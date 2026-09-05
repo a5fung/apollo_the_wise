@@ -4533,6 +4533,7 @@ async def _live_fill_counterfactuals_job():
     try:
         from agents.market_intelligence.live_fill_counterfactuals import run_live_fill_counterfactuals
         from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.health_checks import check_recorder_failure_rate
         out = await run_live_fill_counterfactuals(et_today())
         logger.info(
             f"live-fill counterfactuals: {out['written']} arm row(s) written across "
@@ -4540,6 +4541,11 @@ async def _live_fill_counterfactuals_job():
             f"{out['unscoreable']} unscoreable, {out['horizon']} at horizon, "
             f"{out['pending']} pending, {out['errors']} error(s)"
         )
+        # #593 (2026-09-04): distinguish "wrote 0 because nothing to write" from "wrote 0
+        # because it failed on essentially everything it tried" — see health_checks.py's
+        # #593 RECORDER FAILURE-RATE CHECK section for the rule and why it lives there.
+        await check_recorder_failure_rate(
+            "live_fill_counterfactuals", out, attempted_key="arms_considered")
     except Exception as e:
         logger.error(f"live-fill counterfactual job failed: {e}", exc_info=True)
         await notify_job_failure("live_fill_counterfactuals", str(e))
@@ -4558,6 +4564,7 @@ async def _sustain_reject_replay_job():
     try:
         from agents.market_intelligence.sustain_reject_replay import run_sustain_reject_replay
         from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.health_checks import check_recorder_failure_rate
         out = await run_sustain_reject_replay(et_today())
         logger.info(
             f"sustain-reject replay: {out['written']} row(s) written across "
@@ -4566,6 +4573,10 @@ async def _sustain_reject_replay_job():
             f"{out['unscoreable']} unscoreable, {out['open']} open, {out['horizon']} at horizon, "
             f"{out['pending']} pending, {out['errors']} error(s)"
         )
+        # #593 (2026-09-04): the incident this check exists for — 95/95 candidates errored,
+        # 0 written, reported success. See health_checks.py's #593 RECORDER FAILURE-RATE CHECK.
+        await check_recorder_failure_rate(
+            "sustain_reject_replay", out, attempted_key="candidates")
     except Exception as e:
         logger.error(f"sustain-reject replay job failed: {e}", exc_info=True)
         await notify_job_failure("sustain_reject_replay", str(e))
@@ -4585,6 +4596,7 @@ async def _gap_near_miss_replay_job():
     try:
         from agents.market_intelligence.gap_near_miss_replay import run_gap_near_miss_replay
         from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.health_checks import check_recorder_failure_rate
         out = await run_gap_near_miss_replay(et_today())
         logger.info(
             f"gap near-miss replay: {out['written']} row(s) written across "
@@ -4593,6 +4605,9 @@ async def _gap_near_miss_replay_job():
             f"{out['unscoreable']} unscoreable, {out['open']} open, {out['horizon']} at horizon, "
             f"{out['pending']} pending, {out['errors']} error(s)"
         )
+        # #593 (2026-09-04): see health_checks.py's #593 RECORDER FAILURE-RATE CHECK.
+        await check_recorder_failure_rate(
+            "gap_near_miss_replay", out, attempted_key="candidates")
     except Exception as e:
         logger.error(f"gap near-miss replay job failed: {e}", exc_info=True)
         await notify_job_failure("gap_near_miss_replay", str(e))
@@ -4611,6 +4626,7 @@ async def _lowcap_lane_replay_job():
     try:
         from agents.market_intelligence.lowcap_lane_replay import run_lowcap_lane_replay
         from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.health_checks import check_recorder_failure_rate
         out = await run_lowcap_lane_replay(et_today())
         logger.info(
             f"low-cap lane replay: {out['written']} row(s) written across "
@@ -4619,6 +4635,9 @@ async def _lowcap_lane_replay_job():
             f"{out['open']} open, {out['horizon']} at horizon, {out['pending']} pending, "
             f"{out['errors']} error(s)"
         )
+        # #593 (2026-09-04): see health_checks.py's #593 RECORDER FAILURE-RATE CHECK.
+        await check_recorder_failure_rate(
+            "lowcap_lane_replay", out, attempted_key="candidates")
     except Exception as e:
         logger.error(f"low-cap lane replay job failed: {e}", exc_info=True)
         await notify_job_failure("lowcap_lane_replay", str(e))

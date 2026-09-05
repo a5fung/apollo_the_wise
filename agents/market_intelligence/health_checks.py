@@ -1861,6 +1861,156 @@ async def run_detector_liveness_check() -> dict[str, Any]:
     return out
 
 
+# ── #593 RECORDER FAILURE-RATE CHECK (2026-09-04) ──────────────────────────────────────────────
+#
+# WHY. `sustain_reject_replay`'s first nightly pass (#593, 2026-09-03) hit `KeyError: 'volume'`
+# on ALL 95 of its candidates, wrote 0 rows, and the job reported success — counters read
+# {"population": 95, "candidates": 95, "written": 0, "errors": 95} and nothing anywhere raised
+# that as different from a legitimately quiet night (population=0, nothing to write). The root
+# cause (a column dropped in a refactor) is fixed elsewhere; this check is the missing detection.
+#
+# THIS IS A DIFFERENT QUESTION FROM `_DETECTOR_LIVENESS_TABLES` ABOVE, not a special case of it.
+# That registry asks "has this table gone dark over MANY nights, relative to its own cadence" —
+# read from the table's row history, days after the fact, tolerant of long legitimate silences
+# (>=14 days, sparse tables up to 45). It cannot tell tonight's "wrote 0 because there was
+# nothing to write" apart from "wrote 0 because everything errored": both leave the identical
+# zero-new-rows footprint, and the mechanism is built to not even look until a cadence threshold
+# elapses. This check instead reads the run's OWN counters, already in hand the moment the job
+# returns — no DB round trip, no calendar delay, fires the SAME night. (Verified while building
+# this: the generic `%_error` catch-all in `_check_nightly_silent_errors` ALSO could not have
+# caught tonight's 95 rows — it runs once, at the end of the 17:00 ET nightly-data-pull, a >1
+# hour BEFORE these four recorders run at 18:04-18:15 ET; its 2h lookback window closes before
+# they write a single audit row. Left alone deliberately: fixing that job's timing is a broader,
+# separate change than this card, and it would still need the same rate rule below to avoid
+# alarming on the ordinary per-ticker errors these recorders already treat as loud-ok.)
+#
+# THE RULE, stated as narrowly as it can be: fire when the recorder attempted a non-trivial
+# amount of work (attempted >= _RECORDER_FAILURE_MIN_ATTEMPTED) AND essentially all of it
+# errored (errors / attempted >= _RECORDER_FAILURE_RATE_THRESHOLD). Both guards matter:
+#   - Without the minimum, a single bad ticker in a 1- or 2-candidate night reads as "100%
+#     failure" and cries wolf on ordinary noise — every one of these recorders' own per-item
+#     try/except is commented "loud-ok: one candidate's/reject's/signal's failure is counted;
+#     the others proceed", i.e. an occasional isolated error is BY DESIGN, not an incident.
+#   - Without the rate floor, an ordinary bad night (a handful of data-quality errors among
+#     many successes) would alarm on business-as-usual noise — exactly the "high error RATE on
+#     a small population is normal" case this must not fire on.
+#   - >=90% is "failed on essentially everything it attempted," not "had a rough night": a real
+#     systemic bug (a dropped column referenced on every row, tonight's actual cause) fails at
+#     ~100%, not 60-70%. A rate alone, with no floor on N, was considered and rejected — see the
+#     first bullet; N and rate must both hold.
+# A THIRD, narrower shape is also covered: `attempted == 0` (the population query itself raised,
+# never reaching the candidate loop at all) with `errors > 0` is unambiguous regardless of N —
+# there is no partial-failure population to reason about, the run failed before it could try
+# anything, which is never "no signal" and never ordinary noise.
+#
+# A FOURTH shape, granularity-independent (added on review 2026-09-04): `arms_considered` counts
+# per ARM (several per fill) while `errors` can land per FILL — a failure in `_record_one_fill`'s
+# SETUP code (outside its own per-arm try/except, e.g. `get_daily_ohlc_range`, called ONCE per
+# fill before the arm loop even starts) escapes to the per-fill `except` in
+# `run_live_fill_counterfactuals`'s own loop over `fills`, one error increment for a fill whose
+# `arms_considered` already counted every one of its arms. Tonight's bug, in that shape, would
+# give `arms_considered=8N, errors=N` — a 12.5% rate the rule above would wave through, on
+# exactly the recorder it was built to cover. The fix is not a different threshold; it's a rule
+# that doesn't depend on the two counters sharing a unit at all: every attempted item must
+# terminate as EITHER a write, a pending (legitimately still open, e.g. an unresolved gap — not
+# a failure), or an error — so `written == 0 AND pending == 0 AND errors > 0` means the errors
+# accounted for everything regardless of how coarsely they were counted. Checked against the
+# same negatives the rate rule was tested on: 50 attempted/40 written/3 errors → written != 0,
+# silent. 16 arms/14 pending/2 errors → pending != 0, silent (most of the batch is legitimately
+# waiting, not broken).
+_RECORDER_FAILURE_MIN_ATTEMPTED = 5
+_RECORDER_FAILURE_RATE_THRESHOLD = 0.9
+
+
+def evaluate_recorder_failure_rate(counters: dict[str, int], attempted_key: str) -> dict[str, Any] | None:
+    """Pure decision (mock-free, mirrors `_evaluate_table_liveness`'s idiom): did THIS run fail
+    on essentially everything it attempted? `attempted_key` names the counter that increments
+    once per unit of work the recorder tried — it is NOT the same key across every recorder
+    (`sustain_reject_replay`/`gap_near_miss_replay`/`lowcap_lane_replay` use "candidates", one
+    per ticker-day; `live_fill_counterfactuals` uses "arms_considered", one per settle-arm, since
+    one fill can carry several arms) — pass the right one for the caller's counters dict.
+
+    Returns a flag dict on a real failure, or None (silent = healthy, or too small a sample to
+    judge yet)."""
+    attempted = int(counters.get(attempted_key, 0) or 0)
+    errors = int(counters.get("errors", 0) or 0)
+    written = int(counters.get("written", 0) or 0)
+    pending = int(counters.get("pending", 0) or 0)
+    if attempted == 0:
+        if errors > 0:
+            return {"kind": "no_candidates_reached", "attempted": 0, "errors": errors,
+                    "rate": None, "written": written}
+        return None
+    if attempted < _RECORDER_FAILURE_MIN_ATTEMPTED:
+        return None
+    if written == 0 and pending == 0 and errors > 0:
+        return {"kind": "nothing_produced", "attempted": attempted, "errors": errors,
+                "rate": errors / attempted, "written": 0}
+    rate = errors / attempted
+    if rate >= _RECORDER_FAILURE_RATE_THRESHOLD:
+        return {"kind": "high_error_rate", "attempted": attempted, "errors": errors,
+                "rate": rate, "written": written}
+    return None
+
+
+async def check_recorder_failure_rate(
+    job_name: str, counters: dict[str, int], attempted_key: str,
+) -> bool:
+    """Side-effecting wrapper around `evaluate_recorder_failure_rate` for the four nightly
+    replay/counterfactual recorders that share this counters shape
+    (`live_fill_counterfactuals.py`, `sustain_reject_replay.py`, `gap_near_miss_replay.py`,
+    `lowcap_lane_replay.py`). Call this right after `out = await run_X(...)` in each scheduler
+    job, passing the SAME counters dict the job already logs at INFO — no new persistence, no
+    new query, just a decision on data already in hand.
+
+    On a fire: writes an `mi_audit_log` row (durable — `/audit` and the weekly digest can find
+    it later) AND sends an immediate Telegram via `notify_job_failure`. This condition is rare
+    (a healthy night never gets near it), terminal (nothing about it self-heals — the job will
+    report the identical shape again tomorrow night until the underlying bug is fixed) and
+    actionable (there is a concrete defect to find) — exactly the class CLAUDE.md's Self-Audit
+    System reserves Telegram for. An audit-row-only home (silent until the Sunday digest) was
+    considered and rejected: that is precisely the up-to-a-week delay that let tonight's 95-row
+    failure read as "no signal" for as long as anyone let it. Never raises — a health guard
+    that dies silently is the failure it exists to prevent.
+
+    `notify_job_failure` wraps its `error` argument in bare `_..._` (legacy-Markdown italics —
+    core/notifications.py) and already renders `job_name` separately, backtick-fenced, in its
+    own header line. `body` below is built WITHOUT the job name (every job name here has 2-3
+    underscores; one of them, `gap_near_miss_replay`, pairs with the wrapper's own two to an ODD
+    total and 400s the send outright, dropping the alert — the exact 2026-07-05 lesson at
+    scheduler.py's `_check_nightly_silent_errors`: "an unpaired `_` in legacy-Markdown 400s the
+    send"). `msg` (with the job name, for the audit row and the log line, neither Markdown-
+    rendered) stays separate.
+
+    Returns True iff it fired (so tests can assert on it without parsing logs)."""
+    try:
+        flag = evaluate_recorder_failure_rate(counters, attempted_key)
+        if flag is None:
+            return False
+        if flag["kind"] == "no_candidates_reached":
+            body = (f"never reached its candidate loop ({flag['errors']} error(s) before any "
+                    f"item was attempted), 0 rows written. This is a recorder failure, not a "
+                    f"quiet night — investigate before drawing any conclusion from its output.")
+        elif flag["kind"] == "nothing_produced":
+            body = (f"{flag['errors']} error(s) across {flag['attempted']} attempted item(s), "
+                    f"0 written, 0 pending. This is a recorder failure, not a quiet night — "
+                    f"investigate before drawing any conclusion from its output.")
+        else:
+            body = (f"{flag['errors']}/{flag['attempted']} attempted item(s) errored "
+                    f"({flag['rate']:.0%}), {flag['written']} row(s) written. This is a "
+                    f"recorder failure, not a quiet night — investigate before drawing any "
+                    f"conclusion from its output.")
+        msg = f"{job_name}: {body}"
+        logger.error("recorder_failure_rate: %s", msg)
+        await log_audit_event("recorder_failure_rate", msg)
+        from core.notifications import notify_job_failure
+        await notify_job_failure(job_name, body)
+        return True
+    except Exception as e:  # loud-ok: a health guard that dies silently is the failure it exists to prevent
+        logger.warning("check_recorder_failure_rate(%s) failed: %s", job_name, e)
+        return False
+
+
 # ── #521 INERT-SWEEP CHECK (2026-08-03) ───────────────────────────────────────────────────────
 #
 # WHY. `mi_orb_extension_shadow` swept six entry-cutoff times for three months and every one of
