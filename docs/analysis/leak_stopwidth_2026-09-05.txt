@@ -1,0 +1,12 @@
+Pager usage is off.
+==== A. STOP-WIDTH REFUSALS — SETTLED closes, not max ====
+ERROR:  function round(double precision, integer) does not exist
+LINE 19:        ROUND(100.0*(p.c20-p.c0)/NULLIF(p.c0,0),0) pct_20d
+                ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+
+==== A-SUMMARY: HIGH-scored refusals vs the rest, 20 trading days later ====
+grp|n|avg_pct_20d|median_pct|still_up
+(not scored)|15|5.6|-6.9|6
+HIGH|9|-2.7|2.1|5
+(2 rows)
