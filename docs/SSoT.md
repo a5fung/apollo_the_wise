@@ -71,6 +71,7 @@ setup's criteria, change log and findings.
 | Portfolio safeguards | `docs/setups/safeguards.md` |
 | Catalyst rubric (LIVE gate) | `docs/setups/catalyst_rubric.md` |
 | Meta rubric | `docs/setups/meta_rubric.md` |
+| Meta rubric — what it is, the REAL dependency graph, the anti-block table (decision record, #504) | `docs/decisions/0035-meta-rubric-architecture.md` |
 | Portfolio | `docs/setups/PORTFOLIO.md` |
 
 ## Architecture

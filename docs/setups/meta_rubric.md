@@ -11,6 +11,8 @@ catalyst verdict; each axis below owns a CALIBRATED, traceable CONTEXT credit sh
 Flip to load-bearing = `#335` (CHANGE_PROCESS + operator sign-off + the ONE batched re-grade —
 never a per-axis spend, per the operator's 6/18 cost directive).
 
+**Architecture + dependency graph (decision record, 2026-09-05)**: `docs/decisions/0035-meta-rubric-architecture.md` — what the rubric is in plain words, where it sits, the stage-by-stage path, the three portfolio uses, and the ANTI-BLOCK table (zero-authority work is never gated on a load-bearing flip; every cluster task re-checked, #299 found still chained to #335 after his 08-03 unchain ruling). Its §7 forks are the operator's.
+
 ## The 3 sibling axes (#329 child cards)
 
 | # | Axis | ADR | Table | Status |
