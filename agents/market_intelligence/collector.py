@@ -1567,8 +1567,26 @@ async def search_news_perplexity(
                         # Recency moved INTO the web_search tool config — same
                         # "day"/"week"/"month" vocabulary the callers already pass, so no
                         # call site changes.
+                        # 2026-09-04 FIX: `search_recency_filter` was sent as a direct
+                        # sibling of `type` on the tool object. Perplexity's documented
+                        # Agent API schema nests every search filter (search_recency_filter,
+                        # search_domain_filter, search_after/before_date_filter, ...) under
+                        # a `filters` sub-object on the web_search tool
+                        # (docs.perplexity.ai/docs/agent-api/tools/web-search#filters) —
+                        # confirmed against three separate pages of their current docs. The
+                        # flat placement dates to the 2026-08-27 migration and is fixed here
+                        # regardless. ⚠ NOT CONFIRMED: whether this specific shape is what
+                        # produced the 3 `api_failure_perplexity` http_4xx rows on
+                        # 2026-09-04 — the flat shape was accepted (200s, real cost rows) for
+                        # the 8 days prior, the failing calls' response bodies were not
+                        # captured, and no PERPLEXITY_API_KEY was available at diagnosis time
+                        # to reproduce against the live API. Ship this fix on its own merit
+                        # (it matches the documented contract either way); if a 400
+                        # recurs post-fix, log_audit_event's detail column now also carries
+                        # the response body (see llm_health.alert_api_failure, 2026-09-04),
+                        # so the next one names its own cause.
                         "tools": [{"type": "web_search",
-                                   "search_recency_filter": recency}],
+                                   "filters": {"search_recency_filter": recency}}],
                     },
                 )
                 r.raise_for_status()

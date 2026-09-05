@@ -93,12 +93,79 @@ def test_a_blank_answer_is_never_cached():
 # ── the request keeps the behaviour the callers depend on ────────────────────────────────
 def test_recency_still_reaches_the_search_and_the_system_prompt_survives():
     """`recency` moved into the web_search tool config and the system prompt became
-    `instructions`. Both must still be sent, or every caller silently loses its time window."""
-    body = _COLLECTOR_SRC.split("_PPLX_AGENT_URL,", 1)[1].split(")", 1)[0]
-    body += _COLLECTOR_SRC.split("_PPLX_AGENT_URL,", 2)[2].split(")", 1)[0]
-    assert '"search_recency_filter": recency' in _COLLECTOR_SRC
+    `instructions`. Both must still be sent, or every caller silently loses its time window.
+
+    2026-09-04: `search_recency_filter` must be NESTED under a `filters` sub-object on the
+    tool, not a direct sibling of `type` — the flat placement does not match Perplexity's
+    documented web_search tool schema (docs.perplexity.ai/docs/agent-api/tools/web-search
+    #filters, confirmed against 3 separate doc pages). Whether this specific defect is what
+    produced the day's live HTTP 400s is UNCONFIRMED (the flat shape ran for 8 days without
+    erroring and the failing calls' bodies weren't captured) — this fix ships on contract
+    conformance regardless. This is still a source-text pin (see the structural test below
+    for the real guard), but it must pin the DOCUMENTED shape, not the flat one."""
+    assert '"filters": {"search_recency_filter": recency}' in _COLLECTOR_SRC
+    assert '"search_recency_filter": recency}]' not in _COLLECTOR_SRC, \
+        "search_recency_filter is back as a flat sibling of type, contradicting the documented schema"
     assert '"instructions": system_prompt or _PERPLEXITY_SYSTEM_DEFAULT' in _COLLECTOR_SRC
     assert '"input": query' in _COLLECTOR_SRC
+
+
+@pytest.mark.asyncio
+async def test_the_actual_wire_body_has_recency_nested_under_filters(monkeypatch):
+    """2026-09-04: a source-text grep for `'"search_recency_filter": recency'` (the test
+    above, pre-fix) is satisfied by EITHER the correct nested shape or the broken flat one —
+    it only checks the value survives, never WHERE it lands. The flat shape shipped on
+    2026-08-27 and ran for 8 days without erroring (real cost rows, 200s) before 3 live
+    `api_failure_perplexity` http_4xx rows appeared on 2026-09-04 — whether this exact shape
+    defect is what those 400s were is UNCONFIRMED (bodies weren't captured, no repro key was
+    available at diagnosis time), but the flat shape contradicts Perplexity's documented
+    schema regardless and is fixed on that basis alone.
+
+    This test instead captures the REAL outgoing JSON body and checks its structure per
+    Perplexity's documented web_search tool schema: `filters.search_recency_filter`, not a
+    bare `search_recency_filter` key on the tool object. A future regression back to the flat
+    shape fails THIS test even though the string-pin above could not tell the difference."""
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "k")
+    import agents.market_intelligence.spend_tracker as spend_tracker
+    monkeypatch.setattr(spend_tracker, "log_perplexity_call", _noop_meter)
+
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"status": "completed",
+                    "output": [{"type": "message",
+                                "content": [{"type": "output_text", "text": "ok"}]}]}
+
+    class _Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, headers=None, json=None):
+            captured["url"] = url
+            captured["json"] = json
+            return _Resp()
+
+    monkeypatch.setattr(collector.httpx, "AsyncClient", lambda *a, **k: _Client())
+
+    out = await collector.search_news_perplexity("query", recency="week", fresh=True)
+    assert out == "ok"
+    tool = captured["json"]["tools"][0]
+    assert tool["type"] == "web_search"
+    assert tool.get("filters", {}).get("search_recency_filter") == "week", (
+        "search_recency_filter must be nested under tools[0]['filters'], not a top-level "
+        f"key on the tool — got tool={tool!r}"
+    )
+    assert "search_recency_filter" not in tool, \
+        "search_recency_filter must not ALSO be a flat sibling of type"
 
 
 def test_the_health_probe_does_not_buy_a_search():

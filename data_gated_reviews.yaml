@@ -5905,7 +5905,143 @@ reviews:
 
       Post-fix: revisit whether the carve-out shipped 2026-05-28
       becomes redundant (belt-and-suspenders) or stays load-bearing.
-    status: pending
+    status: done   # 2026-09-04 — the schema vocabulary is pending|done|deferred
+    closed_on: 2026-09-04
+    outcome: |
+      Predicate hit N=19 (30d window: 7 catalyst_earnings_revenue_weak_downgrade
+      + 12 catalyst_downgrade_carveout_applied, all reason=q_rev_yoy_missing_
+      no_prior_year_comparable). This SUPERSEDES the 2026-07-13 progress note,
+      which recommended (as future work, target 7/27) "build a yfinance q-rev
+      +prior-year fallback in the extractor" — a fix of that SHAPE (#321
+      live_yoy_recovery, operator-approved, shipped LIVE 2026-06-28 per git
+      log, validated 20/21 <3% error) was already live two weeks before that
+      note was written, though placed as a bolt-on in ep_detector.py rather
+      than inside the extractor itself; the note doesn't cite it, so either
+      it missed it or was proposing the extractor-side placement instead
+      (that placement would persist YoY into mi_ep_catalyst_metrics and fix
+      two of the three failure modes below at once — an option, not decided
+      here). The real question isn't "does a fix exist" (it does, and is
+      not rare: 18 DISTINCT real-number computations by #321 in this same
+      30d window (14 distinct tickers kept the grade — the raw 18-row
+      catalyst_yoy_recovered_live audit includes KRNT logged 5x on 8/12,
+      the per-tick-emit bug fixed same day per commit cda05751 — + 4
+      distinct tickers confirmed genuine weakness and downgraded correctly
+      WITH a real number) — it's why 19 cases still
+      slip past it. Traced both branches against #321's own telemetry, then
+      checked real-world consequence against mi_ep_alerts + mi_live_trades
+      (not just audit-row counts):
+
+      (1) THE CARVE-OUT SHADOWS THE FIX FOR ALL 12 carveout_applied CASES —
+      A HYGIENE FINDING, DIRECTION UNPROVEN. In ep_detector.py the 2026-05-28
+      carve-out check runs BEFORE the #321 recovery block; when it fires it
+      sets _downgrade_reason=None, so #321's guard never evaluates true and
+      the real number is never looked up. All 12 carve-out grades were
+      decided on the beat+guidance heuristic with a computable real YoY
+      sitting unchecked (yfinance has ≥5 quarters of history for 11 of 12;
+      EROC, 2 quarters only, is likely a genuine case-(d)). "Shadowed" is
+      NOT "harmed" — all 12 beat their estimate, which makes a positive
+      YoY likely but does not guarantee it (a beat against a lowered bar
+      can still be a down year), so reordering could confirm some as
+      stronger than graded OR flip some to a downgrade. Direction unknown
+      without running the check. $0 next step for whoever owns the decision:
+      pull fiscal_period + q_revenue_usd.value for the 12 from
+      mi_ep_catalyst_metrics and replay compute_yoy_from_prior_year offline
+      — no live call, no cost, answers the direction question before any
+      reorder is considered.
+
+      (2) OF THE 7 STILL-DOWNGRADED CASES, THREE DIFFERENT FAILURE MODES —
+      NOT ONE FIX FOR ALL: BE and GPRK were "first seen" by the earnings-gate
+      exactly inside the 9:30-9:45 ET ORB-window exclusion — BY DESIGN (6/28
+      comment: a name first-seen in-window stays conservative rather than
+      risk the ORB cutoff). Both were, in fact, recoverable: #321 computed
+      BE +166.7% and GPRK +24.7% on a LATER tick that same morning, once
+      outside the window — proving the data was sitting there, not proving
+      the exclusion was wrong (it has no earlier answer to protect for a
+      first-seen name; the fork is whether to pre-fetch prior-year revenue
+      ahead of 9:30, keyed to the earnings calendar rather than first
+      sighting — a design call, not a bug). NSSC is a DIFFERENT, THIRD
+      pattern and IS a bug: it was correctly recovered at 07:25 ET (+10.1%,
+      also in the 18), then RE-DERIVED FROM SCRATCH and DOWNGRADED at
+      09:30:07 ET on a later tick, because the earnings-gate block re-runs
+      every 5-min tick from the DB-cached news-extraction (which never had
+      the YoY) and only checks the CURRENT tick's clock against the cutoff —
+      an answer already known 2 hours earlier is never written back anywhere
+      the later tick can see. The 6/28 code comment claims "the rescued
+      grade caches ... for the in-window scans" — it does not, on this
+      path: the recovered YoY (_rec["yoy_pct"]) is never written back into
+      _extracted or mi_ep_catalyst_metrics, so the later tick's
+      get_q_revenue_yoy_pct(_extracted) is still None and _downgrade_reason
+      re-derives to "missing" from scratch — landing in-window, recovery is
+      skipped and the downgrade fires. (The _catalyst_cache write at
+      ep_detector.py ~line 4951 is where the DOWNGRADE lands, not where the
+      fix belongs — the fix is persisting the recovered number so
+      get_q_revenue_yoy_pct sees it on the next tick, or a yoy_recovered
+      flag on the cache entry.) This is the one clean bug-fix candidate
+      here — the BE/GPRK fix (pre-fetch) would NOT fix NSSC's pattern, and
+      vice versa; they are not the same problem. 1 (TWST) recovered 4 min
+      later outside the cutoff window — a
+      transient retry miss (a slow yfinance call under the 4s timeout),
+      self-healed, no fix needed. 1 (YEXT) never recovered (not in the 18)
+      — its own extraction wrote an ambiguous dual fiscal-period label
+      ("Q2/Q3 FY2026-27") that compute_yoy_from_prior_year's exact
+      (quarter, year) matcher can't parse — taxonomy case (b). 2 (ACHR,
+      OMER) never recovered (not in the 18) and are genuinely unrecoverable
+      — case (d): ACHR's own corpus disagreed with itself (conflicting
+      revenue figures, low confidence); OMER's number is a newly-launched
+      drug's first quarter of sales with no meaningful prior-year base.
+      Safety-net is the correct response for these two.
+
+      VERIFIED REAL CONSEQUENCE (checked against mi_ep_alerts + mi_live_
+      trades, not assumed from audit rows): only BE (2026-08-12) produced a
+      confirmed missed entry — NOT a confirmed lost trade; whether it would
+      have won is not checked here. mi_ep_alerts shows BE's #321-recovered
+      "strong"/HIGH grade (ep_score 84) fired at 09:50:00 ET, 5 minutes past
+      the 9:45 ET ORB cutoff. mi_live_trades confirms: BE, live account,
+      status=skipped, skip_reason="window:out_of_orb: detected 09:50 ET" —
+      a real HIGH-tier candidate the pipeline never got to act on, one way
+      or the other. Same shape as the original 5/28 SNOW case (suppressed
+      alert / blocked ORB submission), now hitting the mechanism built to
+      fix that. GPRK/NSSC/YEXT never produced an mi_ep_alerts row at all on
+      their alert dates (other criteria may have kept them sub-threshold
+      regardless of catalyst grade) — no confirmed pipeline consequence
+      found for those three; they stand as grade-quality findings only.
+
+      Root cause, in one line: the #321 fix for "fill the data" was already
+      built, operator-approved, and is reliable when it runs (18 distinct
+      real numbers computed in 30d) — but it never gets a turn for 12/19 cases
+      because the carve-out decides first (hygiene, direction unproven),
+      it is deliberately excluded during the one 15-minute window that
+      decides ORB entry for names first seen there (2/7 — BE, GPRK — by
+      design, not a bug), and a genuine state bug throws away an
+      already-correct answer for a 3rd (NSSC). Only 2/19 (ACHR, OMER) are
+      genuinely case-(d) unrecoverable; 1/19 (TWST) is a self-healed
+      transient; 1/19 (YEXT) is a label-parse gap. This crosses the
+      review's own ≥60% "fix the plumbing" bar, but the plumbing already
+      exists — the finding is about ORDER, STATE, and TIMING, not about
+      building a fallback from scratch. One verified pipeline consequence:
+      BE, live account, a HIGH-tier candidate skipped 5 minutes late.
+
+      NOT MINE TO SHIP. Three distinct forks — do not conflate them
+      (classify-before-gate): (a) NSSC's cache/idempotency defect is a BUG
+      in an already-approved mechanism not doing what its own design
+      comment says — a bug-fix candidate, not a new criteria evidence-gate,
+      but still money-path code needing normal review before shipping. (b)
+      Pre-fetching prior-year revenue ahead of 9:30 for earnings-calendar
+      names (fixes BE/GPRK-class, does NOT fix NSSC-class) vs. accepting the
+      conservative default for first-seen-in-window names — a design
+      tradeoff, operator's call. (c) Running #321 BEFORE the carve-out,
+      falling back to the heuristic only when recovery returns None, is a
+      scoring-ORDER change on the money path (docs/setups/catalyst_rubric.md
+      SSoT) — operator sign-off + backtest-the-grade-delta per
+      CHANGE_PROCESS.md; run the $0 offline replay on the 12 first so the
+      direction is known before deciding. Do NOT narrow/remove the 9:30-9:45
+      ET exclusion itself — that guard protects ORB entry latency for a real
+      reason (advisor-flagged 6/28) and nothing found here shows that
+      reasoning was wrong. Optional: a successor data-gated review to catch
+      this predicate refilling once this one closes (it will — the carve-out
+      still bypasses #321 for every future case unless (c) is decided).
+      No code changed in this review; suite untouched (7436 passed, 7
+      skipped, not re-run).
     added_on: 2026-05-28
 
   - review_id: theme_axis_gating_logic

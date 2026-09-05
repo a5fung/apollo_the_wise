@@ -28,6 +28,15 @@ import sys
 
 sys.path.insert(0, "/app")
 
+# 2026-09-04 alert-sweep fix: this probe calls the SAME collector helper the live scan
+# path uses (see the module docstring above), inside the SAME container, with the SAME
+# real API key — nothing at the HTTP layer can tell this script's failures from a live
+# scan's. Setting this before importing collector marks every _polygon_get/_fmp_get
+# failure this process raises as probe-origin (llm_health._is_probe_origin): the
+# api_failure_polygon audit row still gets written, but it never pages and never counts
+# toward a live sustained-failure escalation. See llm_health.py's PROBE-ORIGIN section.
+os.environ.setdefault("APOLLO_CALL_ORIGIN", "probe")
+
 from agents.market_intelligence.collector import get_ticker_details  # noqa: E402
 
 TICKERS_PATH = "/tmp/_623_all_tickers.txt"
@@ -41,7 +50,13 @@ def _log(msg):
 
 async def main():
     with open(TICKERS_PATH) as f:
-        tickers = [ln.strip() for ln in f if ln.strip()]
+        # #623 alert-sweep fix (2026-09-04): TICKERS_PATH was built from a psql capture and
+        # this loop had no footer guard -- the literal "(3458 rows)" summary line rode along
+        # as if it were a ticker (sorts first, "(" < "A"), got GET-ed against Polygon's
+        # /v3/reference/tickers/{ticker} and tripped the live api_failure_polygon alarm on a
+        # 3458-row population that was never a real ticker. Same house pattern as
+        # _623_join.py/_623_replay.py's `not r["ticker"].startswith("(")` psql-footer guard.
+        tickers = [ln.strip() for ln in f if ln.strip() and not ln.strip().startswith("(")]
 
     done = set()
     if os.path.exists(OUT_PATH):

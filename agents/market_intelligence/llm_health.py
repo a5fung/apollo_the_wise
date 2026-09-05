@@ -27,6 +27,7 @@ REACTIVE exhaustion alert.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -273,6 +274,35 @@ _last_api_alert_ts: dict[tuple[str, str], float] = {}
 # real-money path trains the operator to dismiss it.
 _API_PROVIDERS = ("polygon", "fmp", "perplexity", "alpaca")
 
+# ── PROBE-ORIGIN carve-out (2026-09-04 alert sweep) ───────────────────────────────────
+#
+# THE GAP this closes: a `scripts/probes/*.py` one-off calls the SAME collector helpers
+# the live scan path does (same process type once `docker exec`'d into the market-agent
+# container, same real API key), so `_polygon_get`'s except block has no way to tell "the
+# live 09:31 ORB scan just failed" from "today's throwaway #623 probe had a data bug and
+# hit Polygon with a malformed ticker." The #623 psql-footer-as-ticker bug did exactly
+# that: `GET /v3/reference/tickers/(3458 rows)` fired a genuine `api_failure_polygon`
+# Telegram claiming the catalyst grade / RS universe / news corpus was degrading, when in
+# truth zero live traffic was involved.
+#
+# FIX: a probe sets this env var, in-process, at import time — no docker flag to
+# remember, no per-call plumbing through ~20 public collector signatures (get_ticker_
+# details, get_daily_bars, ... all the way down to _polygon_get/_fmp_get). The process is
+# the origin boundary here, and the marker travels with it automatically.
+#
+# NEVER weaken the live alarm: the live app never sets this var, so its calls are governed
+# by the exact same logic as before this change. A probe-origin failure still writes the
+# `api_failure_<provider>` audit row (never silently dropped — a probe hitting a real
+# provider bug is still worth seeing later) with an `origin=probe` marker; it just never
+# pages, and — see the dedup lookback below — never counts toward a LIVE failure's
+# "sustained" transient-class escalation either.
+_PROBE_ORIGIN_ENV = "APOLLO_CALL_ORIGIN"
+
+
+def _is_probe_origin() -> bool:
+    return os.environ.get(_PROBE_ORIGIN_ENV) == "probe"
+
+
 # Alarm copy varies by provider CLASS, not per-provider — a small mapping, not
 # an if-chain. Data-APIs (polygon/fmp/perplexity/unlisted-"other") degrade the
 # catalyst grade / RS universe / news corpus; alpaca is the BROKER — its reads
@@ -463,65 +493,79 @@ async def alert_api_failure(provider: str, exc: BaseException,
         now = time.monotonic()
         code = _status_code(exc)
         transient = is_transient_api_failure(provider, cls, code)
+        is_probe = _is_probe_origin()
 
         # ── Telegram decision (the audit row below is written EITHER WAY) ──
         send_telegram = False
-        last = _last_api_alert_ts.get(key)
-        pregate_open = last is None or (now - last) >= _ALERT_WINDOW_S
-        if pregate_open:
-            already_alerted = False
-            lookback_ok = False
-            same_cls_rows: list[dict] = []
-            try:
-                from agents.market_intelligence.db import get_audit_log
-                recent = await get_audit_log(
-                    event_type=event_type, since_hours=_ALERT_WINDOW_HOURS,
-                    limit=_SUSTAINED_LOOKBACK_LIMIT,
-                )
-                lookback_ok = True
-                for row in (recent or []):
-                    summary = row.get("summary") or ""
-                    if f"class={cls}" not in summary:
-                        continue
-                    same_cls_rows.append(row)
-                    # tg=1 = row that carried a Telegram; legacy rows (no tg=
-                    # marker, pre-split format) were only written when a
-                    # Telegram fired → also count as alerted.
-                    if "tg=1" in summary or "tg=" not in summary:
-                        already_alerted = True
-            except Exception as e:
-                # DB unavailable — for ACTIONABLE classes fall through and alert
-                # (better a possible dup than a silently-swallowed API outage,
-                # the whole bug class #380/#370). TRANSIENT classes stay quiet:
-                # sustained-detection needs the DB, and a self-healing blip must
-                # not page just because the lookback flaked.
-                logger.warning("alert_api_failure dedup lookback failed for %s/%s "
-                                "(actionable falls through to alert): %s",
-                                provider, cls, e)
+        # Probe-origin calls skip the ENTIRE decision block below, not just the final
+        # "send" flag: the block also (a) reads `_last_api_alert_ts[key]` to decide
+        # whether the pre-gate is open and (b) WRITES it on an already-alerted lookback
+        # hit. Touching either from a probe would let a throwaway script's failure
+        # suppress or reshape a genuine live alert on the same (provider, class) shortly
+        # after — worse than just letting a probe page once. `send_telegram` simply stays
+        # False and no live dedup state is touched.
+        if not is_probe:
+            last = _last_api_alert_ts.get(key)
+            pregate_open = last is None or (now - last) >= _ALERT_WINDOW_S
+            if pregate_open:
+                already_alerted = False
+                lookback_ok = False
+                same_cls_rows: list[dict] = []
+                try:
+                    from agents.market_intelligence.db import get_audit_log
+                    recent = await get_audit_log(
+                        event_type=event_type, since_hours=_ALERT_WINDOW_HOURS,
+                        limit=_SUSTAINED_LOOKBACK_LIMIT,
+                    )
+                    lookback_ok = True
+                    for row in (recent or []):
+                        summary = row.get("summary") or ""
+                        # A probe-origin row must never feed the LIVE sustained-count —
+                        # three probe timeouts plus one real live timeout must not read
+                        # as "sustained" (see the module-level PROBE-ORIGIN note above).
+                        if "origin=probe" in summary:
+                            continue
+                        if f"class={cls}" not in summary:
+                            continue
+                        same_cls_rows.append(row)
+                        # tg=1 = row that carried a Telegram; legacy rows (no tg=
+                        # marker, pre-split format) were only written when a
+                        # Telegram fired → also count as alerted.
+                        if "tg=1" in summary or "tg=" not in summary:
+                            already_alerted = True
+                except Exception as e:
+                    # DB unavailable — for ACTIONABLE classes fall through and alert
+                    # (better a possible dup than a silently-swallowed API outage,
+                    # the whole bug class #380/#370). TRANSIENT classes stay quiet:
+                    # sustained-detection needs the DB, and a self-healing blip must
+                    # not page just because the lookback flaked.
+                    logger.warning("alert_api_failure dedup lookback failed for %s/%s "
+                                    "(actionable falls through to alert): %s",
+                                    provider, cls, e)
 
-            if not transient:
-                send_telegram = not already_alerted
-            else:
-                sustained = False
-                if lookback_ok and len(same_cls_rows) + 1 >= _SUSTAINED_COUNT:
-                    times = []
-                    for row in same_cls_rows:
-                        ts = row.get("created_at")
-                        if isinstance(ts, datetime):
-                            if ts.tzinfo is None:
-                                ts = ts.replace(tzinfo=timezone.utc)
-                            times.append(ts)
-                    if times:
-                        spread_s = (datetime.now(timezone.utc) - min(times)).total_seconds()
-                        sustained = spread_s >= _SUSTAINED_MIN_SPREAD_S
-                send_telegram = sustained and not already_alerted
+                if not transient:
+                    send_telegram = not already_alerted
+                else:
+                    sustained = False
+                    if lookback_ok and len(same_cls_rows) + 1 >= _SUSTAINED_COUNT:
+                        times = []
+                        for row in same_cls_rows:
+                            ts = row.get("created_at")
+                            if isinstance(ts, datetime):
+                                if ts.tzinfo is None:
+                                    ts = ts.replace(tzinfo=timezone.utc)
+                                times.append(ts)
+                        if times:
+                            spread_s = (datetime.now(timezone.utc) - min(times)).total_seconds()
+                            sustained = spread_s >= _SUSTAINED_MIN_SPREAD_S
+                    send_telegram = sustained and not already_alerted
 
-            if already_alerted:
-                _last_api_alert_ts[key] = now  # keep the pre-gate honest
+                if already_alerted:
+                    _last_api_alert_ts[key] = now  # keep the pre-gate honest
 
-        if send_telegram:
-            # Claim the window in-process before any await that could interleave.
-            _last_api_alert_ts[key] = now
+            if send_telegram:
+                # Claim the window in-process before any await that could interleave.
+                _last_api_alert_ts[key] = now
 
         code_str = f" HTTP {code}" if code is not None else ""
         label = provider.upper()
@@ -529,17 +573,40 @@ async def alert_api_failure(provider: str, exc: BaseException,
         kind = copy["kind"]
         consequence = copy["consequence"]
 
+        # 2026-09-04 (found diagnosing a Perplexity 400 with no repro key): `str(exc)` on an
+        # `httpx.HTTPStatusError` is ONLY "Client error '400 Bad Request' for url '...'" — it
+        # never includes the response BODY, which is exactly where a 4xx provider names the
+        # offending field (Perplexity's shape: `{"error":{"message","type","code"}}`, confirmed
+        # live against their 401 response). That left the actual incident's audit row with the
+        # URL and status but not the one line that would have named the bad field immediately.
+        # Appending the body (bounded, redacted at the log_audit_event chokepoint same as
+        # everything else) means the NEXT 4xx/5xx across every provider on this shared path
+        # names its own cause instead of needing a live reproduction to find out.
+        _detail = str(exc)[:400]
+        try:
+            _resp_text = getattr(getattr(exc, "response", None), "text", None)
+            if _resp_text:
+                _detail = f"{_detail} | body={_resp_text[:400]}"
+        except Exception as _e:
+            # Response body isn't always readable (streamed/closed) — the exc text alone
+            # stands; this is best-effort enrichment, never load-bearing for the alert.
+            logger.debug("alert_api_failure: could not read response body for %s/%s: %s",
+                         provider, cls, _e)
+
         # Audit row FIRST, ALWAYS (durable record + queryable; visible to the
         # morning banner / `show errors` / sweeps even when no Telegram fires).
         # `class=<cls>` + ` tg=<0|1>` markers are load-bearing — the lookback
-        # above matches on them.
+        # above matches on them. `origin=probe` is the carve-out marker (never
+        # emitted for a live call — is_probe is only True when a probe explicitly
+        # set APOLLO_CALL_ORIGIN=probe in its own process).
         try:
             from agents.market_intelligence.db import log_audit_event
             await log_audit_event(
                 event_type,
                 f"{label} API FAILURE class={cls}{code_str} tg={1 if send_telegram else 0}"
+                + (" origin=probe" if is_probe else "")
                 + (f" — {context}" if context else ""),
-                str(exc)[:400],
+                _detail,
             )
         except Exception as e:
             logger.warning("alert_api_failure audit-row write failed for %s/%s: %s",

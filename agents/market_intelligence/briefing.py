@@ -2273,6 +2273,33 @@ def _format_morning_briefing(
 _perplexity_cache: dict[str, dict] = {}  # {date_str: {"overnight_news": str, "econ_calendar": str}}
 
 
+def _merge_overnight_error_rows(*row_lists: "list[dict] | None") -> list[dict]:
+    """Merge the morning briefing's overnight audit-log queries, dedup by row id
+    (a pattern-overlap query, e.g. validation_error matching both %error% and no
+    other list, must not double-count), and drop probe-origin api_failure rows.
+
+    2026-09-04 alert-sweep fix: an `api_failure_<provider>` row a probe tripped
+    (llm_health._is_probe_origin, marker `origin=probe`) never Telegrammed — see
+    llm_health.alert_api_failure — but the raw audit-log queries still surface
+    it here, which would put a throwaway script's failure in front of the
+    operator as a 🔴 overnight engine event. The row itself is kept (queryable
+    via `show errors` / a direct audit-log read); it just never enters the
+    morning digest, the one surface this fix is actually about."""
+    seen: set = set()
+    out: list[dict] = []
+    for rows in row_lists:
+        for r in (rows or []):
+            rid = r.get("id")
+            if rid is not None and rid in seen:
+                continue
+            if rid is not None:
+                seen.add(rid)
+            if "origin=probe" in str(r.get("summary") or ""):
+                continue
+            out.append(r)
+    return out
+
+
 async def send_morning_briefing(chat_id: int | None = None) -> str:
     """
     Assemble and send the morning briefing.
@@ -2300,17 +2327,10 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         # exist when THEME_MERGE_ARM is on and merges executed; empty otherwise.
         _get_audit_log(limit=6, event_type="theme_thesis_merged", since_hours=18),
     )
-    # Merge + dedup by id — pattern overlap (e.g. validation_error matches both
-    # %error%) won't double-count.
-    seen: set = set()
-    overnight_errors: list[dict] = []
-    for r in (overnight_err_rows or []) + (overnight_api_rows or []) + (overnight_rate_rows or []):
-        rid = r.get("id")
-        if rid is not None and rid in seen:
-            continue
-        if rid is not None:
-            seen.add(rid)
-        overnight_errors.append(r)
+    # Merge + dedup by id (pattern overlap, e.g. validation_error matches both
+    # %error%, won't double-count) and drop probe-origin api_failure rows.
+    overnight_errors = _merge_overnight_error_rows(
+        overnight_err_rows, overnight_api_rows, overnight_rate_rows)
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
     # Earnings calendar — get RS scores for tickers with earnings data

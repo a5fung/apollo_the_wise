@@ -734,3 +734,105 @@ def test_briefing_banner_downgrades_transient_api_rows():
     assert "1 transient data-API blip(s)" in text          # quiet 🔵 line
     assert "PERPLEXITY API FAILURE" not in text            # not echoed as 🔴
     assert "FMP API FAILURE class=http_4xx HTTP 403" in text  # actionable stays loud
+
+
+# ── PROBE-ORIGIN carve-out (2026-09-04 alert sweep, #623) ─────────────────────
+#
+# A probe hitting a live collector helper from the same process/key as the app
+# must never page the operator or corrupt a genuine live escalation, but the
+# audit trail must still capture it. APOLLO_CALL_ORIGIN=probe is the marker.
+
+@pytest.mark.asyncio
+async def test_probe_origin_writes_audit_row_but_never_alerts(monkeypatch):
+    monkeypatch.setenv("APOLLO_CALL_ORIGIN", "probe")
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    # A non-transient class (http_4xx) would normally page immediately.
+    await llm_health.alert_api_failure("polygon", _http_status_error(400),
+                                       context="GET /v3/reference/tickers/(3458 rows)")
+
+    assert sent == []
+    assert len(db.written) == 1
+    et, summary, _ = db.written[0]
+    assert et == "api_failure_polygon"
+    assert "origin=probe" in summary
+    assert "tg=0" in summary
+    # The live pre-gate/dedup state must be untouched by a probe call — a live
+    # failure on the same (provider, class) right after must still be free to fire.
+    assert llm_health._last_api_alert_ts == {}
+
+
+@pytest.mark.asyncio
+async def test_probe_origin_does_not_weaken_a_following_live_alert(monkeypatch):
+    # THE "did not weaken the live alarm" proof: a probe failure immediately
+    # followed by a real live failure on the same (provider, class) must still
+    # page — the probe call must leave no dedup/sustained state behind.
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    monkeypatch.setenv("APOLLO_CALL_ORIGIN", "probe")
+    await llm_health.alert_api_failure("polygon", _http_status_error(400),
+                                       context="GET /v3/reference/tickers/(3458 rows)")
+    assert sent == []
+
+    monkeypatch.delenv("APOLLO_CALL_ORIGIN", raising=False)
+    await llm_health.alert_api_failure("polygon", _http_status_error(400),
+                                       context="GET /v3/reference/tickers/AAPL")
+
+    assert len(sent) == 1                    # the live call still pages
+    assert len(db.written) == 2
+    assert "origin=probe" not in db.written[1][1]
+
+
+@pytest.mark.asyncio
+async def test_probe_origin_rows_excluded_from_sustained_lookback(monkeypatch):
+    # Three probe-origin timeouts sitting in the lookback window must NOT count
+    # toward a live timeout's sustained-escalation threshold (>=3, >=30min spread).
+    db = _DBStub(existing=[
+        {"event_type": "api_failure_perplexity",
+         "summary": "PERPLEXITY API FAILURE class=timeout tg=0 origin=probe — probe run",
+         "created_at": _utc_ago(45)},
+        {"event_type": "api_failure_perplexity",
+         "summary": "PERPLEXITY API FAILURE class=timeout tg=0 origin=probe — probe run",
+         "created_at": _utc_ago(20)},
+    ])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("perplexity", httpx.ReadTimeout("slow"),
+                                       context="news search")
+
+    assert sent == []                        # a single LIVE timeout stays quiet —
+    assert len(db.written) == 1              # the probe rows above must not have
+    assert "tg=0" in db.written[0][1]         # been counted toward "sustained"
+    assert "origin=probe" not in db.written[0][1]
+
+
+def test_morning_briefing_merge_drops_probe_origin_rows():
+    # The morning digest's own audit-log queries would otherwise re-surface a
+    # probe-origin api_failure row (it was never Telegrammed, but nothing about
+    # the %api_failure% audit-log query itself excludes it) as a 🔴 overnight
+    # engine event. _merge_overnight_error_rows is the one place that filters it
+    # before _format_morning_briefing ever sees the list.
+    from agents.market_intelligence.briefing import _merge_overnight_error_rows
+
+    merged = _merge_overnight_error_rows(
+        [{"id": 1, "event_type": "validation_error", "summary": "class=timeout"}],
+        [{"id": 2, "event_type": "api_failure_polygon",
+          "summary": "POLYGON API FAILURE class=http_4xx HTTP 400 tg=0 origin=probe "
+                     "— GET /v3/reference/tickers/(3458 rows)"},
+         {"id": 3, "event_type": "api_failure_fmp",
+          "summary": "FMP API FAILURE class=http_4xx HTTP 403 tg=1"}],
+        [],
+    )
+    ids = {r["id"] for r in merged}
+    assert ids == {1, 3}                     # the probe row (id 2) is dropped
+    assert all("origin=probe" not in (r.get("summary") or "") for r in merged)
+
+
+def test_morning_briefing_merge_dedups_by_id_across_lists():
+    from agents.market_intelligence.briefing import _merge_overnight_error_rows
+
+    row = {"id": 7, "event_type": "validation_error", "summary": "class=timeout"}
+    merged = _merge_overnight_error_rows([row], [row], [])
+    assert len(merged) == 1
