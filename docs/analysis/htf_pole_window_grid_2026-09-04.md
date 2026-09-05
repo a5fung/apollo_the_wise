@@ -36,7 +36,8 @@ constant rather than as replay noise.
 - **It does not establish that HTF makes money.** Every number here is detection behaviour — days on
   the board, stage transitions, and raw forward moves. **It is not realized R through any bracket**,
   no entry or stop is simulated, and the money question is #397's, explicitly out of scope.
-- **It cannot generalise from the labelled corpus, which is N=2.** CDNA and HNGE are two names. They
+- **It cannot generalise from the labelled corpus, which is N=7** (grown from 2 on 2026-09-04: CDNA,
+  HNGE, NCI, ATAI, OUST, SHAZ, REPL — every member a verbatim operator label). Seven names. They
   are useful as worked cases and are worthless as a rate.
 - **The forward window is short.** The added names' next-20-session moves span a period where SPY was
   +3.9% and QQQ −0.7%; two months is not a regime sample, and several names are truncated by the
@@ -178,5 +179,5 @@ python scripts/probes/_592_610_htf_grid_replay.py --data-dir <dir> --only-base  
 python scripts/probes/_592_610_htf_grid_replay.py --data-dir <dir>               # full grid
 ```
 Labelled corpus: `tests/fixtures/htf_labelled.py` + `tests/test_htf_labelled_corpus.py` (HNGE, CDNA;
-N=2 — the only trader-labelled HTFs on disk. No corpus was built from the detector's own criteria;
+N=7 as of 2026-09-04 — every member operator-labelled. No corpus was built from the detector's own criteria;
 that would be circular).

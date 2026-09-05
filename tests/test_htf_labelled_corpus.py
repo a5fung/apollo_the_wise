@@ -76,11 +76,19 @@ def test_every_member_has_an_operator_sourced_label():
         assert m.label_source and "operator" in m.label_source, (
             f"{m.ticker}: label_source must name where the operator-shared label came from"
         )
-        assert m.expected in ("actionable", "rejected:runup"), m
+        assert m.expected == "actionable" or m.expected.startswith("rejected:"), (
+            f"{m.ticker}: expected must be 'actionable' or 'rejected:<reason-prefix>', got {m.expected!r}"
+        )
 
 
 @pytest.mark.parametrize("member", HTF_LABELLED, ids=[m.ticker for m in HTF_LABELLED])
 def test_labelled_member_matches_recorded_verdict(member, bars):
+    """`expected` is either "actionable" (must be in _ACTIONABLE) or "rejected:<prefix>"
+    (must NOT be in _ACTIONABLE and its `reason` must start with `<prefix>`) — generalised
+    2026-09-04 (#592/#610 corpus build) from the original runup-only check so a member can
+    be rejected by ANY gate (stage2, flag-depth, base-age, runup, ...), not just runup. The
+    runup case keeps its extra numeric check for backward-compat rigor.
+    """
     assert member.ticker in bars, f"no bars for {member.ticker} in {_BARS.name}"
     res = _replay(member.ticker, bars[member.ticker], through=max(member.assert_dates))
     for d in member.assert_dates:
@@ -91,9 +99,12 @@ def test_labelled_member_matches_recorded_verdict(member, bars):
                 f"{member.ticker} {d}: MUST-NOT-MISS regressed — stage={m['stage']} reason={m['reason']}"
             )
         else:
-            assert m["stage"] == "unqualified" and (m["reason"] or "").startswith("runup_"), (
+            prefix = member.expected.split(":", 1)[1]
+            assert m["stage"] not in _ACTIONABLE and (m["reason"] or "").startswith(prefix), (
                 f"{member.ticker} {d}: the RECORDED verdict changed (stage={m['stage']} "
-                f"reason={m['reason']}). If this is deliberate, update the member's `expected` "
-                f"AND docs/setups/htf.md § Known limitations in the same commit."
+                f"reason={m['reason']}, expected prefix {prefix!r}). If this is deliberate, "
+                f"update the member's `expected` AND docs/setups/htf.md § Known limitations "
+                f"in the same commit."
             )
-            assert m["runup_pct"] is not None and m["runup_pct"] < fd._RUNUP_MIN_RATIO - 1.0
+            if prefix == "runup_":
+                assert m["runup_pct"] is not None and m["runup_pct"] < fd._RUNUP_MIN_RATIO - 1.0

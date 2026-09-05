@@ -64,7 +64,9 @@ from agents.market_intelligence import flag_detector as fd  # noqa: E402
 ACTIONABLE = ("WATCH", "TIGHTENING", "COILED", "TRIGGERED")
 BASELINE_MATCH_FLOOR = 0.95      # named floor — below this the harness is wrong, stop
 WINDOW_START = date(2026, 6, 29)  # report from here; seed rows before it thread state only
-CANARIES = ("CDNA", "HNGE")       # the only trader-labelled HTFs on disk (N=2)
+CANARIES = ("CDNA", "HNGE")       # the two POSITIVE trader-labelled HTFs; the corpus is N=7
+                                  # (tests/fixtures/htf_labelled.py) — the other five are his
+                                  # REJECTIONS, which belong in the fixture, not in a canary set
 
 GRID = [
     (1.90, 40, 0.040),   # BASELINE — shipped

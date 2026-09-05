@@ -120,7 +120,8 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    a criterion question; recorded so the money gate is not built on an assumed edge.
 5. `close_below_base_low_close` INVALIDATED re-arms as the base's lowest close creeps down, so a
    name can flip INVALIDATED → TIGHTENING (CDNA 07-22→07-29, then 07-30). Cosmetic; unfixed.
-6. **Labelled corpus is N=2** (HNGE, CDNA — `tests/fixtures/htf_labelled.py`, replayed every suite
+6. **Labelled corpus is N=7** (CDNA, HNGE, NCI, ATAI, OUST, SHAZ, REPL — grown from 2 on 2026-09-04,
+   every member a VERBATIM operator label, never an inference — `tests/fixtures/htf_labelled.py`, replayed every suite
    run through the shipped detector). Every further trader-shared HTF is a one-line addition.
 
 ## Change log
