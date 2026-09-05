@@ -29,10 +29,19 @@ from agents.market_intelligence.parabolic_detector import _sma
 logger = logging.getLogger(__name__)
 
 _SCAN_CONCURRENCY = 8       # bound per-ticker history fetches
-_HISTORY_DAYS     = 380     # CALENDAR days (get_recent_daily_history filters by trade_date, not row
-                            # count): ~0.685 trading-days/calendar-day, so 380 ≈ 260 TRADING rows —
-                            # enough for the 200d MA + 52w-high Stage-2 gate. (260 cal gave only ~178
-                            # trading rows → sma_200 was silently None / dead — advisor 6/27, #381 class.)
+_HISTORY_DAYS     = 262     # TRADING days (2026-09-05: get_recent_daily_history now counts rows,
+                            # not a calendar span — see its docstring). 262 = the MEDIAN the old
+                            # calendar filter actually delivered (it ranged 258-263 with holidays),
+                            # chosen over the 260 its own comment claimed because this change is
+                            # about making the COUNT honest, not about moving the window: 260 would
+                            # shift live behaviour for no evidenced reason. Operator-approved
+                            # 2026-09-05. Measured either way: of 405 replayed (ticker, date) pairs
+                            # 116 got a window 1-3 rows different and ALL 116 produced an identical
+                            # stage and reason, and the direction is one-sided — fewer rows can only
+                            # LOWER the 52-week high the Stage-2 gate reads, so weakly more
+                            # permissive, never stricter.
+                            # Enough for the 200d MA + 52w-high Stage-2 gate. (Below ~200 trading rows,
+                            # sma_200 goes silently None / dead — advisor 6/27, #381 class.)
 
 # ── Universe / runup gates ──────────────────────────────────────────────────
 _PIVOT_LOOKBACK_DAYS = 25       # Walk back this far to find pivot-high bar
@@ -734,6 +743,8 @@ def compute_flag_metrics(
         "base_low": None,
         "runup_pct": None,
         "runup_start_date": None,
+        "flagpole_ratio": None,
+        "flag_depth_pct": None,
         "range_contraction_ratio": None,
         "vol_contraction_ratio": None,
         "last_body_pct": None,
@@ -826,6 +837,12 @@ def compute_flag_metrics(
     base_low_close  = min(float(r["close"])      for r in base_rows)
     base["base_high"] = base_high
     base["base_low"]  = base_low
+    # flag_depth_pct = pullback fraction off the pole top, on the SAME quantities
+    # (base_low, pivot_high) the flag-depth gate below (_FLAG_DEPTH_MIN) compares —
+    # not the closing variants. Recorded here (telemetry) even for rows the runup/
+    # artifact/INVALIDATED checks below still go on to reject, so offline analysis
+    # sees the metric at every candidate that got this far (#356 follow-up).
+    base["flag_depth_pct"] = (1.0 - (base_low / pivot_high)) if pivot_high > 0 else None
 
     # ── Runup magnitude: pivot_high / min(low) over 40 sessions ending at pivot (sourced HTF)
     runup_window_start = max(0, pivot_idx - _RUNUP_LOOKBACK_DAYS + 1)
@@ -839,6 +856,10 @@ def compute_flag_metrics(
         return base
     runup_pct = (pivot_high / runup_low) - 1.0
     base["runup_pct"] = runup_pct
+    # flagpole_ratio = pivot_high / runup_low = 1 + runup_pct — the same ratio the
+    # runup gate (_RUNUP_MIN_RATIO) below compares, just carried as its own column
+    # so offline analysis doesn't have to re-derive it from runup_pct (#356 follow-up).
+    base["flagpole_ratio"] = 1.0 + runup_pct
     base["runup_start_date"] = next(
         (r["trade_date"] for r in runup_rows if float(r["low_price"]) == runup_low), None
     )

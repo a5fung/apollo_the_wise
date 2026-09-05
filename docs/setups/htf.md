@@ -29,7 +29,7 @@ criteria were swapped/added.
 | **Flagpole magnitude** | `pivot_high / 40d_low ≥ 1.9×` (≥90% in ~8wk) | spec `C≥1.9×C₄₀` / `High₄₀≥1.9×Low₄₀` | `_RUNUP_MIN_RATIO=1.90`, `_RUNUP_LOOKBACK_DAYS=40` |
 | **Flag depth** | `base_low ≥ 0.75×pivot_high` (≤25% pullback, on the ABSOLUTE low) | spec `Close≥0.75×High₄₀`, tightened to the low | `_FLAG_DEPTH_MIN=0.75` |
 | **Trend** | `close ≥ sma_50` AND MAs stacked `10≥20≥50` (Stage-2 uptrend) | spec "above the 10/20/50 MAs" | `_SMA50_WINDOW` + the trend block |
-| **Stage-2 (long-term)** | `close ≥ 200d MA` AND `pivot_high ≥ 75% of the 52w high` (near highs, not a crash-recovery) | spec "Stage-2 uptrend (Minervini)" | `_SMA200_WINDOW`, `_STAGE2_NEAR_HIGH_MIN`; needs `_HISTORY_DAYS=380` |
+| **Stage-2 (long-term)** | `close ≥ 200d MA` AND `pivot_high ≥ 75% of the 52w high` (near highs, not a crash-recovery) | spec "Stage-2 uptrend (Minervini)" | `_SMA200_WINDOW`, `_STAGE2_NEAR_HIGH_MIN`; needs `_HISTORY_DAYS=260` (TRADING rows since 2026-09-05 — see change log) |
 | **Flagpole data-artifact** | reject a >50% single-day close jump with `vol < 2× window avg` | Gemini 6/27 (split / bad-tick backstop) | runup-window guard |
 | **Flagpole volume** | ≥1 day in the 40d window at `vol ≥ 2× window avg` | spec "undeniable institutional demand"; Gemini 6/27 | `spike_days ≥ 1` |
 | **Liquidity** | ADV > 500k shares, ADR > 4% | spec | ✅ ENCODED 6/28 in `compute_flag_metrics` (per-ticker — so EVERY universe path is gated, not just the organic SQL one; VERIFY found the $5M dollar-vol floor didn't cover it). Tunable named constants: `_HTF_MIN_ADV_SHARES=500_000` (firm liquidity floor) + `_HTF_MIN_ADR_PCT=0.04` (STARTING value — 4% is NOT canonical, sources 3-6%; DATA-GATED tune `htf_adr_threshold_tune` once the breakout-shadow accrues N≥10 settled winners). Impact: dropped 1 of 2 current candidates (under-liquid). |
@@ -125,6 +125,58 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    run through the shipped detector). Every further trader-shared HTF is a one-line addition.
 
 ## Change log
+- **2026-09-05 — #356 follow-up: `get_recent_daily_history` now counts TRADING rows, not a
+  calendar span; `flagpole_ratio`/`flag_depth_pct` persisted on `mi_flag_candidates`. Bug fix +
+  telemetry, no criterion changed.**
+  **Trigger**: #356's own to-do list (recorded 2026-08-26) named both as unbuilt: the two columns
+  were absent (not merely NULL) from `mi_flag_candidates`, and `get_recent_daily_history` filtered
+  `trade_date >= end - days` — a CALENDAR span, so the actual row count silently drifted with how
+  many weekends/holidays fell inside that span on any given scan_date (the exact defect the
+  2026-07-24 entry below papered over by inflating `_HISTORY_DAYS` to 380 calendar days).
+  **Fix**: `get_recent_daily_history` now orders the ticker's own rows by `trade_date DESC LIMIT
+  days` (a plain per-ticker top-N — no PARTITION needed, unlike the multi-ticker ROW_NUMBER pattern
+  used for ADV-20 elsewhere in this file) — so "N rows" and "N trading days" are the same thing (no
+  separate holiday calendar needed; `mi_daily_closes` only ever has a row for a day the market was
+  open). `_HISTORY_DAYS` recalibrated **380 calendar → 260 trading** — the same target the 2026-07-24
+  entry already named as its intent ("380 ≈ 260 trading rows"), now exact every day instead of
+  fluctuating with the holiday count inside that specific calendar window.
+  `flagpole_ratio` (`pivot_high / runup_low`, = `1 + runup_pct`) and `flag_depth_pct`
+  (`1 - base_low/pivot_high`, the same quantity the flag-depth gate compares) are now computed
+  in `compute_flag_metrics` from values it already derives and persisted as their own columns —
+  telemetry only, read nowhere by the state machine.
+  **Anticipated effect — MEASURED, not guessed**: `parabolic_detector.py` (the other production
+  caller, `_HISTORY_DAYS=120`) is unaffected — every lookback there (`_sma`, `_compute_base_low`,
+  `_roc`) slices relative to `today_idx`, never the total row count, so the extra rows it now
+  receives (≈120 vs. the old ≈82 actual trading rows from 120 calendar days) are unused headroom,
+  not a new admission path. For THIS detector, `hi_52w` (the Stage-2 near-52w-high gate) is the one
+  place that consumes the ENTIRE returned row list rather than a fixed offset from today, so it is
+  the only place row-count exactness matters. Measured the real NYSE trading calendar
+  (`exchange_calendars`, 898 end-dates 2023-2026, scratchpad-only): the OLD 380-calendar-day window
+  actually returned **258-263 trading rows** (mean 261.7, median 262) — never as low as the "~260"
+  the old comment claimed as its target. NEW is fixed at exactly **260**, i.e. at the low end of that
+  range. Direction: fewer rows ⇒ `hi_52w` can only be ≤ the old value in 897 of 898 dates (one rare
+  date had OLD=258 < NEW=260, the opposite direction) ⇒ `pivot_high < 0.75×hi_52w` fires *less* often
+  ⇒ **the fix is weakly MORE PERMISSIVE at this one gate, essentially never stricter** — nothing that
+  qualified before gets newly rejected by it. Replayed the full 7-member labelled corpus
+  (`tests/test_htf_labelled_corpus.py` fixture bars) old-window-vs-new-window, ticker-by-ticker,
+  scan-date-by-scan-date — 405 (ticker, scan_date) pairs total, not just the corpus's own pass/fail
+  assertions (which only check a handful of `assert_dates`). Of those, **116 pairs actually got a
+  different window** (the other 289 truncated to the same fixture-data start under both old and new,
+  so they're identical by construction, not evidence); the difference on those 116 was always 1-3
+  rows (old − new). **All 116 produced identical stage AND reason.** Not a live-production replay (no
+  DB access at fix time) — this is the best available check short of one.
+  **Operator's call**: commit at 260 (the documented target, and the direction is provably
+  permissive-or-neutral), or move to 262 (the measured median of the old behavior, closer to
+  reproducing it exactly) if exact behavioral continuity matters more than hitting the stated target.
+  **Reversion-flag**: NEW (first fix of this specific bug; not a reversal of a signed threshold).
+  **Status**: shipped in this session, tree left dirty per instruction — not deployed. Known
+  inconsistency left OUT OF SCOPE (belongs to #592, not this line): `scripts/probes/
+  _592_610_htf_grid_replay.py:153` still does `d - timedelta(days=fd._HISTORY_DAYS)` — a calendar-
+  span slice — so it will silently stop mirroring live once `_HISTORY_DAYS` means trading rows;
+  whoever next runs that probe needs to fix its slicing first. Tests: `test_schema_alter_create_parity.py`,
+  `audit_column_writes.py check` (confirmed `mi_flag_candidates` is out of that gate's scope —
+  it only covers `mi_live_trades`), full suite.
+
 - **2026-09-04 — Pivot anchor: a wick over the pole top is no longer a new pole top (#592).
   Measurement fix, no criterion or constant changed.**
   **Trigger**: #592 (operator's HNGE call, 2026-08-24). Its two named causes did NOT hold up (the

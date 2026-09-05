@@ -35,7 +35,12 @@ logger = logging.getLogger(__name__)
 # an FMP profile fetch (cap-tier classification) — same rate-limit envelope as
 # the rest of the system uses for FMP.
 _SCAN_CONCURRENCY = 10
-_HISTORY_DAYS = 120  # 60d base anchor walk + 50d SMA + buffer
+_HISTORY_DAYS = 120  # 60d base anchor walk + 50d SMA + buffer. get_recent_daily_history now
+                     # returns exactly this many TRADING rows (2026-09-05 fix; previously ~82
+                     # due to the old calendar-day filter) — unaffected either way, since every
+                     # lookback here (_sma, _compute_base_low, _roc) slices relative to
+                     # today_idx, never the total row count; the extra rows are just unused
+                     # headroom, not a new admission path.
 
 # ── News-check exclusion (M&A / FDA / single-news pop) ──────────────────────
 # Parabolic-short setups need ongoing momentum; a single one-shot news event

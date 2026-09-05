@@ -2109,6 +2109,12 @@ async def initialize_schema() -> None:
                 base_low                    FLOAT,
                 runup_pct                   FLOAT,
                 runup_start_date            DATE,
+                -- #356 follow-up (2026-09-05): telemetry for offline analysis, derived from
+                -- pivot_high_price/base_low/runup_pct already above — flagpole_ratio =
+                -- pivot_high/runup_low = 1 + runup_pct; flag_depth_pct = 1 - base_low/pivot_high
+                -- (the same quantity the flag-depth gate compares). Not gates themselves.
+                flagpole_ratio              FLOAT,
+                flag_depth_pct              FLOAT,
                 range_contraction_ratio     FLOAT,
                 vol_contraction_ratio       FLOAT,
                 last_body_pct               FLOAT,
@@ -2160,6 +2166,9 @@ async def initialize_schema() -> None:
             -- offline Phase 2 divergence analysis vs _compute_fresh_tightening.
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS rmv_5d  FLOAT;
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS rmv_15d FLOAT;
+            -- #356 follow-up (2026-09-05): see CREATE TABLE comment above — telemetry only.
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS flagpole_ratio FLOAT;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS flag_depth_pct FLOAT;
             -- P7.2 audit trail (2026-05-17): records which universe pattern(s)
             -- admitted this ticker for the scan. Possible tags:
             --   'rs_top200'           — top-200 RS leader (organic)
@@ -6592,7 +6601,25 @@ async def upsert_market_cap(ticker: str, market_cap: Optional[int]) -> None:
 async def get_recent_daily_history(
     ticker: str, days: int, end_date: "date | None" = None,
 ) -> list[dict]:
-    """Last N calendar days of OHLCV for one ticker, oldest first.
+    """Last N TRADING days of OHLCV for one ticker, oldest first.
+
+    Orders the ticker's OWN rows by trade_date DESC and takes the top `days` —
+    a single-ticker LIMIT, not the ROW_NUMBER/PARTITION pattern used elsewhere
+    in this file for multi-ticker batches (`get_adv_from_daily_closes`,
+    flag_detector's #94 batch query) — this call has only one ticker, so a
+    partition would be a no-op. Counts actual bars, not a calendar span:
+    `mi_daily_closes` only ever has a row for a day the market was open
+    (Polygon grouped-daily), so "N rows" and "N trading days" are the same
+    thing here — no separate holiday calendar needed. Returns however many
+    rows exist if the ticker has fewer than `days`.
+
+    FIX (#356 follow-up, 2026-09-05): the prior version filtered
+    `trade_date >= end - days` — a CALENDAR span — so the actual row count
+    silently drifted with how many weekends/holidays fell inside that span
+    (documented workaround: flag_detector's old `_HISTORY_DAYS = 380` comment,
+    "~0.685 trading-days/calendar-day, so 380 ≈ 260 TRADING rows"). Callers
+    that relied on that ratio have been recalibrated to pass a TRADING-day
+    count directly — see flag_detector.py and parabolic_detector.py.
 
     `end_date` defaults to today ET — pass a historical date to replay the
     scan against an earlier snapshot (essential for backfill validation).
@@ -6603,18 +6630,27 @@ async def get_recent_daily_history(
         if end_date is None:
             rows = await conn.fetch("""
                 SELECT trade_date, open_price, high_price, low_price, close, volume
-                FROM mi_daily_closes
-                WHERE ticker = $1
-                  AND trade_date >= (now() AT TIME ZONE 'America/New_York')::date - $2::int
+                FROM (
+                    SELECT trade_date, open_price, high_price, low_price, close, volume
+                    FROM mi_daily_closes
+                    WHERE ticker = $1
+                      AND trade_date <= (now() AT TIME ZONE 'America/New_York')::date
+                    ORDER BY trade_date DESC
+                    LIMIT $2
+                ) sub
                 ORDER BY trade_date ASC
             """, ticker, days)
         else:
             rows = await conn.fetch("""
                 SELECT trade_date, open_price, high_price, low_price, close, volume
-                FROM mi_daily_closes
-                WHERE ticker = $1
-                  AND trade_date <= $2
-                  AND trade_date >= $2 - $3::int
+                FROM (
+                    SELECT trade_date, open_price, high_price, low_price, close, volume
+                    FROM mi_daily_closes
+                    WHERE ticker = $1
+                      AND trade_date <= $2
+                    ORDER BY trade_date DESC
+                    LIMIT $3
+                ) sub
                 ORDER BY trade_date ASC
             """, ticker, end_date, days)
     return [dict(r) for r in rows]
@@ -6994,6 +7030,7 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             INSERT INTO mi_flag_candidates
                 (ticker, scan_date, pivot_high_date, pivot_high_price, base_age,
                  base_high, base_low, runup_pct, runup_start_date,
+                 flagpole_ratio, flag_depth_pct,
                  range_contraction_ratio, vol_contraction_ratio,
                  last_body_pct, prev_body_pct, atr_14, sma_10, sma_20,
                  breakout_close, breakout_volume_ratio,
@@ -7003,7 +7040,7 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                  rmv_5d, rmv_15d, universe_sources)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
                     $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
-                    $23, $24, $25, $26, $27, $28, $29, $30, $31)
+                    $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 pivot_high_date         = EXCLUDED.pivot_high_date,
                 pivot_high_price        = EXCLUDED.pivot_high_price,
@@ -7012,6 +7049,8 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                 base_low                = EXCLUDED.base_low,
                 runup_pct               = EXCLUDED.runup_pct,
                 runup_start_date        = EXCLUDED.runup_start_date,
+                flagpole_ratio          = EXCLUDED.flagpole_ratio,
+                flag_depth_pct          = EXCLUDED.flag_depth_pct,
                 range_contraction_ratio = EXCLUDED.range_contraction_ratio,
                 vol_contraction_ratio   = EXCLUDED.vol_contraction_ratio,
                 last_body_pct           = EXCLUDED.last_body_pct,
@@ -7044,6 +7083,8 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             record.get("base_low"),
             record.get("runup_pct"),
             record.get("runup_start_date"),
+            record.get("flagpole_ratio"),
+            record.get("flag_depth_pct"),
             record.get("range_contraction_ratio"),
             record.get("vol_contraction_ratio"),
             record.get("last_body_pct"),

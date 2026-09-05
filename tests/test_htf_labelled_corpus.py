@@ -44,8 +44,11 @@ def _replay(ticker: str, bars: list[dict], through: date) -> dict[date, dict]:
     for d in dates:
         if d < _REPLAY_FROM or d > through:
             continue
-        lo = bisect.bisect_left(dates, d - timedelta(days=fd._HISTORY_DAYS))
+        # Row-count slice, matching get_recent_daily_history's TRADING-day semantics
+        # (2026-09-05 fix) — fd._HISTORY_DAYS is now a row count, not a calendar span, so
+        # the window here must be "last N rows ending at d", not "d minus N calendar days".
         hi = bisect.bisect_right(dates, d)
+        lo = max(0, hi - fd._HISTORY_DAYS)
         rows = bars[lo:hi]
         cutoff = d - timedelta(days=5)
         window = [m for m in prior if cutoff <= m["scan_date"] < d]
