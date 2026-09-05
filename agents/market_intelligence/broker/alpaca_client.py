@@ -670,11 +670,20 @@ async def cancel_order(order_id: str, account_mode: str | None = None) -> bool:
         return False
 
 
-async def get_order(order_id: str, account_mode: str | None = None) -> dict | None:
-    """Get order details by ID."""
+async def get_order(order_id: str, account_mode: str | None = None,
+                    timeout: float | None = None) -> dict | None:
+    """Get order details by ID.
+
+    `timeout` overrides `_SDK_TIMEOUT_DEFAULT` (30s) for THIS call only; None keeps it.
+    Added 2026-09-05 for the #600 re-protect floor, which reads a DEAD stop's price purely
+    to raise a placement it will make anyway: it fails open to the DB price, so waiting the
+    full 30s buys nothing and delays arming a protective stop. Every other caller is
+    unchanged — they read a LIVE order whose answer they actually need.
+    """
     try:
         client = get_trading_client(account_mode)
-        order = await _sdk(client.get_order_by_id, order_id)
+        order = (await _sdk(client.get_order_by_id, order_id, timeout=timeout)
+                 if timeout is not None else await _sdk(client.get_order_by_id, order_id))
         return _order_to_dict(order)
     except Exception as e:
         logger.error(f"Failed to get order {order_id}: {e}")

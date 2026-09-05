@@ -154,7 +154,9 @@ async def test_apply_floor_reads_the_pointer_and_audits_when_it_raises():
             7, "FIGS", DB_PRICE, POINTER, "live", site="unit")
 
     assert price == BROKER_PRICE
-    g.assert_awaited_once_with(POINTER, account_mode="live")
+    # 2026-09-05: the floor's broker read carries an explicit 5s bound (operator-approved) —
+    # pinned here so the timeout cannot be silently dropped back to the 30s SDK default.
+    g.assert_awaited_once_with(POINTER, account_mode="live", timeout=om._REPROTECT_DB_TIMEOUT)
     rows = _floor_rows(audited)
     assert len(rows) == 1
     d = json.loads(rows[0][2])
@@ -434,7 +436,8 @@ async def test_ws_partial_cancel_restore_reads_the_live_stop_before_cancelling_i
     )
     await ts._handle_cancel_or_reject(_cancel_data(order_id="plain-limit-1"), "canceled", "live")
 
-    h["get_order"].assert_awaited_once_with(POINTER, account_mode="live")
+    h["get_order"].assert_awaited_once_with(POINTER, account_mode="live",
+                                            timeout=om._REPROTECT_DB_TIMEOUT)
     h["cancel"].assert_awaited_once_with(POINTER, account_mode="live")
     h["place_stop"].assert_awaited_once()
     assert h["place_stop"].await_args.args[2] == BROKER_PRICE

@@ -1993,7 +1993,14 @@ async def _apply_reprotect_floor(
     order = broker_order
     if fetch and order is None and stop_order_id:
         try:
-            order = await alpaca.get_order(stop_order_id, account_mode=account_mode)
+            # 2026-09-05, operator-approved: 5s, NOT the 30s SDK default. This read only
+            # RAISES a price we are about to place anyway and fails open to the DB price,
+            # so a long wait buys nothing and delays arming a protective stop. Matches
+            # _REPROTECT_DB_TIMEOUT so both reads in this function are bounded alike.
+            # ⚠ Deliberately NOT applied to the other get_order(stop_order_id) call in this
+            # file (~:6671): that one READS A STATUS IT ACTS ON, so it keeps its full budget.
+            order = await alpaca.get_order(stop_order_id, account_mode=account_mode,
+                                           timeout=_REPROTECT_DB_TIMEOUT)
         except Exception as e:  # loud-ok: fail-open — floor unavailable, place at base
             logger.warning(
                 f"{site}: {ticker} broker read of stop {stop_order_id} raised ({e}) — "
