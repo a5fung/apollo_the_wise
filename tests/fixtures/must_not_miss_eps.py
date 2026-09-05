@@ -218,21 +218,17 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         label_source="operator",
         label_note=(
             "Operator, 2026-09-05: \"i did tell you i got into TEAM as EP after apollo was stopped "
-            "out, it's still working after weeks and qualify as EP in my book.\" He entered after "
-            "our stop-out and still holds it. THE POINT OF THIS MEMBER: our live trade lost "
-            "(entry 147.13, stop 143.21, mi_live_trades closed same day) while the STOCK went "
-            "110.17 -> 149.07 on the gap day -> 189.58 on 2026-09-04 (+27% above the gap-day close, "
-            "+72% above the pre-gap close, verified mi_daily_closes). A P&L-based label calls this "
-            "a loser; the operator calls it a real EP. That divergence is exactly why returns are "
-            "the wrong labelling instrument and the stock's forward path is the right one."
+            "out, it's still working after weeks and qualify as EP in my book.\" "
+            "⚠ CORRECTED 2026-09-05: I first recorded this as a RUBRIC REJECTION (39.6, "
+            "catalyst=routine). THAT WAS WRONG — those were early premarket ticks. At 12:50Z the "
+            "grade settled to catalyst=strong and TEAM scored 115.2 / HIGH and ALERTED "
+            "(mi_ep_alerts, judge_tier HIGH, rubric v3-2026-06-12-catalyst-freshness). SELECTION "
+            "WORKED. We then entered at 147.13 and stopped out at 143.21 the same day while the "
+            "stock went 110.17 -> 149.07 -> 189.58 on 2026-09-04 (+72%, mi_daily_closes). "
+            "THIS MEMBER IS AN EXIT FAILURE, NOT A SELECTION FAILURE — it belongs to #508/#545, "
+            "and it is the cleanest single case for why exit discipline is the priority."
         ),
-        # Gap day: O 145.14, PDC 110.17 (mi_daily_closes, read 2026-09-05). (145.14-110.17)/110.17
-        # = 31.74%  — OPEN vs prior-close, the same basis as every other member.
-        # ⚠ THE RUBRIC SAW THIS AND REJECTED IT: mi_ep_scan_log 2026-08-07 scored TEAM 39.6 on a
-        # ~32% gap, filter_reason "score 40 < 50 (catalyst=routine)" on every tick. Compare MRNA:
-        # 33.1% gap, catalyst=strong, score 115.2. Near-identical gaps, a 75-point spread, and the
-        # catalyst call is the whole difference. This is the second operator-labelled member and
-        # the FIRST one the scorer rejected.
+        # Gap day: O 145.14, PDC 110.17 (mi_daily_closes, read 2026-09-05) = 31.74%.
         gap_pct=31.74, gap_basis="open vs prior close (mi_daily_closes 2026-08-06/07)",
         prev_close=110.17,
         unverified_gates=_UNVERIFIED_STANDARD,
