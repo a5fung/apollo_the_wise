@@ -53,6 +53,89 @@ def _htf_rows(runup_ratio=2.0, flag_depth=0.10, vol_spike=True,
     return rows
 
 
+# ── 3b. #592 (2026-09-04): a wick over the pole top is not a new pole top ──────
+# The stable-anchor walk used to fire on ANY decisive high. If that high was a wick
+# (price never CLOSED above the pole top), the pole window slid into the flag and a
+# qualified pole re-read as <90%, ejecting the name for good. The fix is a close test
+# with no volume term and no new constant: the flag is resolved once some bar has
+# closed above the pole top; until then the top holds.
+
+def _pole_top(rows):
+    """(pivot_date, pivot_high) of the shipped fixture = the last pole bar."""
+    i, _ = fd._find_pivot_high(rows, len(rows) - 1)
+    return rows[i]["trade_date"], rows[i]["high_price"]
+
+
+def test_wick_over_pole_top_does_not_walk_pivot():
+    rows = _htf_rows(runup_ratio=2.0, flag_depth=0.10, n_flag=8)
+    piv_date, piv_high = _pole_top(rows)
+    flag_price = rows[-1]["close"]
+    d = rows[-1]["trade_date"]
+    # a +2% wick over the pole top that closes back INSIDE the flag on flag-sized volume
+    rows.append(_row(d + timedelta(days=1), flag_price, piv_high * 1.02, flag_price * 0.975,
+                     flag_price, 800_000))
+    # next session ("today") — the wick bar is in the lookback, the prior anchor is threaded
+    rows.append(_row(d + timedelta(days=2), flag_price, flag_price * 1.025, flag_price * 0.975,
+                     flag_price, 800_000))
+    i, ph = fd._find_pivot_high(rows, len(rows) - 1,
+                                prior_pivot_date=piv_date, prior_pivot_high=piv_high)
+    assert rows[i]["trade_date"] == piv_date and ph == piv_high, "wick became the pole top"
+    out = fd.compute_flag_metrics(rows, ticker="WICK", recent_stages=[],
+                                  prior_pivot_date=piv_date, prior_pivot_high=piv_high)
+    assert out["pivot_high_price"] == piv_high
+    assert out["runup_pct"] >= 0.90, out["reason"]          # the pole is still measured from its base
+    assert out["stage"] not in ("unqualified", "INVALIDATED"), out["reason"]
+
+
+def test_close_above_pole_top_still_walks_pivot():
+    rows = _htf_rows(runup_ratio=2.0, flag_depth=0.10, n_flag=8)
+    piv_date, piv_high = _pole_top(rows)
+    flag_price = rows[-1]["close"]
+    d = rows[-1]["trade_date"]
+    # the SAME +2% high, but the bar CLOSES above the pole top — the flag is resolved.
+    # (2M volume: the pre-existing volume rule picks the pivot among bars within 2% of
+    # the max high, so the breakout bar must out-volume the pole-top bar to be chosen.)
+    rows.append(_row(d + timedelta(days=1), flag_price, piv_high * 1.02, flag_price,
+                     piv_high * 1.01, 2_000_000))
+    rows.append(_row(d + timedelta(days=2), piv_high, piv_high * 1.015, piv_high * 0.99,
+                     piv_high, 800_000))
+    i, ph = fd._find_pivot_high(rows, len(rows) - 1,
+                                prior_pivot_date=piv_date, prior_pivot_high=piv_high)
+    assert rows[i]["trade_date"] == d + timedelta(days=1) and ph == piv_high * 1.02
+
+
+def test_close_above_pole_top_then_later_wick_still_walks():
+    """A close above the top followed days later by a higher wick: the flag resolved on
+    the close, so the later wick walks the pivot (not held)."""
+    rows = _htf_rows(runup_ratio=2.0, flag_depth=0.10, n_flag=8)
+    piv_date, piv_high = _pole_top(rows)
+    d = rows[-1]["trade_date"]
+    rows.append(_row(d + timedelta(days=1), piv_high, piv_high * 1.005, piv_high * 0.99,
+                     piv_high * 1.003, 800_000))          # closes above the top, tiny high
+    rows.append(_row(d + timedelta(days=2), piv_high, piv_high * 1.03, piv_high * 0.98,
+                     piv_high * 0.99, 800_000))           # higher wick, closes back under
+    rows.append(_row(d + timedelta(days=3), piv_high * 0.99, piv_high, piv_high * 0.98,
+                     piv_high * 0.99, 800_000))
+    i, ph = fd._find_pivot_high(rows, len(rows) - 1,
+                                prior_pivot_date=piv_date, prior_pivot_high=piv_high)
+    assert rows[i]["trade_date"] == d + timedelta(days=2) and ph == piv_high * 1.03
+
+
+def test_pole_still_extending_walks_as_before():
+    """Fewer than _BASE_AGE_MIN_WATCH bars since the pivot = no formed flag → the top keeps
+    walking on a decisive high alone (unchanged historical behaviour)."""
+    rows = _htf_rows(runup_ratio=2.0, flag_depth=0.10, n_flag=2)
+    piv_date, piv_high = _pole_top(rows)
+    d = rows[-1]["trade_date"]
+    rows.append(_row(d + timedelta(days=1), piv_high, piv_high * 1.05, piv_high * 0.99,
+                     piv_high * 1.03, 1_000_000))
+    rows.append(_row(d + timedelta(days=2), piv_high * 1.03, piv_high * 1.04, piv_high,
+                     piv_high * 1.02, 900_000))
+    i, ph = fd._find_pivot_high(rows, len(rows) - 1,
+                                prior_pivot_date=piv_date, prior_pivot_high=piv_high)
+    assert rows[i]["trade_date"] == d + timedelta(days=1) and ph == piv_high * 1.05
+
+
 def test_valid_htf_qualifies():
     out = fd.compute_flag_metrics(_htf_rows(runup_ratio=2.0, flag_depth=0.10),
                                   ticker="HTF", recent_stages=[])

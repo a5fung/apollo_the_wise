@@ -589,6 +589,26 @@ def _compute_fresh_tightening(
     return (True, fresh_max_tr_pct, atr14_pct)
 
 
+def _flag_resolved_by(rows: list[dict], pivot_idx: int, pivot_high: float, mx_idx: int) -> bool:
+    """Has price LEFT the flag that formed after `pivot_idx` by the time of the new high
+    at `mx_idx`?  A pole top is a high that price has not CLOSED above; the flag under it
+    is resolved the moment some bar closes above it. So:
+      • pole still extending (fewer than `_BASE_AGE_MIN_WATCH` bars since the pivot — no
+        flag has formed) → True, the top keeps walking exactly as it always has;
+      • any bar in (pivot_idx, mx_idx] CLOSED above `pivot_high` → True (resolved; a
+        close-above followed days later by a higher wick still counts);
+      • otherwise → False: the new high is a wick over an unresolved flag and must not
+        become the pole top.
+    Deliberately a CLOSE test with no volume term: volume is the TRIGGERED gate's business.
+    A volume-gated version was measured first (2026-09-04) and held the anchor BELOW price
+    for weeks on real pole continuations that ran on 1.3–1.5× volume (NEO +40%, RNG +16%
+    above a stale pivot) — an invalid geometry. #592.
+    """
+    if mx_idx - pivot_idx - 1 < _BASE_AGE_MIN_WATCH:
+        return True
+    return any(float(rows[j]["close"]) > pivot_high for j in range(pivot_idx + 1, mx_idx + 1))
+
+
 def _find_pivot_high(
     rows: list[dict],
     today_idx: int,
@@ -609,6 +629,9 @@ def _find_pivot_high(
     by at least `_PIVOT_WALK_THRESHOLD`. Prevents the pivot from walking
     forward 1¢-at-a-time on a base making slow higher-highs, which leaves
     base_age stuck near zero and starves the contraction window.
+    Since #592 (2026-09-04) a decisive beat over a FORMED flag only walks the
+    pivot if price has CLOSED above the pole top since the flag formed
+    (`_flag_resolved_by`) — a wick over the top no longer becomes the top.
 
     Returns (idx_in_rows, pivot_high_price) or (None, None) if no qualifying
     bar.
@@ -650,6 +673,19 @@ def _find_pivot_high(
                 # No decisive break → keep prior anchor. Use the bar's actual
                 # current high (in case the row was repaired after the prior
                 # scan, e.g. split adjustment); the band recomputes around it.
+                return (prior_idx, float(rows[prior_idx]["high_price"]))
+            # #592 (2026-09-04) — a decisive HIGH alone does not resolve a FORMED flag.
+            # Price must have CLOSED above the pole top since the flag formed. Before
+            # this, a wick over the top that closed back inside the flag became the new
+            # "pole top", the 40-session pole window slid INTO the flag, and the pole
+            # re-read as a stub and was rejected for good (QLYS: +2.2% wick closing 3%
+            # under the top, 94% pole → 88%, ejected, then +31% in 20 sessions; CHYM
+            # 110% → 71%). Measured 06-29→09-04 over the stored candidate history: 8
+            # names kept, 3 lose 1–2 rows (docs/setups/htf.md change log). No new
+            # constant; a pole still extending (< _BASE_AGE_MIN_WATCH bars since the
+            # pivot) walks as before.
+            mx_idx = max(lookback, key=lambda i: float(rows[i]["high_price"]))
+            if not _flag_resolved_by(rows, prior_idx, float(rows[prior_idx]["high_price"]), mx_idx):
                 return (prior_idx, float(rows[prior_idx]["high_price"]))
 
     threshold = max_high * (1.0 - _PIVOT_HIGH_BAND)

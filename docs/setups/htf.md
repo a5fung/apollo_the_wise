@@ -46,6 +46,10 @@ criteria were swapped/added.
   early-runup low and measures from INSIDE the flag, not the pole. Operator-confirmed 6/28: HTF is a
   well-defined setup — use the PRIMARY definition, do NOT invent our own; the today-anchored form was a
   non-primary interpretation, REJECTED. (memory `feedback_established_setup_use_primary_definition`)
+  **Since 2026-09-04 (#592) the pole top only walks forward over a FORMED flag once price has CLOSED
+  above it** (`_flag_resolved_by`): a wick over the top that closes back inside the flag is not a new
+  pole top, so the 40-session window no longer slides into the flag. A pole still extending (fewer
+  than `_BASE_AGE_MIN_WATCH` bars since the pivot) walks as before. Change-log entry below.
 - **Flag depth on the absolute low (not the close):** the spec writes `Close≥0.75×High₄₀`; we tighten to
   `min(low)≥0.75×High₄₀`. O'Neil/Minervini reject a deep intraday shakeout that rallies to a tight close
   (the spring uncoiled). Operator-endorsed (Gemini 6/27); confirm via the eyeball.
@@ -89,7 +93,81 @@ this is exactly what happened to ATAI on 2026-07-30/07-31 (see change log below)
 that hole by carrying layer 3's own last-verified verdict forward, released the moment today's own
 band stops looking pinned. All layers fail OPEN — a missing signature never suppresses.
 
+## Known limitations / open questions (CHANGE_PROCESS rule 7 — the canonical surface)
+
+Measured 2026-09-04 from raw bars over the stored candidate history (27,446 pairs, 06-29 → 09-04;
+`docs/analysis/htf_pole_window_grid_2026-09-04.md`, harness `scripts/probes/_592_610_htf_grid_replay.py`).
+Nothing below was changed; each is the operator's ruling and stays here until ruled.
+
+1. **The pole definition vs the trader's HNGE label (#592, #610 — one fork, not two).** The sourced
+   pole is 90%+ within **40 sessions**, measured at the pole top (signed 6/27–6/28). HNGE — a
+   trader-labelled HTF the operator brought in — has a **10-week pole** (05-04 $45.01 → 07-13
+   $91.50, +103% / 49 sessions); the spec's own scanner forms reject it on the trader's date
+   (`C/C40` 1.14, `High40/Low40` 1.30 vs 1.90). Admitting HNGE-class poles means the 60-session
+   window (board 10 → 19 names/day, +2 breakouts of which one −23%) or the full retired 1.50/60
+   pair (board → 42/day, HNGE TRIGGERs on his date, the added breakouts' 20-day returns all negative
+   on n=4). CDNA, the must-not-miss, needs neither. **Rec: keep the sourced 40-session pole; treat
+   HNGE as outside the setup, not as a detector miss.** His call.
+2. **The flag horizon.** `_BASE_AGE_MAX=25` / `_PIVOT_LOOKBACK_DAYS=25` encode the spec's 3–5-week
+   flag. SNOW (+25% next 20 sessions) and TWLO (+21%) were dropped at week 5; HNGE's flag on the
+   trader's date was in week 6. Widening it is a criteria change; not measured as a variant.
+3. **`_HTF_MIN_ADR_PCT=0.04` — measured, immaterial under the sourced runup.** 4.0% → 3.0% admits
+   **+3 tickers and 0 breakouts** in two months; the 7,560 ADR rejects (#610) almost all fail the
+   90% pole anyway. It only matters if (1) loosens (+9 names/day at 1.50/60). The data-gated
+   `htf_adr_threshold_tune` review stays as the eventual data-fit; nothing to decide today.
+4. **The board's own outcomes are negative on median** (first-WATCH 20-day return −6.1%, 62% of
+   admits down, against a flat tape) with 3 TRIGGERED events in two months. Context for #397, not
+   a criterion question; recorded so the money gate is not built on an assumed edge.
+5. `close_below_base_low_close` INVALIDATED re-arms as the base's lowest close creeps down, so a
+   name can flip INVALIDATED → TIGHTENING (CDNA 07-22→07-29, then 07-30). Cosmetic; unfixed.
+6. **Labelled corpus is N=2** (HNGE, CDNA — `tests/fixtures/htf_labelled.py`, replayed every suite
+   run through the shipped detector). Every further trader-shared HTF is a one-line addition.
+
 ## Change log
+- **2026-09-04 — Pivot anchor: a wick over the pole top is no longer a new pole top (#592).
+  Measurement fix, no criterion or constant changed.**
+  **Trigger**: #592 (operator's HNGE call, 2026-08-24). Its two named causes did NOT hold up (the
+  40-session window is the sourced criterion and rejects HNGE's 10-week pole by the spec's own
+  scanner; the volume rule KEPT the higher-runup pivot — the 77%→41% drop was the 25-session pivot
+  lookback expiring). The replay built to test them found the real anchor defect instead.
+  **Root cause**: the stable-anchor walk (`_find_pivot_high`, #41) fired on ANY high beating the
+  prior top by `max(1%, 0.25×ATR)`. A wick that never CLOSED above the top became the pole top, the
+  40-session pole window slid INTO the flag, and a qualified pole re-read as a stub. Measured
+  06-29 → 09-04: 9 names walked from a ≥90% actionable row to a `runup_` reject within 7 days; 2
+  were the 5-week flag limit (SNOW, TWLO — by design); of the 7 walks, **2 were pure wicks that
+  never closed above the top (QLYS 94%→88%, CHYM 110%→71%)** and 5 had closed above it (DELL, MAN,
+  PGEN, RBRK, INTA — those still walk under the fix, correctly). None of the 9 ever re-qualified;
+  QLYS then ran +31%. The full before/after diff (below) finds 6 more names the 7-day heuristic
+  missed (BFLY, MBX, NIQ, OKTA, REPL, TRAX) — 8 names kept in total.
+  **Fix** (`_flag_resolved_by`): a decisive high over a FORMED flag (≥ `_BASE_AGE_MIN_WATCH` bars)
+  walks the pivot only if some bar since the flag formed CLOSED above the pole top. A pole still
+  extending walks as before. A close test with NO volume term, deliberately: the first cut reused
+  the TRIGGERED gate's volume test and, replayed, held the anchor BELOW price for weeks on real pole
+  continuations at 1.3–1.5× volume (NEO +40%, RNG +16% above a stale pivot; 2,175 rows changed) —
+  an invalid geometry. The close-only form is the geometry; volume is the entry's business.
+  **Evidence**: replay of the SHIPPED function over the same 27,446 pairs (`docs/analysis/
+  htf_pole_window_grid_2026-09-04.md` §2). Baseline reproduces prod at 99.58% before the fix, every
+  mismatch accounted for; after the fix 350 rows / 110 tickers differ (305 are rejected→rejected
+  bookkeeping), **+26 actionable rows on 8 names** (QLYS +24% and TRAX +18% over the next 20
+  sessions; OKTA −5%, MBX −14%, BFLY −16%, REPL 0%; NIQ/CHYM truncated), **−5 rows on 3 names**
+  (OUST, SHAZ on 06-29 — an older held pivot makes their flag deeper than 25%; REPL ×2). From
+  08-03, once the seed chain has aged out: +6 rows / 3 names, −2 / 1. CDNA (must-not-miss) and HNGE
+  unchanged. Board 10.4 → 10.8 actionable rows/day.
+  **Anticipated effect**: ~1 name per week (8 names over the 10-week window) stays on the board
+  that used to be silently ejected mid-flag; base_age keeps counting through the wick so those
+  names still age out at 25. No effect
+  on the runup, depth, trend, Stage-2, liquidity or tightness gates.
+  **Reversion-flag**: REFINEMENT of the #41 stable-anchor rule (same intent — do not let the pivot
+  walk on noise; this closes the wick case that rule's `max(1%, 0.25×ATR)` floor let through). Not
+  a reversal of any signed criterion. The 6/28 "flagpole anchor = pivot-anchored" ruling is intact.
+  **Status**: shipped, awaiting field validation — verify = a name whose flag pokes a marginal new
+  high keeps its pivot/runup on the next `mi_flag_candidates` row (the QLYS shape), and no
+  `no_pivot_in_lookback`/base_age regressions in the nightly HTF digest. Shadow-only detector; no
+  order path touched. Tests: `test_wick_over_pole_top_does_not_walk_pivot`,
+  `test_close_above_pole_top_still_walks_pivot`, `test_close_above_pole_top_then_later_wick_still_walks`,
+  `test_pole_still_extending_walks_as_before` (`tests/test_htf_criteria.py`);
+  `tests/test_htf_labelled_corpus.py` (HNGE, CDNA replayed through the shipped detector).
+
 - **2026-08-06 — Layer 3b added: STICKY carry bridges the layer-2/layer-3 hand-off hole (#502
   refinement). OPERATOR-SIGNED.**
   **Trigger**: the 2026-07-24 layer-3 change log (below) documented layers 2 and 3 as "complementary
