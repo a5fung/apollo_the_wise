@@ -1019,3 +1019,57 @@ after"* the post.
 
 ⚠ **One case. HOOD is a reference example, not evidence** — same standing as MRNA above. The test is
 whether a social-source leg separates winners across the corpus, not whether it explains this day.
+
+---
+
+## 2026-09-05 — WHAT FUNDAMENTALS ACTUALLY MEASURE, and the non-earnings EP problem
+
+Said after a day of rubric analysis that found the catalyst rubric passes real EPs but cannot
+separate them from lookalikes with identical fundamentals. **Two rulings, both durable, both
+governing every future review of the catalyst rubric.** Verbatim:
+
+> "I'm mostly aligned that fundamentals are not enough, b in theory is the gap between the
+> fundamentals vs the expectation, which is partly expressed in the gap on day one, future price
+> rise is the continued closing vs expectation.
+>
+> bfly is a concern, earnings EP is just one type, we can't penalize non earnings EP with this.
+> Mrna is a middle case where there is earnings but the real driver is the vaccine news that day."
+
+### 1. The model: the edge is SURPRISE, not absolute quality
+
+**Fundamentals are only meaningful relative to what was already expected.** The tradeable quantity
+is the *gap between fundamentals and expectation*, and:
+
+- **Day one's gap size is a partial expression of that gap** — the market's first repricing of it.
+- **Continued price rise is that gap continuing to close**, as expectation catches up to reality.
+
+**This explains the 2026-09-05 null directly, and it is why it is a model rather than a hypothesis.**
+We measured absolute revenue growth against forward returns and found nothing usable: 93% growth
+(PLTR) worked, 50%+ growth as a band was the *worst* performer (32% still up), and the best band on
+median (10-15%) had the fewest big winners. **Under this model that is the expected result** — 93%
+growth that was *anticipated* is already in the price, and 12% growth that *nobody expected* re-rates
+the stock. An absolute-magnitude axis cannot tell those apart, so it measures the wrong thing.
+
+⚠ **The rubric's axes are all ABSOLUTE-magnitude** (revenue YoY, EPS trajectory, margin trajectory,
+milestone) **except axis 4, beat-vs-consensus, which is the only true surprise measure in it.** That
+is a testable consequence of his model and it is the shape of the next real question here.
+
+### 2. Earnings is ONE type of EP. Non-earnings EPs must not be penalised for it.
+
+**BFLY 2026-06-18 is the standing counterexample** and he has now called it a concern twice (the
+first was the 2026-06-19 HARD label, `operator_labelled_eps.md`). It was downgraded
+`strong` → `routine` on `news_corpus_sparse_no_q_rev` — the safety-net gate — because a *partnership*
+catalyst has no quarterly revenue line. **We penalised it for missing data it could never have had.**
+The same gate stands in front of every FDA decision, M&A event and partnership.
+
+**MRNA is the middle case, and he named it as such:** there WERE earnings, but the real driver was
+the vaccine news that day. **So "did this name report earnings" is not even a clean partition** — a
+name can have earnings present and irrelevant. Any fix that just branches on "is this an earnings
+catalyst" will mis-handle MRNA.
+
+**Consequence for the rubric: the earnings axes may only judge a name whose MOVE is driven by
+earnings, and absence of earnings data must never itself be evidence of a weak catalyst.** What
+replaces it for a non-earnings EP is an open design question — not a threshold change.
+
+🛑 THE LINE: the safety-net gate and the axis set are DETECTION CRITERIA. These rulings define the
+intent; any implementation still needs CHANGE_PROCESS + backtest + his sign-off.

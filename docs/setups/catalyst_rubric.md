@@ -1,5 +1,32 @@
 # Catalyst Rubric — Multi-axis fundamentals grader
 
+---
+
+## ⚖ OPERATOR RULINGS 2026-09-05 — read these before proposing ANY change to this rubric
+
+Full text + the evidence behind them: `docs/methodology/operator_shared_notes.md`
+§"WHAT FUNDAMENTALS ACTUALLY MEASURE".
+
+**1. The edge is SURPRISE vs expectation, not absolute fundamental quality.** *"the gap between the
+fundamentals vs the expectation, which is partly expressed in the gap on day one, future price rise
+is the continued closing vs expectation."* ⚠ **Every axis here except axis 4 (beat-vs-consensus)
+measures ABSOLUTE magnitude.** Under his model that is measuring the wrong quantity, and it matches
+what the 2026-09-05 analysis found: absolute revenue growth does not sort forward returns (93% growth
+worked on PLTR; the 50%+ band as a whole was the worst at 32% still up).
+
+**2. Earnings is ONE type of EP — a non-earnings EP must never be penalised for lacking earnings
+data.** *"bfly is a concern, earnings EP is just one type, we can't penalize non earnings EP with
+this."* BFLY 2026-06-18 was downgraded `strong`→`routine` on `news_corpus_sparse_no_q_rev` because a
+partnership catalyst has no revenue line. **The same gate stands in front of every FDA, M&A and
+partnership EP.** ⚠ **MRNA is the middle case he named: earnings were present but the vaccine news
+drove the move — so "did it report earnings" is NOT a clean partition, and a fix that branches on it
+will mis-handle MRNA.**
+
+**These define intent, not implementation.** Any change still needs CHANGE_PROCESS + backtest +
+sign-off (THE LINE).
+
+---
+
 **Phase**: LIVE — production gate. `CATALYST_RUBRIC_GATE_ENABLED` defaults
 `true` (`constants.py`); the gate downgrades real grades
 (`catalyst_quality → "routine"`, feeds `score_tier`) in `ep_detector.py`
