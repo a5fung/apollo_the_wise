@@ -1,0 +1,18 @@
+refused by stop_too_wide: 27   present in the era_c replay: 8
+
+ticker date        admit   entered  final_reason             R
+HTFL   2026-08-14  admit   True     stop_hit             +1.43
+CORT   2026-07-30  admit   True     sma_trail_stop       -0.10
+ATRO   2026-08-12  admit   True     stop_hit             -0.26
+AEVA   2026-08-06  reject  True     stop_hit             -0.59
+AIP    2026-05-13  abstain_float_band_straddles_barFalse    -                        -
+GO     2026-05-14  reject  False    -                        -
+PONY   2026-05-26  abstain_float_band_straddles_barFalse    -                        -
+BULL   2026-08-20  admit   False    -                        -
+
+ENTERED under today's 2R rules: n=4
+  mean   +0.117R
+  median -0.184R
+  sum    +0.47R
+  winners 1/4
+  mean ex-top-2  -0.427R  (n=2)
