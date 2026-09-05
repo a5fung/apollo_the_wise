@@ -225,8 +225,15 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
             "(mi_ep_alerts, judge_tier HIGH, rubric v3-2026-06-12-catalyst-freshness). SELECTION "
             "WORKED. We then entered at 147.13 and stopped out at 143.21 the same day while the "
             "stock went 110.17 -> 149.07 -> 189.58 on 2026-09-04 (+72%, mi_daily_closes). "
-            "THIS MEMBER IS AN EXIT FAILURE, NOT A SELECTION FAILURE — it belongs to #508/#545, "
-            "and it is the cleanest single case for why exit discipline is the priority."
+            "THIS MEMBER IS AN EXIT FAILURE, NOT A SELECTION FAILURE. ✅ AND THE FIX IS ALREADY "
+            "LIVE — TEAM PREDATES IT BY 9 DAYS. It traded under the OLD geometry (stop = ORB low "
+            "= 143.21). The 9:30 bar was 146.80/143.21, so R = 147.13-143.21 = 3.92 and TODAY's "
+            "signed stop (entry-2R, 2026-08-16) sits at 139.29. TEAM's lowest print after entry "
+            "was 141.51 — it would have HELD, by $2.22. The +2R partial at 154.97 fills 08-12 "
+            "(high 156.45), the stop goes to breakeven 147.13, and the stock never returns there "
+            "(lowest since: 150.75). The runner would still be open at 189.58. ⚠ $2.22 of room is "
+            "THIN — this is one name surviving narrowly, not proof the geometry is right. Kept as "
+            "evidence FOR the 2R change, not as an open problem."
         ),
         # Gap day: O 145.14, PDC 110.17 (mi_daily_closes, read 2026-09-05) = 31.74%.
         gap_pct=31.74, gap_basis="open vs prior close (mi_daily_closes 2026-08-06/07)",
