@@ -4799,6 +4799,122 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct"
                     )
 
+            # ── SCORING ORDER (operator-approved 2026-09-04): this block now runs BEFORE the
+            # 2026-05-28 beat+guidance carve-out below, not after. Pre-fix, the carve-out ran
+            # first and — when its heuristic fired — set `_downgrade_reason = None`, which made
+            # this block's own condition (below) false, so the real prior-year number was never
+            # even looked up. Evidence: a $0 replay of 15 carve-out-eligible names
+            # (docs/setups/catalyst_rubric.md, Known limitations #5) found 9 keep their grade on
+            # a real number, 4 (HGTY, PRGO, RPD, HRB) get downgraded on a real number and all four
+            # fell the following week with no live entry attached, 2 (EROC, DG) have no prior-year
+            # row so fall through to the carve-out unchanged. No code changes to the carve-out
+            # block's own condition — reordering + this ONE extra clause is the entire change.
+            #
+            # Revert = the DEDICATED `yoy_recovery_before_carveout` toggle (default ON), NOT the
+            # existing `live_yoy_recovery` one — that one gates the whole #321 mechanism (fetch +
+            # write-back + in-window background fill, all shipped 6/28-9/04) and turning IT off
+            # would revert all the way to pre-6/28 (no #321 at all), silently dropping the signed
+            # rescue for every carve-out-INELIGIBLE name too (the QFIN/ESLT/LION class — no
+            # guidance signal, so the carve-out never applied to them and #321 alone rescued
+            # them). This toggle instead reaches into ONLY the ordering decision: OFF adds
+            # `not _should_apply_yoy_carveout(_extracted)` to the condition below, which skips
+            # THIS block for exactly the names the carve-out would have claimed — the carve-out
+            # (running second) then decides them exactly as it did pre-2026-09-04 — while
+            # carve-out-ineligible names still get recovery, unaffected, both ON and OFF. That is
+            # the byte-identical pre-2026-09-04 order; `live_yoy_recovery` OFF is not.
+            #
+            # #321 LIVE rescue (operator 6/28: it's a BUG — the gate fires "no prior-year comparable"
+            # when the comparable IS available, just not in the news corpus). Recover the YoY from the
+            # prior-year SAME quarter and let it DRIVE the gate: recovered >= floor -> not weak (clear the
+            # downgrade); < floor -> legitimately weak (keep, with the real number); None -> stay
+            # conservative. Latency-bounded (off-corpus yfinance fetch, 4s cap, fail-open) + a revert
+            # toggle — #400a: DB-instant via get_runtime_toggle('live_yoy_recovery', ...) with the
+            # LIVE_YOY_RECOVERY env as fallback; flipping the DB row to 'off' reverts to the
+            # conservative pre-fix downgrade in ≤60s, no redeploy. Runs only on the missing-YoY reason.
+            # Latency guard (advisor 6/28): the prior-year leg FETCH must NOT run inside the 9:30-9:45
+            # ORB-cutoff window — a few × 4s serially could push the scan past 9:45 -> WINDOW_OUT_OF_ORB on
+            # the GOOD names that needed to submit. Earnings names classify pre-market, so the fetch runs
+            # pre-9:30.
+            # ⚠ 2026-09-04 (NSSC 8/24): the 6/28 comment here used to claim "the rescued grade caches in
+            # _catalyst_cache for the in-window scans". It did not, on this path: this block re-runs
+            # every 5-min tick from the DB-cached extraction (which never had the YoY), the recovered
+            # number was written nowhere a later tick could see, and a name recovered +10.1% at 07:25
+            # was re-derived "missing" at 09:30:07 — in-window, fetch off — and DOWNGRADED. The recovery
+            # is now written back beside the extraction row (persist_yoy_recovery -> yoy_recovered_json,
+            # read by lookup_cached_metrics) and read FIRST on every later tick: a dict lookup with no
+            # latency, so the window guard — which exists for the fetch — does not apply to it.
+            # Behaviour is otherwise identical: same toggle, same 4s cap, same floor, same audit.
+            _in_orb_cutoff = now_et.hour == 9 and 30 <= now_et.minute <= 45
+            if (_downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"
+                    and await get_runtime_toggle("live_yoy_recovery", "LIVE_YOY_RECOVERY")
+                    and (await get_runtime_toggle(
+                            "yoy_recovery_before_carveout", "YOY_RECOVERY_BEFORE_CARVEOUT",
+                            default=True)
+                         or not _should_apply_yoy_carveout(_extracted))):
+                _qr2 = _extracted.get("q_revenue_usd") or {}
+                # 1) an answer already computed on an earlier tick today (valid in-window: no fetch)
+                _rec = _persisted_yoy_recovery(_extracted)
+                if _rec is None and not _in_orb_cutoff:
+                    # 2) outside the window: the fetch, exactly as before — then write it back
+                    try:
+                        from agents.market_intelligence.fundamentals import compute_yoy_from_prior_year
+                        _rec = await asyncio.wait_for(
+                            compute_yoy_from_prior_year(
+                                ticker, _extracted.get("fiscal_period"), _qr2.get("value"),
+                                alert_date=today),
+                            timeout=4,
+                        )
+                    except Exception:  # loud-ok: fail-open — timeout/error -> None -> stays the conservative downgrade (safe default)
+                        _rec = None
+                    if _rec is not None:
+                        # Write-back BEFORE the floor decision below: a real below-floor number must
+                        # survive too, or the next tick re-derives "missing" and loses the real number.
+                        _extracted["_yoy_recovered"] = _rec
+                        await persist_yoy_recovery(ticker, today, _rec)
+                elif _rec is None and await get_runtime_toggle(
+                        "live_yoy_recovery_inwindow", "LIVE_YOY_RECOVERY_INWINDOW", default=False):
+                    # 3) IN the window with nothing in hand (first seen at/after 9:30 — BE 8/12): start
+                    # the same fetch DETACHED, never awaited here, so scan latency is untouched; the
+                    # next 5-min tick picks the write-back up at step 1. OPERATOR TOGGLE, default OFF —
+                    # the signed #321 rule acting in the window it was excluded from purely for latency,
+                    # but it changes in-window acting behaviour on the money path (a routine can become
+                    # a HIGH -> live ORB entry). Flip = mi_safeguard_state 'live_yoy_recovery_inwindow'.
+                    _spawn_yoy_recovery_background(
+                        ticker, today, _extracted.get("fiscal_period"), _qr2.get("value"))
+                if _rec is not None:
+                    _ryoy = _rec["yoy_pct"]
+                    if _ryoy >= EARNINGS_REVENUE_GATE_MIN_YOY:
+                        _downgrade_reason = None   # real growth recovered — NOT a weak/missing-comparable name
+                        _floor_grade_kept = {
+                            "gate": "revenue safety net (no prior-year comparable extracted)",
+                            "effect": "would have cut the catalyst grade to routine",
+                            "by": "the live prior-year revenue lookup",
+                            "why": f"recovered year-over-year revenue {_ryoy:+.1f}%",
+                            "grade": catalyst_quality,
+                        }
+                        # Per-ticker-per-day dedup on the AUDIT EMIT only — the recovery
+                        # DECISION above (_downgrade_reason = None) is idempotent and MUST
+                        # run every scan. Without this guard the event re-fires on every
+                        # 5-min scan for an earnings name (KRNT logged 5x 2026-08-12 → the
+                        # digest read "10 rescued" when only 1 name was actually rescued);
+                        # same idiom as the carve-out guard above (~line 3789) and the
+                        # 2026-08-11 extraction-failed-grade-kept fix.
+                        if await _should_log_catalyst_earnings_event_today(
+                            "catalyst_yoy_recovered_live", ticker
+                        ):
+                            await log_audit_event(
+                                "catalyst_yoy_recovered_live",
+                                f"{ticker}: kept {catalyst_quality} — recovered prior-yr YoY "
+                                f"{_ryoy:+.1f}% (>= {EARNINGS_REVENUE_GATE_MIN_YOY:.0f})",
+                                json.dumps({"ticker": ticker, "alert_date": today.isoformat(),
+                                            "recovered_yoy_pct": _ryoy,
+                                            "prior_period": _rec.get("prior_period"),
+                                            "kept_quality": catalyst_quality}))
+                    else:
+                        _downgrade_reason = (
+                            f"q_rev_yoy_{_ryoy:.1f}pct_below_"
+                            f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct_recovered")
+
             # Carve-out (2026-05-28, data-gated review
             # `rubric_safety_net_yoy_required` ripened at N=10): when the
             # downgrade reason is purely missing-YoY but OTHER positive
@@ -4806,6 +4922,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # + raised/initiated/reaffirmed guidance with high/medium
             # confidence), the LLM's original game_changer/strong grade
             # is more trustworthy than the missing-data safety net.
+            #
+            # ⚠ 2026-09-04: this now runs SECOND, after the #321 live recovery above. The
+            # recovery already cleared `_downgrade_reason` for every name whose real YoY was
+            # computable — this carve-out's own condition (`== "...missing..."` below) is
+            # therefore ONLY still true for names with no prior-year comparable to recover at
+            # all (EROC/DG class in the 2026-09-04 replay), OR every carve-out-eligible name when
+            # the `yoy_recovery_before_carveout` toggle above is OFF (the revert). Belt-and-
+            # suspenders, exactly as this entry's original architectural note anticipated. No
+            # condition changed here — this block itself is untouched by the reorder.
             #
             # Cohort evidence: N=10 cases since 2026-05-14. Carve-out subset
             # = 6 (SNOW/BBWI/JOYY/RL/TATT/KLAR); mature N=3 (RL/TATT/KLAR)
@@ -4871,94 +4996,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         )
                     except Exception:
                         pass
-
-            # #321 LIVE rescue (operator 6/28: it's a BUG — the gate fires "no prior-year comparable"
-            # when the comparable IS available, just not in the news corpus). Recover the YoY from the
-            # prior-year SAME quarter and let it DRIVE the gate: recovered >= floor -> not weak (clear the
-            # downgrade); < floor -> legitimately weak (keep, with the real number); None -> stay
-            # conservative. Latency-bounded (off-corpus yfinance fetch, 4s cap, fail-open) + a revert
-            # toggle — #400a: DB-instant via get_runtime_toggle('live_yoy_recovery', ...) with the
-            # LIVE_YOY_RECOVERY env as fallback; flipping the DB row to 'off' reverts to the
-            # conservative pre-fix downgrade in ≤60s, no redeploy. Runs only on the missing-YoY reason.
-            # Latency guard (advisor 6/28): the prior-year leg FETCH must NOT run inside the 9:30-9:45
-            # ORB-cutoff window — a few × 4s serially could push the scan past 9:45 -> WINDOW_OUT_OF_ORB on
-            # the GOOD names that needed to submit. Earnings names classify pre-market, so the fetch runs
-            # pre-9:30.
-            # ⚠ 2026-09-04 (NSSC 8/24): the 6/28 comment here used to claim "the rescued grade caches in
-            # _catalyst_cache for the in-window scans". It did not, on this path: this block re-runs
-            # every 5-min tick from the DB-cached extraction (which never had the YoY), the recovered
-            # number was written nowhere a later tick could see, and a name recovered +10.1% at 07:25
-            # was re-derived "missing" at 09:30:07 — in-window, fetch off — and DOWNGRADED. The recovery
-            # is now written back beside the extraction row (persist_yoy_recovery -> yoy_recovered_json,
-            # read by lookup_cached_metrics) and read FIRST on every later tick: a dict lookup with no
-            # latency, so the window guard — which exists for the fetch — does not apply to it.
-            # Behaviour is otherwise identical: same toggle, same 4s cap, same floor, same audit.
-            _in_orb_cutoff = now_et.hour == 9 and 30 <= now_et.minute <= 45
-            if (_downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"
-                    and await get_runtime_toggle("live_yoy_recovery", "LIVE_YOY_RECOVERY")):
-                _qr2 = _extracted.get("q_revenue_usd") or {}
-                # 1) an answer already computed on an earlier tick today (valid in-window: no fetch)
-                _rec = _persisted_yoy_recovery(_extracted)
-                if _rec is None and not _in_orb_cutoff:
-                    # 2) outside the window: the fetch, exactly as before — then write it back
-                    try:
-                        from agents.market_intelligence.fundamentals import compute_yoy_from_prior_year
-                        _rec = await asyncio.wait_for(
-                            compute_yoy_from_prior_year(
-                                ticker, _extracted.get("fiscal_period"), _qr2.get("value"),
-                                alert_date=today),
-                            timeout=4,
-                        )
-                    except Exception:  # loud-ok: fail-open — timeout/error -> None -> stays the conservative downgrade (safe default)
-                        _rec = None
-                    if _rec is not None:
-                        # Write-back BEFORE the floor decision below: a real below-floor number must
-                        # survive too, or the next tick re-derives "missing" and loses the real number.
-                        _extracted["_yoy_recovered"] = _rec
-                        await persist_yoy_recovery(ticker, today, _rec)
-                elif _rec is None and await get_runtime_toggle(
-                        "live_yoy_recovery_inwindow", "LIVE_YOY_RECOVERY_INWINDOW", default=False):
-                    # 3) IN the window with nothing in hand (first seen at/after 9:30 — BE 8/12): start
-                    # the same fetch DETACHED, never awaited here, so scan latency is untouched; the
-                    # next 5-min tick picks the write-back up at step 1. OPERATOR TOGGLE, default OFF —
-                    # the signed #321 rule acting in the window it was excluded from purely for latency,
-                    # but it changes in-window acting behaviour on the money path (a routine can become
-                    # a HIGH -> live ORB entry). Flip = mi_safeguard_state 'live_yoy_recovery_inwindow'.
-                    _spawn_yoy_recovery_background(
-                        ticker, today, _extracted.get("fiscal_period"), _qr2.get("value"))
-                if _rec is not None:
-                    _ryoy = _rec["yoy_pct"]
-                    if _ryoy >= EARNINGS_REVENUE_GATE_MIN_YOY:
-                        _downgrade_reason = None   # real growth recovered — NOT a weak/missing-comparable name
-                        _floor_grade_kept = {
-                            "gate": "revenue safety net (no prior-year comparable extracted)",
-                            "effect": "would have cut the catalyst grade to routine",
-                            "by": "the live prior-year revenue lookup",
-                            "why": f"recovered year-over-year revenue {_ryoy:+.1f}%",
-                            "grade": catalyst_quality,
-                        }
-                        # Per-ticker-per-day dedup on the AUDIT EMIT only — the recovery
-                        # DECISION above (_downgrade_reason = None) is idempotent and MUST
-                        # run every scan. Without this guard the event re-fires on every
-                        # 5-min scan for an earnings name (KRNT logged 5x 2026-08-12 → the
-                        # digest read "10 rescued" when only 1 name was actually rescued);
-                        # same idiom as the carve-out guard above (~line 3789) and the
-                        # 2026-08-11 extraction-failed-grade-kept fix.
-                        if await _should_log_catalyst_earnings_event_today(
-                            "catalyst_yoy_recovered_live", ticker
-                        ):
-                            await log_audit_event(
-                                "catalyst_yoy_recovered_live",
-                                f"{ticker}: kept {catalyst_quality} — recovered prior-yr YoY "
-                                f"{_ryoy:+.1f}% (>= {EARNINGS_REVENUE_GATE_MIN_YOY:.0f})",
-                                json.dumps({"ticker": ticker, "alert_date": today.isoformat(),
-                                            "recovered_yoy_pct": _ryoy,
-                                            "prior_period": _rec.get("prior_period"),
-                                            "kept_quality": catalyst_quality}))
-                    else:
-                        _downgrade_reason = (
-                            f"q_rev_yoy_{_ryoy:.1f}pct_below_"
-                            f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct_recovered")
 
             # Extraction died and we deliberately kept the grade (operator 2026-08-07).
             # Emitted BEFORE the downgrade block so it is recorded even though nothing

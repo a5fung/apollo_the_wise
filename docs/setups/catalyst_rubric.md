@@ -196,14 +196,15 @@ Applied AFTER composite computation, regardless of score:
    VSNT, VIAV, ARX where rubric and operator labels diverge — useful
    calibration data for Phase 9 quarterly review.
 
-5. **PROPOSED, AWAITING OPERATOR SIGN-OFF (2026-09-04): run the #321 live prior-year
-   recovery BEFORE the 2026-05-28 beat+guidance carve-out.** Today the carve-out runs first
-   and, when it fires, sets `_downgrade_reason=None` so the recovery never looks up the real
-   number — 12 of the 19 missing-YoY cases in the 30d review were waved through on the
-   heuristic with a computable real YoY sitting unchecked. Proposed order: recovery first;
-   carve-out only when recovery returns None. This is a scoring-ORDER change on the money
-   path (a name the carve-out keeps today can be downgraded on its real number), so per
-   CHANGE_PROCESS it needs the operator's call, not the agent's. **$0 replay, 2026-09-04**
+5. **BUILT + TESTED 2026-09-04 (operator-approved same day), awaiting deploy: the #321 live
+   prior-year recovery now runs BEFORE the 2026-05-28 beat+guidance carve-out** — see the
+   2026-09-04 change-log entry "Scoring order: #321 recovery before the carve-out" below for the
+   Trigger/Evidence/Reversion-flag/Status record. Before the fix the carve-out ran first and,
+   when it fired, set `_downgrade_reason=None` so the recovery never looked up the real number —
+   12 of the 19 missing-YoY cases in the 30d review were waved through on the heuristic with a
+   computable real YoY sitting unchecked. New order: recovery first; carve-out only when recovery
+   returns None (unchanged condition), or the `yoy_recovery_before_carveout` revert toggle is
+   OFF. Evidence retained here as the backing replay. **$0 replay, 2026-09-04**
    (`compute_yoy_from_prior_year` offline against `mi_ep_catalyst_metrics` fiscal_period +
    q_revenue value, prior year from yfinance; the review's 12 = 8/06→9/04, plus the same
    cohort's three cases on 8/04-8/05). Forward returns from `mi_daily_closes`, close-to-close.
@@ -237,10 +238,10 @@ Applied AFTER composite computation, regardless of score:
    their series). Recommendation: approve — this is the 2026-06-05 "gate better in BOTH
    directions" case with N=15 replayed and zero cost to the eleven names that deserved to
    pass. Caveat: the replay used today's yfinance history; for the four flips the prior-year
-   row was present on the alert day too (it is ≥4 quarters deep). On sign-off the code change
-   is small — move the #321 block above the carve-out block; the carve-out's own condition is
-   unchanged — and the carve-out entry below is then belt-and-suspenders, as its 2026-05-28
-   architectural note anticipated.
+   row was present on the alert day too (it is ≥4 quarters deep). Built: the #321 block moved
+   above the carve-out block; the carve-out's own condition is unchanged — and the carve-out
+   entry below is now belt-and-suspenders (except when the revert toggle is OFF), as its
+   2026-05-28 architectural note anticipated.
 
 ## Quarterly Review Protocol
 
@@ -272,6 +273,69 @@ trade reactions.
 (to be filed when rubric ships to production gating in Phase 6).
 
 ## Change log (newest first)
+
+### 2026-09-04 — Scoring order: #321 recovery now runs before the beat+guidance carve-out (operator-approved)
+
+**Trigger**: the operator's 2026-09-04 approval ("go with rec") of the scoring-order recommendation
+in Known limitations #5. Before this, the 2026-05-28 beat+guidance carve-out ran FIRST and, when
+its heuristic fired, set `_downgrade_reason=None` — which made the #321 recovery block's own
+top-level condition (also gated on `_downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"`)
+false, so the real prior-year revenue number was never looked up at all. 12 of the 19 missing-YoY
+cases in the 30d review were waved through on the heuristic with a computable real YoY sitting
+unchecked.
+
+**Evidence**: $0 offline replay of 15 carve-out-eligible names (`compute_yoy_from_prior_year`
+against `mi_ep_catalyst_metrics` fiscal_period + q_revenue value, prior year from yfinance; full
+table and method in Known limitations #5 above). **9 keep their grade on a real number** (VOYG,
+INSM, GLBE, CRMD, SCSC, CRWD, MBUU, OKTA, VEEV). **4 get downgraded on a real number — HGTY, PRGO,
+RPD, HRB — and all four fell over the following week (mean -4.9%)**, none with a live entry
+attached (HGTY was `window:out_of_orb`; PRGO, RPD and HRB never reached the pipeline), so
+approving this costs nothing historically. **2 are unchanged** (EROC, DG — no prior-year row, so
+recovery returns None and the carve-out still applies exactly as before). The class this fixes
+is the one that skipped BE on 2026-08-12 — a HIGH-tier candidate, five minutes too late (same
+review, in-window entry below).
+
+**What shipped**: the #321 recovery block (in `run_ep_scan`, `ep_detector.py`) was moved to sit
+immediately BEFORE the 2026-05-28 carve-out block; the carve-out's own `if` condition is
+byte-identical to before the move. Recovery now always gets a chance to look up the real
+prior-year YoY for a `q_rev_yoy_missing_no_prior_year_comparable` name; the carve-out only ever
+sees the ones recovery couldn't resolve (no prior-year row at all, or the revert below is ON).
+Plus ONE new clause on the recovery block's own top-level condition, `and (yoy_recovery_before_carveout
+OR not _should_apply_yoy_carveout(_extracted))` — see Reversion-flag.
+
+**Anticipated effect**: on the historical rate (4 of 19 in 30d, ~1/week), a beat+guidance name
+with a real, computable, below-floor YoY revenue number gets downgraded instead of waved through
+on the heuristic; zero change for names recovery cannot resolve (falls through to the carve-out
+unchanged) or where the real number clears the floor anyway (9 of 15 in the replay).
+
+**Reversion-flag**: NEW — a DEDICATED toggle, `yoy_recovery_before_carveout` /
+`YOY_RECOVERY_BEFORE_CARVEOUT` (`get_runtime_toggle`, DB row or env, ≤60s instant, no redeploy,
+default ON). Flip OFF:
+```sql
+INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+VALUES ('yoy_recovery_before_carveout', 'global', 'off', NOW(), NOW())
+ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
+```
+Deliberately NOT the existing `live_yoy_recovery` toggle: that one gates the whole #321
+mechanism (fetch + write-back + in-window background fill, spanning 6/28 through today); turning
+it OFF would revert all the way to pre-2026-06-28 (no #321 at all) and would ALSO silently drop
+the live rescue for every carve-out-INELIGIBLE name (the QFIN/ESLT/LION class — no guidance
+signal, so the carve-out never touches them and #321 alone rescues them) — a much bigger,
+unintended blast radius than "undo the ordering decision." The dedicated toggle instead adds
+`not _should_apply_yoy_carveout(_extracted)` to the recovery condition when OFF, which skips the
+recovery block for exactly the names the carve-out would have claimed (letting the now-second
+carve-out decide them precisely as it did pre-2026-09-04) while leaving carve-out-ineligible
+names — and the rest of the #321 mechanism — untouched. That is the byte-identical
+pre-2026-09-04 order; `live_yoy_recovery` OFF is not.
+
+**Status**: built + tested (`tests/test_yoy_writeback_and_window.py` — source-order pin, the
+toggle's exact condition text, and replay-fixture behavioral tests for HGTY/PRGO/RPD/HRB/SCSC/
+EROC under both toggle states), awaiting deploy (`market-agent` scope) and next-market-day
+verify. Verify-live: the next `catalyst_downgrade_carveout_applied` audit row for an earnings
+name should show no earlier same-day `catalyst_yoy_recovered_live` row, and no same-day
+`catalyst_earnings_revenue_weak_downgrade` reason ending `_recovered`, for the same ticker — the
+HGTY/PRGO/RPD/HRB class (a real, computable, below-floor YoY on a carve-out-eligible name)
+firing that `_recovered` reason live is the positive confirmation the fix is acting.
 
 ### 2026-09-04 — #321 write-back: a recovered YoY now survives to every later tick (NSSC bug) + DG date guard
 

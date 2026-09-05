@@ -323,5 +323,10 @@
     "id": 626,
     "status": "pending",
     "title": "CLAUDE.md is 21 bytes from its hard ceiling and cannot be trimmed the usual way"
+  },
+  {
+    "id": 627,
+    "status": "in_progress",
+    "title": "YoY revenue fixed at all three causes \u2014 write-back, in-window recovery, and the approved reorder"
   }
 ]
