@@ -62,7 +62,6 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 
 **EVERY task gets a project + ETA + ACTIONABLE DETAIL + a CLEAR OUTCOME AT CREATION** (never a bare bucket label) — `scripts/check_plan.py` (pre-commit Gate 2) FAILS the commit on any task missing a project/ETA/status, any past ETA, any open snapshot task not filed, or any **placeholder title** — the create→file-with-substance rule is a gate, not memory (operator 2026-06-20).
 
-Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
 ## COST EFFICIENCY — HARD RULE (operator 2026-08-03)
 
@@ -96,8 +95,9 @@ Same SoT as Session Protocol above: `PLAN.md` at repo root (projects → tasks �
 needs a clear buy and stop point, continuation does not on its own… that setup needs a name and
 continuation flag is not. Just cut out this confusion every time."*
 
-- **SETUP = a named entry with a DEFINED BUY POINT AND STOP.** MAGNA53 EP (buy ORB high, stop ORB
-  low) is a setup. If you cannot state where it buys and where it stops, **it is not a setup.**
+- **SETUP = a named entry with a DEFINED BUY POINT AND STOP.** MAGNA53 EP (buy ORB high, stop
+  `entry − 2R`, R = entry − ORB low — NOT the ORB low) is a setup. If you cannot state where it buys
+  and where it stops, **it is not a setup.**
 - **FAMILY = a chart condition/context that can HOST several setups** but is not tradeable itself.
   **Continuation / consolidation-post-runup is a FAMILY.** So is "Family A" (ADR 0013).
 - Within a family the tradeable entries each need **their own name** — buy-early-on-anticipation vs
