@@ -22,6 +22,19 @@ Pre-2026-08-16 the stop was the ORB low itself.
 week after it already was — a stale caveat is a hidden rule, P15). Live behaviour observed from
 2026-08-18: AMLX's placed stop equals `2·ORB_low − ORB_high` in prod trade data.
 
+**🛑 THE GAP IS NOT OPTIONAL — operator ruling 2026-09-05, recorded here because it was asked and
+will be asked again.** His words: *"if there's just vol, but no gap that is no EP. It's just churning
+volume where ever it is. It's not an EP."*
+
+**So a name showing extreme volume with no gap is NOT an EP candidate and must not be seeded into the
+EP funnel from any side door.** This closes a question raised while scoping #297: the delayed-entry
+lane seeds only from names that became EP alerts, so a high-volume/no-gap name is structurally
+invisible to it — and that is CORRECT, not a coverage gap.
+
+⚠ Note where this places every piece of volume work: the gap floor cuts at `ep_detector.py:3189` and
+volume is scored at `:3399`, **after** it. Volume ranks and filters names that already gapped; it
+never admits one that did not. That ordering is the ruling above, expressed in code.
+
 This is the canonical Apollo entry strategy — the highest-volume, highest-conviction setup type.
 
 ## Universe / eligibility
