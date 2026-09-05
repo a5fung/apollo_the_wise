@@ -181,6 +181,30 @@ _UNVERIFIED_STANDARD = (
 MUST_NOT_MISS: list[EPFixtureMember] = [
     # ── Member 1 — OPERATOR-NAMED ─────────────────────────────────────────────────────────────
     EPFixtureMember(
+        ticker="TEAM", alert_date="2026-08-07",
+        label_source="operator",
+        label_note=(
+            "Operator, 2026-09-05: \"i did tell you i got into TEAM as EP after apollo was stopped "
+            "out, it's still working after weeks and qualify as EP in my book.\" He entered after "
+            "our stop-out and still holds it. THE POINT OF THIS MEMBER: our live trade lost "
+            "(entry 147.13, stop 143.21, mi_live_trades closed same day) while the STOCK went "
+            "110.17 -> 149.07 on the gap day -> 189.58 on 2026-09-04 (+27% above the gap-day close, "
+            "+72% above the pre-gap close, verified mi_daily_closes). A P&L-based label calls this "
+            "a loser; the operator calls it a real EP. That divergence is exactly why returns are "
+            "the wrong labelling instrument and the stock's forward path is the right one."
+        ),
+        # Gap day: O 145.14, PDC 110.17 (mi_daily_closes, read 2026-09-05). (145.14-110.17)/110.17
+        # = 31.74%  — OPEN vs prior-close, the same basis as every other member.
+        # ⚠ THE RUBRIC SAW THIS AND REJECTED IT: mi_ep_scan_log 2026-08-07 scored TEAM 39.6 on a
+        # ~32% gap, filter_reason "score 40 < 50 (catalyst=routine)" on every tick. Compare MRNA:
+        # 33.1% gap, catalyst=strong, score 115.2. Near-identical gaps, a 75-point spread, and the
+        # catalyst call is the whole difference. This is the second operator-labelled member and
+        # the FIRST one the scorer rejected.
+        gap_pct=31.74, gap_basis="open vs prior close (mi_daily_closes 2026-08-06/07)",
+        prev_close=110.17,
+        unverified_gates=_UNVERIFIED_STANDARD,
+    ),
+    EPFixtureMember(
         ticker="MRNA", alert_date="2026-08-19",
         label_source="operator",
         label_note=(
