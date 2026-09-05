@@ -29,7 +29,9 @@ WHAT this enforces on PLAN.md (every task line `- #<id> | <YYYY-MM-DD> | <status
 USAGE:
   python scripts/check_plan.py            # validate (pre-commit gate). exit 1 on any violation.
   python scripts/check_plan.py --today    # OPEN helper: OVERDUE + due-today + VERIFY-DUE (deployed
-                                          #   tasks whose verify window is here) + LIKELY-BUILT
+                                          #   tasks whose verify window is here) + STALE-DEPLOY
+                                          #   (deployed tasks aged out by GIT history, independent
+                                          #   of the self-chosen verify-date ETA) + LIKELY-BUILT
                                           #   (reads as built but still in_progress/pending —
                                           #   reclassify to `deployed` or close) = the day's plan.
 
@@ -829,6 +831,175 @@ def _deployed_no_verify_gate(tasks, errors) -> None:
             print(f"[plan] WARN — pre-existing deployed-with-no-verify-claim: {msg}")
 
 
+# --- STALE-DEPLOY (2026-09-05) ------------------------------------------------------------------
+# The gap every OTHER surface here misses, named by the operator directly: "how come we keep
+# running into this stale task issue when we have built so much check and balance already?" The
+# honest answer: every gate in this file enforces STRUCTURE (a task HAS a project, an ETA, a
+# status, a stated verify condition) — none of them checks whether anyone ever RAN the verify.
+#
+# VERIFY-DUE (above) fires once a `deployed` task's verify-date ETA has arrived. But that ETA is a
+# date the AGENT set at ship time — a promise, not a measurement — and nothing stops it being set
+# weeks out. A task can sit `deployed`, with a perfectly-formed verify condition, behind a distant
+# self-chosen ETA, and pass VERIFY-DUE, `_deployed_no_verify_gate` and every past-ETA check
+# silently for as long as that ETA stays in the future. Measured on the live board 2026-09-05: of
+# the 5 tasks this surface flags, 4 (#184 #471 #452 #414) carry a FUTURE verify-date and are
+# invisible to VERIFY-DUE despite having shipped 26-36 days ago.
+#
+# THE FIX: an axis INDEPENDENT of the self-chosen ETA — how long GIT says the task has actually
+# been `deployed`. `deployed` on this board means "shipped, awaiting verify" by construction (the
+# Session Protocol: "done = VERIFIED-LIVE, not deployed" — the moment it is confirmed the task
+# closes and leaves PLAN.md). So every task still sitting at `deployed` is, by definition, still
+# unconfirmed; the only question worth asking is HOW LONG, measured from when it actually shipped,
+# not from a date someone typed in.
+#
+# DERIVING "WHEN IT SHIPPED": never trust the line's own prose — that is the exact class of bug
+# this closes (an agent's claim about itself). Git is the honest source. `_deploy_dates_from_history`
+# walks PLAN.md's own commit history ONCE (`git log -p --reverse`) and, for every task id that has
+# ever appeared, records the date its line most recently transitioned INTO `deployed` from some
+# other status (or from nothing) — the LATEST such transition, so an id that went deployed -> back
+# -> deployed again is dated by the second flip, which is what "how long has it CURRENTLY been
+# deployed" means. Reuses `_TASK` (the ONE task-line parser this file already has — see
+# `_plan_at_ref`'s and `_own_commits_touching_code`'s docstrings for the drift that hand-rolling a
+# second one caused twice already) against each `+` diff line, so "what counts as a task line"
+# cannot drift into a third definition. KNOWN EDGE (documented, not fixed — direction is safe):
+# only `+` lines are read, so an id CLOSED while `deployed` (removed from PLAN.md) and later
+# re-added under the same number keeps its ORIGINAL flip date, not the re-add date. That makes
+# the reported age an OVER-estimate, never an under-estimate — it surfaces a little early rather
+# than staying quiet, and `swept:` is exactly the tool for that case.
+#
+# ONE WALK, NOT ONE PER ID: an earlier version pickaxed (`git log -S`) per task id — correct, but
+# each call re-walks the ~1200 commits that touch PLAN.md, so 17 ids cost ~13s. A single
+# `git log -p --reverse` walks that same history exactly once (~1s) and answers for every id at
+# once, because every commit's `+` lines already say the file's state right after that commit —
+# there is nothing per-id left to re-derive. Verified this produces IDENTICAL dates to the
+# per-id `-S` pickaxe for all 17 tasks `deployed` on the live board the day this was built.
+#
+# CONSISTENCY CHECK: the walk's own idea of each id's CURRENT status (`last_status`, the final
+# value after replaying every commit) must agree with what `parse()` just read from disk. A
+# mismatch means the linearized history disagrees with reality — a non-linear merge, a rename, an
+# uncommitted edit this session — and the derived date cannot be trusted; such an id is routed to
+# UNDATEABLE rather than trusted (never guess a date silently, including "trust a history that
+# disagrees with what's on disk right now").
+#
+# THRESHOLD: 14 days. Measured on the live board 2026-09-05 (11 `deployed` tasks): ages split
+# 1,1,2,6,7,9 vs 26,27,27,27,36 — a clean gap from 9 to 26 with nothing in between. 14 sits in
+# that gap, so the threshold falls where the DATA splits "still inside a normal verify window"
+# from "already skipped several" — it is not tuned to hit a target count. Skimming the 5 flagged
+# tasks' own verify text confirms why the gap is real, not coincidence: most of them (#540 broker
+# reject/cancel, #184 a coverage_drift row on a real reconcile cycle, #452 a live entry actually
+# evaluated, #414 a same-day entry still open at 09:35) are gated on a MARKET EVENT that does not
+# fire on a schedule, not on a fixed wait — so some of these will legitimately keep re-surfacing
+# past 14 days until their event occurs, and `swept:` (below) is the intended way to say "looked,
+# still legitimately waiting," not a false close.
+#
+# SURFACE, NOT A GATE (the same call as LIKELY-BUILT, for the same reason). Hard-failing this
+# would block EVERY commit until the whole pre-existing backlog clears — 5 of 11 `deployed` tasks
+# today — and the first thing anyone does to an unconditional blocker on a large pre-existing
+# backlog is bypass it (`--no-verify`); `_pending_verify_gate`'s HARD/WARN split and the `swept:`
+# section above both exist because this repo has already lived that failure. This is loud and
+# unmissable at `--today` instead — an operator/agent decision to re-check, `swept:`, or
+# reclassify, never a build blocker.
+#
+# SUPPRESSION: reuses the `swept:` marker verbatim (`_sweep_is_fresh`, `sweep_fingerprint`) instead
+# of inventing a second dated-marker idiom — same semantics: "I looked at this line today and its
+# state is what it says" ages out on the same 30-day cadence and voids immediately on any edit to
+# the line (content-fingerprinted), exactly like LIKELY-BUILT. UNDATEABLE is deliberately NOT
+# suppressible by `swept:` — "git cannot tell how old this is" is a fact about the DATA, not a
+# judgement call a sweep can settle.
+_STALE_DEPLOY_DAYS = 14
+_DIFF_COMMIT_HDR = re.compile(r'^([0-9a-f]{40})\x00(\d{4}-\d{2}-\d{2})$', re.MULTILINE)
+
+
+def _deploy_dates_from_history(repo: Path = REPO):
+    """One-shot git walk -> (deployed_since, last_status), both `dict[int, ...]` keyed by task id,
+    or `(None, None)` on any git failure (fails open like every other git helper in this file — a
+    `--today` surface must never throw or block a commit).
+
+    `deployed_since[id]` = the date `id`'s line most recently transitioned INTO `deployed` from
+    some other status (or from nothing). `last_status[id]` = `id`'s status as of the newest commit
+    this walk saw — the CONSISTENCY CHECK ANCHOR the caller compares against the live board (see
+    the section comment above for why: a disagreement means the linear replay cannot be trusted).
+
+    Uses `%cd` (committer date — when the commit actually landed on this history), not `%ad`
+    (author date, which a rebase/cherry-pick can carry forward from whenever the change was
+    originally authored, understating "how long has this been on the board").
+    """
+    try:
+        out = subprocess.run(
+            ["git", "log", "-p", "--reverse", "--format=%H%x00%cd", "--date=short",
+             "--", "PLAN.md"],
+            cwd=str(repo), capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=30)
+        if out.returncode != 0:
+            return None, None
+    except Exception:
+        return None, None
+    text = out.stdout
+    boundaries = list(_DIFF_COMMIT_HDR.finditer(text))
+    last_status: dict[int, str] = {}
+    deployed_since: dict[int, date] = {}
+    for i, m in enumerate(boundaries):
+        try:
+            commit_date = date.fromisoformat(m.group(2))
+        except ValueError:
+            continue   # malformed date on this commit — skip it, never guess
+        body_start = m.end()
+        body_end = boundaries[i + 1].start() if i + 1 < len(boundaries) else len(text)
+        for line in text[body_start:body_end].splitlines():
+            if not line.startswith("+- #"):
+                continue
+            tm = _TASK.match(line[1:])   # strip the diff '+' -> the SAME parser parse() uses
+            if not tm:
+                continue
+            tid, status = int(tm.group(1)), tm.group(3)
+            if status == "deployed" and last_status.get(tid) != "deployed":
+                deployed_since[tid] = commit_date
+            last_status[tid] = status
+    return deployed_since, last_status
+
+
+def stale_deploys(tasks: list[dict], today: date, repo: Path = REPO,
+                   threshold: int = _STALE_DEPLOY_DAYS):
+    """`deployed` tasks aged past `threshold` days by GIT (not by the self-chosen verify-date ETA),
+    split from tasks git could not date at all. Returns `(aged, undateable)`:
+      * `aged` = `[(task, deployed_since_date, age_days), ...]`, oldest first — the ones that have
+        gone longest with nobody confirming the verify actually ran;
+      * `undateable` = tasks git could not place (never seen at `deployed` in the walked history,
+        a git failure, or a live-vs-history status mismatch) — ALWAYS reported regardless of
+        `threshold` (an unknown age cannot be thresholded), never silently dropped or guessed.
+    A task carrying a FRESH `swept:` marker (`_sweep_is_fresh` — the exact suppression LIKELY-BUILT
+    already uses) is excluded from `aged`: someone looked at this line recently and it is still,
+    honestly, unverified; the marker voids itself the moment the line changes or ages out.
+    """
+    deployed_since, last_status = _deploy_dates_from_history(repo=repo)
+    aged: list[tuple[dict, date, int]] = []
+    undateable: list[dict] = []
+    for t in tasks:
+        if t["status"] != "deployed":
+            continue
+        since = (deployed_since or {}).get(t["id"])
+        # The walk's own idea of this id's CURRENT status must agree with what's on disk right
+        # now — a mismatch (non-linear history, an uncommitted flip this session) means the
+        # replay cannot be trusted for this id specifically, even though other ids were fine.
+        if since is None or (last_status or {}).get(t["id"]) != "deployed":
+            undateable.append(t)
+            continue
+        age = (today - since).days
+        if age < 0:
+            # a future-dated commit (clock skew) must never manufacture a negative age — but it
+            # also must not be silently dropped, so it joins UNDATEABLE like any other id whose
+            # age cannot be trusted, rather than vanishing from both buckets.
+            undateable.append(t)
+            continue
+        if age < threshold:
+            continue
+        if _sweep_is_fresh(t["title"], today):
+            continue
+        aged.append((t, since, age))
+    aged.sort(key=lambda x: -x[2])
+    return aged, undateable
+
+
 _SHIPPED_CODE_DIRS = ("agents/", "core/", "channels/", "shared/", "main.py")
 _OWN_COMMIT = re.compile(r"^#(\d+)[:.\s]")
 
@@ -1111,6 +1282,28 @@ def main(argv: list[str]) -> int:
             print(f"  #{t['id']:<4} verify {t['eta']}  {t['project']} — {t['title']}")
         if not verify_due:
             print("  (none)")
+        # STALE-DEPLOY (2026-09-05): deployed tasks aged out by GIT history, independent of the
+        # self-chosen verify-date ETA — see stale_deploys()/_deploy_dates_from_history() for the
+        # full derivation + threshold rationale. Complements VERIFY-DUE: that surface only fires
+        # once the ETA arrives, so a task with a distant self-set date is invisible to it no
+        # matter how long ago it actually shipped; this one can't be hidden that way.
+        aged_deploys, undateable_deploys = stale_deploys(tasks, today)
+        print(f"\n-- STALE-DEPLOY ({len(aged_deploys)}) — deployed {_STALE_DEPLOY_DAYS}+ days ago "
+              f"by git, regardless of the self-set verify-date ETA: confirm in prod + close, or "
+              f"[swept:] it --")
+        if aged_deploys:
+            for t, since, age in aged_deploys:
+                title = t["title"][:70] + ("…" if len(t["title"]) > 70 else "")
+                print(f"  #{t['id']:<4} deployed {since} ({age}d ago)  {t['project']} — {title}")
+            print("  (a SURFACE, not a gate — git-derived age can't be hidden behind a distant "
+                  "ETA; re-check + close, or note `[swept:YYYY-MM-DD:hash]` to quiet it 30 days — "
+                  "some of these are legitimately event-gated and will keep re-earning the flag.)")
+        else:
+            print("  (none)")
+        if undateable_deploys:
+            ids = ", ".join(f"#{t['id']}" for t in undateable_deploys)
+            print(f"  ({len(undateable_deploys)} UNDATEABLE — git could not establish a deploy "
+                  f"date (age unknown; always shown, `swept:` cannot silence it): {ids})")
         # LIKELY-BUILT (operator 2026-07-18): status says to-build, line says built. Reclassify.
         # Lines carrying a fresh `swept:YYYY-MM-DD` are suppressed — see _sweep_is_fresh.
         _lb_all = [t for t in tasks if t["status"] in ("in_progress", "pending")
