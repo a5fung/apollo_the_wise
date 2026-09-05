@@ -1,0 +1,21 @@
+Pager usage is off.
+==== #448 CROSSTAB: did the rubric downgrade the LOSERS? ====
+(outcome = the STOCK path, settled close 20 trading sessions after the alert -- NOT our R,
+which is contaminated by our own exit. Alerts newer than 20 sessions are EXCLUDED, else
+the winners are truncated and only losers have settled.)
+verdict|n|avg_pct_20d|median_pct|still_up|pct_up|big_winners_20pct
+DOWNGRADED (composite < 22)|127|-0.6|-0.2|62|49|7
+PASSED the rubric|47|-5.8|-6.8|15|32|3
+(2 rows)
+Pager usage is off.
+==== confound: do the two arms differ in gap size or era? ====
+ERROR:  function pg_catalog.extract(unknown, integer) does not exist
+LINE 19:        ROUND(AVG(EXTRACT(EPOCH FROM (alert_date - DATE '2026...
+                          ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+
+==== same crosstab, restricted to a MATCHED gap band 10-25% ====
+verdict|n|avg_gap|avg_pct_20d|median_pct|still_up
+DOWNGRADED|114|14.8|-0.1|0.5|59
+PASSED|42|14.2|-6.1|-6.8|14
+(2 rows)
