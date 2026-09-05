@@ -13176,6 +13176,16 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "") -> No
     Write a critical event to the audit log. Never raises — safe to call from anywhere.
     event_type: 'advisor_call' | 'theme_discovered' | 'theme_retired' |
                 'stage_change' | 'theme_excluded' | 'ep_alert'
+
+    #621 (2026-09-05): `pool.acquire()` and the INSERT are timeout-bounded at 5s.
+    Found while closing the reprotect-floor DB-timeout gap: `_apply_reprotect_floor`
+    (order_manager.py) calls this, unguarded, in its "floor raised the price" branch
+    BEFORE returning the price to place — a hang here (a saturated pool, a stuck
+    Postgres) blocked the caller from ever reaching `place_stop_order`, exactly the
+    same hazard class as the unbounded reads, just a write. Already swallow-safe
+    (`except Exception` below), so a TimeoutError joins the same silent-log path —
+    no new failure mode, still never raises. This is the ONLY change in this file
+    for #621; every other query in db.py is untouched.
     """
     try:
         # REDACT AT THE CHOKEPOINT (2026-09-01). This is where text becomes DURABLE, and audit
@@ -13187,10 +13197,11 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "") -> No
         from shared.secret_redaction import redact_secrets
         summary, detail = redact_secrets(summary), redact_secrets(detail)
         pool = await get_pool()
-        async with pool.acquire() as conn:
+        async with pool.acquire(timeout=5.0) as conn:
             await conn.execute(
                 "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)",
                 event_type, summary[:500], detail[:8000],
+                timeout=5.0,
             )
     except Exception as e:
         logger.warning(f"audit log write failed ({event_type}): {e}")

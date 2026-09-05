@@ -287,7 +287,8 @@ async def test_a_single_l_cancelled_exit_order_no_longer_reserves_shares(monkeyp
         {"qty": 3, "status": "new"},         # genuinely working
     ]
 
-    async def _fetchval(_sql, _trade_id, statuses):
+    async def _fetchval(_sql, _trade_id, statuses, **_kwargs):
+        # **_kwargs swallows #621's `timeout=` — real asyncpg accepts it too.
         return sum(o["qty"] for o in orders if o["status"] not in statuses)
 
     pool, conn = make_mock_pool()

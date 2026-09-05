@@ -61,6 +61,52 @@ logger = logging.getLogger(__name__)
 
 _ET = ZoneInfo("America/New_York")
 
+# ── DB timeout for the re-protect-floor chain (#621, found 2026-09-05) ──────
+# Nothing in this chain — `_trade_advisory_try_lock`, `get_pending_exit_qty`,
+# `_current_stop_pointer`, `_read_preserved_dead_stop` — carried a time limit,
+# and it runs directly in front of `place_stop_order`. A hung Postgres or a
+# saturated 5-connection pool (`db.py::get_pool`, max_size=5) blocked one of
+# these forever with no code-level escape, ahead of an unprotected position.
+#
+# SCOPE: a per-call bound on this chain only, not a pool-wide asyncpg
+# `command_timeout` in `db.py::get_pool`. A pool-wide default is the smaller
+# diff and would cover every query, but `db.py` runs ~25 `executemany` batch
+# writers (nightly universe/theme/RS inserts, some thousands of rows) that a
+# blanket timeout would need auditing to exempt one by one — undone here to
+# avoid discovering the exempt list in production, and a separate card is
+# already changing `db.py`'s query plumbing concurrently. This constant
+# touches only the calls listed above, all in this file.
+#
+# MECHANISM: asyncpg's own `timeout=` kwarg on `pool.acquire()` and on the
+# query itself (fetchval/fetchrow) — not an external `asyncio.wait_for(...)`
+# wrapped around a call on a pooled connection. asyncpg cancels the in-flight
+# command and marks the connection correctly when its own `timeout=` fires;
+# wrapping externally can abandon the coroutine while the command is still
+# running on the connection and hand a poisoned connection back to the pool
+# for the next borrower. `pool.acquire(timeout=...)` covers the saturation
+# case (blocked waiting for a free connection); the query's own `timeout=`
+# covers a hung command once a connection is in hand.
+#
+# VALUE: these are single-row primary-key reads / an already-non-blocking
+# `pg_try_advisory_lock` — a local round trip normally takes low single-digit
+# milliseconds. 5s is roughly 1000x that: generous headroom against real but
+# transient contention on the EXECUTION_OWNED_JOB_IDS role's shared 5-connection
+# pool (its only concurrent users during market hours are `position_coverage_check`
+# every 15 min and `stop_coverage_repair_retry` every 5 min — scheduler.py), while
+# still ending a true hang in a small fraction of either job's cadence. It is
+# also far tighter than the 30s/45s broker bounds in `alpaca_client.py`
+# (`_SDK_TIMEOUT_DEFAULT`/`_SDK_TIMEOUT_WRITE`) on purpose: a local DB round
+# trip has no business taking anywhere near as long as a network call to
+# Alpaca.
+#
+# FAIL DIRECTION: every caller below already fails open on ANY exception
+# (`_current_stop_pointer`, `_read_preserved_dead_stop`) or already lets a
+# raise propagate to an existing per-trade handler (`get_pending_exit_qty`,
+# `_trade_advisory_try_lock`) — a TimeoutError joins whichever path already
+# exists, unchanged. Nothing here is given a NEW except clause or a NEW
+# fail-open default; see each function's docstring/comment for why.
+_REPROTECT_DB_TIMEOUT = 5.0
+
 
 def stop_limit_buy_price(stop_price: float) -> float:
     """Compute the LIMIT price for a stop-limit BUY parent order.
@@ -1497,14 +1543,19 @@ async def get_pending_exit_qty(trade_id: int) -> int:
     (`scripts/probes/_591_state_capture.sql` Q2: every purpose-labelled exit
     order in the book is `filled`).
     """
+    # #621: timeout only — a raise here (including a new TimeoutError) is left
+    # to propagate exactly as any other DB error already does. Do NOT catch it
+    # and fail open to 0: that would UNDER-count pending exits, oversize the
+    # stop request, and reproduce the FTRE 5/9 class of bug (Alpaca rejects on
+    # insufficient qty → naked), which is worse than the existing raise.
     pool = await get_pool()
-    async with pool.acquire() as conn:
+    async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
         held = await conn.fetchval("""
             SELECT COALESCE(SUM(qty)::int, 0) FROM mi_live_orders
             WHERE trade_id = $1
               AND purpose IN ('partial_exit', 'full_exit')
               AND status != ALL($2::text[])
-        """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
+        """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES), timeout=_REPROTECT_DB_TIMEOUT)
     return int(held or 0)
 
 
@@ -1774,12 +1825,19 @@ async def _current_stop_pointer(trade_id: int) -> str | None:
     after the broker said there is no live stop, so an in-memory copy of the
     pointer may be stale; the row is the source of truth. FAIL-OPEN: a raising
     read returns None (→ no floor → the DB price is placed, exactly as before
-    #600) — the position must still get its stop."""
+    #600) — the position must still get its stop.
+
+    #621: `pool.acquire()` and the query are timeout-bounded — this read used
+    to be able to block forever (a hung Postgres, a saturated pool) directly in
+    front of `place_stop_order`. A TimeoutError is just another exception this
+    `except` already catches, so the fail-open path is unchanged.
+    """
     try:
         pool = await get_pool()
-        async with pool.acquire() as conn:
+        async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
             return await conn.fetchval(
-                "SELECT stop_order_id FROM mi_live_trades WHERE id = $1", trade_id)
+                "SELECT stop_order_id FROM mi_live_trades WHERE id = $1",
+                trade_id, timeout=_REPROTECT_DB_TIMEOUT)
     except Exception as e:  # loud-ok: fail-open by design — the placement still happens
         logger.warning(
             f"_current_stop_pointer: read failed for trade {trade_id} ({e}) — "
@@ -1839,7 +1897,7 @@ async def _preserve_dead_stop_price(
         return
     try:
         pool = await get_pool()
-        async with pool.acquire() as conn:
+        async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
             written = await conn.fetchval("""
                 UPDATE mi_live_trades SET
                     dead_stop_price = $2,
@@ -1849,7 +1907,8 @@ async def _preserve_dead_stop_price(
                 WHERE id = $1
                   AND (dead_stop_price IS NULL OR $2 > dead_stop_price)
                 RETURNING id
-            """, trade_id, price, order_id, status) is not None
+            """, trade_id, price, order_id, status,
+                timeout=_REPROTECT_DB_TIMEOUT) is not None
     except Exception as e:  # loud-ok: fail-open — the #600 floor just finds nothing later
         logger.warning(
             f"_preserve_dead_stop_price: write failed for trade {trade_id} ({e}) — "
@@ -1881,10 +1940,11 @@ async def _read_preserved_dead_stop(trade_id: int) -> dict | None:
     """
     try:
         pool = await get_pool()
-        async with pool.acquire() as conn:
+        async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
             row = await conn.fetchrow(
                 "SELECT dead_stop_price, dead_stop_status, dead_stop_order_id "
                 "FROM mi_live_trades WHERE id = $1", trade_id,
+                timeout=_REPROTECT_DB_TIMEOUT,
             )
     except Exception as e:  # loud-ok: fail-open — the caller places at base, unchanged
         logger.warning(
@@ -2805,6 +2865,13 @@ async def _trade_advisory_lock(trade_id: int):
     (`pg_advisory_lock`), yields, then unlocks + releases the connection in
     `finally`. Session-level → if this process dies the lock auto-releases when
     the connection closes (backstop). Used by execute_partial_exit at the TOP.
+
+    #621: deliberately NOT given the reprotect-floor timeout. The blocking wait
+    for this lock is a safeguard behaviour by design (a partial-exit waits its
+    turn rather than racing the reconciler) — bounding it would change WHEN a
+    partial exit gives up, which is THE LINE, not a hang fix. It also is not on
+    the stop-placement chain #621 addresses (`_ensure_stop_coverage` uses the
+    non-blocking `_trade_advisory_try_lock` above, which IS bounded).
     """
     pool = await get_pool()
     conn = await pool.acquire()
@@ -2835,14 +2902,23 @@ async def _trade_advisory_try_lock(trade_id: int):
     holder has it (caller SKIPS). Unlocks + releases the connection in `finally`.
     Used by _ensure_stop_coverage so the reconciler defers to an in-flight
     partial rather than repairing a stop mid-reduction.
+
+    #621: `pool.acquire()` and both `pg_try_advisory_lock`/`pg_advisory_unlock`
+    calls are timeout-bounded (a saturated pool or a hung Postgres used to
+    block here forever). `pg_try_advisory_lock` is already non-blocking at the
+    Postgres level (it returns immediately either way) — the bound only
+    protects against the DB itself being unresponsive. No new except clause:
+    a raise (including TimeoutError) propagates exactly as any other DB error
+    already does, to the caller's existing handling.
     """
     pool = await get_pool()
-    conn = await pool.acquire()
+    conn = await pool.acquire(timeout=_REPROTECT_DB_TIMEOUT)
     acquired = False
     try:
         acquired = bool(await conn.fetchval(
             "SELECT pg_try_advisory_lock($1, $2)",
             _TRADE_LOCK_NAMESPACE, int(trade_id),
+            timeout=_REPROTECT_DB_TIMEOUT,
         ))
         yield acquired
     finally:
@@ -2851,6 +2927,7 @@ async def _trade_advisory_try_lock(trade_id: int):
                 await conn.fetchval(
                     "SELECT pg_advisory_unlock($1, $2)",
                     _TRADE_LOCK_NAMESPACE, int(trade_id),
+                    timeout=_REPROTECT_DB_TIMEOUT,
                 )
         finally:
             await pool.release(conn)

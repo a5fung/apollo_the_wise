@@ -117,7 +117,8 @@ async def test_get_pending_exit_qty_excludes_a_single_l_cancelled_order():
         {"qty": 3, "status": "new"},        # genuinely still pending
     ]
 
-    async def _fetchval(_sql, _trade_id, statuses):
+    async def _fetchval(_sql, _trade_id, statuses, **_kwargs):
+        # **_kwargs swallows #621's `timeout=` — real asyncpg accepts it too.
         return sum(o["qty"] for o in orders if o["status"] not in statuses)
 
     pool, conn = make_mock_pool()
