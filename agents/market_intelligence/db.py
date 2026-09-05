@@ -15569,7 +15569,16 @@ async def get_intraday_bars_window(conn: Any, ticker: str, start_ts: Any, end_ts
 
 
 async def get_daily_ohlc_range(conn: Any, ticker: str, start: "date", end: "date") -> list[dict]:
-    """READ-ONLY. Stored daily OHLC rows for [start, end], oldest first. A missing session
-    is simply absent — the caller decides (the #482 recorder retries it through
-    get_daily_bar_with_fallback, and abstains if it never appears)."""
-    return await _daily_closes_range(conn, ticker, start, end, with_volume=False)
+    """READ-ONLY. Stored daily OHLC rows for [start, end], oldest first, INCLUDING `volume`.
+    A missing session is simply absent — the caller decides (the #482 recorder retries it
+    through get_daily_bar_with_fallback, and abstains if it never appears).
+
+    ⚠ `volume` IS PART OF THIS CONTRACT and must stay. It was dropped on 2026-09-04 when the
+    /simplify dedup folded this function and get_delayed_entry_daily_window onto one body and
+    passed `with_volume=False` here — the pre-dedup SELECT read `..., close, volume`. The
+    consequence was invisible for a day: `sustain_reject_replay` reads `d0_row["volume"]`, so
+    it raised KeyError on EVERY candidate, counted 95 errors, wrote 0 rows, and the job still
+    reported success — indistinguishable from a quiet week. The suite never caught it because
+    every test at this layer mocks the DB. `tests/test_daily_ohlc_range_contract.py` now pins
+    the returned key set against the real column list so a future refactor cannot repeat it."""
+    return await _daily_closes_range(conn, ticker, start, end, with_volume=True)
