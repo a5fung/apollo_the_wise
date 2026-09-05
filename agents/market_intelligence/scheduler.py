@@ -60,6 +60,10 @@ logger = logging.getLogger(__name__)
 
 # Job name constants — used in mi_job_log; must match exactly
 JOB_NIGHTLY_DATA_PULL = "nightly_data_pull"
+# #625 (2026-09-05): the silent-error sweep is now its OWN named job so it can carry a
+# watermark ("everything since I last looked") instead of a fixed 2h window that silently
+# dropped every job scheduled after it.
+JOB_SILENT_ERROR_SWEEP = "silent_error_sweep"
 JOB_EVENING_BRIEFING = "evening_briefing"
 JOB_MORNING_BRIEFING = "morning_briefing"
 JOB_PARABOLIC_SCAN = "parabolic_scan"
@@ -138,6 +142,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
 # roles (#279) — a stale execution entry fails boot, so execution jobs must stay
 # unconditionally registered.
 INTELLIGENCE_OWNED_JOB_IDS = frozenset({
+    JOB_SILENT_ERROR_SWEEP,  # #625 late evening-tail error sweep (21:30 ET)
     # detection scans
     "ep_scan", "ep_scan_open", "ep_scan_start", "ep_scan_stop",
     "ep_scan_watchdog", "9m_ep_scan", "parabolic_scan", "flag_break_scan",
@@ -860,12 +865,32 @@ async def _check_nightly_silent_errors() -> None:
     nightly pull (17:30–18:30+); a 2h window can straddle past it.
     """
     from agents.market_intelligence.audit_events import DRAWDOWN_CHECK_UNAVAILABLE
+    from agents.market_intelligence.db import hours_since_job_last_ran
 
-    error_rows = await get_audit_log(limit=40, event_type_like="%error%", since_hours=2)
-    rate_rows = await get_audit_log(limit=40, event_type_like="%rate_limited%", since_hours=2)
-    api_rows = await get_audit_log(limit=40, event_type_like="%api_failure%", since_hours=2)
+    # #625 (2026-09-05) — WATERMARK, not a fixed window. The old fixed 2h lookback ran at
+    # the end of the 17:00 ET nightly pull, so every job registered later (18:04-18:15, and
+    # a 21:00) fired AFTER the only thing that would have shouted about their errors. None
+    # of them had ever been covered. That is how #593 errored on 95 of 95 candidates in
+    # silence. Sweeping from "when I last ran" means an event can be surfaced LATE, but it
+    # can no longer fall through the gap between two sweeps and be lost.
+    #   +1h margin so a slightly-early run cannot leave a sliver uncovered.
+    #   floor 2h  — never narrower than the behaviour this replaces.
+    #   cap  26h  — bounds the query on a first run or after an outage.
+    # Fail SAFE, and deliberately toward MORE coverage: if the watermark read itself fails
+    # we sweep the full 24h rather than narrowing. An error surfacer that goes quiet because
+    # its own bookkeeping query broke is the exact failure this task exists to remove; a
+    # duplicate alert is the acceptable cost.
+    try:
+        _elapsed = await hours_since_job_last_ran(JOB_SILENT_ERROR_SWEEP, 24)
+    except Exception as e:
+        logger.warning(f"silent-error sweep: watermark read failed, sweeping 24h: {e}")
+        _elapsed = 24.0
+    _since = min(26.0, max(2.0, _elapsed + 1.0))
+    error_rows = await get_audit_log(limit=40, event_type_like="%error%", since_hours=_since)
+    rate_rows = await get_audit_log(limit=40, event_type_like="%rate_limited%", since_hours=_since)
+    api_rows = await get_audit_log(limit=40, event_type_like="%api_failure%", since_hours=_since)
     safeguard_rows = await get_audit_log(
-        limit=40, event_type=DRAWDOWN_CHECK_UNAVAILABLE, since_hours=6,
+        limit=40, event_type=DRAWDOWN_CHECK_UNAVAILABLE, since_hours=max(6.0, _since),
     )
     rate_limited_types = {"validation_rate_limited", "anthropic_rate_limited",
                           "assignment_rate_limited", "discovery_rate_limited"}
@@ -923,6 +948,33 @@ async def _check_nightly_silent_errors() -> None:
         lines.append("Type 'show errors' for details.")
         await send_telegram_message("\n".join(lines))
         logger.warning(f"Nightly run had {total} silent events — alerted via Telegram")
+
+    # #625: advance the watermark LAST, and only on a clean pass. If anything above raised,
+    # the watermark stays put and the next sweep re-covers this window rather than skipping
+    # it — the failure mode of a watermark is a duplicate alert, never a dropped one.
+    try:
+        await log_job_run(JOB_SILENT_ERROR_SWEEP)
+    except Exception as e:
+        # Watermark did not advance — next sweep re-covers this window. Duplicate, not lost.
+        logger.warning(f"silent-error sweep: watermark write failed: {e}")
+
+
+async def _late_silent_error_sweep_job():
+    """#625 (2026-09-05) — the SECOND sweep, after the last nightly job of the day.
+
+    The first sweep runs at the end of the 17:00 ET nightly pull. Everything registered
+    after it (18:04-18:15, and a 21:00) fired afterwards, so its errors were never seen by
+    the only generic surfacer we have. This run closes the evening tail SAME-DAY; the
+    watermark in `_check_nightly_silent_errors` is what guarantees nothing is lost even if
+    a job is later added after THIS one too.
+
+    `tests/test_625_late_job_error_sweep.py` fails the build if any registered cron job is
+    scheduled later than this sweep — so the next late job cannot quietly re-open the gap.
+    """
+    try:
+        await _check_nightly_silent_errors()
+    except Exception as e:
+        logger.error(f"Late silent-error sweep failed: {e}", exc_info=True)
 
 
 async def _evening_briefing_job():
@@ -6314,6 +6366,20 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=16, minute=5, day_of_week="mon-fri", timezone="America/New_York"),
         id="eod_cleanup",
         replace_existing=True,
+    )
+
+    # #625 LATE SILENT-ERROR SWEEP: 9:30 PM ET — AFTER every other job of the day
+    # (the latest is the 21:00 evening position backstop registered just below). The
+    # first sweep runs at the end of the 17:00 nightly pull, which is BEFORE the
+    # 18:04-18:15 recorders and the 21:00 backstop — none of them had ever been
+    # covered by it. `tests/test_625_late_job_error_sweep.py` fails the build if any
+    # job is ever registered later than this one, so the gap cannot silently reopen.
+    _scheduler.add_job(
+        audit_wrap(_late_silent_error_sweep_job, JOB_SILENT_ERROR_SWEEP),
+        CronTrigger(hour=21, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
+        id=JOB_SILENT_ERROR_SWEEP,
+        replace_existing=True,
+        misfire_grace_time=1800,
     )
 
     # Evening position backstop: 9:00 PM ET — second sync_positions pass after

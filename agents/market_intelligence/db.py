@@ -10490,6 +10490,28 @@ async def get_judge_divergence_stats(window_start: date) -> dict[str, Any]:
     }
 
 
+async def hours_since_job_last_ran(job_name: str, default_hours: int = 24) -> float:
+    """Hours since `job_name` last ran, from mi_job_log. `default_hours` when it never has.
+
+    #625 (2026-09-05): lets a periodic sweep use a WATERMARK lookback instead of a fixed
+    window. A fixed window silently drops anything that happens between two runs — which
+    is exactly how every job scheduled after the nightly error sweep became invisible to
+    it. With this, a sweep can always cover "everything since I last looked", so a late
+    event is surfaced on the next run rather than never.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT ran_at FROM mi_job_log WHERE job_name = $1 ORDER BY ran_at DESC LIMIT 1",
+            job_name,
+        )
+    if not row or not row["ran_at"]:
+        return float(default_hours)
+    from datetime import datetime, timezone
+    delta = datetime.now(timezone.utc) - row["ran_at"]
+    return max(0.0, delta.total_seconds() / 3600.0)
+
+
 async def log_job_run(job_name: str) -> None:
     """Record that a scheduled job ran successfully today (ET date)."""
     from agents.market_intelligence.collector import et_today

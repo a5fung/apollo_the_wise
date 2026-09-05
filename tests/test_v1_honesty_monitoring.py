@@ -131,10 +131,15 @@ async def test_drawdown_unavailable_surfaces_in_nightly_alert(monkeypatch):
     assert len(sent) == 1
     assert "drawdown_check_unavailable" in sent[0]
     assert "FAIL-OPEN" in sent[0]
-    # Fetched by exact event type with the widened 6h window (the event fires
+    # Fetched by exact event type with AT LEAST the widened 6h window (the event fires
     # at 16:12; the nightly check can run past 18:12 — 2h would straddle it).
+    # #625 (2026-09-05): the sweep's lookback became a watermark, so this window is now
+    # `max(6, hours-since-last-sweep + 1)` and is often WIDER than 6. The invariant this
+    # test defends is "never narrower than 6h", which is what the 16:12-vs-18:12 reasoning
+    # above actually requires — the literal `== 6` was a proxy for it, and pinning the
+    # exact number would fail every time the window legitimately widens.
     dd_calls = [c for c in calls if c["event_type"] == "drawdown_check_unavailable"]
-    assert dd_calls and dd_calls[0]["since_hours"] == 6
+    assert dd_calls and dd_calls[0]["since_hours"] >= 6
 
 
 @pytest.mark.asyncio
