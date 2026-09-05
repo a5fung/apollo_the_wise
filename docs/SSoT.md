@@ -88,6 +88,7 @@ setup's criteria, change log and findings.
 
 | topic | owner |
 |---|---|
+| **EPs he named himself — THE ground truth list** | **`docs/methodology/operator_labelled_eps.md`** |
 | Notes he has shared directly | `docs/methodology/operator_shared_notes.md` |
 | Pivots + per-stock character | `docs/methodology/pivots-and-stock-character.md` |
 | The 620 chart | `docs/methodology/620_chart.md` |
