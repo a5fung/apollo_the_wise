@@ -109,7 +109,7 @@
   },
   {
     "id": 356,
-    "status": "deployed"
+    "status": "in_progress"
   },
   {
     "id": 359,
@@ -196,10 +196,6 @@
     "status": "blocked"
   },
   {
-    "id": 533,
-    "status": "deployed"
-  },
-  {
     "id": 540,
     "status": "deployed"
   },
@@ -209,7 +205,7 @@
   },
   {
     "id": 553,
-    "status": "deployed"
+    "status": "blocked"
   },
   {
     "id": 555,
@@ -230,10 +226,6 @@
   {
     "id": 564,
     "status": "pending"
-  },
-  {
-    "id": 576,
-    "status": "deployed"
   },
   {
     "id": 579,
@@ -272,10 +264,6 @@
     "status": "deployed"
   },
   {
-    "id": 601,
-    "status": "deployed"
-  },
-  {
     "id": 607,
     "status": "deployed"
   },
@@ -288,12 +276,8 @@
     "status": "pending"
   },
   {
-    "id": 615,
-    "status": "deployed"
-  },
-  {
     "id": 621,
-    "status": "pending",
+    "status": "in_progress",
     "title": "Close out the 2026-09-03 code-review findings \u2014 no DB read in the market agent has a time limit, and one now sits in front of placing a protective stop"
   },
   {
