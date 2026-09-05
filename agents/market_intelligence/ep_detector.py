@@ -393,10 +393,43 @@ _EARNINGS_TEXT_SIGNAL_RE = re.compile(
 )
 
 
+# 2026-09-05 (#448, operator-directed: "we should know if it's earnings on the day or not,
+# if not, we shouldn't look at any earnings data and focus on news").
+# The signal regex above has no notion of negation, so a sentence saying there was NO
+# earnings release matched it. BFLY 2026-06-18 is the case: our own stored analysis read
+# "No new earnings release, FDA decision, major contract, or 8-K filing has been identified
+# as the trigger" — and `earnings release` matched. That pulled a PARTNERSHIP catalyst into
+# the earnings rubric path, where it was then downgraded strong->routine on
+# `news_corpus_sparse_no_q_rev` for lacking quarterly revenue it never could have had.
+# He has called BFLY an EP twice (2026-06-19 hard label, again 2026-09-05).
+_EARNINGS_NEGATION_RE = re.compile(
+    r"\b(?:no|not|never|without|absent|lack(?:s|ing|ed)?\s+(?:of\s+)?|"
+    r"isn't|wasn't|aren't|weren't|didn't|doesn't|hasn't|haven't|"
+    r"nothing|none|neither|nor|failed\s+to|yet\s+to)\b",
+    re.IGNORECASE,
+)
+# How far back to look for a negator. Long enough for "No new earnings release" and
+# "absent any earnings results"; short enough that an unrelated "not" in the previous
+# clause does not suppress a real signal.
+_EARNINGS_NEGATION_WINDOW = 40
+
+
 def _claude_text_signals_earnings(claude_analysis: str | None) -> bool:
+    """Does Claude's analysis text describe an earnings catalyst?
+
+    A NEGATED mention does not. Every match is checked against a short lookbehind for a
+    negator, and a negated match is skipped rather than accepted — so the function means
+    what its name says. If every match in the text is negated, the answer is False and the
+    name never enters the earnings path.
+    """
     if not claude_analysis:
         return False
-    return bool(_EARNINGS_TEXT_SIGNAL_RE.search(claude_analysis))
+    for m in _EARNINGS_TEXT_SIGNAL_RE.finditer(claude_analysis):
+        window = claude_analysis[max(0, m.start() - _EARNINGS_NEGATION_WINDOW):m.start()]
+        if _EARNINGS_NEGATION_RE.search(window):
+            continue  # "No new earnings release ..." — not an earnings catalyst
+        return True
+    return False
 
 
 def _should_apply_yoy_carveout(extracted: dict) -> bool:
