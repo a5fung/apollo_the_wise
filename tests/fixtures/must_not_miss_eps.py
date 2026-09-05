@@ -241,6 +241,30 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         unverified_gates=_UNVERIFIED_STANDARD,
     ),
     EPFixtureMember(
+        ticker="BFLY", alert_date="2026-06-18",
+        label_source="operator",
+        label_note=(
+            "Operator HARD label, 2026-06-19 (docs/methodology/operator_shared_notes.md:248): "
+            "\"BFLY 6/18 IS an Episodic Pivot — `routine` is the WRONG grade.\" Found 2026-09-05 "
+            "when he asked me to check the other EPs he had shared; it had never been added here. "
+            "⚠ THIS IS THE ONE THE RUBRIC GOT WRONG, AND THE REASON IS STRUCTURAL, NOT A "
+            "THRESHOLD: it was downgraded strong->routine with reason "
+            "'news_corpus_sparse_no_q_rev' — the SAFETY-NET gate, not the composite gate. Its "
+            "catalyst was a Midjourney Medical partnership (40 Butterfly chips per scanner, up "
+            "to $74M over five years), so there was no quarterly revenue line to extract and the "
+            "rubric downgraded it for lacking data it could never have had. Stock 5.71 -> 8.90 "
+            "on the EP day (+55.9%, closed pennies off the high) and 9.00 two months later. "
+            "So the real-EP scoreboard for the rubric is 2 of 3, not 2 of 2: PLTR and HTFL "
+            "passed, BFLY was wrongly downgraded — and every EP whose catalyst is a "
+            "partnership, FDA decision or M&A hits the same gate."
+        ),
+        # Gap day: prior close 5.71 -> intraday open 7.21 (Gemini analysis he shared, verbatim in
+        # operator_shared_notes.md:242-280) = 26.3%. prev_close verified in mi_daily_closes.
+        gap_pct=26.27, gap_basis="open 7.21 vs prior close 5.71 (operator-shared analysis; PDC verified mi_daily_closes)",
+        prev_close=5.71,
+        unverified_gates=_UNVERIFIED_STANDARD,
+    ),
+    EPFixtureMember(
         ticker="MRNA", alert_date="2026-08-19",
         label_source="operator",
         label_note=(
