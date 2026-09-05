@@ -313,5 +313,15 @@
     "id": 624,
     "status": "pending",
     "title": "Low-cap EP lane \u2014 shadow only, to resolve a tail rate n=46 cannot pin"
+  },
+  {
+    "id": 625,
+    "status": "pending",
+    "title": "Nightly jobs after 17:30 ET are invisible to the generic error sweep"
+  },
+  {
+    "id": 626,
+    "status": "pending",
+    "title": "CLAUDE.md is 21 bytes from its hard ceiling and cannot be trimmed the usual way"
   }
 ]
