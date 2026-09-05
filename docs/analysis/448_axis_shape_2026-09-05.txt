@@ -1,0 +1,35 @@
+Pager usage is off.
+==== REVENUE YoY, continuous — the axis buckets at 10/15/25/50%. Where does it actually turn? ====
+revenue_yoy_band|n|avg_pct_20d|median_pct|still_up|pct_up
+a. contracting (<=0%)|20|-1.5|-0.3|7|35
+b. 0-10%|34|-0.2|-2.0|14|41
+c. 10-15%   <- axis awards 1-2|34|4.0|3.8|24|71
+d. 15-25%   <- axis awards 2-3|28|-1.9|-1.4|13|46
+e. 25-50%   <- axis awards 3-4|35|-5.4|-6.7|13|37
+f. 50%+     <- axis awards 4-5|23|-9.0|-6.7|6|26
+(6 rows)
+
+==== BEAT vs consensus, continuous — the axis that works. Where is the separation? ====
+beat_band|n|avg_pct_20d|median_pct|still_up|pct_up
+a. MISSED (<0%)|11|-1.8|-3.0|3|27
+b. in-line 0-2%|43|1.9|1.5|24|56
+c. beat 2-5%|56|-1.9|0.5|30|54
+d. beat 5-10%|50|-2.3|-1.8|24|48
+e. beat 10%+|37|-3.9|-4.5|10|27
+(5 rows)
+Pager usage is off.
+==== confound: do the high-growth names simply gap bigger? ====
+band|n|with_gap|avg_gap|median_gap|median_ret
+high (15-50%)|63|63|15.5|14.4|-5.7
+low  (<10%)|54|54|17.8|15.6|-1.1
+SWEET (10-15%)|34|34|14.4|12.2|3.8
+very high (50%+)|23|23|17.3|15.4|-6.7
+(4 rows)
+
+==== and the same bands INSIDE a matched gap band (10-25%) ====
+band|n|avg_gap|median_ret|up|pct_up
+high (15-50%)|60|14.9|-5.6|25|42
+low  (<10%)|45|15.3|-1.5|19|42
+SWEET (10-15%)|32|13.4|3.8|23|72
+very high (50%+)|19|14.5|-5.7|6|32
+(4 rows)

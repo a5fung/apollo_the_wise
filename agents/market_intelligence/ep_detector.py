@@ -4732,6 +4732,48 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 f"{CATALYST_RUBRIC_MIN_COMPOSITE:.0f}_"
                                 f"label_{_label}"
                             )
+                        elif _composite is not None:
+                            # (the `elif` matters: this branch is reached when the composite
+                            # is None too — that is the rubric FAILING to score, not passing,
+                            # and it must not be logged as a pass.)
+                            # #448 (2026-09-05, operator-directed): the PASS side. The
+                            # downgrade path below records `axes_scored` for every name the
+                            # gate KILLS and nothing recorded them for a name it PASSES, so
+                            # every axis-vs-outcome read was trapped inside composite < 22 —
+                            # the bottom of the range. This is the missing half.
+                            # ⚠ TELEMETRY ONLY: nothing reads this row. It is written after
+                            # the verdict is already decided and changes no grade, score,
+                            # threshold or trade state. Same per-ticker-per-day dedup as the
+                            # downgrade event, and it fails open — a logging error here must
+                            # never cost us an alert.
+                            try:
+                                from agents.market_intelligence.audit_events import (
+                                    CATALYST_RUBRIC_PASSED,
+                                )
+                                if await _should_log_catalyst_earnings_event_today(
+                                    CATALYST_RUBRIC_PASSED, ticker
+                                ):
+                                    await log_audit_event(
+                                        CATALYST_RUBRIC_PASSED,
+                                        f"{ticker}: rubric PASSED composite={_composite:.1f} "
+                                        f"(>= {CATALYST_RUBRIC_MIN_COMPOSITE:.0f}) label={_label}",
+                                        json.dumps({
+                                            "ticker": ticker,
+                                            "alert_date": today.isoformat(),
+                                            "verdict": "passed",
+                                            "rubric": {
+                                                "label": _label,
+                                                "composite_scaled": _composite,
+                                                "caps_applied": _caps,
+                                                "axes_scored": (
+                                                    _rubric_result.get("axes_scored") or {}
+                                                ),
+                                            },
+                                            "gap_pct": c.get("gap_pct"),
+                                        }),
+                                    )
+                            except Exception as _e:
+                                logger.warning(f"{ticker}: rubric-pass telemetry failed: {_e}")
                 except Exception as e:
                     logger.warning(f"{ticker}: rubric scoring failed: {e}")
                     _rubric_result = None

@@ -34,6 +34,14 @@ concatenation and don't require .value accessor noise at call sites.
 
 # ── Catalyst / EP detection ─────────────────────────────────────────────────
 CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE = "catalyst_earnings_revenue_weak_downgrade"
+
+# #448 (2026-09-05, operator-directed). The downgrade event above records the rubric's
+# axes for every name it KILLS, and nothing records them for a name it PASSES — so every
+# axis-vs-outcome measurement was restricted to composite < 22, the bottom of the range.
+# This is the other half: the same rubric block, written when the gate LETS A NAME
+# THROUGH, so "does axis N point the way we assume" can be asked across the full range.
+# ⚠ Telemetry only — no grade, score, threshold or trade-state depends on this row.
+CATALYST_RUBRIC_PASSED = "catalyst_rubric_passed"
 CATALYST_DOWNGRADE_CARVEOUT_APPLIED = "catalyst_downgrade_carveout_applied"  # #143/2026-05-28
 ANTHROPIC_RATE_LIMITED = "anthropic_rate_limited"
 VALIDATION_RATE_LIMITED = "validation_rate_limited"
