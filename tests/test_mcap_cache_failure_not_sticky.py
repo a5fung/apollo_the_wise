@@ -80,3 +80,45 @@ async def test_a_successful_read_is_still_cached(monkeypatch):
     assert await filters._check_market_cap("MSFT") is None
     assert await filters._check_market_cap("MSFT") is None
     assert len(calls) == 1, "a good read must still be cached"
+
+
+@pytest.mark.asyncio
+async def test_an_EMPTY_profile_is_not_cached_either(monkeypatch):
+    """THE REAL FAILURE PATH. `collector.get_fmp_profile` catches its own yfinance error
+    and returns `{}` — it does NOT raise. So a failed lookup arrives through the SUCCESS
+    branch as a missing 'marketCap' key, and a fix that guards only `except` changes
+    nothing at all. This test fails against such a fix."""
+    filters = _load_real_filters(monkeypatch)
+    calls = []
+
+    async def empty_then_real(ticker):
+        calls.append(ticker)
+        if len(calls) == 1:
+            return {}  # exactly what get_fmp_profile returns when yfinance fails
+        return {"marketCap": 134_000_000}
+
+    monkeypatch.setattr(filters, "get_fmp_profile", empty_then_real)
+
+    assert await filters._check_market_cap("CHPT") is None      # fail-open this tick
+    reason = await filters._check_market_cap("CHPT")            # must RE-READ
+    assert len(calls) == 2, \
+        "an empty profile was cached — the ticker is exempt from the floor until restart"
+    assert reason is not None and "mcap_too_small" in reason
+
+
+@pytest.mark.asyncio
+async def test_a_profile_without_a_marketcap_key_is_not_cached(monkeypatch):
+    """Same defect, second shape: a profile that came back but carries no marketCap."""
+    filters = _load_real_filters(monkeypatch)
+    calls = []
+
+    async def no_mcap_then_real(ticker):
+        calls.append(ticker)
+        if len(calls) == 1:
+            return {"companyName": "Some Corp", "sector": "Tech"}  # no marketCap
+        return {"marketCap": 134_000_000}
+
+    monkeypatch.setattr(filters, "get_fmp_profile", no_mcap_then_real)
+    assert await filters._check_market_cap("CHPT") is None
+    assert await filters._check_market_cap("CHPT") is not None
+    assert len(calls) == 2

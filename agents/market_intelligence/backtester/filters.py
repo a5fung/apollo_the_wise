@@ -227,20 +227,32 @@ async def _check_market_cap(ticker: str, metrics: dict | None = None) -> str | N
     if ticker in _mcap_cache:
         mcap = _mcap_cache[ticker]
     else:
+        # 2026-09-05: CACHE ONLY A REAL ANSWER. A missing market cap must never be
+        # cached, because `mcap is None` means "let it through" below and the cache
+        # hit on every later tick skips the re-read — so one bad lookup exempted the
+        # ticker from the $500M floor for the LIFE OF THE PROCESS.
+        #
+        # ⚠ The bad lookup does NOT arrive as an exception. `collector.get_fmp_profile`
+        # catches its own yfinance error and returns `{}` (collector.py:738), so the
+        # failure path runs through the SUCCESS branch as `profile.get("marketCap")`
+        # → None. An earlier version of this fix guarded only `except` — a branch that
+        # essentially never fires (zero "Market cap check failed" lines in 72h of prod
+        # logs) — and changed nothing. Guard the VALUE, not the control flow.
+        #
+        # The fail-OPEN on a miss is deliberate and unchanged: an admission floor must
+        # not block the scan because a data provider blinked. What was never intended
+        # is that it stuck until restart.
         try:
             profile = await get_fmp_profile(ticker)
             mcap = profile.get("marketCap")
-            _mcap_cache[ticker] = mcap
         except Exception as e:
-            # 2026-09-05: do NOT cache the failure. Caching None here made a single
-            # transient FMP error exempt that ticker from the $500M floor for the
-            # LIFE OF THE PROCESS — `mcap is None` means "let it through" below, and
-            # the cache hit on every later tick skipped the re-read entirely. The
-            # fail-OPEN on this tick is deliberate and unchanged (an admission floor
-            # must not block on a data outage); what was never intended is that it
-            # stuck until restart, logged at debug only. Retry on the next tick.
-            logger.warning(f"Market cap check failed for {ticker}, letting through this tick: {e}")
-            return None  # let it through THIS TICK; re-read next tick
+            logger.warning(f"Market cap lookup raised for {ticker}, letting through this tick: {e}")
+            mcap = None
+        if mcap is None:
+            logger.warning(
+                f"No market cap for {ticker} — letting it through this tick, will retry next tick")
+        else:
+            _mcap_cache[ticker] = mcap
 
     if metrics is not None:
         metrics["market_cap"] = mcap
