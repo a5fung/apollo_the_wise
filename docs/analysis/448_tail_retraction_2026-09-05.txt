@@ -1,0 +1,29 @@
+Pager usage is off.
+==== 1. scope check: is the revenue/beat cohort BOTH arms? ====
+arm|n
+downgraded|166
+passed|61
+(2 rows)
+
+==== 2. WHERE DO THE OPERATOR-LABELLED REAL EPs FALL ON THE CURVE? ====
+ticker|d|revenue_yoy|revenue_band|beat_pct
+PLTR|2026-08-04|93.0|very high 50%+|7.2
+TEAM|2026-08-07||-|
+HTFL|2026-08-14|48.0|high 15-50%|13.0
+MRNA|2026-08-19||-|
+CHPT|2026-09-03||-|
+(5 rows)
+Pager usage is off.
+==== I measured the MEDIAN on a TAIL strategy. Where are the BIG WINNERS by revenue band? ====
+band|n|median_20d|won_20pct|won_40pct|p90_20d|p90_peak
+high 15-50%|63|-5.7|5|1|14.8|29.4
+low  <10%|54|-1.1|3|0|14.4|22.9
+SWEET 10-15%|34|3.8|1|0|13.5|22.5
+very high 50%+|23|-6.7|1|0|10.1|18.2
+(4 rows)
+Pager usage is off.
+==== does the DOWNGRADED-vs-PASSED result survive a tail test, or is it also a median artifact? ====
+verdict|n|median|won_20pct|pct_won_20|won_40pct|p90
+DOWNGRADED|127|-0.2|7|6|0|14.0
+PASSED|47|-6.8|3|6|1|12.7
+(2 rows)
