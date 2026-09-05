@@ -181,6 +181,39 @@ _UNVERIFIED_STANDARD = (
 MUST_NOT_MISS: list[EPFixtureMember] = [
     # ── Member 1 — OPERATOR-NAMED ─────────────────────────────────────────────────────────────
     EPFixtureMember(
+        ticker="HTFL", alert_date="2026-08-14",
+        label_source="operator",
+        label_note=(
+            "Operator, 2026-09-05: \"i'd say htfl is another recent one\" (naming recent real EPs "
+            "alongside TEAM and PLTR). THE RUBRIC GOT THIS ONE RIGHT AND WE STILL DID NOT TRADE IT: "
+            "mi_ep_scan_log 2026-08-14 scored HTFL 96, catalyst=game_changer, tier HIGH. The ENTRY "
+            "PIPELINE skipped it — mi_live_trades skip_reason "
+            "'setup:stop_too_wide: ORB range $2.55 (7.0%) > 1.5x ATR $2.19'. The stock went 31.01 "
+            "-> 42.08 on the gap day -> 48.91 on 2026-09-04 (+58%, verified mi_daily_closes). "
+            "So this member indicts the stop-width rule, NOT selection. Any change to that rule is "
+            "entry discipline = THE LINE = operator-only."
+        ),
+        # Gap day: O 39.06, PDC 31.01 (mi_daily_closes, read 2026-09-05) = 25.96%.
+        gap_pct=25.96, gap_basis="open vs prior close (mi_daily_closes 2026-08-13/14)",
+        prev_close=31.01,
+        unverified_gates=_UNVERIFIED_STANDARD,
+    ),
+    EPFixtureMember(
+        ticker="PLTR", alert_date="2026-08-04",
+        label_source="operator",
+        label_note=(
+            "Operator, 2026-09-05: \"pltr another one\". THE ONE THE WHOLE STACK GOT RIGHT, END TO "
+            "END — kept as the positive control so this fixture is not only a list of failures. "
+            "mi_ep_scan_log 2026-08-04: 96, catalyst=game_changer, HIGH. mi_live_trades: entry "
+            "149.05, stop trailed to 170.47 (ABOVE entry), high seen 180.18. Stock 125.65 -> 162.66 "
+            "on the gap day -> 174.33 on 2026-09-04. Selection, entry and exit all worked."
+        ),
+        # Gap day: O 145.15, PDC 125.65 (mi_daily_closes, read 2026-09-05) = 15.52%.
+        gap_pct=15.52, gap_basis="open vs prior close (mi_daily_closes 2026-08-03/04)",
+        prev_close=125.65,
+        unverified_gates=_UNVERIFIED_STANDARD,
+    ),
+    EPFixtureMember(
         ticker="TEAM", alert_date="2026-08-07",
         label_source="operator",
         label_note=(
