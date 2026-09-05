@@ -356,10 +356,21 @@ class _FrozenDatetime(datetime):
         return TICK.astimezone(tz) if tz else TICK.replace(tzinfo=None)
 
 
-async def _run_scan_once(monkeypatch, *, lane_mode: str):
+ADMIT_TICKER = "BIG00"
+
+
+async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False):
     """One full run_ep_scan on a fixture board. 20 big-ADV fillers (top-20 by pre-score),
     all killed at the RVOL@T gate; 3 sub-shortlist names, two of which meet the lane rule.
-    Returns (results, scan_log_rows, alert_inserts, lane_rows)."""
+    Returns (results, scan_log_rows, alert_inserts, lane_rows).
+
+    `admit=True` (the graded-path companion test): ADMIT_TICKER ("BIG00") clears the RVOL@T
+    gate and rides a pre-seeded catalyst-cache entry (the same "already graded today" fast
+    path a real second scan tick takes) straight to a HIGH-tier alert — `check_filters`,
+    `get_fmp_profile`, `is_earnings_day`, `classify_catalyst_type` and the judge's
+    `grade_holistic` are stubbed the way the rest of the suite stubs that LLM path, and the
+    `catalyst_tier_lattice` toggle is held off so the seeded grade acts unmutated. Every
+    other filler still dies at the RVOL@T gate exactly as in the base fixture."""
     from agents.market_intelligence import minute_volume as mv
     fillers = {f"BIG{i:02d}": _snap(50.0, 60.0, 5_000_000) for i in range(20)}
     smalls = {"CHPT": _snap(5.19, 6.90, 969_501), "WETO": _snap(6.00, 7.20, 2_000_000),
@@ -377,10 +388,15 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str):
         alerts.append(copy.deepcopy(record))
 
     async def _toggle(name, env, default=True, **kw):
+        if admit and name == "catalyst_tier_lattice":
+            # held OFF so the seeded catalyst_quality below acts verbatim — the shadow
+            # lattice recompute is a pure text classifier and is not what this test pins.
+            return False
         return default
 
     async def _rvol(ticker, now_et, today_premkt_vol, today_session_vol):
-        return {"anchor": "session", "rvol_at_time": 0.0, "baseline_n": mv.MIN_BASELINE_N_FOR_GATE,
+        rvol_at_time = 10.0 if (admit and ticker == ADMIT_TICKER) else 0.0
+        return {"anchor": "session", "rvol_at_time": rvol_at_time, "baseline_n": mv.MIN_BASELINE_N_FOR_GATE,
                 "today_cum_vol": int(today_session_vol), "baseline_mean": 1.0}
 
     async def _audit(ev, summary, detail=""):
@@ -420,6 +436,45 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str):
     monkeypatch.setattr(universe_floor_shadow, "record_universe_floor_shadow", AsyncMock(return_value=0))
     monkeypatch.setattr(ep_shortlist_shadow, "record_ep_shortlist_shadow", AsyncMock(return_value=0))
     monkeypatch.setattr(catalyst_tier_shadow, "fetch_board_sectors", AsyncMock(return_value={}))
+
+    # Per-run isolation for the module-level catalyst cache — mirrors the lane resets
+    # just below. Cleared even when admit=False so a stray admit-run entry from an
+    # earlier test in the same process can never leak into the RVOL-killed fixture.
+    ep_detector._catalyst_cache_date = None
+    ep_detector._catalyst_cache = {}
+    if admit:
+        monkeypatch.setattr(ep_detector, "check_filters", AsyncMock(return_value=(True, None)))
+        monkeypatch.setattr(ep_detector, "is_earnings_day", AsyncMock(return_value=(False, "yfinance")))
+        monkeypatch.setattr(ep_detector, "get_fmp_profile", AsyncMock(return_value={
+            "marketCap": 3_000_000_000.0, "floatShares": 60_000_000,
+            "companyName": "Big Cap Co", "sector": "Technology", "52WeekHigh": 70.0,
+        }))
+        from agents.market_intelligence import catalyst_type_classifier, ep_grade_judge
+        monkeypatch.setattr(catalyst_type_classifier, "classify_catalyst_type",
+                            AsyncMock(return_value={"catalyst_type": None, "rationale": None}))
+        # The Holistic Grade Judge is an LLM call (Opus) — stubbed the way the rest of the
+        # suite stubs it (see test_ep_grade_judge.py / test_judge_transport.py): None is a
+        # real, common outcome (timeout/malformed → fail-open to the floor tier), and with
+        # get_holistic_judge_enabled() mocked False below the judge has no authority anyway
+        # — this only proves the shadow call itself can't break byte-identity.
+        monkeypatch.setattr(ep_grade_judge, "grade_holistic", AsyncMock(return_value=None))
+        # Seed the "already graded today" fast path — the SAME cache a real second scan
+        # tick reads, so no Claude/Perplexity/SEC/Benzinga fetch is needed to reach a
+        # verdict. game_changer + gap>=10 hits the conviction floor (ep_rubric
+        # SCORE_WEIGHTS["conviction_floor"], floor=60) unconditionally, so the alert does
+        # not depend on the liquidity/float/vol-conviction components at all.
+        ep_detector._catalyst_cache_date = SESSION_DATE
+        ep_detector._catalyst_cache = {
+            ADMIT_TICKER: ep_detector.CachedGrade(
+                "game_changer", 1.0,
+                "Big Cap Co wins landmark FDA approval for its flagship therapy.",
+                "Big Cap Co announced FDA approval for its flagship therapy — a major, "
+                "label-expanding regulatory win with immediate commercial impact.",
+                None, True,
+                grounded_text="Big Cap Co received FDA approval — a concrete, material company event.",
+                has_direct_source=True,
+            ),
+        }
 
     # the lane side
     lane_rows = []
@@ -488,6 +543,42 @@ async def test_run_ep_scan_is_byte_identical_with_the_lane_on_off_and_raising(mo
     chpt = next(r for r in lane_rows if r["ticker"] == "CHPT")
     assert chpt["in_shortlist"] is False and chpt["market_cap"] == 134e6
     assert {b["gate"] for b in chpt["blocking_filters"]} == {"shortlist_cap"}
+    assert off[3] == [] and raising[3] == []
+
+
+@pytest.mark.asyncio
+async def test_run_ep_scan_is_byte_identical_with_an_admitted_alert_lane_on_off_and_raising(monkeypatch):
+    """THE GAP CLOSED: test_605's companion above dies at the RVOL@T gate before any
+    candidate reaches the grading / judge path — a board where NOTHING is admitted proves
+    the hook is harmless there, but says nothing about a real trading morning where a
+    candidate DOES clear the bar. Here ADMIT_TICKER survives RVOL@T and rides the
+    catalyst-cache fast path (the same one a real second-tick scan uses) to a HIGH-tier
+    alert. Same byte-identity assertion, same three lane modes — the only change is that
+    the fixture now reaches insert_ep_alert for real."""
+    on = await _run_scan_once(monkeypatch, lane_mode="on", admit=True)
+    off = await _run_scan_once(monkeypatch, lane_mode="off", admit=True)
+    raising = await _run_scan_once(monkeypatch, lane_mode="raising", admit=True)
+
+    for a, b, what in ((on, off, "on vs off"), (on, raising, "on vs raising")):
+        assert _canon(a[0]) == _canon(b[0]), f"results differ: {what}"
+        assert _canon(a[1]) == _canon(b[1]), f"scan_log rows differ: {what}"
+        assert _canon(a[2]) == _canon(b[2]), f"alert inserts differ: {what}"
+
+    results, scan_log, alerts, lane_rows = on
+    # the point of this test: the graded/judge path actually fired.
+    assert len(results) == 1 and results[0]["ticker"] == ADMIT_TICKER
+    assert results[0]["score_tier"] == "HIGH" and results[0]["catalyst_quality"] == "game_changer"
+    assert len(alerts) == 1 and alerts[0]["ticker"] == ADMIT_TICKER and alerts[0]["score_tier"] == "HIGH"
+    by_ticker = {r["ticker"]: r for r in scan_log}
+    assert set(by_ticker) == set(fillers_and_smalls), sorted(set(fillers_and_smalls) ^ set(by_ticker))
+    assert by_ticker[ADMIT_TICKER]["reject_stage"] is None and by_ticker[ADMIT_TICKER]["score_tier"] == "HIGH"
+    # every OTHER filler still dies at the RVOL@T gate exactly as in the unadmitted fixture
+    assert all(by_ticker[f"BIG{i:02d}"]["reject_stage"] == "rvol_gate"
+              for i in range(20) if f"BIG{i:02d}" != ADMIT_TICKER)
+    assert {by_ticker[t]["reject_stage"] for t in ("CHPT", "WETO", "ZQRT")} == {"shortlist_cap"}
+    # the lane still only ever sees/records CHPT+WETO — an admitted big-cap alert on the
+    # main path is invisible to the lane's own population (it never clears the $500M floor)
+    assert sorted(r["ticker"] for r in lane_rows) == ["CHPT", "WETO"]
     assert off[3] == [] and raising[3] == []
 
 
