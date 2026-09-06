@@ -1132,3 +1132,32 @@ dropped all day to close at lows"* — he dates the failure precisely rather tha
 - **OMER: a second gap on **08-13** which HELD** — the same date as AVAH's good one.
 Our system scanned the bad dates in both cases. **Two of eight rulings say we looked on the wrong
 day** — the single most repeated finding in this whole programme.
+
+### 2026-09-06 (same session) — "switch to higher time frame for longer term bases"
+
+> "for longer term bases, perhaps switch to higher time frame to see the larger pattern, ie weekly
+> or even monthly charts"
+
+**He is right, and it is currently IMPOSSIBLE for a reason that is not the timeframe.**
+
+**`mi_daily_closes` begins 2025-08-04 — THIRTEEN MONTHS of history, 14,721 tickers.** Aggregating
+those dailies into weekly or monthly candles yields ~57 weekly or ~13 monthly bars. That is not a
+higher timeframe in any useful sense; it is the same 13 months drawn coarser, and it cannot reveal
+a pattern that predates the window.
+
+Measured against his own two rulings from the same session:
+
+| his reasoning | earliest bar we hold | can we see it? |
+|---|---|---|
+| **RNG** — *"a long base since 2022… cleared most of it into top of previous range highs over multiple years"* | 2025-08-04 (275 bars) | ❌ **NO. The entire basis of the only chart he has ever called outright good is outside our data.** |
+| **NVTX** — *"a double top from Oct 2025 that it didn't clear"* | 2025-09-09 (250 bars) | ⚠️ barely — Oct-2025 sits ~1 month inside the window, with no prior context to judge it against |
+
+**So the blocker is DATA DEPTH, not chart interval.** Switching to weekly candles over the same 13
+months gains nothing; what is missing is years of bars. The fix is a **multi-year daily backfill**
+for the names we evaluate (Polygon and Alpaca both serve years of daily history and we already pay
+for both), after which weekly/monthly aggregation becomes a real option rather than a relabelling.
+
+⚠ **And this reframes the 2026-08-25 structure-read null.** The supply read measured 0.496 — a coin
+flip — against his labels. It was computed on ≤13 months of bars while he is judging multi-year
+structure. **A null measured on a window that cannot contain the pattern is not evidence the
+pattern is absent.** [[shadow-zero-effect-check-instrumentation]] · [[structure-is-a-supply-ladder]]
