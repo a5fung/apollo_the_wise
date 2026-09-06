@@ -107,6 +107,72 @@
 #   - earliest_review_date: bump to 2026-06-22 (will re-surface then)
 
 reviews:
+  - review_id: chart_reading_review_cycle
+    kind: cadence
+    title: "Chart reading — surface the next review sample for his ruling (#594)"
+    question: |
+      #594 is a standing label-and-evaluate loop, not a build: I surface a sample, he
+      rules, the ruling lands in tests/fixtures/must_not_trade_charts.py keyed on
+      (ticker, DATE), and we re-measure against his labels.
+
+      ⚠ WHY THIS ENTRY EXISTS. The #594 line has ALWAYS said the loop should run on "a
+      recurring data_gated_reviews.yaml entry so the cadence is mechanical and not
+      remembered". It never had one. On 2026-09-06 he asked "when should we pick this up
+      again?" and the honest answer was that nothing would have told us — both existing
+      chart reviews were status=done and the cadence depended entirely on the agent
+      remembering, which is exactly what the task says it must not depend on.
+
+      His cadence, verbatim (2026-08-25): "chart read should be periodic and shadow, every
+      now and then we review good and bad charts together, refine, also making sure our
+      running list of real EPs aren't impacted negatively."
+
+      SO THE SAMPLE MUST CARRY BOTH SIDES. Review sample #1 (2026-09-06) did: five names
+      we scored HIGH that collapsed, five we scored below the bar that ran. His verdict on
+      that set — "looks like our chart vision is spotting the opposite thing" — is only
+      available BECAUSE both directions were shown.
+    predicate_sql: >-
+      -- Cadence, not accrual: fires on elapsed alert volume since the last sample, so a
+      -- quiet fortnight does not manufacture a review with nothing new to look at.
+      SELECT count(*) FROM mi_ep_alerts
+      WHERE alert_date > '2026-09-06';
+    threshold: 40
+    earliest_review_date: 2026-09-20
+    action_when_ready: |
+      BUILD THE NEXT SAMPLE, balanced both ways — never a list of failures:
+        A. names scored HIGH whose stock then collapsed (settled 20 sessions), and
+        B. names scored BELOW the bar whose stock then ran.
+      Ten total is what he engaged with; all dates must be settled at 20 sessions so
+      nothing shown is still open.
+
+      THEN, in the same turn he replies:
+        1. Add every ruling to tests/fixtures/must_not_trade_charts.py keyed on
+           (ticker, DATE), with his words verbatim. Use GOOD_CHART / OKISH_CHART for
+           approvals — the vocabulary had NO positive label until 2026-09-06 and a file
+           that can only record rejections trains a filter that only knows how to reject.
+        2. Transcribe anything he shares into docs/methodology/ the SAME turn. Images are
+           saved to the repo AND transcribed; the 620 chart was lost by doing neither.
+        3. Re-check tests/test_577_must_not_miss_eps.py BEFORE anything else. The running
+           list of real EPs may never shrink.
+
+      ⚠ THE TRAP: with ~25 labelled dates and a free hand over five years of bars, a
+      favourable cutline is trivially findable and worthless. Any shape proposed from
+      LOOKING must be declared in writing before it is measured, and measured on the TAIL
+      (docs/methodology/analysis_standard.md § THE STATISTIC). The 2026-09-06 clearance
+      test is the worked example of doing this right: pre-declared, and it failed.
+    # #573 population declaration. The predicate counts EVERY alert with no signal_type or
+    # account_mode filter, and that is DELIBERATE rather than an oversight: this is a cadence
+    # timer asking "has enough new chart material accumulated to be worth his time", not a
+    # measurement of any one strategy's cohort. A sample drawn only from magna53, or only from
+    # live, would hide exactly the cross-strategy disagreements the loop exists to surface.
+    # Declared explicitly so the gate can see the choice was made rather than forgotten.
+    discriminates_on: []
+    population_note: >-
+      Intentionally unfiltered: all alerts, both account modes, every signal_type. The
+      SAMPLE built in action_when_ready is what gets balanced (HIGH-that-failed vs
+      below-bar-that-ran); the TIMER counts everything.
+    status: pending
+    added_on: 2026-09-06
+    cross_refs: ["#594", "#577", "must_not_trade_charts.py", "analysis_standard.md"]
   - review_id: runner_rule_sweep_recut
     # kind=tripwire, not accrual, though the predicate has both arms. The mis-ranking cost is
     # ASYMMETRIC: labelled accrual, a rules change would surface as "just more data has arrived"
