@@ -49,8 +49,14 @@ def test_open_rows_are_reported_on_every_summary_line():
 def test_tail_stats_print_before_the_median():
     """The operator's ruling, made mechanical: tail first, median second, on the same line."""
     block = _summary_block()
-    line = next((l for l in block.splitlines() if ">=3R" in l), None)
-    assert line, "no tail line found in the summary"
+    # Anchor to an actual print statement. Matching the first line that merely CONTAINS
+    # ">=3R" would evaluate a COMMENT the moment someone documents the format above the
+    # print — the test would then pass while asserting nothing. That vacuous-guard class
+    # bit twice on 2026-09-05 (the #625 cron parser, and the market-cap mock), so it is
+    # closed here by construction rather than by remembering.
+    line = next((l for l in block.splitlines()
+                 if ">=3R" in l and "print(" in l), None)
+    assert line, "no tail PRINT line found in the summary — the guard would be vacuous"
     if "median" in line:
         assert line.index(">=3R") < line.index("median"), \
             "the median must not precede the tail counts"

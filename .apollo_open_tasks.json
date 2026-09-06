@@ -1,304 +1,302 @@
 [
-  {
-    "id": 121,
-    "status": "in_progress"
-  },
-  {
-    "id": 168,
-    "status": "in_progress"
-  },
-  {
-    "id": 176,
-    "status": "pending"
-  },
-  {
-    "id": 184,
-    "status": "deployed"
-  },
-  {
-    "id": 197,
-    "status": "in_progress"
-  },
-  {
-    "id": 210,
-    "status": "in_progress"
-  },
-  {
-    "id": 215,
-    "status": "pending"
-  },
-  {
-    "id": 233,
-    "status": "deployed"
-  },
-  {
-    "id": 239,
-    "status": "pending"
-  },
-  {
-    "id": 261,
-    "status": "in_progress"
-  },
-  {
-    "id": 281,
-    "status": "pending"
-  },
-  {
-    "id": 283,
-    "status": "pending"
-  },
-  {
-    "id": 299,
-    "status": "blocked"
-  },
-  {
-    "id": 307,
-    "status": "pending"
-  },
-  {
-    "id": 308,
-    "status": "pending"
-  },
-  {
-    "id": 309,
-    "status": "pending"
-  },
-  {
-    "id": 311,
-    "status": "pending"
-  },
-  {
-    "id": 312,
-    "status": "pending"
-  },
-  {
-    "id": 313,
-    "status": "pending"
-  },
-  {
-    "id": 314,
-    "status": "pending"
-  },
-  {
-    "id": 316,
-    "status": "pending"
-  },
-  {
-    "id": 331,
-    "status": "in_progress"
-  },
-  {
-    "id": 333,
-    "status": "in_progress"
-  },
-  {
-    "id": 335,
-    "status": "pending"
-  },
-  {
-    "id": 353,
-    "status": "blocked"
-  },
-  {
-    "id": 354,
-    "status": "in_progress"
-  },
-  {
-    "id": 356,
-    "status": "in_progress"
-  },
-  {
-    "id": 359,
-    "status": "pending"
-  },
-  {
-    "id": 368,
-    "status": "in_progress"
-  },
-  {
-    "id": 394,
-    "status": "pending"
-  },
-  {
-    "id": 397,
-    "status": "blocked"
-  },
-  {
-    "id": 414,
-    "status": "deployed"
-  },
-  {
-    "id": 448,
-    "status": "pending"
-  },
-  {
-    "id": 452,
-    "status": "deployed"
-  },
-  {
-    "id": 466,
-    "status": "pending"
-  },
-  {
-    "id": 471,
-    "status": "deployed"
-  },
-  {
-    "id": 482,
-    "status": "deployed"
-  },
-  {
-    "id": 485,
-    "status": "pending"
-  },
-  {
-    "id": 486,
-    "status": "in_progress"
-  },
-  {
-    "id": 488,
-    "status": "pending"
-  },
-  {
-    "id": 491,
-    "status": "in_progress"
-  },
-  {
-    "id": 501,
-    "status": "pending"
-  },
-  {
-    "id": 504,
-    "status": "pending"
-  },
-  {
-    "id": 505,
-    "status": "pending"
-  },
-  {
-    "id": 506,
-    "status": "pending"
-  },
-  {
-    "id": 516,
-    "status": "deployed"
-  },
-  {
-    "id": 519,
-    "status": "in_progress"
-  },
-  {
-    "id": 529,
-    "status": "blocked"
-  },
-  {
-    "id": 540,
-    "status": "deployed"
-  },
-  {
-    "id": 545,
-    "status": "pending"
-  },
-  {
-    "id": 553,
-    "status": "deployed"
-  },
-  {
-    "id": 555,
-    "status": "pending"
-  },
-  {
-    "id": 559,
-    "status": "in_progress"
-  },
-  {
-    "id": 560,
-    "status": "pending"
-  },
-  {
-    "id": 561,
-    "status": "pending"
-  },
-  {
-    "id": 564,
-    "status": "pending"
-  },
-  {
-    "id": 579,
-    "status": "pending"
-  },
-  {
-    "id": 580,
-    "status": "pending"
-  },
-  {
-    "id": 582,
-    "status": "pending"
-  },
-  {
-    "id": 589,
-    "status": "pending"
-  },
-  {
-    "id": 592,
-    "status": "pending"
-  },
-  {
-    "id": 594,
-    "status": "in_progress"
-  },
-  {
-    "id": 597,
-    "status": "deployed"
-  },
-  {
-    "id": 598,
-    "status": "pending"
-  },
-  {
-    "id": 600,
-    "status": "deployed"
-  },
-  {
-    "id": 607,
-    "status": "deployed"
-  },
-  {
-    "id": 610,
-    "status": "pending"
-  },
-  {
-    "id": 612,
-    "status": "pending"
-  },
-  {
-    "id": 621,
-    "status": "in_progress",
-    "title": "Close out the 2026-09-03 code-review findings \u2014 no DB read in the market agent has a time limit, and one now sits in front of placing a protective stop"
-  },
-  {
-    "id": 623,
-    "status": "in_progress",
-    "title": "Volume percentile as a sixth slot ranking \u2014 testing volume-as-a-gate where recall is already solved"
-  },
-  {
-    "id": 624,
-    "status": "pending",
-    "title": "Low-cap EP lane \u2014 shadow only, to resolve a tail rate n=46 cannot pin"
-  },
-  {
-    "id": 625,
-    "status": "pending",
-    "title": "Nightly jobs after 17:30 ET are invisible to the generic error sweep"
-  },
-  {
-    "id": 626,
-    "status": "pending",
-    "title": "CLAUDE.md is 21 bytes from its hard ceiling and cannot be trimmed the usual way"
-  },
-  {
-    "id": 627,
-    "status": "in_progress",
-    "title": "YoY revenue fixed at all three causes \u2014 write-back, in-window recovery, and the approved reorder"
-  }
+ {
+  "id": 121,
+  "status": "in_progress"
+ },
+ {
+  "id": 168,
+  "status": "in_progress"
+ },
+ {
+  "id": 176,
+  "status": "pending"
+ },
+ {
+  "id": 184,
+  "status": "deployed"
+ },
+ {
+  "id": 197,
+  "status": "in_progress"
+ },
+ {
+  "id": 210,
+  "status": "in_progress"
+ },
+ {
+  "id": 215,
+  "status": "pending"
+ },
+ {
+  "id": 233,
+  "status": "deployed"
+ },
+ {
+  "id": 239,
+  "status": "pending"
+ },
+ {
+  "id": 261,
+  "status": "in_progress"
+ },
+ {
+  "id": 281,
+  "status": "pending"
+ },
+ {
+  "id": 283,
+  "status": "pending"
+ },
+ {
+  "id": 299,
+  "status": "blocked"
+ },
+ {
+  "id": 307,
+  "status": "pending"
+ },
+ {
+  "id": 308,
+  "status": "pending"
+ },
+ {
+  "id": 309,
+  "status": "pending"
+ },
+ {
+  "id": 311,
+  "status": "pending"
+ },
+ {
+  "id": 312,
+  "status": "pending"
+ },
+ {
+  "id": 313,
+  "status": "pending"
+ },
+ {
+  "id": 314,
+  "status": "pending"
+ },
+ {
+  "id": 316,
+  "status": "pending"
+ },
+ {
+  "id": 327,
+  "status": "in_progress"
+ },
+ {
+  "id": 331,
+  "status": "in_progress"
+ },
+ {
+  "id": 333,
+  "status": "in_progress"
+ },
+ {
+  "id": 335,
+  "status": "pending"
+ },
+ {
+  "id": 353,
+  "status": "blocked"
+ },
+ {
+  "id": 354,
+  "status": "in_progress"
+ },
+ {
+  "id": 356,
+  "status": "in_progress"
+ },
+ {
+  "id": 359,
+  "status": "pending"
+ },
+ {
+  "id": 368,
+  "status": "in_progress"
+ },
+ {
+  "id": 394,
+  "status": "pending"
+ },
+ {
+  "id": 397,
+  "status": "blocked"
+ },
+ {
+  "id": 414,
+  "status": "deployed"
+ },
+ {
+  "id": 448,
+  "status": "pending"
+ },
+ {
+  "id": 452,
+  "status": "deployed"
+ },
+ {
+  "id": 466,
+  "status": "pending"
+ },
+ {
+  "id": 471,
+  "status": "deployed"
+ },
+ {
+  "id": 482,
+  "status": "deployed"
+ },
+ {
+  "id": 485,
+  "status": "pending"
+ },
+ {
+  "id": 486,
+  "status": "in_progress"
+ },
+ {
+  "id": 488,
+  "status": "pending"
+ },
+ {
+  "id": 491,
+  "status": "in_progress"
+ },
+ {
+  "id": 501,
+  "status": "pending"
+ },
+ {
+  "id": 504,
+  "status": "pending"
+ },
+ {
+  "id": 505,
+  "status": "pending"
+ },
+ {
+  "id": 506,
+  "status": "pending"
+ },
+ {
+  "id": 516,
+  "status": "deployed"
+ },
+ {
+  "id": 519,
+  "status": "in_progress"
+ },
+ {
+  "id": 529,
+  "status": "blocked"
+ },
+ {
+  "id": 540,
+  "status": "deployed"
+ },
+ {
+  "id": 545,
+  "status": "pending"
+ },
+ {
+  "id": 553,
+  "status": "deployed"
+ },
+ {
+  "id": 555,
+  "status": "pending"
+ },
+ {
+  "id": 559,
+  "status": "in_progress"
+ },
+ {
+  "id": 560,
+  "status": "pending"
+ },
+ {
+  "id": 561,
+  "status": "pending"
+ },
+ {
+  "id": 564,
+  "status": "pending"
+ },
+ {
+  "id": 579,
+  "status": "pending"
+ },
+ {
+  "id": 580,
+  "status": "pending"
+ },
+ {
+  "id": 582,
+  "status": "pending"
+ },
+ {
+  "id": 589,
+  "status": "pending"
+ },
+ {
+  "id": 592,
+  "status": "pending"
+ },
+ {
+  "id": 594,
+  "status": "in_progress"
+ },
+ {
+  "id": 597,
+  "status": "deployed"
+ },
+ {
+  "id": 598,
+  "status": "pending"
+ },
+ {
+  "id": 600,
+  "status": "deployed"
+ },
+ {
+  "id": 607,
+  "status": "deployed"
+ },
+ {
+  "id": 610,
+  "status": "pending"
+ },
+ {
+  "id": 612,
+  "status": "pending"
+ },
+ {
+  "id": 621,
+  "status": "in_progress"
+ },
+ {
+  "id": 623,
+  "status": "in_progress"
+ },
+ {
+  "id": 624,
+  "status": "in_progress"
+ },
+ {
+  "id": 625,
+  "status": "deployed"
+ },
+ {
+  "id": 626,
+  "status": "pending"
+ },
+ {
+  "id": 627,
+  "status": "in_progress"
+ }
 ]

@@ -42,6 +42,10 @@ line: the labelled real EPs sat in the bands the median called worst.
   best tail at 11% big winners / p90 20.4 — and HTFL, an operator-labelled real EP, sits in it).
 - **Then check ground truth**: where do the operator-labelled EPs fall?
   `docs/methodology/operator_labelled_eps.md`. If a conclusion puts them in a losing bucket, the
+  ⚠ **This check is DECISIVE only while the list is small (n≤10): with six names you can read
+  every one. Above ~10 it becomes its own study and inherits every trap above it — including
+  the median trap. Do not let "where do the labelled EPs fall" quietly become a cohort
+  average.**
   conclusion is wrong, not the EPs.
 
 ⚠ **The corollary he stated: a poor median is an ENTRY/EXIT problem (#545), not a reason to reject

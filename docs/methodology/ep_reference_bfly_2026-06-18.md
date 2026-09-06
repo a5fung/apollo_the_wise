@@ -22,10 +22,11 @@ news set that did not contain the story. **This is a retrieval failure, not a re
 
 ## What actually happened (the operator supplied the release, 2026-09-05)
 
+⚠ **PROVENANCE, corrected by the operator 2026-09-05: he read it on the COMPANY'S OWN IR NEWSROOM** — `ir.butterflynetwork.com/News/press-releases/news-details/2026/...`. The body carries a `(BUSINESS WIRE)` dateline so it went out on the wire too, **but the copy that is always reachable is the issuer's own site.** That distinction is the fix: a vendor may or may not carry a given release; an issuer's newsroom always has it, is free, and is deterministic.
+
 **Butterfly Network press release, 06/18/2026** — *"Butterfly Network Provides
 Commentary on Midjourney Medical's Full Body Ultrasound Scanner Announcement"*:
 
-⚠ **PROVENANCE, corrected by the operator 2026-09-05: he read it on the COMPANY'S OWN IR NEWSROOM** — `ir.butterflynetwork.com/News/press-releases/news-details/2026/...`. The body carries a `(BUSINESS WIRE)` dateline so it went out on the wire too, **but the copy that is always reachable is the issuer's own site.** That distinction is the fix: a vendor may or may not carry a given release; an issuer's newsroom always has it, is free, and is deterministic.
 
 
 - Midjourney publicly announced **Midjourney Medical** and **The Midjourney Scanner**, a full-body
