@@ -1,0 +1,18 @@
+Pager usage is off.
+==== upper bound on the proposed structural trigger: routine + gap >= 9%, per month ====
+mth|alerts|routine_and_gapped|pct
+2026-05|164|59|36
+2026-06|70|22|31
+2026-07|41|2|5
+2026-08|99|15|15
+2026-09|4|0|0
+(5 rows)
+
+==== vs the PROSE trigger actually measured tonight (analysis says "no catalyst") ====
+mth|no_catalyst_prose
+2026-05|1
+2026-06|13
+2026-07|2
+2026-08|5
+2026-09|0
+(5 rows)
