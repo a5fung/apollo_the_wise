@@ -241,6 +241,43 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         unverified_gates=_UNVERIFIED_STANDARD,
     ),
     EPFixtureMember(
+        ticker="ABNB", alert_date="2026-08-07",
+        label_source="operator",
+        label_note=(
+            "Operator, 2026-09-06: \"ABNB didn't make as EP alert on 8/07 but looking at it now "
+            "it looks like a potential real EP to me\" -> checked, confirmed, and he said add it. "
+            "⚠ THE FIRST MEMBER WHOSE CAUSE IS THE SHORTLIST CUT, not a floor or a news gap. "
+            "The tape: prev close 151.64 -> open 164.70 (+8.6%, UNDER the 9% MIN_GAP_PCT floor by "
+            "0.4pp) -> high 178.48, close 178.07 (+17.4% on the day) on 15.87M shares vs 5.69M the "
+            "prior session (2.8x). It HELD: 184.70, 184.98, 180.10, 185.13, 184.06 over the next "
+            "week. What we did: TWO scan-log rows all day, 09:50 and 09:55, gap 12.6% then 14.2% "
+            "- so it DID clear the 9% floor intraday and we DID re-check every 5 min. Both rows "
+            "were killed by `outside top-20 gap cap`, i.e. 20+ names gapped harder that morning. "
+            "Zero alerts, zero catalyst extraction, zero trades. And 09:50 is past the 09:44 ORB "
+            "submission window, so even a HIGH score could not have been traded that day."
+        ),
+        # Gap day: O 164.70, PDC 151.64 (mi_daily_closes, read 2026-09-06) = 8.61% -- open basis,
+        # the same basis as every other member. Note this is BELOW MIN_GAP_PCT (9.0) at the open;
+        # the 12.6-14.2% figures are intraday reads from mi_ep_scan_log, not the open gap.
+        gap_pct=8.61, gap_basis="open vs prior close (mi_daily_closes 2026-08-06/07)",
+        prev_close=151.64,
+        unverified_gates=_UNVERIFIED_STANDARD,
+        excluded=True,
+        exclude_reason=(
+            "DECLARED ABSTENTION — a POLICY WAIT, not an accepted state, and not a data "
+            "artifact. ABNB is a REAL EP (operator-labelled 2026-09-06) and the live stack "
+            "excludes it correctly under the rules as written: its OPEN gap is 8.61%, below "
+            "MIN_GAP_PCT (9.0) by 0.4pp. Asserting it would demand the stack admit a name it "
+            "is currently configured to reject, i.e. it would encode a criterion change this "
+            "fixture has no authority to make. THE QUESTION IT PUTS TO THE OPERATOR: should a "
+            "name that opens just under the floor and CLEARS it intraday be re-admitted? Our "
+            "own log shows we re-checked and it read 12.6% then 14.2% by 09:50/09:55 — the "
+            "floor was not what finally dropped it, the top-20 shortlist cut was. Both are "
+            "admission criteria = THE LINE = his call. Flip this to asserted the moment he "
+            "rules on either gate. Same standing as CHPT 2026-09-03."
+        ),
+    ),
+    EPFixtureMember(
         ticker="BFLY", alert_date="2026-06-18",
         label_source="operator",
         label_note=(

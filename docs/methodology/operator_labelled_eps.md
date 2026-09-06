@@ -25,6 +25,7 @@ Never add a name because it worked. Never remove one because it didn't.
 | Ticker | EP date | Gap | What he said | What our system did |
 |---|---|---|---|---|
 | **BFLY** | 2026-06-18 | 26.3% | *"BFLY 6/18 **IS** an Episodic Pivot — `routine` is the WRONG grade."* | ❌ **Downgraded** `strong`→`routine`, reason `news_corpus_sparse_no_q_rev`. Partnership catalyst, so no revenue line to extract — downgraded for missing data it could never have had. Stock 5.71 → 8.90 (+55.9%) → 9.00 two months on. |
+| **ABNB** | 2026-08-07 | 8.6% | *"ABNB didn't make as EP alert on 8/07 but looking at it now it looks like a potential real EP to me"* | ❌ **Never scored — cut by the top-20 shortlist.** Gapped 8.6% at the open, **under our 9% floor by 0.4pp**; cleared it intraday and we re-checked every 5 min, but its only two scan rows (09:50, 09:55, gaps 12.6%/14.2%) were both dropped as *outside top-20 gap cap* — 20+ names gapped harder. Closed +17.4% on 2.8× volume and held 184–185 a week later. 09:50 is also past the 09:44 order window. |
 | **PLTR** | 2026-08-04 | 15.5% | *"pltr another one"* | ✅ **Everything worked.** Rubric passed it, 96 / HIGH / game_changer; traded it, stop trailed to 170.47 above a 149.05 entry. The only end-to-end success on this list. |
 | **TEAM** | 2026-08-07 | 31.7% | *"i got into TEAM as EP after apollo was stopped out, it's still working after weeks and qualify as EP in my book"* | ⚠️ **Found it, bought it, lost on it.** Scored 115.2 / HIGH and alerted. We entered 147.13 and stopped out 143.21 the same day under the old ORB-low stop; the stock reached 189.58. Under today's `entry − 2R` stop it holds by $2.22 and the runner is still open. |
 | **HTFL** | 2026-08-14 | 26.0% | *"i'd say htfl is another recent one"* | ⚠️ **Selection worked, entry refused it.** 96 / HIGH / game_changer, then skipped: `setup:stop_too_wide` (ORB range $2.55 = 7.0% vs 1.5×ATR $2.19). Stock 31.01 → 48.91. |
@@ -33,13 +34,14 @@ Never add a name because it worked. Never remove one because it didn't.
 
 ## What the list says, as of 2026-09-05
 
-- **Six names. One clean success (PLTR).**
+- **Seven names. One clean success (PLTR).**
 - **Nothing on this list failed in selection *scoring*.** Of the four the scorer saw, all four graded HIGH.
-- **The four that went wrong each failed somewhere different:** the catalyst rubric's earnings
-  assumption (BFLY), the exit (TEAM), the stop-width rule at entry (HTFL), the market-cap floor (CHPT).
+- **The five that went wrong each failed somewhere different:** the catalyst rubric's earnings
+  assumption (BFLY), the exit (TEAM), the stop-width rule at entry (HTFL), the market-cap floor
+  (CHPT), and the top-20 shortlist cut (ABNB).
 - **The rubric's record on names it actually judged is 2 of 3** — PLTR and HTFL passed, BFLY wrongly
   downgraded. MRNA and CHPT never reached it.
-- **n=6 is thin and it only grows when he names one.** That is the constraint on every conclusion
+- **n=7 is thin and it only grows when he names one.** That is the constraint on every conclusion
   drawn from it, and the reason the capture rule above matters more than any analysis of the six.
 
 ## Related
