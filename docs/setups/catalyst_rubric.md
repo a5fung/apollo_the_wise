@@ -223,8 +223,9 @@ Applied AFTER composite computation, regardless of score:
    VSNT, VIAV, ARX where rubric and operator labels diverge — useful
    calibration data for Phase 9 quarterly review.
 
-5. **BUILT + TESTED 2026-09-04 (operator-approved same day), awaiting deploy: the #321 live
-   prior-year recovery now runs BEFORE the 2026-05-28 beat+guidance carve-out** — see the
+5. **DEPLOYED 2026-09-05 and ACTING IN PROD — `yoy_recovery_before_carveout` → `global:on`.**
+   (Approved and built 2026-09-04, shipped the next day.) **The #321 live prior-year recovery runs BEFORE the 2026-05-28 beat+guidance
+   carve-out** — see the
    2026-09-04 change-log entry "Scoring order: #321 recovery before the carve-out" below for the
    Trigger/Evidence/Reversion-flag/Status record. Before the fix the carve-out ran first and,
    when it fired, set `_downgrade_reason=None` so the recovery never looked up the real number —
@@ -411,7 +412,14 @@ ticker that has an earlier `catalyst_yoy_recovered_live` row.
 **Status**: built + tested (`tests/test_yoy_writeback_and_window.py`), awaiting deploy
 (`market-agent` scope) and next-market-day verify.
 
-### 2026-09-04 — In-window #321 recovery, DETACHED, behind `live_yoy_recovery_inwindow` (default OFF — operator flip)
+### 2026-09-04 — In-window #321 recovery, DETACHED, behind `live_yoy_recovery_inwindow`
+
+⚠ **STATUS UPDATED 2026-09-06: THIS TOGGLE IS ON IN PROD — `live_yoy_recovery_inwindow[global]`
+flipped on 2026-09-05 13:45, on the operator's instruction (*"fix YoY once and for all"*).** The
+entry below was written while it was dark and says `default OFF — operator flip`; that described
+the ship state, not today's. **It is acting.** Caught by `live_rules.py --drift-only` at the
+2026-09-06 OPEN — the doc had been stale for a day, which is exactly the window in which an
+analysis citing it would have been wrong on arrival.
 
 **Trigger**: same review. BE 2026-08-12 (game_changer, first seen 09:30:42 inside the ORB
 window) and GPRK 8/31 (09:40:37) were downgraded `missing` because the fetch is off in-window;
