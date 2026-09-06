@@ -11,6 +11,16 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 
 ---
 
+### 2026-09-06 — five-year daily backfill, and the index it needed
+- `mi_daily_closes` 3.3M → 13.6M rows (2021-09-07 onward, 1,255 sessions) so multi-year base structure is finally visible; his RNG "base since 2022" ruling was previously unmeasurable. Lesson: a data backfill is a PERFORMANCE change — the ticker-only index made per-ticker lookups 111ms and `compute_atr_14` runs that shape per candidate inside the ORB window; composite `(ticker, trade_date)` took it to 0.13ms. Price the read path, not just storage and API calls.
+
+### 2026-09-06 — TradingView news cross-reference, shadow only
+- Nightly 20:45 ET recorder (`mi_tv_news_shadow`) asking whether TradingView carried a catalyst on days we found none; operator-directed after BFLY 06-18, where none of our four feeds had a $74M partnership the whole market saw. Changes no grade. Lesson: the endpoint is a rolling ~25-item window with no date parameter, so it can only answer forward — it can never tell us about BFLY itself.
+
+### 2026-09-06 — a terminal trade with no reason was invisible
+- `audit_invariants.check_reason_coverage` required `status IS NULL` AND no reason, so four live magna53 cancels (FCEL/ABSI/SNX/ACAD, late June) with `status='cancelled'` and no `skip_reason` and no order row were never flagged; container logs had rotated by the time they surfaced. Widened to terminal-status-without-reason. Lesson: "dropped before deciding" and "decided and did not say why" are different defects and only the second is on the money path.
+
+
 
 ### 2026-08-27 — judge rubric v4 · Perplexity on the Agent API · real-time gap live (graduated from CLAUDE.md 2026-09-04)
 
