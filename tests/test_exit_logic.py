@@ -526,3 +526,20 @@ def test_unknown_trail_mode_still_fails_loud():
     with pytest.raises(ValueError, match="unknown trail_mode"):
         apply_daily_exit_step(base_state(), bar(99, 101), date(2026, 4, 5),
                               trail_mode="sma100")
+
+
+def test_trail_undercut_requires_the_close_to_clear_the_line_by_a_margin():
+    """MUTATION TARGET (2026-09-06, operator: "price still below by a margin vs stop
+    immediately"). 20 closes at 100 put the line at 100.0; a close of 99.5 is 0.5% under.
+    With no margin that is an exit; with a 1% margin the line is 99.0 and it is not."""
+    prior = [100.0] * 20
+    kw = dict(prior_closes=prior, skip_partial_decision=True, trail_mode="sma")
+    bare = apply_daily_exit_step(base_state(), bar(99.4, 99.5), date(2026, 4, 20), **kw)
+    assert bare.closed and bare.close_reason == "sma_trail_stop"
+    held = apply_daily_exit_step(base_state(), bar(99.4, 99.5), date(2026, 4, 20),
+                                 trail_undercut=0.01, **kw)
+    assert not held.closed                                  # 99.5 no longer clears the line
+    assert held.active_sma == pytest.approx(bare.active_sma * 0.99)   # the margin, exactly
+    with pytest.raises(ValueError, match="trail_undercut"):
+        apply_daily_exit_step(base_state(), bar(99.4, 99.5), date(2026, 4, 20),
+                              trail_undercut=1.5, **kw)

@@ -596,3 +596,26 @@ def test_breakeven_at_r_refuses_a_runner_with_no_breakeven_floor():
     rs = _replace(_be_rs(3.0, partial_r=None), runner_rule="sma10")
     with pytest.raises(ValueError, match="no breakeven floor"):
         _walk(bars, rs=rs)
+
+
+def test_close_only_trail_never_lets_the_line_become_an_intraday_stop():
+    """MUTATION TARGET (2026-09-06, operator): today the trail is an INTRADAY stop — the walk
+    ratchets the broker's resting stop up to the line, which is why 62 of 65 exits are
+    `stop_hit` and only 3 are the `sma_trail_stop` close-below the methodology describes.
+    With trail_intraday=False the line may only exit on a CLOSE. Here day 1's low (8.5) and
+    day 2's low (8.7) both dip under the ~9.0 line while every close stays above it: the live
+    rule is stopped out at the ratcheted stop, the close-only rule is still holding.
+    The 8.0 hard stop is untouched in both — only the TRAIL becomes close-only."""
+    prior = {(DAY - timedelta(days=i)).isoformat(): (9.0, 9.1, 8.9, 9.0) for i in range(1, 26)}
+    fwd = {"2026-08-04": (9.6, 9.7, 8.5, 9.5), "2026-08-05": (9.6, 9.7, 8.7, 9.6),
+           "2026-08-06": (9.6, 9.7, 9.5, 9.6)}
+    daily = _daily(**{**prior, **fwd})
+    bars0 = _flat_window(o=10.2, h=10.3, l=10.1, c=10.2, n=29)
+    bars0[0] = _bar("09:31", 9.8, 10.05, 9.7, 10.0)      # entry 10.0, hard stop 8.0
+    live = _walk(bars0, daily=daily)
+    assert live["status"] == "settled" and live["final_reason"] == "stop_hit"
+    close_only = _walk(bars0, daily=daily,
+                       rs=_replace(RULESETS["era_c"], trail_intraday=False))
+    assert close_only["status"] == "open_at_horizon"     # never stopped by the trail line
+    assert close_only["final_reason"] is None
+    assert RULESETS["era_c"].trail_intraday is True      # live default unchanged

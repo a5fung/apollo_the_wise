@@ -161,6 +161,7 @@ def apply_daily_exit_step(
     character_ma_window: int = 20,
     character_ma_kind: str = "sma",
     character_undercut: float = 0.0,
+    trail_undercut: float = 0.0,
     prior_closes: list[float] | None = None,
 ) -> ExitStep:
     """Compute one daily exit step.
@@ -378,6 +379,16 @@ def apply_daily_exit_step(
                 }]
                 partial_taken = True
                 breakeven_active = True
+
+    # 2b. Trail undercut (2026-09-06, #545, OPT-IN default 0.0 = byte-identical).
+    # Operator: "price still below by a margin vs stop immediately". Requires the close to
+    # clear the line by a margin before it counts as a break, so a marginal poke through the
+    # average is not an exit. Applies to whichever line mode 2 produced; with "character_ma"
+    # it STACKS on that mode's own per-ticker undercut (both are deliberate tolerances).
+    if trail_undercut and active_sma is not None:
+        if not 0.0 <= trail_undercut < 1.0:
+            raise ValueError(f"trail_undercut must be in [0, 1), got {trail_undercut!r}")
+        active_sma = active_sma * (1.0 - trail_undercut)
 
     # 4. Effective stop
     # stop_source is a pure LABEL tracking which branch last raised effective_stop —

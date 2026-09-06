@@ -145,6 +145,16 @@ class RuleSet:
     # price. "sma10"/"sma20"/"sma50" isolate ONE average; "none" removes the trail entirely
     # (the control). Default "sma" = live, so every existing rule-set is byte-identical.
     trail_mode: str = "sma"
+    # 2026-09-06 (operator): "I'd like to stop only a close below the moving average...
+    # vs stop immediately... it may rid of intraday volatility". TODAY THE TRAIL IS AN
+    # INTRADAY STOP: `_walk_leg` ratchets the broker's resting stop up to the trail line, so
+    # 62 of 65 exits are `stop_hit` (the raised stop taken out intraday) and only 3 are the
+    # `sma_trail_stop` close-below the methodology actually describes. False = the trail line
+    # NEVER becomes a resting stop; only a daily CLOSE below it exits. The hard stop and the
+    # breakeven floor still act intraday — only the trail becomes close-only.
+    trail_intraday: bool = True
+    # The margin the close must clear the line by before it counts as a break (0.01 = 1%).
+    trail_undercut: float = 0.0
     # 2026-09-06: the ORB SUBMISSION window's close. Default 09:45 = today's live rule
     # (CLAUDE.md: HIGHs at 09:45-09:59 -> WINDOW_OUT_OF_ORB), so every existing rule-set is
     # byte-identical. Exists ONLY so the window can be counterfactualled: it is the largest
@@ -256,6 +266,22 @@ for _be in (1.0, 1.5, 2.0, 2.5, 3.0, 4.0):
 # reach an 8R partial exit at a raised stop for +13.79R. Run on BOTH bases (live harvest and the
 # recommended one) so a trail effect cannot be confused with the harvest change. Declared in
 # full before any cell is read.
+# 2026-09-06 — CLOSE-ONLY TRAIL. Operator: "I'd like to stop only a close below the moving
+# average, practically speaking that can only happen near end of day say final 10 min and price
+# still below by a margin vs stop immediately... it may rid of intraday volatility." Two knobs,
+# swept together on the recommended harvest: whether the trail may act INTRADAY at all, and the
+# MARGIN the close must clear it by. Declared in full before any cell is read.
+for _ti in (True, False):
+    for _uc in (0.0, 0.005, 0.01, 0.02):
+        _nm = f"era_c_rec_{'intraday' if _ti else 'closeonly'}_uc{int(_uc*1000)}"
+        RULESETS[_nm] = replace(RULESETS["era_c"], name=_nm, intraday_partial_r=8.0,
+                                breakeven_at_partial=False, breakeven_at_r=3.0,
+                                trail_intraday=_ti, trail_undercut=_uc)
+# the same close-only switch on TODAY's harvest, so the two changes stay separable
+RULESETS["era_c_live_closeonly_uc0"] = replace(RULESETS["era_c"],
+                                               name="era_c_live_closeonly_uc0",
+                                               trail_intraday=False)
+
 for _base, _bt in (("live", dict(intraday_partial_r=2.0, breakeven_at_partial=True)),
                    ("rec", dict(intraday_partial_r=8.0, breakeven_at_partial=False,
                                 breakeven_at_r=3.0))):
@@ -929,7 +955,7 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
                 state, {"l": b["l"], "c": b["c"]}, d,
                 integer_partial_shares=integer_shares,
                 skip_partial_decision=not rs.ladder_partial,
-                trail_mode=rs.trail_mode,
+                trail_mode=rs.trail_mode, trail_undercut=rs.trail_undercut,
                 prior_closes=(prior if rs.trail_prior_closes else None))
             state.update(remaining_shares=step.new_remaining,
                          partial_taken=step.new_partial_taken,
@@ -953,7 +979,11 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
             else:
                 exits = list(step.new_exits)
                 remaining = step.new_remaining
-                resting = max(resting, step.effective_stop)
+                if rs.trail_intraday:
+                    resting = max(resting, step.effective_stop)
+                # else: `resting` already carries the hard stop and the breakeven floor (both
+                # raised directly above); withholding `effective_stop` withholds ONLY the trail
+                # line, which is exactly the operator's rule — the trail exits on the close.
         out["partial_fired"] = any(e["reason"] == "partial_profit" for e in exits)
 
     out["exits"] = exits
