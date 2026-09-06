@@ -526,3 +526,73 @@ def test_ndo_o5l_signal_needs_both_sides_of_0935():
     sig = signal_ndo_o5l(nb)
     assert sig["stop"] == 9.2 and sig["minute"].time() == time(9, 35) and sig["entry"] == 9.5
     assert signal_ndo_o5l(nb[:4]) is None
+
+
+# ── 2026-09-06: breakeven decoupled from the partial (operator: "the two things can move
+# independently, can see we profit at 2r but move breakeven after 8r, for example") ──
+
+def _be_rs(be_r, partial_r=2.0):
+    return _replace(RULESETS["era_c"], breakeven_at_partial=False,
+                    breakeven_at_r=be_r, intraday_partial_r=partial_r)
+
+
+def test_breakeven_arms_with_no_partial_at_all():
+    """MUTATION TARGET: the whole point of the field. `breakeven_at_partial` could ONLY arm
+    the stop when the partial fired, so the operator's shape was inexpressible and I wrongly
+    reported the two as one lever. Here NO partial exists and the stop must still move to
+    entry. era_c geometry: entry 10, orb_low 9, placed stop 8."""
+    bars = [_bar("09:31", 9.8, 10.05, 9.7, 10.0),
+            _bar("09:32", 11.0, 13.10, 10.9, 12.9),   # clears +3R_orb, never revisits entry
+            _bar("09:33", 10.5, 10.6, 9.50, 9.60)]    # dips under entry, ABOVE the 8.0 stop
+    res = _walk(bars, rs=_be_rs(3.0, partial_r=None))
+    assert res["partial_fired"] is False               # nothing was harvested
+    assert res["status"] == "settled" and res["final_reason"] == "stop_hit"
+    assert res["exits"][-1]["price"] == pytest.approx(10.0)   # breakeven, not 8.0
+    assert res["realized_r"] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_breakeven_trigger_uses_the_partial_R_frame_not_the_placed_stop():
+    """MUTATION TARGET: framing on entry−stop would put every trigger at DOUBLE its stated
+    height, because era C places the stop at entry−2R_orb. +3R must mean 13.0, not 16.0 —
+    otherwise 'profit at 2R, breakeven at 8R' means two different R in one sentence."""
+    bars = [_bar("09:31", 9.8, 10.05, 9.7, 10.0),
+            _bar("09:32", 11.0, 13.05, 10.9, 12.9),   # 13.05: past 13.0, far short of 16.0
+            _bar("09:33", 10.5, 10.6, 9.50, 9.60)]
+    assert _walk(bars, rs=_be_rs(3.0, partial_r=None))["realized_r"] == pytest.approx(0.0)
+
+
+def test_breakeven_does_not_arm_below_its_trigger():
+    """MUTATION TARGET: an off-by-one that arms on every bar would read as a free win."""
+    bars = [_bar("09:31", 9.8, 10.05, 9.7, 10.0),
+            _bar("09:32", 11.0, 12.90, 10.9, 12.5),   # 12.90 < the 13.0 trigger
+            _bar("09:33", 10.5, 10.6, 9.50, 9.60)]    # would stop at entry IF wrongly armed
+    res = _walk(bars, rs=_be_rs(3.0, partial_r=None))
+    assert res["status"] == "open_at_horizon"          # full stop room kept, never hit
+    assert res["exits"] == []
+
+
+def test_bar_holding_both_the_trigger_and_entry_abstains():
+    """MUTATION TARGET: silently picking a path. Up-then-armed-then-stopped (0R) and
+    down-first (−1R) are both legal inside one bar and the grain cannot order them."""
+    bars = [_bar("09:31", 9.8, 10.05, 9.7, 10.0),
+            _bar("09:32", 11.0, 13.50, 9.50, 10.2)]   # trigger AND sub-entry in one bar
+    res = _walk(bars, rs=_be_rs(3.0, partial_r=None))
+    assert res["status"] == "abstain"
+    assert res["reason"] == "day0_stop_and_breakeven_same_bar"
+
+
+def test_breakeven_at_r_defaults_off_on_every_dated_ruleset():
+    """MUTATION TARGET: a non-None default would move every era replay and drift the
+    validation baseline without anyone changing a rule."""
+    assert all(RULESETS[n].breakeven_at_r is None for n in ("era_a", "era_b", "era_c"))
+    for d in (date(2026, 5, 1), date(2026, 8, 1), date(2026, 9, 1)):
+        assert ruleset_as_of(d).breakeven_at_r is None
+
+
+def test_breakeven_at_r_refuses_a_runner_with_no_breakeven_floor():
+    """MUTATION TARGET: a silent no-op reads as 'the arm made no difference'."""
+    bars = [_bar("09:31", 9.8, 10.05, 9.7, 10.0),
+            _bar("09:32", 11.0, 13.10, 10.9, 12.9)]
+    rs = _replace(_be_rs(3.0, partial_r=None), runner_rule="sma10")
+    with pytest.raises(ValueError, match="no breakeven floor"):
+        _walk(bars, rs=rs)

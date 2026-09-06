@@ -137,7 +137,6 @@ CLSK|2026-07-14|era_c|HIGH|105.0|105.0|admit|abstain|entry_window_gaps:29_of_29|
 TSEM|2026-07-14|era_c|HIGH|90.0|90.0|admit|settled||True|273.25|259.42999999999995|287.07000000000005|False|stop_hit|-1.0|False|4|0
 AEHR|2026-07-15|era_c|HIGH|105.0|105.0|admit|abstain|entry_window_gaps:29_of_29|False||87.54||False|||False|389|0
 MANE|2026-07-15|era_c|HIGH|105.0|105.0|admit|settled||True|118.75|117.28999999999999|120.21000000000001|True|stop_hit|0.33333333333333337|False|49|0
-MANE|2026-07-15|era_c|HIGH|105.0|105.0|admit|settled||True|118.75|117.28999999999999|120.21000000000001|True|stop_hit|0.33333333333333337|False|49|0
 PRG|2026-07-15|era_c|MODERATE|46.2|52.5|reject|settled||True|45.46|45.07|46.02|True|stop_hit|0.4786324786324799|False|169|0
 SG|2026-07-17|era_c|none|30.0|37.5|reject|no_trade|window_out_of_orb|False||6.570000000000001||False|||False||0
 HUT|2026-07-20|era_c|HIGH|105.0|105.0|admit|settled||True|103.48|99.4164|107.54360000000001|False|stop_hit|-1.0|False|0|0
@@ -185,7 +184,6 @@ APPS|2026-08-05|era_c|HIGH|60.0|69.0|abstain_float_band_straddles_bar|settled||T
 ECG|2026-08-05|era_c|HIGH|105.0|105.0|admit|no_trade|window_out_of_orb|False||142.99999999999997||False|||False||0
 HGTY|2026-08-05|era_c|HIGH|60.0|69.0|abstain_float_band_straddles_bar|abstain|no_930_bar_for_orb|False||||False|||False||0
 KMT|2026-08-05|era_c|HIGH|105.0|105.0|admit|no_entry|never_crossed_orb_high|False||36.9||False|||False|8|0
-KMT|2026-08-05|era_c|HIGH|105.0|105.0|admit|no_entry|never_crossed_orb_high|False||36.9||False|||False|8|0
 KODK|2026-08-05|era_c|HIGH|60.0|69.0|abstain_float_band_straddles_bar|no_trade|setup:zero_range|False||||False|||False||0
 KTOS|2026-08-05|era_c|HIGH|78.0|87.0|admit|settled||True|59.93|54.07|65.78999999999999|False|stop_hit|-1.0|False|0|0
 PRGO|2026-08-05|era_c|MODERATE|52.5|60.0|reject|settled||True|12.98|12.259999999999998|13.700000000000003|False|stop_hit|-1.0|False|0|0
@@ -202,7 +200,6 @@ SOUN|2026-08-06|era_c|MODERATE|45.0|52.5|reject|no_trade|window_out_of_orb|False
 TASK|2026-08-06|era_c|MODERATE|30.0|37.5|reject|no_trade|window_out_of_orb|False||6.879999999999999||False|||False||0
 TRUP|2026-08-06|era_c|MODERATE|30.0|37.5|reject|no_trade|window_out_of_orb|False||24.85||False|||False||0
 U|2026-08-06|era_c|HIGH|105.0|105.0|admit|settled||True|36.61|32.989999999999995|40.230000000000004|True|stop_hit|2.051012891344381|False|0|0
-ACMR|2026-08-07|era_c|HIGH|72.6|81.6|admit|no_entry|never_crossed_orb_high|False||74.58||False|||False|12|0
 ACMR|2026-08-07|era_c|HIGH|72.6|81.6|admit|no_entry|never_crossed_orb_high|False||74.58||False|||False|12|0
 CRSR|2026-08-07|era_c|MODERATE|52.5|60.0|reject|settled||True|12.69|11.53|13.85|True|stop_hit|0.33333333333333337|False|0|0
 DOCS|2026-08-07|era_c|MODERATE|48.0|55.5|reject|abstain|entry_window_gaps:8_of_29|False||36.760000000000005||False|||False|8|0

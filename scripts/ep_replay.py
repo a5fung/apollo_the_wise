@@ -131,6 +131,14 @@ class RuleSet:
     trail_prior_closes: bool        # #548: trail sees the stock's own closes
     entry_cancel: time | None       # unfilled entry cancelled at this ET time (None = end of day)
     breakeven_at_partial: bool = False  # #548: partial moves the resting stop to entry at once
+    # 2026-09-06 (operator): the breakeven step and the partial are SEPARATE decisions and
+    # can move independently — "we profit at 2r but move breakeven after 8r, for example".
+    # `breakeven_at_partial` could only ever arm the stop AT the partial, so the harness
+    # could not express that and I wrongly reported the two as one coupled lever. When set,
+    # this arms breakeven when the leg TRADES THROUGH entry + N x R, whatever the partial
+    # did. It is ADDITIVE to `breakeven_at_partial`: either condition arms it, so every
+    # existing rule-set (all of which leave this None) is byte-identical.
+    breakeven_at_r: float | None = None
     # 2026-09-06: the ORB SUBMISSION window's close. Default 09:45 = today's live rule
     # (CLAUDE.md: HIGHs at 09:45-09:59 -> WINDOW_OUT_OF_ORB), so every existing rule-set is
     # byte-identical. Exists ONLY so the window can be counterfactualled: it is the largest
@@ -205,12 +213,25 @@ for _pr in (None, 5.0, 8.0, 10.0):
     _nm = "era_c_partial_none" if _pr is None else f"era_c_partial_{int(_pr)}r"
     RULESETS[_nm] = replace(RULESETS["era_c"], name=_nm, intraday_partial_r=_pr)
 
-# The combination: a LATE partial with the breakeven step also removed. The breakeven only
-# fires WHEN the partial is taken (`_walk_leg`: `take_partial(...) and rs.breakeven_at_partial`),
-# so these are one coupled mechanism rather than two — this isolates whether breakeven still
-# costs anything once the partial is no longer early.
+# The combination: a LATE partial with the breakeven step also removed.
 RULESETS["era_c_partial_8r_nobe"] = replace(RULESETS["era_c"], name="era_c_partial_8r_nobe",
                                             intraday_partial_r=8.0, breakeven_at_partial=False)
+
+# ── 2026-09-06, operator correction: "the two things can move independently, can see we
+# profit at 2r but move breakeven after 8r, for example" ─────────────────────────────────
+# I reported the partial and the breakeven as ONE coupled lever. That was true of THIS
+# HARNESS, not of the strategy: `breakeven_at_partial` is a bool that can only arm the stop
+# AT the partial, so every arm above moves both together and the interesting cell — bank the
+# 2R cash AND keep full stop room until the move is real — was not expressible. `breakeven_at_r`
+# arms breakeven off the PRICE, independent of the harvest. This grid is DECLARED IN FULL
+# BEFORE ANY CELL IS READ (docs/methodology/analysis_standard.md: pre-declaration), so the
+# operator's own cell is one of nine and cannot be a post-hoc pick. HARNESS-ONLY.
+for _pr in (2.0, 8.0, None):
+    for _be in (3.0, 5.0, 8.0):
+        _pn = "pnone" if _pr is None else f"p{int(_pr)}"
+        _nm = f"era_c_{_pn}_be{int(_be)}"
+        RULESETS[_nm] = replace(RULESETS["era_c"], name=_nm, intraday_partial_r=_pr,
+                                breakeven_at_partial=False, breakeven_at_r=_be)
 
 # The #2 lineage's post-partial rules (scripts/probes/_bt_replay.py RUNNER_RULES), mirrored
 # so that harness can retire. "live" is the ladder itself; "live_trail_be" is the same rule
@@ -535,15 +556,14 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
     # entry − orb_low, NOT the placed stop; that function owns the rule). "own": +2R of
     # the placed stop's own distance — the 08-06 frame, kept ONLY as the mechanism check.
     target = None
-    if rs.intraday_partial_r:
-        if rs.target_frame == "orb":
-            r_ps = profit_target_r_per_share("magna53", entry_px, stop, orb_low)
-        elif rs.target_frame == "own":
-            r_ps = entry_px - stop
-        else:
-            raise ValueError(f"unknown target_frame {rs.target_frame!r}")
-        if r_ps is not None:
-            target = entry_px + rs.intraday_partial_r * r_ps
+    if rs.target_frame == "orb":
+        r_ps = profit_target_r_per_share("magna53", entry_px, stop, orb_low)
+    elif rs.target_frame == "own":
+        r_ps = entry_px - stop
+    else:
+        raise ValueError(f"unknown target_frame {rs.target_frame!r}")
+    if rs.intraday_partial_r and r_ps is not None:
+        target = entry_px + rs.intraday_partial_r * r_ps
     out["target"] = target
     if adr_dollar:
         out["stop_width_adr"] = (entry_px - stop) / adr_dollar
@@ -552,7 +572,7 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
     leg = _walk_leg(ticker=ticker, leg_date=alert_date, entry_px=entry_px, stop=stop,
                     target=target, bars=bars0, fill_idx=fill_idx, rs=rs, daily=daily,
                     shares=shares, integer_shares=integer_shares, adr_dollar=adr_dollar,
-                    minutes_extra=minutes_extra or {})
+                    minutes_extra=minutes_extra or {}, r_frame_ps=r_ps)
     for k in ("status", "reason", "exits", "final_reason", "partial_fired", "gap_through",
               "sessions_abstained", "realized_pnl_per_unit", "realized_r", "pnl_adr",
               "mark_r"):
@@ -647,7 +667,8 @@ def _attempt_two(*, ticker, alert_date, stop_day, stop_minute, stop_px, rs, minu
 
 
 def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, daily,
-              shares, integer_shares, adr_dollar, minutes_extra, fill_at_open=False) -> dict:
+              shares, integer_shares, adr_dollar, minutes_extra, fill_at_open=False,
+              r_frame_ps=None) -> dict:
     """Walk one filled leg from its fill bar to settlement: the day-of minute walk, then the
     forward daily walk under the LIVE ladder (runner_rule "live") or one of the #2 lineage's
     post-partial rules. Returns status / exits / R and the stop-out anchor (day, minute, px)
@@ -668,6 +689,28 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
     # #2's floor rule: breakeven only for the breakeven-family rules; the hard stop stays
     # for every other runner (the "hard-stop-stays" cost side is part of each rule).
     be_floor = runner in ("live", "breakeven", "live_trail_be")
+    # The decoupled breakeven arm. Only meaningful for a breakeven-family runner — raise rather
+    # than silently no-op, because a no-op here reads as "the arm made no difference".
+    be_trigger = None
+    if rs.breakeven_at_r is not None:
+        if not be_floor:
+            raise ValueError(f"breakeven_at_r set on runner_rule {runner!r}, which has no "
+                             "breakeven floor; the arm would silently do nothing")
+        # SAME R frame as the partial target (`target_frame`), so "profit at 2R, breakeven at
+        # 8R" means one R in both halves of the sentence. Under era C the placed stop is
+        # entry − 2R_orb, so framing this on entry − stop instead would silently put every
+        # trigger at DOUBLE its stated height.
+        r_ps = r_frame_ps if r_frame_ps is not None else (entry_px - stop)
+        be_trigger = entry_px + rs.breakeven_at_r * r_ps
+
+    def be_ambiguous(bar_low: float, bar_high: float, resting_level: float) -> bool:
+        """A bar that reaches the breakeven trigger AND also trades at or below entry, while
+        breakeven is not yet armed, has two legal paths the grain cannot order: down first
+        (stopped at the old stop, or survived) versus up first (armed, then stopped at entry).
+        Abstain rather than pick — the same discipline as the stop-and-target abstain. A bar
+        that reaches the trigger and never revisits entry is unambiguous and arms normally."""
+        return (be_trigger is not None and resting_level < entry_px
+                and bar_high >= be_trigger and bar_low <= entry_px)
 
     def book(px: float, qty: float, reason: str, when) -> None:
         exits.append({"time": str(when), "price": px, "reason": reason, "shares": qty,
@@ -719,6 +762,11 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
         # open-priced leg has no such ordering -> the touch is left to the next bar.
         if take_partial(target, fb["m"]) and rs.breakeven_at_partial and be_floor:
             cur_stop = max(cur_stop, entry_px)
+    if not closed and be_trigger is not None and fb["h"] >= be_trigger:
+        # Same provable ordering the partial uses: with the trigger above entry, a touch
+        # >= trigger necessarily post-dates the first touch >= entry. The bar's LOW is
+        # pre-fill and cannot stop the armed leg, and its stop case already returned above.
+        cur_stop = max(cur_stop, entry_px)
     for b in bars[fill_idx + 1:]:
         if closed:
             break
@@ -727,6 +775,12 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
         if hit_stop and hit_tgt:
             out.update(status="abstain", reason="day0_stop_and_target_same_bar")
             return out
+        if be_ambiguous(b["l"], b["h"], cur_stop):
+            out.update(status="abstain", reason="day0_stop_and_breakeven_same_bar")
+            return out
+        if be_trigger is not None and b["h"] >= be_trigger:
+            # past the abstain above, this bar's low is > entry, so the raise cannot stop us
+            cur_stop = max(cur_stop, entry_px)
         if hit_stop:
             px = b["o"] if b["o"] < cur_stop else cur_stop
             if px != cur_stop:
@@ -765,6 +819,11 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
                 out["sessions_abstained"] += 1
                 continue
             last_close = b["c"]
+            if be_ambiguous(b["l"], b["h"], resting):
+                out.update(status="abstain", reason=f"fwd_stop_and_breakeven_same_day:{d}")
+                return out
+            if be_trigger is not None and b["h"] >= be_trigger:
+                resting = max(resting, entry_px)
             hit_tgt = (target is not None and not state["partial_taken"]
                        and b["h"] >= target)
             if hit_tgt and b["l"] <= resting:
@@ -1140,8 +1199,22 @@ def phase_replay(args) -> None:
     rs = get_ruleset(args.ruleset)   # raises without an explicit rule-set — by design
     s2, s3, conf, adv, regime_rows = _scoring_context()
     minutes, daily = load_minutes(), load_daily()
-    rows = []
+    # 2026-09-06: ONE ORB entry per ticker per day. The alert feed carries duplicate rows
+    # (MANE 2026-07-15 appears twice, byte-identical), and walking both books the same trade
+    # twice — it inflated an era_c read from +3.54R to +3.87R and I quoted the inflated one.
+    # The live system cannot take the same entry twice, so neither may the replay. Keep the
+    # EARLIEST detection, which is the tick the live submitter would have acted on.
+    seen: dict[tuple, dict] = {}
     for a in s2["ALERTS"]:
+        k = (a["ticker"], a["alert_date"])
+        if k not in seen or (a.get("detected_at_et") or "") < (seen[k].get("detected_at_et") or ""):
+            seen[k] = a
+    alerts = list(seen.values())
+    if len(alerts) != len(s2["ALERTS"]):
+        print(f"  deduped {len(s2['ALERTS']) - len(alerts)} duplicate ticker/day alert row(s)"
+              " — one ORB entry per name per day")
+    rows = []
+    for a in alerts:
         a = {**a, "confidence_multiplier": conf.get(a["id"])}
         # re-score + re-admit under the SAME explicit rule-set
         ad, sc = _score_one(a, rs, daily, adv, regime_rows)
