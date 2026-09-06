@@ -22,8 +22,11 @@ news set that did not contain the story. **This is a retrieval failure, not a re
 
 ## What actually happened (the operator supplied the release, 2026-09-05)
 
-**Butterfly Network press release, 06/18/2026, BUSINESS WIRE** — *"Butterfly Network Provides
+**Butterfly Network press release, 06/18/2026** — *"Butterfly Network Provides
 Commentary on Midjourney Medical's Full Body Ultrasound Scanner Announcement"*:
+
+⚠ **PROVENANCE, corrected by the operator 2026-09-05: he read it on the COMPANY'S OWN IR NEWSROOM** — `ir.butterflynetwork.com/News/press-releases/news-details/2026/...`. The body carries a `(BUSINESS WIRE)` dateline so it went out on the wire too, **but the copy that is always reachable is the issuer's own site.** That distinction is the fix: a vendor may or may not carry a given release; an issuer's newsroom always has it, is free, and is deterministic.
+
 
 - Midjourney publicly announced **Midjourney Medical** and **The Midjourney Scanner**, a full-body
   tomographic imaging machine.
@@ -50,6 +53,8 @@ comments, which Butterfly did the same morning, over the wire. **So the recovera
 narrow and checkable: a same-day Business Wire release naming BFLY did not reach Polygon, Alpaca,
 FMP or Perplexity in our capture.** Whether that is source coverage, timing (we graded before it
 crossed), or a filter is the next question — and it has a yes/no answer.
+
+**3. THE CANDIDATE FIX HIS CORRECTION POINTS AT: POLL THE ISSUER'S OWN IR NEWSROOM.** We depend entirely on aggregators (Polygon, Alpaca, FMP) plus a web synthesis (Perplexity). Every one is a bet that a vendor picked the release up AND tagged it with our ticker. **The issuer's newsroom is the primary source, is free, and cannot fail to carry the company's own announcement** — for BFLY it had the story while all four of ours did not. **The trigger is already defined by the 2026-09-05 measurement: a name gapping hard where we found no catalyst — 21 names, 5-7% of alerts. A bounded last-resort fetch, not a new firehose.** ⚠ Not built, not scoped: IR sites are per-issuer and unstandardised, so URL discovery, parsing and rate limits are a real design, not a config change.
 
 ⚠ **Do not generalise this into "our news is bad".** 21 of ~323 alerts since 05-01 were called
 catalyst-less (5-7%), and the two other 20%+ names in that set (CHTR, SOUN) both fell over the
