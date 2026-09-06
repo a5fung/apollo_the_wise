@@ -101,6 +101,13 @@ the average)**, never by win rate alone.
 `~/.claude/plans/crystalline-waddling-charm.md`.
 **The entry/exit tactics FRAME across every lane — day-1 AND these day-2+ rungs, including the
 retry test (stop width × attempts, per NAME) and the harness ownership map:**
+`docs/design/545_entry_exit_program_2026-09-05.md` (v3, 2026-09-05 — re-graded TAIL-FIRST under the
+operator's ruling *"big tail is the key ingredient"*; established that on the day-1 replay the entry finds
+the tail and the breakeven-after-partial step gives it back (TEAM turns on one cent of target), that the
+next-day-open re-entry at a tight stop recovers ONE legitimate tail name (TEAM) and is otherwise
+THC-carried on a 0.53% stop — direction only — that the retry chain cannot be reconstructed forward, and
+that the population gap — refused / pre-05-11 / never-alerted names with no bars — is the prerequisite to
+any sweep). It supersedes
 `docs/design/545_entry_exit_program_v2_2026-09-02.md` (2026-09-02; supersedes the 08-07 design doc).
 **BUILD (2026-08-30, post-Stage-0):** the record-everything watch lane is
 `agents/market_intelligence/delayed_entry_shadow.py` (EOD 17:57 ET job, SILENT) writing

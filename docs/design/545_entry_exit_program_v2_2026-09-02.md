@@ -1,5 +1,10 @@
 # #545 — Entry/Exit Tactics Program, v2: the inventory, the grid, the harness map, the sequenced plan (2026-09-02)
 
+> ⚠ **SUPERSEDED 2026-09-05 by `docs/design/545_entry_exit_program_2026-09-05.md` (v3)** — the
+> operator's tail-first objective (*"big tail is the key ingredient, median can be somewhat managed
+> with entry and exit"*) re-grades every row of §3 below; v3 cites this document's row numbers and
+> does not re-derive them. Read v3 first; use this file for the row-level history it carries.
+
 **Status: DESIGN ONLY — no code changed, no threshold moved, nothing flipped, nothing deployed.**
 **Supersedes** `docs/design/545_entry_exit_program_2026-08-07.md` (v1). v1's inventory is cited by
 section below and not re-derived; this document carries what changed in the 26 days since, the
