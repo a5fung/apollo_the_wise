@@ -205,6 +205,13 @@ for _pr in (None, 5.0, 8.0, 10.0):
     _nm = "era_c_partial_none" if _pr is None else f"era_c_partial_{int(_pr)}r"
     RULESETS[_nm] = replace(RULESETS["era_c"], name=_nm, intraday_partial_r=_pr)
 
+# The combination: a LATE partial with the breakeven step also removed. The breakeven only
+# fires WHEN the partial is taken (`_walk_leg`: `take_partial(...) and rs.breakeven_at_partial`),
+# so these are one coupled mechanism rather than two — this isolates whether breakeven still
+# costs anything once the partial is no longer early.
+RULESETS["era_c_partial_8r_nobe"] = replace(RULESETS["era_c"], name="era_c_partial_8r_nobe",
+                                            intraday_partial_r=8.0, breakeven_at_partial=False)
+
 # The #2 lineage's post-partial rules (scripts/probes/_bt_replay.py RUNNER_RULES), mirrored
 # so that harness can retire. "live" is the ladder itself; "live_trail_be" is the same rule
 # re-implemented harness-side and is asserted equal to "live" by the Phase 3 sweep.
