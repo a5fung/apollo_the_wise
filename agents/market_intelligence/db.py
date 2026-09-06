@@ -815,6 +815,16 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_daily_closes ADD COLUMN IF NOT EXISTS high_price FLOAT;
             ALTER TABLE mi_daily_closes ADD COLUMN IF NOT EXISTS low_price FLOAT;
             CREATE INDEX IF NOT EXISTS idx_daily_closes_ticker ON mi_daily_closes(ticker);
+            -- 2026-09-06: the ticker-only index above stopped being enough when the
+            -- 5-year backfill took this table from 3.3M rows to 13.6M. Every per-ticker
+            -- lookup fetched EVERY bar for that ticker and filtered by date afterwards, so
+            -- a single-ticker window query went from ~30ms to 111ms. That shape is on the
+            -- MONEY PATH -- backtester/filters.compute_atr_14 runs it per candidate during
+            -- the 09:31-09:44 ORB window, so ~20 candidates meant ~2s of avoidable latency
+            -- in front of order submission. With the composite index the same query is
+            -- 2.1ms and the ATR shape is 0.13ms (measured on prod, EXPLAIN ANALYZE).
+            CREATE INDEX IF NOT EXISTS idx_daily_closes_ticker_date
+                ON mi_daily_closes(ticker, trade_date);
 
             CREATE TABLE IF NOT EXISTS mi_9m_ep_alerts (
                 id SERIAL PRIMARY KEY,
