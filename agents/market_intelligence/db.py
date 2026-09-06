@@ -724,6 +724,70 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_ep_catalyst_metrics
                 ADD COLUMN IF NOT EXISTS yoy_recovered_json JSONB;
 
+            -- #210 (2026-09-06) — TradingView news cross-reference SHADOW. The BFLY
+            -- 2026-06-18 case (docs/methodology/ep_reference_bfly_2026-06-18.md): our four
+            -- feeds (Polygon/Alpaca/FMP/Perplexity) never carried the Midjourney partnership
+            -- catalyst; TradingView's aggregated headline feed did. This table is a POST-HOC,
+            -- NIGHTLY, read-only record of what TradingView's `/v2/headlines` endpoint shows
+            -- for a ticker/date we ourselves called thin or catalyst-less — it changes NO
+            -- grade, score, admission, or trade state (THE LINE; see tv_news_shadow.py).
+            -- One row per (ticker, alert_date), written once and never revisited (the
+            -- population query in tv_news_shadow.py excludes tickers already present here).
+            --
+            -- our_corpus_available is FALSE for most rows: mi_ep_catalyst_metrics.raw_*_news_json
+            -- (catalyst_metrics_extractor.py) is populated ONLY on the earnings-path
+            -- strong/game_changer extraction branch — the routine/no-direct-source population
+            -- this shadow targets normally never gets a row there (BFLY has one only because a
+            -- since-fixed regex bug misrouted it through the earnings path). When FALSE, the
+            -- our_*_count columns and tv_items_we_missed are NULL — there is nothing stored to
+            -- diff against — but tv_items_on_alert_date still answers "did TradingView have
+            -- same-day coverage" on its own.
+            --
+            -- tv_coverage_reaches_alert_date is the honesty guard the endpoint's own shape
+            -- forces: `/v2/headlines` returns a ROLLING most-recent-~25-item window with no
+            -- date-range parameter (verified empirically 2026-09-06 — a `to=` param is
+            -- silently ignored), so a heavily-covered ticker's window can roll PAST an older
+            -- alert date entirely. FALSE means the fetch cannot speak to that date at all —
+            -- "0 items" and "window doesn't reach that far back" must never be conflated.
+            CREATE TABLE IF NOT EXISTS mi_tv_news_shadow (
+                ticker                      TEXT NOT NULL,
+                alert_date                  DATE NOT NULL,
+                checked_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                -- population context, denormalized off the ep_catalyst_provenance audit row
+                -- (see db.get_no_catalyst_alert_population) so this table answers its own
+                -- question with no join required.
+                catalyst_quality            TEXT,
+                our_has_direct_source       BOOLEAN,
+                our_source_class_count      INT,       -- sum(sources.values()) — the "thin" measure
+                our_corpus_available        BOOLEAN NOT NULL,
+                our_polygon_count           INT,
+                our_alpaca_count            INT,
+                our_fmp_count               INT,
+                our_perplexity_present      BOOLEAN,
+                our_total_item_count        INT,
+                -- TradingView side
+                tv_status                   TEXT NOT NULL,   -- see CHECK below
+                tv_skip_reason              TEXT,            -- populated when tv_status != 'ok'
+                exchange_mic                TEXT,            -- resolved MIC (mi_security_types), '' if none
+                tv_symbol                   TEXT,            -- e.g. 'NYSE:BFLY' — the exact query symbol
+                tv_item_count               INT,             -- items in the WHOLE returned rolling window
+                tv_providers                JSONB,           -- {provider: count} across the whole window
+                tv_oldest_item_published    TIMESTAMPTZ,     -- oldest item's `published` in the window
+                tv_coverage_reaches_alert_date BOOLEAN,       -- see module comment above
+                tv_items_on_alert_date      INT,             -- same-day-rule count (see tv_news_shadow.py)
+                tv_providers_on_alert_date  JSONB,           -- {provider: count}, same-day-rule scoped
+                -- Same-day TV items with no normalised-title match in our corpus. An UPPER
+                -- BOUND, not a confirmed miss: cross-provider re-titling of one real story
+                -- (Dow Jones wire-blurb vs Business Wire's full headline vs a Benzinga
+                -- paraphrase — all three fired for BFLY's own Q2 print) is not deduped across
+                -- providers, only matched title-for-title. NULL when our_corpus_available=false.
+                tv_items_we_missed          JSONB,
+                PRIMARY KEY (ticker, alert_date),
+                CHECK (tv_status IN ('ok', 'skipped_exchange', 'fetch_error', 'unparseable'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_tv_news_shadow_alert_date
+                ON mi_tv_news_shadow(alert_date DESC);
+
             CREATE TABLE IF NOT EXISTS mi_ticker_overrides (
                 ticker TEXT PRIMARY KEY,
                 description TEXT,
