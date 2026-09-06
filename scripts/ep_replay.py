@@ -1146,13 +1146,60 @@ def phase_replay(args) -> None:
           f"reject {sum(1 for r in rows if r['admit'] == 'reject')}, "
           f"abstain {ab_adm}")
     import statistics
-    for label, pool in (("all alerts", st),
-                        ("re-admitted only", [r for r in st if r["admit"] == "admit"])):
-        rs_ = [r["realized_r"] for r in pool if r["realized_r"] is not None]
-        if rs_:
-            print(f"  settled R [{label}]: n={len(rs_)} mean {statistics.mean(rs_):+.2f} "
-                  f"median {statistics.median(rs_):+.2f} sum {sum(rs_):+.1f} "
-                  f">=4R {sum(1 for x in rs_ if x >= 4)}")
+
+    # ── 2026-09-05, operator: "how can we make sure this study works going forward without
+    # all the caveats you listed, that is the more important point." Four traps bit a single
+    # evening's work and every one of them was caught by a human reading the output rather
+    # than by the harness. They are structural, they recur, and they are all decidable HERE:
+    #
+    #   1. CENSORING. A settled-only summary silently drops open_at_horizon rows — and a
+    #      looser exit rule's whole benefit is that it KEEPS POSITIONS OPEN. The 09-05
+    #      breakeven A/B lost CRWD exactly this way, and #327's lane reads -0.75R for the
+    #      same reason (a stop settles instantly; a winner stays open). Now printed on
+    #      every line, so a censored read cannot look complete.
+    #   2. NEAR-ZERO STOPS. A two-cent stop makes R meaningless: two such rows once carried
+    #      more R than a 1,577-row population. Every study was expected to remember to
+    #      exclude them. Now excluded by DEFAULT and the exclusion is stated.
+    #   3. THE WRONG STATISTIC. Operator, same day: "big tail is the key ingredient, median
+    #      can be somewhat managed with entry and exit." Ranking by median produced three
+    #      conclusions that all dissolved on the tail cut. Tail counts now print FIRST.
+    #   4. UNSOURCED COVERAGE. "n=66" says nothing about what it is 66 OF. The walkable
+    #      denominator now prints beside it.
+    _NEAR_ZERO_STOP_PCT = 0.5   # |entry-stop|/entry, in percent — the #621/#623 class
+
+    def _stop_width_pct(r):
+        try:
+            e, sp = float(r["entry_px"]), float(r["stop"])
+            return abs(e - sp) / e * 100 if e else None
+        except (TypeError, ValueError):
+            return None
+
+    _degenerate = [r for r in st
+                   if (w := _stop_width_pct(r)) is not None and w < _NEAR_ZERO_STOP_PCT]
+    if _degenerate:
+        print(f"  ⚠ excluded {len(_degenerate)} settled row(s) with a stop narrower than "
+              f"{_NEAR_ZERO_STOP_PCT}% of entry — R is not meaningful there "
+              f"({', '.join(sorted(r['ticker'] for r in _degenerate)[:6])})")
+    _deg = {id(r) for r in _degenerate}
+
+    for label, pool, openpool in (
+            ("all alerts", st, oh),
+            ("re-admitted only", [r for r in st if r["admit"] == "admit"],
+             [r for r in oh if r["admit"] == "admit"])):
+        rs_ = [r["realized_r"] for r in pool
+               if r["realized_r"] is not None and id(r) not in _deg]
+        if not rs_:
+            continue
+        p90 = statistics.quantiles(rs_, n=10)[-1] if len(rs_) >= 10 else float("nan")
+        # TAIL FIRST — the statistic the operator ruled on 2026-09-05.
+        print(f"  R [{label}]: n={len(rs_)}  >=3R {sum(1 for x in rs_ if x >= 3)}"
+              f"  >=5R {sum(1 for x in rs_ if x >= 5)}  p90 {p90:+.2f}"
+              f"   | median {statistics.median(rs_):+.2f} mean {statistics.mean(rs_):+.2f} "
+              f"sum {sum(rs_):+.1f}")
+        # CENSORING — stated on the same line it would otherwise distort.
+        print(f"     ⚠ {len(openpool)} row(s) STILL OPEN at the horizon and NOT in the above."
+              f" A looser exit rule's benefit hides here — never compare rule-sets on settled"
+              f" rows alone.")
     from collections import Counter
     print(f"  abstain reasons: {dict(Counter(r['reason'].split(':')[0] for r in ab))}")
     print(f"  written: {out}")
