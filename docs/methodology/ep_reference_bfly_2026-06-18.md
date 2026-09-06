@@ -78,3 +78,30 @@ new earnings release… has been identified"* — the regex had no notion of neg
 downgraded `strong`→`routine` on `news_corpus_sparse_no_q_rev`, i.e. for lacking quarterly revenue
 that a partnership catalyst could never have. **That regex bug was fixed and deployed 2026-09-05**
 (`tests/test_448_earnings_signal_negation.py`, pinned against this exact text).
+
+
+## The causal chain, closed 2026-09-06 (he found the story on Stocktwits/TradingView)
+
+**Root cause is SOURCE COVERAGE. Not caching, not timing, not reasoning.** Each link measured:
+
+1. **We graded once, early.** Catalyst extracted **07:01:02 ET**; BFLY was scanned **38 times**
+   through 09:55. `_catalyst_cache` is keyed by ticker with no time component and
+   `lookup_cached_metrics(ticker, today)` serves the day's extraction thereafter — **the 07:01
+   read on a premarket corpus was final.**
+2. **The story was in the ecosystem.** A Stocktwits piece carried by TradingView had every
+   detail — Midjourney, the 40 modules, the $74M co-development agreement, the CEO quote. It is
+   timestamped **08:56 PDT = 11:56 ET**, after our last tick, so it could not have helped *us* —
+   **but it proves the information was public and findable that morning. Our four feeds were not
+   carrying it.**
+3. **The mechanism built for exactly this case could not have fired.** `should_repoll_shadow`
+   (#344, `ep_detector.py:992`) names BFLY in its own docstring — *"BFLY graded routine pre-PR,
+   the PR arrived later, the cache pinned routine"*. It triggers on `current_source_count >
+   grade_source_count`, i.e. **a new direct source APPEARING**, and only `in_orb_window`. **No
+   source ever appeared, so the counter never moved.** A re-poll keyed on new sources cannot
+   rescue a name whose story is absent from every source.
+
+⚖ **Therefore the fix is a source that actually carried it.** The IR-newsroom route is dead for
+this name — `ir.butterflynetwork.com` returns **403 from the production host** on every path
+(tested 2026-09-06 with the same User-Agent that got a 200 from a laptop). **Stocktwits had it.**
+That is a different question from the one the design card was asked, and it is the one worth
+pricing next.
