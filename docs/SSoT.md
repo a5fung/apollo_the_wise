@@ -90,6 +90,7 @@ setup's criteria, change log and findings.
 |---|---|
 | **EPs he named himself — THE ground truth list** | **`docs/methodology/operator_labelled_eps.md`** |
 | BFLY 06-18 — the EP whose news never reached us | `docs/methodology/ep_reference_bfly_2026-06-18.md` |
+| **His Stocks Model Book — transcribed pages** | **`docs/methodology/model_book/`** |
 | Notes he has shared directly | `docs/methodology/operator_shared_notes.md` |
 | Pivots + per-stock character | `docs/methodology/pivots-and-stock-character.md` |
 | The 620 chart | `docs/methodology/620_chart.md` |
