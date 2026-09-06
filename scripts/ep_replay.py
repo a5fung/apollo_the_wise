@@ -70,7 +70,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
@@ -176,6 +176,14 @@ RULESETS: dict[str, RuleSet] = {
                      ladder_partial=False),
 }
 RULESETS["current"] = RULESETS["era_c"]
+
+# ── 2026-09-05, operator-approved A/B: "yes, test it" ──────────────────────────────────
+# era_c with the ONE step removed that #545's design doc identifies as the tail-killer: the
+# breakeven-at-partial move. Everything else is byte-identical to `current`, so any difference
+# in the read is attributable to that step alone. HARNESS-ONLY — this rule-set is never
+# returned by `ruleset_as_of()` (which builds era rule-sets by DATE) and nothing live reads it.
+RULESETS["era_c_no_breakeven"] = replace(RULESETS["era_c"], name="era_c_no_breakeven",
+                                         breakeven_at_partial=False)
 
 # The #2 lineage's post-partial rules (scripts/probes/_bt_replay.py RUNNER_RULES), mirrored
 # so that harness can retire. "live" is the ladder itself; "live_trail_be" is the same rule
