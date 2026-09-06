@@ -131,6 +131,12 @@ class RuleSet:
     trail_prior_closes: bool        # #548: trail sees the stock's own closes
     entry_cancel: time | None       # unfilled entry cancelled at this ET time (None = end of day)
     breakeven_at_partial: bool = False  # #548: partial moves the resting stop to entry at once
+    # 2026-09-06: the ORB SUBMISSION window's close. Default 09:45 = today's live rule
+    # (CLAUDE.md: HIGHs at 09:45-09:59 -> WINDOW_OUT_OF_ORB), so every existing rule-set is
+    # byte-identical. Exists ONLY so the window can be counterfactualled: it is the largest
+    # single skip class we have (11 fires in 30 days, 29 in 90) and the outcome was previously
+    # unmeasurable because the harness enforced the same cut-off it was meant to test.
+    submit_window_end: time = time(9, 45)
     # ── #545 Phase 3 extensions (2026-09-03). Every field below defaults to the LIVE
     # behaviour so the era rule-sets and `validate` are byte-identical to before. ──
     ladder_partial: bool = True     # the day-3/5 ladder partial: LIVE only while
@@ -184,6 +190,12 @@ RULESETS["current"] = RULESETS["era_c"]
 # returned by `ruleset_as_of()` (which builds era rule-sets by DATE) and nothing live reads it.
 RULESETS["era_c_no_breakeven"] = replace(RULESETS["era_c"], name="era_c_no_breakeven",
                                          breakeven_at_partial=False)
+
+# 2026-09-06: era_c with the ORB SUBMISSION window widened 09:45 -> 10:00, and NOTHING else.
+# Answers the only question the existing orb_extension shadow cannot: that shadow is fed from
+# orders we ALREADY placed, so a name skipped at window:out_of_orb never enters it. HARNESS-ONLY.
+RULESETS["era_c_late_window"] = replace(RULESETS["era_c"], name="era_c_late_window",
+                                        submit_window_end=time(10, 0))
 
 # The #2 lineage's post-partial rules (scripts/probes/_bt_replay.py RUNNER_RULES), mirrored
 # so that harness can retire. "live" is the ladder itself; "live_trail_be" is the same rule
@@ -482,8 +494,9 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
         out.update(status="no_trade", reason="stop_at_or_below_zero")
         return out
     out["stop"] = stop
-    if rs.entry_cancel is not None and submit >= time(9, 45):
-        # CLAUDE.md ORB window: HIGHs at 9:45-9:59 -> WINDOW_OUT_OF_ORB, no submission
+    if rs.entry_cancel is not None and submit >= rs.submit_window_end:
+        # CLAUDE.md ORB window: HIGHs at 9:45-9:59 -> WINDOW_OUT_OF_ORB, no submission.
+        # Reads the rule-set (default 09:45 = the live rule) so a variant can widen it.
         out.update(status="no_trade", reason="window_out_of_orb")
         return out
     if not bars0:
