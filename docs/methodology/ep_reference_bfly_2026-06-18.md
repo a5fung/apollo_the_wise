@@ -54,6 +54,14 @@ narrow and checkable: a same-day Business Wire release naming BFLY did not reach
 FMP or Perplexity in our capture.** Whether that is source coverage, timing (we graded before it
 crossed), or a filter is the next question — and it has a yes/no answer.
 
+**2b. CHECKED 2026-09-05 — NO VENDOR CARRIED IT.** Alpaca returned `[]`. Polygon returned one
+headline, an unrelated congenital-heart AI editorial. Perplexity returned 500 characters of
+premarket-mover commentary. FMP returned five, four of them generic screener filler — and one that
+is the most instructive row in the whole case: *"Butterfly Network TD Cowen Call Puts Volatile
+Growth Story In Focus"*, **the same 12:00 EDT TD Cowen webinar the press release announces.** A
+vendor saw the event's shadow and still never carried the release that explains it. **So this is
+not recoverable by tuning aggregators.**
+
 **3. THE CANDIDATE FIX HIS CORRECTION POINTS AT: POLL THE ISSUER'S OWN IR NEWSROOM.** We depend entirely on aggregators (Polygon, Alpaca, FMP) plus a web synthesis (Perplexity). Every one is a bet that a vendor picked the release up AND tagged it with our ticker. **The issuer's newsroom is the primary source, is free, and cannot fail to carry the company's own announcement** — for BFLY it had the story while all four of ours did not. **The trigger is already defined by the 2026-09-05 measurement: a name gapping hard where we found no catalyst — 21 names, 5-7% of alerts. A bounded last-resort fetch, not a new firehose.** ⚠ Not built, not scoped: IR sites are per-issuer and unstandardised, so URL discovery, parsing and rate limits are a real design, not a config change.
 
 ⚠ **Do not generalise this into "our news is bad".** 21 of ~323 alerts since 05-01 were called
