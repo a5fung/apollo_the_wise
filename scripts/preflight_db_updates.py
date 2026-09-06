@@ -28,7 +28,7 @@ from agents.market_intelligence.db import (
     GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
     LOWCAP_LANE_REPLAY_UPSERT_SQL, LOWCAP_LANE_SIGNAL_INSERT_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
-    UNIVERSE_FLOOR_SHADOW_INSERT_SQL,
+    UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
     get_pool)
 
 logger = logging.getLogger(__name__)
@@ -205,6 +205,11 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
     (
         "db.upsert_analyst_estimates: #333 analyst-estimates recorder (executemany since 2026-08-31)",
         _ANALYST_EST_UPSERT_SQL,
+    ),
+    (
+        "db.upsert_tv_news_shadow_rows: #210 TradingView news cross-reference shadow "
+        "(executemany since 2026-09-06)",
+        _TV_NEWS_SHADOW_UPSERT_SQL,
     ),
     (
         "db.upsert_analyst_estimates_divergence: #333 v4 Finnhub-vs-yfinance divergence "

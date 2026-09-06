@@ -215,3 +215,16 @@ EVENING_BRIEF_SEND_FAILED = "evening_brief_send_failed"
 # Name contains "error" so `_check_nightly_silent_errors`'s `%error%` sweep
 # and `show errors` pick it up automatically, with no extra wiring.
 PERPLEXITY_ENDPOINT_ERROR = "perplexity_endpoint_error"
+
+# ── #210 TradingView news cross-reference SHADOW (2026-09-06) ──────────────
+# TV_NEWS_ENDPOINT_ERROR reuses llm_health.alert_endpoint_shape_anomaly exactly as its
+# own module comment invites ("a future FIXED-URL provider can reuse this ... only a
+# new audit_events constant") — one row per DEGRADED NIGHTLY RUN (non-200/timeout
+# majority, a missing `items` key, or this run's median item count collapsing well
+# below the table's own trailing norm; see tv_news_shadow.classify_run_degradation).
+# Name contains "error" for the same %error% sweep reason as PERPLEXITY_ENDPOINT_ERROR.
+TV_NEWS_ENDPOINT_ERROR = "tv_news_endpoint_error"
+# The per-run SUMMARY row (population size, fetches ok/skipped/failed, rows written) —
+# written on every run, healthy or not. Deliberately does NOT contain "error" (a
+# healthy run must not appear in the %error% nightly sweep as noise).
+TV_NEWS_SHADOW_RUN = "tv_news_shadow_run"

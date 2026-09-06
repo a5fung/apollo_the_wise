@@ -211,6 +211,11 @@ def test_module_constant_covers_the_required_tables():
         # only watchdog.
         "mi_lowcap_lane_signals",
         "mi_lowcap_lane_replays",
+        # 2026-09-06 (#210): the TradingView news cross-reference shadow — SILENT by the
+        # data-capture contract (Telegram only on a sustained, run-level endpoint
+        # degradation via a different mechanism, llm_health.alert_endpoint_shape_anomaly);
+        # this registry is the only watchdog for the writer itself going dark.
+        "mi_tv_news_shadow",
     }
 
 

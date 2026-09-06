@@ -15728,3 +15728,163 @@ async def get_daily_ohlc_range(conn: Any, ticker: str, start: "date", end: "date
     every test at this layer mocks the DB. `tests/test_daily_ohlc_range_contract.py` now pins
     the returned key set against the real column list so a future refactor cannot repeat it."""
     return await _daily_closes_range(conn, ticker, start, end, with_volume=True)
+
+
+# ── #210 TradingView news cross-reference SHADOW queries (2026-09-06) ────────────────
+# Single writer: tv_news_shadow.py (nightly 20:45 ET job). DATA CAPTURE ONLY — read by
+# no grade/score/admission/trade-state path (THE LINE). Schema + the honesty contract
+# (our_corpus_available, tv_coverage_reaches_alert_date): the mi_tv_news_shadow DDL
+# block above (search "TradingView news cross-reference SHADOW").
+
+async def get_no_catalyst_alert_population(since_date: "date", today: "date") -> list[dict]:
+    """Alerts in [since_date, today] we ourselves called thin or catalyst-less, per the
+    SAME structural predicate `docs/design/210_ir_newsroom_fallback_2026-09-05.md` §2.1
+    already established (`catalyst_quality == 'routine'` OR no direct source in the
+    graded corpus) — reused rather than re-derived so this shadow and that design agree
+    on what "no catalyst" means. Excludes tickers already recorded in mi_tv_news_shadow
+    for that date (this is a run-once-per-alert shadow, not a re-check).
+
+    Source: the `ep_catalyst_provenance` audit row every graded ticker/day already gets
+    (ep_detector.py, Wave B, 2026-08-xx) — `detail` is a JSON blob with `catalyst_quality`,
+    `sources` ({class: count}) and `has_direct_source`. Parsed defensively in Python
+    (never cast in SQL): `detail` is a free-text column shared by every audit event type,
+    and a cast that aborts the whole query on one malformed row is worse than skipping it.
+
+    Returns [{"ticker", "alert_date", "catalyst_quality", "source_class_count",
+    "has_direct_source"}], newest alert first. A ticker/date with NO provenance row
+    (pre-dates Wave B, or the log call itself failed) is excluded — this population
+    errs toward SMALLER and CONFIRMED, never toward guessing a name is thin.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        alert_rows = await conn.fetch("""
+            SELECT a.ticker, a.alert_date
+            FROM mi_ep_alerts a
+            LEFT JOIN mi_tv_news_shadow s
+                ON s.ticker = a.ticker AND s.alert_date = a.alert_date
+            WHERE a.alert_date >= $1 AND a.alert_date <= $2 AND s.ticker IS NULL
+        """, since_date, today)
+        if not alert_rows:
+            return []
+        wanted = {(r["ticker"], r["alert_date"]) for r in alert_rows}
+        prov_rows = await conn.fetch("""
+            SELECT detail FROM mi_audit_log
+            WHERE event_type = 'ep_catalyst_provenance'
+              AND created_at >= $1::date
+        """, since_date)
+
+    best: dict[tuple[str, "date"], dict] = {}
+    for r in prov_rows:
+        try:
+            d = json.loads(r["detail"])
+            key = (str(d["ticker"]), date.fromisoformat(d["alert_date"]))
+        except (TypeError, ValueError, KeyError, json.JSONDecodeError):
+            continue  # malformed/truncated detail — skip this row, never guess its content
+        if key not in wanted or key in best:
+            continue  # not in our alert window, or already have this ticker/date's row
+        sources = d.get("sources") or {}
+        try:
+            source_count = sum(int(v) for v in sources.values())
+        except (TypeError, ValueError):
+            source_count = 0
+        best[key] = {
+            "ticker": key[0],
+            "alert_date": key[1],
+            "catalyst_quality": d.get("catalyst_quality"),
+            "source_class_count": source_count,
+            "has_direct_source": bool(d.get("has_direct_source")),
+        }
+
+    out = [
+        v for v in best.values()
+        if v["catalyst_quality"] == "routine" or not v["has_direct_source"]
+    ]
+    out.sort(key=lambda v: v["alert_date"], reverse=True)
+    return out
+
+
+async def get_catalyst_metrics_raw_corpus(ticker: str, alert_date: "date") -> "dict | None":
+    """The raw per-source news corpus captured at grade time, if any — see the
+    mi_tv_news_shadow DDL's our_corpus_available note: this row exists ONLY when
+    catalyst_metrics_extractor's earnings-path (strong/game_changer) branch ran for
+    this ticker/date. Returns None (not a dict of Nones) when no row exists at all,
+    so the caller can distinguish "we checked and it's empty" from "we never captured
+    a snapshot to check." raw_*_news_json may itself be NULL even when the row exists
+    (a source that returned nothing that day) — asyncpg deserializes JSONB to a Python
+    list already; no json.loads needed here."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT raw_polygon_news_json, raw_alpaca_news_json, raw_fmp_news_json,
+                   raw_perplexity_text
+            FROM mi_ep_catalyst_metrics
+            WHERE ticker = $1 AND alert_date = $2
+        """, ticker, alert_date)
+    return dict(row) if row else None
+
+
+_TV_NEWS_SHADOW_COLS = (
+    "ticker", "alert_date", "catalyst_quality", "our_has_direct_source",
+    "our_source_class_count", "our_corpus_available",
+    "our_polygon_count", "our_alpaca_count", "our_fmp_count",
+    "our_perplexity_present", "our_total_item_count",
+    "tv_status", "tv_skip_reason", "exchange_mic", "tv_symbol",
+    "tv_item_count", "tv_providers", "tv_oldest_item_published",
+    "tv_coverage_reaches_alert_date", "tv_items_on_alert_date",
+    "tv_providers_on_alert_date", "tv_items_we_missed",
+)
+_TV_NEWS_SHADOW_JSONB_DICT_COLS = frozenset({"tv_providers", "tv_providers_on_alert_date"})
+_TV_NEWS_SHADOW_JSONB_LIST_COLS = frozenset({"tv_items_we_missed"})
+_TV_NEWS_SHADOW_KEY_COLS = frozenset({"ticker", "alert_date"})
+_TV_NEWS_SHADOW_UPSERT_SQL = (
+    "INSERT INTO mi_tv_news_shadow (" + ", ".join(_TV_NEWS_SHADOW_COLS) + ") VALUES ("
+    + _jsonb_value_list(_TV_NEWS_SHADOW_COLS,
+                        (_TV_NEWS_SHADOW_JSONB_DICT_COLS, _TV_NEWS_SHADOW_JSONB_LIST_COLS))
+    + ") ON CONFLICT (ticker, alert_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _TV_NEWS_SHADOW_COLS
+                if c not in _TV_NEWS_SHADOW_KEY_COLS)
+)
+
+
+async def upsert_tv_news_shadow_rows(rows: list[dict]) -> int:
+    """UPSERT one row per (ticker, alert_date) — write-once in practice (the population
+    query excludes already-recorded keys), UPSERT rather than INSERT ON CONFLICT DO
+    NOTHING only so a deliberate manual re-run can refresh a row. ONE executemany for
+    the caller's whole run (same shape as upsert_analyst_estimates, for the same
+    reason — a nightly run writes a handful to a few dozen rows, never one at a time)."""
+    if not rows:
+        return 0
+    vals = []
+    for row in rows:
+        tup = []
+        for c in _TV_NEWS_SHADOW_COLS:
+            v = row.get(c)
+            if c in _TV_NEWS_SHADOW_JSONB_DICT_COLS:
+                v = _jsonb_param(v if v is not None else {})
+            elif c in _TV_NEWS_SHADOW_JSONB_LIST_COLS:
+                v = _jsonb_list_param(v if v is not None else [])
+            tup.append(v)
+        vals.append(tuple(tup))
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany(_TV_NEWS_SHADOW_UPSERT_SQL, vals)
+    return len(rows)
+
+
+async def get_tv_news_shadow_trailing_item_counts(days: int, before: "date") -> list[int]:
+    """Trailing `tv_item_count` values from successful ('ok') fetches in the last `days`
+    calendar days before `before` — the run's own historical baseline for the
+    item-count-collapse degradation check (tv_news_shadow.classify_run_degradation).
+    Deliberately reads THIS table's own history rather than parsing prior audit-log
+    summaries (health_checks._DETECTOR_LIVENESS_TABLES' idiom: a table's own recorded
+    history is the cheapest, most direct baseline). Empty list = no history yet (cold
+    start — the caller must not judge a collapse against zero samples)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT tv_item_count FROM mi_tv_news_shadow
+            WHERE tv_status = 'ok' AND tv_item_count IS NOT NULL
+              AND checked_at >= ($1::date - ($2 || ' days')::INTERVAL)
+              AND checked_at < $1::date
+        """, before, str(days))
+    return [r["tv_item_count"] for r in rows]

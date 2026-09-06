@@ -161,6 +161,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "gap_near_miss_replay",  # #617 Step 2 2026-09-03 — standing CURRENT-era bracket replay on every 7-9% open-gap name universe admission excluded that day (4R+/positive); pure compute + DB/audit, no broker calls, no admission change, SILENT (no Telegram)
     "lowcap_lane_replay",  # #624 2026-09-04 — CURRENT-era bracket replay on every low-cap lane signal, from the row's OWN tick wall-clock (tail rate >=3R, next-open gap, offering flag); pure compute + market-data read + DB/audit, no order path, no admission change, SILENT (no Telegram)
     "analyst_estimates_snapshot",  # #333 2026-08-31 — EOD FMP consensus-estimate capture for the alert population; pure fetch + DB/audit, no broker calls, no rule, SILENT (no Telegram)
+    "tv_news_shadow",  # #210 2026-09-06 — nightly TradingView news cross-reference for thin/no-catalyst alerts; pure fetch + DB/audit, no broker calls, no grade/admission change, Telegram only on a sustained run-level endpoint degradation (never a single blip)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
@@ -4804,6 +4805,50 @@ async def _analyst_estimates_snapshot_job():
             pass
 
 
+async def _tv_news_shadow_job():
+    """Run at 20:45 ET mon-fri — after every 18:xx EOD recorder and the 21:00 evening
+    position backstop, before the 21:30 ET #625 late silent-error sweep, and clear of
+    the 21:15-22:15 ET after-hours deploy window (a mid-run market-agent restart could
+    otherwise clip it).
+
+    #210 2026-09-06 — TradingView news CROSS-REFERENCE SHADOW (the BFLY 2026-06-18
+    case: our four feeds never carried the Midjourney catalyst; TradingView's did).
+    Fetches TradingView headlines for alerts we ourselves called thin/catalyst-less
+    in the trailing few days and records the comparison. DATA CAPTURE ONLY — no
+    grade/score/admission/trade-state path reads this (THE LINE; see
+    tv_news_shadow.py module docstring). NEVER on the live scan path (07:00-10:00 ET)
+    or the 09:31-09:44 ET ORB window.
+
+    SILENT by the same data-capture contract as its EOD siblings: no
+    notify_job_failure — failures land in mi_audit_log (+ a Telegram ONLY on a
+    sustained, run-level endpoint degradation via llm_health.alert_endpoint_shape_
+    anomaly, never on a single blip), and the detector-liveness registry
+    (mi_tv_news_shadow) is the watchdog for a silently-dead writer.
+    run_tv_news_shadow itself never raises; the guard here is belt-and-braces for
+    import-time errors."""
+    try:
+        from agents.market_intelligence.tv_news_shadow import run_tv_news_shadow
+        from agents.market_intelligence.collector import et_today
+        out = await run_tv_news_shadow(et_today())
+        logger.info(
+            f"tv-news shadow: {out.get('rows_written', 0)} row(s) across "
+            f"{out.get('population', 0)} candidate(s), {out.get('fetches_ok', 0)} ok, "
+            f"{out.get('skipped_exchange', 0)} skipped-exchange, "
+            f"{out.get('fetches_failed', 0)} fetch-error, {out.get('errors', 0)} error(s)"
+            + (f", DEGRADED: {out['degradation_reasons']}"
+               if out.get("degradation_reasons") else "")
+        )
+    except Exception as e:
+        logger.error(f"tv-news shadow job failed: {e}", exc_info=True)
+        try:
+            # NO function-local import of log_audit_event (module-level binding — the
+            # UnboundLocalError deploy-gate class, [5c]).
+            await log_audit_event("tv_news_shadow_error",
+                                  f"job-level failure: {type(e).__name__}: {e}")
+        except Exception:  # loud-ok: logger.error above already fired
+            pass
+
+
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
@@ -6378,6 +6423,21 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_late_silent_error_sweep_job, JOB_SILENT_ERROR_SWEEP),
         CronTrigger(hour=21, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_SILENT_ERROR_SWEEP,
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+
+    # #210 TV-NEWS SHADOW: 8:45 PM ET — after every 18:xx EOD recorder, before the
+    # 21:00 evening position backstop and the 21:30 late-error sweep, and clear of the
+    # 21:15-22:15 ET after-hours deploy window (a mid-run market-agent restart could
+    # otherwise clip it). DATA CAPTURE ONLY, no broker calls, no grade/admission
+    # change (THE LINE; see tv_news_shadow.py module docstring). SILENT except for a
+    # sustained, run-level endpoint-degradation Telegram (llm_health.
+    # alert_endpoint_shape_anomaly) — never on a single blip.
+    _scheduler.add_job(
+        audit_wrap(_tv_news_shadow_job, "tv_news_shadow"),
+        CronTrigger(hour=20, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
+        id="tv_news_shadow",
         replace_existing=True,
         misfire_grace_time=1800,
     )
