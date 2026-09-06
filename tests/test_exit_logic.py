@@ -479,3 +479,50 @@ def test_handoff_is_a_valid_trail_mode():
                                  bar(99.0, 101.0), date(2026, 4, 3),
                                  trail_mode="sma_10_20_handoff")
     assert step.action in ("updated", "partial_only")
+
+
+# ── 2026-09-06 (#545 trail sweep, OPT-IN): single-MA and no-trail modes ──────
+# Operator: "make sense to look into the sma stops too?" These modes are evidence-only —
+# no live caller passes them — but they are LIVE-FILE code, so each branch is pinned here.
+
+
+def test_trail_mode_none_leaves_only_the_hard_stop():
+    """MUTATION TARGET: a 'none' that silently fell through to the max(SMA10,SMA20) default
+    would make the control arm identical to the live arm, and 'the trail earns its keep'
+    unfalsifiable. 20 prior closes at 120 put both SMAs above the 101 close, so the live
+    trail exits on this bar and the control must not. skip_partial_decision keeps the day-3/5
+    ladder partial (and the breakeven it arms) out of the comparison."""
+    prior = [120.0] * 20
+    kw = dict(prior_closes=prior, skip_partial_decision=True)
+    step = apply_daily_exit_step(base_state(), bar(99, 101), date(2026, 4, 20),
+                                 trail_mode="none", **kw)
+    assert step.active_sma is None
+    assert step.effective_stop == pytest.approx(95.0)      # the hard stop alone
+    assert step.stop_source == "hard_stop" and not step.closed
+    live = apply_daily_exit_step(base_state(), bar(99, 101), date(2026, 4, 20),
+                                 trail_mode="sma", **kw)
+    assert live.closed and live.close_reason == "sma_trail_stop"   # the arms really differ
+
+
+def test_single_ma_trail_modes_use_one_average_not_the_max_of_two():
+    """MUTATION TARGET: the live 'sma' mode takes max(SMA10, SMA20), which is the TIGHTER
+    line — when a stock rolls over, SMA20 sits ABOVE SMA10 and that max() hands the position
+    a stop above recent price. A single-MA mode must track ITS OWN window only."""
+    prior = [100.0 + i for i in range(30)]          # rising, so SMA10 > SMA20
+    closes = prior + [151.0]                        # today's close joins running_closes
+    got = {tm: apply_daily_exit_step(base_state(), bar(150, 151), date(2026, 4, 20),
+                                     trail_mode=tm, prior_closes=prior,
+                                     skip_partial_decision=True).active_sma
+           for tm in ("sma", "sma10", "sma20", "sma50", "none")}
+    assert got["sma10"] == pytest.approx(sum(closes[-10:]) / 10)
+    assert got["sma20"] == pytest.approx(sum(closes[-20:]) / 20)
+    assert got["sma10"] > got["sma20"]
+    assert got["sma"] == pytest.approx(got["sma10"])   # the live max() picks the higher line
+    assert got["sma50"] is None                        # only 31 closes — no 50-day line yet
+    assert got["none"] is None
+
+
+def test_unknown_trail_mode_still_fails_loud():
+    with pytest.raises(ValueError, match="unknown trail_mode"):
+        apply_daily_exit_step(base_state(), bar(99, 101), date(2026, 4, 5),
+                              trail_mode="sma100")

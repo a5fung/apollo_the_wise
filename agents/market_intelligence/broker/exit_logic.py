@@ -222,7 +222,8 @@ def apply_daily_exit_step(
       None (DEFAULT) = byte-identical to every existing caller.
 
     """
-    if trail_mode not in ("sma", "ema_10_20", "sma_10_20_handoff", "pivot_swing", "character_ma"):
+    if trail_mode not in ("sma", "ema_10_20", "sma_10_20_handoff", "pivot_swing",
+                          "character_ma", "sma10", "sma20", "sma50", "none"):
         raise ValueError(f"apply_daily_exit_step: unknown trail_mode {trail_mode!r}")
     remaining = float(state.get("remaining_shares") or 0)
     alert_date = state["alert_date"]
@@ -284,7 +285,19 @@ def apply_daily_exit_step(
     # long we happen to have been in. Empty/None prior_closes -> identical to the old behavior.
     trail_closes = list(prior_closes or []) + running_closes
     active_sma = None
-    if trail_mode == "ema_10_20":
+    if trail_mode == "none":
+        # 2026-09-06 (#545 trail sweep, OPT-IN, evidence-only — no live caller passes this):
+        # NO trail line at all, so the effective stop is the hard stop and the breakeven floor
+        # alone. The control arm: without it, "the trail earns its keep" is unfalsifiable.
+        active_sma = None
+    elif trail_mode in ("sma10", "sma20", "sma50"):
+        # A SINGLE moving average, not the max() of two. The live "sma" mode takes
+        # max(SMA10, SMA20), which is the TIGHTER of the pair — and when a stock rolls over
+        # and SMA20 rises above SMA10, that max() hands the position a stop ABOVE the recent
+        # price. These arms isolate one line so that effect is measurable rather than assumed.
+        _w = int(trail_mode[3:])
+        active_sma = (sum(trail_closes[-_w:]) / _w) if len(trail_closes) >= _w else None
+    elif trail_mode == "ema_10_20":
         ema_10 = ema(trail_closes, 10)
         ema_20 = ema(trail_closes, 20)
         if ema_20 is not None:

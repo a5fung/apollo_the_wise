@@ -139,6 +139,12 @@ class RuleSet:
     # did. It is ADDITIVE to `breakeven_at_partial`: either condition arms it, so every
     # existing rule-set (all of which leave this None) is byte-identical.
     breakeven_at_r: float | None = None
+    # 2026-09-06 (operator: "make sense to look into the sma stops too?"). The trail line the
+    # forward walk uses. "sma" = LIVE: max(SMA10, SMA20) — the TIGHTER of the pair, so when a
+    # stock rolls over and SMA20 crosses above SMA10 the stop jumps to a line above recent
+    # price. "sma10"/"sma20"/"sma50" isolate ONE average; "none" removes the trail entirely
+    # (the control). Default "sma" = live, so every existing rule-set is byte-identical.
+    trail_mode: str = "sma"
     # 2026-09-06: the ORB SUBMISSION window's close. Default 09:45 = today's live rule
     # (CLAUDE.md: HIGHs at 09:45-09:59 -> WINDOW_OUT_OF_ORB), so every existing rule-set is
     # byte-identical. Exists ONLY so the window can be counterfactualled: it is the largest
@@ -243,6 +249,19 @@ for _be in (1.0, 1.5, 2.0, 2.5, 3.0, 4.0):
     _nm = f"era_c_pBEST_be{str(_be).replace('.', 'p')}"
     RULESETS[_nm] = replace(RULESETS["era_c"], name=_nm, intraday_partial_r=8.0,
                             breakeven_at_partial=False, breakeven_at_r=_be)
+
+# 2026-09-06 — THE TRAIL SWEEP. The third exit lever and the only one never varied. It is
+# worth sweeping precisely BECAUSE of what the hold-time check found: the trail seldom fires as
+# a close-below exit (3 of 65) but the stop it raises DOES bind — 24 of the 55 trades that never
+# reach an 8R partial exit at a raised stop for +13.79R. Run on BOTH bases (live harvest and the
+# recommended one) so a trail effect cannot be confused with the harvest change. Declared in
+# full before any cell is read.
+for _base, _bt in (("live", dict(intraday_partial_r=2.0, breakeven_at_partial=True)),
+                   ("rec", dict(intraday_partial_r=8.0, breakeven_at_partial=False,
+                                breakeven_at_r=3.0))):
+    for _tm in ("none", "sma10", "sma20", "sma50", "sma", "ema_10_20"):
+        RULESETS[f"era_c_{_base}_trail_{_tm}"] = replace(
+            RULESETS["era_c"], name=f"era_c_{_base}_trail_{_tm}", trail_mode=_tm, **_bt)
 
 for _pr in (2.0, 8.0, None):
     for _be in (3.0, 5.0, 8.0):
@@ -910,6 +929,7 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
                 state, {"l": b["l"], "c": b["c"]}, d,
                 integer_partial_shares=integer_shares,
                 skip_partial_decision=not rs.ladder_partial,
+                trail_mode=rs.trail_mode,
                 prior_closes=(prior if rs.trail_prior_closes else None))
             state.update(remaining_shares=step.new_remaining,
                          partial_taken=step.new_partial_taken,
@@ -1248,7 +1268,8 @@ def phase_replay(args) -> None:
     cols = ["ticker", "alert_date", "ruleset", "score_tier_stored",
             "score_lo", "score_hi", "admit", "status", "reason",
             "entered", "entry_px", "stop", "target", "partial_fired", "final_reason",
-            "realized_r", "gap_through", "day0_missing_minutes", "sessions_abstained"]
+            "realized_r", "mark_r", "gap_through", "day0_missing_minutes",
+            "sessions_abstained"]
     out = DATA / (args.out or f"campaigns_{rs.name}.tsv")
     write_tsv(out, rows, cols)
     n = len(rows)

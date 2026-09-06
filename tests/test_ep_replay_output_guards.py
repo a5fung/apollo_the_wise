@@ -84,3 +84,16 @@ def test_duplicate_ticker_day_alerts_are_deduped_before_walking():
     assert 'k = (a["ticker"], a["alert_date"])' in body, "dedup key gone from phase_replay"
     assert "for a in alerts:" in body, "the walk no longer iterates the deduped list"
     assert "deduped" in body, "the drop must be announced, not silent"
+
+
+def test_open_rows_carry_their_mark_so_censoring_is_correctable():
+    """MUTATION TARGET: trap 1, the half that was missing. The summary ANNOUNCED the
+    open-at-horizon count but the TSV carried no mark, so a reader who saw the warning still
+    had no way to correct for it. It bit hard on 2026-09-06: the loose-trail arms held 12-14
+    positions open (PLTR, TEAM, HTFL — operator-labelled real EPs) against 2 for the live
+    trail, and a realized-only sum read them as -19.79R. `mark_r` must be an emitted column."""
+    src = (pathlib.Path(__file__).resolve().parents[1] / "scripts" / "ep_replay.py").read_text()
+    body = src.split("def phase_replay(")[1].split("\ndef ")[0]
+    cols = body.split("cols = [")[1].split("]")[0]
+    assert '"mark_r"' in cols, "open rows must emit their mark, not just be counted"
+    assert '"realized_r"' in cols and '"status"' in cols
