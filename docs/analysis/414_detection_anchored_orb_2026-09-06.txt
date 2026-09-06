@@ -1,0 +1,33 @@
+ticker date        entered          R  outcome
+IDCC   2026-06-11  True        +0.33R  stop_hit
+AKTS   2026-06-12  True        -3.50R  stop_hit
+PENG   2026-07-08  True        +0.33R  stop_hit
+IREN   2026-07-20  True        -1.00R  stop_hit
+HAS    2026-07-21  True        -1.00R  stop_hit
+NNE    2026-07-27  True        -1.00R  stop_hit
+TEVA   2026-07-29  True        +0.33R  stop_hit
+LRCX   2026-07-30  True        -1.00R  stop_hit
+BLZE   2026-07-31  True        -1.00R  stop_hit
+AMRC   2026-08-04  True        -1.00R  stop_hit
+TSAT   2026-08-04  True        +4.25R  stop_hit
+HGTY   2026-08-05  False            —  setup:zero_range
+ECG    2026-08-05  True        -1.00R  stop_hit
+CAI    2026-08-06  True        -1.00R  stop_hit
+DCTH   2026-08-06  True        +0.33R  stop_hit
+ONTO   2026-08-07  True        -1.00R  stop_hit
+MTW    2026-08-07  True        -1.15R  stop_hit
+ACHR   2026-08-10  True        +0.33R  stop_hit
+NESR   2026-08-10  True        +0.60R  stop_hit
+MRX    2026-08-12  True             —  day0_stop_and_target_same_bar
+BE     2026-08-12  True        -1.00R  stop_hit
+CRWV   2026-08-12  True        +0.29R  stop_hit
+OMER   2026-08-13  True        +0.33R  stop_hit
+KURA   2026-08-13  True        -1.00R  stop_hit
+NMAX   2026-08-14  True        -1.00R  stop_hit
+TWST   2026-08-19  True        -1.00R  stop_hit
+UUUU   2026-08-21  True        -1.00R  stop_hit
+VEEV   2026-08-27  True        +0.33R  stop_hit
+CHRN   2026-08-27  True             —  day0_stop_and_target_same_bar
+
+ENTERED + SETTLED  n=26  sum -11.18R  mean -0.43R  median -1.00R
+  >=3R 1   >=5R 0   winners 10/26
