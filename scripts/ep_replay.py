@@ -197,6 +197,14 @@ RULESETS["era_c_no_breakeven"] = replace(RULESETS["era_c"], name="era_c_no_break
 RULESETS["era_c_late_window"] = replace(RULESETS["era_c"], name="era_c_late_window",
                                         submit_window_end=time(10, 0))
 
+# 2026-09-06 — THE HARVEST SWEEP (#545 Phase 1). era_c takes a partial at +2R and that is
+# the step the 09-05 A/B showed converting a 5R and a 2R into two +0.33R scratches. These
+# vary ONLY `intraday_partial_r`: no partial at all, or a LATER one. Nothing else moves,
+# so any difference is attributable to the harvest schedule alone. HARNESS-ONLY.
+for _pr in (None, 5.0, 8.0, 10.0):
+    _nm = "era_c_partial_none" if _pr is None else f"era_c_partial_{int(_pr)}r"
+    RULESETS[_nm] = replace(RULESETS["era_c"], name=_nm, intraday_partial_r=_pr)
+
 # The #2 lineage's post-partial rules (scripts/probes/_bt_replay.py RUNNER_RULES), mirrored
 # so that harness can retire. "live" is the ladder itself; "live_trail_be" is the same rule
 # re-implemented harness-side and is asserted equal to "live" by the Phase 3 sweep.
