@@ -226,6 +226,24 @@ RULESETS["era_c_partial_8r_nobe"] = replace(RULESETS["era_c"], name="era_c_parti
 # arms breakeven off the PRICE, independent of the harvest. This grid is DECLARED IN FULL
 # BEFORE ANY CELL IS READ (docs/methodology/analysis_standard.md: pre-declaration), so the
 # operator's own cell is one of nine and cannot be a post-hoc pick. HARNESS-ONLY.
+# 2026-09-06, second operator question: "did you also look in between 2r and 8r for partials?
+# looks like breakeven at 3r is the sweet spot." The first grid jumped 2R -> 8R with nothing
+# between, so the partial optimum was un-located. This sweeps the GAP with breakeven pinned at
+# the 3R that won, plus levels beyond 8R so the top is bracketed rather than assumed. Declared
+# in full before any cell is read.
+for _pr in (2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 12.0, 15.0, None):
+    _pn = "pnone" if _pr is None else f"p{int(_pr)}"
+    _nm = f"era_c_{_pn}_be3"
+    RULESETS[_nm] = replace(RULESETS["era_c"], name=_nm, intraday_partial_r=_pr,
+                            breakeven_at_partial=False, breakeven_at_r=3.0)
+
+# And the breakeven level re-swept FINELY around 3R once the partial is at its own optimum —
+# 3R was the LOWEST level in the first grid, so its win may just be "lower is better".
+for _be in (1.0, 1.5, 2.0, 2.5, 3.0, 4.0):
+    _nm = f"era_c_pBEST_be{str(_be).replace('.', 'p')}"
+    RULESETS[_nm] = replace(RULESETS["era_c"], name=_nm, intraday_partial_r=8.0,
+                            breakeven_at_partial=False, breakeven_at_r=_be)
+
 for _pr in (2.0, 8.0, None):
     for _be in (3.0, 5.0, 8.0):
         _pn = "pnone" if _pr is None else f"p{int(_pr)}"
