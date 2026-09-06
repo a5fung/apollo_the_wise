@@ -1,0 +1,12 @@
+Pager usage is off.
+==== how often do we declare "no catalyst", by gap size? ====
+band|n|said_no_catalyst|pct
+gapped 10-20%|260|18|7
+gapped 20%+|63|3|5
+under 10% / no gap row|5|0|0
+(3 rows)
+
+==== (c) STALE-AS-FRESH — the fully mechanical failure mode: is a primary source even recorded? ====
+ERROR:  column "has_direct_source" does not exist
+LINE 2:        COUNT(*) FILTER (WHERE has_direct_source) with_direct...
+                                      ^
