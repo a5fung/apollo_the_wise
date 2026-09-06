@@ -141,26 +141,46 @@ async def classify_naked_positions(body: dict) -> dict:
     return body
 
 
+# 2026-09-06 (#184, found chasing the Sunday review): a row that reached a TERMINAL
+# status with no reason was invisible here, because the original arm required status
+# to be NULL as well. FCEL 06-24, ABSI 06-24, SNX 06-25 and ACAD 06-26 were all
+# `status='cancelled'`, live account, magna53, with an entry price computed, NO
+# skip_reason AND no `mi_live_orders` row at all — so they left no record of why they
+# ended, and nothing flagged them. By the time they surfaced, the container logs had
+# rotated (5x50MB) and the cause was unrecoverable.
+#
+# The two arms answer different questions and both are needed:
+#   NULL status      -> "the pipeline dropped this row before deciding anything"
+#   terminal + no why -> "the pipeline decided, and did not say why"
+# The second is the money-path one: a live entry can end without an explanation.
+_TERMINAL_TRADE_STATUSES = ("cancelled", "canceled", "expired", "rejected")
+
+
 async def check_reason_coverage(conn, *, since: date) -> tuple[bool, dict]:
     rows = await conn.fetch(
         """
         SELECT ticker, alert_date, status, skip_reason
         FROM mi_live_trades
         WHERE alert_date >= $1
-          AND status IS NULL
           AND skip_reason IS NULL
+          AND (status IS NULL OR status = ANY($2))
         ORDER BY alert_date DESC
         """,
-        since,
+        since, list(_TERMINAL_TRADE_STATUSES),
     )
+    _silent = sum(1 for r in rows if r["status"] is None)
+    _unexplained = len(rows) - _silent
     return (len(rows) == 0, {
         "name": INV_REASON_COVERAGE,
         "count": len(rows),
-        "summary": f"{len(rows)} silent-drop rows (status NULL AND skip_reason NULL)",
+        "summary": (f"{len(rows)} rows with no reason "
+                    f"({_silent} silent-drop: status NULL · "
+                    f"{_unexplained} terminal-without-why)"),
         "offending": [f"{r['ticker']} {r['alert_date']}" for r in rows[:10]],
         "drill_sql": (
-            f"SELECT ticker, alert_date FROM mi_live_trades\n"
-            f"WHERE alert_date >= '{since}' AND status IS NULL AND skip_reason IS NULL;"
+            f"SELECT ticker, alert_date, status FROM mi_live_trades\n"
+            f"WHERE alert_date >= '{since}' AND skip_reason IS NULL\n"
+            f"  AND (status IS NULL OR status IN ('cancelled','canceled','expired','rejected'));"
         ),
         "code_pointers": [
             "agents/market_intelligence/broker/entry_pipeline.py::submit_trade_entry",
