@@ -1161,3 +1161,40 @@ for both), after which weekly/monthly aggregation becomes a real option rather t
 flip — against his labels. It was computed on ≤13 months of bars while he is judging multi-year
 structure. **A null measured on a window that cannot contain the pattern is not evidence the
 pattern is absent.** [[shadow-zero-effect-check-instrumentation]] · [[structure-is-a-supply-ladder]]
+
+### 2026-09-06 (same session) — the idea the backfill unlocks: open-ended chart reading
+
+> "with this data, i think we can expand the review and do more open ended chart vision reading,
+> look at what bases look like, what break out looks like, what holds up and how it correlates
+> with EPs we find, thats an potential idea"
+
+**Flagged by him as a POTENTIAL idea, not a commitment — recorded as a direction.**
+
+**What changes it from impossible to possible is the 5-year backfill** (approved and run the same
+day). Everything below needs multi-year structure and none of it could be asked on 13 months.
+
+**The shift it proposes is from JUDGING to CHARACTERISING.** Review sample #1 asked him a closed
+question — is this date good or bad — on ten names we picked. He is describing the opposite: look
+at the population and ask what the shapes actually ARE.
+
+Four questions, in his words, and each is a different study:
+
+1. **"what bases look like"** — a taxonomy of the accumulation structures that precede EPs. Length,
+   depth, tightness, volume behaviour. Today we have no vocabulary for this beyond `extension_pct`.
+2. **"what break out looks like"** — how a real break out of a base differs from a gap that stalls.
+   His RNG ruling is the worked example: *"cleared most of it into top of previous range highs over
+   multiple years, closed near high of day and just kept going."*
+3. **"what holds up"** — the post-gap survival question. AVAH 08-13 *"still holding up"*; NVTS *"was
+   still ok until 3rd day"*. **He dates the failure, which means holding-up is measurable per day
+   rather than as one outcome.**
+4. **"how it correlates with EPs we find"** — the join back to our own alert population. This is the
+   one that makes it a system change rather than chart study: if a base shape predicts which of our
+   EPs work, it becomes a selection input.
+
+⚠ **THE TRAP THIS MUST AVOID, and it is the lesson of 2026-09-05: with ~30 labelled names and a
+free hand over multi-year charts, a favourable pattern is trivially findable and worthless. Any
+shape proposed from looking must be declared BEFORE it is measured, and measured on the TAIL, not
+the median** (`analysis_standard.md` §THE STATISTIC). [[measure-the-tail-not-the-median]]
+
+⚠ **And it must be checked against `must_not_miss_eps.py` before anything else** — the running list
+of real EPs may never shrink. That guard already exists and stays in the loop.
