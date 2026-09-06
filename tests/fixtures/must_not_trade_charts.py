@@ -101,7 +101,16 @@ from __future__ import annotations
 
 from typing import NamedTuple, Optional
 
-RULING_DATE = "2026-08-25"
+RULING_DATE = "2026-08-25"          # session 1 — the original eleven
+# 2026-09-06: rulings now arrive in SESSIONS, so a single RULING_DATE no longer describes
+# the file. Session 1 is the eleven horrendous charts he was first shown; session 2 is
+# review sample #1 (ten names where our score and the outcome disagreed). Every member
+# carries its own `ruling_date`; this set is what a test may check membership against, so
+# a typo cannot invent a session that never happened.
+RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06"})
+# The eleven BAD_CHART members of session 1 are the population the v3 backtest measured.
+# Later BAD_CHART rulings are NOT in it — the doc's numbers are against these only.
+V3_MEASURED_POPULATION_SIZE = 11
 
 OPERATOR_VERDICT_ON_THE_LIST = "these are horrendous charts"
 OPERATOR_QUALIFICATION = (
@@ -118,15 +127,24 @@ OKISH_EARLIER = "OKISH_EARLIER"
 WRONG_STAGE = "WRONG_STAGE"
 WRONG_DAY = "WRONG_DAY"
 NO_SETUP_ON_THIS_DATE = "NO_SETUP_ON_THIS_DATE"
+# 2026-09-06: the vocabulary had NO positive label. Every verdict above is a way of saying
+# no, because until review sample #1 he had only ever been shown charts to reject. On that
+# sample he called RNG 2026-07-24 "looks great" and OMER 2026-07-27 "ok'ish" — the first
+# times he has approved a surfaced DATE outright. Forcing those into OKISH_EARLIER would
+# have been wrong twice over: that label means "the earlier version of a move condemned
+# later", and neither is that. A file that can only record rejections trains a filter that
+# only knows how to reject.
+GOOD_CHART = "GOOD_CHART"        # he approved THIS date. The strongest must-not-reject.
+OKISH_CHART = "OKISH_CHART"      # approved with a named reservation ("ok'ish, but…").
 
 VERDICTS = frozenset({BAD_CHART, OKISH_EARLIER, WRONG_STAGE, WRONG_DAY,
-                      NO_SETUP_ON_THIS_DATE})
+                      NO_SETUP_ON_THIS_DATE, GOOD_CHART, OKISH_CHART})
 
 # Verdicts that mean "he does NOT want this date filtered out" — the must-NOT-reject side
 # contributed by this file, over and above the 26 members of `must_not_miss_eps.py`.
 # ⚠ WRONG_DAY's own date IS rejectable (he said the setup is elsewhere); it is the
 # `better_date` it points at that must not be rejected. That asymmetry is deliberate.
-MUST_NOT_REJECT_VERDICTS = frozenset({OKISH_EARLIER})
+MUST_NOT_REJECT_VERDICTS = frozenset({OKISH_EARLIER, GOOD_CHART, OKISH_CHART})
 
 # `better_date` provenance — see ChartRuling.better_date_provenance.
 STATED = "STATED"            # he said this date was good
@@ -184,6 +202,121 @@ class ChartRuling(NamedTuple):
 # scripts/probes/_structure_read_v3.py.
 # ══════════════════════════════════════════════════════════════════════════════════════
 CHART_RULINGS: list[ChartRuling] = [
+    # ══════════════════════════════════════════════════════════════════════════════════
+    # REVIEW SAMPLE #1 — 2026-09-06. Ten (ticker, date) pairs surfaced because our SCORE
+    # and the OUTCOME disagreed; he ruled on all ten. Verbatim words are in
+    # docs/methodology/operator_shared_notes.md § "EIGHT CHART RULINGS".
+    #
+    # 🔑 HIS OWN READ OF THE SET: "looks like our chart vision is spotting the opposite
+    # thing." All FIVE names our scorer graded HIGH and which then collapsed are, by his
+    # eye, bad charts — 5 of 5. He would have rejected every one on sight.
+    # ⚠ The reverse is NOT symmetric and must not be reported as an inversion: of the five
+    # we scored BELOW the bar that then ran, he approves only RNG (+39%) and OMER (+70%)
+    # and calls ABVX (+60%), CGEM (+39%) and AVAH (+37%) garbage. So his eye is strong at
+    # refusing losers and mixed at catching winners — exactly the asymmetry RULE 0 assumes.
+    # ══════════════════════════════════════════════════════════════════════════════════
+    ChartRuling(
+        ticker="NVTX", alert_date="2026-06-03", verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words=("chart is ok but there's a double top from Oct 2025 that it didn't "
+                        "clear, in fact, that probably played out as resistance and it failed"),
+        gap_open_pct=37.7, ret_5d=None,
+        prior_runup_note=("our score: 62.4 HIGH, catalyst=routine. Settled -81% at 20 sessions. "
+                          "⚠ THE BINDING LEVEL IS EIGHT MONTHS OLD — an Oct-2025 double top. No "
+                          "lookback we currently compute reaches it."),
+    ),
+    ChartRuling(
+        ticker="NVTS", alert_date="2026-06-03", verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words=("looked good for one day but it failed to make new highs and quickly "
+                        "dropped lower, closed on bottom of range on EP day. It was still ok "
+                        "until 3rd day it opened and dropped all day to close at lows."),
+        gap_open_pct=15.4, ret_5d=None,
+        prior_runup_note=("our score: 84 HIGH, catalyst=strong. Settled -53%. THE SAME-DAY TELL "
+                          "IS CLOSE-WITHIN-RANGE: 'closed on bottom of range on EP day' — a "
+                          "computable day-0 fact we do not score."),
+    ),
+    ChartRuling(
+        ticker="MRLN", alert_date="2026-06-05", verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words=("garbage chart, in downtrend, gapped didn't clear anothing, clear "
+                        "resistance and chop in the area, poor chart"),
+        gap_open_pct=28.0, ret_5d=None,
+        prior_runup_note="our score: 80 HIGH, catalyst=strong. Settled -49%. Prior TREND is the first cut.",
+    ),
+    ChartRuling(
+        ticker="AVGU", alert_date="2026-06-02", verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words="avgu and crwg, missed those but they look like garbage as well",
+        gap_open_pct=13.1, ret_5d=None,
+        prior_runup_note="our score: 42 HIGH-tier alert, catalyst=routine. Settled -44%.",
+    ),
+    ChartRuling(
+        ticker="CRWG", alert_date="2026-06-01", verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words="avgu and crwg, missed those but they look like garbage as well",
+        gap_open_pct=10.3, ret_5d=None,
+        prior_runup_note="our score: 44.4 HIGH-tier alert, catalyst=routine. Settled -40%.",
+    ),
+    ChartRuling(
+        ticker="ABVX", alert_date="2026-06-03", verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words="absolute garbage",
+        gap_open_pct=13.8, ret_5d=None,
+        prior_runup_note=("⚠ THIS ONE RAN: +60% at 20 sessions, and we had ALREADY rejected it "
+                          "(score 43 < 50). He still calls the chart garbage. A profitable "
+                          "outcome does NOT make it a chart he wants — do not treat this row as "
+                          "a miss."),
+    ),
+    ChartRuling(
+        ticker="CGEM", alert_date="2026-06-08", verdict=WRONG_DAY,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words="cgem on 6/8 is garbage, possible EP day is 6/22",
+        better_date="2026-06-22", better_date_provenance=POINTED_AT,
+        better_date_note=("he says 'POSSIBLE EP day' — a pointer, not a ruling, so it does NOT "
+                          "enter MUST_NOT_REJECT_DATES."),
+        gap_open_pct=10.6, ret_5d=None,
+        prior_runup_note="our score: 42, catalyst=strong, rejected. Settled +39% — but on the wrong date.",
+    ),
+    ChartRuling(
+        ticker="AVAH", alert_date="2026-06-02", verdict=WRONG_DAY,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words=("Avah - 6/2 day looks like garbage, gap on 8/13 looks excellent, cleared "
+                        "everything and into new highs, sitll holding up"),
+        better_date="2026-08-13", better_date_provenance=STATED,
+        better_date_note=("STATED, not pointed at: 'looks excellent… cleared everything and into "
+                          "new highs'. 08-13 is a must-not-reject date."),
+        gap_open_pct=12.1, ret_5d=None,
+        prior_runup_note="our score: 33.1, rejected. The scanned date settled +37% — still the wrong day.",
+    ),
+    ChartRuling(
+        ticker="OMER", alert_date="2026-07-27", verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words=("ok'ish, didn't clear level and still in base but did clear all key "
+                        "moving averages 10/20/50 and 200 day. Another good gap up on 8/13 "
+                        "which held"),
+        better_date="2026-08-13", better_date_provenance=STATED,
+        better_date_note="'Another good gap up on 8/13 which held' — a second approved date on the same name.",
+        gap_open_pct=16.8, ret_5d=None,
+        prior_runup_note=("WE REJECTED IT: score 38 < 50, catalyst=routine. Settled +70% — the "
+                          "biggest winner in the sample. CLEARING THE 10/20/50/200 MAs is what "
+                          "lifts it from garbage to ok'ish DESPITE failing his first criterion."),
+    ),
+    ChartRuling(
+        ticker="RNG", alert_date="2026-07-24", verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-09-06",
+        operator_words=("looks good, stock been in a long base since 2022 and this gap cleared "
+                        "most of it into top of previous range highs over multiple years, closed "
+                        "near high of day and just kept going, moved above all moving averages "
+                        "on gap day, looks great"),
+        gap_open_pct=20.7, ret_5d=None,
+        prior_runup_note=("⚠ WE REJECTED IT — score 37 < 50, catalyst=routine — and it settled "
+                          "+39%. THE FIRST DATE HE HAS EVER CALLED OUTRIGHT GOOD, and our scorer "
+                          "put it below the bar. His four reasons are all structural and none is "
+                          "in our score: a base since 2022, the gap clearing MOST of it into "
+                          "multi-year range highs, a close near the day's high, and above every "
+                          "moving average on the gap day."),
+    ),
     # ── BAD_CHART — "these are horrendous charts" (11) ────────────────────────────────
     ChartRuling(
         ticker="GDC", alert_date="2026-05-06", verdict=BAD_CHART,

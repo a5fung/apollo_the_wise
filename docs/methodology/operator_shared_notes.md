@@ -1073,3 +1073,62 @@ replaces it for a non-earnings EP is an open design question — not a threshold
 
 🛑 THE LINE: the safety-net gate and the axis set are DETECTION CRITERIA. These rulings define the
 intent; any implementation still needs CHANGE_PROCESS + backtest + his sign-off.
+
+---
+
+## 2026-09-06 — EIGHT CHART RULINGS, verbatim (review sample #1, #594)
+
+I surfaced ten (ticker, date) pairs where our score and the outcome disagreed. He ruled on eight.
+**Captured the same turn he wrote them** — [[capture-operator-shared-notes]]. Verbatim:
+
+> 1. nvtx - chart is ok but there's a double top from Oct 2025 that it didn't clear, in fact, that
+>    probably played out as resistance and it failed
+> 2. nvts - looked good for one day but it failed to make new highs and quickly dropped lower,
+>    closed on bottom of range on EP day. It was still ok until 3rd day it opened and dropped all
+>    day to close at lows.
+> 3. mrln - garbage chart, in downtrend, gapped didn't clear anothing, clear resistance and chop in
+>    the area, poor chart
+> 4. omer - ok'ish, didn't clear level and still in base but did clear all key moving averages
+>    10/20/50 and 200 day. Another good gap up on 8/13 which held
+> 5. abvx - absolute garbage
+> 6. cgem on 6/8 is garbage, possible EP day is 6/22
+> 7. RNG - looks good, stock been in a long base since 2022 and this gap cleared most of it into
+>    top of previous range highs over multiple years, closed near high of day and just kept going,
+>    moved above all moving averages on gap day, looks great
+> 8. Avah - 6/2 day looks like garbage, gap on 8/13 looks excellent, cleared everything and into
+>    new highs, sitll holding up
+
+### The criteria he actually applied — read off the eight, not invented
+
+**1. DID THE GAP CLEAR OVERHEAD SUPPLY? This is the first question in six of the eight.**
+- NVTX: *"a double top from Oct 2025 that it didn't clear… that probably played out as resistance"*
+  — **an eight-month-old level was the binding one.** Our lookback is nowhere near that.
+- MRLN: *"gapped didn't clear anothing, clear resistance and chop in the area"*
+- RNG: *"cleared most of it into top of previous range highs over multiple years"* → his best chart.
+- AVAH 08-13: *"cleared everything and into new highs"* → *"excellent"*.
+- OMER: *"didn't clear level and still in base"* — but survives to "ok'ish" on the MA criterion below.
+⚠ **"Cleared" is measured against MULTI-YEAR structure — a 2022 base for RNG, an Oct-2025 double
+top for NVTX. [[structure-is-a-supply-ladder]]: count the congestion zones a gap CLEARS.**
+
+**2. WHERE DID IT CLOSE ON THE DAY?**
+- NVTS: *"closed on bottom of range on EP day"* → the tell, on a day that "looked good".
+- RNG: *"closed near high of day and just kept going"*.
+**Close-within-day-range is a same-day, computable fact we do not currently score.**
+
+**3. POSITION VS THE MOVING AVERAGES (10/20/50/200).**
+- OMER: *"did clear all key moving averages 10/20/50 and 200 day"* — this alone lifts a chart that
+  failed criterion 1 from garbage to "ok'ish".
+- RNG: *"moved above all moving averages on gap day"*.
+
+**4. THE PRIOR TREND.** MRLN: *"in downtrend"* → garbage before anything else is considered.
+
+**5. WHAT HAPPENED AFTER, as part of the verdict.** NVTS: *"still ok until 3rd day it opened and
+dropped all day to close at lows"* — he dates the failure precisely rather than condemning the setup.
+
+### ⚠ TWO DATE CORRECTIONS — the "he judges the DAY" rule, again
+
+- **CGEM: 06-08 is garbage; *"possible EP day is 6/22"*.**
+- **AVAH: 06-02 is garbage; *"gap on 8/13 looks excellent"*.**
+- **OMER: a second gap on **08-13** which HELD** — the same date as AVAH's good one.
+Our system scanned the bad dates in both cases. **Two of eight rulings say we looked on the wrong
+day** — the single most repeated finding in this whole programme.

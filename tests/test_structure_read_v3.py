@@ -175,18 +175,31 @@ def test_every_ruling_is_operator_sourced_and_well_formed():
     for r in F.CHART_RULINGS:
         assert r.label_source == "operator", f"{r.ticker} {r.alert_date} is not operator-sourced"
         assert r.verdict in F.VERDICTS, f"{r.ticker} {r.alert_date}: unknown verdict {r.verdict}"
-        assert r.ruling_date == F.RULING_DATE
+        # 2026-09-06: rulings arrive in SESSIONS. A single RULING_DATE stopped describing
+        # the file the moment he ruled a second time, so this checks the date is one of
+        # the sessions that actually happened rather than pinning one of them.
+        assert r.ruling_date in F.RULING_SESSIONS, (
+            f"{r.ticker} {r.alert_date}: ruling_date {r.ruling_date} is not a known "
+            "session — add it to RULING_SESSIONS or fix the typo")
         date.fromisoformat(r.alert_date)
         if r.better_date:
             date.fromisoformat(r.better_date)
             assert r.better_date_note, f"{r.ticker}: better_date needs a note saying why"
 
 
-def test_the_eleven_bad_charts_are_the_measured_population():
-    """The two headline counts in the v3 doc are against exactly these eleven. If the list
-    grows, the doc's numbers are stale and must be recomputed."""
-    assert len(F.MUST_NOT_TRADE) == 11
+def test_the_v3_measured_population_is_still_the_original_eleven():
+    """The v3 doc's headline counts are against SESSION 1's eleven bad charts only.
+
+    2026-09-06: session 2 added six more BAD_CHART rulings, so MUST_NOT_TRADE is no longer
+    that population. Asserting its total would either fail or, worse, get "fixed" by bumping
+    the number — silently re-pointing the doc's figures at a cohort they were never computed
+    on. The invariant that matters is that session 1's eleven have not moved."""
+    session_1 = [r for r in F.MUST_NOT_TRADE if r.ruling_date == F.RULING_DATE]
+    assert len(session_1) == F.V3_MEASURED_POPULATION_SIZE, (
+        "the v3 doc's numbers are computed on session 1's eleven bad charts; that set moved")
     assert all(r.verdict == F.BAD_CHART for r in F.MUST_NOT_TRADE)
+    assert len(F.MUST_NOT_TRADE) > len(session_1), (
+        "session 2's BAD_CHART rulings are missing — the fixture lost data")
 
 
 def test_rulings_are_keyed_on_ticker_AND_date_not_ticker_alone():
