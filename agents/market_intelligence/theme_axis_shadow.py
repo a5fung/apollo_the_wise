@@ -50,9 +50,11 @@ from agents.market_intelligence.collector import get_fmp_profile
 from agents.market_intelligence.db import (
     get_company_names_batch,
     get_daily_moves,
+    get_theme_axis_shadow_bounded_backfill_targets,
     get_theme_heat_asof,
     log_audit_event,
     upsert_company_names_batch,
+    write_theme_axis_shadow_bounded_backfill,
 )
 
 logger = logging.getLogger(__name__)
@@ -319,6 +321,21 @@ async def compute_step1_signals(conn, ticker: str, alert_date, grounded_text,
     }
 
 
+def compute_bounded_theme_match(
+    theme_name_7d: "str | None", unbounded_theme_name: "str | None",
+) -> bool:
+    """The #486 comparison: do the two as-of reads agree on an ANSWER, not on freshness?
+    True when both found the same theme name, or both found none (a themeless row is
+    AGREEMENT, not a mismatch — the cross-validation filters on this column, so conflating
+    "neither found a theme" with "they differ" would inflate the mismatch set).
+
+    Extracted to a shared helper (2026-09-07, #486 backfill) so the live writer
+    (log_theme_axis_shadow) and the backfill (theme_axis_shadow.compute_bounded_backfill_read)
+    can never diverge on what "matches" means — same discipline as compute_step1_signals' G1
+    note for a different pair of signals."""
+    return theme_name_7d == unbounded_theme_name
+
+
 async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
     """SHADOW writer (#329 STEP-0 + #367 STEP-1). For one scored EP candidate, log the as-of
     theme heat + BOTH relevance signals to mi_theme_axis_shadow:
@@ -359,10 +376,8 @@ async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
             heat_7d = await get_theme_heat_asof(conn, ticker, alert_date, recency_days=7)
             theme_name_7d = heat_7d["name"] if heat_7d else None
             theme_stage_7d = heat_7d["stage"] if heat_7d else None
-            # Compares the two reads' ANSWERS, not their freshness: True when both found the
-            # same theme (or both found none). This is the column a cross-validation filters on.
-            bounded_matches_unbounded = (
-                theme_name_7d == (heat["name"] if heat else None))
+            bounded_matches_unbounded = compute_bounded_theme_match(
+                theme_name_7d, heat["name"] if heat else None)
         except Exception as _be:
             logger.debug(f"theme-axis shadow: bounded read failed for {ticker} — {_be}")
         if themeless:
@@ -495,6 +510,134 @@ async def refresh_co_movement_for_date(conn: Any, trade_date: Any) -> dict:
         except Exception:  # loud-ok: fallback-of-the-fallback — the audit sink itself failed; logger.warning above already surfaced the primary failure
             pass
         return {"refreshed": 0, "skipped": 0}
+
+
+# ─── #486 bounded-read backfill (2026-09-07 unblock) ───────────────────────────────────────
+# theme_name_7d/theme_stage_7d/bounded_matches_unbounded were instrumented 2026-09-03 and
+# capture forward only, so 588 of 592 rows sat NULL and #486 (the judge <-> theme-engine
+# cross-validation) was dated to wait for rows to accrue. It does not have to wait: the
+# column is a pure recomputation from data already stored on every row.
+#
+# FAITHFULNESS (verified 2026-09-07, not taken on faith):
+#   1. `mi_themes` is dated append-only history for any date once its day has passed. Every
+#      INSERT/UPDATE call site (theme_engine._save_themes, db.seed_theme, db.
+#      assign_ticker_to_theme, plus the one-off scripts/probes/_reconcile_2026_05_14_bugs.py)
+#      resolves its target theme_date to et_today() (or an explicit CURRENT_DATE) at CALL
+#      time — grepped every UPDATE/INSERT `mi_themes` site in db.py/theme_engine.py, and
+#      /assigntheme (agent.py:1750) never threads a historical scan_date through to
+#      assign_ticker_to_theme. So a PAST theme_date row cannot be mutated after its day ends.
+#   2. BUT append-only history is not sufficient on its own — a row can still be APPENDED
+#      between when the live writer read `mi_themes` and today. mi_themes.created_at for
+#      theme_date=D rows clusters at ~17:07-18:23 ET on day D (theme engine runs inside
+#      _nightly_data_pull, CronTrigger hour=17 in scheduler.py), while log_theme_axis_shadow
+#      only ever runs inside the 7:00-10:05 ET EP scan (its one call site, ep_detector.py).
+#      So AT THE MOMENT a live row was written, theme_date=alert_date's OWN row did not exist
+#      yet — the live 7d-bounded read was effectively bounded to [alert_date-7, alert_date-1],
+#      not [alert_date-7, alert_date], no matter what the code passed as the upper bound.
+#      Naively re-querying get_theme_heat_asof(ticker, alert_date, recency_days=7) TODAY sees
+#      the now-existing alert_date row and can return a DIFFERENT theme than the live write
+#      saw — proven, not hypothetical: of all 592 rows, the same-day-inclusive and prior-day
+#      forms disagree on 31; and on the one live-captured row where they disagree (ALAB,
+#      2026-09-04), the STORED theme_name_7d ("Optical Networking & Photonics...") matches
+#      the prior-day form exactly and does NOT match the same-day form ("AI data-center power
+#      buildout") — direct proof the prior-day form is the one that actually ran.
+#   3. The wrinkle: mi_theme_axis_shadow ALSO holds 452 rows from the #369 mass backfill
+#      (scripts/backfill_theme_axis_shadow.py, all created 2026-06-24 12:38 ET, for alert_dates
+#      already months in the past by then) — those rows' `theme_name` WAS computed with the
+#      same-day-inclusive form, because by 2026-06-24 every historical alert_date's own
+#      theme_date row already existed. Anchoring EVERY row at `alert_date - 1` regardless of
+#      when it was written would reproduce the live population's own `theme_name` correctly
+#      but silently MISMATCH the backfilled population's `theme_name` (which was captured with
+#      the other convention) — a self-inflicted, methodology-only mismatch, not a genuine
+#      bounded-vs-unbounded engine disagreement. `same_day_write` (created_at's ET date ==
+#      alert_date, computed in get_theme_axis_shadow_bounded_backfill_targets) distinguishes
+#      the two populations: verified against ALL 592 rows' stored `theme_name`, the
+#      conditional anchor reproduces 591/592 (99.8%); the lone residual (HUT, 2026-07-20) is a
+#      same-score tie between two near-duplicate theme names on 2026-07-17
+#      ("Bitcoin & Crypto Mining Infrastructure" / "Bitcoin Mining & Crypto Infrastructure
+#      Operators") that get_theme_heat_asof's ORDER BY ... score DESC NULLS LAST does not
+#      break deterministically — a pre-existing property of the shared accessor, not
+#      introduced by this backfill, and equally present in the original live read.
+#
+# CONCLUSION: mi_themes' append-only-per-day property makes the backfill possible, but by
+# itself is NOT sufficient for faithfulness (per the brief's own warning) — the anchor date
+# must also account for same-day data latency at the ORIGINAL write time. Fixed here, not
+# left for the live writer: log_theme_axis_shadow itself needs no change — at true scan
+# time, alert_date's own row genuinely does not exist yet, so its calls are already
+# correct by construction. Only a backfill running long after the fact needs the explicit
+# adjustment.
+
+def bounded_backfill_anchor(alert_date, same_day_write: bool):
+    """The ONE place the #486 backfill's as-of anchor is decided — pure, no DB access, so
+    it's cheaply unit-testable in isolation from compute_bounded_backfill_read below.
+    Returns (anchor_date, recency_days) to pass to get_theme_heat_asof.
+
+    See the module comment above for why `same_day_write` picks the anchor: a row written
+    the same ET calendar day as its own alert_date (a genuine live scan write) can only have
+    seen theme snapshots through alert_date-1 (mi_themes' theme_date=alert_date row is not
+    written until the evening); a row written on a LATER calendar day (the #369 mass
+    backfill) could see alert_date's own snapshot, matching how its stored `theme_name` was
+    itself computed."""
+    if same_day_write:
+        return alert_date - timedelta(days=1), 6
+    return alert_date, 7
+
+
+async def compute_bounded_backfill_read(
+    conn: Any, ticker: str, alert_date, same_day_write: bool, stored_theme_name: "str | None",
+):
+    """Compute (WITHOUT writing) the #486 bounded read for one historical row: the ONE
+    get_theme_heat_asof call and the ONE compute_bounded_theme_match call, anchored per
+    bounded_backfill_anchor. Split out from backfill_bounded_theme_reads (advisor review,
+    2026-09-07) so a prod fidelity check can call this directly, read-only, against the 4
+    rows already captured live — the exact same code path the backfill writes from, minus
+    the write. Returns (theme_name_7d, theme_stage_7d, bounded_matches_unbounded)."""
+    anchor_date, recency = bounded_backfill_anchor(alert_date, same_day_write)
+    heat_7d = await get_theme_heat_asof(conn, ticker, anchor_date, recency_days=recency)
+    theme_name_7d = heat_7d["name"] if heat_7d else None
+    theme_stage_7d = heat_7d["stage"] if heat_7d else None
+    matches = compute_bounded_theme_match(theme_name_7d, stored_theme_name)
+    return theme_name_7d, theme_stage_7d, matches
+
+
+async def backfill_bounded_theme_reads(conn: Any) -> dict:
+    """One-time, idempotent backfill of theme_name_7d/theme_stage_7d/bounded_matches_unbounded
+    for every mi_theme_axis_shadow row where bounded_matches_unbounded IS NULL. Reuses
+    get_theme_heat_asof and compute_bounded_theme_match via compute_bounded_backfill_read —
+    the SAME accessor and comparison the live writer uses — so a backfilled value can never
+    drift from a live one for identical inputs; see bounded_backfill_anchor for the one
+    deliberate difference (the as-of anchor, required for faithfulness — module comment above).
+
+    NEVER touches the 4 rows already captured live, or any row a prior run already backfilled
+    — both the SELECT (get_theme_axis_shadow_bounded_backfill_targets) and the UPDATE
+    (write_theme_axis_shadow_bounded_backfill) filter on `bounded_matches_unbounded IS NULL`.
+    A second run finds zero candidates: fully idempotent.
+
+    Unlike the live writer, this does NOT swallow exceptions — it is an operator-run, offline
+    migration over historical rows (not a hot path that must protect a grade), so a failure
+    should stop the run and be investigated, not silently degrade a row to NULL.
+
+    Returns {"candidates": n, "backfilled": n, "themed": n, "themeless": n} — themed/themeless
+    split on the STORED unbounded theme_name (the #486 report's cohort split — 481 themeless
+    always trivially agree and must not be pooled into the headline number), not on the fresh
+    bounded read.
+    """
+    targets = await get_theme_axis_shadow_bounded_backfill_targets(conn)
+    themed = themeless = backfilled = 0
+    for row in targets:
+        theme_name_7d, theme_stage_7d, matches = await compute_bounded_backfill_read(
+            conn, row["ticker"], row["alert_date"], row["same_day_write"], row["theme_name"])
+        n = await write_theme_axis_shadow_bounded_backfill(
+            conn, row["id"], theme_name_7d, theme_stage_7d, matches)
+        backfilled += n
+        if row["theme_name"] is not None:
+            themed += 1
+        else:
+            themeless += 1
+    return {
+        "candidates": len(targets), "backfilled": backfilled,
+        "themed": themed, "themeless": themeless,
+    }
 
 
 # ─── Part 3 (#329 STEP-0): themeless-winner-INCLUSIVE label-cohort enrolment rule ─────────

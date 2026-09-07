@@ -780,3 +780,249 @@ def test_the_insert_is_column_placeholder_and_arg_aligned():
     n_args = len([a for a in blk[blk.rindex('"""') + 3:].replace("\n", " ").split(",")
                   if a.strip()])
     assert n_cols == n_ph == n_args, f"cols={n_cols} placeholders={n_ph} args={n_args}"
+
+
+# ─── #486 bounded-read backfill (2026-09-07 unblock) ───────────────────────────────────────
+# 588 of 592 mi_theme_axis_shadow rows sat NULL on theme_name_7d/theme_stage_7d/
+# bounded_matches_unbounded (instrumented 2026-09-03, forward-only). This backfills them
+# from data already stored on every row. The load-bearing property under test: the as-of
+# ANCHOR the backfill queries get_theme_heat_asof with must match the anchor the row's OWN
+# theme_name was actually captured with — a same-day-write (live-scan) row could only ever
+# see theme_date <= alert_date-1 (mi_themes' theme_date=alert_date row isn't written until
+# the evening theme-engine run), while a later-day-write row (the #369 mass backfill) could
+# see alert_date's own snapshot. Getting this wrong silently writes a DIFFERENT theme than
+# what the live path actually saw — proven against prod on 2026-09-07 (ALAB, alert_date
+# 2026-09-04: naive same-day form returns "AI data-center power buildout", the live-
+# captured theme_name_7d is "Optical Networking & Photonics Components for AI Data
+# Centers" — the prior-day form the tests below pin).
+
+from agents.market_intelligence.theme_axis_shadow import (  # noqa: E402
+    bounded_backfill_anchor,
+    compute_bounded_backfill_read,
+    compute_bounded_theme_match,
+)
+
+
+def test_bounded_backfill_anchor_same_day_write_steps_back_one_day():
+    """MUTATION TARGET: bounded_backfill_anchor NOT subtracting a day (or using the wrong
+    recency_days) for a same_day_write row flips this — that row's stored theme_name_7d
+    was captured when alert_date's own mi_themes row did not exist yet (see module comment
+    in theme_axis_shadow.py), so the backfill anchor must exclude it too."""
+    anchor, recency = bounded_backfill_anchor(date(2026, 9, 4), True)
+    assert anchor == date(2026, 9, 3)
+    assert recency == 6
+
+
+def test_bounded_backfill_anchor_non_same_day_write_keeps_alert_date():
+    """MUTATION TARGET: subtracting a day here too flips this — the #369 mass-backfill
+    population's stored theme_name WAS computed with alert_date's own snapshot visible
+    (the backfill ran months after those alert_dates, once every historical theme_date row
+    already existed), so re-anchoring at alert_date-1 would mismatch it."""
+    anchor, recency = bounded_backfill_anchor(date(2026, 9, 4), False)
+    assert anchor == date(2026, 9, 4)
+    assert recency == 7
+
+
+def _dual_snapshot_heat_fake(same_day_name="SameDayTheme", prior_day_name="PriorDayTheme"):
+    """A theme whose 7d-bounded answer DIFFERS depending on whether the alert_date's own
+    (same-calendar-day) mi_themes snapshot is visible to the query — models the real ALAB
+    2026-09-04 case where a theme's cohort/attribution changed between D-1 and D."""
+    async def _fake(_conn, ticker, query_date, recency_days=None):
+        assert recency_days in (6, 7)
+        if query_date == date(2026, 9, 4):
+            return {"name": same_day_name, "stage": "Nascent", "score": 1.0,
+                    "tickers": [ticker], "description": ""}
+        return {"name": prior_day_name, "stage": "Accelerating", "score": 2.0,
+                "tickers": [ticker], "description": ""}
+    return _fake
+
+
+def test_backfill_reproduces_the_live_writers_value_for_a_same_day_write_row(monkeypatch):
+    """THE FIDELITY PROOF for a live-captured (same_day_write=True) row: the live writer's
+    scan-time call could only ever see theme_date <= alert_date-1, so the backfill must
+    reproduce "PriorDayTheme", never "SameDayTheme" — the value a naive alert_date-inclusive
+    re-query would wrongly return now that alert_date's own snapshot exists.
+
+    MUTATION TARGET: bounded_backfill_anchor returning `alert_date` unchanged for
+    same_day_write=True flips theme_name_7d to "SameDayTheme" and `matches` to False."""
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof",
+        _dual_snapshot_heat_fake())
+    name_7d, stage_7d, matches = _run(compute_bounded_backfill_read(
+        None, "ALAB", date(2026, 9, 4), True, "PriorDayTheme"))
+    assert name_7d == "PriorDayTheme"
+    assert stage_7d == "Accelerating"
+    assert matches is True
+
+
+def test_backfill_reproduces_the_mass_backfill_populations_value_for_a_later_write_row(
+    monkeypatch,
+):
+    """Companion to the test above for the OTHER population (same_day_write=False, the
+    #369 mass backfill): its stored theme_name WAS captured with alert_date's own snapshot
+    visible, so the bounded backfill must reproduce "SameDayTheme" for these rows, not
+    "PriorDayTheme".
+
+    MUTATION TARGET: bounded_backfill_anchor subtracting a day for same_day_write=False
+    flips theme_name_7d to "PriorDayTheme" and `matches` to False."""
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof",
+        _dual_snapshot_heat_fake())
+    name_7d, _, matches = _run(compute_bounded_backfill_read(
+        None, "ALAB", date(2026, 9, 4), False, "SameDayTheme"))
+    assert name_7d == "SameDayTheme"
+    assert matches is True
+
+
+def test_themeless_row_backfill_resolves_true_for_the_right_reason(monkeypatch):
+    """A themeless row (stored theme_name=None) whose bounded read ALSO finds nothing must
+    resolve `matches=True` — but for the right reason (both sides agree there's no theme),
+    not vacuously. Proven by also checking the read finding SOMETHING resolves False.
+
+    MUTATION TARGET: compute_bounded_theme_match hardcoded to `return True` would leave the
+    first assertion green but flip the second (both-None vs found-something) assertion —
+    proving the True above isn't vacuous."""
+    async def _no_heat(_conn, ticker, query_date, recency_days=None):
+        return None
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof", _no_heat)
+    _, _, matches = _run(compute_bounded_backfill_read(
+        None, "LONE", date(2026, 6, 1), True, None))
+    assert matches is True
+
+    async def _found_heat(_conn, ticker, query_date, recency_days=None):
+        return {"name": "SomeTheme", "stage": "Nascent", "score": 1.0,
+                "tickers": [ticker], "description": ""}
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof", _found_heat)
+    _, _, matches2 = _run(compute_bounded_backfill_read(
+        None, "LONE", date(2026, 6, 1), True, None))
+    assert matches2 is False
+
+
+def test_write_helper_sql_sets_the_backfilled_marker_and_idempotency_guard():
+    """The marker + guard live in the SQL constant itself (registered in
+    scripts/preflight_db_updates.py so a type-deduction bug can't hide silently — #606
+    class). A reader must never mistake a backfilled value for a live-captured one.
+
+    MUTATION TARGET: dropping `bounded_backfilled_at = NOW()` from the UPDATE removes the
+    marker this column exists for; dropping the `AND bounded_matches_unbounded IS NULL`
+    guard would let a re-run (or a race with a live write) clobber an already-captured
+    row."""
+    from agents.market_intelligence.db import THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL as sql
+    assert "bounded_backfilled_at = NOW()" in sql
+    assert "WHERE id = $1 AND bounded_matches_unbounded IS NULL" in sql
+
+
+def test_write_helper_returns_the_actual_update_count(monkeypatch):
+    """MUTATION TARGET: hardcoding a return of 1 regardless of the UPDATE status string
+    flips this — the guard clause can legitimately produce "UPDATE 0" (a row a live write
+    raced ahead of the backfill), and the caller must be able to tell."""
+    from agents.market_intelligence.db import write_theme_axis_shadow_bounded_backfill
+    pool, conn = make_mock_pool()
+
+    conn.execute = AsyncMock(return_value="UPDATE 1")
+    n = _run(write_theme_axis_shadow_bounded_backfill(conn, 1, "X", "Nascent", True))
+    assert n == 1
+
+    conn.execute = AsyncMock(return_value="UPDATE 0")
+    n2 = _run(write_theme_axis_shadow_bounded_backfill(conn, 1, "X", "Nascent", True))
+    assert n2 == 0
+
+
+def test_backfill_orchestrator_sums_writer_returned_count_not_a_blind_increment(monkeypatch):
+    """MUTATION TARGET: `backfilled += 1` in backfill_bounded_theme_reads instead of
+    `backfilled += n` flips this — a guard-blocked write (UPDATE 0) must not inflate the
+    reported backfilled count."""
+    from agents.market_intelligence.theme_axis_shadow import backfill_bounded_theme_reads
+    pool, conn = make_mock_pool()
+
+    targets = [
+        {"id": 1, "ticker": "AAA", "alert_date": date(2026, 6, 1), "theme_name": None,
+         "same_day_write": True},
+        {"id": 2, "ticker": "BBB", "alert_date": date(2026, 6, 1), "theme_name": "Th",
+         "same_day_write": True},
+    ]
+
+    async def _fake_targets(_conn):
+        return targets
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow."
+        "get_theme_axis_shadow_bounded_backfill_targets",
+        _fake_targets,
+    )
+
+    async def _no_heat(_conn, ticker, query_date, recency_days=None):
+        return None
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof", _no_heat)
+
+    write_returns = [1, 0]  # first row writes; second simulates a guard-blocked race
+
+    async def _fake_write(_conn, row_id, name_7d, stage_7d, matches):
+        return write_returns.pop(0)
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.write_theme_axis_shadow_bounded_backfill",
+        _fake_write,
+    )
+
+    result = _run(backfill_bounded_theme_reads(conn))
+    assert result["candidates"] == 2
+    assert result["backfilled"] == 1, "must reflect the guard block, not double-count"
+    assert result["themed"] == 1 and result["themeless"] == 1
+
+
+def test_backfill_targets_query_carries_the_real_idempotency_guard():
+    """The actual idempotency mechanism lives in the SELECT's WHERE clause (a second run
+    must find zero candidates), not in the orchestrator loop — this pins the real SQL text.
+
+    MUTATION TARGET: dropping `WHERE bounded_matches_unbounded IS NULL` from
+    db.get_theme_axis_shadow_bounded_backfill_targets's SELECT flips this red — a second
+    run's SELECT would then return every row, live-captured or already-backfilled, and
+    write_theme_axis_shadow_bounded_backfill's own guard is the only thing left stopping a
+    clobber (belt, not suspenders)."""
+    import inspect
+    from agents.market_intelligence import db as db_module
+    src = inspect.getsource(db_module.get_theme_axis_shadow_bounded_backfill_targets)
+    assert "WHERE bounded_matches_unbounded IS NULL" in src
+
+
+def test_backfill_orchestrator_reports_zero_everywhere_on_zero_candidates(monkeypatch):
+    """Companion sanity check on the orchestrator itself: given zero targets (the real
+    post-first-run state once the SELECT guard above excludes everything), the loop must
+    run zero iterations — no writes, and every counter starts and stays at 0.
+
+    MUTATION TARGET: seeding `backfilled`/`themed`/`themeless` from anything but a literal
+    0 (e.g. `len(targets)` before the loop) would flip this even though nothing was
+    actually read or written."""
+    from agents.market_intelligence.theme_axis_shadow import backfill_bounded_theme_reads
+    pool, conn = make_mock_pool()
+
+    async def _empty_targets(_conn):
+        return []
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow."
+        "get_theme_axis_shadow_bounded_backfill_targets",
+        _empty_targets,
+    )
+    write_mock = AsyncMock()
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.write_theme_axis_shadow_bounded_backfill",
+        write_mock,
+    )
+
+    result = _run(backfill_bounded_theme_reads(conn))
+    assert result == {"candidates": 0, "backfilled": 0, "themed": 0, "themeless": 0}
+    write_mock.assert_not_called()
+
+
+def test_compute_bounded_theme_match_shared_by_writer_and_backfill():
+    """The live writer (log_theme_axis_shadow) and the backfill (compute_bounded_backfill_
+    read) both call compute_bounded_theme_match — never a locally re-derived `==`.
+
+    MUTATION TARGET: either call site inlining its own comparison expression again (the
+    pre-2026-09-07 shape) instead of calling the shared helper flips this string check."""
+    import io
+    src = io.open("agents/market_intelligence/theme_axis_shadow.py", encoding="utf-8").read()
+    assert src.count("compute_bounded_theme_match(") >= 3, (
+        "expected the def plus at least 2 call sites (writer + backfill)")

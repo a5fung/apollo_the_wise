@@ -27,6 +27,7 @@ from agents.market_intelligence.db import (
     _DELAYED_VARIANT_SETTLE_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
     GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
     LOWCAP_LANE_REPLAY_UPSERT_SQL, LOWCAP_LANE_SIGNAL_INSERT_SQL,
+    THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
     UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
     get_pool)
@@ -296,6 +297,14 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # again with a green deploy; the column is added at boot by initialize_schema.
         "catalyst_metrics_extractor.persist_yoy_recovery: #321 live YoY recovery write-back",
         YOY_RECOVERY_WRITEBACK_SQL,
+    ),
+    (
+        # #486 backfill (2026-09-07): the one-time bounded-read recorder for
+        # mi_theme_axis_shadow's 588 pre-instrumentation rows. Four plain params, no jsonb —
+        # low risk, but registered for the same reason as every other shadow writer here: a
+        # silent failure would leave the backfill claiming success while writing nothing.
+        "db.write_theme_axis_shadow_bounded_backfill: #486 bounded-read backfill",
+        THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL,
     ),
 ]
 

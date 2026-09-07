@@ -1598,6 +1598,13 @@ async def initialize_schema() -> None:
                 theme_name_7d TEXT,
                 theme_stage_7d TEXT,
                 bounded_matches_unbounded BOOLEAN,
+                -- #486 backfill (2026-09-07): marks a row whose theme_name_7d/theme_stage_7d/
+                -- bounded_matches_unbounded were RECOMPUTED after the fact from stored inputs,
+                -- rather than captured live at scan time. NULL (the default) = live-captured,
+                -- or not yet captured at all; a timestamp = backfilled at that moment. A reader
+                -- must never mistake a value recomputed today for one captured at the time —
+                -- this column is that guard. Mirrored in the ALTER block below.
+                bounded_backfilled_at TIMESTAMPTZ,
                 themeless_flag BOOLEAN NOT NULL DEFAULT FALSE,
                 structural_attribution_score INT NOT NULL DEFAULT 0,
                 structural_attributable BOOLEAN NOT NULL DEFAULT FALSE,
@@ -1657,6 +1664,8 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS theme_stage_7d TEXT;
             ALTER TABLE mi_theme_axis_shadow
                 ADD COLUMN IF NOT EXISTS bounded_matches_unbounded BOOLEAN;
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS bounded_backfilled_at TIMESTAMPTZ;
             ALTER TABLE mi_theme_axis_shadow
                 ADD COLUMN IF NOT EXISTS cohort_move FLOAT;
             ALTER TABLE mi_theme_axis_shadow
@@ -9083,6 +9092,73 @@ async def get_theme_heat_asof(
         "tickers": list(row["tickers"] or []),
         "description": row["description"],
     }
+
+
+# ── #486 bounded-read backfill (2026-09-07) ────────────────────────────────────────────
+# theme_name_7d/theme_stage_7d/bounded_matches_unbounded were instrumented 2026-09-03 and
+# capture forward only, so 588 of 592 mi_theme_axis_shadow rows sat NULL. Both statements
+# below are hoisted to module level and registered in scripts/preflight_db_updates.py's
+# SHADOW_WRITER_STATEMENTS — same "a silent recorder is where a type-deduction bug hides
+# longest" discipline as THEME_RENAME_INSERT_SQL / UNIVERSE_FLOOR_SHADOW_INSERT_SQL.
+
+THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL = """
+    UPDATE mi_theme_axis_shadow
+    SET theme_name_7d = $2, theme_stage_7d = $3,
+        bounded_matches_unbounded = $4, bounded_backfilled_at = NOW()
+    WHERE id = $1 AND bounded_matches_unbounded IS NULL
+"""
+
+
+async def get_theme_axis_shadow_bounded_backfill_targets(conn: Any) -> list[dict]:
+    """Rows whose #486 bounded read has never been captured — live or backfilled —
+    `bounded_matches_unbounded IS NULL`. Never returns the 4 rows the live writer already
+    captured (2026-09-03 on).
+
+    `theme_name` is the ALREADY-STORED unbounded read — the backfill compares its fresh
+    bounded read against this, it does not re-derive it (#486 brief).
+
+    `same_day_write`: whether this row was written on the SAME ET calendar day as its own
+    `alert_date` — i.e., a genuine live scan-time write (mi_theme_axis_shadow.log_theme_
+    axis_shadow always runs in the 7:00-10:05 ET EP scan, strictly before the theme engine's
+    ~17:00-18:00 ET nightly save writes that day's OWN theme_date row — verified against
+    mi_themes.created_at for 2026-09 snapshots). A row written on a LATER calendar day (the
+    #369 mass backfill on 2026-06-24 for historical alert_dates already in the past) could
+    see that day's own theme_date row, because by the time it ran the row already existed.
+    The backfill orchestrator (theme_axis_shadow.compute_bounded_backfill_read) uses this
+    flag to anchor the bounded re-read at the SAME as-of point the row's own theme_name was
+    captured at — see that function's docstring for the empirical proof (591/592 rows'
+    stored theme_name is reproduced when the anchor is chosen this way; anchoring every row
+    at `alert_date` regardless of when it was written reproduces only 561/592, confirmed via
+    a live-row counter-example on 2026-09-07)."""
+    rows = await conn.fetch("""
+        SELECT id, ticker, alert_date, theme_name,
+               ((created_at AT TIME ZONE 'America/New_York')::date = alert_date) AS same_day_write
+        FROM mi_theme_axis_shadow
+        WHERE bounded_matches_unbounded IS NULL
+        ORDER BY id
+    """)
+    return [dict(r) for r in rows]
+
+
+async def write_theme_axis_shadow_bounded_backfill(
+    conn: Any, row_id: int, theme_name_7d: "str | None", theme_stage_7d: "str | None",
+    bounded_matches_unbounded: bool,
+) -> int:
+    """Write one backfilled row. Returns the UPDATE's affected-row count (0 or 1) — a
+    guard-blocked no-op (a second run, or a row a live write raced in between) must NOT
+    count as backfilled, so the caller sums this rather than assuming success.
+
+    `WHERE id = $1 AND bounded_matches_unbounded IS NULL` is a belt-and-suspenders
+    idempotency guard: the caller's SELECT (get_theme_axis_shadow_bounded_backfill_targets)
+    already filtered on the same predicate, so this can only ever be a no-op, never a
+    clobber of the 4 rows already captured live or of a row a prior backfill run already
+    wrote. Sets bounded_backfilled_at = NOW() as the backfilled marker (NULL = live-
+    captured or not yet captured — see the CREATE TABLE comment)."""
+    res = await conn.execute(
+        THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL,
+        row_id, theme_name_7d, theme_stage_7d, bounded_matches_unbounded,
+    )
+    return int(str(res).split()[-1])
 
 
 async def _resolve_weekly_snapshots(conn: Any, base_date: "date") -> list:
