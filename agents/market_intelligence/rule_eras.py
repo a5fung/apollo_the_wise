@@ -57,9 +57,12 @@ BREAKEVEN_AT_PARTIAL_DATE = date(2026, 8, 8)
 #                                             to entry at +3 ORB-R whether or not a partial fired,
 #                                             which was impossible before: breakeven only existed
 #                                             inside execute_partial_exit)
-# ⚠ 2026-09-06 is a SUNDAY, so `>=` already equals first-acting-session (Mon 09-07) — the same
-# reason the four dates above need no adjustment. See the ADMISSION note below for why that
-# matters.
+# ⚠ FIRST ACTING SESSION IS **TUE 2026-09-08**, not Monday: 09-06 is a Sunday AND Mon 09-07 is
+# Labor Day (NYSE closed — `trading_calendar.get_market_status` confirms it). `>=` still gives
+# the right answer because no fill can occur on either day, which is the same reason the four
+# dates above need no adjustment. Recorded explicitly because the ADMISSION note below exists
+# precisely to stop a switch being dated to a day that admitted nothing (operator caught the
+# holiday 2026-09-06; the original comment here said "Mon 09-07" and was wrong).
 # ⚠⚠ THIS SWITCH IS PER-STRATEGY, WHICH IS NEW. The flip set mi_strategies.profit_trigger_r /
 # breakeven_arm_r on `magna53` ONLY; every other strategy still runs the global +2R with no price
 # arm. So these two functions now take `signal_type`, and it DEFAULTS to the global stack — a
