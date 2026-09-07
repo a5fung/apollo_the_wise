@@ -97,3 +97,11 @@ scripts/probes/_step1_audit2.tsv
 scripts/probes/_step1_audit3.tsv
 scripts/probes/_step1_cohort.tsv
 scripts/probes/_step1_*.err
+
+# theme-correctness step-2 recall probe — raw prod pulls, re-derivable by rerunning the probe
+scripts/probes/_step2_shadow.tsv
+scripts/probes/_step2_alerts.tsv
+scripts/probes/_step2_overrides.tsv
+scripts/probes/_step2_scan.tsv
+scripts/probes/_step2_closes.tsv
+scripts/probes/_step2_*.err

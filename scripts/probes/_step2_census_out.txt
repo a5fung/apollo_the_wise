@@ -1,0 +1,110 @@
+Output format is unaligned.
+Field separator is "|".
+n|with_industry|with_sector|n_industries|n_sectors
+2885|2430|2430|137|11
+min|max|count|count
+2026-03-24|2026-09-04|592|491
+themed_7d|captured_7d|active_7d
+76|592|40
+score_tier|in_active_theme|count
+HIGH|f|263
+HIGH|t|22
+HIGH||61
+MODERATE|f|35
+MODERATE|t|2
+MODERATE||30
+none|f|10
+none|t|1
+m|count
+2026-05-01|202
+2026-06-01|75
+2026-07-01|42
+2026-08-01|101
+2026-09-01|4
+alert_tickers|with_industry|with_sector
+491|379|379
+alert_tickers|with_industry|with_sector
+336|274|274
+scan_tickers|with_industry|with_sector
+2600|1218|1218
+med|p90|max
+11|32|251
+count|count
+311422|2430
+column_name|data_type
+id|integer
+scan_date|date
+ticker|text
+gap_pct|double precision
+prev_close|double precision
+rel_volume|double precision
+filter_reason|text
+ep_score|double precision
+score_tier|text
+catalyst_quality|text
+created_at|timestamp with time zone
+scan_time_et|timestamp with time zone
+rank_by_gap|integer
+projected_vol_multiple|double precision
+pm_rvol|double precision
+adv|double precision
+adv_source|text
+minutes_since_open|integer
+gap_pct_rt|double precision
+gap_pct_delayed|double precision
+price_source|text
+rt_price_age_s|double precision
+prev_close_alpaca|double precision
+reject_stage|text
+current_price|double precision
+prev_day_volume|bigint
+today_volume|bigint
+pm_rvol_baseline_n|integer
+days_since_prior_alert|integer
+extension_pct|double precision
+quality_adv_dollar|double precision
+atr_pct|double precision
+market_cap|double precision
+vol_percentile|double precision
+prior_3m_change|double precision
+float_shares|double precision
+in_active_theme|boolean
+llm_catalyst_quality|text
+score_breakdown|jsonb
+ep_bar|double precision
+score_side|text
+rank_by_prescore|integer
+column_name
+id
+ticker
+alert_date
+grade
+theme_name
+theme_stage
+theme_score
+themeless_flag
+structural_attribution_score
+structural_attributable
+matched_terms
+created_at
+name_attribution_score
+name_attributable
+matched_names
+cohort_move
+ticker_move
+co_moving
+theme_name_7d
+theme_stage_7d
+bounded_matches_unbounded
+bounded_backfilled_at
+column_name
+id
+ticker
+alert_date
+stratum
+enrol_fwd_5d_pct
+enrol_n_sessions_5d
+seeded_at
+operator_label
+operator_note
+labeled_at

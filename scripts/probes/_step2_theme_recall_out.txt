@@ -1,0 +1,257 @@
+=== STEP 2 RECALL probe — frozen prod exports of 2026-09-07 (read-only, $0) ===
+constants: MIN_PEERS=3 LEVEL_RS=70.0 GAP_PCT=9.0 WINDOW=20 POOL_LIMIT=30 THEME_RS_MIN=50.0 control stages=['cooldown', 'extension', 'post_grade_filter', 'quality_filter', 'rvol_gate', 'score_bar', 'shortlist_cap']
+loaded: shadow 592 · mi_ep_alerts 424 · overrides 2885 · scan-log rows 53432 · closes 597922 · scores 474882 · themes 6744 · label cohort 190
+calendar: 2026-02-02 -> 2026-09-04 (150 sessions) · tickers with closes 4147 · RS snapshot dates 132
+
+## 0. Coverage (mi_ticker_overrides.industry) — stated before any cohort number
+  overrides rows 2885, with industry 2430/2885 = 84.2%, industries 137, sectors 11
+  industry size (overrides members): median 11 · p90 32 · max 251
+  alert tickers with industry: 379/491 = 77.2%
+  control tickers with industry: 997/1502 = 66.4%   <- NOT a random half: a name is in overrides because something looked it up
+
+## 1. The alert population and its four themeless denominators
+  D1 stored themeless_flag (unbounded, as written): 481/592 = 81.2%
+  D1' RECOMPUTED unbounded, anchor date-1 (used below): 484/592 = 81.8%
+  D2 7d-bounded any-stage themeless (anchor date-1, recency 6): 520/592 = 87.8%
+  D3 not in an Accelerating/Mainstream theme within 7d (= live in_active_theme definition): 553/592 = 93.4%
+  D4 mi_ep_alerts.in_active_theme = TRUE: 25/424 = 5.9% of all rows; 25/333 = 7.5% of non-NULL rows -> live flag themeless 94.1% / 92.5%
+  stored vs recomputed disagree: 3 of 592
+    POET 2026-05-14 stored_themeless=False recomputed=True stored_theme='Optical Components & Transceiver Manufacturers' recomputed_theme=None same_day_write=False theme_first_row=2026-04-16
+    ALAB 2026-05-20 stored_themeless=False recomputed=True stored_theme='Custom AI Silicon & Chip Architecture Licensing' recomputed_theme=None same_day_write=False theme_first_row=2026-03-20
+    GFS 2026-05-21 stored_themeless=False recomputed=True stored_theme='Semiconductor Wafer Foundry & Advanced IC Manufacturing' recomputed_theme=None same_day_write=False theme_first_row=2026-03-26
+  shadow rows not in mi_ep_alerts: 254 (of which before 2026-05-08: 236) · mi_ep_alerts rows not in shadow: 40
+  by era (alerts / recomputed themeless): E0 <04-13 (no scan log): 50/47 · E1 04-13..05-31 (floor 8%): 357/322 · E2 06-01..07-31 (floor 10%): 87/58 · E3 08-01..08-21 (floor 9%, 5% capture): 88/54 · E4 08-22+ (cutline change): 10/3
+  by grade: HIGH: 567 · MODERATE: 25
+
+## 2. The control population — sub-bar names from mi_ep_scan_log (probe's own derivation)
+  scan-log rows 53432 -> last state per (date, ticker) 5118; final stages: universe_floor 1797 · shortlist_cap 791 · quality_filter 595 · rvol_gate 368 · score_bar 331 · post_grade_filter 323 · gap_floor 295 · duplicate 240 · extension 182 · cooldown 118 · ALERT-final 78
+  UNMATCHED tail (filter_reason no pattern): 0
+  control ticker-days: 2708 (backfill's own count 2708; MATCH) · 2026-04-13 -> 2026-09-04 · distinct tickers 1502
+  by stage: shortlist_cap 791 · quality_filter 595 · rvol_gate 368 · score_bar 331 · post_grade_filter 323 · extension 182 · cooldown 118
+  control themeless (recomputed, anchor date-1): 2292/2708 = 84.6%; 7d-themeless 2460/2708 = 90.8%
+  control rows that are ALSO an alert row (shadow or mi_ep_alerts): 199 — a name scored HIGH at one scan whose LAST scan-log state that day is a reject; the recorder's ON CONFLICT DO NOTHING would skip these. By stage: shortlist_cap 45 · rvol_gate 44 · score_bar 41 · quality_filter 33 · post_grade_filter 20 · cooldown 9 · extension 7
+  PURE control (never alerted that day, used below): 2509 ticker-days · themeless 2122/2509 = 84.6%
+  scan-log LAST state of the shadow alert rows (>=04-13): duplicate 207 · not in scan log 84 · ALERT-final 54 · shortlist_cap 44 · rvol_gate 42 · score_bar 41 · quality_filter 33 · post_grade_filter 20 · cooldown 9 · extension 7 · gap_floor 1
+  the 84 alert rows with NO scan-log row: mi_ep_alerts source = not in mi_ep_alerts 43 · historical_scan 37 · live 4 · dates 2026-04-13 -> 2026-06-05 · by month 2026-04 24 · 2026-05 51 · 2026-06 9
+
+## 3. Measuring G1 as of date-1 for every subject (this takes a minute)
+  measured 3101 subjects · legs cache 68836 · hold cache 66938
+
+## 3b. Peer-level base rates — why an absolute '>= 3 peers' bar saturates (arithmetic, not market)
+  peer-evaluations 68836: with an RS row 55349/68836 = 80.4% · RS>=70 | has RS 24587/55349 = 44.4% · rising 16291/55349 = 29.4% · turning 734/55349 = 1.3% · hold computable 64307 · hold>0 28213/64307 = 43.9%
+  mi_stock_scores keeps 3598 rows/day of a ~9,700 universe; RS>=70 among KEPT rows 142052/474882 = 29.9% (a percentile that would read 30% on the full universe) -> every RS-based leg is measured on a pre-selected strong pool
+  with ~30 data-bearing peers and ~40% of names 'holding up' on any given day, P(>=3 strong) is ~1 by arithmetic; the by-size buckets in §4 show it directly. The bar is NOT moved here — this is reported as the instrument's meaning.
+
+## 4. THE HEADLINE — themeless alerts (D1', >= 2026-04-13) vs themeless controls
+--- THEMELESS ALERTS (recomputed unbounded, >=04-13): n=437 · industry-covered 321/437 = 73.5% · computable (>=3 data-bearing peers) 318/437 = 72.8% · sector-fallback-only 0 · no group 116
+    G1 subtle >=3 peers                                 299/321 = 93.1%   | computable-only 299/318 = 94.0%
+      GRIND (>=3 strong, no gap in window)              295/321 = 91.9%   | computable-only 295/318 = 92.8%
+      CO-GAP via window-gapped peers                       4/321 = 1.2%   | computable-only 4/318 = 1.3%
+      G3 same-day co-gap (scan log, >=2)                107/321 = 33.3%   | computable-only 107/318 = 33.6%
+      same-day co-gap, uniform open-gap read (>=2)       60/321 = 18.7%   | computable-only 60/318 = 18.9%
+      CO-GAP class (window or same-day, not grind)         4/321 = 1.2%   | computable-only 4/318 = 1.3%
+    LEVEL RS>=70 >=3 peers                              274/321 = 85.4%   | computable-only 274/318 = 86.2%
+      LEVEL-grind (no gap)                              262/321 = 81.6%   | computable-only 262/318 = 82.4%
+    rising/turning only >=3                             260/321 = 81.0%   | computable-only 260/318 = 81.8%
+      rising/turning-grind                              247/321 = 76.9%   | computable-only 247/318 = 77.7%
+    hold-up leg only >=3                                285/321 = 88.8%   | computable-only 285/318 = 89.6%
+    STRICT: in engine top-30 pools >=3                   63/321 = 19.6%   | computable-only 63/318 = 19.8%
+      STRICT-grind                                        31/321 = 9.7%   | computable-only 31/318 = 9.7%
+    class (covered): grind 295 · co-gap 4 · none 22
+    by peer-group size (data-bearing peers): <10: n=36 G1 53% grind 53% hold-only 39% · 10-30: n=138 G1 97% grind 94% hold-only 91% · >30: n=147 G1 99% grind 99% hold-only 99%
+--- THEMELESS CONTROLS (sub-bar, recomputed unbounded): n=2122 · industry-covered 1401/2122 = 66.0% · computable (>=3 data-bearing peers) 1393/2122 = 65.6% · sector-fallback-only 0 · no group 721
+    G1 subtle >=3 peers                               1299/1401 = 92.7%   | computable-only 1299/1393 = 93.3%
+      GRIND (>=3 strong, no gap in window)            1279/1401 = 91.3%   | computable-only 1279/1393 = 91.8%
+      CO-GAP via window-gapped peers                     20/1401 = 1.4%   | computable-only 20/1393 = 1.4%
+      G3 same-day co-gap (scan log, >=2)               450/1401 = 32.1%   | computable-only 450/1393 = 32.3%
+      same-day co-gap, uniform open-gap read (>=2)     249/1401 = 17.8%   | computable-only 249/1393 = 17.9%
+      CO-GAP class (window or same-day, not grind)       56/1401 = 4.0%   | computable-only 56/1393 = 4.0%
+    LEVEL RS>=70 >=3 peers                            1169/1401 = 83.4%   | computable-only 1169/1393 = 83.9%
+      LEVEL-grind (no gap)                            1122/1401 = 80.1%   | computable-only 1122/1393 = 80.5%
+    rising/turning only >=3                           1087/1401 = 77.6%   | computable-only 1087/1393 = 78.0%
+      rising/turning-grind                            1019/1401 = 72.7%   | computable-only 1019/1393 = 73.2%
+    hold-up leg only >=3                              1226/1401 = 87.5%   | computable-only 1226/1393 = 88.0%
+    STRICT: in engine top-30 pools >=3                 251/1401 = 17.9%   | computable-only 251/1393 = 18.0%
+      STRICT-grind                                     146/1401 = 10.4%   | computable-only 146/1393 = 10.5%
+    class (covered): grind 1279 · co-gap 56 · none 66
+    by peer-group size (data-bearing peers): <10: n=179 G1 63% grind 60% hold-only 53% · 10-30: n=552 G1 97% grind 94% hold-only 89% · >30: n=670 G1 97% grind 97% hold-only 96%
+--- ALL CONTROLS (themed + themeless): n=2509 · industry-covered 1777/2509 = 70.8% · computable (>=3 data-bearing peers) 1767/2509 = 70.4% · sector-fallback-only 1 · no group 731
+    G1 subtle >=3 peers                               1617/1777 = 91.0%   | computable-only 1617/1767 = 91.5%
+      GRIND (>=3 strong, no gap in window)            1583/1777 = 89.1%   | computable-only 1583/1767 = 89.6%
+      CO-GAP via window-gapped peers                     34/1777 = 1.9%   | computable-only 34/1767 = 1.9%
+      G3 same-day co-gap (scan log, >=2)               639/1777 = 36.0%   | computable-only 639/1767 = 36.2%
+      same-day co-gap, uniform open-gap read (>=2)     371/1777 = 20.9%   | computable-only 371/1767 = 21.0%
+      CO-GAP class (window or same-day, not grind)      103/1777 = 5.8%   | computable-only 103/1767 = 5.8%
+    LEVEL RS>=70 >=3 peers                            1478/1777 = 83.2%   | computable-only 1478/1767 = 83.6%
+      LEVEL-grind (no gap)                            1409/1777 = 79.3%   | computable-only 1409/1767 = 79.7%
+    rising/turning only >=3                           1373/1777 = 77.3%   | computable-only 1373/1767 = 77.7%
+      rising/turning-grind                            1289/1777 = 72.5%   | computable-only 1289/1767 = 72.9%
+    hold-up leg only >=3                              1516/1777 = 85.3%   | computable-only 1516/1767 = 85.8%
+    STRICT: in engine top-30 pools >=3                 316/1777 = 17.8%   | computable-only 316/1767 = 17.9%
+      STRICT-grind                                     191/1777 = 10.7%   | computable-only 191/1767 = 10.8%
+    class (covered): grind 1583 · co-gap 103 · none 91
+    sector-fallback line (NOT blended): n=1 · G1 1/1 = 100.0% · grind 1/1 = 100.0%
+
+  grind rate, covered denominators: alerts 91.9% (295 of 321) vs controls 91.3% (1279 of 1401) -> margin +0.6 pts
+  grind rate, computable-only:      alerts 92.8% (295 of 318) vs controls 91.8% (1279 of 1393) -> margin +1.0 pts
+  co-gap class: alerts 1.2% vs controls 4.0% -> margin -2.8 pts
+  LEVEL RS>=70 cut: alerts 85.4% vs controls 83.4%; G1 - LEVEL gap on alerts +7.8 pts (what a level gate misses)
+  PRE-DECLARED BAR (covered denominators): NO VERDICT from the number alone (10-30%, or margin < 15 pts)
+  PRE-DECLARED BAR (computable-only):      NO VERDICT from the number alone (10-30%, or margin < 15 pts)
+
+## 5. Same read on the other alert denominators (full window incl. pre-04-13)
+--- ALL 592 shadow alerts: n=592 · industry-covered 460/592 = 77.7% · computable (>=3 data-bearing peers) 456/592 = 77.0% · sector-fallback-only 1 · no group 131
+    G1 subtle >=3 peers                                 425/460 = 92.4%   | computable-only 425/456 = 93.2%
+      GRIND (>=3 strong, no gap in window)              418/460 = 90.9%   | computable-only 418/456 = 91.7%
+      CO-GAP via window-gapped peers                       7/460 = 1.5%   | computable-only 7/456 = 1.5%
+      G3 same-day co-gap (scan log, >=2)                153/460 = 33.3%   | computable-only 153/456 = 33.6%
+      same-day co-gap, uniform open-gap read (>=2)      102/460 = 22.2%   | computable-only 102/456 = 22.4%
+      CO-GAP class (window or same-day, not grind)        11/460 = 2.4%   | computable-only 11/456 = 2.4%
+    LEVEL RS>=70 >=3 peers                              397/460 = 86.3%   | computable-only 397/456 = 87.1%
+      LEVEL-grind (no gap)                              373/460 = 81.1%   | computable-only 373/456 = 81.8%
+    rising/turning only >=3                             355/460 = 77.2%   | computable-only 355/456 = 77.9%
+      rising/turning-grind                              331/460 = 72.0%   | computable-only 331/456 = 72.6%
+    hold-up leg only >=3                                405/460 = 88.0%   | computable-only 405/456 = 88.8%
+    STRICT: in engine top-30 pools >=3                   86/460 = 18.7%   | computable-only 86/456 = 18.9%
+      STRICT-grind                                       46/460 = 10.0%   | computable-only 46/456 = 10.1%
+    class (covered): grind 418 · co-gap 11 · none 31
+    sector-fallback line (NOT blended): n=1 · G1 1/1 = 100.0% · grind 1/1 = 100.0%
+--- THEMED alerts (recomputed unbounded) — the engine DID name these: n=108 · industry-covered 108/108 = 100.0% · computable (>=3 data-bearing peers) 107/108 = 99.1% · sector-fallback-only 0 · no group 0
+    G1 subtle >=3 peers                                  99/108 = 91.7%   | computable-only 99/107 = 92.5%
+      GRIND (>=3 strong, no gap in window)               96/108 = 88.9%   | computable-only 96/107 = 89.7%
+      CO-GAP via window-gapped peers                       3/108 = 2.8%   | computable-only 3/107 = 2.8%
+      G3 same-day co-gap (scan log, >=2)                 46/108 = 42.6%   | computable-only 46/107 = 43.0%
+      same-day co-gap, uniform open-gap read (>=2)       37/108 = 34.3%   | computable-only 37/107 = 34.6%
+      CO-GAP class (window or same-day, not grind)         7/108 = 6.5%   | computable-only 7/107 = 6.5%
+    LEVEL RS>=70 >=3 peers                               99/108 = 91.7%   | computable-only 99/107 = 92.5%
+      LEVEL-grind (no gap)                               90/108 = 83.3%   | computable-only 90/107 = 84.1%
+    rising/turning only >=3                              89/108 = 82.4%   | computable-only 89/107 = 83.2%
+      rising/turning-grind                               79/108 = 73.1%   | computable-only 79/107 = 73.8%
+    hold-up leg only >=3                                 93/108 = 86.1%   | computable-only 93/107 = 86.9%
+    STRICT: in engine top-30 pools >=3                   21/108 = 19.4%   | computable-only 21/107 = 19.6%
+      STRICT-grind                                       13/108 = 12.0%   | computable-only 13/107 = 12.1%
+    class (covered): grind 96 · co-gap 7 · none 5
+--- 7d-THEMELESS alerts (D2): n=520 · industry-covered 388/520 = 74.6% · computable (>=3 data-bearing peers) 385/520 = 74.0% · sector-fallback-only 1 · no group 131
+    G1 subtle >=3 peers                                 357/388 = 92.0%   | computable-only 357/385 = 92.7%
+      GRIND (>=3 strong, no gap in window)              351/388 = 90.5%   | computable-only 351/385 = 91.2%
+      CO-GAP via window-gapped peers                       6/388 = 1.5%   | computable-only 6/385 = 1.6%
+      G3 same-day co-gap (scan log, >=2)                121/388 = 31.2%   | computable-only 121/385 = 31.4%
+      same-day co-gap, uniform open-gap read (>=2)       76/388 = 19.6%   | computable-only 76/385 = 19.7%
+      CO-GAP class (window or same-day, not grind)         8/388 = 2.1%   | computable-only 8/385 = 2.1%
+    LEVEL RS>=70 >=3 peers                              329/388 = 84.8%   | computable-only 329/385 = 85.5%
+      LEVEL-grind (no gap)                              307/388 = 79.1%   | computable-only 307/385 = 79.7%
+    rising/turning only >=3                             295/388 = 76.0%   | computable-only 295/385 = 76.6%
+      rising/turning-grind                              276/388 = 71.1%   | computable-only 276/385 = 71.7%
+    hold-up leg only >=3                                339/388 = 87.4%   | computable-only 339/385 = 88.1%
+    STRICT: in engine top-30 pools >=3                   72/388 = 18.6%   | computable-only 72/385 = 18.7%
+      STRICT-grind                                       39/388 = 10.1%   | computable-only 39/385 = 10.1%
+    class (covered): grind 351 · co-gap 8 · none 29
+    sector-fallback line (NOT blended): n=1 · G1 1/1 = 100.0% · grind 1/1 = 100.0%
+--- NOT-ACTIVE alerts (D3, no Accelerating/Mainstream within 7d): n=553 · industry-covered 421/553 = 76.1% · computable (>=3 data-bearing peers) 417/553 = 75.4% · sector-fallback-only 1 · no group 131
+    G1 subtle >=3 peers                                 386/421 = 91.7%   | computable-only 386/417 = 92.6%
+      GRIND (>=3 strong, no gap in window)              379/421 = 90.0%   | computable-only 379/417 = 90.9%
+      CO-GAP via window-gapped peers                       7/421 = 1.7%   | computable-only 7/417 = 1.7%
+      G3 same-day co-gap (scan log, >=2)                130/421 = 30.9%   | computable-only 130/417 = 31.2%
+      same-day co-gap, uniform open-gap read (>=2)       84/421 = 20.0%   | computable-only 84/417 = 20.1%
+      CO-GAP class (window or same-day, not grind)        11/421 = 2.6%   | computable-only 11/417 = 2.6%
+    LEVEL RS>=70 >=3 peers                              358/421 = 85.0%   | computable-only 358/417 = 85.9%
+      LEVEL-grind (no gap)                              335/421 = 79.6%   | computable-only 335/417 = 80.3%
+    rising/turning only >=3                             317/421 = 75.3%   | computable-only 317/417 = 76.0%
+      rising/turning-grind                              296/421 = 70.3%   | computable-only 296/417 = 71.0%
+    hold-up leg only >=3                                367/421 = 87.2%   | computable-only 367/417 = 88.0%
+    STRICT: in engine top-30 pools >=3                   75/421 = 17.8%   | computable-only 75/417 = 18.0%
+      STRICT-grind                                       42/421 = 10.0%   | computable-only 42/417 = 10.1%
+    class (covered): grind 379 · co-gap 11 · none 31
+    sector-fallback line (NOT blended): n=1 · G1 1/1 = 100.0% · grind 1/1 = 100.0%
+
+## 6. Era and reject-stage cuts (tags, never cuts — the floors moved 8 -> 10 -> 9/5, cutline 08-22)
+  E0 <04-13 (no scan log)                  themeless alerts n=  0 G1   nan% grind   nan%   | themeless controls n=   0 G1   nan% grind   nan%
+  E1 04-13..05-31 (floor 8%)               themeless alerts n=225 G1  92.0% grind  90.2%   | themeless controls n= 719 G1  93.6% grind  92.1%
+  E2 06-01..07-31 (floor 10%)              themeless alerts n= 47 G1  95.7% grind  95.7%   | themeless controls n= 493 G1  90.7% grind  89.5%
+  E3 08-01..08-21 (floor 9%, 5% capture)   themeless alerts n= 46 G1  95.7% grind  95.7%   | themeless controls n= 157 G1  94.3% grind  92.4%
+  E4 08-22+ (cutline change)               themeless alerts n=  3 G1 100.0% grind 100.0%   | themeless controls n=  32 G1  96.9% grind  96.9%
+  controls by reject stage (themeless, covered):
+    shortlist_cap      n= 399 G1  86.5% grind  84.7% co-gap   9.5%
+    quality_filter     n= 317 G1  94.3% grind  93.1% co-gap   1.6%
+    rvol_gate          n= 178 G1  96.1% grind  93.8% co-gap   2.8%
+    post_grade_filter  n= 185 G1  94.6% grind  93.5% co-gap   1.1%
+    score_bar          n= 174 G1  95.4% grind  94.8% co-gap   2.3%
+    extension          n=  98 G1  96.9% grind  94.9% co-gap   2.0%
+    cooldown           n=  50 G1  96.0% grind  96.0% co-gap   0.0%
+
+## 7. Validation — the operator's 31 labelled themeless-winner rows (22 yes / 9 no). Reported, never tuned.
+  labelled rows 31 (y 22 / n 9) · industry-covered 28 · uncovered: ['BBBY', 'FTAI', 'ISPC']
+    G1 subtle (any leg)                      his Y: fires 21 / silent 0   his N: fires 6 / silent 1   agreement 22/28 = 78.6%
+    G1 GRIND                                 his Y: fires 19 / silent 2   his N: fires 6 / silent 1   agreement 20/28 = 71.4%
+    CO-GAP class                             his Y: fires 2 / silent 19   his N: fires 0 / silent 7   agreement 9/28 = 32.1%
+    LEVEL RS>=70                             his Y: fires 18 / silent 3   his N: fires 6 / silent 1   agreement 19/28 = 67.9%
+    rising/turning only                      his Y: fires 17 / silent 4   his N: fires 6 / silent 1   agreement 18/28 = 64.3%
+    STRICT top-30 pools                      his Y: fires 4 / silent 17   his N: fires 1 / silent 6   agreement 10/28 = 35.7%
+  per row (ticker date label | industry | data peers | strong/nogap/gapped | level | same-day scan | class | his note):
+    MANE  2026-04-27 y | Biotechnology                      | 241 | 69/51/18 | 95 |  9 | grind  | One of the biotech themes which as been 
+    BBBY  2026-04-28 n |                                    |   0 |  0/ 0/ 0 |  0 |  0 | none   | 
+    SKYQ  2026-04-28 y | Oil & Gas Integrated               |  12 | 12/12/ 0 |  2 |  0 | grind  | Energy, likely war related move
+    ICLR  2026-04-29 y | Diagnostics & Research             |  30 |  4/ 2/ 2 |  2 |  1 | co-gap | Biotech related
+    NEO   2026-04-29 y | Diagnostics & Research             |  30 |  4/ 2/ 2 |  2 |  1 | co-gap | Biotech related
+    NXPI  2026-04-29 y | Semiconductors                     |  58 | 48/33/15 | 50 |  2 | grind  | AI Semi
+    SIMO  2026-04-29 y | Semiconductors                     |  58 | 48/33/15 | 49 |  2 | grind  | AI Semi
+    BAND  2026-04-30 n | Software - Infrastructure          |  93 | 41/39/ 2 | 34 |  0 | grind  | 
+    DRVN  2026-04-30 n | Auto & Truck Dealerships           |  13 |  9/ 9/ 0 |  6 |  0 | grind  | 
+    FTAI  2026-04-30 y |                                    |   0 |  0/ 0/ 0 |  0 |  0 | none   | AI infra/power
+    NVCR  2026-04-30 y | Medical Devices                    |  50 |  8/ 6/ 2 |  6 |  1 | grind  | Biotech related
+    PI    2026-04-30 n | Semiconductors                     |  58 | 47/31/16 | 53 |  3 | grind  | 
+    TTMI  2026-04-30 n | Electronic Components              |  29 | 24/21/ 3 | 20 |  2 | grind  | 
+    CUE   2026-05-01 y | Biotechnology                      | 242 | 59/44/15 | 78 |  5 | grind  | Biotech related
+    FIVN  2026-05-01 y | Software - Infrastructure          |  93 | 54/49/ 5 | 35 |  4 | grind  | Cloud/software
+    ISPC  2026-05-01 n |                                    |   0 |  0/ 0/ 0 |  0 |  0 | none   | 
+    TEAM  2026-05-01 y | Software - Application             | 107 | 59/54/ 5 | 28 |  1 | grind  | Software
+    TWLO  2026-05-01 y | Software - Infrastructure          |  93 | 54/49/ 5 | 34 |  4 | grind  | Software
+    BB    2026-05-04 y | Software - Infrastructure          |  93 | 62/55/ 7 | 43 |  0 | grind  | AI infra/networking
+    OUST  2026-05-04 y | Electronic Components              |  29 | 24/22/ 2 | 20 |  0 | grind  | AI Semi
+    CYRX  2026-05-05 y | Integrated Freight & Logistics     |  13 | 11/11/ 0 |  6 |  0 | grind  | Healtech
+    FTRE  2026-05-05 y | Biotechnology                      | 244 | 92/75/17 | 100 |  7 | grind  | Healthtech
+    GPK   2026-05-05 n | Packaging & Containers             |  11 |  2/ 2/ 0 |  1 |  0 | none   | 
+    IART  2026-05-05 y | Medical Devices                    |  50 | 13/ 8/ 5 |  8 |  0 | grind  | Healtech
+    PAY   2026-05-05 n | Software - Infrastructure          |  94 | 61/54/ 7 | 45 |  2 | grind  | 
+    STRL  2026-05-05 y | Engineering & Construction         |  31 | 26/23/ 3 | 24 |  0 | grind  | AI Infra
+    AVTX  2026-05-06 y | Biotechnology                      | 244 | 88/67/21 | 89 |  7 | grind  | Healthtech
+    BLMN  2026-05-06 n | Restaurants                        |  22 |  7/ 6/ 1 |  6 |  1 | grind  | 
+    FLEX  2026-05-06 y | Electronic Components              |  29 | 22/20/ 2 | 19 |  2 | grind  | AI Infra / data center
+    LIVN  2026-05-06 y | Medical Devices                    |  50 | 12/ 7/ 5 |  8 |  3 | grind  | Healthtech
+    OSS   2026-05-06 y | Computer Hardware                  |  20 | 12/ 8/ 4 | 14 |  2 | grind  | AI Infra
+  limits: those 31 were SELECTED on forward 5-day return >= +5% (an upper bound on a good day, not a recall rate; returns are ruled out of this work); his notes are SECTOR-level, G1 is peer-level.
+
+## 8. What carries G1 — leg composition and the by-construction risk in big industries
+  themeless alerts: G1 fires 299 of 321; of those, 39 fire ONLY through the hold-up leg (rising/turning < 3); median data-bearing peers 29; median peer hold-up -0.32%/down day
+    G1 industries: Biotechnology 53 · Software - Application 21 · Semiconductors 19 · Software - Infrastructure 17 · Communication Equipment 13 · Computer Hardware 11
+    GRIND industries: Biotechnology 53 · Software - Application 21 · Semiconductors 19 · Software - Infrastructure 17 · Communication Equipment 13 · Computer Hardware 11
+  themeless controls: G1 fires 1299 of 1401; of those, 212 fire ONLY through the hold-up leg (rising/turning < 3); median data-bearing peers 30; median peer hold-up -0.19%/down day
+    G1 industries: Biotechnology 213 · Software - Infrastructure 86 · Semiconductors 74 · Software - Application 51 · Information Technology Services 43 · Semiconductor Equipment & Materials 35
+    GRIND industries: Biotechnology 213 · Software - Infrastructure 86 · Semiconductors 74 · Software - Application 51 · Information Technology Services 43 · Semiconductor Equipment & Materials 33
+
+## 8b. Threshold-free read — SHARE of data-bearing peers that are subtly strong and did not gap (no bar invented)
+  themeless alerts (>=04-13)           strong&no-gap share: p25 31% · median 46% · p75 57% (n=318)
+                                       rising/turning&no-gap: p25 12% · median 20% · p75 30% (n=318)
+                                       RS>=70&no-gap:         p25 18% · median 30% · p75 45% (n=318)
+                                       REFLEXIVITY — share of STRONG peers that gapped >=9% in the window: p25 7% · median 14% · p75 24% (n=316)
+                                       share of data-bearing peers gapping ON the day (open-gap): p25 0% · median 0% · p75 2% (n=318)
+  themeless PURE controls              strong&no-gap share: p25 32% · median 47% · p75 62% (n=1393)
+                                       rising/turning&no-gap: p25 10% · median 19% · p75 29% (n=1393)
+                                       RS>=70&no-gap:         p25 18% · median 29% · p75 43% (n=1393)
+                                       REFLEXIVITY — share of STRONG peers that gapped >=9% in the window: p25 0% · median 11% · p75 20% (n=1363)
+                                       share of data-bearing peers gapping ON the day (open-gap): p25 0% · median 0% · p75 2% (n=1393)
+  THEMED alerts (engine named them)    strong&no-gap share: p25 29% · median 47% · p75 58% (n=107)
+                                       rising/turning&no-gap: p25 9% · median 19% · p75 27% (n=107)
+                                       RS>=70&no-gap:         p25 18% · median 31% · p75 47% (n=107)
+                                       REFLEXIVITY — share of STRONG peers that gapped >=9% in the window: p25 4% · median 13% · p75 29% (n=106)
+                                       share of data-bearing peers gapping ON the day (open-gap): p25 0% · median 2% · p75 4% (n=107)
+  his 22 YES labels                    strong&no-gap share: p25 18% · median 50% · p75 59% (n=21)
+                                       rising/turning&no-gap: p25 8% · median 17% · p75 38% (n=21)
+                                       RS>=70&no-gap:         p25 17% · median 30% · p75 46% (n=21)
+                                       REFLEXIVITY — share of STRONG peers that gapped >=9% in the window: p25 9% · median 24% · p75 31% (n=21)
+                                       share of data-bearing peers gapping ON the day (open-gap): p25 0% · median 1% · p75 2% (n=21)
+  his 9 NO labels                      strong&no-gap share: p25 27% · median 53% · p75 69% (n=7)
+                                       rising/turning&no-gap: p25 14% · median 31% · p75 44% (n=7)
+                                       RS>=70&no-gap:         p25 23% · median 37% · p75 59% (n=7)
+                                       REFLEXIVITY — share of STRONG peers that gapped >=9% in the window: p25 0% · median 11% · p75 14% (n=7)
+                                       share of data-bearing peers gapping ON the day (open-gap): p25 0% · median 0% · p75 2% (n=7)
