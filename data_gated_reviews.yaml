@@ -10827,13 +10827,20 @@ reviews:
     # stop arms are SETTLED (not abstained, not at horizon). Censoring here runs the
     # OPPOSITE way to #616's — the TIGHT arms settle early (a stop-out) and it is the
     # live/wide arm that lags — so counting any single arm would fire on a stop-heavy
-    # set. Live account + era C (the current stop's own population) only. to_regclass
-    # idiom: reads 0, never errors, before the deploy creates the table.
+    # set. Live account + era D only. ⚠ REPOINTED era_c -> era_d 2026-09-07 (operator: "ok"),
+    # because the 2026-09-06 #545 flip STRANDED this review. It had accrued 5 of 20 complete
+    # sets, all era_c; from 09-06 every MAGNA53 fill is stamped era_d, so that 5 could never
+    # grow — this would have sat pending to 2026-10-05 and then read empty. The 5 are NOT
+    # pooled in: the flip moved the partial 2R->8R and armed breakeven on PRICE, which changes
+    # realized R on EVERY arm including the stop arms, so era_c and era_d sets are not
+    # comparable — exactly what the era stamp exists to enforce. Accrual restarts at 0 (~1 fill
+    # / 3 days recently), so earliest_review_date is a FLOOR, not a forecast.
+    # to_regclass idiom: reads 0, never errors, before the deploy creates the table.
     predicate_sql: >-
       SELECT CASE WHEN to_regclass('mi_live_fill_counterfactuals') IS NULL THEN 0
                   ELSE (SELECT COUNT(*) FROM (
                           SELECT trade_id FROM mi_live_fill_counterfactuals
-                          WHERE account_mode = 'live' AND exit_era = 'era_c'
+                          WHERE account_mode = 'live' AND exit_era = 'era_d'
                             AND arm IN ('live_actual', 'stop_orb_low', 'stop_adr_050', 'stop_adr_075')
                             AND outcome = 'settled'
                           GROUP BY trade_id HAVING COUNT(DISTINCT arm) = 4) complete) END
