@@ -258,3 +258,27 @@ delta matrix (`meta_rubric_reconciliation_329_2026-06-18.md`) or the D1–D7 tee
 - The principles this ranks against: `docs/roadmap/ep_profitability_program.md` (P1–P15, §1b)
 - Registry: `data_gated_reviews.yaml::theme_axis_boost_reeval` · `gap_alignment_331_accrual` ·
   `b6_gate_inversion_recheck` · `judge_signal_wiring_effect_2026_09_01`
+
+---
+
+## 6. RE-CHECK 2026-09-07 — the #504 DoD's second half, run against live data
+
+The table in §5 was written 2026-08-18 from estimates. Re-running it against prod today changes
+three rows, and **every change is a DATE that was fiction, not a block that was fiction.** The
+ground rule in §5 catches `blocked_by:` fictions; it does not catch an ETA derived from an accrual
+rate that has since collapsed. Both are the same failure — a stated gate nobody can check.
+
+| # | §5 said | measured today | what changed |
+|---|---|---|---|
+| **#448** (B6 gate) | pending 09-15, needs +8 live-PASS | **CLOSED 2026-09-07** | gate met 45× over; re-look ran; NO inversion at the bigger N; threshold 22 unchanged, fork B not opened |
+| **#331** (gap-alignment axis) | in_progress 09-29, "588 at 08-30, +3.7/day → ≈09-29" | **592 rows.** 4 rows in 8 days ≈ **0.5/day** | the rate collapsed; 700 lands **early November**. Re-dated 09-29 → 11-06 |
+| **#486** (judge ↔ theme) | in_progress, "forward-only from 08-29" | **4 rows.** `bounded_matches_unbounded` is NULL on **588 of 592** | the column was only populated from **09-03**; all 4 are `true`, not one `false` exists yet. Re-dated → 10-06 |
+| **#299** (tape axis) | 🔴 `blocked_by:#335` is fiction; "he already authorized the spend" | still `blocked` | **the fiction stands corrected, but the task does NOT unblock** — his 2026-09-05 ruling supersedes: *"until we can justify the spend by a concrete outcome that is useful for our system, we don't spend."* Real block restated as a checkable condition |
+
+**The finding underneath all three:** `mi_theme_axis_shadow` has slowed from 5-9 rows/day in
+mid-August to 1-3/day with multi-day gaps. Two tasks are dated against a write rate that no longer
+exists, and a third waits on a column that did not exist until four days ago. Before either re-run
+is scheduled again, ask whether the slowdown is the world or the instrument — a shadow that quietly
+stops is the failure mode `shadow-zero-effect-check-instrumentation` names. **And for #486
+specifically: decide whether the bounded/unbounded comparison can be BACKFILLED onto the 588 NULL
+rows, which would answer it now rather than in months.**
