@@ -301,3 +301,17 @@ def test_parse_prod_capture_roundtrip():
     assert st.toggle_row("breakeven_at_broker", "live")["state"] == "on"
     assert st.strategies[0]["live_real_enabled"] is True
     assert st.deployed_commit.startswith("abc123")
+
+
+def test_an_override_is_never_reported_as_acting_while_the_global_switch_is_off():
+    """MUTATION TARGET: PROFIT_TRIGGER_R is the SWITCH (partial on at all) and
+    mi_strategies.profit_trigger_r is the LEVEL. With the switch unset, an 8.0 sitting in the
+    table governs nothing — but the first version of this reporting block read the override
+    unconditionally and would print '[OFF (constant unset)] ... reaches entry + 8 x R', the
+    exact docs-vs-prod lie this tool exists to catch."""
+    import pathlib
+    src = (pathlib.Path(__file__).resolve().parents[1] / "scripts" / "live_rules.py").read_text()
+    assert "_eff = f\"{float(_ptr_ovr):g}\" if (_ptr_ovr and trigger_on) else _fmt(ptr)" in src, \
+        "the effective level no longer requires the global switch to be ON"
+    assert "if _ptr_ovr and trigger_on:" in src, "the OVERRIDES banner is no longer switch-gated"
+    assert "INERT" in src, "the switch-off-with-an-override case is no longer called out"

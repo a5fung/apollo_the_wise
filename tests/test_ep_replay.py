@@ -619,3 +619,44 @@ def test_close_only_trail_never_lets_the_line_become_an_intraday_stop():
     assert close_only["status"] == "open_at_horizon"     # never stopped by the trail line
     assert close_only["final_reason"] is None
     assert RULESETS["era_c"].trail_intraday is True      # live default unchanged
+
+
+def test_current_ruleset_is_era_d_and_matches_what_is_live():
+    """MUTATION TARGET: `current` left pointing at era_c after the 2026-09-06 flip — every
+    "what would we do today" replay would then silently answer with the RETIRED rule. The
+    live values come from mi_strategies (magna53: profit_trigger_r 8.0, breakeven_arm_r 3.0);
+    breakeven_at_partial stays True because execute_partial_exit's fold was NOT retired."""
+    cur = RULESETS["current"]
+    assert cur.name == "era_d"
+    assert cur.intraday_partial_r == 8.0
+    assert cur.breakeven_at_r == 3.0
+    assert cur.breakeven_at_partial is True
+    assert cur.trail_mode == "sma" and cur.trail_intraday is True    # trail unchanged
+    d = ruleset_as_of(date(2026, 9, 7))
+    assert (d.intraday_partial_r, d.breakeven_at_r) == (8.0, 3.0)
+    b = ruleset_as_of(date(2026, 9, 5))
+    assert (b.intraday_partial_r, b.breakeven_at_r) == (2.0, None)
+
+
+def test_no_new_silently_aliased_rulesets():
+    """MUTATION TARGET (2026-09-06 simplify pass): four independently written sweep grids each
+    re-derived the SAME recommended cell (partial 8R + breakeven 3R) under its own name, so one
+    experiment sat in four campaigns TSVs looking like four separate ones — and a reader
+    comparing two of them would treat identical output as agreement between different rules.
+    The existing aliases are DECLARED here; a NEW one fails the build. Fix a failure by reusing
+    the existing name, not by adding a line below."""
+    from dataclasses import replace as _r
+    groups: dict[str, list[str]] = {}
+    for name, rs in RULESETS.items():
+        groups.setdefault(repr(_r(rs, name="_")), []).append(name)
+    aliased = {tuple(sorted(v)) for v in groups.values() if len(v) > 1}
+    declared = {
+        ("current", "era_d"),                       # `current` is a deliberate pointer
+        ("era_c", "era_c_live_trail_sma"),          # the trail sweep's own base cell
+        ("era_c_p8_be3", "era_c_pBEST_be3p0",       # the recommended cell, reached by 4 grids
+         "era_c_rec_intraday_uc0", "era_c_rec_trail_sma"),
+    }
+    assert aliased == declared, (
+        f"rule-set alias set changed.\n  new: {aliased - declared}\n  gone: {declared - aliased}")
+    # and the declared aliases must really be the SAME config, not just the same name shape
+    assert RULESETS["current"] is RULESETS["era_d"]

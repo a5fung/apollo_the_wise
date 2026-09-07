@@ -628,7 +628,10 @@ async def test_every_row_carries_the_era_stamp(monkeypatch):
     await lfc.run_live_fill_counterfactuals(_TODAY, now_et=_NOW)
     for r in inserts:
         assert r["exit_era"] == "era_c"
+        # breakeven_at_r None: this fixture's alert_date predates the 2026-09-06 flip, so the
+        # price-armed breakeven did not exist for it (#545).
         assert r["exit_rules"] == {"stop_mode": "entry_minus_2r", "intraday_partial_r": 2.0,
+                                   "breakeven_at_r": None,
                                    "trail_prior_closes": True, "breakeven_at_partial": True,
                                    "ladder_partial": False, "score_separation": False}
         assert r["admission_era"] == "adm_2026-08-20_gap_floor_9"
@@ -926,11 +929,20 @@ def test_exit_switch_dates_are_the_operator_signed_facts_and_shared():
     assert rule_eras.SEP_SCORE_DATE == date(2026, 8, 22) == ep.SEP_SCORE_DATE
     assert rule_eras.TRAIL_PRIOR_CLOSES_DATE == date(2026, 8, 8) == ep.TRAIL_PRIOR_CLOSES_DATE
     assert rule_eras.BREAKEVEN_AT_PARTIAL_DATE == date(2026, 8, 8) == ep.BREAKEVEN_AT_PARTIAL_DATE
-    # the harness composes its RuleSet from the SAME fields
-    for d in (date(2026, 7, 15), date(2026, 8, 5), date(2026, 8, 20), date(2026, 9, 3)):
-        rs, ours = ep.ruleset_as_of(d), rule_eras.exit_rules_as_of(d)
-        assert (rs.stop_mode, rs.intraday_partial_r, rs.trail_prior_closes, rs.breakeven_at_partial,
-                rs.ladder_partial, rs.score_separation) == tuple(ours.values())
+    assert rule_eras.PARTIAL_8R_DATE == date(2026, 9, 6) == ep.PARTIAL_8R_DATE
+    assert rule_eras.BREAKEVEN_ARM_R_DATE == date(2026, 9, 6) == ep.BREAKEVEN_ARM_R_DATE
+    assert rule_eras.PARTIAL_8R_VALUE == 8.0 == ep.PARTIAL_8R_VALUE
+    assert rule_eras.BREAKEVEN_ARM_R_VALUE == 3.0 == ep.BREAKEVEN_ARM_R_VALUE
+    # The harness composes its RuleSet from the SAME fields. Compared BY KEY, not by
+    # tuple(ours.values()) — that positional form silently passed whatever order the dict
+    # happened to have and broke the moment a field was added (2026-09-06).
+    # `ep.ruleset_as_of` is MAGNA53-only by construction (this harness replays MAGNA53 EP
+    # alerts), so the era functions must be asked about MAGNA53 for the two to agree at all.
+    for d in (date(2026, 7, 15), date(2026, 8, 5), date(2026, 8, 20), date(2026, 9, 3),
+              date(2026, 9, 7)):
+        rs, ours = ep.ruleset_as_of(d), rule_eras.exit_rules_as_of(d, "magna53")
+        for field, want in ours.items():
+            assert getattr(rs, field) == want, f"{field} disagrees on {d}"
 
 
 def test_exit_era_labels_at_the_boundaries():
@@ -973,3 +985,34 @@ def test_every_admission_switch_cites_a_dated_heading_in_the_setup_ssot():
         # the heading records the change; the acting session is on or after it — except the
         # 08-25 universe flip, only recorded under the 08-28 status record
         assert recorded_under <= d or (d, recorded_under) == (date(2026, 8, 26), date(2026, 8, 28))
+
+
+# ── 2026-09-06 (#545): era D — the flip is PER-STRATEGY, and the label must say so ──
+
+def test_era_d_labels_only_the_flipped_strategy_after_the_flip_date():
+    """MUTATION TARGET: the silent-pooling defect this module exists to prevent. Without a
+    signal_type, every post-flip MAGNA53 fill is stamped era_c with a 2R partial and JOINS
+    the era_c cohort — two different exit rules averaged in the one column that keeps them
+    apart, and `data_gated_reviews.yaml`'s `WHERE exit_era = 'era_c'` counts them together."""
+    from datetime import date as _d
+    from agents.market_intelligence.rule_eras import exit_era_label, exit_rules_as_of
+    assert exit_era_label(_d(2026, 9, 5), "magna53") == "era_c"     # the day before
+    assert exit_era_label(_d(2026, 9, 7), "magna53") == "era_d"     # first acting session
+    assert exit_era_label(_d(2026, 9, 7), "magna53_lowcap") == "era_c"   # not flipped
+    assert exit_era_label(_d(2026, 9, 7)) == "era_c"                # no signal_type = global
+    r = exit_rules_as_of(_d(2026, 9, 7), "magna53")
+    assert r["intraday_partial_r"] == 8.0 and r["breakeven_at_r"] == 3.0
+    for st in (None, "magna53_lowcap", "parabolic_short"):
+        o = exit_rules_as_of(_d(2026, 9, 7), st)
+        assert o["intraday_partial_r"] == 2.0 and o["breakeven_at_r"] is None
+
+
+def test_the_recorder_stamps_the_rows_signal_type_not_the_date_alone():
+    """MUTATION TARGET: dropping signal_type at the stamp site. The era functions default to
+    the GLOBAL stack, so omitting it fails SILENTLY — correct-looking rows, wrong cohort."""
+    import pathlib
+    src = (pathlib.Path(__file__).resolve().parents[1] / "agents" / "market_intelligence"
+           / "live_fill_counterfactuals.py").read_text()
+    assert 'exit_era_label(alert_date, _sig)' in src, "era label no longer per-strategy"
+    assert 'exit_rules_as_of(alert_date, _sig)' in src, "era rules no longer per-strategy"
+    assert '_sig = trade.get("signal_type")' in src, "signal_type no longer read off the row"

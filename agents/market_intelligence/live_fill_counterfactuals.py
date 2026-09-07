@@ -778,8 +778,13 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
     orb_low = _f(trade.get("orb_low"))
     live_stop = _f(trade.get("hard_stop"))          # read ONCE; stored on every row
 
-    era = {"exit_era": exit_era_label(alert_date),
-           "exit_rules": exit_rules_as_of(alert_date),
+    # #545 (2026-09-06): the exit era is PER-STRATEGY now — the flip moved `magna53` alone.
+    # WITHOUT this signal_type, every post-flip MAGNA53 fill would be stamped `era_c` with
+    # `intraday_partial_r: 2.0` and would silently JOIN the era_c cohort, pooling two
+    # different exit rules in the one column that exists to keep them apart.
+    _sig = trade.get("signal_type")
+    era = {"exit_era": exit_era_label(alert_date, _sig),
+           "exit_rules": exit_rules_as_of(alert_date, _sig),
            "admission_era": admission_era_as_of(alert_date)}
     rules = era["exit_rules"]
     stamp = await get_ep_alert_admission_stamp(conn, ticker, alert_date)

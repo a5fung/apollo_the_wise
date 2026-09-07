@@ -119,6 +119,10 @@ from agents.market_intelligence.rule_eras import (  # noqa: E402
     SEP_SCORE_DATE,
     STOP_2R_DATE,
     TRAIL_PRIOR_CLOSES_DATE,
+    PARTIAL_8R_DATE,
+    PARTIAL_8R_VALUE,
+    BREAKEVEN_ARM_R_DATE,
+    BREAKEVEN_ARM_R_VALUE,
 )
 
 
@@ -205,7 +209,16 @@ RULESETS: dict[str, RuleSet] = {
     "era_c": RuleSet("era_c", True, "entry_minus_2r", 2.0, True, time(10, 0), True,
                      ladder_partial=False),
 }
-RULESETS["current"] = RULESETS["era_c"]
+# 2026-09-06 (#545, operator-signed): era D is what MAGNA53 actually trades now — the +8R
+# partial with breakeven armed on PRICE at +3R. `current` MUST point here, or every future
+# "what do we do today" replay silently answers with the retired rule.
+# breakeven_at_partial stays TRUE: live did NOT retire `execute_partial_exit`'s fold-to-entry,
+# so BOTH paths exist (exit_discipline.md 2026-09-06 evening). With the arm at +3R it is a
+# no-op — the stop is already at entry long before an +8R partial — but modelling it False
+# would make this rule-set describe a system we do not run.
+RULESETS["era_d"] = replace(RULESETS["era_c"], name="era_d", intraday_partial_r=8.0,
+                            breakeven_at_r=3.0)
+RULESETS["current"] = RULESETS["era_d"]
 
 # ── 2026-09-05, operator-approved A/B: "yes, test it" ──────────────────────────────────
 # era_c with the ONE step removed that #545's design doc identifies as the tail-killer: the
@@ -324,10 +337,15 @@ def ruleset_as_of(d: date) -> RuleSet:
         name=f"as_of_{d.isoformat()}",
         score_separation=d >= SEP_SCORE_DATE,
         stop_mode="entry_minus_2r" if d >= STOP_2R_DATE else "orb_low",
-        intraday_partial_r=2.0 if d >= PARTIAL_LIVE_DATE else None,
+        # 2026-09-06 (#545): era D. This harness replays MAGNA53 EP alerts ONLY, which is the
+        # one strategy the flip touched, so the date alone settles it here — unlike
+        # rule_eras.exit_rules_as_of, whose callers see every strategy and must pass one.
+        intraday_partial_r=(PARTIAL_8R_VALUE if d >= PARTIAL_8R_DATE
+                            else (2.0 if d >= PARTIAL_LIVE_DATE else None)),
         trail_prior_closes=d >= TRAIL_PRIOR_CLOSES_DATE,
         entry_cancel=time(10, 0) if d >= PARTIAL_LIVE_DATE else None,
         breakeven_at_partial=d >= BREAKEVEN_AT_PARTIAL_DATE,
+        breakeven_at_r=BREAKEVEN_ARM_R_VALUE if d >= BREAKEVEN_ARM_R_DATE else None,
         ladder_partial=d < PARTIAL_LIVE_DATE,
     )
 

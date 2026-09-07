@@ -1070,13 +1070,21 @@ def build_exit_section(res: Resolver) -> list[str]:
              "2026-08-23 failure this tool exists to prevent):")
     act1 = "ACTING" if trigger_on else ("OFF (constant unset)" if ptr and ptr.known else "⚠ UNKNOWN")
     L.append(f"  1. INTRADAY [{act1}] — order_manager.scan_profit_triggers, every 5 minutes 9:30–16:00 ET:")
-    _eff = f"{float(_ptr_ovr):g}" if _ptr_ovr else _fmt(ptr)
+    # ⚠ The override is a LEVEL, not a switch: PROFIT_TRIGGER_R unset stands the whole intraday
+    # partial down, and an 8.0 sitting in mi_strategies then governs NOTHING. Reporting the
+    # override's number under an [OFF] header would print exactly the docs-vs-prod lie this tool
+    # exists to catch (found in the 2026-09-06 simplify pass, hours after the line was written).
+    _eff = f"{float(_ptr_ovr):g}" if (_ptr_ovr and trigger_on) else _fmt(ptr)
     L.append(f"     sells 1/3 the first time the in-hold minute HIGH reaches entry + {_eff} × R, "
              f"then moves the stop to breakeven.")
-    if _ptr_ovr:
+    if _ptr_ovr and trigger_on:
         L.append(f"     ⚠ that {float(_ptr_ovr):g} is MAGNA53's OWN mi_strategies.profit_trigger_r, which "
                  f"OVERRIDES constants.PROFIT_TRIGGER_R = {_fmt(ptr)} (#545, operator-signed 2026-09-06). "
                  f"Other strategies still act on the constant.")
+    elif _ptr_ovr:
+        L.append(f"     ⚠ MAGNA53 carries mi_strategies.profit_trigger_r = {float(_ptr_ovr):g} but it is "
+                 f"INERT — the intraday partial is off entirely (constants.PROFIT_TRIGGER_R = "
+                 f"{_fmt(ptr)}). The level governs nothing until the constant is set.")
     elif res.prod.reachable and res.prod.strategies:
         L.append("     no per-strategy override set — MAGNA53 acts on the constant above.")
     if frame_fp:

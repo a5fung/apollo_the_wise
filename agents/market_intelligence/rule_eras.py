@@ -52,15 +52,51 @@ STOP_2R_DATE = date(2026, 8, 16)
 PARTIAL_LIVE_DATE = date(2026, 8, 1)
 TRAIL_PRIOR_CLOSES_DATE = date(2026, 8, 8)
 BREAKEVEN_AT_PARTIAL_DATE = date(2026, 8, 8)
+#   partial +2R -> +8R           2026-09-06  (#545, operator-signed — mi_strategies.profit_trigger_r)
+#   breakeven ARMS ON PRICE      2026-09-06  (#545 — mi_strategies.breakeven_arm_r; the stop moves
+#                                             to entry at +3 ORB-R whether or not a partial fired,
+#                                             which was impossible before: breakeven only existed
+#                                             inside execute_partial_exit)
+# ⚠ 2026-09-06 is a SUNDAY, so `>=` already equals first-acting-session (Mon 09-07) — the same
+# reason the four dates above need no adjustment. See the ADMISSION note below for why that
+# matters.
+# ⚠⚠ THIS SWITCH IS PER-STRATEGY, WHICH IS NEW. The flip set mi_strategies.profit_trigger_r /
+# breakeven_arm_r on `magna53` ONLY; every other strategy still runs the global +2R with no price
+# arm. So these two functions now take `signal_type`, and it DEFAULTS to the global stack — a
+# caller that does not know its strategy gets exactly today's pre-flip answer, unchanged.
+PARTIAL_8R_DATE = date(2026, 9, 6)
+PARTIAL_8R_VALUE = 8.0
+BREAKEVEN_ARM_R_DATE = date(2026, 9, 6)
+BREAKEVEN_ARM_R_VALUE = 3.0
+# The strategies the 2026-09-06 flip actually touched. Adding one here is the same
+# same-commit duty as the change-log entry (see MAINTENANCE RULE above).
+PARTIAL_8R_SIGNAL_TYPES = frozenset({"magna53"})
 
 
-def exit_rules_as_of(d: date) -> dict[str, Any]:
-    """The exit/geometry stack live on date d, as plain fields (the same composition
-    `scripts/ep_replay.ruleset_as_of` builds its RuleSet from). Stored verbatim on every
-    #482 row so a reader never has to re-derive the acting rule from a date."""
+def _flipped_8r(d: date, signal_type: str | None) -> bool:
+    """True when the 2026-09-06 per-strategy flip governs (d, signal_type). `signal_type`
+    None (the default everywhere) = the GLOBAL stack, i.e. NOT flipped — so every caller
+    that does not know its strategy keeps the pre-flip answer."""
+    return d >= PARTIAL_8R_DATE and signal_type in PARTIAL_8R_SIGNAL_TYPES
+
+
+def exit_rules_as_of(d: date, signal_type: str | None = None) -> dict[str, Any]:
+    """The exit/geometry stack live on date d for `signal_type`, as plain fields (the same
+    composition `scripts/ep_replay.ruleset_as_of` builds its RuleSet from). Stored verbatim
+    on every #482 row so a reader never has to re-derive the acting rule from a date.
+
+    `signal_type` (2026-09-06, #545): the partial multiple and the breakeven arm became
+    PER-STRATEGY, so a date alone no longer answers the question. Omitting it returns the
+    global stack — correct for every strategy the flip did not touch, and byte-identical to
+    this function's pre-2026-09-06 output for ALL dates."""
+    flipped = _flipped_8r(d, signal_type)
     return {
         "stop_mode": "entry_minus_2r" if d >= STOP_2R_DATE else "orb_low",
-        "intraday_partial_r": 2.0 if d >= PARTIAL_LIVE_DATE else None,
+        "intraday_partial_r": (PARTIAL_8R_VALUE if flipped
+                               else (2.0 if d >= PARTIAL_LIVE_DATE else None)),
+        # None = no price-armed breakeven; the stop reaches entry only at the partial.
+        "breakeven_at_r": (BREAKEVEN_ARM_R_VALUE
+                           if (d >= BREAKEVEN_ARM_R_DATE and flipped) else None),
         "trail_prior_closes": d >= TRAIL_PRIOR_CLOSES_DATE,
         "breakeven_at_partial": d >= BREAKEVEN_AT_PARTIAL_DATE,
         "ladder_partial": d < PARTIAL_LIVE_DATE,
@@ -68,15 +104,24 @@ def exit_rules_as_of(d: date) -> dict[str, Any]:
     }
 
 
-def exit_era_label(d: date) -> str:
+def exit_era_label(d: date, signal_type: str | None = None) -> str:
     """Coarse exit era: A = no executable partial (< 2026-08-01) · B = partial live, ORB-low
-    stop (< 2026-08-16) · C = partial live, entry−2R stop (the current stack). The same
-    taxonomy docs/analysis/exit_tune_cohort_review_2026-08-22.md and system_review's
-    era-scoped setup review use."""
+    stop (< 2026-08-16) · C = partial live at +2R, entry−2R stop · D = the 2026-09-06 flip
+    (+8R partial, breakeven armed on price at +3R). The same taxonomy
+    docs/analysis/exit_tune_cohort_review_2026-08-22.md and system_review's era-scoped setup
+    review use.
+
+    ⚠ era D is PER-STRATEGY. Without `signal_type` this returns era_c for any post-flip date,
+    which is correct for every strategy the flip did not touch and is what every pre-existing
+    caller already assumed. A caller stamping MAGNA53 rows MUST pass it — otherwise post-flip
+    fills join the era_c cohort and pool two different exit rules, the exact defect this
+    module exists to prevent."""
     if d < PARTIAL_LIVE_DATE:
         return "era_a"
     if d < STOP_2R_DATE:
         return "era_b"
+    if _flipped_8r(d, signal_type):
+        return "era_d"
     return "era_c"
 
 
