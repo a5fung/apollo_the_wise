@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# #194 — daily auto-export: regenerate BOTH dashboard snapshots (themes + trades) and push
+# #194 — daily auto-export: regenerate ALL THREE dashboard snapshots (themes + trades + funnel) and push
 # them to the portfolio-app2 repo, so the Streamlit dashboards stay fresh without a manual regen.
 #
 # Runs on the prod host (has docker access to apollo-postgres + the apollo_export_deploy key,
@@ -22,9 +22,12 @@ git reset -q --hard "origin/$BR"
 # Regenerate both snapshots (read-only; the theme SQL carries the #194 e_code ecosystem join).
 docker exec -i "$PG" psql -U apollo -d apollo -A -t -X -f - < "$APOLLO/scripts/export_theme_snapshot.sql"  > apollo_themes_snapshot.json
 docker exec -i "$PG" psql -U apollo -d apollo -A -t -X -f - < "$APOLLO/scripts/export_trades_snapshot.sql" > apollo_trades_paper.json
+# #589 (2026-09-07): the funnel page's snapshot was hand-made and uncommitted — the same
+# ad-hoc-then-silently-stale failure export_trades_snapshot.sql exists to prevent. Joined here.
+docker exec -i "$PG" psql -U apollo -d apollo -A -t -X -f - < "$APOLLO/scripts/export_funnel_snapshot.sql" > apollo_funnel_snapshot.json
 
 # Sanity: both must be non-trivial JSON, else abort WITHOUT pushing (never publish a truncated/empty snapshot).
-for f in apollo_themes_snapshot.json apollo_trades_paper.json; do
+for f in apollo_themes_snapshot.json apollo_trades_paper.json apollo_funnel_snapshot.json; do
   if [ ! -s "$f" ] || [ "$(wc -c < "$f")" -lt 200 ]; then
     echo "auto-export: ABORT — $f is empty/truncated ($(wc -c < "$f") bytes); not pushing." >&2
     git checkout -q -- . ; exit 1
@@ -34,7 +37,7 @@ done
 if git diff --quiet; then
   echo "auto-export: no snapshot change — nothing to push."
 else
-  git add apollo_themes_snapshot.json apollo_trades_paper.json
+  git add apollo_themes_snapshot.json apollo_trades_paper.json apollo_funnel_snapshot.json
   git commit -q -m "auto-export dashboard snapshots $(date -u +%Y-%m-%dT%H:%MZ)"
   git push -q origin "$BR"
   echo "auto-export: pushed updated snapshots to $BR."
