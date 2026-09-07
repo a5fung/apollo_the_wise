@@ -27,6 +27,8 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from shared.operator_labelled_eps import ACKNOWLEDGED_DOWNGRADES, OPERATOR_LABELLED_EPS
+
 _ET = ZoneInfo("America/New_York")
 
 # ── Invariant key constants (stable across system_audit + readiness_check) ─
@@ -42,6 +44,7 @@ INV_COOLDOWN_SURGE = "cooldown_surge"
 INV_HIGH_NO_TERMINAL = "high_ep_no_terminal_state"
 INV_JOB_NO_SHOW = "job_no_show"
 INV_EXIT_SHARE_SUM = "exit_share_sum_mismatch"
+INV_OPERATOR_EP_DOWNGRADED = "operator_labelled_ep_downgraded"
 
 # ── Existing 6 (from readiness_check.py) ───────────────────────────────────
 
@@ -702,6 +705,97 @@ async def check_exit_share_sum(conn, *, since: date | None = None) -> tuple[bool
     })
 
 
+# Every `mi_audit_log` event type through which the catalyst rubric mutates `catalyst_quality`
+# toward a weaker grade. The ask that created this check (operator, 2026-09-07) named only
+# `catalyst_earnings_revenue_weak_downgrade` — grepping every `log_audit_event(...)` call in
+# ep_detector.py that reassigns `catalyst_quality` found it is NOT the only one:
+# `catalyst_pplx_hedge_downgrade` (Perplexity self-reports a hollow search — RDDT 5/1 class,
+# ep_detector.py ~4445) and `catalyst_prose_mismatch_downgrade` (#72 — a strong grade whose own
+# prose says "no catalyst" — MRAM 5/11 class, ep_detector.py ~5215) downgrade the exact same way.
+# Corroborated independently by health_checks.py's `_GRADING_DATA_EVENTS`, which groups precisely
+# these three as the rubric's "a downgrade fired" set. `catalyst_downgrade_carveout_applied` and
+# `catalyst_yoy_recovered_live` are deliberately EXCLUDED, there and here: both are KEEP events —
+# a downgrade condition was present and the grade survived — not downgrades. Missing either of
+# the other two here would leave this check quietly blind to 2 of the 3 real paths.
+_CATALYST_DOWNGRADE_EVENT_TYPES = (
+    "catalyst_earnings_revenue_weak_downgrade",
+    "catalyst_prose_mismatch_downgrade",
+    "catalyst_pplx_hedge_downgrade",
+)
+
+
+async def check_operator_ep_downgraded(conn) -> tuple[bool, dict]:
+    """Did the catalyst rubric downgrade a name the operator has personally called a real EP?
+
+    Operator, 2026-09-07: "a safeguard here is to also trigger whenever we negatively impact a
+    real EP, but that will likely need to be manual" — then, widening the scope past the current
+    list: "not just current EP list, i meant future EPs if we/i spot we had a bad rubric read but
+    it's a real EP per my read." This makes it computable instead of manual: the identity list
+    (`shared/operator_labelled_eps.py::OPERATOR_LABELLED_EPS`) is his alone — OPERATOR-AUTHORED, a
+    name enters only when he calls it a real EP — and every name on it is checked here, forever,
+    against every downgrade event type above. A hit not covered by
+    `ACKNOWLEDGED_DOWNGRADES` (same module — a named root cause + the task that owns it, keyed by
+    the exact (ticker, alert_date, event_type) so acknowledging one mechanism never silences a
+    different one on the same name) breaches.
+
+    Read-only telemetry (THE LINE): reads mi_audit_log only. Changes no grade, threshold, or
+    trade state.
+    """
+    breaches: list[dict] = []
+    for ep in OPERATOR_LABELLED_EPS:
+        rows = await conn.fetch(
+            """
+            SELECT event_type, COUNT(*) AS n, MIN(created_at) AS first_seen
+            FROM mi_audit_log
+            WHERE event_type = ANY($1)
+              AND detail LIKE $2
+              AND detail LIKE $3
+            GROUP BY event_type
+            ORDER BY event_type
+            """,
+            list(_CATALYST_DOWNGRADE_EVENT_TYPES),
+            f'%"ticker": "{ep.ticker}"%',
+            f'%"alert_date": "{ep.alert_date}"%',
+        )
+        for r in rows:
+            if (ep.ticker, ep.alert_date, r["event_type"]) in ACKNOWLEDGED_DOWNGRADES:
+                continue
+            breaches.append({
+                "ticker": ep.ticker,
+                "alert_date": ep.alert_date,
+                "event_type": r["event_type"],
+                "n": r["n"],
+                "first_seen": r["first_seen"],
+            })
+
+    return (len(breaches) == 0, {
+        "name": INV_OPERATOR_EP_DOWNGRADED,
+        "count": len(breaches),
+        "summary": (
+            f"{len(breaches)} operator-labelled real EP(s) downgraded by the catalyst rubric, "
+            "unacknowledged" if breaches else
+            "clean — no unacknowledged catalyst-rubric downgrade on any operator-labelled real EP"
+        ),
+        "offending": [
+            f"{b['ticker']} {b['alert_date']} {b['event_type']} "
+            f"(x{b['n']}, first {b['first_seen']})"
+            for b in breaches[:10]
+        ],
+        "drill_sql": (
+            "SELECT event_type, summary, detail, created_at FROM mi_audit_log\n"
+            "WHERE event_type = ANY(ARRAY['catalyst_earnings_revenue_weak_downgrade',\n"
+            "  'catalyst_prose_mismatch_downgrade', 'catalyst_pplx_hedge_downgrade'])\n"
+            "  AND detail LIKE '%\"ticker\": \"<TICKER>\"%'\n"
+            "  AND detail LIKE '%\"alert_date\": \"<YYYY-MM-DD>\"%';"
+        ),
+        "code_pointers": [
+            "shared/operator_labelled_eps.py",
+            "agents/market_intelligence/ep_detector.py::_resolve_acting_catalyst_quality",
+            "docs/methodology/operator_labelled_eps.md",
+        ],
+    })
+
+
 # ── Registry: ordered list of (key, callable, kwargs-builder) ──────────────
 
 
@@ -724,4 +818,5 @@ def all_invariants(*, since: date, since_dt: datetime, now_et: datetime | None =
         (INV_HIGH_NO_TERMINAL, check_high_no_terminal, {}),
         (INV_JOB_NO_SHOW, check_job_no_show, {"now_et": now_et}),
         (INV_EXIT_SHARE_SUM, check_exit_share_sum, {}),
+        (INV_OPERATOR_EP_DOWNGRADED, check_operator_ep_downgraded, {}),
     ]

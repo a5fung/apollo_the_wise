@@ -131,6 +131,12 @@ from __future__ import annotations
 
 from typing import Dict, FrozenSet, NamedTuple, Optional, Tuple
 
+# Operator-named members below take their IDENTITY (ticker + alert_date only) from here rather
+# than a second hand-typed literal — `shared/operator_labelled_eps.py` is the OPERATOR-AUTHORED
+# single source; `_op(ticker)` raises KeyError loudly if this fixture and that module ever
+# disagree on which tickers are operator-named, instead of silently drifting.
+from shared.operator_labelled_eps import identity as _op
+
 
 class EPFixtureMember(NamedTuple):
     ticker: str
@@ -181,7 +187,7 @@ _UNVERIFIED_STANDARD = (
 MUST_NOT_MISS: list[EPFixtureMember] = [
     # ── Member 1 — OPERATOR-NAMED ─────────────────────────────────────────────────────────────
     EPFixtureMember(
-        ticker="HTFL", alert_date="2026-08-14",
+        ticker=_op("HTFL").ticker, alert_date=_op("HTFL").alert_date,
         label_source="operator",
         label_note=(
             "Operator, 2026-09-05: \"i'd say htfl is another recent one\" (naming recent real EPs "
@@ -199,7 +205,7 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         unverified_gates=_UNVERIFIED_STANDARD,
     ),
     EPFixtureMember(
-        ticker="PLTR", alert_date="2026-08-04",
+        ticker=_op("PLTR").ticker, alert_date=_op("PLTR").alert_date,
         label_source="operator",
         label_note=(
             "Operator, 2026-09-05: \"pltr another one\". THE ONE THE WHOLE STACK GOT RIGHT, END TO "
@@ -214,7 +220,7 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         unverified_gates=_UNVERIFIED_STANDARD,
     ),
     EPFixtureMember(
-        ticker="TEAM", alert_date="2026-08-07",
+        ticker=_op("TEAM").ticker, alert_date=_op("TEAM").alert_date,
         label_source="operator",
         label_note=(
             "Operator, 2026-09-05: \"i did tell you i got into TEAM as EP after apollo was stopped "
@@ -241,7 +247,7 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         unverified_gates=_UNVERIFIED_STANDARD,
     ),
     EPFixtureMember(
-        ticker="ABNB", alert_date="2026-08-07",
+        ticker=_op("ABNB").ticker, alert_date=_op("ABNB").alert_date,
         label_source="operator",
         label_note=(
             "Operator, 2026-09-06: \"ABNB didn't make as EP alert on 8/07 but looking at it now "
@@ -278,7 +284,7 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         ),
     ),
     EPFixtureMember(
-        ticker="BFLY", alert_date="2026-06-18",
+        ticker=_op("BFLY").ticker, alert_date=_op("BFLY").alert_date,
         label_source="operator",
         label_note=(
             "Operator HARD label, 2026-06-19 (docs/methodology/operator_shared_notes.md:248): "
@@ -302,7 +308,7 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         unverified_gates=_UNVERIFIED_STANDARD,
     ),
     EPFixtureMember(
-        ticker="MRNA", alert_date="2026-08-19",
+        ticker=_op("MRNA").ticker, alert_date=_op("MRNA").alert_date,
         label_source="operator",
         label_note=(
             "Operator, 2026-08-19: \"MRNA is a textbook EP... the news is truly gamechanging, the "
@@ -332,7 +338,7 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
     # gate — the $500M market-cap floor — which is why it matters: it opens a second debt category
     # against P1, and #622 is the task that asks whether that floor is costing us winners.
     EPFixtureMember(
-        ticker="CHPT", alert_date="2026-09-03",
+        ticker=_op("CHPT").ticker, alert_date=_op("CHPT").alert_date,
         label_source="operator",
         label_note=(
             "Operator, 2026-09-03: \"today there's a microcap EP (CHPT) that we caught but filtered "
