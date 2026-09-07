@@ -318,7 +318,11 @@ def _prod_script(env_vars: list[str]) -> str:
     vars_str = " ".join(env_vars)
     q_toggles = ("SELECT safeguard, account_mode, state, last_transition_at "
                  "FROM mi_safeguard_state ORDER BY safeguard, account_mode")
-    q_strats = ("SELECT strategy_id, phase, enabled, live_real_enabled, position_size_multiplier "
+    # #545 (2026-09-06): the partial multiple and the breakeven arm are PER-STRATEGY now.
+    # Without these two columns this view printed the GLOBAL "+2 x R" for MAGNA53 while prod
+    # was acting on 8.0 — the exact docs-vs-prod lie this tool exists to catch.
+    q_strats = ("SELECT strategy_id, phase, enabled, live_real_enabled, position_size_multiplier, "
+                "COALESCE(profit_trigger_r::text, ''), COALESCE(breakeven_arm_r::text, '') "
                 "FROM mi_strategies ORDER BY strategy_id")
     return f"""
 VARS="{vars_str}"
@@ -382,10 +386,16 @@ def parse_prod_capture(raw: str) -> ProdState:
             st.toggles.append({"safeguard": sg, "account_mode": mode, "state": state,
                                "last_transition_at": ts})
         elif section == "STRATEGIES" and line.count("|") >= 4:
-            sid, phase, enabled, live_real, mult = line.split("|", 4)
+            parts = line.split("|")
+            sid, phase, enabled, live_real, mult = parts[:5]
+            # #545: tolerate BOTH row shapes — a prod DB without the two columns yet still parses.
+            ptr_o = parts[5].strip() if len(parts) > 5 else ""
+            bar_o = parts[6].strip() if len(parts) > 6 else ""
             st.strategies.append({"strategy_id": sid, "phase": phase,
                                   "enabled": enabled == "t", "live_real_enabled": live_real == "t",
-                                  "position_size_multiplier": mult})
+                                  "position_size_multiplier": mult,
+                                  "profit_trigger_r": ptr_o or None,
+                                  "breakeven_arm_r": bar_o or None})
         elif section == "DEPLOYED_COMMIT" and line.strip():
             st.deployed_commit = line.strip()
         elif section == "CONSTANTS_PY":
@@ -1048,14 +1058,27 @@ def build_exit_section(res: Resolver) -> list[str]:
                                 r'_ORB_R_FRAME_SIGNAL_TYPES = frozenset\(\{"magna53"\}\)')
     standdown_fp = code_fingerprint("agents/market_intelligence/broker/live_tracker.py",
                                     r"skip_partial_decision=bool\(PROFIT_TRIGGER_R\)")
+    # #545 (2026-09-06): mi_strategies.profit_trigger_r OVERRIDES the constant per strategy.
+    # Report what MAGNA53 actually acts on, not the global — reading the constant alone is how
+    # this view would have printed "+2 x R" while prod ran 8.0.
+    _m53 = next((x for x in res.prod.strategies if x["strategy_id"] == "magna53"), None)
+    _ptr_ovr = (_m53 or {}).get("profit_trigger_r")
+    _bar_ovr = (_m53 or {}).get("breakeven_arm_r")
     trigger_on = ptr is not None and ptr.value not in (None, 0)
     L.append("")
     L.append("partial profit — TWO code paths exist; exactly ONE acts (misreading this is the "
              "2026-08-23 failure this tool exists to prevent):")
     act1 = "ACTING" if trigger_on else ("OFF (constant unset)" if ptr and ptr.known else "⚠ UNKNOWN")
     L.append(f"  1. INTRADAY [{act1}] — order_manager.scan_profit_triggers, every 5 minutes 9:30–16:00 ET:")
-    L.append(f"     sells 1/3 the first time the in-hold minute HIGH reaches entry + {_fmt(ptr)} × R, "
+    _eff = f"{float(_ptr_ovr):g}" if _ptr_ovr else _fmt(ptr)
+    L.append(f"     sells 1/3 the first time the in-hold minute HIGH reaches entry + {_eff} × R, "
              f"then moves the stop to breakeven.")
+    if _ptr_ovr:
+        L.append(f"     ⚠ that {float(_ptr_ovr):g} is MAGNA53's OWN mi_strategies.profit_trigger_r, which "
+                 f"OVERRIDES constants.PROFIT_TRIGGER_R = {_fmt(ptr)} (#545, operator-signed 2026-09-06). "
+                 f"Other strategies still act on the constant.")
+    elif res.prod.reachable and res.prod.strategies:
+        L.append("     no per-strategy override set — MAGNA53 acts on the constant above.")
     if frame_fp:
         L.append(f"     R here = entry − ORB low for MAGNA53 (NOT the placed 2R stop distance — that would "
                  f"silently make the target +4R) [{frame_fp}]")
@@ -1071,6 +1094,21 @@ def build_exit_section(res: Resolver) -> list[str]:
         L.append("     ⚠ the stand-down fingerprint is ABSENT — the two paths may BOTH be able to fire; "
                  "check live_tracker.run_partial_exits immediately.")
 
+    L.append("")
+    L.append("breakeven — TWO ways the stop reaches entry (#545, 2026-09-06):")
+    if _bar_ovr:
+        L.append(f"  1. PRICE-ARMED [ACTING for MAGNA53] — order_manager.scan_breakeven_arms, same "
+                 f"5-minute poll: moves the stop to entry the first time the in-hold minute HIGH "
+                 f"reaches entry + {float(_bar_ovr):g} × R, WHETHER OR NOT A PARTIAL HAS FIRED.")
+        L.append("     mi_strategies.breakeven_arm_r; NULL = OFF and there is no global default, so "
+                 "every other strategy has this path dark.")
+    elif res.prod.reachable and res.prod.strategies:
+        L.append("  1. PRICE-ARMED [OFF everywhere] — scan_breakeven_arms returns [] before reading a "
+                 "position: no mi_strategies row carries a breakeven_arm_r.")
+    else:
+        L.append("  1. PRICE-ARMED [⚠ UNKNOWN — prod unreachable, cannot read mi_strategies]")
+    L.append("  2. AT-PARTIAL [always] — execute_partial_exit folds the stop to entry when the "
+             "partial fills. Independent of path 1; both are raise-only.")
     L.append("")
     L.append("order shape of the partial (runtime toggles, per account mode):")
     L.append(f"  resting GTC limit AT the target instead of a market sell — `profit_take_resting_limit`: "

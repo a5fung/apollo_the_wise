@@ -246,6 +246,50 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-09-06 (evening PT) — #545 FLIPPED LIVE for MAGNA53: partial +2R → +8R, price-armed breakeven ON at +3R (OPERATOR-SIGNED)
+
+**BEHAVIOUR CHANGED TODAY.** The mechanism entry below (built dark, same date) is now ACTIVE for
+`magna53` only. Operator authorised in-session ("go"), after being shown the rec, its cost and the
+open-position check.
+
+**What was run** (the exact SQL this file specified, in one transaction):
+```sql
+UPDATE mi_strategies SET profit_trigger_r = 8.0, updated_at = NOW() WHERE strategy_id = 'magna53';
+UPDATE mi_strategies SET breakeven_arm_r  = 3.0, updated_at = NOW() WHERE strategy_id = 'magna53';
+```
+
+**Verified end-to-end INSIDE the running `apollo-execution` container** (not just as a DB row):
+`get_strategy_exit_overrides` returns `{'magna53': {'profit_trigger_r': 8.0, 'breakeven_arm_r': 3.0}}`,
+and the resolvers return `magna53 → 8.0 / 3.0` while `magna53_lowcap` and `parabolic_short` still
+return `2.0 / None`. **No other strategy changed** — every other row is still NULL.
+
+**R frame, so this is not misread:** both levels are ORB-R (`entry − orb_low`, via
+`profit_target_r_per_share`), NOT the placed-stop distance. The stop sits 2 ORB-R below entry, so
++8R ≈ 4× the money risked and +3R ≈ 1.5×.
+
+**Open-position check made BEFORE flipping** (the retroactive-arm hazard — the arm reads `MAX(high)`
+across the whole hold, so a position that cleared +3R before the rule existed would arm on the first
+poll, and below entry that is a sell-stop above market):
+| ticker | entry | ORB low | arms at +3R | in-hold high | would arm | partial taken |
+|---|---|---|---|---|---|---|
+| HOOD | 118.37 | 113.04 | 134.36 | 124.88 | no | no |
+| OKTA | 167.879 | 159.20 | 193.92 | 174.85 | no | no |
+Neither was near its OLD 2R level either (HOOD 129.03, OKTA 185.24), so nothing was applied
+retroactively. Flipped with the market CLOSED so neither could cross a trigger mid-flip.
+
+⚠ **Accepted mid-hold change, stated:** HOOD and OKTA will no longer take a partial at +2R if they
+reach it — their exit rule changed while held. Everything else touches only trades entered under
+the new rules.
+
+**NOT YET VERIFIED-LIVE.** The rule is live but has not ACTED. Verify on the next MAGNA53 fill:
+`scan_profit_triggers` must compute its target at entry + 8 × (entry − orb_low) — confirm in the
+trigger context / audit row, NOT by re-reading this file. ~11 fills in the prior 30 days ≈ one every
+~3 days. A rule is not live until it has fired once.
+
+⚠ **OUTSTANDING FLIP-DAY DUTY (from the dark entry below, NOT yet done):** `scripts/live_rules.py`
+does not know these two columns, so the acting-rules view still prints "+2 × R" for MAGNA53. That is
+now a genuine docs-vs-prod lie and must be fixed before it is quoted.
+
 ### 2026-09-06 — #545: the partial's MULTIPLE becomes per-strategy and a PRICE-ARMED breakeven exists — BOTH BUILT DARK (no exit rule, stop level, target, size or cadence changed today)
 
 **Why**: the #545 replay recommends, for MAGNA53 only, a +8R partial with breakeven at +3R on

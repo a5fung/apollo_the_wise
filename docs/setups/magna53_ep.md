@@ -403,6 +403,44 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
+### 2026-09-06 (evening PT) — #545 exit tactics are LIVE for MAGNA53 — OPERATOR-SIGNED, supersedes the PROPOSED entry below
+
+**THE RULE BELOW IS NO LONGER A PROPOSAL. It is acting on real money for `magna53` only.**
+Operator authorised in-session ("go"). Mechanism, exact SQL, the pre-flip open-position check and
+the end-to-end container verification: `exit_discipline.md` 2026-09-06 (evening PT) — that file
+owns the mechanism, this one owns the rule.
+
+**What is now live for MAGNA53:**
+1. Intraday 1/3 partial at **+8 ORB-R** (was +2 ORB-R).
+2. Protective stop moves to entry when price trades **+3 ORB-R** above entry — **whether or not a
+   partial has fired**, which was previously impossible (breakeven only existed inside
+   `execute_partial_exit`).
+3. Trail line and trail timing **UNCHANGED**: still `max(SMA10, SMA20)`, still acting intraday.
+   Both alternatives were tested and both lost (loose trail −9.0R, close-only −5.3R, each paired on
+   the trades where both arms settled).
+
+**Evidence** (65 admitted MAGNA53 era-C trades, replayed under the era-C stack): **+3.54R → +12.10R**
+settled (+5.47R → +15.04R marked across 67 including open rows). Trades reaching 3R **0 → 5**. With
+the two biggest winners removed, **−2.40R → +4.78R** — so it is not carried by two names.
+
+**Cost, accepted with eyes open:** winners fall **36 → 23 of 65** (a 55% hit rate becomes 35%) and
+the median goes **+0.21 → −0.26**. This is the operator's standing ruling that the tail is the
+ingredient and the median can be managed, applied.
+
+⚠ **IN-SAMPLE.** 30+ cells and the selection all ran on the same 65 trades; there is no holdout.
+Taking the plateau's middle over its peak mitigates this; it does not make it out-of-sample.
+
+⚠ **KNOWN DEVIATION from the replay:** `scan_profit_triggers` polls every 5 minutes while the
+harness arms on the bar's HIGH, so a same-day arm-then-stop that the replay ABSTAINS on will occur
+live. Documented before the flip, not discovered after.
+
+**NOT YET VERIFIED-LIVE — a rule is not live until it has fired once.** Confirm on the next MAGNA53
+fill that the profit trigger's target is `entry + 8 × (entry − orb_low)`, from the trigger context /
+audit row rather than from this file. ~11 fills in the prior 30 days ≈ one every ~3 days.
+
+**Reversion**: `UPDATE mi_strategies SET profit_trigger_r = NULL, breakeven_arm_r = NULL WHERE
+strategy_id = 'magna53';` — acts on the next 5-minute poll, no redeploy.
+
 ### 2026-09-06 — #545 PROPOSED exit tactics: partial +2R → +8R, breakeven decoupled and armed at +3R on price — PLUMBING BUILT DARK, values NOT changed (NOT LIVE — awaiting operator sign-off)
 
 **Trigger**: the #545 entry/exit-tactics replay (`scripts/ep_replay.py`, 65 admitted MAGNA53
