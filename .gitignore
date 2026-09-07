@@ -105,3 +105,8 @@ scripts/probes/_step2_overrides.tsv
 scripts/probes/_step2_scan.tsv
 scripts/probes/_step2_closes.tsv
 scripts/probes/_step2_*.err
+
+# theme-correctness step-3 runway probe — raw prod pull, re-derivable by rerunning the probe
+scripts/probes/_step3_clusters.tsv
+scripts/probes/_step3_census_out.txt
+scripts/probes/_step3_*.err
