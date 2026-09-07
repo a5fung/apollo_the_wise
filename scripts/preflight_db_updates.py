@@ -84,6 +84,23 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         """,
     ),
     (
+        # #545 (2026-09-06): price-armed breakeven, flag-only shape (broker stop already
+        # at/above entry — nothing replaced). Dark until mi_strategies.breakeven_arm_r is set.
+        "order_manager._mark_breakeven_armed: flag-only branch (#545)",
+        "UPDATE mi_live_trades SET breakeven_active = TRUE WHERE id = $1",
+    ),
+    (
+        # #545: the confirmed-live shape — pointer + price + flag in ONE statement.
+        "order_manager._mark_breakeven_armed: confirmed-successor branch (#545)",
+        """
+        UPDATE mi_live_trades SET
+            stop_order_id = $2,
+            stop_price = $3,
+            breakeven_active = TRUE
+        WHERE id = $1
+        """,
+    ),
+    (
         "order_manager._finalize_partial_exit_locked: close-at-zero branch (#566)",
         """
         UPDATE mi_live_trades SET

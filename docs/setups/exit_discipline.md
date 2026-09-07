@@ -20,7 +20,14 @@ file **entirely** before changing any exit behaviour, per `CHANGE_PROCESS.md`.
 the exit path sees intraday price", which stopped being true on 2026-08-01):**
 - **The PARTIAL is INTRADAY**: `order_manager.scan_profit_triggers` polls every 5 minutes
   (9:30–16:00 ET) and fires on the in-hold minute HIGH — live since `PROFIT_TRIGGER_R = 2.0`
-  (2026-08-01). The day-3/5 time gate below stands down while it is on (§1).
+  (2026-08-01). The day-3/5 time gate below stands down while it is on (§1). Since
+  2026-09-06 (#545) the MULTIPLE resolves per strategy from `mi_strategies.profit_trigger_r`
+  (NULL on every row today → the global 2.0 for everyone); the switch stays global.
+- **A PRICE-ARMED breakeven exists but is OFF**: `order_manager.scan_breakeven_arms` (same
+  5-minute poll, after the partial) moves the full-position stop to entry at
+  `entry + mi_strategies.breakeven_arm_r × R` — NULL on every row today → it returns `[]`
+  before any read, so breakeven today still arrives ONLY via the partial (#548). Change log
+  2026-09-06.
 - **The TRAIL is DAILY**: `exit_logic.py` is *"pure daily-exit-step decision logic"*;
   `apply_daily_exit_step(state, daily_bar, …)` consumes **one daily bar** — the SMA-trail /
   stop-update decisions are evaluated once, against the close, not on the touch.
@@ -238,6 +245,101 @@ Full evidence, all figures independently recomputed twice:
 ---
 
 ## Change log (newest first)
+
+### 2026-09-06 — #545: the partial's MULTIPLE becomes per-strategy and a PRICE-ARMED breakeven exists — BOTH BUILT DARK (no exit rule, stop level, target, size or cadence changed today)
+
+**Why**: the #545 replay recommends, for MAGNA53 only, a +8R partial with breakeven at +3R on
+price (evidence, caveats and the proposed rule: `magna53_ep.md` 2026-09-06 — that file owns
+the proposal; this one owns the mechanism). It could not be applied because
+`constants.PROFIT_TRIGGER_R` is one global number consumed by a scan with no `signal_type`
+predicate, and breakeven only exists inside `execute_partial_exit`. This entry records what
+was built so the operator's eventual flip is one SQL row, and what stays exactly as it is.
+
+**1. Per-strategy partial multiple — `mi_strategies.profit_trigger_r` (NULL = today).**
+- `order_manager.resolve_profit_trigger_r(signal_type, overrides, PROFIT_TRIGGER_R)`: the
+  strategy's own positive `profit_trigger_r` when set, else the global constant. Read FRESH
+  every 5-minute poll by `scan_profit_triggers` (`db.get_strategy_exit_overrides`, keyed by
+  `signal_type` — the key trade rows carry; deliberately NOT the registry's process cache, so a
+  direct `UPDATE mi_strategies` acts on the next poll with no restart).
+- **The SWITCH stays global.** `PROFIT_TRIGGER_R = None` still means no intraday partial for
+  ANY strategy and the day-3/5 ladder returns; `scan_profit_triggers`' first line and
+  `run_partial_exits`' `skip_partial_decision=bool(PROFIT_TRIGGER_R)` are byte-identical. An
+  override can only change the LEVEL a strategy's partial fires at, and only while the global
+  switch is on — so the two partial paths can never both act (#508's one-owner rule holds).
+- The resolved multiple is what the target, the "Profit target hit" Telegram and the
+  `profit_trigger_fired` audit row now carry (`r_multiple` in the detail JSON).
+- A read failure → `{}` → the globals: a DB hiccup can never move a live partial's level.
+
+**2. Price-armed breakeven — `mi_strategies.breakeven_arm_r` (NULL = OFF → today).**
+- `order_manager.scan_breakeven_arms`, driven by `_track_open_position_extremes_job` right
+  AFTER `scan_profit_triggers`, in its own try/except (an exception out of the new path can
+  never starve the live partial). Same shape as the trigger: the in-hold minute HIGH from
+  `mi_intraday_bars`, R via `profit_target_r_per_share` (entry − ORB low for MAGNA53; no valid
+  frame → skipped loudly). With every `breakeven_arm_r` NULL it returns `[]` before the
+  position query and before any broker call — that line is the dark branch.
+- **The stop it moves is the FULL-position OTO leg** (`mi_live_trades.stop_order_id`) — it
+  arms BEFORE any partial, so it is NOT the reduced stop `execute_partial_exit`'s resting-mode
+  breakeven handles. Mechanism: **atomic price-only `alpaca.replace_order`** — quantity
+  untouched, so it cannot race the share reservation (the IBM 2026-05-27 class), and a
+  rejected replace leaves the old stop live (probe T1b/P4: "price-only replace works, the
+  replacement remains a leg"). Not routed through `update_stop`'s cancel-then-new, whose own
+  #433 note records the 3-second naked retry an OTO leg often needs. ⚠ **First production use
+  of a price-only replace on a FULL leg** (the #548 site runs on the already-reduced stop) —
+  a verify-live item on the first arm.
+- **Raise-only against the BROKER** (the 2026-08-10 rule): the live stop is read first; at or
+  above entry → no replace, flag only. Unreadable / not live → nothing touched, audit only (a
+  dead stop is the coverage invariant's job, not a second stop-placer's).
+- **Idempotent two ways**: the SQL skips `breakeven_active = TRUE` rows, and the live broker
+  read skips a stop already at entry — a lost flag write cannot produce a second replace.
+- **Composes with the EOD trail by construction**: the flag it sets is the SAME
+  `breakeven_active` that `exit_logic.apply_daily_exit_step` folds into
+  `max(hard_stop, trail, entry)`, and `update_stop`'s broker floor refuses any later lower move.
+- **Trade-state writer**: `order_manager._mark_breakeven_armed` — pointer + `stop_price` +
+  flag in ONE statement, written ONLY after the successor reads back live
+  (`_STOP_CONFIRMED_LIVE_STATUSES`, ~3s bounded poll). Registered in `audit_column_writes` and
+  `preflight_db_updates`. `stop_price` follows the broker here for the same reason as the #548
+  write: a stale lower value would let a later trail pass re-place LOWER.
+- **Outcomes** (every one audited): `armed` (🛡 Telegram, one message — the price-only replace
+  does not raise a WS cancel event, so the safety-net "Stop replaced" does not double it) ·
+  `already_at_breakeven` (flag only) · `arm_rejected` (old stop confirmed live → nothing
+  written, retried next poll, ⚠ Telegram ONCE per trade via `_breakeven_arm_already_alerted`)
+  · `arm_unverified` (successor still pending after budget → pointer persisted via
+  `set_stop_order_id(reason='breakeven_arm_unverified')`, price + flag WITHHELD — the DB
+  understating protection is the safe direction; next poll's broker read converges it) ·
+  `arm_failed_*` (a stop read back DEAD → pointer nulled, `_ensure_stop_coverage` post-lock,
+  🚨) · `skipped_*` (no pointer / a partial holds the advisory lock / stop unreadable → audit
+  only). An exception out of one trade's arm is audited + ⚠ Telegrammed and never skips the
+  next trade.
+- Advisory lock: the arm takes `_trade_advisory_try_lock` (non-blocking) and defers to an
+  in-flight partial, exactly as `_ensure_stop_coverage` does.
+
+**Flip (OPERATOR-ONLY, THE LINE — one row per column, acts on the next 5-minute poll):**
+```sql
+-- MAGNA53 partial at +8 ORB-R (NULL restores the global PROFIT_TRIGGER_R):
+UPDATE mi_strategies SET profit_trigger_r = 8.0, updated_at = NOW() WHERE strategy_id = 'magna53';
+-- MAGNA53 breakeven armed at +3 ORB-R on price (NULL restores today's partial-only breakeven):
+UPDATE mi_strategies SET breakeven_arm_r = 3.0, updated_at = NOW() WHERE strategy_id = 'magna53';
+```
+Both columns are `CHECK (… IS NULL OR … > 0)`. Flip-day duties: a dated line here and in
+`magna53_ep.md` the same day; bump `system_review._PROFIT_TRIGGER_ERA_START` / the
+`rule_eras` boundary so era-scoped reviews and the #482 recorder stamp the new era; and teach
+`scripts/live_rules.py` the two columns (`build_exit_section` reads only the global constant
+today, so after a flip the rules view would still print "entry + 2 × R" for MAGNA53 — no drift
+while NULL, drift the moment a value is set).
+
+**Known deviation vs the replay**: the harness arms on the bar HIGH; live polls every 5 minutes,
+so a same-day arm-then-stop the harness abstains on WILL occur live (`magna53_ep.md`
+2026-09-06). **Evidence is in-sample** (same 65 trades for every cell and the selection).
+
+**Verification**: `tests/test_545_per_strategy_exit_levels.py` (26 tests, nine mutations
+each red on the test that names it); `python scripts/audit_column_writes.py check` OK;
+`scripts/ep_replay.py validate` unchanged (VALIDATION PASS). Verify-live on the first flip:
+`breakeven_armed` audit row + the successor stop visible on Alpaca at entry for the full
+quantity; `profit_trigger_fired` detail carrying `r_multiple = 8.0`.
+
+**Status**: plumbing shipped inert — every row NULL → byte-identical to the 2026-08-23
+"acting partial" description above. The VALUES are **PROPOSED — NOT LIVE — awaiting operator
+sign-off** (`magna53_ep.md` 2026-09-06).
 
 ### 2026-09-04 — BUG FIX (#600 fork 2): the cancel/reject handler discarded the dead stop's own price the instant it nulled the pointer — the #600 floor was DARK on the common intraday path; it now consumes a preserved price instead (TRADE STATE — no exit rule, stop level, target or size changed)
 

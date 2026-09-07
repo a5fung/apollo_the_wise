@@ -1594,6 +1594,8 @@ async def set_stop_order_id(
       - 'cancel_or_reject_restored' trade_stream restored stop after cancel
       - 'stop_ack_timeout'         scheduler watchdog fallback
       - 'ingest_r1_repair'         #184b broker-order ingest repaired a NULL/dead stop pointer
+      - 'breakeven_arm_failed'     #545 price-armed breakeven: a stop read back DEAD → null
+      - 'breakeven_arm_unverified' #545 price-armed breakeven: successor accepted, not yet confirmed
 
     `expected_prior` (optional): a NO-OVERWRITE compare-and-set. When supplied, the update applies
     ONLY if the current stop_order_id IS NOT DISTINCT FROM it — race-safe, never clobber a pointer a
@@ -7741,6 +7743,75 @@ def profit_target_r_per_share(
     return entry - stop
 
 
+# ── #545 (2026-09-06): per-strategy exit LEVELS — the multiple, not the switch ────────
+# `constants.PROFIT_TRIGGER_R` was one global number, and scan_profit_triggers selects
+# EVERY filled position with no signal_type predicate — only the R FRAME varied per
+# strategy (profit_target_r_per_share), never the multiple. So the +2R → +8R partial
+# the #545 replay recommends for MAGNA53 (65 era-C trades, +3.54R → +12.10R) could not
+# be applied without also moving every other strategy that ever holds a position, on
+# evidence that is MAGNA53-only. These resolvers make the MULTIPLE per-strategy via
+# `mi_strategies.profit_trigger_r` / `.breakeven_arm_r` (NULL = today), read fresh
+# each poll by `_load_strategy_exit_overrides`.
+#
+# THE SWITCH STAYS GLOBAL, deliberately: `PROFIT_TRIGGER_R = None` still means "no
+# intraday partial anywhere, the day-3/5 ladder is back" — scan_profit_triggers'
+# first line and live_tracker.run_partial_exits' `skip_partial_decision=
+# bool(PROFIT_TRIGGER_R)` stand-down are byte-identical, so the two paths can never
+# both act (one owner per decision, #508). A per-strategy override changes ONLY the
+# level a strategy's partial fires at, and only while the global switch is on.
+
+def resolve_profit_trigger_r(
+    signal_type: str | None,
+    overrides: dict[str, dict] | None,
+    global_r: float | None,
+) -> float | None:
+    """The +N×R partial multiple for `signal_type`: the strategy's own
+    `profit_trigger_r` when set and positive, else the global `global_r`
+    (today's `constants.PROFIT_TRIGGER_R`). No override anywhere → `global_r`
+    exactly — the byte-identity guard is `test_545_per_strategy_exit_levels.py`."""
+    row = (overrides or {}).get(signal_type or "") or {}
+    v = row.get("profit_trigger_r")
+    if v is not None:
+        try:
+            if float(v) > 0:
+                return float(v)
+        except (TypeError, ValueError):
+            pass
+    return global_r
+
+
+def resolve_breakeven_arm_r(
+    signal_type: str | None,
+    overrides: dict[str, dict] | None,
+) -> float | None:
+    """The price-armed breakeven level for `signal_type` (entry + N×R), or None =
+    OFF. There is NO global default on purpose: with every row NULL this returns
+    None for every strategy and scan_breakeven_arms is inert — today's behaviour."""
+    row = (overrides or {}).get(signal_type or "") or {}
+    v = row.get("breakeven_arm_r")
+    if v is not None:
+        try:
+            if float(v) > 0:
+                return float(v)
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+async def _load_strategy_exit_overrides(conn=None) -> dict[str, dict]:
+    """Fresh read of `mi_strategies.profit_trigger_r` / `.breakeven_arm_r` keyed by
+    signal_type (db.get_strategy_exit_overrides). FAILS TO TODAY: any error → `{}`,
+    which every resolver above maps to the global constant / OFF. A read hiccup
+    must never move a live partial's level or arm a stop move — the same
+    fail-closed idiom as `_breakeven_at_broker_enabled`. Never raises."""
+    try:
+        from agents.market_intelligence import db
+        return await db.get_strategy_exit_overrides(conn=conn)
+    except Exception as e:  # loud-ok: logged; falling back to the globals is today's behaviour
+        logger.warning(f"strategy exit overrides unreadable — running on the globals: {e}")
+        return {}
+
+
 async def scan_profit_triggers() -> list[dict]:
     """#508 — take 1/3 when the position first trades at entry + PROFIT_TRIGGER_R x risk.
 
@@ -7765,6 +7836,10 @@ async def scan_profit_triggers() -> list[dict]:
     idealised limit fill: <=0.04R, nil at +2R — build step 1).
 
     OFF unless constants.PROFIT_TRIGGER_R is set. Returns per-trade outcome dicts.
+
+    #545 (2026-09-06): the MULTIPLE is per-strategy — `mi_strategies.profit_trigger_r`
+    (NULL = the global constant) via resolve_profit_trigger_r; the SWITCH above stays
+    global. With no override row set, every target below is byte-identical to before.
     """
     from agents.market_intelligence.constants import PROFIT_TRIGGER_R
     if not PROFIT_TRIGGER_R:
@@ -7788,6 +7863,9 @@ async def scan_profit_triggers() -> list[dict]:
               AND COALESCE(partial_taken, FALSE) = FALSE
             """
         )
+        # #545: per-strategy multiples, read once per poll on the same connection.
+        # {} (no override rows, or a read failure) → the global constant for every row.
+        overrides = await _load_strategy_exit_overrides(conn)
     results: list[dict] = []
     for t in rows:
         def _num(v):
@@ -7796,6 +7874,7 @@ async def scan_profit_triggers() -> list[dict]:
         stop = _num(t["hard_stop"]) or _num(t["stop_price"])
         if not entry or not stop or stop >= entry:
             continue
+        r_multiple = resolve_profit_trigger_r(t["signal_type"], overrides, PROFIT_TRIGGER_R)
         # 🔴 2026-08-16 (operator-signed 2R-stop change): the target's R frame is
         # the ORB-based R (entry − orb_low) for MAGNA53 — NOT the placed stop
         # distance, which is now 2R wide. `entry + N·(entry − stop)` on a 2R stop
@@ -7810,7 +7889,7 @@ async def scan_profit_triggers() -> list[dict]:
                 f"orb_low={t['orb_low']} stop={stop}) — trigger skipped"
             )
             continue
-        target = entry + PROFIT_TRIGGER_R * r_per_share
+        target = entry + r_multiple * r_per_share
         async with pool.acquire() as conn:
             hi = await conn.fetchval(
                 """
@@ -7854,7 +7933,7 @@ async def scan_profit_triggers() -> list[dict]:
                 _trigger_ctx = {
                     "delivered": False,
                     "high": float(hi), "target": float(target), "entry": float(entry),
-                    "r_multiple": PROFIT_TRIGGER_R,
+                    "r_multiple": r_multiple,
                 }
         except Exception:  # loud-ok: notification must never abort the money action below
             logger.warning(f"profit-trigger context build failed for {t['ticker']}", exc_info=True)
@@ -7879,21 +7958,494 @@ async def scan_profit_triggers() -> list[dict]:
                 await send_telegram_message(
                     f"{mode_prefix(t['account_mode'])}\U0001F4B0 *Profit target hit: {t['ticker']}*\n"
                     f"traded ${float(hi):.2f} >= ${target:.2f} "
-                    f"({PROFIT_TRIGGER_R:g}R above ${entry:.2f})\n"
+                    f"({r_multiple:g}R above ${entry:.2f})\n"
                     f"{_action_line}"
                 )
             except Exception:  # loud-ok: notification must never abort the money action below
                 logger.warning(f"profit-trigger notify failed for {t['ticker']}", exc_info=True)
         await log_audit_event(
             "profit_trigger_fired" if ok else "profit_trigger_failed",
-            f"{t['ticker']}: high ${float(hi):.2f} >= {PROFIT_TRIGGER_R:g}R target ${target:.2f}",
+            f"{t['ticker']}: high ${float(hi):.2f} >= {r_multiple:g}R target ${target:.2f}",
             json.dumps({"trade_id": t["id"], "shares": shares, "entry": entry,
-                        "target": target, "high": float(hi)}),
+                        "target": target, "high": float(hi),
+                        "r_multiple": r_multiple}),
         )
         results.append({"ticker": t["ticker"],
                         "action": "partial_submitted" if ok else "partial_failed",
                         "shares": shares})
     return results
+
+
+# ── #545 (2026-09-06): PRICE-ARMED BREAKEVEN — independent of the partial ────────────
+# Today breakeven is bolted to the partial: it is applied inside execute_partial_exit,
+# so the stop only moves to entry when a partial fires. The #545 replay (65 admitted
+# MAGNA53 era-C trades) recommends decoupling them — breakeven at +3 ORB-R on PRICE,
+# whether or not a partial has fired (and the partial itself moved out to +8R). This
+# is the mechanism, shipped DARK: `mi_strategies.breakeven_arm_r` is NULL on every row,
+# resolve_breakeven_arm_r therefore returns None for every strategy, and
+# scan_breakeven_arms returns [] before it reads a single position or touches the
+# broker. The operator arms it with one UPDATE (docs/setups/exit_discipline.md).
+#
+# THE STOP IT MOVES: it arms BEFORE any partial, so the target is the FULL-position
+# stop — the OTO leg every MAGNA53 entry carries (`mi_live_trades.stop_order_id`) —
+# NOT the reduced stop execute_partial_exit's resting-mode breakeven handles. The move
+# is an atomic PRICE-ONLY `alpaca.replace_order`: quantity never changes, so it can
+# never race the share-reservation system (the IBM 2026-05-27 class), and a REJECTED
+# replace leaves the old stop live and untouched (probe T1b/P4, `_508_oto_leg_probe`:
+# "price-only replace works, the replacement remains a leg"). No cancel → no naked
+# window — the reason this is not routed through update_stop's cancel-then-new, whose
+# own #433 comment records the 3-second naked retry an OTO leg often needs. ⚠ First
+# PRODUCTION use of a price-only replace on a full leg (the #548 site at
+# `_be_outcome` runs on the already-reduced stop) — a verify-live item.
+#
+# RAISE-ONLY, enforced against the BROKER, not the DB (the 2026-08-10 rule): the live
+# stop is read first; a broker stop already at/above entry is left alone (flag only).
+# It composes with the EOD trail by construction — the flag it sets is the SAME
+# `breakeven_active` exit_logic's daily pass folds into `max(hard_stop, trail, entry)`.
+#
+# IDEMPOTENT two ways: the SQL skips `breakeven_active = TRUE` rows, and the live
+# broker read skips a stop already at entry, so a lost flag write cannot produce a
+# second replace. Same 5-minute poll + `mi_intraday_bars` HIGH shape as the trigger.
+_BREAKEVEN_ARM_VERIFY_POLLS = 12          # 12 × 0.25s ≈ 3s — mirrors execute_partial_exit Step 1b
+_BREAKEVEN_ARM_VERIFY_INTERVAL_S = 0.25
+
+
+async def _mark_breakeven_armed(
+    trade_id: int,
+    *,
+    new_stop_id: str | None = None,
+    new_stop_price: float | None = None,
+) -> None:
+    """The price-armed breakeven's ONE trade-state writer (Gate 5 G registered by name).
+
+    Two shapes, one function so the column-write authority stays a single site:
+      * flag only (`new_stop_id` None) — the broker stop was already at/above entry, so
+        nothing was replaced; the flag stops this scan re-reading the trade and lets the
+        EOD pass floor the stop at entry via exit_logic's existing `breakeven_active` max().
+      * pointer + price + flag ATOMICALLY — written ONLY after the successor stop is
+        CONFIRMED live at the broker. `stop_price` MUST follow the broker here (the same
+        reason as the #548 `_be_outcome == "live"` write): the EOD trail fires only when
+        `effective_stop > stop_price`, so a stale lower value would let a later trail
+        pass cancel this stop and re-place LOWER — loosening protection.
+    Never written from an unconfirmed path — the DB understating protection is the safe
+    direction (test_resting_mode_breakeven_548.py); the pointer alone goes through
+    set_stop_order_id there.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if new_stop_id is None:
+            await conn.execute(
+                "UPDATE mi_live_trades SET breakeven_active = TRUE WHERE id = $1",
+                trade_id,
+            )
+        else:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    stop_order_id = $2,
+                    stop_price = $3,
+                    breakeven_active = TRUE
+                WHERE id = $1
+            """, trade_id, new_stop_id, new_stop_price)
+
+
+async def _breakeven_arm_already_alerted(trade_id: int) -> bool:
+    """Has the "breakeven move rejected" Telegram already gone out for this trade today?
+
+    Same idiom as `_profit_trigger_already_announced`: a rejected replace leaves the
+    old stop live, so the scan is RIGHT to retry every poll while the level holds —
+    but the operator must hear about it once, not every 5 minutes (the 2026-08-04
+    bombardment). The `breakeven_arm_rejected` audit row still lands every cycle.
+    Matched in Python, not via a `detail::jsonb` cast in SQL (trade_stream's note on
+    '' detail rows). Fails OPEN (announce) — a duplicate is a nuisance, a missed
+    notice on a money path is not."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT detail FROM mi_audit_log "
+                "WHERE event_type = 'breakeven_arm_rejected' "
+                "AND created_at > NOW() - INTERVAL '1 day'")
+        for r in rows or []:
+            try:
+                if str(json.loads(r["detail"]).get("trade_id")) == str(trade_id):
+                    return True
+            except Exception:  # loud-ok: a malformed candidate row is skipped, not the check
+                continue
+        return False
+    except Exception as e:  # loud-ok: logged; failing open only risks a duplicate alert
+        logger.warning(f"breakeven-arm alert dedupe check failed (will announce): {e}")
+        return False
+
+
+async def scan_breakeven_arms() -> list[dict]:
+    """#545 — move the protective stop to entry when the position TRADES at
+    entry + `mi_strategies.breakeven_arm_r` × R, whether or not a partial has fired.
+
+    Runs on the 5-minute cadence right after scan_profit_triggers (same job, own
+    try/except), on the bars track_open_position_extremes just persisted. Detection is
+    the in-hold minute HIGH from mi_intraday_bars (a spike between polls still arms).
+    R is the strategy's own frame via profit_target_r_per_share (entry − ORB low for
+    MAGNA53 — never the placed 2R stop distance); no valid frame → skipped loudly.
+
+    DARK BY DEFAULT: with `breakeven_arm_r` NULL on every mi_strategies row this
+    returns [] at the `if not armed_types` line — before the position query, before any
+    broker call. Returns per-trade outcome dicts. See the block comment above for the
+    stop it targets, the raise-only guard and the idempotency.
+    """
+    pool = await get_pool()
+    now_et = datetime.now(_ET)
+    today_open_et = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+    if now_et <= today_open_et:
+        return []
+
+    async with pool.acquire() as conn:
+        overrides = await _load_strategy_exit_overrides(conn)
+    armed_types = {st for st in overrides if resolve_breakeven_arm_r(st, overrides) is not None}
+    if not armed_types:
+        return []  # ← the dark branch: no strategy carries a breakeven_arm_r
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, ticker, entry_price, hard_stop, stop_price, stop_order_id,
+                   orb_low, signal_type, remaining_shares, filled_at, account_mode
+            FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0
+              AND filled_at IS NOT NULL
+              AND COALESCE(breakeven_active, FALSE) = FALSE
+            """
+        )
+    results: list[dict] = []
+    for t in rows:
+        def _num(v):
+            return float(v) if v is not None else None
+        arm_r = resolve_breakeven_arm_r(t["signal_type"], overrides)
+        if arm_r is None:
+            continue
+        entry = _num(t["entry_price"])
+        # The R FRAME anchors on the ORIGINAL stop (hard_stop, immutable), exactly as
+        # the trigger does; the CURRENT stop (stop_price) is only a hint for the
+        # raise-only check below — the broker read is what decides.
+        frame_stop = _num(t["hard_stop"]) or _num(t["stop_price"])
+        if not entry or not frame_stop or frame_stop >= entry:
+            continue
+        r_per_share = profit_target_r_per_share(
+            t["signal_type"], entry, frame_stop, _num(t["orb_low"]))
+        if r_per_share is None:
+            logger.warning(
+                f"breakeven arm: {t['ticker']} trade {t['id']} has no valid R frame "
+                f"(signal_type={t['signal_type']} entry={entry} orb_low={t['orb_low']} "
+                f"stop={frame_stop}) — arm skipped"
+            )
+            continue
+        arm_level = entry + arm_r * r_per_share
+        async with pool.acquire() as conn:
+            hi = await conn.fetchval(
+                """
+                SELECT MAX(high) FROM mi_intraday_bars
+                 WHERE ticker = $1 AND bar_time >= $2
+                """,
+                t["ticker"], t["filled_at"],
+            )
+        if hi is None or float(hi) < arm_level:
+            continue
+        try:
+            results.append(await _arm_breakeven_on_full_stop(
+                t, entry=entry, arm_r=arm_r, arm_level=arm_level, high=float(hi)))
+        except Exception as e:  # loud-ok: one trade's failure must not skip the rest; audited + Telegrammed below
+            logger.error(f"breakeven arm raised for {t['ticker']} trade {t['id']}: {e}",
+                         exc_info=True)
+            await log_audit_event(
+                "breakeven_arm_failed",
+                f"{t['ticker']}: breakeven arm raised {type(e).__name__} — stop state "
+                f"unverified; coverage check + next poll re-read",
+                json.dumps({"trade_id": t["id"], "ticker": t["ticker"],
+                            "reason": "exception", "error": str(e)[:500]}),
+            )
+            await send_telegram_message(
+                f"{mode_prefix(t['account_mode'])}⚠️ {t['ticker']}: breakeven arm hit an "
+                f"error ({type(e).__name__}) — verify the stop on Alpaca; the coverage "
+                f"check reconciles it."
+            )
+            results.append({"ticker": t["ticker"], "action": "arm_raised"})
+    return results
+
+
+async def _arm_breakeven_on_full_stop(
+    t, *, entry: float, arm_r: float, arm_level: float, high: float,
+) -> dict:
+    """Move ONE trade's full-position stop to entry via atomic price-only replace.
+    Called by scan_breakeven_arms once the in-hold HIGH has reached `arm_level`.
+
+    Outcomes (every one audited; terminal ones Telegram; transient ones audit only):
+      already_at_breakeven  — broker stop ≥ entry: flag only, no broker write.
+      armed                 — successor CONFIRMED live: pointer+price+flag written.
+      arm_rejected          — replace rejected, old stop CONFIRMED live: protection
+                              unchanged, retried next poll (Telegram once per trade).
+      arm_unverified        — replace accepted but the successor (or, on a raise, the
+                              old stop) could not be confirmed either way within budget:
+                              pointer persisted where known, price + flag WITHHELD
+                              (the #548 idiom), operator asked to eyeball.
+      arm_failed_*          — a stop read back DEAD: pointer nulled, broker-truth
+                              re-protect via _ensure_stop_coverage post-lock, 🚨.
+      skipped_*             — no pointer / partial holds the lock / stop unreadable:
+                              nothing touched; the coverage net or the next poll owns it.
+    """
+    def _num(v):
+        return float(v) if v is not None else None
+    trade_id = t["id"]
+    ticker = t["ticker"]
+    account_mode = t["account_mode"] or current_account_mode()
+    signal_type = t["signal_type"] or "unknown"
+    stop_id = t["stop_order_id"]
+    remaining = int(float(t["remaining_shares"]))
+    db_stop = _num(t["stop_price"])
+    be = round(float(entry), 2)
+    ctx = {
+        "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+        "arm_r": arm_r, "arm_level": round(arm_level, 4), "high": high,
+        "entry": float(entry), "breakeven": be, "db_stop_price": db_stop,
+        "old_stop_id": stop_id, "remaining_shares": remaining,
+    }
+    if not stop_id:
+        # No pointer = the post-remediation naked shape. The coverage invariant owns
+        # naked positions; a second stop-placer here would be the duplicate-stop hazard.
+        await log_audit_event(
+            "breakeven_arm_skipped",
+            f"{ticker}: level ${arm_level:.2f} reached (high ${high:.2f}) but the trade "
+            f"has no stop pointer — coverage check owns re-protection",
+            json.dumps({**ctx, "reason": "no_stop_pointer"}),
+        )
+        return {"ticker": ticker, "action": "skipped_no_stop"}
+
+    reprotect = False
+    outcome: dict = {"ticker": ticker, "action": "skipped"}
+    async with _trade_advisory_try_lock(trade_id) as have_lock:
+        if not have_lock:
+            await log_audit_event(
+                "breakeven_arm_skipped",
+                f"{ticker}: a partial holds the trade lock — arm deferred to the next poll",
+                json.dumps({**ctx, "reason": "partial_in_flight"}),
+            )
+            return {"ticker": ticker, "action": "skipped_partial_in_flight"}
+
+        # ── Raise-only floor against the LIVE broker stop (never the DB, which may
+        # understate) — the 2026-08-10 rule. Unreadable / not live / no price → we
+        # cannot prove the move is a raise, so nothing is touched (update_stop's own
+        # fail direction); a DEAD stop is the coverage invariant's job, not ours.
+        live = await alpaca.get_order(stop_id, account_mode=account_mode)
+        status = _canonical_order_status(live.get("status") if live else None)
+        broker_stop_raw = live.get("stop_price") if live else None
+        if status not in _STOP_CONFIRMED_LIVE_STATUSES or broker_stop_raw is None:
+            await log_audit_event(
+                "breakeven_arm_skipped",
+                f"{ticker}: stop {stop_id[:8]} not confirmed live at the broker "
+                f"(status={status}, stop_price={broker_stop_raw}) — cannot prove a raise; "
+                f"nothing touched",
+                json.dumps({**ctx, "reason": "stop_not_live_or_unreadable",
+                            "broker_status": status}),
+            )
+            return {"ticker": ticker, "action": "skipped_stop_unreadable"}
+        broker_stop = float(broker_stop_raw)
+        ctx["broker_stop_price"] = broker_stop
+        if broker_stop >= be - 1e-9:
+            # Already at/above breakeven — a trailed or gapped-up position, or a prior
+            # arm whose flag write was lost. Nothing to raise; flag it so the daily
+            # pass floors at entry and this scan never re-reads the trade.
+            await _mark_breakeven_armed(trade_id)
+            await log_audit_event(
+                "breakeven_arm_noop",
+                f"{ticker}: level ${arm_level:.2f} reached but the broker stop "
+                f"${broker_stop:.2f} already sits at/above entry ${be:.2f} — flagged, "
+                f"no replace",
+                json.dumps(ctx),
+            )
+            return {"ticker": ticker, "action": "already_at_breakeven"}
+
+        # ── RAISE: atomic PRICE-ONLY replace on the full-position stop. ────────────
+        coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+        new_order = None
+        try:
+            new_order = await alpaca.replace_order(
+                stop_id, stop_price=be, account_mode=account_mode, client_order_id=coid,
+            )
+        except Exception as _rep_err:
+            # A rejected replace is atomic broker-side — the old stop should still be
+            # live. VERIFY that, never assume it (every incident here repeats this).
+            chk = await alpaca.get_order(stop_id, account_mode=account_mode)
+            chk_status = _canonical_order_status(chk.get("status") if chk else None)
+            if chk_status in _STOP_CONFIRMED_LIVE_STATUSES:
+                await log_audit_event(
+                    "breakeven_arm_rejected",
+                    f"{ticker}: breakeven replace rejected ({type(_rep_err).__name__}); "
+                    f"stop {stop_id[:8]} still live @${broker_stop:.2f} — protection "
+                    f"unchanged, retrying next poll",
+                    json.dumps({**ctx, "error": str(_rep_err)[:500]}),
+                )
+                if not await _breakeven_arm_already_alerted(trade_id):
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}⚠️ {ticker}: breakeven move to "
+                        f"${be:.2f} rejected ({type(_rep_err).__name__}) — stop stays at "
+                        f"${broker_stop:.2f} for {remaining} sh (still protected). "
+                        f"Retrying every 5 minutes while the level holds."
+                    )
+                return {"ticker": ticker, "action": "arm_rejected"}
+            if chk_status in _STOP_DEAD_STATUSES or chk_status == "filled":
+                # broker-confirmed: reached ONLY on an ACTUAL terminal status read. The
+                # old stop is gone and we hold no successor id → null the pointer and
+                # re-protect to broker truth post-lock (the coverage invariant finds any
+                # successor the broker did create).
+                await set_stop_order_id(
+                    trade_id, None, reason="breakeven_arm_failed", account_mode=account_mode,
+                )
+                await log_audit_event(
+                    "breakeven_arm_failed",
+                    f"{ticker}: breakeven replace raised ({type(_rep_err).__name__}) AND "
+                    f"stop {stop_id[:8]} read back {chk_status} — pointer nulled, "
+                    f"re-protecting to broker truth",
+                    json.dumps({**ctx, "reason": "old_stop_dead", "broker_status": chk_status,
+                                "error": str(_rep_err)[:500]}),
+                )
+                reprotect = True
+                outcome = {"ticker": ticker, "action": "arm_failed_stop_dead"}
+            else:
+                # UNKNOWN: the replace raised AND the old stop could not be confirmed
+                # either way. Demoting here would be inference from a failed read (the
+                # FPS 2026-06-04 false-naked shape ADR 0008 outlaws) — touch nothing,
+                # say so, and let the next poll's broker read + the coverage net settle it.
+                await log_audit_event(
+                    "breakeven_arm_failed",
+                    f"{ticker}: breakeven replace raised ({type(_rep_err).__name__}) and "
+                    f"stop {stop_id[:8]} could not be read back (status={chk_status}) — "
+                    f"nothing changed in the DB; verify at the broker",
+                    json.dumps({**ctx, "reason": "old_stop_unknown", "broker_status": chk_status,
+                                "error": str(_rep_err)[:500]}),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⚠️ {ticker}: breakeven move to ${be:.2f} "
+                    f"failed ({type(_rep_err).__name__}) and the stop could not be read back "
+                    f"— verify the stop on Alpaca. Nothing was changed here."
+                )
+                return {"ticker": ticker, "action": "arm_unverified"}
+
+        if new_order is not None:
+            new_id = new_order["id"]
+            # Bounded verify — the successor must be CONFIRMED live before the DB says so.
+            succ_status = None
+            succ_outcome = "unknown"
+            for _ in range(_BREAKEVEN_ARM_VERIFY_POLLS):
+                _chk = await alpaca.get_order(new_id, account_mode=account_mode)
+                succ_status = _canonical_order_status(_chk.get("status") if _chk else None)
+                if succ_status in _STOP_CONFIRMED_LIVE_STATUSES:
+                    succ_outcome = "live"
+                    break
+                if succ_status in _STOP_DEAD_STATUSES or succ_status == "filled":
+                    succ_outcome = "dead"
+                    break
+                await asyncio.sleep(_BREAKEVEN_ARM_VERIFY_INTERVAL_S)
+            if succ_outcome == "live":
+                await _mark_breakeven_armed(trade_id, new_stop_id=new_id, new_stop_price=be)
+                pool = await get_pool()
+                async with pool.acquire() as conn:
+                    await conn.execute("""
+                        INSERT INTO mi_live_orders
+                            (trade_id, alpaca_order_id, ticker, side, order_type,
+                             qty, stop_price, status, raw_response, purpose, exit_reason)
+                        VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
+                                'stop_loss', 'stop_hit')
+                        ON CONFLICT (alpaca_order_id) DO NOTHING
+                    """, trade_id, new_id, ticker, float(remaining), be,
+                        new_order.get("status", "new"),
+                        _jsonb_param(new_order))  # #216: codec single-encodes; do NOT pre-dumps
+                await log_audit_event(
+                    "breakeven_armed",
+                    f"{ticker}: traded ${high:.2f} >= {arm_r:g}R level ${arm_level:.2f} — "
+                    f"stop ${broker_stop:.2f} → ${be:.2f} (entry) on the full "
+                    f"{remaining}-share stop via price-only replace "
+                    f"({stop_id[:8]}→{new_id[:8]})",
+                    json.dumps({**ctx, "new_stop_id": new_id, "new_stop_price": be,
+                                "mechanism": "price_only_replace"}),
+                )
+                _why = describe_stop_move(
+                    entry_price=float(entry),
+                    hard_stop=_num(t["hard_stop"]),
+                    old_stop_price=broker_stop, new_stop_price=be,
+                    stop_source="breakeven",
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}🛡 *Breakeven armed: {ticker}*\n"
+                    f"traded ${high:.2f} >= ${arm_level:.2f} ({arm_r:g}R above ${float(entry):.2f})\n"
+                    f"Stop ${broker_stop:.2f} → ${be:.2f} for {remaining} sh. {_why}"
+                )
+                outcome = {"ticker": ticker, "action": "armed", "new_stop_id": new_id}
+            elif succ_outcome == "dead":
+                # broker-confirmed terminal read on the SUCCESSOR: the replace consumed
+                # the old stop and its successor died — the position is unprotected.
+                await set_stop_order_id(
+                    trade_id, None, reason="breakeven_arm_failed", account_mode=account_mode,
+                )
+                await log_audit_event(
+                    "breakeven_arm_failed",
+                    f"{ticker}: breakeven successor {new_id[:8]} read back {succ_status} — "
+                    f"pointer nulled, re-protecting to broker truth",
+                    json.dumps({**ctx, "reason": "successor_dead", "new_stop_id": new_id,
+                                "broker_status": succ_status}),
+                )
+                reprotect = True
+                outcome = {"ticker": ticker, "action": "arm_failed_successor_dead"}
+            else:
+                # Still settling after the budget. The successor LIKELY lives — persist
+                # the pointer (best broker truth; the old id is auto-cancelled by the
+                # replace) but WITHHOLD price + flag: the next poll's broker read will
+                # find it live at entry and take the flag-only path, or find it dead and
+                # leave it to the coverage net. Ask the operator to eyeball meanwhile.
+                await set_stop_order_id(
+                    trade_id, new_id, reason="breakeven_arm_unverified",
+                    account_mode=account_mode,
+                )
+                await log_audit_event(
+                    "breakeven_arm_unverified",
+                    f"{ticker}: breakeven replace accepted ({stop_id[:8]}→{new_id[:8]}) "
+                    f"but successor not confirmed live within budget (status={succ_status})",
+                    json.dumps({**ctx, "new_stop_id": new_id, "last_status": succ_status}),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⚠️ {ticker}: breakeven stop replace "
+                    f"accepted but not confirmed live (status={succ_status}). Verify the "
+                    f"stop on Alpaca — {remaining} sh should now rest at ${be:.2f}."
+                )
+                outcome = {"ticker": ticker, "action": "arm_unverified", "new_stop_id": new_id}
+
+    if reprotect:
+        # Post-lock, same idiom as execute_partial_exit's be_reprotect block (the
+        # try-lock inside _ensure_stop_coverage is why this must run after release).
+        coverage_msg = None
+        try:
+            _pos = await alpaca.get_position(ticker, account_mode=account_mode)
+            _broker_qty = float(_pos.get("qty")) if _pos and _pos.get("qty") is not None else None
+            if _broker_qty and _broker_qty > 0:
+                coverage_msg = await _ensure_stop_coverage(
+                    trade_id, ticker, _broker_qty, db_stop, signal_type, account_mode,
+                )
+        except Exception as _re:
+            logger.error(f"breakeven arm: re-protect via _ensure_stop_coverage raised for "
+                         f"{ticker}: {_re}")
+            await log_audit_event(
+                "breakeven_arm_reprotect_failed",
+                f"{ticker}: re-protect after a dead stop raised ({type(_re).__name__}) — "
+                f"coverage retry / next sync will remediate",
+                json.dumps({"trade_id": trade_id, "ticker": ticker, "error": str(_re)[:500]}),
+            )
+            coverage_msg = f"⚠️ re-protect call raised: {_re}"
+        _cov_line = coverage_msg or (
+            "_Re-protect deferred (coverage already met, or broker read failed) — verify "
+            "the stop covers the position on Alpaca; the coverage retry reconciles._"
+        )
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}🚨 *{ticker}: breakeven move FAILED and the stop "
+            f"read back dead* — {remaining} sh may be unprotected.\n{_cov_line}"
+        )
+    return outcome
 
 
 async def track_open_position_extremes(sweep: bool = False) -> int:

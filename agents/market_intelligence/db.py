@@ -4544,6 +4544,10 @@ async def initialize_schema() -> None:
                 promotion_thresholds     JSONB NOT NULL,
                 position_size_multiplier NUMERIC NOT NULL DEFAULT 1.0,
                 max_concurrent_positions INT,
+                -- #545 (2026-09-06): per-strategy exit levels, NULL = today's globals
+                -- (folded into CREATE per #258 parity; the ALTERs below add the CHECKs).
+                profit_trigger_r         NUMERIC,
+                breakeven_arm_r          NUMERIC,
                 notes                    TEXT,
                 created_at               TIMESTAMPTZ DEFAULT NOW(),
                 updated_at               TIMESTAMPTZ DEFAULT NOW(),
@@ -4664,6 +4668,40 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS position_size_multiplier NUMERIC NOT NULL DEFAULT 1.0;
             ALTER TABLE mi_strategies
                 ADD COLUMN IF NOT EXISTS max_concurrent_positions INT;
+            -- #545 (2026-09-06): per-strategy EXIT levels, same NULL-shares-global
+            -- idiom as max_concurrent_positions above. BOTH NULL on every row =
+            -- today's behaviour byte-for-byte; the operator sets a value with a
+            -- one-row UPDATE (docs/setups/exit_discipline.md 2026-09-06), no
+            -- redeploy. No seed writes either column — the plumbing ships, the
+            -- values do not (THE LINE).
+            -- profit_trigger_r: NULL = the global constants.PROFIT_TRIGGER_R
+            --   multiple; a number = THIS strategy's +N×R partial trigger. The
+            --   ON/OFF switch stays global (PROFIT_TRIGGER_R = None turns the
+            --   intraday partial off for everyone); only the MULTIPLE is
+            --   per-strategy. Read fresh each 5-minute scan by
+            --   order_manager.scan_profit_triggers via get_strategy_exit_overrides.
+            -- breakeven_arm_r: NULL = OFF (no price-armed breakeven — today);
+            --   a number = move the protective stop to entry once the position
+            --   trades at entry + N×R, whether or not a partial has fired
+            --   (order_manager.scan_breakeven_arms). R is the strategy's R frame
+            --   (profit_target_r_per_share: entry − ORB low for MAGNA53).
+            -- Non-positive values are rejected at the DB so a typo can never
+            -- read as "fire at once" (0×R) — DROP + ADD so it is idempotent
+            -- across boots, the same shape as mi_strategies_phase_check below.
+            ALTER TABLE mi_strategies
+                ADD COLUMN IF NOT EXISTS profit_trigger_r NUMERIC;
+            ALTER TABLE mi_strategies
+                ADD COLUMN IF NOT EXISTS breakeven_arm_r NUMERIC;
+            ALTER TABLE mi_strategies
+                DROP CONSTRAINT IF EXISTS mi_strategies_profit_trigger_r_positive;
+            ALTER TABLE mi_strategies
+                ADD CONSTRAINT mi_strategies_profit_trigger_r_positive
+                CHECK (profit_trigger_r IS NULL OR profit_trigger_r > 0);
+            ALTER TABLE mi_strategies
+                DROP CONSTRAINT IF EXISTS mi_strategies_breakeven_arm_r_positive;
+            ALTER TABLE mi_strategies
+                ADD CONSTRAINT mi_strategies_breakeven_arm_r_positive
+                CHECK (breakeven_arm_r IS NULL OR breakeven_arm_r > 0);
             -- #424 (2026-07-06): 'deprecated' phase. The existing prod table's
             -- inline CHECK (phase IN 'shadow','paper','live') is auto-named
             -- mi_strategies_phase_check and does NOT include 'deprecated' —
@@ -5343,6 +5381,47 @@ async def get_all_strategy_summaries(conn: Any = None) -> list[Any]:
     pool = await get_pool()
     async with pool.acquire() as acquired:
         return await acquired.fetch(_sql)
+
+
+async def get_strategy_exit_overrides(conn: Any = None) -> dict[str, dict[str, float | None]]:
+    """#545 (2026-09-06): the per-strategy exit levels, keyed by `signal_type` (the key
+    `mi_live_trades` rows carry) → `{"profit_trigger_r": float|None, "breakeven_arm_r":
+    float|None}`. Only rows carrying at least one override are returned, so an
+    untouched registry yields `{}` — the callers then run on today's globals, which is
+    the byte-identity the build ships under.
+
+    Read FRESH on every 5-minute scan — deliberately NOT via strategies.registry's
+    process cache: the operator's flip is a direct `UPDATE mi_strategies` (the same
+    way every runtime toggle is flipped) and must act on the next poll, not the next
+    restart. One tiny indexed read per poll is the price of that.
+
+    Same contract as `get_safeguard_state`: does NOT catch exceptions and applies no
+    fail-direction — the caller (`order_manager._load_strategy_exit_overrides`) owns
+    that, and its direction is "today's behaviour" ({}). Rows whose columns are absent
+    (a test double feeding trade rows back) are skipped, never raised on.
+    `conn` injectable (tests, or a caller already holding a connection)."""
+    _sql = ("SELECT signal_type, profit_trigger_r, breakeven_arm_r FROM mi_strategies "
+            "WHERE profit_trigger_r IS NOT NULL OR breakeven_arm_r IS NOT NULL")
+    if conn is not None:
+        rows = await conn.fetch(_sql)
+    else:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            rows = await acquired.fetch(_sql)
+    out: dict[str, dict[str, float | None]] = {}
+    for r in rows or []:
+        try:
+            signal_type = r["signal_type"]
+            ptr, bar = r["profit_trigger_r"], r["breakeven_arm_r"]
+        except (KeyError, IndexError, TypeError):
+            continue
+        if not signal_type:
+            continue
+        out[str(signal_type)] = {
+            "profit_trigger_r": float(ptr) if ptr is not None else None,
+            "breakeven_arm_r": float(bar) if bar is not None else None,
+        }
+    return out
 
 
 async def set_safeguard_state(

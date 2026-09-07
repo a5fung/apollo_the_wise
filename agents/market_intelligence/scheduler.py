@@ -2152,6 +2152,22 @@ async def _track_open_position_extremes_job():
     except Exception as e:
         logger.error(f"track_position_extremes failed: {e}")
 
+    # #545 — price-armed breakeven runs AFTER the partial, on the same poll's bars,
+    # in its OWN try/except: an exception out of the new path must never starve
+    # today's live partial above (that alone would falsify its dark claim). Same-
+    # poll double-cross costs nothing in this order — the partial's fold-in already
+    # moves the stop to entry. DARK until `mi_strategies.breakeven_arm_r` is set
+    # (returns [] before any position read or broker call).
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            scan_breakeven_arms,
+        )
+        armed = await scan_breakeven_arms()
+        if armed:
+            logger.info(f"breakeven arm: {armed}")
+    except Exception as e:
+        logger.error(f"scan_breakeven_arms failed: {e}")
+
 
 async def _position_path_eod_sweep_job():
     """Run once at 16:10 ET, mon-fri (#306, 2026-07-25).

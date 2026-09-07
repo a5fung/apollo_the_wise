@@ -403,6 +403,102 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
+### 2026-09-06 — #545 PROPOSED exit tactics: partial +2R → +8R, breakeven decoupled and armed at +3R on price — PLUMBING BUILT DARK, values NOT changed (NOT LIVE — awaiting operator sign-off)
+
+**Trigger**: the #545 entry/exit-tactics replay (`scripts/ep_replay.py`, 65 admitted MAGNA53
+era-C EP trades, the `era_c` rule-set stack) plus the advisor pass recorded in commit
+`9111c1c9`: the recommendation stands, but `constants.PROFIT_TRIGGER_R` was ONE global number
+and `order_manager.scan_profit_triggers` selects every filled position with no `signal_type`
+predicate — only the R FRAME varied per strategy, never the multiple — so the change could not
+be applied to MAGNA53 without also moving every other strategy's partial, on evidence that is
+MAGNA53-only. That blocking defect is what this entry ships; the rule itself is proposed here
+and changes nothing until the operator flips it.
+
+**The proposed rule (NOT yet acting):**
+1. Intraday partial (1/3) at **+8 ORB-R** instead of +2 ORB-R. The 5R–12R range is a flat
+   plateau in the replay; 8R is its middle — deliberately not the +12.37R peak cell at 10R.
+2. **Breakeven DECOUPLED from the partial**: the protective stop moves to entry when the
+   position **trades at entry + 3 ORB-R**, whether or not a partial has fired. Today breakeven
+   is applied only inside `execute_partial_exit`, so it exists only after a partial.
+3. Trail line and trail timing: **NO CHANGE** (both alternatives were tested and lost — commits
+   `eccdee91`, `9a55f8df`, `00dd915d`).
+
+⚠ "R" throughout is the **ORB R frame** — `entry − ORB_low` via
+`order_manager.profit_target_r_per_share` — NOT the placed stop distance (era C places the stop
+at `entry − 2·ORB-R`). Both mechanisms below frame off that function; neither re-derives it.
+
+**Evidence** (all replay, all on the same 65 trades — see the in-sample caveat):
+- Settled result across the 65 trades: **+3.54R → +12.10R** (today's +2R partial with
+  breakeven-at-partial vs +8R partial with breakeven at +3R on price).
+- Trades reaching +3R and finishing at or above breakeven: **0 → 5**.
+- Excluding the two biggest winners: **−2.40R → +4.78R** — the gain is not two carriers.
+- The cost, stated plainly: **winners 36 → 23** and the **median trade +0.21R → −0.26R**. More
+  trades scratch or lose small; the tail pays for it (memory: measure the tail, not the median).
+- ⚠ **IN-SAMPLE.** Thirty-odd grid cells and the selection of this cell all ran on the same 65
+  trades with no holdout. Taking the middle of the plateau instead of the peak mitigates
+  overfitting; it does not make the number out-of-sample. The out-of-sample path is the #482
+  live-fill counterfactual recorder (`exit_discipline.md` 2026-09-03) — adding this exact cell
+  as a #482 arm accrues live evidence from day one regardless of when any flip happens. That
+  arm is NOT part of this entry.
+
+**Known deviation — replay vs live (named here so it is documented, not discovered):** the
+harness arms breakeven on the bar's **HIGH**, while live `scan_breakeven_arms` polls every
+**5 minutes** on the bars `track_open_position_extremes` has just persisted. A same-day
+arm-then-stop that the harness ABSTAINS on (stop and arm level inside one bar/day with no finer
+bar to order them) **will actually occur live**: the poll sees the high, moves the stop to entry,
+and the next bars can fill it. Small on this population, but it is a fill the replay never
+books, so live results will diverge from the +12.10R figure in that direction.
+
+**What shipped (the plumbing, DARK — every default is today's behaviour):**
+- `mi_strategies.profit_trigger_r` (NUMERIC, NULL = the global `PROFIT_TRIGGER_R`) — the
+  partial's MULTIPLE is now per-strategy (`order_manager.resolve_profit_trigger_r`). The
+  ON/OFF SWITCH stays global: `PROFIT_TRIGGER_R = None` still means no intraday partial anywhere
+  and the day-3/5 ladder returns (`live_tracker.run_partial_exits`'s
+  `skip_partial_decision=bool(PROFIT_TRIGGER_R)` stand-down is byte-identical). No row is
+  seeded with a value, so every target today is `entry + 2.0 × R` exactly as before.
+- `mi_strategies.breakeven_arm_r` (NUMERIC, NULL = OFF → today's behaviour: breakeven only via
+  the partial) — `order_manager.scan_breakeven_arms`, running right after the profit trigger on
+  the same 5-minute poll. With every row NULL it returns `[]` before reading a single position
+  or touching the broker. When armed it moves the **full-position OTO stop leg** (the stop every
+  MAGNA53 entry carries — NOT the reduced stop `execute_partial_exit` handles) to entry via an
+  **atomic price-only `replace_order`**: no cancel, no naked window, a rejected replace leaves
+  the old stop live. **Raise-only against the LIVE broker stop** (a stop already at/above entry
+  is left alone), **idempotent** (the `breakeven_active` flag is the SQL skip AND a live broker
+  read is the real guard), and it composes with the EOD trail because the flag it sets is the
+  same one `exit_logic` folds into `max(hard_stop, trail, entry)`. Every terminal failure
+  Telegrams; transient ones are `mi_audit_log` only. Full contract:
+  `docs/setups/exit_discipline.md` 2026-09-06. Tests: `tests/test_545_per_strategy_exit_levels.py`
+  (mutation-proven — nine mutations, each red on the test that names it).
+- Both columns are `CHECK (… IS NULL OR … > 0)` at the DB, so a typo can never read as "fire at
+  entry". Both are read FRESH each poll (not through the registry cache), so the flip acts on
+  the next 5-minute cycle with no redeploy.
+
+**THE-LINE proof (why nothing changes today):** (1) `profit_trigger_r` is NULL on every row →
+`resolve_profit_trigger_r` returns the global constant → every target is byte-identical.
+(2) `breakeven_arm_r` is NULL on every row → `resolve_breakeven_arm_r` returns None for every
+strategy → `scan_breakeven_arms` hits `if not armed_types: return []` before its position query
+— zero reads, zero broker calls. (3) No constant's value changed (`PROFIT_TRIGGER_R` is still
+2.0), no seed writes either column, no `mi_strategies` row's effective behaviour changed.
+(4) A read failure on the new columns falls back to `{}` = the globals = today.
+
+**Anticipated effect**: none until flipped. **When flipped for MAGNA53** (the ONLY strategy the
+evidence covers): the partial fires at +8 ORB-R instead of +2 (so far fewer partials — most
+trades never reach 8R); the stop moves to entry on the first 5-minute poll after the position
+trades ≥ entry + 3 ORB-R, so more trades scratch that today would ride back to the 2R stop;
+expected settled improvement on the replay population +3.54R → +12.10R with the caveats above.
+The flip is one SQL row per column (in `exit_discipline.md` 2026-09-06), reversible with `= NULL`.
+Flip-day duties (same day, per the 2026-08-23 discipline): a dated line in BOTH this file and
+`exit_discipline.md`, and bump `system_review._PROFIT_TRIGGER_ERA_START` /
+`rule_eras` so the weekly review and the #482 recorder stamp the new era.
+
+**Reversion-flag**: NEW for the per-strategy plumbing and the price-armed breakeven.
+REFINEMENT of 2026-08-01 (#508, +2R partial) and 2026-08-08 (#548, breakeven at the partial)
+**if flipped** — same direction (harvest later, protect earlier), not a reversal.
+
+**Status**: **PROPOSED — NOT LIVE — awaiting operator sign-off** on the values (8R / 3R).
+Plumbing built and tested; ships inert. Revert path for the plumbing itself: set the column
+NULL (restores today's behaviour with no code change).
+
 ### 2026-09-04 — #624: the low-cap lane ships as a SHADOW RECORDER (NO criteria, floor, stop, target, size or admission change)
 
 **Trigger**: CHPT 2026-09-03 — a $134M name that gapped 33%, ran 46% and closed on the highest

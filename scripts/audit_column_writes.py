@@ -97,8 +97,12 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # than refactored away. It fires ONLY after the successor stop is CONFIRMED live at
     # the broker; the unconfirmed branch deliberately withholds the write (DB understating
     # protection is the safe direction — pinned in test_resting_mode_breakeven_548.py).
+    # #545 (2026-09-06): the price-armed breakeven's ONE writer — pointer + price +
+    # breakeven_active in a single UPDATE, written ONLY after the successor stop is
+    # broker-confirmed live (same rule as execute_partial_exit's write above). Dark
+    # until `mi_strategies.breakeven_arm_r` is set; docs/setups/exit_discipline.md.
     "stop_price":         {"entry_pipeline._skip", "order_manager.update_stop", "order_manager.check_fills",
-                           "order_manager.execute_partial_exit"},
+                           "order_manager.execute_partial_exit", "order_manager._mark_breakeven_armed"},
     # hard_stop: SINGLE WRITER (entry_pipeline._skip INSERT only). Per Gate 3
     # initial-stop modeling (2026-05-18) — hard_stop is the immutable
     # risk-basis for R-expectancy calc, set once at INSERT, never updated.
@@ -137,6 +141,8 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "order_manager._finalize_partial_exit_locked",
         "order_manager._sync_positions_for_mode",
         "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
+        # #545 (2026-09-06): price-armed breakeven — pointer+price+flag atomic (see stop_price).
+        "order_manager._mark_breakeven_armed",
     },
 
     # ── Exit lifecycle ─────────────────────────────────────────────────
@@ -172,7 +178,10 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # partial_taken=TRUE optimistically. c0fa67f fix moved write to
     # finalize_partial_exit. Strict-single-owner enforcement now.
     "partial_taken":      {"order_manager._finalize_partial_exit_locked"},
-    "breakeven_active":   {"order_manager._finalize_partial_exit_locked", "live_tracker.update_open_positions_live"},
+    "breakeven_active":   {"order_manager._finalize_partial_exit_locked", "live_tracker.update_open_positions_live",
+                           # #545 (2026-09-06): price-armed breakeven sets the SAME flag exit_logic's
+                           # daily pass folds into max(hard_stop, trail, entry) — FALSE→TRUE only.
+                           "order_manager._mark_breakeven_armed"},
 
     # ── live_tracker-domain columns (computed by state machine) ────────
     "hold_days":          {"live_tracker.update_open_positions_live"},
