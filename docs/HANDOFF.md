@@ -556,9 +556,9 @@ bounded poll-and-classify helper next time that file is opened for a real reason
 
 ### 🔴 Found, not fixed — his decisions
 
-- **The per-strategy SIZING knob is DEAD.** `entry_pipeline.py:624` reads `position_size_multiplier`
+- ✅ **FIXED 2026-09-07 (#628) — the per-strategy SIZING knob was DEAD and is now wired.** `entry_pipeline.py:624` reads `position_size_multiplier`
   off `registry.Strategy`, which has no such field → always 1.0. The column exists and the drift
-  check reads it, so it LOOKS wired. Latent (all 5 enabled strategies are 1.0). Sizing = THE LINE.
+  check reads it, so it LOOKS wired. `Strategy` now carries the field and `entry_pipeline` reads it directly (the `getattr` default that hid this for months is gone). **NO live size changed: all 8 prod rows are 1.0, verified.** ⚠ The registry is a PROCESS CACHE with no periodic reload — like `live_real_enabled`, a value set by `UPDATE mi_strategies` acts only from the next restart of apollo-execution. Setting a value is still THE LINE, operator-only.
 - **9M is GONE** — deprecated and disabled. Do not re-verify it; do not cite it as a risk.
 
 ### Lessons that cost me time today

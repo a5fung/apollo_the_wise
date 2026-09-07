@@ -619,9 +619,19 @@ async def submit_trade_entry(
     # builder. Drawdown tier (2026-05-18): REDUCE = 0.5×, WATCH/OK = 1.0×.
     # Composition is methodology-correct — bleed weeks compound conservative
     # sizing across both axes (e.g. 9M Day 2 0.5× × REDUCE 0.5× = 0.25×).
+    #
+    # #628 (2026-09-07): the field is read DIRECTLY. The prior
+    # `getattr(strategy, "position_size_multiplier", None) or 1.0` defaulted on EVERY entry
+    # because registry.Strategy never carried the field — the #65 knob sat at 1.0 for four
+    # months while the column, the drift check and the docs all said it acted. A missing
+    # attribute is now an AttributeError (loud), never a silent 1.0. `strategy is None`
+    # (unregistered / pre-seed strategy) keeps 1.0 = today's full sizing — the only answer
+    # that does not change a position size on a config gap (THE LINE). A registry read that
+    # RAISES has already aborted this entry at the phase gate above (fail-closed, unchanged);
+    # a NULL / non-finite cell resolves to 1.0 in registry._coerce_position_size_multiplier.
     strategy_multiplier = 1.0
     if strategy is not None:
-        strategy_multiplier = float(getattr(strategy, "position_size_multiplier", None) or 1.0)
+        strategy_multiplier = float(strategy.position_size_multiplier)
     composite_multiplier = strategy_multiplier * drawdown_multiplier
     if composite_multiplier != 1.0 and order_spec.get("shares"):
         baseline_shares = int(order_spec["shares"])

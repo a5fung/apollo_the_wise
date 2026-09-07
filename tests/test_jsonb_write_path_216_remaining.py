@@ -121,6 +121,8 @@ async def test_load_all_tolerates_legacy_string_promotion_thresholds(monkeypatch
         # double-encoded #216-shaped corruption: real JSON text, not a native object
         "promotion_thresholds": '{"shadow_to_paper": {"min_closed": 30}}',
         "notes": None, "live_real_enabled": True,
+        # #628: the loader reads this column by name (a real-shape row, not a partial).
+        "position_size_multiplier": 1.0,
     }])
     monkeypatch.setattr(registry, "get_pool", AsyncMock(return_value=pool))
 

@@ -114,7 +114,7 @@ Full evidence + the 43-trade cohort + the counterfactual-weighting table: `docs/
 final_shares = floor(spec.shares × strategy.position_size_multiplier × drawdown_tier_multiplier)
 ```
 
-Per-strategy (#65) and drawdown tier multipliers compound multiplicatively — a strategy at 0.5× during REDUCE state = 0.5 × 0.5 = 0.25× sizing. This is methodology-correct: bleed weeks should compound conservative sizing across both axes. (The worked example used to be 9M Day 2 at 0.5×; that strategy was deleted 2026-08-02, #515. **No strategy currently carries a multiplier other than 1.0** — the mechanism is live and untested by a second strategy until one is promoted.)
+Per-strategy (#65) and drawdown tier multipliers compound multiplicatively — a strategy at 0.5× during REDUCE state = 0.5 × 0.5 = 0.25× sizing. This is methodology-correct: bleed weeks should compound conservative sizing across both axes. (The worked example used to be 9M Day 2 at 0.5×; that strategy was deleted 2026-08-02, #515. **No strategy currently carries a multiplier other than 1.0.**) ⚠ The per-strategy leg was **DEAD from #65 (2026-05-10) until #628 (2026-09-07)**: `registry.Strategy` never carried the field, so `entry_pipeline`'s `getattr(…, 1.0)` default fired on every entry and the column governed nothing. Wired 2026-09-07 (change-log entry below); the drawdown leg was never affected. The knob is set by a direct `UPDATE mi_strategies` and, like `live_real_enabled`, is read through the registry's process cache (no periodic reload exists) — it acts from the next restart of the container running the entry funnel (apollo-execution; a `deploy.sh market-agent` alone leaves it dark).
 
 **Account-mode scoping**: paper history doesn't carry over to live. Live cutover starts a fresh peak. `mi_safeguard_state` row is per `(safeguard, account_mode)`.
 
@@ -467,6 +467,45 @@ overridden again. Pre-commitment is preserved by making overrides visible,
 not impossible.
 
 ## Change log (newest first)
+
+### 2026-09-07 — Per-strategy sizing knob (`position_size_multiplier`) wired for the FIRST time (#628, BUG FIX — no size change)
+
+**Trigger**: `entry_pipeline.py` read the #65 knob as
+`getattr(strategy, "position_size_multiplier", None) or 1.0`, and `registry.Strategy` had no such
+field (eleven fields; not among them). The default therefore fired on every entry since #65
+shipped (2026-05-10): the column existed, `db.get_all_strategy_summaries` selected it for the
+drift check, README.md documented the formula — it LOOKED wired, and the multiplier was always 1.0.
+Found 2026-09-06 (HANDOFF "Found, not fixed"); operator directed the fix 2026-09-07.
+
+**Classification**: BUG FIX, not a criteria change — #65 was operator-signed to read this value
+and the code never did. No CHANGE_PROCESS evidence gate applies (`classify-before-applying-evidence-gates`).
+
+**Change**: `registry.Strategy` now carries `position_size_multiplier: float = 1.0`, loaded from
+`mi_strategies` beside `live_real_enabled`; the pipeline reads the attribute DIRECTLY (a missing
+field is an AttributeError, never a silent 1.0). Resolution on a config gap is explicit and
+conservative: strategy absent from the registry → 1.0; NULL / NaN / ±Inf / non-numeric cell →
+1.0 + WARNING (`registry._coerce_position_size_multiplier`); a registry read that raises aborts
+the entry at the phase gate exactly as before (fail-closed). No clamp on 0.0 (legitimate
+"size nothing" → `size_too_small`) or on >1.0 (RED-3's clamp-to-baseline, unchanged).
+
+**Evidence of NO size change (THE LINE)**: read-only prod `SELECT` 2026-09-07 — all 8
+`mi_strategies` rows carry `position_size_multiplier = 1.0` (the 5 enabled: magna53 live,
+magna53_lowcap / parabolic_short / shadow_orb_5m / wick_fill shadow). At 1.0 × drawdown 1.0 the
+composite is exactly 1.0 and step 5b's block does not run — byte-identical to the dead path,
+pinned by `tests/test_628_position_size_multiplier_wired.py::test_pipeline_at_one_is_byte_identical`.
+
+**Composed arithmetic checked against the docs**: `final = floor(spec.shares × strategy × tier)`
+as written above and in README.md — the code computes `floor(baseline × (strategy × tier))`, the
+same number; the docs omit only RED-3's clamp (binds solely when the composite exceeds 1.0).
+The 20% notional cap still binds afterwards: `prepare_orb_order` clamps to
+`floor(equity × MAX_POSITION_PCT / orb_high)` BEFORE the spec exists, and step 5b can only size
+down or clamp back to that baseline, so post-multiplier shares ≤ baseline ≤ cap.
+
+**Reversion-flag**: NEW — first wiring of this leg; nothing prior to revert to.
+
+**Status**: built + tested 2026-09-07; deploy pending (market-agent + execution scopes — the
+pipeline runs on apollo-execution). Verify-live = the next real entry's `orb_bar_fetched` →
+INSERT with `entry_shares` unchanged vs the builder (no `per_strategy_sizing_applied` event at 1.0).
 
 ### 2026-08-23 — Kill/scale bands now divide by risk actually placed, not the pre-cap budget (#586, operator-signed)
 

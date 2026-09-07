@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -45,9 +46,53 @@ class Strategy:
     # so user can stage strategies (MAGNA53 first, 9M Day 2 after N clean fills)
     # without flipping every strategy to real money on flip day.
     live_real_enabled: bool = False
+    # #65 per-strategy sizing knob, applied in entry_pipeline step 5b AFTER the builder's
+    # 20%-cap-maximal spec: final_shares = floor(spec.shares × this × drawdown_tier_multiplier).
+    # #628 (2026-09-07): this field did NOT EXIST from #65 (2026-05-10) until today — the
+    # pipeline read it via `getattr(strategy, "position_size_multiplier", None) or 1.0`, so
+    # the default fired on every entry and `mi_strategies.position_size_multiplier` governed
+    # nothing while the column, the drift check and the docs all said it acted. The pipeline
+    # now reads the attribute DIRECTLY (a missing field is an AttributeError, never a silent
+    # 1.0) and tests/test_628_position_size_multiplier_wired.py pins the field's existence.
+    # 1.0 = full sizing = the value every production row carries (read-only prod check
+    # 2026-09-07: 8 rows, all 1.0), so wiring it changed no position size.
+    position_size_multiplier: float = 1.0
 
 
 _CACHE: dict[str, Strategy] | None = None
+
+
+def _coerce_position_size_multiplier(raw: Any, strategy_id: str) -> float:
+    """`mi_strategies.position_size_multiplier` (NUMERIC NOT NULL DEFAULT 1.0) → float.
+
+    asyncpg hands NUMERIC back as `Decimal`; entry_pipeline multiplies it into `math.floor`.
+    A value that cannot size a trade — NULL (the column forbids it, but a hand-migrated row
+    or a test double might carry one), NaN / ±Inf (NUMERIC admits both, and
+    `math.floor(shares * nan)` raises mid-pipeline), or non-numeric garbage — resolves to
+    **1.0**: today's full sizing, the same answer the pre-#628 silent default gave. Any other
+    resolution would CHANGE a position size on a configuration gap (THE LINE — sizing is the
+    operator's alone), which would be a worse defect than the dead knob this replaces. The
+    gap is logged at WARNING so it is visible rather than silent.
+
+    Deliberately NOT clamped: 0.0 is a legitimate "size nothing" (it lands in the pipeline's
+    size_too_small skip) and >1.0 is RED-3's clamp-to-baseline in
+    `entry_pipeline._apply_composite_multiplier`. Coercion is wiring, not policy.
+    """
+    if raw is None:
+        logger.warning(f"mi_strategies.{strategy_id}.position_size_multiplier is NULL — "
+                       f"sizing at 1.0 (full) until the row is fixed")
+        return 1.0
+    try:
+        val = float(raw)
+    except (TypeError, ValueError):
+        logger.warning(f"mi_strategies.{strategy_id}.position_size_multiplier={raw!r} is not "
+                       f"numeric — sizing at 1.0 (full) until the row is fixed")
+        return 1.0
+    if not math.isfinite(val):
+        logger.warning(f"mi_strategies.{strategy_id}.position_size_multiplier={raw!r} is not "
+                       f"finite — sizing at 1.0 (full) until the row is fixed")
+        return 1.0
+    return val
 
 
 def invalidate_cache() -> None:
@@ -62,7 +107,7 @@ async def _load_all() -> dict[str, Strategy]:
             """
             SELECT strategy_id, name, family, phase, enabled, signal_type,
                    outcomes_table, promotion_model, promotion_thresholds, notes,
-                   live_real_enabled
+                   live_real_enabled, position_size_multiplier
             FROM mi_strategies
             """
         )
@@ -83,6 +128,8 @@ async def _load_all() -> dict[str, Strategy]:
             promotion_thresholds=thresholds or {},
             notes=r["notes"],
             live_real_enabled=r["live_real_enabled"],
+            position_size_multiplier=_coerce_position_size_multiplier(
+                r["position_size_multiplier"], r["strategy_id"]),
         )
     return out
 
