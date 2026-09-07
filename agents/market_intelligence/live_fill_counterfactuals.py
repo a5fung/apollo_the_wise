@@ -20,10 +20,11 @@ differed from the 08-16 read because the populations differed and nothing said s
 
 THE ARMS (one row each, per fill — `ARMS` below):
   live_actual           what the real trade did (mi_live_trades.total_pnl / placed risk).
-  live_replay           the LIVE rule (entry−2R stop, +2R partial, breakeven, SMA trail)
-                        walked on the same bars — the per-trade FIDELITY CHECK. A
-                        counterfactual number is quotable only where live_replay agrees
-                        with live_actual (scripts/ep_replay.py validate, made forward).
+  live_replay           the LIVE rule (entry−2R stop, the CURRENT per-strategy partial +
+                        breakeven levels, SMA trail) walked on the same bars — the
+                        per-trade FIDELITY CHECK. A counterfactual number is quotable only
+                        where live_replay agrees with live_actual (scripts/ep_replay.py
+                        validate, made forward).
   stop_orb_low          the stop retired 2026-08-16 (ORB low), live ladder, target pinned.
   stop_adr_050          entry − 0.5 × ADR20$, live ladder, target pinned.
   stop_adr_075          entry − 0.75 × ADR20$, live ladder, target pinned.
@@ -39,6 +40,13 @@ THE ARMS (one row each, per fill — `ARMS` below):
                         no trail post-partial — the #2 lineage's rule, mirrored exactly).
                         Phase 3's one direction-only runner (+16R on 55 takers, three
                         names carrying 80%) — the cheap forward test of that claim.
+  harvest_legacy_2r     THE RETIRED RULE (2026-09-06, #545 flipped MAGNA53 live to +8R /
+                        breakeven-at-+3R): live stop; 1/3 off at +2R; breakeven AT the
+                        partial only (no price-armed breakeven); SMA trail — exactly what
+                        live_replay itself walked before the flip. Operator: "do we track
+                        the old strategy to constantly compare." Fixed forever at 2R/no
+                        arm regardless of any future live change, so old-vs-new stays a
+                        live comparison, not a one-time snapshot.
   Why these: stop arms vary ONE thing (where the stop sits) against the live ladder; harvest
   arms vary ONE thing each against the live stop. The +2R target is PINNED to the ORB R in
   every stop arm (entry + 2·(entry − orb_low)) because Phase 3 §6 showed the pin is what
@@ -46,6 +54,17 @@ THE ARMS (one row each, per fill — `ARMS` below):
   Each rule is one plain sentence (P15-A). R is reported in each arm's OWN units
   (pnl ÷ (entry − its stop)) so a wider stop is not flattered; realized_pct and pnl_adr
   are size-free.
+
+  WHICH ARMS TRACK THE LIVE RULE, WHICH ARE FIXED (`ARMS[*].follows_live_rule`, #545,
+  2026-09-06): live_actual / live_replay / the three stop_* arms track whatever
+  `mi_strategies.profit_trigger_r` / `.breakeven_arm_r` currently say for the row's
+  signal_type (resolve_target_r / resolve_breakeven_arm_r below) — they ARE "the live
+  ladder", so when the operator moves it, they move with it (this is the fix: before
+  2026-09-06 they were hardcoded to the pre-#545 +2R/no-arm rule and would have silently
+  disagreed with live_actual on every fill from here on). harvest_no_breakeven /
+  harvest_trail_only / harvest_t3 / harvest_legacy_2r are each a DECLARED, FIXED
+  mechanism probe (their own one-sentence rule above never moves) — flexing them to
+  "whatever's live" would silently change what their own docstring says they test.
 
 WHAT IT MIRRORS. The walk (`walk_arm`) re-implements `scripts/ep_replay._walk_leg` — the
 only mechanics validated per-trade against real fills (stop 44/44 · entered 33/33 ·
@@ -91,6 +110,29 @@ and must never be cited — operator 2026-08-29), `filled_at` on/after `BACKFILL
 2026-08-16, the day the current entry−2R stop went live: era C is the current stop's OWN
 population, and anything earlier is the re-slice this task exists to end. Both account
 modes are recorded and stamped (`account_mode`); the gated review counts live only.
+
+#545 (2026-09-06) — PER-STRATEGY EXIT LEVELS, RESOLVED ONCE PER RUN, NEVER RE-FRAMED. The
+operator flipped MAGNA53's live rule via `mi_strategies.profit_trigger_r` (2.0 → 8.0) and
+`.breakeven_arm_r` (NULL → 3.0, a NEW price-armed breakeven independent of the partial —
+`order_manager.scan_breakeven_arms`). `TARGET_R` above is a MODULE CONSTANT, not "today's
+rule" — before this fix every arm, including live_replay, walked it regardless, so from the
+first fill settled after the flip live_replay would walk +2R while live_actual followed
++8R: the fidelity gate this module exists to police would fail on every new row. The fix:
+`resolve_target_r` / `resolve_breakeven_arm_r` (below) read `db.get_strategy_exit_overrides`
+ONCE per run and are used by every arm whose `follows_live_rule` is True. They are LOCAL and
+deviate from THE LINE below on nothing — `order_manager.resolve_profit_trigger_r` /
+`.resolve_breakeven_arm_r` compute the identical thing, but this module may import NOTHING
+from that broker module (THE LINE), so the logic is duplicated here at ~5 lines each and
+pinned byte-for-byte against the originals by `tests/test_live_fill_counterfactuals.py`
+(a divergence fails loudly, never silently). A read failure fails TO TODAY ({} — every
+resolver then returns the pre-#545 global/OFF values, the same fail-closed idiom
+`order_manager._load_strategy_exit_overrides` uses on the live path) — a hiccup degrades
+this recorder's OWN numbers for that run only; it never touches anything live. EVERY row,
+walked or not, stores the target_r / breakeven_arm_r IT ACTUALLY USED (read once, at the
+time THAT row was written, never re-framed on a later run) so old rows (walked under the
+retired +2R/no-arm rule) and new rows (walked under whatever is live now) can never be
+pooled blindly — the exact discipline the era stamp above already applies to dated rules,
+extended to this OPERATOR-TOGGLED one.
 """
 from __future__ import annotations
 
@@ -110,6 +152,7 @@ from agents.market_intelligence.db import (
     get_ep_alert_admission_stamp,
     get_intraday_bars_window,
     get_pool,
+    get_strategy_exit_overrides,
     insert_live_fill_counterfactual,
     log_audit_event,
 )
@@ -134,20 +177,72 @@ ADR_LOOKBACK_CAL_DAYS = 60     # calendar days read to cover the ADR window
 PRIOR_CLOSES_CAL_DAYS = 40     # live_tracker._load_exit_state's trail window (#548)
 SETTLED_AFTER_ET = time(16, 30)  # today's daily bar is settled only after the close
 
-# (arm, kind, stop_rule, harvest_rule)
-ARMS: tuple[tuple[str, str, str, str], ...] = (
-    ("live_actual", "control", "live", "live_ladder"),
-    ("live_replay", "control", "live", "live_ladder"),
-    ("stop_orb_low", "stop", "orb_low", "live_ladder"),
-    ("stop_adr_050", "stop", "adr_050", "live_ladder"),
-    ("stop_adr_075", "stop", "adr_075", "live_ladder"),
-    ("harvest_no_breakeven", "harvest", "live", "no_breakeven"),
-    ("harvest_trail_only", "harvest", "live", "trail_only"),
-    ("harvest_t3", "harvest", "live", "t3"),
+# (arm, kind, stop_rule, harvest_rule, follows_live_rule) — follows_live_rule=True means
+# this arm walks resolve_target_r/resolve_breakeven_arm_r's CURRENT-strategy levels (#545);
+# False means it walks the fixed +2R/no-arm premise its own docstring sentence declares.
+ARMS: tuple[tuple[str, str, str, str, bool], ...] = (
+    ("live_actual", "control", "live", "live_ladder", True),
+    ("live_replay", "control", "live", "live_ladder", True),
+    ("stop_orb_low", "stop", "orb_low", "live_ladder", True),
+    ("stop_adr_050", "stop", "adr_050", "live_ladder", True),
+    ("stop_adr_075", "stop", "adr_075", "live_ladder", True),
+    ("harvest_no_breakeven", "harvest", "live", "no_breakeven", False),
+    ("harvest_trail_only", "harvest", "live", "trail_only", False),
+    ("harvest_t3", "harvest", "live", "t3", False),
+    ("harvest_legacy_2r", "harvest", "live", "live_ladder", False),
 )
 ARM_NAMES: tuple[str, ...] = tuple(a[0] for a in ARMS)
 HARVEST_RULES = ("live_ladder", "no_breakeven", "trail_only", "t3")
 STOP_RULES = ("live", "orb_low", "adr_050", "adr_075")
+
+
+# ── #545 (2026-09-06) exit-level resolvers — LOCAL, pinned byte-for-byte against
+# broker.order_manager.resolve_profit_trigger_r / .resolve_breakeven_arm_r by
+# tests/test_live_fill_counterfactuals.py. Duplicated rather than imported: THE LINE above
+# bans importing order_manager into this recorder (it pulls the Alpaca client at import
+# time); the parity test is how "reuse, don't re-derive" is honoured without that import.
+
+
+def resolve_target_r(signal_type: Optional[str], overrides: dict, global_r: float) -> float:
+    """The +N×R partial multiple for `signal_type`: its own `profit_trigger_r` override
+    when positive, else `global_r` (this module's TARGET_R). No override anywhere →
+    `global_r` exactly, byte-identical to before #545."""
+    row = (overrides or {}).get(signal_type or "") or {}
+    v = row.get("profit_trigger_r")
+    if v is not None:
+        try:
+            if float(v) > 0:
+                return float(v)
+        except (TypeError, ValueError):
+            pass
+    return global_r
+
+
+def resolve_breakeven_arm_r(signal_type: Optional[str], overrides: dict) -> Optional[float]:
+    """The price-armed breakeven level for `signal_type`, or None = OFF (no override
+    anywhere → None for every strategy, today's pre-#545 behaviour)."""
+    row = (overrides or {}).get(signal_type or "") or {}
+    v = row.get("breakeven_arm_r")
+    if v is not None:
+        try:
+            if float(v) > 0:
+                return float(v)
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+async def load_exit_overrides(conn) -> dict[str, dict]:
+    """Fresh read of the per-strategy exit-level overrides, ONCE per run (not per fill —
+    every fill this run shares the same live rule). FAILS TO TODAY: any read error → {},
+    which both resolvers above map to the pre-#545 global/OFF values — a hiccup must
+    degrade this recorder's own numbers for the run, never block it, never touch anything
+    live (mirrors order_manager._load_strategy_exit_overrides' fail-closed idiom)."""
+    try:
+        return await get_strategy_exit_overrides(conn=conn)
+    except Exception as e:  # loud-ok: logged; every resolver falls back to the globals
+        logger.warning(f"live-fill counterfactual: exit overrides unreadable, using globals: {e}")
+        return {}
 
 
 # ── Pure compute (fixture-testable, no IO) ─────────────────────────────────────────────
@@ -204,7 +299,9 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
              sessions: list[tuple[date, Optional[dict]]], prior_closes: list[float],
              harvest: str, fill_day: date,
              breakeven_at_partial: bool = True, trail_prior_closes: bool = True,
-             ladder_partial: bool = False, horizon: int = HORIZON_SESSIONS) -> dict:
+             ladder_partial: bool = False, horizon: int = HORIZON_SESSIONS,
+             breakeven_at_r: Optional[float] = None,
+             r_frame_ps: Optional[float] = None) -> dict:
     """Walk ONE arm from the fill bar to settlement, on one fractional share.
 
     `day0_bars`: the fill day's 1-min bars {m,o,h,l,c}, `fill_idx` = the fill minute's
@@ -213,6 +310,19 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
     bar is a gap and BLOCKS the walk (pending at that date). Mirrors
     scripts/ep_replay._walk_leg for the live rule and the #2 lineage's t3 (module docstring
     lists the three deliberate deviations).
+
+    `breakeven_at_r` (#545, 2026-09-06): the PRICE-ARMED breakeven, independent of the
+    partial — the stop raises to entry the first time price trades at
+    entry + breakeven_at_r × r_frame_ps, whether or not a partial has fired. Only
+    meaningful on harvest="live_ladder" (raises ValueError otherwise — a silent no-op on
+    a harvest with no breakeven floor is worse than a loud reject). `r_frame_ps` is the
+    SAME R frame the target uses (entry − orb_low for MAGNA53's ORB frame); defaults to
+    entry − stop when not given, mirroring ep_replay._walk_leg's `r_frame_ps` exactly.
+    AMBIGUITY: a bar that reaches the trigger AND also trades at/below entry while not yet
+    armed has two unorderable paths at this grain (armed-then-stopped vs survived-then-
+    armed) → abstain, never guessed — the same discipline ep_replay's `be_ambiguous` uses,
+    reproduced verbatim here (not imported: ep_replay cannot be imported into the market
+    agent, module docstring's WHAT IT MIRRORS).
 
     status: settled | abstain | horizon | pending. R is left to the caller (pnl_per_share /
     (entry − stop)); `mark_pnl_per_share` is set only at the horizon."""
@@ -232,6 +342,20 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
     # The live ladder is the only harvest that raises the resting stop to entry after the
     # partial (breakeven). no_breakeven / t3 keep the hard stop; trail_only never partials.
     be_floor = harvest == "live_ladder" and breakeven_at_partial
+    if breakeven_at_r is not None and harvest != "live_ladder":
+        raise ValueError(f"breakeven_at_r set on harvest {harvest!r}, which has no "
+                         "breakeven floor; the arm would silently do nothing")
+    be_trigger = None
+    if breakeven_at_r is not None:
+        r_ps = r_frame_ps if r_frame_ps is not None else (entry - stop)
+        be_trigger = entry + breakeven_at_r * r_ps
+
+    def be_ambiguous(bar_low: float, bar_high: float, resting_level: float) -> bool:
+        """Verbatim ep_replay._walk_leg.be_ambiguous: a bar reaching the trigger AND
+        trading at/below entry, while not yet armed, cannot be ordered at this grain."""
+        return (be_trigger is not None and resting_level < entry
+                and bar_high >= be_trigger and bar_low <= entry)
+
     use_target = target is not None and harvest != "trail_only"
 
     def book(px: float, qty: float, reason: str, when: Any) -> None:
@@ -277,6 +401,11 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
         # fill — orderable (the _walk_leg argument).
         if take_partial(target, fb["m"]) and be_floor:
             cur_stop = max(cur_stop, entry)
+    if not closed and be_trigger is not None and fb["h"] >= be_trigger:
+        # Same provable ordering the partial uses: the trigger is above entry, so a touch
+        # >= trigger necessarily post-dates the fill; the fill bar's low is pre-fill and
+        # cannot stop the newly-armed leg (its stop case already returned above).
+        cur_stop = max(cur_stop, entry)
     for b in day0_bars[fill_idx + 1:]:
         if closed:
             break
@@ -285,6 +414,13 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
         if hit_stop and hit_tgt:
             out.update(status="abstain", reason="day0_stop_and_target_same_bar")
             return out
+        if be_ambiguous(b["l"], b["h"], cur_stop):
+            out.update(status="abstain", reason="day0_stop_and_breakeven_same_bar")
+            return out
+        if be_trigger is not None and b["h"] >= be_trigger:
+            # past the ambiguity abstain above, this bar's low is > entry, so the raise
+            # cannot stop the leg on this same bar.
+            cur_stop = max(cur_stop, entry)
         if hit_stop:
             px = b["o"] if (b["o"] is not None and b["o"] < cur_stop) else cur_stop
             if px != cur_stop:
@@ -317,6 +453,11 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
                 return out
             out["sessions_walked"] = idx
             last_close = b["c"]
+            if be_ambiguous(b["l"], b["h"], resting):
+                out.update(status="abstain", reason=f"fwd_stop_and_breakeven_same_day:{d.isoformat()}")
+                return out
+            if be_trigger is not None and b["h"] >= be_trigger:
+                resting = max(resting, entry)
             hit_tgt = (use_target and not state["partial_taken"] and b["h"] >= target)
             if hit_tgt and b["l"] <= resting:
                 out.update(status="abstain", reason=f"fwd_stop_and_target_same_day:{d.isoformat()}")
@@ -517,9 +658,11 @@ async def _day0_bars(conn, ticker: str, fill_day: date,
     return None, None
 
 
-def _base_fields(trade: dict, arm: tuple[str, str, str, str], *, fill_day: date,
-                 inputs: dict, era: dict, stamp: Optional[dict], settled_session: date) -> dict:
-    name, kind, stop_rule, harvest_rule = arm
+def _base_fields(trade: dict, arm: tuple[str, str, str, str, bool], *, fill_day: date,
+                 inputs: dict, era: dict, stamp: Optional[dict], settled_session: date,
+                 target_price: Optional[float], target_r: float,
+                 breakeven_arm_r: Optional[float]) -> dict:
+    name, kind, stop_rule, harvest_rule, _follows_live_rule = arm
     stamp = stamp or {}
     return {
         "settled_session": settled_session,
@@ -530,7 +673,9 @@ def _base_fields(trade: dict, arm: tuple[str, str, str, str], *, fill_day: date,
         "arm": name, "arm_kind": kind, "stop_rule": stop_rule, "harvest_rule": harvest_rule,
         "entry_price": inputs["entry"], "orb_high": inputs["orb_high"],
         "orb_low": inputs["orb_low"], "live_stop": inputs["live_stop"],
-        "target_price": inputs["target"], "target_r": TARGET_R,
+        # #545: THIS ARM'S own levels, read once at record time — never the module's fixed
+        # TARGET_R for an arm whose follows_live_rule is True (see the ARMS table above).
+        "target_price": target_price, "target_r": target_r, "breakeven_arm_r": breakeven_arm_r,
         "adr20_pct": inputs["adr20_pct"], "adr20_n": inputs["adr20_n"],
         "adr_dollar": inputs["adr_dollar"],
         "pnl_attribution": trade.get("pnl_attribution"), "regime": trade.get("regime"),
@@ -611,7 +756,8 @@ async def _write(fields: dict, out: dict, label: str) -> bool:
     )
 
 
-async def _record_one_fill(conn, trade: dict, last_session: date, out: dict) -> None:
+async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
+                           overrides: dict) -> None:
     trade_id = int(trade["id"])
     ticker = trade["ticker"]
     label = f"{ticker} trade {trade_id}"
@@ -638,6 +784,14 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict) -> 
     rules = era["exit_rules"]
     stamp = await get_ep_alert_admission_stamp(conn, ticker, alert_date)
 
+    # #545: THIS fill's signal_type resolved against the overrides `overrides` (read ONCE,
+    # for the whole run) — the level every follows_live_rule arm below walks (see the ARMS
+    # table + module docstring). No override anywhere -> TARGET_R / None, byte-identical
+    # to before #545.
+    signal_type = trade.get("signal_type")
+    live_target_r = resolve_target_r(signal_type, overrides, TARGET_R)
+    live_be_r = resolve_breakeven_arm_r(signal_type, overrides)
+
     # Pre-alert daily rows: ADR (last ≤20 sessions) + the trail's prior closes (40 cal days).
     pre = await get_daily_ohlc_range(conn, ticker, alert_date - timedelta(days=ADR_LOOKBACK_CAL_DAYS),
                                      alert_date - timedelta(days=1))
@@ -646,17 +800,25 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict) -> 
     prior_cut = alert_date - timedelta(days=PRIOR_CLOSES_CAL_DAYS)
     prior_closes = [float(r["close"]) for r in pre
                     if r.get("close") is not None and r["trade_date"] >= prior_cut]
-    target = pinned_target(entry, orb_low)
+    # Two target frames sharing the same entry/orb_low validity (target_r never changes
+    # whether the frame exists, only where it sits): target_fixed is TARGET_R, the harvest
+    # mechanism-check arms' own declared +2R and harvest_legacy_2r's retired rule;
+    # target_live is THIS signal_type's current live level, for every follows_live_rule arm.
+    target_fixed = pinned_target(entry, orb_low, TARGET_R)
+    target_live = pinned_target(entry, orb_low, live_target_r)
     inputs = {"entry": entry, "orb_high": orb_high, "orb_low": orb_low, "live_stop": live_stop,
-              "target": target, "adr20_pct": adr20_pct, "adr20_n": adr20_n,
-              "adr_dollar": adr_dollar}
+              "adr20_pct": adr20_pct, "adr20_n": adr20_n, "adr_dollar": adr_dollar}
 
     missing = [k for k in ("entry", "orb_high", "orb_low", "live_stop") if inputs[k] is None]
-    if missing or target is None or live_stop >= entry:
+    if missing or target_fixed is None or live_stop >= entry:
         reason = f"missing_inputs:{','.join(missing) or 'invalid_frame'}"
         for arm in todo:
-            fields = _base_fields(trade, arm, fill_day=fill_day, inputs=inputs, era=era, stamp=stamp,
-                                 settled_session=last_session)
+            follows_live = arm[4]
+            fields = _base_fields(
+                trade, arm, fill_day=fill_day, inputs=inputs, era=era, stamp=stamp,
+                settled_session=last_session, target_price=None,
+                target_r=(live_target_r if follows_live else TARGET_R),
+                breakeven_arm_r=(live_be_r if follows_live else None))
             fields.update(_outcome_fields({"reason": reason}, entry=entry or 0.0, stop=None,
                                           adr_dollar=adr_dollar, outcome="unscoreable",
                                           day0_bar_count=None))
@@ -665,11 +827,16 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict) -> 
 
     day0_bars = fill_idx = None
     sessions: Optional[list] = None
+    r_frame_ps = entry - orb_low   # MAGNA53's ORB-R frame (order_manager.profit_target_r_per_share) — the only signal_type this recorder ever reads (get_counterfactual_fills)
     for arm in todo:
-        name, _kind, stop_rule, harvest = arm
+        name, _kind, stop_rule, harvest, follows_live = arm
+        target_r = live_target_r if follows_live else TARGET_R
+        target = target_live if follows_live else target_fixed
+        breakeven_r = live_be_r if follows_live else None
         try:
             fields = _base_fields(trade, arm, fill_day=fill_day, inputs=inputs, era=era, stamp=stamp,
-                                 settled_session=last_session)
+                                 settled_session=last_session, target_price=target,
+                                 target_r=target_r, breakeven_arm_r=breakeven_r)
             if name == "live_actual":
                 res = live_actual_outcome(trade, fill_day=fill_day, entry=entry, live_stop=live_stop)
                 if res["status"] == "pending":
@@ -700,7 +867,8 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict) -> 
                            harvest=harvest, fill_day=fill_day,
                            breakeven_at_partial=bool(rules["breakeven_at_partial"]),
                            trail_prior_closes=bool(rules["trail_prior_closes"]),
-                           ladder_partial=bool(rules["ladder_partial"]))
+                           ladder_partial=bool(rules["ladder_partial"]),
+                           breakeven_at_r=breakeven_r, r_frame_ps=r_frame_ps)
             status = res["status"]
             if status == "pending":
                 gap = res.get("pending_at")
@@ -740,9 +908,13 @@ async def run_live_fill_counterfactuals(today: Optional[date] = None, *,
         try:
             pool = await get_pool()
             async with pool.acquire() as conn:
+                # #545: read ONCE per run — every fill this run touches shares the same
+                # live rule; a mid-run change would otherwise re-frame later fills against
+                # a level the earlier ones in this same run did not use.
+                overrides = await load_exit_overrides(conn)
                 for trade in fills:
                     try:
-                        await _record_one_fill(conn, trade, last_session, out)
+                        await _record_one_fill(conn, trade, last_session, out, overrides)
                     except Exception as e:  # loud-ok: per-fill isolation; counted + audited
                         out["errors"] += 1
                         await log_audit_event(

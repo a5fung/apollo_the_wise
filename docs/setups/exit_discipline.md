@@ -723,6 +723,43 @@ and the recorder module is absent from `scripts/exec_loaded_modules.txt`, but `d
 step; execution's behaviour is unchanged by either edit (an additive table + an
 intelligence-only job registration).
 
+### 2026-09-06 — BUG FIX (#545 follow-up): `live_replay` now follows MAGNA53's live partial/breakeven level instead of a hardcoded +2R (RECORD ONLY — no exit rule, stop, target, size or admission changed)
+
+**Trigger**: same day #545 flipped MAGNA53 live to a +8R partial and a NEW price-armed
+breakeven at +3R (`mi_strategies.profit_trigger_r` / `.breakeven_arm_r`,
+`order_manager.scan_profit_triggers` / `.scan_breakeven_arms`). `live_fill_counterfactuals.
+TARGET_R` was a hardcoded module constant every arm walked regardless — from the next
+settled fill, `live_replay` would walk +2R while `live_actual` followed +8R, disagreeing on
+every new row and failing the fidelity gate the whole table exists to police (module
+docstring, `THE ARMS`).
+
+**The fix**: `resolve_target_r` / `resolve_breakeven_arm_r` (local to the recorder —
+duplicated, not imported, since the recorder may import nothing from `order_manager`;
+pinned byte-for-byte against the originals by `tests/test_live_fill_counterfactuals.py`)
+read `db.get_strategy_exit_overrides` ONCE per run. Every arm that IS "the live ladder"
+(`live_actual`, `live_replay`, the three `stop_*` arms) now walks the resolved level;
+the price-armed breakeven is modelled in `walk_arm` as a decoupled trigger (raise-only,
+composes with the SMA trail and the at-partial breakeven via `max()`) with the SAME
+same-bar ambiguity abstain `scripts/ep_replay._walk_leg` uses (`day0_stop_and_breakeven_
+same_bar` / `fwd_stop_and_breakeven_same_day`). The three fixed harvest arms
+(`harvest_no_breakeven` / `harvest_trail_only` / `harvest_t3`) are UNCHANGED — each is a
+DECLARED mechanism probe at its own stated +2R, not "whatever's live."
+
+**New arm — `harvest_legacy_2r`** (operator: *"do we track the old strategy to constantly
+compare"*): walks the RETIRED rule forever — 1/3 at +2R, breakeven at the partial only, no
+price arm, live stop, SMA trail — exactly what `live_replay` itself walked before this fix,
+preserved deliberately so old-vs-new stays a continuous live comparison.
+
+**No history rewritten**: existing rows (write-once) keep their meaning unchanged. A new
+column, `breakeven_arm_r` (NULL = no price-armed breakeven for that arm), joins `target_r`
+(now the arm's ACTUAL partial multiple, not always the module constant) and `target_price`
+so a row states the exact levels it was walked under; old and new rows can never be pooled
+blindly. A re-run only ever fills in arms not yet written (`UNIQUE (trade_id, arm)`) — it
+never re-frames a settled row.
+
+**Status**: BUILT 2026-09-06, working tree. Deploy: `market-agent` (schema `ADD COLUMN IF
+NOT EXISTS breakeven_arm_r` lands on boot) — same scope-drift note as the #482 entry above.
+
 ### 2026-08-24 — BUG FIX (#591): the day-1 stop-out closed the row while a profit-take was still resting at the broker (TRADE STATE — operator-signed; no exit rule, stop, target or size changed)
 
 **Trigger**: #588's audit (entry below) surfaced it and deliberately left it open as

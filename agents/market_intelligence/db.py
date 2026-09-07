@@ -3185,7 +3185,7 @@ async def initialize_schema() -> None:
                 entry_attempt       INT,                 -- 1 = day-1 first attempt; 2 = re-entry after a stop
                 alert_date          DATE NOT NULL,
                 fill_day            DATE NOT NULL,       -- ET date of filled_at (day 0 of the walk)
-                arm                 TEXT NOT NULL,       -- live_actual | live_replay | stop_orb_low | stop_adr_050 | stop_adr_075 | harvest_no_breakeven | harvest_trail_only | harvest_t3
+                arm                 TEXT NOT NULL,       -- live_actual | live_replay | stop_orb_low | stop_adr_050 | stop_adr_075 | harvest_no_breakeven | harvest_trail_only | harvest_t3 | harvest_legacy_2r
                 arm_kind            TEXT NOT NULL,       -- control | stop | harvest
                 stop_rule           TEXT NOT NULL,       -- live | orb_low | adr_050 | adr_075
                 harvest_rule        TEXT NOT NULL,       -- live_ladder | no_breakeven | trail_only | t3
@@ -3195,8 +3195,9 @@ async def initialize_schema() -> None:
                 orb_high            DOUBLE PRECISION,
                 orb_low             DOUBLE PRECISION,
                 live_stop           DOUBLE PRECISION,    -- mi_live_trades.hard_stop as read
-                target_price        DOUBLE PRECISION,    -- entry + target_r × (entry − orb_low): the ORB-R frame, pinned across every stop arm
-                target_r            DOUBLE PRECISION,
+                target_price        DOUBLE PRECISION,    -- entry + target_r × (entry − orb_low): the ORB-R frame, THIS ARM'S OWN target_r (was the module's fixed TARGET_R for every arm until #545, 2026-09-06 — old rows and new rows can differ here on purpose, never pool without checking)
+                target_r            DOUBLE PRECISION,    -- the partial multiple THIS arm actually walked: resolve_target_r's per-strategy override for a follows_live_rule arm, else the module's fixed TARGET_R (harvest_no_breakeven/trail_only/t3/legacy_2r's own declared +2R)
+                breakeven_arm_r     DOUBLE PRECISION,    -- #545 (2026-09-06): the PRICE-ARMED breakeven level THIS arm walked (entry + breakeven_arm_r × (entry − orb_low), independent of the partial) — NULL = this arm had no price-armed breakeven (every arm before #545; harvest_legacy_2r forever, by design)
                 adr20_pct           DOUBLE PRECISION,    -- mean (high−low)/close × 100 over the ≤20 stored sessions strictly before alert_date; NULL below 10 sessions (never substituted)
                 adr20_n             INT,
                 adr_dollar          DOUBLE PRECISION,    -- adr20_pct/100 × entry_price (ENTRY-anchored; Phase 3 anchored at orb_high — rebuild from adr20_pct × orb_high if comparing)
@@ -3241,6 +3242,10 @@ async def initialize_schema() -> None:
                 ON mi_live_fill_counterfactuals(alert_date);
             CREATE INDEX IF NOT EXISTS idx_live_fill_cf_arm
                 ON mi_live_fill_counterfactuals(arm);
+            -- #545 (2026-09-06): additive-schema defence (CLAUDE.md) for the one column this
+            -- table has gained since its 2026-09-03 CREATE — a fresh install gets it from the
+            -- CREATE TABLE above; a prod table already live at #482 gets it here, idempotently.
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS breakeven_arm_r DOUBLE PRECISION;
 
             -- 2026-09-03 — #593 SUSTAIN-REJECT BRACKET REPLAY (sustain_reject_replay.py).
             -- The operator's own framing: a price move is not a trade outcome. For every
@@ -15232,6 +15237,7 @@ LIVE_FILL_CF_COLS: tuple[str, ...] = (
     "trade_id", "ticker", "account_mode", "signal_type", "entry_attempt", "alert_date",
     "fill_day", "arm", "arm_kind", "stop_rule", "harvest_rule",
     "entry_price", "orb_high", "orb_low", "live_stop", "target_price", "target_r",
+    "breakeven_arm_r",
     "adr20_pct", "adr20_n", "adr_dollar", "stop_price", "risk_per_share", "stop_width_pct",
     "stop_width_adr",
     "outcome", "final_reason", "realized_r", "realized_pct", "pnl_adr", "mark_r",

@@ -39,6 +39,9 @@ FILL_DAY = date(2026, 8, 20)                     # Thursday, era C, adm_2026-08-
 ENTRY, ORB_HIGH, ORB_LOW = 10.0, 10.0, 9.5       # R_orb = 0.5
 LIVE_STOP = 2 * ORB_LOW - ORB_HIGH               # 9.0 = entry - 2R (risk 1.0 in live units)
 TARGET = ENTRY + 2 * (ENTRY - ORB_LOW)           # 11.0, pinned to the ORB R
+R_PS = ENTRY - ORB_LOW                           # 0.5, the ORB-R frame breakeven_at_r shares with the target
+TARGET_8R = ENTRY + 8 * R_PS                     # 14.0 — #545's live partial level for magna53
+BE_TRIGGER_3R = ENTRY + 3 * R_PS                 # 11.5 — #545's live price-armed breakeven level
 SESSIONS = [date(2026, 8, 21), date(2026, 8, 24), date(2026, 8, 25), date(2026, 8, 26),
             date(2026, 8, 27), date(2026, 8, 28), date(2026, 8, 31), date(2026, 9, 1),
             date(2026, 9, 2), date(2026, 9, 3), date(2026, 9, 4)]
@@ -147,6 +150,92 @@ def test_stop_arms_settle_in_their_own_units_on_the_same_scratch():
     adr = _walk("live_ladder", stop=ENTRY - 0.5 * 0.4)
     assert _r(orb, ORB_LOW) == pytest.approx((1 / 3) / 0.5)
     assert _r(adr, ENTRY - 0.2) == pytest.approx((1 / 3) / 0.2)
+
+
+# ── #545 (2026-09-06) price-armed breakeven: decoupled from the partial ───────────────
+
+
+def test_price_armed_breakeven_arms_with_no_partial_taken():
+    """#545: breakeven_at_r arms the stop off PRICE alone. Day 0 touches BE_TRIGGER_3R
+    (11.5) but never TARGET_8R (14.0) -- no partial fires, yet S1's dip to entry stops the
+    WHOLE position at breakeven for a dead scratch: 0/share, not the -1R the pre-#545
+    (unarmed) stop would have taken."""
+    day0 = [DAY0_A[0], DAY0_A[1], _m(9, 32, 10.02, 11.6, 10.1, 11.5), DAY0_A[4]]
+    sess = [(SESSIONS[0], _bar(10.0, 10.1, 9.7, 9.8))]
+    res = _walk("live_ladder", target=TARGET_8R, day0=day0, sessions=sess,
+                breakeven_at_r=3.0, r_frame_ps=R_PS)
+    assert res["status"] == "settled" and res["partial_fired"] is False
+    assert res["final_reason"] == "stop_hit" and res["exit_session"] == 1
+    assert res["gap_through"] is False
+    assert len(res["exits"]) == 1
+    exit0 = res["exits"][0]
+    assert exit0["reason"] == "stop_hit" and exit0["price"] == pytest.approx(ENTRY)
+    assert exit0["shares"] == pytest.approx(1.0) and exit0["pnl"] == pytest.approx(0.0)
+    assert _r(res, LIVE_STOP) == pytest.approx(0.0)
+
+
+def test_price_armed_breakeven_is_raise_only_and_persists_across_sessions():
+    """Day 0 arms breakeven at +3R without a partial; S1 survives untouched (never
+    re-touches the trigger); S2 dips intraday to 8.4 -- well below both the ORIGINAL stop
+    (9.0) and the SMA trail (~9.0, PRIOR_CLOSES) -- yet exits at ENTRY, proving the raise
+    HELD across the session boundary (raise-only) rather than reverting to a lower level."""
+    day0 = [DAY0_A[0], DAY0_A[1], _m(9, 32, 10.02, 11.6, 10.1, 11.5), DAY0_A[4]]
+    sess = [(SESSIONS[0], _bar(10.5, 10.8, 10.2, 10.6)),
+            (SESSIONS[1], _bar(10.0, 10.1, 8.4, 8.6))]
+    res = _walk("live_ladder", target=TARGET_8R, day0=day0, sessions=sess,
+                breakeven_at_r=3.0, r_frame_ps=R_PS)
+    assert res["status"] == "settled" and res["exit_session"] == 2
+    assert res["final_reason"] == "stop_hit" and res["gap_through"] is False
+    assert res["exits"][-1]["price"] == pytest.approx(ENTRY)
+    assert _r(res, LIVE_STOP) == pytest.approx(0.0)
+
+
+def test_breakeven_ambiguous_bar_abstains_day0_and_forward():
+    """A bar that reaches BE_TRIGGER_3R AND also trades at/below entry, while not yet
+    armed, has two unorderable paths (armed-then-stopped vs survived-then-armed) --
+    abstain, never guessed, on day 0 and on a forward session."""
+    day0 = [DAY0_A[0], DAY0_A[1], _m(9, 33, 10.0, 11.6, 9.8, 11.0)]
+    res = _walk("live_ladder", target=TARGET_8R, day0=day0,
+                breakeven_at_r=3.0, r_frame_ps=R_PS)
+    assert res["status"] == "abstain" and res["reason"] == "day0_stop_and_breakeven_same_bar"
+
+    day0_no_arm = [DAY0_A[0], DAY0_A[1], DAY0_A[4]]
+    sess = [(SESSIONS[0], _bar(10.0, 11.6, 9.8, 11.0))]
+    res2 = _walk("live_ladder", target=TARGET_8R, day0=day0_no_arm, sessions=sess,
+                breakeven_at_r=3.0, r_frame_ps=R_PS)
+    assert (res2["status"] == "abstain"
+            and res2["reason"].startswith("fwd_stop_and_breakeven_same_day"))
+
+
+def test_breakeven_at_r_requires_the_live_ladder_harvest():
+    """breakeven_at_r on a harvest with no breakeven floor would silently do nothing --
+    raise instead of a silent no-op (mirrors ep_replay._walk_leg's own guard)."""
+    for harvest in ("no_breakeven", "trail_only", "t3"):
+        with pytest.raises(ValueError, match="breakeven_at_r"):
+            _walk(harvest, target=TARGET_8R, breakeven_at_r=3.0, r_frame_ps=R_PS)
+
+
+def test_resolvers_match_order_manager_byte_for_byte():
+    """#545: this module MAY NOT import order_manager (THE LINE) -- resolve_target_r /
+    resolve_breakeven_arm_r are LOCAL duplicates of order_manager.resolve_profit_trigger_r
+    / .resolve_breakeven_arm_r. Pinned here against a grid of inputs so a divergence
+    between the two definitions fails loudly, never silently."""
+    from agents.market_intelligence.broker import order_manager as om
+    grid_overrides = [
+        {}, None,
+        {"magna53": {"profit_trigger_r": 8.0, "breakeven_arm_r": 3.0}},
+        {"magna53": {"profit_trigger_r": 0.0, "breakeven_arm_r": -1.0}},
+        {"magna53": {"profit_trigger_r": 0.0, "breakeven_arm_r": 0.0}},   # the > 0 boundary itself
+        {"magna53": {"profit_trigger_r": None, "breakeven_arm_r": None}},
+        {"magna53": {"profit_trigger_r": "nope", "breakeven_arm_r": "nope"}},
+        {"other": {"profit_trigger_r": 5.0, "breakeven_arm_r": 2.0}},
+    ]
+    for overrides in grid_overrides:
+        for signal_type in ("magna53", "other", None, ""):
+            assert (lfc.resolve_target_r(signal_type, overrides, TARGET)
+                    == om.resolve_profit_trigger_r(signal_type, overrides, TARGET))
+            assert (lfc.resolve_breakeven_arm_r(signal_type, overrides)
+                    == om.resolve_breakeven_arm_r(signal_type, overrides))
 
 
 # ── Day-0 mechanics (stop-first, same-bar abstain, fill-bar rules) ────────────────────
@@ -326,6 +415,61 @@ def test_walk_matches_the_validated_harness_on_identical_bars(monkeypatch, harve
         assert [e["price"] for e in ours["exits"]] == pytest.approx([e["price"] for e in theirs["exits"]])
 
 
+def _ep_daily_for(day0_bars, sess):
+    """Generalizes _ep_daily() above to an arbitrary day-0 minute set + forward sessions —
+    the FILL_DAY aggregate is derived from the actual bars (reproduces _ep_daily()'s
+    hardcoded values exactly on DAY0_A/SESS_A)."""
+    d = {}
+    for r in _pre_rows():
+        d[r["trade_date"]] = {"o": 9.0, "h": 9.18, "l": 8.82, "c": 9.0}
+    d[FILL_DAY] = {"o": day0_bars[0]["o"], "h": max(b["h"] for b in day0_bars),
+                   "l": min(b["l"] for b in day0_bars), "c": day0_bars[-1]["c"]}
+    for day, b in sess:
+        d[day] = dict(b)
+    return {"XYZ": d}
+
+
+def test_walk_matches_the_validated_harness_with_price_armed_breakeven(monkeypatch):
+    """#545: the decoupled price-armed breakeven (breakeven_at_r) must match ep_replay.
+    _walk_leg's own implementation of the same mechanism — a partial at +8R, breakeven
+    armed independently at +3R on price, with breakeven_at_partial=True (this module's
+    OWN invariant for every era-C fill it ever walks — BACKFILL_FROM postdates
+    BREAKEVEN_AT_PARTIAL_DATE), at every stop."""
+    import scripts.ep_replay as ep
+    day0 = [DAY0_A[0], DAY0_A[1], _m(9, 32, 10.02, 11.6, 10.1, 11.5), DAY0_A[4]]
+    sess = [(SESSIONS[0], _bar(12.0, 14.5, 12.0, 14.2)),
+            (SESSIONS[1], _bar(10.0, 10.1, 9.8, 9.85))]
+    monkeypatch.setattr(ep, "LAST_SETTLED", SESSIONS[-1])
+    rs = dc_replace(ep.RULESETS["era_c"], intraday_partial_r=8.0, breakeven_at_r=3.0)
+    for stop in (LIVE_STOP, ORB_LOW, 9.8, 9.7):
+        theirs = ep._walk_leg(ticker="XYZ", leg_date=FILL_DAY, entry_px=ENTRY, stop=stop,
+                              target=TARGET_8R, bars=day0, fill_idx=FILL_IDX_A, rs=rs,
+                              daily=_ep_daily_for(day0, sess), shares=None, integer_shares=False,
+                              adr_dollar=None, minutes_extra={}, r_frame_ps=R_PS)
+        ours = _walk("live_ladder", stop=stop, target=TARGET_8R, day0=day0, sessions=sess,
+                     breakeven_at_r=3.0, r_frame_ps=R_PS)
+        assert theirs["status"] == "settled" == ours["status"], (stop, theirs.get("reason"), ours.get("reason"))
+        assert ours["pnl_per_share"] / (ENTRY - stop) == pytest.approx(theirs["realized_r"])
+        assert ours["final_reason"] == theirs["final_reason"]
+        assert [e["reason"] for e in ours["exits"]] == [e["reason"] for e in theirs["exits"]]
+        assert [e["price"] for e in ours["exits"]] == pytest.approx([e["price"] for e in theirs["exits"]])
+
+
+def test_walk_matches_the_validated_harness_ambiguity_abstain():
+    """The breakeven-ambiguity abstain must fire on both harnesses for the same bar."""
+    import scripts.ep_replay as ep
+    day0 = [DAY0_A[0], DAY0_A[1], _m(9, 33, 10.0, 11.6, 9.8, 11.0)]
+    rs = dc_replace(ep.RULESETS["era_c"], intraday_partial_r=8.0, breakeven_at_r=3.0)
+    theirs = ep._walk_leg(ticker="XYZ", leg_date=FILL_DAY, entry_px=ENTRY, stop=LIVE_STOP,
+                          target=TARGET_8R, bars=day0, fill_idx=FILL_IDX_A, rs=rs,
+                          daily=_ep_daily_for(day0, []), shares=None, integer_shares=False,
+                          adr_dollar=None, minutes_extra={}, r_frame_ps=R_PS)
+    ours = _walk("live_ladder", stop=LIVE_STOP, target=TARGET_8R, day0=day0, sessions=[],
+                breakeven_at_r=3.0, r_frame_ps=R_PS)
+    assert theirs["status"] == "abstain" == ours["status"]
+    assert theirs["reason"] == ours["reason"] == "day0_stop_and_breakeven_same_bar"
+
+
 # ── Orchestration against a CAPTURING fake pool — THE LINE at the SQL layer ──────────
 
 
@@ -346,9 +490,11 @@ def _trade_row(**over):
 
 
 def _wire(monkeypatch, *, trade, written=(), daily=None, minutes=None, stamp=None,
-          execute_result="INSERT 0 1"):
+          execute_result="INSERT 0 1", overrides=()):
     """A fake asyncpg pool that ROUTES every statement by the table it reads and RECORDS
-    every statement executed. Returns (statements, inserts, audits, trade_store)."""
+    every statement executed. Returns (statements, inserts, audits, trade_store).
+    `overrides`: raw mi_strategies rows (signal_type/profit_trigger_r/breakeven_arm_r) —
+    default () means the table is untouched (byte-identical to before #545)."""
     daily = daily if daily is not None else (_pre_rows() + [
         {"trade_date": d, "open_price": b["o"], "high_price": b["h"], "low_price": b["l"], "close": b["c"]}
         for d, b in SESS_A])
@@ -375,6 +521,8 @@ def _wire(monkeypatch, *, trade, written=(), daily=None, minutes=None, stamp=Non
             lo, hi = args[1], args[2]
             return [{"bar_time": b["m"], "open": b["o"], "high": b["h"], "low": b["l"], "close": b["c"]}
                     for b in minutes if lo <= b["m"] <= hi]
+        if "FROM mi_strategies" in sql:
+            return [dict(r) for r in overrides]
         raise AssertionError(f"unexpected fetch: {sql[:80]}")
 
     async def fetchrow(sql, *args):
@@ -426,7 +574,9 @@ async def test_run_writes_one_row_per_arm_and_only_to_its_own_table(monkeypatch)
     """THE BYTE-IDENTITY ACCEPTANCE TEST. Every statement the run executes is captured:
     the only writes are INSERTs into mi_live_fill_counterfactuals; every read of
     mi_live_trades is a SELECT; the served trade row is EQUAL to a deepcopy taken before.
-    And the eight arms carry the values the pure tests derived from the same bars."""
+    And the nine arms carry the values the pure tests derived from the same bars. No
+    mi_strategies override row (the default) -> #545's resolvers return the pre-#545
+    globals, so every arm here is byte-identical to before that fix."""
     trade = _trade_row()
     before = copy.deepcopy(trade)
     statements, inserts, audits, store = _wire(monkeypatch, trade=trade)
@@ -441,8 +591,8 @@ async def test_run_writes_one_row_per_arm_and_only_to_its_own_table(monkeypatch)
     assert live_reads and all(sql.lstrip().upper().startswith("SELECT") for sql in live_reads)
     assert store["row"] == before                      # byte-identical after the run
 
-    assert out["errors"] == 0 and out["population"] == 1 and out["written"] == 8
-    assert out["settled"] == 8 and out["pending"] == 0
+    assert out["errors"] == 0 and out["population"] == 1 and out["written"] == 9
+    assert out["settled"] == 9 and out["pending"] == 0
     by = {r["arm"]: r for r in inserts}
     assert set(by) == set(lfc.ARM_NAMES)
     assert by["live_actual"]["realized_r"] == pytest.approx(1 / 3)          # 10 / (30 x 1.0)
@@ -453,8 +603,12 @@ async def test_run_writes_one_row_per_arm_and_only_to_its_own_table(monkeypatch)
     assert by["harvest_no_breakeven"]["realized_r"] == pytest.approx(1 / 3 - 1.0)
     assert by["harvest_t3"]["realized_r"] == pytest.approx(1 / 3 + 4 / 3)
     assert by["harvest_trail_only"]["realized_r"] == pytest.approx(-1.5)
+    # #545: no override row anywhere -> harvest_legacy_2r walks the SAME stop/target/
+    # breakeven live_replay does today -> byte-identical realized_r (both 1/3).
+    assert by["harvest_legacy_2r"]["realized_r"] == pytest.approx(1 / 3)
     for r in inserts:
         assert r["target_price"] == pytest.approx(11.0) and r["target_r"] == 2.0
+        assert r["breakeven_arm_r"] is None
         assert r["adr20_pct"] == pytest.approx(4.0) and r["adr20_n"] == 20
         assert r["adr_dollar"] == pytest.approx(0.4) and r["live_stop"] == LIVE_STOP
         assert r["outcome"] == "settled" and r["settle_version"] == lfc.SETTLE_VERSION
@@ -483,6 +637,44 @@ async def test_every_row_carries_the_era_stamp(monkeypatch):
         assert r["account_mode"] == "live" and r["regime"] == "Bull" and r["entry_attempt"] == 1
         assert r["fill_day"] == FILL_DAY and r["trade_id"] == 42
         assert r["settled_session"] == _TODAY          # the last settled session this run walked
+
+
+@pytest.mark.asyncio
+async def test_545_override_moves_the_live_rule_arms_but_not_the_fixed_ones(monkeypatch):
+    """#545, THE REGRESSION THIS CARD FIXES: with mi_strategies.profit_trigger_r=8.0 /
+    breakeven_arm_r=3.0 for magna53, live_replay must reproduce live_actual again (both
+    walk the SAME +8R partial / +3R price-armed breakeven) -- the fidelity gate the whole
+    table exists to police. The three stop_* arms move with it (they ARE "the live
+    ladder"); the fixed harvest arms and harvest_legacy_2r do NOT -- each row states
+    which level it actually used, so old and new can never be pooled blindly."""
+    day0 = [DAY0_A[0], DAY0_A[1], _m(9, 32, 10.02, 11.6, 10.1, 11.5), DAY0_A[4]]
+    sess = [(SESSIONS[0], _bar(12.0, 14.5, 12.0, 14.2)),
+            (SESSIONS[1], _bar(10.0, 10.1, 9.8, 9.85))]
+    daily = _pre_rows() + [
+        {"trade_date": d, "open_price": b["o"], "high_price": b["h"], "low_price": b["l"], "close": b["c"]}
+        for d, b in sess]
+    trade = _trade_row(
+        entry_shares=30.0, total_pnl=40.0,
+        exits=[{"reason": "partial_profit", "price": 14.0, "shares": 10, "pnl": 40.0},
+               {"reason": "stop_hit", "price": 10.0, "shares": 20, "pnl": 0.0}],
+        closed_at=datetime(2026, 8, 25, 16, 0, tzinfo=_ET))
+    overrides = [{"signal_type": "magna53", "profit_trigger_r": 8.0, "breakeven_arm_r": 3.0}]
+    _, inserts, _, _ = _wire(monkeypatch, trade=trade, daily=daily, minutes=day0, overrides=overrides)
+    out = await lfc.run_live_fill_counterfactuals(_TODAY, now_et=_NOW)
+    assert out["errors"] == 0
+    by = {r["arm"]: r for r in inserts}
+
+    # THE FIX: live_replay reproduces live_actual again, both at +8R/+3R.
+    assert by["live_actual"]["realized_r"] == pytest.approx(4 / 3)
+    assert by["live_replay"]["realized_r"] == pytest.approx(4 / 3)
+    assert by["live_replay"]["outcome"] == "settled"
+
+    for arm in ("live_actual", "live_replay", "stop_orb_low", "stop_adr_050", "stop_adr_075"):
+        assert by[arm]["target_r"] == 8.0 and by[arm]["breakeven_arm_r"] == 3.0
+        assert by[arm]["target_price"] == pytest.approx(TARGET_8R)
+    for arm in ("harvest_no_breakeven", "harvest_trail_only", "harvest_t3", "harvest_legacy_2r"):
+        assert by[arm]["target_r"] == 2.0 and by[arm]["breakeven_arm_r"] is None
+        assert by[arm]["target_price"] == pytest.approx(TARGET)
 
 
 @pytest.mark.asyncio
@@ -525,9 +717,9 @@ async def test_total_recorder_failure_leaves_the_live_trade_untouched(monkeypatc
     monkeypatch.setattr(lfc, "insert_live_fill_counterfactual", write_boom)
     out = await lfc.run_live_fill_counterfactuals(_TODAY, now_et=_NOW)
     assert out["written"] == 0 and inserts == []
-    assert out["errors"] == 8                        # 7 walked arms + the live_actual write
+    assert out["errors"] == 9                        # 8 walked arms + the live_actual write
     errs = [s for e, s in audits if e == "live_fill_counterfactual_error"]
-    assert sum("walk boom" in s for s in errs) == 7 and sum("write boom" in s for s in errs) == 1
+    assert sum("walk boom" in s for s in errs) == 8 and sum("write boom" in s for s in errs) == 1
     assert store["row"] == before
     assert not any(k == "execute" for k, _, _ in statements)
 
@@ -552,7 +744,7 @@ async def test_fill_query_failure_returns_counted_not_raised(monkeypatch):
 @pytest.mark.asyncio
 async def test_missing_adr_closes_the_adr_arms_unscoreable_and_settles_the_rest(monkeypatch):
     """Only 6 stored pre-alert sessions: ADR is NULL (never substituted). The two ADR arms
-    are written `unscoreable` with every R NULL and the shortfall named; the other six
+    are written `unscoreable` with every R NULL and the shortfall named; the other seven
     settle normally on the same run."""
     daily = _pre_rows()[-6:] + [
         {"trade_date": d, "open_price": b["o"], "high_price": b["h"], "low_price": b["l"], "close": b["c"]}
@@ -560,7 +752,7 @@ async def test_missing_adr_closes_the_adr_arms_unscoreable_and_settles_the_rest(
     _, inserts, _, _ = _wire(monkeypatch, trade=_trade_row(), daily=daily)
     out = await lfc.run_live_fill_counterfactuals(_TODAY, now_et=_NOW)
     by = {r["arm"]: r for r in inserts}
-    assert out["unscoreable"] == 2 and out["settled"] == 6
+    assert out["unscoreable"] == 2 and out["settled"] == 7
     for arm in ("stop_adr_050", "stop_adr_075"):
         assert by[arm]["outcome"] == "unscoreable" and by[arm]["final_reason"] == "no_adr20:6_sessions"
         assert by[arm]["realized_r"] is None and by[arm]["stop_price"] is None
@@ -583,7 +775,7 @@ async def test_open_live_trade_defers_live_actual_and_settles_the_tight_arms(mon
     arms = {r["arm"] for r in inserts}
     assert arms == {"stop_orb_low", "stop_adr_050", "stop_adr_075"}
     assert all(r["realized_r"] == pytest.approx(-1.0) and r["exit_session"] == 0 for r in inserts)
-    assert out["pending"] == 5 and out["written"] == 3
+    assert out["pending"] == 6 and out["written"] == 3
 
 
 @pytest.mark.asyncio
@@ -598,12 +790,12 @@ async def test_a_stale_gap_is_written_abstain_a_fresh_one_waits(monkeypatch):
     fresh = datetime(2026, 8, 21, 18, 4, tzinfo=_ET)
     _, inserts, _, _ = _wire(monkeypatch, trade=trade, daily=daily, minutes=[])
     out = await lfc.run_live_fill_counterfactuals(fresh.date(), now_et=fresh)
-    assert inserts == [] and out["pending"] == 8
+    assert inserts == [] and out["pending"] == 9
 
     stale = datetime(2026, 8, 28, 18, 4, tzinfo=_ET)          # 6 sessions past the fill day
     _, inserts2, _, _ = _wire(monkeypatch, trade=trade, daily=daily, minutes=[])
     out2 = await lfc.run_live_fill_counterfactuals(stale.date(), now_et=stale)
-    assert out2["abstained"] == 7 and out2["pending"] == 1          # live_actual still open
+    assert out2["abstained"] == 8 and out2["pending"] == 1          # live_actual still open
     assert all(r["outcome"] == "abstain" and r["final_reason"] == "no_day0_minute_bars"
                and r["realized_r"] is None for r in inserts2)
 
@@ -620,7 +812,7 @@ async def test_write_once_a_fully_recorded_fill_is_skipped(monkeypatch):
 async def test_conflict_is_not_counted_as_written(monkeypatch):
     _, inserts, _, _ = _wire(monkeypatch, trade=_trade_row(), execute_result="INSERT 0 0")
     out = await lfc.run_live_fill_counterfactuals(_TODAY, now_et=_NOW)
-    assert len(inserts) == 8 and out["written"] == 0 and out["settled"] == 0
+    assert len(inserts) == 9 and out["written"] == 0 and out["settled"] == 0
 
 
 # ── THE LINE, statically ──────────────────────────────────────────────────────────────
