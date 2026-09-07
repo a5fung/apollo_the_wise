@@ -508,3 +508,66 @@ function, not the caller.**
 Never `git add -A` while a background card holds the tree — I swept half-finished work into a commit
 and only the pre-push suite caught it. One heavy card per window; the 5-hour cap killed a card
 mid-flight with nothing written.
+
+---
+
+## 2026-09-06 (Sun) — 🔴 **RESUME HERE. Supersedes every section above.**
+
+**THE EXIT RULE IS FLIPPED LIVE ON REAL MONEY (#545, operator-signed). Read this before touching
+anything exit-related.** Tree clean, pushed, suite **7701**, board 75 → 75.
+
+### What changed
+
+`mi_strategies` for **`magna53` ONLY**: `profit_trigger_r = 8.0`, `breakeven_arm_r = 3.0`.
+
+- **1/3 partial at +8 ORB-R** (was +2). **Stop moves to entry at +3 ORB-R on PRICE**, whether or not
+  a partial fired — previously impossible (breakeven only lived inside `execute_partial_exit`).
+  **Trail UNCHANGED**: `max(SMA10, SMA20)`, still acting intraday. Both alternatives were tested and
+  both lost (loose trail −9.0R, close-only −5.3R, each paired on the trades where both arms settled).
+- ⚠ **R = ORB-R (`entry − orb_low`), NOT the placed stop distance.** The stop sits 2 ORB-R below
+  entry, so +8R ≈ 4× the money risked and +3R ≈ 1.5×. The easiest thing here to misread.
+- Evidence: **+3.54R → +12.10R** over 65 replayed trades · trades reaching 3R **0 → 5** · ex-two
+  biggest winners **−2.40R → +4.78R**. Cost accepted: winners **36 → 23** (55% → 35% hit rate),
+  median **+0.21 → −0.26**. ⚠ **IN-SAMPLE** — 30+ cells on the same 65 trades, no holdout.
+- **SSoT**: `docs/setups/exit_discipline.md` (mechanism, exact SQL, flip-day duties) +
+  `docs/setups/magna53_ep.md` (the rule). Both dated 2026-09-06 evening.
+- **REVERSION is ONE statement, no redeploy** (acts on the next 5-minute poll):
+  `UPDATE mi_strategies SET profit_trigger_r = NULL, breakeven_arm_r = NULL WHERE strategy_id = 'magna53';`
+
+### ⏳ NOT VERIFIED-LIVE YET — and Mon 2026-09-07 is LABOR DAY (NYSE closed)
+
+**First session under the rule is TUE 2026-09-08.** Two separate verifies:
+1. **The path runs** — grep `apollo-execution` for `scan_breakeven_arms failed` (want zero) and
+   confirm the 5-minute poll ticked.
+2. **The rule acts** — the first trade touching +3 ORB-R arms breakeven, writes its audit row and
+   replaces the stop at the broker. **That** is verified-live; the deploy and the SQL are not.
+
+Open across the long weekend: **HOOD** (entry 118.37, arms 134.36, high 124.88) and **OKTA**
+(entry 167.879, arms 193.92, high 174.85) — neither near a trigger, checked before flipping. Both
+changed exit rules mid-hold; stated and accepted.
+
+### 🛑 Do NOT refactor the money path this week
+
+Full deferral list sits on #545's PLAN line. **The one that is a real defect, not tidiness:** on a
+REJECTED stop replace, `execute_partial_exit` retries the status read 12× over ~3s
+(`order_manager.py:4011`) while the new `_arm_breakeven_on_full_stop` reads ONCE (`:8272`) — two
+copies of one state machine, disagreeing on the day the second was written. Fold in the ~15-line
+bounded poll-and-classify helper next time that file is opened for a real reason.
+
+### 🔴 Found, not fixed — his decisions
+
+- **The per-strategy SIZING knob is DEAD.** `entry_pipeline.py:624` reads `position_size_multiplier`
+  off `registry.Strategy`, which has no such field → always 1.0. The column exists and the drift
+  check reads it, so it LOOKS wired. Latent (all 5 enabled strategies are 1.0). Sizing = THE LINE.
+- **9M is GONE** — deprecated and disabled. Do not re-verify it; do not cite it as a risk.
+
+### Lessons that cost me time today
+
+- **A number that moves is a POPULATION question first.** An era_c read went +3.54R vs +3.87R
+  between two of my own scripts: one deduped by ticker/day, one did not, and the alert feed carries
+  MANE twice. I had already quoted the inflated one.
+- **The censoring trap fires whenever a looser rule is tested** — a loose trail keeps winners OPEN,
+  and open rows have no realized R, so a settled-only sum reads them as a catastrophe. It said
+  "no trail = −24R" and the truth was +4R. `phase_replay` now emits `mark_r` so it is correctable.
+- **Name the two things being compared, side by side.** Operator: *"you didn't tell me which exit
+  for which, I have no idea where your conclusion are from."*
