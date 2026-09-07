@@ -1,0 +1,117 @@
+=== STEP 1 PRECISION probe — frozen prod exports of 2026-09-07 ===
+constants read from source: ASSIGN_POOL_RS_FLOOR=70.0 THEME_RS_MIN=50.0 _PROMOTE_MIN_MEMBERS=3 MIN_GAP_PCT=9.0 _MEAN_CORR_MIN=0.8 _MIN_CLUSTER_SIZE=4 (relaxed panel uses 2)
+mi_themes rows=6744 names=513 span 2026-03-19..2026-09-04; sessions in price calendar=161 (2026-01-15..2026-09-04); score dates populated=132
+names whose FIRST member row is a Retired tombstone (not births): 12
+lineage edges: rename-table=2 tombstone-note=11 mass-flag-audit=4 jaccard>=0.4-in-10d=102
+names born wearing a non-Nascent stage (inherited history): 34; of which the Jaccard rule attaches to a prior name: 7 — the rest are same-name revivals or inherited from a name >10d back
+
+--- 1. LINEAGES: 398 lineages from 513 names (engine identity rules; 69 lineages carry >1 name)
+rebirth links (#534: >=50% of a newborn's founders came from a lineage dead <=14d earlier): 32; lineages if those were ALSO collapsed: 366
+
+--- 2. BIRTH CLASS (co-gap = >=2 founders gapped >= 9% in the 20 sessions up to and incl. birth; grind = 0-1) ---
+scan-log window fully covered: 328/398 = 82.4% (scan log starts 2026-04-13; floors 8% Apr-May, 10% Jun-Jul, capture from 5% Aug+) — uncovered births use the open-gap read
+scan-log vs open-gap classifier agreement on the covered subset: 301/328 = 91.8%
+PRIMARY class: grind=325 co-gap=73 (of 398)
+open-gap-only class (uniform, all births): grind=348 co-gap=50
+grind births with EXACTLY 1 gapper (boundary): 93
+co-gap births by sessions from the LATEST founder gap to birth: {'1-5 sessions': 27, '11-20': 15, '6-10': 15, 'same day (0)': 16}
+co-gap births with >=2 founders gapping on birth day or the day before: 13
+by birth month (grind / co-gap): 2026-03: 35/8  2026-04: 22/3  2026-05: 3/0  2026-06: 35/6  2026-07: 111/5  2026-08: 99/45  2026-09: 20/6
+founder-count distribution (8=8+): {1: 1, 2: 127, 3: 105, 4: 72, 5: 42, 6: 22, 7: 8, 8: 21}  — 233 lineages are born below the engine's 4-member coherence-instrument floor
+
+--- 3. COHERENCE of founders (mean pairwise SPY-residual corr, 20 sessions; bar = engine _MEAN_CORR_MIN 0.8) — ALL lineages ---
+  NATIVE (>=4 founders w/ full prices)             grind: n=132  pre median=0.807  pre>=0.8: 69/132 = 52.3%  |  post median=0.583  post>=0.8: 11/83 = 13.3%  post>pre: 21/83 = 25.3%
+  NATIVE (>=4 founders w/ full prices)             cogap: n= 33  pre median=0.638  pre>=0.8: 10/33 = 30.3%  |  post median=0.546  post>=0.8: 3/12 = 25.0%  post>pre: 6/12 = 50.0%
+  RELAXED (instrument floor 2 in-process)          grind: n=320  pre median=0.644  pre>=0.8: 99/320 = 30.9%  |  post median=0.506  post>=0.8: 26/219 = 11.9%  post>pre: 76/219 = 34.7%
+  RELAXED (instrument floor 2 in-process)          cogap: n= 73  pre median=0.391  pre>=0.8: 16/73 = 21.9%  |  post median=0.518  post>=0.8: 4/30 = 13.3%  post>pre: 18/30 = 60.0%
+
+    ...lineages that reached Mainstream
+  NATIVE (>=4 founders w/ full prices)             grind: n= 54  pre median=0.815  pre>=0.8: 29/54 = 53.7%  |  post median=0.602  post>=0.8: 8/42 = 19.0%  post>pre: 12/42 = 28.6%
+  NATIVE (>=4 founders w/ full prices)             cogap: n=  7  pre median=0.384  pre>=0.8: 0/7 = 0.0%  |  post median=0.312  post>=0.8: 0/2 = 0.0%  post>pre: 0/2 = 0.0%
+  RELAXED (instrument floor 2 in-process)          grind: n=141  pre median=0.575  pre>=0.8: 37/141 = 26.2%  |  post median=0.439  post>=0.8: 12/113 = 10.6%  post>pre: 40/113 = 35.4%
+  RELAXED (instrument floor 2 in-process)          cogap: n= 22  pre median=0.342  pre>=0.8: 2/22 = 9.1%  |  post median=0.425  post>=0.8: 0/10 = 0.0%  post>pre: 6/10 = 60.0%
+
+    ...lineages that never reached Mainstream
+  NATIVE (>=4 founders w/ full prices)             grind: n= 78  pre median=0.804  pre>=0.8: 40/78 = 51.3%  |  post median=0.552  post>=0.8: 3/41 = 7.3%  post>pre: 9/41 = 22.0%
+  NATIVE (>=4 founders w/ full prices)             cogap: n= 26  pre median=0.703  pre>=0.8: 10/26 = 38.5%  |  post median=0.552  post>=0.8: 3/10 = 30.0%  post>pre: 6/10 = 60.0%
+  RELAXED (instrument floor 2 in-process)          grind: n=179  pre median=0.683  pre>=0.8: 62/179 = 34.6%  |  post median=0.537  post>=0.8: 14/106 = 13.2%  post>pre: 36/106 = 34.0%
+  RELAXED (instrument floor 2 in-process)          cogap: n= 51  pre median=0.424  pre>=0.8: 14/51 = 27.5%  |  post median=0.540  post>=0.8: 4/20 = 20.0%  post>pre: 12/20 = 60.0%
+  births the NATIVE instrument cannot read but the relaxed one can: 228; unreadable in both (prices missing / window before data): 5
+  panels disagree on the pre-birth bar where both read: 0/165 = 0.0% (expected 0 — same maths, floor only)
+
+--- 4. STRENGTH OF FOUNDERS AT BIRTH — RS level (>= 70) vs SUBTLE RS (rising = get_rs_velocity predicate · turning = get_rs_turners predicate · holding up = median (name-SPY) on SPY-down days > 0) ---
+  grind founders n=1185: RS>=70 632/1185 = 53.3% | subtle(any leg) 962/1185 = 81.2% | rising 629/1185 = 53.1% | turning 121/1185 = 10.2% | holding-up 779/1185 = 65.7% (median hold 0.006) | subtle but RS<70: 374/1185 = 31.6% | RS>=70 but no subtle leg: 44/1185 = 3.7%
+  grind lineages n=325: >=half founders RS>=70 214/325 = 65.8% | >=half founders subtle 277/325 = 85.2% | subtle-majority but NOT level-majority: 76 | level-majority but NOT subtle-majority: 13
+  grind founders that GAPPED n=92: RS>=70 72/92 = 78.3%, holding-up 49/92 = 53.3% · did NOT gap n=1093: RS>=70 560/1093 = 51.2%, holding-up 730/1093 = 66.8%
+  cogap founders n=326: RS>=70 184/326 = 56.4% | subtle(any leg) 208/326 = 63.8% | rising 175/326 = 53.7% | turning 34/326 = 10.4% | holding-up 136/326 = 41.7% (median hold -0.004) | subtle but RS<70: 35/326 = 10.7% | RS>=70 but no subtle leg: 11/326 = 3.4%
+  cogap lineages n=73: >=half founders RS>=70 52/73 = 71.2% | >=half founders subtle 57/73 = 78.1% | subtle-majority but NOT level-majority: 7 | level-majority but NOT subtle-majority: 2
+  cogap founders that GAPPED n=207: RS>=70 119/207 = 57.5%, holding-up 72/207 = 34.8% · did NOT gap n=119: RS>=70 65/119 = 54.6%, holding-up 64/119 = 53.8%
+
+--- 5. NON-MATURER SPLIT ---
+protect-strip events that emptied a theme: 156; same-day tombstone on the STRIPPED theme pointing at the kept one (correct): 66; same-day tombstone on the KEPT theme pointing at the stripped one (spurious): 6 — the engine-drop block seeds successor pointers as j=lost/i=successor regardless of which side was stripped (theme_engine.py ~7860); reported, not patched
+absorption re-keyed on the lineage's DEATH name; lineages an any-name rule would have called absorbed but whose ending name has no absorption record: 4
+lineages never reaching Mainstream: 234/398 = 58.8% (Mainstream is age-gated: age>=5 sessions in a 7-day window AND score>=50 — the stage clock is not earliness)
+  grind non-maturers n=183: dissolved=73 · absorbed=45 · still-live (censored)=25 · reborn=13 · killed-healthy=12 · post-death window incomplete (censored)=11 · rs 50-70, coherence held (undefined by task)=4
+        classifiable n=147: CHURN (absorbed+reborn+killed-healthy) 70/147 = 47.6% · DISSOLVED 73/147 = 49.7% · undefined-bucket 4/147 = 2.7%
+        dissolved by: {'rs<50': 31, 'coh-fell': 25, 'rs<50+coh-fell': 17}  (rs<50 alone is the task's noise definition; 'coh-fell' with RS>=70 = healthy RS, coherence slipped)
+        healthy-at-death among the 89 health-split lineages: LEVEL (mean RS>=70 & coherence held) 12 · SUBTLE (>=half members rising/turning/holding-up & coherence held) 23 · both 12 · subtle-only 11 · level-only 0
+        death mechanisms on record: {'theme_pass1_protect_strip': 6, 'reborn as lineage 62': 2, 'reborn as lineage 63': 1, 'theme_pass1_5_absorption': 4, 'cap-drop': 2, 'reborn as lineage 64': 1, 'reborn as lineage 65': 1, 'tombstone:absorbed': 34, 'reborn as lineage 154': 1, 'reborn as lineage 198': 1, 'validation-dissolve (Arm A)': 6, 'reborn as lineage 211': 1, 'reborn as lineage 247': 2, 'reborn as lineage 222': 1, 'reborn as lineage 237': 1, 'reborn as lineage 382': 1, 'theme_auto_retired': 1}
+        by birth month: 2026-03: dissolved=5,killed-he=4,absorbed=6,reborn=3,rs 50-70,=1  2026-04: dissolved=6,reborn=2,absorbed=2  2026-05: absorbed=3  2026-06: dissolved=15,reborn=1,absorbed=1,killed-he=1  2026-07: absorbed=6,dissolved=29,killed-he=7,reborn=6,rs 50-70,=3  2026-08: dissolved=17,absorbed=25,reborn=1  2026-09: absorbed=2,dissolved=1
+  cogap non-maturers n=51: absorbed=13 · dissolved=12 · still-live (censored)=9 · post-death window incomplete (censored)=8 · reborn=5 · killed-healthy=3 · rs 50-70, coherence held (undefined by task)=1
+        classifiable n=34: CHURN (absorbed+reborn+killed-healthy) 21/34 = 61.8% · DISSOLVED 12/34 = 35.3% · undefined-bucket 1/34 = 2.9%
+        dissolved by: {'coh-fell': 2, 'rs<50+coh-fell': 3, 'rs<50': 7}  (rs<50 alone is the task's noise definition; 'coh-fell' with RS>=70 = healthy RS, coherence slipped)
+        healthy-at-death among the 16 health-split lineages: LEVEL (mean RS>=70 & coherence held) 3 · SUBTLE (>=half members rising/turning/holding-up & coherence held) 4 · both 3 · subtle-only 1 · level-only 0
+        death mechanisms on record: {'reborn as lineage 62': 1, 'theme_pass1_5_absorption': 1, 'reborn as lineage 70': 1, 'theme_pass1_protect_strip': 3, 'tombstone:absorbed': 9, 'reborn as lineage 246': 1, 'validation-dissolve (Arm A)': 3, 'cap-drop': 3, 'reborn as lineage 346': 1, 'reborn as lineage 395': 1}
+        by birth month: 2026-03: reborn=2,dissolved=1,absorbed=2,rs 50-70,=1  2026-06: dissolved=4,absorbed=1  2026-07: dissolved=2,killed-he=1,reborn=1,absorbed=1  2026-08: dissolved=5,killed-he=2,absorbed=9,reborn=2
+
+  dissolved-definition check: post-birth coherence sits BELOW pre-birth in 155/249 = 62.2% of ALL readable lineages (maturers included: 77/123 = 62.6%) — a cohort selected for moving together regresses after naming, so the 'coherence fell' arm fires near-universally
+  grind: dissolved on the RS arm (members' mean RS < 50 at death) 48/147 = 32.7%; dissolved ONLY because coherence slipped 25, of which 16 still had mean RS >= 70
+  cogap: dissolved on the RS arm (members' mean RS < 50 at death) 10/34 = 29.4%; dissolved ONLY because coherence slipped 2, of which 2 still had mean RS >= 70
+
+  SUBTLE-HEALTHY FOLD-IN (killed-healthy also = coherence held AND >= half members rising/turning/holding-up at death, any RS level):
+  grind classifiable n=147: LEVEL split churn 70/147 = 47.6% dissolved 73/147 = 49.7% killed-healthy 12 | SUBTLE split churn 81/147 = 55.1% dissolved 66/147 = 44.9% killed-healthy 23 | moved 11 from {('dissolved', 'rs<50'): 7, ('rs 50-70,', ''): 4}
+  cogap classifiable n=34: LEVEL split churn 21/34 = 61.8% dissolved 12/34 = 35.3% killed-healthy 3 | SUBTLE split churn 22/34 = 64.7% dissolved 12/34 = 35.3% killed-healthy 4 | moved 1 from {('rs 50-70,', ''): 1}
+
+  BAR A (dissolved >= 40% within GRIND): pre-declared definition (either arm) 73/147 = 49.7% → CROSSED; RS arm alone 48/147 = 32.7% → not crossed
+  BAR B (churn >= 60% of classifiable non-maturers, both classes): 91/181 = 50.3% → not crossed
+  under the SUBTLE-healthy definition: BAR A 66/147 = 44.9% → CROSSED; BAR B 103/181 = 56.9% → not crossed
+  (co-gap class, reported not judged: dissolved 12/34 = 35.3%, churn 21/34 = 61.8%)
+
+  maturity by founder strength at birth (Mainstream reached / lineages):
+    grind level-majority  : matured 105/214 = 49.1%
+    grind subtle-majority : matured 130/277 = 46.9%
+    grind neither         : matured 7/35 = 20.0%
+    grind pre-coh >= bar (rlx): matured 37/99 = 37.4%
+    grind pre-coh <  bar (rlx): matured 104/221 = 47.1%
+    cogap level-majority  : matured 21/52 = 40.4%
+    cogap subtle-majority : matured 21/57 = 36.8%
+    cogap neither         : matured 0/14 = 0.0%
+    cogap pre-coh >= bar (rlx): matured 2/16 = 12.5%
+    cogap pre-coh <  bar (rlx): matured 20/57 = 35.1%
+
+--- 6. AGREEMENT WITH THE OPERATOR'S LABELS (themed stratum; coherence over the 20 sessions ending alert_date-1) ---
+sheet themed rows=59 labels={'Y': 49, 'N': 9, '?': 1}; prod themed labels: y=49 n=9 ?=1 — MATCH
+detectable ceiling stated up front: 5 of the 9 N labels are ONE scope error (crypto miners converting to AI: HUT x2, WULF, CLSK, IREN) — a coherent cohort under the wrong name, invisible to price coherence by construction; 2 are membership errors (BATL, KYTX), 2 near-misses (LUNR, CRCL). Price coherence can at most catch 4 of 9.
+decided rows=58 (Y=49 N=9); board row found within 10d: 55; ticker a MEMBER of that row: 48 (the sheet's theme column is the shadow's attribution, which can name a theme the ticker never joined — its fit is still read against that cohort)
+  cohort coherence                : Y median=0.359 (n=47)  N median=0.693 (n=8)  share of (Y,N) pairs where Y scores higher = 0.29  |  at the fixed 0.8 bar: Y>=bar 1/47 = 2.1%, N>=bar 3/8 = 37.5%
+  ticker's own fit to its cohort  : Y median=0.344 (n=47)  N median=0.667 (n=8)  share of (Y,N) pairs where Y scores higher = 0.29  |  at the fixed 0.8 bar: Y>=bar 1/47 = 2.1%, N>=bar 2/8 = 25.0%
+  the 9 N rows, ticker fit vs its cohort (lower = the name did not move with the group):
+    BATL  2026-04-02 fit=-0.13 coh=0.24 on-board=True — Wrong theme, this is oil and gas
+    KYTX  2026-04-22 fit=0.07 coh=0.07 on-board=True — Wrong theme, this is health tech
+    HUT   2026-05-06 fit=0.54 coh=0.54 on-board=True — This is the case where crypto miners are convertin
+    LUNR  2026-05-26 fit=0.57 coh=0.61 on-board=False — This is a space theme (which is close) but not sat
+    WULF  2026-07-06 fit=0.76 coh=0.80 on-board=True — Crypto miner to AI infra conversion play
+    CLSK  2026-07-14 fit=0.79 coh=0.78 on-board=False — Crypto to AI
+    IREN  2026-07-20 fit=0.83 coh=0.86 on-board=True — Crypto to AI
+    HUT   2026-07-20 fit=0.87 coh=0.87 on-board=True — Crypto to AI
+    CRCL  2026-07-10 fit=n/a coh=n/a on-board=None — THis is crypto play, stable coin
+  for scale, Y-row fit quartiles: 0.07, 0.19, 0.34, 0.49, 0.69 (p10/p25/p50/p75/p90)
+
+--- 7. FUNNEL CHECK — velocity/turner pool names with RS < ASSIGN_POOL_RS_FLOOR (70): do they ever reach a theme? ---
+(scope note said THEME_RS_MIN=40; source reads THEME_RS_MIN=50 — flagged)
+pool-reconstruction fidelity vs the engine's own nightly funnel rows (n=54 nights since 2026-06-18, uncovered counts): velocity exact 25/54 = 46.3% / within 3 50/54 = 92.6%; turners exact 19/54 = 35.2% / within 3 43/54 = 79.6%
+velocity-pool names below the assignment floor and not already in a theme: 315 ticker-nights over 120 runs; reached ANY theme within 14 days: 69/315 = 21.9%; never did: 246/315 = 78.1%
+turner-pool names below the floor and uncovered: 37; reached a theme within 14d: 25/37 = 67.6%; never did: 12/37 = 32.4%
+CONTROL — the same pools' names AT/ABOVE the floor and uncovered: velocity 2417 ticker-nights, reached a theme within 14d 640/2417 = 26.5%; turners 871, reached 203/871 = 23.3%
+sample of dropped subtle names: ['MS@2026-03-26 rs=57 (velocity)', 'JPM@2026-03-26 rs=54 (velocity)', 'AAPL@2026-03-26 rs=53 (velocity)', 'ASML@2026-03-26 rs=70 (velocity)', 'SCHW@2026-03-26 rs=54 (velocity)', 'GS@2026-03-27 rs=50 (velocity)', 'AAPL@2026-03-27 rs=50 (velocity)', 'MCHP@2026-03-27 rs=50 (velocity)']
+note: the turner predicate requires a sector, and only the top ~300 RS ranks carry one in mi_stock_scores — a 'not highest RS but turning' name is excluded from that pool by construction unless it is already near the top

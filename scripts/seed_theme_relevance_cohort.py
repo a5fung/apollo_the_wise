@@ -44,6 +44,16 @@ from agents.market_intelligence.theme_axis_shadow import classify_label_stratum
 
 # Shadow rows LEFT-joined to outcomes: themed rows enrol regardless of outcome (o.* may be
 # NULL); themeless rows need a settled winning outcome to enrol (classify_label_stratum).
+#
+# Theme-correctness programme Step 4 (2026-09-07): `s.source != 'eod_unscored'` excludes
+# the new null-control population. This cohort exists to label whether the LIVE JUDGE
+# correctly credited a theme as the driver for a REAL alert — an eod_unscored row was
+# never alerted (never graded, no `grade`/no judge decision at all), so classifying its
+# themeless_flag=False rows as 'themed' would enrol never-graded candidates into the
+# operator's #368 labeling queue, and a themeless-but-winning eod_unscored row is a
+# different finding entirely (a name the system missed before it ever scored) — not the
+# judge-attribution question this cohort is built to answer. Filtered out, not silently
+# absorbed.
 _SELECT_SQL = """
 SELECT s.ticker, s.alert_date, s.themeless_flag, s.theme_name, s.grade,
        o.fwd_5d_pct, o.n_sessions_5d
@@ -51,6 +61,7 @@ FROM mi_theme_axis_shadow s
 LEFT JOIN mi_ep_scan_outcomes o
        ON o.ticker = s.ticker AND o.scan_date = s.alert_date
 WHERE s.alert_date >= CURRENT_DATE - $1::int
+  AND s.source != 'eod_unscored'
 ORDER BY s.alert_date, s.ticker
 """
 

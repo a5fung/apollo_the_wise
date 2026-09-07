@@ -80,6 +80,11 @@ async def main() -> None:
             JOIN mi_ep_alerts e ON e.ticker = s.ticker AND e.alert_date = s.alert_date
             WHERE s.alert_date >= CURRENT_DATE - $1::int
               AND s.themeless_flag = FALSE
+              -- Theme-correctness programme Step 4 (2026-09-07): an eod_unscored row was
+              -- never alerted, so it has no mi_ep_alerts row and this INNER JOIN already
+              -- excludes it structurally; the explicit filter is belt-and-suspenders
+              -- against that join ever being loosened (e.g. to a LEFT JOIN) later.
+              AND s.source != 'eod_unscored'
             ORDER BY s.alert_date
             """,
             since_days,

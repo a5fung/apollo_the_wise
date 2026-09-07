@@ -36,6 +36,11 @@ async def _run(since_days: int) -> None:
                    cohort_move, ticker_move, co_moving
             FROM mi_theme_axis_shadow
             WHERE alert_date >= CURRENT_DATE - $1::int
+              -- Theme-correctness programme Step 4 (2026-09-07): eod_unscored rows have NO
+              -- grounded_text (never graded), so their attribution columns are NOT
+              -- MEANINGFUL (attribution_computable=FALSE) — a naive read would count their
+              -- false zeros as real "not attributable" and dilute this health read's N.
+              AND source != 'eod_unscored'
             ORDER BY alert_date
             """,
             since_days,

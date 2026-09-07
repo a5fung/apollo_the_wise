@@ -85,3 +85,15 @@ scripts/ep_replay_data/*.tsv.gz
 # pulls are reproducible from the committed .sql/.py and do not belong in git history.
 scripts/probes/_617_bars.psv.gz
 scripts/probes/_617_population_out.txt
+
+# #486 step-1 theme-precision probe — raw prod pulls, re-derivable by rerunning the probe
+scripts/probes/_step1_scores_all.tsv
+scripts/probes/_step1_closes.tsv
+scripts/probes/_step1_scan.tsv
+scripts/probes/_step1_scores.tsv
+scripts/probes/_step1_themes.tsv
+scripts/probes/_step1_audit.tsv
+scripts/probes/_step1_audit2.tsv
+scripts/probes/_step1_audit3.tsv
+scripts/probes/_step1_cohort.tsv
+scripts/probes/_step1_*.err

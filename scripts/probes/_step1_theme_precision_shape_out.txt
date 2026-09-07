@@ -1,0 +1,151 @@
+Output format is unaligned.
+Field separator is "|".
+=== mi_themes ===
+n|names|min|max
+6744|513|2026-03-19|2026-09-04
+(1 row)
+stage|count
+Fading|2225
+Mainstream|1923
+Nascent|1326
+Accelerating|714
+Retired|556
+(5 rows)
+source|count
+shadow_promoted|260
+live|6484
+(2 rows)
+retired_with_parent|retired|live_with_parent
+213|556|210
+(1 row)
+names_reached_mainstream
+173
+(1 row)
+names_with_retired_row
+388
+(1 row)
+m|rows|names
+2026-03-01|249|61
+2026-04-01|697|87
+2026-05-01|704|61
+2026-06-01|660|87
+2026-07-01|1663|174
+2026-08-01|2259|278
+2026-09-01|512|155
+(7 rows)
+rs_avg_null|empty_tickers|total
+2445|513|6744
+(1 row)
+=== mi_theme_renames ===
+id|old_name|new_name|mechanism|detail|theme_date|renamed_at
+1|Pure-Play Agricultural Tractor & Farm Machinery Manufacturers|Global Agriculture Value Chain Recovery|mass_flag_rename|#214 mass-flag rename; 10 members kept|2026-09-04|2026-09-04 21:08:46.448413+00
+2|U.S. Downstream Refining & Marketing|Global Oil & Gas Upstream, Integrated & Transport Value Chain|mass_flag_rename|#214 mass-flag rename; 41 members kept|2026-09-04|2026-09-04 21:08:46.452103+00
+(2 rows)
+=== mi_ep_scan_log ===
+count|min|max|gap_null
+53432|2026-04-13|2026-09-04|0
+(1 row)
+m|rows|ge9|ge10|min_gap
+2026-04-01|661|422|325|8.00
+2026-05-01|10304|9048|8209|8.00
+2026-06-01|6138|6138|6138|10.00
+2026-07-01|5438|5438|5438|10.00
+2026-08-01|20983|11357|10487|-4.11
+2026-09-01|9908|3056|2652|-4.62
+(6 rows)
+=== mi_ep_alerts ===
+count|min|max
+424|2026-05-11|2026-09-04
+(1 row)
+=== mi_daily_closes ===
+count|min|max|count
+13595267|2021-09-07|2026-09-04|20028
+(1 row)
+spy_rows|min|max
+1255|2021-09-07|2026-09-04
+(1 row)
+=== mi_stock_scores ===
+count|min|max|count
+504070|2025-12-26|2026-09-04|135
+(1 row)
+=== mi_theme_relevance_cohort ===
+stratum|operator_label|count
+themed|?|1
+themed|n|9
+themed|y|49
+themeless_winner|n|9
+themeless_winner|y|22
+themeless_winner||100
+(6 rows)
+=== mi_correlation_clusters ===
+count|count|min|max
+12631|144|2025-12-02|2026-09-04
+(1 row)
+=== mi_audit_log theme events ===
+event_type|count|min|max
+theme_retired|448|2026-04-10|2026-09-04
+theme_discovery_llm_call|433|2026-06-22|2026-09-04
+theme_ecosystem_assigned|386|2026-07-15|2026-09-04
+theme_stage_flip_held|352|2026-05-01|2026-09-04
+theme_score_ties|279|2026-04-30|2026-09-04
+theme_pass1_5_absorption|272|2026-04-30|2026-09-04
+theme_merge_distinct|253|2026-07-27|2026-09-04
+theme_discovered|252|2026-04-16|2026-09-04
+theme_pass1_protect_strip|213|2026-04-30|2026-09-04
+theme_pass1_5_skip|194|2026-04-30|2026-09-04
+theme_breadth_fade|175|2026-04-22|2026-09-04
+theme_low_quality_description|151|2026-05-29|2026-09-04
+theme_carryforward_filter_stripped|141|2026-05-18|2026-09-04
+theme_load_state|109|2026-04-30|2026-09-04
+theme_constituent_churn|88|2026-05-15|2026-09-04
+theme_auto_retired|79|2026-05-26|2026-09-04
+theme_discovery_shadow_ran|79|2026-06-02|2026-09-04
+theme_axis_co_move_refreshed|67|2026-07-27|2026-09-04
+theme_renamed_for_continuity|64|2026-05-12|2026-09-04
+theme_synthesis_run|62|2026-06-10|2026-09-04
+theme_engine_funnel|62|2026-06-18|2026-09-04
+theme_birth_gate|60|2026-07-30|2026-09-04
+theme_cap_drop|53|2026-04-30|2026-09-04
+theme_split|51|2026-04-14|2026-09-03
+theme_empty_tickers|50|2026-04-30|2026-09-04
+theme_axis_shadow_adjusted|37|2026-07-10|2026-08-20
+theme_merge_pairs_proposed|37|2026-07-27|2026-09-04
+theme_dissolved_flagged_pair|28|2026-07-27|2026-09-02
+theme_sector_cap_dropped|25|2026-08-17|2026-09-04
+theme_orphan_sub|24|2026-04-30|2026-09-04
+theme_quality_clean|21|2026-08-06|2026-09-04
+theme_composition_churn|19|2026-08-13|2026-09-04
+theme_birth_validated|17|2026-06-25|2026-08-04
+theme_thesis_merged|14|2026-07-29|2026-09-02
+theme_high_strip_rate|11|2026-05-16|2026-08-27
+theme_name_variant_observed|10|2026-05-14|2026-05-28
+theme_cross_run_dup_candidate|10|2026-04-30|2026-05-13
+theme_merge_parent_child|10|2026-07-27|2026-09-01
+theme_operator_promoted|9|2026-08-17|2026-09-03
+theme_merge_adjudication_error|8|2026-08-20|2026-08-20
+theme_canonicalize_blocked_mass_evicted|5|2026-08-31|2026-09-04
+theme_renamed_on_mass_flag|5|2026-08-28|2026-09-04
+theme_cap_strip|5|2026-04-30|2026-08-17
+theme_member_pruned_while_rising|4|2026-08-05|2026-08-25
+theme_rename_cap_reached|3|2026-08-31|2026-09-04
+theme_subtheme_routed|2|2026-07-17|2026-08-28
+theme_dup_ticker_sets|1|2026-07-17|2026-07-17
+theme_assignment_barren|1|2026-08-10|2026-08-10
+theme_retired_while_healthy|1|2026-08-05|2026-08-05
+theme_manual_assignment|1|2026-05-15|2026-05-15
+theme_excluded|1|2026-06-12|2026-06-12
+theme_dominant_split_eligible|1|2026-07-17|2026-07-17
+(52 rows)
+=== mi_security_types ===
+security_type|count
+ETF|5612
+CS|5598
+WARRANT|523
+PFD|453
+ADRC|389
+FUND|345
+UNIT|341
+SP|174
+RIGHT|152
+ETS|116
+(10 rows)

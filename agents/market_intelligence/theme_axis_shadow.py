@@ -52,9 +52,11 @@ from agents.market_intelligence.db import (
     get_daily_moves,
     get_theme_axis_shadow_bounded_backfill_targets,
     get_theme_heat_asof,
+    get_unscored_theme_axis_population,
     log_audit_event,
     upsert_company_names_batch,
     write_theme_axis_shadow_bounded_backfill,
+    write_unscored_theme_axis_row,
 )
 
 logger = logging.getLogger(__name__)
@@ -286,14 +288,35 @@ async def _ensure_company_names(conn: Any, tickers: list[str]) -> dict[str, str]
     return {**cached, **fetched}
 
 
+_MARKET_ADJUST_TICKER = "SPY"
+
+
 async def _cohort_co_movement(conn: Any, ticker: str, alert_date: Any,
-                              cohort_tickers: "list[str]") -> tuple:
+                              cohort_tickers: "list[str]", spy_adjust: bool = False) -> tuple:
     """The ONE moves-fetch + co-movement derivation (subject excluded from the cohort
     side) — shared by compute_step1_signals (scan-time) and refresh_co_movement_for_date
     (EOD), same divergence rationale as compute_step1_signals' G1 note. Returns
-    (ticker_move, cohort_move, co_moving)."""
+    (ticker_move, cohort_move, co_moving).
+
+    `spy_adjust` (theme-correctness programme Step 4, 2026-09-07): opt-in, default
+    UNCHANGED (False) — every existing caller (the live shadow writer via
+    compute_step1_signals, refresh_co_movement_for_date, the #367/#369 backfill
+    scripts) keeps today's RAW-move behavior byte-identical. The EOD-unscored writer
+    (log_unscored_theme_axis_for_date) passes True: the plan's own finding is that the
+    current co_moving is NOT market-adjusted, which reads trivially True on a broad
+    up day — coverage_probe's birth-gate copy already subtracts SPY's same-day
+    open->close move from every leg (fork F-D, coverage_probe.market_adjust_moves)
+    before the co-movement floor is applied; this matches that, rather than inventing
+    a second adjustment rule. Lazy import (coverage_probe imports THIS module at
+    module level — a top-level import here would be circular)."""
     peers = [t for t in cohort_tickers if (t or "").upper() != ticker.upper()]
-    moves = await get_daily_moves(conn, alert_date, [ticker] + peers)
+    fetch_tickers = [ticker] + peers
+    if spy_adjust:
+        fetch_tickers = fetch_tickers + [_MARKET_ADJUST_TICKER]
+    moves = await get_daily_moves(conn, alert_date, fetch_tickers)
+    if spy_adjust:
+        from agents.market_intelligence.coverage_probe import market_adjust_moves
+        moves = market_adjust_moves(moves, moves.get(_MARKET_ADJUST_TICKER))
     ticker_move = moves.get(ticker.upper())
     cohort_moves = [moves[t.upper()] for t in peers if t.upper() in moves]
     cohort_move, co_moving = compute_co_movement(ticker_move, cohort_moves)
@@ -638,6 +661,267 @@ async def backfill_bounded_theme_reads(conn: Any) -> dict:
         "candidates": len(targets), "backfilled": backfilled,
         "themed": themed, "themeless": themeless,
     }
+
+
+# ─── Theme-correctness programme Step 4 (THE INSTRUMENT, 2026-09-07) ──────────────────────
+# `mi_theme_axis_shadow` today records only names that SCORED ABOVE the EP bar
+# (log_theme_axis_shadow, source='live_scan'). Everything filtered earlier is invisible, so
+# there is no comparison group — and the reflexivity step (step 2 of the programme) needs
+# exactly that group as its NULL CONTROL: without it, a themeless-alert rate can't be
+# falsified against anything. Two groups were missing: (1) scored-under-bar
+# (reject_stage='score_bar') and (2) — the group prior scoping missed — candidates killed
+# BEFORE scoring ever ran (shortlist_cap/rvol_gate/cooldown/extension/quality_filter/
+# post_grade_filter — ep_decision_vector.py:91-126), where modest-gap early theme members
+# live. This EOD job (NOT in the scan loop — run once, after market close) is the write
+# side; db.get_unscored_theme_axis_population is the read side.
+#
+# NEVER touches a grade/alert/entry/exit/size column or table (THE LINE) — writes ONLY
+# mi_theme_axis_shadow (+ mi_audit_log), same SHADOW contract as log_theme_axis_shadow.
+
+async def compute_unscored_theme_axis_row(conn: Any, ticker: str, trade_date: Any) -> dict:
+    """Compute (WITHOUT writing) one EOD-unscored row's theme + co-movement fields. Split
+    out from log_unscored_theme_axis_for_date (mirrors compute_bounded_backfill_read's split
+    from backfill_bounded_theme_reads, same reason) so a read-only dry-run/sample check can
+    call this directly — the EXACT same code path the EOD job and the historical backfill
+    runner both write from, minus the write.
+
+    Both theme reads (unbounded theme_name/theme_stage/theme_score AND the 7d-bounded
+    theme_name_7d/theme_stage_7d/bounded_matches_unbounded) are anchored via
+    `bounded_backfill_anchor(trade_date, same_day_write=True)` — NOT the live shadow
+    writer's own anchor (bare `alert_date`). log_theme_axis_shadow runs at 7:00-10:05 AM ET,
+    before that day's own mi_themes row is written (~17:07-18:23 ET), so passing alert_date
+    verbatim is safe there — the row genuinely doesn't exist yet. This function is called
+    from a job that runs at 18:03 ET, AFTER the 17:07 theme save has already landed
+    `trade_date`'s OWN theme_date row, so it MUST be excluded or every candidate would
+    trivially match a theme born from today's own move — exactly the same_day_write=True
+    reasoning bounded_backfill_anchor exists for (#486, proven faithful on 591/592 rows);
+    reused here rather than re-derived. The historical backfill runner calls this with the
+    SAME same_day_write=True for every past date too — see its module docstring for why
+    that is the faithful choice even with no live capture to diff against.
+
+    Co-movement is computed inline via `_cohort_co_movement(..., spy_adjust=True)` against
+    the BOUNDED (7d) cohort — matching coverage_probe's birth-gate copy (market-adjusted),
+    not the live shadow writer's un-adjusted one (the current co_moving reads trivially True
+    on a broad up day without the SPY subtraction; see _cohort_co_movement's docstring).
+
+    Returns a dict with the exact fields write_unscored_theme_axis_row needs beyond
+    (ticker, alert_date, reject_stage, ep_score): theme_name, theme_stage, theme_score,
+    themeless_flag, theme_name_7d, theme_stage_7d, bounded_matches_unbounded, cohort_move,
+    ticker_move, co_moving."""
+    anchor_date, recency = bounded_backfill_anchor(trade_date, same_day_write=True)
+    heat = await get_theme_heat_asof(conn, ticker, anchor_date)
+    heat_7d = await get_theme_heat_asof(conn, ticker, anchor_date, recency_days=recency)
+    theme_name = heat["name"] if heat else None
+    theme_stage = heat["stage"] if heat else None
+    theme_score = heat["score"] if heat else None
+    theme_name_7d = heat_7d["name"] if heat_7d else None
+    theme_stage_7d = heat_7d["stage"] if heat_7d else None
+    bounded_matches_unbounded = compute_bounded_theme_match(theme_name_7d, theme_name)
+    themeless_flag = heat is None
+
+    cohort_move = ticker_move = co_moving = None
+    if heat_7d is not None:
+        ticker_move, cohort_move, co_moving = await _cohort_co_movement(
+            conn, ticker, trade_date, heat_7d["tickers"], spy_adjust=True)
+
+    return {
+        "theme_name": theme_name, "theme_stage": theme_stage, "theme_score": theme_score,
+        "themeless_flag": themeless_flag,
+        "theme_name_7d": theme_name_7d, "theme_stage_7d": theme_stage_7d,
+        "bounded_matches_unbounded": bounded_matches_unbounded,
+        "cohort_move": cohort_move, "ticker_move": ticker_move, "co_moving": co_moving,
+    }
+
+
+async def _write_unscored_candidates(conn: Any, candidates: "list[dict]") -> dict:
+    """Shared per-row compute+write+counters+error-handling loop for the step-4
+    EOD-unscored population. Each candidate dict needs "ticker", "scan_date" (the
+    per-candidate trade_date — the live daily job's candidates all share one date; the
+    historical backfill runner's span many), "reject_stage", "ep_score". Used by BOTH
+    log_unscored_theme_axis_for_date (candidates sourced from reject_stage alone, the
+    live daily case) AND the historical backfill runner (candidates sourced from
+    reject_stage OR the legacy filter_reason classifier) — ONE write path, never two,
+    so a fix here can never apply to only one of them.
+
+    NEVER raises past the caller — every per-row failure swallows to an audit event,
+    same SHADOW contract as log_theme_axis_shadow. Returns
+    {"written": n, "themed": n, "themeless": n}."""
+    written = themed = themeless = 0
+    for c in candidates:
+        ticker = c["ticker"]
+        trade_date = c["scan_date"]
+        try:
+            fields = await compute_unscored_theme_axis_row(conn, ticker, trade_date)
+            if fields["themeless_flag"]:
+                themeless += 1
+            else:
+                themed += 1
+
+            n = await write_unscored_theme_axis_row(
+                conn, ticker, trade_date,
+                fields["theme_name"], fields["theme_stage"], fields["theme_score"],
+                fields["themeless_flag"], fields["cohort_move"], fields["ticker_move"],
+                fields["co_moving"], fields["theme_name_7d"], fields["theme_stage_7d"],
+                fields["bounded_matches_unbounded"],
+                c.get("reject_stage"), c.get("ep_score"),
+            )
+            written += n
+        except Exception as _rowe:
+            logger.warning(
+                f"theme-axis EOD-unscored row failed for {ticker} {trade_date}: {_rowe}")
+            try:
+                await log_audit_event(
+                    "theme_axis_eod_unscored_row_failed",
+                    f"{ticker} {trade_date}: {type(_rowe).__name__}: {_rowe}",
+                )
+            except Exception:  # loud-ok: fallback-of-the-fallback — the audit sink itself failed; logger.warning above already surfaced the primary failure
+                pass
+    return {"written": written, "themed": themed, "themeless": themeless}
+
+
+async def log_unscored_theme_axis_for_date(conn: Any, trade_date: Any) -> dict:
+    """EOD writer for the step-4 null-control population: every mi_ep_scan_log candidate on
+    `trade_date` that got PAST the gap floor but never became a live alert
+    (db.UNSCORED_THEME_AXIS_REJECT_STAGES; see db.get_unscored_theme_axis_population for the
+    exact population query + why a ticker whose FINAL state that day was a real alert can
+    never appear here). Per-row fields come from compute_unscored_theme_axis_row via the
+    shared _write_unscored_candidates loop (see that docstring for the anchor +
+    co-movement rationale) — this function owns only the population fetch + its own
+    failure handling.
+
+    NEVER raises past the caller — every failure (population fetch, or anything inside
+    the shared write loop) swallows to an audit event, same SHADOW contract as
+    log_theme_axis_shadow. Returns {"candidates": n, "written": n, "themed": n,
+    "themeless": n}."""
+    try:
+        candidates = await get_unscored_theme_axis_population(conn, trade_date, trade_date)
+    except Exception as _pe:
+        logger.warning(f"theme-axis EOD-unscored population fetch failed for {trade_date}: {_pe}")
+        try:
+            await log_audit_event(
+                "theme_axis_eod_unscored_population_failed",
+                f"{trade_date}: {type(_pe).__name__}: {_pe}",
+            )
+        except Exception:  # loud-ok: fallback-of-the-fallback — the audit sink itself failed; logger.warning above already surfaced the primary failure
+            pass
+        return {"candidates": 0, "written": 0, "themed": 0, "themeless": 0}
+
+    out = await _write_unscored_candidates(conn, candidates)
+
+    try:
+        await log_audit_event(
+            "theme_axis_eod_unscored_logged",
+            f"{trade_date}: {out['written']}/{len(candidates)} written "
+            f"({out['themed']} themed / {out['themeless']} themeless)",
+        )
+    except Exception:  # loud-ok: fallback-of-the-fallback, matches refresh_co_movement_for_date
+        pass
+    return {"candidates": len(candidates), **out}
+
+
+# ─── Legacy filter_reason -> reject_stage classifier (2026-09-07 unblock) ──────────────────
+# #605 (2026-08-29) added mi_ep_scan_log.reject_stage, but VERIFIED ON PROD (2026-09-07):
+# it is populated only from 2026-08-31 on — every row from the table's start (2026-04-13)
+# through 2026-08-30 carries reject_stage=NULL, even though `filter_reason` (the older
+# free-text column) is populated back to day one (53,079 of 53,432 total rows). Without
+# this, the historical backfill recovers only the ~2 weeks reject_stage covers on its own
+# (38 ticker-days) instead of the ~2,700 sitting in filter_reason since April — the ONE
+# group step 4 exists to supply, per the plan.
+#
+# EVERY PATTERN BELOW IS SOURCED FROM THE EXACT STRING LITERAL ep_detector.py builds
+# (grepped, not guessed) — see the stage-by-stage citations:
+#   universe_floor    <- "filter:universe_prev_close_too_low: ..." (broker/skip_reasons.py
+#                         FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW) / "filter:universe_prev_day_
+#                         illiquid: ..." (FILTER_UNIVERSE_PREV_DAY_ILLIQUID) — EXCLUDED
+#                         from the population (before the gap floor).
+#   gap_floor         <- "filter:universe_below_gap_floor: ..." (FILTER_UNIVERSE_BELOW_
+#                         GAP_FLOOR) — EXCLUDED (before the gap floor).
+#   duplicate         <- "already scored earlier today" (ep_detector.py:3926, stage=
+#                         "duplicate" explicit) — EXCLUDED (a real alert already covers it).
+#   shortlist_cap     <- "outside top-N shortlist (...)" / "outside top-N gap cap (gap
+#                         X%)" (ep_detector.py:3670/3674, stage="shortlist_cap").
+#   rvol_gate         <- "filter:pm_rvol_too_low: ..." / "filter:session_rvol_too_low:
+#                         ..." (ep_detector.py:3781, stage="rvol_gate" — the CURRENT
+#                         RVOL@T message) PLUS three now-dead legacy wordings the CURRENT
+#                         source no longer contains — found only by inspecting the actual
+#                         pre-08-31 data, the message changed underneath the same check
+#                         at least twice: "low rel volume X < Yx" (earliest, 2026-04-13),
+#                         "low volume rel_vol X < Yx", "low volume projected X < Yx
+#                         (post-open)".
+#   cooldown          <- "EP cooldown — alerted within last N days" (ep_detector.py:3918,
+#                         stage="cooldown").
+#   extension         <- "already up N% in prior 5 days (extended)" (ep_detector.py:3934,
+#                         stage="extension").
+#   quality_filter    <- "quality filter: <check_filters skip_reason>" (ep_detector.py:
+#                         3950, stage="quality_filter" — the sub-reason after the colon
+#                         varies (adv_too_low/mcap_too_small/atr_too_high/adv_no_data) but
+#                         the "quality filter: " prefix is constant).
+#   post_grade_filter <- THREE reasons from _post_grade_filters, all stage=
+#                         "post_grade_filter" (ep_detector.py:4122/4502): "M&A/buyout
+#                         catalyst — no momentum trade" (:1785), "routine catalyst, gap
+#                         X%" (:1809), "pre-mkt volume N < 25,000 shares" (:1846).
+#   score_bar         <- "score N < 50 (catalyst=...)" (pre-#533 legacy form) / "score N
+#                         < bar M (catalyst=...)" (post-#533 form) — ep_detector.py:
+#                         5427/5430, stage="score_bar".
+#
+# VERIFIED ON PROD (2026-09-07): classifying every mi_ep_scan_log row since 2026-04-13
+# this way leaves the UNMATCHED tail at ZERO (every filter_reason this table has ever
+# held either matches a pattern below or belongs to a real alert with filter_reason
+# NULL) — checked directly against the live table, not assumed. A future new free-text
+# wording this map doesn't know about would show up as a non-empty
+# get_legacy_classification_unmatched result, not a silently dropped row.
+_LEGACY_FILTER_REASON_PATTERNS: "list[tuple[str, re.Pattern]]" = [
+    ("universe_floor", re.compile(r"^filter:universe_prev_close")),
+    ("universe_floor", re.compile(r"^filter:universe_prev_day_illiquid")),
+    ("gap_floor", re.compile(r"^filter:universe_below_gap_floor")),
+    ("duplicate", re.compile(r"^already scored earlier today")),
+    ("shortlist_cap", re.compile(r"^outside top-\d+")),
+    ("rvol_gate", re.compile(r"^filter:(pm|session)_rvol_too_low")),
+    ("rvol_gate", re.compile(r"^low (rel volume|volume rel_vol|volume projected)")),
+    ("cooldown", re.compile(r"^EP cooldown")),
+    ("extension", re.compile(r"^already up \d+% in prior 5 days")),
+    ("quality_filter", re.compile(r"^quality filter:")),
+    ("post_grade_filter", re.compile(r"^M&A/buyout catalyst")),
+    ("post_grade_filter", re.compile(r"^routine catalyst, gap")),
+    ("post_grade_filter", re.compile(r"^pre-mkt volume")),
+    ("score_bar", re.compile(r"^score -?\d+ < (bar \d+|\d+) \(catalyst=")),
+]
+
+
+def classify_legacy_filter_reason(filter_reason: "str | None") -> "str | None":
+    """Map one pre-#605 free-text mi_ep_scan_log.filter_reason to the reject_stage it
+    would have carried had #605's capture existed then. Returns None for a falsy
+    filter_reason (a real alert — nothing to classify) OR for text that matches no known
+    pattern (an UNMATCHED tail) — this function alone can't tell those two apart; the
+    caller distinguishes them via whether filter_reason was truthy to begin with (see
+    get_legacy_classification_unmatched)."""
+    if not filter_reason:
+        return None
+    for stage, pattern in _LEGACY_FILTER_REASON_PATTERNS:
+        if pattern.match(filter_reason):
+            return stage
+    return None
+
+
+def effective_reject_stage(reject_stage: "str | None", filter_reason: "str | None") -> "str | None":
+    """The ONE place a historical mi_ep_scan_log row's stage is decided: reject_stage
+    when #605 already captured it (>= 2026-08-31), else the legacy classification of
+    filter_reason. Shared by the backfill runner's population build and its
+    unmatched-tail report so they can never diverge on what counts as classified."""
+    return reject_stage or classify_legacy_filter_reason(filter_reason)
+
+
+def get_legacy_classification_unmatched(rows: "list[dict]") -> "list[dict]":
+    """Rows with a REAL filter_reason (not a passed/alerted row, not already
+    reject_stage-tagged) that classify_legacy_filter_reason maps to nothing — the
+    unmatched tail the historical backfill must report, not silently drop. `rows` are
+    raw db.get_ep_scan_log_raw_population dicts."""
+    return [
+        r for r in rows
+        if r.get("reject_stage") is None
+        and r.get("filter_reason")
+        and classify_legacy_filter_reason(r["filter_reason"]) is None
+    ]
 
 
 # ─── Part 3 (#329 STEP-0): themeless-winner-INCLUSIVE label-cohort enrolment rule ─────────

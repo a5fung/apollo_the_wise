@@ -163,6 +163,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "analyst_estimates_snapshot",  # #333 2026-08-31 — EOD FMP consensus-estimate capture for the alert population; pure fetch + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "tv_news_shadow",  # #210 2026-09-06 — nightly TradingView news cross-reference for thin/no-catalyst alerts; pure fetch + DB/audit, no broker calls, no grade/admission change, Telegram only on a sustained run-level endpoint degradation (never a single blip)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
+    "theme_axis_eod_unscored",  # theme-correctness Step 4 (THE INSTRUMENT) 2026-09-07 — EOD null-control population write for the theme-axis shadow; pure compute + DB/audit, no broker calls, no grade/admission change, SILENT (no Telegram)
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
     "delayed_residual",  # #489 — EOD delayed-feed residual tracker; read-only (Polygon replay + DB/audit), no broker calls
@@ -5054,6 +5055,30 @@ async def _theme_axis_co_move_refresh_job():
     logger.info(f"theme-axis co-movement EOD refresh: {out}")
 
 
+async def _theme_axis_eod_unscored_job():
+    """Theme-correctness programme Step 4 (THE INSTRUMENT, 2026-09-07) — EOD write of the
+    NULL-CONTROL population `mi_theme_axis_shadow` has never recorded: every mi_ep_scan_log
+    candidate that got past the gap floor but never became a live alert (scored-under-bar
+    'score_bar', plus the group prior scoping missed — killed before scoring ever ran at
+    shortlist_cap/rvol_gate/cooldown/extension/quality_filter/post_grade_filter). Without
+    this group there is no comparison population for a themeless-alert rate to be falsified
+    against (the step-2 reflexivity read's null control). Sequenced AFTER
+    theme_axis_co_move_refresh (17:58) — same dependency (today's mi_daily_closes/mi_themes
+    must already be ingested) plus its own extra one: theme_axis_co_move_refresh's own
+    as-of anchor assumes trade_date's mi_themes row does NOT yet exist when IT runs, so this
+    job (which explicitly anchors AROUND that row via bounded_backfill_anchor) must not run
+    before it. SHADOW: writes ONLY mi_theme_axis_shadow (source='eod_unscored') +
+    mi_audit_log — never a grade/alert/entry/exit/size column or table (THE LINE). Never
+    raises past the wrapper (log_unscored_theme_axis_for_date swallows internally too)."""
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.db import get_pool
+    from agents.market_intelligence.theme_axis_shadow import log_unscored_theme_axis_for_date
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        out = await log_unscored_theme_axis_for_date(conn, et_today())
+    logger.info(f"theme-axis EOD-unscored write: {out}")
+
+
 async def _chart_axis_shadow_weekly_digest_job():
     """#343 — Sunday push of the week's new chart-axis SHADOW deltas for OPERATOR labeling. RE-RENDERS
     each delta's chart from the audit row's ticker+alert_date (render is deterministic — no saved-PNG
@@ -6096,6 +6121,19 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_theme_axis_co_move_refresh_job, "theme_axis_co_move_refresh"),
         CronTrigger(hour=17, minute=58, day_of_week="mon-fri", timezone="America/New_York"),
         id="theme_axis_co_move_refresh",
+        replace_existing=True,
+        misfire_grace_time=900,
+    )
+
+    # Theme-correctness programme Step 4 (THE INSTRUMENT): 6:03 PM ET mon-fri — sequenced
+    # AFTER theme_axis_co_move_refresh (17:58), which itself depends on the 17:00 nightly
+    # pull's mi_daily_closes/mi_themes ingestion. Shadow-table-only writes
+    # (mi_theme_axis_shadow, source='eod_unscored' + mi_audit_log) — never a grade/alert/
+    # entry/exit/size table.
+    _scheduler.add_job(
+        audit_wrap(_theme_axis_eod_unscored_job, "theme_axis_eod_unscored"),
+        CronTrigger(hour=18, minute=3, day_of_week="mon-fri", timezone=ZoneInfo("America/New_York")),
+        id="theme_axis_eod_unscored",
         replace_existing=True,
         misfire_grace_time=900,
     )

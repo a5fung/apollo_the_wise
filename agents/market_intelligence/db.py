@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 import asyncpg
 
+from agents.market_intelligence.ep_decision_vector import GATE_VECTOR
 from shared.secrets import get_secrets
 
 logger = logging.getLogger(__name__)
@@ -1631,6 +1632,38 @@ async def initialize_schema() -> None:
                 cohort_move FLOAT,
                 ticker_move FLOAT,
                 co_moving BOOLEAN,
+                -- Theme-correctness programme Step 4 (THE INSTRUMENT, 2026-09-07): the
+                -- NULL-CONTROL population. Every row above this point is written for a
+                -- scored EP HIGH/MODERATE (source='live_scan', the default below) — the
+                -- live judge's own population. These four columns extend the table to
+                -- ALSO record candidates that never reached a live alert: scored-under-bar
+                -- (reject_stage='score_bar') and, the group prior scoping missed,
+                -- candidates killed before scoring ever ran (shortlist_cap/rvol_gate/
+                -- cooldown/extension/quality_filter/post_grade_filter — see
+                -- UNSCORED_THEME_AXIS_REJECT_STAGES below and theme_axis_shadow.
+                -- log_unscored_theme_axis_for_date). Without this group there is no
+                -- comparison population for "X% of alerts are themeless" to be falsified
+                -- against. Mirrored in the ALTER block below.
+                source TEXT NOT NULL DEFAULT 'live_scan',
+                -- The mi_ep_scan_log reject_stage this row was killed at. NULL for a real
+                -- live-scan alert row (it passed every gate). Vocabulary:
+                -- ep_decision_vector.GATE_VECTOR keys.
+                reject_stage TEXT,
+                -- The EP score in hand when this row was written. Populated only for
+                -- 'score_bar' rows — every earlier-killed stage never reached scoring, so
+                -- NULL here means "never computed", not "computed zero".
+                ep_score FLOAT,
+                -- ⚠ FALSE-ZERO GUARD: structural_attribution_score/name_attribution_score/
+                -- matched_terms/matched_names/*_attributable above are NOT NULL DEFAULT 0 —
+                -- an eod_unscored row has NO grounded_text (never graded, so no catalyst
+                -- text exists to attribute against), and a naive write would record a false
+                -- zero that looks like a real "catalyst didn't mention the cohort" read.
+                -- FALSE here means the attribution columns above are NOT MEANINGFUL for
+                -- this row — every attribution reader MUST filter on this (or the
+                -- equivalent `source != 'eod_unscored'`) before aggregating those columns.
+                -- Defaults TRUE so every existing row (live-captured + the #369 mass
+                -- backfill, which DID have grounded_text) keeps its current meaning.
+                attribution_computable BOOLEAN NOT NULL DEFAULT TRUE,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (ticker, alert_date)
             );
@@ -1672,6 +1705,17 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS ticker_move FLOAT;
             ALTER TABLE mi_theme_axis_shadow
                 ADD COLUMN IF NOT EXISTS co_moving BOOLEAN;
+            -- Theme-correctness programme Step 4 (THE INSTRUMENT, 2026-09-07) — mirrored
+            -- from the CREATE block above (test_schema_alter_create_parity pins the two
+            -- together). See that block's comments for the false-zero-guard rationale.
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'live_scan';
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS reject_stage TEXT;
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS ep_score FLOAT;
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS attribution_computable BOOLEAN NOT NULL DEFAULT TRUE;
         """)
 
         # ── Theme-relevance label cohort (#329 STEP-0 part 3 → labeled at #368) ──────────
@@ -9157,6 +9201,146 @@ async def write_theme_axis_shadow_bounded_backfill(
     res = await conn.execute(
         THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL,
         row_id, theme_name_7d, theme_stage_7d, bounded_matches_unbounded,
+    )
+    return int(str(res).split()[-1])
+
+
+# ── Theme-correctness programme Step 4 (THE INSTRUMENT, 2026-09-07) ───────────────────
+# `mi_theme_axis_shadow` today records only names that SCORED ABOVE the EP bar
+# (source='live_scan'). Everything filtered earlier is invisible, so there is no
+# comparison group — and the reflexivity step (step 2 of the programme) needs exactly
+# that group as its NULL CONTROL: without it, a themeless-alert rate can't be falsified
+# against anything. Two groups were missing: (1) scored-under-bar (reject_stage=
+# 'score_bar') and (2) — the group prior scoping missed — candidates killed BEFORE
+# scoring ever ran, where modest-gap early theme members live. This section is the
+# read side (population accessors); theme_axis_shadow.log_unscored_theme_axis_for_date
+# is the write side.
+
+# Stages EXCLUDED from the unscored population, deliberately: 'universe_floor'/
+# 'gap_floor' are BEFORE the gap floor (this population is explicitly PAST it), and
+# 'duplicate' means "already has a REAL mi_ep_alerts row today" — that ticker's true
+# state lives on the live-scan row, not here. Derived from the GATE_VECTOR registry
+# (not a hand-maintained literal list) so a future gate addition/removal is reflected
+# automatically instead of silently rotting this population's definition.
+UNSCORED_THEME_AXIS_REJECT_STAGES: "tuple[str, ...]" = tuple(sorted(
+    set(GATE_VECTOR) - {"universe_floor", "gap_floor", "duplicate"}
+))
+
+
+async def get_unscored_theme_axis_population(
+    conn: Any, since_date: Any, until_date: "Any | None" = None,
+) -> list[dict]:
+    """The step-4 EOD-unscored population from `mi_ep_scan_log`, over
+    [since_date, until_date] inclusive (until_date=None -> since_date alone, the daily
+    EOD writer's single-day case). Deduped to the LAST scan-log state per (scan_date,
+    ticker) — the canonical `SELECT DISTINCT ON (...) ORDER BY scan_time_et DESC NULLS
+    LAST, id DESC` collapse used everywhere else this table is read (see
+    get_ep_scanned_day) — then filtered to UNSCORED_THEME_AXIS_REJECT_STAGES.
+
+    ⚠ THIS IS THE reject_stage-ONLY READ — correct and sufficient for the live daily
+    writer (reject_stage has been populated on every row since 2026-08-31, #605), but
+    it returns NOTHING for a date before that, even though such rows exist (verified on
+    prod 2026-09-07: reject_stage is NULL for every row before 2026-08-31, on a table
+    that starts 2026-04-13 — filter_reason is populated back to day one instead). The
+    one-time historical backfill runner does NOT use this function for that older
+    window — see get_ep_scan_log_raw_population + theme_axis_shadow.
+    classify_legacy_filter_reason, which recover it from filter_reason.
+
+    A name whose FINAL state that day was a real alert (reject_stage IS NULL, having
+    passed every gate) is excluded by the reject_stage filter itself: e.g. a ticker
+    that was 'score_bar' at 9:35 and re-scanned HIGH at 9:50 has reject_stage NULL as
+    its last row that day, so it never appears here — its live row (source='live_scan')
+    already covers it. The writer's own `ON CONFLICT (ticker, alert_date) DO NOTHING`
+    is the second, belt-and-suspenders line of defense for the same property.
+
+    Returns [{"scan_date": date, "ticker": str, "reject_stage": str, "ep_score": float|None}, ...].
+    """
+    rows = await conn.fetch("""
+        SELECT scan_date, ticker, reject_stage, ep_score
+        FROM (
+            SELECT DISTINCT ON (scan_date, ticker)
+                   scan_date, ticker, reject_stage, ep_score, scan_time_et
+            FROM mi_ep_scan_log
+            WHERE scan_date >= $1 AND ($2::date IS NULL OR scan_date <= $2)
+            ORDER BY scan_date, ticker, scan_time_et DESC NULLS LAST, id DESC
+        ) latest
+        WHERE reject_stage = ANY($3)
+        ORDER BY scan_date, ticker
+    """, since_date, until_date, list(UNSCORED_THEME_AXIS_REJECT_STAGES))
+    return [dict(r) for r in rows]
+
+
+async def get_ep_scan_log_raw_population(
+    conn: Any, since_date: Any, until_date: "Any | None" = None,
+) -> list[dict]:
+    """RAW (scan_date, ticker, reject_stage, filter_reason, ep_score) — deduped to the
+    LAST scan-log state per (scan_date, ticker), same collapse as
+    get_unscored_theme_axis_population, but UNFILTERED on stage (reject_stage may be
+    NULL). Used ONLY by the theme-correctness Step 4 historical backfill runner to
+    recover the pre-#605 era (reject_stage populated only from 2026-08-31 on;
+    filter_reason goes back to the table's start, 2026-04-13) via
+    theme_axis_shadow.classify_legacy_filter_reason /
+    theme_axis_shadow.effective_reject_stage. The live daily EOD job never needs this —
+    reject_stage is always populated going forward, so
+    get_unscored_theme_axis_population alone is correct and sufficient there.
+
+    Returns [{"scan_date": date, "ticker": str, "reject_stage": str|None,
+    "filter_reason": str|None, "ep_score": float|None}, ...]."""
+    rows = await conn.fetch("""
+        SELECT scan_date, ticker, reject_stage, filter_reason, ep_score
+        FROM (
+            SELECT DISTINCT ON (scan_date, ticker)
+                   scan_date, ticker, reject_stage, filter_reason, ep_score, scan_time_et
+            FROM mi_ep_scan_log
+            WHERE scan_date >= $1 AND ($2::date IS NULL OR scan_date <= $2)
+            ORDER BY scan_date, ticker, scan_time_et DESC NULLS LAST, id DESC
+        ) latest
+        ORDER BY scan_date, ticker
+    """, since_date, until_date)
+    return [dict(r) for r in rows]
+
+
+# The write side: an EOD-unscored candidate has no grounded_text (mi_ep_scan_log never
+# stores it — a name killed before/at scoring was never graded), so the attribution
+# columns (structural_attribution_score/name_attribution_score/matched_terms/
+# matched_names/*_attributable) are simply OMITTED from the column list below and take
+# their schema DEFAULTs (0/FALSE/'{}') — attribution_computable=FALSE is the marker a
+# reader must check before trusting those defaults as real zeros. `grade` is likewise
+# omitted (NULL): a stage before score_bar assigns no tier at all, and score_bar's own
+# tier is None by construction (it failed the bar). `ON CONFLICT ... DO NOTHING`: a
+# name that was e.g. score_bar at 9:35 and alerted HIGH at 9:50 must keep its HIGH row
+# (source='live_scan') — this writer must never clobber it, only ever fill a true gap.
+EOD_UNSCORED_THEME_AXIS_INSERT_SQL = """
+    INSERT INTO mi_theme_axis_shadow (
+        ticker, alert_date, theme_name, theme_stage, theme_score, themeless_flag,
+        cohort_move, ticker_move, co_moving,
+        theme_name_7d, theme_stage_7d, bounded_matches_unbounded,
+        source, reject_stage, ep_score, attribution_computable
+    ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+        'eod_unscored', $13, $14, FALSE
+    )
+    ON CONFLICT (ticker, alert_date) DO NOTHING
+"""
+
+
+async def write_unscored_theme_axis_row(
+    conn: Any, ticker: str, alert_date: Any,
+    theme_name: "str | None", theme_stage: "str | None", theme_score: "float | None",
+    themeless_flag: bool, cohort_move: "float | None", ticker_move: "float | None",
+    co_moving: "bool | None", theme_name_7d: "str | None", theme_stage_7d: "str | None",
+    bounded_matches_unbounded: "bool | None", reject_stage: "str | None",
+    ep_score: "float | None",
+) -> int:
+    """Write one EOD-unscored row. Returns the INSERT's affected-row count (0 or 1) — a
+    guard-blocked no-op (a live-scan row for this (ticker, alert_date) already exists)
+    must NOT count as written, so the caller sums this rather than assuming success —
+    same discipline as write_theme_axis_shadow_bounded_backfill."""
+    res = await conn.execute(
+        EOD_UNSCORED_THEME_AXIS_INSERT_SQL,
+        ticker, alert_date, theme_name, theme_stage, theme_score, themeless_flag,
+        cohort_move, ticker_move, co_moving, theme_name_7d, theme_stage_7d,
+        bounded_matches_unbounded, reject_stage, ep_score,
     )
     return int(str(res).split()[-1])
 

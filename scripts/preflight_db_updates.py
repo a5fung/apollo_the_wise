@@ -24,7 +24,8 @@ from agents.market_intelligence.catalyst_metrics_extractor import YOY_RECOVERY_W
 from agents.market_intelligence.db import (
     _ANALYST_EST_DIVERGENCE_UPSERT_SQL, _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL,
     _DELAYED_SETTLE_SQL,
-    _DELAYED_VARIANT_SETTLE_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
+    _DELAYED_VARIANT_SETTLE_SQL, EOD_UNSCORED_THEME_AXIS_INSERT_SQL,
+    EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
     GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
     LOWCAP_LANE_REPLAY_UPSERT_SQL, LOWCAP_LANE_SIGNAL_INSERT_SQL,
     THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL,
@@ -305,6 +306,14 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # silent failure would leave the backfill claiming success while writing nothing.
         "db.write_theme_axis_shadow_bounded_backfill: #486 bounded-read backfill",
         THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL,
+    ),
+    (
+        # Theme-correctness programme Step 4 (THE INSTRUMENT, 2026-09-07): the
+        # EOD-unscored writer — the exact #629 shape this list exists for, a silent
+        # recorder feeding an analysis step (step 2's null control) that would never
+        # notice an empty table. Plain params, no jsonb, but still registered.
+        "db.write_unscored_theme_axis_row: theme-correctness Step 4 EOD-unscored recorder",
+        EOD_UNSCORED_THEME_AXIS_INSERT_SQL,
     ),
 ]
 
