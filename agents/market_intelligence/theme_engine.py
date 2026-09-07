@@ -5296,6 +5296,91 @@ def _partition_discovery_pools(
     return batches
 
 
+async def _log_discovery_shown_and_declined(
+    pools: "dict[str, list[dict]]",
+    correlation_clusters: "list[dict] | None",
+    proposed: "list[dict]",
+    *,
+    recall_mode: bool,
+) -> None:
+    """SHADOW recorder (#486, 2026-09-07) — record what discovery was SHOWN and what it DECLINED.
+
+    WHY THIS EXISTS. Step 3 measured that **140 of 398 themes had at least half their founders
+    sitting in a stored correlation cluster a median 26 sessions before the theme was born**
+    (`docs/analysis/step3_theme_runway_2026-09-07.md`). `_discover_new_themes` is already handed
+    `correlation_clusters`, so those groups were in front of the model and it passed on them —
+    naming is the lag, not detection. Nothing recorded that: `theme_discovery_llm_call` carries
+    only token counts (`stop=... out_tok=...`) and `mi_theme_candidates_shadow` records what WAS
+    proposed, never what was shown or skipped. So "why did it decline?" cannot be asked of history
+    at all. This row makes it askable going forward.
+
+    ⚖ THE LINE: writes ONE `mi_audit_log` row and nothing else. It cannot change what discovery
+    returns — the caller has already computed `proposed` — is never read by a live path, and never
+    raises (`log_audit_event` swallows, and the body is wrapped besides).
+    """
+    try:
+        claimed = {
+            str(tk).upper()
+            for th in (proposed or [])
+            for tk in (th.get("tickers") or [])
+        }
+        shown: "dict[str, list[str]]" = {}
+        for pool_name, rows in (pools or {}).items():
+            shown[pool_name] = sorted({
+                str(s.get("ticker", "")).upper()
+                for s in (rows or []) if s.get("ticker")
+            })
+        declined = {
+            pool_name: [tk for tk in tks if tk not in claimed]
+            for pool_name, tks in shown.items()
+        }
+
+        # A cluster is DECLINED when not one of its members reached a proposed theme.
+        # Partly-claimed clusters are the interesting middle and are counted apart.
+        cl_declined, cl_partial, cl_taken = [], 0, 0
+        for c in (correlation_clusters or []):
+            members = {str(tk).upper() for tk in (c.get("tickers") or [])}
+            if not members:
+                continue
+            hit = len(members & claimed)
+            if hit == 0:
+                cl_declined.append({
+                    "cluster_hash": c.get("cluster_hash"),
+                    "tickers": sorted(members),
+                    "mean_corr": round(float(c.get("mean_corr") or 0.0), 3),
+                    "avg_rs": round(float(c.get("avg_rs") or 0.0), 1),
+                })
+            elif hit < len(members):
+                cl_partial += 1
+            else:
+                cl_taken += 1
+
+        n_shown = sum(len(v) for v in shown.values())
+        n_declined = sum(len(v) for v in declined.values())
+        summary = (
+            f"shown={n_shown} declined={n_declined} proposed={len(proposed or [])} "
+            f"clusters shown={len(correlation_clusters or [])} "
+            f"declined={len(cl_declined)} partial={cl_partial} taken={cl_taken} "
+            f"recall_mode={recall_mode}"
+        )
+        detail = json.dumps({
+            "shown": shown,
+            "declined": declined,
+            "proposed": [
+                {"name": th.get("name"),
+                 "tickers": sorted({str(tk).upper() for tk in (th.get("tickers") or [])})}
+                for th in (proposed or [])
+            ],
+            "clusters_declined": cl_declined,
+            "clusters_partial": cl_partial,
+            "clusters_taken": cl_taken,
+            "recall_mode": recall_mode,
+        }, default=str)[:60000]
+        await log_audit_event("theme_discovery_shown_declined", summary, detail)
+    except Exception as e:  # loud-ok: a recorder must never break discovery
+        logger.warning(f"[theme discovery recorder] skipped: {e}")
+
+
 async def _discover_new_themes(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
@@ -5333,14 +5418,19 @@ async def _discover_new_themes(
     # RUN-level advisor budget shared across batches — _MAX_ADVISOR_CALLS was
     # always a per-run cost bound and batching must not multiply it.
     advisor_state = {"calls": 0}
+    _pools_shown = {"uncovered": uncovered_stocks, "velocity": velocity_leaders,
+                    "turner": turners, "elite": elite_covered}
     if total <= _DISCOVERY_LLM_BATCH_STOCKS:
-        return await _discover_new_themes_single(
+        _out = await _discover_new_themes_single(
             uncovered_stocks, existing_themes, stocks_by_ticker,
             velocity_leaders, turners, elite_covered,
             theme_exclusions=theme_exclusions,
             correlation_clusters=correlation_clusters,
             globally_banned=globally_banned, recall_mode=recall_mode,
             advisor_state=advisor_state)
+        await _log_discovery_shown_and_declined(
+            _pools_shown, correlation_clusters, _out, recall_mode=recall_mode)
+        return _out
 
     batches = _partition_discovery_pools(
         {"uncovered": uncovered_stocks, "velocity": velocity_leaders,
@@ -5370,7 +5460,10 @@ async def _discover_new_themes(
                     tk for tk in (t.get("tickers") or []) if tk not in seen]
             else:
                 merged[key] = dict(t)
-    return list(merged.values())
+    _out = list(merged.values())
+    await _log_discovery_shown_and_declined(
+        _pools_shown, correlation_clusters, _out, recall_mode=recall_mode)
+    return _out
 
 
 async def _discover_new_themes_single(

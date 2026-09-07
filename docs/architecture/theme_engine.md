@@ -262,6 +262,36 @@ have known it was running.
 
 ## Change log
 
+### 2026-09-07 — discovery now records what it was SHOWN and what it DECLINED (#486)
+
+**Shadow recorder. No behaviour change** — nothing about which themes are born, named, scored or
+retired moves. Added because a measured question could not be asked of history at all.
+
+- **What forced it.** `docs/analysis/step3_theme_runway_2026-09-07.md`: the engine names a group a
+  median **30 sessions (~6 weeks) after its first signal**, and **140 of 398 themes (35%) had at
+  least half their founders sitting in a stored correlation cluster a median 26 sessions before
+  birth, unnamed**. `_discover_new_themes` is **already passed `correlation_clusters`** — so those
+  groups were in front of the model and it declined them. **Naming is the lag, not detection.**
+- **Why nothing could explain it.** The `theme_discovery_llm_call` audit row carries only token
+  counts (`stop=tool_use out_tok=… iter=…`), and `mi_theme_candidates_shadow` records what WAS
+  proposed — never what was shown or skipped. There was no record of a decline anywhere.
+- **What now happens.** `_log_discovery_shown_and_declined` writes ONE `mi_audit_log` row per
+  discovery run, event type **`theme_discovery_shown_declined`**: the tickers shown per pool
+  (uncovered / velocity / turner / elite), the tickers claimed by proposed themes, the difference,
+  and every correlation cluster split into **taken** (all members claimed), **partial**, and
+  **declined** (not one member reached a theme — the class step 3 measured), each declined cluster
+  carrying its hash, members, mean correlation and average RS.
+- **Where.** `theme_engine.py`, called at **both** return paths of `_discover_new_themes` (the
+  single-call fast path and the batched path) so a batched run is not silently unrecorded.
+- **Safety.** The row is written after the result already exists and cannot alter it; the body is
+  wrapped and `log_audit_event` swallows besides, so a failing recorder cannot break discovery.
+  Frozen by `tests/test_theme_discovery_shown_declined.py`, including the case where the audit
+  write itself raises.
+- **Not yet answered:** *why* the model declines. This row is the instrument; the reading comes
+  after it has run. Any change to the naming rule is a detection criterion — CHANGE_PROCESS,
+  operator sign-off, and this file in the same commit.
+
+
 ### 2026-09-02 — a theme rename no longer discards the operator's rulings (#601)
 
 Found 2026-08-26 reviewing the same night's #214 rename deploy. Themes touch no money, so
