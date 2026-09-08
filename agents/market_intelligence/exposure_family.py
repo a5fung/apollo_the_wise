@@ -88,6 +88,38 @@ async def shadow_check_and_emit(ticker: str, account_mode: str, strategy_label: 
     try/except (the #94-hook pattern) — this function may raise freely; it must never
     be called un-wrapped on the entry path."""
     info = await check_family_exposure(ticker, account_mode)
+
+    # HEARTBEAT (2026-09-07) — record EVERY check, not just the breaches.
+    # WHY: this shadow shipped 2026-08-09 and had written nothing in five weeks and
+    # 19 filled entries. That is indistinguishable from "the hook never ran", because
+    # the only row it could ever write was a breach — and container logs cannot settle
+    # it either (a deploy recreates the container, so `docker logs` only reaches back
+    # to the last deploy). A guard whose silence is ambiguous cannot be verified live,
+    # which is what left #452 on the stale-deploy surface for a month.
+    # [[shadow-zero-effect-check-instrumentation]] [[a-rule-is-not-live-until-it-has-fired-once]]
+    # Volume is negligible by construction: this runs once per entry SUBMISSION, and
+    # the live book took 19 fills in the five weeks to 2026-09-03.
+    # Still observe-only — it writes an audit row and returns; it can never block.
+    await log_audit_event(
+        "exposure_family_checked",
+        f"{ticker} ({account_mode}/{strategy_label}): "
+        + ("no theme membership — nothing to compare" if not info or not info["candidate_themes"]
+           else f"{len(info['same_family'])} same-family open(s), "
+                f"breach={bool(info['breach'])}"),
+        json.dumps({
+            "ticker": ticker,
+            "account_mode": account_mode,
+            "strategy": strategy_label,
+            "candidate_themes": (info or {}).get("candidate_themes") or [],
+            "same_family_opens": (info or {}).get("same_family") or [],
+            "open_positions": (info or {}).get("open_positions") or [],
+            "breach": bool((info or {}).get("breach")),
+            "threshold": EXPOSURE_FAMILY_SHADOW_THRESHOLD,
+            "no_data": info is None,
+            "shadow": True,
+        }),
+    )
+
     if not info or not info["breach"]:
         if info and info["candidate_themes"]:
             logger.info(

@@ -99,3 +99,59 @@ async def test_entry_pipeline_hook_is_error_isolated(monkeypatch):
     assert "shadow_check_and_emit" in src
     hook_region = src.split("shadow_check_and_emit")[0][-600:] + src.split("shadow_check_and_emit")[2][:400]
     assert "except Exception" in src.split("from agents.market_intelligence.exposure_family")[1][:500]
+
+
+# ---------------------------------------------------------------------------
+# HEARTBEAT (2026-09-07) — the shadow must record that it RAN, not only that it
+# fired. It shipped 2026-08-09 and wrote nothing across five weeks and 19 filled
+# entries, which is indistinguishable from the hook never executing; container
+# logs cannot settle it either, because a deploy recreates the container. These
+# pins make silence mean something.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_heartbeat_written_when_there_is_no_breach(monkeypatch):
+    """The case that made #452 unverifiable: nothing to report, so nothing was."""
+    _setup(monkeypatch, ["CCC"], _themes(("T", ("NEWT", "AAA"))))
+    audit = AsyncMock()
+    monkeypatch.setattr(ef, "log_audit_event", audit)
+
+    await ef.shadow_check_and_emit("NEWT", "live", "MAGNA53")
+
+    assert audit.await_count == 1, "a no-breach check must still leave a trace"
+    assert audit.await_args.args[0] == "exposure_family_checked"
+    d = json.loads(audit.await_args.args[2])
+    assert d["breach"] is False and d["shadow"] is True
+    assert d["threshold"] == ef.EXPOSURE_FAMILY_SHADOW_THRESHOLD
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_written_when_the_name_has_no_theme(monkeypatch):
+    """Most alerts carry no theme, so this is the common path — and it must log."""
+    _setup(monkeypatch, ["AAA", "BBB"], _themes(("T", ("AAA", "BBB"))))
+    audit = AsyncMock()
+    monkeypatch.setattr(ef, "log_audit_event", audit)
+
+    await ef.shadow_check_and_emit("NEWT", "live", "MAGNA53")
+
+    assert audit.await_count == 1
+    assert audit.await_args.args[0] == "exposure_family_checked"
+    assert json.loads(audit.await_args.args[2])["candidate_themes"] == []
+
+
+@pytest.mark.asyncio
+async def test_breach_still_writes_both_rows_and_still_never_blocks(monkeypatch):
+    """The heartbeat is additive: a breach leaves the check row AND the breach row."""
+    _setup(monkeypatch, ["AAA", "BBB"], _themes(("T", ("NEWT", "AAA", "BBB"))))
+    audit = AsyncMock()
+    monkeypatch.setattr(ef, "log_audit_event", audit)
+    import agents.market_intelligence.briefing as briefing
+    import agents.market_intelligence.constants as constants
+    monkeypatch.setattr(briefing, "send_telegram_message", AsyncMock())
+    monkeypatch.setattr(constants, "mode_prefix", lambda m=None: "")
+
+    out = await ef.shadow_check_and_emit("NEWT", "live", "MAGNA53")
+
+    events = [c.args[0] for c in audit.await_args_list]
+    assert events == ["exposure_family_checked", "exposure_family_breach"]
+    assert out is None, "observe-only: the hook returns nothing the caller can act on"
