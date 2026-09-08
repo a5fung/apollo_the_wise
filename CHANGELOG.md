@@ -1,6 +1,14 @@
 ### 2026-08-11 — account-mode literal gate [5o/7]
 - SQL mode/phase literals need `mode-ok:`; nightly sweep replays them on any phase change / dormant pinned book, once ever. SSoT `dual_account.md`.
 
+### 2026-09-08 — commit `2be7e45e` carries THREE money-path changes, and its message documents only one
+- **Bookkeeping correction, recorded here because the commit is already pushed and rewriting shared history for a message is the wrong trade.** A `git add -A` in the main loop swept a concurrently-running card's finished work into the regime commit. Nothing is wrong with the code; the RECORD was wrong. Lesson: never `git add -A` while a card is writing to the same tree — stage explicit paths, or wait for the card.
+- **What `2be7e45e` actually contains:**
+- **(1) Regime staleness is holiday-aware** (`order_manager._last_ingested_session`) — the gate used `last_trading_day(today−1)`, which is weekend-aware and holiday-blind, so the Tuesday after Labor Day demanded a Monday regime row that could never exist. **It fired for real on 2026-09-08 and quartered two live entries (PHVS, SEI): $12.35 of risk each against the ~$37 Choppy's own 0.75 multiplier allowed.** Now reads `max(trade_date)` from `mi_daily_closes` — a holiday produces no rows, so the table carries the trading calendar for free. Not circular (freshness judged from CLOSES, never from the regime table). Calendar rule survives as the fallback because flooring is safe when we cannot tell. SSoT `safeguards.md`, which previously called this an accepted ~9×/yr false positive.
+- **(2) #414 — the 09:35 stop-refresh now counts what it EXCLUDES.** ADR 0029 D1 drops same-day fills in the SQL, so excluded rows never reached `examined` and the summary said nothing about them. 15 of the last 17 fills landed before 09:35, so the exclusion had fired plenty and was simply never counted — which is why the verify sat stuck since August as "cannot be manufactured". Telemetry only; which rows get refreshed is unchanged.
+- **(3) #540 — the entry-rejection capture now proves it RAN.** It only wrote on a real rejection, and the last was 2026-08-07, three days before it shipped — indistinguishable from broken. The heartbeat sits inside `_handle_cancel_or_reject` itself; a first draft put it in `submit_entry`, which would only have proved submission (already provable via `orb_order_placed`), and was moved in review.
+- **The through-line for all three: a guard that writes only when it FIRES cannot be verified, and its silence reads as safety.** Third, fourth and fifth instances this week after #452's heartbeat on 09-07.
+
 # Apollo the Wise — Change Log
 
 Compressed historical change log. **Live operational reference + recent prose entries (~2 weeks) live in `CLAUDE.md`.** Entries graduate here once they age out of the recent window.
