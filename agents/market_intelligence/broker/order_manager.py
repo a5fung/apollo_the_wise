@@ -255,6 +255,37 @@ async def broker_terminal_reason(event_norm: str, ticker: str, trigger_price) ->
 # ── Order Preparation ────────────────────────────────────────────────────────
 
 
+async def _last_ingested_session(today: date) -> "date | None":
+    """The most recent session we actually HOLD closes for, or None if unknowable.
+
+    This is the holiday-aware half of the freshness test (2026-09-08). `mi_daily_closes`
+    gets a row per ticker per SESSION, so a market holiday simply produces none — the
+    table knows the trading calendar without anyone maintaining one. Verified the morning
+    this shipped: it held 09-01/02/03/04 and NO 2026-09-07 (Labor Day).
+
+    NOT circular: the staleness question is "is the regime row older than the last session
+    we have data for", so it is answered from the CLOSES table, never from the regime table
+    itself (which would make a stale row define its own freshness and never fire).
+
+    Bounded at `_REPROTECT_DB_TIMEOUT` and returns None on any failure — this sits on the
+    ORB entry path, and #621's lesson is that an unbounded read here blocks sizing itself.
+    None routes the caller back to the calendar rule, which floors — the safe direction.
+    """
+    try:
+        from agents.market_intelligence.db import _coerce_date, get_pool
+        pool = await get_pool()
+        async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
+            row = await conn.fetchval(
+                "SELECT max(trade_date) FROM mi_daily_closes WHERE trade_date <= $1",
+                today, timeout=_REPROTECT_DB_TIMEOUT,
+            )
+        return _coerce_date(row) if row else None
+    except Exception:
+        # loud-ok: falls back to the calendar rule below, which floors + alerts.
+        logger.exception("regime freshness: last-session read failed; using the calendar rule")
+        return None
+
+
 def _regime_sizing_freshness_threshold(today: date) -> date:
     """The oldest `regime_date` that still counts as FRESH when read at an ORB
     entry on `today` (#456).
@@ -267,12 +298,13 @@ def _regime_sizing_freshness_threshold(today: date) -> date:
     + fail-loud EVERY morning. The correct threshold is the last completed
     trading day strictly BEFORE today.
 
-    Known limitation (documented, not fixed — see safeguards.md): weekend-only,
-    no market-holiday calendar (matches `last_trading_day`'s own docstring).
-    The trading day after a market holiday reads one day tighter than
-    necessary and floors+alerts as a false positive (~9x/yr). Safe-direction
-    (floors size, doesn't oversize) — accepted rather than building a holiday
-    calendar for this.
+    ⚠ CALENDAR-ONLY FALLBACK since 2026-09-08. `last_trading_day` is weekend-aware but
+    holiday-blind, so on the trading day after a market holiday this reads one day tighter
+    than necessary and floors + alerts as a FALSE POSITIVE (~9x/yr). It fired for real on
+    2026-09-08, the Tuesday after Labor Day, and quartered two live entries (PHVS, SEI).
+    `_last_ingested_session` is now tried FIRST and is holiday-aware by construction; this
+    remains the fallback when that read is unavailable, because floring is the safe
+    direction when we cannot tell.
     """
     from agents.market_intelligence.collector import last_trading_day
     return last_trading_day(today - timedelta(days=1))
@@ -423,7 +455,9 @@ async def _resolve_regime_risk_pct(
     regime_date = (
         _coerce_date(regime_record.get("regime_date")) if regime_record else None
     )
-    threshold = _regime_sizing_freshness_threshold(today)
+    # Holiday-aware first (the last session we actually hold closes for), calendar
+    # rule as the fallback. See _last_ingested_session for why this is not circular.
+    threshold = await _last_ingested_session(today) or _regime_sizing_freshness_threshold(today)
     is_stale = regime_date is None or regime_date < threshold
     is_unrecognized = (not is_stale) and label not in REGIME_RISK_MULTIPLIER
 

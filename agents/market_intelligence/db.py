@@ -13275,6 +13275,23 @@ async def get_open_live_trades() -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+async def get_same_day_excluded_stop_candidates(conn: Any, today: "date") -> list[str]:
+    """#414 telemetry (2026-09-08): the tickers `morning_stop_refresh`'s same-day
+    guard (ADR 0029 D1, `alert_date <> $1`) is ABOUT to exclude — i.e. the exact
+    complement of that population, restricted to today. Takes an existing `conn`
+    (not its own pool acquire) so the caller can read this alongside the main
+    query on one connection. Read-only; the caller decides what to do with it
+    (record a count — this NEVER changes which rows the morning pass refreshes)."""
+    rows = await conn.fetch(
+        """
+        SELECT ticker FROM mi_live_trades
+        WHERE status = 'filled' AND remaining_shares > 0 AND alert_date = $1
+        """,
+        today,
+    )
+    return [r["ticker"] for r in rows]
+
+
 async def insert_position_mgmt_decision(position_id, ticker, decision_date, *, account_mode,
         verdict, rationale, confidence, payload: dict, hold_days, current_price, model) -> None:
     """Write one P3 management-judge SHADOW row (ADR 0014). Idempotent per (position_id,

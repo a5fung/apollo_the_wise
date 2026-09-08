@@ -81,6 +81,22 @@ ORB_CANCELLATION_CLASSIFICATION = "orb_cancellation_classification"
 # unexpected cancel) reaching the WS handler. Feeds the
 # entry_order_rejections_systematic data-gated review — observe before fixing.
 ENTRY_ORDER_REJECTED = "entry_order_rejected"
+# #540 HEARTBEAT (2026-09-08): ENTRY_ORDER_REJECTED above writes ONLY when a
+# rejection actually happens, and it had not fired once since 2026-08-07 —
+# three days before the #540 capture shipped 2026-08-10 — making a month of
+# silence indistinguishable from a broken capture. Fires from the SAME
+# handler (trade_stream._handle_cancel_or_reject), the moment its own
+# `entry_trade` lookup comes back empty for a BUY-side order — i.e. the
+# capture code path ran, looked, and found nothing NEW to record (the
+# expected, frequent case: the 10:00 ET unfilled-cleanup already flipped the
+# row's status before this WS event landed). The #452 exposure_family
+# "checked" pattern (record the check, not just the hit) applied to the SAME
+# function ENTRY_ORDER_REJECTED lives in, not a different one upstream — an
+# earlier draft put this in submit_entry(), which only proves an order was
+# SUBMITTED (already provable via orb_order_placed) and says nothing about
+# whether this handler still runs. Volume is a non-issue: ~19 fills in five
+# weeks.
+ENTRY_REJECTION_WATCH_ARMED = "entry_rejection_watch_armed"
 
 # ── Regime-keyed risk sizing (#456, operator-ruled 2026-07-26) ──────────────
 # Fires when a real-money sizing site (MAGNA53 ORB / 9M Day2) reads a missing,

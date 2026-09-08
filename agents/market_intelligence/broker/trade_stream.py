@@ -28,7 +28,10 @@ from datetime import datetime, timezone
 
 from alpaca.trading.stream import TradingStream
 
-from agents.market_intelligence.audit_events import ENTRY_ORDER_REJECTED
+from agents.market_intelligence.audit_events import (
+    ENTRY_ORDER_REJECTED,
+    ENTRY_REJECTION_WATCH_ARMED,
+)
 from agents.market_intelligence.broker.stream_models import (
     ReasonPreservingTradingStream,
 )
@@ -1482,6 +1485,35 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             f"WS [{account_mode}]: entry order {event_norm}: {symbol} ({skip_reason})"
         )
         return
+
+    # 1b. #540 HEARTBEAT (2026-09-08): entry_trade came back empty, but this is a
+    # BUY-side order dying at the broker — an entry-shaped order the capture above
+    # did NOT record. Almost always the EXPECTED case: the 10:00 ET unfilled-cleanup
+    # job already flipped the row's status away from the tracked set (see the #475
+    # comment above) before this WS event landed, so entry_order_rejected correctly
+    # stayed silent about it. Before this, only an actual capture ever wrote a row —
+    # a month with zero entry_order_rejected rows was indistinguishable from this
+    # handler never running at all (measured: none since 2026-08-07, three days
+    # before the capture shipped). This records that the check itself ran and found
+    # nothing NEW — the #452 exposure_family "checked" idea, same function the
+    # capture lives in. SELL-side orders (stop legs, exits, OCO) are handled by the
+    # sections below and never reach this branch. Telemetry only — never returns,
+    # never blocks the stop-loss/exit handling that follows.
+    elif str(getattr(order, "side", "")).split(".")[-1].lower() == "buy":
+        try:
+            await log_audit_event(
+                ENTRY_REJECTION_WATCH_ARMED,
+                f"{symbol} [{account_mode}] order {order_id[:8]} {event_norm} — "
+                f"buy-side, no tracked entry row (routine path already handled it, "
+                f"or genuinely untracked) — nothing new to capture",
+                json.dumps({
+                    "ticker": symbol, "account_mode": account_mode,
+                    "order_id": order_id, "event_norm": event_norm,
+                    "entry_trade_found": False,
+                }),
+            )
+        except Exception as _e:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); this guards the json.dumps/context assembly only, and must never block the stop-loss/exit handling that follows
+            logger.warning(f"entry_rejection_watch_armed telemetry emit failed for {symbol}: {_e}")
 
     # 2. Stop-loss leg cancellation — signals open position is now unprotected
     async with pool.acquire() as conn:

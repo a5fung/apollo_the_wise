@@ -65,6 +65,7 @@ from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.db import (
     get_pool, get_manual_halt_state, _coerce_date, OPEN_POSITION_STATUSES,
     log_audit_event, get_runtime_toggle, latest_complete_score_date,
+    get_same_day_excluded_stop_candidates,
 )
 # #533 (2026-08-30, operator-signed): the acting within-day slot-ranking key + the
 # five-ranking watch recorder live in ONE module so what acts and what is recorded
@@ -1203,9 +1204,23 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     `mi_audit_log` rows in the three days since it shipped (PLAN.md #527) —
     not proof it was broken, just proof we had no way to tell either way.
     Telemetry only: no placement/threshold/ordering decision below changed.
+
+    #414 HEARTBEAT (2026-09-08): the morning pass's `alert_date <> $1` guard
+    (ADR 0029 D1) EXCLUDES same-day fills in the SQL itself, so an excluded row
+    never reaches `examined` and the summary said nothing about what the
+    exclusion removed. Measured on the live book: 15 of the last 17 fills
+    landed before 09:35, so the exclusion has fired plenty — we simply never
+    counted it, which is why #414's verify sat stuck since August ("cannot be
+    manufactured"). This counts + names the same-day rows the morning pass is
+    ABOUT to skip, purely for the audit row below — it changes nothing about
+    which rows get refreshed. Read-only and failure-isolated: a failure here
+    degrades to "unavailable" (`None`) rather than blocking the real refresh
+    that follows. The post-close pass has nothing to exclude by construction
+    (`include_same_day=True`), so it never touches this — no misleading zero.
     """
     today = et_today()
     pool = await get_pool()
+    same_day_excluded: list[str] | None = None
     async with pool.acquire() as conn:
         if include_same_day:
             trades = await conn.fetch("""
@@ -1215,6 +1230,11 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
                 WHERE status = 'filled' AND remaining_shares > 0
             """)
         else:
+            try:
+                same_day_excluded = await get_same_day_excluded_stop_candidates(conn, today)
+            except Exception as e:  # loud-ok: telemetry-only read; the real refresh below must run regardless
+                logger.warning(f"{label}: same-day-excluded read failed (non-fatal): {e}")
+                same_day_excluded = None
             trades = await conn.fetch("""
                 SELECT id, ticker, remaining_shares, stop_price, stop_order_id,
                        account_mode
@@ -1300,20 +1320,32 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     for s in skipped:
         reason_counts[s["reason"]] = reason_counts.get(s["reason"], 0) + 1
     skip_summary = ", ".join(f"{k}={v}" for k, v in sorted(reason_counts.items())) or "none"
-    await log_audit_event(
-        "stop_refresh_ran",
+    summary = (
         f"{label}: examined {examined}, placed {refreshed}, "
-        f"already-covered {len(already_covered)}, skipped {len(skipped)} ({skip_summary})",
-        json.dumps({
-            "pass": label,
-            "examined": examined,
-            "placed": refreshed,
-            "placed_tickers": refreshed_tickers,
-            "already_covered": already_covered,
-            "skipped": skipped,
-            "unprotected": unprotected,
-        }),
+        f"already-covered {len(already_covered)}, skipped {len(skipped)} ({skip_summary})"
     )
+    detail = {
+        "pass": label,
+        "examined": examined,
+        "placed": refreshed,
+        "placed_tickers": refreshed_tickers,
+        "already_covered": already_covered,
+        "skipped": skipped,
+        "unprotected": unprotected,
+    }
+    # #414 — only the morning pass excludes anything, and only when the read above
+    # succeeded. `same_day_excluded is None` covers BOTH the post-close pass
+    # (nothing to exclude by construction) and a failed read on the morning pass
+    # (unknown, not zero) — either way, stay silent rather than write a number
+    # that isn't true. An empty list IS a real, reportable zero.
+    if same_day_excluded is not None:
+        detail["same_day_excluded"] = len(same_day_excluded)
+        detail["same_day_excluded_tickers"] = same_day_excluded
+        summary += (
+            f", same-day excluded {len(same_day_excluded)} "
+            f"({', '.join(same_day_excluded) if same_day_excluded else 'none'})"
+        )
+    await log_audit_event("stop_refresh_ran", summary, json.dumps(detail))
     return refreshed
 
 
