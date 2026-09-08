@@ -16234,7 +16234,16 @@ async def upsert_tv_news_shadow_rows(rows: list[dict]) -> int:
             if c in _TV_NEWS_SHADOW_JSONB_DICT_COLS:
                 v = _jsonb_param(v if v is not None else {})
             elif c in _TV_NEWS_SHADOW_JSONB_LIST_COLS:
-                v = _jsonb_list_param(v if v is not None else [])
+                # ⚠ PRESERVE NULL (2026-09-08). `tv_items_we_missed` has a documented
+                # three-state meaning: a list = the items we missed, [] = we missed
+                # NOTHING, NULL = NOT COMPUTABLE because `our_corpus_available` is false
+                # and there is nothing stored to diff against (see this table's DDL and
+                # tv_news_shadow's else-branch, which deliberately sets None).
+                # Coercing None -> [] here silently turned "cannot tell" into "clean",
+                # in the very instrument built to COUNT news misses — the first row ever
+                # written (ALAB 2026-09-04) had no corpus and TradingView had 25 items,
+                # and it stored []. Same false-zero class as #452/#414/#540 this week.
+                v = _jsonb_list_param(v) if v is not None else None
             tup.append(v)
         vals.append(tuple(tup))
     pool = await get_pool()
