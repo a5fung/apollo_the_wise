@@ -148,7 +148,12 @@ def main():
     never = {t for t, L in lab.items() if L["first"] is None}
     positives = {t for t, L in lab.items() if L["pre_existing"] and L["in_roster"] and not L["already_member"]}
     print(f"\nnever joined: {len(never)} {sorted(never)}")
-    print(f"already on the board when parked: {sorted(t for t, L in lab.items() if L['already_member'])}")
+    print(f"already on the board when parked (same theme_date): "
+          f"{sorted(t for t, L in lab.items() if L['already_member'])}")
+    print("  ⚠ same theme_date is NOT 'before the lane-2 decision': the board row can land AFTER it "
+          "(NESR 08-10 +2.5 min, LPTH 08-14 +62 ms). Compare mi_themes.created_at with the "
+          "lane2_decision_record created_at before counting a name as already-held; on the "
+          "2026-09-08 read only HOOD, OMER, MRNA were on the board first.")
     print(f"MUST-FIRE (pre-existing theme, not yet a member): {sorted(positives)}")
 
     # IDF background = latest description per live theme name

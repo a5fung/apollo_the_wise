@@ -286,7 +286,8 @@ have known it was running.
   since its 08-03 birth. MRNA likewise was on the 08-19 board before its decision. That leaves
   **CBRS (08-17) as the ONE genuine case** (theme born 08-13, CBRS not yet a member, joined
   08-18). "12 later joined, median lag 1 day" is a next-snapshot artefact: 3 were already in, 2
-  (NESR, LPTH) were promoted by step 5d minutes AFTER the lane-2 decision, 7 truly joined later.
+  (NESR, LPTH) were promoted by step 5d (`source='shadow_promoted'`) AFTER the lane-2 decision
+  (+2.5 min and +62 ms), 7 truly joined later.
   Against the `active` parameter itself (the Lane-2 roster, 0-7 narratives on those nights) the
   strict must-fire set is EMPTY.
 - **The sweep** (IDF-weighted distinctive-token overlap, story vs name+thesis; token floor
