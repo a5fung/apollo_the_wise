@@ -39,7 +39,7 @@ def _pool_returning(value):
 async def test_the_labor_day_case_no_longer_reads_as_stale():
     """The exact 2026-09-08 case, through the real read: the closes table holds Friday
     (no Labor Day row exists), so Friday's regime row is FRESH and nothing floors."""
-    with patch("agents.market_intelligence.db.get_pool",
+    with patch.object(om, "get_pool",
                new=AsyncMock(return_value=_pool_returning(date(2026, 9, 4)))):
         threshold = await om._last_ingested_session(date(2026, 9, 8))
     assert threshold == date(2026, 9, 4)
@@ -58,7 +58,7 @@ def test_the_calendar_fallback_is_what_produced_the_false_positive():
 async def test_a_genuinely_stale_feed_is_still_caught():
     """The fix must not blind the gate: if we hold Monday's closes and the regime row is
     still Friday's, the nightly really did fail and it must floor."""
-    with patch("agents.market_intelligence.db.get_pool",
+    with patch.object(om, "get_pool",
                new=AsyncMock(return_value=_pool_returning(date(2026, 9, 8)))):
         threshold = await om._last_ingested_session(date(2026, 9, 9))
     assert date(2026, 9, 4) < threshold, "a real feed failure must still read as stale"
@@ -69,5 +69,5 @@ async def test_an_unreadable_closes_table_falls_back_to_flooring():
     """Safe direction: if we cannot tell, we floor rather than assume fresh."""
     pool = AsyncMock()
     pool.acquire.side_effect = RuntimeError("pool saturated")
-    with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)):
+    with patch.object(om, "get_pool", new=AsyncMock(return_value=pool)):
         assert await om._last_ingested_session(date(2026, 9, 8)) is None

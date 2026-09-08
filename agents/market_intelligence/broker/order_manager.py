@@ -272,7 +272,11 @@ async def _last_ingested_session(today: date) -> "date | None":
     None routes the caller back to the calendar rule, which floors — the safe direction.
     """
     try:
-        from agents.market_intelligence.db import _coerce_date, get_pool
+        # `get_pool` is module-level (:47) — importing it here would make the name LOCAL for
+        # this whole function and any earlier reference would raise UnboundLocalError. That is
+        # the 2026-05-20 outage class, and deploy gate [5?/7] rejects it. `_coerce_date` is not
+        # module-level here, so only it is imported locally (same idiom as :452).
+        from agents.market_intelligence.db import _coerce_date
         pool = await get_pool()
         async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
             row = await conn.fetchval(
