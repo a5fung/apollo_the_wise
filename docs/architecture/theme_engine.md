@@ -73,7 +73,10 @@ themes emerge from price action, never a hypothesis fed in):
     Dedup is STRUCTURAL (a continuing story is a join, never a new name);
     member overlap between a birth and an active narrative only fires the
     surface-only `lane2_possible_duplicate_narrative` audit tripwire — never an
-    auto-merge. Seeds are outside BOTH walls by construction (not in
+    auto-merge. ⚠ The seed hygiene ("already a member → consumed, never seeded")
+    sees ONLY the lane's own `narrative_cogap` roster — never the live `mi_themes`
+    board step 5 wrote minutes earlier — so a name Lane 1 already holds can still
+    be parked as a seed (HOOD 09-03, OMER 08-13; change log 2026-09-08). Seeds are outside BOTH walls by construction (not in
     `AUTO_PROMOTE_THEME_SOURCES`, not in `get_narrative_theme_candidates`'s
     source list). OFF is byte-identical to v1 (pinned by
     `tests/test_lane2_grouping_v2.py`). ⚠ GRADE-AFFECTING: this
@@ -261,6 +264,52 @@ whether it should reach live, is the operator's call. What was wrong was that no
 have known it was running.
 
 ## Change log
+
+### 2026-09-08 — seed-story vs active-theme matcher: calibrated on 25 labelled seeds, NOT shipped
+
+**No behaviour change.** Recorded so the read is not redone from the same mistaken evidence
+(CHANGE_PROCESS rule 7 — the open question lives here, not in a ticket).
+
+- **The rule (operator-approved)**: before parking a lone name as a Lane-2 seed, test its story
+  against the ACTIVE themes; on a match, join instead of seeding. Its calibration was the ship
+  condition: must fire on seeds that later joined a theme which already existed, must not fire on
+  seeds that never joined anything. A rule that cannot separate labelled cases does not go live on
+  a detection path.
+- **The evidence did not hold** (`scripts/probes/_lane2_seed_story_match_sweep.py`, read-only, $0,
+  25 seeds 2026-08-10 → 09-03, joins measured against the live `mi_themes` board because the
+  evidence's four "existing themes" are live themes, not Lane-2 narratives). Of the five named
+  misses: **BRUN and BLSH** joined themes born AFTER they were parked (08-13, 08-19) — not
+  catchable. **HOOD and OMER were already members** of their pre-existing theme on the night they
+  were parked (board rows written 21:07 and 21:09 UTC; the lane-2 decision 21:11 and 21:12) — a
+  membership fact, not a story-matching one; HOOD had sat in *Wealth Management & Retail
+  Brokerage Platforms* since at least 08-21, OMER in *Specialty Pharmaceutical Commercialization*
+  since its 08-03 birth. MRNA likewise was on the 08-19 board before its decision. That leaves
+  **CBRS (08-17) as the ONE genuine case** (theme born 08-13, CBRS not yet a member, joined
+  08-18). "12 later joined, median lag 1 day" is a next-snapshot artefact: 3 were already in, 2
+  (NESR, LPTH) were promoted by step 5d minutes AFTER the lane-2 decision, 7 truly joined later.
+  Against the `active` parameter itself (the Lane-2 roster, 0-7 narratives on those nights) the
+  strict must-fire set is EMPTY.
+- **The sweep** (IDF-weighted distinctive-token overlap, story vs name+thesis; token floor
+  0/1.5/2.5/3.5 × threshold 0.15/0.25/0.35/0.50): the only settings that fire on CBRS and HOOD
+  (threshold 0.15) fire on **18 of 25 seeds, including 8 of the 13 that never joined**; every
+  stricter setting misses both. No threshold can rescue it: CBRS's real theme ranks **10th of 94**
+  on its board (0.20, below a storage-theme hit at 0.29 on `ai/data/infrastructure`), HOOD's ranks
+  **9th of 118** (0.10, on `crypto/market`). What fired was catalyst boilerplate — `beat`,
+  `guidance`, `raised`, `award`, `contract` — the catalyst-type words `_LANE2_NARRATIVE_RULES`
+  forbids as themes. The operator's specific worry did not materialise: the never-joined biotech
+  seeds (CGEM, ARGX, SLN, ABCL, AMLX) never paired with an oncology theme on Phase/oncology tokens
+  (best 0.19, AMLX on `data/readout`).
+- **What WAS found**: the seed hygiene reads only the lane's own roster (architecture bullet
+  above). A check against the PRIOR-day live board (race-free — the same-night board can land
+  after the decision, as NESR/LPTH show) is exact, needs no threshold, and would have consumed
+  exactly HOOD and OMER. It has no write path (Lane 2 cannot add a member to `mi_themes`) — "join"
+  can only mean *consume the seed and record it as covered*. Two measured costs: HOOD's
+  prediction-market story would be absorbed by a 20-name, yields-driven brokerage cluster (a
+  sector, not a theme), and OMER's seed demonstrably fed the 08-14 five-member Lane-2 birth the
+  next night — a conversion the check would have prevented. **Operator decision, not taken here.**
+- **Reversion-flag**: NEW (nothing changed). **Status**: tested and NOT shipped — a decision, not a
+  pending deploy; re-run the probe when the labelled set has grown
+  (`lane2_seed_birth_calibration`, data_gated_reviews.yaml).
 
 ### 2026-09-07 — discovery now records what it was SHOWN and what it DECLINED (#486)
 
