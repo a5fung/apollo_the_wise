@@ -601,7 +601,12 @@ async def test_v2reg_decision_record_outcomes_and_seed_conversion(monkeypatch):
     assert detail["offered"] == ["CLSK", "IREN", "WDFC"]
     assert detail["outcomes"]["CLSK"] == {
         "outcome": "join", "narrative": "Clean-power infrastructure for AI compute"}
-    assert detail["outcomes"]["IREN"] == {"outcome": "seed"}
+    # #471 (2026-09-08, operator: "log why as well"): a seed now carries the STORY it was
+    # seeded on. Assert the outcome and the story's presence rather than exact dict equality,
+    # so this pins the contract without re-freezing the shape against the next honest addition.
+    _iren = detail["outcomes"]["IREN"]
+    assert _iren["outcome"] == "seed"
+    assert "story" in _iren, "a seed must record why — the story it was seeded on"
     assert detail["outcomes"]["WDFC"] == {"outcome": "none"}
     # WULF: seeded 07-06, pulled into the narrative 07-14 → conversion, lag 8d.
     assert detail["seed_conversions"] == [{
@@ -647,7 +652,9 @@ async def test_v2reg_decision_record_not_persisted_on_backfill(monkeypatch):
         monkeypatch, flag_on=True, today_alerts=[_alert("WULF", today, ep=96.0)],
         llm_response='{"themes": [], "seeds": [{"ticker": "WULF", "story": "s"}]}')
     out = await discover_narrative_themes(today, persist=True, backfilled=True)
-    assert out["decision_record"]["outcomes"]["WULF"] == {"outcome": "seed"}
+    _wulf = out["decision_record"]["outcomes"]["WULF"]
+    assert _wulf["outcome"] == "seed"
+    assert _wulf.get("story") == "s", "the seed story rides through the backfill path too"
     assert not [c for c in mocks.audit.await_args_list
                 if c.args[0] == "lane2_decision_record"]
 

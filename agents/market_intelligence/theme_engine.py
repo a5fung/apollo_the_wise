@@ -1089,6 +1089,13 @@ async def _discover_lane2_registry(
     # detail = queryable JSON); the run-count-gated review
     # `lane2_seed_birth_calibration` (data_gated_reviews.yaml) re-tunes on it.
     seeded_tk = {s["ticker"] for s in new_seeds}
+    # WHY, not just WHAT (operator 2026-09-08: "let's log why as well so we can know what
+    # was decision making at the time"). The calibration read on 2026-09-08 could report
+    # that 13 of 25 seeded names never joined any theme, but NOT why — the record stored
+    # the outcome and, for join/birth, the theme name; a seed carried neither a story nor
+    # a reason, so every seed read "(none given)". The story is already in hand here
+    # (`new_seeds` carries it) and was simply being dropped.
+    seed_story = {s["ticker"]: s.get("story") for s in new_seeds}
     outcomes: dict[str, dict] = {}
     for tk in sorted(today_set):
         outcome, narr = "none", None
@@ -1099,8 +1106,15 @@ async def _discover_lane2_registry(
                 break
         if outcome == "none" and tk in seeded_tk:
             outcome = "seed"
-        outcomes[tk] = {"outcome": outcome} if narr is None else \
-            {"outcome": outcome, "narrative": narr}
+        rec_o: dict = {"outcome": outcome}
+        if narr is not None:
+            rec_o["narrative"] = narr
+        if outcome == "seed":
+            # The story the model saw. A seed becomes a theme only when a LATER name
+            # shares this story, so the story text is what makes "it stayed a one-off"
+            # checkable after the fact instead of inferred.
+            rec_o["story"] = seed_story.get(tk)
+        outcomes[tk] = rec_o
     conversions = [
         {"ticker": tk, "seeded": str(seed_origin[tk]),
          "lag_days": (scan_d - seed_origin[tk]).days, "narrative": e["name"]}
@@ -1110,6 +1124,12 @@ async def _discover_lane2_registry(
         "date": out["date"], "offered": sorted(today_set),
         "watchlist_offered": [s["ticker"] for s in seeds],
         "outcomes": outcomes, "seed_conversions": conversions,
+        # Night-level context, so a seed can be judged against the field it was
+        # chosen from rather than in isolation: a lone candidate had no peer to
+        # pair with by construction, which is a different fact from "the model
+        # declined to pair it".
+        "offered_count": len(today_set),
+        "active_themes_at_decision": len(active) if active is not None else None,
     }
     out["decision_record"] = record
     if not backfilled:

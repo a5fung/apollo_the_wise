@@ -9675,7 +9675,7 @@ reviews:
       Then the operator rules: keep the prompt-level bias as shipped, strengthen it,
       or add a mechanical same-night pairing rule. Grouping changes affect DETECTION
       => THE LINE: CHANGE_PROCESS + operator sign-off before any live change.
-    status: pending
+    status: done   # RAN 2026-09-08 on 15 decision records (2026-08-10 -> 09-04), 54 decisions. MIX: seed 27 (50%) · none 13 · birth 8 · join 6. Seeds aged >=15d: 25 (threshold 20, met). CONVERSION: 3 of 27 = 11%. MEDIAN LAG: 1.0 day. VERDICT under the review's OWN pre-declared rule — SPLIT, and the split is the finding: the conversion arm (>~40% = birth-shy) says CALIBRATED at 11%, but the lag arm (<=3d = birth-shy) FIRES at 1.0 day. Read together: ~89% of seeds are correctly held and expire unconverted, but the few that convert do so the VERY NEXT NIGHT — the exact deferred-birth signature this review was built to detect. ⚠ n=3 conversions; the threshold was 20 SEEDS (met), not 20 conversions, so the lag number is directional. REC (operator's ruling, DETECTION = THE LINE): do NOT strengthen the general seeding bias — that would convert correct holds into wrong births across the 89%. Add the targeted mechanical same-night pairing rule instead, which hits only the failure mode. Recorded on #471.
     added_on: 2026-07-27
     cross_refs: ["task #167"]
 
