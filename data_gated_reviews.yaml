@@ -5564,7 +5564,7 @@ reviews:
              review's outcome too (if that one also shows the same
              timing-artifact pattern, the whole rel_volume<0.5 hypothesis
              family is suspect, not just the large-cap variant).
-    status: pending
+    status: pending   # RAN 2026-09-08 — the SHADOW ARM CONFIRMS, but the review's own COMPARISON CANNOT BE MADE. Shadow (large-cap HIGH, rel_volume < 0.5, closed since 07-19): n=14, 3 wins (21%), avg -$3.38, total -$47.28. That reproduces the retrospective's 3/20 almost exactly — two independent samples, same ~20% win rate, so the DIRECTION is consistent. ⛔ But the same-period rel_volume >= 0.5 large-cap control is **n=1** (one trade, -$14.96), so there is nothing to compare against and the step-2 comparison this review is built on cannot run. Do NOT put a floor change to the operator on a one-armed read — a filter change is THE LINE and needs the control. STAYS PENDING, gated on the CONTROL arm reaching n>=10, not on the shadow arm (which is already past its threshold at 14).
     added_on: 2026-07-19
 
   - review_id: theme_axis_boost_reeval
