@@ -1615,7 +1615,7 @@ reviews:
       If decision is to extend, change ORB_WINDOW_END in scheduler.py + update
       _orb_window_cleanup_job cron + skip_reasons.
       Origin: 2026-05-04 cancelled-ORB lifecycle analysis (orb_extension_lifecycle_report.md).
-    status: pending
+    status: done   # ANSWERED 2026-09-06 and SHELVED by the operator; marked done 2026-09-07 because it kept re-surfacing as ready and caused the analysis to be re-run from scratch. VERDICT: DO NOT EXTEND — all six cutoffs are byte-identical (37 names, 28 fills, mean $104.56, median -$8.64), because every fill lands 09:32-09:45 ET, so a later cutoff adds zero fills. The instrumentation was checked before the null was believed (orb_extension_shadow.py:192 does pass each cutoff into its own simulation). Full result + the follow-on window work it triggered are on PLAN.md #414.
     earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
     regate_kind: date
