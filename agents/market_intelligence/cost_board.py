@@ -106,12 +106,41 @@ async def compute_cost_board(today: date) -> dict:
             GROUP BY caller ORDER BY spend DESC LIMIT 3
         """, today)
 
-    # True median over ALL 30 trailing days — quiet days count as $0 (review
-    # 7/17: active-days-only + upper-middle-element inflated the baseline and
-    # desensitized the 2× anomaly trigger).
+        # Trading-day calendar for the baseline below — read HERE because `conn` is
+        # released when this block exits. Doing it after the block "works" only by
+        # accident and would have been swallowed by the fallback, leaving the fix
+        # shipped-but-inert (the exact failure class this file's watchdog exists for).
+        try:
+            _session_rows = await conn.fetch(
+                "SELECT DISTINCT trade_date AS d FROM mi_daily_closes "
+                "WHERE trade_date < $1 ORDER BY trade_date DESC LIMIT 30", today)
+        except Exception:
+            logger.exception("cost baseline: session read failed; using calendar days")
+            _session_rows = []
+
+    # Median over the trailing 30 TRADING days — a quiet trading day still counts
+    # as $0 (review 7/17: active-days-only + upper-middle-element inflated the
+    # baseline and desensitized the 2× trigger, so that intent is preserved), but
+    # WEEKENDS AND MARKET HOLIDAYS ARE EXCLUDED.
+    #
+    # Why (2026-09-08): the series was all 30 CALENDAR days, so roughly ten days the
+    # system cannot spend on — eight weekend days plus holidays — were folded in as
+    # $0 and dragged the median toward zero. Every ordinary trading day then read as
+    # a multiple of it. It fired that evening on theme_discovery "$0.88 vs $0.62
+    # median (1.4x)" when 18 calls sat squarely inside the fortnight's 9-20 range,
+    # against a median depressed by the Labor Day weekend. Third holiday-blind false
+    # positive in one day, after the regime-sizing gate and the HTF count band.
+    #
+    # mi_daily_closes carries a row per ticker per SESSION, so a holiday produces
+    # none — the trading calendar is in the data and nobody has to maintain one.
+    # Falls back to the old calendar window if that read fails: a slightly noisy
+    # baseline beats no watchdog.
     import statistics
     spend_by_day = {r["d"]: float(r["spend"]) for r in daily}
-    series = [spend_by_day.get(today - timedelta(days=k), 0.0) for k in range(1, 31)]
+    sessions = [r["d"] for r in _session_rows]
+    if not sessions:
+        sessions = [today - timedelta(days=k) for k in range(1, 31)]
+    series = [spend_by_day.get(d, 0.0) for d in sessions]
     median30 = statistics.median(series) if series else 0.0
     mtd = float(row["mtd"])
     day_of_month = today.day
