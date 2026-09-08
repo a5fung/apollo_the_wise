@@ -42,6 +42,7 @@ agents/market_intelligence/constants.py
 agents/market_intelligence/data_quality.py
 agents/market_intelligence/db.py
 agents/market_intelligence/earnings_calendar.py
+agents/market_intelligence/ep_decision_vector.py
 agents/market_intelligence/ep_detector.py
 agents/market_intelligence/ep_grade_judge.py
 agents/market_intelligence/ep_rubric.py
