@@ -493,12 +493,17 @@ _TRADE_METRICS: list[MetricSpec] = [
         ["agents/market_intelligence/broker/live_tracker.py::process_new_alerts_live",
          "agents/market_intelligence/broker/entry_pipeline.py::submit_trade_entry"],
     ),
-    MetricSpec(
-        "9m_alerts_per_day", _today_9m_alerts,
-        "SELECT ticker, alert_date, current_price, projected_vol "
-        "FROM mi_9m_ep_alerts WHERE alert_date=CURRENT_DATE ORDER BY current_price DESC;",
-        ["agents/market_intelligence/ninem_detector.py"],
-    ),
+    # ⛔ 9m_alerts_per_day RETIRED as an alerting metric 2026-09-08.
+    # 9M IS DEPRECATED AND CANNOT TRADE — `mi_strategies.9m_day2` is phase='deprecated',
+    # enabled=false, and the operator has ruled repeatedly "9M is GONE — stop raising it".
+    # The DETECTOR still runs and still writes mi_9m_ep_alerts (17 rows on 2026-09-08 vs a
+    # 30d median of 10), so this metric kept firing L2 anomalies and PAGING HIM about a lane
+    # that cannot place an order. A monitor whose only possible action is "ignore it" is
+    # noise on the one channel that must stay actionable (CLAUDE.md: reserve Telegram for
+    # terminal/actionable events).
+    # Deliberately NOT deleting the detector or the table here: that is a live-code change
+    # on a lane he has parked, and its rows stay available for anyone replaying 9M history.
+    # If 9M is ever revived, restore this spec in the same commit that re-enables it.
     MetricSpec(
         "bar_stream_disconnect_count_24h", _today_bar_stream_disconnect_24h,
         "SELECT created_at, summary, detail FROM mi_audit_log "
