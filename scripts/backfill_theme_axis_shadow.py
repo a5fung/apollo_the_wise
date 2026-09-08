@@ -2,9 +2,26 @@
 """Meta-rubric STEP-0.5 backfill (#369): backfill mi_theme_axis_shadow over historical EP HIGHs.
 
 SHADOW telemetry ONLY — read-only on mi_ep_alerts, writes ONLY mi_theme_axis_shadow (idempotent
-upsert). Reuses the live STEP-0 writer `log_theme_axis_shadow` (identical heat / structural-
-attribution / upsert), so a backfilled row is byte-identical to what the live hook would have
-logged for that alert. Never touches trade-state or the live grade.
+upsert). Reuses the live STEP-0 writer `log_theme_axis_shadow`, so the heat read, the structural
+attribution and the upsert are the same code the live hook runs. Never touches trade-state or the
+live grade.
+
+⚠ #629 (2026-09-07) — WHAT THIS IS **NOT**. An earlier version of this docstring claimed a
+backfilled row is "byte-identical to what the live hook would have logged". **That is FALSE, and it
+was false for 452 rows**, found while backfilling #486's bounded read. Same code is not the same
+answer, because the two runs see different data:
+
+  · The live hook runs **07:00-10:05 ET**, while `mi_themes`' own same-day row is not written until
+    **~17:07 ET**. So a live 7-day-bounded read can only ever see `[alert_date-7, alert_date-1]` —
+    it can NEVER see `alert_date` itself.
+  · A backfill re-queried later DOES see that row, so it can credit a theme the live path could not
+    have known about. That is not a bug in either one; it is an unavoidable difference between
+    reading the tape live and reading it afterwards.
+
+So: a backfilled row is a FAITHFUL RECONSTRUCTION under a stated as-of anchor, not a replica. Where
+faithfulness matters, use `theme_axis_shadow.bounded_backfill_anchor(alert_date,
+same_day_write=True)` — it pins the read to `alert_date - 1` with recency 6, and was proven against
+591 of 592 live-captured rows. Claim reconstruction; never claim identity.
 
 Grounding-era is DERIVABLE from alert_date (< 2026-06-23 = pre-#360, less-grounded catalyst text
 from the Perplexity-discoverer era → noisier structural attribution). STEP-2 segments on it; no
