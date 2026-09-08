@@ -82,6 +82,7 @@ setup's criteria, change log and findings.
 | Theme engine | `docs/architecture/theme_engine.md` |
 | Dual-account (paper/live routing) | `docs/architecture/dual_account.md` |
 | Trade-state ownership | `docs/architecture/trade-state-ownership.md` |
+| Market agent build & ops how-to (run locally · add a tool · add a Telegram command · `execute_task` routing · ticker extraction · env vars · pre-commit hooks) | `docs/architecture/market_agent_reference.md` |
 | Model selection | `docs/model_selection_baseline.md` |
 
 ## Methodology — the operator's own words
