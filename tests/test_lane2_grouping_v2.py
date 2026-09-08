@@ -55,6 +55,15 @@ _GROUNDED = (
 )
 
 
+def _prompt_text(content):
+    """The user prompt as one string, whether it is a plain string or the cache-split
+    block list. #519/theme_discovery gained a `cache_control` breakpoint on 2026-09-08
+    (its stable existing-themes prefix), so `content` became a list of text blocks.
+    These tests assert on the prompt's CONTENT, which is unchanged — only its shape is.
+    """
+    if isinstance(content, str):
+        return content
+    return "".join(b.get("text", "") for b in content)
 def _alert(ticker, d, ep=80.0, gap=12.0, catalyst=_LONG_CATALYST,
            analysis="Grounded analysis: AI data-center capacity lease.",
            grounded=_GROUNDED):
@@ -298,7 +307,7 @@ async def test_v2reg_cold_start_omits_roster_blocks_and_births_from_today(monkey
                      '"catalyst_type": "theme", "tickers": ["HUT", "IREN"], '
                      '"thesis": "Both lease HPC capacity."}], "seeds": []}')
     out = await discover_narrative_themes(today)
-    prompt = captured["messages"][0]["content"]
+    prompt = _prompt_text(captured["messages"][0]["content"])
     assert "ACTIVE tracked narratives (from prior sessions):" not in prompt  # roster block absent
     assert "WATCH LIST (recent single-name stories" not in prompt
     assert "Stocks TODAY:" in prompt and '"seeds"' in prompt
@@ -459,7 +468,7 @@ async def test_v2reg_seed_pairs_with_today_alert_to_birth_narrative(monkeypatch)
                      '"catalyst_type": "theme", "tickers": ["WULF", "CLSK"], '
                      '"thesis": "Miners lease HPC capacity to AI tenants."}], "seeds": []}')
     out = await discover_narrative_themes(today)
-    prompt = captured["messages"][0]["content"]
+    prompt = _prompt_text(captured["messages"][0]["content"])
     assert "WATCH LIST" in prompt and "- WULF (2026-07-06):" in prompt
     persisted = mocks.persist.await_args.args[1]
     assert persisted[0]["tickers"] == ["WULF", "CLSK"]
@@ -499,7 +508,7 @@ async def test_v2reg_roster_hygiene_seed_superseded_by_membership_and_today(monk
         active=[_narrative("Miners pivot to AI", ["WULF", "CLSK"])],
         pending=[_seed("CLSK"), _seed("IREN"), _seed("SMCI", story="AI server demand")])
     out = await discover_narrative_themes(today)
-    prompt = captured["messages"][0]["content"]
+    prompt = _prompt_text(captured["messages"][0]["content"])
     # Seed lines carry a dated prefix "- TICK (YYYY-MM-DD):" — distinct from
     # today-stock lines "- TICK (gap …" — so match on the dated form.
     assert "- SMCI (2026-07-06):" in prompt   # genuine pending seed survives
@@ -561,7 +570,7 @@ async def test_v2reg_prompt_orders_join_new_seed_with_seed_as_last_resort(monkey
         monkeypatch, flag_on=True,
         today_alerts=[_alert("AEHR", today, ep=70.0), _alert("JBL", today, ep=68.0)])
     await discover_narrative_themes(today)
-    prompt = captured["messages"][0]["content"]
+    prompt = _prompt_text(captured["messages"][0]["content"])
     assert "Decide in this order." in prompt
     assert "you MUST return them as ONE new themes entry" in prompt
     assert "never file the same story as two separate seeds" in prompt

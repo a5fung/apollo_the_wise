@@ -5659,10 +5659,24 @@ IMPORTANT: If a cluster forms a valid theme, invent a specific descriptive busin
         "- When in doubt whether a stock belongs — exclude it. A smaller, correct theme beats a larger, wrong one.\n"
         "- Return zero themes if no clear cluster exists — that is the correct answer"
     )
-    prompt = f"""You are a market intelligence analyst using Marios Stamatoudis's theme discovery methodology.
+    # ── PROMPT-CACHE SPLIT (2026-09-08) ────────────────────────────────────────
+    # `theme_discovery` is our LARGEST LLM caller ($3.78 MTD, 70 calls, ~9.8K input
+    # tokens each) and had NO cache_control, while its sibling `theme_assignment`
+    # has carried one since it was written and shows 572,983 cached reads against
+    # 57,430 creations this month — a 10x return on the identical pattern. The code
+    # existed next door and this path simply never got it.
+    #
+    # The cacheable prefix is the intro + the FULL EXISTING-THEMES block: byte-
+    # identical across every batch of a run (and across the run's advisor turns),
+    # and the single biggest chunk of the input. Everything after it varies by
+    # batch, so it cannot sit inside the breakpoint — a cache prefix must be an
+    # exact prefix. Same shape as _build_assign_prompt's shared_prefix/batch_body.
+    cache_prefix = f"""You are a market intelligence analyst using Marios Stamatoudis's theme discovery methodology.
 
 Themes emerge BOTTOM-UP from price action. The real alpha is finding sub-themes BEFORE they become common knowledge.
-{existing_block}{elite_block}{velocity_block}{turners_block}{cluster_block}
+{existing_block}"""
+
+    prompt_body = f"""{elite_block}{velocity_block}{turners_block}{cluster_block}
 RS LEADERS NOT YET IN ANY ACTIVE THEME:
 {stock_lines}
 
@@ -5699,7 +5713,14 @@ In every other case, skip the advisor and call `report_themes` immediately, with
 
     try:
         client = _get_anthropic_client()
-        messages: list[dict] = [{"role": "user", "content": prompt}]
+        messages: list[dict] = [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": cache_prefix,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": prompt_body},
+            ],
+        }]
         force_report = False   # once True, compel report_themes so the model commits its
                                # best judgment instead of dithering on the advisor or
                                # stopping silently — the #173 shadow-death class (a real

@@ -41,6 +41,15 @@ from types import SimpleNamespace
 from agents.market_intelligence import theme_engine as te
 
 
+def _prompt_text(content):
+    """The user prompt as one string, whether it is a plain string or the cache-split
+    block list. #519/theme_discovery gained a `cache_control` breakpoint on 2026-09-08
+    (its stable existing-themes prefix), so `content` became a list of text blocks.
+    These tests assert on the prompt's CONTENT, which is unchanged — only its shape is.
+    """
+    if isinstance(content, str):
+        return content
+    return "".join(b.get("text", "") for b in content)
 class _Block:
     def __init__(self, type, name=None, input=None, id="b1"):
         self.type = type
@@ -164,7 +173,7 @@ def test_prompt_kills_inducer_and_adds_no_free_text_guard(monkeypatch):
     monkeypatch.setattr(te, "_get_anthropic_client", lambda: client)
 
     asyncio.run(te._discover_new_themes(stocks, [], sbt))
-    prompt = calls[0]["messages"][0]["content"]
+    prompt = _prompt_text(calls[0]["messages"][0]["content"])
 
     # inducer gone
     assert "Consult the advisor FIRST" not in prompt
@@ -184,7 +193,7 @@ def test_criterion_rules_unchanged(monkeypatch):
     monkeypatch.setattr(te, "_get_anthropic_client", lambda: client)
 
     asyncio.run(te._discover_new_themes(stocks, [], sbt))
-    prompt = calls[0]["messages"][0]["content"]
+    prompt = _prompt_text(calls[0]["messages"][0]["content"])
 
     assert "A theme REQUIRES at least 2 stocks" in prompt           # min-cluster rule
     assert "NAME-BREADTH RULE" in prompt                            # #214 breadth

@@ -17,6 +17,15 @@ from types import SimpleNamespace
 from agents.market_intelligence import theme_engine as te
 
 
+def _prompt_text(content):
+    """The user prompt as one string, whether it is a plain string or the cache-split
+    block list. #519/theme_discovery gained a `cache_control` breakpoint on 2026-09-08
+    (its stable existing-themes prefix), so `content` became a list of text blocks.
+    These tests assert on the prompt's CONTENT, which is unchanged — only its shape is.
+    """
+    if isinstance(content, str):
+        return content
+    return "".join(b.get("text", "") for b in content)
 class _Block:
     def __init__(self, type, name=None, input=None, id="b1"):
         self.type = type
@@ -116,7 +125,7 @@ def test_recall_mode_flips_disposition(monkeypatch):
 
     asyncio.run(te._discover_new_themes(stocks, [], sbt, recall_mode=True))
 
-    prompt = calls[0]["messages"][0]["content"]
+    prompt = _prompt_text(calls[0]["messages"][0]["content"])
     assert "RECALL PASS" in prompt
     assert "Return zero themes if no clear cluster exists" not in prompt
 
@@ -129,6 +138,6 @@ def test_precision_is_default_live_engine_unchanged(monkeypatch):
 
     asyncio.run(te._discover_new_themes(stocks, [], sbt))  # recall_mode defaults False
 
-    prompt = calls[0]["messages"][0]["content"]
+    prompt = _prompt_text(calls[0]["messages"][0]["content"])
     assert "Return zero themes if no clear cluster exists" in prompt
     assert "RECALL PASS" not in prompt

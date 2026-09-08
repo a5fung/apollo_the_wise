@@ -35,6 +35,15 @@ from agents.market_intelligence import theme_engine as te
 
 # ── scaffolding ───────────────────────────────────────────────────────────────
 
+def _prompt_text(content):
+    """The user prompt as one string, whether it is a plain string or the cache-split
+    block list. #519/theme_discovery gained a `cache_control` breakpoint on 2026-09-08
+    (its stable existing-themes prefix), so `content` became a list of text blocks.
+    These tests assert on the prompt's CONTENT, which is unchanged — only its shape is.
+    """
+    if isinstance(content, str):
+        return content
+    return "".join(b.get("text", "") for b in content)
 class _Block:
     def __init__(self, type, name=None, input=None, id="b1", text=""):
         self.type = type
@@ -358,7 +367,7 @@ def test_discovery_large_pool_batches_and_bounds_each_call(monkeypatch):
     assert len(calls) == 4, "80 stocks at cap 22 must produce 4 calls"
     seen = []
     for c in calls:
-        prompt = c["messages"][0]["content"]
+        prompt = _prompt_text(c["messages"][0]["content"])
         batch = _rendered_tickers(prompt)
         assert 0 < len(batch) <= te._DISCOVERY_LLM_BATCH_STOCKS
         assert "Widget Platforms" in prompt, "every batch must see the existing-themes context"
@@ -594,5 +603,5 @@ def test_split_forces_a_tool_call_and_terse_scratchpad(monkeypatch):
     desc = te._SPLIT_TOOL["input_schema"]["properties"]["analysis_scratchpad"]["description"]
     assert "KEEP IT SHORT" in desc and "not per stock" in desc.lower(), \
         "split scratchpad lost its terse contract — verbosity truncation returns"
-    prompt = calls[0]["messages"][0]["content"]
+    prompt = _prompt_text(calls[0]["messages"][0]["content"])
     assert "Do NOT write any free-text analysis before your tool call" in prompt
