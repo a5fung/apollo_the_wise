@@ -5070,7 +5070,7 @@ reviews:
       engine that mislabeled the drone/software cohorts as theme-less. The CLEAN forward
       evidence is rows AFTER that fix promotes from shadow; pre-promotion rows carry
       contaminated theme labels. Data quality here is gated on the ADR-0007 promotion.
-    status: pending
+    status: done   # ANSWERED 2026-09-07. VERDICT: NO LIFT — do not set a theme weight on this. n=147 HIGH alerts since 2026-06-02, forward 10d from the ALERT-DAY CLOSE. Broad denominator (any non-Retired theme within 7d): themed 49 vs themeless 98 — mean 12.4 vs 11.9, median 9.2 vs 7.5, p90 24.8 vs 24.9, >=20% 14% vs 16%. The tails are identical, which is the measure that matters. The LIVE in_active_theme arm looks better (n=15, mean 15.9, p90 50.2) but is 2 names carrying it — not calibratable. The 2026-05-30 n=13 '2x lift' does NOT reproduce forward. CAVEAT for anyone reusing this column: 93-99% of the cohort is POSITIVE at 10d and the wider mi_ep_scan_outcomes table runs 92% positive with a +1096% max, so fwd_10d_pct needs its own validation before anything is built on it. Consistent with #486 step 1: the theme bonus is decorative, and the returns do not justify making it real.
     earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
     regate_kind: date
