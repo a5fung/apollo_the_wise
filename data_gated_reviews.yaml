@@ -5768,7 +5768,14 @@ reviews:
         AND stop_price IS NOT NULL AND hard_stop IS NOT NULL
         AND entry_price IS NOT NULL
         AND (stop_price <= 0
-             OR stop_price > entry_price
+             -- ⛔ `stop_price > entry_price` REMOVED 2026-09-08. It fired on all SEVEN
+       -- matches, and every one was a PROFITABLE trade whose stop had TRAILED
+       -- above entry (MRNA entry 120.75 -> stop 145.20, +$90; GOOGL 382.61 ->
+       -- 395.87, +$618). In each, hard_stop stayed BELOW entry — the ordering is
+       -- correct and the trail is doing its job. The clause predates the trail
+       -- acting at all ("Today's data: zero such cases"), so it silently turned
+       -- into a detector that fires on SUCCESS. The genuine KLAR class is a
+       -- hard_stop ABOVE the working stop, which the remaining clauses catch.
              OR hard_stop > stop_price + 0.01)  -- 1c tolerance for trail rounding
         AND pnl_attribution IS NULL;
     threshold: 1
