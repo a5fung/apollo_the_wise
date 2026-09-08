@@ -20,99 +20,32 @@ _Last CLOSE: 2026-06-16._
 
 ---
 
-## 🎯 THIS WEEK'S SEQUENCE — Wed 2026-09-02 → Fri 2026-09-04 (operator-agreed 09-02)
+## 🎯 THIS WEEK'S SEQUENCE — Tue 2026-09-08 → Fri 2026-09-11 (operator-agreed 2026-09-07 evening)
 
-**Capacity:** ~70% of a full week left as of Wed 09:00 PDT. **TARGET: the board ends BELOW 70 open
-tasks** (started the day at 82, currently 79) — operator 2026-09-02: *"try to burn down and reach
-below 70 like you shown"*. That is a real-completion target, not a reclassify target: the burndown
-rule stands — reduce ONLY by ship + verify-live or a legitimate duplicate close, never by splitting,
-hiding, or re-homing. This block is a SEQUENCE over existing tasks, not new work; nothing here is a
-new #-line.
+**A BUILD A DAY.** Operator: *"we have time for a build tmr too, at least one each day, look for it"*,
+then *"prioritize the list and for each day Tues-Fri put one item as main and one at stretch, whatever
+we don't get to will go to a push on Saturday and Sunday."* Every line below is an EXISTING #-task;
+this is a sequence, not new work. **Board opens the week at 71** (75 → 71 on 09-07).
 
-**Priority frame:** EP profitability first (standing ruling: EP → HTF → wick_fill), then the one
-hard external deadline, then money-path and alert-trust defects.
+**Priority frame, unchanged:** EP profitability first, then theme correctness (in flight), then
+money-path and alert-trust defects. Nothing new graduates to live until EP works.
 
-| Order | # | Plain name | Who | When |
-|---|---|---|---|---|
-| 1 | **#601** | a theme rename discards the operator's rulings | Fable | Wed (from 11:30 PDT) |
-| 2 | **#545** | entry/exit tactics — *"the EP cohort wins, our tactics do not"* | Fable, **capped at 2 cards** | Wed pm → Thu |
-| 3 | **#603** | Perplexity kills our endpoint 2026-09-27 (hard, external, fails SILENT) | Fable design → Sonnet build | Thu |
-| 3b | **#545 Phase 3** | the joint day-1 stop × target × runner sweep on the MAIN LINE, replayed — operator 2026-09-02: *"ok, phase 3 tmr"*. The only way to size the CONVERSION question (Phase 2: we admit the tail at 13% and realize ≥4R on none of it) without waiting months for live closes. $0. | Fable | Thu, after #603 |
+⚠ **These are BUILDS — code that does not exist yet.** Deliberately excluded: anything already built
+and waiting on a verify, on evidence to accrue, or on an operator decision (#356, #482, #327, #519,
+#414's window half). Those close when the market cooperates, not when we work.
 
-**⚠ THREE THINGS PHASE 3'S CARD MUST DO FIRST (advisor review, 2026-09-02) — each is $0 and each is more decision-relevant than anything it would build:**
-1. **READ WHAT IS ALREADY ON DISK BEFORE BUILDING ANYTHING.** `scripts/ep_replay_data/campaigns_era_c.tsv` already carries every skipped HIGH alert walked through the CURRENT bracket. Phase 2 only summarised the buckets from it. The direct question — **on those campaigns, what did the bracket REALIZE versus what the stock actually did?** — is the conversion gap measured head-on, and it needs no new code.
-2. **ANSWER "DID THE 2R WIDENING WORK" WITHOUT WAITING FOR 16 MORE LIVE CLOSES.** `ep_replay.py` is era-clean by design: **replay the 22 pre-2R live trades under `era_c` rules and count how many still die on day 1.** Today's live split is 73% day-1 deaths pre-2R vs 25% post — on n=4. This is the era-matched version of that number and it is the single most decision-relevant cell on the board.
-3. **STATE WHY `BAND` AND `STRL` ARE "NOT REPLAYABLE"** (missing minute bars?) before `stop_too_wide` is presented as the one bucket that clears the bar. Two unreplayable pre-May names carrying a verdict is the same shape as the May gap-overs that collapsed every delayed-entry result this week.
-| 4 | **#600** | a repair can re-arm a stop at a price the broker already passed (money path) | Sonnet | Fri am |
-| 5 | **#604** | the naked-position L1 cries wolf at 16:15, every time | Sonnet | Fri am |
-
-⚠ **CAPACITY, operator 2026-09-03 evening: #600 is the LAST FABLE-CAPACITY ITEM until the FRIDAY EVENING reset.** Everything after it is **Sonnet or main-loop** — do not scope a Fable card before Friday evening. Friday's fixed points are all main-loop anyway: read #593's 40-day backfill and report the number, verify #617 / #333 / #604, and deploy #604.
-
-**Verifies riding along:** #333 Wed 18:12 ET · #616 Thu · #540, #595, #233 Fri.
-
-### ✅ ALL FOUR NEW RECORDERS ARE ACTUALLY SCHEDULED — checked 2026-09-03, post-deploy
-
-Every recorder shipped today is SILENT by design, so the failure mode is that one is not
-registered and we find out by hearing nothing — the exact shape that left a validation function
-uncalled, an alarm invisible to its own sweep, and a review "ready" for 63 days, all in one week.
-Dry-booted the real job graph inside `apollo-market` (`AsyncIOScheduler.start` patched to a no-op,
-the #519 idiom) — **68 jobs registered**, and all four fire tomorrow:
-
-| job | ET | state |
-|---|---|---|
-| `live_fill_counterfactuals` | 18:04 mon–fri | live (`next_run_time` ABSENT → APScheduler computes it at start) |
-| `analyst_estimates_snapshot` | 18:12 mon–fri | live |
-| `sustain_reject_replay` | 18:13 mon–fri | live |
-| `gap_near_miss_replay` | 18:14 mon–fri | live |
-| `chart_axis_shadow` | 17:50 mon–fri | **`next_run_time=None` — PARKED**, his 08-02 ruling |
-
-⚠ **The control is the point** (#519's own lesson): the parked job reads `None` where the live ones
-read ABSENT, so the probe can tell the two apart. Without a known-parked control, a probe that
-found everything "fine" would prove nothing.
-
-### 💵 DATA SUBSCRIPTIONS — what we pay for and why (answered 2026-09-02, measured not assumed)
-
-Operator asked *"what are we paying for and why, what are the alternatives"* and then *"check it, I
-don't want to add another sub, find a good solution here."* **Answer: nothing is duplicated, and the
-$99 line is load-bearing.**
-
-| Line | Cost | What it buys | Verdict |
+| Day | MAIN | STRETCH | why this order |
 |---|---|---|---|
-| **Alpaca Algo Trader Plus** (`ALPACA_DATA_FEED=sip`) | ~$99/mo | The real-time consolidated tape. Every EP number — gap %, RVOL, ORB high/low — is computed off these bars at 9:31–9:45 ET | **KEEP — proven not redundant** |
-| **Polygon** | monthly | Grouped daily across ~12,500 tickers (the RS universe), news, splits, ticker reference | Keep for now; see the one real option below |
-| **Anthropic** | $47.91 / 30d | Sonnet 5 $33.07 (2,987 calls) · Opus 5 $9.25 · Sonnet 4.6 $3.59 · Haiku $2.00 | metered |
-| **Perplexity** | $21.90 / 30d, **$0.99 in Sept** | Second-opinion grade + overnight brief. The Agent-API migration (#603) collapsed the cost | metered, already fixed |
-| FMP · yfinance · SEC EDGAR | **$0** | Analyst estimates (annual), fundamentals, filing-date anchors | free tier is enough |
+| **Tue 09-08** | **guard telemetry** — make `morning_stop_refresh` (#414 D1) and the rejection capture (#540) record what they CHECKED, not just what they caught | **#582** `theme_synthesis` truncation guard · **#564** weekend ad-hoc lookup writing a real score row | Tuesday is verify-heavy (ten due, incl. #545's two). Small main by design. Unsticks two stale-deploys that cannot otherwise close |
+| **Wed 09-09** | **#486 — the naming build.** Name the groups discovery is already shown and declines | **#331** gap-vs-structure as an explicit scored axis | The discovery recorder's first rows land Tue ~17:00 ET, so Wed is the FIRST day this is knowable. Highest measured payoff on the board: naming 5 sessions earlier takes member gaps ahead of us from 29% → 55% |
+| **Thu 09-10** | **#501 — wire the 13 gate-invisible silent failures** | **#610 + #592** HTF detector: the provisional threshold that starves it, and the wrong measurement | Today produced three separate instances of this exact class (#452 never emitted, #414's exclusion uncounted, #540 unfired). It is the most-proven defect class we have |
+| **Fri 09-11** | **#368 — wire the meta-rubric axis weights** | **#505 + #506** parent-child on every discovery path + a nightly hierarchy health check | Grade quality is the EP-profitability lever, and the weights were never actually set |
+| **Sat–Sun 09-12/13** | **#555 — rewrite `canonicalize_themes` as a model, not a tenth guard** | **#354** merge `flag_continuation` into Family A · plus everything that slipped | The rewrite is the one item that genuinely needs a clear run rather than a weekday slot |
 
-🔑 **THE $99 IS NOT REDUNDANT — MEASURED, NOT ASSUMED.** Polygon on our current plan DOES return
-minute and second aggregates, which is what made the duplication worth testing. But today's bars
-come back stamped **`status: DELAYED`**, and `/v3/trades` returns **403 NOT_AUTHORIZED — "You are
-not entitled to this data"**. A 15-minute delay is unusable for the ORB window: we would be placing
-9:31 entries against 9:16 prices. Making Polygon real-time means UPGRADING Polygon, which is adding
-cost, not saving it.
-
-▶ **THE ONE REAL OPTION, and it is a migration rather than a click:** everything we use Polygon for
-— the daily universe, news, splits, ticker reference — is DELAY-TOLERANT, and Alpaca (already paid,
-already real-time) serves all of it, including news via its Benzinga feed which
-`news_source_quality.py` already names. **So the candidate saving is dropping POLYGON, not Alpaca.**
-Not scoped, not costed, not started — recorded so the question is not re-asked from scratch.
-
-**STRETCH, in the order to take them** (operator 2026-09-02: *"include a few stretch items as well
-if we get to it"*):
-
-| # | Plain name | Why it earns a stretch slot |
-|---|---|---|
-| **#482** | bracket geometry — our stop shakes out winners | Same replay harness as #545, so marginal cost is small once that card runs |
-| **#210** | an accurate read of the news | Its own re-scope says the first work lands when capacity resets — that is now |
-| **#593** | the +20% revert trigger fired on an artifact | Predicate wiring is mechanical; the settled-close basis change is a live admission-gate definition → operator sign-off |
-| **#255** | judge precedent retrieval | Blocked on "enough corpus" with NO number. Name the count that makes it testable, or un-block and close — the line itself says re-dating is the dishonest option |
-| **#261** | scripts/ namespace tidy | Pure burndown, mechanical, no date pressure |
-
-⚠ **Why this block lives in PLAN.md and not in chat:** the sequence and the below-70 target are the
-operator's, and chat compacts. If the week is re-sequenced, EDIT this block — do not leave it
-asserting a plan that is no longer being run.
-
----
+**Not scheduled, and why:** #488 (halt data) touches the live path and wants its own careful slot;
+#579/#598/#561 (surfacing: ad-hoc discovery, the flag board nobody sees, named weekly movers) are
+small and make good filler on any day that runs short; #308-#314 (the v2.0 ladder) is a horizon
+programme, not a week's work.
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
 
