@@ -45,7 +45,12 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 **OPEN** (first actions, every session):
 1. `git pull origin main`.
 2. **`python scripts/check_plan.py --today`** → prints OVERDUE + due-today tasks = the day's plan. **Then `python scripts/live_rules.py --drift-only`** — the acting-rules check (docs-vs-code/prod drift; read-only, works offline). Read `next-session-pickup` for in-flight context (operator is **PDT** — `feedback-operator-timezone-pdt`). **On a fresh machine where the local `memory/` (pickup) is absent — e.g. a laptop — read `docs/HANDOFF.md` instead** (git-synced; the memory dir is machine-local).
-3. STATE the day's plan + **WHO does each piece** (Fable/Sonnet/me), then **PIN it: `delegation_report.py --route "#N:fable"`**. The declaration is the ONLY decidable delegation check — a counting gate was measured on 37 session-days and does not exist (best precision 33%). (operator 2026-08-03: *"use them wisely"*; a CHECKPOINT not a gate — why it can't be gated is in commit `f578a54`).
+3. ⛔ **NEVER assemble "what waits on you" by hand — run `python scripts/operator_asks.py`.** If an
+   item is not in its output, it is NOT open: do not raise it, do not "just check". (Operator
+   2026-09-08: *"I don't want you asking me these answered items again"* — an audit that day found 3
+   of 4 standing asks already answered, one carried for seven weeks, and one asked in spite of a
+   cadence gate built the week before for exactly that purpose.) [[never-re-ask-an-answered-question]]
+4. STATE the day's plan + **WHO does each piece** (Fable/Sonnet/me), then **PIN it: `delegation_report.py --route "#N:fable"`**. The declaration is the ONLY decidable delegation check — a counting gate was measured on 37 session-days and does not exist (best precision 33%). (operator 2026-08-03: *"use them wisely"*; a CHECKPOINT not a gate — why it can't be gated is in commit `f578a54`).
 
 **CLOSE** (when the operator wraps, or before ending):
 1. **Update `PLAN.md` — the single reconcile step.** For every task touched this session: set its status; REBUMP any ETA now ≤ today to a real future date (or close the task). FILE every new item / deferral / finding / watch-item as a PLAN.md line under a project with an ETA — chat & pickup prose do NOT count (the pickup gets rewritten, PLAN.md doesn't). Refresh `.apollo_open_tasks.json` from the harness so the completeness cross-check stays honest.
