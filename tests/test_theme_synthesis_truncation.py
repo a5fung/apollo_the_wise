@@ -1,12 +1,19 @@
-"""Theme-synthesis truncation handling (advisor flag, 2026-06-24).
+"""Theme-synthesis truncation handling (advisor flag, 2026-06-24; guard added #582, 2026-09-08).
 
-The fix that unblocked theme discovery — `max_tokens` 2000→4000 + capturing `stop_reason` in the
-`theme_synthesis_run` telemetry — shipped untested. The exact failure it cures: a forced tool call
-that TRUNCATES (`stop_reason='max_tokens'`) returns an incomplete / missing tool_use block, so
-`tool_input.get('cohorts')` is empty → 0 cohorts proposed, SILENTLY — indistinguishable in the logs
-from a genuine "no emerging cohorts" unless the stop_reason is recorded. (Discovery proposed 0 for
-3 days straight, 6/22–24, because of this.) These tests pin: a truncated response proposes 0
-gracefully AND records `max_tokens`; a normal response parses the cohorts AND records `tool_use`.
+The original fix that unblocked theme discovery — `max_tokens` 2000→4000 + capturing `stop_reason`
+in the `theme_synthesis_run` telemetry — shipped untested and only RECORDED the stop_reason, it
+never ACTED on it: a forced tool call that TRUNCATES (`stop_reason='max_tokens'`) returns an
+incomplete / missing tool_use block, so `tool_input.get('cohorts')` reads empty → 0 cohorts
+proposed, reported as a normal `theme_synthesis_run` — indistinguishable from a genuine "no
+emerging cohorts" run. That is the identical shape to the 2026-08-10 `theme_split` incident, where
+a truncated response parsed as an affirmative "already coherent" verdict (#582).
+
+`run_theme_synthesis` now carries the same `is_truncated()` guard `theme_engine._split_fat_theme`
+uses: a truncated response is detected BEFORE the tool input is read and reported as a
+`theme_synthesis_error` (never a `theme_synthesis_run` with a fabricated 0-cohort result). These
+tests pin: a truncated response (including one with a tool_use block cut mid-JSON, missing the
+`cohorts` key) is DETECTED as a failure, not silently read as an empty verdict; a normal response
+still parses the cohorts AND records `tool_use` under the ordinary `theme_synthesis_run` event.
 """
 from datetime import date
 
@@ -87,14 +94,34 @@ def _setup(monkeypatch, resp):
 
 
 @pytest.mark.asyncio
-async def test_truncated_response_proposes_zero_and_records_stop_reason(monkeypatch):
-    # stop_reason='max_tokens' + NO tool_use block (truncated before the tool JSON) -> proposes 0.
+async def test_truncated_response_is_detected_as_failure_not_zero_cohorts(monkeypatch):
+    # stop_reason='max_tokens' + NO tool_use block (truncated before the tool JSON starts).
     captured = _setup(monkeypatch, _Resp("max_tokens", [_Block("text")]))
     result = await theme_synthesis.run_theme_synthesis()
-    assert result["n_proposed"] == 0  # graceful — no crash on the truncated/empty tool input
-    runs = [d for et, d in captured if et == "theme_synthesis_run"]
-    # the silent-truncation tell must be recorded (this is what made the 6/22-24 zeros legible)
-    assert runs and '"stop_reason": "max_tokens"' in runs[-1]
+    assert result["n_proposed"] == 0
+    # MUST be flagged as a failure, not silently reported as a real 0-cohort run.
+    assert result["dropped"] == ["truncated: max_tokens"]
+    assert "written" not in result  # persist_synthesis_theme_candidates was never reached
+    event_types = [et for et, _ in captured]
+    assert "theme_synthesis_error" in event_types
+    # The old bug: this got reported as an ordinary run with a fabricated empty result.
+    assert "theme_synthesis_run" not in event_types
+
+
+@pytest.mark.asyncio
+async def test_truncated_tool_use_cut_mid_json_is_detected_as_failure(monkeypatch):
+    # THE SHAPE THAT BURNED US (2026-08-10, theme_split): the response DOES carry a
+    # tool_use block for the forced tool, but stop_reason='max_tokens' because the
+    # JSON was cut before `cohorts` was ever emitted — tool_input.get('cohorts') would
+    # silently read as [] (a fabricated "0 cohorts") without the explicit guard.
+    partial_block = _Block("tool_use", {"analysis_scratchpad": "OKTA + CRWD + DDOG accelerati"})
+    captured = _setup(monkeypatch, _Resp("max_tokens", [partial_block]))
+    result = await theme_synthesis.run_theme_synthesis()
+    assert result["n_proposed"] == 0
+    assert result["dropped"] == ["truncated: max_tokens"]
+    event_types = [et for et, _ in captured]
+    assert "theme_synthesis_error" in event_types
+    assert "theme_synthesis_run" not in event_types
 
 
 @pytest.mark.asyncio

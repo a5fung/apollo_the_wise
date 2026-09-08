@@ -20,7 +20,7 @@ import logging
 from datetime import date, timedelta
 from typing import Optional
 
-from agents.market_intelligence.collector import et_today
+from agents.market_intelligence.collector import et_today, last_trading_day
 from agents.market_intelligence.collector import (
     get_grouped_daily,
     get_index_history,
@@ -584,6 +584,20 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
     Score one ticker on demand against today's existing RS distribution.
     1 Polygon API call. Ranks the ticker's raw returns against stored raw returns
     from today's full run. Requires at least one full RS run to have completed.
+
+    #564: an ad-hoc lookup on a non-trading day (weekend, or an explicit
+    `trade_date` that lands on one) does NOT persist a row — see the guard
+    around `upsert_stock_score` below for why (writing onto the last real
+    session's row would OVERWRITE its sector/adv_20/market_cap with None via
+    the full-column upsert, corrupting the legitimate nightly-run row; that
+    is worse than the stray-day bug this replaces). The score is still
+    computed and returned so callers (e.g. `/setup TICKER`) keep working —
+    only the persisted row is skipped.
+    ⚠ `last_trading_day` is WEEKENDS ONLY (see its docstring) — a lookup on a
+    weekday that happens to be a market holiday still writes. Known residual,
+    deliberately not chased (PLAN.md #564): it self-heals once the nightly
+    run backfills that date, which is why every stray row observed on prod
+    was a weekend, never a holiday.
     """
     today = trade_date or et_today()
     today_str = today.strftime("%Y-%m-%d")
@@ -702,8 +716,23 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
         "raw_3m": round(r3, 2),
         "raw_6m": round(r6, 2),
     }
-    await upsert_stock_score(db_record)
-    await upsert_tracked_stock(ticker, today, composite)
+    # #564: only persist (both mi_stock_scores AND mi_tracked_stocks) when
+    # `today` is a real trading day (last_trading_day is weekends-only — a
+    # weekday-holiday stray is a known, self-healing residual, see the
+    # docstring above). An ad-hoc lookup must not mint a `mi_stock_scores`
+    # row dated a session that never traded: the FIGS 2026-08-08 Saturday
+    # row made 08-08 look like a trading day to a downstream date-window
+    # query and silently blanked a signal line in the evening brief. The
+    # score above is still computed from `use_date`'s real distribution and
+    # returned either way — this guard only withholds the WRITE.
+    if today == last_trading_day(today):
+        await upsert_stock_score(db_record)
+        await upsert_tracked_stock(ticker, today, composite)
+    else:
+        logger.info(
+            f"Single-ticker score: {ticker} on {today} is not a trading day — "
+            "score computed but NOT persisted (#564)"
+        )
 
     ma_lines = []
     for sma, label in [(sma_10, "10MA"), (sma_20, "20MA"), (sma_50, "50MA")]:

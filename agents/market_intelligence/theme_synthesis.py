@@ -30,6 +30,7 @@ import json
 import logging
 from datetime import date
 
+from shared.llm_response import is_truncated
 from shared.output_ceilings import max_tokens_for
 from shared import llm_thinking
 
@@ -307,6 +308,35 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
         await log_anthropic_call_safe(model=SYNTHESIS_MODEL, caller="theme_synthesis",
                                        response=resp)
         stop_reason = getattr(resp, "stop_reason", None)
+
+        # TRUNCATION HONESTY (#582, same shape + same fix as
+        # theme_engine._split_fat_theme's 2026-08-10 incident): a
+        # stop_reason='max_tokens' response is a FAILED call, never a genuine
+        # "0 cohorts tonight". Twice on 2026-08-10 a truncated theme_split
+        # response parsed with its key missing and was read as an affirmative
+        # verdict; this caller has the identical hazard — a response cut
+        # mid-JSON parses with `cohorts` missing, indistinguishable from a
+        # real empty proposal unless checked explicitly. The #543 live alarm
+        # (llm_truncation_live) has already fired via log_anthropic_call_safe
+        # above; this is the refusal to also read the cut as a verdict.
+        if is_truncated(resp):
+            logger.warning(
+                f"theme synthesis response TRUNCATED at max_tokens "
+                f"({len(by_ticker)} candidates) — treating as a failed run, "
+                "not a genuine 0-cohort result"
+            )
+            await log_audit_event(
+                "theme_synthesis_error",
+                f"TRUNCATED at max_tokens ({len(by_ticker)} candidates) — "
+                "not a real 0-cohort result",
+                json.dumps({
+                    "run_date": str(rd), "n_candidates": len(by_ticker),
+                    "stop_reason": stop_reason,
+                }),
+            )
+            return {"n_candidates": len(by_ticker), "n_proposed": 0, "n_kept": 0,
+                    "dropped": ["truncated: max_tokens"]}
+
         tool_input = next(
             (b.input for b in resp.content if getattr(b, "type", "") == "tool_use"), {},
         )
