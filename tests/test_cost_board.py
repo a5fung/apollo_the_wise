@@ -196,3 +196,47 @@ async def test_cost_handler_appends_watchdog_when_present(monkeypatch):
     assert "COST BOARD" in resp.result
     assert "WATCHDOG" in resp.result
     assert "theme_validation" in resp.result
+
+
+# ── trading-day baselines (2026-09-08) ───────────────────────────────────────
+# The watchdog reported theme_discovery as "calls 1.5x recent" on a day whose 18 calls
+# sat inside the fortnight's 9-20 range. The trailing windows counted CALENDAR days, so
+# the Labor Day weekend entered the comparison as days of zero spend — which is not
+# evidence of low spend, because the system cannot spend while the market is shut.
+#
+# The calendar must come from the MARKET, never from the usage rows: rows say when a
+# CALLER spent, which cannot distinguish "market shut" from "this caller was quiet".
+# A first attempt derived it from the rows and the new-lane fixtures caught it at once.
+
+def test_window_series_counts_trading_sessions_when_given_them():
+    from datetime import date as _d
+    from agents.market_intelligence.cost_board import _window_series
+    series = {_d(2026, 9, 4): {"calls": 10.0}, _d(2026, 9, 3): {"calls": 20.0}}
+    sessions = [_d(2026, 9, 4), _d(2026, 9, 3)]          # Fri, Thu — no weekend, no holiday
+    assert _window_series(series, _d(2026, 9, 8), "calls", 0, 2, sessions) == [10.0, 20.0]
+
+
+def test_window_series_without_sessions_keeps_the_calendar_behaviour():
+    """The fallback must stay exact: a failed calendar read degrades, never changes meaning."""
+    from datetime import date as _d
+    from agents.market_intelligence.cost_board import _window_series
+    series = {_d(2026, 9, 7): {"calls": 5.0}}
+    assert _window_series(series, _d(2026, 9, 8), "calls", 1, 3) == [5.0, 0.0]
+
+
+def test_the_labor_day_weekend_stops_diluting_a_recent_window():
+    """The exact shape that fired: three non-trading days inside a 5-day 'recent' window."""
+    from datetime import date as _d
+    from agents.market_intelligence.cost_board import _window_series
+    series = {_d(2026, 9, 4): {"calls": 14.0}, _d(2026, 9, 3): {"calls": 12.0},
+              _d(2026, 9, 2): {"calls": 17.0}}
+    today = _d(2026, 9, 8)
+    calendar = _window_series(series, today, "calls", 0, 5)          # incl. Sat/Sun/Labor Day
+    sessions = _window_series(series, today, "calls", 0, 3,
+                              [_d(2026, 9, 4), _d(2026, 9, 3), _d(2026, 9, 2)])
+    # offsets 0..4 from Tue 09-08 = 09-08, Labor Day 09-07, Sun 09-06, Sat 09-05, Fri 09-04.
+    # FOUR of the five are days the market was shut or has no data yet — the dilution is not
+    # marginal, it is most of the window.
+    assert calendar.count(0.0) == 4, "calendar view carries the shut-market zeros"
+    assert 0.0 not in sessions, "the session view carries only days we could have spent"
+    assert sum(sessions) / len(sessions) > sum(calendar) / len(calendar)

@@ -342,10 +342,23 @@ def _classify_caller_band(today_spend: float, history: list[float]) -> tuple[int
     return band, p50, mad, ratio
 
 
-def _window_series(series: dict, today: date, key: str, start_k: int, end_k: int) -> list:
-    """Trailing per-day values of one metric key over day-offsets [start_k, end_k) back from today
-    (a missing day → 0.0). Single source for the anomaly/retry trailing windows so a change to how a
-    day-offset slice is built can't drift across the call sites that need it."""
+def _window_series(series: dict, today: date, key: str, start_k: int, end_k: int,
+                   sessions: "list | None" = None) -> list:
+    """Trailing per-day values of one metric key over offsets [start_k, end_k) back from today
+    (a missing day → 0.0). Single source for the anomaly/retry trailing windows so a change to how
+    a slice is built can't drift across the call sites that need it.
+
+    ⚠ OFFSETS COUNT TRADING SESSIONS when `sessions` is given (2026-09-08), calendar days
+    otherwise. Calendar offsets fold weekends and market holidays in as $0 days, which is not
+    evidence of low spend — the system cannot spend while the market is shut. In a
+    "recent vs baseline" ratio that flattens the baseline and makes an ordinary day read as a
+    ramp: theme_discovery was reported as "calls 1.5x recent" on a day whose 18 calls sat inside
+    the fortnight's 9-20 range, with the Labor Day weekend inside the comparison window.
+
+    `sessions` is NEWEST-FIRST (index 0 = the most recent session strictly before `today`), so
+    every existing offset keeps its meaning and no call site changes intent."""
+    if sessions:
+        return [series.get(d, {}).get(key, 0.0) for d in sessions[start_k:end_k]]
     return [series.get(today - timedelta(days=k), {}).get(key, 0.0)
             for k in range(start_k, end_k)]
 
@@ -404,7 +417,8 @@ def _attribute_leak(today_spend: float, today_calls: int,
 
 
 def _caller_cost_anomalies_from_rows(rows, today: date, lookback_days: int = 30,
-                                     daily: "dict | None" = None) -> list[dict]:
+                                     daily: "dict | None" = None,
+                                     _sessions: "list | None" = None) -> list[dict]:
     """Pure half of compute_caller_cost_anomalies — takes already-fetched
     rows so compute_cost_watchdog can share ONE api_usage read across both
     the anomaly detector and the reduction heuristics below, instead of
@@ -418,8 +432,8 @@ def _caller_cost_anomalies_from_rows(rows, today: date, lookback_days: int = 30,
         today_calls = today_slot["calls"]
         if today_spend < CALLER_ANOMALY_MIN_USD:
             continue
-        hist_spend = _window_series(series, today, "spend", 1, lookback_days + 1)
-        hist_calls = _window_series(series, today, "calls", 1, lookback_days + 1)
+        hist_spend = _window_series(series, today, "spend", 1, lookback_days + 1, _sessions)
+        hist_calls = _window_series(series, today, "calls", 1, lookback_days + 1, _sessions)
         active_spend = [v for v in hist_spend if v > 0]
         active_calls = [v for v in hist_calls if v > 0]
         if len(active_spend) < CALLER_MIN_SAMPLE_DAYS:
@@ -479,7 +493,8 @@ _NEW_LANE_RECENT_DAYS = 3     # a lane that starts on a Friday is still new on M
 
 
 def _new_lanes_from_rows(rows, today: date, recent_days: int = _NEW_LANE_RECENT_DAYS,
-                         lookback_days: int = 30, daily: "dict | None" = None) -> list[dict]:
+                         lookback_days: int = 30, daily: "dict | None" = None,
+                         _sessions: "list | None" = None) -> list[dict]:
     """Callers spending in the last `recent_days` with ZERO spend across the whole baseline window.
 
     Pure (unit-testable without a DB). The once-ever dedupe lives in the async layer — a sparse
@@ -488,14 +503,14 @@ def _new_lanes_from_rows(rows, today: date, recent_days: int = _NEW_LANE_RECENT_
     daily = daily if daily is not None else _daily_caller_series(rows)
     out = []
     for caller, series in daily.items():
-        recent_spend = sum(_window_series(series, today, "spend", 0, recent_days))
+        recent_spend = sum(_window_series(series, today, "spend", 0, recent_days, _sessions))
         if recent_spend < _NEW_LANE_MIN_USD:
             continue
         baseline = sum(_window_series(series, today, "spend", recent_days,
-                                      lookback_days + recent_days))
+                                      lookback_days + recent_days, _sessions))
         if baseline > 0:
             continue
-        recent_calls = int(sum(_window_series(series, today, "calls", 0, recent_days)))
+        recent_calls = int(sum(_window_series(series, today, "calls", 0, recent_days, _sessions)))
         out.append({
             "type": "new_lane", "caller": caller,
             "recent_spend": round(recent_spend, 2), "recent_calls": recent_calls,
@@ -633,6 +648,25 @@ async def detect_reduction_opportunities(
     return _reduction_opportunities_from_rows(rows, today, lookback_days, window_days)
 
 
+async def _trading_sessions(today: date, lookback_days: int) -> list:
+    """Trading days strictly before `today`, newest-first, from the market's own calendar.
+
+    mi_daily_closes has a row per ticker per SESSION, so a holiday produces none and the calendar
+    needs no maintenance. Returns [] on any failure, which routes _window_series back to calendar
+    offsets — a slightly noisy baseline beats a silent watchdog."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT DISTINCT trade_date AS d FROM mi_daily_closes "
+                "WHERE trade_date < $1 ORDER BY trade_date DESC LIMIT $2",
+                today, lookback_days * 2)
+        return [r["d"] for r in rows]
+    except Exception:
+        logger.exception("cost baseline: trading-session read failed; using calendar days")
+        return []
+
+
 async def compute_cost_watchdog(today: date, lookback_days: int = 30) -> dict:
     """Combined read for the /cost board appendix + the daily job — ONE
     api_usage fetch feeds both the anomaly detector and the reduction
@@ -640,10 +674,17 @@ async def compute_cost_watchdog(today: date, lookback_days: int = 30) -> dict:
     indexed range twice per caller check)."""
     rows = await _fetch_caller_window(today, lookback_days)
     daily = _daily_caller_series(rows)  # derived ONCE here, shared by all three consumers below
-    anomalies = _caller_cost_anomalies_from_rows(rows, today, lookback_days, daily=daily)
+    # TRADING-DAY calendar for the trailing windows (2026-09-08). Sourced here because only the
+    # async layer has DB access and because it must come from the MARKET's calendar, never from
+    # the usage rows: rows tell us when a CALLER spent, which cannot distinguish "market shut"
+    # from "this caller was quiet" — a distinction the new-lane fixtures caught immediately.
+    sessions = await _trading_sessions(today, lookback_days)
+    anomalies = _caller_cost_anomalies_from_rows(rows, today, lookback_days, daily=daily,
+                                                 _sessions=sessions)
     opportunities = _reduction_opportunities_from_rows(rows, today, lookback_days, daily=daily)
     new_lanes = await _unannounced_new_lanes(
-        _new_lanes_from_rows(rows, today, lookback_days=lookback_days, daily=daily))
+        _new_lanes_from_rows(rows, today, lookback_days=lookback_days, daily=daily,
+                             _sessions=sessions))
     return {"anomalies": anomalies, "opportunities": opportunities, "new_lanes": new_lanes}
 
 
