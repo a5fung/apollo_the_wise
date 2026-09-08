@@ -571,3 +571,40 @@ bounded poll-and-classify helper next time that file is opened for a real reason
   "no trail = −24R" and the truth was +4R. `phase_replay` now emits `mark_r` so it is correctable.
 - **Name the two things being compared, side by side.** Operator: *"you didn't tell me which exit
   for which, I have no idea where your conclusion are from."*
+
+## 2026-09-07 (Mon, Labor Day) — 🔴 RESUME HERE. Supersedes everything above.
+
+**Closed at `8b37be80`, suite 7777, board 75 → 71** (four real closes, no carryover).
+
+**THE WEEK IS ALREADY PLANNED — read the top of `PLAN.md` first.** His instruction was *"at least one
+[build] each day"*, main + stretch Tue-Fri with the weekend catching slippage. He rejected a first
+list for mixing builds with verifies (*"I asked what's top ten build not what's left to verify"*), so
+in that block MAIN/STRETCH means **unwritten code** and AGENDA means verifies, reads and rulings.
+
+**THEMES ARE MEASURED; NAMING IS THE WEAK HALF.** Four $0 steps landed with their probes and findings
+docs (`docs/analysis/step{1,2,3}_theme_*_2026-09-07.md`):
+- Group-FINDING precision is **93%**; the "errors" are the engine mis-NAMING a group he identified
+  correctly (crypto-miners-to-AI filed as "Crypto Asset Recovery").
+- Recall came back a clean **null** and the defect was mine — a "≥3 strong peers" bar saturates above
+  ~10 peers, firing on 93%/93%/92% of three different populations.
+- **The payoff:** we name a theme a median **30 sessions after its first signal**, and **140 of 398
+  themes sat unnamed in a correlation cluster** a median 26 sessions before birth. Naming **5 sessions
+  earlier takes member gaps still ahead of us from 29% to 55%** — he aligned on 5.
+- ⚠ The lever is **naming, not detection**: `_discover_new_themes` (`theme_engine.py:7500`) is already
+  handed `correlation_clusters` and declined those groups.
+
+**THREE RECORDERS ARE LIVE AS OF TONIGHT'S DEPLOY** (`both` then `execution`), first rows Tue
+2026-09-08: `theme_discovery_shown_declined` (~17:00 ET) · the EOD unscored theme-axis recorder
+(18:03 ET) · `exposure_family_checked` (next entry submission). **2,512 backfilled rows** already
+give the null control: sub-bar names carry a theme 15.4% of the time vs 33% for alerts.
+
+**THE DEFECT CLASS TO CARRY FORWARD:** a guard that writes a row only when it FIRES cannot be
+verified, and its silence reads as safety. Three instances surfaced in one day (#452, #414, #540).
+Thursday's #501 is ranked on that evidence.
+
+**HIS RULINGS:** themes are **not** judged on returns yet (said twice — I closed a review on returns
+and had to re-open it) · RS and EP are **reflexive**, so split grind from co-gap in every cohort read ·
+**subtle RS** = rising / rising faster / holding up on down days, and the down-day leg did not exist ·
+#452 stays observe-only · #281 closed (staging was built and never once started).
+
+**WAITS ON HIM, not on us:** #184's dry-run flip · #612's key rotation · #519's scorer and spend.
