@@ -20,32 +20,67 @@ _Last CLOSE: 2026-06-16._
 
 ---
 
-## 🎯 THIS WEEK'S SEQUENCE — Tue 2026-09-08 → Fri 2026-09-11 (operator-agreed 2026-09-07 evening)
+## 🎯 THIS WEEK'S PLAN — Tue 2026-09-08 → Sun 2026-09-13 (operator-agreed 2026-09-07 evening)
 
-**A BUILD A DAY.** Operator: *"we have time for a build tmr too, at least one each day, look for it"*,
-then *"prioritize the list and for each day Tues-Fri put one item as main and one at stretch, whatever
-we don't get to will go to a push on Saturday and Sunday."* Every line below is an EXISTING #-task;
-this is a sequence, not new work. **Board opens the week at 71** (75 → 71 on 09-07).
+**A BUILD A DAY, plus the day's agenda.** Operator: *"we have time for a build tmr too, at least one
+each day, look for it"* → *"prioritize the list and for each day Tues-Fri put one item as main and
+one at stretch, whatever we don't get to will go to a push on Saturday and Sunday"* → *"make this the
+plan along with current agenda."* **Board opens the week at 71** (75 → 71 on 09-07). Everything below
+is an EXISTING #-task; this is a sequence, not new work.
 
 **Priority frame, unchanged:** EP profitability first, then theme correctness (in flight), then
 money-path and alert-trust defects. Nothing new graduates to live until EP works.
 
-⚠ **These are BUILDS — code that does not exist yet.** Deliberately excluded: anything already built
-and waiting on a verify, on evidence to accrue, or on an operator decision (#356, #482, #327, #519,
-#414's window half). Those close when the market cooperates, not when we work.
+⚠ **MAIN/STRETCH are BUILDS — code that does not exist yet.** AGENDA is everything else the day
+already owes: verifies, reads, rulings. Deliberately NOT scheduled as builds: #356, #482, #327, #519
+and #414's window half — all built and waiting on a verify, on evidence, or on him. Those close when
+the market cooperates, not when we work.
 
-| Day | MAIN | STRETCH | why this order |
-|---|---|---|---|
-| **Tue 09-08** | **guard telemetry** — make `morning_stop_refresh` (#414 D1) and the rejection capture (#540) record what they CHECKED, not just what they caught | **#582** `theme_synthesis` truncation guard · **#564** weekend ad-hoc lookup writing a real score row | Tuesday is verify-heavy (ten due, incl. #545's two). Small main by design. Unsticks two stale-deploys that cannot otherwise close |
-| **Wed 09-09** | **#486 — the naming build.** Name the groups discovery is already shown and declines | **#331** gap-vs-structure as an explicit scored axis | The discovery recorder's first rows land Tue ~17:00 ET, so Wed is the FIRST day this is knowable. Highest measured payoff on the board: naming 5 sessions earlier takes member gaps ahead of us from 29% → 55% |
-| **Thu 09-10** | **#501 — wire the 13 gate-invisible silent failures** | **#610 + #592** HTF detector: the provisional threshold that starves it, and the wrong measurement | Today produced three separate instances of this exact class (#452 never emitted, #414's exclusion uncounted, #540 unfired). It is the most-proven defect class we have |
-| **Fri 09-11** | **#368 — wire the meta-rubric axis weights** | **#505 + #506** parent-child on every discovery path + a nightly hierarchy health check | Grade quality is the EP-profitability lever, and the weights were never actually set |
-| **Sat–Sun 09-12/13** | **#555 — rewrite `canonicalize_themes` as a model, not a tenth guard** | **#354** merge `flag_continuation` into Family A · plus everything that slipped | The rewrite is the one item that genuinely needs a clear run rather than a weekday slot |
+### Tue 09-08 — first trading day after Labor Day
+- **MAIN BUILD: guard telemetry.** Make `morning_stop_refresh` (#414 D1) and the rejection capture
+  (#540) record what they **CHECKED**, not only what they caught. Same pattern as the #452 heartbeat
+  shipped 09-07. Small by design — the day is verify-heavy — and it unsticks two stale-deploys that
+  cannot otherwise close.
+- **STRETCH:** #582 `theme_synthesis` truncation guard · #564 weekend ad-hoc lookup writing a real
+  score row.
+- **AGENDA — 10 due:** **#545 (TWO distinct verifies: the breakeven path RUNS, then the rule ACTS on
+  a real +3 ORB-R touch)** · #628 sizing knob · #600 · #607 · #210 · #184 · #624 · #623 · #627 · #176.
+- **EVENING, unattended:** the discovery recorder writes its first `theme_discovery_shown_declined`
+  row (~17:00 ET) and the unscored recorder its first rows (18:03 ET). Do not read them tonight.
 
-**Not scheduled, and why:** #488 (halt data) touches the live path and wants its own careful slot;
-#579/#598/#561 (surfacing: ad-hoc discovery, the flag board nobody sees, named weekly movers) are
-small and make good filler on any day that runs short; #308-#314 (the v2.0 ladder) is a horizon
-programme, not a week's work.
+### Wed 09-09 — the first day #486 is knowable
+- **MAIN BUILD: #486 — the naming build.** Name the groups discovery is ALREADY shown and declines.
+  Largest measured payoff on the board: naming 5 sessions earlier moves member gaps still ahead of us
+  from **29% → 55%**. ⚠ Read Tuesday's declined-cluster rows FIRST — the build follows the reason,
+  not the other way round. Detection criterion → CHANGE_PROCESS + operator sign-off + SSoT same commit.
+- **STRETCH:** #331 gap-vs-structure as an explicit scored axis.
+- **AGENDA — 4 due:** #589 (did the nightly auto-export produce a FRESH funnel snapshot on its own?) ·
+  #625 · #471 · #299 (blocked on funding, his call).
+
+### Thu 09-10 — the most-proven defect class we have
+- **MAIN BUILD: #501 — wire the 13 gate-invisible silent failures.** Ranked here on 09-07's evidence:
+  three separate instances surfaced in one session — #452 had never emitted in five weeks, #414's
+  same-day exclusion is uncounted, #540 has never fired.
+- **STRETCH:** #610 + #592 — the HTF detector's provisional threshold that starves it, and the wrong
+  measurement.
+- **AGENDA:** nothing due. The clearest build day of the week.
+
+### Fri 09-11 — grade quality is the EP lever
+- **MAIN BUILD: #368 — wire the meta-rubric axis weights.** They were never actually set.
+- **STRETCH:** #505 + #506 — parent-child on every discovery path + a nightly hierarchy health check.
+- **AGENDA — 3 due:** #486 · #368 · #482.
+
+### Sat–Sun 09-12/13 — the catch-up push
+- **MAIN BUILD: #555 — rewrite `canonicalize_themes` as a MODEL, not a tenth guard.** The one item
+  that genuinely needs a clear run rather than a weekday slot.
+- **STRETCH:** #354 merge `flag_continuation` into Family A · **plus everything that slipped Tue-Fri.**
+- **AGENDA — 7 due:** #579 · #564 · #414 · #561 (Sat) · #488 · #519 · #485 (Sun).
+
+### Standing — waits on the operator, not on us
+- **#184** — flip broker-order ingest from dry-run to live. Rec 09-07: keep logging.
+- **#612** — rotate the FMP key and decide whether to purge the 99 plaintext rows.
+- **#519** — which scorer, and whether to spend.
+- **#452** — ruled 09-07: stays observe-only; reopens only on same-family entries underperforming.
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
 
