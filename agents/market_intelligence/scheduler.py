@@ -5491,11 +5491,29 @@ async def _ep_scan_watchdog():
 
 
 async def _9m_scan_job() -> None:
-    """Run every 5 min, 9:30 AM – 4:00 PM ET. Detect 9M EP volume events."""
+    """Run every 5 min, 9:30 AM – 4:00 PM ET. Detect 9M EP volume events.
+
+    ⛔ GATED ON THE STRATEGY FLAG since 2026-09-08. `mi_strategies.9m_day2` has been
+    phase='deprecated', enabled=false for weeks and the operator has ruled repeatedly
+    that "9M is GONE — stop raising it", yet this job kept scanning every five minutes
+    and writing mi_9m_ep_alerts (17 rows on 2026-09-08). That surfaced as an L2 anomaly
+    that PAGED him about a lane which cannot place an order.
+
+    The defect was structural, not specific to 9M: a detector ignoring its own
+    strategy's master switch. `should_run` is the sanctioned gate for exactly this
+    (same lever flag_detector uses) and it fails OPEN for an unregistered strategy, so
+    nothing else changes behaviour. Re-enabling `9m_day2` revives the scan by itself —
+    the switch is data, not this code. Sibling precedent: the 9M Day-2 ORB job was
+    REMOVED outright on 2026-08-02 (#515); gating rather than deleting keeps the lane
+    replayable and reversible.
+    """
     from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.strategies.registry import should_run
     today = et_today()
     if not get_market_status(today).is_trading_day:
         return
+    if not await should_run("9m_day2"):
+        return  # deprecated lane — no scan, no rows, no page
     try:
         from agents.market_intelligence.ninem_detector import run_9m_scan
         alerts = await run_9m_scan()
