@@ -76,11 +76,30 @@ the market cooperates, not when we work.
 - **STRETCH:** #354 merge `flag_continuation` into Family A · **plus everything that slipped Tue-Fri.**
 - **AGENDA — 7 due:** #579 · #564 · #414 · #561 (Sat) · #488 · #519 · #485 (Sun).
 
-### Standing — waits on the operator, not on us
-- **#184** — flip broker-order ingest from dry-run to live. Rec 09-07: keep logging.
-- **#612** — rotate the FMP key and decide whether to purge the 99 plaintext rows.
-- **#519** — which scorer, and whether to spend.
-- **#452** — ruled 09-07: stays observe-only; reopens only on same-family entries underperforming.
+### Standing — waits on the operator (each carries a PROOF; no proof = do not raise it)
+
+⛔ **Operator 2026-09-08: *"I don't want you asking me these answered items again."*** An audit that
+day found **three of four** items here were already answered — #184's flip taken 2026-07-17 and
+carried for seven weeks, #612 dead since 09-02 (he said twice we have no FMP sub), #452 ruled the
+previous day. This section CAUSED that: it was a written-once list nobody retracted.
+
+**RULE: an item may only be raised with him if its PROOF still holds.** Run the proof first. If it
+fails, the item is answered — delete the line, do not mention it.
+[[never-re-ask-an-answered-question]]
+
+| # | the ask | PROOF it is still open |
+|---|---|---|
+| **#519** | Chart-vision: which scorer (realized R on 43 closed trades vs forward return), then fund the run or not | no ADR-0011 scorer ruling recorded on the #519 line ⚠ **AND HALF IS MINE — he cannot approve a spend I have not priced. Produce ONE cost number for the whole path (227-alert run + any re-run) from `pricing_for()` BEFORE raising it.** |
+
+**Retired as ANSWERED 2026-09-08 — do not resurrect:**
+- **#184** — `mi_safeguard_state.broker_order_ingest = live_r1` since 2026-07-17. Proof: query it.
+- **#612** — the FMP key is DEAD: 547 `api_failure_fmp` rows in 7 days, and he ruled 09-02
+  *"what FMP key, we don't have a sub"*. Nothing to rotate. The 99 plaintext rows are a cosmetic
+  purge and MY call, not his.
+- **#452** — ruled 2026-09-07: stays observe-only; reopens only on same-family entries
+  underperforming solo ones.
+- **wick_fill promotion hold** — restored 2026-09-08 on his approval; the checker now reports
+  `eligible: false`.
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
 
