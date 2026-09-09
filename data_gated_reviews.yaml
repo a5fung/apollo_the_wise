@@ -9813,35 +9813,29 @@ reviews:
       Exit discipline on the money path => THE LINE: CHANGE_PROCESS + operator sign-off
       before any rule ships. This review produces evidence, not a rule.
     predicate_sql: >-
-      SELECT LEAST(
-        (SELECT COUNT(*) FROM mi_live_trades
-          WHERE status = 'closed' AND account_mode = 'live'),
-        -- REGIME-DIVERSITY GATE (added 2026-07-30). Trade count alone cannot answer
-        -- "does the right exit differ by regime" — measured 2026-07-30 the live cells
-        -- were Bull n=1, Choppy n=4, Correcting n=6, Crisis n=0. Twenty-five more
-        -- trades all in one regime would fire this review and still answer nothing.
-        -- Capped until at least 3 DISTINCT regimes have >=4 live closes each:
-        -- 9 x that count means the gate opens at 3 qualifying regimes.
-        -- Today: 2 qualifying regimes (Choppy 4, Correcting 6) -> 18, so the trade
-        -- count still binds; at 25 trades in 2 regimes this correctly holds at 18.
-        (SELECT 9 * COUNT(*) FROM (
-            SELECT r.regime FROM mi_live_trades t
-              JOIN mi_market_regime r ON r.regime_date = t.alert_date
-             WHERE t.status = 'closed' AND t.account_mode = 'live'
-             GROUP BY r.regime HAVING COUNT(*) >= 4) q)
-      );
-    threshold: 25
+      SELECT COUNT(*) FROM mi_sell_discipline_records r
+      WHERE r.account_mode = 'live' AND r.signal_type = 'magna53'
+        AND r.alert_date >= DATE '2026-09-06'
+    # ⚠ RE-GATED 2026-09-09 ON THE EXIT ERA, after this review fired and produced a RETRACTED
+    # recommendation. The old predicate counted ALL live magna53 trades regardless of which exit
+    # rule they ran under. It read 27 and fired — but the MAGNA53 exit was flipped live on
+    # 2026-09-06 (commit b52fdcbc: partial to +8R, price-armed breakeven at +3R), so 27 of those
+    # 28 trades belonged to the REPLACED rule. Comparing candidate exits against that baseline
+    # measures a system that no longer exists (analysis_standard.md §2, the era rule).
+    # The date floor is the flip date. This review must not fire again until there are enough
+    # trades run under the CURRENT rule to say anything about it.
+    threshold: 20
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     # 10 closed live trades at registration. 25 gives a plausible 3-way regime split
     # (the current 6/4/1 cannot support one). Trade-count gated, never a date — a
     # future date could only delay a review whose evidence is already in (ruled 7/26).
-    earliest_review_date: 2026-07-29
+    earliest_review_date: 2026-10-15
     action_when_ready: >-
       Re-run the regime x exit cut across all setups using the date join. Report
       realized R, peak R and win rate per regime cell with n. Name which cells remain
       too thin. Then the operator rules whether the exit rule varies by regime.
       Rulings land on #545's PLAN line (the entry/exit tactics program). ⚠ Repointed 2026-09-09: this said #508, which is CLOSED — a dangling pointer that would have sent the next reader to a line that is not there.
-    status: done
+    status: pending
     added_on: 2026-07-29
     cross_refs: ["task #508", "task #503"]
 
