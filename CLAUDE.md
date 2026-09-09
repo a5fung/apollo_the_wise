@@ -256,6 +256,10 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
+### 2026-09-09 — #486: two cluster artifacts killed at the source; the recorder now says WHY a cluster was declined
+
+- GOOG×4 (four share classes, one issuer) held a cluster slot 25 nights and became a live theme once; takeover targets clustered at 0.92. Both removed in `correlation_engine.py` (root-match + return-identity; ex-spike vol floor). Discovery renders cluster members with RS / description / `[in: theme]`; the recorder adds `already_named` + the model's scratchpad. Rule sentences unchanged. Lesson: the recall-run "declined" count was the shadow reading the nightly's own births back as existing. Full read + operator forks: `docs/architecture/theme_engine.md` 2026-09-09.
+
 ### 2026-09-04 — #624 low-cap EP lane shipped as a SHADOW recorder
 
 - Rule + evidence + THE-LINE proof: `docs/setups/magna53_ep.md` §"Low-cap lane". Lesson: `get_fmp_profile` is yfinance, not FMP.

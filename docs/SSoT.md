@@ -80,6 +80,7 @@ setup's criteria, change log and findings.
 |---|---|
 | Entry pipeline (the single funnel) | `docs/architecture/entry_pipeline.md` |
 | Theme engine | `docs/architecture/theme_engine.md` |
+| Correlation cluster engine (the Lane-1 statistical pre-pass: thresholds, share-class collapse, cash-like floor, what discovery is shown) | `docs/architecture/theme_engine.md` §"Correlation cluster engine" |
 | Dual-account (paper/live routing) | `docs/architecture/dual_account.md` |
 | Trade-state ownership | `docs/architecture/trade-state-ownership.md` |
 | Market agent build & ops how-to (run locally · add a tool · add a Telegram command · `execute_task` routing · ticker extraction · env vars · pre-commit hooks) | `docs/architecture/market_agent_reference.md` |

@@ -1333,6 +1333,7 @@ async def run_theme_discovery_shadow(today=None, clusters=None) -> dict:
     turners = [s for s in turners_all if s["ticker"] not in covered]
 
     # 5. discovery — EXISTING prompt (baseline; (f) ignition variant is a Monday A/B step)
+    await _ensure_cluster_member_descriptions(clusters)
     new_raw = await _discover_new_themes(
         uncovered, existing, stocks_by_ticker,
         velocity_leaders=velocity_leaders, turners=turners,
@@ -1366,6 +1367,24 @@ async def run_theme_discovery_shadow(today=None, clusters=None) -> dict:
     except Exception:
         pass
     return summary
+
+
+async def _ensure_cluster_member_descriptions(clusters: "list[dict] | None") -> None:
+    """#486 (2026-09-09): correlation-cluster members are now rendered with a
+    description in the discovery prompt (`_render_cluster_block`), and most of
+    them sit outside every pool the existing `_ensure_descriptions` calls cover
+    (a cluster member at RS 90 is rank ~240 — far below the top-40 leaders).
+    Same helper, same cache (mi_ticker_overrides; dedup + early-return keeps a
+    re-run free). GUARDED: a description fetch failing must not take discovery
+    down with it — the block degrades to bare tickers, which is what it always
+    rendered before this change."""
+    tks = sorted({str(tk) for c in (clusters or []) for tk in (c.get("tickers") or []) if tk})
+    if not tks:
+        return
+    try:
+        await _ensure_descriptions(tks)
+    except Exception as e:  # loud-ok: context enrichment must never break discovery
+        logger.warning(f"[theme discover] cluster-member descriptions skipped: {e}")
 
 
 async def _ensure_descriptions(tickers: list[str]) -> None:
@@ -4007,6 +4026,17 @@ _ASSIGN_LLM_BATCH_SIZE = 18
 #   run) — narrower than a truncation (costs one cohort, not the whole call).
 _DISCOVERY_LLM_BATCH_STOCKS = 22
 
+# #486 (2026-09-09): correlation-cluster members are rendered WITH RS, sector and
+# description like every other pool (they were the only block shown as bare
+# tickers). At most this many members per cluster get the full line — the top
+# by member RS — and the rest are listed bare on a "+K more" tail, so a 33-name
+# cluster (the precious-metals block on 09-08) cannot add 33 rendered stocks to
+# one call. _partition_discovery_pools counts the described lines toward the
+# batch weight, which is what keeps _DISCOVERY_LLM_BATCH_STOCKS honest: a
+# described cluster member costs the same output as a pool stock (the
+# scratchpad narrates rendered names), a bare tail ticker costs ~1 token.
+_CLUSTER_DESCRIBED_CAP = 12
+
 
 def _chunk_list(items: list, size: int) -> list[list]:
     """Contiguous chunks of at most `size` (pure; order-preserving)."""
@@ -5262,9 +5292,13 @@ def _partition_discovery_pools(
 
     def _weight(a: dict) -> int:
         n = sum(len(by_ticker[tk]) for tk in a["tickers"])
-        if n == 0 and a["clusters"]:
-            # Cluster with no pool members still renders its ticker list.
-            n = sum(len(c.get("tickers") or []) for c in a["clusters"])
+        # #486: cluster members outside every pool are rendered with a full
+        # description line too (up to _CLUSTER_DESCRIBED_CAP per cluster), so
+        # they count as rendered stocks. Members that ARE in a pool were
+        # already counted above (their cluster line reuses the pool's data).
+        for c in a["clusters"]:
+            outside = [tk for tk in (c.get("tickers") or []) if tk not in by_ticker]
+            n += min(len(outside), _CLUSTER_DESCRIBED_CAP)
         return n
 
     def _sector(a: dict) -> str:
@@ -5320,12 +5354,106 @@ def _partition_discovery_pools(
     return batches
 
 
+def _render_cluster_block(
+    relevant: "list[dict]",
+    existing_themes: "list[dict]",
+    stocks_by_ticker: "dict[str, dict]",
+) -> str:
+    """The CORRELATION CLUSTERS block of the discovery prompt (pure; #486, 2026-09-09).
+
+    PARITY, not a new rule. Every other pool renders a stock as
+    `TICKER (RS, sector — description)`; the cluster block rendered bare tickers,
+    so a cluster whose members sit outside the top-40 leaders (RS 90 = rank ~240
+    of ~2,400 — hotel REITs at RS 94, truckers at RS 92) reached the model as
+    five symbols and nothing else. Now:
+      * clusters are ordered strongest-first by avg RS (the BFS order was
+        arbitrary, so 'Cluster A' meant nothing);
+      * each member carries its RS (cluster `member_rs` from the engine, else
+        the pool lookup), sector when known, and description when known;
+      * a member already in an active theme is tagged `[in: <theme>]`, so a
+        cluster that is already named several times over (the 33-name
+        precious-metals block, held by five themes on 09-08) is self-evident;
+      * at most _CLUSTER_DESCRIBED_CAP members (top by RS) get the full line;
+        the rest are listed bare on a '+K more' tail — bounded rendering.
+    The three rule sentences at the end are VERBATIM from before this change
+    (the disposition is the criterion; the rendering is context).
+    """
+    from agents.market_intelligence.universe import TICKER_DESC
+
+    # ticker → (theme name, stage). The stage matters: the one split that DID
+    # work in the history (tankers, cluster 09-01 → named 09-02) came out of a
+    # FADING 41-name energy blob, and a bare `[in: X]` on a dying parent would be
+    # a stronger "skip" signal than the bare ticker the model used to see. So a
+    # Fading parent is named as such in the tag and split out in the header.
+    ticker_theme: dict[str, tuple[str, str]] = {}
+    for t in existing_themes or []:
+        for tk in (t.get("tickers") or []):
+            ticker_theme.setdefault(tk, (t.get("name") or "", str(t.get("stage") or "")))
+
+    def _tag(tk: str) -> str:
+        if tk not in ticker_theme:
+            return ""
+        name, stage = ticker_theme[tk]
+        return f" [in: {name} (Fading)]" if stage == "Fading" else f" [in: {name}]"
+
+    def _rs_of(c: dict, tk: str) -> "float | None":
+        mrs = c.get("member_rs") or {}
+        if tk in mrs and mrs[tk] is not None:
+            return float(mrs[tk])
+        s = stocks_by_ticker.get(tk) or {}
+        v = s.get("rs_composite", s.get("rs_now"))
+        return float(v) if v is not None else None
+
+    ordered = sorted(relevant, key=lambda c: -float(c.get("avg_rs") or 0.0))
+    lines: list[str] = []
+    for i, c in enumerate(ordered):
+        members = list(c.get("tickers") or [])
+        n_in = sum(1 for tk in members if tk in ticker_theme)
+        n_fading = sum(1 for tk in members if tk in ticker_theme and ticker_theme[tk][1] == "Fading")
+        by_rs = sorted(members, key=lambda tk: -(_rs_of(c, tk) if _rs_of(c, tk) is not None else -1.0))
+        described, tail = by_rs[:_CLUSTER_DESCRIBED_CAP], by_rs[_CLUSTER_DESCRIBED_CAP:]
+        covered_note = ""
+        if n_in:
+            covered_note = f", {n_in} of {len(members)} already in a theme"
+            if n_fading:
+                covered_note += f" ({n_fading} of those in a Fading one)"
+        head = (f"- Cluster {chr(65 + i)} ({c.get('member_count', len(members))} stocks, "
+                f"corr {float(c.get('mean_corr') or 0):.2f}, avg RS {float(c.get('avg_rs') or 0):.0f}"
+                f"{covered_note}):")
+        lines.append(head)
+        for tk in described:
+            rs = _rs_of(c, tk)
+            parts = [f"RS {rs:.0f}" if rs is not None else "RS ?"]
+            sec = (stocks_by_ticker.get(tk) or {}).get("sector")
+            if sec and sec != "Unknown":
+                parts.append(f"sector: {sec}")
+            desc = TICKER_DESC.get(tk, "")
+            meta = ", ".join(parts) + (f" — {desc}" if desc else "")
+            lines.append(f"    · {tk} ({meta}){_tag(tk)}")
+        if tail:
+            tail_txt = ", ".join(f"{tk}{_tag(tk)}" for tk in tail)
+            lines.append(f"    · +{len(tail)} more: {tail_txt}")
+    cluster_lines = "\n".join(lines)
+    return f"""
+CORRELATION CLUSTERS (beta-adjusted residual correlation ≥ 0.85, 20-day window; strongest avg RS first):
+These stocks have been moving together statistically before any narrative crystallized — potential emerging themes.
+Each member shows its own RS and description; [in: X] marks a member already in the active theme X (listed above); "(Fading)" means that theme is fading.
+{cluster_lines}
+
+If a cluster maps to a clear business thesis, propose it as a Nascent theme.
+If the correlation reason is unclear, do NOT force a theme — leave the stocks uncovered.
+IMPORTANT: If a cluster forms a valid theme, invent a specific descriptive business name (e.g., 'Optical Networking', 'Uranium Miners'). Do NOT name it 'Cluster A', 'Cluster B', or any placeholder — those labels are internal identifiers only.
+"""
+
+
 async def _log_discovery_shown_and_declined(
     pools: "dict[str, list[dict]]",
     correlation_clusters: "list[dict] | None",
     proposed: "list[dict]",
     *,
     recall_mode: bool,
+    existing_themes: "list[dict] | None" = None,
+    scratchpads: "list[str] | None" = None,
 ) -> None:
     """SHADOW recorder (#486, 2026-09-07) — record what discovery was SHOWN and what it DECLINED.
 
@@ -5359,21 +5487,42 @@ async def _log_discovery_shown_and_declined(
             for pool_name, tks in shown.items()
         }
 
+        # What the PROMPT counted as covered — the same set the model saw (all
+        # active themes, Fading included), so the row reads what it read.
+        ticker_theme: "dict[str, str]" = {}
+        for th in (existing_themes or []):
+            for tk in (th.get("tickers") or []):
+                ticker_theme.setdefault(str(tk).upper(), str(th.get("name") or ""))
+
         # A cluster is DECLINED when not one of its members reached a proposed theme.
         # Partly-claimed clusters are the interesting middle and are counted apart.
-        cl_declined, cl_partial, cl_taken = [], 0, 0
+        # ALREADY_NAMED (2026-09-09): a cluster with no member claimed AND at least
+        # half its members already inside an active theme was not declined — the
+        # model was told not to re-create those. On 09-08 this class held the
+        # three clusters the 17:07 nightly had just named (the 17:15 shadow read
+        # them back as existing) and the 33-name precious-metals block held by
+        # five themes; all four read as "declined". Kept apart so the declined
+        # list is the class the naming lag is actually about.
+        cl_declined, cl_already, cl_partial, cl_taken = [], [], 0, 0
         for c in (correlation_clusters or []):
             members = {str(tk).upper() for tk in (c.get("tickers") or [])}
             if not members:
                 continue
             hit = len(members & claimed)
             if hit == 0:
-                cl_declined.append({
+                in_theme = [tk for tk in sorted(members) if tk in ticker_theme]
+                by_theme: "dict[str, int]" = {}
+                for tk in in_theme:
+                    by_theme[ticker_theme[tk]] = by_theme.get(ticker_theme[tk], 0) + 1
+                row = {
                     "cluster_hash": c.get("cluster_hash"),
                     "tickers": sorted(members),
                     "mean_corr": round(float(c.get("mean_corr") or 0.0), 3),
                     "avg_rs": round(float(c.get("avg_rs") or 0.0), 1),
-                })
+                    "covered_share": round(len(in_theme) / len(members), 2),
+                    "covered_by": sorted(by_theme, key=lambda k: -by_theme[k])[:3],
+                }
+                (cl_already if len(in_theme) * 2 >= len(members) else cl_declined).append(row)
             elif hit < len(members):
                 cl_partial += 1
             else:
@@ -5384,7 +5533,8 @@ async def _log_discovery_shown_and_declined(
         summary = (
             f"shown={n_shown} declined={n_declined} proposed={len(proposed or [])} "
             f"clusters shown={len(correlation_clusters or [])} "
-            f"declined={len(cl_declined)} partial={cl_partial} taken={cl_taken} "
+            f"declined={len(cl_declined)} already_named={len(cl_already)} "
+            f"partial={cl_partial} taken={cl_taken} "
             f"recall_mode={recall_mode}"
         )
         detail = json.dumps({
@@ -5396,9 +5546,14 @@ async def _log_discovery_shown_and_declined(
                 for th in (proposed or [])
             ],
             "clusters_declined": cl_declined,
+            "clusters_already_named": cl_already,
             "clusters_partial": cl_partial,
             "clusters_taken": cl_taken,
             "recall_mode": recall_mode,
+            # The model's own one-line-per-cluster reasoning, per batch — the
+            # instrument the 09-07 entry said was still missing ("why did it
+            # decline?"). Bounded per batch so the row stays under the cap.
+            "scratchpads": [str(s)[:2000] for s in (scratchpads or [])][:12],
         }, default=str)[:60000]
         await log_audit_event("theme_discovery_shown_declined", summary, detail)
     except Exception as e:  # loud-ok: a recorder must never break discovery
@@ -5453,7 +5608,9 @@ async def _discover_new_themes(
             globally_banned=globally_banned, recall_mode=recall_mode,
             advisor_state=advisor_state)
         await _log_discovery_shown_and_declined(
-            _pools_shown, correlation_clusters, _out, recall_mode=recall_mode)
+            _pools_shown, correlation_clusters, _out, recall_mode=recall_mode,
+            existing_themes=existing_themes,
+            scratchpads=advisor_state.get("scratchpads") or [])
         return _out
 
     batches = _partition_discovery_pools(
@@ -5634,20 +5791,7 @@ Look for CLUSTERS here — if 3+ stocks from the same sector are all turning, th
             if any(t not in covered_in_themes for t in c["tickers"])
         ]
         if relevant:
-            cluster_lines = "\n".join(
-                f"- Cluster {chr(65 + i)} ({c['member_count']} stocks, corr {c['mean_corr']:.2f}, "
-                f"avg RS {c['avg_rs']:.0f}): {', '.join(c['tickers'])}"
-                for i, c in enumerate(relevant)
-            )
-            cluster_block = f"""
-CORRELATION CLUSTERS (beta-adjusted residual correlation ≥ 0.85, 20-day window):
-These stocks have been moving together statistically before any narrative crystallized — potential emerging themes.
-{cluster_lines}
-
-If a cluster maps to a clear business thesis, propose it as a Nascent theme.
-If the correlation reason is unclear, do NOT force a theme — leave the stocks uncovered.
-IMPORTANT: If a cluster forms a valid theme, invent a specific descriptive business name (e.g., 'Optical Networking', 'Uranium Miners'). Do NOT name it 'Cluster A', 'Cluster B', or any placeholder — those labels are internal identifiers only.
-"""
+            cluster_block = _render_cluster_block(relevant, existing_themes, stocks_by_ticker)
 
     # Disposition rules — PRECISION for the live engine (default), RECALL for the ADR-0007
     # shadow. The shadow is a human-reviewed candidate table, not live themes; instructing
@@ -5900,6 +6044,12 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 else:
                     logger.info(f"Theme discovery: Sonnet used advisor {advisor_state['calls']}x before reporting")
                 raw_themes = report_block.input.get("themes", [])
+                # #486: keep the model's terse per-cluster reasoning for the
+                # shown/declined recorder (run-level, one entry per batch).
+                # Additive telemetry only — never touches what is returned.
+                _pad = report_block.input.get("analysis_scratchpad") if isinstance(
+                    report_block.input, dict) else None
+                advisor_state.setdefault("scratchpads", []).append(str(_pad or "")[:2000])
                 # The tool schema says themes is a list of objects, but the model
                 # occasionally emits a list of bare NAME STRINGS instead. That used
                 # to raise AttributeError: 'str' object has no attribute 'get' out
@@ -7635,6 +7785,7 @@ async def run_theme_engine(
                   or len(turners) >= NEW_THEME_MIN_STOCKS
                   or len(elite_covered) >= NEW_THEME_MIN_STOCKS)
     if has_enough:
+        await _ensure_cluster_member_descriptions(clusters)
         new_raw = await _discover_new_themes(
             uncovered, updated_themes, stocks_by_ticker,
             velocity_leaders, turners, elite_covered,

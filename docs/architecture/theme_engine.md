@@ -263,7 +263,127 @@ we need to fix this, 100x more times???"*, which is what prompted extending the 
 whether it should reach live, is the operator's call. What was wrong was that nobody could
 have known it was running.
 
+## Correlation cluster engine (Lane-1 statistical pre-pass) — parameters and what discovery is shown
+
+`agents/market_intelligence/correlation_engine.py`, run by the nightly job (scheduler step 4.5)
+before the theme engine; its output goes to BOTH `run_theme_engine` (17:07 ET, precision
+disposition) and `run_theme_discovery_shadow` (~17:15 ET, recall disposition) and is persisted
+to `mi_correlation_clusters`. Nothing under `broker/` reads it. Documented here 2026-09-09 (#486)
+because nothing recorded these parameters before.
+
+- **Universe** (`db.get_closes_for_correlation`): `mi_daily_closes`, close ≥ $5, security type
+  CS/ADRC (`mi_security_types` — this is what keeps single-stock leveraged ETFs out; they sit at
+  raw corr 1.00 to their underlying), average daily dollar volume ≥ $20M, full coverage over the
+  window. 35 calendar days → ≥ 21 closes → 20 daily returns.
+- **Source-level artifact removal (#486, 2026-09-09), BEFORE beta adjustment, on raw returns:**
+  1. **Share classes of one issuer → one representative.** Candidate by ticker shape (same pre-dot
+     root `BRK.A/BRK.B`; one ticker = the other + one trailing letter `GOOG/GOOGL`, `UA/UAA`; both
+     ≥ 5 chars sharing the first four `BELFA/BELFB`, `GOOGM/GOOGN`) AND confirmed by raw-return
+     correlation ≥ `_SHARE_CLASS_MIN_RAW_CORR = 0.90`. Survivor = shortest ticker, then
+     alphabetical; siblings leave the matrix. **Why both tests:** on real closes the GOOG family's
+     raw corr fell to 0.961 in one of 24 windows while DISTINCT issuers reached 0.99 (NSA/PSA, two
+     self-storage REITs, 14 windows; RIG/VAL 24 windows) — a pure threshold would collapse real
+     groups; a pure root match would merge ALM/ALMS (different companies, corr ≈ 0.3).
+  2. **Cash-like series dropped.** A name whose daily-return std with its single largest |return|
+     day removed is < `_MIN_EX_SPIKE_DAILY_STD = 0.3%` is a takeover target trading at its deal
+     price (BWMN/HZO/VREX: +46-56% on 08-10, then 0.19-0.26%/day). Its beta residual is ∝ the
+     market's return, so such names correlate with each other spuriously (five clustered at 0.92
+     on 09-08). Measured: the universe's 0.5th percentile of the statistic was 0.20-0.43% across
+     three windows; real cluster members sit at 1.3-4.2%/day.
+- **Correlation**: beta-adjust each name against SPY (ddof=1 throughout), Pearson on residuals.
+- **Clusters**: BFS connected components at pairwise residual corr ≥ 0.85; keep components of
+  ≥ 4 members with mean pairwise corr ≥ 0.80 (the chaining filter). Hash = sha256 of the sorted
+  members (first 8 hex).
+- **Dedup vs themes**: a cluster with ≥ 50% of its members inside ONE non-Fading active theme is
+  dropped before the write; a cluster spread across several themes passes (deliberate — a
+  cross-theme cluster can be a sub-theme or a merge signal). Consequence, stated: the 33-name
+  precious-metals block passed 25 nights while 31 of 33 members sat in five themes.
+- **Enrichment**: `avg_rs` and, in memory only, `member_rs` (per-member RS from
+  `get_rs_for_tickers`; not persisted — `get_correlation_clusters` readers fall back to the pool
+  lookup).
+- **What discovery is shown** (`_render_cluster_block`, #486): only clusters with ≥ 1 member not in
+  any active theme; ordered strongest-first by avg RS; each member as `TICKER (RS, sector —
+  description) [in: <theme>]` for the top `_CLUSTER_DESCRIBED_CAP = 12` members by RS, the rest on
+  a `+K more` tail (the header says `N of M already in a theme`). **A Fading parent is named as
+  such** — `[in: X (Fading)]`, header `(K of those in a Fading one)` — because the one split that
+  did work in the history (tankers, cluster 09-01 → named 09-02) came out of a Fading 41-name
+  energy blob, and a bare "already in a theme" on a dying parent would be a stronger skip signal
+  than the bare ticker the model used to see. `_partition_discovery_pools`
+  counts the described lines toward `_DISCOVERY_LLM_BATCH_STOCKS`. Members outside every pool get
+  their description via `_ensure_cluster_member_descriptions` at both call sites (guarded — a
+  fetch failure degrades to bare tickers, the pre-09-09 rendering). The three disposition sentences
+  (propose on a clear thesis / do NOT force when unclear / real name, never 'Cluster A') are
+  verbatim from before and are the criterion.
+- **What the recorder writes** (`theme_discovery_shown_declined`, one row per discovery run):
+  pools shown/declined, themes proposed, and every cluster as **taken / partial /
+  already_named / declined** — `already_named` (2026-09-09) = no member claimed AND ≥ 50% of
+  members already in an active theme (Fading included — the set the prompt itself uses), with
+  `covered_share` + `covered_by`; plus `scratchpads` = the model's own one-line-per-cluster
+  reasoning per batch, so "why did it decline?" is readable from the row.
+
 ## Change log
+
+### 2026-09-09 — #486: the naming lag, read — two cluster artifacts killed at the source, the recorder made truthful, cluster members rendered like every other pool
+
+**Themes touch no money; shipped full (operator working rule). Rule sentences unchanged — the
+disposition is the criterion and did not move.** Evidence: the two 09-08 recorder rows
+(`/tmp`-captured once), `mi_correlation_clusters` + `mi_themes` for 09-08, and the local frozen
+history (`scripts/probes/_step3_clusters.tsv`, `_step1_themes.tsv`, `_step2_closes.tsv`, 06-01 →
+09-04). Tests: `tests/test_correlation_engine_artifacts_486.py`,
+`tests/test_theme_cluster_rendering_486.py`, `tests/test_theme_discovery_shown_declined.py`.
+
+- **The recall-mode "inversion" (0 of 12 taken vs the nightly's 3) is sequencing, not a
+  permissive-mode bug.** The shadow runs ~8 min after `run_theme_engine` has persisted its births
+  and reads them back through `get_active_themes()`; it is told not to re-create existing themes,
+  so it (correctly) did not; the recorder credited "taken" only against a run's OWN proposals, so
+  the three clusters the nightly had just named read as declined — 8 + 3 = the 11 reported.
+  Fixed in the instrument (the `already_named` class), not by re-sequencing the shadow.
+- **The two "strong but declined" clusters were not misses.** Tankers (RS 92): the nightly named
+  them that night — *Crude Oil, Product & LPG Tanker Shipping* → live *Oil & Product Tanker
+  Shipping*, score 75. Precious-metals miners (RS 89, 33 names): 31 of 33 already sat in five
+  themes (Gold & Precious Metals Miners Rotation, Silver-Focused Primary Miners, Latin American
+  Silver & Gold, Royalty & Streaming, Miners Velocity Breakout) — a correct decline, and a
+  fragmentation problem, not a naming one. Every other 09-08 decline was RS 18-51 and/or already
+  held (healthcare REITs 5/6, shopping REITs 6/7).
+- **The real miss class, from the history (06-01 → 09-04, 859 stored cluster-days):** of 145
+  RS ≥ 70 clusters only 23% were ≥ 50% inside a theme; 70 cluster-days were strong AND < 25%
+  covered; 41 of those were industry-coherent (14 distinct groups) and **only 6 got a theme within
+  10 sessions**. Hotel REITs (APLE/DRH/HST/RLJ/SHO, RS 90-94, 6 nights), self-storage
+  (CUBE/EXR/NSA/PSA, RS 76-78), shopping REITs, Canadian banks, European banks, security software,
+  life-science tools and industrial machinery were **never named**; trucking (RS 89-94) took 18
+  sessions, airlines 17, refiners two months. The other 29 were mixed-industry coincidences
+  (ABT/ATAI/CDNA/MAN, INCY/IQV/ITRI/KNSA — the momentum factor the SPY residual does not remove),
+  which the model declined correctly. **Why the coherent ones were declined is NOT established** —
+  homebuilders (RS 22) and CRE brokers were named from bare tickers the same night Canadian banks
+  were not; the scratchpad now captured is what answers it. **And naming is not the whole lag:**
+  the 09-01 tankers cluster was named 09-02 and auto-retired 09-03 (*"dropped during
+  merge/absorption (no successor found)"*), then re-named 09-08; the 08-13 refiners were named
+  08-18 and absorbed into a 36-name E&P blob by 08-20. That churn is #555's territory.
+- **Shipped (A) at the source** — share-class collapse + cash-like floor in the cluster engine
+  (parameters above). GOOG×4 had held a slot 25 consecutive nights and became a live theme once
+  (*Alphabet (Google) Platform Re-Rating*, 08-03 → 08-12). The cash-like floor is an ADDITION
+  beyond the card's ask, justified by the 09-08 rows (Cluster F, corr 0.92, five takeover
+  targets). `member_rs` attached in memory.
+- **Shipped (B) the instrument** — `already_named` class with `covered_share`/`covered_by`, and the
+  model's per-batch `analysis_scratchpad` stashed on the run-level `advisor_state` and written to
+  the row (bounded 2,000 chars × 12). Tomorrow's row can say why.
+- **Shipped (C) parity rendering** — cluster members now carry RS / sector / description and an
+  `[in: theme]` tag, strongest cluster first, top-12 described + tail; descriptions ensured for
+  cluster members at both call sites. Framed as parity, not as the fix for the miss class above.
+- **Deliberately NOT changed:** the three disposition sentences and the precision/recall text;
+  `THEME_RS_MIN` and the fact that the cluster path has **no RS floor** (homebuilders at RS 22 and
+  CRE brokers at RS 32 went live 09-08 while every pool is floored at 50 — changing that is a
+  criterion, operator's call); `_dedup_against_themes` (its single-theme-50% rule is why the
+  fully-fragmented miners block keeps passing — a merge signal, #555); the merge/retire passes;
+  the shadow's run order.
+- **Operator forks (each one line, decide after one night of scratchpads):** (1) should a cluster
+  need avg RS ≥ 50 like every pool, or is a low-RS coherent cluster a valid rotation seed? (2) do
+  sector-rotation groups (REITs / banks / trucking at RS 90+) count as themes under the north
+  star, or only catalyst cohorts? Rec: read the 09-09/09-10 scratchpads first.
+- **Verify-live (09-10):** `mi_correlation_clusters` for 09-09 holds NO GOOG cluster and no
+  BWMN/HZO/VREX cluster; `apollo-market` logs show `collapsed 1 share-class group(s)` and
+  `dropped N cash-like series`; the 09-09 `theme_discovery_shown_declined` rows carry
+  `already_named=` in the summary and non-empty `scratchpads`; discovery cache_read stays non-zero.
 
 ### 2026-09-08 — seed-story vs active-theme matcher: calibrated on 25 labelled seeds, NOT shipped
 

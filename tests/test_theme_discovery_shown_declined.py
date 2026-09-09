@@ -86,3 +86,52 @@ async def test_a_failing_recorder_does_not_change_what_discovery_returns():
             [_stock("AAA")], [], {"AAA": _stock("AAA")},
             correlation_clusters=[_cluster("h", ["AAA"])])
     assert out == returned
+
+
+# ── #486 2026-09-09: the recorder no longer misreads an already-named cluster ──────────────
+# On 09-08 the 17:15 shadow run read the three clusters the 17:07 nightly had just NAMED as
+# "declined" (it saw them as existing themes and, correctly, did not re-create them) — 8 + 3
+# = the 11 it reported — and the 33-name precious-metals block held by five themes read the
+# same way. These pin the new class and the scratchpad capture.
+
+@pytest.mark.asyncio
+async def test_already_named_cluster_is_classed_apart_from_declined():
+    existing = [{"name": "Oil & Product Tanker Shipping", "tickers": ["FRO", "INSW", "NAT", "TNK"]}]
+    clusters = [
+        _cluster("h_named", ["FRO", "INSW", "LPG", "NAT", "TNK"], rs=92.0),   # 4/5 already in a theme
+        _cluster("h_open", ["APLE", "DRH", "HST", "RLJ"], rs=94.0),           # nobody holds these
+    ]
+    with patch.object(te, "log_audit_event", new=AsyncMock()) as m:
+        await te._log_discovery_shown_and_declined(
+            {"uncovered": []}, clusters, [], recall_mode=True,
+            existing_themes=existing, scratchpads=["tankers already a theme — skip"])
+    _, summary, detail = m.await_args.args
+    d = json.loads(detail)
+    assert [c["cluster_hash"] for c in d["clusters_already_named"]] == ["h_named"]
+    assert d["clusters_already_named"][0]["covered_share"] == 0.8
+    assert d["clusters_already_named"][0]["covered_by"] == ["Oil & Product Tanker Shipping"]
+    assert [c["cluster_hash"] for c in d["clusters_declined"]] == ["h_open"]
+    assert d["clusters_declined"][0]["covered_share"] == 0.0
+    assert "declined=1 already_named=1" in summary
+    assert d["scratchpads"] == ["tankers already a theme — skip"]
+
+
+@pytest.mark.asyncio
+async def test_driver_hands_existing_themes_and_scratchpads_to_the_recorder():
+    """The single-call path must pass what the prompt saw (existing themes) and what the
+    model said (its scratchpad, stashed on the run-level advisor_state) to the recorder."""
+    existing = [{"name": "T", "tickers": ["AAA", "BBB"]}]
+
+    async def _fake_single(*args, **kwargs):
+        kwargs["advisor_state"].setdefault("scratchpads", []).append("AAA/BBB in T — skip")
+        return []
+
+    with patch.object(te, "_discover_new_themes_single", new=_fake_single), \
+         patch.object(te, "log_audit_event", new=AsyncMock()) as m:
+        await te._discover_new_themes(
+            [_stock("CCC")], existing, {"CCC": _stock("CCC")},
+            correlation_clusters=[_cluster("h", ["AAA", "BBB"])])
+    d = json.loads(m.await_args.args[2])
+    assert d["clusters_already_named"][0]["cluster_hash"] == "h"
+    assert d["clusters_declined"] == []
+    assert d["scratchpads"] == ["AAA/BBB in T — skip"]
