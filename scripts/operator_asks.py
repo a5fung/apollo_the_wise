@@ -95,6 +95,17 @@ def _gated_reviews_ready() -> list[str]:
         elif thr is not None and got >= thr:
             accruing.append(f"{rid}: threshold MET ({got}/{thr}) but earliest date {earliest} "
                             f"is still ahead. Not an ask yet.")
+        elif got == 0 and earliest and earliest <= today:
+            # A review reading ZERO whose own earliest date has already passed is not
+            # "accruing" — it has produced nothing since the day it became eligible. Every
+            # dead gate found on 2026-09-09 wore the accruing label: a phantom column (617),
+            # an audit event emitted nowhere (harvest), a column never SET (failed_break), a
+            # deprecated lane (9M convergence). Say ZERO out loud so it gets looked at.
+            _stale = (_days_since(earliest) or 0)
+            accruing.append(
+                f"{rid}: ⚠ ZERO since its date passed ({got}/{thr}, earliest {earliest}"
+                f"{f', {_stale}d ago' if _stale else ''}). Not accruing — it has produced "
+                f"NOTHING. Check the predicate can ever be true before trusting this 0.")
         else:
             accruing.append(f"{rid}: accruing {got}/{thr} (earliest {earliest}).")
     # A `kind: cadence` review is DATE-gated by design and correctly carries no predicate — it
@@ -114,6 +125,15 @@ def _gated_reviews_ready() -> list[str]:
             accruing.append(f"{rid}: NO predicate_sql and not a dated cadence review — it cannot "
                             f"become ready on its own. Give it a predicate or close it.")
     return ready, accruing, err
+
+
+def _days_since(iso: str) -> "int | None":
+    from datetime import date
+    try:
+        y, m, d = (int(x) for x in iso.split("-"))
+        return (date.fromisoformat(_operator_today()) - date(y, m, d)).days
+    except Exception:
+        return None
 
 
 def _has_predicate(r: dict) -> bool:

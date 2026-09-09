@@ -342,6 +342,14 @@ reviews:
       fires only when the number the action compares actually exists — advisor 6/14: gating on MFE
       would recreate the MFE-vs-realized gap this tactic's analysis closed. Ensure Step 3 captures
       `realized_r` (or the exit-fill data to derive it); repoint here if the column name differs.
+    # ⚠ READS 0 FOR A STRUCTURAL REASON, not for want of data (checked 2026-09-09). It requires
+    # `state = 'triggered' AND realized_r IS NOT NULL`. mi_anticipation_lifecycle holds 19 rows
+    # across watched(8) / armed(8) / expired(2) / ready(1) — 'triggered' has NEVER occurred, and
+    # anticipation.py:85 says so outright: "the JOB layer maps it to lifecycle state 'ready' —
+    # NOT 'triggered'/entry". So the gate waits on a state today's pipeline does not emit.
+    # Left pending rather than closed: the Phase-3 settlement path that writes 'triggered' +
+    # realized_r exists in the module, so this becomes satisfiable when that path runs. But it is
+    # NOT "accruing" today and must not be read as such.
 
   - review_id: anticipation_270_calibration_revalidation
     title: "#270 calibration re-validation — EXPANSION floor + trigger-volume floor (tune/confirm)"
@@ -7409,8 +7417,13 @@ reviews:
       Origin: 2026-05-22 #84 ship plan ("File as data-gated review at
       first convergence fire"). Filed retroactively 2026-05-22 PM per
       advisor review of the day's ship list.
-    status: pending
+    status: done
     added_on: 2026-05-22
+    # CLOSED 2026-09-09 — PERMANENTLY UNSATISFIABLE. This gates on 9M convergence fires, and
+    # 9M is DEPRECATED: mi_strategies.9m_day2.enabled = false, and CLAUDE.md says plainly
+    # "9M is GONE... do not raise it, do not re-verify it". A review whose lane is switched off
+    # cannot accrue, so it would have sat pending forever reading 0/10.
+    closed_on: 2026-09-09
 
   - review_id: orb_bar1_wick_outlier_persistence_filter
     title: ORB bar-1 high single-tick outlier filter (#122)
@@ -7649,6 +7662,16 @@ reviews:
 
     status: pending
     added_on: 2026-05-28
+    # 🔴 BROKEN PREDICATE, found 2026-09-09 — DO NOT TRUST ITS 0. It counts
+    # `mi_flag_breaks WHERE parent_invalidated_eod = TRUE`. That column is declared
+    # `BOOLEAN DEFAULT FALSE` in two CREATE TABLE statements and is referenced NOWHERE ELSE in
+    # agents/ except comments — it is NEVER SET. Prod confirms: 167 rows total, 62 in the last
+    # 90 days, and parent_invalidated_eod has been TRUE exactly ZERO times, ever. So the
+    # predicate is `WHERE FALSE` and this gate can never fire.
+    # ⚠ NOT silently repointed: choosing a different proxy for "the break failed by EOD" is a
+    # judgement about what the detector is being graded on, not a typo fix. It needs either the
+    # column actually written, or a stated proxy someone signs. Until then this is a DEAD gate
+    # wearing a "still accruing" label — the exact shape that hid four other gates this week.
 
   - review_id: partial_exit_hardening_n7_clean_cycles
     title: "P0 — Partial-exit architecture stable for N=7 consecutive paper cycles"
