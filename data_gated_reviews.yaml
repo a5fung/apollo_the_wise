@@ -7801,6 +7801,18 @@ reviews:
     # ⚠ Both cohorts LOSE ground over 10 sessions: clearing base_high is not itself bullish here.
     # ⚠ This is the EOD-classified failure, NOT the real-time one this review ultimately wants.
     # docs/analysis/failed_break_signal_n50_2026-09-09.md
+    # ⚖ OPERATOR RULING 2026-09-09 — KEEP THE EVIDENCE, and I had the framing wrong.
+    # I recommended closing this on the grounds that flag_continuation is a deprecated
+    # STRATEGY, so the signal had "no setup to attach to". He corrected it:
+    #   "consolidation is real, can be used many setups and I think htf also needs
+    #    consolidation so we should keep the evidence"
+    # He is right and the error was mine: I collapsed a dead STRATEGY ROW into a dead
+    # FAMILY. Consolidation is a family that HOSTS setups (CLAUDE.md, SETUP vs FAMILY) —
+    # HTF needs a base before the breakout, Family A is built on it (#354), and the
+    # base/breakout follow-through measured here characterises BASE QUALITY, which every
+    # setup sitting on a consolidation inherits.
+    # So this review is FAMILY-level evidence serving several setups, not a
+    # flag_continuation artifact. Do not close it on the strategy row's status.
 
   - review_id: partial_exit_hardening_n7_clean_cycles
     title: "P0 — Partial-exit architecture stable for N=7 consecutive paper cycles"

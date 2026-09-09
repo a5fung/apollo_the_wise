@@ -52,9 +52,17 @@ Clearing `base_high` is not by itself a bullish event in this population. The fa
 - **The phenomenon carries signal — Phase 1 is justified.** Build `failed_at`, `low_after_break`
   and `bars_until_fail` so the reversal is captured when it happens rather than inferred at the
   close.
-- **Ship it as an observational surface only.** `flag_continuation` is a deprecated strategy and
-  continuation is a **family**, not a setup — there is no buy point or stop here to attach a signal
-  to. This is detector quality, not P&L.
+- **⚖ OPERATOR RULING 2026-09-09 — KEEP THIS EVIDENCE; it is FAMILY-level, not flag-only.** I had
+  recommended closing the review because `flag_continuation` is a deprecated *strategy*, so the
+  signal had "no setup to attach to". He corrected it: *"consolidation is real, can be used many
+  setups and I think htf also needs consolidation so we should keep the evidence"*. **The error was
+  mine — I collapsed a dead strategy ROW into a dead FAMILY.** Consolidation is a family that HOSTS
+  setups: HTF needs a base before its breakout, Family A is built on it (#354), and what this
+  measures is **base quality and breakout follow-through**, which every setup sitting on a
+  consolidation inherits.
+- **Still an observational surface, for a different reason.** Not because the family is dead, but
+  because a family has no buy point or stop of its own — the signal attaches to the SETUPS the
+  family hosts, and each needs its own read. This is detector quality, not P&L.
 - ⚖ **No live rule, no operator sign-off needed for the shadow columns.** Any promotion to an
   operator-facing alert or an entry/exit input is CHANGE_PROCESS + sign-off.
 
