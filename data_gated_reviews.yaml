@@ -7789,6 +7789,18 @@ reviews:
     # column is NEVER SET") was wrong: the EOD reconcile runs nightly and has fired 73 times on
     # the sibling tables. The real cause (a close-based INVALIDATED rule a same-day break
     # cannot meet) and the fix are in the #633 block above the predicate.
+    # PHASE 2 RUN 2026-09-09 at n=162 settled (FAILED 50 / HELD 112), the first time this gate
+    # was readable — its old predicate asked for parent_invalidated_eod = TRUE and hid 54 cases.
+    # VERDICT: the phenomenon CARRIES SIGNAL; Phase 1 (failed_at / low_after_break /
+    # bars_until_fail) is justified. Measured against base_high — the level both cohorts share —
+    # FAILED goes -3.85% -> -7.10% and is above the level at 10 sessions only 34% of the time,
+    # against HELD +6.26% -> +0.81% and 46%. A 7.9-point spread.
+    # ⚠ THE TRAP, recorded so nobody repeats it: measured from the BREAK-DAY CLOSE the result
+    # INVERTS (FAILED +1.51% vs HELD -0.91% at 5 sessions) because a failed break closes BELOW
+    # base_high by construction and is scored from a lower base. Always normalise to base_high.
+    # ⚠ Both cohorts LOSE ground over 10 sessions: clearing base_high is not itself bullish here.
+    # ⚠ This is the EOD-classified failure, NOT the real-time one this review ultimately wants.
+    # docs/analysis/failed_break_signal_n50_2026-09-09.md
 
   - review_id: partial_exit_hardening_n7_clean_cycles
     title: "P0 — Partial-exit architecture stable for N=7 consecutive paper cycles"
