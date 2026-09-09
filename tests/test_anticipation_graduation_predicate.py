@@ -34,3 +34,17 @@ def test_graduation_predicate_columns_exist_on_table():
     assert "mi_anticipation_lifecycle" in ddl
     for col in ("state", "realized_r", "entry_tactic"):
         assert col in sql and col in ddl
+
+
+def test_both_lifecycle_reviews_are_closed_while_the_writer_job_is_unregistered():
+    """#633 (2026-09-09): the readiness + 3b jobs — the only writers of mi_anticipation_lifecycle —
+    were un-registered 2026-06-16 (ADR-0013) and the table has not changed since. Both reviews that
+    gated on it are CLOSED as superseded (Family A carries its own gates; #297 re-files if it
+    reclaims Family B). The predicate text stays as history, which is why the two tests above
+    still hold. Reopening either without the writer is the dead gate coming back."""
+    revs = yaml.safe_load(YAML.read_text(encoding="utf-8"))["reviews"]
+    for rid in ("anticipation_270_shadow_graduation", "anticipation_270_calibration_revalidation"):
+        r = next(x for x in revs if x.get("review_id") == rid)
+        assert r["status"] == "done", f"{rid} reopened — its writer job is still unregistered"
+        assert str(r.get("closed_on")) == "2026-09-09"
+        assert "#297" in r["outcome"] and "ADR-0013" in r["outcome"]

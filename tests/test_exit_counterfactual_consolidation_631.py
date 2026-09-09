@@ -174,6 +174,12 @@ def test_the_one_read_predicate_is_scoped_to_the_current_exit_era():
     sql = e["predicate_sql"]
     latest = _latest_exit_switch()
     assert latest == rule_eras.PARTIAL_8R_DATE == date(2026, 9, 6)   # the fact as of this commit
+    # #633 (2026-09-09): the offline forensic's earliest_review_date is the SAME era start, so
+    # its "zero since eligible" age counts from the flip, not from a date two eras back.
+    # yaml hands back a date object — compare to `latest` directly.
+    assert _registry()["exit_tune_cohort_review"]["earliest_review_date"] == latest, (
+        "exit_tune_cohort_review.earliest_review_date must move with the exit era in the same "
+        "commit as the predicate literal")
     assert f"alert_date >= DATE '{latest.isoformat()}'" in sql, (
         "the ONE read must count fills from the LATEST exit switch — move this literal in the "
         "same commit as the next exit-rule change")

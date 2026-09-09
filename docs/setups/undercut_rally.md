@@ -58,7 +58,15 @@ Detector: `flag_detector.run_intraday_undercut_rally_scan` (every 5 min, gated
   `/flagbreaks` `/supporttests` `/mapullbacks` `/lowvolrests`.
 - EOD reconciliation in `reconcile_flag_state_post_eod` flips `parent_invalidated_eod`
   if the parent ticker classified INVALIDATED at the 5:25 PM scan (audit:
-  `flag_undercut_rally_reconciled`). Backward-check filters `parent_invalidated_eod = FALSE`.
+  `flag_undercut_rally_reconciled`).
+  **⚠ 2026-09-09 (#633): the N≥10 review (`intraday_undercut_rally_signal_n10`) NO LONGER
+  filters on `parent_invalidated_eod = FALSE`.** That flag fired on 6 of 6 U&Rs ever — for
+  the parent FLAG's close-based rules (close below SMA20 / below the base's lowest close),
+  which a 2-8% undercut trips even when the reclaim holds (COMP, CPSH, TTMI, SNOW all
+  closed above `base_low` and above their stop and were still excluded). The review now
+  grades the U&R on its OWN invalidation from this page: **the day-0 close held above
+  `undercut_low`, the stop.** The evening-brief roundup's "structurally-surviving" filter
+  is a display choice and is unchanged.
 
 ## Known limitations / V2 deferrals (NOT built in v1)
 - Multi-day undercut *persistence* (undercut yesterday, reclaim today) — v1 is same-day only.

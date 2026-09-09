@@ -101,11 +101,7 @@ def _gated_reviews_ready() -> list[str]:
             # dead gate found on 2026-09-09 wore the accruing label: a phantom column (617),
             # an audit event emitted nowhere (harvest), a column never SET (failed_break), a
             # deprecated lane (9M convergence). Say ZERO out loud so it gets looked at.
-            _stale = (_days_since(earliest) or 0)
-            accruing.append(
-                f"{rid}: ⚠ ZERO since its date passed ({got}/{thr}, earliest {earliest}"
-                f"{f', {_stale}d ago' if _stale else ''}). Not accruing — it has produced "
-                f"NOTHING. Check the predicate can ever be true before trusting this 0.")
+            accruing.append(_zero_line(rid, r, got, thr, earliest, _days_since(earliest) or 0))
         else:
             accruing.append(f"{rid}: accruing {got}/{thr} (earliest {earliest}).")
     # A `kind: cadence` review is DATE-gated by design and correctly carries no predicate — it
@@ -125,6 +121,26 @@ def _gated_reviews_ready() -> list[str]:
             accruing.append(f"{rid}: NO predicate_sql and not a dated cadence review — it cannot "
                             f"become ready on its own. Give it a predicate or close it.")
     return ready, accruing, err
+
+
+def _zero_line(rid: str, r: dict, got: int, thr, earliest: str, stale: int) -> str:
+    """A review reading ZERO past its own date is either RULED or UNEXAMINED — never "accruing".
+
+    #633 (2026-09-09) ruled the eleven that read zero that day: six were WAITING on an event that
+    genuinely has not happened, with the proof written into the entry. Printing "check the
+    predicate can ever be true" for a gate checked yesterday is a re-ask generator — the exact
+    drift this script exists to stop — so a ruled entry carries `zero_verdict:` (a dated one-liner
+    the loader can see; comments cannot be seen) and prints its ruling instead. An entry WITHOUT
+    one stays loud: that zero has not been looked at."""
+    ago = f", {stale}d ago" if stale else ""
+    verdict = str(r.get("zero_verdict") or "").strip()
+    if verdict:
+        return (f"{rid}: ZERO since its date passed ({got}/{thr}, earliest {earliest}{ago}) — "
+                f"RULED {verdict}")
+    return (f"{rid}: ⚠ ZERO since its date passed ({got}/{thr}, earliest {earliest}{ago}). "
+            f"Not accruing — it has produced NOTHING, and nobody has ruled why. Check the "
+            f"predicate can ever be true before trusting this 0; when it can, record a dated "
+            f"`zero_verdict:` on the entry so this is not re-asked.")
 
 
 def _days_since(iso: str) -> "int | None":

@@ -63,6 +63,14 @@
 #     last_run_note: what was found on that run (kept even though it isn't a
 #                     decision — real findings from a false-ready fire are
 #                     worth keeping, they just don't close the entry).
+#     zero_verdict: "<YYYY-MM-DD> WAITING — <why the zero is real>" (#633, 2026-09-09).
+#                    For a review reading ZERO after its earliest date: the dated ruling
+#                    that its predicate CAN be true and the event has simply not happened
+#                    (name the emitter / the rows that prove the shape). operator_asks.py
+#                    prints this instead of "check the predicate can ever be true" — a
+#                    `# comment` is INVISIBLE to the loader and gets the same question
+#                    re-asked next session. WAITING is the only verdict written here:
+#                    IMPOSSIBLE-AS-WRITTEN gets its predicate fixed, OBSOLETE gets closed.
 #     ⚠ Both fields belong to the entry they describe — attach them ONLY to
 #       that review_id's block. Landing them on the WRONG entry (copy-paste
 #       into the next block down) shipped once, 2026-08-17, on this exact
@@ -309,7 +317,23 @@ reviews:
         AND entry_tactic IN ('first5_break', 'gdl_reclaim')
     threshold: 5
     earliest_review_date: 2026-07-15
-    status: pending
+    status: done
+    closed_on: 2026-09-09
+    outcome: >-
+      OBSOLETE (#633, 2026-09-09) — CLOSED because the pipeline this review grades no longer runs
+      and has been superseded. Both writers of mi_anticipation_lifecycle — the readiness job and
+      the 3b FIRST5/gdl job, the ONLY code path that writes state='triggered' with an entry_tactic
+      (db.py::record_anticipation_3b_entry) — were UN-REGISTERED on 2026-06-16 by ADR-0013
+      (scheduler.py, the commented add_job pair under "FAMILY B ... PAUSED"): the universe seed
+      hard-gated on a +40% one-day gap reverse-engineered from ONE stock, and its telemetry was
+      declared contaminated. Prod 2026-09-09: 19 rows, every one last written 2026-06-16, a
+      'triggered' row never. Family A — the consolidation play, "the #270 rebuild on the SIGNED
+      universe" — superseded this shadow and carries its own gates
+      (consolidation_anticipate_paper_graduation ran NO-GO 07-12; consolidation_anticipate_signflip_watch;
+      consolidation_unification_review). Family B's reclaim is #297 (a parked design rock): if
+      #297 re-registers the pair it files its OWN gate on its own clean cohort — this review's
+      contaminated cohort must not be revived. Predicate left in place as history; a test pins
+      that no pending review reads mi_anticipation_lifecycle while the 3b job stays unregistered.
     added_on: 2026-06-14
     action_when_ready: |
       Compare the live shadow cohort's realized R (recorded vs the forward path) to the
@@ -347,9 +371,10 @@ reviews:
     # across watched(8) / armed(8) / expired(2) / ready(1) — 'triggered' has NEVER occurred, and
     # anticipation.py:85 says so outright: "the JOB layer maps it to lifecycle state 'ready' —
     # NOT 'triggered'/entry". So the gate waits on a state today's pipeline does not emit.
-    # Left pending rather than closed: the Phase-3 settlement path that writes 'triggered' +
-    # realized_r exists in the module, so this becomes satisfiable when that path runs. But it is
-    # NOT "accruing" today and must not be read as such.
+    # ⚠ SUPERSEDED the same day by the close above (#633): the settlement path exists in the
+    # MODULE, but the JOB that would run it (_anticipation_3b_job) is unregistered and its cohort
+    # is declared contaminated by ADR-0013 — "satisfiable when that path runs" is #297's call,
+    # not a reason to keep this pending.
 
   - review_id: anticipation_270_calibration_revalidation
     title: "#270 calibration re-validation — EXPANSION floor + trigger-volume floor (tune/confirm)"
@@ -370,7 +395,15 @@ reviews:
       WHERE state = 'triggered' AND realized_r IS NOT NULL
     threshold: 30
     earliest_review_date: 2026-09-15
-    status: pending
+    status: done
+    closed_on: 2026-09-09
+    outcome: >-
+      OBSOLETE (#633, 2026-09-09) — CLOSED with its sibling anticipation_270_shadow_graduation
+      (see that outcome for the chain): it reads the same mi_anticipation_lifecycle table, whose
+      only writers were un-registered 2026-06-16 (ADR-0013) and whose cohort is declared
+      contaminated. It would have joined the ZERO-since-eligible list on 09-15. The two
+      calibration knobs it re-validates belong to the gap-anchored Family B machine — #297
+      re-files this question on its own cohort if it reclaims that machine.
     added_on: 2026-06-14
     action_when_ready: |
       Re-run `scripts/_270_calibration_probe.py` adapted to the LIVE cohort (the table now has the
@@ -2132,6 +2165,14 @@ reviews:
     # WATCH (-4%) carries multiplier 1.0x, so the tier it currently sits in is
     # informational by design. It is tracking correctly and protecting nothing yet.
     # [[a-rule-is-not-live-until-it-has-fired-once]]
+    #
+    # ── #633 VERDICT 2026-09-09: WAITING — the predicate CAN be true; the event has not happened. ──
+    # Proof the shape fires: drawdown_breaker.py:415-417 emits exactly these event names with
+    # summary f"{mode}: {prev} → {new} ...", and prod holds 2 `drawdown_reduce_entered` rows with
+    # the `paper:` prefix (2026-06-05) plus 2 `drawdown_watch_entered` rows with the `live:` prefix
+    # (last 2026-08-28) — same emitter, same summary shape the LIKE 'live%' matches. Live sits in
+    # WATCH (-4.88% since 08-28; multiplier 1.0x); REDUCE engages at -7%. Zero is the truth.
+    zero_verdict: "2026-09-09 WAITING — the reduce/block events are emitted with a 'live:' summary (paper rows prove the shape); live sits in WATCH at -4.88%, REDUCE is -7%. Nothing has engaged yet."
     status: pending
     regated_on: 2026-08-06
     regate_kind: predicate
@@ -4853,7 +4894,22 @@ reviews:
           membership. Window expansion to 180d for tier 2/3 sample.
         - Per `user_pradeep_catalyst_hierarchy.md`: weighted theme
           axis 1.5-2× fundamentals in final composite.
-    status: pending
+    status: done
+    closed_on: 2026-09-09
+    outcome: >-
+      OBSOLETE (#633, 2026-09-09) — CLOSED as superseded. (1) The predicate could never fire: it
+      counts 'catalyst_rubric_scored' + 'theme_context_scored' audit events, and no code in
+      agents/ or scripts/ has ever emitted either name (0 rows all-time; the 08-15 sweep saw it).
+      (2) The action it would trigger — fit composition weights by logistic regression on N>=30
+      alerts — was overruled by the operator's methodology-fidelity directive (05-30, reinforced
+      06-04 above: "we IMPLEMENT the known method, we do NOT validate it from ~30 bull-regime
+      alerts" → "de-gate from the 9/8 / N>=30 framing"). (3) The program it anchored to lives
+      elsewhere now: no #329 line exists in PLAN.md; the composite was built under ADR 0024
+      (meta_rubric_compose.py, dark behind composite_authority), the WEIGHTING decision is #368
+      (operator labels + decides the magnitudes; in_progress), the load-bearing flip is #335
+      (operator sign-off; pending), and the Phase-6 gating decision keeps its own review
+      (phase6_meta_rubric_gating — which carries the SAME writer-less-event defect, noted there
+      for #335 to resolve). The 05-25 fixture pin and the 06-04 RUM case stay above as history.
     added_on: 2026-05-17
 
   - review_id: catalyst_type_forward_signal
@@ -5178,6 +5234,14 @@ reviews:
     # NOTE 2026-08-15 (sweep): 'meta_rubric_score_advisory' has NO writer in the
     # codebase and 0 rows all-time (Phase 5/#329 unbuilt). Correctly dark until the
     # advisory composite ships — a forward-registered gate, not a defect.
+    # ⚠ #633 2026-09-09: STILL writer-less, and now the review that OWNS this event (phase5
+    # closed as superseded — see its outcome). NOT repointed: the composite computes only
+    # behind get_composite_authority_enabled() (ep_detector.py ~5993), so there is no dark
+    # per-alert advisory stream to count yet; what it emits once #335 flips it is #335's
+    # decision, and this predicate must move with it in the same commit. Until then it reads 0
+    # for a structural reason, not for want of data. Exempted BY NAME, with this reason, in
+    # tests/test_gated_review_predicates_runnable.py's emitter check. catalyst_rubric_quarterly
+    # keys on the same event — the same note applies (earliest 2026-12-29).
     predicate_sql: |
       -- Need ≥20 advisory alerts settled (5d forward returns) WITH
       -- the meta_rubric_score_advisory audit event AND a measurable
@@ -7060,6 +7124,23 @@ reviews:
     # while sibling detectors accrue hundreds (ma_pullbacks 360, breaks 160 in 90d).
     # Either U&R is genuinely that rare or the detector went dark ~06-18 — needs a
     # detector-health look (#98); the gate cannot ripen at the observed rate.
+    #
+    # ── #633 VERDICT 2026-09-09: IMPOSSIBLE-AS-WRITTEN → FIXED. ──
+    # The old filter `parent_invalidated_eod = FALSE` excluded EVERY U&R by construction: prod
+    # holds 6 rows ever (06-03 → 09-08) and all 6 are TRUE — for the parent FLAG's close-based
+    # rules (close below SMA20 ×3; close below the base's lowest CLOSE ×3), never for the U&R's
+    # own invalidation. A U&R by definition probes 2-8% under base_low, which drags the close
+    # under the SMA20 / lowest-close reference even when the reclaim HELD: COMP, CPSH, TTMI and
+    # SNOW all closed above base_low AND above their undercut-low stop, and every one was
+    # excluded. The gate graded the U&R on the flag's structure rule, not on the U&R.
+    # NOW: the U&R's OWN survival per its SSoT (docs/setups/undercut_rally.md: stop = the
+    # undercut low) — the day-0 close held above the stop. Reads 4 settled today (COMP, CPSH,
+    # TTMI, SNOW; PAY 08-27 closed below its stop and is out; RUM 09-08 is not yet settled).
+    # Alternative considered and recorded: `d0.close >= u.base_low` (the reclaim held into the
+    # close) — reads the same 4 today; the stop is the SSoT's invalidation, so it wins.
+    # The detector is ALIVE — rows on 08-27 and 09-08, `intraday_undercut_rally` audit events
+    # through 09-08 — which answers the 08-15 "went dark?" question: no, U&R is just rare (2 in
+    # the last 30 days vs 48 ma-pullbacks). Threshold 10 stays; it accrues honestly now.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_flag_undercut_rally u
       LEFT JOIN mi_daily_closes d0
@@ -7070,10 +7151,15 @@ reviews:
           ORDER BY trade_date ASC OFFSET 9 LIMIT 1
       ) d10 ON TRUE
       WHERE u.ur_date <= CURRENT_DATE - INTERVAL '12 days'
-        AND u.parent_invalidated_eod = FALSE
-        AND d0.close > 0
+        -- the U&R's own invalidation (SSoT: stop = undercut_low), NOT the parent flag's
+        -- close-below-SMA20 / lowest-close rule, which fired on 6 of 6 U&Rs ever (#633)
+        AND d0.close > u.undercut_low
         AND d10.close IS NOT NULL;
     threshold: 10
+    # #633 2026-09-09: reviewed — mi_flag_undercut_rally carries no setup/account column;
+    # parent_stage (TIGHTENING/COILED/TRIGGERED) is context the review grades ACROSS, not a
+    # different question.
+    discriminates_on: []
     earliest_review_date: 2026-07-15
     action_when_ready: |
       Pull cohort. Compute 5d/10d forward returns from current_price
@@ -7641,13 +7727,50 @@ reviews:
     # intraday — apparently never observed. The gate cannot ripen as written; what
     # should count as a "failed break" (e.g. close back below base_high, next-day
     # failure) is detector semantics — operator/design call, not a re-gate here.
+    #
+    # ── #633 VERDICT 2026-09-09: IMPOSSIBLE-AS-WRITTEN → FIXED. And the 09-09 morning note at
+    # the foot of this entry ("the column is NEVER SET") was WRONG about the cause. ──
+    # The column IS written: flag_detector.reconcile_flag_state_post_eod, called from
+    # run_flag_scan, has fired 73 times on the four sibling tables (ma_pullbacks 33,
+    # support_tests 25, low_vol_rests 10, undercut_rally 5). It has never fired on BREAKS
+    # because the flag's INVALIDATED rule is CLOSE-based (close below the base's lowest close /
+    # SMA20 / SMA50 / SMA200), and a name that broke ABOVE base_high on day D can only meet it by
+    # closing under the base's LOWEST close the same day — a full intraday round-trip of the
+    # base. Prod: 0 of 167 breaks in 3.5 months; the parent's EOD stage on the break day was
+    # TIGHTENING 90 / unqualified 46 / TRIGGERED 18 / COILED 12 / INVALIDATED 0. The proxy was
+    # empty by construction, not by silence.
+    # NOW: the review's OWN stated mechanic — "closes back BELOW base_high before EOD" — read
+    # from mi_daily_closes on the break day, with the same settled-10-session join the sibling
+    # U&R review uses. Cumulative, no rolling window (a window that forgets is the shape that hid
+    # entry_order_rejections_systematic for a month). Prod today: 54 of 167 breaks (32%) closed
+    # back under base_high on the break day; 50 of those are settled → reads 50 against 10 and
+    # is READY. The Phase-1 "3 columns" build is NOT needed to answer Phase 2 — the
+    # forward-return read runs on data already held.
     predicate_sql: |
-      SELECT COUNT(*) FROM mi_flag_breaks
-      WHERE break_date >= CURRENT_DATE - INTERVAL '90 days'
-        AND parent_invalidated_eod = TRUE;  -- proxy: these failed by EOD
+      SELECT COUNT(*) FROM mi_flag_breaks b
+      JOIN mi_daily_closes d0
+          ON d0.ticker = b.ticker AND d0.trade_date = b.break_date
+      LEFT JOIN LATERAL (
+          SELECT close FROM mi_daily_closes
+          WHERE ticker = b.ticker AND trade_date > b.break_date
+          ORDER BY trade_date ASC OFFSET 9 LIMIT 1
+      ) d10 ON TRUE
+      WHERE b.break_date <= CURRENT_DATE - INTERVAL '12 days'
+        -- the failed break itself: broke base_high intraday, closed back under it (#633).
+        -- NOT parent_invalidated_eod — that flag needs a same-day close under the base's LOWEST
+        -- close and has been TRUE on 0 of 167 breaks ever.
+        AND d0.close < b.base_high
+        AND d10.close IS NOT NULL;
     threshold: 10
+    # #633 2026-09-09: reviewed — mi_flag_breaks carries no setup/account column; parent_stage is
+    # context the review grades ACROSS (same call as intraday_undercut_rally_signal_n10).
+    discriminates_on: []
     earliest_review_date: 2026-07-15
     action_when_ready: |
+      ⚠ ORDER CHANGED 2026-09-09 (#633): run Phase 2 FIRST, on the settled cases the predicate
+      now counts (failed = closed back under base_high on the break day, vs held). Phase 1's
+      three columns are needed only if the signal justifies a REAL-TIME surface.
+
       Phase 1: ship shadow detector that adds 3 columns to
       mi_flag_breaks: `failed_at`, `low_after_break`, `bars_until_fail`.
       Extend existing run_intraday_flag_break_scan to poll today's
@@ -7662,16 +7785,10 @@ reviews:
 
     status: pending
     added_on: 2026-05-28
-    # 🔴 BROKEN PREDICATE, found 2026-09-09 — DO NOT TRUST ITS 0. It counts
-    # `mi_flag_breaks WHERE parent_invalidated_eod = TRUE`. That column is declared
-    # `BOOLEAN DEFAULT FALSE` in two CREATE TABLE statements and is referenced NOWHERE ELSE in
-    # agents/ except comments — it is NEVER SET. Prod confirms: 167 rows total, 62 in the last
-    # 90 days, and parent_invalidated_eod has been TRUE exactly ZERO times, ever. So the
-    # predicate is `WHERE FALSE` and this gate can never fire.
-    # ⚠ NOT silently repointed: choosing a different proxy for "the break failed by EOD" is a
-    # judgement about what the detector is being graded on, not a typo fix. It needs either the
-    # column actually written, or a stated proxy someone signs. Until then this is a DEAD gate
-    # wearing a "still accruing" label — the exact shape that hid four other gates this week.
+    # 2026-09-09 (morning): flagged as a dead gate — correctly — but the stated cause ("the
+    # column is NEVER SET") was wrong: the EOD reconcile runs nightly and has fired 73 times on
+    # the sibling tables. The real cause (a close-based INVALIDATED rule a same-day break
+    # cannot meet) and the fix are in the #633 block above the predicate.
 
   - review_id: partial_exit_hardening_n7_clean_cycles
     title: "P0 — Partial-exit architecture stable for N=7 consecutive paper cycles"
@@ -8237,7 +8354,18 @@ reviews:
     # above). It stays at zero and stays silent until a real
     # HIGH-without-direct-source appears — then it surfaces on its own, with a
     # cohort to look at.
+    # ── #633 VERDICT 2026-09-09: WAITING (tripwire) — the emitter is live and the slice is empty. ──
+    # ep_detector.py ~5568-5590 writes one `perplexity_boost_shadow` row per boosted alert
+    # (confidence_multiplier >= 1.2, direct flag captured) with summary
+    # "{ticker} {tier} boost=.. direct=.." — the 5 MODERATE+direct=False rows prove the LIKEs match.
+    # Prod: 71 rows (06-08 → 08-27); HIGH+direct=False = 0 of 50 HIGHs. The quiet since 08-27 is
+    # the BOOST not firing (0 of 11 alerts 08-28 → 09-08 carried the 1.2x; 4 of 5 did on 08-27 and
+    # all 4 wrote rows), while the direct-source flag still populates daily
+    # (`ep_catalyst_provenance` through 09-09). kind: tripwire — 0 here means the boost has never
+    # manufactured a HIGH without a source, which is the good outcome, not neglect.
+    zero_verdict: "2026-09-09 WAITING — emitter live (71 rows, last 08-27; boost simply has not fired since); HIGH-without-direct-source is 0 of 50 HIGHs. Good news, not neglect."
     status: pending
+    kind: tripwire
     regated_on: 2026-08-06
     regate_kind: predicate
     added_on: 2026-06-10
@@ -8561,10 +8689,21 @@ reviews:
     # data-readiness triggers, not the calendar).
     earliest_review_date: 2026-08-11
     action_when_ready: >-
-      Per-event: pull the audit JSON (candidate_themes, same_family_opens), judge true-family vs
-      false-family with the charts/themes of that day. All true + operator sign-off -> the BLOCKING
-      card (CHANGE_PROCESS, safeguards.md #3 amendment, backtest/replay, sign-off — THE LINE).
-      Any false-family -> fix the key first (ecosystem-key fork, 0025 merge arm) and re-arm.
+      RE-ALIGNED 2026-09-09 (#633) to the operator's 2026-09-07 ruling on #452 — "stays
+      observe-only; reopens only on same-family entries underperforming solo ones" (PLAN.md
+      standing section). Per-event: pull the audit JSON (candidate_themes, same_family_opens),
+      judge true-family vs false-family with the charts/themes of that day; any false-family ->
+      fix the key first (ecosystem-key fork, 0025 merge arm) and re-arm. Then COMPARE the
+      same-family entries' realized R against solo entries over the same window. If they
+      underperform, surface the reopen fork to him with that comparison; if not, note it and stay
+      observe-only. This review never proposes a block on its own — a BLOCKING card exists only
+      if he reopens it (THE LINE).
+    # ── #633 VERDICT 2026-09-09: WAITING (tripwire) — the check runs on every entry; no breach yet. ──
+    # exposure_family.py::shadow_check_and_emit is called from entry_pipeline.py on every entry
+    # submission and writes `exposure_family_breach` on a breach; the 09-08 heartbeat
+    # `exposure_family_checked` (5 rows on 09-08, one per submission) proves the check itself
+    # runs. Zero breaches = no same-family stacking has occurred on the live book. The truth.
+    zero_verdict: "2026-09-09 WAITING — the check runs on every entry (09-08 heartbeat rows prove it); zero breaches means no same-family stacking has happened. Action re-aligned to his 09-07 ruling."
     status: pending
     added_on: 2026-08-11
     cross_refs: ["task #452", "exposure_family_cap_promotion (r1)", "docs/analysis/452_r1_stage2_design_2026-07-17.md"]
@@ -8827,11 +8966,25 @@ reviews:
       mechanism? Any retry mechanism = entry-discipline change → CHANGE_PROCESS +
       operator sign-off (THE LINE); this review only decides whether to open that
       design.
+    # ── #633 VERDICT 2026-09-09: WRONG-AS-WRITTEN → FIXED — it FIRED and then FORGOT. ──
+    # Three rows exist: ARWR 07-22 (cancelled), INSM 08-06 (rejected), QNST 08-07 (cancelled).
+    # With the old rolling 30-day window this read 3 >= 3 from 08-07 until the 07-22 row aged out
+    # on 08-21 — READY for two weeks — but nothing ran predicates before 09-09 (operator_asks.py
+    # only started executing them that day), and by then the window had rolled back to 0. A
+    # tripwire whose memory is shorter than the interval between reads is the operator's
+    # "condition set is wrong" made concrete. NOW cumulative since the telemetry shipped (#475,
+    # 2026-07-15): reads 3 → READY. After each run, RE-BUMP threshold to the next milestone
+    # (3 → 6 → 9), the recurring idiom exit_tune_cohort_review uses, so the same rows never
+    # re-trigger a run.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_audit_log
       WHERE event_type = 'entry_order_rejected'
-        AND created_at > NOW() - INTERVAL '30 days'
+        AND created_at >= DATE '2026-07-15'
     threshold: 3
+    # #633 2026-09-09: reviewed — account_mode lives in the detail JSON / "[live]" in the
+    # summary; the question ("is the reject pattern systematic?") spans both modes, and
+    # post-cutover all three rows are live. No column here filters a different question.
+    discriminates_on: []
     earliest_review_date: 2026-07-29
     action_when_ready: |
       Pull the rows:
@@ -9348,7 +9501,15 @@ reviews:
     # At 2026-08-22 the era-C count is 1, so this correctly will not fire again for a while.
     threshold: 20
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode, mi_sell_discipline_records.signal_type, mi_sell_discipline_records.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
-    earliest_review_date: 2026-08-01
+    # #633 2026-09-09: earliest_review_date moved 2026-08-01 → 2026-09-06 to MATCH the era restart
+    # the predicate already carries (created_at >= 2026-09-06). Left at 08-01 it rendered as
+    # "ZERO for 39 days" when the counter has only existed since the 09-06 flip (first market day
+    # 09-08). VERDICT: WAITING — prod 09-09: era-D closed live trades = 1 (PHVS), its peak 0.63 ADR
+    # is under the 1.5 runner bar, so LEAST() = 0 honestly; 28 closed live trades all-time flow
+    # through the same columns, so the shape is proven. Move this date with _EXIT_ERA_START on
+    # the next flip.
+    earliest_review_date: 2026-09-06
+    zero_verdict: "2026-09-09 WAITING — era D started 09-06; 1 closed live trade so far (PHVS, no runner). 28 closed live trades all-time flow through these columns."
     status: pending
     action_when_ready: |
       ⚠ STALL CLAUSE (added 2026-08-01, mirroring cooldown_admission_unassumed).
@@ -11174,6 +11335,16 @@ reviews:
     #    prod read yet at commit time — no DB access from the build session; the FIRST real
     #    read happens after deploy + the first nightly run (job "sustain_reject_replay",
     #    18:13 ET). NOTHING about live admission changed.
+    # >> #633 VERDICT 2026-09-09: WAITING (tripwire) — honest zero, mechanics exercised end to end.
+    #    Prod: the table exists and the nightly job writes (sustain_reject_replay_recorded 09-05 →
+    #    09-09); 102 scoreable rows in the 30-day window (the n>=30 gate passes); 18 cleared the
+    #    gap-floor + dollar-volume funnel; 7 of those would have made a POSITIVE return but 0
+    #    reached >=4R → 0/102, under 10% → 0. The funnel and the positive arm both count non-zero,
+    #    so the >=4R arm reading 0 is the rule turning away no >=4R name, not a dead query.
+    #    Caveat carried: 190 `sustain_reject_replay_error` rows (KeyError 'volume', 09-04/05 — 95
+    #    candidates × 2 runs) stopped by 09-07; 24 rows sit 'unscoreable' (NULL, counted, never
+    #    substituted).
+    zero_verdict: "2026-09-09 WAITING — 102 scoreable declines in the window, 7 would have made money, 0 reached 4R; the sustain rule has turned away no 4R name. Funnel counts non-zero, so the query is live."
     status: pending
     kind: tripwire
     # tripwire, not accrual: while the rate stays under 10% this predicate reads 0, which is
@@ -11239,6 +11410,11 @@ reviews:
     threshold: 1
     discriminates_on: []
     earliest_review_date: 2026-09-08
+    # #633 VERDICT 2026-09-09: WAITING (tripwire, one day past its date). The emitter exists —
+    # order_manager.py `_REPROTECT_FLOOR_EVENT` is written by the re-protect path — and prod holds
+    # 0 rows of it, verified 09-09. The repair path it sits on fired twice in the system's life,
+    # so silence here is the base rate, not a defect.
+    zero_verdict: "2026-09-09 WAITING — emitter exists (order_manager `_REPROTECT_FLOOR_EVENT`); 0 rows verified 09-09; the repair path fired twice in the system's life."
     status: pending
     kind: tripwire
     added_on: 2026-09-04

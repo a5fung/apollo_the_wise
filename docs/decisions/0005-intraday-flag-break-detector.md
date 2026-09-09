@@ -122,6 +122,16 @@ UPDATE mi_flag_breaks
 
 A stock that broke intraday but is reclassified INVALIDATED by the same evening's flag scan (e.g. it broke then immediately closed back under base_high — failed structurally) gets excluded from forward-return analysis. The backward-check evidence script (`_b94_intraday_flag_break_evidence.py`) filters `WHERE parent_invalidated_eod = FALSE`.
 
+> **Addendum 2026-09-09 (#633).** The example above overstates what the flag catches. INVALIDATED is
+> CLOSE-based (`flag_detector.py` ~895-945: close below the base's lowest close / SMA20 / SMA50 /
+> SMA200), so a same-day break above `base_high` can only be reconciled TRUE by closing under the
+> base's LOWEST close that day — a full intraday round-trip of the base. In 3.5 months it fired on
+> 0 of 167 breaks (the reconcile itself runs nightly and has fired 73 times on the sibling tables).
+> "Closed back under base_high" is a different, measurable population (54 of 167), and the N≥10
+> failed-break review (`data_gated_reviews.yaml::intraday_failed_break_signal_n10`) now reads it
+> from `mi_daily_closes` directly. The backward-check script's `= FALSE` filter is therefore a
+> no-op today, not a filter.
+
 ## 6. Architectural choices (decided)
 
 | Choice | Decision | Rationale |
