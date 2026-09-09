@@ -1152,11 +1152,20 @@ def _standing_ask_gate(errors) -> None:
     j = text.find("\n## ", i)
     block = text[i:j if j > 0 else len(text)]
     asks, retired = {}, set()
+    # Both sides parse the #ID with the SAME regex. The first cut took `split("**")[1]` on the
+    # retired line, which yields "519 scorer" for a row titled `- **#519 scorer** — ...` and would
+    # NEVER have matched the ask row's "519" — the gate would have stayed silent on the exact row
+    # it was written for. Caught 2026-09-08 by the advisor pass, minutes after the RED test
+    # (planted on #452, whose title happens to be a bare number) reported it working.
+    _tid = re.compile(r"#(\d+)")
     for ln in block.splitlines():
         st = ln.strip()
         if st.startswith("| **#"):
             cells = [c.strip() for c in st.strip("|").split("|")]
-            tid = cells[0].strip("* #")
+            m_id = _tid.search(cells[0])
+            if not m_id:
+                continue
+            tid = m_id.group(1)
             asks[tid] = cells
             if len(cells) < 3 or len(cells[2]) < 20:
                 errors.append(
@@ -1164,8 +1173,12 @@ def _standing_ask_gate(errors) -> None:
                     f"a one-line LIVE FACT that proves it is still open (a query, a file, a ruling "
                     f"that is absent) — 'the task text says so' is what rotted. Add the proof or "
                     f"delete the row.")
-        elif st.startswith("- **#"):
-            retired.add(st.split("**")[1].strip("# "))
+        elif st.startswith("- **"):
+            # `- **wick_fill promotion hold**` carries no #ID and simply contributes nothing,
+            # which is right: a retirement with no number cannot be resurrected by number.
+            m_id = _tid.search(st.split("**")[1] if "**" in st else "")
+            if m_id:
+                retired.add(m_id.group(1))
     for tid in sorted(set(asks) & retired):
         errors.append(
             f"PLAN standing-ask #{tid} is listed as an ASK **and** as retired-ANSWERED in the same "
