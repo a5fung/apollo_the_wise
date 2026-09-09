@@ -356,10 +356,13 @@ carve-out decide them precisely as it did pre-2026-09-04) while leaving carve-ou
 names — and the rest of the #321 mechanism — untouched. That is the byte-identical
 pre-2026-09-04 order; `live_yoy_recovery` OFF is not.
 
-**Status**: built + tested (`tests/test_yoy_writeback_and_window.py` — source-order pin, the
-toggle's exact condition text, and replay-fixture behavioral tests for HGTY/PRGO/RPD/HRB/SCSC/
-EROC under both toggle states), awaiting deploy (`market-agent` scope) and next-market-day
-verify. Verify-live: the next `catalyst_downgrade_carveout_applied` audit row for an earnings
+**Status**: ✅ **DEPLOYED AND VERIFIED-LIVE 2026-09-08** — the "awaiting deploy" line was correct
+on its own date and stale since; `live_rules.py --drift-only` caught it at CLOSE. **The verify below
+was RUN, not assumed:** across 21 days of `catalyst_downgrade_carveout_applied` rows (7, newest ERO
+today) **not one has an earlier same-day `catalyst_yoy_recovered_live` row for the same ticker** —
+the condition this entry named. ⚠ **The check was proved able to FAIL before its pass was believed:**
+the same ticker-match pattern hits all 26 `catalyst_yoy_recovered_live` rows, so an all-false result
+is a real pass and not a format mismatch that could never match. Original verify text kept below. Verify-live: the next `catalyst_downgrade_carveout_applied` audit row for an earnings
 name should show no earlier same-day `catalyst_yoy_recovered_live` row, and no same-day
 `catalyst_earnings_revenue_weak_downgrade` reason ending `_recovered`, for the same ticker — the
 HGTY/PRGO/RPD/HRB class (a real, computable, below-floor YoY on a carve-out-eligible name)
@@ -409,8 +412,10 @@ ticker that has an earlier `catalyst_yoy_recovered_live` row.
 
 **Reversion-flag**: REFINEMENT of the 2026-06-28 #321 entry (same rule, the answer now persists).
 
-**Status**: built + tested (`tests/test_yoy_writeback_and_window.py`), awaiting deploy
-(`market-agent` scope) and next-market-day verify.
+**Status**: ✅ **DEPLOYED AND LIVE — confirmed 2026-09-08.** `live_yoy_recovery_inwindow` reads
+`on` in `mi_safeguard_state` on prod (re-checked tonight after the 21:15 redeploy, since a flag that
+does not survive a restart is the failure this class keeps producing), and the sibling entry above
+carries the run verification. The "awaiting deploy" line was stale, not wrong on its date.
 
 ### 2026-09-04 — In-window #321 recovery, DETACHED, behind `live_yoy_recovery_inwindow`
 

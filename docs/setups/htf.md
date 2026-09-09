@@ -169,7 +169,17 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
   permissive-or-neutral), or move to 262 (the measured median of the old behavior, closer to
   reproducing it exactly) if exact behavioral continuity matters more than hitting the stated target.
   **Reversion-flag**: NEW (first fix of this specific bug; not a reversal of a signed threshold).
-  **Status**: shipped in this session, tree left dirty per instruction — not deployed. Known
+  **Status**: ✅ **DEPLOYED AND LIVE AT 262 — read off the running `apollo-market` image
+  2026-09-08** (`flag_detector.py:32`, matching the repo). The old line said *"shipped in this
+  session, tree left dirty — not deployed"*, which was true on 2026-09-05 and stale by the next
+  deploy; `live_rules.py --drift-only` caught it at CLOSE on 09-08.
+  **The 260-vs-262 fork above is CLOSED at 262 — the exact-behavioural-continuity option**, i.e.
+  the measured median of the old window rather than the stated 260 target. Recording the basis
+  rather than re-asking: the entry's own replay showed the direction is permissive-or-neutral at
+  this gate under EITHER value (all 116 differing pairs produced identical stage and reason), HTF
+  is not live-trading (its money gate #397 is still blocked), so neither number can move a trade
+  today. **If the operator prefers 260 — the documented target — it is a one-line change**; this is
+  recorded as a settled default, not as a ruling he gave. Known
   inconsistency left OUT OF SCOPE (belongs to #592, not this line): `scripts/probes/
   _592_610_htf_grid_replay.py:153` still does `d - timedelta(days=fd._HISTORY_DAYS)` — a calendar-
   span slice — so it will silently stop mirroring live once `_HISTORY_DAYS` means trading rows;

@@ -810,11 +810,19 @@ LINE — a revert-review threshold on a live admission gate).
 **Reversion-flag**: REFINEMENT of the 2026-08-28 rate mechanics (which stand); REPLACEMENT of the
 2026-08-28 breach TEST specifically. Nothing about the sustain rule's own admission logic changed.
 
-**Status**: rewired 2026-09-03, code-complete + suite green (`tests/test_sustain_reject_replay.py`,
-28 tests). **Not yet deployed / not yet verified-live** — built with no prod DB access from this
-session; the table and job ship on the next market-agent (+ execution, since `db.py`/`scheduler.py`
-are on the execution-loaded-module list) deploy, and the first real reading lands after the first
-nightly run (job `sustain_reject_replay`, 18:13 ET) backfills the standing 40-trading-day window.
+**Status**: rewired 2026-09-03. ✅ **DEPLOYED AND VERIFIED-LIVE — confirmed on prod 2026-09-08**,
+five days after this entry was written; the "not yet deployed" line it used to carry was correct on
+its own date and stale by 09-04. `live_rules.py --drift-only` is what caught it, which is the job
+that check exists to do. Evidence read from the database, not inferred: `mi_sustain_reject_replays`
+holds **99 rows** through decline-date 2026-09-08, and the nightly job (`sustain_reject_replay`,
+18:13 ET) ran **tonight at 18:13:00 ET — 6 candidates, 6 written, 0 errors.**
+⚠ **Its first run was NOT clean and that matters more than the pass:** 2026-09-04 21:03 processed
+95 candidates and wrote **zero**, failing all 95 on `KeyError: 'volume'`. The re-run at 21:29 wrote
+all 95 (14 settled, 56 no-trade, 23 unscoreable, 2 open). A recorder that writes only on success
+would have shown an empty table and read as "nothing to record" — the same silent-guard class as
+#501. The audit summary line is what made the failure legible.
+**Still open, and unchanged by this**: the 10% threshold question above is the operator's call once
+the predicate has a real reading.
 
 ### 2026-08-28 — STATUS RECORD: two real-time toggles went live and the SSoT never said so
 

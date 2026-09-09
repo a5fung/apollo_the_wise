@@ -24,8 +24,13 @@ load-bearing of those; the rest is nuance the signed ADRs + PLAN.md task detail 
 1. `git pull origin main`
 2. `python scripts/operator_now.py` (you're **PDT**; harness clock is UTC — never trust it for dates)
 3. `python scripts/check_plan.py --today` → the day's plan (this reads PLAN.md, the SoT — works fine on the laptop)
-4. **Read THIS file (§3) for in-flight context** (it replaces the machine-local pickup you won't have)
-5. State the day's plan before reacting.
+4. ⛔ **`python scripts/operator_asks.py` — NEVER assemble "what waits on you" by hand.** If an
+   item is not in that output it is NOT open: do not raise it, do not "just check". (Added here
+   2026-09-08, the same day it became an OPEN step in CLAUDE.md — a laptop session following the
+   old four-step list would hand-assemble the ask list, which is the exact failure it prevents.)
+5. **Read THIS file (the LAST dated section) for in-flight context** (it replaces the machine-local
+   pickup you won't have)
+6. State the day's plan before reacting.
 
 CLOSE ritual is unchanged (reconcile PLAN.md → `check_plan.py` must pass → commit+push). Your
 laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays the source of truth,
@@ -608,3 +613,74 @@ and had to re-open it) · RS and EP are **reflexive**, so split grind from co-ga
 #452 stays observe-only · #281 closed (staging was built and never once started).
 
 **WAITS ON HIM, not on us:** #184's dry-run flip · #612's key rotation · #519's scorer and spend.
+
+---
+
+## 2026-09-08 (Tue) — 🔴 RESUME HERE. Supersedes everything above.
+
+**Tree clean, pushed through `07da77d2`, suite 7,793, board 71 → 68** (four real closes, one new
+task filed, no carryover). Six changes live on the running images.
+
+### 🔴 WEDNESDAY 9:31 ET, BEFORE ANYTHING ELSE — the only money-path change
+
+The regime freshness rule read Labor Day as a missed session, called the regime row stale, and
+**floored sizing on two live entries to a quarter of full size.** Fixed and deployed 12:06 ET:
+`_last_ingested_session` asks `mi_daily_closes` what the last real session was, so the closes table
+supplies the trading calendar and nobody maintains one.
+
+**It has never run on an ordinary morning.** Check: **no `sizing_regime_fallback` audit row at 9:31,
+and the first fill's `risk_dollars` at full size (~$37), not the ~$12.35 floor.**
+⚠ **Zero entries Wednesday is NOT a pass** — it stays open until a real fill proves it.
+
+### 🚦 12:00–13:00 ET — #630 deploy, `both` THEN `execution`, before any other push
+
+Two corrections built Tuesday night after the 21:15 window closed. **A deploy ships the BRANCH, not
+your diff** — if #486 deploys `market-agent` first without the second step, `order_manager.py` lands
+on one image and the money path runs dark on the other.
+
+- **The ORB regime read caches per calendar day.** It did a database read on *every* submission; at
+  9:31 concurrent entries contend for a five-connection pool, and a timeout falls back to the
+  calendar rule that floors — the bug would return on exactly the post-holiday morning the fix
+  exists for. ⚖ No sizing, rule or threshold changed.
+- **`active_themes_at_decision` → `lane2_narratives_at_decision`** — the value is the Lane-2 roster
+  shown to the model (0–7, capped), never the ~118-theme board.
+
+### The rest of Wednesday's verifies
+
+From the 21:15 ET deploy (`6974a059`): discovery prompt cache · seed why-logging · cost trading-day
+baselines · #582 truncation guard · the 9M shutdown. Plus three the advisor pass added:
+
+- **Prove the cost-baseline reader RAN, not just shipped** — `_trading_sessions` swallows failures
+  and falls back to calendar days, so "the watchdog didn't re-fire" passes either way. Real check:
+  **zero `trading-session read failed` lines in the `apollo-market` logs.** Presence of code on an
+  image is not evidence it executed.
+- **tv_news NULL preservation** — after the 20:45 ET run a no-corpus row writes `NULL`, not `[]`.
+- ⚠ **ONE 9M check, then 9M leaves the board forever.** CLAUDE.md says *do not re-verify it*; I had
+  put three 9M verifies on Wednesday. Kept one only because the shutdown shipped Tuesday.
+
+**MAIN BUILD: #486 (naming the groups discovery is already shown and declines).** Read Tuesday's
+declined-cluster rows FIRST — the build follows the reason, not the other way round.
+
+### ⛔ The day's real failure: I re-asked him questions he had already answered
+
+*"everyday you tell me you're waiting on me for the same things, over and over"* → *"I don't want
+you asking me these answered items again."* An audit found **three of four** standing asks already
+answered, one carried seven weeks, and one asked despite a cadence gate built the week before for
+exactly that purpose.
+
+- **`scripts/operator_asks.py` is now the only way to say what waits on him**, and it is a GATE:
+  `check_plan._standing_ask_gate` fails the commit on a proofless ask row, or on a task number
+  listed as both an ask and retired-answered.
+- ⚠ **Its first version could not have caught the one row it was written for** — the retired line
+  parsed as `split("**")[1]`, and my RED test happened to use a task whose title was a bare number.
+  Both arms are regex-parsed and re-tested RED now. *A test that passes while unable to fail is the
+  same shape #625 hit last week.*
+- **NOTHING WAITS ON HIM.** #519's chart-vision scorer was retired: his 2026-08-19 ruling (*"does it
+  see what he sees, scored against his LABELLED set"*) is recorded on that very line. What remains
+  is **mine** (one cost number from `pricing_for()`) and **calendar** (labels arrive through #594's
+  gate — 40 alerts, earliest 2026-09-20).
+
+### The rest of the week (top of PLAN.md, a build a day)
+
+**Thu #501** the 13 gate-invisible silent failures · **Fri #368** rubric weights ·
+**Sat/Sun #555** rewrite `canonicalize_themes`.
