@@ -26,6 +26,7 @@ Read-only. No DB writes, no network beyond the read-only prod query the gated re
 """
 from __future__ import annotations
 
+import base64
 import re
 import subprocess
 import sys
@@ -41,23 +42,134 @@ _ASK_BLOCK = re.compile(
 
 
 def _gated_reviews_ready() -> list[str]:
-    """Asks that carry a real predicate live in data_gated_reviews.yaml. A review that is
-    not READY is not an ask — its own gate says so, and overriding that by hand is the
-    2026-09-08 #594 mistake."""
+    """Asks that carry a real predicate live in data_gated_reviews.yaml — and this RUNS the
+    predicates rather than asserting their answer.
+
+    ⚠ WHY THIS WAS REWRITTEN (2026-09-09, one day after the script shipped). The first version
+    listed every pending review under the line "NOT an ask until its own predicate says READY"
+    — **without ever asking the predicate.** So a review that WAS ready could never surface, and
+    the sentence was not a finding but a fixed string. `gap_alignment_331_accrual` is the proof:
+    its predicate is `SELECT count(*) FROM mi_theme_axis_shadow` against a threshold of 700, prod
+    holds **3,120**, and #331 sat parked to 2026-11-06 on a hand-count of 592 that was wrong by
+    more than 5x. A gate that cannot fire is the exact defect class this file was written to stop,
+    and it shipped inside the fix for it.
+
+    Returns (ready, accruing, error). **`error` is not cosmetic: an unreachable database must
+    NEVER render as "nothing waits on him"** — that is the silent-guard failure wearing the
+    friendliest possible face."""
     try:
         import yaml
     except ImportError:
-        return ["(pyyaml missing — cannot read the gated reviews)"]
+        return [], ["(pyyaml missing — cannot read the gated reviews)"], "pyyaml missing"
     d = yaml.safe_load((REPO / "data_gated_reviews.yaml").read_text())
-    out = []
-    for r in d.get("reviews", []):
-        if r.get("status") != "pending":
+    pending = [r for r in d.get("reviews", [])
+               if r.get("status") == "pending"
+               and "operator" in str(r.get("action_when_ready", "")).lower()]
+    if not pending:
+        return [], [], None
+
+    today = _operator_today()
+    # ONE ssh + ONE psql for every predicate, not one per review (the capture-once cost rule).
+    numbered = [(i, r) for i, r in enumerate(pending) if _has_predicate(r)]
+    counts, err = _run_predicates(numbered)
+
+    ready, accruing = [], []
+    for i, r in numbered:
+        rid = r["review_id"]
+        thr = r.get("threshold")
+        earliest = str(r.get("earliest_review_date") or "")
+        got = counts.get(i)
+        if got is None:
+            accruing.append(f"{rid}: predicate DID NOT RUN — treat as UNKNOWN, never as not-ready.")
             continue
-        if not str(r.get("action_when_ready", "")).lower().count("operator"):
+        date_ok = (not earliest) or earliest <= today
+        if thr is not None and got >= thr and date_ok:
+            # NOT "this is an ask". Every one of these actions starts with work that is MINE —
+            # re-run the probe, produce the cut — and only THEN yields a decision for him.
+            # Labelling a ready review as an operator ask would walk straight back into raising
+            # things before they are answerable, which is what this file exists to stop.
+            ready.append(f"{rid}: ⚠ READY — predicate reads {got} against threshold {thr}"
+                         f"{'' if not earliest else f', earliest {earliest} has passed'}. "
+                         f"RUN THE REVIEW (my work first; his decision only after it produces a "
+                         f"result). Action: {str(r.get('action_when_ready','')).strip().splitlines()[0][:100]}")
+        elif thr is not None and got >= thr:
+            accruing.append(f"{rid}: threshold MET ({got}/{thr}) but earliest date {earliest} "
+                            f"is still ahead. Not an ask yet.")
+        else:
+            accruing.append(f"{rid}: accruing {got}/{thr} (earliest {earliest}).")
+    # A `kind: cadence` review is DATE-gated by design and correctly carries no predicate — it
+    # becomes ready when its own earliest date arrives (chart_reading_review_cycle is the model).
+    # Only a data-gated review with no predicate is broken.
+    for r in pending:
+        if _has_predicate(r):
             continue
-        out.append(f"{r['review_id']}: gated — earliest {r.get('earliest_review_date')}, "
-                   f"threshold {r.get('threshold')}. NOT an ask until its own predicate says READY.")
-    return out
+        rid, earliest = r["review_id"], str(r.get("earliest_review_date") or "")
+        if str(r.get("kind", "")).lower() == "cadence" and earliest:
+            if earliest <= today:
+                ready.append(f"{rid}: ⚠ READY — cadence review, earliest {earliest} has passed. "
+                             f"RUN THE REVIEW (my work first; his decision only after).")
+            else:
+                accruing.append(f"{rid}: cadence — not due until {earliest}.")
+        else:
+            accruing.append(f"{rid}: NO predicate_sql and not a dated cadence review — it cannot "
+                            f"become ready on its own. Give it a predicate or close it.")
+    return ready, accruing, err
+
+
+def _has_predicate(r: dict) -> bool:
+    """A predicate must be a non-empty STRING. `str(None)` is "None" — truthy — which let a
+    review with an explicit YAML null reach the SQL builder and crash the whole tool on its
+    first real run (2026-09-09)."""
+    v = r.get("predicate_sql")
+    return isinstance(v, str) and bool(v.strip())
+
+
+def _operator_today() -> str:
+    """The operator's PT day as YYYY-MM-DD — never the harness UTC date."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
+
+
+def _run_predicates(numbered) -> tuple[dict, "str | None"]:
+    """Run every predicate on prod in ONE ssh, each ISOLATED. Returns ({idx: value}, error).
+
+    ⚠ TWO THINGS THIS SHAPE EXISTS FOR, both learned by running it (2026-09-09):
+    1. **Isolation.** The first version UNION-ALL'd all 44 predicates into one statement. A single
+       review whose SQL ends `...= TRUE;  -- proxy: ...` (a semicolon mid-string, then a comment)
+       made the whole batch a syntax error, and every review reported "DID NOT RUN". One bad row
+       must never blind the list. Each predicate now gets its own psql invocation.
+    2. **No re-quoting.** Each predicate is base64'd here and decoded on the host into `psql -f -`,
+       so embedded quotes, semicolons, comments and newlines are carried verbatim. A trailing
+       semicolon is legal for a standalone statement — it was only illegal as a subquery.
+
+    Still ONE ssh round trip, per the capture-once cost rule."""
+    if not numbered:
+        return {}, None
+    lines = []
+    for i, r in numbered:
+        b64 = base64.b64encode(r["predicate_sql"].strip().encode()).decode()
+        lines.append(
+            f'echo "{i}|$(echo {b64} | base64 -d | '
+            f'docker exec -i apollo-postgres psql -U apollo -d apollo -t -A -f - 2>/dev/null '
+            f'| head -1 | tr -d " ")"')
+    script = "\n".join(lines)
+    cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=25",
+           "apollo@87.99.134.162", script]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        if proc.returncode != 0 and not proc.stdout.strip():
+            return {}, f"prod read failed (ssh exit {proc.returncode}): {proc.stderr.strip()[:160]}"
+    except Exception as e:   # loud-ok: unreachable prod degrades to UNKNOWN, never to "not ready"
+        return {}, f"prod read failed ({type(e).__name__}: {e})"
+    out = {}
+    for ln in proc.stdout.splitlines():
+        k, _, v = ln.strip().partition("|")
+        if k.isdigit() and v.strip().lstrip("-").isdigit():
+            out[int(k)] = int(v)
+    if not out:
+        return {}, "prod read returned nothing parseable — treat every review as UNKNOWN"
+    return out, None
 
 
 def main() -> int:
@@ -81,11 +193,26 @@ def main() -> int:
         print(f"\n--- retired as ANSWERED ({len(retired)}) — do NOT resurrect ---")
         for r in retired:
             print("  " + r.strip()[:150])
-    print("\n--- gated reviews that will become asks on their own schedule ---")
-    for line in _gated_reviews_ready():
+    ready, accruing, err = _gated_reviews_ready()
+
+    if err:
+        # An unreachable database must never render as "nothing waits on him". Loud, and it
+        # changes the exit code so a caller cannot treat a blind run as a clean one.
+        print("\n🔴 COULD NOT EVALUATE THE GATED REVIEWS — " + err)
+        print("   Their state is UNKNOWN, which is NOT the same as not-ready. Re-run when prod")
+        print("   is reachable BEFORE telling him nothing waits on him.")
+
+    if ready:
+        print("\n🔴 --- GATED REVIEWS NOW READY: MY WORK IS DUE, NOT HIS ANSWER ---")
+        for line in ready:
+            print("  " + line)
+
+    print("\n--- gated reviews still accruing (NOT asks — their own predicate says so) ---")
+    for line in accruing:
         print("  " + line)
+
     print("\nIf an item is not printed above, it is NOT open. Do not raise it.")
-    return 0
+    return 2 if err else 0
 
 
 if __name__ == "__main__":

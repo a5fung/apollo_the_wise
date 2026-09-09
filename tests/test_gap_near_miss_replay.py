@@ -516,7 +516,12 @@ def test_gated_review_carries_the_operator_set_rate_and_its_evidence():
     assert e["threshold"] == 1, "the predicate returns ready/not-ready, so the threshold is 1"
 
     # the rate, expressed as integer arithmetic so no float rounding decides a live-adjacent gate
-    assert "20 * COUNT(*) FILTER (WHERE reached_4r)" in flat, "the 5% rate gate is gone"
+    # ⚠ 2026-09-09: this assertion used to pin `FILTER (WHERE reached_4r)` — a column that does
+    # NOT exist on mi_gap_near_miss_replays. The predicate therefore ERRORED on prod from the day
+    # it was written, and this test guaranteed it stayed broken. The operator's rule is "reached
+    # >= 4R", which is `realized_r >= 4`; the rate is what must be pinned, never the typo.
+    assert "20 * COUNT(*) FILTER (WHERE realized_r >= 4)" in flat, "the 5% rate gate is gone"
+    assert "reached_4r" not in flat, "the phantom column is back; the predicate errors on prod"
     assert ">= 100" in flat, "the minimum sample is gone — one lucky name would trip 5%"
 
     # the evidence must travel WITH the number

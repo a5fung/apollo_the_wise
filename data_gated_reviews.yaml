@@ -11111,7 +11111,7 @@ reviews:
         -- the band is worth admitting rather than after. n>=100 keeps one lucky name from
         -- tripping it (1 of 20 is 5% and means nothing).
         SELECT CASE WHEN COUNT(*) FILTER (WHERE outcome <> 'unscoreable') >= 100
-                     AND 20 * COUNT(*) FILTER (WHERE reached_4r) >=
+                     AND 20 * COUNT(*) FILTER (WHERE realized_r >= 4) >=
                          COUNT(*) FILTER (WHERE outcome <> 'unscoreable')
                     THEN 1 ELSE 0 END
         FROM mi_gap_near_miss_replays
