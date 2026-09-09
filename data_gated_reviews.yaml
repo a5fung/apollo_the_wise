@@ -9840,8 +9840,8 @@ reviews:
       Re-run the regime x exit cut across all setups using the date join. Report
       realized R, peak R and win rate per regime cell with n. Name which cells remain
       too thin. Then the operator rules whether the exit rule varies by regime.
-      Rulings land on #508's PLAN line.
-    status: pending
+      Rulings land on #545's PLAN line (the entry/exit tactics program). ⚠ Repointed 2026-09-09: this said #508, which is CLOSED — a dangling pointer that would have sent the next reader to a line that is not there.
+    status: done
     added_on: 2026-07-29
     cross_refs: ["task #508", "task #503"]
 

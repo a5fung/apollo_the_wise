@@ -43,10 +43,19 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+# 2026-09-09: this was a hardcoded session scratchpad that no longer exists, so a review gated on
+# TRADE COUNT could not be re-run when the count finally arrived. Takes a directory now; produce
+# one with `bash scripts/probes/_508_pull_snapshot.sh <dir>`.
+import os
 SNAPSHOT_DIR = Path(
-    "/private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/"
-    "6bd49b80-0683-4b68-be72-adb54075b1c4/scratchpad"
+    (sys.argv[1] if len(sys.argv) > 1 else None)
+    or os.environ.get("APOLLO_508_SNAPSHOT")
+    or "/private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/"
+       "6bd49b80-0683-4b68-be72-adb54075b1c4/scratchpad"
 )
+if not SNAPSHOT_DIR.is_dir():
+    raise SystemExit(f"snapshot dir not found: {SNAPSHOT_DIR}\n"
+                     f"run: bash scripts/probes/_508_pull_snapshot.sh <dir>, then pass <dir>")
 
 spec = importlib.util.spec_from_file_location(
     "replay508", HERE / "_508_exit_rule_replay.py"
