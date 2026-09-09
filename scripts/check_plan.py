@@ -1129,6 +1129,50 @@ def _stale_block_gate(tasks, errors, today) -> None:
                 f"`revalidated:{today}` — or un-block it.")
 
 
+_STANDING_HDR = "### Standing — waits on the operator"
+
+
+def _standing_ask_gate(errors) -> None:
+    """The standing-ask table may not carry a proofless row, and may not resurrect a retired one.
+
+    WHY (2026-09-08, the same day the section was written). `scripts/operator_asks.py` was built
+    to stop me raising answered questions — but it READS this hand-edited table, which is the
+    exact surface that rotted: rows are written when an ask is raised and never retracted when he
+    answers. Three of four rows were stale the day it was audited, and the advisor's note that
+    evening was blunt: it is not a gate until a commit FAILS on a bad row. This is that failure.
+
+    Two things are objectively decidable from the text, and only those are checked:
+      1. a row with an empty PROOF cell — an ask with nothing to re-run is a written memory
+      2. a #ID that appears BOTH as an ask row and in the retired list — the resurrection itself
+    Whether a proof still HOLDS is not decidable here; running it stays the discipline."""
+    text = PLAN.read_text()
+    i = text.find(_STANDING_HDR)
+    if i < 0:
+        return
+    j = text.find("\n## ", i)
+    block = text[i:j if j > 0 else len(text)]
+    asks, retired = {}, set()
+    for ln in block.splitlines():
+        st = ln.strip()
+        if st.startswith("| **#"):
+            cells = [c.strip() for c in st.strip("|").split("|")]
+            tid = cells[0].strip("* #")
+            asks[tid] = cells
+            if len(cells) < 3 or len(cells[2]) < 20:
+                errors.append(
+                    f"PLAN standing-ask #{tid} has no PROOF cell. An ask he can be shown must carry "
+                    f"a one-line LIVE FACT that proves it is still open (a query, a file, a ruling "
+                    f"that is absent) — 'the task text says so' is what rotted. Add the proof or "
+                    f"delete the row.")
+        elif st.startswith("- **#"):
+            retired.add(st.split("**")[1].strip("# "))
+    for tid in sorted(set(asks) & retired):
+        errors.append(
+            f"PLAN standing-ask #{tid} is listed as an ASK **and** as retired-ANSWERED in the same "
+            f"section. That is the resurrection this section exists to stop (operator 2026-09-08: "
+            f"\"I don't want you asking me these answered items again\"). Pick one.")
+
+
 def _rebump_gate(tasks, errors) -> None:
     """Rebump cap — HARD RULE (operator 2026-06-28): a task ETA may be rebumped AT MOST ONCE; a
     2nd+ bump needs [ok:reason] (operator approval) or [blocked:reason] (physically impossible). The
@@ -1458,6 +1502,7 @@ def main(argv: list[str]) -> int:
     _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
     _shipped_pending_gate(tasks, errors)   # `pending` + own code commit = stale line -> duplicate card (operator 7/25)
     _stale_block_gate(tasks, errors, today)   # [blocked:] is not an unlimited rebump pass (operator 7/26)
+    _standing_ask_gate(errors)   # a proofless / resurrected operator-ask FAILS the commit (operator 9/08)
     _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
     _pending_verify_gate(tasks, errors)   # own text claims a pending verify but status != deployed; HARD on touched, WARN on pre-existing (operator 8/09, the #167 lesson)
     _deployed_no_verify_gate(tasks, errors)   # deployed but states NO verify condition at all; HARD on touched, WARN on pre-existing (operator 8/09, the inverse)

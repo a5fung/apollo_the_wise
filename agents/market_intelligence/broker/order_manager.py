@@ -255,8 +255,19 @@ async def broker_terminal_reason(event_norm: str, ticker: str, trigger_price) ->
 # ── Order Preparation ────────────────────────────────────────────────────────
 
 
+_LAST_SESSION_CACHE: "dict[date, date]" = {}
+
+
 async def _last_ingested_session(today: date) -> "date | None":
     """The most recent session we actually HOLD closes for, or None if unknowable.
+
+    CACHED PER CALENDAR DAY (2026-09-08, same day as the fix). The answer cannot change
+    intraday — a session that exists at 9:31 still exists at 9:45 — but the read sits on
+    the ORB submission path, where several entries fire concurrently against a 5-connection
+    pool at 9:31. Uncached, contention is the one condition under which this times out, and
+    a timeout routes back to the calendar rule that floors: the bug would return on exactly
+    the post-holiday morning the fix exists for. Only SUCCESSES are cached — a transient
+    failure must not poison the rest of the day.
 
     This is the holiday-aware half of the freshness test (2026-09-08). `mi_daily_closes`
     gets a row per ticker per SESSION, so a market holiday simply produces none — the
@@ -271,6 +282,9 @@ async def _last_ingested_session(today: date) -> "date | None":
     ORB entry path, and #621's lesson is that an unbounded read here blocks sizing itself.
     None routes the caller back to the calendar rule, which floors — the safe direction.
     """
+    hit = _LAST_SESSION_CACHE.get(today)
+    if hit is not None:
+        return hit
     try:
         # `get_pool` is module-level (:47) — importing it here would make the name LOCAL for
         # this whole function and any earlier reference would raise UnboundLocalError. That is
@@ -283,7 +297,11 @@ async def _last_ingested_session(today: date) -> "date | None":
                 "SELECT max(trade_date) FROM mi_daily_closes WHERE trade_date <= $1",
                 today, timeout=_REPROTECT_DB_TIMEOUT,
             )
-        return _coerce_date(row) if row else None
+        got = _coerce_date(row) if row else None
+        if got is not None:
+            _LAST_SESSION_CACHE.clear()   # single-entry: yesterday's answer is dead weight
+            _LAST_SESSION_CACHE[today] = got
+        return got
     except Exception:
         # loud-ok: falls back to the calendar rule below, which floors + alerts.
         logger.exception("regime freshness: last-session read failed; using the calendar rule")

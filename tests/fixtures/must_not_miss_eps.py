@@ -270,17 +270,23 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         unverified_gates=_UNVERIFIED_STANDARD,
         excluded=True,
         exclude_reason=(
-            "DECLARED ABSTENTION — a POLICY WAIT, not an accepted state, and not a data "
-            "artifact. ABNB is a REAL EP (operator-labelled 2026-09-06) and the live stack "
-            "excludes it correctly under the rules as written: its OPEN gap is 8.61%, below "
-            "MIN_GAP_PCT (9.0) by 0.4pp. Asserting it would demand the stack admit a name it "
-            "is currently configured to reject, i.e. it would encode a criterion change this "
-            "fixture has no authority to make. THE QUESTION IT PUTS TO THE OPERATOR: should a "
-            "name that opens just under the floor and CLEARS it intraday be re-admitted? Our "
-            "own log shows we re-checked and it read 12.6% then 14.2% by 09:50/09:55 — the "
-            "floor was not what finally dropped it, the top-20 shortlist cut was. Both are "
-            "admission criteria = THE LINE = his call. Flip this to asserted the moment he "
-            "rules on either gate. Same standing as CHPT 2026-09-03."
+            "DECLARED ABSTENTION — not an accepted state, and not a data artifact. ABNB is a "
+            "REAL EP (operator-labelled 2026-09-06) and the live stack excludes it correctly "
+            "under the rules as written: its OPEN gap is 8.61%, below MIN_GAP_PCT (9.0) by "
+            "0.4pp. Asserting it would demand the stack admit a name it is configured to "
+            "reject, i.e. encode a criterion change this fixture has no authority to make. "
+            "⚠ NOT WAITING ON HIM (corrected 2026-09-08 — the earlier text here put two "
+            "questions to him and HE ANSWERED BOTH ON 2026-09-06, but this string was never "
+            "retracted). (a) Re-admit a name that opens under the floor and clears it "
+            "intraday? He said YES — and it ALREADY works that way: ABNB re-entered at 09:50 "
+            "reading 12.6%, so his yes confirmed current behaviour and needed no change. "
+            "(b) The top-20 shortlist cut? He had gap-size ordering REMOVED on 2026-08-22; "
+            "ABNB was cut on 08-07, two weeks earlier, by the exact mechanism he had already "
+            "killed. Under today\'s liquidity-dominant weights it would very likely make the "
+            "cut. ▶ What is genuinely left is the 9% floor itself, and that is NOT an ask — "
+            "it accrues under `gap_near_miss_tradeable_miss_rate_617` on his own numbers and "
+            "resurfaces on its own predicate. Flip to asserted only if that review moves the "
+            "floor. Same standing as CHPT 2026-09-03."
         ),
     ),
     EPFixtureMember(
@@ -379,11 +385,16 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         #   this case in front of him, that a $134M EP is out of scope — record that ruling here.
         excluded=True,
         exclude_reason=(
-            "POLICY WAIT, not a data artifact: excluded by filter:mcap_too_small ($134M < $500M), "
-            "a live, deliberate, operator-owned selection filter. Whether that floor moves is his "
-            "call alone (THE LINE) and is the open question of #622, filed 2026-09-03 at his own "
-            "request. Asserting an operator-named member against a gate only he can change would "
-            "red the suite indefinitely. Flip excluded=False the moment #622 is ruled either way."
+            "SETTLED EXCLUSION, not a data artifact and no longer a wait: excluded by "
+            "filter:mcap_too_small ($134M < $500M), a live, deliberate, operator-owned filter. "
+            "⚠ CORRECTED 2026-09-08 — this string said it waited on #622. #622 was CLOSED into "
+            "#359 on 2026-09-04 AND ANSWERED: on names blocked by the market-cap floor alone "
+            "(n=7) the mean is +1.76R but +0.27R without its best trade and −0.26R without its "
+            "best two; the sub-$500M population is breakeven over 314 settled walks and every "
+            "band from $25M to $200M loses. CHPT itself sits in a losing band and would have "
+            "realized +0.33R. THE FLOOR STAYS — the answer was no. So this stays excluded on a "
+            "settled ruling, not on a pending one. Re-open only if #624/#623 (the volume-gate "
+            "shadows) change the tail rate; that is their job, not a standing question to him."
         ),
         # Corroborating, not fed to any gate assertion — the size of what the floor turned away:
         # the same scan log has CHPT at +34.68% by 09:31 ET, +42.5% by 09:35 and +46.53% by 09:40,

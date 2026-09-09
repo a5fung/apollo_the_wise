@@ -196,10 +196,17 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     abstained = [m for m in _mnm.MUST_NOT_MISS if m.excluded and m.label_source == "operator"]
     for m in abstained:
         terminalreporter.write_line(
+            # 2026-09-08: this line used to say "awaiting his ruling on the gate that drops it"
+            # for EVERY abstained member. It was hardcoded, and by today it was false on BOTH of
+            # them — ABNB's two admission questions were ruled 09-06 and CHPT's floor question was
+            # answered 09-04 (the floor stays). A banner that prints an operator ask on every test
+            # run, for asks he has already closed, is the exact rot `scripts/operator_asks.py`
+            # exists to stop. The member's OWN reason is the only thing that can stay true.
             f"[#577 must-not-miss] ⚠ {m.ticker} {m.alert_date} is OPERATOR-NAMED, is excluded by "
-            f"the live stack, and is NOT being asserted — awaiting his ruling on the gate that "
-            f"drops it. This is a declared abstention, not an accepted state: "
-            f"{(m.exclude_reason or '').split(':')[0]}. See must_not_miss_eps.py.",
+            f"the live stack, and is NOT being asserted. This is a declared abstention, not an "
+            f"accepted state — its reason: {(m.exclude_reason or '').split(':')[0]}. Whether it "
+            f"is still waiting on anyone is that reason's job to say, not this banner's. "
+            f"See must_not_miss_eps.py.",
             yellow=True,
         )
 

@@ -1129,7 +1129,11 @@ async def _discover_lane2_registry(
         # pair with by construction, which is a different fact from "the model
         # declined to pair it".
         "offered_count": len(today_set),
-        "active_themes_at_decision": len(active) if active is not None else None,
+        # NOT the live theme board (~118). `active` is the Lane-2 narrative roster the
+        # model was actually shown, capped at LANE2_ROSTER_MAX — so the name says roster.
+        # It was called `active_themes_at_decision` for one night (2026-09-08) and read as
+        # the board; any row carrying the old key is the same roster number.
+        "lane2_narratives_at_decision": len(active) if active is not None else None,
     }
     out["decision_record"] = record
     if not backfilled:
