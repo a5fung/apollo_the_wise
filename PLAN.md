@@ -83,6 +83,20 @@ the market cooperates, not when we work.
   · **Cost baseline (both halves)** — the watchdog must NOT re-fire on theme_discovery at a normal
     call count; Tuesday's alert was the Labor Day weekend inside a calendar window.
   · **#582 truncation guard** — the synthesis run completes and its audit row reads normally.
+- ✅ **RESULTS 2026-09-09 12:30 ET — what could be checked TODAY, and what could not.**
+  · **9M shutdown — PASS.** `mi_9m_ep_alerts` took **0 rows today against 17 on Tuesday**, and zero
+    `9m_alerts_per_day` anomalies. The Tuesday count is the control: the population still exists, so
+    the gate is what changed. **9M now leaves the board permanently.**
+  · **Cost trading-day baselines — PASS, by EXECUTION not presence.** Ran `_trading_sessions` inside
+    `apollo-market`: **60 sessions returned** (0 would have meant the silent calendar fallback),
+    newest 09-08 → 09-04 → 09-03, **no weekend day and Labor Day 2026-09-07 correctly absent.** The
+    holiday is the discriminating case and it is the one that passed.
+  · ⛔ **NOT CHECKABLE TODAY, and the board was wrong to list them for Wednesday morning: seed
+    why-logging · discovery prompt cache · #582 · #471 · #486 · #630's rename.** All six depend on
+    the **17:00 ET discovery/synthesis run**, which happens at the END of Wednesday — and last
+    night's 17:07 run PREDATES the 21:15 deploy that shipped them. Confirmed by reading the newest
+    `lane2_decision_record`: its two seeds (ERO, SEI) carry no `story`, exactly as expected for a
+    pre-change row. **These are THURSDAY-MORNING verifies. Do not read tonight's absence as failure.**
 - ⚠ **THREE MORE, added 09-08 after the advisor pass — each is a silence that would read as a pass.**
   · **The cost-baseline reader RAN, not just shipped.** `_trading_sessions` swallows any failure and
     falls back to calendar days, so "the watchdog didn't re-fire" passes either way (the weekend is
