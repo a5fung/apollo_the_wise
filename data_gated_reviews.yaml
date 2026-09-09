@@ -8818,7 +8818,7 @@ reviews:
     predicate_sql: "SELECT count(*) FROM mi_theme_axis_shadow"
     threshold: 700
     earliest_review_date: 2026-08-25
-    status: pending
+    status: done
     action_when_ready: |
       Re-run (both READ-ONLY, in apollo-market):
         docker exec apollo-market python scripts/probes/_331_gap_alignment_evidence.py
@@ -8827,6 +8827,14 @@ reviews:
       shape that FITS the distribution, not a flat +1), drop, or redesign. Any grade-affecting flip
       = ADR 0033 CHANGE_PROCESS + operator sign-off (never on agent authority).
     added_on: 2026-07-21
+    # RAN 2026-09-09 at N=3,120 (threshold was 700; it had been ready since 2026-08-25 and the
+    # ask-gate never noticed because it printed "not ready" without running the predicate).
+    # VERDICT: do not ship. The axis is inverted — fades_into_congestion beats punch_through on
+    # avg, median and win rate at fwd-5d and fwd-10d, in every regime, ex-tape-junk, and within
+    # every price band ($5-15, $15-50, >=$50), so it is not a size artifact.
+    # Do NOT flip the sign either: forward %-return is not realized R through our bracket.
+    # Full read: docs/analysis/331_gap_alignment_n3120_2026-09-09.md
+    closed_on: 2026-09-09
 
   - review_id: tqs_junk_accrual
     title: "TQS Stage 3 — suppression backtest once >=30 settled tape_junk accrue"
