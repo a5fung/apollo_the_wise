@@ -59,8 +59,12 @@ the market cooperates, not when we work.
 - ✅ **DEPLOYED Tue 21:15 ET (`6974a059`, both + execution, verified on the RUNNING images).** Six
   runtime changes landed; each has a check that can only run on a real session, so they are
   Wednesday's first job:
-  · **9M scan gated** — `mi_9m_ep_alerts` must take **ZERO** new rows Wednesday (it took 17 Tuesday).
-  · **9M pager retired** — no `9m_alerts_per_day` L2 anomaly, whatever the row count.
+  · **9M shutdown landed — ONE check, then 9M leaves the board for good.** `mi_9m_ep_alerts` takes
+    ZERO new rows (it took 17 Tuesday) AND no `9m_alerts_per_day` anomaly fires. ⚠ **This is the
+    LAST 9M item anywhere.** CLAUDE.md is explicit — *9M is GONE, do not raise it, do not re-verify
+    it, do not cite it as a risk* — and I had put THREE 9M verifies on this day, which is that rule
+    broken three times over. The single check stays only because the shutdown shipped Tuesday and an
+    unverified deploy is its own defect. **After it passes: delete, and never schedule 9M work again.**
   · **Discovery prompt cache** — `api_usage` must show non-zero `cache_read` for `theme_discovery`
     after the 17:00 ET run (it was 0 against theme_assignment's 572,983).
   · **Seed why-logging** — the first `lane2_decision_record` carrying a `story` on each seed.
@@ -74,8 +78,9 @@ the market cooperates, not when we work.
     the `apollo-market` logs.** Presence of the code on the image is not evidence it executed — the
     distinction this week was built on.
   · **tv_news NULL preservation** — after the 20:45 ET run, a no-corpus row must write `NULL`, not `[]`.
-  · **9M pace digest on an empty source table** — `_9m_pace_digest_job` is still scheduled and its
-    table now takes zero rows by design. It must return quietly: no page, no error.
+  · **The last 9M job still on the scheduler** — `_9m_pace_digest_job` runs 16:20 ET against a table
+    that now takes zero rows. Folded into the single 9M check above rather than listed separately:
+    if it pages or errors it will say so itself, and a deprecated lane does not earn its own line.
 - 🚦 **12:00-13:00 ET — #630 deploy: scope `both`, THEN `execution`.** Two corrections built
   Tuesday night after the window closed. ⚠ **This is not optional sequencing:** a deploy ships the
   BRANCH, not your diff, so if #486 (or anything else) deploys `market-agent` today WITHOUT the
