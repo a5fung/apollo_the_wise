@@ -134,6 +134,16 @@ class MetricSpec:
     # baselines must be reset on paper→live $ flip (or any equity step-change).
     # All current metrics are scale-invariant; flip to False when adding $-absolute.
     scale_invariant: bool = True
+    # spiky: a ZERO-INFLATED COUNT whose ordinary days sit at 0-2 and whose normal weeks
+    # contain spikes many times that. For these, "3 MAD above the median" is not evidence —
+    # a MAD of 2 on such a series makes every ordinary busy night a 3-sigma event.
+    # A spiky metric must ALSO clear its own 30-day P95 before it may page.
+    # Added 2026-09-09 after `cooldowns_per_day` paged the operator at 9 (median 2, MAD 2,
+    # z=3.5) when 9 was the SIXTH HIGHEST of the previous 35 days and had already occurred
+    # twice in that window (24, 19, 13, 10, 10, 9, 9, 9 …). The alert was correct arithmetic
+    # about the wrong model. Second false page of the week — the 9M lane was retired 09-08
+    # for the same class of defect.
+    spiky: bool = False
 
 
 async def _today_cooldowns(conn) -> float:
@@ -662,6 +672,10 @@ _NIGHTLY_METRICS: list[MetricSpec] = [
         "GROUP BY 1 ORDER BY 2 DESC LIMIT 15;",
         ["agents/market_intelligence/db.py::get_active_themes",
          "agents/market_intelligence/theme_engine.py::_validate_theme_membership"],
+        # Zero-inflated and lumpy: theme-membership revalidation prunes in bursts when a
+        # cohort of aging themes comes due together, so ordinary nights are 0-2 and ordinary
+        # weeks contain 9-24. See MetricSpec.spiky.
+        spiky=True,
     ),
     MetricSpec(
         "theme_count_active", _today_active_themes,
@@ -1319,6 +1333,14 @@ async def _compute_anomaly(
     # Band routing — MAD<1 z-fallback, directional ratio, _band_for, and the slow-drift
     # L2->L3 downgrade — all live in _classify_band (the SINGLE source the drift-guard test pins).
     band, z, ratio = _classify_band(current, p50, mad, direction)
+
+    # SPIKY GUARD (2026-09-09): a zero-inflated count must clear its own P95 to page. This
+    # sits AFTER the band computation deliberately — the band is still recorded at L3 below,
+    # so the drift surface keeps seeing the value; only the Telegram page is withheld.
+    p95 = (baseline or {}).get("p95")
+    if (band == 3 and getattr(metric, "spiky", False)
+            and p95 is not None and direction == "high" and current <= float(p95)):
+        band = 2
 
     if band == 3 and not warming:
         last_band = await _last_band_for(conn, metric.name)
