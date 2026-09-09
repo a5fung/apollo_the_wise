@@ -253,15 +253,26 @@ def _render_data():
                      "reached_avg": 1.1, "kept_avg": -0.4}],
         "shadow": {"consol": [("anticipate", 118, 2.44, -0.27), ("confirm", 43, 0.7, -0.1)],
                    "htf": (2, 0.51, -1.0), "wick": (65, 8.1, 2.3),
-                   "giveback_n": 1,
                    # DoD leg 3 (#508 verify 2026-08-08): the surface renders what a
                    # CANDIDATE RULE would have kept, not a row count. `changed` is the
                    # load-bearing number — an average can drift merely because a profile
                    # is NULL on some trades, so "changed 0" is what says the candidate
-                   # did nothing at all.
-                   "pivot_cf": {"n": 8, "abstained": 5, "reached": 2.04,
-                                "actual": -0.56, "p1": -0.56, "p2": -0.47,
-                                "p1_diff": 0, "p2_diff": 0}},
+                   # did nothing at all. #631 (2026-09-09): the block now reads the ONE
+                   # exit-counterfactual recorder (every arm, current exit era) instead of
+                   # the retired mi_pivot_stop_shadow.
+                   "exit_cf": {"n": 7, "era": "era_d", "arms": [
+                       {"arm": "live_replay", "n": 7, "unscoreable": 0, "delta_pct": 0.1, "changed": 1},
+                       {"arm": "stop_orb_low", "n": 7, "unscoreable": 0, "delta_pct": -0.8, "changed": 3},
+                       {"arm": "stop_adr_050", "n": 6, "unscoreable": 1, "delta_pct": -1.2, "changed": 4},
+                       {"arm": "stop_adr_075", "n": 6, "unscoreable": 1, "delta_pct": -0.4, "changed": 2},
+                       {"arm": "stop_orb_3r", "n": 7, "unscoreable": 0, "delta_pct": 0.0, "changed": 0},
+                       {"arm": "harvest_no_breakeven", "n": 7, "unscoreable": 0, "delta_pct": 0.6, "changed": 2},
+                       {"arm": "harvest_trail_only", "n": 7, "unscoreable": 0, "delta_pct": -0.3, "changed": 5},
+                       {"arm": "harvest_t3", "n": 7, "unscoreable": 0, "delta_pct": 0.9, "changed": 2},
+                       {"arm": "harvest_legacy_2r", "n": 7, "unscoreable": 0, "delta_pct": 0.2, "changed": 1},
+                       {"arm": "trail_pivot_swing", "n": 7, "unscoreable": 0, "delta_pct": 0.0, "changed": 0},
+                       {"arm": "trail_character_ma", "n": 2, "unscoreable": 5, "delta_pct": 0.0, "changed": 0},
+                   ]}},
     }
 
 
@@ -286,12 +297,16 @@ def test_renderer_full_surface():
     assert "consolidation, early entry" in out and "118 trades" in out
     assert "wick fade setup (percent moves, not R)" in out               # odd unit called out in words
     assert "MAGNA53 EP (paper trading)" in out and "26 trades" in out
-    assert "WOULD A DIFFERENT STOP HAVE KEPT MORE" in out
+    assert "WOULD A DIFFERENT EXIT HAVE KEPT MORE" in out                # #631: every arm, one block
     assert "swing-stop rule" in out and "character-based rule" in out
-    assert "no history for 5 trades" in out                              # was "(5 abstained)"
-    assert "changed 0 trades" in out, (
-        "the surface no longer reports how many trades a candidate rule would have "
+    assert "the old rule (partial at +2R)" in out                         # old vs new, every close
+    assert "stop at the opening-range low: -0.8%" in out                  # size-free unit, in words
+    assert "our own rule replayed, as a check: +0.1% (off by over a quarter R on 1 of 7 fills)" in out
+    assert "no history for 5 fills" in out                               # was "(5 abstained)"
+    assert "changed 0 of 7 fills" in out, (
+        "the surface no longer reports how many fills a candidate rule would have "
         "CHANGED — without that, an inert candidate reads as a working one")
+    assert "7 fills with a settled result" in out
 
     # giveback store dropped entirely (n=1 isn't actionable, operator 2026-08-16)
     assert "giveback" not in out

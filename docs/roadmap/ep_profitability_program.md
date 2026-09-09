@@ -1045,6 +1045,9 @@ plan forward."* Four lanes, and only one of them needs agent time this week.
 ### LANE A — WATCH (live money, starts immediately, no build)
 - **Read the 2R comparison after EVERY close** — `stop_2r_running_comparison`, deliberately ungated.
   Both arms come from the same trades; the old rule is reconstructable from `stop_ref`.
+  → **Folded 2026-09-09 (#631)** into the ONE exit read (`live_fill_counterfactuals_first_read_482`,
+  its `stop_orb_low` arm); the every-close half now renders in the nightly sell-discipline digest.
+  Owner: `docs/setups/exit_discipline.md` §"Exit counterfactuals — ONE recorder, ONE read".
 - **Monday:** flip `profit_take_oco` when he's ready; verify the 16:22 path job, the first
   `db_growth_check` row, EROC appearing with its chase-cap reason, and the two new shadows writing.
 - ⚠ **Watch specifically for:** the new stop losing 2× where the old cut at −1R · the profit target
@@ -2478,8 +2481,8 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 
 | lane | trigger | where it is tracked |
 |---|---|---|
-| **A · WATCH** — the 2R stop vs the old rule | **every close**, from the first one | `data_gated_reviews.yaml` → `stop_2r_running_comparison` (deliberately UNGATED — live money) |
-| **B · ACCRUE** — exit-path shadow | 20 closed positions (~early Oct) | → `exit_path_shadow_first_read` |
+| **A · WATCH** — the 2R stop vs the old rule | **every close**, from the first one | `data_gated_reviews.yaml` → `stop_2r_running_comparison` (deliberately UNGATED — live money) → **folded 2026-09-09 (#631)** into `live_fill_counterfactuals_first_read_482`; the every-close read is the nightly sell-discipline digest block |
+| **B · ACCRUE** — exit-path shadow | 20 closed positions (~early Oct) | → `exit_path_shadow_first_read` → **folded 2026-09-09 (#631)** into `live_fill_counterfactuals_first_read_482` (`stop_orb_low` / `stop_orb_3r` arms); `mi_exit_path_shadow` keeps recording |
 | **B · ACCRUE** — alert-rank shadow | 25 recorded sessions after 08-16 (~late Sept, honest read mid-late Oct) | → `alert_rank_shadow_out_of_sample` |
 | **C · BUILD** — expectedness axis · structure-encoder split · D-1 floors · sizing | agent time, no trigger | ⚠ **NOT yet filed as PLAN.md tasks — see the note below** |
 | **D · FORKS** — extension filter · liquidity gates · grade gap-dependence | his ruling | §9 of this doc; surfaced at the Friday review |

@@ -47,6 +47,28 @@ THE ARMS (one row each, per fill — `ARMS` below):
                         the old strategy to constantly compare." Fixed forever at 2R/no
                         arm regardless of any future live change, so old-vs-new stays a
                         live comparison, not a one-time snapshot.
+  stop_orb_3r           (#631) entry − 3 × (entry − ORB low), live ladder, target pinned.
+                        The third rung of the exit-path stop ladder (ORB low = −1R ·
+                        live = −2R · this = −3R): the 08-16 read's "−2R pays, −3R does
+                        not" claim, checked forward instead of on 43 reconstructed trades.
+  trail_pivot_swing     (#631, was mi_pivot_stop_shadow P1 / ADR 0031) live stop, live
+                        ladder; the TRAIL is the ratcheting CONFIRMED swing low (fractal
+                        k=2, confirmed two sessions later — pivot_analysis.
+                        annotate_pivot_stops on the sessions since the fill) instead of
+                        max(SMA10, SMA20). Exits on the ladder's close-below semantics.
+  trail_character_ma    (#631, was mi_pivot_stop_shadow P2 / ADR 0031) live stop, live
+                        ladder; the TRAIL is the stock's own respected MA × (1 − its
+                        habitual undercut) from pivot_analysis.character_profile over the
+                        260 sessions BEFORE the alert; the trail sees those closes from day
+                        one (#548). No profile (short history, nothing respected) →
+                        `unscoreable` with the reason named — the old shadow's first-class
+                        abstain, kept as an outcome and COUNTED (an abstention rate is a
+                        GO/NO-GO input by itself, ADR 0031 §5).
+  NOT an arm — the +6%/60% peak-lock giveback (mi_giveback_shadow). Operator 2026-08-11,
+  verbatim: "no, we let winners run" — "do not re-propose it" (exit_discipline.md, the
+  2026-08-11 ruling). An arm here would put a ruled-out rule in front of him on every
+  read. Adding one is HIS call; the recorder does not make it.
+
   Why these: stop arms vary ONE thing (where the stop sits) against the live ladder; harvest
   arms vary ONE thing each against the live stop. The +2R target is PINNED to the ORB R in
   every stop arm (entry + 2·(entry − orb_low)) because Phase 3 §6 showed the pin is what
@@ -55,8 +77,24 @@ THE ARMS (one row each, per fill — `ARMS` below):
   (pnl ÷ (entry − its stop)) so a wider stop is not flattered; realized_pct and pnl_adr
   are size-free.
 
+  #631 (2026-09-09) — ONE RECORDER, ONE READ. Operator: "aren't we logging all entry and
+  exit rules together and reviewing them together... stop one off, consolidate." Before
+  this, FOUR tables recorded exit counterfactuals on the same live fills (this one,
+  mi_pivot_stop_shadow, mi_giveback_shadow, mi_exit_path_shadow) and ~12 gated reviews
+  read them one at a time — one question asked twelve times against four populations
+  that cannot be compared. The pivot-stop arms now live HERE (recorded on the same fill,
+  same bars, same ladder, same era stamp as every other arm); the pivot and giveback
+  jobs are unregistered and their tables kept READ-ONLY (history preserved, never
+  migrated: the pivot shadow walked the ladder's day-3/5 partial on daily bars with the
+  row's share count; the giveback shadow synthesised l=c bars from running_closes —
+  neither is this walk, so their rows cannot sit beside these). mi_exit_path_shadow
+  KEEPS RUNNING: it records the PATH, not a rule (scored offline by
+  scripts/stop_2r_counterfactual.py), and is not an arm table. The single read is
+  `data_gated_reviews.yaml` → live_fill_counterfactuals_first_read_482, gated on fills
+  under the CURRENT exit era (rule_eras), never a raw count.
+
   WHICH ARMS TRACK THE LIVE RULE, WHICH ARE FIXED (`ARMS[*].follows_live_rule`, #545,
-  2026-09-06): live_actual / live_replay / the three stop_* arms track whatever
+  2026-09-06): live_actual / live_replay / the stop_* and trail_* arms track whatever
   `mi_strategies.profit_trigger_r` / `.breakeven_arm_r` currently say for the row's
   signal_type (resolve_target_r / resolve_breakeven_arm_r below) — they ARE "the live
   ladder", so when the operator moves it, they move with it (this is the fix: before
@@ -132,7 +170,10 @@ walked or not, stores the target_r / breakeven_arm_r IT ACTUALLY USED (read once
 time THAT row was written, never re-framed on a later run) so old rows (walked under the
 retired +2R/no-arm rule) and new rows (walked under whatever is live now) can never be
 pooled blindly — the exact discipline the era stamp above already applies to dated rules,
-extended to this OPERATOR-TOGGLED one.
+extended to this OPERATOR-TOGGLED one. #631 adds the per-FILL half of that discipline: once a
+fill has one follows-live row, every later follows-live arm on that fill (an arm added to
+ARMS after the fill settled, or one still pending across a flip) walks the SAME levels that
+row stored — never today's — so the pair inside one fill can never disagree on the rule.
 """
 from __future__ import annotations
 
@@ -156,6 +197,10 @@ from agents.market_intelligence.db import (
     insert_live_fill_counterfactual,
     log_audit_event,
 )
+from agents.market_intelligence.pivot_analysis import (  # pure: statistics + exit_logic.ema, no I/O
+    annotate_pivot_stops,
+    character_profile,
+)
 from agents.market_intelligence.rule_eras import (
     admission_era_as_of,
     exit_era_label,
@@ -165,7 +210,7 @@ from agents.market_intelligence.trading_calendar import get_market_status
 
 logger = logging.getLogger(__name__)
 
-SETTLE_VERSION = "cf_v1"
+SETTLE_VERSION = "cf_v2"        # cf_v2 (#631): + trail_rule column, stop_orb_3r / trail_* arms
 HORIZON_SESSIONS = 40          # forward sessions after the fill day; open beyond → 'horizon' + mark
 GAP_RETRY_SESSIONS = 5         # a data gap older than this many sessions is written 'abstain'
 BACKFILL_FROM = date(2026, 8, 16)   # era C: the day the live entry−2R stop went live
@@ -175,25 +220,39 @@ ADR_WINDOW = 20                # sessions in the ADR mean
 ADR_MIN_SESSIONS = 10          # below this ADR is NULL (ep_replay.adr20_pct's floor)
 ADR_LOOKBACK_CAL_DAYS = 60     # calendar days read to cover the ADR window
 PRIOR_CLOSES_CAL_DAYS = 40     # live_tracker._load_exit_state's trail window (#548)
+CHARACTER_HISTORY_BARS = 260   # sessions the character profile reads (pivot_stop_shadow's LIMIT 260)
+CHARACTER_LOOKBACK_CAL_DAYS = 400  # calendar days read to cover those 260 sessions
 SETTLED_AFTER_ET = time(16, 30)  # today's daily bar is settled only after the close
 
-# (arm, kind, stop_rule, harvest_rule, follows_live_rule) — follows_live_rule=True means
-# this arm walks resolve_target_r/resolve_breakeven_arm_r's CURRENT-strategy levels (#545);
-# False means it walks the fixed +2R/no-arm premise its own docstring sentence declares.
-ARMS: tuple[tuple[str, str, str, str, bool], ...] = (
-    ("live_actual", "control", "live", "live_ladder", True),
-    ("live_replay", "control", "live", "live_ladder", True),
-    ("stop_orb_low", "stop", "orb_low", "live_ladder", True),
-    ("stop_adr_050", "stop", "adr_050", "live_ladder", True),
-    ("stop_adr_075", "stop", "adr_075", "live_ladder", True),
-    ("harvest_no_breakeven", "harvest", "live", "no_breakeven", False),
-    ("harvest_trail_only", "harvest", "live", "trail_only", False),
-    ("harvest_t3", "harvest", "live", "t3", False),
-    ("harvest_legacy_2r", "harvest", "live", "live_ladder", False),
+# (arm, kind, stop_rule, harvest_rule, trail_rule, follows_live_rule) — follows_live_rule=True
+# means this arm walks resolve_target_r/resolve_breakeven_arm_r's CURRENT-strategy levels
+# (#545); False means it walks the fixed +2R/no-arm premise its own docstring sentence
+# declares. trail_rule (#631): 'sma' is the live max(SMA10, SMA20); the two trail_* arms
+# vary ONLY that against the live stop + live ladder.
+ARMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
+    ("live_actual", "control", "live", "live_ladder", "sma", True),
+    ("live_replay", "control", "live", "live_ladder", "sma", True),
+    ("stop_orb_low", "stop", "orb_low", "live_ladder", "sma", True),
+    ("stop_adr_050", "stop", "adr_050", "live_ladder", "sma", True),
+    ("stop_adr_075", "stop", "adr_075", "live_ladder", "sma", True),
+    ("harvest_no_breakeven", "harvest", "live", "no_breakeven", "sma", False),
+    ("harvest_trail_only", "harvest", "live", "trail_only", "sma", False),
+    ("harvest_t3", "harvest", "live", "t3", "sma", False),
+    ("harvest_legacy_2r", "harvest", "live", "live_ladder", "sma", False),
+    # #631 — appended so the first nine keep their order; write-once means an already
+    # recorded fill simply gains these three on its next nightly pass.
+    ("stop_orb_3r", "stop", "orb_3r", "live_ladder", "sma", True),
+    ("trail_pivot_swing", "trail", "live", "live_ladder", "pivot_swing", True),
+    ("trail_character_ma", "trail", "live", "live_ladder", "character_ma", True),
 )
 ARM_NAMES: tuple[str, ...] = tuple(a[0] for a in ARMS)
 HARVEST_RULES = ("live_ladder", "no_breakeven", "trail_only", "t3")
-STOP_RULES = ("live", "orb_low", "adr_050", "adr_075")
+STOP_RULES = ("live", "orb_low", "adr_050", "adr_075", "orb_3r")
+TRAIL_RULES = ("sma", "pivot_swing", "character_ma")
+# The one rule this recorder deliberately does NOT record — see the module docstring.
+RULED_OUT_ARMS: dict[str, str] = {
+    "giveback_peak_lock": "operator 2026-08-11: 'no, we let winners run' (exit_discipline.md)",
+}
 
 
 # ── #545 (2026-09-06) exit-level resolvers — LOCAL, pinned byte-for-byte against
@@ -284,7 +343,39 @@ def arm_stop_price(stop_rule: str, *, entry: Optional[float], orb_low: Optional[
         if not entry or entry <= 0 or adr_dollar is None or adr_dollar <= 0:
             return None
         return entry - (0.5 if stop_rule == "adr_050" else 0.75) * adr_dollar
+    if stop_rule == "orb_3r":
+        # #631: entry − 3R in the ORB frame (R = entry − orb_low), the rung below the live
+        # entry − 2R. Same validity rule as pinned_target: no frame → None, never a guess.
+        if entry is None or entry <= 0 or orb_low is None or orb_low >= entry:
+            return None
+        return entry - 3.0 * (entry - orb_low)
     raise ValueError(f"unknown stop_rule {stop_rule!r}")
+
+
+def pivot_stops_for_sessions(sessions: list[tuple[date, Optional[dict]]]) -> list[Optional[float]]:
+    """(#631, was pivot_stop_shadow's `annotate_pivot_stops(fwd)`) The per-session ratcheting
+    confirmed-swing-low stop over the sessions AFTER the fill, aligned to `sessions`. Only
+    the contiguous prefix before the first missing bar is annotated — the walk blocks at
+    that gap anyway (pending), and a pivot confirmed across a hole would be a fabrication."""
+    fwd = []
+    for _d, b in sessions:
+        if b is None or b.get("l") is None:
+            break
+        fwd.append({"low_price": b["l"]})
+    stops = annotate_pivot_stops(fwd) if fwd else []
+    return list(stops) + [None] * (len(sessions) - len(stops))
+
+
+def character_profile_for(hist_rows: list[dict]) -> Optional[dict]:
+    """(#631, was pivot_stop_shadow's `character_profile(hist)`) The per-ticker character
+    profile from the last CHARACTER_HISTORY_BARS stored sessions strictly BEFORE the alert
+    (the old shadow read through the alert day; the alert day is the gap bar itself and
+    must not shape the profile, and a pre-alert window is fixed forever — write-once needs
+    a deterministic input). None = ABSTAIN, a first-class outcome the caller records."""
+    rows = [r for r in hist_rows
+            if r.get("close") is not None and r.get("low_price") is not None
+            and r.get("high_price") is not None]
+    return character_profile(rows[-CHARACTER_HISTORY_BARS:])
 
 
 def _fresh_walk() -> dict[str, Any]:
@@ -301,8 +392,18 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
              breakeven_at_partial: bool = True, trail_prior_closes: bool = True,
              ladder_partial: bool = False, horizon: int = HORIZON_SESSIONS,
              breakeven_at_r: Optional[float] = None,
-             r_frame_ps: Optional[float] = None) -> dict:
+             r_frame_ps: Optional[float] = None,
+             trail_mode: str = "sma",
+             pivot_stops: Optional[list] = None,
+             character: Optional[dict] = None) -> dict:
     """Walk ONE arm from the fill bar to settlement, on one fractional share.
+
+    `trail_mode` (#631): 'sma' (DEFAULT, byte-identical to before #631 — the live
+    max(SMA10, SMA20)); 'pivot_swing' reads `pivot_stops[i]` for session i (from
+    pivot_stops_for_sessions) as the trail line; 'character_ma' trails the profile's home
+    MA × (1 − undercut_p80) — `character` is REQUIRED for it (ValueError otherwise: a
+    silent fall-back to the SMA trail would record the wrong arm under the right name).
+    The trail only ever enters the ladder's max() — day 0 (minute walk) is unchanged.
 
     `day0_bars`: the fill day's 1-min bars {m,o,h,l,c}, `fill_idx` = the fill minute's
     index (None = minutes unavailable → pending). `sessions`: [(date, bar|None)] for the
@@ -328,6 +429,13 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
     (entry − stop)); `mark_pnl_per_share` is set only at the horizon."""
     if harvest not in HARVEST_RULES:
         raise ValueError(f"unknown harvest rule {harvest!r}")
+    if trail_mode not in TRAIL_RULES:
+        raise ValueError(f"unknown trail rule {trail_mode!r}")
+    if trail_mode == "character_ma" and not character:
+        raise ValueError("trail_mode 'character_ma' needs a character profile; "
+                         "record the arm unscoreable instead of walking it")
+    if trail_mode == "pivot_swing" and pivot_stops is None:
+        raise ValueError("trail_mode 'pivot_swing' needs pivot_stops (pivot_stops_for_sessions)")
     out = _fresh_walk()
     if stop is None or entry is None or entry - stop <= 0:
         out.update(status="abstain", reason="nonpositive_risk_per_share")
@@ -497,11 +605,23 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
                     break
                 continue
             state["hard_stop"] = resting
+            bar = {"l": b["l"], "c": b["c"]}
+            ladder_kw: dict[str, Any] = {}
+            if trail_mode == "pivot_swing":
+                # the annotated stop for THIS session (idx is 1-based over `sessions`)
+                bar["pivot_stop"] = pivot_stops[idx - 1] if idx - 1 < len(pivot_stops) else None
+                ladder_kw["trail_mode"] = "pivot_swing"
+            elif trail_mode == "character_ma":
+                ladder_kw.update(trail_mode="character_ma",
+                                 character_ma_window=int(character["home_window"]),
+                                 character_ma_kind=str(character["home_kind"]),
+                                 character_undercut=float(character["undercut_p80"]))
             step = apply_daily_exit_step(
-                state, {"l": b["l"], "c": b["c"]}, d,
+                state, bar, d,
                 integer_partial_shares=False,
                 skip_partial_decision=not ladder_partial,
-                prior_closes=(list(prior_closes) if trail_prior_closes else None))
+                prior_closes=(list(prior_closes) if trail_prior_closes else None),
+                **ladder_kw)
             state.update(remaining_shares=step.new_remaining,
                          partial_taken=step.new_partial_taken,
                          breakeven_active=step.new_breakeven_active,
@@ -658,11 +778,11 @@ async def _day0_bars(conn, ticker: str, fill_day: date,
     return None, None
 
 
-def _base_fields(trade: dict, arm: tuple[str, str, str, str, bool], *, fill_day: date,
+def _base_fields(trade: dict, arm: tuple[str, str, str, str, str, bool], *, fill_day: date,
                  inputs: dict, era: dict, stamp: Optional[dict], settled_session: date,
                  target_price: Optional[float], target_r: float,
                  breakeven_arm_r: Optional[float]) -> dict:
-    name, kind, stop_rule, harvest_rule, _follows_live_rule = arm
+    name, kind, stop_rule, harvest_rule, trail_rule, _follows_live_rule = arm
     stamp = stamp or {}
     return {
         "settled_session": settled_session,
@@ -671,6 +791,7 @@ def _base_fields(trade: dict, arm: tuple[str, str, str, str, bool], *, fill_day:
         "signal_type": trade.get("signal_type"), "entry_attempt": trade.get("entry_attempt"),
         "alert_date": trade["alert_date"], "fill_day": fill_day,
         "arm": name, "arm_kind": kind, "stop_rule": stop_rule, "harvest_rule": harvest_rule,
+        "trail_rule": trail_rule,
         "entry_price": inputs["entry"], "orb_high": inputs["orb_high"],
         "orb_low": inputs["orb_low"], "live_stop": inputs["live_stop"],
         # #545: THIS ARM'S own levels, read once at record time — never the module's fixed
@@ -796,6 +917,23 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
     signal_type = trade.get("signal_type")
     live_target_r = resolve_target_r(signal_type, overrides, TARGET_R)
     live_be_r = resolve_breakeven_arm_r(signal_type, overrides)
+    # #631 (2026-09-09) — A FILL'S LIVE RULE IS FIXED BY ITS OWN FIRST FOLLOWS-LIVE ROW.
+    # Adding an arm to ARMS re-selects every recorded fill (write-once means only the new
+    # arm is walked), and "read the CURRENT levels once per run" would then walk it at
+    # TODAY's rule beside siblings that walked the rule live AT THE FILL: on 2026-09-09
+    # the three new arms would have landed on the seven era-C fills at +8R / +3R beside
+    # live_actual / live_replay rows at +2R / none — a broken pair, unrewritable (caught in
+    # review before it ran). The same defect waits at every future flip for any arm still
+    # pending on an older-era fill. So: if this fill already has a follows-live row, every
+    # follows-live arm written from now on uses THAT row's levels — #545's own "never
+    # re-framed on a later run", applied per fill instead of per row. A brand-new fill
+    # (no follows-live row yet) is framed by today's rule, exactly as before.
+    pinned = next((written[a[0]] for a in ARMS
+                   if a[5] and a[0] in written and written[a[0]].get("target_r") is not None), None)
+    if pinned is not None:
+        live_target_r = float(pinned["target_r"])
+        _be = pinned.get("breakeven_arm_r")
+        live_be_r = float(_be) if _be is not None else None
 
     # Pre-alert daily rows: ADR (last ≤20 sessions) + the trail's prior closes (40 cal days).
     pre = await get_daily_ohlc_range(conn, ticker, alert_date - timedelta(days=ADR_LOOKBACK_CAL_DAYS),
@@ -832,9 +970,13 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
 
     day0_bars = fill_idx = None
     sessions: Optional[list] = None
+    pivot_stops: Optional[list] = None          # #631 trail_pivot_swing, computed once per fill
+    character: Optional[dict] = None            # #631 trail_character_ma, read once per fill
+    character_prior: Optional[list[float]] = None
+    character_loaded = False
     r_frame_ps = entry - orb_low   # MAGNA53's ORB-R frame (order_manager.profit_target_r_per_share) — the only signal_type this recorder ever reads (get_counterfactual_fills)
     for arm in todo:
-        name, _kind, stop_rule, harvest, follows_live = arm
+        name, _kind, stop_rule, harvest, trail_rule, follows_live = arm
         target_r = live_target_r if follows_live else TARGET_R
         target = target_live if follows_live else target_fixed
         breakeven_r = live_be_r if follows_live else None
@@ -867,13 +1009,39 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
                 sessions = await _assemble_sessions(conn, ticker, fill_day, last_session)
             day0_count = (len(day0_bars) - fill_idx) if (day0_bars and fill_idx is not None) else 0
 
+            # #631 — the trail arms' own inputs (each built once per fill, only when needed)
+            arm_prior = prior_closes
+            if trail_rule == "pivot_swing" and pivot_stops is None:
+                pivot_stops = pivot_stops_for_sessions(sessions)
+            if trail_rule == "character_ma":
+                if not character_loaded:
+                    hist = await get_daily_ohlc_range(
+                        conn, ticker, alert_date - timedelta(days=CHARACTER_LOOKBACK_CAL_DAYS),
+                        alert_date - timedelta(days=1))
+                    character = character_profile_for(hist)
+                    character_prior = [float(r["close"]) for r in hist
+                                       if r.get("close") is not None][-CHARACTER_HISTORY_BARS:]
+                    character_loaded = True
+                if character is None:
+                    # the old shadow's first-class ABSTAIN: recorded + counted, never walked
+                    res = {"reason": f"no_character_profile:{len(character_prior or [])}_bars"}
+                    fields.update(_outcome_fields(res, entry=entry, stop=stop, adr_dollar=adr_dollar,
+                                                  outcome="unscoreable", day0_bar_count=day0_count))
+                    await _write(fields, out, f"{label} {name}")
+                    continue
+                # the stock's OWN moving average from day one (#548) — the profile's home
+                # window can exceed the 40-calendar-day SMA window the other arms use
+                arm_prior = character_prior or prior_closes
+
             res = walk_arm(entry=entry, stop=stop, target=target, day0_bars=day0_bars,
-                           fill_idx=fill_idx, sessions=sessions, prior_closes=prior_closes,
+                           fill_idx=fill_idx, sessions=sessions, prior_closes=arm_prior,
                            harvest=harvest, fill_day=fill_day,
                            breakeven_at_partial=bool(rules["breakeven_at_partial"]),
                            trail_prior_closes=bool(rules["trail_prior_closes"]),
                            ladder_partial=bool(rules["ladder_partial"]),
-                           breakeven_at_r=breakeven_r, r_frame_ps=r_frame_ps)
+                           breakeven_at_r=breakeven_r, r_frame_ps=r_frame_ps,
+                           trail_mode=trail_rule, pivot_stops=pivot_stops,
+                           character=character)
             status = res["status"]
             if status == "pending":
                 gap = res.get("pending_at")

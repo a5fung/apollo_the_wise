@@ -150,8 +150,11 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
     "anticipation_readiness", "anticipation_3b", "consolidation_readiness",
     "htf_management_shadow",  # #396 HTF Phase 4 — pure compute + DB/audit-log only, no broker calls
-    "giveback_shadow",  # ADR 0023 F1 — peak-lock counterfactual on the live book; pure compute + DB, no broker calls
-    "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
+    # "giveback_shadow" / "pivot_stop_shadow" — UNREGISTERED 2026-09-09 (#631, operator: "stop
+    # one off, consolidate"). The pivot-stop arms now record inside live_fill_counterfactuals
+    # (trail_pivot_swing / trail_character_ma, same fill, same bars, same era stamp); the
+    # giveback rule was ruled out 2026-08-11 ("we let winners run") and records nowhere. Both
+    # tables stay, READ-ONLY, with every row they ever wrote; the modules stay importable.
     "sell_discipline_recorder",  # #508 WS1 — reached-vs-kept record per closed trade; pure compute + DB/audit, no broker calls, no rule
     "exit_path_shadow",  # 2026-08-16 — per-trading-day path record on every LIVE fill; pure compute + DB/audit, no broker calls, no rule
     "alert_rank_shadow",  # 2026-08-16 — EOD + as-of-09:45 selection-rank record on every EP alert; pure compute + DB/audit, no broker calls, no grading/ordering change
@@ -4517,37 +4520,9 @@ async def _book_concentration_job():
         await notify_job_failure("book_concentration", str(e))
 
 
-async def _giveback_shadow_job():
-    """Run at 17:38 ET (EOD, after positions close). Log the peak-lock (giveback) SHADOW for
-    live MAGNA53 trades that closed today — ADR 0023 F1 forward measurement (operator 7/9).
-    Pure compute + DB/audit, NO broker calls, NO live-exit change (THE LINE)."""
-    try:
-        from agents.market_intelligence.giveback_shadow import run_giveback_shadow
-        from agents.market_intelligence.collector import et_today
-        n = await run_giveback_shadow(et_today())
-        logger.info(f"giveback-shadow: logged {n} live giveback-shadow row(s)")
-    except Exception as e:
-        logger.error(f"giveback-shadow job failed: {e}", exc_info=True)
-        await notify_job_failure("giveback_shadow", str(e))
-
-
-async def _pivot_stop_shadow_job():
-    """Run at 17:42 ET (EOD, after the giveback shadow). Log the ADR 0031 pivot-stop SHADOW
-    (baseline vs P1 swing-pivot vs P2 character-MA counterfactuals) for live MAGNA53 trades
-    that closed today. Pure compute + DB/audit, NO broker calls, NO live-exit change (THE LINE;
-    live flip queues strictly behind giveback F1 — ADR 0031 §0)."""
-    try:
-        from agents.market_intelligence.pivot_stop_shadow import run_pivot_stop_shadow
-        from agents.market_intelligence.collector import et_today
-        n = await run_pivot_stop_shadow(et_today())
-        logger.info(f"pivot-stop-shadow: logged {n} row(s)")
-    except Exception as e:
-        logger.error(f"pivot-stop-shadow job failed: {e}", exc_info=True)
-        await notify_job_failure("pivot_stop_shadow", str(e))
-
-
 async def _sell_discipline_recorder_job():
-    """Run at 17:46 ET (EOD, after the 17:00 nightly close pull + the 17:38/17:42 shadows).
+    """Run at 17:46 ET (EOD, after the 17:00 nightly close pull; the 17:38/17:42 pivot and
+    giveback shadows that used to precede it were unregistered 2026-09-09, #631).
     #508 WS1: write one durable sell-discipline record per newly-closed trade (ALL setups,
     both account modes) — what it REACHED (intraday + daily-close axes, with WHEN) vs what
     it KEPT — BEFORE mi_intraday_bars' 120d retention purges the minute-level peak timing.
@@ -5934,24 +5909,9 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # Peak-lock (giveback) SHADOW — 17:38 ET mon-fri, EOD after positions close. Logs what the
-    # ADR 0023 peak-lock (arm +6% / floor 60%) WOULD have done on today's closed live MAGNA53
-    # trades vs actual (F1 forward measurement, operator 7/9). Pure compute + DB, no broker calls.
-    _scheduler.add_job(
-        audit_wrap(_giveback_shadow_job, "giveback_shadow"),
-        CronTrigger(hour=17, minute=38, day_of_week="mon-fri", timezone="America/New_York"),
-        id="giveback_shadow",
-        replace_existing=True,
-    )
-
-    # ADR 0031 pivot-stop SHADOW — 17:42 ET mon-fri (after the giveback shadow's 17:38; both are
-    # read-only counterfactuals on closed trades, disjoint tables — they coexist by design §0).
-    _scheduler.add_job(
-        audit_wrap(_pivot_stop_shadow_job, "pivot_stop_shadow"),
-        CronTrigger(hour=17, minute=42, day_of_week="mon-fri", timezone="America/New_York"),
-        id="pivot_stop_shadow",
-        replace_existing=True,
-    )
+    # giveback_shadow (17:38) + pivot_stop_shadow (17:42) — UNREGISTERED 2026-09-09 (#631).
+    # See INTELLIGENCE_OWNED_JOB_IDS for the reason; the 18:04 live_fill_counterfactuals job
+    # below is the ONE exit-counterfactual recorder now.
 
     # #508 WS1 sell-discipline RECORDER — 17:46 ET mon-fri, after the 17:00 nightly close pull
     # (close-day daily rows exist) and the 17:38/17:42 counterfactual shadows. One durable

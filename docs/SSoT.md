@@ -61,6 +61,7 @@ setup's criteria, change log and findings.
 | MAGNA53 EP — the live setup | `docs/setups/magna53_ep.md` |
 | **Delayed-EP re-entry** — incl. the **CONTEXT LEDGER** | `docs/setups/delayed_ep_reentry.md` |
 | Exit discipline | `docs/setups/exit_discipline.md` |
+| **Exit counterfactuals — the ONE recorder (every exit arm on every MAGNA53 fill) + the ONE read + which reviews it absorbed (#631)** | `docs/setups/exit_discipline.md` §"Exit counterfactuals — ONE recorder, ONE read" |
 | 9M EP + Sugar Baby | `docs/setups/ninem.md` |
 | HTF — high tight flag | `docs/setups/htf.md` |
 | Undercut & rally | `docs/setups/undercut_rally.md` |

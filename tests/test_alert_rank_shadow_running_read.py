@@ -45,7 +45,10 @@ PARKED_IDS = [
     "bracket_geometry_variants_parked",
     "floor_timing_never_alerted_crossers_parked",
     "rt_cutover_ep_capture_argument_parked",
-    "regime_conditional_exit_grid_parked",
+    # "regime_conditional_exit_grid_parked" — FOLDED 2026-09-09 (#631) into the ONE exit
+    # read (live_fill_counterfactuals_first_read_482, its regime segmentation); status=done
+    # with an outcome pointing there. tests/test_exit_counterfactual_consolidation_631.py
+    # pins the pointer, so it is not silently deleted — it is deliberately closed.
     "minute_pull_620_trigger_parked",
 ]
 
@@ -121,15 +124,15 @@ def test_the_one_date_fire_thread_is_labelled_honestly_not_dressed_up():
     assert isinstance(entry["earliest_review_date"], date)
 
 
-def test_regime_grid_predicate_reads_the_current_thin_cells():
-    """Sanity: the regime-conditional-exit-grid parked entry's predicate is a real,
-    non-date-fire SQL read (not vacuously true/false)."""
-    from agents.market_intelligence.data_gated_reviews import is_date_fire_predicate
-
+def test_regime_grid_parked_entry_was_folded_not_deleted():
+    """#631 (2026-09-09): the regime-conditional-exit-grid entry is CLOSED with a pointer
+    into the ONE exit read (its `regime` segmentation), never removed. Its predicate text
+    is kept for the audit trail."""
     reg = _load_registry()
     entry = reg["regime_conditional_exit_grid_parked"]
-    assert not is_date_fire_predicate(entry["predicate_sql"])
-    assert entry["threshold"] == 10
+    assert entry["status"] == "done"
+    assert "live_fill_counterfactuals_first_read_482" in entry["outcome"]
+    assert entry["threshold"] == 10 and entry["predicate_sql"]      # history intact
 
 
 # ── PART 1b — nothing was deleted or silently reclassified ────────────────────────────
@@ -172,12 +175,16 @@ def test_alert_rank_shadow_out_of_sample_predicate_is_real_evidence_not_a_date_f
     assert "mi_alert_rank_shadow" in entry["predicate_sql"]
 
 
-def test_stop_2r_running_comparison_untouched_in_shape():
-    """The model entry this conversion copies — its predicate/status must not have
-    been touched by this task (only a caveat note was added to it)."""
+def test_stop_2r_running_comparison_folded_with_its_running_half_kept():
+    """The model entry this conversion copied. #631 (2026-09-09) FOLDED it into the ONE
+    exit read — but its defining property, "read after EVERY close, not gated" (operator
+    2026-08-16), survives as the nightly sell-discipline digest's per-arm block, and the
+    outcome must say so. Shape kept for the audit trail (evidence_predicate untouched)."""
     reg = _load_registry()
     entry = reg["stop_2r_running_comparison"]
-    assert entry["status"] == "pending"
+    assert entry["status"] == "done"
+    assert "live_fill_counterfactuals_first_read_482" in entry["outcome"]
+    assert "RUNNING" in entry["outcome"] and "sell-discipline digest" in entry["outcome"]
     assert entry.get("earliest_review_date") is None
     assert "mi_exit_path_shadow" in entry["evidence_predicate"]
 

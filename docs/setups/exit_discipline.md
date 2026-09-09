@@ -244,7 +244,140 @@ Full evidence, all figures independently recomputed twice:
 
 ---
 
+## Exit counterfactuals — ONE recorder, ONE read (#631, 2026-09-09)
+
+**Operator, verbatim:** *"aren't we logging all entry and exit rules together and reviewing them
+together. Multiple entries and exits. Why are you doing this one off analysis with this
+particular"* … *"stop one off, consolidate."* Said after a one-off offline replay had to be
+retracted the same day — `docs/analysis/508_exit_regime_interaction_n28_2026-09-09.md`
+(**established: the ERA ERROR** — its 28-trade baseline had 27 trades under the exit rule the
+2026-09-06 flip replaced; every comparison in it measured a system that no longer exists).
+
+**What existed before (measured 2026-09-09):** FOUR tables recorded per-arm exit counterfactuals
+on the same live MAGNA53 fills, and TWELVE gated reviews read them one at a time — one question,
+*which exit does better on the fills we actually took*, asked twelve times against four
+populations that cannot be compared to each other.
+
+**What exists now — ONE recorder.** `agents/market_intelligence/live_fill_counterfactuals.py` →
+`mi_live_fill_counterfactuals` (job `live_fill_counterfactuals`, 18:04 ET Mon–Fri). Every arm is
+recorded beside the SAME fill, on the SAME stored bars, through the SAME `exit_logic` ladder, with
+the SAME era stamp (`exit_era` / `exit_rules` / `admission_era` from `rule_eras.py`, `regime` =
+the entry stamp). Twelve arms, each one plain sentence, each varying ONE thing:
+
+| arm | kind | what it varies |
+|---|---|---|
+| `live_actual` | control | what the real trade did |
+| `live_replay` | control | the live rule walked on the same bars — the fidelity check |
+| `stop_orb_low` | stop | stop at the ORB low (−1R; the rule retired 08-16) |
+| `stop_adr_050` · `stop_adr_075` | stop | stop at entry − 0.5 / 0.75 × ADR20$ |
+| `stop_orb_3r` | stop | stop at entry − 3R — the "−3R does not pay" rung, checked forward (new) |
+| `harvest_no_breakeven` · `harvest_trail_only` · `harvest_t3` | harvest | what happens after the partial |
+| `harvest_legacy_2r` | harvest | the RETIRED +2R / breakeven-at-partial rule, fixed forever — old rule vs new on every fill |
+| `trail_pivot_swing` | trail | the confirmed-swing-low trail (was `mi_pivot_stop_shadow` P1, ADR 0031) (new) |
+| `trail_character_ma` | trail | the stock's own respected MA × (1 − its undercut) (was P2); no profile → `unscoreable`, counted (new) |
+
+**Deliberately NOT an arm: the +6%/60% peak-lock giveback.** Ruled out 2026-08-11 — *"no, we let
+winners run"*, *"do not re-propose it"* (§ below). An arm would put a ruled-out rule in front of
+him on every read. `live_fill_counterfactuals.RULED_OUT_ARMS` records the omission; adding one is
+his call alone.
+
+**ONE read.** `data_gated_reviews.yaml` → `live_fill_counterfactuals_first_read_482`, gated on
+fills under the **CURRENT exit era** (`exit_era = 'era_d' AND alert_date >= 2026-09-06`, the
+control pair `live_actual` + `live_replay` settled), threshold 20, recurring 20 → 40 → 60. Never a
+raw count — a count predicate is what let the retracted analysis fire. **The era literal is pinned
+to `rule_eras.py` by `tests/test_exit_counterfactual_consolidation_631.py`:** the next exit-rule
+flip goes RED there until the predicate moves with it. (The prose version of that rule — "bump
+`_EXIT_ERA_START` in the same commit" on `exit_tune_cohort_review` — was missed on 09-06 and sat
+stale for three days; both `exit_tune_*` predicates were repointed to 09-06 and are under the same
+pin.) Six sections, read PAIRED per fill and segmented by admission era FIRST: fidelity · stop ·
+harvest · trail (incl. the tail-clip test and the abstention rate) · regime (entry-stamped cells,
+n stated, thin cells named) · the running read.
+
+**The running read** (operator 2026-08-16: *"we should make frequent comparisons vs waiting for x
+samples since it's live"*): the nightly sell-discipline digest's *"WOULD A DIFFERENT EXIT HAVE KEPT
+MORE?"* block (`sell_discipline._exit_counterfactual_running_read`) renders every arm after every
+close — mean change vs the real result in % of entry, and the count of fills the arm would have
+CHANGED (measured against `live_replay`, the same engine on the same bars, so "changed 0" is exact
+and is the finding — the #508 lesson). Current exit era only.
+
+**Coverage map — the 13 reviews (the 12 named plus the one that produced the retraction):**
+
+| review | verdict | where it lives now |
+|---|---|---|
+| `pivot_stop_shadow_review` | FOLDED | section 4 — `trail_pivot_swing` / `trail_character_ma` |
+| `exit_path_shadow_first_read` | FOLDED | section 2 — `stop_orb_low` / `stop_orb_3r` vs `live_actual`; day-0 coverage = `day0_bar_count` |
+| `stop_2r_running_comparison` | FOLDED, running half kept | section 2 + the digest block above |
+| `harvest_rule_effectiveness` | FOLDED (its predicate was DEAD — keyed on an audit event nothing emits) | section 3 — `harvest_legacy_2r` vs `live_actual`, recurring |
+| `exit_regime_interaction_review` | FOLDED (the retracted run's gate) | section 5 — `regime` segmentation, entry stamp not date join |
+| `regime_conditional_exit_grid_parked` | FOLDED | section 5 — its "≥10 per cell" is a reporting rule inside the read |
+| `giveback_shadow_review` | CLOSED BY RULING (2026-08-11), not folded | — |
+| `exit_tune_cohort_review` · `exit_tune_bull_regime_read` | KEPT — different instrument | the wide-grid offline forensic (`_508_exit_rule_replay.py`, 34 candidates, character / holding-period axes); era repointed to 09-06; quotes the ONE read's arms as primary evidence where they overlap |
+| `runner_rule_sweep_recut` | KEPT — different population | a backtest population (Run-U, n=194), tripwire on a rules change |
+| `bracket_geometry_variants_parked` | KEPT — not an exit question | ENTRY geometry (5-min ORB bar, ATR ladder, established-low entry, re-entry) |
+| `delayed_entry_adr_stop_variant_616` · `_025_545` | KEPT — a different signal's recorder | `mi_delayed_entry_trigger`, the delayed re-entry lane's own stop variants |
+
+**The old tables — history preserved, nothing migrated.** `mi_pivot_stop_shadow` and
+`mi_giveback_shadow` are RETIRED READ-ONLY: their jobs are unregistered, every row they wrote stays,
+and no row was migrated because the semantics do not match — the pivot shadow walked the ladder's
+day-3/5 partial on daily bars with the row's share count (no day-0 minute walk, no intraday
+partial); the giveback shadow synthesised `l=c` bars from `running_closes`. Neither is the
+recorder's walk, so their rows cannot sit beside its rows. Their last reads stand as history
+(2026-08-08: p1 changed 0 of 12, p2 changed 0 of 5 — both inert under the old rule).
+**`mi_exit_path_shadow` KEEPS RUNNING** — it records the PATH (daily excursions, R-touches,
+gap-throughs), not a rule, and remains the substrate for scoring any rule not yet proposed
+(`scripts/stop_2r_counterfactual.py` reads it). It is not an arm table and was never the
+duplication.
+
+**One stated deviation from the old pivot shadow.** That shadow exited P1/P2 on *close-below* the
+trail line ("recorded deviation", ADR 0031). Here the trail arms get the same raise-only
+resting-stop overlay every other arm gets — the trail level becomes the next session's resting
+stop, which is what the live tracker does with the SMA trail and what a live pivot stop would do at
+the broker. So the trail arms exit on the TOUCH of a confirmed pivot the following session, not
+only on a close below it. Faithful to live; slightly stricter than the old shadow.
+
+⚖ **THE LINE.** Recorder + read + digest are evidence only. A stop, harvest or trail change is
+CHANGE_PROCESS + N≥10 + the #151 harness + operator sign-off; a pivot flip additionally needs the
+ADR 0029-D1 `update_stop` hardening before a second live stop authority exists. Nothing here changes
+what any live position does.
+
+---
+
 ## Change log (newest first)
+
+### 2026-09-09 — #631: ONE exit-counterfactual recorder, ONE read — two shadow tables retired read-only, six reviews folded, one closed by ruling (RECORD/READ ONLY — no exit rule, stop, target, size or admission changed)
+
+**Trigger**: operator — *"stop one off, consolidate"* (full quote + the retraction that prompted it
+in §"Exit counterfactuals — ONE recorder, ONE read" above, which is the owner of everything below).
+
+**What changed:**
+- `live_fill_counterfactuals.py`: three arms added — `stop_orb_3r`, `trail_pivot_swing`,
+  `trail_character_ma` (the pivot-stop shadow's P1/P2, on the recorder's own walk); a `trail_rule`
+  column on every row (`cf_v2`; old rows read NULL = `sma`); `RULED_OUT_ARMS` names the giveback
+  omission. Existing arms byte-identical (parity tests unchanged). **A fill's live rule is fixed by
+  its own first follows-live row**: an arm added later (these three, on the seven era-C fills) or
+  one still pending across a flip walks the levels its siblings stored, never today's — caught in
+  review before the first run, when the new arms would have landed at +8R / +3R beside +2R / none.
+- `scheduler.py`: `giveback_shadow` (17:38) and `pivot_stop_shadow` (17:42) UNREGISTERED. Tables and
+  rows kept; modules kept importable. `exit_path_shadow` untouched.
+- `sell_discipline.py`: the digest's candidate block now reads the ONE table, every arm, current
+  exit era only, with the CHANGED count against `live_replay` — the running read.
+- `data_gated_reviews.yaml`: `live_fill_counterfactuals_first_read_482` rewritten as THE ONE READ
+  (era-scoped control-pair predicate, six sections); `pivot_stop_shadow_review` ·
+  `exit_path_shadow_first_read` · `stop_2r_running_comparison` · `harvest_rule_effectiveness` ·
+  `exit_regime_interaction_review` · `regime_conditional_exit_grid_parked` → done, each outcome
+  naming the read and its arm; `giveback_shadow_review` → done by the 2026-08-11 ruling;
+  `exit_tune_cohort_review` + `exit_tune_bull_regime_read` era literal 08-16 → 09-06 (missed on
+  the flip; now test-pinned to `rule_eras`).
+- Tests: `tests/test_exit_counterfactual_consolidation_631.py` pins the arm set, the coverage map,
+  the era pin, the retired-not-dropped tables, the digest and the trail-arm walk.
+
+**Reversion-flag**: n/a — records and reads. Re-registering the two jobs is a two-line scheduler
+change; nothing live depends on either direction.
+
+**Deploy**: `market-agent` (the recorder and the digest run there; the `ALTER TABLE … ADD COLUMN
+IF NOT EXISTS trail_rule` lands on boot) **then `execution`** — `db.py` and `scheduler.py` are on
+`scripts/exec_loaded_modules.txt`, so the scope-drift guard demands the second step (the #482
+precedent); execution's behaviour is unchanged by either edit.
 
 ### 2026-09-06 (evening PT) — #545 FLIPPED LIVE for MAGNA53: partial +2R → +8R, price-armed breakeven ON at +3R (OPERATOR-SIGNED)
 

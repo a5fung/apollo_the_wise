@@ -513,7 +513,10 @@ def _wire(monkeypatch, *, trade, written=(), daily=None, minutes=None, stamp=Non
         if "FROM mi_live_trades" in sql:
             return [trade_store["row"]] if trade_store["row"] is not None else []
         if "FROM mi_live_fill_counterfactuals WHERE trade_id" in sql:
-            return [{"arm": a} for a in written]
+            # #631: a written row carries the level it walked; a bare name = the pre-#545
+            # global rule (2R, no price-armed breakeven), a dict = whatever the test says
+            return [({"arm": a, "target_r": lfc.TARGET_R, "breakeven_arm_r": None}
+                     if isinstance(a, str) else dict(a)) for a in written]
         if "FROM mi_daily_closes" in sql:
             lo, hi = args[1], args[2]
             return [dict(r) for r in daily if lo <= r["trade_date"] <= hi]
@@ -591,10 +594,13 @@ async def test_run_writes_one_row_per_arm_and_only_to_its_own_table(monkeypatch)
     assert live_reads and all(sql.lstrip().upper().startswith("SELECT") for sql in live_reads)
     assert store["row"] == before                      # byte-identical after the run
 
-    assert out["errors"] == 0 and out["population"] == 1 and out["written"] == 9
-    assert out["settled"] == 9 and out["pending"] == 0
+    # #631: twelve arms. Eleven settle; trail_character_ma is `unscoreable` because the
+    # fixture stores only 20 pre-alert sessions and character_profile abstains below 60 —
+    # the old shadow's first-class abstain, recorded and counted, never walked.
+    assert out["errors"] == 0 and out["population"] == 1 and out["written"] == 12
+    assert out["settled"] == 11 and out["unscoreable"] == 1 and out["pending"] == 0
     by = {r["arm"]: r for r in inserts}
-    assert set(by) == set(lfc.ARM_NAMES)
+    assert set(by) == set(lfc.ARM_NAMES) and len(by) == 12
     assert by["live_actual"]["realized_r"] == pytest.approx(1 / 3)          # 10 / (30 x 1.0)
     assert by["live_replay"]["realized_r"] == pytest.approx(1 / 3)          # the fidelity check agrees
     assert by["stop_orb_low"]["realized_r"] == pytest.approx((1 / 3) / 0.5)
@@ -606,12 +612,36 @@ async def test_run_writes_one_row_per_arm_and_only_to_its_own_table(monkeypatch)
     # #545: no override row anywhere -> harvest_legacy_2r walks the SAME stop/target/
     # breakeven live_replay does today -> byte-identical realized_r (both 1/3).
     assert by["harvest_legacy_2r"]["realized_r"] == pytest.approx(1 / 3)
+    # #631 arms. stop_orb_3r: entry − 3·(entry − orb_low) = 8.5, risk 1.5 in its own unit.
+    # The day-0 partial moves the stop to breakeven (10.0) exactly as it does for every
+    # live-ladder arm, so S1's 9.9 dip closes the remainder at entry: pnl = 1/3 per share
+    # (the same +0.33R scratch the live rule prints) → 1/3 ÷ 1.5 = +0.222R here. A wider
+    # initial stop changes nothing once breakeven has taken over — that is the point of
+    # reporting in own units.
+    assert by["stop_orb_3r"]["stop_price"] == pytest.approx(8.5)
+    assert by["stop_orb_3r"]["risk_per_share"] == pytest.approx(1.5)
+    assert by["stop_orb_3r"]["realized_r"] == pytest.approx((1 / 3) / 1.5)
+    assert by["stop_orb_3r"]["exit_session"] == 1
+    # trail_pivot_swing: no swing low is CONFIRMED before the S4 gap kills the position
+    # (a fractal low needs two bars either side), so the pivot line never exists and the
+    # arm is byte-identical to the live rule on these bars — the "changed 0" case.
+    assert by["trail_pivot_swing"]["realized_r"] == pytest.approx(1 / 3)
+    assert by["trail_pivot_swing"]["trail_rule"] == "pivot_swing"
+    assert by["trail_character_ma"]["outcome"] == "unscoreable"
+    assert by["trail_character_ma"]["final_reason"].startswith("no_character_profile:")
+    assert by["trail_character_ma"]["realized_r"] is None
+    assert by["trail_character_ma"]["trail_rule"] == "character_ma"
+    assert by["live_replay"]["trail_rule"] == "sma" and by["stop_orb_low"]["arm_kind"] == "stop"
+    assert by["trail_pivot_swing"]["arm_kind"] == "trail"
     for r in inserts:
         assert r["target_price"] == pytest.approx(11.0) and r["target_r"] == 2.0
         assert r["breakeven_arm_r"] is None
         assert r["adr20_pct"] == pytest.approx(4.0) and r["adr20_n"] == 20
         assert r["adr_dollar"] == pytest.approx(0.4) and r["live_stop"] == LIVE_STOP
-        assert r["outcome"] == "settled" and r["settle_version"] == lfc.SETTLE_VERSION
+        assert r["settle_version"] == lfc.SETTLE_VERSION
+        if r["arm"] == "trail_character_ma":
+            continue
+        assert r["outcome"] == "settled"
         assert r["realized_pct"] == pytest.approx(r["realized_r"] * r["risk_per_share"] / ENTRY * 100)
     assert by["harvest_no_breakeven"]["gap_through"] is True
     assert by["stop_orb_low"]["stop_width_adr"] == pytest.approx(0.5 / 0.4)
@@ -720,9 +750,11 @@ async def test_total_recorder_failure_leaves_the_live_trade_untouched(monkeypatc
     monkeypatch.setattr(lfc, "insert_live_fill_counterfactual", write_boom)
     out = await lfc.run_live_fill_counterfactuals(_TODAY, now_et=_NOW)
     assert out["written"] == 0 and inserts == []
-    assert out["errors"] == 9                        # 8 walked arms + the live_actual write
+    # 10 walked arms + the live_actual write + trail_character_ma's no-profile write (#631):
+    # that arm never reaches walk_arm on a 20-session history, so its failure is the writer's
+    assert out["errors"] == 12
     errs = [s for e, s in audits if e == "live_fill_counterfactual_error"]
-    assert sum("walk boom" in s for s in errs) == 8 and sum("write boom" in s for s in errs) == 1
+    assert sum("walk boom" in s for s in errs) == 10 and sum("write boom" in s for s in errs) == 2
     assert store["row"] == before
     assert not any(k == "execute" for k, _, _ in statements)
 
@@ -747,15 +779,17 @@ async def test_fill_query_failure_returns_counted_not_raised(monkeypatch):
 @pytest.mark.asyncio
 async def test_missing_adr_closes_the_adr_arms_unscoreable_and_settles_the_rest(monkeypatch):
     """Only 6 stored pre-alert sessions: ADR is NULL (never substituted). The two ADR arms
-    are written `unscoreable` with every R NULL and the shortfall named; the other seven
-    settle normally on the same run."""
+    are written `unscoreable` with every R NULL and the shortfall named (and #631's
+    trail_character_ma abstains on the same short history); the other nine settle
+    normally on the same run."""
     daily = _pre_rows()[-6:] + [
         {"trade_date": d, "open_price": b["o"], "high_price": b["h"], "low_price": b["l"], "close": b["c"]}
         for d, b in SESS_A]
     _, inserts, _, _ = _wire(monkeypatch, trade=_trade_row(), daily=daily)
     out = await lfc.run_live_fill_counterfactuals(_TODAY, now_et=_NOW)
     by = {r["arm"]: r for r in inserts}
-    assert out["unscoreable"] == 2 and out["settled"] == 7
+    assert out["unscoreable"] == 3 and out["settled"] == 9
+    assert by["trail_character_ma"]["final_reason"] == "no_character_profile:6_bars"
     for arm in ("stop_adr_050", "stop_adr_075"):
         assert by[arm]["outcome"] == "unscoreable" and by[arm]["final_reason"] == "no_adr20:6_sessions"
         assert by[arm]["realized_r"] is None and by[arm]["stop_price"] is None
@@ -775,10 +809,14 @@ async def test_open_live_trade_defers_live_actual_and_settles_the_tight_arms(mon
     now = datetime(2026, 8, 21, 18, 4, tzinfo=_ET)
     _, inserts, _, _ = _wire(monkeypatch, trade=trade, daily=daily, minutes=day0)
     out = await lfc.run_live_fill_counterfactuals(now.date(), now_et=now)
-    arms = {r["arm"] for r in inserts}
-    assert arms == {"stop_orb_low", "stop_adr_050", "stop_adr_075"}
-    assert all(r["realized_r"] == pytest.approx(-1.0) and r["exit_session"] == 0 for r in inserts)
-    assert out["pending"] == 6 and out["written"] == 3
+    by = {r["arm"]: r for r in inserts}
+    # #631: stop_orb_3r sits at 8.5, below the 9.45 dip, so it waits with the live-stop
+    # arms; trail_character_ma's no-profile abstain never depends on the walk.
+    assert set(by) == {"stop_orb_low", "stop_adr_050", "stop_adr_075", "trail_character_ma"}
+    assert all(by[a]["realized_r"] == pytest.approx(-1.0) and by[a]["exit_session"] == 0
+               for a in ("stop_orb_low", "stop_adr_050", "stop_adr_075"))
+    assert by["trail_character_ma"]["outcome"] == "unscoreable"
+    assert out["pending"] == 8 and out["written"] == 4
 
 
 @pytest.mark.asyncio
@@ -793,12 +831,16 @@ async def test_a_stale_gap_is_written_abstain_a_fresh_one_waits(monkeypatch):
     fresh = datetime(2026, 8, 21, 18, 4, tzinfo=_ET)
     _, inserts, _, _ = _wire(monkeypatch, trade=trade, daily=daily, minutes=[])
     out = await lfc.run_live_fill_counterfactuals(fresh.date(), now_et=fresh)
-    assert inserts == [] and out["pending"] == 9
+    # #631: trail_character_ma's no-profile abstain is a fact about the PRE-ALERT history,
+    # not the gap, so it is the one row that does not wait; every walked arm does.
+    assert [r["arm"] for r in inserts] == ["trail_character_ma"]
+    assert out["pending"] == 11                     # live_actual (open) + the ten walked arms
 
     stale = datetime(2026, 8, 28, 18, 4, tzinfo=_ET)          # 6 sessions past the fill day
-    _, inserts2, _, _ = _wire(monkeypatch, trade=trade, daily=daily, minutes=[])
+    _, inserts2, _, _ = _wire(monkeypatch, trade=trade, daily=daily, minutes=[],
+                              written=("trail_character_ma",))
     out2 = await lfc.run_live_fill_counterfactuals(stale.date(), now_et=stale)
-    assert out2["abstained"] == 8 and out2["pending"] == 1          # live_actual still open
+    assert out2["abstained"] == 10 and out2["pending"] == 1         # live_actual still open
     assert all(r["outcome"] == "abstain" and r["final_reason"] == "no_day0_minute_bars"
                and r["realized_r"] is None for r in inserts2)
 
@@ -815,7 +857,7 @@ async def test_write_once_a_fully_recorded_fill_is_skipped(monkeypatch):
 async def test_conflict_is_not_counted_as_written(monkeypatch):
     _, inserts, _, _ = _wire(monkeypatch, trade=_trade_row(), execute_result="INSERT 0 0")
     out = await lfc.run_live_fill_counterfactuals(_TODAY, now_et=_NOW)
-    assert len(inserts) == 9 and out["written"] == 0 and out["settled"] == 0
+    assert len(inserts) == 12 and out["written"] == 0 and out["settled"] == 0
 
 
 # ── THE LINE, statically ──────────────────────────────────────────────────────────────
@@ -865,7 +907,11 @@ def test_nothing_live_imports_the_recorder():
     # and the TABLE is named nowhere on the execution side or in the detector/judge/sizing paths
     for py in (_REPO / "agents" / "market_intelligence").rglob("*.py"):
         if py.name in ("db.py", "health_checks.py", "live_fill_counterfactuals.py",
-                      "sustain_reject_replay.py"):
+                      "sustain_reject_replay.py",
+                      # #631 (2026-09-09): the nightly sell-discipline digest READS the table
+                      # (the running per-arm read that replaced mi_pivot_stop_shadow's block).
+                      # Display only — SELECTs, never the module, no decision path.
+                      "sell_discipline.py"):
             continue
         assert "mi_live_fill_counterfactuals" not in py.read_text(), py.relative_to(_REPO)
 
@@ -913,9 +959,15 @@ def test_gated_review_is_registered_with_its_population_declared():
     entries = reg["reviews"] if isinstance(reg, dict) else reg
     e = next(x for x in entries if x.get("review_id") == "live_fill_counterfactuals_first_read_482")
     assert e["threshold"] == 20 and e["status"] == "pending" and e["kind"] == "accrual"
-    assert "HAVING COUNT(DISTINCT arm) = 4" in e["predicate_sql"]
+    # #631: the ONE read counts fills whose control PAIR (live_actual + live_replay) is
+    # settled, under the CURRENT exit era only — the era pin itself is
+    # tests/test_exit_counterfactual_consolidation_631.py's job.
+    assert "HAVING COUNT(DISTINCT arm) = 2" in e["predicate_sql"]
+    assert "arm IN ('live_actual', 'live_replay')" in e["predicate_sql"]
+    assert "exit_era = 'era_d'" in e["predicate_sql"]
     assert "to_regclass('mi_live_fill_counterfactuals')" in e["predicate_sql"]
     assert "mi_live_fill_counterfactuals.admission_era" in e["discriminates_on"]
+    assert "mi_live_fill_counterfactuals.signal_type" in e["discriminates_on"]
 
 
 # ── rule_eras: one table, cited by the SSoT, read by every consumer ───────────────────

@@ -37,6 +37,7 @@ from typing import Any, Iterable, Optional
 from shared.dates import _ET
 
 from agents.market_intelligence.db import _f, get_pool, log_audit_event
+from agents.market_intelligence.rule_eras import exit_era_label
 
 logger = logging.getLogger(__name__)
 
@@ -456,6 +457,92 @@ def _plural(n: int, word: str) -> str:
     return f"{n} {word}" if n == 1 else f"{n} {word}s"
 
 
+def _pct(v) -> str:
+    return f"{v:+.1f}%" if v is not None else "?"
+
+
+# #631 — plain-words labels for the ONE exit-counterfactual recorder's arms
+# (live_fill_counterfactuals.ARMS). live_actual is the baseline and never renders as a row.
+_CF_ARM_LABELS: dict[str, str] = {
+    "live_replay": "our own rule replayed, as a check",
+    "stop_orb_low": "stop at the opening-range low",
+    "stop_adr_050": "stop half a daily range below entry",
+    "stop_adr_075": "stop three-quarters of a daily range below entry",
+    "harvest_no_breakeven": "partial, but no move to breakeven",
+    "harvest_trail_only": "no partial, trail only",
+    "harvest_t3": "partial, sell the rest three days later",
+    "harvest_legacy_2r": "the old rule (partial at +2R)",
+    "stop_orb_3r": "stop three R below entry",
+    "trail_pivot_swing": "swing-stop rule",
+    "trail_character_ma": "character-based rule",
+}
+
+# The ONE recorder, read PAIRED on the same fill: mean change vs the real outcome
+# (live_actual) and the count of fills where the arm's walk differs from the live rule's
+# walk on the same bars (live_replay — same engine, so "no difference" is exact equality).
+# Current exit era only ($1), live money only. READ-ONLY.
+_EXIT_CF_RUNNING_READ_SQL = """
+    WITH actual AS (
+        SELECT trade_id, realized_pct AS actual_pct
+        FROM mi_live_fill_counterfactuals
+        WHERE account_mode = 'live' AND arm = 'live_actual' AND outcome = 'settled'  -- mode-ok: exit-discipline read tracks the real-money book by definition (#508)
+          AND exit_era = $1
+    ),
+    replay AS (
+        SELECT trade_id, realized_pct AS replay_pct
+        FROM mi_live_fill_counterfactuals
+        WHERE account_mode = 'live' AND arm = 'live_replay' AND outcome = 'settled'  -- mode-ok: same read
+          AND exit_era = $1
+    )
+    SELECT c.arm,
+           count(*) FILTER (WHERE c.outcome = 'settled') AS n,
+           count(*) FILTER (WHERE c.outcome = 'unscoreable') AS unscoreable,
+           avg(c.realized_pct - a.actual_pct) FILTER (WHERE c.outcome = 'settled') AS delta_pct,
+           -- CHANGED: a counterfactual arm vs the live rule's own walk (same engine, same bars
+           -- -> exact equality means "the rule made no difference"). For live_replay itself
+           -- that comparison is vacuous, so its count is the FIDELITY miss: fills where the
+           -- replay is off the real result by more than a quarter of the fill's live R
+           -- (risk_per_share as % of entry) — the ONE read's own 0.25R quote threshold.
+           count(*) FILTER (WHERE c.outcome = 'settled' AND (
+                CASE WHEN c.arm = 'live_replay'
+                     THEN abs(c.realized_pct - a.actual_pct)
+                          > 0.25 * (c.risk_per_share / NULLIF(c.entry_price, 0) * 100.0)
+                     ELSE r.replay_pct IS NULL OR abs(c.realized_pct - r.replay_pct) > 1e-9
+                END)) AS changed
+    FROM mi_live_fill_counterfactuals c
+    JOIN actual a USING (trade_id)
+    LEFT JOIN replay r USING (trade_id)
+    WHERE c.account_mode = 'live' AND c.exit_era = $1  -- mode-ok: same read
+      AND c.arm <> 'live_actual' AND c.outcome IN ('settled', 'unscoreable')
+    GROUP BY c.arm
+"""
+
+
+async def _exit_counterfactual_running_read(conn, exit_era: str) -> Optional[dict]:
+    """{n, era, arms:[{arm, n, unscoreable, delta_pct, changed}]} for the current exit era,
+    arms in _CF_ARM_LABELS order (= live_fill_counterfactuals.ARMS order, pinned by
+    tests/test_exit_counterfactual_consolidation_631.py — the recorder is deliberately NOT
+    imported here: nothing outside the scheduler and the replay lanes may, and this is a
+    display-only reader); None when no fill has a settled actual result yet (the renderer
+    then shows nothing — a bare count explained nothing, #508)."""
+    n = await conn.fetchval("""
+        SELECT count(*) FROM mi_live_fill_counterfactuals
+        WHERE account_mode = 'live' AND arm = 'live_actual' AND outcome = 'settled'  -- mode-ok: exit-discipline read tracks the real-money book by definition (#508)
+          AND exit_era = $1
+    """, exit_era)
+    if not n:
+        return None
+    rows = {r["arm"]: dict(r) for r in await conn.fetch(_EXIT_CF_RUNNING_READ_SQL, exit_era)}
+    arms = []
+    for name in _CF_ARM_LABELS:
+        if name not in rows:
+            continue
+        r = rows[name]
+        arms.append({"arm": name, "n": int(r["n"] or 0), "unscoreable": int(r["unscoreable"] or 0),
+                     "delta_pct": _f(r["delta_pct"]), "changed": int(r["changed"] or 0)})
+    return {"n": int(n), "era": exit_era, "arms": arms}
+
+
 # Human strategy names, mirroring mi_strategies rows (db.py ~170/198: "MAGNA53 EP",
 # "9M Day 2 ORB") — a lookup for DISPLAY only, no new data source. Unknown signal_types
 # (a future strategy) fall back to a title-cased version of the code rather than the raw
@@ -541,7 +628,8 @@ def format_sell_discipline_section(data: dict) -> str:
     give it a split point INSIDE this fence, leaving an unterminated ``` on a long day.
     `data` keys (all optional): open_lines [str], provisional [dict], recorded [dict],
     live_cohort {n,wins,reached_avg,kept_avg,partials,stop_above,regimes:[(name,n,kept)]},
-    cohorts [dict], shadow {consol:[(mode,n,reached,kept)], htf, wick, giveback_n, pivot_cf}.
+    cohorts [dict], shadow {consol:[(mode,n,reached,kept)], htf, wick,
+    exit_cf {n, era, arms:[{arm,n,unscoreable,delta_pct,changed}]}} (#631).
     Returns "" when there is nothing at all to show."""
     sections: list[list[str]] = []
 
@@ -621,33 +709,30 @@ def format_sell_discipline_section(data: dict) -> str:
         sections.append(
             ["SIMULATION ONLY, CANNOT TRADE — typical (median) reached vs kept"] + shadow_lines)
 
-    cf = sh.get("pivot_cf") or {}
+    cf = sh.get("exit_cf") or {}
     if cf.get("n"):
-        abstained = cf.get("abstained", 0)
-        # The CHANGED count is the load-bearing number, not the average: an average can
-        # move simply because a profile is NULL on some trades. "changed 0 trades" means
-        # the candidate would have done nothing at all, which is the finding. p1 (the
-        # swing-stop rule) always has a value; p2 (the character-based rule) needs a
-        # trading-history profile the stock may not have — that's what "no history for"
-        # reports, attributed to the rule it actually applies to (pivot_stop_shadow.py:
-        # `abstained` is set exactly when the character profile is None, i.e. only p2 is
-        # unavailable — a labelling fix, not a number moved; exit_discipline.md 2026-08-08
-        # corroborates "p2 changed 0 of the 5 it was populated on").
+        # #631: one line per arm of the ONE exit-counterfactual recorder, current exit era
+        # only. The CHANGED count is the load-bearing number, not the average: "changed 0
+        # trades" means the candidate would have done nothing at all, which is the finding
+        # (#508 lesson). "no history for" = the character-based rule had no profile to
+        # apply — a first-class abstain, counted, never hidden.
         candidate = [
-            "WOULD A DIFFERENT STOP HAVE KEPT MORE? (replayed on real trades)",
-            f" {_plural(cf['n'], 'trade')} tested, reached {_r(cf.get('reached'))} on average",
-            f" kept, actual: {_r(cf.get('actual'))}",
-            f" swing-stop rule: {_r(cf.get('p1'))}"
-            f" (would have changed {_plural(cf.get('p1_diff', 0), 'trade')})",
-            f" character-based rule: {_r(cf.get('p2'))}"
-            f" (would have changed {_plural(cf.get('p2_diff', 0), 'trade')}"
-            + (f", no history for {_plural(abstained, 'trade')}" if abstained else "") + ")",
+            "WOULD A DIFFERENT EXIT HAVE KEPT MORE? (replayed on the real fills, current rule)",
+            f" {_plural(cf['n'], 'fill')} with a settled result; change vs actual, in % of entry",
         ]
+        for a in cf.get("arms") or []:
+            label = _CF_ARM_LABELS.get(a["arm"], a["arm"].replace("_", " "))
+            if not a.get("n"):
+                if a.get("unscoreable"):
+                    candidate.append(f" {label}: no history for {_plural(a['unscoreable'], 'fill')}")
+                continue
+            verb = "off by over a quarter R on" if a["arm"] == "live_replay" else "changed"
+            line = (f" {label}: {_pct(a.get('delta_pct'))}"
+                    f" ({verb} {a.get('changed', 0)} of {_plural(a['n'], 'fill')}")
+            if a.get("unscoreable"):
+                line += f", no history for {_plural(a['unscoreable'], 'fill')}"
+            candidate.append(line + ")")
         sections.append(candidate)
-
-    # giveback store row deliberately DROPPED (operator 2026-08-16): n=1 is not actionable
-    # and the raw row count explained nothing. The underlying query/data is untouched —
-    # this is display scope only.
 
     if not sections:
         return ""
@@ -751,27 +836,24 @@ async def build_sell_discipline_section(
                    percentile_cont(0.5) WITHIN GROUP (ORDER BY fwd_10d_from_close_pct) AS kept
             FROM mi_wick_candidates WHERE fwd_10d_from_close_pct IS NOT NULL
         """)
-        giveback_n = await conn.fetchval("SELECT count(*) FROM mi_giveback_shadow")
-        # DoD leg 3 (#508): "what a CANDIDATE RULE would have kept". This line used to render
-        # two bare ROW COUNTS — which answers "does the store have rows", not the question the
-        # task exists for. mi_pivot_stop_shadow already carries the answer per trade
-        # (baseline_exit_r = what we actually kept, p1/p2_exit_r = what each candidate profile
-        # would have kept), so the surface just was not asking.
+        # DoD leg 3 (#508): "what a CANDIDATE RULE would have kept" — the RUNNING read.
+        # #631 (2026-09-09): repointed from mi_pivot_stop_shadow (retired, read-only) to the
+        # ONE exit-counterfactual recorder, mi_live_fill_counterfactuals, CURRENT EXIT ERA ONLY
+        # (rule_eras — the retracted 2026-09-09 analysis pooled 27 old-rule trades with 1
+        # current-rule trade; this surface must never do that). This is also where the
+        # operator's 2026-08-16 ask lives — "we should make frequent comparisons vs waiting
+        # for x samples since it's live" (was stop_2r_running_comparison): every arm, every
+        # close, beside the actual result. The gated review
+        # live_fill_counterfactuals_first_read_482 is the decision-grade read at n=20.
         # ⚠ DISPLAY ONLY. Rendering what a rule WOULD have kept is evidence; changing a rule is
-        # THE LINE (CHANGE_PROCESS + sign-off). This makes candidate rules replayable so they
-        # stop being argued — including, as of today, showing when a candidate does NOTHING.
-        pivot_cf = await conn.fetchrow("""
-            SELECT count(*) AS n,
-                   count(*) FILTER (WHERE abstained) AS abstained,
-                   avg(mfe_r) AS reached,
-                   avg(baseline_exit_r) AS actual,
-                   avg(p1_exit_r) AS p1,
-                   avg(p2_exit_r) AS p2,
-                   count(*) FILTER (WHERE p1_exit_r IS DISTINCT FROM baseline_exit_r) AS p1_diff,
-                   count(*) FILTER (WHERE p2_exit_r IS NOT NULL
-                                      AND p2_exit_r IS DISTINCT FROM baseline_exit_r) AS p2_diff
-            FROM mi_pivot_stop_shadow WHERE account_mode = 'live'  -- mode-ok: exit-discipline shadow tracks the real-money book by definition (#508)
-        """)
+        # THE LINE (CHANGE_PROCESS + sign-off). The CHANGED count stays load-bearing: it is
+        # what separates an inert candidate from a working one — measured against
+        # live_replay (the live rule walked by the SAME engine on the SAME bars, so an arm
+        # that made no difference is byte-identical to it), while the mean delta is against
+        # the real outcome (live_actual). Size-free unit (% of entry) so every arm shares one
+        # scale — R differs per stop arm by construction.
+        cf_era = exit_era_label(today, "magna53")
+        exit_cf = await _exit_counterfactual_running_read(conn, cf_era)
 
     open_lines = []
     for pos in open_positions:
@@ -813,7 +895,7 @@ async def build_sell_discipline_section(
             "consol": [(c["entry_mode"], c["n"], _f(c["reached"]), _f(c["kept"])) for c in consol],
             "htf": (htf["n"], _f(htf["reached"]), _f(htf["kept"])) if htf and htf["n"] else None,
             "wick": (wick["n"], _f(wick["reached"]), _f(wick["kept"])) if wick and wick["n"] else None,
-            "giveback_n": giveback_n, "pivot_cf": dict(pivot_cf) if pivot_cf else None,
+            "exit_cf": exit_cf,
         },
     }
     return format_sell_discipline_section(data)

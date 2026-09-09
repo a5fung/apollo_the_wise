@@ -3238,10 +3238,11 @@ async def initialize_schema() -> None:
                 entry_attempt       INT,                 -- 1 = day-1 first attempt; 2 = re-entry after a stop
                 alert_date          DATE NOT NULL,
                 fill_day            DATE NOT NULL,       -- ET date of filled_at (day 0 of the walk)
-                arm                 TEXT NOT NULL,       -- live_actual | live_replay | stop_orb_low | stop_adr_050 | stop_adr_075 | harvest_no_breakeven | harvest_trail_only | harvest_t3 | harvest_legacy_2r
-                arm_kind            TEXT NOT NULL,       -- control | stop | harvest
-                stop_rule           TEXT NOT NULL,       -- live | orb_low | adr_050 | adr_075
+                arm                 TEXT NOT NULL,       -- live_actual | live_replay | stop_orb_low | stop_adr_050 | stop_adr_075 | stop_orb_3r | harvest_no_breakeven | harvest_trail_only | harvest_t3 | harvest_legacy_2r | trail_pivot_swing | trail_character_ma (live_fill_counterfactuals.ARMS is the SoT)
+                arm_kind            TEXT NOT NULL,       -- control | stop | harvest | trail
+                stop_rule           TEXT NOT NULL,       -- live | orb_low | adr_050 | adr_075 | orb_3r
                 harvest_rule        TEXT NOT NULL,       -- live_ladder | no_breakeven | trail_only | t3
+                trail_rule          TEXT,                -- #631 (2026-09-09): sma | pivot_swing | character_ma — the trail line this arm walked; NULL on rows written before #631 (cf_v1) = 'sma', the only trail that existed then
                 -- inputs, read ONCE at record time (hard_stop can move on the trade row — a
                 -- re-run must never re-frame R against a moved stop)
                 entry_price         DOUBLE PRECISION,
@@ -3299,6 +3300,9 @@ async def initialize_schema() -> None:
             -- table has gained since its 2026-09-03 CREATE — a fresh install gets it from the
             -- CREATE TABLE above; a prod table already live at #482 gets it here, idempotently.
             ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS breakeven_arm_r DOUBLE PRECISION;
+            -- #631 (2026-09-09): same additive-schema defence for the trail_rule column (the
+            -- pivot-stop arms folded in from mi_pivot_stop_shadow). Old rows read NULL = 'sma'.
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS trail_rule TEXT;
 
             -- 2026-09-03 — #593 SUSTAIN-REJECT BRACKET REPLAY (sustain_reject_replay.py).
             -- The operator's own framing: a price move is not a trade outcome. For every
@@ -15512,7 +15516,7 @@ async def get_analyst_estimates_asof(
 
 LIVE_FILL_CF_COLS: tuple[str, ...] = (
     "trade_id", "ticker", "account_mode", "signal_type", "entry_attempt", "alert_date",
-    "fill_day", "arm", "arm_kind", "stop_rule", "harvest_rule",
+    "fill_day", "arm", "arm_kind", "stop_rule", "harvest_rule", "trail_rule",
     "entry_price", "orb_high", "orb_low", "live_stop", "target_price", "target_r",
     "breakeven_arm_r",
     "adr20_pct", "adr20_n", "adr_dollar", "stop_price", "risk_per_share", "stop_width_pct",
@@ -15598,14 +15602,19 @@ async def get_counterfactual_fills(filled_from: "date", n_arms: int) -> list[dic
 
 
 _COUNTERFACTUAL_ARMS_WRITTEN_SQL = """
-    SELECT arm FROM mi_live_fill_counterfactuals WHERE trade_id = $1
+    SELECT arm, target_r, breakeven_arm_r FROM mi_live_fill_counterfactuals WHERE trade_id = $1
 """
 
 
-async def get_counterfactual_arms_written(conn: Any, trade_id: int) -> set[str]:
-    """READ-ONLY. The arms already recorded for one trade (write-once: these are skipped)."""
+async def get_counterfactual_arms_written(conn: Any, trade_id: int) -> dict[str, dict]:
+    """READ-ONLY. The arms already recorded for one trade (write-once: these are skipped),
+    keyed by arm, each carrying the partial / breakeven level THAT row walked. #631
+    (2026-09-09): the levels are what lets a later-added follows-live arm join a fill at
+    the SAME live rule its siblings used, instead of today's — see
+    live_fill_counterfactuals._record_one_fill."""
     rows = await conn.fetch(_COUNTERFACTUAL_ARMS_WRITTEN_SQL, int(trade_id))
-    return {r["arm"] for r in rows}
+    return {r["arm"]: {"target_r": r.get("target_r"), "breakeven_arm_r": r.get("breakeven_arm_r")}
+            for r in rows}
 
 
 # ── #593 (2026-09-03) SUSTAIN-REJECT BRACKET REPLAY — the reads + the ONE upsert ─────────
