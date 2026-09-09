@@ -49,6 +49,17 @@ the market cooperates, not when we work.
   row (~17:00 ET) and the unscored recorder its first rows (18:03 ET). Do not read them tonight.
 
 ### Wed 09-09 — the first day #486 is knowable
+- ✅ **DEPLOYED Tue 21:15 ET (`6974a059`, both + execution, verified on the RUNNING images).** Six
+  runtime changes landed; each has a check that can only run on a real session, so they are
+  Wednesday's first job:
+  · **9M scan gated** — `mi_9m_ep_alerts` must take **ZERO** new rows Wednesday (it took 17 Tuesday).
+  · **9M pager retired** — no `9m_alerts_per_day` L2 anomaly, whatever the row count.
+  · **Discovery prompt cache** — `api_usage` must show non-zero `cache_read` for `theme_discovery`
+    after the 17:00 ET run (it was 0 against theme_assignment's 572,983).
+  · **Seed why-logging** — the first `lane2_decision_record` carrying a `story` on each seed.
+  · **Cost baseline (both halves)** — the watchdog must NOT re-fire on theme_discovery at a normal
+    call count; Tuesday's alert was the Labor Day weekend inside a calendar window.
+  · **#582 truncation guard** — the synthesis run completes and its audit row reads normally.
 - **MAIN BUILD: #486 — the naming build.** Name the groups discovery is ALREADY shown and declines.
   Largest measured payoff on the board: naming 5 sessions earlier moves member gaps still ahead of us
   from **29% → 55%**. ⚠ Read Tuesday's declined-cluster rows FIRST — the build follows the reason,
