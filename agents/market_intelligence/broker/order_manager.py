@@ -295,7 +295,18 @@ async def _last_ingested_session(today: date) -> "date | None":
         pool = await get_pool()
         async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
             row = await conn.fetchval(
-                "SELECT max(trade_date) FROM mi_daily_closes WHERE trade_date <= $1",
+                # STRICTLY `<` (operator-signed 2026-09-10, #636). The threshold means
+                # "the last session we already hold closes for", and TODAY's closes do not
+                # exist at 9:31 — they land ~17:52-18:00 ET. With `<=` the correctness of
+                # the whole sizing path rested on that timing: if a row dated TODAY ever
+                # existed before the bell (ingest rescheduled, a backfill, a manual re-run,
+                # a future intraday writer), the threshold would become today, EVERY regime
+                # row dated yesterday would read STALE, and EVERY entry would be floored to
+                # a quarter size — every day, until somebody noticed, and caused by a change
+                # to a job that has nothing to do with sizing. `<` is behaviour-identical
+                # today and removes the coupling. Pinned by
+                # tests/test_regime_freshness_same_day_row_636.py.
+                "SELECT max(trade_date) FROM mi_daily_closes WHERE trade_date < $1",
                 today, timeout=_REPROTECT_DB_TIMEOUT,
             )
         got = _coerce_date(row) if row else None

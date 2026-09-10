@@ -168,6 +168,10 @@
   "status": "blocked"
  },
  {
+  "id": 540,
+  "status": "deployed"
+ },
+ {
   "id": 545,
   "status": "pending"
  },
