@@ -9022,8 +9022,27 @@ reviews:
       CHANGE_PROCESS item for operator sign-off (do NOT build it from this
       review). If they're heterogeneous one-offs, extend the window (defer +30d)
       or close as non-systematic. Ref: PLAN #475.
-    status: pending
+    status: done
     added_on: 2026-07-15
+    # RAN + CLOSED 2026-09-09. VERDICT: NOT systematic — do NOT scope the retry/re-price design.
+    # Three broker-side entry deaths in the eight weeks since 2026-07-15, all live/magna53:
+    #   ARWR 07-22  cancelled  gap 19.6%  Correcting
+    #   INSM 08-06  REJECTED   gap 16.1%  Bull
+    #   QNST 08-07  cancelled  gap 27.9%  Bull
+    # The review's own rule was "if >= half are AEHR-class LULD rejects, scope a retry design".
+    # Only ONE of the three is a true exchange `rejected`; the other two are unexpected
+    # `cancelled`, a different death. One in three is under the bar, so the rule says no.
+    # ⚠ The gaps ARE all large (16-28%), consistent with LULD exposure — so if the rate rises
+    # this becomes real. It is the RATE that is tiny (3 in 8 weeks), not the theory that is wrong.
+    # ECONOMICS: all three names were DOWN at both horizons — ARWR -2.8/-2.0, INSM -4.7/-5.6,
+    # QNST -2.8/-2.2 (5d/10d from the day's close). No missed profit is visible on a hold basis.
+    # ⚠ Stated honestly: each ran open->high +7.4% to +11.7% before fading, so a bracket that
+    # takes a partial might have banked something. "They were losers to hold" is NOT the same as
+    # "the rejections cost nothing" — settling that needs a bracket replay, which no one has asked
+    # for and which three names could not answer anyway.
+    # Re-open if the rate rises: the telemetry keeps accruing, and a future ZERO here would be
+    # good news rather than neglect.
+    closed_on: 2026-09-09
 
   - review_id: b6_gate_inversion_recheck
     title: "B6 re-look (#448) — does the rubric-gate inversion hold at bigger N?"
