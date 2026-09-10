@@ -127,7 +127,11 @@ esac
 # HARD-GUARD against building on a near-full disk (the corruption trigger).
 echo "=== [0/5] Disk hygiene: prune unused build cache + free-space guard ==="
 docker builder prune -f >/dev/null 2>&1 || true
-AVAIL_GB=$(df -BG / | awk 'NR==2 {gsub(/[A-Za-z]/,"",$4); print int($4)}')
+# POSIX `df -k` (1K blocks) — portable. `-BG` is a GNU extension and BSD/macOS `df`
+# rejects it outright, which under `set -e` killed the deploy at step 0 before it ever
+# reached the server (2026-09-10, from the laptop). The guard below is the point of this
+# block, so it must not be the thing that breaks.
+AVAIL_GB=$(df -k / | awk 'NR==2 {print int($4/1048576)}')
 echo "Root disk free after prune: ${AVAIL_GB:-?}G"
 if [ "${AVAIL_GB:-0}" -lt 8 ]; then
   echo ""
