@@ -70,6 +70,16 @@ change). The one adjacent decision that would be money-path is flagged under F9.
 
 ### Tier 1 — money-path / trade-state safety nets
 
+> **SHIPPED 2026-09-10 (#501 Tier-1, F1–F4)** — owner doc for the surfaces:
+> `docs/architecture/market_agent_reference.md` §Error Alerting; tests (mutation-checked
+> RED): `tests/test_501_tier1_silent_failure_surfaces.py`. Drift found against this audit's
+> line numbers: `ninem_detector`'s site is now dead in prod (`_9m_scan_job` is gated off by
+> `should_run("9m_day2")` since 2026-09-08), flag has FIVE intraday sites (a low-vol-rest scan
+> was added), `get_snapshot_all` has 12 callers — so F2 was guarded at the SOURCE
+> (`collector.get_snapshot_all`) rather than per scan job. F1's fix went into `audit_run`
+> (fix-list option A); a `notify_job_failure` Markdown-400 hazard that would have dropped the
+> F1 page on real asyncpg error text was fixed alongside it.
+
 **F1 · Naked-position watchdogs can die with no Telegram and no audit row** — class T6
 - Sites: `scheduler.py:1488-1587` `_stuck_fill_watchdog_job` (Gate-5 deliverable D — detects
   stuck `status='filling'` rows from a crashed WS fill handler), `scheduler.py:1590-1799`

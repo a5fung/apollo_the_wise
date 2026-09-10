@@ -221,6 +221,26 @@ JUDGE_DIVERGENCE_CHECK_FAILED = "judge_divergence_check_failed"
 EVENING_BRIEF_SENT = "evening_brief_sent"
 EVENING_BRIEF_SEND_FAILED = "evening_brief_send_failed"
 
+# ── #501 Tier-1 (2026-09-10): the silent-failure taxonomy's money-path safety nets ──
+# All three names contain "error" ON PURPOSE: `_check_nightly_silent_errors`'s `%error%`
+# sweep and `show errors` pick them up with no extra wiring (the RED-3b / F5 lesson —
+# an audit-only `*_failed` event is swept WEEKLY, i.e. surfaces a week late).
+#
+# F1 — ANY audit_wrap'd job whose exception reaches `core.job_audit.audit_run` (it has no
+# handler of its own — the stuck-fill / stop-ack naked-position watchdogs were the worst
+# cases). One row per failure; Telegram deduped per job_id (core.job_audit.record_job_failure).
+JOB_FAILED_ERROR = "job_failed_error"
+# F2 — Polygon's full-market snapshot answered 200 OK with ZERO tickers. No exception fires
+# for this, so every intraday scan (EP, flag ×5, 9M) reads it as a quiet day: a detection
+# BLACKOUT. Guarded at the source (collector.get_snapshot_all) via
+# llm_health.alert_endpoint_shape_anomaly — row per empty tick, Telegram once sustained.
+POLYGON_SNAPSHOT_EMPTY_ERROR = "polygon_snapshot_empty_error"
+# F4 — the 15-min DB↔Alpaca reconcile lost a WHOLE account mode (auth broken, first API
+# call raising before the per-order loop). Distinct from ORDER_STATUS_RECONCILE_FAILED
+# (per-ORDER, advisor-ruled audit-only): a dead mode means the silent-stop catcher is
+# off for that whole account. Row per failure; Telegram after N consecutive (order_manager).
+ORDER_STATUS_RECONCILE_MODE_ERROR = "order_status_reconcile_mode_error"
+
 # ── #603 DoD (3): endpoint-SHAPE anomaly canary ─────────────────────────────
 # Fires on a response that did NOT raise a classifiable provider-health
 # exception (so llm_health.alert_api_failure's classifier never sees it) but

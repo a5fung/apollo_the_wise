@@ -46,7 +46,9 @@ def _wire(monkeypatch, *, run_id=42):
     import agents.market_intelligence.db as db
     monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(db, "log_audit_event", audit)
+    monkeypatch.setattr(db, "get_audit_log", AsyncMock(return_value=[]))   # #501 F1 dedup lookback
     monkeypatch.setattr(job_audit, "notify_job_failure", AsyncMock())
+    monkeypatch.setattr(job_audit, "_last_job_failure_alert_ts", {})
     return pool, conn, audit
 
 
@@ -108,10 +110,12 @@ async def test_cancelled_job_write_failure_still_reraises_cancellation(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_ordinary_exception_still_recorded_failed_unchanged(monkeypatch):
-    """Regression: the pre-existing Exception path (status='failed') must be untouched
-    by the new CancelledError branch — CancelledError is BaseException, not a subclass
-    of Exception, so the two branches are disjoint by construction."""
+async def test_ordinary_exception_recorded_failed_and_surfaced(monkeypatch):
+    """The Exception path (status='failed') is disjoint from the CancelledError branch
+    by construction (CancelledError is BaseException). Until #501 F1 (2026-09-10) this
+    path wrote ONLY the unwatched 'failed' row — no audit-log event, no Telegram — which
+    is how the naked-position watchdogs could die invisibly. It now surfaces via
+    `record_job_failure` (full contract: tests/test_501_tier1_silent_failure_surfaces.py)."""
     pool, conn, audit = _wire(monkeypatch)
 
     with pytest.raises(ValueError):
@@ -122,7 +126,10 @@ async def test_ordinary_exception_still_recorded_failed_unchanged(monkeypatch):
     args = conn.execute.await_args.args[1:]
     status = args[2]
     assert status == "failed"
-    audit.assert_not_awaited()   # unchanged: the 'failed' path never wrote an audit-log event
+    audit.assert_awaited_once()
+    assert audit.await_args.args[0] == "job_failed_error"
+    assert "job=some_job " in audit.await_args.args[1]
+    job_audit.notify_job_failure.assert_awaited_once()
 
 
 @pytest.mark.asyncio

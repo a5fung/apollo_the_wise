@@ -36,7 +36,9 @@ Usage:
 `expected_min_rows=None` opts out of the empty-result invariant — for jobs
 like briefings, alerts, monitors that don't write tabular rows.
 
-Exceptions inside the context are recorded as status='failed' and re-raised
+Exceptions inside the context are recorded as status='failed', surfaced via
+`record_job_failure` (#501 F1 — audit row + deduped Telegram; before 2026-09-10
+a no-handler job died with only the unwatched 'failed' row) and re-raised
 so existing `notify_job_failure` callers in scheduler.py keep working.
 CancelledError is recorded as status='interrupted' (see above) and re-raised.
 """
@@ -52,6 +54,91 @@ from typing import Optional
 from core.notifications import notify_job_failure
 
 logger = logging.getLogger(__name__)
+
+# ── #501 F1 (2026-09-10): the shared job-failure surface ─────────────────────
+# Before this, a job that raised into `audit_run` with no handler of its own left
+# ONLY an unwatched `mi_job_runs status='failed'` row — no Telegram, no audit-log
+# row, nothing sweeping `mi_job_runs` (audit_invariants._EXPECTED_JOBS covers 4
+# curated jobs; health_checks._JOB_OUTPUT_CHECKS excludes 'failed' runs on the
+# assumption they "already alert"). The naked-position watchdogs (stuck-fill,
+# stop-ack) were exactly this class: the net that catches a naked position could
+# die invisibly. `record_job_failure` is the ONE surface — audit row every time,
+# Telegram deduped per job — used by `audit_run`'s exception branch (every
+# no-handler job, present and future) and by the F3 handlers in scheduler.py.
+#
+# Dedup copies llm_health.alert_endpoint_shape_anomaly's two layers: a per-process
+# pre-gate (collapses a 30-second watchdog failing all session to one page per
+# window) plus an audit-log lookback for a `tg=1` marker (restart-proof — a
+# container bounce mid-outage does not re-page). One page per job per hour.
+_JOB_FAILURE_ALERT_WINDOW_MIN = 60
+_last_job_failure_alert_ts: dict[str, float] = {}
+
+
+async def record_job_failure(job_id: str, exc: BaseException | str,
+                             consequence: str = "") -> bool:
+    """Durable + deduped surface for a scheduled job's own failure. NEVER raises.
+
+    Writes a `JOB_FAILED_ERROR` audit row on every call (the durable record —
+    `show errors` and the nightly `%error%` sweep see it), then Telegrams via
+    `notify_job_failure` unless this job_id already paged inside the window.
+    `consequence` (F3 callers) is the operator-facing first line — what is
+    UNWATCHED while this job is down — so the page is triaged, not generic.
+
+    Returns True iff a Telegram was attempted (tests assert on it)."""
+    try:
+        from agents.market_intelligence.audit_events import JOB_FAILED_ERROR
+        err_text = (f"{type(exc).__name__}: {exc}" if isinstance(exc, BaseException)
+                    else str(exc))
+        err_text = " ".join(err_text.split())[:300]
+        now = time.monotonic()
+        window_s = _JOB_FAILURE_ALERT_WINDOW_MIN * 60
+        last = _last_job_failure_alert_ts.get(job_id)
+        pregate_open = last is None or (now - last) >= window_s
+
+        send_telegram = False
+        if pregate_open:
+            try:
+                from agents.market_intelligence.db import get_audit_log
+                recent = await get_audit_log(
+                    event_type=JOB_FAILED_ERROR, since_hours=1, limit=100,
+                )
+                already = any(
+                    f"job={job_id} " in (row.get("summary") or "")
+                    and "tg=1" in (row.get("summary") or "")
+                    for row in (recent or [])
+                )
+                send_telegram = not already
+            except Exception as e:
+                # Lookback unavailable (the DB may share the outage that killed the
+                # job): page rather than stay quiet — a duplicate page beats a dead
+                # watchdog nobody hears about. The pre-gate still bounds it.
+                logger.warning(f"record_job_failure: audit lookback failed for {job_id}: {e}")
+                send_telegram = True
+        if send_telegram:
+            _last_job_failure_alert_ts[job_id] = now
+
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                JOB_FAILED_ERROR,
+                f"job={job_id} {err_text} tg={1 if send_telegram else 0}",
+                json.dumps({"job_id": job_id, "error": err_text,
+                            "consequence": consequence}),
+            )
+        except Exception as e:
+            logger.warning(f"record_job_failure: audit-row write failed for {job_id}: {e}")
+
+        if not send_telegram:
+            return False
+        try:
+            body = (f"{consequence} " if consequence else "") + err_text
+            await notify_job_failure(job_id, body)
+        except Exception as e:
+            logger.warning(f"record_job_failure: Telegram send failed for {job_id}: {e}")
+        return True
+    except Exception as e:  # absolute belt-and-suspenders — never raise upward
+        logger.warning(f"record_job_failure swallowed for {job_id}: {e}")
+        return False
 
 
 class JobRun:
@@ -191,6 +278,11 @@ async def audit_run(job_id: str, expected_min_rows: Optional[int] = None):
             rows_written=run.rows_written,
             error_message=str(e)[:500],
         )
+        # #501 F1: this branch used to re-raise into APScheduler's logger and
+        # nothing else — the ONLY trace was the unwatched 'failed' row above.
+        # Surface it (audit row + deduped Telegram) BEFORE re-raising; the
+        # helper never raises, so the original exception always propagates.
+        await record_job_failure(job_id, e)
         raise
     else:
         # Determine terminal status. Convention:

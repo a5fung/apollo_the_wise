@@ -55,6 +55,7 @@ from agents.market_intelligence.audit_events import (
     SIZING_NOTIONAL_CAP_TRUNCATED,
     STOP_UPDATE_RETRY_TRIGGERED,
     STOP_UPDATE_FAILED,
+    ORDER_STATUS_RECONCILE_MODE_ERROR,
 )
 
 logger = logging.getLogger(__name__)
@@ -5484,6 +5485,58 @@ async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> 
     return {"examined": examined, "updated": updated, "errors": errors}
 
 
+# ── #501 F4 (2026-09-10): a WHOLE account mode dropping out of the reconcile ──
+# `reconcile_all_modes` is the designated silent-stop catcher (#123) and the
+# declared mitigation for the money-path audit's residuals. A per-ORDER failure
+# writes ORDER_STATUS_RECONCILE_FAILED (advisor-ruled audit-only). A whole-MODE
+# failure — live auth broken, the first API call raising before the per-order
+# loop — was `logger.error` + `errors += 1`, and the scheduler job only
+# `logger.info`'d the count: the net for an entire account could be gone for
+# days with no signal. Pattern copied from intraday_drawdown._consecutive_failures:
+# audit row on EVERY failure (durable; name ends `_error` → nightly sweep),
+# Telegram at N consecutive for the SAME mode (3 × 15 min = 45 min unwatched;
+# 3 min on the 1-minute open-window variant — a dead mode at the open should
+# page fast), counter reset on the page and on that mode's next success.
+_MODE_RECONCILE_PAGE_THRESHOLD = 3
+_mode_reconcile_consecutive_failures: dict[str, int] = {}
+
+
+async def _note_mode_reconcile_failure(mode: str, exc: Exception,
+                                       lookback_days: int) -> bool:
+    """Surface one whole-mode reconcile failure. NEVER raises.
+    Returns True iff a Telegram was attempted (tests assert on it)."""
+    n = _mode_reconcile_consecutive_failures.get(mode, 0) + 1
+    _mode_reconcile_consecutive_failures[mode] = n
+    page = n >= _MODE_RECONCILE_PAGE_THRESHOLD
+    err = f"{type(exc).__name__}: {' '.join(str(exc).split())[:200]}"
+    try:
+        await log_audit_event(
+            ORDER_STATUS_RECONCILE_MODE_ERROR,
+            f"account_mode={mode} whole-mode reconcile failed ({n} consecutive) "
+            f"{err} tg={1 if page else 0}",
+            json.dumps({"account_mode": mode, "consecutive_failures": n,
+                        "lookback_days": lookback_days, "error": err}),
+        )
+    except Exception as e:
+        logger.warning(f"_note_mode_reconcile_failure audit write failed [{mode}]: {e}")
+    if not page:
+        return False
+    _mode_reconcile_consecutive_failures[mode] = 0
+    try:
+        from shared.telegram_format import b, esc
+        await send_telegram_message(
+            f"🔴 {b(f'{mode.upper()} ORDER RECONCILE DOWN')} — the 15-minute DB↔Alpaca "
+            f"reconcile has failed {n}× in a row for the {esc(mode)} account, before "
+            f"reaching a single order. Silent stops and stuck orders in that account "
+            f"are UNWATCHED until it recovers.\n"
+            f"Latest: {esc(err)}",
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.warning(f"_note_mode_reconcile_failure Telegram failed [{mode}]: {e}")
+    return True
+
+
 async def reconcile_all_modes(lookback_days: int = 90) -> dict:
     """Run reconcile_order_states for paper + live (or paper only if
     ENABLE_LIVE_MODE=false). Aggregate counts across modes."""
@@ -5494,9 +5547,11 @@ async def reconcile_all_modes(lookback_days: int = 90) -> dict:
             result = await reconcile_order_states(mode, lookback_days=lookback_days)
             for k in totals:
                 totals[k] += result.get(k, 0)
+            _mode_reconcile_consecutive_failures[mode] = 0
         except Exception as e:
             logger.error(f"reconcile_order_states[{mode}] failed: {e}", exc_info=True)
             totals["errors"] += 1
+            await _note_mode_reconcile_failure(mode, e, lookback_days)   # #501 F4
     return totals
 
 

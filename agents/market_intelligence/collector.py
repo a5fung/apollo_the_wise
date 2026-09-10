@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 import os
 import random
 import re
@@ -210,11 +211,75 @@ async def get_grouped_daily(trade_date: str) -> dict[str, dict]:
         return {}
 
 
-async def get_snapshot_all() -> dict[str, dict]:
+# ── #501 F2 (2026-09-10): the 200-OK-but-EMPTY snapshot guard ───────────────
+# `_polygon_get` raising is LOUD (maybe_alert_api_failure → audit + Telegram). A
+# 200 OK whose body is `{"tickers": []}` (Polygon maintenance / partial outage)
+# raises NOTHING anywhere, so no exception-based guard can ever see it — and
+# every intraday consumer (EP scan, 5 flag scans, 9M) treats `{}` as a quiet day:
+# a detection BLACKOUT with zero trace (ninem had no log line at all; ep's said
+# "market may not be open yet", a mislabel). Guarded HERE, at the source, so all
+# 12 callers — and any future one — are covered by one site. Return value is
+# unchanged (`{}`): observability only. Audit row on EVERY empty tick; Telegram
+# once SUSTAINED (3 empties within 1h ≈ 3 consecutive 5-minute scans), deduped
+# for the window — via llm_health.alert_endpoint_shape_anomaly, the existing
+# audit-always/page-when-sustained canary (TV-news precedent).
+#
+# ⚠ CRY-WOLF RISK, MEASURED before shipping (2026-09-10) rather than left as a
+# "verify it later". The card that built this flagged one thing it could not
+# prove offline: is an empty snapshot ever LEGITIMATE pre-market, in which case
+# this pages on a normal morning? Checked against `mi_ep_scan_log` over the last
+# 9 trading days: ET hours 07/08/09 recorded 108/108/117 distinct minute-ticks —
+# every scheduled 5-minute tick, no misses — each writing thousands of rows. So
+# the snapshot was non-empty on 333 consecutive pre-market ticks. "Polygon
+# answers with last-known data around the clock" is now evidence, not an
+# assumption, and an empty body really is anomalous at any hour.
+#
+# ⛔ Do NOT "fix" a false page here by time-gating it to market hours: pre-market
+# IS the EP scan's job (gap detection ahead of the 9:31 ORB), so blindness then
+# is the most expensive kind, not the least.
+_SNAPSHOT_EMPTY_WINDOW_HOURS = 1
+_SNAPSHOT_EMPTY_SUSTAINED = 3
+
+
+async def _note_empty_snapshot(caller: str) -> None:
+    """Record one 200-OK-empty full-market snapshot. NEVER raises."""
+    try:
+        from agents.market_intelligence.audit_events import POLYGON_SNAPSHOT_EMPTY_ERROR
+        from agents.market_intelligence.llm_health import alert_endpoint_shape_anomaly
+        from shared.telegram_format import b, esc
+        label = caller or "unknown"
+        logger.error(
+            f"Polygon snapshot came back EMPTY (200 OK, 0 tickers) for {label} — "
+            f"intraday detection is BLIND this tick (not a market-hours condition)"
+        )
+        page = (
+            f"🔴 {b('POLYGON SNAPSHOT EMPTY — EP / flag DETECTION IS BLIND')}\n"
+            f"The full-market snapshot answered 200 OK with 0 tickers {{count}}× in the "
+            f"last {{window_hours}}h (latest caller: {esc(label)}). No exception fires "
+            f"for this, so nothing else will page — every intraday scan reads it as a "
+            f"quiet day.\n"
+            f"Check status.polygon.io; scans self-heal on the next non-empty tick."
+        )
+        await alert_endpoint_shape_anomaly(
+            "polygon", POLYGON_SNAPSHOT_EMPTY_ERROR,
+            f"empty_snapshot_on_200 caller={label}",
+            detail=f"caller={label}",
+            window_hours=_SNAPSHOT_EMPTY_WINDOW_HOURS,
+            sustained_count=_SNAPSHOT_EMPTY_SUSTAINED,
+            telegram_text=page,
+        )
+    except Exception as e:
+        logger.warning(f"_note_empty_snapshot swallowed for {caller}: {e}")
+
+
+async def get_snapshot_all(caller: str = "") -> dict[str, dict]:
     """
     Get current snapshot for all tickers (includes pre-market data).
     Returns: {ticker: snapshot_dict}
     Pre-market price is in snapshot["lastTrade"]["p"] or snapshot["day"]["o"]
+
+    `caller` labels the audit row on an empty response (#501 F2); when omitted
+    the calling function's name is used.
     """
     try:
         data = await _polygon_get(
@@ -222,7 +287,13 @@ async def get_snapshot_all() -> dict[str, dict]:
             {"include_otc": "false"},
         )
         tickers = data.get("tickers", [])
-        return {t["ticker"]: t for t in tickers if "ticker" in t}
+        snaps = {t["ticker"]: t for t in tickers if "ticker" in t}
+        if not snaps:
+            # 200 OK, nothing in it — the class no `except` can catch (#501 F2).
+            # The exception path below is NOT guarded here: _polygon_get already
+            # alerted, a second surface would double-report one outage.
+            await _note_empty_snapshot(caller or sys._getframe(1).f_code.co_name)
+        return snaps
     except Exception as e:
         logger.error(f"Snapshot fetch failed: {e}")
         return {}

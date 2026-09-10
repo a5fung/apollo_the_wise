@@ -51,7 +51,7 @@ from agents.market_intelligence.backtester.tracker import (
     format_tracker_telegram,
 )
 from core.notifications import notify_job_failure, notify_job_success, notify_owner
-from core.job_audit import audit_wrap
+from core.job_audit import audit_wrap, record_job_failure
 from shared.llm_models import DESCRIPTION_MODEL
 from shared.output_ceilings import max_tokens_for
 from shared.llm_response import first_text
@@ -1349,6 +1349,17 @@ async def _check_fills_job():
     except Exception as e:
         import traceback
         logger.error(f"Fallback fill check failed: {e}\n{traceback.format_exc()}")
+        # #501 F3: this handler was container-log ONLY — and it only runs when
+        # the WS stream is already down, so a failure here was a DOUBLE outage
+        # nobody could see. Audit row + deduped Telegram (one per hour), consequence
+        # first; still swallowed (mirrors orb_monitor / the flag scans three lines
+        # away). Residual: audit_wrap still records this run as 'success'.
+        await record_job_failure(
+            "check_fills", e,
+            consequence="the WS-outage FALLBACK fill checker is DOWN while the trade "
+                        "stream is unhealthy — fills and stop-fills are UNOBSERVED "
+                        "until it recovers;",
+        )
 
 
 async def _stream_health_watchdog():
@@ -1365,6 +1376,14 @@ async def _stream_health_watchdog():
             asyncio.create_task(start_trade_stream())
     except Exception as e:
         logger.error(f"Stream watchdog error: {e}")
+        # #501 F3: the mechanism that RESTARTS a dead trade stream was itself
+        # log-only on failure. Same shared surface as check_fills (deduped 1/h).
+        await record_job_failure(
+            "stream_health_watchdog", e,
+            consequence="the watchdog that RESTARTS a dead trade stream is itself "
+                        "failing — a dead stream would stay dead and fills would go "
+                        "unobserved;",
+        )
 
 
 async def _post_close_stop_refresh_job():

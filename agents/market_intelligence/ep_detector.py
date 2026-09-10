@@ -3124,9 +3124,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         _minutes_since_open = None  # pre-market — no projection
 
     # Fetch all snapshots (1 Polygon call)
-    snapshots = await get_snapshot_all()
+    snapshots = await get_snapshot_all(caller="ep_scan")
     if not snapshots:
-        logger.warning("No snapshot data — market may not be open yet")
+        # #501 F2: an empty snapshot is NOT a market-hours condition — Polygon
+        # answers with last-known data around the clock. get_snapshot_all has
+        # already surfaced it (exception path → _polygon_get alerts; 200-OK-empty
+        # path → _note_empty_snapshot audit + sustained page). This tick is blind.
+        logger.error("EP scan: Polygon snapshot EMPTY — EP detection is BLIND this tick")
         return []
 
     # Find gap candidates

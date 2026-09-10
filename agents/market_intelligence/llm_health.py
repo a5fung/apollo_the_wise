@@ -720,6 +720,8 @@ _last_shape_alert_ts: dict[tuple[str, str], float] = {}
 
 async def alert_endpoint_shape_anomaly(
     provider: str, event_type: str, reason: str, detail: str = "",
+    *, window_hours: int | None = None, sustained_count: int | None = None,
+    telegram_text: str | None = None,
 ) -> None:
     """Audit-always + sustained-Telegram canary for a RESPONSE-SHAPE anomaly:
     a call that did NOT raise a classifiable provider-health exception (so
@@ -734,13 +736,25 @@ async def alert_endpoint_shape_anomaly(
     contains "error"); Telegram fires only once SUSTAINED (>= 3 rows for this
     exact (provider, event_type) within 72h), deduped via a `tg=1` marker in
     the summary — same convention as `alert_api_failure`.
+
+    #501 F2 (2026-09-10) keyword overrides — every default is the module
+    constant, so existing callers are byte-for-byte unchanged:
+      window_hours / sustained_count — the 72h/3 defaults are sized for a
+        2-calls-per-day caller; a 5-minute scan cadence needs a ~1h window.
+      telegram_text — replaces the vendor-sunset page wording. The default text
+        is a T5 mislabel for a DETECTION BLACKOUT (the consequence must be the
+        first line). `{count}` / `{window_hours}` are substituted literally
+        (never str.format — a stray brace must not turn into a swallowed
+        exception and a lost page).
     """
     try:
         from agents.market_intelligence.db import get_audit_log, log_audit_event
 
         key = (provider, event_type)
         now = time.monotonic()
-        window_s = _SHAPE_ALERT_WINDOW_HOURS * 3600
+        _window_h = window_hours if window_hours is not None else _SHAPE_ALERT_WINDOW_HOURS
+        _sustained = sustained_count if sustained_count is not None else _SHAPE_SUSTAINED_COUNT
+        window_s = _window_h * 3600
         last = _last_shape_alert_ts.get(key)
         pregate_open = last is None or (now - last) >= window_s
 
@@ -750,7 +764,7 @@ async def alert_endpoint_shape_anomaly(
         if pregate_open:
             try:
                 recent = await get_audit_log(
-                    event_type=event_type, since_hours=_SHAPE_ALERT_WINDOW_HOURS, limit=50,
+                    event_type=event_type, since_hours=_window_h, limit=50,
                 )
                 for row in (recent or []):
                     summary = row.get("summary") or ""
@@ -766,7 +780,7 @@ async def alert_endpoint_shape_anomaly(
                 logger.warning("alert_endpoint_shape_anomaly lookback failed for "
                                 "%s/%s: %s", provider, event_type, e)
             else:
-                send_telegram = count >= _SHAPE_SUSTAINED_COUNT and not already_alerted
+                send_telegram = count >= _sustained and not already_alerted
 
         if send_telegram:
             _last_shape_alert_ts[key] = now
@@ -788,15 +802,19 @@ async def alert_endpoint_shape_anomaly(
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             from shared.telegram_format import b, esc
-            await send_telegram_message(
-                f"⚠️ {b(f'{provider.upper()} ENDPOINT SHAPE ANOMALY')} ({esc(reason)}).\n"
-                f"{count} unusable response(s) in the last {_SHAPE_ALERT_WINDOW_HOURS}h "
-                "with no 5xx/timeout raised — this looks like the endpoint or its "
-                "response format changed, not a normal outage. A vendor endpoint "
-                "sunset is exactly this shape.\n"
-                "Check the provider's API docs/changelog and verify the call shape.",
-                parse_mode="HTML",
-            )
+            if telegram_text is not None:
+                text = (telegram_text.replace("{count}", str(count))
+                        .replace("{window_hours}", str(_window_h)))
+            else:
+                text = (
+                    f"⚠️ {b(f'{provider.upper()} ENDPOINT SHAPE ANOMALY')} ({esc(reason)}).\n"
+                    f"{count} unusable response(s) in the last {_window_h}h "
+                    "with no 5xx/timeout raised — this looks like the endpoint or its "
+                    "response format changed, not a normal outage. A vendor endpoint "
+                    "sunset is exactly this shape.\n"
+                    "Check the provider's API docs/changelog and verify the call shape."
+                )
+            await send_telegram_message(text, parse_mode="HTML")
         except Exception as e:
             logger.warning("alert_endpoint_shape_anomaly Telegram send failed "
                             "for %s/%s: %s", provider, event_type, e)
