@@ -11755,3 +11755,55 @@ reviews:
         themeless names. Re-anchor when the engine next changes materially."
     status: pending
     added_on: 2026-09-10
+
+  - review_id: spiky_guard_first_engagement
+    kind: cadence
+    title: "The spiky-metric pager guard — has it ever actually ENGAGED? (#632)"
+    question: |
+      #632 added a P95 floor so a zero-inflated count must clear its own 30-day P95 before it may
+      page. It is deployed and RED-proven by test, but its LIVE effect cannot be scheduled: the
+      guard only engages on a night that is band-3 by MAD *and* at or under the P95 — for
+      cooldowns_per_day that is roughly the 8-to-19 window. On 2026-09-10 the metric read 1.0, so
+      nothing would have paged with or without it, and the "verify" tested nothing.
+
+      Rather than re-date #632 every few weeks on a night that proves nothing, this watches for the
+      guard's own footprint and surfaces the day it engages for real.
+
+      WHAT ENGAGEMENT LOOKS LIKE: an L3 `anomaly_detected` row for a spiky metric carrying
+      `to_band = 2`. The band-3 computation happened and the guard downgraded it — which is the
+      event, and it is distinguishable from an ordinary band-2 night because ordinary nights never
+      reach the band-3 branch at all.
+    # `to_band` is written into the detail JSON by _compute_anomaly's band-3 branch, so a value of
+    # 2 there means the guard fired. Ordinary band-2 nights take the L3 path and record `to_band`
+    # from _classify_band instead - the discriminating field, not a proxy for it.
+    discriminates_on: []
+    predicate_sql: >-
+      SELECT count(*) FROM mi_audit_log
+      WHERE event_type = 'anomaly_detected'
+        AND summary ILIKE '%cooldowns_per_day%'
+        AND detail::json->>'to_band' = '2'
+        AND created_at > TIMESTAMP '2026-09-09';
+    threshold: 1
+    earliest_review_date: 2026-09-11
+    action_when_ready: |
+      The guard has engaged on a real night. Read the row: `current` must be at or under the
+      `baseline_p95` it was compared against, and no Telegram should have gone out for it while the
+      L3 row still records the value. That is the live confirmation #632 has been waiting for -
+      close it. If `current` is ABOVE the p95 and it still downgraded, the guard is too wide and
+      that is a defect, not a confirmation.
+    can_fire:
+      predicate_runs: "2026-09-10 - runs and returns 0, which is correct: the guard has not engaged
+        since it deployed on 2026-09-09."
+      nonzero_possible: "_compute_anomaly writes to_band into the L3 detail on every band-3 night
+        (system_audit.py), and cooldowns_per_day reached 9 on 2026-09-09 - inside the 8-to-19
+        window - so the condition is reachable and was met the day before the guard shipped."
+      lane_live: "n/a - this is the nightly self-audit, not a strategy lane. The 17:30 job ran
+        tonight and every night this week."
+      threshold_vs_observed: "1, against an observed 0 since deploy on the SAME predicate. The
+        historical rate on the same population: cooldowns_per_day landed in the 8-to-19 window on
+        6 of the previous 35 days, so roughly a 1-in-6 night."
+      era_scoped: "Anchored after 2026-09-09 because the guard did not exist before it; rows from
+        before that date cannot be evidence about it."
+    status: pending
+    added_on: 2026-09-10
+
