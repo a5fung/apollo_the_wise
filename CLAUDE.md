@@ -69,6 +69,8 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 
 **Capture:** "**track it**" / "**track this**" = add it as a `PLAN.md` line immediately — under a project, with an `ETA` + `status` (**Miscellaneous** if no home; **propose a NEW project** if a genuine big-rock). Also route to `data_gated_reviews.yaml` if evidence-gated, or a memory if it's a fact/feedback — confirm back WHERE + the #. Default to over-capturing.
 
+**EVERY task gets a project + ETA + ACTIONABLE DETAIL + a CLEAR OUTCOME AT CREATION — and the OUTCOME half is a GATE now (operator 2026-09-10: *"is dod required for every task?"*). It was not: 21 of 66 open tasks stated nothing checkable, two of them already `deployed`.** That is the hole under the close gate — a task with no criterion closes on prose. `check_plan._dod_required_gate` FAILS the commit on any task without a `DoD:` / `VERIFY-LIVE =` / `VERIFY:`, and it shares ONE extractor (`close_bar_for`) with the close gate so a task cannot satisfy creation and then be unclosable. All 21 were backfilled the same day, so the gate was born green rather than as a warning nobody reads.
+
 **EVERY task gets a project + ETA + ACTIONABLE DETAIL + a CLEAR OUTCOME AT CREATION** (never a bare bucket label) — `scripts/check_plan.py` (pre-commit Gate 2) FAILS the commit on any task missing a project/ETA/status, any past ETA, any open snapshot task not filed, or any **placeholder title** — the create→file-with-substance rule is a gate, not memory (operator 2026-06-20).
 
 
@@ -268,10 +270,6 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 - **A gate, test or probe that cannot fail is indistinguishable from one that passes — SIX instances found in one day.** Eleven review predicates read zero because their condition could never be true; a shadow table answered "how often does a large cap clear the floor" with the floor itself as its write condition; a new test asserted against a local copy of the guard it was testing. **Before trusting a green/zero reading, make it go RED once.** Twelve exit reviews consolidated to one (#631) on his *"stop one off, consolidate"*.
 - GOOG×4 (four share classes, one issuer) held a cluster slot 25 nights and became a live theme once; takeover targets clustered at 0.92. Both removed in `correlation_engine.py` (root-match + return-identity; ex-spike vol floor). Discovery renders cluster members with RS / description / `[in: theme]`; the recorder adds `already_named` + the model's scratchpad. Rule sentences unchanged. Lesson: the recall-run "declined" count was the shadow reading the nightly's own births back as existing. Full read + operator forks: `docs/architecture/theme_engine.md` 2026-09-09.
-
-### 2026-09-04 — #624 low-cap EP lane shipped as a SHADOW recorder
-
-- Rule + evidence + THE-LINE proof: `docs/setups/magna53_ep.md` §"Low-cap lane". Lesson: `get_fmp_profile` is yfinance, not FMP.
 
 Older entries → `CHANGELOG.md` (search any concept).
 

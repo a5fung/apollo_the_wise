@@ -302,6 +302,10 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 **2026-08-21 — deploy windows gated** — two windows only (12:00-13:00 · 21:15-22:15 ET); `deploy.sh` exits 12 outside them, operator-only override. Repeated ~17:02 deploys had been clipping nightly jobs.
 
 **2026-08-22 — one catalyst grade everywhere** — the admission filters read the corrected news grade, the same one the score reads. The fork (corrected score, raw filters) was binning real EPs before the fix could act.
+## 2026-09-04 — #624 low-cap EP lane shipped as a SHADOW recorder
+
+Rule + evidence + THE-LINE proof: `docs/setups/magna53_ep.md` §"Low-cap lane". Lesson: `get_fmp_profile` is yfinance, not FMP. (Graduated from CLAUDE.md Recent 2026-09-10 — the file was 891 chars from its hard ceiling.)
+
 ## 2026-08-28 — verify-live day: three confirmed, one defect caught, two rulings signed
 
 Written straight to CHANGELOG because CLAUDE.md's Recent section has ~40 bytes of headroom.

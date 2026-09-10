@@ -1138,9 +1138,13 @@ CLOSE_LEDGER = REPO / "docs" / "task_closes.md"
 # VERIFY-LIVE / VERIFY sentence. A line usually has BOTH, and the DoD outranks —
 # that ordering IS the gate's point (see _close_evidence_gate).
 _BAR_PATTERNS = (
-    re.compile(r"\*{0,2}DoD\*{0,2}\s*[:\u2014-]\s*(.{30,600}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
-    re.compile(r"VERIFY-LIVE\s*=\s*(.{20,600}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
-    re.compile(r"VERIFY[^:]{0,24}:\s*(.{20,600}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
+    # `DoD:` / `**DoD:**` / `**DoD (written 2026-09-10):**` — the parenthetical form is what you
+    # write when adding a criterion to an OLD line, and rejecting it silently made five real
+    # DoDs invisible to this very gate the day it shipped (2026-09-10).
+    re.compile(r"\*{0,2}DoD\*{0,2}\s*(?:\([^)]{0,90}\))?\s*\*{0,2}\s*[:\u2014-]\s*\*{0,2}\s*"
+               r"(.{30,}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
+    re.compile(r"VERIFY-LIVE\s*=\s*(.{20,}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
+    re.compile(r"VERIFY[^:]{0,24}:\s*(.{20,}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
 )
 
 
@@ -1213,6 +1217,31 @@ def verify_is_absence_only(bar_text: str) -> bool:
         r"(?=(?:zero|no|none|nothing)\b)", " ", scrubbed, flags=re.I)
     return bool(_NEG_OBSERVABLE.search(scrubbed)) and not _POS_OBSERVABLE.search(scrubbed)
 
+
+def _dod_required_gate(errors, tasks) -> None:
+    """EVERY task must say what done means (operator 2026-09-10: *"is dod required for every task?"*).
+
+    It was not, and 21 of 66 open tasks said nothing checkable — including two already marked
+    `deployed`. That is the hole underneath the close gate written the same morning: a task with no
+    stated criterion closes on `NO-BAR-DECLARED` prose, which is the soft path the gate was meant to
+    remove. CLAUDE.md has demanded "a CLEAR OUTCOME AT CREATION" since 2026-06-20; nothing enforced
+    the OUTCOME half, only project/ETA/status/title.
+
+    Accepts `DoD:`, `VERIFY-LIVE =` or `VERIFY:` — see `close_bar_for`, which is the same extractor
+    the close gate judges against, so a task cannot satisfy one and fail the other.
+    """
+    # The real board only. Fixtures in the test-suite pin OTHER behaviours and are deliberately
+    # minimal; making every one of them carry a DoD would be a tax on unrelated tests, and the
+    # backfill this gate protects is a property of PLAN.md, not of the parser.
+    if PLAN != REPO / "PLAN.md":
+        return
+    for t_ in tasks:
+        if close_bar_for(t_["title"]) is None:
+            errors.append(
+                f"task #{t_['id']} states NO criterion — no `DoD:`, `VERIFY-LIVE =` or `VERIFY:`. "
+                f"Say what done looks like, in terms someone could read off prod. A task that never "
+                f"defined done cannot be honestly closed, and 21 lines were in this state on "
+                f"2026-09-10.")
 
 def _absence_only_verify_gate(errors, tasks) -> None:
     """A `deployed` task may not rest on an absence alone (operator 2026-09-10).
@@ -1717,6 +1746,7 @@ def main(argv: list[str]) -> int:
     _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
     _shipped_pending_gate(tasks, errors)   # `pending` + own code commit = stale line -> duplicate card (operator 7/25)
     _stale_block_gate(tasks, errors, today)   # [blocked:] is not an unlimited rebump pass (operator 7/26)
+    _dod_required_gate(errors, tasks)   # every task must say what done means (operator 9/10)
     _absence_only_verify_gate(errors, tasks)   # a verify satisfied by absence alone (operator 9/10)
     _close_evidence_gate(errors, tasks)   # a close must be judged against the task's OWN DoD (operator 9/10)
     _standing_ask_gate(errors)   # a proofless / resurrected operator-ask FAILS the commit (operator 9/08)
