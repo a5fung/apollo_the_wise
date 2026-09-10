@@ -11696,3 +11696,62 @@ reviews:
                  "agents/market_intelligence/strategies/adapters.py",
                  "agents/market_intelligence/rule_eras.py",
                  "tests/fixtures/must_not_miss_eps.py"]
+
+  - review_id: theme_relevance_labeling_cycle
+    kind: cadence
+    title: "Theme-relevance labelling — surface the next batch for his ruling (#368)"
+    question: |
+      #368 needs the operator's theme-relevance labels as ground truth, and the labelling had
+      NO cadence of any kind. That is not a small omission: he labelled 90 rows on 2026-08-04
+      and nothing surfaced the queue again. By 2026-09-10 the cohort was stale — the alerts
+      averaged 111-131 days old, the theme engine had taken 33 commits, and 18 of his 31
+      "themeless winner" labels described names that ARE themed under today's board. A month
+      of his work aged out because a recurring entry did not exist.
+
+      His own words when asked when labelling happens (2026-09-10): "let's do it this weekend."
+      This entry is what stops the question needing to be asked again.
+
+      SURFACE THE THEMED STRATUM FIRST. D2 is the theme-boost MAGNITUDE and the boost acts on
+      THEMED names, so that stratum is what the decision rests on. The themeless-winner rows
+      guard the asymmetry ("never penalize themeless") — a direction, not a magnitude — and are
+      an optional add when he wants them.
+    # Accrual of UNLABELLED rows enrolled under the current engine. `>= 2026-08-04` is the
+    # era anchor: rows older than that were labelled against an engine 33 commits behind, and
+    # re-labelling them would measure a system that no longer exists.
+    predicate_sql: >-
+      SELECT count(*) FROM mi_theme_relevance_cohort
+      WHERE operator_label IS NULL AND alert_date >= DATE '2026-08-04';
+    # Deliberately EMPTY, reviewed rather than skipped: this predicate is a CADENCE trigger
+    # (how many unlabelled rows have accrued), not an outcome comparison, so there are no two
+    # populations for a column to separate. The stratum split that DOES matter — themed vs
+    # themeless_winner — is applied in action_when_ready when the batch is built, not in the
+    # trigger, because the cadence should fire on total accrual either way.
+    discriminates_on: []
+    threshold: 30
+    earliest_review_date: 2026-09-12
+    action_when_ready: |
+      1. Top up the cohort first: `seed_theme_relevance_cohort.py --since-days N --commit`
+         (idempotent, and labelled rows are NEVER overwritten).
+      2. Put the THEMED unlabelled rows in front of him: ticker, alert_date, the theme the
+         engine credited, grade, settled fwd_5d. Roughly 40-50 is a sitting he has completed
+         before in one go; do not pad it with the themeless stratum by default.
+      3. Ingest his labels with `scripts/_368_ingest_labels.py`.
+      4. STATE THE INTERVAL WITH ANY RESULT. n=44 is +/-11 points; n=31 was +/-16. These
+         support a direction long before they support a magnitude, and D2/D3 is a magnitude.
+      5. Re-anchor this entry's era date if the engine changes materially again.
+    can_fire:
+      predicate_runs: "2026-09-10 - runs and returns 80, the unlabelled rows enrolled today
+        from alerts 2026-08-04 onward."
+      nonzero_possible: "mi_theme_relevance_cohort is written by scripts/seed_theme_relevance_cohort.py,
+        which enrolled 80 rows on 2026-09-10; the operator_label column is NULL until he labels,
+        so a non-zero reading is the normal resting state, not a rare event."
+      lane_live: "n/a for a strategy lane. The population is mi_theme_axis_shadow rows, which the
+        live judge writes on every graded alert - 102 rows in the last 37 days."
+      threshold_vs_observed: "30 against an observed 80 unlabelled today, on the SAME population
+        the predicate counts. Accrual measured at ~2.2 enrolments/day (80 in 37 days), so 30
+        represents roughly a fortnight of new rows - a cadence, not a wall."
+      era_scoped: "Anchored at 2026-08-04 precisely BECAUSE the older rows are stale: the engine
+        took 33 commits since, and 18 of 31 older themeless-winner labels no longer describe
+        themeless names. Re-anchor when the engine next changes materially."
+    status: pending
+    added_on: 2026-09-10
