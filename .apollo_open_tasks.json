@@ -120,16 +120,8 @@
   "status": "deployed"
  },
  {
-  "id": 452,
-  "status": "deployed"
- },
- {
   "id": 466,
   "status": "pending"
- },
- {
-  "id": 471,
-  "status": "deployed"
  },
  {
   "id": 482,
@@ -174,10 +166,6 @@
  {
   "id": 529,
   "status": "blocked"
- },
- {
-  "id": 540,
-  "status": "deployed"
  },
  {
   "id": 545,
