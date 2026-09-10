@@ -1132,6 +1132,131 @@ def _stale_block_gate(tasks, errors, today) -> None:
 _STANDING_HDR = "### Standing — waits on the operator"
 
 
+CLOSE_LEDGER = REPO / "docs" / "task_closes.md"
+
+# Extract the BAR a task must be closed against: its DoD if it has one, else its
+# VERIFY-LIVE / VERIFY sentence. A line usually has BOTH, and the DoD outranks —
+# that ordering IS the gate's point (see _close_evidence_gate).
+_BAR_PATTERNS = (
+    re.compile(r"\*{0,2}DoD\*{0,2}\s*[:\u2014-]\s*(.{30,600}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
+    re.compile(r"VERIFY-LIVE\s*=\s*(.{20,600}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
+    re.compile(r"VERIFY[^:]{0,24}:\s*(.{20,600}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
+)
+
+
+def _norm(s: str) -> str:
+    """Compare on words only — markdown, backticks and whitespace must not decide a gate."""
+    return " ".join(re.sub(r"[^a-z0-9 ]+", " ", s.lower()).split())
+
+
+def close_bar_for(title: str) -> "tuple[str, str] | None":
+    """(kind, bar-text) a close of this line must be judged against, or None if it states none."""
+    for kind, pat in zip(("DoD", "VERIFY-LIVE", "VERIFY"), _BAR_PATTERNS):
+        m = pat.search(title)
+        if m and len(_norm(m.group(1))) >= 25:
+            return kind, m.group(1)
+    return None
+
+
+def close_bar_matches(quoted: str, actual_bar: str, min_run: int = 4) -> bool:
+    """True when `quoted` is genuinely lifted from `actual_bar` rather than substituted for it.
+
+    Substring-of-a-run rather than equality: a close legitimately quotes PART of a long DoD, and
+    markdown/punctuation must not decide a gate (hence `_norm`). But a DIFFERENT criterion shares
+    no run of words with the real one, which is precisely the #540 case — "a heartbeat row appears
+    on the next buy-side cancel/reject" against a DoD demanding "a non-null broker_reason ...
+    proven on a real live event". Extracted so the tests exercise THIS function and not a copy of
+    its condition (the `_classify_band` lesson, and the same defect this repo found six times in
+    the week this shipped).
+    """
+    q, a = _norm(quoted), _norm(actual_bar)
+    if not q or not a:
+        return False
+    words = q.split()
+    for n in range(min(len(words), 12), min_run - 1, -1):
+        for i in range(len(words) - n + 1):
+            if " ".join(words[i:i + n]) in a:
+                return True
+    return False
+
+
+def _close_evidence_gate(errors, tasks) -> None:
+    """A task may not leave PLAN.md unless the close is written down AND judged against the
+    task's OWN bar — its DoD where it has one.
+
+    WHY THIS IS A GATE AND NOT A HABIT (operator 2026-09-10, after a morning in which he
+    caught four separate bad calls and asked: *"Do I need to ask you to double check all your
+    work every time and re prompt you after things are closed?"*). On 2026-09-10 I closed
+    #540 on a liveness HEARTBEAT while its DoD demanded a non-null `broker_reason` on a real
+    rejection — a strictly weaker fact that happened to be true. The line carried BOTH a DoD
+    and a later, narrower VERIFY sentence about one sub-feature, and I matched the narrow one.
+    Nothing in the repo objected: a closed task simply vanishes from PLAN.md, taking its
+    unmet DoD with it. **A close was the one irreversible act here with no gate on it.**
+
+    The mechanism: a removed task line must have an entry in `docs/task_closes.md` carrying a
+    `BAR:` line whose words actually appear in the removed line's OWN bar, plus `EVIDENCE:`.
+    Quoting a convenient criterion instead of the real one is what fails — which is exactly
+    the #540 mistake, and the reason the DoD outranks any later VERIFY text in `close_bar_for`.
+
+    Everything here is decidable from the text, per this file's standing rule: only
+    mechanically-checkable things are gated.
+    """
+    import subprocess
+    try:
+        diff = subprocess.run(
+            ["git", "diff", "--cached", "origin/main", "--", "PLAN.md"], cwd=str(REPO),
+            capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
+    except Exception:
+        return          # offline / no origin — fail OPEN, never block on infrastructure
+    if not diff:
+        return
+    removed = {}
+    for ln in diff.splitlines():
+        if ln.startswith("-") and not ln.startswith("---"):
+            m = _TASK.match(ln[1:].strip())
+            if m:
+                removed[int(m.group(1))] = m.group(4)
+    still_open = {t["id"] for t in tasks}
+    closed = {i: ttl for i, ttl in removed.items() if i not in still_open}
+    if not closed:
+        return
+    ledger = CLOSE_LEDGER.read_text(encoding="utf-8") if CLOSE_LEDGER.exists() else ""
+    for tid, title in sorted(closed.items()):
+        entry = re.search(rf"^##\s*#{tid}\b(.*?)(?=^##\s*#|\Z)", ledger, re.S | re.M)
+        if not entry:
+            errors.append(
+                f"task #{tid} was REMOVED from PLAN.md (a close) but has no entry in "
+                f"docs/task_closes.md. A close is irreversible and ungated everywhere else — "
+                f"write `## #{tid}` with a BAR: (quote the task's own DoD) and an EVIDENCE: line.")
+            continue
+        body = entry.group(1)
+        bar_m = re.search(r"^\s*BAR:\s*(.+)$", body, re.M)
+        ev_m = re.search(r"^\s*EVIDENCE:\s*(.+)$", body, re.M)
+        if not bar_m or len(_norm(bar_m.group(1))) < 20:
+            errors.append(f"docs/task_closes.md #{tid}: missing or too-short `BAR:` — quote the "
+                          f"criterion this close is judged against, from the task's own text.")
+            continue
+        if not ev_m or len(_norm(ev_m.group(1))) < 20:
+            errors.append(f"docs/task_closes.md #{tid}: missing or too-short `EVIDENCE:` — state what "
+                          f"you observed in prod that satisfies the BAR.")
+            continue
+        real = close_bar_for(title)
+        if real is None:
+            if "NO-BAR-DECLARED" not in body:
+                errors.append(
+                    f"docs/task_closes.md #{tid}: the PLAN line states no DoD or VERIFY criterion, so "
+                    f"there is nothing to check this close against. Add `NO-BAR-DECLARED: <why closing "
+                    f"is right anyway>` — deliberately awkward, because closing a task that never said "
+                    f"what done meant should be.")
+            continue
+        kind, bar_text = real
+        if not close_bar_matches(bar_m.group(1), bar_text):
+            errors.append(
+                f"task #{tid}: the BAR: in docs/task_closes.md does not appear in the task's own "
+                f"{kind}. That is the #540 failure — closing against a weaker criterion that happened "
+                f"to be true. Its {kind} reads: \"{bar_text.strip()[:180]}...\"")
+
+
 def _standing_ask_gate(errors) -> None:
     """The standing-ask table may not carry a proofless row, and may not resurrect a retired one.
 
@@ -1515,6 +1640,7 @@ def main(argv: list[str]) -> int:
     _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
     _shipped_pending_gate(tasks, errors)   # `pending` + own code commit = stale line -> duplicate card (operator 7/25)
     _stale_block_gate(tasks, errors, today)   # [blocked:] is not an unlimited rebump pass (operator 7/26)
+    _close_evidence_gate(errors, tasks)   # a close must be judged against the task's OWN DoD (operator 9/10)
     _standing_ask_gate(errors)   # a proofless / resurrected operator-ask FAILS the commit (operator 9/08)
     _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
     _pending_verify_gate(tasks, errors)   # own text claims a pending verify but status != deployed; HARD on touched, WARN on pre-existing (operator 8/09, the #167 lesson)
