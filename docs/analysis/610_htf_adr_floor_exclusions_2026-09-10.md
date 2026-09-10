@@ -1,4 +1,4 @@
-# The HTF ADR floor discards 8,976 ticker-days, and the band just under it holds 82 of the 89 big movers
+# The HTF ADR floor discards 8,976 ticker-days — and it is sorting correctly, so the case for lowering it does not stand
 
 **2026-09-10 · read-only · $0 · #610 — the measurement half only. The threshold itself is not proposed here.**
 
@@ -63,6 +63,34 @@ Forward 10-session return from scan date, rows 2026-07-01 → 08-20 (bounded so 
 82 of the 89 big movers among all excluded names sit in the band a sourced 3% floor would admit —
 2.4% of that band versus 0.27% below it.
 
+## Finding 4 — ⛔ THE ONE THAT KILLS MY OWN RECOMMENDATION
+
+I first read Findings 1-3 as "the gate is starving the detector, lower it to 3%". The operator asked
+what the floor is FOR, which is the question that tests it — and the missing number answers it.
+
+**Mover rate by ADR band**, same window, same forward-10-session ≥ +20% definition:
+
+| population | n | ran ≥ +20% | rate |
+|---|---|---|---|
+| **PASSED the gate (ADR ≥ 4%)** | 14,070 | 691 | **4.91%** |
+| excluded, ADR 3.0-4.0 | 3,443 | 82 | 2.38% |
+| excluded, ADR < 3.0 | 2,612 | 7 | 0.27% |
+
+**The rate rises monotonically with ADR, and the admitted population moves at roughly TWICE the rate
+of the band I proposed admitting.** The floor is not an arbitrary line that happens to cut a lot —
+it is sorting on exactly the property the HTF setup monetises. `htf.md` files it under **Liquidity /
+tradability**: a name needs enough daily range for a breakout to travel far enough to pay for its
+stop. It is doing that.
+
+**So the correct reading of Findings 1-3 is a TRADE-OFF, not a defect:** moving to 3.0% would roughly
+double the candidate pool while roughly halving its mover density. That is a real choice — HTF
+currently produces ~4 breaks a month, so *starved for candidates* is arguable — but it is not the
+"provisional number is wrong" conclusion the count of exclusions suggested on its own.
+
+⚠ **The lesson, since it is the second time in one day.** A large exclusion count is not evidence of
+a bad gate; it is what a working filter looks like. The comparison that decides it is against the
+ADMITTED population, and I wrote three findings before computing it.
+
 ## ⚠ The confound, stated first rather than buried
 
 **ADR mechanically predicts large moves.** A name with a 3.5% average daily range is more likely to
@@ -86,7 +114,11 @@ and it is doing so on a threshold the code itself never claimed to have derived.
 ⛔ **No threshold is proposed and nothing is changed.** `_HTF_MIN_ADR_PCT` is a detection criterion:
 CHANGE_PROCESS + N≥10 backtest + operator sign-off, and the sign-off is his alone.
 
-The next step is a replay of the 5,190 excluded-but-≥3.0% ticker-days through the HTF detector with
-the ADR floor lifted to 3.0%, settled as breakouts, and compared against the breakouts the current
-gate admits. That is a real analysis with a real population, and it is now known to be possible —
-which was the open question this measurement answers.
+**Finding 4 withdraws the case for lowering it.** The question is no longer "is 4% too high" but
+"does HTF want more candidates at half the mover density", and that is a portfolio question for the
+operator, not a threshold error to correct.
+
+If it is pursued, the replay is possible and the population exists: 5,190 excluded-but-≥3.0%
+ticker-days, run through the detector with the floor at 3.0%, settled as breakouts and compared
+against what the current gate admits. **But it should only be paid for if he wants the trade-off** —
+the measurement no longer suggests the current value is wrong.
