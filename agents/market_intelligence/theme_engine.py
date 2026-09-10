@@ -5642,8 +5642,17 @@ async def _discover_new_themes(
             else:
                 merged[key] = dict(t)
     _out = list(merged.values())
+    # ⚠ scratchpads MUST be passed here too. The single-batch path above passed them
+    # and this one did not, so the #486 instrument recorded an empty list on every
+    # production run — `_DISCOVERY_LLM_BATCH_STOCKS` is 22 and the nightly pool is
+    # 60-70 names, so the single-batch branch never executes in prod and the ONLY
+    # live path was the one missing the argument. Found 2026-09-10 verifying #486:
+    # the summary line looked healthy (`declined=6 already_named=0`) while the
+    # "why did it decline?" field it was built to fill was `[]` every night.
     await _log_discovery_shown_and_declined(
-        _pools_shown, correlation_clusters, _out, recall_mode=recall_mode)
+        _pools_shown, correlation_clusters, _out, recall_mode=recall_mode,
+        existing_themes=existing_themes,
+        scratchpads=advisor_state.get("scratchpads") or [])
     return _out
 
 
