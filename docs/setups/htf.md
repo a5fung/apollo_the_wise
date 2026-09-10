@@ -123,6 +123,15 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
 6. **Labelled corpus is N=7** (CDNA, HNGE, NCI, ATAI, OUST, SHAZ, REPL — grown from 2 on 2026-09-04,
    every member a VERBATIM operator label, never an inference — `tests/fixtures/htf_labelled.py`, replayed every suite
    run through the shipped detector). Every further trader-shared HTF is a one-line addition.
+7. **The shipped breakout bet has no replayed edge (#610, 2026-09-10 —
+   `docs/analysis/610_htf_replay_2026-09-10.md`, harness `scripts/probes/_610_htf_replay.py`).**
+   The live chain (detector → next-session break → `prepare_htf_breakout_order` →
+   `_htf_settle_from_bars`) replayed from raw bars 2021-09 → 2026-09 under the code at HEAD:
+   **148 takeable first-breakouts settled, 25 captures (17%, breakeven 25%), mean +0.05R, median
+   −1R; −0.09R once the 8 entries that opened above the order's limit are removed.** 2023: 0 of 20.
+   The #396 management readout on the same entries is +0.74R mean / −0.16R median, 85% of it from
+   five trades. #397's N≥10 exists offline; the edge it was meant to confirm does not, for the
+   fixed +3R/−1R bet. Nothing changed; the fork is the operator's.
 
 ## Change log
 - **2026-09-05 — #356 follow-up: `get_recent_daily_history` now counts TRADING rows, not a
