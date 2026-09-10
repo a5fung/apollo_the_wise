@@ -7783,7 +7783,7 @@ reviews:
 
       Phase 3: paper-phase entry/exit gating. Defer to N≥30.
 
-    status: pending
+    status: done
     added_on: 2026-05-28
     # 2026-09-09 (morning): flagged as a dead gate — correctly — but the stated cause ("the
     # column is NEVER SET") was wrong: the EOD reconcile runs nightly and has fired 73 times on
@@ -7813,6 +7813,18 @@ reviews:
     # setup sitting on a consolidation inherits.
     # So this review is FAMILY-level evidence serving several setups, not a
     # flag_continuation artifact. Do not close it on the strategy row's status.
+    # CLOSED 2026-09-09 — its Phase-2 question is ANSWERED, so leaving it pending would have it
+    # read READY 50/10 every morning on a question nobody still has. The signal is real: a break
+    # that closes back under base_high ends 7.9 points worse against base_high at 10 sessions
+    # (34% vs 46% above the level, n=50/112).
+    # ⚠ NOT closed as "no further work" — Phase 1 (failed_at / low_after_break / bars_until_fail,
+    # the REAL-TIME capture this review ultimately wants) is justified by that result and now
+    # lives on #354, where the flag detector is being merged into Family A. Operator 2026-09-09:
+    # "consolidation is real, can be used many setups and I think htf also needs consolidation so
+    # we should keep the evidence" — so this is family-level evidence, not flag-only.
+    # A fresh review gates Phase 3 when Phase 1 ships; gating it here would be a gate on work
+    # that does not exist yet, which is the defect class #634 exists to stop.
+    closed_on: 2026-09-09
 
   - review_id: partial_exit_hardening_n7_clean_cycles
     title: "P0 — Partial-exit architecture stable for N=7 consecutive paper cycles"
