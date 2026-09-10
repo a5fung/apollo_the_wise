@@ -74,3 +74,70 @@ def test_the_write_path_actually_calls_it():
     src = inspect.getsource(log_audit_event)
     assert "_fit_audit_detail(detail)" in src, "the write path stopped using the JSON-safe fit"
     assert "detail[:8000]" not in src, "the blind character cut is back"
+
+
+# ── The envelope must fit EXACTLY, at any cap (2026-09-10) ───────────────────────────────────
+#
+# The first version reserved a fixed 200 chars for the wrapper and then closed with
+# `[:_AUDIT_DETAIL_MAX]`. That is the same blind cut this function exists to remove, one level up:
+# JSON escaping expands quotes, backslashes and newlines, so the wrapper itself can cross the budget
+# and be sliced mid-token. It survived at 8,000 and broke the moment the cap moved to 32,000 — which
+# is only a lucky escape, not a design.
+
+@pytest.mark.parametrize("size", [8_001, 12_000, 40_000, 200_000])
+def test_output_is_valid_json_and_within_budget_at_any_size(size):
+    src = json.dumps({"blob": "x" * size})
+    out = _fit_audit_detail(src)
+    json.loads(out)
+    assert len(out) <= _AUDIT_DETAIL_MAX
+
+
+def test_escape_heavy_content_still_fits():
+    """Quotes and newlines double in length once escaped — the reserve cannot be a constant."""
+    src = json.dumps({"blob": '"\\\n' * 20_000})
+    out = _fit_audit_detail(src)
+    json.loads(out)
+    assert len(out) <= _AUDIT_DETAIL_MAX
+
+
+def test_the_cap_is_not_a_database_limit():
+    """Recorded so nobody re-derives it: mi_audit_log.detail is `text`, unlimited in Postgres.
+    8,000 was a number we chose and then forgot we had, and it silently ate the tail of the one
+    instrument built to explain why the model declined a cluster."""
+    from agents.market_intelligence.db import _AUDIT_DETAIL_MAX as cap
+    assert cap >= 32_000
+
+
+# ── The mark must be READ by something, not just written (2026-09-10) ────────────────────────
+#
+# Half the fix is that a truncated row now carries `_truncated`. The other half is that some
+# surface queries it — a marker nothing looks at is the same silence relocated, which is exactly
+# how the 8,000-char cut survived unnoticed until a JSON parse failed by accident.
+
+def test_the_nightly_sweep_reads_the_truncation_mark():
+    import inspect
+
+    from agents.market_intelligence import scheduler
+    src = inspect.getsource(scheduler._check_nightly_silent_errors)
+    assert "count_truncated_audit_rows" in src, (
+        "the nightly sweep stopped counting truncated rows — the mark is unread again")
+    assert "_trunc" in src
+
+
+def test_the_sweep_reports_even_when_only_truncations_happened():
+    """A night with zero errors but truncated payloads must still speak. Under `if total:` it
+    would have stayed silent, which is the failure mode being fixed."""
+    import inspect
+
+    from agents.market_intelligence import scheduler
+    src = inspect.getsource(scheduler._check_nightly_silent_errors)
+    assert "if total or _trunc:" in src, "a truncation-only night would be silent again"
+
+
+def test_the_counter_never_raises_into_its_caller():
+    """It rides on the sweep; a diagnostic must not break the surface it reports through."""
+    import inspect
+
+    from agents.market_intelligence.db import count_truncated_audit_rows
+    src = inspect.getsource(count_truncated_audit_rows)
+    assert "return 0" in src and "except Exception" in src

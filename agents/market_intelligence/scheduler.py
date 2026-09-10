@@ -24,6 +24,7 @@ from apscheduler.triggers.cron import CronTrigger
 from agents.market_intelligence.db import (
     purge_old_data, log_job_run, job_ran_today, upsert_fundamental_flags_batch,
     get_rs_leaders, update_sectors_batch, get_audit_log, get_pool, log_audit_event,
+    count_truncated_audit_rows,
 )
 from agents.market_intelligence.rs_engine import run_rs_engine, ingest_daily
 from agents.market_intelligence.regime import run_regime_engine
@@ -922,9 +923,26 @@ async def _check_nightly_silent_errors() -> None:
             buckets["safeguard_unavailable"].append(r)
         elif "error" in evt:
             buckets["other"].append(r)
+    # TRUNCATED AUDIT PAYLOADS (2026-09-10). Truncation is not an event_type — it is a marker
+    # INSIDE an otherwise-normal row's detail — so none of the `%error%` patterns above can see it.
+    # It was silent until a JSON parse failed by accident while verifying #486. `_fit_audit_detail`
+    # now marks every truncated row; this is the surface that reads the mark, because a marker no
+    # surface queries is the same silence in a new place. Deliberately NOT an audit event of its
+    # own: log_audit_event writing about log_audit_event is a recursion waiting to happen.
+    _trunc = 0
+    try:
+        _trunc = await count_truncated_audit_rows(since_hours=_since)
+    except Exception as e:   # loud-ok: a diagnostic must never break the sweep it rides on
+        logger.warning(f"truncated-audit-row count failed: {e}")
+
     total = sum(len(v) for v in buckets.values())
-    if total:
+    if total or _trunc:
         lines = [f"⚠️ *{total} engine event(s) during nightly run:*"]
+        if _trunc:
+            lines.append(
+                f"  ✂️ {_trunc} audit row(s) TRUNCATED — a payload exceeded the detail budget and "
+                f"its tail is gone. The rows are marked `_truncated` and stay queryable, but the "
+                f"content is lost; raise the budget or trim at the writer.")
         if buckets["safeguard_unavailable"]:
             # Static text only (no dynamic summary echo — an unpaired `_` in
             # legacy-Markdown 400s the send, 2026-07-05 lesson); the event

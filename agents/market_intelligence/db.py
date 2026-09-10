@@ -13673,7 +13673,14 @@ async def list_theme_exclusions() -> list[dict[str, Any]]:
 
 # ── Audit log ─────────────────────────────────────────────────────────────────
 
-_AUDIT_DETAIL_MAX = 8000
+# 32k, raised from 8,000 on 2026-09-10 (operator: "yes, fix it"). The column is `text` with NO
+# limit, so 8,000 was never a database constraint — it was a number we chose and then forgot we had.
+# Cost of the raise, measured before making it: average detail across 42,037 rows is 188 characters,
+# only 37 rows in the table's whole history exceed 4,000, and the table is 16 MB growing 69 kB/day.
+# The verbose caller (theme-discovery's decline reasoning) runs twice a day, so the realistic cost is
+# single-digit MB a year — against losing the tail of the one instrument built to explain WHY the
+# model declined a cluster.
+_AUDIT_DETAIL_MAX = 32000
 
 
 def _fit_audit_detail(detail):
@@ -13703,13 +13710,42 @@ def _fit_audit_detail(detail):
         # Narrow on purpose: "this text is not JSON" is the ONLY thing being decided here, and a
         # bare `except` would make it a silent swallow (the #381 gate is right to object).
         return detail[:_AUDIT_DETAIL_MAX]        # not JSON — a plain cut loses nothing structural
-    head_budget = _AUDIT_DETAIL_MAX - 200        # room for the wrapper keys
-    return json.dumps({
+    # Fit the envelope EXACTLY, then verify — do not slice the result. A fixed reserve plus a
+    # closing `[:MAX]` is the same blind cut this function exists to remove, one level up: JSON
+    # escaping expands quotes, backslashes and newlines, so the wrapper can cross the budget and
+    # get sliced mid-token itself. My own test caught it the moment the cap moved (2026-09-10).
+    envelope = {
         "_truncated": True,
         "_original_len": len(detail),
         "_note": "payload exceeded the mi_audit_log detail budget; head kept, row still queryable",
-        "_head": detail[:head_budget],
-    })[:_AUDIT_DETAIL_MAX]
+        "_head": "",
+    }
+    head = detail[: max(0, _AUDIT_DETAIL_MAX - len(json.dumps(envelope)))]
+    out = json.dumps({**envelope, "_head": head})
+    while len(out) > _AUDIT_DETAIL_MAX and head:
+        head = head[: max(0, len(head) - (len(out) - _AUDIT_DETAIL_MAX) - 8)]
+        out = json.dumps({**envelope, "_head": head})
+    return out
+
+
+async def count_truncated_audit_rows(since_hours: float = 26.0) -> int:
+    """How many audit rows lost their tail to the detail budget in the window.
+
+    `_fit_audit_detail` marks every truncated row `_truncated`. Nothing queried that mark until
+    2026-09-10, which is why an 8,000-character cut sat unnoticed until a JSON parse failed by
+    accident. Read by the nightly silent-error sweep. Returns 0 on any failure — a diagnostic must
+    never break the surface it rides on."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire(timeout=5.0) as conn:
+            return int(await conn.fetchval(
+                "SELECT count(*) FROM mi_audit_log "
+                "WHERE created_at > NOW() - ($1 || ' hours')::interval "
+                "  AND detail LIKE '%\"_truncated\": true%'",
+                str(since_hours), timeout=5.0) or 0)
+    except Exception as e:
+        logger.warning(f"count_truncated_audit_rows failed: {e}")
+        return 0
 
 
 async def log_audit_event(event_type: str, summary: str, detail: str = "") -> None:
