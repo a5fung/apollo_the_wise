@@ -107,3 +107,18 @@ rows are still diagnosable.
 Polygon one. The FMP key is dead; Polygon's is presumably live. Filed as #637 for his rotate-or-
 accept ruling rather than folded in here, because it is a different credential and a different
 decision.
+
+## #637 — Polygon credential exposed in mi_audit_log: rotate or accept (2026-09-10)
+BAR: he rules ROTATE or ACCEPT. If ROTATE: the new key is in the secrets bundle, `deploy.sh`
+preflight passes, and one full scan cycle completes on it. If ACCEPT: the ruling is recorded here
+and this closes.
+EVIDENCE: **Operator ruled ACCEPT on 2026-09-10**, asked directly with the trade-off stated (an
+internal-only exposure in our own database against a rotation that stops the EP scan if it goes
+wrong). No rotation performed. The exposure itself is closed either way: all 771 rows carrying
+`apikey=` are masked, verified by a query independent of the script that masked them — zero rows
+match `(apikey|api_key|token|secret)\s*=\s*[A-Za-z0-9]{12,}`, and the write path
+(`db.log_audit_event` → `redact_secrets`) has been masking every new row since 2026-09-02.
+⚠ WHAT THIS RULING DOES AND DOES NOT COVER: it accepts the risk of a Polygon key that sat in our own
+database 2026-06-26 → 2026-09-01. It is NOT a standing ruling about credential exposure generally —
+a key reaching a surface OUTSIDE our infrastructure (a Telegram render, a shared doc, a public log)
+is a different question and does not inherit this answer.
