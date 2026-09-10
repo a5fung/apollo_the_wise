@@ -161,3 +161,24 @@ queue)."* None of that is built.
 it** — and by the person who wrote it. A fix landing and being verified is not the task being done;
 the recorder was one component of a readout that does not exist yet. The gate held, which is the
 argument for gates over intentions in one line.
+
+## #555 — rewrite canonicalize_themes as a model, not a tenth guard (closed 2026-09-10, shipped 2026-09-05)
+BAR: cohort identity is decided by ONE model rather than nine stacked constraints — the rewrite
+replaces greedy pairwise overlap, and the nine guards are RETIRED, not joined by a tenth
+(the line also carries an earlier bar: the regression set green, the two residuals resolved or
+explicitly accepted, and knob count DOWN not up — both are satisfied by the evidence below)
+EVIDENCE: Shipped in `portfolio-app2` commit `1c19c76` on 2026-09-05 — *"a cohort identity model,
+not a tenth guard: all three false merges gone, ranking unmoved"* — 846 lines of `theme_canon.py`
+rewritten with `test_theme_canon.py` and `theme_data.py`. Verified today rather than taken on the
+commit message: **the suite is 90/90 green**, and the discriminating clause holds — **tunable knobs
+went 5 → 2**. `_MIN_SHARED`, `_MAX_SET_SIZE` and `_FIRST_CONTACT_THRESHOLD` are gone; the last of
+those is the 0.70 the task line called out for sitting in a 0.014-wide margin between the bad case
+(0.667) and the nearest genuine rename (0.714) on N=2. What remains is `_OVERLAP_THRESHOLD` (reused
+from `dedup_themes`) and `_MAX_GAP_DAYS`. Knob count down, not up, exactly as the bar asked.
+⛔ THE PROCESS FAILURE, recorded because it is the point: **this shipped five days before I closed
+it, and I did not notice twice in one day.** This morning I wrote #555 a fresh "DoD (written
+2026-09-10)" describing a rewrite that already existed, and this evening I scheduled it into the
+weekend. A Sonnet card building #561 found it by running `git log` — the exact check
+[[grep-git-before-scoping-a-card]] exists for, which I hold as a memory and did not apply. The
+LIKELY-BUILT surface could not help: it keys on built/deployed markers in the task text, and this
+line had none, because nobody had written one.
