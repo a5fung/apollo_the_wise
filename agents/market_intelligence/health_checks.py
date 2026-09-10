@@ -3571,6 +3571,58 @@ async def run_jsonb_encoding_check(conn=None) -> dict[str, Any]:
 # guard). Read-only: SELECTs mi_catalyst_tier_shadow / mi_ep_alerts / mi_daily_closes, writes
 # only audit rows and Telegram — never a grade, entry, sizing or safeguard path.
 
+async def _lattice_retier_rows(days) -> list:
+    """The lattice's verdict vs the raw LLM grade for the given scan dates.
+
+    Read-only, and fail-CLOSED for the caller's purpose: on any error it returns [] , which
+    `lattice_altered_nothing` reads as "no evidence the lattice acted" — so a database hiccup
+    withholds a revert RECOMMENDATION rather than manufacturing one. The trigger still fires and
+    still says the lane was silent; only the prescription is held back."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire(timeout=5.0) as conn:
+            rows = await conn.fetch(
+                "SELECT scan_date, ticker, live_quality_last, shadow_tier_last "
+                "FROM mi_catalyst_tier_shadow WHERE scan_date = ANY($1::date[])",
+                list(days), timeout=5.0)
+        return [dict(r) for r in rows]
+    except Exception as e:
+        logger.warning(f"catalyst_lattice_monitor: retier-row read failed — {e}")
+        return []
+
+
+def lattice_altered_nothing(retier_rows) -> "bool | None":
+    """True when the lattice's verdict matched the raw LLM grade on EVERY row in the window.
+
+    THE POINT (#638, 2026-09-10). Trigger (c) fired on two zero-alert days and printed revert SQL
+    for `catalyst_tier_lattice`. Measured on prod that morning: the lattice's verdict was IDENTICAL
+    to the raw LLM grade on all 12 candidates of 2026-09-09 — turning it off would have been
+    byte-identical. It had suppressed nothing, and the zero came from the best score of the day
+    being 58.8 against a bar of 65.
+
+    **A monitor that prescribes a revert without checking whether the thing reverted did anything
+    is a gate that cannot be wrong.** Trigger (b) already learned this in a different shape on
+    2026-08-24 — it named the flip as cause for a collapse that started five trading days BEFORE
+    the flip — and was era-scoped in response. Same lesson, second trigger.
+
+    ⚠ This does NOT silence the trigger: two silent days on a live money path are still worth a
+    look, which is exactly what the 2026-08-26 note above argues. It changes what the message
+    RECOMMENDS, not whether it speaks.
+
+    ⚠ THREE STATES, not two — the existing monitor tests caught me collapsing them. `None` means
+    UNKNOWN (no re-tier rows recorded at all), which is NOT the same as inert: if the shadow
+    recorder itself were broken, the lattice could be acting hard while this table sat empty, and
+    treating that as "inert" would silently mute the prescription exactly when it was most needed.
+    Unknown keeps the revert SQL and says it could not be verified; only OBSERVED sameness
+    withholds it.
+    """
+    rows = list(retier_rows or [])
+    if not rows:
+        return None          # UNKNOWN — nothing recorded; do not read that as evidence either way
+    return all((r.get("shadow_tier_last") or r.get("shadow_tier"))
+               == (r.get("live_quality_last") or r.get("live_quality")) for r in rows)
+
+
 _LATTICE_TOGGLE = ("catalyst_tier_lattice", "CATALYST_TIER_LATTICE_ENABLED")
 _LATTICE_REVERT_SQL = (
     "INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at) "
@@ -4074,8 +4126,14 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                 # ALL tiers, matching this trigger's own "no EP alerts at all" definition —
                 # not the HIGH-only count trigger (b) uses.
                 ctx_alerts = sum(by_date.get(d, (0, 0))[0] for d in ctx_days)
+                # #638: did the lattice CHANGE anything in the window? If not, a revert is
+                # byte-identical and recommending one is noise dressed as a finding.
+                _win_rows = await _lattice_retier_rows(last_tds)
+                out["lattice_inert"] = lattice_altered_nothing(_win_rows)
                 out["triggers"].append({
                     "kind": "zero_alert_days",
+                    "lattice_inert": out["lattice_inert"],
+                    "lattice_rows_seen": len(_win_rows),
                     "days": [d.isoformat() for d in last_tds],
                     "supply": [supply_by_date.get(d) for d in last_tds],
                     "supply_gap_pct": _LATTICE_SUPPLY_GAP_PCT,
@@ -4128,13 +4186,34 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     f"— two consecutive trading days.{ctx} (Supply is CONTEXT, not a verdict "
                     f"— this trigger is deliberately not supply-normalised.)")
         lines.append("")
-        lines.append("Revert the flip (ONE flag; takes effect within ~60s, no redeploy):")
-        lines.append("```")
-        lines.append(_LATTICE_REVERT_SQL)
-        lines.append("```")
-        lines.append("_Permanent form: set `CATALYST_TIER_LATTICE_ENABLED=false` in prod .env "
-                     "and redeploy market-agent. Evidence + change log: "
-                     "docs/setups/magna53_ep.md 2026-08-22._")
+        # #638 (2026-09-10): only PRESCRIBE a revert when the lattice actually changed a grade in
+        # the window. On 2026-09-10 this printed revert SQL for a mechanism whose verdict matched
+        # the raw LLM grade on all 12 candidates — reverting would have been byte-identical, and
+        # the zero came from the day's best score being 58.8 against a bar of 65. The trigger still
+        # speaks (a silent money path is worth a look); it no longer names a culprit it has not
+        # checked. Trigger (b) learned the same lesson on 2026-08-24 in a different shape.
+        if out.get("lattice_inert") is True:
+            lines.append(
+                "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The lattice's "
+                "verdict matched the raw LLM grade on every candidate in this window, so turning "
+                "it off would be byte-identical — it suppressed nothing. Look at the tape, the "
+                "score bar and the scan log instead. To revert anyway, the flag is in "
+                "`docs/setups/magna53_ep.md` 2026-08-22.")
+        else:
+            if out.get("lattice_inert") is None and "zero_alert_days" in {
+                    x["kind"] for x in out["triggers"]}:
+                lines.append(
+                    "⚠ *Could not verify the lattice actually acted* — no re-tier rows were "
+                    "recorded for these days, which may mean the shadow recorder is down rather "
+                    "than that the lattice was quiet. The SQL is below, but check that first.")
+            lines.append("Revert the flip (ONE flag; takes effect within ~60s, no redeploy):")
+            lines.append("```")
+            lines.append(_LATTICE_REVERT_SQL)
+            lines.append("```")
+        if out.get("lattice_inert") is not True:
+            lines.append("_Permanent form: set `CATALYST_TIER_LATTICE_ENABLED=false` in prod .env "
+                         "and redeploy market-agent. Evidence + change log: "
+                         "docs/setups/magna53_ep.md 2026-08-22._")
 
         headline = ("catalyst lattice revert trigger: "
                     + ", ".join(t["kind"] for t in out["triggers"]))
