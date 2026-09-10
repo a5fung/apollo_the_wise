@@ -75,3 +75,15 @@ verify line added for one sub-feature does not replace it.** `close_bar_for` enc
 ordering.
 THE TRUTH: every `entry_order_rejected` row in prod is 08-07, 08-06 and 07-22 — all three predate the
 08-10 fix and all three carry a NULL reason. The reason-capture path has never run in production.
+
+## #636 — regime-freshness threshold coupled to the closes-ingest schedule (2026-09-10)
+BAR: either his go-ahead for the one-character hardening (plus a test pinning that a same-day closes
+row cannot move the threshold), or an explicit ruling to leave it coupled
+EVIDENCE: Operator chose "Change <= to <" on 2026-09-10. Shipped in `cf16da34`:
+`order_manager.py:298` now reads `WHERE trade_date < $1`, with the reason recorded at the call site.
+`tests/test_regime_freshness_same_day_row_636.py` carries the required pin —
+`test_a_same_day_closes_row_cannot_move_the_threshold` — and is RED-proven: reverting to `<=` fails
+it plus the SQL-text pin. `docs/setups/safeguards.md` updated in the same commit. Deployed
+2026-09-10 12:0x ET (`both` exit 0, then `execution` exit 0, server `074a6ebd`) and confirmed by
+importing the module INSIDE the running apollo-execution container: strict `<` True, legacy `<=`
+False — read off the container that actually runs broker code, not the repo.
