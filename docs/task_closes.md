@@ -87,3 +87,23 @@ it plus the SQL-text pin. `docs/setups/safeguards.md` updated in the same commit
 2026-09-10 12:0x ET (`both` exit 0, then `execution` exit 0, server `074a6ebd`) and confirmed by
 importing the module INSIDE the running apollo-execution container: strict `<` True, legacy `<=`
 False — read off the container that actually runs broker code, not the repo.
+
+## #612 — a live API key written to mi_audit_log in plain text (2026-09-10)
+BAR: the redaction holds at the chokepoint, proven by a NEGATIVE query — zero rows in
+`mi_audit_log` contain an unmasked credential pattern (`apikey=`, `token=`, `Bearer `) from the fix
+date forward — AND the 99 historical rows are purged or masked in place
+EVIDENCE: Both halves confirmed on prod, by a query run independently of the script that did the
+work. (a) The chokepoint holds: every row from 2026-09-02 onward was already masked before I touched
+anything — 569 of them — so `db.log_audit_event` → `redact_secrets` is working on the live path.
+(b) The historical rows are masked in place: `scripts/probes/_612_redact_historical_audit_rows.py`
+applied the SHIPPED `redact_secrets` (not a SQL copy of its regex) to 202 rows carrying an unmasked
+value, inside one transaction. Verification query afterwards: **0 rows matching
+`(apikey|api_key|token|secret)\s*=\s*[A-Za-z0-9]{12,}`, 771 rows carrying the mask.**
+⚠ THE TASK'S OWN NUMBER WAS WRONG AND THE CLOSE RECORDS IT: the line said 99 rows. 99 is the count
+for the `summary` column alone; `detail` held far more. The real exposure was **202 unmasked rows,
+2026-06-26 → 2026-09-01**. Masking preserves the audit record — the parameter name stays, so the
+rows are still diagnosable.
+⚠ NOT CLOSED WITH IT: 4 of the rows are POLYGON, not FMP, and the earliest unmasked row of all is a
+Polygon one. The FMP key is dead; Polygon's is presumably live. Filed as #637 for his rotate-or-
+accept ruling rather than folded in here, because it is a different credential and a different
+decision.
