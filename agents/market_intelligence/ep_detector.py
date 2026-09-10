@@ -2010,7 +2010,15 @@ async def _emit_large_cap_relvol_floor_shadow(r: dict, now_et: datetime) -> None
     `filter:large_cap_relvol_floor_shadow` mi_audit_log row when `r` is a HIGH
     alert with ADV$ (adv_20 * prev_close) >= $50M and rel_volume < 0.5. Never
     raises (log_audit_event swallows its own errors); wrapped defensively
-    anyway so a bug here can never affect the live alert/entry path."""
+    anyway so a bug here can never affect the live alert/entry path.
+
+    ⚠ THE ROWS ARE A CENSORED SAMPLE, NOT A POPULATION. A name at rel_volume
+    >= 0.5 returns early and writes NOTHING, so counting these rows can only
+    ever tell you that every recorded row is below the floor -- which is the
+    emit condition restated, not a finding. Any question of the form "how often
+    does a large cap CLEAR the floor" must be asked of `mi_ep_alerts`, never of
+    this event. (Answered wrongly from this table once, 2026-09-09, and
+    corrected the same day: docs/analysis/large_cap_relvol_floor_shadow_2026-09-09.md.)"""
     try:
         if os.environ.get(
             "LARGE_CAP_RELVOL_FLOOR_SHADOW_ENABLED", "true"

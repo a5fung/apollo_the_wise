@@ -5641,13 +5641,18 @@ reviews:
     # RAN 2026-09-09 (ready since 09-01; the ask-gate never noticed because it printed
     # "not ready" without running any predicate — fixed the same day).
     # VERDICT: DO NOT SHIP, at any threshold on this metric.
-    #   * 64 of 64 observations (2026-07-20 -> 09-08) sit BELOW the proposed 0.5 floor; the
-    #     highest rel_volume ever recorded is 0.380. The floor is an off switch, not a filter.
+    #   * The floor rejects 95% of large-cap EP alerts: 3 of 62 HIGH large-cap alerts
+    #     (2026-07-20 -> 09-08) reached 0.5, max 0.690 - and all three alerted 09:45-09:50 ET
+    #     and were skipped out-of-ORB, so none was tradeable. An off switch, not a filter.
+    #     (CORRECTED same day: the first read said "64 of 64 below, max 0.380" - counted from
+    #     the SHADOW table, whose emitter returns early on rel_volume >= 0.5, so above-floor
+    #     names never write a row. The population was defined by the answer. Real numbers
+    #     come from mi_ep_alerts; the shadow table cannot answer this question at all.)
     #   * rel_volume is cumulative-volume / ADV, so it tracks the CLOCK: median 0.020 for
     #     pre-market alerts vs 0.170 in-session, 8.5x on the same measure. The "is it just an
     #     artifact of alerting early" concern recorded at build time is answered: it is.
     #   * The retrospective 3/20 finding that motivated this compared <0.5 against a >=0.5
-    #     control that is EMPTY on the forward population.
+    #     control that is 3 names with ZERO settled outcomes on the forward population.
     # Keep the observer running (it is free and it produced this). A real test of the
     # hypothesis needs a TIME-NORMALISED measure - a different build, not a threshold.
     # docs/analysis/large_cap_relvol_floor_shadow_2026-09-09.md
