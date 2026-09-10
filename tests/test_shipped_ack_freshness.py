@@ -211,3 +211,41 @@ def test_day_movement_counts_SETS_not_diff_lines():
     assert "rev-list" in src and "--before=" in src, (
         "the comparison point must be the last commit BEFORE the operator's PT day began")
     assert "_OPERATOR_TZ" in src, "the day boundary is the operator's PT day, never UTC"
+
+
+# ── The MOST RECENT marker wins, not the first (2026-09-10) ──────────────────────────────────
+#
+# A long task line accumulates history. #368 carried "BLOCK RE-VALIDATED 2026-07-26
+# revalidated:2026-07-26" as a record of a past revalidation, and `.search()` returned THAT
+# token — so a block re-validated TODAY still read as stale, and the gate demanded a
+# revalidation that was already written. No amount of doing the work correctly could satisfy it;
+# the only ways out were falsifying the historical date or deleting the record.
+
+def test_a_historical_marker_does_not_defeat_a_fresh_one():
+    from datetime import date
+
+    from scripts.check_plan import _REVALIDATED, _marker_age_days
+    today = date(2026, 9, 10)
+    line = ("BLOCK RE-VALIDATED 2026-07-26 revalidated:2026-07-26 — the original reasoning "
+            "… and re-stated against today revalidated:2026-09-10")
+    assert _marker_age_days(_REVALIDATED, line, today) == 0, (
+        "an older historical marker shadowed the fresh one — the gate becomes unsatisfiable")
+
+
+def test_a_future_marker_is_still_discarded():
+    """"Latest wins" must not become a way to mute a task by post-dating it."""
+    from datetime import date
+
+    from scripts.check_plan import _REVALIDATED, _marker_age_days
+    today = date(2026, 9, 10)
+    assert _marker_age_days(_REVALIDATED, "revalidated:2099-01-01", today) is None
+    # a real one alongside a future one still reads from the real one
+    assert _marker_age_days(
+        _REVALIDATED, "revalidated:2099-01-01 revalidated:2026-09-01", today) == 9
+
+
+def test_a_malformed_date_is_ignored_not_trusted():
+    from datetime import date
+
+    from scripts.check_plan import _REVALIDATED, _marker_age_days
+    assert _marker_age_days(_REVALIDATED, "revalidated:2026-13-45", date(2026, 9, 10)) is None

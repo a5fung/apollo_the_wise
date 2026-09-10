@@ -258,14 +258,21 @@ def _marker_age_days(pattern, title: str, today: date) -> int | None:
       * absent, malformed, or an impossible date (`2026-13-45`) — a typo must never buy silence;
       * dated in the FUTURE — the cheapest way to mute a task forever.
     """
-    m = pattern.search(title)
-    if not m:
-        return None
-    try:
-        age = (today - date.fromisoformat(m.group(1))).days
-    except ValueError:
-        return None
-    return age if age >= 0 else None
+    # The MOST RECENT valid marker wins, not the first one on the line (2026-09-10). A long task
+    # line accumulates history — "BLOCK RE-VALIDATED 2026-07-26 revalidated:2026-07-26" stays as a
+    # record — and `.search()` returned that HISTORICAL token, so a block re-validated TODAY still
+    # read as stale. The gate then demanded a revalidation that had already been written, which no
+    # amount of doing the work correctly could satisfy. Future dates are still discarded (the
+    # 2099 mute), so "latest" cannot be gamed by post-dating.
+    ages = []
+    for m in pattern.finditer(title):
+        try:
+            age = (today - date.fromisoformat(m.group(1))).days
+        except ValueError:
+            continue                      # a typo must never buy silence — just ignore that one
+        if age >= 0:
+            ages.append(age)
+    return min(ages) if ages else None
 
 
 def _marker_is_fresh(pattern, title: str, today: date, max_age: int, fingerprint) -> bool:
