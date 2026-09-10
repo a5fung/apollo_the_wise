@@ -684,3 +684,54 @@ exactly that purpose.
 
 **Thu #501** the 13 gate-invisible silent failures · **Fri #368** rubric weights ·
 **Sat/Sun #555** rewrite `canonicalize_themes`.
+
+---
+
+## 2026-09-09 (Wed) — 🔴 RESUME HERE. Supersedes everything above.
+
+**CLOSED at `7f8b5ed0`, suite 7,862, board 68 → 68** (no growth, no carryover). Two deploys verified
+live on the RUNNING images (noon + 21:15 ET), server `81223603`.
+
+### The day's lesson, and it cost me a wrong headline
+
+**A gate, test or probe that cannot come out the other way is indistinguishable from one that passes.**
+Six instances in one day: eleven review predicates whose condition could never be true · a shadow table
+asked "how often does a large cap clear the floor" when the floor IS its write condition · a brand-new
+test asserting against a local copy of the guard it was testing. **Before trusting a green or a zero,
+make it go RED once.**
+
+I published *"the rel_volume floor rejects 100% of its population, highest reading ever 0.380"* — that
+was `_emit_large_cap_relvol_floor_shadow`'s early return restated, not a finding. Real numbers from
+`mi_ep_alerts`: **3 of 62 large-cap alerts cleared 0.5, max 0.690**, all three alerting 09:45–09:50 ET
+and skipped out-of-ORB. **The verdict (do not ship) did not change; the evidence for it did.** Doc,
+review note and the emitter docstring all corrected the same evening.
+
+### 🔴 STILL UNPROVEN after two days — the regime sizing fix (the only money-path item)
+
+The Labor-Day freshness bug floored two live entries to a quarter of full size. Fixed and deployed
+Tuesday; **Wednesday produced no qualifying fill, so it has still never run on an ordinary morning.**
+Check at 9:31: **no `sizing_regime_fallback` audit row, and the first fill's `risk_dollars` reads full
+size (~$37), not the ~$12.35 floor.** ⚠ **Zero entries is NOT a pass.**
+
+### Thursday's verifies — nine, all mine
+
+- **#631 (one exit recorder, twelve arms) — TWO checks.** (a) `live_fill_counterfactual_recorded` shows
+  12 arms + the digest renders its candidate block; (b) ⚠ **THE PIN** — new-arm rows on pre-09-06 fills
+  must carry that fill's OWN `target_r` (**2.0**), not 8.0. **The arm count does not test the pin** and
+  would read clean while the pin was broken.
+- **#632 (the pager that fired on an ordinary busy night)** — no page on a sub-P95 night, L3 row still
+  written. **Prod P95 is 19, tonight's value 9** — the expected answer is known before you look.
+- #486 artifacts (no GOOG/BWMN cluster · `already_named` · non-empty scratchpads) · #630's rename
+  (`lane2_narratives_at_decision` present, old key absent) · discovery prompt cache non-zero
+  `cache_read` · seed why-logging `story` · tv_news NULL not `[]` · #582 · #471.
+
+### Two things that shape the rest of the week
+
+- **#634 is no longer a new gate.** It folds into `scripts/operator_asks.py` (which already runs every
+  predicate over ssh) as one `--audit` flag plus one `check_plan` arm. He said *"stop one off,
+  consolidate"* and then *"simplify"* — and **today's net machinery still went UP.** Do not answer that
+  by building a fifth detector.
+- **#633 remainder:** route `catalyst_rubric_quarterly` and
+  `trade_stream_stop_placement_without_orders_row` — writer-less, exempted by name today.
+
+**NOTHING WAITS ON THE OPERATOR.** `scripts/operator_asks.py` is the only way to say what does.

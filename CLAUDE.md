@@ -258,6 +258,7 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ### 2026-09-09 — #486: two cluster artifacts killed at the source; the recorder now says WHY a cluster was declined
 
+- **A gate, test or probe that cannot fail is indistinguishable from one that passes — SIX instances found in one day.** Eleven review predicates read zero because their condition could never be true; a shadow table answered "how often does a large cap clear the floor" with the floor itself as its write condition; a new test asserted against a local copy of the guard it was testing. **Before trusting a green/zero reading, make it go RED once.** Twelve exit reviews consolidated to one (#631) on his *"stop one off, consolidate"*.
 - GOOG×4 (four share classes, one issuer) held a cluster slot 25 nights and became a live theme once; takeover targets clustered at 0.92. Both removed in `correlation_engine.py` (root-match + return-identity; ex-spike vol floor). Discovery renders cluster members with RS / description / `[in: theme]`; the recorder adds `already_named` + the model's scratchpad. Rule sentences unchanged. Lesson: the recall-run "declined" count was the shadow reading the nightly's own births back as existing. Full read + operator forks: `docs/architecture/theme_engine.md` 2026-09-09.
 
 ### 2026-09-04 — #624 low-cap EP lane shipped as a SHADOW recorder
