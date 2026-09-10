@@ -138,11 +138,27 @@ reviews:
       we scored HIGH that collapsed, five we scored below the bar that ran. His verdict on
       that set — "looks like our chart vision is spotting the opposite thing" — is only
       available BECAUSE both directions were shown.
+    # WARNING: `>-` folds every line into ONE, so a `--` SQL comment swallows everything
+    # after it. This predicate was 100% comment and could never return a number — found
+    # 2026-09-10 by `operator_asks.py --audit`, on the first run of the tool built to find
+    # exactly this. Use a YAML comment like this one, or /* */, never `--` in a folded scalar.
+    # Cadence, not accrual: fires on alert volume elapsed since the last review sample, so a
+    # quiet fortnight does not manufacture a review with nothing new to look at.
     predicate_sql: >-
-      -- Cadence, not accrual: fires on elapsed alert volume since the last sample, so a
-      -- quiet fortnight does not manufacture a review with nothing new to look at.
       SELECT count(*) FROM mi_ep_alerts
       WHERE alert_date > '2026-09-06';
+    can_fire:
+      predicate_runs: "2026-09-10 - runs and returns a number. It did NOT before today: the
+        entire statement sat inside a folded -- comment."
+      nonzero_possible: "mi_ep_alerts is the live alert table, written by ep_detector on every
+        scan tick - 109 HIGH rows in the last 51 days alone, so non-zero is routine."
+      lane_live: "n/a - this counts EP alerts rather than a strategy lane; MAGNA53 EP is the
+        live setup and is enabled."
+      threshold_vs_observed: "40 alerts since 2026-09-06, measured on the SAME population the
+        predicate counts (mi_ep_alerts, all tiers). That table takes tens of rows a week, so 40
+        sits inside the observed range rather than beyond it - roughly a fortnightly cadence."
+      era_scoped: "Anchored at 2026-09-06, the date of the last review sample, so it measures
+        volume SINCE that ruling rather than all history."
     threshold: 40
     earliest_review_date: 2026-09-20
     action_when_ready: |

@@ -208,7 +208,85 @@ def _run_predicates(numbered) -> tuple[dict, "str | None"]:
     return out, None
 
 
+def _load_reviews() -> list:
+    """Every review in the file, open or closed — `--audit` reports on all of them."""
+    import yaml
+    d = yaml.safe_load((REPO / "data_gated_reviews.yaml").read_text())
+    return [r for r in (d.get("reviews") or []) if isinstance(r, dict)]
+
+
+_CAN_FIRE_KEYS = ("predicate_runs", "nonzero_possible", "lane_live",
+                  "threshold_vs_observed", "era_scoped")
+
+
+def _audit(reviews) -> int:
+    """`--audit` — report, for EVERY review in the file, whether it could fire at all (#634).
+
+    `check_plan._review_can_fire_gate` blocks a NEW or edited review without a `can_fire:` block.
+    That stops the bleed; it does not tell you about the 153 already in the file. This does, and
+    it runs the predicates for real rather than reading the YAML and believing it.
+
+    Reports three things per review, in the order they cost us on 2026-09-09:
+      ERROR      — the predicate did not execute (a phantom column; #617 keyed on `reached_4r`)
+      ZERO       — it ran and returned 0 past its eligible date (the shape that hid eleven of them)
+      NO EVIDENCE — no `can_fire:` block, so nothing was checked at creation
+    """
+    # OPEN reviews only. A closed review's predicate may reference a table that has since been
+    # dropped — that is history, not a defect, and listing it buries the live ones (2 of the first
+    # 3 "cannot fire" hits were `status: done`).
+    open_revs = [r for r in reviews
+                 if str(r.get("status", "")).lower() not in ("done", "closed", "retired", "superseded")]
+    numbered = [(i, r) for i, r in enumerate(open_revs) if _has_predicate(r)]
+    values, err = _run_predicates(numbered)
+    if err:
+        print(f"⚠ {err}")
+    today = _operator_today()
+    errored, zero, no_ev, ok, ruled = [], [], [], 0, 0
+    for i, r in numbered:
+        rid = r.get("review_id", f"#{i}")
+        if i not in values:
+            errored.append(rid)
+        elif values[i] == 0 and str(r.get("earliest_review_date", "9999")) <= today:
+            # A zero already RULED is not an open question. Six were ruled WAITING on 2026-09-09
+            # after checking each emitter against prod; re-listing them here would be this file's
+            # own version of asking him something already answered, which is the failure it was
+            # written for. [[never-re-ask-an-answered-question]]
+            if str(r.get("zero_verdict", "")).strip():
+                ruled += 1
+            else:
+                zero.append(f"{rid} (eligible since {r.get('earliest_review_date')})")
+        else:
+            ok += 1
+        if not isinstance(r.get("can_fire"), dict):
+            no_ev.append(rid)
+        else:
+            missing = [k for k in _CAN_FIRE_KEYS
+                       if not isinstance(r["can_fire"].get(k), str)
+                       or len(r["can_fire"].get(k, "").strip()) < 12]
+            if missing:
+                no_ev.append(f"{rid} (thin: {','.join(missing)})")
+
+    print("=== GATED-REVIEW AUDIT — can each one actually fire? ===\n")
+    print(f"reviews with a predicate: {len(numbered)}   ran and non-zero: {ok}   zero but already RULED: {ruled}")
+    print(f"\n⛔ PREDICATE DID NOT RUN ({len(errored)}) — a phantom column or bad SQL; "
+          f"these can NEVER fire:")
+    for x in errored or ["  (none)"]:
+        print(f"   {x}")
+    print(f"\n⚠ ZERO PAST ITS ELIGIBLE DATE ({len(zero)}) — ran fine, returned nothing. Either "
+          f"the world is genuinely quiet or the condition cannot be met; RULE each one:")
+    for x in zero or ["  (none)"]:
+        print(f"   {x}")
+    print(f"\n📋 NO `can_fire:` EVIDENCE ({len(no_ev)} of {len(reviews)}) — nothing was checked at "
+          f"creation. New/edited ones are blocked by check_plan; this is the standing backlog:")
+    for x in no_ev[:25]:
+        print(f"   {x}")
+    if len(no_ev) > 25:
+        print(f"   … and {len(no_ev) - 25} more")
+    return 0
+
 def main() -> int:
+    if "--audit" in sys.argv:
+        return _audit(_load_reviews())
     text = PLAN.read_text()
     m = _ASK_BLOCK.search(text)
     print("=== WHAT ACTUALLY WAITS ON THE OPERATOR ===\n")

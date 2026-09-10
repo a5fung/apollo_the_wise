@@ -1218,6 +1218,88 @@ def verify_is_absence_only(bar_text: str) -> bool:
     return bool(_NEG_OBSERVABLE.search(scrubbed)) and not _POS_OBSERVABLE.search(scrubbed)
 
 
+REVIEWS_YAML = REPO / "data_gated_reviews.yaml"
+
+# The five ways a gated review turned out to be unable to fire, all found on 2026-09-09 when
+# eleven of them were reading zero. Named plainly because the author has to answer each one.
+_CAN_FIRE_KEYS = (
+    "predicate_runs",          # it EXECUTED and returned a number — date + value
+    "nonzero_possible",        # the writer exists AND its job is registered (file:line)
+    "lane_live",               # the strategy/lane it depends on is enabled, or n/a + why
+    "threshold_vs_observed",   # the observed range OF THE RIGHT POPULATION, and where the bar sits
+    "era_scoped",              # how it survives a rule change, or n/a + why
+)
+
+
+def _reviews_by_id(text: str) -> dict:
+    try:
+        import yaml
+    except Exception:
+        return {}
+    try:
+        doc = yaml.safe_load(text) or {}
+        revs = doc.get("reviews", doc) if isinstance(doc, dict) else doc
+        return {r["review_id"]: r for r in (revs or []) if isinstance(r, dict) and r.get("review_id")}
+    except Exception:
+        return {}
+
+
+def _review_can_fire_gate(errors) -> None:
+    """A NEW or EDITED gated review must record that it CAN fire (operator 2026-09-09: *"how do we
+    safeguard from this in future, that's a lot of bad review conditions... they all suffer from
+    defects"*).
+
+    On 2026-09-09 eleven reviews were reading zero and the reasons were all different: a phantom
+    column; an audit event emitted nowhere; a column declared `DEFAULT FALSE` and never SET; a
+    threshold sitting outside the metric's entire observed range — and that range itself measured on
+    a CENSORED table whose write condition WAS the threshold; a predicate counting trades from a
+    rule that had been replaced. Every one was invisible at creation and stayed invisible for 56-70
+    days. The detectors shipped that day find a bad gate LATE; this is the front half.
+
+    Scoped to reviews ADDED or CHANGED versus origin/main. The 153 existing ones are not
+    retrofitted here — that is #635-shaped work — but the bleed stops now, and `operator_asks.py
+    --audit` reports the same five verdicts for the whole file so the backlog is visible.
+    """
+    if REVIEWS_YAML != REPO / "data_gated_reviews.yaml" or not REVIEWS_YAML.exists():
+        return
+    import subprocess
+    try:
+        base = subprocess.run(
+            ["git", "show", "origin/main:data_gated_reviews.yaml"], cwd=str(REPO),
+            capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if base.returncode != 0:
+            return          # no origin — fail OPEN, never block on infrastructure
+        old = _reviews_by_id(base.stdout)
+    except Exception:
+        return
+    new = _reviews_by_id(REVIEWS_YAML.read_text(encoding="utf-8"))
+    if not new:
+        return
+    # No readable BASELINE means we cannot tell a new review from an old one, and treating all 153
+    # as new would bury a real finding under noise. Fail OPEN — the same rule every other gate here
+    # follows when its evidence is unavailable. (Caught by the suite: a sibling test monkeypatches
+    # subprocess.run, so `git show` returned something that was not the YAML at all.)
+    if not old:
+        return
+    for rid, r in new.items():
+        if rid in old and old[rid] == r:
+            continue                                  # untouched
+        if str(r.get("status", "")).lower() in ("closed", "retired", "superseded"):
+            continue                                  # closing one is not proposing one
+        cf = r.get("can_fire")
+        if not isinstance(cf, dict):
+            errors.append(
+                f"gated review `{rid}` is new or edited but records no `can_fire:` block. Eleven "
+                f"reviews were reading zero on 2026-09-09 for five different reasons, none visible "
+                f"at creation. Add can_fire with: {', '.join(_CAN_FIRE_KEYS)}.")
+            continue
+        missing = [k for k in _CAN_FIRE_KEYS
+                   if not isinstance(cf.get(k), str) or len(cf.get(k, "").strip()) < 12]
+        if missing:
+            errors.append(
+                f"gated review `{rid}`: `can_fire` is missing or too thin for {missing}. Each must "
+                f"say what was CHECKED, not that it was checked.")
+
 def _dod_required_gate(errors, tasks) -> None:
     """EVERY task must say what done means (operator 2026-09-10: *"is dod required for every task?"*).
 
@@ -1746,6 +1828,7 @@ def main(argv: list[str]) -> int:
     _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
     _shipped_pending_gate(tasks, errors)   # `pending` + own code commit = stale line -> duplicate card (operator 7/25)
     _stale_block_gate(tasks, errors, today)   # [blocked:] is not an unlimited rebump pass (operator 7/26)
+    _review_can_fire_gate(errors)   # a new/edited gated review must prove it CAN fire (operator 9/09)
     _dod_required_gate(errors, tasks)   # every task must say what done means (operator 9/10)
     _absence_only_verify_gate(errors, tasks)   # a verify satisfied by absence alone (operator 9/10)
     _close_evidence_gate(errors, tasks)   # a close must be judged against the task's OWN DoD (operator 9/10)

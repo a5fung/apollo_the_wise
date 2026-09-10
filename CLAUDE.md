@@ -50,6 +50,12 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
    2026-09-08: *"I don't want you asking me these answered items again"* — an audit that day found 3
    of 4 standing asks already answered, one carried for seven weeks, and one asked in spite of a
    cadence gate built the week before for exactly that purpose.) [[never-re-ask-an-answered-question]]
+   **Then `python scripts/operator_asks.py --audit`** — the same runner, reporting whether each
+   gated review CAN fire: predicates that ERROR (never fire), zeros past their eligible date that
+   nobody has ruled, and reviews carrying no `can_fire:` evidence. Its first run found a predicate
+   that was 100% SQL comment — a folded YAML scalar had swallowed the SELECT. A NEW or edited
+   review without `can_fire:` FAILS the commit (`check_plan._review_can_fire_gate`); the existing
+   153 are a standing backlog this surfaces rather than a wall in front of every commit.
 4. STATE the day's plan + **WHO does each piece** (Fable/Sonnet/me), then **PIN it: `delegation_report.py --route "#N:fable"`**. The declaration is the ONLY decidable delegation check — a counting gate was measured on 37 session-days and does not exist (best precision 33%). (operator 2026-08-03: *"use them wisely"*; a CHECKPOINT not a gate — why it can't be gated is in commit `f578a54`).
 
 **CLOSE** (when the operator wraps, or before ending):

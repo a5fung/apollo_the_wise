@@ -122,3 +122,25 @@ match `(apikey|api_key|token|secret)\s*=\s*[A-Za-z0-9]{12,}`, and the write path
 database 2026-06-26 → 2026-09-01. It is NOT a standing ruling about credential exposure generally —
 a key reaching a surface OUTSIDE our infrastructure (a Telegram render, a shared doc, a public log)
 is a different question and does not inherit this answer.
+
+## #634 — a new review must prove it can fire before it is accepted (2026-09-10)
+BAR: FOLD INTO `scripts/operator_asks.py`, DO NOT BUILD A NEW GATE — add a `--audit` mode that
+reports the five verdicts per review, and have `check_plan` fail a NEW/EDITED review that has no
+recorded evidence block. One new flag and one gate arm — not a second runner, not a second script.
+And check (c) must name its population.
+EVIDENCE: Both halves shipped, and no new script was created. (a) `operator_asks.py --audit` reuses
+the existing `_run_predicates` — the same one ssh, predicates isolated — and reports per review:
+PREDICATE DID NOT RUN, ZERO PAST ITS ELIGIBLE DATE, and NO `can_fire:` EVIDENCE. It suppresses zeros
+already carrying a `zero_verdict` so the six ruled on 2026-09-09 are not re-raised, and it reports
+only OPEN reviews (2 of the first 3 "cannot fire" hits were `status: done`). (b)
+`check_plan._review_can_fire_gate` fails the commit on a new or edited review whose `can_fire:` block
+is absent or thin — RED-proven both ways: a review with no block is refused, and one with five
+one-word values is refused as too thin. Check (c) is `threshold_vs_observed`, whose name carries the
+population requirement, and the fixed review's own entry states which table its range was measured
+on.
+⚠ IT PAID FOR ITSELF ON THE FIRST RUN: `chart_reading_review_cycle`'s predicate was **100% SQL
+comment** — YAML's `>-` folds every line into one, so a `--` comment swallowed the SELECT. It could
+never have returned a number, and nothing else would have noticed. Fixed, evidenced, and pinned by
+`tests/test_review_can_fire_gate.py`.
+⚠ NOT CLOSED WITH IT: the 153 existing reviews have no `can_fire:` block. That is a standing backlog
+the audit surfaces every OPEN, not part of this DoD.
