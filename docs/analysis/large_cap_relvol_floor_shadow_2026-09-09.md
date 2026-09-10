@@ -56,12 +56,19 @@ tradeable anyway.**
 `rel_volume` is today's CUMULATIVE volume ÷ ADV. At 07:00 ET the numerator is a few pre-market
 prints, so the ratio is near zero **however heavily the name is really trading**.
 
-| alert window | n | mean rel_volume | median | below floor |
-|---|---|---|---|---|
-| pre-market (<09:00) | 46 | 0.033 | **0.020** | 46 |
-| session (≥09:00) | 18 | 0.166 | **0.170** | 18 |
+| alert window | n | mean rel_volume | median |
+|---|---|---|---|
+| pre-market (<09:00) | 46 | 0.033 | **0.020** |
+| session (≥09:00) | 18 | 0.166 | **0.170** |
 
-**The median is 8.5× higher in-session than pre-market on the same measure.** The candidate concern
+⚠ **n is the SHADOW rows, which stop at 0.5** — so this table is censored, and the three names above
+the floor in Finding 1 are missing from the session row (**n=18 here; true in-session n=21**). Censoring removes
+only HIGH values, and all three excluded names are in-session, so **0.170 is a floor on the true
+in-session median, and 8.5× is a floor on the true gap.** A "below floor" column is deliberately not
+shown here: within these rows it is 46/46 and 18/18 by construction, which is the emit condition, not
+a result.
+
+**The median is at least 8.5× higher in-session than pre-market on the same measure.** The candidate concern
 recorded when this shadow was built — *"is <0.5 genuine thin participation, or just an artifact of
 alerting early in the session"* — is answered: **it is the artifact.** A floor on this quantity
 would gate on what time the alert fired.
