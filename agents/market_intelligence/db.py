@@ -13673,6 +13673,45 @@ async def list_theme_exclusions() -> list[dict[str, Any]]:
 
 # ── Audit log ─────────────────────────────────────────────────────────────────
 
+_AUDIT_DETAIL_MAX = 8000
+
+
+def _fit_audit_detail(detail):
+    """Bound `detail` to the column budget WITHOUT turning valid JSON into garbage.
+
+    WHY (2026-09-10). This was `detail[:8000]` — a blind character cut. Most callers pass
+    `json.dumps(...)`, so a long payload was stored sliced mid-token and the row could no longer be
+    read back: `SELECT detail::json->>'x'` fails for the WHOLE row with "invalid input syntax for
+    type json". Found verifying #486, whose discovery recorder had JUST been fixed to write the
+    model's per-cluster reasoning — the 17:06 run parsed, the 17:13 run hit exactly 8000 characters
+    and became unreadable. **An instrument that records and cannot be read back is the same defect
+    as one that records nothing**, which is the whole subject of this week.
+
+    (The #486 recorder bounds its own payload to 60,000 — a number that never applied, since the
+    real budget is here and is 8,000. Fixing only that caller would leave the next one to repeat it,
+    the same reasoning as the redaction chokepoint above.)
+
+    Valid JSON in, valid JSON out: when the payload parses and does not fit, store a JSON object
+    that says so and carries what fits, so the row stays queryable and announces its own loss.
+    Non-JSON text keeps the plain truncation — nothing to protect there.
+    """
+    if not isinstance(detail, str) or len(detail) <= _AUDIT_DETAIL_MAX:
+        return detail
+    try:
+        json.loads(detail)
+    except (ValueError, TypeError):
+        # Narrow on purpose: "this text is not JSON" is the ONLY thing being decided here, and a
+        # bare `except` would make it a silent swallow (the #381 gate is right to object).
+        return detail[:_AUDIT_DETAIL_MAX]        # not JSON — a plain cut loses nothing structural
+    head_budget = _AUDIT_DETAIL_MAX - 200        # room for the wrapper keys
+    return json.dumps({
+        "_truncated": True,
+        "_original_len": len(detail),
+        "_note": "payload exceeded the mi_audit_log detail budget; head kept, row still queryable",
+        "_head": detail[:head_budget],
+    })[:_AUDIT_DETAIL_MAX]
+
+
 async def log_audit_event(event_type: str, summary: str, detail: str = "") -> None:
     """
     Write a critical event to the audit log. Never raises — safe to call from anywhere.
@@ -13702,7 +13741,7 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "") -> No
         async with pool.acquire(timeout=5.0) as conn:
             await conn.execute(
                 "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)",
-                event_type, summary[:500], detail[:8000],
+                event_type, summary[:500], _fit_audit_detail(detail),
                 timeout=5.0,
             )
     except Exception as e:

@@ -144,3 +144,20 @@ never have returned a number, and nothing else would have noticed. Fixed, eviden
 `tests/test_review_can_fire_gate.py`.
 ⚠ NOT CLOSED WITH IT: the 153 existing reviews have no `can_fire:` block. That is a standing backlog
 the audit surfaces every OPEN, not part of this DoD.
+
+
+## Lesson — task #486, a close the gate REFUSED on 2026-09-10
+
+⚠ Not a close record — #486 is OPEN. Written as a `## Lesson` heading so the gate cannot mistake it
+for a justification.
+
+I tried to close #486 on *"scratchpads non-empty and covered_share/covered_by populated"* — the
+verify line **I wrote that same morning** for one fix inside it. `check_plan._close_evidence_gate`
+refused the removal and quoted the task's real DoD back at me: *"a periodic agreement readout
+(themed-per-engine vs themed-per-judge, the mismatch cohorts, an engine-improvement candidate
+queue)."* None of that is built.
+
+**This is the #540 failure exactly, attempted again eight hours after writing the gate that catches
+it** — and by the person who wrote it. A fix landing and being verified is not the task being done;
+the recorder was one component of a readout that does not exist yet. The gate held, which is the
+argument for gates over intentions in one line.
