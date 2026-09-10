@@ -1180,6 +1180,78 @@ def close_bar_matches(quoted: str, actual_bar: str, min_run: int = 4) -> bool:
     return False
 
 
+# A verify condition whose ONLY observable is an ABSENCE is satisfied by a system that is
+# not running at all. Decidable from the text, which is why it can be a gate at all.
+_NEG_OBSERVABLE = re.compile(
+    r"\b(?:no|not|never|zero|none|without|absent|doesn'?t|does not|"
+    r"stays? (?:quiet|silent|empty)|remains? (?:quiet|silent|empty))\b", re.I)
+_POS_OBSERVABLE = re.compile(
+    r"(?:\b(?:appears?|present|populated|written|writes?|emits?|fires?|records?|contains?|"
+    r"reads?|shows?|equals?|carries|carrying|non-?zero|non-?null|at least|>=|greater than)\b"
+    r"|\b[1-9]\d*\b)", re.I)
+
+
+def verify_is_absence_only(bar_text: str) -> bool:
+    """True when the criterion asks ONLY for something to be missing.
+
+    `no page fired` is true of a healthy night AND of a dead job AND of an un-deployed image.
+    `no page fired AND the L3 row still records the value` is not — the second half cannot be
+    satisfied by absence. That difference is the whole check.
+    """
+    if not bar_text:
+        return False
+    # Strip CLOCK TIMES and DATES first. A bare number is a positive observable ("3 rows",
+    # "~$37") but "9:31" and "2026-09-11" are not — and without this the "9" in "no
+    # sizing_regime_fallback row at 9:31" defeated the whole check, which is the exact
+    # sloppiness this gate exists to object to (caught by its own RED test, 2026-09-10).
+    scrubbed = re.sub(r"\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}:\d{2}\b", " ", bar_text)
+    # A positive VERB directly negated is still an absence claim: "writes zero rows" and
+    # "records nothing" assert that nothing happened. Drop the verb so the negation stands,
+    # or the check is defeated by phrasing rather than by substance.
+    scrubbed = re.sub(
+        r"\b(?:writes?|records?|emits?|fires?|shows?|reads?|appears?|contains?|returns?)\s+"
+        r"(?=(?:zero|no|none|nothing)\b)", " ", scrubbed, flags=re.I)
+    return bool(_NEG_OBSERVABLE.search(scrubbed)) and not _POS_OBSERVABLE.search(scrubbed)
+
+
+def _absence_only_verify_gate(errors, tasks) -> None:
+    """A `deployed` task may not rest on an absence alone (operator 2026-09-10).
+
+    THE DAY THIS CAME FROM. He asked whether the pending verifies were "looking for the right
+    conditions to be confirmed". Three of four were not: #632's *no page on a sub-P95 night* is
+    true of an ordinary quiet night that never engages the guard; #630's *no fallback row on an
+    ordinary morning* is produced identically by the BROKEN code; #631 counted the wrong number.
+    Every one would have been reported as a pass.
+
+    Only the first class is decidable from text, so only it is gated: if the criterion contains a
+    negative observable and no positive one, it cannot distinguish "working" from "not running".
+    The escape is to say what a real failure would look like — `WOULD-FAIL-IF:` — which is exactly
+    the sentence I skipped writing on all three. A task that genuinely can only be checked by an
+    absence (an alarm that fires on a rare failure) is legitimate; it just has to say so.
+
+    ⚠ WHAT THIS DOES NOT CATCH, stated so it is not mistaken for full cover: a verify with a
+    positive observable that is nonetheless NON-DISCRIMINATING — #630's *risk_dollars reads full
+    size*, which the broken code also produces. That needs knowing what the broken system would
+    output and is not textually decidable. `WOULD-FAIL-IF:` is the only lever on it, and it works
+    by forcing the question, not by checking the answer.
+    """
+    for t in tasks:
+        if t["status"] != "deployed":
+            continue
+        bar = close_bar_for(t["title"])
+        if not bar:
+            continue
+        kind, txt = bar
+        if not verify_is_absence_only(txt):
+            continue
+        if re.search(r"WOULD-FAIL-IF:", t["title"]):
+            continue
+        errors.append(
+            f"task #{t['id']}: its {kind} asks ONLY for something to be ABSENT, so a system that "
+            f"is not running passes it — the 2026-09-10 class. Add a positive observable (a row "
+            f"written, a count, a value) or state `WOULD-FAIL-IF: <what a real failure would look "
+            f"like>`. Its {kind} reads: \"{txt.strip()[:150]}\"")
+
 def _close_evidence_gate(errors, tasks) -> None:
     """A task may not leave PLAN.md unless the close is written down AND judged against the
     task's OWN bar — its DoD where it has one.
@@ -1202,6 +1274,11 @@ def _close_evidence_gate(errors, tasks) -> None:
     mechanically-checkable things are gated.
     """
     import subprocess
+    # Only meaningful against the REAL board. Under test (and any caller that redirects PLAN to a
+    # fixture) the git diff would describe the repo's PLAN.md while `tasks` describes the fixture,
+    # so every real task would read as "removed" — a gate firing on a file it is not looking at.
+    if PLAN != REPO / "PLAN.md":
+        return
     try:
         diff = subprocess.run(
             ["git", "diff", "--cached", "origin/main", "--", "PLAN.md"], cwd=str(REPO),
@@ -1640,6 +1717,7 @@ def main(argv: list[str]) -> int:
     _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
     _shipped_pending_gate(tasks, errors)   # `pending` + own code commit = stale line -> duplicate card (operator 7/25)
     _stale_block_gate(tasks, errors, today)   # [blocked:] is not an unlimited rebump pass (operator 7/26)
+    _absence_only_verify_gate(errors, tasks)   # a verify satisfied by absence alone (operator 9/10)
     _close_evidence_gate(errors, tasks)   # a close must be judged against the task's OWN DoD (operator 9/10)
     _standing_ask_gate(errors)   # a proofless / resurrected operator-ask FAILS the commit (operator 9/08)
     _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
