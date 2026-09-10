@@ -956,7 +956,12 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
     if missing or target_fixed is None or live_stop >= entry:
         reason = f"missing_inputs:{','.join(missing) or 'invalid_frame'}"
         for arm in todo:
-            follows_live = arm[4]
+            # arm[5] is follows_live_rule; arm[4] is trail_rule, and a non-empty trail rule
+            # is TRUTHY — so any trailing arm read as follows-live here regardless of its
+            # flag. Harmless while every trailing arm happens to be follows-live, wrong the
+            # moment one is not. Found 2026-09-10 while chasing something that turned out
+            # not to be a bug at all.
+            follows_live = arm[5]
             fields = _base_fields(
                 trade, arm, fill_day=fill_day, inputs=inputs, era=era, stamp=stamp,
                 settled_session=last_session, target_price=None,
