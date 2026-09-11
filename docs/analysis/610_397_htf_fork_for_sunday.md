@@ -17,6 +17,23 @@ instrument defects below.
 **So the decision is: what do we do to get the DETECTOR right.** The options are re-framed on that
 axis.
 
+## ⛔ And it goes further than that — HTF is not yet a setup at all
+
+Operator, same turn: ***"we also haven't figured out optimal entry and exit, sizing, etc etc for
+HTF."***
+
+CLAUDE.md's own definition: **a SETUP is a named entry with a DEFINED BUY POINT AND STOP. If you
+cannot state where it buys and where it stops, it is not a setup.** HTF has neither settled. So the
+replay did not test "HTF as written today" — **it tested HTF with a placeholder entry (`base_high`
+on the break day), a placeholder exit (+3R/−1R) and no sizing work at all.**
+
+**That is why the capture number cannot carry any weight: R itself is measured against a stop nobody
+chose.** Change the stop and every number on this page moves, including the 25% breakeven, because
+the breakeven is a property of the bracket rather than of the setup.
+
+**What HTF has today is a detector for a chart CONDITION.** The entry, the exit and the sizing are
+unstarted work, and they come after the detector is right — not alongside a graduation decision.
+
 ## Method and population
 
 **Rows:** `mi_htf_breakout_shadow` breakouts with a SETTLED outcome — **n = 148** — replayed from
