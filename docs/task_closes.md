@@ -349,3 +349,23 @@ tie-break, and the tiny-inside-huge case is pinned by its own test. Suite 36 gre
 ⛔ AND IT SAT OPEN FIVE DAYS AFTER SHIPPING, which is the reason it is closable today: it lives in
 the dashboard repo, and until `#641` half (a) shipped this morning **no git-derived surface in this
 board could see a commit there**. `--today` named it within minutes of that scan going live.
+
+## #561 — Weekly Movers: name the movers, rank by the jump (closed 2026-09-11, shipped 2026-09-10)
+BAR: the list renders on his phone, names the movers, and he can tell in one look which themes got
+stronger this week. Ask HIM to confirm that, since 'readable' is his call and this task exists
+because I judged it for him once already
+EVIDENCE: **He confirmed it himself, unprompted, in one line: *"pure play nand/dram 90->18, +72"*.**
+That is the DoD executing — he opened the view, found the mover, and read its jump without being
+told what to look for. Nobody else could have produced that evidence, which is exactly why the DoD
+was written to require him.
+▶ **And the number is RIGHT, checked rather than accepted:** recomputing `compute_weekly_movers`
+against the same snapshot the page reads returns `Pure-Play NAND/DRAM Memory Chip Makers`,
+`prev_rank 90 → curr_rank 18, delta 72` as the TOP gainer of 15, with `entrants_total 9`. A readable
+view showing a wrong number would be worse than an unreadable one, so his reading was verified
+against the data, not taken on trust.
+▶ Shipped `26ebd91` (2026-09-10) and corrected the same evening in `5d119e0`: *entrants* had read
+19 when **12 of those 19 carried a known rank the previous week** — a known prior rank is a known
+prior rank, even past the board cut. Corrected to 9, which is the number the page now shows. The
+identical defect was found in Rank Flow the next day (#640) and in the same shape.
+⛔ IT SAT `in_progress` WITH ITS WORK LIVE because the commit is in the dashboard repo, invisible to
+every git-derived surface here until #641's second-repo scan shipped this morning.
