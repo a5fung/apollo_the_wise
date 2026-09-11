@@ -182,3 +182,24 @@ weekend. A Sonnet card building #561 found it by running `git log` — the exact
 [[grep-git-before-scoping-a-card]] exists for, which I hold as a memory and did not apply. The
 LIKELY-BUILT surface could not help: it keys on built/deployed markers in the task text, and this
 line had none, because nobody had written one.
+
+## #638 — the revert monitor may not blame the lattice without checking it did anything (closed 2026-09-10, shipped + verified live the same evening)
+BAR: the trigger gains a DISCRIMINATING pre-condition — it may only recommend a revert when the
+lattice actually CHANGED a grade in the window (`shadow_tier` ≠ `llm_quality` on at least one row)
+EVIDENCE: Shipped in `99b19289` and extended in `33cccd13`; deployed 2026-09-10 21:1x ET, `both`
+then `execution`, both green, box on `33cccd13`. **Verified on the RUNNING apollo-market image
+against real prod data, not on a green suite:** `_lattice_retier_rows` over 2026-09-09/09-10 — the
+exact window that produced tonight's false alarm — reads **13 rows** and `lattice_altered_nothing`
+returns **True**, which is the branch that withholds the revert SQL. So the pre-condition
+discriminates on the case it was built for, through the deployed code.
+⛔ AND THE FIRST VERSION ONLY COVERED ONE OF THREE ENTRANCES. `lattice_inert` was computed inside
+trigger (c)'s branch while the announce block that prints the SQL is shared by all three, so an (a)-
+or (b)-only firing left the key unset and printed the prescription with no check and no caveat —
+identical behaviour to before the fix. Trigger (a) was the worse half: `_lattice_acting_tier`
+returns the raw LLM grade whenever `live_side != "lattice"`, so it could name the lattice for a
+missed real EP the lattice was never in the path of. The verdict now belongs to the shared block,
+over the union of every fired trigger's dates: confirmed on the running image — computed once,
+after the last trigger append, with all three triggers feeding it. Found by the cleanup review, not
+by me. ⚠ The DoD's `WOULD-FAIL-IF` (it fires again on a window where the lattice altered nothing)
+is a falsification condition, not a further requirement — and it is now structurally unreachable on
+any trigger, which is what the bar asked for.
