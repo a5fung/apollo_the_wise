@@ -3045,6 +3045,39 @@ reviews:
       doesn't need this strip. Confirmed by grep.
 
   - review_id: trade_stream_stop_placement_without_orders_row
+
+
+    can_fire:
+
+      predicate_runs: >-
+        Ran 2026-09-11 via operator_asks.py --audit against prod and returned 0; proxy also returned
+        0 over 14 days when chased 2026-09-06.
+
+      nonzero_possible: >-
+        NO, AND THIS IS THE HONEST ANSWER. The predicate's own SQL comment says the specific audit
+        events at trade_stream.py:367 and :600-611 were never added, so it runs a naked-position
+        PROXY. A zero therefore cannot separate 'no stop was placed without a row' from 'we still
+        cannot see it'. The writer for the real question does not exist. Tracked as a writer-less
+        remainder on #633.
+
+      lane_live: >-
+        Live lane enabled and both code paths are reachable on any entry-fill stop remediation, so
+        the question is live even though the instrument is not.
+
+      threshold_vs_observed: >-
+        Threshold 1. Proxy observed 0 over 14 days (2026-09-06). That number measures the proxy, not
+        the question — recorded so it is never read as an answer.
+
+      era_scoped: >-
+        The proxy is current-state. Era scoping for the REAL predicate is undefined until the two
+        audit events exist, which is part of what #633 owes.
+    zero_verdict: >-
+      2026-09-06 WAITING — ALREADY RULED, re-surfacing for the same reason: the verdict lived in
+      #184's PLAN line, not here. Its naked-position proxy returned 0 over 14 days. ⚠ The predicate's
+      own SQL comment says it is a PROXY and that the specific audit events at trade_stream.py:367 and
+      :600-611 were never added — so a zero cannot distinguish 'no stop was placed without a row' from
+      'we still cannot see it'. That is the writer-less remainder tracked on #633 (2026-09-16), not a
+      new finding.
     kind: tripwire
     title: "trade_stream.py places stops without mi_live_orders row (2 edge case sites)"
     question: |
@@ -5828,6 +5861,34 @@ reviews:
       live cutover.
 
   - review_id: gate5h_value_invariant_proposal
+
+
+    can_fire:
+
+      predicate_runs: >-
+        Ran 2026-09-11 via operator_asks.py --audit against prod and returned 0.
+
+      nonzero_possible: >-
+        Reads stop_price / entry_price / hard_stop on closed trades — columns written by the live
+        exit path on every close, and the population is non-empty (28 closed live trades all-time
+        flow through these columns per exit_tune_cohort_review).
+
+      lane_live: >-
+        magna53 live lane enabled; closed live trades exist and are still accruing.
+
+      threshold_vs_observed: >-
+        Threshold 1. A tripwire, not a rate: observed zero KLAR-class wrong-value rows since the
+        original bug, which is the evidence AGAINST building the invariant now.
+
+      era_scoped: >-
+        The invariant is methodology-independent (a long needs entry > stop, and hard_stop > stop),
+        so it survives exit-rule changes including the 2026-09-06 flip. No historical window to
+        strand.
+    zero_verdict: >-
+      2026-09-11 WAITING — no KLAR-class recurrence since the review became eligible 2026-09-01, and
+      none since the original bug. This is a BUILD PROPOSAL gate, not an incident monitor: zero
+      recurrences is the evidence, and it argues AGAINST building the value invariant now. Re-ask only
+      if the predicate fires; it needs no calendar nudge.
     kind: tripwire
     title: "Gate 5 H: value-invariant preflight for sensitive trade-state columns"
     question: |
@@ -8206,6 +8267,31 @@ reviews:
     resolution_2026_07_04: |
       CLOSED (operator 7/4): the 6/3 resolution stands (entry-side fill-rate class, order-record-grounded; exit-side activation is broker-identical paper/live + covered by #123 + never-naked). Successor = PLAN #414 (gated entry-tuning: widen limit vs stop-market-with-chase-cap, CHANGE_PROCESS, composes with #180).
   - review_id: orb_entry_stuck_pending_new
+    can_fire:
+      predicate_runs: >-
+        Ran 2026-09-11 via operator_asks.py --audit against prod and returned 0; chased by hand
+        2026-09-06.
+      nonzero_possible: >-
+        Reads cancelled/expired ORB entries in the live trade tables; 21 such cancels exist since
+        the 2026-06-18 window fix, so the population is real. The predicate's own exclusions reduce
+        it to zero, not an absent writer.
+      lane_live: >-
+        magna53 live ORB lane enabled; entries are submitted on market mornings and cancels keep
+        accruing.
+      threshold_vs_observed: >-
+        Threshold 1. Of the 21 cancels since 2026-06-18: 12 are our own 10:00 ET cleanup, 5 carry
+        explicit broker or setup reasons, and 4 are unexplained but a DIFFERENT class (no order row
+        at all, answered by widening audit_invariants.check_reason_coverage). None is stuck-pending.
+      era_scoped: >-
+        The 2026-06-18 ORB window fix is the era boundary and the counted population starts after
+        it, so pre-fix behaviour cannot leak in.
+    zero_verdict: >-
+      2026-09-06 WAITING — ALREADY RULED and re-surfacing only because the verdict was written into
+      #184's PLAN line instead of here. The chase that day: of 21 cancels since the 2026-06-18 window
+      fix, 12 are our own 10:00 ET ORB-window cleanup and 5 more carry explicit broker/setup reasons.
+      Armed and quiet is the tripwire working. (The 4 unexplained live cancels that same chase DID
+      find are a different class — no order row at all — and were answered by widening
+      `audit_invariants.check_reason_coverage`, deployed 2026-09-06.)
     kind: tripwire
     title: "P0 — ORB entry stuck in `pending_new` (missed RDW 2026-05-26)"
     closed_on: 2026-05-28
@@ -9852,6 +9938,34 @@ reviews:
     added_on: 2026-07-26
 
   - review_id: htf_sizing_left_on_legacy_formula
+
+
+    can_fire:
+
+      predicate_runs: >-
+        Ran 2026-09-11 via operator_asks.py --audit against prod and returned 0.
+
+      nonzero_possible: >-
+        Reads mi_strategies.phase, a populated current-state column; other strategies already sit in
+        paper and live, so a non-zero is one phase flip away.
+
+      lane_live: >-
+        n/a BY DESIGN — it fires ON the HTF lane reaching paper or live, and HTF is in neither
+        today. That is the condition, not a gap.
+
+      threshold_vs_observed: >-
+        Threshold 1 HTF strategy in phase paper or live; observed 0. His 2026-07-26 ruling is
+        exactly this state holding.
+
+      era_scoped: >-
+        Current-state column with no historical window, so no rule change can strand it; the
+        graduation question itself lives on #397/#610.
+    zero_verdict: >-
+      2026-09-11 WAITING — the condition is exactly right: it counts HTF strategies in phase
+      paper/live, which is ZERO because HTF is not graduated. That is his own 2026-07-26 ruling
+      holding ("leave to old for now is fine... we can't leave it permanently"), and the predicate
+      fires automatically the moment HTF reaches paper. Nothing to decide until then; #397/#610 is
+      where the graduation question actually lives.
     kind: tripwire
     title: "#456 — the HTF shadow was deliberately left on the PRE-#456 sizing formula; it cannot stay there once HTF touches money"
     question: >-
@@ -11757,6 +11871,39 @@ reviews:
     added_on: 2026-09-10
 
   - review_id: spiky_guard_first_engagement
+
+
+    can_fire:
+
+      predicate_runs: >-
+        Ran 2026-09-11 via operator_asks.py --audit against prod and returned 0.
+
+      nonzero_possible: >-
+        Writer is the nightly self-audit band detector (system_audit.py:68 registers
+        cooldowns_per_day at ceiling 20 / direction high). On prod `anomaly_detected` carries 46
+        cooldowns_per_day rows all-time across bands 1, 2 AND 3 — band 2 is demonstrably reachable,
+        not theoretical.
+
+      lane_live: >-
+        n/a — an observability metric from the daily self-audit, gated by no strategy lane; 46 rows
+        spanning months prove the job runs.
+
+      threshold_vs_observed: >-
+        Threshold 1 row after 2026-09-09. Prod 30-day P95 is 19 and recent nights run about 9, so
+        firing needs a genuinely spiky night — zero on day one is the expected reading.
+
+      era_scoped: >-
+        Window pinned to created_at > 2026-09-09, the date #632's P95 floor shipped, so pre-floor
+        rows cannot satisfy it. WEAKNESS NAMED: it counts pages that SURVIVED the floor, so a zero
+        reads the same for a quiet tape and for a floor suppressing everything. Sharpening tracked
+        on #633.
+    zero_verdict: >-
+      2026-09-11 WAITING — day one: eligible TODAY for the first time, so zero is the expected
+      reading, not a finding. #632's P95 floor only engages on a night whose cooldown count clears its
+      own 30-day P95; prod P95 is 19 and recent nights run ~9. ⚠ NAMED WEAKNESS, not hidden: this
+      predicate counts PAGES that survived the floor, so a zero is produced identically by a quiet
+      tape and by a floor that suppresses everything. Sharpening it needs a row recording the count-
+      vs-P95 comparison itself; folded into #633 rather than answered here.
     kind: cadence
     title: "The spiky-metric pager guard — has it ever actually ENGAGED? (#632)"
     question: |
