@@ -226,3 +226,52 @@ population reads like a failure here and would read like a pass somewhere else. 
 then a wider query said 10, and the answer is 2. The other 8 hold plain prose and were never JSON —
 their tails are gone and no repair restores them. All three numbers are recorded in the probe's own
 docstring so the corrected one is the one that survives.
+
+## #631 — one exit recorder, twelve arms (closed 2026-09-11, shipped 2026-09-09, index fix 2026-09-10)
+BAR: (a) every arm the other three tables test exists as an arm in the one recorder, with coverage
+PROVEN arm-by-arm before anything is retired; (b) history preserved — migrate or leave the old
+tables read-only, never dropped; (c) the duplicate reviews retired with a pointer to the single
+read, and ONLY those whose question is genuinely covered; (d) one gated review does the reading
+EVIDENCE: all four checked against prod today rather than taken from the task line —
+(a) `mi_live_fill_counterfactuals` holds **12 distinct arms, 79 rows, 8 trades**, fills 2026-08-18 →
+2026-09-08 — every arm in the `ARMS` table is writing.
+(b) `mi_orb_shadow_trades` still exists with **356 rows**; nothing dropped.
+(d) `live_fill_counterfactuals_first_read_482` is the single gated review and reads 7 of 20
+(earliest 2026-10-05) — confirmed in `operator_asks.py` output this morning.
+▶ THE LAST OPEN ITEM — the `arm[5]` index fix — is live on the running image (confirmed 2026-09-10
+inside apollo-market) AND, checked today, **the bug never reached the data**. It sat only in the
+`missing_inputs` / `invalid_frame` branch, and every `harvest_*` row in prod is `settled`: 24 rows
+across the four harvest arms, **0 with `breakeven_arm_r` set and avg `target_r` = 2.00**, which is
+the fixed premise those arms are supposed to walk. Had the bug fired, they would carry the live
+level and a non-null breakeven arm.
+⛔ WHY IT WAS REAL ANYWAY, recorded so the next reader does not dismiss it: `arm[4]` is `trail_rule`
+and **every arm in the table carries a non-empty one**, so the old index read TRUTHY for all twelve —
+the four `follows_live_rule=False` arms included. Latent, not harmless: the first unscoreable fill
+would have recorded four arms against a premise they do not hold.
+
+## #501 — the jobs that could die without telling anyone, Tier-1 (closed 2026-09-11, deployed 2026-09-10)
+BAR: the Tier-1 four surfaced (audit + deduped Telegram)
+EVIDENCE: deployed 2026-09-10 12:0x ET, both scopes. The task's own verify line called for the
+NEGATIVE check — *no false page fired* — which is the shape this week's rule forbids on its own, so
+each of the four carries a POSITIVE companion proving its host path actually ran, all queried on
+prod this morning (07:00–09:15 ET, a live market day):
+- **Zero** `job_failed_error`, `polygon_snapshot_empty_error` or `order_status_reconcile_mode_error`
+  rows since the deploy. That is the absence half.
+- **F1** — 105 job runs over 18 distinct jobs since 07:00 ET, every one `success`, including the two
+  watchdogs that are the whole reason this is Tier-1: `stop_ack_timeout_watchdog` ×32 and
+  `stuck_fill_watchdog` ×16. A handler-less death would have written a row; none did.
+- **F2** — 1,867 `mi_ep_scan_log` rows over **28 distinct ticks** today, so the full-market snapshot
+  came back non-empty on every tick and the guard was exercised 28 times without firing. An empty
+  snapshot pages; an inverted guard would have paged 28 times.
+- **F3** — `stream_health_watchdog` ran 4 times (last 09:15 ET) with no failure row; the WS-outage
+  backstop chain is alive.
+- **F4** — `order_status_reconciled` fired 4 times since 07:00 ET, so the 15-minute reconcile is
+  walking its modes; a mode dropping out writes the mode-error row, and none exists.
+▶ SCOPE, stated because the DoD sentence still carries it: the second clause — *operator rules the
+Tier-2/3 batch* — moved to **#635** on 2026-09-10 (F5–F13, never built). This line was narrowed to
+Tier-1 that day so neither half wore a false headline.
+⛔ AND ITS OPEN OPERATOR FORK WAS MOVED OUT BEFORE CLOSING, not closed with it. *Every job-failure
+page arrives silent* (`core/notifications.py:90`, `:104`) — it had been written inside this task's
+text on 2026-09-10 and was therefore invisible to `operator_asks.py`, which reads only the standing
+table. It is now a row in that table with a proof. **A close must not take an unanswered ask down
+with it**, which is the whole reason this ledger exists.
