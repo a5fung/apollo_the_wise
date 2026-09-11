@@ -170,6 +170,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "theme_axis_eod_unscored",  # theme-correctness Step 4 (THE INSTRUMENT) 2026-09-07 — EOD null-control population write for the theme-axis shadow; pure compute + DB/audit, no broker calls, no grade/admission change, SILENT (no Telegram)
     "theme_resilience_weekly",  # #644 2026-09-11 — Sunday weekly per-theme down-day-resilience capture for the November forward test; pure compute (get_active_themes + the already-tested get_down_day_resilience) + DB/audit, no broker calls, no grade/admission/ranking change, SILENT (no Telegram), RECORDS ONLY
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
+    "strength_spread_alert",  # #579 2026-09-12 — ad-hoc strength-map direction-spread crossing alert; read-only + audit, Telegram only on a genuine crossing
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
     "delayed_residual",  # #489 — EOD delayed-feed residual tracker; read-only (Polygon replay + DB/audit), no broker calls
     "rt_miss_digest",  # #489 — 10:00 ET residual real-time-miss morning digest; read-only (mi_audit_log + Telegram)
@@ -4558,6 +4559,31 @@ async def _book_concentration_job():
         await notify_job_failure("book_concentration", str(e))
 
 
+async def _strength_spread_alert_job():
+    """Run at 17:40 ET mon-fri — after the 17:00 nightly_data_pull refreshes
+    mi_daily_closes (the input is DAILY CLOSES, so this is the earliest hour the reading can
+    honestly be said to have changed; no intraday read is implied). #579 — ad-hoc alert on the
+    strength-map direction spreads (`agents/market_intelligence/strength_map.py`): Telegrams
+    ONLY on a genuine crossing of each pair's own freshly recalculated 75th-percentile bar, in
+    plain words naming the direction — not on a schedule, and not on every day the reading
+    stays above the bar. Only Precious metals and Energy qualify (the only two complexes with
+    both an anchor and an equity expression). READ-ONLY + Telegram; no strategy, entry, exit,
+    sizing, safeguard, grade or admission touched anywhere in this path (THE LINE)."""
+    try:
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.strength_map import run_spread_crossing_alert
+        res = await run_spread_crossing_alert(et_today())
+        logger.info(
+            f"strength-spread-alert: fired={res['fired']} skipped={res['skipped']} "
+            f"errors={res['errors']}")
+        if res["errors"]:
+            await notify_job_failure(
+                "strength_spread_alert", f"complex(es) failed: {res['errors']}")
+    except Exception as e:
+        logger.error(f"strength-spread-alert job failed: {e}", exc_info=True)
+        await notify_job_failure("strength_spread_alert", str(e))
+
+
 async def _sell_discipline_recorder_job():
     """Run at 17:46 ET (EOD, after the 17:00 nightly close pull; the 17:38/17:42 pivot and
     giveback shadows that used to precede it were unregistered 2026-09-09, #631).
@@ -5963,6 +5989,20 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_book_concentration_job, "book_concentration"),
         CronTrigger(hour=16, minute=18, day_of_week="mon-fri", timezone="America/New_York"),
         id="book_concentration",
+        replace_existing=True,
+    )
+
+    # #579 — ad-hoc strength-map spread-crossing alert, 17:40 ET mon-fri: after the 17:00
+    # nightly_data_pull refreshes mi_daily_closes, and a free slot ahead of the 17:45+ EOD
+    # chain (17:35/17:36 HTF family, 17:45 wick_forward_returns, 17:46 sell_discipline, ...).
+    # Outside both deploy blackout windows (09:25-10:05 and 16:00-17:00 ET) like every job in
+    # this file. Fires ONLY on a genuine crossing of each pair's own recalculated 75th-
+    # percentile bar — not on a schedule. Read-only + Telegram, no strategy/entry/exit/sizing/
+    # safeguard change (THE LINE).
+    _scheduler.add_job(
+        audit_wrap(_strength_spread_alert_job, "strength_spread_alert"),
+        CronTrigger(hour=17, minute=40, day_of_week="mon-fri", timezone="America/New_York"),
+        id="strength_spread_alert",
         replace_existing=True,
     )
 

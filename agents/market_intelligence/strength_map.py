@@ -34,11 +34,12 @@ it is sequenced first.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date
 from typing import Any
 
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
 
@@ -283,3 +284,319 @@ async def build_strength_map_section(today: date) -> str:
     """Assemble + render. Raises to the caller on DB failure; the brief fail-opens loudly so a
     map problem can never cost the operator the rest of his briefing."""
     return format_strength_map(await compute_strength_map(today))
+
+
+# ── #579 — the AD-HOC spread-crossing alert ────────────────────────────────────────────────
+#
+# Operator's proving case: this module already computes "are the miners outrunning the metal?"
+# — and it only ever surfaced inside the WEEKLY briefing, so he found the 15.3pt precious-metals
+# lead on Twitter before Apollo told him. *"what I really love is not preset reviews and
+# notification, but ad hoc things that Apollo can discover and send me whenever it deems it's
+# relevant and the timing is right."* The computation was never the gap. The cadence was.
+#
+# THE PRIMITIVE IS `_dominance_band`, GENERALISED — SAME SHAPE, DIFFERENT STATISTIC. That
+# function is a self-calibrating band for a CLASSIFIER (median, so it can be told apart from
+# "typical" about half the time — fine inside a 3-way weekly read). An ad-hoc trigger needs a
+# rare-tail bar, not a typical-move one: `docs/analysis/579_spread_firing_distribution_2026-09-11.md`
+# measured the median-band ported unchanged fires 50.7%/47.9% of ALL days — worthless as a
+# trigger. **Each series' own 75TH PERCENTILE of |30-session change|, recomputed from trailing
+# history every run**, prices out at ~1.2 crossings/month per complex. That number is MEASURED,
+# not guessed — the two percentile constants below are the ONLY threshold-shaped literals in
+# this section; everything else derives from data every time it runs.
+#
+# UNLIKE `_dominance_band`'s deliberately-narrow 60-day "recent" window (built to catch the BAND
+# ITSELF shifting), the percentile here is computed over the FULL trailing history available.
+# The measured ~1.2/month figure was priced against that full-history population — a narrow
+# recent window would be reactive (today's own spike inflates tomorrow's bar) and would quietly
+# re-argue a number the operator has already priced and accepted. "Recomputed every run" means
+# the population GROWS as more days of `mi_daily_closes` arrive, not that it's windowed to a
+# fixed recent slice.
+#
+# "30-SESSION", not "30-day": the move is measured as an INDEX offset of 30 trading entries in
+# each complex's own spread series (matching the #579 probe that produced the priced numbers),
+# not a 30-calendar-day gap the way `_dominance_band`'s BTC-dominance series is windowed — the
+# two series have different data-density reasons for that choice, not an inconsistency to fix.
+_SPREAD_ALERT_PCTL = 75                       # measured 2026-09-11 (#579) — NOT 10 or 15pts; a PERCENTILE, recomputed fresh from data
+_SPREAD_ALERT_MOVE_SESSIONS = 30              # the horizon #579 measured against, and the crypto lane's own horizon
+_SPREAD_ALERT_WINDOW_BARS = _WINDOWS[0][1]    # 21 — the SAME 1M window the operator was shown, not a second constant
+_SPREAD_ALERT_MIN_JUDGED = 240                # mirrors `_DOM_BASELINE_DAYS` — below this a percentile is too noisy to trust; SKIP rather than guess a bar
+
+# Only complexes with BOTH an anchor and an equity expression can carry a direction spread at
+# all (#579 DoD 6) — Uranium/Agriculture/Macro backdrop have no `senior`/`junior` legs paired
+# with an anchor and must be ABSENT from this alert, never silently counted as quiet. Plain-word
+# labels for the message (DoD 4: "gold miners pulling ahead of gold", not "Precious metals
+# spread +14.9").
+_SPREAD_ALERT_LABELS: dict[str, dict[str, str]] = {
+    "Precious metals": {"anchor": "gold", "expression": "gold miners"},
+    "Energy": {"anchor": "oil & gas", "expression": "energy stocks"},
+}
+_SPREAD_ALERT_COMPLEXES: tuple[str, ...] = tuple(_SPREAD_ALERT_LABELS)
+
+
+def _percentile(xs: list[float], p: float) -> float | None:
+    """Linear-interpolation percentile (numpy's default 'linear' method), no numpy dependency.
+    `p` in [0, 100]."""
+    if not xs:
+        return None
+    s = sorted(xs)
+    n = len(s)
+    if n == 1:
+        return s[0]
+    k = (p / 100.0) * (n - 1)
+    lo = int(k)
+    hi = min(lo + 1, n - 1)
+    frac = k - lo
+    return s[lo] + (s[hi] - s[lo]) * frac
+
+
+def _returns_by_date(closes: list[tuple[date, float]], bars: int) -> dict[date, float]:
+    """{date: trailing %return over `bars` of THIS ticker's own trading days} — the same
+    definition `_ret` uses for "today", computed at every point instead of only the latest so
+    a full history can be walked."""
+    out: dict[date, float] = {}
+    for i in range(bars, len(closes)):
+        prev = closes[i - bars][1]
+        if prev != 0:
+            out[closes[i][0]] = (closes[i][1] / prev - 1.0) * 100.0
+    return out
+
+
+def _basket_returns_by_date(series: dict[str, list[tuple]], tickers: list[str],
+                             bars: int) -> dict[date, float]:
+    """Equal-weighted basket return at every date ANY member has enough history — the same
+    drop-the-short-leg rule `_basket` uses for "today", generalised across the whole series."""
+    per_ticker = [_returns_by_date(series.get(t, []), bars) for t in tickers]
+    all_dates: set = set().union(*per_ticker) if per_ticker else set()
+    out: dict[date, float] = {}
+    for d in all_dates:
+        vals = [m[d] for m in per_ticker if d in m]
+        if vals:
+            out[d] = sum(vals) / len(vals)
+    return out
+
+
+def _direction_spread_series(series: dict[str, list[tuple]], complex_def: dict,
+                              bars: int) -> list[tuple[date, float]]:
+    """(date, spread) oldest-first for one complex — expression minus anchor, the exact
+    quantity `compute_strength_map` shows for "today" (`windows[w]["spread"]`), computed at
+    every date instead of just the latest so #579's alert can measure its own history. Joined
+    by DATE (not raw list position) so a ticker with a different data start date can never
+    silently misalign the series."""
+    anchor = _basket_returns_by_date(series, complex_def["anchor"], bars)
+    expr = _basket_returns_by_date(series, complex_def["senior"] + complex_def["junior"], bars)
+    dates = sorted(set(anchor) & set(expr))
+    return [(d, expr[d] - anchor[d]) for d in dates]
+
+
+def _signed_session_moves(spread_hist: list[tuple[date, float]],
+                           n_sessions: int = _SPREAD_ALERT_MOVE_SESSIONS
+                           ) -> list[tuple[date, float]]:
+    """(date, SIGNED change in spread) over the prior `n_sessions` trading sessions. A positive
+    move means the equity expression gained ground on the anchor over that stretch; negative
+    means it lost ground — the sign IS the direction. #579: *"what about the reverse — what if
+    it drops ten points?"* — a fall is measured exactly like a rise (the magnitude gate below
+    is symmetric); only the message differs."""
+    return [(spread_hist[i][0], spread_hist[i][1] - spread_hist[i - n_sessions][1])
+            for i in range(n_sessions, len(spread_hist))]
+
+
+def _classify_spread_state(move_signed: float, band: float) -> str:
+    """'pulling_ahead' (expression gained on the anchor by AT OR ABOVE the band — #579 DoD 2:
+    "the move goes from below the bar to AT OR ABOVE it"), 'falling_behind' (lost by at/above
+    the band), or 'quiet' (inside the band — no direction earned)."""
+    if move_signed >= band:
+        return "pulling_ahead"
+    if move_signed <= -band:
+        return "falling_behind"
+    return "quiet"
+
+
+def _is_new_crossing(old_state: str, new_state: str) -> bool:
+    """#579 DoD 2+3 — the entire dedupe. Fire ONLY on a genuine crossing (into a non-quiet
+    state that differs from what was last persisted): a same-direction hold is one event, not
+    one per day it stays above (median run is 2-3 days — firing daily is the exact failure mode
+    named in the task); dropping back to 'quiet' fires nothing but clears the dedupe so the SAME
+    direction can fire again later; a direct flip to the OPPOSITE direction always fires — a
+    +10-through-zero-to-−10 swing is two different trades, not one continuing event."""
+    return new_state != "quiet" and new_state != old_state
+
+
+def _crossings_per_month(dated_moves: list[tuple[date, float]], band: float) -> float:
+    """#579 DoD 5 — the silence rate stated ON the alert itself, so a quiet month is provably
+    "nothing happened" rather than "the job died". Walks the WHOLE trailing history against
+    THIS run's freshly-recomputed band (not walk-forward re-percentiled at every step — that
+    would be a second, more expensive measurement the operator has not priced) and counts
+    genuine `_is_new_crossing` events, per direction, over the elapsed span."""
+    if not dated_moves:
+        return 0.0
+    state = "quiet"
+    events = 0
+    for _, mv in dated_moves:
+        new_state = _classify_spread_state(mv, band)
+        if _is_new_crossing(state, new_state):
+            events += 1
+        state = new_state
+    span_days = (dated_moves[-1][0] - dated_moves[0][0]).days
+    if span_days <= 0:
+        return 0.0
+    return round(events / (span_days / 30.44), 1)
+
+
+def evaluate_spread_crossing(spread_hist: list[tuple[date, float]], old_state: str) -> dict:
+    """PURE core (#579) — no I/O. Given one complex's full (date, spread) history and its last
+    PERSISTED alert state, decides whether the latest reading is a new crossing and returns
+    everything the message + audit row need. The DB-bound orchestrator
+    (`run_spread_crossing_alert`) is a thin I/O wrapper around this function; every dedupe rule
+    lives here and is tested here without a database."""
+    dated_moves = _signed_session_moves(spread_hist)
+    if len(dated_moves) < _SPREAD_ALERT_MIN_JUDGED:
+        return {"measured": False, "judged": len(dated_moves)}
+    band = _percentile([abs(m) for _, m in dated_moves], _SPREAD_ALERT_PCTL)
+    today_date, today_move = dated_moves[-1]
+    new_state = _classify_spread_state(today_move, band)
+    return {
+        "measured": True,
+        "judged": len(dated_moves),
+        "date": today_date,
+        "band": round(band, 2),
+        "move": round(today_move, 2),
+        "spread_now": round(spread_hist[-1][1], 2) if spread_hist else None,
+        "old_state": old_state,
+        "new_state": new_state,
+        "crossed": _is_new_crossing(old_state, new_state),
+        "crossings_per_month": _crossings_per_month(dated_moves, band),
+    }
+
+
+def format_spread_crossing_alert(complex_name: str, ev: dict) -> str:
+    """Telegram text for one crossing event. #579 DoD 4 — the message MUST name the DIRECTION
+    in plain words ("gold miners pulling ahead of gold" / "gold miners falling behind gold");
+    an absolute-value trigger would render opposite trades identically, which is the defect
+    this whole surface exists to fix. DoD 5 — states its own silence rate on the same message.
+    Monospace code block for the numbers, no pipe tables (CLAUDE.md Telegram formatting)."""
+    labels = _SPREAD_ALERT_LABELS[complex_name]
+    anchor, expr = labels["anchor"], labels["expression"]
+    expr_cap = expr[0].upper() + expr[1:]
+    if ev["new_state"] == "pulling_ahead":
+        headline = f"{expr_cap} pulling ahead of {anchor}"
+    else:
+        headline = f"{expr_cap} falling behind {anchor}"
+    spread_now = ev.get("spread_now")
+    if spread_now is None:
+        gap_line = "current 1-month gap: not computed"
+    else:
+        who, other = (expr, anchor) if spread_now > 0 else (anchor, expr)
+        gap_line = f"current 1-month gap: {who} ahead of {other} by {abs(spread_now):.1f}pts"
+    out = [
+        f"🗺 *Strength map — {complex_name}*",
+        headline,
+        "```",
+        f"30-session move: {ev['move']:+.1f}pts  (bar: {ev['band']:.1f}pts — this pair's own "
+        f"75th percentile, recalculated today)",
+        gap_line,
+        "```",
+        f"_Fires about {ev['crossings_per_month']:.1f}x a month for this pair — quiet the rest "
+        f"of the time · a READ, not a rule_",
+    ]
+    return "\n".join(out)
+
+
+_SPREAD_ALERT_STATE_TABLE = "mi_strength_spread_alert_state"
+
+
+async def _get_alert_state(conn, complex_name: str) -> str:
+    row = await conn.fetchrow(
+        f"SELECT state FROM {_SPREAD_ALERT_STATE_TABLE} WHERE complex_name = $1", complex_name)
+    return row["state"] if row else "quiet"
+
+
+async def _set_alert_state(conn, complex_name: str, state: str,
+                            move: float | None, band: float | None) -> None:
+    await conn.execute(
+        f"""
+        INSERT INTO {_SPREAD_ALERT_STATE_TABLE}
+            (complex_name, state, last_move, last_band, updated_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        ON CONFLICT (complex_name) DO UPDATE
+        SET state = EXCLUDED.state, last_move = EXCLUDED.last_move,
+            last_band = EXCLUDED.last_band, updated_at = NOW()
+        """, complex_name, state, move, band)
+
+
+async def run_spread_crossing_alert(today: date) -> dict:
+    """#579 — the ad-hoc alert on the strength-map direction spreads. THE LINE: notification
+    only — no strategy, entry, exit, sizing, safeguard, grade or admission is touched anywhere
+    in this function.
+
+    Scheduled DAILY, after `ingest_daily` has refreshed `mi_daily_closes` — the input is daily
+    CLOSES, so this is the earliest hour the reading can honestly be said to have changed (no
+    intraday read is implied or attempted).
+
+    Only `_SPREAD_ALERT_COMPLEXES` (Precious metals, Energy) are evaluated — DoD 6: Uranium,
+    Agriculture and Macro backdrop have no anchor+expression pair and are absent, not silently
+    treated as quiet.
+
+    Per complex: reads the persisted last-alert state, computes the full spread history, and
+    Telegrams ONLY when `evaluate_spread_crossing` reports a genuine crossing. State is
+    persisted only AFTER a successful Telegram send — a delivery failure leaves the OLD state
+    in place, so the next run's comparison naturally retries the same crossing instead of
+    silently eating it. An `mi_audit_log` row is written every run a band could be measured
+    (so the series is graphable even on quiet days), matching `book_concentration`'s
+    audit-always/Telegram-only-when-flagged house rule.
+
+    One complex's failure is caught and logged (`# loud-ok:`) so it can never block the other
+    complex or break the host job; a genuinely systemic failure (e.g. the DB read itself) still
+    propagates to the caller, which the scheduler wraps in `audit_wrap` + `notify_job_failure`
+    like every other job in this file."""
+    pool = await get_pool()
+    tickers = sorted({t for name in _SPREAD_ALERT_COMPLEXES
+                       for c in COMPLEXES if c["name"] == name
+                       for k in ("anchor", "senior", "junior") for t in c[k]})
+    fired: list[str] = []
+    skipped: list[str] = []
+    errors: list[str] = []
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_CLOSES_SQL, tickers, today)
+        series: dict[str, list[tuple]] = {}
+        for r in rows:
+            series.setdefault(r["ticker"], []).append((r["trade_date"], float(r["close"])))
+        for c in COMPLEXES:
+            if c["name"] not in _SPREAD_ALERT_COMPLEXES:
+                continue
+            try:
+                spread_hist = _direction_spread_series(series, c, _SPREAD_ALERT_WINDOW_BARS)
+                old_state = await _get_alert_state(conn, c["name"])
+                ev = evaluate_spread_crossing(spread_hist, old_state)
+                if not ev["measured"]:
+                    skipped.append(c["name"])
+                    logger.info(
+                        f"strength spread alert: {c['name']} insufficient history "
+                        f"({ev['judged']} judged days, need {_SPREAD_ALERT_MIN_JUDGED}) — "
+                        "skipped, no default guessed")
+                    continue
+                await log_audit_event(
+                    "strength_spread_alert_check",
+                    summary=(f"{c['name']}: state={ev['new_state']} move={ev['move']:+.1f} "
+                             f"band={ev['band']:.1f} crossed={ev['crossed']}"),
+                    detail=json.dumps({**ev, "date": str(ev["date"]), "complex": c["name"]}),
+                )
+                if ev["crossed"]:
+                    from agents.market_intelligence.briefing import send_telegram_message
+                    ok = await send_telegram_message(
+                        format_spread_crossing_alert(c["name"], ev))
+                    # `send_telegram_message` returns False (does NOT raise) on a missing
+                    # token/chat-id or an HTTP failure — the state write below must be SKIPPED
+                    # on that path, or the crossing is silently eaten: tomorrow's comparison
+                    # would see the OLD (unfired) state and never notice it already changed.
+                    if not ok:
+                        logger.warning(
+                            f"strength spread alert: Telegram send failed for {c['name']} — "
+                            "state NOT advanced, next run will retry this crossing")
+                        errors.append(c["name"])
+                        continue
+                    fired.append(c["name"])
+                await _set_alert_state(conn, c["name"], ev["new_state"], ev["move"], ev["band"])
+            except Exception as e:  # loud-ok: one complex's data/send problem must not silence the other complex or break the host job
+                logger.warning(f"strength spread alert failed for {c['name']}: {e}")
+                errors.append(c["name"])
+    return {"fired": fired, "skipped": skipped, "errors": errors}

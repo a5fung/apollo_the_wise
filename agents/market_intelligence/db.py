@@ -1213,6 +1213,22 @@ async def initialize_schema() -> None:
                 updated_at          TIMESTAMPTZ DEFAULT NOW()
             );
 
+            -- #579 — ad-hoc strength-map spread-crossing alert state (1 row per complex).
+            -- Persists whether the LAST EVALUATED day's reading was at/above its own freshly
+            -- recalculated 75th-percentile bar, and in which direction, so the daily job can
+            -- dedupe on (complex, DIRECTION): a same-direction hold re-fires nothing, a drop
+            -- back to 'quiet' clears the dedupe, and a direct flip to the opposite direction
+            -- always fires (two different events, not one). Written only AFTER a successful
+            -- Telegram send (strength_map.run_spread_crossing_alert), so a delivery failure
+            -- retries the crossing on the next run instead of silently eating it.
+            CREATE TABLE IF NOT EXISTS mi_strength_spread_alert_state (
+                complex_name  TEXT PRIMARY KEY,
+                state         TEXT NOT NULL,   -- 'quiet' | 'pulling_ahead' | 'falling_behind'
+                last_move     NUMERIC,
+                last_band     NUMERIC,
+                updated_at    TIMESTAMPTZ DEFAULT NOW()
+            );
+
             -- Cross-strategy allocator (#31) candidate queue. Strategies
             -- enqueue RankableCandidate rows during their normal scan; the
             -- 9:28 AM allocator job drains, scores, and selects top-N.
