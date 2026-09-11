@@ -34,6 +34,27 @@ the breakeven is a property of the bracket rather than of the setup.
 **What HTF has today is a detector for a chart CONDITION.** The entry, the exit and the sizing are
 unstarted work, and they come after the detector is right — not alongside a graduation decision.
 
+## ⛔ And the metric is backwards for an asymmetric setup
+
+Operator, same turn: ***"similar to with EP, it's asymmetric meaning lower winrate but outsized
+winners, at least that's the ideal goal."***
+
+**A +3R/−1R bracket CAPS every winner at +3R.** If the edge is a low hit rate with outsized winners,
+that bracket truncates precisely the thing being looked for — and then the measurement reports a low
+hit rate as failure, which is what a low-hit-rate setup looks like when it is working.
+
+**So "25 of 148 reached +3R" is not a weak result. It is a measurement taken through an instrument
+built for the opposite shape of edge.** A 25% breakeven only applies if every win is exactly 3R and
+every loss exactly 1R — the assumption an asymmetric setup violates by design.
+
+**What would actually measure it:** the distribution of maximum favourable excursion — how far the
+winners ran when they ran, and what share of total return the top few produced — not a hit rate
+against a fixed target. [[measure-the-tail-not-the-median]] · this is the same lesson as the live
+book, which reaches +1.8R on average and keeps −0.4R.
+
+⚠ **This compounds the point above rather than replacing it.** The stop was never chosen, AND the
+target caps the winners. Two invented parameters, and the metric derived from them decides nothing.
+
 ## Method and population
 
 **Rows:** `mi_htf_breakout_shadow` breakouts with a SETTLED outcome — **n = 148** — replayed from
