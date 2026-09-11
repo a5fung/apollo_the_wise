@@ -4694,6 +4694,78 @@ async def _finalize_partial_exit_locked(
     )
 
 
+# ── #646: the cancel/sell race, and never returning naked ────────────────────────────────────
+#
+# Alpaca has no atomic cancel-and-close for ONE symbol — `close_position` takes no `cancel_orders`
+# flag (only `close_all_positions` does, and closing the whole book is not an option). So a full
+# exit must cancel the protective stop, wait for the broker to release the shares, then sell. The
+# waiting step is the one that was missing on 2026-09-11.
+_EXIT_RELEASE_ATTEMPTS = 10       # ~5s total; the release is normally sub-second
+_EXIT_RELEASE_SLEEP_S = 0.5
+
+
+async def _await_shares_released(ticker: str, need: float, account_mode: str) -> bool:
+    """Block until the broker reports `need` shares FREE to sell, or give up.
+
+    `cancel_order` returns as soon as Alpaca ACCEPTS the cancel, not when it settles — the OKTA
+    log has the cancel acknowledged, the sell rejected for `held_for_orders: 2`, and the WS
+    cancellation event arriving afterwards, all inside one second. `qty_available` (#151) is the
+    field that distinguishes 'the shares are mine' from 'the shares are free'.
+
+    Returns True when they are free. False means the caller should still TRY the sell — the wait is
+    an optimisation, never a gate: a broker that reports oddly must not be able to block an exit.
+    """
+    for _ in range(_EXIT_RELEASE_ATTEMPTS):
+        try:
+            pos = await alpaca.get_position(ticker, account_mode=account_mode)
+        except Exception as e:   # loud-ok: a read failure must not block the sell
+            logger.warning(f"_await_shares_released: position read failed for {ticker} — {e}")
+            return False
+        if pos is None:
+            return True          # already flat; the sell will no-op or fail loudly, either is fine
+        if float(pos.get("qty_available") or 0) >= need:
+            return True
+        await asyncio.sleep(_EXIT_RELEASE_SLEEP_S)
+    logger.warning(
+        f"_await_shares_released: {ticker} still shows fewer than {need} free after "
+        f"{_EXIT_RELEASE_ATTEMPTS * _EXIT_RELEASE_SLEEP_S:.0f}s — selling anyway")
+    return False
+
+
+async def _restore_stop_after_failed_exit(
+    trade_id: int, ticker: str, shares: float, stop_price: "float | None", account_mode: str,
+) -> bool:
+    """Put back the protective stop a failed full exit already cancelled.
+
+    THE RULE THIS ENFORCES: a failed exit may leave the position OPEN, but it may never leave it
+    UNPROTECTED. Before 2026-09-11 `execute_full_exit` sent one Telegram and returned False with
+    the stop cancelled — OKTA sat naked from 16:45 Friday with no scheduled repair until Monday
+    09:31, about 64 hours. Restoring is not a new decision: it is the stop that was already there,
+    at the price it was already at.
+    """
+    if not stop_price or shares <= 0:
+        logger.error(f"_restore_stop_after_failed_exit: {ticker} has no stop price to restore")
+        return False
+    try:
+        placed = await alpaca.place_stop_order(
+            ticker, shares, float(stop_price), account_mode=account_mode)
+    except Exception as e:   # loud-ok: the caller pages either way; this says WHICH failure
+        logger.error(f"_restore_stop_after_failed_exit: re-placing {ticker} stop FAILED — {e}")
+        return False
+    new_id = (placed or {}).get("id")
+    if not new_id:
+        return False
+    try:
+        await set_stop_order_id(trade_id, new_id, reason="restored_after_failed_full_exit",
+                                account_mode=account_mode)
+    except Exception as e:   # loud-ok: the ORDER is live, which is what protects the money
+        logger.error(f"_restore_stop_after_failed_exit: {ticker} stop {new_id} placed but the "
+                     f"pointer write failed — {e}")
+    logger.warning(f"_restore_stop_after_failed_exit: {ticker} stop RESTORED at ${stop_price} "
+                   f"({new_id}) after a failed full exit")
+    return True
+
+
 async def execute_full_exit(trade_id: int, reason: str) -> bool:
     """Close entire remaining position."""
     pool = await get_pool()
@@ -4726,17 +4798,39 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
     account_mode = trade.get("account_mode") or current_account_mode()
     logger.info(f"Full exit: {ticker} reason={reason} shares={trade['remaining_shares']:.0f} (trade_id={trade_id})")
 
-    # Cancel stop order first
+    # Cancel stop order first — then WAIT for the broker to actually release the shares.
+    #
+    # 🔴 #646 (2026-09-11, OKTA, live money). This used to cancel and sell in the same breath, and
+    # the log shows why that fails — all three lines inside ONE second:
+    #     16:45:00 Full exit: cancelled stop 2f5ac5cb... (success=True)
+    #     16:45:00 Failed to close position: available 0, held_for_orders 2
+    #     16:45:00 WS event: canceled | OKTA          <- the confirmation arrives AFTER
+    # Alpaca ACKNOWLEDGES the cancel immediately but does not release `held_for_orders` until the
+    # cancel actually settles, so the very next call is rejected for insufficient quantity. The
+    # cancel did not fail; the sell raced it. `qty_available` (#151) is the field that says so.
+    cancelled_stop_price = trade.get("stop_price")
+    cancelled_stop_shares = trade["remaining_shares"]
     if trade.get("stop_order_id"):
         cancelled = await alpaca.cancel_order(trade["stop_order_id"], account_mode=account_mode)
         logger.info(f"Full exit: cancelled stop {trade['stop_order_id']} for {ticker} (success={cancelled})")
+        if cancelled:
+            await _await_shares_released(ticker, cancelled_stop_shares, account_mode)
 
     try:
         order = await alpaca.close_position(ticker, account_mode=account_mode)
     except Exception as e:
+        # 🔴 #646: NEVER return with the stop cancelled and nothing in its place. The old code
+        # sent one Telegram and returned False, leaving a live position naked until the next
+        # session's 09:31 repair window — on a Friday that is ~64 hours. The exit still fails and
+        # still pages; what changes is that the position keeps its protection while it does.
         logger.error(f"Full exit failed for {ticker}: {e}")
+        restored = await _restore_stop_after_failed_exit(
+            trade_id, ticker, cancelled_stop_shares, cancelled_stop_price, account_mode)
         await send_telegram_message(
             f"{mode_prefix(account_mode)}⚠️ Full exit FAILED for {ticker}: {e}"
+            + (f"\nStop RESTORED at ${cancelled_stop_price:.2f} — position is protected."
+               if restored else
+               "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required.")
         )
         return False
 
