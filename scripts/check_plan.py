@@ -1686,6 +1686,69 @@ def day_movement(today) -> dict:
     return {"closed": sorted(was - now, key=int), "opened": sorted(now - was, key=int),
             "start_count": len(was), "end_count": len(now), "since": rev[:8]}
 
+def audit_closed_bars() -> list:
+    """Re-score EVERY entry in the close ledger against the PLAN line it actually closed.
+
+    WHY (operator 2026-09-11: *"can you prevent these issues going forward?"*). A close is
+    irreversible and, once written, nothing ever read it again. Two things can make a past close
+    wrong after the fact: it was taken before the gate existed (#471 closed 07:28, the gate shipped
+    08:28 the same morning — it quoted a sentence that is no clause of its own DoD, and stood for a
+    day), or the EXTRACTOR changed underneath it, which happened twice in two days. Neither is
+    visible at commit time, because the gate only ever looks at lines removed in the current diff.
+
+    ONE `git log -p` pass over PLAN.md recovers every removed task line; the ledger's `BAR:` is then
+    re-matched against that line's own criterion under TODAY's rules. Read-only, prints nothing when
+    clean, and deliberately a SURFACE rather than a gate — a historical entry cannot be rewritten,
+    so failing a commit on one would only teach people to bypass the hook.
+    """
+    import subprocess
+    if not CLOSE_LEDGER.exists():
+        return []
+    ledger = CLOSE_LEDGER.read_text(encoding="utf-8")
+    entries = re.findall(r"^##\s*#(\d+)\b(.*?)(?=^##\s*#|\Z)", ledger, re.S | re.M)
+    if not entries:
+        return []
+    try:
+        log = subprocess.run(
+            ["git", "log", "-p", "--format=%H", "--", "PLAN.md"], cwd=str(REPO),
+            capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
+    except Exception:
+        return []          # offline — a surface must never become the reason nothing runs
+    removed = {}           # id -> the line text as it stood when it was removed (most recent wins)
+    for ln in log.splitlines():
+        if ln.startswith("-") and not ln.startswith("---"):
+            m = _TASK.match(ln[1:].strip())
+            if m and int(m.group(1)) not in removed:
+                removed[int(m.group(1))] = m.group(4)
+    open_ids = {t["id"] for t in parse(PLAN.read_text(encoding="utf-8"))[0]}
+    out = []
+    for tid, body in entries:
+        tid = int(tid)
+        if tid in open_ids:
+            continue       # reopened since — the live gates own it again
+        title = removed.get(tid)
+        bar_m = re.search(r"^\s*BAR:\s*(.+)$", body, re.M)
+        if not title or not bar_m:
+            continue
+        real = close_bar_for(title)
+        if real is None:
+            continue       # NO-BAR-DECLARED closes are the gate's business, not this one
+        kind, bar_text = real
+        if not close_bar_matches(bar_m.group(1), bar_text):
+            out.append(f"#{tid}: the ledger BAR matches NO part of the line's own {kind} — "
+                       f"it reads \"{bar_text.strip()[:110]}...\"")
+            continue
+        clauses = [c for c in re.split(r"\s\+\s", bar_text) if len(_norm(c).split()) >= 4]
+        if len(clauses) > 1:
+            unc = [c for c in clauses if not close_bar_matches(bar_m.group(1), c)]
+            if unc and len(unc) < len(clauses) and not re.search(
+                    r"^\s*(?:MOVED:\s*#\d+|ACCEPTED-PARTIAL:)", body, re.M):
+                out.append(f"#{tid}: closed against {len(clauses) - len(unc)} of {len(clauses)} "
+                           f"{kind} clauses with no MOVED:/ACCEPTED-PARTIAL: — unquoted: "
+                           f"\"{unc[0].strip()[:90]}...\"")
+    return out
+
+
 def main(argv: list[str]) -> int:
     if not PLAN.exists():
         print(f"[plan] ERROR: {PLAN} not found — it is the single source of truth.")
@@ -1706,6 +1769,16 @@ def main(argv: list[str]) -> int:
         print("  (a line edited in place is NOT a close — this compares id SETS, not +/- lines)")
         print("  ⚠ a task OPENED AND CLOSED the same day appears in neither list: it is in neither\n"
               "     the start set nor the end set. #614 was one on 2026-09-01.")
+        return 0
+
+    if "--audit-closes" in argv:
+        bad = audit_closed_bars()
+        print("=== CLOSE-LEDGER RE-SCORE — every past close, under today's rules ===")
+        for b in bad:
+            print(f"  ⚠ {b}")
+        print("  (none — every recorded close still matches its own bar)" if not bad else
+              f"  {len(bad)} entry(ies) no longer hold. A close cannot be rewritten: re-OPEN the "
+              f"task if the bar was never met, or correct the ledger if only the quote was wrong.")
         return 0
 
     if "--today" in argv:
@@ -1839,6 +1912,14 @@ def main(argv: list[str]) -> int:
         print("   Take a HARD LOOK for real closes; open a new task only if you close a real one first.")
         _print_pinned_runbooks()
         return 0
+
+        _stale_closes = audit_closed_bars()
+        if _stale_closes:
+            print(f"\n-- CLOSE-LEDGER RE-SCORE ({len(_stale_closes)}) — a PAST close no longer "
+                  f"matches its own bar. Re-OPEN if the bar was never met; correct the ledger if "
+                  f"only the quote was wrong --")
+            for _b in _stale_closes:
+                print(f"   {_b}")
 
     if "--carryover" in argv:
         # OPERATOR-SIGNED escape for NECESSARY growth: raise TODAY's ceiling by N with a reason.

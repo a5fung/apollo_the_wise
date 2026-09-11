@@ -29,7 +29,13 @@ instead — deliberately awkward, because closing a task that never said what do
 ---
 
 ## #582 — theme_synthesis truncation guard (2026-09-10)
-BAR: tonight's synthesis run completes and its audit row reads normally
+BAR: a cut `theme_synthesis` response produces a loud audit row, not a silent zero; a test pins it
+⚠ BAR CORRECTED 2026-09-11 (the close itself stands). The original entry quoted *"tonight's
+synthesis run completes and its audit row reads normally"* — a later verify sentence, not the DoD.
+`--audit-closes` caught it. Clause by clause: **"a test pins it"** is met outright; **"a cut
+response produces a loud audit row"** is proven by TEST and by the guard being present in the
+running container, NOT by a real truncation in prod — which the entry below already said in its own
+words, and which is why the close stands rather than reopening.
 EVIDENCE: The 09-09 18:05 run — the first after the 09-08 21:15 deploy — recorded
 `stop_reason='tool_use'`, 63 candidates → 2 proposed → 1 kept, and wrote no `theme_synthesis_error`.
 The `n_proposed` field is parsed downstream of the guard with no branch between, so the row proves
@@ -40,8 +46,15 @@ covered by tests, not by prod. The task's own criterion was written that way ("a
 so the verify is that the guard does not misfire on healthy runs").
 
 ## #452 — same-family exposure hook (2026-09-10)
-BAR: the hook logs on a real entry evaluation. If Monday passes with entries evaluated and still zero
-rows, the hook is INERT and that is a bug, not a wait
+BAR: stage-1 live; stage-2 backtested + decided
+⚠ BAR CORRECTED 2026-09-11 (the close itself stands). The original entry quoted the task's later
+verify sentence — *"the hook logs on a real entry evaluation..."* — instead of its DoD.
+`--audit-closes` caught it. Clause by clause: **stage-1 live** is met by the evidence below (five
+rows, the real comparison branch). **Stage-2 decided** is met by the operator's ruling of
+2026-09-07 — *stays observe-only; reopens only on same-family entries*. **Stage-2 backtested** was
+NOT run and is not claimed: his ruling settled the question without one, and the promote decision
+sits in `exposure_family_cap_promotion_r2`, which is still accruing. Recorded plainly rather than
+folded into the stage-2 tick.
 EVIDENCE: Five `exposure_family_checked` rows on 09-08 at the ORB. PHVS reads "0 same-family
 open(s), breach=False" — the real comparison branch, not the no-theme-membership early exit — so the
 hook demonstrably computed rather than merely running. The promote-on-3-breaches question stays in
