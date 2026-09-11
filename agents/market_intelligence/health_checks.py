@@ -3974,6 +3974,13 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
     async def _run(c) -> "dict[str, Any]":
         day = today or et_today()
         out["today"] = day.isoformat()
+        # #638 SECOND PASS (2026-09-10, cleanup review). Every date ANY fired trigger implicates.
+        # The inertness check was computed inside trigger (c) only, so (a) or (b) firing alone left
+        # `lattice_inert` unset and printed the revert SQL with NO check at all — and (a) is the
+        # worse case, because `_lattice_acting_tier` returns the raw LLM grade whenever
+        # `live_side != "lattice"`, so (a) could name the lattice for a miss it was never in the
+        # path of. The verdict now belongs to the announce block, which all three triggers share.
+        _implicated: list = []
 
         # ── trigger (a): P1 — a must-not-miss member graded routine by the acting side ──
         members = _load_must_not_miss_members()
@@ -4020,6 +4027,7 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                         "AND summary LIKE $1 LIMIT 1", summary_key + "%")
                     if already:
                         continue
+                    _implicated.append(r["scan_date"])
                     out["triggers"].append({
                         "kind": "p1_member_routine", "ticker": key[0], "date": key[1],
                         "live_side": r["live_side"],
@@ -4088,6 +4096,7 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                         prior_rate = prior_high / prior_supply
                         drop = _evaluate_lattice_high_drop(recent_rate, prior_rate)
                         if drop:
+                            _implicated.extend(recent_m)
                             out["triggers"].append({
                                 "kind": "high_conversion_drop",
                                 "recent_rate": round(recent_rate, 5),
@@ -4126,14 +4135,9 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                 # ALL tiers, matching this trigger's own "no EP alerts at all" definition —
                 # not the HIGH-only count trigger (b) uses.
                 ctx_alerts = sum(by_date.get(d, (0, 0))[0] for d in ctx_days)
-                # #638: did the lattice CHANGE anything in the window? If not, a revert is
-                # byte-identical and recommending one is noise dressed as a finding.
-                _win_rows = await _lattice_retier_rows(last_tds)
-                out["lattice_inert"] = lattice_altered_nothing(_win_rows)
+                _implicated.extend(last_tds)
                 out["triggers"].append({
                     "kind": "zero_alert_days",
-                    "lattice_inert": out["lattice_inert"],
-                    "lattice_rows_seen": len(_win_rows),
                     "days": [d.isoformat() for d in last_tds],
                     "supply": [supply_by_date.get(d) for d in last_tds],
                     "supply_gap_pct": _LATTICE_SUPPLY_GAP_PCT,
@@ -4148,6 +4152,15 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
 
         if not out["triggers"]:
             return out
+
+        # ── did the lattice CHANGE anything where the trigger is pointing? ──────────
+        # ONE query over the union of every fired trigger's dates. If it altered nothing there, a
+        # revert is byte-identical and prescribing one is noise dressed as a finding — whichever
+        # trigger fired. No dates at all (should not happen) reads as UNKNOWN, not as inert.
+        _win_rows = await _lattice_retier_rows(sorted(set(_implicated))) if _implicated else []
+        out["lattice_inert"] = lattice_altered_nothing(_win_rows)
+        out["lattice_rows_seen"] = len(_win_rows)
+        out["lattice_days_checked"] = [d.isoformat() for d in sorted(set(_implicated))]
 
         # ── announce: WHICH trigger, the numbers, the exact revert command ───────────
         lines = ["🔴 *CATALYST TIER MONITOR — revert trigger hit* (#533 flip, 2026-08-22)"]
@@ -4200,8 +4213,7 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                 "score bar and the scan log instead. To revert anyway, the flag is in "
                 "`docs/setups/magna53_ep.md` 2026-08-22.")
         else:
-            if out.get("lattice_inert") is None and "zero_alert_days" in {
-                    x["kind"] for x in out["triggers"]}:
+            if out.get("lattice_inert") is None:
                 lines.append(
                     "⚠ *Could not verify the lattice actually acted* — no re-tier rows were "
                     "recorded for these days, which may mean the shadow recorder is down rather "

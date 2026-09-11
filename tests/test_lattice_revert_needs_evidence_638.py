@@ -83,3 +83,46 @@ def test_the_revert_sql_is_gated_on_the_evidence():
     window = src[max(0, i - 900):i]
     assert 'if out.get("lattice_inert")' in window, (
         "the revert SQL is printed without checking whether the lattice did anything")
+
+
+# ── The verdict belongs to ALL THREE triggers, not to one of them (2026-09-10, second pass) ───
+#
+# The first version computed `lattice_inert` inside trigger (c)'s branch. Triggers (a) and (b)
+# therefore left the key unset, `out.get("lattice_inert")` read None, and the "could not verify"
+# line was itself gated on `"zero_alert_days" in kinds` — so an (a)- or (b)-only firing printed the
+# revert SQL with no inertness check and no caveat. (a) is the worse half: `_lattice_acting_tier`
+# returns the raw LLM grade whenever `live_side != "lattice"`, so (a) can name the lattice for a
+# miss it was never in the acting path of. A check that only covers one of three entrances is
+# indistinguishable from no check on the other two — this week's defect, one level up.
+
+def _monitor_src():
+    import inspect
+
+    from agents.market_intelligence import health_checks
+    return inspect.getsource(health_checks.run_catalyst_lattice_monitor)
+
+
+def test_the_verdict_is_computed_once_and_outside_every_trigger_branch():
+    src = _monitor_src()
+    assert src.count('out["lattice_inert"] = lattice_altered_nothing(') == 1, (
+        "the verdict is computed in more than one place, or not at all")
+    verdict = src.index('out["lattice_inert"] = lattice_altered_nothing(')
+    last_append = src.rindex('out["triggers"].append(')
+    assert verdict > last_append, (
+        "the inertness verdict sits inside a trigger's branch — the other triggers skip it")
+
+
+def test_every_trigger_contributes_the_dates_it_points_at():
+    """All three must feed the window, or the verdict judges the wrong days."""
+    src = _monitor_src()
+    assert src.count("_implicated.append(") + src.count("_implicated.extend(") == 3, (
+        "a trigger stopped contributing its dates — its firing would be judged on someone "
+        "else's window, or on none")
+
+
+def test_the_could_not_tell_caveat_is_not_scoped_to_one_trigger():
+    src = _monitor_src()
+    i = src.index("Could not verify the lattice actually acted")
+    guard = src[max(0, i - 400):i]
+    assert "zero_alert_days" not in guard, (
+        "the unknown-verdict caveat only speaks for one trigger again")
