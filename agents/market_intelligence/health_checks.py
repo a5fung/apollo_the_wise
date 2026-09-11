@@ -4230,8 +4230,19 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
         headline = ("catalyst lattice revert trigger: "
                     + ", ".join(t["kind"] for t in out["triggers"]))
         try:
+            # ⚠ THE VERDICT MUST BE IN THE ROW (2026-09-11). Yesterday's #638 second pass moved
+            # `lattice_inert` OFF trigger (c)'s dict and onto `out` — which is right for the
+            # decision, and left the audit row recording only `today` and `triggers`. The alarm
+            # then ACTED on a verdict nothing could audit afterwards: tonight's alert printed the
+            # revert SQL and no row anywhere said whether that was because the lattice had acted
+            # (it had — 7 re-tier rows, inert=False) or because the check could not tell. A
+            # decision surface that does not record its own input is the defect this whole task
+            # is about, introduced by the fix for it.
             await _log("catalyst_lattice_monitor_alert", headline,
-                       json.dumps({"today": day.isoformat(), "triggers": out["triggers"]}))
+                       json.dumps({"today": day.isoformat(), "triggers": out["triggers"],
+                                   "lattice_inert": out.get("lattice_inert"),
+                                   "lattice_rows_seen": out.get("lattice_rows_seen"),
+                                   "lattice_days_checked": out.get("lattice_days_checked")}))
             for t in out["triggers"]:
                 if t["kind"] == "p1_member_routine":
                     await _log("catalyst_lattice_p1_miss",

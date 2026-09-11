@@ -126,3 +126,20 @@ def test_the_could_not_tell_caveat_is_not_scoped_to_one_trigger():
     guard = src[max(0, i - 400):i]
     assert "zero_alert_days" not in guard, (
         "the unknown-verdict caveat only speaks for one trigger again")
+
+
+# ── The verdict must be IN the audit row (2026-09-11) ────────────────────────────────────────
+#
+# The 09-11 alert printed the revert SQL and no row recorded WHY. Checked by hand afterwards:
+# 7 re-tier rows, inert=False — so printing it was correct. But "correct, verified by hand the
+# next day" is not the same as recorded, and the second pass caused it: moving `lattice_inert`
+# off trigger (c) and onto `out` took it out of the serialised detail, which only carried
+# `today` and `triggers`. An alarm that acts on a verdict nothing can audit is this task's own
+# defect, reintroduced by its fix.
+
+def test_the_audit_row_records_the_verdict_it_acted_on():
+    src = _monitor_src()
+    i = src.index('"catalyst_lattice_monitor_alert"')
+    payload = src[i:i + 700]
+    for field in ("lattice_inert", "lattice_rows_seen", "lattice_days_checked"):
+        assert field in payload, f"the alert row does not record {field} — the verdict is unauditable"
