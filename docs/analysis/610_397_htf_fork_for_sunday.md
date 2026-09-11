@@ -1,6 +1,21 @@
 # HTF — one decision, for Sunday 2026-09-13
 
-**You are choosing what to DO. The evidence is already gathered; nothing here needs building first.**
+⛔ **FRAMING CORRECTED 2026-09-11, by the operator, and it changes what this page is asking.** His
+words: ***"we aren't trading it, we already discussed this over and over, it's a setup we trying to
+detect and get right."***
+
+**HTF IS A DETECTION PROBLEM, NOT A MONEY PROBLEM.** The question is whether our detector finds the
+setup correctly — not whether trading it pays. Trading it is gated behind EP profitability anyway
+(`priority-ep-profitability-before-new-setups`), so a capture rate cannot decide anything here.
+
+**What that does to the replay's number:** 25 of 148 reaching +3R before −1R measures an ENTRY and
+an EXIT we are not proposing to use. It is evidence about a bet nobody is placing. It becomes
+relevant to detection only in one direction — **if our detector were finding the right setups, a
+reasonable entry on them should not be this bad** — and even that reading is blocked by the two
+instrument defects below.
+
+**So the decision is: what do we do to get the DETECTOR right.** The options are re-framed on that
+axis.
 
 ## Method and population
 
@@ -38,17 +53,23 @@ have no edge."* The replay tested **our encoding plus one exit bet**:
 
 ## The fork
 
-| | what it means | what it costs |
+| | what it means for DETECTION | what it costs |
 |---|---|---|
-| **A — record #397 NO-GO** | HTF breakout entry does not graduate on this evidence | closes a four-month thread; risks killing it on a defective measurement |
-| **B — fix the recorder first, then re-measure** | repair the fill assumption and the split join, re-run the same replay | a day or two; the answer changes or it does not, and either way it is trustworthy |
-| **C — re-test with the #396 exit** | the same names, managed differently | **the +0.74R mean is 85% five trades — without them it is +0.12R, median −0.16R.** Not yet a real alternative |
+| **A — park #397** | stop spending on the money-graduation thread; it is gated behind EP anyway | nothing is lost — the detector work continues without it |
+| **B — fix the recorder, then re-measure** | the outcome join becomes trustworthy, so it can at least be used as a weak sanity check on whether we are finding the right names | a day or two |
+| **C — go at the detector directly** | the ADR/ADV floors cut breakouts 91% (#610's own finding) and `htf.md` calls the ADR floor a starting value and the flagpole ratio one interpretation of several — measure what those admit and reject against sourced HTF examples | the real work, and the only option that answers the question he is actually asking |
 
-## My recommendation: B
+## My recommendation: C, with A alongside it
 
-**A NO-GO recorded on a defective instrument is the same mistake as a GO.** Both defects are known,
-both are in the measuring path, and neither is expensive to fix. C is not ready — its headline
-number is five trades wearing a mean.
+**C is the only one that answers the detection question.** The 91% collapse in breakouts came from
+two liquidity floors shipped as provisional and never measured — that is a detector defect sitting
+in plain sight, and it is upstream of every number on this page.
+
+**A alongside it** because the money-graduation thread cannot decide anything while HTF sits behind
+EP, and leaving it open invites exactly the category error this page just had to correct.
+
+**B only if the outcome join is wanted as a sanity check** — it is worth doing, but it is not on the
+critical path to a better detector.
 
 ⚖ This is your call, not mine, and nothing has been flipped or changed while it waits.
 
