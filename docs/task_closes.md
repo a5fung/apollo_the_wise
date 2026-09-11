@@ -369,3 +369,34 @@ prior rank, even past the board cut. Corrected to 9, which is the number the pag
 identical defect was found in Rank Flow the next day (#640) and in the same shape.
 ⛔ IT SAT `in_progress` WITH ITS WORK LIVE because the commit is in the dashboard repo, invisible to
 every git-derived surface here until #641's second-repo scan shipped this morning.
+
+## #641 — the dashboard repo was invisible to every gate here (closed 2026-09-11, same day)
+BAR: (1) `check_plan.py` reads `portfolio-app2`'s git log for the
+SHIPPED-BUT-UNRECORDED and LIKELY-BUILT surfaces, so a dashboard task that ships cannot stay
+`pending` — RED-proven by pointing it at #555's own commit and watching it fire; (2) the deployed
+URL is captured in `portfolio-app2/CLAUDE.md` and a verify step exists that touches the RENDERED
+page, not the local recompute — even if that step is *ask him to look*, it must be a named step,
+not an assumption
+EVIDENCE: half (a) shipped in `cb14a3f8`; `--today` now prints a SECOND-REPO SHIPS block. **On the
+real board it named #553 and #561 within minutes of going live, and BOTH CLOSED the same morning on
+the evidence it produced** — #553 had been shipped and invisible for five days, #561 for one. The
+matcher is looser than this repo's on purpose and calibrated, not assumed: 182 commits in
+`portfolio-app2`, 15 mentioning an id, 11 distinct ids, **9 of the 11 already-closed tasks that flag
+nothing**. The anchored rule this repo uses would have missed **#555 itself** (*"#553/#555 — a
+cohort identity model, not a tenth guard"*). 7 tests including a real temp git repo, RED-proven by
+re-anchoring the regex. Fails OPEN: `APOLLO_SIDECAR_REPOS` overrides, a missing or non-git directory
+is skipped, any git error returns nothing — the repo is absent on the laptop and the prod box.
+▶ HALF (b): the verify step is NAMED, which is what the bar asked for. It could not be
+"touch the rendered page": the app is SSO-gated at the Streamlit platform level, so no automated
+fetch reaches it and a password in `st.secrets` would not change that. `portfolio-app2/CLAUDE.md`
+now carries the URL (`alvin-portfolio-dashboard.streamlit.app`) and a three-step rule — recompute
+the page's own function against the same snapshot JSON the page reads and assert the rendered
+numbers; state that the page was not opened; ask him to look ONLY when the change is visual. **It
+was exercised twice the same day before being written down**: #640's numbers were recomputed and
+reported as not-opened, and #561 closed on step 3 — his own words, *"pure play nand/dram 90->18,
++72"*.
+⛔ TWO ERRORS OF MINE ARE RECORDED IN THAT FILE RATHER THAN QUIETLY FIXED. I raised the URL as an
+operator ask after searching every FILE, when one HTTP request would have settled it — and then the
+URL I "found" that way was WRONG, because a 303 to Streamlit's auth endpoint proves nothing (it
+answers for any `*.streamlit.app` subdomain). The real one came from his screenshot. Also recorded:
+Streamlit served the pre-push build for ~14 minutes, which made a working fix look broken.
