@@ -136,6 +136,36 @@ rendering them identically, not to suppress one of them.
 ⚠ **Recorded because I recommended the time rule BEFORE measuring it**, and he asked for the effect.
 Both the size floor and the confirmation delay read as obviously right and both fail on the numbers.
 
+## ⛔ THE THIRD RECOMMENDATION FAILS AS WELL — he said *"check your rec again before presenting it"*
+
+*"Label each cohort with how long it has held a slot"* only works if that number PREDICTS anything.
+It does not. Given a cohort has held N consecutive weeks post-launch, the chance it holds the next:
+
+| held | 1 wk | 2 wks | 3 wks | 4 wks | 5+ wks |
+|---|---|---|---|---|---|
+| holds next week | 52.0% | 54.8% | 62.2% | 50.0% | 57.9% |
+| n | 150 | 73 | 37 | 22 | 19 |
+
+**Flat, near a coin flip, at every history length.** A label carrying a number that does not
+discriminate is decoration, and printing it would imply a confidence the data does not support.
+
+**Three recommendations, three failures — size floor, time confirmation, and now the label.** Each
+read as obviously right. What they share is that all three tried to fix the BOARD.
+
+## 🔑 What the flat line actually says
+
+Board membership is close to memoryless: whether a cohort is in the top 30 next week is ~55%
+regardless of everything it has done so far. **That is not a display problem and no rearrangement of
+the display touches it.** It says presence in an `rs_avg`-ranked top 30 is not a signal you can act
+on — which is a statement about the RANKING AXIS, not about churn.
+
+And that lands on something already established rather than something new: the north star is that a
+theme is real when it shows up in the strongest names FIRST, measured by **subtle RS — rising,
+rising faster, and holding up better on the market's down days**. Checked again today: `get_rs_velocity`
+(db.py:9411) and `get_rs_turners` (db.py:9779) cover the first two. **Down-day resilience still does
+not exist anywhere in `agents/` or `shared/`** — the one leg #486's plan named as genuinely new, and
+still the one missing.
+
 ## What this opens, and whose call it is
 
 The honest next question is not about the matcher at all: **should a two- or three-ticker cohort
