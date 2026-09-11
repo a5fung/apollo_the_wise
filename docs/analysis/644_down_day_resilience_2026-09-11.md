@@ -196,3 +196,31 @@ it is a read-only accessor next to `get_rs_velocity`/`get_rs_turners`, and this 
 against board persistence without wiring it anywhere. Any use of it to rank, score, admit, or
 alert is a detection-criterion change and is the operator's call behind CHANGE_PROCESS, not
 something this document proposes or decides. Nothing in the trading system changed.
+
+## The lead survives its most obvious confound (added 2026-09-11, after the report)
+
+The median split could easily have been basket size in disguise: high-resilience cohorts are the
+SMALLER ones (median 2 tickers vs 3), a 2-name median is a noisy statistic more likely to land
+extreme, and #639 already found small cohorts persist slightly better. That is three steps to a
+spurious finding, so it was checked rather than assumed.
+
+**Stratified by basket size, the gap holds at the same magnitude in BOTH strata:**
+
+| stratum | n | above median | below median | gap |
+|---|---|---|---|---|
+| **≤3 tickers** | 86 | 30/48 = **62.5%** | 16/38 = 42.1% | **+20.4pp** (1.9 SE) |
+| **4+ tickers** | 47 | 11/18 = **61.1%** | 12/29 = 41.4% | **+19.7pp** (1.3 SE) |
+| *basket size alone, ignoring resilience* | 133 | 53.5% (≤3) | 48.9% (4+) | +4.6pp |
+
+**It is not basket size.** Size on its own moves persistence by under five points; the resilience
+split moves it by twenty, and by the SAME twenty inside each size group. A split that was really a
+size proxy would collapse in at least one stratum, and neither does.
+
+Each stratum alone is under 2 SE — the n's are 86 and 47 — so this is not significance, it is
+CONSISTENCY: the same effect size, same direction, in two independent subgroups. That is a different
+and stronger kind of evidence than one post-hoc cut on a pooled sample, and it is why the lead is
+now worth a pre-registered forward test rather than a footnote.
+
+⚠ **Still post hoc on the THRESHOLD.** The median was chosen after seeing the distribution. The
+confound check strengthens the relationship; it does nothing about the threshold, and only the
+forward test can.
