@@ -13704,6 +13704,12 @@ def _fit_audit_detail(detail):
     """
     if not isinstance(detail, str) or len(detail) <= _AUDIT_DETAIL_MAX:
         return detail
+    # Say it OUT LOUD at the moment it happens. The `_truncated` mark makes the row honest after
+    # the fact; this makes the event visible tonight. Commit 3e5400d7 claimed this line and did not
+    # have it — the claim was true of the intent and false of the code (advisor caught it same day).
+    logger.warning(
+        f"mi_audit_log detail truncated: {len(detail)} chars exceeds the "
+        f"{_AUDIT_DETAIL_MAX} budget; head kept, tail lost")
     try:
         json.loads(detail)
     except (ValueError, TypeError):

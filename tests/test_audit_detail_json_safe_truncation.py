@@ -141,3 +141,37 @@ def test_the_counter_never_raises_into_its_caller():
     from agents.market_intelligence.db import count_truncated_audit_rows
     src = inspect.getsource(count_truncated_audit_rows)
     assert "return 0" in src and "except Exception" in src
+
+
+# ── The truncation must be LOUD at the moment it happens (2026-09-10, second pass) ───────────
+#
+# Commit 3e5400d7's message says "A truncation also logs a warning at the moment it happens".
+# It did not: the envelope-fit edit replaced the span that held the line, and no test asserted it,
+# so the claim survived in prose and died in code. That is this week's defect applied to a claim
+# instead of a gate — a statement nothing can falsify reads the same as a true one.
+
+def test_a_truncation_logs_a_warning_when_it_happens(caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="agents.market_intelligence.db"):
+        _fit_audit_detail(_big_json(40_000))
+    assert any("truncated" in r.message for r in caplog.records), (
+        "truncation went silent at the moment it happened")
+
+
+def test_the_warning_covers_non_json_text_too(caplog):
+    """The plain cut loses a tail as surely as the JSON path does."""
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="agents.market_intelligence.db"):
+        _fit_audit_detail("z" * (_AUDIT_DETAIL_MAX + 500))
+    assert any("truncated" in r.message for r in caplog.records)
+
+
+def test_a_payload_that_fits_says_nothing(caplog):
+    """The ordinary row is the overwhelming majority — it must not page anyone."""
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="agents.market_intelligence.db"):
+        _fit_audit_detail(json.dumps({"a": 1}))
+    assert not caplog.records
