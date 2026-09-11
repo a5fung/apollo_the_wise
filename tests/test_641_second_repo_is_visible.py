@@ -78,13 +78,20 @@ def test_only_ids_we_asked_about_come_back(tmp_path, monkeypatch):
 
 
 @pytest.mark.skipif(not _has_sidecar(), reason="the dashboard repo is not on this machine")
-def test_the_real_board_sees_the_two_tasks_that_were_invisible():
-    """THE REGRESSION, on the real population: #553 and #561 shipped in portfolio-app2 and no
-    surface here could see them. If this ever returns nothing, the scan has gone dark."""
+def test_the_scan_is_not_dark_on_the_real_board():
+    """THE REGRESSION, on the real population: if this returns nothing, the scan has gone dark and
+    a dashboard task can ship invisibly again — which is how #555 sat five days.
+
+    ⚠ THE FIRST VERSION OF THIS TEST PINNED #553 AND #561 BY ID and went red within the hour,
+    because the scan surfaced them and they were then CLOSED on the evidence it produced. A test
+    that names the specific tasks a surface currently catches is pinning a MOMENT, not a property —
+    it fails precisely when the surface does its job. What is durable is that the scan still finds
+    something and that everything it finds is a real open task."""
     tasks = parse(PLAN.read_text(encoding="utf-8"))[0]
-    got = _sidecar_commits_touching_tasks({t["id"] for t in tasks})
+    open_ids = {t["id"] for t in tasks}
+    got = _sidecar_commits_touching_tasks(open_ids)
     assert got, "the second-repo scan found nothing at all — it has gone dark"
-    assert {553, 561} & set(got), f"expected the known pair, got {sorted(got)}"
+    assert set(got) <= open_ids, f"it reported ids that are not open tasks: {set(got) - open_ids}"
 
 
 @pytest.mark.skipif(not _has_sidecar(), reason="the dashboard repo is not on this machine")
