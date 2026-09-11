@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import statistics
 from datetime import date, timedelta
 from typing import Any, Optional
 
@@ -9846,6 +9847,139 @@ async def get_rs_turners(
              max_rs_4w_ago, min_consecutive_weeks, limit)
 
         return [dict(r) for r in rows]
+
+
+async def get_down_day_resilience(
+    d: "str | date",
+    tickers: "list[str] | None" = None,
+    lookback: int = 20,
+) -> list[dict[str, Any]]:
+    """
+    Down-day resilience — the third leg of subtle RS (#644, alongside
+    get_rs_velocity's "rising" and get_rs_turners' "rising faster" above):
+    how a name's daily returns compared to SPY's on the days SPY fell, over
+    the `lookback` trading sessions strictly BEFORE `d`.
+
+        resilience = median(name's return on SPY's down days)
+                    - median(SPY's return on those same down days)
+
+    Positive = held up better than the market on the days the market fell.
+
+    AS-OF DISCIPLINE — the entire point of this function, and why it does
+    NOT share get_rs_velocity/get_rs_turners' `_resolve_score_date` /
+    `_prepare_weekly_snapshots` machinery: those two describe where a stock
+    stands AS OF `d` (falling back to the latest COMPLETE run on or before
+    `d` when `d` itself has no data yet). This one describes what was
+    already known walking INTO `d` — e.g. a cohort's first week on a board —
+    so `d`'s own session, and anything on or after it, must never enter the
+    window. Sessions used are strictly `trade_date < d` (never `<=`).
+
+    tickers=None scores every ticker with a close on the relevant sessions
+    (like get_rs_leaders' min_adv=0 "unfiltered" mode); pass an explicit
+    list (e.g. one cohort's basket) to score only those names in one round
+    trip — the shape #644's caller needs.
+
+    Returns [] if fewer than `lookback` + 1 distinct trading sessions exist
+    strictly before `d` (not enough history to compute `lookback` daily
+    returns — mirrors `_prepare_weekly_snapshots`' "insufficient data"
+    contract above), or if SPY had zero down days in the window (nothing to
+    measure resilience against). A ticker is omitted from the result (not
+    returned with a fabricated 0) if it has zero valid down-day
+    observations in the window — mirrors get_rs_turners' `WHERE rs_earliest
+    IS NOT NULL` "can't compute it, don't invent it" contract.
+
+    Read-only, evidence-only (CLAUDE.md ⚖ THE LINE): this function ranks
+    nothing and touches no scoring/sizing/admission/alerting path. Any use
+    of it to rank, score, admit or alert is a detection-criterion change
+    and stays the operator's call behind CHANGE_PROCESS.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        session_rows = await conn.fetch(
+            """
+            SELECT DISTINCT trade_date FROM mi_daily_closes
+            WHERE trade_date < $1
+            ORDER BY trade_date DESC
+            LIMIT $2
+            """,
+            _to_date(d), lookback + 1,
+        )
+        if len(session_rows) < lookback + 1:
+            return []
+        dates = sorted(r["trade_date"] for r in session_rows)  # ascending, len == lookback+1
+
+        spy_rows = await conn.fetch(
+            """
+            SELECT trade_date, close FROM mi_daily_closes
+            WHERE ticker = 'SPY' AND trade_date = ANY($1) AND close IS NOT NULL
+            """,
+            dates,
+        )
+        spy_close = {r["trade_date"]: r["close"] for r in spy_rows}
+
+        down_day_returns: dict[date, float] = {}
+        for prev, curr in zip(dates, dates[1:]):
+            c_prev, c_curr = spy_close.get(prev), spy_close.get(curr)
+            if c_prev is None or c_curr is None or c_prev <= 0:
+                continue
+            ret = c_curr / c_prev - 1
+            if ret < 0:
+                down_day_returns[curr] = ret
+
+        if not down_day_returns:
+            return []
+        down_days = set(down_day_returns)
+        spy_median = statistics.median(down_day_returns.values())
+
+        if tickers is not None:
+            # asyncpg's ANY($1) needs a real list — callers may reasonably hand in a
+            # set/frozenset/tuple (e.g. a cohort basket built as a frozenset of tickers).
+            rows = await conn.fetch(
+                """
+                SELECT ticker, trade_date, close FROM mi_daily_closes
+                WHERE ticker = ANY($1) AND trade_date = ANY($2) AND close IS NOT NULL
+                """,
+                list(tickers), dates,
+            )
+        else:
+            rows = await conn.fetch(
+                """
+                SELECT ticker, trade_date, close FROM mi_daily_closes
+                WHERE trade_date = ANY($1) AND close IS NOT NULL
+                """,
+                dates,
+            )
+
+        closes_by_ticker: dict[str, dict[date, float]] = {}
+        for r in rows:
+            closes_by_ticker.setdefault(r["ticker"], {})[r["trade_date"]] = r["close"]
+
+        results: list[dict[str, Any]] = []
+        for tk, by_date in closes_by_ticker.items():
+            tk_returns = []
+            for prev, curr in zip(dates, dates[1:]):
+                if curr not in down_days:
+                    continue
+                c_prev, c_curr = by_date.get(prev), by_date.get(curr)
+                if c_prev is None or c_curr is None or c_prev <= 0:
+                    continue
+                tk_returns.append(c_curr / c_prev - 1)
+            if not tk_returns:
+                continue
+            tk_median = statistics.median(tk_returns)
+            results.append({
+                "ticker": tk,
+                "resilience": tk_median - spy_median,
+                "ticker_median_down_day_return": tk_median,
+                "spy_median_down_day_return": spy_median,
+                "n_down_days_used": len(tk_returns),
+                "n_down_days_market": len(down_days),
+                "window_start": dates[0],
+                "window_end": dates[-1],
+            })
+
+        results.sort(key=lambda r: r["resilience"], reverse=True)
+        return results
 
 
 async def get_ep_history(days: int = 14) -> list[dict[str, Any]]:
