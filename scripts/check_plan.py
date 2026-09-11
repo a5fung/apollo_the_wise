@@ -1065,6 +1065,63 @@ def _own_commits_touching_code(tids: set[int], repo: Path = REPO) -> dict[int, t
     return out
 
 
+# --- THE SECOND REPO (2026-09-11, #641) --------------------------------------------------------
+# Every surface above reads THIS repo's git log. The dashboard lives in `portfolio-app2`, so a
+# task that ships there fires none of them — which is how #555 sat five days after shipping and
+# was found by a card running `git log` by hand, not by any gate.
+#
+# ⚠ THE MATCHER IS DELIBERATELY LOOSER HERE, and the number is why. In this repo, matching ANY
+# `#N` mention flags 31 of 84 tasks (subjects cross-reference ids constantly), so `_OWN_COMMIT`
+# anchors at the start. Measured on portfolio-app2 the day this shipped: **182 commits, 15
+# mentioning an id, 11 distinct ids — and 9 of the 11 are already-closed tasks, so they flag
+# nothing. The two that remain are #553 and #561, both genuinely shipped-but-unrecorded.** Zero
+# false positives on the real population. The anchored rule would have missed #555 itself, whose
+# commit reads "#553/#555 — a cohort identity model, not a tenth guard".
+#
+# Path resolution fails OPEN everywhere: the repo is a sibling on this machine and absent on the
+# laptop and the prod box, and a board-hygiene surface must never be the reason a commit fails.
+_SIDECAR_MENTION = re.compile(r"#(\d+)")
+
+
+def _sidecar_repos() -> list:
+    """(label, Path) for each second repo to scan. `APOLLO_SIDECAR_REPOS` overrides (os.pathsep
+    separated); default is the dashboard sibling. Only existing git checkouts are returned."""
+    import os
+    raw = os.environ.get("APOLLO_SIDECAR_REPOS")
+    paths = ([Path(x) for x in raw.split(os.pathsep) if x.strip()] if raw
+             else [REPO.parent / "portfolio-app2"])
+    return [(p.name, p) for p in paths if (p / ".git").exists()]
+
+
+def _sidecar_commits_touching_tasks(tids: set) -> dict:
+    """{tid: (repo_label, sha, subject)} for ids named by a commit in a second repo.
+
+    Newest commit wins, same as `_own_commits_touching_code`. No code-path filter: these repos
+    ARE the product (portfolio-app2 is a Streamlit app at its root), so "touched code" and
+    "committed" are the same statement. Fails open on any git problem.
+    """
+    if not tids:
+        return {}
+    import subprocess
+    out: dict = {}
+    for label, repo in _sidecar_repos():
+        try:
+            log = subprocess.run(["git", "log", "--all", "--format=%h%x00%s"], cwd=str(repo),
+                                 capture_output=True, text=True, encoding="utf-8",
+                                 errors="replace", timeout=10)
+            if log.returncode != 0:
+                continue
+        except Exception:
+            continue        # missing / broken checkout — never block on it
+        for line in log.stdout.splitlines():
+            sha, _, subj = line.partition("\x00")
+            for m in _SIDECAR_MENTION.finditer(subj):
+                tid = int(m.group(1))
+                if tid in tids and tid not in out:
+                    out[tid] = (label, sha, subj)
+    return out
+
+
 def _shipped_pending_gate(tasks, errors) -> None:
     """A `pending` task whose OWN commit already shipped product code is contradictory — `pending`
     means NOT STARTED, and code named after the task exists. That contradiction is what makes a line
@@ -1878,6 +1935,16 @@ def main(argv: list[str]) -> int:
         # at commit time — so a pre-existing (WARN-only) violation can never go quiet between
         # sessions the way #167 did.
         pending_verify = _pending_verify_violations(tasks)
+        # #641 (2026-09-11) — the SECOND repo. Every surface above reads THIS repo's log, so a task
+        # that ships in portfolio-app2 fires none of them. That is how #555 sat five days.
+        _side = _sidecar_commits_touching_tasks({t["id"] for t in tasks})
+        if _side:
+            print(f"\n-- SECOND-REPO SHIPS ({len(_side)}) — a commit in another repo names this task, "
+                  f"and no git-based surface here can see it. Confirm + close, or say why it is still open --")
+            for _tid, (_lab, _sha, _subj) in sorted(_side.items()):
+                _st = next((t["status"] for t in tasks if t["id"] == _tid), "?")
+                print(f"   #{_tid}  {_st:<12} {_lab} {_sha}  {_subj[:82]}")
+
         print(f"\n-- VERIFY-CLAIMED, NOT DEPLOYED ({len(pending_verify)}) — task text asserts a "
               f"pending verify but status isn't `deployed`: set status=deployed + a verify-date ETA --")
         for t in pending_verify or []:
