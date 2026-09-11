@@ -102,6 +102,40 @@ refuses to support. ⚖ His call; it is a board-composition rule, not a matcher 
 slot" is a proxy for value, not value itself. It is enough to REFUSE a size floor. It is not enough
 to assert that small cohorts are better, and this doc does not.
 
+## ⛔ AND THE SECOND RECOMMENDATION FAILS TOO — he asked what its effect would be, and I had not checked
+
+*"Confirm on time: two consecutive weeks before a cohort is presented as a theme."* Measured on the
+same post-launch population, 142 cohorts that reached the board:
+
+| | count | share |
+|---|---|---|
+| **GOOD — suppressed forever** (held exactly one week, never returned) | **66** | **46%** |
+| **BAD — survivors delayed** (held 4+ weeks; 23 of them held 2 straight) | 29 | 20% |
+
+**The cost, for the 23 survivors: they arrive one week late, and during that wait their rank moves a
+median of −3 (UP the board), with 57% improving.** So the rule works as a noise filter — and it
+makes you a week late on exactly the cohorts that turn out to matter.
+
+🔴 **That is fatal, and for a reason already on the board.** A week is five trading sessions, and
+**#486's step-3 read — which he ALIGNED ON 2026-09-07 — is that naming five sessions EARLIER lifts a
+theme's remaining runway from 29% to 55%.** A two-week confirmation spends precisely that, in the
+wrong direction, on the 20% of cohorts worth having. The rule trades away the thing the theme
+programme exists for in order to tidy a display.
+
+## ✅ The recommendation that survives: do not delay, LABEL
+
+Present everything immediately, and show what is known about it: **"week 1" versus "held N weeks"**
+on the board itself. The 46% one-week cohorts become visibly provisional instead of being hidden a
+week; the 20% that matter are on the board the day they arrive, at full earliness; and the reader
+does the discounting with the fact in front of him rather than the engine doing it for him.
+
+It is also the same correction as every other one in this file's week: **two different facts — "new
+and unproven" and "held for a month" — currently render identically**, and the fix is to stop
+rendering them identically, not to suppress one of them.
+
+⚠ **Recorded because I recommended the time rule BEFORE measuring it**, and he asked for the effect.
+Both the size floor and the confirmation delay read as obviously right and both fail on the numbers.
+
 ## What this opens, and whose call it is
 
 The honest next question is not about the matcher at all: **should a two- or three-ticker cohort
