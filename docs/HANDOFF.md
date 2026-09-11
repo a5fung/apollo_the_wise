@@ -740,7 +740,7 @@ size (~$37), not the ~$12.35 floor.** ⚠ **Zero entries is NOT a pass.**
 
 ## 2026-09-10 (Thu) — 🔴 RESUME HERE. Supersedes everything above.
 
-**Closed 21:40 ET. Tree clean, suite 7,953, board 68 → 67. Deployed 21:1x ET — `both` then
+**Closed 21:40 ET. Tree clean, suite 7,953, board 68 → 66. Deployed 21:1x ET — `both` then
 `execution`, box on `33cccd13` — and VERIFIED on the running images, not on an exit code.**
 
 ### The day's lesson — a claim nothing can falsify reads exactly like a true one
@@ -761,13 +761,13 @@ defect showed up in **prose** and in **partial coverage**:
 **Four gates shipped today; two had real defects within hours.** All three were found by a cleanup
 pass over my own diff. **Review your own gates the day you write them.**
 
-### What waits on him — exactly one
+### What waits on him — nothing
 
-**#642 — two audit rows written under the old 8,000 cap are unreadable.** The repair is written and
-dry-run clean on prod; the `--commit` mutates audit history so it is his call:
-`docker exec apollo-market python scripts/probes/_501_repair_unreadable_audit_rows.py --commit`.
-⚠ The count was wrong twice in one evening — "only 1", then 10, then **2**. The other 8 rows that
-hit the cap hold plain prose and were never JSON.
+**#642 CLOSED the same evening on his go-ahead.** Both unreadable audit rows repaired and confirmed:
+`pg_input_is_valid = true`, `_truncated = true`, the surviving 8,000 characters preserved in
+`_head`, originals snapshotted first. The bar query returns 0.
+⚠ The count was wrong twice before it was right — "only 1", then 10, then **2**. The other 8 rows
+that hit the cap hold plain prose and were never JSON.
 
 ### Verified live tonight — do not re-check
 
@@ -784,7 +784,7 @@ hit the cap hold plain prose and were never JSON.
 ### The weekend — Saturday mine (9), Sunday his (3)
 
 **Sat 09-12:** #485 · #488 · #519 · #561 · #579 · #639 · #640 (Rank Flow repaired, not retired) ·
-#641 · #642. **Sun 09-13:** #368 (label 44 themed rows + D2/D3 weighting) · #397/#610 (the HTF
+#641. **Sun 09-13:** #368 (label 44 themed rows + D2/D3 weighting) · #397/#610 (the HTF
 fork — *HTF as written today* has no edge, which is not a verdict on HTF as a setup).
 
 🔴 **#641 is the one that matters most: `portfolio-app2` is invisible to every gate in this repo.**

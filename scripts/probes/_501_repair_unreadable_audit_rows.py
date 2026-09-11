@@ -125,9 +125,14 @@ async def main(commit: bool) -> int:
                 "UPDATE mi_audit_log SET detail = $2 "
                 " WHERE id = $1 AND NOT pg_input_is_valid(detail, 'json')", rid, fixed
             ) != "UPDATE 0"))
+        # ⚠ AND THE SUCCESS CHECK WAS WRONG TOO — it counted every non-JSON row (24,367 of them,
+        # nearly all legitimately plain text) and would have reported failure after a clean repair.
+        # A check has to measure the population it just fixed. Same query as _FIND, by construction.
         left = await conn.fetchval(
             "SELECT count(*) FROM mi_audit_log "
-            " WHERE detail IS NOT NULL AND NOT pg_input_is_valid(detail, 'json')")
+            " WHERE detail IS NOT NULL AND length(detail) = $1 "
+            "   AND left(ltrim(detail), 1) IN ('{', '[') "
+            "   AND NOT pg_input_is_valid(detail, 'json')", _OLD_CAP)
         print(f"\nrepaired {done} row(s); unreadable rows remaining: {left}")
         return 0 if left == 0 else 1
 

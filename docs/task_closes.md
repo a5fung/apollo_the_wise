@@ -203,3 +203,26 @@ after the last trigger append, with all three triggers feeding it. Found by the 
 by me. ⚠ The DoD's `WOULD-FAIL-IF` (it fires again on a window where the lattice altered nothing)
 is a falsification condition, not a further requirement — and it is now structurally unreachable on
 any trigger, which is what the bar asked for.
+
+## #642 — the two audit rows the old blind cut left unreadable (closed 2026-09-10, same evening, on his go-ahead)
+BAR: zero rows where `length(detail)=8000 AND left(ltrim(detail),1) IN ('{','[') AND NOT
+pg_input_is_valid(detail,'json')`. WOULD-FAIL-IF: the count comes back non-zero, or a repaired
+row's `_head` no longer prefixes the snapshotted original
+EVIDENCE: `scripts/probes/_501_repair_unreadable_audit_rows.py --commit` run on prod 2026-09-10
+21:45 ET with his explicit go-ahead (it mutates audit history, so it was not mine to run). Two rows
+repaired — `theme_birth_gate` id 39426 (2026-09-03) and `theme_discovery_shown_declined` id 42037
+(2026-09-10 17:13, the row that exposed the bug). **Bar confirmed by direct query: the count is 0.**
+Both rows now read `pg_input_is_valid = true`, `_truncated = true`, and `_head` is **8,000
+characters** — the surviving text preserved exactly, nothing deleted, originals snapshotted to
+`/tmp/_501_audit_repair_20260910T214502.json` before any write.
+⛔ TWO THINGS THIS PROBE GOT WRONG BEFORE IT GOT THEM RIGHT, both caught by running it rather than
+reading it. (1) The first FIND query selected every row whose detail is not JSON — which includes
+rows that are legitimately plain prose — and offered to rewrite an 11-character `stage_change` row;
+the verbatim-head assertion stopped it. (2) The SUCCESS CHECK had the same defect and survived
+longer: after a clean repair it reported **24,367 unreadable rows remaining**, because it counted
+that same broad population instead of the one it had just fixed. A check that measures the wrong
+population reads like a failure here and would read like a pass somewhere else. Both narrowed.
+⚠ THE COUNT WAS WRONG TWICE TODAY BEFORE IT WAS RIGHT: I told him "15 hit the cap, only 1 broken",
+then a wider query said 10, and the answer is 2. The other 8 hold plain prose and were never JSON —
+their tails are gone and no repair restores them. All three numbers are recorded in the probe's own
+docstring so the corrected one is the one that survives.
