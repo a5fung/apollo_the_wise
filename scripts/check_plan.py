@@ -1144,14 +1144,25 @@ CLOSE_LEDGER = REPO / "docs" / "task_closes.md"
 # Extract the BAR a task must be closed against: its DoD if it has one, else its
 # VERIFY-LIVE / VERIFY sentence. A line usually has BOTH, and the DoD outranks —
 # that ordering IS the gate's point (see _close_evidence_gate).
+# WHERE A BAR ENDS. Every one of these starts a NEW thought in a PLAN line, so a criterion that
+# runs past one has stopped being the criterion.
+#   ▶ next step · >> a later append · ⚠ caveat · ✅ done-marker · ⛔ blocker
+#   ⚖ SCOPE / THE LINE note · ➕ an inherited addition
+# ⚠ `⚖` AND `➕` WERE MISSING UNTIL 2026-09-11, and `⚖` is the one that mattered: it marks the
+# THE-LINE / scope sentence ("no strategy, sizing or safeguard change; any flip needs sign-off"),
+# which sits right after a DoD more often than anything else. Measured on the live board the day
+# it was found: **15 of 64 open tasks had a bar running past one of these into commentary** — so a
+# close could have quoted a THE-LINE caveat as the criterion it was judged against. Same
+# over-capture class as the `[ok:]` rebump leak fixed one day earlier, in the same function.
+_BAR_END = r"(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4|\u2696|\u2795)|$)"
 _BAR_PATTERNS = (
     # `DoD:` / `**DoD:**` / `**DoD (written 2026-09-10):**` — the parenthetical form is what you
     # write when adding a criterion to an OLD line, and rejecting it silently made five real
     # DoDs invisible to this very gate the day it shipped (2026-09-10).
     re.compile(r"\*{0,2}DoD\*{0,2}\s*(?:\([^)]{0,90}\))?\s*\*{0,2}\s*[:\u2014-]\s*\*{0,2}\s*"
-               r"(.{30,}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
-    re.compile(r"VERIFY-LIVE\s*=\s*(.{20,}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
-    re.compile(r"VERIFY[^:]{0,24}:\s*(.{20,}?)(?=\s(?:\u25b6|>>|\u26a0|\u2705|\u26d4)|$)", re.S),
+               r"(.{30,}?)" + _BAR_END, re.S),
+    re.compile(r"VERIFY-LIVE\s*=\s*(.{20,}?)" + _BAR_END, re.S),
+    re.compile(r"VERIFY[^:]{0,24}:\s*(.{20,}?)" + _BAR_END, re.S),
 )
 
 
@@ -1483,6 +1494,33 @@ def _close_evidence_gate(errors, tasks) -> None:
                     f"what done meant should be.")
             continue
         kind, bar_text = real
+        # A SPLIT MUST NOT NARROW THE BAR SILENTLY (operator 2026-09-11: *"so you're saying the
+        # unbuilt stuff sits with 635, so it's ok to close 501?"*). The check above only asks
+        # whether the quote APPEARS in the bar — so "split the task, quote the surviving half,
+        # close" passed every time. #501's DoD was `the Tier-1 four surfaced + operator rules the
+        # Tier-2/3 batch`; the second clause moved to #635 and the close quoted only the first.
+        # ⚠ Calibrated, not guessed: a fraction-of-words-missing rule fires on 10 of 12 real ledger
+        # entries (legitimate closes quote PART of a long DoD, 0.33-1.00 missing), so it cannot
+        # discriminate. A top-level ` + ` conjunction can: across the whole ledger it marks exactly
+        # the two-clause DoDs, and after the ⚖ stop-set fix it fires on #501 and nothing else.
+        clauses = [c for c in re.split(r"\s\+\s", bar_text) if len(_norm(c).split()) >= 4]
+        if len(clauses) > 1:
+            uncovered = [c for c in clauses if not close_bar_matches(bar_m.group(1), c)]
+            if uncovered and len(uncovered) < len(clauses):
+                moved = re.search(r"^\s*MOVED:\s*#(\d+)\b", body, re.M)
+                accepted = re.search(r"^\s*ACCEPTED-PARTIAL:\s*(.+)$", body, re.M)
+                if moved and int(moved.group(1)) not in still_open:
+                    errors.append(
+                        f"docs/task_closes.md #{tid}: `MOVED: #{moved.group(1)}` names a task that is "
+                        f"NOT open in PLAN.md. The clause has to land somewhere real, or closing "
+                        f"#{tid} drops it.")
+                elif not moved and not (accepted and len(_norm(accepted.group(1))) >= 20):
+                    errors.append(
+                        f"task #{tid}: the BAR: covers only part of its {kind} — {len(uncovered)} of "
+                        f"{len(clauses)} clauses are unquoted, starting \"{uncovered[0].strip()[:90]}"
+                        f"...\". A close against a NARROWED bar must say where the rest went: add "
+                        f"`MOVED: #<task>` (which must be open) or `ACCEPTED-PARTIAL: <why the "
+                        f"unquoted clause no longer applies>`.")
         if not close_bar_matches(bar_m.group(1), bar_text):
             errors.append(
                 f"task #{tid}: the BAR: in docs/task_closes.md does not appear in the task's own "

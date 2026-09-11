@@ -59,6 +59,26 @@ mechanism is producing, not a single fixture row.
 
 ## Re-opened after a bad close — kept here because the mistake is the lesson
 
+## Lesson — task #471, closed 2026-09-10 07:28 and re-opened 2026-09-11
+
+⚠ Not a close record — #471 is OPEN again. Deliberately not a `## #<id>` heading so the gate cannot
+read this post-mortem as a justification.
+ITS REAL DoD: **fixture replays green + a synthetic unassigned cluster fires the veto alert +
+promotes on no-veto** — three clauses joined by ` + `.
+WHAT I QUOTED INSTEAD: `VERIFY-LIVE = mi_themes.parent_theme NON-NULL for the cyber-vuln child`.
+That is a real line in the task, and it is not any of the three clauses. `close_bar_for` ranks DoD
+ABOVE VERIFY-LIVE for exactly this reason.
+WHY NOTHING STOPPED IT: I closed it at **07:28**; `_close_evidence_gate` shipped at **08:28** the
+same morning. It missed the gate by one hour. Run against it today the gate fails it outright —
+`close_bar_matches` returns False on the whole bar, not merely on a clause.
+WHAT IS AND IS NOT TRUE: the parent/child depth evidence stands — 461 child themes, 234 live, the
+09-09 run produced 19 more. `theme_subtheme_arm` reads **True** on prod. What is NOT shown is the
+veto half: no unassigned-cluster veto alert emitter is findable in `agents/market_intelligence/`,
+and the DoD's grace-end/veto/cooldown path is the Phase-2 design, not the parent_theme column.
+HOW IT SURFACED: not by review. He asked whether #501's DoD was really met; calibrating the
+partial-bar rule against the whole ledger printed #471 as the only other entry whose quote matches
+no clause of its own DoD. **The check I built to answer one question found the older instance.**
+
 ## Lesson — task #540, closed 2026-09-10 and re-opened the same day
 
 ⚠ Not a close record — #540 is OPEN. Deliberately not written as a `## #<id>` heading so the gate
@@ -266,6 +286,8 @@ before this close. So the bar below is the NARROWED bar, and the narrowing happe
 legitimate bookkeeping and it is also exactly the shape of a substituted criterion, so it is stated
 at the top rather than left at the bottom for a reader to find.
 BAR: the Tier-1 four surfaced (audit + deduped Telegram)
+MOVED: #635 — the unquoted clause (*operator rules the Tier-2/3 batch*, F5–F13) lives there,
+open, dated 2026-10-03, with its own DoD. Added 2026-09-11 when the gate learned to ask.
 EVIDENCE: deployed 2026-09-10 12:0x ET, both scopes. The task's own verify line called for the
 NEGATIVE check — *no false page fired* — which is the shape this week's rule forbids on its own, so
 each of the four carries a POSITIVE companion proving its host path actually ran, all queried on
