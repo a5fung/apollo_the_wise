@@ -272,11 +272,6 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 - Four silent-death classes surfaced (audit row + deduped Telegram): a no-handler job dying into an unwatched `mi_job_runs` row — the naked-position and stop-ack watchdogs included; a 200-OK-but-EMPTY Polygon snapshot read by every intraday scan as a quiet day; the WS-backstop's own failures; a whole account-mode dropping out of the 15-min reconcile. Observability only. Lesson: an odd `_` in an error message made the page 400 and vanish — an alarm that cannot render the errors it most often carries is not an alarm. Detail: `docs/architecture/market_agent_reference.md` §Error Alerting.
 
-### 2026-09-09 — #486: two cluster artifacts killed at the source; the recorder now says WHY a cluster was declined
-
-- **A gate, test or probe that cannot fail is indistinguishable from one that passes — SIX instances found in one day.** Eleven review predicates read zero because their condition could never be true; a shadow table answered "how often does a large cap clear the floor" with the floor itself as its write condition; a new test asserted against a local copy of the guard it was testing. **Before trusting a green/zero reading, make it go RED once.** Twelve exit reviews consolidated to one (#631) on his *"stop one off, consolidate"*.
-- GOOG×4 (four share classes, one issuer) held a cluster slot 25 nights and became a live theme once; takeover targets clustered at 0.92. Both removed in `correlation_engine.py` (root-match + return-identity; ex-spike vol floor). Discovery renders cluster members with RS / description / `[in: theme]`; the recorder adds `already_named` + the model's scratchpad. Rule sentences unchanged. Lesson: the recall-run "declined" count was the shadow reading the nightly's own births back as existing. Full read + operator forks: `docs/architecture/theme_engine.md` 2026-09-09.
-
 Older entries → `CHANGELOG.md` (search any concept).
 
 ---

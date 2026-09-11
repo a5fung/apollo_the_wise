@@ -1,3 +1,7 @@
+### 2026-09-09 — #486: two cluster artifacts killed at the source; the recorder says WHY a cluster was declined
+
+- **A gate, test or probe that cannot fail is indistinguishable from one that passes — six instances in one day** (eleven review predicates whose condition could never be true; a shadow table whose question WAS its write condition; a test asserting against a local copy of the guard). Before trusting a green or a zero, make it go RED once. GOOG×4 and takeover-target clusters removed at source in `correlation_engine.py`; the discovery recorder now carries `already_named` + the model's scratchpad. Twelve exit reviews consolidated to one (#631) on his *"stop one off, consolidate"*. Full read: `docs/architecture/theme_engine.md` 2026-09-09.
+
 ### 2026-08-11 — account-mode literal gate [5o/7]
 - SQL mode/phase literals need `mode-ok:`; nightly sweep replays them on any phase change / dormant pinned book, once ever. SSoT `dual_account.md`.
 
