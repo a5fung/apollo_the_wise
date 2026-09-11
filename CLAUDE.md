@@ -272,6 +272,8 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 - Four silent-death classes surfaced (audit row + deduped Telegram): a no-handler job dying into an unwatched `mi_job_runs` row — the naked-position and stop-ack watchdogs included; a 200-OK-but-EMPTY Polygon snapshot read by every intraday scan as a quiet day; the WS-backstop's own failures; a whole account-mode dropping out of the 15-min reconcile. Observability only. Lesson: an odd `_` in an error message made the page 400 and vanish — an alarm that cannot render the errors it most often carries is not an alarm. Detail: `docs/architecture/market_agent_reference.md` §Error Alerting.
 
+- **A CLAIM nothing can falsify reads exactly like a true one — the same defect as an unfireable gate, moved into prose.** A commit said truncation "also logs a warning at the moment it happens"; the line had been deleted by an edit in that same commit and no test asserted it. Found by review, not by me. Sister case the same evening: #638's lattice check sat inside 1 of the monitor's 3 triggers, so the other two printed revert SQL unchecked — a check covering one entrance is no check on the rest. **Four gates shipped today; two had real defects within hours, both found by a cleanup pass over my own diff.** Close gates on your OWN work the same day you write them.
+
 Older entries → `CHANGELOG.md` (search any concept).
 
 ---
