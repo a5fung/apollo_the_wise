@@ -1751,6 +1751,60 @@ async def initialize_schema() -> None:
                 WHERE operator_label IS NULL;
         """)
 
+        # ── Theme down-day resilience, WEEKLY SHADOW (#644, 2026-09-11) ──────────────────
+        # One row per active theme per week, carrying that theme's down-day resilience
+        # (db.get_down_day_resilience — "held up better than the market on the days the
+        # market fell" — the third leg of subtle RS beside get_rs_velocity/get_rs_turners)
+        # AS CAPTURED THAT WEEK. Exists so the November forward test (PLAN.md #644, decision
+        # rule frozen 2026-09-11) reads a value that was recorded AS-OF THE TIME, never a
+        # value reconstructed later from closes — a reconstruction that silently differs
+        # from what was live-captured is the exact #629 defect class.
+        # RECORDS ONLY (THE LINE): nothing here ranks, scores, admits, sizes, or alerts.
+        # `resilience_computable`/`not_computable_reason` mirror mi_theme_axis_shadow's
+        # `attribution_computable` discipline — a theme the measure could not score (no
+        # tickers on the snapshot, or get_down_day_resilience returned no coverage) still
+        # gets a row, with a NULL resilience and a stated reason, rather than being skipped:
+        # a missing row and a computed-null are different facts and must never render the
+        # same way to a later reader (the single most repeated lesson in this codebase).
+        # UNIQUE (theme_name, week_start): the job is idempotent — re-running for a week
+        # recomputes and overwrites that week's row rather than accumulating duplicates.
+        # ⚠ JOIN RULE FOR THE NOVEMBER READER — `week_start` names the ISO week the JOB
+        # ran in (the recorder fires Sunday morning, before the board's own Monday week
+        # begins), it is NOT the board week a cohort's entry belongs to. A cohort entering
+        # the board's top 30 on Monday W needs the capture from the SUNDAY IMMEDIATELY
+        # BEFORE W — this row's `week_start` reads as W-7d, one calendar week EARLIER than
+        # the board week it is the correct as-of value for. Join on `as_of_date`
+        # (unambiguous: `as_of_date = W - 1 day`), never on `week_start` alone — a naive
+        # week_start-to-week_start join is exactly the kind of silent divergence this table
+        # exists to prevent, just self-inflicted instead of coming from a reconstruction.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_resilience_weekly (
+                id SERIAL PRIMARY KEY,
+                -- the ISO week (Monday) the CAPTURE ran in — see the JOIN RULE comment
+                -- above this block; do not join board-week-start to this column directly.
+                week_start DATE NOT NULL,
+                theme_name TEXT NOT NULL,
+                theme_stage TEXT,
+                -- the mi_themes.theme_date of the active-theme snapshot this row reflects —
+                -- "the theme identity as mi_themes records it", not a re-derivation.
+                theme_snapshot_date DATE,
+                tickers TEXT[] NOT NULL DEFAULT '{}',
+                n_tickers_covered INT NOT NULL DEFAULT 0,
+                resilience FLOAT,
+                -- the `d` passed to get_down_day_resilience — AS-OF DISCIPLINE, so a later
+                -- reader can confirm no lookahead without re-deriving it. THE JOIN KEY for
+                -- a board week W: as_of_date = W - 1 day (the Sunday walking into W).
+                as_of_date DATE NOT NULL,
+                lookback_days INT NOT NULL DEFAULT 20,
+                resilience_computable BOOLEAN NOT NULL DEFAULT TRUE,
+                not_computable_reason TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (theme_name, week_start)
+            );
+            CREATE INDEX IF NOT EXISTS idx_theme_resilience_weekly_week
+                ON mi_theme_resilience_weekly(week_start DESC);
+        """)
+
         # ── Structure-axis shadow (#330, ADR 0016) — meta-rubric structure-axis measurement
         # scaffold, the #329 child axis 2 of 3 (theme #328 · structure #330 · gap-alignment #331).
         # SHADOW ONLY: logs, per scored EP HIGH/MODERATE, the 3 AS-OF (no-lookahead) structure
@@ -9980,6 +10034,54 @@ async def get_down_day_resilience(
 
         results.sort(key=lambda r: r["resilience"], reverse=True)
         return results
+
+
+# ── #644 weekly shadow: theme down-day resilience recorder ─────────────────────────────────
+# THE ONE writer for mi_theme_resilience_weekly. Compute/orchestration (looping active
+# themes, calling get_down_day_resilience, the not-computable reasons) lives in
+# agents/market_intelligence/theme_resilience_shadow.py — this function is the thin,
+# single-row upsert, mirroring write_unscored_theme_axis_row's shape. Hoisted to a module
+# constant + registered in scripts/preflight_db_updates.py SHADOW_WRITER_STATEMENTS per the
+# #606 lesson: a silent recorder is exactly where a type-deduction bug hides longest.
+THEME_RESILIENCE_WEEKLY_INSERT_SQL = """
+    INSERT INTO mi_theme_resilience_weekly (
+        week_start, theme_name, theme_stage, theme_snapshot_date,
+        tickers, n_tickers_covered, resilience, as_of_date, lookback_days,
+        resilience_computable, not_computable_reason
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    ON CONFLICT (theme_name, week_start) DO UPDATE SET
+        theme_stage = EXCLUDED.theme_stage,
+        theme_snapshot_date = EXCLUDED.theme_snapshot_date,
+        tickers = EXCLUDED.tickers,
+        n_tickers_covered = EXCLUDED.n_tickers_covered,
+        resilience = EXCLUDED.resilience,
+        as_of_date = EXCLUDED.as_of_date,
+        lookback_days = EXCLUDED.lookback_days,
+        resilience_computable = EXCLUDED.resilience_computable,
+        not_computable_reason = EXCLUDED.not_computable_reason
+"""
+
+
+async def write_theme_resilience_weekly_row(
+    conn: Any, week_start: "date", theme_name: str, theme_stage: "str | None",
+    theme_snapshot_date: "date | None", tickers: "list[str]", n_tickers_covered: int,
+    resilience: "float | None", as_of_date: "date", lookback_days: int,
+    resilience_computable: bool, not_computable_reason: "str | None",
+) -> int:
+    """Write (or, on a same-week re-run, overwrite) one theme's weekly resilience row.
+    Idempotent via ON CONFLICT (theme_name, week_start) DO UPDATE — re-running the job for
+    a week recomputes and replaces that week's row rather than accumulating duplicates.
+    Returns the affected-row count (always 1 for a successful INSERT/upsert here — no
+    guard clause can no-op this statement, unlike write_unscored_theme_axis_row's
+    ON CONFLICT DO NOTHING). Caller (theme_resilience_shadow.record_theme_resilience_weekly)
+    owns the per-theme try/except — this function does not swallow errors itself."""
+    res = await conn.execute(
+        THEME_RESILIENCE_WEEKLY_INSERT_SQL,
+        week_start, theme_name, theme_stage, theme_snapshot_date,
+        list(tickers or []), n_tickers_covered, resilience, as_of_date, lookback_days,
+        resilience_computable, not_computable_reason,
+    )
+    return int(str(res).split()[-1])
 
 
 async def get_ep_history(days: int = 14) -> list[dict[str, Any]]:

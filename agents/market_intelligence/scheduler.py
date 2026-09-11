@@ -168,6 +168,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "tv_news_shadow",  # #210 2026-09-06 — nightly TradingView news cross-reference for thin/no-catalyst alerts; pure fetch + DB/audit, no broker calls, no grade/admission change, Telegram only on a sustained run-level endpoint degradation (never a single blip)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "theme_axis_eod_unscored",  # theme-correctness Step 4 (THE INSTRUMENT) 2026-09-07 — EOD null-control population write for the theme-axis shadow; pure compute + DB/audit, no broker calls, no grade/admission change, SILENT (no Telegram)
+    "theme_resilience_weekly",  # #644 2026-09-11 — Sunday weekly per-theme down-day-resilience capture for the November forward test; pure compute (get_active_themes + the already-tested get_down_day_resilience) + DB/audit, no broker calls, no grade/admission/ranking change, SILENT (no Telegram), RECORDS ONLY
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
     "delayed_residual",  # #489 — EOD delayed-feed residual tracker; read-only (Polygon replay + DB/audit), no broker calls
@@ -5091,6 +5092,25 @@ async def _theme_axis_eod_unscored_job():
     logger.info(f"theme-axis EOD-unscored write: {out}")
 
 
+async def _theme_resilience_weekly_job():
+    """#644 — Sunday 9:00 AM ET weekly SHADOW capture of theme down-day resilience: one
+    `mi_theme_resilience_weekly` row per currently-active theme, carrying its as-of
+    resilience (db.get_down_day_resilience — frozen, unchanged, called never reimplemented)
+    so the November forward test (PLAN.md #644, decision rule frozen 2026-09-11) reads a
+    value CAPTURED at the time, never one reconstructed later from closes (the #629 defect
+    class). Slot chosen to sit clear of the two deploy-restricted windows
+    (9:25-10:05 / 16:00-17:00 ET) and of the existing Sunday cluster (2:00 cleanup, 8:00
+    system review, 8:45 gap finder, 19:00/19:30 later jobs) — the first open slot in that
+    run of mostly-hourly Sunday-morning jobs. RECORDS ONLY (THE LINE): writes ONLY
+    mi_theme_resilience_weekly + mi_audit_log, ranks/scores/admits/sizes/alerts on nothing.
+    Never raises past the wrapper (record_theme_resilience_weekly swallows internally too,
+    same SHADOW contract as theme_axis_shadow.py)."""
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.theme_resilience_shadow import record_theme_resilience_weekly
+    out = await record_theme_resilience_weekly(et_today())
+    logger.info(f"theme resilience weekly capture: {out}")
+
+
 async def _chart_axis_shadow_weekly_digest_job():
     """#343 — Sunday push of the week's new chart-axis SHADOW deltas for OPERATOR labeling. RE-RENDERS
     each delta's chart from the audit row's ticker+alert_date (render is deterministic — no saved-PNG
@@ -6301,6 +6321,21 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_source_gap_finder_job, "source_gap_finder"),
         CronTrigger(day_of_week="sun", hour=8, minute=45, timezone="America/New_York"),
         id="source_gap_finder",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
+    # #644 theme down-day-resilience weekly SHADOW capture: Sunday 9:00 AM ET — right after
+    # source_gap_finder (8:45), clear of the existing Sunday cluster, and clear of the
+    # deploy-restricted 9:25-10:05 ET window by 25+ minutes (that window's own live ORB
+    # entry job runs mon-fri only — no Sunday market — the margin here is purely so this
+    # slot could never be mistaken for landing inside it). Reads mi_themes +
+    # mi_daily_closes, both settled well before Sunday morning either way.
+    # RECORDS ONLY (THE LINE) — see _theme_resilience_weekly_job's docstring.
+    _scheduler.add_job(
+        audit_wrap(_theme_resilience_weekly_job, "theme_resilience_weekly"),
+        CronTrigger(day_of_week="sun", hour=9, minute=0, timezone="America/New_York"),
+        id="theme_resilience_weekly",
         replace_existing=True,
         misfire_grace_time=3600,
     )

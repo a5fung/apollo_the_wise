@@ -28,7 +28,7 @@ from agents.market_intelligence.db import (
     EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
     GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
     LOWCAP_LANE_REPLAY_UPSERT_SQL, LOWCAP_LANE_SIGNAL_INSERT_SQL,
-    THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL,
+    THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL, THEME_RESILIENCE_WEEKLY_INSERT_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
     UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
     get_pool)
@@ -314,6 +314,16 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # notice an empty table. Plain params, no jsonb, but still registered.
         "db.write_unscored_theme_axis_row: theme-correctness Step 4 EOD-unscored recorder",
         EOD_UNSCORED_THEME_AXIS_INSERT_SQL,
+    ),
+    (
+        # #644 (2026-09-11): the weekly theme down-day-resilience recorder — the capture the
+        # November forward test (PLAN.md #644) reads instead of reconstructing from closes.
+        # An UPSERT (ON CONFLICT (theme_name, week_start) DO UPDATE) with eleven plain params
+        # (one TEXT[] cast implicitly by asyncpg, no jsonb) — same silent-recorder shape this
+        # list exists for: a dead write here would leave the table empty through its first
+        # weeks with no downstream error, and November would have nothing to read.
+        "db.write_theme_resilience_weekly_row: #644 weekly theme down-day-resilience recorder",
+        THEME_RESILIENCE_WEEKLY_INSERT_SQL,
     ),
 ]
 
