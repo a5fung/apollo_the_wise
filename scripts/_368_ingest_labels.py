@@ -24,13 +24,15 @@ import sys
 from datetime import date as _date
 from collections import defaultdict
 
-SHEET = "docs/analysis/368_labeling_sheet.tsv"
+SHEET = "docs/analysis/368_labeling_sheet.tsv"   # default: the 2026-08-03 sitting
+# #368 (2026-09-11): a SECOND sitting means a second sheet. `--sheet <path>` keeps his
+# completed 08-03 work product untouched rather than overwriting it to reuse the ingest.
 VALID = {"y": "y", "n": "n", "?": "?"}
 
 
-def _load():
+def _load(sheet: str = SHEET):
     """(key -> (label, note)) for labelled rows; plus the conflicts we refuse to write."""
-    rows = list(csv.DictReader(open(SHEET), delimiter="\t"))
+    rows = list(csv.DictReader(open(sheet), delimiter="\t"))
     by_key = defaultdict(list)
     for r in rows:
         raw = (r.get("LABEL") or "").strip().lower()
@@ -52,10 +54,10 @@ def _load():
     return len(rows), clean, conflicts
 
 
-async def main(execute: bool) -> int:
+async def main(execute: bool, sheet: str = SHEET) -> int:
     from agents.market_intelligence.db import get_pool
 
-    total, clean, conflicts = _load()
+    total, clean, conflicts = _load(sheet)
     print(f"sheet rows {total} · labelled keys {len(clean)} · conflicting keys {len(conflicts)}")
     for key, vals in conflicts:
         print(f"  ! CONFLICT {key}: {[(v[2], v[0]) for v in vals]} — writing neither")
@@ -97,4 +99,8 @@ async def main(execute: bool) -> int:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--execute", action="store_true")
-    sys.exit(asyncio.run(main(ap.parse_args().execute)))
+
+    ap.add_argument("--sheet", default=SHEET,
+                    help="path to the labelling sheet (default: the 2026-08-03 sitting)")
+    _args = ap.parse_args()
+    sys.exit(asyncio.run(main(_args.execute, _args.sheet)))
