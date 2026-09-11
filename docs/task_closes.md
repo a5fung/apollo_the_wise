@@ -236,6 +236,16 @@ EVIDENCE: all four checked against prod today rather than taken from the task li
 (a) `mi_live_fill_counterfactuals` holds **12 distinct arms, 79 rows, 8 trades**, fills 2026-08-18 →
 2026-09-08 — every arm in the `ARMS` table is writing.
 (b) `mi_orb_shadow_trades` still exists with **356 rows**; nothing dropped.
+(c) **CHECKED AFTER THE FACT, because he asked whether the DoD was really met and this clause was
+the one I had asserted rather than verified.** It holds: **6 reviews carry an explicit `FOLDED INTO
+live_fill_counterfactuals_first_read_482 (#631)` pointer and all 6 are `status: done`**
+(`harvest_rule_effectiveness`, `pivot_stop_shadow_review`, `exit_regime_interaction_review`,
+`stop_2r_running_comparison`, `exit_path_shadow_first_read`, `regime_conditional_exit_grid_parked`);
+**1 was deliberately NOT folded** (`exit_tune_cohort_review`, the wide-grid OFFLINE read, kept as
+its own review) and **1 was closed by operator ruling, not folded** (`giveback_shadow_review`).
+That split is the *"ONLY those whose question is genuinely covered"* half of the clause being
+honoured rather than everything being swept. `tests/test_exit_counterfactual_consolidation_631.py`
+pins it — 34 tests green.
 (d) `live_fill_counterfactuals_first_read_482` is the single gated review and reads 7 of 20
 (earliest 2026-10-05) — confirmed in `operator_asks.py` output this morning.
 ▶ THE LAST OPEN ITEM — the `arm[5]` index fix — is live on the running image (confirmed 2026-09-10
@@ -250,6 +260,11 @@ the four `follows_live_rule=False` arms included. Latent, not harmless: the firs
 would have recorded four arms against a premise they do not hold.
 
 ## #501 — the jobs that could die without telling anyone, Tier-1 (closed 2026-09-11, deployed 2026-09-10)
+⚠ SAY THIS FIRST: **the DoD sentence as written has TWO clauses and this close satisfies ONE.** The
+second — *operator rules the Tier-2/3 batch* — was moved to **#635** in a scope split on 2026-09-10,
+before this close. So the bar below is the NARROWED bar, and the narrowing happened first. That is
+legitimate bookkeeping and it is also exactly the shape of a substituted criterion, so it is stated
+at the top rather than left at the bottom for a reader to find.
 BAR: the Tier-1 four surfaced (audit + deduped Telegram)
 EVIDENCE: deployed 2026-09-10 12:0x ET, both scopes. The task's own verify line called for the
 NEGATIVE check — *no false page fired* — which is the shape this week's rule forbids on its own, so
