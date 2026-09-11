@@ -322,8 +322,12 @@ def test_snap_candidate_parity_pre945_no_projection():
 
 # ── fork 4: shadow catches surface DIGEST-ONLY (ride the existing 10:00 digest) ────────────
 
-def _digest_pool(monkeypatch, miss_rows, catch_rows):
+def _digest_pool(monkeypatch, miss_rows, catch_rows, declined_rows=None):
     import json as _json
+    # #643: a third digest query (ep_rt_declined_not_missed) was added alongside miss/catch.
+    # Route it explicitly so pre-existing callers (no declined_rows passed) get an EMPTY
+    # declined set rather than silently falling into the catch_rows branch.
+    _declined = declined_rows if declined_rows is not None else []
 
     class _C:
         def __init__(self):
@@ -331,7 +335,12 @@ def _digest_pool(monkeypatch, miss_rows, catch_rows):
 
         async def fetch(self, q, *a):
             self.calls += 1
-            rows = miss_rows if "ep_rt_live_miss" in q else catch_rows
+            if "ep_rt_live_miss" in q:
+                rows = miss_rows
+            elif "ep_rt_declined_not_missed" in q:
+                rows = _declined
+            else:
+                rows = catch_rows
             return [{"detail": _json.dumps(r)} for r in rows]
 
     class _A:
@@ -383,6 +392,9 @@ def test_digest_appends_universe_catches_dedup_vs_misses(monkeypatch):
 
 
 def test_digest_catches_only_still_sends(monkeypatch):
+    """#643 (2026-09-11): the miss line now ALWAYS renders once the digest sends anything —
+    "0 genuine misses" on a catches-only morning — rather than silently vanishing. A vanished
+    line is indistinguishable from a job that never ran, which is the defect #643 exists to end."""
     from agents.market_intelligence import briefing
     _digest_pool(monkeypatch, [], [{"ticker": "NVVE", "rt_gap": 31.8, "tick_et": "07:35"}])
     _digest_toggle(monkeypatch, authoritative=False)
@@ -394,7 +406,7 @@ def test_digest_catches_only_still_sends(monkeypatch):
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
     n = asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 7, 24)))
     assert n == 1 and len(sent) == 1 and "NVVE" in sent[0]
-    assert "Real-time EP misses" not in sent[0]
+    assert "Real-time EP misses today: 0 genuine misses" in sent[0]
     assert "shadow-observed only, NOT admitted" in sent[0]
 
 

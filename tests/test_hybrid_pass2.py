@@ -90,9 +90,16 @@ def test_watchdog_excludes_caught_superset(monkeypatch):
     assert "ep_rt_live_miss" not in logged
 
 
-def _mock_pool(monkeypatch, rows):
+def _mock_pool(monkeypatch, rows, declined_rows=None):
+    # #643: a third query (ep_rt_declined_not_missed) was added alongside miss/catch. Route it
+    # explicitly so pre-existing callers that only pass `rows` keep getting an EMPTY declined set
+    # (unchanged behaviour) instead of silently reusing `rows` for a query they never intended.
+    _declined = declined_rows if declined_rows is not None else []
+
     class _C:
         async def fetch(self, q, *a):
+            if "ep_rt_declined_not_missed" in q:
+                return _declined
             return rows
     class _A:
         async def __aenter__(self):

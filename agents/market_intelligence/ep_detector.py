@@ -2350,7 +2350,8 @@ def _snap_candidate(ticker: str, snap: dict, prev_close: float, current_price: f
 async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, snapshots: dict,
                                      adv_map: dict, minutes_since_open: "int | None",
                                      now_et: datetime,
-                                     prev_trade_date: "date | None") -> "tuple[list[dict], dict | None]":
+                                     prev_trade_date: "date | None", *,
+                                     declined_out: "dict | None" = None) -> "tuple[list[dict], dict | None]":
     """#490 Pass-0 — full-universe real-time overlay (design §5.1). ONE Alpaca SIP fetch of the
     whole RT universe per tick (the watchdog + Pass-2 reuse the returned map — one fetch, not
     three). For every universe ticker NOT already a Pass-1 candidate whose rt gap crosses the
@@ -2366,7 +2367,14 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
     deduped Telegram via maybe_alert_api_failure. NEVER raises. Returns (candidates, snaps|None).
 
     Master flag OFF (deploy default) → pure no-op, candidates returned unchanged (freeze-tested
-    byte-identical)."""
+    byte-identical).
+
+    #643: `declined_out`, when passed, is filled at every point this function DECLINES a ticker
+    that had already cleared the raw_gap >= MIN_GAP_PCT check — `declined_out[ticker] = "<event>"`
+    naming the guard that refused it. Callers thread the SAME dict into `_rt_miss_watchdog` (same
+    tick) so a deliberate decline is never re-reported as a delay-missed EP (the BGSI 2026-09-11
+    defect — #643). A keyword-only OUT param rather than a bigger return tuple: this function has
+    multiple early returns and a new positional element would need touching all of them correctly."""
     if not (EP_RT_UNIVERSE_ENABLED and EP_RT_PASS2_ENABLED) or not rt_universe:
         return candidates, None
     try:
@@ -2462,6 +2470,8 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                         f"{tkr} split effective today — RT-only admission held (delayed-path semantics)",
                         json.dumps({"ticker": tkr, "rt_gap": round(raw_gap, 2),
                                     "tick_et": now_et.strftime("%H:%M")}))
+                if declined_out is not None:
+                    declined_out[tkr] = "ep_rt_corp_action_hold"
                 continue
             # §4 — halt quarantine: frozen print + dead quote on a previously-fresh name.
             if _is_halt_suspect(tkr, sn, now_et):
@@ -2473,6 +2483,8 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                         json.dumps({"ticker": tkr, "rt_gap": round(raw_gap, 2),
                                     "trade_age_s": _ts_age_s(sn.get("price_ts"), now_et),
                                     "tick_et": now_et.strftime("%H:%M")}))
+                if declined_out is not None:
+                    declined_out[tkr] = "ep_rt_halt_suspect"
                 continue
             # §2.1 — date-keyed prev_close cross-check (Polygon prevDay.c stays the denominator).
             a_ref = _alpaca_ref_close(sn, prev_trade_date)
@@ -2484,18 +2496,23 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                         json.dumps({"ticker": tkr, "alpaca": a_ref, "polygon": pc,
                                     "prev_trade_date": prev_trade_date.isoformat() if prev_trade_date else None,
                                     "tick_et": now_et.strftime("%H:%M")}))
+                if declined_out is not None:
+                    declined_out[tkr] = "ep_rt_prev_close_mismatch"
                 continue   # degrade to delayed semantics — exactly today's fail direction
             # §3 — Q1-Q4; Q3 is ALWAYS mandatory here (every one of these is an RT-only admission;
             # an unverified prev_close (a_ref None) is covered by the same mandatory Q3, per §2.1).
             rt_price, reject, meta = _rt_quality_read(sn, pc, now_et, rt_only=True)
             if rt_price is None:
-                if reject and _audit_dedupe_check(tkr, adate, "ep_rt_tick_quality_reject"):
-                    await log_audit_event(
-                        "ep_rt_tick_quality_reject",
-                        f"{tkr} rt {raw_gap:.1f}% REJECTED ({reject}) @ {now_et:%H:%M} ET",
-                        json.dumps({"ticker": tkr, "reason": reject, "rt_gap": round(raw_gap, 2),
-                                    "quote_state": meta.get("quote_state"),
-                                    "tick_et": now_et.strftime("%H:%M")}))
+                if reject:
+                    if declined_out is not None:
+                        declined_out[tkr] = "ep_rt_tick_quality_reject"
+                    if _audit_dedupe_check(tkr, adate, "ep_rt_tick_quality_reject"):
+                        await log_audit_event(
+                            "ep_rt_tick_quality_reject",
+                            f"{tkr} rt {raw_gap:.1f}% REJECTED ({reject}) @ {now_et:%H:%M} ET",
+                            json.dumps({"ticker": tkr, "reason": reject, "rt_gap": round(raw_gap, 2),
+                                        "quote_state": meta.get("quote_state"),
+                                        "tick_et": now_et.strftime("%H:%M")}))
                 continue
             rt_gap = (rt_price - pc) / pc * 100
             if rt_gap < MIN_GAP_PCT:
@@ -2511,6 +2528,8 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                                     "accepted_gap": round(rt_gap, 2),
                                     "basis": meta.get("basis"),
                                     "tick_et": now_et.strftime("%H:%M")}))
+                if declined_out is not None:
+                    declined_out[tkr] = "ep_rt_retreated_below_floor"
                 continue
             # ── #490 SUSTAIN gate (operator-signed 2026-08-02, N=3) ──────────────────────
             # Runs HERE, at the would-be-catch, because the set is tiny (~0-3 symbols a tick) so a
@@ -2542,17 +2561,29 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                             json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2),
                                         "bars_required": EP_RT_SUSTAIN_BARS,
                                         "tick_et": now_et.strftime("%H:%M"), **_sd}))
+                    # #643: BGSI 2026-09-11 — this is the exact defect. The watchdog does not
+                    # consult the overlay's own rejections, so a name declined HERE was silently
+                    # re-reported as "delay-missed EP" at the same tick.
+                    if declined_out is not None:
+                        declined_out[tkr] = "ep_rt_sustain_reject"
                     continue
-                if _held is None and _audit_dedupe_check(tkr, adate, "ep_rt_sustain_undecidable"):
-                    # Fail-open, but NAMED — otherwise "the rule is on" and "the rule never had
-                    # data" look identical in the log, which is the instrumentation trap that made
-                    # gate 1 unanswerable in the first place.
-                    await log_audit_event(
-                        "ep_rt_sustain_undecidable",
-                        f"{tkr} sustain rule UNAVAILABLE ({_sd.get('reason')}) @ {now_et:%H:%M} ET "
-                        f"— admitted on today's behaviour",
-                        json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2),
-                                    "tick_et": now_et.strftime("%H:%M"), **_sd}))
+                if _held is None:
+                    # #643: deliberately NOT recorded in `declined_out`. This site does not
+                    # `continue` — it falls through to the catch below, and its own message says
+                    # "admitted on today's behaviour". Calling it a decline would print a
+                    # SHADOW-mode CATCH inside the digest's DECLINED line, which is the exact
+                    # false-label defect this task exists to remove. My card spec listed it as a
+                    # decline site; the card pushed back and was right (2026-09-11).
+                    if _audit_dedupe_check(tkr, adate, "ep_rt_sustain_undecidable"):
+                        # Fail-open, but NAMED — otherwise "the rule is on" and "the rule never had
+                        # data" look identical in the log, which is the instrumentation trap that made
+                        # gate 1 unanswerable in the first place.
+                        await log_audit_event(
+                            "ep_rt_sustain_undecidable",
+                            f"{tkr} sustain rule UNAVAILABLE ({_sd.get('reason')}) @ {now_et:%H:%M} ET "
+                            f"— admitted on today's behaviour",
+                            json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2),
+                                        "tick_et": now_et.strftime("%H:%M"), **_sd}))
             delayed_gap = _delayed_gap_for(snapshots.get(tkr), pc)
             # The shadow-proof event — fires in BOTH modes (the RT-2 proof-join and the RT-4
             # regression monitor read it). AUDIT-ONLY + morning digest (operator fork 4, 7/21
@@ -2798,7 +2829,8 @@ _WATCHDOG_BG_TASKS: set = set()
 
 
 async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime,
-                            snaps: "dict | None" = None) -> None:
+                            snaps: "dict | None" = None, *,
+                            declined: "dict | None" = None) -> None:
     """#489 real-time MISS detector — ALERT-ONLY (records; a morning digest sends the summary). The
     hybrid structurally can't catch the residual (flat-premarket-then-explode) class in real time, but
     this CAN surface it: each in-window tick, fetch REAL-TIME Alpaca SIP prices for the full RT universe
@@ -2810,7 +2842,13 @@ async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime,
     OBSERVE mode — never changes what we enter, not THE LINE. Deduped per ticker/day; never raises.
 
     #490 RT-1: `snaps` accepts the Pass-0 pre-fetched universe map (§5.1 — one universe fetch per
-    tick, not two). None (universe flag off / Pass-0 degraded) → own fetch, exactly as before."""
+    tick, not two). None (universe flag off / Pass-0 degraded) → own fetch, exactly as before.
+
+    #643: `declined`, when passed, is the SAME dict `_apply_rt_universe_overlay` filled this tick
+    (`declined_out`) — ticker -> the named guard event that refused it. A ticker present there was
+    SEEN by the overlay and deliberately excluded, so it is never a "delay couldn't see it" miss;
+    it gets `ep_rt_declined_not_missed` instead of `ep_rt_live_miss` (the BGSI 2026-09-11 defect —
+    the watchdog previously had no way to tell a genuine miss from a deliberate decline)."""
     if not (EP_RT_MISS_WATCHDOG_ENABLED and EP_RT_PASS2_ENABLED) or not rt_universe:
         return
     mod = now_et.hour * 60 + now_et.minute
@@ -2831,8 +2869,20 @@ async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime,
             if not price or not pc:
                 continue
             rt_gap = (price - pc) / pc * 100
-            if rt_gap >= MIN_GAP_PCT:
-                missed.append((tkr, pc, rt_gap))
+            if rt_gap < MIN_GAP_PCT:
+                continue
+            if declined and tkr in declined:
+                # #643: the overlay already saw this ticker THIS tick and declined it on a named
+                # guard — never re-report it as a miss. One audit row per ticker per day names why.
+                if _audit_dedupe_check(tkr, adate, "ep_rt_declined_not_missed"):
+                    _reason = declined[tkr]
+                    await log_audit_event(
+                        "ep_rt_declined_not_missed",
+                        f"{tkr} rt {rt_gap:.1f}% @ {now_et:%H:%M} ET — DECLINED by {_reason}, not missed",
+                        json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2),
+                                    "tick_et": now_et.strftime("%H:%M"), "declined_reason": _reason}))
+                continue
+            missed.append((tkr, pc, rt_gap))
         if not missed:
             return
         # #489 (A): mechanical EP gates — alert only on a REAL EP-shaped miss, not every 9% spike.
@@ -2864,7 +2914,8 @@ async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime,
                 continue
             await log_audit_event(
                 "ep_rt_live_miss",
-                f"{tkr} rt {rt_gap:.1f}% ≥10 @ {now_et:%H:%M} ET, passes mechanical EP gates but NOT a scan candidate (delay-missed EP)",
+                f"{tkr} rt {rt_gap:.1f}% ≥{MIN_GAP_PCT:.0f} @ {now_et:%H:%M} ET, passes mechanical "
+                f"EP gates and the RT overlay did not see it — no decline recorded this tick",
                 json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2), "tick_et": now_et.strftime("%H:%M")}))
             # #489 (operator 7/21): AUDIT-ONLY — no per-ticker Telegram (was too noisy). The residual
             # misses digest ONCE per morning via send_rt_miss_digest (~10:00 ET), not a per-tick blast.
@@ -2887,7 +2938,14 @@ async def send_rt_miss_digest(run_date=None) -> int:
     rather than derived): the catch line's ADMITTED-vs-shadow wording is now read from the SAME
     `ep_rt_universe_authoritative` toggle the admission path (`_apply_rt_universe_overlay`) reads,
     via `get_runtime_toggle`, so the next flip can't leave it stale again. A toggle-read error
-    omits the claim rather than guessing."""
+    omits the claim rather than guessing.
+
+    #643 (2026-09-11, BGSI): a ticker the overlay SAW and declined on a named guard (sustain
+    reject, corp-action hold, ...) is no longer eligible for `ep_rt_live_miss` at all — the
+    watchdog now excludes it and records `ep_rt_declined_not_missed` instead. This digest reads
+    that event as its own DECLINED line. When there is other real activity to report (a genuine
+    miss or a decline) but zero genuine misses, the miss line renders "0 genuine misses" rather
+    than being omitted — an omitted line is indistinguishable from a job that never ran."""
     d = run_date or et_today()
     try:
         pool = await get_pool()
@@ -2899,6 +2957,13 @@ async def send_rt_miss_digest(run_date=None) -> int:
             """, d)
             catch_rows = await conn.fetch("""
                 SELECT detail FROM mi_audit_log WHERE event_type='ep_rt_universe_catch'
+                  AND (created_at AT TIME ZONE 'America/New_York')::date = $1
+                ORDER BY created_at
+            """, d)
+            # #643: the overlay's own declines this day — a ticker here was SEEN and refused on a
+            # named guard, so it must render as DECLINED, never folded into the miss line above.
+            declined_rows = await conn.fetch("""
+                SELECT detail FROM mi_audit_log WHERE event_type='ep_rt_declined_not_missed'
                   AND (created_at AT TIME ZONE 'America/New_York')::date = $1
                 ORDER BY created_at
             """, d)
@@ -2924,7 +2989,12 @@ async def send_rt_miss_digest(run_date=None) -> int:
         for j in _parse(catch_rows)
         if j.get("ticker") not in miss_tickers   # the in-window overlap is already in the miss line
     ]
-    if not items and not catch_items:
+    declined_items = [
+        f"{j.get('ticker', '?')} +{j.get('rt_gap', '?')}% @{j.get('tick_et', '?')} "
+        f"({j.get('declined_reason', '?')})"
+        for j in _parse(declined_rows)
+    ]
+    if not items and not catch_items and not declined_items:
         return 0
 
     # #578-class fix (2026-08-26, display-text only — no admission/behaviour change): derive
@@ -2944,10 +3014,23 @@ async def send_rt_miss_digest(run_date=None) -> int:
             logger.warning(f"send_rt_miss_digest toggle read failed (non-fatal): {_te}")
 
     parts = []
+    # #643: the miss line renders EVERY time the digest sends anything — including "0 genuine
+    # misses" — never omitted. The early return above already covers the true "nothing happened"
+    # case (no misses, no catches, no declines); anything past it is a real digest send, and a
+    # silently-vanished miss line inside a real send is indistinguishable from a job that never
+    # ran (the exact defect this card exists to end — it applied to the catch-only case too, not
+    # just the declined case).
     if items:
         parts.append(
             f"🚨 Real-time EP misses today ({len(items)} residual — the delay-missed class the hybrid can't "
             f"catch): " + " · ".join(items) + ". No entry (observability); grade/catalyst unconfirmed.")
+    else:
+        parts.append(
+            "🚨 Real-time EP misses today: 0 genuine misses (the delay-missed class the hybrid can't catch).")
+    if declined_items:
+        parts.append(
+            f"🔕 Declined, not missed ({len(declined_items)} — the overlay saw these and refused on a named "
+            f"guard, so they were never delay-missed): " + " · ".join(declined_items) + ".")
     if catch_items:
         _label_suffix = f", {_catch_label}" if _catch_label else ""
         parts.append(
@@ -2958,7 +3041,7 @@ async def send_rt_miss_digest(run_date=None) -> int:
         await send_telegram_message(" ".join(parts))
     except Exception:  # loud-ok: Telegram best-effort; the audit rows are durable
         pass
-    return len(items) + len(catch_items)
+    return len(items) + len(catch_items) + len(declined_items)
 
 
 async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
@@ -3332,10 +3415,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # so the watchdog EXCLUDES them and flags only the TRUE residual (delayed <5%, never a candidate). Else a
     # 5-10%-delayed ticker that Pass-2 shadow-drops double-fires floor-flip + watchdog (AEHR, 7/21).
     _superset = {c["ticker"] for c in candidates}
+    # #643: one dict, created fresh per tick, threaded into BOTH the overlay (which fills it) and
+    # the watchdog (which reads it) — the SAME object, so a future refactor cannot silently
+    # disconnect the two and resurrect the BGSI "declined re-reported as missed" defect.
+    _declined_this_tick: dict = {}
     # #490 Pass-0 — full-universe rt overlay (no-op + no fetch when EP_RT_UNIVERSE_ENABLED is off,
     # the deploy default). One universe fetch per tick: Pass-2 and the watchdog reuse `_rt_snaps`.
     candidates, _rt_snaps = await _apply_rt_universe_overlay(
-        candidates, _rt_universe, snapshots, adv_map, _minutes_since_open, now_et, _prev_trade_date)
+        candidates, _rt_universe, snapshots, adv_map, _minutes_since_open, now_et, _prev_trade_date,
+        declined_out=_declined_this_tick)
     _pre_pass2 = list(candidates)   # #605: the set Pass-2 decides over, for drop capture below
     candidates = await _apply_realtime_pass2(
         candidates, now_et, prev_trade_date=_prev_trade_date, snaps=_rt_snaps)
@@ -3366,7 +3454,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # #490: exclusion set = the pre-Pass-2 superset ∪ anything that IS a candidate now (a Pass-0
     # authoritative admit is a real scan candidate — the watchdog must not re-flag it as a miss).
     _wt = asyncio.create_task(_rt_miss_watchdog(
-        _rt_universe, _superset | {c["ticker"] for c in candidates}, now_et, snaps=_rt_snaps))
+        _rt_universe, _superset | {c["ticker"] for c in candidates}, now_et, snaps=_rt_snaps,
+        declined=_declined_this_tick))
     _WATCHDOG_BG_TASKS.add(_wt)
     _wt.add_done_callback(_WATCHDOG_BG_TASKS.discard)
 
