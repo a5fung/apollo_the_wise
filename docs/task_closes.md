@@ -400,3 +400,28 @@ operator ask after searching every FILE, when one HTTP request would have settle
 URL I "found" that way was WRONG, because a 303 to Streamlit's auth endpoint proves nothing (it
 answers for any `*.streamlit.app` subdomain). The real one came from his screenshot. Also recorded:
 Streamlit served the pre-push build for ~14 minutes, which made a working fix look broken.
+
+## #233 — Perplexity repositioned as a labelled second opinion, and the agreement boost retired (closed 2026-09-11)
+BAR: the Perplexity grade reaches the judge as a LABELED second opinion and its DISAGREEMENT with
+Claude is visible in a real judge rationale, with the mechanical `confidence_multiplier` floor
+retired. WOULD-FAIL-IF: the multiplier is still doing the work, or the judge reads the text but
+never the grade — the exact half-integration this line was written to finish
+EVIDENCE: both clauses proven on prod data, not on code reading.
+▶ **The boost is retired and the DATA says so:** in `mi_ep_alerts`, `confidence_multiplier = 1.2`
+appears on 37 alerts from 2026-08-04 to **2026-08-27 — the sign-off date — and never again**. All
+74 alerts since read 1.0. So the WOULD-FAIL-IF's first arm ("the multiplier is still doing the
+work") is answered by the column itself, and it was genuinely acting before: it multiplies straight
+into the score via `regime_multiplier * confidence_multiplier` at three sites.
+▶ **The judge reads the GRADE, not just the text** — the second arm of the WOULD-FAIL-IF, and the
+half this task existed to finish. Two of the 11 post-flip alerts carry a judge rationale citing it,
+and both show the disagreement DOING something:
+  - **QCOM 2026-09-08** — Claude `strong`, judge `game_changer`: *"Second opinion prompted a
+    re-read: the 8-K's $60B purchase-linked warrant on a $180B cap is a hyperscaler design win of
+    transformative scale, not just a legal-overhang removal, so I move up to game_changer."*
+  - **SEI 2026-09-08** — *"The second opinion's 'strong' reads the Omega deal as the driver;
+    re-reading, the load-bearing item is today's guidance raise..."* — the judge names the second
+    opinion's GRADE and overrules it on evidence.
+⚖ No strategy, threshold or sizing change was made in closing this; the flip itself was
+operator-signed 2026-08-27 and the evidence for retiring the boost is in
+`docs/analysis/pplx_agreement_boost_233_2026-08-27.md` (boosted names ran a SMALLER 5-day max move,
+9.17% vs 11.20%, and the effect is a null once score band is held constant).
