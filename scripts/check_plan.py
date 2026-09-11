@@ -1161,7 +1161,20 @@ def _norm(s: str) -> str:
 
 
 def close_bar_for(title: str) -> "tuple[str, str] | None":
-    """(kind, bar-text) a close of this line must be judged against, or None if it states none."""
+    """(kind, bar-text) a close of this line must be judged against, or None if it states none.
+
+    Matched against `_verify_claim_body(title)`, NOT the raw line — the SAME substrate the two
+    verify-claim gates use, for the same reason its docstring gives: an `[ok:]` / `[blocked:]` /
+    `[swept:]` tag is commentary about a past rebump decision, never a statement of this task's own
+    criterion. ⚠ **This was wrong on the day it shipped and the altitude review caught it
+    (2026-09-10).** The capture groups stop only at ▶ >> ⚠ ✅ ⛔, so a bar ran straight past the end
+    of the real DoD into the rebump prose after it — **12 of 67 open lines, #540 included**, whose
+    624-character "bar" ended inside *"[ok:2026-08-07→2026-08-10 — NOT a deferral: it shipped..."*.
+    #540 is the task whose mishandled close is the entire reason `_close_evidence_gate` exists, so
+    the gate could have been satisfied by quoting rebump history — the exact substitution it was
+    built to refuse. One substrate repo-wide for "what is this task's own claim", not two.
+    """
+    title = _verify_claim_body(title)
     for kind, pat in zip(("DoD", "VERIFY-LIVE", "VERIFY"), _BAR_PATTERNS):
         m = pat.search(title)
         if m and len(_norm(m.group(1))) >= 25:
@@ -1270,6 +1283,19 @@ def _review_can_fire_gate(errors) -> None:
     if REVIEWS_YAML != REPO / "data_gated_reviews.yaml" or not REVIEWS_YAML.exists():
         return
     import subprocess
+    # Cheapest question first: was the file touched at all? The gate only judges NEW or EDITED
+    # reviews, so on the overwhelming majority of commits there is nothing here to judge — and
+    # finding that out cost a `git show` plus TWO yaml.safe_load passes over 726 KB / 11,809
+    # lines, about 230 ms on EVERY pre-commit run and every hand-run. `git diff --quiet` answers
+    # it in ~11 ms. rc 0 = unchanged (skip); rc 1 = changed and rc 128 = no origin both fall
+    # through to the existing fail-OPEN path, unchanged. (Found 2026-09-10 by the cleanup pass.)
+    try:
+        if subprocess.run(["git", "diff", "--quiet", "origin/main", "--",
+                           "data_gated_reviews.yaml"], cwd=str(REPO),
+                          capture_output=True).returncode == 0:
+            return
+    except Exception:
+        pass        # cannot tell -> fall through and do the full check
     try:
         base = subprocess.run(
             ["git", "show", "origin/main:data_gated_reviews.yaml"], cwd=str(REPO),
@@ -1300,12 +1326,24 @@ def _review_can_fire_gate(errors) -> None:
                 f"reviews were reading zero on 2026-09-09 for five different reasons, none visible "
                 f"at creation. Add can_fire with: {', '.join(_CAN_FIRE_KEYS)}.")
             continue
-        missing = [k for k in _CAN_FIRE_KEYS
-                   if not isinstance(cf.get(k), str) or len(cf.get(k, "").strip()) < 12]
+        missing = can_fire_missing(cf)
         if missing:
             errors.append(
                 f"gated review `{rid}`: `can_fire` is missing or too thin for {missing}. Each must "
                 f"say what was CHECKED, not that it was checked.")
+
+def can_fire_missing(cf: dict) -> list:
+    """Which `can_fire` keys are absent or too thin to be evidence.
+
+    THE one definition, imported by `operator_asks.py --audit` rather than copied there. Both were
+    written on 2026-09-10 and both carried their own copy of this rule, so a sixth key or a moved
+    floor would have left the commit gate and the audit report disagreeing about what counts —
+    the same drift `_plan_at_ref` was consolidated to end. Twelve characters is the floor because
+    "yes", "n/a" and "checked" are not answers to "what was CHECKED".
+    """
+    return [k for k in _CAN_FIRE_KEYS
+            if not isinstance(cf.get(k), str) or len(cf.get(k, "").strip()) < 12]
+
 
 def _dod_required_gate(errors, tasks) -> None:
     """EVERY task must say what done means (operator 2026-09-10: *"is dod required for every task?"*).

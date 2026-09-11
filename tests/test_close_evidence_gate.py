@@ -86,3 +86,53 @@ def test_a_line_with_no_criterion_at_all_returns_none():
 def test_empty_inputs_never_pass():
     assert not close_bar_matches("", "anything at all here")
     assert not close_bar_matches("something", "")
+
+
+# ── The bar may not bleed into rebump commentary (2026-09-10, altitude review) ────────────────
+#
+# `close_bar_for`'s capture groups stop only at ▶ >> ⚠ ✅ ⛔ — not at `[`. So a DoD followed by an
+# `[ok:...]` rebump tag extracted BOTH: 12 of 67 open lines on the day the gate shipped, #540
+# included, whose 624-character "bar" ran into "[ok:2026-08-07→2026-08-10 — NOT a deferral: it
+# shipped, the verify RAN today...]". #540 is the task whose mishandled close is the whole reason
+# this gate exists, so the gate could have been SATISFIED by quoting rebump history — the exact
+# substitution it refuses. Fixed by matching `_verify_claim_body(title)`, the substrate the two
+# verify-claim gates already share, rather than a second definition of "this task's own claim".
+
+_REBUMP_TAIL = (
+    "**DoD: a non-null `broker_reason` on a real live buy-side rejection, proven on a real event.** "
+    "[ok:2026-08-07→2026-08-10 — NOT a deferral: it shipped, the verify RAN today on a real live "
+    "cancel, and it FAILED (broker_reason null while the reason sat on the event stream).]"
+)
+
+
+def test_the_bar_stops_at_the_dod_and_never_enters_a_rebump_tag():
+    from scripts.check_plan import close_bar_for
+
+    kind, bar = close_bar_for(_REBUMP_TAIL)
+    assert kind == "DoD"
+    assert "broker_reason" in bar, "the real DoD was lost"
+    assert "NOT a deferral" not in bar, "the bar swallowed the [ok:] rebump commentary"
+    assert "[ok:" not in bar
+
+
+def test_rebump_prose_cannot_be_quoted_as_the_bar():
+    """THE CONSEQUENCE, asserted directly: with the tag inside the bar, this quote passed."""
+    from scripts.check_plan import close_bar_for, close_bar_matches
+
+    _, bar = close_bar_for(_REBUMP_TAIL)
+    assert not close_bar_matches("NOT a deferral it shipped the verify RAN today", bar), (
+        "a close could be justified by quoting the rebump note instead of the DoD")
+    assert close_bar_matches("a non-null broker_reason on a real live buy-side rejection", bar)
+
+
+def test_every_open_task_on_the_real_board_has_a_clean_bar():
+    """The board is the population that matters — 12 of 67 were leaking when this was written."""
+    import re
+
+    from scripts.check_plan import PLAN, close_bar_for, parse
+
+    tasks = parse(PLAN.read_text(encoding="utf-8"))[0]
+    meta = re.compile(r"\[(?:ok|blocked|swept|revalidated):", re.I)
+    leaking = [t["id"] for t in tasks
+               if (got := close_bar_for(t["title"])) and meta.search(got[1])]
+    assert not leaking, f"bars bleeding into rebump commentary: {leaking}"

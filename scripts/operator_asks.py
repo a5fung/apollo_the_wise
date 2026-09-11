@@ -215,8 +215,13 @@ def _load_reviews() -> list:
     return [r for r in (d.get("reviews") or []) if isinstance(r, dict)]
 
 
-_CAN_FIRE_KEYS = ("predicate_runs", "nonzero_possible", "lane_live",
-                  "threshold_vs_observed", "era_scoped")
+# ONE definition of the can_fire contract, shared with the gate that enforces it at commit time.
+# It was declared here AND in check_plan.py on the same day, along with a copy of the "too thin"
+# rule — so adding a sixth key or moving the 12-character floor in one place would leave this
+# audit and that gate quietly disagreeing about what counts as evidence. Two cleanup reviewers
+# flagged it independently (2026-09-10).
+sys.path.insert(0, str(REPO / "scripts"))
+from check_plan import _CAN_FIRE_KEYS, can_fire_missing     # noqa: E402
 
 
 def _audit(reviews) -> int:
@@ -260,9 +265,7 @@ def _audit(reviews) -> int:
         if not isinstance(r.get("can_fire"), dict):
             no_ev.append(rid)
         else:
-            missing = [k for k in _CAN_FIRE_KEYS
-                       if not isinstance(r["can_fire"].get(k), str)
-                       or len(r["can_fire"].get(k, "").strip()) < 12]
+            missing = can_fire_missing(r["can_fire"])
             if missing:
                 no_ev.append(f"{rid} (thin: {','.join(missing)})")
 
