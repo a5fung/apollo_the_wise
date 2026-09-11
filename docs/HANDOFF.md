@@ -735,3 +735,68 @@ size (~$37), not the ~$12.35 floor.** ⚠ **Zero entries is NOT a pass.**
   `trade_stream_stop_placement_without_orders_row` — writer-less, exempted by name today.
 
 **NOTHING WAITS ON THE OPERATOR.** `scripts/operator_asks.py` is the only way to say what does.
+
+---
+
+## 2026-09-10 (Thu) — 🔴 RESUME HERE. Supersedes everything above.
+
+**Closed 21:40 ET. Tree clean, suite 7,953, board 68 → 67. Deployed 21:1x ET — `both` then
+`execution`, box on `33cccd13` — and VERIFIED on the running images, not on an exit code.**
+
+### The day's lesson — a claim nothing can falsify reads exactly like a true one
+
+Yesterday: *a gate that cannot fail is indistinguishable from one that passes*. Today the same
+defect showed up in **prose** and in **partial coverage**:
+
+- A commit message said truncation *"also logs a warning at the moment it happens."* The line had
+  been deleted by an edit **in that same commit**, and no test asserted it.
+- **#638's lattice check covered 1 of the monitor's 3 triggers.** The announce block is shared, so
+  an (a)- or (b)-only firing printed revert SQL with no check and no caveat — identical to before
+  the fix. Trigger (a) was the worse half: it can name the lattice for a miss the lattice was never
+  in the acting path of.
+- The close gate's own bar extractor bled into `[ok:]` rebump prose on **12 of 67 lines, #540
+  included** — the task whose mishandled close is the entire reason that gate exists. It could have
+  been satisfied by quoting rebump history.
+
+**Four gates shipped today; two had real defects within hours.** All three were found by a cleanup
+pass over my own diff. **Review your own gates the day you write them.**
+
+### What waits on him — exactly one
+
+**#642 — two audit rows written under the old 8,000 cap are unreadable.** The repair is written and
+dry-run clean on prod; the `--commit` mutates audit history so it is his call:
+`docker exec apollo-market python scripts/probes/_501_repair_unreadable_audit_rows.py --commit`.
+⚠ The count was wrong twice in one evening — "only 1", then 10, then **2**. The other 8 rows that
+hit the cap hold plain prose and were never JSON.
+
+### Verified live tonight — do not re-check
+
+- Audit truncation: **both** containers at 32,000; a 40,009-character payload stores as valid JSON
+  at 31,992 with the warning firing. That is the defect itself reproduced through deployed code.
+- **#638 CLOSED** on prod data: `_lattice_retier_rows` over the real 09-09/09-10 window reads 13
+  rows and `lattice_altered_nothing` returns True — the branch that withholds the revert SQL.
+- `follows_live = arm[5]` (the exit recorder's index fix) is in the running image.
+- **#486's component check passed and discriminates** — the 09-10 discovery rows carry a populated
+  `scratchpads`, non-zero `covered_share` and non-empty `covered_by`; 09-09 and 09-08 read zero and
+  empty on all three. The TASK is still blocked (70 of 75 clean rows share one judge grade) and was
+  re-dated to 10-15 with the reason said out loud.
+
+### The weekend — Saturday mine (9), Sunday his (3)
+
+**Sat 09-12:** #485 · #488 · #519 · #561 · #579 · #639 · #640 (Rank Flow repaired, not retired) ·
+#641 · #642. **Sun 09-13:** #368 (label 44 themed rows + D2/D3 weighting) · #397/#610 (the HTF
+fork — *HTF as written today* has no edge, which is not a verdict on HTF as a setup).
+
+🔴 **#641 is the one that matters most: `portfolio-app2` is invisible to every gate in this repo.**
+`check_plan`, the delegation gate, the growth gate and `--audit-new` all run from
+`apollo_the_wise`, and SHIPPED-BUT-UNRECORDED / LIKELY-BUILT derive from THIS repo's git log — so a
+dashboard commit fires none of them. That is how **#555 sat five days** after shipping, found by a
+Sonnet card grepping `git log`. **#561 and #553 are in the same hole now.** Second half: the
+dashboard's deployed URL is **in no file I can read**, so *done = verified-live* cannot be satisfied
+for any dashboard task; today's Weekly Movers fix was confirmed by recomputing against the same
+snapshot JSON the page reads — the code being right, not the page.
+
+### Still unproven — the regime sizing fix, now three days without evidence
+
+No qualifying fill. Check: **no `sizing_regime_fallback` audit row at 9:31, and the first fill's
+`risk_dollars` reads full size (~$37), not the ~$12.35 floor.** ⚠ Zero entries is NOT a pass.
