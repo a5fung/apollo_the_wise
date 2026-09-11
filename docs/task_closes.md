@@ -325,3 +325,27 @@ page arrives silent* (`core/notifications.py:90`, `:104`) — it had been writte
 text on 2026-09-10 and was therefore invisible to `operator_asks.py`, which reads only the standing
 table. It is now a row in that table with a proof. **A close must not take an unanswered ask down
 with it**, which is the whole reason this ledger exists.
+
+## #553 — cohort identity: containment alone may no longer merge (closed 2026-09-11, shipped 2026-09-05)
+BAR: containment alone can no longer merge — `dedup_themes` requires a similarity gate (not a
+tie-break), and the recorded false-merge cases stay SEPARATE when the matcher is replayed over them.
+WOULD-FAIL-IF: a small theme wholly inside a larger unrelated one still merges at containment 1.00,
+or merges still CHAIN (A~B, B~C → A+B+C) across unrelated cohorts
+EVIDENCE: shipped in `portfolio-app2` `1c19c76` (2026-09-05) and **replayed over the REAL committed
+snapshot today, not a synthetic fixture** — `TestRealSnapshot*` runs `canonicalize_themes` across the
+full series and all 9 pass:
+- **The three operator-evidenced false merges stay split across every day**: satellite-mobile never
+  shares a cohort with defense primes; niche specialty chemicals never with IP licensing; the nylon
+  rows never with agri or nitrogen.
+- **The one true duplicate stays merged on every day it appears** (defense spending / contract
+  surge) — so the gate did not simply stop merging, which is the failure mode a "nothing merges
+  now" fix would hide behind.
+- The same-day absorb is refused (`test_same_day_blob_does_not_absorb_optical_networking`) and
+  alternating names on one basket resolve to one cohort.
+- `test_grid_output_unchanged` pins the Grid view's own dedup byte-identical to the pre-#553
+  original — the change is contained to cohort identity.
+The gate itself: `_OVERLAP_THRESHOLD = 0.50` is a Jaccard FLOOR required before any merge, not a
+tie-break, and the tiny-inside-huge case is pinned by its own test. Suite 36 green on that module.
+⛔ AND IT SAT OPEN FIVE DAYS AFTER SHIPPING, which is the reason it is closable today: it lives in
+the dashboard repo, and until `#641` half (a) shipped this morning **no git-derived surface in this
+board could see a commit there**. `--today` named it within minutes of that scan going live.
