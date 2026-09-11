@@ -72,6 +72,36 @@ ticker with a prior 3-ticker basket scores Jaccard 0.25 and reads NEW. At these 
 "unrecognised" are not separable by ticker overlap, so **63-70% is an UPPER bound on novelty**, not
 a measurement of it. The task line already warned about this from the other direction.
 
+## ⛔ The obvious recommendation is WRONG, and the data says so
+
+The reading above invites "raise the membership floor — stop letting two-ticker cohorts hold board
+slots". **I checked before recommending it, and it does not survive.** Post-launch, for every cohort
+that reached the board, how long did it hold a slot:
+
+| first reached the board post-launch | n | median weeks held | gone after one week | held 4+ weeks |
+|---|---|---|---|---|
+| **≤3 tickers** | 92 | **2** | 40 (43%) | 21 (**23%**) |
+| **4+ tickers** | 50 | **1** | 26 (52%) | 8 (16%) |
+
+**Small cohorts persist slightly BETTER, not worse.** Basket size does not predict staying power, so
+a size floor would remove the tiny cohorts *and* the ones most likely to stay — while trading away
+early detection, which is the entire point of the engine (a theme is supposed to show up in the
+strongest names FIRST, and it has few members when it does).
+
+**What the table actually shows is size-independent: roughly half of everything that reaches the
+board is gone a week later — 43% and 52%.** That is the churn, and it has nothing to do with how
+many tickers a cohort carries.
+
+**RECOMMENDATION: do not filter on size. Confirm on time.** A cohort has to hold a top-30 slot for
+two consecutive weeks before it is presented as a theme rather than a candidate. That removes about
+half the churn by the board's own numbers, costs nothing in detection (the cohort is still tracked,
+just not promoted), and makes no judgement about basket size — which is the judgement the data
+refuses to support. ⚖ His call; it is a board-composition rule, not a matcher change.
+
+⚠ **Limits, because n is small:** 92 and 50 cohorts, one post-launch quarter, and "weeks holding a
+slot" is a proxy for value, not value itself. It is enough to REFUSE a size floor. It is not enough
+to assert that small cohorts are better, and this doc does not.
+
 ## What this opens, and whose call it is
 
 The honest next question is not about the matcher at all: **should a two- or three-ticker cohort
