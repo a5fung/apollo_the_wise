@@ -524,3 +524,20 @@ price (`int(target), place_price`) = True; it places the RAW db price = **False*
 helpers (`_preserve_dead_stop_price`, `_current_stop_pointer`) are present. The third line is the
 discriminating one — a system with the bug still in it would place `float(db_stop_price)` there, so
 this is not an absence check.
+
+## #545 — the entry/exit tactics program: its design deliverable (2026-09-12)
+BAR: a design doc with the variant inventory, the parameter grid, the answerable-vs-needs-capture
+split, and a phased execution plan for the operator to sequence.
+EVIDENCE: delivered TWICE, and both files exist on disk — `docs/design/545_entry_exit_program_v2_2026-09-02.md`
+(66,275 bytes) and its successor `docs/design/545_entry_exit_program_2026-09-05.md` (66,415 bytes),
+the second re-graded under the operator's tail-first objective. All four named parts are present in
+the current version.
+⚠ THE STATUS WORD WAS SET FOR SOMETHING ELSE, and that is worth stating rather than glossing: this
+line reads `deployed` because of the 2026-09-06 LIVE EXIT FLIP (`b52fdcbc` — partial to +8R,
+price-armed breakeven at +3R), not because of the design doc. The DoD is the doc, and a DoD outranks
+a later status or verify sentence.
+NOTHING IS ORPHANED: the flip's own effectiveness evaluation is already rehomed as the data-gated
+review `exit_regime_interaction_review` — verified today as era-scoped on the flip date, threshold
+20, earliest 2026-10-15, so it CANNOT speak about the current rule until it has trades from the
+current rule. That re-gating was itself the fix for this line's worst moment: a recommendation built
+on 28 trades of which 27 predated the rule it proposed changing.
