@@ -106,6 +106,11 @@ scripts/probes/_step2_scan.tsv
 scripts/probes/_step2_closes.tsv
 scripts/probes/_step2_*.err
 
+# #579 spread-crossing + #644 down-day resilience probes — raw prod pulls, re-derivable by
+# rerunning the committed probe scripts
+scripts/probes/_579_closes.tsv
+scripts/probes/_644_closes.csv
+
 # theme-correctness step-3 runway probe — raw prod pull, re-derivable by rerunning the probe
 scripts/probes/_step3_clusters.tsv
 scripts/probes/_step3_census_out.txt
