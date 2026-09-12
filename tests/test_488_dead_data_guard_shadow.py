@@ -20,6 +20,8 @@ Pins the shadow build's three contracts (SHADOW-ONLY — the live guard is untou
 from __future__ import annotations
 
 import asyncio
+import sys
+import types
 from datetime import date, datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -29,6 +31,23 @@ from agents.market_intelligence.flag_detector import _compute_rmv, rmv_none_reas
 
 def _run(coro):
     return asyncio.run(coro)
+
+
+def _stub_alpaca_data_live(monkeypatch, stream_instance):
+    """tests/conftest.py stubs `alpaca`/`alpaca.data`/`alpaca.data.enums` etc as
+    `_MockModule`s (a `sys.modules.setdefault`, so it wins even when alpaca-py IS
+    installed — nothing in this process has imported the real `alpaca` package before
+    conftest runs). `alpaca.data.live` is NOT in that stub list, and a `_MockModule`
+    parent has no real `__path__` for the import system to find a submodule under —
+    so a bare `from alpaca.data.live import StockDataStream` (what bar_stream.py does
+    inside start_bar_stream) raises ModuleNotFoundError in the test process even
+    though the real package IS installed. Register a throwaway module for the one test
+    that needs it, scoped by monkeypatch (reverted automatically), rather than
+    widening the shared conftest.py stub list for a single call site."""
+    stub = types.ModuleType("alpaca.data.live")
+    stub.StockDataStream = MagicMock(return_value=stream_instance)
+    monkeypatch.setitem(sys.modules, "alpaca.data.live", stub)
+    return stub.StockDataStream
 
 
 # ─── Bar builders (keys per mi_daily_closes / get_recent_daily_history) ─────────────────
@@ -264,6 +283,70 @@ def test_compare_job_no_history_row(monkeypatch):
     _run(run_dead_data_guard_shadow(date(2026, 7, 17)))
     row = upsert.await_args.args[0]
     assert row["none_reason"] == "no_history" and not row["inferred_dead"]
+
+
+# ─── 4. bar_stream wiring (the live registration point) ────────────────────────────────
+#
+# Everything above tests halt_status_shadow / dead_data_guard_shadow in isolation. Neither
+# proves the ACTUAL wiring inside `bar_stream.start_bar_stream` — the one call site that
+# matters, because it constructs the SAME StockDataStream that carries real-money ORB bars.
+# These two tests exercise start_bar_stream end-to-end (stream construction mocked, network
+# never touched) to prove (a) the registration hook is actually invoked there, and (b) with
+# the flag at its prod default (unset), the constructed stream never sees
+# subscribe_trading_statuses — the live-money outage risk the whole default-OFF discipline
+# exists to prevent.
+
+def test_start_bar_stream_registers_capture_hook(monkeypatch):
+    """RED-PROVED 2026-09-12: commenting out bar_stream.start_bar_stream's
+    `maybe_register_status_capture(_data_stream)` call made this fail
+    (hook.assert_called_once_with never satisfied); reverted."""
+    from agents.market_intelligence.broker import bar_stream, alpaca_client
+    from agents.market_intelligence import constants
+    from alpaca.data.enums import DataFeed
+
+    monkeypatch.setattr(constants, "LIVE_TRADING_ENABLED", True)
+    monkeypatch.setenv("ALPACA_API_KEY", "k")
+    monkeypatch.setenv("ALPACA_SECRET_KEY", "s")
+    monkeypatch.setattr(alpaca_client, "get_data_feed", lambda: DataFeed.IEX)
+    monkeypatch.setattr(bar_stream, "_run_stream", AsyncMock())
+
+    from agents.market_intelligence.broker import halt_status_shadow as hss
+
+    stream_instance = MagicMock()
+    _stub_alpaca_data_live(monkeypatch, stream_instance)
+    hook = MagicMock()
+    monkeypatch.setattr(hss, "maybe_register_status_capture", hook)
+
+    _run(bar_stream.start_bar_stream())
+
+    hook.assert_called_once_with(stream_instance)
+
+
+def test_start_bar_stream_flag_off_never_subscribes(monkeypatch):
+    """End-to-end (real halt_status_shadow, not mocked): with HALT_STATUS_CAPTURE_ENABLED
+    unset (the prod default), start_bar_stream must construct the stream WITHOUT ever
+    calling subscribe_trading_statuses on it.
+
+    RED-PROVED 2026-09-12: forcing `capture_enabled()` in halt_status_shadow.py to always
+    return True (bypassing the env check) made subscribe_trading_statuses get called,
+    failing `assert_not_called()`; reverted."""
+    from agents.market_intelligence.broker import bar_stream, alpaca_client
+    from agents.market_intelligence import constants
+    from alpaca.data.enums import DataFeed
+
+    monkeypatch.delenv("HALT_STATUS_CAPTURE_ENABLED", raising=False)
+    monkeypatch.setattr(constants, "LIVE_TRADING_ENABLED", True)
+    monkeypatch.setenv("ALPACA_API_KEY", "k")
+    monkeypatch.setenv("ALPACA_SECRET_KEY", "s")
+    monkeypatch.setattr(alpaca_client, "get_data_feed", lambda: DataFeed.IEX)
+    monkeypatch.setattr(bar_stream, "_run_stream", AsyncMock())
+
+    stream_instance = MagicMock()
+    _stub_alpaca_data_live(monkeypatch, stream_instance)
+
+    _run(bar_stream.start_bar_stream())
+
+    stream_instance.subscribe_trading_statuses.assert_not_called()
 
 
 def test_compare_job_never_raises(monkeypatch):
