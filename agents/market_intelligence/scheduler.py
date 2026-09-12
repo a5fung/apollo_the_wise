@@ -150,6 +150,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
 # roles (#279) — a stale execution entry fails boot, so execution jobs must stay
 # unconditionally registered.
 INTELLIGENCE_OWNED_JOB_IDS = frozenset({
+    "theme_axis_bounded_sweep",  # #486 — shadow table only, no broker
     JOB_SILENT_ERROR_SWEEP,  # #625 late evening-tail error sweep (21:30 ET)
     # detection scans
     "ep_scan", "ep_scan_open", "ep_scan_start", "ep_scan_stop",
@@ -2523,6 +2524,53 @@ async def _coverage_watch_job(slot: str = "evening"):
     except Exception as e:
         logger.error(f"Coverage check [{slot}] failed: {e}")
         await notify_job_failure(f"coverage_watch_{slot}", str(e))
+
+
+# ── #486 (2026-09-12): the bounded read runs NIGHTLY now, not by hand ──────────────
+# WHY THIS EXISTS. `mi_theme_axis_shadow` is how the engine's view of a theme is compared
+# against the judge's, and that comparison needs a bounded, as-of-alert-time value per row.
+# The value was filled by a ONE-TIME backfill probe (`scripts/probes/_486_backfill_bounded.py`)
+# which last ran 2026-09-07 — a script correctly built for a one-off job. The FORWARD path
+# was never built, so every alert captured since has no comparison value: 10 of 598 rows on
+# 2026-09-12, growing every scan day. A readout published on that population would measure a
+# silently shrinking slice and look worse every week for reasons having nothing to do with
+# themes.
+#
+# WHY NIGHTLY RATHER THAN AT CAPTURE, the obvious alternative: the bounded read needs the
+# day's own theme snapshot, which the nightly theme run writes AFTER the alert fires.
+# Computing it at capture would read an incomplete picture — precisely why these rows were
+# backfilled in the first place (see `theme_axis_shadow.bounded_backfill_anchor` and its
+# same-day-latency note). 18:10 sits after the 17:58 co-move refresh and the 18:03
+# EOD-unscored writer, so the day's rows exist before this sweeps them, and it is clear of
+# BOTH deploy windows (12:00-13:00 and 21:15-22:15 ET) so a deploy restart cannot clip it.
+#
+# SHADOW ONLY: three columns on a shadow table, no grade / alert / entry / exit / size.
+# Idempotent by construction — both the SELECT and the UPDATE filter on
+# `bounded_matches_unbounded IS NULL`, so a re-run is a no-op and a row captured live is
+# never overwritten.
+async def _theme_axis_bounded_sweep_job():
+    """Fill the bounded as-of read for any shadow row still missing it (#486).
+
+    Writes an audit row on EVERY run, including the common zero-rows case — without it a
+    quiet night and a dead job are the same silence, and this job going dark is exactly
+    what produced the gap it exists to close.
+    """
+    try:
+        from agents.market_intelligence.theme_axis_shadow import backfill_bounded_theme_reads
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            result = await backfill_bounded_theme_reads(conn) or {}
+        await log_audit_event(
+            "theme_axis_bounded_sweep",
+            f"bounded read swept: {result.get('updated', 0)} row(s) filled, "
+            f"{result.get('remaining', 0)} still missing",
+            json.dumps({k: v for k, v in result.items()
+                        if isinstance(v, (int, float, str, bool, type(None)))}),
+        )
+        logger.info(f"Theme-axis bounded sweep: {result}")
+    except Exception as e:
+        logger.error(f"Theme-axis bounded sweep failed: {e}")
+        await notify_job_failure("theme_axis_bounded_sweep", str(e))
 
 
 async def _shadow_orb_entry_job():
@@ -6493,6 +6541,17 @@ def start_scheduler() -> AsyncIOScheduler:
         id="theme_axis_eod_unscored",
         replace_existing=True,
         misfire_grace_time=900,
+    )
+
+    # #486: sweep the bounded as-of read onto any shadow row still missing it. 18:10 ET,
+    # after the 17:58 co-move refresh and the 18:03 unscored writer so the day's rows exist,
+    # and clear of both deploy windows (12:00-13:00, 21:15-22:15) so a restart cannot clip it.
+    _scheduler.add_job(
+        audit_wrap(_theme_axis_bounded_sweep_job, "theme_axis_bounded_sweep"),
+        CronTrigger(hour=18, minute=10, day_of_week="mon-fri", timezone="America/New_York"),
+        id="theme_axis_bounded_sweep",
+        replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # Telegram polling-bot health watchdog: every 2 min, 24/7 (#153). Raw (not
