@@ -498,6 +498,20 @@ _EXIT_CF_RUNNING_READ_SQL = """
            count(*) FILTER (WHERE c.outcome = 'settled') AS n,
            count(*) FILTER (WHERE c.outcome = 'unscoreable') AS unscoreable,
            avg(c.realized_pct - a.actual_pct) FILTER (WHERE c.outcome = 'settled') AS delta_pct,
+           -- #645 (2026-09-11, operator: "I find it odd that most exit is the same at
+           -- +0.2%, is this info correct?"). He was right. `delta_pct` above measures the
+           -- arm against the REAL FILL, so it carries the replay-vs-actual FIDELITY gap on
+           -- top of whatever the rule itself did — which is why five arms the digest
+           -- labelled "changed 0 of 1 fill" all printed +0.2%: that was PHVS's replay
+           -- drift (+0.19pp), not an exit result. Measured against the live rule's OWN
+           -- walk on the SAME bars, an arm that changed nothing is exactly 0. The
+           -- fidelity gap keeps its own line (the live_replay row) with its own n, so the
+           -- two facts stop sharing a column. NULL replay rows are excluded rather than
+           -- silently folded in, and `n_vs_replay` says how many fills the number rests on.
+           avg(c.realized_pct - r.replay_pct) FILTER (
+               WHERE c.outcome = 'settled' AND r.replay_pct IS NOT NULL) AS delta_vs_replay_pct,
+           count(*) FILTER (
+               WHERE c.outcome = 'settled' AND r.replay_pct IS NOT NULL) AS n_vs_replay,
            -- CHANGED: a counterfactual arm vs the live rule's own walk (same engine, same bars
            -- -> exact equality means "the rule made no difference"). For live_replay itself
            -- that comparison is vacuous, so its count is the FIDELITY miss: fills where the
@@ -539,7 +553,10 @@ async def _exit_counterfactual_running_read(conn, exit_era: str) -> Optional[dic
             continue
         r = rows[name]
         arms.append({"arm": name, "n": int(r["n"] or 0), "unscoreable": int(r["unscoreable"] or 0),
-                     "delta_pct": _f(r["delta_pct"]), "changed": int(r["changed"] or 0)})
+                     "delta_pct": _f(r["delta_pct"]),
+                     "delta_vs_replay_pct": _f(r["delta_vs_replay_pct"]),
+                     "n_vs_replay": int(r["n_vs_replay"] or 0),
+                     "changed": int(r["changed"] or 0)})
     return {"n": int(n), "era": exit_era, "arms": arms}
 
 
@@ -556,6 +573,10 @@ _CONSOL_MODE_DISPLAY = {"anticipate": "early entry", "confirm": "confirmed entry
 # footnote the reader has to jump to and decode) — same wording everywhere, so a record
 # reads identically whether or not a CLOSED-today block happens to sit above it.
 _APPROX_NOTE = "peak may be understated — 5-min estimate"
+
+# #645 — a visible divider between digest sections. Monospace-block safe (Telegram renders
+# no pipe tables, CLAUDE.md), and short enough not to wrap on a phone.
+_SECTION_RULE = "──────────"
 
 
 def _signal_display(signal_type: Optional[str]) -> str:
@@ -716,27 +737,75 @@ def format_sell_discipline_section(data: dict) -> str:
         # trades" means the candidate would have done nothing at all, which is the finding
         # (#508 lesson). "no history for" = the character-based rule had no profile to
         # apply — a first-class abstain, counted, never hidden.
-        candidate = [
-            "WOULD A DIFFERENT EXIT HAVE KEPT MORE? (replayed on the real fills, current rule)",
-            f" {_plural(cf['n'], 'fill')} with a settled result; change vs actual, in % of entry",
-        ]
+        # #645 second half (operator 2026-09-11: "format of that msg is also hard to read,
+        # hard to see new line item from previous one"). Ten near-identical lines gave the
+        # arms that did NOTHING the same visual weight as the one that did something — the
+        # same defect as the number, one layer up. So: the arms that CHANGED something get
+        # a line each and come first; the ones that changed nothing collapse into one
+        # named list instead of seven full lines; and the replay's own fidelity gap moves
+        # OUT of the candidate list, because it is a measurement-quality fact and not an
+        # exit anybody could choose.
+        movers, quiet, abstained, fidelity = [], [], [], None
         for a in cf.get("arms") or []:
             label = _CF_ARM_LABELS.get(a["arm"], a["arm"].replace("_", " "))
+            if a["arm"] == "live_replay":
+                fidelity = (a, label)
+                continue
             if not a.get("n"):
                 if a.get("unscoreable"):
-                    candidate.append(f" {label}: no history for {_plural(a['unscoreable'], 'fill')}")
+                    abstained.append(f" {label}: no history for {_plural(a['unscoreable'], 'fill')}")
                 continue
-            verb = "off by over a quarter R on" if a["arm"] == "live_replay" else "changed"
-            line = (f" {label}: {_pct(a.get('delta_pct'))}"
-                    f" ({verb} {a.get('changed', 0)} of {_plural(a['n'], 'fill')}")
-            if a.get("unscoreable"):
-                line += f", no history for {_plural(a['unscoreable'], 'fill')}"
-            candidate.append(line + ")")
+            (movers if a.get("changed") else quiet).append((a, label))
+
+        candidate = [
+            "WOULD A DIFFERENT EXIT HAVE KEPT MORE? (replayed on the real fills, current rule)",
+            f" {_plural(cf['n'], 'fill')} settled; change vs OUR OWN rule replayed on the "
+            f"same bars, in % of entry",
+        ]
+        if movers:
+            for a, label in movers:
+                line = (f" ▸ {label}: {_pct(a.get('delta_vs_replay_pct'))}"
+                        f" (changed {a['changed']} of {_plural(a['n'], 'fill')}")
+                if a.get("unscoreable"):
+                    line += f", no history for {_plural(a['unscoreable'], 'fill')}"
+                candidate.append(line + ")")
+        else:
+            candidate.append(" ▸ nothing changed any fill — no candidate did anything yet")
+        if quiet:
+            candidate.append(f" changed NOTHING on any of {_plural(cf['n'], 'fill')}, so 0.0% each:")
+            for _a, label in quiet:
+                # An inert arm can still have ABSTAINED on some fills (the character-based
+                # rule with no profile to apply). Collapsing it into this list must not
+                # swallow that count — it is the difference between "did nothing" and
+                # "could not be judged on 5 of 7".
+                note = (f" — no history for {_plural(_a['unscoreable'], 'fill')}"
+                        if _a.get("unscoreable") else "")
+                candidate.append(f"   · {label}{note}")
+        candidate.extend(abstained)
         sections.append(candidate)
+
+        # The replay's fidelity, on its own, with its own n — never again mixed into an
+        # arm's result. This is "how closely can we reproduce the real fill at all", and at
+        # up to 2.1pp (MRNA) it is the scale of the effects #482 exists to measure, so it
+        # is stated rather than buried.
+        if fidelity is not None:
+            a, label = fidelity
+            if a.get("n"):
+                fid = [
+                    "HOW CLOSE IS THE REPLAY TO THE REAL FILL? (a check on the method, not an exit)",
+                    f" {label}: {_pct(a.get('delta_pct'))} average gap vs the real result "
+                    f"over {_plural(a['n'], 'fill')}",
+                    f" off by over a quarter of the fill's risk on "
+                    f"{a.get('changed', 0)} of {_plural(a['n'], 'fill')}",
+                ]
+                sections.append(fid)
 
     if not sections:
         return ""
-    body = "\n \n".join("\n".join(s) for s in sections)  # " " keeps this out of "\n\n" splits
+    # #645: sections were divided by a bare blank line, which on a phone reads as one
+    # wall of text. A visible rule separates them. The lone-space line is KEPT (it is what
+    # keeps this body out of "\n\n" splits downstream) — the rule is added, not swapped in.
+    body = f"\n \n{_SECTION_RULE}\n".join("\n".join(s) for s in sections)
     return ("📼 *Sell discipline — reached vs kept* (recorder only, no rule)\n"
             "```\n" + body + "\n```")
 

@@ -283,20 +283,46 @@ def test_the_digest_reads_the_one_table_every_arm_current_era_only():
 
 
 def test_the_digest_renders_every_arm_with_the_changed_count_load_bearing():
+    """#645 (2026-09-11) rewrote this contract and made it STRONGER, not looser.
+
+    Before: every arm printed its gap against the REAL FILL, so the replay-vs-actual
+    fidelity drift rode along and five arms the digest itself labelled "changed 0 of 1
+    fill" all printed +0.2% — the operator spotted it. Now each candidate is measured
+    against our own rule's replayed walk on the same bars, so no-change is exactly 0.0,
+    the arms that DID something are listed first and separately, and the replay's own
+    fidelity gap has its own section because it is a check on the method rather than an
+    exit anyone could pick.
+    """
     data = {"shadow": {"exit_cf": {"n": 3, "era": "era_d", "arms": [
-        {"arm": "stop_orb_low", "n": 3, "unscoreable": 0, "delta_pct": -1.25, "changed": 2},
-        {"arm": "trail_pivot_swing", "n": 3, "unscoreable": 0, "delta_pct": 0.0, "changed": 0},
-        {"arm": "trail_character_ma", "n": 0, "unscoreable": 3, "delta_pct": None, "changed": 0},
+        {"arm": "stop_orb_low", "n": 3, "unscoreable": 0, "delta_pct": -1.05,
+         "delta_vs_replay_pct": -1.25, "n_vs_replay": 3, "changed": 2},
+        {"arm": "trail_pivot_swing", "n": 3, "unscoreable": 0, "delta_pct": 0.2,
+         "delta_vs_replay_pct": 0.0, "n_vs_replay": 3, "changed": 0},
+        {"arm": "trail_character_ma", "n": 0, "unscoreable": 3, "delta_pct": None,
+         "delta_vs_replay_pct": None, "n_vs_replay": 0, "changed": 0},
     ]}}}
     data["shadow"]["exit_cf"]["arms"].insert(
-        0, {"arm": "live_replay", "n": 3, "unscoreable": 0, "delta_pct": 0.4, "changed": 1})
+        0, {"arm": "live_replay", "n": 3, "unscoreable": 0, "delta_pct": 0.4,
+            "delta_vs_replay_pct": None, "n_vs_replay": 0, "changed": 1})
     out = sd.format_sell_discipline_section(data)
     assert "WOULD A DIFFERENT EXIT HAVE KEPT MORE" in out
-    assert "3 fills with a settled result" in out
-    # the fidelity line counts DISAGREEMENT with the real result, never "changed vs itself"
-    assert "our own rule replayed, as a check: +0.4% (off by over a quarter R on 1 of 3 fills)" in out
-    assert "stop at the opening-range low: -1.2% (changed 2 of 3 fills)" in out
-    assert "swing-stop rule: +0.0% (changed 0 of 3 fills)" in out
+    assert "3 fills settled" in out
+    assert "change vs OUR OWN rule replayed on the same bars" in out
+    # the arm that DID something: its own line, marked, measured against the replay
+    assert "▸ stop at the opening-range low: -1.2% (changed 2 of 3 fills)" in out
+    # the arm that did NOTHING: named under one heading, never given its own +N% number
+    assert "changed NOTHING on any of 3 fills, so 0.0% each:" in out
+    assert "· swing-stop rule" in out
+    assert "swing-stop rule: +0.2%" not in out, (
+        "the fidelity drift must never print as a no-change arm's result — this is the bug"
+    )
+    # the fidelity gap: its OWN section, its own n, counting DISAGREEMENT with the real fill
+    assert "HOW CLOSE IS THE REPLAY TO THE REAL FILL?" in out
+    assert "our own rule replayed, as a check: +0.4% average gap vs the real result over 3 fills" in out
+    assert "off by over a quarter of the fill's risk on 1 of 3 fills" in out
+    assert "our own rule replayed, as a check" not in out.split("HOW CLOSE IS THE REPLAY")[0], (
+        "the replay is a method check, not a candidate — it must not sit in the arm list"
+    )
     assert "character-based rule: no history for 3 fills" in out
     assert "|" not in out and "n=" not in out
 
