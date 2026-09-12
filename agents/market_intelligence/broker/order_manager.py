@@ -4824,6 +4824,20 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         # session's 09:31 repair window — on a Friday that is ~64 hours. The exit still fails and
         # still pages; what changes is that the position keeps its protection while it does.
         logger.error(f"Full exit failed for {ticker}: {e}")
+        # #646 (d): WRITE IT DOWN. On 2026-09-11 a rejected live exit left NO audit row — the only
+        # record was the Telegram, so reconstructing what happened meant reading container logs the
+        # next hour and inferring the rest. A money-path failure that exists only in a chat message
+        # is the same recording gap as #184's four unexplained June cancels.
+        try:
+            await log_audit_event(
+                "full_exit_rejected",
+                f"{ticker} full exit REJECTED ({reason}) — {cancelled_stop_shares:.0f} sh still open",
+                json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
+                            "shares": cancelled_stop_shares, "account_mode": account_mode,
+                            "stop_price": cancelled_stop_price, "error": str(e)[:400]}),
+            )
+        except Exception as _ae:   # loud-ok: the page and the restore matter more than the row
+            logger.warning(f"full_exit_rejected audit write failed for {ticker}: {_ae}")
         restored = await _restore_stop_after_failed_exit(
             trade_id, ticker, cancelled_stop_shares, cancelled_stop_price, account_mode)
         await send_telegram_message(

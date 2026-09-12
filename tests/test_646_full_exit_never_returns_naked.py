@@ -124,3 +124,46 @@ async def test_the_wait_is_an_optimisation_never_a_gate(monkeypatch):
     h = _wire(monkeypatch, close_raises=False, available=0)
     await om.execute_full_exit(382, "sma_trail_stop")
     h["close"].assert_awaited_once()
+
+
+# ── A rejected exit must leave a ROW, not just a Telegram (#646 (d), 2026-09-11) ──────────────
+#
+# Reconstructing tonight's incident meant reading container logs an hour later and inferring the
+# rest, because the rejection wrote nothing to mi_audit_log. A money-path failure that exists only
+# in a chat message is the same recording gap as #184's four unexplained June cancels — those are
+# permanently unknowable now, because container logs rotate.
+
+@pytest.mark.asyncio
+async def test_a_rejected_exit_writes_an_audit_row(monkeypatch):
+    rows = []
+    monkeypatch.setattr(om, "log_audit_event",
+                        AsyncMock(side_effect=lambda e, s, d=None, **k: rows.append((e, s, d))))
+    _wire(monkeypatch, close_raises=True)
+    await om.execute_full_exit(382, "sma_trail_stop")
+    assert any(e == "full_exit_rejected" for e, *_ in rows), [r[0] for r in rows]
+
+
+@pytest.mark.asyncio
+async def test_the_row_carries_what_a_diagnosis_needs(monkeypatch):
+    """Ticker, reason, shares and the broker's own error — so the next one is one query, not an hour."""
+    import json as _json
+    rows = []
+    monkeypatch.setattr(om, "log_audit_event",
+                        AsyncMock(side_effect=lambda e, s, d=None, **k: rows.append((e, s, d))))
+    _wire(monkeypatch, close_raises=True)
+    await om.execute_full_exit(382, "sma_trail_stop")
+    detail = _json.loads(next(d for e, _s, d in rows if e == "full_exit_rejected"))
+    assert detail["ticker"] == "OKTA"
+    assert detail["reason"] == "sma_trail_stop"
+    assert detail["shares"] == SHARES
+    assert detail["stop_price"] == STOP_PRICE
+    assert "insufficient qty" in detail["error"]
+
+
+@pytest.mark.asyncio
+async def test_a_failed_audit_write_does_not_swallow_the_restore(monkeypatch):
+    """The row is the diagnosis; the restore is the money. The row may never cost the restore."""
+    monkeypatch.setattr(om, "log_audit_event", AsyncMock(side_effect=Exception("db down")))
+    h = _wire(monkeypatch, close_raises=True)
+    await om.execute_full_exit(382, "sma_trail_stop")
+    h["place"].assert_awaited_once()

@@ -25,6 +25,7 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from alpaca.trading.stream import TradingStream
 
@@ -1319,6 +1320,35 @@ async def _handle_oco_parent_cancel(
     )
 
 
+# ── #646 (c): tell him WHEN the repair actually comes ────────────────────────────────────────
+#
+# This alert used to end "Remediation runs at 4:05 PM ET — monitor" no matter what time it fired.
+# On 2026-09-11 it reached him at 16:45 — forty minutes AFTER 16:05 had already run — so it named a
+# repair that could not come and he stood down on it. A message that promises a repair which has
+# already passed is worse than one that says nothing: it converts an unprotected position into a
+# handled one in the reader's head. The repair times are facts about the schedule, so the message
+# can compute them instead of asserting one.
+_ET = ZoneInfo("America/New_York")   # market/code frame (CLAUDE.md)
+_REPAIR_WINDOW_START = (9, 31)    # _stop_coverage_repair_retry_job, every 5 min
+_REPAIR_WINDOW_END = (15, 55)     # ...and it returns early outside that window
+_EOD_REPAIR = (16, 5)             # sync_positions inside eod_cleanup
+
+
+def _next_repair_sentence(now) -> str:
+    """When the next SCHEDULED repair will actually run, from `now`. Plain words, no jargon."""
+    hm = (now.hour, now.minute)
+    if hm < _REPAIR_WINDOW_START:
+        return "The repair job starts at 9:31 AM ET — monitor."
+    if hm <= _REPAIR_WINDOW_END:
+        return "The repair job runs every 5 minutes until 3:55 PM ET — monitor."
+    if hm <= _EOD_REPAIR:
+        return "Remediation runs at 4:05 PM ET — monitor."
+    # After 16:05 nothing repairs this until the next session's 09:31 — say so rather than
+    # naming a time that has passed. On a Friday that is roughly 64 hours away.
+    nxt = "Monday" if now.weekday() >= 4 else "tomorrow"
+    return (f"🚨 NO scheduled repair until {nxt} 9:31 AM ET — this will NOT fix itself tonight.")
+
+
 async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
     """Handle order cancellation, expiry, or rejection."""
     # Local import (breaks a module-level import cycle with order_manager); consolidates
@@ -2018,7 +2048,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     await send_telegram_message(
                         f"{mode_prefix(account_mode)}⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
                         f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
-                        f"Remediation runs at 4:05 PM ET — monitor."
+                        f"{_next_repair_sentence(datetime.now(_ET))}"
                     )
                     logger.warning(
                         f"WS [{account_mode}]: stop-loss {event_norm}: {symbol} "
