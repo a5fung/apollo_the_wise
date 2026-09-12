@@ -11954,3 +11954,62 @@ reviews:
     status: pending
     added_on: 2026-09-10
 
+  - review_id: sync_position_gone_first_real_vanish_597
+    kind: tripwire
+    title: "#597 — the position-vanish guard has never fired; surface the first real one"
+    question: |
+      #597 fixed the branch that used to close a live trade row BLIND when Alpaca stopped
+      reporting a position: it now records the exit the broker actually reports, and refuses
+      to close on anything less. The fix is deployed and correct.
+
+      IT HAS NEVER RUN. `sync_position_gone_unresolved` has ZERO rows in the system's life
+      (re-queried on prod 2026-09-12). The guarded path executes only when a position
+      vanishes from the broker mid-flight, which has not happened once.
+
+      SO THE TASK IS UNVERIFIABLE BY CONSTRUCTION, and the honest handling is neither to
+      close it on that absence nor to re-date it monthly on a "looks fine" — both were
+      explicitly refused on the line itself. This entry makes the watch MECHANICAL instead
+      of remembered: the moment the event occurs, it surfaces on its own and #597 becomes
+      closeable that day with a real observation.
+
+      ⚠ This is a TRIPWIRE, not an accrual. One row is the whole signal. A second row would
+      mean the race is not rare and is its own, larger finding.
+    # Counts the guard's own audit event. Zero is the expected steady state; ANY row means
+    # the path this fix protects has executed for the first time on real money.
+    predicate_sql: >-
+      SELECT count(*) FROM mi_audit_log
+      WHERE event_type = 'sync_position_gone_unresolved';
+    # #573 population declaration: event_type is the ONLY thing separating this question
+    # from every other row in mi_audit_log, and the predicate filters on it. There is no
+    # account_mode or era axis here — the guard is live-book-only by construction (its
+    # emitter runs inside sync_positions) and the event has never occurred, so there is no
+    # history to scope.
+    discriminates_on: [mi_audit_log.event_type]
+    can_fire:
+      predicate_runs: "2026-09-12 - run against prod today, returns 0. A number, not an error:
+        mi_audit_log and the event_type column both exist and the query plans."
+      nonzero_possible: "The emitter is live in deployed code - order_manager._resolve_position_gone
+        writes sync_position_gone_unresolved on the branch where the broker reports no position and
+        no exit fill can be established. Deployed to apollo-execution and byte-verified on the image."
+      lane_live: "MAGNA53 EP is the live setup and sync_positions runs every 15 minutes plus the
+        21:00 evening backstop, so the guard is exercised on a live book continuously - it is the
+        TRIGGERING CONDITION that is rare, not the code path's liveness."
+      threshold_vs_observed: "1 against an observed 0 in the system's life. Deliberately the
+        smallest possible bar: this is a tripwire on a rare race, so anything above 1 would mean
+        waiting for the problem to recur before looking at it."
+      era_scoped: "All-history by design - the event has never occurred, so there is no era to
+        scope to and any occurrence at all is the finding."
+    threshold: 1
+    earliest_review_date: 2026-09-13
+    status: pending
+    action_when_ready: |
+      A POSITION HAS VANISHED FROM THE BROKER MID-FLIGHT FOR THE FIRST TIME. Read the row
+      before anything else: ticker, trade_id, what the broker reported, and whether a
+      Telegram went out.
+
+      1. Confirm the fix behaved: the row was NOT closed blind, and the operator was told.
+         That is #597's clearing condition, verbatim - "the first real vanish event
+         Telegrams instead of silently closing the row."
+      2. If it behaved, CLOSE #597 with this row as the evidence in docs/task_closes.md.
+      3. If it did NOT behave, that is a live-money defect and outranks whatever else is
+         planned that day.
