@@ -5,7 +5,33 @@
 
 ## The number
 
-**$116 for the whole path** (227-alert run + one re-run) — **$0.26/alert** for a single pass.
+🔴 **CORRECTED THE SAME DAY, on a live count rather than a six-week-old line: the corpus is 372,
+not 227, so the whole path is ~$190.**
+
+| | one run | whole path (run + 1 re-run) |
+|---|---|---|
+| **n=372 (live, queried 2026-09-12)** | **$95** | **$190** |
+| n=227 (the stale figure this doc was built on) | $58 | $116 |
+| real-spend band, rescaled | $83–$105 | **$165–$210** |
+
+The per-alert cost is unchanged at **$0.26**; only the population moved. The count comes from the
+doc's OWN query, run against prod today:
+
+```sql
+SELECT COUNT(*) FROM mi_ep_alerts a
+JOIN mi_ep_scan_outcomes o ON o.ticker = a.ticker AND o.scan_date = a.alert_date
+WHERE a.score_tier IN ('HIGH','MODERATE') AND o.fwd_5d_pct IS NOT NULL;
+-- 372
+```
+
+⚠ **And it keeps growing** — every settling alert adds to it, so a price quoted from PLAN prose is
+stale on arrival. Anyone re-pricing this should re-run the query rather than read a number.
+⚠ The n=227 analysis below is left intact rather than rewritten: its arithmetic is right and its
+per-alert figure is what rescales. Read the table above as the answer.
+
+---
+
+**ORIGINAL (n=227):** **$116 for the whole path** (227-alert run + one re-run) — **$0.26/alert** for a single pass.
 
 | | one run (227 alerts) | whole path (run + 1 re-run) |
 |---|---|---|
