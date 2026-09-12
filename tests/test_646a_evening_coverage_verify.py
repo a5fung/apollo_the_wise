@@ -98,7 +98,7 @@ async def test_a_clean_night_still_writes_its_row(monkeypatch):
     from agents.market_intelligence import scheduler as sch
     h = _wire_job(monkeypatch, result=_clean(3))
 
-    await sch._evening_coverage_verify_job()
+    await sch._coverage_watch_job("evening")
 
     rows = [r for r in h["audited"] if r[0] == "coverage_verified_evening"]
     assert len(rows) == 1
@@ -115,7 +115,7 @@ async def test_a_position_still_bare_after_9pm_pages_him(monkeypatch):
     from agents.market_intelligence import scheduler as sch
     h = _wire_job(monkeypatch, result=_gap())
 
-    await sch._evening_coverage_verify_job()
+    await sch._coverage_watch_job("evening")
 
     assert len(h["sent"]) == 1
     msg = h["sent"][0]
@@ -136,7 +136,7 @@ async def test_an_unreadable_broker_also_pages(monkeypatch):
     res["check_failed"] = [{"ticker": "HOOD", "error": "timeout"}]
     h = _wire_job(monkeypatch, result=res)
 
-    await sch._evening_coverage_verify_job()
+    await sch._coverage_watch_job("evening")
 
     assert len(h["sent"]) == 1 and "HOOD" in h["sent"][0]
     assert "coverage unknown" in h["sent"][0].lower()
@@ -150,7 +150,7 @@ async def test_the_job_bypasses_the_detectors_day_dedup(monkeypatch):
     from agents.market_intelligence import scheduler as sch
     h = _wire_job(monkeypatch, result=_gap())
 
-    await sch._evening_coverage_verify_job()
+    await sch._coverage_watch_job("evening")
 
     h["detector"].assert_awaited_once()
     assert h["detector"].await_args.kwargs.get("notify") is False
@@ -164,7 +164,7 @@ async def test_the_job_places_cancels_and_replaces_nothing(monkeypatch):
     from agents.market_intelligence import scheduler as sch
     h = _wire_job(monkeypatch, result=_gap())
 
-    await sch._evening_coverage_verify_job()
+    await sch._coverage_watch_job("evening")
 
     for name, mock in h["writes"].items():
         mock.assert_not_called()
@@ -176,7 +176,7 @@ async def test_the_job_noops_when_live_trading_is_off(monkeypatch):
     from agents.market_intelligence import scheduler as sch
     h = _wire_job(monkeypatch, result=_gap(), live_enabled=False)
 
-    await sch._evening_coverage_verify_job()
+    await sch._coverage_watch_job("evening")
 
     h["detector"].assert_not_awaited()
     assert not h["sent"] and not h["audited"]
@@ -195,14 +195,17 @@ def test_registered_at_2110_mon_fri_and_execution_owned():
         EXECUTION_OWNED_JOB_IDS, INTELLIGENCE_OWNED_JOB_IDS,
     )
     src = open("agents/market_intelligence/scheduler.py").read()
-    block = re.search(
-        r'id="evening_coverage_verify"', src)
-    assert block, "the job is not registered"
-    window = src[max(0, block.start() - 600): block.start()]
-    assert "_evening_coverage_verify_job" in window
-    assert re.search(r"CronTrigger\(hour=21,\s*minute=10,\s*day_of_week=\"mon-fri\"", window), window[-400:]
-    assert "evening_coverage_verify" in EXECUTION_OWNED_JOB_IDS
-    assert "evening_coverage_verify" not in INTELLIGENCE_OWNED_JOB_IDS
+    block = re.search(r'\("evening", 21, 10\)', src)
+    assert block, "the evening slot is not registered"
+    # #649 generalised the single 21:10 job into three slots driven by one loop, so the
+    # registration is a f-string id rather than a literal — assert the SLOT TABLE and the
+    # loop's own times instead of a hand-written CronTrigger line.
+    assert '("evening", 21, 10)' in src, "the 21:10 slot must survive the generalisation"
+    assert '("post_close", 17, 0)' in src and '("late", 19, 0)' in src
+    assert "_coverage_watch_job" in src
+    for _j in ("coverage_watch_evening", "coverage_watch_post_close", "coverage_watch_late"):
+        assert _j in EXECUTION_OWNED_JOB_IDS
+        assert _j not in INTELLIGENCE_OWNED_JOB_IDS
 
 
 # ── the detector's notify switch ──────────────────────────────────────────────
