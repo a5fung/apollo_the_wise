@@ -800,3 +800,73 @@ snapshot JSON the page reads — the code being right, not the page.
 
 No qualifying fill. Check: **no `sizing_regime_fallback` audit row at 9:31, and the first fill's
 `risk_dollars` reads full size (~$37), not the ~$12.35 floor.** ⚠ Zero entries is NOT a pass.
+
+---
+
+## 2026-09-11 (Fri) — 🔴 **RESUME HERE. Supersedes every section above.**
+
+**A live-money exit bug was found, fixed in four parts and deployed today. Read this before touching
+`execute_full_exit` or the stop-cancel handler.** Tree clean, pushed, suite **8,065**, board 66 → 66.
+Box on **`508ec617`**; origin ahead at **`f9be0bae`** with two builds awaiting Saturday's deploy.
+
+### The bug (#646) — a full exit left a position naked BY CONSTRUCTION
+
+OKTA, live money, 16:02 ET. `execute_full_exit` cancelled the resting stop to free the shares, the
+sell was **rejected** (`insufficient qty available — requested 2, available 0, held_for_orders 2`
+because Alpaca had not released them yet), and the function returned False **having restored
+nothing**. The cancel and the sell raced each other and the function caused its own failure. This was
+never confined to after hours — any full exit, including a real stop-driven one mid-session, could
+lose its stop and keep its shares while price moved.
+
+**⚠ OKTA never breached its stop** (low 166.17 vs stop 165.57). The defect fires on a HEALTHY
+position, which is worse than the premise it was reported under.
+
+### What shipped and is verified inside the running images
+
+| part | what |
+|---|---|
+| (b) | `execute_full_exit` waits for the broker to release shares (`_await_shares_released`, bounded ~5s, an optimisation and never a gate) and **re-places the stop at its own price on ANY sell failure** before returning |
+| (c) | the unprotected alert **computes** the next real repair time; after 16:05 it says "NO scheduled repair until Monday 9:31 — this will NOT fix itself tonight" |
+| (d) | a rejected exit writes a `full_exit_rejected` audit row (before this, only a Telegram existed) |
+| (e) | the stop-cancel handler **refills the pointer it clears**, but only on a broker-CONFIRMED replacement, with `expected_prior=None` so it can only fill a NULL and never overwrite |
+
+Also deployed: #644's Sunday resilience recorder, #579's 17:40 spread-crossing alert, #638's lattice
+audit row.
+
+⚠ **Deploy gate G6 skipped on both deploys (market closed), so (b) and (e) are UNSMOKED. Monday
+16:45 ET on OKTA is their first real broker exercise.**
+
+### ⚠ #646's own premise was WRONG — do not repeat it
+
+The task claimed a stop lost after ~16:30 sits bare *"until the next session's 09:31 — on a Friday
+~64 hours."* **It does not: `evening_position_backstop` runs 21:00 ET mon-fri and calls
+`sync_positions`, whose orphan loop re-places a missing stop.** That is what protected OKTA at 21:00.
+The real exposure was **16:02 → 21:00, about five hours**, four of them inside extended-hours
+trading. And it is not a weekend hole: every stop-touching cron is `mon-fri`, so nothing can strip a
+stop over a weekend for anything to repair.
+
+### Built, pushed, NOT deployed — deploy Saturday, `both` then `execution`
+
+- **#646 (a1)** `evening_coverage_verify` — 21:10 ET mon-fri, execution-owned, verifies the 21:00
+  repair actually held; writes `coverage_verified_evening` on EVERY run so a quiet night and a dead
+  job are distinguishable; its own liveness is asserted in the 09:00 morning briefing.
+  ⚖ **Detection only — it places, cancels and replaces nothing.** The operator ruled the repair fork
+  on 2026-09-11: **page only. Do not re-raise it.**
+- **#645** the exit-counterfactual digest printed `+0.2%` for five arms that changed nothing — that
+  was the replay-vs-actual drift, not an exit result. Each arm is now measured against our own rule's
+  replayed walk on the same bars, the fidelity gap has its own section with its own n, and the render
+  got SHORTER (2,377 chars against a 2,500 cap).
+
+### The book — all three positions carry a stop
+
+OKTA 2 sh @ $165.57 (order `5a93bd8e`) · HOOD 4 sh @ $111 · SEI 2 sh @ $57.82. Read from inside
+`apollo-execution` after both container restarts.
+
+### 🔴 THE OPERATIONAL LESSON, and it cost him a wrong answer
+
+**Alpaca credentials live ONLY in `apollo-execution`** (#256 W2). A broker probe run in
+`apollo-market` returns `position: null, 0 open orders` — and `alpaca_client` swallows the credential
+`RuntimeError` into an empty list, so **an empty read looks exactly like an empty broker**.
+`_bootstrap_alpaca_credentials()` even returns `dual_ready` there while the key is absent. I told him
+the broker disagreed with its own remediation message; he replied *"i see the open orders."*
+**Always probe the broker from inside `apollo-execution`.**

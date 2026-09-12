@@ -268,11 +268,11 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
-### 2026-09-10 — #501 Tier-1: the jobs that could die without telling anyone
+### 2026-09-11 — #646: a full exit left a live position naked BY CONSTRUCTION
 
-- Four silent-death classes surfaced (audit row + deduped Telegram): a no-handler job dying into an unwatched `mi_job_runs` row — the naked-position and stop-ack watchdogs included; a 200-OK-but-EMPTY Polygon snapshot read by every intraday scan as a quiet day; the WS-backstop's own failures; a whole account-mode dropping out of the 15-min reconcile. Observability only. Lesson: an odd `_` in an error message made the page 400 and vanish — an alarm that cannot render the errors it most often carries is not an alarm. Detail: `docs/architecture/market_agent_reference.md` §Error Alerting.
-
-- **A CLAIM nothing can falsify reads exactly like a true one — the same defect as an unfireable gate, moved into prose.** A commit said truncation "also logs a warning at the moment it happens"; the line had been deleted by an edit in that same commit and no test asserted it. Found by review, not by me. Sister case the same evening: #638's lattice check sat inside 1 of the monitor's 3 triggers, so the other two printed revert SQL unchecked — a check covering one entrance is no check on the rest. **Four gates shipped today; two had real defects within hours, both found by a cleanup pass over my own diff.** Close gates on your OWN work the same day you write them.
+- **`execute_full_exit` cancelled the resting stop, the sell was REJECTED because the broker had not released the shares yet, and it returned False having restored nothing.** The cancel and the sell raced each other and the function caused its own failure — on a HEALTHY position (OKTA never breached its stop), and not only after hours. Fixed in four parts, all deployed and verified inside the running images: wait for share release then **re-place the stop on ANY sell failure**; the unprotected alert **computes** the next real repair time instead of naming an hour that already passed; a rejected exit writes an audit row; and the stop-cancel handler refills the pointer it clears, but only on a broker-CONFIRMED replacement. SSoT `docs/setups/exit_discipline.md`.
+- ⚠ **Alpaca credentials live ONLY in `apollo-execution`.** A broker probe run in `apollo-market` returns `position: null, 0 open orders` — the credential error is swallowed into an empty list — so **an empty read looks exactly like an empty broker**. I reported that the broker disagreed with its own remediation message; it did not. Always probe from inside `apollo-execution`.
+- ⚠ **A task's own premise can be the wrong thing.** #646 claimed ~64 bare hours on a Friday; `evening_position_backstop` (21:00 ET mon-fri) repairs it and the real exposure was ~5 hours. Verify the premise before building against it.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
