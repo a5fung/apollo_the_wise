@@ -2376,17 +2376,32 @@ async def _evening_position_backstop_job():
 # mid-window while extended hours are still trading; 21:10 is #646 (a1)'s original slot,
 # ten minutes after the 21:00 backstop, and keeps its own wording because by then a repair
 # has been attempted and failed.
+# `repairs` (#649, OPERATOR-AUTHORISED 2026-09-12): whether this slot may re-drive the
+# SIGNED repairer. ⚠ `check_position_coverage`'s docstring reserves a second order-emission
+# site for him in writing, and he authorised exactly this one after seeing WHY the obvious
+# repair was barred: `stop_ack_timeout_watchdog` re-arms at the ORIGINAL `orb_low`, handing
+# back every point of a trail. `_ensure_stop_coverage` does NOT — it places at
+# `_apply_reprotect_floor` (#600), which is floored to the last level the broker actually
+# held, so it can never place worse than the position's current stop. That difference is
+# the whole reason this is allowed and the watchdog widening is not.
+#
+# The 21:10 slot stays DETECT-ONLY on his earlier ruling, and that ruling still holds on
+# its own evidence: the 21:00 backstop has already made 3 attempts with backoff by then,
+# so a 4th ten minutes later adds little. 17:00 and 19:00 are the opposite case — NOTHING
+# has tried, and nothing will for hours.
 _COVERAGE_SLOTS = {
-    # slot: (audit event, headline, what-happens-next line)
+    # slot: (audit event, headline, what-happens-next line, repairs)
     "post_close": (
         "coverage_checked_post_close",
         "🚨 *UNPROTECTED AFTER THE CLOSE*",
-        "Nothing repairs this until *9:00 PM ET*. Extended hours are still trading.",
+        "Extended hours are still trading, and the automatic repair above did not hold.",
+        True,
     ),
     "late": (
         "coverage_checked_late",
         "🚨 *STILL UNPROTECTED THIS EVENING*",
-        "The 9:00 PM sync has not run yet — it is the next automatic attempt.",
+        "The repair above did not hold; the 9:00 PM sync is the next automatic attempt.",
+        True,
     ),
     "evening": (
         "coverage_verified_evening",
@@ -2394,6 +2409,7 @@ _COVERAGE_SLOTS = {
         "The 9:00 PM sync already tried and did not fix this.\n"
         "Nothing else runs automatically until *9:00 AM ET*, when the stop watchdog "
         "re-arms — at the ORIGINAL stop, not the trailed one.",
+        False,
     ),
 }
 
@@ -2409,7 +2425,7 @@ async def _coverage_watch_job(slot: str = "evening"):
 
     ⚖ Detection and reporting only — places, cancels and replaces nothing.
     """
-    event, headline, next_line = _COVERAGE_SLOTS[slot]
+    event, headline, next_line, repairs = _COVERAGE_SLOTS[slot]
     from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
     if not LIVE_TRADING_ENABLED:
         return
@@ -2445,6 +2461,47 @@ async def _coverage_watch_job(slot: str = "evening"):
                 f"{result.get('examined', 0)} positions covered"
             )
             return
+
+        # ── #649 REPAIR ARM (operator-authorised 2026-09-12, in-window slots only) ──
+        # Re-drive the SIGNED repairer, the same one `sync_positions` calls, and then
+        # ASK THE BROKER AGAIN rather than trusting the attempt. A repair that reports
+        # success but leaves no live stop must still page — "I tried" is not coverage.
+        repaired: list[str] = []
+        if repairs and gaps:
+            from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+                _ensure_stop_coverage,
+            )
+            for gap in gaps:
+                try:
+                    await _ensure_stop_coverage(
+                        gap.get("trade_id"), gap.get("ticker"),
+                        float(gap.get("target") or 0),
+                        gap.get("stop_price"),
+                        gap.get("signal_type") or "unknown",
+                        gap.get("account_mode") or "live",
+                    )
+                    repaired.append(str(gap.get("ticker")))
+                except Exception as _re:  # loud-ok: the re-check below is the real verdict
+                    logger.warning(
+                        f"Coverage repair [{slot}] raised for {gap.get('ticker')}: {_re}"
+                    )
+            # BROKER TRUTH AGAIN. Whatever the repairer returned, the question is whether
+            # a stop is resting now — the #527 detector is the only thing that answers it.
+            result = await check_position_coverage(notify=False)
+            gaps = result.get("gaps") or []
+            failed = result.get("check_failed") or []
+            await log_audit_event(
+                f"{event}_repair_attempted",
+                f"coverage repair [{slot}]: tried {len(repaired)} "
+                f"({', '.join(repaired) or 'none'}), {len(gaps)} still uncovered",
+                json.dumps({"slot": slot, "attempted": repaired,
+                            "still_uncovered": gaps, "unreadable": failed}),
+            )
+            if not gaps and not failed:
+                logger.info(
+                    f"Coverage repair [{slot}]: {len(repaired)} position(s) re-protected"
+                )
+                return
 
         lines = []
         for gap in gaps:

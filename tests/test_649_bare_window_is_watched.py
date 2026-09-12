@@ -17,12 +17,15 @@ overnight GTC stop, so a gap there is real rather than the ordinary 16:15 expiry
 mid-window with extended hours still trading; 21:10 keeps #646 (a1)'s slot and its own
 wording, because by then a repair has been attempted and failed.
 
-MUTATION-PROVEN — reported as the runs came back:
-  - delete the `post_close`/`late` entries from the registration loop -> reddens
+MUTATION-PROVEN, reported as the runs came back rather than as a tidy pairing:
+  - delete the post_close/late entries from the registration loop -> ONE:
     test_all_three_slots_are_registered_and_execution_owned;
-  - give every slot the evening wording -> reddens
-    test_each_slot_says_what_actually_happens_next (all three assertions);
-  - drop `notify=False` -> reddens test_every_slot_bypasses_the_detectors_day_dedup.
+  - give every slot the evening wording -> ONE: test_each_slot_says_what_actually_happens_next;
+  - drop `notify=False` -> ONE: test_every_slot_bypasses_the_detectors_day_dedup;
+  - trust the repairer and skip the re-read -> FOUR: verdict_is_a_fresh_broker_read,
+    every_slot_pages_on_a_real_gap, a_raising_repairer_still_pages,
+    each_slot_says_what_actually_happens_next;
+  - let the evening slot repair too -> ONE: test_the_evening_slot_still_repairs_NOTHING.
 """
 from __future__ import annotations
 
@@ -110,12 +113,13 @@ async def test_each_slot_says_what_actually_happens_next(monkeypatch):
         await sch._coverage_watch_job(slot)
         msgs[slot] = h["sent"][0]
 
-    assert "until *9:00 PM ET*" in msgs["post_close"]
     assert "Extended hours are still trading" in msgs["post_close"]
-    assert "has not run yet" in msgs["late"]
+    assert "the automatic repair above did not hold" in msgs["post_close"]
+    assert "the 9:00 PM sync is the next automatic attempt" in msgs["late"]
     assert "already tried and did not fix this" in msgs["evening"]
-    assert "already tried" not in msgs["post_close"], (
-        "a post-close page must not claim a repair has been attempted"
+    assert "9:00 AM ET" in msgs["evening"], (
+        "only the evening page should send him to the morning watchdog — the in-window "
+        "slots have a nearer automatic attempt to name"
     )
 
 
@@ -137,16 +141,94 @@ async def test_every_slot_writes_its_row_even_when_clean(monkeypatch, slot):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("slot", SLOTS)
-async def test_no_slot_places_cancels_or_replaces_anything(monkeypatch, slot):
-    """THE LINE. The repair is barred because the obvious one lowers a trailed stop."""
+async def test_the_evening_slot_still_repairs_NOTHING(monkeypatch):
+    """His ruling of 2026-09-12 stands for 21:10 on its own evidence: the 21:00 backstop
+    has already made three attempts with backoff, so a fourth ten minutes later adds
+    little. The in-window slots are the opposite case — nothing has tried."""
     from agents.market_intelligence import scheduler as sch
+    from agents.market_intelligence.broker import order_manager as om
     h = _wire(monkeypatch, result=_gap())
+    repairer = AsyncMock()
+    monkeypatch.setattr(om, "_ensure_stop_coverage", repairer)
+
+    await sch._coverage_watch_job("evening")
+
+    repairer.assert_not_called()
+    for _n, m in h["writes"].items():
+        m.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("slot", ("post_close", "late"))
+async def test_an_in_window_slot_drives_the_SIGNED_repairer_and_never_the_broker_directly(
+        monkeypatch, slot):
+    """THE LINE, in the shape he authorised. The job may re-drive `_ensure_stop_coverage`
+    — which places at `_apply_reprotect_floor`, floored to the last level the broker held,
+    so it can never place worse than the position's current stop. It may NOT reach the
+    broker itself, because that would bypass the floor and is exactly how the morning
+    watchdog hands back a trail."""
+    from agents.market_intelligence import scheduler as sch
+    from agents.market_intelligence.broker import order_manager as om
+    h = _wire(monkeypatch, result=_gap())
+    repairer = AsyncMock()
+    monkeypatch.setattr(om, "_ensure_stop_coverage", repairer)
 
     await sch._coverage_watch_job(slot)
 
+    repairer.assert_awaited_once()
+    assert repairer.await_args.args[1] == "OKTA"
     for _n, m in h["writes"].items():
-        m.assert_not_called()
+        m.assert_not_called(), "the job must never place a stop itself — only via the floor"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("slot", ("post_close", "late"))
+async def test_the_verdict_is_a_fresh_broker_read_not_the_repairers_word(monkeypatch, slot):
+    """A repairer that returns happily while leaving no live stop must still page.
+    'I tried' is not coverage — the #527 detector is asked again and IT decides."""
+    from agents.market_intelligence import scheduler as sch
+    from agents.market_intelligence.broker import order_manager as om
+    h = _wire(monkeypatch, result=_gap())
+    monkeypatch.setattr(om, "_ensure_stop_coverage", AsyncMock(return_value="repaired!"))
+
+    await sch._coverage_watch_job(slot)
+
+    assert h["detector"].await_count == 2, "the broker must be re-read after the repair"
+    assert h["sent"], "still uncovered on the re-read -> he is told, whatever the repairer said"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("slot", ("post_close", "late"))
+async def test_a_successful_repair_is_silent_but_recorded(monkeypatch, slot):
+    """No page when the re-read comes back clean — but a durable row either way, so a
+    repair that happened is distinguishable from a night nothing needed."""
+    from agents.market_intelligence import scheduler as sch
+    from agents.market_intelligence.broker import order_manager as om
+    h = _wire(monkeypatch, result=_gap())
+    h["detector"].side_effect = [_gap(), _clean()]
+    monkeypatch.setattr(om, "_ensure_stop_coverage", AsyncMock())
+
+    await sch._coverage_watch_job(slot)
+
+    assert not h["sent"], "a repair that worked should not page him at 5pm"
+    evts = [e for e, *_ in h["audited"]]
+    assert any(e.endswith("_repair_attempted") for e in evts)
+    row = json.loads(next(d for e, _s, d in h["audited"] if e.endswith("_repair_attempted")))
+    assert row["attempted"] == ["OKTA"] and row["still_uncovered"] == []
+
+
+@pytest.mark.asyncio
+async def test_a_raising_repairer_still_pages(monkeypatch):
+    """The repairer blowing up must not swallow the alarm — the gap is the point."""
+    from agents.market_intelligence import scheduler as sch
+    from agents.market_intelligence.broker import order_manager as om
+    h = _wire(monkeypatch, result=_gap())
+    monkeypatch.setattr(om, "_ensure_stop_coverage",
+                        AsyncMock(side_effect=RuntimeError("broker down")))
+
+    await sch._coverage_watch_job("post_close")
+
+    assert h["sent"] and "OKTA" in h["sent"][0]
 
 
 @pytest.mark.asyncio
