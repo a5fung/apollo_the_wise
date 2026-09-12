@@ -342,7 +342,12 @@ _ALLOWED_REFERRERS = {
 }
 
 
-_EXCLUDED_DIR_PARTS = {".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache"}
+# ⚠ `.claude` added 2026-09-12: an isolated agent worktree lives at `.claude/worktrees/<id>/`
+# and is a full COPY of the repo, so this scan counted the copy's own recorder files as
+# "references outside the recorder" and reddened the moment any card ran in isolation. The
+# invariant is about THIS tree, not about every checkout sitting under it.
+_EXCLUDED_DIR_PARTS = {".git", ".claude", ".venv", "venv", "node_modules", "__pycache__",
+                       ".pytest_cache"}
 
 
 def test_nothing_outside_the_recorder_reads_or_writes_the_table():
