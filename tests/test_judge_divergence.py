@@ -444,10 +444,20 @@ def test_all_one_direction_is_called_systematic_not_instability(monkeypatch):
     assert "stricter" in line
 
 
-def test_mixed_directions_are_reported_as_a_split(monkeypatch):
-    line = _line(monkeypatch, {"n": 18, "n_disagree": 9, "n_stricter": 5, "n_looser": 4,
+def test_mixed_direction_defensive_branch_drops_looser(monkeypatch):
+    """#650 rewrite: `strict != n_disagree` is unreachable with real HIGH-scoped data (see
+    the function's own docstring), but the defensive elif must render `strict` alone —
+    `loose` is a DIFFERENT population (demotions) and must never appear glued to this split
+    via a stray "/ N looser" the way it did pre-#650, when both columns were structurally
+    scoped to the same all-HIGH table and a "5 stricter / 4 looser" reading, however
+    synthetic, at least described one coherent population. MUTATION: put `loose` back into
+    this branch's f-string — this fails because "5 stricter" would no longer be exact (it
+    would gain a trailing "/ N looser") and "looser" would start appearing outside the new
+    demoted-name clause."""
+    line = _line(monkeypatch, {"n": 18, "n_disagree": 9, "n_stricter": 5, "n_looser": 0,
                                "secondary_model": JUDGE_DIVERGENCE_MODEL})
-    assert "5 stricter / 4 looser" in line
+    assert "5 stricter" in line
+    assert "looser" not in line
     assert "one-directional" not in line, "a genuine split must NOT be labelled systematic"
 
 
@@ -455,6 +465,45 @@ def test_full_agreement_adds_no_direction_clause(monkeypatch):
     line = _line(monkeypatch, {"n": 18, "n_disagree": 0, "n_stricter": 0, "n_looser": 0,
                                "secondary_model": JUDGE_DIVERGENCE_MODEL})
     assert "stricter" not in line and "one-directional" not in line
+    assert "demoted name" not in line
+
+
+# ── #650: n_looser is a DIFFERENT population (demotions), rendered as its own clause ────────
+#
+# Found by review before this shipped: n_disagree/n_stricter are HIGH-scoped (db.py), but
+# n_looser is deliberately NOT (it's the demotion population's own signal — see db.py). The
+# pre-#650 render folded n_looser into the SAME stricter/looser split as n_disagree, which
+# would either (a) silently drop it entirely (the "ALL X one-directional" branch fires
+# whenever strict == n_disagree, which — mathematically, for real data — is ALWAYS true,
+# so loose's value was never even looked at), or worse (b) coincidentally match
+# `loose == n_disagree` and mislabel an unrelated demotion count as "the HIGH disagreements
+# were all looser". Neither is acceptable once demotion rows exist.
+
+
+def test_demoted_looser_renders_as_its_own_additive_clause_not_a_partition(monkeypatch):
+    """MUTATION: fold `loose` back into the `direction` computation (e.g. restore the
+    pre-#650 `strict == n_disagree or loose == n_disagree` condition) — this fails because
+    with strict(2) == n_disagree(2), that condition is already satisfied by `strict` alone,
+    so the ONLY thing this test can detect is whether `loose` also leaks into the "ALL...
+    one-directional" text itself (checked via the exact wording) or whether the separate
+    "+3 demoted..." clause is missing entirely."""
+    line = _line(monkeypatch, {
+        "n": 10, "n_disagree": 2, "n_stricter": 2, "n_looser": 3,
+        "secondary_model": JUDGE_DIVERGENCE_MODEL,
+    })
+    assert "ALL 2 one-directional (2nd model stricter)" in line
+    assert "stricter / " not in line, "n_looser must never be glued onto the stricter split"
+    assert "+3 demoted names the 2nd model would have graded HIGH" in line
+
+
+def test_demoted_looser_clause_omitted_when_zero(monkeypatch):
+    """n_looser == 0 (the pre-#650 norm, and any HIGH-only week post-#650) must add nothing
+    — the clause is purely additive, never a bare '+0 demoted...' filler line."""
+    line = _line(monkeypatch, {
+        "n": 18, "n_disagree": 9, "n_stricter": 9, "n_looser": 0,
+        "secondary_model": JUDGE_DIVERGENCE_MODEL,
+    })
+    assert "demoted name" not in line
 
 
 # ── #509 staleness: the SECOND opinion must track its tier too (2026-08-03) ──────────────────

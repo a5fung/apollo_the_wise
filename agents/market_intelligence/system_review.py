@@ -1880,7 +1880,21 @@ async def _judge_divergence_section(window_start: date) -> str:
     ONE weekly-review line for #301, not a new digest section.
 
     Omitted entirely when the window has no rows (n=0) — no misleading 0% line, same
-    no-data convention as `_format_crypto_section` / `_format_mfe_capture_section`."""
+    no-data convention as `_format_crypto_section` / `_format_mfe_capture_section`.
+
+    #650 (2026-09-12): `n`/`n_disagree`/`n_stricter` stay HIGH-tier-scoped (`db.
+    get_judge_divergence_stats` filters them to `primary_tier = 'HIGH'`) — this line's own
+    text has always claimed to measure "the HIGH-tier judge verdict", and #650 widened the
+    underlying check to ALSO fire on demotions, which is a different population entirely.
+    `n_looser` is DELIBERATELY excluded from that scoping (see the db.py docstring) because
+    it is the demotion population's own signal, not a partition of `n_disagree` — rendered
+    below as its own additive clause, never combined with the stricter/looser split, so a
+    demotion disagreement can never be mis-rendered as part of the HIGH-tier direction
+    read (found by review before this shipped: `strict` is now MATHEMATICALLY GUARANTEED
+    to equal `n_disagree` for the real HIGH-scoped population — a HIGH primary can only
+    disagree by moving DOWN a tier — so the pre-#650 `loose == n_disagree` branch would
+    otherwise coincidentally fire on an unrelated demotion count and mislabel it as "the
+    HIGH disagreements were all looser")."""
     from agents.market_intelligence.db import get_judge_divergence_stats
     stats = await get_judge_divergence_stats(window_start)
     n = stats.get("n") or 0
@@ -1899,18 +1913,32 @@ async def _judge_divergence_section(window_start: date) -> str:
     # alone is not just incomplete, it is misleading.
     strict = stats.get("n_stricter") or 0
     loose = stats.get("n_looser") or 0
-    if n_disagree and (strict == n_disagree or loose == n_disagree):
-        direction = (f" — ALL {n_disagree} one-directional "
-                     f"({'2nd model stricter' if strict else '2nd model looser'}), "
+    if n_disagree and strict == n_disagree:
+        direction = (f" — ALL {n_disagree} one-directional (2nd model stricter), "
                      f"i.e. systematic tier bias, not instability")
     elif n_disagree:
-        direction = f" — {strict} stricter / {loose} looser"
+        # Defensive only, NEVER reachable with real data post-#650: `strict` is filtered to
+        # the identical HIGH-scoped population as `n_disagree` (db.py), and for that
+        # population NOT agree ALWAYS implies secondary_tier <> 'HIGH' (that's what
+        # disagreement on a HIGH primary IS), so strict == n_disagree unconditionally.
+        # Kept so a future inconsistency renders sanely rather than crashing — deliberately
+        # drops `loose` from this line (#650): it is a DIFFERENT population, see below.
+        direction = f" — {strict} stricter"
     else:
         direction = ""
+    # #650: n_looser is a SEPARATE, additive signal — demotion disagreements where the 2nd
+    # model would have kept the name alive (primary_tier <> 'HIGH', secondary_tier = 'HIGH').
+    # Structurally always 0 before #650 (no non-HIGH primary_tier rows existed to read).
+    # Never folded into `direction` above — that split's denominator is HIGH-tier
+    # disagreements only, and this counts an entirely different set of alert-days.
+    demoted_clause = (
+        f" · +{loose} demoted name{'s' if loose != 1 else ''} the 2nd model would have "
+        f"graded HIGH"
+    ) if loose else ""
     return (
         f"\U0001F50D *Judge 2nd-opinion (#301, {secondary_model}):* "
         f"{n_disagree}/{n} disagreed ({pct}%) with the HIGH-tier judge verdict this week{flag}"
-        f"{direction}"
+        f"{direction}{demoted_clause}"
     )
 
 
