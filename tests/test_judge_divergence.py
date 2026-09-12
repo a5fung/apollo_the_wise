@@ -15,6 +15,10 @@ Pins:
      `log_caller` so its spend is separately attributable (#377 cost meter).
   7. the ep_detector.py trigger site is genuinely off the critical path (never awaited) and
      gated on both the HIGH-tier verdict and the once-per-ticker-per-day dedupe guard.
+     (#650 widened the tier gate to ALSO fire on a judge demotion — HIGH->MODERATE,
+     HIGH->none, MODERATE->none; see tests/test_judge_demotion_divergence.py for that
+     widening's own pins — this file's pin #7 stays HIGH-only deliberately, to prove the
+     HIGH arm keeps working byte-identically after the widening.)
 """
 import asyncio
 from datetime import date
@@ -236,6 +240,82 @@ def test_ep_detector_trigger_is_never_awaited_and_is_gated():
     assert '"judge_divergence_check"' in src
 
 
+# ─── ZERO AUTHORITY, repo-wide: mi_judge_divergence is NEVER read by a scoring path ─────────
+#
+# THE LINE (ADR 0011): this module can log a divergence, never act on one. The strongest
+# available pin (no DB in this test environment to run a real integration read) is a
+# repo-wide grep for every file that so much as MENTIONS the table — an allow-list, so
+# adding a NEW reader that isn't one of these five deliberately-audited files fails this
+# test rather than silently becoming a sixth undocumented touchpoint. Grade/entry/exit
+# code (ep_detector.py's grading section, ep_grade_judge.py, broker/entry_pipeline.py,
+# meta_rubric_compose.py, catalyst_rubric_runtime.py) is explicitly asserted absent.
+
+
+def _repo_files_mentioning(needle: str) -> set:
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # repo root
+    hits = set()
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in (
+            ".git", "__pycache__", "node_modules", "tests", ".claude",
+        )]
+        for fn in filenames:
+            if not (fn.endswith(".py") or fn.endswith(".yaml") or fn.endswith(".yml")):
+                continue
+            path = os.path.join(dirpath, fn)
+            try:
+                with open(path, encoding="utf-8", errors="ignore") as f:
+                    text = f.read()
+            except OSError:
+                continue
+            if needle in text:
+                hits.add(os.path.relpath(path, root))
+    return hits
+
+
+def test_mi_judge_divergence_is_touched_only_by_the_audited_allow_list():
+    """MUTATION: this test would fail the day someone wires a NEW reader (e.g. an entry
+    filter that reads the divergence rate) without updating the allow-list here — which is
+    the point: a silent 6th touchpoint on a THE-LINE table should never pass quietly."""
+    allow_list = {
+        "data_gated_reviews.yaml",              # judge_divergence_marginal_high_signal predicate
+        "agents/market_intelligence/db.py",       # table DDL + get_judge_divergence_stats reader
+        "agents/market_intelligence/audit_events.py",   # comment only, naming the audit events
+        "agents/market_intelligence/judge_divergence.py",  # the writer itself
+        "agents/market_intelligence/system_review.py",     # the one weekly-digest READ-ONLY line
+    }
+    assert _repo_files_mentioning("mi_judge_divergence") == allow_list
+
+
+def test_no_scoring_or_entry_path_reads_the_divergence_table_or_helpers():
+    """MUTATION: same as above, phrased the other way — explicitly names the grade/entry/
+    exit modules THE LINE forbids from ever mentioning this table or its reader function,
+    so a future edit to any one of them that starts referencing `mi_judge_divergence` or
+    `get_judge_divergence_stats` (the only other exported symbol besides the writer) fails
+    here even if it slips past the allow-list test above (e.g. by editing db.py itself,
+    which IS in the allow-list, to pipe the stats into a scoring helper defined there)."""
+    scoring_paths = [
+        "agents/market_intelligence/ep_grade_judge.py",       # the judge that sets score_tier
+        "agents/market_intelligence/broker/entry_pipeline.py",  # the entry funnel
+        "agents/market_intelligence/meta_rubric_compose.py",  # M1-d composite-tier composer
+        "agents/market_intelligence/catalyst_rubric_runtime.py",
+    ]
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for rel in scoring_paths:
+        text = open(os.path.join(root, rel), encoding="utf-8").read()
+        assert "mi_judge_divergence" not in text, rel
+        assert "get_judge_divergence_stats" not in text, rel
+
+    # ep_detector.py DOES call launch_divergence_check (that's the trigger under test), but
+    # ONLY fire-and-forget — its return value (always None; see judge_divergence.py) must
+    # never be assigned to anything that could feed back into r/score_tier.
+    import agents.market_intelligence.ep_detector as ep
+    src = open(ep.__file__, encoding="utf-8").read()
+    assert "= launch_divergence_check(" not in src
+    assert "get_judge_divergence_stats" not in src
+
+
 # ─── db.get_judge_divergence_stats — the weekly-digest aggregate ───────────────────────────
 
 
@@ -261,6 +341,47 @@ def test_get_judge_divergence_stats_no_rows(monkeypatch):
 
     stats = _run(db.get_judge_divergence_stats(date(2026, 7, 20)))
     assert stats["n"] == 0
+
+
+# ── #650: n/n_disagree stay HIGH-scoped once demotions also write rows ──────────────────────
+#
+# Can't run the real SQL against a live Postgres from this test environment, so this pins the
+# query TEXT itself (the same static-source-check idiom test_ep_detector_trigger_is_never_
+# awaited_and_is_gated already uses for the sibling closure that can't be unit-invoked
+# directly) — a regression guard against the exact blind spot #650 introduces: before it,
+# EVERY row had primary_tier='HIGH' (the check was HIGH-only), so an unfiltered n/n_disagree
+# was accidentally correct; #650 makes that assumption false the day a demotion row lands.
+
+
+def test_n_and_n_disagree_are_filtered_to_primary_tier_high():
+    """MUTATION: drop the `primary_tier = 'HIGH'` filter from the n/n_disagree FILTER
+    clauses (i.e. revert to the pre-#650 SQL) — this fails because the filtered forms no
+    longer appear, which is exactly the state that would let a demotion's disagreement
+    silently inflate the HIGH-tier rate the weekly digest (`_judge_divergence_section`) and
+    the >25% ⚠ threshold were calibrated against."""
+    src = open(db.__file__, encoding="utf-8").read()
+    assert "async def get_judge_divergence_stats" in src  # sanity: still the right function
+    assert "COUNT(*) FILTER (WHERE primary_tier = 'HIGH') AS n" in src
+    assert ("COUNT(*) FILTER (WHERE NOT agree\n"
+            "                                    AND primary_tier = 'HIGH') AS n_disagree") in src
+
+
+def test_n_looser_stays_unfiltered_so_it_can_still_see_demotions():
+    """MUTATION: add a blanket `WHERE primary_tier = 'HIGH'` to the query (rather than
+    scoping only the n/n_disagree FILTER clauses) — this fails because it would ALSO zero
+    n_looser's `primary_tier <> 'HIGH'` clause, silently freezing it forever exactly like
+    the #509 frozen-JUDGE_DIVERGENCE_MODEL bug this file's own docstring already warns
+    about, just for a different column. n_looser is the demotion population's own signal
+    (the 2nd model would have kept a demoted name alive) and must keep reading the full
+    table."""
+    src = open(db.__file__, encoding="utf-8").read()
+    assert ("primary_tier <> 'HIGH'\n"
+            "                                    AND secondary_tier = 'HIGH')             AS n_looser") in src
+    # The base WHERE clause (after the SELECT) must stay window-only, not tier-blanket.
+    from_idx = src.index("FROM mi_judge_divergence")
+    where_clause = src[from_idx:src.index("window_start,", from_idx)]
+    assert "WHERE alert_date >= $1" in where_clause
+    assert "primary_tier" not in where_clause.split("WHERE alert_date >= $1")[1]
 
 
 # ─── system_review._judge_divergence_section — the ONE weekly-review line ──────────────────

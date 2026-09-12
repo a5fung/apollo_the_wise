@@ -11227,13 +11227,29 @@ async def get_judge_divergence_stats(window_start: date) -> dict[str, Any]:
     line. Read-only, zero-authority (THE LINE — this feeds a Telegram appendix, never a
     grade path). `n=0` when the window has no rows; the caller renders nothing in that
     case rather than a misleading 0% line (matches the crypto/mfe_capture appendix
-    convention)."""
+    convention).
+
+    `n`/`n_disagree` are HIGH-SCOPED (#650, 2026-09-12) — filtered to `primary_tier =
+    'HIGH'`, matching what the digest line's own docstring has always claimed it measures
+    ("the primary holistic judge's HIGH-tier verdict"). Before #650 this filter was a
+    no-op: the divergence check triggered on HIGH verdicts only, so every row already had
+    primary_tier='HIGH' and `n`/`n_disagree` were byte-identical with or without it. #650
+    widened the trigger to ALSO fire on judge demotions (HIGH->MODERATE, HIGH->none,
+    MODERATE->none), so without this filter the HIGH-tier disagreement rate — and the >25%
+    ⚠ threshold calibrated against it (`_judge_divergence_section`,
+    `judge_divergence_marginal_high_signal`) — would silently start blending in an
+    unrelated population the moment demotion rows begin landing. n_stricter was already
+    HIGH-scoped this way and is untouched; n_looser is DELIBERATELY left reading the FULL
+    table (primary_tier <> 'HIGH') — that's the demotion population's own signal (the 2nd
+    model would have kept a demoted name alive), and it was always structurally zero before
+    #650 for lack of any non-HIGH primary_tier rows to look at."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT COUNT(*) AS n,
-                   COUNT(*) FILTER (WHERE NOT agree) AS n_disagree,
+            SELECT COUNT(*) FILTER (WHERE primary_tier = 'HIGH') AS n,
+                   COUNT(*) FILTER (WHERE NOT agree
+                                    AND primary_tier = 'HIGH') AS n_disagree,
                    -- DIRECTION (added 2026-08-02). A bare rate reads as "the judge is a coin
                    -- flip"; the first 18 rows were 9 disagreements ALL of them HIGH->MODERATE and
                    -- ZERO the other way. That is a systematic tier bias in the 2nd model, not

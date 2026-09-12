@@ -1,5 +1,7 @@
-"""P1 ensemble-divergence SHADOW (#301) — zero-authority 2nd-model divergence monitor
-on the HIGH-tier holistic judge (ep_grade_judge.py, ADR 0011) verdict.
+"""P1 ensemble-divergence SHADOW (#301, widened by #650) — zero-authority 2nd-model
+divergence monitor on the holistic judge (ep_grade_judge.py, ADR 0011) verdict, on every
+HIGH tier AND every demotion (the judge's tier landing strictly below the floor's:
+HIGH->MODERATE, HIGH->none, MODERATE->none — `ep_detector._is_judge_demotion`).
 
 ZERO AUTHORITY (THE LINE): this module can NEVER change a grade, an alert, an entry, or
 an exit — it only LOGS. `launch_divergence_check` is called by the caller (ep_detector.py
@@ -12,7 +14,10 @@ UNAFFECTED, because they have already fully settled by the time this module even
 
 Design (PLAN #301, build-spec'd 2026-07-11, unblocked 2026-07-26 — the pre-cutover
 grade-path-stability freeze this inherited a `blocked_by` from never actually applied to a
-monitor that cannot alter a grade): trigger post-judge-HIGH persist · call
+monitor that cannot alter a grade; trigger widened to demotions 2026-09-12 per #650 —
+#485's feasibility read found 17 demotions since 07-27 with zero second-model reads, vs
+97/97 coverage on HIGH, because a demotion is exactly the decision that silently removes a
+candidate): trigger post-judge-HIGH-or-demotion persist · call
 `ep_grade_judge.grade_holistic` again with the IDENTICAL payload the primary judge saw,
 model-swapped to JUDGE_DIVERGENCE_MODEL (Sonnet — deliberately a DIFFERENT model/tier than
 JUDGE_MODEL=Opus, so the 2nd opinion is genuinely independent, not just a cheaper rerun of
@@ -26,9 +31,10 @@ Dedup / cost control: the EP scan re-runs every 5 min (7:00-10:00 ET, ~36 ticks/
 and `_judge_shadow` re-grades every still-alerted candidate on each tick. The CALLER gates
 the trigger on `_audit_dedupe_check(ticker, alert_date, "judge_divergence_check")`
 (ep_detector.py — the same in-memory once-per-ticker-per-day guard the sibling axis
-shadows use, e.g. `theme_axis_shadow_adjusted`), so a HIGH-tier alert that stays HIGH
-across the whole scan window fires the 2nd-model call ONCE, not ~36 times — this is what
-keeps the module at the designed ~2-5 calls/day instead of ~2-5 x 36/day.
+shadows use, e.g. `theme_axis_shadow_adjusted`), so a HIGH-tier or demoted verdict that
+holds across the whole scan window fires the 2nd-model call ONCE, not ~36 times — this is
+what keeps the module bounded at roughly HIGH-rate + demotion-rate calls/day (#650 costs
+this out in the PLAN #650 close commit) instead of either population x 36/day.
 """
 from __future__ import annotations
 

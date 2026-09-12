@@ -56,7 +56,7 @@ from agents.market_intelligence.collector import (
     search_news_perplexity,
     get_sec_recent_filings,
 )
-from agents.market_intelligence.constants import SKIP_TICKERS
+from agents.market_intelligence.constants import SKIP_TICKERS, TIER_RANK
 from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_volume_history_daily_closes, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, get_runtime_toggle, LIVE_SOURCE_SQL
 from agents.market_intelligence.backtester.filters import check_filters
 from agents.market_intelligence.minute_volume import (
@@ -607,6 +607,27 @@ def _resolve_grade_authority(judge_authority: bool, verdict: "dict | None", floo
     if verdict is not None:
         return verdict["tier"], "judge", True
     return floor_tier, "fallback", True
+
+
+def _is_judge_demotion(judge_tier, floor_tier) -> bool:
+    """#650 — FACTUAL tier-rank comparison (SSoT `constants.TIER_RANK`, the same none <
+    MODERATE < HIGH lattice ADR 0024 §3 and `briefing._judge_direction` use). A demotion is
+    the judge's tier landing STRICTLY BELOW the floor's: HIGH→MODERATE, HIGH→none, or
+    MODERATE→none — the exact population #485's feasibility read counted (17 since 07-27,
+    docs/analysis/485_judge_meta_review_feasibility_2026-09-12.md §2d).
+
+    Deliberately NOT the judge's own raw `direction_vs_floor` field. That field is
+    unvalidated model output — `_normalize_verdict` checks it for enum membership only,
+    never for agreement with tier-vs-floor — and the model routinely answers it on the
+    catalyst-grade axis instead of the tier axis (OKTA 2026-08-27: `direction_vs_floor` said
+    'demote' while the tier held at HIGH == floor_tier; nothing moved).
+    `briefing._judge_direction` documents this exact gap and computes the same rank-based
+    move for the operator-facing tier-transition line — this is that same computation,
+    reused here so the #650 second-opinion trigger fires on what the tier ACTUALLY did."""
+    a, b = TIER_RANK.get(judge_tier), TIER_RANK.get(floor_tier)
+    if a is None or b is None:
+        return False
+    return a < b
 
 
 def _resolve_catalyst_text(claude_analysis, news_summary, has_direct_source, limit):
@@ -6263,7 +6284,19 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             # and returns immediately — it is NEVER awaited, so a slow/
                             # failed/timed-out 2nd-model call cannot add latency here or
                             # anywhere downstream.
-                            if v.get("tier") == "HIGH" and _audit_dedupe_check(
+                            # #650: widened from HIGH-only. A DEMOTION (_is_judge_demotion:
+                            # the judge's tier landing strictly below floor_tier — HIGH→
+                            # MODERATE, HIGH→none, MODERATE→none) is the judge deciding a
+                            # name is NOT tradeable, i.e. exactly the decision that silently
+                            # removes a candidate — #485's feasibility read found 17 of
+                            # these since 07-27 with zero second-model reads (0/17), vs
+                            # 97/97 coverage on HIGH. Same trigger, same dedupe key/guard,
+                            # same call — a demotion is just a second population that now
+                            # satisfies the same `if`, not a new code path.
+                            if (
+                                v.get("tier") == "HIGH"
+                                or _is_judge_demotion(v.get("tier"), floor_tier)
+                            ) and _audit_dedupe_check(
                                 r["ticker"], today, "judge_divergence_check"
                             ):
                                 try:

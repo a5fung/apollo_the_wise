@@ -10315,8 +10315,13 @@ reviews:
       the roles on 2026-07-31 to claude-opus-5 vs claude-sonnet-5. The clustering evidence
       above therefore describes a model pair that NO LONGER RUNS, and the predicate counts only
       the CURRENT pair. Expect the count to restart from ~0 — that is correct, not a bug.
+      ⚠⚠⚠ #650 (2026-09-12) widened the divergence check to ALSO fire on judge DEMOTIONS
+      (HIGH->MODERATE, HIGH->none, MODERATE->none) — a different question (was the demotion
+      right?) than this review's (was a marginal HIGH right?). Added `d.primary_tier =
+      'HIGH'` below so demotion rows can never enter THIS count; they stay in the table as
+      a separate population for a future review to ask its own question of.
     predicate_sql: |
-      -- TWO gates, both load-bearing.
+      -- THREE gates, all load-bearing.
       -- (1) SETTLED, not merely present: counting rows would fire on an unscoreable cohort,
       --     which is the failure this review exists to avoid.
       -- (2) CURRENT MODEL PAIR only. ⚠ Found 2026-08-02: all 18 registration-time rows were
@@ -10325,11 +10330,18 @@ reviews:
       --     two pairs would answer "do these two models disagree" with data from two DIFFERENT
       --     experiments — the pre-upgrade rows describe a pairing that no longer runs. They
       --     stay in the table as history; they must not enter this verdict.
+      -- (3) HIGH-TIER PRIMARY ONLY (added #650, 2026-09-12). This review is about marginal
+      --     HIGHs specifically (title + question above) — #650 widened the divergence
+      --     check to also fire on demotions (primary_tier IN ('MODERATE','none')), a
+      --     DIFFERENT population asking a different question. Every row before #650 already
+      --     had primary_tier='HIGH' (the check was HIGH-only), so this filter is a no-op on
+      --     all EXISTING rows and only scopes rows written from here on.
       SELECT COUNT(*)
       FROM mi_judge_divergence d
       JOIN mi_ep_scan_outcomes o
         ON o.ticker = d.ticker AND o.scan_date = d.alert_date
       WHERE NOT d.agree
+        AND d.primary_tier = 'HIGH'
         AND o.fwd_5d_pct IS NOT NULL
         AND d.primary_model   = (SELECT model FROM mi_model_resolution
                                   WHERE role = 'JUDGE_MODEL'
@@ -10337,6 +10349,27 @@ reviews:
         AND d.secondary_model = (SELECT model FROM mi_model_resolution
                                   WHERE role = 'JUDGE_DIVERGENCE_MODEL'
                                   ORDER BY resolved_at DESC LIMIT 1);
+    can_fire:
+      predicate_runs: "Not re-executed today (this build has no prod DB access); the
+        identical query minus the new primary_tier filter was run 2026-09-12 for the #485
+        feasibility read and returned 8 of the 15 threshold (docs/analysis/
+        485_judge_meta_review_feasibility_2026-09-12.md 2b). The new filter is a no-op on
+        every row that produced that 8 - all predate #650 and already carry
+        primary_tier='HIGH' - so today's count is unchanged by this edit."
+      nonzero_possible: "judge_divergence.py inserts into mi_judge_divergence on every
+        HIGH-tier (and, from #650, demoted) judge verdict via ep_detector._judge_shadow;
+        97 rows exist 07-27 to 09-08 per the same #485 read, so nonzero is routine."
+      lane_live: "The HIGH-tier holistic judge is LOAD-BEARING (ep_grade_judge.py: Wave 2
+        flipped, holistic_judge_enabled ON) - the population this review scores is live,
+        not a shadow."
+      threshold_vs_observed: "8 of 15 settled disagreements as of 2026-09-12, current
+        model pair only (opus-5/sonnet-5), per #485's read of the SAME table this
+        predicate counts. Volume is roughly 4 judge-HIGHs/week at ~10% disagreement. 15 is
+        a few months out at that pace, not beyond the observed range."
+      era_scoped: "The predicate's own model-pair join already re-resolves JUDGE_MODEL and
+        JUDGE_DIVERGENCE_MODEL from mi_model_resolution at query time, so a future model
+        swap re-scopes it automatically; the new primary_tier filter is orthogonal to that
+        and does not change era-scoping."
     threshold: 15
     # 9 disagreements existed at registration, none settled. 15 SETTLED disagreements is
     # still thin for a verdict but enough to see a direction; a smaller bar would invite
