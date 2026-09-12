@@ -1216,7 +1216,13 @@ _BAR_PATTERNS = (
     # `DoD:` / `**DoD:**` / `**DoD (written 2026-09-10):**` — the parenthetical form is what you
     # write when adding a criterion to an OLD line, and rejecting it silently made five real
     # DoDs invisible to this very gate the day it shipped (2026-09-10).
-    re.compile(r"\*{0,2}DoD\*{0,2}\s*(?:\([^)]{0,90}\))?\s*\*{0,2}\s*[:\u2014-]\s*\*{0,2}\s*"
+    # ⚠ `=` ADDED 2026-09-12. #414 was the ONE line of 66 written `DoD =` instead of `DoD:`,
+    # and without it `close_bar_for` fell straight through to a later VERIFY sentence - so a
+    # close quoting #414's REAL DoD would have FAILED this gate, while one quoting a narrow
+    # sub-item's verify would have PASSED. That is the exact inversion of 'the DoD outranks
+    # any later VERIFY line', on the single task where the question was being asked out loud.
+    # Found by reviewing that task's disposition, not by the gate.
+    re.compile(r"\*{0,2}DoD\*{0,2}\s*(?:\([^)]{0,90}\))?\s*\*{0,2}\s*[:=\u2014-]\s*\*{0,2}\s*"
                r"(.{30,}?)" + _BAR_END, re.S),
     re.compile(r"VERIFY-LIVE\s*=\s*(.{20,}?)" + _BAR_END, re.S),
     re.compile(r"VERIFY[^:]{0,24}:\s*(.{20,}?)" + _BAR_END, re.S),
