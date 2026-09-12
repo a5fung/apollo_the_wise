@@ -444,3 +444,21 @@ their refutations live in the analysis doc, not only in the closed line: a baske
 cohorts persist slightly BETTER, 43% vs 52% gone after one week) and a two-week confirmation delay
 (it costs the 20% worth having exactly the five sessions #486 step-3 showed lift remaining runway
 from 29% to 55%).
+
+## #633 — eleven gated reviews had produced nothing since becoming eligible, and nobody had ruled them (2026-09-12)
+BAR: no pending review reads ZERO-since-eligible without a dated note saying which it is.
+EVIDENCE: read POSITIVELY rather than as an absence — `operator_asks.py --audit` run today
+enumerates every review currently reading zero since its eligible date, and ALL SIX carry a dated
+ruling in their own entry: `drawdown_breaker_active_effectiveness`, `exit_tune_cohort_review`,
+`exposure_family_cap_promotion_r2`, `stop_reprotect_floor_first_fire_600`,
+`sustain_reject_tradeable_miss_rate_593`, `wave_c_part2_boost_demotion`. A review reading zero
+with no dated note would appear in that same output and does not.
+RESIDUAL, built and DEPLOYED rather than carried forward: `spiky_guard_first_engagement` could not
+distinguish a suppressed alert from an ordinary quiet night — the guard's demotion wrote the same
+band field an unremarkable night writes, and on a night following another band-2 night it wrote
+nothing at all. Fixed in `97baa0f6`, live in both images 2026-09-12: the engagement now stamps
+itself at the demotion site and records even when the band is unchanged, while the guard's own
+behaviour is untouched and pinned by test.
+NOTHING IS ORPHANED BY THIS CLOSE: the residual's first-firing watch lives in the
+`spiky_guard_first_engagement` review itself, which is a data-gated review and survives in
+`data_gated_reviews.yaml` independently of this line.
