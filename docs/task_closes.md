@@ -462,3 +462,33 @@ behaviour is untouched and pinned by test.
 NOTHING IS ORPHANED BY THIS CLOSE: the residual's first-firing watch lives in the
 `spiky_guard_first_engagement` review itself, which is a data-gated review and survives in
 `data_gated_reviews.yaml` independently of this line.
+
+## #485 — a meta-LLM reviewing the judge (2026-09-12)
+BAR: feasibility read — does a meta-LLM add signal over the operator-labeled sample + the by-tier
+outcome cross-tab #337 already surfaces? → if yes, design + shadow (advisory only, NEVER a grade
+input — THE LINE); if no, retire the idea.
+ACCEPTED-PARTIAL: the DoD is a FORK, and the read resolved it to the "no" branch, so the "if yes,
+design + shadow (advisory only, NEVER a grade input)" clause is unreachable by construction rather
+than unmet — there is nothing to design because the feasibility answer was negative. Nothing is
+being quietly dropped: the by-tier outcome cross-tab the DoD names as the comparison baseline is
+#337's, which is a SEPARATE surface that remains live and untouched by this close.
+EVIDENCE: the read was done at $0 and the answer is NO —
+`docs/analysis/485_judge_meta_review_feasibility_2026-09-12.md`. Three independent reasons:
+(1) COVERAGE ALREADY EXISTS — `mi_judge_divergence` holds **97 runs, 80 agreed, 17 disagreed, over
+24 distinct days from 2026-07-27 to 09-08**, i.e. every judge HIGH already receives an independent
+second-model read, queried on prod today.
+(2) THE QUESTION IS ALREADY QUEUED — "were the disagreed calls the weaker ones" is the registered
+gated review `judge_divergence_marginal_high_signal`, at 8 of 15 settled; a meta-LLM would be a
+second instrument asking a question already instrumented.
+(3) THERE IS NOTHING TO CALIBRATE AGAINST — under the rules actually running (rubric v4 from
+08-28) the judge has decided **10** alerts with **4** settled outcomes.
+And a reviewer that FLAGS judge calls is a self-score, which ADR 0011 forbids outright — so the
+"yes" branch was never available in the shape the idea imagined.
+OPERATOR RULING: retire — *"aligned"*, 2026-09-12, against the standing priority that EP
+profitability is an EXIT problem, making selection-side polish a detour.
+CARRIED FORWARD, not deleted: the demotion gap — 17 demotions since 07-27 with zero second reads,
+because #301's trigger is HIGH-only — is real, is NEW work rather than this task's bar, and is
+recorded in the analysis doc above so it survives this close.
+⚠ MY OWN ERROR, kept because it is instructive: I first reported that coverage could NOT be proven,
+having read only `mi_audit_log` (which records disagreements only) and missed the per-run table
+write one line above it. Same shape as the defect I was accusing the analysis of.
