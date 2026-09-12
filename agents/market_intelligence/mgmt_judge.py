@@ -323,5 +323,8 @@ async def run_position_mgmt_judge(send: bool = False) -> str:
         text += "\n\n" + section
     if send:
         from agents.market_intelligence.briefing import send_telegram_message
-        await send_telegram_message(text)
+        from shared.telegram_format import md_to_html
+        # #647: HTML layer — a verdict like TRAIL_TIGHTEN is one bare `_`, which 400'd the
+        # legacy-Markdown send on 4 of the last 14 days. The sell-discipline fence rides <pre>.
+        await send_telegram_message(md_to_html(text), parse_mode="HTML")
     return text

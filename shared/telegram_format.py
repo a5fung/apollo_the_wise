@@ -82,13 +82,19 @@ _CODE_RE = re.compile(r"`([^`]+)`")
 _BOLD_RE = re.compile(r"(?<!\w)\*(?!\s)(.+?)(?<!\s)\*(?!\w)")
 _ITALIC_RE = re.compile(r"(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+# Legacy-Markdown backslash escapes — the four characters Telegram's v1 parser reads as
+# markup, and exactly what `briefing._md_escape` emits (`\_`, `\*`). Consumed OUTSIDE
+# code/pre only, matching v1, where a backslash inside a code span is literal.
+_ESCAPED_RE = re.compile(r"\\([_*`\[])")
 
 
 def md_to_html(text: str) -> str:
     """Best-effort convert a legacy-Markdown Telegram string to safe HTML.
 
     Use at the send boundary to migrate a builder without rewriting it. Handles
-    *bold* _italic_ `code` ```pre``` [text](url). Anything not matched is
+    *bold* _italic_ `code` ```pre``` [text](url) and the v1 backslash escapes
+    `\\_` `\\*` `` \\` `` `\\[` (#647: `_md_escape`d fields such as the EP alert's
+    ⚖️ Acted block used to arrive with literal backslashes). Anything not matched is
     HTML-escaped, so a stray `<` or `&` in prose is safe. Not perfect for
     pathological nesting — new builders should use the helpers directly."""
     if text is None:
@@ -102,6 +108,9 @@ def md_to_html(text: str) -> str:
     # 1) Pull pre/code spans out (escape their inner content), leave a placeholder.
     text = _PRE_RE.sub(lambda m: _stash(f"<pre>{esc(m.group(1))}</pre>"), text)
     text = _CODE_RE.sub(lambda m: _stash(f"<code>{esc(m.group(1))}</code>"), text)
+    # 1b) Backslash-escaped markup chars become literal text (stashed so neither the
+    #     link/emphasis regexes below nor a neighbouring `_` can pair with them).
+    text = _ESCAPED_RE.sub(lambda m: _stash(esc(m.group(1))), text)
     # 2) Links: capture before escaping (the () [] would survive escape, but do it now).
     text = _LINK_RE.sub(lambda m: _stash(link(m.group(1), m.group(2))), text)
     # 3) Escape everything else.

@@ -34,6 +34,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     humanize,
 )
 from agents.market_intelligence.briefing import send_telegram_message
+from shared.telegram_format import md_to_html   # #647: money-path pages go out on the HTML layer
 from agents.market_intelligence.constants import (
     current_account_mode,
     mode_prefix,
@@ -387,12 +388,14 @@ async def _alert_regime_sizing_fallback_once(
         f"{REGIME_SIZING_FALLBACK_MULTIPLIER:.2f}x"
     )
     await log_audit_event(SIZING_REGIME_FALLBACK, summary)
-    await send_telegram_message(
+    # #647: HTML layer — `regime_date` + `missing_or_stale` are three bare `_`, so this page
+    # 400'd legacy Markdown on every firing and only the plain retry reached the operator.
+    await send_telegram_message(md_to_html(
         f"{mode_prefix(account_mode)}🚨 Regime sizing FALLBACK ({reason}): "
         f"last regime_date seen {detail_date}, label={label or 'none'} — "
         f"sizing floored to {REGIME_SIZING_FALLBACK_MULTIPLIER:.0%}. Regime "
         f"feed may be broken — check the nightly regime job."
-    )
+    ), parse_mode="HTML")
 
 
 async def _log_notional_cap_truncation(
@@ -4840,12 +4843,15 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
             logger.warning(f"full_exit_rejected audit write failed for {ticker}: {_ae}")
         restored = await _restore_stop_after_failed_exit(
             trade_id, ticker, cancelled_stop_shares, cancelled_stop_price, account_mode)
-        await send_telegram_message(
+        # #647: HTML layer — `{e}` is Alpaca's JSON (`existing_qty`, `held_for_orders`), which
+        # 400'd the legacy-Markdown send of the 2026-09-11 OKTA page; the plain retry then
+        # stripped the JSON's underscores. The page must land first time, intact.
+        await send_telegram_message(md_to_html(
             f"{mode_prefix(account_mode)}⚠️ Full exit FAILED for {ticker}: {e}"
             + (f"\nStop RESTORED at ${cancelled_stop_price:.2f} — position is protected."
                if restored else
                "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required.")
-        )
+        ), parse_mode="HTML")
         return False
 
     remaining = trade["remaining_shares"]

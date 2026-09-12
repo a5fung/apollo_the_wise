@@ -28,6 +28,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.briefing import send_telegram_message
+from shared.telegram_format import md_to_html   # #647: findings carry COIDs → HTML layer
 from agents.market_intelligence.constants import mode_prefix
 from agents.market_intelligence.db import get_pool, get_safeguard_state, log_audit_event, _jsonb_param
 
@@ -127,7 +128,9 @@ async def _already_seen(conn, signature: str) -> bool:
 async def _emit(event_type: str, signature: str, detail: dict, telegram: str | None) -> None:
     await log_audit_event(event_type, signature, json.dumps(detail, default=str))
     if telegram:
-        await send_telegram_message(telegram)
+        # #647: HTML layer — a rejection reason reads `mode_mismatch coid=apollo_live_magna53_…`,
+        # which legacy Markdown cannot carry. Not yet seen in prod; provably the same class.
+        await send_telegram_message(md_to_html(telegram), parse_mode="HTML")
 
 
 # ───────────────────────────────────── R1 repair ─────────────────────────────────────

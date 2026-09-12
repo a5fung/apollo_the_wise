@@ -158,7 +158,7 @@ async def test_emit_l2_persists_to_band_then_last_band_reads_it(monkeypatch):
         return 0
     monkeypatch.setattr(system_audit, "count_today_anomalies", _zero)
 
-    async def _send_ok(_text):
+    async def _send_ok(_text, *a, **k):     # #647: _emit_l2 now passes parse_mode="HTML"
         return True
 
     import agents.market_intelligence.briefing as briefing

@@ -214,7 +214,7 @@ async def test_naked_position_check_end_to_end_reaches_telegram_and_audit_row(mo
 
     sent: list[str] = []
 
-    async def _send(text):
+    async def _send(text, *a, **k):     # #647: _emit_l1 now passes parse_mode="HTML"
         sent.append(text)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _send)

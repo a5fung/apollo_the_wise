@@ -1022,5 +1022,8 @@ async def run_truncation_check() -> dict | None:
         lines += ["```", "The trackers derive stop_reason from the response, so this is NOT "
                   "a missing kwarg: either the response shape stopped carrying stop_reason, "
                   "or something outside the two spend trackers is writing api_usage rows."]
-    await send_telegram_message("\n".join(lines))
+    from shared.telegram_format import md_to_html
+    # #647: HTML layer — `max_tokens` in the header sits OUTSIDE the fence (one bare `_`), so
+    # the #477-parity comment above was true of the table and false of the message (09-01).
+    await send_telegram_message(md_to_html("\n".join(lines)), parse_mode="HTML")
     return t

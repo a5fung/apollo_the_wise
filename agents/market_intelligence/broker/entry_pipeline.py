@@ -37,6 +37,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     humanize,
 )
 from agents.market_intelligence.briefing import send_telegram_message
+from shared.telegram_format import md_to_html   # #647: money-path pages go out on the HTML layer
 from agents.market_intelligence.constants import (
     MAX_CONCURRENT_LIVE_POSITIONS,
     current_account_mode,
@@ -843,10 +844,12 @@ async def submit_trade_entry(
                 )
             except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.error already fired above, and the failure Telegram below is unconditional (not gated on this try)
                 pass
-            await send_telegram_message(
+            # #647: HTML layer — `trade_id` is one bare `_`, so this page 400'd legacy Markdown
+            # (IONQ 2026-09-08) and reached the operator only through the plain retry.
+            await send_telegram_message(md_to_html(
                 f"{mode_prefix(account_mode)}⚠️ *{ticker}* {strategy_label} auto-enter failed — "
                 f"check logs (trade_id={trade_id})"
-            )
+            ), parse_mode="HTML")
             return {"ticker": ticker, "action": ACTION_AUTO_ENTER_FAILED}
 
         try:
@@ -884,8 +887,8 @@ async def submit_trade_entry(
     if sent:
         logger.info(f"{strategy_label} trade proposal sent: {ticker} (id={trade_id})")
         return {"ticker": ticker, "action": ACTION_PROPOSED, "trade_id": trade_id}
-    await send_telegram_message(
+    await send_telegram_message(md_to_html(          # #647: same `trade_id` class as above
         f"{mode_prefix(account_mode)}⚠️ *{ticker}* {strategy_label} proposal send failed — "
         f"check logs (trade_id={trade_id})"
-    )
+    ), parse_mode="HTML")
     return {"ticker": ticker, "action": ACTION_PROPOSAL_SEND_FAILED}

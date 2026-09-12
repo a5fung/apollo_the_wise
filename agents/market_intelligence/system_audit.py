@@ -1650,7 +1650,10 @@ async def _emit_l1(name: str, body: dict) -> None:
     )
     try:
         from agents.market_intelligence.briefing import send_telegram_message
-        await send_telegram_message(text)
+        from shared.telegram_format import md_to_html
+        # #647: HTML layer — the fenced drill SQL rides <pre> verbatim and no identifier in the
+        # offending rows can 400 the send. The naked-position breach is the page that matters.
+        await send_telegram_message(md_to_html(text), parse_mode="HTML")
     except Exception:
         logger.exception(f"system_audit: L1 Telegram send failed for {name} (audit row written)")
 
@@ -1689,7 +1692,9 @@ async def _emit_l2(metric: MetricSpec, anomaly: Anomaly, event_deltas: list[dict
     )
     try:
         from agents.market_intelligence.briefing import send_telegram_message
-        await send_telegram_message(text)
+        from shared.telegram_format import md_to_html
+        # #647: HTML layer — same class as L1 (2026-09-08: `9m_alerts_per_day` fell back).
+        await send_telegram_message(md_to_html(text), parse_mode="HTML")
     except Exception:
         logger.exception(f"system_audit: L2 Telegram send failed for {metric.name} (audit row written)")
 

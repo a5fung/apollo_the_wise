@@ -39,8 +39,13 @@ def _outside_fences(text: str) -> str:
     """Telegram Markdown V1 treats a ``` fence as opaque; everything else is
     subject to *bold*/_italic_ parsing. Splitting on "```" and keeping the
     even-indexed segments recovers exactly the text NOT protected by a fence."""
-    parts = text.split("```")
+    # #647: run_truncation_check now sends through md_to_html as HTML, so the fence the
+    # operator's client sees is <pre>…</pre>; both spellings are opaque to the parser.
+    parts = _FENCE_RE.split(text)
     return "".join(p for i, p in enumerate(parts) if i % 2 == 0)
+
+
+_FENCE_RE = __import__("re").compile(r"```|</?pre>")
 
 
 _MAX_FENCED_LINE = 80  # a Telegram code block does NOT wrap on a phone — a long
@@ -50,7 +55,7 @@ _MAX_FENCED_LINE = 80  # a Telegram code block does NOT wrap on a phone — a lo
 
 
 def _assert_fenced_lines_are_short(text: str) -> None:
-    parts = text.split("```")
+    parts = _FENCE_RE.split(text)
     fenced = [p for i, p in enumerate(parts) if i % 2 == 1]
     for block in fenced:
         for line in block.split("\n"):

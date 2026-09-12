@@ -2572,19 +2572,33 @@ def _strip_markdown_markers(text: str) -> str:
     Triple-backtick code blocks are kept as-is (the content inside is
     typically tabular/monospace data the user wants verbatim — we drop the
     fences but leave the body).
+
+    #647 (2026-09-12): the body of a code span or fence is now stashed VERBATIM before
+    the emphasis strip runs, and the bold/italic pairs must be word-bounded. The old
+    order — drop the fences, THEN strip paired `_` across the whole message — delivered
+    the catalyst-lattice revert SQL as `INSERT INTO misafeguardstate (... accountmode ...)`
+    and the OKTA exit-failure JSON as `"existingqty"`: a backstop that corrupts the one
+    payload the alert exists to carry. Machine text (SQL, JSON, snake_case) survives the
+    fallback byte-for-byte now, whether or not the builder fenced it.
     """
     import re as _re
-    # Drop triple-backtick fences (keep body)
-    text = _re.sub(r"```[a-zA-Z]*\n?", "", text)
-    text = text.replace("```", "")
-    # Drop inline `code` markers (keep body)
-    text = _re.sub(r"`([^`]+)`", r"\1", text)
-    # Drop bold/italic markers (keep body). Use a regex so we only strip
-    # what looks like paired markers — avoid stripping a stray * or _ inside
-    # a word like "/foo_bar_baz".
-    text = _re.sub(r"\*(?=\S)([^*\n]*?)(?<=\S)\*", r"\1", text)
-    text = _re.sub(r"_(?=\S)([^_\n]*?)(?<=\S)_", r"\1", text)
-    return text
+    keep: list[str] = []
+
+    def _stash(body: str) -> str:
+        keep.append(body)
+        return f"\x00{len(keep) - 1}\x00"
+
+    # Fenced blocks: drop the fences (+ optional lang tag and the newline after each
+    # fence, matching the pre-#647 output shape), keep the body verbatim.
+    text = _re.sub(r"```[a-zA-Z]*\n?(.*?)```\n?", lambda m: _stash(m.group(1)), text,
+                   flags=_re.DOTALL)
+    text = text.replace("```", "")          # an unpaired fence: drop the marker, keep the text
+    # Inline code: drop the backticks, keep the body verbatim.
+    text = _re.sub(r"`([^`\n]+)`", lambda m: _stash(m.group(1)), text)
+    # Bold/italic PAIRS only, word-bounded — `snake_case_name` and `5*3` are left alone.
+    text = _re.sub(r"(?<!\w)\*(?=\S)([^*\n]*?)(?<=\S)\*(?!\w)", r"\1", text)
+    text = _re.sub(r"(?<!\w)_(?=\S)([^_\n]*?)(?<=\S)_(?!\w)", r"\1", text)
+    return _re.sub(r"\x00(\d+)\x00", lambda m: keep[int(m.group(1))], text)
 
 
 async def send_telegram_message(
@@ -3353,7 +3367,14 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     except Exception as _tqe:
         logger.debug(f"Tape/vol context lines in EP alert failed (non-critical): {_tqe}")
 
-    await send_telegram_message(text, chat_id)
+    # #647: the alert goes out on the HTML layer, converted ONCE at the send boundary. The
+    # italic "why" is model prose — 73% of the last 60 days' rationales carry a `_`
+    # (game_changer …) — and under legacy Markdown an odd count 400'd the send (IONQ 09-08,
+    # HOOD 09-03) while an even count silently toggled italics mid-word. md_to_html leaves an
+    # intra-word `_` literal and consumes the `\_` that format_grade_outcome_lines' _md_escape
+    # emits, so the ⚖️ Acted block reads as written. Content unchanged — delivery only.
+    from shared.telegram_format import md_to_html
+    await send_telegram_message(md_to_html(text), chat_id, parse_mode="HTML")
 
     # Post to Twitter/X
     try:

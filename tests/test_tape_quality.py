@@ -609,9 +609,10 @@ def test_ep_alert_renders_tape_line_and_sparkline():
     ep = {"ticker": "GLND", "score_tier": "HIGH", "gap_pct": 11.0, "ep_score": 78,
           "catalyst_quality": "strong", "rel_volume": 3.0, "tape_quality": tqs}
     text = _send_alert_capture(ep)
-    assert "TAPE: *junk*" in text
+    # #647: the alert crosses the send boundary as HTML — bold is <b>, the spark is <code>.
+    assert "TAPE: <b>junk</b>" in text
     assert "3 spikes (1 held/2 rev)" in text
-    assert f"`{tqs['sparkline']}`" in text
+    assert f"<code>{tqs['sparkline']}</code>" in text
 
 
 def test_ep_alert_without_annotation_has_no_tape_line():

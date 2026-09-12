@@ -268,6 +268,10 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
+### 2026-09-12 — #647: machine-text alerts leave on the HTML layer, first send
+
+- 28 alerts in 14 days (the EP alert, the live OKTA exit page, the safeguard-revert SQL, the daily residual) 400'd legacy Markdown on a bare `_`; the plain retry then STRIPPED the SQL's underscores. 13 senders now send `md_to_html(text)` as HTML (#121's path); the Markdown backstop keeps code bodies verbatim. Lesson: *"checked before filing"* was asserted, not run. Detail: `market_agent_reference.md` §Telegram Formatting.
+
 ### 2026-09-11 — #646: a full exit left a live position naked BY CONSTRUCTION
 
 - **`execute_full_exit` cancelled the resting stop, the sell was REJECTED because the broker had not released the shares yet, and it returned False having restored nothing.** The cancel and the sell raced each other and the function caused its own failure — on a HEALTHY position (OKTA never breached its stop), and not only after hours. Fixed in four parts, all deployed and verified inside the running images: wait for share release then **re-place the stop on ANY sell failure**; the unprotected alert **computes** the next real repair time instead of naming an hour that already passed; a rejected exit writes an audit row; and the stop-cancel handler refills the pointer it clears, but only on a broker-CONFIRMED replacement. SSoT `docs/setups/exit_discipline.md`.

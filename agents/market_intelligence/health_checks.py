@@ -576,7 +576,10 @@ async def run_job_liveness_sweep(conn=None) -> dict[str, Any]:
         try:
             # Imported lazily so a Telegram/env issue can't break module import or tests.
             from agents.market_intelligence.briefing import send_telegram_message
-            await send_telegram_message(body)
+            from shared.telegram_format import md_to_html
+            # #647: HTML layer — the bare `(ep_scan)` job ids between the code spans 400'd
+            # legacy Markdown; the identifiers are the point of this page.
+            await send_telegram_message(md_to_html(body), parse_mode="HTML")
         except Exception as e:
             logger.warning("job_liveness_sweep: telegram send failed: %s", e)
             errors.append({"telegram": str(e)})
@@ -4372,7 +4375,12 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                                f"{t['ticker']} {t['date']} graded routine by the acting tier",
                                json.dumps(t))
             from agents.market_intelligence.briefing import send_telegram_message
-            out["spoke"] = bool(await send_telegram_message("\n".join(lines)))
+            from shared.telegram_format import md_to_html
+            # #647: HTML layer — the fenced revert SQL rides <pre> byte-for-byte, and the
+            # `magna53_ep.md` underscore in the italic line can no longer 400 the send
+            # (4 of the last 14 days it did, and the plain retry then stripped the SQL's `_`).
+            out["spoke"] = bool(await send_telegram_message(
+                md_to_html("\n".join(lines)), parse_mode="HTML"))
         except Exception as e:
             logger.warning("catalyst_lattice_monitor: announce failed: %s", e)
             out["errors"].append({"announce": str(e)})

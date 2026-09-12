@@ -61,8 +61,10 @@ def test_ep_alert_premarket_shows_pm_rvol_not_raw_rel_volume():
     with patch.object(briefing, "send_telegram_message", new=AsyncMock(side_effect=_cap)):
         asyncio.run(briefing.send_ep_alert(ep))
 
-    assert "pm RVOL: *12.1x*" in captured["text"]    # the pre-market figure, labeled
-    assert "| RVOL: *0.01x*" not in captured["text"]  # NOT the raw rel_volume that reads ~0
+    # #647: the alert crosses the send boundary as HTML (md_to_html), so the bold figure
+    # reads <b>12.1x</b> here — the pre-market figure, labeled, is still the thing pinned.
+    assert "pm RVOL: <b>12.1x</b>" in captured["text"]    # the pre-market figure, labeled
+    assert "| RVOL: <b>0.01x</b>" not in captured["text"]  # NOT the raw rel_volume that reads ~0
 
 
 # ── #405 fold / #317-verify: the catalyst-suppression is now OBSERVABLE ──────────

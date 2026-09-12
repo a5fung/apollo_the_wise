@@ -171,10 +171,14 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
     if n_missed > 0:
         try:
             from agents.market_intelligence.briefing import send_telegram_message
-            await send_telegram_message(
+            from shared.telegram_format import md_to_html
+            # #647: HTML layer. `ep_delayed_residual_scan` carries three `_`, so legacy Markdown
+            # 400'd this on EVERY firing day (11 of the last 14) and the operator only ever saw
+            # the plain-text retry. Delivery only — the words are unchanged.
+            await send_telegram_message(md_to_html(
                 f"🔴 Delayed-feed residual {run_date}: {n_missed} delay-missed EP crosser(s) today, "
                 f"{n_residual} BEYOND the 5% hybrid (the class the fix can't catch). Outcomes settle ~5d. "
-                f"(/audit ep_delayed_residual_scan)")
+                f"(/audit ep_delayed_residual_scan)"), parse_mode="HTML")
         except Exception:  # loud-ok: Telegram is best-effort; the mi_ep_delayed_residual rows are durable
             pass
     logger.info(f"delayed_residual {run_date}: {n_missed} missed, {n_residual} residual beyond hybrid")

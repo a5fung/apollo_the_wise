@@ -405,23 +405,25 @@ def _annotated_ep(bars):
 
 
 def test_ep_alert_renders_vol_line_and_aligned_labeled_sparks():
+    # #647: the alert crosses the send boundary as HTML, so the monospace rows are <code>…</code>
+    # here rather than backticked — the labels, the alignment and the window are what is pinned.
     text = _send_alert_capture(_annotated_ep(_flat_bars(60)))
     assert "VOL: 5d avg 1.00× of 50d" in text
     rows = text.split("\n")
-    ntr_rows = [l for l in rows if l.startswith("`NTR ")]
-    vol_rows = [l for l in rows if l.startswith("`VOL ")]
+    ntr_rows = [l for l in rows if l.startswith("<code>NTR ")]
+    vol_rows = [l for l in rows if l.startswith("<code>VOL ")]
     assert len(ntr_rows) == 1 and len(vol_rows) == 1
     assert len(ntr_rows[0]) == len(vol_rows[0])       # 4-char labels + equal windows align
-    assert vol_rows[0] == "`VOL " + "▅" * _VOL_SPARK_WIN + "`"
+    assert vol_rows[0] == "<code>VOL " + "▅" * _VOL_SPARK_WIN + "</code>"
 
 
 def test_ep_alert_with_only_vol_annotation_renders_labeled_vol_row():
     ep = _annotated_ep(_flat_bars(60))
     del ep["tape_quality"]
     text = _send_alert_capture(ep)
-    assert "TAPE:" not in text and "`NTR " not in text
+    assert "TAPE:" not in text and "<code>NTR " not in text
     assert "VOL: 5d avg 1.00× of 50d" in text
-    assert "`VOL " + "▅" * _VOL_SPARK_WIN + "`" in text
+    assert "<code>VOL " + "▅" * _VOL_SPARK_WIN + "</code>" in text
 
 
 # ─── EOD landmark pass (V4 — recap surface) ──────────────────────────────────────────────

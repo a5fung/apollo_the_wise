@@ -324,7 +324,9 @@ async def quarterly_backward_check_sweep_job():
             f"Completed in {result['elapsed_sec']:.0f}s · "
             f"{len(result['results'])} scripts",
         )
-        await send_telegram_message(result["digest_message"])
+        from shared.telegram_format import md_to_html
+        # #647: HTML layer — the digest carries script/module identifiers (2026-09-01 fell back).
+        await send_telegram_message(md_to_html(result["digest_message"]), parse_mode="HTML")
         logger.info("Quarterly sweep digest sent")
     except Exception as e:
         logger.exception(f"Quarterly sweep failed: {e}")
