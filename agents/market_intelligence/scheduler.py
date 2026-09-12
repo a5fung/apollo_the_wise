@@ -117,7 +117,13 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "stop_coverage_repair_retry",  # #596 — re-drives a FAILED coverage repair (touches the broker)
     "live_position_update",
     "partial_exit_scan",  # #361 — 3:45 PM market-hours partial-profit (split from 4:45)
-    "evening_position_backstop", JOB_ORDER_STATUS_RECONCILE,
+    "evening_position_backstop",
+    # #646 (a1) — MUST be execution-owned: it reads broker truth, and an intelligence
+    # container holds no Alpaca credentials, where an empty read is indistinguishable
+    # from an empty broker (proven 2026-09-11: two probes in apollo-market returned
+    # "no position, no orders" on a book holding three protected positions).
+    "evening_coverage_verify",
+    JOB_ORDER_STATUS_RECONCILE,
     JOB_ORDER_STATUS_RECONCILE + "_open", "track_position_extremes",
     "position_path_eod_sweep",  # #306 — 16:10 ET path-recorder EOD completion sweep
     "alert_day_path_persist",  # 2026-08-15 capture audit item 3 — 16:22 ET minute bars for every alert ticker-day (needs Alpaca data creds)
@@ -1040,6 +1046,18 @@ async def _morning_briefing_job():
     except Exception as e:
         logger.error(f"Health heartbeat failed: {e}", exc_info=True)
         await notify_job_failure("health_heartbeat", str(e))
+
+    # #646 (a1): did last night's 21:10 coverage verifier run at all? Hosted HERE for the
+    # same reason as the heartbeat above — a different job in a different container, so
+    # the verifier cannot vouch for its own liveness. Own try/except; DB-only, no broker
+    # credentials needed, which is why it can live on the intelligence side.
+    try:
+        from agents.market_intelligence.health_checks import run_evening_verify_heartbeat
+        ev = await run_evening_verify_heartbeat()
+        logger.info(f"Evening coverage verifier heartbeat: {ev.get('status')}")
+    except Exception as e:
+        logger.error(f"Evening verify heartbeat failed: {e}", exc_info=True)
+        await notify_job_failure("evening_verify_heartbeat", str(e))
 
 
 async def _ep_scan_job():
@@ -2300,6 +2318,110 @@ async def _evening_position_backstop_job():
     except Exception as e:
         logger.error(f"Evening position backstop failed: {e}")
         await notify_job_failure("evening_position_backstop", str(e))
+
+
+# ── #646 (a1) (2026-09-11): VERIFY THE 21:00 REPAIR ACTUALLY WORKED ──────────────
+# THE HOLE THIS CLOSES, and it is narrower than #646's line originally claimed. The
+# task said a stop lost after ~16:30 sits bare "until the next session's 09:31 — on a
+# Friday ~64 hours". That is WRONG: `evening_position_backstop` (21:00 ET mon-fri,
+# below) runs `sync_positions`, whose orphan loop re-places a missing stop — and that
+# is exactly what protected OKTA on 2026-09-11 at 21:00, hours before the fix for the
+# crash half was even deployed.
+#
+# What nothing does is check whether that 21:00 pass SUCCEEDED. `sync_positions`'
+# orphan loop writes `set_stop_order_id` ONLY inside its `if new_order:` branch; when
+# its place attempts are exhausted it writes `stop_ack_remediation_failed` and NO
+# pointer, and the next look is 09:00. So the ONE repairer standing between a bare
+# position and the open can fail and say so only in an audit row nobody reads at
+# 21:0x. This job is the look after the last thing that can strip or restore coverage
+# — literally DoD (a)'s "the check must outlive the replacement cycle".
+#
+# ⚠ DETECTION AND REPORTING ONLY — it places, cancels and replaces NOTHING. Whether
+# this slot should ALSO re-drive `_ensure_stop_coverage` is a real fork with a real
+# upside, and it is the OPERATOR'S: `check_position_coverage`'s own docstring reserves
+# it in writing ("must never become a second order-emission site; that would be a
+# strategy/safeguard-shaped change reserved for the operator"). Pending his ruling.
+#
+# WHY 21:10 AND NOT EARLIER: every earlier slot is upstream of something that can
+# still remove coverage — the repair job stops 15:55, eod_cleanup runs 16:05, the
+# naked-position check ran 16:27 and was correctly green on OKTA night because the
+# stop still existed then, and the replacement cycle runs 16:45. 21:10 is the first
+# minute at which nothing further is scheduled to touch a stop until 09:00.
+#
+# WHAT A BROKEN SYSTEM PRODUCES HERE (the discriminating test): a night where
+# sync_positions exhausted its attempts reads `gaps=[...]` and pages. A healthy night
+# reads `covered == examined` and writes a row saying so. The two are never the same
+# reading — and the row lands EVERY run, so "no page" can be told apart from
+# "the job never ran" by the morning heartbeat below.
+async def _evening_coverage_verify_job():
+    """Run at 9:10 PM ET mon-fri, 10 minutes after the 21:00 position backstop.
+
+    Reads BROKER TRUTH per open live position via the signed #527 detector and pages
+    if any position holding shares has no resting stop — i.e. the evening repair did
+    not hold. Always writes `coverage_verified_evening`, whether or not there is a
+    gap: that row is this job's own liveness evidence (see
+    `health_checks.run_evening_verify_heartbeat`), and without it a quiet night and a
+    dead job are the same silence.
+    """
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            check_position_coverage,
+        )
+        # notify=False: we own the wording here. The detector's own Telegram is deduped
+        # per trade per ET day, which would SUPPRESS this page on any ticker it already
+        # alerted about intraday — and "the 21:00 repair did not hold" is a new fact.
+        result = await check_position_coverage(notify=False)
+        gaps = result.get("gaps") or []
+        failed = result.get("check_failed") or []
+        deferred = result.get("deferred") or []
+
+        await log_audit_event(
+            "coverage_verified_evening",
+            f"evening coverage verify: examined {result.get('examined', 0)}, "
+            f"covered {result.get('covered', 0)}, gaps {len(gaps)}, "
+            f"unreadable {len(failed)}, deferred {len(deferred)}",
+            json.dumps({
+                "examined": result.get("examined", 0),
+                "covered": result.get("covered", 0),
+                "gaps": gaps,
+                "check_failed": failed,
+                "deferred": deferred,
+            }),
+        )
+
+        if not gaps and not failed:
+            logger.info(
+                f"Evening coverage verify: {result.get('covered', 0)}/"
+                f"{result.get('examined', 0)} positions covered — the 21:00 repair held"
+            )
+            return
+
+        lines = []
+        for gap in gaps:
+            lines.append(
+                f"• {gap.get('ticker')}: holds {float(gap.get('target') or 0):.0f} sh, "
+                f"live stop covers {float(gap.get('live_qty') or 0):.0f} sh"
+            )
+        for bad in failed:
+            lines.append(f"• {bad.get('ticker')}: broker read FAILED — coverage unknown")
+        await send_telegram_message(
+            "🚨 *STILL UNPROTECTED AFTER THE 9 PM REPAIR*\n"
+            + "\n".join(lines)
+            + "\n\nThe 9:00 PM sync already tried and did not fix this.\n"
+            "Nothing else runs automatically until *9:00 AM ET*, when the stop watchdog "
+            "re-arms — at the ORIGINAL stop, not the trailed one.\n"
+            "`/syncnow live` re-runs the same repair now."
+        )
+        logger.warning(
+            f"Evening coverage verify: {len(gaps)} gap(s), {len(failed)} unreadable "
+            f"after the 21:00 backstop"
+        )
+    except Exception as e:
+        logger.error(f"Evening coverage verify failed: {e}")
+        await notify_job_failure("evening_coverage_verify", str(e))
 
 
 async def _shadow_orb_entry_job():
@@ -6595,6 +6717,17 @@ def start_scheduler() -> AsyncIOScheduler:
         id="evening_position_backstop",
         replace_existing=True,
         misfire_grace_time=1800,
+    )
+
+    # #646 (a1): verify the 21:00 repair actually held — 9:10 PM ET, the first minute
+    # after which nothing else is scheduled to touch a stop until 09:00. Detection and
+    # reporting only; the repair fork is the operator's (see the job's own comment).
+    _scheduler.add_job(
+        audit_wrap(_evening_coverage_verify_job, "evening_coverage_verify"),
+        CronTrigger(hour=21, minute=10, day_of_week="mon-fri", timezone="America/New_York"),
+        id="evening_coverage_verify",
+        replace_existing=True,
+        misfire_grace_time=900,
     )
 
     # EOD EP recap: 4:10 PM ET — one-line Telegram summary of today's HIGH outcomes.

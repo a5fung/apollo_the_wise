@@ -703,6 +703,129 @@ def _evaluate_heartbeat(latest_ts: datetime | None, cutoff: datetime) -> dict[st
     return None
 
 
+# ── #646 (a1) (2026-09-11): the 21:10 coverage verifier's OWN liveness ───────────
+# The verifier only matters for one minute a day, so its silence is ambiguous by
+# construction: a book with no gaps and a job that never ran produce the same absence
+# of a Telegram. That is precisely the reading CLAUDE.md forbids accepting. So the job
+# writes `coverage_verified_evening` on EVERY run and this heartbeat asserts the row
+# exists — hosted in the 09:00 morning briefing, a DIFFERENT job in a DIFFERENT
+# container, so the verifier cannot vouch for itself.
+#
+# CADENCE, stated rather than overclaimed: this answers "did last night's 21:10 run?"
+# every weekday morning BEFORE the open. A Friday-night no-show is reported Monday
+# 09:00 — which is not a hole, because no scheduled job can strip a stop over a
+# weekend (every stop-touching cron is mon-fri) and the 09:00 stop watchdog is the
+# same repairer a Monday-morning report would send him to anyway.
+_EVENING_VERIFY_HOUR = 21
+_EVENING_VERIFY_MINUTE = 10
+_EVENING_VERIFY_AUDIT_EVENTS = ["coverage_verified_evening"]
+
+
+def _expected_evening_verify_cutoff(now_et: datetime) -> datetime:
+    """The most-recent expected 21:10 ET mon-fri verifier run STRICTLY before `now_et`.
+
+    Same pure date math as `_expected_sweep_cutoff` (no calendar import, mock-free,
+    holiday-BLIND to match the cron exactly). Examples (all ET):
+      - Tue 09:00  -> Mon 21:10   (last night's run; ~12h, normal)
+      - Mon 09:00  -> Fri 21:10   (the weekend gap widens itself — not a false fire)
+      - Wed 22:00  -> Wed 21:10   (tonight's run already due and past)
+    """
+    cutoff = now_et.replace(hour=_EVENING_VERIFY_HOUR, minute=_EVENING_VERIFY_MINUTE,
+                            second=0, microsecond=0)
+    if cutoff >= now_et:
+        cutoff -= timedelta(days=1)        # today's 21:10 hasn't happened yet
+    while cutoff.weekday() >= 5:           # 5=Sat, 6=Sun — the job is mon-fri
+        cutoff -= timedelta(days=1)
+    return cutoff
+
+
+async def run_evening_verify_heartbeat(conn=None) -> dict[str, Any]:
+    """Assert last night's 21:10 coverage verifier actually ran (#646 a1).
+
+    LOUD ON FAILURE, mirroring `run_health_heartbeat`: a heartbeat that cannot run its
+    own check must never report healthy. Fresh -> audit row only; missing or stale ->
+    ONE Telegram, because a dead verifier means the night's coverage was unverified and
+    he should look at the broker himself before the open.
+    """
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            return await run_evening_verify_heartbeat(acquired)
+
+    now_et = _now_et()
+    cutoff = _expected_evening_verify_cutoff(now_et)
+
+    try:
+        latest_ts = await conn.fetchval(
+            """
+            SELECT MAX(created_at)
+            FROM mi_audit_log
+            WHERE event_type = ANY($1::text[])
+            """,
+            _EVENING_VERIFY_AUDIT_EVENTS,
+        )
+    except Exception as e:
+        logger.error("evening_verify_heartbeat: check FAILED: %s", e, exc_info=True)
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            await send_telegram_message(
+                "🩺 *Evening coverage verifier UNVERIFIED* — the heartbeat could not query "
+                f"the audit log ({type(e).__name__}). Nobody confirmed last night's stops."
+            )
+        except Exception as te:
+            logger.error("evening_verify_heartbeat: degraded telegram ALSO failed: %s", te)
+        try:
+            await log_audit_event(
+                "evening_verify_heartbeat_error",
+                f"heartbeat check failed: {type(e).__name__}: {e}",
+                detail=str({"cutoff": cutoff.isoformat()}),
+            )
+        except Exception as ae:
+            logger.error("evening_verify_heartbeat: error-audit write ALSO failed: %s", ae)
+        return {"status": "error", "latest_ts": None, "cutoff": cutoff.isoformat(),
+                "error": str(e)}
+
+    if latest_ts is not None and latest_ts.tzinfo is None:
+        latest_ts = latest_ts.replace(tzinfo=_ET)
+
+    verdict = _evaluate_heartbeat(latest_ts, cutoff)
+    latest_iso = latest_ts.isoformat() if latest_ts is not None else None
+    summary = {"status": "ok" if verdict is None else "alert",
+               "latest_ts": latest_iso, "cutoff": cutoff.isoformat()}
+
+    if verdict is not None:
+        if verdict["reason"] == "never":
+            detail_line = ("there is NO evening-verify audit at all — the 9:10 PM check has "
+                           "never run, or its audit write is broken.")
+        else:
+            age_hours = round((now_et - latest_ts).total_seconds() / 3600)
+            detail_line = (f"the last evening-verify audit was {age_hours}h ago, before the "
+                           f"expected {cutoff.strftime('%a %H:%M')} ET run.")
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            await send_telegram_message(
+                "🩺 *Nobody checked last night's stops* — " + detail_line +
+                " The 9:10 PM coverage verifier appears DEAD, so a position left bare after "
+                "the 9 PM repair would have gone unreported. Check the broker before the open."
+            )
+        except Exception as e:
+            logger.error("evening_verify_heartbeat: telegram failed on a REAL alert: %s", e)
+            summary["telegram_error"] = str(e)
+        await log_audit_event(
+            "evening_verify_heartbeat_stale",
+            f"evening verifier liveness ALERT ({verdict['reason']}): latest {latest_iso}, "
+            f"expected >= {cutoff.isoformat()}",
+            detail=str(summary),
+        )
+    else:
+        await log_audit_event(
+            "evening_verify_heartbeat_ok",
+            f"evening verifier alive: latest {latest_iso} >= cutoff {cutoff.isoformat()}",
+            detail=str(summary),
+        )
+    return summary
+
+
 def _now_et() -> datetime:
     """tz-aware now() in ET. Isolated so tests can monkeypatch it without touching the clock."""
     return datetime.now(_ET)

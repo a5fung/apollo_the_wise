@@ -6660,7 +6660,7 @@ async def _coverage_gap_already_alerted_today(trade_id: int, today) -> bool:
         return False
 
 
-async def check_position_coverage() -> dict:
+async def check_position_coverage(*, notify: bool = True) -> dict:
     """#527 market-hours coverage DETECTOR — every ~15 min, 09:31-15:55 ET.
 
     Answers the only question that matters: does every LIVE open position have a
@@ -6695,6 +6695,14 @@ async def check_position_coverage() -> dict:
     session via `_coverage_gap_already_alerted_today`. Silent on a normally-covered
     book — no row, no message, nothing (CLAUDE.md 2026-08-03: a guard that always
     fires is not a guard).
+
+    `notify=False` (#646 a1, 2026-09-11): run the same detection, write the same durable
+    rows, send NO Telegram — for a caller that owns its own wording. The 21:10 evening
+    verifier passes it because that per-trade-per-ET-day dedup would otherwise SUPPRESS
+    the evening page on any ticker the intraday detector already paged, and "the 21:00
+    repair did not hold" is a NEW fact about the same ticker, not a repeat. Default True
+    keeps the 09:31-15:55 caller byte-identical. Detection is unchanged either way —
+    this switches the messenger, never the verdict.
 
     DEFERS to an in-flight partial exit (advisor review, #527) — takes the SAME
     non-blocking `_trade_advisory_try_lock` `_ensure_stop_coverage` uses, for the
@@ -6797,7 +6805,7 @@ async def check_position_coverage() -> dict:
                     "plain_stop_qty": live_qty, "oco_reserved_qty": oco_stop_qty,
                 }),
             )
-            if not await _coverage_gap_already_alerted_today(trade_id, today):
+            if notify and not await _coverage_gap_already_alerted_today(trade_id, today):
                 try:
                     await send_telegram_message(
                         f"{mode_prefix(account_mode)}🚨 *Position unprotected: {ticker}*\n"
