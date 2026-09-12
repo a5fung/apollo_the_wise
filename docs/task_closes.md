@@ -487,8 +487,8 @@ And a reviewer that FLAGS judge calls is a self-score, which ADR 0011 forbids ou
 OPERATOR RULING: retire — *"aligned"*, 2026-09-12, against the standing priority that EP
 profitability is an EXIT problem, making selection-side polish a detour.
 CARRIED FORWARD, not deleted: the demotion gap — 17 demotions since 07-27 with zero second reads,
-because #301's trigger is HIGH-only — is real, is NEW work rather than this task's bar, and is
-recorded in the analysis doc above so it survives this close.
+because #301's trigger is HIGH-only — is real, is NEW work rather than this task's bar, and was
+FILED AS #650 on 2026-09-12 (a doc alone is not a rehome; the board is).
 ⚠ MY OWN ERROR, kept because it is instructive: I first reported that coverage could NOT be proven,
 having read only `mi_audit_log` (which records disagreements only) and missed the per-run table
 write one line above it. Same shape as the defect I was accusing the analysis of.
