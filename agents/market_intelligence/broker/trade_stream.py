@@ -1705,6 +1705,56 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 _hard = stop_trade.get("hard_stop")
                 _old_stop = stop_trade.get("stop_price")
 
+                # ── #646 (e) (2026-09-11): REPAIR THE POINTER THIS HANDLER JUST
+                # CLEARED. The null above is deliberately unconditional (#600 fork
+                # 2 pins it byte-for-byte: assume-naked is a fail-safe and does not
+                # get a guard). But on THIS branch the broker has POSITIVELY
+                # confirmed a live stop covering the position, so the NULL is now
+                # known to be wrong, and nothing else rewrites it — the #566
+                # comment further down says so in as many words. OKTA 2026-09-11:
+                # `execute_full_exit` cancelled the stop, the sell was rejected,
+                # #646 (b) re-placed the stop, and this cancel event arrived
+                # afterwards and cleared the pointer to a LIVE broker stop. The
+                # position was protected and the database said unprotected.
+                #
+                # `expected_prior=None` makes this a FILL, never an overwrite: it
+                # writes only while the column is still the NULL we wrote, so a
+                # concurrent writer that has already set a pointer always wins and
+                # this can never clobber anyone (the #184b ingest R1 idiom, used in
+                # the safe direction). POSITIVE EVIDENCE ONLY, mirroring #433 — no
+                # confirmed replacement means no repair, and the naked branch below
+                # is untouched.
+                try:
+                    _repaired = await set_stop_order_id(
+                        stop_trade["id"], replacement.get("id"),
+                        reason="cancel_or_reject_restored",
+                        account_mode=account_mode,
+                        expected_prior=None,
+                    )
+                    if not _repaired:
+                        # Someone wrote a pointer between our null and here, which
+                        # is the outcome we defer to — record it so a silent
+                        # no-repair is never indistinguishable from no attempt.
+                        await log_audit_event(
+                            "stop_pointer_repair_deferred",
+                            f"{symbol} [{account_mode}]: broker-confirmed stop "
+                            f"{str(replacement.get('id'))[:8]} was NOT written — the "
+                            f"pointer had already been set by another writer",
+                            json.dumps({
+                                "trade_id": stop_trade["id"], "ticker": symbol,
+                                "account_mode": account_mode,
+                                "cancelled_order_id": order_id,
+                                "confirmed_replacement_id": (
+                                    None if replacement.get("id") is None
+                                    else str(replacement["id"])
+                                ),
+                            }),
+                        )
+                except Exception as _re:  # loud-ok: bookkeeping — must never block the operator message below
+                    logger.warning(
+                        f"stop pointer repair failed for {symbol}: {_re}"
+                    )
+
                 # Operator (2026-08-12): "can we combine these two msg? I get two
                 # Everytime stop moves." — this WS safety-net and order_manager's
                 # own retry-recovered "Stop confirmed" fire independently for the
@@ -1947,12 +1997,17 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 # corroborated against a live re-read of mi_live_trades — but
                 # THIS SAME HANDLER unconditionally NULLS that trade's
                 # stop_order_id a few lines above (`cancel_or_reject_null`,
-                # no compare-and-set), the instant the cancel event arrives.
-                # If that null-write lands AFTER order_manager's own DB write
-                # (a plain WS-delivery timing question, not guaranteed
-                # either way), it clobbers the good pointer and nothing
-                # rewrites it before this branch reads it — silently making
-                # the suppression inert on the very race it exists for.
+                # no compare-and-set), the instant the cancel event arrives. If that null-write lands AFTER order_manager's
+                # own DB write (a plain WS-delivery timing question, not
+                # guaranteed either way), it clobbers the good pointer and
+                # nothing rewrites it before this branch reads it — silently
+                # making the suppression inert on the very race it exists for.
+                # ⚠ #646 (e) (2026-09-11) repairs that pointer on the
+                # broker-confirmed branch above, but the corroboration below
+                # deliberately STAYS on the two immutable audit rows: this
+                # branch is the one where NO replacement was confirmed, so the
+                # repair never runs here, and a live mutable column any writer
+                # can move is the wrong thing to build suppression on anyway.
                 #
                 # Fix: corroborate between TWO INDEPENDENTLY-WRITTEN,
                 # IMMUTABLE mi_audit_log rows instead of a live, mutable DB
