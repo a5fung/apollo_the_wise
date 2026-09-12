@@ -530,6 +530,50 @@ def _compute_rmv(
     return max(0.0, min(100.0, rmv))
 
 
+def rmv_none_reason(
+    rows: list[dict],
+    today_idx: int,
+    lookback: int = 15,
+    current_window: int = 3,
+) -> Optional[str]:
+    """#488 SHADOW — WHY did `_compute_rmv` return None (or None if it returned a value)?
+
+    `_compute_rmv`'s None is deliberately overloaded across four degenerate causes; the
+    dead-data-guard shadow compare (dead_data_guard_shadow.py) needs them SEPARATED so the
+    authoritative halt flag can be judged against the ONE cause that means "dead/halted data"
+    (`dead_floor`), not against insufficient history. Pure sibling — mirrors `_compute_rmv`'s
+    branch order EXACTLY and NEVER changes its behavior (the guard itself is a detection
+    criterion — THE LINE; tests/test_488_dead_data_guard_shadow.py pins reason-is-None ⟺
+    rmv-is-not-None parity so drift between the two is caught).
+
+    Returns:
+        None                     — `_compute_rmv` returns a real value on these inputs
+        "insufficient_history"   — today_idx < lookback, current_window < 1, or short series
+        "degenerate_close"       — a bar in the window has a non-positive close
+        "dead_floor"             — every recent-window NTR < _RMV_DEAD_NTR_FLOOR (the halt /
+                                   frozen-feed / zero-tick inference this shadow measures)
+        "zero_base"              — baseline mean NTR ≤ 0 (defensive; unreachable when the
+                                   dead-floor branch fires first, kept for exact parity)
+    """
+    if today_idx < lookback or current_window < 1:
+        return "insufficient_history"
+    earliest = today_idx - lookback + 1
+    ntrs: list[float] = []
+    for i in range(earliest, today_idx + 1):
+        prev_close = float(rows[i - 1]["close"]) if i > 0 else None
+        v = _ntr(rows[i], prev_close)
+        if v is None:
+            return "degenerate_close"
+        ntrs.append(v)
+    if len(ntrs) < current_window:
+        return "insufficient_history"
+    if max(ntrs[-current_window:]) < _RMV_DEAD_NTR_FLOOR:
+        return "dead_floor"
+    if sum(ntrs) / len(ntrs) <= 0:
+        return "zero_base"
+    return None
+
+
 def _compute_fresh_tightening(
     rows: list[dict], today_idx: int, base_age: int,
     recent_avg_vol: Optional[float] = None,

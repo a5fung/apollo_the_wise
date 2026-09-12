@@ -71,6 +71,18 @@ async def start_bar_stream() -> None:
     feed = get_data_feed()
     _data_stream = StockDataStream(api_key, secret_key, feed=feed)
 
+    # #488 SHADOW — authoritative halt-status capture (env-gated, DEFAULT OFF; no-op until
+    # the operator flips HALT_STATUS_CAPTURE_ENABLED after the entitlement probe passes —
+    # see broker/halt_status_shadow.py for the two live-path reasons it is not a default).
+    # Own try/except: a shadow registration failure must never break the ORB bar path.
+    try:
+        from agents.market_intelligence.broker.halt_status_shadow import (
+            maybe_register_status_capture,
+        )
+        maybe_register_status_capture(_data_stream)
+    except Exception:
+        logger.exception("halt-status shadow registration failed — shadow-only, bar path unaffected")
+
     _stream_task = asyncio.create_task(_run_stream())
     mode = "PAPER" if paper else "LIVE"
     logger.info(f"Bar stream started ({mode}, feed={feed.value})")

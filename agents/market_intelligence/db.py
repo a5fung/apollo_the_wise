@@ -1894,6 +1894,52 @@ async def initialize_schema() -> None:
                 ON mi_judge_divergence(alert_date DESC);
         """)
 
+        # ── #488 dead-data-guard shadow (built #386 2026-07-18, merged #488 2026-09-12) —
+        # SHADOW/TELEMETRY ONLY ─────────────────────────────────────────────────────────
+        # mi_halt_status_events: raw authoritative trading-status (halt/resume) events from
+        # Alpaca's WS `statuses` channel (broker/halt_status_shadow.py — capture is env-
+        # gated OFF by default). mi_dead_data_guard_shadow: the nightly compare row set —
+        # the RMV dead-NTR-floor's INFERRED verdict logged beside the AUTHORITATIVE halt
+        # flag (dead_data_guard_shadow.py). NOTHING on a detection/entry path reads either
+        # table; the operator judges the live guard switch on the measured agreement
+        # (THE LINE + CHANGE_PROCESS — see docs/analysis/386_authoritative_halt_data_2026-07-18.md).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_halt_status_events (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                event_ts TIMESTAMPTZ NOT NULL,
+                status_code TEXT,
+                status_message TEXT,
+                reason_code TEXT,
+                reason_message TEXT,
+                tape TEXT,
+                feed TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_halt_status_events_ticker
+                ON mi_halt_status_events(ticker, event_ts DESC);
+            CREATE INDEX IF NOT EXISTS idx_halt_status_events_ts
+                ON mi_halt_status_events(event_ts DESC);
+
+            CREATE TABLE IF NOT EXISTS mi_dead_data_guard_shadow (
+                id SERIAL PRIMARY KEY,
+                scan_date DATE NOT NULL,
+                ticker TEXT NOT NULL,
+                rmv_15d FLOAT,
+                none_reason TEXT,
+                inferred_dead BOOLEAN NOT NULL,
+                halted_authoritative BOOLEAN NOT NULL,
+                halt_events_n INT NOT NULL DEFAULT 0,
+                halt_codes TEXT[] DEFAULT '{}',
+                in_flag_universe BOOLEAN,
+                agree BOOLEAN NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, scan_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_dead_data_guard_shadow_date
+                ON mi_dead_data_guard_shadow(scan_date DESC);
+        """)
+
         # ── Coverage probe (S2, EP↔theme coverage loop 2026-07-13) ────────────────────
         # SHADOW/TELEMETRY ONLY — one row per (subject, alert_date) themeless EP alert
         # (HIGH+MODERATE), recording the DETERMINISTIC, zero-LLM blind-spot evidence:
@@ -13074,6 +13120,84 @@ async def get_tape_bars_asof(
         ORDER BY trade_date ASC
     """, ticker, alert_date, days)
     return [dict(r) for r in rows]
+
+
+# ── #488 dead-data-guard shadow accessors (built #386 2026-07-18, merged #488 2026-09-12) —
+# SHADOW/TELEMETRY ONLY ───────────────────────────────────────────────────────────────────
+# Writers touch ONLY mi_halt_status_events + mi_dead_data_guard_shadow; readers feed the
+# nightly compare (dead_data_guard_shadow.py). Nothing here can reach a detection/entry
+# table — the live RMV dead-floor guard is untouched (THE LINE).
+
+async def insert_halt_status_event(
+    *, ticker: str, event_ts: Any, status_code: str | None, status_message: str | None,
+    reason_code: str | None, reason_message: str | None, tape: str | None, feed: str | None,
+) -> None:
+    """One authoritative trading-status (halt/resume) event from the Alpaca WS `statuses`
+    channel (broker/halt_status_shadow.py). Append-only raw capture."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_halt_status_events
+                (ticker, event_ts, status_code, status_message,
+                 reason_code, reason_message, tape, feed)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        """, ticker, event_ts, status_code, status_message,
+             reason_code, reason_message, tape, feed)
+
+
+async def get_halt_events_between(start_date: Any, end_date: Any) -> dict[str, list[dict]]:
+    """Authoritative status events with an ET event date in [start_date, end_date],
+    grouped {ticker: [events oldest-first]}. ET conversion BEFORE the date cast per the
+    CLAUDE.md TIMESTAMPTZ rule."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, event_ts, status_code, status_message, reason_code
+            FROM mi_halt_status_events
+            WHERE (event_ts AT TIME ZONE 'America/New_York')::date BETWEEN $1 AND $2
+            ORDER BY ticker, event_ts ASC
+        """, _coerce_date(start_date), _coerce_date(end_date))
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        out.setdefault(r["ticker"], []).append(dict(r))
+    return out
+
+
+async def get_flag_scan_rmv_map(scan_date: Any) -> dict[str, float | None]:
+    """{ticker: rmv_15d} for every mi_flag_candidates row on `scan_date` — the scanned
+    universe with the guard's persisted reading (None = _compute_rmv returned None OR the
+    metric compute early-returned before the RMV step; the compare recomputes the reason)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, rmv_15d FROM mi_flag_candidates WHERE scan_date = $1
+        """, _coerce_date(scan_date))
+    return {r["ticker"]: r["rmv_15d"] for r in rows}
+
+
+async def upsert_dead_data_guard_shadow(row: dict) -> None:
+    """One compare row (ticker, scan_date) — idempotent latest-wins upsert (mirrors the
+    mi_structure_axis_shadow writer pattern)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_dead_data_guard_shadow
+                (scan_date, ticker, rmv_15d, none_reason, inferred_dead,
+                 halted_authoritative, halt_events_n, halt_codes, in_flag_universe, agree)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (ticker, scan_date) DO UPDATE SET
+                rmv_15d = EXCLUDED.rmv_15d,
+                none_reason = EXCLUDED.none_reason,
+                inferred_dead = EXCLUDED.inferred_dead,
+                halted_authoritative = EXCLUDED.halted_authoritative,
+                halt_events_n = EXCLUDED.halt_events_n,
+                halt_codes = EXCLUDED.halt_codes,
+                in_flag_universe = EXCLUDED.in_flag_universe,
+                agree = EXCLUDED.agree
+        """, _coerce_date(row["scan_date"]), row["ticker"], row.get("rmv_15d"),
+             row.get("none_reason"), row["inferred_dead"], row["halted_authoritative"],
+             row.get("halt_events_n", 0), row.get("halt_codes") or [],
+             row.get("in_flag_universe"), row["agree"])
 
 
 # ── Coverage probe (S2/S3, coverage-loop 2026-07-13) — SHADOW-only accessors ─────────────

@@ -3476,6 +3476,16 @@ async def _flag_scan_job():
         # send_flag_digest is invoked from within run_flag_scan (same pattern
         # as parabolic_detector — keeps the per-ticker TRIGGERED alerts
         # ordered before the digest).
+        # #488 SHADOW piggyback — dead-data-guard compare (inferred RMV dead-floor vs
+        # authoritative halt events). run_dead_data_guard_shadow never raises, and this
+        # guard makes even an IMPORT failure non-fatal to the flag scan (shadow-only).
+        try:
+            from agents.market_intelligence.dead_data_guard_shadow import (
+                run_dead_data_guard_shadow,
+            )
+            await run_dead_data_guard_shadow(et_today())
+        except Exception:
+            logger.exception("dead-data guard shadow piggyback failed (shadow-only)")
         n_total = sum(len(v) for v in by_stage.values())
         return int(n_total)
     except Exception as e:
