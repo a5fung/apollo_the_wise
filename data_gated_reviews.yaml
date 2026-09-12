@@ -11871,39 +11871,6 @@ reviews:
     added_on: 2026-09-10
 
   - review_id: spiky_guard_first_engagement
-
-
-    can_fire:
-
-      predicate_runs: >-
-        Ran 2026-09-11 via operator_asks.py --audit against prod and returned 0.
-
-      nonzero_possible: >-
-        Writer is the nightly self-audit band detector (system_audit.py:68 registers
-        cooldowns_per_day at ceiling 20 / direction high). On prod `anomaly_detected` carries 46
-        cooldowns_per_day rows all-time across bands 1, 2 AND 3 — band 2 is demonstrably reachable,
-        not theoretical.
-
-      lane_live: >-
-        n/a — an observability metric from the daily self-audit, gated by no strategy lane; 46 rows
-        spanning months prove the job runs.
-
-      threshold_vs_observed: >-
-        Threshold 1 row after 2026-09-09. Prod 30-day P95 is 19 and recent nights run about 9, so
-        firing needs a genuinely spiky night — zero on day one is the expected reading.
-
-      era_scoped: >-
-        Window pinned to created_at > 2026-09-09, the date #632's P95 floor shipped, so pre-floor
-        rows cannot satisfy it. WEAKNESS NAMED: it counts pages that SURVIVED the floor, so a zero
-        reads the same for a quiet tape and for a floor suppressing everything. Sharpening tracked
-        on #633.
-    zero_verdict: >-
-      2026-09-11 WAITING — day one: eligible TODAY for the first time, so zero is the expected
-      reading, not a finding. #632's P95 floor only engages on a night whose cooldown count clears its
-      own 30-day P95; prod P95 is 19 and recent nights run ~9. ⚠ NAMED WEAKNESS, not hidden: this
-      predicate counts PAGES that survived the floor, so a zero is produced identically by a quiet
-      tape and by a floor that suppresses everything. Sharpening it needs a row recording the count-
-      vs-P95 comparison itself; folded into #633 rather than answered here.
     kind: cadence
     title: "The spiky-metric pager guard — has it ever actually ENGAGED? (#632)"
     question: |
@@ -11916,41 +11883,80 @@ reviews:
       Rather than re-date #632 every few weeks on a night that proves nothing, this watches for the
       guard's own footprint and surfaces the day it engages for real.
 
-      WHAT ENGAGEMENT LOOKS LIKE: an L3 `anomaly_detected` row for a spiky metric carrying
-      `to_band = 2`. The band-3 computation happened and the guard downgraded it — which is the
-      event, and it is distinguishable from an ordinary band-2 night because ordinary nights never
-      reach the band-3 branch at all.
-    # `to_band` is written into the detail JSON by _compute_anomaly's band-3 branch, so a value of
-    # 2 there means the guard fired. Ordinary band-2 nights take the L3 path and record `to_band`
-    # from _classify_band instead - the discriminating field, not a proxy for it.
-    discriminates_on: []
+      #633 FIX (2026-09-12): the original predicate keyed on `to_band = '2'`, but an ordinary night
+      that reaches band 2 on its own writes the exact same `to_band` — a non-discriminating
+      positive that could never tell an engagement from routine drift, and (separately) wrote
+      NOTHING at all whenever the guard engaged on a night that already sat at band 2 the day
+      before. `_compute_anomaly` (system_audit.py) now stamps `spiky_guard_demoted: true` at the
+      demotion site itself, plus `baseline_p95`, and writes that row even when the band didn't
+      change — the engagement is now a real, distinguishable, always-recorded fact instead of an
+      inference from a shared field.
+
+      WHAT ENGAGEMENT LOOKS LIKE NOW: an L3 `anomaly_detected` row for a spiky metric carrying
+      `spiky_guard_demoted: true`. That key is written ONLY at the guard's own demotion branch —
+      an ordinary band-2 night (never touched band 3) never sets it, so it is the discriminating
+      field, not a proxy for one. The fix does NOT make a zero mean more than it used to: a broken
+      stamp and an unengaged guard both still read as zero here — what changed is that a NONZERO
+      now means something (an engagement), which it structurally could not before.
+    discriminates_on: [mi_audit_log.summary]  # filters to one metric (cooldowns_per_day) via ILIKE
     predicate_sql: >-
       SELECT count(*) FROM mi_audit_log
       WHERE event_type = 'anomaly_detected'
         AND summary ILIKE '%cooldowns_per_day%'
-        AND detail::json->>'to_band' = '2'
+        AND detail::json->>'spiky_guard_demoted' = 'true'
         AND created_at > TIMESTAMP '2026-09-09';
     threshold: 1
     earliest_review_date: 2026-09-11
     action_when_ready: |
       The guard has engaged on a real night. Read the row: `current` must be at or under the
-      `baseline_p95` it was compared against, and no Telegram should have gone out for it while the
-      L3 row still records the value. That is the live confirmation #632 has been waiting for -
-      close it. If `current` is ABOVE the p95 and it still downgraded, the guard is too wide and
-      that is a defect, not a confirmation.
+      `baseline_p95` it was compared against (both fields are on the row itself now), and no
+      Telegram should have gone out for it while the L3 row still records the value. That is the
+      live confirmation #632 has been waiting for - close it. If `current` is ABOVE the
+      `baseline_p95` and it still downgraded, the guard is too wide and that is a defect, not a
+      confirmation.
     can_fire:
-      predicate_runs: "2026-09-10 - runs and returns 0, which is correct: the guard has not engaged
-        since it deployed on 2026-09-09."
-      nonzero_possible: "_compute_anomaly writes to_band into the L3 detail on every band-3 night
-        (system_audit.py), and cooldowns_per_day reached 9 on 2026-09-09 - inside the 8-to-19
-        window - so the condition is reachable and was met the day before the guard shipped."
-      lane_live: "n/a - this is the nightly self-audit, not a strategy lane. The 17:30 job ran
-        tonight and every night this week."
-      threshold_vs_observed: "1, against an observed 0 since deploy on the SAME predicate. The
-        historical rate on the same population: cooldowns_per_day landed in the 8-to-19 window on
-        6 of the previous 35 days, so roughly a 1-in-6 night."
-      era_scoped: "Anchored after 2026-09-09 because the guard did not exist before it; rows from
-        before that date cannot be evidence about it."
+      predicate_runs: >-
+        The PRE-#633 predicate (keyed on to_band='2') ran 2026-09-11 via operator_asks.py --audit
+        against prod and returned 0. The #633 predicate above (keyed on spiky_guard_demoted) has
+        NOT been executed against prod from this machine (no POSTGRES_PASSWORD here) - it returns
+        0 by construction until this fix deploys, since no existing row can carry a key nothing
+        has ever written. RE-RUN via operator_asks.py --audit on the first night after deploy to
+        get a real reading on the new predicate.
+      nonzero_possible: >-
+        `_compute_anomaly`'s demotion branch (system_audit.py, ~line 1341) sets
+        `spiky_guard_demoted = True` whenever band==3, metric.spiky, p95 is not None, and current
+        <= p95; the L3 branch (~line 1378) then threads it plus `baseline_p95` into the written
+        detail, even when band == last_band. RED-proven by
+        tests/test_spiky_metric_guard.py::test_engagement_records_even_when_last_band_already_2
+        and ::test_emit_l3_persists_spiky_guard_demoted_and_baseline_p95 — reverting either
+        change fails the named test. Per the 2026-09-10 entry, cooldowns_per_day reached 9 on
+        2026-09-09 - inside the guard's 8-to-19 engagement window - so the condition is reachable
+        and was met the day before the guard shipped.
+      lane_live: >-
+        n/a - this is the nightly self-audit, not a strategy lane. Per the 2026-09-10 entry, the
+        17:30 job ran that night and every night that week; nothing about #633 changes when or
+        whether that job runs.
+      threshold_vs_observed: >-
+        Threshold 1 row, against an observed 0 on the pre-#633 predicate since deploy (2026-09-11
+        reading). The historical rate on the same underlying population: cooldowns_per_day landed
+        in the 8-to-19 engagement window on 6 of the previous 35 days, so roughly a 1-in-6 night -
+        the #633 predicate change does not alter how often the guard itself engages, only whether
+        an engagement leaves a discriminating trace when it does.
+      era_scoped: >-
+        Window pinned to created_at > 2026-09-09, the date #632's P95 floor shipped, so pre-floor
+        rows cannot satisfy it either way. The #633 field rename needs no separate era cut:
+        `spiky_guard_demoted` exists only on rows written after this fix ships, and the predicate
+        only asks whether any such row exists at all - there is nothing older it could be confused
+        with.
+    zero_verdict: >-
+      2026-09-12 WAITING — the guard has not engaged for real since it shipped 2026-09-09; #633
+      changed WHAT gets recorded when it does, not whether it has happened yet, so today's zero
+      carries the same meaning the 2026-09-11 reading did. ⚠ NAMED WEAKNESS (partially fixed, not
+      closed): a NONZERO is now discriminating — `spiky_guard_demoted` is set only at the guard's
+      own demotion branch, RED-proven in tests/test_spiky_metric_guard.py — but a ZERO still
+      cannot separate "quiet tape, guard never engaged" from "the stamp itself is broken/removed
+      and nothing would ever satisfy this predicate again." That residual is not sharpenable from
+      the audit-log side alone; the RED tests are the actual proof the stamp works, not this count.
     status: pending
     added_on: 2026-09-10
 

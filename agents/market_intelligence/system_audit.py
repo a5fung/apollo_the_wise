@@ -1338,9 +1338,15 @@ async def _compute_anomaly(
     # sits AFTER the band computation deliberately — the band is still recorded at L3 below,
     # so the drift surface keeps seeing the value; only the Telegram page is withheld.
     p95 = (baseline or {}).get("p95")
+    spiky_guard_demoted = False
     if (band == 3 and getattr(metric, "spiky", False)
             and p95 is not None and direction == "high" and current <= float(p95)):
         band = 2
+        # #633: stamp the engagement HERE, at the site of the decision, rather than letting a
+        # downstream reader try to infer it from `to_band` — an ordinary night that reaches
+        # band 2 on its own writes the exact same to_band, so that field can never discriminate
+        # a real guard engagement from routine drift (a non-discriminating positive).
+        spiky_guard_demoted = True
 
     if band == 3 and not warming:
         last_band = await _last_band_for(conn, metric.name)
@@ -1377,15 +1383,28 @@ async def _compute_anomaly(
     # L3: drift band, threshold-crossing only.
     if band > 0:
         last_band = await _last_band_for(conn, metric.name)
-        if band == last_band:
+        # #633: a guard engagement is the event, not the band it lands on — dedup on
+        # "same band as last night" is right for ORDINARY drift (nothing new happened) but
+        # wrong here: the guard withholding a page is new information every night it happens,
+        # even if it also withheld one yesterday. Only bypass the dedup for an actual
+        # engagement; an organic same-band night (spiky_guard_demoted False) is unaffected.
+        if band == last_band and not spiky_guard_demoted:
             return None  # steady drift within same band — already recorded
-        return Anomaly(3, metric.name, {
+        detail = {
             "current": current,
             "baseline_p50": p50, "mad": mad, "sample_n": sample_n,
             "z_score": round(z, 2), "ratio": round(ratio, 2),
             "from_band": last_band, "to_band": band,
             "warming": warming,
-        })
+        }
+        if spiky_guard_demoted:
+            # Distinguishable marker (#633) so a reader can tell this apart from an ordinary
+            # night that reached band 2 on its own — both would otherwise write a
+            # byte-identical to_band=2 row. baseline_p95 travels with it because
+            # action_when_ready compares `current` against the P95 the guard cleared it on.
+            detail["spiky_guard_demoted"] = True
+            detail["baseline_p95"] = p95
+        return Anomaly(3, metric.name, detail)
     return None
 
 
@@ -1677,20 +1696,27 @@ async def _emit_l2(metric: MetricSpec, anomaly: Anomaly, event_deltas: list[dict
 
 async def _emit_l3(metric: MetricSpec, anomaly: Anomaly) -> None:
     """L3 is audit-only — no Telegram. Sunday digest rolls these up."""
+    detail = {
+        "level": 3, "key": metric.name,
+        "current": anomaly.body.get("current"),
+        "baseline_p50": anomaly.body.get("baseline_p50"),
+        "z_score": anomaly.body.get("z_score"),
+        "ratio": anomaly.body.get("ratio"),
+        "from_band": anomaly.body.get("from_band"),
+        "to_band": anomaly.body.get("to_band"),
+        "warming": anomaly.body.get("warming", False),
+    }
+    if anomaly.body.get("spiky_guard_demoted"):
+        # #633: carried through explicitly — this function otherwise allowlists keys, so a
+        # field added to _compute_anomaly's detail dict without a matching line here is
+        # silently dropped before it ever reaches mi_audit_log.
+        detail["spiky_guard_demoted"] = True
+        detail["baseline_p95"] = anomaly.body.get("baseline_p95")
     await log_audit_event(
         _AUDIT_EVENT,
         summary=f"L3 {metric.name}",
         # default=str: same class as the L1/L2 fixes above.
-        detail=json.dumps({
-            "level": 3, "key": metric.name,
-            "current": anomaly.body.get("current"),
-            "baseline_p50": anomaly.body.get("baseline_p50"),
-            "z_score": anomaly.body.get("z_score"),
-            "ratio": anomaly.body.get("ratio"),
-            "from_band": anomaly.body.get("from_band"),
-            "to_band": anomaly.body.get("to_band"),
-            "warming": anomaly.body.get("warming", False),
-        }, default=str),
+        detail=json.dumps(detail, default=str),
     )
 
 
