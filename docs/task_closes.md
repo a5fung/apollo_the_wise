@@ -425,3 +425,22 @@ and both show the disagreement DOING something:
 operator-signed 2026-08-27 and the evidence for retiring the boost is in
 `docs/analysis/pplx_agreement_boost_233_2026-08-27.md` (boosted names ran a SMALLER 5-day max move,
 9.17% vs 11.20%, and the effect is a null once score band is held constant).
+
+## #639 — two thirds of the theme board is new every week, and nobody owned that (2026-09-12)
+BAR: separate REAL rotation from IDENTITY INSTABILITY, and say which dominates. For each week's
+entrants, is the cohort genuinely new (its tickers were not together on the board under any name)
+or is it an existing cohort under a changed name/membership?
+EVIDENCE: `docs/analysis/639_board_churn_split_2026-09-11.md`, from the canonical grid's own
+`canonical_id` and `tickers` columns over eleven post-launch weeks. The split, at the middle
+Jaccard threshold: **NEW 107 (70%) · REAPPEARED 44 (29%) · RENAMED 1**. The answer to "which
+dominates" is unambiguous and is stated: **real rotation dominates — identity instability is not
+the cause.** RENAMED is ONE entrant in eleven weeks and holds at every threshold tested, falling
+to zero under the stricter previous-week-board variant. The WOULD-FAIL-IF is satisfied in the
+strong direction: the finding is reported as the three-way split, never as a single churn
+percentage.
+CARRIED FORWARD, not deleted: the one surviving remedy — label *week 1* apart from *held N weeks*
+on the board — is UNBUILT and is now #648. Two other candidate remedies died on measurement and
+their refutations live in the analysis doc, not only in the closed line: a basket-size floor (small
+cohorts persist slightly BETTER, 43% vs 52% gone after one week) and a two-week confirmation delay
+(it costs the 20% worth having exactly the five sessions #486 step-3 showed lift remaining runway
+from 29% to 55%).
