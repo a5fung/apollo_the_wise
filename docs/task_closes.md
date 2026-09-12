@@ -492,3 +492,35 @@ FILED AS #650 on 2026-09-12 (a doc alone is not a rehome; the board is).
 ⚠ MY OWN ERROR, kept because it is instructive: I first reported that coverage could NOT be proven,
 having read only `mi_audit_log` (which records disagreements only) and missed the per-run table
 write one line above it. Same shape as the defect I was accusing the analysis of.
+
+## #564 — an ad-hoc lookup on a weekend used to write a row dated a day the market never traded (2026-09-12)
+BAR: decide and implement what an ad-hoc lookup should do on a non-trading day — write against the
+last trading day, or compute without persisting — then confirm no new off-calendar rows appear.
+EVIDENCE: both halves. DECIDED AND IMPLEMENTED — compute without persisting (`rs_engine.py:728`,
+the guard confirmed present in the RUNNING apollo-market image, not just the repo). CONFIRMED on a
+real weekend, by TRIGGERING the path rather than by watching for silence: `score_single_ticker`
+called in prod today (Saturday 2026-09-12) returned **rs_composite 87.8 with score_date 2026-09-11**
+— a real score, ranked against Friday's distribution — and logged *"SMCI on 2026-09-12 is not a
+trading day — score computed but NOT persisted (#564)"*. The weekend-dated row census is UNCHANGED
+before and after: 2026-03-21 (9,784 — a one-off bulk backfill, a different class), then the four
+singleton bug rows 05-30, 07-05, 07-12, 08-08, and nothing since. `mi_tracked_stocks` has no SMCI
+row at all, so the bookkeeping half wrote nothing either.
+⚠ WHY THE TRIGGER MATTERS: a passive scan would have been absence-only — a broken system also shows
+no weekend row on a weekend when nobody looks anything up, and the bug fired 4 times in 3.5 months.
+The positive observables (a returned score, Friday's date, the skip-branch log line) are what make
+the absence mean something.
+⚠ AND THE LINE NAMED THE WRONG COMMAND: its later VERIFY sentence says `/setup TICKER`, which routes
+to the detector-chronology lookup and never reaches this writer — running that and seeing no row
+would have been a FALSE PASS on an unfixed system. The DoD, not that sentence, is what was checked.
+CARRIED FORWARD, not deleted: the four legacy rows are still in the table. Deleting them is a
+production write and the line records it as the operator's call, not a condition of this fix.
+
+## #600 — the repair could re-arm a stop at a price the broker had already beaten (2026-09-12)
+BAR: route the place branch through the same raise-only floor, or state why it must not be.
+EVIDENCE: routed, and verified INSIDE BOTH RUNNING IMAGES rather than in the repo — apollo-execution
+(which actually runs `broker/`) and apollo-market both report: the place branch calls
+`_apply_reprotect_floor` with `site="ensure_stop_coverage.place"` = True; it places the FLOORED
+price (`int(target), place_price`) = True; it places the RAW db price = **False**; and both fork-2
+helpers (`_preserve_dead_stop_price`, `_current_stop_pointer`) are present. The third line is the
+discriminating one — a system with the bug still in it would place `float(db_stop_price)` there, so
+this is not an absence check.
