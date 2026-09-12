@@ -1819,6 +1819,9 @@ class TelegramChannel:
                      "scanned",
                      # 2026-06-29 operator one-tap theme promotion (decision-alerts carry the action)
                      "promotetheme",
+                     # 2026-09-12 #471 ADR 0032 Phase 3 — one-tap veto / retire of an
+                     # auto-promoted ecosystem (the 🆕 alert carries the command)
+                     "vetoecosystem",
                      # 2026-06-19 #345 one-command real-money trading halt
                      "pause", "resume"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
@@ -1865,6 +1868,9 @@ class TelegramChannel:
             BotCommand("syncnow",      "/syncnow [paper|live] — operator-confirm DB↔broker sync_positions"),
             BotCommand("pause",        "⏸️ HALT all new real-money entries (instant kill switch)"),
             BotCommand("resume",       "▶️ Resume real-money entries after /pause"),
+            # #471 ADR 0032 Phase 3 — in the menu because the alert's tappable form is the
+            # bare command; an operator who missed the alert can still find it here.
+            BotCommand("vetoecosystem", "🚫 Veto an auto-promoting ecosystem (or retire a live auto one)"),
             # #513 (operator-approved 2026-08-02). 32 commands were DISPATCHED but absent from
             # this list, so they worked only if you already knew to type them — the May-2026
             # invisible-command class at 5x the size. Curated, not exhaustive: a 40-item menu is

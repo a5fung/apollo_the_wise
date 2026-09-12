@@ -66,6 +66,17 @@ ANTICIPATION_MNA_CHECK_CAPPED = "anticipation_mna_check_capped"  # per-run M&A-c
 
 # ── Theme ecosystems (ADR 0032 Phase 1) ─────────────────────────────────────
 THEME_ECOSYSTEM_ASSIGNED = "theme_ecosystem_assigned"  # method=haiku|keyword|unassigned in summary
+# ADR 0032 Phase 3 — ecosystem auto-discovery lane (#471, ecosystem_discovery.py).
+# ONE vocabulary for the whole state machine; the *_ran row is the weekly
+# heartbeat (written on EVERY run, idle included — the verify-live signal).
+ECOSYSTEM_DISCOVERY_RAN = "ecosystem_discovery_ran"
+ECOSYSTEM_CLUSTER_SIGHTED = "ecosystem_cluster_sighted"
+ECOSYSTEM_PROPOSED_PENDING = "ecosystem_proposed_pending"   # the veto alert fired
+ECOSYSTEM_AUTO_PROMOTED = "ecosystem_auto_promoted"         # grace ended, no veto
+ECOSYSTEM_VETOED = "ecosystem_vetoed"
+ECOSYSTEM_COOLDOWN_SKIP = "ecosystem_cooldown_skip"
+ECOSYSTEM_RETIRED = "ecosystem_retired"                     # operator retro-retire
+ECOSYSTEM_PROMOTION_ERROR = "ecosystem_promotion_error"     # fail-loud on sweep/alert
 
 # ── Sugar Baby / convergence ────────────────────────────────────────────────
 SUGAR_BABY_CONVERGENCE_ALERT = "sugar_baby_convergence_alert"

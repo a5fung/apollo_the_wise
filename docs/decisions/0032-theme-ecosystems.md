@@ -135,6 +135,31 @@ constants; auto-promote noise → grace + cooldown + retroactive retire; re-gran
 0025 adjudicator is corpus-cleared + the acceptance fixture. **THE LINE:** untouched — no money path,
 no strategy/sizing/safeguard; the theme-axis into the shadow judge stays shadow.
 
+## Change log
+
+- **2026-09-12 — Phase 3 BUILT (#471): the discovery + auto-promote/veto lane (D1).**
+  `agents/market_intelligence/ecosystem_discovery.py` + two tables (`mi_ecosystem_proposals`
+  — the grace state machine `sighted → pending → live | vetoed`, `live → retired`;
+  `mi_theme_ecosystems_dynamic` — the DB-side taxonomy extension, effective taxonomy =
+  YAML ∪ active dynamic rows, YAML wins). Weekly pass Sunday 09:30 ET (deterministic
+  pre-cluster: shared ticker OR shared ≥5-char name token, components ≥3; sustain = two
+  sightings ≥7d apart AND cluster age ≥14d; then ONE Sonnet proposal, ≤2/run) → `pending`
+  + the 🆕 veto alert (bare `/vetoecosystem` is the one-tap); hourly sweep at :12 (+ boot
+  catch-up) promotes at grace-end via a status-guarded claim (double sweep = one promote);
+  veto → 30d cooldown, the cluster is skipped if re-sighted; `/vetoecosystem <live auto
+  code>` soft-retires a bucket and returns its themes to E-UNASSIGNED (the reversibility).
+  Every mutation writes `mi_audit_log` (`ecosystem_*` vocabulary, `ecosystem_discovery_ran`
+  on every run as the heartbeat). **Deviations from the 07-14 design, all cost-side:** the
+  Sonnet call runs only when a cluster is ELIGIBLE to go pending (not on every sighting);
+  `fits_existing`, early re-surfacing of a strengthened vetoed cluster, the 28d `sighted →
+  expired` hygiene, the 🆕 board marker and an inline veto button are NOT built. **Ship gate
+  (design §3): lands ≥1 week after the Phase-2 flip; deploy scope `both`** (the command
+  registers in `channels/telegram.py`). THE LINE: theme structure only — a promotion
+  re-points `mi_theme_ecosystems` rows and changes no theme's membership, criterion,
+  threshold, sizing, safeguard or exit; the far end of the chain (a promoted bucket becomes
+  visible to the #534 reactivation detector → seed → #491 assignment-pool admission) is the
+  SAME chain a YAML edit opens and was signed under D1 / #491.
+
 ## References
 - `docs/analysis/theme_ecosystem_litmus_design_2026-07-14.md` (full diagnostic + verified evidence)
 - ADR 0025 (theme-fragmentation controls — `THEME_MERGE_ARM`, PARENT_CHILD adjudicator)

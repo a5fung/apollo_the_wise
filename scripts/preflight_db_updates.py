@@ -29,6 +29,7 @@ from agents.market_intelligence.db import (
     GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
     LOWCAP_LANE_REPLAY_UPSERT_SQL, LOWCAP_LANE_SIGNAL_INSERT_SQL,
     THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL, THEME_RESILIENCE_WEEKLY_INSERT_SQL,
+    ECOSYSTEM_PROPOSAL_INSERT_SQL, ECOSYSTEM_DYNAMIC_INSERT_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
     UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
     get_pool)
@@ -324,6 +325,20 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # weeks with no downstream error, and November would have nothing to read.
         "db.write_theme_resilience_weekly_row: #644 weekly theme down-day-resilience recorder",
         THEME_RESILIENCE_WEEKLY_INSERT_SQL,
+    ),
+    (
+        # #471 ADR 0032 Phase 3 (2026-09-12): the ecosystem-proposal writer — three
+        # TEXT[] params + a RETURNING id, the exact asyncpg type-deduction shape this
+        # list exists for. A dead insert here would make the weekly lane read as
+        # "idle" forever (its heartbeat still fires) with no downstream error.
+        "db.insert_ecosystem_proposal: #471 ecosystem discovery sighting/proposal writer",
+        ECOSYSTEM_PROPOSAL_INSERT_SQL,
+    ),
+    (
+        # #471: the auto-promoted bucket writer (two TEXT[] params, ON CONFLICT DO
+        # NOTHING). Runs once per promotion, from the grace sweep.
+        "db.insert_dynamic_ecosystem: #471 auto-promoted ecosystem bucket writer",
+        ECOSYSTEM_DYNAMIC_INSERT_SQL,
     ),
 ]
 

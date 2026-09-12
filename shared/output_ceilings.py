@@ -284,6 +284,15 @@ CEILINGS: dict[str, OutputCeiling] = {
     "theme_ecosystem_assignment": OutputCeiling(
         1000, "ECOSYSTEM_ASSIGN_MODEL", "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "240 haiku calls, max completed 757 (76% of cap)."),
+    "ecosystem_discovery_proposal": OutputCeiling(
+        2500, "SYNTHESIS_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        "NEW caller 2026-09-12 (#471 ADR 0032 Phase 3, ecosystem_discovery.py). No "
+        "sample yet — sized by ANALOGY: one forced tool call, thinking=DISABLED, a "
+        "terse scratchpad + one ecosystem object (code/name/one-line description/"
+        "<=12 stems/<=12 exemplars/3-6 theme names/1-2 lines of evidence). Same "
+        "shape as theme_split/theme_rename (1750, max completed 691) with a longer "
+        "evidence field; 2500 leaves ~3x headroom. PROVISIONAL: re-derive from "
+        "api_usage after the first real firings (expect <=2 per Sunday run)."),
     # theme_advisor's spend rows are phase-suffixed (theme_advisor_{discovery,split,
     # assignment}) but ONE call site serves all three — identical ceiling by construction.
     "theme_advisor_discovery": _ADVISOR,

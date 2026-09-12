@@ -5130,6 +5130,26 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._error(request, f"Promote failed: {e}")
         return self._ok(request, result=_render_promote_result(res, body))
 
+    async def _handle_vetoecosystem(self, request: AgentRequest) -> AgentResponse:
+        """#471 ADR 0032 Phase 3 — the one-tap opt-out for an auto-promoting ecosystem
+        (and the retro-retire of a live auto bucket). Usage: bare `/vetoecosystem` vetoes
+        the ONE pending proposal (the tappable form in the 🆕 alert); `/vetoecosystem
+        E-CODE` names one when several are pending, or retires a LIVE auto-promoted
+        bucket (its themes go back to E-UNASSIGNED). Curated YAML buckets are refused.
+        Theme STRUCTURE only — no money path (ecosystem_discovery.veto_ecosystem)."""
+        import re as _re
+        from agents.market_intelligence.ecosystem_discovery import (
+            render_veto_result, veto_ecosystem,
+        )
+        body = _re.sub(r'^\s*/?vetoecosystem(@\w+)?\b\s*', '', request.task or '', count=1,
+                       flags=_re.IGNORECASE).strip()
+        try:
+            res = await veto_ecosystem(body or None)
+        except Exception as e:
+            logger.exception(f"vetoecosystem failed: {e}")
+            return self._error(request, f"Veto failed: {e}")
+        return self._ok(request, result=render_veto_result(res))
+
     async def _handle_promotetheme_id(self, request: AgentRequest) -> AgentResponse:
         """One-tap button target for the 🔭 Emerging-theme synthesis alert (operator ask
         2026-08-17: "is it possible make this even easier like with one-click" — typing the
@@ -5724,6 +5744,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/themes":         self._handle_theme_query,
             "/promotetheme":   self._handle_promotetheme,
             "/promotetheme_id": self._handle_promotetheme_id,
+            # #471 ADR 0032 Phase 3 — veto / retire an auto-promoted ecosystem
+            "/vetoecosystem":  self._handle_vetoecosystem,
             "/clusters":       self._handle_correlation_clusters,
             "/regime":         self._handle_regime_query,
             "/positions":      self._handle_watchlist,

@@ -102,6 +102,9 @@ _MAX_HAIKU_PER_RUN = 25
 # ═════════════════════════════════════════════════════════════════════════
 
 _TAXONOMY_CACHE: list[dict[str, Any]] | None = None
+# Phase 3 (#471): active rows of mi_theme_ecosystems_dynamic, normalized to
+# taxonomy entries by refresh_dynamic_taxonomy(). None = never refreshed.
+_DYNAMIC_CACHE: list[dict[str, Any]] | None = None
 
 
 def _load_taxonomy() -> list[dict[str, Any]]:
@@ -133,24 +136,70 @@ def _load_taxonomy() -> list[dict[str, Any]]:
 
 
 def reset_taxonomy_cache() -> None:
-    """Test hook — drop the module cache so a monkeypatched _PATH reloads."""
-    global _TAXONOMY_CACHE
+    """Test hook — drop BOTH module caches so a monkeypatched _PATH reloads
+    and no dynamic bucket leaks between tests."""
+    global _TAXONOMY_CACHE, _DYNAMIC_CACHE
     _TAXONOMY_CACHE = None
+    _DYNAMIC_CACHE = None
+
+
+async def refresh_dynamic_taxonomy() -> int:
+    """Phase 3 (#471): re-read the ACTIVE auto-promoted buckets from
+    mi_theme_ecosystems_dynamic into the module cache. The Phase-1 loader is
+    sync + module-cached and DB access is async — this is the seam. Fail-safe:
+    on ANY DB error the PREVIOUS cache is kept (or stays None), logged, never
+    raised — /themes degrades to the YAML-only taxonomy, never breaks.
+    Returns the number of dynamic entries now cached."""
+    global _DYNAMIC_CACHE
+    try:
+        from agents.market_intelligence.db import get_dynamic_ecosystems
+        rows = await get_dynamic_ecosystems(active_only=True)
+    except Exception as e:
+        logger.warning(
+            f"[theme ecosystems] dynamic taxonomy refresh failed — keeping "
+            f"{len(_DYNAMIC_CACHE or [])} cached entr(y/ies): {e}")
+        return len(_DYNAMIC_CACHE or [])
+    _DYNAMIC_CACHE = [
+        {
+            "e_code": r["e_code"],
+            "name": r.get("name") or r["e_code"],
+            "description": r.get("description") or "",
+            "keyword_stems": list(r.get("keyword_stems") or []),
+            "exemplars": list(r.get("exemplars") or []),
+            "dynamic": True,
+            "created_at": r.get("created_at"),
+        }
+        for r in rows if r.get("e_code")
+    ]
+    return len(_DYNAMIC_CACHE)
 
 
 def get_ecosystems() -> list[dict[str, Any]]:
-    """The ordered ecosystem list, exactly as in the YAML (order = display tiebreak)."""
-    return _load_taxonomy()
+    """The effective ordered ecosystem list: YAML entries in YAML order, then
+    the active DYNAMIC (auto-promoted, #471) buckets, then E-UNASSIGNED —
+    which stays LAST (the render sort key and Phase-1 tests pin that). YAML
+    wins on an e_code collision (the graduation path: a proven auto bucket
+    added to the YAML shadows its DB row, so retiring the row is seamless)."""
+    base = _load_taxonomy()
+    dyn = _DYNAMIC_CACHE or []
+    if not dyn:
+        return base
+    yaml_codes = {e["e_code"] for e in base}
+    extra = [d for d in dyn if d["e_code"] not in yaml_codes]
+    if not extra:
+        return base
+    idx = next((i for i, e in enumerate(base) if e["e_code"] == E_UNASSIGNED), len(base))
+    return base[:idx] + extra + base[idx:]
 
 
 def get_ecosystem_map() -> dict[str, dict[str, Any]]:
-    """e_code -> taxonomy entry lookup."""
-    return {e["e_code"]: e for e in _load_taxonomy()}
+    """e_code -> taxonomy entry lookup (YAML ∪ dynamic)."""
+    return {e["e_code"]: e for e in get_ecosystems()}
 
 
 def get_ecosystem_codes() -> list[str]:
-    """Ordered e_codes (YAML order)."""
-    return [e["e_code"] for e in _load_taxonomy()]
+    """Ordered e_codes (YAML order, dynamic before E-UNASSIGNED)."""
+    return [e["e_code"] for e in get_ecosystems()]
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -471,6 +520,9 @@ async def ensure_theme_ecosystems(
 
     if not themes:
         return []
+    # Phase 3 (#471): a birth may belong in an auto-promoted bucket — the
+    # Haiku prompt and the keyword fallback both iterate get_ecosystems().
+    await refresh_dynamic_taxonomy()
     existing = await _db.get_all_theme_ecosystems()
     todo = [t for t in themes
             if (t.get("name") or "").strip()
@@ -526,6 +578,10 @@ async def ensure_theme_ecosystems(
 async def load_ecosystem_assignments() -> dict[str, str]:
     """Fail-safe fetch of the theme_name -> e_code mapping for render surfaces.
     Any DB failure degrades to {} (flat /themes fallback) — never raises."""
+    # Phase 3 (#471): every render surface funnels through here, so ONE
+    # refresh makes auto-promoted buckets visible on /themes, the theme-only
+    # rerun and the evening scorecard. Fail-safe inside (keeps the last cache).
+    await refresh_dynamic_taxonomy()
     try:
         from agents.market_intelligence.db import get_all_theme_ecosystems
         return await get_all_theme_ecosystems()

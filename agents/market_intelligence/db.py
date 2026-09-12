@@ -2126,6 +2126,53 @@ async def initialize_schema() -> None:
             );
         """)
 
+        # ── ADR 0032 Phase 3 — ecosystem auto-discovery lane (#471) ──────
+        # mi_ecosystem_proposals: the grace state machine for a cluster of
+        # E-UNASSIGNED themes proposed as a NEW primary ecosystem.
+        #   status: sighted → pending → live | vetoed ; live → retired
+        #   (retired = operator retro-retire of an auto bucket; carries the
+        #   same 30d cooldown as a veto). Rows are never deleted (lineage).
+        # mi_theme_ecosystems_dynamic: DB-side extension of the curated
+        # theme_ecosystems.yaml (baked into the image — runtime promotion
+        # cannot edit it). Effective taxonomy = YAML ∪ active dynamic rows,
+        # YAML wins on e_code collision. Retire = soft (status + retired_at).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_ecosystem_proposals (
+                id               SERIAL PRIMARY KEY,
+                e_code           TEXT,
+                name             TEXT,
+                description      TEXT,
+                keyword_stems    TEXT[] NOT NULL DEFAULT '{}',
+                exemplars        TEXT[] NOT NULL DEFAULT '{}',
+                member_themes    TEXT[] NOT NULL DEFAULT '{}',
+                evidence         TEXT,
+                status           TEXT NOT NULL DEFAULT 'sighted',
+                first_sighted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                last_sighted_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+                sightings        INT NOT NULL DEFAULT 1,
+                pending_at       TIMESTAMPTZ,
+                grace_ends_at    TIMESTAMPTZ,
+                decided_at       TIMESTAMPTZ,
+                cooldown_until   TIMESTAMPTZ,
+                veto_snapshot    JSONB,
+                created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS idx_ecosystem_proposals_status
+                ON mi_ecosystem_proposals(status, grace_ends_at);
+            CREATE TABLE IF NOT EXISTS mi_theme_ecosystems_dynamic (
+                e_code        TEXT PRIMARY KEY,
+                name          TEXT NOT NULL,
+                description   TEXT,
+                keyword_stems TEXT[] NOT NULL DEFAULT '{}',
+                exemplars     TEXT[] NOT NULL DEFAULT '{}',
+                source        TEXT NOT NULL DEFAULT 'auto',
+                status        TEXT NOT NULL DEFAULT 'active',
+                proposal_id   INT,
+                created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+                retired_at    TIMESTAMPTZ
+            );
+        """)
+
         # ── HUD state — pinned message IDs for auto-refresh ──────────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_hud_state (
@@ -14659,6 +14706,207 @@ async def upsert_theme_ecosystem(
                 method = EXCLUDED.method,
                 assigned_at = NOW()
         """, theme_name, e_code, method)
+
+
+# ── ADR 0032 Phase 3 — ecosystem auto-discovery lane (#471) ──────────────────
+# Thin accessors only. The state machine (sighted → pending → live | vetoed,
+# cooldowns, the veto) lives in agents/market_intelligence/ecosystem_discovery.py.
+# The two INSERTs are hoisted to module constants and registered in
+# scripts/preflight_db_updates.py: TEXT[] + JSONB params are exactly the
+# asyncpg type-deduction class that gate exists for (#606 / #644 precedent).
+
+ECOSYSTEM_PROPOSAL_INSERT_SQL = """
+    INSERT INTO mi_ecosystem_proposals (
+        e_code, name, description, keyword_stems, exemplars, member_themes,
+        evidence, status, first_sighted_at, last_sighted_at, sightings
+    ) VALUES ($1, $2, $3, $4::text[], $5::text[], $6::text[], $7, $8, $9, $9, 1)
+    RETURNING id
+"""
+
+ECOSYSTEM_DYNAMIC_INSERT_SQL = """
+    INSERT INTO mi_theme_ecosystems_dynamic (
+        e_code, name, description, keyword_stems, exemplars, source, status,
+        proposal_id, created_at
+    ) VALUES ($1, $2, $3, $4::text[], $5::text[], $6, 'active', $7, $8)
+    ON CONFLICT (e_code) DO NOTHING
+"""
+
+
+async def get_theme_ecosystem_rows() -> list[dict[str, Any]]:
+    """Every mapping row WITH its assigned_at (the discovery substrate needs
+    the age; get_all_theme_ecosystems deliberately returns only the map)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT theme_name, e_code, method, assigned_at FROM mi_theme_ecosystems")
+    return [dict(r) for r in rows]
+
+
+async def remap_theme_ecosystems(
+    theme_names: list[str], e_code: str, method: str
+) -> int:
+    """Bulk re-point existing mapping rows (promote: E-UNASSIGNED → E-<new>;
+    retire: E-<auto> → E-UNASSIGNED). Only rows that exist are touched — a
+    theme with no mapping row is the nightly assignment pass's job."""
+    if not theme_names:
+        return 0
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute("""
+            UPDATE mi_theme_ecosystems
+               SET e_code = $2, method = $3, assigned_at = NOW()
+             WHERE theme_name = ANY($1::text[])
+        """, list(theme_names), e_code, method)
+    return int(str(res).split()[-1])
+
+
+async def get_theme_names_in_ecosystem(e_code: str) -> list[str]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT theme_name FROM mi_theme_ecosystems WHERE e_code = $1", e_code)
+    return [r["theme_name"] for r in rows]
+
+
+async def get_ecosystem_proposals(statuses: list[str]) -> list[dict[str, Any]]:
+    """Proposal rows in the given statuses, oldest first."""
+    if not statuses:
+        return []
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT * FROM mi_ecosystem_proposals
+             WHERE status = ANY($1::text[])
+             ORDER BY id
+        """, list(statuses))
+    return [dict(r) for r in rows]
+
+
+async def insert_ecosystem_proposal(
+    *, e_code: "str | None", name: "str | None", description: "str | None",
+    keyword_stems: list[str], exemplars: list[str], member_themes: list[str],
+    evidence: "str | None", status: str, sighted_at: "datetime",
+) -> int:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            ECOSYSTEM_PROPOSAL_INSERT_SQL,
+            e_code, name, description, list(keyword_stems or []),
+            list(exemplars or []), list(member_themes or []), evidence, status,
+            sighted_at,
+        )
+
+
+async def touch_ecosystem_proposal_sighting(
+    proposal_id: int, member_themes: list[str], sighted_at: "datetime"
+) -> None:
+    """A re-sighting that does NOT yet qualify for pending: bump the counter,
+    refresh the member set so the next overlap check compares against the
+    latest shape."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_ecosystem_proposals
+               SET last_sighted_at = $2, sightings = sightings + 1,
+                   member_themes = $3::text[]
+             WHERE id = $1
+        """, proposal_id, sighted_at, list(member_themes or []))
+
+
+async def mark_ecosystem_proposal_pending(
+    proposal_id: int, *, e_code: str, name: str, description: str,
+    keyword_stems: list[str], exemplars: list[str], member_themes: list[str],
+    evidence: str, pending_at: "datetime", grace_ends_at: "datetime",
+) -> bool:
+    """sighted → pending, carrying the LLM proposal. Status-guarded so a
+    concurrent pass cannot double-arm the grace window."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute("""
+            UPDATE mi_ecosystem_proposals
+               SET status = 'pending', e_code = $2, name = $3, description = $4,
+                   keyword_stems = $5::text[], exemplars = $6::text[],
+                   member_themes = $7::text[], evidence = $8,
+                   pending_at = $9, grace_ends_at = $10,
+                   last_sighted_at = $9, sightings = sightings + 1
+             WHERE id = $1 AND status = 'sighted'
+        """, proposal_id, e_code, name, description, list(keyword_stems or []),
+            list(exemplars or []), list(member_themes or []), evidence,
+            pending_at, grace_ends_at)
+    return str(res).endswith(" 1")
+
+
+async def claim_due_ecosystem_proposals(now: "datetime") -> list[dict[str, Any]]:
+    """The grace sweep's CLAIM: atomically flip every pending proposal whose
+    grace has ended to 'live' and return those rows. The status guard makes a
+    double sweep (hourly + boot catch-up, or two containers) promote once —
+    the second claim finds nothing."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            UPDATE mi_ecosystem_proposals
+               SET status = 'live', decided_at = $1
+             WHERE status = 'pending' AND grace_ends_at <= $1
+            RETURNING *
+        """, now)
+    return [dict(r) for r in rows]
+
+
+async def mark_ecosystem_proposal_vetoed(
+    proposal_id: int, *, now: "datetime", cooldown_until: "datetime",
+    snapshot: dict, new_status: str = "vetoed",
+) -> bool:
+    """pending → vetoed (or live → retired for a retro-retire). Guarded on the
+    FROM status so a veto that races the sweep loses cleanly (returns False)."""
+    from_status = "pending" if new_status == "vetoed" else "live"
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute("""
+            UPDATE mi_ecosystem_proposals
+               SET status = $2, decided_at = $3, cooldown_until = $4,
+                   veto_snapshot = $5::jsonb
+             WHERE id = $1 AND status = $6
+        """, proposal_id, new_status, now, cooldown_until, snapshot, from_status)
+    return str(res).endswith(" 1")
+
+
+async def get_dynamic_ecosystems(active_only: bool = True) -> list[dict[str, Any]]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT e_code, name, description, keyword_stems, exemplars, source,
+                   status, proposal_id, created_at, retired_at
+              FROM mi_theme_ecosystems_dynamic
+             WHERE ($1::bool IS FALSE) OR status = 'active'
+             ORDER BY created_at
+        """, active_only)
+    return [dict(r) for r in rows]
+
+
+async def insert_dynamic_ecosystem(
+    *, e_code: str, name: str, description: "str | None",
+    keyword_stems: list[str], exemplars: list[str], source: str,
+    proposal_id: "int | None", created_at: "datetime",
+) -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            ECOSYSTEM_DYNAMIC_INSERT_SQL,
+            e_code, name, description, list(keyword_stems or []),
+            list(exemplars or []), source, proposal_id, created_at,
+        )
+
+
+async def retire_dynamic_ecosystem(e_code: str, retired_at: "datetime") -> bool:
+    """Soft-delete an auto bucket (reversible lineage — rows are never deleted)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute("""
+            UPDATE mi_theme_ecosystems_dynamic
+               SET status = 'retired', retired_at = $2
+             WHERE e_code = $1 AND status = 'active'
+        """, e_code, retired_at)
+    return str(res).endswith(" 1")
 
 
 async def get_globally_banned_tickers(

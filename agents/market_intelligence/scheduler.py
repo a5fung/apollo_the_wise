@@ -174,6 +174,11 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "tv_news_shadow",  # #210 2026-09-06 — nightly TradingView news cross-reference for thin/no-catalyst alerts; pure fetch + DB/audit, no broker calls, no grade/admission change, Telegram only on a sustained run-level endpoint degradation (never a single blip)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "theme_axis_eod_unscored",  # theme-correctness Step 4 (THE INSTRUMENT) 2026-09-07 — EOD null-control population write for the theme-axis shadow; pure compute + DB/audit, no broker calls, no grade/admission change, SILENT (no Telegram)
+    # #471 ADR 0032 Phase 3 (2026-09-12) — the ecosystem auto-discovery lane.
+    # Theme STRUCTURE only: re-points mi_theme_ecosystems rows, alerts, audits.
+    # No broker call, no grade/admission/sizing/exit input (THE LINE).
+    "ecosystem_discovery",       # Sunday 09:30 ET weekly pass (<=2 Sonnet calls)
+    "ecosystem_grace_sweep",     # hourly :12 — pending → live at grace-end
     "theme_resilience_weekly",  # #644 2026-09-11 — Sunday weekly per-theme down-day-resilience capture for the November forward test; pure compute (get_active_themes + the already-tested get_down_day_resilience) + DB/audit, no broker calls, no grade/admission/ranking change, SILENT (no Telegram), RECORDS ONLY
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "strength_spread_alert",  # #579 2026-09-12 — ad-hoc strength-map direction-spread crossing alert; read-only + audit, Telegram only on a genuine crossing
@@ -5269,6 +5274,49 @@ async def _theme_resilience_weekly_job():
     logger.info(f"theme resilience weekly capture: {out}")
 
 
+async def _ecosystem_discovery_job():
+    """#471 — ADR 0032 Phase 3 weekly ecosystem auto-discovery (Sunday 09:30 ET,
+    after the 08:00 / 08:45 / 09:00 Sunday jobs so the alert lands in the same
+    operator reading window; 48h grace ⇒ Tuesday 09:30 ET promotion, spanning the
+    Mon + Tue briefs the ADR intends). Clusters the E-UNASSIGNED themes; a cluster
+    seen twice ≥7d apart and ≥14d old gets ONE Sonnet proposal → `pending` + the
+    veto alert. Writes the `ecosystem_discovery_ran` heartbeat on EVERY run (idle
+    included — G8: the substrate is ~1 theme today, so idle is the expected early
+    reading and must still be visible). Theme STRUCTURE only (THE LINE): touches
+    mi_ecosystem_proposals / mi_theme_ecosystems / mi_audit_log / Telegram and
+    nothing that grades, admits, sizes or exits. Returns None on purpose —
+    audit_wrap reads an int as rows_written and would arm the empty-result
+    invariant against a lane that idles for weeks by design."""
+    from agents.market_intelligence.ecosystem_discovery import run_ecosystem_discovery
+    out = await run_ecosystem_discovery()
+    logger.info(f"ecosystem discovery: {out}")
+
+
+async def _ecosystem_grace_sweep_job():
+    """#471 — hourly grace sweep: every `pending` ecosystem proposal whose 48h
+    grace has ended and was not vetoed goes LIVE (dynamic bucket row + member
+    themes remapped E-UNASSIGNED → E-<new> + Telegram confirm + audit). The claim
+    is a status-guarded UPDATE, so this and the boot catch-up sweep can both run
+    and promote once. Returns None (see _ecosystem_discovery_job)."""
+    from agents.market_intelligence.ecosystem_discovery import sweep_ecosystem_grace
+    out = await sweep_ecosystem_grace()
+    if out.get("promoted") or out.get("errors"):
+        logger.info(f"ecosystem grace sweep: {out}")
+
+
+async def _ecosystem_grace_sweep_boot():
+    """Downtime catch-up: a container that was down across a grace-end promotes
+    on boot instead of waiting up to an hour. Own try/except — a boot task must
+    never take the process down."""
+    try:
+        from agents.market_intelligence.ecosystem_discovery import sweep_ecosystem_grace
+        out = await sweep_ecosystem_grace()
+        if out.get("promoted") or out.get("errors"):
+            logger.info(f"ecosystem grace sweep (boot): {out}")
+    except Exception as e:
+        logger.warning(f"ecosystem grace sweep (boot) failed: {e}")
+
+
 async def _chart_axis_shadow_weekly_digest_job():
     """#343 — Sunday push of the week's new chart-axis SHADOW deltas for OPERATOR labeling. RE-RENDERS
     each delta's chart from the audit row's ticker+alert_date (render is deterministic — no saved-PNG
@@ -6025,6 +6073,12 @@ def start_scheduler() -> AsyncIOScheduler:
     from agents.market_intelligence.model_resolution import record_boot_resolution
     asyncio.create_task(record_boot_resolution())
 
+    # #471 ADR 0032 Phase 3 — grace-sweep downtime catch-up (intelligence role only;
+    # the execution container shares the DB and would otherwise double-run it).
+    from agents.market_intelligence.constants import runs_intelligence_jobs
+    if runs_intelligence_jobs():
+        asyncio.create_task(_ecosystem_grace_sweep_boot())
+
     # Data pull: 5:00 PM ET (30 min after tape settles), Mon-Fri.
     # expected_min_rows recalibrated 5000→3500 (#263, 2026-06-10), then
     # 3500→2200 (2026-07-02): #286 (dd4eeb4, 6/15, operator-signed) added the
@@ -6510,6 +6564,27 @@ def start_scheduler() -> AsyncIOScheduler:
         id="theme_resilience_weekly",
         replace_existing=True,
         misfire_grace_time=3600,
+    )
+
+    # #471 ADR 0032 Phase 3 — weekly ecosystem auto-discovery: Sunday 09:30 ET
+    # (design §2.1: after the Sunday-morning cluster, alert lands Sunday morning
+    # PT, 48h grace ⇒ Tuesday 09:30 ET promotion spanning the Mon + Tue briefs).
+    # Theme STRUCTURE only — see _ecosystem_discovery_job's docstring.
+    _scheduler.add_job(
+        audit_wrap(_ecosystem_discovery_job, "ecosystem_discovery"),
+        CronTrigger(day_of_week="sun", hour=9, minute=30, timezone="America/New_York"),
+        id="ecosystem_discovery",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
+    # #471 — hourly grace sweep at :12 (cheap indexed SELECT; idempotent claim).
+    _scheduler.add_job(
+        audit_wrap(_ecosystem_grace_sweep_job, "ecosystem_grace_sweep"),
+        CronTrigger(minute=12, timezone="America/New_York"),
+        id="ecosystem_grace_sweep",
+        replace_existing=True,
+        misfire_grace_time=1800,
     )
 
     # Friday watchlist: Friday 6:00 PM ET — curated chart-review aggregator
