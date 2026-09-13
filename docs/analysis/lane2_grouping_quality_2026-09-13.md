@@ -55,15 +55,37 @@ other three: **51, 13 and 12 days.**
 
 ## The ruling this feeds — leave / widen / retire
 
-**RETIRE is wrong on this evidence.** Three catches at 12–51 days early is precisely the rare-event
-payoff the lane was built for, and the entry says so itself: *"Lane-2 is a RARE-EVENT detector by
-design... low output is EXPECTED and a low proposal count is not evidence of failure."*
+⛔ **CORRECTION, 2026-09-13, after he caught it: my first recommendation ("leave", on the grounds
+that widening buys ~2 days) was arithmetically wrong and the conclusion did not follow from this
+table.** His words: *"your data doesn't agree with your conclusion, e.g. 51 days for miners, how is
+that buying 2 days."* He is right.
 
-**WIDEN is aimed at the wrong thing if aimed at the decline days.** Both class-B misses cost one day
-each — widening the model's willingness to propose buys **two days across three months**. The 15
-class-A days cannot be helped at all: they had no pair.
+**The error:** I defined "widen" as *act on the days it declined* and so computed the benefit over
+class B only — 2 misses × 1 day = 2 days. But **six of the eight misses are class C**: days Lane-2
+ran, proposed something, and missed a DIFFERENT real group. Widening breadth — how many groups it
+considers and proposes per day — targets exactly those.
 
-**LEAVE is what the evidence supports**, with one caveat below.
+**The prize, recomputed over all 8 misses:**
+
+| class | misses | days of earliness available | lags |
+|---|---|---|---|
+| B — declined that day | 2 | **2 days** | 1, 1 |
+| C — proposed something else | 6 | **79 days** | 51, 13, 12, 1, 1, 1 |
+| **total** | **8** | **81 days** | |
+
+**So the upside is 81 days across three months, 76 of it in three catches — not 2 days.** My figure
+described one narrow reading of "widen" and I then used it to rule out the whole option.
+
+**RETIRE remains wrong** — 12-to-51-day catches are the rare-event payoff the entry says this lane
+exists for.
+
+**LEAVE is no longer supported by this table.** An 81-day prize is worth answering properly.
+
+**The honest recommendation is now: INSTRUMENT, THEN DECIDE.** The run audit rows carry an **empty
+`detail`**, so what Lane-2 actually considered each day is not recorded. Without that, *"would a
+wider Lane-2 have caught HYMC/AUGO on 06-15?"* is unanswerable — and it is the only question that
+matters here. Log the per-day candidate inputs, re-run this review after ~20 run-days, and the
+widen/leave call is then made on evidence instead of on a guess about breadth.
 
 ## What this does NOT answer
 

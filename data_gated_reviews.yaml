@@ -10114,9 +10114,16 @@ reviews:
     # MEDIAN LAG 1 DAY — 5 of 8 were caught by another lane the next day, so they cost a day, not
     # a theme. The whole value is the other three: 51d (HYMC/AUGO -> Precious Metals Miners
     # Rotation), 13d (EME/PWR), 12d (BLZE/FLNC/MPWR). All 15 'nothing qualified' days had FEWER
-    # THAN TWO EP alerts — nothing to find, not failures. REC: LEAVE. Retire is wrong (12-51d
-    # catches are the rare-event payoff the lane exists for); widening the decline days buys ~2
-    # days in 3 months. Workings: docs/analysis/lane2_grouping_quality_2026-09-13.md
+    # THAN TWO EP alerts — nothing to find, not failures.
+    # ⛔ FIRST REC WAS WRONG AND HE CAUGHT IT: I said LEAVE because "widening buys ~2 days". That
+    # counted class B (declined days) only — 2 misses x 1 day. But SIX of the eight misses are
+    # class C: Lane-2 ran, proposed something, and missed a DIFFERENT real group. Widening BREADTH
+    # targets those. Recomputed: class B 2 days, class C 79 days (51+13+12+1+1+1) = 81 DAYS of
+    # earliness available, not 2. Retire stays wrong; LEAVE is no longer supported.
+    # REC NOW: INSTRUMENT THEN DECIDE — the run rows carry an EMPTY detail, so what Lane-2 actually
+    # considered each day is unrecorded and "would a wider Lane-2 have caught HYMC/AUGO?" cannot be
+    # answered. Log the per-day candidates, re-run after ~20 run-days, then rule.
+    # Workings: docs/analysis/lane2_grouping_quality_2026-09-13.md
     # (was) UN-DEFERRED 2026-09-13 — THIS REVIEW'S OWN PULL-FORWARD TRIGGER HAS FIRED.
     # Its deferral reads "PULLS FORWARD if Lane-2 proposals start naming stocks EP is actually
     # trading." Measured on prod 2026-09-13 over 60 days: Lane-2 named 59 distinct tickers, EP
