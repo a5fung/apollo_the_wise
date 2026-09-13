@@ -2471,6 +2471,33 @@ async def initialize_schema() -> None:
                 --                            methodology: 9M = watchlist trigger)
                 -- A ticker admitted by multiple patterns captures all tags.
                 universe_sources            TEXT[] DEFAULT '{}',
+                -- #354 Sunday shadow sub-piece (2026-09-13): records WHEN a
+                -- TRIGGERED breakout later closed back under the base it broke
+                -- out of, and HOW FAR it fell — observational only, changes no
+                -- entry/exit/sizing/stage/alert. All three NULL until a
+                -- breakout is on record for the ticker's CURRENT pivot; see
+                -- flag_detector.py's failure-telemetry block (right after the
+                -- pivot anchor) + db.get_flag_failure_carry for the frozen-
+                -- anchor rationale (a daily-recomputed base_high/base_low
+                -- would self-poison the same way #354's undercut→WATCH_UR
+                -- probe found for base_low_close).
+                --   failed_at               — NULL: never triggered, or still
+                --                             holding above the level it broke
+                --                             out of. Else the first scan_date
+                --                             its close gave that level back.
+                --   low_after_breakout       — NULL: no breakout on record yet.
+                --                             Else the running minimum close
+                --                             since the breakout (tracked every
+                --                             day the anchor exists, not only
+                --                             after failed_at fires).
+                --   undercut_after_breakout  — NULL: no breakout on record yet.
+                --                             FALSE: breakout on record, has not
+                --                             (yet, as of this scan) closed
+                --                             below the base_low it broke out
+                --                             of. TRUE: it has, at least once.
+                failed_at                   DATE,
+                low_after_breakout          FLOAT,
+                undercut_after_breakout     BOOLEAN,
                 created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 UNIQUE (ticker, scan_date)
             );
@@ -2504,6 +2531,11 @@ async def initialize_schema() -> None:
             -- organic patterns wouldn't have caught?"
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS
                 universe_sources TEXT[] DEFAULT '{}';
+            -- #354 Sunday shadow sub-piece (2026-09-13) — see CREATE TABLE
+            -- comment above for the NULL semantics of each column.
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS failed_at DATE;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS low_after_breakout FLOAT;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS undercut_after_breakout BOOLEAN;
 
             -- Intraday flag-break detections (#94, ADR 0005, 2026-05-23).
             -- EOD flag_candidates is the IDENTIFICATION layer (which stocks
@@ -7447,10 +7479,12 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                  rs_rank, rs_composite, sector,
                  stage, reason, score, held_from_stage,
                  fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct,
-                 rmv_5d, rmv_15d, universe_sources)
+                 rmv_5d, rmv_15d, universe_sources,
+                 failed_at, low_after_breakout, undercut_after_breakout)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
                     $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
-                    $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
+                    $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
+                    $34, $35, $36)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 pivot_high_date         = EXCLUDED.pivot_high_date,
                 pivot_high_price        = EXCLUDED.pivot_high_price,
@@ -7482,7 +7516,10 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                 atr14_pct               = EXCLUDED.atr14_pct,
                 rmv_5d                  = EXCLUDED.rmv_5d,
                 rmv_15d                 = EXCLUDED.rmv_15d,
-                universe_sources        = EXCLUDED.universe_sources
+                universe_sources        = EXCLUDED.universe_sources,
+                failed_at               = EXCLUDED.failed_at,
+                low_after_breakout      = EXCLUDED.low_after_breakout,
+                undercut_after_breakout = EXCLUDED.undercut_after_breakout
         """,
             record["ticker"],
             scan_date,
@@ -7517,6 +7554,9 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             record.get("rmv_5d"),
             record.get("rmv_15d"),
             record.get("universe_sources") or [],
+            record.get("failed_at"),
+            record.get("low_after_breakout"),
+            record.get("undercut_after_breakout"),
         )
 
 
@@ -7697,6 +7737,83 @@ async def get_yesterday_flag_pivots(
             ORDER BY ticker, scan_date DESC
         """, scan_date)
     return {r["ticker"]: (r["pivot_high_date"], float(r["pivot_high_price"])) for r in rows}
+
+
+async def get_flag_failure_carry(
+    scan_date: "str | date", lookback_days: int = 5,
+) -> dict[str, dict[str, Any]]:
+    """Per-ticker carry-forward for the #354 Sunday failure-telemetry columns
+    (failed_at / low_after_breakout / undercut_after_breakout — see the
+    CREATE TABLE comment on mi_flag_candidates for their NULL semantics).
+
+    Two things travel together, both scoped to the ticker's CURRENT base
+    (matched on `pivot_high_date`, mirroring get_yesterday_flag_pivots' own
+    5-day lookback so a weekend/holiday gap doesn't drop the state):
+      - the already-recorded failed_at/low_after_breakout/undercut_after_breakout
+        from the ticker's most recent prior row;
+      - the FROZEN breakout anchor (anchor_base_high/anchor_base_low) — the
+        base_high/base_low from the EARLIEST prior row under this same pivot
+        where breakout_close is set (the day the breakout actually fired).
+        Freezing it there — rather than reading TODAY's freshly-walked
+        base_high/base_low — is deliberate: the breakout day's own high/close
+        enters the base window the day after it stops being "today", which
+        would ratchet the threshold up to chase the price down (the same
+        self-poisoning the #354 undercut→WATCH_UR probe found for
+        base_low_close: a minimal-diff patch fired 'reclaim' at a median of
+        1 day because the running min already included the undercut close).
+
+    Read-only metadata query against this same table — NOT a second
+    per-ticker price-history fetch. Returns {} if no prior rows; a ticker
+    with no breakout on record yet (or a fresh pivot with no matching
+    history) comes back with anchor_base_high/anchor_base_low = None.
+    """
+    pool = await get_pool()
+    if isinstance(scan_date, str):
+        scan_date = date.fromisoformat(scan_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH latest AS (
+                SELECT DISTINCT ON (ticker)
+                    ticker, pivot_high_date, failed_at,
+                    low_after_breakout, undercut_after_breakout
+                FROM mi_flag_candidates
+                WHERE scan_date < $1
+                  AND scan_date >= $1 - ($2::int || ' days')::interval
+                  AND pivot_high_date IS NOT NULL
+                ORDER BY ticker, scan_date DESC
+            ),
+            anchor AS (
+                SELECT DISTINCT ON (c.ticker)
+                    c.ticker, c.base_high AS anchor_base_high, c.base_low AS anchor_base_low
+                FROM mi_flag_candidates c
+                JOIN latest l ON l.ticker = c.ticker AND l.pivot_high_date = c.pivot_high_date
+                WHERE c.breakout_close IS NOT NULL
+                  AND c.scan_date < $1
+                ORDER BY c.ticker, c.scan_date ASC
+            )
+            SELECT latest.ticker, latest.pivot_high_date, latest.failed_at,
+                   latest.low_after_breakout, latest.undercut_after_breakout,
+                   anchor.anchor_base_high, anchor.anchor_base_low
+            FROM latest
+            LEFT JOIN anchor ON anchor.ticker = latest.ticker
+        """, scan_date, lookback_days)
+    return {
+        r["ticker"]: {
+            "pivot_high_date": r["pivot_high_date"],
+            "failed_at": r["failed_at"],
+            "low_after_breakout": (
+                float(r["low_after_breakout"]) if r["low_after_breakout"] is not None else None
+            ),
+            "undercut_after_breakout": r["undercut_after_breakout"],
+            "anchor_base_high": (
+                float(r["anchor_base_high"]) if r["anchor_base_high"] is not None else None
+            ),
+            "anchor_base_low": (
+                float(r["anchor_base_low"]) if r["anchor_base_low"] is not None else None
+            ),
+        }
+        for r in rows
+    }
 
 
 async def get_recent_flag_stages(scan_date: "str | date", lookback_days: int = 5) -> dict[str, list[str]]:

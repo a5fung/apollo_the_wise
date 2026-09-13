@@ -13,6 +13,13 @@ Five stages emitted per (ticker, scan_date):
   * COILED       — range AND volume contracted + small bodies + holding MAs.
   * TRIGGERED    — broke base_high on volume, was COILED-eligible recently.
   * INVALIDATED  — lost base_low / SMA20 / aged out (>25 sessions).
+
+`failed_at` / `low_after_breakout` / `undercut_after_breakout` (#354 Sunday
+shadow sub-piece, 2026-09-13): observational-only columns recording WHEN a
+TRIGGERED breakout later closed back under the base it broke out of, and HOW
+FAR it fell — set inside `compute_flag_metrics`, right after the pivot
+anchor. They never affect `stage`. See the CREATE TABLE comment on
+mi_flag_candidates (db.py) for the NULL semantics of each.
 """
 from __future__ import annotations
 
@@ -759,6 +766,7 @@ def compute_flag_metrics(
     recent_stages: Optional[list[str]] = None,
     prior_pivot_date: Optional[date] = None,
     prior_pivot_high: Optional[float] = None,
+    prior_failure: Optional[dict] = None,
 ) -> dict[str, Any]:
     """Score the LAST row in `rows` as a continuation-flag candidate.
 
@@ -769,6 +777,12 @@ def compute_flag_metrics(
     `recent_stages` = stages of the last 5 scan_dates (most recent last),
     used for TRIGGERED gate ("was COILED-eligible in last 5 days"). Pass
     empty list during fresh replay.
+
+    `prior_failure` = db.get_flag_failure_carry()'s per-ticker dict (pivot_high_date,
+    failed_at, low_after_breakout, undercut_after_breakout, anchor_base_high,
+    anchor_base_low) — carries the #354 Sunday failure-telemetry state and the
+    FROZEN breakout anchor across days. Pass None during fresh replay (the three
+    output columns then stay None, same as "no breakout on record").
 
     Returns a dict with every metric + final `stage`. Hysteresis applied at end:
     a single-day downgrade vs `yesterday_stage` is held one day (except
@@ -810,6 +824,15 @@ def compute_flag_metrics(
         "stage": "unqualified",
         "reason": None,
         "held_from_stage": None,
+        # #354 Sunday shadow sub-piece (2026-09-13) — see the CREATE TABLE
+        # comment on mi_flag_candidates (db.py) for NULL semantics. Set below,
+        # right after the pivot anchor, so none of the early-returns further
+        # down this function can silently null out an already-recorded
+        # failure (the liquidity-floor rejects ABOVE this point are the one
+        # gap — see the block's own comment).
+        "failed_at": None,
+        "low_after_breakout": None,
+        "undercut_after_breakout": None,
     }
 
     if not rows:
@@ -859,6 +882,54 @@ def compute_flag_metrics(
     pivot_close = float(rows[pivot_idx]["close"])
     base["pivot_high_date"]  = rows[pivot_idx]["trade_date"]
     base["pivot_high_price"] = pivot_high
+
+    # ── Failure telemetry (#354 Sunday shadow sub-piece, 2026-09-13) ──────
+    # Records WHEN a TRIGGERED breakout later closed back under the base it
+    # broke out of, and HOW FAR it fell — purely observational, never
+    # changes `stage`, gates, entries, exits, sizing, or anything reaching
+    # the operator. Placed here (right after the pivot anchor, before every
+    # later early-return in this function) so a same-cycle reject further
+    # down — the flagpole guards, the flag-depth gate, an INVALIDATED
+    # return — can't silently null out an already-recorded failure. The one
+    # gap: the liquidity-floor checks ABOVE this point still skip it on a
+    # reject day; that's a transient, self-healing gap (get_flag_failure_carry's
+    # 5-day lookback bridges it, same as the pivot/stage carry-forward
+    # already does for weekend gaps), not a permanent loss.
+    #
+    # `prior_failure` (db.get_flag_failure_carry) is matched on pivot_high_date
+    # so a brand-new base never inherits a prior, unrelated cycle's failure.
+    # The anchor (anchor_base_high/anchor_base_low) it supplies is FROZEN on
+    # the day the breakout actually fired — comparing against TODAY's
+    # freshly-walked base_high/base_low instead would self-poison exactly
+    # like the #354 undercut→WATCH_UR probe found for base_low_close: the
+    # breakout day's own high/close enters the base window the day after it
+    # stops being "today", ratcheting the threshold up to chase the price
+    # down (a "failure" would then fire almost immediately, not on a real
+    # reversal). See get_flag_failure_carry's docstring for the query.
+    pf = (
+        prior_failure
+        if prior_failure and prior_failure.get("pivot_high_date") == base["pivot_high_date"]
+        else {}
+    )
+    base["failed_at"] = pf.get("failed_at")
+    base["low_after_breakout"] = pf.get("low_after_breakout")
+    base["undercut_after_breakout"] = pf.get("undercut_after_breakout")
+    anchor_high = pf.get("anchor_base_high")
+    anchor_low = pf.get("anchor_base_low")
+    if anchor_high is not None:
+        # Track the running low every day the anchor exists, not only once
+        # failed_at has fired — "how far did it pull back at its worst"
+        # is meaningful before a hard failure too.
+        base["low_after_breakout"] = (
+            close_today if base["low_after_breakout"] is None
+            else min(base["low_after_breakout"], close_today)
+        )
+        if base["failed_at"] is None and close_today < anchor_high:
+            base["failed_at"] = base["scan_date"]
+        if base["undercut_after_breakout"] is None:
+            base["undercut_after_breakout"] = False
+        if anchor_low is not None and close_today < anchor_low:
+            base["undercut_after_breakout"] = True
 
     # ── Base window: strictly between pivot and today ────────────────────
     base_rows = rows[pivot_idx + 1 : today_idx]   # excludes pivot AND today
@@ -1208,12 +1279,13 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         + " ".join(f"{src}={n}" for src, n in _source_counts.most_common())
     )
 
-    yesterday_map, recent_map, rs_map, sector_map, pivot_map = await asyncio.gather(
+    yesterday_map, recent_map, rs_map, sector_map, pivot_map, failure_map = await asyncio.gather(
         db.get_yesterday_flag_stages(scan_date),
         db.get_recent_flag_stages(scan_date, lookback_days=_COILED_LOOKBACK_DAYS),
         db.get_rs_for_tickers(scan_date, universe),
         db.get_sectors_batch(universe),
         db.get_yesterday_flag_pivots(scan_date),
+        db.get_flag_failure_carry(scan_date),
     )
 
     logger.info(f"flag_scan {scan_date}: scoring {len(universe)} candidates")
@@ -1237,6 +1309,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     recent_stages=recent_map.get(ticker, []),
                     prior_pivot_date=prior_pivot[0] if prior_pivot else None,
                     prior_pivot_high=prior_pivot[1] if prior_pivot else None,
+                    prior_failure=failure_map.get(ticker),
                 )
                 metrics["scan_date"] = scan_date
                 # P7.2: record universe-pattern provenance for telemetry
