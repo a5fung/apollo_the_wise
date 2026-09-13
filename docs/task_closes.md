@@ -572,3 +572,49 @@ the `def _src(): return open("agents/...").read()` helper pattern present in at 
 files. Hand-verified on `tests/test_486_bounded_read_is_nightly.py:34` — `_src()` opens
 `scheduler.py` and `test_the_slot_avoids_both_deploy_windows` regexes it, a genuine pin my scan did
 not see. The baseline is set to the measured 444, NOT force-fit to the number in the task text.
+
+## #516 — the M&A filter that wrongly suppressed material movers (2026-09-13)
+
+BAR: false-positive rate on material movers measured before/after, WEN's repeat misfire explained,
+and `unknown` match-path share reduced or justified.
+
+EVIDENCE: all three clauses, the last two settled today — measured on prod, not inferred.
+
+(1) FALSE-POSITIVE RATE, measured 2026-08-08 (`docs/analysis/516_ma_filter_false_positives_2026-08-08.md`):
+per suppression path over 60 days, screened on pin-vs-keeps-running. `claude_classifier` 0 of 26 ran
+>=10%; `polygon_news` 5 of 18 (worst +154.6%); `keyword_in_text_1` 2 of 11; `keyword_in_text_0` 2 of 8.
+The LLM path is clean; the keyword/news paths account for every runner. His own operator judgement
+supplied the labels (3 false positives, 1 correct) — CHANGE_PROCESS r3/r4 reserves that call to him
+and #514 delivered it.
+
+(2) WEN'S REPEAT MISFIRE — EXPLAINED, and this line's own account of it was WRONG. The line said
+"the #89 dedup did not stop it repeating for two months." It did exactly its job. The dedup key is
+(ticker, detector_tag) per TRADING DAY and it shipped 2026-05-23. Measured on prod today, WEN's
+fires by day and detector:
+
+    2026-05-12  (no detector tag)  32 fires   <- PREDATES the dedup by 11 days
+    2026-06-26  9m_intraday         1
+    2026-06-29  9m_intraday         1
+    2026-06-29  9m_sugar_baby       1         <- different detector, same day: correctly allowed
+    2026-07-01  9m_intraday         1
+    2026-07-01  9m_sugar_baby       1
+
+After the ship date there is NEVER more than one fire per detector per day. The 32-fire burst is
+pre-dedup and also pre-dates the summary contract that standardised the `(detector_tag)` format,
+which is why those rows carry no tag. So WEN's "repeat" is not a dedup failure at all: it is the
+same name being a false positive on FIVE SEPARATE DAYS via `polygon_news` — the path clause (1)
+already measured as 2-of-3 wrong on material movers. The defect is filter accuracy, not logging.
+
+(3) `unknown` MATCH-PATH SHARE — JUSTIFIED, because there is no unknown share. `ma_filter.py` emits
+exactly four literals (`title`:626, `description+insights`:692, `claude_classifier`:737,
+`keyword_in_text_{idx}`:777). All 946 `mna_filter_fired` rows name their path in the SUMMARY — 100%,
+both eras. The structured `detail.match_path` field went from 5.4% populated (52 of 961) to 100%
+(5 of 5) after the DoD-3 fix. ZERO rows carry an unrecognised value. The task's founding premise —
+"70% carry match_path='unknown'" — was reading the narrow field instead of the summary.
+
+⚠ TWO MEASUREMENT ARTIFACTS HIT WHILE CLOSING THIS, both of which looked like findings: the era
+boundary was wrong by three weeks (the `claude_classifier` stamp shipped 2026-08-30, not 08-08, so
+splitting at 08-08 makes clause 3 look unmet), and a naive value regex misses `description+insights`
+(the `+`) while a ` via <path> ` match with a trailing space misses the 452 rows that END with the
+path, reading 52% coverage instead of 100%. Both were caught by checking, not by the numbers looking
+wrong.

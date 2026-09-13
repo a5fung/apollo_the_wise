@@ -109,3 +109,61 @@ sessions → 68%, 15 → 81%.
   discovery-cap victim and I should not have cited it. **XHLD is not filtered and stands.**
 - **A judge's claim that strong clusters convert *less* (23% vs 54%) is not supported** by the
   source document, which says clusters convert at 48–54% and the plan's bar holds. Dropped.
+
+---
+
+# The birth gate — why it is still `observe`, and what flipping it would do
+
+## Why it is still observe: it is UN-RUN, not blocked
+
+The `observe → on` flip requires a forward-evidence review
+(`theme_birth_gate_observe_calibration`) plus CHANGE_PROCESS sign-off. **That review's evidence bar
+was met on 2026-08-07 — five weeks ago.** Its predicate (distinct clean `theme_date`s since
+2026-07-29, threshold **8**) now reads **32**.
+
+It never surfaced as something waiting on him because it carries
+`earliest_review_date: 2026-10-01`, annotated in the file as "registration day = non-blocking" —
+but that date is exactly what keeps it out of `operator_asks.py`. **Nothing is blocked. Nobody ran it.**
+
+## What flipping it would do — 168 recorded verdicts over 45 days in observe
+
+| verdict | n | share | avg member RS | what happens at `on` |
+|---|---|---|---|---|
+| **join** | 86 | **51%** | 63.0 | folds into an EXISTING theme instead of creating a new one |
+| **await_second_sighting** | 53 | **32%** | 68.5 | birth is delayed to a later day |
+| **birth** | 26 | 15% | 70.6 | a genuinely new theme, as today |
+| **held_floor** | 3 | 2% | 29.3 | blocked outright — genuinely weak |
+
+**Expected effect: fewer, fuller themes.** Half of today's new births would become members of themes
+that already exist — which is the direct remedy for *65% of themes hold five or fewer members* and
+*20 themes sit at 2 members, below the engine's own `_PROMOTE_MIN_MEMBERS = 3`*. Almost nothing is
+rejected outright (3 of 168).
+
+## ⚠ AND IT CUTS AGAINST STEP 2 — measured, recorded 2026-08-11, not discovered now
+
+**The gate moves theme birth LATER by design** — a first-sighting cohort must wait for a second
+sighting. The measured case is the worst possible one for his stated goals:
+
+> The defense theme holding **{PLTR, TSAT, VOYG, AMRC}** — created that evening **BY those four EP
+> alerts** — carried an observe verdict of `awaiting-2nd-sighting`. **At `on` it would not have been
+> born that night at all.**
+> — `docs/analysis/theme_flow_and_the_0931_seam_2026-08-11.md`
+
+**PLTR is one of his seven labelled real EPs.** And a theme created by EP gap-ups *is* goal 2 — the
+reflexive lane he named. So:
+
+| | step 1 — right themes | step 2 — early enough |
+|---|---|---|
+| flip the gate `on` | **helps** — 51% consolidate, churn falls | **hurts** — 32% of births delayed by a day or more |
+
+**That is the real trade, and it is his.** It is not a bug in the gate; it was operator-ruled on
+2026-07-27 for a real reason (churn). The point is that the ruling should be made knowing the
+trade, which the file itself says.
+
+## What this does NOT answer
+
+- **Whether the trade is worth taking.** The delay is measured in verdicts, not in matured themes —
+  nobody has yet checked how many `await_second_sighting` cohorts died vs merely birthed a day later.
+  That check is the review's own clause (c) and it has never been run.
+- **Whether a middle setting exists** — e.g. join-arm on, wait-arm off. The code has three modes and
+  no per-arm control; adding one is a build, not a toggle.
