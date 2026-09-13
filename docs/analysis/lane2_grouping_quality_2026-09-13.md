@@ -305,152 +305,133 @@ move a detection threshold.
 
 ---
 
-# ⚠️ RECOMMENDATION — REWRITTEN 2026-09-13 EVENING. The first version was wrong.
+# RECOMMENDATION — third version. Two earlier ones were withdrawn; the reasons matter.
 
-**Superseded:** *"Do not move the bar this week. Decide it on Friday 2026-09-18, on a rule."*
-**Now:** **lower the promote floor to 2 while the birth gate is `on`.** His call — a detection
-criterion, so CHANGE_PROCESS + backtest + sign-off.
+**Answer: do not lower `_PROMOTE_MIN_MEMBERS`. It is not the lever, and the measured benefit is
+two themes in four months.** The lever is the birth gate's join arm — which **does not join.**
 
-An advisor review of the recommendation caught that **every number under it was measured against a
-rule the flip had already replaced four hours earlier.** The corrections, in order of how much they
-moved the answer.
+Two advisor reviews took this apart. Both were right, and the second one moved the conclusion off
+the bar entirely.
 
-## Correction 1 — the "+258 candidates, board doubles" figure is dead
+## Withdrawn #1 — "decide it Friday on a rule"
 
-The impact script imported the STATIC `db.AUTO_PROMOTE_THEME_SOURCES`. The engine reads
-`db.resolve_auto_promote_sources()`, which at gate mode `on` returns the set **minus `shadow_v2`**
-(`db.py:9157`). Confirmed live in `apollo-market`:
-
-```
-gate mode        : on
-static frozenset : ['narrative_cogap', 'rs_slope_synthesis', 'shadow_v2']
-RESOLVED (live)  : ['narrative_cogap', 'rs_slope_synthesis']
-```
-
-`shadow_v2` is not merely de-allowlisted — its whole pass is retired at `on`, and its a/a2
-selectors were **ported into Lane-1 discovery** first (`theme_engine.py:7428`), which births at
-`NEW_THEME_MIN_STOCKS = 2`. So those cohorts were never going to hit the promote floor at all; they
-already flow through a **2-member** floor, into the same gate.
-
-**Re-measured on the live allowlist, over the engine's real 3-day promote window, 35 nights:**
-
-| | cohort-nights eligible | per night |
-|---|---|---|
-| bar = 3 (today) | 65 | 1.9 |
-| bar = 2 | 84 | 2.4 |
-| **delta** | **+19 (+29%)** | **+0.5** |
-
-| source | extra admitted at bar=2 | already eligible at bar=3 |
-|---|---|---|
-| `narrative_cogap` (Lane 2) | **19** | 21 |
-| `rs_slope_synthesis` | **0** | 44 |
-
-**The bar is now a Lane-2-only bar.** `rs_slope_synthesis` never produces a 2-member cohort. The
-decision affects one lane and about half a cohort a night — not 258 candidates, not a doubled board.
-
-## Correction 2 — the Friday rule could not have produced a reading
-
-It proposed measuring *"the gated join rate on new 2-member candidates, Mon–Fri."* But
-`theme_engine.py:2447` filters on the member count **before** the gate loop runs:
+The rule was *"gated join rate on new 2-member candidates, Mon–Fri."* `theme_engine.py:2447`
+filters on member count **before** the gate loop:
 
 ```python
 cohorts = [c for c in cands if len(c.get("tickers") or []) >= _PROMOTE_MIN_MEMBERS]
 ```
 
-At bar 3, **zero** 2-member cohorts reach a gate verdict — this week, last week, or ever. The rule
-would have returned an empty numerator every night and I would have read a structural zero as
-evidence. The 51% join figure it leaned on came from Lane-1 births and ≥3-member promotes: a
-different population entirely.
+At bar 3, **zero** 2-member cohorts ever receive a gate verdict. The rule would have returned a
+structural zero every night and I would have read it as a finding. A deferral dressed as a rule.
 
-⚠ **This is the week's recurring defect class again** — a check that cannot fire reads exactly like
-one that passes. It is the third instance in seven days.
+## Withdrawn #2 — "lower the floor to 2 while the gate is on"
 
-## Correction 3 — the 60% maturity figure cannot speak to this decision
+Built on two numbers that did not survive checking.
 
-Split by source, the ≤2-member band is **entirely** Lane-1 (`source='live'`). Not one
-`shadow_promoted` theme was ever born at ≤2 — the bar makes that impossible by construction.
+**(a) The impact figure was measured against a replaced rule.** The script imported the static
+`db.AUTO_PROMOTE_THEME_SOURCES`; the engine reads `resolve_auto_promote_sources()`, which at gate
+mode `on` drops `shadow_v2` (`db.py:9157`). Live read: `{narrative_cogap, rs_slope_synthesis}`.
+Re-measured on the live allowlist over the real 3-day window, 35 nights: bar 3 → 65 cohort-nights,
+bar 2 → 84. **+19, every one of them `narrative_cogap`; `rs_slope_synthesis` contributes zero.**
 
-| source | born 1–2 | born 3–4 | born 5+ |
-|---|---|---|---|
-| `live` (Lane-1 discovery) | **48%** (68/142) | 34% (30/88) | 36% (35/98) |
-| `shadow_promoted` | **— none exist —** | 21% (33/159) | 14% (9/65) |
+**(b) Of those, six would be suppressed anyway.** Running the REAL `find_join_target` against the
+board as it stood each night, for all eight 2-member Lane-2 cohorts of the last 120 days:
 
-So the number says nothing about how a 2-member promote would mature. **Withdrawn from the
-decision.** What survives is weaker and points the same way: in the one lane that *does* allow
-2-member births, they mature **better** than larger ones (48% vs 34%/36%). Still uncontrolled —
-"Mainstream" is age-gated, so it is partly a survival measure.
-
-## What actually decides it — the bar is a permanent filter, not a delay
-
-Every `narrative_cogap` cohort first seen at exactly 2 members, last 120 days:
-
-| first seen | cohort | outcome |
+| first seen | cohort | at bar 2, with the gate on |
 |---|---|---|
-| 2026-06-25 | AI memory and infrastructure demand surge — MU, SNX | never reached 3, never a theme |
-| 2026-07-20 | **Bitcoin miners pivoting to AI data centers — HUT, IREN** | never reached 3, never a theme |
-| 2026-07-30 | AI-Driven Power & Grid Infrastructure Boom — EME, PWR | reached 3 in **13 days** |
-| 2026-07-31 | Semiconductor test recovery AI-driven demand — COHU, MPWR | never reached 3, never a theme |
-| 2026-08-04 | Semiconductor Equipment Cycle Recovery — AEIS, ZBRA | never reached 3, never a theme |
-| 2026-08-19 | AI-driven biotech/R&D acceleration — TWST, TEM | never reached 3, never a theme |
-| 2026-09-03 | AI data-center power buildout — AGX, SNOW | reached 3 in **1 day** |
-| 2026-09-08 | Bradykinin-mediated angioedema oral therapies — PHVS, ROIV | never reached 3, never a theme |
+| 2026-06-25 | MU, SNX | JOIN → *AI Memory & Storage* (0.50) |
+| 2026-07-20 | HUT, IREN | JOIN → *Bitcoin & Crypto Mining Infrastructure* (**1.00**) |
+| 2026-07-30 | EME, PWR | **new 2-member theme** |
+| 2026-07-31 | COHU, MPWR | JOIN → *AI data center infrastructure buildout* (0.50) |
+| 2026-08-04 | AEIS, ZBRA | **new 2-member theme** |
+| 2026-08-19 | TWST, TEM | JOIN → *Genomics & DNA Sequencing Tools* (0.50) |
+| 2026-09-03 | AGX, SNOW | JOIN → *Cloud Data Storage & Analytics* (0.50) |
+| 2026-09-08 | PHVS, ROIV | JOIN → *Inflammatory Disease & Immunology Biologics* (0.50) |
 
-**6 of 8 never cross.** The bar does not delay them, it deletes them. Only 2 of 8 ever became live
-themes, and one of those waited 13 days.
+**6 of 8 JOIN, 2 of 8 birth.** And a join changes nothing (next section). So lowering the floor
+buys **two 2-member themes in 120 days** — not a case for a detection-criterion change.
 
-## The evidence that these are not noise — a second, independent system named the same pairs
+⚠ **My "the bar deleted his own thesis" headline was wrong.** On 2026-07-20 a live theme already
+held **both** HUT and IREN (*Bitcoin & Crypto Mining Infrastructure*, Nascent, {CIFR, CORZ, HUT,
+IREN, WULF}). Overlap 1.00. Lane 2 was not naming an unseen group — it was naming a **thesis
+shift** on a group already on the board. The members were never missing; the framing was. That is
+the #491 finding again, and this file's own SSoT already names thesis quality as the live lever.
 
-The #651 judge reads EP alert text and names the group it sees. It has no access to Lane 2's
-cohorts, no shared code path, no shared input. Its recurring groups against the blocked list:
+⚠ **And this floor was already measured 33 days ago** — `theme_flow_and_the_0931_seam_2026-08-11.md`
+§11, which read the same population and concluded the floor's cost is *"real but small, and for the
+EP-gap population specifically, unconfirmed."* **That verdict stands.** None of its five discarded
+`narrative_cogap` pairs ever reappeared in a real ≥3-member theme. I did not overturn it; I
+re-derived it and briefly mistook it for a new finding.
 
-| Lane 2, blocked by the bar | #651 judge, independently |
+---
+
+# 🔴 THE ACTUAL FINDING — the join arm does not join
+
+**`join_target` is recorded and never acted on. Nothing in the codebase adds a joined cohort's
+members to the theme it names.**
+
+Every reference to it: the DDL column (`db.py:2020`), the ledger writer (`db.py:9242-9300`), one
+changelog entry (`theme_engine.py:7889`), and two log lines. **No membership write.** The gate's
+effect on a `join` verdict is exactly one line:
+
+```python
+new_themes = _gate_passed          # theme_engine.py:7897 — gated cohorts are dropped
+```
+
+**And the members are orphaned, by ordering.** Step 2b, `_assign_uncovered_to_themes`, runs at
+`:7767` — **before** discovery (`:7790`) and before the gate (`:7844`). It runs once. When the gate
+kills a cohort at 3a.5, the assignment pass has already had its turn that night and declined those
+names — which is *why* they were still uncovered and available to discovery. Nothing downstream
+re-homes them: steps 4/4b/4c dedupe, split and merge **themes**, they never assign tickers.
+
+## What this means for the flip he signed today
+
+| | |
 |---|---|
-| COHU + MPWR, **2026-07-31** | `ai-data-center-semiconductor` — **COHU + MPWR, 2026-07-31** |
-| HUT + IREN, **2026-07-20** | `ai-data-center-infrastructure` — first seen **2026-07-20**, includes **HUT** |
-| AEIS + ZBRA, 2026-08-04 | `ai-data-center-power` — first seen **2026-08-04**, includes **AEIS** |
-| AGX + SNOW, 2026-09-03 | `ai-data-center-power` evidence names **AGX/SNOW/ALAB**, 09-08 |
+| **What the SSoT told him** | *"fewer, fuller themes — ~half of new births fold into existing themes"* |
+| **What the code does** | the birth is cancelled; the named target receives nothing |
+| **So** | **fewer themes, yes. Fuller themes, no.** Existing themes stay exactly as narrow as they were |
+| **And** | the cancelled cohort's members end that night in **no theme at all**, where under `observe` they had one |
 
-The first row is an **exact match**: same two tickers, same day, two mechanisms that share nothing.
-That is the strongest available answer to "are 2-member co-gap cohorts noise?" — twice, a separate
-system looking at different data named the identical group on the identical day.
+**51% of the observe-era verdicts were `join` (86 of 168).** Post-flip every one of those is a
+suppression citing a merge that does not happen. The step-1 defect he named — *65% of 127 themes
+hold ≤5 members, 20 sit at 2* — is untouched by this, and the "join arm is the lever that fixes it"
+claim in #655 is wrong.
 
-**And the second row is his own thesis.** Lane 2 named *"Bitcoin miners pivoting to AI data
-centers"* on **2026-07-20**. He ruled the same thing — miners *"converting into AI infra plays"* —
-on **2026-08-04**, fifteen days later (#491 M2, SSoT `theme_engine.md`). The bar deleted the
-engine's version. IREN now sits in the live *Emerging Bitcoin & AI Cloud Compute Miners* theme that
-is tonight's flagged unruled join.
+⚠ **Also note the join threshold's behaviour at n=2:** `BIRTH_GATE_JOIN_OVERLAP = 0.5` is
+intersection-over-smaller, so a 2-member cohort joins on **one** shared ticker. Six of the eight
+above sit at exactly 0.50 — a single name. That is a loose join to be citing as a merge, and it is
+a second reason not to read those six as "correctly folded."
 
-## The recommendation
+## What stays TRUE about the flip — it is not a mistake, it is over-claimed
 
-**Make the promote floor mode-dependent, exactly as the allowlist already is:** 2 while the birth
-gate is `on`, 3 when it is `observe` or `off`.
+- **The wait arm is real and is the bulk of the benefit.** All 53 `await_second_sighting`
+  candidates were single sightings that never recurred — genuine one-day corpses, correctly not
+  minted.
+- **Suppressing a would-be duplicate is still better than minting it**, which is the fragmentation
+  he wants fixed. The members were already declined by assignment that night either way.
+- **Reversion is one command, instant, no redeploy** — `set_theme_birth_gate_mode('observe')`.
 
-- **Why mode-dependent and not a flat 2:** reverting the gate puts `shadow_v2` back in the
-  allowlist. A flat 2 would then admit its ~250-candidate stream at a 2-member floor with no gate
-  adjudicating it. Tying the floor to the mode makes the change auto-revert with the gate, and it
-  reuses the `resolve_auto_promote_sources` idiom rather than adding a source-specific special case.
-- **Why 2 is the consistent number:** post-flip, Lane-1 discovery already births live themes at 2
-  members, through the same gate. Two floors for the same act — 2 for Lane-1, 3 for promote — had a
-  reason before today: promote was *"THE previously-ungated bypass"* (`theme_engine.py:2498`). The
-  flip closed that bypass. The asymmetry outlived its justification by four hours.
-- **What protects quality now:** the gate, which promote cohorts did not clear before today. Its
-  arms are `join` (fold into an existing theme), `await_second_sighting` (the one-day-corpse
-  filter — all 53 observe-era holds were single sightings that never recurred), `held_floor` and
-  `held_no_rs`. A 2-member cohort admitted at bar=2 is adjudicated, not waved through.
-- **Blast radius:** ~0.5 extra cohort-nights per night, one lane, every one of them gated.
+## The fork — his call
 
-**The backtest CHANGE_PROCESS requires:** replay the promote path over the last N nights with the
-floor at 2 and the gate on, and read the join/birth/hold split. That is the evidence for sign-off,
-and it is the same work the dead Friday rule was going to wait five days to approximate badly.
+| option | what it buys | cost |
+|---|---|---|
+| **A — keep `on`, build the merge** (my rec) | the join arm actually adds the cohort's uncovered members to its target ⇒ the "fuller themes" benefit becomes real | a build; a membership write is live-theme state ⇒ CHANGE_PROCESS + sign-off |
+| **B — keep `on` as-is** | fewer duplicate and one-day themes | 51% of verdicts remain suppressions; step 1 gets no fuller themes |
+| **C — revert to `observe`** | back to today's behaviour | loses the wait arm too, which is the part that works |
 
-## What this still does NOT answer
+**I recommend A**, and B is what we have until it ships. **Not C** — the flip's real benefit (the
+53 corpses) is independent of the join defect.
 
-- **Whether the 6 blocked cohorts would have matured.** They never existed as themes, so there is
-  no outcome to read. The judge correspondence says they were real groups; it does not say they
-  were durable ones.
-- **Whether the gate's join arm handles 2-member cohorts well.** It has never seen one. The backtest
-  is what answers this, and it must report the join/birth split, not a total.
-- **Whether naming these earlier would have changed a trade.** Out of scope by his own sequencing —
-  step 3 is parked until steps 1 and 2 are settled (#655).
-- **The 48% Lane-1 small-birth maturity edge.** Uncontrolled for era, sector and regime, and
-  "Mainstream" is age-gated. Directional only; it is not load-bearing above.
+## What this does NOT answer
+
+- **Whether a join-merge would be correct.** Adding members to a theme on a 0.50 single-ticker
+  overlap may be worse than dropping them. The threshold needs deriving before anything writes
+  membership — that is the backtest, and it is the same question `ASSIGN_POOL_RS_FLOOR = 70`
+  already answers a different way.
+- **Whether the orphaned members matter.** He has ruled that coverage is not the goal; a member
+  ending the night uncovered is not automatically a loss.
+- **Whether the two would-be 2-member births (EME/PWR, AEIS/ZBRA) are any good.** EME/PWR reached
+  3 members on its own 13 days later; AEIS/ZBRA never did.
+- **Anything about trade outcomes.** Step 3 is parked by his own sequencing (#655).
