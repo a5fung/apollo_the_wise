@@ -126,4 +126,24 @@ if [ -f scripts/check_analysis_doc.py ]; then
     fi
 fi
 
+# ── Gate 7: test source-pin ratchet (#653) ────────────────────────────
+# Fires when a test file is staged. Blocks any NEW or EDITED test that asserts on
+# SOURCE TEXT (inspect.getsource / .read_text() of a module / open() on
+# agents-scripts-channels-core-shared) instead of behaviour — the class that
+# broke 32 tests on 2026-09-12 against a refactor that changed nothing real,
+# while #649's dead repair arm shipped with 20 green tests the same week. The
+# existing ~285 are a surfaced backlog, not a wall — same new/edited-only shape
+# as Gate 2's `_review_can_fire_gate`. Escape: a reviewed
+# `# source-pin-ok: <why>` comment on a genuine wiring check.
+if git diff --cached --name-only | grep -qE '^tests/.*\.py$'; then
+    if ! "$PY_BIN" scripts/check_test_source_pins.py; then
+        echo "✘ pre-commit: a NEW or EDITED test asserts on SOURCE TEXT rather than behaviour (#653)."
+        echo "  Run: python3 scripts/check_test_source_pins.py"
+        echo "  Rewrite it to exercise behaviour, or annotate a reviewed wiring-check with"
+        echo "  '# source-pin-ok: <why behaviour cannot be exercised>'."
+        echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
+        exit 1
+    fi
+fi
+
 exit 0
