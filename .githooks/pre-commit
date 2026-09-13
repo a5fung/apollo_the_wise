@@ -141,6 +141,8 @@ if git diff --cached --name-only | grep -qE '^tests/.*\.py$'; then
         echo "  Run: python3 scripts/check_test_source_pins.py"
         echo "  Rewrite it to exercise behaviour, or annotate a reviewed wiring-check with"
         echo "  '# source-pin-ok: <why behaviour cannot be exercised>'."
+        echo "  Rule + when a NEW test FILE (vs extending an existing one) is justified:"
+        echo "  docs/testing/test_discipline.md"
         echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
         exit 1
     fi

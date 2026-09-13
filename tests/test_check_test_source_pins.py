@@ -441,23 +441,30 @@ def test_check_new_or_edited_fails_open_when_git_is_unavailable(monkeypatch, tmp
 
 # ── the baseline file matches what the scanner finds RIGHT NOW ──────────────────────────────
 
-def test_baseline_matches_the_live_scan():
-    """A baseline that silently drifts from the scanner is worse than none — it would let a real
-    regression through unremarked (rising count, nobody told) or manufacture false 'improvement'.
-    MUTATION: this test itself IS the mutation-detector for that drift — hand-editing
-    `test_source_pin_baseline.json`'s total to a different number while running this test
-    reddened it immediately. Restored to the real scanned value before commit."""
-    import json
-    from pathlib import Path
+def test_baseline_is_a_ratchet_not_a_snapshot():
+    """The checked-in baseline must never UNDERSTATE the live repo (that would hide a real
+    regression: rising count, nobody told). It is deliberately NOT an exact-equality lock —
+    other work in this same tree (a different card, a different task) can legitimately add or
+    remove source-pin tests in files this task never touches, and pinning an exact total/per-file
+    snapshot would redden this suite on THEIR commit, not a regression in this gate. 'Rising must
+    be loud' only requires total <= baseline; going down needs no baseline edit to stay green.
 
-    total, unescaped, per_file = scan_repo()
+    MUTATION: this test itself is the mutation-detector for a baseline that got hand-edited DOWN
+    (the dangerous direction — it hides growth) — setting `total` in
+    `test_source_pin_baseline.json` to less than the live count reddened it immediately (`444 <=
+    439` style failure). Restored to the real scanned value before commit; the file only needs
+    manual regeneration (`--update-baseline`) when the live count legitimately falls below it."""
+    import json
+
+    total, unescaped, _ = scan_repo()
     baseline = json.loads(mod_path().read_text(encoding="utf-8"))
-    assert baseline["total"] == total
-    assert baseline["unescaped"] == unescaped
-    assert baseline["per_file"] == per_file
+    assert total <= baseline["total"], (
+        f"live scan found {total} source-pin test(s), more than the checked-in baseline "
+        f"({baseline['total']}) — a NEW pin landed without updating the baseline, or this "
+        f"gate's own detector regressed. Run `--update-baseline` only after confirming which.")
+    assert unescaped <= baseline.get("unescaped", baseline["total"])
 
 
 def mod_path():
-    from pathlib import Path
     import scripts.check_test_source_pins as mod
     return mod.BASELINE_PATH

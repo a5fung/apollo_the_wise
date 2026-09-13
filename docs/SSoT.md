@@ -87,6 +87,12 @@ setup's criteria, change log and findings.
 | Market agent build & ops how-to (run locally · add a tool · add a Telegram command · `execute_task` routing · ticker extraction · env vars · pre-commit hooks) | `docs/architecture/market_agent_reference.md` |
 | Model selection | `docs/model_selection_baseline.md` |
 
+## Testing
+
+| topic | owner |
+|---|---|
+| Test-suite hygiene — new file vs. extend existing, source pins vs. behavior | `docs/testing/test_discipline.md` |
+
 ## Methodology — the operator's own words
 
 | topic | owner |
