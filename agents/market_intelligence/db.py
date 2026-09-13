@@ -7762,58 +7762,93 @@ async def get_flag_failure_carry(
         base_low_close: a minimal-diff patch fired 'reclaim' at a median of
         1 day because the running min already included the undercut close).
 
+    Also carries `anchor_breakout_close` (the CLOSE price on that same
+    breakout-anchor row) alongside `anchor_base_high` — `base_high` is the
+    max INTRADAY HIGH over the base window and is always >= the max-CLOSE
+    level (`base_high_close`) that actually gated TRIGGERED, so using
+    `anchor_base_high` alone as the failure threshold is too strict: a
+    close that sits between the two would already be back ABOVE the level
+    that triggered the breakout yet still read as "failed". The caller
+    (flag_detector.py) takes `min(anchor_base_high, anchor_breakout_close)`
+    — `breakout_close` is itself always > base_high_close by construction
+    of the breakout gate, so the tighter of the two available upper bounds
+    is the closer approximation without a schema change.
+
+    Telemetry must never be load-bearing for the live scan: any failure
+    here (a bad connection, a query error) is caught and logged, returning
+    {} — every ticker then carries no anchor/no carry-forward for that
+    scan (the 3 new columns stay NULL that day) rather than taking down
+    `run_flag_scan` and, with it, the `/flags` board and the HTF engine it
+    feeds (the exact 2026-08-03 pattern this module's own history warns
+    about — see the "NO STRATEGY GATE HERE" comment in flag_detector.py).
+
     Read-only metadata query against this same table — NOT a second
     per-ticker price-history fetch. Returns {} if no prior rows; a ticker
     with no breakout on record yet (or a fresh pivot with no matching
-    history) comes back with anchor_base_high/anchor_base_low = None.
+    history) comes back with anchor_base_high/anchor_base_low/
+    anchor_breakout_close = None.
     """
-    pool = await get_pool()
-    if isinstance(scan_date, str):
-        scan_date = date.fromisoformat(scan_date)
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            WITH latest AS (
-                SELECT DISTINCT ON (ticker)
-                    ticker, pivot_high_date, failed_at,
-                    low_after_breakout, undercut_after_breakout
-                FROM mi_flag_candidates
-                WHERE scan_date < $1
-                  AND scan_date >= $1 - ($2::int || ' days')::interval
-                  AND pivot_high_date IS NOT NULL
-                ORDER BY ticker, scan_date DESC
-            ),
-            anchor AS (
-                SELECT DISTINCT ON (c.ticker)
-                    c.ticker, c.base_high AS anchor_base_high, c.base_low AS anchor_base_low
-                FROM mi_flag_candidates c
-                JOIN latest l ON l.ticker = c.ticker AND l.pivot_high_date = c.pivot_high_date
-                WHERE c.breakout_close IS NOT NULL
-                  AND c.scan_date < $1
-                ORDER BY c.ticker, c.scan_date ASC
-            )
-            SELECT latest.ticker, latest.pivot_high_date, latest.failed_at,
-                   latest.low_after_breakout, latest.undercut_after_breakout,
-                   anchor.anchor_base_high, anchor.anchor_base_low
-            FROM latest
-            LEFT JOIN anchor ON anchor.ticker = latest.ticker
-        """, scan_date, lookback_days)
-    return {
-        r["ticker"]: {
-            "pivot_high_date": r["pivot_high_date"],
-            "failed_at": r["failed_at"],
-            "low_after_breakout": (
-                float(r["low_after_breakout"]) if r["low_after_breakout"] is not None else None
-            ),
-            "undercut_after_breakout": r["undercut_after_breakout"],
-            "anchor_base_high": (
-                float(r["anchor_base_high"]) if r["anchor_base_high"] is not None else None
-            ),
-            "anchor_base_low": (
-                float(r["anchor_base_low"]) if r["anchor_base_low"] is not None else None
-            ),
+    try:
+        pool = await get_pool()
+        if isinstance(scan_date, str):
+            scan_date = date.fromisoformat(scan_date)
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                WITH latest AS (
+                    SELECT DISTINCT ON (ticker)
+                        ticker, pivot_high_date, failed_at,
+                        low_after_breakout, undercut_after_breakout
+                    FROM mi_flag_candidates
+                    WHERE scan_date < $1
+                      AND scan_date >= $1 - ($2::int || ' days')::interval
+                      AND pivot_high_date IS NOT NULL
+                    ORDER BY ticker, scan_date DESC
+                ),
+                anchor AS (
+                    SELECT DISTINCT ON (c.ticker)
+                        c.ticker, c.base_high AS anchor_base_high,
+                        c.base_low AS anchor_base_low,
+                        c.breakout_close AS anchor_breakout_close
+                    FROM mi_flag_candidates c
+                    JOIN latest l ON l.ticker = c.ticker AND l.pivot_high_date = c.pivot_high_date
+                    WHERE c.breakout_close IS NOT NULL
+                      AND c.scan_date < $1
+                    ORDER BY c.ticker, c.scan_date ASC
+                )
+                SELECT latest.ticker, latest.pivot_high_date, latest.failed_at,
+                       latest.low_after_breakout, latest.undercut_after_breakout,
+                       anchor.anchor_base_high, anchor.anchor_base_low,
+                       anchor.anchor_breakout_close
+                FROM latest
+                LEFT JOIN anchor ON anchor.ticker = latest.ticker
+            """, scan_date, lookback_days)
+        return {
+            r["ticker"]: {
+                "pivot_high_date": r["pivot_high_date"],
+                "failed_at": r["failed_at"],
+                "low_after_breakout": (
+                    float(r["low_after_breakout"]) if r["low_after_breakout"] is not None else None
+                ),
+                "undercut_after_breakout": r["undercut_after_breakout"],
+                "anchor_base_high": (
+                    float(r["anchor_base_high"]) if r["anchor_base_high"] is not None else None
+                ),
+                "anchor_base_low": (
+                    float(r["anchor_base_low"]) if r["anchor_base_low"] is not None else None
+                ),
+                "anchor_breakout_close": (
+                    float(r["anchor_breakout_close"]) if r["anchor_breakout_close"] is not None else None
+                ),
+            }
+            for r in rows
         }
-        for r in rows
-    }
+    except Exception:
+        logger.warning(
+            "get_flag_failure_carry: failed, returning {} (failure telemetry "
+            "must never block run_flag_scan — see this function's docstring)",
+            exc_info=True,
+        )
+        return {}
 
 
 async def get_recent_flag_stages(scan_date: "str | date", lookback_days: int = 5) -> dict[str, list[str]]:

@@ -38,6 +38,13 @@ MUTATION-PROVEN (each confirmed RED against the CORRECT code, then reverted):
     close to a None anchor) instead of leaving the columns None.
   - flip `close_today < anchor_low` to `<=` -> test_undercut_requires_strictly_below_anchor_low
     RED (fired True on a close sitting exactly ON the anchor low).
+  - drop `anchor_high = min(anchor_high, anchor_breakout_close)` (an advisor-review
+    finding: `base_high` alone is too strict a threshold — see the tightening's own
+    comment) -> test_close_between_base_high_close_and_base_high_is_not_a_failure RED
+    (fired True on a close still ABOVE the actual breakout close).
+  - narrow `get_flag_failure_carry`'s `except Exception` to `except ValueError`
+    -> test_carry_survives_a_db_error RED (the RuntimeError propagated instead of
+    degrading to {} — exactly what must never happen to `run_flag_scan`).
 
 test_never_changes_stage_or_reason is a structural regression guard rather
 than independently mutation-provable within the new block: every later
@@ -164,6 +171,12 @@ def _chain(day0):
     anchor_base_low), out3=undercuts (closes under anchor_base_low too),
     out4=one more day so failed_at's "first day, not latest" is provable."""
     anchor_high, anchor_low = day0["base_high"], day0["base_low"]
+    assert day0["breakout_close"] > anchor_high, (
+        "fixture assumption: breakout_close is the larger bound here, so "
+        "min(anchor_base_high, anchor_breakout_close) == anchor_base_high — "
+        "the tightening in test_close_between_base_high_close_and_base_high_is_not_a_failure "
+        "covers the case where it is the SMALLER bound instead"
+    )
 
     def _carry(prior_out):
         return {
@@ -173,6 +186,7 @@ def _chain(day0):
             "undercut_after_breakout": prior_out["undercut_after_breakout"],
             "anchor_base_high": anchor_high,
             "anchor_base_low": anchor_low,
+            "anchor_breakout_close": day0["breakout_close"],
         }
 
     return anchor_high, anchor_low, _carry
@@ -294,6 +308,54 @@ def test_undercut_requires_strictly_below_anchor_low():
     assert out["undercut_after_breakout"] is False, "a close AT the anchor low is not an undercut"
 
 
+def test_close_between_base_high_close_and_base_high_is_not_a_failure():
+    """`base_high` (persisted) is the max INTRADAY HIGH over the base window —
+    always >= the max-CLOSE level (`base_high_close`) that actually gated
+    TRIGGERED. A close sitting strictly BETWEEN the two is still above the
+    level that triggered the breakout and must not read as failed, even
+    though it is below the persisted `base_high`. Caught by an advisor
+    review of this card: the day-0 fixture's breakout always cleared
+    `base_high` itself, so this gap never showed."""
+    rows, d0, di = _base_pole_flag()
+    pre = fd.compute_flag_metrics(rows, ticker="TST", recent_stages=[])
+    base_high_close = rows[-1]["close"]           # the flat flag's own close level
+    assert pre["base_high"] > base_high_close, "fixture assumption: base_high (intraday) > base_high_close"
+
+    # Breakout closes just above base_high_close but BELOW base_high.
+    breakout_close = (base_high_close + pre["base_high"]) / 2.0
+    assert base_high_close < breakout_close < pre["base_high"]
+    rows2 = rows + [_row(d0 + timedelta(days=di), rows[-1]["close"], breakout_close * 1.005,
+                          rows[-1]["close"] * 0.995, breakout_close, 5_000_000)]
+    day0 = fd.compute_flag_metrics(
+        rows2, ticker="TST", recent_stages=["COILED"] * 5,
+        prior_pivot_date=pre["pivot_high_date"], prior_pivot_high=pre["pivot_high_price"],
+    )
+    assert day0["stage"] == "TRIGGERED", f"fixture didn't reach TRIGGERED: {day0['reason']}"
+    assert day0["breakout_close"] == pytest.approx(breakout_close)
+
+    # Day+1 closes just above the ACTUAL breakout close (still climbing) but
+    # below the persisted base_high — the exact counterexample.
+    day1_close = breakout_close * 1.01
+    assert day1_close < day0["base_high"]
+    rows3 = _append_close(rows2, d0, di + 1, day1_close)
+    prior_failure = {
+        "pivot_high_date": day0["pivot_high_date"],
+        "failed_at": None, "low_after_breakout": None, "undercut_after_breakout": None,
+        "anchor_base_high": day0["base_high"], "anchor_base_low": day0["base_low"],
+        "anchor_breakout_close": day0["breakout_close"],
+    }
+    out = fd.compute_flag_metrics(
+        rows3, ticker="TST", recent_stages=["TRIGGERED"] * 5,
+        prior_pivot_date=day0["pivot_high_date"], prior_pivot_high=day0["pivot_high_price"],
+        prior_failure=prior_failure,
+    )
+    assert out["failed_at"] is None, (
+        f"closed at {day1_close:.4f}, ABOVE breakout_close {breakout_close:.4f} — "
+        "still climbing, must not read as failed even though it's below the "
+        f"intraday base_high {day0['base_high']:.4f}"
+    )
+
+
 # ── 5. Stale-pivot guard: a prior base's failure state must not leak into a
 #      brand-new pivot cycle for the same ticker ────────────────────────────
 
@@ -370,6 +432,7 @@ async def test_carry_shapes_rows_from_the_real_producer(monkeypatch):
             "undercut_after_breakout": False,
             "anchor_base_high": 20.295,
             "anchor_base_low": 19.305,
+            "anchor_breakout_close": 20.90,
         },
         {
             # a ticker with a prior row but no breakout on record yet
@@ -380,6 +443,7 @@ async def test_carry_shapes_rows_from_the_real_producer(monkeypatch):
             "undercut_after_breakout": None,
             "anchor_base_high": None,
             "anchor_base_low": None,
+            "anchor_breakout_close": None,
         },
     ]
     pool, conn = make_mock_pool()
@@ -396,11 +460,28 @@ async def test_carry_shapes_rows_from_the_real_producer(monkeypatch):
     assert abcd["undercut_after_breakout"] is False
     assert abcd["anchor_base_high"] == pytest.approx(20.295)
     assert abcd["anchor_base_low"] == pytest.approx(19.305)
+    assert abcd["anchor_breakout_close"] == pytest.approx(20.90)
     assert isinstance(abcd["low_after_breakout"], float)  # real coercion ran, not a passthrough
 
     nobrk = out["NOBRK"]
     assert nobrk["anchor_base_high"] is None and nobrk["anchor_base_low"] is None
+    assert nobrk["anchor_breakout_close"] is None
     assert nobrk["failed_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_carry_survives_a_db_error(monkeypatch):
+    """Telemetry must never be load-bearing for the live scan (the 2026-08-03
+    lesson flag_detector.py's own history warns about — a detector-adjacent
+    write failing silently starved the whole board). A DB error here must
+    degrade to {} (every ticker reads as "no carry that day"), not raise
+    and take down run_flag_scan."""
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=RuntimeError("connection reset"))
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+
+    out = await db.get_flag_failure_carry(date(2026, 3, 15))
+    assert out == {}
 
 
 @pytest.mark.asyncio
@@ -416,6 +497,7 @@ async def test_carry_feeds_compute_flag_metrics_end_to_end(monkeypatch):
         "undercut_after_breakout": None,
         "anchor_base_high": day0["base_high"],
         "anchor_base_low": day0["base_low"],
+        "anchor_breakout_close": day0["breakout_close"],
     }]
     pool, conn = make_mock_pool()
     conn.fetch = AsyncMock(return_value=fake_rows)

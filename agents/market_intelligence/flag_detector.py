@@ -916,6 +916,17 @@ def compute_flag_metrics(
     base["undercut_after_breakout"] = pf.get("undercut_after_breakout")
     anchor_high = pf.get("anchor_base_high")
     anchor_low = pf.get("anchor_base_low")
+    anchor_breakout_close = pf.get("anchor_breakout_close")
+    if anchor_high is not None and anchor_breakout_close is not None:
+        # `base_high` is the max INTRADAY HIGH over the base window — always
+        # >= the max-CLOSE level (`base_high_close`) that actually gated
+        # TRIGGERED (`close_today > base_high_close`), so it alone is too
+        # strict a failure threshold: a close sitting between the two would
+        # already be back ABOVE the level that triggered the breakout yet
+        # still read as "failed". `breakout_close` (always > base_high_close
+        # by construction of that same gate) is the closer of the two
+        # available upper bounds — take the tighter one.
+        anchor_high = min(anchor_high, anchor_breakout_close)
     if anchor_high is not None:
         # Track the running low every day the anchor exists, not only once
         # failed_at has fired — "how far did it pull back at its worst"

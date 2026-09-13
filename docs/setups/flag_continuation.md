@@ -214,6 +214,19 @@ base window the day after it stops being "today", ratcheting the threshold to ch
 down). See the CREATE TABLE comment on `mi_flag_candidates` (db.py) and the block's own comment in
 `flag_detector.py` for the full reasoning.
 
+⚠ **Post-ship advisor review (same day) caught two things, both fixed before the "shipped" note
+above was final:** (1) `base_high` (persisted) is the max INTRADAY HIGH over the base window —
+always ≥ the max-CLOSE level (`base_high_close`) that actually gates TRIGGERED — so using it alone
+as the failure threshold was too strict: a close sitting between the two would already be back
+above the level that triggered the breakout yet still read as "failed". Fixed by also carrying
+`anchor_breakout_close` (the close on the breakout day, always > `base_high_close` by construction
+of that same gate) and taking `min(anchor_base_high, anchor_breakout_close)` — the tighter of the
+two available upper bounds, no schema change. (2) `get_flag_failure_carry`'s query had never
+executed against a live database; wrapped it in try/except returning `{}` on any failure, so a bad
+day reads as "no carry that day" (the 3 columns stay NULL) rather than throwing inside
+`run_flag_scan`'s `asyncio.gather` and taking down the whole scan — the exact 2026-08-03
+strategy-gate incident this module's own code comment warns about, just via a new code path.
+
 ### 2026-07-24 — FL-5 reconcile: doc synced to code (line citations + header clarity, no values changed)
 
 Re-pointed every drifted line citation to the current code location (values were all still
