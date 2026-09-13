@@ -1242,3 +1242,48 @@ enrolled under an engine state we no longer run — the exact era error that has
 before. The honest read of today's engine is 48%, not the 68% a pooled 70/103 would print.
 
 [[check-the-rule-era-before-comparing-to-actual]] · [[themes-not-judged-on-returns-yet]]
+
+## 2026-09-13 — HOOD: a stock can have several drivers and the engine names one
+
+**His words, on why he labelled HOOD `n` despite 19 peers moving with it:**
+
+> *"On Hood, the theme of wealth management is only partially correct, Hood also moves with crypto
+> sometimes, and long with the market during high speculative times, so that's why I said no to
+> that particular theme"*
+
+**Checked on prod the same turn, and it holds mechanically:**
+
+- **HOOD has only ever belonged to ONE theme** — *Wealth Management & Retail Brokerage Platforms*.
+  Never a crypto grouping, never a speculative/high-beta one. The engine has one slot and HOOD
+  needs three.
+- **Across the whole board, only 37 of 679 tickers (5.4%) sit in more than one theme.** Nothing
+  forbids multi-membership; it simply almost never happens. The engine is *de facto*
+  one-theme-per-stock.
+
+### This is a FOURTH thing an `n` can mean, and it is structural
+
+| the `n` means | what it is |
+|---|---|
+| no theme drove it | false positive — tighten the axis |
+| the stock drove the theme | reflexivity — the arrow points the other way |
+| the theme is real but mis-named / wrong members | naming or membership |
+| **the theme is ONE OF SEVERAL drivers and we can only name one** | **structural — the engine cannot express what he knows** |
+
+**The question "was the theme the driver?" presumes a single driver.** For a multi-driver name it
+is not answerable as posed, and his `n` is the most accurate answer available to him.
+
+### ⚠ And it breaks the co-movement rule in a specific, fixable way
+
+The co-movement test subtracts **SPY**. His phrase *"long with the market during high speculative
+times"* names a factor SPY does not carry: risk appetite. If HOOD and 19 brokerage peers all rose
+because speculation rose, the test reads "the group moved together" and credits the theme.
+
+**SPY-adjustment is not enough for high-beta names.** The fix is the null control the theme
+programme already specifies: does the theme's group move together **more than a matched set of
+similar names that are not in the theme**? Without it, "the group moved" and "everything like this
+moved" are indistinguishable — which is the same defect class as an alarm that cannot fail.
+
+Related: the birth gate's own copy of `co_moving` is market-adjusted while the shared helper is
+not — a filed doc-vs-code gap that now has a second reason to be closed.
+
+[[his-theme-labels-are-supplementary]] · [[theme-north-star-early-rs-before-mainstream]]
