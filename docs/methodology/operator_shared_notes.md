@@ -1198,3 +1198,47 @@ the median** (`analysis_standard.md` §THE STATISTIC). [[measure-the-tail-not-th
 
 ⚠ **And it must be checked against `must_not_miss_eps.py` before anything else** — the running list
 of real EPs may never shrink. That guard already exists and stays in the loop.
+
+## 2026-09-13 — reflexivity makes "was the theme the driver?" ambiguous for a LEADER
+
+**His words, finishing the 44 themed labels:**
+
+> *"one challenge I faced was that of reflexivity, some of these stocks drives the theme
+> because they may be one of the leaders while the theme may drive the group, so it's a bit
+> complicated, did what I can"*
+
+**Why it matters: a `n` can mean two different things, and pooling them gives the wrong answer.**
+
+| the `n` means | what it is | what to do about it |
+|---|---|---|
+| we credited a theme that was not the driver | a **false positive** — the theme axis over-credited | tighten the axis |
+| this stock IS the leader; it drove the theme | **reflexivity** — the label is descriptively true, causally backwards | not a filter error; the arrow points the other way |
+
+This is the same constraint already recorded for RS and EP (*a gap manufactures relative
+strength*), arriving from the labelling side. **Never quote a themed precision number without
+saying which of the two it is measuring.**
+
+### ⚠ The obvious mechanical test FAILS — measured, not assumed
+
+If a leader predated its theme, the theme could not have driven it. So: does the alert land
+before the theme's birth? **Zero of 44.** Every alert came after its theme already existed —
+median 22 days after. That operationalisation of his point rescues nothing.
+
+The founder split is nearly as weak: tickers that were **founding members** of their theme label
+`y` at **52%** (14/27); tickers that **joined later** at **41%** (7/17). An 11-point gap on tiny
+n, both near a coin flip.
+
+**So the concern is real but this is not its shape.** The sharper test his words actually imply:
+on the alert date, did the theme's OTHER members move too? Group moves together → the theme is
+driving. Only this name moves → the name is driving. That is a co-movement question, it is $0
+from `mi_daily_closes`, and it is the one that should gate the theme-boost magnitude.
+
+### The number his labels actually produced
+
+**21 yes / 23 no on 44 alerts — 48% — under the CURRENT engine.**
+
+⚠ **Do not pool this with the older 49y/9n (84%).** Those 59 rows are the pre-scrap cohort,
+enrolled under an engine state we no longer run — the exact era error that has bitten this repo
+before. The honest read of today's engine is 48%, not the 68% a pooled 70/103 would print.
+
+[[check-the-rule-era-before-comparing-to-actual]] · [[themes-not-judged-on-returns-yet]]
