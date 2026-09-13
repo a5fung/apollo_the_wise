@@ -236,3 +236,69 @@ CHANGE_PROCESS, backtest, his sign-off.
 - **Whether the bar should be 2, or 2-with-conditions** (e.g. 2 plus a second sighting, which is
   what the birth gate's wait arm already does).
 - **The 31 proposals that never became themes** — size is one reason, quality may be another.
+
+
+---
+
+# ⛔ A CONTRADICTION HE CAUGHT — and today's statement was the wrong one
+
+> *"Yesterday you told me EP alerts themes are just text and don't source themes, now you say it does"*
+
+**He is right, and the error is in TODAY's work, not yesterday's.**
+
+Today I wrote *"Goal 2 had no lane until yesterday"* and *"nothing routes a gap into theme
+creation."* **Both false.** `narrative_cogap` — Lane 2 — has been writing theme candidates from EP
+alerts since **2026-06-25**, nearly three months, and it sits on the auto-promote allowlist.
+
+What was true yesterday is narrower: **#651 is about the JUDGE's free-text theme mention inside its
+grading rationale**, which was parsed by nothing and routed nowhere. That specific signal was just
+text. **I then over-generalised it into "EP alerts don't source themes", which erases a lane that
+has been running all along.**
+
+Lane 2 IS the gap-ups-to-themes lane. #651 is a second, different signal on the same alerts.
+
+---
+
+# Impact of allowing two-stock themes
+
+## (a) Supply — it is not a Lane-2 change, it is a board-wide one
+
+Candidates from auto-promotable sources since 2026-06-07, by member count:
+
+| | at the bar today (≥3) | dropping to ≥2 adds |
+|---|---|---|
+| **total eligible** | **225** | **+258 → 483 (+115%)** |
+
+⚠ **And the change is overwhelmingly NOT about Lane 2.** Of the 258 newly-eligible two-member
+candidates, **250 are `shadow_v2`** (the correlation lane) and only **8 are Lane-2's**. Framing this
+as "frees Lane-2's eight stalled stories" understates the blast radius by ~30×. **It would roughly
+double theme births, from Lane 1.**
+
+## (b) Do small-born themes actually behave worse? Measured, and NO — the opposite
+
+Every theme lineage on record, by its size on its birth day, against whether it ever reached
+Accelerating or Mainstream:
+
+| born with | themes | ever matured | rate |
+|---|---|---|---|
+| **2 or fewer** | 142 | 85 | **60%** |
+| 3–4 | 247 | 74 | **30%** |
+| 5+ | 163 | 66 | **40%** |
+
+**Themes born small mature at twice the rate of mid-sized ones.** The 3-member bar exists to keep
+noise out, and on this measure the names it keeps out are the ones that do best.
+
+⚠ **Uncontrolled, and I am not going to dress it up.** This compares raw cohorts with no control
+for era, sector, market regime or how the lineage is name-matched across renames. It is strong
+enough to say *the bar is not obviously protecting quality*; it is not strong enough on its own to
+move a detection threshold.
+
+## What this does NOT answer
+
+- **Whether doubling births is survivable.** The birth gate (flipped ON today) would fold many of
+  the 250 into existing themes via its join arm rather than minting them — but that interaction has
+  never been measured, and it is the whole question.
+- **Why small-born themes mature more.** Could be real (a tight pair is a truer signal) or an
+  artifact of how lineages are matched. Untested.
+- **Whether Lane-2's eight specifically are any good** — they are 3% of the change and should not
+  drive it.
