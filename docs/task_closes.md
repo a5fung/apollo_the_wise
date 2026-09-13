@@ -541,3 +541,34 @@ review `exit_regime_interaction_review` — verified today as era-scoped on the 
 20, earliest 2026-10-15, so it CANNOT speak about the current rule until it has trades from the
 current rule. That re-gating was itself the fix for this line's worst moment: a recommendation built
 on 28 trades of which 27 predated the rule it proposed changing.
+
+## #653 — ration the brittle tests, not the count (2026-09-13)
+
+BAR: a gate FAILS the commit when a NEW or EDITED test asserts on source text, with a reviewed
+escape (`# source-pin-ok: <why behaviour cannot be exercised>`) — NEW/EDITED only, the existing 285
+stay a surfaced backlog rather than a wall; the gate reports the current source-pin count so the
+trend is visible and must go DOWN; a written rule for when a new test file is justified versus
+extending an existing one.
+
+EVIDENCE: all three parts shipped and the gate was exercised end-to-end, not merely written.
+(1) `scripts/check_test_source_pins.py`, wired as Gate 7 in `.githooks/pre-commit`, diff-based
+new/edited-only in the same shape as `check_plan._review_can_fire_gate`. Verified by staging a real
+source-pinning probe test and watching the hook BLOCK it with the right message, then cleaning up —
+the gate has been made to fail, which is this repo's own bar for believing a gate. The escape
+requires a stated reason of >=12 chars, so a bare marker does not satisfy it. (2) The count prints
+on every run (`source-pin test count: 444 total, baseline 444 (flat)`) and is held by a RATCHET
+(`total <= baseline`), not an exact snapshot — the first version was an exact lock that would have
+reddened the whole suite whenever unrelated concurrent work shifted a count, which was caught and
+replaced before shipping. (3) `docs/testing/test_discipline.md`, registered in `docs/SSoT.md` and
+pointed to from the Gate 7 failure text: a new file is justified only by no existing coverage, new
+infrastructure, or a deliberate topical split — "task #NNN" is never a reason.
+19 mutations run against the real file, each confirmed RED then restored. Suite 8,288 passed.
+
+⚠ THE TASK'S OWN NUMBER WAS WRONG AND THE CARD CORRECTED IT RATHER THAN FITTING TO IT. The line
+said 285 source-pin tests across 120 files; the real figure is **444 across 136 files** — 7.6% of
+5,881 test functions, not 4.8%. My original scan counted only source reads inside a test body and
+missed the indirection this repo actually uses: a module-level `HEALTH = Path(...).read_text()`, and
+the `def _src(): return open("agents/...").read()` helper pattern present in at least four test
+files. Hand-verified on `tests/test_486_bounded_read_is_nightly.py:34` — `_src()` opens
+`scheduler.py` and `test_the_slot_avoids_both_deploy_windows` regexes it, a genuine pin my scan did
+not see. The baseline is set to the measured 444, NOT force-fit to the number in the task text.
