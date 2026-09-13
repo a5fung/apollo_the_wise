@@ -1287,3 +1287,57 @@ Related: the birth gate's own copy of `co_moving` is market-adjusted while the s
 not — a filed doc-vs-code gap that now has a second reason to be closed.
 
 [[his-theme-labels-are-supplementary]] · [[theme-north-star-early-rs-before-mainstream]]
+
+## 2026-09-13 — coverage is NOT the goal; he stated the goal in two parts
+
+> *"hold on, we don't have 100% coverage that is not the goal otherwise every gap will get
+> boosted, our goal is to 1) boost the real EPs if there's a real theme attached and 2) the
+> reflexive part, source new themes from the gap ups, this case may be an early mover in a theme
+> bringing up the whole group for example. So low'ish coverage may not be a bad thing provided we
+> catch the real EPs, the exact % i don't know"*
+
+**This kills the framing I had been measuring against.** I reported "289 of 600 strong names have
+no theme — 48%" as the problem. It is not a problem statement at all: **at 100% coverage every gap
+gets boosted and the boost carries zero information.** Market-wide coverage is the wrong
+denominator and a higher number is not automatically better.
+
+### The two goals, and the measurement each one implies
+
+| | goal | the right denominator |
+|---|---|---|
+| **1** | boost the **real EPs** when a **real theme** is attached | his own labelled real-EP list — did we have the theme on the day? |
+| **2** | **source new themes from the gap-ups** — an early mover can be the start of a theme that later lifts the group | of gap-ups with no theme, how many later seeded a real one? |
+
+He explicitly does not know the right coverage %, and it is **an output, not a target**.
+
+### Measured against goal 1 the same turn — and it found something structural
+
+Of his 7 labelled real EPs, **3 had a theme on the day**. But the sharper finding is in the other
+column:
+
+```
+BFLY 06-18  theme: Physical AI & Robotics            (Fading)
+PLTR 08-04  theme: U.S. Gov/Defense Spending Surge   (Nascent)   in_active_theme = FALSE
+MRNA 08-19  theme: mRNA Vaccine & Therapeutics       (Nascent)   in_active_theme = FALSE
+TEAM 08-07  no theme that day — themed LATER (Software Development & DevOps)
+HTFL 08-14  no theme that day — themed LATER (AI-Driven Diagnostics & Imaging)
+ABNB 08-07  never in any theme
+CHPT 09-03  never in any theme
+```
+
+🔴 **`in_active_theme` counts ONLY Accelerating or Mainstream themes** (`ep_detector.py:1568`).
+**PLTR and MRNA were both in NASCENT themes we had correctly found — and the boost did not fire.**
+Those are two of his strongest labelled EPs (+15.5% and +84.3%).
+
+**The boost excludes exactly the early stage his north star is about.** "Subtle RS → early theme →
+buy before it is obvious" — and the bonus only switches on once a theme is already Accelerating or
+Mainstream, i.e. once it is no longer early. The engine found the theme; the rubric ignored it.
+
+⚠ The same docstring already records that the bonus is **decorative** at the current threshold: *"0
+MODERATE-in-theme alerts would have crossed to HIGH"* over 60 days.
+
+**TEAM and HTFL are goal 2's case:** both got their theme LATER. Their gap is precisely the
+"early mover that brings up the group" he described, and nothing routes a gap into theme creation.
+
+[[his-theme-labels-are-supplementary]] · [[theme-north-star-early-rs-before-mainstream]] ·
+[[operator-labelled-ep-list]]
