@@ -62,8 +62,46 @@ def _strip_md(text: str) -> str:
     return "\n".join(lines)
 
 
-async def notify_owner(text: str) -> None:
+# ── #635 (operator-approved 2026-09-13): which job-DEATH pages buzz the phone ──
+# Every page through `notify_owner` is silent (`disable_notification`) — a job
+# failure is telemetry and must not wake him. He was offered three options (leave
+# all silent · make every job-failure page buzz · split the naked-position and
+# stop-ack watchdog pages onto a loud path) and chose the split. Membership rule:
+# LOUD iff the job's death removes the LAST DETECTION of a bare live position.
+# A REPAIR job's death (stop refresh, the 21:00 backstop, the retry re-driver) is
+# caught by a detector that is still alive — and every alert those detectors
+# EMIT already buzzes, because `briefing.send_telegram_message` sends no
+# `disable_notification` at all. Only the page saying the detector itself DIED
+# was silent; that is what this set fixes.
+#
+# Keyed on the job id, not a per-call flag, because the two watchdogs with no
+# handler of their own (stop-ack, stuck-fill) page from `audit_run`'s generic
+# exception branch via `record_job_failure` — there is no call site to flag.
+# One reviewable hunk; widening it is the operator's decision, not a default.
+LOUD_FAILURE_JOBS: frozenset[str] = frozenset({
+    # the stop-ack watchdog — every 30s in market hours; places the fallback stop
+    # when a fill's OTO stop leg never ACKed (MRAM-class)
+    "stop_ack_timeout_watchdog",
+    # its sibling — a row stuck 'filling' means the WS fill handler threw before
+    # the stop was known; its own page says "check broker for naked position"
+    "stuck_fill_watchdog",
+    # the broker-truth coverage detectors: the 15-min intraday check (#527), the
+    # three bare-window slots 17:00/19:00/21:10 (#646/#649), and the L1
+    # naked_position checks at 15:55/16:27 (#604)
+    "position_coverage_check",
+    "coverage_watch_post_close", "coverage_watch_late", "coverage_watch_evening",
+    "naked_position_pre_close_check", "naked_position_post_refresh_check",
+})
+
+
+async def notify_owner(text: str, *, silent: bool = True) -> None:
     """Send a message directly to the owner via Telegram Bot API.
+
+    `silent` maps to Telegram's `disable_notification` — the Bot API's ONLY
+    sound lever (there is no priority or sound choice beyond on/off). Default
+    True keeps every existing caller byte-identical; `notify_job_failure` passes
+    False for the jobs in `LOUD_FAILURE_JOBS` (#635). The plain-text retry
+    carries the same flag, so a loud page that 400s on Markdown still buzzes.
 
     On a 400 (almost always a Markdown parse failure) the same text is re-sent
     as plain text so the alert still LANDS — mirrors `briefing.send_telegram_message`.
@@ -87,7 +125,7 @@ async def notify_owner(text: str) -> None:
                     "chat_id": chat_id,
                     "text": text,
                     "parse_mode": "Markdown",
-                    "disable_notification": True,  # silent — don't buzz the phone
+                    "disable_notification": silent,  # default True — don't buzz the phone
                 },
             )
             status = getattr(r, "status_code", 200)
@@ -101,7 +139,7 @@ async def notify_owner(text: str) -> None:
                     json={
                         "chat_id": chat_id,
                         "text": _strip_md(text),
-                        "disable_notification": True,
+                        "disable_notification": silent,
                     },
                 )
                 status = getattr(r, "status_code", 200)
@@ -148,10 +186,13 @@ async def notify_job_failure(job_name: str, error: str) -> None:
 
     The error text is Markdown-escaped (#501 F1) — see `md_escape`. The job name
     is backtick-fenced, so an underscore in it was never the problem; the free
-    text between the italics markers was."""
+    text between the italics markers was.
+
+    Silent unless `job_name` is in `LOUD_FAILURE_JOBS` (#635) — the wording, the
+    dedup and the trigger are untouched; only whether the phone buzzes changes."""
     flat = " ".join(str(error).split())   # italics cannot span a newline
     text = f"🚨 *Scheduled job failed*: `{job_name}`\n_{md_escape(flat[:200])}_"
-    await notify_owner(text)
+    await notify_owner(text, silent=job_name not in LOUD_FAILURE_JOBS)
 
 
 async def notify_job_success(job_name: str, summary: str) -> None:

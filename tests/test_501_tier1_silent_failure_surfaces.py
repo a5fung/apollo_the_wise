@@ -186,7 +186,7 @@ async def test_notify_job_failure_escapes_underscores(monkeypatch):
     the alert (health_checks.py's recorder guard documents the same trap)."""
     sent = []
 
-    async def _owner(text):
+    async def _owner(text, **kw):
         sent.append(text)
 
     monkeypatch.setattr(notifications, "notify_owner", _owner)
@@ -448,3 +448,226 @@ async def test_f4_paper_mode_is_never_blamed_for_live(reconcile_env):
     assert "paper" not in om._mode_reconcile_consecutive_failures or \
         om._mode_reconcile_consecutive_failures["paper"] == 0
     assert all("account_mode=paper" not in r[1] for r in audit)
+
+
+# ── #635 — the naked-position / stop-ack watchdog DEATH pages buzz; the rest stay silent ──
+# Operator-approved 2026-09-13 (the split, not the flip-everything option). The
+# alerts those watchdogs EMIT already buzz — `briefing.send_telegram_message`
+# sends no `disable_notification` key — so the only silent page was the one that
+# says the watchdog itself DIED, and that page comes out of `notify_owner`.
+#
+# The fixture below leaves `record_job_failure`, `notify_job_failure` and
+# `notify_owner` REAL and replaces only the DB sinks and the httpx wire, so the
+# assertion is on the JSON Telegram would receive from the REAL producer. The
+# `sinks` fixture above stubs `notify_job_failure`; that seam would let a fixture
+# decide the payload (the #649 lesson, CLAUDE.md 2026-09-12), so it is not used here.
+
+_LOUD_SLOTS = ("post_close", "late", "evening")
+
+
+@pytest.fixture
+def wire(monkeypatch):
+    """Real funnel, captured wire. Returns the list of JSON payloads posted."""
+    posts: list[dict] = []
+
+    class _Resp:
+        status_code = 200
+        text = ""
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, json=None, **kw):
+            posts.append(json)
+            return _Resp()
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "123")
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+
+    s = _Sinks()
+    import agents.market_intelligence.db as db
+    from agents.market_intelligence import scheduler as sch
+    monkeypatch.setattr(db, "log_audit_event", s.log_audit_event)
+    monkeypatch.setattr(db, "get_audit_log", s.get_audit_log)
+    monkeypatch.setattr(sch, "log_audit_event", s.log_audit_event)
+    monkeypatch.setattr(job_audit, "_last_job_failure_alert_ts", {})
+    _wire_job_runs(monkeypatch)
+    return posts
+
+
+async def _boom():
+    raise RuntimeError("watchdog exploded")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("job_id", ["stop_ack_timeout_watchdog", "stuck_fill_watchdog"])
+async def test_635_a_no_handler_watchdog_death_buzzes(monkeypatch, wire, job_id):
+    """The two watchdogs with no handler of their own page from audit_run's generic
+    branch — the ONLY place their death can be routed. Same wording as before;
+    only the sound bit changes."""
+    from core.job_audit import audit_wrap
+    with pytest.raises(RuntimeError):
+        await audit_wrap(_boom, job_id)()
+    assert len(wire) == 1
+    assert wire[0]["disable_notification"] is False
+    assert wire[0]["text"].startswith(f"🚨 *Scheduled job failed*: `{job_id}`\n")
+    assert "watchdog exploded" in wire[0]["text"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("job_id", ["crypto_nightly_ingest", "theme_quality_check"])
+async def test_635_an_ordinary_no_handler_job_death_stays_silent(monkeypatch, wire, job_id):
+    from core.job_audit import audit_wrap
+    with pytest.raises(RuntimeError):
+        await audit_wrap(_boom, job_id)()
+    assert len(wire) == 1
+    assert wire[0]["disable_notification"] is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("slot", _LOUD_SLOTS)
+async def test_635_a_dead_coverage_slot_buzzes(monkeypatch, wire, slot):
+    """#646/#649 bare-window slots: the handler's own except → the real notify chain."""
+    from agents.market_intelligence import scheduler as sch
+    from agents.market_intelligence import constants as const
+    from agents.market_intelligence.broker import order_manager as om
+    monkeypatch.setattr(const, "LIVE_TRADING_ENABLED", True)
+    monkeypatch.setattr(om, "check_position_coverage",
+                        AsyncMock(side_effect=RuntimeError("broker read blew up")))
+    await sch._coverage_watch_job(slot)
+    assert len(wire) == 1
+    assert wire[0]["disable_notification"] is False
+    assert wire[0]["text"].startswith(f"🚨 *Scheduled job failed*: `coverage_watch_{slot}`\n")
+
+
+@pytest.mark.asyncio
+async def test_635_the_dead_15min_coverage_detector_buzzes(monkeypatch, wire):
+    """#527's market-hours detector. The clock is pinned inside its window so the
+    guard admits the run and the detector's failure reaches the real notify chain."""
+    from datetime import datetime as _real_dt
+    from agents.market_intelligence import scheduler as sch
+    from agents.market_intelligence import constants as const
+    from agents.market_intelligence.broker import order_manager as om
+
+    class _Clock(_real_dt):
+        @classmethod
+        def now(cls, tz=None):
+            return _real_dt(2026, 9, 14, 10, 0, tzinfo=tz)
+
+    monkeypatch.setattr(sch, "datetime", _Clock)
+    monkeypatch.setattr(const, "LIVE_TRADING_ENABLED", True)
+    monkeypatch.setattr(om, "check_position_coverage",
+                        AsyncMock(side_effect=RuntimeError("broker read blew up")))
+    await sch._position_coverage_check_job()
+    assert len(wire) == 1
+    assert wire[0]["disable_notification"] is False
+    assert wire[0]["text"].startswith("🚨 *Scheduled job failed*: `position_coverage_check`\n")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("handler, job_id", [
+    ("_naked_position_pre_close_check_job", "naked_position_pre_close_check"),
+    ("_naked_position_post_refresh_check_job", "naked_position_post_refresh_check"),
+])
+async def test_635_a_dead_l1_naked_position_check_buzzes(monkeypatch, wire, handler, job_id):
+    from agents.market_intelligence import scheduler as sch
+    from agents.market_intelligence import system_audit
+    monkeypatch.setattr(system_audit, "run_naked_position_check",
+                        AsyncMock(side_effect=RuntimeError("invariant query died")))
+    await getattr(sch, handler)()
+    assert len(wire) == 1
+    assert wire[0]["disable_notification"] is False
+    assert wire[0]["text"].startswith(f"🚨 *Scheduled job failed*: `{job_id}`\n")
+
+
+@pytest.mark.asyncio
+async def test_635_a_dead_repair_job_stays_silent(monkeypatch, wire):
+    """The judgement call, pinned: the 21:00 REPAIR's death is silent. Its result is
+    verified ten minutes later by the 21:10 slot, whose own death now buzzes and whose
+    "still unprotected" page already did."""
+    from agents.market_intelligence import scheduler as sch
+    from agents.market_intelligence import constants as const
+    from agents.market_intelligence.broker import order_manager as om
+    monkeypatch.setattr(const, "LIVE_TRADING_ENABLED", True)
+    monkeypatch.setattr(om, "sync_positions",
+                        AsyncMock(side_effect=RuntimeError("sync died")))
+    await sch._evening_position_backstop_job()
+    assert len(wire) == 1
+    assert wire[0]["disable_notification"] is True
+    assert wire[0]["text"].startswith("🚨 *Scheduled job failed*: `evening_position_backstop`\n")
+
+
+@pytest.mark.asyncio
+async def test_635_a_loud_page_stays_loud_on_the_plain_text_retry(monkeypatch):
+    """A loud page that 400s on Markdown is re-sent plain — and must still buzz.
+    Before #635 both sends hardcoded the silent bit independently."""
+    posts = []
+
+    class _Resp:
+        def __init__(self, code):
+            self.status_code = code
+            self.text = "Bad Request: can't parse entities"
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, json=None, **kw):
+            posts.append(json)
+            return _Resp(400 if "parse_mode" in json else 200)
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "123")
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+    await notifications.notify_job_failure("stop_ack_timeout_watchdog", "bad _ text")
+    assert [p["disable_notification"] for p in posts] == [False, False]
+
+
+@pytest.mark.asyncio
+async def test_635_startup_and_direct_owner_pages_are_unchanged(monkeypatch, wire):
+    """The other two producers on the funnel keep today's behaviour byte-for-byte."""
+    import core.confirmations as confirmations
+    monkeypatch.setattr(confirmations, "get_redis",
+                        AsyncMock(side_effect=RuntimeError("no redis in tests")))
+    await notifications.notify_startup({"market": (True, "ok")})
+    await notifications.notify_owner("🔶 *2 job run(s) marked interrupted*")
+    assert [p["disable_notification"] for p in wire] == [True, True]
+
+
+def test_635_every_loud_job_is_one_the_scheduler_really_registers(monkeypatch):
+    """A renamed job id would silently drop out of the loud set — the unfireable-gate
+    class. Pin the set against what start_scheduler ACTUALLY registers, not a manifest."""
+    from tests.test_job_partition import _really_registered_job_ids
+    registered = _really_registered_job_ids(monkeypatch)
+    missing = notifications.LOUD_FAILURE_JOBS - registered
+    assert not missing, f"in LOUD_FAILURE_JOBS but never registered: {sorted(missing)}"
+
+
+def test_635_the_loud_set_is_exactly_the_two_approved_families():
+    """He approved two families — the naked-position detectors and the stop-ack
+    watchdog — and nothing else. A repair job or a heartbeat added here is a
+    widening of that decision, which is his to make."""
+    from agents.market_intelligence.scheduler import (
+        EXECUTION_OWNED_JOB_IDS, INTELLIGENCE_OWNED_JOB_IDS,
+    )
+    loud = notifications.LOUD_FAILURE_JOBS
+    assert loud <= EXECUTION_OWNED_JOB_IDS | INTELLIGENCE_OWNED_JOB_IDS
+    for repair_or_heartbeat in ("evening_position_backstop", "stop_coverage_repair_retry",
+                                "post_close_stop_refresh", "morning_stop_refresh",
+                                "evening_verify_heartbeat"):
+        assert repair_or_heartbeat not in loud
+    assert {"stop_ack_timeout_watchdog", "stuck_fill_watchdog"} <= loud
