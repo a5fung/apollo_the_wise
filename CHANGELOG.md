@@ -1,3 +1,9 @@
+### 2026-09-11 — #646: a full exit left a live position naked BY CONSTRUCTION
+
+- **`execute_full_exit` cancelled the resting stop, the sell was REJECTED because the broker had not released the shares, and it returned False having restored nothing** — the cancel and the sell raced each other, so the function caused its own failure, on a HEALTHY position and not only after hours. Fixed in four parts, deployed and verified in the running images. SSoT `docs/setups/exit_discipline.md`.
+- ⚠ **Alpaca credentials live ONLY in `apollo-execution`.** The same probe in `apollo-market` swallows the credential error into an empty list, so **an empty read looks exactly like an empty broker** — I reported the broker disagreed with its own remediation message; it did not.
+- ⚠ **A task's own premise can be the wrong thing.** #646 claimed ~64 bare hours; `evening_position_backstop` (21:00 ET mon-fri) repairs it and the real exposure was ~5 hours.
+
 ### 2026-09-10 — #501 Tier-1 silent-death alarms, and a claim nothing can falsify
 
 - Four silent-death classes now surface (audit row + deduped Telegram): a no-handler job dying into an unwatched `mi_job_runs` row (naked-position and stop-ack watchdogs included), a 200-OK-but-EMPTY Polygon snapshot read as a quiet day, the WS-backstop's own failures, a whole account-mode dropping out of the 15-min reconcile. Lesson: an odd `_` made the page 400 and vanish — an alarm that cannot render the errors it carries is not an alarm. **And the week's defect moved into PROSE: a commit claimed truncation "logs a warning", the line had been deleted by an edit in that same commit, and no test asserted it; #638's lattice check covered 1 of 3 triggers. Four gates shipped that day, two had real defects within hours — both found by a cleanup pass over my own diff.** Detail: `docs/architecture/market_agent_reference.md` §Error Alerting.

@@ -268,15 +268,12 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
-### 2026-09-12 — #647: machine-text alerts leave on the HTML layer, first send
+### 2026-09-12 — a TEST FIXTURE that invents the caller's input is a CLAIM about the caller
 
-- 28 alerts in 14 days (the EP alert, the live OKTA exit page, the safeguard-revert SQL, the daily residual) 400'd legacy Markdown on a bare `_`; the plain retry then STRIPPED the SQL's underscores. 13 senders now send `md_to_html(text)` as HTML (#121's path); the Markdown backstop keeps code bodies verbatim. Lesson: *"checked before filing"* was asserted, not run. Detail: `market_agent_reference.md` §Telegram Formatting.
-
-### 2026-09-11 — #646: a full exit left a live position naked BY CONSTRUCTION
-
-- **`execute_full_exit` cancelled the resting stop, the sell was REJECTED because the broker had not released the shares yet, and it returned False having restored nothing.** The cancel and the sell raced each other and the function caused its own failure — on a HEALTHY position (OKTA never breached its stop), and not only after hours. Fixed in four parts, all deployed and verified inside the running images: wait for share release then **re-place the stop on ANY sell failure**; the unprotected alert **computes** the next real repair time instead of naming an hour that already passed; a rejected exit writes an audit row; and the stop-cancel handler refills the pointer it clears, but only on a broker-CONFIRMED replacement. SSoT `docs/setups/exit_discipline.md`.
-- ⚠ **Alpaca credentials live ONLY in `apollo-execution`.** A broker probe run in `apollo-market` returns `position: null, 0 open orders` — the credential error is swallowed into an empty list — so **an empty read looks exactly like an empty broker**. I reported that the broker disagreed with its own remediation message; it did not. Always probe from inside `apollo-execution`.
-- ⚠ **A task's own premise can be the wrong thing.** #646 claimed ~64 bare hours on a Friday; `evening_position_backstop` (21:00 ET mon-fri) repairs it and the real exposure was ~5 hours. Verify the premise before building against it.
+- 🔴 **#649's stop-repair arm shipped and could not repair a naked position — 20 tests green.** The gap dict `check_position_coverage` returns is the repairer's ARGUMENT LIST, and it carried no `stop_price`, so every call passed `db_stop_price=None` and the no-live-stop branch (the naked case, the whole point) returned `COVERAGE_FLAGGED` without placing anything. The page then said *"the automatic repair did not hold"* about a repair that never ran. **The test mocked the repairer and asserted only the ticker, against a hand-written fixture that invented the dict shape** — the fixture, not the code, decided what the repairer received. Found by an advisor review of my own diff hours after shipping. **Pin a caller's input contract at the REAL producer, or the fixture is the only thing being tested.** Same class as the unfireable gates, in a new disguise.
+- ⚠ **A heartbeat may not call a job dead for a night it did not exist.** The 09:00 liveness check would have paged *"the 9:10 PM verifier appears DEAD"* on the first market morning after a Saturday deploy, reading an empty table correctly and diagnosing it wrongly.
+- ⚠ **Volume is not protection, and brittle tests cost twice.** 8,267 tests run in 83s, but **285 assert on SOURCE TEXT and 32 broke against a refactor that changed no behaviour** — while the two real defects above sailed through green. #653 rations the brittle kind, never the count.
+- #647: 28 alerts in 14 days 400'd legacy Markdown on a bare `_` and the plain retry STRIPPED the SQL's underscores. 13 senders migrated to `md_to_html` + HTML; **~192 remain — #652 fixes the shared default, not more call sites.** A wrapper was built and thrown away: no defect fixed, 32 test edits.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
