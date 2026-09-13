@@ -10108,7 +10108,16 @@ reviews:
       alert tickers later shared a theme (any lane) or co-moved market-adjusted. Report
       genuine-miss count vs correctly-declined, split from any LLM opinion. Then the
       operator rules: leave / widen / retire. Rulings land on #167's PLAN line.
-    status: pending  # UN-DEFERRED 2026-09-13 — THIS REVIEW'S OWN PULL-FORWARD TRIGGER HAS FIRED.
+    status: pending  # RUN 2026-09-13 — the work is DONE and the RULING is his (leave/widen/
+    # retire). Result: 64 live run-days since 06-07; 8 genuine misses, where a miss means >=2 of
+    # that day's EP alerts later landed in the same theme (the model's own opinion used nowhere).
+    # MEDIAN LAG 1 DAY — 5 of 8 were caught by another lane the next day, so they cost a day, not
+    # a theme. The whole value is the other three: 51d (HYMC/AUGO -> Precious Metals Miners
+    # Rotation), 13d (EME/PWR), 12d (BLZE/FLNC/MPWR). All 15 'nothing qualified' days had FEWER
+    # THAN TWO EP alerts — nothing to find, not failures. REC: LEAVE. Retire is wrong (12-51d
+    # catches are the rare-event payoff the lane exists for); widening the decline days buys ~2
+    # days in 3 months. Workings: docs/analysis/lane2_grouping_quality_2026-09-13.md
+    # (was) UN-DEFERRED 2026-09-13 — THIS REVIEW'S OWN PULL-FORWARD TRIGGER HAS FIRED.
     # Its deferral reads "PULLS FORWARD if Lane-2 proposals start naming stocks EP is actually
     # trading." Measured on prod 2026-09-13 over 60 days: Lane-2 named 59 distinct tickers, EP
     # traded 104, and 47 of the 59 OVERLAP — 80%. The overlap includes PLTR, MRNA, HOOD, AMLX,
