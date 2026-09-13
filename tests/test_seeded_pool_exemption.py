@@ -25,9 +25,21 @@ invention — including the two shapes the design doc got wrong: APLD is NOT hom
 Mirrors test_ecosystem_reactivation.py: pure decisions tested with zero mocking; the
 db accessor's SQL is pinned by inspection (it was exercised for real against prod by
 the #491 replay, not re-proven here).
+
+2026-09-13 (#653 cleanup): the two accessor pins now call the REAL
+get_seeded_assignment_tickers against a fake pool and inspect the literal SQL + bound
+params it sends (proving the ACTUAL value passed is the registered tuple, not just
+that its identifier's name appears in source text). The 5 `_m2_block()` wiring pins
+stay TAGGED: the M2 block is inline inside `run_theme_engine`, a ~2000-line orchestrator
+with no independently-callable seam (the same reasoning as run_ep_scan elsewhere in
+this sweep) -- test_theme_birth_gate.py's existing run_theme_engine() harness does not
+mock get_seeded_assignment_tickers, so seeded_triggers comes back empty there too and
+the M2 block is never reached "for free," matching this file's own module docstring
+("the db accessor's SQL is pinned by inspection... not re-proven here").
 """
 from __future__ import annotations
 
+import asyncio
 import inspect
 from datetime import date
 
@@ -48,23 +60,74 @@ def test_the_admission_scope_is_exactly_the_two_ruled_seed_sources():
     assert SEEDED_ASSIGN_SOURCES == ("narrative_cogap", "ecosystem_reactivation")
 
 
-def test_the_accessor_filters_by_the_pinned_sources_and_reads_only():
-    src = inspect.getsource(dbmod.get_seeded_assignment_tickers)
-    # The SQL must be built FROM the pinned tuple (one place to widen = one place to catch),
-    # and the window must be strictly prior-sessions (a same-day lane row can never be its
-    # own admission ticket — tonight's rows are written after the assignment pass).
-    assert "SEEDED_ASSIGN_SOURCES" in src
-    assert "run_date < $2" in src
+class _FakeConn:
+    def __init__(self, sink):
+        self._sink = sink
+
+    async def fetch(self, sql, *params):
+        self._sink.append((sql, params))
+        return []
+
+
+class _FakeAcquire:
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *a):
+        return False
+
+
+class _FakePool:
+    def __init__(self, sink):
+        self._conn = _FakeConn(sink)
+
+    def acquire(self):
+        return _FakeAcquire(self._conn)
+
+
+def _capture_seeded_sql(monkeypatch):
+    """Calls the REAL get_seeded_assignment_tickers against a fake pool and returns the
+    (sql, params) it actually sends — the runtime query, not a re-read of its own source."""
+    sink: list[tuple] = []
+
+    async def _pool():
+        return _FakePool(sink)
+
+    monkeypatch.setattr(dbmod, "get_pool", _pool)
+    asyncio.run(dbmod.get_seeded_assignment_tickers(date(2026, 8, 1), date(2026, 8, 5)))
+    assert len(sink) == 1
+    return sink[0]
+
+
+def test_the_accessor_filters_by_the_pinned_sources_and_reads_only(monkeypatch):
+    """Proves the ACTUAL bound parameter is the registered tuple, not just that the
+    identifier's name appears somewhere in the function's source — stronger than the
+    prior source-grep, which could not tell a real reference from a stale comment.
+
+    MUTATION TARGET: pass a hardcoded ("narrative_cogap",) instead of
+    list(SEEDED_ASSIGN_SOURCES) as the $3 parameter — the accessor would silently stop
+    tracking a future widening/narrowing of the registered source tuple."""
+    sql, params = _capture_seeded_sql(monkeypatch)
+    assert params[2] == list(SEEDED_ASSIGN_SOURCES), (
+        "the $3 parameter must be the REGISTERED tuple, not a hardcoded copy")
+    # The window must be strictly prior-sessions (a same-day lane row can never be its own
+    # admission ticket — tonight's rows are written after the assignment pass).
+    assert "run_date < $2" in sql
     # READ-ONLY: the exemption feeds a pool; it must never write anything anywhere.
     for verb in ("INSERT", "UPDATE", "DELETE"):
-        assert verb not in src.upper().replace("NEVER WRITES", "")
+        assert verb not in sql.upper()
 
 
-def test_the_accessor_has_no_rs_input_at_all():
-    # A raw-RS-band admission would need RS in the query. There is none, by design.
-    src = inspect.getsource(dbmod.get_seeded_assignment_tickers)
-    assert "rs_composite" not in src
-    assert "mi_stock_scores" not in src  # scores are fetched by the CALLER, per admitted name
+def test_the_accessor_has_no_rs_input_at_all(monkeypatch):
+    """MUTATION TARGET: add an rs_composite predicate/join to the query — a raw-RS-band
+    admission would need RS somewhere in the query text; there must be none, by design
+    (fork F-D)."""
+    sql, _ = _capture_seeded_sql(monkeypatch)
+    assert "rs_composite" not in sql
+    assert "mi_stock_scores" not in sql  # scores are fetched by the CALLER, per admitted name
 
 
 # ── FORK F-D, pin 2: the pure admission decision takes NO RS argument ───────────────────────────
@@ -168,6 +231,9 @@ def _m2_block() -> str:
 
 
 def test_the_engine_wires_m2_between_pool_build_and_assignment():
+    # source-pin-ok: wiring check on a block inline inside run_theme_engine, a
+    # ~2000-line orchestrator with no independently-callable seam -- see the file
+    # docstring for why test_theme_birth_gate.py's existing harness doesn't reach it.
     block = _m2_block()
     assert "_seeded_pool_admissions" in block
     assert "get_seeded_assignment_tickers" in block
@@ -179,6 +245,7 @@ def test_the_engine_wires_m2_between_pool_build_and_assignment():
 def test_m2_touches_the_assignment_pool_only_never_discovery():
     # Discovery stays top-40 untouched (§4.2) — an admitted name must never leak into
     # the `uncovered` discovery pool or any lane's candidate table.
+    # source-pin-ok: same run_theme_engine-closure reasoning as the wiring test above.
     block = _m2_block()
     assert "assignment_pool.append" in block
     assert "uncovered.append" not in block
@@ -188,6 +255,7 @@ def test_m2_touches_the_assignment_pool_only_never_discovery():
 
 
 def test_m2_fails_open_a_broken_read_costs_one_night_not_the_run():
+    # source-pin-ok: same run_theme_engine-closure reasoning as the wiring test above.
     block = _m2_block()
     assert "no M2 exemption this run" in block
 
@@ -196,6 +264,7 @@ def test_m2_admissions_are_observable_and_the_rate_bound_is_loud_not_silent():
     # §4.4: ~15/night by construction. A fat lane night is a FINDING to surface —
     # never a silent cap, never dropped names. One audit row per run carries the
     # per-ticker trigger pointers (the operator's "why is this name here").
+    # source-pin-ok: same run_theme_engine-closure reasoning as the wiring test above.
     block = _m2_block()
     assert "seeded_pool_admission" in block
     assert "> 15" in block and "bound" in block
@@ -205,6 +274,7 @@ def test_m2_admissions_are_observable_and_the_rate_bound_is_loud_not_silent():
 def test_scores_are_fetched_explicitly_for_admitted_names():
     # The exemption's mechanism: "its score row fetched explicitly from mi_stock_scores"
     # (§4.2) — via get_rs_for_tickers, never via the leaders fetch it exists to bypass.
+    # source-pin-ok: same run_theme_engine-closure reasoning as the wiring test above.
     block = _m2_block()
     assert "get_rs_for_tickers" in block
     assert "get_rs_leaders" not in block
