@@ -100,3 +100,66 @@ widen/leave call is then made on evidence instead of on a guess about breadth.
   was proposed was any good.
 
 Cost: **$0**. Read-only.
+
+
+---
+
+# THE CALL — 2026-09-13, after he pushed back on "instrument and wait"
+
+> *"it's already delayed, I need to know why you recommend keep waiting, if that even makes sense
+> or we just keep deferring to not make a call"*
+
+He was right. The data answered it; no instrumentation was needed. Both of my earlier
+recommendations are withdrawn.
+
+## 1. What "widening" concretely means — and why it is dead
+
+The only knob is `_lane2_qualifies` (`theme_engine.py:626`):
+**`ep_score >= 50` AND (`catalyst` OR `claude_analysis`)**. Widening = lowering that floor.
+
+**Checked all 21 tickers across all 8 missed groups: every one QUALIFIED. Zero were excluded.**
+Scores ran 50 to 96; every one had both a catalyst and an analysis.
+
+**So widening the pool changes nothing.** Lane-2 already saw every name it missed. The floor is
+innocent and the question is closed — with evidence, today, not after 20 more run-days.
+
+## 2. The goal it serves
+
+His goal 2, stated 2026-09-13: *source new themes from the gap-ups* — an early mover can be the
+start of a theme that later lifts the group. Lane-2 exists for the cross-sector/policy stories that
+price correlation structurally cannot see.
+
+## 3. What Lane-2 actually gives us
+
+| | |
+|---|---|
+| proposals since 2026-06-07 | **43** over 64 run-days |
+| map to a theme the board later held | **12** |
+| never became anything | **31** |
+| **proposed BEFORE the board had it** | **3 — by 14d, 13d and 1d** |
+
+The two that matter: **AI-Driven Power & Grid Infrastructure Boom, proposed 07-30, board named it
+08-12 — 13 days later.** **Semiconductor test recovery, proposed 07-31, board named it 08-14 — 14
+days later.** Lane-2 named them correctly and first.
+
+## The verdict
+
+**LEAVE THE LANE AS IT IS. Do not widen, do not retire. The defect is downstream of it.**
+
+Lane-2's 07-30 candidate sat **13 days** before the board held that theme, and it was in
+`narrative_cogap` — a source that is already on the auto-promote allowlist. **Its output was right,
+and slow to land.**
+
+**That is the same finding as the main theme work today** — the engine holds a group a median 26
+sessions before naming it. Lane-2 is not a separate problem; it is more evidence for step 2
+(timing), on a lane whose detection is already working.
+
+## What this does NOT answer
+
+- **Why the 07-30 candidate took 13 days** to become a live theme despite sitting in an
+  auto-promote source. That is the promotion path, not the detection lane, and it is the thing
+  worth chasing next.
+- **Whether the 31 proposals that never became themes were wrong.** They may be noise, or groups
+  the board still has not found. Not tested here.
+- **The model/prompt question.** All 21 names qualified, so what made it group some and not others
+  is a prompt-quality question this review does not open.
