@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
-"""#651 — judge-named themes: the historical pass, the capture loader, and THE REPORT.
+"""#651 — judge-named themes: the historical pass, the capture loader, THE REPORT, and the
+surface preview.
 
-Three modes, all off the alert path, none touching a grade/entry/exit/size/theme (THE LINE):
+Four modes, all off the alert path, none touching a grade/entry/exit/size/theme (THE LINE):
+
+  --surface [--dry-run]
+        The nightly trigger, by hand: every recurring judge-named group the engine never had
+        and has not been paged yet -> seed a shadow candidate (source 'judge_named') + ONE
+        Telegram page with the existing one-tap promote button. WITH --dry-run it reads
+        everything and writes/sends NOTHING — prints what WOULD fire ($0). Run the dry run in
+        prod after deploy: the first real run pages the historical never-matched groups.
 
   --historical [--since 2026-07-01] [--limit 400] --capture PATH [--commit]
         Extract the group names the judge wrote into mi_ep_alerts.judge_rationale for every
@@ -134,8 +142,26 @@ async def _report(args) -> int:
     return 0
 
 
+async def _surface(args) -> int:
+    from agents.market_intelligence.judge_named_themes import surface_new_candidates
+    out = await surface_new_candidates(dry_run=args.dry_run)
+    head = "DRY RUN — would fire" if args.dry_run else "fired"
+    print(f"{out['n_recurring']} recurring group(s): {out['n_matched']} matched a theme, "
+          f"{out['n_unmatched']} unmatched, {out['n_already_surfaced']} already surfaced")
+    cands = out["would_fire"] if args.dry_run else out["fired"]
+    print(f"{head}: {len(cands)}")
+    for c in cands:
+        print(f"  {c['key']}  ->  '{c['name']}'  on {len(c['tickers'])} tickers: {', '.join(c['tickers'])}")
+    if not args.dry_run:
+        print(f"re-seeded (still being named): {out['n_refreshed']}; send failed: {out['n_send_failed']}; "
+              f"seed failed: {out['n_seed_failed']}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--surface", action="store_true", help="run the nightly trigger by hand")
+    p.add_argument("--dry-run", action="store_true", help="with --surface: print what would fire, write/send nothing")
     p.add_argument("--historical", action="store_true")
     p.add_argument("--since", default="2026-07-01")
     p.add_argument("--limit", type=int, default=400)
@@ -146,6 +172,8 @@ def main(argv=None) -> int:
     p.add_argument("--themes-json", default=None)
     p.add_argument("--out", default=None)
     args = p.parse_args(argv)
+    if args.surface:
+        return asyncio.run(_surface(args))
     if args.historical:
         if args.commit and not args.capture:
             p.error("--commit requires --capture: the paid output must be captured to a file first")

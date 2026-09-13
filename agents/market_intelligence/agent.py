@@ -5153,7 +5153,10 @@ class MarketIntelligenceAgent(BaseAgent):
     async def _handle_promotetheme_id(self, request: AgentRequest) -> AgentResponse:
         """One-tap button target for the 🔭 Emerging-theme synthesis alert (operator ask
         2026-08-17: "is it possible make this even easier like with one-click" — typing the
-        long theme name by hand). Internal-only dispatch key — never a user-typed/registered
+        long theme name by hand) and, since 2026-09-12, the 🧭 judge-named-group alert (#651:
+        the seed row carries source 'judge_named'; include_probe=True below is what lets a
+        non-allowlisted source resolve here, exactly as for 'coverage_probe' /
+        'ecosystem_reactivation'). Internal-only dispatch key — never a user-typed/registered
         command (like /eps_detail, /trades_detail, /themes_detail); only the Telegram callback
         button (channels/telegram.py `tpromo:` prefix) ever sends it.
 

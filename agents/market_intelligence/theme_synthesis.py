@@ -180,7 +180,11 @@ def build_synthesis_keyboard(kept: list[dict]) -> dict:
     """Inline keyboard for the synthesis alert — one 'Promote' button per kept cohort,
     the tappable alternative to typing `/promotetheme <name>` (operator 2026-08-17).
     One row per cohort so each is independently tappable; the alert can carry several
-    candidates and tapping one must never disturb the others' buttons."""
+    candidates and tapping one must never disturb the others' buttons.
+
+    Also the button for the #651 judge-named-group alert (judge_named_themes.py, 2026-09-12)
+    — only `name` is read, so any shadow-candidate row shape works; one keyboard builder
+    for every producer means the callback_data scheme can never drift between alerts."""
     return {
         "inline_keyboard": [
             [{

@@ -199,9 +199,40 @@ name list alone does not.
 grades, admits, sizes, enters, exits, creates or promotes a theme; the judge's own inputs
 (`get_narrative_theme_candidates`, `ep_grade_judge`) never select from it
 (`tests/test_651_judge_named_themes.py` group 5). Candidates surface for the operator's
-ruling only. Finding: `docs/analysis/651_judge_named_themes_2026-09-12.md` — as of that
-date the paid historical pass had NOT run (no prod route from the build card, $0 spent);
-the doc carries the one-command runner and the three possible first-line answers.
+ruling only. Finding: `docs/analysis/651_judge_named_themes_2026-09-12.md`; measured the
+same day in prod ($0.24): of 45 groups over 144 alerts, 7 recur across >= 2 tickers — 2
+named by the judge 11 and 8 days BEFORE the engine had the theme (7 tickers each), 3 already
+existed, 2 never matched anything the engine ever held.
+
+**The surface (2026-09-12, second half — a silent list is the same trap as a fill that
+quietly stops; nobody reads it, nothing happens).** After the sweep, the same nightly job runs
+`judge_named_themes.surface_new_candidates` over THE SAME `lead_time_report`: a group named
+on **>= 2 distinct tickers** (recurrence is the definition of a theme) whose verdict is
+`never_matched` (no theme the engine EVER held — a match to a retired name is #534's
+reactivation lane, not this) and that has not been paged before is **SEEDED as a shadow
+candidate** (`db.persist_judge_named_seed`, source **`judge_named`**, through the same
+source-guarded upsert as `persist_reactivation_seed`; name = the judge's most frequent
+phrasing, tickers = the ones it was named on, thesis = the judge's own sentences) and
+**PAGED ONCE** with the group name, the tickers, the judge's words, the closest names we ever
+had, and the **EXISTING one-tap promote button** (`theme_synthesis.build_synthesis_keyboard`
+→ `tpromo:` → `/promotetheme_id` → `theme_engine.promote_candidate_by_name`). No creation
+path was invented and nothing auto-creates a theme — the tap is the operator's. The engine's
+`_PROMOTE_MIN_MEMBERS` bar (3) applies at the tap; the trigger is at 2 tickers, so the alert
+states the count and that the button goes live at the third — the seed is re-written nightly
+with the CURRENT ticker set while the judge keeps naming the group (`SEED_REFRESH_DAYS`, the
+7-day shadow window), and the button resolves the name against the newest row. Dedupe is per
+group key, FOREVER (`db.get_judge_named_surfaced_keys` over `judge_named_theme_candidate`
+audit rows), written only after a successful send (a lost page retries next night — loud,
+never silent). **Walls, by construction and pinned (test group 6):** `judge_named` ∉
+`AUTO_PROMOTE_THEME_SOURCES` (never auto-promotes), ∉ `get_narrative_theme_candidates` /
+`get_lane2_active_narratives` (never the judge's own evidence), ∉ `SEEDED_ASSIGN_SOURCES`
+(the #491 assignment-pool RS-floor exemption is an operator-ruled two-lane scope and was NOT
+widened — seeding there would have let a judge inference bypass the RS floor into the
+membership that feeds the judge); visible only to operator surfaces via `include_probe=True`.
+**Liveness:** every run writes `judge_named_theme_candidates_evaluated` (counts, and per
+recurring group which theme suppressed it) — a quiet month and a dead trigger otherwise read
+identically; a read failure RAISES so `audit_wrap` records the failure and #501 pages.
+Expected ~one page a month. $0 preview: `scripts/judge_named_themes_651.py --surface --dry-run`.
 
 ## ONE birth gate + lane retirements (consolidation Phase 1, 2026-07-27 — 3-state toggle `theme_birth_gate`, fail-closed 'off')
 

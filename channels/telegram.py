@@ -1609,7 +1609,9 @@ class TelegramChannel:
 
     async def _handle_theme_promote_callback(self, query, callback_data: str) -> None:
         """tpromo: one-tap promote — the 🔭 Emerging-theme synthesis alert's button (operator
-        2026-08-17: "is it possible make this even easier like with one-click"). Forwards the
+        2026-08-17: "is it possible make this even easier like with one-click"); since
+        2026-09-12 also the 🧭 judge-named-group alert's button (#651, judge_named_themes.py —
+        a second PRODUCER, the same callback and the same resolution path). Forwards the
         short id to the market agent's /promotetheme_id, which resolves it back to the
         candidate name and promotes through the SAME promote_candidate_by_name the typed
         /promotetheme command calls (agent.py) — no promotion logic duplicated here, this is

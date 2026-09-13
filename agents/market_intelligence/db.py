@@ -14690,6 +14690,60 @@ async def get_theme_name_history(conn) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+# ── Judge-named themes (#651) — the SURFACE's two statements (2026-09-12) ─────────
+# A recurring judge-named group the engine never had is seeded as a SHADOW CANDIDATE so the
+# operator's EXISTING one-tap promote button (tpromo: -> /promotetheme_id ->
+# theme_engine.promote_candidate_by_name) can create it. The seed is a candidate, never a
+# theme; only his tap promotes (THE LINE).
+#
+# ⚠ WHY A NEW SOURCE AND NOT SEEDED_ASSIGN_SOURCES: that tuple is the #491 M2 assignment-pool
+# RS-floor exemption, operator-ruled (fork F-D) to EXACTLY two price-action-anchored lanes and
+# pinned by tests/test_seeded_pool_exemption.py. A judge-inferred ticker admitted through it
+# would bypass the RS floor into membership that feeds the judge's own context — the #322
+# anti-circularity wall. So 'judge_named' is walled off BY CONSTRUCTION, like
+# 'ecosystem_reactivation': NOT in AUTO_PROMOTE_THEME_SOURCES (an allowlist — it can never
+# auto-promote), NOT in get_narrative_theme_candidates / get_lane2_active_narratives (never
+# the judge's own evidence), NOT in SEEDED_ASSIGN_SOURCES (never an admission ticket). Visible
+# ONLY to operator surfaces via get_shadow_theme_candidates(include_probe=True) -> the tap.
+# Pinned by tests/test_651_judge_named_themes.py group 6.
+JUDGE_NAMED_SEED_SOURCE = "judge_named"
+# One audit row per group EVER paged — the dedupe state (summary starts '<key>:'). Forever,
+# not recency-bounded: a 3rd/4th ticker must never re-page the same group.
+JUDGE_NAMED_CANDIDATE_EVENT = "judge_named_theme_candidate"
+# One audit row per nightly evaluation, with counts — the liveness signal. A month with no
+# page reads the SAME whether the trigger works or died; this row is what tells them apart.
+JUDGE_NAMED_EVALUATED_EVENT = "judge_named_theme_candidates_evaluated"
+
+
+async def persist_judge_named_seed(
+    conn, run_date: "str | date", name: str, tickers: list[str], thesis: "str | None",
+) -> None:
+    """Write ONE judge-named discovery seed to mi_theme_candidates_shadow under
+    source='judge_named' — the tickers the judge named the group on, the judge's own words
+    as the thesis. Goes through _upsert_theme_candidate_shadow's source-guarded conflict
+    path like every sibling lane writer (persist_reactivation_seed): a same-day same-name
+    row from another lane is left alone, never hijacked. Re-run nightly while the group is
+    still being named (a new run_date row carrying the CURRENT ticker set) so the alert's
+    button — which resolves the name against the newest row — promotes current membership,
+    exactly as the typed /promotetheme does. Never touches mi_themes."""
+    await _upsert_theme_candidate_shadow(
+        conn, _to_date(run_date), name, tickers, thesis, JUDGE_NAMED_SEED_SOURCE)
+
+
+async def get_judge_named_surfaced_keys(conn) -> set[str]:
+    """Dedupe set: every group key that has EVER been paged (the '<key>: ...' summary of a
+    JUDGE_NAMED_CANDIDATE_EVENT row, the split_part idiom). Deliberately NOT recency-bounded
+    (unlike get_reactivation_alerted_ecosystems): the design pages a group ONCE, at its
+    second distinct ticker; later tickers refresh the seed silently. Keys are normalize_key
+    slugs (no colons), so split_part is exact."""
+    rows = await conn.fetch(
+        "SELECT DISTINCT split_part(summary, ':', 1) AS k FROM mi_audit_log "
+        "WHERE event_type = $1",
+        JUDGE_NAMED_CANDIDATE_EVENT,
+    )
+    return {r["k"] for r in rows if r["k"]}
+
+
 async def record_theme_rename(
     old_name: str, new_name: str, *, mechanism: str, theme_date: date,
     detail: str = "", conn=None,

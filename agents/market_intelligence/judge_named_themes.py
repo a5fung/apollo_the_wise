@@ -25,14 +25,38 @@ extractor would bury the real candidates in junk. Haiku 4.5 at ~300 in / ~60 out
 alert priced the whole historical pass at ~$0.07 and the forward flow at pennies a month —
 operator-approved 2026-09-12.
 
+THE SURFACE (second half, 2026-09-12 — measured first: of 45 groups over 144 alerts, 7 recurred
+across >=2 tickers and 2 were named 8-11 days BEFORE the engine had the theme; 2 more matched
+nothing we ever had). A silent list is the same trap as a fill that quietly stops — nobody reads
+it, nothing happens. `surface_new_candidates` (nightly, after the sweep) fires when a group
+reaches its SECOND distinct ticker and matches no theme the engine EVER held (same
+`lead_time_report` rule the operator already read): it SEEDS a shadow candidate
+(`db.persist_judge_named_seed`, source 'judge_named' — the `persist_reactivation_seed` shape)
+and pages ONCE with the EXISTING one-tap promote button (`theme_synthesis.build_synthesis_keyboard`
+-> `tpromo:` -> `/promotetheme_id` -> `theme_engine.promote_candidate_by_name`). No creation path
+is invented; the engine's own `_PROMOTE_MIN_MEMBERS` bar applies at the tap. ~one page a month.
+  - The trigger is at 2 tickers, the promote bar is 3: the alert says how many names it has;
+    while the judge keeps naming the group the seed is re-written nightly with the CURRENT
+    ticker set (`SEED_REFRESH_DAYS`), so the original alert's button goes live when a third
+    name lands — the button resolves the name against the newest candidate row.
+  - Dedupe is per group key, FOREVER (`db.get_judge_named_surfaced_keys`): a 3rd/4th ticker
+    never re-pages. The dedupe row is written only AFTER a successful send — a lost page
+    retries next night (a duplicate is loud; a silent loss is the failure this exists to end).
+  - LIVENESS: every evaluation writes a `judge_named_theme_candidates_evaluated` audit row
+    with counts and, per recurring group, which theme suppressed it. A month with no page
+    reads the SAME whether the trigger works or died; that row is what tells them apart.
+
 THE LINE (never crossed here): a ZERO-AUTHORITY post-process over text the judge already wrote.
   - Does NOT touch the judge's prompt or call path, so it cannot move a grade.
-  - Writes ONLY `mi_judge_named_themes` (+ audit rows). Creates no theme, moves no membership,
-    reaches no grade / entry / exit / size. Candidates surface for the OPERATOR'S ruling.
+  - Writes ONLY `mi_judge_named_themes`, a SHADOW CANDIDATE row (never `mi_themes`) and audit
+    rows. Creates no theme, moves no membership, reaches no grade / entry / exit / size.
+    Nothing here promotes — the tap is HIS; the seed is a candidate, not a theme.
   - Anti-circularity as #322: the judge's own inputs (`db.get_narrative_theme_candidates`,
-    `ep_grade_judge.assemble_judge_inputs`) never select from this table — pinned by
-    tests/test_651_judge_named_themes.py — so a judge inference can never become the judge's
-    own future corroborating evidence.
+    `ep_grade_judge.assemble_judge_inputs`) never select from this table, and the
+    'judge_named' seed source is outside AUTO_PROMOTE_THEME_SOURCES, the judge's narrative
+    feed AND the #491 assignment-pool exemption (SEEDED_ASSIGN_SOURCES, an operator-ruled
+    scope) — pinned by tests/test_651_judge_named_themes.py — so a judge inference can never
+    become the judge's own future corroborating evidence.
   - Off the alert hot path by construction: the NIGHTLY sweep (`extract_pending`, scheduler
     job `judge_named_themes_extract`) does the work; the 5-minute scan never waits on it.
 
@@ -54,8 +78,10 @@ from pathlib import Path
 from typing import Any
 
 from agents.market_intelligence.db import (
-    get_judge_named_themes_pending, get_pool, insert_judge_named_theme_row, log_audit_event,
-    resolve_theme_aliases,
+    JUDGE_NAMED_CANDIDATE_EVENT, JUDGE_NAMED_EVALUATED_EVENT, JUDGE_NAMED_SEED_SOURCE,
+    get_judge_named_surfaced_keys, get_judge_named_theme_rows, get_judge_named_themes_pending,
+    get_pool, get_theme_name_history, get_theme_rename_edges, insert_judge_named_theme_row,
+    log_audit_event, persist_judge_named_seed, resolve_theme_aliases,
 )
 from shared.llm_models import JUDGE_NAMED_THEMES_MODEL, pricing_for
 from shared.llm_response import is_truncated, usage_tokens
@@ -363,8 +389,9 @@ def recurring_groups(rows: list[dict]) -> list[dict]:
         key = normalize_key(raw)
         if not key:
             continue
-        g = by_key.setdefault(key, {"key": key, "variants": set(), "mentions": [], "evidence": []})
-        g["variants"].add(str(r.get("group_name") or raw))
+        g = by_key.setdefault(key, {"key": key, "variants": {}, "mentions": [], "evidence": []})
+        variant = str(r.get("group_name") or raw)
+        g["variants"][variant] = g["variants"].get(variant, 0) + 1
         g["mentions"].append((r["alert_date"], str(r["ticker"]).upper()))
         if r.get("evidence"):
             g["evidence"].append((r["alert_date"], str(r["ticker"]).upper(), r["evidence"]))
@@ -379,6 +406,7 @@ def recurring_groups(rows: list[dict]) -> list[dict]:
         out.append({
             "key": g["key"],
             "variants": sorted(g["variants"]),
+            "variant_counts": dict(g["variants"]),   # phrasing -> mentions; the seed name picks the modal one
             "tickers": tickers,
             "n_tickers": len(tickers),
             "n_alerts": len(mentions),
@@ -527,3 +555,188 @@ def format_report(rep: dict) -> str:
         for d, t, ev in g["evidence"][:3]:
             lines.append(f"   {d} {t}: \"{ev}\"")
     return "\n".join(lines)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════
+# The SURFACE — seed a shadow candidate, page ONCE with the existing one-tap promote button
+
+# The candidate name is what the operator sees in /themes for the life of the theme — capped
+# to the synthesis lane's own name limit (theme_synthesis._MAX_NAME_LEN), no prefix.
+MAX_SEED_NAME_LEN = 80
+# Re-seed a surfaced-but-unpromoted group while its LAST naming is within this many days —
+# the shadow window promote_candidate_by_name / the button read (get_shadow_theme_candidates
+# days=7), so the button keeps resolving to a row carrying the current ticker set.
+SEED_REFRESH_DAYS = 7
+
+
+def seed_name_for(group: dict) -> str:
+    """The judge's MOST FREQUENT phrasing of the group; ties -> shortest, then alphabetical
+    (deterministic). Falls back to the slug only if no phrasing was recorded."""
+    counts = group.get("variant_counts") or {}
+    if not counts:
+        return (group.get("key") or "")[:MAX_SEED_NAME_LEN]
+    best = sorted(counts.items(), key=lambda kv: (-kv[1], len(kv[0]), kv[0]))[0][0]
+    best = best.strip()
+    if len(best) > MAX_SEED_NAME_LEN:
+        best = best[:MAX_SEED_NAME_LEN - 1].rstrip() + "…"
+    return best
+
+
+def find_new_candidates(report: dict, surfaced: set[str]) -> list[dict]:
+    """Recurring (>= 2 distinct tickers, the definition of a theme) AND matched no theme the
+    engine EVER held (`lead_time_report`'s `never_matched`, the same deterministic rule the
+    operator's report prints) AND never paged before. Oldest first, like the report."""
+    return [g for g in report["groups"]
+            if g["verdict"] == "never_matched" and g["key"] not in surfaced]
+
+
+def _thesis_for(group: dict) -> str:
+    """The candidate's thesis = the judge's own sentences, one per ticker, dated — what
+    /themes shows beside the cohort and what a promoted theme's description starts from."""
+    parts = [f"Judge-named on {group['n_tickers']} EP alerts "
+             f"({group['first_named_date']} -> {group['last_named_date']}); "
+             f"no theme of ours matched (#651)."]
+    for d, t, ev in group.get("evidence", [])[:3]:
+        parts.append(f"{d} {t}: {ev}")
+    return " ".join(parts)[:400]
+
+
+def format_candidate_alert(group: dict, name: str, promote_min: int) -> str:
+    """The page. HTML (#121 layer) — the judge's prose carries '&' and '<', esc() is total.
+    Carries: the group name, the tickers it was named on, the judge's own words, that we have
+    no theme for it (plus the closest names we ever had, for the eye), and — plainly — how
+    many names it has against the promote bar, so a tap that must fail is never offered as
+    if it would succeed."""
+    from shared.telegram_format import b, code, esc, i
+
+    n = group["n_tickers"]
+    lines = [
+        f"🧭 {b('Judge-named group — no theme of ours matches')}",
+        b(name),   # b() escapes internally — never esc() twice (a '&' would render '&amp;amp;')
+        f"Named on {n} tickers: {code(' '.join(group['tickers']))}  "
+        f"({esc(str(group['first_named_date']))} → {esc(str(group['last_named_date']))})",
+        "",
+        i("The judge's words:"),
+    ]
+    for d, t, ev in group.get("evidence", [])[:3]:
+        lines.append(f"• {esc(str(d))} {esc(t)}: “{esc(ev)}”")
+    near = group.get("near_misses") or []
+    if near:
+        closest = ", ".join(f"{esc(m['theme_name'])} ({esc(str(m['theme_first_date']))})"
+                            for m in near[:3])
+        lines.append("")
+        lines.append(f"Closest names we ever had (none matched): {closest}")
+    lines.append("")
+    if n < promote_min:
+        lines.append(
+            f"{n} names so far — the promote bar is {promote_min}. The button below goes live "
+            f"when the judge names a third; the candidate refreshes on each new naming. "
+            f"Nothing is created until you tap.")
+    else:
+        lines.append(
+            f"Tap below to create it as a live theme ({n} members). "
+            f"Nothing is created until you tap.")
+    return "\n".join(lines)
+
+
+async def surface_new_candidates(*, today: "date | None" = None, dry_run: bool = False) -> dict:
+    """The nightly trigger. Reads the recorded rows + the engine's full theme timeline, runs
+    THE SAME `lead_time_report` the operator's report uses, and for every recurring group the
+    engine never had that has not been paged before: SEED (so the button has a target) ->
+    SEND (with the existing tpromo: promote button) -> DEDUPE ROW (only if the send landed).
+    Already-paged unmatched groups still being named are re-seeded silently (see
+    SEED_REFRESH_DAYS). ALWAYS ends with the liveness audit row — even on a quiet night.
+    `dry_run` reads everything and writes/sends nothing (the $0 preview). Raises on a read
+    failure on purpose: audit_wrap records the job failed and #501 pages — a trigger that
+    dies quietly is the failure this surface exists to end."""
+    if today is None:
+        from agents.market_intelligence.collector import et_today
+        today = et_today()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await get_judge_named_theme_rows(conn)
+        hist = await get_theme_name_history(conn)
+        edges = await get_theme_rename_edges(conn)
+        surfaced = await get_judge_named_surfaced_keys(conn)
+    rep = lead_time_report(rows, hist, rename_edges=edges)
+    groups = rep["groups"]
+    unmatched = [g for g in groups if g["verdict"] == "never_matched"]
+    new = find_new_candidates(rep, surfaced)
+    refresh = [g for g in unmatched
+               if g["key"] in surfaced and (today - g["last_named_date"]).days <= SEED_REFRESH_DAYS]
+    out = {
+        "today": today.isoformat(), "dry_run": dry_run,
+        "n_recurring": len(groups), "n_matched": len(groups) - len(unmatched),
+        "n_unmatched": len(unmatched), "n_already_surfaced": len(unmatched) - len(new),
+        "n_refreshed": 0, "n_fired": 0, "n_send_failed": 0, "n_seed_failed": 0,
+        "would_fire": [{"key": g["key"], "name": seed_name_for(g), "tickers": g["tickers"]} for g in new],
+        "fired": [],
+    }
+    if dry_run:
+        return out
+
+    from agents.market_intelligence.theme_engine import _PROMOTE_MIN_MEMBERS
+    from agents.market_intelligence.theme_synthesis import build_synthesis_keyboard
+    from agents.market_intelligence.briefing import send_telegram_message
+
+    # Silent refresh: the seed is the button's target; keep it current while the judge keeps
+    # naming the group (a third name is what makes the tap clear the promote bar).
+    for g in refresh:
+        try:
+            async with pool.acquire() as conn:
+                await persist_judge_named_seed(conn, today, seed_name_for(g), g["tickers"], _thesis_for(g))
+            out["n_refreshed"] += 1
+        except Exception as e:
+            out["n_seed_failed"] += 1
+            logger.warning(f"judge_named_themes: seed refresh failed for {g['key']}: {e}")
+
+    for g in new:
+        name = seed_name_for(g)
+        seeded = True
+        try:
+            async with pool.acquire() as conn:
+                await persist_judge_named_seed(conn, today, name, g["tickers"], _thesis_for(g))
+        except Exception as e:
+            # The finding still reaches him; only the button is lost (it would resolve nothing).
+            seeded = False
+            out["n_seed_failed"] += 1
+            logger.warning(f"judge_named_themes: seed write failed for {g['key']}: {e}")
+        text = format_candidate_alert(g, name, _PROMOTE_MIN_MEMBERS)
+        if not seeded:
+            text += "\n\n⚠ The candidate could not be seeded tonight — the button will not resolve; /themes tomorrow."
+        markup = build_synthesis_keyboard([{"name": name}]) if seeded else None
+        ok = await send_telegram_message(text, parse_mode="HTML", reply_markup=markup)
+        if not ok:
+            out["n_send_failed"] += 1
+            logger.warning(f"judge_named_themes: page for {g['key']} did not send — retries next night")
+            continue
+        await log_audit_event(
+            JUDGE_NAMED_CANDIDATE_EVENT,
+            f"{g['key']}: '{name}' named on {g['n_tickers']} tickers "
+            f"({', '.join(g['tickers'])}) {g['first_named_date']} -> {g['last_named_date']}; "
+            f"no theme ever matched; seeded source={JUDGE_NAMED_SEED_SOURCE}"
+            + ("" if seeded else " (SEED FAILED)"),
+            detail=str({k: v for k, v in g.items() if k != "mentions"}),
+        )
+        out["n_fired"] += 1
+        out["fired"].append({"key": g["key"], "name": name, "tickers": g["tickers"], "seeded": seeded})
+
+    # LIVENESS — the positive observable. Per group: which theme suppressed it, so a wrong
+    # match is visible in the audit log rather than silently swallowing a real candidate.
+    per_group = "; ".join(
+        f"{g['key']}[{g['n_tickers']}t] -> "
+        + (f"matched '{g['match']['theme_name']}' ({g['match']['theme_first_date']}, lead {g['lead_days']}d)"
+           if g["match"] else
+           ("paged tonight" if any(f["key"] == g["key"] for f in out["fired"])
+            else ("already surfaced" if g["key"] in surfaced else "unmatched, page did not send")))
+        for g in groups)
+    await log_audit_event(
+        JUDGE_NAMED_EVALUATED_EVENT,
+        f"{out['n_recurring']} recurring group(s): {out['n_matched']} matched a theme, "
+        f"{out['n_unmatched']} unmatched ({out['n_already_surfaced']} already surfaced, "
+        f"{out['n_refreshed']} re-seeded), {out['n_fired']} fired"
+        + (f", {out['n_send_failed']} send failed" if out["n_send_failed"] else "")
+        + (f", {out['n_seed_failed']} seed failed" if out["n_seed_failed"] else ""),
+        detail=per_group or "no recurring groups yet",
+    )
+    return out

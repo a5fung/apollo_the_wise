@@ -181,7 +181,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     # No broker call, no grade/admission/sizing/exit input (THE LINE).
     "ecosystem_discovery",       # Sunday 09:30 ET weekly pass (<=2 Sonnet calls)
     "ecosystem_grace_sweep",     # hourly :12 — pending → live at grace-end
-    "judge_named_themes_extract",  # #651 2026-09-12 — nightly Haiku extraction of the GROUP the judge named in its stored rationale (mi_ep_alerts.judge_rationale) into mi_judge_named_themes; bounded batch, ~pennies/month; pure read + DB/audit, no broker calls, no grade/admission/theme change, SILENT (no Telegram), RECORDS ONLY
+    "judge_named_themes_extract",  # #651 2026-09-12 — nightly Haiku extraction of the GROUP the judge named in its stored rationale (mi_ep_alerts.judge_rationale) into mi_judge_named_themes, THEN the surface: a group named on >=2 tickers that matches no theme we ever had is seeded as a SHADOW candidate (source judge_named, walled off from auto-promote) and paged ONCE with the existing one-tap promote button (~1/month); bounded batch, ~pennies/month; no broker calls, no grade/admission change, NEVER CREATES A THEME — only the operator's tap promotes
     "theme_resilience_weekly",  # #644 2026-09-11 — Sunday weekly per-theme down-day-resilience capture for the November forward test; pure compute (get_active_themes + the already-tested get_down_day_resilience) + DB/audit, no broker calls, no grade/admission/ranking change, SILENT (no Telegram), RECORDS ONLY
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "strength_spread_alert",  # #579 2026-09-12 — ad-hoc strength-map direction-spread crossing alert; read-only + audit, Telegram only on a genuine crossing
@@ -5407,13 +5407,26 @@ async def _judge_named_themes_extract_job():
     Haiku call, and after the 17:00 nightly pull so the day's alerts are settled; clear of
     both deploy windows (12:00-13:00, 21:15-22:15 ET). Bounded batch (`limit`) so a
     backlog can never turn into a surprise bill — the historical pass is the script
-    (`scripts/judge_named_themes_651.py`), not this job. RECORDS ONLY (THE LINE): writes
-    ONLY mi_judge_named_themes + mi_audit_log; no theme is created, no membership moves,
-    nothing reaches a grade, entry, exit or size. Never raises past the wrapper
-    (extract_pending swallows per-alert failures and leaves them for the next night)."""
-    from agents.market_intelligence.judge_named_themes import extract_pending
+    (`scripts/judge_named_themes_651.py`), not this job.
+
+    THEN THE SURFACE (2026-09-12, second half): `surface_new_candidates` — a group the judge
+    named on >= 2 distinct tickers that matches no theme the engine EVER had is SEEDED as a
+    shadow candidate (source 'judge_named', outside the auto-promote allowlist, the judge's
+    own feed and the assignment-pool exemption) and paged ONCE with the EXISTING one-tap
+    promote button (tpromo: -> /promotetheme_id -> promote_candidate_by_name). Expected
+    ~one page a month. Every run writes a `judge_named_theme_candidates_evaluated` audit
+    row with counts — the liveness signal, so a quiet month and a dead trigger never read
+    the same. THE LINE: writes mi_judge_named_themes, ONE shadow-candidate row and audit
+    rows; NO theme is created — only the operator's tap promotes; nothing reaches a grade,
+    entry, exit or size. The extraction swallows per-alert failures (retried next night);
+    the surface RAISES on a read failure on purpose — audit_wrap records the run failed and
+    the #501 watch pages, because a trigger that dies quietly is the failure it exists to
+    end."""
+    from agents.market_intelligence.judge_named_themes import extract_pending, surface_new_candidates
     out = await extract_pending(limit=40)
     logger.info(f"judge-named themes nightly extraction: {out}")
+    surfaced = await surface_new_candidates()
+    logger.info(f"judge-named themes surface: {surfaced}")
 
 
 async def _theme_resilience_weekly_job():
@@ -6571,10 +6584,11 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=3600,
     )
 
-    # #651: judge-named theme capture — 18:20 ET mon-fri, after the 18:10 bounded sweep so
-    # the theme-side rows of the day exist, still clear of both deploy windows. Shadow-
-    # table-only writes (mi_judge_named_themes + mi_audit_log); never a grade/alert/entry/
-    # exit/size/theme table. Off the alert hot path by construction (nightly, not per-scan).
+    # #651: judge-named theme capture + surface — 18:20 ET mon-fri, after the 18:10 bounded
+    # sweep so the theme-side rows of the day exist, still clear of both deploy windows.
+    # Writes mi_judge_named_themes + mi_audit_log + (on a trigger) ONE shadow-candidate row
+    # under source 'judge_named' for the operator's one-tap promote; never mi_themes, never a
+    # grade/alert/entry/exit/size table. Off the alert hot path by construction (nightly).
     _scheduler.add_job(
         audit_wrap(_judge_named_themes_extract_job, "judge_named_themes_extract"),
         CronTrigger(hour=18, minute=20, day_of_week="mon-fri", timezone="America/New_York"),

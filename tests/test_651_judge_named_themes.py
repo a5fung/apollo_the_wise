@@ -13,6 +13,12 @@ Groups:
      job classified INTELLIGENCE + scheduled off the alert hot path, registry role/label/ceiling.
   5. THE LINE + anti-circularity: the new table is read by NOTHING that grades, promotes, or
      feeds the judge's own inputs — it is a recorder for the operator's ruling only.
+  6. The SURFACE (the second half, 2026-09-12): when a judge-named group reaches its SECOND
+     distinct ticker and matches no theme the engine ever had, seed a SHADOW CANDIDATE
+     (source 'judge_named', walled off from auto-promote / the judge feed / the assignment
+     pool) and page ONCE with the EXISTING one-tap promote button — the tap is HIS, the
+     module never promotes; a nightly "evaluated" audit row is the liveness signal so a dead
+     trigger never reads like a quiet month.
 """
 from __future__ import annotations
 
@@ -382,9 +388,15 @@ def test_registry_role_label_and_ceiling_are_wired():
 # ════════════════════════════════════════════════════════════════════════════════════
 # 5. THE LINE + anti-circularity
 
-def test_the_table_feeds_nothing_that_grades_promotes_or_informs_the_judge():
+def test_the_table_feeds_nothing_that_grades_or_informs_the_judge_and_the_module_never_promotes():
     """A judge-named group must never become the judge's own corroborating evidence (#322's
-    wall), never auto-create a theme, and never touch a grade/entry/exit/size path."""
+    wall), never auto-create a theme, and never touch a grade/entry/exit/size path.
+
+    Rewritten with the surface (group 6): the module now seeds a SHADOW CANDIDATE through
+    db.py's source-guarded upsert — the sanctioned pre-promotion shape (`persist_reactivation_seed`)
+    — so the old literal pin ("never mentions mi_theme_candidates_shadow") is replaced by the
+    walls that actually matter: never mi_themes, never the judge's alert rows, and NEVER a
+    promotion call — only the operator's tap promotes."""
     mi = _REPO / "agents" / "market_intelligence"
     for rel in ("ep_grade_judge.py", "theme_engine.py", "ep_detector.py", "entry_pipeline.py"):
         p = mi / rel
@@ -393,7 +405,281 @@ def test_the_table_feeds_nothing_that_grades_promotes_or_informs_the_judge():
     # the judge's own narrative feed never selects from it
     import inspect
     assert "mi_judge_named_themes" not in inspect.getsource(dbmod.get_narrative_theme_candidates)
-    # the module itself writes ONLY its own table
     src = (mi / "judge_named_themes.py").read_text()
-    assert "INSERT INTO mi_themes" not in src and "mi_theme_candidates_shadow" not in src
+    for verb in ("INSERT INTO mi_themes", "UPDATE mi_themes", "DELETE FROM mi_themes"):
+        assert verb not in src, verb
     assert "UPDATE mi_ep_alerts" not in src
+    # the tap is HIS: nothing in the module CALLS promotion, auto or otherwise (the docstring
+    # may name the chain; a call is the thing that must not exist)
+    assert "promote_candidate_by_name(" not in src and "promote_shadow_themes(" not in src
+    assert "_upsert_promoted_theme" not in src
+
+
+# ════════════════════════════════════════════════════════════════════════════════════
+# 6. The surface — seed a shadow candidate, page once with the EXISTING promote button
+
+from types import SimpleNamespace  # noqa: E402
+from unittest.mock import MagicMock  # noqa: E402
+
+from agents.market_intelligence import theme_synthesis as ts  # noqa: E402
+
+
+def _row_on(ticker, day, key, name=None, evidence=""):
+    """Like _row but with an explicit date (the refresh tests are relative to a 'today')."""
+    return {
+        "ticker": ticker, "alert_date": day, "canonical_key": key,
+        "group_name": name or key, "evidence": evidence, "judge_says_untracked": None,
+    }
+
+
+def _sep(d):
+    return _D(2026, 9, d)
+
+
+def _surface_fixture(monkeypatch, rows, hist, *, surfaced=frozenset(), send_ok=True):
+    """Wire every read/write the surface touches to recorders; returns the event list."""
+    from agents.market_intelligence import briefing
+    pool, conn = make_mock_pool()
+    monkeypatch.setattr(jnt, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(jnt, "get_judge_named_theme_rows", AsyncMock(return_value=rows))
+    monkeypatch.setattr(jnt, "get_theme_name_history", AsyncMock(return_value=hist))
+    monkeypatch.setattr(jnt, "get_theme_rename_edges", AsyncMock(return_value=[]))
+    monkeypatch.setattr(jnt, "get_judge_named_surfaced_keys", AsyncMock(return_value=set(surfaced)))
+    events: list = []
+
+    async def _seed(conn_, run_date, name, tickers, thesis):
+        events.append(("seed", run_date, name, list(tickers), thesis))
+
+    async def _send(text, **kw):
+        events.append(("send", text, kw))
+        return send_ok
+
+    async def _audit(event_type, summary, detail=""):
+        events.append(("audit", event_type, summary, detail))
+
+    monkeypatch.setattr(jnt, "persist_judge_named_seed", _seed)
+    monkeypatch.setattr(briefing, "send_telegram_message", _send)
+    monkeypatch.setattr(jnt, "log_audit_event", _audit)
+    return events
+
+
+def _two_ticker_unmatched_rows():
+    return [
+        _row_on("BBB", _sep(9), "lng-export", name="LNG export",
+                evidence="BBB trades with the LNG export cohort & no active theme matched"),
+        _row_on("CCC", _sep(11), "lng-export", name="LNG Export Cohort",
+                evidence="CCC is an LNG export name"),
+    ]
+
+
+def test_seed_name_is_the_judges_most_frequent_phrasing_not_the_slug():
+    rows = [
+        _row_on("AAA", _sep(1), "lng-export", name="LNG export"),
+        _row_on("BBB", _sep(2), "lng-export", name="LNG Export Cohort"),
+        _row_on("CCC", _sep(3), "lng-export", name="LNG export"),
+    ]
+    g = jnt.recurring_groups(rows)[0]
+    assert jnt.seed_name_for(g) == "LNG export"
+
+
+def test_seed_name_ties_break_deterministically_and_are_capped():
+    # equal counts: the SHORTER phrasing wins ("Zeta phrasing" is 13 chars, "Alpha phrasing" 14)
+    rows = [_row_on("AAA", _sep(1), "k", name="Zeta phrasing"),
+            _row_on("BBB", _sep(2), "k", name="Alpha phrasing")]
+    assert jnt.seed_name_for(jnt.recurring_groups(rows)[0]) == "Zeta phrasing"
+    # equal counts AND equal length: alphabetical
+    rows = [_row_on("AAA", _sep(1), "k3", name="Zeta phrasing"),
+            _row_on("BBB", _sep(2), "k3", name="Beta phrasing")]
+    assert jnt.seed_name_for(jnt.recurring_groups(rows)[0]) == "Beta phrasing"
+    long = "x" * 200
+    rows = [_row_on("AAA", _sep(1), "k2", name=long), _row_on("BBB", _sep(2), "k2", name=long)]
+    assert len(jnt.seed_name_for(jnt.recurring_groups(rows)[0])) <= jnt.MAX_SEED_NAME_LEN
+
+
+def test_new_candidates_are_recurring_unmatched_and_not_yet_surfaced():
+    rows = [
+        _row_on("BBB", _sep(2), "lng-export"), _row_on("CCC", _sep(5), "lng-export"),                # fires
+        _row_on("DDD", _sep(2), "ai-infrastructure"), _row_on("EEE", _sep(3), "ai-infrastructure"),  # matched
+        _row_on("FFF", _sep(4), "quantum-computing"),                                                # one ticker
+        _row_on("GGG", _sep(4), "gold-miner"), _row_on("HHH", _sep(6), "gold-miner"),                # surfaced
+    ]
+    rep = jnt.lead_time_report(rows, [{"name": "AI Infrastructure", "theme_date": _sep(1)}])
+    new = jnt.find_new_candidates(rep, surfaced={"gold-miner"})
+    assert [g["key"] for g in new] == ["lng-export"]
+
+
+def test_candidate_alert_carries_name_tickers_the_judges_words_and_says_we_have_no_theme():
+    g = jnt.recurring_groups(_two_ticker_unmatched_rows())[0]
+    g["match"] = None
+    g["near_misses"] = [{"theme_name": "LNG Shipping", "theme_first_date": _sep(1),
+                         "jaccard": 0.33, "contained": False}]
+    text = jnt.format_candidate_alert(g, "LNG export", promote_min=3)
+    assert "LNG export" in text
+    assert "BBB" in text and "CCC" in text
+    assert "&amp; no active theme matched" in text        # the judge's own words, HTML-escaped
+    assert "no theme" in text.lower()
+    assert "LNG Shipping" in text                          # closest name we ever had, for the eye
+    # 2 names, bar is 3: say so plainly instead of offering a tap that must fail
+    assert "2 names" in text and "third" in text
+
+
+def test_candidate_alert_offers_the_tap_once_the_bar_is_met():
+    rows = _two_ticker_unmatched_rows() + [
+        _row_on("DDD", _sep(12), "lng-export", name="LNG export", evidence="DDD too")]
+    g = jnt.recurring_groups(rows)[0]
+    g["match"], g["near_misses"] = None, []
+    text = jnt.format_candidate_alert(g, "LNG export", promote_min=3)
+    assert "third" not in text
+    assert "nothing is created until you tap" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_surface_seeds_then_pages_with_the_existing_promote_button_then_dedupes(monkeypatch):
+    events = _surface_fixture(monkeypatch, _two_ticker_unmatched_rows(), [])
+
+    out = await jnt.surface_new_candidates(today=_sep(12))
+
+    assert out["n_fired"] == 1 and out["fired"][0]["key"] == "lng-export"
+    kinds = [e[0] for e in events]
+    assert kinds.index("seed") < kinds.index("send"), "the seed must exist before the button can be tapped"
+    seed = next(e for e in events if e[0] == "seed")
+    assert seed[1] == _sep(12) and seed[2] == "LNG export" and seed[3] == ["BBB", "CCC"]
+    assert "LNG export cohort" in seed[4]                   # the judge's words ride in the thesis
+    send = next(e for e in events if e[0] == "send")
+    assert send[2]["parse_mode"] == "HTML"
+    btn = send[2]["reply_markup"]["inline_keyboard"][0][0]
+    assert btn["callback_data"] == f"{ts.PROMOTE_CALLBACK_PREFIX}{ts.theme_candidate_short_id('LNG export')}"
+    assert "LNG export" in btn["text"]
+    audits = [e for e in events if e[0] == "audit"]
+    cand = [e for e in audits if e[1] == dbmod.JUDGE_NAMED_CANDIDATE_EVENT]
+    assert len(cand) == 1 and cand[0][2].startswith("lng-export:")   # the dedupe state, split_part-able
+    assert [e for e in audits if e[1] == dbmod.JUDGE_NAMED_EVALUATED_EVENT], "the liveness row"
+
+
+@pytest.mark.asyncio
+async def test_surface_does_not_dedupe_a_page_that_failed_to_send(monkeypatch):
+    """A lost page must retry next night (fail LOUD with a duplicate, never silently lost)."""
+    events = _surface_fixture(monkeypatch, _two_ticker_unmatched_rows(), [], send_ok=False)
+    out = await jnt.surface_new_candidates(today=_sep(12))
+    assert out["n_fired"] == 0 and out["n_send_failed"] == 1
+    assert not any(e[0] == "audit" and e[1] == dbmod.JUDGE_NAMED_CANDIDATE_EVENT for e in events)
+    assert any(e[0] == "audit" and e[1] == dbmod.JUDGE_NAMED_EVALUATED_EVENT for e in events)
+
+
+@pytest.mark.asyncio
+async def test_surface_pages_once_but_refreshes_the_seed_while_the_judge_keeps_naming_it(monkeypatch):
+    """A 3rd/4th ticker never re-pages (design). But the seed IS the button's target and the
+    promote bar is 3, so while the group is still being named the candidate is re-seeded
+    nightly with the CURRENT ticker set — the original alert's button resolves to it."""
+    rows = _two_ticker_unmatched_rows() + [_row_on("DDD", _sep(12), "lng-export", name="LNG export")]
+    events = _surface_fixture(monkeypatch, rows, [], surfaced={"lng-export"})
+    out = await jnt.surface_new_candidates(today=_sep(12))
+    assert out["n_fired"] == 0 and out["n_refreshed"] == 1
+    assert not any(e[0] == "send" for e in events)
+    seed = next(e for e in events if e[0] == "seed")
+    assert seed[3] == ["BBB", "CCC", "DDD"]
+
+
+@pytest.mark.asyncio
+async def test_surface_stops_refreshing_a_seed_the_judge_stopped_naming(monkeypatch):
+    events = _surface_fixture(monkeypatch, _two_ticker_unmatched_rows(), [], surfaced={"lng-export"})
+    later = _sep(11) + _dt.timedelta(days=jnt.SEED_REFRESH_DAYS + 1)
+    out = await jnt.surface_new_candidates(today=later)
+    assert out["n_refreshed"] == 0 and not any(e[0] == "seed" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_surface_writes_the_evaluated_row_even_when_nothing_fires(monkeypatch):
+    """THE observability point: a month of no pages must NOT read the same as a dead trigger.
+    Every night writes a row with counts; the broken system writes nothing."""
+    rows = [_row_on("DDD", _sep(2), "ai-infrastructure"), _row_on("EEE", _sep(3), "ai-infrastructure")]
+    events = _surface_fixture(monkeypatch, rows, [{"name": "AI Infrastructure", "theme_date": _sep(1)}])
+    out = await jnt.surface_new_candidates(today=_sep(12))
+    assert out["n_fired"] == 0 and out["n_recurring"] == 1 and out["n_matched"] == 1
+    assert not any(e[0] in ("seed", "send") for e in events)
+    ev = next(e for e in events if e[0] == "audit" and e[1] == dbmod.JUDGE_NAMED_EVALUATED_EVENT)
+    assert "1 recurring" in ev[2] and "0 fired" in ev[2]
+    assert "ai-infrastructure" in ev[3] and "AI Infrastructure" in ev[3]   # which theme suppressed it
+
+
+@pytest.mark.asyncio
+async def test_surface_dry_run_writes_nothing_sends_nothing_and_lists_what_would_fire(monkeypatch):
+    events = _surface_fixture(monkeypatch, _two_ticker_unmatched_rows(), [])
+    out = await jnt.surface_new_candidates(today=_sep(12), dry_run=True)
+    assert out["dry_run"] is True and [g["key"] for g in out["would_fire"]] == ["lng-export"]
+    assert events == []
+
+
+def test_seed_source_is_walled_off_from_auto_promote_the_judge_feed_and_the_assignment_pool():
+    import inspect
+    assert dbmod.JUDGE_NAMED_SEED_SOURCE == "judge_named"
+    assert dbmod.JUDGE_NAMED_SEED_SOURCE not in dbmod.AUTO_PROMOTE_THEME_SOURCES      # never auto-promotes
+    assert dbmod.JUDGE_NAMED_SEED_SOURCE not in dbmod.SEEDED_ASSIGN_SOURCES           # F-D ruling untouched
+    assert dbmod.JUDGE_NAMED_SEED_SOURCE not in inspect.getsource(dbmod.get_narrative_theme_candidates)
+    assert dbmod.JUDGE_NAMED_SEED_SOURCE not in inspect.getsource(dbmod.get_lane2_active_narratives)
+    src = inspect.getsource(dbmod.persist_judge_named_seed)
+    assert "_upsert_theme_candidate_shadow" in src
+    for verb in ("INSERT INTO mi_themes", "UPDATE mi_themes", "DELETE FROM mi_themes"):
+        assert verb not in src
+
+
+def test_seed_writer_goes_through_the_source_guarded_upsert():
+    pool, conn = make_mock_pool()
+    conn.execute = AsyncMock()
+    _run(dbmod.persist_judge_named_seed(conn, _sep(12), "LNG export", ["BBB", "CCC"], "why"))
+    sql, *args = conn.execute.call_args.args
+    assert "ON CONFLICT (run_date, name)" in sql and "WHERE mi_theme_candidates_shadow.source = $5" in sql
+    assert args[-1] == "judge_named" and args[1] == "LNG export"
+
+
+def test_the_dedupe_is_a_forever_set_over_the_candidate_event():
+    import inspect
+    src = inspect.getsource(dbmod.get_judge_named_surfaced_keys)
+    assert "split_part" in src and "JUDGE_NAMED_CANDIDATE_EVENT" in src
+    assert "NOW() -" not in src, "forever by design: a 3rd/4th ticker must never re-page"
+
+
+@pytest.mark.asyncio
+async def test_the_button_resolves_a_judge_named_seed_through_the_same_promote_path(monkeypatch):
+    """END TO END: the seed row (source 'judge_named') is what the existing tpromo: button
+    resolves, and the promotion call is the SAME promote_candidate_by_name the typed
+    /promotetheme uses — no second creation path exists."""
+    from agents.market_intelligence import theme_engine as te
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+    seed = {"name": "LNG export", "tickers": ["BBB", "CCC", "DDD"], "thesis": "t", "source": "judge_named"}
+    monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[seed]))
+    promote = AsyncMock(return_value={"status": "promoted", "name": "LNG export",
+                                      "tickers": seed["tickers"], "n_members": 3, "canonicalized": False})
+    monkeypatch.setattr(te, "promote_candidate_by_name", promote)
+    kb = ts.build_synthesis_keyboard([{"name": seed["name"]}])
+    short_id = kb["inline_keyboard"][0][0]["callback_data"].split(":", 1)[1]
+
+    class _Agent:
+        def _ok(self, request, *, result):
+            return SimpleNamespace(success=True, result=result, error=None)
+
+        def _error(self, request, error):
+            return SimpleNamespace(success=False, result=None, error=error)
+
+    req = MagicMock()
+    req.task = f"/promotetheme_id {short_id}"
+    resp = await MarketIntelligenceAgent._handle_promotetheme_id(_Agent(), req)
+    promote.assert_awaited_once()
+    assert promote.await_args.args[0] == "LNG export"
+    assert "✅ Promoted" in resp.result
+
+
+def test_the_nightly_job_surfaces_after_extracting_and_is_no_longer_documented_as_silent():
+    src = (_REPO / "agents" / "market_intelligence" / "scheduler.py").read_text()
+    start = src.index("async def _judge_named_themes_extract_job")
+    body = src[start:src.index("\nasync def ", start + 10)]
+    assert "extract_pending" in body and "surface_new_candidates" in body
+    assert body.index("extract_pending(") < body.index("surface_new_candidates(")
+    census = next(line for line in src.splitlines() if '"judge_named_themes_extract",' in line)
+    assert "SILENT" not in census and "RECORDS ONLY" not in census
+    assert "never creates a theme" in census.lower()
+
+
+def test_the_runner_has_a_zero_dollar_surface_preview():
+    src = (_REPO / "scripts" / "judge_named_themes_651.py").read_text()
+    assert "--surface" in src and "--dry-run" in src and "surface_new_candidates" in src
