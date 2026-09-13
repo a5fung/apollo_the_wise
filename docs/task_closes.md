@@ -620,3 +620,25 @@ splitting at 08-08 makes clause 3 look unmet), and a naive value regex misses `d
 (the `+`) while a ` via <path> ` match with a trailing space misses the 452 rows that END with the
 path, reading 52% coverage instead of 100%. Both were caught by checking, not by the numbers looking
 wrong.
+
+## #648 — a first-week theme no longer looks identical to one held a month (2026-09-13)
+
+BAR: "the board shows first-week cohorts distinguishably from held-N-weeks ones, so a provisional
+theme stops rendering identically to a matured one — the reader discounts with the fact in front of
+him rather than having it hidden."
+
+EVIDENCE: shipped in `portfolio-app2` as `d75271f` ("#648: the board now says how long each cohort
+has held its place"), on `origin/main`. `theme_movers.py:68` adds `_weeks_on_board(...)` — CONSECUTIVE
+weeks on the board ending at the week being rendered, 1 = its first week — carried into every mover
+row as `weeks_held` (`:186`, `:195`) and rendered on every line via `_tenure()` (`:220`) as
+"1st week" / "2nd week" / "4th week": `:235` for new entrants ("outside → 12 · 1st week") and `:244`
+for gainers ("18 → 9 (+9) · 4th week").
+
+WOULD-FAIL-IF (from the task): "a cohort in its first week and one held four weeks render the same
+on the deployed board." They do not — the two examples above are the two cases, and they differ in
+the rendered string. `test_648_board_tenure.py`: 6 passed.
+
+⚖ Display only, as the task required — no engine, grade, ranking or membership change.
+⚠ Streamlit serves from `main` and #640 records that a rebuild has needed forcing before; the code
+is on origin and the tenure string is unconditional, so a stale render would show the OLD lines
+rather than wrong new ones.
