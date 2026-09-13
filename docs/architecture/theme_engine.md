@@ -357,6 +357,34 @@ without the two-sighting hold and without the `shadow_v2` retirement. Three beha
 3-state switch is why a good arm and two unargued ones shipped together. ⚖ Detection criterion —
 his sign-off. Evidence: `docs/analysis/theme_lifecycle_diagnosis_2026-09-13.md`.
 
+### 2026-09-13 (23:10 UTC) — FLIPPED to `dedup_only` ON HIS INSTRUCTION ("Go with rec")
+
+Third and final mode change of the day, and the one the evidence supports. `observe` → `dedup_only`.
+
+**What acts**: the join/dedup arm ALONE — `BIRTH_GATE_ACTED_OUTCOMES['dedup_only'] = {'join'}`, and
+only on a FIRST CROSSING. `await_second_sighting`, `held_floor` and `held_no_rs` are born. Verified
+live after the flip: acted verdicts `['join']`, auto-promote lanes
+`['narrative_cogap','rs_slope_synthesis','shadow_v2']` — **`shadow_v2` retained**, its nightly pass
+still runs, `coverage_probe` still runs, and the a/a2 Lane-1 fold stays OFF.
+
+**Evidence it rests on** (`theme_birth_gate_dedup_only_flip` in `data_gated_reviews.yaml`, bar
+declared before the query): of the 6 first-crossing joins to a DIFFERENT theme in the 45-day observe
+window, **6 of 6 were correct** — 2 never appeared as a live theme, 4 died within 3 days, 0 survived
+4+ days as a distinct lineage. n=6 is thin and was reported as thin; the change is ~3 suppressed
+births a month and reverts instantly, so the bar was sized to the risk.
+
+⚠ **Right-sized expectation, measured before the flip**: the gate had a verdict on only **20 of the
+92** absorption/merge events in 45 days, so this prevents **at most ~22%** of the re-mint churn. The
+other 72 are renamed back or absorbed by other passes before the gate ever sees them. The duplicate
+problem is upstream, in naming — this is not its fix.
+
+**Verified from three surfaces**: the setter read-back (`dedup_only`), the raw row
+(`theme_birth_gate | dedup_only | 2026-09-13 23:10:57`), and `apollo-execution`'s independent read.
+
+**Reversion-flag**: `set_theme_birth_gate_mode('observe')` — instant, no redeploy.
+**Forward tripwire**: any cohort suppressed in `dedup_only` whose members later form a durable
+distinct theme is a WRONG suppression — surface it immediately, do not wait for a review.
+
 **Status**: shipped 2026-09-13 on his instruction ("Flip it") after the forward review above, and
 **REVERTED the same day on his instruction ("Revert")** — see the entry immediately above.
 Awaiting live validation — the forward check is whether consolidated themes mature at the same rate
