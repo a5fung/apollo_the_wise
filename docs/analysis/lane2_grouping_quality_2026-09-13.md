@@ -163,3 +163,76 @@ sessions before naming it. Lane-2 is not a separate problem; it is more evidence
   the board still has not found. Not tested here.
 - **The model/prompt question.** All 21 names qualified, so what made it group some and not others
   is a prompt-quality question this review does not open.
+
+---
+
+# Why Lane-2 suggestions don't reach the board — answered
+
+## How Lane-2 works, in one pass
+
+Nightly, inside the theme-engine run (~17:00–18:00 ET, market days):
+
+1. **Take today's qualifying EP alerts** — `ep_score >= 50` AND (`catalyst` OR `claude_analysis`)
+   (`_lane2_qualifies`, `theme_engine.py:626`).
+2. **Read its own memory** — the ACTIVE narratives it is already tracking, plus one-name "seeds",
+   both windowed to the last `LANE2_WINDOW_TRADING_DAYS` sessions, prior days only.
+3. **One Sonnet call** over today's evidence text plus that roster. The evidence is the SEC-8K
+   grounded body where available, else `claude_analysis`, else the Perplexity catalyst.
+4. **It emits three things**: JOIN (add today's name to a story it already tracks), NEW (a fresh
+   multi-name story), SEED (a one-name story to watch for a partner later).
+
+**The point of the memory** is cross-day assembly: WULF on 07-06 and CLSK on 07-14 become one
+cohort without re-reading old documents nightly. **The point of the lane** is stories that bind
+non-co-moving names — policy, cross-sector — which Lane 1 structurally cannot see because it needs
+price correlation.
+
+Writes land in `mi_theme_candidates_shadow`: multi-name as `narrative_cogap` (auto-promotable),
+one-name as `narrative_seed` (walled off — a 1-member row can never promote).
+
+## Why they don't land: the 3-member bar
+
+The nightly auto-promote takes cohorts with **`len(tickers) >= _PROMOTE_MIN_MEMBERS`**, and
+`_PROMOTE_MIN_MEMBERS = 3` (`theme_engine.py:2274`).
+
+**Lane-2's `narrative_cogap` output since 2026-06-07, by size:**
+
+| members | candidates | can promote? |
+|---|---|---|
+| **2** | **8** | **NO — below the bar** |
+| 3 | 4 | yes |
+| 4 | 2 | yes |
+| 5 | 1 | yes |
+| 8 | 1 | yes |
+
+**Exactly half — 8 of 16 — name a two-stock story and are structurally unpromotable.**
+
+## The 13-day case, explained exactly
+
+```
+2026-07-30   AI-Driven Power & Grid Infrastructure Boom   2 members: EME, PWR      -> below the bar
+2026-08-12   same narrative                               4 members: EME, PWR, EROC, BE -> promoted
+```
+
+**The 13 days were Lane-2 waiting for a third and fourth member to show up.** Nothing was stuck or
+forgotten — the cohort was two names, the bar is three, and it promoted the day it crossed. The
+lane was right on 07-30 and the board could not act on it.
+
+## The inconsistency worth his eye
+
+`_PROMOTE_MIN_MEMBERS = 3` but `PRUNE_MIN_TICKERS = 2` — **a theme may LIVE at two members but may
+not be BORN at two.** Twenty live themes currently sit at 2, having arrived by other paths. So the
+board already holds two-member themes; it just refuses to create them.
+
+**The fork, and it is his:** lower the birth bar to 2 and Lane-2's eight stalled candidates become
+eligible — at the cost of admitting more two-stock groups, which is the same churn the birth gate
+(flipped ON today) exists to control. The gate's join arm would now fold many of them into existing
+themes rather than minting new ones, which did not used to be true. ⚖ Detection criterion —
+CHANGE_PROCESS, backtest, his sign-off.
+
+## What this does NOT answer
+
+- **Whether two-name stories are worth promoting.** 8 of 16 is the supply; nobody has checked how
+  many of those eight later proved real.
+- **Whether the bar should be 2, or 2-with-conditions** (e.g. 2 plus a second sighting, which is
+  what the birth gate's wait arm already does).
+- **The 31 proposals that never became themes** — size is one reason, quality may be another.
