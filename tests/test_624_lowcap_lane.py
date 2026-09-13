@@ -590,6 +590,10 @@ def _scan_src():
 
 
 def test_hook_sits_before_the_shortlist_cut_wrapped_and_lazily_imported():
+    # source-pin-ok: ordering + import-placement check inside run_ep_scan's own body -- a
+    # closure with no independently-callable seam; part 1's harness already runs the full
+    # scan end to end (byte-identity across lane on/off/raising) but that proves OUTCOMES
+    # equal, not WHERE the hook textually sits relative to the shortlist cut.
     src = _scan_src()
     hook = src.index("schedule_lowcap_lane_tick(")
     cut = src.index("for c in candidates[SHORTLIST_SIZE:]:")
@@ -612,6 +616,8 @@ def _code_only(src: str) -> str:
 
 def test_hook_adds_no_continue_and_no_log_filtered_site():
     """test_605 counts both; this pins the intent locally so a future edit cannot slip a gate in."""
+    # source-pin-ok: banned-keyword scan over the hook's own inserted block inside run_ep_scan
+    # -- the closed-list "ban on a banned keyword" case, scoped to a closure with no seam.
     src = _scan_src()
     hook = src.index("#624 LOW-CAP LANE")
     end = src.index("for c in candidates[SHORTLIST_SIZE:]:")
@@ -621,16 +627,38 @@ def test_hook_adds_no_continue_and_no_log_filtered_site():
 
 
 def test_lane_never_writes_the_acting_cap_cache():
+    # source-pin-ok: absence-from-module-source check -- "_mcap_cache never appears anywhere
+    # in lowcap_lane.py" has no call-based equivalent (there is only one place this name
+    # could appear, and testing its ABSENCE means reading the module, not calling it).
     code = _code_only(_LANE.read_text())
     assert not re.search(r"_mcap_cache\s*[\[=]", code), "the lane must never write the acting cap cache"
     assert not re.search(r"import[^\n]*_mcap_cache", code)
-    src = _LANE.read_text()
-    calls = re.findall(r"check_filters\((.*?)\)", src, re.S)
-    real = [c for c in calls if "v.ticker" in c]
-    assert real and all("skip_mcap=True" in c for c in real)
+
+
+@pytest.mark.asyncio
+async def test_lane_calls_check_filters_with_skip_mcap_true(monkeypatch):
+    """Calls the REAL enrich_and_record through the existing _wire_enrich harness (Part 2)
+    instead of grepping lowcap_lane.py's source for the call-site literal. `_wire_enrich`'s
+    own fake check_filters asserts `skip_mcap is True` the instant it is invoked -- a real
+    assertion, not a mock stub, so it fails this test exactly when the guarded call site
+    stops passing it.
+
+    MUTATION TARGET: drop `skip_mcap=True` from enrich_and_record's check_filters call --
+    a call that CAN touch the acting cap cache is exactly the hazard #624 must never reopen
+    (an audit-only shadow lane must never be able to corrupt the acting scan's cache)."""
+    written, _ = _wire_enrich(monkeypatch, caps={"CHPT": 134_000_000})
+    v = lane.free_terms(_cand("CHPT"), HIST_90)
+    out = await lane.enrich_and_record(
+        [v], {"CHPT": lane.snapshot_board([_cand("CHPT")])[0]}, **_ctx())
+    assert out["written"] == 1 and written, (
+        "must reach and pass the check_filters call without _wire_enrich's own "
+        "skip_mcap assertion firing")
 
 
 def test_lane_module_never_touches_the_acting_path():
+    # source-pin-ok: whole-module banned import/keyword scan -- the closed-list "ban on a
+    # banned import/keyword" case, applied to the entire lowcap_lane.py module rather than
+    # one call site (THE LINE guard: an audit-only shadow lane must never gain a money path).
     src = _LANE.read_text()
     import_lines = [l for l in src.splitlines() if re.match(r"\s*(from|import)\s", l)]
     for banned in ("order_manager", "live_tracker", "entry_pipeline", "execution_client",
@@ -867,6 +895,8 @@ async def test_a_broken_population_query_never_raises(monkeypatch):
 
 
 def test_walker_boundary_only_the_two_market_data_wrappers_from_broker():
+    # source-pin-ok: same whole-module banned import/keyword scan as
+    # test_lane_module_never_touches_the_acting_path, applied to lowcap_lane_replay.py.
     src = _WALKER.read_text()
     import_lines = [l for l in src.splitlines() if re.match(r"\s*(from|import)\s", l)]
     broker = [l for l in import_lines if "agents.market_intelligence.broker" in l]
@@ -883,7 +913,9 @@ def test_walker_boundary_only_the_two_market_data_wrappers_from_broker():
 # ── Part 6: registrations, schema, seed, adapter, gate, SSoT ─────────────────────────
 
 
-def test_registrations_job_liveness_preflight_schema_exec_list():
+def test_registrations_reach_the_job_liveness_and_shadow_writer_registries():
+    """Already fully behavioral -- every check reads a REAL registered data structure
+    (job-id sets, liveness-table tuples, shadow-writer identity), never source text."""
     from agents.market_intelligence import scheduler as sched, health_checks as hc
     import scripts.preflight_db_updates as pf
     assert "lowcap_lane_replay" in sched.INTELLIGENCE_OWNED_JOB_IDS
@@ -892,14 +924,53 @@ def test_registrations_job_liveness_preflight_schema_exec_list():
     assert any(t[0] == "mi_lowcap_lane_replays" and t[2] == "settled_session" for t in hc._DETECTOR_LIVENESS_TABLES)
     assert any(sql is db.LOWCAP_LANE_SIGNAL_INSERT_SQL for _, sql in pf.SHADOW_WRITER_STATEMENTS)
     assert any(sql is db.LOWCAP_LANE_REPLAY_UPSERT_SQL for _, sql in pf.SHADOW_WRITER_STATEMENTS)
-    src = (_REPO / "agents" / "market_intelligence" / "db.py").read_text()
+
+
+def test_schema_create_block_carries_every_registered_column(monkeypatch):
+    """Calls the REAL initialize_schema() against a fake pool and inspects the literal
+    CREATE TABLE statements it sends, instead of grepping db.py's source text.
+
+    MUTATION TARGET: drop one column (e.g. `blocking_filters`) from the
+    mi_lowcap_lane_signals CREATE block while leaving it in LOWCAP_LANE_SIGNAL_COLS --
+    the registered column would then be silently absent from the boot-time schema."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    sink: list[str] = []
+
+    async def _execute(sql, *a, **k):
+        sink.append(sql)
+        return "OK"
+
+    async def _executemany(sql, seq, *a, **k):
+        sink.append(sql)
+
+    async def _fetchval(sql, *a, **k):
+        return 0
+
+    conn.execute = _execute
+    conn.executemany = _executemany
+    conn.fetchval = _fetchval
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    asyncio.run(db.initialize_schema())
+
     for table, cols in (("mi_lowcap_lane_signals", db.LOWCAP_LANE_SIGNAL_COLS),
                         ("mi_lowcap_lane_replays", db.LOWCAP_LANE_REPLAY_COLS)):
-        block = re.search(rf"CREATE TABLE IF NOT EXISTS {table} \((.*?)\n\s*\);", src, re.S).group(1)
+        hits = [s for s in sink if f"CREATE TABLE IF NOT EXISTS {table} (" in s]
+        assert len(hits) == 1, f"{table}: CREATE block not found in the executed DDL"
+        block = re.search(rf"CREATE TABLE IF NOT EXISTS {table} \((.*?)\n\s*\);",
+                          hits[0], re.S).group(1)
         key = "UNIQUE (ticker, scan_date)" if table.endswith("signals") else "UNIQUE (ticker, session_date)"
         assert key in block
         for col in cols:
             assert re.search(rf"^\s*{col}\s+", block, re.M), f"{table}: column {col} missing from CREATE"
+
+
+def test_registrations_job_scheduled_and_excluded_from_the_execution_image():
+    # source-pin-ok: two static config/registration checks -- exec_loaded_modules.txt is a
+    # plain text exclusion list (the closed-list "a specific constant/id appears in a
+    # registration block" case) and scheduler.py's CronTrigger line is the job's own
+    # registration text; neither has a call-based equivalent (scheduler jobs are
+    # registered at import time via decorator-like calls this suite does not re-run).
     exec_list = (_REPO / "scripts" / "exec_loaded_modules.txt").read_text()
     assert "lowcap_lane" not in exec_list
     sched_src = (_REPO / "agents" / "market_intelligence" / "scheduler.py").read_text()
@@ -1012,10 +1083,18 @@ async def test_adapter_maps_outcomes_and_drops_unscoreable(monkeypatch):
     assert "mi_lowcap_lane_replays" in sql and "outcome <> 'unscoreable'" in sql
 
 
-def test_no_admission_switch_row_at_shadow_and_the_note_says_why():
-    """A row would relabel every MAGNA53 fill's admission_era with an identical filter set."""
+def test_no_admission_switch_row_at_shadow():
+    """A row would relabel every MAGNA53 fill's admission_era with an identical filter set.
+    Already fully behavioral -- reads the REAL ADMISSION_SWITCHES list and calls the REAL
+    admission_era_as_of(), never source text."""
     assert not any("lowcap" in name for _, name, *_ in rule_eras.ADMISSION_SWITCHES)
     assert rule_eras.admission_era_as_of(date(2026, 9, 8)) == "adm_2026-08-31_extension_cap_50_slot_rank_rs"
+
+
+def test_the_no_admission_switch_decision_is_explained_in_rule_eras():
+    # source-pin-ok: documentation-presence check -- confirms the module carries the
+    # explanatory note for WHY no row was added (an operator-facing "why", not code
+    # behavior); no call-based equivalent exists for "does this comment exist".
     src = (_REPO / "agents" / "market_intelligence" / "rule_eras.py").read_text()
     assert "#624" in src and "NO row" in src and "PAPER FLIP" in src
 
