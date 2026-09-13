@@ -68,8 +68,13 @@ def _wire(monkeypatch, *, result):
 
 
 def _gap():
+    """The REAL shape `check_position_coverage` returns — its contract is pinned in
+    tests/test_position_coverage_check_527.py. The price/signal/mode keys are the
+    repairer's arguments; a fixture without them cannot tell a repair from a flag."""
     return {"examined": 2, "covered": 1,
-            "gaps": [{"trade_id": 382, "ticker": "OKTA", "target": 2.0, "live_qty": 0.0}],
+            "gaps": [{"trade_id": 382, "ticker": "OKTA", "target": 2.0, "live_qty": 0.0,
+                      "stop_price": 165.57, "signal_type": "magna53",
+                      "account_mode": "live"}],
             "check_failed": [], "deferred": []}
 
 
@@ -176,7 +181,16 @@ async def test_an_in_window_slot_drives_the_SIGNED_repairer_and_never_the_broker
     await sch._coverage_watch_job(slot)
 
     repairer.assert_awaited_once()
-    assert repairer.await_args.args[1] == "OKTA"
+    trade_id, ticker, qty, price, signal_type, account_mode = repairer.await_args.args
+    assert (trade_id, ticker) == (382, "OKTA")
+    assert qty == 2.0
+    # #649 follow-up 2026-09-12: a None here reaches `_ensure_stop_coverage`'s
+    # `if not db_stop_price` guard and returns COVERAGE_FLAGGED without placing
+    # anything — the arm would page "the automatic repair did not hold" about a
+    # repair that never ran. Positional, because they are positional at the call.
+    assert isinstance(price, float) and price > 0, "no price -> flagged, never repaired"
+    assert signal_type == "magna53"
+    assert account_mode == "live"
     for _n, m in h["writes"].items():
         m.assert_not_called(), "the job must never place a stop itself — only via the floor"
 

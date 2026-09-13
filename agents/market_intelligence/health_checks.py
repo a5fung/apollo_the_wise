@@ -723,6 +723,15 @@ _EVENING_VERIFY_HOUR = 21
 _EVENING_VERIFY_MINUTE = 10
 _EVENING_VERIFY_AUDIT_EVENTS = ["coverage_verified_evening"]
 
+# The first ET date the 21:10 verifier could run at all. It was deployed Sat 2026-09-12
+# and its cron is mon-fri, so its FIRST scheduled run is Mon 2026-09-14 21:10. Without
+# this floor the MONDAY 09:00 briefing (cutoff Fri 09-11 21:10) reads a genuinely empty
+# table and pages "the 9:10 PM check has never run... the verifier appears DEAD" — a
+# true absence, a FALSE diagnosis, on the money pager before the open. A heartbeat may
+# not accuse a job of being dead for a night it did not yet exist. Armed from Tue 09-15
+# onward (cutoff Mon 21:10 == this date); nothing to remove, it stops mattering.
+_EVENING_VERIFY_LIVE_FROM = date(2026, 9, 14)
+
 
 def _expected_evening_verify_cutoff(now_et: datetime) -> datetime:
     """The most-recent expected 21:10 ET mon-fri verifier run STRICTLY before `now_et`.
@@ -795,6 +804,18 @@ async def run_evening_verify_heartbeat(conn=None) -> dict[str, Any]:
     latest_iso = latest_ts.isoformat() if latest_ts is not None else None
     summary = {"status": "ok" if verdict is None else "alert",
                "latest_ts": latest_iso, "cutoff": cutoff.isoformat()}
+
+    if (verdict is not None and verdict["reason"] == "never"
+            and cutoff.date() < _EVENING_VERIFY_LIVE_FROM):
+        # No row, and the expected run predates the job's existence — not a death.
+        summary["status"] = "not_yet_live"
+        await log_audit_event(
+            "evening_verify_heartbeat_not_yet_live",
+            f"evening verifier not yet live at cutoff {cutoff.isoformat()} "
+            f"(first scheduled run {_EVENING_VERIFY_LIVE_FROM.isoformat()} 21:10 ET)",
+            detail=str(summary),
+        )
+        return summary
 
     if verdict is not None:
         if verdict["reason"] == "never":

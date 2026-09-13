@@ -46,9 +46,16 @@ from tests.conftest import make_mock_pool
 # ─────────────────────────── Part 2: check_position_coverage ──────────────────
 
 
-def _trade(trade_id=1, ticker="IBM", remaining_shares=4.0, account_mode="live"):
+def _trade(trade_id=1, ticker="IBM", remaining_shares=4.0, account_mode="live",
+           stop_price=98.5, orb_low=97.0, signal_type="magna53"):
+    """Mirrors the row the detector's OWN SELECT returns — all seven columns.
+
+    ⚠ The price/signal columns are NOT decoration (#649, 2026-09-12). The gap dict is
+    re-driven through `_ensure_stop_coverage` by the coverage-watch slots, and a fixture
+    that omits them lets a gap dict missing the repairer's arguments pass every test."""
     return {"id": trade_id, "ticker": ticker, "remaining_shares": remaining_shares,
-            "account_mode": account_mode}
+            "account_mode": account_mode, "stop_price": stop_price,
+            "orb_low": orb_low, "signal_type": signal_type}
 
 
 def _live_stop(order_id, qty, status="new"):
@@ -148,6 +155,44 @@ async def test_naked_position_alerts_and_writes_position_unprotected():
     assert any(evt == "position_unprotected" for evt, _, _ in audited)
     telegram_mock.assert_called_once()
     assert "NAKD" in telegram_mock.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_the_gap_dict_carries_every_argument_the_REPAIRER_needs():
+    """#649 (2026-09-12) — the gap dict is the repairer's argument list, not a report line.
+
+    `_coverage_watch_job` re-drives `_ensure_stop_coverage` from these keys. It shipped
+    carrying only ticker/trade_id/target/live_qty, so the repair arm passed
+    `db_stop_price=None` on every call — and the no-live-stop branch (THE NAKED CASE the
+    watch exists for) returns COVERAGE_FLAGGED `no_stop_and_no_stop_price` the instant
+    that argument is falsy. The arm could never repair a naked position, and the page it
+    then sent said the automatic repair "did not hold".
+
+    WOULD-FAIL-IF: the detector stops selecting or forwarding stop_price/signal_type/
+    account_mode — every assertion below reads a key straight off the real gap dict."""
+    trades = [_trade(7, "NAKD", 5.0, stop_price=101.25, signal_type="magna53")]
+    ctx, _audited, _tg, _ = _wire(trades, {"NAKD": []})
+
+    result = await _run_coverage_check(ctx)
+
+    gap = result["gaps"][0]
+    assert gap["stop_price"] == 101.25, "no price -> the repairer flags instead of placing"
+    assert isinstance(gap["stop_price"], float)
+    assert gap["signal_type"] == "magna53"
+    assert gap["account_mode"] == "live", "the repairer places on THIS account or none"
+
+
+@pytest.mark.asyncio
+async def test_the_gap_price_falls_back_to_orb_low_exactly_as_sync_positions_does():
+    """`sync_positions` passes `stop_price or orb_low` — a trade whose stop_price was
+    never written still has its original protective level. The gap dict must not be a
+    stricter source than the signed caller, or the watch repairs strictly less."""
+    trades = [_trade(8, "NOSP", 3.0, stop_price=None, orb_low=88.0)]
+    ctx, _audited, _tg, _ = _wire(trades, {"NOSP": []})
+
+    result = await _run_coverage_check(ctx)
+
+    assert result["gaps"][0]["stop_price"] == 88.0
 
 
 @pytest.mark.asyncio

@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import json
 from contextlib import ExitStack
-from datetime import datetime
+from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
 
@@ -308,6 +308,51 @@ async def test_heartbeat_pages_when_the_verifier_never_ran(monkeypatch):
     assert out["status"] == "alert"
     assert "evening_verify_heartbeat_stale" in audited
     assert sent and "last night's stops" in sent[0]
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_does_NOT_cry_dead_for_a_night_the_job_did_not_exist(monkeypatch):
+    """MONDAY 2026-09-14, 09:00 — the first market morning after Saturday's deploy.
+
+    The verifier's cron is mon-fri, so its first possible run is that same Monday 21:10.
+    At 09:00 the audit table is empty and the cutoff is Fri 09-11 21:10 — a night the job
+    did not exist. Without the live-from floor this pages "the 9:10 PM coverage verifier
+    appears DEAD... check the broker before the open" about a perfectly healthy job, on
+    the money pager, before the open.
+
+    WOULD-FAIL-IF: the floor is removed or dated wrong -> `sent` is non-empty and the
+    status is `alert`. The sibling test above (Tue 09:00, cutoff Mon 21:10) proves the
+    floor does not disarm the real check."""
+    from agents.market_intelligence import health_checks as hc
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=None)
+    audited, sent = [], []
+
+    async def _audit(evt, summary=None, detail=None):
+        audited.append(evt)
+
+    monkeypatch.setattr(hc, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(hc, "log_audit_event", _audit)
+    monkeypatch.setattr(hc, "_now_et", lambda: datetime(2026, 9, 14, 9, 0, tzinfo=_ET))
+    import agents.market_intelligence.briefing as br
+    monkeypatch.setattr(br, "send_telegram_message", AsyncMock(side_effect=lambda m, *a, **k: sent.append(m)))
+
+    out = await hc.run_evening_verify_heartbeat()
+
+    assert out["status"] == "not_yet_live"
+    assert audited == ["evening_verify_heartbeat_not_yet_live"], (
+        "the absence is still RECORDED — it is the diagnosis that was wrong, not the read"
+    )
+    assert not sent
+
+
+def test_the_floor_is_the_jobs_first_mon_fri_run_not_its_deploy_date():
+    """Deployed Sat 09-12; a mon-fri cron's first run is Mon 09-14. A floor set to the
+    deploy date would arm the check on Monday morning and page anyway."""
+    from agents.market_intelligence.health_checks import _EVENING_VERIFY_LIVE_FROM
+    assert _EVENING_VERIFY_LIVE_FROM == date(2026, 9, 14)
+    assert _EVENING_VERIFY_LIVE_FROM.weekday() == 0, "a mon-fri job cannot first run on a weekend"
 
 
 @pytest.mark.asyncio

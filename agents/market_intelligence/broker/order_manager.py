@@ -6729,7 +6729,8 @@ async def check_position_coverage(*, notify: bool = True) -> dict:
     pool = await get_pool()
     async with pool.acquire() as conn:
         trades = await conn.fetch("""
-            SELECT id, ticker, remaining_shares, account_mode
+            SELECT id, ticker, remaining_shares, account_mode,
+                   stop_price, orb_low, signal_type
             FROM mi_live_trades
             WHERE status = 'filled' AND remaining_shares > 0 AND account_mode = 'live'  -- mode-ok: real dollars only by design (see docstring)
         """)
@@ -6800,8 +6801,19 @@ async def check_position_coverage(*, notify: bool = True) -> dict:
                 continue
 
             # Gap. Audit row lands every cycle; Telegram is deduped per trade per session.
+            # The gap dict is the REPAIRER'S ARGUMENT LIST, not just a report line
+            # (#649, 2026-09-12). `_ensure_stop_coverage`'s no-live-stop branch — the
+            # NAKED case this watch exists for — returns COVERAGE_FLAGGED
+            # "manual intervention needed" the moment `db_stop_price` is falsy, so a
+            # gap dict without a price cannot repair the one case that matters. Carry
+            # the same fields sync_positions passes (`stop_price or orb_low`,
+            # `signal_type`, `account_mode`) so any caller re-driving the repairer from
+            # a gap gets the signed behaviour, not a silent flag.
             gaps.append({"ticker": ticker, "trade_id": trade_id,
-                         "target": target, "live_qty": live_qty + oco_stop_qty})
+                         "target": target, "live_qty": live_qty + oco_stop_qty,
+                         "stop_price": trade.get("stop_price") or trade.get("orb_low"),
+                         "signal_type": trade.get("signal_type") or "unknown",
+                         "account_mode": account_mode})
             await log_audit_event(
                 "position_unprotected",
                 f"{ticker}: live stop qty {live_qty + oco_stop_qty:.0f} < {target:.0f} shares held — GAP",
