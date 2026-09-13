@@ -167,3 +167,80 @@ trade, which the file itself says.
   That check is the review's own clause (c) and it has never been run.
 - **Whether a middle setting exists** — e.g. join-arm on, wait-arm off. The code has three modes and
   no per-arm control; adding one is a build, not a toggle.
+
+---
+
+# The flip decision — recommendation: FLIP IT ON
+
+The 2026-08-11 objection does not survive the observe data, and the wait arm's record is clean.
+
+## The counter-example resolves — it was a one-day delay, not a suppression
+
+The note that has held this back said the defense theme **{PLTR, TSAT, VOYG, AMRC}** *"would not
+have been born that night at all"* at `on`. True for that night. The candidate row says what
+happened next:
+
+```
+U.S. Government/Defense Spending Surge | verdict: birth | sightings: 2
+first_seen 2026-08-04 · last_seen 2026-08-05 · born_date 2026-08-05
+```
+
+It was seen again the next day and the verdict resolved to **birth**. At `on` it arrives
+**2026-08-05 instead of 2026-08-04 — one day late.** The note described the first-night verdict and
+stopped before the resolution.
+
+## The wait arm lost nothing in 45 days
+
+| verdict | n | sightings range | what it means |
+|---|---|---|---|
+| `await_second_sighting` | **53** | **1 to 1** | **never recurred — one-day corpses, correctly killed** |
+| `birth` | 26 | 2 to 8 | all recurred, all birthed |
+
+⚠ **Checked that this is not a broken counter before believing it:** the `sightings` column reaches
+**14**, with 107 rows above 1 and 107 rows whose `last_seen > first_seen`. It increments fine. So
+all 53 genuinely never came back.
+
+**Zero real themes lost. 53 pieces of noise stopped.**
+
+## The join arm is stopping outright duplication
+
+Of the top 10 join verdicts by sightings, **three name the SAME theme as their join target** —
+*Gold & Precious Metals Miners Rotation*, *Government & Defense IT Services Providers*, *Precious
+Metals Royalty & Streaming Companies*. The engine is re-minting themes it already has. Others are
+plain synonyms: *Major US Passenger Airlines* → *U.S. Domestic Passenger Airlines*; *Lumber &
+Building Products Manufacturing-Distribution* → *Building Products & Construction Materials
+Manufacturing*.
+
+## ⚠ ONE JOIN NEEDS HIS EYE — the review's clause (b), which only he can answer
+
+```
+Emerging Bitcoin & AI Cloud Compute Miners  ->  Bitcoin Mining Equities Momentum Basket
+members: APLD, BTDR, CIFR, CLSK, CORZ, GLXY, HUT, IOND, IREN, MARA, NBIS, RIOT, WULF
+```
+
+**This is his own #491 case.** He corrected us on 2026-08-04 that the crypto miners are *"converting
+into AI infra plays"* — a fundamental shift, not a merge. APLD, NBIS and IREN are the converts.
+**Folding them back into a Bitcoin Mining basket may be exactly the wrong join**, and clause (b) of
+the calibration review reserves that judgement to him.
+
+## Recommendation
+
+**Flip to `on`.** The join arm stops real duplication, the wait arm cost is one day on real themes
+and nothing else, and only 3 of 168 candidates were blocked outright (all at avg member RS 29).
+
+**Mitigation for the one-day step-2 cost: it already exists and is live.** #651's judge-named lane
+is independent of this gate and named a theme **11 days** before the engine had it. The gate delays
+the engine's own birth by a day; the judge lane routes around it entirely. No per-arm build is
+needed on this evidence.
+
+⚖ This is a safeguard/detection change. The recommendation is mine; the flip, and the ruling on the
+Bitcoin-miner join, are his.
+
+## What this does NOT answer
+
+- **Whether the join TARGETS are right in general.** One pair is checked above and it is the
+  doubtful one. The other 85 joins have not had his eyeball, and clause (b) asks for it.
+- **The effect on theme COUNT.** 51% joins should mean fewer, fuller themes, but nobody has
+  projected the steady-state board size.
+- **Anything after the flip.** The forward check — do consolidated themes mature at the same rate —
+  needs a fresh observe period at `on`.
