@@ -6825,6 +6825,15 @@ reviews:
 
   - review_id: flag_detector_graduation_evidence_n30
     title: "Flag detector TRIGGERED-as-EOD-classification is structurally wrong (#92 — re-framed)"
+    can_fire:
+      predicate_runs: "n/a - CLOSED as superseded 2026-09-13, so the predicate no longer gates
+        anything. Recorded for completeness rather than for future firing."
+      nonzero_possible: "yes, and it is moot: the successor intraday_flag_break_signal_n10 reads
+        162 against threshold 10 on the same subject matter."
+      lane_live: "YES - the #94 intraday flag-break detector has been live in prod since
+        2026-05-26 (167 audit rows through 2026-09-09), which is what closes this entry."
+      threshold_vs_observed: "superseded before the threshold mattered; the successor carries it."
+      era_scoped: "n/a - closed. The successor is era-scoped to the live detector."
     question: |
       INITIAL FRAMING (2026-05-23 AM): "Does TRIGGERED stage earn
       paper-phase graduation at N≥30 settled cases with positive
@@ -6930,11 +6939,19 @@ reviews:
         classification, not entry-aware P&L)
       - feedback_methodology_insights_need_periodic_revalidation.md
         (this entry IS the periodic re-evaluation)
-    status: deferred  # ⚠ TRIGGER IS UNFIREABLE AS WRITTEN (found 2026-09-13). It pulls forward
-    # "when #94 ships" — and #94 exists on NO surface: not in PLAN.md, not in docs/task_closes.md,
-    # and `git log -S "- #94 |" -- PLAN.md` returns nothing. A trigger keyed to a task with no
-    # record can never fire, which is the same defect class as a predicate that never runs.
-    # Re-key it to the real successor or to a measurable condition before relying on it.
+    status: done  # SUPERSEDED — closed 2026-09-13 by this entry's OWN scripted instruction.
+    # Its trigger reads: "PULLS FORWARD when #94 ships - at that point close this entry and open
+    # the intraday-entry cohort review that supersedes it." #94 SHIPPED 2026-05-23 (commits
+    # 2dc3e153 schema+scan+scheduler, 95695d6a operator surface+monitoring) and the detector has
+    # been LIVE IN PROD SINCE 2026-05-26 — 167 audit rows through 2026-09-09. So the trigger fired
+    # almost four months ago and nobody acted on it.
+    # ⚠ THE DEFERRAL'S OWN PREMISE WAS FALSE: it says "the intraday flag-break detector (#94 /
+    # ADR 0005) did NOT ship by 2026-08-15". It shipped three months before that date.
+    # The successor it names ALREADY EXISTS and is accruing: `intraday_flag_break_signal_n10`,
+    # predicate 162 against threshold 10. Nothing is lost by closing this.
+    # ⚠ AND MY OWN FIRST READ OF THIS WAS WRONG: I recorded that #94 "exists on no surface". It
+    # exists in git and in prod; it is absent only from PLAN.md (long closed) and task_closes.md
+    # (which only began 2026-09-10). Searching two surfaces is not searching every surface.
     deferred_reason: "OFF the EP critical path (operator triage 2026-08-24) - and this is exactly the decision branch this entry already scripts: the intraday flag-break detector (#94 / ADR 0005) did NOT ship by 2026-08-15, so its urgency is re-evaluated against other priorities, and EP profitability wins. The structural no-go conclusion does not change with more N, so nothing is lost by waiting. PULLS FORWARD when #94 ships - at that point close this entry and open the intraday-entry cohort review that supersedes it."
     deferred_on: 2026-08-24
     deferred_until: 2026-10-01
