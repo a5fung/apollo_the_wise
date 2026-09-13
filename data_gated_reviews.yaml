@@ -10139,6 +10139,18 @@ reviews:
     cross_refs: ["task #167"]
 
   - review_id: theme_birth_gate_observe_calibration
+    # RULED + FLIPPED 2026-09-13 (operator: "Flip it"). Forward review run on 168
+    # observe verdicts over 45 days: join 86 (51%) / await_second_sighting 53 (32%) / birth 26 /
+    # held_floor 3. Clause (a)+(c): the wait arm lost NOTHING — all 53 await rows sit at exactly 1
+    # sighting and never recurred, while all 26 birth rows carry 2-8 and birthed (counter verified
+    # sound: max sightings 14, 107 rows >1). The 2026-08-11 objection does NOT survive: the defense
+    # theme {PLTR,TSAT,VOYG,AMRC} resolved to `birth` with born_date 08-05 against first_seen 08-04
+    # — a ONE-DAY delay, not a suppression; the note stopped before the resolution. Clause (b): 3 of
+    # the top 10 joins name the SAME theme as their target, so the join arm stops real duplication.
+    # ⚠ ONE JOIN LEFT UNRULED AND NOW LIVE: 'Emerging Bitcoin & AI Cloud Compute Miners' ->
+    # 'Bitcoin Mining Equities Momentum Basket' incl. APLD/NBIS/IREN — the #491 converting-to-AI-infra
+    # case. Flagged to him before the flip and authorised anyway; first thing to check if it lands wrong.
+    # Full workings: docs/analysis/themes_path_forward_2026-09-13.md; SSoT entry in theme_engine.md.
     title: "Birth gate observe-period: forward verdicts vs actual theme outcomes (observe -> on gate)"
     question: >-
       Does the birth gate's derived cell (RS>=70 OR pre-birth 5-session dRS>=0,
@@ -10213,7 +10225,21 @@ reviews:
       gates after signing: fresh ADR-0030 judge-robustness eval (the
       preflight_judge_eval_gate WILL fire on the grade-surface drift — by
       design, never suppress), then set_theme_birth_gate_mode('on').
-    status: deferred
+    can_fire:
+      predicate_runs: "2026-09-13 - runs and returns 32 (SELECT COUNT(DISTINCT theme_date)
+        FROM mi_themes WHERE theme_date >= '2026-07-29'). Executed on prod today, not assumed."
+      nonzero_possible: "mi_themes is written by the nightly engine on every market day, so a
+        non-zero count is routine; 32 distinct clean theme_dates since 2026-07-29."
+      lane_live: "YES - the gate was in 'observe' from 2026-07-30 and recorded 168 verdicts in
+        mi_theme_birth_candidates over 45 days, which is the evidence this review consumes."
+      threshold_vs_observed: "threshold 8, observed 32 - met on 2026-08-07 and exceeded 4x since."
+      era_scoped: "YES - counts only from 2026-07-29, the first clean pull after the 07-28 crash,
+        and only observe-mode rows qualify (mode 'on' rows deliberately do not count, because the
+        review gates observe->on). Now RULED, so the era is closed."
+    status: done  # observe -> on FLIPPED 2026-09-13 15:58 UTC, operator-signed. The 08-24
+    # deferral's own pull-forward trigger fired exactly as written: "PULLS FORWARD when the
+    # operator wants the observe->on flip decided". Verdict + evidence in the comment block
+    # above this entry's title and in docs/architecture/theme_engine.md's change log.
     deferred_reason: "OFF the EP critical path (operator triage 2026-08-24). Theme birth timing does not touch EP selection, entry, exit or sizing, and observe mode keeps recording forward verdicts while deferred - the evidence base grows, nothing is lost. PULLS FORWARD when the operator wants the observe->on flip decided, or if board churn becomes a visible problem."
     deferred_on: 2026-08-24
     deferred_until: 2026-10-01

@@ -121,9 +121,12 @@ The `observe → on` flip requires a forward-evidence review
 was met on 2026-08-07 — five weeks ago.** Its predicate (distinct clean `theme_date`s since
 2026-07-29, threshold **8**) now reads **32**.
 
-It never surfaced as something waiting on him because it carries
-`earliest_review_date: 2026-10-01`, annotated in the file as "registration day = non-blocking" —
-but that date is exactly what keeps it out of `operator_asks.py`. **Nothing is blocked. Nobody ran it.**
+⚠ **Correction to my first read of this.** It did not surface because of a date — it surfaced as
+nothing because **his own 2026-08-24 triage set it `status: deferred`**, reason: *"OFF the EP
+critical path... observe mode keeps recording forward verdicts while deferred — the evidence base
+grows, nothing is lost."* That entry also wrote its own pull-forward trigger: *"PULLS FORWARD when
+the operator wants the observe->on flip decided."* **The system behaved exactly as designed and the
+trigger fired the moment he asked.** Nothing was neglected.
 
 ## What flipping it would do — 168 recorded verdicts over 45 days in observe
 

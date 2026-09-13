@@ -234,6 +234,57 @@ recurring group which theme suppressed it) — a quiet month and a dead trigger 
 identically; a read failure RAISES so `audit_wrap` records the failure and #501 pages.
 Expected ~one page a month. $0 preview: `scripts/judge_named_themes_651.py --surface --dry-run`.
 
+### 2026-09-13 — birth gate `observe` → `on` (OPERATOR-SIGNED)
+
+**Trigger**: he asked why the gate was still observe-only and what to expect on flipping. It had
+sat in `observe` for **45 days** (since 2026-07-30). Its gating review
+(`theme_birth_gate_observe_calibration`) had its evidence bar — 8 clean `theme_date`s since
+2026-07-29 — **met on 2026-08-07**; the predicate now reads **32**. It never surfaced as an
+operator ask because the entry carries `earliest_review_date: 2026-10-01`. **Un-run, not blocked.**
+
+**Evidence** — the forward review the flip required, run 2026-09-13 on **168 recorded verdicts**
+over the 45-day observe window (`mi_theme_birth_candidates`):
+
+| verdict | n | share | avg member RS | sightings |
+|---|---|---|---|---|
+| `join` | 86 | 51% | 63.0 | 1–14 |
+| `await_second_sighting` | 53 | 32% | 68.5 | **1 only** |
+| `birth` | 26 | 15% | 70.6 | 2–8 |
+| `held_floor` | 3 | 2% | 29.3 | 2–5 |
+
+- **Clause (a)/(c) — the wait arm lost nothing.** All 53 `await_second_sighting` candidates sit at
+  exactly **1 sighting and never recurred** — one-day corpses. All 26 `birth` verdicts have 2–8
+  sightings and birthed. ⚠ Verified the counter is not broken before believing it: `sightings`
+  reaches **14**, with 107 rows above 1 and 107 whose `last_seen > first_seen`.
+- **The 2026-08-11 objection does not survive.** It held that the defense theme
+  {PLTR, TSAT, VOYG, AMRC} *"would not have been born that night at all"*. The candidate row:
+  `U.S. Government/Defense Spending Surge`, verdict **birth**, sightings 2, first_seen 08-04,
+  **born_date 08-05**. A **one-day delay**, not a suppression. The note stopped before the
+  resolution.
+- **Clause (b) — the join arm stops real duplication.** Three of the top ten joins name the SAME
+  theme as their join target (*Gold & Precious Metals Miners Rotation*, *Government & Defense IT
+  Services Providers*, *Precious Metals Royalty & Streaming*); others are plain synonyms
+  (*Major US Passenger Airlines* → *U.S. Domestic Passenger Airlines*).
+
+**Anticipated effect**: fewer, fuller themes. ~Half of new births fold into existing themes rather
+than creating new ones, directly addressing *65% of 127 themes hold ≤5 members* and *20 themes sit
+at 2, below `_PROMOTE_MIN_MEMBERS = 3`*. Expect theme birth ~1 day later for genuinely recurring
+cohorts, and ~53 fewer one-day themes per 45 days. Almost nothing blocked outright (3 of 168).
+
+**Reversion-flag**: INSTANT and no redeploy — `set_theme_birth_gate_mode('observe')` (or `'off'`).
+The toggle is DB-backed in `mi_safeguard_state`; every reader fails closed to `off`.
+
+⚠ **ONE JOIN IS UNRULED AND WILL NOW ACT.** `Emerging Bitcoin & AI Cloud Compute Miners` would JOIN
+`Bitcoin Mining Equities Momentum Basket`, members including **APLD, NBIS, IREN**. That is the #491
+case — he ruled on 2026-08-04 that the miners are *"converting into AI infra plays"*, a fundamental
+shift and not a merge. **The flip was authorised with this flagged and unresolved**; if that join
+lands wrong, it is the first thing to look at, and `/vetoecosystem` and a mode revert are both
+one step.
+
+**Status**: shipped 2026-09-13 on his instruction ("Flip it") after the forward review above.
+Awaiting live validation — the forward check is whether consolidated themes mature at the same rate
+as separately-born ones, which needs a fresh window at `on`.
+
 ## ONE birth gate + lane retirements (consolidation Phase 1, 2026-07-27 — 3-state toggle `theme_birth_gate`, fail-closed 'off')
 
 Behind `mi_safeguard_state` toggle `theme_birth_gate`
