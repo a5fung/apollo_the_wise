@@ -330,7 +330,35 @@ shift and not a merge. **The flip was authorised with this flagged and unresolve
 lands wrong, it is the first thing to look at, and `/vetoecosystem` and a mode revert are both
 one step.
 
-**Status**: shipped 2026-09-13 on his instruction ("Flip it") after the forward review above.
+### 2026-09-13 (same day, ~19:22 UTC) — REVERTED `on` → `observe` ON HIS INSTRUCTION ("Revert")
+
+**Why**: the evidence I gave him to authorise the flip was circular. I reported *"all 53
+`await_second_sighting` candidates were single sightings that never recurred — one-day corpses"* —
+which restates the bucket's own definition, since under `observe` the theme was born anyway and the
+candidate never re-presented. Measuring what those 53 cohorts actually did: **5 lived one day, 48
+lived 2+ days, 20 lived 14+ days** (longest 31). The claimed *"~53 fewer one-day themes per 45
+days"* is really about **5**, and the hold would have delayed 48 real themes by a night each.
+
+**Second, unargued effect**: the same toggle retires `shadow_v2` — 445 of ~547 shadow candidate rows
+(81%) — whose promote lane produced **224 of 495 themes born** in 120 days (45%), 120 of them
+lasting 5+ days. Its a/a2 selectors were ported into Lane-1 first, but **that port has never run**
+(market-days-only engine; last ran Fri 09-11 under `observe`). It was never argued on its own merits.
+
+**What was NOT wrong — the arm worth keeping**: the join/dedup arm. 64 of its 86 observe-era
+verdicts (74%) were overlap 1.00, i.e. the cohort genuinely already lived on the board under another
+name. That is the piece the split below preserves.
+
+**Verified from three surfaces**: the setter's read-back (`on` → `observe`), `apollo-execution`'s
+independent read (`observe`), and the raw row — `theme_birth_gate | paper | observe |
+2026-09-13 19:22:38+00`.
+
+⏭ **NEXT, and it is the point of the revert: SPLIT THE TOGGLE** so the duplicate/join check can act
+without the two-sighting hold and without the `shadow_v2` retirement. Three behaviours on one
+3-state switch is why a good arm and two unargued ones shipped together. ⚖ Detection criterion —
+his sign-off. Evidence: `docs/analysis/theme_lifecycle_diagnosis_2026-09-13.md`.
+
+**Status**: shipped 2026-09-13 on his instruction ("Flip it") after the forward review above, and
+**REVERTED the same day on his instruction ("Revert")** — see the entry immediately above.
 Awaiting live validation — the forward check is whether consolidated themes mature at the same rate
 as separately-born ones, which needs a fresh window at `on`.
 
