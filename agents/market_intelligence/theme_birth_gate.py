@@ -8,8 +8,9 @@ ONE gate in front of every live-theme birth — Lane-1 discovery AND the
 `shadow_promoted` graduation path (which previously bypassed adjudication
 entirely; the RS-38.7 / RS-49.1 graduates of 2026-07-27 entered there).
 
-THREE-STATE toggle `theme_birth_gate` in mi_safeguard_state (db.BIRTH_GATE_MODES,
-the broker_order_ingest off/dry_run/live idiom, FAIL-CLOSED 'off'):
+FOUR-STATE toggle `theme_birth_gate` in mi_safeguard_state (db.BIRTH_GATE_MODES,
+the broker_order_ingest off/dry_run/live idiom, FAIL-CLOSED 'off'; three states
+until the 2026-09-13 split added `dedup_only`):
   off     — this module is never invoked; behavior byte-identical to today
             (pinned by tests/test_theme_birth_gate.py).
   observe — the DEPLOY state: every would-be birth is evaluated and the verdict
@@ -20,7 +21,19 @@ the broker_order_ingest off/dry_run/live idiom, FAIL-CLOSED 'off'):
             evidence accrues BEFORE the gate ever touches a live theme; the
             observe→on comparison is the data-gated review
             `theme_birth_gate_observe_calibration`.
-  on      — the gate acts as designed (births filtered, lanes retired).
+  dedup_only — (2026-09-13 split, operator: "1. Split") the callers act on the
+            `join` verdict ONLY — lever 1 below, the measured arm (64 of its 86
+            observe-era verdicts were overlap 1.00). Levers 2 and 3 are still
+            computed and RECORDED, but a cohort they would hold is born exactly
+            as in observe; the lane retirements stay off; the allowlist is the
+            full frozen set; the a/a2 fold into Lane-1 stays off (shadow_v2
+            still runs and supplies those cohorts). Verdict math is identical
+            in every non-off mode — ONLY the caller's act differs, and which
+            verdicts act per mode is the ONE table BIRTH_GATE_ACTED_OUTCOMES.
+  on      — the gate acts as designed (births filtered on every non-birth
+            verdict, lanes retired). Flipped and REVERTED to observe on
+            2026-09-13: the two-sighting hold and the shadow_v2 retirement were
+            authorised on bad evidence (docs/architecture/theme_engine.md).
 
 The gate, in order (each lever measured independently in the derivation):
 
@@ -103,6 +116,36 @@ BIRTH_GATE_LEDGER_DAYS = 14     # join-or-new memory incl. quiet candidates
 # join suppression is skipped (merge/Route-A owns it). Strictly-greater-than
 # 0.5 so an exactly-half-covered cohort still gets the full net-new check.
 BIRTH_GATE_REFINEMENT_COVERED_SHARE = 0.5
+
+# ── Which verdicts each mode ACTS on (2026-09-13 split) ──────────────────────
+# The verdict is computed identically in every non-'off' mode (evaluate_birth);
+# this table is the ONLY place that says which verdicts a CALLER suppresses a
+# birth on. Both call sites (promote_shadow_themes + run_theme_engine Step
+# 3a.5) read it through gate_acts_on, so they cannot drift. An unknown mode
+# maps to the empty set — records, acts on nothing (fail-closed, same
+# direction as db.get_theme_birth_gate_mode's 'off'). 'birth' is never here.
+_HOLD_OUTCOMES = frozenset({"await_second_sighting", "held_floor", "held_no_rs"})
+BIRTH_GATE_ACTED_OUTCOMES: dict[str, frozenset[str]] = {
+    "off": frozenset(),                          # never evaluated at all
+    "observe": frozenset(),                      # recorded, nothing acted on
+    "dedup_only": frozenset({"join"}),           # the join/dedup arm alone
+    "on": frozenset({"join"}) | _HOLD_OUTCOMES,  # every non-birth verdict
+}
+
+
+def gate_acts_on(mode: str, outcome: str) -> bool:
+    """True when a caller must SUPPRESS a would-be birth with this verdict in
+    this mode (see BIRTH_GATE_ACTED_OUTCOMES). Pure; no I/O."""
+    return outcome in BIRTH_GATE_ACTED_OUTCOMES.get(mode, frozenset())
+
+
+def gate_promotes_held(mode: str) -> bool:
+    """True when a HELD verdict (two-sighting / floor) is still born in this
+    mode — observe and dedup_only. The promote lane uses it for the fidelity
+    carve-out: a held cohort that was promoted anyway has a prior mi_themes row
+    tomorrow (would read as maintenance), so it keeps being evaluated while its
+    ledger row is 'watching' — the hold progression stays measurable."""
+    return not _HOLD_OUTCOMES <= BIRTH_GATE_ACTED_OUTCOMES.get(mode, frozenset())
 
 
 # ── Pure decision logic (unit-tested; no I/O) ────────────────────────────────
@@ -224,8 +267,9 @@ async def evaluate_birth(
     {outcome: 'birth'|'join'|'await_second_sighting'|'held_floor'|'held_no_rs',
      reason, join_target, join_overlap, ledger_overlap, sightings, rs_avg,
      traj5, mode, candidate_id}.
-    `mode` ('observe'|'on') is RECORD-KEEPING ONLY here — the verdict is
-    computed identically in both; ACTING on it is the caller's branch. Every
+    `mode` ('observe'|'dedup_only'|'on') is RECORD-KEEPING ONLY here — the
+    verdict is computed identically in all three; ACTING on it is the caller's
+    branch (gate_acts_on / BIRTH_GATE_ACTED_OUTCOMES). Every
     evaluation is recorded in the ledger with the deciding lever (`reason`)
     and its inputs, so an observe period is judgeable from stored rows alone.
     `ledger` may be passed in by batch callers to avoid N re-fetches — pass the

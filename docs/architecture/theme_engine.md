@@ -362,13 +362,69 @@ his sign-off. Evidence: `docs/analysis/theme_lifecycle_diagnosis_2026-09-13.md`.
 Awaiting live validation — the forward check is whether consolidated themes mature at the same rate
 as separately-born ones, which needs a fresh window at `on`.
 
-## ONE birth gate + lane retirements (consolidation Phase 1, 2026-07-27 — 3-state toggle `theme_birth_gate`, fail-closed 'off')
+### 2026-09-13 (evening) — SPLIT the toggle: new mode `dedup_only`, the join arm alone (SHIPPED DARK)
+
+**Trigger**: the 19:22 UTC revert above. One 3-state switch carried FIVE behaviours that were never
+argued separately — (a) the join/dedup arm, (b) the two-sighting hold, (c) the derived RS floor,
+(d) the `shadow_v2` retirement (nightly pass skipped + allowlist minus `shadow_v2`), (e) the
+`coverage_probe` retirement — so a measured arm and two unargued ones shipped together. Operator:
+*"1. Split"*.
+
+**What shipped**: `db.BIRTH_GATE_MODES = ("off", "observe", "dedup_only", "on")`. In `dedup_only`
+`evaluate_birth` computes and RECORDS every verdict exactly as in `observe` (ledger row + audit row,
+tag `[lane/dedup_only]`) and the callers act on **`join` only**: `await_second_sighting` /
+`held_floor` / `held_no_rs` pass through as births; `shadow_v2` keeps its nightly pass AND its
+allowlist seat (`db.resolve_auto_promote_sources` returns the full frozen set); `coverage_probe`
+runs; the a/a2 fold into Lane-1 stays off — a **SIXTH** bundled behaviour the five-item list omitted
+(the fold is the retirement's companion; folding while `shadow_v2` still runs would double-discover
+its cohorts). Which verdicts act per mode is ONE table, `theme_birth_gate.BIRTH_GATE_ACTED_OUTCOMES`,
+read by BOTH call sites through `gate_acts_on` (`promote_shadow_themes` and `run_theme_engine` Step
+3a.5) and pinned against `db.BIRTH_GATE_MODES` so a mode cannot be added to one and not the other;
+an unknown mode acts on nothing. Promote lane: acting is restricted to FIRST crossings
+(`prior is None`) — the held-cohort fidelity carve-out (now engaging in `dedup_only` as well as
+`observe`, via `gate_promotes_held`) re-evaluates a still-`watching` cohort the mode promoted anyway,
+and in prod that re-evaluation draws `join` against ITSELF (the board holds last night's promotion
+at overlap 1.00); acting on it would cancel a maintenance re-promotion `on` never gated. Scheduler
+step 5b was extracted to `_theme_shadow_pass_step` so the per-mode retirement decision is testable
+the way `_coverage_probe_job` is; no behaviour change.
+
+**Evidence** (the revert entry's numbers): the hold kills 5 genuine one-day themes but delays 48
+real ones (20 lived 14+ days); (d) silently cut the lane that produced 224 of 495 themes born in
+120 days; (a) is measured — 64 of its 86 observe-era verdicts were overlap 1.00. ⚠ One caveat on
+that 64: the promote lane's carve-out re-evaluates cohorts it promoted itself, and those draw a
+self-`join` at 1.00 under the cohort's OWN name — run
+`SELECT COUNT(*) FROM mi_theme_birth_candidates WHERE last_outcome='join' AND join_target=name`
+before citing 64 as "under another name" (not run tonight — the prod read was unavailable from the
+build machine). The self-join also means the carve-out's "hold progression accrues" claim is weaker
+than written for the promote lane: on night 2 lever 1 short-circuits levers 2-3.
+
+**Anticipated effect**: **none until flipped** — production stays `observe`; every off/observe
+parity pin passed untouched and the diff is dark by construction. At `dedup_only`: roughly half of
+would-be births (86 of 168 observe verdicts) are suppressed as duplicates of a theme already on the
+board; NO theme is delayed a night; `shadow_v2` keeps feeding promote; the birth count falls for ONE
+reason only, so a drop IS evidence the join arm acted (unlike the 09-13 flip). The "previously-held
+later PASSED" counter reads as would-have-been-delayed there — the same caveat observe carries.
+
+**Reversion-flag**: NEW (a new mode; `off` / `observe` / `on` behave exactly as before).
+
+**Status**: shipped DARK 2026-09-13; live mode `observe`. Flipping to `dedup_only` is the
+OPERATOR's call (THE LINE) — `set_theme_birth_gate_mode('dedup_only')`, instant, no redeploy;
+revert with `set_theme_birth_gate_mode('observe')`. Pins: `tests/test_theme_birth_gate.py` (48 —
+join acted on and ONLY join at both sites; holds born in `dedup_only` and not in `on`; `shadow_v2`
+in the allowlist and its pass running; the self-join carve-out never suppressing; every off/observe
+parity pin intact).
+
+## ONE birth gate + lane retirements (consolidation Phase 1, 2026-07-27 — 4-state toggle `theme_birth_gate` since the 2026-09-13 split, fail-closed 'off')
 
 Behind `mi_safeguard_state` toggle `theme_birth_gate`
-(`db.get/set_theme_birth_gate_mode`, **3 states — the `broker_order_ingest`
-off/dry_run/live idiom**, `db.BIRTH_GATE_MODES = ("off","observe","on")`,
+(`db.get/set_theme_birth_gate_mode`, **4 states — the `broker_order_ingest`
+off/dry_run/live idiom plus the 2026-09-13 split**,
+`db.BIRTH_GATE_MODES = ("off","observe","dedup_only","on")`,
 fail-closed 'off' on any error or unrecognized string, instant no-redeploy
-transitions, OPERATOR-gated):
+transitions, OPERATOR-gated). **Which verdicts each mode ACTS on is ONE table,
+`theme_birth_gate.BIRTH_GATE_ACTED_OUTCOMES`, read by both call sites through
+`gate_acts_on` and pinned against `db.BIRTH_GATE_MODES`** — the verdict math is
+identical in every non-`off` mode; only the caller's act differs:
 
 - **`off`** (today's production state) ⇒ **byte-identical to the pre-gate
   engine** (pinned by `tests/test_theme_birth_gate.py`).
@@ -393,7 +449,23 @@ transitions, OPERATOR-gated):
   an observe-born cohort can't re-sight (it's covered next night), so Lane-1
   verdicts read as-at-first-sighting and the review judges the two-sighting
   lever from mi_themes presence (≥2-day themes = delayed-not-lost).
-- **`on`** ⇒ the gate ACTS:
+- **`dedup_only`** (the 2026-09-13 SPLIT, operator: *"1. Split"*) ⇒ the gate
+  acts on the **`join` verdict ONLY**, at both call sites: a first-crossing
+  cohort overlapping ≥ 0.5 (intersection-over-smaller) with a live theme is
+  not born — the bet is already on the board under another name. Every other
+  verdict (`await_second_sighting` / `held_floor` / `held_no_rs`) is recorded
+  exactly as in `observe` and the theme IS born — no theme is delayed a night;
+  `shadow_v2` keeps its nightly pass AND its allowlist seat; `coverage_probe`
+  runs; no a/a2 fold (the fold is the retirement's companion — folding while
+  `shadow_v2` still runs would double-discover its cohorts). Promote-lane
+  acting is restricted to FIRST crossings (`prior is None`): the held-cohort
+  carve-out engages here as in observe, and a carve-out re-evaluation
+  self-joins at overlap 1.00 in prod (the board holds last night's
+  promotion) — acting on it would cancel a maintenance re-promotion `on`
+  never gated. Audit tag `[lane/dedup_only]`; the
+  `theme_birth_gate_observe_calibration` review keys on `%/observe]%` and
+  does not count these rows.
+- **`on`** ⇒ the gate ACTS on every non-birth verdict:
 
 - **ONE birth gate on every live-theme birth path** (`theme_birth_gate.py`):
   Lane-1 discovery (`run_theme_engine` step 3a.5, after name-inheritance,

@@ -1,7 +1,7 @@
-"""Theme BIRTH GATE (consolidation Phase 1, operator-ruled 2026-07-27) — 3-state pins.
+"""Theme BIRTH GATE (consolidation Phase 1, operator-ruled 2026-07-27) — 4-state pins.
 
-Toggle `theme_birth_gate` ∈ db.BIRTH_GATE_MODES = ("off", "observe", "on") —
-the broker_order_ingest 3-state idiom, fail-closed 'off'.
+Toggle `theme_birth_gate` ∈ db.BIRTH_GATE_MODES = ("off", "observe", "dedup_only", "on")
+— the broker_order_ingest 3-state idiom plus the 2026-09-13 split, fail-closed 'off'.
 
 The load-bearing contracts:
 1. Mode 'off' ⇒ byte-identical to today: no a/a2 selector fetch, no gate
@@ -26,6 +26,14 @@ The load-bearing contracts:
 6. The a/a2 port: in mode 'on', Lane-1 discovery receives the accelerator +
    recovery-slope selections that previously existed only in the retired
    shadow_v2 pass.
+7. Mode 'dedup_only' (the 2026-09-13 SPLIT, operator: "1. Split") acts on the
+   `join` verdict and ONLY `join`, at BOTH call sites: a cohort that would draw
+   await_second_sighting / held_floor / held_no_rs IS born (not in 'on'); the
+   verdict is recorded either way; shadow_v2 stays in the allowlist and its
+   nightly pass still runs; coverage_probe still runs; no a/a2 fold. Which
+   verdicts act per mode is ONE table (tbg.BIRTH_GATE_ACTED_OUTCOMES), pinned
+   against db.BIRTH_GATE_MODES so a new mode cannot be added to one and not
+   the other.
 
 GRADE-AFFECTING + AUTO-PROMOTE reach: theme output feeds the judge's
 active_narratives and auto-promotes into live mi_themes — the off/observe
@@ -61,7 +69,28 @@ def test_derived_cell_constants_are_the_signed_values():
     assert tbg.BIRTH_GATE_JOIN_OVERLAP == 0.5
     assert tbg.BIRTH_GATE_LEDGER_DAYS == 14
     assert tbg.BIRTH_GATE_TRAJ_SESSIONS == 5
-    assert dbmod.BIRTH_GATE_MODES == ("off", "observe", "on")
+    assert dbmod.BIRTH_GATE_MODES == ("off", "observe", "dedup_only", "on")
+
+
+def test_acted_outcomes_table_is_the_one_policy_for_every_mode():
+    # The 2026-09-13 split: WHICH verdicts a caller acts on is one table, keyed
+    # by exactly the modes the DB toggle accepts — a mode added to one side and
+    # not the other is the drift this pin exists to catch.
+    assert set(tbg.BIRTH_GATE_ACTED_OUTCOMES) == set(dbmod.BIRTH_GATE_MODES)
+    holds = {"await_second_sighting", "held_floor", "held_no_rs"}
+    for mode in ("off", "observe"):
+        assert not any(tbg.gate_acts_on(mode, o) for o in holds | {"join"}), mode
+    assert tbg.gate_acts_on("dedup_only", "join")
+    assert not any(tbg.gate_acts_on("dedup_only", o) for o in holds)
+    assert tbg.gate_acts_on("on", "join")
+    assert all(tbg.gate_acts_on("on", o) for o in holds)
+    # 'birth' is never acted on, in any mode; an unknown mode acts on NOTHING
+    # (fail-closed — the same direction the DB reader takes for a bad string).
+    assert not any(tbg.gate_acts_on(m, "birth") for m in dbmod.BIRTH_GATE_MODES)
+    assert not any(tbg.gate_acts_on("bogus", o) for o in holds | {"join", "birth"})
+    # The promote lane's held-cohort carve-out engages exactly where a held
+    # cohort is still promoted: everywhere but 'on'.
+    assert [tbg.gate_promotes_held(m) for m in dbmod.BIRTH_GATE_MODES] == [True, True, True, False]
 
 
 def test_gate_decision_boundaries():
@@ -280,6 +309,8 @@ async def test_mode_unrecognized_state_reads_off_and_set_validates(monkeypatch):
     assert await dbmod.get_theme_birth_gate_mode() == "off"
     conn.fetchrow = AsyncMock(return_value={"state": "observe"})
     assert await dbmod.get_theme_birth_gate_mode() == "observe"
+    conn.fetchrow = AsyncMock(return_value={"state": "dedup_only"})  # the 2026-09-13 split mode
+    assert await dbmod.get_theme_birth_gate_mode() == "dedup_only"
     conn.fetchrow = AsyncMock(return_value=None)                   # no row → off
     assert await dbmod.get_theme_birth_gate_mode() == "off"
     # …and the setter refuses to WRITE a state every reader would discard.
@@ -293,6 +324,9 @@ async def test_resolve_auto_promote_sources_only_on_retires_shadow_v2():
     assert off is dbmod.AUTO_PROMOTE_THEME_SOURCES          # identity: byte-identical
     observe = await dbmod.resolve_auto_promote_sources("observe")
     assert observe is dbmod.AUTO_PROMOTE_THEME_SOURCES      # observe acts on NOTHING
+    dedup = await dbmod.resolve_auto_promote_sources("dedup_only")
+    assert dedup is dbmod.AUTO_PROMOTE_THEME_SOURCES        # split: shadow_v2 NOT retired
+    assert "shadow_v2" in dedup
     on = await dbmod.resolve_auto_promote_sources("on")
     assert on == dbmod.AUTO_PROMOTE_THEME_SOURCES - {"shadow_v2"}
     assert "narrative_cogap" in on and "rs_slope_synthesis" in on
@@ -307,7 +341,7 @@ async def test_auto_promote_reader_drops_shadow_v2_only_in_mode_on(monkeypatch):
     conn.fetch = AsyncMock(return_value=[])
     monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
 
-    for mode in ("off", "observe"):
+    for mode in ("off", "observe", "dedup_only"):
         monkeypatch.setattr(dbmod, "get_theme_birth_gate_mode",
                             AsyncMock(return_value=mode))
         await dbmod.get_shadow_theme_candidates(days=7)
@@ -409,7 +443,7 @@ async def test_mode_observe_promote_telegram_parity_with_off(monkeypatch):
     # Zero behavioural difference includes the operator surface: the NEW-grad
     # Telegram fires identically in observe and off for the same input.
     msgs = {}
-    for mode in ("off", "observe"):
+    for mode in ("off", "observe", "dedup_only"):
         conn, tele, _ = _wire_promote(
             monkeypatch,
             [{"name": "New Cohort", "tickers": ["N1", "N2", "N3"],
@@ -417,7 +451,9 @@ async def test_mode_observe_promote_telegram_parity_with_off(monkeypatch):
             mode=mode)
         await te.promote_shadow_themes(_MON)
         msgs[mode] = [c.args[0] for c in tele.await_args_list]
-    assert msgs["off"] == msgs["observe"] and len(msgs["off"]) == 1
+    # dedup_only: a NON-join first crossing (this one awaits its 2nd sighting)
+    # is promoted and announced exactly as in off — the split acts on join only.
+    assert msgs["off"] == msgs["observe"] == msgs["dedup_only"] and len(msgs["off"]) == 1
 
 
 @pytest.mark.asyncio
@@ -523,6 +559,127 @@ async def test_mode_on_second_sighting_strong_cohort_births_via_promote(monkeypa
     assert written == ["Real New Theme"]
 
 
+# ── the 2026-09-13 SPLIT on the promote path: dedup_only acts on join ONLY ───
+
+_BOARD_THEME = {"name": "Board Name", "stage": "Nascent", "tickers": ["J1", "J2", "J3"]}
+
+
+@pytest.mark.asyncio
+async def test_dedup_only_promote_first_crossing_join_is_held(monkeypatch):
+    # The kept arm: a first-ever crossing whose cohort ALREADY lives on the
+    # board under another name (overlap 1.00) is not promoted in dedup_only.
+    conn, tele, _ = _wire_promote(
+        monkeypatch,
+        [{"name": "Dup Cohort", "tickers": ["J1", "J2", "J3"],
+          "thesis": "t", "source": "narrative_cogap"}],
+        mode="dedup_only")
+    monkeypatch.setattr(te, "get_active_themes", AsyncMock(return_value=[dict(_BOARD_THEME)]))
+    n = await te.promote_shadow_themes(_MON)
+    assert n == 0
+    assert not [c for c in conn.execute.await_args_list
+                if "INSERT INTO mi_themes" in c.args[0]]
+    rec = dbmod.record_birth_candidate_sighting
+    assert rec.await_args.kwargs["outcome"] == "join"
+    assert rec.await_args.kwargs["join_target"] == "Board Name"
+    assert rec.await_args.kwargs["mode"] == "dedup_only"
+    gate_rows = [c for c in dbmod.log_audit_event.await_args_list
+                 if c.args and c.args[0] == "theme_birth_gate"]
+    assert len(gate_rows) == 1
+    assert "[promote/dedup_only]" in (gate_rows[0].kwargs.get("summary") or gate_rows[0].args[1])
+    promo_rows = [c for c in te.log_audit_event.await_args_list
+                  if c.args and c.args[0] == "shadow_themes_promoted"]
+    assert "1 held at the birth gate" in promo_rows[0].kwargs["summary"]
+    # A deliberate hold is not a silent failure: no 🎓 ping, no ⚠️ ping, no alarm row.
+    tele.assert_not_awaited()
+    assert not [c for c in te.log_audit_event.await_args_list
+                if c.args and c.args[0] == "shadow_promotion_silent_failure"]
+
+
+# Each scenario yields the named HOLD verdict from the REAL evaluate_birth
+# (ledger + RS snapshot are the gate's own inputs, not an invented result).
+_HOLD_SCENARIOS = {
+    "await_second_sighting": dict(ledger=[], rs=(84.0, 80.0)),         # 1st sighting, elite RS
+    "held_floor": dict(ledger=[{"id": 5, "name": "Held Cohort", "first_seen": _FRI,
+                                "last_seen": _FRI, "sightings": 1,
+                                "tickers": ["H1", "H2", "H3"], "status": "watching"}],
+                       rs=(40.0, 45.0)),                                # 2nd sighting, weak + falling
+    "held_no_rs": dict(ledger=[{"id": 6, "name": "Held Cohort", "first_seen": _FRI,
+                                "last_seen": _FRI, "sightings": 1,
+                                "tickers": ["H1", "H2", "H3"], "status": "watching"}],
+                       rs=(None, None)),                                # 2nd sighting, unknown RS
+}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("verdict", sorted(_HOLD_SCENARIOS))
+@pytest.mark.parametrize("mode,expect_promoted", [("dedup_only", 1), ("on", 0)])
+async def test_hold_verdicts_promote_in_dedup_only_but_not_in_on(
+        monkeypatch, verdict, mode, expect_promoted):
+    sc = _HOLD_SCENARIOS[verdict]
+    conn, tele, _ = _wire_promote(
+        monkeypatch,
+        [{"name": "Held Cohort", "tickers": ["H1", "H2", "H3"],
+          "thesis": "t", "source": "narrative_cogap"}],
+        mode=mode)
+    monkeypatch.setattr(dbmod, "get_recent_birth_candidates",
+                        AsyncMock(return_value=[dict(r) for r in sc["ledger"]]))
+    monkeypatch.setattr(dbmod, "get_cohort_rs_snapshot", AsyncMock(return_value=sc["rs"]))
+    n = await te.promote_shadow_themes(_MON)
+    # The verdict is IDENTICAL in both modes — only the act differs.
+    assert dbmod.record_birth_candidate_sighting.await_args.kwargs["outcome"] == verdict
+    assert n == expect_promoted
+    written = [c.args[2] for c in conn.execute.await_args_list
+               if "INSERT INTO mi_themes" in c.args[0]]
+    assert written == (["Held Cohort"] if expect_promoted else [])
+    assert len(tele.await_args_list) == expect_promoted   # the 🎓 ping follows the write
+
+
+@pytest.mark.asyncio
+async def test_dedup_only_shadow_v2_cohort_still_auto_promotes(monkeypatch):
+    # The split keeps the lane that produced 224 of 495 themes: a shadow_v2
+    # cohort with no board overlap promotes in dedup_only (0 in 'on' — pinned above).
+    conn, _, _ = _wire_promote(
+        monkeypatch,
+        [{"name": "Shadow Cohort", "tickers": ["S1", "S2", "S3", "S4"],
+          "thesis": "t", "source": "shadow_v2"}],
+        mode="dedup_only")
+    n = await te.promote_shadow_themes(_MON)
+    assert n == 1
+    written = [c.args[2] for c in conn.execute.await_args_list
+               if "INSERT INTO mi_themes" in c.args[0]]
+    assert written == ["Shadow Cohort"]
+
+
+@pytest.mark.asyncio
+async def test_dedup_only_watching_cohort_reevaluated_but_never_suppressed(monkeypatch):
+    # Night 2 of a cohort dedup_only promoted despite a hold: it has a prior
+    # row AND a still-'watching' ledger row, so the fidelity carve-out keeps
+    # evaluating it — and in prod the board now holds the cohort under ITS OWN
+    # name, so the verdict is a self-`join` at overlap 1.00. That verdict is
+    # recorded (measurement) but must NEVER cancel the re-promotion: acting is
+    # for FIRST crossings only, exactly the maintenance leg 'on' never gated.
+    conn, _, _ = _wire_promote(
+        monkeypatch,
+        [{"name": "Watched Cohort", "tickers": ["W1", "W2", "W3"],
+          "thesis": "t", "source": "narrative_cogap"}],
+        mode="dedup_only",
+        prior_rows=[{"name": "Watched Cohort", "days_active": 1}])
+    monkeypatch.setattr(dbmod, "get_recent_birth_candidates", AsyncMock(return_value=[
+        {"id": 31, "name": "Watched Cohort", "first_seen": _FRI, "last_seen": _FRI,
+         "sightings": 1, "tickers": ["W1", "W2", "W3"], "status": "watching"}]))
+    monkeypatch.setattr(te, "get_active_themes", AsyncMock(return_value=[
+        {"name": "Watched Cohort", "stage": "Nascent", "tickers": ["W1", "W2", "W3"]}]))
+    n = await te.promote_shadow_themes(_MON)
+    rec = dbmod.record_birth_candidate_sighting
+    assert rec.await_args.args[0] == 31                       # the watching row was updated
+    assert rec.await_args.kwargs["outcome"] == "join"
+    assert rec.await_args.kwargs["join_target"] == "Watched Cohort"
+    assert n == 1                                             # maintenance proceeds
+    written = [c.args[2] for c in conn.execute.await_args_list
+               if "INSERT INTO mi_themes" in c.args[0]]
+    assert written == ["Watched Cohort"]
+
+
 # ── coverage_probe job retirement ────────────────────────────────────────────
 
 @pytest.mark.asyncio
@@ -534,12 +691,12 @@ async def test_coverage_probe_job_runs_in_off_and_observe_retires_in_on(monkeypa
     monkeypatch.setattr(cp, "run_coverage_probe", probe)
     monkeypatch.setattr(sched, "log_audit_event", audit)
 
-    for mode in ("off", "observe"):
+    for mode in ("off", "observe", "dedup_only"):
         probe.reset_mock()
         monkeypatch.setattr(dbmod, "get_theme_birth_gate_mode",
                             AsyncMock(return_value=mode))
         await sched._coverage_probe_job()
-        probe.assert_awaited_once()      # off AND observe: the probe runs
+        probe.assert_awaited_once()      # off, observe AND dedup_only: the probe runs
     assert not [c for c in audit.await_args_list
                 if c.args and c.args[0] == "coverage_probe_retired"]
 
@@ -549,6 +706,38 @@ async def test_coverage_probe_job_runs_in_off_and_observe_retires_in_on(monkeypa
     probe.assert_not_awaited()           # on: retired
     retired = [c for c in audit.await_args_list
                if c.args and c.args[0] == "coverage_probe_retired"]
+    assert len(retired) == 1             # audited, never silent
+
+
+# ── shadow_v2 nightly pass retirement (scheduler step 5b) ───────────────────
+
+@pytest.mark.asyncio
+async def test_shadow_pass_runs_in_off_observe_dedup_only_and_retires_in_on(monkeypatch):
+    # The split's second half: the lane that fed 224 of 495 births keeps
+    # RUNNING in dedup_only — only 'on' retires it (skipped + audited).
+    from agents.market_intelligence import scheduler as sched
+    shadow = AsyncMock(return_value={"shadow_themes": 4})
+    audit = AsyncMock()
+    monkeypatch.setattr(te, "run_theme_discovery_shadow", shadow)
+    monkeypatch.setattr(sched, "log_audit_event", audit)
+
+    for mode in ("off", "observe", "dedup_only"):
+        shadow.reset_mock()
+        monkeypatch.setattr(dbmod, "get_theme_birth_gate_mode",
+                            AsyncMock(return_value=mode))
+        part = await sched._theme_shadow_pass_step(_MON, clusters := [{"c": 1}])
+        shadow.assert_awaited_once_with(_MON, clusters=clusters)
+        assert part == "shadow:4", mode
+    assert not [c for c in audit.await_args_list
+                if c.args and c.args[0] == "shadow_v2_stream_retired"]
+
+    shadow.reset_mock()
+    monkeypatch.setattr(dbmod, "get_theme_birth_gate_mode", AsyncMock(return_value="on"))
+    part = await sched._theme_shadow_pass_step(_MON, [])
+    shadow.assert_not_awaited()          # on: retired
+    assert part == "shadow:retired"
+    retired = [c for c in audit.await_args_list
+               if c.args and c.args[0] == "shadow_v2_stream_retired"]
     assert len(retired) == 1             # audited, never silent
 
 
@@ -722,18 +911,72 @@ async def test_mode_on_a2_port_feeds_discovery_and_gate_filters_births(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_mode_on_existing_theme_reemission_is_never_gated(monkeypatch):
+@pytest.mark.parametrize("mode", ["on", "dedup_only"])
+async def test_acting_modes_existing_theme_reemission_is_never_gated(monkeypatch, mode):
     # A discovery proposal that lands on a name ALREADY live on the board is a
     # re-emission — it must pass through ungated (merge owns it), leaving the
-    # board theme intact. (Leg 3 of existing-live-themes-untouched.)
+    # board theme intact. (Leg 3 of existing-live-themes-untouched.) Holds in
+    # BOTH acting modes — a self-join by name can never fire on Lane 1.
     saved, _, _, _ = _drive_engine(
-        monkeypatch, mode="on",
+        monkeypatch, mode=mode,
         discovered=[{"name": "Existing Live Theme", "tickers": ["EX1", "EX2"],
                      "thesis": "t"}])
     themes, changelog = await te.run_theme_engine(trade_date=_MON)
     dbmod.record_birth_candidate_sighting.assert_not_awaited()
     assert not [e for e in changelog if e.get("type") == "theme_birth_gated"]
     assert "Existing Live Theme" in [t["name"] for t in saved]
+
+
+# ── the 2026-09-13 SPLIT on Lane 1: dedup_only acts on join ONLY ────────────
+
+# "Dup Name" carries the board theme's whole cohort {EX1, EX2} plus two more:
+# intersection-over-smaller = 2/2 = 1.00 (join fires), covered share = 2/4 =
+# 0.5 — NOT > 0.5, so the refinement carve-out does not skip the join check.
+# "First Sighting" is net-new with no ledger history → await_second_sighting.
+_SPLIT_DISCOVERED = [
+    {"name": "Dup Name", "tickers": ["EX1", "EX2", "L04", "L05"], "thesis": "t"},
+    {"name": "First Sighting", "tickers": ["L02", "L03"], "thesis": "t"},
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode,expect_saved,expect_gated", [
+    ("dedup_only", {"First Sighting"}, {"Dup Name"}),          # join acted on; the hold is born
+    ("on", set(), {"Dup Name", "First Sighting"}),            # every non-birth verdict acted on
+    ("observe", {"Dup Name", "First Sighting"}, set()),       # nothing acted on
+])
+async def test_lane1_split_dedup_only_suppresses_join_only(
+        monkeypatch, mode, expect_saved, expect_gated):
+    accel = [{"ticker": "ACC1", "rs_composite": 62.0, "sector": "Industrials"}]
+    saved, discover, accel_mock, _ = _drive_engine(
+        monkeypatch, mode=mode, accel=accel,
+        discovered=[dict(d) for d in _SPLIT_DISCOVERED])
+    themes, changelog = await te.run_theme_engine(trade_date=_MON)
+    newborn = {t["name"] for t in saved} - {"Existing Live Theme"}
+    assert newborn == expect_saved, mode
+    assert "Existing Live Theme" in {t["name"] for t in saved}   # board theme untouched
+    gated = {e["theme"]: e for e in changelog if e.get("type") == "theme_birth_gated"}
+    assert set(gated) == expect_gated, mode
+    if "Dup Name" in gated:
+        assert gated["Dup Name"]["outcome"] == "join"
+        assert gated["Dup Name"]["join_target"] == "Existing Live Theme"
+    # The verdicts are recorded identically in every non-off mode.
+    recorded = {c.args[1]: c.kwargs["outcome"]
+                for c in dbmod.record_birth_candidate_sighting.await_args_list}
+    assert recorded == {"Dup Name": "join", "First Sighting": "await_second_sighting"}
+    gate_rows = [c for c in dbmod.log_audit_event.await_args_list
+                 if c.args and c.args[0] == "theme_birth_gate"]
+    assert len(gate_rows) == 1
+    _summary = gate_rows[0].kwargs.get("summary") or gate_rows[0].args[1]
+    assert f"[lane1/{mode}]" in _summary
+    assert "1 join" in _summary and "1 awaiting-2nd-sighting" in _summary
+    # The a/a2 fold is 'on'-only: dedup_only keeps shadow_v2 running, so it
+    # must not ALSO fold the selectors into Lane-1 (double discovery).
+    if mode == "on":
+        accel_mock.assert_awaited_once()
+    else:
+        accel_mock.assert_not_awaited()
+        assert "ACC1" not in {s["ticker"] for s in discover.await_args.args[0]}
 
 
 # ── the forward false-negative signal (operator 2026-08-03) ──────────────────────────────────

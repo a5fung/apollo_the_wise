@@ -1981,7 +1981,7 @@ async def initialize_schema() -> None:
         """)
 
         # ── Theme BIRTH-GATE candidate ledger (theme consolidation Phase 1,
-        # 2026-07-27 — 3-state toggle 'theme_birth_gate', fail-closed 'off').
+        # 2026-07-27 — 4-state toggle 'theme_birth_gate' since the 2026-09-13 split, fail-closed 'off').
         # ONE ledger for every would-be live-theme birth, any discovery path:
         # a NEW cohort is recorded on its 1st sighting and may only BIRTH into
         # mi_themes on its >=2nd distinct-day sighting AND passing the derived
@@ -5874,7 +5874,7 @@ async def set_lane2_grouping_v2_enabled(enabled: bool) -> None:
 
 
 _THEME_BIRTH_GATE_TOGGLE = ("theme_birth_gate", "paper")  # (safeguard, account_mode) PK
-# 3-state, the broker_order_ingest INGEST_MODES idiom (off / dry_run / live_r1):
+# 4-state (3 until the 2026-09-13 split), the broker_order_ingest INGEST_MODES idiom (off / dry_run / live_r1):
 #   off     — byte-identical to today (production default; pinned by test).
 #   observe — the gate COMPUTES + RECORDS its verdict on every would-be birth
 #             (ledger + audit rows accrue: verdict, deciding lever, member-avg
@@ -5884,18 +5884,38 @@ _THEME_BIRTH_GATE_TOGGLE = ("theme_birth_gate", "paper")  # (safeguard, account_
 #             deploy state: forward evidence accrues BEFORE the gate ever
 #             touches a live theme (the shadow-first discipline every other
 #             flip in this repo followed).
-#   on      — the gate acts (births filtered, shadow_v2 + coverage_probe
-#             retired, allowlist minus shadow_v2). OPERATOR-gated flip.
-BIRTH_GATE_MODES = ("off", "observe", "on")
+#   dedup_only — (2026-09-13 SPLIT, operator: "1. Split") the gate ACTS on ONE
+#             verdict only: `join` (the cohort already lives on the board under
+#             another name — the measured, kept arm: 64 of its 86 observe-era
+#             verdicts were overlap 1.00). Every OTHER verdict
+#             (await_second_sighting / held_floor / held_no_rs) is recorded and
+#             the theme is born exactly as in observe; shadow_v2 and
+#             coverage_probe still run; the allowlist is the FULL frozen set;
+#             the a/a2 fold stays off (shadow_v2 still supplies those cohorts).
+#             Policy table: theme_birth_gate.BIRTH_GATE_ACTED_OUTCOMES.
+#   on      — the gate acts on EVERY non-birth verdict (births filtered,
+#             shadow_v2 + coverage_probe retired, allowlist minus shadow_v2,
+#             a/a2 selectors folded into Lane-1). OPERATOR-gated flip. Flipped
+#             and REVERTED to observe 2026-09-13: the two-sighting hold and the
+#             shadow_v2 retirement were authorised on bad evidence (SSoT
+#             docs/architecture/theme_engine.md, 2026-09-13 entries).
+BIRTH_GATE_MODES = ("off", "observe", "dedup_only", "on")
 
 
 async def get_theme_birth_gate_mode() -> str:
-    """Theme consolidation Phase 1 (operator-ruled 2026-07-27) — the 3-state
-    birth-gate toggle (see BIRTH_GATE_MODES above), DB-backed in
-    mi_safeguard_state (durable across restarts, instant no-redeploy flip).
+    """Theme consolidation Phase 1 (operator-ruled 2026-07-27) — the 4-state
+    birth-gate toggle (see BIRTH_GATE_MODES above; 3-state until the
+    2026-09-13 split added 'dedup_only'), DB-backed in mi_safeguard_state
+    (durable across restarts, instant no-redeploy flip).
     FAIL-CLOSED: any read error, missing row, or unrecognized state string →
     'off' (byte-identical to today — the contract pinned by
     tests/test_theme_birth_gate.py).
+    When 'dedup_only': ONLY the join/dedup arm of the gate acts (a cohort
+    overlapping >= BIRTH_GATE_JOIN_OVERLAP with a live theme is not born); the
+    two-sighting hold and the derived RS floor are recorded but NOT acted on,
+    and neither lane retirement below applies (shadow_v2 + coverage_probe run,
+    allowlist unchanged). Which verdicts each mode acts on is ONE table:
+    theme_birth_gate.BIRTH_GATE_ACTED_OUTCOMES.
     When 'on': (1) every NEW live-theme birth (Lane-1 discovery AND the
     shadow_promoted path — the path that previously bypassed adjudication
     entirely) must clear the gate: join-or-new vs the live board +14d ledger,
@@ -9141,10 +9161,12 @@ AUTO_PROMOTE_THEME_SOURCES = frozenset({
 
 async def resolve_auto_promote_sources(gate_mode: "str | None" = None) -> frozenset:
     """The EFFECTIVE auto-promote allowlist for this run (theme consolidation
-    Phase 1, operator-ruled 2026-07-27). Mode 'off' OR 'observe' (and any read
-    error) ⇒ the full AUTO_PROMOTE_THEME_SOURCES — byte-identical to today
-    (observe must change NOTHING behavioral; the shadow_v2 retirement is an
-    ACT, so it belongs to 'on' only). Mode 'on' ⇒ 'shadow_v2' is retired from
+    Phase 1, operator-ruled 2026-07-27). Mode 'off' OR 'observe' OR
+    'dedup_only' (and any read error) ⇒ the full AUTO_PROMOTE_THEME_SOURCES —
+    byte-identical to today (observe must change NOTHING behavioral; the
+    shadow_v2 retirement is an ACT that was never argued on its own merits —
+    2026-09-13 revert — so it belongs to 'on' only; 'dedup_only' acts on the
+    join verdict alone and keeps this lane). Mode 'on' ⇒ 'shadow_v2' is retired from
     the allowlist (decision 1: the stream stops running AND its stale
     ≤7d-window rows can no longer graduate — defense in depth on both walls).
     Shared by BOTH walls (get_shadow_theme_candidates' default reader +
@@ -9179,7 +9201,7 @@ async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False
     tests/test_coverage_probe.py (default-exclude + unknown-source pins)."""
     # Phase-1 birth gate (2026-07-27): the auto-promote branch reads the
     # EFFECTIVE allowlist (shadow_v2 retired only in mode 'on'; the full
-    # frozen set — byte-identical — in 'off' AND 'observe'). Operator surfaces
+    # frozen set — byte-identical — in 'off', 'observe' AND 'dedup_only'). Operator surfaces
     # (include_probe=True) still see EVERYTHING, so the resolve call is
     # skipped entirely on that branch.
     sources = (
@@ -9248,7 +9270,7 @@ async def record_birth_candidate_sighting(
     `status` transitions: watching → born (outcome='birth') / joined stays
     'watching' (a join target may die; the cohort can still birth later).
     `reason` = the DECIDING LEVER (pass_rs_level / pass_rs_rising / join /
-    await_second_sighting / held_floor / held_no_rs); `mode` = observe|on —
+    await_second_sighting / held_floor / held_no_rs); `mode` = observe|dedup_only|on —
     together with rs_avg / rs_traj5 / the IoS overlaps these make the observe
     period judgeable from stored rows alone. Returns the candidate id."""
     td = _to_date(today)

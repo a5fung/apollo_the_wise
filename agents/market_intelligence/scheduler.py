@@ -309,6 +309,30 @@ _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
 
 
+async def _theme_shadow_pass_step(today, correlation_clusters) -> str:
+    """Nightly step 5b — the ADR-0007 shadow_v2 discovery pass, or its audited
+    retirement. Returns the summary part for the nightly digest. Extracted from
+    _nightly_data_pull (2026-09-13) so the per-mode decision is testable the way
+    _coverage_probe_job is: mode 'on' ⇒ the stream is RETIRED (skipped, audited
+    `shadow_v2_stream_retired`); 'off' / 'observe' / 'dedup_only' / error ⇒ the
+    pass runs exactly as it always has. Raises into the caller's try like the
+    inline code it replaced (non-fatal there)."""
+    from agents.market_intelligence.db import get_theme_birth_gate_mode
+    if (await get_theme_birth_gate_mode()) == "on":
+        logger.info("Theme shadow pass (ADR 0007) SKIPPED — shadow_v2 stream retired (birth-gate ON)")
+        await log_audit_event(
+            "shadow_v2_stream_retired",
+            summary="shadow_v2 discovery stream retired (theme_birth_gate mode 'on') — "
+                    "a/a2 selectors run inside Lane-1 discovery",
+            detail="run_theme_discovery_shadow skipped; no source='shadow_v2' rows written tonight",
+        )
+        return "shadow:retired"
+    from agents.market_intelligence.theme_engine import run_theme_discovery_shadow
+    shadow_summary = await run_theme_discovery_shadow(today, clusters=correlation_clusters)
+    logger.info(f"Theme shadow pass (ADR 0007): {shadow_summary}")
+    return f"shadow:{shadow_summary.get('shadow_themes', 0)}"
+
+
 async def _nightly_data_pull():
     """
     Run at 5:00 PM ET (30 min after tape settles).
@@ -637,25 +661,13 @@ async def _nightly_data_pull():
     # Theme consolidation Phase 1 (operator-ruled 2026-07-27, decision 1): in mode
     # 'on' the shadow_v2 STREAM IS RETIRED — its a/a2 selectors were ported INTO
     # run_theme_engine's discovery pool first (5a above runs them), so skipping here
-    # loses nothing. Fail-closed mode read: 'off'/'observe'/error ⇒ the pass runs
-    # exactly as today (byte-identical — observe must change NOTHING behavioral).
-    # Audited nightly when retired, never silent.
+    # loses nothing. Fail-closed mode read: 'off'/'observe'/'dedup_only'/error ⇒ the
+    # pass runs exactly as today (byte-identical — observe must change NOTHING
+    # behavioral; dedup_only acts on the join verdict alone and keeps this lane —
+    # 2026-09-13 split). Audited nightly when retired, never silent. The decision
+    # lives in _theme_shadow_pass_step so it can be pinned per mode.
     try:
-        from agents.market_intelligence.db import get_theme_birth_gate_mode
-        if (await get_theme_birth_gate_mode()) == "on":
-            logger.info("Theme shadow pass (ADR 0007) SKIPPED — shadow_v2 stream retired (birth-gate ON)")
-            await log_audit_event(
-                "shadow_v2_stream_retired",
-                summary="shadow_v2 discovery stream retired (theme_birth_gate mode 'on') — "
-                        "a/a2 selectors run inside Lane-1 discovery",
-                detail="run_theme_discovery_shadow skipped; no source='shadow_v2' rows written tonight",
-            )
-            summary_parts.append("shadow:retired")
-        else:
-            from agents.market_intelligence.theme_engine import run_theme_discovery_shadow
-            shadow_summary = await run_theme_discovery_shadow(_today, clusters=correlation_clusters)
-            logger.info(f"Theme shadow pass (ADR 0007): {shadow_summary}")
-            summary_parts.append(f"shadow:{shadow_summary.get('shadow_themes', 0)}")
+        summary_parts.append(await _theme_shadow_pass_step(_today, correlation_clusters))
     except Exception as e:
         logger.warning(f"Theme shadow pass failed (non-fatal, ADR 0007): {e}")
         # Audit the swallowed failure — a bare logger.warning let #173 die silently for
@@ -5340,9 +5352,10 @@ async def _coverage_probe_job():
     'on' this JOB IS RETIRED — 0 confirmed cohorts / 0 candidates lifetime; its
     P3 market-adjusted co-movement primitive survives as the birth gate's
     evidence annotation (theme_birth_gate._p3_annotation, importing the same
-    coverage_probe helpers). Fail-closed mode read: 'off'/'observe'/error ⇒ the
-    probe runs exactly as today (observe changes nothing behavioral). Audited
-    on skip, never silent."""
+    coverage_probe helpers). Fail-closed mode read: 'off'/'observe'/'dedup_only'/
+    error ⇒ the probe runs exactly as today (observe changes nothing behavioral;
+    dedup_only acts on the join verdict alone — 2026-09-13 split). Audited on
+    skip, never silent."""
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.db import get_theme_birth_gate_mode
     if (await get_theme_birth_gate_mode()) == "on":
