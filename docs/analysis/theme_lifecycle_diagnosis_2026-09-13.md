@@ -115,3 +115,30 @@ part of the flip does what I said it does.
   months old, selected on forward return — the axis he explicitly ruled out for judging themes.
 - Which merge step ate a correct utilities theme three times in one week (the branch writes no
   audit row).
+
+
+---
+
+## ⚠ Correction 2026-09-13 (post-build): the dedup arm's value was overstated ~2x
+
+I reported *"64 of 86 join verdicts were overlap 1.00 — the cohort genuinely already on the board
+under another name."* The overlap figure is right; the **"under another name"** half is not.
+
+| of the 86 observe-era `join` verdicts | n |
+|---|---|
+| joined a **different** theme (the real dedup case) | **47** |
+| joined **ITSELF** — same theme name | **39** |
+| at overlap 1.00 | 64 |
+| …of those, self-joins | **34** |
+| **real exact duplicates under another name** | **30** |
+
+**Cause**: the promote lane's observe carve-out re-evaluates cohorts it promoted itself, and
+`get_active_themes()` still holds that theme the next night — so it draws `join` against its own
+name at overlap 1.00. 30 of the 39 self-joins come from `promote:shadow_v2`.
+
+**This does not change the recommendation**, and the shipped code already handles it: `dedup_only`
+acts on **first crossings only**, so a maintenance re-promotion is never cancelled (pinned in
+`tests/test_theme_birth_gate.py`). The corrected value of the arm is **~47 genuine joins in 45 days,
+about one a day**, not 64.
+
+Flagged by the build agent, verified by direct query before reporting.
