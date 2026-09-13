@@ -10194,6 +10194,83 @@ reviews:
     added_on: 2026-07-27
     cross_refs: ["task #167"]
 
+  - review_id: theme_birth_gate_dedup_only_flip
+    # FILED 2026-09-13 on his instruction: "I don't want to forget it, make it data driven
+    # decision to flip." The `dedup_only` mode shipped and deployed DARK the same day
+    # (53aadca5) after the on -> observe revert. This entry is the evidence gate on flipping
+    # to it — NOT a reminder, a predicate.
+    title: "Flip the birth gate to dedup_only? — the join arm alone, on measured suppression accuracy"
+    question: >-
+      Should `theme_birth_gate` move from 'observe' to 'dedup_only', so the join/dedup arm
+      suppresses a duplicate birth while the two-sighting hold, the RS floor, the shadow_v2
+      retirement and the coverage_probe retirement all stay OFF? The bar, declared BEFORE the
+      query and NOT fitted afterwards: of the cohorts dedup_only would ACTUALLY act on — a
+      FIRST-CROSSING `join` verdict whose target is a DIFFERENT theme (self-joins excluded by
+      construction; the promote lane re-evaluates its own prior-night promotion and matches its
+      own name at overlap 1.00, which is 39 of the 86 raw joins and is NOT dedup) — what share
+      proved to be genuine duplicates? Under 'observe' the theme was born anyway, so every
+      verdict has a real forward outcome: a CORRECT suppression is a theme that never appeared
+      or died within 3 days; a WRONG one is a theme that lived 4+ days as its own distinct
+      lineage. FLIP if >=85% correct. DO NOT FLIP if <85% — the 0.5 intersection-over-smaller
+      join threshold is then too loose and it is the threshold that needs deriving, not the mode.
+      ⚠ This bar is NOT a restatement of the bucket's own definition — the two outcomes it
+      separates are produced by different systems, which is the exact defect that invalidated
+      the 2026-09-13 'all 53 holds were one-day corpses' reading.
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_theme_birth_candidates
+      WHERE last_outcome = 'join' AND join_target IS NOT NULL
+        AND join_target <> name AND sightings = 1
+        AND first_seen >= '2026-07-30'
+    threshold: 6
+    # The four columns that separate THIS question from a neighbouring one. Each is
+    # actually filtered in the predicate above, not merely declared:
+    #   last_outcome — join vs birth/await/held; the other verdicts are a different question
+    #   join_target  — <> name excludes the 39 self-joins, which are NOT dedup at all
+    #   sightings    — = 1 is the first crossing; dedup_only acts only on those
+    #   first_seen   — >= 2026-07-30 scopes to the observe era (mode 'off' wrote nothing)
+    discriminates_on:
+      - mi_theme_birth_candidates.last_outcome
+      - mi_theme_birth_candidates.join_target
+      - mi_theme_birth_candidates.sightings
+      - mi_theme_birth_candidates.first_seen
+    can_fire:
+      predicate_runs: >-
+        Run 2026-09-13 against prod (apollo-market): returns 6. Plain COUNT over
+        mi_theme_birth_candidates, no CTE, no folded scalar — the SELECT is one line and
+        executes.
+      nonzero_possible: >-
+        Already nonzero: 6 rows exist today. The population is not hypothetical — each row is a
+        recorded verdict with a join_target, and all six were hand-checked forward against
+        mi_themes.
+      lane_live: >-
+        The gate records verdicts in every mode except 'off'. Live mode is 'observe' as of
+        2026-09-13 19:22 UTC (reverted from 'on'), verified from three surfaces, so rows keep
+        accruing. `dedup_only` is deployed and selectable but NOT live.
+      threshold_vs_observed: >-
+        Threshold 6, observed 6 — DELIBERATELY MET ON FILING, not a wait. The rate is ~1 per 7.5
+        days, so a bar of 15 would land ~end of October and would be a deferral wearing a
+        predicate. The change is low-blast-radius (about 3 suppressed births a month), instant
+        to apply and instant to revert, so a large n is disproportionate to the risk. Thin
+        evidence, stated as thin: n=6, 6 of 6 correct, and he rules on that.
+      era_scoped: >-
+        Scoped to first_seen >= 2026-07-30, the observe deploy date. Rows before it do not
+        exist (mode 'off' writes nothing). The 2026-09-13 on-era rows are a few hours wide and
+        the revert ended that era; sightings=1 + join_target<>name is stable across both.
+    earliest_review_date: 2026-09-14
+    action_when_ready: >-
+      Report to him: n, the correct/wrong split, and every WRONG one by name with its join
+      target and overlap (those are the cases that argue the 0.5 threshold is too loose).
+      Reading as of 2026-09-13: n=6 — 2 never appeared, 4 died within 3 days, 0 survived 4+
+      days as a distinct theme. 6 of 6 correct. ⚖ HIS CALL, detection criterion under THE LINE
+      — `set_theme_birth_gate_mode('dedup_only')`, instant, no redeploy; revert with
+      ('observe'). Never self-authorise. FORWARD TRIPWIRE once flipped: any cohort suppressed
+      in dedup_only whose members later form a durable distinct theme elsewhere is a wrong
+      suppression — surface it immediately rather than at the next review.
+      Evidence: docs/analysis/theme_lifecycle_diagnosis_2026-09-13.md; SSoT
+      docs/architecture/theme_engine.md (2026-09-13 entries: flip, revert, split).
+    plan_ref: "#655"
+    status: pending
+
   - review_id: theme_birth_gate_observe_calibration
     # RULED + FLIPPED 2026-09-13 (operator: "Flip it"). Forward review run on 168
     # observe verdicts over 45 days: join 86 (51%) / await_second_sighting 53 (32%) / birth 26 /
