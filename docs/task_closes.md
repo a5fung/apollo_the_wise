@@ -564,6 +564,8 @@ pointed to from the Gate 7 failure text: a new file is justified only by no exis
 infrastructure, or a deliberate topical split — "task #NNN" is never a reason.
 19 mutations run against the real file, each confirmed RED then restored. Suite 8,288 passed.
 
+▶ **CLEANUP SWEEP, same day (2026-09-13):** the gate stops new pins but nothing drove the existing ones down, so a scoped sweep ran over the nine worst NON-money-path files. **444 → 403 total, 444 → 362 unescaped — 82 pins in those files became 41, and every survivor carries a stated reason.** 45 behavioural tests written or converted, each mutation-proven RED-then-restored. Verified by me independently rather than taken on report: `git diff --stat` shows exactly 9 test files plus the baseline changed — **zero production code** — and my own run of the scanner reads 403/362. Suite 8,307. ⚠ **41 stayed TAGGED and that is the honest answer, not a shortfall: 30 of them sit inside `run_ep_scan` / `run_theme_engine` / `_post_nightly_audit_job`** — orchestrators with no independently-callable seam short of a production refactor, which is a scope decision rather than a test one. Money-path files (stop / partial / profit / broker / exit / order / coverage) were deliberately NOT touched — that is a separate, slower job.
+
 ⚠ THE TASK'S OWN NUMBER WAS WRONG AND THE CARD CORRECTED IT RATHER THAN FITTING TO IT. The line
 said 285 source-pin tests across 120 files; the real figure is **444 across 136 files** — 7.6% of
 5,881 test functions, not 4.8%. My original scan counted only source reads inside a test body and
