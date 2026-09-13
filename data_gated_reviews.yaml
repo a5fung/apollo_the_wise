@@ -6930,7 +6930,11 @@ reviews:
         classification, not entry-aware P&L)
       - feedback_methodology_insights_need_periodic_revalidation.md
         (this entry IS the periodic re-evaluation)
-    status: deferred
+    status: deferred  # ⚠ TRIGGER IS UNFIREABLE AS WRITTEN (found 2026-09-13). It pulls forward
+    # "when #94 ships" — and #94 exists on NO surface: not in PLAN.md, not in docs/task_closes.md,
+    # and `git log -S "- #94 |" -- PLAN.md` returns nothing. A trigger keyed to a task with no
+    # record can never fire, which is the same defect class as a predicate that never runs.
+    # Re-key it to the real successor or to a measurable condition before relying on it.
     deferred_reason: "OFF the EP critical path (operator triage 2026-08-24) - and this is exactly the decision branch this entry already scripts: the intraday flag-break detector (#94 / ADR 0005) did NOT ship by 2026-08-15, so its urgency is re-evaluated against other priorities, and EP profitability wins. The structural no-go conclusion does not change with more N, so nothing is lost by waiting. PULLS FORWARD when #94 ships - at that point close this entry and open the intraday-entry cohort review that supersedes it."
     deferred_on: 2026-08-24
     deferred_until: 2026-10-01
@@ -10025,6 +10029,16 @@ reviews:
 
   - review_id: lane2_narrative_grouping_quality
     title: "#167 — Lane-2 narrative grouping: enough live runs to judge whether it finds subtle shared stories"
+    can_fire:
+      predicate_runs: "2026-09-13 - the overlap read runs on prod: mi_theme_candidates_shadow
+        (source lane2/narrative) joined to mi_live_trades over 60 days. Executed, not assumed."
+      nonzero_possible: "Lane-2 writes shadow candidates continuously - 57 rows, newest 2026-09-08
+        - and mi_live_trades has 104 distinct tickers in the same window."
+      lane_live: "YES - Lane-2 is producing (57 proposals) and EP is trading; both sides populated."
+      threshold_vs_observed: "the trigger is qualitative ('start naming stocks EP is actually
+        trading'); observed 47 of 59 Lane-2 tickers overlap EP-traded names = 80%, dominant not marginal."
+      era_scoped: "YES - 60-day window ending 2026-09-13, so it reads the CURRENT Lane-2 output and
+        the current trading stack, not a pre-change era."
     question: >-
       Operator 2026-07-27: keep the lane and keep collecting, but answer the real
       question — "are we discovering the subtle theme for 2+ EPs well?" This is that
@@ -10067,13 +10081,22 @@ reviews:
     # Date deliberately NON-BLOCKING (set to registration day): firing is AND, so a
     # future date could only DELAY a review whose evidence is already in — the exact
     # calendar-block pattern the operator ruled against on 2026-07-26.
-    earliest_review_date: 2026-10-01
+    earliest_review_date: 2026-09-13  # PULLED FORWARD 2026-09-13 by this entry's OWN rule, not
+    # by my judgement: its deferred_reason says it pulls forward when Lane-2 starts naming stocks
+    # EP actually trades, and that is now 47 of 59 (80%). Also the operator's 2026-07-26 ruling:
+    # "a future date can only DELAY a review whose evidence is already in" — the evidence is in
+    # (threshold 70/50) and the qualitative condition has fired. The RULING stays his.
     action_when_ready: >-
       Pull the no-story days accumulated since 2026-06-07. For each, check whether its
       alert tickers later shared a theme (any lane) or co-moved market-adjusted. Report
       genuine-miss count vs correctly-declined, split from any LLM opinion. Then the
       operator rules: leave / widen / retire. Rulings land on #167's PLAN line.
-    status: deferred
+    status: pending  # UN-DEFERRED 2026-09-13 — THIS REVIEW'S OWN PULL-FORWARD TRIGGER HAS FIRED.
+    # Its deferral reads "PULLS FORWARD if Lane-2 proposals start naming stocks EP is actually
+    # trading." Measured on prod 2026-09-13 over 60 days: Lane-2 named 59 distinct tickers, EP
+    # traded 104, and 47 of the 59 OVERLAP — 80%. The overlap includes PLTR, MRNA, HOOD, AMLX,
+    # VERA, AGX, SEI, UUUU, SNOW, ARM — names from his own labelled real-EP list. The condition is
+    # not merely met, it is the dominant case. Surfacing for the leave/widen/retire ruling.
     deferred_reason: "OFF the EP critical path (operator triage 2026-08-24). Grouping quality is a theme-lane question with no effect on EP selection, entry, exit or sizing. Run count keeps accruing while deferred, so the evidence only gets stronger. PULLS FORWARD if Lane-2 proposals start naming stocks EP is actually trading, or when the operator wants the leave/widen/retire ruling."
     deferred_on: 2026-08-24
     deferred_until: 2026-10-01
