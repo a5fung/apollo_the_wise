@@ -19,10 +19,27 @@ Measured against the real tables when it was built:
 
 ⚠ It deliberately does NOT judge plausibility, ranges or units — those need a domain model and
 would cry wolf. This fires only on a signature that is always a defect.
-"""
-import inspect
 
+2026-09-13 (#653 cleanup): the three tests over an actually-observable BEHAVIOR (the
+zero-vs-low-variance verdict, per-lane isolation, skip-reason classification) now call the REAL
+`run_inert_sweep_check()` against a mocked asyncpg pool and assert on its RETURNED dict, instead
+of grepping a source-text copy. The remaining four are TAGGED, not converted — each is either a
+wiring check (the closed-list legitimate case in docs/testing/test_discipline.md) or control flow
+inlined in `_post_nightly_audit_job`, a ~300-line orchestrator that awaits ~13 OTHER health checks
+in sequence. No existing test in this repo drives that function end-to-end (every other test of it
+also pins its source — see test_grading_health_543.py, test_detector_liveness_543.py,
+test_capture_retention_2026_08_15.py) because each of those other checks binds its own `get_pool`
+at ITS OWN module's import time: silencing them for real would mean refactoring scheduler.py to
+add a testable seam (out of scope for a test-brittleness sweep) or leaving ~12 unrelated checks
+free to attempt REAL network connections inside a unit test — a worse trade than a reviewed pin.
+"""
+import asyncio
+import inspect
+from unittest.mock import AsyncMock
+
+import agents.market_intelligence.db as db_mod
 from agents.market_intelligence import health_checks as hc
+from tests.conftest import make_mock_pool
 
 
 def test_the_registry_names_the_lane_that_actually_broke():
@@ -55,29 +72,93 @@ def test_a_minimum_subject_count_gates_every_lane():
     assert all(lane[3] >= 10 for lane in hc._SWEEP_LANES)
 
 
-def test_the_verdict_is_zero_varied_not_low_variance():
-    """Deliberate: 'some variants agree' is normal and common. Only NOT ONE subject differing is
-    always a defect. Anything softer becomes wallpaper."""
-    src = inspect.getsource(hc.run_inert_sweep_check)
-    assert "varied == 0" in src
+# ── behavioral fixture: run the REAL run_inert_sweep_check against a mocked asyncpg pool ──────
+# `run_inert_sweep_check` does `from agents.market_intelligence.db import get_pool` INSIDE the
+# function body (a fresh lookup every call), so patching `hc.get_pool` (the name bound in
+# health_checks.py's own namespace at ITS import time) would not reach it — the patch has to
+# land on `db_mod.get_pool`, the actual name the local import re-reads at call time.
+
+def _wire(monkeypatch, cols_by_table, fetchrow_by_table):
+    pool, conn = make_mock_pool()
+
+    async def _fetch(sql, table, *a, **k):
+        if table in cols_by_table:
+            v = cols_by_table[table]
+            if isinstance(v, Exception):
+                raise v
+            return [{"column_name": c} for c in v]
+        return []  # table absent from information_schema
+
+    async def _fetchrow(sql, *a, **k):
+        # every per-lane SELECT embeds its table name literally in the query text
+        for table, row in fetchrow_by_table.items():
+            if table in sql:
+                return row
+        return None
+
+    conn.fetch = AsyncMock(side_effect=_fetch)
+    conn.fetchrow = AsyncMock(side_effect=_fetchrow)
+    monkeypatch.setattr(db_mod, "get_pool", AsyncMock(return_value=pool))
 
 
-def test_each_lane_is_isolated_so_one_bad_table_cannot_blind_the_rest():
-    src = inspect.getsource(hc.run_inert_sweep_check)
-    body = src[src.index("for table"):]
-    assert "except Exception" in body and '"errors"' in src
+def _run():
+    return asyncio.run(hc.run_inert_sweep_check())
 
 
-def test_a_missing_table_or_column_is_SKIPPED_not_reported_as_inert():
-    """An absent lane must never read as 'measuring nothing' — that would be a false alarm with the
-    same wording as the real one."""
-    src = inspect.getsource(hc.run_inert_sweep_check)
-    assert '"table absent"' in src and '"expected columns absent"' in src
+def test_the_verdict_is_zero_varied_not_low_variance(monkeypatch):
+    """MUTATION TARGET: 'varied == 0' loosened to a threshold (e.g. varied <= 1), so a sweep
+    where only ONE of many subjects varied would ALSO be flagged inert. Deliberate: 'some
+    variants agree' is normal and common — only NOT ONE subject differing is always a defect."""
+    cols = {"mi_orb_extension_shadow": ["trade_id", "cutoff_minute", "total_pnl"]}
+
+    _wire(monkeypatch, cols,
+          {"mi_orb_extension_shadow": {"subjects": 31, "multi_variant_subjects": 31, "varied": 0}})
+    assert any(r["table"] == "mi_orb_extension_shadow" for r in _run()["inert"]), \
+        "zero varied across 31 multi-variant subjects must fire"
+
+    _wire(monkeypatch, cols,
+          {"mi_orb_extension_shadow": {"subjects": 31, "multi_variant_subjects": 31, "varied": 1}})
+    assert not any(r["table"] == "mi_orb_extension_shadow" for r in _run()["inert"]), \
+        "ONE subject varying is low variance, not the zero-variance defect signature"
+
+
+def test_each_lane_is_isolated_so_one_bad_table_cannot_blind_the_rest(monkeypatch):
+    """MUTATION TARGET: the per-lane try/except removed, so one bad table's exception
+    propagates out of the loop and the OTHER three lanes are never even reached."""
+    _wire(monkeypatch, {"mi_orb_extension_shadow": RuntimeError("boom: query failed")}, {})
+    result = _run()
+    assert any(e["table"] == "mi_orb_extension_shadow" for e in result["errors"]), \
+        "the broken lane must be recorded as an error, not silently dropped"
+    skipped = {s["table"] for s in result["skipped"]}
+    assert skipped == {"mi_giveback_shadow", "mi_htf_management_shadow",
+                        "mi_consolidation_entry_shadow"}, \
+        "a bad table's exception must not stop the OTHER lanes from being reached"
+
+
+def test_a_missing_table_or_column_is_SKIPPED_not_reported_as_inert(monkeypatch):
+    """MUTATION TARGET: an absent lane must never read as 'measuring nothing' — that would be a
+    false alarm with the same wording as a real defect. Two distinct absence shapes: the table
+    itself missing (schema probe returns no columns) vs the table existing but missing the
+    swept/outcome column this lane expects."""
+    cols = {
+        "mi_orb_extension_shadow": [],                       # table itself absent
+        "mi_giveback_shadow": ["trade_id", "arm"],            # exists, missing realized_r
+    }
+    _wire(monkeypatch, cols, {})
+    result = _run()
+    reasons = {s["table"]: s["why"] for s in result["skipped"]}
+    assert reasons["mi_orb_extension_shadow"] == "table absent"
+    assert reasons["mi_giveback_shadow"] == "expected columns absent"
+    assert "mi_htf_management_shadow" in reasons and "mi_consolidation_entry_shadow" in reasons
+    assert result["inert"] == [], "an absent lane must never be reported as inert"
 
 
 def test_it_is_wired_into_the_nightly_audit_and_alerts():
     """A check nobody runs is a function. /audit and /crypto both shipped this week with working
     handlers and no registration."""
+    # source-pin-ok: wiring check (the closed-list legitimate case) that the guard is actually
+    # called from the nightly job and reaches both the audit log and Telegram — see the file
+    # docstring for why _post_nightly_audit_job cannot be driven end-to-end in this suite.
     sched = open("agents/market_intelligence/scheduler.py").read()
     assert "run_inert_sweep_check" in sched
     i = sched.index("run_inert_sweep_check")
@@ -87,8 +168,12 @@ def test_it_is_wired_into_the_nightly_audit_and_alerts():
 
 
 def test_the_check_does_not_judge_plausibility():
-    """Scope guard. The moment it starts opining on whether numbers look sensible it needs a domain
-    model, and it becomes the kind of broad checker that gets switched off."""
+    """Scope guard. The moment it starts opining on whether numbers look sensible it needs a
+    domain model, and it becomes the kind of broad checker that gets switched off."""
+    # source-pin-ok: banned-keyword scope guard, the closed-list "ban on X" legitimate case —
+    # the SQL already returns only counts (never raw outcome values) so there is no behavioral
+    # input that could exercise a magnitude judgment that structurally cannot exist yet; this
+    # only stops someone from WIDENING the query to add one.
     src = inspect.getsource(hc.run_inert_sweep_check)
     for overreach in ("mean", "median", "stddev", "outlier", "plausib"):
         assert overreach not in src.lower()
@@ -99,6 +184,8 @@ def test_the_alert_announces_ONCE_per_lane_not_nightly():
     would fire every night about a defect already known and already filed. That is how a real
     signal becomes wallpaper — the same failure the 7/17 budget-alarm re-fire fix addressed, and
     the reason the new-lane detector dedupes too. The audit log is the state; no new table."""
+    # source-pin-ok: the dedupe read is inline in _post_nightly_audit_job (see file docstring —
+    # ~300-line orchestrator, ~13 other health checks, none driven end-to-end by any test here).
     sched = open("agents/market_intelligence/scheduler.py").read()
     i = sched.index("run_inert_sweep_check")
     block = sched[i:i + 2600]
@@ -109,6 +196,8 @@ def test_the_alert_announces_ONCE_per_lane_not_nightly():
 def test_the_dedupe_fails_OPEN():
     """If the dedupe read breaks, the cost must be a duplicate alert — never a missed one. A
     health guard that goes quiet on its own error is the failure it exists to prevent."""
+    # source-pin-ok: same inline-control-flow reasoning as the dedupe-once test above — no seam
+    # to call this in isolation without refactoring scheduler.py's orchestration function.
     sched = open("agents/market_intelligence/scheduler.py").read()
     i = sched.index("inert-sweep dedupe read failed")
     assert "will re-announce" in sched[i:i + 120]
