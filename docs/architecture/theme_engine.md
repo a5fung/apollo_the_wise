@@ -271,6 +271,32 @@ than creating new ones, directly addressing *65% of 127 themes hold ≤5 members
 at 2, below `_PROMOTE_MIN_MEMBERS = 3`*. Expect theme birth ~1 day later for genuinely recurring
 cohorts, and ~53 fewer one-day themes per 45 days. Almost nothing blocked outright (3 of 168).
 
+⚠ **THE JOIN ARM IS NOT THE ONLY THING THAT CHANGED — TWO LANES RETIRED THE SAME INSTANT, and the
+first version of this entry omitted both** (caught by an advisor review the same evening; he was
+told only "fewer, fuller themes"):
+
+1. **`shadow_v2` is retired** — its nightly pass is skipped (`run_theme_discovery_shadow`, scheduler
+   5b) AND it leaves the effective auto-promote allowlist (`db.resolve_auto_promote_sources` returns
+   `{narrative_cogap, rs_slope_synthesis}` at `on`). Nothing is lost: its a/a2 selectors were ported
+   into Lane-1 discovery FIRST (`theme_engine.py:7428`), so those cohorts now arrive through Lane-1
+   — which births at `NEW_THEME_MIN_STOCKS = 2`, not at `_PROMOTE_MIN_MEMBERS = 3`.
+2. **The `coverage_probe` job is retired** (P3 survives as evidence annotation only).
+
+🔴 **CONSEQUENCE — the effective auto-promote allowlist shrank from 3 sources to 2, so the night's
+theme count will fall for TWO independent reasons** (joins acting, and a lane no longer feeding
+promote). A birth-count drop is therefore **NOT** evidence the join arm worked: read the `join`
+verdicts in the `/on]` rows, never the total. #655's Monday verify is written against that.
+
+🔴 **AND IT MOVED THE PROMOTE-FLOOR QUESTION.** With `shadow_v2` out, `_PROMOTE_MIN_MEMBERS = 3`
+now filters ONE lane only — `narrative_cogap` — at ~0.5 cohorts a night, while Lane-1 births at 2
+through the same gate. The asymmetry existed because promote was the previously-UNGATED bypass; the
+flip closed that bypass. Measured 2026-09-13 evening: 6 of 8 two-member Lane-2 cohorts never reach
+3, so the floor deletes rather than delays, and two of them were independently named by the #651
+judge on the SAME DAY with the SAME tickers. **Recommendation on the table, HIS call under
+CHANGE_PROCESS: make the floor mode-dependent (2 at `on`, 3 at `observe`/`off`), mirroring the
+allowlist.** Evidence + the withdrawn first recommendation:
+`docs/analysis/lane2_grouping_quality_2026-09-13.md`.
+
 **Reversion-flag**: INSTANT and no redeploy — `set_theme_birth_gate_mode('observe')` (or `'off'`).
 The toggle is DB-backed in `mi_safeguard_state`; every reader fails closed to `off`.
 

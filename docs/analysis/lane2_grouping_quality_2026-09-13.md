@@ -305,30 +305,152 @@ move a detection threshold.
 
 ---
 
-# RECOMMENDATION
+# ⚠️ RECOMMENDATION — REWRITTEN 2026-09-13 EVENING. The first version was wrong.
 
-**Do not move the bar this week. Decide it on Friday 2026-09-18, on a rule written now.**
+**Superseded:** *"Do not move the bar this week. Decide it on Friday 2026-09-18, on a rule."*
+**Now:** **lower the promote floor to 2 while the birth gate is `on`.** His call — a detection
+criterion, so CHANGE_PROCESS + backtest + sign-off.
 
-**Why the wait is real and not a deferral:** the birth gate went to `on` four hours ago, and it
-changes what lowering the bar MEANS. In observe, **86 of 168 candidates (51%) resolved to JOIN** —
-folded into an existing theme instead of minting a new one. If two-member candidates join at a
-similar rate, dropping the bar to 2 mostly makes existing themes FULLER, which is what step 1 wants.
-If they birth instead, it doubles the board, which is what the bar exists to prevent. **Nobody has
-seen a single gated night yet.** The first is Monday.
+An advisor review of the recommendation caught that **every number under it was measured against a
+rule the flip had already replaced four hours earlier.** The corrections, in order of how much they
+moved the answer.
 
-**The rule, so Friday is a reading and not another debate:**
+## Correction 1 — the "+258 candidates, board doubles" figure is dead
 
-| gated join rate on new 2-member candidates, Mon–Fri | then |
+The impact script imported the STATIC `db.AUTO_PROMOTE_THEME_SOURCES`. The engine reads
+`db.resolve_auto_promote_sources()`, which at gate mode `on` returns the set **minus `shadow_v2`**
+(`db.py:9157`). Confirmed live in `apollo-market`:
+
+```
+gate mode        : on
+static frozenset : ['narrative_cogap', 'rs_slope_synthesis', 'shadow_v2']
+RESOLVED (live)  : ['narrative_cogap', 'rs_slope_synthesis']
+```
+
+`shadow_v2` is not merely de-allowlisted — its whole pass is retired at `on`, and its a/a2
+selectors were **ported into Lane-1 discovery** first (`theme_engine.py:7428`), which births at
+`NEW_THEME_MIN_STOCKS = 2`. So those cohorts were never going to hit the promote floor at all; they
+already flow through a **2-member** floor, into the same gate.
+
+**Re-measured on the live allowlist, over the engine's real 3-day promote window, 35 nights:**
+
+| | cohort-nights eligible | per night |
+|---|---|---|
+| bar = 3 (today) | 65 | 1.9 |
+| bar = 2 | 84 | 2.4 |
+| **delta** | **+19 (+29%)** | **+0.5** |
+
+| source | extra admitted at bar=2 | already eligible at bar=3 |
+|---|---|---|
+| `narrative_cogap` (Lane 2) | **19** | 21 |
+| `rs_slope_synthesis` | **0** | 44 |
+
+**The bar is now a Lane-2-only bar.** `rs_slope_synthesis` never produces a 2-member cohort. The
+decision affects one lane and about half a cohort a night — not 258 candidates, not a doubled board.
+
+## Correction 2 — the Friday rule could not have produced a reading
+
+It proposed measuring *"the gated join rate on new 2-member candidates, Mon–Fri."* But
+`theme_engine.py:2447` filters on the member count **before** the gate loop runs:
+
+```python
+cohorts = [c for c in cands if len(c.get("tickers") or []) >= _PROMOTE_MIN_MEMBERS]
+```
+
+At bar 3, **zero** 2-member cohorts reach a gate verdict — this week, last week, or ever. The rule
+would have returned an empty numerator every night and I would have read a structural zero as
+evidence. The 51% join figure it leaned on came from Lane-1 births and ≥3-member promotes: a
+different population entirely.
+
+⚠ **This is the week's recurring defect class again** — a check that cannot fire reads exactly like
+one that passes. It is the third instance in seven days.
+
+## Correction 3 — the 60% maturity figure cannot speak to this decision
+
+Split by source, the ≤2-member band is **entirely** Lane-1 (`source='live'`). Not one
+`shadow_promoted` theme was ever born at ≤2 — the bar makes that impossible by construction.
+
+| source | born 1–2 | born 3–4 | born 5+ |
+|---|---|---|---|
+| `live` (Lane-1 discovery) | **48%** (68/142) | 34% (30/88) | 36% (35/98) |
+| `shadow_promoted` | **— none exist —** | 21% (33/159) | 14% (9/65) |
+
+So the number says nothing about how a 2-member promote would mature. **Withdrawn from the
+decision.** What survives is weaker and points the same way: in the one lane that *does* allow
+2-member births, they mature **better** than larger ones (48% vs 34%/36%). Still uncontrolled —
+"Mainstream" is age-gated, so it is partly a survival measure.
+
+## What actually decides it — the bar is a permanent filter, not a delay
+
+Every `narrative_cogap` cohort first seen at exactly 2 members, last 120 days:
+
+| first seen | cohort | outcome |
+|---|---|---|
+| 2026-06-25 | AI memory and infrastructure demand surge — MU, SNX | never reached 3, never a theme |
+| 2026-07-20 | **Bitcoin miners pivoting to AI data centers — HUT, IREN** | never reached 3, never a theme |
+| 2026-07-30 | AI-Driven Power & Grid Infrastructure Boom — EME, PWR | reached 3 in **13 days** |
+| 2026-07-31 | Semiconductor test recovery AI-driven demand — COHU, MPWR | never reached 3, never a theme |
+| 2026-08-04 | Semiconductor Equipment Cycle Recovery — AEIS, ZBRA | never reached 3, never a theme |
+| 2026-08-19 | AI-driven biotech/R&D acceleration — TWST, TEM | never reached 3, never a theme |
+| 2026-09-03 | AI data-center power buildout — AGX, SNOW | reached 3 in **1 day** |
+| 2026-09-08 | Bradykinin-mediated angioedema oral therapies — PHVS, ROIV | never reached 3, never a theme |
+
+**6 of 8 never cross.** The bar does not delay them, it deletes them. Only 2 of 8 ever became live
+themes, and one of those waited 13 days.
+
+## The evidence that these are not noise — a second, independent system named the same pairs
+
+The #651 judge reads EP alert text and names the group it sees. It has no access to Lane 2's
+cohorts, no shared code path, no shared input. Its recurring groups against the blocked list:
+
+| Lane 2, blocked by the bar | #651 judge, independently |
 |---|---|
-| **≥50% join** | lower `_PROMOTE_MIN_MEMBERS` to 2 — the gate is absorbing them into existing themes |
-| **<50% join** | leave it at 3 — lowering would double births, and the maturity evidence is too weak to justify that |
+| COHU + MPWR, **2026-07-31** | `ai-data-center-semiconductor` — **COHU + MPWR, 2026-07-31** |
+| HUT + IREN, **2026-07-20** | `ai-data-center-infrastructure` — first seen **2026-07-20**, includes **HUT** |
+| AEIS + ZBRA, 2026-08-04 | `ai-data-center-power` — first seen **2026-08-04**, includes **AEIS** |
+| AGX + SNOW, 2026-09-03 | `ai-data-center-power` evidence names **AGX/SNOW/ALAB**, 09-08 |
 
-**Five market days, one stated threshold, a decision either way.** That is the difference from the
-45-day drift this sweep found.
+The first row is an **exact match**: same two tickers, same day, two mechanisms that share nothing.
+That is the strongest available answer to "are 2-member co-gap cohorts noise?" — twice, a separate
+system looking at different data named the identical group on the identical day.
 
-**If he wants it faster**, the alternative is the backtest CHANGE_PROCESS requires anyway: replay
-the last N nights with the bar at 2 AND the gate on, and read the join-vs-birth split from history
-instead of waiting for it live. That is a scoped build, doable this week, and it answers the same
-question without the wait.
+**And the second row is his own thesis.** Lane 2 named *"Bitcoin miners pivoting to AI data
+centers"* on **2026-07-20**. He ruled the same thing — miners *"converting into AI infra plays"* —
+on **2026-08-04**, fifteen days later (#491 M2, SSoT `theme_engine.md`). The bar deleted the
+engine's version. IREN now sits in the live *Emerging Bitcoin & AI Cloud Compute Miners* theme that
+is tonight's flagged unruled join.
 
-⚖ Either path ends in a detection-criterion change — CHANGE_PROCESS, backtest, his sign-off.
+## The recommendation
+
+**Make the promote floor mode-dependent, exactly as the allowlist already is:** 2 while the birth
+gate is `on`, 3 when it is `observe` or `off`.
+
+- **Why mode-dependent and not a flat 2:** reverting the gate puts `shadow_v2` back in the
+  allowlist. A flat 2 would then admit its ~250-candidate stream at a 2-member floor with no gate
+  adjudicating it. Tying the floor to the mode makes the change auto-revert with the gate, and it
+  reuses the `resolve_auto_promote_sources` idiom rather than adding a source-specific special case.
+- **Why 2 is the consistent number:** post-flip, Lane-1 discovery already births live themes at 2
+  members, through the same gate. Two floors for the same act — 2 for Lane-1, 3 for promote — had a
+  reason before today: promote was *"THE previously-ungated bypass"* (`theme_engine.py:2498`). The
+  flip closed that bypass. The asymmetry outlived its justification by four hours.
+- **What protects quality now:** the gate, which promote cohorts did not clear before today. Its
+  arms are `join` (fold into an existing theme), `await_second_sighting` (the one-day-corpse
+  filter — all 53 observe-era holds were single sightings that never recurred), `held_floor` and
+  `held_no_rs`. A 2-member cohort admitted at bar=2 is adjudicated, not waved through.
+- **Blast radius:** ~0.5 extra cohort-nights per night, one lane, every one of them gated.
+
+**The backtest CHANGE_PROCESS requires:** replay the promote path over the last N nights with the
+floor at 2 and the gate on, and read the join/birth/hold split. That is the evidence for sign-off,
+and it is the same work the dead Friday rule was going to wait five days to approximate badly.
+
+## What this still does NOT answer
+
+- **Whether the 6 blocked cohorts would have matured.** They never existed as themes, so there is
+  no outcome to read. The judge correspondence says they were real groups; it does not say they
+  were durable ones.
+- **Whether the gate's join arm handles 2-member cohorts well.** It has never seen one. The backtest
+  is what answers this, and it must report the join/birth split, not a total.
+- **Whether naming these earlier would have changed a trade.** Out of scope by his own sequencing —
+  step 3 is parked until steps 1 and 2 are settled (#655).
+- **The 48% Lane-1 small-birth maturity edge.** Uncontrolled for era, sector and regime, and
+  "Mainstream" is age-gated. Directional only; it is not load-bearing above.
