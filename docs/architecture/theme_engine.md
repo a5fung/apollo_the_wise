@@ -287,37 +287,38 @@ theme count will fall for TWO independent reasons** (joins acting, and a lane no
 promote). A birth-count drop is therefore **NOT** evidence the join arm worked: read the `join`
 verdicts in the `/on]` rows, never the total. #655's Monday verify is written against that.
 
-🔴 **THE JOIN ARM DOES NOT JOIN — the "fuller themes" half of the effect above is WRONG, and this
-entry asserted it (found 2026-09-13 evening, second advisor review).** `join_target` is RECORDED
-and never acted on: its only appearances are the DDL column (`db.py:2020`), the ledger writer
-(`db.py:9242-9300`), one changelog entry (`theme_engine.py:7889`) and two log lines. **No code path
-adds a joined cohort's members to the theme it names.** The gate's entire effect on a non-birth
-verdict is `new_themes = _gate_passed` (`:7897`) — the cohort is DROPPED.
+🔴 **"FEWER, FULLER THEMES" ABOVE IS HALF WRONG — the gate makes NO theme fuller, and it was never
+built to** (found 2026-09-13 evening; the error is in this entry, not in the gate). A `join` verdict
+is **de-duplication, not a merge** — `theme_birth_gate_derivation_2026-07-27.md:36`: *"Joins are
+dedup, not kills: a birth suppressed because its cohort already lives on the board under another
+name loses nothing… the bet stays on the board."* `join_target` is recorded for the ledger only;
+there is no membership write, by design. The gate's whole effect on a non-birth verdict is
+`new_themes = _gate_passed` (`:7897`).
 
-**And its members are orphaned, by ordering**: `_assign_uncovered_to_themes` (Step 2b, `:7767`)
-runs ONCE, BEFORE discovery (`:7790`) and before the gate (`:7844`) — it had already declined those
-names that night, which is why they were available to discovery. Steps 4/4b/4c dedupe, split and
-merge THEMES; none assigns tickers. So a `join` verdict ends with the cohort unborn, the target
-unchanged, and the members in no theme at all — where under `observe` they had one.
+⇒ **Read the effect as FEWER themes. Not fuller ones.** 86 of 168 observe verdicts (51%) were
+`join`; step 1's defect (*65% of themes hold ≤5 members*) is untouched by this gate, and #655's
+claim that the join arm is the lever for it has been corrected.
 
-⇒ **Read the effect as: FEWER themes, NOT fuller ones.** 86 of 168 observe-era verdicts (51%) were
-`join`; every one of those is now a suppression citing a merge that does not happen. The step-1
-defect (*65% of themes hold ≤5 members*) is untouched by this gate. ⚠ `BIRTH_GATE_JOIN_OVERLAP =
-0.5` is intersection-over-smaller, so a 2-member cohort joins on ONE shared ticker — a loose basis
-for calling it a duplicate.
+**Residual gap — the design's PREMISE, not its mechanism.** *"already lives on the board"* is exact
+at overlap 1.00 and false below it. Measured on all 86: **64 (74%) are overlap 1.00 — nothing
+orphaned, dedup exactly as designed**; the other **22 (26%) orphan ~2.1 members each** (~1 member a
+night in no theme, where `observe` gave it one), because `BIRTH_GATE_JOIN_OVERLAP = 0.5` is
+intersection-over-smaller — a cohort joins on a MINORITY of its own members; 7 of 86 are cohorts of
+≤3 joining on a single shared ticker. `_assign_uncovered_to_themes` cannot catch them: Step 2b
+(`:7767`) runs once, BEFORE discovery (`:7790`) and the gate (`:7844`).
 
-**What survives**: the wait arm, which is the bulk of the real benefit — all 53
-`await_second_sighting` holds were single sightings that never recurred. **Fork on his desk (A/B/C,
-recommend A = keep `on` + build the merge):**
-`docs/analysis/lane2_grouping_quality_2026-09-13.md`.
+**Recommendation (HIS call): keep `on`, floor stays 3, and close the partial-join orphan gap** —
+either by re-running assignment on the orphans with the target hinted (NOT a direct `join_target`
+write, which would bypass exclusions/cooldowns/bans/protected/F4) or by a small-cohort join-overlap
+floor. `BIRTH_GATE_JOIN_OVERLAP = 0.5` was set with no small-cohort analysis.
 
-**Promote floor** (`_PROMOTE_MIN_MEMBERS = 3`): lowering it to 2 was recommended and then
-**WITHDRAWN** the same evening — 6 of 8 two-member Lane-2 cohorts would draw a `join` verdict
-(= suppressed, identical to today) and only 2 would birth, so the change buys two themes in 120
-days. §11 of `docs/analysis/theme_flow_and_the_0931_seam_2026-08-11.md` measured the same floor 33
-days earlier and its verdict — cost *"real but small, and for the EP-gap population specifically,
-unconfirmed"* — **stands unchanged.** No recorded derivation exists for the value 3 (it arrived with
-#226, `36e73843`, no change-log entry).
+**Promote floor** (`_PROMOTE_MIN_MEMBERS = 3`): lowering it to 2 was recommended and **WITHDRAWN**
+the same evening — 6 of 8 two-member Lane-2 cohorts would draw a `join` (suppressed, identical to
+today), so it buys two themes in 120 days. §11 of
+`docs/analysis/theme_flow_and_the_0931_seam_2026-08-11.md` measured the same floor 33 days earlier
+and its verdict — *"real but small, and for the EP-gap population specifically, unconfirmed"* —
+**stands.** No recorded derivation exists for the value 3 (arrived with #226, `36e73843`).
+Full evidence: `docs/analysis/lane2_grouping_quality_2026-09-13.md`.
 
 **Reversion-flag**: INSTANT and no redeploy — `set_theme_birth_gate_mode('observe')` (or `'off'`).
 The toggle is DB-backed in `mi_safeguard_state`; every reader fails closed to `off`.

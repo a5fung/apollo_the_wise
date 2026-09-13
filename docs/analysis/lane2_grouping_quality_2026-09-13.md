@@ -366,72 +366,74 @@ re-derived it and briefly mistook it for a new finding.
 
 ---
 
-# 🔴 THE ACTUAL FINDING — the join arm does not join
+# THE FINDING — the gate works as designed. I described it to him wrongly, twice.
 
-**`join_target` is recorded and never acted on. Nothing in the codebase adds a joined cohort's
-members to the theme it names.**
+**`join` was never a merge. It is de-duplication, and the derivation doc says so in its own
+words** (`theme_birth_gate_derivation_2026-07-27.md:36`):
 
-Every reference to it: the DDL column (`db.py:2020`), the ledger writer (`db.py:9242-9300`), one
-changelog entry (`theme_engine.py:7889`), and two log lines. **No membership write.** The gate's
-effect on a `join` verdict is exactly one line:
+> *"**Joins are dedup, not kills**: a birth suppressed because its cohort already lives on the board
+> under another name loses nothing… **Dedup, not loss** — the bet stays on the board."*
 
-```python
-new_themes = _gate_passed          # theme_engine.py:7897 — gated cohorts are dropped
-```
+So there is no code path from `join_target` to a membership write because none was ever intended.
+`join_target` is recorded for the ledger and the audit trail. The gate's effect on a non-birth
+verdict is `new_themes = _gate_passed` (`theme_engine.py:7897`), which is the designed behaviour.
 
-**And the members are orphaned, by ordering.** Step 2b, `_assign_uncovered_to_themes`, runs at
-`:7767` — **before** discovery (`:7790`) and before the gate (`:7844`). It runs once. When the gate
-kills a cohort at 3a.5, the assignment pass has already had its turn that night and declined those
-names — which is *why* they were still uncovered and available to discovery. Nothing downstream
-re-homes them: steps 4/4b/4c dedupe, split and merge **themes**, they never assign tickers.
+**The error is mine, and it is what he was told.** My flip change-log entry and #655 both said
+*"~half of new births fold into existing themes"* and *"the join arm is the lever"* for
+*65% of themes hold ≤5 members*. Neither is true: nothing folds, and the gate makes no theme fuller.
+**The flip delivers FEWER themes. It was never going to deliver fuller ones.** Corrected in both
+places.
 
-## What this means for the flip he signed today
+## The residual gap is real but narrow — it is the design's premise, not its mechanism
 
-| | |
-|---|---|
-| **What the SSoT told him** | *"fewer, fuller themes — ~half of new births fold into existing themes"* |
-| **What the code does** | the birth is cancelled; the named target receives nothing |
-| **So** | **fewer themes, yes. Fuller themes, no.** Existing themes stay exactly as narrow as they were |
-| **And** | the cancelled cohort's members end that night in **no theme at all**, where under `observe` they had one |
+The justification *"its cohort already lives on the board under another name"* is exactly true at
+overlap 1.00 and **not true** at partial overlap. Measured on all 86 observe-era join verdicts:
 
-**51% of the observe-era verdicts were `join` (86 of 168).** Post-flip every one of those is a
-suppression citing a merge that does not happen. The step-1 defect he named — *65% of 127 themes
-hold ≤5 members, 20 sit at 2* — is untouched by this, and the "join arm is the lever that fixes it"
-claim in #655 is wrong.
+| overlap | joins | avg cohort | members NOT in the target |
+|---|---|---|---|
+| **1.00 — every member already there** | **64 (74%)** | 4.4 | **0** |
+| 0.75 | 1 | 4 | 1 |
+| ~0.67 | 8 | — | ~1–9 |
+| 0.60 | 1 | 5 | 2 |
+| 0.50 | 12 | — | ~1–3 |
+| **below 1.00, combined** | **22 (26%)** | 5.1 | **~2.1 each** |
 
-⚠ **Also note the join threshold's behaviour at n=2:** `BIRTH_GATE_JOIN_OVERLAP = 0.5` is
-intersection-over-smaller, so a 2-member cohort joins on **one** shared ticker. Six of the eight
-above sit at exactly 0.50 — a single name. That is a loose join to be citing as a merge, and it is
-a second reason not to read those six as "correctly folded."
+- **Three-quarters of joins are exact re-mints.** The cohort genuinely already lives on the board;
+  suppressing the duplicate loses nothing, precisely as designed.
+- **The other quarter orphans ~2 members a cohort** — roughly **one member a night** ending in no
+  theme, where under `observe` it had one. For those, "already lives on the board" is false: at
+  `BIRTH_GATE_JOIN_OVERLAP = 0.5`, intersection-over-smaller, a cohort joins on a **minority** of
+  its own members.
+- **Worst case is small: 7 of 86** are cohorts of ≤3 joining on a single shared ticker.
 
-## What stays TRUE about the flip — it is not a mistake, it is over-claimed
+⚠ **Why assignment does not catch them**: `_assign_uncovered_to_themes` (Step 2b, `:7767`) runs
+once, **before** discovery (`:7790`) and the gate (`:7844`), and had already declined those names
+that night. Steps 4/4b/4c dedupe, split and merge *themes*; none assigns tickers.
 
-- **The wait arm is real and is the bulk of the benefit.** All 53 `await_second_sighting`
-  candidates were single sightings that never recurred — genuine one-day corpses, correctly not
-  minted.
-- **Suppressing a would-be duplicate is still better than minting it**, which is the fragmentation
-  he wants fixed. The members were already declined by assignment that night either way.
-- **Reversion is one command, instant, no redeploy** — `set_theme_birth_gate_mode('observe')`.
+# RECOMMENDATION
 
-## The fork — his call
+**Monday: keep the gate `on`. Do not revert, do not touch the promote floor.**
 
-| option | what it buys | cost |
-|---|---|---|
-| **A — keep `on`, build the merge** (my rec) | the join arm actually adds the cohort's uncovered members to its target ⇒ the "fuller themes" benefit becomes real | a build; a membership write is live-theme state ⇒ CHANGE_PROCESS + sign-off |
-| **B — keep `on` as-is** | fewer duplicate and one-day themes | 51% of verdicts remain suppressions; step 1 gets no fuller themes |
-| **C — revert to `observe`** | back to today's behaviour | loses the wait arm too, which is the part that works |
-
-**I recommend A**, and B is what we have until it ships. **Not C** — the flip's real benefit (the
-53 corpses) is independent of the join defect.
+- **Keep `on`** — 74% of joins are exact re-mints, and the wait arm (all 53
+  `await_second_sighting` holds were single sightings that never recurred) is the bulk of the
+  benefit. Nothing measured here argues for a revert.
+- **Floor stays at 3** — withdrawn above: 6 of 8 two-member cohorts would draw a `join` anyway,
+  so lowering buys two themes in 120 days, and §11 of the 08-11 analysis already ruled the same way.
+- **The one thing worth building, his call:** close the partial-join orphan gap — ~1 member a
+  night. **Not a direct write from `join_target`** — that would bypass exclusions, cooldowns,
+  global bans, the protected set and F4 validation, all of which `_assign_uncovered_to_themes`
+  already enforces. The reuse-shaped fix is **re-run assignment on the join-orphans with the
+  target hinted**, after the gate. The cheaper alternative is a **join-overlap floor for small
+  cohorts** (no membership write at all): below some cohort size, require overlap 1.00 to call it
+  a duplicate. ⚖ Either touches live theme state ⇒ CHANGE_PROCESS + sign-off.
 
 ## What this does NOT answer
 
-- **Whether a join-merge would be correct.** Adding members to a theme on a 0.50 single-ticker
-  overlap may be worse than dropping them. The threshold needs deriving before anything writes
-  membership — that is the backtest, and it is the same question `ASSIGN_POOL_RS_FLOOR = 70`
-  already answers a different way.
-- **Whether the orphaned members matter.** He has ruled that coverage is not the goal; a member
-  ending the night uncovered is not automatically a loss.
-- **Whether the two would-be 2-member births (EME/PWR, AEIS/ZBRA) are any good.** EME/PWR reached
-  3 members on its own 13 days later; AEIS/ZBRA never did.
+- **Which of the two fixes is right.** The orphan-reassignment and the small-cohort overlap floor
+  solve it from opposite ends and have not been compared. Deriving `BIRTH_GATE_JOIN_OVERLAP` for
+  small cohorts is the prerequisite for either; it was set at 0.5 with no small-cohort analysis.
+- **Whether an orphaned member matters at all.** He has ruled coverage is not the goal. One
+  uncovered member a night may be correct behaviour, not a gap.
+- **Whether the 22 partial joins were right calls.** They were never acted on — `observe` recorded
+  the verdict and the theme was born anyway. Monday is the first night any of it acts.
 - **Anything about trade outcomes.** Step 3 is parked by his own sequencing (#655).
