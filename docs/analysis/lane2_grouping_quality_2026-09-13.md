@@ -302,3 +302,33 @@ move a detection threshold.
   artifact of how lineages are matched. Untested.
 - **Whether Lane-2's eight specifically are any good** — they are 3% of the change and should not
   drive it.
+
+---
+
+# RECOMMENDATION
+
+**Do not move the bar this week. Decide it on Friday 2026-09-18, on a rule written now.**
+
+**Why the wait is real and not a deferral:** the birth gate went to `on` four hours ago, and it
+changes what lowering the bar MEANS. In observe, **86 of 168 candidates (51%) resolved to JOIN** —
+folded into an existing theme instead of minting a new one. If two-member candidates join at a
+similar rate, dropping the bar to 2 mostly makes existing themes FULLER, which is what step 1 wants.
+If they birth instead, it doubles the board, which is what the bar exists to prevent. **Nobody has
+seen a single gated night yet.** The first is Monday.
+
+**The rule, so Friday is a reading and not another debate:**
+
+| gated join rate on new 2-member candidates, Mon–Fri | then |
+|---|---|
+| **≥50% join** | lower `_PROMOTE_MIN_MEMBERS` to 2 — the gate is absorbing them into existing themes |
+| **<50% join** | leave it at 3 — lowering would double births, and the maturity evidence is too weak to justify that |
+
+**Five market days, one stated threshold, a decision either way.** That is the difference from the
+45-day drift this sweep found.
+
+**If he wants it faster**, the alternative is the backtest CHANGE_PROCESS requires anyway: replay
+the last N nights with the bar at 2 AND the gate on, and read the join-vs-birth split from history
+instead of waiting for it live. That is a scoped build, doable this week, and it answers the same
+question without the wait.
+
+⚖ Either path ends in a detection-criterion change — CHANGE_PROCESS, backtest, his sign-off.
