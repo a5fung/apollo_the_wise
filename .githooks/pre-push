@@ -58,7 +58,7 @@ cd "$repo_root"
 
 # Paths whose content the SUITE READS — a change to any of these can turn the suite red
 # with no .py file touched. Kept in one place, and pinned by a test (see header).
-_DATA_RE='\.py$|^(CLAUDE|PLAN)\.md$|^data_gated_reviews\.ya?ml$|^docs/setups/.*\.md$|^tests/|^docker/docker-compose.*\.ya?ml$'
+_DATA_RE='\.py$|^(CLAUDE|PLAN)\.md$|^data_gated_reviews\.ya?ml$|^docs/setups/.*\.md$|^tests/|^docker/docker-compose.*\.ya?ml$|^agents/market_intelligence/fixtures/.*\.json$'
 
 zero="0000000000000000000000000000000000000000"
 saw_ref=0
