@@ -201,6 +201,7 @@ ROLE_LABELS: dict[str, str] = {
     "SYSTEM_REVIEW_MODEL": "weekly review",
     "COMPRESSION_MODEL": "conversation compression",
     "HEALTHCHECK_MODEL": "health check ping",
+    "JUDGE_NAMED_THEMES_MODEL": "judge-named theme capture",
 }
 
 
@@ -244,6 +245,10 @@ RESOLVED_ROLES: dict[str, str] = {
     "CATALYST_TYPE_MODEL": "haiku",
     "COMPRESSION_MODEL": "haiku",
     "HEALTHCHECK_MODEL": "haiku",
+    # #651 (2026-09-12): the judge-named theme capture — a zero-authority post-process over
+    # text the judge already wrote (mi_ep_alerts.judge_rationale). Haiku because the task is
+    # extraction, not judgment, and the whole historical pass was priced at ~$0.07.
+    "JUDGE_NAMED_THEMES_MODEL": "haiku",
     # JUDGE_DIVERGENCE_MODEL tracks the SONNET tier — deliberately a DIFFERENT
     # tier from JUDGE_MODEL (opus), never a different VINTAGE.
     #
@@ -351,6 +356,9 @@ SYSTEM_REVIEW_MODEL = effective_model("SYSTEM_REVIEW_MODEL")
 COMPRESSION_MODEL = effective_model("COMPRESSION_MODEL")
 # /agents health-check ping (channels/telegram.py — 5 tokens)
 HEALTHCHECK_MODEL = effective_model("HEALTHCHECK_MODEL")
+# #651 judge-named theme capture (judge_named_themes.py) — nightly extraction over the
+# judge's stored rationale; never inside the judge, never near a grade.
+JUDGE_NAMED_THEMES_MODEL = effective_model("JUDGE_NAMED_THEMES_MODEL")
 
 # ── Pricing ($ per 1M tokens) — ONE copy ─────────────────────────────────────
 # Both spend tables (core/spend.py orchestrator-side, agents/.../spend_tracker.py

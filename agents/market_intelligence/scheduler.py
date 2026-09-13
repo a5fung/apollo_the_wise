@@ -181,6 +181,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     # No broker call, no grade/admission/sizing/exit input (THE LINE).
     "ecosystem_discovery",       # Sunday 09:30 ET weekly pass (<=2 Sonnet calls)
     "ecosystem_grace_sweep",     # hourly :12 — pending → live at grace-end
+    "judge_named_themes_extract",  # #651 2026-09-12 — nightly Haiku extraction of the GROUP the judge named in its stored rationale (mi_ep_alerts.judge_rationale) into mi_judge_named_themes; bounded batch, ~pennies/month; pure read + DB/audit, no broker calls, no grade/admission/theme change, SILENT (no Telegram), RECORDS ONLY
     "theme_resilience_weekly",  # #644 2026-09-11 — Sunday weekly per-theme down-day-resilience capture for the November forward test; pure compute (get_active_themes + the already-tested get_down_day_resilience) + DB/audit, no broker calls, no grade/admission/ranking change, SILENT (no Telegram), RECORDS ONLY
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "strength_spread_alert",  # #579 2026-09-12 — ad-hoc strength-map direction-spread crossing alert; read-only + audit, Telegram only on a genuine crossing
@@ -5399,6 +5400,22 @@ async def _theme_axis_eod_unscored_job():
     logger.info(f"theme-axis EOD-unscored write: {out}")
 
 
+async def _judge_named_themes_extract_job():
+    """#651 — nightly 6:20 PM ET SHADOW extraction of the group name the judge wrote into
+    `mi_ep_alerts.judge_rationale` on today's (and any still-owed) EP alerts, into
+    `mi_judge_named_themes`. Runs AFTER the market day so the scan tick never waits on a
+    Haiku call, and after the 17:00 nightly pull so the day's alerts are settled; clear of
+    both deploy windows (12:00-13:00, 21:15-22:15 ET). Bounded batch (`limit`) so a
+    backlog can never turn into a surprise bill — the historical pass is the script
+    (`scripts/judge_named_themes_651.py`), not this job. RECORDS ONLY (THE LINE): writes
+    ONLY mi_judge_named_themes + mi_audit_log; no theme is created, no membership moves,
+    nothing reaches a grade, entry, exit or size. Never raises past the wrapper
+    (extract_pending swallows per-alert failures and leaves them for the next night)."""
+    from agents.market_intelligence.judge_named_themes import extract_pending
+    out = await extract_pending(limit=40)
+    logger.info(f"judge-named themes nightly extraction: {out}")
+
+
 async def _theme_resilience_weekly_job():
     """#644 — Sunday 9:00 AM ET weekly SHADOW capture of theme down-day resilience: one
     `mi_theme_resilience_weekly` row per currently-active theme, carrying its as-of
@@ -6550,6 +6567,18 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_theme_axis_bounded_sweep_job, "theme_axis_bounded_sweep"),
         CronTrigger(hour=18, minute=10, day_of_week="mon-fri", timezone="America/New_York"),
         id="theme_axis_bounded_sweep",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
+    # #651: judge-named theme capture — 18:20 ET mon-fri, after the 18:10 bounded sweep so
+    # the theme-side rows of the day exist, still clear of both deploy windows. Shadow-
+    # table-only writes (mi_judge_named_themes + mi_audit_log); never a grade/alert/entry/
+    # exit/size/theme table. Off the alert hot path by construction (nightly, not per-scan).
+    _scheduler.add_job(
+        audit_wrap(_judge_named_themes_extract_job, "judge_named_themes_extract"),
+        CronTrigger(hour=18, minute=20, day_of_week="mon-fri", timezone="America/New_York"),
+        id="judge_named_themes_extract",
         replace_existing=True,
         misfire_grace_time=3600,
     )

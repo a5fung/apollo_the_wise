@@ -26,7 +26,7 @@ from agents.market_intelligence.db import (
     _DELAYED_SETTLE_SQL,
     _DELAYED_VARIANT_SETTLE_SQL, EOD_UNSCORED_THEME_AXIS_INSERT_SQL,
     EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
-    GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
+    GAP_NEAR_MISS_REPLAY_UPSERT_SQL, JUDGE_NAMED_THEME_INSERT_SQL,
     LOWCAP_LANE_REPLAY_UPSERT_SQL, LOWCAP_LANE_SIGNAL_INSERT_SQL,
     THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL, THEME_RESILIENCE_WEEKLY_INSERT_SQL,
     ECOSYSTEM_PROPOSAL_INSERT_SQL, ECOSYSTEM_DYNAMIC_INSERT_SQL,
@@ -277,6 +277,13 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # exists to produce empty through its first run with no downstream error.
         "db.upsert_gap_near_miss_replay: #617 Step 2 standing 7-9% gap-floor near-miss replay",
         GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
+    ),
+    (
+        # #651: the judge-named theme recorder's single writer. Nightly, silent, and the
+        # only place the judge's proposed group names land — a type bug here would leave
+        # the lateness measurement empty with no downstream error.
+        "db.insert_judge_named_theme_row: #651 judge-named theme capture (nightly sweep)",
+        JUDGE_NAMED_THEME_INSERT_SQL,
     ),
     (
         # #624: the low-cap lane's scan-tick recorder — a batched INSERT with one jsonb param

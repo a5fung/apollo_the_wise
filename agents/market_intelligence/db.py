@@ -2092,6 +2092,37 @@ async def initialize_schema() -> None:
                 ON mi_theme_renames(new_name);
         """)
 
+        # ── Judge-named themes (#651, 2026-09-12) — SHADOW RECORDER ──────────
+        # On an EP alert the judge sometimes names the GROUP a stock trades under
+        # ("AI data-center power buildout", "LNG export cohorts") inside its free-text
+        # `mi_ep_alerts.judge_rationale`, and nothing captured it. This table holds
+        # that name, structured, one row per (alert, group), written by the NIGHTLY
+        # extraction sweep (judge_named_themes.extract_pending) — never by the judge
+        # and never on the alert path. A sentinel row (canonical_key = '(none)') marks
+        # an alert whose rationale named no group, so the sweep never re-bills it.
+        # THE LINE: read by NOTHING that grades, admits, sizes, enters, exits, or
+        # creates a theme — the read is `judge_named_themes.lead_time_report`, an
+        # operator-facing measurement of how late the engine is (recurrence across
+        # >=2 tickers before a matching mi_themes name). Anti-circularity as #322:
+        # the judge's own inputs (get_narrative_theme_candidates) never select here.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_judge_named_themes (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                alert_id INT,
+                group_name TEXT NOT NULL,
+                canonical_key TEXT NOT NULL,
+                evidence TEXT,
+                judge_says_untracked BOOLEAN,
+                model TEXT,
+                extracted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, alert_date, canonical_key)
+            );
+            CREATE INDEX IF NOT EXISTS idx_judge_named_themes_key
+                ON mi_judge_named_themes(canonical_key);
+        """)
+
         # ── Theme-pair merge cooldowns (ADR 0025 Arm B, #274) ─────────────
         # A DISTINCT verdict from the Stage-B thesis adjudicator writes a 30d
         # (theme_a, theme_b) cooldown so the pair isn't re-adjudicated nightly
@@ -14582,6 +14613,81 @@ THEME_RENAME_INSERT_SQL = """
 # (#59) and name-inheritance both rename TOWARD the prior persisted name, so the
 # name they discard was never one the operator could have ruled under.
 THEME_RENAME_MECHANISM_MASS_FLAG = "mass_flag_rename"
+
+
+# ── Judge-named themes (#651) — the recorder's three statements ──────────────
+# Schema comment on the CREATE TABLE (init_db) says what the table is for. Registered in
+# scripts/preflight_db_updates.py — a silent recorder is where a type bug hides longest.
+
+JUDGE_NAMED_THEME_INSERT_SQL = """
+    INSERT INTO mi_judge_named_themes
+        (ticker, alert_date, alert_id, group_name, canonical_key, evidence,
+         judge_says_untracked, model)
+    VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8)
+    ON CONFLICT (ticker, alert_date, canonical_key) DO NOTHING
+"""
+
+# Alerts the sweep still owes an extraction: a stored rationale, on/after the window
+# start, and NO row of any kind yet (a named group OR the '(none)' sentinel). ONE row per
+# (ticker, alert_date) even if mi_ep_alerts holds a duplicate (newest id wins), so a
+# duplicate can never be billed twice in one batch. Bounded so a nightly run can never
+# fan out into a surprise bill; oldest first so the backlog drains in order.
+JUDGE_NAMED_THEMES_PENDING_SQL = """
+    SELECT s.id, s.ticker, s.alert_date, s.judge_rationale
+    FROM (
+        SELECT DISTINCT ON (a.ticker, a.alert_date)
+               a.id, a.ticker, a.alert_date, a.judge_rationale
+        FROM mi_ep_alerts a
+        WHERE a.judge_rationale IS NOT NULL
+          AND length(a.judge_rationale) >= 40
+          AND a.alert_date >= $1::date
+          AND NOT EXISTS (
+                SELECT 1 FROM mi_judge_named_themes j
+                WHERE j.ticker = a.ticker AND j.alert_date = a.alert_date)
+        ORDER BY a.ticker, a.alert_date, a.id DESC
+    ) s
+    ORDER BY s.alert_date, s.ticker
+    LIMIT $2
+"""
+
+
+async def insert_judge_named_theme_row(
+    conn, ticker: str, alert_date: date, alert_id: "int | None", group_name: str,
+    canonical_key: str, evidence: "str | None", judge_says_untracked: "bool | None",
+    model: "str | None",
+) -> None:
+    """One (alert, group) row; idempotent on (ticker, alert_date, canonical_key). `ticker` is
+    written EXACTLY as mi_ep_alerts holds it — the pending query joins on `j.ticker = a.ticker`,
+    so a case change here would make the same alert pending (and billed) every night forever."""
+    await conn.execute(
+        JUDGE_NAMED_THEME_INSERT_SQL, ticker, alert_date, alert_id,
+        (group_name or "")[:120], (canonical_key or "")[:80],
+        (evidence or "")[:400] or None, judge_says_untracked, model,
+    )
+
+
+async def get_judge_named_themes_pending(conn, since: date, limit: int) -> list[dict]:
+    rows = await conn.fetch(JUDGE_NAMED_THEMES_PENDING_SQL, since, int(limit))
+    return [dict(r) for r in rows]
+
+
+async def get_judge_named_theme_rows(conn) -> list[dict]:
+    """Every recorded row, oldest first — the input to judge_named_themes.lead_time_report."""
+    rows = await conn.fetch("""
+        SELECT ticker, alert_date, alert_id, group_name, canonical_key, evidence,
+               judge_says_untracked, model, extracted_at
+        FROM mi_judge_named_themes
+        ORDER BY alert_date, ticker, id
+    """)
+    return [dict(r) for r in rows]
+
+
+async def get_theme_name_history(conn) -> list[dict]:
+    """(name, theme_date) for every mi_themes row ever written — the engine's own timeline,
+    against which a judge-named group's first mention is compared. Full history on purpose:
+    the question is whether the engine EVER had the theme and when, not whether it is active."""
+    rows = await conn.fetch("SELECT name, theme_date FROM mi_themes ORDER BY theme_date, name")
+    return [dict(r) for r in rows]
 
 
 async def record_theme_rename(

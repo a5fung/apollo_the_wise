@@ -167,6 +167,42 @@ scope).
 standalone memory file exists; this section + `judge_theme_gap.py`'s module
 docstring are the durable SSoT going forward).
 
+### Judge-named theme capture (#651, built 2026-09-12) — the NAME, and how late the engine is
+
+The #322 feed above records THAT the judge fired on an untracked name, as a sector+date
+stub, and deliberately never the group the judge named. #651 captures the name itself,
+structured, from the prose the judge already wrote (`mi_ep_alerts.judge_rationale`): the
+nightly job `judge_named_themes_extract` (18:20 ET, bounded batch) runs one Haiku call per
+still-owed alert (`judge_named_themes.extract_pending`) and writes one row per
+`(alert, group)` into **`mi_judge_named_themes`** — `group_name`, a model-proposed
+`canonical_key`, the judge's own sentence as `evidence`, `judge_says_untracked` — plus a
+`(none)` sentinel for an alert that named nothing, so nothing is ever re-billed. **No
+change to the judge's prompt or call path** (it cannot move a grade) and **off the alert
+hot path by construction** (nightly, never per-scan — `ep_detector.py` does not reference
+it, pinned).
+
+**The purpose is a NUMBER, not a list — how late is the engine.** The read
+(`judge_named_themes.lead_time_report`, runner `scripts/judge_named_themes_651.py
+--report`) groups rows by normalised key and keeps only groups seen on **>= 2 distinct
+tickers** — recurrence is the filter (one mention is a story, two names under one story
+is a theme), there is no score or threshold — then asks whether `mi_themes` EVER held a
+matching name (deterministic token match, rename lineage via `mi_theme_renames`,
+near-misses printed beside every verdict) and reports `theme_first_date −
+first_named_date` in days, positive = the judge was earlier. Verdicts `judge_earlier` /
+`already_existed` / `never_matched`, each with its n. ⚠ The judge is fed our active-theme
+context, so a rationale can ECHO our own theme name — the local timeline already holds a
+theme literally named "AI data-center power buildout" four days before the SEI 09-08
+rationale used those words. Only the dated comparison separates discovery from echo; the
+name list alone does not.
+
+**THE LINE / anti-circularity (same walls as #322):** the table is read by NOTHING that
+grades, admits, sizes, enters, exits, creates or promotes a theme; the judge's own inputs
+(`get_narrative_theme_candidates`, `ep_grade_judge`) never select from it
+(`tests/test_651_judge_named_themes.py` group 5). Candidates surface for the operator's
+ruling only. Finding: `docs/analysis/651_judge_named_themes_2026-09-12.md` — as of that
+date the paid historical pass had NOT run (no prod route from the build card, $0 spent);
+the doc carries the one-command runner and the three possible first-line answers.
+
 ## ONE birth gate + lane retirements (consolidation Phase 1, 2026-07-27 — 3-state toggle `theme_birth_gate`, fail-closed 'off')
 
 Behind `mi_safeguard_state` toggle `theme_birth_gate`
@@ -323,6 +359,18 @@ because nothing recorded these parameters before.
   reasoning per batch, so "why did it decline?" is readable from the row.
 
 ## Change log
+
+### 2026-09-12 — #651: the judge's named groups are captured, and the read that turns them into "how late is the engine" is built — NOT yet run
+
+**Themes touch no money; shipped full.** New: `judge_named_themes.py` (Haiku extraction over
+`judge_rationale`, nightly `judge_named_themes_extract` 18:20 ET, table `mi_judge_named_themes`,
+the recurrence + lead-time read), `scripts/judge_named_themes_651.py`, role
+`JUDGE_NAMED_THEMES_MODEL` (haiku tier), ceiling `judge_named_themes`, shadow-writer registration.
+No judge prompt/call-path change; not on the alert path. Tests:
+`tests/test_651_judge_named_themes.py` (26). Finding:
+`docs/analysis/651_judge_named_themes_2026-09-12.md` — the paid pass (~$0.07) could not be run
+from the build card (no prod route), so the lateness number is still owed; the doc carries the
+command. Section: "Judge-named theme capture (#651)" above.
 
 ### 2026-09-09 — #486: the naming lag, read — two cluster artifacts killed at the source, the recorder made truthful, cluster members rendered like every other pool
 

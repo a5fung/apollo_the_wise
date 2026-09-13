@@ -180,6 +180,11 @@ CEILINGS: dict[str, OutputCeiling] = {
         8000, "METRICS_EXTRACTION_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise from 2000 (PLAN #542): sonnet-5 p50 1484 vs 557 on 4-6 "
         "(>=2.7x model growth), 3 calls censored at 2000. No post-raise sample yet."),
+    "judge_named_themes": OutputCeiling(
+        900, "JUDGE_NAMED_THEMES_MODEL", "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        "2026-09-12 FIRST-RUN ESTIMATE, unsized (#651): forced-tool JSON of <=5 groups x "
+        "(name + slug + <=300-char evidence sentence + bool) ~ 60-400 output tokens; "
+        "re-size from api_usage after the ~105-alert historical pass."),
 
     # ── theme engine ──
     # 2026-08-10: the four truncating theme callers were fixed by BOUNDING THE
