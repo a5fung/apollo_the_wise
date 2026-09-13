@@ -63,8 +63,13 @@ async def main(seconds: int) -> int:
     from alpaca.data.live import StockDataStream
     from alpaca.data.enums import DataFeed
 
-    feed_name = os.environ.get("ALPACA_DATA_FEED", "iex").lower()
-    feed = DataFeed.SIP if feed_name == "sip" else DataFeed.IEX
+    # The CANONICAL resolution (#279 single-sources it in execution_client), not a
+    # hand-rolled re-read. The hand-rolled one here was missing `.strip()`, so an env
+    # value with a trailing newline — the ordinary shape from a `.env` file — resolved
+    # to IEX while prod resolved to SIP, and this probe would have reported success on
+    # "the SAME feed prod uses" (its own stated purpose) having probed the other one.
+    from agents.market_intelligence.broker.alpaca_client import get_data_feed
+    feed = get_data_feed()
     log.info(f"Probing feed={feed.value} for the `statuses` channel ({seconds}s window)...")
 
     # Surface the SDK's own logs — the subscription ack ("subscribed to statuses: ['*']")

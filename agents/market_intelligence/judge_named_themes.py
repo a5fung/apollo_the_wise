@@ -301,10 +301,26 @@ async def extract_pending(
         out["n_alerts"] = len(pending) if not commit else 0
         return out
 
-    for row in pending:
+    # The Haiku calls run CONCURRENTLY, bounded by `_SEM` (4), which `extract_named_themes`
+    # already acquires. It was declared and then never achieved: this loop used to await one
+    # call at a time, so at most ONE was ever in flight and the budget was decoration — a
+    # stated capacity nothing held. The WRITE loop below is unchanged and still strictly
+    # ordered, so capture order, per-row failure handling and the pending-on-failure retry
+    # are identical; only the network wait is shared. `return_exceptions=True` keeps one bad
+    # call from cancelling its siblings — it lands as None, which the loop already means
+    # "leave this alert pending".
+    _results = await asyncio.gather(
+        *(extract_named_themes(r["ticker"], r["alert_date"], r.get("judge_rationale"))
+          for r in pending),
+        return_exceptions=True,
+    )
+
+    for row, res in zip(pending, _results):
         ticker, alert_date = row["ticker"], row["alert_date"]
         out["n_alerts"] += 1
-        res = await extract_named_themes(ticker, alert_date, row.get("judge_rationale"))
+        if isinstance(res, BaseException):
+            logger.warning("judge_named_themes: %s %s raised: %s", ticker, alert_date, res)
+            res = None
         if res is None:
             out["n_failed"] += 1
             continue

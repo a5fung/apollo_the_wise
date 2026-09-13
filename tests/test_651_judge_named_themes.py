@@ -293,6 +293,59 @@ def test_sweep_writes_named_rows_plus_a_sentinel_and_captures_first(monkeypatch,
     assert out["est_cost_usd"] == pytest.approx(500 * 1.0 / 1e6 + 80 * 5.0 / 1e6)
 
 
+def test_the_declared_concurrency_budget_is_ACTUALLY_USED(monkeypatch, tmp_path):
+    """`_SEM = asyncio.Semaphore(4)` shipped 2026-09-12 and did nothing: the sweep awaited one
+    extraction at a time, so at most ONE was ever in flight. A declared capacity nothing holds
+    reads exactly like a real one — this week's own defect class, in a constant.
+
+    WOULD-FAIL-IF: the gather is reverted to a sequential `await` per row -> max in-flight 1."""
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=_pending(
+        ("AGX", 3, _RATIONALE), ("SNOW", 3, _RATIONALE), ("NET", 3, _RATIONALE)))
+    conn.execute = AsyncMock()
+    monkeypatch.setattr(jnt, "get_pool", AsyncMock(return_value=pool))
+
+    state = {"now": 0, "max": 0}
+
+    async def _slow(ticker, alert_date, rationale):
+        state["now"] += 1
+        state["max"] = max(state["max"], state["now"])
+        await asyncio.sleep(0)          # yield, so a sequential loop cannot overlap
+        await asyncio.sleep(0)
+        state["now"] -= 1
+        return {"groups": [], "input_tokens": 1, "output_tokens": 1, "model": "m"}
+    monkeypatch.setattr(jnt, "extract_named_themes", _slow)
+
+    out = _run(jnt.extract_pending(limit=10, capture_path=tmp_path / "c.jsonl"))
+
+    assert out["n_alerts"] == 3 and out["n_failed"] == 0
+    assert state["max"] > 1, "the calls ran one at a time — the semaphore is decoration"
+
+
+def test_one_raising_extraction_does_not_cancel_its_siblings(monkeypatch, tmp_path):
+    """`return_exceptions=True`: a raise lands as that alert's own failure and leaves it pending,
+    exactly as a returned None does. Without it, gather cancels the whole batch and a single bad
+    rationale costs the night's other extractions — money already spent, thrown away.
+
+    WOULD-FAIL-IF: the flag is dropped -> the raise propagates and n_alerts never reaches 2."""
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=_pending(("AGX", 3, _RATIONALE), ("SNOW", 3, _RATIONALE)))
+    conn.execute = AsyncMock()
+    monkeypatch.setattr(jnt, "get_pool", AsyncMock(return_value=pool))
+
+    async def _one_bad(ticker, alert_date, rationale):
+        if ticker == "AGX":
+            raise RuntimeError("boom")
+        return {"groups": [], "input_tokens": 5, "output_tokens": 5, "model": "m"}
+    monkeypatch.setattr(jnt, "extract_named_themes", _one_bad)
+
+    out = _run(jnt.extract_pending(limit=10, capture_path=tmp_path / "c.jsonl"))
+
+    assert out["n_alerts"] == 2, "the sibling was cancelled by its neighbour's raise"
+    assert out["n_failed"] == 1
+    assert out["n_rows_written"] == 1, "SNOW still wrote its sentinel row"
+
+
 def test_sweep_skips_the_write_on_a_failed_extraction_so_it_retries_next_night(monkeypatch, tmp_path):
     pool, conn = make_mock_pool()
     conn.fetch = AsyncMock(return_value=_pending(("AGX", 3, _RATIONALE)))

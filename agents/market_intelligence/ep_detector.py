@@ -56,7 +56,7 @@ from agents.market_intelligence.collector import (
     search_news_perplexity,
     get_sec_recent_filings,
 )
-from agents.market_intelligence.constants import SKIP_TICKERS, TIER_RANK
+from agents.market_intelligence.constants import SKIP_TICKERS
 from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_volume_history_daily_closes, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, get_runtime_toggle, LIVE_SOURCE_SQL
 from agents.market_intelligence.backtester.filters import check_filters
 from agents.market_intelligence.minute_volume import (
@@ -622,12 +622,13 @@ def _is_judge_demotion(judge_tier, floor_tier) -> bool:
     catalyst-grade axis instead of the tier axis (OKTA 2026-08-27: `direction_vs_floor` said
     'demote' while the tier held at HIGH == floor_tier; nothing moved).
     `briefing._judge_direction` documents this exact gap and computes the same rank-based
-    move for the operator-facing tier-transition line — this is that same computation,
-    reused here so the #650 second-opinion trigger fires on what the tier ACTUALLY did."""
-    a, b = TIER_RANK.get(judge_tier), TIER_RANK.get(floor_tier)
-    if a is None or b is None:
-        return False
-    return a < b
+    move for the operator-facing tier-transition line — so this CALLS it rather than
+    re-typing the comparison. ⚠ That is not cosmetic: `system_review`'s divergence section
+    asserts `strict == n_disagree` as mathematically guaranteed, which holds only while the
+    trigger population and the reported population read the SAME lattice comparison. Two
+    copies could drift on a new tier or on tie-handling and break that silently."""
+    from agents.market_intelligence.briefing import _judge_direction  # lazy: cycle
+    return _judge_direction(judge_tier, floor_tier) == "demote"
 
 
 def _resolve_catalyst_text(claude_analysis, news_summary, has_direct_source, limit):
