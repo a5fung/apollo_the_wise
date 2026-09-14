@@ -680,3 +680,40 @@ as long as a security stays halted, so the table counts feed heartbeats rather t
 is shadow-only (SQL table, no Telegram, no reader in the money path) so nothing is wrong today, but
 any query over it must count DISTINCT halts, and the writer should dedupe until the status changes.
 Filed as #659.
+
+## #651 — the judge names groups we don't have, and now they reach him with a button (2026-09-14)
+
+BAR: "a theme the judge names that does not match an existing theme is captured as a STRUCTURED
+candidate — ticker, alert date, the proposed name, the judge's own words — and surfaced for his
+ruling; nothing auto-creates a theme."
+
+EVIDENCE: the first live nightly run, 2026-09-14 22:20 UTC, verified on prod — the prediction held on members not just count, the rows carry the judge's own sentences, and the send is proven by the audit row's own gating.
+
+- **The prediction held exactly, members and all.** The 09-12 prod dry run named TWO groups that
+  would fire: `ai-monetization` and `semiconductor-equipment-cycle-recovery`. Tonight's audit row
+  reads *"7 recurring group(s): 5 matched a theme, 2 unmatched (0 already surfaced, 0 re-seeded),
+  2 fired"* — and the two that fired are those two, on the same tickers. ⚠ A matching COUNT with
+  different members would have been a false pass; I checked the members, not the number.
+- **Structured, with the judge's own words** — `mi_judge_named_themes` holds 157 rows, 70 carrying
+  a non-sentinel `canonical_key` AND non-empty `evidence`. The four rows behind tonight's pages:
+  `ai-monetization` NMAX 2026-08-14 (*"new multi-year Meta AI content-licensing partnership…"*) and
+  TEAM 2026-08-07; `semiconductor-equipment-cycle-recovery` ONTO and ACMR, both 2026-08-07
+  (*"The advanced-packaging/ECP driver plugs directly into the active 'Semiconductor Equipment
+  Cycle…'"*). Ticker, alert date, proposed name and the judge's sentence, as the bar requires.
+- **"Surfaced for his ruling" is PROVEN, not assumed, and this is the part I nearly took on faith.**
+  There is no telegram-send audit row, so I read the code instead: `judge_named_themes.py:724`
+  does `ok = await send_telegram_message(...)`, then `if not ok: … continue` — the
+  `judge_named_theme_candidate` audit row at `:729` is UNREACHABLE unless the send returned ok.
+  Both rows exist, so both pages landed.
+- **The button was attached.** `markup = build_synthesis_keyboard(…) if seeded else None`, and the
+  summary appends `" (SEED FAILED)"` when it is not. Neither row carries it (`seed_failed = f`,
+  both end `seeded source=judge_named`), so both pages went out WITH the promote button — the
+  clause its own WOULD-FAIL-IF calls out ("a 🧭 alert arrives without the button").
+- **Nothing auto-created a theme.** Tonight's `mi_themes` rows are 125 `live` + 5
+  `shadow_promoted`; the judge-named candidates are seeds awaiting his button.
+
+⚠ **Its liveness WOULD-FAIL-IF ("no row by 18:30 while new graded alerts exist") is satisfied by
+the same run**: `judge_named_themes_extracted` — 2 alerts, 2 rows written, 0 failed, ~$0.0030.
+
+⚠ Left open deliberately, and NOT part of this bar: whether he promotes either group. The task's
+job was to stop throwing the judge's names away and put them in front of him; the ruling is his.
