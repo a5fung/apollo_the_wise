@@ -191,12 +191,21 @@ picks the acting table — see the 2026-08-22 SEPARATION change-log entry). Comp
 - Liquidity (20-day ADV$ tiers 15/12/10/7), float bonus (+5 under 50M), vol_conviction (5/3),
   theme_bonus (+10) — unchanged by the separation change, shared by both flag sides.
   **Since 2026-09-13 the +10 pays when the stock BELONGS to a live theme at alert time**
-  (operator-directed BUG FIX, see change log): belonging = LISTED in a theme staged in
-  `ep_theme_belonging.THEME_BONUS_STAGES` (Accelerating/Mainstream — the pre-fix rule, kept)
-  **OR** the stock's SPY-adjusted daily returns over the 60 sessions strictly before the scan
-  date correlate at or above the **co-movement bar 0.35** with the equal-weight basket of such a
-  theme's members (≥3 members with history, ≥30 overlapping sessions, leave-one-out). Toggle
-  `ep_theme_belonging` (default ON) is REVERSION ONLY — OFF = the ticker-list read alone.
+  (operator-directed BUG FIX, see change log 2026-09-13 + 2026-09-14): belonging = LISTED in a
+  theme staged in `ep_theme_belonging.THEME_BONUS_STAGES` (Accelerating/Mainstream — the pre-fix
+  rule, kept) **OR** a TWO-STAGE test: (1) the stock's SPY-adjusted daily returns over the 60
+  sessions strictly before the scan date correlate at or above the **shortlist bar 0.35**
+  (`BELONGING_SHORTLIST_CORR_BAR` — a FILTER, never a verdict: the best of ~17 paying baskets
+  clears 0.35 by coincidence) with the equal-weight basket of such a theme's members (≥3 members
+  with history, ≥30 overlapping sessions, leave-one-out), which SHORTLISTS the top 3 such themes;
+  (2) `theme_engine.judge_theme_fit` — the nightly assignment pass's own prompt, tool and rules —
+  CONFIRMS the stock clearly fits one of them. **Correlation alone never pays.** One Sonnet call
+  per shortlisted name per day, ≤3 per tick / ≤40 per day, 15 s timeout, premarket only
+  (post-open ticks use the day's cached verdicts); every non-verdict = list membership decides.
+  The operator-signed **co-movement bar 0.35** for the assignment gate's sector-test replacement
+  (#655) is a separate constant (`BELONGING_CORR_BAR`) the EP path does not read as a verdict.
+  Toggle `ep_theme_belonging` (default ON) is REVERSION ONLY — OFF = the ticker-list read alone,
+  and no call is spent.
   ⚠ Seam: the grading SHORTLIST pre-score (`compute_shortlist_ranking`) still reads list
   membership — it ranks the whole board before the cut, so a name that belongs but is not
   listed ranks without the theme term. Column `in_active_theme` on alerts / the scan log /
@@ -417,6 +426,88 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
+### 2026-09-14 — BELONGING is TWO-STAGE: correlation SHORTLISTS, the nightly assignment judgement DECIDES (bug-fix REFINEMENT, shipped ON, same revert flag)
+
+**Trigger**: the 2026-09-13 replay of the correlation-only rule (n=346 alerts, 120 days) before it
+ran a single live tick: belonging at 0.35 would have paid 197 of 346 (57%) against 25 listed, and
+the new admissions were wrong on their face — D (Dominion, a utility) → *Hydraulic Fracturing &
+Well Completion Services* at 0.45; BKKT (crypto) and QBTS (quantum) → *Satellite Imagery &
+Geospatial Intelligence* (0.49 / 0.41); CMPS (psilocybin biotech) → *Custom AI Silicon & Chip
+Architecture* (0.38). Operator: *"That is clearly wrong themes for those stocks."*
+
+**What was wrong**: the 0.35 bar was derived for ONE stock against ONE nominated theme (the
+assignment gate's sector-test replacement, `docs/analysis/cross_industry_themes_2026-09-13.md`).
+The EP read took the BEST correlation across every live paying basket — a mean of 16.9 baskets per
+alert (min 4, max 51) — and best-of-many clears 0.35 by coincidence. Raising the bar is not a fix:
+at every level it drops IREN 2026-07-20 (a case he wants to work) before BKKT.
+
+**What changed** (`ep_theme_belonging.py`, `theme_engine.judge_theme_fit`, wired in `run_ep_scan`):
+- Correlation is now a SHORTLIST FILTER (`BELONGING_SHORTLIST_CORR_BAR = 0.35`, its own constant;
+  top `BELONGING_SHORTLIST_THEMES = 3` paying-stage baskets, best first). A shortlist is not
+  belonging; `belongs_paying` is False on correlation alone.
+- The DECIDER is the fit judgement the nightly assignment pass already makes:
+  `theme_engine.judge_theme_fit` calls the SAME `_propose_assignment_batch` (same prompt, tool,
+  rules, model) against the shortlist only — assign tool forced, no advisor loop, its own
+  cost-meter caller `ep_theme_fit` and audit rows `ep_theme_fit_*` (never the nightly's
+  `assignment_*` rows, which `data_gated_reviews.yaml` reads as the nightly's health). ONE
+  definition of "fits a theme" in the codebase. **belongs = listed OR fit CONFIRMED.**
+- Bounded and fail-open to list membership: ≤3 calls per tick (`BELONGING_FIT_CALLS_PER_TICK`),
+  ≤40 per day, 15 s timeout, 30 s per-tick wall budget; verdicts cached per (day, ticker,
+  shortlist) so a name is judged once a day and a failure is never cached as a verdict; NO call
+  at or after 9:30 ET (`_is_premarket` — the #344 posture: the ORB entry path gets cached
+  verdicts only); no description → no call; toggle OFF → no call. Every non-verdict
+  (`fit_status` failed / timeout / error / budget / off / window / no_description) leaves list
+  membership deciding, logged at WARNING with the ticker.
+- The call runs inside the scan loop right before the first `_score_ep` — after every gate that
+  could still drop the name, with the FMP profile in hand (the nightly one-liner wins where the
+  universe has one; the profile paragraph, capped at 300 chars, otherwise). All four scoring
+  sites read the verdict through the existing `_theme_bonus_input` seam.
+- Shadow row `mi_ep_theme_belonging_shadow` (not yet created in prod, so the CREATE was edited in
+  place) records the shortlist (theme/stage/corr JSON), the verdict (`fit_status`, `fit_theme`,
+  `fit_stage`, `fit_rationale`) and the UNJUDGED Nascent shortlist — re-readable without a call.
+  `reason` vocabulary: listed | fit | shortlisted_rejected | fit_unjudged | below_bar |
+  no_history | no_baskets.
+- `BELONGING_CORR_BAR` (0.35) stays as the operator-signed single-pair reference for #655's
+  assignment-gate swap; the EP path no longer reads it as a verdict.
+- What did NOT change: the +10; the stage set (Nascent is still a SEPARATE decision — live, its
+  shortlist is recorded unjudged; the backtest judges it with real calls as its own number);
+  `_score_ep`; the toggle; every admission gate, stop, target, size.
+
+**Evidence**: stage 1 (correlation, $0 — `scripts/probes/_ep_theme_belonging_backtest.py` on the
+2026-09-14 prod pull, `docs/analysis/ep_theme_belonging_backtest_2026-09-13.md`): 346 alerts;
+listed 25 by as-of reconstruction (341 of 346 agree with the stored `in_active_theme` flag, which
+says 22); **173 unlisted names cleared the shortlist bar = what correlation alone would have
+boosted**; 99 carry a Nascent shortlist; 2 have no description anywhere. **Stage 2 — the
+judgement — is PENDING: ~US$2 for 171 paying + 99 Nascent calls**, cached to
+`fit_verdicts.json` on run one. The sandbox this was built in could neither export the API key
+nor sync code to the host, so the one command is recorded in the backtest doc for the operator's
+session. Reported the same day it runs: list-only / belonging-with-fit / newly boosted, the four
+wrong cases and IREN by name, every new HIGH crossing at each alert's OWN era bar, the Nascent
+delta, calls and wall-clock. ⚠ The earlier *"4 HIGHs in 90 days depended on the +10 (SNOW, HOOD
+09-03; BLZE 07-31; AEHR 06-17)"* was read at a flat 70: SNOW and HOOD at 77.5 on the separation
+side are raw 50, and raw 40 without the +10 presents as 65.0 = the bar, so they do NOT depend on
+it; AEHR 06-17 was a MODERATE at 70. The recount at era bars is a line of the backtest.
+
+**Anticipated effect**: newly boosted alerts fall from 173 (correlation alone) to the subset the
+judgement confirms — expected a small minority, concentrated in names a theme later filed
+(IREN-class); D / BKKT / QBTS / CMPS rejected. Per scan day: ~0.6 unlisted shortlisted ALERTS
+(173 over the window's alert days) plus sub-bar graded names, ≤ US$0.30/day at the cap, ~5 s per
+call, premarket only. Strictly monotone still: no alert loses a bonus it has today.
+
+**Reversion-flag**: REFINEMENT of the 2026-09-13 entry (same fix; its membership TEST corrected
+before it ran live). Not a reversal: the decision to key on belonging stands; only the
+correlation-only decider was wrong, for the reason stated above.
+
+**Status**: shipped 2026-09-14 ON (built, NOT deployed), awaiting field validation. VERIFY-LIVE =
+on the first premarket after deploy, `mi_ep_theme_belonging_shadow` holds at least one unlisted
+shortlisted row with `fit_status` in (confirmed, rejected) — the judgement RAN — the
+`EP scan complete` line carries `fit calls N in Nms (c confirmed, r rejected, u unjudged)` with
+N ≥ 1, an `ep_theme_fit_llm_proposed` audit row exists, and `api_usage` shows caller
+`ep_theme_fit`. WOULD-FAIL-IF: every shortlisted row across a premarket morning reads
+`fit_status` in (error, timeout, budget, no_description, window) — the call path is dead; or a
+`reason='fit'` row carries `acting_in_theme=false` with the toggle ON — the seam is not wired; or
+an `ep_theme_fit` `api_usage` row is stamped at or after 9:30 ET — the window guard failed.
+
 ### 2026-09-13 — THEME BONUS keys on BELONGING at alert time, not on last night's ticker list (OPERATOR-DIRECTED BUG FIX, shipped ON, one-flag revertible)
 
 **Trigger**: the operator, 2026-09-13, on the R4 +10 in-theme bonus: *"EP boost should be based on
@@ -507,6 +598,11 @@ much"* — refuted if bonus-dependent HIGHs rise above ~8 per 90 days.
 
 **Reversion-flag**: REFINEMENT of the 2026-05-17 R4 ship (P2.1c) — same +10, same stage set; the
 membership TEST is corrected. Not a reversal of any prior decision.
+
+⚠ **SUPERSEDED 2026-09-14, before a single live tick** — the correlation-only DECIDER below was
+replayed and found wrong (a utility in a fracking theme); see the 2026-09-14 entry above. The
+verify condition below refers to a `reason='comoves'` vocabulary that no longer exists; the live
+verify is the 2026-09-14 entry's.
 
 **Status**: shipped 2026-09-13 ON, awaiting field validation. VERIFY-LIVE = on the first market
 morning `mi_ep_theme_belonging_shadow` holds rows for the graded names with at least one

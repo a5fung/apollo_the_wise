@@ -409,17 +409,35 @@ GATE_REGISTRY: list[dict] = [
             "file": "docs/setups/magna53_ep.md",
             "text": "co-movement bar 0.35",
         },
-        "note": "2026-09-13 BUG FIX, operator-directed (\"EP gets boost if it belongs to a theme, "
-                "regardless if it's already in a theme or not at the time of EP alert\"): the +10 "
-                "theme bonus keys on BELONGING at alert time — listed OR market-adjusted "
-                "correlation >= this bar with a THEME_BONUS_STAGES theme's member basket over the "
-                "60 sessions strictly before the scan date. 0.35 is the bar the operator signed the "
-                "same day for the assignment gate's sector-test replacement (admits IREN 0.70+, MSTR "
-                "0.65, CMC 0.60, GPN 0.54; rejects OTTR -0.14, ECO -0.11, SEDG 0.16, AGX 0.29 — "
-                "docs/analysis/cross_industry_themes_2026-09-13.md). Whether it TRANSFERS to this "
-                "use (a max over ~20 baskets, not one nominated pair) is the null-control curve in "
-                "docs/analysis/ep_theme_belonging_backtest_2026-09-13.md. Scoring-only: it never "
-                "admits or removes a candidate; it moves a score by the existing +10. Reversion "
-                "toggle `ep_theme_belonging` (default ON). Change log: magna53_ep.md 2026-09-13.",
+        "note": "The operator-signed 2026-09-13 co-movement bar for the ASSIGNMENT GATE's sector-test "
+                "replacement (PLAN #655; admits IREN 0.70+, MSTR 0.65, CMC 0.60, GPN 0.54; rejects OTTR "
+                "-0.14, ECO -0.11, SEDG 0.16, AGX 0.29 — docs/analysis/cross_industry_themes_2026-09-13.md). "
+                "Derived for ONE stock against ONE nominated theme. Kept in ep_theme_belonging.py as that "
+                "signed reference; since 2026-09-14 the EP path does NOT read it as a belonging verdict "
+                "(it did for one day, never live — replayed and found to transfer badly to a "
+                "best-of-many search: 57% of alerts admitted, a utility in a fracking theme). See "
+                "BELONGING_SHORTLIST_CORR_BAR. Change log: magna53_ep.md 2026-09-13 + 2026-09-14.",
+    },
+    {
+        "id": "ep_theme_belonging.BELONGING_SHORTLIST_CORR_BAR",
+        "file": "agents/market_intelligence/ep_theme_belonging.py",
+        "kind": "const",
+        "name": "BELONGING_SHORTLIST_CORR_BAR",
+        "value": 0.35,
+        "citation": {
+            "file": "docs/setups/magna53_ep.md",
+            "text": "shortlist bar 0.35",
+        },
+        "note": "2026-09-14 (bug-fix refinement, operator-directed): the +10 theme bonus's belonging test "
+                "is TWO-STAGE — a market-adjusted correlation >= this bar with a THEME_BONUS_STAGES "
+                "basket (60 sessions strictly before the scan date) SHORTLISTS up to 3 themes, and the "
+                "nightly assignment pass's own fit judgement (theme_engine.judge_theme_fit) DECIDES. A "
+                "FILTER, never a verdict: correlation alone admitted 173 of 321 unlisted alerts (the best "
+                "of a mean 16.9 paying baskets clears 0.35 by coincidence). Same value as the signed "
+                "single-pair bar so a real member is never filtered out before the judgement sees it; "
+                "its own constant so the two can move separately. Scoring-only: it never admits or "
+                "removes a candidate; it moves a score by the existing +10 only when the judgement "
+                "confirms. Reversion toggle `ep_theme_belonging` (default ON). Change log: "
+                "magna53_ep.md 2026-09-14; backtest docs/analysis/ep_theme_belonging_backtest_2026-09-13.md.",
     },
 ]

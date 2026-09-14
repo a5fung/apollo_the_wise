@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Theme BELONGING backtest — stage 1 of 2: the READ-ONLY prod pull (2026-09-13).
 #
-# Pulls the five CSVs `_ep_theme_belonging_backtest.py` reads, straight from prod Postgres via the
+# Pulls the six CSVs `_ep_theme_belonging_backtest.py` reads, straight from prod Postgres via the
 # operator-authorized `ssh ... docker exec apollo-postgres psql` read path (the _508_pull_snapshot.sh
 # idiom — read-only SELECTs only, HANDOFF.md). Nothing is written to the database.
 #
@@ -47,10 +47,15 @@ run "SELECT a.id, a.ticker, a.alert_date, a.detected_at, a.ep_score, a.score_tie
      ORDER BY a.alert_date, a.ticker" > "$OUT/alerts.csv"
 
 echo "pulling theme snapshots (window + 8 days back, every stage incl. Retired tombstones) ..."
-run "SELECT theme_date, name, stage, tickers::text AS tickers
+run "SELECT theme_date, name, stage, tickers::text AS tickers, description
      FROM mi_themes
      WHERE theme_date >= CURRENT_DATE - ($WINDOW_DAYS + 8)
      ORDER BY theme_date, name" > "$OUT/themes.csv"
+
+echo "pulling ticker descriptions (the nightly assignment prompt's own one-liners) ..."
+run "SELECT ticker, description, sector, industry, company_name FROM mi_ticker_overrides
+     WHERE coalesce(description,'') <> '' OR coalesce(sector,'') <> ''
+     ORDER BY ticker" > "$OUT/descriptions.csv"
 
 echo "pulling the scored-but-not-alerting scan-log rows (null control i) ..."
 run "SELECT DISTINCT ON (l.scan_date, l.ticker)
@@ -95,7 +100,7 @@ run "WITH members AS (SELECT DISTINCT unnest(tickers) AS t FROM mi_themes
      WHERE d.trade_date >= CURRENT_DATE - ($WINDOW_DAYS + 110) AND d.close > 0
      ORDER BY d.ticker, d.trade_date" > "$OUT/closes.csv"
 
-for f in alerts themes scanlog_nonalert controls closes; do
+for f in alerts themes descriptions scanlog_nonalert controls closes; do
   printf '  %-18s %8d rows\n' "$f.csv" "$(( $(wc -l < "$OUT/$f.csv") - 1 ))"
 done
 echo "done -> $OUT   (next: python scripts/probes/_ep_theme_belonging_backtest.py $OUT)"
