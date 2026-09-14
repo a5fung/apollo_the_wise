@@ -1626,6 +1626,12 @@ _EXPECT_NA_PATTERN = re.compile(r"EXPECT-NA\s*:\s*(.+?)" + _BAR_END, re.S)
 _EXPECT_NA_FLOOR = 12   # "n/a" is not a reason — same floor can_fire_missing/source-pin-ok use
 
 
+def _squash(text: str, cap: int) -> str:
+    """One-line, length-capped rendering of a PLAN blob for the --today surface."""
+    one = " ".join((text or "").split())
+    return one if len(one) <= cap else one[: cap - 1] + "…"
+
+
 def expect_done_when_for(title: str) -> "tuple[str, str] | None":
     """(expect-text, done-when-text) this task states, or None if either is missing or too thin.
 
@@ -1994,6 +2000,20 @@ def main(argv: list[str]) -> int:
         print(f"\n-- VERIFY-DUE ({len(verify_due)}) — SHIPPED; verify window here -> confirm in prod + close --")
         for t in verify_due or []:
             print(f"  #{t['id']:<4} verify {t['eta']}  {t['project']} — {t['title']}")
+            # Operator 2026-09-13: *"Expectation is just an addition to all the verifies we do
+            # today already, anything we are verifying and looking for data and evidence should
+            # have expectation and trigger is the same"*. So the expectation rides THIS trigger —
+            # it is not a second surface with its own schedule. Printed BEFORE the data is looked
+            # at, which is the whole point: read what was predicted, then go and look.
+            _ed = expect_done_when_for(t["title"])
+            if _ed:
+                print(f"        EXPECT    → {_squash(_ed[0], 300)}")
+                print(f"        DONE-WHEN → {_squash(_ed[1], 300)}")
+            elif expect_na_reason(t["title"]):
+                print(f"        EXPECT-NA → {_squash(expect_na_reason(t['title']), 160)}")
+            else:
+                print("        ⚠ no EXPECT/DONE-WHEN on this line — you are about to read live "
+                      "data with no prediction to judge it against (pre-dates the 2026-09-13 gate)")
         if not verify_due:
             print("  (none)")
         # STALE-DEPLOY (2026-09-05): deployed tasks aged out by GIT history, independent of the
