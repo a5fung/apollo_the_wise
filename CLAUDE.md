@@ -8,6 +8,7 @@
 - **Max 1 rebump.** Due/overdue task → UNBLOCK + SHIP, not re-date. A 2nd bump is FORBIDDEN without my sign-off — tag `[ok:reason]`/`[blocked:reason]`. Gated in `check_plan._rebump_gate`.
 - **No conservatism unless REAL $ at risk.** Default = ship / graduate / load-bearing. Don't hedge ("shadow-first" etc.) unless it risks real money (THE LINE). Themes / grades / detectors = no money → ship full.
 - **Concise — no essays; never mention session length or ending a session — keep working.** A decision = the fork + a 1-line rec.
+- **🗓 WEEKENDS ARE THE BUILD SLOT; WEEKDAYS CARRY VERIFIES AND DECISIONS** (operator 2026-09-14: *"make weekend heavy, we want to make use of market downtime to do some heavy build work every weekend"*). The market is shut, deploy windows are unrestricted, and there is no ORB window to clip — so **schedule refactors, migrations and anything touching the money path on Sat/Sun**, and keep market days for verify-and-close, lookups and his rulings. ⚠ **Load the weekend by pulling work EARLIER, never by pushing it later** — pushing a due task out is a rebump and needs his sign-off; pulling a future one forward is free. At CLOSE and on any re-date, ask which side of the week the task belongs on.
 - **📐 REPORT FORMAT — HARD, asked 5× across multiple days (operator 2026-08-02: *"how can I get the format I asked for without asking again and again"*). It lives HERE, not in memory, because memory was recalled and still drifted inside 24h — same lesson as every other prose-discipline failure in this file: only the always-loaded surface holds.** EVERY progress report / summary / status:
   1. **Header carries the SUBSTANCE** — the thing AND the result. *"#340 — a stale threshold now surfaces in 3 days instead of never"*, NOT *"#340 — shipped and verified"* (status theatre).
   2. **Bullets. Titled blocks (problem / shipped / result / action) once >1 idea. NO prose paragraphs** — a bolded lead-in plus 3 sentences is still a paragraph, and is the recurring drift.
@@ -204,8 +205,8 @@ Bottom-up from price action (themes emerge from RS, not hypotheses); lifecycle N
 - **ORB submission window**: `now_et.hour == 9 and now_et.minute < 45`. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup job cancels any unfilled `order_placed`. (Also documented in `docs/setups/magna53_ep.md`.)
 - **Fade guard** (`entry_pipeline.py::check_fade_guard`): tiered — MAGNA53 HIGH passes `None` (skipped), 9M Day 2 passes `0.25` (skip if last < lower 25% of ORB). Stop-buy mechanics + 10:00 ET unfilled-cancel are the real backstop.
 
-### 9M EP Detection — **DEPRECATED, disabled in prod**
-**9M is GONE (operator, repeatedly — do not raise it, do not re-verify it, do not cite it as a risk).** Kept as a pointer only because the tables still exist: `docs/setups/ninem.md` owns every threshold; detail in `docs/architecture/market_agent_reference.md`.
+### 9M EP Detection — **GONE** (operator, repeatedly: do not raise it, re-verify it, or cite it as a risk)
+Tables still exist; `docs/setups/ninem.md` owns it.
 
 ### Entry Pipeline
 **`broker/entry_pipeline.py::submit_trade_entry`** — the single entry funnel (per-strategy differences inject via `spec_builder`). **FULL SSoT: `docs/architecture/entry_pipeline.md`** (pipeline stages, action/skip-reason vocabularies, account_mode threading) — update it in the same commit as any pipeline change. **Contract kept inline: every terminal failure Telegrams via `humanize()`.**
@@ -216,19 +217,16 @@ One container, two Alpaca accounts (paper + live), routed per-strategy via `mi_s
 **The 3 correctness invariants (safety backbone — never relax):** (1) mode-bound client order IDs (`make_client_order_id`) at EVERY submission site; (2) cross-account event rejection before any DB mutation (`_verify_event_account_mode`); (3) `account_mode` filter on every trade query.
 
 ### Stop-Leg ID Capture
-`alpaca_client.extract_stop_leg_id(order)` is the canonical helper — **never re-implement the loop** (5 call sites; details in `docs/architecture/entry_pipeline.md`).
+`alpaca_client.extract_stop_leg_id(order)` is canonical — **never re-implement the loop** (`docs/architecture/entry_pipeline.md`).
 
-### Self-Audit System (L1/L2/L3)
-L1 invariant breach → Telegram + audit row · L2 anomaly → Telegram + hypothesis · L3 drift → audit row, Sunday digest. **Job times, cold-start tiers and `/audit <topic>`: `docs/architecture/market_agent_reference.md`.**
-
-### Error Alerting
-Silent theme-engine failures land in `mi_audit_log` and Telegram if any fire within 2h of the nightly run. **Event names + the briefing banner: `docs/architecture/market_agent_reference.md`.**
+### Self-Audit (L1/L2/L3) · Error Alerting
+L1 breach → Telegram + audit row · L2 anomaly → Telegram + hypothesis · L3 drift → audit row, Sunday digest. Silent theme-engine failures land in `mi_audit_log`, and Telegram if any fire within 2h of the nightly run. **Job times, cold-start tiers, `/audit <topic>`, event names: `docs/architecture/market_agent_reference.md`.**
 
 ### Paper Trading (Alpaca)
 - `mi_paper_trades` = EOD simulation table (LIVE_TRADING_ENABLED=true, ALPACA_PAPER=true)
 - `mi_live_trades` = actual Alpaca order table
 - ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, OTO with stop-loss at ORB low. Always `order_class=OrderClass.OTO` — alpaca-py silently drops `stop_loss` kwarg without it.
-- Safeguards (SSoT `docs/setups/safeguards.md`): max 5 positions (`MAX_CONCURRENT_LIVE_POSITIONS`), 2% daily loss limit, tiered drawdown breaker (active 2026-06-03). Count-based circuit breaker (10 losses) is **KEPT** (operator-ruled 2026-07-31, cancelling its queued removal — the plan was to run ONE breaker, the drawdown one; it promoted 6/03 but has never ACTED on live money, so the swap was met in NAME only). BOTH run. ⚠ It is self-perpetuating: a loss closing during cooldown re-arms it 24h from THAT close, so its expiry can land inside the 9:31-9:45 ORB window and cancel most of a day's entries (6 alerts / 0 entries, 2026-07-31).
+- Safeguards — **SSoT `docs/setups/safeguards.md`**: max 5 positions, 2% daily loss limit, tiered drawdown breaker, AND the count-based circuit breaker (10 losses), which he ruled KEPT 2026-07-31. BOTH run. ⚠ The count breaker is self-perpetuating: a loss closing during cooldown re-arms it 24h from THAT close, so its expiry can land inside the 9:31-9:45 ORB window and cancel most of a day's entries (6 alerts / 0 entries, 2026-07-31).
 - Kill switch: `LIVE_TRADING_ENABLED=false` (boot-read) · `/pause` (instant runtime halt, #345)
 
 ### Telegram Formatting
@@ -270,12 +268,11 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
-### 2026-09-13 — an expectation written AFTER the data is not an expectation
+### 2026-09-14 — a measure that never asks what the system already did counts its wins as losses
 
-- 🔴 **A bar derived for ONE pair does not transfer to a best-of-many search.** Correlation ≥0.35 against every live basket put a utility in a fracking theme (57% of alerts admitted) — caught by replay before one live tick. Fix: correlation SHORTLISTS, the nightly assignment judgement DECIDES (`theme_engine.judge_theme_fit`, ONE definition of "fits"). SSoT `magna53_ep.md`.
-- 🔴 **Five confident reversals on ONE question in one evening.** The worst was circular: I told him the birth gate's wait arm would drop *"~53 junk one-day themes"* — which merely restated that bucket's own definition. Measured properly: **5 were one-day, 48 lived 2+ days, 20 lived 14+.** He signed a live flip on that number; it was reverted the same day. **Before quoting any bucket as evidence, ask what the BROKEN system would put in it.**
-- ⚠ **Verify the MECHANISM, not just the claim.** `join_target` genuinely has no membership write — a true fact I filed as a defect without reading the design doc, which says in one line that joins are *"dedup, not kills"*. A locally-true fact inside a misunderstood system is a confident wrong answer.
-- ⚠ **`core/` is orchestrator-owned to `deploy.sh:176` but is COPY'd into the market/execution image** — a `core/` change deploys, prints DEPLOY OK, and leaves apollo-execution **stale**. Caught live; #656.
+- 🔴 **Two days running, a miss rule scored our own output as our failures.** Lane 2's review said *"8 genuine misses, 81 days of earliness"* — **5 were Lane 2's own same-day proposals** (verified row by row) and a sixth was already on the board; the real figure is 29 days of its own LEAD. The day before, *"53 junk one-day themes"* merely restated its bucket's definition. **Before counting a miss, query what the system already found that day and exclude it.** [[check-what-the-system-already-did]]
+- ⚠ **Two silent-dark catches before their deploys, both #456 class.** `ep_theme_belonging.py` loads in `apollo-execution` but was not routed there, so `deploy.sh market-agent` alone would have left the running container stale. Regenerate `scripts/exec_loaded_modules.txt`; a theme/EP deploy is **two steps**.
+- ⚠ **A replacement expectation can be unmeasurable too**, and **UTC rolls at 17:00 PDT** — ~20 stamps dated Sunday's work as Monday. Retiring P1 (it could not fail) gave P1a/P1b, but `comove_stats` had no mirror counter; `rejected_over_sector` was added before shipping, not after. Run `scripts/operator_now.py`; never take the harness date.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
