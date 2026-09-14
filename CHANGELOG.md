@@ -1,3 +1,15 @@
+## 2026-09-12 — a test fixture that invents the caller's input is a claim about the caller
+
+### a TEST FIXTURE that invents the caller's input is a CLAIM about the caller
+
+- 🔴 **#649's stop-repair arm shipped and could not repair a naked position — 20 tests green.** The gap dict `check_position_coverage` returns is the repairer's ARGUMENT LIST, and it carried no `stop_price`, so every call passed `db_stop_price=None` and the no-live-stop branch (the naked case, the whole point) returned `COVERAGE_FLAGGED` without placing anything. The page then said *"the automatic repair did not hold"* about a repair that never ran. **The test mocked the repairer and asserted only the ticker, against a hand-written fixture that invented the dict shape** — the fixture, not the code, decided what the repairer received. Found by an advisor review of my own diff hours after shipping. **Pin a caller's input contract at the REAL producer, or the fixture is the only thing being tested.** Same class as the unfireable gates, in a new disguise.
+- ⚠ **A heartbeat may not call a job dead for a night it did not exist.** The 09:00 liveness check would have paged *"the 9:10 PM verifier appears DEAD"* on the first market morning after a Saturday deploy, reading an empty table correctly and diagnosing it wrongly.
+- ⚠ **Volume is not protection, and brittle tests cost twice.** 8,267 tests run in 83s, but **285 assert on SOURCE TEXT and 32 broke against a refactor that changed no behaviour** — while the two real defects above sailed through green. #653 rations the brittle kind, never the count.
+- #647: 28 alerts in 14 days 400'd legacy Markdown on a bare `_` and the plain retry STRIPPED the SQL's underscores. 13 senders migrated to `md_to_html` + HTML; **~192 remain — #652 fixes the shared default, not more call sites.** A wrapper was built and thrown away: no defect fixed, 32 test edits.
+
+
+---
+
 ### 2026-09-11 — #646: a full exit left a live position naked BY CONSTRUCTION
 
 - **`execute_full_exit` cancelled the resting stop, the sell was REJECTED because the broker had not released the shares, and it returned False having restored nothing** — the cancel and the sell raced each other, so the function caused its own failure, on a HEALTHY position and not only after hours. Fixed in four parts, deployed and verified in the running images. SSoT `docs/setups/exit_discipline.md`.

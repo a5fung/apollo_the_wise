@@ -170,3 +170,48 @@ bar chosen once the result is visible.
 AI/HPC Hosting` — the theme named after his #491 concept, and the headline case for this whole
 change — is **Retired with zero members** as of the 7-day board. It died since 2026-09-08. P3 should
 treat its re-formation as the acceptance case.
+
+
+---
+
+## ✅ OPERATOR SIGN-OFF ON THE EP EFFECT — 2026-09-13, with his own prediction pre-registered
+
+> *"I sign off on the EP effect, imo the number of themes won't change much, so EPs getting boosted
+> shouldn't change much too, but just a guess"*
+
+**His conclusion is right and now measured. One step of the reasoning needs correcting**, because it
+changes what we watch:
+
+| | |
+|---|---|
+| **His premise** | the number of THEMES barely changes |
+| **Correct** | yes — the change adds MEMBERS to existing themes; it mints almost no new ones |
+| **But the boost is keyed to STOCKS, not themes** | every member of an Accelerating/Mainstream theme carries +10, so the number to watch is the boosted STOCK count |
+| **Measured** | **178 distinct stocks** carry the +10 today (22 of 119 themes are Accelerating/Mainstream, holding 178 of the board's 679 names) |
+| **After the change** | ~5 of the 26 returning names land in a boosted theme ⇒ **178 → ~183, +3%** |
+| **So his call stands** | a 3% change in the boosted population. Small, as he guessed. |
+
+⚠ **AND A CORRECTION TO AN EARLIER CLAIM OF MINE: the +10 is NOT decorative.** It was previously
+recorded that *"zero MODERATE-in-theme alerts over 60 days would have crossed to HIGH with it."*
+Measured the other way round — HIGHs that would NOT have been HIGH without the bonus — over the last
+90 days (n=176 scored alerts, 19 of them in an active theme):
+
+| HIGH threshold | alerts that needed the +10 to clear it |
+|---|---|
+| **70** | **4** — SNOW and HOOD (both 2026-09-03, 77.5), BLZE (07-31, 72.0), AEHR (06-17, 70.0) |
+| 65 | 4 — ERO, BLZE, MRVL, AEHR |
+| 60 | 5 |
+
+**Four real alerts in 90 days reached HIGH on the theme bonus.** The mechanism acts on the money
+path; it is not telemetry. That is why this sign-off was required.
+
+### HIS PREDICTION, PRE-REGISTERED (the practice, applied to his own guess)
+
+| | |
+|---|---|
+| **Prediction** | "EPs getting boosted shouldn't change much" |
+| **Baseline, declared now** | 178 boosted stocks · 19 of 176 alerts in-theme · **4 HIGHs in 90 days depended on the +10** |
+| **Confirms it** | boosted stocks ≤ ~190 and the bonus-dependent HIGH rate stays ≈4 per 90 days |
+| **Refutes it** | boosted stocks > 200, or bonus-dependent HIGHs rise above ~8 per 90 days |
+| **What we do if refuted** | report same-day; the R4 bonus has its own instant kill switch, `R4_THEME_BONUS_ENABLED=false` — ⚖ his call, not mine |
+| **Done when** | 90 trading days, or the first refutation, whichever comes first |
