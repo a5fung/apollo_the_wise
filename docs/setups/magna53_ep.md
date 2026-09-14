@@ -600,9 +600,10 @@ much"* — refuted if bonus-dependent HIGHs rise above ~8 per 90 days.
 membership TEST is corrected. Not a reversal of any prior decision.
 
 ⚠ **SUPERSEDED 2026-09-13, before a single live tick** — the correlation-only DECIDER below was
-replayed and found wrong (a utility in a fracking theme); see the 2026-09-13 entry above. The
-verify condition below refers to a `reason='comoves'` vocabulary that no longer exists; the live
-verify is the 2026-09-13 entry's.
+replayed and found wrong (a utility in a fracking theme); see the **2026-09-13 (late evening,
+same day)** TWO-STAGE entry above — NOT the earlier 2026-09-13 bug-fix entry, which is the one
+this text supersedes. The verify condition below refers to a `reason='comoves'` vocabulary that
+no longer exists; the live verify is that late-evening entry's.
 
 **Status**: shipped 2026-09-13 ON, awaiting field validation. VERIFY-LIVE = on the first market
 morning `mi_ep_theme_belonging_shadow` holds rows for the graded names with at least one
