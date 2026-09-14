@@ -22,16 +22,52 @@ import pathlib
 import re
 
 SRC = pathlib.Path("agents/market_intelligence/health_checks.py").read_text(encoding="utf-8")
-ENGINE = pathlib.Path("agents/market_intelligence/theme_engine.py").read_text(encoding="utf-8")
 
 
-def _assignment_call() -> str:
-    """The assignment loop's messages.create call, read from source rather than copied."""
-    i = ENGINE.find("caller=\"theme_assignment\"")
-    assert i > 0, "theme_assignment call site not found"
-    start = ENGINE.rfind("response = await client.messages.create(", 0, i)
-    assert start > 0
-    return ENGINE[start:i]
+def _assignment_call() -> dict:
+    """The kwargs the assignment loop's messages.create call actually sends — captured from
+    ONE nightly-shaped call through the real `_propose_assignment_batch` against a scripted
+    client (2026-09-14: behaviour, not a source scan — the call site gained an EP-time caller
+    with its own tool choice, and a text pin on the source could no longer name which one)."""
+    import asyncio
+    from agents.market_intelligence import theme_engine
+
+    class _Block:
+        def __init__(self, type_, name=None, input_=None, id="b1"):
+            self.type, self.name, self.input, self.id = type_, name, input_ or {}, id
+
+    class _Resp:
+        def __init__(self, blocks):
+            self.content, self.stop_reason = blocks, "tool_use"
+
+    captured: dict = {}
+
+    class _Messages:
+        async def create(self, **kwargs):
+            captured.update(kwargs)
+            return _Resp([_Block("tool_use", name="assign_stocks_to_themes",
+                                  input_={"assignments": []})])
+
+    class _Client:
+        messages = _Messages()
+
+    async def _run():
+        import agents.market_intelligence.spend_tracker as spend_mod
+        _real_spend, _real_audit = spend_mod.log_anthropic_call_safe, theme_engine.log_audit_event
+
+        async def _noop(*a, **k):
+            return None
+        spend_mod.log_anthropic_call_safe, theme_engine.log_audit_event = _noop, _noop
+        try:
+            await theme_engine._propose_assignment_batch(
+                _Client(), [{"ticker": "AAA", "rs_composite": 90, "sector": "Technology"}],
+                shared_prefix="Existing themes: (none)", cooldown_note="",
+                advisor_state={"calls": 0}, batch_no=1, n_batches=1, pool_size=1)
+        finally:
+            spend_mod.log_anthropic_call_safe, theme_engine.log_audit_event = _real_spend, _real_audit
+    asyncio.run(_run())
+    assert captured, "theme_assignment call site not found"
+    return captured
 
 
 # ── the structural fix: free text can no longer eat the budget ───────────────────────────
@@ -40,10 +76,10 @@ def test_assignment_forces_a_tool_call():
     """`auto` let the model answer in prose and never reach a tool — which IS the failure path
     ("no tool_uses" below it). `any` makes that impossible rather than merely less likely."""
     call = _assignment_call()
-    assert '"type": "any"' in call, (
+    assert call.get("tool_choice") == {"type": "any"}, (
         "theme assignment no longer forces a tool call — the model can spend its whole budget on "
         "prose and silently produce nothing, which is the 07-28→08-07 outage")
-    assert '"type": "auto"' not in call, "assignment reverted to tool_choice=auto"
+    assert {t["name"] for t in call["tools"]} == {"assign_stocks_to_themes", "consult_advisor"}
 
 
 def test_assignment_ceiling_was_raised_too():
@@ -51,9 +87,9 @@ def test_assignment_ceiling_was_raised_too():
     billing is on tokens generated, not the ceiling."""
     # 2026-08-09: the number moved into the ceilings registry (with its evidence);
     # the call site must bind from there, and the registered value must hold.
-    assert 'max_tokens_for("theme_assignment")' in _assignment_call(), (
-        "theme_assignment no longer binds its ceiling from shared/output_ceilings.py")
     from shared.output_ceilings import max_tokens_for
+    assert _assignment_call().get("max_tokens") == max_tokens_for("theme_assignment"), (
+        "theme_assignment no longer binds its ceiling from shared/output_ceilings.py")
     assert max_tokens_for("theme_assignment") >= 8000, (
         f"assignment ceiling back down to {max_tokens_for('theme_assignment')}")
 

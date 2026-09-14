@@ -4096,6 +4096,41 @@ _THEME_ASSIGNMENT_TOOL = {
 }
 
 
+def _assignment_stock_line(s: dict) -> str:
+    """ONE rendering of a candidate stock for the assignment prompt. The nightly pass and
+    the EP-time fit judgement (`judge_theme_fit`, called by ep_theme_belonging) both go
+    through it, so a stock reads the same to the model whichever path asks. A `description`
+    on the dict wins over TICKER_DESC (the EP path carries the FMP profile text for a name
+    the universe has no one-liner for); RS is rendered only when the caller has one — the
+    nightly pool always does, so its line is byte-identical to the pre-2026-09-14 form."""
+    from agents.market_intelligence.universe import TICKER_DESC
+    ticker = s["ticker"]
+    desc = s.get("description") or TICKER_DESC.get(ticker, "")
+    rs = s.get("rs_composite")
+    rs_part = f"RS {rs:.0f}, " if rs is not None else ""
+    return f"- {ticker} ({rs_part}sector: {s.get('sector', 'Unknown')} — {desc})"
+
+
+def _assignment_theme_line(t: dict) -> str:
+    """ONE rendering of an existing theme for the assignment prompt (name, a [Fading] stage
+    label the model is told to echo — see `_strip_stage_label` — members, description)."""
+    stage_note = " [Fading]" if t.get("stage") == "Fading" else ""
+    return (f"- {t['name']}{stage_note}: {', '.join(t.get('tickers') or [])} — "
+            f"{(t.get('description') or '')[:120]}")
+
+
+def assignment_shared_prefix(themes: list[dict]) -> str:
+    """The assignment prompt's shared prefix: intro + the theme list the model may assign
+    to. The nightly pass renders the FULL board through it (every batch sees every theme);
+    the EP-time fit judgement renders only a stock's correlation SHORTLIST through it. Same
+    words either way — that is the point: there is ONE definition of "fits a theme"."""
+    return f"""You are a market intelligence analyst. Assign uncovered stocks to existing themes ONLY when the fit is obvious.
+
+EXISTING THEMES:
+{chr(10).join(_assignment_theme_line(t) for t in themes)}
+"""
+
+
 async def _propose_assignment_batch(
     client,
     batch_stocks: list[dict],
@@ -4105,6 +4140,11 @@ async def _propose_assignment_batch(
     batch_no: int,
     n_batches: int,
     pool_size: int,
+    *,
+    allow_advisor: bool = True,
+    caller: str = "theme_assignment",
+    audit_prefix: str = "assignment",
+    sink: dict | None = None,
 ) -> list[dict]:
     """ONE bounded assignment LLM call: the FULL theme list rides in
     `shared_prefix` (input-side context, costs no output), the stock list is
@@ -4116,6 +4156,17 @@ async def _propose_assignment_batch(
     _MAX_ADVISOR_CALLS was always a per-run cost bound and batching must not
     multiply it by the batch count.
 
+    EP-TIME CALLER (2026-09-14, `judge_theme_fit`): the same prompt, tool and
+    rules judge whether an EP candidate fits one of its correlation-shortlisted
+    themes. That caller passes `allow_advisor=False` (one bounded Sonnet call on
+    the scan path — the Opus escalation loop is a nightly luxury, not a 7 AM
+    one: the assign tool is then the ONLY tool and is forced), `caller=` for
+    the cost meter and `audit_prefix=` so its telemetry never lands on the
+    nightly pass's `assignment_llm_proposed` / `assignment_silent_stop` rows
+    (data_gated_reviews.yaml reads those as the NIGHTLY pass's health). `sink`,
+    when given, receives `outcome` (proposed | truncated | silent_stop) and the
+    model's `scratchpad`, so the caller can tell "no fit" from "no verdict".
+
     TRUNCATION HONESTY (2026-08-10): a stop_reason='max_tokens' response is a
     FAILED batch, never "proposed 0 assignments". A truncated tool call parses
     with keys missing (assignments → []), which is exactly how the 07-28→08-07
@@ -4125,15 +4176,7 @@ async def _propose_assignment_batch(
     function's only extra job is to NOT convert the cut into a fake empty
     result (so no assignment_llm_proposed row is written for a truncated call).
     """
-    from agents.market_intelligence.universe import TICKER_DESC
-
-    stock_lines = []
-    for s in batch_stocks:
-        ticker = s["ticker"]
-        desc = TICKER_DESC.get(ticker, "")
-        stock_lines.append(
-            f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, sector: {s.get('sector', 'Unknown')} — {desc})"
-        )
+    stock_lines = [_assignment_stock_line(s) for s in batch_stocks]
 
     batch_note = ""
     if n_batches > 1:
@@ -4155,12 +4198,21 @@ Rules:
 OUTPUT FORMAT — IMPORTANT:
 Do NOT write any free-text analysis before your tool call. All per-ticker reasoning belongs INSIDE the `assign_stocks_to_themes` tool's `analysis_scratchpad` field. Free text before the tool call wastes the output budget and can cause the response to truncate before the tool is invoked.
 
-Call `assign_stocks_to_themes` directly with your reasoning in `analysis_scratchpad` (one short line per ticker: business + decision + theme name or "no fit"). The `assignments` array contains only the actual fits.
+Call `assign_stocks_to_themes` directly with your reasoning in `analysis_scratchpad` (one short line per ticker: business + decision + theme name or "no fit"). The `assignments` array contains only the actual fits."""
+    if allow_advisor:
+        batch_body += """
 
 Consult the advisor ONLY if either of these apply:
 - A stock could plausibly fit 2 different themes and you're not sure which is more specific
 - A stock's description is ambiguous — it could be in this theme or something unrelated
 In every other case, skip the advisor and call `assign_stocks_to_themes` immediately."""
+
+    if allow_advisor:
+        tools = [_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL]
+        tool_choice: dict = {"type": "any"}
+    else:
+        tools = [_THEME_ASSIGNMENT_TOOL]
+        tool_choice = {"type": "tool", "name": _THEME_ASSIGNMENT_TOOL["name"]}
 
     messages: list[dict] = [{
         "role": "user",
@@ -4215,14 +4267,14 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
             # analysis_scratchpad — thinking would be a second hidden copy of that same
             # reasoning, sharing (and able to exhaust) the same ceiling. See llm_thinking.py.
             thinking=llm_thinking.DISABLED,
-            tools=[_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL],
-            tool_choice={"type": "any"},
+            tools=tools,
+            tool_choice=tool_choice,
             messages=messages,
         )
         # #377 cost meter — per-turn (each loop iter is a billed call).
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
-        await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_assignment",
+        await log_anthropic_call_safe(model=THEME_MODEL, caller=caller,
                                        response=response)
 
         if is_truncated(response):
@@ -4233,6 +4285,8 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                 f"({len(batch_stocks)} stocks) — batch skipped; its stocks stay uncovered "
                 f"this run. {_TRUNCATION_ALARM_NOTE.capitalize()}."
             )
+            if sink is not None:
+                sink["outcome"] = "truncated"
             return []
 
         tool_uses = [b for b in response.content if b.type == "tool_use"]
@@ -4254,7 +4308,7 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                 f"Response: {stop_text[:300]}"
             )
             await log_audit_event(
-                "assignment_silent_stop",
+                f"{audit_prefix}_silent_stop",
                 summary=(f"Sonnet stopped without proposing assignments after "
                          f"{advisor_state['calls']} advisor call(s) (batch {batch_no}/{n_batches})"),
                 detail=json.dumps({
@@ -4267,6 +4321,8 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                     "candidate_tickers": [s["ticker"] for s in batch_stocks][:20],
                 }),
             )
+            if sink is not None:
+                sink["outcome"] = "silent_stop"
             return []
 
         assign_block = next((b for b in tool_uses if b.name == "assign_stocks_to_themes"), None)
@@ -4276,6 +4332,9 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
             else:
                 logger.info(f"Theme assignment batch {batch_no}/{n_batches}: advisor used {advisor_state['calls']}x so far this run")
             assignments = assign_block.input.get("assignments", [])
+            if sink is not None:
+                sink["outcome"] = "proposed"
+                sink["scratchpad"] = str(assign_block.input.get("analysis_scratchpad") or "")
             # Telemetry — log every proposal so we can compare LLM intent
             # vs final state and diagnose silent-skip filters.
             proposals = [
@@ -4283,7 +4342,7 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                 for a in assignments
             ]
             await log_audit_event(
-                "assignment_llm_proposed",
+                f"{audit_prefix}_llm_proposed",
                 summary=(f"Sonnet proposed {len(proposals)} assignment(s) "
                          f"(batch {batch_no}/{n_batches}, advisor_calls={advisor_state['calls']})"),
                 detail=json.dumps({
@@ -4323,6 +4382,69 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                     "content": advice,
                 })
         messages.append({"role": "user", "content": tool_results})
+
+
+FIT_CONFIRMED = "confirmed"
+FIT_REJECTED = "rejected"
+FIT_FAILED = "failed"
+
+
+async def judge_theme_fit(
+    ticker: str,
+    *,
+    description: str,
+    sector: str | None,
+    themes: list[dict],
+    rs_composite: float | None = None,
+    client=None,
+) -> tuple[str, str | None, str]:
+    """THE fit judgement, asked at EP time (ep_theme_belonging, 2026-09-14): does `ticker`
+    CLEARLY fit one of `themes`? Same prompt, same tool, same rules and same model as the
+    nightly assignment pass (`_propose_assignment_batch`) — deliberately not a second prompt,
+    so "fits a theme" has ONE definition in the codebase. The nightly pass shows the model
+    the whole board; this shows it only the themes the caller shortlisted (correlation
+    narrows ~100 themes to a few, the judgement decides which one, or none).
+
+    Returns (status, theme_name | None, rationale):
+      FIT_CONFIRMED — the model assigned `ticker` to a theme IN `themes` (stage label
+                      stripped, the `_strip_stage_label` idiom); `rationale` is its sentence.
+      FIT_REJECTED  — the model returned no fit for this ticker, or named a theme that was
+                      not offered (an echo is not a fit); `rationale` is its scratchpad line.
+      FIT_FAILED    — no verdict: the call truncated or the model stopped without calling
+                      the tool. NOT "rejected" — the caller must fall back, never conclude.
+    API errors RAISE (the caller owns the timeout / fail-open policy). One bounded call, no
+    advisor loop, forced tool; telemetry lands on `ep_theme_fit_*` audit rows and the
+    `ep_theme_fit` cost-meter caller, never on the nightly pass's rows."""
+    tk = (ticker or "").upper()
+    if not tk or not themes:
+        return FIT_REJECTED, None, "nothing to judge"
+    if not (description or "").strip():
+        # The nightly pass refuses to cluster blind ("clustering blind produces bogus theme
+        # assignments"); the same refusal applies here.
+        return FIT_FAILED, None, "no description"
+    stock = {"ticker": tk, "sector": sector or "Unknown", "description": description.strip()}
+    if rs_composite is not None:
+        stock["rs_composite"] = rs_composite
+    sink: dict = {}
+    proposals = await _propose_assignment_batch(
+        client or _get_anthropic_client(), [stock], assignment_shared_prefix(themes),
+        cooldown_note="", advisor_state={"calls": 0}, batch_no=1, n_batches=1, pool_size=1,
+        allow_advisor=False, caller="ep_theme_fit", audit_prefix="ep_theme_fit", sink=sink,
+    )
+    outcome = sink.get("outcome")
+    if outcome != "proposed":
+        return FIT_FAILED, None, f"no verdict ({outcome or 'unknown'})"
+    scratch = (sink.get("scratchpad") or "").strip()
+    offered = {(t.get("name") or ""): t for t in themes}
+    for a in proposals:
+        if (a.get("ticker") or "").upper() != tk:
+            continue
+        name = _strip_stage_label(a.get("theme") or "")
+        if name in offered:
+            return FIT_CONFIRMED, name, (a.get("rationale") or scratch)[:500]
+        logger.info(f"ep theme fit: {tk} → '{name}' was not on the shortlist — not a fit")
+        return FIT_REJECTED, None, f"named a theme not offered: {name}"[:500]
+    return FIT_REJECTED, None, (scratch or "no fit")[:500]
 
 
 async def _assign_uncovered_to_themes(
@@ -4369,16 +4491,6 @@ async def _assign_uncovered_to_themes(
     if not uncovered_stocks:
         return [], []
 
-    theme_lines = []
-    for t in existing_themes:
-        if t.get("stage") == "Fading":
-            stage_note = " [Fading]"
-        else:
-            stage_note = ""
-        theme_lines.append(
-            f"- {t['name']}{stage_note}: {', '.join(t.get('tickers') or [])} — {t.get('description', '')[:120]}"
-        )
-
     # Load active cooldowns and inject as a hard constraint in the prompt.
     # #217: run_theme_engine passes its post-rescore fetch; fallback for direct calls.
     if cooldown_set is None:
@@ -4397,11 +4509,7 @@ async def _assign_uncovered_to_themes(
     # a stock's best home can never sit in "another batch" — only the STOCKS
     # are chunked. (The theme list is input-side context; input does not count
     # against the output ceiling that was truncating.)
-    shared_prefix = f"""You are a market intelligence analyst. Assign uncovered stocks to existing themes ONLY when the fit is obvious.
-
-EXISTING THEMES:
-{chr(10).join(theme_lines)}
-"""
+    shared_prefix = assignment_shared_prefix(existing_themes)
 
     # ── Batch loop (2026-08-10): chunk the STOCKS, never the theme list ──────
     # Derivation of _ASSIGN_LLM_BATCH_SIZE at its definition. Chunk order is
