@@ -91,7 +91,8 @@ from agents.market_intelligence.ep_rubric import (
     resolve_score_weights, tier_points)
 # The ONE stage set the theme bonus pays on (2026-09-13 belonging fix) — the list read here
 # and the co-movement read in ep_theme_belonging share this name, never two literals.
-from agents.market_intelligence.ep_theme_belonging import THEME_BONUS_STAGES
+from agents.market_intelligence.ep_theme_belonging import (
+    THEME_BONUS_STAGES, resolve_theme_bonus_input)
 from shared.llm_response import is_truncated
 
 logger = logging.getLogger(__name__)
@@ -3911,7 +3912,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _belonging = {}
 
     def _theme_bonus_input(_tk: str) -> bool:
-        from agents.market_intelligence.ep_theme_belonging import resolve_theme_bonus_input
+        # imported at module top — this is called ~5x per graded candidate per tick
         return resolve_theme_bonus_input(
             _tk in _in_active_theme_set, _belonging.get((_tk or "").upper()), _belonging_live)
 

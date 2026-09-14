@@ -10109,7 +10109,17 @@ reviews:
       genuine-miss count vs correctly-declined, split from any LLM opinion. Then the
       operator rules: leave / widen / retire. Rulings land on #167's PLAN line.
     plan_ref: "#655"  # #167 is no longer on the board; the ruling lands on #655 (theme sequencing).
-    status: pending  # ⛔ THE 2026-09-13 NUMBERS BELOW ARE SUPERSEDED — see the 2026-09-14 block
+    status: done  # ⚖ RULED 2026-09-14 BY HIM: **LEAVE**. ("ok, leave it, let's make sure we track
+    # to see if anything changes our decision going forward.") Forward tracking is its own entry:
+    # `lane2_widen_reconsider` below, with the flip bars declared the same day, before any data.
+    # He pressed twice before ruling and was right to: I briefly flipped the rec to a
+    # propose-but-do-not-promote middle ground, and TWO of my claims about it were false — the
+    # auto-promote allowlist is SOURCE-level not per-proposal (so it needs a sector-vs-catalyst
+    # tag that is the same LLM call's self-report on the judgement being loosened), and NO
+    # operator surface reads an unpromoted candidate (judge_theme_gap.py is the only consumer).
+    # I also cited BRUN/CRWV never being grouped by any lane as pro-widen when the review's own
+    # ground truth reads that as correctly declined. The decision is binary: leave or widen.
+    # ⛔ THE 2026-09-13 NUMBERS BELOW ARE SUPERSEDED — see the 2026-09-14 block
     # immediately after them. Kept verbatim because the correction only means something next to
     # what it corrects.
     #
@@ -10228,6 +10238,86 @@ reviews:
     status: done   # RAN 2026-09-08 on 15 decision records (2026-08-10 -> 09-04), 54 decisions. MIX: seed 27 (50%) · none 13 · birth 8 · join 6. Seeds aged >=15d: 25 (threshold 20, met). CONVERSION: 3 of 27 = 11%. MEDIAN LAG: 1.0 day. VERDICT under the review's OWN pre-declared rule — SPLIT, and the split is the finding: the conversion arm (>~40% = birth-shy) says CALIBRATED at 11%, but the lag arm (<=3d = birth-shy) FIRES at 1.0 day. Read together: ~89% of seeds are correctly held and expire unconverted, but the few that convert do so the VERY NEXT NIGHT — the exact deferred-birth signature this review was built to detect. ⚠ n=3 conversions; the threshold was 20 SEEDS (met), not 20 conversions, so the lag number is directional. REC (operator's ruling, DETECTION = THE LINE): do NOT strengthen the general seeding bias — that would convert correct holds into wrong births across the 89%. Add the targeted mechanical same-night pairing rule instead, which hits only the failure mode. Recorded on #471.
     added_on: 2026-07-27
     cross_refs: ["task #167"]
+
+  - review_id: lane2_widen_reconsider
+    # FILED 2026-09-14 the moment he ruled LEAVE, on his instruction: "let's make sure we track to
+    # see if anything changes our decision going forward." The bars below are written BEFORE any
+    # v2 data accrues, so they cannot be moved to fit what shows up. [[declare-expectations-before-shipping]]
+    title: "Does anything now argue for WIDENING Lane 2? — the re-read he asked for when he ruled leave"
+    question: >-
+      He ruled LEAVE on 2026-09-14 on 5 judgeable v2 no-story days, which is not a rate. This
+      fires when there are 20. THE QUESTION: does the v2-era evidence still support leave?
+
+      THE BARS, DECLARED NOW AND NOT TO BE MOVED:
+      * STAY LEAVE if the judgeable miss rate is under 15% of no-story days (the 09-14 read
+        cleared this at 8%), OR if the misses are groups Lane 1 made on its own within 5
+        sessions — that is Lane 1 doing its job, not Lane 2 failing.
+      * WIDEN BECOMES ARGUABLE only if BOTH: the miss rate exceeds 15% of judgeable no-story
+        days, AND the missed groups were NOT made by Lane 1 within 5 sessions. Even then it is
+        his call and a detection change (CHANGE_PROCESS + sign-off), never automatic.
+      * RETIRE INSTEAD if precision falls below 25% of proposals independently confirmed (44% on
+        2026-09-14). A different decision from widening, with its own bar.
+
+      ⚠ THREE THINGS FLIP THIS EARLY — surface them IMMEDIATELY, do not wait for n=20:
+      (a) HE names a group Lane 2 declined that he considers a real theme. His theme labels are
+          supplementary by his own instruction, but a named miss is evidence the blind spot is
+          real rather than theoretical.
+      (b) The standing ruling that themes are not judged on returns is lifted. That ruling is
+          precisely why the 23-51 days of forgone earliness could not be valued on 2026-09-14 —
+          it is what made this undecidable rather than decided.
+      (c) A declined group later forms a theme that LIVES (>= 14 days on the board). The two
+          that stood on 09-14 were a rotation that lived 2 days and a 15-member RS turnaround;
+          a durable one is a different animal.
+
+      ⚠ AND THE LIMIT THAT DOES NOT GO AWAY, stated so nobody quotes this as settled: ground
+      truth is "did another lane group them later", so a real story NO lane ever finds reads as
+      CORRECTLY DECLINED. This measure cannot see that class at all. It is the known blind spot
+      of the leave decision, not an oversight in the query.
+    predicate_sql: >-
+      WITH runs AS (
+        SELECT DISTINCT (created_at AT TIME ZONE 'America/New_York')::date AS d
+        FROM mi_audit_log WHERE event_type = 'narrative_theme_discovery_ran'
+          AND (created_at AT TIME ZONE 'America/New_York')::date >= DATE '2026-08-09'),
+      alerts AS (SELECT alert_date, count(DISTINCT ticker) AS n FROM mi_ep_alerts GROUP BY 1)
+      SELECT count(*) FROM runs r LEFT JOIN alerts a ON a.alert_date = r.d
+      WHERE a.n >= 2 AND NOT EXISTS (
+        SELECT 1 FROM mi_theme_candidates_shadow c
+        WHERE c.source = 'narrative_cogap' AND c.run_date = r.d)
+    threshold: 20
+    discriminates_on:
+      - mi_audit_log.event_type          # narrative runs only
+      - mi_audit_log.created_at          # >= 2026-08-09, the v2 era; v1 must never be pooled
+      - mi_ep_alerts.alert_date          # >= 2 alerts = a JUDGEABLE day
+      - mi_theme_candidates_shadow.source  # no narrative_cogap proposal that day = no story
+    can_fire:
+      predicate_runs: >-
+        Run 2026-09-14 against prod (apollo-postgres): returns 5. Plain CTE + LEFT JOIN, no
+        folded scalar, executes as written.
+      nonzero_possible: >-
+        Already nonzero: 5 today, and it independently REPRODUCES the 2026-09-14 review's own
+        "5 v2 no-story days" figure computed by a different script — two routes to the same
+        number, which is why this predicate is trusted over the first one I wrote.
+      lane_live: >-
+        Lane 2 runs on every scan day and has since 2026-06-07; v2 (full grounded text + the
+        <2-alert gate removed) since 2026-08-09. 23 v2 run-days as of 2026-09-14.
+      threshold_vs_observed: >-
+        Threshold 20, observed 5. At ~5 judgeable no-story days per 5 weeks this lands around
+        mid-November. DELIBERATELY not a date: the 2026-09-14 read's own limit was that 5 days
+        is not a rate, so the fix is more days, not more calendar.
+      era_scoped: >-
+        Scoped to >= 2026-08-09, the v2 cutover. The 09-13 read's central error came from mixing
+        populations; the v1 days and the 90 hindsight-backfill runs of 06-04/06-06 are excluded
+        by construction here, not by remembering to exclude them.
+    earliest_review_date: 2026-11-10
+    action_when_ready: >-
+      Re-run the SAME script as 2026-09-14 (docs/analysis/lane2_narrative_grouping_review_2026-09-14.md
+      documents it) over the v2 era only, and report against the three bars above verbatim.
+      ⚠ Before counting ANY day as a miss, exclude the groups Lane 2 proposed ITSELF that day —
+      that omission is what made the 2026-09-13 read wrong by a factor of three.
+      [[check-what-the-system-already-did]]
+      ⚖ HIS CALL: leave / widen / retire. Report the number, recommend, do not decide.
+    plan_ref: "#655"
+    status: pending
 
   - review_id: theme_birth_gate_dedup_only_flip
     # ⚖ RULED + FLIPPED 2026-09-13 23:10:57 UTC (operator: "Go with rec"). The bar below was

@@ -641,3 +641,31 @@ async def test_toggle_off_is_byte_identical_to_a_scan_with_no_belonging_at_all(m
         assert _canon(a) == _canon(b), f"{what} differ: toggle OFF is not the pre-fix scan"
     assert none[3][0]["reason"] == "no_baskets" and none[3][0]["acting_in_theme"] is False
     assert off[4] == [] and none[4] == []
+
+
+def test_the_cached_basket_mean_is_used_only_when_nothing_is_excluded():
+    """The all-members mean is computed once at build (it depends on the BASKET, not the
+    candidate) — but a candidate that is ITSELF a member must still get the leave-one-out
+    recompute, or it would be correlated against a mean containing its own returns.
+
+    Mutation that proves this test: make `correlate` always read `basket.mean_all` (drop the
+    `len(keep) == len(basket.members)` guard) and the excluded/included correlations become
+    equal, failing the last assertion while the rest of the file still passes.
+    """
+    import numpy as np
+    ex = {
+        "A": np.array([0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, 0.02, 0.03, -0.01, 0.02, 0.01]),
+        "B": np.array([0.011, 0.021, -0.009, 0.031, 0.019, -0.021, 0.011, 0.019, 0.029, -0.011, 0.021, 0.009]),
+        "C": np.array([-0.02, 0.03, 0.01, -0.03, 0.02, 0.01, -0.01, 0.03, -0.02, 0.01, 0.02, -0.03]),
+        "D": np.array([0.005, 0.015, -0.005, 0.02, 0.01, -0.01, 0.005, 0.012, 0.02, -0.005, 0.015, 0.004]),
+    }
+    bk = etb.build_baskets([{"name": "T", "stage": "Mainstream", "tickers": ["A", "B", "C", "D"]}],
+                           ex, stages=("Mainstream",), min_members=3, min_overlap=5)[0]
+
+    # the cache is the honest full recompute, not a different number
+    assert np.allclose(bk.mean_all, etb._basket_mean(bk.matrix, 3), equal_nan=True)
+
+    corr_excl, _, n_excl = etb.correlate(ex["A"], bk, exclude="A", min_members=3, min_overlap=5)
+    corr_incl, _, n_incl = etb.correlate(ex["A"], bk, min_members=3, min_overlap=5)
+    assert n_excl == 3 and n_incl == 4                 # leave-one-out really drops a row
+    assert abs(corr_excl - corr_incl) > 1e-9           # and it is NOT reading the cached mean

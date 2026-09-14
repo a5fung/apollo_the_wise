@@ -173,6 +173,7 @@ FIT_TIMEOUT = "timeout"
 FIT_ERROR = "error"
 FIT_BUDGET = "budget"              # per-tick / per-day cap or wall budget spent
 FIT_OFF = "off"                    # toggle reverted — no call spent
+REASON_FIT_UNJUDGED = "fit_unjudged"   # `reason` when stage 2 never produced a verdict
 FIT_WINDOW = "window"              # at/after 9:30 ET with no cached verdict — no call spent
 FIT_NO_DESCRIPTION = "no_description"
 _UNJUDGED = frozenset({FIT_PENDING, FIT_FAILED, FIT_TIMEOUT, FIT_ERROR, FIT_BUDGET, FIT_OFF,
@@ -213,6 +214,12 @@ class ThemeBasket:
     stage: str
     members: tuple[str, ...]      # members WITH usable price history, in matrix row order
     matrix: np.ndarray            # (n_members, n_sessions) excess log returns, NaN where missing
+    mean_all: np.ndarray          # the ALL-MEMBERS equal-weight mean, computed once at build
+    # `mean_all` exists because the basket mean depends on the BASKET, not on the candidate being
+    # scored — and stage 1 runs on every graded candidate on every tick, INSIDE the ORB window
+    # (unlike the stage-2 fit call, which is premarket-gated). Recomputing it per candidate was
+    # ~20x the necessary work. Only a candidate that is ITSELF a member needs the leave-one-out
+    # recompute; everyone else reads this.
 
 
 @dataclass
@@ -300,6 +307,18 @@ def _usable(vec: np.ndarray, min_overlap: int) -> bool:
     return int(np.isfinite(vec).sum()) >= min_overlap
 
 
+def _basket_mean(sub: np.ndarray, min_members: int) -> np.ndarray:
+    """Equal-weight mean excess return across `sub`'s rows, NaN on any session where fewer than
+    `min_members` rows are finite. ONE definition, called from build_baskets (all members) and
+    from correlate (leave-one-out) so the cached vector and the recomputed one cannot drift."""
+    finite = np.isfinite(sub)
+    counts = finite.sum(axis=0)
+    with np.errstate(invalid="ignore"):
+        return np.where(counts >= min_members,
+                        np.nansum(np.where(finite, sub, 0.0), axis=0) / np.maximum(counts, 1),
+                        np.nan)
+
+
 def build_baskets(themes: Iterable[dict], excess: dict[str, np.ndarray],
                   stages: tuple[str, ...] = BELONGING_SHADOW_STAGES,
                   min_members: int = BELONGING_MIN_BASKET_MEMBERS,
@@ -316,9 +335,10 @@ def build_baskets(themes: Iterable[dict], excess: dict[str, np.ndarray],
         rows = [t for t in members if t in excess and _usable(excess[t], min_overlap)]
         if len(rows) < min_members:
             continue
+        matrix = np.vstack([excess[t] for t in rows])
         baskets.append(ThemeBasket(
             name=th.get("name") or "", stage=stage, members=tuple(rows),
-            matrix=np.vstack([excess[t] for t in rows]),
+            matrix=matrix, mean_all=_basket_mean(matrix, min_members),
         ))
     return baskets
 
@@ -333,13 +353,10 @@ def correlate(candidate: np.ndarray, basket: ThemeBasket, exclude: str | None = 
     keep = [i for i, m in enumerate(basket.members) if m != (exclude or "").upper()]
     if len(keep) < min_members:
         return None, 0, len(keep)
-    sub = basket.matrix[keep]
-    finite = np.isfinite(sub)
-    counts = finite.sum(axis=0)
-    with np.errstate(invalid="ignore"):
-        basket_mean = np.where(counts >= min_members,
-                               np.nansum(np.where(finite, sub, 0.0), axis=0) / np.maximum(counts, 1),
-                               np.nan)
+    if len(keep) == len(basket.members) and basket.mean_all is not None:
+        basket_mean = basket.mean_all          # nothing excluded -> the mean built with the basket
+    else:
+        basket_mean = _basket_mean(basket.matrix[keep], min_members)
     mask = np.isfinite(candidate) & np.isfinite(basket_mean)
     n = int(mask.sum())
     if n < min_overlap:
@@ -384,7 +401,7 @@ def score_belonging(ticker: str, candidate: np.ndarray | None, baskets: list[The
     if listed:
         fit_status, reason = FIT_LISTED, "listed"
     elif shortlist:
-        fit_status, reason = FIT_PENDING, "fit_unjudged"
+        fit_status, reason = FIT_PENDING, REASON_FIT_UNJUDGED
     elif not baskets:
         # THE BOARD is the reason, and it outranks the ticker's own history: with no basket to
         # compare against, belonging is unjudgeable no matter how much price data this ticker
@@ -426,7 +443,7 @@ def with_fit(read: BelongingRead, status: str, theme: str | None = None,
     if status not in _UNJUDGED:
         raise ValueError(f"unknown fit status {status!r}")
     return replace(read, fit_status=status, fit_theme=None, fit_stage=None,
-                   fit_rationale=rationale, belongs_paying=False, reason="fit_unjudged")
+                   fit_rationale=rationale, belongs_paying=False, reason=REASON_FIT_UNJUDGED)
 
 
 def resolve_theme_bonus_input(listed: bool, read: BelongingRead | None, live: bool) -> bool:

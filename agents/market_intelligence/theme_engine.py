@@ -4384,9 +4384,13 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
         messages.append({"role": "user", "content": tool_results})
 
 
-FIT_CONFIRMED = "confirmed"
-FIT_REJECTED = "rejected"
-FIT_FAILED = "failed"
+# ONE definition, imported rather than restated — ep_theme_belonging.resolve_fit compares its own
+# copies against what judge_theme_fit returns, and two hand-synced literals that happen to coincide
+# is the drift THEME_BONUS_STAGES' own comment forbids ("same values, one name, never two
+# literals"). Direction is forced: ep_theme_belonging._UNJUDGED is built at module load, so it
+# cannot pull from here; ep_theme_belonging imports only db + numpy + stdlib, so this does not cycle.
+from agents.market_intelligence.ep_theme_belonging import (  # noqa: E402
+    FIT_CONFIRMED, FIT_FAILED, FIT_REJECTED)
 
 
 async def judge_theme_fit(
@@ -5499,7 +5503,7 @@ def _strip_stage_label(name: str) -> str:
 #     ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
 # Nothing in this module writes to mi_safeguard_state.
 # ═══════════════════════════════════════════════════════════════════════════════════════════
-from dataclasses import dataclass as _dataclass
+from dataclasses import dataclass
 
 # THE BAR. Derivation (docs/analysis/cross_industry_themes_2026-09-13.md, 60 sessions,
 # SPY-subtracted): real theme members sit 0.5-0.8, a random board stock ≈ 0.05; 0.35 separates
@@ -5516,7 +5520,7 @@ ASSIGN_COMOVE_TOGGLE: tuple[str, str] = ("theme_assign_comove", "THEME_ASSIGN_CO
 ASSIGN_COMOVE_DEFAULT_ON: bool = True
 
 
-@_dataclass
+@dataclass
 class ComoveContext:
     """The nightly run's price context, built ONCE per run by `_load_comove_context`:
     market-adjusted log returns per ticker over the sessions STRICTLY BEFORE `before_date` (the
@@ -5528,7 +5532,7 @@ class ComoveContext:
     n_rows: int                   # mi_daily_closes rows read (cost telemetry)
 
 
-@_dataclass(frozen=True)
+@dataclass(frozen=True)
 class ComoveVerdict:
     """One pair's verdict. `admit` True/False = the tape decided; None = cannot judge -> the
     caller MUST fall back to the sector test (never admit on None)."""
