@@ -870,3 +870,73 @@ OKTA 2 sh @ $165.57 (order `5a93bd8e`) · HOOD 4 sh @ $111 · SEI 2 sh @ $57.82.
 `_bootstrap_alpaca_credentials()` even returns `dual_ready` there while the key is absent. I told him
 the broker disagreed with its own remediation message; he replied *"i see the open orders."*
 **Always probe the broker from inside `apollo-execution`.**
+
+---
+
+## 2026-09-13 (Sun) — 🔴 RESUME HERE. Supersedes everything above.
+
+Tree clean and pushed (`1e5a2db2`). Suite **8,419 passing**. Board **66 → 68** on his own carryover
+instruction. Full detail is in the machine-local `next-session-pickup` memory; this is the
+git-synced subset a fresh machine needs.
+
+### 📌 THE ONE THING ON HIS DESK — #658, how the two theme changes reach production
+
+Both changes are on `main`, **default ON**, and **NOT deployed**. The EP boost fix reads
+`read_belonging_toggle` with `BELONGING_DEFAULT_ON` and **fails OPEN to the fix**, so
+**any `deploy.sh market-agent` for any unrelated reason ships it live** — with its ~US$2 stage-2
+backtest still unrun and the four nonsense matches he caught still unverified as rejected
+(Dominion→fracking, Bakkt→satellites, QBTS→satellites, Compass→AI silicon).
+
+**His ruling: run the backtest first, before the next deploy.** He was told plainly that nothing
+enforces it. He did not take the pre-disable row. **Never write that row on your own authority** —
+`mi_safeguard_state` is THE LINE. On request only:
+
+```sql
+INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+VALUES ('ep_theme_belonging', 'global', 'off', NOW(), NOW())
+ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = 'off', updated_at = NOW();
+```
+
+### Live now
+
+- **Theme birth gate = `dedup_only`** since 23:10:57 UTC, verified from three surfaces. The
+  join/dedup arm acts; everything else stays off. Revert instantly with
+  `set_theme_birth_gate_mode('observe')` — DB-backed, no redeploy. The day ran
+  `on` → `observe` → `dedup_only`; the first two were reverted the same day.
+- **Loud Telegram pages** for the eight naked-position / coverage watchdogs (#501 — they were silent).
+- **The EXPECT/DONE-WHEN commit gate** — a new or edited `deployed` task must state what live data
+  should show and when to stop watching. Escape `EXPECT-NA: <reason>`.
+
+### Not deployed, on main (#658)
+
+- **Cross-sector swap** (`b22e9ff3`): assignment ADMISSIONS move to market-adjusted co-movement at
+  0.35. **Removals stay on the sector test** per his *"swap job 1 and leave job 2"* — verified at
+  both call sites (`theme_engine.py:6544`, `:8248`).
+- **EP theme-belonging fix** (`4835c0c7`): belongs = LISTED **or** (correlation shortlist ≥0.35 →
+  fit confirmed by the nightly assignment judgement). His words: *"EP gets boost if it belongs to a
+  theme, regardless if it's already in a theme or not at the time of EP alert."*
+- Agreed window: Monday **21:15–22:15 ET**, so Monday's engine run stays a clean read of
+  `dedup_only` alone. First live effect Tuesday ~17:00 ET.
+
+### Monday 2026-09-14
+
+First `dedup_only` gated engine run ~17:00 ET — audit rows must carry `/dedup_only]` and `shadow_v2`
+must be promoting again. Also due: **`/simplify`** (he deferred it explicitly), the #658 backtest,
+and the READY-but-unrun `lane2_narrative_grouping_quality` review.
+
+### 🔴 The day's lesson — a check that CANNOT FAIL reads exactly like one that passes
+
+Five confident reversals on one question in one evening; he stopped me twice. The worst was
+circular: *"~53 junk one-day themes"* restated that bucket's own definition — measured properly, 5
+were one-day, 48 lived 2+ days, 20 lived 14+, and he had signed a live flip on it. Separately,
+`join_target` having no membership write is a **true fact** I filed as a defect without reading the
+design doc that says joins are *"dedup, not kills"*. **A locally-true fact inside a misunderstood
+system is a confident wrong answer.**
+
+### ⚠ Two mechanical traps hit today
+
+- **UTC rolls at 17:00 PDT.** ~20 stamps written that evening dated Sunday's work as Monday, across
+  two SSoT change logs, four modules, CLAUDE.md and PLAN.md. All corrected. **Run
+  `python scripts/operator_now.py`; never take the harness date.**
+- **`core/` is orchestrator-owned to `deploy.sh:176` but is COPY'd into the market/execution
+  image** — a `core/` change deploys, prints DEPLOY OK, and leaves `apollo-execution` stale (#656).
