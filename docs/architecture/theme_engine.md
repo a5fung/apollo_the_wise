@@ -169,6 +169,20 @@ docstring are the durable SSoT going forward).
 
 ### Judge-named theme capture (#651, built 2026-09-12) — the NAME, and how late the engine is
 
+> ⚖ **RULED 2026-09-14 — LEAVE AS IS. Do not re-raise.** He tapped the promote button on
+> *Semiconductor Equipment Cycle Recovery* (ACMR+ONTO) and got *"only 2 member(s) — need ≥3. Not
+> promoted."* **That is the design, not a defect:** `format_candidate_alert` states the bar in
+> words and the button is meant to PERSIST so the original message goes live if the judge names a
+> third (`SEED_REFRESH_DAYS = 7`). ⚠ I started removing the button for sub-bar groups and
+> `test_651_judge_named_themes.py` caught it — the test encodes the persistence deliberately.
+> ⚠ **Known and accepted, stated so nobody files it as a bug:** the seed sits in a 7-day window,
+> so a group that never gets a third naming lets its button stop resolving silently. This one's
+> tickers were last named 2026-08-07, 38 days before it paged, so it is dormant and will likely
+> never promote itself. **`_PROMOTE_MIN_MEMBERS` stays 3** (ruled 2026-09-13 for the auto-promote
+> lane). Whether a MANUAL tap should be exempt from an auto-promote floor was surfaced to him on
+> 2026-09-14 and he ruled **leave it**. [[never-re-ask-an-answered-question]]
+
+
 The #322 feed above records THAT the judge fired on an untracked name, as a sector+date
 stub, and deliberately never the group the judge named. #651 captures the name itself,
 structured, from the prose the judge already wrote (`mi_ep_alerts.judge_rationale`): the
