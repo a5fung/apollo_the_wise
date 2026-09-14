@@ -815,14 +815,59 @@ reviews:
       SELECT COUNT(DISTINCT theme_date) FROM mi_themes
       WHERE theme_date > CURRENT_DATE - 200
     threshold: 120
+    discriminates_on:
+      - mi_themes.theme_date          # distinct DAYS of theme history, the thin-history blocker
+    can_fire:
+      predicate_runs: >-
+        Run 2026-09-14 against prod (apollo-postgres): returns 124. One-line COUNT DISTINCT,
+        no CTE, no folded scalar. Executed, not assumed.
+      nonzero_possible: >-
+        Already nonzero and already past: 124 against a threshold of 120. And the review it
+        gates has now actually been EXECUTED end to end (2026-09-14), which is the strongest
+        possible evidence that it can fire — it did.
+      lane_live: >-
+        The theme engine writes mi_themes every market evening and has since 2025-12; that is
+        the only lane this predicate reads. mi_correlation_clusters holds ~1,938 clusters over
+        144 days, so the measured population exists too.
+      threshold_vs_observed: >-
+        Threshold 120 distinct theme-days, observed 124 — met, and MET LONG AGO. ⚠ THE REAL
+        FINDING OF THIS ENTRY IS THE 104-DAY DELAY: it was ripe from 2026-06-01, surfaced in
+        the weekly digest every week, and nobody triaged it. Surfacing is not triage. That is
+        what #662 (the weekly-review redesign, filed 2026-09-14) exists to fix.
+      era_scoped: >-
+        The 200-day window is why the 2026-04-17 reading was worthless: the old 0.5% was taken
+        against a theme-data GAP, not a real population. The re-run states plainly that the two
+        eras are NOT comparable rather than quoting a 72x improvement.
     earliest_review_date: 2026-06-01
     action_when_ready: |
-      Rerun the 2026-04-17 backtest pipeline with the larger theme window.
-      Compare precision/recall vs prior 0.5%/8.2%. If precision still < 5%,
-      retire correlation_engine and remove /clusters surface. If improved,
-      gate on alerting (HIGH-precision clusters trigger Telegram).
+      ⛔ DO NOT RUN scripts/backtest_clusters.py — this line used to say "rerun the
+      2026-04-17 backtest pipeline" and that script calls the LIVE
+      run_correlation_clustering(day), which WRITES rows into mi_correlation_clusters
+      and dedups them against TODAY's themes. Running it over a historical range
+      overwrites real cluster history with a back-dated, wrongly-deduped version.
+      Found 2026-09-14 while executing this very entry; the instruction was a trap.
+      Use the read-only replay in docs/analysis/correlation_engine_revalidation_2026-09-14.md.
       Origin: CLAUDE.md historical 2026-04-17 session 4.
-    status: pending
+    status: done
+    # ✅ RAN 2026-09-14, $0, read-only (ripe 104 days — it surfaced weekly and nobody triaged it;
+    # that delay is the finding as much as the number is).
+    # RESULT: precision = 36.2% (354 of 979 cluster-days where the stored cluster sat inside a
+    # theme 2-6 weeks later), on the SAME definition as the 2026-04-17 measurement. The old
+    # 0.5% was not a real reading — it was taken against a theme-data gap. Eras are NOT
+    # comparable and the doc says so rather than quoting a 72x improvement.
+    # DISCRIMINATING CONTROL, declared before the query: random same-size groups from the same
+    # day's universe score 0.2%. So the engine is 1-in-8 on genuinely new themes 2-6 weeks
+    # early against 1-in-50 for random. A useless engine and a working one do NOT produce the
+    # same reading here, which is what makes 36% mean something.
+    # ⚖ OUTCOME: KEEP AS-IS. Retire is off the table (the entry's own floor was 5%; the
+    # backtest script's own header sets 30% as the production-signal bar and 36.2% clears it).
+    # And DO NOT build the alert gate the old action proposed: there is no high-precision
+    # stratum to gate on — the tightest, strongest clusters are the ones discovery names LEAST
+    # (RS >= 70 clusters: 20%) — and a "hit" only means the theme engine later named it, which
+    # is not a page-worthy fact. Keep-as-is changes nothing, so it needs no sign-off; retiring
+    # or gating would (CHANGE_PROCESS + operator).
+    # ⚠ Not this module: ep_theme_belonging's SPY-subtraction correlation is DIFFERENT math on a
+    # separately calibrated bar. Do not merge them — that is a detection change.
     added_on: 2026-04-29
 
   - review_id: fishhook_TI3_revisit
