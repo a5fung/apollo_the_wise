@@ -254,7 +254,9 @@ async def describe(ticker: str, desc_rows: dict, cache: dict) -> tuple[str, str 
 async def run_fits(jobs: list[dict], cache_path: Path, concurrency: int, meter: Meter) -> dict:
     """jobs: [{key, ticker, description, sector, themes}] -> {key: verdict dict}. Cached."""
     verdicts = json.loads(cache_path.read_text()) if cache_path.exists() else {}
-    todo = [j for j in jobs if j["key"] not in verdicts]
+    # a cached FAILURE (auth error, timeout, exception) is not a verdict — re-buy it, the way the
+    # live module never caches a non-verdict
+    todo = [j for j in jobs if verdicts.get(j["key"], {}).get("status") not in ("confirmed", "rejected")]
     print(f"stage 2: {len(jobs)} judgements, {len(jobs) - len(todo)} cached, {len(todo)} to buy")
     if not todo:
         return verdicts
@@ -317,8 +319,6 @@ async def main_async(d: Path, spend: bool, concurrency: int) -> None:
     desc_cache_path = d / "profile_descriptions.json"
     desc_cache = json.loads(desc_cache_path.read_text()) if desc_cache_path.exists() else {}
     jobs, nas_jobs, no_desc = [], [], []
-    for r in shortlisted + nascent_only:
-        pass
     for r in rows:
         rd = r["read"]
         if rd.listed:
@@ -347,7 +347,7 @@ async def main_async(d: Path, spend: bool, concurrency: int) -> None:
     est_total = (len(jobs) + len(nas_jobs)) * est_per_call
     cache_path = d / "fit_verdicts.json"
     cached = json.loads(cache_path.read_text()) if cache_path.exists() else {}
-    to_buy = [j for j in jobs + nas_jobs if j["key"] not in cached]
+    to_buy = [j for j in jobs + nas_jobs if cached.get(j["key"], {}).get("status") not in ("confirmed", "rejected")]
     print(f"stage 1: n={n} listed(recon)={listed_recon} listed(stored)={listed_stored} agree={agree} "
           f"shortlisted(unlisted, paying)={len(shortlisted)} nascent-shortlisted(unlisted)={len(nascent_only)} "
           f"no_description={len(no_desc)}")
@@ -398,12 +398,17 @@ def _write(d, rows, verdicts, nas_keys, meter, price, model, est_per_call, *, dr
         names = [nme for nme, _, _ in (r["read"].shortlist if lane == "paying" else r["read"].nascent_shortlist)]
         return f"{r['date']}|{r['ticker']}|{lane}|{';'.join(names)}"
 
+    no_desc_ids = {id(r) for r in no_desc}
     for r in rows:
         rd = r["read"]
         v = verdicts.get(vkey(r, "paying")) if (not rd.listed and rd.shortlist) else None
         if v is None:
-            r["fit"] = etb.with_fit(rd, etb.FIT_NO_DESCRIPTION if r in no_desc else etb.FIT_NOT_SHORTLISTED) \
-                if not rd.listed and rd.shortlist else rd
+            # no verdict for a shortlisted, unlisted name: no description, or the call was never
+            # made / never came back — UNJUDGED either way (list membership decides), never a
+            # 'not shortlisted' relabel and never a crash after the money is spent
+            r["fit"] = (etb.with_fit(rd, etb.FIT_NO_DESCRIPTION if id(r) in no_desc_ids else etb.FIT_FAILED,
+                                     rationale="no verdict in fit_verdicts.json")
+                        if (not rd.listed and rd.shortlist) else rd)
         else:
             st = v["status"]
             stage = next((s for nme, s, _ in rd.shortlist if nme == v.get("theme")), None)
@@ -473,8 +478,8 @@ def _write(d, rows, verdicts, nas_keys, meter, price, model, est_per_call, *, dr
     P("\n### Recount: HIGHs that depend on the +10 TODAY (listed alerts, at each alert's own era bar)\n")
     dep = []
     for r in rows:
-        if not r["read"].listed and not r["stored_listed"]:
-            continue
+        if not r["stored_listed"]:
+            continue          # the stored score carries the +10 ONLY if the live flag paid it that day
         e = r["eff"]
         if e["status"] in ("unreconstructible",) or e["raw"] is None:
             continue
@@ -482,20 +487,21 @@ def _write(d, rows, verdicts, nas_keys, meter, price, model, est_per_call, *, dr
             wo = without_bonus(r["alert"], e)
             if wo is not None and wo < e["bar"]:
                 dep.append((r, wo))
-    P(f"{len(dep)} listed alert(s) are HIGH only because of the +10 at their own era bar "
+    P(f"{len(dep)} alert(s) that carried the +10 (stored `in_active_theme`) are HIGH only because of it at their own era bar "
       f"(the earlier read of 4 — SNOW, HOOD 09-03; BLZE 07-31; AEHR 06-17 — was taken at a flat 70).\n")
     if dep:
         P("| date | ticker | score | without +10 | era bar |\n|---|---|---|---|---|")
         for r, wo in dep:
             P(f"| {r['date']} | {r['ticker']} | {r['eff']['before']} | {wo} | {r['eff']['bar']} |")
     P("\nThe four alerts the earlier read named, at their own era bar:\n")
-    P("| date | ticker | score | listed | era bar | without +10 | HIGH without it? |\n|---|---|---|---|---|---|---|")
+    P("| date | ticker | score | +10 paid | era bar | HIGH at the scorer WITH it? | without +10 | HIGH without it? |\n|---|---|---|---|---|---|---|---|")
     for r in rows:
         k = (r["alert"]["alert_date"], r["ticker"])
         if k in NAMED_HIGHS:
             e = r["eff"]
-            wo = without_bonus(r["alert"], e) if (r["read"].listed or r["stored_listed"]) else None
-            P(f"| {k[0]} | {k[1]} | {e['before']} | {r['read'].listed or bool(r['stored_listed'])} | {e['bar']} | {wo if wo is not None else 'n/a (not listed)'} | "
+            wo = without_bonus(r["alert"], e) if r["stored_listed"] else None
+            with_it = "yes" if e["before"] >= e["bar"] else "no (stored tier is the judge's)"
+            P(f"| {k[0]} | {k[1]} | {e['before']} | {bool(r['stored_listed'])} | {e['bar']} | {with_it} | {wo if wo is not None else 'n/a (bonus not paid)'} | "
               f"{'no' if (wo is not None and wo < e['bar']) else ('yes' if wo is not None else 'n/a')} |")
 
     # Nascent, separately

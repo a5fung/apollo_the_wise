@@ -41,7 +41,7 @@ run "SELECT a.id, a.ticker, a.alert_date, a.detected_at, a.ep_score, a.score_tie
      ) s ON true
      LEFT JOIN LATERAL (
         SELECT regime, ep_threshold FROM mi_market_regime
-        WHERE regime_date <= a.alert_date ORDER BY regime_date DESC LIMIT 1
+        WHERE regime_date < a.alert_date ORDER BY regime_date DESC LIMIT 1   -- the row a MORNING scan read: mi_market_regime rows are written 17:00 ET on their own date
      ) r ON true
      WHERE a.alert_date >= CURRENT_DATE - $WINDOW_DAYS AND a.ep_score IS NOT NULL
      ORDER BY a.alert_date, a.ticker" > "$OUT/alerts.csv"

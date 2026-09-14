@@ -234,6 +234,32 @@ recurring group which theme suppressed it) — a quiet month and a dead trigger 
 identically; a read failure RAISES so `audit_wrap` records the failure and #501 pages.
 Expected ~one page a month. $0 preview: `scripts/judge_named_themes_651.py --surface --dry-run`.
 
+### 2026-09-14 — the ASSIGNMENT JUDGEMENT is now on the EP money path (`judge_theme_fit`)
+
+**What changed**: `theme_engine.judge_theme_fit(ticker, description=, sector=, themes=)` asks the
+nightly assignment pass's own question — the SAME `_propose_assignment_batch` (same prompt, same
+`assign_stocks_to_themes` tool, same rules: *clearly matches the thesis / when in doubt do not /
+most specific theme / exact name*) — of a caller-supplied theme SHORTLIST, with the assign tool
+forced and no Opus advisor loop. It is stage 2 of the EP theme-bonus BELONGING test
+(`ep_theme_belonging.py`, SSoT `docs/setups/magna53_ep.md` 2026-09-14): correlation shortlists ≤3
+paying-stage themes, this judgement decides, and a confirmed fit pays the +10 on the EP score.
+The prompt builders are extracted (`assignment_shared_prefix`, `_assignment_stock_line`,
+`_assignment_theme_line`); the nightly render is byte-identical (pinned by literal in
+`tests/test_ep_theme_fit.py`).
+
+**⚠ What that means for anyone editing the assignment prompt**: its wording is now a SCORING
+input on the money path, not only a nightly membership input. A "nightly-only" edit to the rules
+text, the tool schema or the stock/theme line format silently moves EP scores the next morning.
+Edit it as a detection-criterion change (CHANGE_PROCESS, magna53_ep.md) — that is the price of
+having ONE definition of "fits a theme" instead of two that drift.
+
+**Telemetry is separated on purpose**: the EP-time caller logs to the cost meter as
+`ep_theme_fit` and writes `ep_theme_fit_llm_proposed` / `ep_theme_fit_silent_stop` audit rows —
+never the nightly's `assignment_llm_proposed` / `assignment_silent_stop`, which
+`data_gated_reviews.yaml` and `health_checks` read as the NIGHTLY pass's health (a dead nightly
+must not look alive because the morning scan proposed something). Bounds live in
+`ep_theme_belonging.py` (≤3 calls/tick, ≤40/day, 15 s timeout, premarket only, cached per day).
+
 ### 2026-09-13 — birth gate `observe` → `on` (OPERATOR-SIGNED)
 
 **Trigger**: he asked why the gate was still observe-only and what to expect on flipping. It had
