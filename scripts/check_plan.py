@@ -1591,6 +1591,131 @@ def _close_evidence_gate(errors, tasks) -> None:
                 f"to be true. Its {kind} reads: \"{bar_text.strip()[:180]}...\"")
 
 
+# --- EXPECT / DONE-WHEN GATE (operator 2026-09-13) -----------------------------------------------
+# WHY: the theme change shipped today went out behind a PRE-REGISTRATION (docs/analysis/
+# cross_industry_themes_2026-09-13.md § "PRE-REGISTRATION") — expected effects against TODAY's
+# baseline, plus an explicit stopping rule — written BEFORE going live, not reconstructed after.
+# The operator's ask, verbatim: *"we should make this standard practice, write down expectations
+# to be verified live so we know how to treat what we see in real live data, what to do, and when
+# we're done."* Same reason every rule in this file is mechanical, not prose: prose reconciles have
+# never held here, and a memory drifted inside 24 hours once already.
+#
+# `EXPECT:` = what we expect to see in live data, and the baseline it is measured against.
+# `DONE-WHEN:` = the stopping rule — when we stop watching and call it settled.
+# Escape: `EXPECT-NA: <reason>` (>=12 chars, same floor `can_fire_missing`/`source-pin-ok` use) for
+# a task with genuinely nothing to expect — a pure revert, a docs-only change.
+#
+# SCOPED, same shape as `_review_can_fire_gate` and `check_test_source_pins.py` (Gate 7): 23
+# `deployed` tasks were already on the board the day this shipped and NONE carried `EXPECT:` — a
+# gate that hard-fails all 23 is a wall in front of the very next commit, not a gate, and a
+# half-hearted backfill would make it born green but hollow. So this BLOCKS only a `deployed` line
+# that is NEW or EDITED this commit (via `_diff_added_task_lines`, the SAME differ `--audit-new`
+# already uses — one differ, reused, never a second one invented for this rule) and SURFACES the
+# pre-existing count as a named, non-blocking backlog line every plain run, so it can be paid down
+# deliberately rather than hidden.
+# `(?:\([^)]{0,90}\))?` after the marker mirrors close_bar_for's DoD pattern exactly — the
+# parenthetical is what you write when retrofitting a criterion onto an OLD line
+# (`EXPECT (added 2026-09-14): ...`), and rejecting it silently made five real DoDs invisible
+# during the LAST retrofit this repo ran (2026-09-10). The 23-task EXPECT backfill is the next
+# one, so the same shape must not go missing twice.
+_EXPECT_PATTERN = re.compile(
+    r"\*{0,2}EXPECT\*{0,2}\s*(?:\([^)]{0,90}\))?\s*\*{0,2}\s*[:=]\s*\*{0,2}\s*(.{20,}?)" + _BAR_END, re.S)
+_DONE_WHEN_PATTERN = re.compile(
+    r"\*{0,2}DONE-WHEN\*{0,2}\s*(?:\([^)]{0,90}\))?\s*\*{0,2}\s*[:=]\s*\*{0,2}\s*(.{20,}?)" + _BAR_END, re.S)
+_EXPECT_NA_PATTERN = re.compile(r"EXPECT-NA\s*:\s*(.+?)" + _BAR_END, re.S)
+_EXPECT_NA_FLOOR = 12   # "n/a" is not a reason — same floor can_fire_missing/source-pin-ok use
+
+
+def expect_done_when_for(title: str) -> "tuple[str, str] | None":
+    """(expect-text, done-when-text) this task states, or None if either is missing or too thin.
+
+    Same substrate and floor idiom as `close_bar_for`: matched against `_verify_claim_body`
+    (a meta-tag like `[ok:...]` is commentary about a past rebump, never a live statement of THIS
+    task's own expectation), and each half must clear the SAME 25-char normalized floor
+    `close_bar_for` applies to a DoD — "EXPECT: yes" is not an expectation any more than
+    "DoD: done" is a DoD.
+    """
+    body = _verify_claim_body(title)
+    m_e = _EXPECT_PATTERN.search(body)
+    if not m_e or len(_norm(m_e.group(1))) < 25:
+        return None
+    m_d = _DONE_WHEN_PATTERN.search(body)
+    if not m_d or len(_norm(m_d.group(1))) < 25:
+        return None
+    return m_e.group(1).strip(), m_d.group(1).strip()
+
+
+def expect_na_reason(title: str) -> "str | None":
+    """The `EXPECT-NA: <reason>` escape text, if present and long enough to count as a reason."""
+    body = _verify_claim_body(title)
+    m = _EXPECT_NA_PATTERN.search(body)
+    if m and len(m.group(1).strip()) >= _EXPECT_NA_FLOOR:
+        return m.group(1).strip()
+    return None
+
+
+def _diff_added_task_lines(base: str = "origin/main", cached: bool = False) -> "list[dict] | None":
+    """Task lines added by a `git diff base -- PLAN.md` — the SAME differ `--audit-new` already
+    used (originally inlined there; extracted here so it has exactly one implementation, per the
+    operator's instruction not to write a second one). A '+' line that parses as a task, i.e. the
+    line-based diff's view of "this task line is new here". A single-line EDIT (status flip,
+    retitle) shows as a '-' (old) + '+' (new) pair in that same diff, so this catches EDITED lines
+    too, not only additions.
+
+    `cached=True` diffs the STAGED index instead of the working tree — what a PRE-COMMIT gate must
+    judge (an unstaged edit is not part of the commit being made), mirroring
+    `_close_evidence_gate`'s own `git diff --cached origin/main -- PLAN.md`. `--audit-new` is a
+    CLOSE-ritual eyeball review of the whole session's edits, not a commit gate, so it keeps the
+    default working-tree diff (`cached=False`) — unchanged from its original behavior.
+
+    Returns None when git could not produce a diff at all (fail OPEN — never block a commit on a
+    git/infra hiccup, the posture every other git-touching gate in this file takes); [] when
+    PLAN.md is unchanged versus `base`.
+    """
+    import subprocess
+    cmd = ["git", "diff"] + (["--cached"] if cached else []) + [base, "--", "PLAN.md"]
+    try:
+        diff = subprocess.run(cmd, cwd=str(REPO),
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=10).stdout
+    except Exception:
+        return None
+    added = [ln[1:].strip() for ln in diff.splitlines()
+             if ln.startswith("+") and not ln.startswith("+++") and ln[1:].lstrip().startswith("- #")]
+    return [{"id": int(m.group(1)), "title": m.group(4)}
+            for m in (_TASK.match(ln) for ln in added) if m]
+
+
+def _expect_done_when_gate(tasks, errors) -> None:
+    """A `deployed` task that is NEW or EDITED this commit must state `EXPECT:` + `DONE-WHEN:` —
+    what we expect in live data (against today's baseline) and when we stop watching and call it
+    settled — or `EXPECT-NA: <reason>` if it genuinely has nothing to expect. See the section
+    comment above for why this is scoped to touched lines only and how the pre-existing 23 are
+    surfaced rather than blocked.
+    """
+    touched = _diff_added_task_lines("origin/main", cached=True)
+    touched_ids = {t["id"] for t in touched} if touched is not None else set()
+    backlog = 0
+    for t in tasks:
+        if t["status"] != "deployed":
+            continue
+        if expect_done_when_for(t["title"]) is not None:
+            continue
+        if expect_na_reason(t["title"]) is not None:
+            continue
+        if t["id"] in touched_ids:
+            errors.append(
+                f"L{t['line']}: task #{t['id']} is `deployed` and NEW or EDITED this commit, but "
+                f"states no `EXPECT:` + `DONE-WHEN:` (what we expect in live data, against today's "
+                f"baseline, and when we stop watching and call it settled) — or `EXPECT-NA: "
+                f"<reason>` if it genuinely has nothing to expect (operator 2026-09-13: \"write "
+                f"down expectations to be verified live... and when we're done\").")
+        else:
+            backlog += 1
+    print(f"[plan] EXPECT/DONE-WHEN backlog: {backlog} pre-existing `deployed` task(s) state no "
+          f"live-data expectation or stopping rule (not blocking — pay down deliberately).")
+
+
 def _standing_ask_gate(errors) -> None:
     """The standing-ask table may not carry a proofless row, and may not resurrect a retired one.
 
@@ -2024,20 +2149,15 @@ def main(argv: list[str]) -> int:
         # a scoped CLOSE review of only the new lines. Default base = origin/main (correct
         # when the session batches its commit at CLOSE); pass an explicit ref if you pushed
         # PLAN.md mid-session: `--audit-new <session-start-ref>`.
-        import subprocess
         idx = argv.index("--audit-new")
         base = argv[idx + 1] if idx + 1 < len(argv) and not argv[idx + 1].startswith("-") else "origin/main"
-        try:
-            diff = subprocess.run(
-                ["git", "diff", base, "--", "PLAN.md"], cwd=str(REPO),
-                capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
-        except Exception as e:
-            print(f"[audit-new] could not `git diff {base} -- PLAN.md`: {e}")
+        # `_diff_added_task_lines` is the ONE differ (2026-09-13) — this used to hand-roll its own
+        # `git diff` here; the EXPECT/DONE-WHEN gate needs the identical "new-or-edited-vs-base"
+        # detection, so it was extracted rather than copied a second time.
+        new = _diff_added_task_lines(base)
+        if new is None:
+            print(f"[audit-new] could not `git diff {base} -- PLAN.md`")
             return 0
-        added = [ln[1:].strip() for ln in diff.splitlines()
-                 if ln.startswith("+") and not ln.startswith("+++") and ln[1:].lstrip().startswith("- #")]
-        new = [{"id": int(m.group(1)), "title": m.group(4)}
-               for m in (_TASK.match(ln) for ln in added) if m]
         thin = [t for t in new if looks_thin(t["title"], t["id"])]
         print(f"=== NEW-TASK AUDIT — {len(new)} task(s) added vs {base} ===")
         if not new:
@@ -2073,6 +2193,7 @@ def main(argv: list[str]) -> int:
     _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
     _pending_verify_gate(tasks, errors)   # own text claims a pending verify but status != deployed; HARD on touched, WARN on pre-existing (operator 8/09, the #167 lesson)
     _deployed_no_verify_gate(tasks, errors)   # deployed but states NO verify condition at all; HARD on touched, WARN on pre-existing (operator 8/09, the inverse)
+    _expect_done_when_gate(tasks, errors)   # NEW/EDITED deployed task must state EXPECT:+DONE-WHEN: or EXPECT-NA:; pre-existing = surfaced backlog, not a wall (operator 9/13)
 
     # buried-work tripwire: when a task NAMES critical-path/blocker build work, that phrase must be
     # IMMEDIATELY followed by the #id of the task that does it — forcing "name it -> point at the
