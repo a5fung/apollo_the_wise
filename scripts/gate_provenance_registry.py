@@ -398,4 +398,28 @@ GATE_REGISTRY: list[dict] = [
                 "SMA-10' was a birth transcription error (never in code), corrected same-day "
                 "(magna53_ep.md lines 19/30/53 + change log). Live criterion unchanged.",
     },
+    # ── Family B / detection — ep_theme_belonging.py (docs/setups/magna53_ep.md SSoT) ──────────
+    {
+        "id": "ep_theme_belonging.BELONGING_CORR_BAR",
+        "file": "agents/market_intelligence/ep_theme_belonging.py",
+        "kind": "const",
+        "name": "BELONGING_CORR_BAR",
+        "value": 0.35,
+        "citation": {
+            "file": "docs/setups/magna53_ep.md",
+            "text": "co-movement bar 0.35",
+        },
+        "note": "2026-09-13 BUG FIX, operator-directed (\"EP gets boost if it belongs to a theme, "
+                "regardless if it's already in a theme or not at the time of EP alert\"): the +10 "
+                "theme bonus keys on BELONGING at alert time — listed OR market-adjusted "
+                "correlation >= this bar with a THEME_BONUS_STAGES theme's member basket over the "
+                "60 sessions strictly before the scan date. 0.35 is the bar the operator signed the "
+                "same day for the assignment gate's sector-test replacement (admits IREN 0.70+, MSTR "
+                "0.65, CMC 0.60, GPN 0.54; rejects OTTR -0.14, ECO -0.11, SEDG 0.16, AGX 0.29 — "
+                "docs/analysis/cross_industry_themes_2026-09-13.md). Whether it TRANSFERS to this "
+                "use (a max over ~20 baskets, not one nominated pair) is the null-control curve in "
+                "docs/analysis/ep_theme_belonging_backtest_2026-09-13.md. Scoring-only: it never "
+                "admits or removes a candidate; it moves a score by the existing +10. Reversion "
+                "toggle `ep_theme_belonging` (default ON). Change log: magna53_ep.md 2026-09-13.",
+    },
 ]

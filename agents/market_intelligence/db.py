@@ -4190,6 +4190,53 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_ep_score_shadow_date
                 ON mi_ep_score_shadow(scan_date DESC);
 
+            -- THEME BELONGING record (2026-09-13, operator-directed BUG FIX): the +10 theme
+            -- bonus keys on whether the stock BELONGS to a live theme at alert time (listed
+            -- OR co-moving with a THEME_BONUS_STAGES basket over the sessions strictly before
+            -- the scan date), not on last night's ticker list alone. One row per scored
+            -- candidate per day (first/last idiom): what list membership alone and what
+            -- belonging would each have scored, which ACTED (`acting_in_theme` — stamped,
+            -- never inferred from dates), the co-movement read behind it, the incl-Nascent
+            -- shadow read (never acting — a separate operator decision), and the bar /
+            -- lookback / stage set the row was judged under (#606 acting-value convention).
+            -- Read by NO grading / entry / sizing / safeguard path — evidence only.
+            -- RETENTION: kept forever (evidence class). Writer: ep_theme_belonging.py.
+            CREATE TABLE IF NOT EXISTS mi_ep_theme_belonging_shadow (
+                id                             SERIAL PRIMARY KEY,
+                scan_date                      DATE NOT NULL,
+                ticker                         TEXT NOT NULL,
+                first_seen_et                  TIMESTAMPTZ,
+                last_seen_et                   TIMESTAMPTZ,
+                listed                         BOOLEAN,           -- in a THEME_BONUS_STAGES ticker list (the pre-fix rule)
+                best_theme                     TEXT,              -- best-correlated paying-stage basket
+                best_stage                     TEXT,
+                best_corr                      DOUBLE PRECISION,  -- market-adjusted Pearson vs that basket's equal-weight mean
+                n_sessions                     INT,               -- overlap sessions behind best_corr
+                basket_n                       INT,               -- members in that basket (leave-one-out applied)
+                belongs_paying                 BOOLEAN,           -- listed OR best_corr >= corr_bar — what the fix decides
+                belongs_incl_nascent           BOOLEAN,           -- the same read with Nascent baskets also paying (SHADOW ONLY)
+                best_nascent_theme             TEXT,
+                best_nascent_corr              DOUBLE PRECISION,
+                reason                         TEXT,              -- listed | comoves | below_bar | no_history | no_baskets | no_read
+                acting_in_theme                BOOLEAN,           -- the value _score_ep actually received
+                ep_score_acting_first          DOUBLE PRECISION,
+                ep_score_acting_last           DOUBLE PRECISION,
+                ep_score_listed_only_first     DOUBLE PRECISION,  -- the pre-fix rule's score (same scorer, same inputs)
+                ep_score_listed_only_last      DOUBLE PRECISION,
+                ep_score_with_belonging_first  DOUBLE PRECISION,  -- the fix's score
+                ep_score_with_belonging_last   DOUBLE PRECISION,
+                ep_bar                         DOUBLE PRECISION,  -- the acting HIGH bar that tick
+                crossed_bar                    BOOLEAN,           -- listed-only and with-belonging land on different sides of ep_bar
+                toggle_on                      BOOLEAN,           -- ep_theme_belonging toggle state that tick
+                corr_bar                       DOUBLE PRECISION,  -- BELONGING_CORR_BAR the row was judged under
+                lookback_sessions              INT,
+                stage_set                      TEXT,              -- e.g. 'Accelerating+Mainstream'
+                created_at                     TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (scan_date, ticker)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ep_theme_belonging_shadow_date
+                ON mi_ep_theme_belonging_shadow(scan_date DESC);
+
             -- SHORTLIST PRE-SCORE counterfactual (2026-08-22, operator-directed):
             -- one row per (scan tick, candidate) for EVERY candidate on the board —
             -- which names each ordering key (gap vs the three-term pre-score) would

@@ -190,6 +190,18 @@ picks the acting table — see the 2026-08-22 SEPARATION change-log entry). Comp
   `routine` (or anything else) +0.
 - Liquidity (20-day ADV$ tiers 15/12/10/7), float bonus (+5 under 50M), vol_conviction (5/3),
   theme_bonus (+10) — unchanged by the separation change, shared by both flag sides.
+  **Since 2026-09-13 the +10 pays when the stock BELONGS to a live theme at alert time**
+  (operator-directed BUG FIX, see change log): belonging = LISTED in a theme staged in
+  `ep_theme_belonging.THEME_BONUS_STAGES` (Accelerating/Mainstream — the pre-fix rule, kept)
+  **OR** the stock's SPY-adjusted daily returns over the 60 sessions strictly before the scan
+  date correlate at or above the **co-movement bar 0.35** with the equal-weight basket of such a
+  theme's members (≥3 members with history, ≥30 overlapping sessions, leave-one-out). Toggle
+  `ep_theme_belonging` (default ON) is REVERSION ONLY — OFF = the ticker-list read alone.
+  ⚠ Seam: the grading SHORTLIST pre-score (`compute_shortlist_ranking`) still reads list
+  membership — it ranks the whole board before the cut, so a name that belongs but is not
+  listed ranks without the theme term. Column `in_active_theme` on alerts / the scan log /
+  the judge payload keeps its LIST-MEMBERSHIP meaning; what PAID is `score_breakdown.theme_bonus`
+  and why is `mi_ep_theme_belonging_shadow`.
 - (`prior_momentum` and `neglect` were DELETED 2026-08-22 — see that change-log entry. Doc-sync
   note: this paragraph previously still described the prior-momentum penalty.)
 
@@ -404,6 +416,105 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 6. **Judge calibration cannot yet be read, and a meta-LLM reviewer over the judge was evaluated and NOT built** (2026-09-12, #485 — `docs/analysis/485_judge_meta_review_feasibility_2026-09-12.md`). Every judge-HIGH already gets an independent second-model read the same morning (#301, 97 of 97 distinct alert-days since 07-27; the current opus-5/sonnet-5 pair disagrees 8 of 77, always stricter); the "were the disagreed HIGHs weaker?" question is the `judge_divergence_marginal_high_signal` gated review, at 8 of 15 settled. Under rubric v4 (08-28 on) the judge has 10 decisions, 4 settled — no calibration claim is possible under current rules. The one uncovered class: **demotions get no same-day second read** (17 since 07-27, 0 rows) because the #301 trigger is HIGH-only; widening it is a zero-authority trigger edit and the operator's call. Nothing here touches a grade.
 
 ## Change log (newest first)
+
+### 2026-09-13 — THEME BONUS keys on BELONGING at alert time, not on last night's ticker list (OPERATOR-DIRECTED BUG FIX, shipped ON, one-flag revertible)
+
+**Trigger**: the operator, 2026-09-13, on the R4 +10 in-theme bonus: *"EP boost should be based on
+theme and not stock list."* — *"building a theme is to discover strength in a group, if a stock (EP)
+gets recognized to be in the theme, it should get the boost. Otherwise it's kinda backwards, EP will
+likely move the stock into a theme but the EP already happened so there's nothing to boost."* —
+*"this is a bug, this is wrong, we need to fix it, EP gets boost if it belongs to a theme, regardless
+if it's already in a theme or not at the time if EP alert."* On shipping it enabled rather than
+dark: *"Is a bug, if we don't like the impact then is a question if themes should boost at all, or
+how much, or if themes are right, etc. Those are the legit questions, not if we should boost based
+on belonging to theme or it's actually in list, that is the bug."*
+
+**What was wrong**: `run_ep_scan` built `_in_active_theme_set` by unioning the ticker arrays of
+Accelerating/Mainstream themes and paid +10 when the alerting ticker was in that set. The arrays
+are written by the NIGHTLY assignment pass — membership was a record of what the engine filed last
+night. Measured over 120 days, n=346 EP alerts (`docs/analysis/theme_boost_arrives_late_2026-09-13.md`):
+22 (6%) were listed on the alert day; 54 joined a paying theme AFTERWARDS, median 4 days later. The
+boost systematically arrived after the event it exists to inform.
+
+**What changed** (`agents/market_intelligence/ep_theme_belonging.py`, wired in `run_ep_scan`):
+- **Belonging is decided at alert time, NO LOOKAHEAD.** A graded name belongs if it is LISTED (the
+  old rule, kept as one way to belong) **OR** its market-adjusted daily log returns (minus SPY's)
+  over the 60 sessions ending STRICTLY BEFORE the scan date correlate at ≥ the **co-movement bar
+  0.35** with the equal-weight basket of a `THEME_BONUS_STAGES` theme's members (basket needs ≥3
+  members with history; ≥30 overlapping sessions; leave-one-out if the name is itself a member).
+  Thin history / no baskets / any error → "cannot judge" → list membership decides (today's
+  behaviour); the fix can never manufacture a bonus it cannot justify and can never kill a scan.
+- **0.35 is the operator-signed bar** for the assignment gate's sector-test replacement, signed the
+  same day (admits IREN 0.70+, MSTR 0.65, CMC 0.60, GPN 0.54; rejects OTTR −0.14, ECO −0.11, SEDG
+  0.16, AGX 0.29 — `docs/analysis/cross_industry_themes_2026-09-13.md`; reference scale: members
+  0.5–0.8, a random board stock ≈0.05). ⚠ Whether it TRANSFERS to this use — a max over ~20
+  baskets, not one nominated pair — is what the backtest's null-control curve answers (below).
+  Registered in `scripts/gate_provenance_registry.py`.
+- **The stage set is ONE named constant** — `THEME_BONUS_STAGES = ("Accelerating", "Mainstream")`,
+  read by both the list read and the co-movement read. **Unchanged.** Whether Nascent should also
+  pay is a SEPARATE decision (the list read alone would add +32 alerts of 346); it is NOT bundled
+  here — bundling two changes made a live flip unreadable and got it reverted earlier the same
+  day. The shadow record carries the incl-Nascent read so that decision has live evidence.
+- **Toggle `ep_theme_belonging` — REVERSION ONLY, DEFAULT ON** (`db.get_runtime_toggle`, the
+  `catalyst_tier_lattice` idiom: `mi_safeguard_state` row `(safeguard='ep_theme_belonging',
+  account_mode='global')` > env `EP_THEME_BELONGING_ENABLED` > default true). On a fresh deploy
+  with no row and no env the fix ACTS, even if the toggle read itself errors (fail-open to the
+  default — the row is the operator's revert lever, not a liveness check). OFF = list membership
+  alone, byte-identical to the pre-fix scan (proven end to end in
+  `tests/test_ep_theme_belonging.py`). Revert, no redeploy, ~60s cache lag:
+  `INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+  VALUES ('ep_theme_belonging', 'global', 'off', NOW(), NOW()) ON CONFLICT (safeguard, account_mode)
+  DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();` Nothing in the code writes that row.
+- **Shadow record `mi_ep_theme_belonging_shadow`** — one row per scored candidate per day: what
+  list membership ALONE and what BELONGING would each have scored (same scorer, same inputs, only
+  the theme flag differs), which ACTED (`acting_in_theme`, stamped), the co-movement read behind it
+  (best theme / correlation / overlap / basket size), the incl-Nascent read, and the bar / lookback
+  / stage set the row was judged under. Writer registered in `preflight_db_updates.SHADOW_WRITER_STATEMENTS`.
+- **What did NOT change**: the +10 size; the stage set; `_score_ep` (untouched — the fix changes
+  only the VALUE passed as `in_active_theme` at every scoring site); the shortlist pre-score (still
+  list membership — the seam is named in the Score section); the `in_active_theme` column's
+  meaning on `mi_ep_alerts` / the scan log / the judge payload (list membership, as its DDL says);
+  every admission gate, stop, target, size.
+- **Cost**: one `mi_daily_closes` query for the board's members + SPY (≈700 tickers × ≈65
+  sessions) **per day** — the basket context is cached on (scan date, board signature) because
+  neither the board nor prior closes move intraday — plus one ≤20-ticker closes query per tick and
+  numpy correlations (≤20 names × ≈120 baskets). Both are logged in ms on the `EP scan complete`
+  line; the real number is read from prod on the first market morning (the analysis machine has
+  no DB route — see Evidence).
+
+**Evidence**: the DEFECT is measured (n=346, above). The BAR is operator-signed (above). The
+BACKTEST — `docs/analysis/ep_theme_belonging_backtest_2026-09-13.md` — replays the same 346
+alerts under the new rule with every input strictly before each alert date, recomputes every
+score at its OWN era bar (65 presented since 2026-08-22; the per-regime raw bar before — the
+earlier "4 HIGHs in 90 days depended on the +10" was read at a flat 70 and must be re-read),
+names every alert that would CROSS into HIGH, gives the incl-Nascent number separately, and runs
+the null control (the same belonging test on matched non-alerting names the same day, as a curve
+over bars 0.30–0.60). ⚠ **Its numbers are PENDING the prod pull**: the analysis sandbox had no
+route to the database (the ssh path was blocked), so the run is packaged as two commands —
+`bash scripts/probes/_ep_theme_belonging_pull.sh <dir>` then
+`python scripts/probes/_ep_theme_belonging_backtest.py <dir>` — and the results section of that
+document is to be filled from the second command's output. Per the operator's ruling above the
+backtest is a REPORT on a bug fix, not a gate on it: an alarming number is reported the same day
+and the revert lever is his; it does not quietly disable the fix.
+
+**Anticipated effect**: the share of alerts carrying +10 rises from 6% (22 of 346) toward the
+names the engine already knew a group for (9% paying-stage / 21% any-stage on the day) plus
+unlisted co-movers; strictly MONOTONE — no alert loses a bonus it has today (listed still
+belongs). The number that matters is HIGHs that clear the bar ONLY because of the +10: the
+backtest reports it at the era-correct bar, before vs under the fix. His own pre-registered guess
+on the boosted population (cross_industry doc, same day): *"EPs getting boosted shouldn't change
+much"* — refuted if bonus-dependent HIGHs rise above ~8 per 90 days.
+
+**Reversion-flag**: REFINEMENT of the 2026-05-17 R4 ship (P2.1c) — same +10, same stage set; the
+membership TEST is corrected. Not a reversal of any prior decision.
+
+**Status**: shipped 2026-09-13 ON, awaiting field validation. VERIFY-LIVE = on the first market
+morning `mi_ep_theme_belonging_shadow` holds rows for the graded names with at least one
+`reason='comoves'` on an unlisted name (or, on a morning with none, rows whose `reason` is
+`below_bar`/`listed` with a non-null `best_corr` — the read RAN), and the `EP scan complete` log
+line carries the belonging ms. WOULD-FAIL-IF: every row reads `no_history`/`no_baskets`/`no_read`
+(the closes query or the basket build is dead), or `acting_in_theme` never differs from `listed`
+across a week that includes a `comoves` row with the toggle ON.
 
 ### 2026-09-06 (evening PT) — #545 exit tactics are LIVE for MAGNA53 — OPERATOR-SIGNED, supersedes the PROPOSED entry below
 

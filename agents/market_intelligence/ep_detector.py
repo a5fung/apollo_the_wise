@@ -39,6 +39,7 @@ import logging
 import os
 import random
 import re
+import time
 from datetime import date, datetime, timedelta
 from typing import Any, NamedTuple, Optional
 
@@ -88,6 +89,9 @@ from agents.market_intelligence.ep_rubric import (
     SCORE_WEIGHTS, SEPARATION_BAR, SHORTLIST_SIZE, apply_output_scale,
     resolve_conviction_floor, resolve_ep_bar, resolve_moderate_cutline,
     resolve_score_weights, tier_points)
+# The ONE stage set the theme bonus pays on (2026-09-13 belonging fix) — the list read here
+# and the co-movement read in ep_theme_belonging share this name, never two literals.
+from agents.market_intelligence.ep_theme_belonging import THEME_BONUS_STAGES
 from shared.llm_response import is_truncated
 
 logger = logging.getLogger(__name__)
@@ -3171,27 +3175,56 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         f"EP scan: regime={regime_label}, threshold={ep_threshold} "
         f"(separation={'ON' if _sep_live else 'OFF — legacy rubric + per-regime bar'})")
 
-    # R4 (2026-05-17 ship): cache the set of tickers currently in an
-    # active (Accelerating/Mainstream) theme. Built once per scan tick
+    # R4 (2026-05-17 ship): cache the set of tickers currently LISTED in an
+    # active (THEME_BONUS_STAGES) theme. Built once per scan tick
     # to avoid N+1 PostgreSQL array-containment queries per ticker
     # (Gemini 2026-05-17). Per-ticker membership check is O(1) on the
-    # set. Lookups against `_in_active_theme_set` happen inside
-    # `_score_ep` via the new `in_active_theme` parameter.
+    # set. Since the 2026-09-13 BELONGING fix this set is ONE of two ways
+    # to belong (see `_theme_bonus_input` below); it also keeps its
+    # original meaning everywhere a row/payload records `in_active_theme`
+    # (list membership — the judge payload, mi_ep_alerts, the scan log).
     _in_active_theme_set: set[str] = set()
+    _active_themes: list[dict] = []
     try:
         from agents.market_intelligence.db import get_active_themes
         _active_themes = await get_active_themes(stale_after_days=7)
         for _theme in _active_themes:
             stage = (_theme.get("stage") or "").strip()
-            if stage in ("Accelerating", "Mainstream"):
+            if stage in THEME_BONUS_STAGES:
                 for _t in (_theme.get("tickers") or []):
                     _in_active_theme_set.add(_t)
         logger.info(
             f"EP scan: {len(_in_active_theme_set)} tickers in active themes "
-            f"(Accelerating/Mainstream) for R4 bonus"
+            f"({'/'.join(THEME_BONUS_STAGES)}) for R4 bonus"
         )
     except Exception as e:
         logger.warning(f"EP scan: theme set load failed ({e}) — R4 bonus disabled this tick")
+
+    # ── THEME BELONGING (2026-09-13, operator-directed BUG FIX, ships ON) ─────────────────
+    # The +10 pays when the stock BELONGS to a theme at alert time — listed (above) OR
+    # co-moving with a THEME_BONUS_STAGES basket over the sessions strictly before today
+    # (ep_theme_belonging.py has the definition, the bar and the operator's ruling). The
+    # basket context is built ONCE PER DAY (cached on the board signature — neither the
+    # board nor prior closes move intraday); the graded names are scored against it before
+    # the loop. Toggle `ep_theme_belonging` is REVERSION ONLY (default ON): OFF = list
+    # membership alone, byte-identical to the pre-fix behaviour. Fail direction on ANY error
+    # here: list membership decides, loudly — never a dead scan, never a manufactured bonus.
+    _belonging_live = False
+    _belonging_ctx = None
+    try:
+        from agents.market_intelligence.ep_theme_belonging import (
+            prepare_basket_context, read_belonging_toggle)
+        _belonging_live = await read_belonging_toggle()
+        _belonging_ctx = await prepare_basket_context(_active_themes, today)
+        logger.info(
+            f"EP scan: theme belonging {'ON' if _belonging_live else 'OFF (reverted — list membership acts)'}"
+            f" — {len(_belonging_ctx.baskets)} baskets from {len(_belonging_ctx.excess)} member series"
+            f" over {len(_belonging_ctx.sessions)} sessions before {today}"
+            f" ({'cached' if _belonging_ctx.cached else f'{_belonging_ctx.prep_ms:.0f}ms, {_belonging_ctx.n_closes_rows} close rows'})"
+        )
+    except Exception as e:  # loud-ok: the fix degrades to the pre-fix read, never a dead scan
+        logger.warning(f"EP scan: theme belonging setup failed ({e}) — list membership decides the theme bonus this tick")
+        _belonging_ctx = None
 
     # Narrative-cohort membership set (#201 fire panel — the #167 narrative axis).
     # Built once per scan from prior-days narrative_cogap candidates (the lane is
@@ -3851,6 +3884,30 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     except Exception as _lce:  # loud-ok: flip degrades to the raw-grade (pre-flip) path
         logger.warning(f"catalyst lattice setup failed — LLM grade acts this tick: {_lce}")
         _lattice_live = False
+
+    # Theme BELONGING reads for the graded cohort — one small closes query for the names the
+    # basket context does not already hold, then pure arithmetic. `_theme_bonus_input` is THE
+    # seam every `_score_ep` call below reads its `in_active_theme` argument through:
+    # toggle OFF -> list membership (pre-fix, byte-identical); ON -> the belonging verdict,
+    # falling back to list membership for any name without a read.
+    _belonging: dict = {}
+    _belonging_score_ms = 0.0
+    _belonging_shadow_inputs: list[dict] = []
+    if _belonging_ctx is not None and candidates:
+        try:
+            from agents.market_intelligence.ep_theme_belonging import score_candidates
+            _bt0 = time.monotonic()
+            _belonging = await score_candidates(
+                _belonging_ctx, [c["ticker"] for c in candidates[:SHORTLIST_SIZE]])
+            _belonging_score_ms = (time.monotonic() - _bt0) * 1000.0
+        except Exception as _ble:  # loud-ok: list membership decides — the pre-fix read
+            logger.warning(f"EP scan: theme belonging scoring failed ({_ble}) — list membership decides this tick")
+            _belonging = {}
+
+    def _theme_bonus_input(_tk: str) -> bool:
+        from agents.market_intelligence.ep_theme_belonging import resolve_theme_bonus_input
+        return resolve_theme_bonus_input(
+            _tk in _in_active_theme_set, _belonging.get((_tk or "").upper()), _belonging_live)
 
     for c in candidates[:SHORTLIST_SIZE]:  # graded cap — the LLM/FMP call budget
         ticker = c["ticker"]
@@ -5464,12 +5521,51 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             adv_dollar=((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
             vol_percentile=vol_pct,
             prior_3m_change=prior_3m_change,
-            in_active_theme=(ticker in _in_active_theme_set),
+            in_active_theme=_theme_bonus_input(ticker),
             weights=_act_weights,
         )
         # #605: the full component vector — previously computed then DISCARDED for every
         # sub-bar candidate (only alert rows kept any trace, and not even they kept this).
         c["score_breakdown"] = breakdown
+
+        # Theme BELONGING record (2026-09-13): what list membership ALONE and what BELONGING
+        # would each have scored this name — same scorer, same inputs, only the theme flag
+        # differs — whichever one ACTED. Keeps the pre-fix rule observable after the fix, and
+        # the fix observable if he reverts it. Telemetry only; never alters ep_score / tier.
+        try:
+            from agents.market_intelligence.ep_theme_belonging import build_belonging_shadow_row
+            _bl_read = _belonging.get((ticker or "").upper())
+            _bl_listed = ticker in _in_active_theme_set
+            _bl_acting = _theme_bonus_input(ticker)
+            _bl_belongs = _bl_read.belongs_paying if _bl_read is not None else _bl_listed
+
+            def _bl_score(_flag: bool) -> float:
+                if _flag == _bl_acting:
+                    return ep_score
+                _s, _ = _score_ep(
+                    gap_pct=c["gap_pct"],
+                    rel_volume=rel_volume,
+                    catalyst_quality=catalyst_quality,
+                    profile=profile,
+                    regime_multiplier=regime_multiplier * confidence_multiplier,
+                    projected_vol_multiple=c.get("projected_vol_multiple"),
+                    adv_dollar=((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
+                    vol_percentile=vol_pct,
+                    prior_3m_change=prior_3m_change,
+                    in_active_theme=_flag,
+                    weights=_act_weights,
+                )
+                return _s
+
+            _belonging_shadow_inputs.append(build_belonging_shadow_row(
+                _bl_read, ticker=ticker, listed=_bl_listed, acting_in_theme=_bl_acting,
+                ep_score_acting=ep_score,
+                ep_score_listed_only=_bl_score(_bl_listed),
+                ep_score_with_belonging=_bl_score(_bl_belongs),
+                ep_bar=float(ep_threshold), toggle_on=_belonging_live,
+            ))
+        except Exception as _bse:
+            logger.debug(f"{ticker}: theme belonging shadow capture failed — {_bse}")
 
         # #533 separation — "keep tracking existing": the OTHER side's score,
         # from the SAME scorer with the other weight table, tiered against the
@@ -5491,7 +5587,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 adv_dollar=((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
                 vol_percentile=vol_pct,
                 prior_3m_change=prior_3m_change,
-                in_active_theme=(ticker in _in_active_theme_set),
+                in_active_theme=_theme_bonus_input(ticker),
                 weights=_cf_weights,
             )
             _act_t = ("HIGH" if ep_score >= ep_threshold
@@ -5703,7 +5799,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     adv_dollar=((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
                     vol_percentile=vol_pct,
                     prior_3m_change=prior_3m_change,
-                    in_active_theme=(ticker in _in_active_theme_set),
+                    in_active_theme=_theme_bonus_input(ticker),
                     weights=_act_weights,  # #533: boost-off compare stays on the acting side
                 )
                 await log_audit_event(
@@ -5746,7 +5842,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     adv_dollar=((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
                     vol_percentile=_vol_pct_shadow,  # the ONLY input that differs from ep_score above
                     prior_3m_change=prior_3m_change,
-                    in_active_theme=(ticker in _in_active_theme_set),
+                    in_active_theme=_theme_bonus_input(ticker),
                     weights=_act_weights,
                 )
                 _would_cross = ep_score < ep_threshold <= _score_shadow_vol
@@ -5961,14 +6057,31 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         except Exception as _sle2:
             logger.warning(f"shortlist-shadow batch dispatch failed — {_sle2}")
 
+    # Theme BELONGING batch write (fire and forget, fail-open; mi_ep_theme_belonging_shadow
+    # is read by NO grading / entry / sizing / safeguard path — the list-vs-belonging
+    # evidence per scored name per day, see ep_theme_belonging.py).
+    if _belonging_shadow_inputs:
+        try:
+            from agents.market_intelligence.ep_theme_belonging import (
+                record_ep_theme_belonging_shadow)
+            asyncio.create_task(record_ep_theme_belonging_shadow(
+                _belonging_shadow_inputs, today, now_et))
+        except Exception as _bde:
+            logger.warning(f"theme-belonging batch dispatch failed — {_bde}")
+
     # Summary log — always visible, even when no alerts fire. Helps verify the scan ran
     # and diagnose why candidates were filtered out.
     high = [r for r in results if r["score_tier"] == "HIGH"]
     moderate = [r for r in results if r["score_tier"] == "MODERATE"]
+    _bl_comoves = sum(1 for _r in _belonging.values() if _r.reason == "comoves")
     logger.info(
         f"EP scan complete: {len(candidates)} gap candidates → {len(results)} scored "
         f"({len(high)} HIGH, {len(moderate)} MODERATE) | "
-        f"regime={regime_label} threshold={ep_threshold}"
+        f"regime={regime_label} threshold={ep_threshold} | "
+        f"theme belonging: {len(_belonging)} read, {_bl_comoves} co-move (unlisted), "
+        f"scored in {_belonging_score_ms:.0f}ms"
+        + (f", baskets {'cached' if _belonging_ctx.cached else f'{_belonging_ctx.prep_ms:.0f}ms'}"
+           if _belonging_ctx is not None else ", baskets unavailable")
     )
 
     # ── North Star C1 (2026-05-30): catalyst-TYPE classification (ADVISORY) ──

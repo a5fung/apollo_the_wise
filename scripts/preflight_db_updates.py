@@ -21,6 +21,7 @@ import logging
 import sys
 
 from agents.market_intelligence.catalyst_metrics_extractor import YOY_RECOVERY_WRITEBACK_SQL
+from agents.market_intelligence.ep_theme_belonging import EP_THEME_BELONGING_SHADOW_UPSERT_SQL
 from agents.market_intelligence.db import (
     _ANALYST_EST_DIVERGENCE_UPSERT_SQL, _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL,
     _DELAYED_SETTLE_SQL,
@@ -346,6 +347,15 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # NOTHING). Runs once per promotion, from the grace sweep.
         "db.insert_dynamic_ecosystem: #471 auto-promoted ecosystem bucket writer",
         ECOSYSTEM_DYNAMIC_INSERT_SQL,
+    ),
+    (
+        # Theme BELONGING (2026-09-13, operator-directed bug fix): the list-vs-belonging
+        # score record beside every scored EP candidate — an UPSERT with 24 params, three of
+        # them ($3, $16-$18) bound TWICE (first/last), every one explicitly cast. This is the
+        # evidence the operator reads to judge the fix and the Nascent question; a dead write
+        # here would leave the table empty with no downstream error.
+        "ep_theme_belonging.record_ep_theme_belonging_shadow: theme belonging list-vs-belonging record",
+        EP_THEME_BELONGING_SHADOW_UPSERT_SQL,
     ),
 ]
 
