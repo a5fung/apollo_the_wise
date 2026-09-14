@@ -6169,10 +6169,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 async with _sc_pool.acquire() as _sc_conn:
                     _sc_fields = await compute_setup_class_fields(_sc_conn, r)
                 _setup_class = classify_setup_class(_sc_fields)
-                r["setup_class"] = _setup_class  # display-only, mirrors catalyst_type/judge_rationale
                 await update_ep_alert_setup_class(r["ticker"], r["alert_date"], _setup_class)
             except Exception as _sce:
                 logger.warning(f"setup-class classify failed for {r.get('ticker')}: {_sce}")
+            # SET UNCONDITIONALLY, OUTSIDE the try — display-only, mirrors catalyst_type /
+            # judge_rationale. Assigning it INSIDE meant a classify failure changed the result
+            # dict's SHAPE (key absent) rather than its VALUE (key None), so two scans of the
+            # same inputs could differ by a key's existence. That made #624's lane-on/off
+            # BYTE-IDENTITY assertion fail in CI on 2026-09-14 for a reason that had nothing to
+            # do with the lowcap lane. Every reader already uses r.get("setup_class")
+            # (e.g. :711), so absent and None are indistinguishable downstream — this changes
+            # the shape's determinism, never a value, a grade or a trade.
+            r["setup_class"] = _setup_class
             try:
                 # W4 (#245): feed the judge the DETERMINISTIC deal-size÷market-cap
                 # materiality tier — the exact ratio an LLM can't compute reliably
@@ -6536,20 +6544,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 logger.warning(f"judge shadow failed for {r.get('ticker')}: {_je}")
 
         async def _classify_type(r: dict) -> None:
+            # Seed both advisory keys BEFORE the try (2026-09-14, same defect class as
+            # setup_class above): assigning them only on success meant a classify failure
+            # dropped the keys entirely, so two scans of identical inputs could differ by a
+            # key's existence. Every reader uses .get, so absent and None are identical
+            # downstream — this fixes shape determinism, never a value, grade or trade.
+            # ⚠ UNPROVEN BY TEST: the harness in tests/test_624_lowcap_lane.py does not reach
+            # this branch, so unlike the setup_class fix above this one rests on inspection —
+            # setdefault cannot alter a value, and every reader already uses .get.
+            r.setdefault("catalyst_type", None)
+            r.setdefault("catalyst_type_rationale", None)
             try:
                 res = await classify_catalyst_type(
                     r["ticker"], r.get("catalyst"), r.get("claude_analysis"),
                     sector=(r.get("sector") or None),
                 )
-                r["catalyst_type"] = res.get("catalyst_type")
-                r["catalyst_type_rationale"] = res.get("rationale")
+                _ct, _ctr = res.get("catalyst_type"), res.get("rationale")
                 # Fire-panel refine RETIRED 2026-06-10 (#249) — the judge's
                 # verdict fire_axes (persisted in _judge_shadow) is the fire
                 # signal; catalyst_type stays a pure advisory label here.
-                await update_ep_alert_advisory(
-                    r["ticker"], r["alert_date"],
-                    r.get("catalyst_type"), r.get("catalyst_type_rationale"),
-                )
+                r["catalyst_type"], r["catalyst_type_rationale"] = _ct, _ctr
+                await update_ep_alert_advisory(r["ticker"], r["alert_date"], _ct, _ctr)
             except Exception as _te:
                 logger.warning(f"catalyst_type classify failed for {r.get('ticker')}: {_te}")
 

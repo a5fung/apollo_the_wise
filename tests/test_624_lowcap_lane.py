@@ -1132,3 +1132,45 @@ def test_ssot_carries_the_rule_sentence_verbatim_and_a_dated_entry():
     assert not (_REPO / "docs" / "setups" / "lowcap_lane.md").exists()     # a LANE, not a setup
     router = (_REPO / "docs" / "SSoT.md").read_text()
     assert "lowcap" not in router.lower()
+
+
+@pytest.mark.asyncio
+async def test_a_setup_class_failure_changes_the_value_not_the_result_shape(monkeypatch):
+    """THE CI FLAKE OF 2026-09-14, pinned. `run_ep_scan` assigned `r["setup_class"]` INSIDE
+    the classifier's own try/except, so a classify failure left the key ABSENT rather than
+    None — two scans of identical inputs could then differ by a key's EXISTENCE, and the
+    lane-on/off byte-identity assertion above failed in CI for a reason that had nothing to
+    do with the lowcap lane. It passed locally 8 runs out of 8.
+
+    Display-only field: every reader uses `r.get("setup_class")`, so absent vs None is
+    invisible downstream — which is exactly why this could rot unnoticed.
+
+    Mutation that proves this test: move `r["setup_class"] = _setup_class` back inside the
+    try in ep_detector.run_ep_scan and the `in` assertion below fails, while every other
+    test in this file still passes.
+    """
+    import agents.market_intelligence.setup_class_classifier as scc
+    import agents.market_intelligence.catalyst_type_classifier as ctc
+
+    def _boom(*a, **k):
+        raise RuntimeError("classifier down")
+
+    async def _aboom(*a, **k):
+        raise RuntimeError("classifier down")
+
+    # BOTH classifiers are made to fail: ep_detector imports each lazily from its own module,
+    # so patching the source module is what the scan actually picks up.
+    monkeypatch.setattr(scc, "classify_setup_class", _boom)
+    monkeypatch.setattr(ctc, "classify_catalyst_type", _aboom)
+    results, _scan_log, _alerts, _lane = await _run_scan_once(
+        monkeypatch, lane_mode="off", admit=True)
+
+    assert len(results) == 1 and results[0]["ticker"] == ADMIT_TICKER
+    # the KEY survives the failure...
+    assert "setup_class" in results[0], (
+        "a classify failure dropped the key entirely — the scan's output shape is "
+        "non-deterministic and any byte-identity assertion over it can flake"
+    )
+    # ...carrying None, not a stale or invented value
+    assert results[0]["setup_class"] is None
+
