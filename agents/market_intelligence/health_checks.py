@@ -379,8 +379,15 @@ _JOB_OUTPUT_CHECKS: list[tuple[str, str, str, str, int, int]] = [
     # ep_scan: "No alert for zero EPs (normal)" (ep_scan_watchdog) — EP HIGHs are a rare event, 0/day
     # is common; only a multi-day drought signals the detector silently dying (#173 shadow-death class).
     ("ep_scan", "EP detector alerts", "mi_ep_alerts", "alert_date", 1, 3),
-    # 9m_ep_scan: virgin-9M is a ~1% rare event (target 2-5/day but many days 0) → quiet, K=3.
-    ("9m_ep_scan", "9M EP alerts", "mi_9m_ep_alerts", "alert_date", 1, 3),
+    # 9m_ep_scan REMOVED 2026-09-14 — it could only ever fire FALSELY. The 9M lane is deprecated
+    # (mi_strategies: phase='deprecated', enabled=f) and `_9m_scan_job` early-returns on
+    # `should_run("9m_day2")` with "deprecated lane — no scan, no rows, no page". So the job
+    # records a SUCCESS run and writes zero rows every single trading day, which is exactly the
+    # shape this check flags — it paged him on 2026-09-14 and would have kept paging forever.
+    # ⚠ THE GENERAL RULE, so the next retirement does not repeat it: when a lane is deprecated,
+    # DELETE its row here. A check over a job that is designed to produce nothing is not a check,
+    # it is a scheduled false alarm — and every one of those spends the credibility of the ones
+    # that are real. Nothing about 9M itself changed: it was already gone.
 ]
 
 # NOTE on scope (judgment call, documented per advisor): mi_stock_scores / mi_daily_closes are
