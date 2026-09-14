@@ -300,7 +300,14 @@ def resolve_theme_bonus_input(listed: bool, read: BelongingRead | None, live: bo
     when one exists for this ticker; a missing read (no history, setup failure) falls back to
     list membership — a fix that cannot judge changes nothing."""
     if live and read is not None:
-        return bool(read.belongs_paying)
+        # UNION, never replacement. Being on the list IS one way to belong, and the operator's
+        # instruction was to ADD a second way — *"EP gets boost if it belongs to a theme,
+        # regardless if it's already in a theme or not at the time of EP alert"* (2026-09-13).
+        # Returning the correlation verdict alone would STRIP the bonus from a listed stock whose
+        # 60-session correlation happens to sit under the bar — a live-money REGRESSION dressed as
+        # a fix, and the opposite of what was asked for. Caught by this module's own test
+        # (`...off_is_list_membership_on_is_the_verdict`, "listed is listed") before deploy.
+        return bool(listed) or bool(read.belongs_paying)
     return bool(listed)
 
 
