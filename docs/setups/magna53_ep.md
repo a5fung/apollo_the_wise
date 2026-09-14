@@ -580,11 +580,27 @@ score at its OWN era bar (65 presented since 2026-08-22; the per-regime raw bar 
 earlier "4 HIGHs in 90 days depended on the +10" was read at a flat 70 and must be re-read),
 names every alert that would CROSS into HIGH, gives the incl-Nascent number separately, and runs
 the null control (the same belonging test on matched non-alerting names the same day, as a curve
-over bars 0.30–0.60). ⚠ **Its numbers are PENDING the prod pull**: the analysis sandbox had no
-route to the database (the ssh path was blocked), so the run is packaged as two commands —
-`bash scripts/probes/_ep_theme_belonging_pull.sh <dir>` then
-`python scripts/probes/_ep_theme_belonging_backtest.py <dir>` — and the results section of that
-document is to be filled from the second command's output. Per the operator's ruling above the
+over bars 0.30–0.60).
+
+✅ **STAGE 2 RAN 2026-09-14, US$1.79 actual (269 calls, `claude-sonnet-4-6`), verdicts cached —
+results: `docs/analysis/ep_theme_belonging_stage2_results_2026-09-14.md`.** Headline: **all four
+nonsense matches the operator caught are REJECTED** (Dominion→fracking 0.45, Bakkt→satellites 0.49,
+QBTS→satellites 0.41, Compass→AI silicon 0.38), the judgement rejects **160 of the 173** names
+correlation alone would have paid, boosted alerts go **25 → 36 of 346**, and the money path is
+**ONE definite new HIGH crossing in 120 days** (GFS 2026-05-21, 56.4 → 68.4 at a 65 bar). ⚠ **The
+recount corrects our own earlier number DOWNWARD: only 2 alerts are HIGH today because of the +10 at
+their own era bar (MRVL 08-19, ERO 09-08), not 4** — the 4 was read at a flat 70.
+
+🔴 **AND THE OPEN ONE: IREN — the #491 case this work came from — is REJECTED, and not by the
+judgement.** Its paying-stage shortlist on 2026-07-20 held *Custom AI Silicon* (0.53) and *Wafer
+Foundry* (0.44); IREN is neither, so the rejection is correct. Against the **Nascent** shortlist the
+judge CONFIRMS it to *Bitcoin Mining & Crypto Infrastructure Operators* at **0.80**. **That theme was
+Nascent, and `ep_detector.py:3186` pays only Accelerating/Mainstream** — the #368 exclusion, now
+measured on his own must-work case. Letting Nascent pay would add 11 confirmed alerts (11 → 22 of
+346) for 1 more new HIGH crossing. ⚖ **That is a detection criterion and stays HIS call — it is NOT
+part of this fix and must not ride along with its deploy.**
+
+Per the operator's ruling above the
 backtest is a REPORT on a bug fix, not a gate on it: an alarming number is reported the same day
 and the revert lever is his; it does not quietly disable the fix.
 
