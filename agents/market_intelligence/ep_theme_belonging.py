@@ -273,10 +273,15 @@ def score_belonging(ticker: str, candidate: np.ndarray | None, baskets: list[The
         reason = "listed"
     elif comoves:
         reason = "comoves"
-    elif candidate is None:
+    elif not baskets:
+        # THE BOARD is the reason, and it outranks the ticker's own history: with no basket to
+        # compare against, belonging is unjudgeable no matter how much price data this ticker
+        # has. Ordering this after the `candidate is None` check reported `no_history` on an
+        # empty board — blaming missing price data for what is actually an empty theme board,
+        # which would send anyone reading the shadow rows to the wrong place.
+        reason = "no_baskets"
+    elif candidate is None or n_seen == 0:
         reason = "no_history"
-    elif not baskets or n_seen == 0:
-        reason = "no_baskets" if not baskets else "no_history"
     else:
         reason = "below_bar"
     return BelongingRead(

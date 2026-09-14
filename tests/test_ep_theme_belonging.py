@@ -334,6 +334,9 @@ def _canon(obj):
     return json.dumps(obj, sort_keys=True, default=str)
 
 
+_PRISTINE_PREPARE_BASKET_CONTEXT = etb.prepare_basket_context
+
+
 async def _scan_with_belonging(monkeypatch, *, toggle_on: bool, themes):
     """One real run_ep_scan on the test_624 fixture board (ADMIT_TICKER rides the graded path
     to a HIGH alert), with the theme board substituted (the harness mocks get_active_themes to
@@ -342,7 +345,12 @@ async def _scan_with_belonging(monkeypatch, *, toggle_on: bool, themes):
     from tests.test_624_lowcap_lane import ADMIT_TICKER, _run_scan_once
     _, tape = _tape(comover=ADMIT_TICKER)
     etb._reset_cache()
-    real_prep = etb.prepare_basket_context
+    # The PRISTINE function, captured at import. Reading `etb.prepare_basket_context` here
+    # re-captures whatever a PREVIOUS call to this harness already patched in, so a second
+    # call would chain into the first call's closure and silently reuse the FIRST board —
+    # which is exactly how the "toggle OFF is not the pre-fix scan" failure was manufactured:
+    # the themes=[] scan was still being served THEMES.
+    real_prep = _PRISTINE_PREPARE_BASKET_CONTEXT
 
     async def _prep(_themes, before_date, **kw):
         return await real_prep(themes, before_date, **kw)
