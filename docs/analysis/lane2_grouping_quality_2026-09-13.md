@@ -1,5 +1,19 @@
 # Lane-2 narrative grouping quality — the review, run 2026-09-13
 
+⛔ **SUPERSEDED ON ITS CENTRAL NUMBER — 2026-09-14.** This document's miss rule was *"≥2 of that
+day's EP alerts later landed in the same theme"* and **it never checked whether Lane 2 had proposed
+that very group on that day.** Five of its eight "genuine misses" are Lane 2's own same-day
+proposals (`mi_theme_candidates_shadow` rows 187, 191, 230, 298, 574 — verified row by row on
+2026-09-14), and a sixth was already on the board five months. So **"81 days of earliness available"
+is really 29 days of Lane 2's own LEAD over the board plus one dedup**, and this doc's conclusion
+that *"LEAVE is no longer supported"* does not stand. The corrected read, with its bars declared
+before the queries, is `lane2_narrative_grouping_review_2026-09-14.md`; it recommends **LEAVE**.
+⚠ Kept rather than deleted because the correction only means something next to what it corrects —
+this is the same defect as the rest of 2026-09-13: **a measure that cannot tell a win from a miss,
+because it never asked what the system had already done.**
+
+---
+
 Run on his instruction after the entry's own pull-forward trigger was found to have fired
 (Lane-2 proposals now overlap EP-traded names 47 of 59 = 80%).
 

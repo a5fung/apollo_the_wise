@@ -10108,7 +10108,42 @@ reviews:
       alert tickers later shared a theme (any lane) or co-moved market-adjusted. Report
       genuine-miss count vs correctly-declined, split from any LLM opinion. Then the
       operator rules: leave / widen / retire. Rulings land on #167's PLAN line.
-    status: pending  # RUN 2026-09-13 — the work is DONE and the RULING is his (leave/widen/
+    plan_ref: "#655"  # #167 is no longer on the board; the ruling lands on #655 (theme sequencing).
+    status: pending  # ⛔ THE 2026-09-13 NUMBERS BELOW ARE SUPERSEDED — see the 2026-09-14 block
+    # immediately after them. Kept verbatim because the correction only means something next to
+    # what it corrects.
+    #
+    # ✅ RE-RUN 2026-09-14, $0, prod read-only, no LLM opinion in any classification —
+    # docs/analysis/lane2_narrative_grouping_review_2026-09-14.md. Bars declared in its §0 BEFORE
+    # the first query, including §0.7 "what a WORKING and a USELESS Lane 2 would each produce".
+    # ANSWER: "no shared story" was CORRECT on 22 of 25 no-story days. 2 of 24 judgeable days (8%)
+    # cost earliness, both on sector/RS groupings Lane 1 exists to make and DID make. At pair
+    # level: 279 declined pairs, 4 (1.4%) later grouped by another lane, 271 (97%) never.
+    # 🔴 THE 09-13 READ'S CENTRAL NUMBER WAS WRONG, AND I WROTE IT. Its miss rule was ">=2 of that
+    # day's EP alerts later landed in the same theme" and it NEVER CHECKED WHETHER LANE 2 HAD
+    # PROPOSED THAT VERY GROUP THAT DAY. Five of the eight "genuine misses" are Lane 2's own
+    # same-day proposals — VERIFIED row by row against mi_theme_candidates_shadow on 2026-09-14:
+    #   187 2026-07-30 {EME,PWR} · 191 07-31 {BLZE,FLNC,MPWR} · 230 08-04 {BTDR,AMRC,BLZE}
+    #   298 08-12 {BLZE,FLNC,MPWR,EROC,BE,WYFI,NBIS,CRWV} · 574 09-03 {AGX,SNOW}
+    # The "lag" was Lane 2's LEAD over the board. A sixth (08-27 OKTA/CRWD) was already on the
+    # board 5 months — redundant, not missed. So "81 days of earliness available" is really 29 days
+    # of Lane 2's own lead plus a dedup; the 52 that stand are 51 days on a 19-member precious-
+    # metals rotation that lived two days on the board, and 1 day on Lane 2's own next-day
+    # conversion. SAME DEFECT CLASS AS THE REST OF 2026-09-13: a measure that cannot tell a win
+    # from a miss because it never asked what the system had already done.
+    # INPUT RICHNESS — the 07-27 audit's leading hypothesis — is REFUTED: the 280-char v1 declines
+    # hid a story in 0 of 164 pairs within 20 days; v2 on full grounded text shows 2 of 89. The
+    # WINDOW arm is what worked (cross-day catches 0 -> 30). RETIRE is off the table: precision 7
+    # of 16 proposals independently confirmed, 5 of them 4-29 days AHEAD of the board.
+    # ⚠ The re-run's own earliness bar FIRED for v2 and it still recommends LEAVE, saying so
+    # plainly rather than moving the bar — the only arm that captures that prize is grouping on
+    # sector membership with no shared catalyst, which is a change to the lane's DEFINITION and
+    # his fork, not a knob.
+    # ⚖ REC: LEAVE. HIS RULING (leave / widen / retire) lands on #655. Next read: re-run the same
+    # script at ~20 v2 no-story days (~mid-November at 5 per 5 weeks), on DATA not a calendar.
+    #
+    # ---- superseded 2026-09-13 reading, kept for the contrast ----
+    # RUN 2026-09-13 — the work is DONE and the RULING is his (leave/widen/
     # retire). Result: 64 live run-days since 06-07; 8 genuine misses, where a miss means >=2 of
     # that day's EP alerts later landed in the same theme (the model's own opinion used nowhere).
     # MEDIAN LAG 1 DAY — 5 of 8 were caught by another lane the next day, so they cost a day, not
