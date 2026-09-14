@@ -124,3 +124,49 @@ That is the whole finding in one case: the rule is testing the vendor's filing c
 - **How much the rule removes at BIRTH.** Birth-time drops write no record, so every count here
   understates the true cost.
 - **Anything about trade returns.** Step 3 stays parked by his own sequencing (#655).
+
+---
+
+# 📋 PRE-REGISTRATION — written BEFORE the change, at his instruction
+
+> Operator 2026-09-13: *"Aligned, and we should track its effect both positive and unintended
+> consequences together, as well as against our expectation. This may improve member count for
+> example"*
+
+**Every number below is declared NOW, before the sector test is replaced and before the backtest
+runs.** That ordering is the point: today's five reversals all came from measuring first and
+deciding what the bar was afterwards. Anything measured later gets compared to THIS table, not to a
+bar chosen once the result is visible.
+
+## Expected POSITIVE effects
+
+| # | expectation | today's baseline | what would confirm it | what would refute it |
+|---|---|---|---|---|
+| P1 | **Themes hold more members** (his own example) | avg 4.7 at birth → 6.3 peak; 83 of 119 hold ≤5 | avg members per live theme rises, and the ≤5 share falls below 70% | no movement after 3 weeks |
+| P2 | **Fewer themes starved below the 3-member floor** | 29 of 46 sector strips left a theme under 3 | strip-to-under-3 events fall by more than half | unchanged |
+| P3 | **His four named concepts become formable** | IREN blocked from the theme named after it | a cross-sector cohort appears on the board and holds ≥5 days | they still never form |
+| P4 | **Membership rejections fall** | 167 of 824 proposals (20%) rejected on sector | sector-rejections → ~0, total rejections fall | total rejections flat (another wall absorbed them) |
+
+## Expected UNINTENDED consequences — watch these as hard as the wins
+
+| # | risk | why it is plausible | the tripwire |
+|---|---|---|---|
+| U1 | 🔴 **THE EP SCORE MOVES. This is the money-path one.** A member of an **Accelerating or Mainstream** theme gets **+10** on its EP score (`ep_detector.py:1666`, `SCORE_WEIGHTS["theme_bonus"]`, R4 live since 2026-05-17, **env flag unset ⇒ ON**). More members ⇒ more stocks carrying +10 ⇒ a score can cross into HIGH and fire an alert that would not have fired. | adding members is not a display change; it reaches grading | **Exposure is bounded and measured: only 22 of 119 themes (18%) are Accelerating/Mainstream**, and of the 8 named themes that would gain a name, **2** are (Skilled Nursing, Oil & Product Tanker). Track: count of alerts whose HIGH depended on the +10, before vs after. **Any increase is reported to him the same day — ⚖ THE LINE.** |
+| U2 | **Theme tightness falls** | ~1 readmitted name in 7 is junk | mean member co-movement drops below today's 0.5–0.8 band |
+| U3 | **Volume overshoots the 26-name estimate** | the assignment LLM has **never been told** cross-sector is permitted; once it is, it may propose far more | readmissions materially exceed ~1/day |
+| U4 | **Theme names get vaguer** | a cross-sector cohort is harder to name; a vague name feeds the #214 mass-eviction loop | rise in `validation_mass_removal_name_suspect` / rename events |
+| U5 | **Nothing changes at all** | discovery batches are sorted by sector UPSTREAM, so a cross-sector cohort can straddle two batches and never reach the gate | P1–P4 all flat ⇒ the gate was not the binding constraint and the batching is |
+
+## How it gets measured
+
+- **Before/after on the same measures**, market-adjusted, with the matched random-name control that
+  this analysis already used. No new instrument.
+- **A rule-off window of at least 15 trading days** — U3 and U4 are drift effects and cannot be read
+  from one night.
+- **Reported together.** Positives and unintended in ONE table against this pre-registration, never
+  a wins-only summary.
+
+⚠ **Observation of note, found while writing this**: `Emerging Bitcoin Miners Diversifying into
+AI/HPC Hosting` — the theme named after his #491 concept, and the headline case for this whole
+change — is **Retired with zero members** as of the 7-day board. It died since 2026-09-08. P3 should
+treat its re-formation as the acceptance case.
