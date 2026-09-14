@@ -25,6 +25,7 @@ agents/market_intelligence/broker/drawdown_breaker.py
 agents/market_intelligence/broker/entry_pipeline.py
 agents/market_intelligence/broker/exit_logic.py
 agents/market_intelligence/broker/gap_through_telemetry.py
+agents/market_intelligence/broker/halt_status_shadow.py
 agents/market_intelligence/broker/intraday_drawdown.py
 agents/market_intelligence/broker/live_tracker.py
 agents/market_intelligence/broker/orb_extension_shadow.py
@@ -46,6 +47,7 @@ agents/market_intelligence/ep_decision_vector.py
 agents/market_intelligence/ep_detector.py
 agents/market_intelligence/ep_grade_judge.py
 agents/market_intelligence/ep_rubric.py
+agents/market_intelligence/ep_theme_belonging.py
 agents/market_intelligence/execution_client.py
 agents/market_intelligence/execution_routes.py
 agents/market_intelligence/fundamentals.py
