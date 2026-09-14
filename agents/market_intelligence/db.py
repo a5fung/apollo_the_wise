@@ -4196,9 +4196,10 @@ async def initialize_schema() -> None:
             -- the scan date), not on last night's ticker list alone. One row per scored
             -- candidate per day (first/last idiom): what list membership alone and what
             -- belonging would each have scored, which ACTED (`acting_in_theme` — stamped,
-            -- never inferred from dates), the co-movement read behind it, the incl-Nascent
-            -- shadow read (never acting — a separate operator decision), and the bar /
-            -- lookback / stage set the row was judged under (#606 acting-value convention).
+            -- never inferred from dates), the correlation SHORTLIST and the FIT verdict
+            -- behind it (2026-09-14: correlation filters, the nightly assignment judgement
+            -- decides), the unjudged Nascent shortlist (a separate operator decision), and
+            -- the bar / lookback / stage set the row was judged under (#606 convention).
             -- Read by NO grading / entry / sizing / safeguard path — evidence only.
             -- RETENTION: kept forever (evidence class). Writer: ep_theme_belonging.py.
             CREATE TABLE IF NOT EXISTS mi_ep_theme_belonging_shadow (
@@ -4213,11 +4214,14 @@ async def initialize_schema() -> None:
                 best_corr                      DOUBLE PRECISION,  -- market-adjusted Pearson vs that basket's equal-weight mean
                 n_sessions                     INT,               -- overlap sessions behind best_corr
                 basket_n                       INT,               -- members in that basket (leave-one-out applied)
-                belongs_paying                 BOOLEAN,           -- listed OR best_corr >= corr_bar — what the fix decides
-                belongs_incl_nascent           BOOLEAN,           -- the same read with Nascent baskets also paying (SHADOW ONLY)
-                best_nascent_theme             TEXT,
-                best_nascent_corr              DOUBLE PRECISION,
-                reason                         TEXT,              -- listed | comoves | below_bar | no_history | no_baskets | no_read
+                shortlist                      TEXT,              -- JSON [{theme, stage, corr}] — paying-stage baskets >= shortlist_bar, best first (a FILTER, not a verdict)
+                nascent_shortlist              TEXT,              -- the same for Nascent baskets — UNJUDGED live (evidence lane only)
+                fit_status                     TEXT,              -- listed | not_shortlisted | pending | confirmed | rejected | failed | timeout | error | budget | off | window | no_description | no_read
+                fit_theme                      TEXT,              -- the theme the fit judgement confirmed (theme_engine.judge_theme_fit)
+                fit_stage                      TEXT,
+                fit_rationale                  TEXT,              -- the model's sentence (fit) or its scratchpad line (no fit)
+                belongs_paying                 BOOLEAN,           -- listed OR fit confirmed — what the fix decides
+                reason                         TEXT,              -- listed | fit | shortlisted_rejected | fit_unjudged | below_bar | no_history | no_baskets | no_read
                 acting_in_theme                BOOLEAN,           -- the value _score_ep actually received
                 ep_score_acting_first          DOUBLE PRECISION,
                 ep_score_acting_last           DOUBLE PRECISION,
@@ -4228,7 +4232,7 @@ async def initialize_schema() -> None:
                 ep_bar                         DOUBLE PRECISION,  -- the acting HIGH bar that tick
                 crossed_bar                    BOOLEAN,           -- listed-only and with-belonging land on different sides of ep_bar
                 toggle_on                      BOOLEAN,           -- ep_theme_belonging toggle state that tick
-                corr_bar                       DOUBLE PRECISION,  -- BELONGING_CORR_BAR the row was judged under
+                shortlist_bar                  DOUBLE PRECISION,  -- BELONGING_SHORTLIST_CORR_BAR the row was shortlisted under
                 lookback_sessions              INT,
                 stage_set                      TEXT,              -- e.g. 'Accelerating+Mainstream'
                 created_at                     TIMESTAMPTZ DEFAULT NOW(),

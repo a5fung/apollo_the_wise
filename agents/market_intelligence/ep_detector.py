@@ -3885,21 +3885,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         logger.warning(f"catalyst lattice setup failed — LLM grade acts this tick: {_lce}")
         _lattice_live = False
 
-    # Theme BELONGING reads for the graded cohort — one small closes query for the names the
-    # basket context does not already hold, then pure arithmetic. `_theme_bonus_input` is THE
-    # seam every `_score_ep` call below reads its `in_active_theme` argument through:
-    # toggle OFF -> list membership (pre-fix, byte-identical); ON -> the belonging verdict,
-    # falling back to list membership for any name without a read.
+    # Theme BELONGING, STAGE 1 for the graded cohort — one small closes query for the names
+    # the basket context does not already hold, then pure arithmetic: listed, or a correlation
+    # SHORTLIST of paying-stage themes (a filter, never a verdict — ep_theme_belonging.py "why
+    # two stages"). STAGE 2 (the fit judgement, one bounded Sonnet call per shortlisted name
+    # per day) runs inside the loop below, once the FMP profile is in hand, and is what
+    # decides. `_theme_bonus_input` is THE seam every `_score_ep` call below reads its
+    # `in_active_theme` argument through: toggle OFF -> list membership (pre-fix,
+    # byte-identical); ON -> the belonging verdict, falling back to list membership for any
+    # name without a read or without a verdict.
     _belonging: dict = {}
     _belonging_score_ms = 0.0
     _belonging_shadow_inputs: list[dict] = []
+    _fit_budget = None
     if _belonging_ctx is not None and candidates:
         try:
-            from agents.market_intelligence.ep_theme_belonging import score_candidates
+            from agents.market_intelligence.ep_theme_belonging import FitBudget, score_candidates
             _bt0 = time.monotonic()
             _belonging = await score_candidates(
                 _belonging_ctx, [c["ticker"] for c in candidates[:SHORTLIST_SIZE]])
             _belonging_score_ms = (time.monotonic() - _bt0) * 1000.0
+            _fit_budget = FitBudget()
         except Exception as _ble:  # loud-ok: list membership decides — the pre-fix read
             logger.warning(f"EP scan: theme belonging scoring failed ({_ble}) — list membership decides this tick")
             _belonging = {}
@@ -5510,6 +5516,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 if prior_3m_change is not None else None)
         c["float_shares"] = profile.get("floatShares")
 
+        # Theme BELONGING, STAGE 2 (2026-09-14): a shortlisted, unlisted name gets the fit
+        # judgement HERE — after every gate above that could still drop it (no call is spent
+        # on a name that never reaches scoring) and with the FMP profile in hand for the
+        # description. ONE seam, before the first `_score_ep`: all four scoring sites below
+        # read `_belonging` through `_theme_bonus_input` at call time. Cached per day, capped
+        # per tick and per day, under a timeout, premarket only (`_is_premarket` — the #344
+        # posture: nothing new on the ORB entry path); every failure = listed decides.
+        if _fit_budget is not None:
+            _bl_pending = _belonging.get((ticker or "").upper())
+            if _bl_pending is not None and _bl_pending.fit_status == "pending":
+                try:
+                    from agents.market_intelligence.ep_theme_belonging import resolve_fit
+                    _belonging[_bl_pending.ticker] = await resolve_fit(
+                        _bl_pending, ctx=_belonging_ctx, profile=profile, budget=_fit_budget,
+                        live=_belonging_live, in_window=_is_premarket(now_et), scan_date=today)
+                except Exception as _fre:  # loud-ok: resolve_fit never raises; belt and braces
+                    logger.warning(f"EP scan: theme fit for {ticker} failed outside its guard ({_fre}) — list membership decides")
+
         # Score (weights = the side the ep_score_separation flag chose above)
         ep_score, breakdown = _score_ep(
             gap_pct=c["gap_pct"],
@@ -6073,13 +6097,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # and diagnose why candidates were filtered out.
     high = [r for r in results if r["score_tier"] == "HIGH"]
     moderate = [r for r in results if r["score_tier"] == "MODERATE"]
-    _bl_comoves = sum(1 for _r in _belonging.values() if _r.reason == "comoves")
+    _bl_shortlisted = sum(1 for _r in _belonging.values() if _r.shortlist and not _r.listed)
+    _bl_fit = sum(1 for _r in _belonging.values() if _r.reason == "fit")
+    _bl_fit_calls = (f", fit calls {_fit_budget.calls} in {_fit_budget.seconds * 1000:.0f}ms "
+                     f"({_fit_budget.confirmed} confirmed, {_fit_budget.rejected} rejected, "
+                     f"{_fit_budget.unjudged} unjudged)" if _fit_budget is not None else "")
     logger.info(
         f"EP scan complete: {len(candidates)} gap candidates → {len(results)} scored "
         f"({len(high)} HIGH, {len(moderate)} MODERATE) | "
         f"regime={regime_label} threshold={ep_threshold} | "
-        f"theme belonging: {len(_belonging)} read, {_bl_comoves} co-move (unlisted), "
-        f"scored in {_belonging_score_ms:.0f}ms"
+        f"theme belonging: {len(_belonging)} read, {_bl_shortlisted} shortlisted (unlisted), "
+        f"{_bl_fit} belong by fit, scored in {_belonging_score_ms:.0f}ms{_bl_fit_calls}"
         + (f", baskets {'cached' if _belonging_ctx.cached else f'{_belonging_ctx.prep_ms:.0f}ms'}"
            if _belonging_ctx is not None else ", baskets unavailable")
     )

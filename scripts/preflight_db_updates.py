@@ -349,9 +349,9 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         ECOSYSTEM_DYNAMIC_INSERT_SQL,
     ),
     (
-        # Theme BELONGING (2026-09-13, operator-directed bug fix): the list-vs-belonging
-        # score record beside every scored EP candidate — an UPSERT with 24 params, three of
-        # them ($3, $16-$18) bound TWICE (first/last), every one explicitly cast. This is the
+        # Theme BELONGING (2026-09-13/14, operator-directed bug fix): the list-vs-belonging
+        # score record beside every scored EP candidate — an UPSERT with 27 params, four of
+        # them ($3, $19-$21) bound TWICE (first/last), every one explicitly cast. This is the
         # evidence the operator reads to judge the fix and the Nascent question; a dead write
         # here would leave the table empty with no downstream error.
         "ep_theme_belonging.record_ep_theme_belonging_shadow: theme belonging list-vs-belonging record",
