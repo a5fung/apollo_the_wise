@@ -1615,7 +1615,7 @@ def _close_evidence_gate(errors, tasks) -> None:
 # deliberately rather than hidden.
 # `(?:\([^)]{0,90}\))?` after the marker mirrors close_bar_for's DoD pattern exactly — the
 # parenthetical is what you write when retrofitting a criterion onto an OLD line
-# (`EXPECT (added 2026-09-14): ...`), and rejecting it silently made five real DoDs invisible
+# (`EXPECT (added 2026-09-13): ...`), and rejecting it silently made five real DoDs invisible
 # during the LAST retrofit this repo ran (2026-09-10). The 23-task EXPECT backfill is the next
 # one, so the same shape must not go missing twice.
 _EXPECT_PATTERN = re.compile(

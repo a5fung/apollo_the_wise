@@ -10195,6 +10195,15 @@ reviews:
     cross_refs: ["task #167"]
 
   - review_id: theme_birth_gate_dedup_only_flip
+    # ⚖ RULED + FLIPPED 2026-09-13 23:10:57 UTC (operator: "Go with rec"). The bar below was
+    # declared before the query and MET: n=6 first-crossing cross-theme joins over the observe
+    # era, 6 of 6 correct suppressions (2 never appeared, 4 died within 3 days, 0 survived 4+
+    # days as a distinct lineage) against a >=85% bar. Thin and stated as thin. Live mode is
+    # now `dedup_only`, verified from three surfaces; SSoT docs/architecture/theme_engine.md
+    # (2026-09-13 23:10 entry). status -> done so this does NOT re-surface as an open ask —
+    # [[never-re-ask-an-answered-question]]. The FORWARD TRIPWIRE in action_when_ready stays
+    # live and is NOT closed by this ruling: a suppressed cohort that later forms a durable
+    # distinct theme is a wrong suppression, surfaced immediately, not at a next review.
     # FILED 2026-09-13 on his instruction: "I don't want to forget it, make it data driven
     # decision to flip." The `dedup_only` mode shipped and deployed DARK the same day
     # (53aadca5) after the on -> observe revert. This entry is the evidence gate on flipping
@@ -10243,9 +10252,11 @@ reviews:
         recorded verdict with a join_target, and all six were hand-checked forward against
         mi_themes.
       lane_live: >-
-        The gate records verdicts in every mode except 'off'. Live mode is 'observe' as of
-        2026-09-13 19:22 UTC (reverted from 'on'), verified from three surfaces, so rows keep
-        accruing. `dedup_only` is deployed and selectable but NOT live.
+        The gate records verdicts in every mode except 'off'. Live mode is `dedup_only` as of
+        2026-09-13 23:10:57 UTC, verified from three surfaces, so rows keep accruing. (Earlier
+        the same day: 'on' -> 'observe' at 19:22 UTC, then 'observe' -> 'dedup_only' on his
+        ruling. The predicate stays valid — `sightings = 1` first crossings keep being written
+        in every mode except 'off'.)
       threshold_vs_observed: >-
         Threshold 6, observed 6 — DELIBERATELY MET ON FILING, not a wait. The rate is ~1 per 7.5
         days, so a bar of 15 would land ~end of October and would be a deferral wearing a
@@ -10269,7 +10280,7 @@ reviews:
       Evidence: docs/analysis/theme_lifecycle_diagnosis_2026-09-13.md; SSoT
       docs/architecture/theme_engine.md (2026-09-13 entries: flip, revert, split).
     plan_ref: "#655"
-    status: pending
+    status: done
 
   - review_id: theme_birth_gate_observe_calibration
     # RULED + FLIPPED 2026-09-13 (operator: "Flip it"). Forward review run on 168

@@ -5516,7 +5516,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 if prior_3m_change is not None else None)
         c["float_shares"] = profile.get("floatShares")
 
-        # Theme BELONGING, STAGE 2 (2026-09-14): a shortlisted, unlisted name gets the fit
+        # Theme BELONGING, STAGE 2 (2026-09-13): a shortlisted, unlisted name gets the fit
         # judgement HERE — after every gate above that could still drop it (no call is spent
         # on a name that never reaches scoring) and with the FMP profile in hand for the
         # description. ONE seam, before the first `_score_ep`: all four scoring sites below

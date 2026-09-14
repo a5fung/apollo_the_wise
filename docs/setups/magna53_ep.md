@@ -191,7 +191,7 @@ picks the acting table — see the 2026-08-22 SEPARATION change-log entry). Comp
 - Liquidity (20-day ADV$ tiers 15/12/10/7), float bonus (+5 under 50M), vol_conviction (5/3),
   theme_bonus (+10) — unchanged by the separation change, shared by both flag sides.
   **Since 2026-09-13 the +10 pays when the stock BELONGS to a live theme at alert time**
-  (operator-directed BUG FIX, see change log 2026-09-13 + 2026-09-14): belonging = LISTED in a
+  (operator-directed BUG FIX, see change log 2026-09-13, both entries): belonging = LISTED in a
   theme staged in `ep_theme_belonging.THEME_BONUS_STAGES` (Accelerating/Mainstream — the pre-fix
   rule, kept) **OR** a TWO-STAGE test: (1) the stock's SPY-adjusted daily returns over the 60
   sessions strictly before the scan date correlate at or above the **shortlist bar 0.35**
@@ -426,7 +426,7 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
-### 2026-09-14 — BELONGING is TWO-STAGE: correlation SHORTLISTS, the nightly assignment judgement DECIDES (bug-fix REFINEMENT, shipped ON, same revert flag)
+### 2026-09-13 (late evening, same day) — BELONGING is TWO-STAGE: correlation SHORTLISTS, the nightly assignment judgement DECIDES (bug-fix REFINEMENT, shipped ON, same revert flag)
 
 **Trigger**: the 2026-09-13 replay of the correlation-only rule (n=346 alerts, 120 days) before it
 ran a single live tick: belonging at 0.35 would have paid 197 of 346 (57%) against 25 listed, and
@@ -474,7 +474,7 @@ at every level it drops IREN 2026-07-20 (a case he wants to work) before BKKT.
   `_score_ep`; the toggle; every admission gate, stop, target, size.
 
 **Evidence**: stage 1 (correlation, $0 — `scripts/probes/_ep_theme_belonging_backtest.py` on the
-2026-09-14 prod pull, `docs/analysis/ep_theme_belonging_backtest_2026-09-13.md`): 346 alerts;
+2026-09-13 prod pull, `docs/analysis/ep_theme_belonging_backtest_2026-09-13.md`): 346 alerts;
 listed 25 by as-of reconstruction (341 of 346 agree with the stored `in_active_theme` flag, which
 says 22); **173 unlisted names cleared the shortlist bar = what correlation alone would have
 boosted**; 99 carry a Nascent shortlist; 2 have no description anywhere. **Stage 2 — the
@@ -498,7 +498,7 @@ call, premarket only. Strictly monotone still: no alert loses a bonus it has tod
 before it ran live). Not a reversal: the decision to key on belonging stands; only the
 correlation-only decider was wrong, for the reason stated above.
 
-**Status**: shipped 2026-09-14 ON (built, NOT deployed), awaiting field validation. VERIFY-LIVE =
+**Status**: shipped 2026-09-13 ON (built, NOT deployed), awaiting field validation. VERIFY-LIVE =
 on the first premarket after deploy, `mi_ep_theme_belonging_shadow` holds at least one unlisted
 shortlisted row with `fit_status` in (confirmed, rejected) — the judgement RAN — the
 `EP scan complete` line carries `fit calls N in Nms (c confirmed, r rejected, u unjudged)` with
@@ -599,10 +599,10 @@ much"* — refuted if bonus-dependent HIGHs rise above ~8 per 90 days.
 **Reversion-flag**: REFINEMENT of the 2026-05-17 R4 ship (P2.1c) — same +10, same stage set; the
 membership TEST is corrected. Not a reversal of any prior decision.
 
-⚠ **SUPERSEDED 2026-09-14, before a single live tick** — the correlation-only DECIDER below was
-replayed and found wrong (a utility in a fracking theme); see the 2026-09-14 entry above. The
+⚠ **SUPERSEDED 2026-09-13, before a single live tick** — the correlation-only DECIDER below was
+replayed and found wrong (a utility in a fracking theme); see the 2026-09-13 entry above. The
 verify condition below refers to a `reason='comoves'` vocabulary that no longer exists; the live
-verify is the 2026-09-14 entry's.
+verify is the 2026-09-13 entry's.
 
 **Status**: shipped 2026-09-13 ON, awaiting field validation. VERIFY-LIVE = on the first market
 morning `mi_ep_theme_belonging_shadow` holds rows for the graded names with at least one

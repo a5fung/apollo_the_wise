@@ -14,7 +14,7 @@ only 22 (6%) were on a paying theme's list on the alert day, while 54 joined a p
 AFTERWARDS, median 4 days later. The ticker arrays are the record of what the engine filed LAST
 NIGHT, so the boost systematically arrived after the event it exists to inform.
 
-BELONGING IS A TWO-STAGE RULE (2026-09-14 — the first cut was correlation alone and it was
+BELONGING IS A TWO-STAGE RULE (2026-09-13 — the first cut was correlation alone and it was
 WRONG; see "why two stages" below). NO LOOKAHEAD — every input predates the alert date.
   1. LISTED — the ticker is in the ticker list of a theme staged in THEME_BONUS_STAGES (today's
      rule, kept as one way to belong: if it is already listed, it belongs).
@@ -79,7 +79,7 @@ row (the #606 acting-value convention) — so the backtest can be re-read withou
 single LLM call. Read by NO grading / entry / sizing / safeguard path — evidence only. Writer
 registered in scripts/preflight_db_updates.SHADOW_WRITER_STATEMENTS (#629).
 
-SSoT: docs/setups/magna53_ep.md (change log 2026-09-13 + 2026-09-14).
+SSoT: docs/setups/magna53_ep.md (change log 2026-09-13, both entries).
 """
 from __future__ import annotations
 

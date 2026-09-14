@@ -4197,7 +4197,7 @@ async def initialize_schema() -> None:
             -- candidate per day (first/last idiom): what list membership alone and what
             -- belonging would each have scored, which ACTED (`acting_in_theme` — stamped,
             -- never inferred from dates), the correlation SHORTLIST and the FIT verdict
-            -- behind it (2026-09-14: correlation filters, the nightly assignment judgement
+            -- behind it (2026-09-13: correlation filters, the nightly assignment judgement
             -- decides), the unjudged Nascent shortlist (a separate operator decision), and
             -- the bar / lookback / stage set the row was judged under (#606 convention).
             -- Read by NO grading / entry / sizing / safeguard path — evidence only.

@@ -413,10 +413,10 @@ GATE_REGISTRY: list[dict] = [
                 "replacement (PLAN #655; admits IREN 0.70+, MSTR 0.65, CMC 0.60, GPN 0.54; rejects OTTR "
                 "-0.14, ECO -0.11, SEDG 0.16, AGX 0.29 — docs/analysis/cross_industry_themes_2026-09-13.md). "
                 "Derived for ONE stock against ONE nominated theme. Kept in ep_theme_belonging.py as that "
-                "signed reference; since 2026-09-14 the EP path does NOT read it as a belonging verdict "
+                "signed reference; since 2026-09-13 the EP path does NOT read it as a belonging verdict "
                 "(it did for one day, never live — replayed and found to transfer badly to a "
                 "best-of-many search: 57% of alerts admitted, a utility in a fracking theme). See "
-                "BELONGING_SHORTLIST_CORR_BAR. Change log: magna53_ep.md 2026-09-13 + 2026-09-14.",
+                "BELONGING_SHORTLIST_CORR_BAR. Change log: magna53_ep.md 2026-09-13, both entries.",
     },
     {
         "id": "ep_theme_belonging.BELONGING_SHORTLIST_CORR_BAR",
@@ -428,7 +428,7 @@ GATE_REGISTRY: list[dict] = [
             "file": "docs/setups/magna53_ep.md",
             "text": "shortlist bar 0.35",
         },
-        "note": "2026-09-14 (bug-fix refinement, operator-directed): the +10 theme bonus's belonging test "
+        "note": "2026-09-13 (bug-fix refinement, operator-directed): the +10 theme bonus's belonging test "
                 "is TWO-STAGE — a market-adjusted correlation >= this bar with a THEME_BONUS_STAGES "
                 "basket (60 sessions strictly before the scan date) SHORTLISTS up to 3 themes, and the "
                 "nightly assignment pass's own fit judgement (theme_engine.judge_theme_fit) DECIDES. A "
@@ -438,7 +438,7 @@ GATE_REGISTRY: list[dict] = [
                 "its own constant so the two can move separately. Scoring-only: it never admits or "
                 "removes a candidate; it moves a score by the existing +10 only when the judgement "
                 "confirms. Reversion toggle `ep_theme_belonging` (default ON). Change log: "
-                "magna53_ep.md 2026-09-14; backtest docs/analysis/ep_theme_belonging_backtest_2026-09-13.md.",
+                "magna53_ep.md 2026-09-13; backtest docs/analysis/ep_theme_belonging_backtest_2026-09-13.md.",
     },
     # ── Theme engine — membership test (docs/architecture/theme_engine.md SSoT) ─────────────────
     {

@@ -234,14 +234,14 @@ recurring group which theme suppressed it) — a quiet month and a dead trigger 
 identically; a read failure RAISES so `audit_wrap` records the failure and #501 pages.
 Expected ~one page a month. $0 preview: `scripts/judge_named_themes_651.py --surface --dry-run`.
 
-### 2026-09-14 — the ASSIGNMENT JUDGEMENT is now on the EP money path (`judge_theme_fit`)
+### 2026-09-13 (late evening) — the ASSIGNMENT JUDGEMENT is now on the EP money path (`judge_theme_fit`)
 
 **What changed**: `theme_engine.judge_theme_fit(ticker, description=, sector=, themes=)` asks the
 nightly assignment pass's own question — the SAME `_propose_assignment_batch` (same prompt, same
 `assign_stocks_to_themes` tool, same rules: *clearly matches the thesis / when in doubt do not /
 most specific theme / exact name*) — of a caller-supplied theme SHORTLIST, with the assign tool
 forced and no Opus advisor loop. It is stage 2 of the EP theme-bonus BELONGING test
-(`ep_theme_belonging.py`, SSoT `docs/setups/magna53_ep.md` 2026-09-14): correlation shortlists ≤3
+(`ep_theme_belonging.py`, SSoT `docs/setups/magna53_ep.md` 2026-09-13): correlation shortlists ≤3
 paying-stage themes, this judgement decides, and a confirmed fit pays the +10 on the EP score.
 The prompt builders are extracted (`assignment_shared_prefix`, `_assignment_stock_line`,
 `_assignment_theme_line`); the nightly render is byte-identical (pinned by literal in

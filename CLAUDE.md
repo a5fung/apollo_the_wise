@@ -270,12 +270,9 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
-### 2026-09-14 — a bar derived for one pair does not transfer to a best-of-many search
-
-- 🔴 **Correlation ≥0.35 against every live basket put a utility in a fracking theme (57% of alerts admitted) — caught by replay before one live tick.** Fix: correlation SHORTLISTS, the nightly assignment judgement DECIDES (`theme_engine.judge_theme_fit`, ONE definition of "fits"). SSoT `magna53_ep.md` 2026-09-14.
-
 ### 2026-09-13 — an expectation written AFTER the data is not an expectation
 
+- 🔴 **A bar derived for ONE pair does not transfer to a best-of-many search.** Correlation ≥0.35 against every live basket put a utility in a fracking theme (57% of alerts admitted) — caught by replay before one live tick. Fix: correlation SHORTLISTS, the nightly assignment judgement DECIDES (`theme_engine.judge_theme_fit`, ONE definition of "fits"). SSoT `magna53_ep.md`.
 - 🔴 **Five confident reversals on ONE question in one evening.** The worst was circular: I told him the birth gate's wait arm would drop *"~53 junk one-day themes"* — which merely restated that bucket's own definition. Measured properly: **5 were one-day, 48 lived 2+ days, 20 lived 14+.** He signed a live flip on that number; it was reverted the same day. **Before quoting any bucket as evidence, ask what the BROKEN system would put in it.**
 - ⚠ **Verify the MECHANISM, not just the claim.** `join_target` genuinely has no membership write — a true fact I filed as a defect without reading the design doc, which says in one line that joins are *"dedup, not kills"*. A locally-true fact inside a misunderstood system is a confident wrong answer.
 - ⚠ **`core/` is orchestrator-owned to `deploy.sh:176` but is COPY'd into the market/execution image** — a `core/` change deploys, prints DEPLOY OK, and leaves apollo-execution **stale**. Caught live; #656.

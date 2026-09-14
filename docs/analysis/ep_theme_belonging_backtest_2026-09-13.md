@@ -1,4 +1,4 @@
-# Theme bonus by BELONGING — the backtest CHANGE_PROCESS requires (2026-09-13, re-run under the TWO-STAGE rule 2026-09-14)
+# Theme bonus by BELONGING — the backtest CHANGE_PROCESS requires (2026-09-13, re-run the same evening under the TWO-STAGE rule)
 
 > Operator: *"EP gets boost if it belongs to a theme, regardless if it's already in a theme or
 > not at the time of EP alert."* — and on the backtest's role: *"Is a bug, if we don't like the
@@ -7,13 +7,13 @@
 > actually in list, that is the bug."* — and on the correlation-only first cut, shown D / BKKT /
 > QBTS / CMPS with their best-matching themes: *"That is clearly wrong themes for those stocks."*
 
-**Status (2026-09-14): stage 1 (correlation, $0) is MEASURED below. Stage 2 (the fit judgement,
+**Status (2026-09-13): stage 1 (correlation, $0) is MEASURED below. Stage 2 (the fit judgement,
 paid) is PENDING one command** — the sandbox this was built in could neither export the API key
 nor sync code to the host, and both refusals were correct. Everything below the stage-1 table is
 filled by that command's `results.md`, which also names every case the operator asked for.
 
 ```
-bash   scripts/probes/_ep_theme_belonging_pull.sh /tmp/etb              # read-only COPY ... TO STDOUT, six CSVs (DONE 2026-09-14)
+bash   scripts/probes/_ep_theme_belonging_pull.sh /tmp/etb              # read-only COPY ... TO STDOUT, six CSVs (DONE 2026-09-13)
 python scripts/probes/_ep_theme_belonging_backtest.py /tmp/etb          # stage 1 + the PRICE (DONE: ~US$2)
 ANTHROPIC_API_KEY=... python scripts/probes/_ep_theme_belonging_backtest.py /tmp/etb --spend   # stage 2, once; verdicts cached
 ```
@@ -44,7 +44,7 @@ before BKKT. So correlation became the FILTER and the nightly assignment pass's 
 ## Method / population
 
 - **Population**: every `mi_ep_alerts` row with a score, `alert_date >= CURRENT_DATE − 120`
-  (**n = 346**, pulled 2026-09-14). HIGH and MODERATE alerts both — the MODERATEs are where a new
+  (**n = 346**, pulled 2026-09-13). HIGH and MODERATE alerts both — the MODERATEs are where a new
   HIGH crossing can come from.
 - **Board as-of each alert**: `mi_themes` rows with `theme_date < alert_date AND theme_date >=
   alert_date − 7`, latest row per name, Retired dropped — the mirror of
@@ -84,7 +84,7 @@ before BKKT. So correlation became the FILTER and the nightly assignment pass's 
 | era-bar recheck of "4 HIGHs depended on the +10" | recount at each alert's own bar | — | the earlier read at a flat 70 stands or is corrected here |
 | cost | calls, tokens, US$, mean seconds per call | ~US$0.007 and ~5 s per call | — |
 
-## Results — stage 1 (measured 2026-09-14, $0)
+## Results — stage 1 (measured 2026-09-13, $0)
 
 | | count | of |
 |---|---|---|

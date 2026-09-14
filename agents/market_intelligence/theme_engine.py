@@ -4102,7 +4102,7 @@ def _assignment_stock_line(s: dict) -> str:
     through it, so a stock reads the same to the model whichever path asks. A `description`
     on the dict wins over TICKER_DESC (the EP path carries the FMP profile text for a name
     the universe has no one-liner for); RS is rendered only when the caller has one — the
-    nightly pool always does, so its line is byte-identical to the pre-2026-09-14 form."""
+    nightly pool always does, so its line is byte-identical to the pre-2026-09-13 form."""
     from agents.market_intelligence.universe import TICKER_DESC
     ticker = s["ticker"]
     desc = s.get("description") or TICKER_DESC.get(ticker, "")
@@ -4156,7 +4156,7 @@ async def _propose_assignment_batch(
     _MAX_ADVISOR_CALLS was always a per-run cost bound and batching must not
     multiply it by the batch count.
 
-    EP-TIME CALLER (2026-09-14, `judge_theme_fit`): the same prompt, tool and
+    EP-TIME CALLER (2026-09-13, `judge_theme_fit`): the same prompt, tool and
     rules judge whether an EP candidate fits one of its correlation-shortlisted
     themes. That caller passes `allow_advisor=False` (one bounded Sonnet call on
     the scan path — the Opus escalation loop is a nightly luxury, not a 7 AM
@@ -4398,7 +4398,7 @@ async def judge_theme_fit(
     rs_composite: float | None = None,
     client=None,
 ) -> tuple[str, str | None, str]:
-    """THE fit judgement, asked at EP time (ep_theme_belonging, 2026-09-14): does `ticker`
+    """THE fit judgement, asked at EP time (ep_theme_belonging, 2026-09-13): does `ticker`
     CLEARLY fit one of `themes`? Same prompt, same tool, same rules and same model as the
     nightly assignment pass (`_propose_assignment_batch`) — deliberately not a second prompt,
     so "fits a theme" has ONE definition in the codebase. The nightly pass shows the model
