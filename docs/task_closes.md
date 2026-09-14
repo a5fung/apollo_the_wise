@@ -642,3 +642,41 @@ the rendered string. `test_648_board_tenure.py`: 6 passed.
 ⚠ Streamlit serves from `main` and #640 records that a rebuild has needed forcing before; the code
 is on origin and the tenure string is unconditional, so a stale render would show the OLD lines
 rather than wrong new ones.
+
+## #488 — authoritative halt data is live on the ORB stream, and it caught a real halt (2026-09-14)
+
+BAR: "the Alpaca-WS `statuses` channel is captured and a REAL halt appears in our data with its
+authoritative status, on the live path. WOULD-FAIL-IF: the capture ships and no halt is ever
+recorded — a subscription nobody can prove is receiving."
+
+EVIDENCE: verified on prod this morning, not taken from a report.
+- **The subscribe RAN**, and this is the half that could have been faked by silence:
+  `halt-status shadow: trading-statuses (*) capture registered (#488)` at 2026-09-13T23:29:23Z,
+  3 seconds after the container start at 23:29:20Z, with no restart since. `capture_enabled()`
+  returns True inside the running `apollo-execution` image.
+- **A REAL halt appeared with its authoritative status:** `mi_halt_status_events` holds 79 rows for
+  today, ticker **VRC**, `status_code = 2` / `status_message = 'Trading Halt'`, `feed = 'sip'`,
+  tape B, first at 13:33:14Z. That is the authoritative per-security halt source the whole task was
+  about, and before today it had never recorded anything.
+- **On the LIVE path, with the shared stream intact** — the S2 risk this task existed to bound
+  (`websocket.py:352`: a subscribe on an un-entitled feed kills the ORB price stream). At 13:31:00Z
+  the same stream delivered `first bar received for SRRK O=56.50 H=56.90 L=55.00 C=55.51` and at
+  13:31:11Z the same for DFTX, both logged `stream healthy=True`, and DFTX went on to a real live
+  order (`trade_id=399`, stop-limit BUY @$43.61). **Bars kept flowing through a session in which the
+  statuses subscription was attached.**
+
+⚠ **I checked the discriminating fact first rather than the convenient one.** Bars flowing proves
+nothing on its own — an unsubscribed stream delivers bars identically. The registration log line and
+`capture_enabled()` are what separate the working system from the broken one; the bar flow is only
+meaningful once those are established.
+
+⚠ **The RMV heuristic still owns the consolidation guard**, exactly as the task required — this
+changed nothing there. `mi_dead_data_guard_shadow` is at 0 rows; it accrues on the nightly compare,
+which has not run since the flip, so the "does authoritative beat the heuristic" question is open
+and belongs to whoever reads that table, not to this bar.
+
+⚠ **Noted, not fixed: 79 rows are ONE halt, not 79.** The writer records a row every ~5 seconds for
+as long as a security stays halted, so the table counts feed heartbeats rather than halt events. It
+is shadow-only (SQL table, no Telegram, no reader in the money path) so nothing is wrong today, but
+any query over it must count DISTINCT halts, and the writer should dedupe until the status changes.
+Filed as #659.
