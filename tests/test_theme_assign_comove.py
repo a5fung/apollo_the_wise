@@ -229,6 +229,14 @@ def test_assignment_rejects_same_sector_noise_and_records_that_the_label_would_h
     detail = json.loads(next(e[2] for e in events if e[0] == "assignment_skipped_comove_below_bar"))
     assert detail["sector_verdict"] == "admit" and detail["corr"] < te.ASSIGN_COMOVE_BAR
     assert "assignment_skipped_sector_outlier" not in [e[0] for e in events]
+    # The COUNTER, not just the per-pair row (operator 2026-09-14, pre-registration P1b): a
+    # symmetric bar can cost membership as well as buy it, and before today only the buying side
+    # was counted. Mutation that proves this line: drop the `rejected_over_sector` increment in
+    # theme_engine._assign_uncovered_to_themes and this assertion fails while every other
+    # assertion in this test still passes — i.e. it tests the counter and nothing else.
+    summary = json.loads(next(e[2] for e in events if e[0] == "assignment_comove_summary"))
+    assert summary["rejected"] == 1 and summary["rejected_over_sector"] == 1
+    assert summary["admitted"] == 0 and summary["admitted_over_sector"] == 0
 
 
 def test_a_candidate_with_no_history_falls_to_the_sector_test_in_both_directions(monkeypatch):

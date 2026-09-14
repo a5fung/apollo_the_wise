@@ -142,7 +142,9 @@ bar chosen once the result is visible.
 
 | # | expectation | today's baseline | what would confirm it | what would refute it |
 |---|---|---|---|---|
-| P1 | **Themes hold more members** (his own example) | avg 4.7 at birth → 6.3 peak; 83 of 119 hold ≤5 | avg members per live theme rises, and the ≤5 share falls below 70% | no movement after 3 weeks |
+| ~~P1~~ | ⛔ **RETIRED 2026-09-14 — IT COULD NOT FAIL.** The swap is SYMMETRIC: the tape admits cross-sector pairs the label rejected AND rejects same-sector pairs the label kept, so a flat member count is produced identically by a change that works and one that does nothing. Replaced by P1a/P1b below, on the operator's ruling. | — | — | — |
+| **P1a** | **The tape ADMITS what the label would have thrown out** — the whole point of the swap | 167 of 824 proposals (20%) rejected on sector; `admitted_over_sector` did not exist before 2026-09-13 | `assignment_comove_summary` carries `admitted_over_sector` ≥ 1 per trading week over 15 days | it stays at 0 — the gate was never the binding constraint and U5 (upstream sector batching) is the real wall |
+| **P1b** | **And does not quietly cost more than it buys** — the mirror nobody was counting | `rejected_over_sector` was NOT INSTRUMENTED until 2026-09-14; baseline is unknown by construction and the first 15 days ARE the baseline | over the same 15 days, `rejected_over_sector` ≤ `admitted_over_sector` | rejections-over-label EXCEED admits-over-label ⇒ the symmetric bar is a net membership COST, and narrowing the test to cross-sector pairs returns to his desk as a real decision rather than a pre-emptive hedge |
 | P2 | **Fewer themes starved below the 3-member floor** | 29 of 46 sector strips left a theme under 3 | strip-to-under-3 events fall by more than half | unchanged |
 | P3 | **His four named concepts become formable** | IREN blocked from the theme named after it | a cross-sector cohort appears on the board and holds ≥5 days | they still never form |
 | P4 | **Membership rejections fall** | 167 of 824 proposals (20%) rejected on sector | sector-rejections → ~0, total rejections fall | total rejections flat (another wall absorbed them) |

@@ -647,6 +647,46 @@ because nothing recorded these parameters before.
 
 ### 2026-09-13 — THE MEMBERSHIP TEST ASKS THE TAPE: market-adjusted co-movement at 0.35 replaces the sector-identity test (OPERATOR-SIGNED, shipped ON, one-flag revertible)
 
+> 🔒 **TWO RULES SIGNED 2026-09-14, AFTER the backtest — read these with the entry below; they are
+> part of the change, not footnotes to it.**
+>
+> **RULE 1 — BATCH ORDER MUST NOT DECIDE MEMBERSHIP. The deferred, ordered second pass is
+> DELIBERATE (operator 2026-09-14: *"keep it, and write it into the SSoT as a deliberate rule"*).**
+> The apply-loop appends each admit to `theme["tickers"]` as it goes, so whether a proposal meets a
+> judgeable basket depends on where the LLM's batching happened to put it. **This is not
+> hypothetical: IREN on 2026-09-08 was proposed BEFORE BTDR in the same batch, was judged against
+> CIFR+CORZ alone, could not be judged for want of members, fell through to the sector test — and
+> was rejected. That is the headline case of this entire change, lost to batch order.** So a pair
+> the tape cannot judge **ONLY** for `thin_basket` is deferred to a second pass after the run's
+> other admits have landed, and that pass is ORDERED so the pairs the sector label would admit go
+> first (they land regardless), giving the tape the largest basket the night allows.
+> ⚠ **Fail-safe is unchanged:** a pair still thin on the second pass takes the sector test, exactly
+> as before. Every other check re-runs on a deferred pair and is idempotent. **Only `thin_basket`
+> defers** — a pair the tape judged and REJECTED is not given a second chance to pass, which would
+> be shopping for a verdict.
+> ⚠ It was originally added by the build agent beyond its instruction. It is signed now because it
+> is right, not because it shipped — the reasoning above is the justification, and it belongs in the
+> SSoT rather than in a code comment nobody re-reads.
+>
+> **RULE 2 — THE BAR STAYS SYMMETRIC, AND THE EXPECTATION MOVED INSTEAD (operator 2026-09-14:
+> *"keep it as you signed; fix the expectation instead"*).** The swap was signed as a REPLACEMENT of
+> the sector-identity test, so the tape decides both directions: it admits cross-sector pairs the
+> label rejected **and** rejects same-sector pairs the label would have kept. Narrowing it to
+> cross-sector pairs only would have made pre-registration P1 (*member count rises*) safe — and
+> that was the wrong fix, because **P1 could not fail either way: a flat member count is produced
+> identically by a change that works and one that does nothing.**
+> **What changed is the instrument.** `comove_stats` counted `admitted_over_sector` and had **no
+> mirror**, so the cost side of a symmetric test was invisible. It now also counts
+> **`rejected_over_sector`** — pairs the label would have ADMITTED that the tape threw out — and
+> both appear on the summary log line and in the `assignment_comove_summary` audit row.
+> **P1 is retired and replaced by P1a/P1b** in `docs/analysis/cross_industry_themes_2026-09-13.md`:
+> P1a = `admitted_over_sector` ≥ 1 per trading week (the change does something); P1b =
+> `rejected_over_sector` ≤ `admitted_over_sector` over 15 days (it does not cost more than it buys).
+> ⚠ **`rejected_over_sector` has NO historical baseline — it was never instrumented.** The first 15
+> days ARE the baseline, and that is stated rather than papered over. If P1b fails, narrowing the
+> test to cross-sector pairs returns to him as a real decision backed by a number.
+
+
 **Trigger**: the operator's question 2026-09-13 — *"can a theme span more than one sector? I lean
 yes, but we should verify"* — answered in `docs/analysis/cross_industry_themes_2026-09-13.md` (3 of
 3 measurement angles survived adversarial refutation), then his sign-off on the bar, the

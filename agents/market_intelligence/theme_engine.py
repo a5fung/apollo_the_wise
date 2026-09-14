@@ -4686,7 +4686,13 @@ async def _assign_uncovered_to_themes(
     assigned_tickers: set[str] = set()
     changelog: list[dict] = []
     # The run summary the verify-live reads (a POSITIVE observable, not "no sector events").
-    comove_stats = {"judged": 0, "admitted": 0, "rejected": 0, "admitted_over_sector": 0, "unjudgeable": 0}
+    # `rejected_over_sector` is the MIRROR of `admitted_over_sector` and exists because the swap
+    # is SYMMETRIC: the tape can also throw out a pair the sector label would have kept. Without
+    # both directions on the same line, "member count rose" cannot be read as evidence either
+    # way — a working change and an inert one produce the same net number (operator 2026-09-14,
+    # replacing pre-registration P1 with a falsifiable pair).
+    comove_stats = {"judged": 0, "admitted": 0, "rejected": 0, "admitted_over_sector": 0,
+                    "rejected_over_sector": 0, "unjudgeable": 0}
 
     # TWO PASSES (2026-09-13). The apply-loop appends each admit to theme["tickers"] as it goes,
     # so whether a proposal to a 2-member theme meets a 3-member basket depends on where the
@@ -4764,6 +4770,8 @@ async def _assign_uncovered_to_themes(
                 comove_stats["judged"] += 1
                 if not cv.admit:
                     comove_stats["rejected"] += 1
+                    if sector_says == "admit":
+                        comove_stats["rejected_over_sector"] += 1
                     logger.info(f"Assignment skipped: {ticker} → '{theme_name}' co-moves at {cv.corr} "
                                 f"< {ASSIGN_COMOVE_BAR} over {cv.overlap} sessions (sector test would "
                                 f"have said: {sector_says})")
@@ -4840,12 +4848,15 @@ async def _assign_uncovered_to_themes(
             f"Theme membership test (co-movement, bar {ASSIGN_COMOVE_BAR}): judged {comove_stats['judged']} "
             f"proposed pair(s) — admitted {comove_stats['admitted']} "
             f"({comove_stats['admitted_over_sector']} the sector label would have rejected), "
-            f"rejected {comove_stats['rejected']}, {comove_stats['unjudgeable']} left to the sector test")
+            f"rejected {comove_stats['rejected']} "
+            f"({comove_stats['rejected_over_sector']} the sector label would have ADMITTED), "
+            f"{comove_stats['unjudgeable']} left to the sector test")
         if comove_stats["judged"] or comove_stats["unjudgeable"]:
             await log_audit_event(
                 "assignment_comove_summary",
                 summary=(f"Co-movement test: {comove_stats['admitted']} admitted "
                          f"({comove_stats['admitted_over_sector']} over the sector label), "
+                         f"{comove_stats['rejected_over_sector']} rejected the label would have kept, "
                          f"{comove_stats['rejected']} rejected, {comove_stats['unjudgeable']} unjudgeable"),
                 detail=json.dumps({**comove_stats, "bar": ASSIGN_COMOVE_BAR,
                                    "before_date": str(comove_ctx.before_date),
