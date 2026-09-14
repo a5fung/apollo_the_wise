@@ -4445,6 +4445,106 @@ async def judge_theme_fit(
         logger.info(f"ep theme fit: {tk} → '{name}' was not on the shortlist — not a fit")
         return FIT_REJECTED, None, f"named a theme not offered: {name}"[:500]
     return FIT_REJECTED, None, (scratch or "no fit")[:500]
+async def _sector_identity_gate(ticker: str, theme_name: str, theme: dict,
+                                stocks_by_ticker: dict[str, dict]) -> bool:
+    """TODAY's sector test, extracted VERBATIM from the assignment apply-loop on 2026-09-13
+    (pure refactor — the sector-identity rejection, the sector-keyword fallback with its
+    description rescue, and the Unknown-sector description-overlap check, with the same audit
+    events). Returns True to admit, False to skip. It is now the FAIL-SAFE branch: the
+    co-movement test in `_assign_uncovered_to_themes` runs first wherever the tape can judge
+    the pair, and this decides only when it cannot (or the toggle is off)."""
+    from agents.market_intelligence.universe import TICKER_DESC
+
+    # Sector outlier check: reject if stock's sector is outlier vs theme
+    stock_sector = stocks_by_ticker.get(ticker, {}).get("sector", "Unknown")
+    theme_tickers = theme.get("tickers") or []
+    theme_sectors = [stocks_by_ticker.get(tk, {}).get("sector", "Unknown") for tk in theme_tickers]
+    known_sectors = [s for s in theme_sectors if s and s != "Unknown"]
+    if stock_sector and stock_sector != "Unknown":
+        if known_sectors and stock_sector not in known_sectors:
+            logger.info(f"Assignment skipped: {ticker} sector '{stock_sector}' is outlier in '{theme_name}'")
+            await log_audit_event(
+                "assignment_skipped_sector_outlier",
+                f"{ticker} ({stock_sector}) → '{theme_name}' (members: {sorted(set(known_sectors))})",
+                json.dumps({
+                    "ticker": ticker, "theme": theme_name,
+                    "stock_sector": stock_sector,
+                    "theme_known_sectors": sorted(set(known_sectors)),
+                }),
+            )
+            return False
+        elif not known_sectors:
+            # Theme members all have unknown sectors (e.g. oil stocks outside top-300 RS).
+            # The normal sector gate is blind — fall back to keyword overlap between the
+            # stock's sector and the theme name+description. Zero overlap = obvious
+            # cross-sector hallucination (e.g. "Electronic Technology" → "Crude Oil E&P").
+            # KNOWN WEAKNESS (#46): broad sector labels like "Technology" rarely overlap
+            # with specific theme keywords ("Optical", "Memory", etc.) — false-positive
+            # rejections of valid Tech matches. Description-overlap fallback below is
+            # the better gate; this branch should be deprecated once #46 ships the fix.
+            sector_words = set(re.findall(r'\b\w{4,}\b', stock_sector.lower()))
+            theme_text = (theme_name + " " + (theme.get("description") or "")).lower()
+            theme_words = set(re.findall(r'\b\w{4,}\b', theme_text))
+            if sector_words and theme_words and not sector_words.intersection(theme_words):
+                # Try description-overlap as a second-chance gate before rejecting.
+                # If the stock's description shares ≥2 keywords with the theme
+                # description, treat the sector-keyword check as a false rejection.
+                stock_desc = (TICKER_DESC.get(ticker) or "").lower()
+                theme_desc = (theme.get("description") or "").lower()
+                desc_words = set(re.findall(r'\b\w{4,}\b', stock_desc))
+                theme_desc_words = set(re.findall(r'\b\w{4,}\b', theme_desc))
+                desc_overlap = desc_words & theme_desc_words
+                if len(desc_overlap) >= 2:
+                    logger.info(
+                        f"Assignment retained: {ticker} sector '{stock_sector}' lacks theme-name "
+                        f"keyword overlap but description overlaps {sorted(desc_overlap)[:5]} — "
+                        f"sector-keyword check overridden by description-overlap rescue"
+                    )
+                    await log_audit_event(
+                        "assignment_sector_kw_overridden_by_desc",
+                        f"{ticker} → '{theme_name}' (desc rescue: {sorted(desc_overlap)[:5]})",
+                        json.dumps({
+                            "ticker": ticker, "theme": theme_name,
+                            "stock_sector": stock_sector,
+                            "desc_overlap_words": sorted(desc_overlap)[:10],
+                        }),
+                    )
+                else:
+                    logger.info(
+                        f"Assignment skipped: {ticker} sector '{stock_sector}' has zero keyword "
+                        f"overlap with theme '{theme_name}' — likely cross-sector hallucination"
+                    )
+                    await log_audit_event(
+                        "assignment_skipped_sector_kw",
+                        f"{ticker} ({stock_sector}) → '{theme_name}' (zero kw overlap, no desc rescue)",
+                        json.dumps({
+                            "ticker": ticker, "theme": theme_name,
+                            "stock_sector": stock_sector,
+                            "theme_words_sample": sorted(theme_words)[:10],
+                            "desc_overlap_words": sorted(desc_overlap)[:10] if desc_words else [],
+                        }),
+                    )
+                    return False
+    else:
+        # Stock sector unknown — fall back to description keyword overlap as a sanity check.
+        stock_desc = (TICKER_DESC.get(ticker) or "").lower()
+        theme_desc = (theme.get("description") or "").lower()
+        if stock_desc and theme_desc:
+            desc_words = set(re.findall(r'\b\w{4,}\b', stock_desc))
+            theme_words = set(re.findall(r'\b\w{4,}\b', theme_desc))
+            if not desc_words.intersection(theme_words):
+                logger.info(
+                    f"Assignment skipped: {ticker} has Unknown sector and zero "
+                    f"description overlap with '{theme_name}'"
+                )
+                await log_audit_event(
+                    "assignment_skipped_desc_overlap",
+                    f"{ticker} → '{theme_name}' (Unknown sector + zero desc overlap)",
+                    json.dumps({"ticker": ticker, "theme": theme_name}),
+                )
+                return False
+
+    return True
 
 
 async def _assign_uncovered_to_themes(
@@ -4455,6 +4555,7 @@ async def _assign_uncovered_to_themes(
     globally_banned: set[str] | None = None,
     cooldown_set: set[tuple[str, str]] | None = None,
     protected: set[tuple[str, str]] | None = None,
+    comove_ctx: ComoveContext | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """
     Ask Claude to assign uncovered stocks to existing themes where they clearly fit.
@@ -4462,6 +4563,9 @@ async def _assign_uncovered_to_themes(
     theme_exclusions: mapping of theme_name → set of tickers permanently excluded from it.
     globally_banned: tickers that have been validation-removed from ≥ N distinct themes
         in the lookback window — filtered out before reaching the LLM.
+    comove_ctx: the run's price context (2026-09-13). With it, each proposed pair is judged by
+        market-adjusted co-movement at ASSIGN_COMOVE_BAR; a pair the tape cannot judge — and
+        every pair when it is None — goes through today's sector test (`_sector_identity_gate`).
     """
     if not uncovered_stocks or not existing_themes:
         return uncovered_stocks, []
@@ -4581,161 +4685,172 @@ async def _assign_uncovered_to_themes(
     theme_by_name = {t["name"]: t for t in existing_themes}
     assigned_tickers: set[str] = set()
     changelog: list[dict] = []
+    # The run summary the verify-live reads (a POSITIVE observable, not "no sector events").
+    comove_stats = {"judged": 0, "admitted": 0, "rejected": 0, "admitted_over_sector": 0, "unjudgeable": 0}
 
-    for a in assignments:
-        ticker = a.get("ticker", "")
-        theme_name = a.get("theme", "")
-        rationale = a.get("rationale", "")
+    # TWO PASSES (2026-09-13). The apply-loop appends each admit to theme["tickers"] as it goes,
+    # so whether a proposal to a 2-member theme meets a 3-member basket depends on where the
+    # LLM's batches happened to put it: IREN on 2026-09-08 was proposed BEFORE BTDR in the same
+    # batch, was judged against CIFR+CORZ alone, could not be judged, and fell to the sector
+    # test — which rejected the headline case of the whole change. A pair the tape cannot judge
+    # ONLY for want of members is deferred to a second pass, after this run's other admits have
+    # landed; a pair still thin on the second pass takes the sector test (fail SAFE, unchanged).
+    # Every other check re-runs on the deferred pair and is idempotent (no event on a pass).
+    pending: list[dict] = list(assignments)
+    for attempt in (1, 2):
+        deferred: list[dict] = []
+        for a in pending:
+            ticker = a.get("ticker", "")
+            theme_name = a.get("theme", "")
+            rationale = a.get("rationale", "")
 
-        # Validate theme exists. The prompt says "use the EXACT theme name from
-        # the list above" — and that list renders Fading themes as
-        # "Name [Fading]" (stage_note), so Sonnet faithfully echoes the suffix
-        # (2026-06-10: BOT + OUST → 'Physical AI & Robotics [Fading]' both
-        # silently dropped here). Strip a trailing bracketed stage label and
-        # retry before giving up.
-        theme = theme_by_name.get(theme_name)
-        if not theme:
-            stripped_name = _strip_stage_label(theme_name)
-            theme = theme_by_name.get(stripped_name)
-            if theme:
-                theme_name = stripped_name
-        if not theme:
-            # AUDIT, not just a rotating log line — a dropped proposal is a
-            # silent assignment failure (feedback_no_silent_failures class).
-            logger.warning(f"Assignment skipped: theme '{theme_name}' not found")
-            await log_audit_event(
-                "assignment_theme_not_found",
-                f"{ticker} → '{theme_name}' dropped: no live theme by that name",
-                json.dumps({"ticker": ticker, "proposed_theme": theme_name}),
-            )
-            continue
-
-        # Validate ticker is in uncovered pool
-        if ticker not in {s["ticker"] for s in uncovered_stocks}:
-            continue
-
-        # Honor persistent exclusions — uses fuzzy match so renames don't bypass it
-        if theme_exclusions and ticker in _get_excluded_tickers_for_theme(theme_name, theme_exclusions):
-            logger.info(f"Assignment blocked: {ticker} is permanently excluded from '{theme_name}'")
-            await log_audit_event(
-                "assignment_skipped_exclusion",
-                f"{ticker} → '{theme_name}' blocked: persistent exclusion",
-                json.dumps({"ticker": ticker, "theme": theme_name}),
-            )
-            continue
-
-        # Sector outlier check: reject if stock's sector is outlier vs theme
-        stock_sector = stocks_by_ticker.get(ticker, {}).get("sector", "Unknown")
-        theme_tickers = theme.get("tickers") or []
-        theme_sectors = [stocks_by_ticker.get(tk, {}).get("sector", "Unknown") for tk in theme_tickers]
-        known_sectors = [s for s in theme_sectors if s and s != "Unknown"]
-        if stock_sector and stock_sector != "Unknown":
-            if known_sectors and stock_sector not in known_sectors:
-                logger.info(f"Assignment skipped: {ticker} sector '{stock_sector}' is outlier in '{theme_name}'")
+            # Validate theme exists. The prompt says "use the EXACT theme name from
+            # the list above" — and that list renders Fading themes as
+            # "Name [Fading]" (stage_note), so Sonnet faithfully echoes the suffix
+            # (2026-06-10: BOT + OUST → 'Physical AI & Robotics [Fading]' both
+            # silently dropped here). Strip a trailing bracketed stage label and
+            # retry before giving up.
+            theme = theme_by_name.get(theme_name)
+            if not theme:
+                stripped_name = _strip_stage_label(theme_name)
+                theme = theme_by_name.get(stripped_name)
+                if theme:
+                    theme_name = stripped_name
+            if not theme:
+                # AUDIT, not just a rotating log line — a dropped proposal is a
+                # silent assignment failure (feedback_no_silent_failures class).
+                logger.warning(f"Assignment skipped: theme '{theme_name}' not found")
                 await log_audit_event(
-                    "assignment_skipped_sector_outlier",
-                    f"{ticker} ({stock_sector}) → '{theme_name}' (members: {sorted(set(known_sectors))})",
-                    json.dumps({
-                        "ticker": ticker, "theme": theme_name,
-                        "stock_sector": stock_sector,
-                        "theme_known_sectors": sorted(set(known_sectors)),
-                    }),
+                    "assignment_theme_not_found",
+                    f"{ticker} → '{theme_name}' dropped: no live theme by that name",
+                    json.dumps({"ticker": ticker, "proposed_theme": theme_name}),
                 )
                 continue
-            elif not known_sectors:
-                # Theme members all have unknown sectors (e.g. oil stocks outside top-300 RS).
-                # The normal sector gate is blind — fall back to keyword overlap between the
-                # stock's sector and the theme name+description. Zero overlap = obvious
-                # cross-sector hallucination (e.g. "Electronic Technology" → "Crude Oil E&P").
-                # KNOWN WEAKNESS (#46): broad sector labels like "Technology" rarely overlap
-                # with specific theme keywords ("Optical", "Memory", etc.) — false-positive
-                # rejections of valid Tech matches. Description-overlap fallback below is
-                # the better gate; this branch should be deprecated once #46 ships the fix.
-                sector_words = set(re.findall(r'\b\w{4,}\b', stock_sector.lower()))
-                theme_text = (theme_name + " " + (theme.get("description") or "")).lower()
-                theme_words = set(re.findall(r'\b\w{4,}\b', theme_text))
-                if sector_words and theme_words and not sector_words.intersection(theme_words):
-                    # Try description-overlap as a second-chance gate before rejecting.
-                    # If the stock's description shares ≥2 keywords with the theme
-                    # description, treat the sector-keyword check as a false rejection.
-                    stock_desc = (TICKER_DESC.get(ticker) or "").lower()
-                    theme_desc = (theme.get("description") or "").lower()
-                    desc_words = set(re.findall(r'\b\w{4,}\b', stock_desc))
-                    theme_desc_words = set(re.findall(r'\b\w{4,}\b', theme_desc))
-                    desc_overlap = desc_words & theme_desc_words
-                    if len(desc_overlap) >= 2:
-                        logger.info(
-                            f"Assignment retained: {ticker} sector '{stock_sector}' lacks theme-name "
-                            f"keyword overlap but description overlaps {sorted(desc_overlap)[:5]} — "
-                            f"sector-keyword check overridden by description-overlap rescue"
-                        )
-                        await log_audit_event(
-                            "assignment_sector_kw_overridden_by_desc",
-                            f"{ticker} → '{theme_name}' (desc rescue: {sorted(desc_overlap)[:5]})",
-                            json.dumps({
-                                "ticker": ticker, "theme": theme_name,
-                                "stock_sector": stock_sector,
-                                "desc_overlap_words": sorted(desc_overlap)[:10],
-                            }),
-                        )
-                    else:
-                        logger.info(
-                            f"Assignment skipped: {ticker} sector '{stock_sector}' has zero keyword "
-                            f"overlap with theme '{theme_name}' — likely cross-sector hallucination"
-                        )
-                        await log_audit_event(
-                            "assignment_skipped_sector_kw",
-                            f"{ticker} ({stock_sector}) → '{theme_name}' (zero kw overlap, no desc rescue)",
-                            json.dumps({
-                                "ticker": ticker, "theme": theme_name,
-                                "stock_sector": stock_sector,
-                                "theme_words_sample": sorted(theme_words)[:10],
-                                "desc_overlap_words": sorted(desc_overlap)[:10] if desc_words else [],
-                            }),
-                        )
-                        continue
-        else:
-            # Stock sector unknown — fall back to description keyword overlap as a sanity check.
-            stock_desc = (TICKER_DESC.get(ticker) or "").lower()
-            theme_desc = (theme.get("description") or "").lower()
-            if stock_desc and theme_desc:
-                desc_words = set(re.findall(r'\b\w{4,}\b', stock_desc))
-                theme_words = set(re.findall(r'\b\w{4,}\b', theme_desc))
-                if not desc_words.intersection(theme_words):
-                    logger.info(
-                        f"Assignment skipped: {ticker} has Unknown sector and zero "
-                        f"description overlap with '{theme_name}'"
-                    )
+
+            # Validate ticker is in uncovered pool
+            if ticker not in {s["ticker"] for s in uncovered_stocks}:
+                continue
+
+            # Honor persistent exclusions — uses fuzzy match so renames don't bypass it
+            if theme_exclusions and ticker in _get_excluded_tickers_for_theme(theme_name, theme_exclusions):
+                logger.info(f"Assignment blocked: {ticker} is permanently excluded from '{theme_name}'")
+                await log_audit_event(
+                    "assignment_skipped_exclusion",
+                    f"{ticker} → '{theme_name}' blocked: persistent exclusion",
+                    json.dumps({"ticker": ticker, "theme": theme_name}),
+                )
+                continue
+
+            # ── Membership test (2026-09-13, OPERATOR-SIGNED): the tape decides where it can ──
+            # Market-adjusted co-movement of the candidate with the theme's members over the
+            # sessions strictly before the run date, admitted at >= ASSIGN_COMOVE_BAR. A pair the
+            # tape cannot judge (no history / thin basket / context missing / toggle off) falls to
+            # today's sector test — `_sector_identity_gate`, verbatim — never to a silent admit.
+            stock_sector = stocks_by_ticker.get(ticker, {}).get("sector", "Unknown")
+            theme_tickers = theme.get("tickers") or []
+            known_sectors = [
+                sec for sec in (stocks_by_ticker.get(tk, {}).get("sector", "Unknown") for tk in theme_tickers)
+                if sec and sec != "Unknown"
+            ]
+            cv = _comove_verdict(ticker, theme_tickers, comove_ctx)
+            if cv is not None and cv.admit is not None:
+                sector_says = _sector_identity_counterfactual(stock_sector, known_sectors)
+                cv_detail = {
+                    "ticker": ticker, "theme": theme_name, "corr": cv.corr,
+                    "overlap_sessions": cv.overlap, "basket_n": cv.basket_n, "bar": ASSIGN_COMOVE_BAR,
+                    "stock_sector": stock_sector, "theme_known_sectors": sorted(set(known_sectors)),
+                    "sector_verdict": sector_says,
+                }
+                comove_stats["judged"] += 1
+                if not cv.admit:
+                    comove_stats["rejected"] += 1
+                    logger.info(f"Assignment skipped: {ticker} → '{theme_name}' co-moves at {cv.corr} "
+                                f"< {ASSIGN_COMOVE_BAR} over {cv.overlap} sessions (sector test would "
+                                f"have said: {sector_says})")
                     await log_audit_event(
-                        "assignment_skipped_desc_overlap",
-                        f"{ticker} → '{theme_name}' (Unknown sector + zero desc overlap)",
-                        json.dumps({"ticker": ticker, "theme": theme_name}),
+                        "assignment_skipped_comove_below_bar",
+                        f"{ticker} → '{theme_name}' rejected: co-movement {cv.corr} < {ASSIGN_COMOVE_BAR} "
+                        f"(sector test: {sector_says})",
+                        json.dumps(cv_detail),
                     )
                     continue
+                comove_stats["admitted"] += 1
+                if sector_says == "reject":
+                    # The pre-registration's P4 observable: the pairs the sector label alone
+                    # would have thrown out, admitted because they move with the theme.
+                    comove_stats["admitted_over_sector"] += 1
+                    await log_audit_event(
+                        "assignment_comove_admitted_over_sector",
+                        f"{ticker} ({stock_sector}) → '{theme_name}' admitted on co-movement {cv.corr} "
+                        f"(members: {sorted(set(known_sectors))})",
+                        json.dumps(cv_detail),
+                    )
+            else:
+                if attempt == 1 and cv is not None and cv.reason == "thin_basket":
+                    # Not enough MEMBERS yet — maybe because this run's other proposals to the
+                    # same theme are still in the queue. Judge it again after they have landed.
+                    # The sector counterfactual travels with it: on the second pass the label's
+                    # own yeses land FIRST, so the tape gets the largest basket the night allows.
+                    deferred.append({**a, "_sector_says": _sector_identity_counterfactual(stock_sector, known_sectors)})
+                    continue
+                if comove_ctx is not None:
+                    comove_stats["unjudgeable"] += 1
+                    logger.info(f"Assignment: {ticker} → '{theme_name}' cannot be judged by the tape "
+                                f"({cv.reason if cv else 'no context'}) — sector test decides")
+                if not await _sector_identity_gate(ticker, theme_name, theme, stocks_by_ticker):
+                    continue
 
-        # Hard cooldown filter — safety net in case Claude ignored the prompt constraint
-        if (ticker, theme_name) in cooldown_set:
-            logger.info(f"Assignment blocked by cooldown: {ticker} → '{theme_name}'")
+            # Hard cooldown filter — safety net in case Claude ignored the prompt constraint
+            if (ticker, theme_name) in cooldown_set:
+                logger.info(f"Assignment blocked by cooldown: {ticker} → '{theme_name}'")
+                await log_audit_event(
+                    "cooldown_blocked_assignment",
+                    summary=f"Cooldown prevented {ticker} → '{theme_name}'",
+                    detail="Claude ignored cooldown constraint — hard filter applied",
+                )
+                continue
+
+            # Apply assignment
+            if "tickers" not in theme:
+                theme["tickers"] = []
+            if ticker not in theme["tickers"]:
+                theme["tickers"].append(ticker)
+            assigned_tickers.add(ticker)
+            changelog.append({
+                "type": "ticker_assigned",
+                "theme": theme_name,
+                "ticker": ticker,
+                "rationale": rationale,
+            })
+            logger.info(f"Assigned {ticker} → '{theme_name}': {rationale}")
+
+        if not deferred:
+            break
+        # Second pass, ordered: pairs the sector test would admit first (they land on the theme
+        # whether or not the tape can see them), then the fallbacks, then the label's rejections
+        # — so a cross-sector co-mover proposed BEFORE a same-sector name in the same batch is
+        # judged against the full basket, not against the batch order (IREN/BTDR 2026-09-08).
+        _rank = {"admit": 0, "fallback": 1, "reject": 2}
+        pending = sorted(deferred, key=lambda a: _rank.get(a.get("_sector_says"), 1))
+        logger.info(f"Theme membership test: {len(pending)} pair(s) deferred for want of members — "
+                    f"second pass against this run's admits")
+
+    if comove_ctx is not None:
+        logger.info(
+            f"Theme membership test (co-movement, bar {ASSIGN_COMOVE_BAR}): judged {comove_stats['judged']} "
+            f"proposed pair(s) — admitted {comove_stats['admitted']} "
+            f"({comove_stats['admitted_over_sector']} the sector label would have rejected), "
+            f"rejected {comove_stats['rejected']}, {comove_stats['unjudgeable']} left to the sector test")
+        if comove_stats["judged"] or comove_stats["unjudgeable"]:
             await log_audit_event(
-                "cooldown_blocked_assignment",
-                summary=f"Cooldown prevented {ticker} → '{theme_name}'",
-                detail="Claude ignored cooldown constraint — hard filter applied",
+                "assignment_comove_summary",
+                summary=(f"Co-movement test: {comove_stats['admitted']} admitted "
+                         f"({comove_stats['admitted_over_sector']} over the sector label), "
+                         f"{comove_stats['rejected']} rejected, {comove_stats['unjudgeable']} unjudgeable"),
+                detail=json.dumps({**comove_stats, "bar": ASSIGN_COMOVE_BAR,
+                                   "before_date": str(comove_ctx.before_date),
+                                   "n_sessions": comove_ctx.n_sessions}),
             )
-            continue
-
-        # Apply assignment
-        if "tickers" not in theme:
-            theme["tickers"] = []
-        if ticker not in theme["tickers"]:
-            theme["tickers"].append(ticker)
-        assigned_tickers.add(ticker)
-        changelog.append({
-            "type": "ticker_assigned",
-            "theme": theme_name,
-            "ticker": ticker,
-            "rationale": rationale,
-        })
-        logger.info(f"Assigned {ticker} → '{theme_name}': {rationale}")
 
     # Immediately validate net-new assignments — don't wait for Mon/Wed/Fri scheduled run.
     # This catches LLM hallucinations before they ever hit the database.
@@ -5200,8 +5315,17 @@ async def _apply_carryforward_deterministic_filter(
     globally_banned: set[str],
     cooldown_set: set[tuple[str, str]],
     stocks_by_ticker: dict[str, dict],
+    comove_ctx: ComoveContext | None = None,
 ) -> int:
     """Daily strip-only filter for theme carryforward members (2026-05-15).
+
+    2026-09-13 (operator-signed): arm 3 is no longer a sector-IDENTITY test when `comove_ctx`
+    is given. A singleton-sector member is KEPT when it co-moves with the rest of the theme
+    at >= ASSIGN_COMOVE_BAR (leave-one-out, market-adjusted, sessions strictly before the run
+    date) and stripped when it does not; a member the tape cannot judge is stripped exactly
+    as before (fail SAFE). Without this the assignment change would churn: a name admitted on
+    co-movement tonight would be stripped here tomorrow, before the LLM ever saw the board.
+    `comove_ctx=None` is the pre-change filter, byte-for-byte.
 
     Closes the adds/removes asymmetry — the bug class that let 4 oncology
     biotechs (RVMD/AVBP/DAWN/AJRD) cycle through Satellite-named themes for
@@ -5247,6 +5371,8 @@ async def _apply_carryforward_deterministic_filter(
         # function operates per-merge; here we apply the same logic per-theme
         # without that gate.
         sector_outliers: list[str] = []
+        comove_below_bar: list[str] = []
+        comove_kept: list[str] = []
         if len(tickers) >= 3:
             sector_of = {
                 t: stocks_by_ticker.get(t, {}).get("sector") or "Unknown"
@@ -5258,11 +5384,23 @@ async def _apply_carryforward_deterministic_filter(
                 singleton_sectors = {
                     s for s, n in counts.items() if n == 1 and len(counts) > 1
                 }
-                sector_outliers = [
-                    t for t in tickers if sector_of[t] in singleton_sectors
-                ]
+                for t in tickers:
+                    if sector_of[t] not in singleton_sectors:
+                        continue
+                    # 2026-09-13: the tape decides where it can; the label only where it cannot.
+                    cv = _comove_verdict(t, tickers, comove_ctx)
+                    if cv is not None and cv.admit is True:
+                        comove_kept.append(t)
+                    elif cv is not None and cv.admit is False:
+                        comove_below_bar.append(t)
+                    else:
+                        sector_outliers.append(t)
 
-        to_remove = set(banned_hits) | set(cooldown_hits) | set(sector_outliers)
+        if comove_kept:
+            logger.info(
+                f"Carryforward filter: '{theme_name}' keeps cross-sector member(s) {comove_kept} — "
+                f"co-move with the theme at >= {ASSIGN_COMOVE_BAR}")
+        to_remove = set(banned_hits) | set(cooldown_hits) | set(sector_outliers) | set(comove_below_bar)
         if not to_remove:
             continue
 
@@ -5280,6 +5418,10 @@ async def _apply_carryforward_deterministic_filter(
             reason_parts.append(f"cooldown={sorted(cooldown_hits)}")
         if sector_outliers:
             reason_parts.append(f"sector_outlier={sorted(sector_outliers)}")
+        if comove_below_bar:
+            reason_parts.append(f"comove_below_bar={sorted(comove_below_bar)}")
+        if comove_kept:
+            reason_parts.append(f"comove_kept={sorted(comove_kept)}")
         await log_audit_event(
             "theme_carryforward_filter_stripped",
             summary=(
@@ -5310,7 +5452,172 @@ def _strip_stage_label(name: str) -> str:
     return re.sub(r"\s*\[[A-Za-z]+\]\s*$", "", name or "")
 
 
-def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> dict:
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+# MEMBERSHIP TEST — market-adjusted CO-MOVEMENT replaces the sector-identity test
+# (2026-09-13, OPERATOR-SIGNED — SSoT: docs/architecture/theme_engine.md change log 2026-09-13;
+#  evidence: docs/analysis/cross_industry_themes_2026-09-13.md)
+#
+# WHAT WAS WRONG WITH THE SECTOR TEST. Three sites asked the same question — "does this name's
+# top-level sector label match the theme's?" — at assignment (`_sector_identity_gate`), at birth
+# (`_strip_sector_outliers`) and every night on carryforward members
+# (`_apply_carryforward_deterministic_filter`). Measured on 389 accepted and 83 rejected
+# name↔theme pairs with price history: the names it ADMITS move with their themes at 0.65 and the
+# names it REJECTS at 0.61 (a random board stock ≈ 0.05). The label was testing the data vendor's
+# filing cabinet, not the tape — IREN sits at 0.70-0.83 with CIFR/CORZ/BTDR (as tight as they sit
+# with each other) and was excluded from the theme named after it solely because mi_stock_scores
+# files it as Financial Services and them as Technology.
+#
+# THE REPLACEMENT is the question the sector label was a proxy for, asked directly: the
+# candidate's market-adjusted (SPY-subtracted) daily returns over the ASSIGN-lookback sessions
+# STRICTLY BEFORE the run date, correlated with the equal-weight basket of the theme's members
+# (leave-one-out when the candidate is itself a member). The maths is `ep_theme_belonging`'s —
+# imported, never re-derived — so the EP scan and the nightly engine cannot disagree about what
+# "co-moves" means.
+#
+# FAIL DIRECTION (explicit): a pair the tape CANNOT judge — no price history, fewer than
+# BELONGING_MIN_OVERLAP_SESSIONS overlapping sessions, a basket with fewer than
+# BELONGING_MIN_BASKET_MEMBERS members that have history, the closes read failing, or the toggle
+# OFF — falls back to TODAY's sector test at that site, byte-for-byte. It is never silently
+# admitted. `comove_ctx=None` is that fallback, structurally: every site's pre-change code path
+# is the `None` branch.
+#
+# THE TOGGLE (`theme_assign_comove`, mi_safeguard_state / env THEME_ASSIGN_COMOVE_ENABLED,
+# DEFAULT ON — he signed it). Revert with NO redeploy (~60s cache lag):
+#     INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+#     VALUES ('theme_assign_comove', 'global', 'off', NOW(), NOW())
+#     ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
+# Nothing in this module writes to mi_safeguard_state.
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+from dataclasses import dataclass as _dataclass
+
+# THE BAR. Derivation (docs/analysis/cross_industry_themes_2026-09-13.md, 60 sessions,
+# SPY-subtracted): real theme members sit 0.5-0.8, a random board stock ≈ 0.05; 0.35 separates
+# every case measured — admits IREN 0.70+, MSTR 0.65, CMC 0.60, GPN 0.54; rejects OTTR -0.14,
+# ECO -0.11, SEDG 0.16, AGX 0.29. ⚠ THIS IS A PER-PAIR TEST: the LLM has already nominated ONE
+# (stock, theme) pair and this judges that pair. The same number used to pick the BEST of ~119
+# themes admits nonsense (Dominion Energy matched a fracking theme at 0.45) — that is a different
+# use with its own bar (`ep_theme_belonging.BELONGING_CORR_BAR`, same value today, free to
+# diverge). Do not raise this bar to fix the best-of-many problem. Registered in
+# scripts/gate_provenance_registry.py (plain assignment on purpose — the provenance parser reads
+# `NAME = <literal>`).
+ASSIGN_COMOVE_BAR = 0.35
+ASSIGN_COMOVE_TOGGLE: tuple[str, str] = ("theme_assign_comove", "THEME_ASSIGN_COMOVE_ENABLED")
+ASSIGN_COMOVE_DEFAULT_ON: bool = True
+
+
+@_dataclass
+class ComoveContext:
+    """The nightly run's price context, built ONCE per run by `_load_comove_context`:
+    market-adjusted log returns per ticker over the sessions STRICTLY BEFORE `before_date` (the
+    run date — no lookahead). Passed down to the three membership-test sites; `None` at any site
+    means "cannot judge" and that site runs today's sector test."""
+    before_date: date
+    excess: dict[str, Any]        # ticker -> np.ndarray, aligned to the N return sessions
+    n_sessions: int               # N
+    n_rows: int                   # mi_daily_closes rows read (cost telemetry)
+
+
+@_dataclass(frozen=True)
+class ComoveVerdict:
+    """One pair's verdict. `admit` True/False = the tape decided; None = cannot judge -> the
+    caller MUST fall back to the sector test (never admit on None)."""
+    admit: bool | None
+    corr: float | None
+    overlap: int                  # sessions the correlation was read on
+    basket_n: int                 # members (with history) in the basket, after leave-one-out
+    reason: str                   # comoves | below_bar | no_history | thin_basket
+
+
+async def _read_assign_comove_toggle() -> bool:
+    """The reversion toggle, default ON. DB row > env > default; a DB error -> env/default
+    (grade-quality toggle, not capital — db.get_runtime_toggle's own fail direction)."""
+    from agents.market_intelligence.db import get_runtime_toggle
+    # Literals on purpose: scripts/live_rules.py discovers runtime toggles by regex over
+    # `get_runtime_toggle("<name>", "<ENV>")`; a tuple-unpack call is invisible to the nightly
+    # docs-vs-prod drift check. ASSIGN_COMOVE_TOGGLE stays the one name tests and docs use, and
+    # tests/test_theme_assign_comove.py pins the two to each other through the real discoverer.
+    return bool(await get_runtime_toggle("theme_assign_comove", "THEME_ASSIGN_COMOVE_ENABLED",
+                                         default=ASSIGN_COMOVE_DEFAULT_ON))
+
+
+async def _load_comove_context(tickers: "set[str] | list[str]", before_date: date) -> ComoveContext | None:
+    """ONE mi_daily_closes read for the run: `tickers` + SPY over the calendar window that
+    covers BELONGING_LOOKBACK_SESSIONS sessions, all STRICTLY before `before_date` (the fetch
+    asks for `< before_date` AND `session_index` re-applies it — the no-lookahead guarantee
+    never rests on a WHERE clause alone). Returns None on ANY failure — the callers then run
+    today's sector test (fail SAFE), loudly: an audit row records why."""
+    from agents.market_intelligence import ep_theme_belonging as etb
+    try:
+        syms = {(t or "").upper() for t in tickers if t} | {etb.MARKET_TICKER}
+        closes, n_rows = await etb.fetch_closes(
+            syms, before_date - timedelta(days=etb._CALENDAR_DAYS_FOR_LOOKBACK), before_date)
+        sessions = etb.session_index(closes.get(etb.MARKET_TICKER, {}), before_date,
+                                     etb.BELONGING_LOOKBACK_SESSIONS)
+        if len(sessions) < 2:
+            raise RuntimeError(f"no {etb.MARKET_TICKER} closes before {before_date} — nothing to adjust against")
+        market = etb.log_returns(closes.get(etb.MARKET_TICKER, {}), sessions)
+        excess = etb.excess_returns(closes, sessions, market)
+        ctx = ComoveContext(before_date=before_date, excess=excess,
+                            n_sessions=len(sessions) - 1, n_rows=n_rows)
+        logger.info(
+            f"Theme membership test: co-movement context ready — {len(excess)} tickers with returns "
+            f"over {ctx.n_sessions} sessions before {before_date} ({n_rows} close rows)")
+        return ctx
+    except Exception as e:  # loud-ok: the membership test fails SAFE to the sector test, and says so
+        logger.warning(f"Theme membership test: co-movement context FAILED ({type(e).__name__}: {e}) "
+                       f"— every site runs the sector test tonight")
+        await log_audit_event(
+            "theme_comove_context_failed",
+            summary=f"Co-movement context failed — sector test used tonight ({type(e).__name__})",
+            detail=f"before_date={before_date} tickers={len(tickers)} error={e}",
+        )
+        return None
+
+
+def _comove_verdict(ticker: str, member_tickers: "list[str] | tuple[str, ...]",
+                    ctx: ComoveContext | None) -> ComoveVerdict | None:
+    """THE per-pair test: `ticker` against the equal-weight basket of `member_tickers`
+    (leave-one-out if it is among them), admitted at >= ASSIGN_COMOVE_BAR. Pure and sync — the
+    birth strip is called synchronously. Returns None when there is no context (toggle OFF or
+    the read failed) and a verdict with `admit=None` when THIS pair cannot be judged; both mean
+    "run the sector test". Never admits on missing data."""
+    if ctx is None:
+        return None
+    from agents.market_intelligence import ep_theme_belonging as etb
+    t = (ticker or "").upper()
+    vec = ctx.excess.get(t)
+    if vec is None:
+        return ComoveVerdict(admit=None, corr=None, overlap=0, basket_n=0, reason="no_history")
+    # One basket, this theme only. build_baskets keys on stage so the EP scan can skip Fading —
+    # here the stage is whatever the theme's is (assignment offers Fading themes too), so a
+    # sentinel stage selects exactly this one theme and no other rule leaks in.
+    others = [m for m in member_tickers if (m or "").upper() != t]
+    baskets = etb.build_baskets([{"name": "_pair", "stage": "_pair", "tickers": others}],
+                                ctx.excess, stages=("_pair",))
+    if not baskets:
+        with_history = sum(1 for m in others if (m or "").upper() in ctx.excess)
+        return ComoveVerdict(admit=None, corr=None, overlap=0, basket_n=with_history, reason="thin_basket")
+    corr, overlap, used = etb.correlate(vec, baskets[0], exclude=t)
+    if corr is None:
+        reason = "thin_basket" if used < etb.BELONGING_MIN_BASKET_MEMBERS else "no_history"
+        return ComoveVerdict(admit=None, corr=None, overlap=overlap, basket_n=used, reason=reason)
+    admit = corr >= ASSIGN_COMOVE_BAR
+    return ComoveVerdict(admit=admit, corr=round(corr, 4), overlap=overlap, basket_n=used,
+                         reason="comoves" if admit else "below_bar")
+
+
+def _sector_identity_counterfactual(stock_sector: str | None, known_sectors: list[str]) -> str:
+    """What the sector-identity test WOULD have said about this pair — recorded on every
+    co-movement audit row so the change's effect is readable in prod without a new instrument
+    (pre-registration row P4). 'reject' = the singleton-sector rejection; 'admit' = same sector;
+    'fallback' = the keyword/description paths (stock or theme sector unknown)."""
+    if not stock_sector or stock_sector == "Unknown" or not known_sectors:
+        return "fallback"
+    return "admit" if stock_sector in known_sectors else "reject"
+
+
+def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict],
+                           comove_ctx: ComoveContext | None = None) -> dict:
     """
     Remove tickers whose sector is a lone outlier vs the rest of the theme.
 
@@ -5320,6 +5627,11 @@ def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> di
 
     A ticker is an outlier if its sector doesn't appear in the majority and it's
     the only one with that sector.
+
+    2026-09-13 (operator-signed): with `comove_ctx`, a singleton-sector member is KEPT when
+    it co-moves with the rest of the new theme at >= ASSIGN_COMOVE_BAR (leave-one-out) and
+    dropped when it does not; a member the tape cannot judge is dropped exactly as before
+    (fail SAFE). `comove_ctx=None` is the pre-change function, byte-for-byte.
     """
     tickers = list(theme.get("tickers", []))
     if len(tickers) < 3:
@@ -5335,7 +5647,21 @@ def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> di
     # A sector is "minority of 1" if it appears exactly once and there are other sectors
     singleton_sectors = {s for s, n in counts.items() if n == 1 and len(counts) > 1}
 
-    clean_tickers = [t for t in tickers if sector_of[t] not in singleton_sectors]
+    kept_by_tape: list[str] = []
+    for t in tickers:
+        if sector_of[t] not in singleton_sectors:
+            continue
+        cv = _comove_verdict(t, tickers, comove_ctx)
+        if cv is not None and cv.admit is True:
+            kept_by_tape.append(t)
+        elif cv is not None:
+            logger.info(f"Theme '{theme.get('name')}': {t} ({sector_of[t]}) not kept by the tape — "
+                        f"{cv.reason} corr={cv.corr} overlap={cv.overlap} basket={cv.basket_n}")
+
+    clean_tickers = [t for t in tickers if sector_of[t] not in singleton_sectors or t in kept_by_tape]
+    if kept_by_tape:
+        logger.info(f"Theme '{theme.get('name')}': kept cross-sector member(s) {kept_by_tape} — "
+                    f"co-move with the theme at >= {ASSIGN_COMOVE_BAR}")
     if len(clean_tickers) < len(tickers):
         dropped = [t for t in tickers if t not in clean_tickers]
         logger.info(f"Theme '{theme['name']}': dropped sector outliers {dropped}")
@@ -5698,6 +6024,7 @@ async def _discover_new_themes(
     correlation_clusters: list[dict] | None = None,
     globally_banned: set[str] | None = None,
     recall_mode: bool = False,
+    comove_ctx: ComoveContext | None = None,
 ) -> list[dict]:
     """Batching driver (2026-08-10) — bounds each discovery call's OUTPUT by
     construction. The response narrates every rendered stock (scratchpad) plus
@@ -5733,7 +6060,7 @@ async def _discover_new_themes(
             theme_exclusions=theme_exclusions,
             correlation_clusters=correlation_clusters,
             globally_banned=globally_banned, recall_mode=recall_mode,
-            advisor_state=advisor_state)
+            advisor_state=advisor_state, comove_ctx=comove_ctx)
         await _log_discovery_shown_and_declined(
             _pools_shown, correlation_clusters, _out, recall_mode=recall_mode,
             existing_themes=existing_themes,
@@ -5756,7 +6083,7 @@ async def _discover_new_themes(
             theme_exclusions=theme_exclusions,
             correlation_clusters=b["clusters"],
             globally_banned=globally_banned, recall_mode=recall_mode,
-            advisor_state=advisor_state)
+            advisor_state=advisor_state, comove_ctx=comove_ctx)
         for t in themes:
             key = (t.get("name") or "").strip().lower()
             if key in merged:
@@ -5795,6 +6122,7 @@ async def _discover_new_themes_single(
     globally_banned: set[str] | None = None,
     recall_mode: bool = False,
     advisor_state: dict | None = None,
+    comove_ctx: ComoveContext | None = None,
 ) -> list[dict]:
     """
     Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators + turners.
@@ -6208,6 +6536,11 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 valid = [t for t in raw_themes if len(t.get("tickers", []) or []) >= NEW_THEME_MIN_STOCKS]
                 result_themes = []
                 for t in valid:
+                    # JOB 2 (REMOVALS) LEFT ON THE SECTOR TEST — operator 2026-09-13, "swap job 1
+                    # and leave job 2". The admission swap was signed on measured evidence; the
+                    # removal side was never measured and would evict 95 current members (MSFT
+                    # 0.30, HOOD -0.01, ORCL 0.04, PYPL 0.08 — 75 had passed validation). Passing
+                    # no context is the byte-identical pre-change path.
                     t = _strip_sector_outliers(t, stocks_by_ticker)
                     # Post-LLM ban filter — catches banned tickers reintroduced via
                     # correlation_clusters or LLM ignoring the absent input.
@@ -7890,6 +8223,28 @@ async def run_theme_engine(
     # Mon/Wed/Fri validation ADDS cooldowns that this filter and the
     # assignment prompt below must see (same-run re-assignment guard).
     cooldown_set = await get_cooldown_set()
+
+    # ── Membership test context (2026-09-13, OPERATOR-SIGNED): ONE closes read per run ──
+    # The toggle is read once and the price context built once, then handed to the three
+    # sites that used to ask the sector label (carryforward strip, assignment, birth strip).
+    # `comove_ctx=None` — toggle OFF or the read failed — is the pre-change engine at every
+    # site (fail SAFE to the sector test; the loader already audited why).
+    comove_ctx: ComoveContext | None = None
+    if await _read_assign_comove_toggle():
+        _comove_universe: set[str] = {s["ticker"] for s in leaders}
+        for _pool in (velocity_all, turners_all):
+            _comove_universe.update(s["ticker"] for s in _pool)
+        for _t in updated_themes:
+            _comove_universe.update(_t.get("tickers") or [])
+        for _c in (clusters or []):
+            _comove_universe.update(_c.get("tickers") or [])
+        comove_ctx = await _load_comove_context(_comove_universe, today)
+    else:
+        logger.info("Theme membership test: co-movement toggle OFF — sector test decides tonight")
+
+    # JOB 2 (REMOVALS) STAYS ON THE SECTOR TEST — operator 2026-09-13, *"swap job 1 and leave
+    # job 2"*. Withholding the context is the byte-identical pre-change path; the co-movement
+    # code stays in place, unused here, ready for the evaluation he asked to be filed.
     await _apply_carryforward_deterministic_filter(
         updated_themes, globally_banned, cooldown_set, stocks_by_ticker,
     )
@@ -7910,6 +8265,7 @@ async def run_theme_engine(
             globally_banned=globally_banned,
             cooldown_set=cooldown_set,
             protected=protected_set,
+            comove_ctx=comove_ctx,
         )
         changelog.extend(assign_log)
         _assigned = {c["ticker"] for c in assign_log if c.get("type") == "ticker_assigned"}
@@ -7931,6 +8287,7 @@ async def run_theme_engine(
             theme_exclusions=theme_exclusions,
             correlation_clusters=clusters,
             globally_banned=globally_banned,
+            comove_ctx=comove_ctx,
         )
         logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 

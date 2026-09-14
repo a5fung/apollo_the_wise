@@ -33,7 +33,7 @@
 - **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
 - **Birth validation (#266, 2026-06-17, operator-signed)**: newly DISCOVERED themes run the SAME `_validate_theme_membership` on their founding members before `_save_themes` — discovery previously skipped it, so bad members sat ~6d until the next Mon/Wed/Fri (evidence: `docs/analysis/theme_birth_validation_evidence_2026-06-17.md`). Changes WHEN, not WHAT; min-survivor guard keeps small/born-bad themes intact; emits `theme_birth_validated`.
 - **Tool schemas**: all three tools (assignment, discovery, split) have `analysis_scratchpad` as required first field — forces reasoning before JSON output.
-- **Unknown sector fallback**: when sector is "Unknown", checks description keyword overlap (4+ letter words) before allowing assignment.
+- **Membership test = the TAPE, not the sector label (2026-09-13, OPERATOR-SIGNED)**: a proposed (stock, theme) pair is admitted when the stock's market-adjusted (SPY-subtracted) daily returns over the 60 sessions STRICTLY BEFORE the run date correlate at ≥ `ASSIGN_COMOVE_BAR` (0.35 — a PER-PAIR bar; derivation at the constant) with the theme's equal-weight member basket (leave-one-out; ≥3 members with history, ≥30 overlapping sessions — `ep_theme_belonging`'s own maths and guards, imported, never re-derived). The same rule keeps or drops a SINGLETON-sector member at the birth strip (`_strip_sector_outliers`) and the nightly carryforward strip (`_apply_carryforward_deterministic_filter`) — without that, a name admitted on co-movement tonight is stripped by the label tomorrow. **Fail direction**: a pair the tape cannot judge (no history / thin basket / closes read failed / toggle off) runs TODAY's sector test — `_sector_identity_gate`, verbatim: the singleton-sector rejection, the sector-keyword fallback with its description rescue, and the Unknown-sector description-overlap check — never a silent admit. **Two passes per run**: a pair thin only for want of members is re-judged after the run's other admits have landed, the label's own yeses first (IREN was proposed before BTDR in the same batch on 2026-09-08 and met a 2-name basket). ONE `mi_daily_closes` read per run (`_load_comove_context`, in `run_theme_engine`, handed to the three sites as `comove_ctx`; `None` = the pre-change engine byte-for-byte). Toggle `theme_assign_comove` (`mi_safeguard_state` / env `THEME_ASSIGN_COMOVE_ENABLED`, DEFAULT ON). Audit: `assignment_comove_admitted_over_sector`, `assignment_skipped_comove_below_bar` (both carry the sector counterfactual), `assignment_comove_summary` (the nightly positive observable), `theme_comove_context_failed`; the strip's aggregate row gains `comove_kept=` / `comove_below_bar=`. Change log 2026-09-13.
 - **Description chunking**: `_ensure_descriptions()` sends max 15 tickers per Haiku call.
 - **`get_active_themes(stale_after_days=7)`**: recency cap is the de-facto retirement mechanism — themes that stop appearing in daily snapshots age out after a week.
 - **Phase 2 re-granularization (ADR 0032, behind `THEME_SUBTHEME_ARM` DB toggle, fail-closed OFF)**: Route A protect-strip→PARENT_CHILD adjudication (inert on DISTINCT verdicts — fail-closed to today's strip) + Route B sole-sub-theme ecosystem-dominant split via `_split_fat_theme` (self-disarms: post-split the ecosystem has 2 themes). Split children persist via `parent_theme` (rebuilt into `sub_theme_parents` each run); covered-ticker exclusion keeps split-offs out of the discovery pool.
@@ -644,6 +644,142 @@ because nothing recorded these parameters before.
   reasoning per batch, so "why did it decline?" is readable from the row.
 
 ## Change log
+
+### 2026-09-13 — THE MEMBERSHIP TEST ASKS THE TAPE: market-adjusted co-movement at 0.35 replaces the sector-identity test (OPERATOR-SIGNED, shipped ON, one-flag revertible)
+
+**Trigger**: the operator's question 2026-09-13 — *"can a theme span more than one sector? I lean
+yes, but we should verify"* — answered in `docs/analysis/cross_industry_themes_2026-09-13.md` (3 of
+3 measurement angles survived adversarial refutation), then his sign-off on the bar, the
+admit/reject case table and the money-path exposure (*"I thought I already signed it, you asked me
+earlier"*). The case that named it: **IREN** excluded from `Emerging Bitcoin Miners Diversifying
+into AI/HPC Hosting` — the theme named after his own #491 concept — solely because
+`mi_stock_scores` files IREN as Financial Services and CIFR/CORZ/BTDR as Technology, while IREN
+co-moves with them at 0.70–0.83 (as tightly as they do with each other).
+
+**What was wrong (REVERSAL — the prior reasoning, and why it was wrong)**: the sector-outlier
+post-filter was introduced 2026-03-16 (commit `0dd09144`: *"stricter discovery prompt requires 3+
+tickers, genuine industry fit, sector outlier post-filter"*) as a PROXY for "genuine industry
+fit", copied to the assignment gate (telemetry added 2026-05-08, `66476697`, #46) and to the
+nightly carryforward strip 2026-05-15 (`3f0233ea`). Its premise: *a name whose top-level sector
+differs from every other member does not belong to the group.* Measured, the premise is false —
+not incomplete, false: the names the label ADMITS co-move with their themes at 0.65 and the names it
+REJECTS at 0.61 (analysis, 389/83 pairs), 0.58 vs 0.65 in this replay (504/98 pairs); a random
+board stock sits ≈0.05. The label was testing the data vendor's filing cabinet (MSTR "Technology"
+among "Financial Services" peers, CMC "Industrials" among "Basic Materials" steel, PACS
+"Healthcare" among "Real Estate" nursing REITs, converting miners split three ways), not the
+tape. And its real cost was starvation, not coherence: 29 of 46 strip events left a theme under
+the 3-member floor.
+
+**What changed** (`theme_engine.py`, section "MEMBERSHIP TEST"):
+- **`ASSIGN_COMOVE_BAR = 0.35`** — its own constant (registered in
+  `scripts/gate_provenance_registry.py`), with the derivation and the PER-PAIR warning at the
+  definition: the same number used to pick the BEST of ~119 themes admits nonsense (Dominion Energy
+  matched a fracking theme at 0.45); here the LLM has already nominated one pair and the test
+  judges that pair. `ep_theme_belonging.BELONGING_CORR_BAR` carries the same value for that other
+  use and the two are free to diverge.
+- **The maths is `ep_theme_belonging`'s** — `fetch_closes`, `session_index`, `log_returns`,
+  `excess_returns`, `build_baskets`, `correlate` — imported, so the EP scan and the nightly engine
+  cannot disagree about what "co-moves" means. Its `prepare_basket_context` was NOT reused: it
+  builds baskets only for `BELONGING_SHADOW_STAGES` (assignment offers Fading themes too) and its
+  module cache is the EP scan's own cost lever. `_load_comove_context` builds the nightly context
+  from the same primitives: ONE read of members ∪ RS leaders ∪ velocity ∪ turners ∪ cluster names
+  ∪ SPY, strictly before the run date (the fetch asks `< run date` and `session_index` re-applies
+  it).
+- **Three sites, one rule.** Assignment (`_assign_uncovered_to_themes`): where the tape can judge,
+  it decides the pair and supersedes the whole sector block, keyword/description fallbacks
+  included (they exist only because the label was blind); where it cannot, `_sector_identity_gate`
+  — today's block extracted verbatim — decides. Birth strip and carryforward strip: a
+  singleton-sector member is kept when it co-moves ≥ bar with the rest (leave-one-out), stripped
+  when it does not, stripped as before when unjudgeable. **The strips had to move with the gate**:
+  the analysis called them secondary because relaxing them ALONE changes nothing — true — but once
+  assignment admits IREN on night 1, the carryforward strip removes it on night 2 before the LLM
+  sees the board. Left alone they would have turned the change into nightly churn.
+- **Fail direction, explicit**: no history, fewer than 30 overlapping sessions, a basket with
+  fewer than 3 members that have history, a failed closes read, toggle off → TODAY's sector test at
+  that site, byte-for-byte (`comove_ctx=None` IS that branch). Never a silent admit. Consequence,
+  stated: a 3-member theme can be JOINED (basket 3) but a 3-member theme with a singleton cannot
+  KEEP it via the strip (leave-one-out basket 2) — today's behaviour by construction; the guards
+  are shared with the EP scan and were not forked to change it.
+- **Two passes per run** (the one design decision beyond the instruction): the apply-loop appends
+  admits to `theme["tickers"]` as it goes, so whether a proposal to a 2-member theme meets a
+  3-member basket depended on where the LLM's batches put it. IREN on 2026-09-08 was listed BEFORE
+  BTDR in the same batch, met CIFR+CORZ alone, could not be judged, and the label rejected the
+  headline case. A pair thin only for want of members is deferred to a second pass after the run's
+  other admits land, ordered sector-admit first (they land whether or not the tape can see them);
+  a pair still thin then takes the sector test. Every other check re-runs on the deferred pair and
+  is idempotent.
+- **Toggle `theme_assign_comove`** — reversion only, DEFAULT ON (`db.get_runtime_toggle`:
+  `mi_safeguard_state` row > env `THEME_ASSIGN_COMOVE_ENABLED` > default true; fail-open to the
+  default on a read error — a grade-quality toggle, not capital). OFF = the pre-change engine at all
+  three sites. Revert, no redeploy, ~60s cache lag: `INSERT INTO mi_safeguard_state (safeguard,
+  account_mode, state, last_transition_at, updated_at) VALUES ('theme_assign_comove', 'global',
+  'off', NOW(), NOW()) ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state,
+  updated_at = NOW();` Nothing in the code writes that row.
+- **Audit**: `assignment_comove_admitted_over_sector` and `assignment_skipped_comove_below_bar`
+  (both carry `corr`, `overlap_sessions`, `basket_n`, `bar` and the SECTOR COUNTERFACTUAL — the
+  pre-registration's P4 is readable from prod without a new instrument),
+  `assignment_comove_summary` once per run (judged / admitted / admitted-over-sector / rejected /
+  unjudgeable — the POSITIVE observable verify-live reads), `theme_comove_context_failed` when the
+  read fails; the carryforward aggregate row gains `comove_kept=[…]` / `comove_below_bar=[…]`.
+- The assignment PROMPT is unchanged and carries NO sector rule (*"Only assign if the stock's
+  business CLEARLY matches the theme's thesis"*) — the gate was the binding constraint, not the
+  prompt; U3 (the model has never been told cross-sector is allowed) stays a live-weeks question.
+
+**Evidence** — `docs/analysis/assignment_comove_backtest_2026-09-13.md`, $0, the LIVE
+`_comove_verdict` replayed over the last 60 trading days (2026-06-17 → 09-11, 60 nightly runs, 710
+proposed pairs), each pair judged on the sessions strictly before its own night against the members
+assignment saw (prior row − that night's strip + earlier admits, two passes as built):
+- 602 of 710 pairs judgeable; 108 fall to the sector test (88 thin basket, 5 no history, 15 no
+  prior row).
+- **Admitted now, sector rejected: 88 of 98** judgeable sector-rejections (90%). **Rejected now,
+  sector admitted: 95 of 504** judgeable sector-admissions (19%) — 75 of them had survived LLM
+  validation and sat on the board that night.
+- **IREN → the miners theme, 2026-09-08: ADMITTED at 0.83** over 60 sessions against 3 members
+  (via the second pass — BTDR lands first).
+- Named checks: MSTR 0.78–0.88 admit, CMC 0.76 admit, GPN 0.63–0.73 admit (15 nights), ECO →
+  Hormuz 0.20 reject; ECO → the tanker themes 0.58–0.81 ADMIT (the analysis listed that add-back as
+  legitimate — its −0.11 was a ±10-session read on the Hormuz theme); AGX 0.59 admit on 09-10 vs
+  0.33 reject on the 09-11 board — sits at the bar. OTTR and SEDG were not sector-rejected inside
+  the window.
+- Returning names: **14 of 19** candidates clear the bar (4 refused: MAX 0.35, AGX 0.33, FIVE
+  0.29, WLTH 0.24; 1 unjudgeable). The analysis's "26" was a rule-OFF count from 06-01 and included
+  themes retired since (the miners theme) and an empty theme; 9 of the 11 names in its board table
+  reappear here.
+- Board 2026-09-11: 119 themes, mean members 6.03 → 6.15, ≤5-member share **70% → 66%** (83 → 79
+  of 119) with the add-backs alone; **5.85 and 70% again** once the members the tape would have
+  refused at assignment are removed too (a counterfactual — deploying does NOT remove them; the
+  strip re-tests singleton-sector members only). **P1 may REFUTE under the symmetric bar**: 95
+  refusals vs 88 admits over the window means the member count is more likely to fall than rise
+  over weeks; narrowing the tape to cross-sector pairs only would remove that risk — ⚖ his call,
+  not pre-decided. Likewise U1 only pre-registered the increase: same-sector refusals mean fewer
+  FUTURE +10 carriers.
+- Tightness across the 9 changed themes **0.53 → 0.55** (7 tighter, 2 looser); the matched random
+  same-sector control lands at **0.48** — the returning names behave like members, random names do
+  not. PACS is the one add the control beats (158 of 300 draws).
+- Money path (U1): stocks carrying the +10 bonus **178 → 182** (ASC, ECO, BAH, PACS land in
+  Accelerating themes) — the pre-registration said ~183.
+- Starvation (P2): strips that left a theme under 3 members **27 → 19 of 44**; the tape keeps 27
+  of the 58 singleton-sector members stripped in the window.
+
+**Not pre-registered, found by the replay**: the bar is SYMMETRIC and the pre-registration modelled
+only add-backs. The larger flow in pair-count is the refusals: 95 sector-admitted pairs the tape
+rejects — HOOD → Wealth Management (−0.01, 0.01), ORCL → AI enterprise analytics (0.04), PYPL →
+consumer fintech (0.08), MSFT (0.30), BOX (−0.17), ROKU (−0.03) — thematically plausible names that
+do not move with their basket over 60 sessions. That is what "the tape decides" means; it is
+reported here so the shape is his to keep or narrow (e.g. tape decides cross-sector pairs only),
+⚖ not pre-decided.
+
+**Anticipated effect**: ~1.5 cross-sector admits and ~1.5 same-sector refusals per night (88 and
+95 over 60 nights); `assignment_skipped_sector_outlier` falls to the unjudgeable residue (~2 a
+night); the ≤5-member share drifts under 70% over weeks if P1 holds; boosted-stock count stays under
+190 if his EP prediction holds.
+
+**Reversion-flag**: REVERSAL of the 2026-03-16 sector-outlier post-filter (`0dd09144`) and its
+2026-05-15 carryforward copy (`3f0233ea`) — why the prior reasoning was wrong: above.
+
+**Status**: shipped, awaiting field validation — measured against the pre-registration rows
+P1–P4 / U1–U5 in `docs/analysis/cross_industry_themes_2026-09-13.md` (15+ trading days for the
+drift rows). Tests: `tests/test_theme_assign_comove.py` (13, through the real functions).
 
 ### 2026-09-12 — #651: the judge's named groups are captured, and the read that turns them into "how late is the engine" is built — NOT yet run
 

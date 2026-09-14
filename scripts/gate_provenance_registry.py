@@ -440,4 +440,28 @@ GATE_REGISTRY: list[dict] = [
                 "confirms. Reversion toggle `ep_theme_belonging` (default ON). Change log: "
                 "magna53_ep.md 2026-09-14; backtest docs/analysis/ep_theme_belonging_backtest_2026-09-13.md.",
     },
+    # ── Theme engine — membership test (docs/architecture/theme_engine.md SSoT) ─────────────────
+    {
+        "id": "theme_engine.ASSIGN_COMOVE_BAR",
+        "file": "agents/market_intelligence/theme_engine.py",
+        "kind": "const",
+        "name": "ASSIGN_COMOVE_BAR",
+        "value": 0.35,
+        "citation": {
+            "file": "docs/architecture/theme_engine.md",
+            "text": "market-adjusted co-movement at 0.35 replaces the sector-identity test",
+        },
+        "note": "2026-09-13 OPERATOR-SIGNED (\"I thought I already signed it, you asked me earlier\"): "
+                "the assignment gate's sector-identity test — and, for singleton-sector members, the "
+                "birth strip and the nightly carryforward strip — is replaced by a PER-PAIR "
+                "market-adjusted co-movement test: the candidate's SPY-subtracted returns over the 60 "
+                "sessions strictly before the run date vs the theme's member basket, admitted at >= "
+                "this bar. Derivation: real members sit 0.5-0.8, a random board stock ~0.05; 0.35 "
+                "separates every case measured (admits IREN 0.70+, MSTR 0.65, CMC 0.60, GPN 0.54; "
+                "rejects OTTR -0.14, ECO -0.11, SEDG 0.16, AGX 0.29 — "
+                "docs/analysis/cross_industry_themes_2026-09-13.md). Same value as "
+                "ep_theme_belonging.BELONGING_CORR_BAR today but a DIFFERENT use (one nominated pair, "
+                "not a max over ~20 baskets) — the two are free to diverge. 60-day replay: "
+                "docs/analysis/assignment_comove_backtest_2026-09-13.md.",
+    },
 ]
