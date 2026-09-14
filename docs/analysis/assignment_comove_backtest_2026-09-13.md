@@ -364,7 +364,7 @@ Tightness = mean leave-one-out co-movement of each member with the rest (60 sess
 
 | row | expectation / risk | this replay reads |
 |---|---|---|
-| P1 themes hold more members | avg 4.7 at birth → 6.3 peak; 83 of 119 ≤5 | mean members 6.03 → 6.15; ≤5 share 70% → 66% on the 2026-09-11 board (one night of add-backs, not 3 weeks) |
+| P1 themes hold more members | avg 4.7 at birth → 6.3 peak; 83 of 119 ≤5 | add-backs alone: mean members 6.03 → 6.15, ≤5 share 70% → 66%; add-backs MINUS the members the tape would have refused at assignment: 5.85, 70% — one night on the 2026-09-11 board. **P1 may REFUTE under the symmetric bar**: 95 refusals vs 88 admits over the window means the member count is more likely to fall than rise over weeks; narrowing the tape to cross-sector pairs only would remove that risk — his call |
 | P2 fewer themes starved under 3 | 29 of 46 strips left a theme under 3 | 27 of 44 → 19 of 44 in this window |
 | P3 his four concepts formable | IREN blocked from the theme named after it | IREN admit at 0.8255 on 2026-09-08 — formation itself needs the live run (the theme is Retired today) |
 | P4 membership rejections fall | 167 of 824 (20%) rejected on sector | sector rejections 98 → 10 of the judgeable ones stay rejected on the tape (95 sector-admitted pairs newly rejected); unjudgeable pairs (108) keep the sector verdict |

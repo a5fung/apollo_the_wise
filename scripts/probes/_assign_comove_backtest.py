@@ -495,8 +495,11 @@ P("## 9. Against the pre-registration, row by row")
 P("")
 P("| row | expectation / risk | this replay reads |")
 P("|---|---|---|")
-P(f"| P1 themes hold more members | avg 4.7 at birth → 6.3 peak; 83 of 119 ≤5 | mean members {mean_b:.2f} → {mean_a:.2f}; "
-  f"≤5 share {100*le5_b/max(n_b,1):.0f}% → {100*le5_a/max(n_a,1):.0f}% on the {last_run} board (one night of add-backs, not 3 weeks) |")
+P(f"| P1 themes hold more members | avg 4.7 at birth → 6.3 peak; 83 of 119 ≤5 | add-backs alone: mean members {mean_b:.2f} → {mean_a:.2f}, "
+  f"≤5 share {100*le5_b/max(n_b,1):.0f}% → {100*le5_a/max(n_a,1):.0f}%; add-backs MINUS the members the tape would have refused at assignment: "
+  f"{mean_c:.2f}, {100*le5_c/max(n_c,1):.0f}% — one night on the {last_run} board. **P1 may REFUTE under the symmetric bar**: "
+  f"{rej_new} refusals vs {adm_over} admits over the window means the member count is more likely to fall than rise over weeks; "
+  f"narrowing the tape to cross-sector pairs only would remove that risk — his call |")
 P(f"| P2 fewer themes starved under 3 | 29 of 46 strips left a theme under 3 | {under3_before} of {len(strip_events)} → {under3_after} of {len(strip_events)} in this window |")
 iren_rows = [r for r in rows if r["ticker"] == "IREN"]
 P(f"| P3 his four concepts formable | IREN blocked from the theme named after it | "

@@ -280,6 +280,24 @@ def test_second_pass_judges_a_comover_proposed_before_the_name_that_makes_the_th
     assert "assignment_skipped_sector_outlier" not in [e[0] for e in events]
 
 
+def test_a_pair_still_thin_on_the_second_pass_takes_the_sector_test_and_is_rejected(monkeypatch):
+    """IREN minus BTDR: a 2-member theme, one cross-sector co-mover, nobody else lands. Both passes
+    meet a 2-name basket; the label decides and REJECTS. Never a silent admit."""
+    ctx = _ctx(_tape())
+    themes = [_theme(["CIFR", "CORZ"])]
+    sbt = {tk: {"ticker": tk, "sector": "Technology"} for tk in ["CIFR", "CORZ"]}
+    stocks = [_stock("IREN", "Financial Services", monkeypatch)]
+    _, changelog, events = _run(stocks, themes, sbt, monkeypatch,
+                                [{"ticker": "IREN", "theme": "Miners", "rationale": "x"}], ctx)
+    assert themes[0]["tickers"] == ["CIFR", "CORZ"] and changelog == []
+    kinds = [e[0] for e in events]
+    assert "assignment_skipped_sector_outlier" in kinds
+    assert "assignment_comove_admitted_over_sector" not in kinds
+    assert "assignment_skipped_comove_below_bar" not in kinds
+    summary = json.loads(next(e[2] for e in events if e[0] == "assignment_comove_summary"))
+    assert summary["unjudgeable"] == 1 and summary["judged"] == 0
+
+
 # ── 5. the two strips ─────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio

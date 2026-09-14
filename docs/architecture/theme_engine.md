@@ -720,8 +720,13 @@ assignment saw (prior row − that night's strip + earlier admits, two passes as
   themes retired since (the miners theme) and an empty theme; 9 of the 11 names in its board table
   reappear here.
 - Board 2026-09-11: 119 themes, mean members 6.03 → 6.15, ≤5-member share **70% → 66%** (83 → 79
-  of 119) with the add-backs; 70% again once the members the tape would have refused at assignment
-  are removed too (one night's add-backs, not the 3-week drift P1 asks for).
+  of 119) with the add-backs alone; **5.85 and 70% again** once the members the tape would have
+  refused at assignment are removed too (a counterfactual — deploying does NOT remove them; the
+  strip re-tests singleton-sector members only). **P1 may REFUTE under the symmetric bar**: 95
+  refusals vs 88 admits over the window means the member count is more likely to fall than rise
+  over weeks; narrowing the tape to cross-sector pairs only would remove that risk — ⚖ his call,
+  not pre-decided. Likewise U1 only pre-registered the increase: same-sector refusals mean fewer
+  FUTURE +10 carriers.
 - Tightness across the 9 changed themes **0.53 → 0.55** (7 tighter, 2 looser); the matched random
   same-sector control lands at **0.48** — the returning names behave like members, random names do
   not. PACS is the one add the control beats (158 of 300 draws).
@@ -748,7 +753,7 @@ night); the ≤5-member share drifts under 70% over weeks if P1 holds; boosted-s
 
 **Status**: shipped, awaiting field validation — measured against the pre-registration rows
 P1–P4 / U1–U5 in `docs/analysis/cross_industry_themes_2026-09-13.md` (15+ trading days for the
-drift rows). Tests: `tests/test_theme_assign_comove.py` (12, through the real functions).
+drift rows). Tests: `tests/test_theme_assign_comove.py` (13, through the real functions).
 
 ### 2026-09-12 — #651: the judge's named groups are captured, and the read that turns them into "how late is the engine" is built — NOT yet run
 
