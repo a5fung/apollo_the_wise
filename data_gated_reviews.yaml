@@ -5861,6 +5861,28 @@ reviews:
       SELECT count(*) FROM mi_theme_axis_shadow
       WHERE grade = 'MODERATE' AND themeless_flag = false;
     threshold: 10
+    can_fire:
+      predicate_runs: >-
+        RUN AGAINST PROD 2026-09-15: returns 8 against threshold 10. Clean SQL, no phantom column.
+        It has always RUN — the defect was never that it could not fire, it was what it counted.
+      nonzero_possible: >-
+        It is nonzero (8) and would eventually reach 10 — but ONLY by mixing two populations, which
+        is exactly why this entry is now `done`. The score-band half is frozen at 6 forever (no
+        MODERATE cutline on the separation side since 2026-08-22); the only new rows are judge
+        DEMOTIONS, a different animal. A gate that can only reach its threshold by changing what it
+        counts must be closed, not waited on.
+      lane_live: >-
+        mi_theme_axis_shadow is written on every scan and has 180 rows since 2026-08-24, so the
+        recorder is live. The boost it was gating is being unplugged under #335 (his 2026-09-15
+        ruling), so there is no live mechanism left for this review to evaluate.
+      threshold_vs_observed: >-
+        Threshold 10, observed 8 — and the 8 are 6 score-band MODERATEs (extinct population) plus 2
+        judge demotions (ALAB 65.0, ERO 67.5, both above bar 65). The gap is not a sample-size
+        problem, it is a definition problem.
+      era_scoped: >-
+        NOT era-scoped, and that is the finding. The predicate spans the 2026-08-22 rescale, which
+        removed the MODERATE band on the live side — so its count straddles a definition change with
+        nothing marking the boundary. Any successor must scope to one side of that date.
     earliest_review_date: 2026-09-15
     action_when_ready: >-
       Enough MODERATE-with-a-theme data now exists to evaluate the boost. Replay the deterministic boost
@@ -5869,8 +5891,35 @@ reviews:
       a stable theme-engine window + improved coverage hold -> flip composite_authority live (CHANGE_PROCESS +
       operator sign-off). If the population is STILL ~0 even with good coverage -> then it is genuinely
       redundant with the judge -> close #335. NEVER auto-flip (THE LINE).
-    status: pending
+    status: done
     added_on: 2026-07-19
+    resolution_2026_09_15: |
+      CLOSED 2026-09-15 — the question died, it was not answered.
+
+      The gate wanted 10 themed-MODERATE rows and had 8. Measured today, THOSE 8 ARE TWO
+      DIFFERENT POPULATIONS:
+        - 6 are score-band MODERATEs from a band that NO LONGER EXISTS. Since the 2026-08-22
+          rescale resolve_moderate_cutline returns None on the separation side and a sub-bar
+          candidate is SKIPPED outright (ep_detector.py:5669) — so that population is frozen
+          at 6 forever.
+        - 2 are JUDGE DEMOTIONS: ALAB 2026-09-04 scored 65.0 and ERO 2026-09-08 scored 67.5,
+          both AT OR ABOVE bar 65, both judge_direction='demote'.
+      Waiting for 10 was waiting for a number that means two things. Same defect family as the
+      2026-07-19 read this entry exists to prevent ("0 upgrades in 466 rows" on a sample that
+      was 465 HIGHs) — the sample could not answer the question asked of it.
+      [[check-what-the-system-already-did]]
+
+      AND THE THING IT GATED IS BEING UNPLUGGED. Operator ruled 2026-09-15 ("aligned, keep
+      container"): DROP the theme axis, KEEP the composite-authority rail for #331
+      (gap-vs-structure). compute_theme_axis_credit_live is the only credit function wired to
+      that toggle and it is the redundant one — the judge already receives a theme signal and
+      demoted ALAB and ERO anyway. So there is no theme boost left for this gate to re-evaluate.
+      ⚠ Caveat recorded the same day: the judge's payload gets plain LIST MEMBERSHIP, not
+      #658's belonging verdict (ep_detector.py:3183-3186), so the redundancy rests on the judge
+      seeing the narrower signal. If the judge is ever given the belonging verdict, re-ask.
+
+      Work lands Sat 2026-09-19 under #335. Evidence:
+      docs/analysis/unified_allocator_phase_1b_2026-09-14.md §6/§6a.
   - review_id: gate_5g_historical_coverage
     title: "Gate 5 G retroactive coverage — would the gate have caught CRMD/KLAR/ARM/BW/AIXI?"
     question: |
