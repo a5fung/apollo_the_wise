@@ -30,7 +30,7 @@ to an operator-confirm entry (`/mapullback ENTER`, stop just below the MA). What
   06-29 (current parent), n=52 from 18 tickers.** Pooled = 87% retired-universe.
 - **⚠ Survivor filter is outcome-conditioned.** 122 of 529 rows (23%) had the parent stamped INVALIDATED at the same
   day's 17:25 close (invalidation lag = 0 days on every row). That uses the day-0 CLOSE — information not available
-  at the bounce price. The excluded set's own 10d read: median −2.2%, 35% ≤ −10% (n=118 settled). The unconditioned
+  at the bounce price. The excluded set's own 10d read: median −2.2%, 34% ≤ −10% (n=116 settled, clean). The unconditioned
   population (all settled rows) is reported beside the gate number.
 - **Independence:** 314 of 529 rows re-fire within 10 days of a prior fire on the same ticker (a ticker sitting on its
   MA fires day after day; NWL 6×, XMTR/TWLO/VCYT/ZBIO/CDNA/CHYM 4× in Era B). First-fire-per-campaign n = 218

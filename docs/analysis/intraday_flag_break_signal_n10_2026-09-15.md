@@ -41,7 +41,8 @@ holds on any cut below.
   n = 124 (111 settled Era A, 9 Era B). Shown beside raw n.
 - **What the system already did on those dates:** 4 breaks coincided with an EP alert, 1 with a live-trade alert date.
   **All 17 Era B breaks are also rows in `mi_htf_breakout_shadow`** (#356 Phase 3 — the HTF breakout-entry shadow
-  with its own 3R settlement); 0 of 151 Era A breaks are. See §Supersession.
+  with its own 3R settlement) because the #94 scan writes that row itself; 0 of 151 Era A breaks are (table shipped
+  06-28). See §Supersession.
 - **Data artifacts excluded from the break_price and R reads:** CRWD 2026-07-01 — detection price 781.50 on
   pre-split shares, stored closes 193.19 on 4:1-adjusted shares; base_low 617.74 exceeds every stored close. Kept in
   the runner's verbatim N=163 (its open→close read is internally consistent); dropped where the two bases mix.
@@ -117,10 +118,13 @@ the review's own N≥10-of-independent-events bar (9 first fires), and it shows 
 ## Supersession — the system already settles these events
 
 The HTF breakout shadow (`mi_htf_breakout_shadow`, #356 Phase 3, shipped 06-28) has exactly 17 rows, and they are
-the 17 Era B breaks. It carries its own entry (buy-stop-limit), its own stop (SMA10-anchored), an 8% max-stop-distance
-reject, and 3R settlement. Its read on the same names, 10 settled: 1 capture (CDNA 07-31, +3R), 3 stops (−1R), 6
-open (−0.38R to +0.72R); 6 of 17 carry `would_reject_reason = stop_distance_gt_8pct`. #94's Phase 2 (`/flagbreak
-ENTER`, stop at base_low) would be a second entry surface on the same event with a wider stop.
+the 17 Era B breaks — **by construction, not by coincidence: the shadow row is written by the #94 scan itself**
+(`run_intraday_flag_break_scan` step 7, "Persist + audit + HTF shadow", `flag_detector.py` ~2174). Every #94 break
+since 06-28 is a shadow row; Era A has none because the table did not exist. The shadow carries its own entry
+(buy-stop-limit), its own stop (SMA10-anchored), an 8% max-stop-distance reject, and 3R settlement. Its read on the
+same names, 10 settled: 1 capture (CDNA 07-31, +3R), 3 stops (−1R), 6 open (−0.38R to +0.72R); 7 of 17 carry
+`would_reject_reason = stop_distance_gt_8pct`. #94's Phase 2 (`/flagbreak ENTER`, stop at base_low) would be a
+second entry surface on #94's own output, with a wider stop, beside a settlement path that already exists.
 
 **Fork for the operator (not decided here):** close this review as superseded by #356's HTF breakout path, or keep
 both accruing. One-line rec: supersede — in the current era every #94 break IS an HTF shadow row, and #356 already

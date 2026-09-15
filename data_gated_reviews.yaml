@@ -7327,9 +7327,45 @@ reviews:
         via quarterly_review.py sweep)
       - feedback_validate_metric_before_decision.md (Phase 2 must use
         minute-bar entry simulation, not break-day open approximation)
-    status: pending
+    status: done
     added_on: 2026-05-23
-
+    can_fire:
+      predicate_runs: >-
+        RUN AGAINST PROD 2026-09-15 — the runner and predicate both execute clean; N=163 against threshold 10.
+      nonzero_possible: >-
+        It IS nonzero (163) and always was. Closing it is not a firing problem — the question moved to htf_breakout_paper_graduation, which reads 5 of 5 and carries the entry/stop this one lacks.
+      lane_live: >-
+        run_intraday_flag_break_scan runs every 5 min from 09:00 ET and has since 2026-05-27 (47/47 clean on its first day). The lane is live; its successor review reads the same rows with an entry attached.
+      threshold_vs_observed: >-
+        Threshold 10, observed 163 — met 16x over. The defect was never N. It was that 163 pools two detector eras and the entire >=+20% tail sits in the retired one.
+      era_scoped: >-
+        NOT era-scoped, and that is the finding. The 2026-06-27 #356 rebuild replaced the parent; 151 of the 163 rows predate it. Its successor inherits rows written after the rebuild only.
+    resolution_2026_09_15: |
+      CLOSED 2026-09-15 as SUPERSEDED — not as answered, and not as failed.
+      
+      THE READ (Fable card, $0, prod read-only, verified independently by me before recording):
+      N=163, avg 10d -0.95%, 29% up 5%+ — the runner's own gate fires REVISE, not PROMOTE.
+      TAIL: 12 of 163 reached >=+20% at 10d (12%) — AND EVERY ONE PREDATES THE 2026-06-27 #356
+      HTF PARENT REBUILD. My own count, run separately from the card's:
+        pre-rebuild  151 breaks, 12 reached >=+20%
+        current era   12 breaks,  0 reached >=+20%
+      So the tail that made this look promising belongs to a detector parent that no longer exists.
+      LOOK-AHEAD, stated by the card unprompted: the runner enters at the break-day OPEN, which is
+      look-ahead; at the real fill (break_price, median +2.6% above that open) the pooled read is
+      avg -4.0% and 6% >=+20%.
+      
+      WHY SUPERSEDED RATHER THAN REVISED: run_intraday_flag_break_scan ALREADY WRITES #356's
+      breakout shadow itself — flag_detector.py:2156 calls db.insert_htf_breakout_shadow with a full
+      order spec from prepare_htf_breakout_order (entry + stop), and the row settles through
+      settle_htf_breakout_shadow with realized_r and fwd_mfe_r. VERIFIED IN CODE, not taken from the
+      card. So every current-era break already has an entry/stop/settled-R path inside
+      htf_breakout_paper_graduation, which is itself RIPE (5 of 5). That review measures settled R on
+      the same breaks; this one measures a raw signal with no entry. Two reviews, one population — the
+      one with the entry wins.
+      
+      NO OPERATOR ACTION. Nothing promoted, nothing graduated, nothing live changed. The EP-first
+      priority is untouched because the gate said REVISE, so no graduation was ever on the table.
+      Doc: docs/analysis/intraday_flag_break_signal_n10_2026-09-15.md.
   - review_id: intraday_ma_pullback_signal_n10
     title: "Intraday MA-pullback detector — N≥10 graduation review (#96)"
     question: |
@@ -7392,9 +7428,39 @@ reviews:
       - memory/user_tight_range_entry_techniques.md Entry #3
       - #94 (breakout), #95 (support-test), #97 (low-vol rest), #98 (U&R)
       - ADR 0004 §4 source_detector enum (flag_ma_pullback slot)
-    status: pending
+    status: done
     added_on: 2026-05-24
-
+    can_fire:
+      predicate_runs: >-
+        RUN AGAINST PROD 2026-09-15 — predicate executes clean; 388 against threshold 10.
+      nonzero_possible: >-
+        Nonzero and far past threshold. Re-firing is not the issue — the verdict is in, on current-era data, and it is REVISE.
+      lane_live: >-
+        The MA-pullback scan runs live and has 52 settled current-era fires since the 2026-06-27 rebuild.
+      threshold_vs_observed: >-
+        Threshold 10, observed 388. Both of the gate's quality bars missed (median 5d +0.8% vs +2%; 30% vs 40% win) — a verdict, not a shortfall.
+      era_scoped: >-
+        Predicate deliberately LEFT unscoped, unlike its support-test sister: the current-era subset (52 rows) carries the same verdict as the pool, so scoping would change the count and not the answer.
+    resolution_2026_09_15: |
+      REVISE — the entry's own decision gate, bucket 2, fired on current-era data.
+      
+      THE READ (Fable card, $0, prod read-only): median 5d +0.8% against the gate's +2% bar; 30% up
+      5%+ against the gate's 40% bar; n=388. Both bars MISSED, so bucket 1 (PROMOTE) does not fire.
+      TAIL: 38 of 384 clean rows reached >=+20% at 10d (10%) pooled — and 0 OF 52 CURRENT-ERA ROWS
+      did. Unlike its two sisters this is NOT a sample-size story: 52 rows sit after the 2026-06-27
+      rebuild and they carry the same verdict, so era-scoping the predicate would not rescue it.
+      That is why this entry keeps its predicate and takes the verdict.
+      
+      TWO METHOD DEFECTS THE CARD RAISED WITHOUT BEING ASKED, both of which make the real read WORSE:
+        - the survivor filter drops 23% of fires on the day-0 close, which is look-ahead;
+        - the gate's own proposed stop ("just below the MA") is hit 9 times in 10 on daily lows, so
+          the entry it was going to justify would have been stopped out in almost every case.
+      
+      NO OPERATOR ACTION AND NO GRADUATION. Its bucket-2 revision options (volume ceiling, SMA50
+      variant, sector filter) are detector work, not a live change, and they are NOT filed as a task:
+      the board was at its 71 ceiling on 2026-09-15 and the operator did not take a carryover. They
+      live here until a slot exists. [[priority-ep-profitability-before-new-setups]] outranks them.
+      Doc: docs/analysis/intraday_ma_pullback_signal_n10_2026-09-15.md.
   - review_id: intraday_undercut_rally_signal_n10
     title: "Intraday U&R (Undercut & Rally) detector — N≥10 graduation review (#98)"
     question: |
@@ -7514,7 +7580,12 @@ reviews:
       WHERE t.test_date <= CURRENT_DATE - INTERVAL '12 days'
         AND t.parent_invalidated_eod = FALSE
         AND d0.close > 0
-        AND d10.close IS NOT NULL;
+        AND d10.close IS NOT NULL
+        -- ERA SCOPE added 2026-09-15: the 2026-06-27 #356 HTF parent rebuild replaced this
+        -- detector's parent entirely. Pooled n=23 crossed the threshold only by MIXING the
+        -- two eras (current era alone is 9). Scoped here rather than pushed by date, because
+        -- a date could only DELAY a review whose evidence is already in (his 2026-07-26 ruling).
+        AND t.test_date >= DATE '2026-06-27';
     threshold: 10
     # RE-SCOPED 2026-07-30 to the operator's standing priority (ruled 2026-07-29):
     # "getting existing EP profitable is the critical thing, until then I'm not in a hurry
@@ -7554,7 +7625,43 @@ reviews:
       - ADR 0005 (#94 design template this detector mirrors)
     status: pending
     added_on: 2026-05-24
+    can_fire:
+      predicate_runs: >-
+        RUN AGAINST PROD 2026-09-15, both forms. Unscoped it returns 23; with the 2026-06-27 era
+        clause now in the predicate it returns 9. Clean SQL either way.
+      nonzero_possible: >-
+        9 today and rising at 2-3 fires per month, so it reaches 10 on its own within weeks — on
+        ONE population instead of two. No date was pushed to get there.
+      lane_live: >-
+        The support-test scan is live; 9 settled current-era fires from 3 campaigns since the
+        2026-06-27 rebuild, plus 14 older ones now correctly excluded.
+      threshold_vs_observed: >-
+        Threshold 10, observed 9 era-scoped (was 23 pooled). The pooled 23 passed the median bar
+        (+2.5% 5d) but FAILED the win-rate bar (22% vs 40%) and landed between the gate's own
+        buckets — a read that could not fire a decision, which is what sent me to the population.
+      era_scoped: >-
+        YES, as of 2026-09-15 — `t.test_date >= DATE '2026-06-27'`, the #356 HTF parent rebuild.
+        This is the fix; it replaces the bucket-3 instruction to bump the date +30d, which would
+        have been a calendar block on evidence that is already in.
+    resolution_2026_09_15: |
+      NOT ENOUGH N — and the predicate was wrong, not just the count.
 
+      Its threshold READ as met (23 vs 10) but only by pooling across the 2026-06-27 #356 HTF
+      parent rebuild. Current era alone is 9. So the entry has been ERA-SCOPED in the predicate
+      rather than date-pushed: it now reads 9 of 10 and will cross on its own.
+
+      What the pooled 23 said, for the record: median 5d +2.5% (passes the gate's +2% bar) but
+      22% win rate against a 40% bar, landing between buckets 1 and 2 — a read that could not
+      fire any decision. Current era (n=9, 3 campaigns): median 5d -5.5%, and ALL NINE traded
+      through base_low, which is exactly where the gate proposed putting the stop.
+
+      THE CARD'S SHARPEST CAVEAT, unprompted: 65% of all fires are invalidated by the same day's
+      close and excluded by `parent_invalidated_eod = FALSE`. The bounce this detector sees at
+      the scan tick does not hold two times in three. That is a fact about the detector, not
+      about the sample, and it should be read before anyone designs an entry on it.
+
+      NO OPERATOR ACTION. Nothing promoted; EP-first priority untouched.
+      Doc: docs/analysis/intraday_support_test_signal_n10_2026-09-15.md.
   - review_id: rally_band_u_shape_observation
     title: "Pradeep rally-band U-shape — sideways/modest-uptrend dead zone (#79 + #78 complementary observation)"
     question: |
@@ -9406,9 +9513,124 @@ reviews:
       jsonl inputs per its docstring, into a FRESH data_dir) on the full cohort.
       Bring the operator the same live-verdict crosstab + the keep-22 /
       neutralize-gate fork (#448).
-    status: pending
+    status: done
     added_on: 2026-07-16
+    can_fire:
+      predicate_runs: >-
+        RUN AGAINST PROD 2026-09-15 by the card and again by me: 46 against threshold 8, clean.
+      nonzero_possible: >-
+        Nonzero and 5x threshold. Closing it is not a firing problem — the question was answered
+        three times the same way (7/16 n=7, 9/07 n=45, 9/15 n=46) and a fourth look at the same
+        era would add nothing.
+      lane_live: >-
+        mi_ep_catalyst_metrics is written on every scored alert and the downgrade event fires
+        live; 122 DOWNGRADE and 45 PASS rows in the 7/17-9/15 growth window alone.
+      threshold_vs_observed: >-
+        Threshold 8, observed 46. N was never the binding problem after 9/07; the era was.
+      era_scoped: >-
+        NO — and that is why a successor exists rather than a fourth re-run. This predicate starts
+        at 2026-07-16 and therefore pools the pre- and post-2026-08-22 admission systems. The
+        successor `b6_gate_inversion_post_rescale` is scoped to >= 2026-08-22.
+    resolution_2026_09_15: |
+      CLOSED — the 7/16 inversion is NOT confirmed, on the third independent look, and the
+      entry's own fork says so: "if reversed/flat -> keep 22, close #448."
 
+      Growth window 2026-07-17 -> 09-15, 5-session return from alert-day open, live-verdict
+      anchored on the audit log (Sonnet card, $0, fresh prod re-pull — NOT a reuse of the 9/07
+      files):
+
+                   n   >=20%    p90     median   win
+        PASS      45   4 (9%)  +16.4%   +0.4%    51%
+        DOWNGRADE 122  8 (7%)  +13.0%   +0.9%    57%
+
+      PASS's TAIL is equal-to-better than DOWNGRADE's. An inversion needs PASS to be WORSE; it is
+      not. Three looks, three times the same direction (7/16 n=7, 9/07 n=45, today n=46).
+      KEEP composite_min = 22. That is the STATUS QUO — no live change, so no sign-off is needed
+      to leave it alone. Fork B (neutralising the composite's downgrade authority) is NOT taken.
+
+      DOWNGRADE-precision is 43% (52/122) — but 44% of ALL scored rows in the window were losers
+      anyway, so 43% is what a signal-free gate would also produce. Recorded as UNINFORMATIVE, in
+      neither direction. [[never-let-him-be-the-check]]
+
+      ⚠ THE CAVEAT THAT CREATED THE SUCCESSOR, and it is the whole reason this is not simply a
+      clean close: essentially all of this evidence — here AND in the 9/07 recheck — comes from
+      the PRE-2026-08-22 admission system. Under the rules actually running today the settled
+      live-PASS population is 2 rows on my own count (the card counted 4 on a looser settle
+      window), and the card reports them 0-for-4 with a median of -9.7%. Far too few to conclude
+      anything, and pointing the OPPOSITE way to the verdict above.
+      [[check-the-rule-era-before-comparing-to-actual]]
+
+      Side finding, resolved not ignored: 6 of the 46 growth-window PASS rows have no
+      mi_ep_alerts record at all (FEIM, FUTU, GKOS, PL, SWBI, YOU) — scored by
+      mi_ep_catalyst_metrics with no live alert ever firing. The card checked whether they mask an
+      inversion: excluding all 6 makes PASS look BETTER (n=40, median +2.0% vs +0.4%, win 55% vs
+      51%), so keeping them is the conservative choice. Worth its own look some day: a scored row
+      with no alert is a population nobody has explained.
+
+      Doc: docs/analysis/b6_gate_inversion_recheck_2026-09-15.md.
+  - review_id: b6_gate_inversion_post_rescale
+    # FILED 2026-09-15 on closing b6_gate_inversion_recheck. That entry answered its question
+    # three times over — but on an admission system replaced on 2026-08-22, and the handful of
+    # rows from the CURRENT system point the other way. Closing without this would lose that.
+    title: "Does the B6 composite_min=22 gate invert under the POST-2026-08-22 admission system?"
+    question: >-
+      Its predecessor answered "no inversion" three times (7/16 n=7, 9/07 n=45, 9/15 n=46) and the
+      gate stays at 22 — but essentially every one of those rows predates the 2026-08-22 rescale.
+      Under today's rules the settled live-PASS population is 2 rows (4 on the card's looser settle
+      window), reported 0-for-4 with a median of -9.7%. THE QUESTION: once enough post-rescale rows
+      settle, does live-PASS still match or beat live-DOWNGRADE on the TAIL (share >=+20%, p90) —
+      or does the inversion the 7/16 read suspected finally appear under the current system?
+      ⚠ Judge on the TAIL first. The predecessor's medians differed by 0.5 points and meant nothing.
+    predicate_sql: |
+      -- live-PASS proxy, POST-RESCALE ONLY: scored row, settled 12d, with NO downgrade event
+      -- of ANY reason (the 7/16 lesson — matching only rubric_composite_* reasons let safety-net
+      -- q_rev_yoy_* downgrades count as PASS and inflate the counter).
+      SELECT COUNT(*) FROM mi_ep_catalyst_metrics m
+      WHERE m.alert_date >= '2026-08-22'
+        AND m.alert_date <= CURRENT_DATE - 12
+        AND m.q_revenue_yoy_pct IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM mi_audit_log a
+          WHERE a.event_type = 'catalyst_earnings_revenue_weak_downgrade'
+            AND a.detail LIKE '%"ticker": "' || m.ticker || '"%'
+            AND a.detail LIKE '%"alert_date": "' || m.alert_date || '"%'
+        )
+    threshold: 15
+    # The era column IS this entry's reason for existing, and the predicate filters it —
+    # `alert_date >= '2026-08-22'`. Its predecessor declared nothing and pooled both systems.
+    discriminates_on: [mi_ep_catalyst_metrics.alert_date]
+    can_fire:
+      predicate_runs: >-
+        RUN AGAINST PROD 2026-09-15: returns 2. Same shape as the predecessor's predicate, which
+        has run clean for two months — only the date floor and the settle filter are added.
+      nonzero_possible: >-
+        Already nonzero (2). The predecessor accrued 45 live-PASS rows in the two months before
+        the rescale, so 15 post-rescale rows is roughly a quarter's accrual, not a wait for
+        something that may never happen.
+      lane_live: >-
+        mi_ep_catalyst_metrics is written on every scored alert and
+        catalyst_earnings_revenue_weak_downgrade fires live — 122 downgrades in the 7/17-9/15
+        window prove both halves emit.
+      threshold_vs_observed: >-
+        Threshold 15, observed 2. DELIBERATELY not a date: the predecessor was re-run twice on
+        schedule and both times the binding problem was the population, not the calendar.
+      era_scoped: >-
+        YES — `alert_date >= '2026-08-22'`, the rescale, which is the exact boundary that made the
+        predecessor's 46-row answer unusable for today's system. No row can straddle it.
+    earliest_review_date: 2026-09-15
+    action_when_ready: >-
+      Re-run scripts/_b6_forward_backtest.py on the POST-RESCALE cohort only and produce the same
+      live-verdict crosstab, reporting the TAIL (count and share >=+20% and >=+40%, p90) BEFORE any
+      median or win rate. ⚠ Compare against the predecessor's pre-rescale numbers as a SEPARATE
+      column, never pooled — pooling them is the exact error that closed the predecessor.
+      If live-PASS is materially WORSE on the tail: bring the operator fork B (neutralise the
+      composite's tier-downgrade authority) via CHANGE_PROCESS — his call, never auto-applied
+      (THE LINE). If equal or better: the gate stays at 22 and this closes for good.
+      Also resolve the side finding inherited from the predecessor: scored rows that have no
+      mi_ep_alerts record at all (6 of 46 in the old window) — explain that population before
+      using it in either direction.
+    status: pending
+    added_on: 2026-09-15
   - review_id: gap_alignment_331_accrual
     title: "#331 gap-alignment axis — re-run evidence at larger N (regime/timeframe underpowered)"
     question: |

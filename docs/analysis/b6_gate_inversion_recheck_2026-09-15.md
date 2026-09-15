@@ -109,6 +109,12 @@ against `mi_ep_alerts`: 40 have a matching alert row (39 HIGH-tier, 1 MODERATE, 
 YOU 08-05 — meaning `mi_ep_catalyst_metrics` extracted a rubric-scorable row for them with no
 corresponding live alert ever firing; not resolved here (see §What this does not answer). The other
 40 are corroborated by an independent live-alert record, which is what this check was run to confirm.
+**Their inclusion is conservative, not a hidden bias toward "flat":** the 5 of 6 with a settled 5d
+return are GKOS −5.1%, YOU −28.7%, FUTU +5.9%, PL −17.5%, SWBI −6.5% (4 of 5 losers, including the
+two worst rows in the whole PASS arm) — excluding all 6 moves the growth-window PASS 5d arm from
+n=45/mean +1.0%/median +0.4%/win 51%/≥20% 9% to n=40/mean +2.5%/median +2.0%/win 55%/≥20% 10%. Every
+measure moves TOWARD "not inverted," none away — so leaving the unmatched 6 in the crosstab, as this
+document does throughout, is the harder test of the "reversed/flat" verdict, not a softer one.
 
 ## The numbers
 
