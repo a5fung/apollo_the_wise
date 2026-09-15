@@ -1773,11 +1773,43 @@ reviews:
       Predicate threshold bumped 5 → 15 days to require enough
       contested days with traded outcomes (not just decision events).
     predicate_sql: |
-      SELECT COUNT(DISTINCT date_trunc('day', created_at AT TIME ZONE 'America/New_York'))
+      SELECT COUNT(DISTINCT (created_at AT TIME ZONE 'America/New_York')::date)
       FROM mi_audit_log
       WHERE event_type = 'unified_allocation_decided'
-        AND created_at > NOW() - INTERVAL '30 days'
+        AND created_at > NOW() - INTERVAL '180 days'
+        AND (created_at AT TIME ZONE 'America/New_York')::time < TIME '09:30'
+        AND detail IS NOT NULL
+        AND (detail::jsonb ->> 'slots_available') IS NOT NULL
+        AND (detail::jsonb ->> 'slots_available')::int > 0
+        AND (detail::jsonb ->> 'slots_available')::int
+            < (detail::jsonb ->> 'n_candidates')::int
     threshold: 15
+    can_fire:
+      predicate_runs: >-
+        RUN AGAINST PROD 2026-09-14, twice. Without the time clause it returns 14 over 90 days; with
+        it, 0. No cast error on `detail::jsonb` (detail is TEXT holding JSON and every non-empty row
+        parses), and the `slots_available IS NOT NULL` guard is what keeps the empty-queue rows —
+        which carry only target_date and n_candidates — from raising on the ::int casts.
+      nonzero_possible: >-
+        It reads 0 TODAY BY DESIGN and that is the honest state: the job fires at 9:35 ET, so the
+        `< 09:30` clause excludes every existing row. It becomes nonzero the day after the shadow job
+        moves to 9:28 (the #312 pre-flip gate) and a contested day occurs — historically ~1 in 5
+        trading days. ⚠ If --audit flags this as a stale zero, the ANSWER IS "the precondition has not
+        landed", not "re-date the review".
+      lane_live: >-
+        `unified_allocator_shadow` has run every weekday since 2026-05-08 (scheduler.py:7688) and
+        emitted 30 events in the last 45 days. The lane is live; only its TIMING is wrong.
+      threshold_vs_observed: >-
+        Threshold 15 contested post-move days, observed 0 post-move (14 pre-move contested days exist
+        but are unusable — see the 2026-09-14 outcome). At ~1 contested day in 5 this is ~15 trading
+        weeks after the move. DELIBERATELY not a date: this review has been deferred twice by moving
+        `earliest_review_date` (2026-06-02, then 2026-09-01) while the predicate stayed wrong, and it
+        re-ripened both times on a count that included empty-queue days.
+      era_scoped: >-
+        The `< 09:30` time clause IS the era scope and it is self-enforcing — pre-move rows can never
+        satisfy it, so no one has to remember to re-date the window when the move lands. This replaces
+        the 2026-08-06 `regate_kind: date`, which pushed a date and left the predicate counting
+        ANY decision day (22 of 30) including 11 empty queues.
     action_when_ready: |
       Pull the audit events:
         SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day, summary, detail
@@ -1834,13 +1866,58 @@ reviews:
         feedback_sample_size_discipline: methodology changes need
         N≥10 backtest evidence. We have N=2.
     status: pending
-    earliest_review_date: 2026-09-01
-    regated_on: 2026-08-06
-    regate_kind: date
+    earliest_review_date: 2026-09-14
+    regated_on: 2026-09-14
+    regate_kind: predicate
+    zero_verdict: >-
+      2026-09-14 WAITING — on a PRECONDITION, by design; the zero is the correct reading.
+      The predicate's `< 09:30 ET` clause is the era scope: the shadow job still fires at 9:35,
+      so no existing row can satisfy it and none ever will. It goes nonzero the day after the
+      job moves to 9:28 (the #312 pre-flip gate, needs his sign-off) and a contested day occurs.
+      ⛔ Do NOT resolve this zero by re-dating the review — that is exactly what was done on
+      2026-06-02 and again on 2026-08-06, and it re-ripened both times on a wrong count.
+    resolution_2026_09_14: |
+      EVALUATED 2026-09-14 (PT), $0, prod read-only —
+      docs/analysis/unified_allocator_phase_1b_2026-09-14.md.
+
+      VERDICT: DEFER — but NOT for more days, which is the change from every prior deferral.
+
+      THE COMPARISON THIS REVIEW ASKS FOR IS STRUCTURALLY UNAVAILABLE, not under-sampled.
+      The shadow job runs 9:35 ET (scheduler.py:7688); ORB entries submit 9:31. `slots_available`
+      is computed from a LIVE `get_open_position_count()` at 9:35
+      (cross_strategy_allocator.py:252), so it already excludes that morning's fills. Measured:
+      6 of the 7 winners that ever filled had ALREADY FILLED when the ranking was computed
+      (ABCL 09:34, BW 09:31, ETON 09:31, AMLX 09:32, PHVS 09:31, DFTX 09:33 — only OKTA 09:49
+      came after). Each is counted TWICE: once inside open_positions consuming a slot, once as
+      the winner of the slots that remain. So "do the winners match the fills" is CIRCULAR, and
+      a live flip on this ranking would OVER-ALLOCATE.
+
+      ⚠ NOT A NEW FINDING, AND I ALMOST REPORTED IT AS ONE. allocator_1b_comparison_2026-07-03.md
+      §3(b) already recorded the point-in-time slot snapshot and §9.3 already recommended reading
+      slots at each candidate's own attempt time; its summary already said the comparison "cannot
+      be directly tested". What is new is the DIRECTION (downstream of the fills, not merely
+      mismatched) and the size (6 of 7). The July recommendation was never implemented, which is
+      why the same telemetry was offered as evidence again today.
+
+      MORE DAYS WILL NOT HELP: winner trade-through is 5 of 19 on contested days (26%), the same
+      ~1/6 interception rate that deferred this on 2026-05-18. On 7 of 9 contested days FEWER
+      names entered than there were slots (39 candidates, 19 slots offered, 8 entries, 21%) —
+      the 5-position cap is not what decides these books; the setup filters are
+      (gap_below_floor 8, no pipeline row 7, circuit_breaker 5, stop_too_wide 5).
+
+      PRECONDITION, recorded on PLAN #312 beside the RED-3 clamp: move the shadow job 9:35 -> 9:28
+      ET and fix the double-count. Shadow-only, submits nothing, $0 — but it changes WHEN a
+      money-path job reads the book, so it needs his sign-off (THE LINE) before it ships.
+      DO NOT FLIP PHASE 1B on the current evidence.
+    regated_2026_08_06_on: 2026-08-06
     regate_reason: >-
-      RE-GATED 2026-08-06 — the predicate fires on ANY decision day (22 of 30), but the operator's 7/
-      4 disposition requires GENUINELY CONTESTED days, and measured with that honest condition since 
-      #415 shipped (7/24) the count is ZERO. The gate is counting the wrong thing.
+      RE-GATED 2026-09-14 by changing the PREDICATE, not the date. Its 2026-08-06 predecessor read:
+      "the predicate fires on ANY decision day (22 of 30), but the operator's 7/4 disposition requires
+      GENUINELY CONTESTED days, and measured with that honest condition since #415 shipped (7/24) the
+      count is ZERO. The gate is counting the wrong thing." ⛔ THAT WAS RIGHT AND THE FIX WAS WRONG —
+      it was a regate_kind:date, so earliest_review_date moved 2026-09-01 and the predicate stayed
+      untouched, and five weeks later it re-ripened on the same wrong count. The predicate is now
+      contested-days-only and self-era-scoping; the date floor is back to today.
     added_on: 2026-05-08
     resolution_2026_07_04: |
       DISPOSITION 7/4 (operator): HOLD Phase-1A shadow + ADD TELEMETRY (docs/analysis/allocator_1b_comparison_2026-07-03.md: zero head-to-head days — pool mismatch + 9m_day2 shadow-demotion confounds; 6/6 intercepted winners positive-fwd = picks plausibly sound). Telemetry = PLAN #415 (real-contest eligibility flag + next-ranked cascade info + slots snapshot cadence). Re-review when genuine contested days accrue.
@@ -10348,12 +10425,15 @@ reviews:
       threshold_vs_observed: >-
         Threshold 20, observed 5. At ~5 judgeable no-story days per 5 weeks this lands around
         mid-November. DELIBERATELY not a date: the 2026-09-14 read's own limit was that 5 days
-        is not a rate, so the fix is more days, not more calendar.
+        is not a rate, so the fix is more days, not more calendar. ⚠ earliest_review_date is
+        therefore TODAY, not the mid-November estimate — firing is AND, so a future date could
+        only DELAY a review whose evidence is already in (his 2026-07-26 ruling against calendar
+        blocks). The estimate belongs in this sentence; the gate belongs to the count.
       era_scoped: >-
         Scoped to >= 2026-08-09, the v2 cutover. The 09-13 read's central error came from mixing
         populations; the v1 days and the 90 hindsight-backfill runs of 06-04/06-06 are excluded
         by construction here, not by remembering to exclude them.
-    earliest_review_date: 2026-11-10
+    earliest_review_date: 2026-09-14
     action_when_ready: >-
       Re-run the SAME script as 2026-09-14 (docs/analysis/lane2_narrative_grouping_review_2026-09-14.md
       documents it) over the v2 era only, and report against the three bars above verbatim.
