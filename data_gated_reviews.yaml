@@ -1898,7 +1898,14 @@ reviews:
       07:00 ET, and 19 of 27 rows across five sampled days were present by 09:28. Its COST: the
       other 8 arrive after 09:28 from the dedicated 9:31 ep_scan_open job, so a 9:28 allocator
       ranks EARLY but on an INCOMPLETE field. The richer alternative is the 2026-07-03 doc's
-      §9.3 (slots read live at each candidate's own attempt time). Which trade is HIS call.
+      §9.3 (slots read live at each candidate's own attempt time).
+
+      HE RULED 2026-09-14: "aligned, A, then B if this becomes necessary" — SIGNED. A = move the
+      shadow job to 9:28 ET and fix the double-count, in a WEEKEND build slot since it is money-path
+      timing. B = the §9.3 per-attempt slot read, built ONLY if A's incomplete-field cost shows up.
+      The trigger for B is written down BEFORE the data: over 15 contested post-move days, if the
+      names arriving after 09:28 would have outranked the 9:28 winners on more than a third of those
+      days, A is judging the wrong field and B is owed; if they rarely outrank, B is closed.
 
       ⚠ NOT A NEW FINDING, AND I ALMOST REPORTED IT AS ONE. allocator_1b_comparison_2026-07-03.md
       §3(b) already recorded the point-in-time slot snapshot and §9.3 already recommended reading
