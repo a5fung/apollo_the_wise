@@ -717,3 +717,38 @@ the same run**: `judge_named_themes_extracted` — 2 alerts, 2 rows written, 0 f
 
 ⚠ Left open deliberately, and NOT part of this bar: whether he promotes either group. The task's
 job was to stop throwing the judge's names away and put them in front of him; the ruling is his.
+
+## #645 — an arm that changed nothing now says 0.0, and the replay gap has its own line (2026-09-14)
+
+BAR: "an arm that changed nothing displays 0.0, and the replay-vs-actual fidelity gap is reported as
+its OWN line with its own n — the two facts stop sharing a column." Plus the format half he asked
+for in the same breath: "a reader can tell where one item ends and the next begins, and the arms
+that CHANGED something are separable at a glance from the arms that did not."
+
+EVIDENCE: the RENDERED digest, pulled read-only out of `apollo-execution` on 2026-09-14 rather than
+inferred from the DB — this is an operator-facing surface, so the rendered text is the only thing
+that can settle it.
+
+- **The verify needed a settled fill and finally got one.** DFTX filled 09:33 ET and stopped out at
+  10:19 ET (−$23.73), so the digest reads **2 fills** (PHVS 09-08 + DFTX 09-14), not the single
+  trade that made every number in that block one trade wide.
+- **Arms that changed nothing print 0.0 — once, as a named list, not six phantom percentages:**
+  `changed NOTHING on any of 2 fills, so 0.0% each:` followed by *partial-but-no-breakeven · no
+  partial, trail only · partial, sell the rest three days later · the old rule (partial at +2R) ·
+  swing-stop rule · character-based rule*. **Its WOULD-FAIL-IF was "an arm with `changed 0` prints
+  a non-zero percentage" — not one does.** That is the original defect he spotted (*"I find it odd
+  that most exit is the same at +0.2%"*): those six were all showing PHVS's +0.19pp replay drift as
+  if it were an exit result.
+- **The fidelity gap moved to its own section with its own n**, labelled as a method check rather
+  than an exit: *"HOW CLOSE IS THE REPLAY TO THE REAL FILL? (a check on the method, not an exit) —
+  our own rule replayed, as a check: +0.1% average gap vs the real result over 2 fills; off by over
+  a quarter of the fill's risk on 0 of 2 fills."*
+- **The format half holds too:** the three arms that DID change something lead with `▸` markers and
+  one line each (+3.8% / +5.7% / +4.5%, each "changed 2 of 2 fills"), the inert six collapse into a
+  single named list beneath them, and `──────────` rules separate the sections that used to read as
+  one wall on a phone. Rendered length 2,026 chars against the 2,500 cap.
+
+⚠ Deliberately NOT read as a finding: the three stop-variant arms show +3.8% to +5.7% on 2 of 2
+fills. That is n=2 and it is #482's question, not this one. This task was about the DISPLAY telling
+the truth, and a two-fill improvement signal is exactly the kind of number the old format would have
+let someone act on.
