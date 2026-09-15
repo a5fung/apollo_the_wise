@@ -9035,7 +9035,58 @@ reviews:
       tune) — this one is the paper-graduation gate.
     status: pending
     added_on: 2026-06-29
+    can_fire:
+      predicate_runs: >-
+        RUN AGAINST PROD 2026-09-15: 5 takeable settled rows against threshold 5 — it is ripe, and
+        that is precisely why the operator's ruling below had to be written down.
+      nonzero_possible: >-
+        Nonzero (5) and accruing at roughly 4 takeable breaks a month. Not a firing problem.
+      lane_live: >-
+        mi_htf_breakout_shadow has 17 rows from 2026-06-29 to 2026-09-14, written by
+        run_intraday_flag_break_scan (flag_detector.py:2156), and the 24-day settle job is current:
+        the 5 unsettled rows are ALL inside their window (earliest eligible 2026-09-18), not stuck.
+      threshold_vs_observed: >-
+        Threshold 5 takeable settlements, observed 5. ⚠ The threshold is MET and the review is still
+        HELD — by priority, not by evidence. Do not read the hold as a data shortfall.
+      era_scoped: >-
+        Implicitly — the table begins 2026-06-29, days after the 2026-06-27 #356 HTF parent rebuild,
+        so every row is current-era by construction. Nothing predates the rebuild.
+    resolution_2026_09_15: |
+      HELD BY THE OPERATOR, NOT BY THE DATA. His ruling, verbatim: "We're not ready to graduate
+      another setup yet" — then, unprompted: "However, we should still try to perfect any new setups
+      we have, make sure we're collecting the right data, etc. But just to graduating yet."
 
+      So the GO/NO-GO half of action_when_ready is SUSPENDED. It reopens when EP profitability is
+      settled (#508 exit discipline), not on a date.
+      [[priority-ep-profitability-before-new-setups]]
+      ⚠ I should not have offered this review as today's work at all — the standing priority already
+      said so, and he had to repeat it.
+
+      THE HALF HE DID ASK FOR — is the shadow collecting the right data — RUN 2026-09-15, $0:
+        - 17 rows, 2026-06-29 to 2026-09-14. Field census on the 10 takeable rows: rmv_5d, rmv_15d,
+          range/vol contraction, adv_20, atr_14, target_r all populated on 10 of 10. The ONLY gap is
+          XMTR 2026-06-29 missing flagpole_ratio and flag_depth_pct — the very first row, written
+          before #402(3) re-derived those from the persisted pivot_high. One row, oldest, explained.
+        - SETTLEMENT IS ON SCHEDULE, NOT STALLED. It looks stalled — nothing settled since 08-19 —
+          and the settle window is `today - 24 days` (scheduler.py:4712), so CDNA 08-25, CHYM 08-28,
+          PBF 09-01, PBF 09-02 and WDAY 09-03 are all correctly NOT YET ELIGIBLE (first ripens
+          2026-09-18). Checked before reporting a stall that was not there.
+        - NO UNITS BUG, CHECKED RATHER THAN ASSUMED. max_loss_pct reads 0.1 on every wide-stop
+          reject, which looks like a percent-vs-fraction mismatch against an 8% gate. It is a
+          FRACTION: recomputing 100*(entry-stop)/entry from the stored prices reconciles to the cent
+          on all 17 rows (OKTA 0.11600 = 11.60%, CDNA 0.07390 = 7.39%).
+
+      🔴 THE ONE FINDING WORTH HIS ATTENTION, and it is about the SETUP, not about graduating:
+      THE 8% STOP GATE REJECTS 7 OF 17 BREAKS (41%). Those are not junk — OKTA, CRWD, RBRK, SNOW,
+      XHLD, IOVA — they are breaks the detector found and the entry spec cannot take, because the
+      base puts the stop 9.2% to 11.6% away. It is not a price-level artifact: the July cluster is
+      high-priced (CRWD 778, SNOW 270) and the September pair is low-priced (XHLD 10.09, IOVA 9.30),
+      so it is base GEOMETRY. Two readings, and this read cannot separate them: either the 8% gate
+      is right and 41% of HTF breaks are simply untakeable at this size, or the base-low stop is the
+      wrong stop for this setup. ⛔ Both are entry/stop questions = THE LINE = his, and neither is
+      urgent while graduation is held. Filed here so it is waiting when he does want it.
+      ⚠ Consequence for later: takeable breaks accrue at ~4/month, so any future graduation sample
+      builds at roughly half the raw break rate. Worth knowing before anyone promises a date.
   - review_id: harvest_rule_effectiveness
     title: "Harvest rule (ADR 0023) — post-flip effectiveness check vs the 18% baseline"
     question: >-
