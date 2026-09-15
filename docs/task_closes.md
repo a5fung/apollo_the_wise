@@ -806,3 +806,60 @@ a passing day.
 rests on one name where the fade is visible. The rule's own standing evidence is
 `sustain_reject_tradeable_miss_rate_593` — 102 scoreable declines, 7 would have made money, 0
 reached 4R.
+
+## #579 — ad-hoc discovery spoke for the first time, and the other pair stayed quiet (2026-09-15)
+
+BAR: (the task's own DoD, verbatim) "(a) a reusable 'is this reading unusual for THIS series' primitive, lifted from the crypto lane; (b) applied first to the strength-map spreads, with the firing distribution MEASURED before any threshold is chosen (P2 — price it like the gap floor, do not guess); (c) it speaks when the reading changes, at whatever hour that is; (d) a stated silence rate — how often it says nothing — because that is the number that proves it is not noise."
+
+EVIDENCE: the 17:40 ET run on 2026-09-15 fired the first real alert this surface has ever produced, and the prediction for it was written down BEFORE it ran.
+
+**PRE-REGISTERED at 2026-09-15 ~10:50 PT, recorded on the task and committed (`cab7106c`) hours
+before the job fired:** *"two `strength_spread_alert_check` rows, `measured:true`, `judged` 565 —
+and a Telegram on ENERGY: move −15.49 against its own band 12.67, state `falling_behind`. Precious
+metals stays SILENT (move +8.37 inside band 11.22, `crossed:false`) — the silence is half the
+proof."*
+
+**WHAT ACTUALLY LANDED at 17:40:00 ET:**
+
+| | predicted | observed |
+|---|---|---|
+| rows | 2, measured | **2** |
+| Energy state | `falling_behind`, crossed | **`falling_behind`, crossed=True** |
+| Energy band | 12.67 | **12.67** |
+| Energy move | −15.49 | **−17.69** (one more session of data) |
+| Precious metals | silent, crossed=False | **`quiet`, crossed=False** |
+| Precious metals band | 11.22 | **11.20** |
+
+The two bands match to the second decimal; the moves differ only because the prediction was
+computed through 2026-09-14 and the job ran on 09-15 data.
+
+**THE TELEGRAM DEMONSTRABLY SENT, and this is a positive check rather than an absence.**
+`run_spread_crossing_alert` advances `mi_strength_spread_alert_state` ONLY after
+`send_telegram_message` returns true — a failed send deliberately leaves the state unadvanced so
+the crossing retries. `mi_strength_spread_alert_state` now reads `Energy | falling_behind | -17.69
+| 12.67`, so the send succeeded. A silent failure would have left the row absent or `quiet`.
+
+**EACH DoD CLAUSE, CHECKED SEPARATELY:**
+- **(a)** `evaluate_spread_crossing` + `_classify_spread_state` + `_is_new_crossing` are the
+  reusable "unusual for THIS series" primitive, percentile-based like the crypto lane's own
+  measured-typical-move test. PURE, no I/O, unit-tested away from a database.
+- **(b)** the bar is each pair's own 75th percentile recalculated on the run, not a picked number —
+  and it survived an 8x increase in its own history when the ETF backfill took judged days from 224
+  to 565 (`crossings_per_month` ~1.3 against the ~1.2 priced on 2026-09-11).
+- **(c)** it spoke at 17:40 on a genuine crossing, not on a schedule: the 11 prior sessions all read
+  `quiet` (−3.45 to −12.48, inside the band) and 09-14 was the first to break it.
+- **(d)** the message states its own silence rate in plain words — *"Fires about 1.3x a month for
+  this pair — quiet the rest of the time · a READ, not a rule"* (`format_spread_crossing_alert`).
+
+**AND THE SILENCE HALF HELD:** Precious metals sat at +5.4 inside an 11.2 bar and said nothing.
+A discovery feed that always has something to say is worth nothing — that was the task's own stated
+failure mode, and on its first live evening one pair spoke and one did not.
+
+⚠ **What this does NOT establish:** that the 1.3-per-month rate holds — it is computed over history,
+not observed live, and one evening is one evening. The unintended-consequence watch items written
+into the task's EXPECT (a first-measured-day false fire, a rate above the priced ~1.2, a send that
+fires but fails to advance state) stay open as things to notice, not as things now disproven.
+
+⚠ **Also not established: that the READ is useful.** Energy stocks falling behind oil and gas by
+17.7 points is a true statement about the tape; whether it is worth acting on is the operator's
+call and always was — the message says "a READ, not a rule" for that reason.
