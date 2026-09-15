@@ -199,10 +199,62 @@ review has now been deferred three times, twice by moving a date.**
 the 5/14+5/15 KLAR entries, −$1,768 — still stands at N=2 and predates the exit rule, the R3 re-entry
 block, and the chase cap. [[check-the-rule-era-before-comparing-to-actual]]
 
+## 6 — The +10 theme bonus IS 40% of slot ranking, and it has decided 2 slots in 60 days
+
+**Added 2026-09-15, his question: *"each EP gets a score, how do we determine priority of slots? it's
+based on score right?"*** Yes — and nobody had measured it. The chain, verified in code:
+`ep_score` (carrying the +10 `theme_bonus`) → `score_magna53(ep_score=…)` → `setup` →
+`composite = 0.40·setup + 0.30·catalyst + 0.20·volume + 0.10·regime` (`:97`) →
+`enqueue_pending_allocation(composite_score=…)` → the allocator's rank → slots.
+
+🔴 **MY FIRST PASS AT THIS WAS THE JULY ARTIFACT AGAIN, AND I CAUGHT IT BEFORE REPORTING IT.** I ran
+the measure over the 12 HIGH rows in `mi_ep_scan_log` and got *"order changed twice, neither crossed a
+cutline"* — a clean null. **But the ranked population is not the HIGH alerts; it is everything queued
+to `mi_pending_allocations`, which is 141 rows over 31 days.** On the right population the answer
+inverts. This is the same shape as the 2026-07-19 read that found *"0 upgrades in 466 rows"* on a
+sample that was 465 HIGHs. [[check-what-the-system-already-did]]
+
+**Method:** ep_score reconstructs EXACTLY as `1.25 × sum(score_breakdown) + 15` on **548 of 548**
+scan-log rows, and every themed row carries `theme_bonus = 10` with the conviction floor never firing
+— so removing the boost is exactly **−12.5 ep_score, −5.0 composite**, with no non-linearity to model.
+Re-ranked each day with and without it, and compared the top-`slots_available` SET.
+
+| | |
+|---|---|
+| queued rows / days | 141 over 31 |
+| themed | 15 |
+| days the cap ACTUALLY BOUND (`0 < slots < candidates`) | **14** |
+| …days where removing the +10 changes the WINNER SET | **2 (14%)** |
+
+**The two days, and what actually happened to the names:**
+
+| day | boost put IN | displaced | outcome |
+|---|---|---|---|
+| 2026-07-31 | BLZE | MPWR | **moot** — BLZE skipped `window:out_of_orb` 09:56, MPWR skipped `block:circuit_breaker`. Neither traded. |
+| 2026-08-14 | ETON | VERA | **ETON entered, +$19.32.** VERA would have been skipped anyway (`setup:gap_below_floor` 5.6% < 10%). |
+
+⚖ **VERDICT: the boost does decide slots, but only ONE case has ever been decided in a way that
+reached a trade, and it went the boost's way by $19.** That is N=1. It is **not** evidence the boost
+helps ranking, and it is **not** evidence it hurts. What it kills is the assumption I was about to
+report — that the boost is inert on the ranking side. It is not inert; it is unmeasured.
+
+**Why this matters to A:** A moves the allocator ahead of the entries, which is what makes this
+ranking answerable at all (§2). **Measure this again after A lands, on post-move contested days** —
+the same re-rank, the same two columns. Until then the honest statement to carry is *"the +10 is 40%
+of a ranking that has decided 2 slots in 60 days, one of them tradeable."*
+
+⚠ **7 of the 15 themed queued rows had no matching scan-log breakdown and were assumed
+`theme_bonus = 10`.** Every breakdown that WAS found carried exactly 10, so the assumption is
+consistent with 100% of observed rows — but it is an assumption, and it is in the direction of
+finding MORE effect, not less.
+
 ## What this does not answer
 
 - **Whether the allocator's RANKING is any good.** Nothing here scores its ordering; the finding is
   that the recorded comparison cannot test it, not that it fails one.
+- **Whether the +10 theme bonus IMPROVES slot ranking.** §6 establishes only that it has changed the
+  winner set twice in 60 days and that exactly one of those reached a trade. One name is not a rate,
+  and a +$19 result on N=1 is indistinguishable from noise.
 - **Whether the 5-position cap is the right number.** §3 says the cap rarely binds on contested days;
   that is an observation about these 45 days, not a sizing recommendation. Sizing is his (THE LINE).
 - **Whether the setup filters that intercept 74% of winners are correct.** They may be doing exactly
