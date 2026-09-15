@@ -752,3 +752,57 @@ that can settle it.
 fills. That is n=2 and it is #482's question, not this one. This task was about the DISPLAY telling
 the truth, and a two-fill improvement signal is exactly the kind of number the old format would have
 let someone act on.
+
+## #643 — BGSI was not delay-missed; the overlay declined it in real time and was right (2026-09-15)
+
+BAR: (the task's own DoD, verbatim) "a one-paragraph answer naming which of the two measurements describes what the live system acts on, why BGSI and ALMR diverged on the same tick, and — if the tracker's basis no longer matches the live path — the corrected LABEL for its alert, which currently calls a non-delay case delay-missed."
+
+WOULD-FAIL-IF: (its own) "the answer rests on reading the code alone without re-deriving both numbers."
+
+EVIDENCE: both numbers re-derived from prod FIRST; the code was read only afterwards, to name the mechanism the data had already exposed.
+
+**There was never a two-number disagreement. The two numbers are fifteen minutes apart.**
+`mi_ep_scan_log` carries both readings in the same row: `gap_pct_rt` is the real-time feed and
+`gap_pct_delayed` is the 15-minute-lagged one. BGSI's 09:50 row reads **rt 7.39% / delayed 10.21%**
+against a `prev_close` of **81.55** (confirmed in `mi_daily_closes`, 2026-09-10). Those are not two
+sources contradicting each other at one moment — they are the price at 09:50 and the price at
+~09:35. **BGSI was +10.2% at 09:35 and had faded to +7.4% by 09:50.** ALMR's own 09:50 row says the
+same thing louder: **rt 1.51% / delayed 10.26%** — it faded harder still, from +10.26% to +1.51%.
+
+**THE LIVE SYSTEM ACTS ON `gap_pct_rt`**, and prod states this itself rather than leaving it to be
+inferred — `ep_rt_floor_flip_down` @09:50:23, *"BGSI delayed 10.2% >=9 > rt 7.4% (stale false-admit
+REMOVED)"*.
+
+**BGSI AND ALMR DID NOT DIVERGE ON MEASUREMENT — THEY DIVERGED ON THE SUSTAIN RULE.** Both were
+~+10.2% at the 09:35 tick. ALMR's level held three consecutive bars, so the real-time universe
+admitted it (`price_source = alpaca_sip_universe`), after which it died on SCORE, not on the
+universe floor — *score 52 < bar 65*. BGSI's level did not hold, and the overlay said so at
+09:35:04, four seconds after the tick: **`ep_rt_sustain_reject` — "BGSI rt 10.2% but the level did
+NOT hold 3 consecutive bars @ 09:35 ET — no catch"**. The fade to 7.4% fifteen minutes later is the
+evidence that the decline was correct.
+
+**THE CORRECTED LABEL: not "delay-missed" — DECLINED IN REAL TIME, ON PURPOSE.** At the same second
+as that rejection, `ep_rt_live_miss` fired anyway: *"BGSI rt 10.2% ≥10 @ 09:35 ET, passes mechanical
+EP gates but NOT a scan candidate (delay-missed EP)"*. The watchdog asked *is it a scan candidate?*
+and never asked *why not* — so the overlay's own deliberate rejection was re-reported as a miss the
+hybrid could not catch. **This is the session's recurring defect class: a measure that never asks
+what the system already did counts its wins as losses.** [[check-what-the-system-already-did]]
+
+**VERIFIED LIVE, and the check discriminates rather than resting on an absence.** The fix
+(`fe121f89`, 2026-09-11) threads `declined_out[tkr] = "ep_rt_sustain_reject"` so the watchdog skips
+names the overlay declined. A ticker-day carrying BOTH events is the defect; carrying only the
+sustain reject is the fix. Over the last 30 days:
+
+| | ticker-days with BOTH (the defect) | sustain-reject only |
+|---|---|---|
+| pre-fix (08-17 → 09-11) | **14**, on 8 separate days | 72 |
+| post-fix, exercised (09-14, 09-15) | **0** | **7** |
+
+The mechanism was engaged seven times after the fix and mislabelled none of them — so this is not a
+quiet-window zero. ⚠ 09-12 produced no sustain rejects at all and is excluded rather than counted as
+a passing day.
+
+⚠ **Deliberately NOT read as a finding:** that the sustain rule is correct in general. This close
+rests on one name where the fade is visible. The rule's own standing evidence is
+`sustain_reject_tradeable_miss_rate_593` — 102 scoreable declines, 7 would have made money, 0
+reached 4R.
