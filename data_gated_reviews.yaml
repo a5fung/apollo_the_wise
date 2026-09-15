@@ -1890,14 +1890,26 @@ reviews:
       (ABCL 09:34, BW 09:31, ETON 09:31, AMLX 09:32, PHVS 09:31, DFTX 09:33 — only OKTA 09:49
       came after). Each is counted TWICE: once inside open_positions consuming a slot, once as
       the winner of the slots that remain. So "do the winners match the fills" is CIRCULAR, and
-      a live flip on this ranking would OVER-ALLOCATE.
+      a flip at THIS TIMING would over-allocate — an artifact of running after the fills, not a
+      sizing defect in the allocator.
+
+      THE 9:28 MOVE WAS CHECKED BEFORE BEING RECOMMENDED: since #515 the only queue writer is
+      enqueue_pending_allocation (ep_detector.py:5999) on an EP scan running every 5 min from
+      07:00 ET, and 19 of 27 rows across five sampled days were present by 09:28. Its COST: the
+      other 8 arrive after 09:28 from the dedicated 9:31 ep_scan_open job, so a 9:28 allocator
+      ranks EARLY but on an INCOMPLETE field. The richer alternative is the 2026-07-03 doc's
+      §9.3 (slots read live at each candidate's own attempt time). Which trade is HIS call.
 
       ⚠ NOT A NEW FINDING, AND I ALMOST REPORTED IT AS ONE. allocator_1b_comparison_2026-07-03.md
       §3(b) already recorded the point-in-time slot snapshot and §9.3 already recommended reading
       slots at each candidate's own attempt time; its summary already said the comparison "cannot
       be directly tested". What is new is the DIRECTION (downstream of the fills, not merely
-      mismatched) and the size (6 of 7). The July recommendation was never implemented, which is
-      why the same telemetry was offered as evidence again today.
+      mismatched) and the size (6 of 7). ⚠ AND "never implemented" would be too blunt: #415 shipped
+      the eligibility flag and cascade info, but the disposition's third piece — "slots snapshot
+      cadence" — shipped as ONE value at the cron tick and closed on "all 3 fields present"
+      (731ea850, 2026-07-24). Partially shipped, closed on the narrower reading. That close is
+      seven weeks old and is NOT reopened here; it is named because it is why the same telemetry
+      came back today wearing a READY flag.
 
       MORE DAYS WILL NOT HELP: winner trade-through is 5 of 19 on contested days (26%), the same
       ~1/6 interception rate that deferred this on 2026-05-18. On 7 of 9 contested days FEWER

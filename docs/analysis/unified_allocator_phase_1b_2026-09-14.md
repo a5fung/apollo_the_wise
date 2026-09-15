@@ -87,8 +87,17 @@ directly tested."** That doc framed it as a capacity-accounting MISMATCH.
 
 **What is new here is the direction and the size of it:** the snapshot is not merely mismatched, it
 is taken *downstream of the fills*, so the allocator names winners that have already entered — and
-that is quantified below for the first time. The July recommendation was never implemented, which is
-why the same telemetry is being offered as evidence again today.
+that is quantified below for the first time.
+
+⚠ **"The July recommendation was never implemented" would be too blunt, and the close record says
+why.** The operator's 7/4 disposition asked for three telemetry pieces — eligibility flag, cascade
+info, **and "slots snapshot cadence"**. #415 shipped and closed 2026-07-24 on *"candidate-day today,
+all 3 fields present"* (commit `731ea850`). The first two are in every audit row as `legacy_eligible`
+and `first_cascade_candidate`. **The third shipped as a FIELD — one `slots_available` value at the
+cron tick — which is not a cadence**, and §9.3's actual proposal (read slots live at each candidate's
+own attempt time) was not built. So: **partially shipped, closed on the narrower reading** — not
+ignored. That close is seven weeks old and is not being reopened here; it is named because it is why
+the same telemetry came back today wearing a READY flag.
 
 `scheduler.py:7688` runs the job at **9:35 ET**. Its own comment says so — *"Runs at 9:35 ET (after
 MAGNA53 ORB monitor + 9M Day 2 cron have populated `mi_pending_allocations`)… Phase 1B (active) will
@@ -126,8 +135,10 @@ winner of it.
 1. **The review's comparison is circular.** "Do the allocator's winners match the actual fills" is
    guaranteed agreement when the winners are drawn from names that had already filled. Four months of
    telemetry cannot answer the question it was collected for.
-2. **A live flip on this ranking would over-allocate**, because `winners` is sized against a slot
-   count that already excludes some of the winners.
+2. **A live flip on THIS ranking, at THIS timing, would over-allocate**, because `winners` is sized
+   against a slot count that already excludes some of the winners. ⚠ **This is an artifact of running
+   after the fills, not a sizing defect in the allocator itself** — moving the job ahead of the
+   entries removes it, which is why the fix below is a timing change and not a sizing change.
 3. **Step 1 of the entry's own `action_when_ready` ("move shadow cron 9:35 → 9:28 ET") is not step 1
    of a promotion — it is a PRECONDITION of measuring anything at all.**
 
@@ -157,6 +168,20 @@ bottleneck was never sample size:
 
 - the comparison is **structurally unavailable** until the job moves ahead of 9:31 (§2), and
 - at 3 candidate divergences in 45 days, even a sound comparison needs **~7 months** to reach N=15.
+
+✅ **CHECKED BEFORE RECOMMENDING THE MOVE — a 9:28 job would NOT read an empty queue.** The cron's
+comment implies the queue is filled by the ORB monitor at 9:31, which would have made the move
+useless. It is not: since #515 the ONLY writer is `enqueue_pending_allocation` at
+`ep_detector.py:5999`, driven by the EP scan that runs **every 5 minutes from 7:00 ET**
+(`scheduler.py:6650`). On the five days sampled, **19 of 27 queue rows were already present by
+09:28** (earliest 07:00 every day; 2026-09-14's two rows were both in by 07:30).
+
+⚠ **And the cost of moving, stated so he is not signing a half-answer: 8 of those 27 rows arrive
+AFTER 09:28** — post-open upgrades from the dedicated 9:31 `ep_scan_open` job, which exists to catch
+at-open volume upgrades. A 9:28 allocator cannot see them. **That is a real trade-off between ranking
+the field before the entries and ranking a complete field**, and it is his to weigh; the alternative
+(July §9.3 — read slots live at each candidate's own attempt time) keeps the complete field and costs
+more to build.
 
 **Recommended order — and only the first is mine to do. ⚠ Note that steps 1 and 2 have each been
 recommended once before (2026-07-03 §9.3; 2026-08-06's regate note) and neither was done — this
