@@ -248,6 +248,31 @@ of a ranking that has decided 2 slots in 60 days, one of them tradeable."*
 consistent with 100% of observed rows — but it is an assumption, and it is in the direction of
 finding MORE effect, not less.
 
+### 6a — Two population facts the RE-MEASURE must carry, or it will not be comparable
+
+🔴 **(1) `in_active_theme` STOPPED MEANING "got the bonus" at last night's deploy.**
+`ep_detector.py:3183-3186` says it outright: since the 2026-09-13 belonging fix the membership set is
+*"ONE of two ways to belong … it also keeps its original meaning everywhere a row/payload records
+`in_active_theme` (list membership — the judge payload, `mi_ep_alerts`, the scan log)."* The **+10
+fires on `_theme_bonus_input`** (list membership **OR** the belonging verdict); the **recorded flag
+stays list membership**. They were the same thing across this study's window, so keying on
+`in_active_theme` was correct HERE — **and it will be wrong from 2026-09-15 forward.** The re-measure
+must key on `score_breakdown.theme_bonus > 0`.
+
+⚠ **The same line corrects something I told the operator on 2026-09-15: that #658 improved the
+judge's theme input.** It did not. **#658 improved the SCORE's input; the judge payload still gets
+plain list membership.** So the "the judge already sees theme and demoted anyway" argument rests on
+the judge seeing the OLD, narrower signal — still true, but weaker than stated, and worth re-testing
+once the judge is given the belonging verdict (if it ever is — that is a payload change, his call).
+
+**(2) "Contested" here means the FULL-DAY queue, which is the widest of three possible populations.**
+This study asks `0 < slots_available < (rows in mi_pending_allocations for that alert_date)` — the
+whole day's queue. The 9:35 audit event saw a SMALLER set (2026-08-14: 5 candidates in the audit vs 7
+queued all day), and after A moves the job to 9:28 it will see a **smaller set again** — the premarket
+queue only (§5 measured 19 of 27 rows present by 09:28). **So "2 of 14 days" is an UPPER bound on how
+often the boost can decide a slot, and the post-move number will be lower by construction.** Any
+comparison that does not state which of the three queues it used is not a comparison.
+
 ## What this does not answer
 
 - **Whether the allocator's RANKING is any good.** Nothing here scores its ordering; the finding is
