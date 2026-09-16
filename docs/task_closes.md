@@ -904,3 +904,47 @@ fix is what the widening could most plausibly have broken:
 in a thin window (nothing alerted 09-15) — that is not a volume test, and a busy morning is where a
 dedupe key would actually be stressed. The priced ~5/week rate is likewise unobserved: it comes
 from 17 demotions over 24 days of history, not from live counting. Neither was part of the DoD.
+
+---
+
+## #239 — closed as a CONVENTION, not as finished work (operator-ruled 2026-09-16)
+
+BAR: "part (a) extracts at the THIRD PERMANENT consumer and not before, and part (b) stays unbuilt
+with its over-abstraction reasoning intact"
+
+WOULD-FAIL-IF: "the trailing-baseline is extracted while both consumers are still disposable
+scripts". Nothing was extracted — the duplication is still two copies, deliberately.
+
+EVIDENCE: **Both halves of that bar are preserved, on a durable surface rather than on a dated PLAN
+line.** The operator ruled the close on 2026-09-16 after the alternative (a third signed re-date)
+was put to him alongside it.
+
+- **Part (a) — the deferral still holds, re-verified not assumed.** `grep -rn "catalyst_quality =
+  'game_changer'" --include='*.py'` across the repo (tests and agent worktrees excluded) returns
+  **exactly two files, both still throwaway `scripts/`**: `_wave_a_grade_inflation_check.py` and
+  `verify_monday_firstfire.py`. **Permanent consumers: zero.** Nothing in `agents/`, `core/` or
+  `channels/` computes a per-day game_changer/HIGH count over a trailing `alert_date` window.
+- **Part (b) is unchanged WON'T-DO**, with its reasoning carried over verbatim: provenance is
+  intra-grade while the tape and Perplexity reads are post-grade, so one envelope over both hides
+  the context difference.
+- **Both now live in `docs/architecture/market_agent_reference.md` § "When to extract a shared
+  helper"** — the build-conventions doc CLAUDE.md already routes to.
+
+**WHY THIS IS A CLOSE AND NOT A BURNDOWN DODGE.** The bar above describes a STATE TO MAINTAIN, not
+an action to complete: "extracts at the third permanent consumer **and not before**" can never be
+finished, only kept. A line that cannot complete re-dates forever — this one had been on the board
+since June and was already `[b2]` with two signed `[ok:]` tags, so its third re-date needed his
+sign-off anyway. The rule did not disappear; it moved to where rules belong. Nothing about the code
+changed in either direction.
+
+⛔ **A GATE WAS CONSIDERED AND DELIBERATELY REJECTED.** The obvious "mechanise it then close it" move
+— a test that greps for this SQL shape and fails at a third hit — would be a guard over a condition
+a real third consumer would most likely never trip: a different column alias, `catalyst_quality IN
+(...)`, or a `TIER_RANK` comparison all read as new code while computing the same thing. Building a
+check that cannot fire and then closing the task **because** a check exists is fake burndown wearing
+mechanisation, and the burndown rule forbids exactly that. The written convention is the honest
+instrument here, and its limitation is stated where it lives.
+
+⚠ **What this does NOT establish:** that the duplication is harmless. It is real — the 2026-06-28
+review was right about that — and a third permanent consumer makes extracting it correct. What
+changed is only where that instruction is recorded.

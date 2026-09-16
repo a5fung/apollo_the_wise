@@ -63,6 +63,32 @@ re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
 ```
 Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py`) — add new ones THERE (one place). Each ticker-extraction site extends it: `_PREPOSITION_SKIP | {site-specific command words}` (e.g. `{"RS","SCORE"}` in `_handle_single_score`). #260 (2026-06-10) deduped the former three hand-synced copies into this base; `tests/test_execute_task_routing.py` freezes the routing cascade.
 
+## When to extract a shared helper — wait for a third PERMANENT consumer
+
+**The convention, operator-ruled 2026-09-16** (this is where #239 went when it was closed as a
+convention rather than a task — a rule with no end state does not belong on the board with a date):
+
+> **Do not extract duplicated logic into a shared helper until a THIRD consumer needs it — and
+> count only PERMANENT consumers.** A one-off script under `scripts/` is a throwaway and does not
+> count toward the three, however many of them there are.
+
+**The case it was written from.** `scripts/_wave_a_grade_inflation_check.py` and
+`scripts/verify_monday_firstfire.py` both compute the same trailing baseline — per-day
+`game_changer` / HIGH counts over the prior ~9 days from `mi_ep_alerts` — to answer "are we
+suddenly grading more generously than usual". A 2026-06-28 review flagged the duplication as real
+and deferred the extraction anyway, because two throwaways are not a reason to build plumbing. Re-run
+2026-09-16: still exactly two consumers, still both `scripts/`, **zero permanent**.
+
+⚠ **This is deliberately NOT mechanised, and that is a judgement not an omission.** A test greping
+for that SQL shape would be a guard over a condition a real third consumer would probably never
+trip — a different column alias, `catalyst_quality IN (...)`, or a `TIER_RANK` comparison all read
+as new code while computing the same thing. A gate that cannot fire is worse than a written rule,
+because it also tells you it is watching.
+
+**Also settled, and not to be re-litigated:** unifying the `_emit_shadow_row` envelope is a WON'T-DO.
+Provenance is intra-grade while the tape and Perplexity reads are post-grade; one envelope over both
+hides exactly the context difference a reader needs. (#239 part (b).)
+
 ## Pre-commit hooks (one-time setup per clone)
 After fresh clone, activate the local pre-commit gates:
 ```bash
