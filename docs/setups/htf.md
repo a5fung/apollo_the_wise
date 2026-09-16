@@ -134,6 +134,47 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    fixed +3R/−1R bet. Nothing changed; the fork is the operator's.
 
 ## Change log
+- **2026-09-16 — OPERATOR RULING on the detection fork. NOTHING CHANGED IN THE DETECTOR; this
+  records a decision and closes out a question, per #610's own DoD ("his ruling recorded in
+  docs/setups/htf.md").**
+  **The fork**: after the 2026-09-10 replay, three options — (A) park #397's money-graduation
+  thread, (B) fix the two `mi_htf_breakout_shadow` recorder defects and re-measure, (C) go at the
+  detector. **He took A + C.**
+  **(A) #397 is PARKED**, status `blocked`, re-opening on EP profitability rather than on a date.
+  HTF is a DETECTION problem and is not traded, so a capture / realized-R number cannot decide
+  anything about it — a point he has now made twice.
+  **(C) is NARROWER THAN IT WAS WRITTEN, and the correction matters more than the ruling.** The
+  Sunday page offered C as *"the ADR/ADV floors cut breakouts 91%"*. That premise had already been
+  retracted twice inside #610 before the page existed:
+  - **2026-08-31** — the floors cut the scanned input roughly IN HALF (228 passed vs 230 ADR + 86
+    ADV killed on 08-31), never 91%.
+  - **2026-09-04** — the 12-variant raw-bar replay put the collapse on the signed 2026-06-27 runup
+    swap (`_RUNUP_MIN_RATIO` 1.50→1.90, `_RUNUP_LOOKBACK_DAYS` 60→40) working AS DESIGNED: its kill
+    rate went 46% → 78-85%. Under the sourced runup, ADR is nearly moot — 4%→3% admits **+3 tickers
+    and 0 breakouts** over two months.
+  - **2026-09-10** — the proposal to lower the ADR floor was withdrawn the same hour, on his
+    question *"why lower, what's the purpose of the range floor"*: names that PASS run ≥+20% in ten
+    sessions at **4.91%**, the 3.0-4.0 band at **2.38%**, below 3.0 at **0.27%**. The rate rises
+    monotonically with ADR, so **the floor sorts on exactly the property HTF monetises.**
+  **So `_HTF_MIN_ADR_PCT` = 4% and `_HTF_MIN_ADV_SHARES` = 500,000 STAY, and they are no longer an
+  open question** — they were measured against the ADMITTED population and they earn their keep. A
+  large exclusion count is what a working filter looks like.
+  **What is left of C**: `_RUNUP_MIN_RATIO` 1.90 over 40 days is the SOURCED spec (*"C≥1.9×C₄₀"*),
+  not our invention. The remaining question is whether our READING of the source matches how its
+  author actually screens — **#592's question**, and #610's 2026-09-04 note had already reached it
+  (*"#592 and #610 collapse into one ruling"*). ⚖ **Methodology, not tuning: it is answered against
+  the author's own labelled examples, never by loosening a sourced number because we want more rows.**
+  **(B) NOT taken, and the consequence is recorded rather than dropped**: the two defects in
+  `mi_htf_breakout_shadow` stay unfixed — (1) `_htf_settle_from_bars` credits a stop-limit fill at
+  `base_high` without checking the break day's LOW, so a gap-above-entry day books a fill that could
+  not have happened (CDNA 2026-07-31: entry 40.47, day low 40.67); (2) the shadow stores raw prices
+  while `mi_daily_closes` is split-adjusted, so any join across a split is nonsense (CRWD
+  2026-07-01, 1 of 16 rows). **Anything that later reads this table for OUTCOMES must fix both
+  first.** They were not worth fixing for a sanity check on a thread now parked.
+  **Files**: no code changed. `docs/analysis/610_397_htf_fork_for_sunday.md` carries the corrected
+  fork; `docs/analysis/610_htf_replay_2026-09-10.md` carries the scope banner (what the replay
+  measured is OUR ENCODING plus ONE exit bet, not the HTF pattern).
+
 - **2026-09-05 — #356 follow-up: `get_recent_daily_history` now counts TRADING rows, not a
   calendar span; `flagpole_ratio`/`flag_depth_pct` persisted on `mi_flag_candidates`. Bug fix +
   telemetry, no criterion changed.**
