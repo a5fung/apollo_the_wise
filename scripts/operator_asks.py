@@ -305,8 +305,18 @@ def is_open_ask(line: str) -> bool:
 
     Lifted out of main() so it can be exercised directly rather than pinned by source text (#653).
     """
-    return (line.startswith("|") and bool(re.search(r"\*\*#\d", line))
-            and not any(t in line for t in _SETTLED_MARKERS))
+    if not (line.startswith("|") and re.search(r"\*\*#\d", line)):
+        return False
+    # ⚠ THE MARKER IS READ FROM THE FIRST CELL ONLY, and that is the whole point (2026-09-16,
+    # found by review the same day the row match was fixed). Scanning the WHOLE line re-created
+    # the bug one layer narrower: an OPEN ask whose DESCRIPTION happens to say "the earlier
+    # proposal was WITHDRAWN 09-10, the question now is X" disappeared, and the tool printed
+    # "nothing waits on him" over it — the same direction of failure, from the same fix.
+    # The table's convention puts status in the first cell (`| ✅ **#501 — ANSWERED…`), so that
+    # is the only cell a status marker may speak from.
+    cells = line.split("|")
+    status_cell = cells[1] if len(cells) > 1 else ""
+    return not any(t in status_cell for t in _SETTLED_MARKERS)
 
 
 def main() -> int:

@@ -36,13 +36,29 @@ def test_the_exact_rows_that_were_invisible_are_asks_now():
     assert _is_ask("| 🔴 **#610/#592 — the HTF fork, written for Sunday and never ruled** | … | … |")
 
 
-def test_every_settled_marker_still_suppresses_a_row():
-    """The fix must not become a resurrection machine — exercised per marker, not read off source."""
+def test_every_settled_marker_in_the_STATUS_CELL_suppresses_a_row():
+    """The fix must not become a resurrection machine — exercised per marker, not read off source.
+    The table's convention puts status in the FIRST cell, so that is where each marker is placed."""
     for token in _SETTLED_MARKERS:
         row = f"| **#999 — something {token} on 2026-09-08** | the ask | the proof |"
         assert not _is_ask(row), (
             f"a row marked {token!r} would be raised with him again — the failure "
             f"never-re-ask-an-answered-question was written for."
+        )
+
+
+def test_a_settled_word_in_the_DESCRIPTION_does_not_suppress_an_open_ask():
+    """⚠ THE SECOND BUG, found by review on 2026-09-16 hours after the first was fixed. Scanning
+    the WHOLE line for markers re-created the original defect one layer narrower: an OPEN ask whose
+    description explains history — "the earlier proposal was WITHDRAWN 09-10, the question now is
+    X" — vanished, and the tool printed "nothing waits on him" over it. Same failure direction,
+    introduced by the fix for it. Markers are read from the status cell only."""
+    for token in _SETTLED_MARKERS:
+        row = (f"| **#700 — a live fork** | the earlier proposal was {token} on 09-10; "
+               f"the question now is X | verified still open |")
+        assert _is_ask(row), (
+            f"an OPEN ask was suppressed because {token!r} appears in its DESCRIPTION. That is the "
+            f"silent drop this whole file exists to prevent, re-introduced by the fix for it."
         )
 
 
