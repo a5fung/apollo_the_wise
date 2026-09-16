@@ -9025,7 +9025,16 @@ reviews:
       -- over-count, the 7/18-readiness-redteam finding). Gate arms on 5 real signals, not 5 rejects.
       SELECT COUNT(*) FROM mi_htf_breakout_shadow WHERE outcome IS NOT NULL AND would_reject_reason IS NULL;
     threshold: 5
-    earliest_review_date: 2026-08-07
+    earliest_review_date: 2026-10-13   # RE-GATED 2026-09-15 to stop it reading "MY WORK IS DUE"
+      # every single day on a question the operator has already ANSWERED. It is NOT a graduation
+      # date and NOT a prediction - it is a CHECK-BACK, and it is the mechanical half of
+      # resolution_2026_09_15 above: he held the GO/NO-GO, so leaving the gate open would make
+      # operator_asks re-raise a settled ruling daily ([[never-re-ask-an-answered-question]]).
+      # TWO THINGS MUST MOVE BEFORE THE GO/NO-GO IS EVEN ASKABLE, neither of them a calendar:
+      #   (1) his hold lifts - it reopens when EP profitability is settled, his standing priority;
+      #   (2) the sample can grow at all - #610 (due 2026-09-18) is the threshold that starved the
+      #       detector 91%, and takeable breaks accrue at only ~4/month even unstarved.
+      # ⚠ OPERATOR: if you want this back on the board sooner, say so and it moves same day.
     action_when_ready: |
       Review the TAKEABLE HTF cohort's settled R / win% / expectancy (capture% noted slightly high from
       same-bar-tie). The GO bar is on the TAKEABLE settlements (would_reject_reason IS NULL) — do NOT
@@ -12856,9 +12865,13 @@ reviews:
       nonzero_possible: "The emitter is live in deployed code - order_manager._resolve_position_gone
         writes sync_position_gone_unresolved on the branch where the broker reports no position and
         no exit fill can be established. Deployed to apollo-execution and byte-verified on the image."
-      lane_live: "MAGNA53 EP is the live setup and sync_positions runs every 15 minutes plus the
-        21:00 evening backstop, so the guard is exercised on a live book continuously - it is the
-        TRIGGERING CONDITION that is rare, not the code path's liveness."
+      lane_live: "MAGNA53 EP is the live setup and the sweep that calls the guard runs TWICE a
+        trading day - eod_cleanup 16:05 ET and evening_position_backstop 21:00 ET, both Mon-Fri
+        (scheduler.py CronTriggers). ** CORRECTED 2026-09-15: this field previously said 'every 15
+        minutes', which was wrong and overstated the exposure window by ~13x. ** Liveness is PROVEN,
+        not assumed: mi_job_runs carries 7 successful runs of EACH job over the last 10 days, the
+        latest 2026-09-15 16:05 and 21:00 ET. So it is the TRIGGERING CONDITION that is rare, not
+        the code path's liveness."
       threshold_vs_observed: "1 against an observed 0 in the system's life. Deliberately the
         smallest possible bar: this is a tripwire on a rare race, so anything above 1 would mean
         waiting for the problem to recur before looking at it."
@@ -12867,6 +12880,20 @@ reviews:
     threshold: 1
     earliest_review_date: 2026-09-13
     status: pending
+    # A ZERO HERE IS THE HEALTHY READING, AND IT IS NOW A RULED ZERO RATHER THAN AN UNEXAMINED
+    # ONE - so operator_asks.py stops surfacing it as unruled and nobody re-derives this.
+    zero_verdict: "2026-09-15 WAITING — the race has still never happened, and the zero is TRUSTED
+      because the positive control passed. What was checked, not assumed: (a) the emitter is in
+      deployed code (order_manager.py:7002, Case 3 of _resolve_position_gone); (b) the sweep that
+      reaches it RAN - mi_job_runs shows eod_cleanup and evening_position_backstop each succeeded 7
+      of 7 trading days in the last 10, latest 2026-09-15 16:05 and 21:00 ET; (c) both sibling
+      outcomes of the same branch are also zero life-to-date (sync_gone_stop_fill_recorded 0,
+      sync_position_gone_unresolved 0), so the OUTER condition - a position disappearing from Alpaca
+      while our row is open - has never been reached at all, on 339 live trade rows. ** THE
+      INSTRUMENTATION CAVEAT, stated because it is exactly the class this repo keeps getting wrong:
+      a healthy sweep writes NO audit row, so mi_audit_log alone cannot tell 'ran clean 30 days' from
+      'never ran'. mi_job_runs is what separates them, and it is the row that makes this zero
+      readable. ** Re-rule on the first row, never on a date."
     action_when_ready: |
       A POSITION HAS VANISHED FROM THE BROKER MID-FLIGHT FOR THE FIRST TIME. Read the row
       before anything else: ticker, trade_id, what the broker reported, and whether a
