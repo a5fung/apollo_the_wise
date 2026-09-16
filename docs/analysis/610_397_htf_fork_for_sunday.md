@@ -95,13 +95,39 @@ have no edge."* The replay tested **our encoding plus one exit bet**:
 |---|---|---|
 | **A — park #397** | stop spending on the money-graduation thread; it is gated behind EP anyway | nothing is lost — the detector work continues without it |
 | **B — fix the recorder, then re-measure** | the outcome join becomes trustworthy, so it can at least be used as a weak sanity check on whether we are finding the right names | a day or two |
-| **C — go at the detector directly** | the ADR/ADV floors cut breakouts 91% (#610's own finding) and `htf.md` calls the ADR floor a starting value and the flagpole ratio one interpretation of several — measure what those admit and reject against sourced HTF examples | the real work, and the only option that answers the question he is actually asking |
+| **C — go at the detector directly** | ⚠ **RE-STATED 2026-09-16 — see the correction below; what is left of C is the FLAGPOLE DEFINITION (#592), not the liquidity floors** | the real work, and the only option that answers the detection question |
 
-## My recommendation: C, with A alongside it
+## ⛔ CORRECTION 2026-09-16 — C's premise was already retracted TWICE before this page was written
 
-**C is the only one that answers the detection question.** The 91% collapse in breakouts came from
-two liquidity floors shipped as provisional and never measured — that is a detector defect sitting
-in plain sight, and it is upstream of every number on this page.
+**I wrote option C on a cause this same task had measured and withdrawn, and the page went to him
+that way. Correcting it before it is decided, not after.**
+
+| what C said | what was already measured |
+|---|---|
+| "the ADR/ADV floors cut breakouts 91%" | **2026-08-31, operator-caught** (*"only 5 stocks have adr above 4? that seems hard to believe"*): the floors cut the input roughly IN HALF — 228 passed vs 230+86 killed on 08-31. They never explained a 91% collapse. |
+| the floors are the detector defect | **2026-09-04, 12-variant replay from raw bars:** the collapse IS the signed 2026-06-27 runup swap (1.50→1.90, 60d→40d) working as designed — its kill rate doubled, 46% → 78-85%. ADR is nearly moot under the sourced runup: 4%→3% admits **+3 tickers and 0 breakouts** in two months. |
+| lower the ADR floor | **2026-09-10, withdrawn the same hour he asked *"why lower, what's the purpose of the range floor"*:** names that PASS run ≥+20% in ten sessions at **4.91%**; the 3.0-4.0 band he would be admitting does **2.38%**; below 3.0, **0.27%**. The rate rises monotonically with ADR — **the floor sorts on exactly the property HTF monetises.** |
+
+**So the liquidity floors are not a defect and are not on the table.** A big exclusion count is what
+a working filter looks like; the comparison that decides it is against the ADMITTED population, and
+that comparison says keep 4%.
+
+## What is actually left of C — one question, and it is methodology not tuning
+
+**Is our flagpole definition the right reading of the source?** The 1.90 / 40-day figure is NOT a
+guess — it is the sourced spec (*"C≥1.9×C₄₀"*). The honest question is whether our reading matches
+how the source's author actually screens, which is **#592's question** (the pole definition vs the
+trader's label). #610's own 2026-09-04 note already reached this: *"the one fork left is #592's, so
+#592 and #610 collapse into one ruling."*
+
+⚠ **That is an operator/methodology call, not something a replay settles** — loosening a sourced
+number because we want more rows is not evidence, and every variant tested already keeps CDNA while
+only the two retired knobs recover HNGE.
+
+## My recommendation: C as re-stated (the #592 pole definition), with A alongside it
+
+**C is the only one that answers the detection question** — but it is now the flagpole reading, not
+the liquidity floors.
 
 **A alongside it** because the money-graduation thread cannot decide anything while HTF sits behind
 EP, and leaving it open invites exactly the category error this page just had to correct.

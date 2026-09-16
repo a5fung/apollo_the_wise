@@ -287,6 +287,28 @@ def _audit(reviews) -> int:
         print(f"   … and {len(no_ev) - 25} more")
     return 0
 
+# Rows already settled. Excluded on purpose: resurrecting one is the exact failure
+# never-re-ask-an-answered-question was written for (3 of 4 standing asks were found already
+# answered on 2026-09-08, one carried seven weeks).
+_SETTLED_MARKERS = ("ANSWERED", "WITHDRAWN", "RULED", "\u2705")
+
+
+def is_open_ask(line: str) -> bool:
+    """True when a standing-table row is an ask that still waits on him.
+
+    ⚠ THIS USED TO BE `line.startswith("| **#")` INLINE IN main(), AND IT MADE THE TABLE LIE.
+    A row opening with a status marker did not match, so on 2026-09-16 BOTH rows in the table
+    were invisible and the tool printed "Standing section carries NO open asks. Nothing waits on
+    him." over an HTF fork that had been waiting since 09-13. The table's own warning says it is
+    the ONLY surface this tool reads; a parser that silently drops decorated rows is that same
+    failure one layer down, and it fails in the direction that invents reassurance.
+
+    Lifted out of main() so it can be exercised directly rather than pinned by source text (#653).
+    """
+    return (line.startswith("|") and bool(re.search(r"\*\*#\d", line))
+            and not any(t in line for t in _SETTLED_MARKERS))
+
+
 def main() -> int:
     if "--audit" in sys.argv:
         return _audit(_load_reviews())
@@ -297,7 +319,7 @@ def main() -> int:
         print("No standing-ask section in PLAN.md — nothing to raise.")
         return 0
     block = m.group(0)
-    rows = [ln for ln in block.splitlines() if ln.startswith("| **#")]
+    rows = [ln for ln in block.splitlines() if is_open_ask(ln)]
     if not rows:
         print("Standing section carries NO open asks. Nothing waits on him.\n")
     else:
