@@ -948,3 +948,46 @@ instrument here, and its limitation is stated where it lives.
 ⚠ **What this does NOT establish:** that the duplication is harmless. It is real — the 2026-06-28
 review was right about that — and a third permanent consumer makes extracting it correct. What
 changed is only where that instruction is recorded.
+
+---
+
+## #656 — a `core/` change no longer ships to orchestrator and leaves the trading box stale (closed 2026-09-16)
+
+BAR: "a `core/` file that the market image COPYs sets NEED_MARKET and NEED_EXEC, and a test derives
+the expectation FROM `docker/Dockerfile.market`'s COPY lines rather than restating a hand-written
+list — a hardcoded list rots the same way this arm did"
+
+WOULD-FAIL-IF: "it prints DEPLOY OK with no execution warning, as it did today" (2026-09-13).
+
+EVIDENCE: **VERIFY-LIVE ran on the prod checkout at 2026-09-16 12:0x ET, against the two exit codes
+pre-registered on the task BEFORE it shipped** — `core/job_audit.py` → **exit 0**, `core/orchestrator.py`
+→ **exit 1**. Both halves matter: the positive proves the new arm is on the box, the negative proves
+it did not become a blanket that drags every orchestrator-only `core/` edit into a three-service
+deploy. `core/notifications.py` (exit 0) and `core/router.py` (exit 1) confirm the pair.
+
+- **Both DoD halves are met, and the second one is the point.** `_market_image_copies_path`
+  (`scripts/deploy.sh:177`) awk-parses `docker/Dockerfile.market`'s COPY lines **on every run** —
+  exact path or directory-COPY prefix — and the split-out `core/*` arm sets `NEED_MARKET=1;
+  NEED_EXEC=1` only when it says yes. No hand-kept list in the script OR the test: the old arm was
+  CORRECT when written and rotted the day those two COPY lines were added, so a list either place
+  would just certify the next rot.
+- **The test executes the real shell.** `tests/test_deploy_scope_core_copies.py` extracts the helper
+  AND the entire per-file `case` block verbatim from `deploy.sh` and runs them, so it cannot pass
+  against a drifted re-implementation. It also runs **the DoD's own acceptance check** — touch a
+  COPY'd `core/` file, classify as `both`, assert `EXEC_DRIFT=1` and that the warning names
+  `bash scripts/deploy.sh execution`.
+- **RED-proven against three mutations, not written green:** restoring the original merged arm → 3
+  red (including the acceptance check); an over-broad `core/* always market+exec` → 1 red; hand-listing
+  the two paths in the helper → 1 red. A vacuity guard fails loudly if `Dockerfile.market` ever stops
+  COPYing `core/` at all, so none of these can pass by having nothing to check.
+
+⚠ **What this does NOT establish.** It has not yet been exercised by a REAL `core/` change flowing
+through a real deploy — the verify ran the classifier on the prod checkout, which is the decision the
+guard makes, but not the full `deploy.sh both` path end to end. That path is covered by the extracted
+acceptance test rather than by a live run, because manufacturing a `core/` edit to watch the warning
+fire is not worth a deploy. The next genuine `core/` change is the real proof.
+
+⚠ **And it fixes the packaging half only.** The guard is still coarse elsewhere by design — the
+`agents/market_intelligence/*` arm leans on the machine-derived `scripts/exec_loaded_modules.txt`
+(#456), and anything unrecognised falls to the catch-all that requires all three. Those were already
+right; nothing here touched them.
