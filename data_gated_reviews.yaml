@@ -11747,10 +11747,17 @@ reviews:
 
       THE NUMBER: never-alerted shadow catches that held >=10% to the actual open AND passed the
       replayed mechanical gates = 33 names, of which >=8xADR tail winners = 0. The alerted book
-      produced 3 over the same dates (1.8/month). Forward windows are now COMPLETE - fwd_n median
-      20, only 1 of 33 still short - where the 2026-08-18 read had none complete and was explicitly
-      a floor. 33 is an UPPER bound on would-have-alerted (catalyst / RVOL / rank gates not
-      replayed), so zero out of the bound is zero out of every subset.
+      produced 3 over the same dates. Forward windows are now COMPLETE - fwd_n median 20, only 1 of
+      33 still short - where the 2026-08-18 read had none complete and was explicitly a floor. 33 is
+      an UPPER bound on would-have-alerted (catalyst / RVOL / rank gates not replayed), so zero out
+      of the bound is zero out of every subset.
+
+      ** THE COHORT IS 17 TRADING DAYS (2026-07-27..08-18), NOT 36. ** The probe's PRIZE header
+      labels its window by the LAST DATE IN THE DAILY-BAR FILE, and only that file was re-captured
+      (to 09-15) while the event and alert files still end where the cohort does. Counts and
+      p-values are unaffected - 0 vs 3 is a matched-date comparison, not a rate - but the alerted
+      book's 3 is ~3.7/month over 17 days, not 1.8, and the evidence window is half what the probe
+      printed. Corrected here rather than left to be quoted as evidence strength.
 
       ERA CHECK, done before measuring: single-era on BOTH axes. tailx is price-only, so the
       2026-09-06 exit flip (#545) cannot reach it; MIN_GAP_PCT moved 10.0 -> 9.0 on 2026-08-19,
@@ -11760,7 +11767,8 @@ reviews:
       33 names EXPECT about 1 tail winner; seeing 0 has p=0.38 under that base rate and Fisher
       (0/33 vs 3/103) is p=1.00. So the capture argument is UNSUPPORTED - it has no evidence for it
       - and that is the ceiling. It is NOT "the delayed feed costs nothing". Separating those two at
-      p<0.05 needs ~102 gate-passing survivors against today's 33, roughly 3.5 more months.
+      p<0.05 needs ~102 gate-passing survivors against today's 33: at ~33 per 17 trading days that is
+      ~36 more trading days of accrual plus ~20 sessions to mature, roughly 2.7 more months.
 
       ** AND IT NEVER TOUCHED THE FAILURE MODE THAT COST HIM A TRADE. ** This population is
       NEVER-ALERTED names. TWST 2026-08-19 ALERTED, fifteen minutes late, because real time read

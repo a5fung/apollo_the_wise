@@ -1,3 +1,10 @@
+> **Superseded 2026-09-15 — `scripts/probes/_490cost_daily.tsv` was re-captured, so the numbers
+> below no longer reproduce from the repo.** Every figure here was right-censored (no name had a
+> full 20-session forward window); they are final in
+> `docs/analysis/490_delayed_screen_cost_recut_2026-09-15.md`, which also carries the power
+> ceiling this read did not state. The Appendix still says "run the probe" — it will now print
+> the matured numbers, not these.
+
 # #490 — Is the delayed universe screen costing us real EPs? (2026-08-18, MEASURE-ONLY)
 
 **One sentence:** No — on the honest denominator (crossers that still held ≥10% at the actual

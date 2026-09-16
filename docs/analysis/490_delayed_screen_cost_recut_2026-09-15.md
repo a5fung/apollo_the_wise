@@ -1,8 +1,9 @@
 # #490 — the delayed-screen capture question, re-cut on COMPLETE forward windows (2026-09-15)
 
-**Answer first: the delayed universe screen surfaced ZERO tail winners we missed, over 36 trading
-days, on windows that are now complete rather than censored — but n=33 is too thin to call the feed
-costless, and it never touched the failure mode that actually cost him a trade.**
+**Answer first: the delayed universe screen surfaced ZERO tail winners we missed across a
+17-trading-day cohort, on forward windows that are now complete rather than censored — but n=33 is
+too thin to call the feed costless, and it never touched the failure mode that actually cost him a
+trade.**
 
 This re-runs `490_delayed_screen_cost_2026-08-18.md` under its own pre-registered closing rule, now
 that the forward windows have matured. MEASURE-ONLY, $0, read-only. Nothing here proposes a flip:
@@ -40,8 +41,16 @@ only 1 of 33 is still short. The floors have become final numbers.
 | the alerted crossers | 30 | 2 (6.7%) | 2.03× | 6.55× |
 | **all live alerts, same dates** | **103** | **3 (2.9%)** | 1.91× | 5.31× |
 
-**Prize, in the programme's own terms:** 0 additional tail winners per month from the delayed
-screen's blind spot, against the alerted book's **1.8/month**.
+**Prize, in the programme's own terms:** 0 additional tail winners from the delayed screen's blind
+spot, against the alerted book's **3 over the same 17 days (~3.7/month)**.
+
+⚠ **THE WINDOW IS 17 TRADING DAYS, NOT 36.** The probe's own PRIZE header labels its window by the
+LAST DATE IN THE DAILY-BAR FILE, and that file was re-captured to 2026-09-15 while the event and
+alert files still end 08-18 where the cohort does. The cohort is **07-27 → 08-18 = 17 trading days**
+of shadow catches, each then followed for 20 sessions. Every rate below is per those 17 days. The
+counts and the p-values are unaffected — 0 vs 3 is a matched-date comparison, not a rate — but the
+evidence window is half what the probe's label says, and that matters directly under a power caveat
+whose whole purpose is not to overstate. (Probe not changed tonight; noted in §Reproducing.)
 
 **33 is an UPPER bound on the would-have-alerted set** — the LLM catalyst grade, the RVOL pace gates
 and the top-20 rank cap were not replayed ($0 limit). Zero out of an upper bound is zero out of every
@@ -56,7 +65,8 @@ Observing 0 has probability 0.38 under that base rate alone — `Fisher(0/33 vs 
   windows, nothing the delayed screen hid has turned into a tail winner.
 - ⛔ **NOT supported: "the delayed feed costs us nothing."** This cohort cannot distinguish zero from
   the normal rate. Separating them at p<0.05 needs **~102 gate-passing survivors**; they accrue at
-  ~33 per 36 trading days, so that is roughly **3.5 more months**.
+  ~33 per **17** trading days, so 69 more is ~36 trading days of accrual plus ~20 sessions to mature
+  = roughly **2.7 more months**.
 - Anyone citing "0 tail winners" as proof the feed is costless is citing a number this study does not
   contain. [[check-what-the-system-already-did]]
 
@@ -82,6 +92,9 @@ Two more things this does not reach:
 ## Reproducing
 
 `python3 scripts/probes/_490_delayed_cost_funnel.py` — deterministic on the captured TSVs.
+⚠ **Its PRIZE header labels the window by DATA END, not cohort end**, so it now prints "36 trading
+days" for a 17-day cohort. Read the window off the event/alert files, not that line, until the probe
+is fixed.
 ⚠ `scripts/probes/_490cost_daily.tsv` was **re-captured 2026-09-15**; the 08-18 doc's censored
 numbers can no longer be reproduced from the repo, which is the intended trade (the capture is
 strictly a superset of the old one, extended forward).
