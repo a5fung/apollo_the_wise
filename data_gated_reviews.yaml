@@ -4892,7 +4892,57 @@ reviews:
         AND scan_date <= CURRENT_DATE - 21;
     threshold: 5  # paper-era rate ~8 tickers/5wk (~1.6/wk); underlying live-mode R3 rate is actually higher (~13 events/4.5wk, ~2.9/wk per the account_mode check above) since events keep happening, just unmatched — so 5 + 21d aging should be reachable within a few weeks of the fix shipping, not the November a threshold-10 read would suggest.
     earliest_review_date: 2026-09-15  # NOMINAL FLOOR ONLY, not a real estimate — the predicate is the actual gate and stays at 0 indefinitely until path (c)'s account_mode filter is fixed (not done here; THE LINE — no detection/entry-path code changed by this review)
-    status: pending
+    can_fire:
+      predicate_runs: "2026-09-16 - returns 7 against threshold 5. A number, not an error."
+      nonzero_possible: "It fired and the review RAN 2026-09-16. The predicate counts genuinely NEW
+        magna53_failed_r3 activity aged >=21 scan days, which is what the 2026-08-11 re-gate asked
+        for; 7 distinct tickers means the path is no longer dark."
+      lane_live: "MAGNA53 EP is the live setup; mi_ep_alerts, mi_flag_candidates and both 9M
+        detection tables all wrote inside the measured window."
+      threshold_vs_observed: "5 against 7 - MET. It had been READY since 2026-09-15 and was invisible
+        because operator_asks was evaluating 30 of 58 pending reviews (fixed the same day)."
+      era_scoped: "YES, and it changed the instrument. The cohort is bounded to a MATURE 21-day
+        forward window per this entry's own 2026-08-11 warning, and the Day-1 join was corrected from
+        account_mode='paper' (dark since 2026-07-14) to prefer the LIVE row."
+    status: done
+    resolution_2026_09_16: |
+      RAN 2026-09-16. ** THE ANSWER IS NO — capture did not move — and this entry's own rule fires. **
+
+      RESULT, on a MATURE 21-day window (2026-05-18 -> 2026-08-21), counting all four capture legs
+      the baseline used (flag stage / later EP alert / 9M EP / 9M Day-2):
+        - failed Day 1, all classes ........ 83 of 233 = 35.6%
+        - tried-and-failed only ............ 43 of 133 = 32.3%
+        - won Day 1 (context) .............. 6 of 8    = 75.0%
+      ** Baseline 34%. Target 60-70%. Both readings land on the baseline**, and the cleaner narrow
+      cohort is slightly BELOW it. action_when_ready: "If MAGNA53 capture <50% at Day 21: file
+      followup investigation before declaring Phase 7 complete." -> **#668 filed.**
+
+      🔴 ** AND THE AUDIT SCRIPT WAS BROKEN, WHICH IS ITS OWN FINDING. ** ep_delayed_capture_audit.py
+      classified Day-1 outcome with `lt.account_mode = 'paper'`. Paper has written NOTHING since
+      2026-07-14; live carries 120 rows since the 2026-06-22 cutover. So every alert after mid-July
+      found no row and fell to NO_TRADE_ROW whatever actually happened to it — destroying precisely
+      the failed-Day-1 cohort this review is about. Same shape as his 2026-07-30 correction on the
+      drawdown review ("why looking at paper? we've switched to real money a month ago"). **Fixed in
+      the same commit** to prefer the live row and fall back to paper, so the next run agrees with
+      the numbers above. This entry's 2026-08-11 warning caught the censoring half; nobody had caught
+      the account half.
+
+      ⚠ ** NO USABLE PRE-SHIP COMPARISON, and the one the data offers is a trap. ** The same query
+      before 2026-05-18, with the maturity bound, leaves FIVE TRADING DAYS (05-11..05-15, n=62)
+      reading 58.1%. Reporting "58% -> 36%" as a regression would be one week against three months —
+      a population error, not a finding. The 34% is carried forward from the original Phase 7 read as
+      a stated number, not re-derived.
+
+      ⚠ ** CAPTURE IS A REACH MEASURE, NOT A MONEY MEASURE. ** It counts whether a downstream lane
+      picked the name up, never whether the pickup was tradeable. 60-70% of noise would be worse than
+      35% of substance and nothing here separates them — stated because the target itself is a reach
+      number and could be hit by loosening a lane.
+
+      ⚠ The 9M half of the action is DROPPED DELIBERATELY, not silently: it asked for the flag-stage
+      distribution of 9M-origin names, and 9M is retired. Its detection tables still write (646
+      mi_9m_ep_alerts rows since 05-18), so their capture legs ARE included above.
+
+      Full read: docs/analysis/p74_alpha_capture_stage2_2026-09-16.md
     regated_on: 2026-08-11
     regate_kind: predicate
     added_on: 2026-05-17

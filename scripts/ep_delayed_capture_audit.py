@@ -68,9 +68,21 @@ day1_outcome AS (
                ELSE COALESCE(lt.status, 'UNKNOWN')
            END AS day1_class
     FROM high_alerts a
-    LEFT JOIN mi_live_trades lt
-      ON lt.ticker = a.ticker AND lt.alert_date = a.alert_date
-     AND lt.account_mode = 'paper' AND lt.pnl_attribution IS NULL
+    -- 2026-09-16: WAS `lt.account_mode = 'paper'`, which silently broke this audit.
+    -- Paper has written NOTHING since 2026-07-14; live carries 120 rows since the
+    -- 2026-06-22 cutover. So every alert after mid-July found no row and fell to
+    -- NO_TRADE_ROW whatever actually happened to it — and the failed-Day-1 cohort
+    -- this script exists to measure is exactly what that misclassifies. Same shape as
+    -- the operator's 2026-07-30 correction on the drawdown review: "why looking at
+    -- paper? we've switched to real money a month ago."
+    -- Prefer the LIVE row, fall back to paper so the pre-cutover history still reads.
+    LEFT JOIN LATERAL (
+        SELECT t.* FROM mi_live_trades t
+        WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
+          AND t.pnl_attribution IS NULL
+        ORDER BY (t.account_mode = 'live') DESC, t.id DESC
+        LIMIT 1
+    ) lt ON true
 )
 SELECT
     d.ticker, d.alert_date, d.ep_score, d.gap_pct, d.catalyst_quality,
