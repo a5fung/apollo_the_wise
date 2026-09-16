@@ -62,9 +62,20 @@ def _gated_reviews_ready() -> list[str]:
     except ImportError:
         return [], ["(pyyaml missing — cannot read the gated reviews)"], "pyyaml missing"
     d = yaml.safe_load((REPO / "data_gated_reviews.yaml").read_text())
-    pending = [r for r in d.get("reviews", [])
-               if r.get("status") == "pending"
-               and "operator" in str(r.get("action_when_ready", "")).lower()]
+    # ⚠ 2026-09-16 — THIS USED TO ALSO REQUIRE `"operator" in action_when_ready`, AND THAT
+    # DROPPED 28 OF 58 PENDING REVIEWS — nearly half the board, silently, for as long as the
+    # filter existed. `alert_rank_shadow_out_of_sample` had been READY 28 DAYS and prod's own
+    # nightly nag was reporting it while this tool said "no ripe reviews"; that gap is what
+    # surfaced it. Others dropped included unified_allocator_phase_1b, lane2_widen_reconsider
+    # and prompt_debias_clean_cohort_215 — entries edited the day before.
+    #
+    # The filter was a leftover from when this function was conceived as "asks". The code
+    # twenty lines below says the opposite in its own words: a READY review is NOT an ask, it
+    # is MY work first and his decision only after. So keying visibility on whether the action
+    # text happens to contain the word "operator" was never the right question, and it failed
+    # in the usual direction — toward a shorter list and a quieter morning.
+    # Every pending review is evaluated now. `--audit` always did (it uses _load_reviews).
+    pending = [r for r in d.get("reviews", []) if r.get("status") == "pending"]
     if not pending:
         return [], [], None
 
