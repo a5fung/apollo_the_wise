@@ -43,7 +43,15 @@ def _load_registry() -> dict:
 
 PARKED_IDS = [
     "bracket_geometry_variants_parked",
-    "floor_timing_never_alerted_crossers_parked",
+    # "floor_timing_never_alerted_crossers_parked" — CLOSED 2026-09-16 on its OWN action, the
+    # same deliberate exit the #631 fold and the 09-15 capture close used. It asked to re-run both
+    # probes on the matured windows and "state plainly whether the '0 reached the tail' / '1.6%
+    # winners' findings hold". They hold: uncensored (fwd_n median 20, 0 of 107 censored) the
+    # reachable-and-gated class gives 1 tail winner of 65, and that one (ALOY) died on the 60-day
+    # EP cooldown — so 0 under the selector we actually run. Relaxing the boundary dilutes
+    # monotonically; separability at 09:45 is chance or worse, four of six features AUC < 0.5.
+    # test_closed_floor_timing_entry_keeps_its_result_and_its_handoff below pins the result AND the
+    # two live questions it hands forward, so this is a deliberate close, never a silent delete.
     # "rt_cutover_ep_capture_argument_parked" — CLOSED 2026-09-15 ON ITS OWN PRE-REGISTERED
     # RULE, the same deliberate exit the #631 fold above used. Its action_when_ready said:
     # re-run the funnel on the now-complete forward windows, and if the uncensored tail-winner
@@ -75,6 +83,23 @@ def test_closed_capture_entry_keeps_its_result_and_its_limit():
     assert "p=1.00" in res or "p=0.38" in res, (
         "lost the power ceiling — without it the zero reads as proof the feed is costless"
     )
+
+
+def test_closed_floor_timing_entry_keeps_its_result_and_its_handoff():
+    """floor_timing_never_alerted_crossers_parked left PARKED_IDS on 2026-09-16. A close is the one
+    irreversible act here, so the entry must keep carrying (a) the verdict, (b) the analysis it
+    lives in, and (c) THE TWO LIVE QUESTIONS IT HANDS FORWARD — two of the four winners died on the
+    $500M market-cap floor and one on the 60-day cooldown, neither of which this review was gated
+    on. Losing (c) is how a finding becomes a closed task and then nothing."""
+    entry = _load_registry()["floor_timing_never_alerted_crossers_parked"]
+    assert entry["status"] == "done"
+    res = " ".join(str(v) for k, v in entry.items() if k.startswith("resolution")).lower()
+    assert "490b_floor_timing_recut_2026-09-16.md" in res, "lost its analysis pointer"
+    assert "cooldown" in res and "market-cap" in res, (
+        "lost the handoff — the live questions for this class are the market-cap floor and the "
+        "60-day cooldown, and neither is what this review was gated on"
+    )
+    assert "aloy" in res, "lost the named winner the verdict turns on"
 
 
 # ── PART 1 — parked entries surface with a re-open trigger, collection continues ──────

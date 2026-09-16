@@ -8965,7 +8965,39 @@ reviews:
       Pull the settled HTF breakout-shadow cohort; compare the ADR distribution of captures vs stops;
       tune _HTF_MIN_ADR_PCT (flag_detector.py) to the evidence + update docs/setups/htf.md. A data-fit,
       not another guess — and don't drop it below where the winners actually live.
-    status: pending
+    can_fire:
+      predicate_runs: "2026-09-16 - returns 10 against threshold 10. A number, not an error."
+      nonzero_possible: "Already met at 10. Moot now: the question it gates was answered elsewhere."
+      lane_live: "HTF is a live SHADOW detector (mi_htf_breakout_shadow gained a row 2026-09-16), so
+        the cohort this would have read is still being written."
+      threshold_vs_observed: "10 against 10 - MET since 2026-07-25 and invisible for 53 days because
+        operator_asks was word-filtering the candidate set (fixed the same day)."
+      era_scoped: "Not applicable - closed as overtaken rather than run. The floor it would tune was
+        settled against the ADMITTED population on 2026-09-10 and operator-ruled 2026-09-16."
+    status: done
+    resolution_2026_09_16: |
+      CLOSED AS OVERTAKEN, NOT RUN — and it is unrunnable as written, which is the stronger reason.
+
+      IT WANTED: "pull the settled HTF breakout-shadow cohort; compare the ADR distribution of
+      captures vs stops; tune _HTF_MIN_ADR_PCT to the evidence."
+
+      (1) ** THE QUESTION IS ANSWERED AND THE OPERATOR RULED ON IT TODAY. ** The floor was measured
+      on 2026-09-10 against the ADMITTED population, which is the comparison that decides it: names
+      that PASS run >=+20% in ten sessions at 4.91%, the 3.0-4.0 band at 2.38%, below 3.0 at 0.27%.
+      The rate rises monotonically with ADR — the floor sorts on exactly the property HTF monetises.
+      `_HTF_MIN_ADR_PCT` = 4% STAYS; recorded in docs/setups/htf.md change log 2026-09-16.
+
+      (2) ** AND ITS STATED METHOD READS A BROKEN INSTRUMENT. ** The captures-vs-stops split needs
+      `mi_htf_breakout_shadow`, and #667 (filed 2026-09-16) measured that table: 2 of 18 rows are
+      corrupt, 2 of the 10 SETTLED ones — 20% of the usable evidence — **and one of them is CDNA, the
+      table's ONLY `capture`.** A captures-vs-stops comparison whose single capture is a trade we
+      could not have entered cannot tune anything. Running this before #667 would have produced a
+      confident number off one phantom row.
+
+      ⚠ NOT closed on "the floor is fine" alone. Both halves matter: the question was settled by a
+      better measure, and the method this entry names is blocked until #667 lands.
+      ⚠ It had been READY since 2026-07-25 — 53 days — invisible because operator_asks was
+      evaluating 30 of 58 pending reviews. That filter was removed the same day.
     added_on: 2026-06-28
 
   - review_id: perplexity_transient_timeout_alert_noise
@@ -11676,7 +11708,57 @@ reviews:
       SELECT COUNT(DISTINCT trade_date)::int FROM mi_daily_closes
       WHERE trade_date > DATE '2026-08-17'
     threshold: 20
-    status: pending
+    can_fire:
+      predicate_runs: "2026-09-16 - returns 20 against threshold 20. A number, not an error."
+      nonzero_possible: "It fired: the threshold was met and the review RAN on 2026-09-16, which is
+        why this entry is done. The counter is nightly_data_pull's own output."
+      lane_live: "MAGNA53 EP is the live setup; mi_ep_missed_outcomes and the RT shadow watchdog both
+        kept writing throughout, as the question text promised."
+      threshold_vs_observed: "20 against 20 - MET. 20 trading days is the forward window the
+        tail-winner statistic itself uses, so the threshold is the measure's own maturity
+        requirement. Result: 0 of 107 censored, fwd_n median 20."
+      era_scoped: "YES, checked not assumed. tailx is price-only so the 2026-09-06 exit flip cannot
+        reach it, and the cohort closes 2026-08-18, before the 2026-08-19 MIN_GAP_PCT move.
+        Single-era on both axes."
+    status: done
+    resolution_2026_09_16: |
+      RAN AND CLOSED ON ITS OWN ACTION, which asked to re-run both probes on the matured windows and
+      "state plainly whether the '0 reached the tail' / '1.6% winners' findings hold". THEY HOLD.
+
+      ** I ALMOST CLOSED THIS WITHOUT RUNNING IT. ** I told the operator it was "largely answered" by
+      yesterday's 490 re-cut. HALF TRUE, and the half I had was the wrong half: yesterday re-ran
+      `_490_delayed_cost_funnel` (the never-alerted GATE-PASSING cohort) and reported the faded class
+      only PRE-GATES at 5 of 138. This entry's question is the GATE-CLEAN faded cohort - a different
+      population - and `_490b_faded_crossed_timing` had NOT been re-run. Closing on the first probe
+      would have been the #540 pattern: a convenient criterion standing in for the task's own.
+
+      THE NUMBERS, uncensored (fwd_n median 20, 0 of 107 censored; on 2026-08-18 the median was 8 of
+      20 and every share was a floor):
+        - reachable (crossed by 09:45), pre-gates .... 4 of 107 (3.7%)
+        - reachable AND passing mechanical gates ..... 1 of 65  (1.5%)
+        - unreachable (crossed after 09:45) .......... 1 of 14  (7.1%)
+
+      ** AND THE ONE THAT PASSED EVERYTHING DIED ON A GATE THAT IS NOT ABOUT TIMING. ** ALOY (9.8x)
+      cleared every mechanical gate and was killed by the 60-DAY EP COOLDOWN (alerted 06-01, 58 days
+      prior). BCAR (14.7x) and MASS (8.5x) both failed the $500M MARKET-CAP floor. AMRC (8.8x)
+      crossed at 09:49 - after the ORB window, so no floor change reaches it. **Under the selector we
+      actually run, the prize is 0.0 per month** against the alerted book's 2 over the same window.
+
+      RELAXING DILUTES, MONOTONICALLY: moving the boundary 09:35 -> close takes 3 of 65 to 5 of 121 -
+      more names, the same 3-5% winner share, never a concentration. Every cell pre-registered 08-18.
+
+      SEPARABILITY IS CHANCE OR WORSE: AUC 0.58 (ADR), 0.44, 0.42, 0.19, 0.18, 0.12. **Four of six
+      features rank the winners BELOW the class.** There is no decision-time signal to build an
+      earlier admission on. 08-18 said 0.47-0.52; complete data makes the sign explicit.
+
+      ** WHAT THIS HANDS FORWARD: the live questions for this class are the $500M market-cap floor
+      and the 60-day cooldown - two of four winners died on the first, one on the second - and
+      NEITHER is what this review was gated on. ** Both are detection criteria = THE LINE. Nothing
+      proposed. ⚠ Also recorded unreconciled: this probe counts 2 alerted-book winners where
+      490_delayed_screen_cost_recut_2026-09-15 counts 3 of 103 - different cohort constructions; do
+      not quote one against the other without rebuilding both denominators.
+
+      Full read: docs/analysis/490b_floor_timing_recut_2026-09-16.md
     kind: accrual
     action_when_ready: >-
       Re-run both probes on the now-complete 60-day forward windows and report the
