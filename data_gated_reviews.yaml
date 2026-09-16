@@ -2847,7 +2847,29 @@ reviews:
         AND alert_date >= '2026-05-05'
         AND alert_date <= CURRENT_DATE - INTERVAL '25 days';
         -- 25-day lag = 20d forward outcome settled + buffer
-    threshold: 10
+    can_fire:
+      predicate_runs: "2026-09-16 - run against prod, returns 20. A number, not an error. The
+        predicate was itself fixed 2026-08-17 after counting every strategy's stop_too_wide skip
+        instead of MAGNA53's, which made it read READY on a question it could not answer."
+      nonzero_possible: "Already 20, and all 20 carry settled forward outcomes in
+        mi_ep_missed_outcomes. The filter is live in _check_safeguards and rejects on ORB range >
+        1.5x ATR_14, so the cohort keeps growing (~20 per 4.5 months)."
+      lane_live: "MAGNA53 EP is the live setup and signal_type is filtered to it; 9m_day2 shares the
+        skip-reason prefix but is a DIFFERENT filter and is deliberately excluded. account_mode is
+        deliberately NOT filtered - these are SKIPS, no position was taken, so the stock's forward
+        path is account-independent and paper rejections are legitimate evidence."
+      threshold_vs_observed: "40 against an observed 20. RE-GATED 2026-09-16 from 10, which had been
+        MET and READ: 8 of 20 against an admitted 201 of 400 gives Fisher p=0.493 - cannot tell. 40
+        is where a 15-point true gap becomes separable at the admitted 50.3% base rate."
+      era_scoped: "Cohort opens 2026-05-05, when the filter's behaviour was last set; the 1.5x
+        multiple has not moved since, so the window is single-era for the question asked. ⚠ The
+        CONTROL (admitted HIGHs) spans the same dates by construction, which is what makes the
+        comparison era-matched rather than merely contemporaneous."
+    threshold: 40   # RE-GATED 2026-09-16 from 10. The n=10 bar was MET and READ (resolution
+    # below); the verdict was "cannot tell" — 8 of 20 against an admitted 201 of 400 is p=0.493.
+    # 40 is not a guess: at the admitted 50.3% base rate it is roughly where a 15-point true gap
+    # becomes separable, and 15 points is the smallest gap worth acting on. Accruing ~20 per 4.5
+    # months, so this is a real interval rather than a parking date.
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-08
     # >> RAN 2026-07-13 (Opus): CANONICAL table mi_ep_missed_outcomes (matches this review's own
@@ -2890,6 +2912,48 @@ reviews:
       AIP 5/13 second case raised priority to formal cohort review.
       Related backlog: project_market_intelligence_backlog item #11.
     status: pending
+    resolution_2026_09_16: |
+      RAN AT n=20 (twice its n>=10 bar — it had been READY since 2026-08-08 and was invisible for 39
+      days because operator_asks evaluated 30 of 58 pending reviews; that filter was removed today).
+      ** VERDICT: CANNOT TELL — and the decision matrix itself is the finding. **
+
+      RESULT, with the ADMITTED population as the control (which the matrix does NOT ask for and
+      which is the comparison that decides a filter):
+                                   n     hit rate (MFE>=+10%)   median MFE 5d   median ret 5d
+        rejected stop_too_wide    20            40.0%               +9.3%           -2.2%
+        admitted HIGHs, same days 400           50.3%              +10.1%           +0.8%
+      Worse on all three, **none of it distinguishable: Fisher p = 0.493.** At the admitted rate 20
+      names expect 10.1 hits; we saw 8. So there is no evidence the filter sheds winners AND no
+      evidence it sorts well — n=20 cannot separate those.
+
+      🔴 ** THE MATRIX COULD ONLY EVER SAY REVISIT. ** Its bars: REVISIT if hit-rate >=30% AND median
+      MFE >= +8%; KEEP if hit-rate <20% OR median MFE <+3%. **The ADMITTED population reads 50.3% and
+      +10.1% — it clears the REVISIT bar by a wide margin.** So any cohort resembling a normal EP
+      population fires REVISIT, and KEEP would need the rejected names to be less than half as good
+      as everything else we alert on. The bars were set in 2026-05 from two anomalies (STRL, AIP)
+      without anyone asking what the base rate was. A rule that can only return one answer is the
+      check-that-cannot-fail class in decision form.
+      ⚠ Third instance of one defect in seven days: a rejection cohort's ABSOLUTE numbers mean
+      nothing; the comparison is against what the filter ADMITS. The HTF ADR floor was the same
+      shape on 2026-09-10. [[check-what-the-system-already-did]]
+
+      ⚠ ** UNITS — THE FIRST READING WAS WRONG AND WOULD HAVE INVERTED THE VERDICT. ** max_high_5d
+      and ret_5d are FRACTIONS from open_d0, not percentages. Reconciled against raw bars rather than
+      assumed: SDOT 2026-06-26 stores 8.2174 against a $106.00 high; RETO 2026-09-10 stores 48.2908
+      against a $20.85 high off a ~$0.42 open. Read naively, "+10% hit" becomes `>= 10` = +1000%, the
+      cohort returns a 0.0% hit rate, and that reads as a clean KEEP — the opposite of the data.
+
+      ** RECOMMENDATION (not a flip — the stop filter is entry discipline = THE LINE): keep the 1.5x
+      multiple; do NOT test options (a) widen to 2.0x / (b) change the stop anchor / (c) tier by
+      score, which were written for a "sheds winners" finding that did not materialise. ** Threshold
+      re-gated 10 -> 40 with CONTROL-RELATIVE bars owed at that point: the rejected cohort must BEAT
+      the admitted hit rate by a stated margin, not clear an absolute number.
+
+      ⚠ What this does NOT answer: whether a wide stop is the right reason to reject. This measures
+      what the stock DID, never what the trade returns at a 2x stop — a name can run +15% and still
+      be a bad bet if the stop is three times as far away, which is the filter's whole premise.
+
+      Full read: docs/analysis/stop_too_wide_cohort_2026-09-16.md
     added_on: 2026-05-13
     last_run_inconclusive_on: 2026-08-17
     last_run_note: >-
