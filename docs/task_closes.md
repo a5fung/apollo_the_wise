@@ -991,3 +991,50 @@ fire is not worth a deploy. The next genuine `core/` change is the real proof.
 `agents/market_intelligence/*` arm leans on the machine-derived `scripts/exec_loaded_modules.txt`
 (#456), and anything unrecognised falls to the catch-all that requires all three. Those were already
 right; nothing here touched them.
+
+---
+
+## #316 — PDT / Rule 4210: the work was done on 2026-06-04 and the task waited three months for it (closed 2026-09-16)
+
+BAR: "Alpaca's OWN 4210 rollout is confirmed from Alpaca (not inferred from Fidelity's), and
+`BLOCK_PDT_LOCKOUT` is then relaxed through CHANGE_PROCESS or explicitly kept"
+
+WOULD-FAIL-IF: "the lockout is relaxed on a broker announcement that was never Alpaca's — the
+confusion this line was created to prevent." **It was Alpaca's, in writing, on our own account.**
+
+EVIDENCE: **Both halves were satisfied on 2026-06-04 and written into the safeguards SSoT the same
+day. Nothing was outstanding; the line was re-dated four times waiting for an event that had already
+happened, and the proof was in our own change log the whole time.**
+
+- **Half one — it was ALPACA, which is the entire point of the WOULD-FAIL-IF.**
+  `docs/setups/safeguards.md` change log, **2026-06-04**, Trigger: *"Alpaca operator email 2026-06-04
+  — 'We have officially lifted the Pattern Day Trader rule and replaced it with the new intraday
+  margin framework.' FINRA retired the PDT rule; **Alpaca confirmed the rollout on our account.**"*
+  The entry names the memory this task cites and quotes its gate verbatim.
+- **Half two — relaxed through CHANGE_PROCESS, with every required field.** The same entry carries
+  Trigger / Evidence / Anticipated effect / Reversion-flag / Status. `BLOCK_PDT_LOCKOUT_ACTIVE` and
+  `_IMMINENT` plus `_emit_pdt_warning_once` were removed from `live_tracker.py`; no Apollo-side
+  day-trade gate replaced them (overextension is Alpaca's broker-side intraday-margin pre-trade
+  check). The skip-reason constants were deliberately KEPT so historical rows still render — which
+  is why grep still finds the names and why this looked open at a glance.
+- **Verified in PRODUCTION today, not inferred from main:** `grep -c BLOCK_PDT_LOCKOUT` inside the
+  running `apollo-execution` image's `live_tracker.py` returns **0**, and the retirement comment sits
+  at line 215 where the guard used to be.
+- **And it never blocked anything:** `mi_live_trades` carries **0 rows** with a `block:pdt_lockout%`
+  skip reason, lifetime.
+
+**WHAT TRIGGERED THE CLOSE.** The operator said *"The day trading rule is live"* on 2026-09-16. That
+is true and was the half this task was gated on — but checking our own side before acting on it
+showed the gate had been cleared in June. The task's last bump said *"If Alpaca has still said
+nothing by then, propose closing it and re-opening on the announcement rather than bumping a ninth
+time."* Alpaca had said something, fifteen weeks earlier, to us, by email, and we had already acted.
+
+⚠ **What this does NOT establish.** That the new intraday-margin framework is safe for us — that is
+Alpaca's broker-side check now, and nothing Apollo-side replaces it. The June entry says so plainly
+and accepted it; this close does not re-open or re-endorse that decision, it only records that the
+decision was made, documented and shipped.
+
+⚠ **Left deliberately:** `BLOCK_PDT_LOCKOUT_IMMINENT` / `_ACTIVE` remain in
+`broker/skip_reasons.py` with their `humanize()` labels. They are dead vocabulary, kept on purpose
+so historical rows render. Do not "clean them up" — removing them makes old rows unreadable, and
+their presence is what makes this task look open to a grep.
