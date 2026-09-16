@@ -167,13 +167,47 @@ AFTER_PULL=$(git rev-parse HEAD)
 # service on stale code (the 2026-05-28 /partialnow gap: orchestrator-side
 # CommandHandler change arrived in a market-agent-only deploy). Ownership is
 # coarse and biased safe: shared/ambiguous paths require BOTH services.
+# >>> #656 scope helper — extracted and executed by tests/test_deploy_scope_core_copies.py >>>
+# True when docker/Dockerfile.market COPYs $1 into the shared market/execution image, either
+# as an explicit file (`COPY core/job_audit.py core/job_audit.py`) or under a directory COPY
+# (`COPY shared/ shared/`). DERIVED FROM THE DOCKERFILE ON EVERY RUN — deliberately not a
+# hand-kept list here, because a hand-kept list is exactly what rotted: the `core/*` arm was
+# correct when written and silently stopped being correct the day those two COPY lines were
+# added. Globbed sources (`COPY *.yaml ./`) are not expanded — the yaml arms below own those.
+_market_image_copies_path() {
+  awk -v p="$1" '
+    $1 == "COPY" {
+      for (i = 2; i < NF; i++) {
+        s = $i
+        if (s ~ /^--/) continue                                  # --from=, --chown= flags
+        if (s == p) { f = 1; exit }
+        if (s ~ /\/$/ && index(p, s) == 1) { f = 1; exit }        # directory COPY
+      }
+    }
+    END { exit f ? 0 : 1 }
+  ' docker/Dockerfile.market 2>/dev/null
+}
+# <<< #656 scope helper <<<
+
 if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
   CHANGED=$(git diff --name-only "$BEFORE_PULL".."$AFTER_PULL")
   NEED_ORCH=0; NEED_MARKET=0; NEED_EXEC=0
   while IFS= read -r f; do
     [ -z "$f" ] && continue
     case "$f" in
-      channels/*|core/*|main.py)              NEED_ORCH=1 ;;
+      channels/*|main.py)                     NEED_ORCH=1 ;;
+      # #656 (2026-09-16): core/ is orchestrator-OWNED but partly market-PACKAGED, and this
+      # arm knew only the ownership half. docker/Dockerfile.market COPYs core/notifications.py
+      # and core/job_audit.py into the SHARED market/execution image, and scheduler.py:55 +
+      # job_audit.py:54 (also health_checks.py:2166, quarterly_review.py:333) import them. So
+      # a core/ change shipped to orchestrator, printed DEPLOY OK, and left apollo-execution
+      # on stale code — CAUGHT LIVE 2026-09-13 on #501's loud-alert change, where 6 of the 8
+      # newly-loud naked-position watchdogs are EXECUTION_OWNED and would have done nothing.
+      # The guard defeated itself by being RIGHT about ownership and WRONG about packaging.
+      core/*)
+          NEED_ORCH=1
+          if _market_image_copies_path "$f"; then NEED_MARKET=1; NEED_EXEC=1; fi
+          ;;
       # #324: broker/ + execution_routes RUN on apollo-execution (not the market-agent
       # image that `both` recreates). They still need NEED_MARKET (shared image build)
       # AND NEED_EXEC (recreate the running broker), else the fix lands in the image but
