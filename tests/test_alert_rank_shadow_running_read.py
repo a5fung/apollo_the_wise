@@ -44,13 +44,37 @@ def _load_registry() -> dict:
 PARKED_IDS = [
     "bracket_geometry_variants_parked",
     "floor_timing_never_alerted_crossers_parked",
-    "rt_cutover_ep_capture_argument_parked",
+    # "rt_cutover_ep_capture_argument_parked" — CLOSED 2026-09-15 ON ITS OWN PRE-REGISTERED
+    # RULE, the same deliberate exit the #631 fold above used. Its action_when_ready said:
+    # re-run the funnel on the now-complete forward windows, and if the uncensored tail-winner
+    # count is still ~0 against the alerted book's real total, the CAPTURE argument stays
+    # unsupported and "this entry closes as such". It ran: 0 of 33 gate-passing never-alerted
+    # survivors reached 8xADR against the alerted book's 3, on windows that are now COMPLETE
+    # (fwd_n median 20) where the 2026-08-18 read had none. status=done carries the full
+    # resolution and the doc path. test_closed_capture_entry_keeps_its_result_and_its_limit
+    # below pins BOTH — so this is a deliberate close, never a silent delete.
     # "regime_conditional_exit_grid_parked" — FOLDED 2026-09-09 (#631) into the ONE exit
     # read (live_fill_counterfactuals_first_read_482, its regime segmentation); status=done
     # with an outcome pointing there. tests/test_exit_counterfactual_consolidation_631.py
     # pins the pointer, so it is not silently deleted — it is deliberately closed.
     "minute_pull_620_trigger_parked",
 ]
+
+
+def test_closed_capture_entry_keeps_its_result_and_its_limit():
+    """rt_cutover_ep_capture_argument_parked left PARKED_IDS on 2026-09-15. A close is the one
+    irreversible act here, so the entry must keep carrying (a) the result, (b) the analysis it
+    lives in, and (c) the LIMIT on what that result can claim — a zero on n=33 against a 2.9%
+    base rate is 'no evidence for', NOT 'the feed costs nothing', and the day this stops being
+    written down is the day someone cites it as proof."""
+    entry = _load_registry()["rt_cutover_ep_capture_argument_parked"]
+    assert entry["status"] == "done"
+    res = " ".join(str(v) for k, v in entry.items() if k.startswith("resolution")).lower()
+    assert "490_delayed_screen_cost_recut_2026-09-15.md" in res, "lost its analysis pointer"
+    assert "unsupported" in res, "lost the verdict its own rule pre-registered"
+    assert "p=1.00" in res or "p=0.38" in res, (
+        "lost the power ceiling — without it the zero reads as proof the feed is costless"
+    )
 
 
 # ── PART 1 — parked entries surface with a re-open trigger, collection continues ──────

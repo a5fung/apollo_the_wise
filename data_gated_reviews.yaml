@@ -11233,16 +11233,41 @@ reviews:
       #548 intraday 2R exit rule instead of the exits that produced the -0.60R baseline?
     # Trading-day counter, not a calendar clock: if the #548 deploy slips, the window
     # slips with it instead of surfacing a review of the wrong exit regime.
+    # ── ERA-SCOPED 2026-09-15. The old predicate counted every alert day since 2026-08-11
+    # and read 14/14 READY — but it spans the 2026-09-06 exit flip (#545, operator-signed:
+    # +2R partial -> +8R plus a price-armed breakeven, magna53 only). This review asks what
+    # admission looks like UNDER THE CURRENT EXIT STACK, so days under the replaced stack
+    # cannot count toward its window. rule_eras.py's own MAINTENANCE RULE says the YAML
+    # literal is a documented duplicate that must be bumped in the SAME commit as any
+    # exit-rule change; that did not happen for #545, and this is that debt being paid.
     predicate_sql: |
       SELECT COUNT(DISTINCT alert_date)::int
-        FROM mi_live_trades
-       WHERE account_mode = 'live'
-         AND alert_date >= DATE '2026-08-11';
+        FROM mi_ep_alerts
+       WHERE COALESCE(source, 'live') = 'live'
+         AND alert_date >= DATE '2026-09-06';
     threshold: 14
     # 14 is the ORIGINAL measurement's own window, not a chosen bar: the -0.60R baseline
     # (n=320 in-window crossers) is a 14-day cut, so a shorter re-cut is not comparable
     # to it and a longer one delays a decision the operator has already framed.
-    earliest_review_date: 2026-08-31
+    # ⚠ THE DAYS MUST NOW ALL SIT ON ONE SIDE OF 2026-09-06, which is the only change.
+    can_fire:
+      predicate_runs: "2026-09-15 - run against prod, returns 2 (alert days 2026-09-08 and
+        2026-09-14, 8 live alerts). A number, not an error."
+      nonzero_possible: "Already nonzero at 2, and mi_ep_alerts gains live rows on any day the
+        EP scan produces a HIGH - 49 alerts over 13 trading days in the immediately preceding
+        era, so the counter moves without anything new having to be built."
+      lane_live: "MAGNA53 EP is the live setup and is the ONLY strategy the 2026-09-06 flip
+        touched (rule_eras.PARTIAL_8R_SIGNAL_TYPES = {magna53}), so the era boundary and the
+        lane are the same population."
+      threshold_vs_observed: "14 against an observed 2. The 14 is inherited, not invented - it
+        is the baseline cut's own window. At the current ~1 alert-day per 3 trading days it is
+        roughly two months out, which is why earliest_review_date is aligned to #559's own
+        2026-10-30 rather than left at a date that has already passed."
+      era_scoped: "YES, and that is the entire edit. Boundary 2026-09-06 = rule_eras.PARTIAL_8R_DATE
+        / BREAKEVEN_ARM_R_DATE (first acting session 2026-09-08 - 09-06 is a Sunday and 09-07 is
+        Labor Day). Before this, the predicate pooled 13 pre-flip alert days with 2 post-flip ones
+        and called it 14."
+    earliest_review_date: 2026-10-30
     action_when_ready: >-
       Re-run the SAME cut as docs/analysis/490_realtime_detection_flip_evidence_2026-08-10.md
       over the post-#548 window and report mean R for (a) all in-window real-time crossers,
@@ -11255,6 +11280,38 @@ reviews:
       ADMISSION IS ENTRY DISCIPLINE = THE LINE — this review produces a recommendation only,
       never a flip.
     status: pending
+    resolution_2026_09_15: |
+      RAN THE POPULATION DECLARATION FIRST, AND IT KILLED THE RUN. The predicate read 14/14 READY,
+      so this was next in line. Before the first measuring query, three checks - all three failed.
+
+      1. ** THE WINDOW STRADDLES AN EXIT-RULE BOUNDARY. ** The predicate counted alert days since
+         2026-08-11, but 2026-09-06 (#545, operator-signed) replaced the +2R intraday partial with
+         +8R and added a price-armed breakeven on magna53. 13 of the 14 days are under the OLD stack
+         and 2 are under the new one. Era-scoped to the current stack the count is 2, not 14.
+
+      2. ** THE REVIEW NAMES A RULE THAT IS NO LONGER LIVE. ** Its question is literally "once trades
+         are managed by the #548 intraday 2R exit rule" - and the 2R rule stopped being the rule six
+         trading days into its own 14-day window. A re-cut against it would grade admission through
+         an exit stack we no longer run.
+
+      3. ** THE BLEND WOULD HAVE BEEN THE REPORTED NUMBER, AND IT IS THE WRONG ONE. ** 11 closed live
+         trades in the old window. Blended mean R = -0.235. Split: era C n=9 mean -0.082 (4 winners,
+         all 4 took the partial); era D n=2 mean -0.920 (0 winners, neither took a partial - the +8R
+         partial has never fired). One number, two populations, opposite stories.
+         (R here is pnl / risk_dollars, the PLANNED risk - risk_dollars_actual only starts 2026-08-27
+         and covers 5 of 30 closed live trades all-time, so the planned column is the only one that
+         spans the window. The two differ by up to 23% on a single name; stated, not silently mixed.)
+
+      ** AND HIS OWN 2026-08-19 CORRECTION ALREADY MOVED THE GATE OFF THE EXIT STACK: ** "hold date
+      for what? ... the issue goes back to what we just discuss, how good is our selection downstream
+      if we admit more because realtime will admit a lot more." The question this entry still asks -
+      does the exit stack change admission's verdict - is not the question he asked for. Recorded here
+      rather than silently re-scoped, because re-scoping an admission review is entry discipline and
+      that is THE LINE. #559 carries the full ruling; its own ETA is 2026-10-30 and this entry is now
+      aligned to it instead of firing two months early on a pooled count.
+
+      NOTHING MEASURED, NOTHING CONCLUDED, NO RECOMMENDATION MADE. The deliverable is the population
+      declaration and the era fix. [[check-the-rule-era-before-comparing-to-actual]]
     kind: accrual
     added_on: 2026-08-10
     cross_refs: ["task #559", "task #548", "task #490 (closed 2026-08-03)"]
@@ -11665,7 +11722,53 @@ reviews:
       SELECT COUNT(DISTINCT trade_date)::int FROM mi_daily_closes
       WHERE trade_date > DATE '2026-08-17'
     threshold: 20
-    status: pending
+    can_fire:
+      predicate_runs: "2026-09-15 - run against prod, returns 20 (trading days in mi_daily_closes
+        after 2026-08-17). A number, not an error."
+      nonzero_possible: "It fired: the threshold of 20 was met and the review RAN on 2026-09-15,
+        which is why this entry is now done. The counter is the nightly_data_pull's own output, so
+        it advances every trading day without anything new being built."
+      lane_live: "The RT shadow watchdog (ep_rt_universe_catch) and mi_ep_missed_outcomes both keep
+        writing regardless of this entry's status, and MAGNA53 EP is the live setup that produced
+        the 103-alert comparison population over the same dates."
+      threshold_vs_observed: "20 against an observed 20 - MET. 20 trading days is the forward window
+        the tail-winner statistic itself uses (d+1..d+20), so the threshold is the measure's own
+        maturity requirement, not a chosen bar. Result: fwd_n median 20, 1 of 33 still short."
+      era_scoped: "YES, and checked before measuring rather than assumed. SINGLE-ERA on both axes:
+        tailx is price-only so the 2026-09-06 exit flip (#545) cannot reach it, and MIN_GAP_PCT moved
+        10.0 -> 9.0 on 2026-08-19, entirely AFTER the 2026-07-27..08-18 cohort closes. Verified
+        against rule_eras.py, not inferred."
+    status: done
+    resolution_2026_09_15: |
+      CLOSED ON ITS OWN PRE-REGISTERED RULE, NOT ON A FRESH ONE. action_when_ready said: re-run the
+      funnel on the now-complete forward windows, and if the uncensored tail-winner count is still
+      ~0 against the alerted book's real total, the CAPTURE argument stays unsupported and this
+      entry closes as such. Run 2026-09-15, $0, read-only.
+
+      THE NUMBER: never-alerted shadow catches that held >=10% to the actual open AND passed the
+      replayed mechanical gates = 33 names, of which >=8xADR tail winners = 0. The alerted book
+      produced 3 over the same dates (1.8/month). Forward windows are now COMPLETE - fwd_n median
+      20, only 1 of 33 still short - where the 2026-08-18 read had none complete and was explicitly
+      a floor. 33 is an UPPER bound on would-have-alerted (catalyst / RVOL / rank gates not
+      replayed), so zero out of the bound is zero out of every subset.
+
+      ERA CHECK, done before measuring: single-era on BOTH axes. tailx is price-only, so the
+      2026-09-06 exit flip (#545) cannot reach it; MIN_GAP_PCT moved 10.0 -> 9.0 on 2026-08-19,
+      entirely after the 07-27..08-18 cohort. Verified against rule_eras.py.
+
+      ** WHAT THE CLOSE DOES NOT CLAIM, and this is load-bearing. ** At the alerted rate of 2.9%,
+      33 names EXPECT about 1 tail winner; seeing 0 has p=0.38 under that base rate and Fisher
+      (0/33 vs 3/103) is p=1.00. So the capture argument is UNSUPPORTED - it has no evidence for it
+      - and that is the ceiling. It is NOT "the delayed feed costs nothing". Separating those two at
+      p<0.05 needs ~102 gate-passing survivors against today's 33, roughly 3.5 more months.
+
+      ** AND IT NEVER TOUCHED THE FAILURE MODE THAT COST HIM A TRADE. ** This population is
+      NEVER-ALERTED names. TWST 2026-08-19 ALERTED, fifteen minutes late, because real time read
+      10.69% at 09:30:04 and only the delayed 9.34% was authoritative. #559 already records that
+      this study must not be cited against that, and completing the windows does not change it.
+      The ops / latency case for a cutover was never gated by this entry and remains open to him.
+
+      Full read: docs/analysis/490_delayed_screen_cost_recut_2026-09-15.md
     kind: accrual
     action_when_ready: >-
       Re-run `490_delayed_screen_cost_2026-08-18.md`'s funnel on the now-complete
@@ -12888,8 +12991,16 @@ reviews:
       reaches it RAN - mi_job_runs shows eod_cleanup and evening_position_backstop each succeeded 7
       of 7 trading days in the last 10, latest 2026-09-15 16:05 and 21:00 ET; (c) both sibling
       outcomes of the same branch are also zero life-to-date (sync_gone_stop_fill_recorded 0,
-      sync_position_gone_unresolved 0), so the OUTER condition - a position disappearing from Alpaca
-      while our row is open - has never been reached at all, on 339 live trade rows. ** THE
+      sync_position_gone_unresolved 0) - so THE GUARD HAS NEVER HAD TO ACT.
+      ** SAY ONLY THAT, and not 'the race has never happened': the resolver has THREE exits that
+      write no audit row at all (trade lock held by an in-flight writer, stop filled inside the
+      _SYNC_GONE_GRACE_S window, finaliser won the race under the lock), so a vanish that resolved
+      itself cleanly is INVISIBLE to this count. What is proven is the guard's own inaction, which
+      is what #597 is about. **
+      ** AND THE DENOMINATOR IS 66, NOT 339. ** mi_live_trades holds 339 rows, but 217 are `skipped`
+      and 56 `cancelled` - rows that never held a share and therefore have no position that could
+      vanish. The rows that ever held one are 64 `closed` + 2 `filled` = 66 (prod, 2026-09-15).
+      Quoting 339 would inflate the exposure ~5x. ** THE
       INSTRUMENTATION CAVEAT, stated because it is exactly the class this repo keeps getting wrong:
       a healthy sweep writes NO audit row, so mi_audit_log alone cannot tell 'ran clean 30 days' from
       'never ran'. mi_job_runs is what separates them, and it is the row that makes this zero
