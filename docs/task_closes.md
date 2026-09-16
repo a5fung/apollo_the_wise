@@ -863,3 +863,44 @@ fires but fails to advance state) stay open as things to notice, not as things n
 ⚠ **Also not established: that the READ is useful.** Energy stocks falling behind oil and gas by
 17.7 points is a true statement about the tape; whether it is worth acting on is the operator's
 call and always was — the message says "a READ, not a rule" for that reason.
+
+---
+
+## #650 — the judge's demotions now get the same second opinion a HIGH does (closed 2026-09-16)
+
+BAR: "a judge demotion receives the same zero-authority second-model read a HIGH does, and
+disagreements land in `mi_judge_divergence` the same way"
+
+WOULD-FAIL-IF: "a week passes with demotions recorded and zero corresponding divergence rows" —
+and, from the VERIFY line, if a demoted alert has NEITHER a divergence row NOR a
+`JUDGE_DIVERGENCE_CHECK_FAILED` audit event. A week with no demotion at all is NOT a pass; it is
+unrunnable, and the EXPECT written before the first query said so explicitly.
+
+EVIDENCE: **CIFR 2026-09-16 is the first real demotion since the 2026-09-12 deploy — floor HIGH,
+judge MODERATE — and it produced a `mi_judge_divergence` row at 09:45:43 ET** (primary MODERATE,
+secondary MODERATE, agree=true). Before #650 that name would have had no second read at all: the
+table held 99 rows, every one `primary_tier='HIGH'`, across 2026-07-27 → 09-14.
+
+- **1:1 pairing, no gaps.** All 3 judged alerts since the deploy (SRRK 09-14, DFTX 09-14, CIFR
+  09-16) carry a divergence row. `JUDGE_DIVERGENCE_CHECK_FAILED` count is **0**.
+- **The "disagreements land the same way" half is STRUCTURAL, not assumed.** CIFR agreed, so the
+  disagree path was not exercised by this row — checked in code rather than closed over:
+  `judge_divergence.py:134-155` computes `agree` and writes it as a COLUMN in a single
+  unconditional INSERT; the `if not agree:` block at :156 only adds an audit breadcrumb AFTER the
+  row exists. There is no branch in which a disagreement fails to land. **And it is not untested
+  either — 17 of the 99 HIGH-sourced rows carry `agree=false`.**
+- **Zero authority re-verified, not inherited:** no reference to `mi_judge_divergence` in
+  `ep_detector.py`, `entry_pipeline.py` or `broker/` beyond the dedupe key (ADR 0011).
+
+**THE UNINTENDED-CONSEQUENCE HALF, checked in the same pass rather than afterwards** — the card
+fixed two readers that would otherwise have blended demotions into HIGH-only statistics, and that
+fix is what the widening could most plausibly have broken:
+
+- `judge_divergence_marginal_high_signal` reads **8**, with **0 non-HIGH rows leaked** into its
+  population. The table splits cleanly: `primary_tier='HIGH'` 99 rows / `'MODERATE'` 1 row.
+- Cost: **1 demotion call in 4 days ≈ 1.8/week against the priced ~5/week.** Below, not above.
+
+⚠ **What this does NOT establish.** One demotion is one demotion. The dedupe key held over 3 alerts
+in a thin window (nothing alerted 09-15) — that is not a volume test, and a busy morning is where a
+dedupe key would actually be stressed. The priced ~5/week rate is likewise unobserved: it comes
+from 17 demotions over 24 days of history, not from live counting. Neither was part of the DoD.
