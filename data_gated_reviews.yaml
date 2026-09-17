@@ -2957,29 +2957,50 @@ reviews:
       Related backlog: project_market_intelligence_backlog item #11.
     status: pending
     resolution_2026_09_16: |
-      RAN AT n=20 (twice its n>=10 bar — it had been READY since 2026-08-08 and was invisible for 39
-      days because operator_asks evaluated 30 of 58 pending reviews; that filter was removed today).
-      ** VERDICT: CANNOT TELL — and the decision matrix itself is the finding. **
+      RAN 2026-09-16 at n=11, then CORRECTED THE SAME EVENING after an advisor pass found the control
+      was mislabelled and n was inflated. It had been READY since 2026-08-08 and was invisible for 39
+      days because operator_asks evaluated 30 of 58 pending reviews; that filter was removed today.
+      ** VERDICT: CANNOT TELL — and the decision matrix itself is the finding. Both survive the
+      correction; three of the stated numbers did not. **
 
-      RESULT, with the ADMITTED population as the control (which the matrix does NOT ask for and
-      which is the comparison that decides a filter):
-                                   n     hit rate (MFE>=+10%)   median MFE 5d   median ret 5d
-        rejected stop_too_wide    20            40.0%               +9.3%           -2.2%
-        admitted HIGHs, same days 400           50.3%              +10.1%           +0.8%
-      Worse on all three, **none of it distinguishable: Fisher p = 0.493.** At the admitted rate 20
-      names expect 10.1 hits; we saw 8. So there is no evidence the filter sheds winners AND no
-      evidence it sorts well — n=20 cannot separate those.
+      🔴 ** WHAT I GOT WRONG, AND IT IS THIS ENTRY'S OWN LESSON TURNED ON ITSELF. **
+        (1) ** THE "ADMITTED HIGHs (n=400)" CONTROL CONTAINED ZERO ADMITTED NAMES. ** It was built as
+            "HIGH alerts with no stop_too_wide skip row" and joined to `mi_ep_missed_outcomes` — a
+            table that BY CONSTRUCTION only records names we did NOT enter. Every one of the 400
+            carries a skip_category: duplicate_scan 122, high_unentered 56, window_missed 43,
+            score_below_50 29, outside_top20 18, mcap_low 15, cooldown 8, and so on. So I compared a
+            rejection cohort against ** another rejection cohort ** and labelled it "what the filter
+            ADMITS" — in the very paragraph warning that that is the comparison that matters.
+        (2) ** n WAS 11, NOT 20. ** mi_live_trades holds 11 distinct ticker-days rejected for
+            `setup:stop_too_wide`; the LEFT JOIN to the missed-outcomes table fanned them to 20 rows
+            (that table carries several rows per ticker-day, one per source/skip_category). The
+            review's n>=10 bar is still MET at 11 — but "twice its bar" was false.
+        (3) The Fisher p of 0.493 was computed on those wrong cohorts.
+      [[prove-two-numbers-measure-the-same-thing]] · [[check-what-the-system-already-did]]
 
-      🔴 ** THE MATRIX COULD ONLY EVER SAY REVISIT. ** Its bars: REVISIT if hit-rate >=30% AND median
-      MFE >= +8%; KEEP if hit-rate <20% OR median MFE <+3%. **The ADMITTED population reads 50.3% and
-      +10.1% — it clears the REVISIT bar by a wide margin.** So any cohort resembling a normal EP
-      population fires REVISIT, and KEEP would need the rejected names to be less than half as good
-      as everything else we alert on. The bars were set in 2026-05 from two anomalies (STRL, AIP)
-      without anyone asking what the base rate was. A rule that can only return one answer is the
-      check-that-cannot-fail class in decision form.
-      ⚠ Third instance of one defect in seven days: a rejection cohort's ABSOLUTE numbers mean
-      nothing; the comparison is against what the filter ADMITS. The HTF ADR floor was the same
-      shape on 2026-09-10. [[check-what-the-system-already-did]]
+      ** A TRUE ADMITTED CONTROL IS BUILDABLE — from raw bars, not the missed-outcomes table. **
+      Admitted = a magna53 trade row that actually entered (no skip_reason, status not
+      cancelled/skipped). Both cohorts scored identically: max high over d+1..d+5 against the
+      gap-day open, from `mi_daily_closes`.
+                                   n    hit rate (MFE>=+10%)   median MFE 5d
+        rejected stop_too_wide    11           36.4%              +8.6%
+        ** ADMITTED (entered) **  25         ** 68.0% **        ** +14.6% **
+      ** The rejected names run at roughly HALF the admitted hit rate — but Fisher p = 0.141, so at
+      n=11 it still cannot be called. ** The direction points toward the filter doing its job, not
+      shedding winners; it is not yet evidence.
+
+      🔴 ** THE MATRIX COULD ONLY EVER SAY REVISIT — and the true control SHARPENS this. ** Its bars:
+      REVISIT if hit-rate >=30% AND median MFE >= +8%; KEEP if hit-rate <20% OR median MFE <+3%.
+      The rejected cohort reads 36.4% and +8.6% — ** it clears both REVISIT bars while running at
+      half the rate of what we actually take (68.0% / +14.6%). ** A cohort can be materially worse
+      than the admitted book and still fire REVISIT, because the bars are ABSOLUTE and were set in
+      2026-05 from two anomalies (STRL, AIP) without anyone asking what the base rate was. KEEP would
+      need the rejected names to be less than a third as good as what we trade. A rule that can only
+      return one answer is the check-that-cannot-fail class in decision form.
+      ⚠ Third instance of one defect in seven days — and I committed a fourth while writing it up:
+      a rejection cohort's ABSOLUTE numbers mean nothing; the comparison is against what the filter
+      ADMITS, and "not rejected for THIS reason" is not the same thing as "admitted". The HTF ADR
+      floor was the same shape on 2026-09-10.
 
       ⚠ ** UNITS — THE FIRST READING WAS WRONG AND WOULD HAVE INVERTED THE VERDICT. ** max_high_5d
       and ret_5d are FRACTIONS from open_d0, not percentages. Reconciled against raw bars rather than
@@ -2991,7 +3012,16 @@ reviews:
       multiple; do NOT test options (a) widen to 2.0x / (b) change the stop anchor / (c) tier by
       score, which were written for a "sheds winners" finding that did not materialise. ** Threshold
       re-gated 10 -> 40 with CONTROL-RELATIVE bars owed at that point: the rejected cohort must BEAT
-      the admitted hit rate by a stated margin, not clear an absolute number.
+      the admitted hit rate by a stated margin, not clear an absolute number. ** The control is now
+      SPECIFIED, not merely demanded: entered magna53 trade rows (no skip_reason, status not
+      cancelled/skipped), MFE scored from mi_daily_closes over d+1..d+5 against the gap-day open —
+      NEVER from mi_ep_missed_outcomes, which cannot contain an admitted name. ** Today it reads
+      68.0% on n=25 and will have grown by n=40.
+
+      ⚠ A caveat on the true control, stated rather than buried: admitted names entered BECAUSE their
+      stop was tight, so the two cohorts differ in ORB range by construction. Raw MFE% does not
+      depend on the stop, so the measure is fair — but these are not random halves, and whatever else
+      a tight ORB range predicts rides along with the comparison.
 
       ⚠ What this does NOT answer: whether a wide stop is the right reason to reject. This measures
       what the stock DID, never what the trade returns at a 2x stop — a name can run +15% and still
@@ -11654,7 +11684,9 @@ reviews:
 
       OUT-OF-SAMPLE (alert_date > 2026-08-16): 30 shadow rows over 12 sessions, all 30
       rank-qualifying, 24 alerted HIGH, 10 filled; 19 carry settled forward outcomes.
-      ** TAIL EVENTS ON THE MODULE'S OWN BAR (>=8xADR): ZERO. Best 4.97x, median 1.46x. ** So
+      ** TAIL EVENTS AT >=8xADR: ZERO on BOTH horizons — best 4.97x over 5 days, best 5.39x over 20
+      days, median 1.46x either way ** (re-read the same evening on 34 rows, the four newest being
+      alerts that landed after the first read). So
       catch-rate on the tail is UNDEFINED, and "report both directions per quartile" with it —
       winners admitted is 0 in every quartile. confidence_label(12) = "THIN (12 of 25 sessions,
       48%) - directional only, NOT a verdict".
@@ -11676,11 +11708,26 @@ reviews:
       #669's audit half as a presentation question, with his input owed — the 08-18 conversion was
       deliberate and is not mine to reverse.**
 
-      ⚠ ** THE BAR IS 8xADR, NOT 10R — a substitution declared rather than hidden. ** The module
-      says ">=10R / >=8xADR, whichever the caller scored". 10R is NOT computable here: an un-filled
-      alert has no entry and no stop, so there is no R. 8xADR is computable from adr20_frac on the
-      shadow row. The two are not the same measure and must not be quoted interchangeably.
-      [[prove-two-numbers-measure-the-same-thing]]
+      ⚠ ** TWO SUBSTITUTIONS, AND I ONLY DECLARED ONE. **
+        (1) DECLARED: the bar is 8xADR, not 10R. The module says ">=10R / >=8xADR, whichever the
+            caller scored". 10R is NOT computable here — an un-filled alert has no entry and no
+            stop, so there is no R. 8xADR is computable from adr20_frac on the shadow row.
+        (2) ⚠ NOT DECLARED, caught by advisor review the same evening: I scored the tail on
+            ** max_high_5d ** while the 490 probes score it over d+1..d+20 (max_high_20d, same
+            table, MATURITY_DAYS 30 against 8). "8xADR in five sessions" is a far harder bar than
+            the one the module names, and stating a ZERO on it while citing the module's bar was a
+            silent swap of the window. Re-read on max_high_20d: ** still ZERO, best 5.39x. **
+        The conclusion survives both, but neither may be quoted interchangeably with the other.
+        [[prove-two-numbers-measure-the-same-thing]]
+
+      ⚠ ** AND THE 20d READ IS ALMOST ENTIRELY UNMATURED — this is the real limit on the ZERO. **
+      Of the 34 out-of-sample rows, 30 have a matured 5-day window but only ** 2 have a matured
+      20-day one ** (alert_date <= CURRENT_DATE - 30). max_high_20d is populated for all 34, so the
+      column reads as if it answered; it does not. ** On the module's own horizon the tail count is
+      UNDEFINED FOR WANT OF MATURITY, not zero, and 5.39x is a FLOOR that can only rise. ** The
+      5-day ZERO is real. The 20-day one is a placeholder until ~mid-October. A column that returns
+      a number for an unelapsed window is the same trap as the rolling CURRENT_DATE-60 censoring in
+      p74. [[shadow-zero-effect-check-instrumentation]]
 
       ⚠ What this does NOT say: that the ranking rule fails. The out-of-sample window has produced
       no tail event to test it against — 12 sessions, a thin tape, best name at half the bar. The
@@ -12000,8 +12047,15 @@ reviews:
       earlier admission on. 08-18 said 0.47-0.52; complete data makes the sign explicit.
 
       ** WHAT THIS HANDS FORWARD: the live questions for this class are the $500M market-cap floor
-      and the 60-day cooldown - two of four winners died on the first, one on the second - and
-      NEITHER is what this review was gated on. ** Both are detection criteria = THE LINE. Nothing
+      and the 60-day cooldown - THREE of FIVE winners died on the first, one on the second - and
+      NEITHER is what this review was gated on. **
+      ⚠ CORRECTED the same evening: this said "two of four". ** The class has FIVE tail winners, not
+      four. ** I read the probe's gate-fates block as four rows and stopped one short; the probe's own
+      §4 says `winners so far: 5` and its PRIZE line names FCUV among the not-reachable-and-gated.
+      The fifth is ** FCUV 2026-08-10, 11.7x, which fails THREE gates at once - dollar volume
+      $0.06M/day, ATR 53%, market cap $8M. ** It does not weaken the finding, it sharpens it: a
+      $60k-a-day $8M microcap is precisely what the liquidity floors exist to exclude, and he
+      confirmed on 2026-09-16 that they stay. [[check-what-the-system-already-did]] Both are detection criteria = THE LINE. Nothing
       proposed. ⚠ Also recorded unreconciled: this probe counts 2 alerted-book winners where
       490_delayed_screen_cost_recut_2026-09-15 counts 3 of 103 - different cohort constructions; do
       not quote one against the other without rebuilding both denominators.
@@ -12248,15 +12302,23 @@ reviews:
       inherit exactly the dilution the parking was about.
 
       🔑 ** BUT TODAY ALSO PRODUCED THE FIRST REAL CANDIDATE FOR A SELECTIVE SUBSET, which is what
-      this check-in exists to look for. ** The class's four tail winners each died on a DIFFERENT
+      this check-in exists to look for. ** The class's FIVE tail winners each died on a DIFFERENT
       gate, and three of them are not about the trigger at all:
         ALOY 9.8x  - passed EVERY mechanical gate, killed by the 60-day EP cooldown
         BCAR 14.7x - market cap $227M, under the $500M floor
         MASS 8.5x  - market cap $410M, under the $500M floor
         AMRC 8.8x  - crossed 09:49, after the ORB window
+        FCUV 11.7x - fails THREE gates: dollar volume $0.06M/day, ATR 53%, market cap $8M
       ** So a candidate criterion suggests itself: names that clear every mechanical gate and are
       excluded ONLY by the cooldown or the market-cap floor. ** That is a far more concentrated pool
-      than the raw declined set, and it is where three of four winners actually sit.
+      than the raw declined set, and it is where ** three of the five ** winners sit.
+
+      ⚠ CORRECTED the same evening: this proposal was first written as "three of FOUR", which
+      overstated it. ** FCUV is the fifth winner and it does NOT sit in the proposed subset ** - it
+      fails the ADV and ATR floors as well as market cap, so no cooldown-or-mcap-only rule reaches
+      it. The subset therefore covers 3 of 5 tail winners, not 3 of 4, and one of the two it misses
+      is a name the liquidity floors are meant to exclude. ** The proposal survives at a lower hit
+      rate; stated before he rules on it, not after. ** [[prove-two-numbers-measure-the-same-thing]]
 
       ⛔ ** PROPOSED, NOT ADOPTED. ** This entry says the definition of "selective" is a scoping
       decision and that inventing one unilaterally is THE LINE — it is an admission criterion in all

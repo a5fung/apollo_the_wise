@@ -32,7 +32,7 @@ move. Single-era on both axes.
 | unreachable (crossed after 09:45) | 14 | 1 (7.1%) | 3.89× |
 
 **And the one that passed everything died on a gate that has nothing to do with timing.** The class's
-four winners, each stopped by a different thing:
+**five** winners, each stopped by a different thing:
 
 | | what actually excluded it |
 |---|---|
@@ -40,10 +40,18 @@ four winners, each stopped by a different thing:
 | **BCAR** 07-29, 14.7× | market cap $227M, under the $500M floor |
 | **MASS** 07-29, 8.5× | market cap $410M, under the $500M floor |
 | **AMRC** 07-30, 8.8× | crossed at **09:49** — after the ORB window, so a floor change cannot reach it |
+| **FCUV** 08-10, 11.7× | fails **three** gates at once: dollar volume **$0.06M/day**, ATR **53%**, market cap **$8M** |
+
+⚠ **This table said "four winners" when first written, on 2026-09-16. It was five** — I read the
+probe's gate-fates block as four rows and stopped one short, and FCUV is the row I dropped. The
+probe's own §4 says `winners so far: 5` and its PRIZE line lists FCUV among the not-reachable-and-gated.
+Corrected the same evening after an advisor pass. [[check-what-the-system-already-did]]
 
 > **So the prize under the selector we actually run is 0.0 per month, against the alerted book's
-> 2 winners over the same window.** Moving the floor-timing rule buys nothing; two of the four
-> winners are a market-cap question and one is a cooldown question.
+> 2 winners over the same window.** Moving the floor-timing rule buys nothing; **three of the five
+> winners are a market-cap question, one is a cooldown question, and one crossed too late to reach.**
+> **FCUV is the clearest case FOR the floors, not against them**: a $60k-a-day, $8M microcap is
+> exactly what the liquidity floors exist to exclude, and he confirmed on 2026-09-16 that they stay.
 
 ## Relaxing the boundary dilutes, and it does so monotonically
 
@@ -85,6 +93,8 @@ conclusion 08-18 reached at AUC 0.47–0.52, now on complete data and with the s
   that one all live alerts on the cohort dates). **Stated rather than reconciled — do not quote one
   against the other without rebuilding both denominators.**
 - **The market-cap floor and the 60-day cooldown are now the live questions for this class**, and
-  neither is what this review was gated on. Two of four winners failed `mcap`, one failed cooldown.
+  neither is what this review was gated on. **Three of five** winners failed `mcap` (BCAR, MASS,
+  FCUV), one failed cooldown, one crossed post-ORB. FCUV additionally failed the ADV and ATR floors,
+  so it is not a market-cap question alone.
   Both are detection criteria = THE LINE; nothing is proposed here.
 - `tailx` says what the stock did, not what we would have made. No entry, exit or size is modelled.
