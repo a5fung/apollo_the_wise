@@ -2892,28 +2892,41 @@ reviews:
         AND alert_date <= CURRENT_DATE - INTERVAL '25 days';
         -- 25-day lag = 20d forward outcome settled + buffer
     can_fire:
-      predicate_runs: "2026-09-16 - run against prod, returns 20. A number, not an error. The
-        predicate was itself fixed 2026-08-17 after counting every strategy's stop_too_wide skip
-        instead of MAGNA53's, which made it read READY on a question it could not answer."
-      nonzero_possible: "Already 20, and all 20 carry settled forward outcomes in
-        mi_ep_missed_outcomes. The filter is live in _check_safeguards and rejects on ORB range >
-        1.5x ATR_14, so the cohort keeps growing (~20 per 4.5 months)."
+      predicate_runs: "2026-09-16 - run against prod, returns 10. A number, not an error. ⚠ First
+        recorded here as 20: that was the JOINED query's row count, not the predicate's. The
+        predicate counts mi_live_trades rows and returns 10, so this review fired at EXACTLY its
+        bar, not at twice it. The predicate was itself fixed 2026-08-17 after counting every
+        strategy's stop_too_wide skip instead of MAGNA53's, which made it read READY on a question
+        it could not answer."
+      nonzero_possible: "10 now, and all 10 carry settled forward outcomes. The filter is live in
+        _check_safeguards and rejects on ORB range > 1.5x ATR_14, so the cohort keeps growing - but
+        SLOWLY and lumpily: 5 in May, 0 in June, 1 in July, 4 in August, 1 in September = ~2.4 a
+        month. Any threshold must be sized against that rate, which is the mistake corrected below."
       lane_live: "MAGNA53 EP is the live setup and signal_type is filtered to it; 9m_day2 shares the
         skip-reason prefix but is a DIFFERENT filter and is deliberately excluded. account_mode is
         deliberately NOT filtered - these are SKIPS, no position was taken, so the stock's forward
         path is account-independent and paper rejections are legitimate evidence."
-      threshold_vs_observed: "40 against an observed 20. RE-GATED 2026-09-16 from 10, which had been
-        MET and READ: 8 of 20 against an admitted 201 of 400 gives Fisher p=0.493 - cannot tell. 40
-        is where a 15-point true gap becomes separable at the admitted 50.3% base rate."
+      threshold_vs_observed: "20 against an observed 10. RE-GATED 2026-09-16 from 10, which had been
+        MET and READ: 4 of 11 against a truly-admitted 17 of 25 gives Fisher p=0.141 - cannot tell.
+        ⚠ SET TO 40 EARLIER THE SAME DAY AND CORRECTED THAT EVENING: 40 was sized against a cohort
+        I believed was 20. At the real 10 and an accrual of ~2.4 a month, 40 is roughly TWELVE MORE
+        MONTHS - a parking date wearing a threshold's clothes. 20 is a genuine doubling, reachable
+        in ~4 months, and POWER-JUSTIFIED: if the observed 36.4%/68.0% rates hold, rejected n=20
+        against an admitted n=40 gives Fisher p=0.027. Going higher buys p=0.012 at 25 and p=0.004
+        at 40 - not worth the extra half-year."
       era_scoped: "Cohort opens 2026-05-05, when the filter's behaviour was last set; the 1.5x
         multiple has not moved since, so the window is single-era for the question asked. ⚠ The
-        CONTROL (admitted HIGHs) spans the same dates by construction, which is what makes the
-        comparison era-matched rather than merely contemporaneous."
-    threshold: 40   # RE-GATED 2026-09-16 from 10. The n=10 bar was MET and READ (resolution
-    # below); the verdict was "cannot tell" — 8 of 20 against an admitted 201 of 400 is p=0.493.
-    # 40 is not a guess: at the admitted 50.3% base rate it is roughly where a 15-point true gap
-    # becomes separable, and 15 points is the smallest gap worth acting on. Accruing ~20 per 4.5
-    # months, so this is a real interval rather than a parking date.
+        CONTROL spans the same dates by construction, which is what makes the comparison era-matched
+        rather than merely contemporaneous - but see the resolution: the control first used was not
+        the admitted population at all, and the era-matching was the only thing about it that held."
+    threshold: 20   # RE-GATED 2026-09-16 from 10. The n=10 bar was MET and READ (resolution
+    # below); the verdict was "cannot tell" — 4 of 11 against a truly-admitted 17 of 25 is p=0.141.
+    # ⚠ SET TO 40 EARLIER THE SAME DAY, CORRECTED THAT EVENING. 40 was sized against a cohort I
+    # believed stood at 20; the predicate actually returns 10, and rejections accrue ~2.4 a month
+    # (5 May, 0 Jun, 1 Jul, 4 Aug, 1 Sep). 40 would therefore be ~12 more months — a parking date
+    # wearing a threshold's clothes, which is exactly what a threshold must not be.
+    # 20 is a true doubling, ~4 months out, and power-justified rather than guessed: if the observed
+    # 36.4% / 68.0% rates hold, rejected n=20 vs admitted n=40 gives Fisher p=0.027.
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-08
     # >> RAN 2026-07-13 (Opus): CANONICAL table mi_ep_missed_outcomes (matches this review's own
@@ -5073,6 +5086,13 @@ reviews:
         - POST-swap 06-30..08-27 (sourced HTF spec) ...... 14 of 69 = ** 20.3% **
       Leg attribution: PRE-swap flag 49 / later-EP 5 / 9M 3 / Day-2 1, flag-ONLY 44.
       POST-swap flag 6 / later-EP 1 / 9M 7 / Day-2 1, flag-ONLY 6.
+
+      ⚠ ** AND THE PRE SIDE NEEDED THE SAME TEST I ONLY APPLIED TO POST. ** POST is bounded to
+      alert_date >= 06-26 so its WHOLE 21-day forward window is post-swap. PRE was not: alerts from
+      ~06-05 onward carry forward windows that reach across the boundary, so PRE was mildly
+      contaminated in the direction that would UNDERSTATE it. Re-ran the strictly clean PRE cohort
+      (alert_date <= 2026-06-04, whole window pre-swap): ** 43 of 81 = 53.1% — identical to the
+      95-name read. ** The contamination changes nothing, but it was checked rather than assumed.
 
       ⚠ ** I FIRST REPORTED 35.6% AGAINST A 34% BASELINE AND CALLED IT FLAT. THAT WAS THE WRONG TWIN. **
       ep_delayed_capture_audit.py emits TWO rates and the baseline doc records both: ANY-downstream
@@ -12322,9 +12342,21 @@ reviews:
 
       ⛔ ** PROPOSED, NOT ADOPTED. ** This entry says the definition of "selective" is a scoping
       decision and that inventing one unilaterally is THE LINE — it is an admission criterion in all
-      but name. **His to sign.** If he takes it, the first step is sizing that pool (re-run the 490b
-      probe with a per-name gate-reason breakdown, $0), and only then the targeted minute pull
-      (574 ticker-days on the 2026-08-18 estimate).
+      but name. **His to sign, eventually.**
+
+      🔒 ** BUT IT IS NOT AN OPERATOR ASK TODAY, AND SAYING SO IS THE POINT. ** A "his to sign" line
+      sitting in YAML prose is structurally invisible: `operator_asks.py` reads the standing-ask
+      table, not resolution text — which is the EXACT failure fixed in that script this morning, one
+      layer over. So it is decided here rather than left in the gap: ** this is NOT an ask until
+      2026-10-17, because the work that would make it a real question is MINE and has not been
+      done. ** [[verify-before-asking-him-to-act]]
+      ORDER: (1) size the pool myself — re-run the 490b probe with a per-name gate-reason breakdown,
+      $0, on data already captured; (2) only if the pool is both small and winner-dense does a
+      question exist worth his time; (3) only then the targeted minute pull (574 ticker-days on the
+      2026-08-18 estimate). Bringing him a criterion to sign with no idea how many names it admits
+      would be asking him to do my sizing. If step (1) says the pool is large or thin, the proposal
+      dies here and never reaches him.
+      ⚠ If it DOES become an ask, it goes in the standing-ask table as a ROW — never as prose.
 
       ⚠ Re-set to 2026-10-17 as a CHECK-IN, not a prediction. `mi_intraday_bars` keeps persisting
       alert-ticker-day bars regardless, so nothing is being lost while it waits.

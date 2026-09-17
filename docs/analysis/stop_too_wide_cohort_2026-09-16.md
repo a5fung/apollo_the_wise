@@ -69,11 +69,16 @@ turned out to convert at 4.91% against the band's 2.38%.
    gap is not callable (p = 0.14).
 2. **Do not test options (a) widen to 2.0× / (b) change the stop anchor / (c) tier by score** on this
    evidence. They were written for a "filter sheds winners" finding that did not materialise.
-3. **Re-gate to n = 40 with CONTROL-RELATIVE bars** — the rejected cohort must beat the admitted
+3. **Re-gate to n = 20 with CONTROL-RELATIVE bars** — the rejected cohort must beat the admitted
    population's hit rate by a stated margin, not clear an absolute number. Bars that any healthy
    population clears are not bars. **The control is now specified, not merely demanded:** entered
    magna53 trade rows, MFE from `mi_daily_closes` over d+1..d+5 — never from
-   `mi_ep_missed_outcomes`, which cannot contain an admitted name.
+   `mi_ep_missed_outcomes`, which cannot contain an admitted name. **20 is power-justified, not
+   guessed:** if the observed 36.4% / 68.0% rates hold, rejected n = 20 against admitted n = 40 gives
+   Fisher p = 0.027. ⚠ It was set to **40** earlier the same day, against a cohort I believed stood
+   at 20. The predicate returns **10**, and rejections accrue about 2.4 a month (5 May, 0 Jun, 1 Jul,
+   4 Aug, 1 Sep) — so 40 was roughly twelve more months, a parking date wearing a threshold's
+   clothes. 20 is a true doubling, about four months out.
 
 ## What this does not answer
 
@@ -101,5 +106,8 @@ turned out to convert at 4.91% against the band's 2.38%.
    that table carries several rows per ticker-day (one per source/skip category). The review's n ≥ 10
    bar is still met at 11 — but "twice its bar" was false.
 3. **The p of 0.493 was computed on those wrong cohorts** and is replaced by 0.141 above.
+5. **The predicate returns 10, not 20** — the 20 was the joined query's row count. So this review
+   fired at *exactly* its n ≥ 10 bar, not at twice it, and the re-gate was sized off the wrong
+   number (see Recommendation 3).
 4. The median 5-day *return* comparison is dropped rather than restated: it was only computable from
    the missed-outcomes table, which the admitted cohort is not in.

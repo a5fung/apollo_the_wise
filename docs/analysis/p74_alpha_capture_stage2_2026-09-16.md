@@ -85,6 +85,11 @@ And which leg did the work:
 | PRE-swap | 96 | 49 | 5 | 3 | 1 | **44** |
 | POST-swap | 69 | 6 | 1 | 7 | 1 | **6** |
 
+⚠ **The PRE row needed the same test I only applied to POST.** POST is bounded to `alert_date >=
+06-26` so its whole 21-day forward window is post-swap; PRE was not, so alerts from ~06-05 onward
+reach across the boundary and understate PRE. Re-ran the strictly clean PRE cohort
+(`alert_date <= 2026-06-04`): **43 of 81 = 53.1% — identical.** Checked, not assumed.
+
 > **86% of the pre-swap captures (44 of 51) were the flag board and nothing else** — and the great
 > majority at the loose `WATCH` stage. So "alpha capture" in this window was very largely a readout of
 > **how many names the flag board admitted**. When #356 raised that bar by roughly 10×, the capture
