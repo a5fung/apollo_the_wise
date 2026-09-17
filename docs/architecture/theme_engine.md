@@ -696,6 +696,25 @@ stays in the population), which is the safe direction for a filter that removes 
 **Applied only to the brief's unanchored surface** (`compute_unanchored`, per-session so a name
 counts normally before its own announcement). **Theme membership, birth, staging and the EP boost are
 UNCHANGED** — the two theme consequences above are recorded, not acted on.
+
+### ⚠ THE THEME SIDE IS STILL OPEN — the engine reads the SAME unfiltered population
+
+`theme_engine.py:1296` calls `get_rs_leaders(today_str, limit=60)`, the identical helper the brief
+used before this change. So deal-pinned names still enter:
+
+| stage | pool | does CBZ (RS 93.4) qualify? |
+|---|---|---|
+| discovery | top-40 leaders | **yes** |
+| assignment | RS ≥ `ASSIGN_POOL_RS_FLOOR` 70 within top-`ASSIGN_POOL_CEILING` 600 | **yes** |
+| coverage | `THEME_COVERAGE_MIN` 3 members still showing strong RS | **counts toward it** |
+
+✅ **A pool filter would SELF-HEAL — no retroactive surgery.** Membership is re-derived nightly, not
+carried: across 639 consecutive-day theme pairs since 09-08, **145 had a ticker LEAVE** and 61 had
+one join. So filtering the pool drops pinned names on the next run and the two thin themes re-stage
+under their own existing rules.
+
+⛔ **NOT DONE — it is a detection criterion (his sole authority) and it is money-adjacent**, because
+`in_active_theme` → the EP theme boost. Weekend build slot.
 **The exclusion is announced, never silent:** the brief names what it removed, because trading a
 false claim for an invisible drop is not a fix.
 
