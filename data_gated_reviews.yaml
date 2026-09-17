@@ -2073,7 +2073,51 @@ reviews:
          drill-down — task #50) at the same time since they share
          the same data path.
       Origin: 2026-05-09 Phase 1 scaffold ship. Phase 2/3 tasks #50/#51.
-    status: pending
+    can_fire:
+      predicate_runs: "2026-09-16 - returns 30 against threshold 30. A number, not an error."
+      nonzero_possible: "Met and exceeded; prod holds 32 closed/open LIVE trade rows. Moot now -
+        closed because the goal was reached, not because the counter moved."
+      lane_live: "MAGNA53 EP trades on the live account since the 2026-06-22 cutover and
+        mi_live_trades gains rows on every entry, which is what the counter reads."
+      threshold_vs_observed: "30 against 30 - MET since 2026-07-15 and invisible for 63 days because
+        operator_asks evaluated 30 of 58 pending reviews (fixed 2026-09-16)."
+      era_scoped: "Not applicable - this is a build-readiness counter (are there enough closed live
+        trades to be worth visualising), not an outcome comparison, so there is no rule era to
+        scope to. Recorded rather than left blank."
+    status: done
+    resolution_2026_09_16: |
+      CLOSED. THE GOAL IS MET; THE ROUTE IN action_when_ready IS THE ONE THING THAT NEVER HAPPENED,
+      and it never could. Operator, 2026-09-16: "The dash is already live" — then, when I listed it
+      as ready AGAIN in the same session: "What dash flip???? We just confirmed it's live already."
+      He is right twice.
+
+      THE GOAL: stop showing mock data; show real closed LIVE trades once there are >=30.
+      VERIFIED, and verified against the DEPLOYED state rather than a local checkout:
+        - `git show origin/main:apollo_trades_paper.json` = 32 rows, ALL account_mode='live',
+          latest alert_date 2026-09-14 — BYTE-IDENTICAL to what prod returns today.
+        - `resolve_data_mode()` returns 'db' whenever that snapshot exists, so the dash has not
+          served the mock generator since it landed.
+        - Trades page defaults to the LIVE book since 2026-07-18 (portfolio-app2 aa53b5a, #480).
+        - Step 2 of the action DID happen: the read-only role `dashboard_ro` exists on prod.
+      So the >=30-closed-live-trades bar and the mock->live flip are both satisfied.
+
+      ** WHY STEPS 1 AND 3-5 COULD NEVER HAPPEN, which is the finding: ** they specify a Tailscale
+      tunnel plus a direct asyncpg read. `scripts/export_trades_snapshot.sql`'s own header says it
+      plainly — "Streamlit Cloud CANNOT reach the private Postgres". The hosted dashboard will
+      ALWAYS read a committed snapshot. The outcome was reached by a nightly auto-export instead:
+      23:30 UTC from the SERVER CRONTAB via `scripts/auto_export_snapshots.sh` (#194), which
+      regenerates and pushes to portfolio-app2 — last run 2026-09-16 23:30Z.
+
+      🔴 ** AND I GOT THIS WRONG TWICE TODAY BEFORE GETTING IT RIGHT. ** I reported the dash as
+      broken — HOOD showing open, DFTX missing — off a local clone five commits behind origin, never
+      having run `git fetch`. Then I grepped `agents/`, `scripts/*.py` and the dashboard's
+      `.github/workflows`, found nothing, and told him it was never automated; the driver is a `.sh`
+      on a schedule that lives outside the repo entirely. Both corrected to him, and written into
+      [[read-the-delta-before-an-execution-deploy]].
+
+      ⚠ This is exactly defect class (4) in #669 — "the question was already settled somewhere else,
+      and nothing links the entry to its answer". Filed the taxonomy, then repeated the instance in
+      the same session. The audit half of #669 exists for precisely this.
     added_on: 2026-05-09
 
   - review_id: theme_assignment_telemetry_review
