@@ -13009,7 +13009,8 @@ reviews:
     # re-labelling them would measure a system that no longer exists.
     predicate_sql: >-
       SELECT count(*) FROM mi_theme_relevance_cohort
-      WHERE operator_label IS NULL AND alert_date >= DATE '2026-08-04';
+      WHERE operator_label IS NULL AND alert_date >= DATE '2026-08-04'
+        AND stratum = 'themed';
     # Deliberately EMPTY, reviewed rather than skipped: this predicate is a CADENCE trigger
     # (how many unlabelled rows have accrued), not an outcome comparison, so there are no two
     # populations for a column to separate. The stratum split that DOES matter — themed vs
@@ -13043,6 +13044,30 @@ reviews:
         took 33 commits since, and 18 of 31 older themeless-winner labels no longer describe
         themeless names. Re-anchor when the engine next changes materially."
     status: pending
+    resolution_2026_09_16: |
+      ** THE OPERATOR IS RIGHT AND THE PREDICATE WAS WRONG. ** He said he had already labelled the
+      new themes; prod confirms it completely. On 2026-09-13 he labelled 44 rows, ALL of them
+      `stratum='themed'`, and **zero themed rows remain unlabelled** (the scoped predicate reads 0).
+      This entry's action_when_ready says "put the THEMED unlabelled rows in front of him" — there
+      are none. The review was READY with an empty ask.
+
+      THE MISMATCH: the predicate counted `operator_label IS NULL` across EVERY stratum while the
+      action can only act on `themed`. All 136 unlabelled rows (2026-05-06 -> 08-27) are
+      `themeless_winner` — a DIFFERENT question this action does not cover. Same defect class as
+      stop_too_wide_outcome_cohort's predicate counting every strategy's skips (fixed 2026-08-17)
+      and exposure_family_cap_promotion (#517): an entry that marks itself READY on a question it
+      cannot answer. **Predicate now scoped to `stratum = 'themed'`, so it fires only when there is
+      something he can actually rule on.**
+
+      🔵 ** SURFACED ONCE, NOT AN ASK: 136 `themeless_winner` rows are unlabelled. ** That cohort
+      asks a different question — *was there a theme here the engine MISSED?* rather than *did the
+      engine's theme apply?* It is the ground truth behind the 22-of-31 themeless-winner figure the
+      theme programme keeps citing, so growing it has value; but it is HIS time and he has not asked.
+      Recorded here rather than filed, and **not to be raised again unless he asks**
+      [[never-re-ask-an-answered-question]] [[his-theme-labels-are-supplementary]].
+
+      ⚠ Cohort at this reading: 270 rows, 134 labelled (92 y / 41 n / 1 ?), 136 unlabelled; last
+      label 2026-09-13.
     added_on: 2026-09-10
 
   - review_id: spiky_guard_first_engagement
