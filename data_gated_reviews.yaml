@@ -5009,42 +5009,80 @@ reviews:
         detection tables all wrote inside the measured window."
       threshold_vs_observed: "5 against 7 - MET. It had been READY since 2026-09-15 and was invisible
         because operator_asks was evaluating 30 of 58 pending reviews (fixed the same day)."
-      era_scoped: "YES, and it changed the instrument. The cohort is bounded to a MATURE 21-day
-        forward window per this entry's own 2026-08-11 warning, and the Day-1 join was corrected from
-        account_mode='paper' (dark since 2026-07-14) to prefer the LIVE row."
+      era_scoped: "YES, and it took two passes. The cohort is bounded to a MATURE 21-day forward
+        window per this entry's own 2026-08-11 warning, and the Day-1 join was corrected from
+        account_mode='paper' (dark since 2026-07-14) to prefer the LIVE row. ⚠ THE SECOND BOUNDARY WAS
+        MISSED ON THE FIRST PASS and is the bigger one: #356 swapped flag_detector's promotion
+        criteria on 2026-06-26 (commit 932dc066), and the flag leg supplied 44 of 51 pre-swap captures
+        ALONE. Every capture number for this review straddles that date unless split. Results are now
+        reported PRE-swap 53.1% / POST-swap 20.3%, never blended."
     status: done
     resolution_2026_09_16: |
-      RAN 2026-09-16. ** THE ANSWER IS NO — capture did not move — and this entry's own rule fires. **
+      RAN 2026-09-16, then CORRECTED THE SAME DAY. ** The question cannot be answered on this
+      measure: its dominant input changed definition in the middle of the window. ** The review's own
+      <50% rule still fires on every reading, so #668 stands — but what #668 investigates changes.
 
-      RESULT, on a MATURE 21-day window (2026-05-18 -> 2026-08-21), counting all four capture legs
-      the baseline used (flag stage / later EP alert / 9M EP / 9M Day-2):
-        - failed Day 1, all classes ........ 83 of 233 = 35.6%
-        - tried-and-failed only ............ 43 of 133 = 32.3%
-        - won Day 1 (context) .............. 6 of 8    = 75.0%
-      ** Baseline 34%. Target 60-70%. Both readings land on the baseline**, and the cleaner narrow
-      cohort is slightly BELOW it. action_when_ready: "If MAGNA53 capture <50% at Day 21: file
-      followup investigation before declaring Phase 7 complete." -> **#668 filed.**
+      🔴 ** THE FLAG BOARD'S PROMOTION BAR MOVED ON 2026-06-26, MID-WINDOW. ** mi_flag_candidates
+      keeps scanning the same ~550 names a day with no gap in scan days. What collapsed is promotion
+      past `unqualified`: WATCH-or-better ran 2,882 rows in May and 2,451 in June, then ** 215 in July,
+      196 in August, 108 in September. ** The step is a single day, 06-25 -> 06-26, 18.0% -> 2.6%, on
+      an unchanged universe (589 -> 572 names). That is commit 932dc066, "#356 HTF Phase 1+2: swap
+      flag_detector criteria to the sourced spec (replaces the n=1 50/60)". ** Signed and deliberate,
+      NOT a defect ** — the point of #356 was to stop reading a bar derived from one example.
+
+      ** WHY THAT WRECKS THIS MEASURE: the flag leg IS the measure. ** Of 51 pre-swap captures, 49
+      came via the flag board and ** 44 via the flag board ALONE ** (86%), mostly at the loose WATCH
+      stage. So "alpha capture" here was very largely a readout of how many names the flag board
+      admitted. Raise that bar ~10x and the capture number falls by about the same factor — an
+      inherited definition change, not a detected degradation.
+      [[check-the-rule-era-before-comparing-to-actual]]
+
+      RESULT, alpha capture (the review's own measure: failed Day 1 AND +5% over gap-day open within
+      21d), all four legs, split at the boundary:
+        - PRE-swap  05-18..06-24 (old n=1 50/60 spec) .... 51 of 96 = 53.1%
+        - POST-swap 06-30..08-27 (sourced HTF spec) ...... 14 of 69 = ** 20.3% **
+      Leg attribution: PRE-swap flag 49 / later-EP 5 / 9M 3 / Day-2 1, flag-ONLY 44.
+      POST-swap flag 6 / later-EP 1 / 9M 7 / Day-2 1, flag-ONLY 6.
+
+      ⚠ ** I FIRST REPORTED 35.6% AGAINST A 34% BASELINE AND CALLED IT FLAT. THAT WAS THE WRONG TWIN. **
+      ep_delayed_capture_audit.py emits TWO rates and the baseline doc records both: ANY-downstream
+      33.0% (37/112) over every failed-Day-1 name, and ALPHA 34.2% (26/76) over the +5% subset. The
+      review's question and its 60-70% target are written against the ALPHA rate, and so is the
+      2026-08-11 read of 51.0%. My 35.6% was the all-failed rate. The numbers sit close (33.0 vs 34.2)
+      so the arithmetic was nearly right; the comparison was not the one asked for.
+      [[prove-two-numbers-measure-the-same-thing]]
+      ** The 51.0% reproduces EXACTLY under today's corrected join — 104 alpha names, 53 captured — **
+      which is what proves the instrument sound and the two reads commensurable once denominators
+      match. Matched pairs: alpha 34.2% -> 51.0% -> 39.4%; any-downstream 33.0% -> 44.6% -> 35.2%.
+
+      🛑 ** THE 60-70% TARGET NOW POINTS AT LOOSENING THE HTF SPEC — THAT IS THE LINE. ** On the
+      current detector the target is unreachable without re-widening flag promotion, i.e. partially
+      undoing #356. Whether the target survives is HIS call, surfaced not pre-decided.
+      [[recommend-against-the-goal-not-the-test]]
 
       🔴 ** AND THE AUDIT SCRIPT WAS BROKEN, WHICH IS ITS OWN FINDING. ** ep_delayed_capture_audit.py
       classified Day-1 outcome with `lt.account_mode = 'paper'`. Paper has written NOTHING since
       2026-07-14; live carries 120 rows since the 2026-06-22 cutover. So every alert after mid-July
       found no row and fell to NO_TRADE_ROW whatever actually happened to it — destroying precisely
       the failed-Day-1 cohort this review is about. Same shape as his 2026-07-30 correction on the
-      drawdown review ("why looking at paper? we've switched to real money a month ago"). **Fixed in
-      the same commit** to prefer the live row and fall back to paper, so the next run agrees with
-      the numbers above. This entry's 2026-08-11 warning caught the censoring half; nobody had caught
-      the account half.
+      drawdown review ("why looking at paper? we've switched to real money a month ago"). ** Fixed **
+      to prefer the live row and fall back to paper. This entry's 2026-08-11 warning caught the
+      censoring half; nobody had caught the account half. Bar-data coverage is complete: 236 of 236
+      failed-Day-1 names have both a gap-day open and a 21-day forward high, so the alpha filter
+      excludes nobody for missing data.
 
       ⚠ ** NO USABLE PRE-SHIP COMPARISON, and the one the data offers is a trap. ** The same query
       before 2026-05-18, with the maturity bound, leaves FIVE TRADING DAYS (05-11..05-15, n=62)
       reading 58.1%. Reporting "58% -> 36%" as a regression would be one week against three months —
-      a population error, not a finding. The 34% is carried forward from the original Phase 7 read as
-      a stated number, not re-derived.
+      a population error, not a finding. The 34.2% is carried forward as a stated number, not
+      re-derived; its raw rows were purged at 90 days.
 
       ⚠ ** CAPTURE IS A REACH MEASURE, NOT A MONEY MEASURE. ** It counts whether a downstream lane
-      picked the name up, never whether the pickup was tradeable. 60-70% of noise would be worse than
-      35% of substance and nothing here separates them — stated because the target itself is a reach
-      number and could be hit by loosening a lane.
+      picked the name up, never whether the pickup was tradeable. The pre-swap 53% is the proof: it
+      was mostly loose WATCH flags. 60-70% of noise would be worse than 20% of substance.
+
+      ⚠ ** 20.3% is not yet a LEVEL. ** Nine weeks, 69 alpha names — enough to show the break, not
+      enough to call the new steady state.
 
       ⚠ The 9M half of the action is DROPPED DELIBERATELY, not silently: it asked for the flag-stage
       distribution of 9M-origin names, and 9M is retired. Its detection tables still write (646
