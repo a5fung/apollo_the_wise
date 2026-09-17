@@ -12177,8 +12177,60 @@ reviews:
     # the board carries one extra date, not three.
     predicate_sql: null
     threshold: 0
-    earliest_review_date: 2026-09-15
+    can_fire:
+      predicate_runs: "N/A by design - `kind: cadence`. This entry carries NO predicate on purpose:
+        its question is 'does a genuinely SELECTIVE pool exist yet', and the entry itself records
+        that defining `selective` is a scoping decision, not something SQL can compute without
+        inventing an admission criterion unilaterally (THE LINE). A date is the honest gate here and
+        is labelled as such."
+      nonzero_possible: "It fired and the check-in RAN on 2026-09-16. A cadence review cannot read
+        zero - it becomes due when its date arrives, and the ANSWER may be 'not yet', which is what
+        happened. That is a verdict, not an absence."
+      lane_live: "MAGNA53 EP is the live setup and `mi_intraday_bars` keeps persisting
+        alert-ticker-day bars regardless of this entry's status, so the material a future targeted
+        pull would extend is still accruing."
+      threshold_vs_observed: "0 - a cadence entry, so the threshold is inert by construction and the
+        date is the gate. ⚠ Stated rather than left blank: a 0 here must NOT be read as 'the
+        predicate returned nothing'."
+      era_scoped: "The evidence it leans on IS era-scoped and that is why the answer moved today:
+        the 490b re-run used COMPLETE 20-session forward windows where the 2026-08-18 read was
+        censored at a median of 8. Same cohort, matured - which is the only thing that changed."
+    earliest_review_date: 2026-10-17
     status: pending
+    resolution_2026_09_16: |
+      CHECK-IN RUN, one day late. ** ANSWER: NOT YET — and "not yet" is not "never", which this
+      entry's own action insists on. Re-set to 2026-10-17. **
+
+      ** THE DILUTION FINDING GOT STRONGER TODAY, not weaker. ** This entry parked the 620 test
+      because every prior read measured the RAW declined pool and that pool dilutes. I re-ran
+      `_490b_faded_crossed_timing` on COMPLETE forward windows this morning (the 2026-08-18 read was
+      severely censored, median 8 of 20 sessions): the reachable-and-gate-passing class gives
+      **1 tail winner in 65**, and relaxing the boundary 09:35 -> close takes 3 of 65 to 5 of 121 —
+      more names at the same 3-5% share, monotonically. Testing the 620 trigger on that pool would
+      inherit exactly the dilution the parking was about.
+
+      🔑 ** BUT TODAY ALSO PRODUCED THE FIRST REAL CANDIDATE FOR A SELECTIVE SUBSET, which is what
+      this check-in exists to look for. ** The class's four tail winners each died on a DIFFERENT
+      gate, and three of them are not about the trigger at all:
+        ALOY 9.8x  - passed EVERY mechanical gate, killed by the 60-day EP cooldown
+        BCAR 14.7x - market cap $227M, under the $500M floor
+        MASS 8.5x  - market cap $410M, under the $500M floor
+        AMRC 8.8x  - crossed 09:49, after the ORB window
+      ** So a candidate criterion suggests itself: names that clear every mechanical gate and are
+      excluded ONLY by the cooldown or the market-cap floor. ** That is a far more concentrated pool
+      than the raw declined set, and it is where three of four winners actually sit.
+
+      ⛔ ** PROPOSED, NOT ADOPTED. ** This entry says the definition of "selective" is a scoping
+      decision and that inventing one unilaterally is THE LINE — it is an admission criterion in all
+      but name. **His to sign.** If he takes it, the first step is sizing that pool (re-run the 490b
+      probe with a per-name gate-reason breakdown, $0), and only then the targeted minute pull
+      (574 ticker-days on the 2026-08-18 estimate).
+
+      ⚠ Re-set to 2026-10-17 as a CHECK-IN, not a prediction. `mi_intraday_bars` keeps persisting
+      alert-ticker-day bars regardless, so nothing is being lost while it waits.
+      ⚠ The two gates this now points at — the 60-day cooldown and the $500M market-cap floor — are
+      the same two that `floor_timing_never_alerted_crossers_parked` handed forward when it closed
+      today. Two entries arriving at the same place independently is worth noticing.
     kind: cadence
     action_when_ready: >-
       This is a CHECK-IN, not an auto-verdict: look at the declined-name pool as it
