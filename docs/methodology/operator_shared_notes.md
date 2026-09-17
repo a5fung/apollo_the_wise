@@ -1478,17 +1478,41 @@ requiring the announcement leg as a control (low range ALONE is just a sleepy st
 ✅ **The money path is clean** — verified: zero `mi_ep_alerts` rows, zero `mi_live_trades` rows for
 ACVA. The EP side never touched it.
 
-🔴 **The brief's footer asserts a diagnosis the data contradicts.** *"Theme-engine coverage gap — no
-theme claimed these names all week"* is false for this class: a company being acquired is
-**definitionally un-themeable**, and no amount of theme-engine work would ever claim it. The surface
-was designed on the premise that a 5-session unanchored survivor IS a coverage gap
-(`brief_composer._persistent_unanchored_material` docstring). That premise has an unmodelled
-exception, and it sends me at work that does not exist.
+### 🛑 CORRECTION, same evening — operator: *"We have m&a validation"*
 
-⚠ **The RS contamination is the larger half** and is NOT confined to the brief: the leaders list
-feeds theme discovery and every RS-ranked surface. Eight pinned names are sitting in the RS ≥ 90
-population right now.
+**He is right and I should have grepped before writing the section above.** I called this an
+"unmodelled exception" and presented the range-collapse discriminator as if it were a finding. **Both
+already exist in this repo**, and one of them is character-for-character the check I "found":
+
+| existing mechanism | where | what it does | cost |
+|---|---|---|---|
+| **M&A news classifier** | `parabolic_detector._news_check_for_exclusion` + `_NEWS_CHECK_PROMPT` | asks Perplexity *"has there been a buyout, acquisition, merger…"*, parses `event_type: buyout\|acquisition\|merger\|fda\|lawsuit\|earnings\|other\|none`, and **excludes M&A from alert-worthy stages**. 14-day TTL cache, concurrency capped at 3 | **PAID** (Perplexity per call) |
+| **merger-arb pin guard** | `db.get_eod_9m_sugar_babies` | *"intraday range >= 2% of close (**rejects merger-arb pins like DBRG**)"* | **$0**, structural |
+
+**So the accurate statement is not "we have no M&A handling" — it is that we have it TWICE and
+NEITHER is wired to the RS leaders board.** `_news_check_for_exclusion` is `_`-private to
+`parabolic_detector` with no external caller; the range guard sits inside the **retired 9M** path.
+The unanchored/persistent surface references neither. [[check-what-the-system-already-did]]
+
+**That makes the situation better, not worse: the fix is REUSE, not invention**, and the $0 leg is
+already proven in-repo with its own named example (DBRG). My eight-name screen is best read as
+independent confirmation that the existing 2%-range rule generalises — all eight clear it by a wide
+margin, averaging 0.16–0.35% against a 2.0% bar.
+
+### 🔴 What remains genuinely wrong
+
+**The brief's footer asserts a diagnosis the data contradicts.** *"Theme-engine coverage gap — no
+theme claimed these names all week"* is false for this class: a company being acquired is
+**definitionally un-themeable**. `brief_composer._persistent_unanchored_material`'s docstring states
+the premise — *"A name that survives 5 straight sessions with no theme claiming it is a THEME-ENGINE
+COVERAGE GAP, not routine churn"* — and that premise is simply not true for deal-pinned names. It
+sends me at work that does not exist.
+
+⚠ **The RS contamination is the larger half** and is not confined to the brief: the leaders list
+feeds theme discovery and every RS-ranked surface. Eight pinned names sit in the RS ≥ 90 population
+right now, one of them at rank 17.
 
 ⛔ **Nothing changed.** Which names a surface admits is an admission criterion — his sole authority
-(THE LINE). Filing is his call too: the board is at its ceiling, and a carryover is operator-initiated.
+(THE LINE). Filing is his call too: the board is at its ceiling, and a carryover is
+operator-initiated, never agent-proposed.
 [[check-our-code-before-blaming-the-world]] · [[rising-volume-is-a-diagnosis-not-a-revert]]
