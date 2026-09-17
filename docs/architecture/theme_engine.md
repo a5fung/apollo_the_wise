@@ -711,7 +711,8 @@ with it: it would have been the **third** M&A mechanism here — after the retir
 assignment kept ingesting deal-pinned names.
 
 ⚠ **AND "FIXED BY INHERITANCE" WAS ITSELF TOO NARROW — corrected the same evening, by review.**
-`get_rs_leaders` is **one of FIVE** RS pools. The live gather (`theme_engine.py:7886`) takes
+`get_rs_leaders` is **one of SIX** RS pools — five in the theme engine, and a sixth that never
+touches it. The live gather (`theme_engine.py:7886`) takes
 **leaders + `get_rs_velocity` + `get_rs_turners`**; a second live gather (`:7919`, behind
 `birth_gate_on`) adds **`get_rs_accelerators` + `get_rs_recovery_slope`**, and
 `run_theme_discovery_shadow` (`:1296`) takes all five unconditionally. Only the leaders were
@@ -752,20 +753,34 @@ completeness guard, stated plainly so it is not later read as a measured hit.
 | discovery | **`get_rs_turners`** (top-30) | live | completeness — no measured hit; a pinned name is a weak turner by construction (needs RS ≤ 30 four weeks ago) |
 | discovery | **`get_rs_accelerators`** (ADR 0007 a) | gate `on` only — **dark today** | the most deal-shaped selector of the five; ACVA clears both arms |
 | discovery | **`get_rs_recovery_slope`** (ADR 0007 a2) | gate `on` only — **dark today** | `rs_1m≥90 ∧ rs_6m≤30` is the post-gap shape |
+| **evening brief** | **`get_rs_recovery`** — RECOVERY section, top-10 | **live, and he reads it** | `rs_1m≥70 ∧ composite≤45` ranked by the divergence **is** the post-gap signature; outside the theme engine entirely |
 | assignment | RS ≥ `ASSIGN_POOL_RS_FLOOR` 70 within top-`ASSIGN_POOL_CEILING` — fed by `get_rs_leaders` | live | pinned names no longer join |
 | coverage / staging | `THEME_COVERAGE_MIN` 3 members showing strong RS | live | a theme carried by a deal loses its member and re-stages by existing rules |
 
-🔒 **GATED — `tests/test_deal_pinned_not_a_coverage_gap.py` derives the pool list from
-`theme_engine.py`'s own `asyncio.gather` calls by AST walk and asserts each one carries
-`include_deal_pinned`.** Never a hand-kept list: a hand-kept list would rot exactly the way the
-"fixed by inheritance" claim did and would then certify the rot (same reasoning as
-`scripts/exec_loaded_modules.txt` and the #656 Dockerfile derivation). **That guard is how
-`get_rs_accelerators` and `get_rs_recovery_slope` were found at all** — it went red on its first
-run against a fix believed complete. A sixth pool reddens it the day it is added.
+🔒 **GATED — `tests/test_deal_pinned_not_a_coverage_gap.py` derives the pool list from `db`'s own
+function signatures and asserts every one carries `include_deal_pinned=False`.** POOL vs LOOKUP is
+itself derived, never hand-listed: a pool ranks a population and takes `limit`; a lookup answers
+about names the caller already holds and takes `tickers`/`conn`. That split sorted nine `get_rs_*`
+functions into **6 pools and 3 lookups** with no overlap.
 
-📌 **The lesson, the day's recurring one in a new costume:** "the theme engine inherits the fix"
-was an inheritance claim tested against **one** call site. The population was wrong again — five
-pools, one checked, and the two most deal-shaped of them were the two never looked at.
+⚠ **THE GATE WAS REPLACED THE SAME EVENING, AND THE REASON MATTERS MORE THAN THE GATE.** Its first
+version AST-walked `theme_engine.py`'s `asyncio.gather` calls — and it earned its keep immediately,
+going **red on its first run** and surfacing `get_rs_accelerators` and `get_rs_recovery_slope`. But
+its own population was wrong **in the same way the fix had been**: it could only see pools passed to
+a `gather`, in one file. A repo-wide sweep then found `get_rs_velocity`/`get_rs_turners` called
+**bare** in `theme_synthesis.py`, and `get_rs_recovery` feeding the **evening brief** from
+`briefing.py` — outside any gather, outside the theme engine. So the derivation moved down a level,
+from **call sites to definitions**: every RS pool in `db` carries the flag, wherever it is called
+from and whether it is called at all. Strictly stronger, catches a new pool at definition rather
+than at wiring, and reads no source text — so the #653 pin baseline went back **down** to 404
+instead of up.
+
+📌 **The lesson, the day's recurring one, and it repeated INSIDE its own fix:** "the theme engine
+inherits the fix" was an inheritance claim tested against **one** call site. Corrected to five, it
+was still wrong — six, and the sixth was the one that reaches the operator directly. Each time the
+arithmetic was right and the population was wrong. **A guard is only as good as the population IT
+derives**, which is why this one now derives from definitions, the narrowest place the answer can
+hide.
 
 ✅ **It self-heals — no migration.** Membership is re-derived nightly, not carried: across 639
 consecutive-day theme pairs since 09-08, **145 had a ticker LEAVE**. So the two affected themes

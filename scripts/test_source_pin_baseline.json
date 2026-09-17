@@ -51,7 +51,6 @@
     "tests/test_dated_marker_freshness.py": 1,
     "tests/test_day1_stop_leaves_row_open_591.py": 2,
     "tests/test_dead_column_sweep_543.py": 3,
-    "tests/test_deal_pinned_not_a_coverage_gap.py": 1,
     "tests/test_delayed_entry_daily_window_contract.py": 1,
     "tests/test_delayed_entry_shadow.py": 2,
     "tests/test_deploy_scope_core_copies.py": 1,
@@ -137,6 +136,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 405,
+  "total": 404,
   "unescaped": 360
 }

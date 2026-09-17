@@ -132,12 +132,6 @@ async def test_the_existing_sector_filter_still_applies(monkeypatch):
 # Same day's recurring defect in a new costume: the population, never the arithmetic.
 # ══════════════════════════════════════════════════════════════════════════════════════
 
-import ast
-import re
-from pathlib import Path
-
-REPO = Path(__file__).resolve().parents[1]
-
 VEL_ROWS = [
     {"ticker": "BWMN", "rs_now": 93.0, "velocity_score": 41.0},   # the live leak, 2026-09-17
     {"ticker": "HURN", "rs_now": 95.0, "velocity_score": 12.0},
@@ -199,69 +193,79 @@ async def test_velocity_and_turners_scope_the_classifier_and_honour_the_opt_in(w
     )
 
 
-# ── the structural guard: a FOURTH input must not be able to leak the same way ─────────
+# ── the structural guard: a SEVENTH pool must not be able to leak the same way ─────────
+#
+# ⚠ THIS GUARD WAS REPLACED THE SAME EVENING, AND THE REPLACEMENT IS WHY.
+# The first version AST-walked `theme_engine.py`'s `asyncio.gather` calls to derive the pool
+# list. It found `get_rs_accelerators` and `get_rs_recovery_slope` — two pools nobody had looked
+# at — by going RED on its first run. But its own population was wrong in the same way the fix
+# had been: it could only see pools passed to a `gather`, in one file. A repo-wide AST sweep
+# then found `get_rs_velocity`/`get_rs_turners` called BARE in `theme_synthesis.py`, and a SIXTH
+# pool — `get_rs_recovery` — feeding the evening brief's RECOVERY section from `briefing.py`,
+# outside any gather and outside the theme engine entirely.
+#
+# So the derivation moved DOWN a level, from call sites to definitions: every RS POOL in `db`
+# must carry the flag, wherever it is called from and whether it is called at all. That is
+# strictly stronger (call-site-independent), catches a new pool at definition rather than at
+# wiring, and — because `inspect.signature` on an imported function reads no source text — it
+# is not a source pin, so the #653 baseline goes back DOWN to 404 rather than up.
+#
+# POOL vs LOOKUP is derived, never hand-listed: a pool ranks a population and takes `limit`;
+# a lookup answers about names you already hold and takes `tickers`/`conn`. On 2026-09-17 that
+# split 9 `get_rs_*` functions into 6 pools and 3 lookups with no overlap.
 
-def _discovery_inputs_gathered_by_the_theme_engine() -> set[str]:
-    """DERIVED from theme_engine.py, never hand-listed — a hand-kept list would rot exactly
-    the way the 'fixed by inheritance' claim did, and would then certify the rot. Same
-    reasoning as tests/test_deploy_scope_core_copies.py and scripts/exec_loaded_modules.txt.
+import inspect
 
-    Returns every `db.get_rs_*` / `get_rs_*` function name appearing inside an
-    `asyncio.gather(...)` in theme_engine.py — i.e. the RS pools that feed discovery and
-    assignment together."""
-    tree = ast.parse((REPO / "agents" / "market_intelligence" / "theme_engine.py")
-                     .read_text(encoding="utf-8"))
-    found: set[str] = set()
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
+
+def _rs_pools() -> dict:
+    """Every ranked RS population in `db`, derived from signatures. A hand-kept list would rot
+    the way the "fixed by inheritance" claim did and then certify the rot."""
+    out = {}
+    for name in dir(db):
+        if not name.startswith("get_rs_"):
             continue
-        fn = node.func
-        name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
-        if name != "gather":
+        fn = getattr(db, name)
+        if not callable(fn):
             continue
-        for arg in node.args:
-            if isinstance(arg, ast.Call):
-                inner = arg.func
-                iname = inner.attr if isinstance(inner, ast.Attribute) else getattr(inner, "id", "")
-                if iname.startswith("get_rs_"):
-                    found.add(iname)
-    return found
-
-
-def test_every_rs_pool_the_theme_engine_gathers_can_exclude_deal_pinned_names():
-    """THE GUARD THIS FILE'S SECOND HALF EXISTS FOR, and the one that FOUND the last two pools.
-    Any RS pool gathered alongside the others to feed theme discovery must carry the same
-    classification, or a pinned name walks in through whichever input was forgotten. A NEW
-    sixth pool reddens this the day it is added, not the day someone notices a deal stock
-    sitting inside a theme.
-
-    ⚠ The vacuity guard is folded in below rather than living as its own test: a derivation
-    that reads EMPTY makes every assertion here pass, which looks exactly like passing.
-
-    # source-pin-ok: a WIRING check — that the five RS pools theme_engine actually gathers each
-    # carry the flag. The gathered SET exists only in theme_engine's source; there is no runtime
-    # seam short of executing live discovery (Perplexity, DB, sector enrichment). This is the
-    # case check_test_source_pins' own docstring reserves the escape for ("a correct helper
-    # nobody called"), and the derivation is AST-walked, never hand-listed — a hand-kept list
-    # would rot the way the "fixed by inheritance" claim did and then certify the rot. Same
-    # reasoning as tests/test_deploy_scope_core_copies.py deriving from the Dockerfile.
-    """
-    import inspect
-    pools = _discovery_inputs_gathered_by_the_theme_engine()
-    assert len(pools) >= 3, (
-        f"expected the theme engine to gather at least leaders + velocity + turners, found "
-        f"{sorted(pools)} — the extraction broke, or the gather sites moved. Fix the extraction; "
-        f"do not delete the guard: empty here means every assertion below passes by vacuity."
-    )
-    for fname in sorted(pools):
-        fn = getattr(db, fname, None)
-        assert fn is not None, f"theme_engine gathers db.{fname} but it does not exist"
         params = inspect.signature(fn).parameters
+        if "limit" in params and "tickers" not in params and "conn" not in params:
+            out[name] = params
+    return out
+
+
+def test_every_rs_pool_can_exclude_deal_pinned_names():
+    """THE GUARD THIS FILE'S SECOND HALF EXISTS FOR. Any function that ranks an RS population
+    must be able to drop deal-pinned names, or one walks in through whichever pool was
+    forgotten — which is what BWMN was positioned to do through velocity, and what the brief's
+    RECOVERY section could have done with no theme engine involved at all.
+
+    A NEW seventh pool reddens this the day it is DEFINED, before it is ever wired up."""
+    pools = _rs_pools()
+    assert len(pools) >= 6, (
+        f"expected at least the six known RS pools, found {sorted(pools)} — the derivation "
+        f"broke. Fix it; do not delete the guard: empty here means every assertion below "
+        f"passes by vacuity, which reads exactly like passing."
+    )
+    for name, params in sorted(pools.items()):
         assert "include_deal_pinned" in params, (
-            f"db.{fname} feeds theme discovery but cannot exclude deal-pinned names. That is "
-            f"the 2026-09-17 leak: the leaders were filtered, the SSoT claimed the engine was "
-            f"'fixed by inheritance', and BWMN was live in the velocity top-30 the same day."
+            f"db.{name} ranks an RS population but cannot exclude deal-pinned names. That is "
+            f"the 2026-09-17 leak: the leaders were filtered, the SSoT claimed the theme engine "
+            f"was 'fixed by inheritance', and five other pools were never looked at."
         )
         assert params["include_deal_pinned"].default is False, (
-            f"db.{fname} defaults to INCLUDING deal-pinned names — the filter is off by default"
+            f"db.{name} defaults to INCLUDING deal-pinned names — the filter is off by default"
+        )
+
+
+def test_the_pool_lookup_split_is_derived_and_does_not_swallow_lookups():
+    """The other half: the rule must not drag per-ticker lookups in. `get_rs_for_tickers`,
+    `get_rs_history` and `get_rs_on_date` answer about names the caller already holds — there
+    is nothing to exclude, and demanding the flag there would be noise that teaches people to
+    add it thoughtlessly."""
+    pools = _rs_pools()
+    for lookup in ("get_rs_for_tickers", "get_rs_history", "get_rs_on_date"):
+        assert hasattr(db, lookup), f"{lookup} is gone — re-derive the split before trusting it"
+        assert lookup not in pools, (
+            f"{lookup} was classified as a ranked pool. It takes an explicit ticker list, so "
+            f"the caller has already chosen the names; the split rule has drifted."
         )

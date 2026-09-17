@@ -10088,6 +10088,7 @@ async def get_rs_recovery(
     min_rs_1m: float = 70.0,
     max_composite: float = 45.0,
     limit: int = 12,
+    include_deal_pinned: bool = False,
 ) -> list[dict[str, Any]]:
     """Fast V-recovery: a strong 1-month RS still climbing out of a weak composite base.
 
@@ -10096,7 +10097,18 @@ async def get_rs_recovery(
     turn (e.g. the 2026-07 crypto-proxy move — MSTR/COIN/BMNR: rs_1m 75-98 but
     composite 22-40) is invisible in every existing surface. This catches it directly:
     rs_1m >= min_rs_1m AND rs_composite <= max_composite, ranked by the 1m-vs-composite
-    divergence (biggest turn first). Display-only — no entry impact (#492)."""
+    divergence (biggest turn first). Display-only — no entry impact (#492).
+
+    ⚠ DEAL-PINNED EXCLUSION (2026-09-17) — THE SIXTH POOL, and the one that reaches him
+    directly: this feeds the evening brief's RECOVERY section, top-10 (`briefing.py`
+    `_format_recovery_section`). `rs_1m >= 70 AND rs_composite <= 45`, ranked by the
+    divergence, is the post-announcement-gap signature almost exactly — one gap lifts the
+    1-month percentile while the composite (40% 1M + 30% 3M + 30% 6M) still carries the
+    pre-deal months, and ranking BY that divergence puts the freshest deals at the top.
+    ⚠ MEASURED ZERO ON PROD 2026-09-17: no name in the 500-row pool clears both pin legs
+    today. Filtered anyway — "no hit today" is the argument this whole day was spent
+    rejecting, and an acquisition in his RECOVERY list is the exact failure he reported
+    that morning off the brief's unanchored line. `include_deal_pinned=True` opts back in."""
     pool = await get_pool()
     rd = date.fromisoformat(d) if isinstance(d, str) else d
     async with pool.acquire() as conn:
@@ -10110,9 +10122,11 @@ async def get_rs_recovery(
             ORDER BY (rs_1m - rs_composite) DESC
             LIMIT $4
             """,
-            rd, min_rs_1m, max_composite, limit,
+            rd, min_rs_1m, max_composite, limit * 2,
         )
-    return [dict(r) for r in rows]
+        pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
+            rd, [r["ticker"] for r in rows])
+    return [dict(r) for r in rows if r["ticker"] not in pinned][:limit]
 
 
 # --- Market Strength Map, slice 1 (#493): cross-asset crypto-vs-market pulse ---
