@@ -690,8 +690,11 @@ retired 9M path) to a shared helper. Two legs, because low range alone is just a
 
 Calibrated on prod 2026-09-17: the pin leg alone matches **5,560** tickers (useless alone); both legs
 match **54**, which reads like a live M&A book. Of the 8 hand-screened RS ≥ 90 names it catches 7 —
-**ITGR is missed**, its announcement falling outside the lookback. That miss **fails open** (the name
-stays in the population), which is the safe direction for a filter that removes things.
+**ITGR is missed** — ⚠ **corrected 2026-09-17, same evening**: not because its announcement falls outside the
+lookback (it does not — ITGR announced **2026-07-31**, 48 days back), but because no single day
+clears **both** bars. Its announcement day is +20.2% on **6.0×** trailing volume against the 10×
+required. So the knob ITGR misses on is `rvol_bar`, not `lookback_days`. That miss **fails open**
+(the name stays in the population), which is the safe direction for a filter that removes things.
 
 **APPLIED AT THE SOURCE — `db.get_rs_leaders`**, alongside the classifications already living
 there: `SKIP_TICKERS_LIST`, the `mi_tracked_stocks.quote_type` non-equity clause, and
@@ -707,13 +710,62 @@ with it: it would have been the **third** M&A mechanism here — after the retir
 `get_rs_leaders`** (`theme_engine.py:1296`), so the brief would have been clean while discovery and
 assignment kept ingesting deal-pinned names.
 
-**So the theme engine is fixed by inheritance, with no theme-specific code:**
+⚠ **AND "FIXED BY INHERITANCE" WAS ITSELF TOO NARROW — corrected the same evening, by review.**
+`get_rs_leaders` is **one of FIVE** RS pools. The live gather (`theme_engine.py:7886`) takes
+**leaders + `get_rs_velocity` + `get_rs_turners`**; a second live gather (`:7919`, behind
+`birth_gate_on`) adds **`get_rs_accelerators` + `get_rs_recovery_slope`**, and
+`run_theme_discovery_shadow` (`:1296`) takes all five unconditionally. Only the leaders were
+filtered. This was not theoretical. **Observed on prod 2026-09-17 under the current UNFILTERED code**
+(nothing was deployed yet): **BWMN is in prod's velocity top-30 and at leaders rank 193**, and
+ACVA and MKTX are in the uncapped velocity pool one rank move from entering it. So the
+leaders-only fix **would have dropped BWMN from the leaders and left it in velocity**. ⚠ Written
+as the inference it is: an earlier draft of this section said BWMN was "gone from the leaders
+while live in velocity" — a state that existed only in the local tree, never on prod. Same
+shape as the #610 retraction earlier the same day.
 
-| stage | pool | effect |
-|---|---|---|
-| discovery | top-40 leaders | pinned names no longer seed a theme |
-| assignment | RS ≥ `ASSIGN_POOL_RS_FLOOR` 70 within top-`ASSIGN_POOL_CEILING` 600 | pinned names no longer join |
-| coverage / staging | `THEME_COVERAGE_MIN` 3 members showing strong RS | a theme carried by a deal loses its member and re-stages by existing rules |
+⚠ **The two selectors found by the guard rather than by inspection are the most deal-prone of
+all five**, which is why "no hit measured today" was never the right test:
+
+- **`get_rs_accelerators`** — rank improvement **≥800 places** *or* an RS jump **≥25** inside two
+  sessions. That is a definition of an acquisition gap. ACVA went rank **1084 → 7** and **RS
+  54 → 99** on its announcement day, clearing *both* arms of the OR by a wide margin.
+- **`get_rs_recovery_slope`** — `rs_1m ≥ 90 ∧ rs_6m ≤ 30`. One gap lifts `rs_1m` to the top decile
+  while `rs_6m` still measures the pre-deal months — the shape is the deal.
+
+Both are reached in the live path only when the birth gate is `on`; prod reads **`dedup_only`** as
+of 2026-09-17, so they are **dark in live today** and reached unconditionally only by the shadow
+pass. Filtered anyway — a dark selector is precisely the one nobody re-checks the day it is
+switched on.
+
+**Velocity is in fact the WORST leg to leave open.** An announcement gap is a one-week RS jump, so a
+pinned name scores *maximum* front-weighted velocity for the four weeks the gap sits inside the
+window — ACVA went **RS 54 → 99 in a single session** on its deal. Turners are a weaker fit (they
+require RS ≤ 30 four weeks ago) and **none of the eight pinned names were turners**; that leg is a
+completeness guard, stated plainly so it is not later read as a measured hit.
+
+**All three inputs now apply the same filter, with the same `include_deal_pinned=True` escape:**
+
+| stage | input | live? | effect |
+|---|---|---|---|
+| discovery | top-40 **leaders** | live | pinned names no longer seed a theme |
+| discovery | **`get_rs_velocity`** (top-30, `min_rs` `THEME_RS_MIN` 50) | live | ← **the leg that was leaking — BWMN was in it on prod** |
+| discovery | **`get_rs_turners`** (top-30) | live | completeness — no measured hit; a pinned name is a weak turner by construction (needs RS ≤ 30 four weeks ago) |
+| discovery | **`get_rs_accelerators`** (ADR 0007 a) | gate `on` only — **dark today** | the most deal-shaped selector of the five; ACVA clears both arms |
+| discovery | **`get_rs_recovery_slope`** (ADR 0007 a2) | gate `on` only — **dark today** | `rs_1m≥90 ∧ rs_6m≤30` is the post-gap shape |
+| assignment | RS ≥ `ASSIGN_POOL_RS_FLOOR` 70 within top-`ASSIGN_POOL_CEILING` — fed by `get_rs_leaders` | live | pinned names no longer join |
+| coverage / staging | `THEME_COVERAGE_MIN` 3 members showing strong RS | live | a theme carried by a deal loses its member and re-stages by existing rules |
+
+🔒 **GATED — `tests/test_deal_pinned_not_a_coverage_gap.py` derives the pool list from
+`theme_engine.py`'s own `asyncio.gather` calls by AST walk and asserts each one carries
+`include_deal_pinned`.** Never a hand-kept list: a hand-kept list would rot exactly the way the
+"fixed by inheritance" claim did and would then certify the rot (same reasoning as
+`scripts/exec_loaded_modules.txt` and the #656 Dockerfile derivation). **That guard is how
+`get_rs_accelerators` and `get_rs_recovery_slope` were found at all** — it went red on its first
+run against a fix believed complete. A sixth pool reddens it the day it is added.
+
+📌 **The lesson, the day's recurring one in a new costume:** "the theme engine inherits the fix"
+was an inheritance claim tested against **one** call site. The population was wrong again — five
+pools, one checked, and the two most deal-shaped of them were the two never looked at.
 
 ✅ **It self-heals — no migration.** Membership is re-derived nightly, not carried: across 639
 consecutive-day theme pairs since 09-08, **145 had a ticker LEAVE**. So the two affected themes

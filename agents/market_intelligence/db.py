@@ -6523,10 +6523,15 @@ async def get_deal_pinned_tickers(
       BOTH legs ........................ 54 tickers    (reads like a live M&A book:
                                          OGN TECH APLS CRNX NUVL ESPR PAYO UTZ ...)
     Against the 8 RS>=90 names hand-screened that day it catches 7 — ACVA UTZ CBZ SAFT
-    BWMN ATKR MKTX — and MISSES ITGR, whose announcement falls outside the 180-day
-    lookback. ⚠ Stated rather than rounded to 8/8: the miss FAILS OPEN (the name stays
-    in the population, i.e. today's behaviour), which is the safe direction for a filter
-    that removes things from a surface.
+    BWMN ATKR MKTX — and MISSES ITGR. ⚠ CORRECTED 2026-09-17 (same evening): the first draft of this
+    docstring said ITGR's announcement "falls outside the 180-day lookback". IT DOES NOT.
+    ITGR announced 2026-07-31, 48 days back and well inside the window; it clears the GAP
+    bar (+20.2%) and fails the VOLUME bar — 6.0x its trailing 21-day average against the
+    10x required. The original sentence came from reading two separate maxima off one
+    summary query as if they were the same day. The distinction is not cosmetic: it names
+    `rvol_bar` as the knob ITGR misses on, not `lookback_days`.
+    ⚠ Stated rather than rounded to 8/8: the miss FAILS OPEN (the name stays in the
+    population, i.e. today's behaviour), the safe direction for a filter that removes.
 
     `lookback_days` is 180 because a deal pins for months: the 2026-09-17 announcements
     ran 6 to 58 calendar days back and a pin can outlive that several times over. The PIN
@@ -8728,6 +8733,11 @@ async def get_rs_leaders(
     Excludes leveraged/inverse ETFs, broad index ETFs, small-cap biotech/pharma, and
     names PINNED BY AN ANNOUNCED DEAL. Set min_adv=0 to get all stocks unfiltered.
 
+    ⚠ `min_adv=0` MEANS UNFILTERED, AND THAT INCLUDES THE DEAL PIN. `include_deal_pinned`
+    is read only on the liquid branch; the `min_adv=0` branch is the documented raw-universe
+    escape and applies no classification at all — not the sector filter, not the pin. Stated
+    because a caller reading only the signature would assume the flag is global.
+
     ⚠ DEAL-PINNED EXCLUSION (2026-09-17, operator-signed) — AT THE SOURCE, DELIBERATELY.
     A cash acquisition gap injects a name into the RS top ranks and it holds that rank for
     the months until close, because RS is a backward-looking 1M/3M/6M percentile and the
@@ -8854,11 +8864,23 @@ async def get_rs_accelerators(
     d: "str | date", lookback_days: int = 2, min_rank_improve: int = 800,
     min_rs_delta: float = 25.0, min_rs_now: float = 50.0,
     min_adv: float = 500_000, min_price: float = 10.0, limit: int = 30,
+    include_deal_pinned: bool = False,
 ) -> list[dict[str, Any]]:
     """ADR 0007 (a): liquid names igniting fast over `lookback_days` trading days
     (rank-acceleration OR rs jump), at meaningful current RS. Defaults seeded from the
     5/31 replay (impr>=800 ∨ rs_delta>=25, rs_now>=50); tune on shadow flood-count
-    before promoting to live."""
+    before promoting to live.
+
+    ⚠ DEAL-PINNED EXCLUSION (2026-09-17) — the same classification the other four RS pools
+    apply, and THIS IS THE SELECTOR THAT NEEDS IT MOST. Its whole definition — a rank
+    improvement of >=800 places, or an RS jump of >=25, inside two sessions — is a
+    description of an acquisition gap. ACVA went rank **1084 -> 7** and **RS 54 -> 99** on
+    its announcement day: it clears both arms of the OR by a wide margin, on a forward path
+    that is a flat line to the deal close. Currently reached only when the theme birth gate
+    is 'on' — prod reads 'dedup_only' as of 2026-09-17, so this pool is DARK in the live
+    path today — and unconditionally by run_theme_discovery_shadow. Filtered anyway: a
+    selector that is dark today is exactly the one nobody re-checks the day it is switched on.
+    `include_deal_pinned=True` opts back in."""
     from agents.market_intelligence.constants import SKIP_TICKERS_LIST, is_sector_filtered
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -8888,10 +8910,14 @@ async def get_rs_accelerators(
                   WHERE ts.ticker = t.ticker AND ts.quote_type IS NOT NULL AND ts.quote_type != 'EQUITY'
               )
         """, score_date, prior, min_adv, min_price, SKIP_TICKERS_LIST, min_rs_now)
+        pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
+            score_date, [r["ticker"] for r in rows])
         out: list[dict[str, Any]] = []
         for r in rows:
             row = dict(r)
             if is_sector_filtered(row.get("sector"), row.get("close")):
+                continue
+            if row.get("ticker") in pinned:
                 continue
             if _is_rank_accelerator(
                 row.get("rs_rank"), row.get("prior_rank"),
@@ -8908,10 +8934,17 @@ async def get_rs_accelerators(
 async def get_rs_recovery_slope(
     d: "str | date", min_rs_1m: float = 90.0, max_rs_6m: float = 30.0,
     min_adv: float = 500_000, min_price: float = 10.0, limit: int = 30,
+    include_deal_pinned: bool = False,
 ) -> list[dict[str, Any]]:
     """ADR 0007 (a2): liquid names re-rating off a low base (rs_1m high, rs_6m low) —
     the recovering-cohort signal rank-acceleration misses. Defaults seeded from the 5/31
-    replay (rs_1m>=90 ∧ rs_6m<=30); tune on shadow flood-count before promoting to live."""
+    replay (rs_1m>=90 ∧ rs_6m<=30); tune on shadow flood-count before promoting to live.
+
+    ⚠ DEAL-PINNED EXCLUSION (2026-09-17) — same classification as the other four RS pools,
+    and this shape is deal-prone for the same reason as the accelerators: a single
+    announcement gap lifts rs_1m to the top decile while rs_6m is still measuring the
+    pre-deal months, which is exactly `rs_1m>=90 AND rs_6m<=30`. ACVA read 99 / low on
+    2026-09-17. `include_deal_pinned=True` opts back in."""
     from agents.market_intelligence.constants import SKIP_TICKERS_LIST, is_sector_filtered
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -8931,10 +8964,14 @@ async def get_rs_recovery_slope(
             ORDER BY rs_1m DESC NULLS LAST
             LIMIT $7
         """, score_date, min_adv, min_price, SKIP_TICKERS_LIST, min_rs_1m, max_rs_6m, limit * 2)
+        pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
+            score_date, [r["ticker"] for r in rows])
         out: list[dict[str, Any]] = []
         for r in rows:
             row = dict(r)
             if is_sector_filtered(row.get("sector"), row.get("close")):
+                continue
+            if row.get("ticker") in pinned:
                 continue
             out.append(row)
             if len(out) >= limit:
@@ -9942,6 +9979,7 @@ async def get_rs_velocity(
     d: "str | date",
     min_rs: float = 40.0,
     limit: int = 30,
+    include_deal_pinned: bool = False,
 ) -> list[dict[str, Any]]:
     """
     Return stocks ranked by sustained multi-week RS acceleration.
@@ -9959,6 +9997,20 @@ async def get_rs_velocity(
     - Have current rs_composite >= min_rs (filters out weak stocks "recovering")
     - Have a positive velocity score (net rising RS over the window)
     - Most recent week (v1w) must be positive (still accelerating, not stalled)
+    - Is not PINNED BY AN ANNOUNCED DEAL (below)
+
+    ⚠ DEAL-PINNED EXCLUSION (2026-09-17) — the SAME filter `get_rs_leaders` applies, and it
+    belongs here for a reason the leaders docstring does not cover. An announcement gap is a
+    huge one-week RS jump, so a pinned name scores *maximum* velocity for the four weeks the
+    gap sits inside the window: ACVA went RS 54 -> 99 in a single session on its deal. The
+    reading is real arithmetic on a forward path that is a flat line to the close.
+    OBSERVED ON PROD 2026-09-17, under the CURRENT UNFILTERED code (nothing was deployed
+    yet): BWMN sits in prod's velocity top-30 AND at leaders rank 193, and ACVA + MKTX sit
+    in the uncapped velocity pool. So the leaders-only fix would have removed BWMN from the
+    leaders and LEFT IT IN VELOCITY. ⚠ Stated as the inference it is — the earlier wording
+    here claimed BWMN was "gone from the leaders while live in velocity", which is a state
+    that existed only in the local tree, never on prod. One of five pools filtered is not a
+    source fix. `include_deal_pinned=True` opts back in.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -10021,9 +10073,14 @@ async def get_rs_velocity(
               AND velocity_score > 0 AND (rs_now - rs_7d) > 0
             ORDER BY velocity_score DESC
             LIMIT $8
-        """, available, d0, d7, d14, d21, d28, min_rs, limit)
+        """, available, d0, d7, d14, d21, d28, min_rs, limit * 2)
 
-        return [dict(r) for r in rows]
+        # Over-fetch then filter then truncate — the shape get_rs_leaders uses, and for the
+        # same reason: the classifier is scoped to the rows we already have, never the universe.
+        pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
+            d0, [r["ticker"] for r in rows])
+        out = [dict(r) for r in rows if r["ticker"] not in pinned]
+        return out[:limit]
 
 
 async def get_rs_recovery(
@@ -10311,6 +10368,7 @@ async def get_rs_turners(
     max_rs_4w_ago: float = 30.0,
     min_consecutive_weeks: int = 3,
     limit: int = 40,
+    include_deal_pinned: bool = False,
 ) -> list[dict[str, Any]]:
     """
     Find stocks turning from weak to strengthening — the early rotation signal.
@@ -10320,6 +10378,12 @@ async def get_rs_turners(
     - RS improved for min_consecutive_weeks in a row (sustained turn)
     - Current RS > earliest RS by at least 10 points (meaningful improvement)
     - Stocks must have sector data (NULL sectors excluded)
+    - Is not PINNED BY AN ANNOUNCED DEAL — same filter as get_rs_velocity above, applied
+      here because this is the third discovery input and a fix that leaves one path open
+      is not a source fix. A pinned name is a WEAKER fit for the turner shape (it needs
+      RS <= 30 four weeks ago) and none of the eight names pinned on 2026-09-17 were
+      turners — so this leg is a completeness guard, not a measured hit. Stated plainly
+      rather than implied, so nobody later reads it as evidence the leg was leaking.
 
     Returns rows with: ticker, sector, rs_now, rs_7d..rs_28d, v1w..v4w,
     consecutive_up_weeks, rs_gain (total improvement).
@@ -10373,9 +10437,14 @@ async def get_rs_turners(
             ORDER BY consecutive_up_weeks DESC, rs_now - rs_earliest DESC
             LIMIT $9
         """, available, d0, d7, d14, d21, d28,
-             max_rs_4w_ago, min_consecutive_weeks, limit)
+             max_rs_4w_ago, min_consecutive_weeks, limit * 2)
 
-        return [dict(r) for r in rows]
+        # Over-fetch / filter / truncate — identical shape to get_rs_velocity and
+        # get_rs_leaders, so all three discovery inputs drop the same names.
+        pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
+            d0, [r["ticker"] for r in rows])
+        out = [dict(r) for r in rows if r["ticker"] not in pinned]
+        return out[:limit]
 
 
 async def get_down_day_resilience(
