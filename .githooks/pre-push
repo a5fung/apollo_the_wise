@@ -67,6 +67,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     saw_ref=1
     [ -z "${local_sha:-}" ] && continue
     [ "$local_sha" = "$zero" ] && continue                 # branch delete — nothing to test
+    PUSH_SHA="$local_sha"                                  # the commit actually going to the remote
     if [ "$remote_sha" = "$zero" ]; then
         py_changed=1                                       # new branch/ref → run the suite
     elif git diff --name-only "$remote_sha..$local_sha" 2>/dev/null | grep -qE "$_DATA_RE"; then
@@ -115,8 +116,50 @@ if [ -f scripts/live_rules.py ]; then
     fi
 fi
 
+# ⚠ TEST THE COMMIT BEING PUSHED, NOT THE WORKING TREE (2026-09-17).
+# This hook ran `pytest tests/` in place, so it graded whatever happened to be on disk. On
+# 2026-09-17 the working tree carried test fixes that had not been committed yet (a separate gate
+# was blocking the commit) while HEAD was `14710eb4` — nine tests red. The hook saw a green tree,
+# let the red commit through, and CI rejected it: the precise "passes locally, reds CI" class this
+# hook's own header says it exists to close, one layer up from the 2026-08-06 data-file gap.
+#
+# When the tree is dirty we run the suite in a throwaway worktree checked out at the pushed SHA.
+# That is also strictly MORE faithful to CI than the dirty tree, since CI builds from a clean
+# checkout with no untracked files. Clean tree → run in place, which is identical and cheaper.
+_SUITE_DIR="."
+_TMP_WT=""
+# Dirty RELATIVE TO THE PUSHED COMMIT — not to HEAD. HEAD can itself differ from PUSH_SHA, and
+# that is one of the two ways the tree stops representing what the remote is about to receive.
+_tree_matches_push=0
+if [ -n "${PUSH_SHA:-}" ] \
+   && git diff --quiet "$PUSH_SHA" -- 2>/dev/null \
+   && [ -z "$(git ls-files --others --exclude-standard 2>/dev/null | head -1)" ]; then
+    _tree_matches_push=1
+fi
+if [ "$_tree_matches_push" -eq 0 ]; then
+    _TMP_WT="$(mktemp -d -t apollo-prepush-XXXXXX 2>/dev/null || true)"
+    if [ -n "$_TMP_WT" ] && git worktree add --detach --quiet "$_TMP_WT" "${PUSH_SHA:-HEAD}" 2>/dev/null; then
+        _SUITE_DIR="$_TMP_WT"
+        echo "▶ pre-push: tree is dirty — testing the PUSHED commit ${PUSH_SHA:0:8} in a temp worktree."
+    else
+        # fail-safe: never skip the suite because the worktree could not be made. Run in place and
+        # say so, so a green result is not mistaken for a green commit.
+        [ -n "$_TMP_WT" ] && rmdir "$_TMP_WT" 2>/dev/null
+        _TMP_WT=""
+        echo "⚠ pre-push: could not create a temp worktree — running against the WORKING TREE."
+        echo "  A green result here does NOT prove the pushed commit is green."
+    fi
+fi
+
+_cleanup_wt() {
+    if [ -n "$_TMP_WT" ]; then
+        git worktree remove --force "$_TMP_WT" 2>/dev/null || rm -rf "$_TMP_WT" 2>/dev/null
+    fi
+}
+trap _cleanup_wt EXIT
+
 echo "▶ pre-push: running full test suite (python -m pytest tests/ -q) — mirrors CI…"
-if ! "$PY_BIN" -m pytest tests/ -q; then
+if ! ( cd "$_SUITE_DIR" && "$PY_BIN" -m pytest tests/ -q ); then
     echo "✘ pre-push: test suite FAILED — push blocked (this is exactly what CI would reject)."
     echo "  Fix the failures, or bypass with: git push --no-verify (emergency only)."
     exit 1
