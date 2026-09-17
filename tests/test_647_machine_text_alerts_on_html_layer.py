@@ -397,6 +397,13 @@ def _src(obj) -> str:
      ['send_telegram_message(md_to_html(result["digest_message"]), parse_mode="HTML")']),
     ("cost_board.run_truncation_check",
      ['send_telegram_message(md_to_html("\\n".join(lines)), parse_mode="HTML")']),
+    # THE FOURTEENTH, added 2026-09-17. Missed by the original migration (144666a9 never touched
+    # ep_detector.py) and found while verifying this task's own DoD — which says "the alerts that
+    # carry machine text ... are sent WITHOUT a Markdown parse mode", not "the thirteen senders the
+    # commit happened to touch". It 400'd 4 of 4 days after the deploy, carrying
+    # `ep_rt_sustain_reject` / `ep_rt_halt_suspect`.
+    ("ep_detector.send_rt_miss_digest",
+     ['send_telegram_message(md_to_html(" ".join(parts)), parse_mode="HTML")']),
     ("broker.entry_pipeline.submit_trade_entry",
      ['auto-enter failed — "\n                f"check logs (trade_id={trade_id})"\n            ), parse_mode="HTML")',
       'proposal send failed — "\n        f"check logs (trade_id={trade_id})"\n    ), parse_mode="HTML")']),
@@ -430,3 +437,47 @@ def test_the_single_send_senders_have_no_bare_legacy_send_left():
         n_html = src.count('parse_mode="HTML"')
         # the lazy `from … import send_telegram_message` lines are not calls
         assert n_send >= 1 and n_send == n_html, (fn.__qualname__, n_send, n_html)
+
+
+# ── the fourteenth sender (2026-09-17) ───────────────────────────────────────────────────────────
+
+_RT_DIGEST_REAL_BODY = (
+    "🚨 Real-time EP misses today (1 residual — the delay-missed class the hybrid can't catch): "
+    "FPS +9.68% @09:40. No entry (observability); grade/catalyst unconfirmed. "
+    "🔕 Declined, not missed (1 — the overlay saw these and refused on a named guard, so they were "
+    "never delay-missed): FPS +9.68% @09:40 (ep_rt_sustain_reject). "
+    "👁 #490 rt-universe catches (2 more, guard-passing): TANH +17.77% @09:40 (ep_rt_halt_suspect)."
+)
+
+
+def test_the_rt_miss_digest_body_that_400d_every_day_converts_and_keeps_its_identifiers():
+    """The REAL failing payload, reconstructed from the prod `telegram_markdown_fallback` rows of
+    2026-09-14/15/16/17 (one a day at exactly 10:00:00 ET, 4 of 4 days). Telegram rejected it
+    because `ep_rt_sustain_reject` and `ep_rt_halt_suspect` each carry three bare `_`, which the v1
+    parser reads as italic delimiters — and the plain-text retry behind it strips paired
+    underscores, so the identifiers the digest exists to carry arrived corrupted."""
+    from shared.telegram_format import md_to_html
+    out = md_to_html(_RT_DIGEST_REAL_BODY)
+    for ident in ("ep_rt_sustain_reject", "ep_rt_halt_suspect"):
+        assert ident in out, (
+            f"{ident} did not survive conversion — this digest exists to carry exactly these "
+            f"identifiers, and a mangled one is worse than a failed send"
+        )
+    assert "<i>" not in out and "<em>" not in out, (
+        "an underscore was read as emphasis — the exact v1 behaviour that 400'd this body"
+    )
+    assert out.count("<") == out.count(">"), "unbalanced tags would 400 on the HTML layer too"
+
+
+def test_the_rt_miss_digest_has_no_bare_legacy_send_left():
+    """MUTATION TARGET: reverting `send_rt_miss_digest` to `send_telegram_message(" ".join(parts))`.
+    That bare call is what shipped, and it is what the parametrized source check above would miss
+    if a SECOND send were added alongside the converted one."""
+    # source-pin-ok: this asserts on the ABSENCE of a call shape, which has no runtime seam — the
+    # function is DB-bound end to end and a behavioural test cannot observe a send that is not made.
+    # Same reasoning as `test_the_single_send_senders_have_no_bare_legacy_send_left` directly above.
+    from agents.market_intelligence import ep_detector
+    src = _src(ep_detector.send_rt_miss_digest)
+    bare = [l for l in src.splitlines()
+            if "send_telegram_message(" in l and "md_to_html" not in l]
+    assert not bare, f"a bare legacy-Markdown send is back in send_rt_miss_digest: {bare}"

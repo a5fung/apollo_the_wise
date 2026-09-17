@@ -3065,7 +3065,14 @@ async def send_rt_miss_digest(run_date=None) -> int:
             + " · ".join(catch_items) + ".")
     try:
         from agents.market_intelligence.briefing import send_telegram_message
-        await send_telegram_message(" ".join(parts))
+        from shared.telegram_format import md_to_html
+        # #647, THE FOURTEENTH SENDER — missed by the 2026-09-12 migration (144666a9 never touched
+        # this file) and caught on 2026-09-17 while verifying that task's own DoD. This digest
+        # carries `ep_rt_sustain_reject` and `ep_rt_halt_suspect`, so legacy Markdown 400'd it on
+        # EVERY firing day since the deploy — 4 of 4 — and the operator only ever saw the
+        # plain-text retry, which strips paired underscores and delivers those identifiers
+        # corrupted. Delivery only: the words are unchanged.
+        await send_telegram_message(md_to_html(" ".join(parts)), parse_mode="HTML")
     except Exception:  # loud-ok: Telegram best-effort; the audit rows are durable
         pass
     return len(items) + len(catch_items) + len(declined_items)
