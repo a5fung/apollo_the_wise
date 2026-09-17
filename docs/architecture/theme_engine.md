@@ -693,30 +693,38 @@ match **54**, which reads like a live M&A book. Of the 8 hand-screened RS ≥ 90
 **ITGR is missed**, its announcement falling outside the lookback. That miss **fails open** (the name
 stays in the population), which is the safe direction for a filter that removes things.
 
-**Applied only to the brief's unanchored surface** (`compute_unanchored`, per-session so a name
-counts normally before its own announcement). **Theme membership, birth, staging and the EP boost are
-UNCHANGED** — the two theme consequences above are recorded, not acted on.
+**APPLIED AT THE SOURCE — `db.get_rs_leaders`**, alongside the classifications already living
+there: `SKIP_TICKERS_LIST`, the `mi_tracked_stocks.quote_type` non-equity clause, and
+`is_sector_filtered`. A deal pin is the same KIND of fact as "this is an ETF" — a per-ticker
+classification every downstream surface inherits without knowing what a deal is. The screen is
+scoped to the rows already fetched (~`limit*2`), not the universe. `include_deal_pinned=True` opts
+back in, so classification lives in one place and POLICY stays the caller's.
 
-### ⚠ THE THEME SIDE IS STILL OPEN — the engine reads the SAME unfiltered population
+⚠ **A FIRST CUT PATCHED `brief_composer.compute_unanchored` AND WAS REVERTED THE SAME DAY**
+(operator: *"Is there a better fix upstream so it's caught at the source"*). Two things were wrong
+with it: it would have been the **third** M&A mechanism here — after the retired 9M range rule and
+`parabolic_detector._news_check_for_exclusion` — and **the theme engine calls the same
+`get_rs_leaders`** (`theme_engine.py:1296`), so the brief would have been clean while discovery and
+assignment kept ingesting deal-pinned names.
 
-`theme_engine.py:1296` calls `get_rs_leaders(today_str, limit=60)`, the identical helper the brief
-used before this change. So deal-pinned names still enter:
+**So the theme engine is fixed by inheritance, with no theme-specific code:**
 
-| stage | pool | does CBZ (RS 93.4) qualify? |
+| stage | pool | effect |
 |---|---|---|
-| discovery | top-40 leaders | **yes** |
-| assignment | RS ≥ `ASSIGN_POOL_RS_FLOOR` 70 within top-`ASSIGN_POOL_CEILING` 600 | **yes** |
-| coverage | `THEME_COVERAGE_MIN` 3 members still showing strong RS | **counts toward it** |
+| discovery | top-40 leaders | pinned names no longer seed a theme |
+| assignment | RS ≥ `ASSIGN_POOL_RS_FLOOR` 70 within top-`ASSIGN_POOL_CEILING` 600 | pinned names no longer join |
+| coverage / staging | `THEME_COVERAGE_MIN` 3 members showing strong RS | a theme carried by a deal loses its member and re-stages by existing rules |
 
-✅ **A pool filter would SELF-HEAL — no retroactive surgery.** Membership is re-derived nightly, not
-carried: across 639 consecutive-day theme pairs since 09-08, **145 had a ticker LEAVE** and 61 had
-one join. So filtering the pool drops pinned names on the next run and the two thin themes re-stage
-under their own existing rules.
+✅ **It self-heals — no migration.** Membership is re-derived nightly, not carried: across 639
+consecutive-day theme pairs since 09-08, **145 had a ticker LEAVE**. So the two affected themes
+(`Management & Business Advisory Consulting Firms` {HURN, CBZ} → 1 member; `Emerging Medical Device
+Innovators Breakout` → 2) fall under `THEME_COVERAGE_MIN` on the next run and fade by the rules
+already in this file.
 
-⛔ **NOT DONE — it is a detection criterion (his sole authority) and it is money-adjacent**, because
-`in_active_theme` → the EP theme boost. Weekend build slot.
-**The exclusion is announced, never silent:** the brief names what it removed, because trading a
-false claim for an invisible drop is not a fix.
+⚠ **The exclusion is silent, deliberately and by precedent** — ETFs, non-equities and small-cap
+healthcare are already dropped here without announcement. The classification is documented in this
+section and in the function's docstring, which is where a reader looks for "why is X not a leader".
+
 
 ## Change log
 

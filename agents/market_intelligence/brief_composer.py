@@ -707,7 +707,6 @@ def _ep_material(data: BriefData) -> tuple[list[str] | None, dict]:
 
 def compute_unanchored(
     leaders: list[dict], themed_tickers: set, *, rs_floor: float = 80.0,
-    pinned_tickers: set | None = None,
 ) -> list[str]:
     """RS >= rs_floor leaders in no theme (same-date membership) — parity
     with the legacy _format_unanchored_section filter (ETF prefix + index
@@ -718,20 +717,16 @@ def compute_unanchored(
     extracted so the ETF-prefix / index-skip logic has exactly one copy for
     both callers to share, rather than a second copy that can drift.
 
-    `pinned_tickers` (2026-09-17, operator-signed) drops names whose price is
-    PINNED BY AN ANNOUNCED DEAL — see `db.get_deal_pinned_tickers`. A cash
-    acquisition gap injects a name into the RS top ranks and it holds that rank
-    for months on a flat forward path: ACVA went rank 1084 -> 7 on its
-    announcement day and was still 17 six sessions later on 0.2%-range bars. It
-    is not momentum and no theme will ever claim it, so counting it as an
-    unanchored leader states a coverage gap that does not exist.
-    Empty/None = no filtering, so every existing caller and test is unchanged."""
-    pinned = pinned_tickers or set()
+    ⚠ Deal-pinned names (an announced acquisition) never reach here: they are
+    excluded AT THE SOURCE in `db.get_rs_leaders`, alongside the ETF/non-equity
+    /sector classifications that already live there. A 2026-09-17 first cut
+    filtered them in this function and was reverted the same day — it would have
+    been a second copy of a classification, and it would have left the theme
+    engine (which calls the same `get_rs_leaders`) still ingesting them."""
     return [
         s["ticker"] for s in leaders
         if (s.get("rs_composite") or 0) >= rs_floor
         and s.get("ticker") not in themed_tickers
-        and s.get("ticker") not in pinned
         and not str(s.get("ticker") or "").startswith("X")
         and s.get("ticker") not in ("SPY", "QQQ", "IWM")
     ]
@@ -759,7 +754,7 @@ def compute_persistent_unanchored_sets(
     def _unanchored(session: dict) -> set[str]:
         return set(compute_unanchored(
             session.get("leaders") or [], session.get("themed_tickers") or set(),
-            rs_floor=rs_floor, pinned_tickers=session.get("pinned_tickers") or set(),
+            rs_floor=rs_floor,
         ))
 
     today_sets = [_unanchored(s) for s in sessions[:streak]]
@@ -810,15 +805,6 @@ def _persistent_unanchored_material(data: BriefData) -> list[str] | None:
         lines.append(f"⚓ Unanchored persistent ({tag}) — left: "
                      + " ".join(f"`{_esc(t)}`" for t in left))
     lines.append("   _theme-engine coverage gap — no theme claimed these names all week · `/themes`_")
-    # 2026-09-17: say what was REMOVED, never drop it silently. The operator caught ACVA on
-    # this very line — "but stock is being bought out" — and a deal-pinned name is not a
-    # coverage gap, it is un-themeable by construction. Excluding it without saying so would
-    # trade a false claim for an invisible one, which is the failure this file's own
-    # "silence ≠ didn't run" rule exists to prevent.
-    pinned_today = (sessions[0].get("pinned_tickers") or set()) if sessions else set()
-    if pinned_today:
-        lines.append("   _(excluded as deal-pinned — an announced acquisition, not momentum: "
-                     + " ".join(f"`{_esc(t)}`" for t in sorted(pinned_today)) + ")_")
     return lines
 
 

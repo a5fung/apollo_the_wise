@@ -807,10 +807,22 @@ def test_rs_leader_ordering_breaks_ties_deterministically():
 
     Pinned as a test because the fix is one word in an ORDER BY and would be trivially lost.
     """
+    # source-pin-ok: the property is the SQL's ORDER BY tiebreaker, which has no runtime seam —
+    # `get_rs_leaders` is DB-bound end to end and a behavioural test would have to stand up a
+    # Postgres with tied rs_composite values to observe a non-deterministic boundary that is,
+    # by definition, only sometimes wrong. Pinning the one word is the honest check. (Re-annotated
+    # 2026-09-17 when the deal-pin docstring pushed the SQL out of this test's fixed slice window.)
     import pathlib
     src = pathlib.Path("agents/market_intelligence/db.py").read_text()
     i = src.index("async def get_rs_leaders")
-    body = src[i:i + 3000]
+    # ⚠ Slice to the NEXT top-level def, not a fixed character count. It was `src[i:i + 3000]`
+    # and broke on 2026-09-17 when the deal-pinned exclusion added ~1.4k of docstring: the SQL
+    # slid past the window and this test reported a MISSING TIEBREAKER that was still there.
+    # A guard whose reach depends on how much prose precedes the code is a false alarm waiting
+    # to happen — and a false RED trains people to widen the number again.
+    _rest = src[i + 1:]
+    _end = _rest.find("\nasync def ")
+    body = src[i:i + 1 + (_end if _end != -1 else len(_rest))]
     assert "ORDER BY rs_composite DESC NULLS LAST\n" not in body, "bare rs ordering is non-deterministic"
     assert "ORDER BY s.rs_composite DESC NULLS LAST\n" not in body
     assert body.count("DESC NULLS LAST, s.ticker") == 1, "the min_adv>0 branch needs the tiebreaker"

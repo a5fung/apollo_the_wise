@@ -8722,10 +8722,31 @@ async def get_rs_leaders(
     limit: int = 30,
     min_adv: float = 500_000,
     min_price: float = 10.0,
+    include_deal_pinned: bool = False,
 ) -> list[dict[str, Any]]:
     """Top RS stocks for a given date, filtered to liquid names (min ADV + min price).
-    Excludes leveraged/inverse ETFs, broad index ETFs, and small-cap biotech/pharma.
-    Set min_adv=0 to get all stocks unfiltered.
+    Excludes leveraged/inverse ETFs, broad index ETFs, small-cap biotech/pharma, and
+    names PINNED BY AN ANNOUNCED DEAL. Set min_adv=0 to get all stocks unfiltered.
+
+    ⚠ DEAL-PINNED EXCLUSION (2026-09-17, operator-signed) — AT THE SOURCE, DELIBERATELY.
+    A cash acquisition gap injects a name into the RS top ranks and it holds that rank for
+    the months until close, because RS is a backward-looking 1M/3M/6M percentile and the
+    forward path is a flat line: ACVA went rank 1084 -> 7 on its announcement day and was
+    still 17 six sessions later on 0.2%-range bars.
+
+    It is filtered HERE rather than in each consumer because this function is where the
+    universe is already classified — `SKIP_TICKERS_LIST`, the `mi_tracked_stocks.quote_type`
+    non-equity clause, and `is_sector_filtered` all live in these few lines. A deal pin is
+    the same KIND of fact as "this is an ETF": a per-ticker classification that every
+    downstream surface should inherit without knowing what a deal is. The first cut of this
+    fix patched `brief_composer.compute_unanchored` instead and was REVERTED the same day —
+    that would have been the third M&A mechanism in the codebase (after the retired 9M
+    range rule and parabolic's paid news check) and would have left the theme engine, which
+    calls this same function, still ingesting them. (operator: *"Is there a better fix
+    upstream so it's caught at the source"*.)
+
+    `include_deal_pinned=True` opts back in — for a surface that WANTS them, e.g. an M&A
+    monitor. Classification lives in one place; policy stays the caller's.
 
     ⚠ Ties are broken by TICKER, deliberately (2026-08-04). `rs_composite` alone is not a
     total order — RS is a percentile and names bunch at the top, so with a bare
@@ -8754,10 +8775,16 @@ async def get_rs_leaders(
                 ORDER BY s.rs_composite DESC NULLS LAST, s.ticker
                 LIMIT $2
             """, score_date, limit * 2, min_adv, SKIP_TICKERS_LIST, min_price)
+            # Scoped to the rows we already fetched (~limit*2), not the universe — the
+            # classifier is cheap but there is no reason to screen 9,700 names to filter 60.
+            pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
+                score_date, [r["ticker"] for r in rows])
             filtered = []
             for r in rows:
                 row = dict(r)
                 if is_sector_filtered(row.get("sector"), row.get("close")):
+                    continue
+                if row.get("ticker") in pinned:
                     continue
                 filtered.append(row)
                 if len(filtered) >= limit:
