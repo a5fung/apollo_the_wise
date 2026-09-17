@@ -72,6 +72,29 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
               "call, filed in docs/setups/htf.md § Known limitations. Runup reads 41% on these dates."),
     ),
     HTFLabelledMember(
+        ticker="MRNA",
+        label_date=date(2026, 9, 17),
+        label_source=("operator-shared trader post 2026-09-17 07:53 (Leif Soreide, @LeifSoreide); "
+                      "his chart is dated 2026-09-16 10:38, i.e. BEFORE the move he called. "
+                      "Transcribed in docs/methodology/operator_shared_notes.md § 2026-09-17"),
+        trader_read=("High Tight Flag. \"Wanted closer to 5 weeks because the flag was a touch deep "
+                     "(~26%), but that was mostly one stretch day (~1% over).\" Breakout Watch spot "
+                     "= the flag's upper rail; he says it triggered 09-17."),
+        assert_dates=(date(2026, 9, 11), date(2026, 9, 15)),
+        expected="rejected:flag_low_",
+        note=("RECORDED GAP, and a DIFFERENT gate from HNGE's — which is the point of adding it. "
+              "The pole is never the issue here: runup reads 2.4 (240%) against a 90% floor. We "
+              "reject on FLAG DEPTH, the same reason for 15 consecutive sessions 08-25 → 09-15: "
+              "`flag_low_128.61_below_75%_of_pole_176.66` = a 27.2% retracement against our 25% "
+              "ceiling. He called it 26.2% and took it anyway because the breach was \"mostly one "
+              "stretch day (~1% over)\" — we have no one-bar allowance, we read the extreme. "
+              "⚠ AND ON 2026-09-16 WE INVALIDATED IT BY FIVE CENTS: `close_145.62_below_sma20_145.67`, "
+              "a 0.03% margin, the session before his breakout. Not asserted here because the "
+              "INVALIDATED reason has a different prefix; the two flag_low dates are asserted "
+              "instead and the 09-16 kill is recorded in the shared-notes entry. "
+              "Two shared names, two different gates: tuning from HNGE alone tunes the wrong thing."),
+    ),
+    HTFLabelledMember(
         ticker="NCI",
         label_date=date(2026, 6, 27),
         label_source=("operator /flags eyeball 2026-06-27, verbatim in commit e91f8f74 and "

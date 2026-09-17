@@ -1341,3 +1341,75 @@ MODERATE-in-theme alerts would have crossed to HIGH"* over 60 days.
 
 [[his-theme-labels-are-supplementary]] · [[theme-north-star-early-rs-before-mainstream]] ·
 [[operator-labelled-ep-list]]
+
+---
+
+## 2026-09-17 — HTF labelled example: $MRNA, shared by the operator
+
+**Source:** Leif Soreide (@LeifSoreide) on X, 17 Sep 2026 07:53, 4.9K views. Chart is his, dated
+**Wed 16-Sep-2026 10:38 am** — i.e. the setup as it stood BEFORE that day's move.
+
+> **"$MRNA High Tight Flag.**
+> Wanted closer to 5 weeks because the flag was a touch deep (~26%), but that was mostly one stretch
+> day (~1% over).
+> Yesterday's chart from before today's move. Today it moved from the Breakout Watch spot"
+
+### What his chart actually marks
+
+| | |
+|---|---|
+| **Pole** | **170.3%**, measured off the ~$63–65 base into the spike high (~$175). The whole move is essentially **ONE GAP DAY around 2026-08-18/19** on ~200M shares |
+| **Flag** | **26.2% deep** — high ~$175 down to ~$132 — over roughly **4 weeks** (19 Aug → 16 Sep) |
+| **His tolerance** | wanted **~5 weeks**; accepted 4. Called 26% *"a touch deep"* and discounted it because the excess was **one stretch day, ~1% over** his bar |
+| **Trigger** | *"Breakout Watch spot"* — the flag's upper rail, ~$150–155 |
+| **Quote** | last 145.71 (+1.35%), open 145.32, H 146.75, L 142.67, prev close 143.77, vol 2.03M |
+| **Structure** | EMA8 143.40 · EMA21 132.07 · MA50 94.93 · MA200 58.94 — price over a fanned stack |
+| **Strength** | SCTR **99.7**; price performance vs $SPX **+187.28%** |
+| **Volatility** | **ATR(14) 11.426 and FALLING** — he draws a red down-trendline on the ATR pane. Contraction inside the flag is part of the read, not decoration |
+| **Fundamentals** | Mkt cap 57.4B, EPS **−8.01**, no dividend. Last earnings 2026-07-31, next **2026-11-05** — so the flag sits clear of an earnings date |
+
+### 🔑 WHAT OUR OWN BOARD SAID — checked before theorising, and it refutes my first guess
+
+`mi_flag_candidates`, MRNA, every scan day 2026-08-17 → 09-16. **We saw it all 23 days and rejected
+it all 23 days.** My first draft of this note guessed the pole WINDOW was the binding constraint.
+It is not — the pole passes easily. [[check-what-the-system-already-did]]
+
+| window | our stage | our stated reason |
+|---|---|---|
+| 08-17 → 08-19 | unqualified | `runup_58%_below_90%` — pre-gap, no pole yet |
+| 08-20 → 08-24 | unqualified | `base_age_0/1/2_below_3` — flag too young |
+| **08-25 → 09-15** | unqualified | **`flag_low_128.61_below_75%_of_pole_176.66`** — 15 consecutive days, one reason |
+| **09-16** | **INVALIDATED** | **`close_145.62_below_sma20_145.67`** |
+
+**🔴 THE BINDING CONSTRAINT IS FLAG DEPTH, AND WE MISS BY ABOUT TWO POINTS.** Our rule wants the
+flag low to hold **≥75% of the pole high** — a 25% maximum retracement. MRNA: 128.61 / 176.66 =
+**72.8%**, a **27.2%** retracement. **He called it 26.2% and took it anyway**, in his own words
+because the breach was *"mostly one stretch day (~1% over)"*. Our gate has no such notion: it reads
+the extreme bar and rejects. **The pole was never the problem — `runup_pct` reads 2.4 (240%) against
+a 90% floor.**
+
+**🔴 AND THE INVALIDATION FIRED BY FIVE CENTS, THE DAY BEFORE HIS BREAKOUT.** On 09-16 we killed the
+setup on `close 145.62 below sma20 145.67`. That is a **$0.05** margin on a $145 stock — 0.03% — and
+his tweet the next morning says *"Today it moved from the Breakout Watch spot."* So we did not merely
+decline to flag it; we actively retired it one session early, on a rounding error.
+
+### Why this matters to #610 / #592
+
+| example | pole | flag depth | our verdict | what actually blocked it |
+|---|---|---|---|---|
+| **HNGE** (in `tests/fixtures/htf_labelled.py`) | +103% / 49 sessions | — | miss | pole outside the sourced 4–8 week window |
+| **MRNA** (this one) | +240% / ~1 session | 27.2% | miss, then INVALIDATED | **flag-depth floor**, then a 5-cent SMA20 kill |
+
+**Two shared names, two different gates — so there is no single knob, and that is the finding.**
+HNGE argues about the pole window; MRNA never reached that argument. Anyone reasoning about the
+detector from HNGE alone would tune the wrong thing.
+
+⚠ **Recorded as observations, NOT proposals. Both gates are admission criteria — his sole authority
+(THE LINE).** Two mechanical differences are now measured and named, and the ruling is his:
+1. **A depth gate has no "one stretch day" allowance.** He discounts a single bar that pokes ~1%
+   through; we read the extreme and reject. That is a difference in KIND, not a threshold argument.
+2. **An SMA20 invalidation has no margin.** A 0.03% breach retires a setup as surely as a 5% one.
+
+⚠ Neither observation says our numbers are wrong. 75%-of-pole and the SMA20 stop may both be
+correctly excluding names that do not pay — that is what #610's both-directions read is for.
+[[htf-tweets-are-a-tuning-corpus]] · [[htf-is-detection-not-trading]] · [[rising-volume-is-a-diagnosis-not-a-revert]]
