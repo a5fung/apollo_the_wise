@@ -11592,9 +11592,61 @@ reviews:
     predicate_sql: >-
       SELECT count(DISTINCT alert_date) FROM mi_alert_rank_shadow
       WHERE alert_date > DATE '2026-08-16'
+    can_fire:
+      predicate_runs: "2026-09-16 - returns 12 distinct out-of-sample sessions. A number, not an error."
+      nonzero_possible: "Already 12 and rising - mi_alert_rank_shadow has written beside every alert
+        since 2026-08-16 (30 rows over 12 sessions)."
+      lane_live: "MAGNA53 EP is the live setup; the shadow recorder writes on every alert and
+        mi_ep_missed_outcomes settles the forward windows nightly."
+      threshold_vs_observed: "1 against 12 - MET, DELIBERATELY, and it must STAY 1. This entry was
+        converted from a single 2026-10-15 date gate on 2026-08-18 exactly so it could not sit inert
+        behind a date, and tests/test_alert_rank_shadow_running_read.py pins threshold == 1.
+        ⚠ I tried to raise it to 5 on 2026-09-16 and the test stopped me - correctly. The stopping
+        power lives in confidence_label(n), NOT in the threshold: n<25 sessions is THIN/directional
+        and must never be presented as a verdict."
+      era_scoped: "YES, and the boundary IS the premise: alert_date > 2026-08-16, the date the
+        shadow went live. Every row is out-of-sample by construction - the rule was fitted before
+        that date and has never seen these rows."
+    discriminates_on: [mi_alert_rank_shadow.alert_date, mi_ep_missed_outcomes.max_high_5d]
     threshold: 1
     owner: operator
     status: pending
+    resolution_2026_09_16: |
+      RAN 2026-09-16. ** THERE IS NOTHING TO SCORE, AND THE GATE WAS ASKING THE WRONG QUESTION. **
+
+      OUT-OF-SAMPLE (alert_date > 2026-08-16): 30 shadow rows over 12 sessions, all 30
+      rank-qualifying, 24 alerted HIGH, 10 filled; 19 carry settled forward outcomes.
+      ** TAIL EVENTS ON THE MODULE'S OWN BAR (>=8xADR): ZERO. Best 4.97x, median 1.46x. ** So
+      catch-rate on the tail is UNDEFINED, and "report both directions per quartile" with it —
+      winners admitted is 0 in every quartile. confidence_label(12) = "THIN (12 of 25 sessions,
+      48%) - directional only, NOT a verdict".
+
+      ⛔ ** I TRIED TO RE-GATE THIS ON TAIL EVENTS AND A TEST CORRECTLY STOPPED ME. ** The gate
+      fires on SESSIONS (threshold 1) while the MEASURE needs tail events, so it demands a read
+      every session that can only answer "still nothing" — the wasted motion the operator called out
+      today. I changed it to count rows reaching the bar, threshold 5.
+      `test_alert_rank_shadow_out_of_sample_is_no_longer_date_locked` pins `threshold == 1`, because
+      this entry was converted FROM a single 2026-10-15 date gate on 2026-08-18 precisely so it
+      could not sit inert. **Reverted. I do not get to undo a recorded design decision because it
+      annoys me**, and raising the threshold would have re-created the exact inertness that
+      conversion fixed.
+
+      ** SO THE WASTE IS REAL BUT THE GATE IS NOT WHERE IT LIVES. ** A running read is meant to be
+      STATED in one line with its confidence label, not investigated like a verdict — the entry says
+      so itself ("n<25 is THIN/directional, NEVER presented as a verdict"). What surfaces it as
+      "MY WORK IS DUE, RUN THE REVIEW" is `operator_asks`' one-size-fits-all wording. **Routed to
+      #669's audit half as a presentation question, with his input owed — the 08-18 conversion was
+      deliberate and is not mine to reverse.**
+
+      ⚠ ** THE BAR IS 8xADR, NOT 10R — a substitution declared rather than hidden. ** The module
+      says ">=10R / >=8xADR, whichever the caller scored". 10R is NOT computable here: an un-filled
+      alert has no entry and no stop, so there is no R. 8xADR is computable from adr20_frac on the
+      shadow row. The two are not the same measure and must not be quoted interchangeably.
+      [[prove-two-numbers-measure-the-same-thing]]
+
+      ⚠ What this does NOT say: that the ranking rule fails. The out-of-sample window has produced
+      no tail event to test it against — 12 sessions, a thin tape, best name at half the bar. The
+      in-sample 2.5x lift is neither confirmed nor challenged.
     action_when_ready: >-
       RUNNING READ — fires again every session a new out-of-sample alert_date lands, from
       the first one. Every run: state n (COUNT(DISTINCT alert_date) WHERE alert_date >
