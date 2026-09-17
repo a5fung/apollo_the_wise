@@ -1516,3 +1516,33 @@ right now, one of them at rank 17.
 (THE LINE). Filing is his call too: the board is at its ceiling, and a carryover is
 operator-initiated, never agent-proposed.
 [[check-our-code-before-blaming-the-world]] · [[rising-volume-is-a-diagnosis-not-a-revert]]
+
+### Theme impact of excluding deal-pinned names — measured 2026-09-17 on his instruction
+
+**4 of the 8 sit in a live theme; 4 are unanchored** (ACVA, ATKR, BWMN, MKTX).
+
+| theme | stage | members now | pinned | after | effect |
+|---|---|---|---|---|---|
+| **Management & Business Advisory Consulting Firms** | **Mainstream** | **2** `{HURN, CBZ}` | CBZ | **1** | **theme dissolves** |
+| Emerging Medical Device Innovators Breakout | Fading | 3 `{ITGR, ATEC, INSP}` | ITGR | 2 | below the 3-member floor |
+| Specialty P&C Insurance Underwriters Rotation Reversal | Nascent | 17 | SAFT | 16 | none |
+| Defensive Consumer Staples Rotation | Fading | 17 | UTZ | 16 | none |
+
+### 🔴 A BUYOUT PROMOTED A THEME TO MAINSTREAM — and Mainstream is the stage the EP boost reads
+
+`Management & Business Advisory Consulting Firms` is **two names**, `{HURN, CBZ}`, and CBZ is the
+deal. Its `rs_avg` climbed **80.3 → 83.7 → 88.2 → 90.1 → 92.9** across 09-10 → 09-16, and it
+**graduated Nascent → Mainstream on 2026-09-15**. That climb is CBZ's +17.6% announcement day on 24×
+volume being averaged into a two-name theme.
+
+**`in_active_theme` counts ONLY Accelerating or Mainstream** (`ep_detector.py:1568`) — it is the flag
+behind the EP theme boost. So if HURN alerts, it collects a theme boost from a theme that is
+Mainstream **because its other member is being acquired.** I said earlier the money path was clean;
+that was true directly (no ACVA alert, no trade) and **not true indirectly** — this is the path.
+
+⚠ Also surfaced, not chased: the theme holds **2 members while `_PROMOTE_MIN_MEMBERS = 3`**, so the
+floor evidently does not bind after birth. Separate question, recorded not investigated.
+
+**Read on the exclusion: the two theme losses are a FEATURE.** One is a deal artefact that reached
+Mainstream on the deal; the other is a 3-name Fading theme. Neither is evidence against excluding —
+but both are visible board changes, which is why he asked.
