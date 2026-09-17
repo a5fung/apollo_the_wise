@@ -1421,3 +1421,74 @@ detector from HNGE alone would tune the wrong thing.
 ⚠ Neither observation says our numbers are wrong. 75%-of-pole and the SMA20 stop may both be
 correctly excluding names that do not pay — that is what #610's both-directions read is for.
 [[htf-tweets-are-a-tuning-corpus]] · [[htf-is-detection-not-trading]] · [[rising-volume-is-a-diagnosis-not-a-revert]]
+
+---
+
+## 2026-09-17 — ACVA is a BUYOUT, and the brief called it a theme-engine coverage gap
+
+**Operator, on the evening brief's line `⚓ Unanchored persistent (5-session, RS≥90) — entered: ACVA`
+and its footer `theme-engine coverage gap — no theme claimed these names all week`:**
+
+> *"From evening brief, but stock is being bought out."*
+
+He is right, and **our own bars already say so** — no external data needed.
+
+### The two-leg deal signature, in data we already have
+
+| leg | ACVA |
+|---|---|
+| **1. announcement** | **2026-09-11: +44.2% on 114.9M shares** against a ~3M-share norm (peak RVOL **28.7×**) |
+| **2. the pin** | every session since trades in a **0.19–0.48% daily range**, closes 10.41 → 10.48. Daily changes: 0.00%, +0.19%, −0.10%, +0.58% |
+
+A cash deal price. Before 09-11 the stock ranged 4–8% a day; after, it cannot move.
+
+### 🔴 What it did to the RS board
+
+| | |
+|---|---|
+| 2026-09-10 | rank **1084**, RS 54.2 |
+| 2026-09-11 | rank **7**, RS 99.7 |
+| through 09-17 | rank 7 → 7 → 10 → **17**, RS still **99.3** |
+
+**One deal gap moved a name from rank 1084 to the RS top-10, and it will hold a top rank for the
+months until the deal closes** — because RS is a backward-looking 1M/3M/6M percentile and the
+forward path is a flat line. It displaces real leaders for as long as it sits there.
+
+### ⚠ EIGHT names, not one — this is a class
+
+Screening today's RS ≥ 90 population for **4 consecutive sessions under a 1% daily range**, then
+requiring the announcement leg as a control (low range ALONE is just a sleepy stock):
+
+| ticker | RS rank | biggest up-day | peak RVOL | avg range since 09-11 |
+|---|---|---|---|---|
+| ACVA | 17 | +44.2% | 28.7× | 0.35% |
+| UTZ | 95 | +88.7% | 31.0× | 0.35% |
+| CBZ | 157 | +17.6% | 24.1× | 0.24% |
+| ITGR | 160 | +20.2% | 23.4× | 0.21% |
+| SAFT | 182 | +41.5% | 13.9× | 0.16% |
+| BWMN | 193 | +55.8% | 20.0× | 0.28% |
+| ATKR | 200 | +28.2% | 25.7× | 0.28% |
+| MKTX | 228 | +29.5% | 18.2× | 0.21% |
+
+**All eight carry both legs.** The discriminator is cheap and needs no new data:
+**one >15% day on >10× volume, followed by ≥4 sessions under a 1% range.**
+
+### What is and is not wrong
+
+✅ **The money path is clean** — verified: zero `mi_ep_alerts` rows, zero `mi_live_trades` rows for
+ACVA. The EP side never touched it.
+
+🔴 **The brief's footer asserts a diagnosis the data contradicts.** *"Theme-engine coverage gap — no
+theme claimed these names all week"* is false for this class: a company being acquired is
+**definitionally un-themeable**, and no amount of theme-engine work would ever claim it. The surface
+was designed on the premise that a 5-session unanchored survivor IS a coverage gap
+(`brief_composer._persistent_unanchored_material` docstring). That premise has an unmodelled
+exception, and it sends me at work that does not exist.
+
+⚠ **The RS contamination is the larger half** and is NOT confined to the brief: the leaders list
+feeds theme discovery and every RS-ranked surface. Eight pinned names are sitting in the RS ≥ 90
+population right now.
+
+⛔ **Nothing changed.** Which names a surface admits is an admission criterion — his sole authority
+(THE LINE). Filing is his call too: the board is at its ceiling, and a carryover is operator-initiated.
+[[check-our-code-before-blaming-the-world]] · [[rising-volume-is-a-diagnosis-not-a-revert]]
