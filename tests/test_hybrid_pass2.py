@@ -121,7 +121,7 @@ def test_rt_miss_digest_summarizes_and_sends(monkeypatch):
             {"detail": _json.dumps({"ticker": "HAS", "rt_gap": 10.9, "tick_et": "09:35"})}]
     _mock_pool(monkeypatch, rows)
     sent = []
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
@@ -132,7 +132,7 @@ def test_rt_miss_digest_summarizes_and_sends(monkeypatch):
 def test_rt_miss_digest_noop_when_empty(monkeypatch):
     _mock_pool(monkeypatch, [])
     sent = []
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)

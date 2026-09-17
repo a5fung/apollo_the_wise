@@ -232,7 +232,7 @@ def test_digest_renders_declined_line_and_zero_miss_line_when_no_genuine_misses(
                         "declined_reason": "ep_rt_sustain_reject"}])
     sent = []
 
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
@@ -255,7 +255,7 @@ def test_digest_renders_both_lines_when_a_genuine_miss_also_exists(monkeypatch):
                         "declined_reason": "ep_rt_sustain_reject"}])
     sent = []
 
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
@@ -271,7 +271,7 @@ def test_digest_still_noop_when_nothing_happened(monkeypatch):
     _digest_pool(monkeypatch, miss_rows=[], catch_rows=[], declined_rows=[])
     sent = []
 
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)

@@ -427,10 +427,19 @@ def test_the_single_send_senders_have_no_bare_legacy_send_left():
     class this task closes must not be re-opened by a sibling send in the same function.
     (`run_catalyst_lattice_monitor` is not listed: its fixture-dark warning is a second,
     legitimately legacy send whose only identifier sits inside a code span.)"""
+    # source-pin-ok: this asserts on the ABSENCE of a second send, which has no runtime seam —
+    # every function listed is DB-bound end to end, and a behavioural test cannot observe a call
+    # that is never made. The positive half (the converted call IS present) is already exercised
+    # by the parametrized check above and by the per-sender monkeypatched send tests; only
+    # "and nothing ELSE sends here" needs the source, which is why the pin is scoped to a count.
     from agents.market_intelligence import ep_delayed_residual, mgmt_judge, quarterly_review
+    from agents.market_intelligence import ep_detector
     from agents.market_intelligence.broker import order_ingest
+    # `send_rt_miss_digest` joined this list 2026-09-17 as the FOURTEENTH sender — see the
+    # parametrized source check above for why it was missed by the original migration.
     for fn in (ep_delayed_residual.run_delayed_residual_scan, mgmt_judge.run_position_mgmt_judge,
                quarterly_review.quarterly_backward_check_sweep_job, order_ingest._emit,
+               ep_detector.send_rt_miss_digest,
                system_audit._emit_l1, system_audit._emit_l2, hc.run_job_liveness_sweep):
         src = _src(fn)
         n_send = src.count("send_telegram_message(")
@@ -467,17 +476,3 @@ def test_the_rt_miss_digest_body_that_400d_every_day_converts_and_keeps_its_iden
         "an underscore was read as emphasis — the exact v1 behaviour that 400'd this body"
     )
     assert out.count("<") == out.count(">"), "unbalanced tags would 400 on the HTML layer too"
-
-
-def test_the_rt_miss_digest_has_no_bare_legacy_send_left():
-    """MUTATION TARGET: reverting `send_rt_miss_digest` to `send_telegram_message(" ".join(parts))`.
-    That bare call is what shipped, and it is what the parametrized source check above would miss
-    if a SECOND send were added alongside the converted one."""
-    # source-pin-ok: this asserts on the ABSENCE of a call shape, which has no runtime seam — the
-    # function is DB-bound end to end and a behavioural test cannot observe a send that is not made.
-    # Same reasoning as `test_the_single_send_senders_have_no_bare_legacy_send_left` directly above.
-    from agents.market_intelligence import ep_detector
-    src = _src(ep_detector.send_rt_miss_digest)
-    bare = [l for l in src.splitlines()
-            if "send_telegram_message(" in l and "md_to_html" not in l]
-    assert not bare, f"a bare legacy-Markdown send is back in send_rt_miss_digest: {bare}"

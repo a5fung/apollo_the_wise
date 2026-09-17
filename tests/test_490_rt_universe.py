@@ -380,7 +380,7 @@ def test_digest_appends_universe_catches_dedup_vs_misses(monkeypatch):
     _digest_toggle(monkeypatch, authoritative=False)   # shadow — matches this toggle's real default
     sent = []
 
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
@@ -400,7 +400,7 @@ def test_digest_catches_only_still_sends(monkeypatch):
     _digest_toggle(monkeypatch, authoritative=False)
     sent = []
 
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
@@ -419,7 +419,7 @@ def test_digest_catch_line_says_admitted_when_toggle_on(monkeypatch):
     _digest_toggle(monkeypatch, authoritative=True)
     sent = []
 
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
@@ -437,7 +437,7 @@ def test_digest_catch_line_omits_claim_on_toggle_failure(monkeypatch):
     _digest_toggle(monkeypatch, authoritative=None)   # raises
     sent = []
 
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
@@ -459,7 +459,7 @@ def test_digest_residual_miss_line_is_mode_invariant(monkeypatch):
     _digest_pool(monkeypatch, [{"ticker": "AEHR", "rt_gap": 12.5, "tick_et": "09:31"}], [])
     sent = []
 
-    async def _tg(msg):
+    async def _tg(msg, **kw):
         sent.append(msg)
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
