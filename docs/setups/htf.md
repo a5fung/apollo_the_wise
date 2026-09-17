@@ -120,7 +120,7 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    a criterion question; recorded so the money gate is not built on an assumed edge.
 5. `close_below_base_low_close` INVALIDATED re-arms as the base's lowest close creeps down, so a
    name can flip INVALIDATED → TIGHTENING (CDNA 07-22→07-29, then 07-30). Cosmetic; unfixed.
-6. **Labelled corpus is N=7** (CDNA, HNGE, NCI, ATAI, OUST, SHAZ, REPL — grown from 2 on 2026-09-04,
+6. **Labelled corpus is N=8** (CDNA, HNGE, **MRNA**, NCI, ATAI, OUST, SHAZ, REPL — grown from 2 on 2026-09-04,
    every member a VERBATIM operator label, never an inference — `tests/fixtures/htf_labelled.py`, replayed every suite
    run through the shipped detector). Every further trader-shared HTF is a one-line addition.
 7. **The shipped breakout bet has no replayed edge (#610, 2026-09-10 —
@@ -132,6 +132,28 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    The #396 management readout on the same entries is +0.74R mean / −0.16R median, 85% of it from
    five trades. #397's N≥10 exists offline; the edge it was meant to confirm does not, for the
    fixed +3R/−1R bet. Nothing changed; the fork is the operator's.
+
+8. **THE TRADER-LABEL FORK IS NOT ONE FORK — $MRNA blocks on FLAG DEPTH, not the pole (added
+   2026-09-17).** Item 1 above frames the whole trader-vs-spec question around the pole window,
+   because HNGE was the only labelled example that reached it. **A second operator-shared HTF now
+   says that framing is too narrow.** Leif Soreide called $MRNA a High Tight Flag on 2026-09-17
+   (chart 09-16, before the move); transcript in `docs/methodology/operator_shared_notes.md
+   § 2026-09-17`, member in `tests/fixtures/htf_labelled.py`.
+   **`mi_flag_candidates` has MRNA on all 23 scan days 08-17 → 09-16 and rejects every one.** The
+   pole is never reached: `runup_pct` = **2.4 (240%)** against the 90% floor. The block is **flag
+   depth, the identical reason for 15 consecutive sessions (08-25 → 09-15):
+   `flag_low_128.61_below_75%_of_pole_176.66`** — a **27.2%** retracement against our **25%**
+   ceiling.
+   **He called it 26.2% and took it, because the breach was *"mostly one stretch day (~1% over)"*.**
+   Our depth gate has **no one-bar allowance**: it reads the extreme low and rejects. That is a
+   difference in KIND from a threshold disagreement, and it is not measured anywhere.
+   🔴 **And on 09-16 the setup was INVALIDATED by five cents** — `close_145.62_below_sma20_145.67`,
+   a **0.03%** margin — **the session before his breakout.** The SMA20 invalidation likewise has no
+   margin: a rounding-error breach retires a setup as surely as a decisive one.
+   **So HNGE argues the pole window and MRNA never reaches that argument. Tuning from HNGE alone
+   tunes the wrong knob.** Nothing changed. Both the 75%-of-pole floor and the SMA20 stop are
+   admission criteria = the operator's sole authority; #610's both-directions read now owes numbers
+   on (a) a one-bar depth allowance and (b) an SMA20 margin, including the junk each admits.
 
 ## Change log
 - **2026-09-16 — OPERATOR RULING on the detection fork. NOTHING CHANGED IN THE DETECTOR; this
