@@ -1304,7 +1304,8 @@ async def _fetch_unanchored_sessions(today: date) -> list[dict]:
     as the latter would inflate that session's unanchored set and could
     manufacture a fake persistent-set change."""
     from agents.market_intelligence.brief_composer import UNANCHORED_SESSIONS_NEEDED
-    from agents.market_intelligence.db import get_recent_score_dates, get_themed_tickers_on_dates
+    from agents.market_intelligence.db import (get_deal_pinned_tickers, get_recent_score_dates,
+                                               get_themed_tickers_on_dates)
 
     dates = await get_recent_score_dates(today, UNANCHORED_SESSIONS_NEEDED)
     if not dates:
@@ -1314,9 +1315,17 @@ async def _fetch_unanchored_sessions(today: date) -> list[dict]:
     missing = [d for d in dates if d not in dates_with_theme_rows]
     if missing:
         raise RuntimeError(f"no mi_themes rows for session date(s) {missing}")
+    # #-- 2026-09-17, operator-signed: drop names PINNED BY AN ANNOUNCED DEAL. Scoped to
+    # each session's own 30 leaders (not the universe) — the helper is cheap but there is
+    # no reason to screen 9,700 names to filter 30. Per-date, because a name is only
+    # pinned from its announcement onward and the 5-session window straddles that.
+    pinned_lists = await asyncio.gather(*(
+        get_deal_pinned_tickers(d, [s["ticker"] for s in leaders])
+        for d, leaders in zip(dates, leaders_lists)))
     return [
-        {"date": d, "leaders": leaders, "themed_tickers": themed_by_date.get(d, set())}
-        for d, leaders in zip(dates, leaders_lists)
+        {"date": d, "leaders": leaders, "themed_tickers": themed_by_date.get(d, set()),
+         "pinned_tickers": pinned}
+        for d, leaders, pinned in zip(dates, leaders_lists, pinned_lists)
     ]
 
 

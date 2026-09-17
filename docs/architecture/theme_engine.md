@@ -657,6 +657,48 @@ because nothing recorded these parameters before.
   `covered_share` + `covered_by`; plus `scratchpads` = the model's own one-line-per-cluster
   reasoning per batch, so "why did it decline?" is readable from the row.
 
+## What is NOT a theme-engine coverage gap — deal-pinned names (2026-09-17, operator-signed)
+
+The evening brief's 5-session persistent-unanchored line states a diagnosis:
+*"theme-engine coverage gap — no theme claimed these names all week"*. **That claim is false for a
+stock pinned by an announced acquisition, which is un-themeable by construction — no amount of
+theme-engine work will ever claim it.**
+
+Found by the operator on the line itself (`entered: ACVA`): *"but stock is being bought out."*
+Our own bars already said so — ACVA gapped **+44.2% on 114.9M shares** on 2026-09-11 (vs a ~3M
+norm) and every session since traded a **0.19–0.48%** range at 10.41–10.48. A cash deal price.
+
+**Why it reaches the theme engine at all:** RS is a backward-looking 1M/3M/6M percentile, so one
+deal gap moved ACVA **rank 1084 → 7**, still 17 six sessions later on flat bars. Eight such names
+sat in the RS ≥ 90 population that day.
+
+🔴 **And a deal had already promoted a theme.** `Management & Business Advisory Consulting Firms` is
+**two names, `{HURN, CBZ}`**, and CBZ is deal-pinned. Its `rs_avg` ran **80.3 → 92.9** over
+09-10 → 09-16 and it graduated **Nascent → Mainstream on 09-15** — that climb is CBZ's +17.6%
+announcement on 24× volume averaged into a two-name theme. **`in_active_theme` counts only
+Accelerating or Mainstream** (`ep_detector.py:1568`), so a name in that theme would collect the EP
+theme boost on a promotion earned by an acquisition.
+
+**THE RULE — reused, not invented.** `db.get_deal_pinned_tickers` lifts the threshold already signed
+in `get_eod_9m_sugar_babies` (*"intraday range >= 2% of close (rejects merger-arb pins like DBRG)"*,
+retired 9M path) to a shared helper. Two legs, because low range alone is just a sleepy stock:
+
+| leg | test |
+|---|---|
+| the pin | last 4 sessions ALL inside 2% of close |
+| the announcement | within 180 days, a day up ≥15% on ≥10× its trailing 21-day volume |
+
+Calibrated on prod 2026-09-17: the pin leg alone matches **5,560** tickers (useless alone); both legs
+match **54**, which reads like a live M&A book. Of the 8 hand-screened RS ≥ 90 names it catches 7 —
+**ITGR is missed**, its announcement falling outside the lookback. That miss **fails open** (the name
+stays in the population), which is the safe direction for a filter that removes things.
+
+**Applied only to the brief's unanchored surface** (`compute_unanchored`, per-session so a name
+counts normally before its own announcement). **Theme membership, birth, staging and the EP boost are
+UNCHANGED** — the two theme consequences above are recorded, not acted on.
+**The exclusion is announced, never silent:** the brief names what it removed, because trading a
+false claim for an invisible drop is not a fix.
+
 ## Change log
 
 ### 2026-09-13 — THE MEMBERSHIP TEST ASKS THE TAPE: market-adjusted co-movement at 0.35 replaces the sector-identity test (OPERATOR-SIGNED, shipped ON, one-flag revertible)

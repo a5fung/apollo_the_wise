@@ -6489,6 +6489,89 @@ async def insert_9m_sugar_baby(record: dict[str, Any]) -> None:
         )
 
 
+async def get_deal_pinned_tickers(
+    as_of: "str | date", tickers: "list[str] | None" = None, *,
+    tight_days: int = 4, range_bar: float = 0.02,
+    gap_bar: float = 15.0, rvol_bar: float = 10.0, lookback_days: int = 180,
+) -> set:
+    """Tickers whose price is PINNED BY AN ANNOUNCED DEAL as of `as_of` — a cash
+    acquisition price, not momentum.
+
+    WHY THIS EXISTS (operator 2026-09-17, on the evening brief surfacing ACVA as a
+    5-session persistent unanchored leader): *"but stock is being bought out."* A deal
+    gap injects a name into the RS top ranks and it then holds that rank for the months
+    until close, because RS is a backward-looking 1M/3M/6M percentile and the forward
+    path is a flat line. ACVA went rank 1084 -> 7 on its announcement day and was still
+    rank 17 six sessions later on 0.2%-range bars.
+
+    ⚠ THE RULE IS NOT NEW AND THE THRESHOLD IS NOT INVENTED. `get_eod_9m_sugar_babies`
+    already encodes it — *"intraday range >= 2% of close (rejects merger-arb pins like
+    DBRG)"* — but that path is the retired 9M lane, and the only other M&A handling here
+    (`parabolic_detector._news_check_for_exclusion`) is `_`-private, Perplexity-PAID and
+    wired to the parabolic setup alone. Neither reached the RS leaders board. This lifts
+    the FREE rule to a shared helper rather than inventing a third mechanism.
+
+    TWO LEGS, because low range ALONE is just a sleepy stock and would exclude genuine
+    low-volatility leaders:
+      1. THE PIN        — the last `tight_days` sessions ALL trade inside `range_bar`
+                          of the close (default 2%, the signed 9M number).
+      2. THE ANNOUNCEMENT — within `lookback_days` there is a single day up >= `gap_bar`%
+                          on >= `rvol_bar`x its own trailing 21-day average volume.
+    CALIBRATED ON PROD 2026-09-17, and the control is doing almost all the work:
+      pin leg alone, whole universe .... 5,560 tickers  (illiquid and dead names sit in
+                                         tiny ranges — unusable on its own)
+      BOTH legs ........................ 54 tickers    (reads like a live M&A book:
+                                         OGN TECH APLS CRNX NUVL ESPR PAYO UTZ ...)
+    Against the 8 RS>=90 names hand-screened that day it catches 7 — ACVA UTZ CBZ SAFT
+    BWMN ATKR MKTX — and MISSES ITGR, whose announcement falls outside the 180-day
+    lookback. ⚠ Stated rather than rounded to 8/8: the miss FAILS OPEN (the name stays
+    in the population, i.e. today's behaviour), which is the safe direction for a filter
+    that removes things from a surface.
+
+    `lookback_days` is 180 because a deal pins for months: the 2026-09-17 announcements
+    ran 6 to 58 calendar days back and a pin can outlive that several times over. The PIN
+    leg is what carries the signal; the announcement leg only separates a deal from a
+    sleepy stock, so a generous window costs little.
+
+    Returns a SET (possibly empty). Read-only; never raises on an unknown ticker.
+    """
+    pool = await get_pool()
+    _sql = """
+        WITH universe AS (
+            SELECT DISTINCT ticker FROM mi_daily_closes
+            WHERE trade_date <= $1 AND ($2::text[] IS NULL OR ticker = ANY($2))
+        ),
+        recent AS (
+            SELECT u.ticker, d.trade_date, d.close, d.high_price, d.low_price, d.volume,
+                   ROW_NUMBER() OVER (PARTITION BY u.ticker ORDER BY d.trade_date DESC) AS rn
+            FROM universe u JOIN mi_daily_closes d USING (ticker)
+            WHERE d.trade_date <= $1 AND d.trade_date > $1::date - $6::int
+        ),
+        pin AS (   -- leg 1: every one of the last N sessions inside the range bar
+            SELECT ticker FROM recent WHERE rn <= $3
+            GROUP BY ticker
+            HAVING count(*) = $3
+               AND bool_and((high_price - low_price) / NULLIF(close, 0) < $4)
+        ),
+        chg AS (
+            SELECT ticker, trade_date, close, volume,
+                   100.0 * (close / NULLIF(LAG(close) OVER (PARTITION BY ticker ORDER BY trade_date), 0) - 1) AS pct,
+                   volume::numeric / NULLIF(AVG(volume) OVER (
+                       PARTITION BY ticker ORDER BY trade_date
+                       ROWS BETWEEN 21 PRECEDING AND 1 PRECEDING), 0) AS rvol
+            FROM recent
+        ),
+        announced AS (   -- leg 2: the deal day itself
+            SELECT DISTINCT ticker FROM chg WHERE pct >= $5 AND rvol >= $7
+        )
+        SELECT p.ticker FROM pin p JOIN announced a USING (ticker);
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_sql, _coerce_date(as_of), tickers, tight_days,
+                                range_bar, gap_bar, lookback_days, rvol_bar)
+    return {r["ticker"] for r in rows}
+
+
 async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     """
     Fetch stocks from mi_daily_closes that qualify as 9M sugar babies for a given date.
