@@ -102,3 +102,16 @@ def test_headline_extraction_stops_at_the_first_marker():
     assert "tail" not in _headline_of("**head** >> tail")
     assert "detail" not in _headline_of("**head** ▶ detail")
     assert "caveat" not in _headline_of("**head** ⚠ caveat")
+
+
+def test_a_headline_that_OPENS_with_a_marker_is_still_checked():
+    """⚠ THE HOLE, found by review on 2026-09-17 — the same day the gate shipped. `_headline_of`
+    cut at the first marker using `i != -1`, so a line OPENING with ⚠ (or ▶, or >>) cut at index 0
+    and returned an empty string. Empty text matches nothing, so the task passed by vacuity — a
+    guard that cannot fire, which is the exact class this repo keeps building by accident."""
+    for opener in ("⚠", "▶", ">>"):
+        title = f"{opener} **Built and suite-green, NOT deployed.** ▶ detail follows"
+        assert _headline_of(title).strip(), f"headline starting with {opener!r} extracted as empty"
+        assert _headline_lies_violations([_task(title)]), (
+            f"a lying headline opening with {opener!r} was not caught — it passed by vacuity"
+        )

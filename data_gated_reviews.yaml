@@ -5073,6 +5073,15 @@ reviews:
       flag_detector criteria to the sourced spec (replaces the n=1 50/60)". ** Signed and deliberate,
       NOT a defect ** — the point of #356 was to stop reading a bar derived from one example.
 
+      ⚠ ** MECHANISM CORRECTED 2026-09-17 (the boundary is unaffected; how it got there is not). **
+      scan_date 06-26 was NOT a live session under the new criteria. The writer upserts —
+      `db.py:7543`, `ON CONFLICT (ticker, scan_date) DO UPDATE SET ... stage, reason, ...` — and
+      `created_at` is not in that update list, so a re-scan 33 minutes after the swap was committed
+      REWROTE that day's rows in place, keeping their original timestamps. The first LIVE scan under
+      the swap is Mon 06-29. ** This does not move the split used here: the STORED rows from
+      scan_date 06-26 onward carry the new criteria either way, and the capture legs read stored
+      rows. ** What it retracts is a claim I made on #610 that the code ran before it was committed.
+
       ** WHY THAT WRECKS THIS MEASURE: the flag leg IS the measure. ** Of 51 pre-swap captures, 49
       came via the flag board and ** 44 via the flag board ALONE ** (86%), mostly at the loose WATCH
       stage. So "alpha capture" here was very largely a readout of how many names the flag board

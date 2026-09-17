@@ -863,7 +863,11 @@ def _headline_of(title: str) -> str:
     cut = len(title)
     for mark in ("\u25b6", ">>", "\u26a0"):          # ▶ detail · >> tail · ⚠ caveat
         i = title.find(mark)
-        if i != -1:
+        # `i > 0`, NOT `i != -1`: a line that OPENS with one of these markers would otherwise cut
+        # at 0 and hand back an empty headline, which passes every check by vacuity. Found by
+        # review 2026-09-17, the day the gate shipped — a guard that cannot fire reads exactly
+        # like one that passes.
+        if i > 0:
             cut = min(cut, i)
     return re.sub(r'\*"[^"]*"\*|"[^"]*"', " ", title[:cut])
 

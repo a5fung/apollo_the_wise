@@ -69,6 +69,13 @@ names). That is commit `932dc066`, *"#356 HTF Phase 1+2: swap flag_detector crit
 spec (replaces the n=1 50/60)"*. **It is a signed, deliberate tightening, not a defect** — the whole
 point of #356 was to stop reading a bar derived from one example.
 
+⚠ **Mechanism corrected 2026-09-17; the boundary is unaffected.** Scan date 06-26 was not a live
+session under the new criteria — the writer upserts (`db.py:7543`, `ON CONFLICT … DO UPDATE SET …
+stage, reason, …`) and does not touch `created_at`, so a re-scan 33 minutes after the swap was
+committed rewrote that day's rows in place. The first *live* scan under the swap is Mon 06-29. The
+split used here is unaffected: stored rows from 06-26 onward carry the new criteria either way, and
+the capture legs read stored rows.
+
 ## Result — split at the era boundary, which is the only honest way to read it
 
 Alpha capture, all four legs, split at 2026-06-26:
