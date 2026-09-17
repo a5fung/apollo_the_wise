@@ -838,6 +838,73 @@ def _deployed_no_verify_gate(tasks, errors) -> None:
             print(f"[plan] WARN — pre-existing deployed-with-no-verify-claim: {msg}")
 
 
+# --- HEADLINE-LIES (2026-09-17) -----------------------------------------------------------------
+# Three `deployed` tasks carried a headline reading "BUILT BUT NOT DEPLOYED" while all three had
+# shipped — #658 (09-14), #654 (09-13), #630 (09-10). Every one of them had the truth recorded in
+# its `>>` tail, and #630's tail even carried an explicit 2026-09-11 correction saying the headline
+# sentence was "STALE and was misleading a reader (me, this morning)". The headline was left lying
+# anyway, and on 2026-09-17 it misled the same reader again — a second time, from a line that
+# already knew about itself.
+#
+# That is the daily-waste leak the `deployed` status was invented for (operator 2026-07-18: built
+# tasks "sat in_progress for weeks wearing a to-build headline and got re-checked/re-built"). The
+# STATUS field was fixed then and works. The HEADLINE was not, and the headline is what gets read
+# first — so the leak simply moved one field to the left.
+#
+# Unlike most of this file's remaining gaps this one IS textually decidable: a task whose status is
+# `deployed` must not open by saying it is not deployed. Quoted text is stripped first, so a line
+# may quote its own old wording while correcting it — which is exactly what the three fixes do.
+_HEADLINE_NOT_DEPLOYED = re.compile(r"\b(?:not(?:\s+yet)?|never)\s+deployed\b", re.I)
+
+
+def _headline_of(title: str) -> str:
+    """The claim a reader meets first: everything before the first detail//tail/caveat marker, with
+    quoted spans removed so a correction may quote the wording it is replacing."""
+    cut = len(title)
+    for mark in ("\u25b6", ">>", "\u26a0"):          # ▶ detail · >> tail · ⚠ caveat
+        i = title.find(mark)
+        if i != -1:
+            cut = min(cut, i)
+    return re.sub(r'\*"[^"]*"\*|"[^"]*"', " ", title[:cut])
+
+
+def _headline_lies_violations(tasks):
+    """Pure (no IO): `deployed` tasks whose HEADLINE still claims they are not deployed."""
+    return [t for t in tasks
+            if t["status"] == "deployed" and _HEADLINE_NOT_DEPLOYED.search(_headline_of(t["title"]))]
+
+
+def _headline_lies_gate(tasks, errors) -> None:
+    """HARD-FAIL on lines touched this commit, WARN on pre-existing. Same git idiom and fail-open
+    posture as `_deployed_no_verify_gate` — never block a commit on a git hiccup."""
+    violations = _headline_lies_violations(tasks)
+    if not violations:
+        return
+    prior_by_id: dict[int, dict] = {}
+    git_ok = False
+    try:
+        _txt = _plan_at_ref()
+        if _txt is not None:
+            prior_tasks, _ = parse(_txt)
+            prior_by_id = {t["id"]: t for t in prior_tasks}
+            git_ok = True
+    except Exception:
+        pass
+    for t in violations:
+        msg = (f"L{t['line']}: task #{t['id']} is `deployed` but its HEADLINE still says it is not "
+               f"deployed — rewrite the headline to state what is actually true and what it now "
+               f"waits on. Correcting this in the `>>` tail does NOT fix it: #630 did exactly that "
+               f"on 2026-09-11 and the stale headline misled a reader again on 2026-09-17.")
+        touched = False
+        if git_ok:
+            prior = prior_by_id.get(t["id"])
+            touched = prior is None or prior["title"] != t["title"] or prior["status"] != t["status"]
+        if touched:
+            errors.append(msg)
+        else:
+            print(f"[plan] WARN — pre-existing lying headline: {msg}")
+
+
 # --- STALE-DEPLOY (2026-09-05) ------------------------------------------------------------------
 # The gap every OTHER surface here misses, named by the operator directly: "how come we keep
 # running into this stale task issue when we have built so much check and balance already?" The
@@ -2213,6 +2280,7 @@ def main(argv: list[str]) -> int:
     _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
     _pending_verify_gate(tasks, errors)   # own text claims a pending verify but status != deployed; HARD on touched, WARN on pre-existing (operator 8/09, the #167 lesson)
     _deployed_no_verify_gate(tasks, errors)   # deployed but states NO verify condition at all; HARD on touched, WARN on pre-existing (operator 8/09, the inverse)
+    _headline_lies_gate(tasks, errors)   # deployed but the HEADLINE still says 'not deployed' — the 2026-09-17 leak (#630 misled twice)
     _expect_done_when_gate(tasks, errors)   # NEW/EDITED deployed task must state EXPECT:+DONE-WHEN: or EXPECT-NA:; pre-existing = surfaced backlog, not a wall (operator 9/13)
 
     # buried-work tripwire: when a task NAMES critical-path/blocker build work, that phrase must be

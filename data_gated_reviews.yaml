@@ -13297,6 +13297,29 @@ reviews:
     # themeless_winner — is applied in action_when_ready when the batch is built, not in the
     # trigger, because the cadence should fire on total accrual either way.
     discriminates_on: []
+    zero_verdict: |
+      2026-09-17 WAITING — the batch is LABELLED, so the cycle is satisfied and simply has to
+      re-accrue. ** The zero means he did the work, not that the predicate cannot fire. **
+      Operator 2026-09-16: *"I also already labeled the new themes."*
+      Verified on prod rather than taken on trust: of the 44 themed rows enrolled since the
+      2026-08-04 era anchor, ** 44 of 44 carry an operator_label ** (21 y / 23 n, alerts 08-04 to
+      09-08). Unlabelled themed rows = 0 because none are left, not because none exist.
+
+      POSITIVE CONTROL — the predicate can still go nonzero, so this zero is readable: themed rows
+      keep enrolling week by week (12, 15, 6, 3, 4, 4 since 08-04). At ~5 a week the threshold of 30
+      is roughly six weeks out, so the next surfacing is late October unless alert volume rises.
+      [[shadow-zero-effect-check-instrumentation]]
+
+      ⚠ NOT A GAP, stated so it is not re-raised: 36 `themeless_winner` rows ARE unlabelled. That is
+      this entry's own design — *"do not pad it with the themeless stratum by default"* — because
+      that stratum guards a DIRECTION (never penalise themeless), not the magnitude D2 rests on.
+
+      🔑 OBSERVATION THE CADENCE WAS NOT ASKING FOR, recorded because it is ground truth on the
+      CURRENT engine and nothing else collects it: his 44 labels split ** 21 yes / 23 no **. ⚠ DO NOT
+      quote that against the 84.5% from his 2026-08-04 batch — different cohort construction (that
+      one spanned both strata and a pre-33-commit engine), and comparing them is the adjacent-quantity
+      error this file keeps making. The bridge has NOT been built; it belongs to #368/#655, not here.
+      [[prove-two-numbers-measure-the-same-thing]]
     threshold: 30
     earliest_review_date: 2026-09-12
     action_when_ready: |
