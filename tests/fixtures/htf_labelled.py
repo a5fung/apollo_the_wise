@@ -76,7 +76,8 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
         label_date=date(2026, 9, 17),
         label_source=("operator-shared trader post 2026-09-17 07:53 (Leif Soreide, @LeifSoreide); "
                       "his chart is dated 2026-09-16 10:38, i.e. BEFORE the move he called. "
-                      "Transcribed in docs/methodology/operator_shared_notes.md § 2026-09-17"),
+                      "Transcribed in docs/methodology/operator_shared_notes.md § 2026-09-17; charts stored at "
+                      "docs/methodology/images/mrna_2026-09-1[67]_htf_*"),
         trader_read=("High Tight Flag. \"Wanted closer to 5 weeks because the flag was a touch deep "
                      "(~26%), but that was mostly one stretch day (~1% over).\" Breakout Watch spot "
                      "= the flag's upper rail; he says it triggered 09-17."),

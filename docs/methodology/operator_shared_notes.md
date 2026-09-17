@@ -1349,6 +1349,14 @@ MODERATE-in-theme alerts would have crossed to HIGH"* over 60 days.
 **Source:** Leif Soreide (@LeifSoreide) on X, 17 Sep 2026 07:53, 4.9K views. Chart is his, dated
 **Wed 16-Sep-2026 10:38 am** — i.e. the setup as it stood BEFORE that day's move.
 
+**🖼 Images stored in-repo** (the uploads directory is session-scoped and does not survive —
+this is the failure mode that lost the 620 chart, so the files are committed, not just cited):
+- `docs/methodology/images/mrna_2026-09-16_htf_stockcharts_daily.jpg` — his annotated daily:
+  the 170.3% pole marker, the 26.2% flag depth marker, the flag rails, and the ATR(14)
+  down-trendline.
+- `docs/methodology/images/mrna_2026-09-17_htf_soreide_post.png` — the post itself, so his
+  wording is preserved as primary source rather than only as my transcription.
+
 > **"$MRNA High Tight Flag.**
 > Wanted closer to 5 weeks because the flag was a touch deep (~26%), but that was mostly one stretch
 > day (~1% over).
