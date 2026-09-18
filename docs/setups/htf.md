@@ -180,6 +180,35 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    NULL and are NOT recommended.** What remains is his ruling on the fork below.
 
 ## Change log
+- **2026-09-18 — OPERATOR RULING on the depth fork: DO NOT PICK ONE YET — OBSERVE SEVERAL.
+  NOTHING CHANGED IN THE DETECTOR.** Per #610's DoD ("his ruling recorded in docs/setups/htf.md").
+  **The fork put to him** (F1): measure flag depth on the flag's **LOW** ÷ pole **HIGH** (ours, the
+  signed 2026-06-27 deviation) or on the **CLOSE** ÷ pole high (the source's literal
+  `Close ≥ 0.75 × High`). My recommendation was to keep the low.
+  **His ruling, verbatim:** *"i dont really see OUST, but i'd lean on letting MRNA. In any case, we
+  should be able to observe multiple parameters since we're just collecting data and refining the
+  setup, we still need to nail down entry/exit, so hard to make a final call right now."*
+  **Three things he settled, and one he deliberately did not:**
+  1. **OUST is NOT an HTF** — and this time it is a CHART READ, not the 2026-09-04 removal-list
+     sign-off. The `tests/fixtures/htf_labelled.py` negative label is now directly supported.
+  2. **He leans toward ADMITTING MRNA.** A LEAN, recorded as a lean — not a criteria change.
+  3. **He REFUSED the binary, and gave the reason: entry and exit are not nailed down.** A depth
+     rule cannot be chosen on outcome evidence while the entry and exit that produce the outcomes
+     are still moving — the same reasoning as [[check-the-rule-era-before-comparing-to-actual]].
+     ⚠ **OUST is the case in point: under the shipped rules its breakout is REJECTED outright
+     (`stop_distance_gt_8pct`, every stop candidate 11-28% away against an 8% cap), and if the cap
+     is overridden it is +3R or −1R depending on WHICH DAY'S sma10 is read.** A selection rule
+     cannot be judged against an exit that unstable.
+  4. **NOT settled, and not to be inferred:** which reading finally ships. That waits on entry/exit.
+  **WHAT THIS MEANS MECHANICALLY — record several readings per candidate-day, keep acting on one.**
+  The LIVE admission gate is UNCHANGED (flag low ÷ pole high ≥ 75%). Alongside it the detector is to
+  RECORD, per candidate-day, the margins for each reading under discussion — depth on the low, depth
+  on the close, the SMA20 invalidation margin and the MA-stack margin — so that when entry/exit
+  settle, the choice is made on accumulated LIVE data instead of a one-off replay. **Observation is
+  not admission: nothing a shadow column records can change what the board admits.**
+  **The two knobs #610 originally asked for are dead and stay dead** — a one-bar depth allowance
+  cannot reach MRNA (four bars breach; second-lowest low 73.6%) and an SMA20 margin adds zero
+  breakouts at every size. Both measured: `docs/analysis/610_htf_depth_and_sma20_margin_2026-09-18.md`.
 - **2026-09-16 — OPERATOR RULING on the detection fork. NOTHING CHANGED IN THE DETECTOR; this
   records a decision and closes out a question, per #610's own DoD ("his ruling recorded in
   docs/setups/htf.md").**
