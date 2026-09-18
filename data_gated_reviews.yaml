@@ -11782,6 +11782,40 @@ reviews:
       entirely on conversion. If it does not, the plan narrows to conversion alone - we
       cannot pick better, only hold better.
     added_on: 2026-08-16
+    resolution_2026_09_17: |
+      RAN 2026-09-17 at CLOSE. ** n = 13 sessions. THIN (n=13 of 25 decision-grade sessions, 52%)
+      -- directional only, NOT a verdict. CONCLUSION UNCHANGED: still nothing to score. **
+
+      OUT-OF-SAMPLE (alert_date > 2026-08-16): 32 shadow rows over 13 sessions, 26 alerted HIGH,
+      11 filled, 20 carrying a settled forward outcome.
+      ** TAIL EVENTS AT >=8xADR: ZERO on BOTH horizons. ** Best 5-day 4.97x (unchanged), median
+      1.65x. Best 20-day 7.41x. Catch-rate on the tail stays UNDEFINED; winners admitted is still
+      0 in every quartile.
+
+      METHOD RE-PINNED, because I nearly got it wrong tonight: max_high_5d / max_high_20d in
+      mi_ep_missed_outcomes are FRACTIONAL GAINS (0.14 = +14%), not prices. The ADR multiple is
+      max_high_5d / adr20_frac. A first pass treated them as prices and returned negative
+      multiples (median -22x) -- nonsense that reproduced Wednesday's 4.97x only once the units
+      were right. TEM 2026-08-19 is the reconciling row: 0.3033 / 0.0610 = 4.97x.
+
+      ** WEDNESDAY'S ROW COUNT WAS INFLATED BY A JOIN FAN-OUT -- 32, NOT 34. **
+      mi_ep_missed_outcomes is unique on (ticker, alert_date, SOURCE), so joining on
+      (ticker, alert_date) alone multiplies rows: the naive join returns ** 48 ** against a true
+      32. Wednesday reported 34. The shadow table has only ever grown (285 rows all-time, 32
+      out-of-sample, latest alert_date 2026-09-17), so a count that FELL from 34 to 32 is
+      arithmetic, not data loss. ** Same defect class as stop_too_wide the same evening (n=11
+      fanned to 20) -- a second instance nobody caught then. ** Tonight de-duplicates with
+      ORDER BY m.source LIMIT 1. No RATE changes: 4.97x reproduces exactly, so the fan-out
+      duplicated rows without moving the maximum. [[prove-two-numbers-measure-the-same-thing]]
+
+      ** THE 20-DAY CAVEAT FROM WEDNESDAY IS CONFIRMED BY ITS OWN PREDICTION. ** It said 5.39x was
+      "a FLOOR that can only rise" because only 2 of 34 rows had a matured 20-day window. Matured
+      rows are now ** 7 of 32 ** and the best 20-day read has risen 5.39x -> ** 7.41x **, which is
+      93% of the 8x bar. The 20-day tail count remains UNDEFINED FOR WANT OF MATURITY rather than
+      zero, and the first tail event may arrive as the remaining 25 rows mature through October.
+
+      Unchanged from Wednesday and not re-litigated: this does NOT say the ranking rule fails. The
+      out-of-sample window has still produced no tail event to test it against.
 
   - review_id: stop_2r_running_comparison
     title: "2R stop — RUNNING comparison against the old rule, read every close (not gated)"
