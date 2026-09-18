@@ -144,16 +144,40 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    depth, the identical reason for 15 consecutive sessions (08-25 → 09-15):
    `flag_low_128.61_below_75%_of_pole_176.66`** — a **27.2%** retracement against our **25%**
    ceiling.
-   **He called it 26.2% and took it, because the breach was *"mostly one stretch day (~1% over)"*.**
-   Our depth gate has **no one-bar allowance**: it reads the extreme low and rejects. That is a
-   difference in KIND from a threshold disagreement, and it is not measured anywhere.
-   🔴 **And on 09-16 the setup was INVALIDATED by five cents** — `close_145.62_below_sma20_145.67`,
-   a **0.03%** margin — **the session before his breakout.** The SMA20 invalidation likewise has no
-   margin: a rounding-error breach retires a setup as surely as a decisive one.
-   **So HNGE argues the pole window and MRNA never reaches that argument. Tuning from HNGE alone
-   tunes the wrong knob.** Nothing changed. Both the 75%-of-pole floor and the SMA20 stop are
-   admission criteria = the operator's sole authority; #610's both-directions read now owes numbers
-   on (a) a one-bar depth allowance and (b) an SMA20 margin, including the junk each admits.
+   🛑 **CORRECTED 2026-09-18 BY THE MEASUREMENT — I WROTE TWO THINGS HERE THAT ARE FALSE, and
+   both were inferences from the trader's own words rather than from our bars.** Replay:
+   `docs/analysis/610_htf_depth_and_sma20_margin_2026-09-18.md`.
+   ❌ **"Mostly one stretch day", so a one-bar allowance is the difference.** IT IS NOT. **FOUR
+   bars breach the floor** (08-20 low 128.61 = 72.8% of the pole, 08-21 132.42 = 75.0%, 08-24
+   130.00 = 73.6%, 09-10 130.38 = 73.8%), and the **second**-lowest low is still **73.6%** — so
+   dropping the single worst bar leaves MRNA rejected. A one-bar allowance could never have
+   reached it. Measured over 88 scan days it admits 25 episodes whose outcomes are
+   indistinguishable from the baseline's own, **1 extra breakout, 0 corpus flips.**
+   ❌ **"Invalidated by five cents, retired one day early on a rounding error."** The 0.03% SMA20
+   breach is real but was **not** what stood between MRNA and the board: on 09-16 the **MA stack
+   was already broken by 1.30%** (sma10 143.78 < sma20 145.67), and on 09-17 — his breakout day —
+   it still fails by **0.24%** (sma10 144.51 < sma20 144.86) under **all ten** variants tested.
+   With an SMA20 margin applied, that same day simply reads `ma_stack_not_stage2`. Margins of
+   0.1/0.25/0.5/1.0% keep 4/8/15/37 of 617 kills and add **0 breakouts at every margin**.
+   ✅ **WHAT THE 26.2%-VS-27.2% GAP ACTUALLY IS — a DENOMINATOR, and this is the real finding.**
+   His 26.2% is `128.61 / 174.38`, the pole-day **CLOSE**. Ours is `128.61 / 176.66`, the pole-day
+   **HIGH**. Same low, different reference. And our gate reads the flag's extreme **LOW**, while
+   the sourced spec's literal words are **`Close ≥ 0.75 × High`** — on which MRNA **passes at
+   75.5%** (lowest close 133.32). **That is the mechanism, and it is neither of the two knobs I
+   scoped.** [[prove-two-numbers-measure-the-same-thing]]
+   ⚖ **SO THE OPEN QUESTION IS A METHODOLOGY REVERSAL, NOT A TUNE:** reading depth on the LOW is
+   our **signed 2026-06-27 deviation** from the spec's literal close. Reverting it is a reversal
+   of a signed decision → CHANGE_PROCESS rule 3 (say why the prior reasoning was *wrong*, not
+   merely incomplete). Measured cost both ways: the spec-literal read puts MRNA COILED 08-28 →
+   09-15, **but also admits OUST — which the operator labelled NOT-HTF** — and its 41 broad
+   admits fall **harder** (57% down a month later vs 51%; MAE −24% vs −14%) with a slightly fatter
+   tail (29% vs 21%).
+   **So HNGE argues the pole window; MRNA does not reach that argument and does not reach mine
+   either — it turns on how depth is measured. Tuning from HNGE alone tunes the wrong knob, and
+   tuning from my first reading of MRNA would have tuned a knob that changes nothing.**
+   ⛔ **NOTHING CHANGED.** Flag depth, the 75%-of-pole floor, the SMA20 stop and the MA stack are
+   all admission criteria = the operator's sole authority. **Both knobs #610 asked for measure
+   NULL and are NOT recommended.** What remains is his ruling on the fork below.
 
 ## Change log
 - **2026-09-16 — OPERATOR RULING on the detection fork. NOTHING CHANGED IN THE DETECTOR; this
