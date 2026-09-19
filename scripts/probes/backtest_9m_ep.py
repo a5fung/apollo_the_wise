@@ -19,7 +19,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # #261: scripts/probes/ is one level deeper than scripts/ was
 
 from agents.market_intelligence.db import get_pool
 

@@ -54,7 +54,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # Allow running as `python scripts/...` (path tweak so package imports work).
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # #261: scripts/probes/ is one level deeper than scripts/ was
 
 from agents.market_intelligence.db import get_pool, update_shadow_trade  # noqa: E402
 from agents.market_intelligence.broker.shadow_orb_tracker import (  # noqa: E402

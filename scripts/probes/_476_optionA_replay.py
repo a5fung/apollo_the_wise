@@ -34,7 +34,7 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parent.parent.parent  # #261: scripts/probes/ is one level deeper than scripts/ was
 sys.path.insert(0, str(REPO))
 
 from agents.market_intelligence.theme_merge_arm import family_of  # noqa: E402

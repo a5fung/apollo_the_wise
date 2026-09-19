@@ -24,6 +24,10 @@ Reason vocabulary:
   cluster:_270             part of the _270_* replay cluster the #261 card named explicitly
                             as "do not move" -- kept whole, not individually re-verified
   bare-imports:_327_replay same-directory `import _327_replay` -- breaks if separated from it
+  dynamic-imports:<name>  same-directory `importlib`/`spec_from_file_location` load of
+                           <name> -- breaks if separated from it (same coupling as
+                           bare-imports, caught by a same-dir-coupling check, not the
+                           inbound-reference grep, since nothing else references THIS file)
   operator-tool:write      an ONGOING operator control lever (safeguard override / grade
                             authority flip), not a one-off historical fix -- #261 explicitly
                             left these at root pending the deferred ops/evals split
@@ -70,6 +74,13 @@ KEPT_AT_ROOT = {
     "_327_entry_signal.py": "code-ref:test+imported-or-code-ref",
     "_327_pull_minute.py": "imported-or-code-ref",
     "_327_replay.py": "imported-or-code-ref",
+    # 2026-09-19 (#261): moved to probes/ then moved BACK -- its dynamic loader
+    # (`importlib.util.spec_from_file_location` off `_HERE = dirname(__file__)`) requires
+    # `_partial_exit_paper_validation.py` in the SAME directory, and that file stays at
+    # root (imported-or-code-ref: order_manager.py cites it as the validated basis).
+    # Outbound-coupling check the #261 card asked for; the class of bug the 6/20
+    # regression was.
+    "_508_leg_safe_paper_validation.py": "dynamic-imports:_partial_exit_paper_validation",
     "_344_late_source_replay.py": "imported-or-code-ref",
     "_368_ingest_labels.py": "imported-or-code-ref+yaml-cited",
     "_b50_revenue_stage_threshold_backward_check.py": "imported-or-code-ref",

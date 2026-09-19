@@ -24,7 +24,7 @@ from datetime import datetime as _dt, timedelta as _td
 from statistics import median as _median
 from typing import Optional
 
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2]))  # #261: scripts/probes/ is one level deeper than scripts/ was
 
 from agents.market_intelligence.flag_detector import (
     compute_flag_metrics,

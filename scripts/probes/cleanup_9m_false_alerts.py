@@ -21,7 +21,7 @@ import asyncio
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # #261: scripts/probes/ is one level deeper than scripts/ was
 
 from agents.market_intelligence.constants import SKIP_TICKERS
 from agents.market_intelligence.db import get_pool

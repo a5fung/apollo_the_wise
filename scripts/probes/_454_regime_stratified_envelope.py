@@ -40,7 +40,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # #261: scripts/probes/ is one level deeper than scripts/ was
 
 # The SSoT envelope constant (kill_scale_bands.py is dependency-free at import time).
 from agents.market_intelligence.kill_scale_bands import (  # noqa: E402

@@ -35,7 +35,7 @@ import time
 from datetime import date, timedelta
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parent.parent.parent  # #261: scripts/probes/ is one level deeper than scripts/ was
 sys.path.insert(0, str(REPO))
 
 ENTRY_BREAK = 1.005          # day-0 high must clear open×this; entry at this

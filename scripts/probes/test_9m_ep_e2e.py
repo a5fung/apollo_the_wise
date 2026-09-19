@@ -24,7 +24,7 @@ import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # #261: scripts/probes/ is one level deeper than scripts/ was
 
 # #227: Windows consoles default to cp1252, which can't encode the ✅/❌
 # markers (UnicodeEncodeError mid-run, masking the actual test results).
@@ -249,7 +249,7 @@ def test_order_spec_logic() -> bool:
 
 def test_agent_routing_coverage() -> bool:
     """Verify all routing keywords are present in agent.py."""
-    agent_path = Path(__file__).parent.parent / "agents/market_intelligence/agent.py"
+    agent_path = Path(__file__).parent.parent.parent / "agents/market_intelligence/agent.py"  # #261
     # #227: explicit encoding — Windows' cp1252 default dies on agent.py's UTF-8.
     content = agent_path.read_text(encoding="utf-8")
 
