@@ -359,10 +359,19 @@ class _FrozenDatetime(datetime):
 ADMIT_TICKER = "BIG00"
 
 
-async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False):
+async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
+                         catalyst_type_raises: bool = False):
     """One full run_ep_scan on a fixture board. 20 big-ADV fillers (top-20 by pre-score),
     all killed at the RVOL@T gate; 3 sub-shortlist names, two of which meet the lane rule.
     Returns (results, scan_log_rows, alert_inserts, lane_rows).
+
+    `catalyst_type_raises=True` (admit=True only): the admit branch below UNCONDITIONALLY
+    stubs `classify_catalyst_type` to a happy-path AsyncMock — a caller-supplied patch set
+    BEFORE calling this function is clobbered by that stub (d747f414's "this harness never
+    reaches that branch" finding, verified empirically 2026-09-19: an outer monkeypatch on
+    `classify_catalyst_type` is overwritten here and the real function is never called). This
+    flag is the ONLY way to make the classifier actually raise inside a real `run_ep_scan` —
+    see test_a_catalyst_type_classify_failure_keeps_the_key_present_as_none.
 
     `admit=True` (the graded-path companion test): ADMIT_TICKER ("BIG00") clears the RVOL@T
     gate and rides a pre-seeded catalyst-cache entry (the same "already graded today" fast
@@ -450,8 +459,14 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False):
             "companyName": "Big Cap Co", "sector": "Technology", "52WeekHigh": 70.0,
         }))
         from agents.market_intelligence import catalyst_type_classifier, ep_grade_judge
-        monkeypatch.setattr(catalyst_type_classifier, "classify_catalyst_type",
-                            AsyncMock(return_value={"catalyst_type": None, "rationale": None}))
+        if catalyst_type_raises:
+            async def _catalyst_type_boom(*a, **k):
+                raise RuntimeError("catalyst_type classifier down")
+            monkeypatch.setattr(catalyst_type_classifier, "classify_catalyst_type",
+                                _catalyst_type_boom)
+        else:
+            monkeypatch.setattr(catalyst_type_classifier, "classify_catalyst_type",
+                                AsyncMock(return_value={"catalyst_type": None, "rationale": None}))
         # The Holistic Grade Judge is an LLM call (Opus) — stubbed the way the rest of the
         # suite stubs it (see test_ep_grade_judge.py / test_judge_transport.py): None is a
         # real, common outcome (timeout/malformed → fail-open to the floor tier), and with
@@ -1150,18 +1165,18 @@ async def test_a_setup_class_failure_changes_the_value_not_the_result_shape(monk
     test in this file still passes.
     """
     import agents.market_intelligence.setup_class_classifier as scc
-    import agents.market_intelligence.catalyst_type_classifier as ctc
 
     def _boom(*a, **k):
         raise RuntimeError("classifier down")
 
-    async def _aboom(*a, **k):
-        raise RuntimeError("classifier down")
-
-    # BOTH classifiers are made to fail: ep_detector imports each lazily from its own module,
-    # so patching the source module is what the scan actually picks up.
+    # setup_class only: ep_detector imports it lazily from its own module, so patching the
+    # source module is what the scan actually picks up. A `classify_catalyst_type` patch set
+    # HERE would be a no-op — `_run_scan_once(admit=True)` unconditionally re-patches it to a
+    # happy-path mock AFTER this call returns, clobbering anything set beforehand (verified
+    # 2026-09-19, #663: the classifier ran zero times). See
+    # test_a_catalyst_type_classify_failure_keeps_the_key_present_as_none, which uses the
+    # `catalyst_type_raises` flag added for exactly this reason.
     monkeypatch.setattr(scc, "classify_setup_class", _boom)
-    monkeypatch.setattr(ctc, "classify_catalyst_type", _aboom)
     results, _scan_log, _alerts, _lane = await _run_scan_once(
         monkeypatch, lane_mode="off", admit=True)
 
@@ -1174,3 +1189,37 @@ async def test_a_setup_class_failure_changes_the_value_not_the_result_shape(monk
     # ...carrying None, not a stale or invented value
     assert results[0]["setup_class"] is None
 
+
+@pytest.mark.asyncio
+async def test_a_catalyst_type_classify_failure_keeps_the_key_present_as_none(monkeypatch):
+    """#663 — the second, previously UNPROVEN half of d747f414's fix. `_classify_type` seeds
+    `catalyst_type` / `catalyst_type_rationale` with `setdefault(..., None)` BEFORE its own
+    try/except (same commit, same defect class as setup_class above) — but d747f414 left it
+    marked "UNPROVEN BY TEST" because the #624 admit fixture's own stub for
+    `classify_catalyst_type` unconditionally re-patches it to a happy-path AsyncMock, clobbering
+    any patch a caller sets beforehand (verified empirically 2026-09-19 — a raising monkeypatch
+    set before calling `_run_scan_once` is silently overwritten and never called; the classifier
+    ran ZERO times). Without `catalyst_type_raises` (added for exactly this test) there is no
+    way to make the real classify path fail inside a real `run_ep_scan` — which is why the
+    original assertion attempt gave no signal and was cut.
+
+    Mutation that proves this test: remove the two `r.setdefault("catalyst_type", None)` /
+    `r.setdefault("catalyst_type_rationale", None)` lines in `ep_detector._classify_type` and
+    the two `in` assertions below fail, while every other test in this file still passes.
+    """
+    results, _scan_log, _alerts, _lane = await _run_scan_once(
+        monkeypatch, lane_mode="off", admit=True, catalyst_type_raises=True)
+
+    assert len(results) == 1 and results[0]["ticker"] == ADMIT_TICKER
+    # the KEYS survive the failure...
+    assert "catalyst_type" in results[0], (
+        "a catalyst_type classify failure dropped the key entirely — the scan's output shape "
+        "is non-deterministic and any byte-identity assertion over it can flake"
+    )
+    assert "catalyst_type_rationale" in results[0], (
+        "a catalyst_type classify failure dropped the key entirely — the scan's output shape "
+        "is non-deterministic and any byte-identity assertion over it can flake"
+    )
+    # ...carrying None, not a stale or invented value
+    assert results[0]["catalyst_type"] is None
+    assert results[0]["catalyst_type_rationale"] is None

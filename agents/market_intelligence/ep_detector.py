@@ -6592,9 +6592,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # dropped the keys entirely, so two scans of identical inputs could differ by a
             # key's existence. Every reader uses .get, so absent and None are identical
             # downstream — this fixes shape determinism, never a value, grade or trade.
-            # ⚠ UNPROVEN BY TEST: the harness in tests/test_624_lowcap_lane.py does not reach
-            # this branch, so unlike the setup_class fix above this one rests on inspection —
-            # setdefault cannot alter a value, and every reader already uses .get.
+            # PROVEN 2026-09-19 (#663): the #624 admit fixture's own stub for
+            # classify_catalyst_type unconditionally re-patches it to a happy-path mock, so a
+            # caller-supplied raising patch set beforehand was silently clobbered — the exact
+            # reason this was UNPROVEN at d747f414 (the classifier ran zero times). Fixed by
+            # threading `catalyst_type_raises` through `_run_scan_once`; RED-proven by
+            # test_a_catalyst_type_classify_failure_keeps_the_key_present_as_none (remove the
+            # two setdefaults below and exactly that one test fails).
             r.setdefault("catalyst_type", None)
             r.setdefault("catalyst_type_rationale", None)
             try:
