@@ -660,3 +660,37 @@ def test_no_new_silently_aliased_rulesets():
         f"rule-set alias set changed.\n  new: {aliased - declared}\n  gone: {declared - aliased}")
     # and the declared aliases must really be the SAME config, not just the same name shape
     assert RULESETS["current"] is RULESETS["era_d"]
+
+
+# ── #665: score_agreement_bucket reads the boundary from rule_eras, not a private literal ───
+
+def test_score_agreement_bucket_reads_sep_score_date_from_rule_eras():
+    """The bucket label must move WITH rule_eras.SEP_SCORE_DATE, not sit as its own private
+    "2026-08-22" copy (the exact duplication #665 found: this file already imports
+    SEP_SCORE_DATE for everything else, but this one function had restated the date as a bare
+    string). MUTATION: change `score_agreement_bucket` to compare against a hardcoded
+    "2026-08-22" literal instead of `SEP_SCORE_DATE.isoformat()` — every assertion below still
+    passes (the VALUE is unchanged), so the mutation that actually matters is caught by
+    `test_score_agreement_bucket_moves_with_the_shared_constant` below, which monkeypatches the
+    shared constant itself and would not observe a private-literal version moving at all."""
+    from agents.market_intelligence.rule_eras import SEP_SCORE_DATE
+    from scripts.ep_replay import score_agreement_bucket
+    tag = SEP_SCORE_DATE.isoformat()[5:]
+    assert score_agreement_bucket(SEP_SCORE_DATE.isoformat()) == f"separation(>={tag})"
+    assert score_agreement_bucket("2026-08-21") == f"legacy(<{tag})"
+    assert score_agreement_bucket("2026-08-22") == f"separation(>={tag})"
+
+
+def test_score_agreement_bucket_moves_with_the_shared_constant(monkeypatch):
+    """The load-bearing check: monkeypatch rule_eras.SEP_SCORE_DATE itself and confirm
+    score_agreement_bucket's split moves with it. A hand-restated literal ("2026-08-22" typed
+    directly into this function, the pre-#665 shape) would NOT react to this monkeypatch and
+    this test would fail — that is the mutation this test exists to catch."""
+    import agents.market_intelligence.rule_eras as rule_eras
+    import scripts.ep_replay as ep_replay_mod
+    monkeypatch.setattr(rule_eras, "SEP_SCORE_DATE", date(2026, 1, 1))
+    monkeypatch.setattr(ep_replay_mod, "SEP_SCORE_DATE", date(2026, 1, 1))
+    assert ep_replay_mod.score_agreement_bucket("2026-01-01") == "separation(>=01-01)"
+    assert ep_replay_mod.score_agreement_bucket("2025-12-31") == "legacy(<01-01)"
+    # the OLD boundary is now just an ordinary date under the new (moved) constant
+    assert ep_replay_mod.score_agreement_bucket("2026-08-22") == "separation(>=01-01)"
