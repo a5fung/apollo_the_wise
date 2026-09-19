@@ -5336,6 +5336,7 @@ async def _apply_carryforward_deterministic_filter(
     cooldown_set: set[tuple[str, str]],
     stocks_by_ticker: dict[str, dict],
     comove_ctx: ComoveContext | None = None,
+    as_of=None,
 ) -> int:
     """Daily strip-only filter for theme carryforward members (2026-05-15).
 
@@ -5360,6 +5361,19 @@ async def _apply_carryforward_deterministic_filter(
       1. Ticker is in Fix B's globally_banned set
       2. (ticker, theme_name) has an active validation cooldown
       3. Ticker is a sector outlier (singleton sector when ≥3 members)
+      4. Ticker's price is PINNED BY AN ANNOUNCED DEAL (#671, `as_of` given)
+
+    ARM 4 — WHY IT EXISTS, and it was found by an expectation that was WRONG. #671 filtered
+    deal-pinned names out of all six RS pools on 2026-09-17 and its verify predicted that
+    CBZ would therefore LEAVE `Management & Business Advisory Consulting Firms`. It did not,
+    and could not: the pools gate what ENTERS discovery and assignment, while a theme's
+    existing roster is carried forward through THIS function — which had no deal-pin arm at
+    all. So a stock could be filtered out of every pool and still sit in a theme indefinitely.
+    His complaint was a bought-out name reaching him; a theme is one of the surfaces it
+    reaches him on. Measured 2026-09-18: 54 names deal-pinned, 0 in any pool, and FOUR still
+    inside themes — CBZ, TECH, SAFT, UTZ.
+    ⚠ `as_of=None` is the pre-change path byte-for-byte, so every existing caller and test is
+    unaffected; the arm only runs when a date is supplied.
 
     STRIP-ONLY: never retires themes here. Themes with 0 members may be
       a) refilled by assignment LLM (uncovered ticker fits the thesis), OR
@@ -5373,6 +5387,20 @@ async def _apply_carryforward_deterministic_filter(
     Returns the count of tickers stripped across all themes.
     """
     from collections import Counter
+
+    # ONE query for every theme's members, not one per theme — the pin classifier is a single
+    # scan and calling it 130 times a night would be the cost mistake, not the correctness one.
+    deal_pinned: set[str] = set()
+    if as_of is not None:
+        all_members = sorted({t for th in themes for t in (th.get("tickers") or [])})
+        if all_members:
+            try:
+                from agents.market_intelligence.db import get_deal_pinned_tickers
+                deal_pinned = await get_deal_pinned_tickers(as_of, all_members)
+            except Exception as e:   # loud-ok: a classifier failure must not stop the nightly
+                logger.error(f"Carryforward deal-pin arm skipped ({type(e).__name__}: {e}) — "
+                             f"members kept; this is a MISSED strip, not a wrong one",
+                             exc_info=True)
 
     stripped_total = 0
     for theme in themes:
@@ -5420,7 +5448,9 @@ async def _apply_carryforward_deterministic_filter(
             logger.info(
                 f"Carryforward filter: '{theme_name}' keeps cross-sector member(s) {comove_kept} — "
                 f"co-move with the theme at >= {ASSIGN_COMOVE_BAR}")
-        to_remove = set(banned_hits) | set(cooldown_hits) | set(sector_outliers) | set(comove_below_bar)
+        pinned_hits = [t for t in tickers if t in deal_pinned]
+        to_remove = (set(banned_hits) | set(cooldown_hits) | set(sector_outliers)
+                     | set(comove_below_bar) | set(pinned_hits))
         if not to_remove:
             continue
 
@@ -5432,6 +5462,8 @@ async def _apply_carryforward_deterministic_filter(
         # pattern). Per-ticker rows would balloon the audit log without adding
         # signal beyond what the reason buckets already convey.
         reason_parts = []
+        if pinned_hits:
+            reason_parts.append(f"deal_pinned={sorted(pinned_hits)}")
         if banned_hits:
             reason_parts.append(f"banned={sorted(banned_hits)}")
         if cooldown_hits:
@@ -8266,6 +8298,7 @@ async def run_theme_engine(
     # code stays in place, unused here, ready for the evaluation he asked to be filed.
     await _apply_carryforward_deterministic_filter(
         updated_themes, globally_banned, cooldown_set, stocks_by_ticker,
+        as_of=today,          # #671 arm 4: a bought-out name leaves the themes it is ALREADY in
     )
 
     # --- Step 2b: Assign uncovered stocks to existing themes ---
