@@ -2797,7 +2797,7 @@ measure web×enrichment double-counting, so it is NOT the flip gate.
 
 **FLIP GATE (load-bearing — make enriched the live grade)**: requires Monday+ live shadow
 data showing production net-correctness (enriched lifts true catalysts, inflates nothing —
-read via `scripts/_344_shadow_verify.py`), re-poll fires once with tolerable latency, then
+read via `scripts/probes/_344_shadow_verify.py`), re-poll fires once with tolerable latency, then
 CHANGE_PROCESS + operator sign-off. Until then the live grade is byte-identical to before.
 **⚠️ The flip MUST carry the grade window**: the validated shadow grades the enriched corpus
 at `max_chars=_GRADE_ENRICH_MAX_CHARS` (12000); the live path defaults to 6000. The flip has

@@ -196,7 +196,7 @@ Completely parallel EP track — zero changes to existing MAGNA53 logic.
 
 **Outcome tracking:** `_compute_9m_ep_outcomes()` in `outcome_tracker.py` — 1D/1W/1M returns → `mi_signal_outcomes` with `signal_type='9m_ep'`
 
-**Scripts:** `scripts/backtest_9m_ep.py` (D1/D5/D10/D21 by vol/range bucket), `scripts/test_9m_ep_e2e.py` (e2e test)
+**Scripts:** `scripts/probes/backtest_9m_ep.py` (D1/D5/D10/D21 by vol/range bucket), `scripts/probes/test_9m_ep_e2e.py` (e2e test)
 
 **Key rules:**
 - Volume ≥ 8.9M (actual) or ≥ 12M projected (after 15 min) = signal
@@ -204,7 +204,7 @@ Completely parallel EP track — zero changes to existing MAGNA53 logic.
 - Stop = prior day's low; shared 4-position cap with MAGNA53
 
 ### Files Changed
-`ninem_detector.py` (new), `db.py`, `briefing.py`, `scheduler.py`, `agent.py`, `broker/order_manager.py`, `broker/live_tracker.py`, `outcome_tracker.py`, `scripts/backtest_9m_ep.py` (new), `scripts/test_9m_ep_e2e.py` (new), `README.md`, `EP_TRADING_RULES.md`, `AGENTS.md`
+`ninem_detector.py` (new), `db.py`, `briefing.py`, `scheduler.py`, `agent.py`, `broker/order_manager.py`, `broker/live_tracker.py`, `outcome_tracker.py`, `scripts/probes/backtest_9m_ep.py` (new), `scripts/probes/test_9m_ep_e2e.py` (new), `README.md`, `EP_TRADING_RULES.md`, `AGENTS.md`
 
 ---
 
@@ -297,7 +297,7 @@ WHERE ticker = 'KURA' AND status = 'filled';
 - **SMA trailing stop timing**: runs once daily at 4:45 PM ET (EOD close-based). Activates on Day 10+ (needs 10 daily closes). Before Day 10: only ORB hard stop + breakeven (if partial taken) apply.
 
 ### Files Changed
-`broker/order_manager.py`, `broker/live_tracker.py`, `scripts/cleanup_9m_false_alerts.py` (new)
+`broker/order_manager.py`, `broker/live_tracker.py`, `scripts/probes/cleanup_9m_false_alerts.py` (new)
 
 **⚠️ MUST-RUN on production before deploy — 100+ false 9M EP alerts in DB:**
 The 9M ETF/non-stock filter was added on 2026-04-20 (session 6), but alerts fired before
@@ -306,11 +306,11 @@ on the server after `git pull`:
 ```bash
 # Dry run first — review output carefully
 docker compose -f docker/docker-compose.prod.yml exec market-agent \
-  python scripts/cleanup_9m_false_alerts.py
+  python scripts/probes/cleanup_9m_false_alerts.py
 
 # Then delete if output looks right
 docker compose -f docker/docker-compose.prod.yml exec market-agent \
-  python scripts/cleanup_9m_false_alerts.py --delete
+  python scripts/probes/cleanup_9m_false_alerts.py --delete
 ```
 Script checks three criteria: SKIP_TICKERS list, non-CS/ADRC in `mi_security_types`,
 and bad ticker format (>5 chars or contains `.`). Also cleans derived sugar baby rows.
@@ -665,10 +665,10 @@ summary of today's HIGH outcomes. Silent when no HIGHs detected today.
    ```bash
    # dry run
    docker compose -f docker/docker-compose.prod.yml exec market-agent \
-     python scripts/backfill_orphan_ep_alerts.py 2026-04-22
+     python scripts/probes/backfill_orphan_ep_alerts.py 2026-04-22
    # apply
    docker compose -f docker/docker-compose.prod.yml exec market-agent \
-     python scripts/backfill_orphan_ep_alerts.py 2026-04-22 --apply
+     python scripts/probes/backfill_orphan_ep_alerts.py 2026-04-22 --apply
    ```
    Inserts one skipped row per orphan HIGH with reason
    `infra:subscribe_timeout: event-loop hang — retro-fit`.
@@ -679,7 +679,7 @@ summary of today's HIGH outcomes. Silent when no HIGHs detected today.
 ### Files Changed
 `broker/skip_reasons.py` (new), `broker/live_tracker.py`, `broker/bar_stream.py`,
 `broker/order_manager.py`, `backtester/filters.py`, `scheduler.py`, `briefing.py`,
-`agent.py`, `db.py`, `scripts/backfill_orphan_ep_alerts.py` (new), `AGENTS.md`
+`agent.py`, `db.py`, `scripts/probes/backfill_orphan_ep_alerts.py` (new), `AGENTS.md`
 
 ---
 

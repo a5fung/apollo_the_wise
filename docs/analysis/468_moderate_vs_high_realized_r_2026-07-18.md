@@ -134,7 +134,7 @@ unless a clean-window extension changes the clean stratum.
 
 The probe's Phase A uses the established operator-authorized read-only path
 (`ssh apollo@87.99.134.162 → docker exec -i apollo-postgres psql -U apollo -d apollo -tAX`,
-the `scripts/_454_regime_stratified_envelope.py` runner shape, SELECT-only asserted). This
+the `scripts/probes/_454_regime_stratified_envelope.py` runner shape, SELECT-only asserted). This
 session's permission layer (auto-mode classifier) denied that command class; per instruction
 the probe was delivered fully instead. From a session/workstation with prod SSH permission:
 

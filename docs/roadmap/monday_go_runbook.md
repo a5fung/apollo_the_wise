@@ -91,7 +91,7 @@ docker exec apollo-postgres psql -U apollo -d apollo -c \
 
 - **`#346` shadow verify (the #344 HARD-gate condition):** after the premarket EP scans —
   ```bash
-  docker exec apollo-market python scripts/_344_shadow_verify.py
+  docker exec apollo-market python scripts/probes/_344_shadow_verify.py
   ```
   Confirm: `ep_grade_enrich_shadow` + `ep_repoll_shadow` rows WROTE · re-poll fired **exactly once
   per ticker** (check container uptime first — a restart can dupe) · latency p95 OK · **AND scan
@@ -264,7 +264,7 @@ anything else, confirm:**
 3. **the bracket has its stop leg attached** — `/positions` or `mi_live_trades.stop_order_id` non-null;
 4. `/pause` is in hand.
 **If the stop leg isn't attached → `/pause` immediately and investigate before the day continues.**
-- `docker exec apollo-market python scripts/verify_monday_firstfire.py` — the first-fire harness.
+- `docker exec apollo-market python scripts/probes/verify_monday_firstfire.py` — the first-fire harness.
 - `scripts/evaluate_kill_scale_bands.py` (#275) + `scripts/replay_regression.py` (#302) now read
   `live` — bands/R-dist start accruing real data.
 - Watch `mi_audit_log` for any `*_error` / `cross_account_event_rejected` in the first hour.

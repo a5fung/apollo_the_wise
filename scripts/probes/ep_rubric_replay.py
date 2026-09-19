@@ -45,7 +45,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from statistics import median
 
-_REPO = pathlib.Path(__file__).resolve().parent.parent
+_REPO = pathlib.Path(__file__).resolve().parent.parent.parent  # #261: scripts/probes/ is one level deeper than scripts/ was
 sys.path.insert(0, str(_REPO))
 
 from agents.market_intelligence.ep_rubric import (  # noqa: E402

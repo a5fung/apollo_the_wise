@@ -2,7 +2,7 @@
 
 The #327 detector was rebuilt around the operator-locked model after the old peak-anchored "base =
 peak..now" was shown to swallow the pullback (CRWD read 24% wide). This file captures the operator's
-verbatim chart reads + the model, as the calibration record. See `scripts/_anticipation_coil_finder.py`.
+verbatim chart reads + the model, as the calibration record. See `scripts/probes/_anticipation_coil_finder.py`.
 
 ## Locked model (operator-confirmed 2026-06-27)
 1. **RUNUP** — a leg up ≥~15% (prior swing low → peak).

@@ -1096,6 +1096,12 @@ def test_nothing_outside_this_module_imports_alert_rank_shadow():
         # non-decision shape as sustain_reject_replay.py directly above.
         str(REPO / "agents/market_intelligence/gap_near_miss_replay.py"),
         str(REPO / "tests/test_gap_near_miss_replay.py"),
+        # 2026-09-19 (#261 reorg continuation): the scripts/-root hygiene allowlist pins
+        # `alert_rank_shadow_running_read.py`'s FILENAME as a dict key (it stays at root,
+        # yaml-cited + test-referenced) — a string literal naming the file, never an
+        # import of the alert_rank_shadow module itself. Same non-decision, string-key
+        # shape as the data_gated_reviews.py exemption above.
+        str(REPO / "tests/test_scripts_root_hygiene.py"),
     }
     unexpected = hits - allowed
     assert not unexpected, f"unexpected references to alert_rank_shadow: {unexpected}"

@@ -1,7 +1,7 @@
 # #454 part 3 — drawdown-breaker LIVE-path exercise (2026-07-25)
 
 **Result: ALL 37 CHECKS PASSED. Zero writes, zero residue.**
-Harness: `scripts/_454_drawdown_live_path_exercise.py` · run in `apollo-execution` (the container that
+Harness: `scripts/probes/_454_drawdown_live_path_exercise.py` · run in `apollo-execution` (the container that
 owns the money path).
 
 ## What this closes — and what it does not

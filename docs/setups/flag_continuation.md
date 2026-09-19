@@ -357,7 +357,7 @@ New `mi_flag_candidates.universe_sources TEXT[]` column records provenance for t
 
 **Trigger**: OKLO 5/04 forming a visible flag with no detector hit. Replay surfaced two structural gaps: (a) universe gate excluded post-runup names whose composite RS is dragged down by pre-runup downtrend; (b) contraction math can't fire on short bases (early-vs-recent window overlap).
 
-**Evidence**: OKLO 5/04 replay (`scripts/backfill_flag_xndu.py`); existing path catches XNDU 4/29-30 baseline.
+**Evidence**: OKLO 5/04 replay (`scripts/probes/backfill_flag_xndu.py`); existing path catches XNDU 4/29-30 baseline.
 
 **Anticipated effect**: (a) `get_flag_universe` adds OR-clause `rs_1m_pct ≥ 80 OR (last_close / trailing10_min - 1) ≥ 0.25`; (b) new `_compute_fresh_tightening` predicate creates alternative COILED path on `base_age ≥ 4 AND max(2bar TR%) ≤ 0.6 × ATR14% AND max(2bar vol) ≤ ADV20`.
 

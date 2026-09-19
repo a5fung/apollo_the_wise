@@ -141,8 +141,8 @@ registered + ran clean 17:55 ET (0 rows — today was a 0-alert market). On the 
   live_tracker, alpaca_client) needs a SECOND `deploy.sh execution`. Verify `docker ps` shows
   apollo-execution "Up <seconds>" after. (The scope guard warns, but confirm.)
 - **No `docker exec python -c` for trade-state MUTATION.** Read-only SELECTs are fine. Mutations go through
-  a COMMITTED, reviewed, DRY-RUN-first script (see scripts/reap_stale_pending_confirmation.py and
-  scripts/fix_double_encoded_exits_287.py as the pattern) — never inline.
+  a COMMITTED, reviewed, DRY-RUN-first script (see scripts/probes/reap_stale_pending_confirmation.py and
+  scripts/probes/fix_double_encoded_exits_287.py as the pattern) — never inline.
 - **Max 1 rebump; UNBLOCK+SHIP, not re-date** (CLAUDE.md). A due task → work it, don't roll the date.
 - **Never invent a `/command`** — grep `channels/telegram.py` first; a command needs handler + dispatch +
   BotCommand registration in the same commit or it's invisible.

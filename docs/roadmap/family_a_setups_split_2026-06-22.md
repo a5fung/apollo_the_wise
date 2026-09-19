@@ -117,6 +117,6 @@ flags any live gate value with no source citation (currently unenforced) — fil
 ## Artifacts (all committed)
 - Diagnosis/defect: `docs/analysis/consolidation_runup_defect_2026-06-22.md`
 - Methodology SSoT: `docs/methodology/operator_shared_notes.md` · Design: ADR 0013
-- Acceptance test: `scripts/_consolidation_acceptance_test.py` · Holds measure: `scripts/_anticipation_holds_measure.py`
-- Shortlist (to label): `scripts/_anticipation_shortlist.py` + `docs/analysis/anticipation_shortlist_to_label_2026-06-22.md`
+- Acceptance test: `scripts/_consolidation_acceptance_test.py` · Holds measure: `scripts/probes/_anticipation_holds_measure.py`
+- Shortlist (to label): `scripts/probes/_anticipation_shortlist.py` + `docs/analysis/anticipation_shortlist_to_label_2026-06-22.md`
 - Fixtures: `tests/fixtures/{consolidation_acceptance,anticipation_pradeep_cohort,anticipation_universe}_bars.psv`

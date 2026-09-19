@@ -78,6 +78,6 @@ recommend one, with reasoning — not to pre-decide it.**
 - `agents/market_intelligence/kill_scale_bands.py` — `CALIBRATION_ENVELOPE`, band logic
 - `docs/setups/safeguards.md` — signed bands + change-log (KILL/SCALE table)
 - `docs/analysis/454_regime_stratified_envelope_2026-07-17.md` — the finding + §5 options
-- `scripts/_454_regime_stratified_envelope.py` · `scripts/_killscale_bands_268.py`
+- `scripts/probes/_454_regime_stratified_envelope.py` · `scripts/_killscale_bands_268.py`
 - `data_gated_reviews.yaml::kill_scale_bands_quarterly_review`
 - prod: `mi_live_trades` (9 closed live), `mi_market_regime`, `mi_audit_log` (`kill_scale_override`)

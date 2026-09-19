@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-17 · **Status:** ANALYSIS ONLY — feeds the quarterly band review
 (`data_gated_reviews.yaml::kill_scale_bands_quarterly_review`); changes NOTHING live.
-**Generator:** `scripts/_454_regime_stratified_envelope.py` (read-only prod SELECTs;
+**Generator:** `scripts/probes/_454_regime_stratified_envelope.py` (read-only prod SELECTs;
 re-run any time to regenerate every number below).
 **Envelope under test:** `kill_scale_bands.CALIBRATION_ENVELOPE` — #268b Phase B, n=399,
 +0.95R / 30% win · t20 p5 −0.63R / min −1.03R · maxDD −24.1R · worst streak 15

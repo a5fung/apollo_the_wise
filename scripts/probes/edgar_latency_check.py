@@ -18,7 +18,7 @@ from pathlib import Path
 
 import httpx
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # #261: scripts/probes/ is one level deeper than scripts/ was
 
 # SEC mandates a descriptive User-Agent with contact info — ONE identity for the whole
 # codebase, so a change of contact does not have to be found in three places (2026-09-02).

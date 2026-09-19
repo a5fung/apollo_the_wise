@@ -64,7 +64,7 @@ is not — a distinct thread worth filing if wanted (why 30 HIGHs go cancelled-b
 
 Precision was never the R question. A late entry has **no fresh ORB**, so it is forced onto a
 stale-ORB stop (structure-low / ATR) — exactly the models #276 W2 study-2 showed collapse realized-R.
-Measured realized-R for the late cohort. Script: `scripts/_290_late_entry_backtest.py` (prod run).
+Measured realized-R for the late cohort. Script: `scripts/probes/_290_late_entry_backtest.py` (prod run).
 
 **Method (explicit UPPER BOUND — advisor 7/9):** cohort = 290 late-detection HIGH_missed (deduped,
 9:45+, post-3/20; 278 had bars + a forward path). Entry fill = the **next minute-bar OPEN after the
