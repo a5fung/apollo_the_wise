@@ -12395,6 +12395,29 @@ reviews:
       entirely on conversion. If it does not, the plan narrows to conversion alone - we
       cannot pick better, only hold better.
     added_on: 2026-08-16
+    resolution_2026_09_19: |
+      RAN 2026-09-19 (Sat). ** n = 13 sessions, UNCHANGED from the 09-17 run. THIN (n=13 of 25
+      decision-grade sessions, 52%) -- directional only, NOT a verdict. CONCLUSION UNCHANGED:
+      still nothing to score. **
+
+      OUT-OF-SAMPLE (alert_date > 2026-08-16): 32 rows over 13 sessions, 20 carrying a settled
+      forward outcome. ** TAIL EVENTS AT >=8xADR: ZERO on BOTH horizons ** (0 of 20 on the 5-day,
+      0 of 20 on the 20-day). Best 5-day 4.97x, best 20-day 7.41x, median 5-day 1.65x.
+
+      UNITS RECONCILED BEFORE ANY READING WAS TRUSTED, as the 09-17 run demanded: TEM 2026-08-19
+      reads 0.3033 / 0.0610 = 4.97x. max_high_5d/max_high_20d are FRACTIONAL GAINS, not prices --
+      treating them as prices returns a median of -22x. mi_ep_missed_outcomes is unique on
+      (ticker, alert_date, SOURCE), so the join de-duplicates with ORDER BY source LIMIT 1;
+      without it 32 rows fan out to 48.
+
+      ** WHY n DID NOT MOVE, checked rather than assumed: there were ZERO EP alerts on 2026-09-18. **
+      mi_ep_alerts holds no row for that date (nor for 09-15), so the missing shadow row is CORRECT
+      and not a recorder failure -- which matters this week, because alert_rank_shadow was one of
+      the 23 jobs that did not run on 09-18 (#672) and was re-run by hand on 09-19. The re-run wrote
+      nothing because there was nothing to write.
+
+      NOTHING IS OWED TO HIM HERE. This is a RUNNING READ and it is my work; it produces a decision
+      only once the tail has something in it or n reaches 25.
     resolution_2026_09_17: |
       RAN 2026-09-17 at CLOSE. ** n = 13 sessions. THIN (n=13 of 25 decision-grade sessions, 52%)
       -- directional only, NOT a verdict. CONCLUSION UNCHANGED: still nothing to score. **
