@@ -158,6 +158,31 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
   - **15-min DB↔Alpaca reconcile losing a WHOLE account mode**: `order_manager.reconcile_all_modes` → `order_status_reconcile_mode_error` row per failure; Telegram "<MODE> ORDER RECONCILE DOWN" after 3 consecutive failures of the same mode (45 min at the 15-min cadence; 3 min on the 9:31–9:40 open-window variant), counter reset on the page and on that mode's next success (the `intraday_drawdown._consecutive_failures` pattern).
   - Tests drive the real paths and were mutation-checked RED: `tests/test_501_tier1_silent_failure_surfaces.py`.
 
+### `_sdk` thread-pool telemetry (#664, 2026-09-18)
+
+Every broker call goes through `broker/alpaca_client._sdk()` = `asyncio.wait_for(asyncio.to_thread(fn), timeout)`, so each one borrows a thread from the loop's DEFAULT executor — `min(32, cpus+4)` = **7 threads on apollo-execution** (3 CPUs), shared with every other `to_thread` caller in that process. Seven concurrent hangs would make a STOP placement queue rather than fail fast. `broker/sdk_pool_telemetry.py` measures that instead of arguing it from the ceiling — **instrumentation only**: no timeout, executor or call-path change (a dedicated executor for writes is an execution-path change and the operator's call, THE LINE).
+
+- **What is recorded, per call, in memory (no I/O on the call path):** the real slot wait (measured on the worker thread), whether the call was `queued` (no free thread at submit — the discriminating signal; an idle pool still shows ~0.1 ms of handoff), the depth at start, the executor's own work-queue size (`backlog`, the only cross-user signal — `get_minute_bars_range`, `bar_stream`, `twitter`, `earnings_calendar`, `correlation_engine` bypass `_sdk`), and for a caller that timed out how long its thread kept the slot past the budget (`overrun_s`).
+- **⚠ The 30s/45s bounds the CALLER, not the slot.** alpaca-py's REST client (`alpaca/common/rest.py`, 0.43.x) passes NO HTTP timeout to `requests`, so a hung socket holds a worker thread until TCP gives up; a 429 additionally sleeps 3s×3 retries on the thread. `overrun_max_s` is the number that shows this; changing it is not this telemetry's job.
+- **Rows:** `sdk_pool_rollup` — one per 5-minute interval with any call, written by the execution-owned `sdk_pool_rollup` job (every 5 min, every day; not `audit_wrap`'d, same reasoning as `telegram_poll_watchdog`). `detail` JSON: `calls`, `max_depth`, `pool_max`, `queued_calls`, `wait_max_ms`, `wait_mean_ms`, `wait_hist_ms`, `run_max_ms`, `timeouts`, `overruns`, `overrun_max_s`, `max_backlog`, `by_fn`, `queued_samples` (≤20 per-call records of the calls that waited), `record_errors`, `service_role`. `sdk_pool_saturated` — additionally, when any call in the interval had no free thread. Nothing reads either row to act.
+- **Reading it — the day's maximum against the pool:**
+  ```sql
+  SELECT date_trunc('hour', created_at AT TIME ZONE 'America/New_York') AS hr_et,
+         SUM((detail::json->>'calls')::int)            AS calls,
+         MAX((detail::json->>'max_depth')::int)        AS depth_max,
+         MAX((detail::json->>'pool_max')::int)         AS pool,
+         SUM((detail::json->>'queued_calls')::int)     AS waited_for_a_thread,
+         MAX((detail::json->>'wait_max_ms')::float)    AS wait_max_ms,
+         SUM((detail::json->>'timeouts')::int)         AS caller_timeouts,
+         MAX((detail::json->>'overrun_max_s')::float)  AS thread_outlived_budget_max_s,
+         SUM((detail::json->>'record_errors')::int)    AS recorder_errors
+    FROM mi_audit_log
+   WHERE event_type = 'sdk_pool_rollup'
+     AND (created_at AT TIME ZONE 'America/New_York')::date = CURRENT_DATE
+   GROUP BY 1 ORDER BY 1;
+  ```
+- **A quiet pool is not a dead recorder:** `position_coverage_check` calls the broker every 15 min 09:31–15:55 ET, so every market-hours interval MUST produce a rollup with `calls > 0`. A market-hours gap, or `record_errors > 0`, is a defect in the telemetry, never evidence the pool was idle. Tests: `tests/test_sdk_offload_464.py` (8 concurrent calls into a 7-wide pool → the eighth records a `queued` wait; the recorder cannot throw into the call), `tests/test_sdk_pool_telemetry.py`.
+
 ### Telegram Formatting
 - NEVER use pipe tables — Telegram can't render them. Use monospace code blocks.
 - `send_telegram_message` in `briefing.py`. Returns False on failure (never raises).

@@ -31,6 +31,7 @@ agents/market_intelligence/broker/live_tracker.py
 agents/market_intelligence/broker/orb_extension_shadow.py
 agents/market_intelligence/broker/order_ingest.py
 agents/market_intelligence/broker/order_manager.py
+agents/market_intelligence/broker/sdk_pool_telemetry.py
 agents/market_intelligence/broker/shadow_orb_tracker.py
 agents/market_intelligence/broker/skip_reasons.py
 agents/market_intelligence/broker/stream_models.py

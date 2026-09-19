@@ -132,6 +132,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "stuck_fill_watchdog", "stop_ack_timeout_watchdog", "stream_health_watchdog",
     "eod_cleanup", JOB_TIME_STOP_SCAN, "account_equity_snapshot",
     "unified_allocator_shadow",
+    "sdk_pool_rollup",  # #664 — flushes `_sdk` thread-pool telemetry; the pool it measures is THIS process's
 }) | _CHECK_FILLS_JOB_IDS
 
 # Declared INTELLIGENCE jobs — detection / themes / judge / briefings / audits /
@@ -1563,6 +1564,26 @@ async def _stop_coverage_repair_retry_job():
     except Exception as e:
         logger.error(f"Stop coverage repair retry failed: {e}")
         await notify_job_failure("stop_coverage_repair_retry", str(e))
+
+
+async def _sdk_pool_rollup_job():
+    """Every 5 minutes, every day (#664). Flushes the in-memory `_sdk` thread-pool
+    telemetry (slot wait per call, depth vs the pool's width, callers that timed
+    out and how long their thread kept its slot) into ONE `sdk_pool_rollup`
+    audit row, plus `sdk_pool_saturated` when any call in the interval had to
+    wait for a thread. Writes nothing for an idle interval.
+
+    Deliberately NOT audit_wrap'd — same reasoning as `telegram_poll_watchdog`:
+    288 self-guarding telemetry runs a day would only spam mi_job_runs. Its own
+    failure is logged at ERROR; `log_audit_event` itself never raises.
+    Execution-owned because the pool it measures is the one a stop placement
+    borrows from — each service role's process has its own executor.
+    """
+    try:
+        from agents.market_intelligence.broker.sdk_pool_telemetry import flush_to_audit_log  # exec-boundary-ok: execution-owned job flushing the execution process's own in-memory pool telemetry (#664)
+        await flush_to_audit_log()
+    except Exception as e:
+        logger.error(f"sdk_pool_rollup failed (telemetry interval lost, broker calls unaffected): {e}")
 
 
 async def _premarket_gap_risk_job():
@@ -6909,6 +6930,17 @@ def start_scheduler() -> AsyncIOScheduler:
         id="stop_coverage_repair_retry",
         replace_existing=True,
         misfire_grace_time=120,
+    )
+
+    # #664 — `_sdk` thread-pool telemetry rollup: every 5 min, every day (the
+    # evening backstops and weekend syncs call the broker too). One audit row per
+    # interval with calls; see `_sdk_pool_rollup_job`.
+    _scheduler.add_job(
+        _sdk_pool_rollup_job,
+        CronTrigger(minute="*/5", timezone="America/New_York"),
+        id="sdk_pool_rollup",
+        replace_existing=True,
+        misfire_grace_time=60,
     )
 
     # Post-close stop refresh: 4:20 PM ET — place the next session's GTC stop the

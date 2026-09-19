@@ -169,6 +169,14 @@ STOP_ACK_REMEDIATION_FAILED = "stop_ack_remediation_failed"
 ORDER_STATUS_RECONCILE_FAILED = "order_status_reconcile_failed"
 STUCK_PENDING_NEW_DETECTED = "stuck_pending_new_detected"  # #142/2026-05-28
 DRAWDOWN_CHECK_UNAVAILABLE = "drawdown_check_unavailable"
+# #664 (2026-09-18) — `_sdk` thread-pool telemetry. ROLLUP: one row per 5-minute
+# interval that saw any broker call (depth max vs the pool width, slot-wait
+# histogram, caller timeouts, threads that outlived their budget). SATURATED:
+# additionally, when at least one call in the interval had NO free thread and
+# waited — the condition under which a stop placement would queue. Telemetry
+# only; nothing reads these to act.
+SDK_POOL_ROLLUP = "sdk_pool_rollup"
+SDK_POOL_SATURATED = "sdk_pool_saturated"
 
 # ── Intraday drawdown crossing (#455 R4 stage-1, 2026-07-16) ────────────────
 # ALERT-ONLY intraday check piggybacked on the 15-min order-status-reconcile

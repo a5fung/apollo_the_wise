@@ -255,9 +255,27 @@ _SDK_TIMEOUT_DEFAULT = 30.0     # reads: account, orders, positions
 _SDK_TIMEOUT_WRITE = 45.0       # writes: submit / replace / cancel / close
 
 
+# #664 (2026-09-18) — the pool `_sdk` borrows from is min(32, cpus+4) = SEVEN threads
+# on apollo-execution, shared with every other `to_thread` caller in the process,
+# and nothing measured its depth. `_pool_telemetry` records, in memory and per
+# call, the real slot wait (measured on the worker thread), the depth at start,
+# and — for a caller that timed out — how long the thread kept its slot past the
+# budget. INSTRUMENTATION ONLY: the timeout, the executor and the call path are
+# unchanged; the recorder is the `fn` argument to `to_thread` and is guarded so
+# it cannot throw into the broker call (see sdk_pool_telemetry.py). Flushed to
+# `mi_audit_log` by the `sdk_pool_rollup` job every 5 minutes.
+from agents.market_intelligence.broker.sdk_pool_telemetry import TELEMETRY as _pool_telemetry
+
+
 async def _sdk(fn, *args, timeout: float = _SDK_TIMEOUT_DEFAULT, **kwargs):
     """Run a blocking alpaca-py call off the event loop, bounded."""
-    return await asyncio.wait_for(asyncio.to_thread(fn, *args, **kwargs), timeout)
+    call = _pool_telemetry.submit(fn, timeout)
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_pool_telemetry.run, call, fn, *args, **kwargs), timeout)
+    except (asyncio.TimeoutError, TimeoutError):
+        _pool_telemetry.mark_timeout(call)   # the thread keeps its slot; recorded as an overrun
+        raise
 
 
 # ── Account ──────────────────────────────────────────────────────────────────
