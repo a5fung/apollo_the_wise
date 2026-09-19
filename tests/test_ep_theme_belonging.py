@@ -44,6 +44,7 @@ import numpy as np
 import pytest
 
 from agents.market_intelligence import ep_theme_belonging as etb
+from agents.market_intelligence import market_adjusted_correlation as mac
 from agents.market_intelligence.ep_detector import _score_ep
 from agents.market_intelligence.ep_rubric import SCORE_WEIGHTS
 from tests.conftest import make_mock_pool
@@ -663,7 +664,7 @@ def test_the_cached_basket_mean_is_used_only_when_nothing_is_excluded():
                            ex, stages=("Mainstream",), min_members=3, min_overlap=5)[0]
 
     # the cache is the honest full recompute, not a different number
-    assert np.allclose(bk.mean_all, etb._basket_mean(bk.matrix, 3), equal_nan=True)
+    assert np.allclose(bk.mean_all, mac._basket_mean(bk.matrix, 3), equal_nan=True)
 
     corr_excl, _, n_excl = etb.correlate(ex["A"], bk, exclude="A", min_members=3, min_overlap=5)
     corr_incl, _, n_incl = etb.correlate(ex["A"], bk, min_members=3, min_overlap=5)

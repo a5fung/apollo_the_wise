@@ -53,6 +53,7 @@ agents/market_intelligence/execution_routes.py
 agents/market_intelligence/fundamentals.py
 agents/market_intelligence/judge_transport.py
 agents/market_intelligence/ma_filter.py
+agents/market_intelligence/market_adjusted_correlation.py
 agents/market_intelligence/minute_volume.py
 agents/market_intelligence/outcome_tracker.py
 agents/market_intelligence/prose_markers.py

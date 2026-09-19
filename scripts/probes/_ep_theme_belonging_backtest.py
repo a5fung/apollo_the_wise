@@ -50,6 +50,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from agents.market_intelligence import ep_theme_belonging as etb  # noqa: E402
+from agents.market_intelligence import market_adjusted_correlation as mac  # noqa: E402
 from agents.market_intelligence.ep_rubric import (  # noqa: E402
     SCORE_WEIGHTS, SCORE_WEIGHTS_LEGACY, SEPARATION_BAR, apply_output_scale, resolve_conviction_floor)
 
@@ -141,7 +142,7 @@ class DayContext:
         if r.shape != self.market.shape:
             return None
         v = r - self.market
-        return v if etb._usable(v, etb.BELONGING_MIN_OVERLAP_SESSIONS) else None
+        return v if mac.usable(v, mac.BELONGING_MIN_OVERLAP_SESSIONS) else None
 
     @property
     def n_paying(self):

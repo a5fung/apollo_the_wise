@@ -86,7 +86,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import math
 import time
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
@@ -99,6 +98,14 @@ logger = logging.getLogger(__name__)
 # Module-level for test patchability (the ep_score_shadow / catalyst_tier_shadow convention —
 # tests patch `etb.get_pool` / `etb.get_runtime_toggle` / `etb.judge_theme_fit` directly).
 from agents.market_intelligence.db import get_pool, get_runtime_toggle  # noqa: E402
+# The maths is a PEER (#660, 2026-09-18 — moved out of this module, bodies verbatim): the same
+# object the nightly theme engine imports, so the two cannot disagree about what "co-moves" means.
+# Imported by name so `etb.session_index` etc. still resolve for every existing reader.
+from agents.market_intelligence.market_adjusted_correlation import (  # noqa: E402
+    BELONGING_LOOKBACK_SESSIONS, BELONGING_MIN_BASKET_MEMBERS, BELONGING_MIN_OVERLAP_SESSIONS,
+    CALENDAR_DAYS_FOR_LOOKBACK, MARKET_TICKER, ThemeBasket, correlate, excess_returns,
+    log_returns, session_index, usable)
+from agents.market_intelligence import market_adjusted_correlation as _mac  # noqa: E402
 
 
 async def judge_theme_fit(ticker: str, **kw) -> tuple[str, str | None, str]:
@@ -138,18 +145,11 @@ BELONGING_SHORTLIST_CORR_BAR = 0.35
 # How many themes the shortlist offers the judgement, best correlation first. The prompt's
 # own rule ("pick the most specific theme if multiple could fit") does the choosing.
 BELONGING_SHORTLIST_THEMES: int = 3
-# Window: the 60-session market-adjusted window the 2026-09-13 cross-industry analysis measured
-# every reference correlation on (members 0.5-0.8, random ~0.05) — same scale, same window.
-BELONGING_LOOKBACK_SESSIONS: int = 60
-# Below this many overlapping sessions a correlation is not a reading — "cannot judge".
-BELONGING_MIN_OVERLAP_SESSIONS: int = 30
-# A basket of 1-2 names is a single stock, not a group; correlation to it is noise.
-BELONGING_MIN_BASKET_MEMBERS: int = 3
-MARKET_TICKER = "SPY"
+# BELONGING_LOOKBACK_SESSIONS (60) · BELONGING_MIN_OVERLAP_SESSIONS (30) ·
+# BELONGING_MIN_BASKET_MEMBERS (3) · MARKET_TICKER · CALENDAR_DAYS_FOR_LOOKBACK (100) live in
+# market_adjusted_correlation.py (#660) and are imported above — same names, same objects.
 BELONGING_TOGGLE: tuple[str, str] = ("ep_theme_belonging", "EP_THEME_BELONGING_ENABLED")
 BELONGING_DEFAULT_ON: bool = True
-# 60 sessions ~ 87 calendar days; margin for holidays and a thin first week.
-_CALENDAR_DAYS_FOR_LOOKBACK: int = 100
 # ── The fit call's bounds (all named — a scoring path that can hang is worse than one that
 # under-pays). Sized from the replay: ~1-2 unlisted shortlisted ALERTS per scan day, but the
 # graded shortlist (<=SHORTLIST_SIZE names, most sub-bar) can carry more; at ~US$0.007 a call
@@ -208,18 +208,7 @@ class BelongingRead:
         return bool(self.shortlist)
 
 
-@dataclass
-class ThemeBasket:
-    name: str
-    stage: str
-    members: tuple[str, ...]      # members WITH usable price history, in matrix row order
-    matrix: np.ndarray            # (n_members, n_sessions) excess log returns, NaN where missing
-    mean_all: np.ndarray          # the ALL-MEMBERS equal-weight mean, computed once at build
-    # `mean_all` exists because the basket mean depends on the BASKET, not on the candidate being
-    # scored — and stage 1 runs on every graded candidate on every tick, INSIDE the ORB window
-    # (unlike the stage-2 fit call, which is premarket-gated). Recomputing it per candidate was
-    # ~20x the necessary work. Only a candidate that is ITSELF a member needs the leave-one-out
-    # recompute; everyone else reads this.
+# `ThemeBasket` (name, stage, members, matrix, mean_all) is market_adjusted_correlation's (#660).
 
 
 @dataclass
@@ -264,110 +253,18 @@ class FitBudget:
         _fit_day["calls"] = _day_calls(scan_date) + 1
 
 
-# ── Pure math ───────────────────────────────────────────────────────────────────────────────
-def session_index(market_closes: dict[date, float], before_date: date,
-                  lookback_sessions: int = BELONGING_LOOKBACK_SESSIONS) -> list[date]:
-    """The CLOSE sessions the window is built on: the market's own trade dates STRICTLY before
-    `before_date`, the last `lookback_sessions + 1` of them (N+1 closes -> N returns). The
-    `< before_date` filter is applied HERE too, never trusted to the fetch — the no-lookahead
-    guarantee must not depend on a query's WHERE clause alone."""
-    dates = sorted(d for d, c in market_closes.items()
-                   if d < before_date and c is not None and c > 0)
-    return dates[-(lookback_sessions + 1):] if lookback_sessions > 0 else dates
-
-
-def log_returns(closes: dict[date, float], close_sessions: list[date]) -> np.ndarray:
-    """Log returns aligned to close_sessions[1:]; NaN wherever either close is missing/<=0."""
-    n = len(close_sessions)
-    out = np.full(max(n - 1, 0), np.nan)
-    for i in range(1, n):
-        c0 = closes.get(close_sessions[i - 1])
-        c1 = closes.get(close_sessions[i])
-        if c0 and c1 and c0 > 0 and c1 > 0:
-            out[i - 1] = math.log(c1 / c0)
-    return out
-
-
-def excess_returns(closes_by_ticker: dict[str, dict[date, float]], close_sessions: list[date],
-                   market_returns: np.ndarray) -> dict[str, np.ndarray]:
-    """Market-adjusted (SPY-subtracted) log returns per ticker. Subtraction, not a beta
-    residual, on purpose: it is the adjustment the 2026-09-13 analysis measured 0.35 on."""
-    out: dict[str, np.ndarray] = {}
-    for t, closes in closes_by_ticker.items():
-        if t == MARKET_TICKER:
-            continue
-        r = log_returns(closes, close_sessions)
-        if r.shape != market_returns.shape:
-            continue
-        out[t] = r - market_returns
-    return out
-
-
-def _usable(vec: np.ndarray, min_overlap: int) -> bool:
-    return int(np.isfinite(vec).sum()) >= min_overlap
-
-
-def _basket_mean(sub: np.ndarray, min_members: int) -> np.ndarray:
-    """Equal-weight mean excess return across `sub`'s rows, NaN on any session where fewer than
-    `min_members` rows are finite. ONE definition, called from build_baskets (all members) and
-    from correlate (leave-one-out) so the cached vector and the recomputed one cannot drift."""
-    finite = np.isfinite(sub)
-    counts = finite.sum(axis=0)
-    with np.errstate(invalid="ignore"):
-        return np.where(counts >= min_members,
-                        np.nansum(np.where(finite, sub, 0.0), axis=0) / np.maximum(counts, 1),
-                        np.nan)
-
-
+# ── Pure math — market_adjusted_correlation.py (#660): session_index, log_returns,
+# excess_returns, usable, _basket_mean, correlate, ThemeBasket. Imported above. The ONE thing that
+# stays here is the EP default for WHICH stages get a basket — an EP rule, not maths.
 def build_baskets(themes: Iterable[dict], excess: dict[str, np.ndarray],
                   stages: tuple[str, ...] = BELONGING_SHADOW_STAGES,
                   min_members: int = BELONGING_MIN_BASKET_MEMBERS,
                   min_overlap: int = BELONGING_MIN_OVERLAP_SESSIONS) -> list[ThemeBasket]:
-    """One basket per theme in `stages` with >= min_members members that have usable history.
-    Retired themes never reach here (get_active_themes drops them); a stage outside `stages`
-    is skipped, so the acting read and the shadow read share one construction."""
-    baskets: list[ThemeBasket] = []
-    for th in themes:
-        stage = (th.get("stage") or "").strip()
-        if stage not in stages:
-            continue
-        members = tuple(sorted({(t or "").upper() for t in (th.get("tickers") or []) if t}))
-        rows = [t for t in members if t in excess and _usable(excess[t], min_overlap)]
-        if len(rows) < min_members:
-            continue
-        matrix = np.vstack([excess[t] for t in rows])
-        baskets.append(ThemeBasket(
-            name=th.get("name") or "", stage=stage, members=tuple(rows),
-            matrix=matrix, mean_all=_basket_mean(matrix, min_members),
-        ))
-    return baskets
-
-
-def correlate(candidate: np.ndarray, basket: ThemeBasket, exclude: str | None = None,
-              min_members: int = BELONGING_MIN_BASKET_MEMBERS,
-              min_overlap: int = BELONGING_MIN_OVERLAP_SESSIONS) -> tuple[float | None, int, int]:
-    """Pearson correlation of the candidate's excess returns with the basket's equal-weight
-    mean excess return (leave-one-out when `exclude` is a member). A session counts only where
-    the candidate is finite AND at least `min_members` members are finite. Returns
-    (corr | None, overlap sessions, basket members used)."""
-    keep = [i for i, m in enumerate(basket.members) if m != (exclude or "").upper()]
-    if len(keep) < min_members:
-        return None, 0, len(keep)
-    if len(keep) == len(basket.members) and basket.mean_all is not None:
-        basket_mean = basket.mean_all          # nothing excluded -> the mean built with the basket
-    else:
-        basket_mean = _basket_mean(basket.matrix[keep], min_members)
-    mask = np.isfinite(candidate) & np.isfinite(basket_mean)
-    n = int(mask.sum())
-    if n < min_overlap:
-        return None, n, len(keep)
-    a, b = candidate[mask], basket_mean[mask]
-    if a.std() < 1e-12 or b.std() < 1e-12:
-        return None, n, len(keep)
-    corr = float(np.corrcoef(a, b)[0, 1])
-    if not math.isfinite(corr):
-        return None, n, len(keep)
-    return corr, n, len(keep)
+    """One basket per theme in `stages` (default: the BELONGING_SHADOW_STAGES the EP scan reads —
+    paying + Nascent, never Fading) — market_adjusted_correlation.build_baskets with the EP
+    stage default bound, so the acting read and the shadow read share one construction."""
+    return _mac.build_baskets(themes, excess, stages=stages, min_members=min_members,
+                              min_overlap=min_overlap)
 
 
 def score_belonging(ticker: str, candidate: np.ndarray | None, baskets: list[ThemeBasket],
@@ -566,7 +463,7 @@ async def prepare_basket_context(themes: list[dict], before_date: date,
     if members:
         closes, n_rows = await fetch_closes(
             members | {MARKET_TICKER},
-            before_date - timedelta(days=_CALENDAR_DAYS_FOR_LOOKBACK), before_date)
+            before_date - timedelta(days=CALENDAR_DAYS_FOR_LOOKBACK), before_date)
     close_sessions = session_index(closes.get(MARKET_TICKER, {}), before_date, lookback_sessions)
     market = log_returns(closes.get(MARKET_TICKER, {}), close_sessions)
     excess = excess_returns(closes, close_sessions, market) if len(close_sessions) > 1 else {}
@@ -599,7 +496,7 @@ async def score_candidates(ctx: BasketContext, tickers: Iterable[str]) -> dict[s
     out: dict[str, BelongingRead] = {}
     for t in syms:
         vec = excess.get(t)
-        if vec is not None and not _usable(vec, BELONGING_MIN_OVERLAP_SESSIONS):
+        if vec is not None and not usable(vec, BELONGING_MIN_OVERLAP_SESSIONS):
             vec = None
         out[t] = score_belonging(t, vec, ctx.baskets, ctx.listed_paying)
     return out
