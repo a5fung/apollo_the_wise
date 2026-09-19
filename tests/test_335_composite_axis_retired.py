@@ -48,7 +48,12 @@ def test_compute_theme_axis_credit_live_retired():
 def test_toggle_and_composer_still_exist():
     """DoD: '...the toggle and composer still do [exist]'. #331's rail depends on both
     being untouched — this is the existence half of that guarantee (the behavioral half
-    is proven by test_registering_an_axis_composes below)."""
+    is proven by test_registering_an_axis_composes below).
+
+    MUTATION: temporarily renamed `compose_final_tier` in meta_rubric_compose.py to
+    `_compose_final_tier_RENAMED_FOR_MUTATION_TEST` — this test's last assertion
+    (`callable(mrc.compose_final_tier)`) failed with AttributeError. Restored; verified
+    by hand before committing."""
     assert callable(db.get_composite_authority_enabled)
     assert callable(mrc.resolve_composite_tier)
     assert callable(mrc.compose_final_tier)
@@ -118,7 +123,15 @@ def test_zero_axes_registered_toggle_off_is_byte_identical_composer_unreached(mo
 def test_zero_axes_registered_on_and_off_agree_byte_identically(monkeypatch):
     """The DoD's literal claim in one assertion: toggle ON and toggle OFF produce the
     SAME (tier, authority, override) triple for every base-decision shape a real scan can
-    hand in (floor/no-override, judge/override, fallback/override)."""
+    hand in (floor/no-override, judge/override, fallback/override).
+
+    MUTATION (a real discriminator, not a code-path break like the other tests here —
+    this one proves the ASSERTION would have caught the pre-#335 shape): temporarily
+    seeded `_COMPOSITE_AXIS_CREDIT_SOURCES` at module level with a fake always-fires
+    +1 axis (simulating "theme still plugged in"). Toggle ON then composes
+    MODERATE->HIGH while toggle OFF stays MODERATE — the `MODERATE, judge, True` case's
+    assertion failed (`('HIGH', 'composite', True) != ('MODERATE', 'judge', True)`).
+    Restored; verified by hand before committing."""
     for base_tier, base_auth, base_over in [
         ("HIGH", "floor", False),
         ("MODERATE", "judge", True),
@@ -142,9 +155,10 @@ def test_registering_an_axis_still_composes_no_rail_rebuild_needed(monkeypatch):
     `_apply_composite_authority` needs to change for a registered axis to compose,
     trace, and audit-log exactly as the retired theme axis did.
 
-    MUTATION: hardcode `return new_tier, authority, do_override` as the first line of
+    MUTATION: hardcoded `return new_tier, authority, do_override` as the first line of
     `_apply_composite_authority` (unconditional early-return) — this test's `result`
-    assertion (expects the composed HIGH) fails because nothing ever composes."""
+    assertion failed (`('MODERATE', 'judge', True) != ('HIGH', 'composite', True)`)
+    because nothing ever composes. Restored; verified by hand before committing."""
     async def _fake_gap_axis(r):
         return {"axis": "gap", "credit_steps": 1, "marker": "aligned", "reason": "test"}
 
@@ -172,7 +186,16 @@ def test_registering_an_axis_still_composes_no_rail_rebuild_needed(monkeypatch):
 def test_registered_axis_returning_none_is_still_a_no_op(monkeypatch):
     """An axis registered but uncomputable for this candidate (None, same contract the
     retired theme function used) must not move the tier — mirrors the old
-    'credit is not None' guard, now applied across the whole gathered list."""
+    'credit is not None' guard, now applied across the whole gathered list.
+
+    MUTATION: shares the exact mutation from the zero-axes-registered tests above
+    (remove both the `if not _COMPOSITE_AXIS_CREDIT_SOURCES` and `if not credits`
+    no-op guards, so `resolve_composite_tier` is called unconditionally) — credits
+    ends up `[]` here too (the one registered axis returns None), so `calls` becomes
+    non-empty and this test's `calls == []` assertion fails identically. Verified as
+    part of that same combined mutation run; see this file's git history / the commit
+    message for the exact before/after pytest output (3 failed / 4 passed, this test
+    among the 3)."""
     async def _uncomputable_axis(r):
         return None
 
