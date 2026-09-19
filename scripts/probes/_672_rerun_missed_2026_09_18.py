@@ -2,7 +2,9 @@
 
 WHY THE PIN: 17 of the 21 missed job functions take no date parameter and read `et_today()`.
 Run bare on a Saturday they record 2026-09-19, not Friday — a naive re-run is WORSE than the
-gap it is meant to close.
+gap it is meant to close. VERIFIED in the running container: every one of the 14 jobs below
+routes its date through `et_today()`; none computes one with `datetime.now(_ET)` or
+`date.today()`, so the pin reaches all of them.
 
 SAFETY, all of it: snapshots row counts for every mi_* table before and after, fingerprints
 mi_live_trades (THE LINE — this must not move), bounds every job at 600s so this script cannot
@@ -17,11 +19,62 @@ DELIBERATELY EXCLUDED and why:
 
 Run: docker cp this into apollo-market, then `docker exec apollo-market python <path>`.
 """
-import asyncio, datetime as _dt
+import asyncio, datetime as _dt, sys
 
 TARGET = _dt.date(2026, 9, 18)
-import agents.market_intelligence.collector as c
-c.et_today = lambda: TARGET
+
+# ── THE DATE PIN, and why it is a sys.modules walk and not one assignment ──────────────
+# `et_today()` is defined in shared/dates.py and RE-EXPORTED widely. MEASURED in the running
+# container on 2026-09-19: **10 modules hold their own `et_today` binding** — shared.dates,
+# collector, rs_engine, regime, theme_engine, ep_detector, outcome_tracker, state_alerts and
+# two more. A module that did `from ... import et_today` at import time keeps its OWN
+# reference, so patching `collector.et_today` alone reaches ONE of the ten and the other nine
+# still return Saturday. The first draft of this script did exactly that and would have
+# recorded 09-19 while reporting success.
+#
+# So: import everything the jobs touch FIRST, then rebind every binding that exists, then
+# ASSERT none is left. The assert is the point — a pin that silently half-applies is worse
+# than no pin, because the rows look right until someone checks their date.
+import agents.market_intelligence.scheduler          # noqa: F401  (pulls the graph in)
+import agents.market_intelligence.db                 # noqa: F401
+import agents.market_intelligence.theme_engine       # noqa: F401
+import agents.market_intelligence.briefing           # noqa: F401
+import shared.dates as _SD
+
+
+def _pinned_today():
+    return TARGET
+
+
+def pin_the_clock() -> int:
+    """Rebind et_today everywhere it is held. Returns how many bindings were pinned."""
+    _SD.et_today = _pinned_today          # the source, so any LATER `from ... import` is pinned too
+    n = 0
+    for mod in list(sys.modules.values()):
+        if mod is not None and callable(getattr(mod, "et_today", None)):
+            setattr(mod, "et_today", _pinned_today)
+            n += 1
+    return n
+
+
+def assert_pinned() -> None:
+    bad = {}
+    for name, mod in list(sys.modules.items()):
+        f = getattr(mod, "et_today", None) if mod is not None else None
+        if callable(f):
+            try:
+                v = f()
+            except Exception as e:                      # pragma: no cover
+                v = f"ERR {e}"
+            if v != TARGET:
+                bad[name] = v
+    if bad:
+        raise SystemExit(f"REFUSING TO RUN — {len(bad)} et_today binding(s) still not {TARGET}: {bad}")
+    if _SD.last_trading_day() != TARGET:
+        raise SystemExit(f"REFUSING TO RUN — last_trading_day() is {_SD.last_trading_day()}, not {TARGET}")
+    # operator_today() is deliberately NOT pinned: it is the OPERATOR's clock, not market logic.
+
+
 from agents.market_intelligence import scheduler as sch
 from agents.market_intelligence.db import get_pool
 
@@ -63,6 +116,9 @@ async def trade_fingerprint(conn):
 
 
 async def main():
+    n = pin_the_clock()
+    assert_pinned()
+    print(f"clock pinned to {TARGET} across {n} binding(s); last_trading_day()={_SD.last_trading_day()}")
     pool = await get_pool()
     async with pool.acquire() as conn:
         before, fp_before = await snapshot(conn), await trade_fingerprint(conn)
