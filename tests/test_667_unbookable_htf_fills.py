@@ -239,17 +239,22 @@ def test_the_readouts_count_unbookable_separately(getter):
 
 
 def _shadow_readers() -> dict:
-    """Every place in the codebase that READS mi_htf_breakout_shadow, derived. Writers
-    (INSERT/UPDATE) are excluded by construction: `FROM`/`JOIN` is what a read looks like."""
+    """Every place in the codebase that READS either HTF shadow table, derived. Writers
+    (INSERT/UPDATE) are excluded by construction: `FROM`/`JOIN` is what a read looks like.
+
+    ⚠ BOTH tables, deliberately. The unbookable rows were KEPT rather than deleted, which is only
+    safe while every read of `mi_htf_management_shadow` joins its parent — CDNA's +1.96R now sits
+    there permanently. A gate that walked only the breakout table would have licensed that
+    decision without checking it."""
     import re
     from pathlib import Path
     out = {}
     root = Path(__file__).resolve().parents[1]
     for path in sorted((root / "agents").rglob("*.py")):
         src = path.read_text(encoding="utf-8")
-        if "mi_htf_breakout_shadow" not in src:
+        if "mi_htf_breakout_shadow" not in src and "mi_htf_management_shadow" not in src:
             continue
-        for m in re.finditer(r"(?:FROM|JOIN)\s+mi_htf_breakout_shadow\b", src):
+        for m in re.finditer(r"(?:FROM|JOIN)\s+mi_htf_(?:breakout|management)_shadow\b", src):
             # the enclosing SQL string: back to the opening triple-quote, forward to the close
             start = src.rfind('"""', 0, m.start())
             end = src.find('"""', m.end())
@@ -265,8 +270,16 @@ def test_no_reader_of_the_shadow_table_can_count_an_unbookable_row():
     and `outcome IS NOT NULL` already cannot reach it. Anything else counts a position that was
     never takeable.
 
-    WOULD-FAIL-IF: a new consumer joins the table with a bare `WHERE outcome IS NULL` — which is
-    exactly the predicate `get_htf_management_shadow_candidates` was using through `m.status`."""
+    WOULD-FAIL-IF: a new consumer joins either table with a bare `WHERE outcome IS NULL` — which
+    is exactly the predicate `get_htf_management_shadow_candidates` was using through `m.status`.
+
+    ⚠ ONE READER IS INVISIBLE TO THIS REGEX AND WAS CHECKED BY HAND: `health_checks._SWEEP_LANES`
+    names `mi_htf_management_shadow` in a registry TUPLE and interpolates it into SQL, so no
+    literal `FROM <table>` exists to match. It is safe by what it computes, not by a predicate —
+    it counts DISTINCT `trail_mode` values per subject and skips any lane with fewer than 10
+    multi-variant subjects; prod has exactly one arm (`ema_10_20`, 12 rows), so the lane is
+    skipped and `realized_r` is never aggregated into a claim. Stated here because a population
+    this gate cannot see is precisely what it must not silently omit."""
     # source-pin-ok: the population this asserts over is "which SQL statements exist", which is
     # only readable from source. The list itself is DERIVED (never hand-written) — that is the
     # property the day's lesson is about, and a behavioural test of the four readers we know
@@ -275,14 +288,20 @@ def test_no_reader_of_the_shadow_table_can_count_an_unbookable_row():
     assert len(readers) >= 4, (
         f"only {len(readers)} reader(s) of mi_htf_breakout_shadow found — the derivation broke, "
         f"and a gate that finds nothing passes exactly like one that finds everything clean")
+    # ⚠ The predicate, NOT the column name. A first draft accepted any SQL that MENTIONED
+    # `settle_abstain_reason` — and passed clean against a mutation that deleted the whole parent
+    # join while leaving the `IS NOT NULL` count behind. Same failure as anchoring a registry edit
+    # on a mention instead of the declaration: presence of a word is not presence of a filter.
+    import re as _re
+    excludes = _re.compile(r"settle_abstain_reason\s+IS\s+NULL")
     unsafe = {
         where: sql for where, sql in readers.items()
-        if "settle_abstain_reason" not in sql
+        if not excludes.search(sql)
         and "outcome IS NOT NULL" not in sql
         and "outcome IN (" not in sql
     }
     assert not unsafe, (
-        "these reads of mi_htf_breakout_shadow can reach an UNBOOKABLE row — a Phase-3 entry we "
-        "could not have filled — and treat it as a real position:\n  " + "\n  ".join(unsafe))
+        "these reads of the HTF shadow tables can reach an UNBOOKABLE row — a Phase-3 entry "
+        "we could not have filled — and treat it as a real position:\n  " + "\n  ".join(unsafe))
 
 
