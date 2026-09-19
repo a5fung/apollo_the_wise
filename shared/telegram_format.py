@@ -20,9 +20,13 @@ RULE: never f-string a raw dynamic value into HTML — wrap it in esc() (or a he
 which esc()s for you). Static markup you write by hand is fine.
 
 MIGRATION: `md_to_html()` converts an existing legacy-Markdown string to safe HTML,
-so a builder can be migrated at the send boundary without a full rewrite. The
-default send path stays Markdown until a surface is explicitly moved over — this
-module is additive and breaks nothing on its own.
+so a builder can be migrated at the send boundary without a full rewrite. Since #652
+(2026-09-19) `send_telegram_message` does that conversion ITSELF whenever the caller
+passes no `parse_mode` — a builder that writes legacy Markdown and calls the sender
+bare is already on the HTML layer. Pass `parse_mode="HTML"` only for a body that is
+already HTML (built with the helpers above, or converted by the caller); it is then
+passed through untouched. `parse_mode="Markdown"` is the explicit opt-in for raw
+legacy Markdown. `chunk_html()` is the tag-aware splitter the HTML send path uses.
 """
 from __future__ import annotations
 
