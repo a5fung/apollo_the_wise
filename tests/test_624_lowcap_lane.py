@@ -1165,18 +1165,18 @@ async def test_a_setup_class_failure_changes_the_value_not_the_result_shape(monk
     test in this file still passes.
     """
     import agents.market_intelligence.setup_class_classifier as scc
-    import agents.market_intelligence.catalyst_type_classifier as ctc
 
     def _boom(*a, **k):
         raise RuntimeError("classifier down")
 
-    async def _aboom(*a, **k):
-        raise RuntimeError("classifier down")
-
-    # BOTH classifiers are made to fail: ep_detector imports each lazily from its own module,
-    # so patching the source module is what the scan actually picks up.
+    # setup_class only: ep_detector imports it lazily from its own module, so patching the
+    # source module is what the scan actually picks up. A `classify_catalyst_type` patch set
+    # HERE would be a no-op — `_run_scan_once(admit=True)` unconditionally re-patches it to a
+    # happy-path mock AFTER this call returns, clobbering anything set beforehand (verified
+    # 2026-09-19, #663: the classifier ran zero times). See
+    # test_a_catalyst_type_classify_failure_keeps_the_key_present_as_none, which uses the
+    # `catalyst_type_raises` flag added for exactly this reason.
     monkeypatch.setattr(scc, "classify_setup_class", _boom)
-    monkeypatch.setattr(ctc, "classify_catalyst_type", _aboom)
     results, _scan_log, _alerts, _lane = await _run_scan_once(
         monkeypatch, lane_mode="off", admit=True)
 
