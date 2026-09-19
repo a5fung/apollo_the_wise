@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 _ET = ZoneInfo("America/New_York")
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.events import EVENT_JOB_MISSED
 from apscheduler.triggers.cron import CronTrigger
 
 from agents.market_intelligence.db import (
@@ -6231,6 +6232,136 @@ async def _reap_stale_running_runs(boot_time: datetime) -> None:
         logger.error(f"Stale-run reap failed: {e}", exc_info=True)
 
 
+# ── #672: the nightly pull carries a HARD CAP ────────────────────────────────
+# 45 minutes = 2.5x its worst NORMAL run. Measured, not guessed: over the eight
+# weekdays before the incident `nightly_data_pull` took 740-1,070 s (12-18 min).
+# On 2026-09-18 it ran 26,192 s — 7.3 HOURS — and only stopped because a deploy
+# restarted the container. Nothing in the job had a timeout, and `pool.acquire()`
+# has none either, so the hang was unbounded by construction.
+#
+# ⚠ WHY THE CAP IS ON THE JOB AND NOT ON THE POOL. The obvious fix — a
+# `command_timeout` on `asyncpg.create_pool` — is NOT taken here and must not be
+# taken without the operator's sign-off: `db.py` builds ONE pool and it serves the
+# ORDER PATH as well as the nightly, so a global query timeout turns a slow query
+# during a 9:31 ORB entry into a FAILED ENTRY. That is trade-state behaviour, not
+# plumbing. Capping this job touches nothing any other caller does.
+#
+# Cancelling mid-run leaves partial work, and the alert says so rather than
+# claiming a clean failure — same honesty rule as the stale-run reaper: state
+# what is known (it was cut off), never what is merely convenient (that it
+# failed, or that it finished).
+_NIGHTLY_PULL_MAX_S = 45 * 60
+
+
+async def _nightly_data_pull_bounded():
+    """`_nightly_data_pull` with a hard ceiling. Re-raises on timeout so
+    `audit_wrap` records the run as a real failure instead of a silent gap."""
+    from agents.market_intelligence.db import log_audit_event
+    try:
+        return await asyncio.wait_for(_nightly_data_pull(), timeout=_NIGHTLY_PULL_MAX_S)
+    except asyncio.TimeoutError:
+        mins = _NIGHTLY_PULL_MAX_S // 60
+        msg = (f"nightly_data_pull CANCELLED at the {mins}-minute ceiling (#672). Normal "
+               f"runs are 12-18 min; on 2026-09-18 an uncapped hang held it 7.3 h and took "
+               f"23 downstream jobs with it. Outcome is PARTIAL and unknown — some steps "
+               f"may have completed; check the output tables rather than assuming either way.")
+        logger.error(msg)
+        try:
+            await log_audit_event("nightly_pull_timeout", msg)
+            await notify_owner(f"🔴 *Nightly data pull cancelled at {mins} min*\n{msg}")
+        except Exception as e:
+            logger.warning(f"nightly-pull timeout notify failed (non-fatal): {e}")
+        raise
+
+
+# ── #672: a SKIPPED nightly job must be LOUD ─────────────────────────────────
+# WHY THIS EXISTS, in one sentence: on 2026-09-18 twenty-three nightly jobs did
+# not run — the evening briefing among them — and NOTHING said so. Nobody knew
+# until the gap was found by hand the next morning.
+#
+# What actually happened: `nightly_data_pull` deadlocked (a nested pool.acquire,
+# fixed separately) and held the loop past every queued job's
+# `misfire_grace_time`. APScheduler then did the correct thing — it SKIPPED them
+# and emitted EVENT_JOB_MISSED for each. Nothing was listening. The scheduler had
+# no listeners at all.
+#
+# ⚠ A skipped job is INVISIBLE in a way a failed one is not: `audit_wrap` only
+# records a run that STARTED, so a job that never starts writes no row anywhere.
+# `mi_job_runs` could only reconstruct 09-18 at all because the hung pull had
+# opened its own row first. The other 23 left no trace.
+#
+# DEBOUNCED ON PURPOSE. Friday's shape is a BURST — one stall skips a whole
+# chain — so alerting per job would have sent 23 Telegrams in under an hour,
+# which is how an alert trains you to ignore it. One flush, one message, every
+# job named. The DB rows are written for all of them regardless: the record must
+# be complete even when the notification is summarised.
+_MISSED_FLUSH_DELAY_S = 60
+_missed_buffer: "list[tuple[str, datetime]]" = []
+_missed_flush_task: "asyncio.Task | None" = None
+_missed_loop = None          # captured at start_scheduler(); listeners are sync
+
+
+def _on_job_missed(event) -> None:
+    """APScheduler EVENT_JOB_MISSED listener. SYNC, and it MUST NEVER RAISE —
+    an exception here propagates into the scheduler's own dispatch loop, which
+    would turn a reporting gap into an outage. Everything is inside try."""
+    global _missed_flush_task
+    try:
+        _missed_buffer.append((event.job_id, event.scheduled_run_time))
+        logger.warning(
+            f"job MISSED (misfire): {event.job_id} scheduled for "
+            f"{event.scheduled_run_time} — never ran")
+        if _missed_loop is None:
+            return                       # pre-start; the log line above still lands
+        if _missed_flush_task is None or _missed_flush_task.done():
+            _missed_flush_task = _missed_loop.create_task(_flush_missed_jobs())
+    except Exception as e:               # loud-ok: never let a listener break dispatch
+        logger.error(f"missed-job listener failed (non-fatal): {e}", exc_info=True)
+
+
+async def _flush_missed_jobs() -> None:
+    """Record every buffered miss in `mi_job_runs` + `mi_audit_log`, then send ONE
+    Telegram naming all of them. Waits `_MISSED_FLUSH_DELAY_S` first so a burst
+    coalesces into a single message."""
+    from agents.market_intelligence.db import get_pool, log_audit_event
+    try:
+        await asyncio.sleep(_MISSED_FLUSH_DELAY_S)
+        batch, _missed_buffer[:] = list(_missed_buffer), []
+        if not batch:
+            return
+        detail = ", ".join(
+            f"{jid}@{when:%H:%M}" if hasattr(when, "strftime") else str(jid)
+            for jid, when in batch)
+        try:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                await conn.executemany(
+                    """INSERT INTO mi_job_runs
+                           (job_id, started_at, finished_at, status, error_message)
+                       VALUES ($1, $2, NOW(), 'missed', $3)""",
+                    [(jid, when,
+                      "never ran — APScheduler misfire (the scheduler was busy past this "
+                      "job's misfire_grace_time). #672")
+                     for jid, when in batch])
+        except Exception as e:           # loud-ok: the Telegram still goes out below
+            logger.error(f"missed-job rows not written (alert still sent): {e}", exc_info=True)
+        await log_audit_event(
+            "jobs_missed",
+            f"{len(batch)} scheduled job(s) never ran: {detail}")
+        try:
+            await notify_owner(
+                f"🔴 *{len(batch)} scheduled job(s) never ran*\n"
+                f"They were SKIPPED, not failed — the scheduler was still busy when their "
+                f"start time passed, so APScheduler dropped them (misfire). Work for those "
+                f"slots is simply missing until it is re-run.\n{detail}")
+        except Exception as e:
+            logger.warning(f"missed-job notify failed (non-fatal): {e}")
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:               # loud-ok
+        logger.error(f"missed-job flush failed: {e}", exc_info=True)
+
+
 # ── Telegram polling-bot health watchdog (#153) ──────────────────────────────
 # The orchestrator's PTB long-poll loop can wedge on a persistent NetworkError
 # and silently stop receiving updates (the 2026-05-22→05-29 7-day outage). The
@@ -6324,7 +6455,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # 2200 ≈ 10% below the new observed band floor: still catches a genuine
     # universe/writer drop without alarming on the steady state.
     _scheduler.add_job(
-        audit_wrap(_nightly_data_pull, JOB_NIGHTLY_DATA_PULL, expected_min_rows=2200),
+        audit_wrap(_nightly_data_pull_bounded, JOB_NIGHTLY_DATA_PULL, expected_min_rows=2200),  # #672: hard 45-min cap
         CronTrigger(hour=17, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_NIGHTLY_DATA_PULL,
         replace_existing=True,
@@ -7763,6 +7894,12 @@ def start_scheduler() -> AsyncIOScheduler:
     # tests can exercise both sides.
     from agents.market_intelligence.constants import SERVICE_ROLE as _ROLE
     _apply_role_partition(_scheduler, _ROLE)
+
+    # #672 — a skipped job must be loud. Registered BEFORE .start() so a miss during
+    # the very first scheduling pass is caught too.
+    global _missed_loop
+    _missed_loop = asyncio.get_event_loop()
+    _scheduler.add_listener(_on_job_missed, EVENT_JOB_MISSED)
 
     _scheduler.start()
     logger.info("Market Intelligence scheduler started (ET timezone)")

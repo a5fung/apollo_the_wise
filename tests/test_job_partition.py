@@ -10,8 +10,9 @@ from agents.market_intelligence import scheduler as sched
 
 
 class _FakeJob:
-    def __init__(self, jid):
+    def __init__(self, jid, func=None):
         self.id = jid
+        self.func = func          # #672: so a test can exercise what was ACTUALLY registered
 
 
 class _FakeScheduler:
@@ -141,9 +142,13 @@ class _CapturingScheduler:
     """Stands in for AsyncIOScheduler: records what start_scheduler registers."""
     def __init__(self, *a, **k):
         self._jobs = []
+        self.listeners = []          # #672: start_scheduler registers a missed-job listener
+
+    def add_listener(self, callback, mask=None):
+        self.listeners.append((callback, mask))
 
     def add_job(self, func, trigger=None, *a, id=None, **k):
-        self._jobs.append(_FakeJob(id))
+        self._jobs.append(_FakeJob(id, func))
 
     def get_jobs(self):
         return list(self._jobs)
