@@ -344,6 +344,40 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-09-19 — #665: the setup-review section's REPORTED numbers now carry their exit era too (REPORTING ONLY — no exit rule, stop, target or size changed)
+
+**The gap #585 (2026-08-23, below) left.** #585 era-scoped every ASK the setup-review section
+generates, but the numbers printed ABOVE those asks (`peak X -> real Y`, exit-reason
+concentration, stop/ADR) stayed a single blended figure over the full `lookback_days` window —
+never labelled with the era(s) it was made of. #662 (filed 2026-09-14) found exactly this:
+*"the setup-review block report[s] ... exp −0.36R vs +0.95R, peak +0.99R → real −1.00R, MFE
+19%, all over 90 days [but] 31 of the 33 closed trades predate [the 2026-09-06 exit rule] —
+era D has n=2."*
+
+**The fix**: every row now also prints an `eras:` line breaking its own `era_trades` cohort
+down by `rule_eras.exit_era_label(alert_date, signal_type)` — e.g. `eras: era_c n=31 · era_d
+n=2` — table-driven, so the NEXT exit-rule flip (era E) appears automatically with no code
+change in `system_review.py`. Applies to every row, including retired/thin-N ones (it reports
+what the numbers ABOVE it are made of, not a question, so it is not gated by the N-floor or the
+retired-strategy early-continue). Fails closed the same way the #585 ASK logic already did: if
+the era-scoped fetch breaks, the line is omitted, never a blended-cohort claim.
+
+**Same-commit fixes to two OTHER private copies of a `rule_eras.py` boundary found while
+building this** (both #533's `SEP_SCORE_DATE`, 2026-08-22): `scripts/ep_replay.py`'s
+score-agreement bucket label had restated it as a bare `"2026-08-22"` string despite already
+importing the constant for everything else in the file; `health_checks.py`'s
+`_LATTICE_FLIP_DATE_FALLBACK` carried its own `date(2026, 8, 22)` literal for the identical
+#533 flip. Both now read the shared constant (`is`, not just `==`) — same value, one source.
+
+**Proved live**: ran `get_setup_era_trades`'s exact SQL (no boundary date in the query) against
+prod read-only, then bucketed the returned rows through `exit_era_label` in a script with zero
+hand-written dates. Result (today's 90d window): `era_a n=13 · era_b n=10 · era_c n=6 ·
+era_d n=2` — era_d matches #662's hand count exactly (the total differs from their 33 only
+because the 90-day window has moved since 09-13/14). Zero-authority, reporting-only (THE LINE):
+no threshold, stop, target or entry rule changed. `replay_regression.py`'s live-vs-calibration
+section is still era-blind by design (`kill_scale_bands.assemble_band_inputs` carries no
+per-trade dates) — that is #662's item (3), not touched here.
+
 ### 2026-09-09 — #631: ONE exit-counterfactual recorder, ONE read — two shadow tables retired read-only, six reviews folded, one closed by ruling (RECORD/READ ONLY — no exit rule, stop, target, size or admission changed)
 
 **Trigger**: operator — *"stop one off, consolidate"* (full quote + the retraction that prompted it
