@@ -312,10 +312,16 @@ async def test_the_ep_alert_goes_out_as_html_with_judge_prose_and_the_acted_bloc
 async def test_lattice_revert_page_goes_out_as_html_with_the_sql_in_pre(monkeypatch):
     """4 of the last 14 days. MUTATION TARGET: `send_telegram_message("\\n".join(lines))` bare
     in `run_catalyst_lattice_monitor`'s announce — the `magna53_ep.md` underscore in the
-    italic line 400s v1 and the plain retry strips the SQL's `_`."""
+    italic line 400s v1 and the plain retry strips the SQL's `_`.
+
+    `zero_last_n=2` (#666, 2026-09-19): also trips the always-armed zero-alert-days trigger,
+    so the revert SQL prints regardless of whether trigger (b)'s own named preventions cover
+    its shortfall — this test is about the HTML FENCING, not the withhold decision (that's
+    covered in tests/test_catalyst_lattice_monitor.py and
+    tests/test_666_prevented_alerts_not_correlation.py)."""
     from tests.test_catalyst_lattice_monitor import _patch_common, _FakeConn, _alert_rows, _FRI
     _audit, tg = _patch_common(monkeypatch)
-    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4, zero_last_n=2),
                      flip_date=date(2026, 1, 1))
     out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
     assert out["spoke"] is True

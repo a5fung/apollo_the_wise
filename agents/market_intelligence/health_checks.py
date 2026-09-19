@@ -3714,8 +3714,9 @@ async def run_jsonb_encoding_check(conn=None) -> dict[str, Any]:
 # MISSED ALERTS — and 4 of the 7 graded labelled real EPs were undetermined offline (they died
 # below score 50 with no stored catalyst text), so this monitor IS the test for that class.
 #
-# THE THREE REVERT TRIGGERS (any one -> Telegram naming the trigger + the numbers + the exact
-# revert command, plus an audit row):
+# THE THREE REVERT TRIGGERS (any one -> Telegram naming the trigger + the numbers, plus an
+# audit row; the revert command itself is PRESCRIBED only when the evidence supports it —
+# see below):
 #   (a) P1 — a member of tests/fixtures/must_not_miss_eps.py is graded `routine` by the ACTING
 #       side. A real EP must never be missed; announced once per member ever.
 #   (b) HIGH alerts PER STOCK THAT GAPPED over the last 7 days fall MORE THAN 50% vs the prior
@@ -3725,8 +3726,17 @@ async def run_jsonb_encoding_check(conn=None) -> dict[str, Any]:
 #
 # Wired into _post_nightly_audit_job (17:30 ET, scheduler.py) — the existing audit surface, no
 # new cron. Stands down when the `catalyst_tier_lattice` toggle is OFF (reverted = nothing to
-# guard). Read-only: SELECTs mi_catalyst_tier_shadow / mi_ep_alerts / mi_daily_closes, writes
-# only audit rows and Telegram — never a grade, entry, sizing or safeguard path.
+# guard). Read-only: SELECTs mi_catalyst_tier_shadow / mi_ep_alerts / mi_daily_closes / (#666)
+# mi_ep_scan_log, writes only audit rows and Telegram — never a grade, entry, sizing or
+# safeguard path.
+#
+# THE REVERT SQL IS WITHHELD, not printed unconditionally (#638 2026-09-10 + #666 2026-09-19):
+# the message always names the trigger and the numbers, but the exact revert command prints
+# only when the evidence actually supports reverting — `lattice_inert` (did the lattice change
+# ANYTHING in the window? #638) and, for trigger (b) specifically, whether the fact-check's own
+# NAMED preventions account for the shortfall it is reporting (#666 — a rate comparison alone
+# is a correlation, never proof of cause). See `out["revert_withheld_reason"]` and the announce
+# block below for the exact gating.
 
 async def _lattice_retier_rows(days) -> list:
     """The lattice's verdict vs the raw LLM grade for the given scan dates.
@@ -4114,6 +4124,162 @@ def _lattice_per_100(alerts: int, supply: int) -> float:
     return round(100.0 * alerts / supply, 1) if supply else 0.0
 
 
+# ── #666 (2026-09-19) — trigger (b) STOPS CORRELATING, STARTS COUNTING ───────────────────
+#
+# WHY. Trigger (b) fired 2026-09-15 at p=0.086 (a coin does this 1 time in 12) and printed
+# revert SQL for the catalyst-tier lattice anyway — a RATE comparison, never a named case.
+# Operator: "Don't revert, keep monitoring but make monitor more precise." The monitor
+# already holds the data to be precise: `mi_catalyst_tier_shadow` stamps which side ACTED
+# per ticker-day and `mi_ep_scan_log` carries the score that resulted — so for every name
+# the lattice actually moved, the monitor can say EXACTLY whether that move crossed the
+# alert bar, by ticker and date, instead of inferring anything from a ratio.
+#
+# THE LINE: this changes what the monitor MEASURES AND SAYS, never the 50% threshold, the
+# flip, the lattice's own behaviour or any grading rule — same boundary the 2026-08-24 and
+# 2026-08-26 fixes to this same trigger drew.
+
+
+def _lattice_b_accounts_for_shortfall(prevented_count: int, shortfall: float) -> bool:
+    """Do the NAMED, counted prevented alerts fully explain trigger (b)'s reported shortfall?
+
+    `shortfall` = the HIGH alerts the recent window would have needed, at the PRIOR
+    conversion rate, to not trip the 50% bar, minus what it actually produced — i.e. how many
+    alerts are "missing". `prevented_count` is real: alerts `_lattice_prevented_alerts`
+    identified BY TICKER AND DATE as ones the fact-check itself stopped. When the named count
+    covers the whole shortfall, the drop is explained by the fact-check doing its intended
+    job (nothing to revert). When it does not, the fact-check is NOT shown to be the cause of
+    most of the drop — pointing a revert at it would not be grounded in the evidence, only in
+    the correlation. `shortfall <= 0` has nothing to explain (trivially accounted for)."""
+    return shortfall <= 0 or prevented_count >= shortfall
+
+
+async def _lattice_prevented_alerts(c, window_days: "list[date]") -> "dict[str, Any]":
+    """Named, counted alerts the fact-check ACTUALLY prevented inside `window_days` — never
+    inferred from a rate (#666, 2026-09-19). Reconstructs, from real recorded rows alone,
+    what the PRESENTED score would have been had the RAW LLM grade acted instead of the
+    lattice's — the same per-name recompute the operator did by hand 2026-09-15 (FEIM 58.8 ->
+    71.3, SMMT 55.0 -> 67.5), generalised and run every night instead of once by hand.
+
+    ATTRIBUTION, deliberately tight (advisor review, 2026-09-19): a row counts only when BOTH
+    (a) `mi_catalyst_tier_shadow` says the LATTICE was the acting side for that ticker/day and
+    its verdict (`shadow_tier_last`) differs from the raw LLM grade (`live_quality_last`), AND
+    (b) the LAST `mi_ep_scan_log` tick that day actually scored that same lattice verdict
+    (`catalyst_quality == shadow_tier_last`) — never scan_log's own raw/acted pair alone,
+    which can also move for reasons that have nothing to do with the fact-check (the M&A /
+    sector-momentum / prose-downgrade overrides live in `ep_detector.py`, not here; a row
+    those touch AFTER the lattice fails this check and is never pinned on the fact-check). A
+    row that fails either check, or is missing a score-reconstruction input, is UNCOUNTABLE —
+    added to that bucket, never guessed into either count.
+
+    THE RECOMPUTE, using only what the row already recorded: `score_breakdown` carries every
+    RAW axis point EXCEPT the catalyst axis under the OTHER grade — swap that in
+    (`ep_rubric.SCORE_WEIGHTS["catalyst"]["points"]`), re-apply the conviction floor
+    (`resolve_conviction_floor`, since a demotion can also drop a game_changer+gap>=10 floor),
+    and scale by the REGIME MULTIPLIER — the one unknown a row doesn't carry directly, backed
+    out from its own recorded `ep_score` (presented) and `score_breakdown` (raw, acted) by
+    inverting `apply_output_scale`, then reused forward for the counterfactual (same function,
+    both directions — never a re-derivation of its formula). Restricted to
+    `score_side == 'separation'` (the live rubric); the legacy table's catalyst points and
+    floor differ and are not reconstructed here.
+
+    PREVENTED: the counterfactual (raw LLM grade) would have cleared `ep_bar` and the acted
+    score did not. CAUSED: the reverse — the fact-check made an alert fire that would not
+    otherwise have. Returns {"prevented": [...], "caused": [...], "uncountable": <int>}, each
+    entry {"ticker", "scan_date", "acted_score", "counterfactual_score", "ep_bar",
+    "acted_grade", "raw_grade"}. Read-only. On any query failure: everything empty and
+    `uncountable=None` (never 0 — the caller can tell 'checked, found nothing' from 'could not
+    check'); either way the shortfall stays unaccounted for and the revert SQL stays withheld
+    — the conservative failure direction for a check that gates a revert prescription."""
+    if not window_days:
+        return {"prevented": [], "caused": [], "uncountable": 0}
+    try:
+        rows = await c.fetch(
+            """
+            WITH last_scan AS (
+                SELECT DISTINCT ON (scan_date, ticker) scan_date, ticker, gap_pct, ep_score,
+                       ep_bar, score_breakdown, score_side, catalyst_quality
+                FROM mi_ep_scan_log
+                WHERE scan_date = ANY($1::date[])
+                ORDER BY scan_date, ticker, scan_time_et DESC
+            )
+            SELECT sh.scan_date, sh.ticker, sh.live_quality_last, sh.shadow_tier_last,
+                   ls.gap_pct, ls.ep_score, ls.ep_bar, ls.score_breakdown, ls.score_side,
+                   ls.catalyst_quality AS acted_catalyst_quality
+            FROM mi_catalyst_tier_shadow sh
+            JOIN last_scan ls ON ls.scan_date = sh.scan_date AND ls.ticker = sh.ticker
+            WHERE sh.scan_date = ANY($1::date[]) AND sh.live_side = 'lattice'
+              AND sh.shadow_tier_last IS DISTINCT FROM sh.live_quality_last
+            """,
+            list(window_days))
+    except Exception as e:
+        logger.warning("catalyst_lattice_monitor: prevented-alert read failed: %s", e)
+        return {"prevented": [], "caused": [], "uncountable": None}
+
+    from agents.market_intelligence.ep_rubric import (
+        SCORE_WEIGHTS as _epw, resolve_conviction_floor as _floor_fn, apply_output_scale)
+    _cat_pts = _epw["catalyst"]["points"]
+    _cat_default = _epw["catalyst"]["default"]
+    _floor_rules = _epw["conviction_floor"]["rules"]
+    _scale = _epw.get("output_scale")
+
+    out: "dict[str, Any]" = {"prevented": [], "caused": [], "uncountable": 0}
+    for r in rows:
+        acted_cq = r.get("shadow_tier_last")
+        raw_cq = r.get("live_quality_last")
+        breakdown = r.get("score_breakdown")
+        # `score_breakdown` is JSONB; the pool's registered codec (db.py `_init_conn`) decodes
+        # it to a dict on every connection this module uses, but a raw string is cheap
+        # insurance against a connection that somehow lacks the codec rather than a crash.
+        if isinstance(breakdown, str):
+            try:
+                breakdown = json.loads(breakdown)
+            except (TypeError, ValueError):   # narrow — a malformed string, never a swallow
+                breakdown = None
+        gap_pct = r.get("gap_pct")
+        ep_score = r.get("ep_score")
+        ep_bar = r.get("ep_bar")
+        if (r.get("score_side") != "separation" or not breakdown or gap_pct is None
+                or ep_score is None or ep_bar is None or acted_cq is None or raw_cq is None
+                or r.get("acted_catalyst_quality") != acted_cq):
+            out["uncountable"] += 1
+            continue
+        try:
+            other_raw_sum = sum(v for k, v in breakdown.items()
+                                 if k not in ("catalyst", "conviction_floor"))
+
+            def _raw_for(cq: str) -> float:
+                cat_pts = _cat_pts.get(cq, _cat_default)
+                before_floor = other_raw_sum + cat_pts
+                floor = _floor_fn(gap_pct, cq, _floor_rules)
+                return before_floor if floor is None else max(before_floor, floor)
+
+            raw_acted = _raw_for(acted_cq)
+            if not raw_acted:
+                out["uncountable"] += 1
+                continue
+            final_acted = (round((ep_score - _scale["offset"]) / _scale["mult"], 1)
+                           if _scale else ep_score)
+            regime_mult = final_acted / raw_acted
+            raw_other = _raw_for(raw_cq)
+            final_other = round(raw_other * regime_mult, 1)
+            presented_other = (apply_output_scale(final_other, _scale) if _scale
+                               else round(final_other, 1))
+        except Exception as e:
+            logger.warning("catalyst_lattice_monitor: prevented-alert recompute failed for "
+                           "%s %s: %s", r.get("ticker"), r.get("scan_date"), e)
+            out["uncountable"] += 1
+            continue
+
+        entry = {"ticker": r["ticker"], "scan_date": r["scan_date"].isoformat(),
+                 "acted_score": ep_score, "counterfactual_score": round(presented_other, 1),
+                 "ep_bar": ep_bar, "acted_grade": acted_cq, "raw_grade": raw_cq}
+        if presented_other >= ep_bar > ep_score:
+            out["prevented"].append(entry)
+        elif ep_score >= ep_bar > presented_other:
+            out["caused"].append(entry)
+    return out
+
+
 async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]":
     """#533 flip monitor — see the block comment above. Returns {"enabled", "today",
     "triggers", "errors", "spoke"}; never raises (each trigger isolated). Silent when
@@ -4257,6 +4423,15 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                         drop = _evaluate_lattice_high_drop(recent_rate, prior_rate)
                         if drop:
                             _implicated.extend(recent_m)
+                            # #666 (2026-09-19): the shortfall this trigger is reporting —
+                            # how many HIGH alerts the recent window would have needed, AT
+                            # THE PRIOR CONVERSION RATE, to clear the 50% bar — and the real,
+                            # named alerts the fact-check itself prevented INSIDE THIS SAME
+                            # WINDOW (never the whole flip era — an out-of-window prevention
+                            # cannot explain an in-window shortfall). Counting, not a rate.
+                            _expected_recent = prior_rate * recent_supply
+                            _shortfall = max(0.0, _expected_recent - recent_high)
+                            _prevented_info = await _lattice_prevented_alerts(c, recent_m)
                             out["triggers"].append({
                                 "kind": "high_conversion_drop",
                                 "recent_rate": round(recent_rate, 5),
@@ -4273,7 +4448,14 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                                 "supply_min_prev_close": _LATTICE_SUPPLY_MIN_PREV_CLOSE,
                                 "supply_min_prev_volume": _LATTICE_SUPPLY_MIN_PREV_VOLUME,
                                 "flip_date": flip_date.isoformat(),
-                                "flip_date_source": flip_source})
+                                "flip_date_source": flip_source,
+                                "shortfall": round(_shortfall, 2),
+                                "expected_recent_high": round(_expected_recent, 2),
+                                "prevented": _prevented_info["prevented"],
+                                "caused": _prevented_info["caused"],
+                                "prevented_uncountable": _prevented_info["uncountable"],
+                                "accounts_for_shortfall": _lattice_b_accounts_for_shortfall(
+                                    len(_prevented_info["prevented"]), _shortfall)})
 
             # trigger (c): the two most recent trading days both produced ZERO alerts.
             # DELIBERATELY NOT supply-normalised (2026-08-26): two silent days on a live money
@@ -4345,6 +4527,33 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     f"(threshold 50%). Raw volume, for reference only: {t['recent_avg']} "
                     f"alerts/day vs {t['prior_avg']} — a thinner tape alone does NOT trip "
                     f"this trigger.")
+                # #666 (2026-09-19): COUNT, don't correlate — the real, named alerts the
+                # fact-check prevented in this SAME window, against the shortfall above.
+                plist, clist = t.get("prevented", []), t.get("caused", [])
+                if plist:
+                    names = "; ".join(
+                        f"`{p['ticker']}` {p['scan_date']} ({p['acted_score']} -> "
+                        f"{p['counterfactual_score']}, bar {p['ep_bar']})" for p in plist)
+                    lines.append(
+                        f"  ↳ The fact-check actually PREVENTED {len(plist)} alert(s) in "
+                        f"this same window: {names}. That is against a shortfall of "
+                        f"{t['shortfall']:.1f} alert(s) vs the {t['expected_recent_high']:.1f} "
+                        f"the prior conversion rate would have expected.")
+                else:
+                    lines.append(
+                        f"  ↳ The fact-check names ZERO alerts it prevented in this window, "
+                        f"against a shortfall of {t['shortfall']:.1f} — a conversion-rate "
+                        f"comparison alone is not evidence the lattice caused it.")
+                if clist:
+                    cnames = "; ".join(f"`{p['ticker']}` {p['scan_date']}" for p in clist)
+                    lines.append(
+                        f"  ↳ It also CAUSED {len(clist)} alert(s) that would not otherwise "
+                        f"have fired: {cnames}.")
+                if t.get("prevented_uncountable"):
+                    u = t["prevented_uncountable"]
+                    lines.append(
+                        f"  ↳ {'An unknown number of' if u is None else u} grade change(s) in "
+                        f"this window could not be judged — score data missing or unreadable.")
             elif t["kind"] == "zero_alert_days":
                 sup = ["?" if s is None else str(s) for s in t.get("supply", [])]
                 ctx = (f" The tape offered {' and '.join(sup)} stocks that OPENED "
@@ -4365,6 +4574,23 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
         # the zero came from the day's best score being 58.8 against a bar of 65. The trigger still
         # speaks (a silent money path is worth a look); it no longer names a culprit it has not
         # checked. Trigger (b) learned the same lesson on 2026-08-24 in a different shape.
+        #
+        # #666 (2026-09-19): a SECOND, independent reason to withhold — trigger (b) fired at
+        # p=0.086 on 2026-09-15 and printed revert SQL anyway. A conversion-rate comparison ALONE
+        # is a correlation, never proof of cause; it may now prescribe a revert only when (a) a
+        # hard-evidence trigger also fired (a named P1 miss, or the always-armed zero-alert-days
+        # trigger), or (b) trigger (b)'s own named preventions ACCOUNT FOR the shortfall it is
+        # reporting (`accounts_for_shortfall`, set where the trigger is built). Otherwise: withheld,
+        # and the message says exactly why — never silently, never a different reason substituted.
+        _b_unexplained = any(
+            t["kind"] == "high_conversion_drop" and not t.get("accounts_for_shortfall", True)
+            for t in out["triggers"])
+        _hard_evidence_present = any(
+            t["kind"] in ("p1_member_routine", "zero_alert_days") for t in out["triggers"])
+        _withhold_correlation_only = _b_unexplained and not _hard_evidence_present
+        out["revert_withheld_reason"] = (
+            "lattice_inert" if out.get("lattice_inert") is True
+            else "correlation_unexplained" if _withhold_correlation_only else None)
         if out.get("lattice_inert") is True:
             lines.append(
                 "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The lattice's "
@@ -4372,6 +4598,13 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                 "it off would be byte-identical — it suppressed nothing. Look at the tape, the "
                 "score bar and the scan log instead. To revert anyway, the flag is in "
                 "`docs/setups/magna53_ep.md` 2026-08-22.")
+        elif _withhold_correlation_only:
+            lines.append(
+                "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The only "
+                "evidence here is a conversion-rate comparison, and the fact-check's own named "
+                "preventions (above) do not account for the shortfall it is reporting — a "
+                "correlation is not proof the lattice caused it. To revert anyway, the flag is "
+                "in `docs/setups/magna53_ep.md` 2026-08-22.")
         else:
             if out.get("lattice_inert") is None:
                 lines.append(
@@ -4382,7 +4615,7 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
             lines.append("```")
             lines.append(_LATTICE_REVERT_SQL)
             lines.append("```")
-        if out.get("lattice_inert") is not True:
+        if out.get("lattice_inert") is not True and not _withhold_correlation_only:
             lines.append("_Permanent form: set `CATALYST_TIER_LATTICE_ENABLED=false` in prod .env "
                          "and redeploy market-agent. Evidence + change log: "
                          "docs/setups/magna53_ep.md 2026-08-22._")
@@ -4402,7 +4635,12 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                        json.dumps({"today": day.isoformat(), "triggers": out["triggers"],
                                    "lattice_inert": out.get("lattice_inert"),
                                    "lattice_rows_seen": out.get("lattice_rows_seen"),
-                                   "lattice_days_checked": out.get("lattice_days_checked")}))
+                                   "lattice_days_checked": out.get("lattice_days_checked"),
+                                   # #666 (2026-09-19): WHY the revert SQL was or was not
+                                   # printed, recorded — the same "unauditable verdict" lesson
+                                   # the 2026-09-11 fix above learned for `lattice_inert`, now
+                                   # applied to the second reason a revert can be withheld.
+                                   "revert_withheld_reason": out.get("revert_withheld_reason")}))
             for t in out["triggers"]:
                 if t["kind"] == "p1_member_routine":
                     await _log("catalyst_lattice_p1_miss",
