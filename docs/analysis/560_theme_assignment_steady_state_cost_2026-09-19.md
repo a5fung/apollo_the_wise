@@ -70,10 +70,51 @@ emptying. **That is not a reason to pull a $5/month job** — it is a reason not
 backlog is solved. If the pool ever turns and climbs past ~250 while cost tracks it, re-read this;
 the instrument is one SQL join and takes a minute.
 
+## ⚠ CORRECTION, same day — "the backlog is clearing" was the wrong description
+
+He asked the obvious question I had not: **are these stocks actually being assigned to themes?**
+They are, and the answer changes the shape of the finding — not the recommendation.
+
+| ET night | pool | proposed | admitted by the co-move gate | theme (name, ticker) pairs |
+|---|---|---|---|---|
+| 09-08 | 178 | 28 | — | 700 |
+| 09-09 | 182 | 36 | — | 684 |
+| 09-10 | 172 | 21 | — | 735 |
+| 09-11 | 164 | 13 | — | 716 |
+| 09-14 | 179 | 19 | — | 717 |
+| 09-15 | 169 | 16 | 11 | 694 |
+| 09-16 | 165 | 26 | 18 | 705 |
+| 09-17 | 158 | 22 | 13 | 712 |
+| 09-18 | 159 | 25 | 15 | 682 |
+
+*(the co-movement summary event only starts on 09-15 — it is newer than the window, not missing)*
+
+**What this actually shows:**
+
+1. **Assignment is doing real work every night** — 13–36 proposals, of which 11–18 survive the
+   co-movement test. It is not idling.
+2. **Total theme membership is FLAT: ~705 pairs, oscillating 682–735 with no trend.** So the
+   assignments are being offset almost exactly by removals — `ticker_revalidated_out`,
+   `validation_cooldown_triggered`, `theme_retired`, `theme_auto_retired`, a handful each night.
+3. **Therefore the pool is NOT a pile being worked down.** If 11–18 names leave it by assignment
+   each night and it only falls by ~2, then **10–16 NEW candidates arrive each night**. It is a
+   steady-state QUEUE with inflow ≈ outflow, drifting gently down.
+
+**So "the backlog is clearing" was wrong as a description.** The correct statement is: *the pool
+is stable and slightly declining because inflow and outflow are near balance — not because a fixed
+backlog is draining.* At −2/session I had implicitly modelled a pile with an end; there is no such
+end, and a reader planning against one would have been misled.
+
+**THE RECOMMENDATION IS UNCHANGED, AND THE CASE FOR IT IS STRONGER.** The worry behind the task
+was a pool that grows without bound while we pay nightly. It does not grow. And the job is not
+grinding a stale pile — it is placing 11–18 stocks into themes every night for 22 cents. **Keep
+it.**
+
 ## What this does not answer
 
 - **Whether the assignments are any GOOD.** This measures cost and pool size. Nothing here says a
   ticker was assigned to the right theme; that is #368/#655 territory and needs his labels.
+- **Why membership stays flat.** Assignments in and removals out are near balance; this does not say whether the REMOVALS are correct. A theme losing members as fast as it gains them could be healthy churn or a validation rule that is too aggressive — different question, not measured here.
 - **Whether the pool will keep falling.** n = 9 sessions with a −2/session slope and ordinary
   day-to-day noise of ±10. The direction is real enough to satisfy *"does the backlog clear"*; the
   slope is not strong enough to forecast an empty pool, and a plateau in the 120–160 band is fully
