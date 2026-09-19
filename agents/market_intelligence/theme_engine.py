@@ -60,6 +60,7 @@ from agents.market_intelligence.collector import (
     get_fmp_profile, search_news_perplexity, check_perplexity_health, et_today,
 )
 from agents.market_intelligence.constants import trimmed_mean
+from agents.market_intelligence import market_adjusted_correlation as mac
 from agents.market_intelligence.db import (
     get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
     get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
@@ -4388,7 +4389,11 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
 # copies against what judge_theme_fit returns, and two hand-synced literals that happen to coincide
 # is the drift THEME_BONUS_STAGES' own comment forbids ("same values, one name, never two
 # literals"). Direction is forced: ep_theme_belonging._UNJUDGED is built at module load, so it
-# cannot pull from here; ep_theme_belonging imports only db + numpy + stdlib, so this does not cycle.
+# cannot pull from here; ep_theme_belonging imports only db + numpy + stdlib +
+# market_adjusted_correlation (a leaf), so this does not cycle. The module alias is for ONE
+# thing — `etb.fetch_closes`, the mi_daily_closes read `_load_comove_context` shares with the EP
+# scan (I/O, not maths; looked up on the module at call time so tests can patch it there).
+from agents.market_intelligence import ep_theme_belonging as etb  # noqa: E402
 from agents.market_intelligence.ep_theme_belonging import (  # noqa: E402
     FIT_CONFIRMED, FIT_FAILED, FIT_REJECTED)
 
@@ -5485,9 +5490,10 @@ def _strip_stage_label(name: str) -> str:
 # THE REPLACEMENT is the question the sector label was a proxy for, asked directly: the
 # candidate's market-adjusted (SPY-subtracted) daily returns over the ASSIGN-lookback sessions
 # STRICTLY BEFORE the run date, correlated with the equal-weight basket of the theme's members
-# (leave-one-out when the candidate is itself a member). The maths is `ep_theme_belonging`'s —
-# imported, never re-derived — so the EP scan and the nightly engine cannot disagree about what
-# "co-moves" means.
+# (leave-one-out when the candidate is itself a member). The maths is
+# `market_adjusted_correlation`'s (#660, 2026-09-18: moved out of `ep_theme_belonging`, a PEER
+# both import) — imported, never re-derived — so the EP scan and the nightly engine cannot
+# disagree about what "co-moves" means.
 #
 # FAIL DIRECTION (explicit): a pair the tape CANNOT judge — no price history, fewer than
 # BELONGING_MIN_OVERLAP_SESSIONS overlapping sessions, a basket with fewer than
@@ -5561,17 +5567,16 @@ async def _load_comove_context(tickers: "set[str] | list[str]", before_date: dat
     asks for `< before_date` AND `session_index` re-applies it — the no-lookahead guarantee
     never rests on a WHERE clause alone). Returns None on ANY failure — the callers then run
     today's sector test (fail SAFE), loudly: an audit row records why."""
-    from agents.market_intelligence import ep_theme_belonging as etb
     try:
-        syms = {(t or "").upper() for t in tickers if t} | {etb.MARKET_TICKER}
+        syms = {(t or "").upper() for t in tickers if t} | {mac.MARKET_TICKER}
         closes, n_rows = await etb.fetch_closes(
-            syms, before_date - timedelta(days=etb._CALENDAR_DAYS_FOR_LOOKBACK), before_date)
-        sessions = etb.session_index(closes.get(etb.MARKET_TICKER, {}), before_date,
-                                     etb.BELONGING_LOOKBACK_SESSIONS)
+            syms, before_date - timedelta(days=mac.CALENDAR_DAYS_FOR_LOOKBACK), before_date)
+        sessions = mac.session_index(closes.get(mac.MARKET_TICKER, {}), before_date,
+                                     mac.BELONGING_LOOKBACK_SESSIONS)
         if len(sessions) < 2:
-            raise RuntimeError(f"no {etb.MARKET_TICKER} closes before {before_date} — nothing to adjust against")
-        market = etb.log_returns(closes.get(etb.MARKET_TICKER, {}), sessions)
-        excess = etb.excess_returns(closes, sessions, market)
+            raise RuntimeError(f"no {mac.MARKET_TICKER} closes before {before_date} — nothing to adjust against")
+        market = mac.log_returns(closes.get(mac.MARKET_TICKER, {}), sessions)
+        excess = mac.excess_returns(closes, sessions, market)
         ctx = ComoveContext(before_date=before_date, excess=excess,
                             n_sessions=len(sessions) - 1, n_rows=n_rows)
         logger.info(
@@ -5598,7 +5603,6 @@ def _comove_verdict(ticker: str, member_tickers: "list[str] | tuple[str, ...]",
     "run the sector test". Never admits on missing data."""
     if ctx is None:
         return None
-    from agents.market_intelligence import ep_theme_belonging as etb
     t = (ticker or "").upper()
     vec = ctx.excess.get(t)
     if vec is None:
@@ -5607,14 +5611,14 @@ def _comove_verdict(ticker: str, member_tickers: "list[str] | tuple[str, ...]",
     # here the stage is whatever the theme's is (assignment offers Fading themes too), so a
     # sentinel stage selects exactly this one theme and no other rule leaks in.
     others = [m for m in member_tickers if (m or "").upper() != t]
-    baskets = etb.build_baskets([{"name": "_pair", "stage": "_pair", "tickers": others}],
+    baskets = mac.build_baskets([{"name": "_pair", "stage": "_pair", "tickers": others}],
                                 ctx.excess, stages=("_pair",))
     if not baskets:
         with_history = sum(1 for m in others if (m or "").upper() in ctx.excess)
         return ComoveVerdict(admit=None, corr=None, overlap=0, basket_n=with_history, reason="thin_basket")
-    corr, overlap, used = etb.correlate(vec, baskets[0], exclude=t)
+    corr, overlap, used = mac.correlate(vec, baskets[0], exclude=t)
     if corr is None:
-        reason = "thin_basket" if used < etb.BELONGING_MIN_BASKET_MEMBERS else "no_history"
+        reason = "thin_basket" if used < mac.BELONGING_MIN_BASKET_MEMBERS else "no_history"
         return ComoveVerdict(admit=None, corr=None, overlap=overlap, basket_n=used, reason=reason)
     admit = corr >= ASSIGN_COMOVE_BAR
     return ComoveVerdict(admit=admit, corr=round(corr, 4), overlap=overlap, basket_n=used,

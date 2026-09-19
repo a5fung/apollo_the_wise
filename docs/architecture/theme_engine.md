@@ -33,7 +33,7 @@
 - **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
 - **Birth validation (#266, 2026-06-17, operator-signed)**: newly DISCOVERED themes run the SAME `_validate_theme_membership` on their founding members before `_save_themes` — discovery previously skipped it, so bad members sat ~6d until the next Mon/Wed/Fri (evidence: `docs/analysis/theme_birth_validation_evidence_2026-06-17.md`). Changes WHEN, not WHAT; min-survivor guard keeps small/born-bad themes intact; emits `theme_birth_validated`.
 - **Tool schemas**: all three tools (assignment, discovery, split) have `analysis_scratchpad` as required first field — forces reasoning before JSON output.
-- **Membership test = the TAPE, not the sector label (2026-09-13, OPERATOR-SIGNED)**: a proposed (stock, theme) pair is admitted when the stock's market-adjusted (SPY-subtracted) daily returns over the 60 sessions STRICTLY BEFORE the run date correlate at ≥ `ASSIGN_COMOVE_BAR` (0.35 — a PER-PAIR bar; derivation at the constant) with the theme's equal-weight member basket (leave-one-out; ≥3 members with history, ≥30 overlapping sessions — `ep_theme_belonging`'s own maths and guards, imported, never re-derived). The same rule keeps or drops a SINGLETON-sector member at the birth strip (`_strip_sector_outliers`) and the nightly carryforward strip (`_apply_carryforward_deterministic_filter`) — without that, a name admitted on co-movement tonight is stripped by the label tomorrow. **Fail direction**: a pair the tape cannot judge (no history / thin basket / closes read failed / toggle off) runs TODAY's sector test — `_sector_identity_gate`, verbatim: the singleton-sector rejection, the sector-keyword fallback with its description rescue, and the Unknown-sector description-overlap check — never a silent admit. **Two passes per run**: a pair thin only for want of members is re-judged after the run's other admits have landed, the label's own yeses first (IREN was proposed before BTDR in the same batch on 2026-09-08 and met a 2-name basket). ONE `mi_daily_closes` read per run (`_load_comove_context`, in `run_theme_engine`, handed to the three sites as `comove_ctx`; `None` = the pre-change engine byte-for-byte). Toggle `theme_assign_comove` (`mi_safeguard_state` / env `THEME_ASSIGN_COMOVE_ENABLED`, DEFAULT ON). Audit: `assignment_comove_admitted_over_sector`, `assignment_skipped_comove_below_bar` (both carry the sector counterfactual), `assignment_comove_summary` (the nightly positive observable), `theme_comove_context_failed`; the strip's aggregate row gains `comove_kept=` / `comove_below_bar=`. Change log 2026-09-13.
+- **Membership test = the TAPE, not the sector label (2026-09-13, OPERATOR-SIGNED)**: a proposed (stock, theme) pair is admitted when the stock's market-adjusted (SPY-subtracted) daily returns over the 60 sessions STRICTLY BEFORE the run date correlate at ≥ `ASSIGN_COMOVE_BAR` (0.35 — a PER-PAIR bar; derivation at the constant) with the theme's equal-weight member basket (leave-one-out; ≥3 members with history, ≥30 overlapping sessions — `market_adjusted_correlation`'s maths and guards, imported by both the EP scan and this engine, never re-derived; #660 moved them out of `ep_theme_belonging` 2026-09-18, a pure move). The same rule keeps or drops a SINGLETON-sector member at the birth strip (`_strip_sector_outliers`) and the nightly carryforward strip (`_apply_carryforward_deterministic_filter`) — without that, a name admitted on co-movement tonight is stripped by the label tomorrow. **Fail direction**: a pair the tape cannot judge (no history / thin basket / closes read failed / toggle off) runs TODAY's sector test — `_sector_identity_gate`, verbatim: the singleton-sector rejection, the sector-keyword fallback with its description rescue, and the Unknown-sector description-overlap check — never a silent admit. **Two passes per run**: a pair thin only for want of members is re-judged after the run's other admits have landed, the label's own yeses first (IREN was proposed before BTDR in the same batch on 2026-09-08 and met a 2-name basket). ONE `mi_daily_closes` read per run (`_load_comove_context`, in `run_theme_engine`, handed to the three sites as `comove_ctx`; `None` = the pre-change engine byte-for-byte). Toggle `theme_assign_comove` (`mi_safeguard_state` / env `THEME_ASSIGN_COMOVE_ENABLED`, DEFAULT ON). Audit: `assignment_comove_admitted_over_sector`, `assignment_skipped_comove_below_bar` (both carry the sector counterfactual), `assignment_comove_summary` (the nightly positive observable), `theme_comove_context_failed`; the strip's aggregate row gains `comove_kept=` / `comove_below_bar=`. Change log 2026-09-13.
 - **Description chunking**: `_ensure_descriptions()` sends max 15 tickers per Haiku call.
 - **`get_active_themes(stale_after_days=7)`**: recency cap is the de-facto retirement mechanism — themes that stop appearing in daily snapshots age out after a week.
 - **Phase 2 re-granularization (ADR 0032, behind `THEME_SUBTHEME_ARM` DB toggle, fail-closed OFF)**: Route A protect-strip→PARENT_CHILD adjudication (inert on DISTINCT verdicts — fail-closed to today's strip) + Route B sole-sub-theme ecosystem-dominant split via `_split_fat_theme` (self-disarms: post-split the ecosystem has 2 themes). Split children persist via `parent_theme` (rebuilt into `sub_theme_parents` each run); covered-ticker exclusion keeps split-offs out of the discovery pool.
@@ -795,6 +795,29 @@ section and in the function's docstring, which is where a reader looks for "why 
 
 ## Change log
 
+### 2026-09-18 — #660: the market-adjusted correlation maths moved to its own module (PURE MOVE, verdicts byte-identical)
+
+- **What**: `session_index`, `log_returns`, `excess_returns`, `usable` (was `_usable`), `_basket_mean`,
+  `build_baskets`, `correlate`, `ThemeBasket` and the constants `BELONGING_LOOKBACK_SESSIONS` (60),
+  `BELONGING_MIN_OVERLAP_SESSIONS` (30), `BELONGING_MIN_BASKET_MEMBERS` (3), `MARKET_TICKER`,
+  `CALENDAR_DAYS_FOR_LOOKBACK` (100, was the private `_CALENDAR_DAYS_FOR_LOOKBACK`) now live in
+  `agents/market_intelligence/market_adjusted_correlation.py`. `ep_theme_belonging.py` and this
+  engine import it as a PEER; the lazy cross-imports inside `_load_comove_context` /
+  `_comove_verdict` are gone, and nothing outside `ep_theme_belonging` reads a `_`-prefixed name of it.
+- **Why**: the nightly engine depended on an EP-named module for generic maths, including a private
+  constant (2026-09-14 altitude review). `correlation_engine.py` was NOT the home — its adjustment is
+  a beta residual, this is SPY subtraction, and the 0.35 bars were measured on the subtraction.
+- **What did NOT move**: `fetch_closes` (the `mi_daily_closes` read — I/O; `_load_comove_context`
+  still calls `etb.fetch_closes`), both bars, the stage sets (`build_baskets` in the EP module keeps
+  its `BELONGING_SHADOW_STAGES` default as a thin wrapper; the peer's `stages` is required).
+- **No bar, threshold or criterion changed.** Evidence: the same harness run before and after over 7
+  synthetic tapes (holes, thin history, flat closes, 2-member baskets, leave-one-out, no-SPY failure
+  path) — 6,082 correlate / verdict / read values plus the context loader's fetch window and excess
+  arrays, serialised byte-exactly, identical (commit message carries the checksums). Suite green with
+  ONE test line changed (an import path: `etb._basket_mean` → `mac._basket_mean`).
+- **Deploy**: `ep_theme_belonging` loads in `apollo-execution`, so the new module does too —
+  `scripts/exec_loaded_modules.txt` regenerated; a deploy is `market-agent` + `execution` (#456 class).
+
 ### 2026-09-13 — THE MEMBERSHIP TEST ASKS THE TAPE: market-adjusted co-movement at 0.35 replaces the sector-identity test (OPERATOR-SIGNED, shipped ON, one-flag revertible)
 
 > 🔒 **TWO RULES SIGNED 2026-09-14, AFTER the backtest — read these with the entry below; they are
@@ -869,7 +892,9 @@ the 3-member floor.
   use and the two are free to diverge.
 - **The maths is `ep_theme_belonging`'s** — `fetch_closes`, `session_index`, `log_returns`,
   `excess_returns`, `build_baskets`, `correlate` — imported, so the EP scan and the nightly engine
-  cannot disagree about what "co-moves" means. Its `prepare_basket_context` was NOT reused: it
+  cannot disagree about what "co-moves" means. *[2026-09-18, #660: the maths now lives in
+  `market_adjusted_correlation.py`, a peer both modules import; only `fetch_closes` (the closes
+  READ) stays in `ep_theme_belonging`. See the 2026-09-18 entry.]* Its `prepare_basket_context` was NOT reused: it
   builds baskets only for `BELONGING_SHADOW_STAGES` (assignment offers Fading themes too) and its
   module cache is the EP scan's own cost lever. `_load_comove_context` builds the nightly context
   from the same primitives: ONE read of members ∪ RS leaders ∪ velocity ∪ turners ∪ cluster names
