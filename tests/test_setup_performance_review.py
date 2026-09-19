@@ -226,3 +226,45 @@ def test_a_straddling_cohort_still_asks_when_the_current_era_genuinely_supports_
     out = _section(monkeypatch, [row], era_trades=era_trades)
     assert "2 of 2 trades that reached ≥+2R under the current stop rules" in out
     assert "Questions for you" in out
+
+
+# ── #665: the REPORTED numbers (not just the asks) carry their era, table-driven ────────────
+# The #662 diagnosis: "the setup-review block reports ... over 90 days, but the exit rule
+# changed 2026-09-06 and 31 of the 33 closed trades predate it — era D has n=2." That number
+# came from a hand count; this line makes it a computed one that never again needs a human to
+# re-derive it from git. RED-PROVEN: comment out the `if era_counts:` block below (or change
+# `exit_era_label` to `lambda *_: "x"`) and every one of these tests fails because "eras:"
+# never appears / n=2 becomes n=33.
+
+_ERA_D_STRADDLE = (
+    [_trade(date(2026, 8, 25), signal_type="magna53") for _ in range(31)]  # pre-era-D
+    + [_trade(date(2026, 9, 8), signal_type="magna53") for _ in range(2)]  # post #545 flip
+)
+
+
+def test_the_era_line_auto_splits_era_c_and_era_d_with_no_hardcoded_date_in_the_test_assertion(monkeypatch):
+    """31 pre-#545-flip + 2 post-flip trades (the exact 33/2 shape #662 hand-counted) must
+    render as TWO era buckets, computed by `exit_era_label` from `rule_eras.PARTIAL_8R_DATE` —
+    this test only supplies alert_date + signal_type, never a boundary date to the code under
+    test. A reader who forgot era D (blended-only reporting, the pre-#665 behaviour) would
+    print one n=33 line and never n=2."""
+    row = _row(n=33, med_peak_r=0.99, med_realized_r=-1.00, med_stop_per_adr=1.0,
+               ran_then_lost=0, n_stop_hit=20, top_exit="stop_hit")
+    out = _section(monkeypatch, [row], era_trades=_ERA_D_STRADDLE)
+    assert "eras: era_c n=31 · era_d n=2" in out
+
+
+def test_the_era_line_still_renders_for_a_retired_or_thin_row(monkeypatch):
+    """The era breakdown sits ABOVE the retired/thin-N early-continues — it is a report of what
+    the numbers above it are made of, not a question, so it must not be gated the way asks are."""
+    out = _section(monkeypatch, [_row(n=3, n_stop_hit=3, ran_then_lost=0, wins=0)],
+                    era_trades=_ERA_D_STRADDLE[:3])
+    assert "eras: era_c n=3" in out
+    assert "monitoring only" in out   # the existing thin-N guard is untouched
+
+
+def test_the_era_line_is_suppressed_not_faked_when_the_era_fetch_fails(monkeypatch):
+    """Same fail-closed contract as the ASK logic (#585): no era_trades means no era claim,
+    never a fallback that implies every trade sits in one bucket."""
+    out = _section(monkeypatch, [_row()], era_trades=RuntimeError("db unavailable"))
+    assert "eras:" not in out

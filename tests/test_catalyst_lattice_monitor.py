@@ -140,6 +140,19 @@ async def test_flip_date_falls_back_to_the_hardcoded_constant_when_both_are_empt
     assert (d, source) == (hc._LATTICE_FLIP_DATE_FALLBACK, "hardcoded_fallback")
 
 
+def test_the_fallback_constant_IS_the_shared_rule_eras_boundary_not_a_private_copy():
+    """#665: `_LATTICE_FLIP_DATE_FALLBACK` used to carry its own `date(2026, 8, 22)` literal —
+    the exact #533 score-separation date `rule_eras.SEP_SCORE_DATE` already names. `is` (not
+    `==`) proves it is the SAME object, not a coincidentally-equal duplicate that could drift
+    the next time either date is touched. MUTATION: revert the fallback assignment to its own
+    `date(2026, 8, 22)` literal instead of `SEP_SCORE_DATE` — `==` below still holds (the VALUE
+    is unchanged) but `is` fails, since `date(2026, 8, 22) is date(2026, 8, 22)` constructs a
+    second object rather than reusing the one `rule_eras.py` defines."""
+    from agents.market_intelligence.rule_eras import SEP_SCORE_DATE
+    assert hc._LATTICE_FLIP_DATE_FALLBACK is SEP_SCORE_DATE
+    assert hc._LATTICE_FLIP_DATE_FALLBACK == date(2026, 8, 22)
+
+
 @pytest.mark.asyncio
 async def test_flip_date_falls_through_a_query_error_to_the_next_source():
     conn = _FlipDateConn(raise_on={"safeguard_state"},

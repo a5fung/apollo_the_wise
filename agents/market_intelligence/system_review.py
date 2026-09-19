@@ -1965,6 +1965,7 @@ _SETUP_REVIEW_MIN_N = 10   # below this the row REPORTS but asks nothing — see
 from agents.market_intelligence.rule_eras import (  # noqa: E402
     PARTIAL_LIVE_DATE as _PROFIT_TRIGGER_ERA_START,
     STOP_2R_DATE as _STOP_GEOMETRY_ERA_START,
+    exit_era_label,
 )
 # _PROFIT_TRIGGER_ERA_START — constants.PROFIT_TRIGGER_R live (operator-signed, #508). Governs
 #     "could a profit-take even fire" — the exit-reason-concentration ask.
@@ -2072,6 +2073,25 @@ async def _setup_performance_section(lookback_days: int = 90) -> str:
             bits.append(f"stop/ADR {float(r['med_stop_per_adr']):.2f}")
         if bits:
             L.append("   " + " · ".join(bits))
+        # #665: era breakdown for the numbers just printed above, so a lookback_days window
+        # that pools two rule-eras SAYS SO instead of reading as one steady number (the exact
+        # defect #662 found: "31 of 33 closed trades predate the 2026-09-06 exit rule" printed
+        # as one blended figure). exit_era_label is table-driven (rule_eras.py) — a future
+        # switch (era E...) appears here automatically, no code change in this file. era_trades
+        # is the SAME per-trade fetch the ASK logic below uses (None only on a failed fetch,
+        # same fail-closed guard) — reused rather than re-queried.
+        if era_trades is not None:
+            era_counts: dict[str, int] = {}
+            for t in era_trades:
+                if (t.get("signal_type") != r["signal_type"]
+                        or t.get("account_mode") != r["account_mode"]
+                        or t.get("alert_date") is None):
+                    continue
+                era = exit_era_label(t["alert_date"], t.get("signal_type"))
+                era_counts[era] = era_counts.get(era, 0) + 1
+            if era_counts:
+                L.append("   eras: " + " · ".join(
+                    f"{era} n={cnt}" for era, cnt in sorted(era_counts.items())))
         if r["blind_peaks"]:
             L.append(f"   ⚠ {r['blind_peaks']} peak(s) unreadable (fast exit, recorder blind <10m)")
         # QUESTIONS — only when the sample can carry one.

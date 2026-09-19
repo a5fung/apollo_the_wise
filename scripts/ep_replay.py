@@ -1247,6 +1247,20 @@ def _score_one(a, rs, daily, adv, regime_rows):
         int(reg["ep_threshold"]) if reg and reg.get("ep_threshold") else None)
 
 
+# #665: the score-agreement bucket label, pulled out to a top-level pure function (was a
+# closure inside phase_score, untestable without the full file-backed replay context) so the
+# boundary usage is independently unit-tested. Reads SEP_SCORE_DATE from rule_eras.py (already
+# imported above) instead of a private "2026-08-22" string literal — this function used to be
+# a second, hand-written copy of the exact boundary this module otherwise reads from the
+# shared table.
+def score_agreement_bucket(alert_date: str) -> str:
+    """Which side of the #533 score-separation rescale (rule_eras.SEP_SCORE_DATE) an ISO
+    alert_date string falls on. Lexical string comparison stays valid for ISO dates."""
+    sep = SEP_SCORE_DATE.isoformat()
+    tag = sep[5:]  # "MM-DD", e.g. "08-22" — derived from the date, not restated
+    return f"separation(>={tag})" if alert_date >= sep else f"legacy(<{tag})"
+
+
 def phase_score(args) -> None:
     s2, s3, conf, adv, regime_rows = _scoring_context()
     daily = load_daily()
@@ -1266,16 +1280,15 @@ def phase_score(args) -> None:
     cols = ["ticker", "alert_date", "ruleset", "stored", "score_lo", "score_hi",
             "bar", "admit", "adv_known", "match"]
     write_tsv(DATA / "score_agreement.tsv", rows, cols)
-    def _bucket(r):
-        return "separation(>=08-22)" if r["alert_date"] >= "2026-08-22" else "legacy(<08-22)"
-    for b in ("separation(>=08-22)", "legacy(<08-22)"):
-        sub = [r for r in rows if _bucket(r) == b]
+    _tag = SEP_SCORE_DATE.isoformat()[5:]
+    for b in (f"separation(>={_tag})", f"legacy(<{_tag})"):   # same fixed print order as before #665
+        sub = [r for r in rows if score_agreement_bucket(r["alert_date"]) == b]
         if not sub:
             continue
         m = sum(1 for r in sub if r["match"])
         print(f"score [{b}]: reproduced {m}/{len(sub)} stored ep_scores "
               f"(band match, float unknown); adv known {sum(1 for r in sub if r['adv_known'])}")
-    mism = [r for r in rows if not r["match"] and r["alert_date"] >= "2026-08-22"]
+    mism = [r for r in rows if not r["match"] and r["alert_date"] >= SEP_SCORE_DATE.isoformat()]
     for r in mism:
         print(f"    MISMATCH {r['ticker']} {r['alert_date']}: stored {r['stored']} "
               f"vs [{r['score_lo']}, {r['score_hi']}]")

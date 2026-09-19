@@ -77,6 +77,9 @@ from agents.market_intelligence.db import (
     get_reactivation_alerted_ecosystems, persist_reactivation_seed,
 )
 from shared.dates import et_today  # canonical ET-today (tz-bug-class centralization, /simplify 6/25)
+from agents.market_intelligence.rule_eras import SEP_SCORE_DATE  # #665: the ONE dated switch
+    # table — see _LATTICE_FLIP_DATE_FALLBACK below, which used to carry its own copy of this
+    # same operator-signed 2026-08-22 date.
 
 _ET = ZoneInfo("America/New_York")  # codebase tz rule — never naive datetime.now()
 
@@ -3802,10 +3805,13 @@ _LATTICE_FIXTURE_WARN_DEDUPE_DAYS = 3
 # trades under the current rule + "not enough to ask" floor instead of a blended finding).
 # THE LINE: this changes which trading days trigger (b) COMPARES, never the 50% threshold,
 # never the flip itself, never any grading rule.
-_LATTICE_FLIP_DATE_FALLBACK = date(2026, 8, 22)   # operator-signed flip date (catalyst_tier_
-    # shadow.py header + docs/setups/magna53_ep.md 2026-08-22 change log). HARDCODED FALLBACK
-    # ONLY — see _lattice_flip_date docstring; used only when both DB-recorded signals below
-    # are unavailable (fresh DB, migration gap, or a transient query error on both).
+_LATTICE_FLIP_DATE_FALLBACK = SEP_SCORE_DATE   # #665: reads rule_eras.py's ONE dated switch
+    # table instead of a private copy of this same date — same operator-signed flip (catalyst_
+    # tier_shadow.py header + docs/setups/magna53_ep.md 2026-08-22 change log; SEP_SCORE_DATE's
+    # own provenance comment in rule_eras.py cites the identical #533 change). Value unchanged
+    # (date(2026, 8, 22)) — this is a source-of-truth swap, not a date change. HARDCODED
+    # FALLBACK ONLY — see _lattice_flip_date docstring; used only when both DB-recorded signals
+    # below are unavailable (fresh DB, migration gap, or a transient query error on both).
 _LATTICE_MIN_POST_FLIP_TRADING_DAYS = 5   # trigger (b) floor: fewer post-flip trading days
     # than this cannot support a halving judgement. 5 is not arbitrary — it is exactly the
     # trading-day count a full _LATTICE_RECENT_DAYS(7 calendar)-day window normally yields
