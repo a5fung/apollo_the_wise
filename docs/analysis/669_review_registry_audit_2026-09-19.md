@@ -55,7 +55,7 @@ measure straddle a dated criteria change in any table the METHOD reads (not just
 | 14 | gate5h_value_invariant_proposal | 0 | yes | ruled 09-11 | the success-firing clause was removed 09-08 | tripwire | none | **verified** + 2 keys |
 | 15 | intraday_undercut_rally_signal_n10 | 4→0 | yes | no | detector rows + closes | yes | **YES** — all 4 counted rows (COMP, TTMI, CPSH, SNOW) predate the 06-27 parent rebuild; sibling was fixed 09-15, this one was not | **RE-GATED** era clause; zero_verdict (RUM/PURR unsettled, not absent) |
 | 16 | intraday_support_test_signal_n10 | 9 | yes | held by priority | detector rows + closes | yes | scoped 09-15 | **verified** + 2 keys |
-| 17 | orb_bar1_wick_outlier_persistence_filter | 5 | yes (ORB entries; account exemption declared) | no | the 87% 9:30-bar gap is CLOSED — 58 of 58 entries since 06-18 have the bar | yes | rolling window replaced by the 06-18 anchor; outcomes span exit eras — segment | **RE-GATED** anchored window |
+| 17 | orb_bar1_wick_outlier_persistence_filter | 5 | yes (ORB entries; account exemption declared) | no | the 87% 9:30-bar gap is CLOSED — ⚠ **'58 of 58' is WRONG, corrected same day by an independent re-count: 34 of 34 real entries (31 closed + 3 filled) have the bar, 100%; 131 of 138 across all rows, including the 80 skipped and 24 cancelled that never held a share. Conclusion unchanged and stronger; the number was not reproducible.** | yes | rolling window replaced by the 06-18 anchor; outcomes span exit eras — segment | **RE-GATED** anchored window |
 | 18 | partial_exit_hardening_n7_clean_cycles | 7 of 7 | yes | partly — the cutover it gated happened 06-22; still valid as the architecture-stability gate | anchor fixed 08-15 | yes (3) | post-split | **verified** (backlog) — **READY on 09-21** |
 | 19 | orb_entry_stuck_pending_new | 0 | yes | ruled 09-06 | order mirror | tripwire | post-fix | **verified** + 2 keys |
 | 20 | wave_c_part2_boost_demotion | 0 | yes (slice) | 08-06: Part 2 retired, tripwire kept | LIKE parse proven | tripwire | n/a | **verified** (backlog) |
@@ -150,3 +150,25 @@ measure straddle a dated criteria change in any table the METHOD reads (not just
 - `check_plan._review_can_fire_gate` now requires **seven** `can_fire:` keys on a NEW or EDITED open review — `population_actionable` and `instrument_trusted` added, `era_scoped` re-defined as the eras of every table the method reads — and prints the untouched backlog as a count. A closed (`done`) review is no longer treated as a proposal. Tests: `tests/test_review_can_fire_gate.py` (the gate exercised for the first time, five RED-proven cases).
 - Registry header documents `can_fire:` for the first time (it was gated since 09-09 and never described).
 - `tests/test_exit_counterfactual_consolidation_631.py` pins `runner_rule_sweep_recut`'s era literal to rule_eras alongside the two exit_tune reviews (RED-proven by reverting the literal).
+
+
+---
+
+## ⚠ VERIFICATION PASS BY THE ORCHESTRATOR — 2026-09-19, after the merge
+
+This audit was **not accepted on its own report.** CLAUDE.md: *never rubber-stamp a premium model —
+verify against code/data first.* What was checked independently, and what it found:
+
+| check | result |
+|---|---|
+| **The one CLOSURE** (`perplexity_transient_timeout_alert_noise`) — irreversible, so checked first | ✅ **CORRECT, and the data claim is exact.** Prod: **5 timeout alerts life-to-date** (first 2026-06-29, last 2026-09-04), **0 in the trailing 14 days, 0 in the trailing 7**, against a threshold of *6 in ~1 week*. The entry's own `action_when_ready` reads *"If under threshold, the default is fine — mark done, no change."* The closure follows its own rule. |
+| **Every predicate still executes** | ✅ `operator_asks.py --audit`: **0 predicates error**, and **0 zeros past their eligible date** — down from 1 at this morning's OPEN (`gap_near_miss_tradeable_miss_rate_617`, now ruled). |
+| **`can_fire` coverage actually moved** | ✅ backlog **39 → 22 of 160**, measured before and after rather than taken from the report. |
+| **Registry mechanics** | ✅ 38 entries edited, **0 added, 0 removed** — the count the YAML-edit rule exists to protect. |
+| **`orb_bar1_wick_outlier_persistence_filter`'s load-bearing number** | 🔴 **WRONG, and corrected in both this doc and the YAML.** The audit cited *"58 of 58 live entries since 06-18 have their 9:30 bar."* **58 is not reproducible on any obvious population.** Prod, since 2026-06-18: 138 distinct `(ticker, alert_date)` rows, of which **80 `skipped` and 24 `cancelled` never held a share**; the rows that actually entered are **31 `closed` + 3 `filled` = 34, and 34 of 34 have the bar (100%)**. Across all 138 it is 131 (94.9%). ⚖ **The DISPOSITION is right — the coverage gap really is closed, and more convincingly than claimed.** Only the count was wrong. |
+
+**Not verified, and said plainly rather than implied:** the other ~17 re-gated dispositions and the
+40 marked `verified` were not re-derived one at a time. What this pass establishes is that the
+irreversible act was correct, the mechanics are sound, every predicate runs — and that **one of the
+two dispositions examined in depth carried an unreproducible number.** That is the rate to assume
+for the rest until someone checks them, not zero. [[derive-the-population-never-hand-list-it]]

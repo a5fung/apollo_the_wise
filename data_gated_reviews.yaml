@@ -8468,8 +8468,13 @@ reviews:
       -- ~87% of live ORB entries — separate issue, doesn't block this
       -- predicate from accruing once coverage improves OR as more
       -- live trades land. Re-run at threshold.
-      -- ⚠ 2026-09-19 (#669 audit): the coverage gap is CLOSED - 58 of 58 live entries since the
-      -- 2026-06-18 ORB-window fix have their 9:30 bar (56 of 56 in the trailing 90 days). And
+      -- ⚠ 2026-09-19 (#669 audit): the coverage gap is CLOSED. ⚠ CORRECTED same day by an
+      -- independent re-count: the audit said '58 of 58' and that number is NOT reproducible
+      -- on any obvious population. Measured: since 2026-06-18 mi_live_trades holds 138
+      -- distinct (ticker, alert_date) rows - 80 skipped and 24 cancelled NEVER HELD A SHARE.
+      -- The rows that actually entered are 31 closed + 3 filled = 34, and 34 OF 34 HAVE THE
+      -- 9:30 BAR (100%). Across all 138 rows it is 131 (94.9%). The conclusion stands and is
+      -- stronger on the population that matters; only the cited count was wrong. And
       -- the ROLLING 90-day window was replaced by that fixed anchor: a review that waits for
       -- accrual cannot sit on a window that forgets - at ~1 outlier a month it could never
       -- reach 10 inside 90 days. Reads 5 either way today; the anchored form only grows.
