@@ -141,7 +141,9 @@ def test_md_to_html_keeps_the_revert_sql_byte_for_byte_inside_pre():
     literal the operator has to paste."""
     body = "```\n" + hc._LATTICE_REVERT_SQL + "\n```"
     out = md_to_html(body)
-    assert out == f"<pre>\n{hc._LATTICE_REVERT_SQL}\n</pre>"
+    # #652 (2026-09-19): the block now opens ON the SQL — the newline after the fence is
+    # skipped as the legacy parser skips it; before, this very body rendered with a blank first line.
+    assert out == f"<pre>{hc._LATTICE_REVERT_SQL}\n</pre>"
     assert _html_backstop(out).strip() == hc._LATTICE_REVERT_SQL
 
 
@@ -326,7 +328,7 @@ async def test_lattice_revert_page_goes_out_as_html_with_the_sql_in_pre(monkeypa
     out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
     assert out["spoke"] is True
     text = _sent_html(tg)
-    assert f"<pre>\n{hc._LATTICE_REVERT_SQL}\n</pre>" in text
+    assert f"<pre>{hc._LATTICE_REVERT_SQL}\n</pre>" in text   # #652: no blank first line
 
 
 @pytest.mark.asyncio

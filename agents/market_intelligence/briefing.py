@@ -55,6 +55,7 @@ from agents.market_intelligence.ep_rubric import (
 )
 from agents.market_intelligence.theme_engine import get_today_themes
 from agents.market_intelligence.audit_events import EVENING_BRIEF_SENT, EVENING_BRIEF_SEND_FAILED
+from shared.telegram_format import md_to_html, chunk_html
 
 logger = logging.getLogger(__name__)
 
@@ -2601,17 +2602,70 @@ def _strip_markdown_markers(text: str) -> str:
     return _re.sub(r"\x00(\d+)\x00", lambda m: keep[int(m.group(1))], text)
 
 
+class _ConvertDefault:
+    """Sentinel for `send_telegram_message(parse_mode=...)` NOT being passed (#652).
+
+    The default is a sentinel, not the string "HTML", so the sender can tell "the caller
+    said nothing — convert the legacy Markdown it wrote" from "the caller built HTML and
+    said so" — a truthiness check would run `md_to_html` a SECOND time over an explicit
+    HTML body and turn every `<b>` into literal `&lt;b&gt;` (32 of the 44 real explicit-HTML
+    bodies in the 2026-09-18 corpus would be mangled that way)."""
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "<parse_mode not passed: convert Markdown→HTML>"
+
+
+_CONVERT = _ConvertDefault()
+
+
+def _chunk_legacy(text: str) -> list[str]:
+    """The pre-#652 chunker, byte-for-byte, for the explicit `parse_mode="Markdown"` opt-in
+    (and plain text): split at the last blank line before 4000, else hard-cut, strip the seam."""
+    if len(text) <= 4000:
+        return [text]
+    chunks: list[str] = []
+    remaining = text
+    while len(remaining) > 4000:
+        split_at = remaining.rfind("\n\n", 0, 4000)
+        if split_at == -1:
+            split_at = 4000
+        chunks.append(remaining[:split_at].strip())
+        remaining = remaining[split_at:].strip()
+    if remaining:
+        chunks.append(remaining)
+    return chunks
+
+
 async def send_telegram_message(
-    text: str, chat_id: int | None = None, parse_mode: str = "Markdown",
+    text: str, chat_id: int | None = None, parse_mode: "str | None" = _CONVERT,
     reply_markup: dict | None = None,
 ) -> bool:
     """Send a message directly via Telegram Bot API. Splits if over 4000 chars.
 
-    parse_mode defaults to legacy "Markdown" (every existing caller). Pass
-    parse_mode="HTML" for surfaces migrated to the shared HTML layer
-    (shared/telegram_format, #121) — HTML has a total escape so dynamic values
-    can't break the parse. On a 400 the message still lands as plain text (markup
-    stripped for the active mode).
+    THE DEFAULT IS SAFE (#652, 2026-09-19). A caller that passes no `parse_mode` writes
+    legacy Markdown as it always did, and this function converts it ONCE at the send
+    boundary (`shared.telegram_format.md_to_html`) and sends it as HTML — so a bare `_`
+    inside a table name, a column in revert SQL, a ticker or a verdict like `TRAIL_TIGHTEN`
+    can no longer 400 the whole message. Before this, 173 of the 205 sender sites rode a
+    `"Markdown"` default: `ep_delayed_residual_scan` 400'd on 11 of 14 firing days and the
+    plain retry stripped the underscores out of the SQL it existed to carry. On the
+    2026-09-18 corpus of 732 real bodies, 266 that failed on the first send render under
+    HTML and none regress the other way (docs/analysis/telegram_html_default_flip_render_check_2026-09-18.md).
+
+    Explicit modes, none of them converted:
+      * `parse_mode="HTML"`  — the body is ALREADY HTML (built with the shared helpers or
+        converted by the caller). Passed through untouched; never converted twice.
+      * `parse_mode="Markdown"` — the OPT-IN for raw legacy Markdown. Chunked and backstopped
+        exactly as before the flip (`_chunk_legacy`, `_strip_markdown_markers`).
+      * `parse_mode=None` — plain text: no parse_mode key on the payload at all.
+
+    A long HTML message is split by `chunk_html`, which closes every open tag at the seam
+    and reopens it in the next chunk, so a code block or bold span crossing 4000 chars
+    renders in both messages instead of failing both. On a 400 the message still lands as
+    plain text (markup stripped for the active mode) and a `telegram_markdown_fallback`
+    audit row records Telegram's error and the mode — for the default path the row says
+    `mode=HTML(default)`, so a converter defect is distinguishable from a hand-built body.
 
     reply_markup (added for the 🔭 theme-synthesis one-tap-promote buttons, operator
     2026-08-17: "is it possible make this even easier like with one-click") — a plain
@@ -2638,34 +2692,31 @@ async def send_telegram_message(
         logger.error("TELEGRAM_BOT_TOKEN not set")
         return False
 
-    # Split into chunks if over Telegram's 4096-char limit
-    chunks: list[str] = []
-    if len(text) <= 4000:
-        chunks = [text]
-    else:
-        # Split at double-newline (section boundaries) to keep sections intact
-        remaining = text
-        while len(remaining) > 4000:
-            split_at = remaining.rfind("\n\n", 0, 4000)
-            if split_at == -1:
-                split_at = 4000
-            chunks.append(remaining[:split_at].strip())
-            remaining = remaining[split_at:].strip()
-        if remaining:
-            chunks.append(remaining)
+    # Resolve the mode ONCE. Only the sentinel converts — an explicit "HTML" is already HTML.
+    converted = parse_mode is _CONVERT
+    mode: str | None = "HTML" if converted else parse_mode
+    if converted:
+        text = md_to_html(text)
+    mode_label = f"{mode}(default)" if converted else str(mode)
+
+    # Split into chunks if over Telegram's 4096-char limit — tag-aware for HTML so a seam
+    # never leaves an open <pre>/<b> in one half and its closer in the other.
+    chunks: list[str] = chunk_html(text) if mode == "HTML" else _chunk_legacy(text)
 
     def _to_plain(chunk: str) -> str:
         # Plain-text fallback strips the active mode's markup so users don't see
         # literal *Foo*/_bar_ (Markdown) or <b> tags (HTML) all over the message.
         # Caught 2026-05-25: 400 ("Can't find end of entity") fell back to plain
         # text without stripping the markers.
-        if parse_mode == "HTML":
+        if mode == "HTML":
             import re as _re
             import html as _html
             # Strip tags, then unescape ALL entities (html.unescape covers &quot;,
             # numeric refs, etc — the manual 3-entity replace missed those).
             return _html.unescape(_re.sub(r"<[^>]+>", "", chunk))
-        return _strip_markdown_markers(chunk)
+        if mode == "Markdown":
+            return _strip_markdown_markers(chunk)
+        return chunk
 
     async def _post(client: httpx.AsyncClient, chunk: str, formatted: bool,
                      markup: dict | None) -> httpx.Response:
@@ -2674,8 +2725,8 @@ async def send_telegram_message(
             "text": chunk if formatted else _to_plain(chunk),
             "disable_web_page_preview": True,
         }
-        if formatted:
-            payload["parse_mode"] = parse_mode
+        if formatted and mode:
+            payload["parse_mode"] = mode
         if markup:
             payload["reply_markup"] = _json.dumps(markup)
         return await client.post(
@@ -2714,7 +2765,7 @@ async def send_telegram_message(
                             "utf-16-le", errors="replace")
                         snippet = f"u8⟨{_u8}⟩ u16⟨{_u16}⟩"
                     logger.warning(
-                        f"Telegram 400 with {parse_mode} — retrying plain text. "
+                        f"Telegram 400 with {mode_label} — retrying plain text. "
                         f"body={body} offset_snippet={snippet!r}"
                     )
                     r2 = await _post(client, chunk, formatted=False, markup=chunk_markup)
@@ -2722,14 +2773,14 @@ async def send_telegram_message(
                         await log_audit_event(
                             "telegram_send_failed",
                             "Telegram send failed after plain-text retry",
-                            f"md_body={body} | plain_status={r2.status_code} | plain_body={r2.text[:400]} | offset_snippet={snippet!r} | chunk={chunk[:300]}",
+                            f"md_body={body} | mode={mode_label} | plain_status={r2.status_code} | plain_body={r2.text[:400]} | offset_snippet={snippet!r} | chunk={chunk[:300]}",
                         )
                         r2.raise_for_status()
                     else:
                         await log_audit_event(
                             "telegram_markdown_fallback",
-                            "Markdown parse failed — delivered as plain text",
-                            f"md_body={body} | offset_snippet={snippet!r} | chunk={chunk[:300]}",
+                            f"{mode_label} parse failed — delivered as plain text",
+                            f"md_body={body} | mode={mode_label} | offset_snippet={snippet!r} | chunk={chunk[:300]}",
                         )
                 else:
                     r.raise_for_status()
