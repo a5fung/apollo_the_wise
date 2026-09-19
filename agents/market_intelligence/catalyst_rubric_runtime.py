@@ -827,51 +827,17 @@ async def log_theme_axis_adjusted_shadow(r: dict[str, Any]) -> None:
                              # done and the scan must still proceed (SHADOW).
 
 
-async def compute_theme_axis_credit_live(r: dict[str, Any]) -> dict[str, Any] | None:
-    """M1-d (ADR 0024 §6) — compute the theme-axis credit for the LIVE composite-
-    authority wire-in (ep_detector._judge_shadow, gated behind the
-    composite_authority_enabled DB toggle; DARK until the operator flips it).
-
-    MIRRORS the fetch logic inside log_theme_axis_adjusted_shadow above
-    (lookup_cached_metrics → score_ep_with_rubric → get_theme_membership →
-    derive_theme_coverage_state → theme_axis_credit) but RETURNS the credit dict
-    {credit_steps, marker, reason, axis} instead of writing an audit row. Read-only
-    on `r`. Returns None when the credit is uncomputable (no cached extraction / no
-    rubric result) and on ANY exception — NEVER raises; the caller fails open to the
-    base grade.
-
-    NOTE: intentional small duplication with the shadow writer above — kept as its
-    own function so this wire-in does NOT touch the deployed shadow path; a future
-    /simplify can dedup the shared fetch once both are settled.
-    """
-    try:
-        ticker = r.get("ticker")
-        alert_date = r.get("alert_date")
-        if not ticker or not alert_date:
-            return None
-        from agents.market_intelligence.catalyst_metrics_extractor import (
-            lookup_cached_metrics,
-        )
-
-        extracted = await lookup_cached_metrics(ticker, alert_date)
-        if not extracted:
-            return None  # no cached extraction -> rubric can't score -> no credit signal
-        rubric_result = score_ep_with_rubric(ticker, extracted, alert_date)
-        if not rubric_result:
-            return None
-
-        membership = await get_theme_membership(ticker)
-        coverage_state = derive_theme_coverage_state(membership, r.get("fire_axes"))
-        credit = theme_axis_credit(
-            membership, coverage_state,
-            label=rubric_result.get("label"),
-            composite_scaled=rubric_result.get("composite_scaled"),
-        )
-        credit["axis"] = "theme"  # names this axis in the Composition trace (else '?')
-        return credit
-    except Exception as _e:  # never raise into the grade path — caller fails open
-        logger.warning(f"compute_theme_axis_credit_live failed for {r.get('ticker')}: {_e}")
-        return None
+# `compute_theme_axis_credit_live` (the LIVE composite-authority wire-in's theme-axis
+# credit source) was RETIRED here 2026-09-19 (#335, operator ruling 2026-09-15 "aligned,
+# keep container"): the judge already receives theme membership directly and demoted
+# anyway on both post-rescale samples (ALAB/ERO 09-08), so the axis was redundant on the
+# live grade path. It was the ONLY caller of `theme_axis_credit`/`get_theme_membership`/
+# `derive_theme_coverage_state` for the LIVE (non-shadow) path — the SHADOW writer above
+# (`log_theme_axis_adjusted_shadow`, feeding `mi_theme_axis_shadow`) is UNCHANGED and
+# keeps accruing measurement; only the live wire-in's credit source is gone.
+# `ep_detector._apply_composite_authority`'s `_COMPOSITE_AXIS_CREDIT_SOURCES` registry
+# (empty today) is the rail #331 (gap-vs-structure) registers its own axis credit
+# function into — no other change needed there.
 
 
 # ── Operator surfaces (human-readable formatting) ────────────────────────────

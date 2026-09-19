@@ -8,8 +8,18 @@ to reason about theme/structure/gap-alignment qualitatively (`docs/setups/cataly
 
 **Origin**: `PLAN.md #329` (composition), a Path-A decision (ADR 0024 §F1): the judge owns the
 catalyst verdict; each axis below owns a CALIBRATED, traceable CONTEXT credit shadowed beside it.
-Flip to load-bearing = `#335` (CHANGE_PROCESS + operator sign-off + the ONE batched re-grade —
-never a per-axis spend, per the operator's 6/18 cost directive).
+
+**⚠ `#335` STATUS CHANGED 2026-09-19 — the theme axis's live-composite credit is RETIRED,
+not flipped.** Operator ruled 2026-09-15 ("aligned, keep container"): the theme axis's
+correlational evidence didn't clear its own bar and the judge already receives theme
+membership directly (it demoted both post-rescale samples, ALAB/ERO 09-08 — the axis was
+redundant on the live grade path). `compute_theme_axis_credit_live` (the live wire-in's
+theme-axis credit source, `catalyst_rubric_runtime.py`) no longer exists.
+`ep_detector._apply_composite_authority`'s `_COMPOSITE_AXIS_CREDIT_SOURCES` registry is
+now EMPTY — the composite-authority RAIL (the DB toggle + `resolve_composite_tier` +
+`compose_final_tier`) stays wired dark for `#331` (gap-alignment) to register into, per
+the "keep container" ruling. Nothing here flips to load-bearing until an axis is
+registered AND its own CHANGE_PROCESS + sign-off + batched re-grade clears.
 
 **Architecture + dependency graph (decision record, 2026-09-05)**: `docs/decisions/0035-meta-rubric-architecture.md` — what the rubric is in plain words, where it sits, the stage-by-stage path, the three portfolio uses, and the ANTI-BLOCK table (zero-authority work is never gated on a load-bearing flip; every cluster task re-checked, #299 found still chained to #335 after his 08-03 unchain ruling). Its §7 forks are the operator's.
 
@@ -17,7 +27,7 @@ never a per-axis spend, per the operator's 6/18 cost directive).
 
 | # | Axis | ADR | Table | Status |
 |---|---|---|---|---|
-| #328 | Theme | `docs/decisions/0015-theme-axis-meta-rubric.md` | `mi_theme_axis_shadow` | shadow, accruing |
+| #328 | Theme | `docs/decisions/0015-theme-axis-meta-rubric.md` | `mi_theme_axis_shadow` | shadow keeps accruing; **live-composite credit RETIRED 2026-09-19 (#335)** — does NOT ride the composite-authority rail |
 | #330 | **Structure** | `docs/decisions/0016-structure-axis-meta-rubric.md` | `mi_structure_axis_shadow` | shadow, accruing (this doc) |
 | #331 | Gap-alignment | ADR 0033 (designed 2026-07-18) | — | STEP-0 backfill + operator sign of the table pending |
 
@@ -113,7 +123,16 @@ were removed same-day along with the cache thread-through itself — see that fi
 
 ---
 
-## Theme axis (#328 credit · #329 STEP-0 measurement) — shadow, accruing
+## Theme axis (#328 credit · #329 STEP-0 measurement) — shadow, accruing; live-composite credit RETIRED
+
+**2026-09-19 (#335): the LIVE wire-in's theme-axis credit (`compute_theme_axis_credit_live`,
+`catalyst_rubric_runtime.py`) is DELETED — operator ruled 2026-09-15 "aligned, keep
+container": drop the theme axis, keep the composite-authority rail for `#331`. The SHADOW
+measurement below (`theme_axis_shadow.py` → `mi_theme_axis_shadow`) is UNCHANGED and keeps
+accruing** — this section still describes that shadow accurately. What changed is only the
+now-deleted LIVE function that would have fed this axis's credit into
+`ep_detector._apply_composite_authority` had `composite_authority_enabled` ever been
+flipped on (it never was — no `mi_safeguard_state` row exists in prod).
 
 Credit table + rollout: ADR 0015 (operator-signed 2026-07-04). Measurement scaffold =
 `theme_axis_shadow.py` → `mi_theme_axis_shadow` (as-of heat via `db.get_theme_heat_asof`,
@@ -224,8 +243,12 @@ into the caller — every error swallows to a `structure_axis_shadow_failed` aud
 ### Flip gate
 
 Same as `#328`/theme: grade-affecting → `CHANGE_PROCESS` + operator sign-off + N≥10 shadow
-divergences with outcomes, folded into the ONE batched `#335` re-grade (`eval_judge_enrich
+divergences with outcomes, folded into the ONE batched re-grade (`eval_judge_enrich
 --regrade`) alongside every other pending axis enrichment. Never on agent authority.
+⚠ **`#335` itself executed 2026-09-19 as a RETIREMENT (theme's live-composite credit
+deleted, operator ruling "keep container"), not a flip vehicle** — structure/#330 (and
+gap-alignment/#331, which inherits the same container) would each need their OWN
+load-bearing task + batched re-grade when pursued, not a ride on #335.
 
 ### Tests
 
