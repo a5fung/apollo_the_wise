@@ -11,7 +11,7 @@
 | Real bodies checked both ways | **732** | every real message body reachable without spending money (§1) |
 | Render today, would 400 under HTML | **0 / 732** | the blocker the task feared does not occur on any real body |
 | 400 today, render under HTML | **266 / 732** | messages that today arrive only via the unformatted plain retry |
-| Silently corrupted today, correct under HTML | **142 / 732** | v1 ate the underscores out of an identifier and italicised a fragment — no fallback row, nobody knows |
+| Silently corrupted today, correct under HTML | **142 / 732** carry a bogus v1 span; **135** of those lose an identifier's underscores | v1 paired a bare `_`/`*` inside an identifier with one later and italicised the fragment between — no fallback row, nobody knows |
 | Identical both ways | **244 / 732** | |
 | Differ, HTML worse | **19 / 732** | ALL one thing: a blank first line inside a code block (§5, §7 item 1) |
 | Message templates of the flip sites (structure only) | **156 / 173** sites reconstructed; **0** render-today-400-under-HTML; **75** 400 today with an underscore-bearing value |
@@ -82,7 +82,7 @@ The 178 real-400 heads: 27 parse fine in the first 300 chars because Telegram's 
 
 | bodies | what differs | HTML is | why |
 |---|---|---|---|
-| **142** | v1 paired a bare `_`/`*` INSIDE an identifier with one later in the text: underscores eaten (`cooldowns_per_day` → `cooldownsperday`), a bogus italic — often spanning lines — and any `*bold*` or backtick inside it shown literally. HTML shows the text as written. | **better** | this is the "silently corrupted" class — it produces no fallback row |
+| **142** | v1 paired a bare `_`/`*` INSIDE an identifier with one later in the text: underscores eaten (`cooldowns_per_day` → `cooldownsperday`), a bogus italic — often spanning lines — and any `*bold*` or backtick inside it shown literally. HTML shows the text as written. | **better** | this is the "silently corrupted" class — it produces no fallback row. **Checked from the other side too** (the class could hide a legitimately written `*bold*s` that HTML leaves literal): of the 142 real bodies and 64 templates carrying such a span, **0** contain a deliberate emphasis HTML failed to render — every span HTML declined was v1's intra-word pairing, and the 10 look-alikes are the SQL pattern `LIKE '%_error'` inside drill SQL, which HTML shows as written (§9, probe section 10) |
 | **98** | `[…]` in prose (SEC citations, `[L2]`, `[Benzinga 2026-09-11]`): v1 consumes the brackets as a link attempt (a domain-looking text becomes a live link); HTML keeps them literal. | **better** | |
 | 33 | a `` `code` `` span or `_italic_` inside `*bold*` (`*Require `rel_volume ≥ 0.5` at alert time*`): v1 cannot nest and shows the inner backticks; HTML nests them. | neutral-to-better | |
 | 11 | markup that v1 left literal because it sat inside a bogus span is rendered by HTML. | better | |
@@ -104,7 +104,7 @@ The 178 real-400 heads: 27 parse fine in the first 300 chars because Telegram's 
 
 ## 7. What the flip would need (the evidence's conditions, not a plan)
 
-1. **Patch `md_to_html`'s fence handling first** — drop a language token and one newline after the opening fence, as v1 does. That converts the 19 / 732 "worse" bodies into identical ones and closes the only regression. The acceptance case in its fence shape is the regression test.
+1. **Patch `md_to_html`'s fence handling first** — drop a language token and one newline after the opening fence, as v1 does. That converts the 19 / 732 "worse" bodies into identical ones and closes the only regression. The acceptance case in its fence shape is the regression test. **It has a live observable before the flip even lands:** the L1/L2 anomaly pages are already on HTML (#647, `system_audit.py:1656/1697`) and their drill-SQL blocks are written as ```` ```\n{drill}\n``` ```` (`system_audit.py:1492/1526/1593`) — so today those pages show the blank first line in prod (the real `fb30504` body is one), and after the patch the next L2 page's block must start on its first line. Of the 9 explicit-HTML sites whose template reconstructs, 0 write a fence that way; the L1/L2 bodies come from helpers the reconstruction cannot see, which is why the grep was needed.
 2. **Convert only when the caller passed no `parse_mode`** (a sentinel default), never when `"HTML"` is passed explicitly — 32 of the 44 bodies from explicit-HTML sites would be mangled by a second `md_to_html` (`<b>` becomes `&lt;b&gt;`). Explicit `"Markdown"` stays the opt-in for legacy.
 3. **Chunk safely** — either convert per chunk (chunk the Markdown, then convert each piece) or make the chunker refuse to split inside a tag. Today the converted text is what gets chunked, it is longer, and one real body already crosses the line under HTML.
 4. **The HTML-branch plain fallback is already right** (`_to_plain` strips tags and unescapes), so a genuine HTML 400 still lands readable — but it must keep writing `telegram_markdown_fallback` so the first one is seen.

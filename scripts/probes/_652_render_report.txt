@@ -299,3 +299,7 @@ corpus: prod items=365 (from _652_corpus_prod.jsonl); test-harvest records=278 (
 
 == 9. SITES THAT WRITE A FENCE AS ```\n… (the one cosmetic regression) ==
    16 of 156 reconstructed default sites → cost_board.py:742, cost_board.py:754, briefing.py:221, health_checks.py:1412, health_checks.py:3060, health_checks.py:3513, health_checks.py:1583, health_checks.py:2018, health_checks.py:2734, health_checks.py:2766, health_checks.py:3150, health_checks.py:3688, health_checks.py:4573, scheduler.py:3909, scheduler.py:4014, spend_tracker.py:171
+
+== 10. BOGUS-SPAN CLASS, CHECKED FROM THE OTHER SIDE (could it hide an emphasis HTML missed?) ==
+   [real bodies] bodies carrying a bogus span: 142; deliberate emphasis HTML left literal: 0
+   [templates] bodies carrying a bogus span: 64; deliberate emphasis HTML left literal: 0

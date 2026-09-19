@@ -552,6 +552,53 @@ def run_report(prod: list[dict], tests: list[dict], show_diffs: int) -> None:
             hits.append(f"{s['file'].split('/')[-1]}:{s['line']}")
     print(f"   {len(hits)} of {len(ok)} reconstructed default sites → {', '.join(hits)}")
 
+    # ── the bogus-span class checked from the other side ──
+    # A legitimately written `*bold*s` (marker glued to a word on ONE side) also fails
+    # _deliberate_pair and would sit in the "HTML better" bucket while HTML actually leaves it
+    # literal. So: for every bogus-tagged body, find each legacy-only emphasis whose OPENER looks
+    # legitimate in the source (non-word before, non-space after, non-space before the closer) and
+    # report whether the HTML rendering has an emphasis of that type covering the same words.
+    print("\n== 10. BOGUS-SPAN CLASS, CHECKED FROM THE OTHER SIDE (could it hide an emphasis HTML missed?) ==")
+
+    def _one_sided(items: list[tuple[str, str]], label: str) -> None:
+        n_bogus = 0
+        missed: list[tuple[str, str, str]] = []
+        for ident, body in items:
+            if not body.strip():
+                continue
+            v = compare(body)
+            if "v1_bogus_span_bare_marker" not in v.tags:
+                continue
+            n_bogus += 1
+            for a, b in zip(v.legacy, v.html):
+                if a.status != "ok" or b.status != "ok":
+                    continue
+                for e in a.entities:
+                    if e.type not in ("bold", "italic"):
+                        continue
+                    s = _u16_slice(a.text, e)
+                    m = "*" if e.type == "bold" else "_"
+                    pat = r"(?<!\w)" + re.escape(m) + r"(?!\s)" + re.escape(s) + r"(?<!\s)" + re.escape(m)
+                    if "\n" in s or not re.search(pat, body):
+                        continue
+                    # what md_to_html would emphasise from that same opener
+                    mm = re.search(r"(?<!\w)" + re.escape(m) + r"(?!\s)(.+?)(?<!\s)" + re.escape(m) + r"(?!\w)", body[body.find(m + s):] or "")
+                    want = re.sub(r"[`*_]", "", mm.group(1)) if mm else re.sub(r"[`*_]", "", s)
+                    rendered = any(he.type == e.type and re.sub(r"[`*_]", "", _u16_slice(b.text, he)) == want for he in b.entities)
+                    literal_ok = (m + s) in b.text and "LIKE" in body  # a SQL LIKE pattern shown as written
+                    if not rendered and not literal_ok:
+                        missed.append((str(ident), e.type, s[:50]))
+        print(f"   [{label}] bodies carrying a bogus span: {n_bogus}; deliberate emphasis HTML left literal: {len(missed)}")
+        for x in missed[:15]:
+            print("      ", x)
+
+    real_items: list[tuple[str, str]] = []
+    for gname, items in groups.items():
+        if not gname.startswith("tests: bodies from EXPLICIT-HTML"):
+            real_items.extend((str(i), b) for i, b in items)
+    _one_sided(real_items, "real bodies")
+    _one_sided([(f"{s['file']}:{s['line']}", s["skeleton"]) for s in ok], "templates")
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
