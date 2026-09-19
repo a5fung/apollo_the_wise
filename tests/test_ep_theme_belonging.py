@@ -531,6 +531,9 @@ def test_the_stage_set_is_one_name_shared_with_the_detector():
 
 # ── 9. THE WIRING — run_ep_scan end to end ─────────────────────────────────────────────────
 
+from tests._byte_identity import assert_byte_identical  # noqa: E402  (#663)
+
+
 def _canon(obj):
     return json.dumps(obj, sort_keys=True, default=str)
 
@@ -638,8 +641,12 @@ async def test_run_ep_scan_pays_a_confirmed_fit_not_a_rejected_one_and_the_toggl
 async def test_toggle_off_is_byte_identical_to_a_scan_with_no_belonging_at_all(monkeypatch):
     off = await _scan_with_belonging(monkeypatch, toggle_on=False, themes=THEMES)
     none = await _scan_with_belonging(monkeypatch, toggle_on=True, themes=[])   # no board -> no baskets
+    # #663: this exact assertion flaked in CI on 2026-09-14 and left NO usable trail — it
+    # compared two ~50 KB JSON strings, so "not equal" was the whole report. It has not
+    # reproduced in 60 runs since, which is precisely why the NEXT failure has to explain
+    # itself: see tests/_byte_identity.py. Equality is decided by the same `canon`.
     for a, b, what in ((off[0], none[0], "results"), (off[1], none[1], "scan_log"), (off[2], none[2], "alerts")):
-        assert _canon(a) == _canon(b), f"{what} differ: toggle OFF is not the pre-fix scan"
+        assert_byte_identical(a, b, f"{what} (toggle OFF vs a scan with no theme board)")
     assert none[3][0]["reason"] == "no_baskets" and none[3][0]["acting_in_theme"] is False
     assert off[4] == [] and none[4] == []
 

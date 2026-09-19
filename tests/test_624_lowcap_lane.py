@@ -528,6 +528,9 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
 fillers_and_smalls = [f"BIG{i:02d}" for i in range(20)] + ["CHPT", "WETO", "ZQRT"]
 
 
+from tests._byte_identity import assert_byte_identical  # noqa: E402  (#663)
+
+
 def _canon(obj):
     return json.dumps(obj, sort_keys=True, default=str)
 
@@ -540,9 +543,9 @@ async def test_run_ep_scan_is_byte_identical_with_the_lane_on_off_and_raising(mo
     raising = await _run_scan_once(monkeypatch, lane_mode="raising")
 
     for a, b, what in ((on, off, "on vs off"), (on, raising, "on vs raising")):
-        assert _canon(a[0]) == _canon(b[0]), f"results differ: {what}"
-        assert _canon(a[1]) == _canon(b[1]), f"scan_log rows differ: {what}"
-        assert _canon(a[2]) == _canon(b[2]), f"alert inserts differ: {what}"
+        assert_byte_identical(a[0], b[0], f"results ({what})")
+        assert_byte_identical(a[1], b[1], f"scan_log rows ({what})")
+        assert_byte_identical(a[2], b[2], f"alert inserts ({what})")
 
     results, scan_log, alerts, lane_rows = on
     # the fixture's acting path: 20 fillers killed at the RVOL gate, 3 names beyond the cut,
@@ -575,9 +578,9 @@ async def test_run_ep_scan_is_byte_identical_with_an_admitted_alert_lane_on_off_
     raising = await _run_scan_once(monkeypatch, lane_mode="raising", admit=True)
 
     for a, b, what in ((on, off, "on vs off"), (on, raising, "on vs raising")):
-        assert _canon(a[0]) == _canon(b[0]), f"results differ: {what}"
-        assert _canon(a[1]) == _canon(b[1]), f"scan_log rows differ: {what}"
-        assert _canon(a[2]) == _canon(b[2]), f"alert inserts differ: {what}"
+        assert_byte_identical(a[0], b[0], f"results ({what})")
+        assert_byte_identical(a[1], b[1], f"scan_log rows ({what})")
+        assert_byte_identical(a[2], b[2], f"alert inserts ({what})")
 
     results, scan_log, alerts, lane_rows = on
     # the point of this test: the graded/judge path actually fired.
