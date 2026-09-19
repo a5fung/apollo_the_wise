@@ -54,7 +54,35 @@ def test_md_escapes_free_text_metachars():
 
 
 def test_md_pre_block():
-    assert md_to_html("```\nline1\nline2\n```") == "<pre>\nline1\nline2\n</pre>"
+    """#652 (2026-09-19): the newline after the opening fence is DROPPED, mirroring Telegram's
+    legacy-Markdown parser; the newline before the closing fence is kept, as v1 keeps it. Before
+    the patch this pinned `<pre>\\nline1…` — a code block that opened with a blank line on every
+    L1/L2 audit page already on the HTML layer. MUTATION TARGET: restoring `_PRE_RE` to
+    ```` ```(.*?)``` ```` (verified: this test fails on that mutation)."""
+    assert md_to_html("```\nline1\nline2\n```") == "<pre>line1\nline2\n</pre>"
+
+
+def test_md_pre_block_mirrors_the_legacy_fence_rule_shape_by_shape():
+    """#652: every fence shape the v1 parser handles, rendered the way v1 renders it (tdlib
+    `parse_markdown`: skip an optional language token, then ONE newline; keep the rest). The
+    task's own repro is the first case — the exact body `system_audit._format_l2_alert` writes.
+    MUTATION TARGET: restoring the old `_PRE_RE` — the first three cases fail on it."""
+    sql = "SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL"
+    assert md_to_html(f"*L2 anomaly* — stop drift\n\n```\n{sql}\n```") == (
+        f"<b>L2 anomaly</b> — stop drift\n\n<pre>{sql}\n</pre>")
+    # a language token is dropped (v1 records it as the entity's language; no production fence
+    # carries one — 0 in the 2026-09-18 census — so dropping it is the safe mirror)
+    assert md_to_html("```sql\nx\n```") == "<pre>x\n</pre>"
+    # \r\n after the opener counts as ONE newline, exactly as tdlib skips it
+    assert md_to_html("```\r\nx\r\n```") == "<pre>x\r\n</pre>"
+    # only ONE newline is skipped — a deliberate blank first line survives
+    assert md_to_html("```\n\nx\n```") == "<pre>\nx\n</pre>"
+    # a bare word between fences is CONTENT, not a language (nothing follows it)
+    assert md_to_html("```abc```") == "<pre>abc</pre>"
+    # a language followed by a space, not a newline: the token goes, the space stays (v1)
+    assert md_to_html("```sql SELECT```") == "<pre> SELECT</pre>"
+    # content is still HTML-escaped inside the block
+    assert md_to_html("```\na < b & c\n```") == "<pre>a &lt; b &amp; c\n</pre>"
 
 
 def test_md_link():

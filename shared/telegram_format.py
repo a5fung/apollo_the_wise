@@ -77,7 +77,15 @@ def render(lines) -> str:
 # content must NOT be markdown-parsed), HTML-escape everything else, translate the
 # inline markers, then restore the (escaped) code/pre spans. This keeps a literal
 # `<` in prose safe and a `*` inside code intact.
-_PRE_RE = re.compile(r"```(.*?)```", re.DOTALL)
+# Fence = Telegram's legacy-Markdown pre rule, mirrored (#652, 2026-09-19): an optional
+# language token — a run of non-space, non-backtick chars straight after the opener, taken
+# only when whitespace follows it (so ```abc``` is content, not a language) — is DROPPED,
+# then ONE newline (\r\n or \n\r count as one) is skipped; the newline BEFORE the closer is
+# kept, exactly as the v1 parser keeps it. Before this the converter kept the newline after
+# the opener too, so every fenced block a builder writes as ```\n…\n``` (system_audit's
+# L1/L2 drill SQL, health_checks, cost_board, the close digest) rendered with a BLANK FIRST
+# LINE. 19 of 732 real bodies differed from the legacy path for that reason alone; 0 after.
+_PRE_RE = re.compile(r"```(?:[^\s`]+(?=\s))?(?:\r\n|\n\r|\n|\r)?(.*?)```", re.DOTALL)
 _CODE_RE = re.compile(r"`([^`]+)`")
 _BOLD_RE = re.compile(r"(?<!\w)\*(?!\s)(.+?)(?<!\s)\*(?!\w)")
 _ITALIC_RE = re.compile(r"(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)")
