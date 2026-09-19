@@ -197,19 +197,92 @@ async def test_an_unfillable_row_is_marked_not_settled(monkeypatch):
     assert "unfillable_entry" in marked[0][1]
 
 
-@pytest.mark.parametrize("field", ["unbookable_n"])
-def test_the_readout_counts_unbookable_separately(field):
+@pytest.mark.parametrize("getter", ["get_htf_breakout_shadow_summary",
+                                   "get_htf_management_shadow_summary"])
+def test_the_readouts_count_unbookable_separately(getter):
     """`outcome` staying NULL is what stops a bad row being counted as a RESULT; this is what
-    stops it being counted as a row still WAITING."""
-    # source-pin-ok: the summary is one SQL string against a live pool with no injectable seam;
+    stops it being counted as a row still WAITING.
+
+    BOTH readouts, under one pin: Phase 3's (the fixed-3R bet) and Phase 4's (#396's management
+    protocol). Phase 4 was added 2026-09-19 when review found it had been reporting CDNA's
+    impossible +1.96R trail-exit as one of its four winners — the consumer half of #667."""
+    # source-pin-ok: each summary is one SQL string against a live pool with no injectable seam;
     # what must not regress is that open_n excludes the abstained rows and that the count is
     # surfaced at all, both of which live only in that query's text.
     import inspect
     from agents.market_intelligence import db
-    src = inspect.getsource(db.get_htf_breakout_shadow_summary)
-    assert field in src
+    src = inspect.getsource(getattr(db, getter))
+    assert "unbookable_n" in src, f"{getter} does not surface the unbookable count at all"
     open_clause = src[src.index("AS open_n") - 260:src.index("AS open_n")]
-    assert "settle_abstain_reason IS NULL" in open_clause, (
-        "open_n still counts unbookable rows — they are not 'still waiting', and folding them in "
-        "overstates the pipeline the way the impossible capture overstated the win rate"
+    assert "settle_abstain_reason IS NULL" in open_clause or " ok " in open_clause, (
+        f"{getter}.open_n still counts unbookable rows — they are not 'still waiting', and "
+        f"folding them in overstates the pipeline the way the impossible capture overstated "
+        f"the win rate"
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────────────────
+# #667, THE SECOND HALF — the CONSUMERS, found by review hours after the first half shipped
+# ─────────────────────────────────────────────────────────────────────────────────────────
+#
+# The first half stopped Phase 3 SETTLING an unbookable row. It did not stop anything else
+# READING one. `get_htf_management_shadow_candidates` (#396 Phase 4) selects on
+# `would_reject_reason IS NULL AND m.status = 'open'` — no mention of the new column — so CDNA,
+# the 40.47 entry against a 40.67 break-day low, was carried through the management replay to
+# `closed_trail_exit` at **+1.96R**. A winner, on a fill that could not have happened, in the
+# readout that answers "what would the sourced management protocol have done".
+#
+# That is the day's own defect class one layer out: the deal-pin fix filtered one of six RS
+# POOLS; this filtered one of four CONSUMERS. So the guard below does not name them — it
+# DERIVES the set from source and fails the day a new one appears.
+# [[derive-the-population-never-hand-list-it]]
+
+
+def _shadow_readers() -> dict:
+    """Every place in the codebase that READS mi_htf_breakout_shadow, derived. Writers
+    (INSERT/UPDATE) are excluded by construction: `FROM`/`JOIN` is what a read looks like."""
+    import re
+    from pathlib import Path
+    out = {}
+    root = Path(__file__).resolve().parents[1]
+    for path in sorted((root / "agents").rglob("*.py")):
+        src = path.read_text(encoding="utf-8")
+        if "mi_htf_breakout_shadow" not in src:
+            continue
+        for m in re.finditer(r"(?:FROM|JOIN)\s+mi_htf_breakout_shadow\b", src):
+            # the enclosing SQL string: back to the opening triple-quote, forward to the close
+            start = src.rfind('"""', 0, m.start())
+            end = src.find('"""', m.end())
+            if start == -1 or end == -1:
+                start, end = max(0, m.start() - 400), m.end() + 400
+            out[f"{path.relative_to(root)}:{src[:m.start()].count(chr(10)) + 1}"] = src[start:end]
+    return out
+
+
+def test_no_reader_of_the_shadow_table_can_count_an_unbookable_row():
+    """The gate. A read is SAFE if it either excludes the abstained rows outright, or filters on
+    a POSITIVE outcome — an unbookable row's `outcome` stays NULL forever, so `outcome IN (...)`
+    and `outcome IS NOT NULL` already cannot reach it. Anything else counts a position that was
+    never takeable.
+
+    WOULD-FAIL-IF: a new consumer joins the table with a bare `WHERE outcome IS NULL` — which is
+    exactly the predicate `get_htf_management_shadow_candidates` was using through `m.status`."""
+    # source-pin-ok: the population this asserts over is "which SQL statements exist", which is
+    # only readable from source. The list itself is DERIVED (never hand-written) — that is the
+    # property the day's lesson is about, and a behavioural test of the four readers we know
+    # about would have passed cleanly while Phase 4 was booking CDNA's impossible +1.96R.
+    readers = _shadow_readers()
+    assert len(readers) >= 4, (
+        f"only {len(readers)} reader(s) of mi_htf_breakout_shadow found — the derivation broke, "
+        f"and a gate that finds nothing passes exactly like one that finds everything clean")
+    unsafe = {
+        where: sql for where, sql in readers.items()
+        if "settle_abstain_reason" not in sql
+        and "outcome IS NOT NULL" not in sql
+        and "outcome IN (" not in sql
+    }
+    assert not unsafe, (
+        "these reads of mi_htf_breakout_shadow can reach an UNBOOKABLE row — a Phase-3 entry we "
+        "could not have filled — and treat it as a real position:\n  " + "\n  ".join(unsafe))
+
+

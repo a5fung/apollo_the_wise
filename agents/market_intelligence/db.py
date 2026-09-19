@@ -3334,6 +3334,10 @@ async def initialize_schema() -> None:
                 updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CHECK (status IN ('open','closed_trail_exit','closed_hard_stop'))
             );
+            -- ⚠ A row here may have an UNBOOKABLE parent (#667 settle_abstain_reason): the two
+            -- written before that filter existed are kept as the record of what was computed,
+            -- NOT deleted. Never aggregate this table without joining mi_htf_breakout_shadow and
+            -- excluding them — get_htf_management_shadow_summary does, and reports the count.
             CREATE UNIQUE INDEX IF NOT EXISTS idx_htf_management_shadow_shadow_id
                 ON mi_htf_management_shadow(shadow_id);
             CREATE INDEX IF NOT EXISTS idx_htf_management_shadow_open
@@ -12964,7 +12968,16 @@ async def get_htf_management_shadow_candidates() -> list[dict]:
     there is nothing to manage) row that either has no management-shadow row yet (never
     replayed) OR whose management-shadow row is still 'open' (not yet resolved). A row whose
     management status is already terminal (closed_trail_exit/closed_hard_stop) is EXCLUDED —
-    the replay is a full-recompute-from-bars each call, so a terminal row need never be revisited."""
+    the replay is a full-recompute-from-bars each call, so a terminal row need never be revisited.
+
+    ⚠ `settle_abstain_reason IS NULL` is the SECOND half of #667 and was missed when #667 shipped
+    (found by review the same night). #667 established that a row whose entry was unfillable, or
+    whose bars are split-corrupted, CANNOT be booked — it stopped Phase 3 settling those rows.
+    But Phase 4 selects on `outcome IS NULL`'s cousin (`m.status = 'open'`), so an unmarked
+    unbookable row kept flowing here and got MANAGED: CDNA/shadow 7 — the 40.47 entry against a
+    40.67 break-day low — was carried to `closed_trail_exit` at **+1.96R**, a winner on a fill
+    that could not have happened. Filtering the producer without filtering its consumers is the
+    same population error as the deal-pin fix's five-of-six pools. [[derive-the-population-never-hand-list-it]]"""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -12973,6 +12986,7 @@ async def get_htf_management_shadow_candidates() -> list[dict]:
             FROM mi_htf_breakout_shadow b
             LEFT JOIN mi_htf_management_shadow m ON m.shadow_id = b.id
             WHERE b.would_reject_reason IS NULL
+              AND b.settle_abstain_reason IS NULL          -- #667: unbookable, never entered
               AND (m.id IS NULL OR m.status = 'open')
             ORDER BY b.break_date ASC
         """)
@@ -13013,17 +13027,27 @@ async def upsert_htf_management_shadow(shadow_id: int, ticker: str, break_date, 
 async def get_htf_management_shadow_summary() -> dict:
     """#396 HTF Phase 4 — the management-shadow READOUT: open/closed counts, the closed cohort's
     trail-exit vs hard-stop split + median realized_r. Aggregate only (mirrors
-    get_htf_breakout_shadow_summary's shape for the Phase 3 bet)."""
+    get_htf_breakout_shadow_summary's shape for the Phase 3 bet).
+
+    ⚠ Rows whose PARENT Phase-3 row is unbookable (#667 `settle_abstain_reason`) are counted
+    SEPARATELY as `unbookable_n` and excluded from every other number — they manage a position
+    that could not have been taken, so folding them in inflates the readout (CDNA carried a
+    +1.96R trail-exit here on an entry 20c below the break day's low). Counted rather than
+    silently dropped, for the same reason Phase 3 reports its own: a number that vanishes cannot
+    be questioned."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         overall = await conn.fetchrow("""
-            SELECT count(*) FILTER (WHERE status = 'open')               AS open_n,
-                   count(*) FILTER (WHERE status <> 'open')               AS closed_n,
-                   count(*) FILTER (WHERE status = 'closed_trail_exit')   AS trail_exit_n,
-                   count(*) FILTER (WHERE status = 'closed_hard_stop')    AS hard_stop_n,
-                   percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r)
-                       FILTER (WHERE status <> 'open')                   AS med_realized_r
-            FROM mi_htf_management_shadow
+            SELECT count(*) FILTER (WHERE b.settle_abstain_reason IS NOT NULL) AS unbookable_n,
+                   count(*) FILTER (WHERE ok AND m.status = 'open')            AS open_n,
+                   count(*) FILTER (WHERE ok AND m.status <> 'open')           AS closed_n,
+                   count(*) FILTER (WHERE ok AND m.status = 'closed_trail_exit') AS trail_exit_n,
+                   count(*) FILTER (WHERE ok AND m.status = 'closed_hard_stop')  AS hard_stop_n,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY m.realized_r)
+                       FILTER (WHERE ok AND m.status <> 'open')               AS med_realized_r
+            FROM mi_htf_management_shadow m
+            JOIN mi_htf_breakout_shadow b ON b.id = m.shadow_id,
+                 LATERAL (SELECT b.settle_abstain_reason IS NULL AS ok) t
         """)
     return dict(overall) if overall else {}
 
