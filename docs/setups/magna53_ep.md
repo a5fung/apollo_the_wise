@@ -1834,6 +1834,29 @@ available supply halved. The trigger kind is `high_conversion_drop` (renamed fro
   instead of the ambiguous "stocks gapping X%+ past the universe floors", so a future reader
   cannot substitute the scan log's per-tick reading for this measure again. Pinned in
   `tests/test_611_supply_reconciliation.py`.
+- **#666 (2026-09-19) — trigger (b) STOPS CORRELATING, STARTS COUNTING; the revert SQL is now
+  WITHHELD on a rate comparison alone.** Fired 2026-09-15 at p=0.086 (a coin does this 1 time
+  in 12) and printed revert SQL anyway — a conversion-rate comparison, never a named case.
+  Operator: *"Don't revert, keep monitoring but make monitor more precise."* The monitor
+  already held the data to be precise: `mi_catalyst_tier_shadow` stamps which side ACTED per
+  ticker-day and `mi_ep_scan_log` carries the score components that resulted, so for every
+  name the LATTICE (never any other grading path) actually moved, the monitor now
+  reconstructs — from those recorded rows alone, never a rate — what the presented score
+  would have been under the RAW LLM grade instead, and names every alert that reconstruction
+  shows the fact-check actually prevented (`_lattice_prevented_alerts`,
+  `health_checks.py`). Trigger (b)'s message now states that count and those names, plus the
+  SHORTFALL (the alerts the recent window would have needed, at the PRIOR conversion rate, to
+  clear the 50% bar) it is being measured against. **The revert SQL prints only when either
+  (a) a hard-evidence trigger also fired — a named P1 miss, or the always-armed
+  zero-alert-days trigger — or (b) the named prevented count covers the whole shortfall
+  (`_lattice_b_accounts_for_shortfall`); otherwise it is withheld and the message says
+  exactly why** (`out["revert_withheld_reason"]`, carried into the audit row alongside
+  `lattice_inert` — same "a decision surface must record its own input" lesson the
+  2026-09-11 `lattice_inert` fix applied one layer up). **Nothing about the 50% threshold, the
+  flip, the lattice's own behaviour, or any grading rule changed** — same boundary every prior
+  fix to this trigger drew. Tests: `tests/test_666_prevented_alerts_not_correlation.py`
+  (the recompute + attribution guards in isolation) and the wiring pins in
+  `tests/test_catalyst_lattice_monitor.py`.
 
 ### 2026-08-19 — `MIN_GAP_PCT`: 10.0% → 9.0% (OPERATOR-SIGNED, REVERSAL of 2026-05-17 R2)
 

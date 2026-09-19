@@ -161,12 +161,18 @@ class _FakeConn:
     hardcoded fallback, exactly like a fresh/never-toggled DB."""
 
     def __init__(self, shadow_rows=None, alert_rows=None, dedupe_hit=False,
-                 flip_date=None, safeguard_transition=None, supply=None):
+                 flip_date=None, safeguard_transition=None, supply=None,
+                 prevented_rows=None):
         self.shadow_rows = shadow_rows or []
         self.alert_rows = alert_rows or []
         self.dedupe_hit = dedupe_hit
         self.flip_date = flip_date
         self.safeguard_transition = safeguard_transition
+        # #666 (2026-09-19): rows for `_lattice_prevented_alerts`' join query — pre-joined
+        # (mi_catalyst_tier_shadow x mi_ep_scan_log) result rows, never simulating the JOIN
+        # itself. None -> [] (no named preventions), the conservative default every OTHER
+        # trigger-(b) test in this file relies on.
+        self.prevented_rows = prevented_rows or []
         # `supply` (trigger (b)'s denominator, 2026-08-26): None -> a FLAT tape, which makes
         # the supply-normalised statistic mathematically identical to the old per-trading-day
         # one (constant supply cancels), so every pre-existing trigger-(b) assertion keeps
@@ -180,6 +186,11 @@ class _FakeConn:
 
     async def fetch(self, sql, *args):
         self.saw_sql.append(sql)
+        # #666: checked BEFORE the generic "mi_catalyst_tier_shadow" branch below — the
+        # prevented-alerts query joins that table too, so it would otherwise be swallowed by
+        # the (unrelated) `shadow_rows` dispatch and returned in the WRONG shape.
+        if "score_breakdown" in sql:
+            return self.prevented_rows
         if "mi_daily_closes" in sql:
             span_start, span_end = args[2], args[1]
             if self.supply is None:
@@ -302,7 +313,11 @@ async def test_trigger_a_same_side_llm_row_uses_llm_grade_and_dedupe_holds(monke
 @pytest.mark.asyncio
 async def test_trigger_b_high_collapse_names_the_numbers(monkeypatch):
     """A genuine halving, with the flip well outside the whole lookback span (self-healed —
-    see _lattice_era_windows), MUST still fire exactly as before the era-scope fix."""
+    see _lattice_era_windows), MUST still fire exactly as before the era-scope fix.
+
+    The `hc._LATTICE_REVERT_SQL not in msg` line is MUTATION PROVEN: hardcoding
+    `_withhold_correlation_only = False` in the source made this assertion fail (the SQL
+    printed anyway); restored before commit."""
     audit, tg = _patch_common(monkeypatch)
     conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
                       flip_date=date(2026, 1, 1))
@@ -317,7 +332,104 @@ async def test_trigger_b_high_collapse_names_the_numbers(monkeypatch):
     msg = tg.call_args[0][0]
     assert "CONVERTING LESS OF WHAT THE TAPE OFFERS" in msg
     assert "75.0%" in msg and "2026-01-01" in msg
+    # #666 (2026-09-19): a RATE comparison alone — no named prevented alerts recorded — must
+    # no longer print the revert SQL. This is the exact case that tripped 2026-09-15 at
+    # p=0.086: printing revert SQL here would be exactly the WOULD-FAIL-IF this fix exists for.
+    assert t["shortfall"] == 15.0 and t["prevented"] == [] and t["accounts_for_shortfall"] is False
+    assert hc._LATTICE_REVERT_SQL not in msg
+    assert out["revert_withheld_reason"] == "correlation_unexplained"
+    assert "ZERO alerts it prevented" in msg and "shortfall of 15.0" in msg
+    assert "not evidence the lattice caused it" in msg
+
+
+@pytest.mark.asyncio
+async def test_trigger_b_prints_sql_when_named_preventions_account_for_the_shortfall(monkeypatch):
+    """The complement of the test above: when the fact-check's OWN named preventions (real
+    rows, by ticker and date) cover the whole shortfall, a revert IS grounded in evidence and
+    the SQL prints again — naming exactly what it prevented, not a rate.
+
+    MUTATION PROVEN: hardcoding the trigger dict's `"accounts_for_shortfall"` to `False`
+    (bypassing `_lattice_b_accounts_for_shortfall` entirely) made
+    `len(t["prevented"]) == 5 and t["accounts_for_shortfall"] is True` fail on the second half
+    (`False is True`) while `len == 5` still held — proving this test exercises the WIRING
+    (the trigger dict actually carries the helper's verdict), not just the helper itself
+    (which is unit-tested separately); restored before commit."""
+    audit, tg = _patch_common(monkeypatch)
+    recent = hc._lattice_trading_days(_FRI, hc._LATTICE_RECENT_DAYS)
+    assert len(recent) == 5          # this fixture's shortfall (5.0) assumes exactly 5 days
+    # one prevented alert per recent trading day — real recorded rows, not a rate: a `strong`
+    # verdict (acted) that would have scored `game_changer` (raw) and cleared the 70 bar.
+    prevented_rows = [
+        {"scan_date": d, "ticker": f"TICK{i}", "live_quality_last": "game_changer",
+         "shadow_tier_last": "strong", "gap_pct": 12.0, "ep_score": 65.0, "ep_bar": 70.0,
+         "score_side": "separation", "acted_catalyst_quality": "strong",
+         "score_breakdown": {"gap": 15, "liquidity": 10, "catalyst": 15, "float": 0,
+                             "vol_conviction": 0, "theme_bonus": 0}}
+        for i, d in enumerate(recent)]
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=0, prior_high=1),
+                      flip_date=date(2026, 1, 1), prevented_rows=prevented_rows)
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    t = [x for x in out["triggers"] if x["kind"] == "high_conversion_drop"][0]
+    assert t["shortfall"] == 5.0
+    assert len(t["prevented"]) == 5 and t["accounts_for_shortfall"] is True
+    assert {p["ticker"] for p in t["prevented"]} == {f"TICK{i}" for i in range(5)}
+    assert all(p["acted_score"] == 65.0 and p["counterfactual_score"] == 90.0
+               for p in t["prevented"])
+    msg = tg.call_args[0][0]
+    assert "PREVENTED 5 alert(s)" in msg
+    assert "TICK0" in msg and "65.0 -&gt; 90.0" in msg   # HTML-escaped "->" (Telegram HTML mode)
     assert hc._LATTICE_REVERT_SQL in msg
+    assert out["revert_withheld_reason"] is None
+
+
+@pytest.mark.asyncio
+async def test_trigger_b_unexplained_does_not_block_a_hard_evidence_revert(monkeypatch):
+    """The withhold is scoped to trigger (b) ALONE. A real P1 miss (a labelled EP graded
+    routine) is hard evidence, not a correlation — its SQL must still print even while (b)
+    fires unexplained alongside it.
+
+    MUTATION PROVEN: hardcoding `_hard_evidence_present = False` in the source (ignoring the
+    P1/zero-day check) made `hc._LATTICE_REVERT_SQL in msg` fail — the SQL was withheld even
+    with a real named EP miss present; restored before commit."""
+    audit, tg = _patch_common(monkeypatch)
+    conn = _FakeConn(
+        shadow_rows=[{"scan_date": date(2026, 8, 19), "ticker": "MRNA",
+                      "live_quality_last": "strong", "shadow_tier_last": "routine",
+                      "live_side": "lattice"}],
+        alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
+        flip_date=date(2026, 1, 1))
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    kinds = {t["kind"] for t in out["triggers"]}
+    assert kinds == {"p1_member_routine", "high_conversion_drop"}
+    b = [t for t in out["triggers"] if t["kind"] == "high_conversion_drop"][0]
+    assert b["accounts_for_shortfall"] is False          # (b) alone is still unexplained...
+    msg = tg.call_args[0][0]
+    assert hc._LATTICE_REVERT_SQL in msg                 # ...but the P1 miss still prints it
+    assert out["revert_withheld_reason"] is None
+
+
+@pytest.mark.asyncio
+async def test_the_withhold_reason_is_in_the_audit_row(monkeypatch):
+    """The 2026-09-11 lesson pinned in test_lattice_revert_needs_evidence_638.py — a decision
+    surface must record its own input — extended to the SECOND withholding reason (#666).
+
+    MUTATION PROVEN: hardcoding the audit payload's `"revert_withheld_reason"` key to `None`
+    in the source made `payloads[0]["revert_withheld_reason"] == "correlation_unexplained"`
+    fail (`None == "correlation_unexplained"`); restored before commit."""
+    audit, tg = _patch_common(monkeypatch)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
+                      flip_date=date(2026, 1, 1))
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert out["revert_withheld_reason"] == "correlation_unexplained"
+    import json as _json
+    payloads = [_json.loads(c.args[2]) for c in audit.call_args_list
+                if c.args[0] == "catalyst_lattice_monitor_alert"]
+    assert len(payloads) == 1
+    assert payloads[0]["revert_withheld_reason"] == "correlation_unexplained"
+
+
+# (the pure `_lattice_b_accounts_for_shortfall` threshold is pinned once, in
+# tests/test_666_prevented_alerts_not_correlation.py, alongside the rest of #666's new logic)
 
 
 # ── the actual 2026-08-24 incident: collapse predates the flip ─────────────────────────
@@ -595,10 +707,17 @@ async def test_a_supply_only_collapse_does_not_fire_but_a_conversion_one_does(mo
 async def test_the_2026_08_22_scan_log_logging_boundary_cannot_create_a_signal(monkeypatch):
     """#570 made the two silent D-1 universe floors log a row from 2026-08-22, so
     `mi_ep_scan_log`'s distinct-ticker count jumps ~18/day to ~222/day across that date for
-    logging reasons alone. The denominator must be immune: the monitor never reads the scan
-    log at all, and the supply query it does run applies the $5 / 50k-share universe floors
-    inside SQL, so the sub-$5 names that class consists of are excluded identically on BOTH
-    sides of the boundary."""
+    logging reasons alone. The DENOMINATOR must be immune: the supply query it runs applies
+    the $5 / 50k-share universe floors inside SQL, so the sub-$5 names that class consists of
+    are excluded identically on BOTH sides of the boundary.
+
+    ⚠ Scoped to the denominator deliberately (#666, 2026-09-19): a HEALTHY day (recent_high ==
+    prior_high, no drop) never calls `_lattice_prevented_alerts`, so `mi_ep_scan_log` is still
+    untouched HERE — but on a day trigger (b) actually fires, the monitor DOES read it (via a
+    join against mi_catalyst_tier_shadow, filtered to the LATTICE's own acting rows), to name
+    the alerts the fact-check prevented. That is a separate, attributed read, not the
+    unfiltered ticker-count this test guards against — see
+    tests/test_666_prevented_alerts_not_correlation.py."""
     audit, tg = _patch_common(monkeypatch)
     conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=3, prior_high=3),
                       flip_date=_OLD_FLIP)
