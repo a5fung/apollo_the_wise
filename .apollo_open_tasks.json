@@ -177,7 +177,7 @@
   },
   {
     "id": 610,
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "id": 624,
@@ -253,7 +253,7 @@
   },
   {
     "id": 664,
-    "status": "pending"
+    "status": "deployed"
   },
   {
     "id": 665,
@@ -273,6 +273,10 @@
   },
   {
     "id": 671,
-    "status": "in_progress"
+    "status": "deployed"
+  },
+  {
+    "id": 672,
+    "status": "pending"
   }
 ]
