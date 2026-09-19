@@ -1,14 +1,20 @@
 """M1-d (ADR 0024 §6) — composite-authority wire-in safety tests.
 
 Pins the two load-bearing invariants of the DARK wire-in:
-1. The DB toggle FAILS CLOSED — missing row or any error → False → the wire-in block
-   in ep_detector._judge_shadow is a no-op and the grade path is byte-identical to
-   pre-M1-d (the dark guarantee). Fail-OPEN here would silently make composition
-   load-bearing with no operator flip — the single worst outcome.
+1. The DB toggle FAILS CLOSED — missing row or any error → False → the wire-in
+   (ep_detector._apply_composite_authority, extracted out of the former
+   ep_detector._judge_shadow inline block by #335 2026-09-19) is a no-op and the grade
+   path is byte-identical to pre-M1-d (the dark guarantee). Fail-OPEN here would
+   silently make composition load-bearing with no operator flip — the single worst
+   outcome.
 2. resolve_composite_tier is a strict passthrough unless the composed tier actually
    MOVES — authority flips to 'composite' / override to True only on a real move;
    otherwise the base decision (floor/judge/fallback + its override flag) stands
    exactly as _resolve_grade_authority set it.
+
+See tests/test_335_composite_axis_retired.py for the #335-specific coverage: the
+theme axis's retirement, and that `_apply_composite_authority` never even reaches
+this module's functions while `_COMPOSITE_AXIS_CREDIT_SOURCES` is empty (today).
 """
 import asyncio
 import sys

@@ -614,6 +614,91 @@ def _resolve_grade_authority(judge_authority: bool, verdict: "dict | None", floo
     return floor_tier, "fallback", True
 
 
+# #335 (2026-09-19, operator ruling 2026-09-15 "aligned, keep container"): the theme axis
+# (the retired `compute_theme_axis_credit_live`) is UNPLUGGED — the judge already receives
+# theme membership directly and demoted anyway on both post-rescale samples (ALAB/ERO
+# 09-08). This list is the RAIL: #331 (gap-vs-structure) registers its own axis credit
+# function here — `async def fn(r: dict) -> dict | None`, the same shape the retired theme
+# function used (None = uncomputable/no signal, else a credit dict carrying `credit_steps`) —
+# and nothing else in `_apply_composite_authority` below needs to change for it to compose.
+_COMPOSITE_AXIS_CREDIT_SOURCES: list = []
+
+
+async def _apply_composite_authority(r: dict, new_tier: str, authority: str, do_override: bool):
+    """M1-d composite authority (ADR 0024 §6) — DARK: default OFF, byte-identical until the
+    operator flips the DB toggle (mi_safeguard_state 'composite_authority_enabled'; the read
+    FAILS CLOSED — missing row or any error → False). Extracted out of `_judge_shadow`
+    (2026-09-19, #335) so the empty-registry no-op is unit-testable independent of the scan
+    loop — the same reason `_resolve_grade_authority` above is a pure function.
+
+    With `_COMPOSITE_AXIS_CREDIT_SOURCES` EMPTY (today: theme retired, #331 not yet landed),
+    this returns `(new_tier, authority, do_override)` UNCHANGED and never imports or calls
+    `resolve_composite_tier`/`compose_final_tier` — an EXPLICIT no-op (not a passthrough via
+    an empty credits list), so the composer is provably unreached no matter the toggle's DB
+    state. Byte-identical to toggle OFF, regardless of whether it's ON.
+
+    Once an axis is registered: reads the toggle, gathers every source's credit for `r`
+    (None-skipping — a source with no signal contributes nothing), and — only if at least
+    one credit came back — composes via the pure M1-a composer and commits the composed
+    (tier, authority, override). Own try/except → FAIL-OPEN to the base grade on ANY error
+    (an audit-logged `composite_authority_failed` event); a composition failure never blocks
+    the base-grade write or breaks the scan. base_tier == new_tier in EVERY case
+    (`_resolve_grade_authority` returns floor_tier whenever `!do_override`, judge tier
+    otherwise)."""
+    if not _COMPOSITE_AXIS_CREDIT_SOURCES:
+        return new_tier, authority, do_override
+    from agents.market_intelligence.db import get_composite_authority_enabled
+    if not await get_composite_authority_enabled():
+        return new_tier, authority, do_override
+    try:
+        from agents.market_intelligence.meta_rubric_compose import resolve_composite_tier
+        base_tier = new_tier  # == floor_tier when !do_override, judge tier otherwise
+        credits = []
+        for _axis_fn in _COMPOSITE_AXIS_CREDIT_SOURCES:
+            _credit = await _axis_fn(r)
+            if _credit is not None:
+                credits.append(_credit)
+        if not credits:
+            return new_tier, authority, do_override
+        # Stage into temps; COMMIT only as the return — a failure anywhere above (even the
+        # trace write) leaves the base grade fully intact (caught below, fail-open).
+        _c_tier, _c_auth, _c_over, _composition = resolve_composite_tier(
+            base_tier, authority, do_override, credits)
+        if _composition is not None and _composition.final_tier != base_tier:
+            # Composed tier moved — persist an explicit trace row for verify-live + /why,
+            # and mirror it on r (display-only).
+            _trace = {
+                "base_tier": base_tier,
+                "final_tier": _composition.final_tier,
+                "net_raw": _composition.net_raw,
+                "net_capped": _composition.net_capped,
+                "contributions": [
+                    {"axis": c.axis, "steps": c.steps,
+                     "marker": c.marker, "reason": c.reason}
+                    for c in _composition.contributions
+                ],
+                "credits": credits,
+            }
+            await log_audit_event(
+                "composite_axis_composed",
+                f"{r['ticker']} {r['alert_date']}: {base_tier} -> "
+                f"{_composition.final_tier} "
+                f"(net {_composition.net_capped:+d}, authority=composite)",
+                json.dumps(_trace, default=str),
+            )
+            r["composite_trace"] = _trace  # display-only, for /why later
+        return _c_tier, _c_auth, _c_over
+    except Exception as _ce:
+        # FAIL-OPEN: base grade stands untouched (temps never committed); counted
+        # (log_audit_event never raises) so silent degradation is visible in /audit + the
+        # weekly review.
+        await log_audit_event(
+            "composite_authority_failed",
+            f"{r.get('ticker')} {r.get('alert_date')}: {type(_ce).__name__}: {_ce}",
+        )
+        return new_tier, authority, do_override
+
+
 def _is_judge_demotion(judge_tier, floor_tier) -> bool:
     """#650 — FACTUAL tier-rank comparison (SSoT `constants.TIER_RANK`, the same none <
     MODERATE < HIGH lattice ADR 0024 §3 and `briefing._judge_direction` use). A demotion is
@@ -6135,7 +6220,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         from agents.market_intelligence.db import (
             update_ep_alert_advisory, update_ep_alert_judge_result,
             update_ep_alert_setup_class,
-            get_holistic_judge_enabled, get_composite_authority_enabled,
+            get_holistic_judge_enabled,
         )
         from agents.market_intelligence.ep_grade_judge import (
             assemble_judge_inputs, grade_holistic,
@@ -6259,65 +6344,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # ── M1-d composite authority (ADR 0024 §6) — DARK: default OFF, byte-
                 # identical until the operator flips the DB toggle (mi_safeguard_state
                 # 'composite_authority_enabled'; the read FAILS CLOSED — missing row or
-                # any error → False → this whole block is a no-op). When ON, compose the
-                # theme-axis credit onto the AUTHORITATIVE tier via the pure M1-a
-                # composer. base_tier == new_tier in EVERY case (_resolve_grade_authority
-                # returns floor_tier whenever !do_override, judge tier otherwise). Own
-                # try/except → FAIL-OPEN to the base grade: any error leaves new_tier/
-                # authority/do_override exactly as _resolve_grade_authority set them +
-                # emits a COUNTED composite_authority_failed audit event — a composition
-                # failure NEVER blocks the base-grade write or breaks the scan. The
-                # composed values flow through the SAME atomic
-                # update_ep_alert_judge_result below — no new write path.
-                if await get_composite_authority_enabled():
-                    try:
-                        from agents.market_intelligence.catalyst_rubric_runtime import (
-                            compute_theme_axis_credit_live,
-                        )
-                        from agents.market_intelligence.meta_rubric_compose import (
-                            resolve_composite_tier,
-                        )
-                        base_tier = new_tier  # == floor_tier when !do_override, judge tier otherwise
-                        credit = await compute_theme_axis_credit_live(r)
-                        if credit is not None:
-                            # Stage into temps; COMMIT to new_tier/authority/do_override
-                            # only as the LAST step — a failure anywhere in this block
-                            # (even the trace write) leaves the base grade fully intact.
-                            _c_tier, _c_auth, _c_over, _composition = resolve_composite_tier(
-                                base_tier, authority, do_override, [credit])
-                            if _composition is not None and _composition.final_tier != base_tier:
-                                # Composed tier moved — persist an explicit trace row for
-                                # verify-live + /why, and mirror it on r (display-only).
-                                _trace = {
-                                    "base_tier": base_tier,
-                                    "final_tier": _composition.final_tier,
-                                    "net_raw": _composition.net_raw,
-                                    "net_capped": _composition.net_capped,
-                                    "contributions": [
-                                        {"axis": c.axis, "steps": c.steps,
-                                         "marker": c.marker, "reason": c.reason}
-                                        for c in _composition.contributions
-                                    ],
-                                    "credit": credit,
-                                }
-                                await log_audit_event(
-                                    "theme_axis_composed",
-                                    f"{r['ticker']} {r['alert_date']}: {base_tier} -> "
-                                    f"{_composition.final_tier} "
-                                    f"(net {_composition.net_capped:+d}, authority=composite)",
-                                    json.dumps(_trace, default=str),
-                                )
-                                r["composite_trace"] = _trace  # display-only, for /why later
-                            new_tier, authority, do_override = _c_tier, _c_auth, _c_over
-                    except Exception as _ce:
-                        # FAIL-OPEN: base grade stands untouched (temps never committed);
-                        # counted (log_audit_event never raises) so silent degradation is
-                        # visible in /audit + the weekly review.
-                        await log_audit_event(
-                            "composite_authority_failed",
-                            f"{r.get('ticker')} {r.get('alert_date')}: "
-                            f"{type(_ce).__name__}: {_ce}",
-                        )
+                # any error → False). #335 (2026-09-19) retired the theme axis and
+                # extracted this step into `_apply_composite_authority` (module-level,
+                # near `_resolve_grade_authority`) so the empty-registry no-op is unit-
+                # tested independent of the scan loop — see its docstring. With
+                # `_COMPOSITE_AXIS_CREDIT_SOURCES` empty (today), this is a no-op and the
+                # composer is never reached. The composed values (once #331 registers an
+                # axis) flow through the SAME atomic update_ep_alert_judge_result below —
+                # no new write path.
+                new_tier, authority, do_override = await _apply_composite_authority(
+                    r, new_tier, authority, do_override)
                 if verdict is not None or do_override:
                     v = verdict or {}
                     # ONE atomic UPDATE (#247): judge_* columns + the conditional
