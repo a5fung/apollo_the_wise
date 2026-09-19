@@ -14595,6 +14595,7 @@ async def assign_ticker_to_theme(
             """, ticker, theme_name)
             await log_audit_event(
                 "theme_manual_assignment",
+                conn=conn,          # #672: we already hold a connection — do not ask for a second
                 summary=f"{ticker} → '{theme_name}' (manual override)",
                 detail=json.dumps({
                     "ticker": ticker, "theme_name": theme_name,
@@ -14779,7 +14780,12 @@ async def count_truncated_audit_rows(since_hours: float = 26.0) -> int:
         return 0
 
 
-async def log_audit_event(event_type: str, summary: str, detail: str = "") -> None:
+# ONE audit INSERT, shared by the pooled path and the caller-supplied-connection path —
+# two copies of the same statement is how they drift.
+_AUDIT_INSERT_SQL = "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)"
+
+
+async def log_audit_event(event_type: str, summary: str, detail: str = "", *, conn=None) -> None:
     """
     Write a critical event to the audit log. Never raises — safe to call from anywhere.
     event_type: 'advisor_call' | 'theme_discovered' | 'theme_retired' |
@@ -14804,10 +14810,18 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "") -> No
         # repeat it — every provider we authenticate by query parameter has the same shape.
         from shared.secret_redaction import redact_secrets
         summary, detail = redact_secrets(summary), redact_secrets(detail)
+        # ⚠ `conn` lets a caller that ALREADY HOLDS a connection hand it over rather than
+        # asking the pool for a SECOND one. The 5 s bound below means a nested acquire here
+        # fails fast instead of deadlocking — but held-plus-requested is still the
+        # 2026-09-18 pattern, and under load it becomes spurious 5 s audit failures.
+        # Gated by tests/test_no_nested_pool_acquire.py.
+        if conn is not None:
+            await conn.execute(_AUDIT_INSERT_SQL, event_type, summary, detail)
+            return
         pool = await get_pool()
         async with pool.acquire(timeout=5.0) as conn:
             await conn.execute(
-                "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)",
+                _AUDIT_INSERT_SQL,
                 event_type, summary[:500], _fit_audit_detail(detail),
                 timeout=5.0,
             )

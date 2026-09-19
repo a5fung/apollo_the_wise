@@ -300,45 +300,12 @@ def _pool_source_blocks() -> dict:
     return {name: inspect.getsource(getattr(db, name)) for name in _rs_pools()}
 
 
-def test_no_pool_asks_for_a_second_connection_while_holding_one():
-    """The gate. A pool that calls the pin lookup INSIDE its own `async with pool.acquire()` must
-    hand over the connection it already holds.
-
-    WOULD-FAIL-IF: any pool calls `get_deal_pinned_tickers(...)` inside its acquire block without
-    `conn=`. Reverting any one of the six call sites reddens this — verified by mutation on all
-    six before this was committed."""
-    # source-pin-ok: the defect is a NESTING relationship between two statements — a call sited
-    # inside an `async with` block. That is a property of the source's structure and of nothing
-    # else; no behavioural test can see it without a live pool and enough concurrency to actually
-    # deadlock, which is a test that hangs rather than fails. One pin, for a defect that cost 23
-    # jobs and 7.3 hours.
-    import re
-    offenders = []
-    for name, src in _pool_source_blocks().items():
-        lines = src.splitlines()
-        acq = next((i for i, l in enumerate(lines) if "pool.acquire()" in l), None)
-        if acq is None:
-            continue
-        acq_ind = len(lines[acq]) - len(lines[acq].lstrip())
-        for i in range(acq + 1, len(lines)):
-            l = lines[i]
-            if not l.strip():
-                continue
-            ind = len(l) - len(l.lstrip())
-            if ind <= acq_ind and not l.strip().startswith("#"):
-                break                                    # left the acquire block
-            if "get_deal_pinned_tickers(" in l:
-                call = "\n".join(lines[i:i + 4])
-                if not re.search(r"conn\s*=\s*conn", call):
-                    offenders.append(f"{name} (line {i} of its source)")
-                break
-    assert not offenders, (
-        "these RS pools ask the pool for a SECOND connection while holding the first:\n  "
-        + "\n  ".join(offenders)
-        + "\n\nThe pool is max_size=5 and pool.acquire() has no timeout, so five concurrent "
-          "callers deadlock permanently. This is the 2026-09-18 outage: 7.3 hours, 23 jobs, the "
-          "evening briefing among them. Pass the connection you already hold: conn=conn."
-    )
+# ⚠ `test_no_pool_asks_for_a_second_connection_while_holding_one` LIVED HERE and was
+# REMOVED 2026-09-19, not weakened: `tests/test_no_nested_pool_acquire.py` replaces it with the
+# GENERAL rule over every function in db.py, so a seventh pool — or any unrelated pair — is
+# caught the day it is written rather than only these six. Keeping both would have been two
+# source pins for one property. The companion signature check below stays, because the general
+# gate is only SATISFIABLE while the helper still accepts a caller's connection.
 
 
 def test_the_lookup_can_accept_a_caller_connection():
