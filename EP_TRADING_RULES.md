@@ -274,7 +274,7 @@ Same shared pool as MAGNA53:
 | `broker/live_tracker.py` | `submit_9m_day2_trade()` — Day 2 ORB execution |
 | `broker/order_manager.py` | `prepare_9m_day2_orb_order()` — order spec with prior-day-low stop |
 | `outcome_tracker.py` | `_compute_9m_ep_outcomes()` — nightly forward returns (1D/1W/1M) → `mi_signal_outcomes` |
-| `scripts/backtest_9m_ep.py` | Historical backtest: D1/D5/D10/D21 returns by volume bucket + range quality bucket |
+| `scripts/probes/backtest_9m_ep.py` | Historical backtest: D1/D5/D10/D21 returns by volume bucket + range quality bucket |
 
 ---
 

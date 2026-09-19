@@ -36,7 +36,7 @@ this session. Recommendations go to Phase 2 (shadow telemetry over
 
 ## 2. Cohort summary
 
-Pulled via `scripts/ep_selectivity_cohort.py` against the 60d window
+Pulled via `scripts/probes/ep_selectivity_cohort.py` against the 60d window
 ending 2026-05-15. Cartesian-explosion guard fired and was fixed on
 first run — `mi_orb_shadow_trades` (multiple `signal_type` per
 ticker-day) and `mi_ep_missed_outcomes` (multiple `source` values)
@@ -194,7 +194,7 @@ gate is the single best candidate to LOOSEN.**
 
 ## 4. Class A/B/C/Chop/Dead split (P1.6)
 
-Per `scripts/classify_ep_shape.py` — fetches 1-min bars from
+Per `scripts/probes/classify_ep_shape.py` — fetches 1-min bars from
 Polygon for each HIGH alert, classifies intraday shape 9:30–11:00 ET.
 N=117 HIGH alerts classified (30 alerts pending bar data or had no
 bars).
@@ -506,7 +506,7 @@ After **R1+R2+R3+R4 ship** (R5 deferred to shadow-only):
 - Median return: +2.9% → **+6.7%**
 
 These numbers come from the retrospective shadow simulation
-(`scripts/ep_selectivity_shadow_sim.py`, output
+(`scripts/probes/ep_selectivity_shadow_sim.py`, output
 `analysis/2026-05-16/shadow_sim.md`). They are DIRECTIONAL evidence,
 not a guarantee — see Caveats below. Real Phase 2 shadow telemetry
 in production is the actual test.
@@ -641,16 +641,16 @@ sittings.
 
 ## 11. Artifacts
 
-- `scripts/ep_selectivity_cohort.py` — master cohort SQL + CSV
+- `scripts/probes/ep_selectivity_cohort.py` — master cohort SQL + CSV
 - `scripts/ep_selectivity_breakdowns.py` — per-dimension crosstabs
-- `scripts/classify_ep_shape.py` — Class A/B/C/Chop/Dead classifier
+- `scripts/probes/classify_ep_shape.py` — Class A/B/C/Chop/Dead classifier
 - `analysis/2026-05-16/ep_cohort_alerts_60d.csv` — 165 alerts cohort
 - `analysis/2026-05-16/ep_cohort_skipped_60d.csv` — 1,147 filter-rejected
 - `analysis/2026-05-16/breakdowns.md` — §3 source tables
 - `analysis/2026-05-16/classifier.csv` — per-alert shape labels
 - `analysis/2026-05-16/classifier_summary.md` — §4 source
 - `analysis/2026-05-16/catalyst_labels.csv` — operator labeling sheet
-- `scripts/ep_selectivity_shadow_sim.py` — retrospective R1-R5 sim
+- `scripts/probes/ep_selectivity_shadow_sim.py` — retrospective R1-R5 sim
 - `analysis/2026-05-16/shadow_sim.md` — projected cohort delta
 
 ---

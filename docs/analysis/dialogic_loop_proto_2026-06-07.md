@@ -1,6 +1,6 @@
 # #212 dialogic-loop prototype — first empirical result (2026-06-07)
 
-**Script:** `scripts/proto_dialogic_dossier.py` (READ-ONLY; no DB write, no scheduler).
+**Script:** `scripts/probes/proto_dialogic_dossier.py` (READ-ONLY; no DB write, no scheduler).
 Rung 1.5 of ADR 0006: tool-grounded INVESTIGATOR (Sonnet) → skeptical-PM ADVISOR
 (Opus, no tools) → INVESTIGATOR revise. Mechanical anti-confabulation check
 (verbatim-quote substring) on every claim. Run on prod, all-history unknown/

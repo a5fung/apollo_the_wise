@@ -307,7 +307,7 @@ Empirical threshold calibration still comes from the labeling pass.
 
 **Touched:** `flag_detector._compute_rmv` (+ `anticipation.compute_rmv` wrapper), `anticipation`
 (`is_entry_tight` gate, `entry_signal_at`/`confirm_signal_at` record both readings), `db` (entry-shadow
-`rmv_15d` column + migration + insert), `scheduler` (caller), `scripts/_anticipation_shortlist.py`
+`rmv_15d` column + migration + insert), `scheduler` (caller), `scripts/probes/_anticipation_shortlist.py`
 (lookback→15), `docs/methodology/primitives.md` (RMV row). Telemetry-only elsewhere — formula improved,
 no gate.
 
@@ -328,7 +328,7 @@ parallel to `consolidation_readiness`) that scans the signed-§2 universe, keeps
 The existing #327 Anticipate/Confirm gate, `mi_consolidation_entry_shadow`, and all trade state are
 **untouched**.
 
-**Evidence.** Daily-replay validation over the prod DB (`scripts/_anticipation_coil_finder.py`,
+**Evidence.** Daily-replay validation over the prod DB (`scripts/probes/_anticipation_coil_finder.py`,
 `docs/analysis/anticipation_coil_finder_validation_2026-06-27.md`): finds all 5 operator-named coils
 (GH/HNGE/CRWD/FTNT/DDOG) incl. HNGE's real May 6–28 base, and rejects GPGI (retraced 199% of its runup).
 The "poor" 4 (OSCR/UAL/PTGX/TVTX) read as valid/marginal coils per the operator's chart reads — confirming
@@ -351,7 +351,7 @@ load-bearing #327 gate is a *later* operator decision (CHANGE_PROCESS + N≥10 +
 **Touched:** `anticipation.find_coil_setup` (+ `COIL_*` constants), `db` (`mi_anticipation_coil_shadow`
 table + `insert_anticipation_coil_shadow`), `scheduler` (`_coil_finder_shadow_job` + registration +
 `INTELLIGENCE_OWNED_JOB_IDS`), `tests/test_anticipation_coil_finder.py`. Validated logic:
-`scripts/_anticipation_coil_finder.py`.
+`scripts/probes/_anticipation_coil_finder.py`.
 
 ### 2026-06-27 (same day) — INTEGRATED: coil-finder becomes the LIVE #327 base; old peak-anchor + the parallel shadow DELETED
 

@@ -1,7 +1,7 @@
 # Anticipation (#327) — operator labels (2026-06-27 pass)
 
 **This file is the STABLE label of record. The worksheet generator
-(`scripts/_anticipation_shortlist.py`) MUST NEVER write here** — a re-gen wiped in-progress labels
+(`scripts/probes/_anticipation_shortlist.py`) MUST NEVER write here** — a re-gen wiped in-progress labels
 once. The generator writes the *unlabeled* board to
 `docs/analysis/anticipation_shortlist_to_label_<date>.md`; copy your G/X labels from there into the
 table below so a rebuild can't clobber them.
@@ -12,7 +12,7 @@ while still flat) or **X** (garbage — grind / decline / breakout-already-gone)
 calibration set the Track-2 structural model (the 5-metric feature matrix) is shaped against.
 
 ## Provenance of the board
-- Universe + bars: rebuilt by `scripts/build_anticipation_universe.py --asof <basing date>` (#388 —
+- Universe + bars: rebuilt by `scripts/probes/build_anticipation_universe.py --asof <basing date>` (#388 —
   CS-filtered via `mi_security_types`, complete; GH/HNGE asserted present).
 - Anchor: base-start peak = earliest bar within 2% of the window peak (#389 — fixes the truncated-base
   bug; HNGE now reads its true ~12–15-day base, not `baseD 4`).

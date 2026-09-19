@@ -45,7 +45,7 @@ only on (a) L1 `anomaly_detected` level-1 rows and (b) four allowlisted
 
 - `phantom_pending_confirmation_reaped` (7/6) is **explicitly excluded** from the allowlist
   (operator-signed 7/6: "DB hygiene, not a repair" — v1_closeout_status.py:84).
-- `scripts/fix_double_encoded_exits_287.py` (7/7) **emits no audit event at all** — it is
+- `scripts/probes/fix_double_encoded_exits_287.py` (7/7) **emits no audit event at all** — it is
   invisible to any query, under any ruling.
 
 So unless an L1 fired in the window (QUERY AT WALK), the mechanical countdown reads ~8/10

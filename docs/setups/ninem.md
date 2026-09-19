@@ -135,7 +135,7 @@ digest at all.
 **REMOVED**: `_9m_day2_orb_job` + its scheduler id, `broker/live_tracker.submit_9m_day2_trade`, the
 `execution_client` facade route, the Day-2 candidate WRITER and watchlist render inside
 `ninem_detector.py`, and the `mi_strategies` row. Also swept the same evening: an unreachable
-`cross_strategy_allocator.score_9m_day2()` and a stale reference in `scripts/test_9m_ep_e2e.py`.
+`cross_strategy_allocator.score_9m_day2()` and a stale reference in `scripts/probes/test_9m_ep_e2e.py`.
 
 **KEPT, deliberately**: 9M CHARACTER detection (`9m_ep_scan`, `mi_9m_ep_alerts`), the sugar-baby EOD
 sweep, `mi_sugar_babies_cohort`, the `/9m` surfaces, and the `mi_9m_day2_candidates` TABLE (rows are

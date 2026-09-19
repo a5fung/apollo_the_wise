@@ -73,7 +73,7 @@ convention rather than a task — a rule with no end state does not belong on th
 > count toward the three, however many of them there are.
 
 **The case it was written from.** `scripts/_wave_a_grade_inflation_check.py` and
-`scripts/verify_monday_firstfire.py` both compute the same trailing baseline — per-day
+`scripts/probes/verify_monday_firstfire.py` both compute the same trailing baseline — per-day
 `game_changer` / HIGH counts over the prior ~9 days from `mi_ep_alerts` — to answer "are we
 suddenly grading more generously than usual". A 2026-06-28 review flagged the duplication as real
 and deferred the extraction anyway, because two throwaways are not a reason to build plumbing. Re-run

@@ -46,7 +46,7 @@ Numbers behind that:
   `_prescore_replay_{boards,themes,outcomes,board0408,outcomes0408,advfill}.psv` (q6 advfill
   pulled in the same session after the first replay run exposed the April ADV gap — see
   basis table below). Never re-run to re-read.
-- **Replay code**: `scripts/ep_rubric_replay.py` — imports the LIVE
+- **Replay code**: `scripts/probes/ep_rubric_replay.py` — imports the LIVE
   `shortlist_prescore` / `shortlist_sort_key` / `SHORTLIST_SIZE` from `ep_rubric` (never a
   reimplementation), full output at `scripts/probes/_prescore_replay_out.txt`.
 - **Boards**: `mi_ep_scan_log` last-seen state per (scan_date, ticker) — the house
@@ -156,7 +156,7 @@ theme engine's state at the time, including its known identity bugs (#553 false 
 ## Files
 
 - This doc: `docs/analysis/shortlist_prescore_replay_2026-08-22.md`
-- Replay: `scripts/ep_rubric_replay.py` → `scripts/probes/_prescore_replay_out.txt`
+- Replay: `scripts/probes/ep_rubric_replay.py` → `scripts/probes/_prescore_replay_out.txt`
 - Capture (one pull): `scripts/probes/_prescore_replay_capture.sql` + the six `.psv` files
 - Anchors: `docs/analysis/shortlist_survival_stage0_2026-08-22.md` (Stage 0) ·
   `docs/analysis/real_ep_retention_562b_2026-08-22.md` (the 16-of-26 attribution) ·
