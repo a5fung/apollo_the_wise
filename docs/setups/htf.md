@@ -52,7 +52,11 @@ criteria were swapped/added.
   than `_BASE_AGE_MIN_WATCH` bars since the pivot) walks as before. Change-log entry below.
 - **Flag depth on the absolute low (not the close):** the spec writes `Close≥0.75×High₄₀`; we tighten to
   `min(low)≥0.75×High₄₀`. O'Neil/Minervini reject a deep intraday shakeout that rallies to a tight close
-  (the spring uncoiled). Operator-endorsed (Gemini 6/27); confirm via the eyeball.
+  (the spring uncoiled). Operator-endorsed (Gemini 6/27); confirm via the eyeball. **Since 2026-09-19
+  (#610) BOTH readings are RECORDED per candidate-day** — `depth_on_low` (this gate's quantity) and
+  `depth_on_close` (the spec literal), alongside `sma20_margin` and `ma_stack_margin`, on
+  `mi_flag_candidates` — so the 2026-09-18 ruling ("observe several, act on one") accrues live data.
+  The gate still acts on the low; the columns are read by nothing. Change-log entry 2026-09-19.
 - **`#80` runup-scaling removed (CHANGE_PROCESS #3 — why it was WRONG, not just superseded):** #80 relaxed
   the proximity band to ~35% for high-runup names. That is correct for a GENERIC flag (deeper bases are
   still valid setups) but WRONG for HTF, where ≤25% tightness is DEFINITIONAL — the "tight" in
@@ -180,6 +184,46 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    NULL and are NOT recommended.** What remains is his ruling on the fork below.
 
 ## Change log
+- **2026-09-19 — #610 THE FOUR-READING OBSERVER IS BUILT. Telemetry only — THE LIVE GATE IS
+  UNCHANGED (flag LOW ÷ pole high ≥ 75%). Built in a card, NOT yet deployed; the deploy is TWO
+  steps (`db.py` is execution-loaded: `deploy.sh market-agent`, then `execution`).** Implements
+  the 2026-09-18 ruling below ("observe several readings, keep acting on one").
+  **What**: `compute_flag_metrics` records four new keys per candidate-day, persisted as four
+  columns on `mi_flag_candidates` (idempotent `ALTER … ADD COLUMN IF NOT EXISTS`; CREATE TABLE in
+  parity; carried through the upsert so a re-scan refreshes them):
+  `depth_on_low` = the flag's lowest LOW ÷ pole high (the LIVE reading, = `1 − flag_depth_pct`;
+  the gate fires below 0.75) · `depth_on_close` = the flag's lowest CLOSE ÷ pole high (the spec's
+  literal `Close ≥ 0.75×High`) · `sma20_margin` = `(close − sma_20) / sma_20` · `ma_stack_margin`
+  = the TIGHTER of the two stack legs, `min((sma_10 − sma_20)/sma_20, (sma_20 − sma_50)/sma_50)`.
+  **⚠ The two margins are SIGNED — negative = that gate fires, by that fraction — so on the live
+  verify MRNA reads −0.03% / −0.24%, not the unsigned 0.03 / 0.24 the PLAN line quotes.**
+  **Where**: the depth pair is set where `flag_depth_pct` is (every row that reaches the base
+  window, including the ones the runup / trend / depth checks then reject); the SMA pair right
+  after the SMAs are computed and BEFORE the INVALIDATED returns (every row past the runup gate
+  and the flagpole guards). NULL before that point; `ma_stack_margin` is NULL whenever the gate
+  itself cannot evaluate (an SMA missing) — each column mirrors its gate exactly. Read by nothing.
+  **Verification, pre-deploy**: (1) `tests/test_610_htf_four_reading_observer.py` — MRNA on the
+  real fixture bars (the 09-17 bar appended from prod): **72.8% / 75.5% / −0.035% on 09-16 /
+  −0.24% on 09-17** (the hand figure "0.03" came from the reason string's 2-dp SMA; exact is
+  0.051/145.671), with the acting stage/reason on both days byte-equal to the stored prod rows;
+  gate agreement on every replayed corpus row; NULL-until-inputs; the upsert carries all four —
+  seven mutations RED-proven, listed in the file's docstring. (2)
+  `scripts/probes/_610_four_reading_observer_replay.py` over every stored candidate-day
+  2026-08-17 → 09-17 (12,657 pairs / 1,796 tickers, prod bars, $0): **OLD function vs NEW, 0
+  diffs on stage / reason / score / held_from_stage** — the WOULD-FAIL-IF, met; NEW vs the STORED
+  rows **99.75% identical (12,625 / 12,657)** with stored-row state threading and **100% on all
+  4,282 rows from 09-07 onward** — every one of the 32 mismatches sits on or before 09-04 and is
+  the #592 anchor fix (committed 09-04 `2d343421`, AFTER that day's 17:25 ET scan, and live by
+  09-08 per the 2026-09-05 entry below — the deploy timestamp itself was not read; the stored
+  `base_age_0_below_3` rows are what the pre-fix pivot walk wrote, where HEAD holds the older
+  pivot and reads `runup_…`) or a bar the vendor revised since the scan (IESC's volume), i.e.
+  the rule era, not the observer. Readings populated: depth pair 4,157 rows, SMA pair 646.
+  **EXPECT (live, from the first 17:25 ET scan after deploy)**: every row that reaches the base
+  window carries the depth pair and every row past the runup gate carries the SMA pair (≈ a third
+  and ≈ 5% of the day's rows, on the replay's proportions); the day's stage/reason distribution
+  is unchanged against the prior week; a `flag_low_` reject reads `depth_on_low < 0.75`.
+  **DONE-WHEN**: one full scan day writes all four. Reversion-flag: NEW (adds columns, changes no
+  criterion). Nothing about THE LINE moved; the fork stays his.
 - **2026-09-18 — OPERATOR RULING on the depth fork: DO NOT PICK ONE YET — OBSERVE SEVERAL.
   NOTHING CHANGED IN THE DETECTOR.** Per #610's DoD ("his ruling recorded in docs/setups/htf.md").
   **The fork put to him** (F1): measure flag depth on the flag's **LOW** ÷ pole **HIGH** (ours, the

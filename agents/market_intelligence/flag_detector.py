@@ -830,6 +830,15 @@ def compute_flag_metrics(
         "runup_start_date": None,
         "flagpole_ratio": None,
         "flag_depth_pct": None,
+        # #610 four-reading observer (2026-09-19, operator ruling 2026-09-18:
+        # "observe multiple parameters ... hard to make a final call right now").
+        # RECORDED, NEVER READ by any gate below — the live admission gate is
+        # unchanged (flag LOW ÷ pole high ≥ _FLAG_DEPTH_MIN). See the CREATE
+        # TABLE comment on mi_flag_candidates (db.py) for definitions + sign.
+        "depth_on_low": None,
+        "depth_on_close": None,
+        "sma20_margin": None,
+        "ma_stack_margin": None,
         "range_contraction_ratio": None,
         "vol_contraction_ratio": None,
         "last_body_pct": None,
@@ -996,6 +1005,17 @@ def compute_flag_metrics(
     # artifact/INVALIDATED checks below still go on to reject, so offline analysis
     # sees the metric at every candidate that got this far (#356 follow-up).
     base["flag_depth_pct"] = (1.0 - (base_low / pivot_high)) if pivot_high > 0 else None
+    # #610 four-reading observer, readings (a) + (b): the fraction of the pole the
+    # flag RETAINED, under the two depth readings on the table — (a) on the flag's
+    # extreme LOW (the LIVE reading; the gate below fires when this is
+    # < _FLAG_DEPTH_MIN) and (b) on the flag's lowest CLOSE (the spec's literal
+    # `Close ≥ 0.75 × High`). Same quantities the gate compares, recorded for
+    # EVERY row that reaches the base window — including the ones the runup /
+    # trend / depth checks below go on to reject — so the two readings can be
+    # compared on live data. depth_on_low == 1 - flag_depth_pct by construction.
+    # Observation only: nothing reads these keys.
+    base["depth_on_low"]   = (base_low / pivot_high)       if pivot_high > 0 else None
+    base["depth_on_close"] = (base_low_close / pivot_high) if pivot_high > 0 else None
 
     # ── Runup magnitude: pivot_high / min(low) over 40 sessions ending at pivot (sourced HTF)
     runup_window_start = max(0, pivot_idx - _RUNUP_LOOKBACK_DAYS + 1)
@@ -1052,6 +1072,22 @@ def compute_flag_metrics(
     base["sma_10"] = sma_10
     base["sma_20"] = sma_20
     base["sma_50"] = sma_50
+    # #610 four-reading observer, readings (c) + (d) — SIGNED margins, relative
+    # to the level each gate compares against; NEGATIVE = that gate fires, by
+    # that fraction. (c) the SMA20 invalidation: (close − sma_20) / sma_20.
+    # (d) the MA stack (10 ≥ 20 ≥ 50): the TIGHTER of its two legs,
+    # (sma_10 − sma_20) / sma_20 and (sma_20 − sma_50) / sma_50 — None whenever
+    # the gate itself cannot evaluate (any SMA missing), so the column mirrors
+    # the gate exactly. Recorded here, before the INVALIDATED returns below, so
+    # every row that computed the SMAs carries both readings whatever rejects
+    # it next. Observation only: nothing reads these keys.
+    base["sma20_margin"] = (
+        (close_today - sma_20) / sma_20 if sma_20 is not None and sma_20 > 0 else None
+    )
+    base["ma_stack_margin"] = (
+        min((sma_10 - sma_20) / sma_20, (sma_20 - sma_50) / sma_50)
+        if None not in (sma_10, sma_20, sma_50) and sma_20 > 0 and sma_50 > 0 else None
+    )
 
     if base_age > _BASE_AGE_MAX:
         base["stage"]  = "INVALIDATED"

@@ -2437,6 +2437,27 @@ async def initialize_schema() -> None:
                 -- (the same quantity the flag-depth gate compares). Not gates themselves.
                 flagpole_ratio              FLOAT,
                 flag_depth_pct              FLOAT,
+                -- #610 four-reading observer (2026-09-19; operator ruling 2026-09-18:
+                -- observe several readings, keep acting on one). RECORDED PER
+                -- CANDIDATE-DAY, READ BY NO GATE — the live admission gate is
+                -- unchanged (flag LOW ÷ pole high ≥ 0.75). NULL until the row
+                -- reaches the point in compute_flag_metrics where the reading's
+                -- inputs exist (depth pair: the base window; SMA pair: the SMAs,
+                -- i.e. after the runup + flagpole guards). Definitions:
+                --   depth_on_low    — flag's lowest LOW ÷ pole high (the LIVE reading;
+                --                     the gate fires when < 0.75). = 1 - flag_depth_pct.
+                --   depth_on_close  — flag's lowest CLOSE ÷ pole high (the spec's
+                --                     literal `Close ≥ 0.75 × High`).
+                --   sma20_margin    — (close - sma_20) / sma_20, SIGNED: negative = the
+                --                     SMA20 invalidation fires, by that fraction.
+                --   ma_stack_margin — the tighter leg of the 10≥20≥50 stack,
+                --                     min((sma_10-sma_20)/sma_20, (sma_20-sma_50)/sma_50),
+                --                     SIGNED: negative = the MA-stack gate fires. NULL
+                --                     whenever the gate itself cannot evaluate.
+                depth_on_low                FLOAT,
+                depth_on_close              FLOAT,
+                sma20_margin                FLOAT,
+                ma_stack_margin             FLOAT,
                 range_contraction_ratio     FLOAT,
                 vol_contraction_ratio       FLOAT,
                 last_body_pct               FLOAT,
@@ -2518,6 +2539,12 @@ async def initialize_schema() -> None:
             -- #356 follow-up (2026-09-05): see CREATE TABLE comment above — telemetry only.
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS flagpole_ratio FLOAT;
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS flag_depth_pct FLOAT;
+            -- #610 four-reading observer (2026-09-19) — see the CREATE TABLE comment
+            -- above for definitions + the sign convention. Telemetry only.
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS depth_on_low    FLOAT;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS depth_on_close  FLOAT;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS sma20_margin    FLOAT;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS ma_stack_margin FLOAT;
             -- P7.2 audit trail (2026-05-17): records which universe pattern(s)
             -- admitted this ticker for the scan. Possible tags:
             --   'rs_top200'           — top-200 RS leader (organic)
@@ -7655,11 +7682,12 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                  stage, reason, score, held_from_stage,
                  fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct,
                  rmv_5d, rmv_15d, universe_sources,
-                 failed_at, low_after_breakout, undercut_after_breakout)
+                 failed_at, low_after_breakout, undercut_after_breakout,
+                 depth_on_low, depth_on_close, sma20_margin, ma_stack_margin)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
                     $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
                     $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                    $34, $35, $36)
+                    $34, $35, $36, $37, $38, $39, $40)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 pivot_high_date         = EXCLUDED.pivot_high_date,
                 pivot_high_price        = EXCLUDED.pivot_high_price,
@@ -7694,7 +7722,11 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                 universe_sources        = EXCLUDED.universe_sources,
                 failed_at               = EXCLUDED.failed_at,
                 low_after_breakout      = EXCLUDED.low_after_breakout,
-                undercut_after_breakout = EXCLUDED.undercut_after_breakout
+                undercut_after_breakout = EXCLUDED.undercut_after_breakout,
+                depth_on_low            = EXCLUDED.depth_on_low,
+                depth_on_close          = EXCLUDED.depth_on_close,
+                sma20_margin            = EXCLUDED.sma20_margin,
+                ma_stack_margin         = EXCLUDED.ma_stack_margin
         """,
             record["ticker"],
             scan_date,
@@ -7732,6 +7764,10 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             record.get("failed_at"),
             record.get("low_after_breakout"),
             record.get("undercut_after_breakout"),
+            record.get("depth_on_low"),
+            record.get("depth_on_close"),
+            record.get("sma20_margin"),
+            record.get("ma_stack_margin"),
         )
 
 

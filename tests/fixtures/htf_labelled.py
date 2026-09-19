@@ -8,7 +8,10 @@ asserts the RECORDED verdict — so a silent detector change flips the test loud
 either direction. Bars: `tests/fixtures/htf_labelled_bars.psv` (mi_daily_closes, pulled
 2026-09-04). CDNA/HNGE/ATAI/NCI/OUST/REPL 2025-07-28 → 2026-09-04; SHAZ only from
 2026-02-18 (no earlier `mi_daily_closes` rows exist for it — coverage gap, not a bug;
-irrelevant to SHAZ's own flag_low rejection which needs no 200d SMA).
+irrelevant to SHAZ's own flag_low rejection which needs no 200d SMA). MRNA runs through
+2026-09-17 (the 09-17 bar — the trader's breakout day — was appended 2026-09-19 from
+prod so `tests/test_610_htf_four_reading_observer.py` can assert the #610 observer's
+four hand-measured MRNA readings on the day they were measured).
 
 ⚠ **`expected` is either `"actionable"` (must be in `_ACTIONABLE`) or `"rejected:<prefix>"`
 (stage must NOT be in `_ACTIONABLE` AND `reason` must start with `<prefix>`) — generalised
