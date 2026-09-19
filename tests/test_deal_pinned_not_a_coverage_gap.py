@@ -269,3 +269,88 @@ def test_the_pool_lookup_split_is_derived_and_does_not_swallow_lookups():
             f"{lookup} was classified as a ranked pool. It takes an explicit ticker list, so "
             f"the caller has already chosen the names; the split rule has drifted."
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────────────────
+# THE DEADLOCK — found 2026-09-19, caused by THIS FIX, and it cost a whole nightly chain
+# ─────────────────────────────────────────────────────────────────────────────────────────
+#
+# The deal-pin filter shipped 2026-09-17 21:15 ET. The next full nightly, 2026-09-18, hung for
+# 7.3 hours and took 23 jobs with it, including the evening briefing. The cause was in the fix:
+#
+#     async with pool.acquire() as conn:          # connection #1, held
+#         rows = await conn.fetch(...)
+#         pinned = await get_deal_pinned_tickers(...)   # asks for connection #2
+#
+# `asyncpg.create_pool(...)` in db.py is `max_size=5` and `pool.acquire()` takes NO timeout. The
+# evening brief gathers EIGHT concurrent `get_rs_leaders`. Five take every connection, each then
+# waits for a sixth that can only be freed by one of the five. Nothing times out, so it waits
+# forever — reproduced live on 2026-09-19 with a task stack showing 8 pending `get_rs_leaders`
+# under one `_GatheringFuture`.
+#
+# All SIX pools had it, because the fix was applied uniformly — which is the bitter half of the
+# lesson: deriving the population correctly (the thing that made the deal-pin fix right) also
+# propagated the defect to every member of it.
+
+
+def _pool_source_blocks() -> dict:
+    """For each derived RS pool, its source — DERIVED from `_rs_pools()`, never hand-listed, so a
+    seventh pool is covered the day it is defined."""
+    import inspect
+    return {name: inspect.getsource(getattr(db, name)) for name in _rs_pools()}
+
+
+def test_no_pool_asks_for_a_second_connection_while_holding_one():
+    """The gate. A pool that calls the pin lookup INSIDE its own `async with pool.acquire()` must
+    hand over the connection it already holds.
+
+    WOULD-FAIL-IF: any pool calls `get_deal_pinned_tickers(...)` inside its acquire block without
+    `conn=`. Reverting any one of the six call sites reddens this — verified by mutation on all
+    six before this was committed."""
+    # source-pin-ok: the defect is a NESTING relationship between two statements — a call sited
+    # inside an `async with` block. That is a property of the source's structure and of nothing
+    # else; no behavioural test can see it without a live pool and enough concurrency to actually
+    # deadlock, which is a test that hangs rather than fails. One pin, for a defect that cost 23
+    # jobs and 7.3 hours.
+    import re
+    offenders = []
+    for name, src in _pool_source_blocks().items():
+        lines = src.splitlines()
+        acq = next((i for i, l in enumerate(lines) if "pool.acquire()" in l), None)
+        if acq is None:
+            continue
+        acq_ind = len(lines[acq]) - len(lines[acq].lstrip())
+        for i in range(acq + 1, len(lines)):
+            l = lines[i]
+            if not l.strip():
+                continue
+            ind = len(l) - len(l.lstrip())
+            if ind <= acq_ind and not l.strip().startswith("#"):
+                break                                    # left the acquire block
+            if "get_deal_pinned_tickers(" in l:
+                call = "\n".join(lines[i:i + 4])
+                if not re.search(r"conn\s*=\s*conn", call):
+                    offenders.append(f"{name} (line {i} of its source)")
+                break
+    assert not offenders, (
+        "these RS pools ask the pool for a SECOND connection while holding the first:\n  "
+        + "\n  ".join(offenders)
+        + "\n\nThe pool is max_size=5 and pool.acquire() has no timeout, so five concurrent "
+          "callers deadlock permanently. This is the 2026-09-18 outage: 7.3 hours, 23 jobs, the "
+          "evening briefing among them. Pass the connection you already hold: conn=conn."
+    )
+
+
+def test_the_lookup_can_accept_a_caller_connection():
+    """The other half — the gate above is satisfiable only because the helper takes `conn`. If the
+    parameter were dropped, every pool would have to nest again and the gate would be unpassable
+    rather than protective."""
+    import inspect
+    params = inspect.signature(db.get_deal_pinned_tickers).parameters
+    assert "conn" in params, (
+        "get_deal_pinned_tickers no longer accepts a caller's connection, so a pool holding one "
+        "has no way to avoid a nested acquire."
+    )
+    assert params["conn"].default is None, (
+        "`conn` must default to None so the helper still works for a caller that holds nothing."
+    )

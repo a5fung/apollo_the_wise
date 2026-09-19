@@ -6536,6 +6536,7 @@ async def get_deal_pinned_tickers(
     as_of: "str | date", tickers: "list[str] | None" = None, *,
     tight_days: int = 4, range_bar: float = 0.02,
     gap_bar: float = 15.0, rvol_bar: float = 10.0, lookback_days: int = 180,
+    conn=None,
 ) -> set:
     """Tickers whose price is PINNED BY AN ANNOUNCED DEAL as of `as_of` — a cash
     acquisition price, not momentum.
@@ -6614,9 +6615,22 @@ async def get_deal_pinned_tickers(
         )
         SELECT p.ticker FROM pin p JOIN announced a USING (ticker);
     """
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(_sql, _coerce_date(as_of), tickers, tight_days,
-                                range_bar, gap_bar, lookback_days, rvol_bar)
+    # ⚠ `conn` IS NOT AN OPTIMISATION — IT IS THE DEADLOCK FIX (2026-09-19).
+    # Every caller of this helper is an RS pool that is ALREADY inside
+    # `async with pool.acquire()`. Acquiring a SECOND connection from the same
+    # `max_size=5` pool while holding the first is a nested acquire: five concurrent
+    # callers take all five connections and then each waits, forever, for a sixth.
+    # `pool.acquire()` has no timeout, so nothing ever breaks the tie. That is exactly
+    # what took the 2026-09-18 nightly chain down for 7.3 hours and 23 jobs. A caller
+    # holding a connection MUST pass it; the gate in
+    # tests/test_deal_pinned_not_a_coverage_gap.py fails the build if one does not.
+    _args = (_coerce_date(as_of), tickers, tight_days, range_bar, gap_bar,
+             lookback_days, rvol_bar)
+    if conn is not None:
+        rows = await conn.fetch(_sql, *_args)
+    else:
+        async with pool.acquire() as _c:
+            rows = await _c.fetch(_sql, *_args)
     return {r["ticker"] for r in rows}
 
 
@@ -8840,7 +8854,7 @@ async def get_rs_leaders(
             # Scoped to the rows we already fetched (~limit*2), not the universe — the
             # classifier is cheap but there is no reason to screen 9,700 names to filter 60.
             pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
-                score_date, [r["ticker"] for r in rows])
+                score_date, [r["ticker"] for r in rows], conn=conn)
             filtered = []
             for r in rows:
                 row = dict(r)
@@ -8963,7 +8977,7 @@ async def get_rs_accelerators(
               )
         """, score_date, prior, min_adv, min_price, SKIP_TICKERS_LIST, min_rs_now)
         pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
-            score_date, [r["ticker"] for r in rows])
+            score_date, [r["ticker"] for r in rows], conn=conn)
         out: list[dict[str, Any]] = []
         for r in rows:
             row = dict(r)
@@ -9017,7 +9031,7 @@ async def get_rs_recovery_slope(
             LIMIT $7
         """, score_date, min_adv, min_price, SKIP_TICKERS_LIST, min_rs_1m, max_rs_6m, limit * 2)
         pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
-            score_date, [r["ticker"] for r in rows])
+            score_date, [r["ticker"] for r in rows], conn=conn)
         out: list[dict[str, Any]] = []
         for r in rows:
             row = dict(r)
@@ -10130,7 +10144,7 @@ async def get_rs_velocity(
         # Over-fetch then filter then truncate — the shape get_rs_leaders uses, and for the
         # same reason: the classifier is scoped to the rows we already have, never the universe.
         pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
-            d0, [r["ticker"] for r in rows])
+            d0, [r["ticker"] for r in rows], conn=conn)
         out = [dict(r) for r in rows if r["ticker"] not in pinned]
         return out[:limit]
 
@@ -10177,7 +10191,7 @@ async def get_rs_recovery(
             rd, min_rs_1m, max_composite, limit * 2,
         )
         pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
-            rd, [r["ticker"] for r in rows])
+            rd, [r["ticker"] for r in rows], conn=conn)
     return [dict(r) for r in rows if r["ticker"] not in pinned][:limit]
 
 
@@ -10508,7 +10522,7 @@ async def get_rs_turners(
         # Over-fetch / filter / truncate — identical shape to get_rs_velocity and
         # get_rs_leaders, so all three discovery inputs drop the same names.
         pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
-            d0, [r["ticker"] for r in rows])
+            d0, [r["ticker"] for r in rows], conn=conn)
         out = [dict(r) for r in rows if r["ticker"] not in pinned]
         return out[:limit]
 
