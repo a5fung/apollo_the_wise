@@ -4708,11 +4708,28 @@ async def _htf_breakout_settle_job(today):
     from agents.market_intelligence.flag_detector import _htf_settle_from_bars
     from agents.market_intelligence.db import (
         get_settleable_htf_breakout_shadows, get_anticipation_ohlcv, settle_htf_breakout_shadow,
+        get_split_dates_after, mark_htf_breakout_shadow_unbookable,
     )
     ripe = await get_settleable_htf_breakout_shadows(today - timedelta(days=24))
     settled = []
+    abstained = []
     for r in ripe:
         try:
+            # ── #667 GUARD 1: a SPLIT between the break and now ──────────────────────────
+            # The shadow stores RAW prices as of the break day; mi_daily_closes is retro-
+            # ADJUSTED. A split in between makes the two incomparable, and the settler would
+            # silently compare them anyway. CRWD 2026-07-01 is the recorded case: entry 778.82
+            # against a break-day low of 191.25, because a 1:4 executed on 2026-07-02.
+            # Checked BEFORE fetching bars — no point pulling prices we must not compare.
+            splits = await get_split_dates_after(r["ticker"], r["break_date"])
+            if splits:
+                sp = splits[0]
+                reason = (f"split_{sp['split_from']}:{sp['split_to']}_on_{sp['execution_date']}"
+                          f"_between_break_and_settle")
+                if await mark_htf_breakout_shadow_unbookable(r["id"], reason):
+                    abstained.append((r["ticker"], reason))
+                continue
+
             bars = de.db_rows_to_bars(await get_anticipation_ohlcv(r["ticker"], today))
             entry_idx = next((j for j, b in enumerate(bars)
                               if b["date"] == r["break_date"].isoformat()), None)
@@ -4722,12 +4739,21 @@ async def _htf_breakout_settle_job(today):
                                         stop=float(r["stop_loss_price"]), target_r=float(r["target_r"]))
             if res is None:
                 continue  # not enough forward bars yet — abstain, retry next run
+            # ── #667 GUARD 2: the settler refused the fill itself ────────────────────────
+            # PERMANENT, unlike the None above — mark it so no reader counts it and so it
+            # stops being re-considered every run.
+            if res.get("abstain_reason"):
+                if await mark_htf_breakout_shadow_unbookable(r["id"], res["abstain_reason"]):
+                    abstained.append((r["ticker"], res["abstain_reason"]))
+                continue
             if await settle_htf_breakout_shadow(r["id"], outcome=res["outcome"],
                                                 realized_r=res["realized_r"], fwd_mfe_r=res["fwd_mfe_r"]):
                 settled.append((r["ticker"], res))
         except Exception as e:
             logger.error(f"htf-breakout-shadow settle {r['ticker']}/{r['id']}: {e}", exc_info=True)
-    logger.info(f"htf-breakout-shadow settlement: {len(ripe)} ripe considered, {len(settled)} settled")
+    logger.info(f"htf-breakout-shadow settlement: {len(ripe)} ripe considered, {len(settled)} settled, "
+                f"{len(abstained)} marked unbookable (#667)"
+                + (f" — {abstained}" if abstained else ""))
     return settled
 
 

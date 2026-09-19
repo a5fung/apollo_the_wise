@@ -2306,8 +2306,13 @@ class MarketIntelligenceAgent(BaseAgent):
                 _cap = _o.get("capture_n") or 0
                 _caprate = f"{round(100 * _cap / _set)}%" if _set else "—"
                 lines.append("")
+                # #667: name the unbookable rows on the SAME line. Without this the capture
+                # rate simply drops (CDNA 2026-07-31 was the only capture and its fill was
+                # impossible) and a reader has no way to see why.
+                _unb = _o.get("unbookable_n") or 0
+                _unbs = f" · {_unb} unbookable" if _unb else ""
                 lines.append(f"🚩 *Breakout-entry shadow* — {_o.get('open_n') or 0} open · "
-                             f"{_set} settled ({_caprate} capture)")
+                             f"{_set} settled ({_caprate} capture){_unbs}")
                 for _bs in (_s.get("by_stage") or []):
                     _bset = _bs.get("settled_n") or 0
                     if _bset:

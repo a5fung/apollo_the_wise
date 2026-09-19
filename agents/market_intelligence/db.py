@@ -3279,6 +3279,13 @@ async def initialize_schema() -> None:
                 realized_r               FLOAT,
                 fwd_mfe_r                FLOAT,
                 settled_at               TIMESTAMPTZ,
+                -- #667: a PERMANENT abstain — the row can never be settled honestly. Set when the
+                -- break day's LOW is above our entry (a stop-limit BUY cannot fill above its limit,
+                -- so the fill was fiction) or when a split falls between the break and the settle,
+                -- which makes the stored RAW price and the retro-ADJUSTED bars incomparable.
+                -- `outcome` stays NULL so no reader can count it; this says WHY, so the row is not
+                -- mistaken for one still waiting on forward bars.
+                settle_abstain_reason    TEXT,
                 created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CHECK (outcome IS NULL OR outcome IN ('capture','stop','open'))
             );
@@ -3287,6 +3294,11 @@ async def initialize_schema() -> None:
                 ON mi_htf_breakout_shadow(ticker, break_date) WHERE outcome IS NULL;
             CREATE INDEX IF NOT EXISTS idx_htf_breakout_shadow_unsettled
                 ON mi_htf_breakout_shadow(break_date) WHERE outcome IS NULL;
+            -- #667: prod's table predates settle_abstain_reason, so CREATE TABLE IF NOT EXISTS
+            -- will not add it. Idempotent; safe on every boot. (Same pattern as
+            -- mi_sell_discipline_records' ADR columns.)
+            ALTER TABLE mi_htf_breakout_shadow
+                ADD COLUMN IF NOT EXISTS settle_abstain_reason TEXT;
 
             -- HTF Phase 4 MANAGEMENT shadow (#396) — a SIBLING table to mi_htf_breakout_shadow,
             -- not new columns on it. Reason: mi_htf_breakout_shadow's `outcome` column + its
@@ -12837,15 +12849,55 @@ async def insert_htf_breakout_shadow(ticker: str, break_date, *, break_time, par
 
 async def get_settleable_htf_breakout_shadows(break_on_or_before) -> list[dict]:
     """OPEN HTF breakout-shadow rows whose break_date is old enough that the forward window has likely
-    elapsed (coarse pre-filter; the settle math re-checks the exact bar count + abstains if short)."""
+    elapsed (coarse pre-filter; the settle math re-checks the exact bar count + abstains if short).
+
+    #667: rows carrying `settle_abstain_reason` are excluded — that abstain is PERMANENT (an
+    unfillable entry or a split across the window), so re-considering them every run would re-mark
+    the same rows forever and hide genuinely ripe ones behind them."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT id, ticker, break_date, entry_price, base_high, stop_loss_price, target_r
             FROM mi_htf_breakout_shadow
-            WHERE outcome IS NULL AND break_date <= $1
+            WHERE outcome IS NULL AND settle_abstain_reason IS NULL AND break_date <= $1
             ORDER BY break_date ASC
         """, break_on_or_before)
+    return [dict(r) for r in rows]
+
+
+async def mark_htf_breakout_shadow_unbookable(row_id: int, reason: str) -> bool:
+    """#667 — record a PERMANENT settle abstain, leaving `outcome` NULL so nothing counts the row.
+
+    The table's only `capture` was CDNA 2026-07-31, booked at 40.47 on a break day whose LOW was
+    40.67: the stock gapped above our order and a stop-limit BUY cannot fill above its limit. The
+    settler never compared the entry to the day's low, so it credited a fill we could not have got
+    and the one win in the table was fiction. This is the write that says so.
+
+    Guarded `WHERE outcome IS NULL` like the settle path, so it can never overwrite a real outcome
+    — except in the one-off repair of the two known-bad rows, which is a separate, explicit UPDATE."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute("""
+            UPDATE mi_htf_breakout_shadow
+            SET settle_abstain_reason=$2, settled_at=NOW()
+            WHERE id=$1 AND outcome IS NULL AND settle_abstain_reason IS NULL
+        """, row_id, reason)
+    return res.endswith(" 1")
+
+
+async def get_split_dates_after(ticker: str, after_date) -> list:
+    """#667 — split execution dates for `ticker` STRICTLY AFTER `after_date`.
+
+    Why this exists: `mi_htf_breakout_shadow` stores RAW prices as they stood on the break day,
+    while `mi_daily_closes` is retro-ADJUSTED. A split between the two makes any comparison
+    nonsense — CRWD 2026-07-01 has entry 778.82 against a break-day low of 191.25 because a 1:4
+    executed on 2026-07-02. Cheap enough to call per ripe row; `mi_splits` is tiny."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT execution_date, split_from, split_to FROM mi_splits "
+            "WHERE ticker=$1 AND execution_date > $2 ORDER BY execution_date",
+            ticker, after_date)
     return [dict(r) for r in rows]
 
 
@@ -12865,17 +12917,28 @@ async def settle_htf_breakout_shadow(row_id: int, *, outcome, realized_r, fwd_mf
 async def get_htf_breakout_shadow_summary() -> dict:
     """The HTF breakout forward-shadow READOUT — open/settled counts + the settled cohort's capture/stop
     rates + median realized_r/fwd_mfe_r, split by parent_stage. Also surfaces the would-reject count + an
-    open-overdue canary (advisor: make the survivorship residual VISIBLE, never silent). Aggregate only."""
+    open-overdue canary (advisor: make the survivorship residual VISIBLE, never silent). Aggregate only.
+
+    #667: `unbookable_n` is its own line and is EXCLUDED from `open_n`. Those rows can never settle
+    (an impossible fill, or a split across the window), so counting them as open would misreport the
+    pipeline — the same way the one impossible `capture` misreported the win rate."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         overall = await conn.fetchrow("""
-            SELECT count(*) FILTER (WHERE outcome IS NULL)              AS open_n,
+            SELECT count(*) FILTER (WHERE outcome IS NULL
+                       AND settle_abstain_reason IS NULL)               AS open_n,
                    count(*) FILTER (WHERE outcome IS NOT NULL)          AS settled_n,
                    count(*) FILTER (WHERE outcome = 'capture')          AS capture_n,
                    count(*) FILTER (WHERE outcome = 'stop')             AS stop_n,
                    count(*) FILTER (WHERE outcome = 'open')             AS timeout_n,
                    count(*) FILTER (WHERE would_reject_reason IS NOT NULL) AS would_reject_n,
-                   count(*) FILTER (WHERE outcome IS NULL AND break_date
+                   -- #667: rows we will NEVER settle because the fill or the price basis was
+                   -- fiction. Broken OUT rather than folded into open_n — an unbookable row is
+                   -- not "still waiting", and leaving it in open_n would overstate the pipeline
+                   -- exactly the way the impossible `capture` overstated the win rate.
+                   count(*) FILTER (WHERE settle_abstain_reason IS NOT NULL) AS unbookable_n,
+                   count(*) FILTER (WHERE outcome IS NULL AND settle_abstain_reason IS NULL
+                       AND break_date
                        < (NOW() AT TIME ZONE 'America/New_York')::date - INTERVAL '24 days')
                                                                         AS open_overdue_n,
                    percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r)

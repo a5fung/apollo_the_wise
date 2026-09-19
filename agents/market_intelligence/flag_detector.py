@@ -100,11 +100,38 @@ def _htf_settle_from_bars(bars, entry_idx, *, entry_price, stop, target_r=_HTF_B
     itself is in the forward window since the fill is intraday). #402(4) docstring fix: NOT a thin
     wrapper — entry_bet_outcome returns only (outcome, fwd_mfe_r); realized_r (capture=+target_r /
     stop=-1.0 / open=mark-to-window at the window end) is a SEPARATE branch computed HERE, not
-    delegated. Returns {outcome, fwd_mfe_r, realized_r} or None to ABSTAIN (window incomplete +
-    undecided). Capture credited on a same-bar high>=tgt tie. bars are db_rows_to_bars dicts with
-    c/h/l."""
+    delegated. Capture credited on a same-bar high>=tgt tie. bars are db_rows_to_bars dicts with
+    c/h/l.
+
+    THREE RETURN SHAPES, and the caller must tell the last two apart (#667):
+      {outcome, fwd_mfe_r, realized_r}          — settled.
+      None                                      — TEMPORARY abstain: the forward window is not
+                                                  complete yet. Retry on the next run.
+      {"outcome": None, "abstain_reason": str}  — PERMANENT abstain: the fill itself was
+                                                  impossible (break-day low above our stop-limit
+                                                  entry). No number of forward bars fixes it; the
+                                                  row must be MARKED, never settled."""
     from agents.market_intelligence.anticipation import entry_bet_outcome
     entry = float(entry_price)
+
+    # ── #667: REFUSE A FILL WE COULD NOT HAVE GOT ────────────────────────────────────────
+    # The HTF entry is a stop-limit BUY at base_high. It can only fill if the break day
+    # actually TRADED at or below that price. When the day's LOW is above our entry the stock
+    # gapped straight over the order — the limit blocks it, and any real fill would have been
+    # at a WORSE price (the open), which is a different trade from the one recorded.
+    #
+    # This was not hypothetical: CDNA 2026-07-31 was booked at 40.47 on a break day whose low
+    # was 40.67, and it was the ONLY `capture` in the whole table. The settler passed
+    # include_entry_bar=True and never compared the entry to that bar's low, so the single win
+    # in the evidence base was a trade nobody could have entered.
+    #
+    # Abstain PERMANENTLY rather than return None: None means "not enough forward bars yet,
+    # retry next run", and this can never become bookable no matter how many bars arrive.
+    low = bars[entry_idx].get("l") if entry_idx < len(bars) else None
+    if low is not None and float(low) > entry:
+        return {"outcome": None,
+                "abstain_reason": f"unfillable_entry_{entry:.2f}_below_break_low_{float(low):.2f}"}
+
     bet = entry_bet_outcome(bars, entry_idx, stop, target_r=target_r, window=window,
                             entry_price=entry, include_entry_bar=True)
     if bet is None:

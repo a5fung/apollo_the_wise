@@ -32,6 +32,7 @@
     "tests/test_647_machine_text_alerts_on_html_layer.py": 2,
     "tests/test_649_bare_window_is_watched.py": 1,
     "tests/test_651_judge_named_themes.py": 7,
+    "tests/test_667_unbookable_htf_fills.py": 1,
     "tests/test_account_mode_literal_gate.py": 4,
     "tests/test_alert_rank_shadow.py": 2,
     "tests/test_anticipation_graduation_predicate.py": 1,
@@ -136,6 +137,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 404,
+  "total": 405,
   "unescaped": 360
 }
