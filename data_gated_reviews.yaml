@@ -81,6 +81,36 @@
 #       "this text lives under review Y." Caught only by reading it. No gate
 #       for this; care on the edit is the only fix.
 #
+#   can_fire: — REQUIRED on every NEW or EDITED open entry (#634 2026-09-09, extended #669
+#              2026-09-19; `check_plan._review_can_fire_gate` FAILS the commit without it, and
+#              `operator_asks.py --audit` lists the pre-existing entries that lack it as the
+#              standing backlog). Seven keys, each a SENTENCE saying what was CHECKED and when —
+#              not that it was checked (12 characters is the floor; "yes"/"n/a" are not answers).
+#              A gate cannot check the answer; it forces the question. The seven:
+#     predicate_runs:        it EXECUTED against prod on <date> and returned <value>.
+#     nonzero_possible:      the writer of the counted rows exists and its job is registered
+#                            (file:line), or the zero is structural and says why.
+#     lane_live:             the strategy/lane it depends on is enabled, or n/a + why.
+#     threshold_vs_observed: the observed range OF THE RIGHT POPULATION and where the bar sits;
+#                            an accrual rate, so "N months out" is stated rather than implied.
+#     era_scoped:            the eras of EVERY TABLE THE METHOD READS — action_when_ready's
+#                            joins and scripts included — not just the window the predicate's
+#                            cohort spans. p74 compared capture rates straddling the 2026-06-26
+#                            HTF criteria swap while its cohort window was single-era.
+#     population_actionable: the rows the predicate COUNTS are rows the action can ACT on —
+#                            name the filter the action applies (stratum, signal_type,
+#                            account_mode, era, takeable) and show the predicate applies the
+#                            same one, or say why a wider count is deliberate. theme_relevance
+#                            counted every stratum while its action handled `themed` only, and
+#                            was READY with an empty ask (2026-09-16).
+#     instrument_trusted:    WHAT the action reads (table / column / script) and WHY it can be
+#                            trusted today — last verified, known phantom rows, dark joins,
+#                            columns that return a number for an unelapsed window.
+#                            htf_adr_threshold_tune read a table whose only capture was a
+#                            phantom fill (#667); p74's script joined account_mode='paper',
+#                            dark since 2026-07-14.
+#     The audit that wrote these for the open entries: docs/analysis/669_review_registry_audit_2026-09-19.md
+#
 # Status semantics:
 #   pending  — review hasn't fired ready yet (predicate not met OR date not reached)
 #   done     — review has been acted on; decision made; no further action.
@@ -148,18 +178,32 @@ reviews:
       SELECT count(*) FROM mi_ep_alerts
       WHERE alert_date > '2026-09-06';
     can_fire:
-      predicate_runs: "2026-09-10 - runs and returns a number. It did NOT before today: the
-        entire statement sat inside a folded -- comment."
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 11: alerts on
+        09-08 (6), 09-14 (2), 09-16 (1), 09-17 (2). It did NOT run before 2026-09-10: the entire
+        statement sat inside a folded -- comment."
       nonzero_possible: "mi_ep_alerts is the live alert table, written by ep_detector on every
-        scan tick - 109 HIGH rows in the last 51 days alone, so non-zero is routine."
+        scan tick; 11 rows in the 13 days since the anchor, so non-zero is routine."
       lane_live: "n/a - this counts EP alerts rather than a strategy lane; MAGNA53 EP is the
         live setup and is enabled."
-      threshold_vs_observed: "40 alerts since 2026-09-06, measured on the SAME population the
-        predicate counts (mi_ep_alerts, all tiers). That table takes tens of rows a week, so 40
-        sits inside the observed range rather than beyond it - roughly a fortnightly cadence."
+      threshold_vs_observed: "20 against an observed 11. ⚠ RE-GATED 2026-09-19 from 40: the 09-10
+        evidence said 'tens of rows a week, roughly a fortnightly cadence' - true in early August
+        (51 then 33 alerts a week) and false since: 11, 6, 4, 6, 5 a week from mid-August on. At
+        5 a week, 40 was an EIGHT-week cadence wearing a fortnight's label. 20 is roughly a month
+        at today's rate and a fortnight at August's, and still yields the ten-name balanced sample
+        he engaged with. A cadence timer, not a trade rule."
       era_scoped: "Anchored at 2026-09-06, the date of the last review sample, so it measures
-        volume SINCE that ruling rather than all history."
-    threshold: 40
+        volume SINCE that ruling rather than all history. The action's forward outcomes come from
+        settled 20-session windows on mi_daily_closes - price history, no rule era to straddle."
+      population_actionable: "Deliberately WIDER than the action's sample (documented in
+        population_note below): the predicate counts every alert as a timer, while the action
+        builds a balanced ten from HIGH-that-collapsed and below-bar-that-ran. Every counted row
+        is a candidate for one of those two sides, so nothing counted is un-actionable; the
+        sample is drawn FROM the count, never equal to it."
+      instrument_trusted: "The action reads mi_ep_alerts (score tier at alert time) and
+        mi_daily_closes for 20-session forward paths. Both verified populated 2026-09-19; the
+        closes table is the same one every settle job reads. The one trap is named in the action:
+        a cutline found by LOOKING at ~25 labelled dates is not evidence."
+    threshold: 20   # RE-GATED 2026-09-19 from 40 (#669): see can_fire.threshold_vs_observed
     earliest_review_date: 2026-09-20
     action_when_ready: |
       BUILD THE NEXT SAMPLE, balanced both ways — never a list of failures:
@@ -225,16 +269,60 @@ reviews:
       system, we need to know when to review as needed as well." A read taken under
       rules that no longer exist is the exact defect that retracted the geometry
       analysis the same day.
-    predicate_sql: >-
+    predicate_sql: |
+      -- ⚠ RE-SCOPED 2026-09-19 (#669 audit). The 2026-08-29 read was VOIDED eight days later by the
+      -- #545 exit flip (2026-09-06: +2R partial -> +8R plus a price-armed breakeven, magna53) - the
+      -- exact "change to the exit stack" the entry says voids the read - and this predicate could
+      -- not see it: mi_safeguard_state holds feature toggles of every kind, not exit rules. What it
+      -- DID count was `live_yoy_recovery_inwindow|global` (09-05) and `theme_birth_gate|paper`
+      -- (09-13), two toggles that touch no exit, so it read 83 and would have fired 09-29 saying
+      -- "a safeguard moved" about the wrong two rows while the real void went unmentioned.
+      -- NOW: (a) the trade arm counts era-D live MAGNA53 closes only - a Run-U re-cut under the
+      -- current control needs trades that RAN under it; (b) the safeguard arm counts LIVE-mode
+      -- transitions since the era start (paper/global toggles do not void a live exit read).
+      -- The era literal is pinned to rule_eras.py's latest exit switch by
+      -- tests/test_exit_counterfactual_consolidation_631.py, so the NEXT flip goes RED here.
       SELECT
         (SELECT count(*) FROM mi_live_trades
           WHERE status = 'closed' AND risk_dollars > 0
-            AND alert_date > '2026-08-29')
+            AND account_mode = 'live' AND signal_type = 'magna53'
+            AND created_at >= DATE '2026-09-06')
         + 40 * (SELECT count(*) FROM mi_safeguard_state
-                 WHERE last_transition_at > '2026-08-29');
+                 WHERE account_mode = 'live'
+                   AND last_transition_at >= DATE '2026-09-06');
     threshold: 40
-    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode, mi_safeguard_state.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode, mi_safeguard_state.account_mode]  # backfilled 2026-08-30 (#573); all three FILTERED since 2026-09-19 (#669)
     earliest_review_date: 2026-09-29
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - the re-scoped form runs against prod and returns
+        2 (two era-D live magna53 closes, zero live-mode safeguard transitions since 09-06). The
+        prior form returned 83 the same day: 3 trades + 40 x 2 toggles that touch no exit."
+      nonzero_possible: "mi_live_trades gains a closed live magna53 row on every stop-out or exit
+        (30 all-time, 2 in era D); mi_safeguard_state rows carry last_transition_at on every
+        toggle flip. Both arms are written by live code paths and already read non-zero."
+      lane_live: "MAGNA53 EP is the live setup and the only strategy the 09-06 flip touched
+        (rule_eras.PARTIAL_8R_SIGNAL_TYPES), so the era boundary and the lane coincide."
+      threshold_vs_observed: "40 against 2 on the trade arm - at the observed ~3-4 live closes a
+        month that is roughly a year, and that is the HONEST reading: the runner question is
+        fat-tailed and cannot be re-cut on a handful of closes. The safeguard arm (one live
+        transition = 40) is what brings it forward, and it fires on the class of event that
+        actually voids a read now that paper/global toggles are excluded."
+      era_scoped: "The predicate and the action both live in era D (created_at >= 2026-09-06,
+        pinned to rule_eras by test). The METHOD reads scripts/probes/_bt_replay.py over the Run-U
+        BACKTEST population (docs/analysis/ep_backtest_run1_2026-08-29.md) - a stored-bar replay
+        whose CONTROL must be re-cut to the era-D exit stack before any looser rule is compared
+        against it; the 08-29 control (+2R partial, breakeven after) no longer exists live. #605's
+        survivor-only capture caveat still applies to the live arm."
+      population_actionable: "The trade arm counts exactly what the sweep would add: closed live
+        magna53 trades that ran under the current exit stack. The safeguard arm counts the
+        event that voids the prior read (a LIVE-mode toggle). Before 2026-09-19 it counted every
+        strategy, both account modes and every global/paper toggle - a population the action
+        could not act on and, on 09-19, would have been reported as 'a safeguard moved'."
+      instrument_trusted: "The action reads mi_live_trades (closed live rows, exits JSON) and the
+        _bt_replay.py probe over stored minute bars. The live table is the broker-reconciled
+        record; the replay is arithmetic over bars we already hold ($0). ⚠ Known limit carried
+        from #605: live capture is survivor-only, so the live arm under-samples runners that
+        were stopped before running - the backtest population is the primary evidence here."
     status: pending
     action_when_ready: |
       RE-RUN THE SWEEP, do not re-derive it: scripts/probes/_bt_replay.py plus the Run-U
@@ -906,13 +994,40 @@ reviews:
       meaningful. Re-evaluate scope after canonicalization (R3) ships.
     predicate_sql: null
     threshold: 0
-    earliest_review_date: 2026-10-01
+    # RE-DATED 2026-09-19 (#669 audit) 2026-10-01 -> 2026-11-01, aligned with theme_as_ep_signal:
+    # R4 is a forward-RETURNS column on themes, and the operator's 2026-09-07 ruling is "getting
+    # themes right and returns are separate things for now" - a returns readout on today's
+    # themed cohort (a theme is named a median 30 sessions after its first signal, 140 of 398
+    # sat unnamed - #486) would decorate the dashboard with a number the ruling says cannot
+    # stand. Parked behind the #486 theme-naming work like its sibling; not closed, because the
+    # column is still wanted once the engine is fixed.
+    earliest_review_date: 2026-11-01
     added_on: 2026-04-29
     action_when_ready: |
-      Verify R3 (canonicalization) is shipped first. Then build R4 in
-      rs-theme-dash repo: per-theme median forward 5d/20d return computed
+      FIRST check the 2026-09-07 ruling still holds (themes not judged on returns until the
+      engine is fixed - #486/#655); if it does, re-date again with the reason rather than build
+      a column the ruling disowns. Then: verify R3 (canonicalization) is shipped. Then build R4
+      in the rs-theme-dash repo: per-theme median forward 5d/20d return computed
       from mi_themes ticker membership joined to mi_daily_closes.
       Origin: project_rs_theme_dash_backlog.md.
+    can_fire:
+      predicate_runs: "N/A by design - `kind: cadence`, predicate_sql is genuinely null; a date
+        fire that cannot read zero."
+      nonzero_possible: "Fires on its date. The inputs it would build on exist: mi_themes
+        membership (298 themes on the 30-day board on 2026-09-19) and mi_daily_closes."
+      lane_live: "n/a for a strategy lane - a dashboard column in the rs-theme-dash repo."
+      threshold_vs_observed: "0 - cadence entry, the date is the gate; stated so a 0 is never
+        read as an empty predicate."
+      era_scoped: "The theme engine's naming/lifecycle is mid-repair (#486 deployed, verify-date
+        2026-10-15; #655 re-sequenced 09-13; #660 09-18); a forward-return column over membership that
+        spans those changes would average themes that did not exist as named under the same
+        rules - which is the reason for the re-date, not a caveat on it."
+      population_actionable: "A date-fire has no counted population; the action's first step
+        now asks whether the ruling that parks it has lifted, so it cannot fire into a build
+        the operator has already said is premature."
+      instrument_trusted: "mi_themes (engine-written nightly) + mi_daily_closes; both populated.
+        The instrument is not broken - it is CHANGING (#486/#655/#660), which is the p74 class
+        this key exists to make someone say out loud."
     status: pending
 
   - review_id: mna_filter_direction_blindness_path_a
@@ -1810,6 +1925,18 @@ reviews:
         satisfy it, so no one has to remember to re-date the window when the move lands. This replaces
         the 2026-08-06 `regate_kind: date`, which pushed a date and left the predicate counting
         ANY decision day (22 of 30) including 11 empty queues.
+      population_actionable: >-
+        (#669 2026-09-19) The predicate counts CONTESTED post-move decision days (slots > 0 and
+        slots < candidates, ranked before 09:30); the action compares winners vs fills on exactly
+        those days. Empty-queue days - the rows that made it fire falsely on 06-02 and 08-06 - are
+        excluded by the same clause both now share. Re-run 09-19: still 0, still by design (the
+        9:28 move has not shipped).
+      instrument_trusted: >-
+        mi_audit_log `unified_allocation_decided` (detail is TEXT holding JSON; every non-empty
+        row parses, verified 09-14) joined to mi_live_trades fills by alert_date. ⚠ The instrument
+        is currently MIS-TIMED, not broken: at 9:35 it reads slots AFTER the 9:31 fills, so 6 of
+        7 historical winners were double-counted (09-14 resolution). Rows written after the 9:28
+        move are the only ones the comparison may use, and the `< 09:30` clause enforces that.
     action_when_ready: |
       Pull the audit events:
         SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day, summary, detail
@@ -2918,7 +3045,23 @@ reviews:
         multiple has not moved since, so the window is single-era for the question asked. ⚠ The
         CONTROL spans the same dates by construction, which is what makes the comparison era-matched
         rather than merely contemporaneous - but see the resolution: the control first used was not
-        the admitted population at all, and the era-matching was the only thing about it that held."
+        the admitted population at all, and the era-matching was the only thing about it that held.
+        (#669 2026-09-19) The METHOD reads mi_daily_closes for MFE - price history, no rule era -
+        but the ADMITTED control's composition moved with every admission-stack change (9% gap
+        floor 08-28, real-time authority 08-27): state the admitted cohort's era split beside the
+        rate, since a tighter admitted book raises the bar the rejected names are measured against."
+      population_actionable: "The predicate counts magna53 setup:stop_too_wide skip rows with a
+        settled 25-day window; the action pulls those SAME rows (skip_reason LIKE
+        'setup:stop_too_wide%', alert_date >= 05-05) and scores them from raw bars. Both account
+        modes, both sides - a skip took no position, so paper skips are valid evidence (declared
+        exemption). The 2026-08-17 defect (9m_day2 rows counted) is closed by the signal_type
+        filter both now share."
+      instrument_trusted: "REJECTED side: mi_live_trades skip rows + mi_daily_closes MFE over
+        d+1..d+5 from the gap-day open. ADMITTED control: entered magna53 rows (no skip_reason,
+        status not cancelled/skipped) scored the same way - NEVER mi_ep_missed_outcomes, which by
+        construction holds only names we did not enter and was the 'admitted' control on 09-16 that
+        contained zero admitted names. Units: max_high_5d/ret_5d are FRACTIONS (0.14 = +14%),
+        reconciled against raw bars on SDOT/RETO 09-16; read naively they invert the verdict."
     threshold: 20   # RE-GATED 2026-09-16 from 10. The n=10 bar was MET and READ (resolution
     # below); the verdict was "cannot tell" — 4 of 11 against a truly-admitted 17 of 25 is p=0.141.
     # ⚠ SET TO 40 EARLIER THE SAME DAY, CORRECTED THAT EVENING. 40 was sized against a cohort I
@@ -2953,17 +3096,32 @@ reviews:
          - Median ret_5d, ret_20d, max_high_5d (max-favorable-excursion)
          - Score distribution by ep_score band (50-69 MOD, 70-99, 100+)
 
-      3. Decision matrix:
-         - 5d hit-rate ≥ 30% AND median max_high_5d ≥ +8% → REVISIT.
-           Filter is shedding winners. Options to test in shadow:
+      3. Decision matrix — CONTROL-RELATIVE since 2026-09-19 (#669 audit; the bars the
+         2026-09-16 resolution said were "owed at that point"). The ABSOLUTE bars it replaces
+         (REVISIT at hit-rate >=30% AND median MFE >=+8%; KEEP at <20% OR <+3%) could only ever
+         return REVISIT: the rejected cohort read 36.4% / +8.6% while the ADMITTED book ran
+         68.0% / +14.6%, so a cohort HALF as good as what we trade cleared both REVISIT bars.
+         A rule with one reachable answer is the check-that-cannot-fail in decision form.
+         Every comparison below is rejected-vs-ADMITTED on the SAME measure (MFE over d+1..d+5
+         from the gap-day open, raw bars), same window, both cohorts' n stated:
+         - REVISIT — the rejected cohort's hit-rate (MFE >= +10%) is AT LEAST the admitted
+           cohort's AND its median MFE is at least the admitted median (the filter is turning
+           away names as good as the ones it lets through). Options to test in shadow:
              (a) Widen multiple 1.5x → 2.0x — measure how many additional
                  candidates pass + their cohort outcomes
              (b) Replace stop anchor: stop = VWAP at ORB-low or stop = max(ORB_low, prior_day_low). Wider effective
                  stop for high-ATR names while keeping ORB-high entry.
              (c) Tier the gate: keep 1.5x for MODERATE, loosen to 2.0x for
                  HIGH (score ≥ 80). Score-conditional looseness.
-         - 5d hit-rate < 20% OR median max_high_5d < +3% → KEEP. Filter
-           correctly rejecting low-R:R setups.
+         - KEEP — the rejected cohort is below the admitted cohort on BOTH measures with
+           Fisher p < 0.10 on the hit-rate (the filter is correctly rejecting the weaker names).
+         - CANNOT TELL — anything else (below on both but not separable, or split on the two
+           measures): say so, state both n and the p, and RE-ARM at +10 rejected rows. This
+           third answer is deliberate; on 2026-09-16 it was the true reading (p=0.141) and the
+           old matrix had no way to say it.
+         ⚠ These bars are PROPOSED by the review, not operator-set; the stop filter itself is
+         entry discipline (THE LINE) and any change to it still needs CHANGE_PROCESS + his
+         sign-off regardless of which bucket fires.
 
       Origin: STRL 5/05 single-case anomaly (#11 filed 2026-05-13 session 2).
       AIP 5/13 second case raised priority to formal cohort review.
@@ -3363,6 +3521,20 @@ reviews:
       era_scoped: >-
         The proxy is current-state. Era scoping for the REAL predicate is undefined until the two
         audit events exist, which is part of what #633 owes.
+      population_actionable: >-
+        (#669 2026-09-19) NO, and declared: the predicate counts a naked-position PROXY
+        (naked_position_detected / stop_placement_failed_after_partial / entry_fill_stop_remediated),
+        while the action's step 1 wants to identify WHICH branch fired from a specific event.
+        Site 1's `entry_fill_stop_remediated` DOES emit (broker/trade_stream.py) and
+        `naked_position_detected` emits from agent.py; site 2's
+        `stop_placement_failed_after_partial` has no emitter (exempted by name in
+        test_gated_review_predicates_runnable). So a site-1 fire is attributable, a site-2 fire is
+        only visible if it also goes naked. Writer-less remainder on #633/#635, not re-gated here.
+      instrument_trusted: >-
+        mi_audit_log for three events, one of which nothing writes - the instrument is PARTLY
+        ABSENT and this entry has said so since 09-06. Re-run 09-19: 0. The two emitted names
+        (verified by grep 2026-09-19: agent.py, broker/trade_stream.py) are trustworthy; the
+        third is the gap.
     zero_verdict: >-
       2026-09-06 WAITING — ALREADY RULED, re-surfacing for the same reason: the verdict lived in
       #184's PLAN line, not here. Its naked-position proxy returned 0 over 14 days. ⚠ The predicate's
@@ -5696,6 +5868,31 @@ reviews:
         AND created_at < CURRENT_DATE - INTERVAL '7 days';
     threshold: 20
     earliest_review_date: 2026-09-29
+    # 2026-09-19 (#669 audit): the writer-less zero was ruled in a `#` comment above, which the
+    # loader cannot see - so from 09-29 `operator_asks.py --audit` would have listed this as an
+    # unruled zero past its date. The ruling now lives in the field the loader reads.
+    zero_verdict: "2026-09-19 WAITING — structurally: 'meta_rubric_score_advisory' has no emitter until #335 flips composite authority (get_composite_authority_enabled, ep_detector.py ~5993); exempted by name in tests/test_gated_review_predicates_runnable.py. The predicate moves in #335's commit."
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 0. Clean SQL; the
+        event name is simply not written by anything yet."
+      nonzero_possible: "NOT TODAY, by design: the composite computes only behind
+        get_composite_authority_enabled() (#335, in_progress, ETA 2026-09-19) and emits no
+        per-alert advisory event until it flips. The writer is #335's deliverable; this predicate
+        must be re-pointed at whatever event name #335 emits, in the same commit."
+      lane_live: "MAGNA53 EP live grading path; the composite authority toggle is OFF."
+      threshold_vs_observed: "20 against 0, structurally. Once #335 emits, ~1-2 graded alerts a
+        day makes 20 settled roughly three weeks."
+      era_scoped: "No rows yet, so no era to scope; when #335 lands, the composite's rubric
+        version is the era and the action's 'R-expectancy vs current cohort' comparison must
+        use trades entered under the same exit stack (era D or later) - the p74 shape if the
+        exit rule moves mid-window."
+      population_actionable: "Once emitted, the predicate counts settled advisory-scored alerts
+        and the action backtests the gate on those same alerts' outcomes. Same rows by
+        construction; today both are empty for the same structural reason."
+      instrument_trusted: "mi_audit_log rows of an event that does not exist yet - the
+        instrument is ABSENT, not broken, and this entry says so rather than reading its zero as
+        'no data has accrued'. catalyst_rubric_quarterly keys on the same event and carries the
+        same note."
     action_when_ready: |
       Per CLAUDE.md "Trading Setup Changes — Read SSoT First":
       1. Backtest N≥10 historical samples under new gating logic
@@ -5911,16 +6108,27 @@ reviews:
     # methodologically right read: judge the stock's ADV/sector AS OF the alert,
     # not "at any point in its history".
     predicate_sql: |
+      -- ⚠ RE-POINTED 2026-09-19 (#669 audit): this counted ALERTS in a ROLLING 90-day window
+      -- (8 on 09-19) while its own 07-30 verdict and action_when_ready demand N>=10 ENTRY-AWARE
+      -- CLOSES ("Re-look when the CORRECTED predicate reaches 10 entry-aware CLOSES - not 10
+      -- alerts"). Two defects in one: the population was alerts not trades (7 of 12 alerts never
+      -- filled), and a rolling window can SHRINK, so the gate could ripen and un-ripen forever.
+      -- NOW: closed MAGNA53 trades (both account modes - a fill's follow-through is the
+      -- question, and paper fills answer it; declared exemption below) whose alert met the
+      -- small-cap-biotech + rel_volume<0.5 profile as of the alert. Anchored, not rolling.
       SELECT COUNT(*) FROM (
-        SELECT DISTINCT a.ticker, a.alert_date
-          FROM mi_ep_alerts a
+        SELECT DISTINCT lt.ticker, lt.alert_date
+          FROM mi_live_trades lt
+          JOIN mi_ep_alerts a
+            ON a.ticker = lt.ticker AND a.alert_date = lt.alert_date
           JOIN LATERAL (
             SELECT adv_20, close, sector
               FROM mi_stock_scores s
              WHERE s.ticker = a.ticker AND s.score_date <= a.alert_date
              ORDER BY s.score_date DESC LIMIT 1
           ) s ON TRUE
-         WHERE a.alert_date >= CURRENT_DATE - 90
+         WHERE lt.status = 'closed'
+           AND lt.signal_type = 'magna53'
            AND a.score_tier = 'HIGH'
            AND a.rel_volume IS NOT NULL
            AND a.rel_volume < 0.5
@@ -5930,6 +6138,32 @@ reviews:
                 OR s.sector ILIKE '%pharma%'
                 OR s.sector ILIKE '%health%')
       ) x;
+    # #573 declaration (added 2026-09-19): signal_type IS filtered (magna53); account_mode is
+    # deliberately NOT - the question is whether a thin-volume small-cap biotech fill follows
+    # through, and RLAY (paper, the seed case) answers it as well as NVCR (live). Same declared
+    # exemption as stop_too_wide_outcome_cohort.
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - the re-pointed form runs against prod and returns
+        5: RLAY 05-21 (paper, -$643), NVCR 07-23 (live, -$24), ABCL 08-10 (live, +$128), ETON
+        08-14 (live, +$19), PHVS 09-08 (live, -$11). The prior alerts-only form returned 8."
+      nonzero_possible: "Written by the live ORB entry path (mi_live_trades closes) joined to
+        the alert row the EP scan writes; 5 already, no missing writer."
+      lane_live: "MAGNA53 EP is the live setup and the only signal_type counted."
+      threshold_vs_observed: "10 against 5 closed, accrued over four months (1 in May, then Jul,
+        Aug x2, Sep) - roughly 1 a month, so the bar is ~5 months out. Honest: an entry filter
+        cannot ship on 5 trades (CHANGE_PROCESS N>=10) and the 07-30 verdict said so."
+      era_scoped: "The stop/exit stack changed twice inside this cohort (2R stop 2026-08-16, +8R
+        partial 2026-09-06) - RLAY and NVCR closed under the ORB-low stop, ABCL/ETON under the 2R
+        stop, PHVS under era D. The action's WR read is on trade OUTCOMES, so it MUST segment by
+        exit era or say the mix; the win/loss direction is what the decision matrix keys on and
+        that survives the era change better than the dollar figures do."
+      population_actionable: "Now yes: the action's cohort is 'N>=10 with mi_live_trades join
+        (entry-aware)' and the predicate counts exactly those closed trades. Before 09-19 it
+        counted alerts, 7 of 12 of which never filled - rows the WR matrix cannot score."
+      instrument_trusted: "The action reads mi_live_trades.total_pnl (broker-reconciled) for WR
+        and mi_stock_scores as-of the alert for ADV/sector - the LATERAL as-of read fixed on
+        2026-07-30 after the any-score-row join inflated the count 40x. Both verified 09-19."
     # ── RUN 2026-07-30 (inline, read-only). VERDICT: NO SHIP — INSUFFICIENT EVIDENCE.
     # THE GATE FIRED ON AN ARTIFACT (see above). Entry-aware cohort, the methodology
     # this review's own action_when_ready demands: on the looser any-score-row read,
@@ -6329,6 +6563,17 @@ reviews:
         The invariant is methodology-independent (a long needs entry > stop, and hard_stop > stop),
         so it survives exit-rule changes including the 2026-09-06 flip. No historical window to
         strand.
+      population_actionable: >-
+        (#669 2026-09-19) The predicate counts closed trades (both account modes - a wrong VALUE
+        written by an authorised writer is account-independent; declared exemption) whose
+        hard_stop sits ABOVE the working stop or whose stop is non-positive; the action
+        investigates exactly that offending row's writer. Same rows. Re-run 09-19: 0.
+      instrument_trusted: >-
+        mi_live_trades stop_price / hard_stop / entry_price on closed rows - the live exit path's
+        own columns. ⚠ The one clause that WAS untrustworthy (`stop_price > entry_price`, which
+        fired on seven PROFITABLE trailed stops) was removed 2026-09-08; the remaining clauses
+        match the KLAR shape and nothing else. pnl_attribution IS NULL excludes rows already
+        reconciled by hand.
     zero_verdict: >-
       2026-09-11 WAITING — no KLAR-class recurrence since the review became eligible 2026-09-01, and
       none since the original bug. This is a BUILD PROPOSAL gate, not an incident monitor: zero
@@ -7768,12 +8013,42 @@ reviews:
         -- the U&R's own invalidation (SSoT: stop = undercut_low), NOT the parent flag's
         -- close-below-SMA20 / lowest-close rule, which fired on 6 of 6 U&Rs ever (#633)
         AND d0.close > u.undercut_low
-        AND d10.close IS NOT NULL;
+        AND d10.close IS NOT NULL
+        -- ERA SCOPE added 2026-09-19 (#669 audit), mirroring the sibling support-test review's
+        -- 2026-09-15 fix: the 2026-06-27 #356 HTF parent rebuild replaced this detector's parent
+        -- entirely, and ALL FOUR rows the predicate counted (COMP 06-03, TTMI 06-09, CPSH 06-09,
+        -- SNOW 06-18) predate it - the 4 of 10 was 100% old-parent era. Current era alone is 0
+        -- settled (PAY 08-27 closed under its stop; RUM 09-08 and PURR 09-15 not yet settled).
+        AND u.ur_date >= DATE '2026-06-27';
     threshold: 10
     # #633 2026-09-09: reviewed — mi_flag_undercut_rally carries no setup/account column;
     # parent_stage (TIGHTENING/COILED/TRIGGERED) is context the review grades ACROSS, not a
     # different question.
     discriminates_on: []
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod: 4 unscoped, 0 with the
+        2026-06-27 era clause now in the predicate. Clean SQL either way."
+      nonzero_possible: "The detector is alive - rows on 08-27, 09-08 and 09-15 (7 ever) - and
+        RUM/PURR both held above their undercut low on day 0, so they enter the count when their
+        10th forward session lands (RUM ~09-22, PURR ~09-29). The zero is maturity, not a dead
+        writer."
+      lane_live: "The U&R scan runs on every TIGHTENING/COILED/TRIGGERED name; graduation is
+        held by the operator's standing no-new-setups priority, not by the lane."
+      threshold_vs_observed: "10 against 0 current-era (was 4 pooled). U&R is rare by nature - 3
+        fires in the 12 weeks since the rebuild - so 10 is roughly a year out and the entry's
+        own bucket 3 ('N<10: bump +30d') is the honest path; say so rather than pool eras."
+      era_scoped: "YES as of 2026-09-19 - ur_date >= 2026-06-27, the #356 parent rebuild. The
+        action reads mi_daily_closes for 5d/10d returns (price history, no era) and
+        current_price/undercut_low from the row itself (written at detection, one era)."
+      population_actionable: "The predicate counts settled current-era U&Rs that survived their
+        OWN stop; the action computes forward returns on exactly those rows and measures risk
+        against the same undercut_low. Before 09-19 four of four counted rows came from a parent
+        that no longer exists - the action would have graded a detector we do not run."
+      instrument_trusted: "mi_flag_undercut_rally (detector-written at the scan tick) plus
+        mi_daily_closes. The 09-09 fix removed the parent flag's invalidation rule that excluded
+        every row; the remaining trap the action names is that v1's undercut is the day LOW and
+        the reclaim is the snapshot price, so no fill is simulated - stated, not fixed."
+    zero_verdict: "2026-09-19 WAITING — the era-scoped count is 0 for want of MATURITY, not of fires: RUM 09-08 and PURR 09-15 both held above their undercut low on day 0 and enter the count when their 10th forward session lands (~09-22, ~09-29). The 4 it read before were all pre-06-27 parent-era rows. Detector alive (rows 08-27, 09-08, 09-15)."
     earliest_review_date: 2026-07-15
     action_when_ready: |
       Pull cohort. Compute 5d/10d forward returns from current_price
@@ -7898,6 +8173,16 @@ reviews:
         YES, as of 2026-09-15 — `t.test_date >= DATE '2026-06-27'`, the #356 HTF parent rebuild.
         This is the fix; it replaces the bucket-3 instruction to bump the date +30d, which would
         have been a calendar block on evidence that is already in.
+      population_actionable: >-
+        (#669 2026-09-19) The predicate counts settled current-era support-tests that survived
+        the parent flag's EOD invalidation; the action computes 5d/10d returns from the
+        bounce-detection price on exactly those rows. Same rows, same era clause. Re-run 09-19:
+        9 of 10. ⚠ The 65%-invalidated-same-day fact from 09-15 is a property of the DETECTOR,
+        stated in the resolution, not a population gap in the trigger.
+      instrument_trusted: >-
+        mi_flag_support_tests (detector-written at the scan tick; current_price is the snapshot
+        price, not a fill) + mi_daily_closes. No phantom-fill class: nothing here simulates an
+        entry, which is why the action forbids graduation without a minute-bar simulation.
     resolution_2026_09_15: |
       NOT ENOUGH N — and the predicate was wrong, not just the count.
 
@@ -8183,24 +8468,53 @@ reviews:
       -- ~87% of live ORB entries — separate issue, doesn't block this
       -- predicate from accruing once coverage improves OR as more
       -- live trades land. Re-run at threshold.
+      -- ⚠ 2026-09-19 (#669 audit): the coverage gap is CLOSED - 58 of 58 live entries since the
+      -- 2026-06-18 ORB-window fix have their 9:30 bar (56 of 56 in the trailing 90 days). And
+      -- the ROLLING 90-day window was replaced by that fixed anchor: a review that waits for
+      -- accrual cannot sit on a window that forgets - at ~1 outlier a month it could never
+      -- reach 10 inside 90 days. Reads 5 either way today; the anchored form only grows.
       WITH bars AS (
           SELECT ticker,
                  bar_time::date AS bar_date,
                  open AS o, high AS h, low AS l, close AS c
           FROM mi_intraday_bars
-          WHERE bar_time::date > NOW()::date - INTERVAL '90 days'
+          WHERE bar_time::date >= DATE '2026-06-18'
             AND EXTRACT(hour FROM bar_time AT TIME ZONE 'America/New_York') = 9
             AND EXTRACT(minute FROM bar_time AT TIME ZONE 'America/New_York') = 30
       )
       SELECT COUNT(*)
       FROM mi_live_trades lt
       JOIN bars b ON b.ticker = lt.ticker AND b.bar_date = lt.alert_date
-      WHERE lt.alert_date > NOW()::date - INTERVAL '90 days'
+      WHERE lt.alert_date >= DATE '2026-06-18'
         AND lt.entry_price IS NOT NULL
         AND (b.h - b.l) > 0
         AND ((b.h - GREATEST(b.o, b.c)) / (b.h - b.l)) >= 0.70;
     threshold: 10
+    # account_mode / signal_type deliberately NOT filtered (declared exemption, 2026-09-19): a
+    # bar-1 wick is a property of the 9:30 minute bar, not of which account filled it, and
+    # every ORB entry we place shares the bar-1 mechanics. Every counted row is an ORB entry.
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 5 on the anchored
+        form (5 on the old rolling form as well, today)."
+      nonzero_possible: "Written by the ORB entry path (mi_live_trades.entry_price) and the
+        alert-ticker-day intraday bar persister; 58 entries since 06-18 all carry a 9:30 bar."
+      lane_live: "MAGNA53 EP live ORB lane; entries land on market mornings."
+      threshold_vs_observed: "10 against 5 accrued over three months (~1.7 a month) - roughly
+        three more months. A cohort of 10 wick-outlier entries is thin for a structural filter
+        and the action's own bucket 3 (>=30% counter-evidence -> defer permanently) is reachable
+        at that n."
+      era_scoped: "Anchored at 2026-06-18 (the ORB submission-window fix - entries before it
+        filled as late as 11:35 ET and are a different population). The action's stop-out-vs-
+        winner split reads trade OUTCOMES, which straddle the 08-16 2R stop and the 09-06 exit
+        flip - it must report the same-day stop-out signature per exit era, since a 2R stop
+        survives a wick that an ORB-low stop did not."
+      population_actionable: "The predicate counts ORB entries whose 9:30 bar had a >=70% upper
+        wick; the action re-runs scripts/orb_wick_outlier_backwardcheck.py on those same entries
+        for the stop-out-vs-held breakdown. Same rows, same filter."
+      instrument_trusted: "mi_intraday_bars 9:30 bars (coverage verified 100% on 2026-09-19 -
+        the 87% gap recorded on 05-26 no longer exists) joined to mi_live_trades. The wick
+        ratio is computed from the persisted minute bar, the same bar the ORB used."
     earliest_review_date: 2026-08-15
     action_when_ready: |
       1. Re-run scripts/orb_wick_outlier_backwardcheck.py on prod to get
@@ -8234,45 +8548,67 @@ reviews:
       Aerospace & Defense). Description-quality guard #125 doesn't
       catch this (both tickers mentioned, description not malformed).
     predicate_sql: |
-      -- Count active theme-ticker pairs where ticker's sector differs
-      -- from the modal sector of all theme members. Requires sector
-      -- data on ≥2 members; themes with all-unknown sectors are
-      -- excluded as not yet evaluable.
-      WITH theme_members AS (
-          SELECT DISTINCT t.name, t.theme_date, unnest(t.tickers) AS ticker
-          FROM mi_themes t
-          WHERE t.theme_date > NOW()::date - INTERVAL '30 days'
-            AND t.stage != 'Retired'
-      ),
-      with_sector AS (
-          SELECT tm.name, tm.theme_date, tm.ticker, o.sector
-          FROM theme_members tm
-          LEFT JOIN mi_ticker_overrides o ON o.ticker = tm.ticker
-          WHERE o.sector IS NOT NULL AND o.sector != ''
-      ),
-      sector_counts AS (
-          SELECT name, theme_date, sector, COUNT(*) AS n_in_sector
-          FROM with_sector
-          GROUP BY name, theme_date, sector
-      ),
-      modal_sector AS (
-          SELECT name, theme_date,
-                 (SELECT sector FROM sector_counts sc
-                  WHERE sc.name = ws.name AND sc.theme_date = ws.theme_date
-                  ORDER BY n_in_sector DESC, sector LIMIT 1) AS modal,
-                 COUNT(*) AS total_with_sector
-          FROM with_sector ws
-          GROUP BY name, theme_date
-          HAVING COUNT(*) >= 2
-      )
-      SELECT COUNT(DISTINCT (ws.name, ws.ticker))
-      FROM with_sector ws
-      JOIN modal_sector ms ON ms.name = ws.name AND ms.theme_date = ws.theme_date
-      WHERE ws.sector != ms.modal;
-    threshold: 10
+      -- ⚠ RE-GATED 2026-09-19 (#669 audit) onto the entry's OWN stated re-open trigger. The
+      -- 08-03 run answered the sector-mismatch question by its own <70% rule (7 of 36 genuine,
+      -- the rest sector-VENDOR noise) and named the honest re-open trigger as the
+      -- Nascent<->Retired flip-flop force-clustering RECURRING - but the predicate kept counting
+      -- sector-mismatch pairs, and by 09-19 that count read 189 (298 themes on the 30-day
+      -- board; dropping 2-member ties only takes it to 185). On 11-01 it would have fired on
+      -- 189 pairs to hand-audit, answering a question already answered. NOW it counts the
+      -- trigger itself: themes that were Retired on one day of the last 14 and alive again on a
+      -- later day - the orphan-and-re-cluster mechanism that produced all 7 genuine cases.
+      -- The sector-mismatch pair query is kept in action_when_ready as the SECONDARY read.
+      SELECT COUNT(*) FROM (
+          SELECT name
+          FROM mi_themes
+          WHERE theme_date > CURRENT_DATE - 14
+          GROUP BY name
+          HAVING max(theme_date) FILTER (WHERE stage <> 'Retired')
+               > min(theme_date) FILTER (WHERE stage = 'Retired')
+      ) resurrected;
+    threshold: 3
+    kind: tripwire
+    # #573 declaration (added 2026-09-19): the predicate filters on stage (Retired vs not);
+    # mi_themes carries no setup/account axis. Every theme on the board is one population.
+    discriminates_on: [mi_themes.stage]
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - the re-gated form runs against prod and returns
+        16 (38 over a 30-day window). The old sector-mismatch form returned 189 the same day."
+      nonzero_possible: "mi_themes is written nightly by the theme engine with a stage per theme
+        per day (Nascent/Accelerating/Mainstream/Fading/Retired - 11 to 15 Retired rows a day
+        this week), so a Retired-then-alive sequence is directly observable. Already 16."
+      lane_live: "n/a for a strategy lane - the theme engine runs every weekday night."
+      threshold_vs_observed: "3 against an observed 16 in 14 days. ⚠ THE TRIGGER IS ALREADY MET:
+        the 08-03 verdict's 'honest re-open trigger' - the flip-flop recurring - is recurring at
+        roughly one theme a day. Left DEFERRED to 2026-11-01 on the 08-24 priority triage (off the
+        EP path, and the theme engine is mid-repair under #486/#655/#660, so a read today would
+        measure a system in flux); the pull-forward is the theme owner's call and is recorded in
+        docs/analysis/669_review_registry_audit_2026-09-19.md rather than decided here."
+      era_scoped: "A 14-day trailing window on the current engine only. The action's secondary
+        read (sector-mismatch pairs) spans mi_ticker_overrides sector tags, which are vendor
+        labels with no rule era; the theme engine itself changed materially on 08-05 (pool
+        widening) and 09-13 (#655 sequence), so any count must be quoted against the engine
+        version of the day, never against the 08-03 figure of 36."
+      population_actionable: "The predicate counts resurrected themes; the action's first step
+        is to list exactly those themes and where their orphaned members were re-clustered on
+        the Retired night - the mechanism behind all 7 genuine cases. Before 09-19 it counted
+        sector-mismatch pairs, 81% of which the 08-03 audit had already ruled vendor noise."
+      instrument_trusted: "mi_themes stage history (engine-written, one row per theme per night)
+        - verified populated through 2026-09-18. The old instrument, mi_ticker_overrides.sector,
+        is the one the 08-03 run found to be GICS-boundary noise for 29 of 36 pairs; it is
+        demoted to the secondary read for that reason."
     action_when_ready: |
+      0. (RE-GATED 2026-09-19) The trigger is the flip-flop, so START THERE: list the themes
+         the predicate returns (Retired on day X, alive on a later day inside the window), and
+         for each Retired night, where its members were re-clustered. If they were force-
+         clustered into the nearest sector-adjacent theme (the Regulated Gas & Electric ->
+         Petroleum Refining case of 08-03), that is the engine instability the 08-03 review
+         named — an engine defect for the theme owner (#655 programme), not a coherence guard.
+         Only then run the secondary read below.
       1. Pull the 30-day cohort of sector-mismatch theme-ticker pairs
-         via the predicate SQL.
+         (SECONDARY read — the query that was this entry's predicate until 2026-09-19:
+         theme members' sector vs the modal sector of the theme, >=3 sector-known members
+         to avoid the 2-member tie-break inflation found 08-03).
       2. Audit each pair: legitimate cross-sector theme (rare; some
          macro themes like "AI Infrastructure" span Tech + Industrials)
          vs accidental RS-correlation cluster (LINC/SWBI class).
@@ -8858,6 +9194,17 @@ reviews:
       era_scoped: >-
         The 2026-06-18 ORB window fix is the era boundary and the counted population starts after
         it, so pre-fix behaviour cannot leak in.
+      population_actionable: >-
+        (#669 2026-09-19) The predicate counts buy stop-limit orders that sat >4h unfilled before
+        cancel/expiry, post-fix; the action pulls exactly those rows (ticker, submitted_at,
+        cancelled_at, raw_response). Same rows. Our own 10:00 ET cleanup cancels at ~29 minutes,
+        so it cannot enter the count - the 12 cleanup cancels in the 09-06 chase are excluded by
+        the 4h clause, not by luck. Re-run 09-19: 0.
+      instrument_trusted: >-
+        mi_live_orders (broker-order mirror: status, submitted_at, cancelled_at, filled_at) -
+        the same table the #123 reconcile job keeps in step with Alpaca every 15 min. The one
+        known gap is the OTHER direction: 4 cancels with no order row at all (09-06), handled by
+        audit_invariants.check_reason_coverage, deployed 09-06 - not this predicate's population.
     zero_verdict: >-
       2026-09-06 WAITING — ALREADY RULED and re-surfacing only because the verdict was written into
       #184's PLAN line instead of here. The chase that day: of 21 cancels since the 2026-06-18 window
@@ -9192,15 +9539,51 @@ reviews:
     threshold: 0
     earliest_review_date: 2026-09-22
     action_when_ready: |
-      Query mi_ep_scan_log for the NEAR-MISS cohort — distinct tickers filtered by
-      mcap_too_small in ~$400-500M that PASSED the EP entry gates (gap>=10% / rvol /
-      extension / price>=$5) since 2026-06-23 — + their FORWARD returns (would the EP
-      alert have won or been noise?). Need N>=~15 with outcomes (else defer for cohort
-      growth). Then the OPERATOR decides whether to lower MIN_MARKET_CAP
+      ⚠ RE-POINTED 2026-09-19 (#669 audit) — THE QUESTION IS BEING ANSWERED ELSEWHERE, so read
+      those instruments first instead of hand-querying mi_ep_scan_log from scratch:
+        (1) #624's low-cap lane (docs/setups/magna53_ep.md "Low-cap lane") IS the BLZE-class
+            mechanism: sub-$500M, gap >= 15%, volume in its own top decile at 09:31, every
+            candidate recorded (mi_lowcap_lane_signals) and walked nightly under the current
+            bracket (mi_lowcap_lane_replays: 10 rows / 7 settled / 6 tickers on 09-19). For the
+            gap >= 15% half of this question, that table is the cohort — do not rebuild it.
+        (2) minute_pull_620's 2026-09-16 check-in found two of the five tail winners in the
+            declined pool (BCAR 14.7x at $227M, MASS 8.5x at $410M) were killed ONLY by this
+            floor, and proposed "excluded solely by the cooldown or the cap floor" as a
+            selective subset — the 2026-10-17 check-in there sizes that pool. This review and
+            that one are the same fork seen from two sides; report them together.
+        (3) ONLY the 10-15% gap band in $400-500M is uncovered by (1) — query mi_ep_scan_log
+            for that band (mcap_too_small, passed gap/rvol/extension/price gates, since
+            2026-06-23) + forward returns from mi_daily_closes, and say its n.
+      Original method, still the shape of the read: the NEAR-MISS cohort's forward returns
+      (would the EP alert have won or been noise?), N>=~15 with outcomes, else defer for cohort
+      growth. Then the OPERATOR decides whether to lower MIN_MARKET_CAP
       (backtester/filters.py:23 = the shared live+backtest gate) — a detection/safeguard
       criterion -> CHANGE_PROCESS + sign-off + filter-list judgment, NEVER an agent call.
       Seed: BLZE 2026-06-23 ($487M, $13M under the floor; gap 17.7->33.6%, rvol->6.65x;
       observe-laned, not alerted). See PLAN #359.
+    can_fire:
+      predicate_runs: "N/A by design - `kind: cadence`, predicate_sql is genuinely null (the
+        documented honest date-fire). It becomes due 2026-09-22 and cannot read zero."
+      nonzero_possible: "A cadence entry fires on its date; the ANSWER may be 'not enough n'.
+        The cohort it reads exists: mi_lowcap_lane_replays has 10 rows (7 settled) and
+        mi_ep_scan_log carries mcap_too_small filter rows on every scan."
+      lane_live: "MAGNA53 EP is the live setup; the low-cap lane (#624) is its SHADOW sibling
+        recording exactly this floor's excluded names since 2026-09-04."
+      threshold_vs_observed: "0 - cadence entry, the date is the gate. Stated so a 0 is never
+        read as 'the predicate returned nothing'."
+      era_scoped: "The lane's replays are walked under the CURRENT bracket with replay_exit_era
+        stored per row; the mi_ep_scan_log half spans the 08-27/08-28 admission changes and
+        must be segmented by that boundary - a name declined in June passed a different
+        upstream stack than one declined in September."
+      population_actionable: "Since 2026-09-19 the action names its instruments: the lane
+        tables for gap >= 15%, mi_ep_scan_log only for the 10-15% band. Before, it would have
+        re-derived from scratch a cohort #624 already records and walks nightly - the
+        check-what-the-system-already-did failure in review form."
+      instrument_trusted: "mi_lowcap_lane_replays (replay walker shared with #593/#617, NULL on
+        a data gap, offering_flag recorded) - 7 settled rows on 09-19, thin but real;
+        mi_ep_scan_log filter_reason text (scan-written); mi_daily_closes for forward paths.
+        ⚠ Forward RETURNS are the stock's move, not a trade - the lane's realized_r IS a
+        walked trade and is the better instrument where both exist."
     status: pending
     added_on: 2026-06-23
 
@@ -9274,7 +9657,20 @@ reviews:
       N-consecutive failures before alerting on the 'timeout' class (or a per-provider timeout-count
       threshold) — NOT a blanket suppression (a sustained outage / a 4xx/5xx must STAY loud immediately).
       If under threshold, the default is fine — mark done, no change.
-    status: pending
+    status: done
+    closed_on: 2026-09-19
+    outcome: |
+      NOT CHATTY — closed by the entry's own rule ("if under threshold, the default is fine —
+      mark done, no change"). Measured on prod 2026-09-19 (#669 audit): FIVE transient-timeout
+      alerts in the 82 days since 2026-06-29 — 06-29, 07-13, 07-14, and two on 09-04 within one
+      minute (tg=0, the dedup held) — i.e. four bursts in twelve weeks, and ZERO in the last 14
+      days. The question was "6 in about a week"; no week ever held more than two.
+      ⚠ WHY IT IS CLOSED RATHER THAN LEFT TO FIRE: the predicate counted CUMULATIVELY since
+      06-29 with no window, so the next single timeout would have read 6 and surfaced "genuinely
+      chatty" over a rate of one alert every 16 days — a decision rule that could only ever return
+      the wrong answer once enough calendar passed (#669 class 6). If perplexity ever becomes
+      chatty for real, the symptom is the Telegram itself, which is the thing this review was
+      asking whether to quiet; no silent watch is needed. Default kept, nothing tuned.
     added_on: 2026-06-29
 
   - review_id: consolidation_anticipate_paper_graduation
@@ -9335,18 +9731,44 @@ reviews:
       predicate_runs: >-
         RUN AGAINST PROD 2026-09-15: 5 takeable settled rows against threshold 5 — it is ripe, and
         that is precisely why the operator's ruling below had to be written down.
+        ⚠ RE-RUN 2026-09-19 (#669 audit): returns 4, not 5. The fifth was CDNA 2026-07-31, whose
+        settlement #667 (closed 2026-09-18) reset because the break day's low never reached the
+        entry — a fill we could not have got. The table is now honest and one row SHORT of the bar.
       nonzero_possible: >-
-        Nonzero (5) and accruing at roughly 4 takeable breaks a month. Not a firing problem.
+        Nonzero (4) and accruing at roughly 4 takeable breaks a month. Not a firing problem.
       lane_live: >-
         mi_htf_breakout_shadow has 17 rows from 2026-06-29 to 2026-09-14, written by
         run_intraday_flag_break_scan (flag_detector.py:2156), and the 24-day settle job is current:
         the 5 unsettled rows are ALL inside their window (earliest eligible 2026-09-18), not stuck.
+        RE-READ 2026-09-19 (#669): 20 rows to 2026-09-18 — the lane is still writing (IOVA 09-16,
+        CDNA 09-17 takeable; CHPT 09-18 a stop-width reject). CDNA 08-25 was eligible 09-18 and
+        still had no outcome on the 09-19 read — if it is still blank on 2026-09-22, read its
+        settle_abstain_reason: the settle job, not the sample, is then the thing to look at.
       threshold_vs_observed: >-
-        Threshold 5 takeable settlements, observed 5. ⚠ The threshold is MET and the review is still
-        HELD — by priority, not by evidence. Do not read the hold as a data shortfall.
+        Threshold 5 takeable settlements — observed 5 on 2026-09-15, observed 4 on 2026-09-19 after
+        #667 reset the CDNA 07-31 phantom capture: ONE SHORT of the bar. It re-crosses when the next
+        takeable row settles — 7 takeable rows are unsettled (CDNA 08-25 through CDNA 09-17), and
+        the 24-day window made CDNA 08-25 eligible on 09-18. ⚠ Either way the review is HELD by
+        priority, not by evidence; do not read the hold as a data shortfall, and do not read the 4
+        as the bar never having been met.
       era_scoped: >-
         Implicitly — the table begins 2026-06-29, days after the 2026-06-27 #356 HTF parent rebuild,
-        so every row is current-era by construction. Nothing predates the rebuild.
+        so every row is current-era by construction. Nothing predates the rebuild. (#669 2026-09-19)
+        The METHOD reads settled R through the HTF shadow's own ladder — not the magna53 stack —
+        so the 08-16 / 09-06 magna53 flips do not straddle it; the one instrument change inside the
+        window is #667's settler fix (2026-09-18), which RESET rows rather than re-scoring them, so
+        pre- and post-#667 settled rows are the same population.
+      population_actionable: >-
+        The predicate counts TAKEABLE settled rows (would_reject_reason IS NULL) and the action's
+        GO bar is on exactly those; the 7 stop_distance_gt_8pct rejects are excluded from both,
+        which the 7/18 red-team required. Same rows, same filter.
+      instrument_trusted: >-
+        mi_htf_breakout_shadow.outcome / realized_r, settled by the 24-day settle job
+        (scheduler.py:4712). ⚠ KNOWN-BROKEN UNTIL 2026-09-18: the settler booked fills the break
+        day's low never reached — 2 of 18 rows, one of them (CDNA 07-31) this predicate's fifth
+        'capture' — fixed by #667 (settler abstains and says so; rows reset). Verified 09-19: the
+        reset row reads NULL, the count fell 5 -> 4, and max_loss_pct is a FRACTION reconciled to
+        the cent on all 17 rows (09-15). Read only rows settled by the post-#667 settler.
     resolution_2026_09_15: |
       HELD BY THE OPERATOR, NOT BY THE DATA. His ruling, verbatim: "We're not ready to graduate
       another setup yet" — then, unprompted: "However, we should still try to perfect any new setups
@@ -9582,8 +10004,37 @@ reviews:
       June tape)? Realized-R never blended across modes (ADR 0013:91); U&R separate if C3 ever lands.
     predicate_sql: >-
       SELECT COUNT(DISTINCT entry_date) FROM mi_consolidation_entry_shadow
-      WHERE entry_mode IN ('confirm', 'ur') AND outcome IS NOT NULL;
+      WHERE entry_mode IN ('confirm', 'ur') AND outcome IS NOT NULL
+        AND entry_date >= DATE '2026-07-14';
     threshold: 20
+    # ⚠ ERA-SCOPED 2026-09-19 (#669 audit): the ROUND-2 question says the post-7/14 re-wire cohort
+    # "must carry its own weight, not coast on the June tape", yet the count pooled the 9 old-wiring
+    # days with the new ones (26 pooled on 09-19). Scoped to the current wiring it reads 20 - which
+    # MEETS the bar on its own: June 6 days / July (post-14) 6 / August 14. Flagged READY in
+    # docs/analysis/669_review_registry_audit_2026-09-19.md; the 7/29 no-new-live-setups priority
+    # still governs what the read may propose (shadow->paper rungs only).
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod: 26 pooled, 20 with the
+        2026-07-14 era clause now in the predicate. Clean SQL either way."
+      nonzero_possible: "mi_consolidation_entry_shadow is written by the Confirm scan (commit
+        72f2b18, Confirm-only since the 8/9 anticipate park) and settled ~12 bars later; 26
+        rows over 14 distinct August days alone."
+      lane_live: "Family-A Confirm shadow lane is enabled and recording; no paper/live rung
+        exists for it (that is the question), so the lane is shadow by design."
+      threshold_vs_observed: "20 against 20 current-era distinct entry days - MET on 2026-09-19.
+        Not a firing problem any more; the entry stays deferred until the round-2 readout runs."
+      era_scoped: "YES - entry_date >= 2026-07-14, the re-wire. The action ALSO reads realized R
+        per row, and the shadow's exit ladder is the one under test for consolidation (ADR 0026),
+        not the magna53 exit stack - so the 08-16/09-06 magna53 flips do not straddle it; the
+        7/14 re-wire is the only boundary and it is now in the predicate."
+      population_actionable: "The action reads Confirm rows by distinct entry day on the CURRENT
+        wiring and compares to the operator's 8/9 bar; the predicate now counts exactly that
+        population. Before 09-19 nine of the counted days were old-wiring June days the action
+        must exclude from the GO decision."
+      instrument_trusted: "mi_consolidation_entry_shadow (entry_mode, outcome, realized R,
+        entry_date) - the same table round 1 read on 08-09 and re-verified on 08-11 against prod.
+        No phantom-fill class is known on it; the U&R mode is structurally 0 rows (C3 unlanded)
+        and the predicate's IN ('confirm','ur') is future-proofing, not a live population."
     # Re-gated 2026-08-11: predicate now counts DISTINCT ENTRY DAYS (was raw rows >= 10 — met since
     # late June, which is why this kept re-surfacing READY after the 8/9 ruling was already in).
     # Data-derived, not calendar: 9 settled days at re-gate + 7 more days already in flight
@@ -9966,6 +10417,15 @@ reviews:
         change writes no audit row today. That emitter is owed on #215 (Sat 2026-09-19) and until
         it lands, his "review with what we have" clause is enforced by a human reading this, not
         by the gate. Do not pretend otherwise.
+      population_actionable: >-
+        (#669 2026-09-19) The predicate counts alerts graded (judge_tier not null) since the
+        08-27 grade-surface change; the action measures the OPTX-residual on exactly that clean
+        cohort before and after the surgical prompt edit. Same rows. Re-run 09-19: 20 of 40.
+      instrument_trusted: >-
+        mi_ep_alerts.judge_tier (load-bearing judge, rubric v4 since 08-27) and
+        scripts/evals/judge_eval_pass_record.json run_at (2026-08-27T18:27:49-07:00 on 09-19,
+        unchanged) - the action's FIRST step checks that file against the predicate's floor,
+        which is the manual half of the missing emitter (#215, ETA 2026-10-10).
     earliest_review_date: 2026-09-15
     action_when_ready: >-
       FIRST check `scripts/evals/judge_eval_pass_record.json`'s `run_at` against this predicate's
@@ -10029,6 +10489,17 @@ reviews:
       era_scoped: >-
         YES — `alert_date >= '2026-08-22'`, the rescale, which is the exact boundary that made the
         predecessor's 46-row answer unusable for today's system. No row can straddle it.
+      population_actionable: >-
+        (#669 2026-09-19) The predicate counts post-rescale scored rows with a settled 12-day
+        window and NO downgrade event of any reason (the live-PASS proxy); the action's crosstab
+        is live-PASS vs live-DOWNGRADE on exactly those rows via _b6_forward_backtest.py. Same
+        rows. Re-run 09-19: 4 of 15.
+      instrument_trusted: >-
+        mi_ep_catalyst_metrics (scored on every alert) + mi_audit_log downgrade events matched
+        by ticker/alert_date LIKE on the detail JSON (122 downgrades 7/17-9/15 prove the join) +
+        mi_daily_closes for the tail. ⚠ Known population caveat, inherited and named in the
+        action: scored rows with NO mi_ep_alerts record (6 of 46 pre-rescale) - explain before
+        use.
     earliest_review_date: 2026-09-15
     action_when_ready: >-
       Re-run scripts/_b6_forward_backtest.py on the POST-RESCALE cohort only and produce the same
@@ -10099,7 +10570,36 @@ reviews:
     # (the replay computes returns itself; no fwd column exists on the table).
     # Junk is regime-dependent (choppy tape) — no calendar promise; the gate now
     # fires only when the evidence the question demands actually exists.
+    # ⚠ 2026-09-19 (#669 audit): the junk tier IS reachable - MRNA 2026-08-19 is the first and
+    # only tape_junk in 136 annotated alerts (114 clean / 21 watch / 1 junk since 07-24). At
+    # one junk row in eight weeks, 30 is roughly FIVE YEARS out. That is a threshold outside
+    # the metric's observed range (the 2026-09-09 class), but it is ALSO the evidence bar for
+    # Stage 4 - a hard gate / demote on LIVE entries (THE LINE) - so it is NOT lowered here.
+    # HIS FORK, recorded in docs/analysis/669_review_registry_audit_2026-09-19.md: (a) keep 30
+    # and accept Stage 4 is effectively parked (the annotator is free, leave it running); (b)
+    # lower the bar; (c) retire Stage 4 on the finding that junk tape is too rare on the live
+    # alert stream to be worth a gate. Until he rules, this reads 1 honestly.
     threshold: 30
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 1 (MRNA 08-19)."
+      nonzero_possible: "tape_quality.annotate_ep_alerts_tape_quality sets mi_ep_alerts.tape_tier
+        on every EP scan (136 rows since 07-24) and the junk value has been written once, so the
+        tier is reachable - just rare."
+      lane_live: "MAGNA53 EP live alert stream is what gets annotated; Stage 1 has run since
+        2026-07-24."
+      threshold_vs_observed: "30 against 1 in eight weeks - ~5 years at the observed rate. NOT
+        re-gated: the bar is Stage 4's evidence floor for a live-entry gate, which is his to
+        move (see the comment above and the audit doc)."
+      era_scoped: "tape_tier is written by one annotator version since 07-24 (no rule change
+        recorded); the action's replay computes 5-day returns from mi_daily_closes itself, so
+        the exit-stack eras do not touch it. The alert stream's ADMISSION changed on 08-27/08-28
+        (real-time authority, 9% floor) - the junk rate before and after may differ; segment."
+      population_actionable: "The predicate counts settled tape_junk alerts; the action replays
+        which HIGHs a tape_junk gate would have suppressed and their outcomes - the same rows
+        plus the clean/watch rows as the comparison set, all on the same table."
+      instrument_trusted: "mi_ep_alerts.tape_tier (annotator-written) and mi_daily_closes for
+        the replay's forward returns. No fwd column exists on the alert table, so the replay
+        computes returns itself - stated in the entry. Verified populated 2026-09-19."
     earliest_review_date: 2026-08-31
     action_when_ready: |
       Run the suppression backtest (which HIGHs a tape_junk gate kills + their fwd
@@ -10318,16 +10818,44 @@ reviews:
       -- cell reaches 5 such trades, i.e. when any pair is comparable on more than the
       -- 3-vs-3 the first read had. Counts winners, not trades: the finding lives
       -- entirely in the tail, so tail count is what makes it readable.
+      -- ⚠ RE-KEYED 2026-09-19 (#669 audit) to the ENTRY-STAMP regime. This joined
+      -- mi_market_regime ON regime_date = alert_date - the date join the operator ruled AGAINST
+      -- on 2026-08-08 (see exit_tune_bull_regime_read: the stamp is the prior session's row,
+      -- read at 09:31 by live_tracker.py:522; the nightly writes today's row at 17:00 ET). The two
+      -- bases disagree on the cells (stamp: Bull 6 of 11 winners; date-join: Bull 7 of 15) and
+      -- agreed on the predicate's value (3) only by coincidence. The action's per-regime table
+      -- MUST use the stamp, so the trigger now counts the same cells.
       SELECT COALESCE(MIN(w), 0) FROM (
         SELECT COUNT(*) FILTER (WHERE r.peak_r >= 1.5) AS w
         FROM mi_sell_discipline_records r
-        JOIN mi_market_regime g ON g.regime_date = r.alert_date
+        JOIN mi_live_trades lt ON lt.id = r.trade_id
         WHERE r.account_mode = 'live' AND r.signal_type = 'magna53'
-        GROUP BY g.regime
+          AND lt.regime IS NOT NULL
+        GROUP BY lt.regime
         ORDER BY 1 DESC LIMIT 2
       ) top2
     threshold: 5
     discriminates_on: [mi_sell_discipline_records.signal_type, mi_sell_discipline_records.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - the re-keyed form runs against prod and returns
+        3 (entry-stamp cells: Bull 6 winners of 11, Correcting 3 of 9, Choppy 2 of 9, Crisis 0
+        of 1). The date-join form also returned 3, on different cells (Bull 7/15, Correcting 3/7,
+        Choppy 1/7)."
+      nonzero_possible: "mi_sell_discipline_records is written on every live close with peak_r;
+        mi_live_trades.regime is stamped at entry. 30 live magna53 records carry both."
+      lane_live: "MAGNA53 EP live lane; closes accrue at ~3-4 a month."
+      threshold_vs_observed: "5 against 3 in the second-largest cell (Correcting). At the observed
+        rate of non-Bull winners (~1 a month) the bar is ~2 months out; Bull already has 6."
+      era_scoped: "peak_r is in R units and the R unit changed on 2026-08-16 (2R stop) - the
+        entry's own confound note. The action segments by exit era; the TRIGGER counts across
+        eras deliberately (a winner reaching +1.5R is a winner under either unit for the
+        purpose of 'is the cell readable'). mi_live_trades.regime is a single-era stamp."
+      population_actionable: "The action builds the per-regime tail table on the ENTRY-STAMP
+        regime (operator-ruled basis 2026-08-08); the predicate now counts the same cells.
+        Before 09-19 it counted date-joined cells the action must not use."
+      instrument_trusted: "mi_sell_discipline_records.peak_r (recorder-written from stored bars,
+        the same source the 08-17 read used) joined to mi_live_trades.regime on trade_id.
+        Verified 2026-09-19: 30 of 30 live magna53 records join, 30 carry a regime stamp."
     earliest_review_date: 2026-09-15
     status: pending
     action_when_ready: |
@@ -10736,8 +11264,15 @@ reviews:
       So: NO new shadow, NO re-pointed label. Every input is already persisted.
       Run the analysis clean when n supports it.
     predicate_sql: |
-      SELECT COUNT(DISTINCT (ticker, scan_date)) FROM mi_ep_scan_log
-      WHERE filter_reason ILIKE 'EP cooldown%' AND gap_pct >= 15;
+      -- STALL ARM added 2026-09-19 (#669 audit): the action's own stall clause ("still <55 by
+      -- ~2027-01 - do NOT keep waiting, run at whatever n exists") was PROSE with nothing to
+      -- fire it. Accrual is decelerating (May 20, Jun 15, Jul 6, Aug 3, Sep 1 -> 45 on 09-19), so
+      -- at ~1-3 a month the 55 bar is 4-10 months out and the clause is the likely path. The
+      -- second term adds 55 on 2027-01-05, which makes the clause mechanical.
+      SELECT COUNT(DISTINCT (ticker, scan_date))
+             + 55 * (CURRENT_DATE >= DATE '2027-01-05')::int
+        FROM mi_ep_scan_log
+       WHERE filter_reason ILIKE 'EP cooldown%' AND gap_pct >= 15;
     threshold: 55
     # Deliberately NON-BLOCKING (operator 2026-07-26: "if we reach it earlier, we
     # should review earlier"). Firing is AND (count >= threshold AND today >=
@@ -10745,6 +11280,30 @@ reviews:
     # ready. Data-readiness is the whole question here, and the threshold already
     # encodes it — a calendar floor adds nothing and can only get in the way.
     earliest_review_date: 2026-07-26
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 45 (the stall term
+        is 0 until 2027-01-05)."
+      nonzero_possible: "mi_ep_scan_log writes a filter_reason row per suppressed candidate on
+        every scan; 45 distinct cooldown-suppressed ticker-days with gap >= 15 since May."
+      lane_live: "MAGNA53 EP live scan; the 60-day cooldown is a live admission rule."
+      threshold_vs_observed: "55 against 45, but accrual has fallen to ~1 a month (Sep: 1), so
+        the honest estimate is 4-10 months, and the stall arm fires the review on 2027-01-05
+        regardless - the underpowered read the action already accepts."
+      era_scoped: "The predicate's gap_pct >= 15 pre-filter is single-era (the cooldown rule and
+        the 15% figure have not moved); the ACTION reads mi_ep_scan_log + alerts + forward
+        outcomes across the 08-27/08-28 admission changes (real-time authority, 9% floor) - a
+        suppressed name from May was suppressed by a different upstream stack than one from
+        September, so segment by admission era in the analysis."
+      population_actionable: "The predicate counts a SUBSET (gap >= 15) of what the action
+        analyses (every cooldown suppression, all factors together) - deliberate: the subset is
+        the trigger's size proxy, the action reads the whole class and says so. ⚠ Cross-ref
+        added 2026-09-19: minute_pull_620's 09-16 check-in found ALOY (9.8x ADR) killed ONLY by
+        this cooldown, and proposed 'excluded solely by cooldown or the cap floor' as a
+        selective subset - the 10-17 check-in there is the same question from the other side."
+      instrument_trusted: "mi_ep_scan_log (scan-written, filter_reason text) joined to
+        mi_daily_closes for ret_*; the action's own caveat stands - ret_* is the stock's move,
+        not a trade, and a cost claim needs a pipeline replay (would it have scored, graded,
+        filled). Verified populated 2026-09-19."
     status: pending
     action_when_ready: |
       ⚠ CALIBRATION NOTE (set 2026-07-26 from measured accrual, NOT guessed): the
@@ -10805,6 +11364,14 @@ reviews:
       era_scoped: >-
         Current-state column with no historical window, so no rule change can strand it; the
         graduation question itself lives on #397/#610.
+      population_actionable: >-
+        (#669 2026-09-19) The predicate counts HTF rows in mi_strategies at phase paper/live;
+        the action folds the HTF sizing site the moment one exists. Same population - one row
+        is the whole signal. Re-run 09-19: 0 (no HTF row in mi_strategies at all).
+      instrument_trusted: >-
+        mi_strategies.phase - the registry the dual-account router reads on every entry, so it
+        cannot be stale without live routing being wrong too. The paper flip is his command
+        (/strategy ... promote), which writes this exact column.
     zero_verdict: >-
       2026-09-11 WAITING — the condition is exactly right: it counts HTF strategies in phase
       paper/live, which is ZERO because HTF is not graduated. That is his own 2026-07-26 ruling
@@ -11135,6 +11702,16 @@ reviews:
         Scoped to >= 2026-08-09, the v2 cutover. The 09-13 read's central error came from mixing
         populations; the v1 days and the 90 hindsight-backfill runs of 06-04/06-06 are excluded
         by construction here, not by remembering to exclude them.
+      population_actionable: >-
+        (#669 2026-09-19) The predicate counts v2 run-days with >= 2 alerts and NO narrative_cogap
+        proposal - the judgeable no-story days; the action re-runs the 09-14 script over exactly
+        those days and excludes Lane 2's own same-day proposals before counting a miss. Same
+        rows. Re-run 09-19: 6 of 20.
+      instrument_trusted: >-
+        mi_audit_log narrative_theme_discovery_ran (one row per run), mi_ep_alerts by day,
+        mi_theme_candidates_shadow source='narrative_cogap' (the lane's own proposals) - and,
+        for the miss judgement, the later themes on mi_themes. ⚠ Stated limit, not a defect: a
+        story NO lane ever finds reads as correctly declined; the measure cannot see that class.
     earliest_review_date: 2026-09-14
     action_when_ready: >-
       Re-run the SAME script as 2026-09-14 (docs/analysis/lane2_narrative_grouping_review_2026-09-14.md
@@ -11492,6 +12069,15 @@ reviews:
         JUDGE_DIVERGENCE_MODEL from mi_model_resolution at query time, so a future model
         swap re-scopes it automatically; the new primary_tier filter is orthogonal to that
         and does not change era-scoping."
+      population_actionable: "(#669 2026-09-19) The predicate counts SETTLED disagreements on
+        HIGH-tier primaries under the CURRENT model pair; the action splits the divergence
+        cohort on `agree` and compares forward return - the agreed side is drawn from the same
+        table with the same three gates. Same rows. Run 09-19 against prod: 8 of 15."
+      instrument_trusted: "mi_judge_divergence (judge_divergence.py writes a row per HIGH-tier /
+        demoted verdict) joined to mi_ep_scan_outcomes.fwd_5d_pct. ⚠ fwd_5d_pct is a
+        HIGH-WATERMARK (max favourable move), not a close-to-close return - theme_as_ep_signal's
+        08-06 note. Comparing two cohorts on the same watermark is valid; calling it 'forward
+        return' against any close-to-close benchmark is not. Say MFE."
     threshold: 15
     # 9 disagreements existed at registration, none settled. 15 SETTLED disagreements is
     # still thin for a verdict but enough to see a direction; a smaller bar would invite
@@ -11554,6 +12140,15 @@ reviews:
         / BREAKEVEN_ARM_R_DATE (first acting session 2026-09-08 - 09-06 is a Sunday and 09-07 is
         Labor Day). Before this, the predicate pooled 13 pre-flip alert days with 2 post-flip ones
         and called it 14."
+      population_actionable: "(#669 2026-09-19) The predicate counts live alert DAYS under the
+        era-D exit stack; the action re-runs the 08-10 cut (in-window real-time crossers, mean R)
+        over that same window. Same window. ⚠ Declared and not fixed here: the resolution says
+        the QUESTION itself was moved by his 08-19 correction ('how good is our selection
+        downstream if we admit more') and #559 (ETA 2026-10-30) carries the real framing - this
+        entry is aligned to it, not a substitute. Run 09-19: 4 of 14."
+      instrument_trusted: "mi_ep_alerts (source='live') for the day count; mi_live_trades
+        pnl/risk_dollars for R (PLANNED risk - risk_dollars_actual covers 5 of 30 closed live
+        trades all-time, stated 09-15, never mixed). Both broker/scan-written and current."
     earliest_review_date: 2026-10-30
     action_when_ready: >-
       Re-run the SAME cut as docs/analysis/490_realtime_detection_flip_evidence_2026-08-10.md
@@ -11704,6 +12299,19 @@ reviews:
       era_scoped: "YES, and the boundary IS the premise: alert_date > 2026-08-16, the date the
         shadow went live. Every row is out-of-sample by construction - the rule was fitted before
         that date and has never seen these rows."
+      population_actionable: "(#669 2026-09-19) The predicate counts out-of-sample SESSIONS; the
+        action scores tail catch-rate per quartile on the shadow ROWS of those sessions joined
+        to settled outcomes - a superset the action narrows by maturity and states (30 of 32
+        5-day-matured, 7 of 32 20-day-matured on 09-17). Deliberate: the gate is a running
+        read, so it must fire on every new session (threshold 1 pinned by test). ⚠ THE
+        PRESENTATION FORK is HIS and is recorded in docs/analysis/669_review_registry_audit_2026-09-19.md:
+        operator_asks renders this as 'MY WORK IS DUE' daily when it is a one-line running read
+        with a confidence label - the 08-18 conversion was deliberate and is not reversed here."
+      instrument_trusted: "mi_alert_rank_shadow (one row per alert since 08-16) joined to
+        mi_ep_missed_outcomes on (ticker, alert_date, SOURCE) - ⚠ the join fans out without
+        source (48 vs 32 on 09-17); max_high_5d/20d are FRACTIONS not prices; and max_high_20d
+        RETURNS A NUMBER FOR AN UNELAPSED WINDOW, so the 20-day tail count is undefined-for-
+        maturity, not zero, until ~mid-October. All three named in the 09-16/09-17 resolutions."
     discriminates_on: [mi_alert_rank_shadow.alert_date, mi_ep_missed_outcomes.max_high_5d]
     threshold: 1
     owner: operator
@@ -12017,11 +12625,36 @@ reviews:
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     status: pending
     kind: accrual
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 8 closed live
+        magna53 trades since 2026-08-17."
+      nonzero_possible: "Written by the live ORB/exit path on every close; 8 already, ~3-4 a
+        month."
+      lane_live: "MAGNA53 EP live lane; the 5-min shadow lane (mi_orb_shadow_trades) also keeps
+        recording regardless of this entry's parked status."
+      threshold_vs_observed: "20 against 8 in five weeks - roughly three more months at the
+        observed close rate; the entry is PARKED and this is the honest wait."
+      era_scoped: "⚠ THE 20 NOW SPAN TWO EXIT ERAS (found 2026-09-19): the bracket's STOP has
+        been the 2R stop since 08-17 (era C, unchanged), but the +2R partial became +8R with a
+        price-armed breakeven on 2026-09-06 (era D, #545). The 08-18 reads scored variants partly
+        on whether they 'destroy the +2R partial' - a metric that no longer describes the live
+        ladder. The probes' ERA_C_START constant has no ERA_D; the re-run must add it and score
+        the exit-sensitive metrics per era, or on era D only. Deliberately NOT re-scoped in the
+        predicate: the count is of trades under the current STOP geometry, which is single-era,
+        and the reopen trigger the operator framed is 'era C reaches ~20 and disappoints'."
+      population_actionable: "The predicate counts closed live magna53 trades under the current
+        2R-stop bracket; the probes re-read exactly that cohort against the 5-min shadow lane's
+        matched name-days. Same rows; the era-D split above is applied inside the read."
+      instrument_trusted: "mi_live_trades (broker-reconciled closes) + mi_orb_shadow_trades (the
+        5-min shadow lane's own recorder) + the two re-runnable probes over stored minute bars.
+        Verified populated 2026-09-19. Known limit: re-entry evidence in the 08-18 read rested
+        on ONE row (INTC) and the entry says so."
     action_when_ready: >-
       Re-run `bracket_geometry_read_482.py` and `geometry_sweep_572.py` against the
       now-populated era C cohort (era boundaries: A < 2026-08-05, B 2026-08-05..
       2026-08-16, C >= 2026-08-17 — matches `bracket_geometry_read_482.py`'s own
-      `ERA_B_START`/`ERA_C_START` constants) and re-decide whether any geometry
+      `ERA_B_START`/`ERA_C_START` constants — ⚠ and ADD an ERA_D boundary at 2026-09-06 for
+      every exit-sensitive metric, see can_fire.era_scoped) and re-decide whether any geometry
       variant now earns a live arm. ⚠ SEPARATE MANUAL TRIGGER this predicate cannot
       see: re-open immediately on ANY material selection change (the 2026-08-18 GOAL
       section rule — every downstream geometry read is conditional on the CURRENT
@@ -12350,6 +12983,17 @@ reviews:
       era_scoped: "The evidence it leans on IS era-scoped and that is why the answer moved today:
         the 490b re-run used COMPLETE 20-session forward windows where the 2026-08-18 read was
         censored at a median of 8. Same cohort, matured - which is the only thing that changed."
+      population_actionable: "(#669 2026-09-19) A date-fire has no counted population; the
+        action's population is the declined-name pool sized by the 490b probe with a per-name
+        gate-reason breakdown (step 1 of the 09-16 ORDER), and the check-in judges whether a
+        selective subset exists in it. ⚠ Cross-refs added 09-19: cooldown_admission_unassumed
+        (the cooldown-only exclusions) and ep_mcap_floor_500m_review (the cap-floor exclusions)
+        are the two halves of the proposed subset - read all three together on 10-17."
+      instrument_trusted: "mi_ep_scan_log declined names + mi_daily_closes for complete
+        20-session forward windows (the 09-16 re-run used COMPLETE windows; the 08-18 read was
+        censored at a median of 8 of 20 - the instrument was not broken, it was IMMATURE, which
+        is the p74 class in the other direction). mi_intraday_bars persists alert-ticker-days
+        only, so the targeted minute pull is still owed for approach days."
     earliest_review_date: 2026-10-17
     status: pending
     resolution_2026_09_16: |
@@ -12437,12 +13081,46 @@ reviews:
     # errors, before the deploy creates it. `realized_r IS NOT NULL` is what makes a
     # trigger SETTLED rather than merely fired (realized_r = the M-none arm's
     # HARVESTED R — never MFE). Predicate verbatim from the approved plan.
+    # ⚠ PROSPECTIVE-ONLY since 2026-09-19 (#669 audit). The plan's verbatim predicate counted
+    # every settled row, and on 09-19 that read 3,029 - of which 1,704 were BACKFILL (fire_date
+    # before 2026-08-31, written 3-6 days after the fact in the recorder's first week; lag-0
+    # rows begin 08-31). The backfill IS the in-sample data the policies' p* were calibrated on
+    # (delayed_entry_campaign_policies_327_2026-08-30.md), so counting it toward "the LIVE watch
+    # lane's real-tail rate" would have read the calibration set as its own validation. Reads
+    # 1,325 prospective settled today - still far past 30, so readiness is unchanged; what
+    # changed is which rows the action may quote.
     predicate_sql: >-
       SELECT CASE WHEN to_regclass('mi_delayed_entry_trigger') IS NULL THEN 0
                   ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger
-                        WHERE realized_r IS NOT NULL) END
+                        WHERE realized_r IS NOT NULL
+                          AND fire_date >= DATE '2026-08-31') END
     threshold: 30
     discriminates_on: [mi_delayed_entry_trigger.rung]
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod: 1,325 with the prospective
+        clause, 3,029 without. Clean SQL."
+      nonzero_possible: "The recorder (delayed_ep_reentry, live since 2026-08-31) writes a row per
+        rung fire on the day it fires (1,716 same-day rows) and the settle path fills realized_r
+        ~20 sessions later; 555 of the 865 rows fired since 09-02 are already settled."
+      lane_live: "The delayed-entry watch lane is SHADOW by design (docs/setups/delayed_ep_reentry.md);
+        its recorder runs every session. Promotion is the question, so no paper/live rung exists."
+      threshold_vs_observed: "30 against 1,325 - met 44x over. The bar is trivially satisfied
+        on this table because it counts every rung; the action reads PER RUNG and per
+        screen_member, where the decision-relevant cells are far thinner, which is why it says
+        'too few settled fires -> extend' per cell rather than trusting the total."
+      era_scoped: "Prospective rows only (fire_date >= 2026-08-31, the recorder's first live
+        session). The action's realized_r is the M-none arm's HARVESTED R through the lane's own
+        exit ladder - not the magna53 stack - so the 09-06 magna53 flip does not straddle it.
+        The band definitions (pattern_version / screen_version columns) are the eras a later
+        change would create; segment on them if either moves."
+      population_actionable: "The action computes the settled-fire tail rate per rung at raw and
+        screen_member=true levels on LIVE fires; the predicate now counts exactly the live-fired
+        settled rows. Before 09-19 it also counted the 1,704-row backfill the plan's own
+        calibration was fitted on."
+      instrument_trusted: "mi_delayed_entry_trigger.realized_r / realized_r_trail, settled by
+        compute_settlement from stored daily bars (the same path #616's variants use). No fill
+        is simulated - the rung fire price is the recorded entry - and the settle writes NULL
+        rather than a substitute on a data gap. Verified populated through 2026-09-17."
     earliest_review_date: 2026-09-29
     status: pending
     kind: accrual
@@ -12477,13 +13155,40 @@ reviews:
     # pre-registered cell (rung = ep_low_reclaim), NOT family-wide: family-wide would
     # trip before the decision-relevant rung has n. to_regclass idiom: same as
     # delayed_entry_shadow_first_read — reads 0, never errors, before the deploy.
+    # fire_date guard added 2026-09-19 (#669 audit): the question says "on the PROSPECTIVE
+    # fires (recorded from 2026-09-02, no cell-picking)" but nothing in the SQL said so - one
+    # August row already carried a variant settlement (160 of 161 were prospective), and a
+    # future backfill run would have polluted the out-of-sample claim silently. Reads 160.
     predicate_sql: >-
       SELECT CASE WHEN to_regclass('mi_delayed_entry_trigger') IS NULL THEN 0
                   ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger
                         WHERE rung = 'ep_low_reclaim'
+                          AND fire_date >= DATE '2026-09-02'
                           AND realized_r_trail_075 IS NOT NULL) END
     threshold: 30
     discriminates_on: [mi_delayed_entry_trigger.rung]
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod: 160 with the fire_date guard,
+        161 without. Clean SQL."
+      nonzero_possible: "The #616 recorder stamps stop_price_075/_100 beside every trigger and
+        the settle path fills realized_r_trail_075 through the SAME compute_settlement; 160
+        ep_low_reclaim rows settled on the trail arm since 09-02."
+      lane_live: "Shadow lane by design (delayed_ep_reentry.md); the recorder runs every session."
+      threshold_vs_observed: "30 against 160 - met 5x over, ahead of the 2026-10-12 date. The
+        binding constraint is the action's own maturity rule (only fires whose 20-session window
+        has fully elapsed), which the predicate's realized-not-null already encodes."
+      era_scoped: "Prospective rows only (fire_date >= 2026-09-02, the day the variant columns
+        shipped). The variants settle through the lane's own trail ladder, not the magna53 exit
+        stack, so the 09-06 magna53 flip does not straddle them; pattern_version / screen_version
+        are the eras a later rule change would create."
+      population_actionable: "The action reads mean/median realized_r_trail_075/_100 vs the
+        incumbent on ep_low_reclaim FIRST ATTEMPTS; the predicate counts ep_low_reclaim rows with
+        a settled 075 trail arm - a superset only by reentry_shape, which the action filters
+        (reentry_shape='first') and states. Same rung, same table, prospective only."
+      instrument_trusted: "mi_delayed_entry_trigger variant columns, settled by the incumbent's
+        compute_settlement on stored daily bars - verified 160 settled 2026-09-19. Known bias the
+        action already names: early variant-settled rows are STOP-HEAVY by construction (wider
+        stops settle later), so an immature read under-states the band."
     earliest_review_date: 2026-10-12
     status: pending
     kind: accrual
@@ -12523,13 +13228,38 @@ reviews:
     # Mirrors delayed_entry_adr_stop_variant_616's idiom/threshold/date exactly — same
     # maturity requirement (a single 20-session settle, not a chain: chain maturity
     # does not apply here since this recorder cannot compose one, see the question).
+    # fire_date guard added 2026-09-19 (#669 audit) for the same reason as the 616 sibling: the
+    # question is explicitly out-of-sample "on fires recorded from 2026-09-02" and the SQL did
+    # not say so (111 of 112 were prospective). Reads 111.
     predicate_sql: >-
       SELECT CASE WHEN to_regclass('mi_delayed_entry_trigger') IS NULL THEN 0
                   ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger
                         WHERE rung = 'ep_low_reclaim'
+                          AND fire_date >= DATE '2026-09-02'
                           AND realized_r_trail_025 IS NOT NULL) END
     threshold: 30
     discriminates_on: [mi_delayed_entry_trigger.rung]
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod: 111 with the fire_date guard,
+        112 without. Clean SQL."
+      nonzero_possible: "The 0.25xADR counterfactual is stamped beside 0.75x/1.00x on every
+        trigger and settles through compute_settlement; 111 ep_low_reclaim rows settled on the
+        025 trail arm since 09-02."
+      lane_live: "Shadow lane by design; the recorder runs every session."
+      threshold_vs_observed: "30 against 111 - met, ahead of the 2026-10-12 date; maturity of
+        the 20-session window is the real constraint and the action states it."
+      era_scoped: "Prospective rows only (fire_date >= 2026-09-02). Settled through the lane's
+        own ladder, so the magna53 exit flips do not straddle it. ⚠ The #545 chained-retry
+        composite this variant is compared AGAINST was measured on the 46-name BACKFILL
+        (545_retry_test_2026-09-02.md) - a different era and population, which the action
+        already says cannot be reconstructed here; quote it as the backfill figure, never pooled."
+      population_actionable: "The action restricts to reentry_shape='first' and reads the 025
+        arms against the incumbent and the 075 arm on the same fires; the predicate counts
+        ep_low_reclaim rows with a settled 025 trail arm, prospective only. Re-entry rows are
+        keyed to the INCUMBENT's stop-out, so they are excluded by the action, as its text says."
+      instrument_trusted: "Same recorder and settle path as the 616 sibling, verified 111 settled
+        2026-09-19; the 025 arm is stop-heavy EARLY in the opposite direction (a tight stop
+        settles fastest), so an immature read over-states its losses - name the maturity cut."
     earliest_review_date: 2026-10-12
     status: pending
     kind: accrual
@@ -12756,11 +13486,40 @@ reviews:
     status: pending
     kind: accrual
     added_on: 2026-09-01
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 14 graded live
+        alerts since 2026-09-02."
+      nonzero_possible: "mi_ep_alerts.judge_grade is written by the load-bearing HIGH-tier judge
+        on every graded alert (ep_grade_judge.py); 14 since 09-02, 93 in the month before 08-27."
+      lane_live: "The holistic judge is live and load-bearing (Wave 2 flipped); the wiring fix
+        shipped 2026-09-01."
+      threshold_vs_observed: "40 against 14 in 12 trading days (~1.2 a day) - roughly four more
+        weeks, close to the entry's own 'six weeks' estimate."
+      era_scoped: "⚠ THE BASELINE STRADDLES A GRADE-SURFACE CHANGE, found 2026-09-19. The '30
+        days to 2026-09-01' baseline (101 rows) is 93 rows graded BEFORE the 2026-08-27 rubric
+        v4 axis-split (scripts/evals/judge_eval_pass_record.json run_at 2026-08-27, #602: the
+        judge's two decisions got two vocabularies) and 6 rows after it. The post-fix cohort is
+        entirely rubric v4. A grade-mix shift between them would read as the wiring's effect
+        when most of it could be the rubric's. The predicate's own window (>= 09-02) is
+        single-era; the COMPARATOR was not, which is exactly the p74 shape."
+      population_actionable: "The predicate counts graded live alerts on the new wiring; the
+        action compares their grade mix - same rows. What the action must NOT do is compare
+        them to the mixed-rubric 101 as one baseline (see era_scoped and the rewritten step)."
+      instrument_trusted: "mi_ep_alerts.judge_grade / judge_tier (rubric v4 vocabulary since
+        08-27) and judge_grade_reason. ⚠ 'judge_signal_trace rows' named in the original action
+        do not exist under that name anywhere in the repo (grep 2026-09-19); the held-vs-sent
+        record is the payload test tests/test_judge_payload_completeness.py pins plus the
+        judge_grade_reason text - read those, not a table that is not there."
     action_when_ready: >-
-      Compare the post-fix grade mix against the recorded pre-fix baseline
-      (game_changer 35 / strong 43 / routine 21 / none 2, tiers HIGH 75 /
-      MODERATE 21 / none 5, over the 30 days to 2026-09-01). Read the
-      judge_signal_trace rows alongside so held-vs-sent is visible per grade.
+      Compare the post-fix grade mix against the pre-fix baseline SPLIT BY RUBRIC ERA (added
+      2026-09-19, #669): (i) the 6 rows graded 2026-08-27..09-01 - same rubric v4, pre-wiring -
+      are the like-for-like comparator and are too thin to carry a distribution, so report them
+      by name; (ii) the 93 rows before 08-27 (the recorded game_changer 35 / strong 43 / routine
+      21 / none 2, tiers HIGH 75 / MODERATE 21 / none 5, over the 30 days to 09-01, are THIS
+      mixed set) are a DIFFERENT rubric and go in a separate column labelled as such - never
+      pooled into one baseline. If the like-for-like cell cannot decide, say so and read
+      judge_grade_reason for whether the source/revenue flags are cited at all (the mechanism
+      question the entry actually asks) rather than forcing a distribution verdict.
       THREE OUTCOMES, all worth recording: (a) no material shift -> the fields
       are inert and the judge reads evidence over flags, so stop treating them
       as load-bearing; (b) grades rise -> the false "no" WAS suppressing, and
@@ -13167,9 +13926,42 @@ reviews:
     status: pending
     kind: accrual
     added_on: 2026-09-03
+    # ⚠ 2026-09-19 (#669 audit): the action below still described the ACCRUAL stage this entry
+    # was born in ("fires once >=30 rows have a verdict... ask him what rate should trigger") while
+    # the predicate already carried his numbers (OPERATOR-SET 2026-09-03: >=5% of >=100 decided
+    # reached 4R). Had it fired, step 2 would have asked him for a number he had already given -
+    # the never-re-ask failure in registry form. Steps 2-3 rewritten to match the predicate; the
+    # kind stays `accrual` (pinned by tests/test_gap_near_miss_replay.py) because the 100-decided
+    # floor is still a sample gate, but a zero past the date is now RULED below.
+    zero_verdict: "2026-09-19 WAITING — 181 decided replay rows, ONE reached >=4R (0.6%) against his 5% bar with the >=100 floor met (396 rows total, 215 unscoreable/no-trade). The funnel counts non-zero, so the query is live; the 9% floor is turning away almost no 4R name."
+    can_fire:
+      predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 0: 181 decided
+        rows, 1 at >=4R (0.6%), floor of 100 met. Not the phantom-column error it shipped with."
+      nonzero_possible: "gap_near_miss_replay.py's nightly job writes a row per 7-9% near-miss
+        session and settles it through the current magna53 bracket; 396 rows since 09-03. The
+        rate arm goes to 1 when 20 x (>=4R rows) >= decided rows - reachable, since one 4R name
+        already exists (5 would trip it at today's n)."
+      lane_live: "MAGNA53 EP is the live setup whose 9% gap floor this watches; the replay job
+        runs nightly (sustain/gap replays, 18:13 ET class)."
+      threshold_vs_observed: "1 (ready flag) against 0. The underlying rate is 0.6% vs a 5% bar
+        that is four times the ~1.5% background - the bar is HIS (2026-09-03) and the observed
+        rate sits well under it. A tripwire posture: zero is the good reading."
+      era_scoped: "Every row carries admission_era and replay_exit_era; the predicate pools
+        eras deliberately (the trigger is 'does the floor cost us 4R names under any stack')
+        and the action segments on both. The walk uses the CURRENT bracket (replay_exit_rules
+        stored per row), so a row walked under era C is labelled as such, never silently mixed."
+      population_actionable: "The predicate counts decided replay rows of 7-9% open-gap names
+        and the rate of those reaching 4R; the action reports exactly that rate beside the
+        any-positive rate, per gap_band and admission_era, from the same table. Same rows."
+      instrument_trusted: "mi_gap_near_miss_replays - realized_r / meets_4r / mark_meets_4r
+        written by the same replay walker sustain_reject_replay.py uses (ORB entry, stop-limit
+        trigger, live exit ladder), with 'unscoreable' written as NULL-and-counted on a data gap.
+        The reached_4r phantom column that made this predicate ERROR from birth was removed
+        2026-09-09; verified running 09-19."
     action_when_ready: |
-      This fires once >=30 gap_near_miss_replays rows have a real verdict (outcome not
-      'unscoreable') — sample sufficiency only, never a rate.
+      This fires when the >=4R tradeable-miss rate among DECIDED 7-9% near-miss replays exceeds
+      the OPERATOR-SET 5% with >=100 decided (his numbers, 2026-09-03 — see the predicate). It is
+      a review trigger, never a revert.
 
       1. Report ALL of these side by side, plainly, from mi_gap_near_miss_replays over the
          full accrued window — never the >=4R number alone:
@@ -13189,13 +13981,12 @@ reviews:
            - replay COVERAGE: outcome IN ('settled','open','horizon') (replayed) vs 'no_trade'
              (our own ORB/ATR rule would have skipped it regardless — never a cost) vs
              'unscoreable' (data gap — NULL, counted, never substituted).
-      2. STATE TODAY'S RATE plainly, then ask, in one line: "what >=4R miss rate, over what
-         rolling window, should trigger a review of the 9% gap floor?" Do NOT pick a number —
-         that is his call (THE LINE — a revert-review threshold on a live admission gate,
-         exactly like #593's own threshold question).
-      3. Once he answers, REWIRE this predicate the same way #593 was rewired 2026-09-03: kind
-         -> tripwire, predicate_sql -> a real rolling-window rate check against his number,
-         threshold -> 1. Do not silently pick a window or number yourself in that rewiring.
+      2. STATE TODAY'S RATE plainly BESIDE HIS BAR (5% of >=100 decided, set 2026-09-03) —
+         never ask him for the number again; it is already in the predicate. The one question
+         that IS his: the predicate reads the FULL accrued table, not a rolling window — say so,
+         and ask in one line whether he wants a window now that it has fired.
+      3. (RETIRED 2026-09-19 — this step described the accrual stage; the rewiring it asked for
+         happened the day he set the numbers. Kept so the history reads straight.)
       4. This is evidence, not a revert — nothing about MIN_GAP_PCT, the universe admission
          floors, or any live selection path changes without a separate, explicit operator
          sign-off + CHANGE_PROCESS entry in docs/setups/magna53_ep.md (Step 3 of #617, his
@@ -13376,19 +14167,31 @@ reviews:
          support a direction long before they support a magnitude, and D2/D3 is a magnitude.
       5. Re-anchor this entry's era date if the engine changes materially again.
     can_fire:
-      predicate_runs: "2026-09-10 - runs and returns 80, the unlabelled rows enrolled today
-        from alerts 2026-08-04 onward."
-      nonzero_possible: "mi_theme_relevance_cohort is written by scripts/seed_theme_relevance_cohort.py,
-        which enrolled 80 rows on 2026-09-10; the operator_label column is NULL until he labels,
-        so a non-zero reading is the normal resting state, not a rare event."
+      predicate_runs: "2026-09-19 (#669 audit) - the stratum-scoped predicate runs against prod and
+        returns 0: 44 themed rows since 08-04, 44 labelled. (The 2026-09-10 reading of 80 was the
+        UNSCOPED form and counted 36 themeless_winner rows the action cannot use - the defect
+        fixed 2026-09-16.)"
+      nonzero_possible: "mi_theme_relevance_cohort is written by scripts/seed_theme_relevance_cohort.py
+        (themed rows enrol week by week: 12, 15, 6, 3, 4, 4 since 08-04); operator_label is NULL
+        until he labels, so the count rises on its own with every top-up."
       lane_live: "n/a for a strategy lane. The population is mi_theme_axis_shadow rows, which the
-        live judge writes on every graded alert - 102 rows in the last 37 days."
-      threshold_vs_observed: "30 against an observed 80 unlabelled today, on the SAME population
-        the predicate counts. Accrual measured at ~2.2 enrolments/day (80 in 37 days), so 30
-        represents roughly a fortnight of new rows - a cadence, not a wall."
+        live judge writes on every graded alert."
+      threshold_vs_observed: "30 against 0 themed-unlabelled today (he labelled all 44 on 09-13).
+        At ~5 themed enrolments a week, 30 is ~6 weeks - late October - a cadence, not a wall."
       era_scoped: "Anchored at 2026-08-04 precisely BECAUSE the older rows are stale: the engine
         took 33 commits since, and 18 of 31 older themeless-winner labels no longer describe
-        themeless names. Re-anchor when the engine next changes materially."
+        themeless names. Re-anchor when the engine next changes materially - the 09-13 #655
+        re-sequencing and #660 are candidates; the action's step 5 owns that call."
+      population_actionable: "YES since 2026-09-16 and re-verified 09-19: the predicate counts
+        themed AND unlabelled rows since the era anchor, and the action puts exactly those in
+        front of him. The 36 unlabelled themeless_winner rows are a different question and are
+        deliberately outside both (his time, not asked - do not re-raise)."
+      instrument_trusted: "mi_theme_relevance_cohort.operator_label (his labels via
+        scripts/_368_ingest_labels.py; never overwritten on re-seed) and stratum (set at
+        enrolment from the board of that day). Verified 09-19: 44 of 44 themed rows carry a label
+        dated <= 09-13. The one instrument caveat is the stratum itself: 'themed' means themed
+        under the ENGINE OF THAT DAY, so a materially changed engine re-defines the population -
+        the era anchor is what protects the labels from that."
     status: pending
     resolution_2026_09_16: |
       ** THE OPERATOR IS RIGHT AND THE PREDICATE WAS WRONG. ** He said he had already labelled the
@@ -13467,7 +14270,9 @@ reviews:
         NOT been executed against prod from this machine (no POSTGRES_PASSWORD here) - it returns
         0 by construction until this fix deploys, since no existing row can carry a key nothing
         has ever written. RE-RUN via operator_asks.py --audit on the first night after deploy to
-        get a real reading on the new predicate.
+        get a real reading on the new predicate. RE-RUN 2026-09-19 (#669 audit) against prod on the
+        #633 predicate: 0. A number, not an error - the detail::json cast plans against the four
+        cooldowns_per_day rows written since 09-09.
       nonzero_possible: >-
         `_compute_anomaly`'s demotion branch (system_audit.py, ~line 1341) sets
         `spiky_guard_demoted = True` whenever band==3, metric.spiky, p95 is not None, and current
@@ -13494,6 +14299,17 @@ reviews:
         `spiky_guard_demoted` exists only on rows written after this fix ships, and the predicate
         only asks whether any such row exists at all - there is nothing older it could be confused
         with.
+      population_actionable: >-
+        (#669 2026-09-19) The predicate counts cooldowns_per_day anomaly rows stamped
+        spiky_guard_demoted=true since the floor shipped; the action reads THAT row's current vs
+        baseline_p95. One row is the whole population and both fields are on it. Re-run 09-19
+        against prod on the post-#633 predicate: 0, with four cooldowns_per_day L2/L3 rows since
+        09-09 (bands 1 and 3, none demoted) proving the query plans against real detail JSON.
+      instrument_trusted: >-
+        mi_audit_log anomaly_detected detail JSON (system_audit._compute_anomaly writes the stamp
+        at the demotion branch; RED-proven in tests/test_spiky_metric_guard.py). The named residual
+        stands: a ZERO cannot separate 'never engaged' from 'stamp removed' - the RED tests, not
+        this count, are the proof the stamp works.
     zero_verdict: >-
       2026-09-12 WAITING — the guard has not engaged for real since it shipped 2026-09-09; #633
       changed WHAT gets recorded when it does, not whether it has happened yet, so today's zero
@@ -13555,6 +14371,14 @@ reviews:
         waiting for the problem to recur before looking at it."
       era_scoped: "All-history by design - the event has never occurred, so there is no era to
         scope to and any occurrence at all is the finding."
+      population_actionable: "(#669 2026-09-19) The predicate counts sync_position_gone_unresolved
+        rows; the action reads that row (ticker, trade_id, broker report, Telegram sent). One row
+        is the population and the action needs nothing the row does not carry. Re-run 09-19: 0."
+      instrument_trusted: "mi_audit_log written by order_manager._resolve_position_gone Case 3
+        (byte-verified on the apollo-execution image 09-12) - plus mi_job_runs, which is what
+        makes the zero readable (a healthy sweep writes no audit row). Stated limit: three
+        resolver exits write nothing, so a cleanly self-resolved vanish is invisible here; what is
+        proven is the GUARD's inaction, which is what #597 is about."
     threshold: 1
     earliest_review_date: 2026-09-13
     status: pending

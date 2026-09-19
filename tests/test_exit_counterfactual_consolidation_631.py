@@ -194,10 +194,17 @@ def test_the_one_read_predicate_is_scoped_to_the_current_exit_era():
     assert "mi_live_fill_counterfactuals.exit_era" in e["discriminates_on"]
 
 
-@pytest.mark.parametrize("review_id", ("exit_tune_cohort_review", "exit_tune_bull_regime_read"))
+@pytest.mark.parametrize("review_id", ("exit_tune_cohort_review", "exit_tune_bull_regime_read",
+                                       "runner_rule_sweep_recut"))
 def test_the_kept_exit_tune_predicates_track_the_latest_exit_switch(review_id):
     """Both carried `created_at >= DATE '2026-08-16'` three days after the 09-06 flip, with a
-    comment demanding the bump. The comment is now this test."""
+    comment demanding the bump. The comment is now this test.
+
+    `runner_rule_sweep_recut` joined the list 2026-09-19 (#669): its own text says an exit-stack
+    change VOIDS the prior read, yet its predicate watched mi_safeguard_state (feature toggles)
+    and never saw the 09-06 flip — it read 83 off two toggles that touch no exit. Its trade arm
+    is now era-scoped to the same literal, so the next flip goes RED here too. RED-PROVEN by
+    reverting that entry's `DATE '2026-09-06'` to `'2026-08-29'`: this parametrization fails."""
     sql = _registry()[review_id]["predicate_sql"]
     latest = _latest_exit_switch().isoformat()
     assert f"DATE '{latest}'" in sql, f"{review_id} still counts trades from a replaced exit era"

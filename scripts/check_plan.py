@@ -1386,13 +1386,34 @@ def verify_is_absence_only(bar_text: str) -> bool:
 REVIEWS_YAML = REPO / "data_gated_reviews.yaml"
 
 # The five ways a gated review turned out to be unable to fire, all found on 2026-09-09 when
-# eleven of them were reading zero. Named plainly because the author has to answer each one.
+# eleven of them were reading zero — plus the two ways a review that CAN fire still sends us at
+# the wrong work, found on 2026-09-16 when six reviews failed in one day for five different
+# reasons (#669). Named plainly because the author has to answer each one.
+#
+# ⚠ A GATE CANNOT CHECK THE ANSWER — IT FORCES THE QUESTION. None of these seven is textually
+# decidable ("is this threshold sane", "can the action act on these rows", "is that table
+# trustworthy"); what stopped the 2026-09-09 class was making the author WRITE DOWN what was
+# checked, so a thin or absent answer is visible at creation instead of 56-70 days later. Same
+# shape as `discriminates_on:` (#573) and a task line's `WOULD-FAIL-IF:`.
 _CAN_FIRE_KEYS = (
     "predicate_runs",          # it EXECUTED and returned a number — date + value
     "nonzero_possible",        # the writer exists AND its job is registered (file:line)
     "lane_live",               # the strategy/lane it depends on is enabled, or n/a + why
     "threshold_vs_observed",   # the observed range OF THE RIGHT POPULATION, and where the bar sits
-    "era_scoped",              # how it survives a rule change, or n/a + why
+    "era_scoped",              # the eras of EVERY TABLE THE METHOD READS (action_when_ready
+                               # included), not just the window the predicate's cohort spans —
+                               # p74 compared capture rates straddling the 2026-06-26 HTF
+                               # criteria swap while its cohort window was single-era (#669 (7))
+    "population_actionable",   # the rows the predicate COUNTS are rows the action can ACT on:
+                               # name the filter the action applies and show the predicate
+                               # applies the same one (theme_relevance counted every stratum
+                               # while its action handled `themed` only; stop_too_wide counted
+                               # every strategy's skips — #669 (3))
+    "instrument_trusted",      # WHAT the action reads (table / column / script) and WHY it is
+                               # trustworthy today: last verified, known phantom rows, dark
+                               # joins (htf_adr_threshold_tune read a table whose only capture
+                               # was a phantom fill; p74's script joined account_mode='paper',
+                               # dark since 2026-07-14 — #669 (5))
 )
 
 
@@ -1423,7 +1444,20 @@ def _review_can_fire_gate(errors) -> None:
 
     Scoped to reviews ADDED or CHANGED versus origin/main. The 153 existing ones are not
     retrofitted here — that is #635-shaped work — but the bleed stops now, and `operator_asks.py
-    --audit` reports the same five verdicts for the whole file so the backlog is visible.
+    --audit` reports the same verdicts for the whole file so the backlog is visible.
+
+    EXTENDED 2026-09-19 (#669, operator 2026-09-16: *"So many wrong info and action from review,
+    this needs to be cleaned up"*). Six failures in one day were five different defects, and only
+    the first was a review that could not fire; the rest FIRED and sent us at the wrong work: a
+    predicate counting rows its action could not act on (theme_relevance, stop_too_wide, #517), a
+    method reading an instrument known to be broken (htf_adr_threshold_tune, p74), a measure
+    straddling a dated criteria change in a table the METHOD reads (p74 again). So `can_fire:` now
+    carries two more questions — `population_actionable` and `instrument_trusted` — and
+    `era_scoped` asks about every table the method reads, not just the cohort window. Same
+    scoping: a NEW or EDITED review must answer all seven; the open entries that predate the two
+    new keys are printed below as a counted backlog, never a wall, and `operator_asks.py --audit`
+    lists them by name via the shared `can_fire_missing` (its "thin:" arm). The full audit that
+    paid the backlog down on 2026-09-19 is docs/analysis/669_review_registry_audit_2026-09-19.md.
     """
     if REVIEWS_YAML != REPO / "data_gated_reviews.yaml" or not REVIEWS_YAML.exists():
         return
@@ -1459,23 +1493,48 @@ def _review_can_fire_gate(errors) -> None:
     # subprocess.run, so `git show` returned something that was not the YAML at all.)
     if not old:
         return
+    backlog = 0
     for rid, r in new.items():
-        if rid in old and old[rid] == r:
-            continue                                  # untouched
-        if str(r.get("status", "")).lower() in ("closed", "retired", "superseded"):
+        if str(r.get("status", "")).lower() in ("done", "closed", "retired", "superseded"):
             continue                                  # closing one is not proposing one
+        if rid in old and old[rid] == r:
+            # Untouched: never blocked, but COUNTED when it predates the 2026-09-19 keys — the
+            # same surfaced-not-walled backlog `_expect_done_when_gate` prints for `deployed`
+            # tasks. `--audit` names them; this is the number.
+            cf0 = r.get("can_fire")
+            if not isinstance(cf0, dict) or any(
+                    k in can_fire_missing(cf0) for k in _CAN_FIRE_ACTION_KEYS):
+                backlog += 1
+            continue
         cf = r.get("can_fire")
         if not isinstance(cf, dict):
             errors.append(
                 f"gated review `{rid}` is new or edited but records no `can_fire:` block. Eleven "
                 f"reviews were reading zero on 2026-09-09 for five different reasons, none visible "
-                f"at creation. Add can_fire with: {', '.join(_CAN_FIRE_KEYS)}.")
+                f"at creation — and on 2026-09-16 six that COULD fire sent us at the wrong work. "
+                f"Add can_fire with: {', '.join(_CAN_FIRE_KEYS)}.")
             continue
         missing = can_fire_missing(cf)
         if missing:
+            action_gap = [k for k in missing if k in _CAN_FIRE_ACTION_KEYS]
+            hint = ""
+            if action_gap:
+                hint = (" `population_actionable` = the rows the predicate COUNTS are rows the "
+                        "action can ACT on (name the filter both apply); `instrument_trusted` = "
+                        "what the action READS and why that instrument is trustworthy today; "
+                        "`era_scoped` = the eras of EVERY table the method reads (#669).")
             errors.append(
                 f"gated review `{rid}`: `can_fire` is missing or too thin for {missing}. Each must "
-                f"say what was CHECKED, not that it was checked.")
+                f"say what was CHECKED, not that it was checked.{hint}")
+    print(f"[plan] can_fire population/instrument backlog: {backlog} open review(s) predate the "
+          f"2026-09-19 `population_actionable` / `instrument_trusted` keys (not blocking — "
+          f"`operator_asks.py --audit` names them).")
+
+
+# The two questions added 2026-09-19 (#669) — split out so the gate can count the backlog of
+# open reviews that answered the original five but not these, and so the error hint can name
+# them. Always a subset of `_CAN_FIRE_KEYS`; `test_review_can_fire_gate` pins that.
+_CAN_FIRE_ACTION_KEYS = ("population_actionable", "instrument_trusted")
 
 def can_fire_missing(cf: dict) -> list:
     """Which `can_fire` keys are absent or too thin to be evidence.
