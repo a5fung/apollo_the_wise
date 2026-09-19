@@ -29,7 +29,7 @@ from __future__ import annotations
 import html as _html
 import re
 
-__all__ = ["esc", "b", "i", "code", "pre", "link", "bullet", "render", "md_to_html"]
+__all__ = ["esc", "b", "i", "code", "pre", "link", "bullet", "render", "md_to_html", "chunk_html"]
 
 
 def esc(s) -> str:
@@ -130,3 +130,86 @@ def md_to_html(text: str) -> str:
     def _unstash(m):
         return placeholders[int(m.group(1))]
     return re.sub(r"\x00(\d+)\x00", _unstash, text)
+
+
+# ── Tag-aware chunking for HTML-mode sends (#652, 2026-09-19) ────────────────
+# Telegram caps a message at 4096 chars, so `send_telegram_message` splits at the last blank
+# line before 4000. On the legacy path that was harmless; on HTML a split that lands INSIDE
+# an open <pre>/<b>/<a> leaves BOTH halves malformed and Telegram 400s both. The converted
+# text is also longer than the Markdown it came from (escapes + tags), so a body that fit in
+# one message as Markdown can cross the line as HTML — one real weekly review already does
+# (3,593 chars -> 4,043). This chunker closes whatever is open at the split and reopens it at
+# the head of the next chunk, and a hard split never lands inside a `<…>` token or an `&…;`
+# entity. Pure function; the legacy-Markdown chunker in briefing.py is untouched.
+_TAG_RE = re.compile(r"<(/?)([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^<>]*)?>")
+_ENTITY_MAX = 10   # longest entity we emit is `&#x1F525;` (9 chars) — the back-off window
+
+
+def _open_tags_before(text: str, pos: int) -> list[tuple[str, str]]:
+    """Tags still open at `pos`, outermost first, as (name, full opening tag)."""
+    stack: list[tuple[str, str]] = []
+    for m in _TAG_RE.finditer(text, 0, pos):
+        if m.group(1):
+            if stack and stack[-1][0] == m.group(2):
+                stack.pop()
+        else:
+            stack.append((m.group(2), m.group(0)))
+    return stack
+
+
+def _hard_split_point(text: str, at: int) -> int:
+    """Back `at` off so it is not inside a `<…>` token or an `&…;` entity."""
+    lt, gt = text.rfind("<", 0, at), text.rfind(">", 0, at)
+    if lt > gt:                       # an unclosed '<' before `at` → inside a tag token
+        at = lt
+    amp = text.rfind("&", max(0, at - _ENTITY_MAX), at)
+    if amp != -1 and ";" not in text[amp:at]:
+        at = amp
+    return at
+
+
+def chunk_html(text: str, limit: int = 4000) -> list[str]:
+    """Split HTML-mode text into ≤`limit`-char chunks that each parse on their own.
+
+    Same section preference as the legacy chunker (last blank line, then last newline,
+    then a hard cut) and the same `.strip()` at the seam; the difference is that every
+    tag open at the seam is closed at the end of the chunk and reopened at the start of
+    the next, so a `<pre>` block or a bold span spanning the cut renders in both messages
+    instead of failing both. A text at or under the limit is returned as-is, one chunk.
+    """
+    if len(text) <= limit:
+        return [text]
+    chunks: list[str] = []
+    remaining = text
+    while len(remaining) > limit:
+        reserve = 0
+        for _attempt in range(8):
+            budget = limit - reserve
+            split_at = remaining.rfind("\n\n", 0, budget)
+            if split_at < 1:
+                split_at = remaining.rfind("\n", 0, budget)
+            if split_at < 1:
+                split_at = _hard_split_point(remaining, budget)
+            if split_at < 1:
+                split_at = budget
+            open_tags = _open_tags_before(remaining, split_at)
+            closers = "".join(f"</{name}>" for name, _ in reversed(open_tags))
+            openers = "".join(tag for _, tag in open_tags)
+            head = remaining[:split_at].strip() + closers
+            # the seam must shrink the text: a split at or before the reopened tags would spin
+            if len(head) <= limit and split_at > len(openers):
+                break
+            reserve = len(closers) + max(0, len(head) - limit) + len(openers)
+        else:                          # closers never fit — cut hard, well inside the limit
+            split_at = _hard_split_point(remaining, limit - limit // 10)
+            open_tags = _open_tags_before(remaining, split_at)
+            closers = "".join(f"</{name}>" for name, _ in reversed(open_tags))
+            openers = "".join(tag for _, tag in open_tags)
+            head = remaining[:split_at].strip() + closers
+        if head:
+            chunks.append(head)
+        remaining = openers + remaining[split_at:].strip()
+    if remaining and remaining != "".join(tag for _, tag in _open_tags_before(remaining, len(remaining))):
+        chunks.append(remaining)
+    return chunks
+

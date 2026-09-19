@@ -5,7 +5,7 @@ containing markup that breaks the parse. Every helper must HTML-escape its conte
 """
 from __future__ import annotations
 
-from shared.telegram_format import esc, b, i, code, pre, link, render, md_to_html
+from shared.telegram_format import esc, b, i, code, pre, link, render, md_to_html, chunk_html
 
 
 def test_esc_escapes_html_metachars():
@@ -97,3 +97,82 @@ def test_md_none_and_plain():
 def test_md_does_not_bold_midword_underscores():
     # snake_case must NOT become italic — the (?<!\w)_ guards prevent it.
     assert md_to_html("news_corpus_sparse") == "news_corpus_sparse"
+
+
+# ── chunk_html — the tag-aware splitter the HTML send path uses (#652) ──────────────
+
+
+def _well_formed(chunk: str) -> None:
+    from tests.test_647_machine_text_alerts_on_html_layer import _assert_well_formed_telegram_html
+    _assert_well_formed_telegram_html(chunk)
+
+
+def _visible(chunk: str) -> str:
+    import html as _h, re as _r
+    return _h.unescape(_r.sub(r"<[^>]+>", "", chunk))
+
+
+def test_chunk_html_returns_short_text_untouched():
+    assert chunk_html("short") == ["short"]
+    assert chunk_html("x" * 4000) == ["x" * 4000]
+
+
+def test_chunk_html_closes_and_reopens_a_pre_block_that_spans_the_cut():
+    """A drill-SQL / table block longer than one message. The legacy chunker cut it at the
+    last newline and left `<pre>` open in one half and `</pre>` orphaned in the other — both
+    400. MUTATION TARGET: dropping the closers/openers (`closers = openers = ""`) — every
+    assertion but the length one fails; verified."""
+    body = "<b>Head</b>\n\n<pre>" + "\n".join(f"row_{n} value_{n}" for n in range(600)) + "\n</pre>\n\nTail"
+    chunks = chunk_html(body)
+    assert len(chunks) >= 3 and all(len(c) <= 4000 for c in chunks)
+    for c in chunks:
+        _well_formed(c)
+    middle = [c for c in chunks if "row_300 " in c][0]
+    assert middle.startswith("<pre>") and middle.endswith("</pre>")
+    # nothing the operator reads is lost at the seams (only the whitespace stripped there)
+    assert _visible("".join(chunks)).replace("\n", "") == _visible(body).replace("\n", "")
+
+
+def test_chunk_html_reopens_nested_tags_in_order_and_a_link_with_its_href():
+    """Nested <b><i> at the seam must close inner-first and reopen outer-first; an <a> must
+    come back WITH its href or the second half is a dead link. MUTATION TARGET: reopening
+    with `f"<{name}>"` instead of the captured tag (the href assertion fails)."""
+    chunks = chunk_html("<b>B <i>I " + "x" * 5000 + "</i></b>")
+    assert [c[:9] for c in chunks] == ["<b>B <i>I", "<b><i>xxx"]
+    assert all(c.endswith("</i></b>") for c in chunks)
+    for c in chunks:
+        _well_formed(c)
+    link_body = '<a href="https://x.com/a?b=1&amp;c=2">' + "l" * 4500 + "</a>"
+    chunks = chunk_html(link_body)
+    assert len(chunks) == 2
+    assert chunks[1].startswith('<a href="https://x.com/a?b=1&amp;c=2">')
+    for c in chunks:
+        _well_formed(c)
+
+
+def test_chunk_html_hard_cut_never_lands_inside_an_entity_or_a_tag_token():
+    """No newline anywhere, so the splitter must cut hard — and a cut inside `&amp;` or
+    inside `<a href=…>` is a guaranteed 400. MUTATION TARGET: `_hard_split_point` returning
+    `at` unchanged (the entity assertion fails; verified)."""
+    import re as _r
+    chunks = chunk_html("<b>" + "&amp;" * 1700 + "</b>")
+    assert len(chunks) == 3
+    for c in chunks:
+        _well_formed(c)
+        assert _r.fullmatch(r"<b>(&amp;)+</b>", c), c[:20] + "…" + c[-20:]
+    # the 4000th char falls INSIDE the `<a href=…>` token: the cut must back off to before `<`
+    straddle = "p" * 3990 + '<a href="https://example.com/very/long/path">t</a>' + "q" * 50
+    chunks = chunk_html(straddle)
+    assert len(chunks) == 2 and chunks[0] == "p" * 3990
+    assert chunks[1].startswith('<a href="https://example.com/very/long/path">t</a>')
+    for c in chunks:
+        _well_formed(c)
+
+
+def test_chunk_html_terminates_and_keeps_the_legacy_section_preference():
+    """A 20k-char text with no newlines finishes (progress is guaranteed at every seam), and
+    the same input the legacy chunker split at the blank line still splits there."""
+    chunks = chunk_html("z" * 20000)
+    assert sum(len(c) for c in chunks) == 20000 and all(len(c) <= 4000 for c in chunks)
+    assert chunk_html("A" * 3000 + "\n\n" + "B" * 3000) == ["A" * 3000, "B" * 3000]
+
