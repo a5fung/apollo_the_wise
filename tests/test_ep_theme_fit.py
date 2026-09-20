@@ -13,11 +13,17 @@ of "fits a theme" that drift. Pinned here, all through the real functions (no so
   3. the verdict mapping: a shortlisted theme → confirmed (stage label stripped); no fit →
      rejected with the model's own line; an echo of a theme not offered or of another
      ticker → rejected; truncation / a silent stop → FAILED, never rejected; no description →
-     failed without spending a call.
+     failed without spending a call;
+  4. the SEAM (#661, 2026-09-20): the EP path calls the one-call primitive `_assignment_turn`
+     directly and never enters the nightly batch driver or its advisor loop; the four
+     bolt-on kwargs are gone; the primitive has no default a later edit could flip; the
+     nightly loop still threads a consult through the same primitive. Each assertion was
+     run RED against the mutation named in its docstring, then restored green.
 """
 from __future__ import annotations
 
 import asyncio
+import inspect
 from types import SimpleNamespace
 
 import pytest
@@ -201,3 +207,104 @@ def test_api_errors_raise_to_the_caller(monkeypatch):
     with pytest.raises(RuntimeError):
         asyncio.run(te.judge_theme_fit("LITE", description="d", sector=None, themes=THEMES,
                                        client=client))
+
+
+# ── 4. the seam (#661): the EP path calls the primitive, never the nightly driver ───────────
+
+def test_ep_path_never_enters_the_nightly_batch_driver(monkeypatch):
+    """MUTATION (run RED 2026-09-20): routing `judge_theme_fit` back through
+    `_propose_assignment_batch` — the pre-#661 shape — makes the forbidden stub raise."""
+    _quiet(monkeypatch)
+
+    async def _forbidden(*a, **k):
+        raise AssertionError("the EP path entered the nightly batch driver")
+
+    monkeypatch.setattr(te, "_propose_assignment_batch", _forbidden)
+    client, calls = _client([_assign_resp([{"ticker": "LITE", "theme": "Old Optical",
+                                             "rationale": "optical parts"}])])
+    got = asyncio.run(te.judge_theme_fit("LITE", description="optical components",
+                                         sector="Technology", themes=THEMES, client=client))
+    assert got == (te.FIT_CONFIRMED, "Old Optical", "optical parts")
+    assert len(calls) == 1 and calls[0]["tool_choice"] == {"type": "tool", "name": "assign_stocks_to_themes"}
+
+
+def test_ep_path_never_reaches_the_advisor_even_if_the_model_asks(monkeypatch):
+    """The forced tool makes a consult_advisor block impossible live; if one ever arrived (a
+    later edit loosening tool_choice) it must read as NO VERDICT — never an Opus call, never a
+    second turn, never a nightly audit row. MUTATION (run RED): the same re-route as above —
+    the nightly driver answers the consult, so the forbidden advisor stub raises."""
+    events = _quiet(monkeypatch)
+
+    async def _no_advisor(*a, **k):
+        raise AssertionError("the EP path consulted the advisor")
+
+    monkeypatch.setattr(te, "_call_advisor", _no_advisor)
+    ask = _resp(_Block("tool_use", name="consult_advisor",
+                       input={"question": "?", "context": "c"}, id="adv1"))
+    client, calls = _client([ask, _assign_resp([])])
+    status, theme, why = asyncio.run(te.judge_theme_fit(
+        "LITE", description="d", sector=None, themes=THEMES, client=client))
+    assert (status, theme) == (te.FIT_FAILED, None) and "consult" in why
+    assert len(calls) == 1, "the EP path took a second turn — it entered the advisor loop"
+    assert not any(e.startswith("assignment_") for e in events)
+
+
+def test_the_four_bolt_on_kwargs_are_gone_from_the_nightly_driver():
+    """MUTATION (run RED): adding `allow_advisor: bool = True` back after `pool_size`."""
+    params = inspect.signature(te._propose_assignment_batch).parameters
+    assert not ({"allow_advisor", "caller", "audit_prefix", "sink"} & set(params)), \
+        "a bolt-on kwarg is back on the nightly driver — the EP path can be re-routed through it"
+    assert list(params) == ["client", "batch_stocks", "shared_prefix", "cooldown_note",
+                            "advisor_state", "batch_no", "n_batches", "pool_size"]
+
+
+def test_the_primitive_has_no_default_a_later_edit_could_flip():
+    """`tools`, `tool_choice` and `caller` are REQUIRED keyword-only on `_assignment_turn`, so
+    neither caller can inherit the other's setting by omission — there is no default to flip.
+    MUTATION (run RED): giving `tool_choice` a default of {"type": "any"}."""
+    params = inspect.signature(te._assignment_turn).parameters
+    for name in ("tools", "tool_choice", "caller"):
+        p = params[name]
+        assert p.kind is inspect.Parameter.KEYWORD_ONLY, name
+        assert p.default is inspect.Parameter.empty, f"{name} grew a default"
+
+
+def test_nightly_advisor_loop_threads_the_consult_through_the_primitive(monkeypatch):
+    """The nightly wrapper still loops: consult → Opus → a second turn carrying the assistant
+    content and the tool_result → proposals, and the audit row says advisor_calls=1.
+    MUTATION (run RED): returning [] from the wrapper on a `consult` outcome instead of looping."""
+    events = []
+
+    async def _audit(event_type, summary="", detail="", **kw):
+        events.append((event_type, summary))
+
+    async def _spend(**kw):
+        return None
+
+    asked = []
+
+    async def _advice(question, context, caller=""):
+        asked.append((question, caller))
+        return "verdict: Bitcoin Miners"
+
+    import agents.market_intelligence.spend_tracker as spend_mod
+    monkeypatch.setattr(te, "log_audit_event", _audit)
+    monkeypatch.setattr(spend_mod, "log_anthropic_call_safe", _spend)
+    monkeypatch.setattr(te, "_call_advisor", _advice)
+    ask = _resp(_Block("tool_use", name="consult_advisor",
+                       input={"question": "which?", "context": "c"}, id="adv1"))
+    client, calls = _client([ask, _assign_resp([{"ticker": "AAA", "theme": "Bitcoin Miners",
+                                                   "rationale": "r"}])])
+    state = {"calls": 0}
+    out = asyncio.run(te._propose_assignment_batch(
+        client, [{"ticker": "AAA", "rs_composite": 90, "sector": "Technology"}],
+        te.assignment_shared_prefix(THEMES), "", state, 1, 1, 1))
+    assert out == [{"ticker": "AAA", "theme": "Bitcoin Miners", "rationale": "r"}]
+    assert asked == [("which?", "assignment")] and state == {"calls": 1}
+    assert len(calls) == 2
+    second = calls[1]["messages"]
+    assert second[1] == {"role": "assistant", "content": ask.content}
+    assert second[2] == {"role": "user", "content": [
+        {"type": "tool_result", "tool_use_id": "adv1", "content": "verdict: Bitcoin Miners"}]}
+    assert ("assignment_llm_proposed",
+            "Sonnet proposed 1 assignment(s) (batch 1/1, advisor_calls=1)") in events

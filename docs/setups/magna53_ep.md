@@ -448,8 +448,9 @@ at every level it drops IREN 2026-07-20 (a case he wants to work) before BKKT.
   top `BELONGING_SHORTLIST_THEMES = 3` paying-stage baskets, best first). A shortlist is not
   belonging; `belongs_paying` is False on correlation alone.
 - The DECIDER is the fit judgement the nightly assignment pass already makes:
-  `theme_engine.judge_theme_fit` calls the SAME `_propose_assignment_batch` (same prompt, tool,
-  rules, model) against the shortlist only — assign tool forced, no advisor loop, its own
+  `theme_engine.judge_theme_fit` asks the SAME question (same prompt body, tool, rules, model —
+  since #661, 2026-09-20, through the shared one-call primitive `_assignment_turn`, no longer
+  through `_propose_assignment_batch`) against the shortlist only — assign tool forced, no advisor loop, its own
   cost-meter caller `ep_theme_fit` and audit rows `ep_theme_fit_*` (never the nightly's
   `assignment_*` rows, which `data_gated_reviews.yaml` reads as the nightly's health). ONE
   definition of "fits a theme" in the codebase. **belongs = listed OR fit CONFIRMED.**

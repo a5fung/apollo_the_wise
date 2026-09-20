@@ -251,10 +251,11 @@ Expected ~one page a month. $0 preview: `scripts/judge_named_themes_651.py --sur
 ### 2026-09-13 (late evening) — the ASSIGNMENT JUDGEMENT is now on the EP money path (`judge_theme_fit`)
 
 **What changed**: `theme_engine.judge_theme_fit(ticker, description=, sector=, themes=)` asks the
-nightly assignment pass's own question — the SAME `_propose_assignment_batch` (same prompt, same
-`assign_stocks_to_themes` tool, same rules: *clearly matches the thesis / when in doubt do not /
-most specific theme / exact name*) — of a caller-supplied theme SHORTLIST, with the assign tool
-forced and no Opus advisor loop. It is stage 2 of the EP theme-bonus BELONGING test
+nightly assignment pass's own question — the SAME prompt body, `assign_stocks_to_themes` tool and
+rules (*clearly matches the thesis / when in doubt do not / most specific theme / exact name*),
+since #661 (2026-09-20, change log) through the shared one-call primitive `_assignment_turn`
+rather than through `_propose_assignment_batch` itself — of a caller-supplied theme SHORTLIST,
+with the assign tool forced and no Opus advisor loop. It is stage 2 of the EP theme-bonus BELONGING test
 (`ep_theme_belonging.py`, SSoT `docs/setups/magna53_ep.md` 2026-09-13): correlation shortlists ≤3
 paying-stage themes, this judgement decides, and a confirmed fit pays the +10 on the EP score.
 The prompt builders are extracted (`assignment_shared_prefix`, `_assignment_stock_line`,
@@ -794,6 +795,61 @@ section and in the function's docstring, which is where a reader looks for "why 
 
 
 ## Change log
+
+### 2026-09-20 — #661: the assignment LLM call has a SEAM — the EP money path no longer runs through the nightly batch driver (REFACTOR ONLY; old-vs-new replay byte-identical)
+
+**Why**: `_propose_assignment_batch` — the nightly pass's multi-turn driver (advisor-consult loop,
+truncation handling, batch-numbered telemetry) — had grown four bolt-on kwargs (`allow_advisor`,
+`caller`, `audit_prefix`, `sink`) on 2026-09-13 so `judge_theme_fit` could reuse it. That put every
+edit made for the NIGHTLY pass on the path that decides whether an EP alert gets its +10 and can
+cross into HIGH. Safe as shipped (the forced tool made the advisor branch unreachable — dead code,
+not a fork); the risk was the next edit. Found by the 2026-09-14 altitude review.
+
+**What changed** (`theme_engine.py`, no prompt / bar / criterion / tool-schema change):
+- The primitive is factored out and BOTH callers use it directly. `_assignment_body(stocks,
+  cooldown_note, batch_note)` renders the prompt body ONE way; `_assignment_messages(prefix, body)`
+  builds the cache-split opening turn; `_assignment_turn(client, messages, *, tools, tool_choice,
+  caller)` makes ONE bounded call (same model, ceiling, `thinking=DISABLED`), meters it, and parses
+  the result into `_AssignmentTurn.outcome` ∈ `proposed` / `truncated` / `silent_stop` / `consult`.
+  `tools`, `tool_choice` and `caller` are REQUIRED keywords — there is no default a later edit could
+  flip one caller onto the other's setting. No audit rows and no log lines live in the primitive.
+- `_propose_assignment_batch(client, batch_stocks, shared_prefix, cooldown_note, advisor_state,
+  batch_no, n_batches, pool_size)` is now the NIGHTLY wrapper: it appends the advisor paragraph
+  (`_ASSIGNMENT_ADVISOR_NOTE`), offers both tools with `tool_choice=any`, loops on `consult`, and
+  writes `assignment_llm_proposed` / `assignment_silent_stop` verbatim. **The four kwargs are gone.**
+- `judge_theme_fit` calls `_assignment_turn` directly with the assign tool ALONE and FORCED
+  (`_ASSIGN_TOOL_FORCED`), writes its own `ep_theme_fit_llm_proposed` / `ep_theme_fit_silent_stop`
+  rows (same event names AND the same detail keys as before — batch 1/1, pool 1, advisor_calls 0 —
+  so anything written against them since 09-13 keeps reading), and never enters the loop.
+
+**The ONE input on which behaviour differs, stated rather than found**: a `consult_advisor` block
+arriving on the EP path. Impossible live (the forced tool cannot produce it); the OLD code would
+have entered the advisor loop there (the dead branch), the NEW code returns `FIT_FAILED` "no
+verdict (consult)" with no Opus call and no second turn. That is the seam doing its job. The only
+other visible difference is a LOG line: a truncated / silent EP call used to log the nightly's
+"Theme assignment batch 1/1 TRUNCATED…" text and now logs "ep theme fit: TK — no verdict (…)".
+Log lines are not audit rows and nothing reads them.
+
+**Proof it is a pure refactor** — `scripts/probes/_661_assignment_seam_replay.py` (output:
+`_661_assignment_seam_replay_out.txt`): the pre-seam `theme_engine.py` is read out of git
+(`git show a25b6113:`) and exec'd beside the new one in ONE process; both are driven through the
+REAL `_assign_uncovered_to_themes` and the REAL `judge_theme_fit` against identical scripted model
+responses that walk every branch (advisor consult → propose with a cross-batch echo → direct
+propose with a non-existent theme → truncated batch; silent stop → advisor budget exhausted;
+six EP cases). Every `messages.create` kwargs (the prompt bytes incl. batch/cooldown notes and the
+advisor paragraph, `tools`, `tool_choice`, model, ceiling, thinking, the advisor-turn follow-ups),
+every cost-meter call, every audit row (type, summary, detail), the proposal list as applied
+(changelog + remaining), and each EP verdict: **0 differing lines over 51 events**. A one-byte
+prompt change shows as 8 differing lines, so the zero is not vacuous. ⚠ It proves the CODE turns
+identical model output into identical requests and records; the raw model output of a real night
+is not stored anywhere (only the proposals are), so the branches are scripted, not recorded. No
+paid call.
+
+**Tests** (`tests/test_ep_theme_fit.py` §4, each run RED against the mutation its docstring
+names, then restored): the EP path never enters the batch driver · never reaches the advisor even
+if the model asks (one turn, no Opus, no nightly row) · the four kwargs are gone · the primitive
+has no defaults · the nightly loop still threads a consult through the primitive. The existing
+forced-tool assertion was also driven RED by loosening the EP `tool_choice` to `any`.
 
 ### 2026-09-18 — #660: the market-adjusted correlation maths moved to its own module (PURE MOVE, verdicts byte-identical)
 
