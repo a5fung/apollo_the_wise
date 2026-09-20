@@ -6,6 +6,14 @@ Pulls 7 days from every tracking system, aggregates to summary statistics
 Claude Sonnet for synthesis, sends a Telegram digest, persists to
 mi_system_reviews so next week's run can grade its own prior suggestions.
 
+THE SHAPE OF THE MESSAGE (#662, operator 2026-09-14): an ACTION HEAD — the week's items
+that need his decision or my work, or the one sentence "Nothing needs you this week." —
+then one line naming every surface that was checked, then everything else inside an
+expandable Telegram quote (the fold). Three rules the head enforces: an item the system has
+recorded as dealt with is never an open anomaly; a check that no data can change is never
+"pending"; a trailing-window number carries its rule era and n or is suppressed.
+`compose_report` / `render_review_html` are the pure pieces; `_assemble_report` sorts.
+
 Entry points:
   run_weekly_review() — called by scheduler and on-demand route.
 """

@@ -273,7 +273,7 @@ def parse_html(text: str) -> tuple[str, list[Entity]]:
                 if at(i) == 0x3E:
                     break
                 attr_begin = i
-                while at(i) not in _SPACE and at(i) != 0x3D:
+                while at(i) not in _SPACE and at(i) != 0x3D and at(i) != 0x3E:
                     i += 1
                 attr_name = b[attr_begin:i].decode("utf-8", "replace")
                 if not attr_name:
@@ -281,6 +281,12 @@ def parse_html(text: str) -> tuple[str, list[Entity]]:
                 while at(i) != 0 and at(i) in _SPACE:
                     i += 1
                 if at(i) != 0x3D:
+                    # Bot API 7.3 (2024-05): `<blockquote expandable>` — a value-less flag on
+                    # this one tag (tdlib parse_html special-cases it). Added 2026-09-20 for the
+                    # #662 weekly-review fold; every other value-less attribute is still a 400.
+                    if tag_name == "blockquote" and attr_name == "expandable":
+                        argument = "expandable"
+                        continue
                     raise TgParseError(
                         f'Expected equal sign in declaration of an attribute of the tag "{tag_name}" at byte offset {attr_begin}',
                         attr_begin)
