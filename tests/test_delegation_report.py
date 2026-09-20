@@ -256,6 +256,39 @@ def test_workflow_spawn_clears_a_declared_fable_routing_gap(tmp_path):
     assert "ROUTING GAPS" not in out
 
 
+def test_spawns_by_model_tally_survives_the_20_line_display_cap(tmp_path):
+    """A Workflow-heavy day easily exceeds the pre-existing 20-line display cap (predates
+    #676; unchanged) — a spawn past the cutoff still counts everywhere else (routing gaps,
+    len(spawns)), but a human reader scanning the printed list alone cannot see it. The tally
+    line makes every model's true count visible regardless of where the cutoff falls.
+    Mutation proven: dropping the tally line's Counter/join in render() -> 'spawns by model'
+    disappears from the output -> RED."""
+    _write_transcript(tmp_path / "sess.jsonl", [
+        _entry(f"u{i}", TS, [_tool("Agent", model="sonnet", description=f"s{i}")])
+        for i in range(19)
+    ])
+    _write_workflow(tmp_path, "sess", "wf_1", [
+        {"agent_id": "a1", "model": "fable", "ts": TS, "label": "#652 last in, past the cutoff"},
+    ])
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert len(led.spawns) == 20
+    out = dr.render(led, [])
+    assert "... and" not in out          # exactly at the cap, nothing truncated this time
+    assert "spawns by model: sonnet 19, fable 1" in out or \
+        "spawns by model: fable 1, sonnet 19" in out
+    # now push it past the cap so #652 itself IS behind "... and N more" — the tally must
+    # still name it truthfully even though the itemised list can't show it.
+    _write_transcript(tmp_path / "sess.jsonl", [
+        _entry(f"u{i}", TS, [_tool("Agent", model="sonnet", description=f"s{i}")])
+        for i in range(20)
+    ])
+    led2 = dr.scan_day(DAY, tdir=tmp_path)
+    assert len(led2.spawns) == 21
+    out2 = dr.render(led2, [])
+    assert "... and 1 more" in out2
+    assert "fable 1" in out2.splitlines()[2]     # the tally line, not the truncated item list
+
+
 def test_workflow_tool_use_resets_the_no_spawn_stretch(tmp_path):
     """A day built entirely through Workflow calls must not read as one uninterrupted
     no-spawn run of main-loop work — the launch point ends the stretch even though the

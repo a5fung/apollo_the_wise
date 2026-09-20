@@ -528,6 +528,15 @@ def render(ledger: DayLedger, routes: list[dict]) -> str:
 
     if ledger.spawns:
         L.append(f"  agent spawns: {len(ledger.spawns)}")
+        # #676: a Workflow-heavy day can carry well over 20 spawns (the display cap below
+        # predates workflow counting and stays — the list is for skimming, not the record) —
+        # without a tally, a card the truncated list drops behind "... and N more" is
+        # invisible to a human reader even though it IS counted everywhere else (routing
+        # gaps, work_calls, etc.). One line, by model, makes "routing gaps: none" checkable
+        # by eye regardless of where the cutoff falls.
+        model_tally = Counter(m for m, _t, _d in ledger.spawns)
+        L.append("  spawns by model: " + ", ".join(
+            f"{m} {n}" for m, n in sorted(model_tally.items(), key=lambda kv: -kv[1])))
         for model, stype, desc in ledger.spawns[:20]:
             L.append(f"    - {model:8} {stype:16} {desc}")
         if len(ledger.spawns) > 20:
