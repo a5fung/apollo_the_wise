@@ -205,3 +205,117 @@ async def test_a_pull_that_finishes_in_time_is_untouched(monkeypatch):
     monkeypatch.setattr(sched, "_nightly_data_pull", _quick)
     monkeypatch.setattr(sched, "_NIGHTLY_PULL_MAX_S", 30)
     assert await sched._nightly_data_pull_bounded() == "done"
+
+
+# ── the two seams the first pass ASSERTED but never exercised ─────────────────────────────
+
+@pytest.mark.asyncio
+async def test_the_ceiling_reaches_mi_job_runs_as_a_REAL_FAILURE(monkeypatch):
+    """Added on advisor review 2026-09-19. The wrapper's own docstring claims the timeout
+    "re-raises so `audit_wrap` records the run as a real failure" — and no test went through
+    `audit_wrap` at all, so that claim was prose.
+
+    It is not a pedantic gap. `asyncio.wait_for` CANCELS the coroutine it is bounding, and
+    `audit_run` treats `CancelledError` and `Exception` completely differently: cancellation
+    records status='interrupted' and deliberately declines to say whether the work finished,
+    while a real exception records status='failed' and fires `record_job_failure` (the #501
+    Telegram path). If the TimeoutError ever arrived as a cancellation instead, the 45-minute
+    cap would write the row that means "the process died, outcome unknown" — which is exactly
+    the reading 2026-09-18 already had, and the cap would have bought nothing.
+
+    So this exercises the REAL `audit_wrap` over the REAL bounded wrapper and pins the status.
+    """
+    from core import job_audit
+
+    finishes, failures = [], []
+
+    async def _never_returns():
+        await asyncio.sleep(3600)
+
+    import agents.market_intelligence.db as dbmod
+    monkeypatch.setattr(sched, "_nightly_data_pull", _never_returns)
+    monkeypatch.setattr(sched, "_NIGHTLY_PULL_MAX_S", 0.05)
+    monkeypatch.setattr(dbmod, "log_audit_event", lambda *a, **k: asyncio.sleep(0))
+    monkeypatch.setattr(sched, "notify_owner", lambda m: asyncio.sleep(0))
+
+    async def _start(job_id, expected_min_rows):
+        return 4242
+
+    async def _finish(run_id, job_id, started_at, status, rows_written, error_message, **kw):
+        finishes.append({"run_id": run_id, "job_id": job_id, "status": status,
+                         "error": error_message})
+
+    monkeypatch.setattr(job_audit, "_record_start", _start)
+    monkeypatch.setattr(job_audit, "_record_finish", _finish)
+    monkeypatch.setattr(job_audit, "record_job_failure",
+                        lambda job_id, e: failures.append((job_id, e)) or asyncio.sleep(0))
+
+    wrapped = job_audit.audit_wrap(sched._nightly_data_pull_bounded,
+                                   "nightly_data_pull", expected_min_rows=2200)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await wrapped()
+
+    assert finishes, "the capped run wrote NO mi_job_runs row — 09-18's exact reading"
+    got = finishes[-1]["status"]
+    assert got == "failed", (
+        f"the 45-minute cap recorded status={got!r}. Only 'failed' means the job is treated as a "
+        f"real failure: 'interrupted' says the outcome is unknown (the reading the incident "
+        f"already produced) and 'success' would hide it entirely.")
+    assert failures, "record_job_failure never fired, so the #501 Telegram path stays silent"
+
+
+def test_a_miss_that_can_never_be_RECORDED_says_so(monkeypatch, caplog):
+    """The absence-shaped failure inside the absence guard, found on advisor review 2026-09-19.
+
+    `_on_job_missed` is sync and schedules its flush with `_missed_loop.create_task`, which is a
+    SILENT no-op on a loop that is not running. The first version returned quietly when the
+    binding was missing — so a miss would log one WARNING and reach neither `mi_job_runs` nor
+    Telegram, which is 2026-09-18's exact reading reproduced inside the guard built to end it.
+
+    MUTATION: restoring the bare `return` reddens the ERROR assertion. Verified RED.
+    """
+    import logging
+
+    monkeypatch.setattr(sched, "_missed_loop", None)
+    sched._missed_buffer.clear()
+
+    class _Ev:
+        job_id = "evening_briefing"
+        scheduled_run_time = datetime(2026, 9, 18, 17, 30)
+
+    with caplog.at_level(logging.ERROR):
+        sched._on_job_missed(_Ev())
+
+    assert sched._missed_buffer, "the miss was not even buffered"
+    assert any(r.levelno >= logging.ERROR for r in caplog.records), (
+        "a miss that can never reach mi_job_runs or Telegram was swallowed at WARNING — the "
+        "exact shape of failure #672 exists to end")
+    sched._missed_buffer.clear()
+
+
+def test_the_live_call_site_binds_the_RUNNING_loop(monkeypatch):
+    """The live binding: whatever `start_scheduler` captures must be the loop that is actually
+    running, or `_on_job_missed`'s `create_task` is scheduled where nothing will run it. This
+    catches a capture that binds None, a freshly-made loop, or a loop from another thread.
+
+    ⚠ TWO honest limits, both checked rather than assumed (advisor review 2026-09-19):
+    - It does NOT discriminate `get_event_loop()` from `get_running_loop()`. Swapping the getter
+      back leaves all 9 tests green, because inside a running coroutine `get_event_loop()` returns
+      that same running loop. Verified — the mutation was run. `get_running_loop()` is still the
+      right call (it raises instead of inventing a loop), but this test is not what holds it.
+    - The `except RuntimeError` fallback beside it is unreachable today: `start_scheduler` already
+      calls `asyncio.create_task` for the stale-run reaper, so a sync call raises there first.
+      Stated, not tested — a test would have to assert on a path that cannot execute."""
+    from tests.test_job_partition import _CapturingScheduler
+    monkeypatch.setattr(sched, "AsyncIOScheduler", _CapturingScheduler)
+    monkeypatch.setattr(sched, "_missed_loop", None)
+
+    async def _go():
+        sched.start_scheduler()
+        return asyncio.get_running_loop()
+
+    running = asyncio.run(_go())
+    assert sched._missed_loop is running, (
+        f"bound {sched._missed_loop!r}, but the live loop is {running!r} — create_task on the "
+        f"wrong loop is silent")

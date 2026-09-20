@@ -6312,7 +6312,11 @@ def _on_job_missed(event) -> None:
             f"job MISSED (misfire): {event.job_id} scheduled for "
             f"{event.scheduled_run_time} — never ran")
         if _missed_loop is None:
-            return                       # pre-start; the log line above still lands
+            # Never silent: this branch means the flush path is dead, and the whole
+            # point of #672 is that a gap announces itself.
+            logger.error("missed job recorded in-memory only — no event loop bound, "
+                         "so nothing will reach mi_job_runs or Telegram (#672).")
+            return
         if _missed_flush_task is None or _missed_flush_task.done():
             _missed_flush_task = _missed_loop.create_task(_flush_missed_jobs())
     except Exception as e:               # loud-ok: never let a listener break dispatch
@@ -7898,7 +7902,20 @@ def start_scheduler() -> AsyncIOScheduler:
     # #672 — a skipped job must be loud. Registered BEFORE .start() so a miss during
     # the very first scheduling pass is caught too.
     global _missed_loop
-    _missed_loop = asyncio.get_event_loop()
+    # get_RUNNING_loop, not get_event_loop: the listener is sync and schedules its
+    # flush with `_missed_loop.create_task`, which is a SILENT no-op on a loop that
+    # is not running. get_event_loop would happily hand back a foreign/idle loop and
+    # every miss would then log one line and do nothing else — an absence-shaped
+    # failure inside the very guard built to end an absence-shaped failure. The live
+    # call site is inside `async def startup()`, so this always binds the real loop;
+    # the probes and tests that call start_scheduler() from sync code take the
+    # fallback and say so.
+    try:
+        _missed_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        _missed_loop = None
+        logger.warning("start_scheduler() ran outside a running event loop — missed "
+                       "jobs will be LOGGED but not recorded or sent (#672).")
     _scheduler.add_listener(_on_job_missed, EVENT_JOB_MISSED)
 
     _scheduler.start()
