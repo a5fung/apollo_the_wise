@@ -87,7 +87,7 @@ and *data gap* inside "No rank" are distinct enough to separate. **Measured over
 | cause | n | share |
 |---|---|---|
 | **brand new — never ranked in 19 weeks of history** | **18** | **90%** |
-| data gap — row present, rank null | 2 | 10% |
+| ~~data gap~~ → **engine-retired: row present, rank null** | 2 | 10% |
 | returning — ranked before, absent, back now | 0 | 0% |
 
 **Consequence in one line: the fattest ribbon on the chart is real. Climbing out of "No rank" is
@@ -96,7 +96,21 @@ almost always a theme being BORN, not our snapshot filling a hole.**
 **RULING (operator, 2026-09-19): do not split the band — RENAME it "New / unranked".** Splitting
 would add a sixth band to a 390px screen to separate a 2-cohort case from an 18-cohort one. The
 honesty stays cheap and stays in the caption: when the data-gap share is unusual, the caption says
-*"2 of 20 were data gaps"* rather than the geometry carrying it.
+*"2 of 20 were listed but unscored"* rather than the geometry carrying it.
+
+⛔ **"DATA GAP" WAS THE WRONG LABEL — corrected the same day, during the build.** I called those two
+a data gap and told him to treat 10% as a floor on missing data. **Both were stage Retired**, and
+measuring the whole snapshot settles it: **all 798 null-rank rows are Fading (424) or Retired
+(374); not one is Nascent, Accelerating or Mainstream. There are NO data gaps.** A null rank is the
+ENGINE'S VERDICT that a theme is done — so the floor was a floor on nothing, and `theme_flow.py`'s
+module docstring, which called it *"a fact about our DATA, not about the cohort's strength"*, had
+it backwards for eight days. Corrected there in the same build.
+
+⚠ **AND THE TWO DIRECTIONS ARE NOT THE SAME THING.** *Leaving* the band is 90% a theme being BORN.
+*Entering* it is the engine giving up on one: of the 14 that fell in over this hop, **7 vanished
+from the snapshot and 7 are still listed but unscored — 5 Retired, 2 Fading.** So a ribbon INTO
+that band is a real demotion, not an absence of data, and it is coloured directionally rather than
+grey. The caption carries the listed-but-unscored count per hop.
 
 ⚠ **Stated limit: 19 weeks of history.** A theme first ranked before April 2026 reads as "brand
 new" here, which inflates the 90%. Treat the 10% data-gap share as a FLOOR, not a ceiling.
