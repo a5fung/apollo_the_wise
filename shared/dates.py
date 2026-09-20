@@ -53,8 +53,71 @@ def et_hhmm(ts) -> str | None:
     return dt.astimezone(_ET).strftime("%H:%M")
 
 
+# ── #672: a RECOVERY re-run pins the market date to the day the job was DUE ──────────────
+# A job that never ran on Friday and is re-run on Saturday must record FRIDAY: 17 of the 21
+# jobs missed on 2026-09-18 take no date parameter and read `et_today()`, so a bare re-run
+# writes Saturday-dated rows — worse than the gap. The pin is a ContextVar, not a rebinding:
+# `et_today` is RE-EXPORTED by ten modules, each holding its own reference to THIS function
+# object, so changing what the function RETURNS reaches all ten, while rebinding
+# `collector.et_today` reached one (the first recovery draft did exactly that). And it is
+# task-LOCAL by construction — in the live process an intraday scan or the order path running
+# beside a recovery must keep reading the real clock, which a global rebinding would break.
+# `last_trading_day()` calls through here, so it follows the pin; `operator_today()` is the
+# OPERATOR's clock and is deliberately untouched.
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import NamedTuple
+
+
+class RecoveryPin(NamedTuple):
+    """What a recovery re-run is standing in for: the job, the slot it was due, its market date."""
+    job_id: str
+    slot: datetime          # the scheduled fire time that never ran (tz-aware, ET)
+    market_date: date       # what `et_today()` returns inside the pinned context
+
+
+_RECOVERY_PIN: "ContextVar[RecoveryPin | None]" = ContextVar("apollo_recovery_pin", default=None)
+
+
+def recovery_pin() -> "RecoveryPin | None":
+    """The active recovery pin, or None on the ordinary (live-clock) path."""
+    return _RECOVERY_PIN.get()
+
+
+@contextmanager
+def pinned_recovery(job_id: str, slot: datetime):
+    """Run a job AS IF it were the `slot` it missed: `et_today()` returns the slot's ET date,
+    `mi_job_runs` rows carry `scheduled_for = slot`, and every Telegram it sends is bannered
+    LATE. Scoped to the current task and whatever it spawns; reset on exit even on error."""
+    pin = RecoveryPin(job_id=job_id, slot=slot, market_date=slot.astimezone(_ET).date())
+    token = _RECOVERY_PIN.set(pin)
+    try:
+        yield pin
+    finally:
+        _RECOVERY_PIN.reset(token)
+
+
+def late_banner(now: "datetime | None" = None) -> str:
+    """The line a Telegram sent from INSIDE a recovery re-run is prefixed with, or "" on the
+    ordinary path. Data-driven by construction: any message any job sends while pinned gets it —
+    there is no list of "jobs that send", which is the hand-list that made both earlier
+    recoveries incomplete. Plain text on purpose (no markup), so it survives both senders'
+    parse modes and the plain-text retry unchanged."""
+    pin = _RECOVERY_PIN.get()
+    if pin is None:
+        return ""
+    now = now or datetime.now(_ET)
+    return (f"⏪ LATE RE-RUN — this is {pin.job_id} for {pin.slot.astimezone(_ET):%a %m-%d %H:%M} ET, "
+            f"which never ran; sent {now.astimezone(_ET):%a %m-%d %H:%M} ET.\n")
+
+
 def et_today() -> date:
-    """Return today's date in US/Eastern timezone. MARKET/trading logic ONLY (trading day, ORB, hours)."""
+    """Return today's date in US/Eastern timezone. MARKET/trading logic ONLY (trading day, ORB, hours).
+
+    Inside `pinned_recovery(...)` (#672) it returns the pinned slot's date instead — see above."""
+    pin = _RECOVERY_PIN.get()
+    if pin is not None:
+        return pin.market_date
     return datetime.now(_ET).date()
 
 

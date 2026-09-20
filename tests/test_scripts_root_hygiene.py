@@ -57,6 +57,7 @@ _SCRIPTS_ROOT = os.path.join(_REPO_ROOT, "scripts")
 # per the reasons above. New root file -> justify it and add a line here, or move it to
 # scripts/probes/ if it's a throwaway.
 KEPT_AT_ROOT = {
+    "check_job_date_sources.py": "code-ref:test+imported-or-code-ref",   # #672 pin-completeness gate, imported by tests/test_672_pin_completeness_scan.py
     "_184b_ingest_paper_exercise.py": "yaml-cited",
     "_216_jsonb_repair.py": "code-ref:test+imported-or-code-ref",
     "_270_anticipation_replay.py": "imported-or-code-ref",

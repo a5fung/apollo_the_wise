@@ -455,10 +455,14 @@ async def _successful_run_dates(conn, job_id: str, limit: int) -> list[str]:
     We make it host-independent (not reliant on the caller gating non-trading days) by dropping
     non-trading run-dates here, exactly the calendar increment 1 leans on implicitly. We over-fetch
     (limit*2 + 5) so in-window holidays don't starve us below k real trading run-dates.
+
+    #672: a RECOVERY re-run (job_recovery.py) runs on a later day but writes rows dated the slot
+    it missed, so its run-date is `scheduled_for`, not `started_at` — otherwise Saturday's re-run
+    of Friday's job would be judged against Saturday-dated output it never wrote.
     """
     rows = await conn.fetch(
         """
-        SELECT DISTINCT (started_at AT TIME ZONE 'America/New_York')::date AS run_date
+        SELECT DISTINCT (COALESCE(scheduled_for, started_at) AT TIME ZONE 'America/New_York')::date AS run_date
         FROM mi_job_runs
         WHERE job_id = $1 AND status = 'success'
         ORDER BY run_date DESC

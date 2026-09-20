@@ -1453,7 +1453,7 @@ def _format_naked_position_alert(body: dict) -> str:
         # Still surfaced either way — silence would be worse — but the after-
         # hours form says what is true instead of manufacturing urgency.
         _now_et = datetime.now(_ET)
-        _market_hours = (_now_et.weekday() < 5 and time(9, 30) <= _now_et.time() <= time(16, 0))
+        _market_hours = (_now_et.weekday() < 5 and time(9, 30) <= _now_et.time() <= time(16, 0))  # recovery-clock-ok: alert WORDING about the present moment, not a data date
         if _market_hours:
             sections.append("Immediate operator action: place stop via Alpaca web UI.")
         else:

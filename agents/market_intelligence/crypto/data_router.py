@@ -163,5 +163,6 @@ async def fetch_macro_indicators() -> dict:
     except Exception:
         logger.exception("DefiLlama /stablecoins failed")
 
-    out["snapshot_date"] = datetime.now(_ET).date()
+    from shared.dates import et_today
+    out["snapshot_date"] = et_today()      # #672: the row date — pinned on a recovery re-run
     return out

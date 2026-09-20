@@ -52,7 +52,8 @@ MIN_VOL_MCAP_RATIO = 0.01    # < 1% = effectively dead
 
 async def run_nightly() -> dict:
     """Main entry point. Returns a stats dict for the scheduler / audit log."""
-    today = datetime.now(_ET).date()
+    from shared.dates import et_today
+    today = et_today()          # #672: the DATA date — follows a recovery pin; wall-clock timestamps below do not
     stats = {
         "date": today.isoformat(),
         "started_at": datetime.now(_ET).isoformat(),
@@ -140,7 +141,8 @@ async def _persist_universe(universe: list[dict]) -> int:
     Single transaction with executemany — no per-row round-trip.
     """
     pool = await get_pool()
-    today = datetime.now(_ET).date()
+    from shared.dates import et_today
+    today = et_today()          # #672: the row date — pinned on a recovery re-run
 
     # Filter top-250 through wash-trade gate.
     keep_rows: list[tuple] = []

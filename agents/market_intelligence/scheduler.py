@@ -219,6 +219,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     # recorder is already `runs_intelligence_jobs()`-gated, so running them on
     # execution too would double-record and double-Telegram every release.
     "model_resolution_refresh", "judge_eval_divergence_check",
+    "missed_job_recovery",  # #672 2026-09-20 — the ledger-derived re-run of missed daily jobs; INTELLIGENCE by construction (it excludes EXECUTION_OWNED_JOB_IDS itself and never touches the broker)
 })
 
 
@@ -1311,7 +1312,8 @@ async def _delayed_residual_job():
     from agents.market_intelligence.ep_delayed_residual import (
         run_delayed_residual_scan, backfill_residual_outcomes,
         residual_regression_stats, rt_shadow_capture_join)
-    run_date = datetime.now(_ET).strftime("%Y-%m-%d")
+    from shared.dates import et_today as _et_today
+    run_date = _et_today().strftime("%Y-%m-%d")   # #672: the DATA day — pinned on a recovery re-run
     missed, residual = await run_delayed_residual_scan(run_date)
     logger.info(f"delayed_residual_job {run_date}: {missed} missed, {residual} residual beyond hybrid")
     # G3: stamp forward outcomes on settled misses (cross-basis since #490 §9.4).
@@ -3150,12 +3152,13 @@ async def _intraday_signals_eod_digest_job():
     shadow detectors (#168 noise fix, 2026-06-07). Replaces the ~23/day per-tick
     pings (now default-off) with a single roll-up; reads the persisted tables, so
     detection + telemetry are untouched. Suppressed entirely on zero-fire days."""
-    now_et = datetime.now(_ET)
-    if not get_market_status(now_et.date()).is_trading_day:
+    from shared.dates import et_today as _et_today
+    run_day = _et_today()      # #672: the DATA day — pinned to the slot on a recovery re-run
+    if not get_market_status(run_day).is_trading_day:
         logger.info("intraday signals digest: non-trading day — skip")
         return 0
     from agents.market_intelligence.flag_detector import run_intraday_signals_eod_digest
-    n = await run_intraday_signals_eod_digest(now_et.date())
+    n = await run_intraday_signals_eod_digest(run_day)
     logger.info(f"intraday signals EOD digest: {n} signals surfaced")
     return int(n) if n is not None else 0
 
@@ -3420,8 +3423,8 @@ async def _position_mgmt_judge_job():
     = post-launch + own evidence + CHANGE_PROCESS + sign-off). DB-sourced ground truth; current
     price from a LIVE snapshot (never mi_daily_closes — the part-1 QURE stale-close artifact);
     per-position fail-open. Skips non-trading days."""
-    now_et = datetime.now(_ET)
-    if not get_market_status(now_et.date()).is_trading_day:
+    from shared.dates import et_today as _et_today
+    if not get_market_status(_et_today()).is_trading_day:   # #672: pinned on a recovery re-run
         logger.info("position mgmt judge: non-trading day — skip")
         return 0
     from agents.market_intelligence.mgmt_judge import run_position_mgmt_judge
@@ -3703,12 +3706,13 @@ async def _theme_synthesis_job():
     validated, written to mi_theme_candidates_shadow (source='rs_slope_synthesis')
     where the operator reviews them and the judge's narrative axis reads them.
     Augment-not-automate: never writes live mi_themes."""
-    now_et = datetime.now(_ET)
-    if not get_market_status(now_et.date()).is_trading_day:
+    from shared.dates import et_today as _et_today
+    run_day = _et_today()      # #672: the DATA day — pinned to the slot on a recovery re-run (was datetime.now(_ET).date())
+    if not get_market_status(run_day).is_trading_day:
         logger.info("theme synthesis: non-trading day — skip")
         return 0
     from agents.market_intelligence.theme_synthesis import run_theme_synthesis
-    res = await run_theme_synthesis(now_et.date())
+    res = await run_theme_synthesis(run_day)
     logger.info(
         f"theme synthesis: {res['n_candidates']} candidates → "
         f"{res['n_proposed']} proposed → {res['n_kept']} kept"
@@ -6356,8 +6360,8 @@ async def _flush_missed_jobs() -> None:
             async with pool.acquire() as conn:
                 await conn.executemany(
                     """INSERT INTO mi_job_runs
-                           (job_id, started_at, finished_at, status, error_message)
-                       VALUES ($1, $2, NOW(), 'missed', $3)""",
+                           (job_id, started_at, finished_at, status, error_message, scheduled_for)
+                       VALUES ($1, $2, NOW(), 'missed', $3, $2)""",
                     [(jid, when,
                       "never ran — APScheduler misfire (the scheduler was busy past this "
                       "job's misfire_grace_time). #672")
@@ -6371,14 +6375,71 @@ async def _flush_missed_jobs() -> None:
             await notify_owner(
                 f"🔴 *{len(batch)} scheduled job(s) never ran*\n"
                 f"They were SKIPPED, not failed — the scheduler was still busy when their "
-                f"start time passed, so APScheduler dropped them (misfire). Work for those "
-                f"slots is simply missing until it is re-run.\n{detail}")
+                f"start time passed, so APScheduler dropped them (misfire). The recovery sweep "
+                f"re-runs what it can (date pinned to the slot) and reports separately.\n{detail}")
         except Exception as e:
             logger.warning(f"missed-job notify failed (non-fatal): {e}")
+        # #672: recording a miss is not the fix — re-running it is. Same sweep as boot/periodic.
+        _kick_recovery_sweep("missed")
     except asyncio.CancelledError:
         raise
     except Exception as e:               # loud-ok
         logger.error(f"missed-job flush failed: {e}", exc_info=True)
+
+
+# ── #672: a MISSED job is RE-RUN, not just recorded ──────────────────────────
+# The listener above only sees a miss the RUNNING scheduler notices. It cannot see the shape
+# 09-18 actually had: jobs dispatched on time, blocked on the pool before their start row,
+# killed by the restart, and FORGOTTEN AT BOOT — APScheduler's in-memory store emits no
+# EVENT_JOB_MISSED for a slot that is already past when it starts (measured: `events at
+# boot: []`). The ledger is the only witness that survives a restart, so the sweep in
+# job_recovery.py derives the gap set FROM THE LEDGER and re-runs it with the date pinned.
+# Three triggers, one function: boot (the 09-18 shape), every 30 minutes (a stall that ended
+# without a restart), and right after the listener records a burst.
+_RECOVERY_BOOT_DELAY_S = 120        # let initialize_schema + the stale-run reaper land first
+
+
+async def _run_recovery_sweep(reason: str) -> dict:
+    from agents.market_intelligence.job_recovery import run_recovery_sweep
+    if _scheduler is None:
+        return {"reason": reason, "skipped": "no scheduler"}
+    return await run_recovery_sweep(_scheduler, EXECUTION_OWNED_JOB_IDS, reason=reason)
+
+
+async def _missed_job_recovery_job():
+    """Every 30 min (intelligence role). Nothing to do → nothing said."""
+    return await _run_recovery_sweep("periodic")
+
+
+async def _recovery_sweep_boot():
+    """Boot catch-up: the one trigger that covers a restart. Own try/except — a boot task must
+    never take the process down."""
+    try:
+        await asyncio.sleep(_RECOVERY_BOOT_DELAY_S)
+        out = await _run_recovery_sweep("boot")
+        logger.info(f"recovery sweep (boot): eligible={out.get('eligible')} "
+                    f"gaps={sum(1 for d in out.get('plan', []) if d.kind == 'gap')} ran={len(out.get('ran', []))}")
+    except Exception as e:                           # loud-ok
+        logger.error(f"recovery sweep (boot) failed: {e}", exc_info=True)
+
+
+async def _run_recovery_sweep_guarded(reason: str) -> None:
+    """A kicked task has nobody awaiting it: an exception (a starved pool inside fetch_ledger) would
+    vanish into the loop's default handler. Log it as the failure it is."""
+    try:
+        await _run_recovery_sweep(reason)
+    except Exception as e:                           # loud-ok: nothing awaits this task
+        logger.error(f"recovery sweep ({reason}) failed: {e}", exc_info=True)
+
+
+def _kick_recovery_sweep(reason: str) -> None:
+    """Fire-and-forget from a place that cannot await (the flush is one; tests another)."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        logger.error(f"recovery sweep ({reason}) not started — no running loop (#672)")
+        return
+    loop.create_task(_run_recovery_sweep_guarded(reason))
 
 
 # ── Telegram polling-bot health watchdog (#153) ──────────────────────────────
@@ -6462,6 +6523,19 @@ def start_scheduler() -> AsyncIOScheduler:
     from agents.market_intelligence.constants import runs_intelligence_jobs
     if runs_intelligence_jobs():
         asyncio.create_task(_ecosystem_grace_sweep_boot())
+        # #672 — boot catch-up of every daily intelligence job that should have run and did not.
+        asyncio.create_task(_recovery_sweep_boot())
+
+    # #672 — the periodic half of the recovery sweep. NOT itself daily (hour is `*`), so it is
+    # excluded from its own population; a job in flight at a pass is skipped, so a pass landing
+    # on a real slot is harmless. Intelligence-owned; the partition removes it on execution.
+    _scheduler.add_job(
+        audit_wrap(_missed_job_recovery_job, "missed_job_recovery"),
+        CronTrigger(minute="20,50", timezone="America/New_York"),
+        id="missed_job_recovery",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
 
     # Data pull: 5:00 PM ET (30 min after tape settles), Mon-Fri.
     # expected_min_rows recalibrated 5000→3500 (#263, 2026-06-10), then

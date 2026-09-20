@@ -10,9 +10,13 @@ from agents.market_intelligence import scheduler as sched
 
 
 class _FakeJob:
-    def __init__(self, jid, func=None):
+    def __init__(self, jid, func=None, trigger=None, misfire_grace_time=None, next_run_time="scheduled"):
         self.id = jid
         self.func = func          # #672: so a test can exercise what was ACTUALLY registered
+        self.trigger = trigger    # #672 recovery: the sweep derives slots from the REAL trigger
+        self.misfire_grace_time = misfire_grace_time
+        self.next_run_time = next_run_time   # None ⇔ registered PAUSED (`next_run_time=None`), as on a real Job
+        self.args, self.kwargs = (), {}
 
 
 class _FakeScheduler:
@@ -148,7 +152,8 @@ class _CapturingScheduler:
         self.listeners.append((callback, mask))
 
     def add_job(self, func, trigger=None, *a, id=None, **k):
-        self._jobs.append(_FakeJob(id, func))
+        self._jobs.append(_FakeJob(id, func, trigger, k.get("misfire_grace_time"),
+                                   k.get("next_run_time", "scheduled")))
 
     def get_jobs(self):
         return list(self._jobs)
