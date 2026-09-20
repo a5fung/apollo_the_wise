@@ -641,6 +641,87 @@ reviews:
     # "n<20, cannot evaluate" answer.
     reviewed_on: 2026-08-06
 
+  - review_id: exit_rules_since_2026_09_06_first_readable_n
+    status: pending
+    title: "The 2026-09-06 exit change has enough closed trades to read — did taking profit at +8R and moving the stop to breakeven at +3R improve what we KEEP?"
+    question: |
+      ⚠ THIS EXISTS SO THE ANSWER STOPS BEING RE-DERIVED. On 2026-09-20 the same
+      conclusion was worked out from scratch for the third time in a week, and the
+      operator's words were: "Then put that in instead of going back and forth all
+      the time getting nowhere."
+
+      WHAT IS ACTUALLY WRONG, in plain words: our trades reach an average peak of
+      +0.87R and close at -1.00R. 24 of 30 are stopped out. We keep 19 cents of every
+      dollar the position reaches — $6,369 of $33,810. That is a CAPTURE problem.
+
+      WHAT IS NOT WRONG, and must stop being re-litigated: admission. The cooldown,
+      the extension cap and the score floors have each been read on PEAK numbers,
+      and each read overstated. The 50-75% extension band paid -1.00R on 15 of 15 on
+      real minute bars despite big peaks. Five names in it ran 2.9R to 15.2R and
+      still paid -1R. And geometry is not the answer either: five stop geometries
+      replayed on our own trades landed within 0.08R of each other, all negative,
+      with the LIVE one best.
+
+      WHY WE COULD NOT ANSWER IT UNTIL NOW: on 2026-09-06 the exit rules changed —
+      the profit-taking partial moved from +2R to +8R and the stop now moves to
+      breakeven once a trade is up +3R (magna53 only). Every read before this fires
+      pools 28 trades from the OLD rules with 2 from the new ones, which describes a
+      system we do not run.
+
+      SO: on the first readable sample under the CURRENT rules, did capture improve?
+      Report kept-vs-peak (the MFE capture ratio), win rate, expectancy in R, and
+      the stop-out share — each for the post-09-06 trades ALONE, never pooled.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE status = 'closed'
+        AND account_mode = 'live'
+        AND signal_type = 'magna53'
+        AND alert_date >= DATE '2026-09-06'
+    threshold: 10
+    # Every column here separates this question from a neighbouring one that would
+    # answer differently — which is the whole defect this review is about.
+    discriminates_on:
+      - mi_live_trades.alert_date      # the 2026-09-06 exit flip: pooling across it is the error
+      - mi_live_trades.signal_type     # the +8R partial is magna53 ONLY (PARTIAL_8R_SIGNAL_TYPES)
+      - mi_live_trades.account_mode    # live vs paper must never pool (the retracted 482 doc did)
+      - mi_live_trades.status          # closed only; an open position has no realized outcome yet
+    # 10 is the smallest n this repo accepts for a directional read (CHANGE_PROCESS
+    # asks N>=10). It is not enough to CHANGE a rule on — it is enough to stop
+    # guessing, which is the whole point of the entry.
+    earliest_review_date: 2026-09-20
+    can_fire:
+      predicate_runs: "2026-09-20 - ran against prod and returned 2, against 30 closed magna53 live
+        trades overall. The split matches what the weekly review's own era line reports (2 current
+        / 28 older), so the predicate and the report agree on the population."
+      nonzero_possible: "mi_live_trades is the live order table, written by the broker path on
+        every fill and close; 30 closed magna53 live rows exist and 2 already sit past the
+        2026-09-06 boundary, so this counts up on its own as trades close."
+      lane_live: "MAGNA53 EP is the live setup and the 09-06 flip is active for it -
+        PARTIAL_8R_SIGNAL_TYPES is frozenset({'magna53'}) in rule_eras.py, and rule_eras exposes
+        partial_at_r=8.0 / breakeven_at_r=3.0 for dates on or after 2026-09-06."
+      threshold_vs_observed: "10 against an observed 2. ⚠ DELIBERATELY NOT YET RIPE - that is the
+        entry's purpose. It fires when the sample is readable instead of a person re-deriving 'n
+        is too small' every week."
+      era_scoped: "This entry IS the era scope. The floor date is the exit-rule flip itself
+        (2026-09-06, rule_eras.PARTIAL_8R_DATE / BREAKEVEN_ARM_R_DATE), and the action forbids
+        pooling with older trades - the exact error that made every prior read meaningless."
+      population_actionable: "The post-09-06 closed trades ARE what the action reads, and what it
+        answers is whether the change we already shipped works. ⚖ It REPORTS - any further exit
+        change is a detection/discipline change needing CHANGE_PROCESS, a backtest and his
+        sign-off (THE LINE)."
+      instrument_trusted: "⚠ QUALIFIED. mi_live_trades is trustworthy for status, dates and
+        realized P&L - it is the broker's own record. The PEAK side is not: the weekly review
+        already flags '7 peak(s) unreadable (fast exit, recorder blind <10m)', so the capture
+        ratio must state how many of the n had a readable peak and exclude the rest rather than
+        treating a blind peak as zero."
+    action_when_ready: |
+      Read the post-2026-09-06 closed magna53 live trades ALONE - never pooled with
+      older ones. Report kept-vs-peak, win rate, expectancy in R and stop-out share,
+      each with its n, and say how many had an unreadable peak (the <10m recorder
+      blind spot) rather than counting those as zero capture.
+      ⚖ REPORTS ONLY. An exit change is entry/exit discipline - CHANGE_PROCESS,
+      N>=10 backtest and operator sign-off before anything moves (THE LINE).
+
   - review_id: extension_cap_75_recheck
     status: pending
     title: "The 50-75% extension band now holds 94 scoreable names (bar was 15) — does it carry edge, or is the STOP still the binding constraint?"
