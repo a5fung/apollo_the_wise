@@ -643,17 +643,34 @@ reviews:
 
   - review_id: extension_cap_75_recheck
     status: pending
-    title: "Did raising the extension cap 50% -> 75% actually admit the names it was raised for?"
+    title: "The 50-75% extension band now holds 94 scoreable names (bar was 15) — does it carry edge, or is the STOP still the binding constraint?"
     question: |
-      The weekly review of 2026-08-23 showed 11 names skipped as "already
-      extended" over 7 days with an average peak of +58%, one of them +427%.
-      The cap was raised 50% -> 75% (operator-signed) and went live 2026-08-23.
-      So: of the names still skipped as extended under the 75% cap, what did
-      they go on to do — and did the raise catch the big ones, or are the
-      movers still sitting above 75%?
-      Answer with the forward outcome distribution of names skipped as extended
-      SINCE the raise, versus the ones the raise newly admitted. If the movers
-      are still above 75%, the raise did not reach them and that is a finding.
+      ⚠ REPOINTED 2026-09-20. This review used to ask "did raising the cap
+      50% -> 75% admit the names it was raised for?" — a question about a rule
+      that NO LONGER EXISTS. The raise went live 2026-08-22 and was REVERTED to
+      50.0 on 2026-08-29, operator-signed, because its evidence was corrupt
+      (#595: mi_ep_missed_outcomes credited names whose pre-market spike faded
+      before the open). MAX_EXTENSION_PCT reads 50.0 in the running image,
+      verified on prod 2026-09-20. Asking the old question would have compared
+      outcomes across two rule eras and produced a confident, meaningless
+      answer — the exact failure its own predicate comment warned about.
+
+      THE LIVE QUESTION is the operator's own re-open condition (a), which HAS
+      now fired: the 50-75% band holds 94 scoreable names against a bar of 15
+      ("we'll review this again in future when we have more samples",
+      2026-08-29). The watch has said so 13 times, latest 2026-09-17, and
+      nobody has ruled on it.
+
+      So: on n=94, does the 50-75% band carry forward edge when replayed
+      through the LIVE bracket — entry = stop-buy at the 9:30 bar's high, stop
+      = that bar's low, walked in sequence? At n=15 it returned -1.00R on 15 of
+      15, with FIVE names running 2.9R to 15.2R that still paid -1R because the
+      9:30 low was taken out first.
+
+      ⚠ CARRY THE PRIOR FINDING INTO THE READ, do not re-derive it: THE CAP IS
+      NOT THE BINDING CONSTRAINT — THE STOP IS. If the band still pays -1R on
+      names that ran 15R, the answer is bracket geometry (#482), not admission,
+      and this review should say so rather than re-litigating the constant.
     predicate_sql: |
       SELECT COUNT(DISTINCT ticker) FROM mi_ep_scan_log
       WHERE filter_reason ILIKE '%(extended)%'
@@ -664,12 +681,46 @@ reviews:
     # outcomes to read. Date floor is the deploy day of the 75% cap: counting a
     # name skipped under the OLD 50% cap would measure the rule we replaced —
     # the era-scoping mistake the 2026-08-23 weekly review already made once.
+    can_fire:
+      predicate_runs: "2026-09-20 - the equivalent query ran against prod and returned 546 rows /
+        19 distinct tickers for filter_reason ILIKE '%(extended)%' since 2026-08-23. ⚠ That is the
+        WRONG population for the repointed question and is why this block matters: the scan log
+        counts names SKIPPED-as-extended, and only 5 of them sit in the 50-75 band. The action
+        reads SCOREABLE names in the band, which is what health_checks._extension_cap_revisit_watch
+        counts - 94."
+      nonzero_possible: "mi_ep_scan_log is written by ep_detector on every scan tick and the
+        extension gate fires daily (ep_detector.py:4212, MAX_EXTENSION_PCT). The watch has emitted
+        extension_cap_sample_ready 13 times, latest 2026-09-17, so non-zero is routine rather than
+        hoped for."
+      lane_live: "MAGNA53 EP is the live setup and the extension gate is on its hard-filter path,
+        verified in the RUNNING image on 2026-09-20: MAX_EXTENSION_PCT reads 50.0 inside
+        apollo-market, not merely in source."
+      threshold_vs_observed: "Registry threshold 15 against an observed 94 scoreable names in the
+        50-75 band - the operator's own re-open bar from 2026-08-29 ('materially more than 15').
+        It is met roughly 6x over, and has been since at least 2026-09-16."
+      era_scoped: "⚠ THE OLD VERSION WAS NOT, WHICH IS WHY IT WAS REPOINTED. It asked about the
+        75% cap and counted from 2026-08-23, spanning BOTH the 08-22 raise and the 08-29 revert -
+        two rule eras in one population, the error its own predicate comment warned against. The
+        question now reads the band under the LIVE 50% cap only, and the action replays through the
+        live bracket by the method of the 08-29 analysis so the two reads are comparable."
+      population_actionable: "The 94 scoreable names ARE the thing the action acts on - they are
+        replayed through the live bracket, and the outcome either shows edge in the band or
+        confirms the recorded finding that the STOP, not the cap, is binding. Either way it is a
+        report; the cap is entry discipline and any change needs CHANGE_PROCESS + sign-off."
+      instrument_trusted: "⚠ QUALIFIED, and this is the one to watch. mi_ep_missed_outcomes is the
+        instrument that CORRUPTED the original 08-22 decision - #595 showed it credited names whose
+        pre-market spike faded before the open, and the corrected re-run cut the band's winners
+        21 -> 12. So the action does NOT trust it as an outcome source: it filters on
+        last_refreshed_at (the #583 stale-row class) and replays on minute bars fetched from
+        Alpaca instead."
     earliest_review_date: 2026-09-15
     action_when_ready: |
-      Read the forward outcomes (mi_ep_missed_outcomes, filtered on
-      last_refreshed_at — the #583 stale-row class) for names skipped as
-      extended since 2026-08-23, and for the band between 50% and 75% that the
-      raise newly admitted. Report: did the admitted band produce winners, and
+      ⚠ Read the band as it stands under the LIVE 50% cap — NOT as "names the
+      75% raise admitted", which is a population that stopped existing on
+      2026-08-29. Replay the 94 scoreable names through the live bracket on
+      minute bars (the method of docs/analysis/577_extension_cap_recheck_2026-08-29.md,
+      so the two reads are comparable), filtered on last_refreshed_at (the #583
+      stale-row class). Report: did the admitted band produce winners, and
       do the names still being skipped carry the +58%-average tail the 08-23
       review showed? ⚖ The cap is entry discipline — THE LINE. This review
       REPORTS; any further change needs CHANGE_PROCESS + operator sign-off.
