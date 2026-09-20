@@ -321,3 +321,209 @@ def test_the_lookup_can_accept_a_caller_connection():
     assert params["conn"].default is None, (
         "`conn` must default to None so the helper still works for a caller that holds nothing."
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════
+# #673 — THE SIX RS POOLS READ ONE UNIVERSE: every pool excludes KNOWN NON-EQUITIES, or
+# says in writing why it reads a wider one.
+#
+# THE SPLIT. Three pools (leaders, accelerators, recovery-slope) carried the
+# `mi_tracked_stocks.quote_type != 'EQUITY'` clause and `SKIP_TICKERS_LIST`; three (velocity,
+# recovery, turners) carried neither and read `mi_stock_scores` bare. Not theoretical: 70 ETFs
+# hold 853 scored rows (prod, 2026-09-19), so one ticker could be excluded by the leaders board
+# and admitted by RISING / ROTATION WATCH / RECOVERY in the same evening brief.
+#
+# ACCIDENTAL, NOT A DESIGN — the two halves of the classification were born as ONE evening
+# hotfix on the leaders board only (`a744d7f6`, 2026-03-23: "Filter non-equity tickers from RS
+# leaders via quote_type subquery. Also add SNXX to SKIP_TICKERS as immediate fix"); the next
+# morning the RS engine stopped SCORING non-common-stock (`bbbfbccc`), the gap went dormant,
+# and the two 05-31 pools inherited the clause by copy while the 07-20 pool was written fresh
+# without it. The recorded intent (09-17, above) was always one universe. Full timeline and
+# the fail-open argument for keeping the read-side clause: `docs/architecture/theme_engine.md`
+# §"The six RS pools read ONE universe".
+#
+# THE GATE, behavioural not textual: each derived pool runs against a RECORDING connection and
+# the statement it sends to `mi_stock_scores` is classified. No `inspect.getsource` — the SQL a
+# function actually issues is behaviour. The escape is a `UNIVERSE-EXCEPTION: <reason>` docstring
+# marker (the house shape: `tz-ok:`, `source-pin-ok:`, `EXPECT-NA:`), read off `fn.__doc__`; the
+# gate fails on a SILENT divergence and on a STALE marker alike, so the readout is always
+# "N/0" or "N/M-with-reasons", never "3/3-silent".
+# ══════════════════════════════════════════════════════════════════════════════════════
+
+import re
+from datetime import date as _date, timedelta as _timedelta
+
+from agents.market_intelligence.constants import SKIP_TICKERS_LIST
+
+# The leaders-board clause, matched structurally: any alias for either table, any whitespace.
+_NON_EQUITY_CLAUSE = re.compile(
+    r"NOT EXISTS \(\s*SELECT 1 FROM mi_tracked_stocks (\w+) WHERE \1\.ticker = (?:\w+\.)?ticker "
+    r"AND \1\.quote_type IS NOT NULL AND \1\.quote_type != 'EQUITY'\s*\)",
+    re.IGNORECASE,
+)
+_UNIVERSE_EXCEPTION = re.compile(r"UNIVERSE-EXCEPTION:\s*(.+)")
+_UNIVERSE_REASON_FLOOR = 12      # the floor `tz-ok:` / `source-pin-ok:` / `EXPECT-NA:` use
+
+
+def reads_one_universe(sql: str, args: tuple) -> bool:
+    """True when ONE statement excludes BOTH classes of known non-equity: the
+    `mi_tracked_stocks.quote_type` clause in the text, and the hand-kept `SKIP_TICKERS_LIST`
+    bound as a parameter. Both, because the write-time common-stock filter fails open and most
+    scored rows are untracked (no `quote_type` row) — on that failure only the skip list catches
+    SPY / TQQQ. One without the other is the 2026-03-23 fix half-applied."""
+    flat = " ".join(sql.split())
+    has_clause = _NON_EQUITY_CLAUSE.search(flat) is not None
+    has_skip = any(a is SKIP_TICKERS_LIST or (isinstance(a, list) and a == SKIP_TICKERS_LIST)
+                   for a in args)
+    return has_clause and has_skip
+
+
+def universe_exception(fn) -> "str | None":
+    """The written reason a pool reads a wider universe, or None. Read off the docstring — the
+    reason lives on the function, where the next reader of the SQL will look."""
+    m = _UNIVERSE_EXCEPTION.search(fn.__doc__ or "")
+    return m.group(1).strip() if m else None
+
+
+class _RecordingConn:
+    """Answers every query with nothing and remembers what was asked."""
+    def __init__(self):
+        self.statements: list = []
+
+    async def fetch(self, sql, *args):
+        self.statements.append((sql, args))
+        return []
+
+    async def fetchrow(self, sql, *args):
+        self.statements.append((sql, args))
+        return None
+
+    async def fetchval(self, sql, *args):
+        self.statements.append((sql, args))
+        return None
+
+
+async def _statements_against_scores(monkeypatch, name: str) -> list:
+    """Run `db.<name>` with its defaults against a recording connection and return every
+    `(sql, args)` it sent to `mi_stock_scores`. The date helpers are stubbed to fixed dates so
+    each pool reaches its main query instead of returning [] on 'no data'."""
+    conn = _RecordingConn()
+    ctx = AsyncMock()
+    ctx.__aenter__ = AsyncMock(return_value=conn)
+    ctx.__aexit__ = AsyncMock(return_value=False)
+    pool = AsyncMock()
+    pool.acquire = lambda *a, **k: ctx
+    d0 = _date(2026, 9, 19)
+    weekly = tuple(d0 - _timedelta(days=7 * i) for i in range(5))
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(db, "_resolve_score_date", AsyncMock(return_value=d0))
+    monkeypatch.setattr(db, "latest_complete_score_date",
+                        AsyncMock(return_value=d0 - _timedelta(days=1)))
+    monkeypatch.setattr(db, "_prepare_weekly_snapshots",
+                        AsyncMock(return_value=(d0, list(weekly), d0) + weekly[1:]))
+    monkeypatch.setattr(db, "get_deal_pinned_tickers", AsyncMock(return_value=set()))
+    await getattr(db, name)(d0)
+    return [(sql, args) for sql, args in conn.statements if "mi_stock_scores" in sql]
+
+
+# ── the detector must not be blind — proven on synthetic statements, not by mutating db.py ──
+
+_LEADERS_SHAPE = """
+    SELECT s.* FROM mi_stock_scores s
+    WHERE s.score_date = $1
+      AND s.ticker != ALL($4)
+      AND NOT EXISTS (
+          SELECT 1 FROM mi_tracked_stocks t
+          WHERE t.ticker = s.ticker AND t.quote_type IS NOT NULL AND t.quote_type != 'EQUITY'
+      )
+    ORDER BY s.rs_composite DESC NULLS LAST, s.ticker
+    LIMIT $2
+"""
+_PRE_FIX_VELOCITY_SHAPE = """
+    WITH snapshots AS (
+        SELECT ticker, score_date, rs_composite, sector
+        FROM mi_stock_scores
+        WHERE score_date = ANY($1) AND rs_composite IS NOT NULL
+    )
+    SELECT * FROM snapshots
+"""
+
+
+def test_the_universe_detector_recognises_the_leaders_shape():
+    """The statement the leaders board has issued since 2026-03-23, with the skip list bound."""
+    assert reads_one_universe(_LEADERS_SHAPE, ("2026-09-19", 60, 500_000, SKIP_TICKERS_LIST, 10.0))
+
+
+def test_the_universe_detector_rejects_the_pre_fix_velocity_shape():
+    """The exact statement velocity and turners issued before #673 — a bare read of the scores
+    table. If this passes the detector, the gate below is decorative."""
+    assert not reads_one_universe(_PRE_FIX_VELOCITY_SHAPE, (["2026-09-19"], "2026-09-19", 40.0, 60))
+
+
+def test_half_of_the_2026_03_23_fix_is_not_one_universe():
+    """Both halves were born in one commit and both are required: the clause without the skip
+    list, or the skip list without the clause, is the fix half-applied."""
+    assert not reads_one_universe(_LEADERS_SHAPE, ("2026-09-19", 60, 500_000, ["SPY"], 10.0)), (
+        "clause present, skip list NOT bound — accepted")
+    assert not reads_one_universe(_PRE_FIX_VELOCITY_SHAPE, (["2026-09-19"], SKIP_TICKERS_LIST)), (
+        "skip list bound, clause absent — accepted")
+
+
+def test_a_written_universe_exception_is_read_off_the_docstring():
+    async def wide_pool(d, limit=30):
+        """Ranks everything. UNIVERSE-EXCEPTION: an ETF-flow board wants the ETFs, by design."""
+    async def plain_pool(d, limit=30):
+        """Ranks equities only."""
+    assert universe_exception(wide_pool) == "an ETF-flow board wants the ETFs, by design."
+    assert universe_exception(plain_pool) is None
+
+
+# ── the real module ─────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_every_rs_pool_reads_the_one_universe_or_says_why(monkeypatch):
+    """THE GATE. Every ranked RS population in `db` (derived by `_rs_pools`, never hand-listed)
+    either excludes known non-equities the way the leaders board does, or carries a written
+    `UNIVERSE-EXCEPTION:`. Fails on a SILENT divergence, on a STALE marker (a reason on a pool
+    that does exclude — the reason is documenting nothing), and on a reason too thin to be one.
+    Prints the split the #673 DoD asks for: `6/0`, or `N/M-with-reasons`."""
+    pools = _rs_pools()
+    assert len(pools) >= 6, (
+        f"expected at least the six known RS pools, found {sorted(pools)} — the derivation broke; "
+        f"an empty population here passes every assertion below by vacuity")
+
+    excludes: dict = {}
+    silent, stale, thin = [], [], []
+    for name in sorted(pools):
+        stmts = await _statements_against_scores(monkeypatch, name)
+        assert stmts, (
+            f"db.{name} sent NOTHING to mi_stock_scores under the stubs — the harness no longer "
+            f"reaches its main query, so its classification below would be vacuous")
+        excludes[name] = any(reads_one_universe(sql, args) for sql, args in stmts)
+        reason = universe_exception(getattr(db, name))
+        if not excludes[name] and reason is None:
+            silent.append(name)
+        if excludes[name] and reason is not None:
+            stale.append(name)
+        if reason is not None and len(reason) < _UNIVERSE_REASON_FLOOR:
+            thin.append(name)
+
+    n_one = sum(excludes.values())
+    print(f"\nRS pool universe split: {n_one}/{len(pools) - n_one} "
+          f"(one universe / documented-wider) over {sorted(pools)}")
+
+    assert not silent, (
+        f"these RS pools read a WIDER universe than the leaders board and do not say why: "
+        f"{silent}. Either add the leaders-board exclusion — the `mi_tracked_stocks.quote_type` "
+        f"NOT EXISTS clause AND `ticker != ALL(SKIP_TICKERS_LIST)` on the statement that reads "
+        f"mi_stock_scores — or write `UNIVERSE-EXCEPTION: <why>` in the docstring. A silent "
+        f"3/3 is how an ETF sits in RISING while the leaders board excludes it (#673)."
+    )
+    assert not stale, (
+        f"these pools carry a UNIVERSE-EXCEPTION marker but DO exclude non-equities: {stale}. "
+        f"The reason documents nothing — remove it, or remove the exclusion it contradicts."
+    )
+    assert not thin, (
+        f"UNIVERSE-EXCEPTION reason shorter than {_UNIVERSE_REASON_FLOOR} chars on {thin} — "
+        f"'n/a' is not a reason"
+    )

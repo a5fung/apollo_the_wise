@@ -793,6 +793,64 @@ already in this file.
 healthcare are already dropped here without announcement. The classification is documented in this
 section and in the function's docstring, which is where a reader looks for "why is X not a leader".
 
+### 🔒 The six RS pools read ONE universe (#673, 2026-09-20)
+
+**All six RS pools read ONE universe: known non-equities are excluded by every one of them.**
+"Known non-equity" is the two classifications the leaders board has carried since 2026-03-23 —
+the `mi_tracked_stocks.quote_type` clause (`NOT EXISTS … quote_type != 'EQUITY'`) and the
+hand-kept `SKIP_TICKERS_LIST` (leveraged / inverse / index / sector / commodity ETFs and ETNs).
+**Gated:** `tests/test_deal_pinned_not_a_coverage_gap.py` §#673 derives the pool list from `db`'s
+signatures (the same POOL-vs-LOOKUP rule as the deal-pin gate), runs each pool against a recording
+connection, and classifies the statement it actually sends to `mi_stock_scores` — behaviour, not
+source text. A pool that must read a wider universe carries a `UNIVERSE-EXCEPTION: <reason>`
+docstring marker; the gate fails on a **silent** divergence and on a **stale** marker alike, so the
+readout is always `N/0` or `N/M-with-reasons`, never `3/3-silent`. **Readout 2026-09-20: 6/0.**
+
+**The 3/3 split was ACCIDENTAL, not a design** — how we know, from git rather than argument:
+
+| when | what | who got it |
+|---|---|---|
+| 2026-03-16 · 03-18 | `get_rs_velocity`, `get_rs_turners` born | no non-equity clause existed yet |
+| **2026-03-23 18:03 PT** | `a744d7f6` — *"Filter non-equity tickers from RS leaders via quote_type subquery. Also add SNXX to SKIP_TICKERS as immediate fix."* | **leaders ONLY** — an evening hotfix on the one board that had just shown an ETN; velocity and turners existed and were not touched, and no commit message or doc gives them a wider universe |
+| **2026-03-24 07:50 PT** | `bbbfbccc` — the RS engine scores only common stock (`mi_security_types` CS / ADRC) | the **write** side. The read-side clause went dormant the next morning, which is why nobody propagated it: the last non-equity score row is dated 2026-03-23 |
+| 2026-05-31 | `get_rs_accelerators`, `get_rs_recovery_slope` (ADR 0007) | cloned from the leaders' liquid branch — carry the clause by copy, not by decision |
+| 2026-07-20 | `get_rs_recovery` (#492) | written fresh, without it |
+| 2026-09-17 | deal pin on all six | the docstrings and this section assert ONE universe (*"a per-ticker classification every downstream surface inherits"*) — the recorded INTENT, which the split contradicted |
+
+⚠ **"Inherits for free" (09-17, above) was true only of the pools that happened to carry the
+clause.** Nothing is inherited: each pool's SQL is its own, and only the gate makes the six agree.
+That is the #673 correction to this section's own wording.
+
+**Why keep the read-side clause when the write side already filters?** The write filter FAILS OPEN
+— `rs_engine.run_rs_engine` reads `if cs_tickers and ticker not in cs_tickers`, so an empty
+`mi_security_types` scores everything — and 1,848 of today's ~2,400 scored rows are UNTRACKED (no
+`quote_type` row), so on that failure only `SKIP_TICKERS_LIST` catches SPY / TQQQ. Two
+classifications, both needed; the leaders board has carried both since the day they were born.
+
+**This is not "subtle RS wants a wider universe".** `get_rs_recovery`'s docstring argues for a wider
+RS *floor* (composite ≤ 45 catches the V-turn that the ≥ 40 velocity floor hides) — that is about RS
+thresholds, not asset class. No file in `docs/setups` or `docs/architecture` gives velocity,
+turners or recovery the ETFs.
+
+**Two escapes, both written:** `get_rs_leaders(min_adv=0)` is the documented raw-universe branch
+(its docstring; used only by the scheduler's sector-enrichment pass) and applies NO classification;
+and the `UNIVERSE-EXCEPTION:` marker above.
+
+**Dormant today, by the numbers (prod, 2026-09-19):** 70 ETFs hold 853 `mi_stock_scores` rows, the
+last dated 2026-03-23; the current scored set is 533 EQUITY + 1,848 untracked + **0** non-equity.
+So this change moves no name off any board today; it is the guard for the day the write filter
+fails open.
+
+⚖ **Two FINDINGS, deliberately NOT changed** — read-path population only; either would change what
+RISING / ROTATION WATCH / RECOVERY show *today*, and that is the operator's call:
+1. **Liquidity and small-cap-healthcare still split 3/3.** Leaders, accelerators and recovery-slope
+   apply `min_adv` 500k, `min_price` $10 and `is_sector_filtered` (Healthcare < $50); velocity,
+   turners and recovery apply none of the three. Those are POLICY (what counts as tradeable), not
+   classification, and are unsized here.
+2. **`get_ma_pullbacks`** (the brief's PULLBACKS section) carries skip / ADV / price / sector but NOT
+   the `quote_type` clause — it predates the 03-23 hotfix too — and sits outside the derived pool
+   list (optional `tickers`, no `limit`), so the gate does not see it.
+
 
 ## Change log
 

@@ -10071,6 +10071,12 @@ async def get_rs_velocity(
     - Have a positive velocity score (net rising RS over the window)
     - Most recent week (v1w) must be positive (still accelerating, not stalled)
     - Is not PINNED BY AN ANNOUNCED DEAL (below)
+    - Is not a KNOWN NON-EQUITY (#673, 2026-09-20): the `mi_tracked_stocks.quote_type` clause
+      and `SKIP_TICKERS_LIST`, exactly as `get_rs_leaders` applies them. This pool predates the
+      2026-03-23 leaders hotfix that introduced both and was never brought level — the next
+      morning's write-time common-stock filter made the gap dormant, not deliberate. Why the
+      six pools read ONE universe, and the docstring marker a pool that must read a wider one
+      carries: `docs/architecture/theme_engine.md` §"The six RS pools read ONE universe".
 
     ⚠ DEAL-PINNED EXCLUSION (2026-09-17) — the SAME filter `get_rs_leaders` applies, and it
     belongs here for a reason the leaders docstring does not cover. An announcement gap is a
@@ -10085,6 +10091,7 @@ async def get_rs_velocity(
     that existed only in the local tree, never on prod. One of five pools filtered is not a
     source fix. `include_deal_pinned=True` opts back in.
     """
+    from agents.market_intelligence.constants import SKIP_TICKERS_LIST
     pool = await get_pool()
     async with pool.acquire() as conn:
         prep = await _prepare_weekly_snapshots(conn, d)
@@ -10094,9 +10101,14 @@ async def get_rs_velocity(
 
         rows = await conn.fetch("""
             WITH snapshots AS (
-                SELECT ticker, score_date, rs_composite, sector
-                FROM mi_stock_scores
-                WHERE score_date = ANY($1) AND rs_composite IS NOT NULL
+                SELECT s.ticker, s.score_date, s.rs_composite, s.sector
+                FROM mi_stock_scores s
+                WHERE s.score_date = ANY($1) AND s.rs_composite IS NOT NULL
+                  AND s.ticker != ALL($9)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM mi_tracked_stocks t
+                      WHERE t.ticker = s.ticker AND t.quote_type IS NOT NULL AND t.quote_type != 'EQUITY'
+                  )
             ),
             pivoted AS (
                 SELECT
@@ -10146,7 +10158,7 @@ async def get_rs_velocity(
               AND velocity_score > 0 AND (rs_now - rs_7d) > 0
             ORDER BY velocity_score DESC
             LIMIT $8
-        """, available, d0, d7, d14, d21, d28, min_rs, limit * 2)
+        """, available, d0, d7, d14, d21, d28, min_rs, limit * 2, SKIP_TICKERS_LIST)
 
         # Over-fetch then filter then truncate — the shape get_rs_leaders uses, and for the
         # same reason: the classifier is scoped to the rows we already have, never the universe.
@@ -10181,21 +10193,33 @@ async def get_rs_recovery(
     ⚠ MEASURED ZERO ON PROD 2026-09-17: no name in the 500-row pool clears both pin legs
     today. Filtered anyway — "no hit today" is the argument this whole day was spent
     rejecting, and an acquisition in his RECOVERY list is the exact failure he reported
-    that morning off the brief's unanchored line. `include_deal_pinned=True` opts back in."""
+    that morning off the brief's unanchored line. `include_deal_pinned=True` opts back in.
+
+    ⚠ KNOWN NON-EQUITIES EXCLUDED (#673, 2026-09-20) — the same `quote_type` clause and
+    `SKIP_TICKERS_LIST` as `get_rs_leaders`. Written 2026-07-20 without either; the gap was
+    dormant (the RS engine has scored only common stock since 2026-03-24) but this is the pool
+    he reads directly. Why one universe: `docs/architecture/theme_engine.md` §"The six RS
+    pools read ONE universe"."""
+    from agents.market_intelligence.constants import SKIP_TICKERS_LIST
     pool = await get_pool()
     rd = date.fromisoformat(d) if isinstance(d, str) else d
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT ticker, sector, rs_1m, rs_3m, rs_6m, rs_composite
-            FROM mi_stock_scores
-            WHERE score_date = $1
-              AND rs_1m IS NOT NULL AND rs_composite IS NOT NULL
-              AND rs_1m >= $2 AND rs_composite <= $3
-            ORDER BY (rs_1m - rs_composite) DESC
+            SELECT s.ticker, s.sector, s.rs_1m, s.rs_3m, s.rs_6m, s.rs_composite
+            FROM mi_stock_scores s
+            WHERE s.score_date = $1
+              AND s.rs_1m IS NOT NULL AND s.rs_composite IS NOT NULL
+              AND s.rs_1m >= $2 AND s.rs_composite <= $3
+              AND s.ticker != ALL($5)
+              AND NOT EXISTS (
+                  SELECT 1 FROM mi_tracked_stocks t
+                  WHERE t.ticker = s.ticker AND t.quote_type IS NOT NULL AND t.quote_type != 'EQUITY'
+              )
+            ORDER BY (s.rs_1m - s.rs_composite) DESC
             LIMIT $4
             """,
-            rd, min_rs_1m, max_composite, limit * 2,
+            rd, min_rs_1m, max_composite, limit * 2, SKIP_TICKERS_LIST,
         )
         pinned = set() if include_deal_pinned else await get_deal_pinned_tickers(
             rd, [r["ticker"] for r in rows], conn=conn)
@@ -10471,10 +10495,14 @@ async def get_rs_turners(
       RS <= 30 four weeks ago) and none of the eight names pinned on 2026-09-17 were
       turners — so this leg is a completeness guard, not a measured hit. Stated plainly
       rather than implied, so nobody later reads it as evidence the leg was leaking.
+    - Is not a KNOWN NON-EQUITY (#673, 2026-09-20) — the same `quote_type` clause and
+      `SKIP_TICKERS_LIST` as `get_rs_leaders`; see get_rs_velocity above and
+      `docs/architecture/theme_engine.md` §"The six RS pools read ONE universe".
 
     Returns rows with: ticker, sector, rs_now, rs_7d..rs_28d, v1w..v4w,
     consecutive_up_weeks, rs_gain (total improvement).
     """
+    from agents.market_intelligence.constants import SKIP_TICKERS_LIST
     pool = await get_pool()
     async with pool.acquire() as conn:
         prep = await _prepare_weekly_snapshots(conn, d)
@@ -10484,9 +10512,14 @@ async def get_rs_turners(
 
         rows = await conn.fetch("""
             WITH snapshots AS (
-                SELECT ticker, score_date, rs_composite, sector
-                FROM mi_stock_scores
-                WHERE score_date = ANY($1) AND rs_composite IS NOT NULL
+                SELECT s.ticker, s.score_date, s.rs_composite, s.sector
+                FROM mi_stock_scores s
+                WHERE s.score_date = ANY($1) AND s.rs_composite IS NOT NULL
+                  AND s.ticker != ALL($10)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM mi_tracked_stocks t
+                      WHERE t.ticker = s.ticker AND t.quote_type IS NOT NULL AND t.quote_type != 'EQUITY'
+                  )
             ),
             pivoted AS (
                 SELECT
@@ -10524,7 +10557,7 @@ async def get_rs_turners(
             ORDER BY consecutive_up_weeks DESC, rs_now - rs_earliest DESC
             LIMIT $9
         """, available, d0, d7, d14, d21, d28,
-             max_rs_4w_ago, min_consecutive_weeks, limit * 2)
+             max_rs_4w_ago, min_consecutive_weeks, limit * 2, SKIP_TICKERS_LIST)
 
         # Over-fetch / filter / truncate — identical shape to get_rs_velocity and
         # get_rs_leaders, so all three discovery inputs drop the same names.
