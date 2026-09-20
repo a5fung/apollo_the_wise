@@ -90,6 +90,186 @@ def test_the_older_harness_spawn_name_task_still_counts(tmp_path):
     assert len(dr.scan_day(DAY, tdir=tmp_path).spawns) == 1
 
 
+# ── workflow-spawned agents (#676) ───────────────────────────────────────────────────────────
+# The `Workflow` tool runs its own cards internally — they never appear as `Agent`/`Task`
+# tool_use blocks in the main transcript scanned above. Their record lives one directory deeper,
+# beside the session's own <session-id>.jsonl: <session-id>/subagents/workflows/<wf_id>/. Real
+# shape (mined 2026-09-20 from this machine's own transcripts, the same day the defect that
+# named it was found): journal.jsonl carries {"type":"started"|"result","agentId":...} lines;
+# agent-<id>.meta.json carries {"model": "fable"|"sonnet"|...} (the short token, NOT the
+# resolved id the top-level workflows/<wf_id>.json summary uses); agent-<id>.jsonl is the
+# card's own transcript, read here only for its first timestamp.
+
+def _write_workflow(tmp_path, session, wf_id, agents):
+    """agents: list of dicts, each optionally carrying agent_id/model/ts/started/result/label.
+    Builds the on-disk shape described above under tmp_path/<session>/... and, only if any
+    agent supplies a label, the top-level workflows/<wf_id>.json summary those labels read
+    from. Missing session.jsonl is the caller's job (mirrors real layout: the workflow tree is
+    always a sibling of <session>.jsonl, never self-sufficient)."""
+    wf_dir = tmp_path / session / "subagents" / "workflows" / wf_id
+    wf_dir.mkdir(parents=True, exist_ok=True)
+    journal_lines = []
+    progress = []
+    for a in agents:
+        aid = a["agent_id"]
+        if a.get("started", True):
+            journal_lines.append(json.dumps({"type": "started", "key": "k", "agentId": aid}))
+        if a.get("result", True):
+            journal_lines.append(json.dumps({"type": "result", "key": "k", "agentId": aid,
+                                             "result": "done"}))
+        if a.get("model") is not None:
+            (wf_dir / f"agent-{aid}.meta.json").write_text(json.dumps(
+                {"agentType": "workflow-subagent", "model": a["model"]}))
+        if a.get("ts") is not None:
+            (wf_dir / f"agent-{aid}.jsonl").write_text(
+                json.dumps({"type": "user", "timestamp": a["ts"]}) + "\n")
+        if a.get("label"):
+            progress.append({"type": "workflow_agent", "agentId": aid, "label": a["label"]})
+    (wf_dir / "journal.jsonl").write_text(
+        "\n".join(journal_lines) + ("\n" if journal_lines else ""))
+    if progress:
+        wf_json_dir = tmp_path / session / "workflows"
+        wf_json_dir.mkdir(parents=True, exist_ok=True)
+        (wf_json_dir / f"{wf_id}.json").write_text(json.dumps({"workflowProgress": progress}))
+    return wf_dir
+
+
+def test_workflow_spawned_agent_is_counted_with_its_model(tmp_path):
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    _write_workflow(tmp_path, "sess", "wf_1", [
+        {"agent_id": "a1", "model": "fable", "ts": TS},
+    ])
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert len(led.spawns) == 1
+    assert led.spawns[0][0] == "fable"
+
+
+def test_workflow_agent_model_read_from_meta_not_resolved_name(tmp_path):
+    """meta.json's short token ('sonnet') must win over a resolved name ('claude-sonnet-5')
+    that might appear in the workflow summary — route_discrepancies matches against the short
+    token declared via --route, so reading the wrong one silently breaks the cross-check this
+    whole feature exists for."""
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    _write_workflow(tmp_path, "sess", "wf_1", [
+        {"agent_id": "a1", "model": "sonnet", "ts": TS, "label": "resolved as claude-sonnet-5"},
+    ])
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert led.spawns[0][0] == "sonnet"
+
+
+def test_workflow_agent_started_without_a_result_still_counts(tmp_path):
+    """Direct Agent/Task spawns count at the tool_use call (launch), not completion — a
+    workflow card that started and then crashed/was killed is delegation that happened, same
+    as one that finished cleanly. Real workflows on this machine have started > result counts
+    for exactly this reason."""
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    _write_workflow(tmp_path, "sess", "wf_1", [
+        {"agent_id": "a1", "model": "fable", "ts": TS, "result": False},
+    ])
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert len(led.spawns) == 1 and led.spawns[0][0] == "fable"
+
+
+def test_workflow_agent_duplicate_started_line_counts_once(tmp_path):
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    wf_dir = tmp_path / "sess" / "subagents" / "workflows" / "wf_1"
+    wf_dir.mkdir(parents=True)
+    (wf_dir / "journal.jsonl").write_text(
+        '\n'.join([json.dumps({"type": "started", "agentId": "a1"})] * 2) + "\n")
+    (wf_dir / "agent-a1.meta.json").write_text(json.dumps({"model": "fable"}))
+    (wf_dir / "agent-a1.jsonl").write_text(json.dumps({"timestamp": TS}) + "\n")
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert len(led.spawns) == 1
+
+
+def test_workflow_agent_missing_meta_falls_back_to_inherit(tmp_path):
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    _write_workflow(tmp_path, "sess", "wf_1", [{"agent_id": "a1", "ts": TS}])   # no model given
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert led.spawns[0][0] == "inherit"
+
+
+def test_workflow_agent_pt_day_bucketing_excludes_a_different_day(tmp_path):
+    other_day_ts = "2026-08-04T20:00:00.000Z"   # 13:00 PDT on 08-04, not 08-03
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    _write_workflow(tmp_path, "sess", "wf_1", [
+        {"agent_id": "a1", "model": "fable", "ts": other_day_ts},
+    ])
+    assert dr.scan_day(DAY, tdir=tmp_path).spawns == []
+    assert len(dr.scan_day("2026-08-04", tdir=tmp_path).spawns) == 1
+
+
+def test_workflow_agent_label_enrichment_from_summary(tmp_path):
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    _write_workflow(tmp_path, "sess", "wf_1", [
+        {"agent_id": "a1", "model": "fable", "ts": TS, "label": "#610 HTF four-reading observer"},
+    ])
+    out = dr.render(dr.scan_day(DAY, tdir=tmp_path), [])
+    assert "#610 HTF four-reading observer" in out
+
+
+def test_workflow_agent_label_falls_back_when_summary_absent(tmp_path):
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    _write_workflow(tmp_path, "sess", "wf_1", [{"agent_id": "a1", "model": "fable", "ts": TS}])
+    out = dr.render(dr.scan_day(DAY, tdir=tmp_path), [])
+    assert "workflow wf_1" in out
+
+
+def test_workflow_dir_stale_before_target_day_is_skipped(tmp_path):
+    """A workflow whose activity ended before the target PT day began (old, unrelated work)
+    must not be opened at all, mirroring the mtime pre-filter the top-level *.jsonl walk uses."""
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    wf_dir = _write_workflow(tmp_path, "sess", "wf_1", [
+        {"agent_id": "a1", "model": "fable", "ts": TS},
+    ])
+    old = dr.datetime(2020, 1, 1, tzinfo=dr._PT).timestamp()
+    os.utime(wf_dir / "journal.jsonl", (old, old))
+    assert dr.scan_day(DAY, tdir=tmp_path).spawns == []
+
+
+def test_workflow_scan_failure_never_blanks_direct_spawn_counts(tmp_path, monkeypatch):
+    """A malformed/unreadable workflow tree must degrade to 'not counted', never wreck the
+    direct-spawn data the main-transcript walk already collected (fail-open at file
+    granularity, not day granularity — the whole point of the module's docstring)."""
+    _write_transcript(tmp_path / "sess.jsonl", [
+        _entry("u1", TS, [_tool("Agent", model="sonnet", description="direct spawn")]),
+    ])
+
+    def _boom(*a, **k):
+        raise RuntimeError("simulated corrupt workflow tree")
+    monkeypatch.setattr(dr, "_scan_workflow_agents", _boom)
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert len(led.spawns) == 1 and led.spawns[0][0] == "sonnet"
+
+
+def test_workflow_spawn_clears_a_declared_fable_routing_gap(tmp_path):
+    """The headline fix (#676): a task declared FABLE at OPEN, actually run as a workflow
+    card, must no longer show up as a routing gap."""
+    _write_transcript(tmp_path / "sess.jsonl", [])
+    _write_workflow(tmp_path, "sess", "wf_1", [
+        {"agent_id": "a1", "model": "fable", "ts": TS, "label": "#610 build"},
+    ])
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    routes = [{"task": "#610", "who": "fable", "note": ""}]
+    assert dr.route_discrepancies(routes, led) == []
+    out = dr.render(led, routes)
+    assert "ROUTING GAPS" not in out
+
+
+def test_workflow_tool_use_resets_the_no_spawn_stretch(tmp_path):
+    """A day built entirely through Workflow calls must not read as one uninterrupted
+    no-spawn run of main-loop work — the launch point ends the stretch even though the
+    workflow's own cards are counted separately (never as tool_use blocks here)."""
+    lines = (
+        [_entry(f"u{i}", TS, [_tool("Bash", command="ls")]) for i in range(5)]
+        + [_entry("u5", TS, [_tool("Workflow", script="x")])]
+        + [_entry(f"u{i}", TS, [_tool("Bash", command="ls")]) for i in range(6, 9)]
+    )
+    _write_transcript(tmp_path / "sess.jsonl", lines)
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert led.longest_no_spawn_run == 5   # NOT 8 — the Workflow call resets the run
+
+
 @pytest.mark.parametrize("fp,cls", [
     (str(_ROOT / "agents/market_intelligence/ep_detector.py"), "impl"),
     (str(_ROOT / "core/router.py"), "impl"),

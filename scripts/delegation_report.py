@@ -117,6 +117,15 @@ WORK_TOOLS = frozenset({"Bash", "Edit", "Write", "Read", "NotebookEdit", "Grep",
 SPAWN_TOOLS = frozenset({"Agent", "Task"})  # "Task" = older harness name for the same tool
 EDIT_TOOLS = frozenset({"Edit", "Write", "NotebookEdit"})
 
+# A Workflow tool call launches a script that spawns its own agents internally (see
+# _scan_workflow_agents below) — it is not itself work OR a spawn tool_use in the sense
+# SPAWN_TOOLS means (no `model`/`subagent_type`/`description` input to read), but it DOES mark
+# the point delegation happened, same as an Agent/Task call, so it resets the no-spawn stretch
+# counter exactly like one (#676, 2026-09-19: before this, a day built entirely through
+# Workflow read as one uninterrupted no-spawn run of main-loop work calls, which is the same
+# false "did it all inline" signal the routing-gap defect produced from the other angle).
+WORKFLOW_LAUNCH_TOOL = "Workflow"
+
 _ROUTE_ARG = re.compile(r"^(?P<task>[^:]+):(?P<who>fable|sonnet|opus|main|advisor)(?::(?P<note>.*))?$")
 
 
@@ -210,6 +219,7 @@ def scan_day(day: str, tdir: Path | None = None) -> DayLedger:
     except (OSError, ValueError):
         return ledger
     seen: set[str] = set()
+    seen_agents: set[tuple[str, str]] = set()   # (wf_dir, agentId) — see _scan_workflow_agents
     for path in sorted(paths):
         try:
             fh = open(path, encoding="utf-8", errors="replace")
@@ -255,6 +265,11 @@ def scan_day(day: str, tdir: Path | None = None) -> DayLedger:
                             _sanitize(inp.get("description") or "", 60),
                         ))
                         ledger._run = 0
+                    elif name == WORKFLOW_LAUNCH_TOOL:
+                        # delegation happened here too — its cards are counted separately by
+                        # _scan_workflow_agents (they never appear as tool_use blocks in THIS
+                        # transcript), but the launch point still ends a no-spawn stretch.
+                        ledger._run = 0
                     elif name in WORK_TOOLS:
                         ledger._run += 1
                         ledger.longest_no_spawn_run = max(ledger.longest_no_spawn_run, ledger._run)
@@ -269,7 +284,147 @@ def scan_day(day: str, tdir: Path | None = None) -> DayLedger:
                                 ledger.impl_edits[rel] += 1
                             else:
                                 ledger.other_edit_classes[cls] += 1
+        # A `Workflow` tool_use above only marks the launch point — the cards it runs never
+        # appear as tool_use blocks in THIS transcript (#676, measured 2026-09-19: a day whose
+        # building ran entirely through two Workflow calls read as "4 spawns" and accused every
+        # one of those cards of having been done inline). Their transcripts live in a sibling
+        # directory instead; walk it separately, one failure here must never blank the ledger
+        # the direct-spawn walk above already built.
+        try:
+            _scan_workflow_agents(ledger, Path(path), day, day_start, seen_agents)
+        except Exception:      # noqa: BLE001 — fails open at file granularity, never at day granularity
+            pass
     return ledger
+
+
+def _scan_workflow_agents(ledger: DayLedger, session_path: Path, day: str,
+                          day_start: float, seen_agents: set[tuple[str, str]]) -> None:
+    """Agents the `Workflow` tool spawned internally. Their transcripts do NOT live beside
+    `session_path` as `*.jsonl` (that population is `subagents/<agent>.jsonl` — the SAME
+    direct-Agent-spawn transcripts already counted above via tool_use blocks, confirmed
+    2026-09-20: zero agentId overlap between that tree and the one below across 224 saved
+    agent transcripts on this machine). Workflow cards land one directory deeper, under
+    `<session-id>/subagents/workflows/<wf_id>/`:
+      - `journal.jsonl`: one `{"type":"started"|"result","agentId":...}` line per lifecycle
+        event. Enumerated from `started` (not `result`) so a card that was launched and then
+        crashed/was killed before finishing still counts as delegation that happened — the same
+        thing a direct Agent tool_use counts at launch, not completion (some real workflows on
+        this machine have started > result: a card that never produced a result is not a card
+        that was never run).
+      - `agent-<agentId>.meta.json`: `{"model": "fable"|"sonnet"|...}` — the SAME short token
+        `route_discrepancies`/`main_route_crosscheck` compare against (confirmed against
+        `wf_976fdec8-427` and `wf_c9fd597d-40d`, the two workflows behind #676's own defect:
+        the top-level `workflows/<wf_id>.json` summary uses resolved names like
+        "claude-fable-5-1" instead — reading THAT for the model would silently break every
+        routing cross-check).
+      - `agent-<agentId>.jsonl`: the card's own transcript, used only for its first entry's
+        `timestamp` (PT-day bucketing, same as the direct-spawn walk).
+    Best-effort, everywhere: a workflow tree can be absent (old sessions, sessions with no
+    Workflow calls), partial, or from a harness version that shapes it differently — none of
+    that may cost the ledger the direct-spawn data it already has, so every failure here
+    degrades to "this one agent/workflow not counted," never a raised exception."""
+    session_dir = session_path.with_suffix("")
+    wf_root = session_dir / "subagents" / "workflows"
+    try:
+        wf_dirs = sorted(d for d in wf_root.iterdir() if d.is_dir())
+    except OSError:
+        return
+    for wf_dir in wf_dirs:
+        journal = wf_dir / "journal.jsonl"
+        try:
+            if os.path.getmtime(journal) < day_start:
+                continue        # this workflow's activity ended before the target PT day began
+        except OSError:
+            continue
+        try:
+            fh = open(journal, encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        agent_ids: list[str] = []
+        with fh:
+            for line in fh:
+                try:
+                    d = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if not isinstance(d, dict) or d.get("type") != "started":
+                    continue
+                aid = d.get("agentId")
+                if isinstance(aid, str) and aid:
+                    agent_ids.append(aid)
+        for agent_id in agent_ids:
+            dedup_key = (str(wf_dir), agent_id)
+            if dedup_key in seen_agents:
+                continue
+            seen_agents.add(dedup_key)
+            entry_day = _workflow_agent_day(wf_dir, agent_id)
+            if entry_day != day:
+                continue
+            model = _workflow_agent_model(wf_dir, agent_id)
+            label = _workflow_agent_label(session_dir, wf_dir.name, agent_id)
+            ledger.spawns.append((
+                _sanitize(model, 12),
+                "workflow",
+                _sanitize(label or f"workflow {wf_dir.name}", 60),
+            ))
+
+
+def _workflow_agent_day(wf_dir: Path, agent_id: str) -> str | None:
+    """PT day of a workflow card, from the first timestamped line of its own transcript —
+    the same entry-level bucketing pt_day_of() does for the main transcript, so a card
+    launched right at a PT-midnight boundary lands the same way a direct spawn would."""
+    try:
+        with open(wf_dir / f"agent-{agent_id}.jsonl", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if isinstance(d, dict) and d.get("timestamp"):
+                    return pt_day_of(d["timestamp"])
+                break            # first non-blank line carried no usable timestamp — give up
+    except OSError:
+        pass
+    return None
+
+
+def _workflow_agent_model(wf_dir: Path, agent_id: str) -> str:
+    """The short model token ('fable', 'sonnet', ...) a workflow card was launched with —
+    read from its own meta.json, NOT the top-level workflow summary (that file records the
+    resolved model id, e.g. 'claude-fable-5-1', which route_discrepancies would never match
+    against a '#N:fable' declaration)."""
+    try:
+        d = json.loads((wf_dir / f"agent-{agent_id}.meta.json").read_text(encoding="utf-8"))
+        if isinstance(d, dict):
+            model = d.get("model")
+            if isinstance(model, str) and model:
+                return model
+    except (OSError, json.JSONDecodeError, ValueError):
+        pass
+    return "inherit"
+
+
+def _workflow_agent_label(session_dir: Path, wf_id: str, agent_id: str) -> str | None:
+    """Best-effort human label for a workflow card (e.g. '#610 HTF four-reading observer'),
+    from the top-level `workflows/<wf_id>.json` run summary the harness writes alongside the
+    per-agent tree. Purely cosmetic — every caller falls back to `workflow <wf_id>` when this
+    finds nothing, so a missing/differently-shaped summary file never drops the spawn itself,
+    only the nicer description."""
+    try:
+        d = json.loads((session_dir / "workflows" / f"{wf_id}.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(d, dict):
+        return None
+    for entry in d.get("workflowProgress") or []:
+        if isinstance(entry, dict) and entry.get("agentId") == agent_id:
+            label = entry.get("label")
+            if isinstance(label, str) and label:
+                return label
+    return None
 
 
 # ── routing declaration (--route, written at OPEN) ──────────────────────────────────────────
