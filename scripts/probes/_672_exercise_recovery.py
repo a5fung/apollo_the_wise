@@ -115,6 +115,9 @@ async def simulate() -> int:
     print("\nDRY-RUN PLAN:")
     for d in plan["plan"]:
         print(f"  {d.label:42s} {d.kind:14s} {d.detail}")
+    if pages:
+        print(f"  (dry-run boot page sent: {pages[-1].splitlines()[0]!r})")
+    pages.clear(); audits.clear()                    # count the LIVE pass on its own
     out = await jr.run_recovery_sweep(S(jobs), {"morning_stop_refresh"}, reason="boot", now=now,
                                       notify=page, audit=audit)
     print("\nRE-RUN:")

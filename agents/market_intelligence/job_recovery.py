@@ -152,10 +152,10 @@ def eligible_jobs(scheduler, execution_owned: Iterable[str]) -> tuple[list, dict
     return eligible, excluded
 
 
-def past_slots(trigger, now: datetime, lookback_days: int = LOOKBACK_DAYS) -> list[datetime]:
+def past_slots(trigger, now: datetime, lookback_days: int | None = None) -> list[datetime]:
     """The trigger's own fire times in (now − lookback, now]. Its arithmetic, not ours."""
     out: list[datetime] = []
-    cursor = now - timedelta(days=lookback_days)
+    cursor = now - timedelta(days=LOOKBACK_DAYS if lookback_days is None else lookback_days)
     while True:
         n = trigger.get_next_fire_time(None, cursor)
         if n is None or n > now:
@@ -197,6 +197,17 @@ def in_orb_quiet_window(now: datetime) -> bool:
     return et.weekday() < 5 and ORB_QUIET[0] <= et.time() < ORB_QUIET[1]
 
 
+def would_cross_orb_window(now: datetime, bound_s: int) -> bool:
+    """A re-run that could still be holding connections at 09:25 ET on a weekday — e.g. a Monday
+    09:20 pass starting a 50-minute job — is deferred. Per re-run, not per pass: a pass that began
+    clear of the window can walk into it."""
+    et = now.astimezone(_ET)
+    if et.weekday() >= 5:
+        return False
+    start = datetime.combine(et.date(), ORB_QUIET[0], tzinfo=_ET)
+    return et < start <= et + timedelta(seconds=bound_s)
+
+
 def slot_is_in_session(slot: datetime) -> bool:
     et = slot.astimezone(_ET)
     return SESSION_OPEN <= et.time() < SESSION_CLOSE and _session_opens_on(et.date())
@@ -225,12 +236,23 @@ def _same_instant(a, b, tol_s: float = 1.0) -> bool:
 
 def classify_slot(job_id: str, slot: datetime, grace_s: int, rows: list[dict], now: datetime,
                   in_flight: Iterable[str] = (), next_fire: datetime | None = None,
-                  bound_s: int = BOUND_DEFAULT_S) -> Disposition:
-    """One slot against its job's ledger rows. Pure — the dry-run and the fixture replay call it."""
+                  bound_s: int = BOUND_DEFAULT_S, slot_end: datetime | None = None) -> Disposition:
+    """One slot against its job's ledger rows. Pure — the dry-run and the fixture replay call it.
+
+    `slot_end` is the trigger's NEXT fire after this slot. An ordinary row anywhere in
+    [slot − 2 min, min(now, slot_end − 2 min)] satisfies the slot — derived from the trigger, not a
+    constant, because a job dispatched on time but BLOCKED in `_record_start` lands its row with
+    `started_at = NOW()` whenever the pool frees (the 45-minute pull cap produces exactly this: 27
+    blocked INSERTs landing at 17:46 for 17:15 slots). A 30-minute window read those as gaps and the
+    next pass re-ran them — the one thing a recovery must never do. `st <= now` stays explicit so a
+    replay with a pinned `now` never accepts a row from its own future."""
     if (now - slot).total_seconds() < (grace_s or 0) + YOUNG_S:
         return Disposition(job_id, slot, "young", detail="slot too recent to judge")
     lo = slot - timedelta(seconds=MATCH_BEFORE_S)
-    hi = slot + timedelta(seconds=(grace_s or 0) + MATCH_AFTER_S)
+    if slot_end is not None and slot_end > slot:
+        hi = min(now, slot_end - timedelta(seconds=MATCH_BEFORE_S))
+    else:
+        hi = min(now, slot + timedelta(seconds=(grace_s or 0) + MATCH_AFTER_S))
     attempts = 0
     for r in rows:
         st, sched, status = r.get("started_at"), r.get("scheduled_for"), r.get("status")
@@ -285,7 +307,12 @@ def plan_recovery(jobs: list, rows_by_job: dict[str, list[dict]], now: datetime,
             logger.warning(f"recovery: {job.id} next fire time unavailable ({e}); too-close guard off for it")
             next_fire = None
         for slot in past_slots(job.trigger, now):
-            out.append(classify_slot(job.id, slot, grace, rows, now, in_flight, next_fire, bound_for(rows)))
+            try:
+                slot_end = job.trigger.get_next_fire_time(None, slot + timedelta(seconds=1))
+            except Exception:                        # loud-ok: falls back to the grace window below
+                slot_end = None
+            out.append(classify_slot(job.id, slot, grace, rows, now, in_flight, next_fire, bound_for(rows),
+                                     slot_end=slot_end))
     out.sort(key=lambda d: d.slot)
     return out
 
@@ -374,13 +401,45 @@ async def rerun_one(job, disp: Disposition, bound_s: int) -> Disposition:
     return disp
 
 
+DRY_RUN_ENV = "APOLLO_RECOVERY_DRY_RUN"     # operator: plan + heartbeat + page, execute NOTHING
+_SWEEP_LOCK: "asyncio.Lock | None" = None   # one sweep at a time — boot, periodic and the miss-kick overlap
+
+
+def _lock() -> asyncio.Lock:
+    global _SWEEP_LOCK
+    if _SWEEP_LOCK is None:
+        _SWEEP_LOCK = asyncio.Lock()
+    return _SWEEP_LOCK
+
+
+def dry_run_enabled() -> bool:
+    import os
+    return os.environ.get(DRY_RUN_ENV, "").strip().lower() in ("1", "true", "yes", "on")
+
+
 async def run_recovery_sweep(scheduler, execution_owned: Iterable[str], *, reason: str,
                              now: datetime | None = None, dry_run: bool = False,
                              notify: Callable | None = None, audit: Callable | None = None) -> dict:
     """Derive → classify → re-run gaps in slot order → ONE summary. Returns what it did.
 
-    `notify`/`audit` default to the live senders; tests and the probe pass captures."""
-    now = now or datetime.now(_ET)
+    SERIALISED under one lock: the boot pass, the :20/:50 pass and the miss-kick can overlap, and
+    two plans computed from the same ledger would both call the same slot a gap. The in-flight set
+    is re-checked immediately before EACH re-run (not only at plan time), which also covers
+    APScheduler dispatching a job's real slot while a pass is walking its list.
+
+    `notify`/`audit` default to the live senders; tests and the probe pass captures. `now` pins the
+    clock for replays; live passes read it fresh before each re-run so a long pass cannot walk into
+    the ORB window unnoticed."""
+    async with _lock():
+        return await _run_recovery_sweep_locked(scheduler, execution_owned, reason=reason, now=now,
+                                                dry_run=dry_run, notify=notify, audit=audit)
+
+
+async def _run_recovery_sweep_locked(scheduler, execution_owned, *, reason, now, dry_run, notify, audit) -> dict:
+    pinned_now = now
+    clock = (lambda: pinned_now) if pinned_now is not None else (lambda: datetime.now(_ET))
+    now = clock()
+    dry_run = dry_run or dry_run_enabled()
     if audit is None:
         from agents.market_intelligence.db import log_audit_event as audit
     if notify is None:
@@ -389,7 +448,7 @@ async def run_recovery_sweep(scheduler, execution_owned: Iterable[str], *, reaso
 
     jobs, excluded = eligible_jobs(scheduler, execution_owned)
     out: dict[str, Any] = {"reason": reason, "now": now.isoformat(), "eligible": len(jobs),
-                           "excluded": excluded, "plan": [], "ran": [], "quiet": False}
+                           "excluded": excluded, "plan": [], "ran": [], "quiet": False, "dry_run": dry_run}
     if in_orb_quiet_window(now):
         out["quiet"] = True
         logger.info("recovery sweep: inside the ORB quiet window — deferred")
@@ -404,24 +463,42 @@ async def run_recovery_sweep(scheduler, execution_owned: Iterable[str], *, reaso
         r.get("status") in TERMINAL and _same_instant(r.get("scheduled_for"), d.slot)
         for r in rows_by_job.get(d.job_id, []))]
     if reason == "boot":
+        mode = "DRY-RUN (APOLLO_RECOVERY_DRY_RUN) — nothing executed" if dry_run else "live"
         await _safe(audit, "job_recovery_sweep",
-                    f"boot: {len(jobs)} eligible job(s), {len(plan)} slot(s) examined, "
-                    f"{len(gaps)} gap(s), {len(to_terminate)} unrecoverable")
+                    f"boot [{mode}]: {len(jobs)} eligible job(s), {len(plan)} slot(s) examined, "
+                    f"{len(gaps)} gap(s), {len(to_terminate)} unrecoverable"
+                    + (f"; would re-run: {', '.join(d.label for d in gaps)}" if gaps else ""))
+        if dry_run and (gaps or to_terminate):
+            await _safe(notify, "⏪ *Missed-job recovery — DRY RUN, nothing executed*\n"
+                        f"Would re-run {len(gaps)}: " + ", ".join(d.label for d in gaps)
+                        + (f"\nUnrecoverable {len(to_terminate)}: " + ", ".join(d.label for d in to_terminate)
+                           if to_terminate else "")
+                        + "\nUnset APOLLO_RECOVERY_DRY_RUN to enable.", silent=False)
     if dry_run:
         return out
     by_id = {j.id: j for j in jobs}
     for d in gaps:
         job = by_id[d.job_id]
-        await rerun_one(job, d, bound_for(rows_by_job.get(d.job_id, [])))
+        bound = bound_for(rows_by_job.get(d.job_id, []))
+        tick = clock()
+        if d.job_id in jobs_in_flight():             # re-checked NOW, not at plan time
+            d.kind, d.detail = "in_flight", "started (or blocked) since this pass was planned; skipped"
+            continue
+        if in_orb_quiet_window(tick) or would_cross_orb_window(tick, bound):
+            d.kind, d.detail = "deferred", f"a {bound // 60}-min re-run would overlap the 09:25–10:05 ORB window; next pass"
+            continue
+        await rerun_one(job, d, bound)
         out["ran"].append(d)
         if d.result == "refused":
             await _safe(record_terminal, d.job_id, d.slot, "unrecoverable", f"pin refused: {d.detail}")
     for d in to_terminate:
         await _safe(record_terminal, d.job_id, d.slot, "unrecoverable", d.detail)
     if out["ran"] or to_terminate:
-        text = summary_text(out["ran"], to_terminate, now)
+        text = summary_text(out["ran"], to_terminate, clock())
         await _safe(audit, "jobs_recovered", " ".join(text.split())[:300])
-        await _safe(notify, text)
+        # a clean recovery whispers; anything that failed, or cannot be recovered, buzzes
+        loud = bool(to_terminate) or any(d.result != "ok" for d in out["ran"])
+        await _safe(notify, text, silent=not loud)
     return out
 
 

@@ -126,6 +126,10 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 # HOLDS every Telegram it would have sent (the summary page names them); set to 1
 # to deliver them instead, each prefixed "⏪ LATE RE-RUN — <job> for <slot>".
 APOLLO_RECOVERY_SEND_LATE=0
+# #672 — set to 1 to deploy the sweep READ-ONLY: every pass plans and the boot
+# pass writes its heartbeat row + one page naming what it WOULD re-run, but nothing
+# executes and nothing is written to mi_job_runs. Unset to enable.
+APOLLO_RECOVERY_DRY_RUN=0
 ```
 
 ## Missed-job recovery (#672, 2026-09-20) — `agents/market_intelligence/job_recovery.py`

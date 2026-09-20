@@ -492,6 +492,130 @@ async def test_recording_a_burst_of_misses_kicks_the_sweep(monkeypatch):
     assert kicked == ["missed"]
 
 
+# ── the two double-run holes found on final review, and the per-re-run ORB guard ──────────
+
+def test_a_row_that_landed_late_because_its_job_was_blocked_still_satisfies_its_slot():
+    """The 45-minute pull cap produces this exact shape: 27 jobs dispatched at 17:15, blocked in
+    `_record_start`, whose rows land at 17:46 when the pool frees. A 30-minute window called them
+    gaps and the next pass would have re-run them — a double run. The window is now the trigger's
+    own boundary: anything before the NEXT slot (and before now) counts.
+
+    MUTATION: ignoring `slot_end` (falling back to the 30-min window) turns the +40 min row into a
+    gap — verified RED."""
+    slot = datetime(2026, 9, 18, 17, 15, tzinfo=ET)
+    nxt = datetime(2026, 9, 21, 17, 15, tzinfo=ET)          # a mon-fri trigger's next fire after Friday
+    now = datetime(2026, 9, 19, 0, 20, tzinfo=ET)
+    late = [{"started_at": slot + timedelta(minutes=40), "status": "success", "scheduled_for": None}]
+    assert jr.classify_slot("j", slot, 1, late, now, slot_end=nxt).kind == "done"
+    # but never a row from the replay's own future, and never the NEXT slot's own on-time run
+    future = [{"started_at": now + timedelta(hours=1), "status": "success", "scheduled_for": None}]
+    assert jr.classify_slot("j", slot, 1, future, now, slot_end=nxt).kind == "gap"
+    mondays = [{"started_at": nxt + timedelta(seconds=1), "status": "success", "scheduled_for": None}]
+    assert jr.classify_slot("j", slot, 1, mondays, nxt + timedelta(hours=1), slot_end=nxt).kind == "unrecoverable"
+
+
+@pytest.mark.asyncio
+async def test_two_overlapping_sweeps_cannot_re_run_the_same_gap_twice(monkeypatch):
+    """Boot, the :20/:50 pass and the miss-kick can overlap. Two plans computed from the same
+    ledger both call the slot a gap; the lock makes the second plan see the first's recovery row.
+
+    ⚠ The in-flight re-check MASKS a missing lock whenever the second sweep plans while the first
+    sweep's job is still running — so the second fetch here is deliberately SLOWER than the first
+    sweep's whole re-run (a real ledger round-trip against a ~10 ms job). Without the lock, B plans
+    from a snapshot taken before A ran, finds A's job finished (not in flight), and runs it again.
+
+    MUTATION: replacing `async with _lock()` with a no-op context runs the job TWICE — verified RED
+    (and the first draft of this test, with an instant fetch, stayed GREEN under that mutation —
+    the re-check caught it instead, which is exactly why the fetch is slow now)."""
+    from core import job_audit
+    from core.job_audit import audit_wrap
+    ledger: list[dict] = []
+    runs, fetches = [], []
+
+    async def f():
+        runs.append(sd.et_today()); await asyncio.sleep(0.01)
+    job = _Job("j", audit_wrap(f, "j"), _daily(17, 15))
+
+    async def fetch(ids, days=60):
+        snapshot = {"j": list(ledger)}               # what a real SELECT would return NOW
+        fetches.append(len(fetches))
+        await asyncio.sleep(0 if len(fetches) == 1 else 0.05)   # second sweep's round-trip is slow
+        return snapshot
+    monkeypatch.setattr(jr, "fetch_ledger", fetch)
+    monkeypatch.setattr(jr, "record_terminal", lambda *a, **k: asyncio.sleep(0))
+    monkeypatch.setattr(jr, "LOOKBACK_DAYS", 1)
+
+    async def _start(job_id, expected):
+        pin = sd.recovery_pin()
+        ledger.append({"job_id": job_id, "started_at": datetime.now(ET), "status": "running",
+                       "scheduled_for": pin.slot if pin else None, "duration_s": None})
+        return len(ledger)
+    async def _finish(run_id, job_id, started_at, status, rows_written, error_message, **kw):
+        ledger[run_id - 1]["status"] = status
+    monkeypatch.setattr(job_audit, "_record_start", _start)
+    monkeypatch.setattr(job_audit, "_record_finish", _finish)
+    quiet = lambda *a, **k: asyncio.sleep(0)
+    now = datetime(2026, 9, 19, 0, 20, tzinfo=ET)
+    await asyncio.gather(
+        jr.run_recovery_sweep(_Sched([job]), (), reason="boot", now=now, notify=quiet, audit=quiet),
+        jr.run_recovery_sweep(_Sched([job]), (), reason="missed", now=now, notify=quiet, audit=quiet))
+    assert len(runs) == 1, f"the same Friday slot was re-run {len(runs)} times"
+
+
+@pytest.mark.asyncio
+async def test_in_flight_is_re_checked_right_before_each_re_run_not_only_at_plan_time(monkeypatch):
+    """A job can start (its real slot, or a sibling sweep) after the plan was made. MUTATION:
+    dropping the `if d.job_id in jobs_in_flight()` re-check inside the loop runs `b` — verified RED."""
+    from core import job_audit
+    from core.job_audit import audit_wrap
+    ran = []
+
+    async def a():
+        ran.append("a"); job_audit._IN_FLIGHT.add("b")       # b starts while the pass is on a
+    async def b():
+        ran.append("b")
+    jobs = [_Job("a", audit_wrap(a, "a"), _daily(17, 15)), _Job("b", audit_wrap(b, "b"), _daily(17, 20))]
+    monkeypatch.setattr(jr, "fetch_ledger", lambda ids, days=60: asyncio.sleep(0, result={}))
+    monkeypatch.setattr(jr, "record_terminal", lambda *a, **k: asyncio.sleep(0))
+    monkeypatch.setattr(jr, "LOOKBACK_DAYS", 1)
+    monkeypatch.setattr(job_audit, "_record_start", lambda *a, **k: asyncio.sleep(0, result=None))
+    monkeypatch.setattr(job_audit, "_record_finish", lambda *a, **k: asyncio.sleep(0))
+    quiet = lambda *a, **k: asyncio.sleep(0)
+    try:
+        out = await jr.run_recovery_sweep(_Sched(jobs), (), reason="boot",
+                                          now=datetime(2026, 9, 19, 0, 20, tzinfo=ET), notify=quiet, audit=quiet)
+    finally:
+        job_audit._IN_FLIGHT.discard("b")
+    assert ran == ["a"], ran
+    skipped = next(d for d in out["plan"] if d.job_id == "b" and d.slot.astimezone(ET).date() == datetime(2026, 9, 18).date())
+    assert skipped.kind == "in_flight", (skipped.kind, skipped.detail)
+
+
+@pytest.mark.asyncio
+async def test_a_re_run_that_would_still_be_running_at_orb_open_is_deferred(monkeypatch):
+    """A Monday 09:20 pass is clear of the 09:25 window, but a 30-minute re-run started then is
+    not. Checked per re-run, with the bound. MUTATION: removing `would_cross_orb_window` from the
+    loop runs the job — verified RED."""
+    from core import job_audit
+    from core.job_audit import audit_wrap
+    ran = []
+
+    async def f(): ran.append(1)
+    job = _Job("j", audit_wrap(f, "j"), _daily(17, 15))
+    monkeypatch.setattr(jr, "fetch_ledger", lambda ids, days=60: asyncio.sleep(0, result={}))
+    monkeypatch.setattr(jr, "record_terminal", lambda *a, **k: asyncio.sleep(0))
+    monkeypatch.setattr(jr, "LOOKBACK_DAYS", 3)
+    monkeypatch.setattr(job_audit, "_record_start", lambda *a, **k: asyncio.sleep(0, result=None))
+    monkeypatch.setattr(job_audit, "_record_finish", lambda *a, **k: asyncio.sleep(0))
+    quiet = lambda *a, **k: asyncio.sleep(0)
+    mon_0920 = datetime(2026, 9, 21, 9, 20, tzinfo=ET)          # Friday 17:15 is still recoverable here
+    out = await jr.run_recovery_sweep(_Sched([job]), (), reason="periodic", now=mon_0920, notify=quiet, audit=quiet)
+    assert ran == [], "a re-run was started 5 minutes before the ORB window with a 30-minute bound"
+    assert any(d.kind == "deferred" for d in out["plan"]), [d.kind for d in out["plan"]]
+    assert jr.would_cross_orb_window(mon_0920, 1800) and not jr.would_cross_orb_window(mon_0920, 200)
+    assert not jr.would_cross_orb_window(datetime(2026, 9, 20, 9, 20, tzinfo=ET), 1800), "weekend: no window"
+
+
 def test_bound_is_sized_from_history_never_below_ten_minutes():
     rows = [{"status": "success", "duration_s": d} for d in (700, 800, 900, 1000, 1070)]
     assert jr.bound_for(rows) == 3 * 1070

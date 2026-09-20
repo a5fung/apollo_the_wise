@@ -6423,6 +6423,15 @@ async def _recovery_sweep_boot():
         logger.error(f"recovery sweep (boot) failed: {e}", exc_info=True)
 
 
+async def _run_recovery_sweep_guarded(reason: str) -> None:
+    """A kicked task has nobody awaiting it: an exception (a starved pool inside fetch_ledger) would
+    vanish into the loop's default handler. Log it as the failure it is."""
+    try:
+        await _run_recovery_sweep(reason)
+    except Exception as e:                           # loud-ok: nothing awaits this task
+        logger.error(f"recovery sweep ({reason}) failed: {e}", exc_info=True)
+
+
 def _kick_recovery_sweep(reason: str) -> None:
     """Fire-and-forget from a place that cannot await (the flush is one; tests another)."""
     try:
@@ -6430,7 +6439,7 @@ def _kick_recovery_sweep(reason: str) -> None:
     except RuntimeError:
         logger.error(f"recovery sweep ({reason}) not started — no running loop (#672)")
         return
-    loop.create_task(_run_recovery_sweep(reason))
+    loop.create_task(_run_recovery_sweep_guarded(reason))
 
 
 # ── Telegram polling-bot health watchdog (#153) ──────────────────────────────
