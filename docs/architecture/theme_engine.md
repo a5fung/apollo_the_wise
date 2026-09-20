@@ -843,13 +843,47 @@ fails open.
 
 ⚖ **Two FINDINGS, deliberately NOT changed** — read-path population only; either would change what
 RISING / ROTATION WATCH / RECOVERY show *today*, and that is the operator's call:
-1. **Liquidity and small-cap-healthcare still split 3/3.** Leaders, accelerators and recovery-slope
-   apply `min_adv` 500k, `min_price` $10 and `is_sector_filtered` (Healthcare < $50); velocity,
-   turners and recovery apply none of the three. Those are POLICY (what counts as tradeable), not
-   classification, and are unsized here.
+1. **Liquidity and small-cap-healthcare still split 3/3 — but liquidity's OWN mechanism was
+   defective, fixed 2026-09-20 (#673(b), see below).** `min_price` $10 and `is_sector_filtered`
+   (Healthcare < $50) remain leaders/accelerators/recovery-slope only, POLICY and unsized here.
 2. **`get_ma_pullbacks`** (the brief's PULLBACKS section) carries skip / ADV / price / sector but NOT
    the `quote_type` clause — it predates the 03-23 hotfix too — and sits outside the derived pool
    list (optional `tickers`, no `limit`), so the gate does not see it.
+
+### 🔒 The leaders liquidity floor was a SHARE count, not a DOLLAR floor (#673(b), 2026-09-20)
+
+**`get_rs_leaders`, `get_rs_accelerators` and `get_rs_recovery_slope` gated `min_adv` on
+`mi_stock_scores.adv_20`, which `db.py:4356` documents as raw SHARES — a ~100x stricter floor in
+dollar terms for a $500 stock than a $5 one.** Measured on prod, 2026-09-20: **STRL missed the
+500,000-share floor by 2,222 shares while trading $258,187,493/day** (`adv_20` 497,778 x `close`
+$518.68) — a >=20R tradeable winner on the must-not-miss fixture
+(`tests/fixtures/must_not_miss_eps.py`). Of **488 of 2,354 scored names the share floor blocked,
+ZERO traded under $10M/day** — the floor was filtering on PRICE, not liquidity.
+
+**Why NOT spread the bar to velocity/turners/recovery instead (the plan reversed the same day):**
+propagating the (broken) share floor there would have dropped STRL from RECOVERY as "illiquid" —
+the defect was in the mechanism, not in whether velocity/turners/recovery need a floor at all. They
+stay unfiltered, per the operator's standing FINDING above.
+
+**THE FIX:** `(adv_20 * close) >= min_adv` in all three, matching the shape `ep_detector.py:2155`
+already uses for EP admission (`adv_dollar = adv_20 * prev_close`) and the existing
+`get_top_dollar_volume_universe` helper (`db.py:11045`, `(adv_20 * close) >= $2`). Default raised
+`500_000` (shares) -> `10_000_000.0` (dollars/day) — the same #673 measurement found the scored
+universe's OWN floor is already $10.0M/day (p05 $12.5M, 2,354 names), so **this excludes ZERO
+names today.** It is a guard against a future universe change admitting sub-$10M names, not a live
+filter: names enter (the 488 the share floor wrongly blocked), none leave.
+
+**Gated:** `tests/test_deal_pinned_not_a_coverage_gap.py` §#673(b) — behavioural, against a
+recording connection (never `inspect.getsource` for the SQL shape): the statement each of the
+three pools actually sends must compare `(adv_20 * close)`, never bare `adv_20`; the bound
+parameter must be the pool's own live default, not a hardcoded copy; `get_rs_velocity` /
+`get_rs_turners` / `get_rs_recovery` must carry no `min_adv` parameter at all. Four mutations run
+RED: the SQL reverted to a bare share compare, the default reverted to 500,000, a `min_adv`
+parameter added to `get_rs_velocity`, and the default raised past STRL's own dollar volume.
+
+⚖ Read-path board filter only — no entry, exit, sizing or safeguard changed. `min_price` and
+`is_sector_filtered` are untouched, per the task that shipped this (explicitly out of scope,
+not measured here).
 
 
 ## Change log
