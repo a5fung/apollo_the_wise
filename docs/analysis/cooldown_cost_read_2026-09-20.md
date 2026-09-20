@@ -59,8 +59,18 @@ replayed through the LIVE bracket on minute bars, **the band returned −1.00R o
 those names ran 2.9R to 15.2R and every one still paid −1R**, because the 9:30 bar's low was taken
 out first.
 
-`ep_detector.py:249` records the conclusion in its own words: **THE CAP IS NOT THE BINDING
-CONSTRAINT — THE STOP IS.**
+`ep_detector.py:249` records that conclusion in its own words — **THE CAP IS NOT THE BINDING
+CONSTRAINT, THE STOP IS** — ⚠ **but that half has since been corrected and must not be repeated.**
+The 08-29 doc flags its own geometry paragraph as wrong (*"its premise is true but the conclusion
+is wrong"*), and the document written to correct it,
+`docs/analysis/482_geometry_counterfactual_2026-08-29.md`, is **RETRACTED at the top: "DO NOT CITE
+ANY NUMBER IN THIS FILE."** Replaying our real trades under five stop geometries put all five
+within 0.08R of each other, all negative, with the LIVE one best — so widening the stop does not
+recover these names either.
+
+**So what IS the lever is an open question, not a settled one.** What survives from 08-29 is the
+narrow replay finding — the 50-75% band paid −1.00R on 15 of 15 on real minute bars — and that is
+enough to say a peak-based read overstates. It is not enough to say geometry is the answer.
 
 A peak-based read of the cooldown is the same shape of evidence that produced that reversal.
 
@@ -68,12 +78,22 @@ A peak-based read of the cooldown is the same shape of evidence that produced th
 
 **Do not rule on these numbers.** They are directionally interesting and they are not a cost.
 
-**What would settle it:** replay the 26 blocked names through the live bracket — entry = stop-buy
-at the 9:30 bar's high, stop = that bar's low, walked in sequence — by the method of
-`docs/analysis/577_extension_cap_recheck_2026-08-29.md`, so the two reads are comparable. If the
-cohort pays −1R the way the extension band did, the cooldown is costing us nothing and the lever is
-bracket geometry (#482), not admission. If it does not, that is a real finding and the cooldown
-becomes a genuine question.
+**What would settle it — and it is more than a query, which is the honest answer.** A bracket
+replay of the 26 is the obvious next step and it carries a KNOWN FATAL DEFECT if done naively.
+The retracted 482 doc names it as its own defect 3: *"Every trade in it was ADMITTED by whatever
+filter ran that day. Re-running the stops on that set measures the stop GIVEN A MIXED ADMISSION
+POPULATION — which answers nothing."* Our 26 span 2026-07-22 to 2026-09-20, across the 2026-09-06
+exit change and August's rubric rescale, so they have exactly that shape.
+
+A replay worth ruling on therefore needs what that doc specifies and what does not exist yet:
+re-score the historical universe under TODAY's rubric (the 08-22 rescale means stored `ep_score`
+is era-stamped), re-apply today's admission stack to it, reconstruct entries and stops from
+`mi_intraday_bars` for whatever survives, and hold live and paper separate. That is the #482 build.
+
+**Recommendation, therefore: the cooldown question cannot be settled cheaply, and should not be
+ruled on until #482's instrument exists.** What CAN be said today is the headline above — the cost
+is peak-shaped, the average blocked name returned zero over five days, and the review's +32% is not
+a number to act on.
 
 ⚠ **Stated limits.** `ret_5d` is null for the most recent names (RPD 09-14 has not settled), so the
 38% positive rate is over the settled subset. `max_high_5d` is a RATIO in this table, not a price —
