@@ -2581,6 +2581,13 @@ def _strip_markdown_markers(text: str) -> str:
     and the OKTA exit-failure JSON as `"existingqty"`: a backstop that corrupts the one
     payload the alert exists to carry. Machine text (SQL, JSON, snake_case) survives the
     fallback byte-for-byte now, whether or not the builder fenced it.
+
+    #675 (2026-09-20): `send_telegram_message` no longer calls this directly — folding the
+    `parse_mode="Markdown"` opt-in into the HTML-converting path removed its only caller inside
+    the sender. Kept (not deleted) because `scripts/probes/_652_render_check.py` imports it as
+    the legacy-400-fallback emulator for the rendering-safety corpus, and
+    `tests/test_briefing_markdown_fallback.py` / `tests/test_647_machine_text_alerts_on_html_layer.py`
+    pin its own behavior directly.
     """
     import re as _re
     keep: list[str] = []
@@ -2619,9 +2626,19 @@ class _ConvertDefault:
 _CONVERT = _ConvertDefault()
 
 
-def _chunk_legacy(text: str) -> list[str]:
-    """The pre-#652 chunker, byte-for-byte, for the explicit `parse_mode="Markdown"` opt-in
-    (and plain text): split at the last blank line before 4000, else hard-cut, strip the seam."""
+def _chunk_plain(text: str) -> list[str]:
+    """The chunker for `parse_mode=None` (plain text, no markup at all — #675, 2026-09-20).
+
+    No tag-awareness needed: plain text carries no `<b>`/`<pre>` to keep balanced across a
+    split, and `chunk_html`'s tag tracker is actively unsafe here — a bare `<ticker>`-shaped
+    substring in plain prose would be read as a real opening tag and get a bogus `</ticker>`
+    closer injected into what Telegram shows verbatim (verified: reusing `chunk_html` on such
+    text mismatches this chunker's output). Split at the last blank line before 4000, else
+    hard-cut, strip the seam — byte-for-byte the pre-#652 legacy chunker, kept under this name
+    because it now serves ONLY the unconverted-plain case; the `parse_mode="Markdown"` opt-in
+    it used to also serve was folded into the HTML-converting path (#675) and no longer needs a
+    chunker of its own. Zero production callers pass `parse_mode=None` today (documented mode
+    only)."""
     if len(text) <= 4000:
         return [text]
     chunks: list[str] = []
@@ -2653,12 +2670,17 @@ async def send_telegram_message(
     2026-09-18 corpus of 732 real bodies, 266 that failed on the first send render under
     HTML and none regress the other way (docs/analysis/telegram_html_default_flip_render_check_2026-09-18.md).
 
-    Explicit modes, none of them converted:
+    Explicit modes:
       * `parse_mode="HTML"`  — the body is ALREADY HTML (built with the shared helpers or
         converted by the caller). Passed through untouched; never converted twice.
-      * `parse_mode="Markdown"` — the OPT-IN for raw legacy Markdown. Chunked and backstopped
-        exactly as before the flip (`_chunk_legacy`, `_strip_markdown_markers`).
-      * `parse_mode=None` — plain text: no parse_mode key on the payload at all.
+      * `parse_mode="Markdown"` — CONVERTED, same as passing nothing (#675, 2026-09-20). This
+        used to be the opt-in for raw legacy Markdown, chunked and backstopped by the pre-#652
+        legacy path; by 2026-09-19 every production caller of it had migrated to the default
+        (scheduler._backup_health_check_job's three sends were the last, one of them a LIVE 400
+        — `"pg_dump is current"` carries a bare `_` outside any backtick span), leaving it a
+        documented opt-in nobody used. Folding it into the converting path removes that dead
+        branch (`_chunk_legacy` is gone) without changing behavior for any real caller.
+      * `parse_mode=None` — plain text, NOT converted: no parse_mode key on the payload at all.
 
     A long HTML message is split by `chunk_html`, which closes every open tag at the seam
     and reopens it in the next chunk, so a code block or bold span crossing 4000 chars
@@ -2692,30 +2714,29 @@ async def send_telegram_message(
         logger.error("TELEGRAM_BOT_TOKEN not set")
         return False
 
-    # Resolve the mode ONCE. Only the sentinel converts — an explicit "HTML" is already HTML.
-    converted = parse_mode is _CONVERT
+    # Resolve the mode ONCE. The sentinel converts; so does the explicit "Markdown" opt-in
+    # (#675) — only an explicit "HTML" is passed through as already-HTML.
+    converted = parse_mode is _CONVERT or parse_mode == "Markdown"
     mode: str | None = "HTML" if converted else parse_mode
     if converted:
         text = md_to_html(text)
     mode_label = f"{mode}(default)" if converted else str(mode)
 
     # Split into chunks if over Telegram's 4096-char limit — tag-aware for HTML so a seam
-    # never leaves an open <pre>/<b> in one half and its closer in the other.
-    chunks: list[str] = chunk_html(text) if mode == "HTML" else _chunk_legacy(text)
+    # never leaves an open <pre>/<b> in one half and its closer in the other; plain text
+    # (mode=None) has no markup to keep balanced, so it uses the tag-blind splitter.
+    chunks: list[str] = chunk_html(text) if mode == "HTML" else _chunk_plain(text)
 
     def _to_plain(chunk: str) -> str:
         # Plain-text fallback strips the active mode's markup so users don't see
-        # literal *Foo*/_bar_ (Markdown) or <b> tags (HTML) all over the message.
-        # Caught 2026-05-25: 400 ("Can't find end of entity") fell back to plain
-        # text without stripping the markers.
+        # literal <b> tags all over the message. Caught 2026-05-25: 400 ("Can't
+        # find end of entity") fell back to plain text without stripping the markers.
         if mode == "HTML":
             import re as _re
             import html as _html
             # Strip tags, then unescape ALL entities (html.unescape covers &quot;,
             # numeric refs, etc — the manual 3-entity replace missed those).
             return _html.unescape(_re.sub(r"<[^>]+>", "", chunk))
-        if mode == "Markdown":
-            return _strip_markdown_markers(chunk)
         return chunk
 
     async def _post(client: httpx.AsyncClient, chunk: str, formatted: bool,

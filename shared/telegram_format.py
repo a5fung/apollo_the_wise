@@ -25,8 +25,9 @@ so a builder can be migrated at the send boundary without a full rewrite. Since 
 passes no `parse_mode` — a builder that writes legacy Markdown and calls the sender
 bare is already on the HTML layer. Pass `parse_mode="HTML"` only for a body that is
 already HTML (built with the helpers above, or converted by the caller); it is then
-passed through untouched. `parse_mode="Markdown"` is the explicit opt-in for raw
-legacy Markdown. `chunk_html()` is the tag-aware splitter the HTML send path uses.
+passed through untouched. `parse_mode="Markdown"` is ALSO converted (#675, 2026-09-20 —
+folded into the same path as the default; it no longer has a raw legacy-Markdown route of
+its own). `chunk_html()` is the tag-aware splitter the HTML send path uses.
 """
 from __future__ import annotations
 
@@ -144,7 +145,10 @@ def md_to_html(text: str) -> str:
 # one message as Markdown can cross the line as HTML — one real weekly review already does
 # (3,593 chars -> 4,043). This chunker closes whatever is open at the split and reopens it at
 # the head of the next chunk, and a hard split never lands inside a `<…>` token or an `&…;`
-# entity. Pure function; the legacy-Markdown chunker in briefing.py is untouched.
+# entity. Pure function; briefing.py's plain-text chunker (`_chunk_plain`, for the
+# unconverted `parse_mode=None` case) is untouched — it is NOT tag-aware, deliberately: a bare
+# `<word>`-shaped substring in plain prose is not a real tag, and running it through THIS
+# chunker's tag tracker would inject a bogus closer into what Telegram shows verbatim (#675).
 _TAG_RE = re.compile(r"<(/?)([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^<>]*)?>")
 _ENTITY_MAX = 10   # longest entity we emit is `&#x1F525;` (9 chars) — the back-off window
 

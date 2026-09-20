@@ -1,0 +1,253 @@
+corpus: prod items=365 (from _652_corpus_prod.jsonl); test-harvest records=278 (unique bodies=189) from /Users/alvinfung/apollo_the_wise/.claude/worktrees/agent-a8fefb0e8af656339/scripts/probes/_652_corpus_tests.jsonl
+
+== 1. ACCEPTANCE CASE (#652 WOULD-FAIL-IF), verbatim SQL in four shapes ==
+   ('400→plain retry' = arrives only via the second, unformatted send; post-#647 the stripper keeps identifiers intact)
+- bare:
+    TODAY : 400→plain retry  underscores intact=True  sees: "400→'SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL'"
+    HTML  : ok, 1st send     underscores intact=True  sees: 'SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL'
+- in a ``` fence:
+    TODAY : ok, 1st send     underscores intact=True  sees: 'Revert:\n⟦pre:SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL;⟧'
+    HTML  : ok, 1st send     underscores intact=True  sees: 'Revert:\n⟦pre:SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL;⟧'
+- in a `code` span:
+    TODAY : ok, 1st send     underscores intact=True  sees: 'Run ⟦code:SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL⟧ now'
+    HTML  : ok, 1st send     underscores intact=True  sees: 'Run ⟦code:SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL⟧ now'
+- under a *bold* header (the revert-page shape):
+    TODAY : 400→plain retry  underscores intact=True  sees: "400→'CATALYST TIER MONITOR — revert\\nSELECT * FROM mi_live_trades WHERE stop_order_id IS NULL'"
+    HTML  : ok, 1st send     underscores intact=True  sees: '⟦bold:CATALYST TIER MONITOR — revert⟧\nSELECT * FROM mi_live_trades WHERE stop_order_id IS NULL'
+
+== 2. PATHOLOGICAL HUNT — constructed from md_to_html's own docstring warning ==
+- interleave: *a _b* c_ d_: html_400_legacy_ok  ⛔ HTML WORSE (400 where legacy renders)
+    legacy: '⟦bold:a _b⟧ c⟦italic: d⟧'
+    html  : "400→'a b c d_'"
+    tags  : ['html_400']
+- interleave in prose: *Verdict TRAIL_TIGHTEN* qty_ 3 shares_: both_ok_differs
+    legacy: '⟦bold:Verdict TRAIL_TIGHTEN for OKTA⟧ qty⟦italic: 3 shares⟧'
+    html  : '⟦bold:Verdict TRAIL_TIGHTEN for OKTA⟧ qty_ 3 shares_'
+    tags  : ['v1_bogus_span_bare_marker']
+- multi-line bold: *line1\nline2*: both_ok_differs  ⚠ HTML WORSE (renders, but loses something legacy showed)
+    legacy: '⟦bold:Header line\nsecond line⟧'
+    html  : '*Header line\nsecond line*'
+    tags  : ['v1_deliberate_multiline_emphasis_html_literal']
+- multi-line italic: _a\nb_: both_ok_differs  ⚠ HTML WORSE (renders, but loses something legacy showed)
+    legacy: '⟦italic:first\nsecond⟧'
+    html  : '_first\nsecond_'
+    tags  : ['v1_deliberate_multiline_emphasis_html_literal']
+- fence with language tag: both_ok_differs  ⚠ HTML WORSE (renders, but loses something legacy showed)
+    legacy: '⟦pre=sql:SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL;⟧'
+    html  : '⟦pre:SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL;⟧'
+    tags  : ['html_pre_leaks_fence_language_word']
+- fence, no tag, leading newline: both_ok_identical
+    legacy: '⟦pre:SELECT 1;⟧'
+    html  : '⟦pre:SELECT 1;⟧'
+- bare brackets [text]: both_ok_differs
+    legacy: 'see ⟦text_url=PLAN.md:PLAN.md⟧ for the task'
+    html  : 'see [PLAN.md] for the task'
+    tags  : ['html_keeps_brackets']
+- bracket with url: both_ok_identical
+    legacy: 'see ⟦text_url=https://example.com/a_b:the task⟧ now'
+    html  : 'see ⟦text_url=https://example.com/a_b:the task⟧ now'
+- empty link [](url): both_ok_differs
+    legacy: '(https://example.com) trailing'
+    html  : '[](https://example.com) trailing'
+    tags  : ['html_keeps_brackets']
+- bullet asterisk at line start: both_ok_differs
+    legacy: '⟦bold:item one\n⟧ item two'
+    html  : '* item one\n* item two'
+    tags  : ['v1_bogus_span_bare_marker']
+- nested emphasis *a _b_ c*: both_ok_differs
+    legacy: '⟦bold:bold with _inner_ italic⟧'
+    html  : '⟦bold:bold with ⟦italic:inner⟧ italic⟧'
+    tags  : ['html_nested_markup']
+- dunder __init__: both_ok_differs
+    legacy: 'module init loaded'
+    html  : 'module ⟦italic:_init_⟧ loaded'
+    tags  : ['html_only_entity:italic']
+- arithmetic 5*3*2: both_ok_differs
+    legacy: 'size 5⟦bold:3⟧2 = 30'
+    html  : 'size 5*3*2 = 30'
+    tags  : ['v1_bogus_span_bare_marker']
+- url with underscores: legacy_400_html_ok
+    legacy: "400→'https://example.com/a_b_c?x_y=1'"
+    html  : 'https://example.com/a_b_c?x_y=1'
+- v1 backslash escapes: both_ok_identical
+    legacy: 'value _escaped_ and *star*'
+    html  : 'value _escaped_ and *star*'
+- html specials in prose: both_ok_identical
+    legacy: 'AT&T <b>not a tag</b> 3 > 2 & 1 < 2'
+    html  : 'AT&T <b>not a tag</b> 3 > 2 & 1 < 2'
+- empty bold **: both_ok_differs
+    legacy: 'double  star'
+    html  : 'double ** star'
+    tags  : ['html_keeps_empty_marker_pair']
+- underscore in code span: both_ok_identical
+    legacy: 'run ⟦code:mi_live_trades⟧ now'
+    html  : 'run ⟦code:mi_live_trades⟧ now'
+- html tag inside code span: both_ok_identical
+    legacy: '⟦code:<b>x</b>⟧ literal'
+    html  : '⟦code:<b>x</b>⟧ literal'
+- odd underscore identifier: legacy_400_html_ok
+    legacy: "400→'TRAIL_TIGHTEN'"
+    html  : 'TRAIL_TIGHTEN'
+- even underscores identifier: legacy_400_html_ok
+    legacy: "400→'ep_rt_sustain_reject'"
+    html  : 'ep_rt_sustain_reject'
+- bold then identifier then italic: legacy_400_html_ok
+    legacy: "400→'Title snake_case italic'"
+    html  : '⟦bold:Title⟧ snake_case ⟦italic:italic⟧'
+- star inside bold span: legacy_400_html_ok
+    legacy: "400→'*a * b*'"
+    html  : '⟦bold:a * b⟧'
+- code span spanning newline: both_ok_identical
+    legacy: '⟦code:a\nb⟧'
+    html  : '⟦code:a\nb⟧'
+- emoji + bold: both_ok_identical
+    legacy: '🟢 ⟦bold:MRNA — HOLD⟧ +27.1%'
+    html  : '🟢 ⟦bold:MRNA — HOLD⟧ +27.1%'
+- _md_escape'd rationale inside _italic_ (pre-#647 EP alert shape): legacy_400_html_ok
+    legacy: '400→"EP ALERT\\n   _game\\\\_changer over the floor\'s strong\\\\read"'
+    html  : "⟦bold:EP ALERT⟧\n   ⟦italic:game_changer over the floor's strong_read⟧"
+
+  constructed cases where HTML is worse than today: 4 / 26 → ['interleave: *a _b* c_ d_', 'multi-line bold: *line1\\nline2*', 'multi-line italic: _a\\nb_', 'fence with language tag']
+
+== 3. REAL BODIES — every one rendered both ways ==
+
+[prod dynamic field under a *bold* header: anomaly_detected]  n=40
+     25 / 40  both_ok_differs
+     15 / 40  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 25 / 40; HTML: 0 / 40
+   difference tags: v1_bogus_span_bare_marker×25, html_keeps_brackets×9
+
+[prod dynamic field under a *bold* header: ep_grade_decision]  n=60
+     32 / 60  both_ok_differs
+     28 / 60  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 32 / 60; HTML: 0 / 60
+   difference tags: v1_bogus_span_bare_marker×32, html_keeps_brackets×5, html_renders_markup_v1_left_literal×1
+
+[prod dynamic field under a *bold* header: grounded_text]  n=25
+     20 / 25  both_ok_differs
+      5 / 25  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 0 / 25; HTML: 0 / 25
+   difference tags: html_keeps_brackets×25, html_keeps_empty_marker_pair×2, html_underscore_rule_line×2, v1_bogus_span_bare_marker×1
+
+[prod dynamic field under a *bold* header: theme_description]  n=40
+     36 / 40  both_ok_identical
+      4 / 40  both_ok_differs
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 0 / 40; HTML: 0 / 40
+   difference tags: html_keeps_brackets×4
+
+[prod dynamic field, raw: anomaly_detected]  n=40
+     25 / 40  both_ok_differs
+     15 / 40  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 25 / 40; HTML: 0 / 40
+   difference tags: v1_bogus_span_bare_marker×25, html_keeps_brackets×9
+
+[prod dynamic field, raw: ep_grade_decision]  n=60
+     32 / 60  both_ok_differs
+     28 / 60  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 32 / 60; HTML: 0 / 60
+   difference tags: v1_bogus_span_bare_marker×32, html_keeps_brackets×5, html_renders_markup_v1_left_literal×1
+
+[prod dynamic field, raw: grounded_text]  n=25
+     20 / 25  both_ok_differs
+      5 / 25  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 0 / 25; HTML: 0 / 25
+   difference tags: html_keeps_brackets×25, html_keeps_empty_marker_pair×2, html_underscore_rule_line×2, v1_bogus_span_bare_marker×1
+
+[prod dynamic field, raw: theme_description]  n=40
+     36 / 40  both_ok_identical
+      4 / 40  both_ok_differs
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 0 / 40; HTML: 0 / 40
+   difference tags: html_keeps_brackets×4
+
+[prod judge prose in the EP-alert italic shape `_{_md_escape(x)}_` (briefing.py:2561)]  n=60
+     51 / 60  both_ok_identical
+      5 / 60  both_ok_differs
+      4 / 60  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 0 / 60; HTML: 0 / 60
+   difference tags: v1_bogus_span_bare_marker×5
+
+[prod: chunks Telegram REALLY 400'd (300-char heads)]  n=178
+     12 / 178  both_ok_identical
+     15 / 178  both_ok_differs
+    151 / 178  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 13 / 178; HTML: 0 / 178
+   difference tags: v1_bogus_span_bare_marker×13, html_keeps_brackets×6, html_renders_markup_v1_left_literal×4, html_nested_markup×2
+
+[prod: full weekly-review bodies (mi_system_reviews)]  n=21
+      2 / 21  both_ok_identical
+      7 / 21  both_ok_differs
+     10 / 21  legacy_400_html_ok
+      2 / 21  empty_body
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 5 / 21; HTML: 0 / 21
+   difference tags: html_nested_markup×7, html_renders_markup_v1_left_literal×5, v1_bogus_span_bare_marker×5, chunk_count_differs×1
+
+[tests: bodies from DEFAULT-Markdown production senders (THE FLIP POPULATION, real builder output)]  n=135
+    119 / 135  both_ok_identical
+     13 / 135  both_ok_differs
+      3 / 135  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 2 / 135; HTML: 0 / 135
+   difference tags: html_keeps_brackets×6, html_nested_markup×5, v1_bogus_span_bare_marker×2
+
+[tests: bodies from EXPLICIT-HTML sites (already converted/native — flip must not double-convert)]  n=44
+     18 / 44  both_ok_identical
+      9 / 44  both_ok_differs
+     17 / 44  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 9 / 44; HTML: 0 / 44
+   difference tags: v1_bogus_span_bare_marker×9, html_keeps_brackets×3
+   double-conversion check: md_to_html(body) != body on 32 / 44 — a flip that converts inside the sender MUST skip explicit-HTML callers
+
+[tests: bodies sent directly by a test (no production sender)]  n=10
+      7 / 10  both_ok_identical
+      1 / 10  both_ok_differs
+      2 / 10  legacy_400_html_ok
+   bodies where an identifier loses its underscores in what is DELIVERED — today: 1 / 10; HTML: 0 / 10
+   difference tags: v1_bogus_span_bare_marker×1
+
+== 4. GRAND TOTAL over the flip-relevant REAL bodies (explicit-HTML group and empty bodies excluded) ==
+    263 / 732  both_ok_identical
+    203 / 732  both_ok_differs
+    266 / 732  legacy_400_html_ok
+      0 / 732  html_400_legacy_ok
+      0 / 732  both_400
+
+== 5. EVERY DIFFERENCE TAG, JUDGED (real bodies; count = bodies carrying it) ==
+    142  v1_bogus_span_bare_marker                        HTML BETTER             v1 paired a bare `_`/`*` inside an identifier with one later: underscores eaten, a bogus italic/bold span (often across lines), anything inside it shown literally. HTML shows the text as written.
+           e.g. anomaly43222/hd: legacy-only italic('band": 3, "to') | legacy-only italic('p50": 5.0, "z') | legacy-only italic('per') | legacy…'ALY [L2]\n\n{"level": 3, "key": "cooldownsperday
+           e.g. anomaly42952/hd: legacy-only italic('at DESC LIMIT 50;", "code') | legacy-only italic('at FROM mi') | legacy-only italic('audit') | legacy-only italic("error'\\n  AND created") 
+     98  html_keeps_brackets                              HTML BETTER             v1 consumed `[…]` as a link attempt (brackets vanish; domain-like text becomes a link). HTML keeps them literal.
+           e.g. anomaly42952/hd: legacy-only italic('at DESC LIMIT 50;", "code') | legacy-only italic('at FROM mi') | legacy-only italic('audit') | legacy-only italic("error'\\n  AND created") 
+           e.g. anomaly39220/hd: legacy-only italic('at < NOW() - INTERVAL \'60 seconds\';", "code') | legacy-only italic('at": "2026-09-03 13:36:09.960473+00:00"}], "db') | legacy-only italic(
+     14  html_nested_markup                               HTML NEUTRAL+           a `code` span or _italic_ inside *bold* (or vice versa): v1 cannot nest so showed the inner markers literally; HTML nests them.
+           e.g. fb22394: legacy-only code('   11  (median 1.0, 11.0× normal)\n  • ') | legacy-only italic('total=0, NEW today)\n  • `review') | html-only code('review_escalation        
+           e.g. fb30031: legacy-only italic('5m refs the `shadow') | legacy-only italic('5m` strategy — telemetry-only 5-min ORB tracker. Per-row 🪜 /') | html-only code('shadow_orb_5m')
+     11  html_renders_markup_v1_left_literal              HTML BETTER             v1 showed the markers literally (inside a bogus span); HTML renders the intended bold/italic/code.
+           e.g. grade_decision40750/hd: legacy-only italic('axes": [], "confidence": 0.72, "rationale": "The attributed ') | legacy-only italic('cap": 3971896576, "sector": "Basic ***REDACTED***", "ha
+           e.g. grade_decision40750: legacy-only italic('axes": [], "confidence": 0.72, "rationale": "The attributed ') | legacy-only italic('cap": 3971896576, "sector": "Basic ***REDACTED***", "ha
+      4  html_keeps_empty_marker_pair                     HTML NEUTRAL            `**` / `__` — v1 drops both characters, HTML shows them.
+           e.g. gt12470/hd: legacy-only italic(' ') | legacy-only italic(' FORM 8-K ') | legacy-only italic(' Okta, Inc. (Exact name of registrant as specified in its ch') | html-only ital
+           e.g. gt12469/hd: html-only italic('____________________________________________________________') | legacy…'ANOMALY [L2]\n\nSEC 8-K filed 2026-08-26, items 2.02,9.0'  ⟷  html…'A
+      4  html_underscore_rule_line                        HTML NEUTRAL            a `__________` separator line (SEC filing text): v1 deletes it, HTML shows the underscores italicised — both are garbage renderings of a rule; HTML keeps the characters.
+           e.g. gt12470/hd: legacy-only italic(' ') | legacy-only italic(' FORM 8-K ') | legacy-only italic(' Okta, Inc. (Exact name of registrant as specified in its ch') | html-only ital
+           e.g. gt12469/hd: html-only italic('____________________________________________________________') | legacy…'ANOMALY [L2]\n\nSEC 8-K filed 2026-08-26, items 2.02,9.0'  ⟷  html…'A
+      1  chunk_count_differs                              HTML NEUTRAL (hazard)   the HTML text is longer (escapes + tags) and crossed the 4000-char split where the Markdown did not: arrives as more messages. A split inside <pre>/<b> would 400 both halves — none found, but the chunker is not tag-aware.
+           e.g. sr9: chunks 1→2 (md 3593 chars, html 4043 chars) | legacy-only code(' 0.12, stopped in 21.8 min for -$164 — the filter the system') | legacy-only code(' L2 anomaly c
+
+== 6. REAL BODIES WHERE HTML IS WORSE THAN TODAY: 0 ==
+
+== 7. COVERAGE — default-Markdown production call sites whose REAL output the harvest exercised: 53 / 173 ==
+   not exercised, by file: order_manager.py×28, scheduler.py×24, trade_stream.py×12, health_checks.py×8, agent.py×6, flag_detector.py×6, briefing.py×4, cost_board.py×4, friday_watchlist.py×4, theme_engine.py×4, bar_stream.py×2, coverage_drift.py×2, briefing.py×2, ep_detector.py×2, confirmations.py×2, book_concentration.py×1, gap_through_telemetry.py×1, live_tracker.py×1, close_digest.py×1, exposure_family.py×1, judge_review.py×1, ninem_detector.py×1, parabolic_detector.py×1, state_alerts.py×1, strength_map.py×1
+
+== 8. TEMPLATE SKELETONS (synthetic values, real structure) for ALL default-Markdown sites: reconstructed 99 / 173 ==
+      4 / 99  both_ok_identical
+     37 / 99  both_ok_differs
+     58 / 99  legacy_400_html_ok
+   difference tags: v1_bogus_span_bare_marker×37, html_renders_markup_v1_left_literal×16
+   sites whose TEMPLATE is worse under HTML: 0
+   not reconstructible (body built by a helper / passed in): 74 → briefing.py:1679, briefing.py:2445, briefing.py:1258, briefing.py:3419, coverage_drift.py:280, close_digest.py:149, briefing.py:232, ep_detector.py:5508, ep_detector.py:4918, flag_detector.py:1831, flag_detector.py:2231, flag_detector.py:2556, flag_detector.py:2768, flag_detector.py:3117, flag_detector.py:3322, friday_watchlist.py:662, friday_watchlist.py:670, friday_watchlist.py:668, friday_watchlist.py:674, health_checks.py:1248, health_checks.py:1262, health_checks.py:1412, health_checks.py:3060, health_checks.py:3513, health_checks.py:285, health_checks.py:837, health_checks.py:964, health_checks.py:1583, health_checks.py:2018, health_checks.py:2734, health_checks.py:2766, health_checks.py:3150, health_checks.py:790, health_checks.py:917, health_checks.py:3344, health_checks.py:3688, health_checks.py:4573, health_checks.py:4154, judge_review.py:224, scheduler.py:1000, scheduler.py:1356, scheduler.py:1709, scheduler.py:2528, scheduler.py:3293, scheduler.py:5558, scheduler.py:5785, scheduler.py:6258, scheduler.py:1433, scheduler.py:1887, scheduler.py:1939, scheduler.py:3909, scheduler.py:4014, scheduler.py:4169, scheduler.py:4264, scheduler.py:4401, scheduler.py:5677, scheduler.py:6041, scheduler.py:6062, scheduler.py:804, scheduler.py:2134, scheduler.py:2168, scheduler.py:5580, scheduler.py:5879, scheduler.py:1282, scheduler.py:2187, scheduler.py:1214, scheduler.py:5920, scheduler.py:1201, state_alerts.py:708, strength_map.py:585, theme_engine.py:7874, theme_engine.py:6426, confirmations.py:99, confirmations.py:118
+
+== 9. SITES THAT WRITE A FENCE AS ```\n… (the one cosmetic regression) ==
+   4 of 99 reconstructed default sites → cost_board.py:742, cost_board.py:754, briefing.py:221, spend_tracker.py:171
+
+== 10. BOGUS-SPAN CLASS, CHECKED FROM THE OTHER SIDE (could it hide an emphasis HTML missed?) ==
+   [real bodies] bodies carrying a bogus span: 142; deliberate emphasis HTML left literal: 0
+   [templates] bodies carrying a bogus span: 37; deliberate emphasis HTML left literal: 0
