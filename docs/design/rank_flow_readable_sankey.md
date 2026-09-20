@@ -121,3 +121,55 @@ Nothing blocking. The build is a normal card: `theme_flow.render_flow` gains the
 two-column layout, the sentence header, and the band rename; `compute_band_flow` already returns
 exactly the shape this needs and does not change.
 
+---
+
+## Multi-column Sankey — RAISED AND DECLINED, 2026-09-19
+
+He asked whether to extend to 3 or 4 columns to track a longer period, flagging that it also
+complicates the list underneath. **Ruling: *"leave as is for now."*** Recorded so it is not
+re-litigated from scratch.
+
+### Measured, on the live grid
+
+| shape | span | ribbons |
+|---|---|---|
+| 2 columns (today) | 4 wks | **17** |
+| 3 columns | 8 wks | 36 |
+| 4 columns | 12 wks | 52 |
+| 5 columns | 16 wks | 62 |
+| **2 columns** | **12 wks** | **9** |
+| 2 columns | 16 wks | 7 |
+
+**A longer SINGLE hop gets CLEANER as it reaches further back (17 → 11 → 9 → 7); more COLUMNS get
+denser (17 → 36 → 52 → 62).** Twelve weeks costs 9 ribbons as one hop and 52 as four columns —
+four times the ink for the same span.
+
+### The structural reason, which outranks the density one
+
+**A Sankey cannot draw a path across 3+ columns.** Ribbon A→B and ribbon B→C are separate marks;
+nothing in the picture says which cohorts in the first continue into the second. Over 3 columns
+the grid carries **32 distinct paths against 36 ribbons** — the drawing and the journeys do not
+even correspond.
+
+This is the same point the top of this document makes about his expense chart: **that chart is a
+TREE — one parent per node — so the path IS the geometry.** Rank flow is a many-to-many transition
+matrix, and no amount of column-adding changes that.
+
+### What each shape actually answers
+
+- **One long hop** — *where is this cohort now versus then.* Net displacement. ⚠ A round trip
+  (out of a band and back) reads as "held".
+- **Multi-column** — *what was the path*, which is precisely what the geometry cannot show.
+- **`theme_bump.py`** — one line per cohort, rank over time, identity preserved across weeks.
+  **The path question already has a chart, and this is it.**
+
+### If it is revisited
+
+Make the hop length a control on the existing two-column view (4 / 8 / 12 weeks) and send "what
+was the journey" to the bump chart. Do not add columns.
+
+⚠ **The open question I could not close, and the honest weakness in the recommendation:** net
+displacement hides churn, and **nobody has measured how often a cohort leaves a band and returns**
+within a hop. If round trips are common, the one-hop view is understating movement. Worth knowing
+before this is settled for good — not filed as a board line on his "leave as is".
+
