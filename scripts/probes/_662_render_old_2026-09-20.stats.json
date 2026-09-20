@@ -1,0 +1,16 @@
+{
+  "tag": "old",
+  "parse_mode": "HTML",
+  "md_lines": 133,
+  "md_chars": 7725,
+  "html_chars": 8212,
+  "chunks": 3,
+  "report_meta": null,
+  "suggestions": [
+    "`audit_errors.total`=3: `job_cancelled_error` \u00d72 and `telegram_send_failed` \u00d71, both last seen 2026-09-19 (1d/0d ago). `l1_invariants` fired 1\u00d7 (`silent_audit_error_window`). Recent days_ago means these are still live in-window \u2014 check audit ground truth before assuming resolved.\\",
+    "`ep_outcomes.total`=5 but `trade_status` shows only 1 actually traded (3 filtered, 1 no_attempt); the 0% win rates cited by tier/catalyst (HIGH 4, MODERATE 1, strong 3, game_changer 2) describe the alert cohort, not the N=1 traded cohort \u2014 needs confirmation which population any read is drawn from.\\",
+    "`theme_churn.total_high_churn_pairs`=20, unchanged from last week's 20 (different tickers: BAH, SKHY, FE, PBR, RIOT this week vs COHR/GLW/LITE last week) \u2014 persistent churn level, mechanism/cause unverified.\\",
+    "\\"
+  ],
+  "audit_writes_attempted": 1
+}

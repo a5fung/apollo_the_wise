@@ -6,6 +6,7 @@ automated divergence verdict, and it persists a snapshot ONLY once live trades e
 quarterly review has history but pre-launch noise rows don't accrue).
 """
 import asyncio
+from datetime import date
 
 import agents.market_intelligence.kill_scale_bands as ksb
 import agents.market_intelligence.db as dbmod
@@ -39,8 +40,15 @@ def test_fingerprint_empty_cohort():
 
 # ── render: surfaces, never verdicts ──
 
+def _split(rs, d=date(2026, 8, 20)):
+    """#662 — every live line carries its rule-era split; these trades ran under an older rule."""
+    from agents.market_intelligence.rule_eras import split_current_vs_older
+    return split_current_vs_older(rs, [{"alert_date": d, "signal_type": "magna53"} for _ in rs],
+                                  date(2026, 9, 20))
+
+
 def test_render_prelaunch_reads_comparison_begins_at_cutover():
-    lines = rr.render_section("live", {"n": 0})
+    lines = rr.render_section("live", {"n": 0}, None)
     text = "\n".join(lines)
     assert "comparison begins at cutover" in text
     assert "#268b calibration" in text            # the reference card still renders
@@ -48,9 +56,11 @@ def test_render_prelaunch_reads_comparison_begins_at_cutover():
 
 
 def test_render_postlaunch_shows_live_numbers_and_caveat_no_verdict():
-    fp = rr.compute_fingerprint([-1.0, 3.0, -1.0, 5.0])
-    text = "\n".join(rr.render_section("live", fp))
+    rs = [-1.0, 3.0, -1.0, 5.0]
+    fp = rr.compute_fingerprint(rs)
+    text = "\n".join(rr.render_section("live", fp, _split(rs)))
     assert "live (n=4)" in text
+    assert "older rules: 4 trades" in text        # #662 — the era clause is part of the line
     assert "calibration (#268b Phase B, n=399)" in text
     assert "STRUCTURAL" in text                    # the investigate-don't-assume-decay caveat
     # The report must NOT prescribe — no divergence verdict, no band-action words.

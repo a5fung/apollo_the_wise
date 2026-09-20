@@ -11685,6 +11685,29 @@ async def get_setup_era_trades(lookback_days: int = 90) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+async def get_job_runs_for(job_ids: list[str], since_hours: int = 240) -> list[dict[str, Any]]:
+    """Ledger rows (`mi_job_runs`) for the given jobs inside the lookback, oldest first — the
+    weekly review's read of whether a job-class silent failure was since RECOVERED (a later
+    `success` row) or CLOSED BY THE OPERATOR (an `unrecoverable` row, #672's hand-close), so a
+    dispositioned incident is not printed as an open anomaly (#662). Read-only, zero-authority:
+    feeds a Telegram digest only. Empty `job_ids` returns [] without a round-trip."""
+    if not job_ids:
+        return []
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT job_id, started_at, finished_at, status, scheduled_for, error_message
+            FROM mi_job_runs
+            WHERE job_id = ANY($1::text[])
+              AND started_at >= NOW() - ($2::int * INTERVAL '1 hour')
+            ORDER BY started_at ASC
+            """,
+            list(job_ids), since_hours,
+        )
+    return [dict(r) for r in rows]
+
+
 async def get_setup_performance_review(lookback_days: int = 90) -> list[dict[str, Any]]:
     """STANDING per-setup entry/stop/outcome geometry — the review that runs whether we are
     winning or losing (operator 2026-08-02).

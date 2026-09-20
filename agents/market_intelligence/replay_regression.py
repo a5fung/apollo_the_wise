@@ -72,19 +72,51 @@ _PERSISTED_KEYS = ("n", "expectancy_r", "win_rate", "avg_win_r", "avg_loss_r",
                    "max_dd_r", "worst_streak", "cur_streak")
 
 
-def render_section(account_mode: str, fp: dict) -> list[str]:
+_ERA_READ_MIN_N = 5   # below this an era's own expectancy is noise — say the count, not a number
+
+
+def era_split_line(split: dict | None, *, indent: str = "  ") -> str:
+    """The #662 era clause for a trailing-window line: which rules the trades ran under and how
+    many, with a per-era expectancy only where the era can carry one. `split` is
+    `rule_eras.split_current_vs_older(...)` over the SAME values the line reports."""
+    from agents.market_intelligence.rule_eras import era_split_sentence
+    if not split:
+        return (f"{indent}rule eras: UNAVAILABLE — the cohort's era split could not be built, so "
+                f"the trailing numbers above are suppressed rather than pooled across rule "
+                f"changes (#662)")
+    parts = []
+    for name, rs in (("current rules", split["current"]), ("older rules", split["older"])):
+        if len(rs) >= _ERA_READ_MIN_N:
+            parts.append(f"{name} exp {sum(rs) / len(rs):+.2f}R")
+        elif rs:
+            parts.append(f"{name} n<{_ERA_READ_MIN_N}, no read")
+    tail = f" — {' · '.join(parts)}" if parts else ""
+    return f"{indent}rule eras: {era_split_sentence(split)}{tail}"
+
+
+def render_section(account_mode: str, fp: dict, era_split: dict | None) -> list[str]:
     """Side-by-side digest lines: live fingerprint vs the #268b calibration card + caveats.
-    SURFACES only — no verdict (pure: fingerprint dict → lines)."""
+    SURFACES only — no verdict (pure: fingerprint dict → lines).
+
+    `era_split` (#662) is REQUIRED: the live numbers are a trailing window over every closed
+    trade, and 31 of 33 predated the 2026-09-06 exit rule when this was last read as "strategy
+    decay". Pass `rule_eras.split_current_vs_older(rs, meta, today)`; pass None only when the
+    split genuinely could not be built — the live line is then SUPPRESSED and says why, never
+    printed pooled."""
     from agents.market_intelligence.kill_scale_bands import CALIBRATION_ENVELOPE as env
     out = ["", f"*🔁 Replay-regression* ({account_mode} R-dist vs #268b calibration):"]
     if fp.get("n", 0) == 0:
         out.append(f"  live: comparison begins at cutover (0 {account_mode} closed trades)")
+    elif era_split is None:
+        out.append(f"  live (n={fp['n']}): numbers suppressed — see the rule-era line")
+        out.append(era_split_line(None))
     else:
         out.append(
             f"  live (n={fp['n']}): exp {fp['expectancy_r']:+.2f}R · "
             f"win {fp['win_rate']*100:.0f}% · avgW {fp['avg_win_r']:+.2f}R · "
             f"avgL {fp['avg_loss_r']:+.2f}R · "
             f"[running maxDD {fp['max_dd_r']:.1f}R · streak {fp['cur_streak']}/{fp['worst_streak']}]")
+        out.append(era_split_line(era_split))
     out.append(
         f"  calibration ({env['source']}): exp {env['expectancy_r']:+.2f}R · "
         f"win {env['win_rate']*100:.0f}% · "
@@ -97,17 +129,31 @@ def render_section(account_mode: str, fp: dict) -> list[str]:
     return out
 
 
-async def assess_regression(account_mode: str = "live") -> dict:
-    """One DB read → the live realized-R fingerprint (the SAME cohort the bands read)."""
+def era_split_for(inputs: dict, today) -> dict | None:
+    """`rule_eras.split_current_vs_older` over a band-inputs dict, or None when the inputs
+    carry no usable per-trade meta (an older caller, a fixture, a failed fetch) — the signal
+    `render_section` reads as "suppress, don't pool"."""
+    from agents.market_intelligence.rule_eras import split_current_vs_older
+    rs, meta = inputs.get("realized_rs") or [], inputs.get("realized_r_meta")
+    if not meta or len(meta) != len(rs) or any(m.get("alert_date") is None for m in meta):
+        return None
+    return split_current_vs_older(rs, meta, today)
+
+
+async def assess_regression(account_mode: str = "live") -> tuple[dict, dict | None]:
+    """One DB read → (the live realized-R fingerprint — the SAME cohort the bands read —, its
+    rule-era split for the #662 clause)."""
+    from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.kill_scale_bands import assemble_band_inputs
     inputs = await assemble_band_inputs(account_mode)
-    return compute_fingerprint(inputs["realized_rs"])
+    return compute_fingerprint(inputs["realized_rs"]), era_split_for(inputs, et_today())
 
 
 async def regression_digest_section(account_mode: str = "live") -> list[str]:
     """Render-only section for the on-demand script / any caller that just wants the lines."""
     try:
-        return render_section(account_mode, await assess_regression(account_mode))
+        fp, split = await assess_regression(account_mode)
+        return render_section(account_mode, fp, split)
     except Exception as e:  # noqa: BLE001
         return ["", f"_replay-regression unavailable: {e}_"]
 
@@ -119,8 +165,8 @@ async def run_replay_regression(account_mode: str = "live", *, persist: bool = T
     isn't valid at low N; the operator judges at the quarterly review). Error-wrapped so it
     never breaks the Sunday digest chain. Returns {lines, fingerprint}."""
     try:
-        fp = await assess_regression(account_mode)
-        lines = render_section(account_mode, fp)
+        fp, split = await assess_regression(account_mode)
+        lines = render_section(account_mode, fp, split)
         if persist and fp.get("n", 0) > 0:
             from agents.market_intelligence.db import log_audit_event
             from agents.market_intelligence.kill_scale_bands import CALIBRATION_ENVELOPE
@@ -130,7 +176,12 @@ async def run_replay_regression(account_mode: str = "live", *, persist: bool = T
                 json.dumps({"account_mode": account_mode,
                             **{k: fp[k] for k in _PERSISTED_KEYS},
                             "calibration_source": CALIBRATION_ENVELOPE["source"]}))
-        return {"lines": lines, "fingerprint": fp}
+        out = {"lines": lines, "fingerprint": fp}
+        if split is None and fp.get("n", 0) > 0:
+            out["suppressed"] = {"what": "replay-regression live numbers",
+                                 "rule": "era split unavailable — suppressed rather than pooled "
+                                         "across rule changes (#662)"}
+        return out
     except Exception as e:  # noqa: BLE001 — telemetry must never break the Sunday digest
         logger.warning(f"run_replay_regression({account_mode}) skipped: {e}")
         return {"lines": ["", f"_replay-regression unavailable: {e}_"], "error": str(e)}

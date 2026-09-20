@@ -6,6 +6,14 @@ Pulls 7 days from every tracking system, aggregates to summary statistics
 Claude Sonnet for synthesis, sends a Telegram digest, persists to
 mi_system_reviews so next week's run can grade its own prior suggestions.
 
+THE SHAPE OF THE MESSAGE (#662, operator 2026-09-14): an ACTION HEAD — the week's items
+that need his decision or my work, or the one sentence "Nothing needs you this week." —
+then one line naming every surface that was checked, then everything else inside an
+expandable Telegram quote (the fold). Three rules the head enforces: an item the system has
+recorded as dealt with is never an open anomaly; a check that no data can change is never
+"pending"; a trailing-window number carries its rule era and n or is suppressed.
+`compose_report` / `render_review_html` are the pure pieces; `_assemble_report` sorts.
+
 Entry points:
   run_weekly_review() — called by scheduler and on-demand route.
 """
@@ -16,7 +24,8 @@ import logging
 import os
 import statistics
 from collections import Counter, defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import anthropic
 
@@ -29,6 +38,7 @@ from agents.market_intelligence.db import (
     get_audit_log,
     get_correlation_clusters,
     get_ep_outcomes,
+    get_job_runs_for,
     get_latest_regime,
     get_latest_system_review,
     get_paper_trade_stats,
@@ -37,6 +47,12 @@ from agents.market_intelligence.db import (
 )
 
 logger = logging.getLogger(__name__)
+_ET = ZoneInfo("America/New_York")
+
+
+def _utcnow() -> datetime:
+    """The aggregators' clock, as one seam so an offline regeneration can pin it."""
+    return datetime.now(timezone.utc)
 
 _WINDOW_DAYS = 7
 # 2800 (was 1200, 2026-08-09 #543 nightly truncation check): this ceiling was ALREADY bounded
@@ -128,12 +144,12 @@ Rules:
 - `anomalies.l1_invariants` and `anomalies.l2_anomalies` already pinged Telegram during the week — cite their counts in ⚠️ *Anomalies to verify* if non-zero so the user sees the week's invariant/anomaly footprint at a glance.
 - The `crypto` field in the metrics is surfaced separately as a deterministic appendix below your output. Do NOT mention crypto in the four sections above — that surface is handled.
 - The `mfe_capture` field (W3 winner-harvest KPI) is likewise surfaced as a deterministic appendix. Do NOT restate it in the four sections above, and do NOT propose management/exit changes from it — it is an operator-gated tuning input.
-- When `strategy_promotions.checks` is non-empty AND any entry has `next_phase` != null, append a "📈 *Strategy promotion check:*" line after 🔁 listing each non-top-of-ladder strategy on its own indented bullet: `<strategy_id>: <eligible '✓ ready' OR top blocking_reason>` (e.g. `shadow_orb_5m: need 30 paired closed (have 12)`). Skip strategies already at the top of the ladder. Omit the section entirely if every strategy is at top-of-ladder.
+- `strategy_promotions` and `audit_errors` are rendered deterministically BELOW your output (#662 — a hold-by-ruling and a dispositioned incident were being narrated as pending/open). Do NOT render a promotion-check or silent-failures section yourself; you may still cite `audit_errors` counts in ⚠️ *Anomalies to verify* per the rules above.
+- `ep_outcomes.by_tier` / `by_catalyst` win rates are the ALERT cohort's forward-return hit rate (`fwd_1w_pct > 0` per alert), NOT a trade win rate — `ep_outcomes.traded` is how many were actually traded, and that is the only cohort a trading read may cite. Never quote a by-tier/by-catalyst rate as if it described trades.
 - When `shadow_orb.paired_closed_total >= 10`, append a "📐 *Shadow ORB:*" line after 🔁 summarizing 5-min vs 1-min ORB telemetry. Cite `entered` / `no_entry` counts and the top `by_shape` entry's `per_alert_delta` (e.g. "12 5m entries, 4 no-entry; bounce 9m delta +0.4 R over 8 paired"). Note: by-shape deltas are 9M-cohort only — `shape_tag` is NULL on MAGNA53 rows. If `paired_closed_total < 10`, omit the line entirely (insufficient signal).
 - When `wick.n_settled >= 10`, append a "🪝 *Wick:*" line after 🔁 summarizing wick-fill telemetry. Cite `n_total` candidates, `fill_rate`, and the gap between `median_fwd_3d_from_high` (filled cohort, conditional drift after fill) and `median_fwd_3d_from_close` (all-settled drift baseline) — the gap is the strategy's actual edge. Format: `12 candidates, 58% fill rate; +1.2% 3d post-fill vs +0.4% baseline drift`. If `n_settled < 10`, omit the line entirely (insufficient signal).
 - The `pending_reviews` field (data-gated "Reviews ready") is surfaced separately as a deterministic appendix below your output (#412 — the titles are actionable and must not be truncated). Do NOT render a Reviews-ready section yourself.
-- When `audit_errors.total > 0`, append a "🔴 *Silent failures (7d):*" section after 🔁 listing each `top_types` entry on its own line: `<event_type> ×<count> (last seen <last_seen>, <days_ago>d ago)`. **Use `days_ago` to judge live-vs-resolved: if a type's `days_ago` is STALE relative to the 7-day window (it stopped firing days back), label it LIKELY-RESOLVED and do NOT treat it as a live concern — a mid-week hotfix shows up exactly as a count that went silent (e.g. ep_scan_failed last 5/26). Only call a type live-concerning when `days_ago` is small (fired in the last day or two).** These are non-fatal errors caught by try/except in jobs that didn't crash hard. If `audit_errors.total == 0`, omit the section entirely.
-- When `strategy_promotions.checks` includes a strategy with `eligible=false` AND its top blocking_reason references a 0-count metric (e.g. "have 0"), the line MUST include the diagnostic context from `metrics.cohort_breakdown` if present (e.g. `shadow_orb_5m: have 0 paired closed (1 shadow vs 3 live, zero overlap)`). The 0-count number alone forces a follow-up question; the breakdown answers it inline.
+- `audit_errors.top_types[].disposition` is already decided in code (`live` / `quiet` / `recovered` / `closed` / `refused`); only `live` is an open concern. Never call a `refused`, `recovered`, `closed` or `quiet` type live-concerning.
 - When `drift_check.unverified_n > 0`, append a "📄 *Docs drift (unverified):*" section after 🔁 listing up to 3 entries from `drift_check.unverified_claims` as `<where>: <words>`. These are dated doc claims the nightly drift check could not mechanically confirm or refute — NOT bugs, NOT errors; do not fold them into ⚠️ *Anomalies to verify* or 🔴 *Silent failures*. `drift_check.drift_n` (contradictions the nightly check could prove) already Telegrams separately every night it is non-zero — do NOT restate it here, cite `unverified_n` only. If `drift_check` is missing or `unverified_n == 0`, omit the section entirely.
 """
 
@@ -149,6 +165,15 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
 
     summary = await _synthesize(metrics, prior)
 
+    # #662 (operator 2026-09-14: "info dense, data dense, most weeks there's not much action —
+    # make it high signal and highlight action"). The message is now TWO tiers: a HEAD that is
+    # nothing but the week's action items — or one sentence saying there are none — and a FOLD
+    # (an expandable Telegram quote) holding every section the review used to open with. Every
+    # section still runs and every number is still computed and persisted; only the order and
+    # the labelling changed. What was suppressed, and by which rule, rides in metrics["report"].
+    head_md, fold_md, report = await _assemble_report(metrics, summary, window_start, today)
+    metrics["report"] = report
+
     review = {
         "review_date": today.isoformat(),
         "window_days": window_days,
@@ -160,146 +185,348 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     }
     await insert_system_review(review)
 
-    header = f"🧠 *Weekly System Review — {window_start.strftime('%b')} {window_start.day}–{today.day}*"
-    regime_label = metrics.get("regime", {}).get("current") or "Unknown"
-    message = f"{header}\n*Regime:* {regime_label}\n\n{summary}"
+    # ⚠ SEND AS HTML (2026-08-30: the legacy-Markdown send failed to parse and the operator
+    # read the digest stripped). The head converts through `md_to_html` — the documented
+    # migration path — and the fold is wrapped in the one HTML construct Telegram folds:
+    # `<blockquote expandable>`. See `render_review_html` for why the fold carries no code
+    # markup.
+    await send_telegram_message(render_review_html(head_md, fold_md), parse_mode="HTML")
 
-    # Losers post-mortem (#76, 2026-05-11) — deterministic appendix above
-    # crypto so the methodology-tuning signals land near the top of the
-    # appendix block, right where the eye looks after reading the LLM
-    # summary. Empty string if no losing trades in window (skipped clean).
-    loser_section = _format_loser_section(metrics.get("loser_breakdown") or {})
-    if loser_section:
-        message = f"{message}\n\n{loser_section}"
+    logger.info(f"Weekly review complete: {window_start}..{today} — "
+                f"{report['needs_you']} for him, {report['needs_me']} for me, "
+                f"{len(report['suppressed'])} suppressed")
+    return review
 
-    # W3 winner-harvest KPI (#306, 2026-07-05) — deterministic appendix right
-    # after the losers post-mortem: the two sides of the expectancy leak
-    # (entry-mechanics losses · management giveback) land adjacent.
+
+# ── #662 report assembly: ACTION head + folded detail ─────────────────────────────────────────
+
+_HEAD_TITLE_CAP = 110     # a review title longer than this wraps a phone three times
+
+
+async def _assemble_report(metrics: dict, summary: str, window_start: date, today: date
+                           ) -> tuple[str, str, dict]:
+    """Run every section, sort each into the head (needs a decision or my work THIS week) or
+    the fold (everything else), and record what was suppressed and why. Each section is
+    error-wrapped exactly as before: one renderer failing costs its own lines, never the
+    digest. Returns (head_md, fold_md, report_meta)."""
+    needs_you: list[tuple[int, str]] = []    # (item count, block) — a block may be several lines
+    needs_me: list[str] = []
+    checked: list[str] = []                   # the "also checked" clause — one phrase per surface
+    fold: list[str] = []
+    suppressed: list[dict] = []
+
+    regime = metrics.get("regime", {}).get("current") or "Unknown"
+    header = (f"🧠 *Weekly review — {window_start.strftime('%b')} {window_start.day}–{today.day}* "
+              f"· regime {regime}")
+
+    # 1. Data-gated reviews whose threshold flipped — the operator's decisions. Rendered
+    #    deterministically (#412) so a title can't be truncated; every ripe item is an action.
     try:
-        mfe_section = _format_mfe_capture_section(metrics.get("mfe_capture") or {})
-        if mfe_section:
-            message = f"{message}\n\n{mfe_section}"
-    except Exception:
-        logger.exception("mfe capture section render failed")
-
-    # Data-gated Reviews-ready (#412, 2026-07-06) — deterministic so actionable
-    # review titles can't be LLM-truncated (the "ADV" nit); was an LLM-prompt section.
-    try:
-        pr_section = _format_pending_reviews_section(metrics.get("pending_reviews") or {})
-        if pr_section:
-            message = f"{message}\n\n{pr_section}"
+        pr = metrics.get("pending_reviews") or {}
+        ready_n = len(pr.get("ready") or [])
+        block = _format_pending_reviews_section(pr, today=today)
+        if block:
+            needs_you.append((ready_n, block))
+        checked.append(f"reviews: {ready_n} ripe" + (" (above)" if ready_n else "")
+                       + f", {pr.get('pending_count') or 0} still accruing")
     except Exception:
         logger.exception("pending-reviews section render failed")
 
-    # Holistic judge weekly roll-up (#240/#249) — replaced the retired #200
-    # theme-gated + #201 fire-panel advisory sections (judge load-bearing 6/10).
+    # 2. Silent failures — only a row the system has NOT recorded a disposition for is open.
     try:
-        judge_section = _format_judge_section(metrics.get("judge_weekly") or {})
-        if judge_section:
-            message = f"{message}\n\n{judge_section}"
+        ae = metrics.get("audit_errors") or {}
+        types = ae.get("top_types") or []
+        open_rows = [d for t in types for d in (t.get("rows") or []) if d.get("disposition") == "live"]
+        if not any("rows" in t for t in types) and types:
+            # An older metrics shape (no dispositions) — fail toward surfacing, and say so.
+            needs_me += [f"{t['event_type']} ×{t['count']} (last seen {t.get('last_seen')}) — "
+                         f"disposition unknown, older metrics shape" for t in types]
+        needs_me += [f"{d['why']} — no re-run or hand-close in the job ledger" if d.get("job_id")
+                     else d["why"] for d in open_rows]
+        suppressed += ae.get("dispositioned") or []
+        n_rows = ae.get("total") or 0
+        if n_rows:
+            checked.append(f"errors: {n_rows} row{'s' if n_rows != 1 else ''}, "
+                           f"{len(open_rows)} open" + (" (above)" if open_rows else ""))
+        else:
+            checked.append("errors: none")
+        sf = _format_silent_failures_section(ae)
+        if sf:
+            fold.append(sf)
     except Exception:
-        logger.exception("judge section render failed")
+        logger.exception("silent-failures section render failed")
 
-    # Missed-opportunity appendix (Step 3 of #missed-EP-tracking, 2026-05-11).
-    # Top winners we didn't enter + per-skip-reason roll-up. Tells the
-    # methodology-tuning side which filter bled the most upside in the window.
+    # 3. Strategy promotions — a strategy that IS eligible is his sign-off; a metric still
+    #    accruing is the fold; a hold-by-ruling is neither pending nor deferred.
     try:
-        from agents.market_intelligence.missed_outcomes import format_missed_section_for_weekly
-        missed_section = format_missed_section_for_weekly(
-            metrics.get("missed_opportunities") or {}
-        )
-        if missed_section:
-            message = f"{message}\n\n{missed_section}"
+        sp = metrics.get("strategy_promotions") or {}
+        ready = [c for c in sp.get("checks") or [] if c.get("eligible") and c.get("next_phase")]
+        for c in ready:
+            needs_you.append((1, f"• strategy `{c['strategy_id']}` is ready to move "
+                                 f"{c.get('current_phase')} → {c['next_phase']} — your sign-off: "
+                                 f"`/strategy {c['strategy_id']} promote`"))
+        promo, held = _format_promotion_section(sp)
+        suppressed += [{"what": f"{h} promotion blocker", "rule": "held by operator ruling — "
+                        "no data can change it, so it is not pending"} for h in held]
+        n_accruing = sum(1 for c in sp.get("checks") or []
+                         if c.get("next_phase") and not c.get("eligible")
+                         and c["strategy_id"] not in held)
+        checked.append(f"promotions: {len(ready)} ready" + (" (above)" if ready else "")
+                       + f", {n_accruing} accruing" + (f", {len(held)} held by ruling" if held else ""))
+        if promo:
+            fold.append(promo)
     except Exception:
-        logger.exception("missed_opportunities section render failed")
+        logger.exception("promotion section render failed")
 
-    # Crypto RS readiness — deterministic appendix (not LLM-interpreted).
-    # Surfaces "ready to flip" verdict so the user doesn't forget about
-    # the shadow-mode module accumulating in the background.
-    crypto_section = _format_crypto_section(metrics.get("crypto") or {})
-    if crypto_section:
-        message = f"{message}\n\n{crypto_section}"
+    # 4. The LLM narrative — UNVERIFIED by its own label, so it opens the fold, never the head.
+    fold.append(summary)
 
-    # Kill/scale band verdict (#275) — a SECTION of the weekly digest (not a new
-    # surface). SURFACES the live-money band + numbers + any active override; the
-    # mechanical evaluation (the weekly layer of safeguards.md condition #1).
+    # 5. STANDING setup review (operator 2026-08-02) — its QUESTIONS are his; the table folds.
     try:
-        from agents.market_intelligence.kill_scale_bands import band_digest_section
-        band_lines = await band_digest_section("live")
-        if band_lines:
-            message = f"{message}\n" + "\n".join(band_lines)
-    except Exception:
-        logger.exception("kill/scale band section render failed")
-
-    # Early-window drift line (#454 R3 part 1, 2026-07-17) — the SIGNED #268b kill/scale
-    # bands above are SILENT below the 20-closed-trade sample floor. This prints the rolling
-    # live expectancy against the calibration envelope's stored trailing-20 reference points
-    # from closed-trade 5 onward, so an ugly early cohort isn't fully invisible pre-floor.
-    # Purely informational — changes nothing about the bands themselves.
-    try:
-        drift_section = await _early_window_drift_section()
-        if drift_section:
-            message = f"{message}\n\n{drift_section}"
-    except Exception:
-        logger.exception("early-window drift section render failed")
-
-    # STANDING setup review (operator 2026-08-02): per-setup entry/stop geometry, run WIN OR
-    # LOSE. Added after the same cut done by hand found what no existing section did — every
-    # live exit was a stop, half died inside 25 min, stop sat at 0.46x ADR, and 4 trades ran
-    # past +2R then closed red. SURFACES + asks; never prescribes (THE LINE, r3). The anti-
-    # overfit guard is the N-gate inside, not the cadence.
-    try:
-        setup_section = await _setup_performance_section()
-        if setup_section:
-            message = f"{message}\n\n{setup_section}"
+        table, asks = await _setup_performance_review()
+        for a in asks:
+            needs_you.append((1, f"• setup question — {a}"))
+        if table:
+            fold.append(table)
     except Exception:
         logger.exception("setup-performance section render failed")
 
-    # Judge ensemble-divergence SHADOW line (#301, 2026-07-26) — ZERO AUTHORITY, informational
-    # only (THE LINE: this reads mi_judge_divergence, never a grade path). ONE line per the
-    # consolidate-not-proliferate build-spec; omitted entirely when the window has no rows.
+    # 6. Kill/scale bands (#275, safeguards.md) — the verdict is the signed safeguard's own
+    #    line, untouched; #662 adds the rule-era clause beside its trailing windows. A band
+    #    other than HOLD is an action; HOLD is the fold.
     try:
-        divergence_section = await _judge_divergence_section(window_start)
-        if divergence_section:
-            message = f"{message}\n\n{divergence_section}"
+        band_block, band, action_line = await _band_section(today)
+        if band_block:
+            fold.append(band_block)
+        if band and band != "HOLD":
+            needs_you.append((1, f"• kill/scale band is {band} — {action_line}"))
+        checked.append(f"bands: {band or 'unavailable'}")
     except Exception:
-        logger.exception("judge-divergence section render failed")
+        logger.exception("kill/scale band section render failed")
 
-    # Cost envelope (FL-6 / #378 S-C, 2026-07-12) — the deterministic MTD-spend line: the
-    # ONE routine surface that completes FL-6 (the /status board + budget alert already exist).
+    # 7. Early-window drift (#454) and replay-regression (#302): trailing windows over the
+    #    same cohort — both carry the era clause or suppress their numbers. Fold only.
     try:
-        spend_section = await _spend_envelope_section()
-        if spend_section:
-            message = f"{message}\n\n{spend_section}"
+        drift_section, drift_suppressed = await _early_window_drift_review(today)
+        if drift_section:
+            fold.append(drift_section)
+        if drift_suppressed:
+            suppressed.append(drift_suppressed)
     except Exception:
-        logger.exception("spend-envelope section render failed")
-
-    # Replay-regression (#302) — the live R-dist beside the #268b calibration card; the P6
-    # "weekly report" input (b) to the quarterly band review. SURFACES + persists a snapshot;
-    # never verdicts (the divergence statistic isn't valid at low N). persist=True so the
-    # quarterly review reads the accruing distribution over time.
+        logger.exception("early-window drift section render failed")
     try:
         from agents.market_intelligence.replay_regression import run_replay_regression
         rr = await run_replay_regression("live", persist=True)
         if rr.get("lines"):
-            message = f"{message}\n" + "\n".join(rr["lines"])
+            fold.append("\n".join(rr["lines"]).strip("\n"))
+        if rr.get("suppressed"):
+            suppressed.append(rr["suppressed"])
     except Exception:
         logger.exception("replay-regression section render failed")
 
-    # ⚠ SEND AS HTML, via the shared layer's documented migration path.
-    # The 2026-08-30 digest FAILED legacy-Markdown parsing ("Can't find end of the entity
-    # starting at byte offset 2315") and fell back to plain text, so the operator read it
-    # degraded. Legacy Markdown has NO safe escape for dynamic values, and this message is
-    # assembled from ~13 independently-built sections carrying audit summaries, tickers and
-    # error text — any one stray `*`, `_` or backtick breaks the whole digest. Escaping each
-    # renderer would leave the 14th to break it again; converting once at the SEND BOUNDARY
-    # covers every section including ones not written yet. `md_to_html` is exactly the
-    # migration path shared/telegram_format.py documents for this.
-    from shared.telegram_format import md_to_html
-    await send_telegram_message(md_to_html(message), parse_mode="HTML")
+    # 8. The rest of the deterministic appendices — the week's losers, the W3 KPI, the judge
+    #    roll-up, missed opportunities, crypto, the 2nd-opinion line, the cost envelope. Each
+    #    folds; the three that can carry an action (crypto ready to flip · spend over budget ·
+    #    2nd-opinion disagreement over the review bar) surface it.
+    for name, fn in (("loser", lambda: _format_loser_section(metrics.get("loser_breakdown") or {})),
+                     ("mfe capture", lambda: _format_mfe_capture_section(metrics.get("mfe_capture") or {})),
+                     ("judge", lambda: _format_judge_section(metrics.get("judge_weekly") or {}))):
+        try:
+            s = fn()
+            if s:
+                fold.append(s)
+        except Exception:
+            logger.exception(f"{name} section render failed")
+    try:
+        from agents.market_intelligence.missed_outcomes import format_missed_section_for_weekly
+        s = format_missed_section_for_weekly(metrics.get("missed_opportunities") or {})
+        if s:
+            fold.append(s)
+    except Exception:
+        logger.exception("missed_opportunities section render failed")
+    try:
+        crypto = metrics.get("crypto") or {}
+        s = _format_crypto_section(crypto)
+        if s:
+            fold.append(s)
+        verdict = crypto.get("verdict") or ""
+        if "ready to flip" in verdict:
+            needs_you.append((1, f"• crypto RS: {verdict} — your call"))
+        if crypto:
+            checked.append("crypto: " + ("live, gates clean" if "live" in verdict
+                                         else verdict.split(":")[0].strip("✅⚠️⏳ ") or "checked"))
+    except Exception:
+        logger.exception("crypto section render failed")
+    # Judge 2nd-opinion (#301): reads mi_judge_divergence and NOTHING else — ZERO AUTHORITY
+    # (THE LINE: never a grade path); its only action is a grounding check, which is mine.
+    try:
+        s = await _judge_divergence_section(window_start)
+        if s:
+            fold.append(s)
+            if "⚠" in s:
+                needs_me.append("judge 2nd-opinion disagreement is over the 25% review bar this "
+                                "week — I run the grounding check (#301)")
+    except Exception:
+        logger.exception("judge-divergence section render failed")
+    try:
+        s, cost, budget, over = await _spend_envelope()
+        if s:
+            fold.append(s)
+        if over:
+            needs_you.append((1, f"• LLM spend ${cost:.2f} is OVER the ${budget:.0f} monthly "
+                                 f"budget — your call on the ceiling"))
+        checked.append(f"spend: ${cost:.2f}" + (f" of ${budget:.0f}" if budget > 0 else " (no budget set)"))
+    except Exception:
+        logger.exception("spend-envelope section render failed")
 
-    logger.info(f"Weekly review complete: {window_start}..{today}")
-    return review
+    head_md, fold_md, meta = compose_report(header, needs_you, needs_me, checked, fold, suppressed)
+    return head_md, fold_md, meta
+
+
+def compose_report(header: str, needs_you: list[tuple[int, str]], needs_me: list[str],
+                   checked: list[str], fold_sections: list[str], suppressed: list[dict]
+                   ) -> tuple[str, str, dict]:
+    """Pure: the head/fold split. The head is the header, then either ONE sentence saying
+    nothing needs him or the action lists (his decisions first, my work second), then one
+    italic line naming every surface that was checked — the positive observable a broken
+    generator cannot print. Everything else is the fold."""
+    n_you = sum(n for n, _ in needs_you)
+    n_me = len(needs_me)
+    head = [header]
+    if not n_you and not n_me:
+        head.append("*Nothing needs you this week.*")
+    else:
+        if n_you:
+            head.append(f"*Needs you ({n_you}):*")
+            head += [block for _, block in needs_you]
+        if n_me:
+            head.append(f"*Needs me ({n_me}):*")
+            head += [f"• {line}" for line in needs_me]
+    if checked:
+        head.append("_Also checked — " + " · ".join(checked) + "._")
+    head_md = "\n".join(head)
+    fold_md = "\n\n".join(s.strip("\n") for s in fold_sections if s and s.strip())
+    meta = {
+        "needs_you": n_you, "needs_me": n_me,
+        "needs_you_lines": [line for _, block in needs_you for line in block.splitlines()
+                            if line.startswith(("•", "🔴"))],
+        "needs_me_lines": list(needs_me),
+        "suppressed": [{"what": str(s.get("what")), "rule": str(s.get("rule"))} for s in suppressed],
+        "head_lines": head_md.count("\n") + 1,
+        "fold_chars": len(fold_md),
+    }
+    return head_md, fold_md, meta
+
+
+def _strip_code_markup(md: str) -> str:
+    """Remove ``` fences and `backticks` from folded Markdown. Telegram's documented nesting
+    rule says pre/code entities cannot sit inside another entity, and the fold IS a blockquote
+    entity; a 400 there would make the sender fall back to plain text — the unfolded dump
+    this task exists to end. Monospace alignment is lost inside the fold, by design."""
+    out = []
+    for line in md.splitlines():
+        if line.strip().startswith("```"):
+            rest = line.strip()[3:].strip("`").strip()
+            if rest:
+                out.append(rest)
+            continue
+        out.append(line.replace("`", ""))
+    return "\n".join(out)
+
+
+def render_review_html(head_md: str, fold_md: str) -> str:
+    """The send body: head through `md_to_html` (the documented migration path), the fold
+    inside `<blockquote expandable>` so Telegram shows it collapsed under the head."""
+    from shared.telegram_format import md_to_html
+    html = md_to_html(head_md)
+    if fold_md and fold_md.strip():
+        html += "\n<blockquote expandable>" + md_to_html(_strip_code_markup(fold_md)) + "</blockquote>"
+    return html
+
+
+def _format_silent_failures_section(ae: dict) -> str:
+    """Fold: every *_error/*_failed type in the window with the disposition the code decided,
+    row by row — the reader sees WHY a row is not open, not just that it isn't."""
+    types = ae.get("top_types") or []
+    if not types:
+        return ""
+    n_open = ae.get("open_total") or sum(1 for t in types for d in t.get("rows") or []
+                                          if d.get("disposition") == "live")
+    lines = [f"🔴 *Silent failures (7d)* — {ae.get('total', 0)} row(s), {n_open} open"]
+    for t in types:
+        rows = t.get("rows") or []
+        if rows:
+            # the row's `why` names its type for the head; the bullet already does here
+            prefix = f"{t['event_type']} — "
+            parts = [f"{d['disposition']}: {d['why'][len(prefix):] if d['why'].startswith(prefix) else d['why']}"
+                     for d in rows]
+            lines.append(f"• {t['event_type']} ×{t['count']} — " + " · ".join(parts))
+        else:
+            lines.append(f"• {t['event_type']} ×{t['count']} (last seen {t.get('last_seen')}, "
+                         f"{t.get('days_ago')}d ago) — disposition unknown")
+    return "\n".join(lines)
+
+
+def _format_promotion_section(sp: dict) -> tuple[str, list[str]]:
+    """Fold: one line per strategy still on the ladder. A blocker that no data can change
+    (`MANUAL_REVIEW_HOLD_REASON`, a standing operator hold) is printed as the hold it is —
+    never as 'deferred', which reads as data pending. Returns (text, held_strategy_ids)."""
+    from agents.market_intelligence.strategies.promotion import MANUAL_REVIEW_HOLD_REASON
+    checks = [c for c in sp.get("checks") or [] if c.get("next_phase")]
+    if not checks:
+        return "", []
+    held: list[str] = []
+    lines = []
+    n_ready = sum(1 for c in checks if c.get("eligible"))
+    import re as _re
+    for c in checks:
+        sid = c.get("strategy_id")
+        reasons = [r for r in c.get("blocking_reasons") or [] if r != MANUAL_REVIEW_HOLD_REASON]
+        if c.get("eligible"):
+            lines.append(f"• {sid}: ✓ ready for {c.get('next_phase')} (see above)")
+        elif reasons:
+            # the verdict text carries an unrounded float ("median R -0.10113402106503139");
+            # presentation only — the verdict is untouched
+            reason = _re.sub(r"-?\d+\.\d{3,}", lambda m: f"{float(m.group()):.2f}", reasons[0])
+            n_closed = (c.get("metrics") or {}).get("n_closed")
+            if n_closed is not None and "have" not in reason:
+                reason += f" (have {n_closed} closed)"
+            lines.append(f"• {sid}: {reason}")
+        elif MANUAL_REVIEW_HOLD_REASON in (c.get("blocking_reasons") or []):
+            held.append(sid)
+            lines.append(f"• {sid}: held in {c.get('current_phase')} by operator ruling — "
+                         f"the metrics clear, and no data can promote it")
+        else:
+            lines.append(f"• {sid}: not eligible (no reason recorded)")
+    head = f"📈 *Strategy promotion* — {n_ready} ready" if n_ready else "📈 *Strategy promotion* — none ready"
+    return "\n".join([head] + lines), held
+
+
+async def _band_section(today: date) -> tuple[str, str | None, str]:
+    """Kill/scale bands for the fold + the band name for the head. The verdict line is the
+    signed safeguard's own `format_band_line`, unchanged; #662 appends the rule-era clause for
+    its trailing windows (all n, and the last-20 window t20 reads) or says the split is
+    unavailable — never a pooled number presented as one era."""
+    from agents.market_intelligence.kill_scale_bands import assess_bands, format_band_line
+    from agents.market_intelligence.replay_regression import era_split_for, era_split_line
+    from agents.market_intelligence.rule_eras import era_split_sentence
+    try:
+        inputs, verdict, override = await assess_bands("live")
+    except Exception as e:  # noqa: BLE001 — telemetry must never break the digest
+        logger.warning("band section: assess_bands failed: %s", e)
+        return f"*🎚️ Kill/scale bands* (live-money, #268b):\n_kill/scale band eval unavailable: {e}_", None, ""
+    lines = ["*🎚️ Kill/scale bands* (live-money, #268b):",
+             format_band_line(verdict, override, inputs.get("open_positions"))]
+    split = era_split_for(inputs, today)
+    if split is None:
+        lines.append(era_split_line(None))
+    else:
+        rs, meta = inputs.get("realized_rs") or [], inputs.get("realized_r_meta") or []
+        last20 = era_split_for({"realized_rs": rs[-20:], "realized_r_meta": meta[-20:]}, today)
+        t20 = (f" — the t20 window holds {len(last20['current'])} current, "
+               f"{len(last20['older'])} older") if last20 and len(rs) > 20 else ""
+        lines.append(f"  rule eras: {era_split_sentence(split)}{t20}")
+    return "\n".join(lines), verdict.band, verdict.action
 
 
 # ── Gather + aggregate ────────────────────────────────────────────────────────
@@ -1001,6 +1228,12 @@ async def _aggregate_ep_outcomes(days: int) -> dict:
         "by_tier": {t: _finalize_bucket(b) for t, b in by_tier.items()},
         "by_catalyst": {c: _finalize_bucket(b) for c, b in by_catalyst.items()},
         "trade_status": dict(trade_status_counts),
+        # #662 — say what the denominator IS. The 2026-09-20 review quoted "0% win rate by
+        # tier" off five ALERTS of which one was traded; the narrator had to flag its own
+        # confusion. `traded` is the only cohort a trading read may cite.
+        "traded": int(trade_status_counts.get("traded", 0)),
+        "denominator": "alerts in window — by_tier/by_catalyst are the alert's fwd_1w hit "
+                       "rate, not a trade win rate; see `traded` for the traded cohort",
     }
 
 
@@ -1126,8 +1359,7 @@ async def _aggregate_audit_errors(days: int) -> dict:
     # CAVEAT: days_ago is a "hasn't-fired-recently" proxy, NOT a true resolution signal —
     # a weekly-recurring error reads as stale mid-week. Safe because every anomaly line is
     # tagged UNVERIFIED downstream, but don't treat days_ago as proof an error was fixed.
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc)
+    now = _utcnow()
 
     def _ts(r: dict):
         t = r.get("created_at")
@@ -1143,6 +1375,7 @@ async def _aggregate_audit_errors(days: int) -> dict:
 
     merged: dict[str, int] = {}
     last_seen: dict = {}
+    rows_by_type: dict[str, list[dict]] = defaultdict(list)
 
     def _bump_last(et: str, r: dict) -> None:
         t = _ts(r)
@@ -1152,25 +1385,127 @@ async def _aggregate_audit_errors(days: int) -> dict:
     for r in err_rows:
         merged[r["event_type"]] = merged.get(r["event_type"], 0) + 1
         _bump_last(r["event_type"], r)
+        rows_by_type[r["event_type"]].append(r)
     seen_err_types = {er["event_type"] for er in err_rows}
     for r in failed_rows:
         # Avoid double-counting events that match both filters
         if r["event_type"] not in seen_err_types:
             merged[r["event_type"]] = merged.get(r["event_type"], 0) + 1
+            rows_by_type[r["event_type"]].append(r)
         _bump_last(r["event_type"], r)
     top5 = sorted(merged.items(), key=lambda kv: -kv[1])[:5]
 
-    def _entry(t: str, c: int) -> dict:
+    # ── #662 DISPOSITION — decided in code, per row, so a closed incident or a deliberate
+    # refusal can never be printed as an open anomaly. The 2026-09-20 review listed three
+    # "silent failures" and every one was already dealt with (a week-old restart, the Friday
+    # outage, a Saturday acceptance probe); a fourth was the probe muzzle refusing a send ON
+    # PURPOSE. The system can only honour dispositions it RECORDED — the job ledger and the
+    # sender's own exception name — so a hand recovery that wrote nothing still surfaces, and
+    # that is correct: the fix is to record it (#672's sweep does), not to guess here.
+    job_ids = sorted({j for rows in rows_by_type.values() for j in map(_row_job_id, rows) if j})
+    try:
+        ledger = await get_job_runs_for(job_ids, since_hours=since_hours) if job_ids else []
+    except Exception:  # loud-ok: the ledger is a disposition SOURCE — without it every
+        logger.exception("silent-failure disposition: job ledger unavailable — "
+                         "job-class rows will read as open rather than recovered")
+        ledger = []   # job-class row simply stays open, which is the fail-safe direction.
+
+    dispositioned: list[dict] = []
+    typed: list[dict] = []
+    for t, c in top5:
+        rows = sorted(rows_by_type.get(t, []), key=lambda r: _ts(r) or now)
+        row_out = [_dispose_error_row(r, _ts(r), now, ledger) for r in rows]
+        worst = max(row_out, key=lambda d: _DISPOSITION_RANK[d["disposition"]])["disposition"] \
+            if row_out else "live"
+        whys = [d["why"] for d in row_out if d["why"]]
         ls = last_seen.get(t)
-        return {
+        typed.append({
             "event_type": t, "count": c,
             "last_seen": ls.date().isoformat() if ls else None,
             "days_ago": (now - ls).days if ls else None,
-        }
+            "disposition": worst,
+            "open": worst == "live",
+            "why": " · ".join(dict.fromkeys(whys)),
+            "rows": row_out,
+        })
+        dispositioned += [{"what": f"{t} at {d['at']}", "rule": f"{d['disposition']}: {d['why']}"}
+                          for d in row_out if d["disposition"] != "live"]
     return {
         "total": sum(merged.values()),
-        "top_types": [_entry(t, c) for t, c in top5],
+        "open_total": sum(1 for e in typed for d in e["rows"] if d["disposition"] == "live"),
+        "top_types": typed,
+        "dispositioned": dispositioned,
     }
+
+
+# The probe chokepoint's exception (scripts/probes/_muzzle.TelegramSendRefused): a send it
+# refused ON PURPOSE is logged by the sender as `telegram_send_failed` with this name first
+# in the detail. Pinned by name in tests/test_weekly_review_report_layout.py so a rename there
+# breaks a test, not this classification.
+_REFUSED_MARKER = "TelegramSendRefused"
+_QUIET_AFTER_DAYS = 2      # the narrator's old "fired in the last day or two" rule, made code
+_DISPOSITION_RANK = {"refused": 0, "closed": 1, "recovered": 1, "quiet": 2, "live": 3}
+
+
+def _row_job_id(r: dict) -> str | None:
+    """`job_id` from a job-class audit row's JSON detail (`{"job_id": ..., "rows_written": ...}`)."""
+    detail = r.get("detail")
+    if isinstance(detail, dict):
+        return detail.get("job_id") or None
+    if isinstance(detail, str) and detail.lstrip().startswith("{"):
+        try:
+            return (json.loads(detail) or {}).get("job_id") or None
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _row_exception(r: dict) -> str | None:
+    """The exception class name a sender wrote first in the detail (`Name: message | ...`)."""
+    detail = r.get("detail")
+    if not isinstance(detail, str):
+        return None
+    head = detail.split(":", 1)[0].strip()
+    return head if head.isidentifier() else None
+
+
+def _dispose_error_row(r: dict, at: datetime | None, now: datetime, ledger: list[dict]) -> dict:
+    """One row → {disposition, why, at, job_id, exception, summary}. Order matters: a refusal
+    is deliberate whatever its age; a job with a later clean run or an operator hand-close is
+    settled in the ledger; anything else is `quiet` once it has not recurred for
+    `_QUIET_AFTER_DAYS`, else `live`."""
+    from agents.market_intelligence.job_recovery import TERMINAL
+    job_id, exc = _row_job_id(r), _row_exception(r)
+    when = at.astimezone(_ET).strftime("%a %m-%d %H:%M ET") if at else "?"
+    base = {"at": at.isoformat() if at else None, "when": when, "job_id": job_id,
+            "exception": exc, "summary": (r.get("summary") or "")[:140]}
+    if exc == _REFUSED_MARKER:
+        return {**base, "disposition": "refused",
+                "why": "refused on purpose by the probe muzzle (a probe, not a failure)"}
+    if job_id and at:
+        later = [j for j in ledger if j.get("job_id") == job_id
+                 and j.get("started_at") and j["started_at"] > at]
+        clean = next((j for j in later if j.get("status") == "success"), None)
+        if clean:
+            ran = clean["started_at"].astimezone(_ET).strftime("%a %m-%d %H:%M ET")
+            return {**base, "disposition": "recovered", "why": f"{job_id} ran clean {ran}"}
+        closed = next((j for j in later if j.get("status") in TERMINAL), None)
+        if closed:
+            note = (closed.get("error_message") or "closed in the job ledger")[:90]
+            return {**base, "disposition": "closed", "why": f"{job_id}: {note}"}
+    age = (now - at).days if at else None
+    if age is not None and age >= _QUIET_AFTER_DAYS:
+        return {**base, "disposition": "quiet",
+                "why": f"{job_id or exc or 'it'} has not recurred in {age}d ({when})"}
+    if job_id:
+        # the audit summary is "<job>: cancelled — …; outcome unknown, check downstream tables"
+        what = f"{job_id}: {base['summary'].split(':', 1)[-1].split(';', 1)[0].strip()}"
+    elif exc:
+        msg = (r.get("detail") or "")[len(exc) + 1:].split("|", 1)[0].strip()[:90]
+        what = f"{r.get('event_type')} — {exc}: {msg}"
+    else:
+        what = f"{r.get('event_type')} — {base['summary']}"
+    return {**base, "disposition": "live", "why": f"{what} ({when})"}
 
 
 async def _aggregate_drift_findings(days: int) -> dict:
@@ -1661,11 +1996,33 @@ _REVIEWS_RENDER_CAP = 8      # an un-scannable wall is WHY the list got ignored
 _REVIEWS_STALE_DAYS = 30     # ripe this long = forgotten, not waiting
 
 
-def _format_pending_reviews_section(pending: dict) -> str:
-    """Deterministic Reviews-ready appendix (#412) — data-gated reviews whose
-    threshold flipped this week. Rendered in code (not the LLM) so an actionable
-    title can't be truncated (the 'ADV top-50 probe…' → 'ADV' nit). Omitted
-    entirely when nothing is ready."""
+def _review_era_note(r: dict) -> str:
+    """#662 — beside a ripe review's age, the rules that moved since it was WRITTEN. The
+    2026-09-20 edition presented the extension-cap review as 'ripe 5d' when its question was
+    about a cap reverted three weeks earlier; age said nothing, the switch count would have.
+    Empty when the registry entry carries no `added_on`."""
+    from agents.market_intelligence.rule_eras import rule_switches_since
+    added = r.get("added_on")
+    if isinstance(added, str):
+        try:
+            added = date.fromisoformat(added)
+        except ValueError:
+            return ""
+    if not isinstance(added, date):
+        return ""
+    switches = rule_switches_since(added)
+    if not switches:
+        return f" · written {added}, no rule change since"
+    n = len(switches)
+    return (f" · written {added}, {n} rule change{'s' if n != 1 else ''} since "
+            f"(latest {switches[-1][0]}) — re-check the question against the live rule")
+
+
+def _format_pending_reviews_section(pending: dict, *, today: date | None = None) -> str:
+    """Deterministic Reviews-ready block (#412) — data-gated reviews whose threshold flipped.
+    Rendered in code (not the LLM) so an actionable title can't be truncated (the 'ADV top-50
+    probe…' → 'ADV' nit). Since #662 this block IS the head of the weekly review — one line per
+    item, the stale ones marked 🔴 — so it must stay scannable. Empty when nothing is ready."""
     ready = (pending or {}).get("ready") or []
     if not ready:
         return ""
@@ -1682,7 +2039,7 @@ def _format_pending_reviews_section(pending: dict) -> str:
     # question, and disposing of it is the operator's call (this file's own status semantics).
     from datetime import date as _date
     from agents.market_intelligence.collector import et_today as _et_today
-    _today = _et_today()
+    _today = today or _et_today()
 
     def _age(r):
         d = r.get("earliest_review_date")
@@ -1728,7 +2085,8 @@ def _format_pending_reviews_section(pending: dict) -> str:
     for r in shown:
         title = (r.get("title") or r.get("review_id") or "?").strip()
         action = (r.get("action_when_ready") or "").strip()
-        first = action.split(". ")[0].rstrip(".") if action else ""
+        # one line per item: a YAML block scalar carries its own newlines, collapse them
+        first = " ".join(action.split(". ")[0].rstrip(".").split()) if action else ""
         age, kind = _age(r), _kind(r)
         flags = r.get("evidence_flags") or {}
         if flags.get("date_fire"):
@@ -1745,7 +2103,14 @@ def _format_pending_reviews_section(pending: dict) -> str:
             tag = " _[periodic — due]_"
         else:
             tag = f" _[ripe {age}d]_" if age else ""
-        line = f"• *{title}*{tag}" + (f" — {first}." if first else "")
+        # #662 — a stale accrual item is the alarm this block exists for: it leads with 🔴 so
+        # 56 days ripe shouts from the head of the message instead of sitting in a list.
+        stale = _counts_as_accrual(r) and (age or 0) >= _REVIEWS_STALE_DAYS
+        marker = "🔴" if stale else "•"
+        if len(title) > _HEAD_TITLE_CAP:
+            title = title[:_HEAD_TITLE_CAP - 1].rstrip() + "…"
+        line = (f"{marker} *{title}*{tag}{_review_era_note(r)}"
+                + (f" — {first}." if first else ""))
         # #517 2026-08-17 — an entry that already fired once and came back inconclusive (mis-
         # scoped cohort, too thin after a fix, etc.) is not a fresh look; a bare re-surface reads
         # as untouched. `stop_too_wide_outcome_cohort` is the worked example this was built for.
@@ -1785,6 +2150,13 @@ async def _spend_envelope_section() -> str:
     flag, and the fixed-subs reminder. Deterministic (no LLM); the ONE routine surface that
     completes FL-6 (the /status board + the budget alert already exist). Fails to '' so a
     meter/DB hiccup never breaks the digest."""
+    text, _cost, _budget, _over = await _spend_envelope()
+    return text
+
+
+async def _spend_envelope() -> tuple[str, float, float, bool]:
+    """`_spend_envelope_section` plus the numbers the #662 head needs: (text, cost, budget,
+    over_budget) — one query, two consumers."""
     from agents.market_intelligence.db import get_pool
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -1812,7 +2184,7 @@ async def _spend_envelope_section() -> str:
         lines.append(f"  {r['caller'].replace('_', ' ')}: ${float(r['cost'] or 0):.2f}")
     # fixed-subs note (not in the LLM meter — keeps the envelope honest, #378 S-C)
     lines.append("_+ fixed infra/data subs (server · Polygon · FMP) not metered here — see the cost-envelope doc._")
-    return "\n".join(lines)
+    return "\n".join(lines), cost, budget, (budget > 0 and cost > budget)
 
 
 async def _early_window_drift_section() -> str:
@@ -1841,14 +2213,34 @@ async def _early_window_drift_section() -> str:
 
     Omitted entirely below n=5 (too thin to show anything meaningful — matches the
     mfe_capture/crypto appendix convention of no misleading near-empty line)."""
+    from agents.market_intelligence.collector import et_today
+    text, _suppressed = await _early_window_drift_review(et_today())
+    return text
+
+
+async def _early_window_drift_review(today: date) -> tuple[str, dict | None]:
+    """`_early_window_drift_section` with the #662 rule applied: the rolling mean is a
+    trailing window over every closed live trade, so it carries the rule-era clause or its
+    numbers are SUPPRESSED (with the reason recorded) — never printed pooled across the
+    2026-09-06 exit-rule change. Returns (text, suppressed-record-or-None)."""
     from agents.market_intelligence.kill_scale_bands import (
         assemble_band_inputs, CALIBRATION_ENVELOPE as env, _SAMPLE_FLOOR,
     )
+    from agents.market_intelligence.replay_regression import era_split_for
+    from agents.market_intelligence.rule_eras import era_split_sentence
     inputs = await assemble_band_inputs("live")
     rs = inputs["realized_rs"]
     n = len(rs)
     if n < 5:
-        return ""
+        return "", None
+    split = era_split_for(inputs, today)
+    if split is None:
+        return (f"\U0001F4C9 *Early-window drift* (live, #454): numbers suppressed — the "
+                f"cohort's rule-era split is unavailable, so a trailing mean over {n} closed "
+                f"trades would pool rule changes (#662)",
+                {"what": "early-window drift numbers",
+                 "rule": "era split unavailable — trailing-window numbers are suppressed "
+                         "rather than pooled across rule changes"})
     mean_r = sum(rs) / n
     p5, floor_r = env["trailing20_p5_r"], env["trailing20_min_r"]
     if mean_r <= floor_r:
@@ -1865,8 +2257,9 @@ async def _early_window_drift_section() -> str:
                   f"for the live verdict")
     return (
         f"\U0001F4C9 *Early-window drift* (live, #454 vs {env['source']}): "
-        f"rolling mean {mean_r:+.2f}R over {n} closed trades — {pos}. _{caveat}_"
-    )
+        f"rolling mean {mean_r:+.2f}R over {n} closed trades — {pos}; "
+        f"{era_split_sentence(split)}. _{caveat}_"
+    ), None
 
 
 async def _judge_divergence_section(window_start: date) -> str:
@@ -1963,6 +2356,7 @@ _SETUP_REVIEW_MIN_N = 10   # below this the row REPORTS but asks nothing — see
 # stamp eras from the same table, so a boundary can no longer move in one place and not the
 # others. Values unchanged (08-01 / 08-16); the names below are kept for every reader.
 from agents.market_intelligence.rule_eras import (  # noqa: E402
+    EXIT_ERA_KEY,
     PARTIAL_LIVE_DATE as _PROFIT_TRIGGER_ERA_START,
     STOP_2R_DATE as _STOP_GEOMETRY_ERA_START,
     exit_era_label,
@@ -2002,6 +2396,18 @@ def _era_split_stats(trades: list[dict], signal_type: str, account_mode: str, er
 
 
 async def _setup_performance_section(lookback_days: int = 90) -> str:
+    """The setup review as ONE block: the geometry table followed by its questions. Kept as
+    the single-string surface; `_assemble_report` uses `_setup_performance_review` so the
+    questions can go to the head and the table to the fold (#662)."""
+    table, asks = await _setup_performance_review(lookback_days)
+    if not table:
+        return ""
+    if asks:
+        table += "\n*Questions for you:*\n" + "\n".join(f"• {a}" for a in asks)
+    return table
+
+
+async def _setup_performance_review(lookback_days: int = 90) -> tuple[str, list[str]]:
     """STANDING per-setup entry/stop geometry review (operator 2026-08-02).
 
     *"every setup, entry/stop, win/losses, etc will need periodic review regardless if we're
@@ -2033,9 +2439,9 @@ async def _setup_performance_section(lookback_days: int = 90) -> str:
         rows = await get_setup_performance_review(lookback_days)
     except Exception:
         logger.exception("system_review: setup-performance section failed")
-        return ""
+        return "", []
     if not rows:
-        return ""
+        return "", []
 
     # Era-scoped trades for the ASK logic (#585, 2026-08-23) — see the two boundary constants
     # above. FAILS CLOSED: if this fetch breaks, era-sensitive asks are suppressed rather than
@@ -2173,10 +2579,8 @@ async def _setup_performance_section(lookback_days: int = 90) -> str:
                             f"instrument's own ADR — inside normal daily range.")
             # else: under the current (wider) stop, this is no longer true — nothing to ask.
     L.append("```")
-    if asks:
-        L.append("*Questions for you:*")
-        L += [f"• {a}" for a in asks]
-    return "\n".join(L)
+    L.append(f"_{EXIT_ERA_KEY}_")   # #662 — the A/B/C/D letters above, readable in place
+    return "\n".join(L), asks
 
 
 def _format_mfe_capture_section(data: dict) -> str:

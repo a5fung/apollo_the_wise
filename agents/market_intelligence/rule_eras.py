@@ -185,3 +185,76 @@ def admission_era_as_of(d: date) -> str:
         if d >= first_session:
             label = f"adm_{first_session.isoformat()}_{name}"
     return label
+
+
+# ── #662 — the weekly review's era vocabulary (plain words for the operator) ──────────────────
+# The review may not print a trailing-window number without saying which rules its trades ran
+# under and how many there are (PLAN #662, operator 2026-09-14). These helpers are the ONE place
+# that turns the switch tables above into that sentence, so a new switch changes every consumer
+# at once (the same P15 reason this module exists). `EXIT_SWITCHES` is derived from the
+# constants above, never a second copy of the dates.
+EXIT_SWITCHES: tuple[tuple[date, str], ...] = (
+    (PARTIAL_LIVE_DATE, "the +2R intraday partial went live (#508)"),
+    (TRAIL_PRIOR_CLOSES_DATE, "the trail moved to the stock's own MA and breakeven to the broker (#548)"),
+    (STOP_2R_DATE, "the protective stop moved to entry−2R"),
+    (SEP_SCORE_DATE, "score separation + rescale (#533)"),
+    (PARTIAL_8R_DATE, "the partial moved +2R→+8R and breakeven arms at +3R, magna53 only (#545)"),
+)
+
+# One line the weekly review's fold prints once, so the A/B/C/D letters the setup review uses
+# are readable without opening this file.
+EXIT_ERA_KEY = (
+    f"era key — A: before {PARTIAL_LIVE_DATE} (no executable partial) · "
+    f"B: before {STOP_2R_DATE} (partial live, ORB-low stop) · "
+    f"C: partial +2R, entry−2R stop · "
+    f"D: since {PARTIAL_8R_DATE} (magna53: partial +8R, breakeven at +3R)"
+)
+
+
+def rule_switches_since(d: date) -> list[tuple[date, str]]:
+    """Every dated rule switch — exit AND admission — that acted strictly after `d`, oldest
+    first. Printed next to a data-gated review as "written <d>, N rule changes since": a ripe
+    review is only actionable if its question still matches the live rule (the extension-cap
+    review surfaced 'ripe 5d' on 2026-09-20 asking about a cap reverted three weeks earlier)."""
+    out = [(sd, f"exit: {desc}") for sd, desc in EXIT_SWITCHES if sd > d]
+    out += [(fs, f"admission: {desc}") for fs, _name, desc, _rec in ADMISSION_SWITCHES if fs > d]
+    return sorted(out)
+
+
+def exit_era_start(label: str) -> date | None:
+    """First date of an exit-era label; None for era_a (nothing precedes it)."""
+    return {"era_b": PARTIAL_LIVE_DATE, "era_c": STOP_2R_DATE, "era_d": PARTIAL_8R_DATE}.get(label)
+
+
+def split_current_vs_older(values: list, meta: list[dict], today: date) -> dict[str, Any]:
+    """Partition `values` (one per trade, parallel to `meta`) into the trades that ran under the
+    rules live TODAY for their own strategy and those that ran under an older rule.
+
+    `meta[i]` = {"alert_date": date, "signal_type": str | None}. "Current" is decided per trade
+    as `exit_era_label(alert_date, signal_type) == exit_era_label(today, signal_type)`, so a
+    strategy still on the global +2R stack is judged against ITS current rule, not magna53's.
+    Returns {"current": [...], "older": [...], "current_since": date | None, "by_era": {label:
+    n}}; `current_since` is the start of today's era for the strategy the cohort is mostly made
+    of (None while that strategy is still on era_a)."""
+    current, older = [], []
+    by_era: dict[str, int] = {}
+    sig_counts: dict[str | None, int] = {}
+    for v, m in zip(values, meta):
+        d, sig = m.get("alert_date"), m.get("signal_type")
+        label = exit_era_label(d, sig)
+        by_era[label] = by_era.get(label, 0) + 1
+        sig_counts[sig] = sig_counts.get(sig, 0) + 1
+        (current if label == exit_era_label(today, sig) else older).append(v)
+    main_sig = max(sig_counts, key=sig_counts.get) if sig_counts else None
+    return {"current": current, "older": older,
+            "current_since": exit_era_start(exit_era_label(today, main_sig)),
+            "by_era": dict(sorted(by_era.items()))}
+
+
+def era_split_sentence(split: dict[str, Any], *, noun: str = "trades") -> str:
+    """The plain-words clause every trailing-window line carries: `under the current rules
+    (since 2026-09-06): 2 trades · older rules: 28 trades`."""
+    since = split.get("current_since")
+    since_s = f" (since {since})" if since else ""
+    return (f"under the current rules{since_s}: {len(split['current'])} {noun} · "
+            f"older rules: {len(split['older'])} {noun}")
