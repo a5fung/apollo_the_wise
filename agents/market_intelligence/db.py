@@ -8798,13 +8798,27 @@ async def _resolve_score_date(conn: Any, requested: "date") -> "date":
 async def get_rs_leaders(
     d: "str | date",
     limit: int = 30,
-    min_adv: float = 500_000,
+    min_adv: float = 10_000_000.0,
     min_price: float = 10.0,
     include_deal_pinned: bool = False,
 ) -> list[dict[str, Any]]:
-    """Top RS stocks for a given date, filtered to liquid names (min ADV + min price).
+    """Top RS stocks for a given date, filtered to liquid names (min ADV$ + min price).
     Excludes leveraged/inverse ETFs, broad index ETFs, small-cap biotech/pharma, and
     names PINNED BY AN ANNOUNCED DEAL. Set min_adv=0 to get all stocks unfiltered.
+
+    ⚠ `min_adv` IS A DOLLAR-VOLUME FLOOR (`adv_20 * close`), NOT A SHARE COUNT (#673,
+    2026-09-20). It was share-based (`adv_20 >= min_adv` against `mi_stock_scores.adv_20`,
+    which `db.py:4356` documents as raw shares) until this fix, which made the floor ~100x
+    stricter for a $500 stock than a $5 one — measured on prod: STRL failed it by 2,222
+    shares while trading $258,187,493/day (adv_20 497,778 x close $518.68), a >=20R
+    tradeable winner on the must-not-miss fixture. Matches the shape `ep_detector.py:2155`
+    already uses for the EP admission path (`adv_dollar = adv_20 * prev_close`).
+
+    DEFAULT $10,000,000/day is a GUARD, not a live filter today: the same #673 measurement
+    found the scored universe's least-liquid member already trades $10.0M/day (p05 $12.5M,
+    2354 names) because `mi_stock_scores` keeps only the top ~2,400 RS-ranked names — so this
+    floor excludes ZERO of today's scored names. It exists for the day the scored population
+    widens to include less-liquid names, not to filter anyone now.
 
     ⚠ `min_adv=0` MEANS UNFILTERED, AND THAT INCLUDES THE DEAL PIN. `include_deal_pinned`
     is read only on the liquid branch; the `min_adv=0` branch is the documented raw-universe
@@ -8848,9 +8862,10 @@ async def get_rs_leaders(
             rows = await conn.fetch("""
                 SELECT s.* FROM mi_stock_scores s
                 WHERE s.score_date = $1
-                  AND s.adv_20 IS NOT NULL AND s.adv_20 >= $3
+                  AND s.adv_20 IS NOT NULL AND s.close IS NOT NULL
+                  AND (s.adv_20 * s.close) >= $3
                   AND s.ticker != ALL($4)
-                  AND s.close IS NOT NULL AND s.close >= $5
+                  AND s.close >= $5
                   AND NOT EXISTS (
                       SELECT 1 FROM mi_tracked_stocks t
                       WHERE t.ticker = s.ticker AND t.quote_type IS NOT NULL AND t.quote_type != 'EQUITY'
@@ -8936,13 +8951,19 @@ def _is_recovery_slope(
 async def get_rs_accelerators(
     d: "str | date", lookback_days: int = 2, min_rank_improve: int = 800,
     min_rs_delta: float = 25.0, min_rs_now: float = 50.0,
-    min_adv: float = 500_000, min_price: float = 10.0, limit: int = 30,
+    min_adv: float = 10_000_000.0, min_price: float = 10.0, limit: int = 30,
     include_deal_pinned: bool = False,
 ) -> list[dict[str, Any]]:
     """ADR 0007 (a): liquid names igniting fast over `lookback_days` trading days
     (rank-acceleration OR rs jump), at meaningful current RS. Defaults seeded from the
     5/31 replay (impr>=800 ∨ rs_delta>=25, rs_now>=50); tune on shadow flood-count
     before promoting to live.
+
+    ⚠ `min_adv` IS A DOLLAR-VOLUME FLOOR (`adv_20 * close`), NOT A SHARE COUNT — the same
+    #673 fix as `get_rs_leaders` (cloned from its liquid branch, so it carried the same
+    share-based defect). Default $10,000,000/day excludes nobody in today's scored universe
+    (measured floor $10.0M, p05 $12.5M); see `get_rs_leaders`'s docstring for the full
+    measurement.
 
     ⚠ DEAL-PINNED EXCLUSION (2026-09-17) — the same classification the other four RS pools
     apply, and THIS IS THE SELECTOR THAT NEEDS IT MOST. Its whole definition — a rank
@@ -8974,8 +8995,9 @@ async def get_rs_accelerators(
             FROM mi_stock_scores t
             JOIN mi_stock_scores p ON p.ticker = t.ticker AND p.score_date = $2
             WHERE t.score_date = $1
-              AND t.adv_20 IS NOT NULL AND t.adv_20 >= $3
-              AND t.close IS NOT NULL AND t.close >= $4
+              AND t.adv_20 IS NOT NULL AND t.close IS NOT NULL
+              AND (t.adv_20 * t.close) >= $3
+              AND t.close >= $4
               AND t.ticker != ALL($5)
               AND t.rs_composite IS NOT NULL AND t.rs_composite >= $6
               AND NOT EXISTS (
@@ -9006,12 +9028,19 @@ async def get_rs_accelerators(
 
 async def get_rs_recovery_slope(
     d: "str | date", min_rs_1m: float = 90.0, max_rs_6m: float = 30.0,
-    min_adv: float = 500_000, min_price: float = 10.0, limit: int = 30,
+    min_adv: float = 10_000_000.0, min_price: float = 10.0, limit: int = 30,
     include_deal_pinned: bool = False,
 ) -> list[dict[str, Any]]:
     """ADR 0007 (a2): liquid names re-rating off a low base (rs_1m high, rs_6m low) —
     the recovering-cohort signal rank-acceleration misses. Defaults seeded from the 5/31
     replay (rs_1m>=90 ∧ rs_6m<=30); tune on shadow flood-count before promoting to live.
+
+    ⚠ `min_adv` IS A DOLLAR-VOLUME FLOOR (`adv_20 * close`), NOT A SHARE COUNT — the same
+    #673 fix as `get_rs_leaders` (cloned from its liquid branch, so it carried the same
+    share-based defect). Default $10,000,000/day excludes nobody in today's scored universe
+    (measured floor $10.0M, p05 $12.5M); see `get_rs_leaders`'s docstring for the full
+    measurement. This is the pool that would have dropped STRL from RECOVERY as "illiquid"
+    had the leaders bar been spread to it instead of fixed at the source.
 
     ⚠ DEAL-PINNED EXCLUSION (2026-09-17) — same classification as the other four RS pools,
     and this shape is deal-prone for the same reason as the accelerators: a single
@@ -9025,8 +9054,9 @@ async def get_rs_recovery_slope(
         rows = await conn.fetch("""
             SELECT * FROM mi_stock_scores
             WHERE score_date = $1
-              AND adv_20 IS NOT NULL AND adv_20 >= $2
-              AND close IS NOT NULL AND close >= $3
+              AND adv_20 IS NOT NULL AND close IS NOT NULL
+              AND (adv_20 * close) >= $2
+              AND close >= $3
               AND ticker != ALL($4)
               AND rs_1m IS NOT NULL AND rs_6m IS NOT NULL
               AND rs_1m >= $5 AND rs_6m <= $6

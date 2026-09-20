@@ -527,3 +527,123 @@ async def test_every_rs_pool_reads_the_one_universe_or_says_why(monkeypatch):
         f"UNIVERSE-EXCEPTION reason shorter than {_UNIVERSE_REASON_FLOOR} chars on {thin} — "
         f"'n/a' is not a reason"
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════
+# #673 (b), 2026-09-20 — THE LEADERS LIQUIDITY FLOOR WAS SHARE-BASED, NOT DOLLAR-BASED.
+#
+# `get_rs_leaders` (and its clones `get_rs_accelerators`, `get_rs_recovery_slope`) gated
+# `min_adv` against `mi_stock_scores.adv_20`, which `db.py:4356` documents as raw SHARES —
+# ~100x stricter in dollar terms for a $500 stock than a $5 one. Measured on prod
+# 2026-09-20: STRL (a >=20R tradeable winner on the must-not-miss fixture) missed the
+# 500,000-share floor by 2,222 shares while trading $258,187,493/day (adv_20 497,778 x
+# close $518.68) — of 488 names the share floor blocked, ZERO traded under $10M/day, so it
+# was filtering on PRICE, not liquidity. `get_rs_velocity`/`get_rs_turners`/`get_rs_recovery`
+# were explicitly NOT given a floor — spreading the bar there would have dropped STRL from
+# RECOVERY, which is why the fix is at the SOURCE (the share->dollar formula) instead.
+#
+# THE FIX: `(adv_20 * close) >= min_adv`, matching `ep_detector.py:2155`'s
+# `adv_dollar = adv_20 * prev_close` shape. Default raised 500_000 -> 10_000_000.0 — the
+# #673 measurement found the scored universe's own floor is already $10.0M/day (p05
+# $12.5M), so this excludes NOBODY today; it is a guard against a future universe change,
+# not a live filter.
+# ══════════════════════════════════════════════════════════════════════════════════════
+
+_LIQUIDITY_POOLS = ("get_rs_leaders", "get_rs_accelerators", "get_rs_recovery_slope")
+_UNFILTERED_POOLS = ("get_rs_velocity", "get_rs_turners", "get_rs_recovery")
+
+# The dollar form: a parenthesised `adv_20 * close` (either side, any/no alias) compared
+# to a bound parameter. The share form (the #673 defect): bare `adv_20 >=` — note the
+# token immediately after `adv_20` in the dollar form is `*`, never `>=`, so this pattern
+# cannot accidentally match the fixed SQL.
+_DOLLAR_ADV_CLAUSE = re.compile(
+    r"\(\s*\w*\.?adv_20\s*\*\s*\w*\.?close\s*\)\s*>=\s*\$\d+", re.IGNORECASE)
+_BARE_SHARE_ADV_CLAUSE = re.compile(r"\badv_20\s*>=\s*\$\d+", re.IGNORECASE)
+
+# STRL, prod 2026-09-20 (PLAN.md #673 — recorded, not re-derived here).
+_STRL_ADV_20_SHARES = 497_778
+_STRL_CLOSE = 518.68
+_STRL_OLD_SHARE_FLOOR_MISS = 500_000  # the share floor STRL missed by 2,222 shares
+
+
+def test_the_dollar_clause_detector_recognises_the_fixed_shape():
+    """Sanity on the detector itself, on a synthetic statement — matches the pattern the
+    house convention uses elsewhere in `db.py` (`get_top_dollar_volume_universe`:
+    `(adv_20 * close) >= $2`)."""
+    assert _DOLLAR_ADV_CLAUSE.search("AND (s.adv_20 * s.close) >= $3")
+    assert _DOLLAR_ADV_CLAUSE.search("AND (adv_20 * close) >= $2")
+    assert not _BARE_SHARE_ADV_CLAUSE.search("AND (s.adv_20 * s.close) >= $3"), (
+        "the dollar form must not also read as a bare-share compare")
+
+
+def test_the_share_clause_detector_recognises_the_pre_fix_shape():
+    """The exact statement all three pools issued before #673(b) — proves the detector
+    below is not vacuous."""
+    assert _BARE_SHARE_ADV_CLAUSE.search("AND s.adv_20 IS NOT NULL AND s.adv_20 >= $3")
+    assert not _DOLLAR_ADV_CLAUSE.search("AND s.adv_20 IS NOT NULL AND s.adv_20 >= $3")
+
+
+@pytest.mark.asyncio
+async def test_the_three_liquidity_pools_compare_dollars_not_shares(monkeypatch):
+    """THE GATE for #673(b). Each of the three pools that carry a liquidity floor must
+    send Postgres a DOLLAR comparison (`adv_20 * close`), never a bare share compare —
+    proven against the statement each function actually issues (a recording connection),
+    not against its source text."""
+    for name in _LIQUIDITY_POOLS:
+        stmts = await _statements_against_scores(monkeypatch, name)
+        assert stmts, f"db.{name} sent nothing to mi_stock_scores under the stubs"
+        flat = " ".join(" ".join(sql.split()) for sql, _ in stmts)
+        assert _DOLLAR_ADV_CLAUSE.search(flat), (
+            f"db.{name} does not compare (adv_20 * close) against its liquidity floor — "
+            f"still reading raw shares")
+        assert not _BARE_SHARE_ADV_CLAUSE.search(flat), (
+            f"db.{name} still sends a bare `adv_20 >=` compare — the #673(b) share-count "
+            f"defect that blocked STRL")
+
+
+@pytest.mark.asyncio
+async def test_the_three_liquidity_pools_bind_the_new_dollar_default(monkeypatch):
+    """The bound parameter value itself must be the new $10,000,000 dollar default, not
+    the old 500,000 SHARE default — captured from the real call (each pool run with its
+    own defaults), not hand-copied into the test."""
+    for name in _LIQUIDITY_POOLS:
+        default_floor = inspect.signature(getattr(db, name)).parameters["min_adv"].default
+        stmts = await _statements_against_scores(monkeypatch, name)
+        args_seen = [a for _, args in stmts for a in args]
+        assert default_floor in args_seen, (
+            f"db.{name}'s own default ({default_floor}) was never bound as a query "
+            f"parameter — the function and the query have drifted apart")
+        assert default_floor != 500_000 and default_floor >= 1_000_000, (
+            f"db.{name}'s min_adv default ({default_floor}) still reads like a share "
+            f"count, not a dollar-volume floor")
+        assert 500_000 not in args_seen, (
+            f"db.{name} still binds the old 500,000 share default somewhere in its query")
+
+
+def test_strl_clears_the_dollar_floor_but_would_have_missed_the_share_floor():
+    """THE ACCEPTANCE CASE. STRL's real prod numbers (2026-09-20, PLAN.md #673), run
+    through both formulas: the OLD bare-share compare rejects it (this IS the defect —
+    497,778 < 500,000), the NEW dollar compare against `get_rs_leaders`'s REAL, live
+    default (not a hardcoded copy) clears it with a wide margin. The structural tests
+    above prove `get_rs_leaders` actually issues the dollar formula in production; this
+    proves that formula, applied to STRL, admits it."""
+    dollar_volume = _STRL_ADV_20_SHARES * _STRL_CLOSE
+    assert _STRL_ADV_20_SHARES < _STRL_OLD_SHARE_FLOOR_MISS, (
+        "sanity: STRL's adv_20 should still miss the OLD 500,000-share floor — "
+        "otherwise this isn't the #673 defect case")
+    real_default = inspect.signature(db.get_rs_leaders).parameters["min_adv"].default
+    assert dollar_volume >= real_default, (
+        f"STRL's real dollar volume (${dollar_volume:,.0f}/day) should clear "
+        f"get_rs_leaders' live min_adv default (${real_default:,.0f})")
+
+
+def test_velocity_turners_recovery_carry_no_liquidity_floor():
+    """#673(b) WHAT-NOT-TO-DO: the share->dollar fix must NOT spread `min_adv` to
+    `get_rs_velocity`, `get_rs_turners` or `get_rs_recovery` — that was the original plan
+    and it was reversed on this same evidence (it would have dropped STRL from RECOVERY
+    as 'illiquid'). They stay unfiltered."""
+    for name in _UNFILTERED_POOLS:
+        params = inspect.signature(getattr(db, name)).parameters
+        assert "min_adv" not in params, (
+            f"db.{name} gained a min_adv parameter — the liquidity bar was spread to a "
+            f"pool #673(b) explicitly says must stay unfiltered")

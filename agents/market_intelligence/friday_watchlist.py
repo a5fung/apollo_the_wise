@@ -400,7 +400,11 @@ async def _fetch_parabolic(window_days: int) -> list[dict]:
 
 async def _fetch_rs_ambient(exclude: set[str]) -> list[dict]:
     today = last_trading_day()
-    leaders = await get_rs_leaders(today, limit=30, min_adv=500_000, min_price=10.0)
+    # #673, 2026-09-20: dropped the explicit min_adv — it restated `get_rs_leaders`'
+    # then-default (500_000 shares) by hand, and under the fix that default is now a
+    # DOLLAR floor, so an unchanged literal here would have silently become a
+    # near-no-op $500K/day floor instead of tracking the function's real default.
+    leaders = await get_rs_leaders(today, limit=30, min_price=10.0)
     out: list[dict] = []
     rank = 0
     for r in leaders:
