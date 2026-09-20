@@ -172,6 +172,21 @@ def _hard_split_point(text: str, at: int) -> int:
     return at
 
 
+def _seam(remaining: str, split_at: int) -> tuple[str, str, str]:
+    """`(closers, openers, head)` for a candidate split point — the four lines the retry loop
+    and its hard-cut fallback both need.
+
+    Lifted on simplify review 2026-09-19: the loop and the `for/else` computed this identically,
+    so a change to how closers are ordered or how `head` is trimmed had two sites to update and
+    only one would have been noticed. `closers` closes every still-open tag in reverse order;
+    `openers` reopens them at the top of the NEXT chunk; `head` is the finished chunk.
+    """
+    open_tags = _open_tags_before(remaining, split_at)
+    closers = "".join(f"</{name}>" for name, _ in reversed(open_tags))
+    openers = "".join(tag for _, tag in open_tags)
+    return closers, openers, remaining[:split_at].strip() + closers
+
+
 def chunk_html(text: str, limit: int = 4000) -> list[str]:
     """Split HTML-mode text into ≤`limit`-char chunks that each parse on their own.
 
@@ -196,20 +211,14 @@ def chunk_html(text: str, limit: int = 4000) -> list[str]:
                 split_at = _hard_split_point(remaining, budget)
             if split_at < 1:
                 split_at = budget
-            open_tags = _open_tags_before(remaining, split_at)
-            closers = "".join(f"</{name}>" for name, _ in reversed(open_tags))
-            openers = "".join(tag for _, tag in open_tags)
-            head = remaining[:split_at].strip() + closers
+            closers, openers, head = _seam(remaining, split_at)
             # the seam must shrink the text: a split at or before the reopened tags would spin
             if len(head) <= limit and split_at > len(openers):
                 break
             reserve = len(closers) + max(0, len(head) - limit) + len(openers)
         else:                          # closers never fit — cut hard, well inside the limit
             split_at = _hard_split_point(remaining, limit - limit // 10)
-            open_tags = _open_tags_before(remaining, split_at)
-            closers = "".join(f"</{name}>" for name, _ in reversed(open_tags))
-            openers = "".join(tag for _, tag in open_tags)
-            head = remaining[:split_at].strip() + closers
+            closers, openers, head = _seam(remaining, split_at)
         if head:
             chunks.append(head)
         remaining = openers + remaining[split_at:].strip()

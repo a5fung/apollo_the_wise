@@ -14810,21 +14810,24 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "", *, co
         # repeat it — every provider we authenticate by query parameter has the same shape.
         from shared.secret_redaction import redact_secrets
         summary, detail = redact_secrets(summary), redact_secrets(detail)
+        # ONE set of arguments for BOTH branches. They are split below only by WHERE the
+        # connection comes from — never by WHAT gets written. Found on simplify review
+        # 2026-09-19: the `conn` branch I added that morning passed raw `summary`/`detail`
+        # and no timeout, so it silently skipped the 500/8,000-char budget AND the #621
+        # 5 s bound this docstring promises. The columns are `text`, so nothing would have
+        # raised — the row would just have been written outside the policy, which is the
+        # quieter half of the same defect. Sharing the tuple is what makes a future
+        # divergence impossible rather than merely unlikely.
+        args = (_AUDIT_INSERT_SQL, event_type, summary[:500], _fit_audit_detail(detail))
         # ⚠ `conn` lets a caller that ALREADY HOLDS a connection hand it over rather than
-        # asking the pool for a SECOND one. The 5 s bound below means a nested acquire here
-        # fails fast instead of deadlocking — but held-plus-requested is still the
-        # 2026-09-18 pattern, and under load it becomes spurious 5 s audit failures.
-        # Gated by tests/test_no_nested_pool_acquire.py.
+        # asking the pool for a SECOND one — held-plus-requested is the 2026-09-18 deadlock
+        # pattern. Gated by tests/test_no_nested_pool_acquire.py.
         if conn is not None:
-            await conn.execute(_AUDIT_INSERT_SQL, event_type, summary, detail)
+            await conn.execute(*args, timeout=5.0)
             return
         pool = await get_pool()
         async with pool.acquire(timeout=5.0) as conn:
-            await conn.execute(
-                _AUDIT_INSERT_SQL,
-                event_type, summary[:500], _fit_audit_detail(detail),
-                timeout=5.0,
-            )
+            await conn.execute(*args, timeout=5.0)
     except Exception as e:
         logger.warning(f"audit log write failed ({event_type}): {e}")
 

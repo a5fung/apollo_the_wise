@@ -173,7 +173,13 @@ async def test_the_pull_is_cancelled_at_the_ceiling_and_says_it_was_partial(monk
     """The 2026-09-18 hang ran 7.3 h because nothing bounded it.
 
     MUTATION: removing the `wait_for` hangs this test rather than passing it — which is why the
-    assertion is on the RAISED TimeoutError and on what the alert SAYS, not on a duration."""
+    assertion is on the RAISED TimeoutError and on what it SAYS, not on a duration.
+
+    ⚠ REWRITTEN on simplify review 2026-09-19. The first version asserted the wrapper sent its
+    OWN audit row and its OWN Telegram — which was the defect, not the contract: `audit_wrap`
+    already calls `record_job_failure` on the re-raise, so a timeout produced two rows and two
+    (silent) pages. The wrapper now sends NOTHING and puts the explanation on the exception.
+    """
     sent, audits = [], []
 
     async def _never_returns():
@@ -183,17 +189,27 @@ async def test_the_pull_is_cancelled_at_the_ceiling_and_says_it_was_partial(monk
     monkeypatch.setattr(sched, "_nightly_data_pull", _never_returns)
     monkeypatch.setattr(sched, "_NIGHTLY_PULL_MAX_S", 0.05)
     monkeypatch.setattr(dbmod, "log_audit_event",
-                        lambda ev, msg: audits.append((ev, msg)) or asyncio.sleep(0))
-    monkeypatch.setattr(sched, "notify_owner", lambda m: sent.append(m) or asyncio.sleep(0))
+                        lambda *a, **k: audits.append(a) or asyncio.sleep(0))
+    monkeypatch.setattr(sched, "notify_owner", lambda m, **k: sent.append(m) or asyncio.sleep(0))
 
-    with pytest.raises(asyncio.TimeoutError):
+    with pytest.raises(asyncio.TimeoutError) as caught:
         await sched._nightly_data_pull_bounded()
 
-    assert audits and audits[0][0] == "nightly_pull_timeout"
-    assert sent, "the operator was not told the pull was cancelled"
-    assert "PARTIAL" in audits[0][1] or "partial" in audits[0][1].lower(), (
-        "the alert must say the outcome is PARTIAL and unknown — claiming a clean failure is the "
-        "same over-claim the stale-run reaper was written to avoid")
+    text = str(caught.value)
+    assert "PARTIAL" in text, (
+        "the message must say the outcome is PARTIAL and unknown — claiming a clean failure is "
+        "the same over-claim the stale-run reaper was written to avoid")
+    assert not sent and not audits, (
+        f"the wrapper reported the timeout ITSELF ({len(sent)} telegram(s), {len(audits)} audit "
+        f"row(s)) on top of the one audit_wrap already sends — one event, two pages")
+
+    # The operator-facing cut is NOT on this string. `record_job_failure` prefixes
+    # f"{type(exc).__name__}: " (14 chars for TimeoutError) and collapses whitespace, and only
+    # then does `notify_job_failure` take [:200] — so the real budget for the message is 186,
+    # and asserting on text[:200] would stay green on a message that no longer fits.
+    rendered = " ".join(f"{type(caught.value).__name__}: {text}".split())[:200]
+    assert "PARTIAL" in rendered and "output tables" in rendered, (
+        f"the actionable half does not survive the page's 200-char cut; he would see: {rendered!r}")
 
 
 @pytest.mark.asyncio
@@ -319,3 +335,79 @@ def test_the_live_call_site_binds_the_RUNNING_loop(monkeypatch):
     assert sched._missed_loop is running, (
         f"bound {sched._missed_loop!r}, but the live loop is {running!r} — create_task on the "
         f"wrong loop is silent")
+
+
+@pytest.mark.asyncio
+async def test_no_backup_stale_page_rides_legacy_markdown(monkeypatch):
+    """Found by the altitude reviewer on the 2026-09-19 simplify pass, and it was LIVE.
+
+    When #652 flipped `send_telegram_message` to convert by default, three sends in
+    `_backup_health_check_job` kept the legacy `parse_mode="Markdown"` opt-in. The third reads
+    *"pg_dump is current (…)"* — ONE bare `_` outside any backtick span. Telegram's legacy
+    Markdown needs matched pairs, so it rejects the whole message, and the plain-text retry then
+    STRIPS the underscores. A DISASTER-RECOVERY page (the off-site backup is stale) arriving
+    with its identifiers eaten is exactly the class #652 exists to close.
+
+    ⚠ THREE VERSIONS OF THIS TEST WERE WRITTEN; the two discarded ones are worth recording:
+    - The first drove the job with the sends captured but did NOT stub `get_pool`, so the job
+      raised on a missing `POSTGRES_PASSWORD` before reaching any send and the harness swallowed
+      it. It asserted over ZERO messages and passed green. Caught by counting the captures: 0.
+    - The second asserted "no body carries an unmatched underscore", which is not the property:
+      the underscore is harmless under HTML, and the text will always say `pg_dump`. It failed
+      against CORRECT code.
+    The third read the function's AST — real, but a source pin, and the ratchet counts those
+    whether or not they carry a reason. Stubbing one function is all it took to exercise the
+    thing for real, which is the whole point of #653. Both halves are asserted together, because
+    it is the COMBINATION of a legacy parse mode and an unmatched underscore that 400s.
+
+    MUTATION: restoring `parse_mode="Markdown"` on any of the three sends reddens this.
+    """
+    import re
+    from datetime import timezone
+
+    sends = []
+
+    async def _capture(text, *a, **kw):
+        sends.append((text, kw.get("parse_mode", "<default>")))
+
+    class _Conn:
+        def __init__(self, row): self._row = row
+        async def fetchrow(self, *a, **k): return self._row
+
+    def _pool_for(row):
+        class _Pool:
+            def acquire(self):
+                class _Ctx:
+                    async def __aenter__(s): return _Conn(row)
+                    async def __aexit__(s, *a): return False
+                return _Ctx()
+        return lambda: asyncio.sleep(0, result=_Pool())
+
+    monkeypatch.setattr(sched, "send_telegram_message", _capture)
+
+    now = datetime(2026, 9, 19, 12, 0, tzinfo=timezone.utc)
+    old = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
+    # all three alerting branches: never-backed-up · pg_dump stale · pg_dump fresh, secrets stale
+    cases = [
+        {"last_pg": None, "last_secrets": None, "last_failure": None},
+        {"last_pg": old, "last_secrets": old, "last_failure": old},
+        {"last_pg": now, "last_secrets": old, "last_failure": None},
+    ]
+    for row in cases:
+        monkeypatch.setattr(sched, "get_pool", _pool_for(row))
+        await sched._backup_health_check_job()
+
+    assert len(sends) >= 3, (
+        f"only {len(sends)} page(s) fired across all three alerting branches — the job is not "
+        f"being exercised and this test would pass over nothing (it already did once)")
+    assert any("pg_dump is current" in t for t, _ in sends), (
+        "the branch carrying the bare underscore never fired, so the defect is untested")
+
+    for text, mode in sends:
+        bare = re.sub(r"`[^`]*`", "", text).count("_") % 2
+        assert mode != "Markdown", (
+            "a backup-health page opted back into legacy Markdown"
+            + (" AND carries an unmatched underscore, so it 400s and the retry strips the "
+               "identifier out of a disaster-recovery page" if bare else
+               ", which is safe only while every `_` stays inside a backtick span")
+            + f": {text[:110]!r}")

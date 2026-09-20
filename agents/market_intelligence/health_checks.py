@@ -4588,17 +4588,21 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
         _hard_evidence_present = any(
             t["kind"] in ("p1_member_routine", "zero_alert_days") for t in out["triggers"])
         _withhold_correlation_only = _b_unexplained and not _hard_evidence_present
-        out["revert_withheld_reason"] = (
+        # ONE derivation, then branch on it. The three sites below used to re-derive the same
+        # two conditions independently (simplify review 2026-09-19), so a third withholding
+        # reason — or any change to how the two combine — had to be made in four places and
+        # would have been noticed in one. `reason is None` is exactly "the SQL is shown".
+        reason = out["revert_withheld_reason"] = (
             "lattice_inert" if out.get("lattice_inert") is True
             else "correlation_unexplained" if _withhold_correlation_only else None)
-        if out.get("lattice_inert") is True:
+        if reason == "lattice_inert":
             lines.append(
                 "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The lattice's "
                 "verdict matched the raw LLM grade on every candidate in this window, so turning "
                 "it off would be byte-identical — it suppressed nothing. Look at the tape, the "
                 "score bar and the scan log instead. To revert anyway, the flag is in "
                 "`docs/setups/magna53_ep.md` 2026-08-22.")
-        elif _withhold_correlation_only:
+        elif reason == "correlation_unexplained":
             lines.append(
                 "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The only "
                 "evidence here is a conversion-rate comparison, and the fact-check's own named "
@@ -4615,7 +4619,7 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
             lines.append("```")
             lines.append(_LATTICE_REVERT_SQL)
             lines.append("```")
-        if out.get("lattice_inert") is not True and not _withhold_correlation_only:
+        if reason is None:
             lines.append("_Permanent form: set `CATALYST_TIER_LATTICE_ENABLED=false` in prod .env "
                          "and redeploy market-agent. Evidence + change log: "
                          "docs/setups/magna53_ep.md 2026-08-22._")

@@ -3606,7 +3606,13 @@ async def _backup_health_check_job():
             "🚨 *Apollo off-site backup MISSING*\n"
             "No `gdrive_backup_success` event ever recorded.\n"
             "Run `/home/apollo/backup.sh` manually to surface the failure mode.",
-            parse_mode="Markdown",
+            # #652: NO parse_mode — take the converting default. These three kept the
+            # legacy opt-in when the default flipped, and the third one is a LIVE 400:
+            # "pg_dump is current" carries ONE bare `_` outside any backtick span, so
+            # Telegram rejects the whole message and the plain-text retry then STRIPS
+            # the underscores — a disaster-recovery page arriving degraded. Verified by
+            # counting unmatched underscores outside backticks, 2026-09-19. The other
+            # two are safe only by accident (every `_` happens to sit inside backticks).
         )
         return
 
@@ -3626,7 +3632,6 @@ async def _backup_health_check_job():
             f"Last `gdrive_backup_success`: {last_pg.astimezone(_ET).strftime('%Y-%m-%d %H:%M ET')} "
             f"({pg_hours:.1f}h ago){fail_note}\n"
             f"Check `/home/apollo/backups/gdrive.log` on prod.",
-            parse_mode="Markdown",
         )
     elif secrets_hours is None or secrets_hours > 36:
         # pg_dump fresh but encrypted secrets blob stale → passphrase file
@@ -3639,7 +3644,6 @@ async def _backup_health_check_job():
             f"🚨 *Apollo secrets backup STALE*\n"
             f"pg_dump is current ({pg_hours:.1f}h ago) but encrypted secrets blob is {secrets_summary}.\n"
             f"Recreate `/home/apollo/.backup-passphrase` per `docs/ops/disaster_recovery.md` Phase 6.{fail_note}",
-            parse_mode="Markdown",
         )
 
 
@@ -6254,24 +6258,35 @@ _NIGHTLY_PULL_MAX_S = 45 * 60
 
 
 async def _nightly_data_pull_bounded():
-    """`_nightly_data_pull` with a hard ceiling. Re-raises on timeout so
-    `audit_wrap` records the run as a real failure instead of a silent gap."""
-    from agents.market_intelligence.db import log_audit_event
+    """`_nightly_data_pull` with a hard ceiling, raising a TimeoutError that CARRIES the
+    operator-facing explanation.
+
+    ⚠ IT DELIBERATELY SENDS NOTHING ITSELF (corrected on simplify review 2026-09-19). The
+    first version wrote its own `log_audit_event` and its own `notify_owner` and THEN
+    re-raised — but this is registered through `audit_wrap`, and `audit_run`'s
+    `except Exception` already calls `record_job_failure`, which writes a JOB_FAILED_ERROR
+    row and pages. So one timeout produced TWO audit rows and TWO Telegrams for the same
+    event, with the operator-facing wording living in two places that could drift. Both
+    pages were silent (`nightly_data_pull` is not in `LOUD_FAILURE_JOBS` and `notify_owner`
+    defaults to silent), so the duplicate bought nothing at all.
+
+    The message now travels ON the exception, which is the one path that reaches every
+    surface at its own budget: `mi_job_runs.error_message` keeps 500 chars (the full text,
+    durable), the audit row 300, and `notify_job_failure` renders 200 — so the FIRST 200
+    CHARACTERS have to carry the actionable part, and they are ordered that way on purpose.
+    Pinned in tests/test_672_missed_jobs_and_pull_cap.py.
+    """
     try:
         return await asyncio.wait_for(_nightly_data_pull(), timeout=_NIGHTLY_PULL_MAX_S)
     except asyncio.TimeoutError:
         mins = _NIGHTLY_PULL_MAX_S // 60
-        msg = (f"nightly_data_pull CANCELLED at the {mins}-minute ceiling (#672). Normal "
-               f"runs are 12-18 min; on 2026-09-18 an uncapped hang held it 7.3 h and took "
-               f"23 downstream jobs with it. Outcome is PARTIAL and unknown — some steps "
-               f"may have completed; check the output tables rather than assuming either way.")
+        # Front-loaded: what it is, then what to DO, then the history. The Telegram cuts at 200.
+        msg = (f"nightly_data_pull CANCELLED at the {mins}-minute ceiling (#672). Outcome is "
+               f"PARTIAL and unknown — check the output tables; do not assume it failed OR "
+               f"finished. Normal runs are 12-18 min; on 2026-09-18 an uncapped hang held it "
+               f"7.3 h and took 23 downstream jobs with it.")
         logger.error(msg)
-        try:
-            await log_audit_event("nightly_pull_timeout", msg)
-            await notify_owner(f"🔴 *Nightly data pull cancelled at {mins} min*\n{msg}")
-        except Exception as e:
-            logger.warning(f"nightly-pull timeout notify failed (non-fatal): {e}")
-        raise
+        raise asyncio.TimeoutError(msg)
 
 
 # ── #672: a SKIPPED nightly job must be LOUD ─────────────────────────────────
