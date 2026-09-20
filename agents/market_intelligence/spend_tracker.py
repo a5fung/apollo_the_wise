@@ -158,7 +158,7 @@ async def _maybe_alert_truncation(*, caller: str, model: str, output_tokens: int
             f"{caller} response TRUNCATED at {output_tokens} output tokens (model {model})",
             diagnosis,
         )
-        today = datetime.now(_ET).date().isoformat()
+        today = datetime.now(_ET).date().isoformat()  # recovery-clock-ok: a once-per-day ALERT dedup key, about now, not the data's date
         if _TRUNCATION_TELEGRAMMED.get(caller) == today:
             return
         _TRUNCATION_TELEGRAMMED[caller] = today

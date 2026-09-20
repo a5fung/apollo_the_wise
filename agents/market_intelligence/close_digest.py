@@ -72,7 +72,8 @@ def contribute(section: str, text: str) -> None:
     try:
         if not text or not text.strip():
             return
-        today = datetime.now(_ET).date().isoformat()
+        from shared.dates import et_today
+        today = et_today().isoformat()     # #672: the digest's DAY — a recovery re-run contributes to its slot's day
         if _buffer_date != today:
             if _buffer:
                 logger.warning(

@@ -179,7 +179,8 @@ async def refresh_curves(
     logging / job-success notifications:
       {tickers_attempted, tickers_succeeded, rows_written}.
     """
-    et_today = today or datetime.now(_ET).date()
+    from shared.dates import et_today as _et_today
+    et_today = today or _et_today()        # #672: the DATA date — pinned on a recovery re-run
     # Use yesterday as the right edge — today's bars settle by EOD but we
     # want the curve to reflect closed sessions only.
     to_d = et_today - timedelta(days=1)

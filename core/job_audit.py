@@ -73,6 +73,17 @@ logger = logging.getLogger(__name__)
 _JOB_FAILURE_ALERT_WINDOW_MIN = 60
 _last_job_failure_alert_ts: dict[str, float] = {}
 
+# ── #672: which jobs are in flight RIGHT NOW, by job_id ─────────────────────
+# `audit_run` is the one funnel every scheduled job passes through, so this set is exact.
+# The recovery sweep (job_recovery.py) calls a job's registered callable DIRECTLY — which
+# APScheduler's `max_instances=1` cannot see — so without this a re-run could double a job
+# that is merely slow, or one still BLOCKED on the pool from its own slot (09-18's shape).
+_IN_FLIGHT: set[str] = set()
+
+
+def jobs_in_flight() -> frozenset:
+    return frozenset(_IN_FLIGHT)
+
 
 async def record_job_failure(job_id: str, exc: BaseException | str,
                              consequence: str = "") -> bool:
@@ -154,15 +165,22 @@ class JobRun:
 async def _record_start(job_id: str, expected_min_rows: Optional[int]) -> Optional[int]:
     try:
         from agents.market_intelligence.db import get_pool
+        from shared.dates import recovery_pin
+        # #672: a recovery re-run stands in for the slot it missed. `scheduled_for` is what
+        # ties this row to that slot — `started_at` is Saturday for Friday's work, and every
+        # reader that keys on started_at (health_checks._successful_run_dates) would otherwise
+        # file the run under the wrong day. NULL on an ordinary run.
+        pin = recovery_pin()
+        scheduled_for = pin.slot if pin is not None else None
         pool = await get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                INSERT INTO mi_job_runs (job_id, started_at, status, expected_min_rows)
-                VALUES ($1, NOW(), 'running', $2)
+                INSERT INTO mi_job_runs (job_id, started_at, status, expected_min_rows, scheduled_for)
+                VALUES ($1, NOW(), 'running', $2, $3)
                 RETURNING id
                 """,
-                job_id, expected_min_rows,
+                job_id, expected_min_rows, scheduled_for,
             )
             return row["id"] if row else None
     except Exception as e:
@@ -238,8 +256,9 @@ async def audit_run(job_id: str, expected_min_rows: Optional[int] = None):
     """
     started_at = time.monotonic()
     run = JobRun(job_id, expected_min_rows)
-    run.run_id = await _record_start(job_id, expected_min_rows)
+    _IN_FLIGHT.add(job_id)          # #672: BEFORE _record_start — a job blocked there is in flight too
     try:
+        run.run_id = await _record_start(job_id, expected_min_rows)
         yield run
     except asyncio.CancelledError:
         # #512: BaseException, not Exception — must be caught explicitly or it
@@ -254,7 +273,10 @@ async def audit_run(job_id: str, expected_min_rows: Optional[int] = None):
         # its own httpx round-trip inside a cancellation handler. If neither
         # write lands before the process dies, scheduler.py's boot-time reap
         # (#528) is the guaranteed backstop on next start.
-        reason = "cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables"
+        from shared.dates import recovery_pin
+        reason = ("cancelled — recovery re-run hit its ceiling (#672); outcome unknown, check downstream tables"
+                  if recovery_pin() is not None else
+                  "cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables")
         await _record_finish(
             run.run_id, job_id, started_at,
             status="interrupted",
@@ -322,3 +344,5 @@ async def audit_run(job_id: str, expected_min_rows: Optional[int] = None):
                 await notify_job_failure(job_id, f"empty_result — {msg}")
             except Exception as e:
                 logger.warning(f"audit_run: failed to notify for {job_id}: {e}")
+    finally:
+        _IN_FLIGHT.discard(job_id)

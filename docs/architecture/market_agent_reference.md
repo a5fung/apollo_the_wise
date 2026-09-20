@@ -121,7 +121,30 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR PIN
                              # (code default $5M). History + re-eval cadence:
                              # CHANGELOG + #55 (quarterly sweep Feb/May/Aug/Nov 1st).
+
+# #672 missed-job recovery — OPERATOR FLIP, default OFF. A re-run of a missed job
+# HOLDS every Telegram it would have sent (the summary page names them); set to 1
+# to deliver them instead, each prefixed "⏪ LATE RE-RUN — <job> for <slot>".
+APOLLO_RECOVERY_SEND_LATE=0
 ```
+
+## Missed-job recovery (#672, 2026-09-20) — `agents/market_intelligence/job_recovery.py`
+
+A daily intelligence job that should have run and did not is **re-run from the ledger**, with the
+market date pinned to the day it was due. Why the ledger and not APScheduler's miss event: the
+in-memory jobstore **forgets a past slot at boot** (no `EVENT_JOB_MISSED` — measured), which is exactly
+the shape 2026-09-18 had. Three triggers, one function: boot (+120 s), every 30 min (`:20/:50`), and
+right after the miss listener records a burst. Population **derived** from the running scheduler —
+fires at most daily · not `EXECUTION_OWNED_JOB_IDS` (THE LINE) · not paused · audit-wrapped. A slot is
+re-run only while **no market session has opened since it** and it was not itself inside 09:30–16:00;
+otherwise it is recorded `unrecoverable` and named for hand recovery. Each re-run executes the
+registered callable through `audit_wrap` inside `shared.dates.pinned_recovery()` (a ContextVar —
+`et_today()` answers the slot's date for that task only; every binding is checked before the run and
+the run is REFUSED if one still reads the clock), records `mi_job_runs.scheduled_for = slot`, is
+bounded at 3× its p95, capped at 3 attempts per slot, and never runs 09:25–10:05 ET. Telegrams are
+held at the httpx layer (`shared/telegram_hold.py`). Exercise / verify: `scripts/probes/_672_exercise_recovery.py simulate`
+(off-prod) and `... dry-run` (in the container, read-only). Pin-completeness is gated by
+`scripts/check_job_date_sources.py` (`# recovery-clock-ok:` escape).
 
 ---
 

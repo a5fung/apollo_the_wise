@@ -2275,10 +2275,17 @@ async def initialize_schema() -> None:
                 rows_written INTEGER,
                 expected_min_rows INTEGER,
                 error_message TEXT,
-                created_at TIMESTAMPTZ DEFAULT NOW()
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                scheduled_for TIMESTAMPTZ
             );
             CREATE INDEX IF NOT EXISTS idx_job_runs_job_started
                 ON mi_job_runs(job_id, started_at DESC);
+            -- #672: the slot a run STANDS IN FOR. NULL on an ordinary run; the scheduled fire
+            -- time on a 'missed' row and on a recovery re-run, so Saturday's re-run of Friday's
+            -- job is filed under Friday by every reader that keys on it.
+            ALTER TABLE mi_job_runs ADD COLUMN IF NOT EXISTS scheduled_for TIMESTAMPTZ;
+            CREATE INDEX IF NOT EXISTS idx_job_runs_scheduled_for
+                ON mi_job_runs(job_id, scheduled_for) WHERE scheduled_for IS NOT NULL;
             CREATE INDEX IF NOT EXISTS idx_job_runs_status
                 ON mi_job_runs(status, started_at DESC);
         """)
