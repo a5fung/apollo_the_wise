@@ -142,6 +142,23 @@ def build_fixture(sec: dict) -> dict:
     return fx
 
 
+def _drop_llm_blocks(summary: str, headers: tuple[str, ...]) -> str:
+    """Remove the blocks that start with one of `headers` and run to the next blank-ish line
+    (the narrator's own `\\`-continued paragraphs count as one block)."""
+    out, skipping = [], False
+    for line in summary.splitlines():
+        bare = line.rstrip("\\").strip()
+        if any(bare.startswith(h) for h in headers):
+            skipping = True
+            continue
+        if skipping and bare == "":
+            skipping = False
+            continue
+        if not skipping:
+            out.append(line)
+    return "\n".join(out).rstrip("\\\n ")
+
+
 class _FakeConn:
     def __init__(self, fx):
         self.fx = fx
@@ -244,6 +261,13 @@ def install_stubs(fx: dict, ledger_as_of: datetime | None = None) -> dict:
     cap: dict = {"sent": [], "inserted": [], "md": [], "audit": []}
     os.environ["ANTHROPIC_MONTHLY_BUDGET"] = fx["budget"]
     collector.et_today = lambda: REVIEW_DATE
+    if hasattr(sr, "_utcnow"):
+        # The stored LLM summary was produced by the OLD prompt, which asked the narrator for a
+        # "🔴 Silent failures" and a "📈 Strategy promotion check" block; the new prompt does not
+        # (both are rendered in code now). Drop those two blocks so NEW shows what next Sunday's
+        # call will produce rather than the same section twice. Done BEFORE the mock below
+        # captures the string.
+        fx["summary"] = _drop_llm_blocks(fx["summary"], ("🔴 *Silent failures", "📈 *Strategy promotion check"))
 
     sr._gather_and_aggregate = AsyncMock(return_value=fx["metrics"])
     sr.get_latest_system_review = AsyncMock(return_value=fx["prior"])
@@ -260,15 +284,31 @@ def install_stubs(fx: dict, ledger_as_of: datetime | None = None) -> dict:
     db.log_audit_event = AsyncMock(side_effect=lambda *a, **k: cap["audit"].append(a))
     db.get_pool = AsyncMock(return_value=_FakePool(fx))
     # post-#662 edges (absent on the old code — getattr keeps this driver version-agnostic)
-    if hasattr(db, "get_job_runs_for"):
+    if hasattr(sr, "get_job_runs_for"):
         as_of = ledger_as_of or datetime(2026, 9, 20, 17, 45, tzinfo=timezone.utc)
 
         async def _runs(job_ids, since_hours=240):
             return [r for r in fx["job_runs"] if r["job_id"] in set(job_ids)
                     and r["started_at"] <= as_of]
-        db.get_job_runs_for = _runs
+        sr.get_job_runs_for = _runs
     if hasattr(sr, "_utcnow"):
         sr._utcnow = lambda: RUN_AT
+        # The stored metrics predate the disposition fields: re-run the REAL aggregator over
+        # the captured audit rows + ledger and splice it in, so NEW is rendered from the same
+        # rows OLD was — plus what the code now derives from them.
+        fx["metrics"]["audit_errors"] = asyncio.run(sr._aggregate_audit_errors(7))
+    # The stored ready payload predates `added_on` (#662): enrich from the registry as it
+    # stands now, by review_id, so the era note renders on the same three items.
+    try:
+        import yaml
+        reg = {e["review_id"]: e for e in
+               (yaml.safe_load((ROOT / "data_gated_reviews.yaml").read_text()) or {}).get("reviews", [])}
+        for r in (fx["metrics"].get("pending_reviews") or {}).get("ready") or []:
+            added = (reg.get(r.get("review_id")) or {}).get("added_on")
+            if added is not None and "added_on" not in r:
+                r["added_on"] = added.isoformat() if hasattr(added, "isoformat") else added
+    except Exception as e:  # noqa: BLE001 — enrichment only
+        print(f"added_on enrichment skipped: {e}")
 
     real_md_to_html = tf.md_to_html
 
@@ -285,9 +325,15 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default="/tmp/662")
     ap.add_argument("--ledger-as-of", default=None,
                     help="ISO UTC timestamp; job-ledger rows after it are hidden (default: capture time)")
+    ap.add_argument("--run-at", default=None,
+                    help="ISO UTC timestamp the review 'runs' at (default 2026-09-20T12:00 = 08:00 ET); "
+                         "audit rows after it are outside the window")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+    if a.run_at:
+        global RUN_AT
+        RUN_AT = datetime.fromisoformat(a.run_at)
 
     fx = build_fixture(load_capture())
     as_of = datetime.fromisoformat(a.ledger_as_of) if a.ledger_as_of else None

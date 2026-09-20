@@ -31,6 +31,14 @@ logger = logging.getLogger(__name__)
 
 WINDOW_DAYS = 90  # promotion check window — wide enough to accumulate 30+ closed
 
+# The blocking reason `_eval_telemetry_review` appends UNCONDITIONALLY whenever a strategy's
+# thresholds carry `review_required: true` (wick_fill, db.py's registry seed; parabolic_short by
+# default). It is a standing operator HOLD, not a data gap — nothing captures a "manual review
+# field", so no outcome can ever clear it. Named here (#662, 2026-09-20) so the weekly review
+# can tell a hold-by-ruling from a metric still accruing and stop printing it as "deferred"
+# every Sunday. Text unchanged: `/strategy` and the verdict payload read exactly as before.
+MANUAL_REVIEW_HOLD_REASON = "manual review fields not yet captured — eligibility deferred"
+
 
 @dataclass
 class PromotionVerdict:
@@ -249,7 +257,7 @@ def _eval_telemetry_review(rows: list[OutcomeRow], thresholds: dict) -> tuple[di
             blocking.append(f"hit rate {hit_rate} < {min_hit}")
 
     if thresholds.get("review_required", True):
-        blocking.append("manual review fields not yet captured — eligibility deferred")
+        blocking.append(MANUAL_REVIEW_HOLD_REASON)
     return metrics, blocking
 
 

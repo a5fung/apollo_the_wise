@@ -14,12 +14,30 @@ import agents.market_intelligence.kill_scale_bands as ksb
 from agents.market_intelligence import system_review as sr
 
 
-def _wire(monkeypatch, rs):
-    """Drive the section via the band cohort edge (the SAME source the bands read)."""
-    monkeypatch.setattr(ksb, "assemble_band_inputs", AsyncMock(return_value={
-        "realized_rs": rs, "drawdown_tier": "OK",
-        "equity_above_start": False, "account_mode": "live",
-    }))
+def _wire(monkeypatch, rs, with_meta: bool = True):
+    """Drive the section via the band cohort edge (the SAME source the bands read). #662: the
+    inputs carry per-trade `realized_r_meta`; without it the line's numbers are SUPPRESSED
+    (see `test_no_era_split_suppresses_the_numbers`), so every test that reads a number
+    supplies it — dated 2026-08-20 = an older exit rule than today's."""
+    from datetime import date
+    inputs = {"realized_rs": rs, "drawdown_tier": "OK",
+              "equity_above_start": False, "account_mode": "live"}
+    if with_meta:
+        inputs["realized_r_meta"] = [{"alert_date": date(2026, 8, 20), "signal_type": "magna53"}
+                                     for _ in rs]
+    monkeypatch.setattr(ksb, "assemble_band_inputs", AsyncMock(return_value=inputs))
+
+
+@pytest.mark.asyncio
+async def test_no_era_split_suppresses_the_numbers(monkeypatch):
+    """#662 — a trailing-window number carries its rule era and n, or it is suppressed. The
+    2026-09-13/20 editions read −0.36R/−0.41R as decay over 30 trades of which 28 predated the
+    2026-09-06 exit rule. MUTATION: `if split is None:` → `if False:` in
+    `_early_window_drift_review` — the pooled mean printed with no era. RED, restored."""
+    _wire(monkeypatch, [-1.0, -1.0, 3.0, -1.0, -1.0], with_meta=False)
+    out = await sr._early_window_drift_section()
+    assert "numbers suppressed" in out and "rule-era split is unavailable" in out
+    assert "-0.20R" not in out
 
 
 @pytest.mark.asyncio
@@ -38,6 +56,8 @@ async def test_pre_floor_prints_caveat_in_the_line(monkeypatch):
     assert "-0.20R" in out and "5 closed trades" in out
     assert "n=5 < 20 sample floor" in out
     assert "SILENT" in out and "informational only" in out
+    # #662 — the era clause rides in the same line as the number it qualifies
+    assert "older rules: 5 trades" in out
     # −0.20R sits above p5 (−0.63R) → healthy-range phrasing, no scare framing.
     assert "within calibration's healthy trailing-20 range" in out
 

@@ -235,7 +235,8 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
     async with pool.acquire() as c:
         trades = await c.fetch(
             """
-            SELECT total_pnl, risk_dollars_actual, entry_shares, entry_price, hard_stop
+            SELECT total_pnl, risk_dollars_actual, entry_shares, entry_price, hard_stop,
+                   alert_date, signal_type
             FROM mi_live_trades
             WHERE status = 'closed' AND account_mode = $1
               AND pnl_attribution IS NULL
@@ -266,12 +267,17 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
             ORDER BY alert_date ASC
             """, list(OPEN_POSITION_STATUSES), account_mode)
 
-    rs = []
+    rs, meta = [], []
     for t in trades:
         risk = risk_placed(t)
         if risk is None or risk <= 0:      # degenerate guard: NULL, zero, or negative
             continue
         rs.append(float(t["total_pnl"]) / risk)
+        # #662 REPORT ONLY, like `open_positions`: which rule era each R ran under, parallel to
+        # `realized_rs`, so the weekly review can say "under the current rules: n=2" beside every
+        # trailing-window number instead of pooling 30 trades across four exit rules. Never
+        # reaches `evaluate_kill_scale_bands` — `assess_bands` passes `realized_rs` alone.
+        meta.append({"alert_date": t.get("alert_date"), "signal_type": t.get("signal_type")})
     open_positions = [{"ticker": r["ticker"], "hold_days": int(r["hold_days"])}
                       for r in open_rows]
     # Map the persisted breaker state to a band tier; legacy TRIPPED → REDUCE (safeguards.md).
@@ -279,7 +285,7 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
         (dd or "OK").upper(), "OK")
     equity_above_start = (eq["first_eq"] is not None and eq["last_eq"] is not None
                           and float(eq["last_eq"]) > float(eq["first_eq"]))
-    return {"realized_rs": rs, "drawdown_tier": tier,
+    return {"realized_rs": rs, "realized_r_meta": meta, "drawdown_tier": tier,
             "equity_above_start": equity_above_start, "account_mode": account_mode,
             "open_positions": open_positions}
 
@@ -432,18 +438,6 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
             # write itself, and there's nothing left above it to escalate to.
             pass
         return {"error": str(e)}
-
-
-async def band_digest_section(account_mode: str = "live") -> list[str]:
-    """The weekly-review section (a SECTION of the existing digest, not a new surface —
-    feedback_consolidate_surfaces). SURFACES the verdict + numbers; never prescribes code."""
-    try:
-        inputs, verdict, override = await assess_bands(account_mode)
-        return ["", "*🎚️ Kill/scale bands* (live-money, #268b):",
-                format_band_line(verdict, override, inputs.get("open_positions"))]
-    except Exception as e:  # noqa: BLE001
-        logger.warning("band_digest_section(%s) failed: %s", account_mode, e)
-        return ["", f"_kill/scale band eval unavailable: {e}_"]
 
 
 def format_band_line(v: BandVerdict, override: dict | None = None,

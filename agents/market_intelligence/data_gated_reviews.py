@@ -371,6 +371,12 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
                                           if hasattr(last_run_inconclusive_on, "isoformat")
                                           else last_run_inconclusive_on),
             "last_run_note": e.get("last_run_note"),
+            # #662 2026-09-20 — the date the review was WRITTEN. A ripe review is only actionable
+            # if its question still matches the live rule: the extension-cap review surfaced
+            # "ripe 5d" this morning and was asking about a cap reverted three weeks earlier. The
+            # weekly review counts the rule switches since this date (rule_eras) next to the age.
+            "added_on": (e.get("added_on").isoformat()
+                         if hasattr(e.get("added_on"), "isoformat") else e.get("added_on")),
         }
         # Only worth the extra DB round-trip for entries actually surfacing ready — a mismatch on
         # a still-accumulating entry isn't actionable yet. Best-effort: a broken breakdown must
