@@ -16,6 +16,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from agents.market_intelligence import briefing
+from shared.telegram_format import md_to_html
 
 
 class _Resp:
@@ -256,11 +257,15 @@ async def test_every_real_explicit_html_body_reaches_telegram_byte_identical_aft
 
 
 @pytest.mark.asyncio
-async def test_explicit_markdown_is_the_opt_in_for_raw_legacy_and_none_means_plain(monkeypatch):
-    """`parse_mode="Markdown"` (scheduler._backup_health_check_job's three sites) sends the
-    raw legacy body — `*` and backticks untouched — with parse_mode Markdown, chunked and
-    backstopped exactly as before the flip; `parse_mode=None` sends plain text with NO
-    parse_mode key. MUTATION TARGET: converting on anything but the sentinel."""
+async def test_explicit_markdown_now_converts_like_the_default_and_none_still_means_plain(monkeypatch):
+    """`parse_mode="Markdown"` (scheduler._backup_health_check_job's three sites — all three had
+    already migrated to the sentinel default by 2026-09-19, one after a LIVE 400 on
+    `"pg_dump is current"`, before this flip) is now CONVERTED exactly like the default (#675):
+    the raw-legacy opt-in had zero real callers left, so it no longer has a route of its own —
+    `_chunk_legacy` is deleted. `parse_mode=None` is untouched — still plain text, no parse_mode
+    key, still split by the tag-blind `_chunk_plain`. MUTATION TARGET: `converted = parse_mode
+    is _CONVERT` with the `or parse_mode == "Markdown"` half dropped (verified: the first
+    assertion below fails — `parse_mode` stays `"Markdown"` and the body is not escaped/tagged)."""
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
     monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "42")
     body = "🚨 *Apollo off-site backup MISSING*\nNo `gdrive_backup_success` event ever recorded."
@@ -268,15 +273,27 @@ async def test_explicit_markdown_is_the_opt_in_for_raw_legacy_and_none_means_pla
     with patch.object(briefing.httpx, "AsyncClient", fake), \
          patch.object(briefing, "log_audit_event", AsyncMock()):
         assert await briefing.send_telegram_message(body, parse_mode="Markdown") is True
-    assert fake.posts[0] == {"chat_id": 42, "text": body, "disable_web_page_preview": True,
-                             "parse_mode": "Markdown"}
-    # the legacy chunker is still the one that splits an explicit-Markdown body
+    assert fake.posts[0]["parse_mode"] == "HTML"
+    assert fake.posts[0]["text"] == md_to_html(body)
+    _well_formed(fake.posts[0]["text"])
+    # identical to what the sentinel default sends for the same body
+    fake_default = _FakeClient([_Resp(200, {"ok": True})])
+    with patch.object(briefing.httpx, "AsyncClient", fake_default), \
+         patch.object(briefing, "log_audit_event", AsyncMock()):
+        assert await briefing.send_telegram_message(body) is True
+    assert fake.posts[0] == fake_default.posts[0]
+
+    # the tag-aware HTML chunker splits a long explicit-Markdown body now (the deleted
+    # last-blank-line-only legacy chunker used to) — on plain "A"*3000/"B"*3000 the split
+    # point is identical either way, so this also pins there is no silent behavior change
     long_md = "A" * 3000 + "\n\n" + "B" * 3000
     fake = _FakeClient([_Resp(200, {"ok": True})] * 2)
     with patch.object(briefing.httpx, "AsyncClient", fake), \
          patch.object(briefing, "log_audit_event", AsyncMock()):
         assert await briefing.send_telegram_message(long_md, parse_mode="Markdown") is True
     assert [p["text"] for p in fake.posts] == ["A" * 3000, "B" * 3000]
+    assert all(p["parse_mode"] == "HTML" for p in fake.posts)
+
     fake = _FakeClient([_Resp(200, {"ok": True})])
     with patch.object(briefing.httpx, "AsyncClient", fake), \
          patch.object(briefing, "log_audit_event", AsyncMock()):
@@ -284,13 +301,54 @@ async def test_explicit_markdown_is_the_opt_in_for_raw_legacy_and_none_means_pla
     assert fake.posts[0]["text"] == "plain *stars*" and "parse_mode" not in fake.posts[0]
 
 
+def _default_markdown_bodies_from_the_0918_corpus() -> list[str]:
+    """Every unique body a REAL default-Markdown call site sent while the suite ran on
+    2026-09-18 (scripts/probes/_652_corpus_tests.jsonl, `parse_mode == "<default>"`) — the
+    population `parse_mode="Markdown"` is folded into by #675, so it must now behave
+    identically to the sentinel default on every one of them."""
+    import json as _json
+    from pathlib import Path as _P
+    path = _P(__file__).resolve().parents[1] / "scripts/probes/_652_corpus_tests.jsonl"
+    seen, out = set(), []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        r = _json.loads(line)
+        if r.get("parse_mode") == "<default>" and r["body"] not in seen:
+            seen.add(r["body"]); out.append(r["body"])
+    return out
+
+
+@pytest.mark.asyncio
+async def test_explicit_markdown_matches_the_default_byte_for_byte_on_the_real_corpus(monkeypatch):
+    """#675: every real default-Markdown body from the 2026-09-18 harvest (217 unique bodies)
+    must reach Telegram identically whether the caller passes nothing or explicitly opts into
+    `parse_mode="Markdown"` — the two are now the SAME path. MUTATION TARGET: same as above
+    (verified: dropping `or parse_mode == "Markdown"` fails this on the first body — the
+    Markdown-explicit post keeps `parse_mode="Markdown"` and an unconverted body while the
+    default post carries `parse_mode="HTML"` and the converted one)."""
+    bodies = _default_markdown_bodies_from_the_0918_corpus()
+    assert len(bodies) >= 100, "the captured corpus is missing — nothing to replay"
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "42")
+    for body in bodies:
+        fake_default = _FakeClient([_Resp(200, {"ok": True})] * 3)
+        with patch.object(briefing.httpx, "AsyncClient", fake_default), \
+             patch.object(briefing, "log_audit_event", AsyncMock()):
+            assert await briefing.send_telegram_message(body) is True
+        fake_md = _FakeClient([_Resp(200, {"ok": True})] * 3)
+        with patch.object(briefing.httpx, "AsyncClient", fake_md), \
+             patch.object(briefing, "log_audit_event", AsyncMock()):
+            assert await briefing.send_telegram_message(body, parse_mode="Markdown") is True
+        assert fake_default.posts == fake_md.posts, body[:80]
+
+
 @pytest.mark.asyncio
 async def test_default_path_long_message_splits_tag_aware_and_keeps_markup_on_the_last_chunk(monkeypatch):
     """A default sender writing a fenced table longer than one message (the shape of the
     row-count drift and detector-liveness digests): after conversion each chunk must parse on
     its own — `<pre>` closed at the seam and reopened — and the inline keyboard rides ONLY
-    the last chunk, as before. MUTATION TARGET: chunking HTML with `_chunk_legacy` (an
-    orphaned `<pre>` fails the well-formed check)."""
+    the last chunk, as before. MUTATION TARGET: chunking HTML with the tag-blind plain-text
+    splitter (`_chunk_plain`) instead of `chunk_html` (an orphaned `<pre>` fails the
+    well-formed check)."""
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
     monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "42")
     body = "*Row-count drift*\n```\n" + "\n".join(f"mi_table_{n}  {n * 7}" for n in range(500)) + "\n```"
