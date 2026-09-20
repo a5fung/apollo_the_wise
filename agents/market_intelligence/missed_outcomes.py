@@ -44,6 +44,19 @@ from agents.market_intelligence.db import get_pool
 # this column's whole job is to answer "would this have been a setup by OUR OWN rule".
 from agents.market_intelligence.ep_detector import MIN_GAP_PCT as _MIN_GAP_PCT
 
+# #677 — the SAME has_direct_source signal the judge's own rubric rule (ep_grade_judge.py
+# rubric point 1: "has_direct_source=false combined with a materiality-driven promotion is
+# the highest-risk pattern... prefer the floor tier") keys its MODERATE-cap decision on.
+# mi_ep_alerts has NO stored has_direct_source column (it is a judge INPUT, not persisted —
+# grep confirms; the only durable trace is `mi_audit_log.ep_catalyst_provenance`, which is
+# gapped on cached-path re-grades). judge_review.recompute_has_direct_source instead
+# reconstructs it DETERMINISTICALLY from the alert's stored `grounded_text` corpus (the
+# same [SEC .../[Benzinga .../[Web summary] markers build_grounded_text writes), which IS
+# persisted on every alert row regardless of cache path — already the established proxy for
+# exactly this question (the #337 monthly judge review uses it the same way). Imported
+# rather than re-derived so the two callers can never define "direct source" differently.
+from agents.market_intelligence.judge_review import recompute_has_direct_source
+
 _MIN_GAP_FRACTION = _MIN_GAP_PCT / 100.0
 
 logger = logging.getLogger(__name__)
@@ -1288,6 +1301,98 @@ async def missed_by_category(window_days: int = 30) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+# ── #677: source-status signal for the should've-entered cohort ─────────────
+#
+# CIFR 2026-09-16 is the case that named this gap: skip_category='moderate_tier',
+# catalyst_quality='strong', +16% peak — a STRONG catalyst capped at MODERATE. The
+# source-gap finder (source_gap_finder.py) separately reported the SAME name's move
+# as unsourced from direct feeds, in an unrelated weekly digest — two facts about
+# one ticker, never joined. This section closes that: every should've-entered row
+# now carries whether the alert that produced it HAD a direct source, computed the
+# SAME way the judge's own rubric rule reads it (see the import comment above).
+_STRONG_CATALYST_QUALITIES = ("strong", "game_changer")
+
+
+def _row_source_status(grounded_text: Optional[str]) -> Optional[bool]:
+    """Tri-state read of one alert's stored corpus: True = a direct primary source
+    (SEC filing / Benzinga wire) was present; False = the corpus was assessable but
+    carried NO direct source (a real sourcing gap — the CIFR case); None = not
+    assessable (no graded corpus at all — a scan-time filter row with no matching
+    alert, or a pre-grounding-era thin row). None is deliberately NOT the same as
+    False: folding "never checked" into "checked and no" would overstate the gap.
+    """
+    has_direct, has_markers = recompute_has_direct_source(grounded_text)
+    return has_direct if has_markers else None
+
+
+def aggregate_source_gap_counts(rows: list[dict]) -> dict:
+    """Pure: from should've-entered MODERATE-tier rows carrying `catalyst_quality`
+    and `grounded_text`, answer the standing question (#677, operator 2026-09-20):
+    of the strong-catalyst names capped at MODERATE, how many were capped for want
+    of a source we could have had, vs a real judge call on the evidence? No I/O —
+    fixture-tested, same pattern as judge_review.aggregate_judge_review.
+
+    `denom`     — strong/game_changer-catalyst MODERATE-tier rows (the population).
+    `unsourced` — of those, corpus assessable AND no direct source: THE source-gap
+                  population this task exists to count.
+    `sourced`   — corpus assessable AND a direct source WAS present: the cap was a
+                  judge call on the evidence, NOT a sourcing gap.
+    `unassessed`— corpus carries no section markers at all (never graded / pre-
+                  grounding era): excluded from unsourced/sourced (neither is a
+                  confirmed answer) but counted so the total is never silently short.
+    """
+    denom = unsourced = sourced = unassessed = 0
+    for r in rows:
+        cq = (r.get("catalyst_quality") or "").lower()
+        if cq not in _STRONG_CATALYST_QUALITIES:
+            continue
+        denom += 1
+        status = _row_source_status(r.get("grounded_text"))
+        if status is None:
+            unassessed += 1
+        elif status:
+            sourced += 1
+        else:
+            unsourced += 1
+    return {"denom": denom, "unsourced": unsourced, "sourced": sourced,
+            "unassessed": unassessed}
+
+
+# Wider window than the 30d gaps table on purpose: the strong-catalyst-capped count is
+# the STANDING question (#677), not the ranked top-8 list, and this is the window the
+# 60d/26/18 scale evidence in PLAN.md #677 was measured against — reusing it keeps a
+# future re-check comparable to the number the operator already saw.
+_SOURCE_GAP_WINDOW_DAYS = 60
+
+
+async def strong_catalyst_moderate_source_gap(
+    window_days: int = _SOURCE_GAP_WINDOW_DAYS,
+) -> dict:
+    """#677: of the should've-entered MODERATE-tier names with a strong/game_changer
+    catalyst, how many were capped for want of a direct source vs a real judge call?
+    REPORTING ONLY — reads mi_ep_missed_outcomes + mi_ep_alerts.grounded_text; never
+    touches the judge, the tier rule, or admission (THE LINE). Returns
+    aggregate_source_gap_counts()'s dict plus `window_days`.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT m.catalyst_quality, ga.grounded_text
+            FROM mi_ep_missed_outcomes m
+            LEFT JOIN LATERAL (
+                SELECT grounded_text FROM mi_ep_alerts a
+                WHERE a.ticker = m.ticker AND a.alert_date = m.alert_date
+                  AND COALESCE(a.source, 'live') = 'live'
+                ORDER BY a.created_at DESC LIMIT 1
+            ) ga ON TRUE
+            WHERE m.alert_date >= CURRENT_DATE - $1::INT
+              AND m.skip_category = 'moderate_tier'
+        """, window_days)
+    result = aggregate_source_gap_counts([dict(r) for r in rows])
+    result["window_days"] = window_days
+    return result
+
+
 async def top_shouldve_entered_gaps(
     window_days: int = 30,
     limit: int = 8,
@@ -1310,13 +1415,28 @@ async def top_shouldve_entered_gaps(
     verifies — see feedback_weekly_review_surface_not_prescribe). Ranked by
     max_high_5d so a real, sized opportunity outranks a barely-green name;
     min_peak drops trivially-small 'misses' (default >= 5% peak).
+
+    #677: each row also carries `has_direct_source` (True/False/None — see
+    `_row_source_status`) — every tier- or catalyst-skipped name in this cohort
+    now states whether we HAD a direct source, so a source gap and a missed EP
+    read as ONE line instead of two disconnected weekly sections. Joined via a
+    LATERAL (not a plain LEFT JOIN) because mi_ep_alerts can carry more than one
+    row per ticker/alert_date (re-grades) — picks the latest LIVE alert, same
+    tie-break the write-path CTEs above already use.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(f"""
-            SELECT ticker, alert_date, source, skip_category, skip_reason,
-                   ep_score, catalyst_quality, open_d0, ret_5d, max_high_5d
+            SELECT m.ticker, m.alert_date, m.source, m.skip_category, m.skip_reason,
+                   m.ep_score, m.catalyst_quality, m.open_d0, m.ret_5d, m.max_high_5d,
+                   ga.grounded_text
             FROM mi_ep_missed_outcomes m
+            LEFT JOIN LATERAL (
+                SELECT grounded_text FROM mi_ep_alerts a
+                WHERE a.ticker = m.ticker AND a.alert_date = m.alert_date
+                  AND COALESCE(a.source, 'live') = 'live'
+                ORDER BY a.created_at DESC LIMIT 1
+            ) ga ON TRUE
             WHERE m.alert_date >= CURRENT_DATE - $1::INT
               AND m.skip_category IN {_SHOULDVE_ENTERED_CATEGORIES}
               AND COALESCE(m.open_d0, 0) >= {_DEFAULT_PRICE_FLOOR}
@@ -1326,7 +1446,13 @@ async def top_shouldve_entered_gaps(
             ORDER BY m.max_high_5d DESC NULLS LAST
             LIMIT $3
         """, window_days, min_peak, limit)
-    return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r)
+        gt = d.pop("grounded_text", None)
+        d["has_direct_source"] = _row_source_status(gt)
+        out.append(d)
+    return out
 
 
 async def aggregate_missed_for_weekly(window_days: int = 7) -> dict:
@@ -1338,11 +1464,15 @@ async def aggregate_missed_for_weekly(window_days: int = 7) -> dict:
     # Gaps use a 30d window (the weekly 7d window is too thin a cohort for a
     # ranked gap list); it's clearly labeled 30d in the section header.
     gaps = await top_shouldve_entered_gaps(window_days=30, limit=8)
+    # #677: the standing strong-catalyst-capped count, over its own (wider, 60d —
+    # see _SOURCE_GAP_WINDOW_DAYS) window; era stated explicitly in the render.
+    source_gap_summary = await strong_catalyst_moderate_source_gap()
     return {
         "window_days": window_days,
         "top_winners": top,
         "by_category": cats,
         "gaps": gaps,
+        "source_gap_summary": source_gap_summary,
     }
 
 
@@ -1458,26 +1588,74 @@ def format_missed_telegram(
     return "\n".join(parts)
 
 
-def format_gaps_section_for_weekly(gaps: list[dict]) -> str:
+def _fmt_source_status(has_direct: Optional[bool]) -> str:
+    """#677: 3-char code for the should've-entered table's `src` column. SRC = a
+    direct primary source (SEC filing / Benzinga wire) was present; GAP =
+    assessable corpus but NO direct source (a real sourcing gap — the CIFR
+    case); — = not assessable (no graded corpus at all to check)."""
+    if has_direct is None:
+        return "  —"
+    return "SRC" if has_direct else "GAP"
+
+
+def format_source_gap_summary(stats: Optional[dict]) -> str:
+    """#677: the standing number — 'of the strong-catalyst names capped at
+    MODERATE, how many were capped for want of a source we could have had?'
+    Denominator and window era always stated together (every trailing-window
+    number carries its era and n). `stats` is
+    `strong_catalyst_moderate_source_gap()`'s return dict; "" when there is no
+    population to report over (never renders a bare-zero non-answer)."""
+    if not stats:
+        return ""
+    denom = stats.get("denom") or 0
+    if not denom:
+        return ""
+    wd = stats.get("window_days", _SOURCE_GAP_WINDOW_DAYS)
+    unsourced = stats.get("unsourced") or 0
+    sourced = stats.get("sourced") or 0
+    unassessed = stats.get("unassessed") or 0
+    tail = f", {unassessed} not assessable" if unassessed else ""
+    return (f"_📡 Strong-catalyst MODERATE caps ({wd}d, n={denom}): {unsourced} capped for "
+            f"want of a direct source, {sourced} had one — a judge call, not a gap{tail}._")
+
+
+def format_gaps_section_for_weekly(
+    gaps: list[dict],
+    source_gap_summary: Optional[dict] = None,
+) -> str:
     """Prominent '🚨 Should've-entered gaps' section (#219) — the actionable
     missed cohort ranked by peak upside, each row with its verified reason.
-    Facts only, no prescription (feedback_weekly_review_surface_not_prescribe)."""
+    Facts only, no prescription (feedback_weekly_review_surface_not_prescribe).
+
+    #677: each row's `src` column states whether the alert that produced it HAD
+    a direct source (SRC / GAP / — see `_fmt_source_status`) — a source gap and
+    a missed EP now read as ONE line, not two disconnected weekly sections.
+    `source_gap_summary` (from `strong_catalyst_moderate_source_gap`), when
+    given, renders as one line under the header: the standing count of
+    strong-catalyst MODERATE caps that lacked a source, with its denominator.
+    """
     if not gaps:
         return ""
     parts = [
         "🚨 *Should've-entered gaps (30d)* — ranked by peak missed upside",
         "_The system wanted in but a gate stopped it: safeguard/timing/setup_",
         "_blocks · cooldown · scored-not-entered. Verify before acting._",
+    ]
+    summary_line = format_source_gap_summary(source_gap_summary)
+    if summary_line:
+        parts.append(summary_line)
+    parts += [
         "```",
-        "tckr  date   peak    5d   reason",
+        "tckr  date   peak    5d   src  reason",
     ]
     for r in gaps:
         tk = r["ticker"][:5].ljust(5)
         d = r["alert_date"].strftime("%m/%d") if r.get("alert_date") else "  —  "
         peak = _fmt_pct_fixed(r.get("max_high_5d"))
         c5 = _fmt_pct_fixed(r.get("ret_5d"))
+        src = _fmt_source_status(r.get("has_direct_source"))
         reason = _humanize_category(r.get("skip_category"))[:24]
-        parts.append(f"{tk} {d}  {peak}  {c5}  {reason}")
+        parts.append(f"{tk} {d}  {peak}  {c5}  {src}  {reason}")
     parts.append("```")
     return "\n".join(parts)
 
@@ -1490,7 +1668,8 @@ def format_missed_section_for_weekly(missed: dict) -> str:
     """
     top = missed.get("top_winners") or []
     cats = missed.get("by_category") or []
-    gaps_section = format_gaps_section_for_weekly(missed.get("gaps") or [])
+    gaps_section = format_gaps_section_for_weekly(
+        missed.get("gaps") or [], missed.get("source_gap_summary"))
     if not top and not cats and not gaps_section:
         return ""
     window_days = missed.get("window_days", 7)
