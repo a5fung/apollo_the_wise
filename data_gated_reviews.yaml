@@ -8954,6 +8954,85 @@ reviews:
     # that does not exist yet, which is the defect class #634 exists to stop.
     closed_on: 2026-09-09
 
+  - review_id: partial_exit_new_failure_class
+    title: "Partial exit — a failure shape we have NOT already seen and ruled safe"
+    question: >-
+      The operator closed partial_exit_hardening_n7_clean_cycles on 2026-09-21 with
+      "we can revisit if we run into issues with partial". This is that revisit, made
+      mechanical — a prose intention in a closed entry is a thing nobody reads again.
+      The closed gate counted ABSENCE OF ABORT, which penalised the architecture every time a
+      safety refusal fired. This counts the opposite: shapes that are NOT a safe refusal.
+      Every abort seen in the 9 post-split cycles fell into three stages, each a refusal to do
+      something unsafe: `place_new_stop` (6 — would not sell without the replacement stop in
+      place), `dedup_pending_exit` (2 — would not double-sell), `verify_shares_free` (1).
+      Those are the architecture working and must NOT trip this.
+      What WOULD mean a real problem: an abort at a stage we have never seen; a sell that
+      failed outright; a naked position after a partial; or the negative-remaining accounting
+      anomaly seen once on ETON trade 367 (new_remaining -5, 2026-08-14, on a trade whose row
+      had already closed that morning — recorded, never explained).
+    threshold: 1
+    status: pending
+    earliest_meaningful_date: "2026-09-22"
+    action_when_ready: >-
+      READ THE ROW BEFORE RAISING ANYTHING. Identify which of the four shapes fired and on which
+      trade. A new abort stage may simply be a new SAFE refusal added since — check the code at
+      the stage name before calling it a defect, and if it is safe, add it to the known-safe list
+      here rather than reporting a problem. Only a sell_failed, a naked position, or a negative
+      remaining is a defect on sight.
+      ⚖ Partial-exit behaviour is exit discipline — THE LINE. This REPORTS; any change needs
+      CHANGE_PROCESS + his sign-off.
+    discriminates_on: [trade_id, event_type, stage, account_mode]
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_audit_log
+       WHERE created_at >= DATE '2026-09-21'
+         AND (
+              event_type IN ('partial_exit_sell_failed', 'partial_exit_rollback_failed')
+           OR (event_type = 'partial_exit_aborted'
+               AND COALESCE(detail::json->>'stage', '') NOT IN
+                   ('place_new_stop', 'dedup_pending_exit', 'verify_shares_free'))
+           OR (event_type = 'partial_exit_committed'
+               AND COALESCE((detail::json->>'new_remaining')::numeric, 0) < 0)
+           OR (event_type = 'naked_position_detected'
+               AND EXISTS (SELECT 1 FROM mi_audit_log p
+                            WHERE p.event_type LIKE 'partial_exit%'
+                              AND p.detail::json->>'trade_id' = mi_audit_log.detail::json->>'trade_id'
+                              AND p.created_at BETWEEN mi_audit_log.created_at - INTERVAL '1 day'
+                                                   AND mi_audit_log.created_at))
+         )
+    can_fire:
+      predicate_runs: "2026-09-21 - executed against prod and returns 0, the correct armed-and-quiet
+        reading. Run over ALL history it returns 14, so the zero is a date bound and not a broken
+        query. Measured per arm rather than asserted (a first draft of this line guessed 3 and was
+        wrong): sell_failed/rollback_failed 6, negative remaining 1 (the ETON trade 367 anomaly,
+        2026-08-14), naked-position-near-a-partial 7, unknown abort stage 0.
+        ⚠ THAT LAST ZERO IS THE USEFUL ONE: across every abort ever recorded, none sits outside
+        the three known-safe stages — so the safe list is complete as of today and that arm is a
+        true tripwire for a shape we have genuinely never seen, not a dead branch."
+      nonzero_possible: "All four arms have live writers: partial_exit_sell_failed at
+        order_manager.py:4004, partial_exit_aborted has 8 writers, partial_exit_committed writes
+        new_remaining on every commit, naked_position_detected fired once post-split (trade 183).
+        ⚠ partial_exit_rollback_failed has NO writer since the rollback block was removed
+        2026-06-23 - kept in the list deliberately so a reintroduction is caught, not because it
+        can fire today."
+      lane_live: "magna53 is phase=live, enabled=t - the only live strategy, and the partial path
+        runs on it."
+      threshold_vs_observed: "Threshold 1: this is a tripwire, not an accrual. Observed 0 since
+        2026-09-21. ⚠ It may sit at 0 for a long time and that is the POINT - the partial now
+        triggers at +8R rather than +2R (b52fdcbc, 2026-09-06), so 0 partial-exit events have
+        occurred in the 15 days since. A quiet tripwire here is not evidence of health; it is
+        mostly evidence the mechanism has not run. Do not read a zero as a pass."
+      era_scoped: "Bounded to created_at >= 2026-09-21 on purpose, so it reads the 8R era only.
+        The known-safe stage list was derived from the 9 post-split (2026-06-23 onward) cycles,
+        which are 2R-era - if the 8R path can abort at a stage those never reached, this fires and
+        the action text says to check the code before calling it a defect."
+      population_actionable: "Every row names a trade_id, so any hit is chaseable to one position.
+        The three known-safe stages are excluded by name rather than by count, so the ordinary
+        working case stays silent instead of being counted and explained away."
+      instrument_trusted: "Partially, and the gap is stated: the `too_small_to_split` skip at
+        order_manager.py:8159-8161 is appended to `results` and NEVER written to mi_audit_log, so
+        a partial that never attempts is invisible to this and to everything else. That is a
+        SILENCE this cannot see - it is why threshold_vs_observed says a zero is not a pass."
+
   - review_id: partial_exit_hardening_n7_clean_cycles
     can_fire:
       predicate_runs: "2026-09-21 - executed verbatim against prod and returned 7. Dropping the
@@ -9031,7 +9110,7 @@ reviews:
       2026-06-22, one day BEFORE this gate's own split anchor.
     title: "P0 — Partial-exit architecture stable for N=7 consecutive paper cycles"
     severity: P0
-    live_cutover_blocker: true
+    live_cutover_blocker: false
     question: |
       The partial-exit code path has shipped two distinct bug classes
       in two days (2026-05-27 cancel→new race, 2026-05-28 str-vs-numeric
@@ -9115,8 +9194,33 @@ reviews:
       If <N=7 within 30 days of split-deploy: investigate failures,
       extend the gate window, or escalate architecture review.
 
-    status: pending
+    status: done
     added_on: 2026-05-28
+    resolved_2026_09_21: >-
+      ✅ CLOSED BY THE OPERATOR, 2026-09-21: "Ok close it, we can revisit if we run into issues
+      with partial." Asked after seeing what the gate was actually built to prove.
+      WHAT IT WAS FOR: the partial-exit path shipped TWO distinct bug classes in two days
+      (2026-05-27 cancel→new race, 2026-05-28 str-vs-numeric Pydantic), each fix breaking a
+      different assumed invariant. The architectural split was the cure and "N=7 consecutive clean
+      paper cycles" was the PROXY for "the rewrite does not break in new ways under real broker
+      variance."
+      WHY THE PROXY WAS THE WRONG INSTRUMENT: it counts cycles with no abort, so it penalises the
+      architecture every time a safety refusal fires. All 9 post-split aborts are refusals to do
+      something unsafe — 6 at `place_new_stop` (would not sell a third without the replacement
+      stop in place first, which is EXACTLY the invariant the 05-27 race broke), 2 at
+      `dedup_pending_exit` (would not place a second sell while one was pending), 1 at
+      `verify_shares_free`. Not one is a new bug class. PLTR trade 307 aborted three times on
+      2026-08-05 and SUCCEEDED on the fourth attempt (+$33.27) — the gate scores that cycle dirty.
+      THE DIRECT EVIDENCE FOR ITS ACTUAL QUESTION, which is positive: all 6 real clean cycles
+      filled in full in mi_live_orders; exactly 1 naked_position_detected exists post-split (trade
+      183 FPS, 06-23) and it is on none of them; neither May bug class has recurred in 122 live
+      trades since the split.
+      AND IT COULD NO LONGER ACCRUE ANYWAY: the live partial moved 2R → 8R on 2026-09-06
+      (b52fdcbc), so 0 partial-exit events have occurred in the 15 days since, and every cycle the
+      gate counts is from the retired 2R era.
+      ▶ REPLACED BY A TRIPWIRE, not by trust: `partial_exit_new_failure_class` below fires on the
+      shapes that WOULD mean a real problem. That is what "revisit if we run into issues" means
+      mechanically. [[check-the-rule-era-before-comparing-to-actual]]
 
   - review_id: alpaca_stop_trigger_reliability
     title: "P0 — Alpaca paper stop trigger silently fails despite SIP-confirmed cross"
