@@ -60,10 +60,6 @@
   "status": "deployed"
  },
  {
-  "id": 335,
-  "status": "deployed"
- },
- {
   "id": 353,
   "status": "blocked"
  },
@@ -201,7 +197,7 @@
  },
  {
   "id": 659,
-  "status": "pending"
+  "status": "deployed"
  },
  {
   "id": 661,
