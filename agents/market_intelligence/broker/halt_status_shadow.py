@@ -69,10 +69,36 @@ def maybe_register_status_capture(data_stream) -> bool:
     return True
 
 
+# #659 (2026-09-21): last status code seen per ticker, so a REPEAT does not write a row.
+#
+# The feed re-sends the same TradingStatus every few seconds for as long as the condition holds.
+# Writing on each one made `mi_halt_status_events` count feed heartbeats rather than halts: on
+# 2026-09-14, VRC produced **79 rows for ONE halt**, `status_code=2` every ~5s from 13:33:14Z.
+# Every row was individually accurate, which is what made it dangerous — any count over this
+# table read halt DURATION as halt FREQUENCY, and the #488 dead-data-guard compare is exactly
+# such a reader.
+#
+# ⚠ DURATION IS NOT LOST BY THIS — it is encoded BETTER. A halt now writes one row on entry and
+# one on the resume transition, so length is `resume_ts - halt_ts` instead of an implicit
+# row-count times an assumed feed cadence. Nothing is dropped retroactively; the existing rows
+# keep their old shape and the readers are the thing that must know which era they are in.
+#
+# ⚠ ON RESTART THIS DICT IS EMPTY, so the first message per ticker after a restart writes even if
+# it repeats a status we had already recorded. That is deliberate: we cannot know the prior state
+# and an extra row is the safe direction for a shadow table. Bounded by the subscribed universe
+# (one short string per ticker seen), so it does not grow without limit.
+_LAST_STATUS: dict[str, str] = {}
+
+
+def _reset_status_cache() -> None:
+    """Test seam — the dedupe state is process-global, so a test must be able to clear it."""
+    _LAST_STATUS.clear()
+
+
 async def _handle_trading_status(status) -> None:
-    """Persist one TradingStatus event. SHADOW-ONLY writer: any failure is logged and
-    swallowed — an event-write error must never propagate into the stream's dispatch loop
-    (the same loop that delivers ORB bars)."""
+    """Persist one TradingStatus event ON A STATUS TRANSITION. SHADOW-ONLY writer: any failure is
+    logged and swallowed — an event-write error must never propagate into the stream's dispatch
+    loop (the same loop that delivers ORB bars)."""
     try:
         from agents.market_intelligence.db import insert_halt_status_event
         from agents.market_intelligence.execution_client import get_data_feed_name
@@ -82,10 +108,18 @@ async def _handle_trading_status(status) -> None:
         symbol = get("symbol") or get("S")
         if not symbol:
             return
+        ticker = str(symbol)
+        code = get("status_code") or get("sc")
+        # The transition test. `code` is normalised to str so that a feed sending 2 and "2" for
+        # the same state does not read as a change and write a spurious row.
+        code_key = "" if code is None else str(code)
+        if _LAST_STATUS.get(ticker) == code_key:
+            return
+        _LAST_STATUS[ticker] = code_key
         await insert_halt_status_event(
-            ticker=str(symbol),
+            ticker=ticker,
             event_ts=get("timestamp") or get("t"),
-            status_code=get("status_code") or get("sc"),
+            status_code=code,
             status_message=get("status_message") or get("sm"),
             reason_code=get("reason_code") or get("rc"),
             reason_message=get("reason_message") or get("rm"),

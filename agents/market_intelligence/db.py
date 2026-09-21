@@ -13902,7 +13902,29 @@ async def insert_halt_status_event(
 async def get_halt_events_between(start_date: Any, end_date: Any) -> dict[str, list[dict]]:
     """Authoritative status events with an ET event date in [start_date, end_date],
     grouped {ticker: [events oldest-first]}. ET conversion BEFORE the date cast per the
-    CLAUDE.md TIMESTAMPTZ rule."""
+    CLAUDE.md TIMESTAMPTZ rule.
+
+    🔴 COUNTING ROWS HERE DOES NOT COUNT HALTS — READ THIS BEFORE AGGREGATING (#659, 2026-09-21).
+
+    ⚠ THE TABLE HAS TWO ERAS and the boundary is 2026-09-21:
+      · BEFORE — one row per FEED MESSAGE. The statuses channel re-sends the same status every
+        few seconds for as long as the condition holds, and the writer persisted each one. On
+        2026-09-14 ticker VRC produced **79 rows for ONE halt** (`status_code=2`, every ~5s from
+        13:33:14Z). Every row is individually accurate, which is what makes it dangerous: a
+        `COUNT(*)` over this era reads halt DURATION as halt FREQUENCY.
+      · AFTER — one row per STATUS TRANSITION (`halt_status_shadow._handle_trading_status`
+        dedupes on (ticker, status_code)). A halt is one row in, one row out.
+
+    SO: to count HALTS, count TRANSITIONS — group consecutive rows per ticker and take the
+    changes, do not `COUNT(*)`. To measure DURATION, take `resume_ts - halt_ts` from the
+    transition pair; in the old era that number has to come from first/last row of a run instead.
+    Nothing was rewritten retroactively — the old rows keep their old shape on purpose, because a
+    halt's length is real information the old shape encodes badly rather than not at all.
+
+    The one consumer today is the #488 dead-data-guard compare
+    (`dead_data_guard_shadow.py`), which asks "did a real halt coincide with the RMV floor" per
+    ticker-day rather than counting rows — so it reads correctly in both eras. A NEW reader that
+    aggregates is the thing this note exists to stop."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
