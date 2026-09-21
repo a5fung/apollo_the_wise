@@ -21,7 +21,7 @@ and the function the scheduler ACTUALLY registers. No source text is read.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -385,8 +385,14 @@ async def test_no_backup_stale_page_rides_legacy_markdown(monkeypatch):
 
     monkeypatch.setattr(sched, "send_telegram_message", _capture)
 
-    now = datetime(2026, 9, 19, 12, 0, tzinfo=timezone.utc)
-    old = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
+    # ⚠ RELATIVE TO REAL NOW, not fixed dates. The first version pinned 2026-09-19 /
+    # 2026-09-15 and passed for a day, then went RED on 2026-09-20 with "the branch
+    # carrying the bare underscore never fired" — the job computes staleness from
+    # `datetime.now(_ET)` against a 36-hour threshold (`scheduler.py:3632`), so a fixed
+    # fixture date drifts out of the branch it was chosen to hit. A test that rots on the
+    # calendar is a test that will be deleted in a hurry on some future morning.
+    now = datetime.now(timezone.utc)
+    old = now - timedelta(days=4)      # > 36h stale, whatever day it is
     # all three alerting branches: never-backed-up · pg_dump stale · pg_dump fresh, secrets stale
     cases = [
         {"last_pg": None, "last_secrets": None, "last_failure": None},
