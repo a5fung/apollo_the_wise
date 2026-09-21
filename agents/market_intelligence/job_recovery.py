@@ -347,17 +347,16 @@ def assert_every_binding_pinned(expected: date) -> dict[str, Any]:
 # ── ledger I/O ────────────────────────────────────────────────────────────────────────────
 
 async def fetch_ledger(job_ids: list[str], days: int = 60) -> dict[str, list[dict]]:
-    from agents.market_intelligence.db import get_pool
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """SELECT job_id, started_at, status, scheduled_for, duration_s, error_message
-                 FROM mi_job_runs
-                WHERE job_id = ANY($1::text[]) AND started_at > NOW() - ($2::int * INTERVAL '1 day')""",
-            job_ids, days)
+    """This job's ledger rows, grouped by job_id, oldest first.
+
+    #678 (2026-09-20): the SQL lives in `db.get_job_runs_for` — one SELECT against `mi_job_runs`
+    for the whole codebase, so a column added there is found once. This is the grouping half.
+    The 60-day default is NOT the classification window (that is LOOKBACK_DAYS=4); `bound_for`
+    needs the longer history to compute a meaningful p95 duration for the re-run timeout."""
+    from agents.market_intelligence.db import get_job_runs_for
     out: dict[str, list[dict]] = {}
-    for r in rows:
-        out.setdefault(r["job_id"], []).append(dict(r))
+    for r in await get_job_runs_for(job_ids, since_hours=days * 24):
+        out.setdefault(r["job_id"], []).append(r)
     return out
 
 

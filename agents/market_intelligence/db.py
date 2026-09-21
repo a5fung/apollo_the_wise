@@ -11753,14 +11753,26 @@ async def get_job_runs_for(job_ids: list[str], since_hours: int = 240) -> list[d
     weekly review's read of whether a job-class silent failure was since RECOVERED (a later
     `success` row) or CLOSED BY THE OPERATOR (an `unrecoverable` row, #672's hand-close), so a
     dispositioned incident is not printed as an open anomaly (#662). Read-only, zero-authority:
-    feeds a Telegram digest only. Empty `job_ids` returns [] without a round-trip."""
+    feeds a Telegram digest only. Empty `job_ids` returns [] without a round-trip.
+
+    ⚠ #678, 2026-09-20: this is the ONE query that reads LEDGER ROWS FOR A SET OF job_ids OVER A
+    LOOKBACK. (Other modules do select from `mi_job_runs` — `system_audit`, `health_checks`,
+    `audit_invariants` — but for different shapes: DISTINCT job_id, COUNT(*), liveness. Those are
+    not this.) `job_recovery.fetch_ledger` used to run a second, near-identical one — same table,
+    same WHERE shape, `duration_s` instead of `finished_at`, days instead of hours — so a column
+    added here had to be found twice. It calls this and groups locally; `duration_s` is for it.
+
+    ⚠ `ORDER BY started_at ASC` is LOAD-BEARING for that caller, not cosmetic. `classify_slot`
+    scans a job's rows and RETURNS on the first match, so its verdict depends on row order — and
+    its old input had no ORDER BY at all, i.e. whatever the plan happened to emit. Chronological
+    is both deterministic and the order that branch actually means. Do not drop it."""
     if not job_ids:
         return []
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT job_id, started_at, finished_at, status, scheduled_for, error_message
+            SELECT job_id, started_at, finished_at, status, scheduled_for, duration_s, error_message
             FROM mi_job_runs
             WHERE job_id = ANY($1::text[])
               AND started_at >= NOW() - ($2::int * INTERVAL '1 hour')
