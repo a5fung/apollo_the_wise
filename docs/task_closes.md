@@ -1260,3 +1260,19 @@ TOTAL DIFFERING LINES (A+B+C): 0
 ```
 - 🔑 **AND THE ZERO IS NOT A BLIND INSTRUMENT.** The probe carries a SENSITIVITY control — the same replay with the prompt changed by **one byte** — which produces **8 differing lines and a different sha (`9ae8a3becd7d8df9`)**. Without that, three zeros would be indistinguishable from a comparison that cannot see anything. [[a-rule-is-not-live-until-it-has-fired-once]]
 - **The live EXPECT held too, both halves on the first market day:** `ep_theme_fit_llm_proposed` fired **4 times today** (first at 08:35 ET) and `assignment_llm_proposed` landed from tonight's nightly at **17:09 ET**, carrying the full key set `advisor_calls, batch_no, batch_size, candidate_pool_size, candidate_tickers, n_batches, proposals`. **Zero `ep_theme_fit_silent_stop` and zero `FIT_FAILED` rows** — the WOULD-FAIL-IF was a `no verdict (consult)` row, and there are none.
+## #671 — deal-pinned names really do leave the themes they sit in, and nothing genuine leaves with them (2026-09-21)
+BAR: the strip's OWN audit row, not a surviving 1-member theme. `theme_carryforward_filter_stripped` on a nightly theme run names the deal-pinned ticker it removed and the size it took the theme from and to, AND the over-removal control (*Emerging Medical Device Innovators Breakout*) still reads 3 members, AND the run's total theme count is comparable to the prior run.
+EVIDENCE: **Monday 2026-09-21's nightly theme run, read positively — six strips, each naming its ticker.**
+```
+Defensive Consumer Staples Rotation                     16 → 15   ['UTZ']
+Inflammatory Disease & Immunology Biologics             12 → 11   ['APGE']
+Life Science Tools & Analytical Instruments             14 → 13   ['TECH']
+Management & Business Advisory Consulting Firms          2 →  1   ['CBZ']
+Peptide & Hormone Therapies for Metabolic & Endocrine     4 →  3   ['CRNX']
+Specialty P&C Insurance Underwriters Rotation Reversal  17 → 16   ['SAFT']
+```
+- **11 `theme_carryforward_filter_stripped` rows tonight, 6 of them `deal_pinned`.** The named case from the task text is there: **CBZ out of the Consulting theme, 2 → 1.** CBZ's pin confirmed independently against the live function — `get_deal_pinned_tickers(2026-09-21, ['CBZ','HURN','IT','ACN'])` returns **`['CBZ']`** and nothing else, so the strip took the pinned name and left HURN alone.
+- **The over-removal control is untouched:** *Emerging Medical Device Innovators Breakout* reads **3 members — ITGR, ATEC, INSP** — on 09-17, 09-18 and 09-21 alike.
+- **The engine did not crash:** total themes 132 (09-17) → 124 (09-18) → **120 (09-21)**, a comparable run.
+⚠ **THE THEME I NAMED DID NOT SURVIVE, AND THAT IS THE STRIP WORKING, NOT FAILING.** Stripped to one member it falls below the member floor and does not persist — so `mi_themes` on 09-21 holds no Consulting row at 1 member. I had written "a row carrying 1 member `{HURN}`" as the success case and "the theme vanishes entirely" as the FAILURE case; they are the same observation. The audit row is what separates them, and it was there the whole time.
+⚠ **TWO CONDITIONS BEFORE THIS ONE COULD NOT BE MET, both defects in the condition rather than the code.** The first named Friday 2026-09-18's run, which predates the Saturday 09-19 ship — unfalsifiable in the wrong direction. The second is the 1-member case above. Recorded because the class recurred three times today (#610, #672, this).
