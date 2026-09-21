@@ -350,8 +350,12 @@ async def _news_check(theme_name: str, tickers: list[str] | None = None) -> tupl
         ticker_str = " ".join(tickers[:6]) if tickers else theme_name
         query = f"What news catalyst is driving {ticker_str} higher this week? Be concise, maximum 3 sentences."
         async with _SEARCH_SEM:
-            answer = await search_news_perplexity(query, recency="week")
+            # #679: raise_on_failure=True so a PROVIDER failure reaches the `except` arm below
+            # instead of arriving as "" and being scored as a factual "no catalysts found".
+            answer = await search_news_perplexity(query, recency="week", raise_on_failure=True)
         if not answer:
+            # Reached only on a 200 that yielded no text — a real answer of nothing, not an
+            # outage. api_err stays False on purpose; the caller scores this 0.
             return 0, "", False
 
         # Detect Perplexity "no results" responses — store nothing, don't pollute DB

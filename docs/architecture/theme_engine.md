@@ -886,6 +886,46 @@ parameter added to `get_rs_velocity`, and the default raised past STRL's own dol
 not measured here).
 
 
+## How a NEWS-PROVIDER failure scores a theme (#679, 2026-09-21 — the guard existed and could not fire)
+
+**The rule, and it is not new: a Perplexity failure must NEVER be scored as a finding about the
+theme.** `_news_check` (`theme_engine.py`) returns `(news_score, description, api_err)`, and BOTH
+its callers — **derived, not listed: `_rescore_existing_theme` (3825) and `_score_new_theme`
+(6824), the only two `_news_check(` call sites in the module** — substitute a **neutral
+`news_score = 15`** (half credit) when `api_err` is true, and `_rescore_existing_theme` also KEEPS
+the theme's existing description rather than blanking it. The code comment has said so since the
+behaviour was written: *"Perplexity is down/rate-limited — don't penalize the theme with score=0."*
+
+🔴 **That guard had never once executed for a provider failure.** `collector.search_news_perplexity`
+catches every exception, alerts, and returns `""` — its own comment reads *"Contract is UNCHANGED:
+this only alerts, then we still return ''"*. So the outage reached `_news_check` as an empty answer,
+took `if not answer: return 0, "", False`, and was recorded as the factual verdict **"no catalysts
+found"**. The `except` arm that sets `api_err=True` was unreachable from below.
+
+**What that cost, measured in prod rather than argued.** On **2026-09-04** four themes were capped
+**Mainstream → Nascent** between **17 and 27 milliseconds** after their own `api_failure_perplexity`
+audit row — Latin American Silver (17:01:28.127 ← .100), IT Consulting (17:01:30.590 ← .573), Life
+Sciences (17:02:05.410 ← .388), Office REIT (17:02:42.955 ← .938), all `reason=empty_description`.
+`ep_theme_belonging.THEME_BONUS_STAGES = ("Accelerating", "Mainstream")`, so **every member ticker
+of those four themes lost the EP theme-belonging bonus because a news API timed out.** Two of the
+four were HTTP 400s and two were timeouts — any provider failure does this, not just a 429.
+
+**The fix:** `search_news_perplexity(..., raise_on_failure=True)` — an opt-in the theme engine
+passes and the other ~12 callers do not, so their fail-open contract is byte-identical. The failure
+now reaches the guard the engine already had.
+
+⚠ **WHAT THIS DOES NOT MEAN, and the distinction matters for any future analysis of history.** A
+zero news score is **NOT** a marker of a provider outage. `_is_garbage(answer)` returns the
+byte-identical `(0, "", False)` from a **successful** call whose answer said there is no news, and
+**2026-07-21 carries a zero-news theme row on a day with no provider failure of any kind**. Outage
+and genuine-no-news were indistinguishable in the stored data. This change removes that ambiguity
+**going forward only** — no historical theme score, stage or description is restated by it.
+
+⚖ **Classified as a BUG FIX, not a criteria change**: it restores behaviour the code already
+documents and intends, under the operator's 2026-08-27 ruling — *"make sure any issue with
+perplexity doesn't affect live trades, just render as no-op or unavailable input."* A timeout
+demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
+
 ## Change log
 
 ### 2026-09-20 — #661: the assignment LLM call has a SEAM — the EP money path no longer runs through the nightly batch driver (REFACTOR ONLY; old-vs-new replay byte-identical)

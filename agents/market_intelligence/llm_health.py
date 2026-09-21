@@ -311,6 +311,18 @@ def _is_probe_origin() -> bool:
 # sentence, and correct for "other").
 _PROVIDER_CLASS = {"alpaca": "broker"}
 
+# #679 (2026-09-21): the "data" sentence is shared across polygon/fmp/perplexity and names
+# THREE surfaces, so at least one clause is false for whichever provider actually failed. On
+# 2026-09-21 a Perplexity 429 told the operator the "RS universe" was degrading; Perplexity does
+# not feed the RS universe at all. An alert that overstates its blast radius is not a harmless
+# rounding — it is the reason a real incident gets read as boilerplate. Named per provider; the
+# shared sentence stays as the honest default for providers not listed.
+_CONSEQUENCE_BY_PROVIDER = {
+    "perplexity": "the catalyst second opinion / theme news scoring that depends on it",
+    "polygon": "the price + RS universe that depends on it",
+    "fmp": "the fundamentals / estimates that depend on it",
+}
+
 _ALARM_COPY_BY_CLASS = {
     "data": {
         "kind": "DATA-API",
@@ -321,6 +333,33 @@ _ALARM_COPY_BY_CLASS = {
         "consequence": "position sync / trade state that depends on it",
     },
 }
+
+
+def provider_said(exc: BaseException) -> tuple[str, str] | None:
+    """`(message, type)` the PROVIDER put in its own error body, or None.
+
+    #679 (2026-09-21). The alert told the operator to "check the provider status + our API
+    key/plan" for a Perplexity 429 whose body — which we had already captured into the audit
+    row — read `{"error":{"message":"upstream model is overloaded","type":"overloaded"}}`.
+    Nothing about our key or our plan. We had the answer and printed a guess over it.
+
+    Perplexity's shape is `{"error":{"message","type","code"}}`; OpenAI-compatible providers
+    use the same envelope, so this is not Perplexity-specific. Best-effort by construction —
+    any parse failure returns None and the caller keeps the generic advice."""
+    try:
+        import json as _json
+        body = getattr(getattr(exc, "response", None), "text", None)
+        if not body:
+            return None
+        err = (_json.loads(body) or {}).get("error")
+        if not isinstance(err, dict):
+            return None
+        msg = str(err.get("message") or "").strip()
+        return (msg[:200], str(err.get("type") or "").strip()[:60]) if msg else None
+    except Exception:  # loud-ok: pure alert-copy enrichment — a body that will not parse must
+        # NEVER cost the operator the alert itself, which is the durable signal. The caller
+        # falls back to the generic advice, which is the pre-#679 behaviour.
+        return None
 
 
 def classify_api_failure(exc: BaseException) -> str | None:
@@ -571,7 +610,7 @@ async def alert_api_failure(provider: str, exc: BaseException,
         label = provider.upper()
         copy = _ALARM_COPY_BY_CLASS[_PROVIDER_CLASS.get(provider, "data")]
         kind = copy["kind"]
-        consequence = copy["consequence"]
+        consequence = _CONSEQUENCE_BY_PROVIDER.get(provider, copy["consequence"])
 
         # 2026-09-04 (found diagnosing a Perplexity 400 with no repro key): `str(exc)` on an
         # `httpx.HTTPStatusError` is ONLY "Client error '400 Bad Request' for url '...'" — it
@@ -626,14 +665,28 @@ async def alert_api_failure(provider: str, exc: BaseException,
             from agents.market_intelligence.briefing import send_telegram_message
             from shared.telegram_format import b, esc
             sustained_tag = "SUSTAINED " if transient else ""
+            _said = provider_said(exc)
             await send_telegram_message(
                 f"⚠️ {b(f'{label} {kind} FAILURE')} ({sustained_tag}{esc(cls)}{esc(code_str)})"
                 + (f" in {esc(context)}" if context else "")
                 + ".\n"
                 + f"The {esc(label)} fetch is failing — {consequence} is "
                 + "silently degrading until it recovers.\n"
-                + "Check the provider status + our API key/plan, then verify the "
-                + "next scan's data.",
+                # #679: if the provider named its own cause, SHOW IT and drop the guess. The
+                # generic "check our API key/plan" is actively misleading when the body says
+                # the fault is upstream capacity.
+                # ⚠ QUOTE AND STOP. A first draft appended "that is the provider's own words —
+                # not our key or plan", which is itself an assertion past the evidence: a 403
+                # `permission_error` or a 400 `authentication_error` also reaches here (only
+                # 401/402 divert to the credit path) and would have been captioned "not our
+                # key". That is the exact defect this whole change is about. The body speaks
+                # for itself; we add nothing to it.
+                + (f"Provider says: {esc(_said[0])}"
+                   + (f" (type={esc(_said[1])})" if _said[1] else "")
+                   + "\nVerify the next scan's data.\n"
+                   if _said else
+                   "Check the provider status + our API key/plan, then verify the "
+                   "next scan's data."),
                 parse_mode="HTML",
             )
         except Exception as e:

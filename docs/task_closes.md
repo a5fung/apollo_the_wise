@@ -1213,3 +1213,14 @@ EVIDENCE: **His verdict, 2026-09-20: "640 looks good".** That is the bar — the
 🔭 **Open and unfiled, recorded in the design doc:** nobody has measured how often a cohort leaves a band and returns within one hop, so net displacement may understate churn.
 
 ⚖ Reporting surface only — no strategy, entry, exit, sizing or safeguard touched. Shipped in `portfolio-app2`.
+
+## #673 — the six RS pools now read one universe, and the liquidity floor is dollars not shares (2026-09-21)
+BAR: state, in the SSoT, whether the six RS pools are meant to share one universe; then either all six exclude known non-equities or the three that differ carry a written reason.
+EVIDENCE: **Both halves of the DoD, plus the live board reading its verify asked for.**
+- **SSoT half:** `docs/architecture/theme_engine.md` §"The six RS pools read ONE universe" states the ruling and the commit evidence behind it — the 3/3 split was ACCIDENTAL (`a744d7f6`, a 2026-03-23 evening hotfix on the leaders board only; `get_rs_velocity` 03-16 and `get_rs_turners` 03-18 already existed and were never touched; no commit or doc ever granted them a wider universe).
+- **Code half:** all six exclude known non-equities. Gate `tests/test_deal_pinned_not_a_coverage_gap.py::test_every_rs_pool_reads_the_one_universe_or_says_why` reads **6/0**; 21 tests green 2026-09-21.
+- **VERIFY ("re-run the AST check … confirm the split is 6/0 … not 3/3-silent"):** re-run today, 6/0, green.
+- **The live no-op proof, measured rather than argued:** on the latest score_date (2026-09-18) `mi_stock_scores` holds **2,381 rows and ZERO non-equity rows** (join on `mi_tracked_stocks.quote_type`); the most recent non-equity score row of ANY date is **2026-03-23**. So the new clause removes nothing and the old-vs-new diff is empty by construction — which is exactly what EXPECT predicted.
+- **Boards render (2026-09-21):** leaders 30, velocity 30, turners 21, recovery 12 — none empty, which was the stated UNINTENDED watch.
+- **The dollar floor's predicted live proof holds: WGS IS on the leaders board.** It trades 497,989 shares × $101.10 = **$50.3M/day** and the old share floor rejected it by 2,011 shares. And **0 of the top-40 by RS sit under the $10M/day floor** — no name disappeared for a liquidity reason, the WOULD-FAIL-IF.
+⚠ NOT claimed: the liquidity + small-cap-healthcare split across velocity/turners/recovery is still 3/3 and was deliberately left alone — it is POLICY that would change what the briefing shows, and it is his call. `get_ma_pullbacks` still sits outside the derived pool list. Both were reported to him and neither is part of this DoD.

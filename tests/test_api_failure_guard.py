@@ -532,8 +532,16 @@ async def test_alpaca_alert_uses_broker_domain_consequence(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_data_provider_alert_keeps_data_domain_consequence(monkeypatch):
-    # Guard the other direction: a genuine data-API provider must keep the
-    # ORIGINAL sentence — the #406 fix must not bleed broker copy onto data.
+    # Guard the other direction: a genuine data-API provider must keep a DATA-domain
+    # consequence — the #406 fix must not bleed broker copy onto data.
+    #
+    # ⚠ #679 (2026-09-21): this used to assert the literal words "catalyst grade" and "news
+    # corpus". That was a PROXY for "the data-domain sentence", and the proxy outlived its
+    # truth: one shared sentence named three surfaces, so whichever provider actually failed,
+    # at least one clause was false — a Perplexity 429 told the operator the RS universe was
+    # degrading, which Perplexity does not feed. The consequence is per-provider now. The
+    # assertion this test exists for — no broker copy on a data provider — is unchanged and
+    # still last; what is added is that each provider's sentence is ABOUT that provider.
     db = _DBStub(existing=[])
     sent = _patch_db_and_telegram(monkeypatch, db)
 
@@ -542,8 +550,26 @@ async def test_data_provider_alert_keeps_data_domain_consequence(monkeypatch):
     assert len(sent) == 1
     msg = sent[0]
     assert "DATA-API" in msg
-    assert "catalyst grade" in msg.lower() and "news corpus" in msg.lower()
+    # THE #406 GUARD, unchanged: broker copy must never appear on a data provider.
     assert "position sync" not in msg.lower() and "trade state" not in msg.lower()
+    # Polygon IS the price/RS feed, so its sentence must say so.
+    assert "rs universe" in msg.lower(), msg
+
+
+@pytest.mark.asyncio
+async def test_each_data_provider_gets_a_consequence_about_ITSELF(monkeypatch):
+    """#679. A Perplexity failure claiming the RS universe is degrading is not a wording nit:
+    it overstates the blast radius of a real incident, which is how a real incident gets read
+    as boilerplate. Perplexity feeds the catalyst second opinion and theme news scoring — it
+    does not touch the RS universe."""
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+    await llm_health.alert_api_failure("perplexity", _http_status_error(500))
+    assert len(sent) == 1
+    msg = sent[0].lower()
+    assert "rs universe" not in msg, f"Perplexity does not feed the RS universe: {sent[0]}"
+    assert "catalyst" in msg and "theme news" in msg, sent[0]
+    assert "position sync" not in msg and "trade state" not in msg
 
 
 # ── (7) Fix-1 (2026-07-14) — TRANSIENT vs ACTIONABLE Telegram triage ──────────

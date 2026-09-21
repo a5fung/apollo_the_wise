@@ -1466,87 +1466,103 @@ async def _validate_catalyst_perplexity(ticker: str, news_summary: str) -> Optio
 
 Respond with ONLY the classification word."""
 
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.post(
-                # #603 — Agent API. The old /chat/completions is sunset 2026-09-27, and this
-                # was the THIRD call site (the two in collector.py were migrated first). No
-                # model string: the preset routes to whatever currently serves it.
-                collector._PPLX_AGENT_URL,
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "preset": collector._PPLX_PRESET,
-                    "instructions": "You classify stock catalysts. Respond with exactly one "
-                                    "word: GAME_CHANGER, STRONG, or ROUTINE.",
-                    "input": prompt,
-                    # ⚠ MEASURED, NOT ASSUMED (2026-08-27): omitting `tools` — and even
-                    # sending `"tools": []` — does NOT suppress search. Both probes came
-                    # back with a `search_results` item and a tool-call charge ($0.0025).
-                    # Under a preset the Agent API searches regardless, so this path can see
-                    # fresh web results alongside the summary it is grading. That matches the
-                    # old behaviour (the retired `sonar` model was itself a search model), so
-                    # it is parity, not a regression — but do not write "no search here".
-                },
-            )
-            r.raise_for_status()
-            try:
-                _data = r.json()
-            except ValueError as je:
-                # #603 DoD (3): see the matching guard in collector.search_news_perplexity —
-                # a 200 that doesn't decode as JSON never raises a classifiable
-                # provider-health exception, so it would otherwise be silent here too.
-                from agents.market_intelligence.llm_health import alert_perplexity_invalid_json
-                await alert_perplexity_invalid_json(str(je))
-                logger.warning(f"Perplexity validation for {ticker}: response was not valid JSON: {je}")
-                return None
-            try:  # #377 cost meter — additive. Never alters the validation result.
-                from agents.market_intelligence.spend_tracker import log_perplexity_call
-                await log_perplexity_call(
-                    caller="perplexity_catalyst_validate", response=_data,
+    # #679 (2026-09-21): ONE bounded retry on a 429, the same rule the news path has had since
+    # 2026-08-12 (`collector.pplx_429_wait_s`). Without it a single transient provider blip —
+    # Perplexity answering `{"type":"overloaded"}`, nothing to do with our key or quota — pages
+    # the operator from here while the news path absorbs the identical 429 silently. Measured
+    # 2026-09-21 08:15:07 ET: news search got a 429, waited 6.4s, succeeded; 1.3s later this
+    # call site got the same 429 and hard-failed. It also makes the ALERT honest — llm_health
+    # classifies 429 as actionable on the stated ground "429-after-retries", which was false
+    # here because there were none.
+    for _attempt in (1, 2):
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.post(
+                    # #603 — Agent API. The old /chat/completions is sunset 2026-09-27, and this
+                    # was the THIRD call site (the two in collector.py were migrated first). No
+                    # model string: the preset routes to whatever currently serves it.
+                    collector._PPLX_AGENT_URL,
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    json={
+                        "preset": collector._PPLX_PRESET,
+                        "instructions": "You classify stock catalysts. Respond with exactly one "
+                                        "word: GAME_CHANGER, STRONG, or ROUTINE.",
+                        "input": prompt,
+                        # ⚠ MEASURED, NOT ASSUMED (2026-08-27): omitting `tools` — and even
+                        # sending `"tools": []` — does NOT suppress search. Both probes came
+                        # back with a `search_results` item and a tool-call charge ($0.0025).
+                        # Under a preset the Agent API searches regardless, so this path can see
+                        # fresh web results alongside the summary it is grading. That matches the
+                        # old behaviour (the retired `sonar` model was itself a search model), so
+                        # it is parity, not a regression — but do not write "no search here".
+                    },
                 )
-            except Exception:
-                pass
-            text = collector._pplx_answer_text(_data).strip().upper()
-        # ⚠ SAFETY (operator 2026-08-27): "make sure any issue with perplexity doesn't affect
-        # live trades, just render as no-op or unavailable input."
-        #
-        # This used to `else: return "routine"` — so an EMPTY or unparseable answer became a
-        # real grade. That is a FAILURE rendered as a JUDGEMENT, and "routine" is the lowest
-        # one: it counted as a disagreement against a strong/game_changer label, which now
-        # renders the second-opinion block to the judge (#233). A degraded provider could
-        # therefore argue every catalyst down. Unrecognised text is now UNAVAILABLE (None),
-        # which is a no-op on every consumer.
-        if "GAME_CHANGER" in text or "GAME CHANGER" in text:
-            return "game_changer"
-        if "STRONG" in text:
-            return "strong"
-        if "ROUTINE" in text:
-            return "routine"
-        if text:
-            logger.warning(
-                f"Perplexity validation for {ticker} returned an unrecognised classification "
-                f"({text[:60]!r}) — treating as unavailable, not as 'routine'")
-        else:
-            # #603 DoD (3): a 200 with NOTHING extractable — no exception, so nothing else
-            # here would ever alert on it. `_summary` was confirmed non-empty and non-hedge
-            # before this call was made, so a legitimate "no news" read isn't possible here;
-            # this is the response shape breaking, the same signature a vendor endpoint
-            # sunset would leave.
-            from agents.market_intelligence.llm_health import alert_perplexity_empty_answer
-            await alert_perplexity_empty_answer()
-        return None
-    except Exception as e:
-        # #376: a 401/402 here is Perplexity credit exhaustion — alert (deduped).
-        # #603 DoD (3): this call site previously alerted on credit exhaustion only — every
-        # other failure (5xx/timeout/connect/the fixed-URL 404 case) was entirely silent,
-        # even though this is the site that actually PRODUCES the #233 second opinion. Now
-        # routed through the same shared triage as collector.search_news_perplexity.
-        from agents.market_intelligence.llm_health import triage_perplexity_exception
-        await triage_perplexity_exception(
-            e, credit_context="Perplexity catalyst validation", api_context="catalyst validation",
-        )
-        logger.warning(f"Perplexity validation failed for {ticker}: {e}")
-        return None
+                r.raise_for_status()
+                try:
+                    _data = r.json()
+                except ValueError as je:
+                    # #603 DoD (3): see the matching guard in collector.search_news_perplexity —
+                    # a 200 that doesn't decode as JSON never raises a classifiable
+                    # provider-health exception, so it would otherwise be silent here too.
+                    from agents.market_intelligence.llm_health import alert_perplexity_invalid_json
+                    await alert_perplexity_invalid_json(str(je))
+                    logger.warning(f"Perplexity validation for {ticker}: response was not valid JSON: {je}")
+                    return None
+                try:  # #377 cost meter — additive. Never alters the validation result.
+                    from agents.market_intelligence.spend_tracker import log_perplexity_call
+                    await log_perplexity_call(
+                        caller="perplexity_catalyst_validate", response=_data,
+                    )
+                except Exception:
+                    pass
+                text = collector._pplx_answer_text(_data).strip().upper()
+            # ⚠ SAFETY (operator 2026-08-27): "make sure any issue with perplexity doesn't affect
+            # live trades, just render as no-op or unavailable input."
+            #
+            # This used to `else: return "routine"` — so an EMPTY or unparseable answer became a
+            # real grade. That is a FAILURE rendered as a JUDGEMENT, and "routine" is the lowest
+            # one: it counted as a disagreement against a strong/game_changer label, which now
+            # renders the second-opinion block to the judge (#233). A degraded provider could
+            # therefore argue every catalyst down. Unrecognised text is now UNAVAILABLE (None),
+            # which is a no-op on every consumer.
+            if "GAME_CHANGER" in text or "GAME CHANGER" in text:
+                return "game_changer"
+            if "STRONG" in text:
+                return "strong"
+            if "ROUTINE" in text:
+                return "routine"
+            if text:
+                logger.warning(
+                    f"Perplexity validation for {ticker} returned an unrecognised classification "
+                    f"({text[:60]!r}) — treating as unavailable, not as 'routine'")
+            else:
+                # #603 DoD (3): a 200 with NOTHING extractable — no exception, so nothing else
+                # here would ever alert on it. `_summary` was confirmed non-empty and non-hedge
+                # before this call was made, so a legitimate "no news" read isn't possible here;
+                # this is the response shape breaking, the same signature a vendor endpoint
+                # sunset would leave.
+                from agents.market_intelligence.llm_health import alert_perplexity_empty_answer
+                await alert_perplexity_empty_answer()
+            return None
+        except Exception as e:
+            _wait = collector.pplx_429_wait_s(e)      # None unless this is a 429
+            if _attempt == 1 and _wait is not None:
+                logger.warning(f"Perplexity validation for {ticker} rate-limited "
+                               f"(429, attempt 1/2) — retrying in {_wait:.1f}s")
+                await asyncio.sleep(_wait)
+                continue
+            # #376: a 401/402 here is Perplexity credit exhaustion — alert (deduped).
+            # #603 DoD (3): this call site previously alerted on credit exhaustion only — every
+            # other failure (5xx/timeout/connect/the fixed-URL 404 case) was entirely silent,
+            # even though this is the site that actually PRODUCES the #233 second opinion. Now
+            # routed through the same shared triage as collector.search_news_perplexity.
+            from agents.market_intelligence.llm_health import triage_perplexity_exception
+            await triage_perplexity_exception(
+                e, credit_context="Perplexity catalyst validation", api_context="catalyst validation",
+            )
+            logger.warning(f"Perplexity validation failed for {ticker}: {e}")
+            return None
+    return None                                   # unreachable: both arms above return
 
 
 def _rt_anchor_measured(rt_vols: "dict | None", now_et: datetime) -> bool:

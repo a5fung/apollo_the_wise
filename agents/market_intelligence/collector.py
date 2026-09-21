@@ -1554,6 +1554,32 @@ _PPLX_429_BACKOFF_DEFAULT_S = 2.0
 _PPLX_429_BACKOFF_MAX_S = 5.0
 
 
+def pplx_429_wait_s(exc: BaseException) -> float | None:
+    """Seconds to wait before ONE retry of a Perplexity 429, or None if `exc` is not a 429.
+
+    Lifted out of `search_news_perplexity`'s loop on 2026-09-21 so the OTHER Perplexity call
+    site can use the same rule instead of growing a second copy. It had no second user for six
+    weeks, and that is exactly the bug: `ep_detector._validate_catalyst_perplexity` had no retry
+    at all, so a transient provider blip that the news path absorbed silently paged the operator
+    from the catalyst path. Both now share this.
+
+    Honors `Retry-After`, falls back to a short fixed backoff, caps it so an interactive call
+    never stalls long, then adds +0-50% jitter: concurrent callers hit by the SAME burst would
+    otherwise read the identical Retry-After and retry in lockstep, re-tripping the limit that
+    just rejected them.
+    """
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    if status != 429:
+        return None
+    wait = _PPLX_429_BACKOFF_DEFAULT_S
+    try:
+        wait = float(exc.response.headers.get("Retry-After", wait))
+    except (TypeError, ValueError, AttributeError):
+        pass
+    wait = min(max(wait, 0.0), _PPLX_429_BACKOFF_MAX_S)
+    return wait * random.uniform(1.0, 1.5)
+
+
 def _pplx_cache_get(key: tuple) -> str | None:
     """Live entry, or None. Prunes on read so the dict cannot grow without bound."""
     hit = _PPLX_CACHE.get(key)
@@ -1579,7 +1605,7 @@ def _pplx_cache_put(key: tuple, answer: str) -> None:
 
 async def search_news_perplexity(
     query: str, recency: str = "month", system_prompt: str | None = None,
-    *, fresh: bool = False,
+    *, fresh: bool = False, raise_on_failure: bool = False,
 ) -> str:
     """Use Perplexity Sonar for news search. Returns a synthesized answer string.
 
@@ -1710,20 +1736,8 @@ async def search_news_perplexity(
             # interactive `fresh=True` call never stalls long). Same bounded-
             # ONE-retry shape as the timeout path — never adds latency to a
             # healthy call, only to the rare one that got rate-limited.
-            _status = getattr(getattr(e, "response", None), "status_code", None)
-            if attempt == 1 and _status == 429:
-                _wait = _PPLX_429_BACKOFF_DEFAULT_S
-                try:
-                    _wait = float(e.response.headers.get("Retry-After", _wait))
-                except (TypeError, ValueError):
-                    pass
-                _wait = min(max(_wait, 0.0), _PPLX_429_BACKOFF_MAX_S)
-                # Jitter: concurrent callers hit by the SAME burst (e.g. the
-                # theme-engine rescore fan-out) would otherwise read the
-                # identical Retry-After (or the identical default) and retry
-                # in lockstep — re-tripping the exact limit that just
-                # rejected them. +0-50% decorrelates the retries.
-                _wait *= random.uniform(1.0, 1.5)
+            _wait = pplx_429_wait_s(e)        # None unless this is a 429
+            if attempt == 1 and _wait is not None:
                 logger.warning(f"Perplexity search rate-limited (429, attempt 1/2) — retrying in {_wait:.1f}s")
                 await asyncio.sleep(_wait)
                 continue
@@ -1745,6 +1759,22 @@ async def search_news_perplexity(
         e, credit_context="Perplexity news search", api_context="news search",
     )
     logger.warning(f"Perplexity search failed: {e}")
+    # #679 (2026-09-21): DEFAULT IS UNCHANGED — return "" and let the caller fail open. ~12
+    # production callers rely on that and none of them are touched.
+    #
+    # ⚠ WHY THE OPT-IN EXISTS, and it is not a style preference. Returning "" for BOTH "the
+    # provider is down" and "there genuinely is no news" made a real safety guard UNREACHABLE.
+    # `theme_engine._news_check` has an `except` arm that returns api_err=True precisely so the
+    # caller can substitute a neutral news score of 15 instead of 0 — its comment reads "don't
+    # penalize the theme with score=0". That arm had never once executed for a provider failure,
+    # because the exception is swallowed HERE, one layer below it. So an outage was recorded as
+    # the factual verdict "no catalysts found".
+    #
+    # MEASURED 2026-09-04: four themes were capped Mainstream -> Nascent 17-27ms after their own
+    # Perplexity failure row, and THEME_BONUS_STAGES is ("Accelerating", "Mainstream") — so every
+    # member ticker silently lost the EP theme-belonging bonus because a news API timed out.
+    if raise_on_failure:
+        raise e
     return ""
 
 
