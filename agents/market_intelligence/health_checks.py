@@ -4143,6 +4143,24 @@ def _lattice_per_100(alerts: int, supply: int) -> float:
 # 2026-08-26 fixes to this same trigger drew.
 
 
+def _lattice_b_unknown_qualifies(unknown_info: "dict[str, Any] | None") -> bool:
+    """#666 half (b): is the prevented-count QUALIFIED enough to prescribe a revert?
+
+    Returns False — i.e. withhold the SQL — when the unknown-share could not be read at all, or
+    when a MAJORITY of the decisions in this window rested on an `unknown` forward-guidance read.
+    The reasoning the operator asked for: a prevented-count built mostly out of decisions the
+    check made without its input is not evidence the lattice is working, and prescribing a live
+    revert off it is the same accusation-on-thin-grounds this task exists to stop.
+
+    ⚠ A query FAILURE returns False, matching `_lattice_prevented_alerts`'s contract that
+    'could not check' must never read as 'checked and fine'. Zero decisions also returns False:
+    if it changed nothing, it cannot account for a shortfall, so the SQL stays withheld."""
+    if not unknown_info or unknown_info.get("n") in (None, 0):
+        return False
+    share = unknown_info.get("share")
+    return share is not None and share <= 0.5
+
+
 def _lattice_b_accounts_for_shortfall(prevented_count: int, shortfall: float) -> bool:
     """Do the NAMED, counted prevented alerts fully explain trigger (b)'s reported shortfall?
 
@@ -4155,6 +4173,63 @@ def _lattice_b_accounts_for_shortfall(prevented_count: int, shortfall: float) ->
     most of the drop — pointing a revert at it would not be grounded in the evidence, only in
     the correlation. `shortfall <= 0` has nothing to explain (trivially accounted for)."""
     return shortfall <= 0 or prevented_count >= shortfall
+
+
+async def _lattice_unknown_share(c, window_days: "list[date]") -> "dict[str, Any]":
+    """Half (b) of #666's DoD: of the decisions the fact-check ACTUALLY MADE in this window, what
+    share turned on an `unknown` input rather than on evidence.
+
+    WHY THIS HALF EXISTS, and it is the half that answers his actual question. He asked (2026-09-15)
+    *"is the fact checking good or bad? Help us decide."* Half (a) — the named prevented count —
+    says what the fact-check DID. It cannot say whether it was ENTITLED to. A demotion made because
+    the forward-guidance read came back `unknown` is not a fact-check finding anything; it is the
+    monitor acting on an absence. Measured by hand on 2026-09-15 over the game_changer cases since
+    2026-08-22: the read was `forward` on 4, `unknown` on 4 and `mixed_fwd` on 1 — **~44% of the
+    cases that mattered were decided on information the check did not have.**
+
+    ⚠ POPULATION — the decisions, NOT every row it looked at. Same attribution as
+    `_lattice_prevented_alerts`: `live_side='lattice'` AND the lattice verdict differs from the raw
+    LLM grade. A row where the fact-check agreed with the LLM changed nothing and is not a decision
+    it "turned on" anything. Widening this to every shadow row would dilute the share with rows the
+    check never acted on — the wrong-population error this whole task exists to stop.
+
+    ⚠ `expct_looking` IS NULLABLE, and NULL is not `'unknown'`. NULL means the column was never
+    written for that row (an older row, or a path that skipped the expectation read); `'unknown'`
+    means the read RAN and came back empty-handed. They are different failures and are counted
+    apart, because folding NULL into `unknown` would inflate the share with rows that never asked
+    the question. `n` is the decisions with a readable value; `unwritten` is reported beside it.
+
+    Returns {"n": int, "unknown": int, "share": float|None, "unwritten": int, "by_value": {...}}.
+    On any query failure every count is None — never 0 — so the caller can tell "checked, found
+    none" from "could not check", the same contract `_lattice_prevented_alerts` keeps."""
+    empty = {"n": 0, "unknown": 0, "share": None, "unwritten": 0, "by_value": {}}
+    if not window_days:
+        return empty
+    try:
+        rows = await c.fetch(
+            """
+            SELECT COALESCE(sh.expct_looking, '(unwritten)') AS looking, COUNT(*) AS n
+              FROM mi_catalyst_tier_shadow sh
+             WHERE sh.scan_date = ANY($1::date[])
+               AND sh.live_side = 'lattice'
+               AND sh.shadow_tier_last IS DISTINCT FROM sh.live_quality_last
+             GROUP BY 1
+            """,
+            list(window_days),
+        )
+        # ⚠ SHAPED INSIDE THE TRY ON PURPOSE. The first draft built `by_value` after it, and a
+        # row missing the `looking` key raised KeyError straight out of a function whose whole
+        # contract is that it cannot break the monitor. This module's rule is that a read failure
+        # returns None and the caller withholds — never that it takes the nightly page down.
+        by_value = {r["looking"]: int(r["n"]) for r in rows}
+    except Exception:
+        logger.exception("lattice monitor: unknown-share read failed (#666 half b)")
+        return {"n": None, "unknown": None, "share": None, "unwritten": None, "by_value": {}}
+    unwritten = by_value.pop("(unwritten)", 0)
+    n = sum(by_value.values())
+    unknown = by_value.get("unknown", 0)
+    return {"n": n, "unknown": unknown, "unwritten": unwritten, "by_value": by_value,
+            "share": (unknown / n) if n else None}
 
 
 async def _lattice_prevented_alerts(c, window_days: "list[date]") -> "dict[str, Any]":
@@ -4436,6 +4511,8 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                             _expected_recent = prior_rate * recent_supply
                             _shortfall = max(0.0, _expected_recent - recent_high)
                             _prevented_info = await _lattice_prevented_alerts(c, recent_m)
+                            # #666 half (b): how much of what it decided rested on an absence.
+                            _unknown_info = await _lattice_unknown_share(c, recent_m)
                             out["triggers"].append({
                                 "kind": "high_conversion_drop",
                                 "recent_rate": round(recent_rate, 5),
@@ -4458,8 +4535,13 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                                 "prevented": _prevented_info["prevented"],
                                 "caused": _prevented_info["caused"],
                                 "prevented_uncountable": _prevented_info["uncountable"],
-                                "accounts_for_shortfall": _lattice_b_accounts_for_shortfall(
-                                    len(_prevented_info["prevented"]), _shortfall)})
+                                "unknown_share": _unknown_info,
+                                # THE DoD: withhold when EITHER half fails — the count cannot
+                                # account for the shortfall, OR it is not qualified enough to act on.
+                                "accounts_for_shortfall": (
+                                    _lattice_b_accounts_for_shortfall(
+                                        len(_prevented_info["prevented"]), _shortfall)
+                                    and _lattice_b_unknown_qualifies(_unknown_info))})
 
             # trigger (c): the two most recent trading days both produced ZERO alerts.
             # DELIBERATELY NOT supply-normalised (2026-08-26): two silent days on a live money
@@ -4558,6 +4640,31 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     lines.append(
                         f"  ↳ {'An unknown number of' if u is None else u} grade change(s) in "
                         f"this window could not be judged — score data missing or unreadable.")
+                # #666 half (b), 2026-09-21: half (a) says what the fact-check DID; this says
+                # whether it was ENTITLED to. A demotion taken because the forward-guidance read
+                # came back `unknown` is the monitor acting on an ABSENCE, not finding anything.
+                _u = t.get("unknown_share") or {}
+                if _u.get("n") is None:
+                    lines.append(
+                        "  ↳ Could NOT read how many of these decisions rested on an `unknown` "
+                        "input — the query failed. Treat the prevented-count above as "
+                        "unqualified.")
+                elif _u.get("n"):
+                    _pct = 100.0 * (_u.get("share") or 0.0)
+                    _mix = ", ".join(f"{k} {v}" for k, v in
+                                     sorted(_u.get("by_value", {}).items(), key=lambda kv: -kv[1]))
+                    lines.append(
+                        f"  ↳ Of the {_u['n']} grade change(s) it made here, "
+                        f"{_u['unknown']} ({_pct:.0f}%) turned on an `unknown` "
+                        f"forward-guidance read rather than on evidence — it was deciding "
+                        f"without the input. Mix: {_mix}."
+                        + (f" ({_u['unwritten']} row(s) never recorded the read at all — a "
+                           f"different gap, counted apart.)" if _u.get("unwritten") else ""))
+                else:
+                    lines.append(
+                        "  ↳ It made ZERO grade changes in this window, so nothing here "
+                        "turned on an `unknown` input — and nothing here can explain the "
+                        "shortfall either.")
             elif t["kind"] == "zero_alert_days":
                 sup = ["?" if s is None else str(s) for s in t.get("supply", [])]
                 ctx = (f" The tape offered {' and '.join(sup)} stocks that OPENED "

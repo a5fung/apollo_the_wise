@@ -175,7 +175,7 @@ class _FakeConn:
 
     def __init__(self, shadow_rows=None, alert_rows=None, dedupe_hit=False,
                  flip_date=None, safeguard_transition=None, supply=None,
-                 prevented_rows=None):
+                 prevented_rows=None, unknown_rows=None):
         self.shadow_rows = shadow_rows or []
         self.alert_rows = alert_rows or []
         self.dedupe_hit = dedupe_hit
@@ -186,6 +186,11 @@ class _FakeConn:
         # itself. None -> [] (no named preventions), the conservative default every OTHER
         # trigger-(b) test in this file relies on.
         self.prevented_rows = prevented_rows or []
+        # #666 half (b), 2026-09-21: grouped rows for `_lattice_unknown_share`, shaped
+        # [{"looking": <expct_looking|"(unwritten)">, "n": int}]. None -> [], i.e. the
+        # fact-check made NO grade changes in the window, which withholds the revert SQL —
+        # the same conservative default `prevented_rows` keeps.
+        self.unknown_rows = unknown_rows or []
         # `supply` (trigger (b)'s denominator, 2026-08-26): None -> a FLAT tape, which makes
         # the supply-normalised statistic mathematically identical to the old per-trading-day
         # one (constant supply cancels), so every pre-existing trigger-(b) assertion keeps
@@ -204,6 +209,10 @@ class _FakeConn:
         # the (unrelated) `shadow_rows` dispatch and returned in the WRONG shape.
         if "score_breakdown" in sql:
             return self.prevented_rows
+        # #666 half (b): must also be checked BEFORE the generic shadow branch — it groups
+        # the same table and would otherwise be answered in the wrong shape.
+        if "expct_looking" in sql:
+            return self.unknown_rows
         if "mi_daily_closes" in sql:
             span_start, span_end = args[2], args[1]
             if self.supply is None:
@@ -379,8 +388,13 @@ async def test_trigger_b_prints_sql_when_named_preventions_account_for_the_short
          "score_breakdown": {"gap": 15, "liquidity": 10, "catalyst": 15, "float": 0,
                              "vol_conviction": 0, "theme_bonus": 0}}
         for i, d in enumerate(recent)]
+    # #666 half (b), added 2026-09-21: the SQL now needs BOTH halves — the count must account
+    # for the shortfall AND the decisions must not have rested mostly on an `unknown` input.
+    # 1 unknown of 5 (20%) is qualified, so this test's original intent is preserved.
     conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=0, prior_high=1),
-                      flip_date=date(2026, 1, 1), prevented_rows=prevented_rows)
+                      flip_date=date(2026, 1, 1), prevented_rows=prevented_rows,
+                      unknown_rows=[{"looking": "forward", "n": 4},
+                                    {"looking": "unknown", "n": 1}])
     out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
     t = [x for x in out["triggers"] if x["kind"] == "high_conversion_drop"][0]
     assert t["shortfall"] == 5.0
@@ -855,3 +869,132 @@ def test_the_supply_floors_in_the_message_follow_the_constants():
     assert "prior close $5+" not in render, (
         "a supply floor is hardcoded in the operator-facing text again — render it from the "
         "trigger's own values via _lattice_supply_floors")
+
+
+# ── #666 half (b) — the share of decisions taken on an `unknown` input ────────────────────
+#
+# Half (a) says what the fact-check DID. Half (b) says whether it was ENTITLED to. His question
+# on 2026-09-15 was "is the fact checking good or bad? Help us decide" — and a demotion taken
+# because the forward-guidance read came back `unknown` is the monitor acting on an ABSENCE, not
+# finding anything. Measured by hand that day: `unknown` on 4 of the 9 game_changer cases since
+# 2026-08-22, so ~44% of what mattered was decided without the input.
+
+
+@pytest.mark.asyncio
+async def test_the_message_states_the_unknown_share_and_names_the_mix(monkeypatch):
+    audit, tg = _patch_common(monkeypatch)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=0, prior_high=1),
+                     flip_date=date(2026, 1, 1),
+                     unknown_rows=[{"looking": "unknown", "n": 4},
+                                   {"looking": "forward", "n": 4},
+                                   {"looking": "mixed_fwd", "n": 1}])
+    await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    msg = tg.call_args[0][0]
+    assert "9 grade change(s)" in msg, msg
+    assert "4 (44%)" in msg, msg          # the hand-measured share, reproduced by the code
+    assert "unknown 4" in msg and "forward 4" in msg, msg
+
+
+@pytest.mark.asyncio
+async def test_a_majority_unknown_WITHHOLDS_the_revert_sql(monkeypatch):
+    """THE DoD's second half: the SQL is withheld when EITHER the count cannot account for the
+    shortfall OR the decisions were mostly taken without the input. Here the count accounts
+    fully — so only half (b) can be withholding it."""
+    audit, tg = _patch_common(monkeypatch)
+    recent = hc._lattice_trading_days(_FRI, hc._LATTICE_RECENT_DAYS)
+    prevented_rows = [
+        {"scan_date": d, "ticker": f"TICK{i}", "live_quality_last": "game_changer",
+         "shadow_tier_last": "routine", "acted_catalyst_quality": "routine",
+         "gap_pct": 12.0, "ep_score": 65.0, "ep_bar": 70.0, "score_side": "separation",
+         "score_breakdown": {"catalyst": 15, "gap": 20, "rvol": 10, "float_rotation": 5,
+                             "vol_conviction": 0, "theme_bonus": 0}}
+        for i, d in enumerate(recent)]
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=0, prior_high=1),
+                     flip_date=date(2026, 1, 1), prevented_rows=prevented_rows,
+                     unknown_rows=[{"looking": "unknown", "n": 4},
+                                   {"looking": "forward", "n": 1}])
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    t = [x for x in out["triggers"] if x["kind"] == "high_conversion_drop"][0]
+    assert len(t["prevented"]) == 5, "half (a) must still account for the shortfall here"
+    assert t["accounts_for_shortfall"] is False, "80% unknown must withhold"
+    assert hc._LATTICE_REVERT_SQL not in tg.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_share_withholds_rather_than_reading_as_fine(monkeypatch):
+    """'Could not check' must never read as 'checked and fine' — the same contract
+    _lattice_prevented_alerts keeps with uncountable=None."""
+    audit, tg = _patch_common(monkeypatch)
+
+    class _Boom(_FakeConn):
+        async def fetch(self, sql, *args):
+            if "expct_looking" in sql:
+                raise RuntimeError("db down")
+            return await super().fetch(sql, *args)
+
+    conn = _Boom(alert_rows=_alert_rows(_FRI, recent_high=0, prior_high=1),
+                 flip_date=date(2026, 1, 1))
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    t = [x for x in out["triggers"] if x["kind"] == "high_conversion_drop"][0]
+    assert t["accounts_for_shortfall"] is False
+    assert "Could NOT read" in tg.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_a_malformed_row_cannot_take_the_nightly_page_down(monkeypatch):
+    """The first draft built the value map OUTSIDE the try, so a row missing `looking` raised
+    KeyError straight out of a function whose contract is that it cannot break the monitor.
+    Caught by the existing suite going red, not by review."""
+    audit, tg = _patch_common(monkeypatch)
+
+    class _Junk(_FakeConn):
+        async def fetch(self, sql, *args):
+            if "expct_looking" in sql:
+                return [{"nope": 1}]
+            return await super().fetch(sql, *args)
+
+    conn = _Junk(alert_rows=_alert_rows(_FRI, recent_high=0, prior_high=1),
+                 flip_date=date(2026, 1, 1))
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert any(x["kind"] == "high_conversion_drop" for x in out["triggers"])
+    assert tg.called
+
+
+def test_the_qualifier_treats_no_decisions_and_no_read_alike():
+    """Both mean 'nothing here justifies a revert', and both must withhold."""
+    assert hc._lattice_b_unknown_qualifies({"n": 4, "unknown": 1, "share": 0.25}) is True
+    assert hc._lattice_b_unknown_qualifies({"n": 4, "unknown": 3, "share": 0.75}) is False
+    assert hc._lattice_b_unknown_qualifies({"n": 2, "unknown": 1, "share": 0.5}) is True
+    assert hc._lattice_b_unknown_qualifies({"n": 0, "unknown": 0, "share": None}) is False
+    assert hc._lattice_b_unknown_qualifies({"n": None, "share": None}) is False
+    assert hc._lattice_b_unknown_qualifies(None) is False
+
+
+@pytest.mark.asyncio
+async def test_rows_that_never_recorded_the_read_are_counted_APART_from_unknown():
+    """NULL is not `unknown`. NULL means the column was never written for that row; `unknown`
+    means the read RAN and came back empty-handed. Folding them together would inflate the
+    share with rows that never asked the question.
+
+    ⚠ THIS COVERS THE SHAPING HALF ONLY, and the gap is stated rather than papered over: the
+    SQL maps NULL -> '(unwritten)' via COALESCE, and mutating that COALESCE to 'unknown' leaves
+    the whole suite GREEN, because the fake routes by SQL substring and cannot exercise a
+    WHERE/COALESCE clause. Same for the `shadow_tier_last IS DISTINCT FROM live_quality_last`
+    restriction that makes this the DECISIONS rather than every row looked at — mutating it away
+    is also green. Both are verified against prod by hand instead (2026-09-21: `unknown` 39 of
+    148 shadow rows since 08-22), and a DB-backed test is the only thing that would pin them."""
+    class _C:
+        async def fetch(self, sql, *args):
+            return [{"looking": "unknown", "n": 2}, {"looking": "forward", "n": 2},
+                    {"looking": "(unwritten)", "n": 6}]
+    got = await hc._lattice_unknown_share(_C(), [date(2026, 9, 21)])
+    assert got["n"] == 4, "the unwritten rows leaked into the denominator"
+    assert got["unknown"] == 2 and got["share"] == 0.5
+    assert got["unwritten"] == 6
+    assert "(unwritten)" not in got["by_value"]
+
+
+@pytest.mark.asyncio
+async def test_an_empty_window_reads_as_no_decisions_not_as_a_failure():
+    got = await hc._lattice_unknown_share(object(), [])
+    assert got == {"n": 0, "unknown": 0, "share": None, "unwritten": 0, "by_value": {}}
