@@ -753,10 +753,18 @@ reviews:
       names that ran 15R, the answer is bracket geometry (#482), not admission,
       and this review should say so rather than re-litigating the constant.
     predicate_sql: |
-      SELECT COUNT(DISTINCT ticker) FROM mi_ep_scan_log
-      WHERE filter_reason ILIKE '%(extended)%'
-        AND scan_date >= DATE '2026-08-23'
-        AND scan_date < CURRENT_DATE - 5
+      -- #679-adjacent fix, 2026-09-21: this counted EVERY name rejected as "(extended)", not the
+      -- 50-75% band the review is about, so it went ripe on a population the question never named.
+      -- The percentage is embedded in filter_reason ("already up 128% in prior 5 days (extended)").
+      SELECT COUNT(DISTINCT ticker) FROM (
+        SELECT ticker,
+               NULLIF(regexp_replace(filter_reason, '^already up ([0-9.]+)%.*$', '\1'),
+                      filter_reason)::numeric AS pct
+          FROM mi_ep_scan_log
+         WHERE filter_reason ILIKE '%(extended)%'
+           AND scan_date >= DATE '2026-08-23'
+           AND scan_date < CURRENT_DATE - 5
+      ) x WHERE pct >= 50 AND pct < 75
     threshold: 15
     # 5-day lag in the predicate so every counted name has settled forward
     # outcomes to read. Date floor is the deploy day of the 75% cap: counting a
@@ -805,6 +813,55 @@ reviews:
       do the names still being skipped carry the +58%-average tail the 08-23
       review showed? ⚖ The cap is entry discipline — THE LINE. This review
       REPORTS; any further change needs CHANGE_PROCESS + operator sign-off.
+    resolution_2026_09_21: >-
+      ✅ RUN 2026-09-21. THE ANSWER FOR HIM: his fork does NOT move — the STOP, not the cap, is
+      still what binds. Nothing here reopens the cap question.
+      🔴 THE WATCH WAS FIRING ON THE WRONG POPULATION, which is why it went ripe at all. It counted
+      EVERY name rejected as "(extended)", not the 50-75% band. Measured on prod over the
+      predicate's own window: 15 distinct tickers all-extended (threshold is 15, so it fired)
+      against 3 in the 50-75 band and 13 at >=75%. The title's "94 scoreable names" was never the
+      band either. Predicate corrected above; it now reads 3 against 15, so the review correctly
+      stops being ready — the band does not yet hold enough names to review.
+      ⚠ A NUMBER I AM NOT ASSERTING: the review agent reported the band at 18 scoreable names. I
+      get 3 on the registry's own window, and 18 exceeds the 15 total extended names that window
+      holds, so theirs must span a wider window or a different scoreable filter. I did not
+      reconcile them, so 3 is stated as "the registry's window with the band filter added" and 18
+      is not repeated as if it were the same measure.
+      ⚠ THE FIRST PASS'S REPLAY RAN ON A STOP WE RETIRED ON 2026-08-16 (the ORB low) rather than
+      the live one (entry - 2R), so every R figure in it described a bracket we stopped trading
+      five weeks before the alert dates it replayed. Re-run on live geometry by
+      scripts/probes/_577v_live_geometry_verify.py (committed): 50-75 band, 9 fills, today's
+      ladder SUM -7.0R / mean -0.78R / 0 winners — and POET 2026-04-22 and WYHG 2026-08-11 scratch
+      at +0.00R because the breakeven arms, they do not pay -1R as first reported. All 9 still
+      touch the live 2R stop within 5 sessions. The >=75% tail, 91 fills: mean -0.38R, 13 winners
+      of 91, best +4.94R (first reported as +2.67R, also era_b).
+      ⚠ NOT COMPARABLE TO THE 2026-08-29 READ, though the first pass claimed it was: the two do
+      not share bars — AKTX is +15.2R there and +31.5R here, and HCAI/ERNA/WSHP fill there and not
+      here. That script was never committed, so the divergence cannot be closed.
+      ⚖ The cap is entry discipline — THE LINE. This REPORTS; no cap, threshold or stop was changed.
+    can_fire:
+      predicate_runs: "2026-09-21 - the corrected predicate executed against prod and returns 3
+        (was 15 before the band bound was added). Parsing verified: all 15 extended rows in the
+        window parse a percentage successfully, so the NULLIF guard drops nothing silently."
+      nonzero_possible: "mi_ep_scan_log is written by the live EP scan on every candidate; the
+        '(extended)' rejection text is produced by the live cap at ep_detector. 13 names sit at
+        >=75% in the same window, so the writer is plainly active - the band is simply narrow."
+      lane_live: "magna53 is phase=live, enabled=t; the extension cap is on its admission path."
+      threshold_vs_observed: "Bar 15, observed 3 in the band. At roughly 3 band names per month of
+        scanning, 15 is several months out - and that is the honest reading rather than the
+        accidental 15 the old predicate produced by counting a different set."
+      era_scoped: "⚠ The COUNT is era-clean (scan-log rejections, unaffected by exit rules), but
+        any REPLAY off it is NOT: the stop changed 2026-08-16 (ORB low -> entry - 2R) and the
+        ladder changed 2026-09-06 (partial 2R -> 8R). The first pass ignored both and reported
+        era_b numbers. action_when_ready now has the committed probe to re-run against."
+      population_actionable: "Each counted row names a ticker and a scan_date, so the band is
+        enumerable and replayable. The >=75% group is deliberately excluded - it is skipped under
+        any cap under discussion and belongs to the separate tail question."
+      instrument_trusted: "Partially, and stated: the percentage is parsed out of a human-readable
+        filter_reason string, so a wording change to that message silently empties this predicate.
+        The NULLIF makes an unparseable row NULL rather than 0, so it drops out instead of
+        counting as in-band - the safe direction, but it would show as a falling count, not an
+        error."
 
   - review_id: conviction_floor_extension
     title: "Conviction floor extension to gap[10,15)+strong band"
