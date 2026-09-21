@@ -1027,10 +1027,13 @@ The old test asserted `len(jobs) >= 40`; **46 clears that**, so it could never h
 new tests name the three jobs and pin the resolver — both verified RED. Widened, the gate found
 exactly two real hits (`_9m_pace_digest_job`, `_judge_delta_digest_job`), now pinned.
 
-🛑 **Four sites in the EP scan are marked `recovery-clock-ok` and MUST NOT be pinned.** The ORB
-submission check is `hour == 9 and minute < 45` against the real clock; pinning it would let a
-10:20 recovery read 09:00 and submit a live order into a closed window. `ORB_QUIET` (09:25–10:05)
-and `would_cross_orb_window` exist to push a late re-run past that point so the check sees the
-truth. The reason is written at each site — do not "fix" them.
+🛑 **Four sites in the EP scan are marked `recovery-clock-ok` and MUST NOT be pinned.** They are
+wall-clock TIME-OF-DAY labels — when the tick actually happened. What keeps a stale re-run off the
+ORB path is the **freshness rule**, not the ORB guards: `classify_slot` marks a slot unrecoverable
+once any session has opened since it, so a 09:00 slot dies at 09:30 and the only live recovery
+window is roughly [09:00, 09:30) — where slot and real clock both satisfy `hour == 9 and minute
+< 45` anyway. `ORB_QUIET` (09:25–10:05) is belt-and-braces. Pinning them would make the alert claim
+a time the scan never ran at, and drop the safe default if freshness ever loosened. The reason is
+written at each site — do not "fix" them.
 
 Prod is `a12036c5`. Suite **8662**, source pins **405**, job-date gate **60 jobs / 0 unescaped**.
