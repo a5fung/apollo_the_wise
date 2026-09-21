@@ -115,3 +115,4 @@ scripts/probes/_644_closes.csv
 scripts/probes/_step3_clusters.tsv
 scripts/probes/_step3_census_out.txt
 scripts/probes/_step3_*.err
+scripts/probes/_lat_*

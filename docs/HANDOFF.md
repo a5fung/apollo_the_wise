@@ -940,3 +940,77 @@ system is a confident wrong answer.**
   `python scripts/operator_now.py`; never take the harness date.**
 - **`core/` is orchestrator-owned to `deploy.sh:176` but is COPY'd into the market/execution
   image** — a `core/` change deploys, prints DEPLOY OK, and leaves `apollo-execution` stale (#656).
+
+---
+
+## 2026-09-20 (Sun) — 🔴 RESUME HERE. Supersedes everything above.
+
+**Board 62.** The weekend build slot ran all day Sunday. ⚠ **CLOSE was NOT run** — he said *"let's
+pick this up tmr"* — so Monday's growth ceiling **carries over at 62** from the watermark rather than
+from a CLOSE. Expected, not a hole.
+
+### 🔒 TWO FLAGS LIVE ON THE SERVER AND IN NO GIT FILE — the thing a fresh machine cannot know
+
+`/home/apollo/apollo_the_wise/.env` (backup alongside it: `.env.bak-2026-09-20`):
+
+```
+APOLLO_RECOVERY_DRY_RUN=0
+APOLLO_RECOVERY_SEND_LATE=1
+```
+
+These switched **#672's missed-job recovery sweep from dry-run to LIVE**, with late sends enabled.
+A redeploy does not rewrite `.env`; a host rebuild would lose them — `docs/ops/disaster_recovery.md`
+restores secrets from the nightly GPG bundle, but **verify these two by name after any restore.**
+Before the flip, Friday 2026-09-18's 33 outage slots were closed **terminal** so switching live could
+not re-run them.
+
+⚠ **A LATE-banner Telegram is the system WORKING, not a failure.** It means a job was missed and
+auto-recovered. Confirm with `mi_job_runs.scheduled_for` non-null + a `jobs_recovered` row. The real
+failure is the opposite: a gap the next sweep leaves standing.
+
+### Shipped and live Sunday — six deploys
+
+| # | plain name |
+|---|---|
+| #661 | the EP theme-fit consult, forced-tool so a verdict cannot be lost |
+| #675 | the legacy-Markdown Telegram branch retired (one live 400 fixed: `pg_dump`'s bare underscore) |
+| #662 | the weekly system review split into an ACTION head + folded detail |
+| #673 | three RS pools now exclude non-equities, **and the liquidity floor is dollars, not shares** |
+| #677 | strong catalyst + moderate source gap surfaced together in missed-outcomes |
+| #672 | the ledger-derived missed-job recovery sweep, **flipped live** (`eligible_jobs()` = 66 in prod) |
+
+⚠ **#673's core finding: `adv_20` is a SHARE count (`db.py:4356`), not dollars.** The floor is now
+`adv_20 * close >= $10M/day`. Derived, not hand-listed: **16 call sites — 14 take the new default; 2
+(`scheduler.py:446`/`:493`) pass `min_adv=0`, the documented raw-universe bypass, unaffected.**
+
+**Prod `5ccddf68` = repo on code** — `git diff 5ccddf68..HEAD -- agents/ core/ channels/ shared/ broker/`
+is empty. Repo `8555948a`, ahead by docs/PLAN only. Suite **8658**, source pins **405**.
+`scripts/operator_asks.py` is clear — **nothing waits on him** except the sitting below.
+
+### Monday 2026-09-21 — a market day, four verifies due
+
+**#671** (deal-pinned names leave the RS leaders) · **#661** (first EP alert writes
+`ep_theme_fit_llm_proposed`) · **#673** (RS boards render, WGS-class names present) · **#675**
+(briefing arrives formatted, zero `telegram_markdown_fallback` rows).
+**Tuesday 09-22 carries ten more**: #624, #610, #327, #335, #210, #677, #672, #666, #664, #652.
+**#662 verifies next Sunday 09-27** — the weekly review is the only day it runs.
+
+### The one thing that needs HIM — ~20 minutes
+
+`docs/analysis/655_step1_unnoted_no_rows.md` — **22 rows with catalysts attached**, each marked **W**
+(should have caught it) or **I** (fine to miss). #655 cannot move without it.
+
+### The lesson of the week — it fired at least eight more times Sunday
+
+**THE POPULATION, NOT THE ARITHMETIC.** Every wrong number this week came from reading the wrong rows,
+never from bad maths. He caught two Sunday: I read `mi_themes.parent_theme` (15 of 124 themes) when the
+real mapping is `mi_theme_ecosystems` (**117 of 124**), and I cited
+`docs/analysis/482_geometry_counterfactual_2026-08-29.md`, which **opens with "⛔ DO NOT CITE ANY
+NUMBER IN THIS FILE"**. Derive the population with a query, and read a doc's header, before quoting.
+
+### Standing conclusion on EP — do not re-litigate
+
+Cooldown, extension cap and source gaps all measured **benign**. The problem is **capture, not
+admission**: +0.87R peak → −1.00R realized, **19% of MFE captured**. Unreadable until the 2026-09-06
+exit rules reach ~10 closed trades — **currently 2**. Gated as
+`exit_rules_since_2026_09_06_first_readable_n` in `data_gated_reviews.yaml`.
