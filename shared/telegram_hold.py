@@ -44,11 +44,8 @@ _HELD: list[tuple[str, Any, str, str]] = []
 
 
 def send_late_enabled() -> bool:
-    return os.environ.get(SEND_LATE_ENV, "").strip().lower() in ("1", "true", "yes", "on")
-
-
-def held_messages() -> list:
-    return list(_HELD)
+    from shared.env_flags import env_flag_on
+    return env_flag_on(SEND_LATE_ENV)
 
 
 def drain_held(job_id: str | None = None) -> list:

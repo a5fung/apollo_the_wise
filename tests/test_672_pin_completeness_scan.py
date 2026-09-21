@@ -98,7 +98,7 @@ def test_the_real_tree_has_no_unescaped_wall_clock_date_in_any_recoverable_job()
     """THE GATE. Every daily, non-execution, non-paused, non-in-session job in scheduler.py, with its
     whole call graph, derives its data date only through `et_today()` / `last_trading_day()`.
 
-    # source-pin-ok: the property is a relation across the CALL GRAPH of 46 registered jobs
+    # source-pin-ok: the property is a relation across the CALL GRAPH of 60 registered jobs
     # (which job reaches which wall-clock date derivation), not the behaviour of one function —
     # exercising it would mean running 46 production jobs under a pin against a database.
     # Same class as tests/test_no_nested_pool_acquire.py.
@@ -106,7 +106,7 @@ def test_the_real_tree_has_no_unescaped_wall_clock_date_in_any_recoverable_job()
     MUTATION: reverting `_theme_synthesis_job` to `now_et.date()` reddens this — verified RED
     before the fix landed (that was the scan's first real-tree run)."""
     rep = scan.analyse()
-    assert len(rep["jobs"]) >= 40, f"only {len(rep['jobs'])} jobs examined — the registration parser lost the population"
+    assert len(rep["jobs"]) >= 58, f"only {len(rep['jobs'])} jobs examined — the registration parser lost the population"
     flagged = [(j["job_id"], h["module"], h["line"], h["text"]) for j in rep["jobs"]
                for h in j.get("date_from_clock", []) if not h["escaped"]]
     assert not flagged, (
@@ -114,3 +114,41 @@ def test_the_real_tree_has_no_unescaped_wall_clock_date_in_any_recoverable_job()
         "it records Saturday. Route it through et_today(), or mark it `# recovery-clock-ok: <why it is "
         f"about NOW>`:\n  " + "\n  ".join(f"{j}: {m}:{l}  {t}" for j, m, l, t in flagged))
     assert any(j["job_id"] == "theme_synthesis" for j in rep["jobs"]), "theme_synthesis dropped out of the population"
+
+
+def test_a_job_registered_with_a_CONSTANT_id_is_in_the_population():
+    """⚠ THE BLIND SPOT, found 2026-09-20 by the simplify pass and RED before the fix.
+
+    `registrations()` read `id=` only when it was written as a literal, and `analyse()` drops a
+    registration whose id is None *silently*. **22 of scheduler.py's 109 `add_job` calls pass a
+    module constant** (`id=JOB_EVENING_BRIEFING`), so the gate examined 46 of 60 daily jobs — 23%
+    invisible — and reported green over the gap.
+
+    The three names below are the point: `nightly_data_pull`, `evening_briefing` and
+    `morning_briefing` are the jobs FRIDAY 2026-09-18's outage actually lost, and the reason #672
+    exists. A completeness gate that cannot see them is green by construction.
+
+    ⚠ The old `>= 40` floor could never have caught this — 46 clears it. A count floor does not
+    test a population; naming the members does. That is the week's recurring defect
+    ([[derive-the-population-never-hand-list-it]]) landing inside the gate built to prevent it."""
+    rep = scan.analyse()
+    seen = {j["job_id"] for j in rep["jobs"]}
+    for jid in ("nightly_data_pull", "evening_briefing", "morning_briefing"):
+        assert jid in seen, (
+            f"{jid!r} is registered as `id=<MODULE CONSTANT>` and has fallen out of the examined "
+            f"population again — the gate is now blind to it and will report green regardless. "
+            f"See module_str_constants() in scripts/check_job_date_sources.py."
+        )
+
+
+def test_the_registration_parser_resolves_a_NAME_id_to_its_string():
+    """The mechanism under the test above, exercised directly on the real scheduler module: every
+    `add_job` call must yield a resolved job_id. RED if `module_str_constants` is dropped."""
+    mods = scan.load_modules()
+    sched = mods["agents.market_intelligence.scheduler"]
+    regs = scan.registrations(sched)
+    unresolved = [r["line"] for r in regs if not r["job_id"]]
+    assert len(regs) - len(unresolved) >= 105, (
+        f"only {len(regs) - len(unresolved)} of {len(regs)} add_job registrations resolved an id; "
+        f"unresolved at scheduler.py lines {unresolved}"
+    )

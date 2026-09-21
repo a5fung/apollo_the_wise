@@ -4112,7 +4112,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                     "rt_vol_state": (
                                         "measured" if _rt_measured else "no_bars_for_anchor"),
                                     "would_rvol_gate_flip_measured": _would_flip_measured,
-                                    "tick_et": now_et.strftime("%H:%M"),
+                                    "tick_et": now_et.strftime("%H:%M"),  # recovery-clock-ok: the REAL tick time, deliberately unpinned. Pinning it to the missed slot would make the ORB-window check read 09:00 on a 10:20 recovery and submit a live order for a shut window (#672, 2026-09-20).
                                 }),
                             )
                 except Exception as _vse:  # loud-ok: shadow-only — never touches the live gate

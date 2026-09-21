@@ -306,12 +306,13 @@ def plan_recovery(jobs: list, rows_by_job: dict[str, list[dict]], now: datetime,
         except Exception as e:                       # loud-ok: only the too-close guard loses precision
             logger.warning(f"recovery: {job.id} next fire time unavailable ({e}); too-close guard off for it")
             next_fire = None
+        bound = bound_for(rows)                  # per JOB, not per slot — `rows` never changes here
         for slot in past_slots(job.trigger, now):
             try:
                 slot_end = job.trigger.get_next_fire_time(None, slot + timedelta(seconds=1))
             except Exception:                        # loud-ok: falls back to the grace window below
                 slot_end = None
-            out.append(classify_slot(job.id, slot, grace, rows, now, in_flight, next_fire, bound_for(rows),
+            out.append(classify_slot(job.id, slot, grace, rows, now, in_flight, next_fire, bound,
                                      slot_end=slot_end))
     out.sort(key=lambda d: d.slot)
     return out
@@ -413,8 +414,8 @@ def _lock() -> asyncio.Lock:
 
 
 def dry_run_enabled() -> bool:
-    import os
-    return os.environ.get(DRY_RUN_ENV, "").strip().lower() in ("1", "true", "yes", "on")
+    from shared.env_flags import env_flag_on
+    return env_flag_on(DRY_RUN_ENV)
 
 
 async def run_recovery_sweep(scheduler, execution_owned: Iterable[str], *, reason: str,
@@ -457,8 +458,11 @@ async def _run_recovery_sweep_locked(scheduler, execution_owned, *, reason, now,
     plan = plan_recovery(jobs, rows_by_job, now, jobs_in_flight())
     out["plan"] = plan
     gaps = [d for d in plan if d.kind == "gap"]
-    stale = [d for d in plan if d.kind in ("unrecoverable", "exhausted") and not d.detail.startswith("recorded")]
-    # only the ones NOT already carrying a terminal row need writing
+    stale = [d for d in plan if d.kind in ("unrecoverable", "exhausted")]
+    # only the ones NOT already carrying a terminal row need writing — `to_terminate` below is the
+    # ONLY dedup. (A `not d.detail.startswith("recorded")` clause used to sit on the line above; no
+    # producer writes such a detail and none of the 33 live terminal rows matched it. Verified both
+    # ways 2026-09-20 before removing it — it read as dedup and did nothing.)
     to_terminate = [d for d in stale if not any(
         r.get("status") in TERMINAL and _same_instant(r.get("scheduled_for"), d.slot)
         for r in rows_by_job.get(d.job_id, []))]

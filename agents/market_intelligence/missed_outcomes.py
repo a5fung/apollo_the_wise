@@ -33,6 +33,7 @@ shipped (the 2026-08-15 cancelled/order_failed fix's own capture hole).
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import date, timedelta
 from typing import Optional
@@ -1457,16 +1458,16 @@ async def top_shouldve_entered_gaps(
 
 async def aggregate_missed_for_weekly(window_days: int = 7) -> dict:
     """Weekly review input: should've-entered gaps + top winners + roll-up."""
-    top = await top_missed_winners(
-        window_days=window_days, horizon="5d", per_category=2,
+    # Four independent reads, no data dependency between them — overlapped rather than chained.
+    # Gaps use a 30d window (the weekly 7d window is too thin a cohort for a ranked gap list);
+    # it's clearly labeled 30d in the section header. #677's strong-catalyst-capped count runs
+    # over its own wider 60d window (see _SOURCE_GAP_WINDOW_DAYS); era stated in the render.
+    top, cats, gaps, source_gap_summary = await asyncio.gather(
+        top_missed_winners(window_days=window_days, horizon="5d", per_category=2),
+        missed_by_category(window_days=window_days),
+        top_shouldve_entered_gaps(window_days=30, limit=8),
+        strong_catalyst_moderate_source_gap(),
     )
-    cats = await missed_by_category(window_days=window_days)
-    # Gaps use a 30d window (the weekly 7d window is too thin a cohort for a
-    # ranked gap list); it's clearly labeled 30d in the section header.
-    gaps = await top_shouldve_entered_gaps(window_days=30, limit=8)
-    # #677: the standing strong-catalyst-capped count, over its own (wider, 60d —
-    # see _SOURCE_GAP_WINDOW_DAYS) window; era stated explicitly in the render.
-    source_gap_summary = await strong_catalyst_moderate_source_gap()
     return {
         "window_days": window_days,
         "top_winners": top,

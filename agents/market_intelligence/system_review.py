@@ -350,10 +350,10 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
         if s:
             fold.append(s)
         verdict = crypto.get("verdict") or ""
-        if "ready to flip" in verdict:
+        if crypto.get("ready_to_flip"):
             needs_you.append((1, f"• crypto RS: {verdict} — your call"))
         if crypto:
-            checked.append("crypto: " + ("live, gates clean" if "live" in verdict
+            checked.append("crypto: " + ("live, gates clean" if crypto.get("is_live")
                                          else verdict.split(":")[0].strip("✅⚠️⏳ ") or "checked"))
     except Exception:
         logger.exception("crypto section render failed")
@@ -1718,6 +1718,12 @@ async def _aggregate_crypto_readiness(window_days: int) -> dict:
         "last_trigger_at": last_trigger_row["triggered_at"].isoformat() if last_trigger_row else None,
         "blockers": blockers,
         "verdict": verdict,
+        # #662, 2026-09-20: the ACTION head used to decide by string-matching `verdict` for the
+        # words "ready to flip" / "live". A wording tweak — an emoji, a rephrase — would have
+        # silently stopped the "needs you" line from ever firing, which is the exact silent drop
+        # this whole report restructure exists to remove. Decide on the facts, render separately.
+        "is_live": is_live,
+        "ready_to_flip": not blockers and not is_live,
     }
 
 
@@ -2149,7 +2155,9 @@ async def _spend_envelope_section() -> str:
     (from the #377 `api_usage` meter) vs `ANTHROPIC_MONTHLY_BUDGET`, top callers, a ceiling
     flag, and the fixed-subs reminder. Deterministic (no LLM); the ONE routine surface that
     completes FL-6 (the /status board + the budget alert already exist). Fails to '' so a
-    meter/DB hiccup never breaks the digest."""
+    meter/DB hiccup never breaks the digest.
+    ⚠ NO PRODUCTION CALLER since #662 (2026-09-20): `_assemble_report` uses the tuple-returning sibling so the head and the fold can be split. This stays as the single-string surface its tests exercise — it DELEGATES, so it cannot drift from the sibling — but do not read it as a live render path.
+    """
     text, _cost, _budget, _over = await _spend_envelope()
     return text
 
@@ -2212,7 +2220,9 @@ async def _early_window_drift_section() -> str:
     n<20.
 
     Omitted entirely below n=5 (too thin to show anything meaningful — matches the
-    mfe_capture/crypto appendix convention of no misleading near-empty line)."""
+    mfe_capture/crypto appendix convention of no misleading near-empty line).
+    ⚠ NO PRODUCTION CALLER since #662 (2026-09-20): `_assemble_report` uses the tuple-returning sibling so the head and the fold can be split. This stays as the single-string surface its tests exercise — it DELEGATES, so it cannot drift from the sibling — but do not read it as a live render path.
+    """
     from agents.market_intelligence.collector import et_today
     text, _suppressed = await _early_window_drift_review(et_today())
     return text
@@ -2398,7 +2408,9 @@ def _era_split_stats(trades: list[dict], signal_type: str, account_mode: str, er
 async def _setup_performance_section(lookback_days: int = 90) -> str:
     """The setup review as ONE block: the geometry table followed by its questions. Kept as
     the single-string surface; `_assemble_report` uses `_setup_performance_review` so the
-    questions can go to the head and the table to the fold (#662)."""
+    questions can go to the head and the table to the fold (#662).
+    ⚠ NO PRODUCTION CALLER since #662 (2026-09-20): `_assemble_report` uses the tuple-returning sibling so the head and the fold can be split. This stays as the single-string surface its tests exercise — it DELEGATES, so it cannot drift from the sibling — but do not read it as a live render path.
+    """
     table, asks = await _setup_performance_review(lookback_days)
     if not table:
         return ""

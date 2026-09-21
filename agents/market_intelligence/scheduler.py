@@ -1177,7 +1177,7 @@ async def _ep_scan_job():
                     # paper mode, so a live-money EP HIGH read as PAPER + its skip row
                     # landed under paper in the EOD summary (operator 7/8).
                     ep_mode = await _magna53_account_mode()
-                    skip_msg = f"{WINDOW_OUT_OF_ORB}: detected {now_et.strftime('%H:%M')} ET"
+                    skip_msg = f"{WINDOW_OUT_OF_ORB}: detected {now_et.strftime('%H:%M')} ET"  # recovery-clock-ok: the REAL arrival time, and it must stay real. This is the WINDOW_OUT_OF_ORB branch; pinning this clock to the missed slot would make a 10:20 recovery read 09:00, pass `hour==9 and minute<45`, and submit a live ORB order for a window that shut hours ago. ORB_QUIET + would_cross_orb_window push a late re-run past 10:05 precisely so this check sees the truth. DO NOT PIN IT (#672, 2026-09-20).
                     try:
                         await record_skipped_trade(
                             ep["ticker"], et_today(), ep, None, skip_msg,
@@ -1215,10 +1215,10 @@ async def _ep_scan_job():
                     except Exception:
                         pass
                     await send_telegram_message(
-                        f"{mode_prefix(ep_mode)}⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "
+                        f"{mode_prefix(ep_mode)}⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "  # recovery-clock-ok: the REAL arrival time, and it must stay real. This is the WINDOW_OUT_OF_ORB branch; pinning this clock to the missed slot would make a 10:20 recovery read 09:00, pass `hour==9 and minute<45`, and submit a live ORB order for a window that shut hours ago. ORB_QUIET + would_cross_orb_window push a late re-run past 10:05 precisely so this check sees the truth. DO NOT PIN IT (#672, 2026-09-20).
                         f"ORB window closed, no order"
                     )
-                    logger.info(f"EP {ep['ticker']}: outside ORB window ({now_et.strftime('%H:%M')} ET) — alert sent, no order")
+                    logger.info(f"EP {ep['ticker']}: outside ORB window ({now_et.strftime('%H:%M')} ET) — alert sent, no order")  # recovery-clock-ok: the REAL arrival time, and it must stay real. This is the WINDOW_OUT_OF_ORB branch; pinning this clock to the missed slot would make a 10:20 recovery read 09:00, pass `hour==9 and minute<45`, and submit a live ORB order for a window that shut hours ago. ORB_QUIET + would_cross_orb_window push a late re-run past 10:05 precisely so this check sees the truth. DO NOT PIN IT (#672, 2026-09-20).
 
         # ORB entry is EXECUTION-owned (#256 W2): route through the facade so
         # the split hands it to the execution service without changing this site
@@ -3335,15 +3335,19 @@ async def _9m_pace_digest_job():
     realtime). Ranked by projected volume, capped with overflow. Empty day →
     no Telegram.
     """
-    now_et = datetime.now(_ET)
-    if not get_market_status(now_et.date()).is_trading_day:
+    from shared.dates import et_today as _et_today
+    run_day = _et_today()      # #672: the DATA day — pinned to the slot on a recovery re-run
+    if not get_market_status(run_day).is_trading_day:
         # Mirror the entry-technique digest sibling + #120 precedent: don't query
         # or fire on weekday market holidays (mon-fri cron alone doesn't exclude them).
         logger.info("9m pace digest: non-trading day — skip")
         return 0
     pool = await get_pool()
-    window_start = now_et.replace(hour=0, minute=0, second=0, microsecond=0)
-    window_end = now_et
+    # The window belongs to the DATA day, not the clock. On a recovery re-run `run_day` is the
+    # MISSED slot's day, so the scan has to cover that day and stop at its end — running to
+    # "now" would sweep a day or more of later rows into a digest labelled with the old date.
+    window_start = datetime.combine(run_day, _dt_time.min, tzinfo=_ET)
+    window_end = min(datetime.now(_ET), window_start + timedelta(days=1))
 
     # `created_at` is TIMESTAMPTZ — compare directly against tz-aware
     # datetime params. Original SQL applied `AT TIME ZONE 'America/New_York'`
@@ -3395,7 +3399,7 @@ async def _9m_pace_digest_job():
     )
     ranked = ranked_all[:20]
 
-    date_str = now_et.strftime("%b %d")
+    date_str = run_day.strftime("%b %d")      # #672: the missed day on a recovery, not today
     parts = [
         f"🏦 *9M EP Pace — EOD {date_str} ({len(ranked_all)})*",
         "_Projection-based anticipations · watchlist, not entries._",
@@ -3444,8 +3448,9 @@ async def _judge_delta_digest_job():
     is shadow until the W2 flip + most days have 0 deltas; build-ahead-of-data). The
     subtitle reflects the LIVE authority toggle so the operator always knows whether the
     deltas DROVE entries (toggle ON) or are advisory (OFF)."""
-    now_et = datetime.now(_ET)
-    if not get_market_status(now_et.date()).is_trading_day:
+    from shared.dates import et_today as _et_today
+    run_day = _et_today()      # #672: the DATA day — pinned to the slot on a recovery re-run
+    if not get_market_status(run_day).is_trading_day:
         logger.info("judge delta digest: non-trading day — skip")
         return 0
     from agents.market_intelligence.db import get_holistic_judge_enabled
@@ -3463,7 +3468,7 @@ async def _judge_delta_digest_job():
             ORDER BY CASE judge_direction WHEN 'promote' THEN 0 ELSE 1 END,
                      gap_pct DESC NULLS LAST
             """,
-            now_et.date(),
+            run_day,
         )
     if not rows:
         return 0
@@ -3474,7 +3479,7 @@ async def _judge_delta_digest_job():
     except Exception:  # loud-ok: display-only; default to the safe "advisory" framing, no state change
         pass
 
-    msg = _build_judge_delta_message(rows, authority_on, now_et.strftime("%b %d"))
+    msg = _build_judge_delta_message(rows, authority_on, run_day.strftime("%b %d"))
     # #479: folded into the 16:55 Market Close Digest (same render text).
     close_digest.contribute("JUDGE", msg)
     return len(rows)

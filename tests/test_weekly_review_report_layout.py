@@ -283,7 +283,11 @@ def _assemble(monkeypatch, **overrides):
         "strategy_promotions": {"checks": [
             {"strategy_id": "wick_fill", "current_phase": "shadow", "next_phase": "paper",
              "eligible": False, "metrics": {}, "blocking_reasons": [MANUAL_REVIEW_HOLD_REASON]}]},
+        # `is_live` / `ready_to_flip` are the fields the head decides on (#662, 2026-09-20) — it
+        # used to string-match the `verdict` prose, so a rewording silently killed the "needs you"
+        # line. They mirror what `_aggregate_crypto_readiness` really returns; keep them in step.
         "crypto": {"verdict": "✅ live; gates clean", "shadow_mode": False, "universe_size": 331,
+                   "is_live": True, "ready_to_flip": False,
                    "rs_history_days": 135, "macro_history_days": 135, "ingest_attempts_7d": 6},
         "judge_weekly": {"total": 0}, "loser_breakdown": {}, "mfe_capture": {},
         "missed_opportunities": {},
@@ -345,3 +349,31 @@ def test_run_weekly_review_sends_the_folded_html_once(monkeypatch):
     assert text == "<b>head</b> &amp; more\n<blockquote expandable>fold x</blockquote>"
     assert inserted[0]["metrics"]["report"]["suppressed"] == []
     assert review["suggestions"] == ["one"]
+
+
+def test_crypto_ready_to_flip_reaches_the_head_even_if_the_verdict_is_reworded(monkeypatch):
+    """⚠ Found by the 2026-09-20 simplify pass. The ACTION head used to decide by searching the
+    RENDERED verdict for the literal words "ready to flip". That made a user-visible call to the
+    operator depend on prose: an emoji swap, a rephrase, a translation, and the "needs you" line
+    stops firing with nothing failing — the exact silent drop #662 was built to remove.
+
+    So this test rewords the verdict to something no substring match would catch, and still
+    demands the head raise it. RED against the old `if "ready to flip" in verdict`."""
+    head, _fold, meta = _assemble(monkeypatch, crypto={
+        "verdict": "🟢 all gates clear — CRYPTO_RS_ENABLED can go true whenever you like",
+        "shadow_mode": True, "is_live": False, "ready_to_flip": True,
+        "universe_size": 331, "rs_history_days": 135, "ingest_attempts_7d": 6,
+    })
+    assert meta["needs_you"] == 1, f"a ready-to-flip crypto call did not reach the head: {head!r}"
+    assert "crypto RS" in head
+
+
+def test_crypto_not_ready_is_not_raised_with_him(monkeypatch):
+    """The other direction, so the test above cannot be satisfied by raising everything.
+    [[never-re-ask-an-answered-question]] — a blocked gate is MY work, not his decision."""
+    _head, _fold, meta = _assemble(monkeypatch, crypto={
+        "verdict": "⏳ not ready: crypto_categories empty",
+        "shadow_mode": True, "is_live": False, "ready_to_flip": False,
+        "universe_size": 331, "rs_history_days": 135, "ingest_attempts_7d": 6,
+    })
+    assert meta["needs_you"] == 0, "a blocked crypto gate was put in front of him as a decision"

@@ -97,8 +97,38 @@ def load_modules() -> dict[str, Module]:
 
 # ── scheduler registrations ───────────────────────────────────────────────────────────────
 
+def module_str_constants(mod: Module) -> dict[str, str]:
+    """Top-level `NAME = "literal"` bindings, so an `id=JOB_EVENING_BRIEFING` registration can be
+    resolved to the string it names.
+
+    ⚠ WHY THIS EXISTS (2026-09-20). `registrations()` read the job id only when it was written as
+    a literal. **22 of scheduler.py's 109 `add_job` calls pass a module constant instead** — and
+    `analyse()` drops a registration whose id is None *silently* (`if not jid ... continue`), so
+    those 22 were never examined and never counted. The invisible fifth included
+    `JOB_NIGHTLY_DATA_PULL`, `JOB_EVENING_BRIEFING` and `JOB_MORNING_BRIEFING` — the three jobs
+    Friday 2026-09-18's outage actually lost, and the reason #672 exists. A completeness gate that
+    cannot see the most important jobs in the system reports green by construction.
+
+    This is the same failure the whole repo keeps repeating: **the population, not the
+    arithmetic.** The derivation was fine; it ran over the wrong rows."""
+    out: dict[str, str] = {}
+    for n in mod.tree.body:
+        if not isinstance(n, ast.Assign) or not isinstance(n.value, ast.Constant):
+            continue
+        if not isinstance(n.value.value, str):
+            continue
+        for tgt in n.targets:
+            if isinstance(tgt, ast.Name):
+                out[tgt.id] = n.value.value
+    return out
+
+
 def registrations(sched: Module) -> list[dict]:
-    """Every `_scheduler.add_job(audit_wrap(fn, "id"...) | fn, CronTrigger(...), id="...")`."""
+    """Every `_scheduler.add_job(audit_wrap(fn, "id"...) | fn, CronTrigger(...), id="...")`.
+
+    An `id=` written as a module constant is resolved through `module_str_constants` — see the
+    note there for the 22-of-109 blind spot that cost."""
+    consts = module_str_constants(sched)
     out = []
     for n in ast.walk(sched.tree):
         if not (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "add_job"):
@@ -112,6 +142,8 @@ def registrations(sched: Module) -> list[dict]:
         for kw in n.keywords:
             if kw.arg == "id" and isinstance(kw.value, ast.Constant):
                 jid = kw.value.value
+            elif kw.arg == "id" and isinstance(kw.value, ast.Name):
+                jid = consts.get(kw.value.id)          # id=JOB_EVENING_BRIEFING → "evening_briefing"
             if kw.arg == "next_run_time" and isinstance(kw.value, ast.Constant) and kw.value.value is None:
                 paused = True
         trig = n.args[1] if len(n.args) > 1 else next((k.value for k in n.keywords if k.arg == "trigger"), None)
