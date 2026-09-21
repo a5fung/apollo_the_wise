@@ -219,3 +219,114 @@ RUNUP_FIELDS = ([f"{k}_{n}" for n in RUNUP_WINDOWS
                  for k in ("ext_close_pct", "runup_low_pct", "runup_adr")]
                 + ["pct_of_captured_range", "extension_live_pct",
                    "blocked_by_live_extension_rule", "clear_air"])
+
+
+# ── #594 STEP 0 — score the read against HIS rulings, in BOTH directions ──────────────────
+#
+# Added 2026-09-21 on his instruction ("Re-date it and encode the rulings"). Until today this
+# file only MENTIONED `must_not_trade_charts.py` in its docstring; nothing scored against it,
+# so his 25 labels sat captured and unused. That mattered beyond tidiness: #519 makes these
+# rulings the bar a paid vision eval (~$190) has to beat, and a paid run cannot be read either
+# way until the $0 read has a number against the same labels.
+#
+# 🔴 THE PARAMETER IS PRE-DECLARED, NOT FITTED, and that is the whole point. The fixture's own
+# warning: "at 15 labels a favourable cutline is trivial to find and worthless." So this scores
+# ONE rule, ANCHOR-75 — his own signed 75%, chosen by him on other evidence before the
+# structure study existed — applied to the 20-session run-up. That is the single bolded row of
+# docs/analysis/structure_read_v3_2026-08-25.md §2, the only 8-of-11 there that owes nothing to
+# a cutline picked after seeing the labels. No search over cutlines happens here and none may
+# be added: a function that tries several and reports the best is a fitting machine wearing a
+# measurement's name.
+#
+# ⚠ RULE 0 DOMINATES AND IS REPORTED FIRST. A false EXCLUSION leaves no row, no skip_reason and
+# no trace. Rejecting one of the 26 real EPs in `must_not_miss_eps.py` is a worse error than
+# admitting any number of BAD_CHART dates, so `wrongly_rejected` is the headline and
+# `rejected` is the secondary count — never the reverse.
+
+ANCHOR_75_METRIC = "runup_low_pct_20"   # run-up over 20 sessions, low -> alert-day open
+ANCHOR_75_CUTLINE = 75.0                # HIS number, signed before this study existed
+
+
+def anchor75_rejects(read: dict | None) -> bool | None:
+    """Would ANCHOR-75 reject this date? None when the read is unavailable/unreadable.
+
+    ⚠ None is NOT False. A date whose bars we cannot read is not a date the rule passed, and
+    collapsing the two would quietly inflate the must-not-reject column — the exact direction
+    RULE 0 says we must never flatter ourselves in."""
+    if not read:
+        return None
+    v = read.get(ANCHOR_75_METRIC)
+    return None if v is None else bool(v >= ANCHOR_75_CUTLINE)
+
+
+def score_against_operator_rulings(read_for) -> dict:
+    """Run ANCHOR-75 over every operator-labelled (ticker, date) and report both directions.
+
+    `read_for(ticker, iso_date) -> dict | None` supplies the structure read — injected rather
+    than fetched here so this stays pure and testable, and so the caller owns the DB access.
+
+    Returns counts ONLY, each with its denominator. No verdict, no recommendation: this is
+    step 0 of the chart-vision chain (#519) and its output is evidence for HIS ruling.
+    """
+    from tests.fixtures.must_not_trade_charts import (
+        MUST_NOT_REJECT_DATES, MUST_NOT_TRADE, POINTED_AT_DATES)
+    from tests.fixtures.must_not_miss_eps import MUST_NOT_MISS
+
+    def _tally(pairs):
+        hit, miss, unread = [], [], []
+        for tk, d, *rest in pairs:
+            got = anchor75_rejects(read_for(tk, d))
+            (unread if got is None else hit if got else miss).append((tk, d, *rest))
+        return hit, miss, unread
+
+    # RULE 0 FIRST — the expensive direction.
+    #
+    # ⚠ `excluded=True` MEMBERS ARE NOT PART OF THE BAR, and the first run of this function got
+    # that wrong. It read all 33 `MUST_NOT_MISS` rows and reported "1 of 33 real EPs wrongly
+    # rejected — TDIC 2026-05-12". TDIC carries `excluded=True` and its own reason calls it "a
+    # data anomaly, not a real tradeable EP" (next-day high $750, close $576, then a full
+    # round-trip to $20). Three members are excluded — ABNB 08-07, CHPT 09-03, TDIC 05-12 —
+    # and `tests/test_577_must_not_miss_eps.py` does not assert on them either. Counting them
+    # here manufactures a RULE 0 violation out of a print nobody claims is tradeable.
+    #
+    # The arithmetic was right; the population was wrong. Both halves are reported below so the
+    # exclusions stay VISIBLE rather than silently dropped — an unexplained 30 invites someone
+    # to "correct" it back to 33.
+    assertable = [m for m in MUST_NOT_MISS if not getattr(m, "excluded", False)]
+    excluded = [(m.ticker, m.alert_date) for m in MUST_NOT_MISS if getattr(m, "excluded", False)]
+    eps = [(m.ticker, m.alert_date) for m in assertable]
+    ep_rejected, _ep_kept, ep_unread = _tally(eps)
+    excluded_rejected, _x_kept, _x_unread = _tally(excluded)
+    mnr_rejected, _mnr_kept, mnr_unread = _tally(MUST_NOT_REJECT_DATES)
+
+    # The cheap direction — what it catches of the dates he condemned.
+    bad = [(r.ticker, r.alert_date) for r in MUST_NOT_TRADE]
+    bad_rejected, _bad_kept, bad_unread = _tally(bad)
+
+    # Flags, NOT labels: he pointed at these while explaining a wrong day, never ruled them.
+    ptr_rejected, _ptr_kept, _ptr_unread = _tally([(t, d, v) for t, d, v in POINTED_AT_DATES])
+
+    return {
+        "parameter": {"metric": ANCHOR_75_METRIC, "cutline": ANCHOR_75_CUTLINE,
+                      "basis": "HIS signed 75%, unfitted, pre-dates this study"},
+        # RULE 0 — must be zero. Reported first on purpose.
+        "real_eps_wrongly_rejected": len(ep_rejected),
+        "real_eps_n": len(eps),
+        "real_eps_wrongly_rejected_names": ep_rejected,
+        # Kept visible, NOT folded in: these three are not part of the bar (see above).
+        "excluded_from_bar": excluded,
+        "excluded_rejected": len(excluded_rejected),
+        "must_not_reject_wrongly_rejected": len(mnr_rejected),
+        "must_not_reject_n": len(MUST_NOT_REJECT_DATES),
+        "must_not_reject_wrongly_rejected_names": mnr_rejected,
+        # The secondary count.
+        "bad_charts_rejected": len(bad_rejected),
+        "bad_charts_n": len(bad),
+        # Unreadable is its own column — never folded into "passed".
+        "unreadable": {"real_eps": len(ep_unread), "must_not_reject": len(mnr_unread),
+                       "bad_charts": len(bad_unread)},
+        # Inference, kept separate from his labels by construction.
+        "pointed_at_rejected": len(ptr_rejected),
+        "pointed_at_n": len(POINTED_AT_DATES),
+        "pointed_at_rejected_names": ptr_rejected,
+    }
