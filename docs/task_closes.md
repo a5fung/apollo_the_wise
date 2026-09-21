@@ -61,7 +61,13 @@ hook demonstrably computed rather than merely running. The promote-on-3-breaches
 its registered gated review (`exposure_family_cap_promotion_r2`), which is where a future decision
 belongs, not in an open task.
 
-## #471 — theme re-granularization, parent/child depth (2026-09-10)
+## Theme re-granularization, parent/child depth — originally filed as #471, closed 2026-09-10
+
+⚠ **HEADING CHANGED 2026-09-20 so it no longer shadows the number.** `#471` was closed on that date for the
+re-granularization work, and the SAME id was then carried forward for the ecosystem-discovery veto lane, which
+closed today against a different DoD. `_close_evidence_gate` slices the ledger with `^##\s*#<id>` and takes the
+FIRST block, so two closes under one number meant the later one was invisible and the gate compared today's DoD
+against September 10th's bar. The evidence below is unchanged and still stands on its own; only the heading moved.
 BAR: VERIFY-LIVE = `mi_themes.parent_theme` NON-NULL for the cyber-vuln child
 EVIDENCE: "Cyber Exposure Management & Vulnerability Assessment" reads parent_theme = "Network
 Security & Zero-Trust Edge" on prod. 461 child themes exist of which 234 are live (94 Nascent,
@@ -1148,3 +1154,22 @@ BAR: a `lane2_decision_record` carrying `lane2_narratives_at_decision`, and no r
 ⚠ **THE GATE CORRECTED MY FIRST DRAFT OF THIS ENTRY AND IT WAS RIGHT.** I quoted the DONE-WHEN (*"one 9:31 fill at full size with no fallback row"*) as the BAR. `close_bar_for` takes the FIRST `VERIFY:` on the line, which is the rename half above — and closing against a later, narrower sentence is precisely the #540 failure the gate was built for. Both halves are evidenced below; the DONE-WHEN is the binding one and is NOT dropped by quoting the bar correctly.
 
 EVIDENCE: **THE BAR ITSELF — the rename half — verified on prod: 3 of 3 `lane2_decision_record` rows since the 09-10 deploy carry `lane2_narratives_at_decision` and ZERO carry `active_themes_at_decision`.** ▶ **AND THE BINDING HALF, the DONE-WHEN, met by fills that had ALREADY happened and that nobody had checked against this line.** ▶ Two live fills since the 09-10 deploy: **DFTX 2026-09-14 09:33 at risk $24.52** and **VICR 2026-09-17 09:31:01 at risk $12.26**. **Zero `sizing_regime_fallback` rows since the deploy** (the only two in the table are 2026-09-08, before it). ▶ 🔑 **THE DISCRIMINATING PART, and it is stronger than "one fill at full size":** the two fills are sized DIFFERENTLY, and each tracks its own prior session's regime. Equity was ~$4,908 and ~$4,906. DFTX = **0.50% of equity**, the Correcting multiplier (0.5× base), with 2026-09-11 Correcting. VICR = **0.25%**, the Crisis multiplier, with 2026-09-16 **Crisis**. **A cache stuck on a fallback constant would have produced the SAME number twice.** Two different, regime-correct sizes across a regime change is a positive observable that a broken cache cannot fake — which is exactly what the verify-condition rule demands and what a "no fallback row appeared" reading alone would not have given. ⚠ **NOT A RE-ASK OF HIS 09-19 RE-DATE.** That "Ok" rested on "Saturday can produce neither a market day nor a fill" — true of that Saturday, but both qualifying fills predate the note and were never checked against the condition. New evidence, not a second bite. ⚖ Read of existing trade records only; nothing placed, cancelled or resized.
+
+
+## #471 — the veto-alert lane is proven by its own synthetic replay (2026-09-20)
+
+BAR: the fixture replay is green; a SYNTHETIC unassigned cluster demonstrably FIRES the veto alert; and a cluster with no veto is promoted at grace-end.
+
+EVIDENCE: **All three clauses met, and the close gate is what found that — I was about to close this on the wrong bar entirely.** ▶ `python3 -m pytest tests/test_471_ecosystem_discovery_lane.py -q` → **64 passed**. ▶ Clause 2, the SYNTHETIC cluster firing the veto alert: `TestWeeklyPass::test_qualifying_resighting_goes_pending_and_fires_the_veto_alert`. ▶ Clause 3, promotion at grace-end with no veto: `TestGraceSweep::test_sweep_at_grace_end_promotes`, alongside `test_sweep_before_grace_end_does_nothing`, `test_double_sweep_promotes_once` and `test_promote_failure_is_audited_not_raised`.
+
+▶ **NOT TAKEN AS GREEN — MUTATED.** Replacing the veto-page call with `sent = True` (skipping the page entirely) turns **6 of the 64 RED**; restoring it returns 64. ⚠ **My FIRST mutation proved nothing and I nearly banked it:** I short-circuited `_send_html` itself and all 64 still passed, because the tests inject their own sender and assert it was CALLED. Patching the transport under a stubbed test is not a mutation of the thing under test.
+
+⚠ **THIS TASK WAS NEVER EVENT-GATED, and two passes in a row said otherwise.** Today's feasibility sweep classed it NEEDS_EVENT — waiting on a real cluster to survive 14 days — and I carried that forward and drafted a close on the operator's ruling that it *"doesn't need a board spot as long as if things go wrong we'll be alerted"*. The close gate refused it: the BAR I quoted did not appear in the task's own DoD. **The DoD never asked for a real cluster. It asked for a SYNTHETIC one** — which has been demonstrable on demand this whole time. [[check-what-the-system-already-did]]
+
+▶ **HIS CONDITION HOLDS ANYWAY, and the checks are worth keeping since they were run:** promotion pages him first (`_send_html` → `send_telegram_message`) with a tappable `/vetoecosystem <E-CODE>` that soft-retires it; the job is registered through `audit_wrap` (`scheduler.py:7056`) so a failure writes a `failed` row and fires `record_job_failure`; and it is now inside the missed-job recovery population — `eligible_jobs()` returns 66 in the live container with `ecosystem_discovery` among them, so a skipped weekly slot is re-run with the date pinned rather than lost the way 27 of 28 jobs were on 2026-09-18.
+
+📊 **CONTEXT, because I told him the opposite first:** **117 of 124 current themes are assigned across 22 ecosystem buckets**; only **7 are `E-UNASSIGNED`**, and those 7 are the discovery substrate. "No cluster this week" means no NEW bucket is needed — the normal outcome. I had read `mi_themes.parent_theme` (15 of 124) and reported 88% unassigned; the real mapping is its own table, `mi_theme_ecosystems`. He pushed back — *"Right now all themes belong to an ecosystem"* — and he was right. [[derive-the-population-never-hand-list-it]]
+
+🔭 **ONE OPEN MECHANISM QUESTION, recorded so the close does not bury it:** the only candidate ever sighted (3 agriculture themes, 2026-09-13) dissolved on **day 3** when Phase 2 gave a member a `parent_theme` and retired it, dropping the cluster below `MIN_CLUSTER_THEMES`. Phase 2 and Phase 3 compete on the same substrate and Phase 2 is faster — **307 of 472 ever-retired themes (65%) finished retirement within 14 days of first appearing**, so the 14-day sustain bar may rarely complete in the wild. Low stakes (a new bucket is a proposal with a veto). **If it matters later, treat a member's absorption into a parent as CONFIRMATION of the group rather than dissolution** — that removes the race instead of shortening the timer.
+
+⚖ Nothing shipped, deployed or changed by this close.
