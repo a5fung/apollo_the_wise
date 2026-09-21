@@ -1173,3 +1173,24 @@ EVIDENCE: **All three clauses met, and the close gate is what found that — I w
 🔭 **ONE OPEN MECHANISM QUESTION, recorded so the close does not bury it:** the only candidate ever sighted (3 agriculture themes, 2026-09-13) dissolved on **day 3** when Phase 2 gave a member a `parent_theme` and retired it, dropping the cluster below `MIN_CLUSTER_THEMES`. Phase 2 and Phase 3 compete on the same substrate and Phase 2 is faster — **307 of 472 ever-retired themes (65%) finished retirement within 14 days of first appearing**, so the 14-day sustain bar may rarely complete in the wild. Low stakes (a new bucket is a proposal with a veto). **If it matters later, treat a member's absorption into a parent as CONFIRMATION of the group rather than dissolution** — that removes the race instead of shortening the timer.
 
 ⚖ Nothing shipped, deployed or changed by this close.
+
+
+## #184 — the broker mirror: drift alerts fire, the gap they found was closed, /syncnow works (2026-09-20)
+
+BAR: coverage-drift alerts live + mirror complete + /syncnow works → cutover prerequisite
+
+EVIDENCE: **Three clauses, each checked against prod today rather than read off the line's own history.**
+
+▶ **CLAUSE 1 — coverage-drift alerts live: YES. 144 `coverage_drift*` rows**, and the detector has produced a REAL detection, not just heartbeats: `coverage_drift_detected — D2_untracked_order_high ETON order=ee925e6b (live)` on 2026-08-14. It fires, on the live account, on the class the mirror exists to catch.
+
+▶ **CLAUSE 2 — mirror complete: the gap it found was CLOSED. ETON now has a row in `mi_live_trades`**, so the untracked broker order it flagged on 08-14 was ingested. And **0 real detections in the last 30 days.** ⚠ **That zero is an ABSENCE, so it is only worth something if the detector was looking** — it was: the 15-minute reconcile it is wired into has **424 `order_status_reconciled` rows, latest 2026-09-18**, and the detector itself emitted 3 rows on 09-14. **A broken detector and a clean book produce the same zero; a detector that demonstrably ran, and that caught a real live D2 five weeks ago, does not.**
+
+▶ **CLAUSE 3 — /syncnow works:** resolved 2026-06-24 (the "Unknown command" was a zero-width-character input artifact already fixed 06-04 by `_normalize`); 3 wiring sites confirmed present today.
+
+⚠ **THE ONE HONEST WEAKNESS, stated rather than buried:** all 3 detector rows in the last 30 days are `coverage_drift_check_degraded — broker read failed (paper)`. The degraded-read guard is doing its job — refusing to declare a clean book off a failed read, which is the #137 guard working — but it means part of the recent quiet is *"did not look"* rather than *"looked and found nothing"*. **It is the PAPER account that degraded; the live path kept reconciling.** Worth watching if degraded reads spread to live, and named here so a future reader does not treat the zero as stronger than it is.
+
+⚠ **AND A WORDING GAP FOUND ON THE WAY, which is why this line sat so long:** the line elsewhere describes waiting on a broker/DB **value** mismatch. `broker/coverage_drift.py`'s D1/D2/D3 are all presence/absence checks — untracked position, untracked order, DB-open-no-broker. **There is no detector class for "broker and DB disagree on a value"**, so a verify written against that wording waits on an event the code cannot emit. ▶ **Two value checks DO exist, found by grep rather than assumed:** share **quantity** is compared and auto-corrected to the broker's number at `order_manager.py:7112`, logging `sync_qty_overwrite`; and the R1 stop-**pointer** repair corrects a wrong `stop_order_id`. **The one value nothing compares is the stop PRICE** — recorded here as the open question, not smuggled into this close.
+
+📊 **Accrual context for the increment-3 paths, measured:** R1 has corrected a stop pointer **twice ever, both `paper`, both 2026-07-11 — zero live corrections in the ~10 weeks since `live_r1` went live**. R3i has 2 clean dry-run proposals (08-06, 08-14), R2 has 0 since its false-positive bug was fixed 07-26, and nothing accrued on any path in 37 days. **Those paths belong to increment 3 (guarded auto-correction), which this DoD does not require** — the DoD is alerts + mirror + /syncnow, and increment 3 was always "never the first increment". Closing this does not ship auto-correction and does not need to.
+
+⚖ Nothing shipped, deployed or changed by this close. Read-only verification of an observe-only lane.
