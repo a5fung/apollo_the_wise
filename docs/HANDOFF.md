@@ -1014,3 +1014,23 @@ Cooldown, extension cap and source gaps all measured **benign**. The problem is 
 admission**: +0.87R peak → −1.00R realized, **19% of MFE captured**. Unreadable until the 2026-09-06
 exit rules reach ~10 closed trades — **currently 2**. Gated as
 `exit_rules_since_2026_09_06_first_readable_n` in `data_gated_reviews.yaml`.
+
+### ⚠ Added late Sunday — the simplify pass shipped a real fix (`a12036c5`, deployed both + execution)
+
+**`scripts/check_job_date_sources.py` examined 46 of 60 daily recoverable jobs and reported green
+over the other 14.** It resolved a job's `id=` only when written as a literal; **22 of
+scheduler.py's 109 `add_job` calls pass a module constant**, and `analyse()` dropped a null id
+*silently*. The invisible set included `nightly_data_pull`, `evening_briefing` and
+`morning_briefing` — the three jobs Friday 2026-09-18's outage actually lost.
+
+The old test asserted `len(jobs) >= 40`; **46 clears that**, so it could never have caught it. The
+new tests name the three jobs and pin the resolver — both verified RED. Widened, the gate found
+exactly two real hits (`_9m_pace_digest_job`, `_judge_delta_digest_job`), now pinned.
+
+🛑 **Four sites in the EP scan are marked `recovery-clock-ok` and MUST NOT be pinned.** The ORB
+submission check is `hour == 9 and minute < 45` against the real clock; pinning it would let a
+10:20 recovery read 09:00 and submit a live order into a closed window. `ORB_QUIET` (09:25–10:05)
+and `would_cross_orb_window` exist to push a late re-run past that point so the check sees the
+truth. The reason is written at each site — do not "fix" them.
+
+Prod is `a12036c5`. Suite **8662**, source pins **405**, job-date gate **60 jobs / 0 unescaped**.
