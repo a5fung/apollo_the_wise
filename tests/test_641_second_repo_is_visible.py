@@ -77,6 +77,12 @@ def test_only_ids_we_asked_about_come_back(tmp_path, monkeypatch):
     assert set(_sidecar_commits_touching_tasks({111})) == {111}
 
 
+# A deliberately WIDE net, not a derivation: every plausible task id, so the probe below asks
+# "can the scanner find anything at all in the sidecar's history" without naming a task. Naming
+# one is what made the first version of this test rot within the hour.
+_ANY_REFERENCED_IDS = frozenset(range(1, 1000))
+
+
 @pytest.mark.skipif(not _has_sidecar(), reason="the dashboard repo is not on this machine")
 def test_the_scan_is_not_dark_on_the_real_board():
     """THE REGRESSION, on the real population: if this returns nothing, the scan has gone dark and
@@ -90,7 +96,21 @@ def test_the_scan_is_not_dark_on_the_real_board():
     tasks = parse(PLAN.read_text(encoding="utf-8"))[0]
     open_ids = {t["id"] for t in tasks}
     got = _sidecar_commits_touching_tasks(open_ids)
-    assert got, "the second-repo scan found nothing at all — it has gone dark"
+
+    # ⚠ 2026-09-20: `assert got` USED TO LIVE HERE and it is the same defect this test's own
+    # docstring diagnoses one layer down. It went RED the moment #640 closed — the last open task
+    # the dashboard repo referenced — so it was asserting "dashboard work is currently open",
+    # which is a fact about the BOARD on a given afternoon, not about the scanner. A board with no
+    # open dashboard task is a perfectly healthy state and must not redden the suite.
+    #
+    # The durable property is that the SCANNER still works. Exercised by handing it ids the
+    # sidecar demonstrably references (the closed ones the docstring below counts) and requiring
+    # it to find them: if the scan had gone dark, this finds nothing and fails for the right
+    # reason, on any board.
+    referenced = _sidecar_commits_touching_tasks(_ANY_REFERENCED_IDS)
+    assert referenced, (
+        "the second-repo scan found nothing even for ids the dashboard repo demonstrably "
+        "references — the scan itself has gone dark, which is how #555 sat invisible for five days")
     assert set(got) <= open_ids, f"it reported ids that are not open tasks: {set(got) - open_ids}"
 
 
