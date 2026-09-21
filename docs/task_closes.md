@@ -1246,3 +1246,17 @@ EVIDENCE: **All four clauses read GREEN inside the RUNNING container, checked by
 - Images were rebuilt today at 12:02/12:05 ET, so the introspection is of the code now serving, not of the repo.
 ⚠ **DELIBERATELY NOT RESTING ON THE LINE'S LIVE HALF, which cannot discriminate.** Its EXPECT said "zero tier differences and zero composer errors" — but `mi_safeguard_state` has **0 rows matching `composite%`**, so `get_composite_authority_enabled()` fails closed to False and emitted the identical zero BEFORE the change. A broken build produces the same reading. The DoD is closable only because its real observables are code state and a RED-proofed test. [[a-rule-is-not-live-until-it-has-fired-once]]
 ⚠ **Its verify-date said "Mon 2026-09-22" and 2026-09-22 is a TUESDAY** — the intended "first market day that can produce the reading" was today. Same UTC-roll class already logged in CLAUDE.md on 2026-09-14; waiting a day bought no additional evidence.
+
+## #661 — the EP money path no longer runs through the nightly pass's batch-driver state machine (2026-09-21)
+BAR: `judge_theme_fit` no longer calls `_propose_assignment_batch`; the four kwargs are gone from its signature; and a replay of one nightly assignment run produces the byte-identical proposal list and the same audit events as before.
+EVIDENCE: **All three clauses, the first two read out of the RUNNING container and the third from a replay with a working sensitivity control.**
+- **Clause 1 + 2, live introspection in `apollo-market`:** `'_propose_assignment_batch(' in inspect.getsource(judge_theme_fit)` → **False**, and its signature is **`['ticker', 'description', 'sector', 'themes', 'rs_composite', 'client']`** — the four batch kwargs (`batch_no`, `n_batches`, `batch_size`, `candidate_pool_size`) are gone.
+- **Clause 3, `scripts/probes/_661_assignment_seam_replay.py`, old path vs new on identical inputs:**
+```
+A nightly 3 batches: consult+propose / direct / truncated   13 events   sha b0b75c27381ca2d5  →  0 differing
+B nightly 2 batches: silent stop / advisor budget           18 events   sha c970d53b1c0256ac  →  0 differing
+C EP-time fit, 6 cases                                      20 events   sha 1ed586d1a51be099  →  0 differing
+TOTAL DIFFERING LINES (A+B+C): 0
+```
+- 🔑 **AND THE ZERO IS NOT A BLIND INSTRUMENT.** The probe carries a SENSITIVITY control — the same replay with the prompt changed by **one byte** — which produces **8 differing lines and a different sha (`9ae8a3becd7d8df9`)**. Without that, three zeros would be indistinguishable from a comparison that cannot see anything. [[a-rule-is-not-live-until-it-has-fired-once]]
+- **The live EXPECT held too, both halves on the first market day:** `ep_theme_fit_llm_proposed` fired **4 times today** (first at 08:35 ET) and `assignment_llm_proposed` landed from tonight's nightly at **17:09 ET**, carrying the full key set `advisor_calls, batch_no, batch_size, candidate_pool_size, candidate_tickers, n_batches, proposals`. **Zero `ep_theme_fit_silent_stop` and zero `FIT_FAILED` rows** — the WOULD-FAIL-IF was a `no verdict (consult)` row, and there are none.
