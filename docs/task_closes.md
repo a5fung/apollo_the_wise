@@ -1194,3 +1194,22 @@ EVIDENCE: **Three clauses, each checked against prod today rather than read off 
 📊 **Accrual context for the increment-3 paths, measured:** R1 has corrected a stop pointer **twice ever, both `paper`, both 2026-07-11 — zero live corrections in the ~10 weeks since `live_r1` went live**. R3i has 2 clean dry-run proposals (08-06, 08-14), R2 has 0 since its false-positive bug was fixed 07-26, and nothing accrued on any path in 37 days. **Those paths belong to increment 3 (guarded auto-correction), which this DoD does not require** — the DoD is alerts + mirror + /syncnow, and increment 3 was always "never the first increment". Closing this does not ship auto-correction and does not need to.
 
 ⚖ Nothing shipped, deployed or changed by this close. Read-only verification of an observe-only lane.
+
+
+## #640 — Rank Flow reads on a phone, and he says so (2026-09-20)
+
+BAR: he can read it on his phone and say what it tells him. Concretely: the *outside* band separates *below the cut with a known rank* from *no rank at all*; labels legible; the ink weighted toward moves rather than stayers. WOULD-FAIL-IF: a ribbon still merges a data gap with a weak rank.
+
+EVIDENCE: **His verdict, 2026-09-20: "640 looks good".** That is the bar — the DoD says readability is HIS call, the same as #561, and he has made it.
+
+▶ **The three concrete clauses, verified in the shipped code rather than asserted:** the outside band renders as **"New / unranked"** (it previously merged two different things under one label); the movers list is **split by direction** via `movers_sections`, which was his one change request after the first phone read; and the chart is a **single hop across two columns** with the ink on movers rather than stayers. Dashboard suite **47 passed** on `test_theme_flow.py`, 145 across the repo.
+
+▶ **THE WOULD-FAIL-IF IS THE INTERESTING HALF and it was settled by measurement, not styling.** The clause says a ribbon must not merge a data gap with a weak rank. **It cannot, because there are no data gaps: all 798 null-rank rows in the grid are stage Fading (424) or Retired (374).** A null rank is the engine's VERDICT, not missing data. ⚠ **I told him the opposite first** — "2 of 20 were data gaps, treat 10% as a floor" — and both of those were stage Retired too. Wrong in kind, not degree, and corrected in `docs/design/rank_flow_readable_sankey.md` before the build.
+
+⚠ **ONE HONEST GAP AGAINST THE DoD's LITERAL WORDING:** it asks him to *"say what it tells him"*, and what he said is *"looks good"* — an approval of the surface, not a reading of its content. Recorded rather than papered over. The clause exists because readability is his to judge and he has judged it; if the view later fails to tell him anything, that is a new finding, not an unmet bar from today.
+
+▶ **Raised, measured and DECLINED the same day, so it is not re-litigated:** extending to 3-4 columns to track a longer period. **A Sankey cannot draw a path across 3+ columns** — rank flow is a many-to-many transition matrix (32 distinct paths against 36 ribbons over 3 columns), while the reference expense chart he had in mind is a tree. Ribbon counts measured: 2 columns/4wk **17** · 3/8wk **36** · 4/12wk **52** · 5/16wk **62**, versus one LONGER hop at 17 → 11 → 9 → 7. His ruling: *"Ok, leave as is for now."*
+
+🔭 **Open and unfiled, recorded in the design doc:** nobody has measured how often a cohort leaves a band and returns within one hop, so net displacement may understate churn.
+
+⚖ Reporting surface only — no strategy, entry, exit, sizing or safeguard touched. Shipped in `portfolio-app2`.

@@ -164,10 +164,6 @@
     "status": "pending"
   },
   {
-    "id": 640,
-    "status": "blocked"
-  },
-  {
     "id": 644,
     "status": "deployed"
   },
