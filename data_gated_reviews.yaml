@@ -8955,6 +8955,80 @@ reviews:
     closed_on: 2026-09-09
 
   - review_id: partial_exit_hardening_n7_clean_cycles
+    can_fire:
+      predicate_runs: "2026-09-21 - executed verbatim against prod and returned 7. Dropping the
+        outer COUNT lists the rows: 9 post-split partial_exit_committed events, of which the
+        NOT-EXISTS clause drops 2 (PLTR trade 307 08-05, ETON trade 367 08-14)."
+      nonzero_possible: "Writers exist for 2 of the 3 failure names the predicate joins on -
+        partial_exit_aborted (8 writers) and partial_exit_sell_failed (order_manager.py:4004).
+        partial_exit_rollback_failed has NO writer anywhere; the rollback block was deliberately
+        removed 2026-06-23 (order_manager.py:3986 'The OLD rollback block here is GONE'). Benign
+        rather than blinding: both historical rollback rows carry a sell_failed sibling on the
+        same trade within 25ms. So the gate observes two failure classes, not three."
+      lane_live: "magna53 is phase=live, enabled=t in mi_strategies (the only live strategy; the
+        other four enabled are shadow). The mechanism runs - it is simply not being reached."
+      threshold_vs_observed: "Bar is 7. Observed 7 CUMULATIVE but 3 CONSECUTIVE, and the gate's own
+        wording asks for consecutive. ⚠ THE ACCRUAL RATE IS THE PROBLEM: 0 partial-exit events in
+        the 15 days since 2026-09-06, across 9 live trades. The 2R era produced 9 cycles from 122
+        live trades since the 06-23 split, about 1 in 14. At +8R on a book whose median peak is
+        under 1R, 'N months out' is not a forecast - the count cannot move at all. The action
+        text's '~1-2/day' rests on a wrong population: its '25 committed since the split' is the
+        ALL-TIME count (first row 2026-05-05); post-split is 9."
+      era_scoped: "🔴 THIS IS THE FAILING KEY. Every cycle the gate counts is from the 2R era. The
+        live partial moved 2R -> 8R on 2026-09-06 (b52fdcbc, 'MAGNA53 partial moves to +8R'), with
+        breakeven arming at +3R; mi_strategies carries profit_trigger_r=8.0 for magna53 while the
+        global PROFIT_TRIGGER_R stays 2.0 for shadow. The last partial-exit event of ANY type is
+        2026-08-27 15:46 ET - ten days BEFORE the flip. The threshold of 7 and the rate assumption
+        both describe a regime that ended. [[check-the-rule-era-before-comparing-to-actual]]"
+      population_actionable: "Not as counted. 1 of the 7 is a test-harness injection, not a
+        scheduled partial: trade 230 (F, 06-23) is ABSENT from mi_live_trades, which holds 229=MLTX
+        and 232=ABSI around it, and sibling 231 logged 'forced sell failure (TEST B)' from
+        scripts/_partial_exit_paper_validation.py. Of the 6 real cycles, 5 ran on
+        account_mode='live' real money and 1 on paper, while the gate text asks for cycles clean
+        'on paper'. The SQL also already returned 7 on 2026-08-31, the day the window was extended
+        on a recorded '3 of 7'."
+      instrument_trusted: "Partially. The 6 real cycles did execute - all 6 partial sells filled in
+        full in mi_live_orders, and exactly 1 naked_position_detected row exists post-split (trade
+        183 FPS, 06-23), on none of them. But two blind spots: the 'too_small_to_split' skip at
+        order_manager.py:8159-8161 (shares = remaining_shares // 3 < 1) is appended to `results`
+        and NEVER written to mi_audit_log, so the gate cannot see why it is starving; and the
+        predicate matches failure events on UTC date, not ET, so a failure after 20:00 ET would
+        land on the next UTC date and fail to mask its own cycle. All 9 post-split cycles ran
+        09:30-16:00 ET, so no row is affected today."
+    finding_2026_09_21: >-
+      🔴 THE COUNT READS 7 AND IT IS NOT THE 7 THIS GATE ASKS FOR. The operator supplied the
+      missing piece: "we change partial from take at 2x to take at 8x recently so this becomes
+      more rare." Verified — `b52fdcbc`, 2026-09-06, "FLIPPED LIVE: MAGNA53 partial moves to +8R
+      and the price-armed breakeven is on at +3R". `mi_strategies` confirms magna53 (the ONLY
+      live strategy) carries profit_trigger_r = 8.0 / breakeven_arm_r = 3.0 as a per-strategy
+      override; the global PROFIT_TRIGGER_R is still 2.0 and now applies only to shadow.
+      ⚠ SO EVERY CYCLE THIS GATE HAS EVER COUNTED IS FROM THE 2R ERA. The last partial-exit
+      event of any type is 2026-08-27 15:46 ET, ten days BEFORE the flip. Since the flip:
+      0 partial-exit events across 9 live trades in 15 days. The 2R era produced 9 cycles from
+      122 live trades since the 06-23 split — about 1 in 14. At +8R, on a book whose median peak
+      is under 1R, the mechanism fires far more rarely BY DESIGN. That is the intent of the
+      2026-09-06 exit-rule change, not a fault.
+      This is [[check-the-rule-era-before-comparing-to-actual]] exactly: a baseline from a
+      replaced rule. The gate's threshold of 7 and its action text's "~1-2/day" rate both belong
+      to a regime that ended on 2026-09-06.
+      ▶ WHAT THE COUNT ALSO CONTAINS, verified independently: the predicate counts CUMULATIVE
+      clean cycles while the gate's own wording says "7 CONSECUTIVE" — the longest consecutive
+      clean run is 3 of 9. One of the 7 is a test-harness injection, not a scheduled partial:
+      trade 230 (F, 2026-06-23) is ABSENT from mi_live_trades, which holds 229=MLTX and
+      232=ABSI around it, and its sibling 231 logged 'forced sell failure (TEST B)'. Of the 6
+      real cycles, 5 ran on account_mode='live' real money and 1 on paper, while the gate text
+      asks for cycles that complete cleanly "on paper". And the SQL already returned 7 on
+      2026-08-31, the day the window was extended on a recorded "3 of 7".
+      ▶ A SECOND, SMALLER BRAKE: at 1-2 share positions `shares = remaining_shares // 3` is < 1,
+      so order_manager.py:8159-8161 skips with action 'too_small_to_split' — and that skip is
+      appended to `results`, never written to mi_audit_log, so it is invisible here.
+      ⚖ OPERATOR DECISION, NOT MINE — this is the LAST entry carrying live_cutover_blocker: true,
+      and re-scoping or retiring it bears on flipping a strategy live (THE LINE). The forks, stated
+      neutrally: (a) re-scope to the 8R world with a stability measure that can actually accrue;
+      (b) retire it as superseded by the 09-06 exit rules; (c) keep it as written and accept that
+      the cutover stays blocked indefinitely. ⚠ Waiting is NOT a fourth option — at the current
+      rate the count cannot move. Also context, not argument: magna53 has been phase=live since
+      2026-06-22, one day BEFORE this gate's own split anchor.
     title: "P0 — Partial-exit architecture stable for N=7 consecutive paper cycles"
     severity: P0
     live_cutover_blocker: true
