@@ -1,0 +1,12 @@
+08-16 extended-cohort bar cache: 159 (ticker,date) pairs
+not filled / no bars: no_fill=36, stop_too_wide=5, zero_range=2
+
+[50-75]  filled n=25   (setup_at_open TRUE: 9)
+   reached BEFORE the stop:  >=2R 11/25   >=3R 9/25   >=8R 3/25   median +1.36R  max +17.02R
+   MFE overall (incl. after the stop): >=2R 21/25   >=5R 14/25   median +5.74R  max +39.79R
+   stop touched within 20 sessions: 24/25
+
+[>=75]  filled n=91   (setup_at_open TRUE: 50)
+   reached BEFORE the stop:  >=2R 37/91   >=3R 27/91   >=8R 12/91   median +1.24R  max +122.18R
+   MFE overall (incl. after the stop): >=2R 70/91   >=5R 44/91   median +4.93R  max +165.93R
+   stop touched within 20 sessions: 90/91

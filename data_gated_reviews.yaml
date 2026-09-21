@@ -12375,6 +12375,32 @@ reviews:
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_09_21: >-
+      🔴 RETRACTION. The 16, 17 and 19 Sep runs of this read each reported ZERO big winners
+      out-of-sample. That was a WRONG-TABLE artifact, not a finding. They scored outcomes from
+      `mi_ep_missed_outcomes`, which by its own docstring holds only alerts we did NOT buy — so
+      every alert that became a trade was invisible to them. The one out-of-sample big winner is
+      MRNA 2026-08-19 (open 116.02, high 176.66 against a 62.96 prior close, volume 191m vs ~4m
+      the day before = 9.13x its average daily range, above the 8x bar), and we BOUGHT it:
+      `mi_live_trades` id 374, status closed. Verified directly on prod, 2026-09-21.
+      So the out-of-sample tail is 1 of 27, not 0 of 20.
+      ⚠ AND THE CORRECTION DOES NOT RESCUE THE RULE — it sharpens the opposite reading. That one
+      winner was ranked LAST by the rule: composite rank 0.875 in a pool of 4 (0 = best), identical
+      on the EOD and the 09:45 version. Top quartile reached the bar 0 of 2 (EOD) and 0 of 3
+      (09:45), and both directions read worse than the rest of the pool.
+      ⚠ STILL THIN AND STILL NOT A VERDICT. n = 13 of 25 sessions (52%) — `confidence_label(13)`
+      returns "THIN ... directional only, NOT a verdict". The top-quartile cell holds two or three
+      rows; on 5 of 13 sessions only ONE alert fired, and a single-item pool always scores 0.5, so
+      4 of 27 matured rows can never enter the cell at all. At ~0.2 top-quartile rows per session,
+      25 sessions yields about 5 rows there.
+      📌 A SEPARATE, LARGER PROBLEM NAMED HERE SO IT IS NOT RE-DISCOVERED: the rule was fitted on a
+      different population than it is being tested on. `scripts/probes/_expectedness_and_ranking.py:580`
+      states the in-sample population as 749 morning gap-day candidates and says outright that "the
+      morning candidate pool, not the alert list, is the population a ranker faces". The live shadow
+      ranks the ALERT LIST only — 1 to 6 names a day, 32 rows over 13 sessions.
+      ✅ NOT A DEFECT: `missed_outcomes_refreshed` last fired 2026-09-17 and skipped 2026-09-18.
+      That is FRIDAY'S OUTAGE (#672), not a new break — it is weekday-only, and the next run is
+      tonight. Checked before reporting it as staleness.
     question: >-
       The three-feature ranking rule (smaller gap + tighter EP day + less extension) put
       16 of the 26 tradeable >=10R winners in its top quartile, a 2.5x lift - but its
