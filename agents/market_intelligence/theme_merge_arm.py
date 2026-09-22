@@ -34,12 +34,12 @@ import anthropic
 
 from shared.llm_models import HAIKU
 from shared.output_ceilings import max_tokens_for
+from shared.env_flags import env_flag_on
 
 logger = logging.getLogger(__name__)
 
 # ── The toggle (ADR 0025 §4) ─────────────────────────────────────────────────
 THEME_MERGE_ARM_ENV = "THEME_MERGE_ARM"
-_TRUTHY = {"1", "true", "on", "yes", "enabled"}
 
 
 def merge_arm_enabled() -> bool:
@@ -48,7 +48,7 @@ def merge_arm_enabled() -> bool:
     Default-off is load-bearing: with the toggle off every theme pass is
     byte-identical to pre-ADR-0025 behavior. Flip = operator decision AFTER the
     golden corpus passes (see module docstring) — never flip it in code."""
-    return os.environ.get(THEME_MERGE_ARM_ENV, "").strip().lower() in _TRUTHY
+    return env_flag_on(THEME_MERGE_ARM_ENV)
 
 
 # ── Rails (ADR 0025 §2 Arm B) ────────────────────────────────────────────────

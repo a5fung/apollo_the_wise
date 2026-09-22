@@ -18,6 +18,7 @@ from typing import Any
 
 import anthropic
 from fastapi import BackgroundTasks, Depends
+from shared.env_flags import env_is_true
 
 # Suppress httpx INFO logs — they include full URLs with API keys
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -540,12 +541,18 @@ class MarketIntelligenceAgent(BaseAgent):
             """
             import os
             from agents.market_intelligence.constants import (
-                ENABLE_LIVE_MODE, active_account_modes, resolve_account_mode_for_strategy,
+                ENABLE_LIVE_MODE, LIVE_TRADING_ENABLED, active_account_modes,
+                resolve_account_mode_for_strategy,
             )
             from agents.market_intelligence.strategies.registry import load_strategies
             from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
 
-            live_enabled = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
+            # ⚠ THE BOOT-READ CONSTANT, not a fresh env read (2026-09-21). This is a STATUS
+            # REPORT, and the kill switch is boot-read by contract (CLAUDE.md; `/pause` is the
+            # runtime halt). Re-reading the environment here made this the SECOND reader of
+            # LIVE_TRADING_ENABLED and let the report disagree with what the system acts on —
+            # it would have said live trading was enabled while the acting constant said off.
+            live_enabled = LIVE_TRADING_ENABLED
             if not live_enabled:
                 return {
                     "live_trading_enabled": False,

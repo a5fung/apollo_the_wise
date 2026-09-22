@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import logging
 import os
+from shared.env_flags import env_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ logger = logging.getLogger(__name__)
 def capture_enabled() -> bool:
     """Read the flag at call time (not import time) so tests / operator restarts see the
     current env. Default OFF — see module docstring for why."""
-    return os.environ.get("HALT_STATUS_CAPTURE_ENABLED", "false").lower() == "true"
+    return env_is_true("HALT_STATUS_CAPTURE_ENABLED")
 
 
 def maybe_register_status_capture(data_stream) -> bool:

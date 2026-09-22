@@ -58,7 +58,8 @@ async def run() -> bool:
         return False
 
     # Hard guard: never exercise this against live mode.
-    if os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true":
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if LIVE_TRADING_ENABLED:
         if not os.environ.get("ALPACA_PAPER_API_KEY"):
             logger.error("G6 requires ALPACA_PAPER_API_KEY for paper-side test")
             return False

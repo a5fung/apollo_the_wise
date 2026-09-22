@@ -58,6 +58,7 @@ from agents.market_intelligence.audit_events import (
     STOP_UPDATE_FAILED,
     ORDER_STATUS_RECONCILE_MODE_ERROR,
 )
+from shared.env_flags import env_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -1316,7 +1317,7 @@ async def attempt_day1_reentry(
     # Phase 7 paired work (sugar baby filter audit + MAGNA53→flag
     # carryforward) close the gap quickly post-ship. Target: 2026-05-24.
     # Env flag for fast rollback if Phase 7 slips materially.
-    _R3_ENABLED = os.environ.get("R3_DAY1_REENTRY_ENABLED", "false").lower() == "true"
+    _R3_ENABLED = env_is_true("R3_DAY1_REENTRY_ENABLED")
     if not _R3_ENABLED:
         total_pnl_so_far = sum(ex.get("pnl", 0) for ex in exits)
         async with pool.acquire() as conn:

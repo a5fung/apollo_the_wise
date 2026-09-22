@@ -22,6 +22,7 @@ import os
 from dataclasses import dataclass, field
 
 from agents.market_intelligence.constants import TIER_LATTICE, TIER_RANK
+from shared.env_flags import env_is_true
 
 # Net axis movement cap (fork F2): the composed tier may move at most ±1 step from the base,
 # no matter how many axes fire. 0016's proposed default, operator-signed 2026-07-07.
@@ -36,7 +37,7 @@ COMPOSITE_AUTHORITY_ENV = "COMPOSITE_AUTHORITY"
 
 def composite_authority_enabled() -> bool:
     """Is the composed tier LOAD-BEARING? Default False (dark). Flipped only at the M1-d sitting."""
-    return os.environ.get(COMPOSITE_AUTHORITY_ENV, "false").strip().lower() == "true"
+    return env_is_true(COMPOSITE_AUTHORITY_ENV, strip=True)
 
 
 @dataclass

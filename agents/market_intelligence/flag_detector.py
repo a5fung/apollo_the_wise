@@ -32,6 +32,7 @@ from statistics import median as _median_stat
 from typing import Any, Optional
 
 from agents.market_intelligence.parabolic_detector import _sma
+from shared.env_flags import env_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -2245,7 +2246,7 @@ async def run_intraday_flag_break_scan(scan_time):
     # of ~7 per-tick pings. Toggle SHADOW_DETECTOR_TELEGRAM_ENABLED=true to
     # re-enable per-tick (e.g. a #168 graduation experiment) — DEFAULT FALSE so a
     # DR restore / fresh env can't silently bring the noise back (code is SoT).
-    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "false").lower() == "true":
+    if env_is_true("SHADOW_DETECTOR_TELEGRAM_ENABLED"):
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             clock = scan_time.strftime("%H:%M")
@@ -2562,7 +2563,7 @@ async def run_intraday_support_test_scan(scan_time):
     # DB writes + audit still fire; the day's tests surface in the 16:00 ET
     # consolidated digest (run_intraday_signals_eod_digest). Toggle
     # SHADOW_DETECTOR_TELEGRAM_ENABLED=true to re-enable per-tick.
-    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "false").lower() == "true":
+    if env_is_true("SHADOW_DETECTOR_TELEGRAM_ENABLED"):
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             clock = scan_time.strftime("%H:%M")
@@ -2781,7 +2782,7 @@ async def run_intraday_undercut_rally_scan(scan_time):
     # intraday pings. DB writes + audit always fire regardless. Flip
     # UNDERCUT_RALLY_INTRADAY_FYI=true to also ping live (e.g. once U&R graduates to a
     # tradeable, real-time setup where the moment-of-reclaim matters for entry).
-    if os.environ.get("UNDERCUT_RALLY_INTRADAY_FYI", "false").lower() == "true":
+    if env_is_true("UNDERCUT_RALLY_INTRADAY_FYI"):
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             clock = scan_time.strftime("%H:%M")
@@ -3124,7 +3125,7 @@ async def run_intraday_ma_pullback_scan(scan_time):
 
     # Per-tick Telegram OFF by default (#168, see support_test equivalent above).
     # Day's pullbacks surface in the 16:00 ET consolidated digest.
-    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "false").lower() == "true":
+    if env_is_true("SHADOW_DETECTOR_TELEGRAM_ENABLED"):
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             clock = scan_time.strftime("%H:%M")
@@ -3342,7 +3343,7 @@ async def run_intraday_low_vol_rest_scan(scan_time):
                 logger.debug(f"intraday_low_vol_rest audit failed (non-critical): {e}")
 
     # Per-tick Telegram OFF by default (#168). Day's rests surface in the 16:00 ET digest.
-    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "false").lower() == "true":
+    if env_is_true("SHADOW_DETECTOR_TELEGRAM_ENABLED"):
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             clock = scan_time.strftime("%H:%M")

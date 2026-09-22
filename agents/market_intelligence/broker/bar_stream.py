@@ -27,6 +27,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     INFRA_SUBSCRIBE_FAILED,
     INFRA_SUBSCRIBE_TIMEOUT,
 )
+from shared.env_flags import env_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,11 @@ async def start_bar_stream() -> None:
 
     from alpaca.data.live import StockDataStream
     from agents.market_intelligence.broker.alpaca_client import get_data_feed
-    paper = os.environ.get("ALPACA_PAPER", "true").lower() == "true"
+    # The shared per-call resolver, not a second read of ALPACA_PAPER (2026-09-21). Identical
+    # semantics — `current_account_mode` is this exact expression — and it means the label this
+    # logs cannot drift from the mode the rest of the system routes orders by.
+    from agents.market_intelligence.constants import current_account_mode
+    paper = current_account_mode() == "paper"
     feed = get_data_feed()
     _data_stream = StockDataStream(api_key, secret_key, feed=feed)
 

@@ -1603,11 +1603,52 @@ def _pplx_cache_put(key: tuple, answer: str) -> None:
     _PPLX_CACHE[key] = (time.monotonic(), answer)
 
 
+class NewsAnswer(str):
+    """The synthesized answer, carrying WHETHER THE PROVIDER ACTUALLY ANSWERED.
+
+    #680 (2026-09-21). #679 fixed the one call site where a Perplexity outage being recorded as
+    a factual "no news" had already cost something — four themes demoted Mainstream -> Nascent on
+    2026-09-04, and every member ticker's EP theme bonus with them. It fixed that site by adding
+    an opt-in `raise_on_failure`, which left the DEFAULT still lying to the other ten callers:
+    `""` is returned both when the provider said "there is no news" and when the provider never
+    answered at all. Those are different facts and the caller could not tell them apart.
+
+    This is a `str` SUBCLASS on purpose. Every existing call site keeps working byte-identically —
+    it compares, slices, truncates, joins and falsifies exactly like the `str` it used to get, so
+    nothing downstream had to change and no caller can be broken by the migration. The difference
+    is that the information now EXISTS at all eleven sites instead of being destroyed at the
+    boundary, and a site that cares reads `.provider_failed`.
+
+    ⚠ Why not raise by default: `ep_detector.py:1221` is awaited inside a
+    `gather(..., return_exceptions=True)` whose consumer re-raises the first exception, so a
+    blanket default-flip would abort that whole enrichment step. Fail-open stays the default
+    BEHAVIOUR; what changes is that failing open is no longer indistinguishable from a real
+    negative finding. [[answer-the-ask-not-a-narrower-measurable-one]]
+    """
+
+    #: True when we never got an answer — no key, transport/HTTP failure, or an undecodable 200.
+    #: False for a genuine answer, INCLUDING a genuine "there is no news about this" answer.
+    provider_failed: bool = False
+    #: Short machine-readable cause when `provider_failed` — for logs and audit rows, never copy.
+    failure_reason: "str | None" = None
+
+    def __new__(cls, value: str = "", *, provider_failed: bool = False,
+                failure_reason: "str | None" = None) -> "NewsAnswer":
+        self = super().__new__(cls, value)
+        self.provider_failed = provider_failed
+        self.failure_reason = failure_reason
+        return self
+
+
 async def search_news_perplexity(
     query: str, recency: str = "month", system_prompt: str | None = None,
     *, fresh: bool = False, raise_on_failure: bool = False,
-) -> str:
+) -> NewsAnswer:
     """Use Perplexity Sonar for news search. Returns a synthesized answer string.
+
+    ⚠ The return is a `NewsAnswer` — a `str` that also says whether the provider ANSWERED.
+    It behaves as a plain `str` everywhere; read `.provider_failed` when "no news" and "no
+    answer" must be told apart. See the class docstring for why this is not an exception.
 
     recency: "day" | "week" | "month" | "year" — use "week" for EP catalysts.
     system_prompt: override the default system prompt for specialized callers.
@@ -1636,7 +1677,7 @@ async def search_news_perplexity(
     """
     api_key = os.environ.get("PERPLEXITY_API_KEY")
     if not api_key:
-        return ""
+        return NewsAnswer(provider_failed=True, failure_reason="no_api_key")
     # Same-run dedupe: an identical question asked twice inside 15 minutes costs a second
     # $0.006 search fee for an answer we already hold. See the block above for why this is
     # narrow and why failures are never stored.
@@ -1647,7 +1688,7 @@ async def search_news_perplexity(
     _cached = None if fresh else _pplx_cache_get(_ck)
     if _cached is not None:
         logger.debug("perplexity search served from cache")
-        return _cached
+        return NewsAnswer(_cached)
     last_exc: Exception | None = None
     for attempt in (1, 2):
         try:
@@ -1698,7 +1739,7 @@ async def search_news_perplexity(
                     logger.warning(f"Perplexity response was not valid JSON: {je}")
                     from agents.market_intelligence.llm_health import alert_perplexity_invalid_json
                     await alert_perplexity_invalid_json(str(je))
-                    return ""
+                    return NewsAnswer(provider_failed=True, failure_reason="undecodable_200")
                 try:  # #377 cost meter — additive, never alters the search result.
                     # Covers #186A + the ~11 indirect callers of this choke point.
                     from agents.market_intelligence.spend_tracker import log_perplexity_call
@@ -1721,7 +1762,7 @@ async def search_news_perplexity(
                     # to say.
                     from agents.market_intelligence.llm_health import alert_perplexity_empty_answer
                     await alert_perplexity_empty_answer()
-                return _answer
+                return NewsAnswer(_answer)
         except Exception as e:
             # Duck-typed timeout check (matches classify_api_failure): every
             # httpx timeout type ends in "Timeout"/"TimeoutException".
@@ -1745,7 +1786,7 @@ async def search_news_perplexity(
             break
     e = last_exc
     if e is None:  # defensive — loop always returns or sets last_exc
-        return ""
+        return NewsAnswer(provider_failed=True, failure_reason="unknown")
     # #273: a 402/401 here is Perplexity CREDIT exhaustion — the #186A
     # catalyst cross-check (and every other Perplexity use) silently returns
     # "" and degrades. Alert it (terminal + actionable) before failing open.
@@ -1775,7 +1816,9 @@ async def search_news_perplexity(
     # member ticker silently lost the EP theme-belonging bonus because a news API timed out.
     if raise_on_failure:
         raise e
-    return ""
+    from agents.market_intelligence.llm_health import classify_api_failure
+    return NewsAnswer(provider_failed=True,
+                      failure_reason=(classify_api_failure(e) or type(e).__name__)[:40])
 
 
 async def search_news_tavily(query: str) -> list[dict]:

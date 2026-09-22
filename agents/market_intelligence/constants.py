@@ -1,6 +1,7 @@
 """Shared constants and helpers for the Market Intelligence agent."""
 
 import os
+from shared.env_flags import env_is_true
 
 # ── Position sizing ──────────────────────────────────────────────────────────
 ACCOUNT_SIZE = 100_000       # Total account value ($)
@@ -59,7 +60,7 @@ def vix_scaled_risk_pct(vix_value: float | None, base_pct: float = RISK_PCT) -> 
 # (vix_scaled_risk_pct + the qqq_ema_bullish halve, both left in place above/
 # at each call site). Flip to on via env var (no code change) once the
 # operator signs off on the live flip — see safeguards.md "Flip steps".
-REGIME_SIZING_ENABLED = os.environ.get("REGIME_SIZING_ENABLED", "false").lower() == "true"
+REGIME_SIZING_ENABLED = env_is_true("REGIME_SIZING_ENABLED")
 
 # Bull/Choppy/Correcting evidenced directionally (N≥10 for Bull=29, pooled
 # non-Bull=14); Correcting (n=5) and Crisis (n=0) are STRUCTURAL PRIORS, not
@@ -97,7 +98,7 @@ def regime_risk_multiplier(regime_label: str | None) -> float:
     return REGIME_RISK_MULTIPLIER.get(regime_label, REGIME_SIZING_FALLBACK_MULTIPLIER)
 
 # ── Live trading ─────────────────────────────────────────────────────────────
-LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
+LIVE_TRADING_ENABLED = env_is_true("LIVE_TRADING_ENABLED")
 
 # ── Dual-account architecture (#66, 2026-05-10) ───────────────────────────────
 # ENABLE_LIVE_MODE=true (production default): both ALPACA_PAPER_API_KEY/SECRET
@@ -107,7 +108,7 @@ LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() =
 # friction for new contributors. Boot fallback in agent.py maps the legacy
 # ALPACA_API_KEY/ALPACA_SECRET_KEY to the paper account if ALPACA_PAPER_* not
 # set — keeps git-revert rollback clean for ONE deploy cycle.
-ENABLE_LIVE_MODE = os.environ.get("ENABLE_LIVE_MODE", "true").lower() == "true"
+ENABLE_LIVE_MODE = env_is_true("ENABLE_LIVE_MODE", default=True)
 
 
 def active_account_modes() -> list[str]:
@@ -253,7 +254,7 @@ def current_account_mode() -> str:
     `resolve_account_mode_for_strategy(strategy)` and propagate `account_mode`
     explicitly through alpaca client calls.
     """
-    return "paper" if os.environ.get("ALPACA_PAPER", "true").lower() == "true" else "live"
+    return "paper" if env_is_true("ALPACA_PAPER", default=True) else "live"
 
 
 def get_strategy_account_mode(strategy) -> str:
@@ -313,7 +314,7 @@ def mode_prefix(account_mode: str | None = None) -> str:
 # false (default): nightly ingest runs, RS computed, audit-only on trigger fire,
 #   /crypto + /altseason commands return shadow-mode message.
 # true: full alt-season Telegram alerts + briefing surfaces enabled.
-CRYPTO_RS_ENABLED = os.environ.get("CRYPTO_RS_ENABLED", "false").lower() == "true"
+CRYPTO_RS_ENABLED = env_is_true("CRYPTO_RS_ENABLED")
 MAX_CONCURRENT_LIVE_POSITIONS = 5
 DAILY_LOSS_LIMIT_PCT = 0.02          # 2% daily loss limit
 # ── Intraday profit trigger (#508, operator-signed 2026-08-01) ───────────────
@@ -402,9 +403,7 @@ DRAWDOWN_RELEASE_PCT       = DRAWDOWN_WATCH_RELEASE_PCT  # legacy alias
 # sales_yoy_latest < threshold (fail-closed if missing). Score-50 floor
 # filters naturally post-downgrade. 5% threshold is conservative
 # ("company actually growing"); refine via Phase 5 calibration.
-EARNINGS_REVENUE_GATE_ENABLED = os.environ.get(
-    "EARNINGS_REVENUE_GATE_ENABLED", "true"
-).lower() == "true"
+EARNINGS_REVENUE_GATE_ENABLED = env_is_true("EARNINGS_REVENUE_GATE_ENABLED", default=True)
 EARNINGS_REVENUE_GATE_MIN_YOY = float(os.environ.get(
     "EARNINGS_REVENUE_GATE_MIN_YOY", "5.0"
 ))  # PERCENT (matches mi_fundamental_flags.sales_yoy_latest storage convention,
@@ -422,9 +421,7 @@ EARNINGS_REVENUE_GATE_MIN_YOY = float(os.environ.get(
 #   22-29: strong            <-- default threshold 22 = strong-or-better
 #   14-21: routine
 #   0-13: weak
-CATALYST_RUBRIC_GATE_ENABLED = os.environ.get(
-    "CATALYST_RUBRIC_GATE_ENABLED", "true"
-).lower() == "true"
+CATALYST_RUBRIC_GATE_ENABLED = env_is_true("CATALYST_RUBRIC_GATE_ENABLED", default=True)
 CATALYST_RUBRIC_MIN_COMPOSITE = float(os.environ.get(
     "CATALYST_RUBRIC_MIN_COMPOSITE", "22"
 ))  # Default 22 = strong floor. Below 22 (routine/weak) → downgrade.

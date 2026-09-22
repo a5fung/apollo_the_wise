@@ -94,6 +94,7 @@ from agents.market_intelligence.ep_rubric import (
 from agents.market_intelligence.ep_theme_belonging import (
     THEME_BONUS_STAGES, resolve_theme_bonus_input)
 from shared.llm_response import is_truncated
+from shared.env_flags import env_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -123,13 +124,13 @@ MIN_GAP_PCT = float(os.environ.get("EP_MIN_GAP_PCT", _MIN_GAP_PCT_DEFAULT))
 # real-time Alpaca confirm, then the REAL 9% MIN_GAP_PCT floor is re-applied on the rt gap. The
 # gap_pct AUTHORITY is the separate `ep_rt_gap_authoritative` runtime toggle (default off = shadow:
 # rt logged alongside, delayed still decides). All OFF (default) = byte-identical to today.
-EP_RT_PASS2_ENABLED = os.environ.get("EP_RT_PASS2_ENABLED", "false").lower() == "true"
+EP_RT_PASS2_ENABLED = env_is_true("EP_RT_PASS2_ENABLED")
 EP_PASS1_SUPERSET_GAP_PCT = float(os.environ.get("EP_PASS1_SUPERSET_GAP_PCT", 5.0))
 # #489 real-time MISS watchdog (observability, ALERT-ONLY — never changes what we enter): each in-window
 # tick it checks the full RT universe live and LOUD-Telegrams any 9% crosser the ~15-min-delayed screen
 # missed. It is the #490 Pass-0 fetch in observe mode (doubles as the full-cutover shadow). Default on
 # when the RT infra (EP_RT_PASS2_ENABLED) is on; own kill switch.
-EP_RT_MISS_WATCHDOG_ENABLED = os.environ.get("EP_RT_MISS_WATCHDOG_ENABLED", "true").lower() == "true"
+EP_RT_MISS_WATCHDOG_ENABLED = env_is_true("EP_RT_MISS_WATCHDOG_ENABLED", default=True)
 
 # ── #490 FULL real-time detection — RT-1 dark build (design signed 2026-07-24,
 # docs/analysis/490_full_realtime_design_2026-07-25.md). Master flag OFF (deploy default) =
@@ -139,7 +140,7 @@ EP_RT_MISS_WATCHDOG_ENABLED = os.environ.get("EP_RT_MISS_WATCHDOG_ENABLED", "tru
 # (mi_safeguard_state, ~60s, no deploy — default off = shadow: rt logged + catch events only,
 # delayed still decides). Volume authority is `ep_rt_volume_authoritative` (own toggle, §6.1,
 # flipped ≥3 market days after the gap per the cutover ladder). Rollback rungs R1-R5: §8.
-EP_RT_UNIVERSE_ENABLED = os.environ.get("EP_RT_UNIVERSE_ENABLED", "false").lower() == "true"
+EP_RT_UNIVERSE_ENABLED = env_is_true("EP_RT_UNIVERSE_ENABLED")
 EP_RT_UNIVERSE_CONCURRENCY = int(os.environ.get("EP_RT_UNIVERSE_CONCURRENCY", "1"))
 EP_RT_UNIVERSE_TIMEOUT_S = float(os.environ.get("EP_RT_UNIVERSE_TIMEOUT_S", "15"))
 # §3 tick-quality guard thresholds (Q1-Q4) — env-tunable, rejections LOUD
@@ -1217,9 +1218,11 @@ async def _build_enriched_corpus(
     async def _fetch_perplexity_answer():
         if perplexity_answer is not None:
             return perplexity_answer
-        return await search_news_perplexity(
+        _a = await search_news_perplexity(
             f"What caused {ticker} stock to gap up? Latest catalyst and news.",
             recency="week")
+        await _note_if_news_provider_failed(_a, ticker, "enriched corpus")
+        return _a
 
     # return_exceptions=True + re-raise-first (7/3 review): plain gather propagates
     # the FIRST exception while sibling fetches keep running in the background —
@@ -1432,6 +1435,36 @@ _PPLX_HEDGE_PHRASES = (
     "i don't have",
     "i do not have",
 )
+
+
+async def _note_if_news_provider_failed(answer, ticker: str, where: str) -> bool:
+    """Record that an EP corpus was built WITHOUT the news provider, and say so. Returns True
+    when the provider failed.
+
+    #680 (2026-09-21). `search_news_perplexity` now returns a `NewsAnswer` that knows whether the
+    provider actually answered, so the EP path can finally tell "there is no news about this
+    name" from "we never got an answer". Those two produced the identical empty string before,
+    which is the same conflation that demoted four themes on 2026-09-04 (#679) — the EP side of
+    it was simply never visible.
+
+    ⚠ THIS RECORDS; IT DOES NOT RE-GRADE. Whether a degraded corpus should change an EP grade is
+    a detection-criterion question and it needs measured harm, not an assumption — no rule
+    without it. This writes the rows that would MEASURE it: how often an EP was graded on a
+    corpus missing its news leg, and for which names. If that turns out to be never, there is
+    nothing to fix and no criterion was touched on a guess. [[no-rules-without-measured-harm]]
+    """
+    if not getattr(answer, "provider_failed", False):
+        return False
+    logger.warning("%s: EP corpus built WITHOUT the news provider (%s) — grade rests on the "
+                   "remaining sources", ticker, getattr(answer, "failure_reason", "unknown"))
+    await log_audit_event(
+        "ep_corpus_missing_news_provider",
+        f"{ticker}: {where} — provider did not answer "
+        f"({getattr(answer, 'failure_reason', 'unknown')}); the EP grade for this name was "
+        f"formed without its news leg. Recording only — no grade was changed.",
+        severity="L3",
+    )
+    return True
 
 
 async def _validate_catalyst_perplexity(ticker: str, news_summary: str) -> Optional[str]:
@@ -1797,7 +1830,7 @@ def _score_ep(
     # R4 in-theme bonus (2026-05-17 ship). Env-flagged for fast rollback —
     # that's control flow, stays here. Point value + full evidence live in
     # ep_rubric.SCORE_WEIGHTS["theme_bonus"].
-    _R4_ENABLED = os.environ.get("R4_THEME_BONUS_ENABLED", "true").lower() == "true"
+    _R4_ENABLED = env_is_true("R4_THEME_BONUS_ENABLED", default=True)
     _theme = weights["theme_bonus"]
     if _R4_ENABLED and in_active_theme:
         breakdown["theme_bonus"] = _theme["points"]
@@ -1979,9 +2012,7 @@ async def _post_grade_filters(
     #      position)
     # Env-flagged for fast rollback: set R6_PMSHARES_CARVEOUT_ENABLED=false
     # to disable carve-out #2 only (carve-out #1 always active).
-    _R6_ENABLED = os.environ.get(
-        "R6_PMSHARES_CARVEOUT_ENABLED", "true"
-    ).lower() == "true"
+    _R6_ENABLED = env_is_true("R6_PMSHARES_CARVEOUT_ENABLED", default=True)
     if today_volume < MIN_PREMARKET_SHARES:
         bypass_reason = None
         if pm_rvol is not None and pm_rvol >= 5.0:
@@ -2178,9 +2209,7 @@ async def _emit_large_cap_relvol_floor_shadow(r: dict, now_et: datetime) -> None
     this event. (Answered wrongly from this table once, 2026-09-09, and
     corrected the same day: docs/analysis/large_cap_relvol_floor_shadow_2026-09-09.md.)"""
     try:
-        if os.environ.get(
-            "LARGE_CAP_RELVOL_FLOOR_SHADOW_ENABLED", "true"
-        ).lower() != "true":
+        if not env_is_true("LARGE_CAP_RELVOL_FLOOR_SHADOW_ENABLED", default=True):
             return
         if r.get("score_tier") != "HIGH":
             return
@@ -4480,7 +4509,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # "shadow" name it now also gates this LIVE-acting re-poll (#347). A rename
             # is a deploy-coordination change (env lives in prod .env) — deferred.
             if (_st and not _st["logged"] and _in_window and _st["quality"] == "routine"
-                    and os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true"):
+                    and env_is_true("ENRICH_SHADOW_ENABLED", default=True)):
                 try:
                     import time as _time
                     _t0 = _time.monotonic()
@@ -4574,6 +4603,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # large contract") missed. Free, error-wrapped → [], never slows the scan.
                 get_alpaca_news(ticker),
             )
+            await _note_if_news_provider_failed(perplexity_answer, ticker, "legacy corpus")
             await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
 
             # Combine news sources — Perplexity synthesized answer + yfinance headlines
@@ -4701,7 +4731,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # REVERSION mode (toggle off), where it resumes validating exactly as before.
             if (not _use_enriched
                     and _is_premarket(now_et)
-                    and os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true"):
+                    and env_is_true("ENRICH_SHADOW_ENABLED", default=True)):
                 try:
                     import time as _time
                     _t0 = _time.monotonic()

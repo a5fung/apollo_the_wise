@@ -16,6 +16,7 @@ import json
 import logging
 from datetime import datetime, time as _dt_time, timedelta
 from zoneinfo import ZoneInfo
+from shared.env_flags import env_is_true
 
 _ET = ZoneInfo("America/New_York")
 
@@ -1992,7 +1993,7 @@ async def _stop_ack_timeout_watchdog_job():
     fast rollback (default true).
     """
     import os
-    if os.environ.get("STOP_ACK_TIMEOUT_GATE_ENABLED", "true").lower() != "true":
+    if not env_is_true("STOP_ACK_TIMEOUT_GATE_ENABLED", default=True):
         return
     import json as _json
     from agents.market_intelligence.db import get_pool, log_audit_event

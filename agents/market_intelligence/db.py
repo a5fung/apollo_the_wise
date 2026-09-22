@@ -14,6 +14,7 @@ import asyncpg
 
 from agents.market_intelligence.ep_decision_vector import GATE_VECTOR
 from shared.secrets import get_secrets
+from shared.env_flags import env_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -6150,7 +6151,7 @@ async def get_runtime_toggle(name: str, env_var: str, default: bool = True) -> b
     hit = _runtime_toggle_cache.get(name)
     if hit and now - hit[0] < _RUNTIME_TOGGLE_TTL_S:
         return hit[1]
-    env_val = _os.environ.get(env_var, "true" if default else "false").lower() == "true"
+    env_val = env_is_true(env_var, default=default)
     try:
         row = await get_safeguard_state(name, "global")
         val = (row["state"] == "on") if row else env_val
@@ -7606,9 +7607,7 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
         # history and both modes, has signal_type='magna53' (checked prod
         # 2026-08-11). Out of scope here (mode resolution only per #p74);
         # flagged for whoever next touches this path.
-        r3_enabled = os.environ.get(
-            "MAGNA53_FLAG_CARRYFORWARD_ENABLED", "true"
-        ).lower() == "true"
+        r3_enabled = env_is_true("MAGNA53_FLAG_CARRYFORWARD_ENABLED", default=True)
         if r3_enabled:
             r3_rows = await conn.fetch("""
                 SELECT DISTINCT ticker
@@ -7633,9 +7632,7 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
         # 14-day rolling window — multi-week tightness observation.
         # Source: mi_9m_ep_alerts (NOT mi_9m_day2_candidates; Day-2-candidate
         # filter is unrelated to the watchlist decision).
-        ninem_enabled = os.environ.get(
-            "NINEM_FLAG_CARRYFORWARD_ENABLED", "true"
-        ).lower() == "true"
+        ninem_enabled = env_is_true("NINEM_FLAG_CARRYFORWARD_ENABLED", default=True)
         if ninem_enabled:
             ninem_rows = await conn.fetch("""
                 SELECT DISTINCT ticker
@@ -7665,9 +7662,7 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
         # Env flag for safety / quick revert. Trigger: RVMD 2026-05-19
         # dropped from universe (rs_rank 321→499, rs_1m 85.6→70.3 in one
         # day) despite 3 consecutive COILED scans.
-        flag_carry_enabled = os.environ.get(
-            "FLAG_STAGE_CARRYFORWARD_ENABLED", "true"
-        ).lower() == "true"
+        flag_carry_enabled = env_is_true("FLAG_STAGE_CARRYFORWARD_ENABLED", default=True)
         if flag_carry_enabled:
             stage_carry_rows = await conn.fetch("""
                 SELECT DISTINCT ticker
@@ -13921,10 +13916,15 @@ async def get_halt_events_between(start_date: Any, end_date: Any) -> dict[str, l
     Nothing was rewritten retroactively — the old rows keep their old shape on purpose, because a
     halt's length is real information the old shape encodes badly rather than not at all.
 
+    ➡ IF YOU ARE ABOUT TO COUNT OR TIME ANYTHING, USE `get_halt_transitions_between()` INSTEAD.
+    It collapses both eras into one entry per halt and is safe to aggregate; this function stays
+    raw-per-message for the one consumer that genuinely wants every message. That is #682: the
+    rule above was true and lived only in this docstring, which is where invariants go to be
+    skipped — the reader that gets it right now exists rather than being described.
+
     The one consumer today is the #488 dead-data-guard compare
     (`dead_data_guard_shadow.py`), which asks "did a real halt coincide with the RMV floor" per
-    ticker-day rather than counting rows — so it reads correctly in both eras. A NEW reader that
-    aggregates is the thing this note exists to stop."""
+    ticker-day rather than counting rows — so it reads correctly in both eras."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -13936,6 +13936,74 @@ async def get_halt_events_between(start_date: Any, end_date: Any) -> dict[str, l
     out: dict[str, list[dict]] = {}
     for r in rows:
         out.setdefault(r["ticker"], []).append(dict(r))
+    return out
+
+
+#: Tape status codes that OPEN a halt, and those that CLOSE one. DERIVED from prod on
+#: 2026-09-21, not guessed: the table holds exactly six codes — 2 "Trading Halt" (20,416 rows /
+#: 53 tickers), H "Trading Halt", P "Volatility Trading Pause"; and T "Trading Resumption",
+#: 3 "Resume", Q "Quotation Resumption". The 20,416 is the whole point: that is heartbeats, not
+#: halts. An unrecognised code ends any open halt WITHOUT starting one, so a new tape code can
+#: never silently extend a halt to infinity — it shows up as a short halt, not a fake long one.
+HALT_OPEN_CODES = frozenset({"2", "H", "P"})
+HALT_CLOSE_CODES = frozenset({"3", "T", "Q"})
+
+
+async def get_halt_transitions_between(start_date: Any, end_date: Any) -> dict[str, list[dict]]:
+    """Real HALTS — one entry per halt, not per feed message — as {ticker: [halt, ...]}.
+
+    #682 (2026-09-21). `get_halt_events_between` carries a 25-line warning that counting its rows
+    counts feed heartbeats rather than halts: before #659 the writer persisted every re-send of a
+    status, so ticker VRC produced **79 rows for ONE halt** on 2026-09-14 and the table holds
+    20,416 "Trading Halt" rows across 53 tickers all-history. That warning is correct and it is
+    in the wrong place — an invariant that lives in prose is one a future reader has to read
+    first, and the whole reason #659 existed is that somebody did not. This puts it in the
+    interface: there is now a reader whose rows you CAN count.
+
+    Each entry: {"halt_ts", "resume_ts" (None if still open at `end_date`), "status_code",
+    "status_message", "reason_code", "messages": how many raw rows it collapsed}. `messages` is
+    kept deliberately — it is the only thing that distinguishes the two eras, and in the old era
+    it is the only signal of how long a halt lasted.
+
+    📏 MEASURED ON PROD 2026-09-21, over the whole table rather than the one case I had:
+    **21,335 raw rows collapse to 468 real halts — a 45.6x overcount** across 172 tickers. The
+    worst single halt is QQBF 2026-09-21, **1,266 feed messages for ONE 20,753-second halt**; the
+    VRC case that prompted #659 (79 messages) is nowhere near the top. 9 of the 468 have no
+    resume row and report `resume_ts=None` rather than a guessed length.
+
+    ⚠ ERA-SAFE BY CONSTRUCTION, which is why it collapses rather than trusting the writer. After
+    #659 consecutive duplicates do not occur, so collapsing is a no-op; before it, collapsing is
+    what makes the count mean the same thing. One function reads both eras correctly and no
+    caller needs to know which era its window lands in. Duration in the OLD era is still only
+    bounded by `resume_ts - halt_ts` when a resume row exists — an old-era halt with no resume
+    row reports `resume_ts=None`, never a guessed length.
+    """
+    by_ticker = await get_halt_events_between(start_date, end_date)
+    out: dict[str, list[dict]] = {}
+    for ticker, events in by_ticker.items():
+        halts: list[dict] = []
+        open_halt: dict | None = None
+        last_code: str | None = None
+        for ev in events:                      # get_halt_events_between orders event_ts ASC
+            code = "" if ev.get("status_code") is None else str(ev["status_code"])
+            if code == last_code and open_halt is not None:
+                open_halt["messages"] += 1     # a re-send of the status we are already in
+                continue
+            last_code = code
+            if code in HALT_OPEN_CODES:
+                if open_halt is not None:      # halt -> different halt code without a resume
+                    halts.append(open_halt)
+                open_halt = {"halt_ts": ev["event_ts"], "resume_ts": None,
+                             "status_code": code, "status_message": ev.get("status_message"),
+                             "reason_code": ev.get("reason_code"), "messages": 1}
+            elif open_halt is not None:        # a close code, or anything unrecognised
+                open_halt["resume_ts"] = ev["event_ts"]
+                halts.append(open_halt)
+                open_halt = None
+        if open_halt is not None:
+            halts.append(open_halt)            # still halted at the end of the window
+        if halts:
+            out[ticker] = halts
     return out
 
 
