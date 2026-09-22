@@ -14731,16 +14731,13 @@ reviews:
         at the demotion branch; RED-proven in tests/test_spiky_metric_guard.py). The named residual
         stands: a ZERO cannot separate 'never engaged' from 'stamp removed' - the RED tests, not
         this count, are the proof the stamp works.
-    zero_verdict: >-
-      2026-09-12 WAITING — the guard has not engaged for real since it shipped 2026-09-09; #633
-      changed WHAT gets recorded when it does, not whether it has happened yet, so today's zero
-      carries the same meaning the 2026-09-11 reading did. ⚠ NAMED WEAKNESS (partially fixed, not
-      closed): a NONZERO is now discriminating — `spiky_guard_demoted` is set only at the guard's
-      own demotion branch, RED-proven in tests/test_spiky_metric_guard.py — but a ZERO still
-      cannot separate "quiet tape, guard never engaged" from "the stamp itself is broken/removed
-      and nothing would ever satisfy this predicate again." That residual is not sharpenable from
-      the audit-log side alone; the RED tests are the actual proof the stamp works, not this count.
-    status: pending
+    resolution_2026_09_22: >-
+      FIRED AND CONFIRMED. The guard engaged for real on the 2026-09-22 17:30 ET audit: row 46697,
+      cooldowns_per_day current 17 against median 2 (z 15, band 3 by MAD) and at or under its own
+      P95 of 24, stamped spiky_guard_demoted. The three-day window holds only that L3 row and no L2
+      row, and an L2 row always precedes a page, so the page was withheld while the value stayed
+      recorded. #632 closed on it (docs/task_closes.md).
+    status: done
     added_on: 2026-09-10
 
   - review_id: sync_position_gone_first_real_vanish_597

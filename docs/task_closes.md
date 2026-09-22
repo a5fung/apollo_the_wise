@@ -1591,3 +1591,24 @@ EVIDENCE: read from prod 2026-09-22 after the full nightly cycle.
   audit write is fire-and-forget so it can never stall the grading loop, and the call binds against
   the REAL `log_audit_event` signature). **Its live check is handed to #679, which is event-gated on
   the next provider failure anyway**, so it is not orphaned by this close.
+
+## #632 — the busy-night pager guard held a page back on a real night, and kept the record (2026-09-22)
+
+BAR: "VERIFY-LIVE = a nightly audit landing INSIDE the guard's engagement window — band 3 by MAD with
+the value at or under P95" … "shows the page WITHHELD while the L3 row still records the value."
+WOULD-FAIL-IF: "such a night pages anyway, or produces no L3 row at all."
+
+EVIDENCE: read from prod `mi_audit_log` on 2026-09-22, after the 17:30 ET nightly audit.
+
+- **The guard engaged for the first time since it shipped.** Row 46697 (17:30 ET): `cooldowns_per_day`
+  current **17** against median 2, z-score **15** — band 3 by MAD, a page under the old rule — and
+  at or under its own 30-day P95 of **24**, so it was demoted: `spiky_guard_demoted: true`, stamped
+  at the demotion branch itself (#633), not inferred from `to_band`.
+- **The page was withheld, and this is discriminating, not an absence.** A page is always preceded by
+  an `L2 cooldowns_per_day` audit row (`_emit_l2` writes it before `send_telegram_message`). The
+  three-day window holds exactly ONE `cooldowns_per_day` row and it is `L3`. With the guard removed,
+  z=15 would have written an L2 row and paged — the broken system produces a different reading.
+- **The value is still recorded** — the L3 row carries `current`, `baseline_p50` and `baseline_p95`,
+  so the drift surface still sees the busy night. Both WOULD-FAIL-IF arms are refuted.
+- The review that watched for this, `spiky_guard_first_engagement`, is resolved in
+  `data_gated_reviews.yaml` the same commit.
