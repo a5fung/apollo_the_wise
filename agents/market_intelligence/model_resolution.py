@@ -111,11 +111,19 @@ _EVAL_RECORD_PATH = Path(__file__).resolve().parents[2] / "scripts" / "evals" / 
 
 # Operator-facing. The mechanism detail (which gate parses what) belongs in the
 # docstrings, not in his Telegram — he needs to know the grade surface moved and
-# what the nightly check will now say about it.
-_JUDGE_EVAL_NOTE = (
-    "The judge now runs a model its last evaluation did not cover, so the nightly "
-    "6:09 PM check will flag it until you re-run the eval or accept it as-is. "
-    "Deploys are not blocked by this."
+# what guards it.
+#
+# ⚠ NO EVAL ASK, by his ruling. This note used to say the nightly check "will flag it until
+# you re-run the eval or accept it as-is". He had already ruled on 2026-07-30 to track the
+# newest model per tier with guardrails AFTER the switch — "go with the leaders, but have
+# guardrails to make sure there's no major degradation … and we can always trace back to when
+# they were updated" — and on 2026-09-22, when Opus 5 → 5.5 was announced and I proposed an
+# eval: "Why eval? This is just normal model update, I thought we decided not to eval on model
+# updates as that happens often." He KEPT the notice ("I like the alert noting that new model
+# … just not the eval"). So the notice stays and names the real guardrail instead.
+_JUDGE_MOVE_NOTE = (
+    "No eval for a routine release — your 2026-07-30 rule. After the switch, the nightly "
+    "check on how often the judge grades HIGH is the guardrail. Deploys are not blocked."
 )
 
 
@@ -227,7 +235,7 @@ async def record_boot_resolution() -> None:
             lines.append("Watch grade rates over the next few days "
                          "(<code>judge_high_rate_daily</code>, L2 audit).")
             if any(r == "JUDGE_MODEL" for r, *_ in real):
-                lines.append(esc(_JUDGE_EVAL_NOTE))
+                lines.append(esc(_JUDGE_MOVE_NOTE))
             # Output-ceiling sweep (2026-08-09, follow-up to #543): every max_tokens
             # ceiling is registered with the model it was sized on
             # (shared/output_ceilings.py). A role's model changing is THE event that
@@ -399,7 +407,7 @@ async def refresh_model_resolution() -> int:
             named = " · ".join(sorted(label_for(r) for r in affected_roles))
             lines.append(f"Will move then: {esc(named)}.")
             if "JUDGE_MODEL" in affected_roles:
-                lines.append(esc(_JUDGE_EVAL_NOTE))
+                lines.append(esc(_JUDGE_MOVE_NOTE))
         lines.append("Don't want it? One edit BEFORE the next deploy: pin the "
                      "tier in <code>_TIER_OVERRIDES</code> "
                      "(shared/llm_models.py).")
@@ -444,11 +452,24 @@ async def check_judge_eval_divergence() -> None:
     source only — a cache-resolved runtime value is invisible to it by
     construction (see shared/llm_models.py AUTO-RESOLUTION docstring).
 
-    Loud WARN only (audit event `judge_model_eval_divergence` + Telegram) —
-    NEVER a block. Adopting a new judge id needs a paid eval + operator sign-off
-    (ADR-0030); a hard block here would hold every unrelated deploy hostage over
-    a model release the operator hasn't even decided to adopt yet. Never raises —
-    a guardrail bug must not take the nightly chain down."""
+    A NOTICE, sent ONCE per (running, evaluated) pair — never a block, and never an eval
+    demand. Never raises — a guardrail bug must not take the nightly chain down.
+
+    ⚠ REWRITTEN 2026-09-22 ON HIS RULING, and the two halves of the change are separate:
+    (1) **no eval ask.** This used to tell him that adopting a new judge id needs "a paid eval
+    + operator sign-off (ADR-0030)" and to "run the judge robustness eval to confirm quality".
+    He ruled 2026-07-30 to track the newest model per tier with guardrails AFTER the switch,
+    and reaffirmed it 2026-09-22 — *"Why eval? This is just normal model update, I thought we
+    decided not to eval on model updates as that happens often"* — while KEEPING the notice:
+    *"I want to keep it to notify me when a model is updated, just not the eval."* ADR-0030's
+    eval still gates RUBRIC / prompt / corpus changes at deploy (`preflight_judge_eval_gate`);
+    a routine same-family model release is not one of those.
+    (2) **once, not nightly.** It had no dedupe, so with no eval ever re-run the pass record
+    never moves, and from the day a new release binds it would have paged him EVERY WEEKNIGHT
+    indefinitely. It now looks for its own prior audit row for the SAME pair and stays quiet if
+    it already said so. A NEW pair — the next release — announces again. If that lookup itself
+    fails it SENDS rather than suppresses: a model change must never go silent (his guardrail
+    #2), and a duplicate is cheaper than a missed change."""
     from shared.telegram_format import code, esc
 
     try:
@@ -479,21 +500,33 @@ async def check_judge_eval_divergence() -> None:
         if running == evaluated:
             return  # in sync — no news, nothing to log or send
 
+        # ONE announcement per (running, evaluated) pair. The summary is built from the pair
+        # alone, so an exact match on a prior row is an exact "already said this".
+        summary = f"JUDGE_MODEL now on {running}; last evaluated model {evaluated}"
+        try:
+            from agents.market_intelligence.db import get_audit_log
+            prior = await get_audit_log(limit=50, event_type="judge_model_eval_divergence",
+                                        since_hours=24 * 400)
+            if any((r.get("summary") or "") == summary for r in prior):
+                return  # already announced this exact change — once, not nightly
+        except Exception as e:  # loud-ok: fail toward SENDING — a missed change is worse
+            logger.warning(f"check_judge_eval_divergence: dedupe lookup failed, sending: {e}")
+
         await log_audit_event(
             "judge_model_eval_divergence",
-            f"JUDGE_MODEL running {running} but last PASSING eval was on {evaluated}",
-            f"eval run_at={record.get('run_at')}; not blocking — run the judge "
-            f"robustness eval on {running} and get it green to make it the new "
-            f"evaluated baseline (ADR-0030).",
+            summary,
+            f"eval run_at={record.get('run_at')}; routine release adopted on the tier, no eval "
+            f"by operator ruling 2026-07-30 (reaffirmed 2026-09-22). Guardrail = the nightly "
+            f"judge_high_rate_daily L2 check. Rollback = pin the tier in _TIER_OVERRIDES.",
         )
         await _send_telegram(
-            "⚠️ <b>Judge model diverged from its last evaluated baseline</b>\n"
-            f"Running: {code(esc(running))}\n"
-            f"Last evaluated (passing): {code(esc(evaluated))}\n"
-            "Not blocking deploys — but live grades are running on an UNEVALUATED "
-            "id. Run the judge robustness eval to confirm quality (then bump "
-            "JUDGE's pin), or set an override in <code>_TIER_OVERRIDES</code> "
-            "(shared/llm_models.py) to hold it back."
+            "🔁 <b>Grading judge is running a new model</b>\n"
+            f"Now: {code(esc(running))}\n"
+            f"Last evaluated: {code(esc(evaluated))}\n"
+            "No eval for a routine release — your 2026-07-30 rule. Watch how often it grades "
+            "HIGH over the next few days. To roll back, pin the tier in "
+            "<code>_TIER_OVERRIDES</code> (shared/llm_models.py) and redeploy.\n"
+            "<i>Sent once per model change.</i>"
         )
     except Exception as e:
         logger.error(f"check_judge_eval_divergence failed (non-fatal): {e}")

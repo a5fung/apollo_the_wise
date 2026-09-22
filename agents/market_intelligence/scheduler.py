@@ -7544,7 +7544,8 @@ def start_scheduler() -> AsyncIOScheduler:
     # #509 guardrail — 6:09 PM ET, right after the refresh above (though
     # logically independent: it compares THIS PROCESS's boot-time judge
     # binding, fixed since last boot, against the last passing eval — not
-    # anything the refresh just wrote). WARN only, never blocks (see
+    # anything the refresh just wrote). A notice sent ONCE per model change — never
+    # a block and, since 2026-09-22, never an eval demand (operator ruling; see
     # model_resolution.py::check_judge_eval_divergence docstring).
     _scheduler.add_job(
         audit_wrap(check_judge_eval_divergence, JOB_JUDGE_EVAL_DIVERGENCE_CHECK),

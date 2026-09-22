@@ -193,3 +193,28 @@ class + golden rationale). Golden cases also hand #301 its seed set (roadmap T1e
 - **F3 — gate hardness:** [5m/7] as hard-FAIL vs warn-only for its first two weeks. *(Rec:
   hard-FAIL from day one — a warn-only gate is the #173 class: looks armed, isn't. The waiver
   field is the pressure valve.)*
+
+**Addendum (2026-09-22) — a routine same-family model release is NOT an eval trigger. Operator
+ruling.** The #509 addendum above left `check_judge_eval_divergence` telling him that adopting a
+new judge id "needs a paid eval + operator sign-off" and to re-run this eval. That contradicted
+his 2026-07-30 ruling to track the newest model per tier with guardrails AFTER the switch, and
+when Opus 5 → 5.5 was announced he said so directly: *"Why eval? This is just normal model update,
+I thought we decided not to eval on model updates as that happens often."* He kept the
+notification itself: *"I want to keep it to notify me when a model is updated, just not the
+eval."*
+
+What changed, and what did NOT:
+- **Unchanged — this gate.** `preflight_judge_eval_gate` still blocks a deploy whose committed
+  rubric text, grade prompt or corpus differs from the last passing record. Those are OUR changes
+  to the grade surface and still need this eval. It never saw the runtime-resolved model anyway.
+- **Changed — the nightly notice.** It no longer asks for an eval; it names the real guardrail
+  (the nightly `judge_high_rate_daily` L2 check) and the rollback (pin the tier in
+  `_TIER_OVERRIDES`). And it fires ONCE per (running, evaluated) pair — it had no dedupe, and with
+  no eval ever re-run the pass record never moves, so it would have paged every weeknight
+  indefinitely from the day a release bound.
+- **Changed — the two model-change notices** ("new model available", "models updated this
+  restart") drop the sentence promising that nightly eval nag.
+- **The pass record stays truthful.** It is deliberately NOT rewritten to the new model id: it
+  records what was actually EVALUATED, and writing an un-run eval into it would falsify it. The
+  once-per-pair dedupe is what stops the nag, not a moved baseline.
+

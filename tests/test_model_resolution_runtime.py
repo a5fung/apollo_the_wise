@@ -16,7 +16,7 @@ Pins:
      tier Telegrams + audits, and calls out any RESOLVED_ROLES role riding that
      tier; a disappeared-tier is accepted loudly; an empty models.list raises
      (so audit_wrap marks the run failed) without touching the cache.
-  5. check_judge_eval_divergence: match -> silent; mismatch -> WARN (audit +
+  5. check_judge_eval_divergence: match -> silent; mismatch -> ONE notice per change, no eval ask (audit +
      Telegram), never a block; missing/corrupt record -> a loud error event,
      never a raise; a downstream exception is swallowed, never propagates.
 """
@@ -201,9 +201,14 @@ def test_refresh_new_release_telegrams_and_flags_judge(monkeypatch, tmp_path):
     assert "Opus 4.8 → Opus 5" in text and "claude-opus-5" not in text
     # the callout is still RESOLVED_ROLES-driven, but named in plain words
     assert "grading judge" in text and "JUDGE_MODEL" not in text
-    # the judge-eval caveat survives the rewording — it just no longer cites an
-    # ADR number, a gate filename and a docstring at the operator
-    assert "last evaluation did not cover" in text
+    # 2026-09-22 — the EVAL caveat is GONE, by his ruling, and the notice itself is kept:
+    # "I want to keep it to notify me when a model is updated, just not the eval." It now states
+    # the no-eval rule and names the real guardrail instead. Pinned both ways, so the eval ask
+    # cannot quietly come back in a later rewording.
+    assert "No eval for a routine release" in text
+    assert "grades HIGH" in text, "the notice no longer names the guardrail that replaced the eval"
+    for banned in ("re-run the eval", "robustness eval", "did not cover", "accept it as-is"):
+        assert banned not in text, f"the model-change notice is asking for an eval again: {banned!r}"
     assert "ADR-0030" not in text and "preflight_judge_eval_gate" not in text
 
 
@@ -251,15 +256,95 @@ def test_divergence_silent_when_running_matches_evaluated(monkeypatch, tmp_path)
     tg_mock.assert_not_awaited()
 
 
-def test_divergence_warns_never_blocks_on_mismatch(monkeypatch, tmp_path):
+def _no_prior_notice(monkeypatch, rows=None):
+    """The dedupe reads its own prior audit rows; default to 'never announced'."""
+    import agents.market_intelligence.db as db
+    async def _fake(**kw):
+        return list(rows or [])
+    monkeypatch.setattr(db, "get_audit_log", _fake)
+
+
+def test_divergence_notifies_never_blocks_on_mismatch(monkeypatch, tmp_path):
+    """A new model on the judge is still ANNOUNCED — he kept the notice (2026-09-22)."""
+    _no_prior_notice(monkeypatch)
     audit_mock, tg_mock = _mock_divergence_deps(
         monkeypatch, tmp_path, {"judge_model": "claude-opus-4-8"}, running="claude-opus-5")
-    _run(mr.check_judge_eval_divergence())  # must not raise — WARN only
+    _run(mr.check_judge_eval_divergence())  # must not raise — a notice, never a block
     audit_mock.assert_awaited_once()
     assert audit_mock.await_args.args[0] == "judge_model_eval_divergence"
     tg_mock.assert_awaited_once()
     text = tg_mock.await_args.args[0]
     assert "claude-opus-5" in text and "claude-opus-4-8" in text
+
+
+def test_the_notice_never_asks_for_an_eval(monkeypatch, tmp_path):
+    """⚠ HIS RULING, pinned as a negative. 2026-07-30: track the newest model per tier with
+    guardrails after the switch. 2026-09-22, when Opus 5 -> 5.5 was announced and an eval was
+    proposed: "Why eval? This is just normal model update, I thought we decided not to eval on
+    model updates as that happens often." Then: "keep it to notify me when a model is updated,
+    just not the eval." This notice used to say "Run the judge robustness eval to confirm
+    quality (then bump JUDGE's pin)". It must never ask again — and it must say how to roll back,
+    because that one edit is what makes tracking-without-an-eval safe."""
+    _no_prior_notice(monkeypatch)
+    audit_mock, tg_mock = _mock_divergence_deps(
+        monkeypatch, tmp_path, {"judge_model": "claude-opus-5"}, running="claude-opus-5-5")
+    _run(mr.check_judge_eval_divergence())
+    text = tg_mock.await_args.args[0]
+    for banned in ("robustness eval", "run the eval", "re-run", "confirm quality", "UNEVALUATED"):
+        assert banned.lower() not in text.lower(), f"the notice is asking for an eval again: {banned!r}"
+    assert "_TIER_OVERRIDES" in text, "the notice lost its one-edit rollback"
+    detail = audit_mock.await_args.args[2]
+    assert "run the judge robustness eval" not in detail, "the audit row still demands an eval"
+
+
+def test_the_same_change_is_announced_ONCE_not_every_weeknight(monkeypatch, tmp_path):
+    """⚠ THE NAG THIS FIXES. The check runs every weeknight at 6:09 PM and had no dedupe. With no
+    eval ever re-run (his rule), the pass record never moves — so from the day a release binds it
+    would have paged him EVERY WEEKNIGHT indefinitely. The second run for the same pair must be
+    silent. Remove the dedupe and this fails on the second Telegram."""
+    rows: list = []
+    import agents.market_intelligence.db as db
+
+    async def _fake(**kw):
+        return list(rows)
+    monkeypatch.setattr(db, "get_audit_log", _fake)
+
+    async def _record(event_type, summary, detail="", **kw):
+        rows.append({"event_type": event_type, "summary": summary})
+    tg_mock = AsyncMock()
+    _mock_divergence_deps(monkeypatch, tmp_path, {"judge_model": "claude-opus-5"},
+                          running="claude-opus-5-5", audit=AsyncMock(side_effect=_record),
+                          telegram=tg_mock)
+    _run(mr.check_judge_eval_divergence())   # night 1 — announces
+    _run(mr.check_judge_eval_divergence())   # night 2 — same pair, must stay quiet
+    _run(mr.check_judge_eval_divergence())   # night 3
+    assert tg_mock.await_count == 1, (
+        f"the same model change paged {tg_mock.await_count} times — it is a nightly nag again"
+    )
+
+
+def test_a_NEW_release_is_announced_again(monkeypatch, tmp_path):
+    """Once per change, not once ever: the NEXT release is a new pair and must be announced."""
+    _no_prior_notice(monkeypatch, rows=[
+        {"summary": "JUDGE_MODEL now on claude-opus-5-5; last evaluated model claude-opus-5"}])
+    _, tg_mock = _mock_divergence_deps(
+        monkeypatch, tmp_path, {"judge_model": "claude-opus-5"}, running="claude-opus-6")
+    _run(mr.check_judge_eval_divergence())
+    tg_mock.assert_awaited_once()
+
+
+def test_a_failed_dedupe_lookup_SENDS_rather_than_goes_silent(monkeypatch, tmp_path):
+    """His guardrail #2: a model change is a NOTIFIED event, never silent. If the dedupe read
+    breaks, the direction is 'send a duplicate', never 'drop the change'."""
+    import agents.market_intelligence.db as db
+
+    async def _boom(**kw):
+        raise RuntimeError("db down")
+    monkeypatch.setattr(db, "get_audit_log", _boom)
+    _, tg_mock = _mock_divergence_deps(
+        monkeypatch, tmp_path, {"judge_model": "claude-opus-5"}, running="claude-opus-5-5")
+    _run(mr.check_judge_eval_divergence())
+    tg_mock.assert_awaited_once()
 
 
 def test_divergence_missing_record_is_loud_not_silent(monkeypatch, tmp_path):
@@ -284,6 +369,7 @@ def test_divergence_corrupt_record_is_loud_not_silent(monkeypatch, tmp_path):
 
 
 def test_divergence_never_raises_even_if_audit_write_fails(monkeypatch, tmp_path):
+    _no_prior_notice(monkeypatch)
     audit_mock = AsyncMock(side_effect=RuntimeError("db down"))
     tg_mock = AsyncMock()
     _mock_divergence_deps(
