@@ -180,6 +180,18 @@ class RuleSet:
                                     # RUNNER_RULES (the #2 lineage's 13, mirrored exactly)
     attempts: int = 1               # 2 = one re-entry leg after a full stop-out
     reentry_signal: str | None = None  # "sd_5m_clear" | "ndo_o5l" | "ndo_pdl" (the #5 legs)
+    # #545 Phase 1 (2026-09-22, operator: "make sure we don't round trip a big winner"). A
+    # SECOND partial rung, in the SAME R frame `target_frame` already picked (so "second
+    # partial at 8R" means the same 8R `intraday_partial_r`/`breakeven_at_r` mean — the same
+    # discipline breakeven_at_r's own comment states). Fires once, taking HALF of whatever
+    # remains after the first rung (so a 1/3-1/3-1/3 split when both fire) — never before the
+    # first rung has fired. None (default) -> every existing rule-set is byte-identical.
+    # SCOPED to the forward daily walk only (post day-0) and to runner_rule != "live": firing
+    # it against the day-0 minute grain or inside apply_daily_exit_step (the canonical ladder)
+    # would need re-deriving that function's own state tracking outside itself, which breaks
+    # this harness's fidelity contract (see module docstring) — walk_campaign raises rather
+    # than silently ignoring the field in either case.
+    second_partial_r: float | None = None
 
     def stop_price(self, orb_high: float, orb_low: float,
                    adr_dollar: float | None = None) -> float:
@@ -587,7 +599,9 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
            # Phase 3 columns
            "adr_pct": None, "adr_dollar": None, "stop_width_adr": None, "pnl_adr": None,
            "mark_r": None, "attempts_fired": 0, "leg2_status": None, "leg2_reason": None,
-           "leg2_r": None, "leg2_pnl_adr": None, "campaign_r": None}
+           "leg2_r": None, "leg2_pnl_adr": None, "campaign_r": None,
+           # Phase 1 harvest-hole column (second partial rung)
+           "partial2_fired": False}
     bars0 = minutes.get((ticker, alert_date), [])
     if orb_high is None or orb_low is None:
         orb = next((b for b in bars0 if b["m"].time() == time(9, 30)), None)
@@ -649,14 +663,27 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
     if adr_dollar:
         out["stop_width_adr"] = (entry_px - stop) / adr_dollar
 
+    # #545 Phase 1 second rung — see the RuleSet.second_partial_r comment for the scope.
+    target2 = None
+    if rs.second_partial_r is not None:
+        if not rs.intraday_partial_r:
+            raise ValueError("second_partial_r set without intraday_partial_r — there is no "
+                             "first rung to be 'second' after")
+        if rs.runner_rule == "live":
+            raise ValueError("second_partial_r is not supported with runner_rule='live' — it "
+                             "would require re-deriving apply_daily_exit_step's own state "
+                             "tracking outside itself; use one of RUNNER_RULES instead")
+        if r_ps is not None:
+            target2 = entry_px + rs.second_partial_r * r_ps
+
     fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
     leg = _walk_leg(ticker=ticker, leg_date=alert_date, entry_px=entry_px, stop=stop,
-                    target=target, bars=bars0, fill_idx=fill_idx, rs=rs, daily=daily,
-                    shares=shares, integer_shares=integer_shares, adr_dollar=adr_dollar,
-                    minutes_extra=minutes_extra or {}, r_frame_ps=r_ps)
+                    target=target, target2=target2, bars=bars0, fill_idx=fill_idx, rs=rs,
+                    daily=daily, shares=shares, integer_shares=integer_shares,
+                    adr_dollar=adr_dollar, minutes_extra=minutes_extra or {}, r_frame_ps=r_ps)
     for k in ("status", "reason", "exits", "final_reason", "partial_fired", "gap_through",
               "sessions_abstained", "realized_pnl_per_unit", "realized_r", "pnl_adr",
-              "mark_r"):
+              "mark_r", "partial2_fired"):
         out[k] = leg[k]
     out["attempts_fired"] = 1
     if leg["status"] == "abstain":
@@ -749,13 +776,19 @@ def _attempt_two(*, ticker, alert_date, stop_day, stop_minute, stop_px, rs, minu
 
 def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, daily,
               shares, integer_shares, adr_dollar, minutes_extra, fill_at_open=False,
-              r_frame_ps=None) -> dict:
+              r_frame_ps=None, target2=None) -> dict:
     """Walk one filled leg from its fill bar to settlement: the day-of minute walk, then the
     forward daily walk under the LIVE ladder (runner_rule "live") or one of the #2 lineage's
     post-partial rules. Returns status / exits / R and the stop-out anchor (day, minute, px)
-    an attempt-2 leg needs. Sizing: `shares=None` -> 1 risk unit on THIS leg's own stop."""
+    an attempt-2 leg needs. Sizing: `shares=None` -> 1 risk unit on THIS leg's own stop.
+
+    `target2` (#545 Phase 1, optional): a second partial rung, checked ONLY in the forward
+    daily walk's runner_rule != "live" branch (walk_campaign already refuses target2 with
+    runner_rule="live" or with no first target) — never in the day-0 minute walk, which is out
+    of scope for this card (stated, not silent: see RuleSet.second_partial_r)."""
     out = {"status": None, "reason": None, "exits": [], "final_reason": None,
-           "partial_fired": False, "gap_through": False, "sessions_abstained": 0,
+           "partial_fired": False, "partial2_fired": False, "gap_through": False,
+           "sessions_abstained": 0,
            "realized_pnl_per_unit": None, "realized_r": None, "pnl_adr": None,
            "mark_r": None, "stop_day": None, "stop_minute": None, "stop_px": None}
     if shares is None:
@@ -763,6 +796,7 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
     risk_denom = shares * (entry_px - stop)
     remaining = float(shares)
     partial_taken = False
+    second_partial_taken = False   # #545 Phase 1 second rung
     exits: list[dict] = []
     runner = rs.runner_rule
     if runner != "live" and runner not in RUNNER_RULES:
@@ -806,6 +840,21 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
         remaining -= qty
         partial_taken = True
         out["partial_fired"] = True
+        return qty
+
+    def take_second_partial(px: float, when) -> float:
+        """The second rung (#545 Phase 1): HALF of what remains after the first, so a full
+        1/3-1/3-1/3 split when both fire — the design doc's "x 1/3" spec. Forward-daily-walk
+        only; walk_campaign already refused this field for the day-0 minute grain / the live
+        ladder (see RuleSet.second_partial_r)."""
+        nonlocal remaining, second_partial_taken
+        qty = float(int(remaining) // 2) if integer_shares else remaining / 2
+        if qty <= 0:
+            return 0.0
+        book(px, qty, "partial_profit_2", when)
+        remaining -= qty
+        second_partial_taken = True
+        out["partial2_fired"] = True
         return qty
 
     def stopped(px: float, when, d: date, minute) -> None:
@@ -925,10 +974,25 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
                 if hit_tgt:
                     held.append(b["c"])       # the partial bar is session 0, never a check
                     continue
-                post_sessions += 1
                 lvl = entry_px if be_floor else stop
                 if runner in ("atr1", "atr2") and atr14 and held:
                     lvl = max(lvl, max(held) - (1.0 if runner == "atr1" else 2.0) * atr14)
+                # #545 Phase 1 second rung: a target2 touch the SAME day the floor is also
+                # touched is unorderable at daily grain — the same abstain discipline the
+                # first target/resting pair use above, mirrored against THIS runner's own
+                # floor rather than re-derived. Never counts toward post_sessions (the same
+                # treatment the first partial's own bar gets, above).
+                hit_tgt2 = (target2 is not None and not second_partial_taken
+                           and b["h"] >= target2)
+                if hit_tgt2 and b["l"] <= lvl:
+                    out.update(status="abstain",
+                              reason=f"fwd_stop_and_target2_same_day:{d}")
+                    return out
+                if hit_tgt2:
+                    take_second_partial(target2, d)
+                    held.append(b["c"])
+                    continue
+                post_sessions += 1
                 if b["l"] <= lvl:
                     px = b["o"] if (b["o"] is not None and b["o"] < lvl) else lvl
                     if px != lvl:
@@ -1003,6 +1067,7 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
                 # raised directly above); withholding `effective_stop` withholds ONLY the trail
                 # line, which is exactly the operator's rule — the trail exits on the close.
         out["partial_fired"] = any(e["reason"] == "partial_profit" for e in exits)
+        out["partial2_fired"] = any(e["reason"] == "partial_profit_2" for e in exits)
 
     out["exits"] = exits
     if closed:

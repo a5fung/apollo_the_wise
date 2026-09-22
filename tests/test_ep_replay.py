@@ -484,6 +484,72 @@ def test_time_runner_exits_at_the_close_n_sessions_after_the_partial():
     assert t3["exits"][-1]["time"] == str(third_close)
 
 
+# ── #545 Phase 1 (2026-09-22): a second partial rung on top of the first ────────────────
+
+def test_second_partial_rung_books_at_its_own_level_after_the_first():
+    """A SECOND partial rung fires in the forward daily walk once the first has already
+    fired, in the SAME R frame. era_c geometry: entry 10, R-frame (orb) = entry - orb_low =
+    1, so the first partial (2R) is at 12.0 and a second rung at 5R is at 15.0. 'hard' keeps
+    the ORIGINAL stop (8.0) as the floor throughout (be_floor is False for 'hard'), so the
+    whole path is: 1/3 booked at 12.0, 1/3 booked at 15.0, the final 1/3 stopped at 8.0.
+
+    MUTATION TARGET: removing/disabling the second-rung logic (take_second_partial or the
+    hit_tgt2 branch) collapses this to plain 'hard' behaviour — 1/3 at 12.0, then the
+    remaining 2/3 rides straight to the 8.0 stop for realized_r = 1/3 + 2/3*(-1) = -1/3, a
+    completely different number from the +5/6 this test pins. Verified by hand: commenting
+    out the `take_second_partial(target2, d)` call inside the `if hit_tgt2:` branch (so it
+    falls through to the ordinary post_sessions/stop path unchanged) reproduces exactly
+    -1/3 here, and reverting restores +5/6."""
+    bars = _flat_window(o=10.05, h=10.3, l=10.02, c=10.1, n=5)
+    bars[0]["o"], bars[0]["l"] = 9.98, 9.97
+    daily = _daily(**{
+        "2026-08-04": (11.5, 12.5, 11.2, 12.0),   # target1 (12.0) hit -> first partial
+        "2026-08-05": (12.0, 13.5, 11.8, 13.0),   # holds, below target2 (15.0)
+        "2026-08-06": (14.0, 15.5, 13.8, 15.0),   # target2 (15.0) hit -> second rung
+        "2026-08-07": (8.0, 8.2, 7.9, 7.95),      # stopped at the original 8.0 floor
+    })
+    daily["T"][DAY] = {"o": 10.0, "h": 10.3, "l": 9.9, "c": 10.1, "v": 1e6}
+    rs = _replace(RULESETS["era_c"], runner_rule="hard", second_partial_r=5.0)
+    res = _walk(bars, daily, rs=rs)
+    assert res["status"] == "settled" and res["final_reason"] == "stop_hit"
+    assert res["partial_fired"] is True and res["partial2_fired"] is True
+    assert [e["reason"] for e in res["exits"]] == \
+        ["partial_profit", "partial_profit_2", "stop_hit"]
+    assert [e["price"] for e in res["exits"]] == pytest.approx([12.0, 15.0, 8.0])
+    assert res["realized_r"] == pytest.approx(5 / 6, abs=1e-6)
+
+
+def test_second_partial_validates_its_preconditions_and_abstains_same_day_as_the_stop():
+    """MUTATION TARGET: (a) second_partial_r with no first rung, or paired with the live
+    ladder (runner_rule='live'), must raise rather than silently doing something undefined —
+    walk_campaign checks both before ever calling _walk_leg. (b) a bar that touches BOTH the
+    second-rung target and the runner's own floor on the SAME day is unorderable at daily
+    grain and must abstain, exactly like the first target/resting pair
+    (fwd_stop_and_target_same_day) — removing that check would let the harness fabricate an
+    order it cannot actually see."""
+    bars = _flat_window(o=10.05, h=10.3, l=10.02, c=10.1, n=5)
+    bars[0]["o"], bars[0]["l"] = 9.98, 9.97
+
+    # (a) no first rung to be "second" after
+    with pytest.raises(ValueError, match="no first rung"):
+        _walk(bars, rs=_replace(RULESETS["era_c"], intraday_partial_r=None,
+                                runner_rule="hard", second_partial_r=5.0))
+    # (a) the live ladder is not supported (would need re-deriving its own state tracking)
+    with pytest.raises(ValueError, match="runner_rule='live'"):
+        _walk(bars, rs=_replace(RULESETS["era_c"], second_partial_r=5.0))
+
+    # (b) same-day stop-vs-target2 ordering: 'hard' floor is the original stop (8.0)
+    daily = _daily(**{
+        "2026-08-04": (11.5, 12.5, 11.2, 12.0),   # first partial at 12.0
+        "2026-08-05": (14.0, 15.5, 7.5, 8.0),     # touches target2 (15.0) AND the 8.0 floor
+    })
+    daily["T"][DAY] = {"o": 10.0, "h": 10.3, "l": 9.9, "c": 10.1, "v": 1e6}
+    rs = _replace(RULESETS["era_c"], runner_rule="hard", second_partial_r=5.0)
+    res = _walk(bars, daily, rs=rs)
+    assert res["status"] == "abstain"
+    assert res["reason"].startswith("fwd_stop_and_target2_same_day")
+
+
 def test_sd_5m_clear_signal_uses_the_first_complete_window_after_the_stop():
     bars = _flat_window(o=9.5, h=9.6, l=9.4, c=9.5, start=time(9, 31), n=40)
     stop_minute = bars[5]["m"]                               # 09:36 -> window 1
