@@ -9925,7 +9925,7 @@ reviews:
       tradeable BLZE-class names?
     predicate_sql: null
     threshold: 0
-    earliest_review_date: 2026-09-22
+    earliest_review_date: 2026-10-17
     action_when_ready: |
       ⚠ RE-POINTED 2026-09-19 (#669 audit) — THE QUESTION IS BEING ANSWERED ELSEWHERE, so read
       those instruments first instead of hand-querying mi_ep_scan_log from scratch:
@@ -9972,6 +9972,19 @@ reviews:
         mi_ep_scan_log filter_reason text (scan-written); mi_daily_closes for forward paths.
         ⚠ Forward RETURNS are the stock's move, not a trade - the lane's realized_r IS a
         walked trade and is the better instrument where both exist."
+    resolution_2026_09_22: >-
+      RAN ON ITS DATE — NOT ENOUGH N; RE-DATED TO 2026-10-17 so it reads WITH minute_pull_620's
+      check-in and #359 that day, as part (2) of its own action asks. (1) The low-cap lane (the
+      BLZE-class cohort, gap >= 15%): 13 signals 09-09 -> 09-22, 8 filled, average -0.50R, 3
+      positive (all the +0.33R scratch) and none reached 3R. Two weeks of a tail question cannot
+      answer it. (3) The uncovered 10-15% gap band at $400-500M: 7 names since 06-23 (TITN, PRLD,
+      EPRX, BBCP, GMTL, CAL, ALLT), none with a 20-day outcome yet, median 5-day -2.0%, well short
+      of the N>=15 this read asks for. ⚠ THE LANE IS PRICED UNDER ITS OWN BRACKET, NOT MAGNA53'S:
+      magna53_lowcap was deliberately left out of the 09-06 exit flip, so its rows walk the +2R
+      partial. A name admitted by LOWERING THE FLOOR would trade MAGNA53's era D bracket instead,
+      so on 10-17 the lane's rows answer the floor question only after a re-walk under era D
+      ($0, stored bars). Found alongside: the two MAGNA53 near-miss lanes were walking era_c by
+      mistake — fixed 2026-09-22 (magna53_ep.md change log). No operator action.
     status: pending
     added_on: 2026-06-23
 
@@ -14240,6 +14253,38 @@ reviews:
     #    candidates × 2 runs) stopped by 09-07; 24 rows sit 'unscoreable' (NULL, counted, never
     #    substituted).
     zero_verdict: "2026-09-09 WAITING — 102 scoreable declines in the window, 7 would have made money, 0 reached 4R; the sustain rule has turned away no 4R name. Funnel counts non-zero, so the query is live."
+    can_fire:
+      predicate_runs: >-
+        2026-09-22 - runs against prod and returns 0: 99 scoreable rows in the trailing 30
+        sessions (decline dates 08-11 -> 09-22), 1 of them at >=4R (1.0%); the n>=30 floor is met.
+      nonzero_possible: >-
+        sustain_reject_replay.py writes a row nightly for every net-declined ep_rt_sustain_reject
+        name (130 rows since 2026-09-04). The ready arm goes to 1 when more than 10% of scoreable
+        rows that held the 9% floor and cleared $50M reach 4R - reachable, one already has.
+      lane_live: >-
+        MAGNA53 EP is the live setup whose sustain gate declines these names; the replay runs
+        nightly in the 18:xx ET replay block.
+      threshold_vs_observed: >-
+        1 (ready flag) against 0. The underlying rate is 1 of 99 (1.0%) against a 10% bar. A tripwire
+        posture: zero is the good reading.
+      era_scoped: >-
+        Trailing 30 sessions, eras pooled. ALL 99 in-window rows are era_c - walked under the retired
+        +2R-partial bracket until the 2026-09-22 fix, not MAGNA53's era D - so the window rolls onto
+        era D rows over the next ~30 sessions; split on replay_exit_era before reading it.
+      population_actionable: >-
+        The predicate counts scoreable net-declined sustain-reject names and those reaching 4R; the
+        action reads the same rows from the same table.
+      instrument_trusted: >-
+        mi_sustain_reject_replays realized_r / meets_4r / mark_meets_4r from the replay walker (ORB
+        entry at the reject's own tick, stop-limit trigger, exit ladder). Its exit bracket was wrong
+        2026-09-06 -> 2026-09-22 (era_c, not era D) - fixed that day and pinned by
+        tests/test_exit_era_callers_name_their_strategy.py.
+    note_2026_09_22_exit_era: >-
+      Every row walked from 2026-09-06 to 2026-09-22 was priced under the RETIRED +2R-partial
+      bracket (era_c) instead of MAGNA53's era D — the walk omitted signal_type after the
+      per-strategy flip. Fixed 2026-09-22; rows from the next nightly carry era_d. Settled rows
+      keep their era_c stamp (not re-walked), so any read of this table splits on
+      replay_exit_era before it concludes anything about the current bracket.
     status: pending
     kind: tripwire
     # tripwire, not accrual: while the rate stays under 10% this predicate reads 0, which is
@@ -14371,6 +14416,12 @@ reviews:
     # in 8-9%; an admission stack that has since changed may not generalize forward).
     discriminates_on: [mi_gap_near_miss_replays.gap_band, mi_gap_near_miss_replays.admission_era]
     earliest_review_date: 2026-09-19
+    note_2026_09_22_exit_era: >-
+      Every row walked from 2026-09-06 to 2026-09-22 was priced under the RETIRED +2R-partial
+      bracket (era_c) instead of MAGNA53's era D — the walk omitted signal_type after the
+      per-strategy flip. Fixed 2026-09-22; rows from the next nightly carry era_d. Settled rows
+      keep their era_c stamp (not re-walked), so any read of this table splits on
+      replay_exit_era before it concludes anything about the current bracket.
     status: pending
     kind: accrual
     added_on: 2026-09-03
@@ -14396,8 +14447,9 @@ reviews:
         rate sits well under it. A tripwire posture: zero is the good reading."
       era_scoped: "Every row carries admission_era and replay_exit_era; the predicate pools
         eras deliberately (the trigger is 'does the floor cost us 4R names under any stack')
-        and the action segments on both. The walk uses the CURRENT bracket (replay_exit_rules
-        stored per row), so a row walked under era C is labelled as such, never silently mixed."
+        and the action segments on both. The walk was MEANT to use MAGNA53's current bracket but
+        priced every row from 2026-09-06 to 2026-09-22 under the retired era_c (no signal_type) -
+        fixed 2026-09-22; the stored replay_exit_era labels which is which, so split on it."
       population_actionable: "The predicate counts decided replay rows of 7-9% open-gap names
         and the rate of those reaching 4R; the action reports exactly that rate beside the
         any-positive rate, per gap_band and admission_era, from the same table. Same rows."

@@ -309,8 +309,11 @@ async def _record_one_reject(conn, row: dict, last_session: date, run_date: date
     out["candidates"] += 1
 
     admission_era = rule_eras.admission_era_as_of(decline_date)
-    replay_exit_rules = rule_eras.exit_rules_as_of(run_date)
-    replay_exit_era = rule_eras.exit_era_label(run_date)
+    # The walk prices a declined MAGNA53 candidate under MAGNA53's OWN current bracket. Since the
+    # 2026-09-06 per-strategy flip (#545) a date alone no longer names that bracket: without the
+    # signal_type this silently walked the retired +2R-partial stack (era_c) for every row after it.
+    replay_exit_rules = rule_eras.exit_rules_as_of(run_date, "magna53")
+    replay_exit_era = rule_eras.exit_era_label(run_date, "magna53")
     fields = _fresh_fields(ticker, decline_date, rt_gap, admission_era, replay_exit_era,
                            replay_exit_rules, run_date, last_session)
 

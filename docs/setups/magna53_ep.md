@@ -428,6 +428,32 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
+### 2026-09-22 — the two MAGNA53 near-miss replays price under MAGNA53's CURRENT bracket again (BUG FIX — no criteria, stop, target, size or admission change)
+
+**Trigger**: the `ep_mcap_floor_500m_review` read found every replay row stamped `era_c`, two weeks
+after MAGNA53 moved to era D (+8R partial, breakeven armed at +3R) on 2026-09-06.
+
+**Evidence**: `sustain_reject_replay.py` and `gap_near_miss_replay.py` called
+`rule_eras.exit_rules_as_of(run_date)` with no `signal_type`, which since the per-strategy flip
+returns the GLOBAL stack — the retired +2R partial. Both lanes' own contracts (the 2026-09-03 #593
+entry below: *"reconstructs the CURRENT-era MAGNA53 entry … walks the SAME live exit ladder"*) say
+MAGNA53's bracket. Prod on 2026-09-22: 130 sustain-reject rows (127 settled) and 419 gap-near-miss
+rows (412 settled), all `era_c`. The 09-06 commit kept every pre-existing caller byte-identical;
+it did not evaluate these two. The low-cap lane is NOT affected: it is its own strategy
+(`magna53_lowcap`), which the flip deliberately left unflipped (pinned by
+`test_era_d_labels_only_the_flipped_strategy_after_the_flip_date`); it now names that strategy
+explicitly, behaviour unchanged.
+
+**Anticipated effect**: rows walked from the next nightly run on carry `replay_exit_era = 'era_d'`
+and `intraday_partial_r = 8.0`. Settled era_c rows keep their stamp and are NOT re-walked: #617's
+trigger pools eras by design and segments its action on them, and #593's predicate reads a
+trailing 30 sessions, so it rolls onto era D rows on its own. Every caller of either lookup must
+now name its strategy (`tests/test_exit_era_callers_name_their_strategy.py`, AST-derived).
+
+**Reversion-flag**: REFINEMENT of the 2026-09-06 per-strategy flip (a caller it missed).
+
+**Status**: shipped, awaiting field validation — the first post-deploy nightly writes era D rows.
+
 ### 2026-09-13 (late evening, same day) — BELONGING is TWO-STAGE: correlation SHORTLISTS, the nightly assignment judgement DECIDES (bug-fix REFINEMENT, shipped ON, same revert flag)
 
 **Trigger**: the 2026-09-13 replay of the correlation-only rule (n=346 alerts, 120 days) before it
