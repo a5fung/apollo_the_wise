@@ -208,20 +208,12 @@
   "status": "in_progress"
  },
  {
-  "id": 664,
-  "status": "deployed"
- },
- {
   "id": 666,
   "status": "deployed"
  },
  {
   "id": 668,
   "status": "pending"
- },
- {
-  "id": 672,
-  "status": "deployed"
  },
  {
   "id": 675,

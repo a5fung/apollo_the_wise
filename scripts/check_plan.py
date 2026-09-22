@@ -432,28 +432,45 @@ def _arm_from_watermark(base: dict | None, today: date) -> dict | None:
     return _write_baseline(carried)
 
 
+def effective_ceiling(base: dict | None, today: date) -> "int | None":
+    """THE ceiling for `today`, or None when the day is not armed. ONE definition.
+
+    Hoisted 2026-09-22, its first morning: `_growth_gate_error` and the `--today` banner each
+    computed this, and the banner's copy did not know about `operator_ceiling` — so on the very
+    first day the tightened ceiling was live, OPEN announced "this session must END <= 61" while
+    the gate was actually blocking at 60. A banner that misstates the rule it is announcing is
+    worse than no banner: it is the number I would have planned the day against.
+
+    Two inputs, and they pull in opposite directions on purpose:
+      · `carryover_allowance` — an operator-signed one-off that RAISES the ceiling for one day;
+      · `operator_ceiling`    — a standing operator instruction that LOWERS it until it is met,
+        and which does not bind on the day it was set (he said "TMR's ceiling").
+    """
+    if not base or base.get("pt_date") != today.isoformat():
+        return None
+    ceiling = base["baseline_count"] + base.get("carryover_allowance", 0)
+    oc = base.get("operator_ceiling")
+    if (isinstance(oc, dict) and isinstance(oc.get("count"), int)
+            and oc.get("set_on") != today.isoformat()):
+        ceiling = min(ceiling, oc["count"])
+    return ceiling
+
+
 def _growth_gate_error(cur_count: int, base: dict | None, today: date) -> str | None:
     """The session-growth check as a PURE function (testable). Returns the error string when the
     PT-day's open count exceeds the pinned ceiling, else None. No baseline or a stale-date baseline
     (a prior day) → None (skip — the day hasn't been armed; `--today` arms it at OPEN)."""
-    if not base or base.get("pt_date") != today.isoformat():
+    ceiling = effective_ceiling(base, today)
+    if ceiling is None:
         return None
-    ceiling = base["baseline_count"] + base.get("carryover_allowance", 0)
     # A STANDING OPERATOR CEILING BINDS DOWNWARD (operator 2026-09-21: "tmr's ceiling is 59").
     # `--carryover` only ever loosens, and the day-start pin can only ratchet the ceiling to
     # wherever the board happens to sit — so there was no way for him to say "no, tighter". He
     # set 59 after I opened three tasks off a review he had told me not to file from: the work
     # was done the same night, so the board sitting at 61 must not buy tomorrow headroom my
-    # filing created. It is a MIN, never a max, so it can only ever make the gate stricter, and
-    # it clears itself the moment the board actually reaches it (see `_clear_reached_ceiling`).
+    # filing created. The arithmetic lives in `effective_ceiling` — ONE copy, because the banner
+    # needs the same answer and its private copy got it wrong on day one.
     oc = base.get("operator_ceiling")
-    if isinstance(oc, dict) and isinstance(oc.get("count"), int):
-        # It takes effect the day AFTER it is set — he said "TMR's ceiling is 59", and the day it
-        # was set has already been worked and closed under the ceiling that was in force then.
-        # Binding it retroactively would also block the commit that records the instruction, which
-        # is a fine way to make a rule impossible to land.
-        if oc.get("set_on") != today.isoformat():
-            ceiling = min(ceiling, oc["count"])
     if cur_count <= ceiling:
         return None
     co = (f" (+{base['carryover_allowance']} carryover: {base['carryover_reason']})"
@@ -2296,9 +2313,14 @@ def main(argv: list[str]) -> int:
         # and never commits still arms TOMORROW's carry-over. Previously only the
         # plain run recorded it, so an open-but-no-commit day left no mark at all.
         _record_watermark(base, len(tasks), today)
-        ceiling = base["baseline_count"] + base.get("carryover_allowance", 0)
+        ceiling = effective_ceiling(base, today)
         print(f"\n-- GROWTH GATE — day started at {base['baseline_count']} open tasks. This session must "
               f"END <= {ceiling} (HARD, operator 2026-07-12: no session ends bigger than it began).")
+        _oc = base.get("operator_ceiling")
+        if isinstance(_oc, dict) and _oc.get("count") == ceiling:
+            print(f"   🔒 {ceiling} is a STANDING CEILING THE OPERATOR SET on {_oc.get('set_on')}, "
+                  f"below the day-start count — only a real close clears it.")
+            print(f"      reason: {_oc.get('reason')}")
         print("   Take a HARD LOOK for real closes; open a new task only if you close a real one first.")
         _print_pinned_runbooks()
         return 0

@@ -1317,3 +1317,108 @@ shape was invisible to `live_rules._classify_value`, so nine flags — the kill 
 silently left the drift checker's fact index while `--drift-only` kept printing "0 findings". Fixed
 in the same deploy (`f206d71c`) and gated offline by named members in
 `tests/test_drift_check_can_still_see_the_money_flags.py`.
+
+## #664 — the seven-thread broker pool ran at 7 of 7 on Monday, and now we know that (2026-09-22)
+
+BAR: "DoD: `mi_audit_log` (or the equivalent metric) carries `_sdk` concurrency depth and queue-wait
+per call for one full trading day, and we can state the observed maximum against the pool's 7 —
+with a test that drives 8 simultaneous `_sdk` calls and asserts the 8th records a nonzero wait."
+
+EVIDENCE: on 2026-09-21 — a full trading day, 45 `sdk_pool_rollup` rows spanning 00:05 to
+21:25 ET, read from prod on 2026-09-22 — the instrumentation carried per-call concurrency
+depth and queue-wait for **431 `_sdk` calls**, and the observed MAXIMUM DEPTH WAS **7 of
+pool 7**, with 0 calls waiting for a slot, 0 caller timeouts and 0 threads outliving their
+budget. The 8-call test required by the bar exists and passes
+(`test_queued_is_decided_against_the_pool_width_at_submit`: 8 simultaneous submits against
+the width-7 pool → `queued_calls == 1`, `max_pending == 8`), and it goes RED under two
+independent mutations of the production counters. Detail below.
+
+**2026-09-21, a full trading day, 45 rollups from 00:05 to 21:25 ET** (`sdk_pool_rollup`
+in `mi_audit_log`, read from prod 2026-09-22):
+
+| measure | observed |
+|---|---|
+| `_sdk` calls | **431** |
+| **MAX concurrency depth** | **7 of pool 7** |
+| calls that waited for a slot | 0 (max submit latency 9ms) |
+| caller timeouts | 0 |
+| threads outliving their budget | 0 |
+
+🔴 **THE NUMBER THE DoD ASKED FOR IS 7 OF 7 — the pool reached full occupancy on an ordinary Monday
+and there is no observed headroom.** Nothing queued and nothing timed out, so this is not a failure;
+it is the measurement the task existed to get, and it says the eighth concurrent `_sdk` call is the
+one that would wait. Filed as the reading, not as a proposal: no rule without measured harm, and the
+harm here is zero waits on 431 calls. [[no-rules-without-measured-harm]]
+
+THE TEST HALF: `tests/test_sdk_pool_telemetry.py::test_queued_is_decided_against_the_pool_width_at_submit`
+submits 8 simultaneous calls against the width-7 pool and asserts `queued_calls == 1`,
+`max_pending == 8`, `pending == 8` — the 8th is recorded as queued. 14 tests green.
+
+WOULD-FAIL-IF, both arms checked rather than assumed:
+- *"the instrumentation reports depth 0 or a null wait on a day the pool demonstrably saturated"* —
+  it reports depth **7**, not 0, on the day it did reach the ceiling.
+- *"the 8-call test passes with the instrumentation removed"* — MUTATED TWICE against the real
+  module and both went RED: deleting `self._queued_calls += 1` fails 3 tests (incl.
+  `test_saturated_interval_writes_the_saturated_row_too`), and deleting the `_max_pending` tracking
+  fails `test_queued_is_decided_against_the_pool_width_at_submit` on `0 == 8`. Restored; working tree
+  clean. Routed `#664:main` before the edit, per the delegation gate.
+
+## #672 — the nightly chain can no longer be taken down silently by one hung pull (2026-09-22)
+
+BAR: "DoD: the stall's MECHANISM is named from evidence — why a 12-minute pull ran 7.3 hours, and
+why 23 queued jobs were skipped rather than delayed — AND a hung job can no longer silently take
+the nightly chain with it: the pull carries a hard timeout, and a skipped nightly job is REPORTED
+rather than absent."
+
+⚠ This line's own WOULD-FAIL-IF forbids closing on a clean night — *"that proves the chain CAN run,
+which was never in doubt"* — so all four of these are positive observables, not absences.
+
+EVIDENCE: read from prod on 2026-09-22. The stall's mechanism is named from `mi_job_runs`
+(a 26,192 s pull against a 740–1,070 s norm, ended `interrupted` by a container restart; 23
+jobs skipped rather than delayed because each carries a 900–3,600 s `misfire_grace_time`).
+The hard timeout is grepped LIVE in both `apollo-market` and `apollo-execution`
+(`asyncio.wait_for(_nightly_data_pull(), timeout=_NIGHTLY_PULL_MAX_S)`, cap 45 min). A
+skipped job is REPORTED, positively: `recovery sweep (boot): eligible=66 gaps=0 ran=0` and
+`recovery sweep: inside the ORB quiet window — deferred`. And the full weekday nightly of
+2026-09-21 completed with the pull at **1,158 s inside the 2,700 s cap** and **98 of 98 jobs
+successful, zero false `missed` rows**. Detail below.
+
+**(1) THE MECHANISM, named from `mi_job_runs` and recorded on the line:** `nightly_data_pull`
+started 21:00 UTC on 2026-09-18 and ran **26,192 s — 7.3 hours — against a 740–1,070 s norm over
+the prior eight weekdays**, ending `interrupted` when my own #664 deploy restarted the container.
+The 23 jobs were SKIPPED rather than delayed because **every one carries a `misfire_grace_time` of
+900–3,600 s, so a 1.5–2 h stall misfires the whole window.** The chain recovered at 23:00 UTC
+(`coverage_watch_late` ran), which is what refuted the first hypothesis — a frozen event loop —
+and that refutation is kept on the line so it is not re-derived.
+
+**(2) THE HARD TIMEOUT IS LIVE IN BOTH CONTAINERS:** `scheduler.py:6290`
+`await asyncio.wait_for(_nightly_data_pull(), timeout=_NIGHTLY_PULL_MAX_S)` with
+`_NIGHTLY_PULL_MAX_S = 45 * 60` — grepped inside `apollo-market` AND `apollo-execution`, not
+assumed from the repo. Deliberately the job-level wrapper, NOT `command_timeout` on the shared
+asyncpg pool: that pool serves the order path, so a global query timeout would convert a slow
+query during a 9:31 ORB entry into a failed entry. That fork was raised, not folded in.
+
+**(3) A SKIPPED JOB IS REPORTED, and the report is positive:** the recovery sweep logs what it
+examined and what it decided — `recovery sweep (boot): eligible=66 gaps=0 ran=0` at 04:15 UTC, and
+`recovery sweep: inside the ORB quiet window — deferred` at 13:50. Neither is silence. The second
+WOULD-FAIL-IF arm — *"the timeout ships with no report, so the next silent night looks identical to
+a quiet one"* — is directly refuted.
+
+**(4) A FULL WEEKDAY NIGHTLY, with the pull inside the cap:** 2026-09-21 17:00 ET ran **1,158 s
+(19.3 min) against the 2,700 s cap**, status `success`; the 21:00 UTC → 12:00 UTC window carried
+**98 runs, 98 success, 0 non-success, and zero false `missed` rows**. ⚠ Noted rather than buried:
+1,158 s is now the worst normal run, above the 1,070 s the cap was sized against — so the margin is
+2.33×, not the 2.5× the line assumed.
+
+🔑 **AND THE OPERATOR DECISION THIS LINE CARRIED IS MOOT — measured, not assumed.** It asked
+*"whether to re-run any of the 23 for 09-18"*, flagging date-parameterised shadow recorders with
+"a real one-day data gap". There is no gap to fill:
+- **2026-09-18 produced ZERO EP alerts** (vs 1 on 09-16, 2 on 09-17, 2 on 09-21), so
+  `mi_alert_rank_shadow` and `mi_exit_path_shadow` having no 09-18 rows is the correct output, not
+  a loss — they are keyed on `alert_date` and there was nothing to record.
+- `mi_theme_axis_shadow` **has 10 rows for 09-18** (22 on 09-17): it wrote.
+- `mi_sell_discipline_records` is 0 on 09-17, 09-18 AND 09-21; `mi_htf_management_shadow` is 0 on
+  09-18 and 0 on 09-21, a day with no stall. Both are sparse writers and their 09-18 zero is
+  indistinguishable from an ordinary day.
+So nothing is handed to him: re-running would mutate prod state to recreate rows that should not
+exist. [[verify-before-asking-him-to-act]]

@@ -26,7 +26,8 @@ from datetime import date
 import pytest
 
 from scripts.check_plan import (_arm_from_watermark, _carry_operator_ceiling,
-                                _growth_gate_error, _pin_daily_baseline, _write_baseline)
+                                _growth_gate_error, _pin_daily_baseline, _write_baseline,
+                                effective_ceiling)
 
 TODAY = date(2026, 9, 22)
 YESTERDAY = date(2026, 9, 21)
@@ -127,3 +128,28 @@ def test_it_does_not_bind_on_the_day_it_was_SET():
     # ...and it bites the very next day.
     next_day = _base(61, 59, day=TODAY, set_on=YESTERDAY.isoformat())
     assert _growth_gate_error(61, next_day, TODAY), "it never started binding at all"
+
+
+def test_the_banner_and_the_gate_cannot_disagree():
+    """⚠ FOUND ON ITS FIRST MORNING. The `--today` banner computed its own ceiling and did not know
+    about `operator_ceiling`, so OPEN announced "this session must END <= 61" while the gate was
+    blocking at 60. A banner that misstates the rule it announces is worse than none — it is the
+    number the day gets planned against. One `effective_ceiling` now serves both."""
+    base = _base(61, 59)
+    ceiling = effective_ceiling(base, TODAY)
+    assert ceiling == 59, f"the shared ceiling reads {ceiling}, not the operator's 59"
+    # and the gate agrees with it, at the boundary in both directions
+    assert _growth_gate_error(ceiling + 1, base, TODAY), "the gate allows one above its own ceiling"
+    assert _growth_gate_error(ceiling, base, TODAY) is None, "the gate blocks at its own ceiling"
+
+
+def test_the_shared_ceiling_still_honours_a_carryover_upward():
+    """The other direction must keep working — one function, both rules."""
+    b = _base(61, None)
+    b["carryover_allowance"], b["carryover_reason"] = 2, "necessary growth"
+    assert effective_ceiling(b, TODAY) == 63
+
+
+def test_an_unarmed_day_has_no_ceiling():
+    assert effective_ceiling(None, TODAY) is None
+    assert effective_ceiling(_base(61, 59, day=YESTERDAY), TODAY) is None
