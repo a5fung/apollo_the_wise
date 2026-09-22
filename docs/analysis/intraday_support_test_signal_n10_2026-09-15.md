@@ -134,3 +134,21 @@ HTF parent, a further 30 days adds ~3 rows and does not change the read.
 
 Working files: `/tmp/gated3/` (st_raw.csv, results_st.txt, results_stop_sensitivity.txt, jump_scan.txt, compute.py).
 Prod was read only.
+
+## Addendum 2026-09-22 — the current era reached n=10, and the gate reads weak
+
+- **Population:** the predicate verbatim (current era only, fires ≥ 2026-06-27, survivors of the day-0
+  close, 10th forward close present) — 10 rows from 5 tickers — at most 4 independent campaigns by the 09-15 count (ABVX ×2, NEO, PAY ×3,
+  WDAY ×3, AMLX 09-08, the one survivor that was unsettled on 09-15). Entry = `current_price`. Pulled once from
+  prod to the session scratchpad.
+- **Gate:** median 5-day **−4.55%**, median 10-day **−4.95%**, 1 of 10 up 5%+ on either window → bucket 2
+  (weak) fires on the gate's own terms. Not promoted.
+- **Every row traded below `base_low` within ten sessions** — the level the gate names for the stop. The
+  two names that later ran (NEO +15%, WDAY +10% to the ten-day high) went through it first. As with
+  #327's delayed-entry read, the placeholder stop is what fails; that is an input to the entry-and-exit
+  work the operator ruled undetermined on 2026-09-22, not a verdict on the pattern.
+- **Not revised.** The revise menu above is unchanged and each item is still a criterion change; the
+  hold-time item needs a minute-bar replay; EP-first priority stands. Same-day invalidation: 14 of the 24
+  current-era fires died by the day-0 close.
+- **Still does not answer:** actual fills (no minute-bar simulation), and whether any exit other than
+  "just below base_low" would have kept the two runners.

@@ -8342,7 +8342,23 @@ reviews:
       - #96/#97/#98 (future entry-technique detectors)
       - ADR 0004 §4 source_detector enum (flag_support_test slot)
       - ADR 0005 (#94 design template this detector mirrors)
-    status: pending
+    resolution_2026_09_22: >-
+      RAN 2026-09-22 — N REACHED (10, current era only) AND THE GATE'S OWN BUCKET 2 FIRES: SIGNAL
+      WEAK. Entry at current_price (the bounce price), predicate verbatim: median 5-day return
+      -4.55% and median 10-day -4.95% against a +2% bar; 1 of 10 up 5%+ at either horizon against a
+      40% bar. Ten rows from five tickers (ABVX x2, NEO, PAY x3, WDAY x3, AMLX) — the 09-15 read counted its four tickers as three independent campaigns, so this is four at most. ALL TEN traded
+      below base_low within ten sessions — the exact level the gate proposed for the stop — so an
+      entry built as specified would have been stopped on every row, including the two that later
+      ran (NEO +15%, WDAY +10% intraday highs). Same-day invalidation unchanged in kind: 14 of the
+      24 current-era fires died by the day-0 close. NOT PROMOTED. NOT REVISED EITHER — every item on
+      the revise menu is a criterion change (CHANGE_PROCESS), the only one the data speaks to (a
+      minimum hold before counting the bounce) needs its own minute-bar replay, and the standing
+      EP-first priority puts consolidation-family entries behind EP profitability. The detector
+      keeps writing telemetry; nothing consumes it. The finding that the placeholder stop, not the
+      entry, is what fails matches #327's delayed-entry read — both are inputs to the
+      entry-and-exit work, not verdicts on the setups. Addendum:
+      docs/analysis/intraday_support_test_signal_n10_2026-09-15.md.
+    status: done
     added_on: 2026-05-24
     can_fire:
       predicate_runs: >-
@@ -12610,6 +12626,17 @@ reviews:
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_09_22: >-
+      RAN 2026-09-22 at close, same method and SQL as the 09-21 re-run
+      (scripts/probes/_verify_rank_shadow_2026-09-21.sql, outcomes recomputed from mi_daily_closes
+      so filled alerts are counted). n = 15 sessions, 35 rows, 11 filled - THIN (15 of 25, 60%),
+      directional only, NOT a verdict. 29 rows now have a matured 5-day outcome (was 27) and 11 a
+      20-day one. CONCLUSION UNCHANGED AND STILL AGAINST THE RULE: the top quartile holds 3 matured
+      rows, 0 reached the 8x-ADR bar and all 3 broke their EP-day low inside five sessions; the
+      rest of the pool holds the only big winner (MRNA 2026-08-19, 9.13x, ranked 0.875 of 4) and
+      17 of 26 broke their low. EOD and 09:45 versions read identically. The cell stays too small
+      to judge - 6 of 15 sessions had a single alert, and a pool of one never enters the top
+      quartile.
     resolution_2026_09_21: >-
       🔴 RETRACTION. The 16, 17 and 19 Sep runs of this read each reported ZERO big winners
       out-of-sample. That was a WRONG-TABLE artifact, not a finding. They scored outcomes from
