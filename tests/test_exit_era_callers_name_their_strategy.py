@@ -3,8 +3,9 @@
 Since the 2026-09-06 per-strategy flip (#545) a date alone no longer names an exit bracket:
 `exit_rules_as_of(d)` / `exit_era_label(d)` without a `signal_type` return the GLOBAL stack, which
 MAGNA53 left that day. Two shadow lanes that exist to price declined MAGNA53 candidates under
-"the CURRENT-era MAGNA53 bracket" (their own words) kept calling without one and walked 539
-settled rows under the retired +2R-partial stack for two weeks — nothing failed, the rows were
+"the CURRENT-era MAGNA53 bracket" (their own words) kept calling without one and walked 95
+rows (85 settled; 37 sustain-reject, 58 gap-near-miss) under the retired +2R-partial stack for two
+weeks — nothing failed, the rows were
 simply priced under a rule nobody trades.
 
 The population is DERIVED (an AST walk over every production package), never hand-listed, so a

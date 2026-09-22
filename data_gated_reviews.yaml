@@ -9980,7 +9980,7 @@ reviews:
       answer it. (3) The uncovered 10-15% gap band at $400-500M: 7 names since 06-23 (TITN, PRLD,
       EPRX, BBCP, GMTL, CAL, ALLT), none with a 20-day outcome yet, median 5-day -2.0%, well short
       of the N>=15 this read asks for. ⚠ THE LANE IS PRICED UNDER ITS OWN BRACKET, NOT MAGNA53'S:
-      magna53_lowcap was deliberately left out of the 09-06 exit flip, so its rows walk the +2R
+      the 09-06 exit flip was scoped to magna53 only, so magna53_lowcap rows walk the +2R
       partial. A name admitted by LOWERING THE FLOOR would trade MAGNA53's era D bracket instead,
       so on 10-17 the lane's rows answer the floor question only after a re-walk under era D
       ($0, stored bars). Found alongside: the two MAGNA53 near-miss lanes were walking era_c by
@@ -14268,9 +14268,10 @@ reviews:
         1 (ready flag) against 0. The underlying rate is 1 of 99 (1.0%) against a 10% bar. A tripwire
         posture: zero is the good reading.
       era_scoped: >-
-        Trailing 30 sessions, eras pooled. ALL 99 in-window rows are era_c - walked under the retired
-        +2R-partial bracket until the 2026-09-22 fix, not MAGNA53's era D - so the window rolls onto
-        era D rows over the next ~30 sessions; split on replay_exit_era before reading it.
+        Trailing 30 sessions, eras pooled. All 99 in-window rows carry era_c; the ones walked on or
+        after 2026-09-07 (37 of the table's 130) were priced under the retired +2R-partial bracket
+        instead of MAGNA53's era D until the 2026-09-22 fix. The window rolls onto era D rows over
+        the next ~30 sessions; split on replay_exit_era before reading it.
       population_actionable: >-
         The predicate counts scoreable net-declined sustain-reject names and those reaching 4R; the
         action reads the same rows from the same table.

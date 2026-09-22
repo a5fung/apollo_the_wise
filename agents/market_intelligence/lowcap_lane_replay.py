@@ -234,8 +234,10 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
     out["candidates"] += 1
 
     admission_era = rule_eras.admission_era_as_of(session_date)
-    # The lane is its own strategy (`mi_strategies.magna53_lowcap`), which the 2026-09-06 flip
-    # deliberately did NOT touch — named explicitly so that is a stated choice, not a default.
+    # The lane is its own strategy (`mi_strategies.magna53_lowcap`); the 2026-09-06 flip was
+    # scoped to magna53 only, so this walks the lane's own (unflipped) bracket. Named explicitly so
+    # that is visible, not a default. Whether the lane should follow MAGNA53's bracket instead is
+    # an open question for the operator (magna53_ep.md, 2026-09-22 entry).
     replay_exit_rules = rule_eras.exit_rules_as_of(run_date, "magna53_lowcap")
     replay_exit_era = rule_eras.exit_era_label(run_date, "magna53_lowcap")
     fields = _fresh_fields(sig, admission_era, replay_exit_era, replay_exit_rules,

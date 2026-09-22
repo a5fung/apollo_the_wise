@@ -438,11 +438,17 @@ after MAGNA53 moved to era D (+8R partial, breakeven armed at +3R) on 2026-09-06
 returns the GLOBAL stack — the retired +2R partial. Both lanes' own contracts (the 2026-09-03 #593
 entry below: *"reconstructs the CURRENT-era MAGNA53 entry … walks the SAME live exit ladder"*) say
 MAGNA53's bracket. Prod on 2026-09-22: 130 sustain-reject rows (127 settled) and 419 gap-near-miss
-rows (412 settled), all `era_c`. The 09-06 commit kept every pre-existing caller byte-identical;
+rows (412 settled), all stamped `era_c` — of which the **95 walked on or after 2026-09-07 (37 + 58;
+85 settled)** were priced under the wrong bracket; walks before the flip were correctly era_c. (The
+fix commit's headline said 539 — that counted every row, not the post-flip walks.) The 09-06 commit kept every pre-existing caller byte-identical;
 it did not evaluate these two. The low-cap lane is NOT affected: it is its own strategy
-(`magna53_lowcap`), which the flip deliberately left unflipped (pinned by
-`test_era_d_labels_only_the_flipped_strategy_after_the_flip_date`); it now names that strategy
-explicitly, behaviour unchanged.
+(`magna53_lowcap`), and the flip was scoped to magna53 only (pinned by
+`test_era_d_labels_only_the_flipped_strategy_after_the_flip_date` — a record of the flip's scope,
+not a ruling on the lane); it now names that strategy explicitly, behaviour unchanged. ⚖ **OPEN,
+the operator's:** should the lane price under its own bracket (today) or follow MAGNA53's? Its
+§"Low-cap lane" text says it "walks the SAME live ladder" and that every row is re-walked under a
+new exit era before it counts, and the floor question (`ep_mcap_floor_500m_review`) needs era D
+prices either way.
 
 **Anticipated effect**: rows walked from the next nightly run on carry `replay_exit_era = 'era_d'`
 and `intraday_partial_r = 8.0`. Settled era_c rows keep their stamp and are NOT re-walked: #617's
