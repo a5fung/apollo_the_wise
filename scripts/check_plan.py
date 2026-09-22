@@ -371,7 +371,26 @@ def _pin_daily_baseline(count: int, today: date) -> dict:
             "carryover_allowance": 0, "carryover_reason": None,
             "last_seen_date": (cur or {}).get("last_seen_date"),
             "last_seen_count": (cur or {}).get("last_seen_count")}
+    # A standing operator ceiling outlives the day it was set — that is the whole point of it.
+    # `carryover_allowance` resets daily because growth is a one-off concession; a tightened
+    # ceiling is a standing instruction and must survive the next OPEN, or it would evaporate
+    # overnight and the pin would quietly re-arm at whatever the board happens to be.
+    oc = _carry_operator_ceiling(cur, count)
+    if oc:
+        data["operator_ceiling"] = oc
     return _write_baseline(data)
+
+
+def _carry_operator_ceiling(cur: dict | None, count: int) -> dict | None:
+    """The standing operator ceiling, or None once it has been REACHED and is therefore spent.
+
+    Self-clearing on purpose: it exists to force a specific burn-down, so the moment the board is
+    at or below it the normal day-start pin is the tighter of the two anyway and keeping it would
+    just be a stale rule nobody can see. Clearing is the one direction that cannot hide growth."""
+    oc = (cur or {}).get("operator_ceiling")
+    if not isinstance(oc, dict) or not isinstance(oc.get("count"), int):
+        return None
+    return None if count <= oc["count"] else oc
 
 
 def _record_watermark(base: dict | None, count: int, today: date) -> None:
@@ -402,11 +421,15 @@ def _arm_from_watermark(base: dict | None, today: date) -> dict | None:
     prev_count = (base or {}).get("last_seen_count")
     if not prev_date or prev_count is None or prev_date == today.isoformat():
         return None
-    return _write_baseline({
+    carried = {
         "pt_date": today.isoformat(), "baseline_count": prev_count,
         "carryover_allowance": 0, "carryover_reason": None,
         "armed_from": prev_date,  # provenance: carried, not pinned at OPEN
-        "last_seen_date": prev_date, "last_seen_count": prev_count})
+        "last_seen_date": prev_date, "last_seen_count": prev_count}
+    oc = _carry_operator_ceiling(base, prev_count)
+    if oc:
+        carried["operator_ceiling"] = oc
+    return _write_baseline(carried)
 
 
 def _growth_gate_error(cur_count: int, base: dict | None, today: date) -> str | None:
@@ -416,14 +439,33 @@ def _growth_gate_error(cur_count: int, base: dict | None, today: date) -> str | 
     if not base or base.get("pt_date") != today.isoformat():
         return None
     ceiling = base["baseline_count"] + base.get("carryover_allowance", 0)
+    # A STANDING OPERATOR CEILING BINDS DOWNWARD (operator 2026-09-21: "tmr's ceiling is 59").
+    # `--carryover` only ever loosens, and the day-start pin can only ratchet the ceiling to
+    # wherever the board happens to sit — so there was no way for him to say "no, tighter". He
+    # set 59 after I opened three tasks off a review he had told me not to file from: the work
+    # was done the same night, so the board sitting at 61 must not buy tomorrow headroom my
+    # filing created. It is a MIN, never a max, so it can only ever make the gate stricter, and
+    # it clears itself the moment the board actually reaches it (see `_clear_reached_ceiling`).
+    oc = base.get("operator_ceiling")
+    if isinstance(oc, dict) and isinstance(oc.get("count"), int):
+        # It takes effect the day AFTER it is set — he said "TMR's ceiling is 59", and the day it
+        # was set has already been worked and closed under the ceiling that was in force then.
+        # Binding it retroactively would also block the commit that records the instruction, which
+        # is a fine way to make a rule impossible to land.
+        if oc.get("set_on") != today.isoformat():
+            ceiling = min(ceiling, oc["count"])
     if cur_count <= ceiling:
         return None
     co = (f" (+{base['carryover_allowance']} carryover: {base['carryover_reason']})"
           if base.get("carryover_allowance") else "")
+    oc_note = ""
+    if isinstance(oc, dict) and oc.get("count") == ceiling:
+        oc_note = (f" ⚠ this ceiling was set BY THE OPERATOR on {oc.get('set_on')}, below the "
+                   f"day-start count, and only a real close clears it: {oc.get('reason')}")
     return (f"SESSION GROWTH GATE: {cur_count} open tasks now; the PT-day started at "
-            f"{base['baseline_count']}{co} (ceiling {ceiling}). A session may NOT end above where "
-            f"it began (operator 2026-07-12, HARD — no fake burndown). CLOSE a real task to reach "
-            f'<= {ceiling}, or record NECESSARY growth: check_plan.py --carryover <N> "<reason>".')
+            f"{base['baseline_count']}{co} (ceiling {ceiling}).{oc_note} A session may NOT end above "
+            f"where it began (operator 2026-07-12, HARD — no fake burndown). CLOSE a real task to "
+            f'reach <= {ceiling}, or record NECESSARY growth: check_plan.py --carryover <N> "<reason>".')
 # Buried-work tripwire (operator 2026-06-17): high-signal phrases that mean a task description is
 # DESCRIBING undone critical work inline instead of TRACKING it as its own dated task. Rare +
 # high-signal (only #326 tripped it at authoring) so this can be a hard gate, not just a warning.
@@ -2268,6 +2310,34 @@ def main(argv: list[str]) -> int:
                   f"only the quote was wrong --")
             for _b in _stale_closes:
                 print(f"   {_b}")
+
+    if "--set-ceiling" in argv:
+        # OPERATOR-ONLY, and the MIRROR of --carryover: that one loosens today's ceiling, this one
+        # TIGHTENS it and keeps tightening until the board actually gets there. Added 2026-09-21
+        # when he said "tmr's ceiling is 59" and nothing in this file could express it — the
+        # day-start pin can only arm at wherever the board sits, so three tasks I should not have
+        # filed would have bought tomorrow three tasks of headroom.
+        idx = argv.index("--set-ceiling")
+        try:
+            n = int(argv[idx + 1])
+        except (IndexError, ValueError):
+            print('usage: check_plan.py --set-ceiling <N> "<reason>"')
+            print("  <N> is the TARGET open-task count, not a delta. It binds DOWNWARD only:")
+            print("  the effective ceiling is min(day-start pin, N), so it can never allow growth.")
+            return 2
+        reason = argv[idx + 2].strip() if idx + 2 < len(argv) else ""
+        if not reason:
+            print("[set-ceiling] a reason is REQUIRED (this is an operator instruction).")
+            return 2
+        base = dict(_load_baseline() or {})
+        base["operator_ceiling"] = {"count": n, "reason": reason, "set_on": today.isoformat()}
+        _write_baseline(base)
+        cur_n = len(tasks)
+        print(f"[set-ceiling] standing ceiling set to {n} (board is {cur_n} now). "
+              f"It survives the next OPEN and clears itself once the board reaches {n}.")
+        if cur_n > n:
+            print(f"[set-ceiling] ⚠ {cur_n - n} real close(s) needed before any commit passes.")
+        return 0
 
     if "--carryover" in argv:
         # OPERATOR-SIGNED escape for NECESSARY growth: raise TODAY's ceiling by N with a reason.
