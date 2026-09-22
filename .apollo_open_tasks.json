@@ -144,10 +144,6 @@
   "status": "pending"
  },
  {
-  "id": 610,
-  "status": "deployed"
- },
- {
   "id": 624,
   "status": "in_progress"
  },
@@ -221,14 +217,6 @@
  },
  {
   "id": 679,
-  "status": "deployed"
- },
- {
-  "id": 680,
-  "status": "deployed"
- },
- {
-  "id": 682,
   "status": "deployed"
  }
 ]

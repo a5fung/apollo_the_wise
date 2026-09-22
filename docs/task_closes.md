@@ -1465,3 +1465,129 @@ THE TEST HALF: `tests/test_659_halt_writer_counts_halts_not_heartbeats.py`, 6 te
 the handler with a repeated identical status and asserts a single write.
 
 ⚖ Shadow writer only: no money path, no detection criterion, no consolidation-guard change.
+
+## #610 — the HTF detector records four depth/trend readings per row, and the live gate did not move (2026-09-22)
+
+BAR: "DoD: one full scan day writes all FOUR margins per candidate-day — depth on the flag low (the
+live reading), depth on the flag close (the spec literal), the SMA20 invalidation margin and the
+MA-stack margin — a replay of 2026-08-17 → 2026-09-17 reproduces the stage and reason of every
+stored row byte-identically, and MRNA's four hand-measured values (72.8% / 75.5% / 0.03% / 0.24%)
+match." WOULD-FAIL-IF: "the acting stage or reason changes for ANY candidate-day versus the
+pre-change run — an observer became a gate."
+
+EVIDENCE: all three clauses, each with the part that is NOT literally what the DoD says stated
+rather than smoothed over.
+
+**(1) ONE FULL SCAN DAY — 2026-09-22, the first full market-day scan after the 09-19 ship, 499
+candidate-day rows.** ⚠ **The DoD's phrasing is loose and the SSoT's is not.** Read literally,
+"all FOUR margins per candidate-day" demands four numbers on all 499 rows; only 22 carry all four.
+That is BY DESIGN and was pre-registered BEFORE the first live scan, at `docs/setups/htf.md:221-222`:
+*"every row that reaches the base window carries the depth pair and every row past the runup gate
+carries the SMA pair (≈ a third and ≈ 5% of the day's rows, on the replay's proportions)"*. A row
+rejected for missing bars or thin liquidity has no pivot and no base to measure a depth from, and
+`tests/test_610_htf_four_reading_observer.py::test_readings_are_null_until_their_inputs_exist` pins
+exactly that. Measured against the pre-registered bar, by reject point in `flag_detector.py`:
+
+| where the row stopped | depth pair | SMA pair | rows |
+|---|---|---|---:|
+| before the base window (L843–L1018: no rows, missing bars, liquidity floors, no pivot, base age) | no | no | 306 |
+| between the base window and the runup gate (L1019–L1085: runup, flagpole checks) | **yes** | no | 171 |
+| past the runup gate | **yes** | **yes** | 22 |
+
+- **0 violations**: every row that reached the base window carries the depth pair; every row past
+  the runup gate carries the SMA pair.
+- **The converse holds, so the check cannot pass vacuously**: 0 rows rejected before the base window
+  carry a depth figure.
+- **Value identity, stated in the source (`flag_detector.py:1016`)**: `depth_on_low == 1 −
+  flag_depth_pct` on **193 of 193** rows, exact.
+- **Population identity**: `depth_on_low` is present exactly where `flag_depth_pct` is on **499 of
+  499** rows — the new recorder covers the pre-existing measured population, no more and no less.
+- Proportions match the pre-registration: depth pair 193/499 = 38.7% (predicted ≈ a third); SMA
+  pair 22/499 = 4.4% (predicted ≈ 5%).
+- ⚠ A first cut of my probe showed 2 rows as "rejected before the SMA pair yet carrying it". They
+  are HELP and RNG, both `stage=WATCH` — passing flags whose `reason` is the descriptive
+  `runup_149% base_18d …`, which my prefix match mistook for the reject `runup_41%_below_90%`.
+  Corrected into the 22 above; there is no anomaly row.
+
+**(2) THE REPLAY — `scripts/probes/_610_four_reading_observer_replay.py`, recorded in the ship
+commit `993a63c2` and at `docs/setups/htf.md:212-220`, over 12,657 stored candidate-days / 1,796
+tickers, 2026-08-17 → 09-17, prod bars.** ⚠ **"Byte-identical to every stored row" is NOT literally
+met, and both numbers are stated:**
+- **OLD function vs NEW function: 0 diffs** on stage / reason / score / held_from_stage. This is the
+  observer-is-not-a-gate proof, and it is the WOULD-FAIL-IF — met.
+- **NEW function vs the STORED prod rows: 12,625 of 12,657 = 99.75%** with stored-row state
+  threading, and **100% on all 4,282 rows from 09-07 onward.** Every one of the 32 mismatches sits on
+  or before 09-04 and is the #592 anchor-fix rule era (committed 09-04 `2d343421`, after that day's
+  scan) or a bar the vendor revised since (IESC's volume) — the stored rows were written by an older
+  rule, not moved by this observer.
+
+**(3) MRNA'S FOUR HAND-MEASURED VALUES** — pinned by `test_mrna_four_hand_measured_readings` against
+the real fixture bars, green today, and recorded in the ship commit as depth-on-low **72.8%**,
+depth-on-close **75.5%**, SMA20 margin **−0.035%** (09-16), MA-stack margin **−0.24%** (09-17). The
+card stores those two margins SIGNED; the DoD quotes magnitudes. The stored 09-17 prod row itself
+can never show them — it was written two days before the code shipped and the scanner only scans
+`et_today()` — which is why the value check lives in the fixture, as this line's own 09-21 note says.
+
+## #682 — the halt table has a reader that counts halts, not the feed's heartbeat (2026-09-22)
+
+BAR: "VERIFY-LIVE =** after the deploy, `get_halt_transitions_between('2026-09-14','2026-09-21')`
+returns **468 halts across 155 tickers** from inside the container" … "and `dead_data_guard_shadow`
+— the raw reader's one consumer — produces an unchanged compare row count." WOULD-FAIL-IF: "the
+halt count differs from 468 for the same window, or the dead-data-guard compare moves."
+
+EVIDENCE: both halves, read from inside `apollo-market` against the deployed code on 2026-09-22.
+
+- **The deployed reader over the DoD's exact window returns 468 halts across 155 tickers** — the
+  number the DoD names, now produced by the function itself rather than the probe that measured it.
+- **The raw reader's one consumer did not move.** ⚠ "Unchanged compare row count" cannot mean the
+  same raw count every day — the guard compares the day's flag universe, which is itself a different
+  size each day. The discriminating quantity is the guard's rows RELATIVE TO the universe it
+  compares, and the first run after the deploy sits inside the prior band:
+
+| scan day | guard rows | flag universe | ratio |
+|---|---:|---:|---:|
+| **2026-09-22 — first run after the deploy** | 597 | 499 | **1.196** |
+| 2026-09-21 | 614 | 504 | 1.218 |
+| 2026-09-18 | 649 | 505 | 1.285 |
+| 2026-09-17 | 629 | 509 | 1.236 |
+| 2026-09-16 | 598 | 507 | 1.179 |
+| 2026-09-15 | 583 | 523 | 1.115 |
+
+  The 09-22 run wrote at its normal 14:25 PT slot, in `flag_continuation_scan`, which succeeded.
+  That is expected: #682 ADDED a function and changed only a docstring on the raw reader.
+- **The reader is also exercised on today's live tape**: 17 halts on 2026-09-22, each one message,
+  and genuine re-halts kept apart (CWD 3 pauses, GRML 2, ZJZZT 5) — the evidence #659 closed on.
+
+## #680 — a Perplexity outage is distinguishable from a real "no news" at every call site (2026-09-22)
+
+BAR: "VERIFY-LIVE =** after tomorrow's deploy, `NewsAnswer` is present in both running containers, a
+full nightly cycle shows **zero** `ep_corpus_missing_news_provider` rows on a clean day, and the EP
+scan's grade distribution is unchanged against tonight's." WOULD-FAIL-IF: "a row appears on a day
+with no `api_failure_perplexity`, or any EP grade moves on a clean day." DONE-WHEN (pre-registered):
+"one clean nightly cycle shows no diff and no phantom rows."
+
+EVIDENCE: read from prod 2026-09-22 after the full nightly cycle.
+
+- **`NewsAnswer` is in both running containers** — `class NewsAnswer(str)` grepped inside
+  `apollo-market` and `apollo-execution` after the 00:01/00:04 ET deploys, with the `empty_200` flag.
+- **Zero `ep_corpus_missing_news_provider` rows, and that zero is DISCRIMINATING, not an absence.**
+  Perplexity ran THROUGH THE NEW CODE **33 times** since the deploy — 26 `perplexity_news_search`
+  (07:00 → 17:09 ET) and 7 `perplexity_catalyst_validate` (07:00 → 09:50 ET, several inside the
+  ORB window) — with **0 `api_failure_perplexity`** and **0 `theme_news_api_err`**. So the branch
+  that must NOT write a degradation row when the provider answers was exercised live 33 times, and
+  wrote nothing. The WOULD-FAIL-IF arm "a row appears on a day with no `api_failure_perplexity`" is
+  directly refuted.
+- ⚠ **Clause 3, stated plainly: "the EP scan's grade distribution is unchanged against tonight's"
+  cannot discriminate as written.** Two days' grade distributions are two different candidate sets
+  (09-21: 147 routine / 78 strong; 09-22 differs because different names gapped), so the comparison
+  measures the tape, not the code. What establishes the clause's INTENT — that this change cannot
+  move a grade when the provider answers — is construction: `NewsAnswer` is a `str` subclass whose
+  VALUE is byte-identical to the old return on a successful answer, pinned by
+  `test_it_is_still_a_plain_string_to_every_existing_caller`, and the full suite (8,766, including
+  every EP grading test) is green on both python 3.14 and CI's 3.13.
+- ⚠ **WHAT IS NOT PROVEN LIVE: the TRUE branch** — that a real provider failure writes one L3 row
+  per affected ticker. No failure has landed since the deploy. That branch is proven by tests only
+  (`test_680_*`, 13 tests, including the two mutation-proven guards added the night it shipped: the
+  audit write is fire-and-forget so it can never stall the grading loop, and the call binds against
+  the REAL `log_audit_event` signature). **Its live check is handed to #679, which is event-gated on
+  the next provider failure anyway**, so it is not orphaned by this close.
