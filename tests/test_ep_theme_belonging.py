@@ -41,6 +41,8 @@ from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
 
 import numpy as np
+
+from tests._module_state import reset_all
 import pytest
 
 from agents.market_intelligence import ep_theme_belonging as etb
@@ -554,7 +556,16 @@ async def _scan_with_belonging(monkeypatch, *, toggle_on: bool, themes, verdict=
     from agents.market_intelligence import ep_detector
     from tests.test_624_lowcap_lane import ADMIT_TICKER, SESSION_DATE, _run_scan_once
     _, tape = _tape(comover=ADMIT_TICKER)
-    etb._reset_cache()
+    # #663: reset EVERY per-run module cache, not just this module's three. The two scans this
+    # harness runs share one process, and `ep_detector`'s dedupe/"seen" structures
+    # (`_tinycap_seen`, `_rt_fresh_seen`, `_repoll_shadow_state`, `_corp_action_set`) are
+    # first-call-does-X by design — so scan 1 could behave differently from scan 2 depending on
+    # what an EARLIER TEST left behind. The list is DERIVED by AST in `tests/_module_state.py`,
+    # never written down, so a cache added later is covered the day it lands.
+    # ⚠ This did NOT reproduce the 2026-09-14 flake — poisoning each of those four left the guard
+    # green (`scripts/probes/_663_poison_the_guard.py`). It closes the suspect class; it does not
+    # explain that event, and #663 stays open saying so.
+    reset_all()
     if seed is not None:
         etb._fit_day["date"], etb._fit_day["calls"] = SESSION_DATE, 1
         etb._fit_cache[(SESSION_DATE, ADMIT_TICKER, ("Grid",))] = seed
