@@ -1455,15 +1455,26 @@ async def _note_if_news_provider_failed(answer, ticker: str, where: str) -> bool
     """
     if not getattr(answer, "provider_failed", False):
         return False
+    _why = getattr(answer, "failure_reason", "unknown")
     logger.warning("%s: EP corpus built WITHOUT the news provider (%s) — grade rests on the "
-                   "remaining sources", ticker, getattr(answer, "failure_reason", "unknown"))
-    await log_audit_event(
-        "ep_corpus_missing_news_provider",
-        f"{ticker}: {where} — provider did not answer "
-        f"({getattr(answer, 'failure_reason', 'unknown')}); the EP grade for this name was "
-        f"formed without its news leg. Recording only — no grade was changed.",
-        severity="L3",
-    )
+                   "remaining sources", ticker, _why)
+    # ⚠ WRAPPED, AND THE KWARG IS GONE. The first draft passed `severity="L3"` — a parameter
+    # `log_audit_event` does not have (`event_type, summary, detail="", *, conn=None`). That is a
+    # TypeError on the FIRST REAL OUTAGE, raised from inside `_fetch_perplexity_answer`, inside
+    # the `gather(return_exceptions=True)` whose consumer re-raises the first exception — so a
+    # recording call would have aborted the whole enriched corpus. Precisely the failure this
+    # task's own design notes say a raising default would cause, reintroduced by the fix for it.
+    # The test hid it: the stub took `**kw` and swallowed the bad signature.
+    # The wrap stays regardless of the signature being right now — this module's rule is that a
+    # shadow/recording write can never break the grading path it observes.
+    try:
+        await log_audit_event(
+            "ep_corpus_missing_news_provider",
+            f"{ticker}: {where} — provider did not answer ({_why}); the EP grade for this name "
+            f"was formed without its news leg. Recording only — no grade was changed.",
+        )
+    except Exception:  # loud-ok: recording only — never cost a name its grade to log about it.
+        logger.exception("%s: could not record the missing news provider (recording only)", ticker)
     return True
 
 

@@ -180,8 +180,12 @@ async def test_the_EP_path_records_a_degraded_corpus_instead_of_losing_it(monkey
     from agents.market_intelligence import ep_detector
     rows: list = []
 
-    async def _cap(event, detail, **kw):
-        rows.append((event, detail))
+    # ⚠ THE STUB MIRRORS THE REAL SIGNATURE EXACTLY — no `**kw`. The first version of this test
+    # took `**kw` and therefore passed while the code under it called `log_audit_event(...,
+    # severity="L3")`, a parameter that does not exist. A permissive stub does not test a call,
+    # it hides one. The binding assertion below is the belt to this brace.
+    async def _cap(event_type, summary, detail="", *, conn=None):
+        rows.append((event_type, summary))
     monkeypatch.setattr(ep_detector, "log_audit_event", _cap)
 
     failed = await ep_detector._note_if_news_provider_failed(
@@ -192,3 +196,32 @@ async def test_the_EP_path_records_a_degraded_corpus_instead_of_losing_it(monkey
     ok = await ep_detector._note_if_news_provider_failed(
         NewsAnswer("a real catalyst"), "ARHS", "enriched corpus")
     assert ok is False and len(rows) == 1, "a healthy read wrote a phantom outage row"
+
+
+def test_the_audit_call_actually_matches_the_real_function():
+    """Bind the call against the REAL `log_audit_event` signature. A monkeypatched stub can only
+    ever prove the code matches the STUB — which is how `severity="L3"` survived a green test and
+    would have raised TypeError on the first genuine Perplexity outage, inside a gather whose
+    consumer re-raises, taking the whole enriched corpus with it."""
+    import inspect
+    from agents.market_intelligence.db import log_audit_event
+    sig = inspect.signature(log_audit_event)
+    assert "severity" not in sig.parameters, (
+        "log_audit_event gained a `severity` parameter — re-read the call in "
+        "`_note_if_news_provider_failed`, which was written once assuming it had one."
+    )
+    sig.bind("ep_corpus_missing_news_provider", "ARHS: enriched corpus — provider did not answer")
+
+
+@pytest.mark.asyncio
+async def test_a_failure_to_RECORD_never_costs_the_name_its_grade(monkeypatch):
+    """The wrap, exercised. A recording write that raises must be swallowed — the grading path it
+    observes cannot be the thing it breaks."""
+    from agents.market_intelligence import ep_detector
+
+    async def _explode(*a, **k):
+        raise RuntimeError("audit table is gone")
+    monkeypatch.setattr(ep_detector, "log_audit_event", _explode)
+    out = await ep_detector._note_if_news_provider_failed(
+        NewsAnswer(provider_failed=True, failure_reason="timeout"), "ARHS", "enriched corpus")
+    assert out is True, "a logging failure changed what the caller is told about the provider"

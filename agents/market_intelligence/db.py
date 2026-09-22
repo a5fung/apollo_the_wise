@@ -13969,7 +13969,16 @@ async def get_halt_transitions_between(start_date: Any, end_date: Any) -> dict[s
     **21,335 raw rows collapse to 468 real halts — a 45.6x overcount** across 172 tickers. The
     worst single halt is QQBF 2026-09-21, **1,266 feed messages for ONE 20,753-second halt**; the
     VRC case that prompted #659 (79 messages) is nowhere near the top. 9 of the 468 have no
-    resume row and report `resume_ts=None` rather than a guessed length.
+    resume row and report `resume_ts=None` rather than a guessed length. ⚠ That window is the
+    WHOLE table (2026-09-14 .. 2026-09-21) — quote it as a date range, never as "the last 30
+    days", which names a different population the moment the table outgrows it.
+
+    ⚠ HOW TO READ THOSE 9, and a known edge. A halt whose CODE changes without a resume between
+    (say `2` -> `P`) is recorded as two halts, the first carrying `resume_ts=None`. Whether that
+    is one halt or two is a judgement the tape does not settle, and splitting is the conservative
+    direction: it never merges two real halts and never invents a duration. So `resume_ts=None`
+    means "no resume row in this window" — a still-open halt OR a code change — and never "we
+    guessed".
 
     ⚠ ERA-SAFE BY CONSTRUCTION, which is why it collapses rather than trusting the writer. After
     #659 consecutive duplicates do not occur, so collapsing is a no-op; before it, collapsing is
