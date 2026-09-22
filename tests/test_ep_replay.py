@@ -760,3 +760,46 @@ def test_score_agreement_bucket_moves_with_the_shared_constant(monkeypatch):
     assert ep_replay_mod.score_agreement_bucket("2025-12-31") == "legacy(<01-01)"
     # the OLD boundary is now just an ordinary date under the new (moved) constant
     assert ep_replay_mod.score_agreement_bucket("2026-08-22") == "separation(>=01-01)"
+
+
+# ── #545 Phase 2 (2026-09-22): the stop_too_wide bypass ──────────────────────────────
+
+def test_bypass_stop_too_wide_walks_a_refused_campaign_default_does_not():
+    """MUTATION TARGET: the population this flag exists for is BY DEFINITION every
+    campaign validate_orb_entry refused for stop_too_wide (the 1.5xATR ORB-range gate) —
+    answering 'what would a different stop basis have done' requires walking PAST that
+    exact gate, since rs.stop_mode is only applied after it. Without the flag (default),
+    the refusal must still return no_trade unchanged — no existing caller's behaviour may
+    move. With the flag, the SAME inputs must actually walk (fill + settle), proving the
+    bypass line is live, not a no-op. atr_14=0.5 with orb_high=10.0/orb_low=9.0 (orb_range
+    1.0 > 1.5*0.5=0.75) is the exact SETUP_STOP_TOO_WIDE shape the fixture's
+    _real_orb_validation monkeypatch reproduces."""
+    bars = [_bar("09:30", 9.5, 10.0, 9.0, 9.8)] + _flat_window(o=10.2, h=10.3, l=8.5, c=8.6)
+    # default: gate still refuses, exactly as every existing caller relies on
+    res_default = _walk(bars, atr_14=0.5)
+    assert res_default["status"] == "no_trade"
+    assert res_default["reason"].startswith("setup:stop_too_wide")
+    assert res_default["gate_skip"] == res_default["reason"]  # gate_skip echoes it either way
+    # bypass=True: the SAME inputs now walk past the gate and settle a real leg
+    res_bypass = _walk(bars, atr_14=0.5, bypass_stop_too_wide=True)
+    assert res_bypass["status"] != "no_trade"
+    assert res_bypass["entered"] is True
+    # the ORIGINAL gate verdict is still recorded, transparently, even though bypassed
+    assert res_bypass["gate_skip"] is not None
+    assert res_bypass["gate_skip"].startswith("setup:stop_too_wide")
+
+
+def test_bypass_stop_too_wide_never_bypasses_zero_range():
+    """MUTATION TARGET: the flag is scoped to ONE reason (SETUP_STOP_TOO_WIDE) — a
+    zero-range ORB (orb_high == orb_low) is a data problem, not a policy question the
+    stop-basis sweep is meant to answer, and must still refuse even with the flag set. A
+    mutation that bypasses on `not ok` alone (any refusal) rather than checking the reason
+    text would let this walk — asserted against directly."""
+    bars = [_bar("09:30", 10.0, 10.0, 10.0, 10.0)] + _flat_window()
+    minutes = {("T", DAY): bars}
+    res = walk_campaign(ticker="T", alert_date=DAY, rs=RULESETS["era_c"], minutes=minutes,
+                        daily={"T": {}}, orb_high=10.0, orb_low=10.0,
+                        bypass_stop_too_wide=True)
+    assert res["status"] == "no_trade"
+    assert res["reason"] == "setup:zero_range"
+    assert res["gate_skip"] == "setup:zero_range"

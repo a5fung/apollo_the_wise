@@ -79,6 +79,7 @@ sys.path.insert(0, str(REPO))
 
 from shared.dates import _ET as _SHARED_ET  # noqa: E402
 from agents.market_intelligence.backtester.filters import validate_orb_entry  # noqa: E402
+from agents.market_intelligence.broker.skip_reasons import SETUP_STOP_TOO_WIDE  # noqa: E402
 from agents.market_intelligence.broker.exit_logic import (  # noqa: E402
     apply_daily_exit_step,
     seed_exit_state,
@@ -580,7 +581,8 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
                   orb_high: float | None = None, orb_low: float | None = None,
                   atr_14: float | None = None,
                   shares: float | None = None, integer_shares: bool = False,
-                  minutes_extra: dict | None = None) -> dict:
+                  minutes_extra: dict | None = None,
+                  bypass_stop_too_wide: bool = False) -> dict:
     """Replay one (ticker, alert day) campaign under rule-set `rs`, entry to final exit.
     ORB comes from the stored trade row when given (a stored fact of the day), else from
     the 9:30 minute bar. `shares=None` -> normalized fractional sizing (1 risk unit).
@@ -589,7 +591,18 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
     Phase 3 (2026-09-03): the walk after a fill lives in `_walk_leg` so an attempt-2 leg
     (rs.attempts == 2, rs.reentry_signal) runs through the SAME fill/stop/target/ladder
     mechanics as the first attempt — each attempt is its own 1-risk-unit leg, and the
-    campaign's R is the SUM of its legs (the per-name accounting Axis 5 requires)."""
+    campaign's R is the SUM of its legs (the per-name accounting Axis 5 requires).
+
+    #545 Phase 2 (2026-09-22): `bypass_stop_too_wide` — the population this flag exists for
+    is, BY DEFINITION, every campaign `validate_orb_entry` refused for `SETUP_STOP_TOO_WIDE`
+    (the 1.5xATR ORB-range gate). Answering "what would this trade have done under a
+    DIFFERENT stop basis" requires walking past that exact gate — `rs.stop_mode` is applied
+    AFTER this check, so no stop-basis choice can ever change its verdict without a bypass.
+    SCOPED to that one reason only: a zero-range ORB (`SETUP_ZERO_RANGE`, a data problem, not
+    a policy question) or any other gate still returns `no_trade` even with the flag set.
+    NEVER silent — `out["gate_skip"]` carries the ORIGINAL verdict (None if the gate would
+    have passed anyway) on every row, bypassed or not, so a reader can always see what the
+    live gate said."""
     out = {"ticker": ticker, "alert_date": alert_date, "ruleset": rs.name,
            "status": None, "reason": None, "entered": False, "entry_px": None,
            "stop": None, "target": None, "exits": [], "realized_pnl_per_unit": None,
@@ -601,7 +614,9 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
            "mark_r": None, "attempts_fired": 0, "leg2_status": None, "leg2_reason": None,
            "leg2_r": None, "leg2_pnl_adr": None, "campaign_r": None,
            # Phase 1 harvest-hole column (second partial rung)
-           "partial2_fired": False}
+           "partial2_fired": False,
+           # Phase 2 population-gap column (stop_too_wide bypass)
+           "gate_skip": None}
     bars0 = minutes.get((ticker, alert_date), [])
     if orb_high is None or orb_low is None:
         orb = next((b for b in bars0 if b["m"].time() == time(9, 30)), None)
@@ -610,7 +625,9 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
             return out
         orb_high, orb_low = orb["h"], orb["l"]
     ok, skip = validate_orb_entry(orb_high, orb_low, atr_14)
-    if not ok:
+    out["gate_skip"] = skip
+    bypassable = bypass_stop_too_wide and not ok and skip is not None and skip.startswith(SETUP_STOP_TOO_WIDE)
+    if not ok and not bypassable:
         out.update(status="no_trade", reason=skip)
         return out
     dbars = daily.get(ticker, {})
