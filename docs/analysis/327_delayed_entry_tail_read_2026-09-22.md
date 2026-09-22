@@ -76,3 +76,38 @@ The task's DoD ends *"→ then his call on whether any pattern graduates."*
 as the passive observer it is (it costs nothing and writes no trade state), and hand the stop-width
 finding to #545 as an input — because the measured defect is stop placement, which is #545's
 subject, not entry timing, which is this lane's.
+
+---
+
+## ⛔ RETRACTION, same day — the stop-widening ladder I quoted from `mfe_r`/`mae_r`
+
+After this read I reported that widening the stop rescues the lane: *"k=2.0 → 2,413 of 2,980
+survive, mean +0.114 to +0.195"*, computed analytically from the stored excursion columns on the
+grounds that widening by k scales R by k. **That is invalid and is withdrawn.**
+
+`delayed_entry_shadow.compute_settlement` walks sessions and does
+`if lo <= stop: _stop_both(i); marks[i] = c; break` — **`mfe_r` and `mae_r` stop accumulating the
+moment the incumbent stop is touched.** No session after it is ever walked, so "survives a wider
+stop" frequently means "was never given the chance to fail".
+
+| row | what it ACTUALLY returned (`r_none_s20`) | what the ladder scored it at k=1.5 |
+|---|---:|---:|
+| FNGR `ep_low_reclaim` 2026-08-26 | **−1.00R** | **+25.81R** |
+| CYAB `ep_close_reclaim` 2026-08-26 | **−1.00R** | +22.56R |
+| CYAB `ep_close_620_prox` 2026-08-26 | **−1.00R** | +13.72R |
+| RITR `ep_close_620_prox` 2026-09-02 | **−1.00R** | +11.87R |
+
+**1,443 of 2,980 rows — 48% — are flipped from a −1.00R loss to a positive by that arithmetic.**
+
+⚠ **The naive version of this correction is also wrong, so state it precisely:** `mae_r` is NOT
+clipped at −1R. The stop SESSION's full low is recorded, and 567 rows do reach −2R (worst −17.92).
+What is missing is every session AFTER the stop session. So the ladder overstates survival without
+being a simple clip, and **it cannot be repaired by filtering — a wider stop needs the bars
+re-walked.**
+
+**Nothing else in this document depends on it.** Every number above comes from recorded
+`r_trail_s20` / `r_none_s20` outcomes, not from the excursion columns. In particular the decisive
+finding is untouched: `r_none_s20` is −1.00R with ZERO positives across all 2,980 rows.
+
+The re-walk is scoped as **Block 5** in `docs/roadmap/fable-weekend-blocks.md` (Saturday
+2026-09-26). [[verify-before-reporting-to-the-operator]]

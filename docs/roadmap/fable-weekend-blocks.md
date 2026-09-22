@@ -260,3 +260,152 @@ with evidence gates.
 > (b) ONE un-encoded rule extracted: **Pradeep's 39%/39%/39% explosive-growth bar** → free
 > boolean+crosstab on the #448 7/16 session; separates → 0028 `pradeep_explosive` feature;
 > doesn't → checked-and-refuted. SiP-conflation grep rides the next SiP card.
+
+---
+
+## Block 5 — THE DELAYED-ENTRY EXIT DAY (Saturday 2026-09-26)
+
+**Trigger:** `run fable weekend block 5`. Scoped 2026-09-22 from four independently-designed day
+plans, judged on three criteria (one-day fit · ends in a decision · prevents the known traps).
+Base plan: *cheapest-first* (won fit and decision). Trap-prevention grafted from *pre-mortem*
+(won that criterion). Three judge-named flaws in the base plan are fixed below.
+
+### The question — one, and it must be able to come back NO
+
+**Is there any stop × target × exit combination under which one of the four delayed-entry patterns
+pays — beyond what buying the same names on a random session in the same window would have paid?**
+
+### What 2026-09-22 established, and the one thing it got wrong
+
+✅ **STANDS — the decisive fact, directly recorded, not derived.** `r_none_s20` is **−1.00R with
+ZERO positives across all 2,980 settled fires, in every one of the four patterns.** Absent a
+target, every fire eventually reaches its stop. All four patterns are negative (−0.581R to
+−0.635R, −1,797R pooled); 30 of 2,980 reach 3R (**1.01%** against a 13% healthy reference); and
+raising the stop-width floor collapses that to 0.24%, so the tail is largely a tight-stop artifact.
+
+⛔ **RETRACTED — the k-ladder. Do not cite it; it is in the session log and nowhere else.** On
+2026-09-22 I reported that widening the stop rescues the lane: *"k=2.0 → 2,413 of 2,980 survive,
+mean +0.114 to +0.195"*. **That was computed from stored `mfe_r`/`mae_r`, and those stop
+accumulating the moment the incumbent stop is touched** —
+`delayed_entry_shadow.compute_settlement` does `if lo <= stop: _stop_both(i); marks[i]=c; break`.
+A row is never walked past its stop session, so "survives a wider stop" was often "was never given
+the chance to fail".
+
+| the row | what it ACTUALLY returned | what my ladder scored it at k=1.5 |
+|---|---:|---:|
+| FNGR `ep_low_reclaim` 2026-08-26 | **−1.00R** | **+25.81R** |
+| CYAB `ep_close_reclaim` 2026-08-26 | **−1.00R** | +22.56R |
+| RITR `ep_close_620_prox` 2026-09-02 | **−1.00R** | +11.87R |
+
+**1,443 of 2,980 rows — 48% — are flipped from a −1.00R loss to a positive by that arithmetic.**
+⚠ Note the subtlety, because the naive version of this correction is also wrong: `mae_r` is NOT
+clipped at −1R (567 rows reach −2R, worst −17.92) — the stop SESSION's full low is recorded. What
+is missing is every session AFTER it. So the ladder overstates survival without being a simple
+clip, and it cannot be repaired by filtering. **A wider stop requires the bars re-walked. That is
+what this day is for.**
+
+### The data position (measured 2026-09-22, do not re-derive)
+
+| | |
+|---|---|
+| fires / names / window | 3,652 / 697 / 2026-08-25 → 09-21; 115 excluded by `stop_width_pct < 0.5` |
+| settled at 20 sessions | 2,980 of 3,537 (84%); `mfe_r`/`mae_r` NULL on all 557 unsettled |
+| `mi_daily_closes` | **all 690 names** — a daily-grain path-ordered re-walk is free |
+| `mi_intraday_bars` | only **250 of 2,171** (ticker, fire_date) pairs; a full minute walk of the exit path is ~43,420 ticker-days |
+| outcome-conditioned? | **No** — every EP name is watched, unlike the 2026-08-30 Stage-2 study |
+
+### The phases — each ends in a number, each can stop the day
+
+**P0 — capture once, and count the bars before trusting any walk (0.75h, main loop, $0).**
+One prod extract to files: all 3,652 trigger rows with every column, the watch rows, and daily
+OHLC for all 690 names 2026-08-01 → 09-25. Then the number nobody has: **per fire, how many of its
+20 sessions carry a COMPLETE OHLC row.** `compute_settlement` ABSTAINS on any missing bar, so a
+hole silently drops a row from a cell rather than failing it.
+- **PASS BAR:** ≥90% of settled fires complete through session 10 and ≥80% through session 20, with
+  the per-session abstain rate written down BEFORE any grid runs. At 70–90% at s10 the primary
+  checkpoint moves to s5 — decided here, from the table, never after seeing a result.
+- **KILLS THE DAY:** completeness at s10 below 70% → daily grain cannot do this; the day stops and
+  the deliverable becomes a scoped bar-fetch proposal.
+- ⚠ **FIX GRAFTED FROM THE JUDGES:** also tier the **day-0 minute hole** here, not inside a later
+  Fable card — count how many fires have no day-0 minute bars and would fall to daily pseudo-bars.
+
+**P1 — prove the walker reproduces production before believing anything it says (1h, Sonnet, $0).**
+Wire the probe to the REAL `compute_settlement` (never re-implement it) and reproduce the
+already-recorded outcomes row-for-row.
+- **PASS BAR:** ≥99% exact match on recorded `outcome`, and ≥99% of recorded `realized_r` within
+  0.001R, on a sample of ≥500 settled rows.
+- **KILLS THE DAY:** the probe cannot reproduce production's own settlements → the replay is
+  untrustworthy, no grid runs, and the finding IS the wiring defect.
+
+**P2 — is there an ENTRY at all? ADR-normalised, against a matched control (1.5h, Fable, $0).**
+Rank entries in a unit the stop cannot contaminate: **ADR dollars, not R.** For every fire, walk
+the forward daily path from `entry_price` and measure whether it reaches +2×ADR$ **before** −1×ADR$
+at s5/s10/s20. **CONTROL: every non-fire session inside the same (ticker, 20-session watch
+window)**, entered at that session's close — so regime over 08-25 → 09-21 is held fixed and a
+positive cell later cannot be drift wearing a pattern's name. Sessions where both levels sit inside
+one daily range are counted under BOTH bounds.
+- **PASS BAR:** a pattern has entry edge only if its +2ADR-before-−1ADR rate at s10 exceeds the
+  matched control's by **≥5 percentage points under the PESSIMISTIC bound**, holds after dropping
+  the single best-contributing **NAME** (not fire — fires per name overlap), on n≥150 fires
+  spanning ≥60 distinct names.
+- **KILLS THE DAY:** all four within ±2pp of control on both bounds → the lane has no entry edge,
+  no stop or target can manufacture one, and this is a SELECTION problem. P3 runs only to confirm
+  the null and the day's answer is NO.
+
+**P3 — the stop × target × exit grid, path-ordered, daily grain (2.5h, Fable, $0).**
+One walk per (row, stop) capturing the per-session high/low/close path, then apply every target and
+exit over the captured path — **~7 × 2,980 = 20,860 walks, not 245 × 2,980**, so the whole grid
+re-runs in ~2 minutes after a bug. Stops: incumbent + {0.25, 0.5, 0.75, 1.0, 1.5}×ADR$ + prior
+session low (7). Targets: {none, 1R, 2R, 3R, 1×ADR, 2×ADR, 3×ADR} (7). Exits: {none, trail SMA10,
+trail SMA20, time s3, time s5, time s10} (6). The only code change is an **inert-by-default**
+`target_r` parameter on `compute_settlement`, with the existing tests byte-identical before and
+after plus a mutation proof. The lane never sets it. **Nothing is deployed.**
+- **PASS BAR — a cell is a CANDIDATE only if ALL hold at s10:** mean R > 0 · ≥3R rate ≥3.0% (3× the
+  incumbent's measured 1.01%) · positive on BOTH time halves · positive on ≥3 of the 4 patterns ·
+  survives drop-best-NAME · n≥300 after the width floor re-applied **in that cell's own stop units**.
+- **AND THE COUNT IS ITSELF REPORTED AGAINST 294 DRAWS:** 1–3 cells clearing is stated as consistent
+  with noise and is **NOT a finding**; ≥25 clearing is a family.
+- **KILLS IT:** zero cells clear, or every clearing cell loses its edge once the width floor is
+  applied in its own units — the tail was the near-zero-stop artifact again, and the answer routes
+  to selection, not exits.
+- ⚠ **TWO FIXES GRAFTED FROM THE JUDGES.** (1) **Define the population by SESSIONS ELAPSED, a
+  clock — never by settlement STATUS, an outcome.** Walking "the 2,980 settled" is survivorship:
+  rows are unsettled precisely because they have not stopped. (2) **The both-time-halves leg is
+  thin by construction and must say so** — s10 is complete only for fires ≤09-11, so the second
+  half contributes four fire dates. Report the leg with its n, or drop it and say why.
+
+**P4 — the straddle audit: does daily grain actually decide this? (1h, Sonnet, $0).**
+For every cell that clears P3, count the sessions where the stop and the target both sit inside one
+daily range — daily grain cannot order those.
+- **PASS BAR:** a clearing cell survives only if it still clears when **every** straddle session is
+  resolved pessimistically (stop first). If it does not, the cell is **undecided at daily grain**,
+  and P4 outputs a **counted, priced, scoped minute-bar fetch** — exact (ticker, session) pairs,
+  wall-clock estimate, $0 — as a go/no-go for him. Never "more data needed" without that packet.
+
+**P5 — the write-up (0.75h, main loop).** `docs/analysis/327_exit_determination_2026-09-26.md`,
+carrying Method/population and What-this-does-not-answer, tail-first throughout.
+
+**Total 7.5h, one Fable card at a time, never two in one tree.**
+
+### The fork for him at the end — stated neutrally, never pre-decided
+
+One of exactly three, and which one is determined by the pass bars above, not by preference:
+1. **A pattern graduates** to shadow-with-a-real-exit — he picks the stop/target from the grid,
+   under CHANGE_PROCESS + sign-off.
+2. **The lane is instrumented wrong** — here is the capture to add so the next 20 sessions answer
+   it properly (a passive shadow costs nothing to widen).
+3. **Delayed entry is dead on this population** — here is what would revive the question.
+
+🛑 **THE LINE: the day produces grids, measured tails and this fork. It never picks the stop.**
+
+### Traps this day is built to prevent, not merely warn about
+
+| trap | the structural prevention |
+|---|---|
+| the ceiling quoted as a backtest | the k-ladder is RETRACTED above; P3 walks real paths, and no ceiling number appears in the deliverable |
+| R silently changing meaning when the stop widens | P2 ranks entries in **ADR dollars**, a unit the stop cannot touch |
+| survivorship in the unsettled 16% | population defined by **sessions elapsed**, never by settled status |
+| four instruments pooled as one | every pass bar requires ≥3 of 4 patterns positive, reported per pattern |
+| an exit that "works" by never triggering | n≥300 per cell after the width floor, in that cell's own stop units |
+| regime concentration (a one-month window) | the matched same-window control in P2; both-time-halves leg in P3, reported with its n |
+| 294 cells, so something clears by luck | the clearing COUNT is judged against the number of draws before any cell is named |
