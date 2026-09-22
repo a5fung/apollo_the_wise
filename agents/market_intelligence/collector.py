@@ -1762,6 +1762,14 @@ async def search_news_perplexity(
                     # to say.
                     from agents.market_intelligence.llm_health import alert_perplexity_empty_answer
                     await alert_perplexity_empty_answer()
+                    # #680 (2026-09-21, review): this branch's OWN comment says a true "" is the
+                    # response shape breaking — and it ALERTS on that — so returning it with
+                    # `provider_failed=False` contradicted the code three lines above. It is the
+                    # outage class the flag most needs to carry: a vendor changing its response
+                    # shape produces no exception at all, so every other signal stays silent.
+                    # The VALUE is unchanged ("" — fail-open exactly as before); only what we
+                    # know about it changes. Sibling case `undecodable_200` was already flagged.
+                    return NewsAnswer(provider_failed=True, failure_reason="empty_200")
                 return NewsAnswer(_answer)
         except Exception as e:
             # Duck-typed timeout check (matches classify_api_failure): every

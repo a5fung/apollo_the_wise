@@ -302,3 +302,31 @@ async def test_a_failure_to_RECORD_never_costs_the_name_its_grade(monkeypatch):
         NewsAnswer(provider_failed=True, failure_reason="timeout"), "ARHS", "enriched corpus")
     assert out is True, "a logging failure changed what the caller is told about the provider"
     await _drain()  # and the raised exception must not escape the background task either
+
+
+@pytest.mark.asyncio
+async def test_a_200_with_no_extractable_text_is_a_FAILURE_not_a_no_news_finding(monkeypatch):
+    """A vendor changing its response shape raises NO exception — the HTTP call succeeds and the
+    body simply yields nothing. Every other signal stays silent, so this is the outage class the
+    flag most needs to carry. The function already ALERTS here and its own comment calls it "the
+    response shape breaking"; it was still returning provider_failed=False.
+
+    ⚠ The distinction that keeps this honest: a genuine "no information found" comes back as HEDGE
+    TEXT, never as a blank — so this cannot swallow a real negative finding."""
+    class _Blank:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return {"status": "completed", "output": [], "usage": {}}
+
+    import agents.market_intelligence.llm_health as llm_health
+    monkeypatch.setattr(llm_health, "alert_perplexity_empty_answer",
+                        lambda *a, **k: _noop(), raising=False)
+
+    async def _noop(): return None
+    _install(monkeypatch, [_Blank()])
+    out = await collector.search_news_perplexity("why did X gap", fresh=True)
+    assert out == "", "the fail-open VALUE changed — only the flag was supposed to move"
+    assert out.provider_failed is True, (
+        "a 200 whose body yields nothing is still recorded as the factual verdict 'no news'"
+    )
+    assert out.failure_reason == "empty_200"

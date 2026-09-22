@@ -156,6 +156,29 @@ def _classify_value(node: ast.AST) -> dict | None:
                 return {"kind": "env", "env_var": var, "cast": "bool",
                         "value": str(default_s).lower() == "true"}
 
+    # bool env, the SHARED reader:  env_is_true("V", default=True) / env_flag_on("V")
+    #
+    # ⚠ ADDED 2026-09-21, AND THE REASON IS THE POINT. The #681 migration replaced ~30
+    # `os.environ.get(V,"false").lower()=="true"` expressions with `env_is_true(V, default=...)`,
+    # which matches no branch above — so NINE boolean flags, including LIVE_TRADING_ENABLED,
+    # ENABLE_LIVE_MODE and REGIME_SIZING_ENABLED, silently vanished from the fact index this
+    # whole tool is built on. `_identifier_states` drops a missing fact with `continue`, and the
+    # PRODUCTION nightly drift job builds its prod-env snapshot from the same index — so the
+    # observer written after the 2026-08-23 stale-doc incident went blind to the kill switch and
+    # to regime sizing, and `--drift-only` kept printing the identical "0 finding(s)" line a
+    # working checker prints. A non-discriminating green is why it passed the session-open check.
+    # `--selftest` case 2 is the replay of that incident and regressed PASS -> FAIL; it is the
+    # check that confirms this branch works.
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id in ("env_is_true", "env_flag_on")
+            and node.args and isinstance(node.args[0], ast.Constant)):
+        default_v = False
+        for kw in node.keywords:
+            if kw.arg == "default" and isinstance(kw.value, ast.Constant):
+                default_v = bool(kw.value.value)
+        return {"kind": "env", "env_var": str(node.args[0].value), "cast": "bool",
+                "value": default_v}
+
     # cast env:  float(os.environ.get("V", d)) / int(...)
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("float", "int"):
         parts = _env_call_parts(node.args[0]) if node.args else None
