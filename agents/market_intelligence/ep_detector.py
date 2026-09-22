@@ -1557,7 +1557,14 @@ Respond with ONLY the classification word."""
     # assumed: 38 catalyst validations ran inside 09:30-09:45 over the 60 days to 2026-09-21,
     # so this is a real population. In-window we take ONE attempt and fail to None (UNAVAILABLE)
     # — byte-identical to the behaviour before #679. The 429 that motivated #679 landed 08:15 ET,
-    # pre-market, where the retry still runs; the window this drops it in has never seen one.
+    # pre-market, where the retry still runs.
+    #
+    # ⚠ AND THE WINDOW REALLY DOES TAKE 429s — an earlier draft of this comment claimed it had
+    # never seen one, and prod says otherwise. `mi_audit_log` for 2026-09-21 holds THREE
+    # `api_failure_perplexity` rows on the catalyst path: 08:15:18, 09:25:11 and **09:40:20 ET**.
+    # The last is inside 9:30-9:45. No stall resulted, only because #679's retry did not deploy
+    # until 12:02 that day — so the very first in-window 429 after it shipped would have been the
+    # one that stalled the grading loop. This guard is not insurance against a hypothetical.
     from agents.market_intelligence.collector import _ET
     _attempts = (1,) if _in_orb_cutoff(datetime.now(_ET)) else (1, 2)
     for _attempt in _attempts:

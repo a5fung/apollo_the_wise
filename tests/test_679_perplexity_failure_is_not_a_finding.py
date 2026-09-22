@@ -257,6 +257,11 @@ def test_an_unparseable_body_costs_the_operator_nothing():
 # "a few x 4s serially could push the scan past 9:45 -> WINDOW_OUT_OF_ORB on the GOOD names
 # that needed to submit." MEASURED: 38 catalyst validations ran inside that window over the
 # 60 days to 2026-09-21, so it is a real population, not a hypothetical one.
+#
+# ⚠ STRONGER THAN THAT, from prod on the night of the deploy: of the THREE Perplexity 429s the
+# catalyst path took on 2026-09-21 (08:15:18, 09:25:11, 09:40:20 ET), one landed INSIDE 9:30-9:45.
+# It cost nothing only because the retry did not ship until 12:02 that day — the first in-window
+# 429 after it would have been the one that stalled the grading loop.
 
 
 @pytest.mark.asyncio

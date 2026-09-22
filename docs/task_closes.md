@@ -1276,3 +1276,44 @@ Specialty P&C Insurance Underwriters Rotation Reversal  17 → 16   ['SAFT']
 - **The engine did not crash:** total themes 132 (09-17) → 124 (09-18) → **120 (09-21)**, a comparable run.
 ⚠ **THE THEME I NAMED DID NOT SURVIVE, AND THAT IS THE STRIP WORKING, NOT FAILING.** Stripped to one member it falls below the member floor and does not persist — so `mi_themes` on 09-21 holds no Consulting row at 1 member. I had written "a row carrying 1 member `{HURN}`" as the success case and "the theme vanishes entirely" as the FAILURE case; they are the same observation. The audit row is what separates them, and it was there the whole time.
 ⚠ **TWO CONDITIONS BEFORE THIS ONE COULD NOT BE MET, both defects in the condition rather than the code.** The first named Friday 2026-09-18's run, which predates the Saturday 09-19 ship — unfalsifiable in the wrong direction. The second is the 1-member case above. Recorded because the class recurred three times today (#610, #672, this).
+
+## #681 — the kill switch and paper-vs-live routing each had one reader, and it is the shared one (2026-09-21)
+
+BAR: "**DoD:** after the deploy, the boot audit event reports the same account mode and live-trading
+state as tonight's, and `mi_safeguard_state`/preflight read identically. **WOULD-FAIL-IF:** the boot
+log's mode label or live-trading flag differs from tonight's in either container."
+
+EVIDENCE: **the boot audit event, before and after tonight's deploy, is identical.**
+
+| when | event | value |
+|---|---|---|
+| 09-21 21:20 ET (BEFORE, prod `d5977497`) | `account_mode_active` | `mode=paper equity=$89,846.04` |
+| 09-22 00:04 ET (AFTER, prod `f206d71c`) | `account_mode_active` | `mode=paper equity=$89,846.04` |
+| 09-21 21:20 ET (BEFORE) | `dual_account_boot_verified` | `modes=['paper', 'live']` |
+| 09-22 00:04 ET (AFTER) | `dual_account_boot_verified` | `modes=['paper', 'live']` |
+
+Read from inside `apollo-market` against the deployed code, every flag now resolved through the one
+shared reader: `LIVE_TRADING_ENABLED=True` (env `'true'`), `ENABLE_LIVE_MODE=True` (env `'true'`),
+`current_account_mode()='paper'` (`ALPACA_PAPER='true'`), `REGIME_SIZING_ENABLED=True`. Both
+containers carry `def env_is_true` in `shared/env_flags.py` and
+`LIVE_TRADING_ENABLED = env_is_true(...)` in `constants.py`. The full preflight chain passed on both
+deploy steps, including the account-mode-literal check (24 annotated book-pins, 0 unannotated).
+
+WHAT IT FIXED: `LIVE_TRADING_ENABLED` was parsed by its own expression in `constants.py`, `agent.py`
+and `preflight_replace_order_smoke.py`; `ALPACA_PAPER` in `constants.py` and `broker/bar_stream.py`.
+The master trading switch and the choice of which account an order goes to, each with readers nothing
+kept in agreement. An AST scan (derived, not grepped) found 41 hand-rolled parses and a third private
+copy of the truthy set in `theme_merge_arm`; 41 → 9, and all 9 remaining are genuinely enum-valued.
+
+⚠ THE EXPECTED FORK DID NOT EXIST, AND THAT WAS THE POINT. `env_flag_on` accepts `{1,true,yes,on}`
+where every one of these sites accepted `"true"` alone, so migrating onto it would have WIDENED what
+turns real trading on. `env_is_true` replicates the old expression exactly — an EMPTY variable is OFF
+even where the default is True (which is what decides whether an empty `ALPACA_PAPER` routes to paper
+or LIVE), and whitespace is not stripped. 18 tests including a parametrised byte-for-byte comparison
+against the original expression at every edge.
+
+⚠ THE REVIEW CAUGHT WHAT THE MIGRATION BROKE ELSEWHERE, and it was not the money path: the new AST
+shape was invisible to `live_rules._classify_value`, so nine flags — the kill switch among them —
+silently left the drift checker's fact index while `--drift-only` kept printing "0 findings". Fixed
+in the same deploy (`f206d71c`) and gated offline by named members in
+`tests/test_drift_check_can_still_see_the_money_flags.py`.
