@@ -1422,3 +1422,46 @@ a quiet one"* — is directly refuted.
   indistinguishable from an ordinary day.
 So nothing is handed to him: re-running would mutate prod state to recreate rows that should not
 exist. [[verify-before-asking-him-to-act]]
+
+## #659 — the halt table records halts now, not the feed's heartbeat (2026-09-22)
+
+BAR: "DoD: a security halted for N minutes produces ONE row (plus a resume row when the status
+changes), and a test drives the handler with a repeated identical status and asserts a single
+write." WOULD-FAIL-IF: "the same halt still writes a row per feed message after the fix."
+
+EVIDENCE: the first market day under the fix (deployed 2026-09-21 21:15 ET), read from prod at
+10:15 ET on 2026-09-22 through the deployed `get_halt_transitions_between`:
+
+| ET day | real halts | **messages for the single worst halt** | total rows |
+|---|---:|---:|---:|
+| **2026-09-22 — AFTER** | 17 | **1** | **17** |
+| 2026-09-21 | 38 | 1,266 | 4,189 |
+| 2026-09-18 | 90 | 1,143 | 1,511 |
+| 2026-09-17 | 66 | 1,085 | 1,330 |
+| 2026-09-16 | 141 | 1,087 | 1,469 |
+| 2026-09-15 | 92 | 1,087 | 12,077 |
+
+**Seventeen halts, seventeen rows.** Every prior day has a single halt writing 1,085–1,266 feed
+messages. The WOULD-FAIL-IF is directly refuted, and not by an absence: these are real halts that
+happened, counted.
+
+**THE DoD'S OWN SHAPE, name by name.** `FLNA` was halted at 07:55:00 ET (`H`, Trading Halt),
+quotation-resumed 08:25:00 (`Q`) and trading-resumed 08:30:00 (`T`) — **a 30-minute halt that wrote
+exactly ONE halt row plus its resume rows.** That is the bar verbatim.
+
+🔑 **AND THE OTHER DIRECTION IS PROVEN TOO, which matters more than the collapse.** A dedupe that
+merged genuine re-halts would be a worse bug than the one it fixed. It does not: **ZJZZT took 5
+separate LULD volatility pauses today, CWD 3, GRML 2, ZXZZT 2 — each pause is its own `P` row with
+its own `T` resume, every one kept apart** (CWD 09:43:50 P → 09:48:50 T → 09:49:19 P → 09:54:19 T →
+10:02:56 P → 10:07:56 T). Suppression happens only on a repeated IDENTICAL status, which is the
+transition rule the fix implements.
+
+⚠ NOT CLAIMED, because an earlier reading of mine would have been wrong: a pre-market-only snapshot
+taken at 09:05 showed "max 1 message per (ticker, code, day)" — that was BEFORE the open and is
+both stale and the wrong unit, since a name can legitimately be paused several times in a day. The
+honest unit is messages per HALT EPISODE, which is what the table above reports.
+
+THE TEST HALF: `tests/test_659_halt_writer_counts_halts_not_heartbeats.py`, 6 tests green — drives
+the handler with a repeated identical status and asserts a single write.
+
+⚖ Shadow writer only: no money path, no detection criterion, no consolidation-guard change.
