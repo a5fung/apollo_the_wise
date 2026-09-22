@@ -23,6 +23,7 @@ question can be answered from data later. [[no-rules-without-measured-harm]]
 from __future__ import annotations
 
 import ast
+import asyncio
 from pathlib import Path
 
 import httpx
@@ -190,11 +191,14 @@ async def test_the_EP_path_records_a_degraded_corpus_instead_of_losing_it(monkey
 
     failed = await ep_detector._note_if_news_provider_failed(
         NewsAnswer(provider_failed=True, failure_reason="timeout"), "ARHS", "enriched corpus")
-    assert failed is True and len(rows) == 1
+    assert failed is True
+    await _drain()                                    # the write is fire-and-forget by design
+    assert len(rows) == 1
     assert rows[0][0] == "ep_corpus_missing_news_provider" and "ARHS" in rows[0][1]
 
     ok = await ep_detector._note_if_news_provider_failed(
         NewsAnswer("a real catalyst"), "ARHS", "enriched corpus")
+    await _drain()
     assert ok is False and len(rows) == 1, "a healthy read wrote a phantom outage row"
 
 
@@ -213,6 +217,78 @@ def test_the_audit_call_actually_matches_the_real_function():
     sig.bind("ep_corpus_missing_news_provider", "ARHS: enriched corpus — provider did not answer")
 
 
+async def _drain() -> None:
+    """Let the fire-and-forget audit task run. The write is deliberately NOT awaited by the
+    caller, so a test that asserts on it has to await the task itself.
+
+    ⚠ NOT via `asyncio.sleep(0)`. The autouse fixture above replaces `collector.asyncio.sleep` —
+    and `collector.asyncio` IS the one `asyncio` module object, so that patch neuters
+    `asyncio.sleep` for the WHOLE PROCESS, this file's own calls included. Anything here that
+    leans on sleep semantics is testing the stub."""
+    from agents.market_intelligence import ep_detector
+    if ep_detector._PENDING_PROVIDER_NOTES:
+        await asyncio.gather(*list(ep_detector._PENDING_PROVIDER_NOTES),
+                             return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_the_audit_write_is_NEVER_awaited_on_the_grading_path(monkeypatch):
+    """⚠ THE REGRESSION THIS ALMOST SHIPPED. Both callers sit inside the sequential
+    `for c in candidates[:SHORTLIST_SIZE]` grading loop, and `log_audit_event` is timeout-bounded
+    at 5s (#621). Awaiting it meant a Perplexity outage during 9:30-9:45 ET cost up to 5s PER
+    SHORTLISTED NAME — with SHORTLIST_SIZE=20, worse than the 22.5s retry regression fixed hours
+    earlier the same night, and added by the fix for it.
+
+    Exercised by making the write HANG: the caller must still return immediately. Re-await the
+    write inside `_note_if_news_provider_failed` and this deadlocks the test."""
+    from agents.market_intelligence import ep_detector
+    started = asyncio.Event()
+    never = asyncio.get_running_loop().create_future()
+
+    # ⚠ A FUTURE THAT NEVER RESOLVES, NOT `asyncio.sleep(3600)`. The first draft used sleep and
+    # PASSED under the mutation that re-awaits the write — because the autouse fixture patches
+    # `collector.asyncio.sleep`, and `collector.asyncio` is the one `asyncio` module object, so
+    # every sleep in the process returns instantly. The test was measuring the stub.
+    async def _hang(*a, **k):
+        started.set()
+        await never
+    monkeypatch.setattr(ep_detector, "log_audit_event", _hang)
+
+    out = await asyncio.wait_for(
+        ep_detector._note_if_news_provider_failed(
+            NewsAnswer(provider_failed=True, failure_reason="timeout"), "ARHS", "enriched corpus"),
+        timeout=2,
+    )
+    assert out is True, "the caller did not get its answer while the audit write was still running"
+    # It had NOT started when the caller returned — that is the point — so wait for it now.
+    await asyncio.wait_for(started.wait(), timeout=1)
+    assert started.is_set(), "the write never actually started — fire-and-forget became fire-never"
+    never.cancel()
+    for task in list(ep_detector._PENDING_PROVIDER_NOTES):
+        task.cancel()
+
+
+@pytest.mark.asyncio
+async def test_the_pending_write_is_held_so_it_cannot_be_collected(monkeypatch):
+    """asyncio holds only a WEAK reference to a task. A bare `create_task(...)` whose handle
+    nobody keeps can be garbage-collected before it runs, and the row would vanish silently —
+    the worst failure mode for a recorder."""
+    from agents.market_intelligence import ep_detector
+    seen: list = []
+
+    # No sleep here either — see _drain's note. A bare coroutine still yields at `await`.
+    async def _slow(event_type, summary, detail="", *, conn=None):
+        seen.append(event_type)
+    monkeypatch.setattr(ep_detector, "log_audit_event", _slow)
+
+    await ep_detector._note_if_news_provider_failed(
+        NewsAnswer(provider_failed=True, failure_reason="timeout"), "ARHS", "enriched corpus")
+    assert ep_detector._PENDING_PROVIDER_NOTES, "nothing is holding the in-flight write"
+    await _drain()
+    assert seen == ["ep_corpus_missing_news_provider"]
+    assert not ep_detector._PENDING_PROVIDER_NOTES, "the done-callback never discarded the task"
+
+
 @pytest.mark.asyncio
 async def test_a_failure_to_RECORD_never_costs_the_name_its_grade(monkeypatch):
     """The wrap, exercised. A recording write that raises must be swallowed — the grading path it
@@ -225,3 +301,4 @@ async def test_a_failure_to_RECORD_never_costs_the_name_its_grade(monkeypatch):
     out = await ep_detector._note_if_news_provider_failed(
         NewsAnswer(provider_failed=True, failure_reason="timeout"), "ARHS", "enriched corpus")
     assert out is True, "a logging failure changed what the caller is told about the provider"
+    await _drain()  # and the raised exception must not escape the background task either

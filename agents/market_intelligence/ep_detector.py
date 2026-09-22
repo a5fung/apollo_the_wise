@@ -1437,6 +1437,12 @@ _PPLX_HEDGE_PHRASES = (
 )
 
 
+#: Live handles for the fire-and-forget audit writes below. asyncio keeps only a WEAK reference
+#: to a task, so a bare `create_task(...)` whose result nobody holds can be collected before it
+#: runs — the write would vanish silently, which is the worst failure mode for a recorder.
+_PENDING_PROVIDER_NOTES: "set[asyncio.Task]" = set()
+
+
 async def _note_if_news_provider_failed(answer, ticker: str, where: str) -> bool:
     """Record that an EP corpus was built WITHOUT the news provider, and say so. Returns True
     when the provider failed.
@@ -1467,14 +1473,26 @@ async def _note_if_news_provider_failed(answer, ticker: str, where: str) -> bool
     # The test hid it: the stub took `**kw` and swallowed the bad signature.
     # The wrap stays regardless of the signature being right now — this module's rule is that a
     # shadow/recording write can never break the grading path it observes.
-    try:
-        await log_audit_event(
-            "ep_corpus_missing_news_provider",
-            f"{ticker}: {where} — provider did not answer ({_why}); the EP grade for this name "
-            f"was formed without its news leg. Recording only — no grade was changed.",
-        )
-    except Exception:  # loud-ok: recording only — never cost a name its grade to log about it.
-        logger.exception("%s: could not record the missing news provider (recording only)", ticker)
+    # ⚠ FIRE-AND-FORGET, NOT AWAITED — caught by the advisor review before this ever deployed.
+    # BOTH call sites sit inside the sequential `for c in candidates[:SHORTLIST_SIZE]` grading
+    # loop, and `log_audit_event` is timeout-bounded at 5s (#621). Awaiting it meant a Perplexity
+    # outage during 9:30-9:45 ET cost up to 5s PER SHORTLISTED NAME — with SHORTLIST_SIZE=20 that
+    # is worse than the 22.5s retry regression fixed hours earlier tonight, added by the fix for
+    # it. A recording write must cost the path it observes NOTHING, so nothing awaits it.
+    # The reference is held: a bare `create_task` can be garbage-collected mid-flight.
+    async def _record() -> None:
+        try:
+            await log_audit_event(
+                "ep_corpus_missing_news_provider",
+                f"{ticker}: {where} — provider did not answer ({_why}); the EP grade for this "
+                f"name was formed without its news leg. Recording only — no grade was changed.",
+            )
+        except Exception:  # loud-ok: recording only — never cost a name its grade to log about it
+            logger.exception("%s: could not record the missing news provider", ticker)
+
+    _task = asyncio.create_task(_record())
+    _PENDING_PROVIDER_NOTES.add(_task)
+    _task.add_done_callback(_PENDING_PROVIDER_NOTES.discard)
     return True
 
 
