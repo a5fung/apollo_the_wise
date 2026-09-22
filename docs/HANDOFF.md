@@ -1037,3 +1037,48 @@ a time the scan never ran at, and drop the safe default if freshness ever loosen
 written at each site — do not "fix" them.
 
 Prod is `a12036c5`. Suite **8662**, source pins **405**, job-date gate **60 jobs / 0 unescaped**.
+
+---
+
+## 2026-09-22 (Tue) — 🔴 RESUME HERE. Supersedes every dated section above.
+
+**Paused mid-day at his request for a model update. CLOSE was NOT run** — it is his trigger.
+The machine-local pickup (`memory/next-session-pickup.md`) is the fuller account; this section
+exists for a machine that does not have it.
+
+| | |
+|---|---|
+| board | **58 open**, ceiling **59** — a STANDING ceiling he set 2026-09-21, enforced by `check_plan.py --set-ceiling`; binds downward only and self-clears once reached |
+| prod | `05e71da3`, **current on code** — commits after it touch only docs/tests/PLAN |
+| suite | **8766**, green on python 3.14 AND on 3.13 (what CI pins) |
+| gates | `check_plan` OK · source pins 406 flat · `live_rules --drift-only` 0 findings |
+
+**🔴 FOUR VERIFIES GO LIVE AT THE ~17:52 ET NIGHTLY: #610, #679, #680, #682.** For #680 note that
+zero `ep_corpus_missing_news_provider` rows is **not yet discriminating** — no provider failure has
+landed since its 00:01 deploy, so a clean reading is what the broken version produces too.
+
+**🔴 SATURDAY 2026-09-26 IS BOOKED: `run fable weekend block 5`** — the delayed-entry exit day,
+`docs/roadmap/fable-weekend-blocks.md` §Block 5. ⛔ **NO BIT-PART WORK ON DELAYED ENTRIES BEFORE
+THEN** (his words: *"stop doing any more bit-part work and wait for the weekend"*). Scoping facts
+may be quoted; derived results may not be produced.
+
+**HIS FOUR RULINGS OF 2026-09-22, all now in memory and in CLAUDE-adjacent docs:**
+1. A review he asks for means **find AND FIX**, not file — and never open a task off a review
+   without asking first.
+2. **Entries and exits are UNDETERMINED for any new setup** — its R measures the placeholder stop,
+   never the setup.
+3. For a question needing a dedicated block, deliver the **scope** and stop.
+4. The growth ceiling is his to tighten, and it is now mechanical.
+
+**⚠ ONE RETRACTION, so it is not re-derived:** a stop-widening ladder computed from
+`mi_delayed_entry_trigger.mfe_r`/`mae_r` is INVALID — `compute_settlement` breaks its walk at the
+incumbent stop, so those columns stop accumulating there. It scored FNGR 2026-08-26 (an actual
+−1.00R loss) at +25.81R and flips 1,443 of 2,980 rows. The decisive finding stands: `r_none_s20`
+is −1.00R with ZERO positives on all 2,980 settled fires.
+
+**NEXT RECOMMENDED: #505** — his rule *"parent child relationship must work regardless on how
+themes are discovered"*, and `parent_theme` is set on **1 of 94** live themes. Root cause traced
+(`theme_engine.py:~4638`). No money path. Due Thu 2026-09-24.
+
+⚠ **Do not spend time on the EXPECT/DONE-WHEN backlog** — checked 09-22, those 12 tasks already
+carry `DoD:` + `DONE-WHEN:` + `WOULD-FAIL-IF:`; only the literal marker is missing.
