@@ -303,7 +303,7 @@ def _is_probe_origin() -> bool:
     return os.environ.get(_PROBE_ORIGIN_ENV) == "probe"
 
 
-# Alarm copy varies by provider CLASS, not per-provider — a small mapping, not
+# Alarm copy varies by provider CLASS — except the CONSEQUENCE sentence, which #679 made per-provider (`_CONSEQUENCE_BY_PROVIDER`) because claiming the RS universe degrades on a Perplexity outage was simply false; the class-level consequence string is now only a fallback for an unlisted provider — a small mapping, not
 # an if-chain. Data-APIs (polygon/fmp/perplexity/unlisted-"other") degrade the
 # catalyst grade / RS universe / news corpus; alpaca is the BROKER — its reads
 # feed position sync and trade state, a different domain entirely (#406).
@@ -335,6 +335,20 @@ _ALARM_COPY_BY_CLASS = {
 }
 
 
+def _response_body(exc: BaseException) -> str | None:
+    """The provider's raw response body, or None. ONE reader (2026-09-21 simplify review).
+
+    The same `getattr(getattr(exc, "response", None), "text", None)` chain was written twice in
+    one call chain — once in `alert_api_failure` for the audit-row detail, once in
+    `provider_said` for the Telegram copy. Best-effort by contract: a body is not always
+    readable (streamed/closed), and neither caller may ever fail because of it.
+    """
+    try:
+        return getattr(getattr(exc, "response", None), "text", None)
+    except Exception:  # loud-ok: enrichment only — both callers degrade to their generic text.
+        return None
+
+
 def provider_said(exc: BaseException) -> tuple[str, str] | None:
     """`(message, type)` the PROVIDER put in its own error body, or None.
 
@@ -348,7 +362,7 @@ def provider_said(exc: BaseException) -> tuple[str, str] | None:
     any parse failure returns None and the caller keeps the generic advice."""
     try:
         import json as _json
-        body = getattr(getattr(exc, "response", None), "text", None)
+        body = _response_body(exc)
         if not body:
             return None
         err = (_json.loads(body) or {}).get("error")
@@ -623,7 +637,7 @@ async def alert_api_failure(provider: str, exc: BaseException,
         # names its own cause instead of needing a live reproduction to find out.
         _detail = str(exc)[:400]
         try:
-            _resp_text = getattr(getattr(exc, "response", None), "text", None)
+            _resp_text = _response_body(exc)
             if _resp_text:
                 _detail = f"{_detail} | body={_resp_text[:400]}"
         except Exception as _e:

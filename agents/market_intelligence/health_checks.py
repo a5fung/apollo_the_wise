@@ -4175,6 +4175,20 @@ def _lattice_b_accounts_for_shortfall(prevented_count: int, shortfall: float) ->
     return shortfall <= 0 or prevented_count >= shortfall
 
 
+# ⚠ ONE DEFINITION OF "A DECISION THE FACT-CHECK ACTUALLY MADE" (2026-09-21 simplify review).
+# `_lattice_prevented_alerts` (half a, the named count) and `_lattice_unknown_share` (half b, the
+# share decided on an absence) are ANDed at the trigger as if they describe one population — and
+# they did, by hand-copied SQL in two places. `_lattice_unknown_share`'s docstring even ASSERTS
+# "same attribution as `_lattice_prevented_alerts`" with nothing enforcing it. Narrowing one copy
+# later would silently decouple the two halves: the derive-the-population failure this repo keeps
+# paying for. The two queries stay SEPARATE on purpose — half (a) INNER JOINs `mi_ep_scan_log` to
+# confirm the verdict was actually scored, and folding them would widen half (b)'s population —
+# but the shared half of the predicate now has exactly one source.
+_LATTICE_DECISION_PREDICATE = (
+    "sh.live_side = 'lattice' AND sh.shadow_tier_last IS DISTINCT FROM sh.live_quality_last"
+)
+
+
 async def _lattice_unknown_share(c, window_days: "list[date]") -> "dict[str, Any]":
     """Half (b) of #666's DoD: of the decisions the fact-check ACTUALLY MADE in this window, what
     share turned on an `unknown` input rather than on evidence.
@@ -4201,18 +4215,30 @@ async def _lattice_unknown_share(c, window_days: "list[date]") -> "dict[str, Any
 
     Returns {"n": int, "unknown": int, "share": float|None, "unwritten": int, "by_value": {...}}.
     On any query failure every count is None — never 0 — so the caller can tell "checked, found
-    none" from "could not check", the same contract `_lattice_prevented_alerts` keeps."""
-    empty = {"n": 0, "unknown": 0, "share": None, "unwritten": 0, "by_value": {}}
+    none" from "could not check", the same contract `_lattice_prevented_alerts` keeps.
+
+    ⚠ THE TWO DEFENSIVE SQL CONSTRUCTS HERE HAVE NEVER FIRED, MEASURED 2026-09-21 — and that is
+    recorded because the shipping commit claimed only "checked against prod by hand", which is a
+    stated gap rather than a measured one. Both were mutated out and run against prod over all
+    148 `live_side='lattice'` rows in the table's history (2026-08-24 onward):
+      · `IS DISTINCT FROM` -> `<>`              : 12 decisions before, 12 after. ZERO rows have a
+        NULL on either side, so the NULL-safe compare changes nothing today.
+      · `COALESCE(..., '(unwritten)')` -> bare  : same four buckets. `expct_looking` is written on
+        every lattice row so far, so `unwritten` is 0 and the bucket never appears.
+    All three columns ARE schema-nullable, so neither construct is dead by schema — they are
+    insurance against a case the column permits and the writer has not yet produced. Do not read
+    the green as "covered": no test and no production row currently discriminates either one.
+    The live reading itself, same run: 12 decisions, 6 on `unknown` — 50%, against the ~44% the
+    operator measured by hand on 2026-09-15."""
     if not window_days:
-        return empty
+        return {"n": 0, "unknown": 0, "share": None, "unwritten": 0, "by_value": {}}
     try:
         rows = await c.fetch(
             """
             SELECT COALESCE(sh.expct_looking, '(unwritten)') AS looking, COUNT(*) AS n
               FROM mi_catalyst_tier_shadow sh
              WHERE sh.scan_date = ANY($1::date[])
-               AND sh.live_side = 'lattice'
-               AND sh.shadow_tier_last IS DISTINCT FROM sh.live_quality_last
+               AND """ + _LATTICE_DECISION_PREDICATE + """
              GROUP BY 1
             """,
             list(window_days),
@@ -4286,8 +4312,7 @@ async def _lattice_prevented_alerts(c, window_days: "list[date]") -> "dict[str, 
                    ls.catalyst_quality AS acted_catalyst_quality
             FROM mi_catalyst_tier_shadow sh
             JOIN last_scan ls ON ls.scan_date = sh.scan_date AND ls.ticker = sh.ticker
-            WHERE sh.scan_date = ANY($1::date[]) AND sh.live_side = 'lattice'
-              AND sh.shadow_tier_last IS DISTINCT FROM sh.live_quality_last
+            WHERE sh.scan_date = ANY($1::date[]) AND """ + _LATTICE_DECISION_PREDICATE + """
             """,
             list(window_days))
     except Exception as e:
@@ -4660,6 +4685,18 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                         f"without the input. Mix: {_mix}."
                         + (f" ({_u['unwritten']} row(s) never recorded the read at all — a "
                            f"different gap, counted apart.)" if _u.get("unwritten") else ""))
+                elif _u.get("unwritten"):
+                    # ⚠ n==0 does NOT mean "no decisions" — `n` counts decisions with a READABLE
+                    # read, and `unwritten` counts decisions where the read was never recorded.
+                    # Both come from the same population. So n=0 with unwritten>0 means it DID
+                    # change grades and not one of them can be judged, and the branch below would
+                    # have reported the exact opposite: "it made ZERO grade changes". Caught by
+                    # the 2026-09-21 simplify review; the computation modelled three cases and the
+                    # rendering collapsed two of them into the one sentence that reads as good news.
+                    lines.append(
+                        f"  ↳ It made {_u['unwritten']} grade change(s) here and NOT ONE of them "
+                        f"recorded what the forward-guidance read returned, so none can be judged "
+                        f"as evidence-led or not. That is a recording gap, not a clean bill.")
                 else:
                     lines.append(
                         "  ↳ It made ZERO grade changes in this window, so nothing here "

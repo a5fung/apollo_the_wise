@@ -87,7 +87,11 @@ def test_persisted_read_is_not_gated_by_the_orb_window():
         r'or not _should_apply_yoy_carveout\(_extracted\)\)\):',
         _BLOCK)
     assert cond, "the #321 top-level condition changed shape (window guard crept back in?)"
-    fetch_guard = _BLOCK.find("if _rec is None and not _in_orb_cutoff:")
+    # 2026-09-21: `_in_orb_cutoff` was a bare local here until #679's Perplexity retry became
+    # a second caller of the same 9:30-9:45 boundary; it is now a module-level predicate and
+    # this guard CALLS it. The pin follows the rename — what this test protects is unchanged:
+    # the window gates the FETCH branch, never the top-level condition or the dict read.
+    fetch_guard = _BLOCK.find("if _rec is None and not _in_orb_cutoff(now_et):")
     assert fetch_guard != -1 and fetch_guard > cond.end()
 
 
@@ -131,7 +135,7 @@ def test_inwindow_fetch_is_never_awaited_on_the_scan_path():
     before = _BLOCK[max(0, spawn - 40):spawn]
     assert "await" not in before, "the background spawn must not be awaited"
     # and the spawn sits inside the in-window branch, i.e. after the out-of-window fetch branch
-    assert spawn > _BLOCK.find("if _rec is None and not _in_orb_cutoff:")
+    assert spawn > _BLOCK.find("if _rec is None and not _in_orb_cutoff(now_et):")
 
 
 def test_background_spawn_dedups_per_ticker_per_day_and_needs_inputs(monkeypatch):

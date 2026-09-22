@@ -33,6 +33,8 @@ and it does NOT retroactively reinterpret history.
 """
 from __future__ import annotations
 
+from zoneinfo import ZoneInfo
+
 import httpx
 import pytest
 
@@ -111,6 +113,25 @@ def _stubs(monkeypatch):
     async def _quiet(*a, **k): return None
     monkeypatch.setattr(llm_health, "alert_api_failure", _quiet)
     monkeypatch.setattr(llm_health, "alert_credit_exhausted", _quiet, raising=False)
+    # ⚠ THE CLOCK IS AN INPUT TO THIS FILE NOW (2026-09-21 simplify review). The retry is
+    # SUPPRESSED inside the 9:30-9:45 ET ORB-submission window, so every retry test above
+    # would flip RED for 15 minutes each weekday morning if it ran on the wall clock. Pinned
+    # pre-market by default — which is also where the 08:15 failure that motivated #679 landed.
+    _pin_clock(monkeypatch, 8, 15)
+
+
+def _pin_clock(monkeypatch, hour: int, minute: int) -> None:
+    """Freeze `ep_detector`'s view of ET wall-clock time. It reads it as `datetime.now(_ET)`
+    against the module-level `from datetime import datetime`, so the class is what we replace."""
+    from datetime import datetime as _dt
+    _fixed = _dt(2026, 9, 21, hour, minute, tzinfo=ZoneInfo("America/New_York"))
+
+    class _Clock(_dt):
+        @classmethod
+        def now(cls, tz=None):
+            return _fixed if tz is None else _fixed.astimezone(tz)
+
+    monkeypatch.setattr(ep_detector, "datetime", _Clock)
 
 
 # ── (1) the retry that was missing ────────────────────────────────────────────────────────
@@ -225,3 +246,80 @@ def test_an_unparseable_body_costs_the_operator_nothing():
     body that is HTML, truncated, or absent."""
     for body in ("", "<html>502 Bad Gateway</html>", '{"nope":', '{"error":"a string"}'):
         assert llm_health.provider_said(_status_error(500, body)) is None, body
+
+
+# ── (4) the ORB-window latency guard (2026-09-21 simplify review) ─────────────────────────
+#
+# The retry #679 added is correct everywhere EXCEPT 9:30-9:45 ET. `_validate_catalyst_perplexity`
+# is awaited inside the sequential `for c in candidates[:SHORTLIST_SIZE]` grading loop, so one
+# 429 costs up to 7.5s of sleep PLUS a second 15s attempt — on a path where this file's own
+# precedent (advisor 6/28, the prior-year YoY fetch) already forbids a 4s fetch, because
+# "a few x 4s serially could push the scan past 9:45 -> WINDOW_OUT_OF_ORB on the GOOD names
+# that needed to submit." MEASURED: 38 catalyst validations ran inside that window over the
+# 60 days to 2026-09-21, so it is a real population, not a hypothetical one.
+
+
+@pytest.mark.asyncio
+async def test_inside_the_orb_window_a_429_is_not_retried(monkeypatch):
+    """The latency half. In-window we take ONE attempt — byte-identical to pre-#679."""
+    _pin_clock(monkeypatch, 9, 35)
+    calls = _install(monkeypatch, ep_detector, [_status_error(429), _GradeResp()])
+    out = await ep_detector._validate_catalyst_perplexity("ARHS", "Beat and raised guidance.")
+    assert len(calls) == 1, (
+        f"the retry ran inside the 9:30-9:45 ORB window ({len(calls)} attempts). Worst case it "
+        f"adds ~22.5s to a call awaited inside the sequential grading loop, which is exactly "
+        f"what pushes a good name past 9:45 into WINDOW_OUT_OF_ORB."
+    )
+    assert out is None
+
+
+@pytest.mark.asyncio
+async def test_an_in_window_429_STILL_ALERTS_instead_of_vanishing(monkeypatch):
+    """⚠ THE BUG THE GUARD ALMOST INTRODUCED, and the reason this test exists. The retry arm
+    read `if _attempt == 1 and _wait is not None: continue`. With the window guard making
+    `_attempts` the single-element `(1,)`, an in-window 429 satisfied `== 1`, hit `continue`,
+    fell off the end of the loop and returned None having alerted NOBODY — strictly worse than
+    the pre-#679 behaviour the guard was written to restore. Suppressing a RETRY must never
+    suppress the TRIAGE. Reinstating `== 1` turns this red."""
+    _pin_clock(monkeypatch, 9, 35)
+    seen: list = []
+
+    async def _capture(exc, **kw):
+        seen.append(exc)
+
+    monkeypatch.setattr(llm_health, "triage_perplexity_exception", _capture, raising=False)
+    _install(monkeypatch, ep_detector, [_status_error(429), _GradeResp()])
+    out = await ep_detector._validate_catalyst_perplexity("ARHS", "Beat and raised guidance.")
+    assert out is None
+    assert len(seen) == 1, (
+        "an in-window 429 was swallowed silently — no triage, no alert. The retry is suppressed "
+        "in the ORB window for LATENCY; the failure still has to be reported."
+    )
+
+
+@pytest.mark.asyncio
+async def test_the_window_is_the_orb_window_and_not_all_morning(monkeypatch):
+    """The boundary, exercised rather than read off the source. 9:29 and 9:46 retry; 9:30 and
+    9:45 do not — the guard must not quietly become "no retries before 10am"."""
+    for hh, mm, want in ((9, 29, 2), (9, 30, 1), (9, 45, 1), (9, 46, 2), (8, 15, 2), (15, 0, 2)):
+        _pin_clock(monkeypatch, hh, mm)
+        calls = _install(monkeypatch, ep_detector, [_status_error(429), _GradeResp()])
+        await ep_detector._validate_catalyst_perplexity("ARHS", "Beat and raised guidance.")
+        assert len(calls) == want, f"at {hh:02d}:{mm:02d} ET expected {want} attempt(s), got {len(calls)}"
+
+
+@pytest.mark.asyncio
+async def test_the_retry_reads_the_SHARED_orb_predicate_not_its_own_copy(monkeypatch):
+    """One definition of the 9:30-9:45 boundary, proved by BEHAVIOUR rather than by grepping the
+    source. `_in_orb_cutoff` was a bare local beside the prior-year YoY fetch until this retry
+    became its second caller, and two copies of a money-path latency boundary is the drift this
+    repo keeps paying for. Redirecting the shared predicate must move THIS call site: re-inline a
+    private copy here and the patch stops reaching it, so the retry runs and this goes red."""
+    _pin_clock(monkeypatch, 8, 15)                      # pre-market: the retry WOULD run
+    monkeypatch.setattr(ep_detector, "_in_orb_cutoff", lambda _now: True)
+    calls = _install(monkeypatch, ep_detector, [_status_error(429), _GradeResp()])
+    await ep_detector._validate_catalyst_perplexity("ARHS", "Beat and raised guidance.")
+    assert len(calls) == 1, (
+        "redirecting the shared `_in_orb_cutoff` did not change this call site — it is reading a "
+        "second, private copy of the ORB-window rule."
+    )

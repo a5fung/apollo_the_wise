@@ -1408,6 +1408,19 @@ catalyst, say so explicitly."""
 # (hoisted from inside run_ep_scan 2026-08-27): the hedge-DOWNGRADE below, and the
 # nothing-to-validate guard in _validate_catalyst_perplexity. They must agree on what
 # "no news" looks like — two copies would drift.
+def _in_orb_cutoff(now_et: datetime) -> bool:
+    """Is `now_et` inside the 9:30-9:45 ET ORB-submission window?
+
+    ONE definition, two users — hoisted 2026-09-21. It was a bare local beside the prior-year
+    YoY fetch, whose comment carries the rule and the reason (advisor 6/28): *"the prior-year
+    leg FETCH must NOT run inside the 9:30-9:45 ORB-cutoff window — a few x 4s serially could
+    push the scan past 9:45 -> WINDOW_OUT_OF_ORB on the GOOD names that needed to submit."*
+    A second caller appeared the moment #679 put a sleeping retry on the catalyst path, and two
+    copies of a money-path latency boundary is exactly the drift this repo keeps paying for.
+    """
+    return now_et.hour == 9 and 30 <= now_et.minute <= 45
+
+
 _PPLX_HEDGE_PHRASES = (
     "no specific information",
     "couldn't find",
@@ -1474,7 +1487,18 @@ Respond with ONLY the classification word."""
     # call site got the same 429 and hard-failed. It also makes the ALERT honest — llm_health
     # classifies 429 as actionable on the stated ground "429-after-retries", which was false
     # here because there were none.
-    for _attempt in (1, 2):
+    # ⚠ LATENCY GUARD, added by the 2026-09-21 simplify review — the retry above is correct
+    # everywhere EXCEPT inside the ORB-submission window. This call is awaited inside the
+    # sequential `for c in candidates[:SHORTLIST_SIZE]` grading loop, so one 429 costs up to
+    # 7.5s of sleep PLUS a second 15s attempt (~37.5s worst case, up from ~15s) on a path where
+    # the file's own precedent already forbids a 4s fetch for the same reason. MEASURED, not
+    # assumed: 38 catalyst validations ran inside 09:30-09:45 over the 60 days to 2026-09-21,
+    # so this is a real population. In-window we take ONE attempt and fail to None (UNAVAILABLE)
+    # — byte-identical to the behaviour before #679. The 429 that motivated #679 landed 08:15 ET,
+    # pre-market, where the retry still runs; the window this drops it in has never seen one.
+    from agents.market_intelligence.collector import _ET
+    _attempts = (1,) if _in_orb_cutoff(datetime.now(_ET)) else (1, 2)
+    for _attempt in _attempts:
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 r = await client.post(
@@ -1546,7 +1570,13 @@ Respond with ONLY the classification word."""
             return None
         except Exception as e:
             _wait = collector.pplx_429_wait_s(e)      # None unless this is a 429
-            if _attempt == 1 and _wait is not None:
+            # ⚠ `_attempt < _attempts[-1]`, NOT `_attempt == 1`. With the ORB guard above,
+            # `_attempts` can be the single-element `(1,)` — and `== 1` would then `continue`
+            # off the end of the loop on an in-window 429, skipping triage entirely and
+            # returning None SILENTLY. That is strictly worse than the pre-#679 behaviour it
+            # was meant to restore: a 429 in the ORB window used to alert. "Is there another
+            # attempt left" is the real question; the literal 1 only answered it by accident.
+            if _attempt < _attempts[-1] and _wait is not None:
                 logger.warning(f"Perplexity validation for {ticker} rate-limited "
                                f"(429, attempt 1/2) — retrying in {_wait:.1f}s")
                 await asyncio.sleep(_wait)
@@ -5214,7 +5244,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # read by lookup_cached_metrics) and read FIRST on every later tick: a dict lookup with no
             # latency, so the window guard — which exists for the fetch — does not apply to it.
             # Behaviour is otherwise identical: same toggle, same 4s cap, same floor, same audit.
-            _in_orb_cutoff = now_et.hour == 9 and 30 <= now_et.minute <= 45
             if (_downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"
                     and await get_runtime_toggle("live_yoy_recovery", "LIVE_YOY_RECOVERY")
                     and (await get_runtime_toggle(
@@ -5224,7 +5253,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 _qr2 = _extracted.get("q_revenue_usd") or {}
                 # 1) an answer already computed on an earlier tick today (valid in-window: no fetch)
                 _rec = _persisted_yoy_recovery(_extracted)
-                if _rec is None and not _in_orb_cutoff:
+                if _rec is None and not _in_orb_cutoff(now_et):
                     # 2) outside the window: the fetch, exactly as before — then write it back
                     try:
                         from agents.market_intelligence.fundamentals import compute_yoy_from_prior_year
