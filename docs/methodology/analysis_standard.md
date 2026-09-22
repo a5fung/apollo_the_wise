@@ -214,3 +214,34 @@ Every one of these actually happened. They are listed so the next pass recognise
 | Evidence marshalled for a position not actually held | the delayed-data argument |
 | A search truncated with `head` and read as complete | the third Perplexity call site |
 | Simulator artifact reported as an observed result | the "+2R winners" |
+
+## A NEW SETUP'S ENTRY AND EXIT ARE UNDETERMINED — so its R is not a verdict on the setup
+
+**Operator, 2026-09-22:** *"we need to find the right entries and exits for any new setups, those
+are undetermined."*
+
+A setup is a named entry WITH a defined buy point and stop. A NEW one arrives with a detection idea
+and a **placeholder** entry/exit — a first-guess stop, a first-guess target. Measuring its returns
+then measures the placeholder. That is how a real edge gets killed on arrival, and how a dead one
+gets a pass because its arbitrary stop happened to be generous.
+
+**What this requires of any analysis of a new setup:**
+
+1. **Name the pair.** Report "−0.635R under a 5-min-close stop at the dip low", never "−0.635R".
+2. **Vary the exit before concluding.** Stop width, target, partial, trail, hold. If the sign or
+   the tail moves across the grid, the exit was the finding, not the setup.
+3. **Separate detection from harvest.** Does it find the right names, and does it keep what it
+   finds? They fail independently and have different owners.
+4. ⚖ **Choosing the stop or target is the operator's, under CHANGE_PROCESS.** The analysis produces
+   the grid and the measured tail and surfaces the fork; it never picks.
+
+**The worked example** is `docs/analysis/327_delayed_entry_tail_read_2026-09-22.md`: four patterns
+all negative, and a stop-width sweep (0.5% → 3% floors) collapsed the 3R rate from 1.01% to 0.24%
+while four of the six biggest winners vanished — so most of the "tail" was a tight-stop artifact.
+The decisive line was the no-target arm: **−1.00R with ZERO positives across all 2,980 rows.**
+Absent a target, every fire eventually reached its stop — which says the stop sat inside the
+instrument's noise, and says nothing at all about the entry.
+
+**The instruments that already exist — use them rather than re-deriving a grid per setup:**
+`docs/design/545_entry_exit_program_2026-09-05.md` (the ranked, phased plan; its §7 Phase 1 is $0
+and ~half a session) and PLAN #482's bracket-geometry lab.
