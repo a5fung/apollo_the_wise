@@ -1612,3 +1612,31 @@ EVIDENCE: read from prod `mi_audit_log` on 2026-09-22, after the 17:30 ET nightl
   so the drift surface still sees the busy night. Both WOULD-FAIL-IF arms are refuted.
 - The review that watched for this, `spiky_guard_first_engagement`, is resolved in
   `data_gated_reviews.yaml` the same commit.
+
+## #675 — the Telegram sender has one conversion path, and three weekdays of digests sent clean (2026-09-23)
+
+BAR: "DoD: `send_telegram_message` has one conversion path, `_chunk_legacy` is deleted, and the
+732-body corpus re-run shows zero bodies rendering worse than today." WOULD-FAIL-IF: "a
+`telegram_markdown_fallback` row cites an HTML tag error after the change." DONE-WHEN: "three
+consecutive weekdays of digests with zero `telegram_markdown_fallback` rows and no mangled message
+reported."
+
+EVIDENCE: read from prod on 2026-09-23 after the 09:00 ET morning briefing.
+
+- **One conversion path, `_chunk_legacy` deleted — in the RUNNING code, both containers.**
+  `def _chunk_legacy` count is 0 in `apollo-market` and `apollo-execution`; the name survives only
+  in a comment at `briefing.py:2682` ("`_chunk_legacy` is gone"). `_chunk_plain` is present in both.
+- **The corpus re-run** (732 bodies, 0 worse) was done at build time, 09-20, and the line itself
+  records it as non-discriminating for routing — the routing rests on the mutation (dropping
+  `or parse_mode == "Markdown"` reddens two tests), not on the corpus.
+- **The stopping rule is met, and it discriminates:** zero `telegram_markdown_fallback` rows since
+  the 2026-09-19 flip, against **54 in the 30 days before it** (~1.8 a day, so five days of the old
+  path would almost surely have written some). Three consecutive weekdays of digests ran in that
+  span — `morning_briefing`, `rt_miss_digest`, `catalyst_downgrade_digest`,
+  `intraday_signals_eod_digest`, `close_digest`, `evening_briefing` all `success` on 09-21 and
+  09-22, and `morning_briefing` `success` at 09:00 ET 09-23. No mangled message reported.
+- **WOULD-FAIL-IF refuted:** no fallback row at all, so none cites an HTML tag error.
+- ⚠ Two `telegram_send_failed` rows exist since the flip (09-19 17:51 ET, `'_R' object has no
+  attribute 'raise_for_status'`; 09-20 11:41 ET, `TelegramSendRefused ... (captured #1)`). Both are
+  weekend rows whose shape is a stubbed/test HTTP layer, not a formatting failure, and both
+  predate the three-weekday window. Recorded here rather than silently passed over.
