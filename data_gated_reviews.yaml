@@ -13828,7 +13828,20 @@ reviews:
     # tables.
     discriminates_on: []
     earliest_review_date: 2026-09-21
-    status: pending
+    resolution_2026_09_23: >-
+      RAN 2026-09-23 on the fuller sample — VERDICT (b): the two-part floor stands; no swap is
+      proposed. Population (recounted on prod by me, matching the card): 2,889 post-open rows over
+      14 trading days (09-02 -> 09-22); real candidates (open gap >= 9%) = 118 admitted, 397
+      rejected (323 tickers). The SHAPE claim replicates (a dollar-volume floor still beats price +
+      share count at equal recall) but the MECHANISM claim reverses (D-1 liquidity now predicts
+      EP-day liquidity, log-log r = 0.71 vs the original 0.44) and the admitted-side COST is
+      material: a $1M swap drops 12 of the 118 caught candidates (10%), with MFE indistinguishable
+      from the ones kept. NOT TESTED, and not the swap question: a loosen-only $500k dollar-volume
+      floor recovers 168 of the 397 at a cost of 1, but also admits 559 faded prints; the rejected
+      real candidates are not junk (mean MFE +31%, 77% traded >= $100k on the EP day), but MFE is
+      not R and nothing here replays the bracket. Full read:
+      docs/analysis/606_d1_floor_recheck_2026-09-23.md. No operator action.
+    status: done
     kind: accrual
     added_on: 2026-08-31
     action_when_ready: >-
