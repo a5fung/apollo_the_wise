@@ -432,6 +432,30 @@ def test_sync_adapter_rewrites_too():
     assert fake.calls[1]["max_tokens"] == 1029
 
 
+def test_wrap_client_sees_an_async_create_hidden_behind_a_decorator():
+    """Found live 2026-09-23: the SDK decorates `AsyncMessages.create` with a plain
+    functools.wraps wrapper, so `iscoroutinefunction` said False, the client was wrapped as
+    SYNC, the coroutine escaped the adapter unawaited and the raw 400 reached the caller.
+    Remove the `inspect.unwrap` in `wrap_client` and this goes red."""
+    import functools
+
+    async def real_create(**kw):
+        return "ok"
+
+    @functools.wraps(real_create)
+    def decorated(**kw):  # a sync wrapper returning a coroutine, like the SDK's
+        return real_create(**kw)
+
+    class Messages:
+        create = staticmethod(decorated)
+
+    class Client:  # a name that does NOT start with "Async", so only unwrap can save it
+        messages = Messages()
+
+    wrapped = wrap_client(Client())
+    assert type(wrapped.messages).__name__ == "_AsyncMessagesAdapter"
+
+
 def test_adapter_delegates_everything_but_create():
     inner = SimpleNamespace(create=AsyncMock(), count_tokens="ct", stream="st")
     client = wrap_client(SimpleNamespace(messages=inner))

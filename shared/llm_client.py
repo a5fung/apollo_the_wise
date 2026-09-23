@@ -494,7 +494,13 @@ def make_anthropic(**client_kwargs):
 def wrap_client(client):
     """Adapt an already-built client (sync or async) — for probes/tests that hand in a fake."""
     inner = client.messages
-    is_async = inspect.iscoroutinefunction(getattr(inner, "create", None))
+    fn = getattr(inner, "create", None)
+    # The SDK decorates `create` (functools.wraps), which hides the coroutine from a plain
+    # iscoroutinefunction check — unwrap first, and fall back to the client's own class name.
+    # (Found live 2026-09-23: the async client was wrapped as sync, the coroutine escaped the
+    # adapter unawaited, and the raw 400 reached the caller.)
+    is_async = (inspect.iscoroutinefunction(inspect.unwrap(fn)) if fn is not None else False) \
+        or type(client).__name__.startswith("Async")
     return _wrap(client, _AsyncMessagesAdapter if is_async else _SyncMessagesAdapter)
 
 
