@@ -70,11 +70,16 @@ def test_the_magna53_lanes_price_under_magna53s_current_bracket():
     d = date(2026, 9, 22)
     assert rule_eras.exit_era_label(d, "magna53") == "era_d"
     assert rule_eras.exit_rules_as_of(d, "magna53")["intraday_partial_r"] == 8.0
-    for f, sig in (("gap_near_miss_replay.py", '"magna53"'),
-                   ("sustain_reject_replay.py", '"magna53"'),
-                   ("lowcap_lane_replay.py", '"magna53"')):
-        src = (REPO / "agents/market_intelligence" / f).read_text()
-        assert f"exit_rules_as_of(run_date, {sig})" in src and f"exit_era_label(run_date, {sig})" in src, f
+    lanes = {"agents/market_intelligence/gap_near_miss_replay.py",
+             "agents/market_intelligence/sustain_reject_replay.py",
+             "agents/market_intelligence/lowcap_lane_replay.py"}
+    seen = {}
+    for f, ln, call in _lookup_calls():
+        if f in lanes:
+            arg = call.args[1] if len(call.args) >= 2 else None
+            seen.setdefault(f, []).append(getattr(arg, "value", None))
+    assert set(seen) == lanes
+    assert all(v == ["magna53", "magna53"] for v in seen.values()), seen
 
 
 def _walk_arm_calls() -> list[tuple[str, int, ast.Call]]:
@@ -105,6 +110,12 @@ def test_every_walk_passes_the_stamped_rules_breakeven_arm():
     missing = [f"{f}:{ln}" for f, ln, c in calls
                if not any(k.arg == "breakeven_at_r" for k in c.keywords)]
     assert not missing, "walk_arm without breakeven_at_r:\n  " + "\n  ".join(missing)
+    # ...and the partial level comes from the stack too: no lane reads a +2R constant any more,
+    # and every lane's pinned_target call takes the stack's partial_r.
     for f in ("gap_near_miss_replay.py", "sustain_reject_replay.py", "lowcap_lane_replay.py"):
-        src = (REPO / "agents/market_intelligence" / f).read_text()
-        assert "pinned_target(entry_px, orb_low, partial_r)" in src and "TARGET_R" not in src, f
+        tree = ast.parse((REPO / "agents/market_intelligence" / f).read_text())
+        names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+        assert "TARGET_R" not in names, f
+        pins = [n for n in ast.walk(tree) if isinstance(n, ast.Call)
+                and getattr(n.func, "id", None) == "pinned_target"]
+        assert pins and all(getattr(n.args[2], "id", None) == "partial_r" for n in pins), f

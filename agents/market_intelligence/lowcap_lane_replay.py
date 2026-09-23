@@ -338,7 +338,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         partial_r = replay_exit_rules["intraday_partial_r"]
         target = pinned_target(entry_px, orb_low, partial_r) if partial_r else None
         fields["target_price"] = target
-        r_frame_ps = (entry_px - orb_low) if (orb_low is not None and orb_low < entry_px) else None
+        r_frame_ps = (entry_px - orb_low) if (orb_low is not None and orb_low < entry_px) else None  # None -> walk_arm falls back to entry − stop
 
         fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
 
