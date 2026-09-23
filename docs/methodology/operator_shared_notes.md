@@ -1546,3 +1546,13 @@ floor evidently does not bind after birth. Separate question, recorded not inves
 **Read on the exclusion: the two theme losses are a FEATURE.** One is a deal artefact that reached
 Mainstream on the deal; the other is a 3-name Fading theme. Neither is evidence against excluding —
 but both are visible board changes, which is why he asked.
+
+## 2026-09-23 — 13 marked-up TraderLion charts of 2020 leaders, operator-shared (photos)
+
+**Full transcription and synthesis: `docs/methodology/traderlion_2020_leaders_2026-09-23.md`**;
+images in `docs/methodology/operator_shared_charts/2026-09-23_traderlion_2020_leaders/`. He shared
+them as the marked-up charts he owed, before deciding on the chart-vision spend (#519). CRWD, FVRR,
+ETSY, DOCU, PTON, PINS, NIO, SQ, SNAP, RARE, ZM, Z, TSLA — where to buy, add and sell on a leader:
+pivot breakouts from proper bases (≥5 weeks flat, ≥7 other), pocket pivots, constructive shakeouts
+to the MA each stock respects, sells on closes below that MA, and failure-prone shapes (too fast up
+the right side, stage 3, wide and loose). Winners only — they teach the read, not the failure rate.
