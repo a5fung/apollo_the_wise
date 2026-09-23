@@ -1,0 +1,254 @@
+=== STEP 3 TIMELINESS / RUNWAY probe — frozen prod exports of 2026-09-07 ===
+windows: pre 20 / post 20 sessions (sensitivity 40/40); ignition search [-40, +20]; RS leg = mean RS >= 70 held 3 score dates; cluster leg = >= 50% of members in one stored cluster; open-gap read >= 9%
+price calendar 2026-01-15..2026-09-04 (161 sessions); score dates 132
+lineages (step 1): 398; class {'grind': 325, 'cogap': 73}; matured 164
+eventual members per lineage: p25/median/p75 = 3 / 4 / 7  (n=398); founders 2 / 3 / 4  (n=398); lineages whose eventual set exceeds the founders: 176
+
+--- EP EVENT LEGS ---
+alert leg (ticker, day): {'mi_ep_alerts rows': 378, 'shadow rows': 592, 'in both': 338, 'shadow only': 254, 'alerts only': 40}
+scan leg: 53432 rows over 101 scan days; sub-floor-tagged rows excluded: 11755; universe-stage rejects excluded: 22551 (first such row 2026-08-24); acting floor breaks (first day at each floor, with that day's row count): 2026-04-13=8.09% (38 rows), 2026-05-18=10.02% (375 rows), 2026-07-13=35.15% (38 rows), 2026-07-14=10.01% (155 rows), 2026-08-20=9.01% (224 rows)
+scan leg (ticker, day) at/above the day's floor: 3058; alert pairs not in the scan leg: 134 (of 632; pre-04-13 alerts + the 84 backfilled rows step 2 found); primary 'had an EP' = alert OR scan = 3192 ticker-days
+
+--- 1. RUNWAY — at naming, what share of the members that EP'd (pre 20 sessions through birth day, post 20) still had their EP AHEAD? ---
+  'no EPer' = lineages with no member EP in either window (their own class, not 0). '=0'/'=1' = lineages at exactly 0% / 100% (coarseness). 'pooled' = member-level across the population (the continuous read). DELIVERED = the post-EP name was on the theme's list on a snapshot strictly before its gap day; post-hoc = it joined on/after the gap.
+
+PRIMARY (alert OR scan-log >= day's floor), 20/20
+  population                                      n no EPer               runway p10/p25/p50/p75/p90     =0    =1   pooled post/EPers pooled DELIVERED  post-hoc  >=1 post >=1 deliv
+  all                                           398     171     0% / 0% / 25% / 100% / 100%  (n=227)    108    72     227/600 = 37.8%  147/600 = 24.5%        80       119        98
+  grind-born                                    325     168     0% / 0% / 50% / 100% / 100%  (n=157)     52    67     190/320 = 59.4%  120/320 = 37.5%        70       105        85
+  co-gap-born                                    73       3          0% / 0% / 0% / 0% / 61%  (n=70)     56     5      37/280 = 13.2%    27/280 = 9.6%        10        14        13
+  matured (Mainstream)                          164      61     0% / 0% / 60% / 100% / 100%  (n=103)     36    41     156/294 = 53.1%   91/294 = 31.0%        65        67        51
+  never matured                                 234     110       0% / 0% / 0% / 62% / 100%  (n=124)     72    31      71/306 = 23.2%   56/306 = 18.3%        15        52        47
+  grind & matured                               142      61      0% / 0% / 86% / 100% / 100%  (n=81)     22    39     131/196 = 66.8%   73/196 = 37.2%        58        59        44
+  grind & not                                   183     107      0% / 0% / 50% / 100% / 100%  (n=76)     30    28      59/124 = 47.6%   47/124 = 37.9%        12        46        41
+  co-gap & matured                               22       0         0% / 0% / 0% / 33% / 85%  (n=22)     14     2       25/98 = 25.5%    18/98 = 18.4%         7         8         7
+  co-gap & not                                   51       3          0% / 0% / 0% / 0% / 14%  (n=48)     42     3       12/182 = 6.6%     9/182 = 4.9%         3         6         6
+  E0 (pre-window before scan log)                70      22   47% / 82% / 100% / 100% / 100%  (n=48)      1    35     118/147 = 80.3%   81/147 = 55.1%        37        47        44
+  E1+ (scan-covered)                            328     149       0% / 0% / 0% / 50% / 100%  (n=179)    107    37     109/453 = 24.1%   66/453 = 14.6%        43        72        54
+  UNCENSORED (post window inside data)          255     101     0% / 0% / 50% / 100% / 100%  (n=154)     51    67     208/388 = 53.6%  132/388 = 34.0%        76       103        85
+  E1+ & uncensored                              185      79     0% / 0% / 21% / 100% / 100%  (n=106)     50    32      90/241 = 37.3%   51/241 = 21.2%        39        56        41
+  E1+ & uncensored & grind                      165      79      0% / 0% / 50% / 100% / 100%  (n=86)     34    32      82/148 = 55.4%   46/148 = 31.1%        36        52        37
+  E1+ & uncensored & co-gap                      20       0          0% / 0% / 0% / 0% / 18%  (n=20)     16     0         8/93 = 8.6%      5/93 = 5.4%         3         4         4
+  E1+ & uncensored & matured                     92      39      0% / 0% / 50% / 100% / 100%  (n=53)     20    19      64/118 = 54.2%   28/118 = 23.7%        36        33        20
+  E1+ & uncensored & not matured                 93      40        0% / 0% / 0% / 50% / 100%  (n=53)     30    13      26/123 = 21.1%   23/123 = 18.7%         3        23        21
+
++OPEN-GAP leg (adds open/prev close - 1 >= 9% from closes — the only pre-birth EP read for E0), 20/20
+  population                                      n no EPer               runway p10/p25/p50/p75/p90     =0    =1   pooled post/EPers pooled DELIVERED  post-hoc  >=1 post >=1 deliv
+  all                                           398     152       0% / 0% / 0% / 60% / 100%  (n=246)    127    49     232/769 = 30.2%  150/769 = 19.5%        82       119       100
+  grind-born                                    325     152     0% / 0% / 38% / 100% / 100%  (n=173)     66    49     208/445 = 46.7%  133/445 = 29.9%        75       107        89
+  co-gap-born                                    73       0          0% / 0% / 0% / 0% / 17%  (n=73)     61     0       24/324 = 7.4%    17/324 = 5.2%         7        12        11
+  matured (Mainstream)                          164      55      0% / 0% / 33% / 88% / 100%  (n=109)     44    27     159/373 = 42.6%   88/373 = 23.6%        71        65        49
+  never matured                                 234      97       0% / 0% / 0% / 50% / 100%  (n=137)     83    22      73/396 = 18.4%   62/396 = 15.7%        11        54        51
+  grind & matured                               142      55      0% / 0% / 50% / 100% / 100%  (n=87)     29    27     143/257 = 55.6%   77/257 = 30.0%        66        58        43
+  grind & not                                   183      97       0% / 0% / 25% / 89% / 100%  (n=86)     37    22      65/188 = 34.6%   56/188 = 29.8%         9        49        46
+  co-gap & matured                               22       0          0% / 0% / 0% / 8% / 33%  (n=22)     15     0      16/116 = 13.8%    11/116 = 9.5%         5         7         6
+  co-gap & not                                   51       0           0% / 0% / 0% / 0% / 0%  (n=51)     46     0        8/208 = 3.8%     6/208 = 2.9%         2         5         5
+  E0 (pre-window before scan log)                70       7       0% / 0% / 33% / 71% / 100%  (n=63)     17    11     119/298 = 39.9%   81/298 = 27.2%        38        46        45
+  E1+ (scan-covered)                            328     145       0% / 0% / 0% / 50% / 100%  (n=183)    110    38     113/471 = 24.0%   69/471 = 14.6%        44        73        55
+  UNCENSORED (post window inside data)          255      84     0% / 0% / 33% / 100% / 100%  (n=171)     68    44     213/545 = 39.1%  135/545 = 24.8%        78       103        87
+  E1+ & uncensored                              185      77     0% / 0% / 21% / 100% / 100%  (n=108)     51    33      94/247 = 38.1%   54/247 = 21.9%        40        57        42
+  E1+ & uncensored & grind                      165      77      0% / 0% / 50% / 100% / 100%  (n=88)     35    33      86/154 = 55.8%   49/154 = 31.8%        37        53        38
+  E1+ & uncensored & co-gap                      20       0          0% / 0% / 0% / 0% / 18%  (n=20)     16     0         8/93 = 8.6%      5/93 = 5.4%         3         4         4
+  E1+ & uncensored & matured                     92      39      0% / 0% / 50% / 100% / 100%  (n=53)     20    19      67/121 = 55.4%   30/121 = 24.8%        37        33        20
+  E1+ & uncensored & not matured                 93      38        0% / 0% / 0% / 75% / 100%  (n=55)     31    14      27/126 = 21.4%   24/126 = 19.0%         3        24        22
+
+ALERTS-ONLY leg (mi_ep_alerts UNION shadow — names the system actually ALERTED on; sub-bar scan gaps excluded), 20/20
+  population                                      n no EPer               runway p10/p25/p50/p75/p90     =0    =1   pooled post/EPers pooled DELIVERED  post-hoc  >=1 post >=1 deliv
+  all                                           398     285      0% / 0% / 0% / 100% / 100%  (n=113)     64    34      83/221 = 37.6%   51/221 = 23.1%        32        49        34
+  grind-born                                    325     262      0% / 0% / 50% / 100% / 100%  (n=63)     29    27       44/87 = 50.6%    25/87 = 28.7%        19        34        21
+  co-gap-born                                    73      23        0% / 0% / 0% / 48% / 100%  (n=50)     35     7      39/134 = 29.1%   26/134 = 19.4%        13        15        13
+  matured (Mainstream)                          164     115      0% / 0% / 50% / 100% / 100%  (n=49)     23    21       44/94 = 46.8%    26/94 = 27.7%        18        26        15
+  never matured                                 234     170        0% / 0% / 0% / 64% / 100%  (n=64)     41    13      39/127 = 30.7%   25/127 = 19.7%        14        23        19
+  grind & matured                               142     107     0% / 0% / 100% / 100% / 100%  (n=35)     14    20       28/48 = 58.3%    13/48 = 27.1%        15        21        11
+  grind & not                                   183     155        0% / 0% / 0% / 75% / 100%  (n=28)     15     7       16/39 = 41.0%    12/39 = 30.8%         4        13        10
+  co-gap & matured                               22       8         0% / 0% / 0% / 43% / 77%  (n=14)      9     1       16/46 = 34.8%    13/46 = 28.3%         3         5         4
+  co-gap & not                                   51      15        0% / 0% / 0% / 46% / 100%  (n=36)     26     6       23/88 = 26.1%    13/88 = 14.8%        10        10         9
+  E0 (pre-window before scan log)                70      46    0% / 38% / 100% / 100% / 100%  (n=24)      6    13       34/49 = 69.4%    20/49 = 40.8%        14        18        11
+  E1+ (scan-covered)                            328     239        0% / 0% / 0% / 75% / 100%  (n=89)     58    21      49/172 = 28.5%   31/172 = 18.0%        18        31        23
+  UNCENSORED (post window inside data)          255     188      0% / 0% / 50% / 100% / 100%  (n=67)     29    28      68/124 = 54.8%   37/124 = 29.8%        31        38        24
+  E1+ & uncensored                              185     142       0% / 0% / 0% / 100% / 100%  (n=43)     23    15       34/75 = 45.3%    17/75 = 22.7%        17        20        13
+  E1+ & uncensored & grind                      165     134       0% / 0% / 0% / 100% / 100%  (n=31)     17    13       16/34 = 47.1%     8/34 = 23.5%         8        14         8
+  E1+ & uncensored & co-gap                      20       8        0% / 0% / 25% / 77% / 98%  (n=12)      6     2       18/41 = 43.9%     9/41 = 22.0%         9         6         5
+  E1+ & uncensored & matured                     92      69      0% / 0% / 50% / 100% / 100%  (n=23)     11    11       16/31 = 51.6%     8/31 = 25.8%         8        12         7
+  E1+ & uncensored & not matured                 93      73        0% / 0% / 0% / 77% / 100%  (n=20)     12     4       18/44 = 40.9%     9/44 = 20.5%         9         8         6
+
+SENSITIVITY 40/40, primary legs, uncensored births only (birth + 40 sessions inside the data)
+  population                                      n no EPer               runway p10/p25/p50/p75/p90     =0    =1   pooled post/EPers pooled DELIVERED  post-hoc  >=1 post >=1 deliv
+  all                                           150      27     0% / 0% / 70% / 100% / 100%  (n=123)     38    57     336/488 = 68.9%  257/488 = 52.7%        79        85        79
+  grind-born                                    131      26     0% / 0% / 70% / 100% / 100%  (n=105)     31    50     274/382 = 71.7%  201/382 = 52.6%        73        74        68
+  co-gap-born                                    19       1      0% / 0% / 55% / 100% / 100%  (n=18)      7     7      62/106 = 58.5%   56/106 = 52.8%         6        11        11
+  matured (Mainstream)                           72      12      0% / 0% / 94% / 100% / 100%  (n=60)     16    30     210/272 = 77.2%  147/272 = 54.0%        63        44        41
+  never matured                                  78      15      0% / 0% / 50% / 100% / 100%  (n=63)     22    27     126/216 = 58.3%  110/216 = 50.9%        16        41        38
+  grind & matured                                67      12     0% / 0% / 100% / 100% / 100%  (n=55)     15    28     174/229 = 76.0%  115/229 = 50.2%        59        40        37
+  grind & not                                    64      14      0% / 0% / 56% / 100% / 100%  (n=50)     16    22     100/153 = 65.4%   86/153 = 56.2%        14        34        31
+  co-gap & matured                                5       0     34% / 86% / 88% / 100% / 100%  (n=5)      1     2       36/43 = 83.7%    32/43 = 74.4%         4         4         4
+  co-gap & not                                   14       1      0% / 0% / 17% / 100% / 100%  (n=13)      6     5       26/63 = 41.3%    24/63 = 38.1%         2         7         7
+  E0 (pre-window before scan log)                70       8  63% / 100% / 100% / 100% / 100%  (n=62)      1    49     294/325 = 90.5%  232/325 = 71.4%        62        61        59
+  E1+ (scan-covered)                             80      19        0% / 0% / 0% / 50% / 100%  (n=61)     37     8      42/163 = 25.8%   25/163 = 15.3%        17        24        20
+  UNCENSORED (post window inside data)          150      27     0% / 0% / 70% / 100% / 100%  (n=123)     38    57     336/488 = 68.9%  257/488 = 52.7%        79        85        79
+  E1+ & uncensored                               80      19        0% / 0% / 0% / 50% / 100%  (n=61)     37     8      42/163 = 25.8%   25/163 = 15.3%        17        24        20
+  E1+ & uncensored & grind                       72      19        0% / 0% / 0% / 50% / 100%  (n=53)     31     8      40/121 = 33.1%   23/121 = 19.0%        17        22        18
+  E1+ & uncensored & co-gap                       8       0           0% / 0% / 0% / 4% / 19%  (n=8)      6     0         2/42 = 4.8%      2/42 = 4.8%         0         2         2
+  E1+ & uncensored & matured                     40      10        0% / 0% / 0% / 50% / 100%  (n=30)     16     5       28/77 = 36.4%    12/77 = 15.6%        16        14        11
+  E1+ & uncensored & not matured                 40       9         0% / 0% / 0% / 29% / 50%  (n=31)     21     3       14/86 = 16.3%    13/86 = 15.1%         1        10         9
+
+SENSITIVITY 40/40, +open-gap, uncensored only
+  population                                      n no EPer               runway p10/p25/p50/p75/p90     =0    =1   pooled post/EPers pooled DELIVERED  post-hoc  >=1 post >=1 deliv
+  all                                           150      20      0% / 0% / 25% / 50% / 100%  (n=130)     52    15     222/609 = 36.5%  155/609 = 25.5%        67        78        71
+  grind-born                                    131      20      0% / 0% / 33% / 67% / 100%  (n=111)     40    15     199/475 = 41.9%  134/475 = 28.2%        65        71        64
+  co-gap-born                                    19       0         0% / 0% / 0% / 17% / 34%  (n=19)     12     0      23/134 = 17.2%   21/134 = 15.7%         2         7         7
+  matured (Mainstream)                           72       9       0% / 0% / 39% / 75% / 100%  (n=63)     21    10     151/336 = 44.9%   91/336 = 27.1%        60        42        37
+  never matured                                  78      11        0% / 0% / 12% / 50% / 67%  (n=67)     31     5      71/273 = 26.0%   64/273 = 23.4%         7        36        34
+  grind & matured                                67       9       0% / 0% / 44% / 75% / 100%  (n=58)     19    10     136/280 = 48.6%   78/280 = 27.9%        58        39        34
+  grind & not                                    64      11        0% / 0% / 25% / 50% / 77%  (n=53)     21     5      63/195 = 32.3%   56/195 = 28.7%         7        32        30
+  co-gap & matured                                5       0         0% / 0% / 13% / 35% / 37%  (n=5)      2     0       15/56 = 26.8%    13/56 = 23.2%         2         3         3
+  co-gap & not                                   14       0         0% / 0% / 0% / 12% / 23%  (n=14)     10     0        8/78 = 10.3%     8/78 = 10.3%         0         4         4
+  E0 (pre-window before scan log)                70       3       0% / 11% / 39% / 63% / 80%  (n=67)     15     5     178/440 = 40.5%  130/440 = 29.5%        48        52        51
+  E1+ (scan-covered)                             80      17        0% / 0% / 0% / 50% / 100%  (n=63)     37    10      44/169 = 26.0%   25/169 = 14.8%        19        26        20
+  UNCENSORED (post window inside data)          150      20      0% / 0% / 25% / 50% / 100%  (n=130)     52    15     222/609 = 36.5%  155/609 = 25.5%        67        78        71
+  E1+ & uncensored                               80      17        0% / 0% / 0% / 50% / 100%  (n=63)     37    10      44/169 = 26.0%   25/169 = 14.8%        19        26        20
+  E1+ & uncensored & grind                       72      17        0% / 0% / 0% / 50% / 100%  (n=55)     31    10      42/127 = 33.1%   23/127 = 18.1%        19        24        18
+  E1+ & uncensored & co-gap                       8       0           0% / 0% / 0% / 4% / 19%  (n=8)      6     0         2/42 = 4.8%      2/42 = 4.8%         0         2         2
+  E1+ & uncensored & matured                     40       8        0% / 0% / 8% / 69% / 100%  (n=32)     16     7       30/81 = 37.0%    12/81 = 14.8%        18        16        11
+  E1+ & uncensored & not matured                 40       9         0% / 0% / 0% / 29% / 50%  (n=31)     21     3       14/88 = 15.9%    13/88 = 14.8%         1        10         9
+
+  EPers per lineage (primary 20/20): {0: 171, 1: 94, 2: 54, 3: 30, 4: 19, 5: 9, 6: 21}  (6 = 6+); lineages with exactly one EPer: 94 — runway is 0% or 100% there by arithmetic
+  post-window censored (birth + 20 sessions beyond 2026-09-04): 143 of 398; 40/40 uncensored: 150
+  sessions from naming to the post-EP (all post EPers): p25/median/p75 = 6 / 11 / 17  (n=227); delivered only: 9 / 13 / 18  (n=147)
+  post EPs that came AFTER the lineage's last live snapshot: 39 of 227
+  pre-EPers: 373, of which founders 251; sessions from their EP to birth p25/median/p75 = 3 / 8 / 15  (n=373) (0 = gapped on birth day)
+  post-EPers: 227, founders among them 103; delivered 147 (founders 103), post-hoc 80
+  post-hoc joiners that joined ON their gap day (the same-night Lane-2 add): 6; later: 74
+  grind lineages with >=1 post-EP: 105 of 325; of those, at least one DELIVERED (on the list before the gap): 85; median members 6
+  cogap lineages with >=1 post-EP: 14 of 73; of those, at least one DELIVERED (on the list before the gap): 13; median members 27.0
+  grind share of ALL eventual members with a post-naming EP: p25/median/p75 = 0% / 0% / 12%  (n=325); pooled 190/2337 = 8.1%
+  cogap share of ALL eventual members with a post-naming EP: p25/median/p75 = 0% / 0% / 0%  (n=73); pooled 37/663 = 5.6%
+  by birth month — lineages / EPers / post / delivered: 2026-03: 43/51/50/30  2026-04: 25/89/66/50  2026-05: 3/9/2/1  2026-06: 41/49/6/4  2026-07: 116/133/66/37  2026-08: 144/254/37/25  2026-09: 26/15/0/0
+
+--- 2. IGNITION — earliest of RS-held / cluster / first-EP in [birth-40, birth+20] sessions; lag = birth - ignition (sessions; negative = named before) ---
+mi_correlation_clusters: 12631 ticker-rows = 1938 clusters over 144 dates (2025-12-02..2026-09-04); size distribution: 4=889 5-8=814 9+=235
+stored-cluster holes > 4 calendar days: 2026-01-02->2026-01-07 (5d), 2026-01-09->2026-01-14 (5d), 2026-01-16->2026-01-28 (12d), 2026-02-13->2026-02-18 (5d), 2026-02-27->2026-04-10 (42d)
+
+  ALL lineages (n=398)
+    RS: mean RS>=70 held 3 score dates (eventual members)      fires  312/398 = 78.4%; lag p25/med/p75 =   1 / 14 / 37  (n=312); before birth 253, on birth day 12, after 47; at the -40 boundary 48
+    RS: same, founders                                         fires  319/398 = 80.2%; lag p25/med/p75 =   2 / 11 / 37  (n=319); before birth 265, on birth day 22, after 32; at the -40 boundary 49
+    RS: eventual members, 20-session lookback only             fires  289/398 = 72.6%; lag p25/med/p75 =    1 / 4 / 17  (n=289); before birth 220, on birth day 20, after 49; at the -40 boundary 0
+    CL: >=half of eventual members in one stored cluster       fires  162/398 = 40.7%; lag p25/med/p75 =   0 / 14 / 32  (n=162); before birth 120, on birth day 32, after 10; at the -40 boundary 19
+    CL: >=half of FOUNDERS in one stored cluster               fires  193/398 = 48.5%; lag p25/med/p75 =   0 / 14 / 31  (n=193); before birth 140, on birth day 36, after 17; at the -40 boundary 19
+    EP: first alert/scan EP among members                      fires  256/398 = 64.3%; lag p25/med/p75 =   0 / 15 / 34  (n=256); before birth 186, on birth day 9, after 61; at the -40 boundary 18
+    EP: +open-gap leg                                          fires  279/398 = 70.1%; lag p25/med/p75 =  10 / 27 / 36  (n=279); before birth 241, on birth day 8, after 30; at the -40 boundary 28
+    cluster-leg coverage: stored-cluster days inside the window p25/med/p75 = 45 / 59 / 61  (n=398); lineages with ZERO stored-cluster days in their window: 0
+    continuous: max share of eventual members ever together in one stored cluster (window) p25/med/p75 = 0% / 33% / 83%  (n=398); founders variant 0% / 35% / 100%  (n=398)
+    WHICH FIRED FIRST (all lineages): {'RS': 172, 'EP': 113, 'CL': 87, 'EP+RS': 9, 'none': 9, 'CL+RS': 4, 'CL+EP': 4}
+    ...restricted to lineages where >=2 legs fired (n=277): {'RS': 117, 'EP': 93, 'CL': 50, 'EP+RS': 9, 'CL+RS': 4, 'CL+EP': 4}
+    lag = birth - earliest ignition: p10/p25/med/p75/p90 = 1 / 10 / 30 / 39 / 40  (n=389); named BEFORE any ignition (lag<0) 16; same day 21; after 352
+    cluster leg by lineage size <=4 members : fires 80/209 = 38.3%; RS leg fires 165/209 = 78.9%; EP leg fires 117/209 = 56.0%
+    cluster leg by lineage size 5-8         : fires 66/113 = 58.4%; RS leg fires 81/113 = 71.7%; EP leg fires 71/113 = 62.8%
+    cluster leg by lineage size 9+          : fires 16/76 = 21.1%; RS leg fires 66/76 = 86.8%; EP leg fires 68/76 = 89.5%
+
+  GRIND-born (n=325)
+    RS: mean RS>=70 held 3 score dates (eventual members)      fires  254/325 = 78.2%; lag p25/med/p75 =   1 / 10 / 35  (n=254); before birth 202, on birth day 11, after 41; at the -40 boundary 31
+    RS: same, founders                                         fires  262/325 = 80.6%; lag p25/med/p75 =   1 / 10 / 36  (n=262); before birth 216, on birth day 17, after 29; at the -40 boundary 34
+    RS: eventual members, 20-session lookback only             fires  242/325 = 74.5%; lag p25/med/p75 =    1 / 4 / 17  (n=242); before birth 184, on birth day 15, after 43; at the -40 boundary 0
+    CL: >=half of eventual members in one stored cluster       fires  141/325 = 43.4%; lag p25/med/p75 =   0 / 14 / 32  (n=141); before birth 104, on birth day 28, after 9; at the -40 boundary 18
+    CL: >=half of FOUNDERS in one stored cluster               fires  162/325 = 49.8%; lag p25/med/p75 =   0 / 15 / 32  (n=162); before birth 120, on birth day 30, after 12; at the -40 boundary 18
+    EP: first alert/scan EP among members                      fires  186/325 = 57.2%; lag p25/med/p75 =  -5 / 14 / 34  (n=186); before birth 123, on birth day 7, after 56; at the -40 boundary 13
+    EP: +open-gap leg                                          fires  206/325 = 63.4%; lag p25/med/p75 =   7 / 26 / 36  (n=206); before birth 170, on birth day 6, after 30; at the -40 boundary 21
+    cluster-leg coverage: stored-cluster days inside the window p25/med/p75 = 45 / 61 / 61  (n=325); lineages with ZERO stored-cluster days in their window: 0
+    continuous: max share of eventual members ever together in one stored cluster (window) p25/med/p75 = 0% / 33% / 86%  (n=325); founders variant 0% / 43% / 100%  (n=325)
+    WHICH FIRED FIRST (all lineages): {'RS': 140, 'CL': 82, 'EP': 82, 'none': 8, 'EP+RS': 6, 'CL+RS': 4, 'CL+EP': 3}
+    ...restricted to lineages where >=2 legs fired (n=214): {'RS': 87, 'EP': 69, 'CL': 45, 'EP+RS': 6, 'CL+RS': 4, 'CL+EP': 3}
+    lag = birth - earliest ignition: p10/p25/med/p75/p90 = 0 / 7 / 29 / 38 / 40  (n=317); named BEFORE any ignition (lag<0) 15; same day 19; after 283
+    cluster leg by lineage size <=4 members : fires 71/175 = 40.6%; RS leg fires 140/175 = 80.0%; EP leg fires 85/175 = 48.6%
+    cluster leg by lineage size 5-8         : fires 57/91 = 62.6%; RS leg fires 63/91 = 69.2%; EP leg fires 49/91 = 53.8%
+    cluster leg by lineage size 9+          : fires 13/59 = 22.0%; RS leg fires 51/59 = 86.4%; EP leg fires 52/59 = 88.1%
+
+  CO-GAP-born (n=73)
+    RS: mean RS>=70 held 3 score dates (eventual members)      fires    58/73 = 79.5%; lag p25/med/p75 =    4 / 28 / 40  (n=58); before birth 51, on birth day 1, after 6; at the -40 boundary 17
+    RS: same, founders                                         fires    57/73 = 78.1%; lag p25/med/p75 =    4 / 26 / 40  (n=57); before birth 49, on birth day 5, after 3; at the -40 boundary 15
+    RS: eventual members, 20-session lookback only             fires    47/73 = 64.4%; lag p25/med/p75 =     2 / 7 / 18  (n=47); before birth 36, on birth day 5, after 6; at the -40 boundary 0
+    CL: >=half of eventual members in one stored cluster       fires    21/73 = 28.8%; lag p25/med/p75 =     1 / 9 / 29  (n=21); before birth 16, on birth day 4, after 1; at the -40 boundary 1
+    CL: >=half of FOUNDERS in one stored cluster               fires    31/73 = 42.5%; lag p25/med/p75 =     0 / 6 / 26  (n=31); before birth 20, on birth day 6, after 5; at the -40 boundary 1
+    EP: first alert/scan EP among members                      fires    70/73 = 95.9%; lag p25/med/p75 =    6 / 18 / 36  (n=70); before birth 63, on birth day 2, after 5; at the -40 boundary 5
+    EP: +open-gap leg                                          fires   73/73 = 100.0%; lag p25/med/p75 =   15 / 29 / 37  (n=73); before birth 71, on birth day 2, after 0; at the -40 boundary 7
+    cluster-leg coverage: stored-cluster days inside the window p25/med/p75 = 47 / 55 / 61  (n=73); lineages with ZERO stored-cluster days in their window: 0
+    continuous: max share of eventual members ever together in one stored cluster (window) p25/med/p75 = 4% / 25% / 50%  (n=73); founders variant 0% / 33% / 67%  (n=73)
+    WHICH FIRED FIRST (all lineages): {'RS': 32, 'EP': 31, 'CL': 5, 'EP+RS': 3, 'none': 1, 'CL+EP': 1}
+    ...restricted to lineages where >=2 legs fired (n=63): {'RS': 30, 'EP': 24, 'CL': 5, 'EP+RS': 3, 'CL+EP': 1}
+    lag = birth - earliest ignition: p10/p25/med/p75/p90 = 8 / 26 / 37 / 40 / 40  (n=72); named BEFORE any ignition (lag<0) 1; same day 2; after 69
+    cluster leg by lineage size <=4 members : fires 9/34 = 26.5%; RS leg fires 25/34 = 73.5%; EP leg fires 32/34 = 94.1%
+    cluster leg by lineage size 5-8         : fires 9/22 = 40.9%; RS leg fires 18/22 = 81.8%; EP leg fires 22/22 = 100.0%
+    cluster leg by lineage size 9+          : fires 3/17 = 17.6%; RS leg fires 15/17 = 88.2%; EP leg fires 16/17 = 94.1%
+
+  matured (n=164)
+    RS: mean RS>=70 held 3 score dates (eventual members)      fires  151/164 = 92.1%; lag p25/med/p75 =    1 / 8 / 31  (n=151); before birth 114, on birth day 4, after 33; at the -40 boundary 17
+    RS: same, founders                                         fires  154/164 = 93.9%; lag p25/med/p75 =    1 / 7 / 33  (n=154); before birth 124, on birth day 9, after 21; at the -40 boundary 16
+    RS: eventual members, 20-session lookback only             fires  148/164 = 90.2%; lag p25/med/p75 =    0 / 3 / 13  (n=148); before birth 105, on birth day 9, after 34; at the -40 boundary 0
+    CL: >=half of eventual members in one stored cluster       fires   54/164 = 32.9%; lag p25/med/p75 =    0 / 22 / 34  (n=54); before birth 40, on birth day 10, after 4; at the -40 boundary 7
+    CL: >=half of FOUNDERS in one stored cluster               fires   72/164 = 43.9%; lag p25/med/p75 =    0 / 20 / 34  (n=72); before birth 52, on birth day 13, after 7; at the -40 boundary 8
+    EP: first alert/scan EP among members                      fires  119/164 = 72.6%; lag p25/med/p75 =  -3 / 14 / 35  (n=119); before birth 83, on birth day 4, after 32; at the -40 boundary 12
+    EP: +open-gap leg                                          fires  126/164 = 76.8%; lag p25/med/p75 =   5 / 28 / 36  (n=126); before birth 108, on birth day 4, after 14; at the -40 boundary 14
+    cluster-leg coverage: stored-cluster days inside the window p25/med/p75 = 51 / 61 / 61  (n=164); lineages with ZERO stored-cluster days in their window: 0
+    continuous: max share of eventual members ever together in one stored cluster (window) p25/med/p75 = 0% / 20% / 50%  (n=164); founders variant 0% / 33% / 81%  (n=164)
+    WHICH FIRED FIRST (all lineages): {'RS': 76, 'EP': 54, 'CL': 26, 'EP+RS': 4, 'CL+EP': 2, 'none': 1, 'CL+RS': 1}
+    ...restricted to lineages where >=2 legs fired (n=133): {'RS': 56, 'EP': 49, 'CL': 21, 'EP+RS': 4, 'CL+EP': 2, 'CL+RS': 1}
+    lag = birth - earliest ignition: p10/p25/med/p75/p90 = 1 / 8 / 30 / 39 / 40  (n=163); named BEFORE any ignition (lag<0) 6; same day 9; after 148
+    cluster leg by lineage size <=4 members : fires 21/69 = 30.4%; RS leg fires 68/69 = 98.6%; EP leg fires 48/69 = 69.6%
+    cluster leg by lineage size 5-8         : fires 26/50 = 52.0%; RS leg fires 42/50 = 84.0%; EP leg fires 29/50 = 58.0%
+    cluster leg by lineage size 9+          : fires 7/45 = 15.6%; RS leg fires 41/45 = 91.1%; EP leg fires 42/45 = 93.3%
+
+  never matured (n=234)
+    RS: mean RS>=70 held 3 score dates (eventual members)      fires  161/234 = 68.8%; lag p25/med/p75 =   2 / 24 / 38  (n=161); before birth 139, on birth day 8, after 14; at the -40 boundary 31
+    RS: same, founders                                         fires  165/234 = 70.5%; lag p25/med/p75 =   2 / 24 / 38  (n=165); before birth 141, on birth day 13, after 11; at the -40 boundary 33
+    RS: eventual members, 20-session lookback only             fires  141/234 = 60.3%; lag p25/med/p75 =    1 / 6 / 17  (n=141); before birth 115, on birth day 11, after 15; at the -40 boundary 0
+    CL: >=half of eventual members in one stored cluster       fires  108/234 = 46.2%; lag p25/med/p75 =   0 / 12 / 28  (n=108); before birth 80, on birth day 22, after 6; at the -40 boundary 12
+    CL: >=half of FOUNDERS in one stored cluster               fires  121/234 = 51.7%; lag p25/med/p75 =   0 / 12 / 28  (n=121); before birth 88, on birth day 23, after 10; at the -40 boundary 11
+    EP: first alert/scan EP among members                      fires  137/234 = 58.5%; lag p25/med/p75 =   1 / 15 / 34  (n=137); before birth 103, on birth day 5, after 29; at the -40 boundary 6
+    EP: +open-gap leg                                          fires  153/234 = 65.4%; lag p25/med/p75 =  12 / 25 / 36  (n=153); before birth 133, on birth day 4, after 16; at the -40 boundary 14
+    cluster-leg coverage: stored-cluster days inside the window p25/med/p75 = 44 / 55 / 61  (n=234); lineages with ZERO stored-cluster days in their window: 0
+    continuous: max share of eventual members ever together in one stored cluster (window) p25/med/p75 = 1% / 33% / 100%  (n=234); founders variant 0% / 50% / 100%  (n=234)
+    WHICH FIRED FIRST (all lineages): {'RS': 96, 'CL': 61, 'EP': 59, 'none': 8, 'EP+RS': 5, 'CL+RS': 3, 'CL+EP': 2}
+    ...restricted to lineages where >=2 legs fired (n=144): {'RS': 61, 'EP': 44, 'CL': 29, 'EP+RS': 5, 'CL+RS': 3, 'CL+EP': 2}
+    lag = birth - earliest ignition: p10/p25/med/p75/p90 = 1 / 10 / 30 / 38 / 40  (n=226); named BEFORE any ignition (lag<0) 10; same day 12; after 204
+    cluster leg by lineage size <=4 members : fires 59/140 = 42.1%; RS leg fires 97/140 = 69.3%; EP leg fires 69/140 = 49.3%
+    cluster leg by lineage size 5-8         : fires 40/63 = 63.5%; RS leg fires 39/63 = 61.9%; EP leg fires 42/63 = 66.7%
+    cluster leg by lineage size 9+          : fires 9/31 = 29.0%; RS leg fires 25/31 = 80.6%; EP leg fires 26/31 = 83.9%
+
+  births >= 2026-04-13 (stored clusters + scan log exist in the window) (n=337)
+    RS: mean RS>=70 held 3 score dates (eventual members)      fires  258/337 = 76.6%; lag p25/med/p75 =   1 / 11 / 35  (n=258); before birth 209, on birth day 9, after 40; at the -40 boundary 46
+    RS: same, founders                                         fires  263/337 = 78.0%; lag p25/med/p75 =   1 / 11 / 35  (n=263); before birth 213, on birth day 20, after 30; at the -40 boundary 48
+    RS: eventual members, 20-session lookback only             fires  235/337 = 69.7%; lag p25/med/p75 =    1 / 5 / 16  (n=235); before birth 179, on birth day 14, after 42; at the -40 boundary 0
+    CL: >=half of eventual members in one stored cluster       fires  156/337 = 46.3%; lag p25/med/p75 =   1 / 14 / 32  (n=156); before birth 118, on birth day 32, after 6; at the -40 boundary 18
+    CL: >=half of FOUNDERS in one stored cluster               fires  182/337 = 54.0%; lag p25/med/p75 =   0 / 14 / 32  (n=182); before birth 133, on birth day 36, after 13; at the -40 boundary 18
+    EP: first alert/scan EP among members                      fires  217/337 = 64.4%; lag p25/med/p75 =   5 / 25 / 36  (n=217); before birth 181, on birth day 9, after 27; at the -40 boundary 18
+    EP: +open-gap leg                                          fires  223/337 = 66.2%; lag p25/med/p75 =   6 / 26 / 36  (n=223); before birth 188, on birth day 8, after 27; at the -40 boundary 21
+    cluster-leg coverage: stored-cluster days inside the window p25/med/p75 = 53 / 61 / 61  (n=337); lineages with ZERO stored-cluster days in their window: 0
+    continuous: max share of eventual members ever together in one stored cluster (window) p25/med/p75 = 7% / 33% / 100%  (n=337); founders variant 0% / 50% / 100%  (n=337)
+    WHICH FIRED FIRST (all lineages): {'RS': 125, 'EP': 107, 'CL': 85, 'EP+RS': 7, 'none': 6, 'CL+EP': 4, 'CL+RS': 3}
+    ...restricted to lineages where >=2 legs fired (n=240): {'EP': 90, 'RS': 87, 'CL': 49, 'EP+RS': 7, 'CL+EP': 4, 'CL+RS': 3}
+    lag = birth - earliest ignition: p10/p25/med/p75/p90 = 1 / 12 / 30 / 39 / 40  (n=331); named BEFORE any ignition (lag<0) 6; same day 19; after 306
+    cluster leg by lineage size <=4 members : fires 78/183 = 42.6%; RS leg fires 143/183 = 78.1%; EP leg fires 105/183 = 57.4%
+    cluster leg by lineage size 5-8         : fires 63/101 = 62.4%; RS leg fires 70/101 = 69.3%; EP leg fires 64/101 = 63.4%
+    cluster leg by lineage size 9+          : fires 15/53 = 28.3%; RS leg fires 45/53 = 84.9%; EP leg fires 48/53 = 90.6%
+
+--- 3. CLUSTER -> THEME CONVERSION (stored clusters are UNCOVERED-by-theme only — a FLOOR) ---
+cluster-days 1938 -> cluster-lineages 775 (chained at >= 50% coverage across consecutive stored days <= 7 calendar days apart); days per cluster-lineage p25/med/p75 = 1 / 1 / 3  (n=775); single-day cluster-lineages 418
+per cluster-DAY: converts (founders cover >= 50% of the cluster, birth within 20 sessions) 418/1938 = 21.6%; loose (eventual members) 465/1938 = 24.0%
+per cluster-LINEAGE: converts 175/775 = 22.6% (loose 202/775 = 26.1%); uncensored only (last day + 20 sessions inside the data, n=638): 121/638 = 19.0% — vs themes maturing 164/398 = 41.2%
+lead = birth - first cluster day (sessions): p25/med/p75 = 0 / 2 / 9  (n=175); lead 0 (named the SAME NIGHT the cluster was handed to the discovery prompt — the engine naming its own seed) 64/175 = 36.6%; 1-5 sessions 45; 6-20 59; >20 7
+converted clusters' themes: matured 57/175 = 32.6%; grind-born 148 / co-gap-born 27
+  cluster-lineages size 4   : n= 393 convert 72/393 = 18.3%
+  cluster-lineages size 5-8 : n= 291 convert 80/291 = 27.5%
+  cluster-lineages size 9+  : n=  91 convert 23/91 = 25.3%
+  ERA (the live engine only consumed clusters from 2026-04-17, commit f70bf9ab; earlier rows are a backfill it never saw; May 2026 had 3 theme births in total):
+    backfill (first day < 04-17)    : n= 296 convert     0/296 = 0.0%; lead 0 0, lead p25/med/p75 = n/a; converted themes matured 0/0 = n/a
+    live, 04-17..05-31              : n= 126 convert     4/126 = 3.2%; lead 0 0, lead p25/med/p75 = 22 / 24 / 30  (n=4); converted themes matured 2/4 = 50.0%
+    live, 06-01 onward              : n= 353 convert  171/353 = 48.4%; lead 0 64, lead p25/med/p75 = 0 / 2 / 9  (n=171); converted themes matured 55/171 = 32.2%
+    live, 06-01 onward, uncensored  : n= 216 convert  117/216 = 54.2%; lead 0 27, lead p25/med/p75 = 1 / 4 / 12  (n=117); converted themes matured 46/117 = 39.3%
+  live 06-01+ cluster-lineages avg RS unknown (0): n=   0 convert 0/0 = n/a
+  live 06-01+ cluster-lineages 0 < avg RS < 70   : n= 293 convert 157/293 = 53.6%
+  live 06-01+ cluster-lineages avg RS >= 70      : n=  60 convert 14/60 = 23.3%
+  by first-day month — cluster-lineages / converted: 2025-12: 72/0  2026-01: 88/0  2026-02: 96/0  2026-04: 87/1  2026-05: 79/3  2026-06: 99/57  2026-07: 99/51  2026-08: 131/57  2026-09: 24/6
+
+  reverse view (from the birth side): lineages whose founders were >= 50% inside one stored cluster in the 40 sessions before birth: 176/398 = 44.2%; among births >= 04-13: 169/337 = 50.1%
+  ...of which the cluster was stored STRICTLY before the birth day (a cluster the engine had in hand on an earlier night): 140; sessions early p25/med/p75 = 10 / 26 / 35  (n=140); matured 52/140 = 37.1%

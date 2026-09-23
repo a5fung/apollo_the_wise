@@ -1,0 +1,463 @@
+2026-05-26|ASPI|10.63|strong|4246265.894123|polygon_20d|5.55||0.05|4.641|54|MODERATE|
+2026-05-26|BTGO|15.87|routine|675037.155718|polygon_20d|6.93||0.15|24.881|50.4|MODERATE|
+2026-05-26|CCOI|10.13|routine|1053147.2329355|polygon_20d|18.16||0.05|4.156|42||score 42 < 50 (catalyst=routine)
+2026-05-26|CLFD|10.56|strong|329963.573112|polygon_20d|43.73||0.03|6.592|24||score 24 < 50 (catalyst=strong)
+2026-05-26|ESLT|11.91|routine|117529.6311875|polygon_20d|767.82|4.7|0.18|2.673|43.2||score 43 < 50 (catalyst=routine)
+2026-05-26|FLY|13.17|strong|7465001.608956|polygon_20d|49.5|3.7|0.19|1.653|21.6||score 22 < 50 (catalyst=strong)
+2026-05-26|FUTU|15.53|routine|2081973.777345|polygon_20d|89.76|37.4|1.92|4.399|51.6|MODERATE|
+2026-05-26|HYLN|18.89|routine|1806456.7424315|polygon_20d|5.99|24.2|1.24|6.008|12||score 12 < 50 (catalyst=routine)
+2026-05-26|JOYY|12.09|routine|278747.1006755|polygon_20d|54.42|1.6|0.06|1.335|18||score 18 < 50 (catalyst=routine)
+2026-05-26|LUNR|14.76|strong|14272419.2481855|polygon_20d|38.26|4.5|0.23|1.741|21.6||score 22 < 50 (catalyst=strong)
+2026-05-26|MDA|10.96|routine|726999.244403|polygon_20d|43.11||0.15|21.088|18||score 18 < 50 (catalyst=routine)
+2026-05-26|MOD|18.99|routine|1016128.360539|polygon_20d|260.52|6.2|0.32|3.769|46.1||score 46 < 50 (catalyst=routine)
+2026-05-26|NNE|13.15|routine|2376684.5374855|polygon_20d|26.73||0.07|2.606|50.4|MODERATE|
+2026-05-26|OKLO|11.68|strong|15455167.6206715|polygon_20d|65.88||0.06|2.344|64.8|MODERATE|
+2026-05-26|PONY|12.66|strong|4246192.398653|polygon_20d|8.92||0.18|13.792|64.8|HIGH|
+2026-05-26|POWI|17.52|strong|1295772.599089|polygon_20d|70.85|4.3|0.22|3.673|84|HIGH|
+2026-05-26|RDW|15.04|strong|45954055.887757|polygon_20d|17.49||0.09|7.216|84|HIGH|
+2026-05-26|SPIR|11.06|strong|1769507.2724765|polygon_20d|21.16||0.03|6.999|28.8||score 29 < 50 (catalyst=strong)
+2026-05-26|UMC|13.23|routine|16009467.000318|polygon_20d|18.22|3.7|0.19|1.666|12||score 12 < 50 (catalyst=routine)
+2026-05-26|VICR|10.33|strong|1055962.6633545|polygon_20d|267.99||0.05|1.297|28.8||score 29 < 50 (catalyst=strong)
+2026-05-26|VSAT|11.36|strong|1701017.172304|polygon_20d|74.56||0.04|13.166|7.2||score 7 < 50 (catalyst=strong)
+2026-05-26|WOLF|10.89|strong|9659773.7389765|polygon_20d|69.89||0.06|1.188|24||score 24 < 50 (catalyst=strong)
+2026-05-27|ANF|11.23|routine|1302169.852526|polygon_20d|74.78|8.6|0.55|8.074|57.6|HIGH|
+2026-05-27|AOSL|10.46|strong|1315766.7726564999|polygon_20d|47.89||0.1|4.089|28.8||score 29 < 50 (catalyst=strong)
+2026-05-27|ASTI|13.48|routine|1225564.177287|polygon_20d|5.64|17.4|0.67||61.9|MODERATE|
+2026-05-27|BBWI|15|routine|5998465.455696|polygon_20d|17.73|3.9|0.2|4.019|54.7|HIGH|
+2026-05-27|CRSR|15.33|strong|1068904.44078|polygon_20d|8.09||0.19|72.985|100.8|HIGH|
+2026-05-27|DY|14.16|strong|488402.261234|polygon_20d|420.47||0.01|14.04|50.4|HIGH|
+2026-05-27|LUNR|10.4|routine|14272419.2481855|polygon_20d|34.86||0.3|3.416|-12||score -12 < 50 (catalyst=routine)
+2026-05-27|OOMA|13.26|strong|288925.6069145|polygon_20d|19.27|9.8|0.5|7.14|26.4||score 26 < 50 (catalyst=strong)
+2026-05-27|QFIN|25.3|routine|1103874.356336|polygon_20d|12.59|13.1|0.67|7.212|66|HIGH|
+2026-05-27|SMTC|11.66|strong|3228616.8064735|polygon_20d|164.46||0.06|6.505|7.2||score 7 < 50 (catalyst=strong)
+2026-05-27|UMC|10.06|routine|16794440.0301265|polygon_20d|21.08|4.7|0.24|2.183|12||score 12 < 50 (catalyst=routine)
+2026-05-28|A|13.76|routine|2305135.4100615|polygon_20d|115.84|4.2|0.27|4.337|30||score 30 < 50 (catalyst=routine)
+2026-05-28|AVAV|10.33|strong|1139936.379432|polygon_20d|181.28||0.09|27.491|72|HIGH|
+2026-05-28|BBY|11.09|routine|3744855.3059375|polygon_20d|64.54|10|0.64|9.139|43.2||score 43 < 50 (catalyst=routine)
+2026-05-28|CHRN|12.7|routine|352691.899224|polygon_20d|14.84|3.9|0.25|1.364|36||score 36 < 50 (catalyst=routine)
+2026-05-28|DLTR|16.35|routine|4128644.560849|polygon_20d|95.87|9|0.58|9.224|46.1||score 46 < 50 (catalyst=routine)
+2026-05-28|HEI|13.11|strong|828441.563126|polygon_20d|309.4|2.5|0.13|2.795|44.4||score 44 < 50 (catalyst=strong)
+2026-05-28|IMOS|14.6|routine|107132.10568499999|polygon_20d|56.72|5.3|0.34|3.039|32.4||score 32 < 50 (catalyst=routine)
+2026-05-28|KSS|21.73|routine|4805689.6079035|polygon_20d|12.93|5.5|0.21|3.292|64.8|MODERATE|
+2026-05-28|KTOS|10.54|strong|4223872.677192001|polygon_20d|57.3||0.07|16.18|64.8|MODERATE|
+2026-05-28|NBIS|10.85|strong|16444243.688325498|polygon_20d|208.37||0.09|1.84|7.2||score 7 < 50 (catalyst=strong)
+2026-05-28|NCNO|10.6|routine|3046177.1213565|polygon_20d|15.19||0.04|102.109|43.2||score 43 < 50 (catalyst=routine)
+2026-05-28|PHR|22.56|routine|1446080.803449|polygon_20d|9.13|1.3|0.05|1.19|54|MODERATE|
+2026-05-28|RCAT|16.07|strong|10622429.063669499|polygon_20d|10.67||0.19|19.512|100.8|HIGH|
+2026-05-28|SNOW|35.23|routine|7528485.683927501|polygon_20d|175.26|9.6|0.37|3.944|53.3|MODERATE|
+2026-05-28|UMAC|46.46|routine|4962110.478743|polygon_20d|18.83|36|2.31|18.967|36||score 36 < 50 (catalyst=routine)
+2026-05-29|ASAN|11.56|routine|7137556.425305501|polygon_20d|6.66|2.3|0.09|1.258|53.3|MODERATE|
+2026-05-29|BHVN|11.47|strong|2025603.1681195|polygon_20d|10.24|2.5|0.13|2.552|64.8|MODERATE|
+2026-05-29|BRUN|11.06|routine|1656488.497823|polygon_20d|32.91|6.2|0.4|1.981|46.1||score 46 < 50 (catalyst=routine)
+2026-05-29|CHA|12.48|routine|520527.6553055|polygon_20d|10.16||0.29||50.4|MODERATE|
+2026-05-29|DELL|36.26|strong|6696352.199104|polygon_20d|317.05||0.17|26.241|115.2|HIGH|
+2026-05-29|HPE|10.91|routine|16730682.751418501|polygon_20d|38.21|4.4|0.17|3.044|0||score 0 < 50 (catalyst=routine)
+2026-05-29|NTAP|27.75|routine|2369406.75509|polygon_20d|142.4|9.5|0.61|6.474|31.7||score 32 < 50 (catalyst=routine)
+2026-05-29|NXT|14.1|routine|2461801.963125|polygon_20d|137.17|3.9|0.25|2.052|14.4||score 14 < 50 (catalyst=routine)
+2026-05-29|OKTA|18.94|routine|3172326.3526290003|polygon_20d|94.72|11.2|0.72|9.002|28.8||score 29 < 50 (catalyst=routine)
+2026-05-29|PD|18.15|routine|1952024.7212975|polygon_20d|7.44||0.03|16.733|50.4|MODERATE|
+2026-05-29|PENG|11.43|strong|3339327.870751|polygon_20d|54.07|3.5|0.18|1.721|28.8||score 29 < 50 (catalyst=strong)
+2026-05-29|QURE|14.61|routine|1741232.636302|polygon_20d|24.85|9|0.58|6.591|24.5||score 24 < 50 (catalyst=routine)
+2026-05-29|SOFI|11.14|routine|66272094.269214004|polygon_20d|16.97||0.29|3.281|27.6||score 28 < 50 (catalyst=routine)
+2026-06-01|ALOY|14.25|strong|1864398.764413|polygon_20d|9.16|4.7|0.3|2.382|86.4|HIGH|
+2026-06-01|EWTX|16.51|routine|1133521.3031755001|polygon_20d|34.16|11.1|0.71|10.573|42||score 42 < 50 (catalyst=routine)
+2026-06-01|IBM|10.7|strong|8210881.0369855|polygon_20d|297.8||0.39|13.653|36||score 36 < 50 (catalyst=strong)
+2026-06-01|JBIO|10.27|routine|609815.2836955|polygon_20d|21.04||0.03|5.867|-7.2||score -7 < 50 (catalyst=routine)
+2026-06-01|NOW|10.31|strong|29335437.802869998|polygon_20d|124.37||0.06|4.879|54.7|MODERATE|
+2026-06-01|PURR|17.22|routine|10821888.0801895|polygon_20d|9.99|6.8|0.26|2.546|10.1||score 10 < 50 (catalyst=routine)
+2026-06-01|SAIC|15.51|routine|513858.063281|polygon_20d|104.2|3.4|0.13|4.146|50.4|MODERATE|
+2026-06-01|SKM|10.69|strong|2526776.9354189998|polygon_20d|37.34|7.6|0.49|4.687|50.4|MODERATE|
+2026-06-01|TNDM|10.52|strong|2764750.587469|polygon_20d|17.2||0.01|4.812|54.7|MODERATE|
+2026-06-02|AVAH|12.14|routine|1495919.127812|polygon_20d|6.67||0.01|1.86|33.1||score 33 < 50 (catalyst=routine)
+2026-06-02|CAMT|10.37|strong|492871.7926315|polygon_20d|163.09||0.05|6.085|50.4|MODERATE|
+2026-06-02|GNRC|10.3|strong|865697.348446|polygon_20d|269.26||0.03|7.935|43.2||score 43 < 50 (catalyst=strong)
+2026-06-02|GRRR|17.64|strong|1019394.6003630001|polygon_20d|21.14||0.36|7.418|100.8|HIGH|
+2026-06-02|HPE|25.28|strong|16730682.751418501|polygon_20d|47||0.11|74.854|115.2|HIGH|
+2026-06-02|HSAI|10.33|routine|1851359.910437|polygon_20d|20.03||0.12|6.207|33.1||score 33 < 50 (catalyst=routine)
+2026-06-02|LAC|11.43|strong|12341472.845755499|polygon_20d|5.51||0.05|4.983|54.7|MODERATE|
+2026-06-02|LEGN|12.58|routine|2465150.346796|polygon_20d|25.51|1.9|0.12|1.402|9.6||score 10 < 50 (catalyst=routine)
+2026-06-02|MCHP|10.63|strong|12831716.268483|polygon_20d|91.52||0.02|1.346|21.6||score 22 < 50 (catalyst=strong)
+2026-06-02|MRVL|24.87|strong|29916838.215758|polygon_20d|219.43||0.23|16.809|115.2|HIGH|
+2026-06-02|PENG|14.37|strong|3501069.6912289998|polygon_20d|59.71|2.5|0.16|1.349|20.4||score 20 < 50 (catalyst=strong)
+2026-06-02|STM|11.46|strong|11911961.8664125|polygon_20d|69.02|2.8|0.18|1.396|31.7||score 32 < 50 (catalyst=strong)
+2026-06-03|ABVX|15.14|routine|1180246.8789575|polygon_20d|72.5||0.51|14.65|50.4|MODERATE|
+2026-06-03|GME|11.52|routine|6628269.8733165|polygon_20d|20.92|10.4|0.4|3.297|36||score 36 < 50 (catalyst=routine)
+2026-06-03|NN|10.22|routine|2502506.6338855|polygon_20d|20.05|4.5|0.29|4.044|30||score 30 < 50 (catalyst=routine)
+2026-06-03|NVTS|15.39|strong|37372324.1854085|polygon_20d|25.86||0.07|3.27|84|HIGH|
+2026-06-04|ELPC|14.52|routine|275885.0279745|polygon_20d|11.36|0|0||18||score 18 < 50 (catalyst=routine)
+2026-06-04|PGY|10.21|strong|4062241.0291835|polygon_20d|13.96|3.1|0.2|1.45|66|HIGH|
+2026-06-04|RUM|15.49|strong|3214256.1792405|polygon_20d|8.33||0.17|2.983|84|HIGH|
+2026-06-05|AGX|10.96|game_changer|296734.4535665|polygon_20d|689.43||0.01|6.778|86.4|HIGH|
+2026-06-05|MRLN|27.99|routine|2146737.8850755002|polygon_20d|7.18||1.34|481.449|60|MODERATE|
+2026-06-05|TTAN|16.28|strong|1435227.910682|polygon_20d|74.33||0|3.281|100.8|HIGH|
+2026-06-08|CGEM|11.03|strong|986328.061802|polygon_20d|13.51||0.01|9.421|42||score 42 < 50 (catalyst=strong)
+2026-06-08|NRIX|11.5|game_changer|1057088.3050179998|polygon_20d|14.64||3.68|1436.935|75.6|HIGH|
+2026-06-08|TNGX|37.44|routine|3223894.7701709997|polygon_20d|20.22|25.4|1.63|23.712|40||score 40 < 50 (catalyst=routine)
+2026-06-09|ACLS|12.15|routine|591028.6464140001|polygon_20d|154.76|3.1|0.2|2.413|6||score 6 < 50 (catalyst=routine)
+2026-06-09|AVO|11.18|routine|1097610.5463625|polygon_20d|10.11|7|0.45|8.345|46.1||score 46 < 50 (catalyst=routine)
+2026-06-09|BAP|11.34|strong|554135.0874795001|polygon_20d|319.89|1.9|0.12|1.921|36||score 36 < 50 (catalyst=strong)
+2026-06-09|CECO|10.58|routine|951269.5945979999|polygon_20d|80.53||0.05|19.325|6||score 6 < 50 (catalyst=routine)
+2026-06-09|VECO|15.06|routine|1353997.3274055|polygon_20d|61.04|6.4|0.41|4.764|8.4||score 8 < 50 (catalyst=routine)
+2026-06-09|VSH|11.64|routine|8546092.889705501|polygon_20d|57.22|3.7|0.24|2.011|0||score 0 < 50 (catalyst=routine)
+2026-06-10|CASY|14.06|routine|495288.2224275|polygon_20d|761.18|5.1|0.33|6.139|38.4||score 38 < 50 (catalyst=routine)
+2026-06-10|CBRL|25.33|routine|1061825.0283535|polygon_20d|36.3|17.9|0.92|16.482|54.7|MODERATE|
+2026-06-11|ELVN|18.33|strong|726611.6913205001|polygon_20d|37||0.03|12.133|84|HIGH|
+2026-06-11|IDCC|15.2|strong|354132.2715065|polygon_20d|253.91|5.1|0.26|6.992|84|HIGH|
+2026-06-11|IMOS|10.67|strong|127264.2221235|polygon_20d|55.12||0.06|1.135|20||score 20 < 50 (catalyst=strong)
+2026-06-11|MH|10.7|strong|419163.4760305|polygon_20d|12.8||0.01||42||score 42 < 50 (catalyst=strong)
+2026-06-11|NAVN|17.87|game_changer|3896958.344165|polygon_20d|20.87||0.03|49.285|80|HIGH|
+2026-06-11|VELO|16.07|routine|3000725.305941|polygon_20d|22.68|8.4|0.54|2.449|12||score 12 < 50 (catalyst=routine)
+2026-06-12|AKTS|11.92|strong|151738.5565725|polygon_20d|19.46|4.2|0.27|2.74|54|MODERATE|
+2026-06-12|SHAZ|11.87|game_changer|704230.188105|polygon_20d|71.51||0.13|14.982|86.4|HIGH|
+2026-06-15|ABSI|15.96|routine|5173585.9885444995|polygon_20d|6.8|3|0.19|2.013|6||score 6 < 50 (catalyst=routine)
+2026-06-15|ATRO|13.03|routine|740407.5433499999|polygon_20d|80||0|2.06|28.8||score 29 < 50 (catalyst=routine)
+2026-06-15|AUGO|13.39|routine|821420.330569|polygon_20d|60.89|2|0.1|1.606|50.4|MODERATE|
+2026-06-15|HQ|19.71|strong|292603.1095985|polygon_20d|10.91|10.9|0.56||84|HIGH|
+2026-06-15|HYMC|13.82|routine|2382789.5169345|polygon_20d|25.76|2|0.13|1.083|53.3|MODERATE|
+2026-06-15|IDR|18.71|routine|268243.21135500004|polygon_20d|36.39|4.7|0.24|2.837|50.4|MODERATE|
+2026-06-15|MMYT|12.81|routine|1001293.5959365|polygon_20d|43.15|2.9|0.15|2.529|60.5|MODERATE|
+2026-06-15|SVM|13.36|strong|4091578.890808|polygon_20d|11.3|2.7|0.17|1.39|44.4||score 44 < 50 (catalyst=strong)
+2026-06-15|USAS|13.06|routine|5212073.888174|polygon_20d|5.28|3|0.19|1.635|47.5||score 48 < 50 (catalyst=routine)
+2026-06-15|WDC|13.22|routine|7220759.9666524995|polygon_20d|562.925|2.9|0.15|1.41|10.1||score 10 < 50 (catalyst=routine)
+2026-06-15|XE|17.64|routine|4057037.080031|pending|18.59|2.8|0.18|1.193|50.4|MODERATE|
+2026-06-16|PURR|11.78|routine|19748260.2604145|polygon_20d|9.34|3.6|0.23|1.542|14.4||score 14 < 50 (catalyst=routine)
+2026-06-16|RXT|17.5|strong|26136457.394183|polygon_20d|5.915||0.03|3.559|84|HIGH|
+2026-06-16|WDC|10.58|strong|7220759.9666524995|polygon_20d|653.53||0.08|7.493|21.6||score 22 < 50 (catalyst=strong)
+2026-06-17|ACMR|13.18|strong|1957203.9750164999|polygon_20d|91.18|2.5|0.16|1.276|26.4||score 26 < 50 (catalyst=strong)
+2026-06-17|AEHR|15.87|strong|2485199.173263|polygon_20d|104.83|2.5|0.13|1.099|70|HIGH|
+2026-06-17|JBL|10.77|game_changer|1233258.2385145|polygon_20d|375.51||0.12|5.178|60|HIGH|
+2026-06-17|LZB|26.5|routine|381953.760026|polygon_20d|35.06|14.6|0.75|27.794|54|MODERATE|
+2026-06-17|QURE|75.2|game_changer|1450821.3110004999|polygon_20d|26.99||0.34|23.989|80|HIGH|
+2026-06-18|BFLY|30.12|routine|4653325.134958999|polygon_20d|5.71|18.6|1.19|14.851|25||score 25 < 50 (catalyst=routine)
+2026-06-18|CHRN|12.91|routine|390766.286635|polygon_20d|20.61|2.5|0.16|1.094|32.4||score 32 < 50 (catalyst=routine)
+2026-06-18|SWBI|15.59|strong|554048.1371919999|polygon_20d|13.73||0.06|45.354|70|HIGH|
+2026-06-18|UUUU|12.36|game_changer|9578939.4043275|polygon_20d|15.3||0.05|6.118|72|HIGH|
+2026-06-18|WDC|11.41|routine|7415599.688335|polygon_20d|712.13|4.5|0.29|2.118|12||score 12 < 50 (catalyst=routine)
+2026-06-22|BWIN|15.22|routine|1541697.1938105|polygon_20d|20.24|2.3|0.15|2.233|42||score 42 < 50 (catalyst=routine)
+2026-06-22|DFTX|14.38|game_changer|2201942.2203545|polygon_20d|24.48||0.03|40.925|60|MODERATE|
+2026-06-22|FRVO|10.35|routine|2907402.1473915|polygon_20d|35.09||0.05|2.031|20||score 20 < 50 (catalyst=routine)
+2026-06-22|JBIO|10.11|strong|1086309.3768495|polygon_20d|16.82|6|0.31|4.35|66|MODERATE|
+2026-06-22|KEEL|12.56|routine|49861142.7186765|polygon_20d|6.29|5.5|0.35|2.159|27||score 27 < 50 (catalyst=routine)
+2026-06-22|MLTX|19.1|game_changer|845066.744123|polygon_20d|19.21||0.06|51.633|96|HIGH|
+2026-06-22|NUAI|11.84|routine|7862928.025641|polygon_20d|6.25|4.4|0.28|2.435|12||score 12 < 50 (catalyst=routine)
+2026-06-22|PENG|11.32|routine|3357964.848355|polygon_20d|67.15|3.7|0.24|1.96|5||score 5 < 50 (catalyst=routine)
+2026-06-22|SYRE|12.35|game_changer|1137796.677529|polygon_20d|88.34||0.01|11.276|60|MODERATE|
+2026-06-22|UMC|15.74|routine|17549741.261777498|polygon_20d|24.08|3.3|0.21|1.609|15||score 15 < 50 (catalyst=routine)
+2026-06-23|ZETA|10.01|strong|9586769.9127415|polygon_20d|18.47||0.08|4.934|36||score 36 < 50 (catalyst=strong)
+2026-06-24|ABSI|16.33|strong|5173585.9885444995|polygon_20d|7.41||0.08|20.544|100.8|HIGH|
+2026-06-24|FCEL|17.51|strong|11826703.302737|polygon_20d|21.82||0.01|1.817|84|HIGH|
+2026-06-24|KBH|14.06|routine|1231907.108414|polygon_20d|52.73|5.1|0.33|7.298|32.4||score 32 < 50 (catalyst=routine)
+2026-06-24|RUN|25.6|routine|8232652.804902|polygon_20d|12.81|22.2|1.42|14.946|48||score 48 < 50 (catalyst=routine)
+2026-06-24|WEN|25.34|routine|9873672.7500195|polygon_20d|6.255||2.09|665.619|54|MODERATE|
+2026-06-25|AYI|16.24|routine|382917.61380249995|polygon_20d|305.51|7|0.45|8.707|37||score 37 < 50 (catalyst=routine)
+2026-06-25|BB|20.59|routine|42064277.6989665|polygon_20d|8.62|5.8|0.37|2.396|14.4||score 14 < 50 (catalyst=routine)
+2026-06-25|KYMR|21.17|strong|677798.4855865|polygon_20d|99.87|9.9|0.51|6.637|80|HIGH|
+2026-06-25|MLKN|14.73|routine|886719.951428|polygon_20d|17.24|2|0.13|2.466|26.4||score 26 < 50 (catalyst=routine)
+2026-06-25|MU|17.71|game_changer|59730697.253147006|polygon_20d|1048.51||0.03|1.504|96|HIGH|
+2026-06-25|SNDK|19.28|routine|11924589.327371001|polygon_20d|1914.46|2.8|0.18|1.28|12||score 12 < 50 (catalyst=routine)
+2026-06-25|SNX|11.22|game_changer|860911.5788005|polygon_20d|283.22||0.01|12.085|72|HIGH|
+2026-06-25|WDC|13.57|routine|8118802.8137435|polygon_20d|643.83||0.05|1.441|0||score 0 < 50 (catalyst=routine)
+2026-06-25|WGO|13.27|routine|774387.455442|polygon_20d|27.27|4.2|0.27|5.346|38||score 38 < 50 (catalyst=routine)
+2026-06-26|ACAD|15.34|strong|1426941.923163|polygon_20d|23.72||0.03|7.014|84|HIGH|
+2026-06-26|APOG|12.13|strong|263725.11615|polygon_20d|42.48||0.05||24||score 24 < 50 (catalyst=strong)
+2026-06-26|ZSQR|10.66|strong|338191.19402249996|polygon_20d|12.2|0|0||43||score 43 < 50 (catalyst=strong)
+2026-06-29|CHTR|26.14|routine|2924312.9928205|polygon_20d|133.64|16.1|0.62|10.211|55|MODERATE|
+2026-06-29|LBRDK|11.36|routine|2090210.7039005|polygon_20d|31.33|2.2|0.14|3.896|37||score 37 < 50 (catalyst=routine)
+2026-06-29|OUST|16.02|strong|5263060.4206395|polygon_20d|42.02|3.1|0.16|1.216|70|MODERATE|
+2026-06-29|QDEL|33.47|routine|1733603.487332|polygon_20d|13.79|7.4|0.38|8.749|54|MODERATE|
+2026-06-29|VSAT|15.63|routine|3391446.978452|polygon_20d|61.95|1.7|0.11|1.323|5||score 5 < 50 (catalyst=routine)
+2026-06-30|AVAV|25.3|routine|1250191.447188|polygon_20d|139||0.06|12.928|54|MODERATE|
+2026-06-30|ENPH|11.44|routine|8239070.20864|polygon_20d|48.34|3.9|0.15|2.097|39.6||score 40 < 50 (catalyst=routine)
+2026-06-30|SEDG|10.19|strong|3144186.9126230003|polygon_20d|55.36||0.02|4.835|54.7|MODERATE|
+2026-07-01|GRND|13.26|strong|1803778.4307855|polygon_20d|14.37|5.7|0.29|5.56|56.4|MODERATE|
+2026-07-01|PRGS|11.17|routine|747601.2726769999|polygon_20d|33.58|7.5|0.48|9.268|30||score 30 < 50 (catalyst=routine)
+2026-07-02|NEXA|13.12|routine|913409.8176160001|polygon_20d|12.04|4.5|0.29|2.458|36||score 36 < 50 (catalyst=routine)
+2026-07-06|IREN|12.16|strong|47992017.643243|polygon_20d|38.82|2.7|0.17|1.425|45||score 45 < 50 (catalyst=strong)
+2026-07-06|RGNX|11.07|strong|1843147.5033175|polygon_20d|13.28|2.5|0.13|1.085|17||score 17 < 50 (catalyst=strong)
+2026-07-06|WULF|19.92|game_changer|28172594.6499165|polygon_20d|21.18||0.05|9.337|96|HIGH|
+2026-07-07|AGIO|12.81|strong|1064544.752328|polygon_20d|37.39|3.6|0.23|4.558|48||score 48 < 50 (catalyst=strong)
+2026-07-07|DOCN|15.62|game_changer|3308520.0824725|polygon_20d|131.37||0.01|3.613|115.2|HIGH|
+2026-07-08|BBOT|10.49|strong|399523.793789|polygon_20d|8.29||0.01||43||score 43 < 50 (catalyst=strong)
+2026-07-08|KC|11.76|strong|1394423.3671845002|polygon_20d|9.44|6|0.31|2.55|50|MODERATE|
+2026-07-08|PENG|10.52|game_changer|3839999.308129|polygon_20d|62.71|5.3|0.34|3.289|72|HIGH|
+2026-07-09|ALNY|15.3|routine|1236666.2057710001|polygon_20d|323.5|15.6|1|14.757|35||score 35 < 50 (catalyst=routine)
+2026-07-09|BBIO|15.02|routine|3057838.303304|polygon_20d|78.33|11.4|0.73|13.993|35||score 35 < 50 (catalyst=routine)
+2026-07-09|ICHR|11.7|strong|1226721.11009|polygon_20d|88.81|2.3|0.15|1.324|17||score 17 < 50 (catalyst=strong)
+2026-07-09|SMPL|16.9|routine|2006430.408209|polygon_20d|12.84|3.1|0.12|4.32|45||score 45 < 50 (catalyst=routine)
+2026-07-09|UCTT|10.12|routine|1498575.4967470001|polygon_20d|100.91|2.9|0.15|1.572|12||score 12 < 50 (catalyst=routine)
+2026-07-10|CRCL|10.76|game_changer|13917309.1186825|polygon_20d|63.01||0.11|4.837|60|MODERATE|
+2026-07-10|EQPT|11.13|routine|2628540.459118|polygon_20d|16|4.2|0.27|4.496|33||score 33 < 50 (catalyst=routine)
+2026-07-10|VOD|11.58|strong|3665529.780936|polygon_20d|13.08|9.5|0.61|5.285|42||score 42 < 50 (catalyst=strong)
+2026-07-10|WDFC|14.23|game_changer|144236.5949475|polygon_20d|239.42||0.04|5.429|72|HIGH|
+2026-07-14|CLSK|17.15|game_changer|19612605.694405|polygon_20d|12.36||0.08|16.43|96|HIGH|
+2026-07-14|TSEM|18.57|game_changer|1899788.849718|polygon_20d|229.68||0.08|9.429|80|HIGH|
+2026-07-15|AEHR|29.5|game_changer|1920275.564948|polygon_20d|72.01||0.06|7.188|96|HIGH|
+2026-07-15|ANGO|10.54|routine|359957.795943|polygon_20d|13|5.1|0.33||32||score 32 < 50 (catalyst=routine)
+2026-07-15|MANE|10.66|game_changer|565630.1430795|polygon_20d|110.17||0.02|6.739|72|HIGH|
+2026-07-15|PRG|21.65|strong|536983.400619|polygon_20d|45.21||0||80|HIGH|
+2026-07-16|ABT|11.87|routine|13255145.1504375|polygon_20d|89.27|4.5|0.29|4.864|25||score 25 < 50 (catalyst=routine)
+2026-07-16|CDNA|22.99|routine|847732.5479065|polygon_20d|29.75|16.4|1.05|13.949|30||score 30 < 50 (catalyst=routine)
+2026-07-16|GHRS|11.44|routine|204474.10926300002|polygon_20d|26.92|6.2|0.24|2.579|17||score 17 < 50 (catalyst=routine)
+2026-07-16|MAN|26.52|routine|1114716.376707|polygon_20d|39.02|6.6|0.42|11.248|42||score 42 < 50 (catalyst=routine)
+2026-07-17|DCBO|11.65|routine|68467.91120900001|polygon_20d|18.54|6.2|0.32||40||score 40 < 50 (catalyst=routine)
+2026-07-17|SG|15.16|routine|5185821.9003880005|polygon_20d|6.22|5.8|0.3|5.419|56.4|MODERATE|
+2026-07-17|TRVI|11.75|routine|3005483.657373|polygon_20d|17.36||0.02|93.433|15||score 15 < 50 (catalyst=routine)
+2026-07-20|HUT|11.54|game_changer|4148554.8702165|polygon_20d|91.45||0.01|4.195|72|MODERATE|
+2026-07-20|IREN|13.15|game_changer|39984517.093499|polygon_20d|33.62|4.3|0.22|2.034|72|MODERATE|
+2026-07-20|PLOW|10.74|routine|231348.58331000002|polygon_20d|44.62|9.9|0.51|7.742|32||score 32 < 50 (catalyst=routine)
+2026-07-21|HAS|10.61|game_changer|1881067.4015374999|polygon_20d|81.59|12.1|0.62|19.977|72|MODERATE|
+2026-07-21|PKE|17.88|routine|325186.7487705|polygon_20d|32.66|4.1|0.26|5.503|35||score 35 < 50 (catalyst=routine)
+2026-07-22|ARWR|19.57|game_changer|2420376.19183|polygon_20d|74.52||0.01|25.831|80|HIGH|
+2026-07-22|EFOR|12.37|routine|962301.622154|polygon_20d|18.31|2.3|0.12|3.129|50.4|MODERATE|
+2026-07-22|FTAI|11.51|routine|1215497.6331004999|polygon_20d|210.25||0.11|83.839|23||score 23 < 50 (catalyst=routine)
+2026-07-22|PAG|10.52|routine|297910.84035149997|polygon_20d|195.19|9.2|0.59|14.969|42||score 42 < 50 (catalyst=routine)
+2026-07-22|SMCI|15.88|strong|52044849.477692|polygon_20d|25.5||0.04|4.497|70|MODERATE|
+2026-07-23|ALLE|10.04|routine|1310871.882235|polygon_20d|139.95|1|0.04|1.032|15||score 15 < 50 (catalyst=routine)
+2026-07-23|CLF|15.03|strong|20317670.8566455|polygon_20d|9.45||0.07|28.763|84|HIGH|
+2026-07-23|DGX|10.54|routine|984526.682614|polygon_20d|209.83|6.7|0.43|10.791|27||score 27 < 50 (catalyst=routine)
+2026-07-23|LMT|10.11|routine|1177305.3869495|polygon_20d|514.36|6|0.31|4.367|27||score 27 < 50 (catalyst=routine)
+2026-07-23|MEDP|22.84|routine|352014.606161|polygon_20d|528.12|6.7|0.43|7.581|42||score 42 < 50 (catalyst=routine)
+2026-07-23|NVCR|15.54|strong|1480816.9874635|polygon_20d|15.57||0.03|7.784|84|HIGH|
+2026-07-23|OII|12.36|routine|1009524.8156335|polygon_20d|45|1.6|0.1|1.746|15||score 15 < 50 (catalyst=routine)
+2026-07-23|TMO|10.56|routine|2105237.3609865|polygon_20d|526.46|6.8|0.35|5.269|37||score 37 < 50 (catalyst=routine)
+2026-07-23|URI|11.31|routine|483596.34182|polygon_20d|1035.06|4.1|0.26|5.203|25||score 25 < 50 (catalyst=routine)
+2026-07-24|AMKR|11.62|strong|5498447.9553815|polygon_20d|65.33||0.06|1.227|45.6||score 46 < 50 (catalyst=strong)
+2026-07-24|RNG|20.72|routine|1577168.2342615002|polygon_20d|38.62|7.8|0.5|10.278|37||score 37 < 50 (catalyst=routine)
+2026-07-24|SSNC|10.52|routine|1913083.973158|polygon_20d|66.95|3.7|0.24|6.361|25||score 25 < 50 (catalyst=routine)
+2026-07-24|THC|14.31|game_changer|1240503.8997765|polygon_20d|199.02||0|12.09|60|HIGH|
+2026-07-24|WKC|11.63|game_changer|1113123.6381105|polygon_20d|36.27||0.01|53.894|60|HIGH|
+2026-07-27|BMNR|12.16|routine|39313407.690659|polygon_20d|15.79|2.8|0.18|1.449|37||score 37 < 50 (catalyst=routine)
+2026-07-27|GENI|10.03|routine|5422662.058705499|polygon_20d|6.48|1.7|0.11|1.868|-2||score -2 < 50 (catalyst=routine)
+2026-07-27|NNE|10.38|strong|2663523.6486235|polygon_20d|15.59|2|0.13|1.141|57|MODERATE|
+2026-07-27|OMER|15.47|routine|1423300.967038|polygon_20d|9.79|4.2|0.27|2.512|38||score 38 < 50 (catalyst=routine)
+2026-07-27|QBTS|11.29|strong|20618275.086363003|polygon_20d|16.21||0.03|2.389|54|MODERATE|
+2026-07-27|TRAX|25.95|routine|704110.255601|polygon_20d|35.52|13.1|0.84|11.955|20||score 20 < 50 (catalyst=routine)
+2026-07-28|AWI|10.14|routine|518598.081685|polygon_20d|165.22|3.9|0.25|9.243|30||score 30 < 50 (catalyst=routine)
+2026-07-28|CORZ|11.28|game_changer|11533860.009666499|polygon_20d|20.74||0.02|12.654|72|MODERATE|
+2026-07-28|ICLR|10.01|strong|793495.9108414999|polygon_20d|168.78|1.2|0.08|1.059|18||score 18 < 50 (catalyst=strong)
+2026-07-28|IQV|15.01|routine|1348923.493177|polygon_20d|213.22|7.2|0.46|8.587|17||score 17 < 50 (catalyst=routine)
+2026-07-28|ITRI|18.71|routine|605193.613199|polygon_20d|84.78|12.5|0.8|22.827|40||score 40 < 50 (catalyst=routine)
+2026-07-28|KNSA|23.1|routine|729331.1812975|polygon_20d|63.535|5.5|0.35|7.73|42||score 42 < 50 (catalyst=routine)
+2026-07-29|AVTR|14.17|routine|10663734.245979998|polygon_20d|12.42|7.3|0.47|7.601|2||score 2 < 50 (catalyst=routine)
+2026-07-29|CBZ|16.49|routine|853521.529054|polygon_20d|46.7|53.7|3.44|105.041|25||score 25 < 50 (catalyst=routine)
+2026-07-29|GEHC|10.39|routine|5628317.564848|polygon_20d|64.11|5.5|0.35|5.171|27||score 27 < 50 (catalyst=routine)
+2026-07-29|GFS|10.16|strong|3705323.223344|polygon_20d|49.02||0.03|13.608|45.6||score 46 < 50 (catalyst=strong)
+2026-07-29|GNRC|10.03|routine|1066606.9521615|polygon_20d|195.6||0.05|22.846|23||score 23 < 50 (catalyst=routine)
+2026-07-29|GRMN|12.5|routine|967559.9326925001|polygon_20d|253.65|2.5|0.16|4.471|22||score 22 < 50 (catalyst=routine)
+2026-07-29|HURN|21.92|routine|304510.48798750003|polygon_20d|121.37|2|0.13|1.43|37||score 37 < 50 (catalyst=routine)
+2026-07-29|LFUS|10.37|routine|378655.5706985|polygon_20d|392.05|0.9|0.06|1.316|20||score 20 < 50 (catalyst=routine)
+2026-07-29|MANH|23.14|routine|762805.6385745001|polygon_20d|168.17|3.7|0.24|5.227|45||score 45 < 50 (catalyst=routine)
+2026-07-29|MBIN|12.77|routine|170891.024327|polygon_20d|48.77|2.7|0.17|3.289|27||score 27 < 50 (catalyst=routine)
+2026-07-29|NEO|16.19|routine|3088511.8908695|polygon_20d|13.4|2.8|0.18|4.396|12||score 12 < 50 (catalyst=routine)
+2026-07-29|TER|10.4|game_changer|4243911.0875585005|polygon_20d|320.65||0.05|9.678|60|HIGH|
+2026-07-29|TEVA|11.4|strong|5211331.8804655|polygon_20d|31.67|7.4|0.38|5.702|50.4|HIGH|
+2026-07-30|ARM|10.77|game_changer|7647057.528174501|polygon_20d|224.89||0.08|5.586|60|HIGH|
+2026-07-30|AVY|10.09|routine|767129.204029|polygon_20d|167.14||0.01|19.762|15||score 15 < 50 (catalyst=routine)
+2026-07-30|BAX|18.3|routine|6522225.1271505|polygon_20d|24.77|5.1|0.26|4.559|17||score 17 < 50 (catalyst=routine)
+2026-07-30|BDC|10.75|routine|591413.23391|polygon_20d|102.03||0|2.166|28||score 28 < 50 (catalyst=routine)
+2026-07-30|CORT|24.21|strong|1145703.833513|polygon_20d|92.95||0.01|21.233|96|HIGH|
+2026-07-30|EFOR|18.37|routine|1106672.718377|polygon_20d|23.41|1.6|0.1|2.088|43||score 43 < 50 (catalyst=routine)
+2026-07-30|EME|10.56|game_changer|458143.1843505|polygon_20d|672.48||0|6.55|60|HIGH|
+2026-07-30|FORM|21.92|routine|1694367.7375495|polygon_20d|83.45|2.2|0.14|1.932|40||score 40 < 50 (catalyst=routine)
+2026-07-30|FTNT|10.1|game_changer|5578109.670519|polygon_20d|153.22||0.01|7.546|60|HIGH|
+2026-07-30|GKOS|10.11|strong|771227.1959124999|polygon_20d|161.66||0|8.637|30||score 30 < 50 (catalyst=strong)
+2026-07-30|HII|11.45|routine|490281.431077|polygon_20d|280.4||0.02|1.146|28||score 28 < 50 (catalyst=routine)
+2026-07-30|LRCX|18.95|strong|14378130.6073985|polygon_20d|252.35|3.7|0.19|2.268|84|HIGH|
+2026-07-30|MKTX|30.03|routine|657091.6281035|polygon_20d|125.73|31.5|2.02|47.738|45||score 45 < 50 (catalyst=routine)
+2026-07-30|NPKI|11.95|routine|1200552.043369|polygon_20d|12.05||0|1.289|15||score 15 < 50 (catalyst=routine)
+2026-07-30|PRCH|17.35|routine|1922115.3834235|polygon_20d|12.36|3.1|0.2|3.231|30||score 30 < 50 (catalyst=routine)
+2026-07-30|PWR|12.09|game_changer|1206900.073026|polygon_20d|561.14||0|7.956|60|HIGH|
+2026-07-30|SFM|17.07|routine|2222564.460806|polygon_20d|79.16|3.7|0.24|4.314|38||score 38 < 50 (catalyst=routine)
+2026-07-30|SIMO|19.18|game_changer|867126.6098420001|polygon_20d|209.68||0.03|4.721|80|HIGH|
+2026-07-30|STGW|12.13|routine|1413320.851911|polygon_20d|8.08||0.03|43.244|15||score 15 < 50 (catalyst=routine)
+2026-07-30|TAL|12.03|routine|3350120.9678140003|polygon_20d|10.89||0.25|7.805|15||score 15 < 50 (catalyst=routine)
+2026-07-31|AAOI|13.92|routine|10323032.2450805|polygon_20d|90.11|2.9|0.15|1.399|37||score 37 < 50 (catalyst=routine)
+2026-07-31|AMZN|13.92|routine|47881737.564496994|polygon_20d|235.5|7|0.45|4.643|27||score 27 < 50 (catalyst=routine)
+2026-07-31|BLZE|13.06|game_changer|2922280.244612|polygon_20d|12.63|2|0.13|1.151|72|MODERATE|
+2026-07-31|COHR|12.52|routine|5331519.679161|polygon_20d|249.06|2.1|0.11|1.135|30||score 30 < 50 (catalyst=routine)
+2026-07-31|COHU|22.71|game_changer|1276945.6399405|polygon_20d|46.45||0.01|9.018|80|HIGH|
+2026-07-31|CSTL|12.43|routine|370955.411118|polygon_20d|26.79|6.4|0.33|8.024|40||score 40 < 50 (catalyst=routine)
+2026-07-31|DXCM|10.4|routine|4898772.9400525|polygon_20d|74.54|4.2|0.27|4.372|25||score 25 < 50 (catalyst=routine)
+2026-07-31|FET|16.04|strong|157896.5033165|polygon_20d|51.43||0|0.674|84|HIGH|
+2026-07-31|FLNC|10.02|game_changer|8764385.194118|polygon_20d|13.47||0.01|1.895|60|MODERATE|
+2026-07-31|MPWR|13.96|game_changer|1053015.1048705|polygon_20d|1316.18||0.02|1.119|60|HIGH|
+2026-07-31|NBIS|10.29|strong|18806035.4298385|polygon_20d|188.43||0.06|2.66|38||score 38 < 50 (catalyst=strong)
+2026-07-31|NVT|11.5|routine|2189961.280847|polygon_20d|144.8|4.7|0.3|5.087|25||score 25 < 50 (catalyst=routine)
+2026-07-31|NWL|13.42|game_changer|10572337.081128001|polygon_20d|5.14||0|24.914|60|HIGH|
+2026-07-31|NXT|10.42|routine|2901067.5435435|polygon_20d|96.9||0.01|4.053|23||score 23 < 50 (catalyst=routine)
+2026-07-31|PWP|12.14|routine|1174266.0363059998|polygon_20d|14.91|2|0.13|3.241|30||score 30 < 50 (catalyst=routine)
+2026-07-31|SPSC|10.83|routine|654186.491996|polygon_20d|65.83|2.2|0.14|2.353|45||score 45 < 50 (catalyst=routine)
+2026-07-31|SPXC|15.25|routine|689134.2300135|polygon_20d|199.3|1.1|0.07|2.186|25||score 25 < 50 (catalyst=routine)
+2026-08-03|CNH|15.66|routine|12177314.8968915|polygon_20d|10.25|3.7|0.24|4.242|30||score 30 < 50 (catalyst=routine)
+2026-08-03|FTH|10.13|strong|229893.9000895|polygon_20d|27.24||0||42||score 42 < 50 (catalyst=strong)
+2026-08-03|FTK|10.45|game_changer|321093.94287599996|polygon_20d|23.54||0.06|15.898|60|MODERATE|
+2026-08-03|LIND|15.55|strong|884029.80804|polygon_20d|29.58|1.4|0.09|2.572|70|HIGH|
+2026-08-04|AAOI|15.33|routine|10125637.925278999|polygon_20d|110.21|9.2|0.59|4.076|40||score 40 < 50 (catalyst=routine)
+2026-08-04|AEIS|15.39|strong|795046.1381415001|polygon_20d|296.38||0.01|13.058|84|HIGH|
+2026-08-04|AMRC|38.72|routine|568592.4743995001|polygon_20d|22.73|7|0.27|7.615|50|MODERATE|
+2026-08-04|ARVN|14.21|routine|643072.7823055|polygon_20d|8.06|6.6|0.42|4.748|35||score 35 < 50 (catalyst=routine)
+2026-08-04|BLZE|19.14|game_changer|2643706.7172405|polygon_20d|15.59||0.02|12.735|80|HIGH|
+2026-08-04|BTDR|24.1|game_changer|9828824.3525755|polygon_20d|11.37||0.06|6.643|80|HIGH|
+2026-08-04|CAT|10|game_changer|3449799.303477|polygon_20d|830.03||0.05|10.243|60|HIGH|
+2026-08-04|COHR|14.9|routine|5331519.679161|polygon_20d|288.14|5.7|0.29|2.746|27||score 27 < 50 (catalyst=routine)
+2026-08-04|DORM|15.87|routine|270042.2984335|polygon_20d|127.68|6.9|0.44|7.947|37||score 37 < 50 (catalyst=routine)
+2026-08-04|EWTX|14.11|routine|1068392.0006610001|polygon_20d|38.38|5.8|0.37|7.154|27||score 27 < 50 (catalyst=routine)
+2026-08-04|FN|17.01|routine|877842.1494440001|polygon_20d|455.94|2|0.1|1.591|40||score 40 < 50 (catalyst=routine)
+2026-08-04|IBTA|48.43|routine|172799.6726715|polygon_20d|24.58|7|0.45|7.317|42||score 42 < 50 (catalyst=routine)
+2026-08-04|INSP|22.29|routine|968127.139957|polygon_20d|52.22|0.8|0.03|1.03|55|MODERATE|
+2026-08-04|LIFE|16.29|game_changer|667395.2369735|polygon_20d|22.83||0.01|6.722|80|HIGH|
+2026-08-04|LITE|12.42|routine|4538375.875136|polygon_20d|779.89||0.14|6.374|15||score 15 < 50 (catalyst=routine)
+2026-08-04|LWLG|15.62|routine|3726587.667033|polygon_20d|6.82|4.1|0.26|2.418|45||score 45 < 50 (catalyst=routine)
+2026-08-04|MED|32.65|routine|203257.23800950003|polygon_20d|9.74|8.1|0.52||42||score 42 < 50 (catalyst=routine)
+2026-08-04|PAY|20.1|routine|1155710.203319|polygon_20d|34.52|4.5|0.29|8.415|45||score 45 < 50 (catalyst=routine)
+2026-08-04|PLTR|15.96|game_changer|40187142.342946|polygon_20d|125.65||0.06|9.342|96|HIGH|
+2026-08-04|POET|15.62|routine|14151322.8765555|polygon_20d|7.36|7.4|0.38|3.392|47||score 47 < 50 (catalyst=routine)
+2026-08-04|TSAT|14.46|game_changer|210006.3550345|polygon_20d|40.18|5.3|0.34|2.085|60|MODERATE|
+2026-08-04|UFPT|21.25|routine|218362.4768665|polygon_20d|267.53|4.2|0.27|2.389|40||score 40 < 50 (catalyst=routine)
+2026-08-04|VOYG|16.96|game_changer|1657392.0414715|polygon_20d|28.01||0.02|3.918|80|HIGH|
+2026-08-04|W|24.95|routine|3288771.239523|polygon_20d|89.31|12|0.77|11.029|25||score 25 < 50 (catalyst=routine)
+2026-08-04|WGS|14.07|routine|806965.07687|polygon_20d|67.86||0.04|4.165|10||score 10 < 50 (catalyst=routine)
+2026-08-04|WIX|14.36|routine|1338219.1547005|polygon_20d|56.84||0.03|16.218|35||score 35 < 50 (catalyst=routine)
+2026-08-04|ZBRA|10.75|game_changer|775420.536001|polygon_20d|291.64||0.05|34.955|60|HIGH|
+2026-08-05|AMPX|12.3|routine|6475880.9121785|polygon_20d|10.81|3.1|0.12|1.842|39.6||score 40 < 50 (catalyst=routine)
+2026-08-05|ANET|10.8|routine|8553488.352712|polygon_20d|190.51||0.05|9.428|0||score 0 < 50 (catalyst=routine)
+2026-08-05|APPS|28.29|strong|3515933.8875155|polygon_20d|9.51||0.04|36.859|115.2|HIGH|
+2026-08-05|BLMN|28.31|routine|1966146.652743|polygon_20d|8.92|10.6|0.68|16.925|48||score 48 < 50 (catalyst=routine)
+2026-08-05|DT|14.29|routine|4702813.013488|polygon_20d|45.71|3.7|0.24|5.775|30||score 30 < 50 (catalyst=routine)
+2026-08-05|ECG|10.96|game_changer|696232.4086605001|polygon_20d|136.16|1.2|0.06|1.717|72|HIGH|
+2026-08-05|FRPT|10.45|routine|1413464.9038075|polygon_20d|62.38||0.05|249.1|24||score 24 < 50 (catalyst=routine)
+2026-08-05|HGTY|11.69|strong|132540.29255399999|polygon_20d|11.72|2.2|0.14||60.5|HIGH|
+2026-08-05|INTA|10.28|routine|789125.3958320001|polygon_20d|32.78||0|2.257|21.6||score 22 < 50 (catalyst=routine)
+2026-08-05|KMT|14.39|game_changer|1008189.5550265|polygon_20d|36.06||0.01|9.257|72|HIGH|
+2026-08-05|KODK|10.86|strong|705907.6183205|polygon_20d|8.93||0.01|4.629|54.7|HIGH|
+2026-08-05|KTOS|11.26|strong|4396572.534067|polygon_20d|51.87||0.05|12.007|64.8|MODERATE|
+2026-08-05|PGEN|11.79|routine|4575404.8918605|polygon_20d|6.53||0|12.92|-12||score -12 < 50 (catalyst=routine)
+2026-08-05|PRGO|13.17|strong|3089159.7812865|polygon_20d|10.78||0.01|18.516|54|HIGH|
+2026-08-05|QLYS|17.99|routine|833600.4491425001|polygon_20d|161.06|2.2|0.14|3.108|8.4||score 8 < 50 (catalyst=routine)
+2026-08-05|ROCK|14.9|strong|338200.4131375|polygon_20d|48.06|2|0.1|3.765|60.5|HIGH|
+2026-08-05|SHOP|16.22|routine|8796000.269914|polygon_20d|123.3|14.7|0.94|8.912|42||score 42 < 50 (catalyst=routine)
+2026-08-05|SWIM|15.03|routine|690530.185063|polygon_20d|5.7|4.8|0.31|7.395|36||score 36 < 50 (catalyst=routine)
+2026-08-05|TATT|11.79|strong|164188.63843300001|polygon_20d|41.65||0.23|37.791|61.9|HIGH|
+2026-08-05|TBI|24.19|routine|284908.453012|polygon_20d|7.69|2.7|0.17||44.4||score 44 < 50 (catalyst=routine)
+2026-08-05|TVTX|14.6|strong|1545170.0426715|polygon_20d|56.02|5.8|0.37|7.196|38.9||score 39 < 50 (catalyst=strong)
+2026-08-05|UPST|17.74|routine|4124572.429214|polygon_20d|30.32||0.1|7.593|42||score 42 < 50 (catalyst=routine)
+2026-08-05|YOU|13.69|strong|1406906.6687165|polygon_20d|55.73||0.02|1.423|36||score 36 < 50 (catalyst=strong)
+2026-08-06|AEVA|22.28|strong|1647336.055799|polygon_20d|19.61||0.02|12.101|96|HIGH|
+2026-08-06|ASPN|58.09|routine|1155508.432448|polygon_20d|5.01|32.9|2.11|21.897|48||score 48 < 50 (catalyst=routine)
+2026-08-06|CAI|17.11|routine|3768885.9754225|polygon_20d|16.45|2.5|0.13|2.637|50.4|MODERATE|
+2026-08-06|CDRE|15.6|routine|360695.9770885|polygon_20d|31.03|3.3|0.21|4.891|42||score 42 < 50 (catalyst=routine)
+2026-08-06|DCTH|21.3|routine|389713.8416275|polygon_20d|12.63|17.6|1.13|11.398|54|MODERATE|
+2026-08-06|INSM|16.14|game_changer|2798264.1623425|polygon_20d|99.02||0|21.455|96|HIGH|
+2026-08-06|KRO|16.91|routine|319629.578076|polygon_20d|6.21|3.4|0.22||42||score 42 < 50 (catalyst=routine)
+2026-08-06|LFST|18.8|game_changer|3503883.141543|polygon_20d|10.37||0|6.946|96|HIGH|
+2026-08-06|MGNI|19.76|routine|2516209.0126655|polygon_20d|20.67|10.3|0.66|12.309|24||score 24 < 50 (catalyst=routine)
+2026-08-06|ORA|10.06|routine|951314.691413|polygon_20d|98.02||0.01|2.036|27.6||score 28 < 50 (catalyst=routine)
+2026-08-06|PAYC|23.02|routine|909391.022871|polygon_20d|174.8|4.4|0.28|8.242|48||score 48 < 50 (catalyst=routine)
+2026-08-06|PAYS|23.77|routine|568600.3359095|polygon_20d|9.59|13.4|0.86||24||score 24 < 50 (catalyst=routine)
+2026-08-06|RDW|12.46|strong|18796332.727819|polygon_20d|10.72||0.06|4.006|64.8|MODERATE|
+2026-08-06|RELY|11.88|routine|2823427.2944719996|polygon_20d|24.07||0.01|8.628|18||score 18 < 50 (catalyst=routine)
+2026-08-06|SITM|28.88|game_changer|512254.70008850005|polygon_20d|543.12||0.01|8.617|96|HIGH|
+2026-08-06|SOUN|25.19|routine|34958938.950033|polygon_20d|6.43|6.8|0.26|6.594|62.4|MODERATE|
+2026-08-06|TASK|11.39|routine|684684.3193265|polygon_20d|6.32|2.1|0.08||50.4|MODERATE|
+2026-08-06|TPC|15.86|routine|660500.5427379999|polygon_20d|84.55|1.2|0.08|1.261|30||score 30 < 50 (catalyst=routine)
+2026-08-06|TRUP|18|routine|367649.4859495|polygon_20d|24.39|3.1|0.16|3.714|60|MODERATE|
+2026-08-06|U|18.41|game_changer|7941165.691189|polygon_20d|35.47||0.05|12.533|96|HIGH|
+2026-08-06|WPP|25.86|routine|451150.231548|polygon_20d|20.61|15.8|1.01|8.943|48||score 48 < 50 (catalyst=routine)
+2026-08-07|ACMR|15.09|strong|1322956.0848019999|polygon_20d|78.98||0.06|3.341|100.8|HIGH|
+2026-08-07|AKAM|11.98|routine|3710783.4604554996|polygon_20d|118.55||0.01|29.273|18||score 18 < 50 (catalyst=routine)
+2026-08-07|CART|14.06|routine|4199067.123548|polygon_20d|45.03||0.03|4.255|18||score 18 < 50 (catalyst=routine)
+2026-08-07|CRSR|16.87|strong|1646785.5515315|polygon_20d|10.61||0.04|13.363|84|HIGH|
+2026-08-07|DOCS|178.8|routine|3562105.632134|polygon_20d|20.66||1.23|4156.587|54|MODERATE|
+2026-08-07|FIGS|26.69|game_changer|3468621.17856|polygon_20d|11.24||0.02|21.904|96|HIGH|
+2026-08-07|FLR|13.44|routine|2230747.7150075|polygon_20d|48.75||0.02|1.073|18||score 18 < 50 (catalyst=routine)
+2026-08-07|FROG|17.51|strong|2415650.7339805|polygon_20d|83.04||0.01|6.839|100.8|HIGH|
+2026-08-07|INOD|14.83|strong|1238047.1108175|polygon_20d|65.48||0.08|8.309|51.6|MODERATE|
+2026-08-07|MTW|33.08|routine|225743.33994550002|polygon_20d|14.21|5.7|0.29||50.4|MODERATE|
+2026-08-07|NET|15.67|strong|3222370.7166275|polygon_20d|284.43||0.03|7.913|100.8|HIGH|
+2026-08-07|NTRA|18.72|routine|1344996.7700395|polygon_20d|265.38|3.6|0.23|3.665|18||score 18 < 50 (catalyst=routine)
+2026-08-07|ONTO|15.31|game_changer|1428941.26768|polygon_20d|268.7|3.1|0.16|2.21|96|HIGH|
+2026-08-07|PRAA|16.61|strong|390056.6996075|polygon_20d|18.15|1.4|0.07|1.143|84|HIGH|
+2026-08-07|PSIX|25.77|routine|461873.06814|polygon_20d|33.02|6.6|0.34|4.496|68.4|HIGH|
+2026-08-07|PUBM|36.87|strong|490423.387992|polygon_20d|13.48||0.09|57.852|96|HIGH|
+2026-08-07|QNST|27.92|game_changer|675278.8406595|polygon_20d|15.22||0.01|23.031|96|HIGH|
+2026-08-07|ROAD|16.74|routine|889761.157375|polygon_20d|100.16|1.9|0.12|1.929|30||score 30 < 50 (catalyst=routine)
+2026-08-07|TEAM|31.66|strong|4023906.902292|polygon_20d|110.17||0.17|25.543|115.2|HIGH|
+2026-08-07|TWLO|17.97|strong|1834889.81168|polygon_20d|193.2||0.02|21.538|84|HIGH|
+2026-08-07|WLDN|14.67|strong|321385.85141799995|polygon_20d|73.69||0.01|7.486|51.6|MODERATE|
+2026-08-10|ABCL|17.6|game_changer|6291141.6775525|polygon_20d|6.93||0.13|12.733|96|HIGH|
+2026-08-10|ACHR|14.85|routine|30267950.1553085|polygon_20d|5.59|13|0.5|7.311|54|MODERATE|
+2026-08-10|ALOY|11.65|routine|3018297.0080124997|polygon_20d|12.27||0.05|6.442|24||score 24 < 50 (catalyst=routine)
+2026-08-10|NESR|11.99|strong|1909418.5386095|polygon_20d|29.02|2.9|0.11|2.467|53.3|HIGH|
+2026-08-10|SLN|18.83|strong|573373.993604|polygon_20d|11.95||0.07||84|HIGH|
+2026-08-10|TH|12.17|strong|1129273.8040089998|polygon_20d|16.51||0|2.317|50.4|HIGH|
+2026-08-11|ACVA|11.98|routine|3139160.7991505|polygon_20d|7.26||0.66|38.488|27.6||score 28 < 50 (catalyst=routine)
+2026-08-11|AP|10.61|routine|161411.02409899997|polygon_20d|8.67|0.9|0.06||24||score 24 < 50 (catalyst=routine)
+2026-08-11|APEI|12.89|routine|328114.6317725|polygon_20d|47.39||0.04|32.631|24||score 24 < 50 (catalyst=routine)
+2026-08-11|BW|34.91|game_changer|3746713.210849|polygon_20d|8.88||0.09|64.301|96|HIGH|
+2026-08-11|CODI|15.97|routine|644467.368886|polygon_20d|11.08|6.7|0.43|6.298|38.4||score 38 < 50 (catalyst=routine)
+2026-08-11|FRMI|17.01|game_changer|17892920.3405535|polygon_20d|5.88||0.02|6.83|96|HIGH|
+2026-08-11|NIQ|21.87|routine|1574830.3805510001|polygon_20d|11.68|4.7|0.3|7.58|42||score 42 < 50 (catalyst=routine)
+2026-08-11|RIOT|17.92|game_changer|17601065.902326|polygon_20d|19.4||0.05|16.442|115.2|HIGH|
+2026-08-11|RPD|16.78|strong|2726075.8352295|polygon_20d|11.61|2|0.1|1.967|84|HIGH|
+2026-08-11|SE|10.58|strong|4984484.441164|polygon_20d|114.8||0.1|35.387|54.7|HIGH|
+2026-08-12|ATRO|11.29|game_changer|554081.912043|polygon_20d|74.91||0.02|9.983|72|HIGH|
+2026-08-12|BE|15.16|strong|16176877.314548|polygon_20d|211.21|4.3|0.22|1.707|84|HIGH|
+2026-08-12|BRUN|12.04|strong|1590680.612148|polygon_20d|18.61||0.02|4.452|60|MODERATE|
+2026-08-12|CAVA|15.27|routine|3711944.547557|polygon_20d|60.81|7.5|0.48|8.669|38.4||score 38 < 50 (catalyst=routine)
+2026-08-12|CRWV|19.51|routine|25214602.7879215|polygon_20d|90.32|13.5|0.69|5.618|51.6|MODERATE|
+2026-08-12|EROC|16.09|game_changer|1585022.7117585|polygon_20d|11.25||0|5.113|96|HIGH|
+2026-08-12|GLBE|10.67|game_changer|1238743.7517265|polygon_20d|40.86||0.01|20.207|72|HIGH|
+2026-08-12|HRB|16.76|strong|2144047.5521795|polygon_20d|46.67|1|0.04|1.662|100.8|HIGH|
+2026-08-12|KRNT|10.92|strong|206864.21175000002|polygon_20d|17.58||0.04||42||score 42 < 50 (catalyst=strong)
+2026-08-12|MRX|12.45|strong|716672.0453164999|polygon_20d|59.93|2.3|0.15|2.65|53.3|HIGH|
+2026-08-12|NBIS|12.2|strong|23459101.1457545|polygon_20d|193.23||0.1|4.129|54.7|HIGH|
+2026-08-12|RSKD|12.43|routine|660385.246038|polygon_20d|5.27|14.7|0.94||36||score 36 < 50 (catalyst=routine)
+2026-08-12|SMWB|11.1|routine|819304.5081075|polygon_20d|7.25|13.9|0.89||12||score 12 < 50 (catalyst=routine)
+2026-08-12|WYFI|17.34|strong|2419064.1961275004|polygon_20d|24.22||0.04|6.347|84|HIGH|
+2026-08-13|AEBI|13.66|routine|322157.27865750005|polygon_20d|12.99|15.9|1.02||42||score 42 < 50 (catalyst=routine)
+2026-08-13|AVAH|14.48|routine|2026690.2200190001|polygon_20d|9.05|4.5|0.29|4.435|30||score 30 < 50 (catalyst=routine)
+2026-08-13|BIRK|16.57|routine|1518975.4923795|polygon_20d|36.74|9.4|0.6|12.544|38.4||score 38 < 50 (catalyst=routine)
+2026-08-13|BLSH|12.4|routine|1309564.2761295|polygon_20d|24.63|4.5|0.29|3.381|54|MODERATE|
+2026-08-13|CGEM|12.24|game_changer|642701.498713|polygon_20d|19.6||0.04|4.895|72|HIGH|
+2026-08-13|CRMD|10|strong|880447.1886440001|polygon_20d|7.1||0.04|17.54|64.8|HIGH|
+2026-08-13|ELMT|11.93|routine|308071.97402850003|polygon_20d|16.93||0.08|3.433|24||score 24 < 50 (catalyst=routine)
+2026-08-13|ENS|11.4|routine|444923.9695005|polygon_20d|186.72|2.9|0.11|4.053|32.4||score 32 < 50 (catalyst=routine)
+2026-08-13|HLIT|23.79|game_changer|1427131.7891865|polygon_20d|12||0.09|96.633|96|HIGH|
+2026-08-13|KURA|13.43|strong|1345006.1509790001|polygon_20d|9.94|5.7|0.29|5.685|60.5|MODERATE|
+2026-08-13|OMER|22.54|routine|1471337.1555195|polygon_20d|13.71|10.4|0.4|8.295|60|MODERATE|
+2026-08-13|TBBB|16.67|routine|586735.8533165001|polygon_20d|42.3|4.8|0.31|9.901|36||score 36 < 50 (catalyst=routine)
+2026-08-13|WWW|11.3|routine|861932.7925915|polygon_20d|18.06||0.01|2.464|27.6||score 28 < 50 (catalyst=routine)
+2026-08-14|ETON|23.28|game_changer|577904.726836|polygon_20d|40.8||0.01|6.559|96|HIGH|
+2026-08-14|HTFL|25.12|game_changer|1093368.1664924999|polygon_20d|31.01||0.01|8.53|96|HIGH|
+2026-08-14|LPTH|10.03|strong|2955889.4475450004|polygon_20d|13.12||0.07|4.94|54.7|MODERATE|
+2026-08-14|NMAX|16.75|strong|670756.3370375|polygon_20d|9.49|14|0.72|5.264|100.8|HIGH|
+2026-08-14|NU|14.25|routine|96139848.255832|polygon_20d|13.93|5.9|0.38|11.405|32.4||score 32 < 50 (catalyst=routine)
+2026-08-14|RCAT|10.43|routine|9034033.206339002|polygon_20d|10.23||0.19|6.452|27.6||score 28 < 50 (catalyst=routine)
+2026-08-14|RDDT|12.24|strong|4247568.1932574995|polygon_20d|158.12||0.05|5.992|54.7|MODERATE|
+2026-08-14|STDN|12.9|strong|1071467.1113495|polygon_20d|12.09|2.8|0.18|1.112|53.3|MODERATE|
+2026-08-14|UMAC|14.61|routine|3751548.510832|polygon_20d|27.24|12.3|0.63|5.214|12||score 12 < 50 (catalyst=routine)
+2026-08-14|VCX|12.48|routine|233696.461852|polygon_20d|38.5||0.15|15.366|36||score 36 < 50 (catalyst=routine)
+2026-08-14|VERA|14.23|game_changer|2410601.175706|polygon_20d|28.89||0.01|9.688|86.4|HIGH|
+2026-08-17|ARGX|10.53|game_changer|282973.737033|polygon_20d|851.29||0.01|5.21|86.4|HIGH|
+2026-08-17|CBRS|12.78|strong|5302478.087009|polygon_20d|218.98|8.1|0.52|2.977|60|MODERATE|
+2026-08-17|OCUL|12.63|routine|2205904.230693|polygon_20d|10.04||0.35|106.824|27.6||score 28 < 50 (catalyst=routine)
+2026-08-18|AMLX|21.33|game_changer|1802362.4636829998|polygon_20d|21.43||0.12|154.481|96|HIGH|
+2026-08-18|HAE|16.45|routine|796394.6489355|polygon_20d|90.27|4.7|0.3|10.734|12||score 12 < 50 (catalyst=routine)
+2026-08-19|BNTX|17.3|routine|898715.6476660001|polygon_20d|92.75|34.5|2.21|29.766|42||score 42 < 50 (catalyst=routine)
+2026-08-19|DRD|12.47|routine|314901.342567|polygon_20d|24.3|4.2|0.27|2.985|45.6||score 46 < 50 (catalyst=routine)
+2026-08-19|EIKN|14.42|routine|363298.18884099997|polygon_20d|11.65|11.7|0.75||42||score 42 < 50 (catalyst=routine)
+2026-08-19|EL|16.1|routine|2392910.4575934997|polygon_20d|84.27|11.5|0.74|14.641|42||score 42 < 50 (catalyst=routine)
+2026-08-19|KC|15.2|routine|1573570.3556889999|polygon_20d|10.84||0.09|5.328|33.6||score 34 < 50 (catalyst=routine)
+2026-08-19|MRK|10.21|routine|8974496.863232002|polygon_20d|135.17|8.9|0.57|7.811|32.4||score 32 < 50 (catalyst=routine)
+2026-08-19|MRNA|33.1|strong|5616703.513057|polygon_20d|62.96||0.07|13.953|115.2|HIGH|
+2026-08-19|MRVI|25.44|routine|2412899.2059645|polygon_20d|5.74|11.4|0.73|12.261|48||score 48 < 50 (catalyst=routine)
+2026-08-19|MRVL|11.38|strong|25374797.676388|polygon_20d|216||0.08|2.482|69.1|HIGH|
+2026-08-19|TEM|16.76|routine|4798203.2613615|polygon_20d|49.36|11.9|0.61|4.899|51.6|MODERATE|
+2026-08-19|TWST|16.7|strong|1434699.8311405|polygon_20d|116.1|5|0.32|2.859|84|HIGH|
+2026-08-20|BULL|15.16|strong|10439542.0214525|polygon_20d|8.64||0.08|57.475|100.8|HIGH|
+2026-08-20|FUTU|9.51|strong|1314168.900136|polygon_20d|109.42||0.52|35.563|39.6||score 40 < 50 (catalyst=strong)
+2026-08-20|MRVI|11.77|routine|2412899.2059645|polygon_20d|7.22|11.5|0.74|12.515|6||score 6 < 50 (catalyst=routine)
+2026-08-20|RARE|11.39|game_changer|2023115.7572405|polygon_20d|26.24||0.03|30.834|72|HIGH|
+2026-08-20|SCSC|20.58|strong|246275.6257025|polygon_20d|51.42||0.05|5.171|96|HIGH|
+2026-08-21|CRML|12.07|routine|6457282.358406|polygon_20d|5.8|3.7|0.24|1.426|40||score 40 < 50 (catalyst=routine)
+2026-08-21|UUUU|9.28|strong|7546081.8724259995|polygon_20d|13.9|4.2|0.27|2.119|51.6|MODERATE|

@@ -1,0 +1,83 @@
+### CAP-NEUTRAL LADDER — base = names that ENTERED the graded shortlist
+period           days  tape10 arrived cap-cut entered mech-cut routine scored  below  HIGH HIGH/ent
+A 07-27..08-07     10    49.6    41.8    15.0    26.8      9.6     1.4   15.8    9.1   5.4    20.1%
+B 08-10..08-14      5    30.4    22.6     0.0    22.6     11.2     0.6   10.8    4.2   4.6    20.4%
+C 08-17..08-21      5    21.8    15.6     0.0    15.6      9.2     1.8    4.6    2.4   1.6    10.3%
+
+### DECOMPOSITION — HIGH alerts per day = (names entering the shortlist) x (HIGH per entrant)
+
+A 07-27..08-07 -> B 08-10..08-14:  5.40 -> 4.60 HIGH alerts/day  (-15%)
+   names entering the shortlist     26.8 ->   22.6   (-16%)
+   HIGH per entrant                20.1% ->  20.4%   (+1%)
+   fewer names alone would give     4.55/day  -> explains   106% of the fall
+   lower conversion explains the remaining    -6%
+
+B 08-10..08-14 -> C 08-17..08-21:  4.60 -> 1.60 HIGH alerts/day  (-65%)
+   names entering the shortlist     22.6 ->   15.6   (-31%)
+   HIGH per entrant                20.4% ->  10.3%   (-50%)
+   fewer names alone would give     3.18/day  -> explains    47% of the fall
+   lower conversion explains the remaining    53%
+
+A 07-27..08-07 -> C 08-17..08-21:  5.40 -> 1.60 HIGH alerts/day  (-70%)
+   names entering the shortlist     26.8 ->   15.6   (-42%)
+   HIGH per entrant                20.1% ->  10.3%   (-49%)
+   fewer names alone would give     3.14/day  -> explains    59% of the fall
+   lower conversion explains the remaining    41%
+
+### SMALL-N CHECK on the step-2 conversion drop (B vs C, both uncapped)
+   B: 23 HIGH out of 113 shortlist entrants = 20.4%
+   C: 8 HIGH out of 78 shortlist entrants = 10.3%
+   Fisher exact two-sided p = 0.074  (NOT significant at 0.05 — the conversion half of step 2 is small-N)
+
+### GRADE MIX at NAME level (one grade per day-ticker that reached grading)
+period            reached  game_chan     strong   moderate       weak    routine
+A 07-27..08-07        142          0         34          0          0        108
+B 08-10..08-14         45          0         18          0          0         27
+C 08-17..08-21         29          0          8          0          0         21
+
+### WHICH MECHANICAL GATE — per trading day, B vs C
+gate                          A        B        C
+mcap_low                    2.0      3.2      2.2
+adv_low                     2.2      3.6      2.8
+extension_gate              1.1      0.8      2.2
+atr_high                    0.9      0.6      0.2
+pm_rvol_low                 1.6      0.2      0.4
+session_rvol_low            0.8      0.6      0.6
+cooldown                    0.2      1.0      0.4
+ma_filter                   0.8      1.2      0.4
+d1_universe_floor           0.0      0.0      0.0
+filter_other                0.0      0.0      0.0
+
+### THE OPERATOR'S OWN STEP: the four days before step 1 vs the five after
+A' 08-04..08-07  days=4  tape_gap10/day= 55.8  arrived/day= 51.5  entered/day= 30.8  HIGH/day=8.50  HIGH/entrant= 27.6%
+B  08-10..08-14  days=5  tape_gap10/day= 30.4  arrived/day= 22.6  entered/day= 22.6  HIGH/day=4.60  HIGH/entrant= 20.4%
+C  08-17..08-21  days=5  tape_gap10/day= 21.8  arrived/day= 15.6  entered/day= 15.6  HIGH/day=1.60  HIGH/entrant= 10.3%
+D  08-24 only    days=1  tape_gap10/day= 19.0  arrived/day=  9.0  entered/day=  9.0  HIGH/day=0.00  HIGH/entrant=  0.0%
+
+### WHAT THE 9% GAP FLOOR ADDED (live from 2026-08-20)
+   2026-08-19: 17 real candidates, 0 of them below the old 10% floor (admitted only because of the 9% floor); 0 of those became HIGH
+   2026-08-20: 19 real candidates, 6 of them below the old 10% floor (admitted only because of the 9% floor); 0 of those became HIGH
+   2026-08-21: 18 real candidates, 7 of them below the old 10% floor (admitted only because of the 9% floor); 1 of those became HIGH
+   2026-08-24: 9 real candidates, 5 of them below the old 10% floor (admitted only because of the 9% floor); 0 of those became HIGH
+
+### THE EXTENSION-GATE NAMES IN PERIOD C (cap was still 50% until 2026-08-22)
+   2026-08-17  FIEE    already up 51% in prior 5 days (extended)
+   2026-08-17  WETO    already up 128% in prior 5 days (extended)
+   2026-08-17  XHLD    already up 191% in prior 5 days (extended)
+   2026-08-18  BANL    already up 169% in prior 5 days (extended)
+   2026-08-18  WETO    already up 581% in prior 5 days (extended)
+   2026-08-20  CURX    already up 2696% in prior 5 days (extended)
+   2026-08-20  IPST    already up 342% in prior 5 days (extended)
+   2026-08-20  WETO    already up 475% in prior 5 days (extended)
+   2026-08-21  ELAB    already up 989% in prior 5 days (extended)
+   2026-08-21  IPST    already up 413% in prior 5 days (extended)
+   2026-08-21  SCTX    already up 61% in prior 5 days (extended)
+
+### THE JULY BASELINE — is today's funnel cutting harder than it did all summer?
+period                             days  tape10/d arrived/d scored/d  HIGH/d  scored/arr  HIGH/arrival  HIGH/scored
+P0 07-06..07-24 (July baseline)      15      19.7      13.9      3.6    1.13       26.0%          8.2%        31.5%
+P1 07-27..07-31                       5      53.0      39.6     12.4    3.60       31.3%          9.1%        29.0%
+P2 08-03..08-07 (the burst)           5      46.2      44.0     19.2    7.20       43.6%         16.4%        37.5%
+P3 08-10..08-14                       5      30.4      22.6     10.8    4.60       47.8%         20.4%        42.6%
+P4 08-17..08-21                       5      21.8      15.6      4.6    1.60       29.5%         10.3%        34.8%
+P5 08-24                              1      19.0       9.0      2.0    0.00       22.2%          0.0%         0.0%

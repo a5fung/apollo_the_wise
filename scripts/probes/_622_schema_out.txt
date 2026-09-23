@@ -1,0 +1,79 @@
+                                             Table "public.mi_ep_scan_log"
+         Column         |           Type           | Collation | Nullable |                  Default                   
+------------------------+--------------------------+-----------+----------+--------------------------------------------
+ id                     | integer                  |           | not null | nextval('mi_ep_scan_log_id_seq'::regclass)
+ scan_date              | date                     |           | not null | 
+ ticker                 | text                     |           | not null | 
+ gap_pct                | double precision         |           |          | 
+ prev_close             | double precision         |           |          | 
+ rel_volume             | double precision         |           |          | 
+ filter_reason          | text                     |           |          | 
+ ep_score               | double precision         |           |          | 
+ score_tier             | text                     |           |          | 
+ catalyst_quality       | text                     |           |          | 
+ created_at             | timestamp with time zone |           |          | now()
+ scan_time_et           | timestamp with time zone |           |          | 
+ rank_by_gap            | integer                  |           |          | 
+ projected_vol_multiple | double precision         |           |          | 
+ pm_rvol                | double precision         |           |          | 
+ adv                    | double precision         |           |          | 
+ adv_source             | text                     |           |          | 
+ minutes_since_open     | integer                  |           |          | 
+ gap_pct_rt             | double precision         |           |          | 
+ gap_pct_delayed        | double precision         |           |          | 
+ price_source           | text                     |           |          | 
+ rt_price_age_s         | double precision         |           |          | 
+ prev_close_alpaca      | double precision         |           |          | 
+ reject_stage           | text                     |           |          | 
+ current_price          | double precision         |           |          | 
+ prev_day_volume        | bigint                   |           |          | 
+ today_volume           | bigint                   |           |          | 
+ pm_rvol_baseline_n     | integer                  |           |          | 
+ days_since_prior_alert | integer                  |           |          | 
+ extension_pct          | double precision         |           |          | 
+ quality_adv_dollar     | double precision         |           |          | 
+ atr_pct                | double precision         |           |          | 
+ market_cap             | double precision         |           |          | 
+ vol_percentile         | double precision         |           |          | 
+ prior_3m_change        | double precision         |           |          | 
+ float_shares           | double precision         |           |          | 
+ in_active_theme        | boolean                  |           |          | 
+ llm_catalyst_quality   | text                     |           |          | 
+ score_breakdown        | jsonb                    |           |          | 
+ ep_bar                 | double precision         |           |          | 
+ score_side             | text                     |           |          | 
+ rank_by_prescore       | integer                  |           |          | 
+Indexes:
+    "mi_ep_scan_log_pkey" PRIMARY KEY, btree (id)
+    "idx_ep_scan_log_date" btree (scan_date DESC)
+    "idx_ep_scan_log_scan_time" btree (scan_time_et DESC)
+
+                   Table "public.mi_intraday_bars"
+  Column  |           Type           | Collation | Nullable | Default 
+----------+--------------------------+-----------+----------+---------
+ ticker   | text                     |           | not null | 
+ bar_time | timestamp with time zone |           | not null | 
+ open     | double precision         |           | not null | 
+ high     | double precision         |           | not null | 
+ low      | double precision         |           | not null | 
+ close    | double precision         |           | not null | 
+ volume   | bigint                   |           | not null | 
+ vwap     | double precision         |           |          | 
+Indexes:
+    "mi_intraday_bars_pkey" PRIMARY KEY, btree (ticker, bar_time)
+    "idx_intraday_bars_ticker" btree (ticker)
+
+                 Table "public.mi_daily_closes"
+   Column   |       Type       | Collation | Nullable | Default 
+------------+------------------+-----------+----------+---------
+ trade_date | date             |           | not null | 
+ ticker     | text             |           | not null | 
+ close      | double precision |           | not null | 
+ volume     | bigint           |           |          | 
+ open_price | double precision |           |          | 
+ high_price | double precision |           |          | 
+ low_price  | double precision |           |          | 
+Indexes:
+    "mi_daily_closes_pkey" PRIMARY KEY, btree (trade_date, ticker)
+    "idx_daily_closes_ticker" btree (ticker)
+

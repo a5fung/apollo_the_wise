@@ -1,0 +1,197 @@
+n settled with realized_r (ALL): 1590  (CLEAN, used below): 1577
+=== HEADLINE DATA-QUALITY FINDING (read this before any number below) ===
+ALL settled rows:   n=1590 meanR=0.106 sumR=167.85
+CLEAN (ex degenerate-stop, 13 rows removed): n=1577 meanR=-0.0 sumR=-0.42
+Two rows (ATI 2026-08-06 R=+119.5, AVBC 2026-07-24 R=+67.5 -- both near-zero-width ORB ranges producing noise-amplified R under the rule-set's own R-normalization, not real economic outcomes) account for +186.97 of the population's +167.85 total R. The WHOLE POPULATION's apparent positive edge is an artifact of two rows. CLEAN is used for every number in the rest of this report; ALL is not used again.
+    ATI    2026-08-06 entry=220.0 stop=219.98000000000002 R=+119.47
+    AVBC   2026-07-24 entry=20.85 stop=20.845999999999997 R=+67.50
+    SLXN   2026-09-03 entry=0.36 stop=0.35960000000000003 R=-20.75
+    NUVL   2026-06-09 entry=122.85 stop=122.75 R=+4.35
+    TKLF   2026-08-27 entry=1.8 stop=1.7975999999999999 R=-3.75
+
+=== UNIVARIATE (Spearman rho vs realized_r) — pooled, then per cap band ===
+  gap_pct               : rho=+0.055 (n=1577)  H1=-0.005 (n=788)  H2=0.011 (n=789)  sign_agrees=False
+  vol_pct_daily_bars    : rho=-0.049 (n=931)  H1=-0.034 (n=465)  H2=-0.045 (n=466)  sign_agrees=True
+  dollar_volume_0931    : rho=+0.113 (n=931)  H1=0.1 (n=465)  H2=0.128 (n=466)  sign_agrees=True
+  market_cap_log        : rho=+0.144 (n=1563)  H1=0.1 (n=781)  H2=0.102 (n=782)  sign_agrees=True
+  catalyst_ord          : rho=-0.039 (n=325)  H1=-0.1 (n=162)  H2=0.026 (n=163)  sign_agrees=False
+  tick_dist_sec         : rho=+0.094 (n=1577)  H1=0.116 (n=788)  H2=0.076 (n=789)  sign_agrees=True
+  record_volume_400d_0931=True : n=5 meanR=-0.6874193548387093
+  record_volume_400d_0931=False: n=926 meanR=0.15548859027216272
+  regime breakdown:
+    Bull         n=430 meanR=+0.021
+    Choppy       n=695 meanR=-0.050
+    Correcting   n=389 meanR=-0.056
+    Crisis       n=63 meanR=+0.745
+  catalyst_quality breakdown:
+    game_changer   n=50 meanR=-0.024
+    mna            n=1 meanR=-1.000
+    routine        n=183 meanR=+0.111
+    strong         n=92 meanR=+0.073
+
+  -- per cap band (gap_pct, vol_pct_daily_bars only, n permitting) --
+  [<200M] gap_pct             : rho=+0.028 (n=703)  band_meanR=-0.249 band_n=703
+  [<200M] vol_pct_daily_bars  : rho=+0.100 (n=202)  band_meanR=-0.249 band_n=703
+  [<200M] vol_bucket: none:n=57,meanR=-0.564  some:n=87,meanR=-0.219  strong:n=58,meanR=0.107
+  [200-500M] gap_pct             : rho=+0.064 (n=174)  band_meanR=+0.232 band_n=174
+  [200-500M] vol_pct_daily_bars  : rho=-0.006 (n=112)  band_meanR=+0.232 band_n=174
+  [200-500M] vol_bucket: none:n=87,meanR=0.316  some:n=19,meanR=0.119  strong:n=6,meanR=2.001
+  [500M-2B] gap_pct             : rho=+0.138 (n=270)  band_meanR=+0.167 band_n=270
+  [500M-2B] vol_pct_daily_bars  : rho=+0.017 (n=214)  band_meanR=+0.167 band_n=270
+  [500M-2B] vol_bucket: none:n=171,meanR=0.253  some:n=35,meanR=0.128  strong:n=8,meanR=-0.043
+  [2-10B] gap_pct             : rho=+0.060 (n=258)  band_meanR=+0.148 band_n=258
+  [2-10B] vol_pct_daily_bars  : rho=-0.022 (n=238)  band_meanR=+0.148 band_n=258
+  [2-10B] vol_bucket: none:n=210,meanR=0.18  some:n=23,meanR=0.09  strong:n=5,meanR=1.181
+  [>10B] gap_pct             : rho=-0.080 (n=158)  band_meanR=+0.346 band_n=158
+  [>10B] vol_pct_daily_bars  : rho=+0.060 (n=155)  band_meanR=+0.346 band_n=158
+  [>10B] vol_bucket: none:n=153,meanR=0.33  some:n=1,meanR=0.242  strong:n=1,meanR=1.955
+
+=== INTERACTIONS (cells = n, mean R) ===
+gap tercile cuts: (7.937500000000005, 11.91)
+vol_pct_daily_bars tercile cuts: (0.0, 0.0)
+
+-- gap tercile x record_volume_400d_0931 (operator's primary hypothesis) --
+  gap=low   record_vol=False: n= 105 meanR=-0.221
+  gap=low   record_vol=True : n=   0 meanR=None
+  gap=mid   record_vol=False: n= 413 meanR=0.272
+  gap=mid   record_vol=True : n=   2 meanR=-1.0
+  gap=high  record_vol=False: n= 408 meanR=0.134
+  gap=high  record_vol=True : n=   3 meanR=-0.479
+
+-- gap tercile x vol_bucket (none/some/strong; smoother hypothesis, see addendum) --
+  gap=low   vol=none  : n=  98 meanR=-0.181
+  gap=low   vol=some  : n=   7 meanR=-0.793
+  gap=low   vol=strong: n=   0 meanR=None
+  gap=mid   vol=none  : n= 331 meanR=0.352
+  gap=mid   vol=some  : n=  72 meanR=-0.045
+  gap=mid   vol=strong: n=  12 meanR=-0.222
+  gap=high  vol=none  : n= 250 meanR=0.108
+  gap=high  vol=some  : n=  94 meanR=-0.026
+  gap=high  vol=strong: n=  67 meanR=0.429
+
+-- cap band x gap tercile --
+  cap=<200M      gap=low  : n= 356 meanR=-0.29
+  cap=<200M      gap=mid  : n= 138 meanR=-0.252
+  cap=<200M      gap=high : n= 209 meanR=-0.179
+  cap=200-500M   gap=low  : n=  61 meanR=-0.077
+  cap=200-500M   gap=mid  : n=  54 meanR=0.521
+  cap=200-500M   gap=high : n=  59 meanR=0.286
+  cap=500M-2B    gap=low  : n=  50 meanR=-0.294
+  cap=500M-2B    gap=mid  : n= 110 meanR=0.354
+  cap=500M-2B    gap=high : n= 110 meanR=0.189
+  cap=2-10B      gap=low  : n=  39 meanR=-0.048
+  cap=2-10B      gap=mid  : n= 134 meanR=0.153
+  cap=2-10B      gap=high : n=  85 meanR=0.23
+  cap=>10B       gap=low  : n=  19 meanR=-0.059
+  cap=>10B       gap=mid  : n=  85 meanR=0.532
+  cap=>10B       gap=high : n=  54 meanR=0.194
+
+-- cap band x vol_bucket (none/some/strong) --
+  cap=<200M      vol=none  : n=  57 meanR=-0.564
+  cap=<200M      vol=some  : n=  87 meanR=-0.219
+  cap=<200M      vol=strong: n=  58 meanR=0.107
+  cap=200-500M   vol=none  : n=  87 meanR=0.316
+  cap=200-500M   vol=some  : n=  19 meanR=0.119
+  cap=200-500M   vol=strong: n=   6 meanR=2.001
+  cap=500M-2B    vol=none  : n= 171 meanR=0.253
+  cap=500M-2B    vol=some  : n=  35 meanR=0.128
+  cap=500M-2B    vol=strong: n=   8 meanR=-0.043
+  cap=2-10B      vol=none  : n= 210 meanR=0.18
+  cap=2-10B      vol=some  : n=  23 meanR=0.09
+  cap=2-10B      vol=strong: n=   5 meanR=1.181
+  cap=>10B       vol=none  : n= 153 meanR=0.33
+  cap=>10B       vol=some  : n=   1 meanR=0.242
+  cap=>10B       vol=strong: n=   1 meanR=1.955
+
+-- cap band x record_volume_400d_0931 --
+  cap=<200M      record_vol=False: n= 199 meanR=-0.212
+  cap=<200M      record_vol=True : n=   3 meanR=-0.907
+  cap=200-500M   record_vol=False: n= 111 meanR=0.385
+  cap=200-500M   record_vol=True : n=   1 meanR=-1.0
+  cap=500M-2B    record_vol=False: n= 214 meanR=0.221
+  cap=500M-2B    record_vol=True : n=   0 meanR=None
+  cap=2-10B      record_vol=False: n= 237 meanR=0.192
+  cap=2-10B      record_vol=True : n=   1 meanR=0.283
+  cap=>10B       record_vol=False: n= 155 meanR=0.34
+  cap=>10B       record_vol=True : n=   0 meanR=None
+
+-- THREE-WAY: cap(<500M vs >=500M) x gap tercile x vol_bucket(none/some/strong) --
+   (record_volume_400d_0931 folded into 'strong' — true on only 7/939 rows, too rare alone)
+  cap=<500M   gap=low   vol=none  : n=  23 meanR=-0.402
+  cap=<500M   gap=low   vol=some  : n=   4 meanR=-0.623  (n<10, not a finding)
+  cap=<500M   gap=low   vol=strong: n=   0 meanR=None  (n<10, not a finding)
+  cap=<500M   gap=mid   vol=none  : n=  63 meanR=0.197
+  cap=<500M   gap=mid   vol=some  : n=  40 meanR=-0.248
+  cap=<500M   gap=mid   vol=strong: n=   8 meanR=-0.167  (n<10, not a finding)
+  cap=<500M   gap=high  vol=none  : n=  58 meanR=-0.136
+  cap=<500M   gap=high  vol=some  : n=  62 meanR=-0.07
+  cap=<500M   gap=high  vol=strong: n=  56 meanR=0.349
+  cap=>=500M  gap=low   vol=none  : n=  75 meanR=-0.113
+  cap=>=500M  gap=low   vol=some  : n=   3 meanR=-1.02  (n<10, not a finding)
+  cap=>=500M  gap=low   vol=strong: n=   0 meanR=None  (n<10, not a finding)
+  cap=>=500M  gap=mid   vol=none  : n= 267 meanR=0.393
+  cap=>=500M  gap=mid   vol=some  : n=  30 meanR=0.247
+  cap=>=500M  gap=mid   vol=strong: n=   4 meanR=-0.333  (n<10, not a finding)
+  cap=>=500M  gap=high  vol=none  : n= 192 meanR=0.182
+  cap=>=500M  gap=high  vol=some  : n=  26 meanR=0.094
+  cap=>=500M  gap=high  vol=strong: n=  10 meanR=0.885
+
+=== LIVE-LANE IMPACT ===
+admitted_today (ever_scored & best_score_tier==HIGH): n=79 meanR=0.077 sumR=6.1
+
+  RULE: record_volume_400d_0931==True (strict)
+    newly admitted (not admitted today): n=5 settled_n=5 meanR=-0.687
+    would drop (admitted today, fails rule): n=79 settled_n=79 meanR=0.077
+
+  RULE: vol_bucket==strong (>=90th pctile)
+    newly admitted (not admitted today): n=75 settled_n=75 meanR=0.3
+    would drop (admitted today, fails rule): n=75 settled_n=75 meanR=0.033
+
+  RULE: gap_high_tercile AND vol_bucket==strong
+    newly admitted (not admitted today): n=63 settled_n=63 meanR=0.399
+    would drop (admitted today, fails rule): n=75 settled_n=75 meanR=0.033
+
+=== ROBUSTNESS (headline cells: n, split-half, minus top contributor) ===
+gap=high & vol_bucket=strong: n=67 meanR=0.429
+  split-half: H1 n=33 meanR=0.3658784072671907  H2 n=34 meanR=0.49050224849296137
+  top contributor: WETO 2026-08-17 R=+12.08
+  minus top: n=66 meanR=0.25251941333155076
+
+=== POST-HOC ROBUSTNESS (advisor-directed, run before recommending) ===
+
+CHECK 1 -- tick freshness (is the gap=high/vol=strong cell a lookahead artifact?):
+  strong-cell (n=56): tick_dist_sec median=0s, 50/56 within 5 min of 09:31 (FRESH)
+  none-cell   (n=58): tick_dist_sec median=990s (16.5 min), only 22/58 within 5 min (STALE)
+  Fresh-tick-only (<=5min): strong meanR=+0.197 (n=50) vs none meanR=-0.269 (n=22) -- contrast
+  SURVIVES (and widens) on fresh ticks only. Not a tick-staleness artifact -- if anything the
+  "none" bucket is the stale one.
+
+CHECK 2 -- reject-reason composition (what would a market-cap-floor-only lane actually admit?):
+  Of the 56 gap=high/vol=strong/cap<500M names: only 8 (14%) were rejected SOLELY by
+  mcap_too_small or already scored. The other 48 (86%) were separately blocked by OTHER live
+  filters a cap-floor-only lane would NOT waive: atr_too_high (12), adv_too_low (11), and 25
+  by the EXTENSION guard ("already up 71%-9900% in prior 5 days" -- post-parabolic names the
+  extension filter exists specifically to catch).
+    - The 8 lane-eligible names: meanR=+1.418, but ENTIRELY carried by FBRX (+10.71R) --
+      minus-top meanR=+0.090 (n=7), split-half wildly inconsistent (+3.17 H1 n=4 / -0.33 H2 n=4).
+    - The 25 extension-blocked names (a DIFFERENT, separate lever -- not the market-cap
+      question): meanR=+0.340, ALSO entirely carried by one name (WETO +12.08R) -- minus-top
+      meanR=-0.170 (net negative).
+  FBRX recurs from the #622 sweep (scripts/probes/_622sweep_summary.txt), which independently
+  found the SAME name carrying every admitting variant's apparent edge in the narrower
+  sub-$500M-rejected cohort. Two independent studies, same fragile carrier.
+
+CHECK 3 -- coverage / date bias:
+  cap<500M/gap=high rows with NO volume data at all: n=92, meanR=-0.303 (further evidence gap
+  alone, without a volume reading, is not a usable small-cap signal).
+  strong-cell date spread: Jun 13 / Jul 20 / Aug 20 / Sep 3 -- roughly proportional to the
+  population's own month distribution, not date-concentrated.
+
+CONCLUSION FROM POST-HOC CHECKS: the pooled 56-name cell's split-half stability is real (not a
+tick-timing or date artifact), but it is NOT one robust effect -- it is two separately fragile,
+single-trade-dependent subgroups (a cap-floor-only-eligible group carried by FBRX, and an
+extension-guard-blocked group carried by WETO) that happen to sit in the same tercile/bucket
+cell together. Capturing the pooled number as traded would require relaxing the market-cap
+floor AND the extension/ATR/liquidity guards simultaneously -- a much larger, riskier change
+than "add a small-cap lane," and even that combined population's edge lives in 2 of 56 trades
+(34 unique tickers, 18/34 with positive average R -- 53%, barely above half).

@@ -1,0 +1,151 @@
+{
+  "ticker": "KALV",
+  "source_chain": [
+    "polygon",
+    "yfinance_attempted_no_improvement"
+  ],
+  "n_quarters": 8,
+  "n_quarters_with_revenue": 2,
+  "quarters": [
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2026",
+      "end_date": "2026-03-31",
+      "filing_date": "2026-05-14",
+      "revenue": 40863000.0,
+      "gross_profit": 37773000.0,
+      "operating_income": -23442000.0,
+      "net_income": -23487000.0,
+      "eps_basic": -0.43,
+      "eps_diluted": -0.43,
+      "gross_margin": 0.9243814697892959,
+      "op_margin": -0.5736730049188753,
+      "net_margin": -0.5747742456500992
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2025",
+      "end_date": "2025-09-30",
+      "filing_date": "2025-11-10",
+      "revenue": 13700000.0,
+      "gross_profit": 12468000.0,
+      "operating_income": -46050000.0,
+      "net_income": -49482000.0,
+      "eps_basic": -0.92,
+      "eps_diluted": -0.92,
+      "gross_margin": 0.9100729927007299,
+      "op_margin": -3.3613138686131387,
+      "net_margin": -3.611824817518248
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2025",
+      "end_date": "2024-10-31",
+      "filing_date": "2024-12-05",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -45811000.0,
+      "net_income": -42268000.0,
+      "eps_basic": -0.91,
+      "eps_diluted": -0.91
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2025",
+      "end_date": "2024-07-31",
+      "filing_date": "2024-09-05",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -44215000.0,
+      "net_income": -40443000.0,
+      "eps_basic": -0.87,
+      "eps_diluted": -0.87
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2024",
+      "end_date": "2024-01-31",
+      "filing_date": "2024-03-11",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -33151000.0,
+      "net_income": -29028000.0,
+      "eps_basic": -0.84,
+      "eps_diluted": -0.84
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2024",
+      "end_date": "2023-10-31",
+      "filing_date": "2023-12-07",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -29746000.0,
+      "net_income": -27650000.0,
+      "eps_basic": -0.8,
+      "eps_diluted": -0.8
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2024",
+      "end_date": "2023-07-31",
+      "filing_date": "2023-09-07",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -29093000.0,
+      "net_income": -25317000.0,
+      "eps_basic": -0.74,
+      "eps_diluted": -0.74
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2023",
+      "end_date": "2023-01-31",
+      "filing_date": "2023-03-09",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -26945000.0,
+      "net_income": -21303000.0,
+      "eps_basic": -0.75,
+      "eps_diluted": -0.75
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": null,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": -0.48809523809523814,
+    "eps_yoy_q1": 0.1499999999999999,
+    "eps_yoy_q2": 0.22972972972972983,
+    "rev_qoq_q0": 1.9827007299270072,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": -0.638095238095238,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": -0.84,
+    "margins_q0": {
+      "gross_margin": 0.9243814697892959,
+      "op_margin": -0.5736730049188753,
+      "net_margin": -0.5747742456500992
+    },
+    "margins_q1": {
+      "gross_margin": 0.9100729927007299,
+      "op_margin": -3.3613138686131387,
+      "net_margin": -3.611824817518248
+    },
+    "margins_q2": {
+      "gross_margin": null,
+      "op_margin": null,
+      "net_margin": null
+    }
+  }
+}

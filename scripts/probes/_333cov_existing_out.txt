@@ -1,0 +1,3 @@
+source|period_type|n|n_tickers|min_as_of|max_as_of
+yfinance|quarter|144|73|2026-09-03|2026-09-03
+(1 row)

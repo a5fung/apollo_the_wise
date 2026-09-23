@@ -1,0 +1,58 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    libjpeg62-turbo-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements/base.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY agents/base.py agents/base.py
+COPY agents/__init__.py agents/__init__.py
+COPY agents/market_intelligence/ agents/market_intelligence/
+COPY shared/ shared/
+COPY core/notifications.py core/notifications.py
+COPY core/job_audit.py core/job_audit.py
+# ALL root-level yaml runtime configs in one glob (#474, 2026-07-16): every new
+# root yaml used to need a hand-added COPY here + a deploy.sh case arm; a miss =
+# a stale image (theme_ecosystems.yaml cost a deploy cycle on 7/14 — 3rd
+# occurrence of the class). The glob + deploy.sh's generic *.yaml arm kill it.
+COPY *.yaml ./
+# Existence check for the KNOWN runtime yamls (review 7/17): the glob
+# alone would build green if one were renamed/moved — restoring the
+# per-file build-time failure the glob removed. ADDING a yaml still
+# needs no edit here; only renames/moves of these three do.
+RUN test -f integrations.yaml && test -f data_gated_reviews.yaml && test -f theme_ecosystems.yaml
+# PLAN.md is NOT copied (#435): it's a read-only bind-mount in docker-compose.prod.yml
+# so the #426 blocking-count reflects the LIVE file (a COPY snapshot went stale on
+# PLAN-only sessions that didn't rebuild the image).
+COPY scripts/ scripts/
+# 2026-08-29 — the nightly drift check (health_checks.run_drift_check, wrapping
+# scripts/live_rules.py's detection functions) reads docs/setups, docs/architecture,
+# docs/analysis, docs/design (load_setup_docs) plus docs/decisions + docs/methodology
+# (via the gate-provenance registry it reuses) AT RUNTIME to compare prose against code/prod.
+# Without this the container has no docs/ at all — load_setup_docs would silently see zero
+# files and detect_drift would report a false "no drift" every night. scripts/deploy.sh's
+# scope-drift guard has a matching docs/* case arm so a doc-only edit still rebuilds this image.
+COPY docs/ docs/
+# #533 flip monitor (2026-08-22): the must-not-miss fixture is READ AT RUNTIME by
+# health_checks.run_catalyst_lattice_monitor (revert trigger (a): a labelled real EP graded
+# routine). Importable as tests.fixtures.must_not_miss_eps via PYTHONPATH=/app namespace
+# packages; stdlib-only imports. deploy.sh carries a matching case arm so a member edit
+# rebuilds this image instead of going stale under the generic tests/* deploy-irrelevant arm.
+COPY tests/fixtures/must_not_miss_eps.py tests/fixtures/must_not_miss_eps.py
+
+RUN useradd -m -u 1000 apollo && chown -R apollo:apollo /app
+USER apollo
+
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8006
+
+CMD ["uvicorn", "agents.market_intelligence.agent:app", "--host", "0.0.0.0", "--port", "8006", "--workers", "1"]

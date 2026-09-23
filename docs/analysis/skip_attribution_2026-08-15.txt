@@ -1,0 +1,466 @@
+====================================================================================================
+SKIP-REASON ATTRIBUTION — does each decline reason drop names that RAN, or names that died?
+(capture 2026-08-15, read-only; step 4 of The Real EP Plan)
+====================================================================================================
+skip population (WIDE, context only): 3224 rows, 116 sessions, 2026-02-11 .. 2026-08-14
+skip population (DATE-MATCHED, governs every test below): 781 rows (24% of wide), 30 sessions, >= 2026-07-06
+taken benchmark : 22 rows (mi_live_trades account_mode=live, status IN closed/filled), 15 sessions, 2026-07-06 .. 2026-08-14
+⚠ MATCH_START = the taken cohort's own earliest date, computed from data. Every permutation
+  test below runs on the DATE-MATCHED skip population only — a Feb-2026 skip session can never
+  actually be a 'taken' session (no fills exist that day), so pooling it in would answer a
+  different question ('is Jul-Aug different from Feb-Jun') than the one asked.
+setup_other rows that did not match a known setup: prefix: 0 (0 expected; folded into OTHER if nonzero)
+catalyst_quality coverage (date-matched): 214/781 populated (27%), 0 literally 'unknown', 567 NULL/empty — any catalyst_quality-flavored reason (catalyst_downgrade, ma_filter)
+  reads on skip_reason TEXT, not this column, so the gap does not block those reasons.
+⚠ outcome values are FRACTIONS in the DB; printed x100 as real percents.
+⚠ each horizon drops alerts too recent to have elapsed (maturity filter vs data max 2026-08-14); N falls as the horizon lengthens.
+
+----------------------------------------------------------------------------------------------------
+BASELINE PROBLEM — quantified (rigor rule 6)
+----------------------------------------------------------------------------------------------------
+  basis_gap_pct = (ORB-high entry − gap-day open) / gap-day open, the 22 taken names:
+    median +1.75%  mean +1.98%  (n=22)
+  READ: every open_d0-basis figure below (both cohorts, by construction, since the
+  taken-name benchmark is computed on the SAME formula as the skip cohort for formula
+  comparability) overstates what a real entry actually captures by roughly this much —
+  the skip cohort NEVER got a real entry price, so this haircut cannot be applied to it,
+  only disclosed as the direction and rough size of the flattering bias on 'taken'.
+
+----------------------------------------------------------------------------------------------------
+TAKEN-NAMES BENCHMARK — what we actually did instead (the standard every reason is judged against)
+----------------------------------------------------------------------------------------------------
+  ret_1d        n= 21 (14 sess)  median   -1.94%  IQR [ -10.84%,    4.64%]   33.3% up  share>=+5% 23.8%  share>=+10% 4.8%
+  ret_5d        n= 15 (11 sess)  median   -7.49%  IQR [ -14.44%,    3.03%]   26.7% up  share>=+5% 20.0%  share>=+10% 13.3%
+  ret_20d       n=  5 ( 4 sess)  median   -8.17%  IQR [ -19.57%,   -8.07%]    0.0% up  share>=+5% 0.0%  share>=+10% 0.0%
+  max_high_5d   n= 15 (11 sess)  median    9.31%  IQR [   3.01%,   18.59%]  100.0% up  share>=+5% 53.3%  share>=+10% 46.7%
+  max_high_20d  n=  5 ( 4 sess)  median    3.11%  IQR [   2.33%,    4.14%]  100.0% up  share>=+5% 20.0%  share>=+10% 0.0%
+  (context only, not compared statistically to skips: ACTUAL realized R [total_pnl/risk_dollars] median -0.74R, n=22)
+
+----------------------------------------------------------------------------------------------------
+BASE RATE — ALL date-matched skips pooled, max_high hit-rates (read every individual
+reason's hit rate against THIS, not against zero — most reasons cluster near it)
+----------------------------------------------------------------------------------------------------
+  ret_5d        n= 578 ( 24 sess)  median    0.46%  share>=+5% 36.0%  share>=+10% 21.8%
+  max_high_5d   n= 581 ( 24 sess)  median   10.66%  share>=+5% 78.3%  share>=+10% 53.4%
+  max_high_20d  n= 111 (  8 sess)  median   15.11%  share>=+5% 78.4%  share>=+10% 62.2%
+
+====================================================================================================
+PRIMARY (pre-registered): gap_below_floor (SELECTION kind) vs taken-names benchmark · ret_5d
+====================================================================================================
+  pre-maturity-filter N for gap_below_floor: 7 (all 7 rows on record fall inside the date-matched window already — this reason has never
+  fired before 2026-08-06; it is NEW, not merely small — see docstring)
+  PRIMARY gap_below_floor ret_5d                       group med  19.18% (n=   2,   1 sess) | taken med  -7.49% (n=15, 11 sess) | diff +26.67pp | N too small for permutation
+  (adj p = Bonferroni across all 54 attempted tests; the adjusted p governs the verdict, per the pre-registration.)
+  VERDICT LANGUAGE: 'too new to tell', not 'no effect' — gate the re-ask on N>=10 mature
+  rows (house convention: data-gated, not calendar-gated), not on a fixed future date.
+
+----------------------------------------------------------------------------------------------------
+EXPLORATORY 1 — sensitivity: PRIMARY reason at the other 4 horizons
+----------------------------------------------------------------------------------------------------
+  gap_below_floor ret_1d                               group med   1.47% (n=   6,   5 sess) | taken med  -1.94% (n=21, 14 sess) | diff +3.41pp | raw p=0.408
+  gap_below_floor ret_20d                              EMPTY (group n=0, taken n=5)
+  gap_below_floor max_high_5d                          group med  20.18% (n=   2,   1 sess) | taken med   9.31% (n=15, 11 sess) | diff +10.87pp | N too small for permutation
+  gap_below_floor max_high_20d                         EMPTY (group n=0, taken n=5)
+
+----------------------------------------------------------------------------------------------------
+EXPLORATORY 2 — every OTHER reason vs taken-names benchmark · ret_5d (date-matched population)
+----------------------------------------------------------------------------------------------------
+  [mechanics] duplicate_scan ret_5d                    group med    0.8% (n=  34,  12 sess) | taken med  -7.49% (n=15, 11 sess) | diff +8.29pp | raw p=0.060
+  [mechanics] faded_from_orb ret_5d                    EMPTY (group n=0, taken n=15)
+  [mechanics] infra_skip ret_5d                        EMPTY (group n=0, taken n=15)
+  [mechanics] window_missed (mostly PRE the 08-13 ORB-window fix — see caveat) ret_5d group med    5.9% (n=  13,  10 sess) | taken med  -7.49% (n=15, 11 sess) | diff +13.39pp | raw p=0.020
+  [mechanics] zero_range ret_5d                        group med  26.21% (n=   1,   1 sess) | taken med  -7.49% (n=15, 11 sess) | diff +33.70pp | N too small for permutation
+  [other] high_unentered (wide-window only — collapses to n=2 date-matched) ret_5d group med  28.23% (n=   2,   1 sess) | taken med  -7.49% (n=15, 11 sess) | diff +35.72pp | N too small for permutation
+  [portfolio] breaker_blocked ret_5d                   group med  -2.73% (n=  12,   4 sess) | taken med  -7.49% (n=15, 11 sess) | diff +4.76pp | raw p=0.497
+  [portfolio] cap_blocked ret_5d                       group med   6.59% (n=   2,   1 sess) | taken med  -7.49% (n=15, 11 sess) | diff +14.08pp | N too small for permutation
+  [portfolio] cooldown ret_5d                          group med   2.08% (n=  15,  10 sess) | taken med  -7.49% (n=15, 11 sess) | diff +9.57pp | raw p=0.112
+  [risk_geometry] atr_high ret_5d                      group med  -1.69% (n=  31,  15 sess) | taken med  -7.49% (n=15, 11 sess) | diff +5.80pp | raw p=0.540
+  [risk_geometry] price_exceeds_cap (chase-cap analog; 'setup:chase_cap_exceeded' has 0 rows on record) ret_5d EMPTY (group n=0, taken n=15)
+  [risk_geometry] size_too_small ret_5d                group med   3.04% (n=   4,   2 sess) | taken med  -7.49% (n=15, 11 sess) | diff +10.53pp | N too small for permutation
+  [risk_geometry] stop_too_wide ret_5d                 group med  -8.36% (n=   2,   2 sess) | taken med  -7.49% (n=15, 11 sess) | diff -0.87pp | N too small for permutation
+  [selection] adv_low ret_5d                           group med  -4.72% (n=  58,  22 sess) | taken med  -7.49% (n=15, 11 sess) | diff +2.77pp | raw p=0.761
+  [selection] catalyst_downgrade ret_5d                group med  -0.39% (n=  21,  10 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.10pp | raw p=0.130
+  [selection] extension_gate ret_5d                    group med  -34.7% (n=  33,  18 sess) | taken med  -7.49% (n=15, 11 sess) | diff -27.21pp | raw p=0.002
+  [selection] ma_filter ret_5d                         group med    0.0% (n=  17,  12 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.49pp | raw p=0.146
+  [selection] mcap_low ret_5d                          group med   0.92% (n=  43,  20 sess) | taken med  -7.49% (n=15, 11 sess) | diff +8.41pp | raw p=0.227
+  [selection] moderate_tier (re-derives _468_moderate_realized_r.py — see caveat) ret_5d group med   0.08% (n=  10,   7 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.57pp | raw p=0.091
+  [selection] outside_top20 (concentrated on high-breadth days — see caveat) ret_5d group med   5.04% (n= 120,   6 sess) | taken med  -7.49% (n=15, 11 sess) | diff +12.53pp | raw p=0.154
+  [selection] pm_rvol_low ret_5d                       group med  -3.05% (n=  18,  14 sess) | taken med  -7.49% (n=15, 11 sess) | diff +4.44pp | raw p=0.542
+  [selection] score_below_50 ret_5d                    group med   1.15% (n= 106,  22 sess) | taken med  -7.49% (n=15, 11 sess) | diff +8.64pp | raw p=0.069
+  [selection] session_rvol_low ret_5d                  group med   -0.4% (n=  34,  15 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.09pp | raw p=0.196
+
+----------------------------------------------------------------------------------------------------
+EXPLORATORY 3 — per taxonomy KIND vs taken-names benchmark, all 5 horizons (date-matched)
+----------------------------------------------------------------------------------------------------
+ -- MECHANICS (n_raw=94 date-matched rows across all reasons in this kind) --
+  [mechanics] ret_1d                                   group med   2.18% (n=  78,  17 sess) | taken med  -1.94% (n=21, 14 sess) | diff +4.12pp | raw p=0.294
+  [mechanics] ret_5d                                   group med   2.99% (n=  48,  13 sess) | taken med  -7.49% (n=15, 11 sess) | diff +10.48pp | raw p=0.071
+  [mechanics] ret_20d                                  group med   1.15% (n=   2,   1 sess) | taken med  -8.17% (n= 5,  4 sess) | diff +9.32pp | N too small for permutation
+  [mechanics] max_high_5d                              group med  11.06% (n=  48,  13 sess) | taken med   9.31% (n=15, 11 sess) | diff +1.75pp | raw p=0.825
+  [mechanics] max_high_20d                             group med  29.33% (n=   2,   1 sess) | taken med   3.11% (n= 5,  4 sess) | diff +26.22pp | N too small for permutation
+ -- SELECTION (n_raw=606 date-matched rows across all reasons in this kind) --
+  [selection] ret_1d                                   group med   0.34% (n= 566,  28 sess) | taken med  -1.94% (n=21, 14 sess) | diff +2.28pp | raw p=0.305
+  [selection] ret_5d                                   group med   0.34% (n= 462,  24 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.83pp | N too small for permutation
+  [selection] ret_20d                                  group med  -12.0% (n=  83,   8 sess) | taken med  -8.17% (n= 5,  4 sess) | diff -3.83pp | N too small for permutation
+  [selection] max_high_5d                              group med  10.41% (n= 463,  24 sess) | taken med   9.31% (n=15, 11 sess) | diff +1.10pp | N too small for permutation
+  [selection] max_high_20d                             group med  12.18% (n=  87,   8 sess) | taken med   3.11% (n= 5,  4 sess) | diff +9.07pp | N too small for permutation
+ -- RISK_GEOMETRY (n_raw=44 date-matched rows across all reasons in this kind) --
+  [risk_geometry] ret_1d                               group med   2.95% (n=  41,  19 sess) | taken med  -1.94% (n=21, 14 sess) | diff +4.89pp | raw p=0.376
+  [risk_geometry] ret_5d                               group med  -0.71% (n=  37,  16 sess) | taken med  -7.49% (n=15, 11 sess) | diff +6.78pp | raw p=0.410
+  [risk_geometry] ret_20d                              group med  -7.96% (n=  15,   7 sess) | taken med  -8.17% (n= 5,  4 sess) | diff +0.21pp | N too small for permutation
+  [risk_geometry] max_high_5d                          group med  22.15% (n=  39,  17 sess) | taken med   9.31% (n=15, 11 sess) | diff +12.84pp | raw p=0.051
+  [risk_geometry] max_high_20d                         group med  15.98% (n=  15,   7 sess) | taken med   3.11% (n= 5,  4 sess) | diff +12.87pp | N too small for permutation
+ -- PORTFOLIO (n_raw=35 date-matched rows across all reasons in this kind) --
+  [portfolio] ret_1d                                   group med  -2.43% (n=  32,  15 sess) | taken med  -1.94% (n=21, 14 sess) | diff -0.49pp | raw p=0.848
+  [portfolio] ret_5d                                   group med   1.05% (n=  29,  13 sess) | taken med  -7.49% (n=15, 11 sess) | diff +8.54pp | raw p=0.160
+  [portfolio] ret_20d                                  group med  -14.2% (n=   7,   4 sess) | taken med  -8.17% (n= 5,  4 sess) | diff -6.03pp | N too small for permutation
+  [portfolio] max_high_5d                              group med   9.09% (n=  29,  13 sess) | taken med   9.31% (n=15, 11 sess) | diff -0.22pp | raw p=0.977
+  [portfolio] max_high_20d                             group med  16.67% (n=   7,   4 sess) | taken med   3.11% (n= 5,  4 sess) | diff +13.56pp | N too small for permutation
+ -- OTHER (n_raw=2 date-matched rows across all reasons in this kind) --
+  [other] ret_1d                                       group med  11.18% (n=   2,   1 sess) | taken med  -1.94% (n=21, 14 sess) | diff +13.12pp | N too small for permutation
+  [other] ret_5d                                       group med  28.23% (n=   2,   1 sess) | taken med  -7.49% (n=15, 11 sess) | diff +35.72pp | N too small for permutation
+  [other] ret_20d                                      EMPTY (group n=0, taken n=5)
+  [other] max_high_5d                                  group med  32.86% (n=   2,   1 sess) | taken med   9.31% (n=15, 11 sess) | diff +23.55pp | N too small for permutation
+  [other] max_high_20d                                 EMPTY (group n=0, taken n=5)
+
+----------------------------------------------------------------------------------------------------
+EXPLORATORY 4 — scope check: ALL date-matched skips pooled (any reason) vs taken benchmark · ret_5d
+----------------------------------------------------------------------------------------------------
+  ALL date-matched skips pooled ret_5d                 group med   0.46% (n= 578,  24 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.95pp | N too small for permutation
+  READ THIS ONE FIRST: nearly every individual reason above shows a SIMILARLY SIZED positive
+  diff vs taken, regardless of kind (mechanics, selection, portfolio alike) — that pattern is
+  a LEVEL SHIFT in the benchmark (taken names' 5d median is -7.49%, the documented losing
+  stretch), not a per-reason effect. This pooled line is that shift with reason stripped out;
+  it is the number that shows the shift is population-wide, not particular to any one filter.
+
+====================================================================================================
+MULTIPLICITY LEDGER — 54 tests attempted (planned 54), 26 produced a p
+====================================================================================================
+  raw p<0.05: 2 of 26 — [mechanics] window_missed (mostly PRE the 08-13 ORB-window fix — see caveat) ret_5d (p=0.020, diff=+13.39pp); [selection] extension_gate ret_5d (p=0.002, diff=-27.21pp)
+  surviving Bonferroni x54 (adj p<0.05): 0
+  expected false positives at raw 0.05 across 26 tests: ~1.3 — this many raw hits is what chance alone produces.
+
+====================================================================================================
+APPENDIX — full descriptive table, every reason x every horizon. DATE-MATCHED numbers govern
+(N and sessions on every line; reasons with single-digit N get NO p, marked as such). WIDE
+(Feb-Aug) numbers follow each reason as CONTEXT ONLY, labelled confounded, never tested.
+====================================================================================================
+
+[mechanics] duplicate_scan
+  date-matched: n_raw=67 rows, 18 sessions, >= 2026-07-06
+    ret_1d        n=  57 ( 16 sess)  median   -0.21%  IQR [  -4.25%,     6.3%]   49.1% up  share>=+5% 33.3%  share>=+10% 19.3%
+    ret_5d        n=  34 ( 12 sess)  median     0.8%  IQR [  -7.02%,   11.19%]   55.9% up  share>=+5% 35.3%  share>=+10% 26.5%
+    ret_20d       n=   1 (  1 sess)  median   20.17%  IQR [  20.17%,   20.17%]  100.0% up  share>=+5% 100.0%  share>=+10% 100.0%
+    max_high_5d   n=  34 ( 12 sess)  median   10.46%  IQR [   6.53%,   16.82%]   97.1% up  share>=+5% 76.5%  share>=+10% 52.9%
+    max_high_20d  n=   1 (  1 sess)  median   26.22%  IQR [  26.22%,   26.22%]  100.0% up  share>=+5% 100.0%  share>=+10% 100.0%
+    SPIKE-VS-HOLD  5d close median +0.8%  vs  5d-high touch rate >=5% 76.5% / >=10% 52.9% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=118 (40 sess) median +0.9%
+
+[mechanics] faded_from_orb
+  date-matched: n_raw=0 rows, 0 sessions, >= 2026-07-06
+  ⚠ N<10 date-matched — the operator's evidence rule: a single skipped name that ran
+    proves nothing. Descriptive numbers below are shown for completeness, NOT evidence.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=2 (1 sess) median -11.1%
+
+[mechanics] infra_skip
+  date-matched: n_raw=3 rows, 1 sessions, >= 2026-07-06
+  ⚠ N<10 date-matched — the operator's evidence rule: a single skipped name that ran
+    proves nothing. Descriptive numbers below are shown for completeness, NOT evidence.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=14 (2 sess) median -2.8%
+
+[mechanics] window_missed (mostly PRE the 08-13 ORB-window fix — see caveat)
+  date-matched: n_raw=23 rows, 15 sessions, >= 2026-07-06
+    ret_1d        n=  20 ( 13 sess)  median    6.24%  IQR [  -2.22%,   15.59%]   65.0% up  share>=+5% 65.0%  share>=+10% 40.0%
+    ret_5d        n=  13 ( 10 sess)  median     5.9%  IQR [  -0.28%,   16.74%]   69.2% up  share>=+5% 53.8%  share>=+10% 38.5%
+    ret_20d       n=   1 (  1 sess)  median  -17.88%  IQR [ -17.88%,  -17.88%]    0.0% up  share>=+5% 0.0%  share>=+10% 0.0%
+    max_high_5d   n=  13 ( 10 sess)  median   14.12%  IQR [    6.2%,   24.53%]   92.3% up  share>=+5% 84.6%  share>=+10% 61.5%
+    max_high_20d  n=   1 (  1 sess)  median   32.44%  IQR [  32.44%,   32.44%]  100.0% up  share>=+5% 100.0%  share>=+10% 100.0%
+    SPIKE-VS-HOLD  5d close median +5.9%  vs  5d-high touch rate >=5% 84.6% / >=10% 61.5% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=45 (25 sess) median +7.4%
+
+[mechanics] zero_range
+  date-matched: n_raw=1 rows, 1 sessions, >= 2026-07-06
+  ⚠ N<10 date-matched — the operator's evidence rule: a single skipped name that ran
+    proves nothing. Descriptive numbers below are shown for completeness, NOT evidence.
+    ret_1d        n=   1 (  1 sess)  median    2.18%  IQR [   2.18%,    2.18%]  100.0% up  share>=+5% 0.0%  share>=+10% 0.0%
+    ret_5d        n=   1 (  1 sess)  median   26.21%  IQR [  26.21%,   26.21%]  100.0% up  share>=+5% 100.0%  share>=+10% 100.0%
+    max_high_5d   n=   1 (  1 sess)  median    30.3%  IQR [   30.3%,    30.3%]  100.0% up  share>=+5% 100.0%  share>=+10% 100.0%
+    SPIKE-VS-HOLD  5d close median +26.2%  vs  5d-high touch rate >=5% 100.0% / >=10% 100.0% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=2 (2 sess) median +14.0%
+
+[other] high_unentered (wide-window only — collapses to n=2 date-matched)
+  date-matched: n_raw=2 rows, 1 sessions, >= 2026-07-06
+  ⚠ N<10 date-matched — the operator's evidence rule: a single skipped name that ran
+    proves nothing. Descriptive numbers below are shown for completeness, NOT evidence.
+    ret_1d        n=   2 (  1 sess)  median   11.18%  IQR [   9.97%,   12.39%]  100.0% up  share>=+5% 100.0%  share>=+10% 50.0%
+    ret_5d        n=   2 (  1 sess)  median   28.23%  IQR [   6.58%,   49.88%]  100.0% up  share>=+5% 100.0%  share>=+10% 50.0%
+    max_high_5d   n=   2 (  1 sess)  median   32.86%  IQR [  12.74%,   52.99%]  100.0% up  share>=+5% 100.0%  share>=+10% 100.0%
+    SPIKE-VS-HOLD  5d close median +28.2%  vs  5d-high touch rate >=5% 100.0% / >=10% 100.0% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=286 (47 sess) median -3.0%
+
+[portfolio] breaker_blocked
+  date-matched: n_raw=12 rows, 4 sessions, >= 2026-07-06
+    ret_1d        n=  12 (  4 sess)  median   -4.74%  IQR [ -13.51%,   -0.65%]   16.7% up  share>=+5% 16.7%  share>=+10% 16.7%
+    ret_5d        n=  12 (  4 sess)  median   -2.73%  IQR [  -8.94%,    8.41%]   50.0% up  share>=+5% 33.3%  share>=+10% 8.3%
+    max_high_5d   n=  12 (  4 sess)  median    7.78%  IQR [   4.62%,   12.65%]  100.0% up  share>=+5% 58.3%  share>=+10% 33.3%
+    SPIKE-VS-HOLD  5d close median -2.7%  vs  5d-high touch rate >=5% 58.3% / >=10% 33.3% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=21 (6 sess) median +1.1%
+
+[portfolio] cap_blocked
+  date-matched: n_raw=3 rows, 2 sessions, >= 2026-07-06
+  ⚠ N<10 date-matched — the operator's evidence rule: a single skipped name that ran
+    proves nothing. Descriptive numbers below are shown for completeness, NOT evidence.
+    ret_1d        n=   3 (  2 sess)  median     6.3%  IQR [  -2.38%,   11.78%]   66.7% up  share>=+5% 66.7%  share>=+10% 33.3%
+    ret_5d        n=   2 (  1 sess)  median    6.59%  IQR [  -2.87%,   16.04%]   50.0% up  share>=+5% 50.0%  share>=+10% 50.0%
+    max_high_5d   n=   2 (  1 sess)  median   10.32%  IQR [   3.98%,   16.66%]  100.0% up  share>=+5% 50.0%  share>=+10% 50.0%
+    SPIKE-VS-HOLD  5d close median +6.6%  vs  5d-high touch rate >=5% 50.0% / >=10% 50.0% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=15 (4 sess) median -1.8%
+
+[portfolio] cooldown
+  date-matched: n_raw=20 rows, 13 sessions, >= 2026-07-06
+    ret_1d        n=  17 ( 11 sess)  median    0.35%  IQR [  -4.03%,   10.16%]   52.9% up  share>=+5% 35.3%  share>=+10% 29.4%
+    ret_5d        n=  15 ( 10 sess)  median    2.08%  IQR [   -6.7%,    6.98%]   53.3% up  share>=+5% 40.0%  share>=+10% 20.0%
+    ret_20d       n=   7 (  4 sess)  median   -14.2%  IQR [ -22.49%,    8.85%]   28.6% up  share>=+5% 28.6%  share>=+10% 14.3%
+    max_high_5d   n=  15 ( 10 sess)  median   16.67%  IQR [   5.42%,   21.59%]  100.0% up  share>=+5% 80.0%  share>=+10% 60.0%
+    max_high_20d  n=   7 (  4 sess)  median   16.67%  IQR [    6.2%,   21.23%]  100.0% up  share>=+5% 85.7%  share>=+10% 71.4%
+    SPIKE-VS-HOLD  5d close median +2.1%  vs  5d-high touch rate >=5% 80.0% / >=10% 60.0% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=106 (51 sess) median -2.7%
+
+[risk_geometry] atr_high
+  date-matched: n_raw=36 rows, 19 sessions, >= 2026-07-06
+    ret_1d        n=  34 ( 18 sess)  median    0.63%  IQR [  -9.29%,   12.87%]   52.9% up  share>=+5% 41.2%  share>=+10% 35.3%
+    ret_5d        n=  31 ( 15 sess)  median   -1.69%  IQR [ -17.82%,   10.28%]   45.2% up  share>=+5% 38.7%  share>=+10% 25.8%
+    ret_20d       n=  15 (  7 sess)  median   -7.96%  IQR [ -32.21%,    4.52%]   33.3% up  share>=+5% 20.0%  share>=+10% 20.0%
+    max_high_5d   n=  33 ( 16 sess)  median   26.36%  IQR [    9.9%,   35.48%]  100.0% up  share>=+5% 84.8%  share>=+10% 72.7%
+    max_high_20d  n=  15 (  7 sess)  median   15.98%  IQR [   9.53%,   32.09%]  100.0% up  share>=+5% 86.7%  share>=+10% 66.7%
+    SPIKE-VS-HOLD  5d close median -1.7%  vs  5d-high touch rate >=5% 84.8% / >=10% 72.7% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=85 (49 sess) median -9.5%
+
+[risk_geometry] price_exceeds_cap (chase-cap analog; 'setup:chase_cap_exceeded' has 0 rows on record)
+  date-matched: n_raw=0 rows, 0 sessions, >= 2026-07-06
+  ⚠ N<10 date-matched — the operator's evidence rule: a single skipped name that ran
+    proves nothing. Descriptive numbers below are shown for completeness, NOT evidence.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=1 (1 sess) median -20.9%
+
+[risk_geometry] size_too_small
+  date-matched: n_raw=4 rows, 2 sessions, >= 2026-07-06
+  ⚠ N<10 date-matched — the operator's evidence rule: a single skipped name that ran
+    proves nothing. Descriptive numbers below are shown for completeness, NOT evidence.
+    ret_1d        n=   4 (  2 sess)  median    3.24%  IQR [   3.15%,     5.9%]   75.0% up  share>=+5% 25.0%  share>=+10% 0.0%
+    ret_5d        n=   4 (  2 sess)  median    3.04%  IQR [   2.86%,    4.77%]  100.0% up  share>=+5% 0.0%  share>=+10% 0.0%
+    max_high_5d   n=   4 (  2 sess)  median    9.53%  IQR [   9.44%,   11.36%]  100.0% up  share>=+5% 100.0%  share>=+10% 25.0%
+    SPIKE-VS-HOLD  5d close median +3.0%  vs  5d-high touch rate >=5% 100.0% / >=10% 25.0% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=4 (2 sess) median +3.0%
+
+[risk_geometry] stop_too_wide
+  date-matched: n_raw=4 rows, 4 sessions, >= 2026-07-06
+  ⚠ N<10 date-matched — the operator's evidence rule: a single skipped name that ran
+    proves nothing. Descriptive numbers below are shown for completeness, NOT evidence.
+    ret_1d        n=   3 (  3 sess)  median    3.18%  IQR [   2.22%,    9.96%]  100.0% up  share>=+5% 33.3%  share>=+10% 0.0%
+    ret_5d        n=   2 (  2 sess)  median   -8.36%  IQR [  -13.1%,   -3.62%]    0.0% up  share>=+5% 0.0%  share>=+10% 0.0%
+    max_high_5d   n=   2 (  2 sess)  median    9.64%  IQR [   9.12%,   10.16%]  100.0% up  share>=+5% 100.0%  share>=+10% 50.0%
+    SPIKE-VS-HOLD  5d close median -8.4%  vs  5d-high touch rate >=5% 100.0% / >=10% 50.0% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=11 (9 sess) median -3.4%
+
+[selection] adv_low
+  date-matched: n_raw=78 rows, 28 sessions, >= 2026-07-06
+    ret_1d        n=  69 ( 26 sess)  median   -1.81%  IQR [ -11.15%,    5.51%]   43.5% up  share>=+5% 26.1%  share>=+10% 13.0%
+    ret_5d        n=  58 ( 22 sess)  median   -4.72%  IQR [ -20.92%,    6.38%]   37.9% up  share>=+5% 29.3%  share>=+10% 20.7%
+    ret_20d       n=  18 (  7 sess)  median  -20.66%  IQR [ -26.87%,   -2.03%]   22.2% up  share>=+5% 22.2%  share>=+10% 22.2%
+    max_high_5d   n=  58 ( 22 sess)  median   10.83%  IQR [   5.24%,   26.39%]   94.8% up  share>=+5% 75.9%  share>=+10% 58.6%
+    max_high_20d  n=  18 (  7 sess)  median   10.79%  IQR [   2.75%,   39.39%]   94.4% up  share>=+5% 72.2%  share>=+10% 55.6%
+    SPIKE-VS-HOLD  5d close median -4.7%  vs  5d-high touch rate >=5% 75.9% / >=10% 58.6% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=211 (75 sess) median -2.9%
+
+[selection] catalyst_downgrade
+  date-matched: n_raw=24 rows, 13 sessions, >= 2026-07-06
+    ret_1d        n=  22 ( 11 sess)  median    1.71%  IQR [  -3.78%,    3.29%]   59.1% up  share>=+5% 22.7%  share>=+10% 4.5%
+    ret_5d        n=  21 ( 10 sess)  median   -0.39%  IQR [  -4.96%,    6.16%]   47.6% up  share>=+5% 33.3%  share>=+10% 14.3%
+    ret_20d       n=   9 (  4 sess)  median    8.31%  IQR [  -9.56%,   10.98%]   66.7% up  share>=+5% 66.7%  share>=+10% 44.4%
+    max_high_5d   n=  21 ( 10 sess)  median     9.9%  IQR [   8.61%,   12.66%]  100.0% up  share>=+5% 85.7%  share>=+10% 47.6%
+    max_high_20d  n=   9 (  4 sess)  median   16.33%  IQR [  12.18%,   18.78%]  100.0% up  share>=+5% 77.8%  share>=+10% 77.8%
+    SPIKE-VS-HOLD  5d close median -0.4%  vs  5d-high touch rate >=5% 85.7% / >=10% 47.6% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=90 (42 sess) median -3.2%
+
+[selection] extension_gate
+  date-matched: n_raw=38 rows, 22 sessions, >= 2026-07-06
+    ret_1d        n=  37 ( 21 sess)  median  -13.13%  IQR [ -31.66%,   11.17%]   29.7% up  share>=+5% 29.7%  share>=+10% 27.0%
+    ret_5d        n=  33 ( 18 sess)  median   -34.7%  IQR [ -48.61%,  -18.36%]   12.1% up  share>=+5% 9.1%  share>=+10% 9.1%
+    ret_20d       n=   7 (  6 sess)  median  -35.44%  IQR [ -57.98%,   -9.94%]    0.0% up  share>=+5% 0.0%  share>=+10% 0.0%
+    max_high_5d   n=  34 ( 18 sess)  median   29.92%  IQR [   9.18%,  107.96%]   97.1% up  share>=+5% 88.2%  share>=+10% 70.6%
+    max_high_20d  n=  11 (  6 sess)  median   72.05%  IQR [  26.81%,  127.67%]  100.0% up  share>=+5% 100.0%  share>=+10% 100.0%
+    SPIKE-VS-HOLD  5d close median -34.7%  vs  5d-high touch rate >=5% 88.2% / >=10% 70.6% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=154 (66 sess) median -23.8%
+
+[selection] gap_below_floor
+  date-matched: n_raw=7 rows, 6 sessions, >= 2026-07-06
+  ⚠ N<10 date-matched — the operator's evidence rule: a single skipped name that ran
+    proves nothing. Descriptive numbers below are shown for completeness, NOT evidence.
+    ret_1d        n=   6 (  5 sess)  median    1.47%  IQR [  -1.36%,    7.02%]   66.7% up  share>=+5% 33.3%  share>=+10% 16.7%
+    ret_5d        n=   2 (  1 sess)  median   19.18%  IQR [  11.19%,   27.16%]  100.0% up  share>=+5% 100.0%  share>=+10% 100.0%
+    max_high_5d   n=   2 (  1 sess)  median   20.18%  IQR [  13.06%,    27.3%]  100.0% up  share>=+5% 100.0%  share>=+10% 100.0%
+    SPIKE-VS-HOLD  5d close median +19.2%  vs  5d-high touch rate >=5% 100.0% / >=10% 100.0% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=2 (1 sess) median +19.2%
+
+[selection] ma_filter
+  date-matched: n_raw=23 rows, 16 sessions, >= 2026-07-06
+    ret_1d        n=  20 ( 14 sess)  median    0.01%  IQR [   -2.7%,    1.11%]   50.0% up  share>=+5% 0.0%  share>=+10% 0.0%
+    ret_5d        n=  17 ( 12 sess)  median     0.0%  IQR [   -6.7%,    0.37%]   47.1% up  share>=+5% 0.0%  share>=+10% 0.0%
+    ret_20d       n=   5 (  4 sess)  median   -14.2%  IQR [ -17.68%,    0.34%]   40.0% up  share>=+5% 20.0%  share>=+10% 0.0%
+    max_high_5d   n=  17 ( 12 sess)  median    2.19%  IQR [   0.87%,    4.88%]  100.0% up  share>=+5% 23.5%  share>=+10% 0.0%
+    max_high_20d  n=   5 (  4 sess)  median    1.81%  IQR [   0.87%,    2.11%]  100.0% up  share>=+5% 20.0%  share>=+10% 0.0%
+    SPIKE-VS-HOLD  5d close median +0.0%  vs  5d-high touch rate >=5% 23.5% / >=10% 0.0% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=63 (41 sess) median -0.3%
+
+[selection] mcap_low
+  date-matched: n_raw=64 rows, 26 sessions, >= 2026-07-06
+    ret_1d        n=  56 ( 24 sess)  median    0.11%  IQR [   -5.7%,    7.58%]   51.8% up  share>=+5% 28.6%  share>=+10% 16.1%
+    ret_5d        n=  43 ( 20 sess)  median    0.92%  IQR [  -6.95%,   10.89%]   55.8% up  share>=+5% 44.2%  share>=+10% 25.6%
+    ret_20d       n=   9 (  6 sess)  median   15.44%  IQR [ -14.42%,   15.62%]   55.6% up  share>=+5% 55.6%  share>=+10% 55.6%
+    max_high_5d   n=  43 ( 20 sess)  median   13.37%  IQR [    7.3%,   21.23%]   97.7% up  share>=+5% 83.7%  share>=+10% 67.4%
+    max_high_20d  n=   9 (  6 sess)  median   19.68%  IQR [    7.3%,   28.73%]   88.9% up  share>=+5% 77.8%  share>=+10% 66.7%
+    SPIKE-VS-HOLD  5d close median +0.9%  vs  5d-high touch rate >=5% 83.7% / >=10% 67.4% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=180 (67 sess) median +0.2%
+
+[selection] moderate_tier (re-derives _468_moderate_realized_r.py — see caveat)
+  date-matched: n_raw=25 rows, 12 sessions, >= 2026-07-06
+    ret_1d        n=  21 ( 10 sess)  median   -0.63%  IQR [  -4.25%,    3.69%]   42.9% up  share>=+5% 23.8%  share>=+10% 9.5%
+    ret_5d        n=  10 (  7 sess)  median    0.08%  IQR [  -5.54%,     9.0%]   50.0% up  share>=+5% 30.0%  share>=+10% 20.0%
+    ret_20d       n=   2 (  2 sess)  median    5.72%  IQR [  -8.74%,   20.17%]   50.0% up  share>=+5% 50.0%  share>=+10% 50.0%
+    max_high_5d   n=  10 (  7 sess)  median    9.49%  IQR [   5.64%,   16.82%]  100.0% up  share>=+5% 80.0%  share>=+10% 50.0%
+    max_high_20d  n=   2 (  2 sess)  median   15.93%  IQR [   5.64%,   26.22%]  100.0% up  share>=+5% 100.0%  share>=+10% 50.0%
+    SPIKE-VS-HOLD  5d close median +0.1%  vs  5d-high touch rate >=5% 80.0% / >=10% 50.0% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=98 (47 sess) median -0.4%
+
+[selection] outside_top20 (concentrated on high-breadth days — see caveat)
+  date-matched: n_raw=156 rows, 7 sessions, >= 2026-07-06
+    ret_1d        n= 156 (  7 sess)  median    2.88%  IQR [  -1.06%,    7.97%]   65.4% up  share>=+5% 42.3%  share>=+10% 15.4%
+    ret_5d        n= 120 (  6 sess)  median    5.04%  IQR [  -1.39%,   12.05%]   70.8% up  share>=+5% 50.0%  share>=+10% 30.0%
+    max_high_5d   n= 120 (  6 sess)  median   12.88%  IQR [   7.19%,    20.9%]  100.0% up  share>=+5% 83.3%  share>=+10% 59.2%
+    SPIKE-VS-HOLD  5d close median +5.0%  vs  5d-high touch rate >=5% 83.3% / >=10% 59.2% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=751 (29 sess) median +1.6%
+
+[selection] pm_rvol_low
+  date-matched: n_raw=21 rows, 16 sessions, >= 2026-07-06
+    ret_1d        n=  21 ( 16 sess)  median    0.67%  IQR [  -1.32%,    3.39%]   61.9% up  share>=+5% 19.0%  share>=+10% 9.5%
+    ret_5d        n=  18 ( 14 sess)  median   -3.05%  IQR [ -11.57%,   -0.06%]   22.2% up  share>=+5% 16.7%  share>=+10% 16.7%
+    ret_20d       n=   5 (  4 sess)  median   -9.17%  IQR [ -13.16%,   13.46%]   40.0% up  share>=+5% 40.0%  share>=+10% 40.0%
+    max_high_5d   n=  18 ( 14 sess)  median    7.03%  IQR [   5.88%,   12.13%]  100.0% up  share>=+5% 77.8%  share>=+10% 33.3%
+    max_high_20d  n=   5 (  4 sess)  median   12.13%  IQR [   6.11%,   17.22%]  100.0% up  share>=+5% 100.0%  share>=+10% 60.0%
+    SPIKE-VS-HOLD  5d close median -3.0%  vs  5d-high touch rate >=5% 77.8% / >=10% 33.3% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=176 (56 sess) median -1.4%
+
+[selection] score_below_50
+  date-matched: n_raw=130 rows, 28 sessions, >= 2026-07-06
+    ret_1d        n= 119 ( 26 sess)  median    0.84%  IQR [  -4.35%,     6.9%]   56.3% up  share>=+5% 34.5%  share>=+10% 13.4%
+    ret_5d        n= 106 ( 22 sess)  median    1.15%  IQR [  -4.67%,    6.78%]   59.4% up  share>=+5% 35.8%  share>=+10% 16.0%
+    ret_20d       n=  12 (  6 sess)  median  -12.52%  IQR [ -26.44%,   10.08%]   33.3% up  share>=+5% 25.0%  share>=+10% 25.0%
+    max_high_5d   n= 106 ( 22 sess)  median    9.19%  IQR [   5.28%,   12.27%]   99.1% up  share>=+5% 76.4%  share>=+10% 44.3%
+    max_high_20d  n=  12 (  6 sess)  median    9.86%  IQR [   0.48%,   15.11%]  100.0% up  share>=+5% 66.7%  share>=+10% 50.0%
+    SPIKE-VS-HOLD  5d close median +1.1%  vs  5d-high touch rate >=5% 76.4% / >=10% 44.3% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=275 (70 sess) median +0.9%
+
+[selection] session_rvol_low
+  date-matched: n_raw=40 rows, 19 sessions, >= 2026-07-06
+    ret_1d        n=  39 ( 18 sess)  median   -3.74%  IQR [  -9.44%,    2.85%]   38.5% up  share>=+5% 17.9%  share>=+10% 15.4%
+    ret_5d        n=  34 ( 15 sess)  median    -0.4%  IQR [ -10.58%,    7.45%]   47.1% up  share>=+5% 32.4%  share>=+10% 23.5%
+    ret_20d       n=  16 (  6 sess)  median  -13.16%  IQR [ -23.38%,    16.3%]   31.2% up  share>=+5% 31.2%  share>=+10% 31.2%
+    max_high_5d   n=  34 ( 15 sess)  median    7.86%  IQR [   4.45%,    17.1%]  100.0% up  share>=+5% 70.6%  share>=+10% 38.2%
+    max_high_20d  n=  16 (  6 sess)  median   10.65%  IQR [   5.64%,   19.41%]  100.0% up  share>=+5% 75.0%  share>=+10% 50.0%
+    SPIKE-VS-HOLD  5d close median -0.4%  vs  5d-high touch rate >=5% 70.6% / >=10% 38.2% — read together: a high touch-rate with a
+                   negative close median means names spiked then gave it back, not
+                   that this reason 'drops runners'.
+    WIDE (Feb-Aug, CONFOUNDED, context only, not tested): ret_5d n=304 (62 sess) median +0.2%
+
+====================================================================================================
+RANKED SUMMARY — reasons at ret_5d (date-matched), sorted by how much the skipped cohort
+OUT-RAN taken names (only reasons with n>=10 after maturity filtering are ranked; smaller-N
+reasons listed below, unranked, exactly per the operator's evidence rule)
+====================================================================================================
+  [mechanics] window_missed (mostly PRE the 08-13 ORB-window fix — see caveat) ret_5d group med    5.9% (n=  13,  10 sess) | taken med  -7.49% (n=15, 11 sess) | diff +13.39pp | raw p=0.020  adj p(x54)=1.000
+  [selection] outside_top20 (concentrated on high-breadth days — see caveat) ret_5d group med   5.04% (n= 120,   6 sess) | taken med  -7.49% (n=15, 11 sess) | diff +12.53pp | raw p=0.154  adj p(x54)=1.000
+  [portfolio] cooldown ret_5d                          group med   2.08% (n=  15,  10 sess) | taken med  -7.49% (n=15, 11 sess) | diff +9.57pp | raw p=0.112  adj p(x54)=1.000
+  [selection] score_below_50 ret_5d                    group med   1.15% (n= 106,  22 sess) | taken med  -7.49% (n=15, 11 sess) | diff +8.64pp | raw p=0.069  adj p(x54)=1.000
+  [selection] mcap_low ret_5d                          group med   0.92% (n=  43,  20 sess) | taken med  -7.49% (n=15, 11 sess) | diff +8.41pp | raw p=0.227  adj p(x54)=1.000
+  [mechanics] duplicate_scan ret_5d                    group med    0.8% (n=  34,  12 sess) | taken med  -7.49% (n=15, 11 sess) | diff +8.29pp | raw p=0.060  adj p(x54)=1.000
+  [selection] moderate_tier (re-derives _468_moderate_realized_r.py — see caveat) ret_5d group med   0.08% (n=  10,   7 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.57pp | raw p=0.091  adj p(x54)=1.000
+  [selection] ma_filter ret_5d                         group med    0.0% (n=  17,  12 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.49pp | raw p=0.146  adj p(x54)=1.000
+  [selection] catalyst_downgrade ret_5d                group med  -0.39% (n=  21,  10 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.10pp | raw p=0.130  adj p(x54)=1.000
+  [selection] session_rvol_low ret_5d                  group med   -0.4% (n=  34,  15 sess) | taken med  -7.49% (n=15, 11 sess) | diff +7.09pp | raw p=0.196  adj p(x54)=1.000
+  [risk_geometry] atr_high ret_5d                      group med  -1.69% (n=  31,  15 sess) | taken med  -7.49% (n=15, 11 sess) | diff +5.80pp | raw p=0.540  adj p(x54)=1.000
+  [portfolio] breaker_blocked ret_5d                   group med  -2.73% (n=  12,   4 sess) | taken med  -7.49% (n=15, 11 sess) | diff +4.76pp | raw p=0.497  adj p(x54)=1.000
+  [selection] pm_rvol_low ret_5d                       group med  -3.05% (n=  18,  14 sess) | taken med  -7.49% (n=15, 11 sess) | diff +4.44pp | raw p=0.542  adj p(x54)=1.000
+  [selection] adv_low ret_5d                           group med  -4.72% (n=  58,  22 sess) | taken med  -7.49% (n=15, 11 sess) | diff +2.77pp | raw p=0.761  adj p(x54)=1.000
+  [selection] extension_gate ret_5d                    group med  -34.7% (n=  33,  18 sess) | taken med  -7.49% (n=15, 11 sess) | diff -27.21pp | raw p=0.002  adj p(x54)=0.113
+
+  reasons with n<10 at ret_5d date-matched (unranked, per evidence rule): faded_from_orb(n=0), infra_skip(n=0), zero_range(n=1), high_unentered (wide-window only — collapses to n=2 date-matched)(n=2), cap_blocked(n=2), price_exceeds_cap (chase-cap analog; 'setup:chase_cap_exceeded' has 0 rows on record)(n=0), size_too_small(n=4), stop_too_wide(n=2), gap_below_floor(n=2)
+
+====================================================================================================
+WHAT COULD NOT BE MEASURED, AND WHY
+====================================================================================================
+  - mi_live_trades 'cancelled' rows (submitted, never filled, N=18 on record) are in neither
+    cohort here — not a skip decision (passed every gate, got submitted) and not a taken name
+    (never filled). The 'whole group to review' is incomplete by this many rows; a follow-up
+    would need to decide which side they belong on before including them.
+  - high_unentered (n=289 wide) collapses to n=2 in the date-matched window — cannot say
+    anything about it in the window that matters for comparison to what we're doing now;
+    the wide-window number is reported as historical context only.
+  - No R-multiple / realized-P&L comparison at fixed day checkpoints: mi_live_trades does not
+    store daily mark-to-market of open positions, only entry/exit and final total_pnl — the
+    ACTUAL realized R printed above is context only, never tested against the skip cohort.
+  - The baseline problem (open_d0 vs ORB-high entry) is quantified in direction and rough
+    magnitude (basis_gap_pct above) but cannot be applied AS a correction to the skip cohort,
+    which never received a real entry price to measure the same gap against.
+  - 'setup:chase_cap_exceeded' (named in the task) has 0 rows under that literal string;
+    price_exceeds_cap is reported as the closest analog on record and flagged everywhere.
+  - The date-matched window is itself one 6-week stretch of tape; it cannot rule out that
+    Jul-Aug is atypical in its own right — a future window will move these numbers, expected.
+
+====================================================================================================
+HOW TO READ THIS — permutation shuffles whole SESSIONS (alerts on one morning share the tape),
+and only within the date-matched window (a Feb session can never be a 'taken' session). The
+PRIMARY's verdict rests on its ADJUSTED p; everything else is exploratory / hypothesis-
+generating. Nothing here licenses a change to any skip rule, filter, or threshold — skips are
+entry discipline (THE LINE); any reason that looks defective is a FORK for the operator, with
+no option pre-chosen.
+====================================================================================================

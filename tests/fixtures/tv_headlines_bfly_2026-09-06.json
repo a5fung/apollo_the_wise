@@ -1,0 +1,520 @@
+{
+    "items": [
+        {
+            "id": "business_wire:b6d2385390d99:0",
+            "title": "Merge Labs and Butterfly Network Partner to Advance Ultrasound-Based Brain-Computer Interfaces",
+            "provider": "business_wire",
+            "sourceLogoId": "business-wire",
+            "published": 1788264300,
+            "source": "BusinessWire",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/business_wire:b6d2385390d99:0-merge-labs-and-butterfly-network-partner-to-advance-ultrasound-based-brain-computer-interfaces/"
+        },
+        {
+            "id": "tradingview:db906757f5136:0",
+            "title": "Butterfly Network's Dr. Erica Schwartz resigns from board following CDC confirmation",
+            "provider": "tradingview",
+            "sourceLogoId": "tradingview",
+            "published": 1786450381,
+            "source": "TradingView",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/tradingview:db906757f5136:0-butterfly-network-s-dr-erica-schwartz-resigns-from-board-following-cdc-confirmation/"
+        },
+        {
+            "id": "business_wire:c9220826cdf5d:0",
+            "title": "Butterfly Network Congratulates Dr. Erica Schwartz on Confirmation as CDC Director",
+            "provider": "business_wire",
+            "sourceLogoId": "business-wire",
+            "published": 1786449900,
+            "source": "BusinessWire",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/business_wire:c9220826cdf5d:0-butterfly-network-congratulates-dr-erica-schwartz-on-confirmation-as-cdc-director/"
+        },
+        {
+            "id": "zacks:c39af3c23094b:0",
+            "title": "BFLY Q2 Earnings Call Spotlights Embedded Growth and Raised Outlook",
+            "provider": "zacks",
+            "sourceLogoId": "zacks",
+            "published": 1786112700,
+            "source": "Zacks",
+            "urgency": 2,
+            "link": "https://www.zacks.com/stock/news/2971069/bfly-q2-earnings-call-spotlights-embedded-growth-and-raised-outlook?cid=CS-TRADINGVIEW-FT-analyst_blog_plus|earnings_call_takeaways-2971069",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/zacks:c39af3c23094b:0-bfly-q2-earnings-call-spotlights-embedded-growth-and-raised-outlook/"
+        },
+        {
+            "id": "tradingview:6945998397cdc:0",
+            "title": "Butterfly Network CAO, SVP, Finance Sold Shares Worth Over $541K",
+            "provider": "tradingview",
+            "sourceLogoId": "tradingview",
+            "published": 1785877228,
+            "source": "TradingView",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/tradingview:6945998397cdc:0-butterfly-network-cao-svp-finance-sold-shares-worth-over-541k/"
+        },
+        {
+            "id": "urn:summary_document_transcript:quartr.com:3962487:0",
+            "title": "BFLY: Record revenue and margin growth drive raised outlook, with Embedded and AI partnerships accelerating expansion",
+            "provider": "quartr",
+            "sourceLogoId": "quartr",
+            "published": 1785448276,
+            "source": "Quartr",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/urn:summary_document_transcript:quartr.com:3962487:0-bfly-record-revenue-and-margin-growth-drive-raised-outlook-with-embedded-and-ai-partnerships-accelerating-expansion/"
+        },
+        {
+            "id": "tag:reuters.com,2026:newsml_L8N43W2S3:0",
+            "title": "Butterfly Network Inc reports results for the quarter ended June 30 - Earnings Summary",
+            "provider": "reuters",
+            "sourceLogoId": "reuters",
+            "published": 1785423689,
+            "source": "Reuters",
+            "urgency": 2,
+            "permission": "headline",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/reuters.com,2026:newsml_L8N43W2S3:0-butterfly-network-inc-reports-results-for-the-quarter-ended-june-30-earnings-summary/"
+        },
+        {
+            "id": "benzinga:8c13f6534094b:0",
+            "title": "Butterfly Network Stock Jumps After Q2 Beat Fueled by Midjourney Partnership",
+            "provider": "benzinga",
+            "sourceLogoId": "benzinga",
+            "published": 1785415575,
+            "source": "Benzinga",
+            "urgency": 2,
+            "link": "https://www.benzinga.com/trading-ideas/movers/26/07/60797279/butterfly-network-stock-jumps-after-q2-beat-fueled-by-midjourney-partnership?utm_source=tradingview&utm_campaign=partner_feed&utm_medium=referral",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/benzinga:8c13f6534094b:0-butterfly-network-stock-jumps-after-q2-beat-fueled-by-midjourney-partnership/"
+        },
+        {
+            "id": "tradingview:64a9ce5394064:0",
+            "title": "Butterfly Network, Inc. 2026: Revenue $32.61M, EPS ($0.05) \u2014 10-Q Summary",
+            "provider": "tradingview",
+            "sourceLogoId": "tradingview",
+            "published": 1785411660,
+            "source": "TradingView",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/tradingview:64a9ce5394064:0-butterfly-network-inc-2026-revenue-32-61m-eps-0-05-10-q-summary/"
+        },
+        {
+            "id": "urn:summary_document_report:quartr.com:3670546:0",
+            "title": "BFLY: Q2 2026 revenue grew 39.5% to $32.6M, with software/services up 149.8% and net loss at $12.9M",
+            "provider": "quartr",
+            "sourceLogoId": "quartr",
+            "published": 1785411148,
+            "source": "Quartr",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/urn:summary_document_report:quartr.com:3670546:0-bfly-q2-2026-revenue-grew-39-5-to-32-6m-with-software-services-up-149-8-and-net-loss-at-12-9m/"
+        },
+        {
+            "id": "urn:summary_document_report:quartr.com:3670545:0",
+            "title": "BFLY: Q2 2026 revenue up 39% to $32.6M, gross margin 71.4%, and guidance raised for the year",
+            "provider": "quartr",
+            "sourceLogoId": "quartr",
+            "published": 1785410317,
+            "source": "Quartr",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/urn:summary_document_report:quartr.com:3670545:0-bfly-q2-2026-revenue-up-39-to-32-6m-gross-margin-71-4-and-guidance-raised-for-the-year/"
+        },
+        {
+            "id": "tag:reuters.com,2026:newsml_L1N43W0IC:0",
+            "title": "Butterfly Network Q2 revenue beats on strong U.S. demand",
+            "provider": "reuters",
+            "sourceLogoId": "reuters",
+            "published": 1785408119,
+            "source": "Reuters",
+            "urgency": 2,
+            "permission": "headline",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/reuters.com,2026:newsml_L1N43W0IC:0-butterfly-network-q2-revenue-beats-on-strong-u-s-demand/"
+        },
+        {
+            "id": "DJN_DN20260730005386_20260730005818:0",
+            "title": "Butterfly Network Raises FY26 View To Rev $119M-$123M >BFLY",
+            "provider": "dow-jones",
+            "sourceLogoId": "dow-jones",
+            "published": 1785407640,
+            "source": "Dow Jones Newswires",
+            "urgency": 2,
+            "permission": "provider",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/DJN_DN20260730005386_20260730005818:0/",
+            "is_flash": true
+        },
+        {
+            "id": "DJN_DN20260730005386_20260730005831:0",
+            "title": "Butterfly Network Sees 3Q Rev $26M-$30M >BFLY",
+            "provider": "dow-jones",
+            "sourceLogoId": "dow-jones",
+            "published": 1785407640,
+            "source": "Dow Jones Newswires",
+            "urgency": 2,
+            "permission": "provider",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/DJN_DN20260730005386_20260730005831:0/",
+            "is_flash": true
+        },
+        {
+            "id": "tradingview:2b4281c9e51f1:0",
+            "title": "Butterfly Network Reports Q2 2026 Record Revenue $32.6M, Adjusted EBITDA Loss Improves to $1.4M",
+            "provider": "tradingview",
+            "sourceLogoId": "tradingview",
+            "published": 1785407581,
+            "source": "TradingView",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/tradingview:2b4281c9e51f1:0-butterfly-network-reports-q2-2026-record-revenue-32-6m-adjusted-ebitda-loss-improves-to-1-4m/"
+        },
+        {
+            "id": "DJN_DN20260730005386_20260730005788:0",
+            "title": "Butterfly Network 2Q Adj Loss/Shr 1c >BFLY",
+            "provider": "dow-jones",
+            "sourceLogoId": "dow-jones",
+            "published": 1785407580,
+            "source": "Dow Jones Newswires",
+            "urgency": 2,
+            "permission": "provider",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/DJN_DN20260730005386_20260730005788:0/",
+            "is_flash": true
+        },
+        {
+            "id": "DJN_DN20260730005386_20260730005772:0",
+            "title": "Butterfly Network 2Q Loss/Shr 5c >BFLY",
+            "provider": "dow-jones",
+            "sourceLogoId": "dow-jones",
+            "published": 1785407580,
+            "source": "Dow Jones Newswires",
+            "urgency": 2,
+            "permission": "provider",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/DJN_DN20260730005386_20260730005772:0/",
+            "is_flash": true
+        },
+        {
+            "id": "DJN_DN20260730005386_20260730005736:0",
+            "title": "Butterfly Network 2Q Rev $32.6M >BFLY",
+            "provider": "dow-jones",
+            "sourceLogoId": "dow-jones",
+            "published": 1785407520,
+            "source": "Dow Jones Newswires",
+            "urgency": 2,
+            "permission": "provider",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/DJN_DN20260730005386_20260730005736:0/",
+            "is_flash": true
+        },
+        {
+            "id": "business_wire:1c9dc6eb825c2:0",
+            "title": "Butterfly Network Reports Second Quarter 2026 Financial Results",
+            "provider": "business_wire",
+            "sourceLogoId": "business-wire",
+            "published": 1785407400,
+            "source": "BusinessWire",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/business_wire:1c9dc6eb825c2:0-butterfly-network-reports-second-quarter-2026-financial-results/"
+        },
+        {
+            "id": "tradingview:b1fea9058fa04:0",
+            "title": "BFLY Q2'26 Earnings: EPS estimate is (0.04) USD",
+            "provider": "tradingview",
+            "sourceLogoId": "tradingview",
+            "published": 1785322878,
+            "source": "TradingView",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/tradingview:b1fea9058fa04:0-bfly-q2-26-earnings-eps-estimate-is-0-04-usd/"
+        },
+        {
+            "id": "zacks:28ef6b079094b:0",
+            "title": "Can AI Momentum and Embedded Growth Lift BFLY's Q2 Results?",
+            "provider": "zacks",
+            "sourceLogoId": "zacks",
+            "published": 1785173040,
+            "source": "Zacks",
+            "urgency": 2,
+            "link": "https://www.zacks.com/stock/news/2961425/can-ai-momentum-and-embedded-growth-lift-bfly-s-q2-results?cid=CS-TRADINGVIEW-FT-analyst_blog|earnings_preview-2961425",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/zacks:28ef6b079094b:0-can-ai-momentum-and-embedded-growth-lift-bfly-s-q2-results/"
+        },
+        {
+            "id": "tradingview:8672444f9e439:0",
+            "title": "BFLY Q2'26 Earnings: revenue estimate is 29.16M USD",
+            "provider": "tradingview",
+            "sourceLogoId": "tradingview",
+            "published": 1784804454,
+            "source": "TradingView",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/tradingview:8672444f9e439:0-bfly-q2-26-earnings-revenue-estimate-is-29-16m-usd/"
+        },
+        {
+            "id": "tradingview:e461b88b975f3:0",
+            "title": "Butterfly Network President & CEO Sold Shares Worth Over $1.3M",
+            "provider": "tradingview",
+            "sourceLogoId": "tradingview",
+            "published": 1784665801,
+            "source": "TradingView",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/tradingview:e461b88b975f3:0-butterfly-network-president-ceo-sold-shares-worth-over-1-3m/"
+        },
+        {
+            "id": "DJN_DN20260716004102:0",
+            "title": "Butterfly Network to Report Second Quarter 2026 Financial Results on July 30, 2026",
+            "provider": "dow-jones",
+            "sourceLogoId": "dow-jones",
+            "published": 1784203500,
+            "source": "Dow Jones Newswires",
+            "urgency": 2,
+            "permission": "provider",
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/DJN_DN20260716004102:0/"
+        },
+        {
+            "id": "business_wire:a8e62a21fefc5:0",
+            "title": "Butterfly Network to Report Second Quarter 2026 Financial Results on July 30, 2026",
+            "provider": "business_wire",
+            "sourceLogoId": "business-wire",
+            "published": 1784203500,
+            "source": "BusinessWire",
+            "urgency": 2,
+            "relatedSymbols": [
+                {
+                    "symbol": "NYSE:BFLY",
+                    "logoid": "butterfly-network",
+                    "logo": {
+                        "style": "single",
+                        "logoid": "butterfly-network"
+                    }
+                }
+            ],
+            "storyPath": "/news/business_wire:a8e62a21fefc5:0-butterfly-network-to-report-second-quarter-2026-financial-results-on-july-30-2026/"
+        }
+    ]
+}

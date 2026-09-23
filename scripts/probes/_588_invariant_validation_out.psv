@@ -1,0 +1,36 @@
+SET
+===Q1_INVARIANT_AS_SHIPPED_CUTOFF_2026_08_24===
+id|ticker|account_mode|alert_date|entry_shares|exit_shares
+(0 rows)
+===Q2_SAME_INVARIANT_NO_DATE_BOUND===
+id|ticker|account_mode|alert_date|entry_shares|exit_shares|total_pnl
+367|ETON|live|2026-08-14|17|22.0|19.323599999999942
+183|FPS|paper|2026-06-01|163|28.0|159.77693200000002
+(2 rows)
+===Q3_ETON_AND_FPS_ORDERS===
+trade_id|ticker|purpose|side|order_type|qty|filled_qty|filled_avg_price|status|submitted_et|filled_et
+17|BSX||buy|stop_limit|201|201|66.744726|filled|2026-04-23 09:31:01|2026-04-23 09:37:23
+107|ARM||buy|stop_limit|89|89|224|filled|2026-05-07 09:31:11|2026-05-07 09:39:46
+107|ARM||buy|stop_limit|89|||cancelled|2026-05-07 09:41:09|
+183|FPS||buy|stop_limit|163|163|53.793681|filled|2026-06-01 09:31:01|2026-06-01 09:45:00
+183|FPS|stop_loss|sell|stop|163|0||expired|2026-06-01 09:31:01|
+183|FPS|stop_loss|sell|stop|109|||cancelled|2026-06-04 16:45:00|
+183|FPS|stop_loss|sell|stop|109|0||cancelled|2026-06-15 16:45:00|
+183|FPS|stop_loss|sell|stop|109|0||cancelled|2026-06-16 16:45:00|
+183|FPS|stop_loss|sell|stop|109|0||cancelled|2026-06-17 16:45:00|
+183|FPS|stop_loss|sell|stop|109|81|57.169012|canceled|2026-06-22 16:45:00|
+183|FPS|stop_loss|sell|stop|28|28|59.5|filled|2026-06-24 16:45:00|2026-06-25 09:45:00
+367|ETON||buy|limit|17|17|55.2012|filled|2026-08-14 09:31:02|2026-08-14 09:32:00
+367|ETON|stop_loss|sell|stop|17|0||canceled|2026-08-14 09:31:02|
+367|ETON|stop_loss|sell|stop|12|0||replaced|2026-08-14 09:35:00|
+367|ETON|partial_exit|sell|limit|5|5|59.58|filled|2026-08-14 09:35:01|2026-08-14 15:58:02
+367|ETON|stop_loss|sell|stop|12|12|55.05|filled|2026-08-14 09:35:01|2026-08-14 10:00:00
+(16 rows)
+===Q4_MULTI_ATTEMPT_ROWS_ARE_LEGIT===
+id|ticker|account_mode|alert_date|entry_attempt|entry_shares|exit_shares
+34|OMCL|paper|2026-04-28|2|432|864.0
+57|TEAM|paper|2026-05-01|2|229|458.0
+81|AMD|paper|2026-05-06|2|48|96.0
+82|SMCI|paper|2026-05-06|2|612|1224.0
+120|MRAM|paper|2026-05-11|2|419|838.0
+(5 rows)

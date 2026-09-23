@@ -1,0 +1,23 @@
+date       ticker   stored  replay    diff  tier
+2026-05-26 ASPI       54.0    36.0   -18.0  MODERATE
+2026-05-26 BTGO       50.4    24.0   -26.4  MODERATE
+2026-05-26 CCOI       42.0    18.0   -24.0  
+2026-05-26 CLFD       24.0    36.0    12.0  
+2026-05-26 ESLT       43.2    26.4   -16.8  
+2026-05-26 FLY        21.6    50.4    28.8  
+2026-05-26 FUTU       51.6    36.0   -15.6  MODERATE
+2026-05-26 HYLN       12.0    24.0    12.0  
+2026-05-26 JOYY       18.0    18.0     0.0  
+2026-05-26 LUNR       21.6    54.0    32.4  
+2026-05-26 MDA        18.0    18.0     0.0  
+2026-05-26 MOD        46.1    38.4    -7.7  
+2026-05-26 NNE        50.4    26.4   -24.0  MODERATE
+2026-05-26 OKLO       64.8    54.0   -10.8  MODERATE
+2026-05-26 PONY       64.8    36.0   -28.8  HIGH
+
+n=463
+median diff (replay - stored): -6.0
+mean diff: -5.0
+within +/-5 pts: 127 (27%)
+replay UNDER stored by >5: 237 (51%)
+replay OVER stored by >5: 99 (21%)

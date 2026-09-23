@@ -1,0 +1,229 @@
+SUPPLY-LADDER PROBE — capture 2026-08-16, read-only, deterministic (re-run verified identical).
+Script: scripts/probes/_533_supply_ladder_probe.py (extends _533_nbis_structure_encoder.py,
+reuses its fixture-gated encode()/loaders unchanged; pre-registration + method are in that
+script's docstring, written before any outcome was read). Post-hoc additions (dose-response,
+zero-bucket decomposition, min-detectable-effect band, side-by-side Spearman) were added AFTER
+reading the pre-registered battery, following an advisor review mid-task — clearly labelled
+below and in the script, never folded into the locked 15-test Bonferroni ledger.
+Command: python3 scripts/probes/_533_supply_ladder_probe.py
+THE LINE: measurement only. Nothing wired into _score_ep, the judge, entry, exit, or sizing.
+A result that points at a change is a FORK for the operator (fork S-3) — no option pre-chosen.
+
+================================================================================================
+==================================================================================================
+SUPPLY-LADDER PROBE — zones_cleared (PRIMARY, his 2026-08-16 refinement) vs raw gap %,
+predicting EXCURSION SIZE and DIRECTION, on the declined-alert population
+==================================================================================================
+Population: mi_ep_missed_outcomes, source IN (moderate_alert, high_unentered) — EPs
+that reached alert grade and were never entered. Excludes every ACTUALLY TRADED alert
+(this table's own design) — reported, not hidden.
+
+cohort funnel: cohort=526 · encoded=526 · tier_a=235 · tier_b_daily_only=291
+encoded: 526 of 526 rows, 97 sessions, 2026-02-11 .. 2026-08-14
+data max (bounds maturity filtering): 2026-08-14
+⚠ outcome values are FRACTIONS in the DB; printed x100 as real percents below.
+⚠ BLUE_SKY / hist_max means 'above the AVAILABLE-HISTORY high' (this pull's daily bars go back to 2025-07; history per name ranges 17-279 trading days, median 206 ≈ 13 months) — NOT literal all-time-high. Read it as 'nothing rejected this in the last ~13 months', not 'this stock has never been higher'.
+
+zones_cleared distribution (analyzed pop): 0=125, 1=87, 2=67, 3=59, 4=53, 5=29, 6=28, 7=18, 8=18, 9=14, 10=11, 11=6, 12=3, 13=3, 14=1, 16=2, 18=1, 19=1
+gap_pct population median (outcome-blind split point): 15.7%  terciles: <13.3% / 13.3-19.1% / >=19.1%
+Spearman(zones_cleared, gap_pct) = +0.16  (descriptive; NOT counted in the 15-test battery — the counted confound control is the gap-tercile split, tests 7-9 below)
+
+==================================================================================================
+THE DECISIVE COMPARISON — does zones_cleared beat raw gap %? (his refinement, PRIMARY)
+==================================================================================================
+
+[1-2] EXCURSION SIZE — max_high_5d
+  1  zones_cleared (0 vs >=1) -> max_high_5d                 POS med  10.26% (n=374, 83 sess, 98.1% up) | NEG med  12.17% (n=116, 62 sess, 96.6% up) | diff -1.91pp | raw p=0.251  adj p(x15)=1.000
+  2  gap_pct (< vs >= population median) -> max_high_5d      POS med  11.33% (n=248, 70 sess, 98.0% up) | NEG med    9.3% (n=242, 77 sess, 97.5% up) | diff +2.03pp | raw p=0.193  adj p(x15)=1.000
+
+[3-4] DIRECTION — ret_5d
+  3  zones_cleared (0 vs >=1) -> ret_5d                      POS med  -0.94% (n=371, 82 sess, 45.6% up) | NEG med  -0.99% (n=116, 62 sess, 44.0% up) | diff +0.05pp | raw p=0.982  adj p(x15)=1.000
+  4  gap_pct (median split) -> ret_5d                        POS med  -2.37% (n=247, 69 sess, 41.7% up) | NEG med  -0.32% (n=240, 77 sess, 48.8% up) | diff -2.05pp | raw p=0.236  adj p(x15)=1.000
+
+[5-6] HORIZON CHECK — max_high_20d
+  5  zones_cleared (0 vs >=1) -> max_high_20d                POS med  12.98% (n=337, 73 sess, 98.8% up) | NEG med  18.74% (n=108, 56 sess, 97.2% up) | diff -5.76pp | raw p=0.043  adj p(x15)=0.639
+  6  gap_pct (median split) -> max_high_20d                  POS med  13.86% (n=231, 65 sess, 98.3% up) | NEG med  13.96% (n=214, 64 sess, 98.6% up) | diff -0.10pp | raw p=0.969  adj p(x15)=1.000
+
+--------------------------------------------------------------------------------------------------
+[7-9] CONFOUND CONTROL — zones_cleared WITHIN gap-size tercile (comparable gap size)
+--------------------------------------------------------------------------------------------------
+  7  gap-low tercile: zones_cleared (0 vs >=1) -> max_high_5d POS med   9.21% (n=121, 53 sess, 97.5% up) | NEG med   8.85% (n=41, 35 sess, 92.7% up) | diff +0.36pp | raw p=0.815  adj p(x15)=1.000
+  8  gap-mid tercile: zones_cleared (0 vs >=1) -> max_high_5d POS med   8.03% (n=119, 57 sess, 99.2% up) | NEG med  13.98% (n=41, 27 sess, 100.0% up) | diff -5.95pp | raw p=0.030  adj p(x15)=0.457
+  9  gap-high tercile: zones_cleared (0 vs >=1) -> max_high_5d POS med  11.57% (n=134, 59 sess, 97.8% up) | NEG med  11.12% (n=34, 28 sess, 97.1% up) | diff +0.45pp | raw p=0.880  adj p(x15)=1.000
+
+--------------------------------------------------------------------------------------------------
+[10-15] STRUCTURE DEPTH — his other named conditions, each its own bucket
+--------------------------------------------------------------------------------------------------
+  10 zones_cleared_and_held (0 vs >=1, Tier-A) -> max_high_5d POS med  11.38% (n=148, 39 sess, 98.6% up) | NEG med   9.51% (n=51, 27 sess, 96.1% up) | diff +1.87pp | raw p=0.429  adj p(x15)=1.000
+   (Tier-A = minute bars present, n=235 of 526)
+  11 IFFY (his word) vs not -> max_high_5d                   POS med  12.42% (n=76, 53 sess, 97.4% up) | NEG med  10.48% (n=414, 84 sess, 97.8% up) | diff +1.94pp | raw p=0.301  adj p(x15)=1.000
+  12 BLUE_SKY (limiting case) vs not -> max_high_5d          POS med   8.93% (n=122, 51 sess, 96.7% up) | NEG med  11.33% (n=368, 89 sess, 98.1% up) | diff -2.40pp | raw p=0.142  adj p(x15)=1.000
+  13 dist-to-nearest NEAR(<1.5xADR) vs FAR, has-overhead only -> max_high_5d POS med  10.92% (n=261, 84 sess, 98.5% up) | NEG med  11.31% (n=89, 48 sess, 96.6% up) | diff -0.39pp | raw p=0.848  adj p(x15)=1.000
+  14 MA-analog: cleared ALL overhead MAs vs not -> max_high_5d POS med   9.04% (n=163, 61 sess, 98.2% up) | NEG med  10.36% (n=167, 72 sess, 97.6% up) | diff -1.32pp | raw p=0.566  adj p(x15)=1.000
+   (MAs = 10/20/50-day always, +200-day where >=200 prior days exist: 138 of 526 names)
+
+   ⚠ TEST 15 IS MECHANICALLY CONTAMINATED — zones_cleared_to_high uses the alert
+   day's own high, which is ONE of the twenty trading days inside max_high_20d.
+   Reported per the pre-registration; never read as a clean predictor.
+  15 [CONTAMINATED] zones_cleared_to_high (0 vs >=1) -> max_high_20d POS med  13.78% (n=369, 75 sess, 98.9% up) | NEG med  15.64% (n=76, 43 sess, 96.1% up) | diff -1.86pp | raw p=0.594  adj p(x15)=1.000
+
+==================================================================================================
+MULTIPLICITY LEDGER — 15 tests attempted (planned 15), 15 produced a p
+==================================================================================================
+  raw p<0.05: 2 of 15 — 5  zones_cleared (0 vs >=1) -> max_high_20d (p=0.043); 8  gap-mid tercile: zones_cleared (0 vs >=1) -> max_high_5d (p=0.030)
+  surviving Bonferroni x15 (adj p<0.05): 0 — NONE
+  expected false positives at raw 0.05 across 15 tests: ~0.8 — a lone raw hit is what chance produces on its own.
+
+==================================================================================================
+READ: session-permutation p shuffles whole alert-mornings (same-morning alerts share
+the tape, not independent draws). THE LINE: this probe measures. Nothing here is wired
+into any grade, admission rule, sizing, or exit. A result that points at a change is a
+FORK for the operator (fork S-3), stated with no option pre-chosen.
+
+==================================================================================================
+POST-HOC — added after reading the primary battery, NOT pre-registered. Two blocking
+gaps in the first pass: (1) the primary only tested presence (0 vs >=1), not the DOSE
+his words describe ("the more it clears the stronger"); (2) the zones_cleared==0 bucket
+silently pools two structural opposites (IFFY = had overhead, cleared none; and
+BLUE_SKY/NO_LEVEL = had nothing to clear). Addressed below.
+==================================================================================================
+
+[A] ZERO-BUCKET COMPOSITION — what zones_cleared==0 actually contains
+  n=125: NEVER_BREACHED=84 · BLUE_SKY_NOHOLDDATA=35 · NEAR_ATH_NOHOLDDATA=3 · NO_LEVEL=3
+  (NEVER_BREACHED = IFFY, his named weak case: had overhead, cleared none. The rest —
+  BLUE_SKY*/NEAR_ATH*/NO_LEVEL — had NOTHING overhead to clear, the opposite structure.
+  Pooling them in one NEG bucket for test 1 could mask or invert a real dose effect.)
+
+[B] TEST 1 RE-RUN — NEG restricted to IFFY only (true apples: cleared-something vs
+cleared-nothing-that-was-there), dropping the no-overhead names entirely
+  B  zones_cleared>=1 vs IFFY-only (0, had overhead) -> max_high_5d POS med  10.26% (n=374, 83 sess, 98.1% up) | NEG med  12.42% (n=76, 53 sess, 97.4% up) | diff -2.16pp | raw p=0.276
+  (dropped 41 names with nothing overhead to clear at all)
+
+[C] DOSE-RESPONSE — graded buckets (descriptive: median/N/sessions, no invented p)
+
+  max_high_5d:
+    zones_cleared 0    med  12.17% n=116  sessions=62  up%=96.6%
+    zones_cleared 1-2  med  11.61% n=146  sessions=59  up%=97.9%
+    zones_cleared 3-5  med   8.61% n=129  sessions=57  up%=98.4%
+    zones_cleared 6+   med   9.04% n=99   sessions=52  up%=98.0%
+
+  max_high_20d:
+    zones_cleared 0    med  18.74% n=108  sessions=56  up%=97.2%
+    zones_cleared 1-2  med   17.5% n=139  sessions=55  up%=98.6%
+    zones_cleared 3-5  med  12.14% n=112  sessions=50  up%=99.1%
+    zones_cleared 6+   med  11.22% n=86   sessions=47  up%=98.8%
+
+[D] EXTREME DOSE TEST — 0 vs 6+ (the strongest form of a monotone-dose claim), formal
+  D5 zones_cleared 0 vs 6+ -> max_high_5d                    POS med   9.04% (n=99, 52 sess, 98.0% up) | NEG med  12.17% (n=116, 62 sess, 96.6% up) | diff -3.13pp | raw p=0.293
+  D20 zones_cleared 0 vs 6+ -> max_high_20d                  POS med  11.22% (n=86, 47 sess, 98.8% up) | NEG med  18.74% (n=108, 56 sess, 97.2% up) | diff -7.52pp | raw p=0.015
+
+[E] MINIMUM DETECTABLE EFFECT — what the design could actually see at this N
+  (2.5/97.5 percentile band of the null permutation distribution for test 1; session-
+  level shuffling is conservative by construction, so the design UNDER-detects rather
+  than a null meaning 'no effect exists')
+  test 1 (zones_cleared 0 vs >=1 -> max_high_5d): observed diff -1.91pp; the null's
+  95% band is [-3.16pp, +3.36pp] — an observed |diff| bigger than that at this N/session count would have cleared raw p<0.05.
+
+[F] SAME-SHAPE COMPARISON — Spearman rho (descriptive; no cluster-adjusted p computed
+  for the continuous form — see the docstring note on why a valid session-permutation
+  p for a clustered correlation coefficient wasn't attempted this round). zones_cleared
+  vs gap_pct, read side by side against each horizon, on the SAME rows per horizon:
+    max_high_5d    zones_cleared rho=-0.111 (n=490)   gap_pct rho=+0.068 (n=490)
+    max_high_20d   zones_cleared rho=-0.140 (n=445)   gap_pct rho=+0.022 (n=445)
+    ret_5d         zones_cleared rho=-0.027 (n=487)   gap_pct rho=-0.117 (n=487)
+
+[G] THE ADR/HISTORY CONFOUND — BLOCKING CHECK (advisor-flagged). The encoder's own
+  qualification rule needs episodes separated by >=1.0xADR20 — on a HIGH-ADR name that's a
+  bigger price move, harder to repeat -> fewer qualified levels -> LOWER zones_cleared.
+  High-ADR names also mechanically post BIGGER % excursions. That chain alone could
+  reproduce the whole monotone decline in [C] with zero supply content. Also checked:
+  history_days (more history -> more chances to accumulate levels -> higher zones_cleared;
+  short history skews recent-listing/high-beta -> bigger excursions) — same-direction risk.
+    Spearman(adr20_pct, zones_cleared)    = -0.353  (n=526)
+    Spearman(adr20_pct, max_high_5d)      = +0.358  (n=490)
+    Spearman(adr20_pct, max_high_20d)     = +0.380  (n=445)
+    Spearman(history_days, zones_cleared) = +0.049  (n=526)  — negligible, ruled out
+    Spearman(history_days, max_high_20d)  = +0.030  (n=445)  — negligible, ruled out
+
+  Dose table [C] RE-SPLIT at the population median ADR20 (5.75%):
+    low-ADR half:
+      max_high_5d   zones_cleared 0    med  11.11% n=40
+      max_high_5d   zones_cleared 1-2  med   8.82% n=57
+      max_high_5d   zones_cleared 3-5  med   6.53% n=71
+      max_high_5d   zones_cleared 6+   med   6.28% n=72
+      max_high_20d  zones_cleared 0    med  16.38% n=37
+      max_high_20d  zones_cleared 1-2  med   9.51% n=53
+      max_high_20d  zones_cleared 3-5  med   8.21% n=61
+      max_high_20d  zones_cleared 6+   med   7.36% n=63
+    high-ADR half:
+      max_high_5d   zones_cleared 0    med  12.93% n=76
+      max_high_5d   zones_cleared 1-2  med  13.21% n=89
+      max_high_5d   zones_cleared 3-5  med   11.3% n=58
+      max_high_5d   zones_cleared 6+   med  18.64% n=27
+      max_high_20d  zones_cleared 0    med   21.8% n=71
+      max_high_20d  zones_cleared 1-2  med  19.11% n=86
+      max_high_20d  zones_cleared 3-5  med  22.74% n=51
+      max_high_20d  zones_cleared 6+   med   21.9% n=23
+
+  READ: adr20_pct correlates with BOTH zones_cleared (-0.35, as the episode-separation
+  mechanism predicts) and the excursion DVs (+0.36/+0.38) — a real confound. But the
+  monotone decline in the LOW-ADR half is STILL THERE (both horizons); it goes flat/mixed
+  in the HIGH-ADR half (cells as small as n=23-27, noisy, no formal test run on them).
+  Verdict: ADR explains PART of the pooled effect, not all of it — the reversal is not
+  purely a volatility artifact, but it is NOT uniform across the population either.
+
+[H] D20 IFFY-ONLY — the clean version of the strongest raw number (D20, p=0.015):
+  NEG restricted to IFFY (had overhead, cleared none), dropping blue-sky/no-level names
+  H  zones_cleared>=6 vs IFFY-only -> max_high_20d           POS med  11.22% (n=86, 47 sess, 98.8% up) | NEG med   18.6% (n=68, 47 sess, 97.1% up) | diff -7.38pp | raw p=0.034
+
+--------------------------------------------------------------------------------------------------
+POST-HOC LEDGER — 4 additional tests (B, D5, D20, H), all EXPLORATORY,
+none folded into the pre-registered x15 Bonferroni figure above.
+TOTAL TESTS RUN THIS PROBE: 15 pre-registered + 4 post-hoc = 19.
+--------------------------------------------------------------------------------------------------
+  B  zones_cleared>=1 vs IFFY-only (0, had overhead) -> max_high_5d raw p=0.276
+  D5 zones_cleared 0 vs 6+ -> max_high_5d                    raw p=0.293
+  D20 zones_cleared 0 vs 6+ -> max_high_20d                  raw p=0.015
+  H  zones_cleared>=6 vs IFFY-only -> max_high_20d           raw p=0.034
+
+--------------------------------------------------------------------------------------------------
+READING THE WHOLE PICTURE TOGETHER (added after all three passes — not a new test, a synthesis)
+--------------------------------------------------------------------------------------------------
+Zero of 15 pre-registered tests survive Bonferroni adjustment — nothing here clears the formal
+bar. The post-hoc dose table [C] and Spearman rhos [F] point the SAME direction, consistently:
+zones_cleared trends NEGATIVELY with excursion size (falls roughly monotonically 0 -> 1-2 -> 3-5
+-> 6+ for both horizons; both horizons' rhos are negative, -0.11/-0.14, vs gap_pct's near-zero,
+inconsistent-sign rhos, +0.07/+0.02/-0.12) — the OPPOSITE of "the more it clears the stronger."
+The ADR check in [G] shows this is PARTLY, not fully, a volatility artifact: the decline survives
+inside the low-ADR half of the population but goes flat/noisy inside the high-ADR half (small
+cells, n=23-27). None of this clears formal multiplicity adjustment, and the strongest single
+number (D20/H, raw p=0.015-0.034) is one look among 19 total, unadjusted. The defensible summary:
+raw gap % looks close to noise here (consistent with his hypothesis about gap % specifically),
+but zones_cleared is not the confirmed stronger replacement — the data leans toward a MILD
+REVERSAL, strongest among lower-volatility names, not proven, and not something to act on without
+a larger or independent sample.
+
+--------------------------------------------------------------------------------------------------
+CAVEATS
+--------------------------------------------------------------------------------------------------
+- Population = mi_ep_missed_outcomes, source IN (moderate_alert, high_unentered): EPs that
+  reached alert grade (HIGH/MODERATE, mi_ep_alerts, source='live') and were never entered. This
+  is the DECLINED population — every alert that was actually traded is absent by the table's own
+  design (documented already in _skip_attribution_read.py / _rs_inflection_read.py). This data
+  cannot say how zones_cleared behaves on our own trades.
+- MFE in R units (under the live ORB geometry) was explicitly SKIPPED — see the script's
+  docstring for why _468_moderate_realized_r.py could not supply it without re-deriving its ORB
+  fill/trigger logic (a "fifth reconstruction," which the task ruled out). max_high_5d/20d (%
+  from the alert-day open, not R) carried the excursion-size question instead.
+- Tier-A (minute bars present, needed for zones_cleared_and_held) covers 235 of 526 rows (45%);
+  the rest predate intraday capture or are thin names; test 10 runs on that smaller subset.
+- gap_pct and the tercile/median splits are computed from the analyzed population's OWN
+  distribution (outcome-blind); zones_cleared's 0-vs->=1 split was fixed before any outcome was
+  read (declared in the script docstring at first commit).
+- BLUE_SKY / "nothing overhead" is relative to each name's AVAILABLE daily history in this pull
+  (median ~13 months, range 17-279 trading days), not a literal all-time high.
+- No valid session-clustered permutation p was computed for the continuous Spearman
+  correlations in [F] — they are reported as descriptive point estimates only, to avoid
+  presenting an ad hoc significance claim under time pressure. The formal, adjusted-significance
+  reads are the 15-test pre-registered battery above; [F] supports the direction/consistency
+  read, not a standalone significance claim.

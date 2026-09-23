@@ -1,0 +1,31 @@
+-- #587 ORB 9:45 window — ONE read-only prod capture (2026-08-23). Never re-run to re-read.
+-- Run: ssh apollo@87.99.134.162 "docker exec -i apollo-postgres psql -U apollo -d apollo" < this
+-- Outputs land in the postgres container's /tmp, pulled back once via tar.
+-- Consumed by scripts/probes/_587_orb_window_analysis.py.
+
+-- q1: every window:out_of_orb skip row ever (small; window filter applied locally)
+\copy (SELECT ticker, alert_date, account_mode, signal_type, status, skip_reason, ep_score, catalyst_quality, gap_pct, regime, to_char(proposed_at AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI:SS') AS proposed_et, to_char(created_at AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI:SS') AS created_et, orb_high, orb_low, entry_price, stop_price, hard_stop, entry_shares FROM mi_live_trades WHERE skip_reason ILIKE 'window:out_of_orb%' ORDER BY alert_date, ticker) TO '/tmp/_587_q1_oob.psv' WITH (FORMAT csv, DELIMITER '|', HEADER true)
+
+-- q2: all live EP alerts since 2026-05-01 (detection times for both cohorts)
+\copy (SELECT ticker, alert_date, score_tier, ep_score, gap_pct, catalyst_quality, source, to_char(detected_at AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI:SS') AS detected_et, to_char(created_at AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI:SS') AS created_et FROM mi_ep_alerts WHERE COALESCE(source,'live')='live' AND alert_date >= '2026-05-01' ORDER BY alert_date, ticker) TO '/tmp/_587_q2_alerts.psv' WITH (FORMAT csv, DELIMITER '|', HEADER true)
+
+-- q3: missed-outcomes rows since 2026-05-01 with freshness stamp (#583 stale-row guard)
+\copy (SELECT ticker, alert_date, source, skip_category, skip_reason, ep_score, gap_pct, catalyst_quality, open_d0, close_d0, ret_1d, ret_5d, ret_20d, max_high_5d, max_high_20d, to_char(last_refreshed_at AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI:SS') AS refreshed_et FROM mi_ep_missed_outcomes WHERE alert_date >= '2026-05-01' ORDER BY alert_date, ticker) TO '/tmp/_587_q3_missed.psv' WITH (FORMAT csv, DELIMITER '|', HEADER true)
+
+-- q4: every mi_live_trades row since 2026-06-01 (entered cohort + all skips, classified locally)
+\copy (SELECT ticker, alert_date, account_mode, signal_type, status, skip_reason, ep_score, catalyst_quality, gap_pct, regime, orb_high, orb_low, entry_price, entry_shares, stop_price, hard_stop, risk_dollars, total_pnl, entry_attempt, to_char(proposed_at AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI:SS') AS proposed_et, to_char(filled_at AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI:SS') AS filled_et, to_char(closed_at AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI:SS') AS closed_et FROM mi_live_trades WHERE alert_date >= '2026-06-01' ORDER BY alert_date, ticker, account_mode) TO '/tmp/_587_q4_trades.psv' WITH (FORMAT csv, DELIMITER '|', HEADER true)
+
+-- q5: daily bars for every ticker touched by q1/q2(HIGH)/q4 since 2026-06-01
+\copy (WITH tk AS (SELECT DISTINCT ticker FROM mi_live_trades WHERE alert_date >= '2026-06-01' UNION SELECT DISTINCT ticker FROM mi_live_trades WHERE skip_reason ILIKE 'window:out_of_orb%' UNION SELECT DISTINCT ticker FROM mi_ep_alerts WHERE COALESCE(source,'live')='live' AND alert_date >= '2026-06-01' AND score_tier='HIGH') SELECT ticker, trade_date, open_price, high_price, low_price, close, volume FROM mi_daily_closes WHERE ticker IN (SELECT ticker FROM tk) AND trade_date >= '2026-06-01' ORDER BY ticker, trade_date) TO '/tmp/_587_q5_daily.psv' WITH (FORMAT csv, DELIMITER '|', HEADER true)
+
+-- q6: minute bars 09:25-10:15 ET on the alert day for every out-of-orb (ticker, day)
+\copy (WITH oob AS (SELECT DISTINCT ticker, alert_date FROM mi_live_trades WHERE skip_reason ILIKE 'window:out_of_orb%') SELECT b.ticker, to_char(b.bar_time AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI') AS bar_et, b.open, b.high, b.low, b.close, b.volume FROM mi_intraday_bars b JOIN oob p ON b.ticker=p.ticker AND (b.bar_time AT TIME ZONE 'America/New_York')::date = p.alert_date WHERE (b.bar_time AT TIME ZONE 'America/New_York')::time BETWEEN TIME '09:25' AND TIME '10:15' ORDER BY b.ticker, b.bar_time) TO '/tmp/_587_q6_minute.psv' WITH (FORMAT csv, DELIMITER '|', HEADER true)
+
+-- q6b: minute-bar coverage per out-of-orb (ticker, day) — who has no bars at all
+\copy (WITH oob AS (SELECT DISTINCT ticker, alert_date FROM mi_live_trades WHERE skip_reason ILIKE 'window:out_of_orb%') SELECT p.ticker, p.alert_date, count(b.*) AS bars_0925_1015 FROM oob p LEFT JOIN mi_intraday_bars b ON b.ticker=p.ticker AND (b.bar_time AT TIME ZONE 'America/New_York')::date = p.alert_date AND (b.bar_time AT TIME ZONE 'America/New_York')::time BETWEEN TIME '09:25' AND TIME '10:15' GROUP BY p.ticker, p.alert_date ORDER BY p.alert_date, p.ticker) TO '/tmp/_587_q6b_cov.psv' WITH (FORMAT csv, DELIMITER '|', HEADER true)
+
+-- q6c: bar-time convention cross-check — minute bars 09:25-09:40 for recent FILLED trades (compare vs stored orb_high)
+\copy (WITH ent AS (SELECT DISTINCT ticker, alert_date, orb_high, orb_low FROM mi_live_trades WHERE alert_date >= '2026-08-01' AND filled_at IS NOT NULL) SELECT e.ticker, e.alert_date, e.orb_high, e.orb_low, to_char(b.bar_time AT TIME ZONE 'America/New_York','HH24:MI') AS bar_et, b.open, b.high, b.low, b.close FROM ent e JOIN mi_intraday_bars b ON b.ticker=e.ticker AND (b.bar_time AT TIME ZONE 'America/New_York')::date = e.alert_date WHERE (b.bar_time AT TIME ZONE 'America/New_York')::time BETWEEN TIME '09:25' AND TIME '09:40' ORDER BY e.ticker, b.bar_time) TO '/tmp/_587_q6c_conv.psv' WITH (FORMAT csv, DELIMITER '|', HEADER true)
+
+-- q7 (second run, new data only): full-RTH minute bars for the 25 in-window out-of-orb pairs
+\copy (WITH oob AS (SELECT DISTINCT ticker, alert_date FROM mi_live_trades WHERE skip_reason ILIKE 'window:out_of_orb%' AND alert_date >= '2026-06-24') SELECT b.ticker, to_char(b.bar_time AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI') AS bar_et, b.open, b.high, b.low, b.close, b.volume FROM mi_intraday_bars b JOIN oob p ON b.ticker=p.ticker AND (b.bar_time AT TIME ZONE 'America/New_York')::date = p.alert_date WHERE (b.bar_time AT TIME ZONE 'America/New_York')::time BETWEEN TIME '09:30' AND TIME '16:00' ORDER BY b.ticker, b.bar_time) TO '/tmp/_587_q7_minute_full.psv' WITH (FORMAT csv, DELIMITER '|', HEADER true)

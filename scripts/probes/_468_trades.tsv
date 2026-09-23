@@ -1,0 +1,162 @@
+EEIQ|2026-03-30|skipped|adv_too_low ($70,931)|||||||0|0|||paper
+TH|2026-04-01|skipped|no ORB bar fetched — first 1-min bar missing from Alpaca IEX feed|||||||0|0|||paper
+AEHR|2026-04-16|cancelled|expired|87|84.65|4.154285714285714|87|84.65|1000|0|0|||paper
+KURA|2026-04-17|closed||9.56|9.495|0.20714285714285716|9.57|9.57|1000|20.919999999999554|0|2026-04-17 11:35:44|2026-04-21 12:32:41|paper
+CADL|2026-04-20|cancelled|canceled|6.52|6.425|0.1899999999999999|6.52|6.425|1004.08|0|0|||paper
+CMPS|2026-04-20|skipped|stop too wide — ORB range $0.80 (9.3%) exceeds 1.5× ATR; risk per share too large|||||||0|0|||paper
+GHRS|2026-04-20|skipped|zero ORB range — open=high=low=$20.91; illiquid or locked opening minute, no breakout level to buy above|||||||0|0|||paper
+NKTR|2026-04-20|skipped|stop too wide — ORB range $3.33 (3.5%) exceeds 1.5× ATR; risk per share too large|||||||0|0|||paper
+USGG|2026-04-20|skipped|zero ORB range — open=high=low=$16.01; illiquid or locked opening minute, no breakout level to buy above|||||||0|0|||paper
+HCSG|2026-04-22|skipped|infra:subscribe_timeout: event-loop hang — retro-fit|||||||0|0|||paper
+INBX|2026-04-22|skipped|infra:subscribe_timeout: event-loop hang — retro-fit|||||||0|0|||paper
+KYTX|2026-04-22|skipped|infra:subscribe_timeout: event-loop hang — retro-fit|||||||0|0|||paper
+NMAX|2026-04-22|skipped|infra:subscribe_timeout: event-loop hang — retro-fit|||||||0|0|||paper
+BSX|2026-04-23|closed||66.735|65.57||66.744726|65.57|995.95|-252.2|0|2026-04-23 09:37:23|2026-04-23 11:49:04|paper
+FRMI|2026-04-23|skipped|infra:no_bar|||||||0|0|||paper
+GSHD|2026-04-23|cancelled|canceled|53.57|53.355|1.202857142857143|53.57|53.355|997.99|0|0|||paper
+SIRI|2026-04-23|cancelled|canceled|28.73|28.55||28.73|26.4|999.57|0|0|||paper
+TLRY|2026-04-23|skipped|setup:stop_too_wide: stop distance 24.8% > 15%|||||||0|0|||paper
+URI|2026-04-23|skipped|setup:zero_range: open=high=low=$953.99|||||||0|0|||paper
+WST|2026-04-23|skipped|setup:stop_too_wide: ORB range $6.33 (2.1%) > 1.5x ATR $5.41|||||||0|0|||paper
+CHE|2026-04-24|cancelled|cancelled|444.595|438.84|4.9178571428571445|444.595|438.84|992.88|0|0|||paper
+CX|2026-04-24|skipped|infra:no_bar|||||||0|0|||paper
+INTC|2026-04-24|closed||84|82.022|1.9118571428571427|84.036076|82.022|997.68|-477.34|0|2026-04-24 09:35:36|2026-04-24 11:47:44|paper
+PENN|2026-04-24|skipped|infra:no_bar|||||||0|0|||paper
+TXN|2026-04-24|skipped|infra:no_bar|||||||0|0|||paper
+WKC|2026-04-24|skipped|setup:stop_too_wide: ORB range $2.70 (10.0%) > 1.5x ATR $0.43|||||||0|0|||paper
+OGN|2026-04-27|skipped|setup:faded_from_orb: last $13.19 < midpoint $13.21 (ORB H=$13.24 L=$13.18, faded 0.4%)|||||||0|0|||paper
+ORKA|2026-04-27|skipped|setup:faded_from_orb: last $87.96 < midpoint $89.35 (ORB H=$91.00 L=$87.69, faded 3.3%)|||||||0|0|||paper
+CRML|2026-04-28|skipped|setup:faded_from_orb: last $12.41 < threshold $12.49 (ratio=0.25, ORB H=$12.92 L=$12.35, faded 3.9%)|||||||0|0|||paper
+CVLT|2026-04-28|skipped|window:out_of_orb: detected 09:55 ET|||||||0|0|||paper
+KFRC|2026-04-28|skipped|window:out_of_orb: detected 09:51 ET|||||||0|0|||paper
+LAC|2026-04-28|skipped|setup:faded_from_orb: last $4.80 < threshold $4.88 (ratio=0.25, ORB H=$5.07 L=$4.81, faded 5.3%)|||||||0|0|||paper
+OMCL|2026-04-28|closed||45.95|45|0.6635714285714295|46|45|992.88|-1506.6302400000022|0|2026-04-28 09:53:49|2026-04-28 10:13:09|paper
+BE|2026-04-29|skipped|block:circuit_breaker: 3 consecutive losses|||||||0|0|||paper
+KALV|2026-04-29|skipped|block:circuit_breaker: 3 consecutive losses|||||||0|0|||paper
+NXPI|2026-04-29|skipped|block:circuit_breaker: 3 consecutive losses|||||||0|0|||paper
+RSI|2026-04-29|skipped|block:circuit_breaker: 3 consecutive losses|||||||0|0|||paper
+STX|2026-04-29|skipped|block:circuit_breaker: 3 consecutive losses|||||||0|0|||paper
+BAND|2026-04-30|skipped|setup:stop_too_wide: ORB range $2.22 (7.2%) > 1.5x ATR $1.30|||||||0|0|||paper
+FTAI|2026-04-30|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+GKOS|2026-04-30|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+PI|2026-04-30|skipped|window:out_of_orb: detected 09:45 ET|||||||0|0|||paper
+TTMI|2026-04-30|skipped|setup:stop_too_wide: ORB range $10.00 (5.9%) > 1.5x ATR $7.37|||||||0|0|||paper
+VIAV|2026-04-30|skipped|window:out_of_orb: detected 09:56 ET|||||||0|0|||paper
+AXTI|2026-05-01|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+TEAM|2026-05-01|closed||85.13|82.79|2.8542857142857145|85.19|85.19|977.81|-269.019909999998|0|2026-05-01 11:31:45|2026-05-06 16:05:00|paper
+TWLO|2026-05-01|cancelled|ORB window unfilled|179.475|177.28|3.9292857142857094|179.475|177.28|977.81|0|0|||paper
+CYRX|2026-05-05|skipped|window:out_of_orb: detected 09:51 ET|||||||0|0|||paper
+EVER|2026-05-05|skipped|setup:stop_too_wide: ORB range $1.00 (5.5%) > 1.5x ATR $0.70|||||||0|0|||paper
+FTRE|2026-05-05|closed||14.3119|13.96|0.3599999999999997|14.31|14.31|990.48|138.23999999999953|0|2026-05-05 09:48:57|2026-05-12 09:41:55|paper
+IART|2026-05-05|skipped|window:out_of_orb: detected 09:51 ET|||||||0|0|||paper
+STRL|2026-05-05|skipped|setup:stop_too_wide: ORB range $35.02 (5.0%) > 1.5x ATR $20.33|||||||0|0|||paper
+AMD|2026-05-06|closed||413.26|405.63|19.735114285714285|413.309375|405.63|995.26|-831.4799040000025|0|2026-05-06 10:53:45|2026-05-07 12:07:41|paper
+BLMN|2026-05-06|skipped|window:out_of_orb: detected 09:52 ET|||||||0|0|||paper
+COMP|2026-05-06|cancelled|ORB window unfilled|9.59|9.28|0.3889285714285717|9.59|9.28|995.26|0|0|||paper
+CRI|2026-05-06|skipped|window:out_of_orb: detected 09:56 ET|||||||0|0|||paper
+FLEX|2026-05-06|cancelled|ORB window unfilled|122|119|3.427592857142856|122|119|995.26|0|0|||paper
+GEO|2026-05-06|cancelled|ORB window unfilled|21.7|21.16|0.5780714285714286|21.7|21.16|995.26|0|0|||paper
+GLW|2026-05-06|skipped|window:out_of_orb: detected 09:52 ET|||||||0|0|||paper
+HUT|2026-05-06|skipped|window:out_of_orb: detected 09:52 ET|||||||0|0|||paper
+LIVN|2026-05-06|skipped|window:out_of_orb: detected 09:52 ET|||||||0|0|||paper
+SMCI|2026-05-06|closed||32.5|31.26|1.620014285714285|32.567614|32.567614|995.26|-639.339263999999|0|2026-05-06 09:38:36|2026-05-12 09:56:55|paper
+ARRY|2026-05-07|skipped|block:max_positions: 5/5|||||||0|0|||paper
+FLNC|2026-05-07|skipped|block:max_positions: 5/5|||||||0|0|||paper
+FTNT|2026-05-07|skipped|block:max_positions: 5/5|||||||0|0|||paper
+JMIA|2026-05-07|skipped|block:max_positions: 5/5|||||||0|0|||paper
+MTSI|2026-05-07|skipped|block:max_positions: 5/5|||||||0|0|||paper
+PCT|2026-05-07|skipped|block:max_positions: 5/5|||||||0|0|||paper
+SEZL|2026-05-07|skipped|block:max_positions: 5/5|||||||0|0|||paper
+SITM|2026-05-07|skipped|block:max_positions: 5/5|||||||0|0|||paper
+AKAM|2026-05-08|skipped|block:circuit_breaker: cooldown until 2026-05-08T16:07:41.865220+00:00|||||||0|0|||paper
+BILL|2026-05-08|skipped|block:circuit_breaker: cooldown until 2026-05-08T16:07:41.865220+00:00|||||||0|0|||paper
+CALY|2026-05-08|skipped|window:out_of_orb: detected 09:55 ET|||||||0|0|||paper
+FROG|2026-05-08|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+INOD|2026-05-08|skipped|block:circuit_breaker: cooldown until 2026-05-08T16:07:41.865220+00:00|||||||0|0|||paper
+LASR|2026-05-08|skipped|block:circuit_breaker: cooldown until 2026-05-08T16:07:41.865220+00:00|||||||0|0|||paper
+PGNY|2026-05-08|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+WEST|2026-05-08|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+WLDN|2026-05-08|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+BW|2026-05-11|closed||16.9999|16.49|1.3953714285714285|17.05|17.05|988.61|2492.4803570000004|0|2026-05-11 09:53:45|2026-05-27 09:37:08|paper
+BZH|2026-05-11|cancelled|ORB window unfilled|25.39|25.25|0.9974928571428574|25.39|25.25|988.61|0|0|||paper
+MNDY|2026-05-11|closed||86.6558|82.7|4.499642857142857|86.823333|82.7|988.58|-1014.2698560000015|0||2026-05-11 10:00:00|paper
+MRAM|2026-05-11|closed||36.425|34.07|2.4980928571428573|36.5|34.07|988.61|-2199.709776|0|2026-05-11 09:50:17|2026-05-11 09:59:15|paper
+AMBQ|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+HLIT|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+PACS|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+SE|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+SIBN|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+TE|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+VG|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+VPG|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+VSTS|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+ZBRA|2026-05-12|skipped|setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'|||||||0|0|||paper
+AIP|2026-05-13|skipped|setup:stop_too_wide: ORB range $3.18 (9.8%) > 1.5x ATR $3.02|||||||0|0|||paper
+EOSE|2026-05-13|cancelled|ORB window unfilled|9.99|9.28|0.7474928571428573|9.99|9.28|968.98|0|0|||paper
+ARX|2026-05-14|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+CPA|2026-05-14|skipped|window:out_of_orb: detected 09:55 ET|||||||0|0|||paper
+CRMD|2026-05-14|closed||8.65|8.45|0.3068214285714287|8.361409|8.45|957.96|-778.0195260000007|0|2026-05-14 09:34:40|2026-05-14 11:08:04|paper
+CSCO|2026-05-14|closed||117.55|115.03|2.5375000000000014|117.55|115.03|957.96|-406.499958|0|2026-05-14 09:39:09|2026-05-14 09:58:53|paper
+FPS|2026-05-14|skipped|block:max_positions: 5/5 (mode=paper)|||||||0|0|||paper
+GO|2026-05-14|skipped|setup:stop_too_wide: ORB range $0.71 (8.1%) > 1.5x ATR $0.60|||||||0|0|||paper
+KLAR|2026-05-14|closed||15.92|15.18|0.6557142857142858|15.92|15.18|957.96|-914.2799999999997|0|2026-05-14 09:35:29|2026-05-14 09:43:04|paper
+STAA|2026-05-14|skipped|block:max_positions: 5/5 (mode=paper)|||||||0|0|||paper
+STUB|2026-05-14|skipped|block:max_positions: 5/5 (mode=paper)|||||||0|0|||paper
+VIK|2026-05-14|skipped|window:out_of_orb: detected 09:55 ET|||||||0|0|||paper
+VSNT|2026-05-14|skipped|block:max_positions: 5/5 (mode=paper)|||||||0|0|||paper
+GEMI|2026-05-15|cancelled|ORB window unfilled|6.9599|6.56|0.3469499999999999|6.9599|6.56|826.16|0|0|||paper
+GLOB|2026-05-15|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+AGYS|2026-05-19|cancelled|ORB window unfilled|94.5229|90.23|3.5314285714285725|94.5229|90.23|797.87|0|0|||paper
+IBRX|2026-05-20|skipped|window:out_of_orb: detected 09:50 ET|||||||0|0|||paper
+INFQ|2026-05-21|cancelled|ORB window unfilled|13.7|13.39|1.2557428571428575|13.7|13.39|812.67|0|0|||paper
+RLAY|2026-05-21|closed|block:r3_reentry_disabled|15.22|14.8|0.9266571428571427|15.298413|14.8|812.67|-642.5502080000006|0|2026-05-21 09:35:34|2026-05-21 09:40:57|paper
+PPTA|2026-05-22|cancelled|ORB window unfilled|29.15|27.5001|2.0867857142857145|29.15|27.5001|844.71|0|0|||paper
+PONY|2026-05-26|skipped|setup:stop_too_wide: ORB range $0.74 (7.6%) > 1.5x ATR $0.73|||||||0|0|||paper
+POWI|2026-05-26|skipped|window:out_of_orb: detected 09:52 ET|||||||0|0|||paper
+RDW|2026-05-26|cancelled|expired|19.68|19.2|1.727478571428571|19.68|19.2|837.03|0|0|||paper
+ANF|2026-05-27|skipped|window:out_of_orb: detected 09:55 ET|||||||0|0|||paper
+BBWI|2026-05-27|skipped|window:out_of_orb: detected 09:51 ET|||||||0|0|||paper
+CRSR|2026-05-27|closed||8.7964|8.4|0.4857857142857143|8.772422|8.77|822|1390.7991939999974|0|2026-05-27 09:39:53|2026-06-08 15:22:50|paper
+DY|2026-05-27|closed|block:r3_reentry_disabled|543.99|535.5|18.99621428571429|546.46|535.5|823.47|-438.24000000000285|0|2026-05-27 09:41:58|2026-05-27 11:33:49|paper
+QFIN|2026-05-27|skipped|window:out_of_orb: detected 09:51 ET|||||||0|0|||paper
+AVAV|2026-05-28|cancelled|cancelled|204.86|197.31|8.443664285714286|204.86|197.31|895.08|0|0|||paper
+RCAT|2026-05-28|closed||12.51|11.955|0.8224857142857142|12.57|12.57|894.95|1165.5900000000004|0|2026-05-28 09:33:52|2026-06-05 12:42:53|paper
+DELL|2026-05-29|closed|block:r3_reentry_disabled|421.85|416.98|18.40777857142857|421.112609|416.98|951.43|-271.92003000000125|0|2026-05-29 09:39:35|2026-05-29 09:46:14|paper
+ALOY|2026-06-01|skipped|window:out_of_orb: detected 09:56 ET|||||||0|0|||paper
+GRRR|2026-06-02|cancelled|ORB window unfilled|23.49|22.4|1.4102142857142856|23.49|22.4|957.15|0|0|||paper
+HPE|2026-06-02|cancelled|ORB window unfilled|63.95|61.7206|2.2963785714285723|63.95|61.7206|957.15|0|0|||paper
+MRVL|2026-06-02|cancelled|cancelled|259.8|252.43|15.649457142857141|259.8|252.43|957.15|0|0|||paper
+NVTS|2026-06-03|closed|block:r3_reentry_disabled|31.63|30.55|3.158828571428572|31.79|30.55|962.51|-830.1402160000002|0|2026-06-03 09:42:30|2026-06-03 09:49:07|paper
+PGY|2026-06-04|skipped|window:out_of_orb: detected 09:56 ET|||||||0|0|||paper
+RUM|2026-06-04|closed|block:r3_reentry_disabled|9.89|9.4|0.75785|9.935633|9.4|917.25|-983.4593429999984|0|2026-06-04 09:44:14|2026-06-04 09:49:09|paper
+AGX|2026-06-05|skipped|block:max_positions: 5/5 (mode=paper)|||||||0|0|||paper
+TTAN|2026-06-05|cancelled|ORB window unfilled|84.0775|82.76|4.1942785714285735|84.0775|82.76|937.75|0|0|||paper
+NRIX|2026-06-08|closed|block:r3_reentry_disabled|16.88|16.1|0.919278571428572|16.956238|16.1|315.12|-378.2401519999998|0|2026-06-08 09:45:45|2026-06-08 09:55:03|paper
+ELVN|2026-06-11|cancelled|ORB window unfilled|45.5171|43.02|2.014464285714285|45.5171|43.02|290|0|0|||paper
+IDCC|2026-06-11|skipped|window:out_of_orb: detected 09:51 ET|||||||0|0|||paper
+NAVN|2026-06-11|closed|block:r3_reentry_disabled|24.32|23.03|1.377071428571428|24.399071|23.03|291.54|-319.46998400000007|0|2026-06-11 09:44:17|2026-06-11 10:01:39|paper
+AKTS|2026-06-12|skipped|window:out_of_orb: detected 09:55 ET|||||||0|0|||paper
+SHAZ|2026-06-12|cancelled|ORB window unfilled|74.77|67.29|9.401314285714284|74.77|67.29|351.56|0|0|||paper
+RXT|2026-06-16|cancelled|ORB window unfilled|7.16|6.61|0.7967357142857144|7.16|6.61|429.55|0|0|||paper
+JBL|2026-06-17|closed|block:r3_reentry_disabled|412.36|407.4|17.13496428571428|413.835454|407.4|109.12|-164.11997800000086|0|2026-06-17 09:40:23|2026-06-17 10:02:10|paper
+QURE|2026-06-17|closed||44.62|42.5|2.0803285714285713|44.69|44.69|424|215.6200000000007|0|2026-06-17 09:36:14|2026-07-02 09:31:21|paper
+SWBI|2026-06-18|cancelled|ORB window unfilled|16.09|15.63|0.48854999999999976|16.09|15.63|264.96|0|0|||paper
+UUUU|2026-06-18|cancelled|ORB window unfilled|18.06|17.31|1.3303944285714289|18.06|17.31|384|0|0|||paper
+DFTX|2026-06-22|cancelled|ORB window unfilled|39.16|37.22|1.5749928571428575|39.16|37.22|426.8|0|0|||paper
+MLTX|2026-06-22|cancelled|ORB window unfilled|20.025|19.75|0.9403499999999997|20.025|19.75|123.93|0|0|||paper
+SYRE|2026-06-22|closed||98.18|95|4.9228499999999995|98.49|95|295.74|-1483.349999999999|0|2026-06-22 09:52:47|2026-06-24 09:32:58|paper
+ABSI|2026-06-24|cancelled||9.66|9.3|0.8568642857142856|9.66|9.3|38.78|0|0||2026-07-06 10:35:45|live
+FCEL|2026-06-24|cancelled||25.199|23.68|3.1869928571428567|25.199|23.68|38.78|0|0||2026-07-06 10:35:45|live
+MU|2026-06-25|skipped|setup:price_exceeds_cap: $1235.00/share > $1000 (20% of $5000)|||||||0|0|||paper
+SNX|2026-06-25|cancelled||295.19|282.16|10.528300000000002|295.19|282.16|40.92|0|0||2026-07-06 10:35:45|live
+ACAD|2026-06-26|cancelled||26.49|25.88|0.6982142857142853|26.49|25.88|40.27|0|0||2026-07-06 10:35:45|live
+AVAV|2026-06-30|cancelled|ORB window unfilled|178.5|170.02|9.701564285714289|178.5|170.02|43.38|0|0|||live
+WULF|2026-07-06|closed|block:r3_reentry_disabled|24.61|23.8|2.2232107142857145|24.62|23.8|47.13|-32.80000000000001|0|2026-07-06 09:33:00|2026-07-06 09:57:29|live
+DOCN|2026-07-07|cancelled|ORB window unfilled|146.57|143.63|13.828707142857143|146.57|143.63|48.26|0|0|||live
+PENG|2026-07-08|skipped|window:out_of_orb: detected 09:55 ET|||||||0|0|||paper
+CRCL|2026-07-10|closed|block:r3_reentry_disabled|70.66|69.29|5.667357142857142|70.65|69.29|23.79|-19.180000000000064|0|2026-07-10 09:31:05|2026-07-10 09:40:34|live
+WDFC|2026-07-10|closed|block:r3_reentry_disabled|295|287.06|6.746692857142857|296.235|287.06|23.79|-19.029999999999973|0|2026-07-10 09:31:19|2026-07-10 09:40:35|live
+CLSK|2026-07-14|cancelled|ORB window unfilled|15.1|14.61|1.3791071428571426|15.1|14.61|21.98|0|0|||live
+TSEM|2026-07-14|closed|block:r3_reentry_disabled|273.25|266.34|21.631800000000005|274|266.34|21.98|-23.010000000000048|0|2026-07-14 09:32:52|2026-07-14 09:44:34|live
+AEHR|2026-07-15|cancelled|rejected|102.46|95|9.428764285714283|102.46|95|22.69|0|0|||live
+MANE|2026-07-15|closed||118.75|118.02|8.945700000000002|119.34|118.02|22.69|-2.3999999999999773|0|2026-07-15 09:33:02|2026-07-16 09:30:06|live

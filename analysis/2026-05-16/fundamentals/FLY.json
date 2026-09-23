@@ -1,0 +1,125 @@
+{
+  "ticker": "FLY",
+  "source_chain": [
+    "yfinance"
+  ],
+  "n_quarters": 7,
+  "n_quarters_with_revenue": 5,
+  "quarters": [
+    {
+      "source": "yfinance",
+      "end_date": "2026-03-31",
+      "revenue": 80879000.0,
+      "gross_profit": 17461000.0,
+      "operating_income": -95668000.0,
+      "net_income": -96676000.0,
+      "eps_basic": -0.61,
+      "eps_diluted": -0.61,
+      "gross_margin": 0.215890404184028,
+      "op_margin": -1.182853398286329,
+      "net_margin": -1.195316460391449
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-12-31",
+      "revenue": 57673000.0,
+      "gross_profit": 15961000.0,
+      "operating_income": -85610000.0,
+      "net_income": -41057000.0,
+      "eps_basic": -0.26,
+      "eps_diluted": -0.26,
+      "gross_margin": 0.27674995231737554,
+      "op_margin": -1.4844034470202694,
+      "net_margin": -0.7118929134950497
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-09-30",
+      "revenue": 30778000.0,
+      "gross_profit": 8490000.0,
+      "operating_income": -62193000.0,
+      "net_income": -133412000.0,
+      "eps_basic": -1.5,
+      "eps_diluted": -1.5,
+      "gross_margin": 0.27584638378062254,
+      "op_margin": -2.0206966014685817,
+      "net_margin": -4.334654623432322
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-06-30",
+      "revenue": 15549000.0,
+      "gross_profit": 3995000.0,
+      "operating_income": -54350000.0,
+      "net_income": -63778000.0,
+      "eps_basic": -0.560699,
+      "eps_diluted": -0.560699,
+      "gross_margin": 0.2569297060904238,
+      "op_margin": -3.4954016335455655,
+      "net_margin": -4.1017428773554565
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-03-31",
+      "revenue": 55855000.0,
+      "gross_profit": 2220000.0,
+      "operating_income": -58544000.0,
+      "net_income": -60093000.0,
+      "eps_basic": -0.504939,
+      "eps_diluted": -0.504939,
+      "gross_margin": 0.03974577029809328,
+      "op_margin": -1.0481425118610688,
+      "net_margin": -1.0758750335690628
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-12-31",
+      "revenue": null,
+      "gross_profit": null,
+      "operating_income": null,
+      "net_income": null,
+      "eps_basic": null,
+      "eps_diluted": null
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-09-30",
+      "revenue": null,
+      "gross_profit": null,
+      "operating_income": null,
+      "net_income": null,
+      "eps_basic": null,
+      "eps_diluted": null
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": 0.44801718736012885,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": 0.20806671696977252,
+    "eps_yoy_q1": null,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": 0.4023719938272676,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": null,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": -0.504939,
+    "margins_q0": {
+      "gross_margin": 0.215890404184028,
+      "op_margin": -1.182853398286329,
+      "net_margin": -1.195316460391449
+    },
+    "margins_q1": {
+      "gross_margin": 0.27674995231737554,
+      "op_margin": -1.4844034470202694,
+      "net_margin": -0.7118929134950497
+    },
+    "margins_q2": {
+      "gross_margin": 0.27584638378062254,
+      "op_margin": -2.0206966014685817,
+      "net_margin": -4.334654623432322
+    }
+  }
+}

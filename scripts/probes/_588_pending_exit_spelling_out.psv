@@ -1,0 +1,26 @@
+SET
+===Q1_ORDER_STATUS_BY_PURPOSE===
+purpose|status|n
+full_exit|filled|2
+(null)|canceled|27
+(null)|cancelled|34
+(null)|expired|2
+(null)|filled|66
+(null)|rejected|2
+partial_exit|filled|16
+stop_loss|canceled|29
+stop_loss|cancelled|55
+stop_loss|expired|13
+stop_loss|filled|43
+stop_loss|new|2
+stop_loss|rejected|1
+stop_loss|replaced|8
+(14 rows)
+===Q2_INVARIANT_WITH_PENDING_EXIT_EXCLUSION_NO_DATE_BOUND===
+id|ticker|account_mode|alert_date|entry_shares|exit_shares
+367|ETON|live|2026-08-14|17|22.0
+183|FPS|paper|2026-06-01|163|28.0
+(2 rows)
+===Q3_OPEN_EXIT_ORDERS_RIGHT_NOW===
+trade_id|ticker|purpose|qty|filled_qty|status
+(0 rows)

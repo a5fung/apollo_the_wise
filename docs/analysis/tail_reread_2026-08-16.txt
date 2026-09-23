@@ -1,0 +1,711 @@
+====================================================================================================
+TAIL RE-READ — same five probes, same cohorts, TAIL statistics (P90/P95/share>=+50%/
++100%) as PRIMARY, median as secondary, permutation run on the tail statistic itself.
+====================================================================================================
+Methodology: docs/roadmap/ep_profitability_program.md GOAL §'WE ARE HUNTING THE TAIL'
++ docs/methodology/structure_model.md §7b. N floors: P90>=20, P95>=40, share>=10 per
+bucket (scripts/probes/_tail_stats.py) — below floor: 'N too thin', never a substituted
+median. R-multiple (5R/10R) share SKIPPED globally — no stop distance on any skip/
+declined-alert population without a fifth reconstruction (see docstring).
+
+====================================================================================================
+PART 1 / PROBE 1 — SUPPLY LADDER (_533_supply_ladder_probe.py), declined-alert
+population n=526, 97 sessions. Same cohort,
+same splits as 2026-08-16's run; only the statistic changes.
+====================================================================================================
+
+--- [1] THE DECISIVE COMPARISON: zones_cleared (0 vs >=1) — his refinement ---
+
+  zones_cleared 0 vs >=1  [max_high_5d]
+    POS n= 374 ( 83s) med(2ndry)=  10.26% P90=  +34.0% P95=  +48.7% share>=+50%=4.5%(17)       share>=+100%=0.5%(2)
+    NEG n= 116 ( 62s) med(2ndry)=  12.17% P90=  +55.8% P95=  +73.9% share>=+50%=12.9%(15)      share>=+100%=3.4%(4)
+    P90           POS=   34.0 NEG=  55.83  diff= -21.83pp  raw p=0.0045
+    P95           POS=   48.7 NEG=  73.87  diff= -25.16pp  raw p=0.0077
+    share>=+50%   POS=    4.5 NEG=   12.9  diff=  -8.40pp  raw p=0.0056
+    share>=+100%  POS=    0.5 NEG=    3.4  diff=  -2.90pp  N too coarse (perm resolution)
+
+  zones_cleared 0 vs >=1  [max_high_20d]
+    POS n= 337 ( 73s) med(2ndry)=  12.98% P90=  +51.8% P95=  +73.5% share>=+50%=12.2%(41)      share>=+100%=0.9%(3)
+    NEG n= 108 ( 56s) med(2ndry)=  18.74% P90=  +80.5% P95= +101.4% share>=+50%=24.1%(26)      share>=+100%=5.6%(6)
+    P90           POS=  51.82 NEG=  80.51  diff= -28.69pp  raw p=0.0042
+    P95           POS=  73.54 NEG= 101.36  diff= -27.81pp  raw p=0.0207
+    share>=+50%   POS=   12.2 NEG=   24.1  diff= -11.90pp  raw p=0.0150
+    share>=+100%  POS=    0.9 NEG=    5.6  diff=  -4.70pp  raw p=0.0079
+
+  zones_cleared 0 vs >=1  [ret_5d]
+    POS n= 371 ( 82s) med(2ndry)=  -0.94% P90=  +18.1% P95=  +32.1% share>=+50%=1.9%(7)        share>=+100%=0.3%(1)
+    NEG n= 116 ( 62s) med(2ndry)=  -0.99% P90=  +27.2% P95=  +45.0% share>=+50%=3.4%(4)        share>=+100%=2.6%(3)
+    P90           POS=  18.12 NEG=  27.16  diff=  -9.04pp  raw p=0.1677
+    P95           POS=  32.11 NEG=  44.97  diff= -12.86pp  raw p=0.3133
+    share>=+50%   POS=    1.9 NEG=    3.4  diff=  -1.50pp  raw p=0.5615
+    share>=+100%  POS=    0.3 NEG=    2.6  diff=  -2.30pp  N too coarse (perm resolution)
+
+--- [2] gap_pct (< vs >= population median) — the comparator his refinement beats ---
+
+  gap_pct median split  [max_high_5d]
+    POS n= 248 ( 70s) med(2ndry)=  11.33% P90=  +45.4% P95=  +59.1% share>=+50%=9.7%(24)       share>=+100%=2.0%(5)
+    NEG n= 242 ( 77s) med(2ndry)=    9.3% P90=  +31.3% P95=  +45.0% share>=+50%=3.3%(8)        share>=+100%=0.4%(1)
+    P90           POS=  45.41 NEG=  31.32  diff= +14.09pp  raw p=0.0484
+    P95           POS=   59.1 NEG=  44.99  diff= +14.11pp  raw p=0.0254
+    share>=+50%   POS=    9.7 NEG=    3.3  diff=  +6.40pp  raw p=0.0088
+    share>=+100%  POS=    2.0 NEG=    0.4  diff=  +1.60pp  N too coarse (perm resolution)
+
+  gap_pct median split  [max_high_20d]
+    POS n= 231 ( 65s) med(2ndry)=  13.86% P90=  +71.6% P95=  +86.4% share>=+50%=18.6%(43)      share>=+100%=2.6%(6)
+    NEG n= 214 ( 64s) med(2ndry)=  13.96% P90=  +50.2% P95=  +60.1% share>=+50%=11.2%(24)      share>=+100%=1.4%(3)
+    P90           POS=  71.56 NEG=  50.19  diff= +21.37pp  raw p=0.0425
+    P95           POS=  86.42 NEG=  60.07  diff= +26.35pp  raw p=0.0144
+    share>=+50%   POS=   18.6 NEG=   11.2  diff=  +7.40pp  raw p=0.0795
+    share>=+100%  POS=    2.6 NEG=    1.4  diff=  +1.20pp  N too coarse (perm resolution)
+
+  gap_pct median split  [ret_5d]
+    POS n= 247 ( 69s) med(2ndry)=  -2.37% P90=  +25.5% P95=  +42.7% share>=+50%=3.6%(9)        share>=+100%=1.2%(3)
+    NEG n= 240 ( 77s) med(2ndry)=  -0.32% P90=  +17.0% P95=  +22.7% share>=+50%=0.8%(2)        share>=+100%=0.4%(1)
+    P90           POS=  25.48 NEG=  16.96  diff=  +8.52pp  raw p=0.0959
+    P95           POS=   42.7 NEG=  22.67  diff= +20.03pp  raw p=0.0355
+    share>=+50%   POS=    3.6 NEG=    0.8  diff=  +2.80pp  N too coarse (perm resolution)
+    share>=+100%  POS=    1.2 NEG=    0.4  diff=  +0.80pp  N too coarse (perm resolution)
+
+--- [3] CONFOUND CONTROL — zones_cleared WITHIN each gap-size tercile, max_high_5d ---
+
+  gap-low tercile: zones_cleared 0 vs >=1  [max_high_5d]
+    POS n= 121 ( 53s) med(2ndry)=   9.21% P90=  +32.2% P95=  +46.3% share>=+50%=3.3%(4)        share>=+100%=0.8%(1)
+    NEG n=  41 ( 35s) med(2ndry)=   8.85% P90=  +23.4% P95=  +23.9% share>=+50%=4.9%(2)        share>=+100%=0.0%(0)
+    P90           POS=   32.2 NEG=  23.37  diff=  +8.83pp  raw p=0.4531
+    P95           POS=  46.32 NEG=  23.91  diff= +22.41pp  raw p=0.1558
+    share>=+50%   POS=    3.3 NEG=    4.9  diff=  -1.60pp  N too coarse (perm resolution)
+    share>=+100%  POS=    0.8 NEG=    0.0  diff=  +0.80pp  N too coarse (perm resolution)
+
+  gap-mid tercile: zones_cleared 0 vs >=1  [max_high_5d]
+    POS n= 119 ( 57s) med(2ndry)=   8.03% P90=  +30.3% P95=  +41.9% share>=+50%=4.2%(5)        share>=+100%=0.0%(0)
+    NEG n=  41 ( 27s) med(2ndry)=  13.98% P90=  +43.1% P95=  +54.2% share>=+50%=7.3%(3)        share>=+100%=0.0%(0)
+    P90           POS=   30.3 NEG=  43.08  diff= -12.77pp  raw p=0.2401
+    P95           POS=  41.86 NEG=  54.24  diff= -12.38pp  raw p=0.3670
+    share>=+50%   POS=    4.2 NEG=    7.3  diff=  -3.10pp  raw p=0.6460
+    share>=+100%  POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+
+  gap-high tercile: zones_cleared 0 vs >=1  [max_high_5d]
+    POS n= 134 ( 59s) med(2ndry)=  11.57% P90=  +40.7% P95=  +50.3% share>=+50%=6.0%(8)        share>=+100%=0.7%(1)
+    NEG n=  34 ( 28s) med(2ndry)=  11.12% P90= +137.0% P95=    N<40 share>=+50%=29.4%(10)      share>=+100%=11.8%(4)
+    P90           POS=   40.7 NEG= 137.02  diff= -96.32pp  raw p=0.0001
+    P95           N TOO THIN (n<40 for P95; pos n=134, neg n=34) — no test attempted
+    share>=+50%   POS=    6.0 NEG=   29.4  diff= -23.40pp  raw p=0.0046
+    share>=+100%  POS=    0.7 NEG=   11.8  diff= -11.10pp  N too coarse (perm resolution)
+
+--- [4] STRUCTURE-DEPTH BUCKETS, max_high_5d ---
+
+  zones_cleared_and_held (Tier-A) 0 vs >=1  [max_high_5d]
+    POS n= 148 ( 39s) med(2ndry)=  11.38% P90=  +44.1% P95=  +51.0% share>=+50%=6.1%(9)        share>=+100%=0.0%(0)
+    NEG n=  51 ( 27s) med(2ndry)=   9.51% P90=  +29.5% P95=  +55.8% share>=+50%=5.9%(3)        share>=+100%=0.0%(0)
+    P90           POS=   44.1 NEG=  29.48  diff= +14.62pp  raw p=0.1198
+    P95           POS=   51.0 NEG=  55.83  diff=  -4.83pp  raw p=0.5640
+    share>=+50%   POS=    6.1 NEG=    5.9  diff=  +0.20pp  raw p=0.9273
+    share>=+100%  POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+
+  IFFY (his word) vs not  [max_high_5d]
+    POS n=  76 ( 53s) med(2ndry)=  12.42% P90=  +56.2% P95=  +78.1% share>=+50%=11.8%(9)       share>=+100%=3.9%(3)
+    NEG n= 414 ( 84s) med(2ndry)=  10.48% P90=  +37.7% P95=  +50.3% share>=+50%=5.6%(23)       share>=+100%=0.7%(3)
+    P90           POS=  56.23 NEG=  37.73  diff= +18.50pp  raw p=0.0384
+    P95           POS=   78.1 NEG=  50.26  diff= +27.84pp  raw p=0.0085
+    share>=+50%   POS=   11.8 NEG=    5.6  diff=  +6.20pp  raw p=0.0613
+    share>=+100%  POS=    3.9 NEG=    0.7  diff=  +3.20pp  N too coarse (perm resolution)
+
+  BLUE_SKY vs not  [max_high_5d]
+    POS n= 122 ( 51s) med(2ndry)=   8.93% P90=  +28.6% P95=  +50.2% share>=+50%=5.7%(7)        share>=+100%=0.0%(0)
+    NEG n= 368 ( 89s) med(2ndry)=  11.33% P90=  +41.0% P95=  +54.0% share>=+50%=6.8%(25)       share>=+100%=1.6%(6)
+    P90           POS=  28.65 NEG=  41.02  diff= -12.37pp  raw p=0.1413
+    P95           POS=  50.19 NEG=  53.98  diff=  -3.79pp  raw p=0.6328
+    share>=+50%   POS=    5.7 NEG=    6.8  diff=  -1.10pp  raw p=0.7476
+    share>=+100%  POS=    0.0 NEG=    1.6  diff=  -1.60pp  N too coarse (perm resolution)
+
+  dist-to-nearest NEAR(<1.5xADR) vs FAR  [max_high_5d]
+    POS n= 261 ( 84s) med(2ndry)=  10.92% P90=  +44.3% P95=  +54.2% share>=+50%=7.7%(20)       share>=+100%=1.1%(3)
+    NEG n=  89 ( 48s) med(2ndry)=  11.31% P90=  +25.8% P95=  +39.5% share>=+50%=3.4%(3)        share>=+100%=2.2%(2)
+    P90           POS=  44.28 NEG=  25.79  diff= +18.50pp  raw p=0.0321
+    P95           POS=  54.24 NEG=  39.45  diff= +14.79pp  raw p=0.2061
+    share>=+50%   POS=    7.7 NEG=    3.4  diff=  +4.30pp  raw p=0.2433
+    share>=+100%  POS=    1.1 NEG=    2.2  diff=  -1.10pp  N too coarse (perm resolution)
+
+  cleared ALL overhead MAs vs not  [max_high_5d]
+    POS n= 163 ( 61s) med(2ndry)=   9.04% P90=  +33.8% P95=  +50.7% share>=+50%=6.1%(10)       share>=+100%=0.6%(1)
+    NEG n= 167 ( 72s) med(2ndry)=  10.36% P90=  +37.7% P95=  +49.3% share>=+50%=4.8%(8)        share>=+100%=1.2%(2)
+    P90           POS=  33.79 NEG=  37.73  diff=  -3.94pp  raw p=0.8863
+    P95           POS=  50.74 NEG=  49.33  diff=  +1.41pp  raw p=0.9313
+    share>=+50%   POS=    6.1 NEG=    4.8  diff=  +1.30pp  raw p=0.7451
+    share>=+100%  POS=    0.6 NEG=    1.2  diff=  -0.60pp  N too coarse (perm resolution)
+
+--- [5] DOSE-RESPONSE, tail statistics per bucket (descriptive, no formal p) ---
+
+  max_high_5d:
+    zones_cleared 0    n= 116 ( 62s) med(2ndry)=  12.17% P90=  +55.8% P95=  +73.9% share>=+50%=12.9%(15)      share>=+100%=3.4%(4)
+    zones_cleared 1-2  n= 146 ( 59s) med(2ndry)=  11.61% P90=  +40.7% P95=  +53.1% share>=+50%=6.8%(10)       share>=+100%=1.4%(2)
+    zones_cleared 3-5  n= 129 ( 57s) med(2ndry)=   8.61% P90=  +31.3% P95=  +44.1% share>=+50%=2.3%(3)        share>=+100%=0.0%(0)
+    zones_cleared 6+   n=  99 ( 52s) med(2ndry)=   9.04% P90=  +30.3% P95=  +37.7% share>=+50%=4.0%(4)        share>=+100%=0.0%(0)
+
+  max_high_20d:
+    zones_cleared 0    n= 108 ( 56s) med(2ndry)=  18.74% P90=  +80.5% P95= +101.4% share>=+50%=24.1%(26)      share>=+100%=5.6%(6)
+    zones_cleared 1-2  n= 139 ( 55s) med(2ndry)=   17.5% P90=  +53.1% P95=  +74.1% share>=+50%=11.5%(16)      share>=+100%=2.2%(3)
+    zones_cleared 3-5  n= 112 ( 50s) med(2ndry)=  12.14% P90=  +55.3% P95=  +61.4% share>=+50%=17.0%(19)      share>=+100%=0.0%(0)
+    zones_cleared 6+   n=  86 ( 47s) med(2ndry)=  11.22% P90=  +35.7% P95=  +66.4% share>=+50%=7.0%(6)        share>=+100%=0.0%(0)
+  [P1-ladder-decisive] tail tests attempted: 56, 40 produced a p
+    raw p<0.05: 18 — zones_cleared 0 vs >=1/P90 (p=0.004); zones_cleared 0 vs >=1/P95 (p=0.008); zones_cleared 0 vs >=1/share>=+50% (p=0.006); zones_cleared 0 vs >=1/P90 (p=0.004); zones_cleared 0 vs >=1/P95 (p=0.021); zones_cleared 0 vs >=1/share>=+50% (p=0.015); zones_cleared 0 vs >=1/share>=+100% (p=0.008); gap_pct median split/P90 (p=0.048); gap_pct median split/P95 (p=0.025); gap_pct median split/share>=+50% (p=0.009); gap_pct median split/P90 (p=0.043); gap_pct median split/P95 (p=0.014); gap_pct median split/P95 (p=0.035); gap-high tercile: zones_cleared 0 vs >=1/P90 (p=0.000); gap-high tercile: zones_cleared 0 vs >=1/share>=+50% (p=0.005); IFFY (his word) vs not/P90 (p=0.038); IFFY (his word) vs not/P95 (p=0.008); dist-to-nearest NEAR(<1.5xADR) vs FAR/P90 (p=0.032)
+    surviving Bonferroni x56: 1 — gap-high tercile: zones_cleared 0 vs >=1/P90
+
+====================================================================================================
+PART 2 — LADDER RE-MEASURED FROM THE RIGHT ORIGIN: overhead REMAINING above the open
+(yesterday's zones_cleared came back BACKWARDS — measured from the alert-day open,
+i.e. AFTER the gap already consumed the structure. Primary becomes what remains.)
+====================================================================================================
+
+--- [P2-1] PRIMARY: zones_remaining (>=1 remaining overhead vs 0) ---
+
+  zones_remaining >=1 vs 0  [max_high_5d]
+    POS n= 350 ( 89s) med(2ndry)=  11.06% P90=  +41.0% P95=  +53.1% share>=+50%=6.6%(23)       share>=+100%=1.4%(5)
+    NEG n= 140 ( 54s) med(2ndry)=   9.23% P90=  +28.7% P95=  +50.3% share>=+50%=6.4%(9)        share>=+100%=0.7%(1)
+    P90           POS=  41.02 NEG=  28.66  diff= +12.36pp  raw p=0.1364
+    P95           POS=  53.13 NEG=  50.26  diff=  +2.88pp  raw p=0.7602
+    share>=+50%   POS=    6.6 NEG=    6.4  diff=  +0.20pp  raw p=0.9344
+    share>=+100%  POS=    1.4 NEG=    0.7  diff=  +0.70pp  N too coarse (perm resolution)
+
+  zones_remaining >=1 vs 0  [max_high_20d]
+    POS n= 309 ( 76s) med(2ndry)=  14.95% P90=  +61.4% P95=  +81.7% share>=+50%=16.2%(50)      share>=+100%=2.3%(7)
+    NEG n= 136 ( 50s) med(2ndry)=  12.82% P90=  +55.0% P95=  +71.6% share>=+50%=12.5%(17)      share>=+100%=1.5%(2)
+    P90           POS=  61.37 NEG=  54.98  diff=  +6.39pp  raw p=0.5374
+    P95           POS=  81.68 NEG=  71.56  diff= +10.12pp  raw p=0.3509
+    share>=+50%   POS=   16.2 NEG=   12.5  diff=  +3.70pp  raw p=0.4462
+    share>=+100%  POS=    2.3 NEG=    1.5  diff=  +0.80pp  raw p=0.5986
+
+--- [P2-2] BLUE SKY reported separately (the limiting case: nothing overhead at all) ---
+
+  BLUE_SKY vs not (Part 2 framing)  [max_high_5d]
+    POS n= 122 ( 51s) med(2ndry)=   8.93% P90=  +28.6% P95=  +50.2% share>=+50%=5.7%(7)        share>=+100%=0.0%(0)
+    NEG n= 368 ( 89s) med(2ndry)=  11.33% P90=  +41.0% P95=  +54.0% share>=+50%=6.8%(25)       share>=+100%=1.6%(6)
+    P90           POS=  28.65 NEG=  41.02  diff= -12.37pp  raw p=0.1413
+    P95           POS=  50.19 NEG=  53.98  diff=  -3.79pp  raw p=0.6328
+    share>=+50%   POS=    5.7 NEG=    6.8  diff=  -1.10pp  raw p=0.7476
+    share>=+100%  POS=    0.0 NEG=    1.6  diff=  -1.60pp  N too coarse (perm resolution)
+
+  BLUE_SKY vs not (Part 2 framing)  [max_high_20d]
+    POS n= 119 ( 48s) med(2ndry)=  12.29% P90=  +50.2% P95=  +62.3% share>=+50%=10.9%(13)      share>=+100%=0.8%(1)
+    NEG n= 326 ( 76s) med(2ndry)=  14.84% P90=  +61.4% P95=  +81.7% share>=+50%=16.6%(54)      share>=+100%=2.5%(8)
+    P90           POS=  50.19 NEG=  61.37  diff= -11.19pp  raw p=0.3473
+    P95           POS=  62.27 NEG=  81.68  diff= -19.40pp  raw p=0.1210
+    share>=+50%   POS=   10.9 NEG=   16.6  diff=  -5.70pp  raw p=0.2434
+    share>=+100%  POS=    0.8 NEG=    2.5  diff=  -1.70pp  N too coarse (perm resolution)
+
+--- [P2-3] DISTANCE to the NEXT remaining zone, in ADR units (near vs far) ---
+
+  dist to next zone NEAR(<1.5xADR) vs FAR  [max_high_5d]
+    POS n= 261 ( 84s) med(2ndry)=  10.92% P90=  +44.3% P95=  +54.2% share>=+50%=7.7%(20)       share>=+100%=1.1%(3)
+    NEG n=  89 ( 48s) med(2ndry)=  11.31% P90=  +25.8% P95=  +39.5% share>=+50%=3.4%(3)        share>=+100%=2.2%(2)
+    P90           POS=  44.28 NEG=  25.79  diff= +18.50pp  raw p=0.0321
+    P95           POS=  54.24 NEG=  39.45  diff= +14.79pp  raw p=0.2061
+    share>=+50%   POS=    7.7 NEG=    3.4  diff=  +4.30pp  raw p=0.2433
+    share>=+100%  POS=    1.1 NEG=    2.2  diff=  -1.10pp  N too coarse (perm resolution)
+
+  dist to next zone NEAR(<1.5xADR) vs FAR  [max_high_20d]
+    POS n= 227 ( 74s) med(2ndry)=  15.49% P90=  +67.5% P95=  +83.7% share>=+50%=16.3%(37)      share>=+100%=1.8%(4)
+    NEG n=  82 ( 42s) med(2ndry)=  14.17% P90=  +60.4% P95=  +73.8% share>=+50%=15.9%(13)      share>=+100%=3.7%(3)
+    P90           POS=  67.54 NEG=  60.41  diff=  +7.12pp  raw p=0.7016
+    P95           POS=  83.72 NEG=  73.83  diff=  +9.89pp  raw p=0.4479
+    share>=+50%   POS=   16.3 NEG=   15.9  diff=  +0.40pp  raw p=0.9433
+    share>=+100%  POS=    1.8 NEG=    3.7  diff=  -1.90pp  raw p=0.4219
+
+--- [P2-4] WITHIN-ADR-HALF CONTROL (population median ADR20 = 5.75%) ---
+(kept from yesterday's run: high-ADR names mechanically have fewer zones AND move
+more, rho -0.35 zones-vs-ADR / +0.36 ADR-vs-excursion — pooled zones_remaining result
+must be read within each half, not just pooled)
+
+  low-ADR half (n=262):
+
+  low-ADR half: zones_remaining >=1 vs 0  [max_high_5d]
+    POS n= 159 ( 63s) med(2ndry)=   8.05% P90=  +23.9% P95=  +26.0% share>=+50%=0.0%(0)        share>=+100%=0.0%(0)
+    NEG n=  81 ( 48s) med(2ndry)=   6.46% P90=  +22.2% P95=  +28.7% share>=+50%=2.5%(2)        share>=+100%=0.0%(0)
+    P90           POS=  23.91 NEG=   22.2  diff=  +1.71pp  raw p=0.6920
+    P95           POS=  25.96 NEG=  28.66  diff=  -2.70pp  raw p=0.5386
+    share>=+50%   POS=    0.0 NEG=    2.5  diff=  -2.50pp  N too coarse (perm resolution)
+    share>=+100%  POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+
+  low-ADR half: zones_remaining >=1 vs 0  [max_high_20d]
+    POS n= 137 ( 55s) med(2ndry)=  11.67% P90=  +30.3% P95=  +35.7% share>=+50%=2.2%(3)        share>=+100%=0.0%(0)
+    NEG n=  77 ( 44s) med(2ndry)=   7.43% P90=  +33.2% P95=  +50.2% share>=+50%=6.5%(5)        share>=+100%=0.0%(0)
+    P90           POS=  30.34 NEG=  33.17  diff=  -2.83pp  raw p=0.7298
+    P95           POS=  35.68 NEG=  50.19  diff= -14.50pp  raw p=0.2373
+    share>=+50%   POS=    2.2 NEG=    6.5  diff=  -4.30pp  raw p=0.1339
+    share>=+100%  POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+
+  high-ADR half (n=264):
+
+  high-ADR half: zones_remaining >=1 vs 0  [max_high_5d]
+    POS n= 191 ( 74s) med(2ndry)=  13.78% P90=  +53.0% P95=  +64.2% share>=+50%=12.0%(23)      share>=+100%=2.6%(5)
+    NEG n=  59 ( 31s) med(2ndry)=  11.62% P90=  +54.0% P95=  +59.1% share>=+50%=11.9%(7)       share>=+100%=1.7%(1)
+    P90           POS=  52.99 NEG=  53.98  diff=  -0.99pp  raw p=0.9055
+    P95           POS=  64.25 NEG=   59.1  diff=  +5.15pp  raw p=0.9315
+    share>=+50%   POS=   12.0 NEG=   11.9  diff=  +0.10pp  raw p=0.9990
+    share>=+100%  POS=    2.6 NEG=    1.7  diff=  +0.90pp  raw p=0.8116
+
+  high-ADR half: zones_remaining >=1 vs 0  [max_high_20d]
+    POS n= 172 ( 63s) med(2ndry)=   23.3% P90=  +79.9% P95=  +92.2% share>=+50%=27.3%(47)      share>=+100%=4.1%(7)
+    NEG n=  59 ( 31s) med(2ndry)=  18.12% P90=  +71.6% P95=  +74.1% share>=+50%=20.3%(12)      share>=+100%=3.4%(2)
+    P90           POS=   79.9 NEG=  71.56  diff=  +8.34pp  raw p=0.4916
+    P95           POS=  92.15 NEG=  74.11  diff= +18.05pp  raw p=0.2790
+    share>=+50%   POS=   27.3 NEG=   20.3  diff=  +7.00pp  raw p=0.4087
+    share>=+100%  POS=    4.1 NEG=    3.4  diff=  +0.70pp  raw p=0.7945
+
+--- [P2-5] DOSE-RESPONSE on REMAINING overhead, tail stats per bucket (descriptive) ---
+
+  max_high_5d:
+    zones_remaining 0 (incl blue sky)  n= 140 ( 54s) med(2ndry)=   9.23% P90=  +28.7% P95=  +50.3% share>=+50%=6.4%(9)        share>=+100%=0.7%(1)
+    zones_remaining 1-2                n=  42 ( 34s) med(2ndry)=  10.08% P90=  +53.0% P95=  +78.2% share>=+50%=11.9%(5)       share>=+100%=4.8%(2)
+    zones_remaining 3-5                n=  74 ( 49s) med(2ndry)=  11.31% P90=  +44.3% P95=  +53.1% share>=+50%=8.1%(6)        share>=+100%=0.0%(0)
+    zones_remaining 6+                 n= 234 ( 77s) med(2ndry)=  10.95% P90=  +39.5% P95=  +49.3% share>=+50%=5.1%(12)       share>=+100%=1.3%(3)
+
+  max_high_20d:
+    zones_remaining 0 (incl blue sky)  n= 136 ( 50s) med(2ndry)=  12.82% P90=  +55.0% P95=  +71.6% share>=+50%=12.5%(17)      share>=+100%=1.5%(2)
+    zones_remaining 1-2                n=  39 ( 32s) med(2ndry)=  15.49% P90=  +78.2% P95=    N<40 share>=+50%=23.1%(9)       share>=+100%=5.1%(2)
+    zones_remaining 3-5                n=  64 ( 43s) med(2ndry)=  14.32% P90=  +66.4% P95=  +71.6% share>=+50%=21.9%(14)      share>=+100%=1.6%(1)
+    zones_remaining 6+                 n= 206 ( 66s) med(2ndry)=  14.84% P90=  +55.3% P95=  +81.2% share>=+50%=13.1%(27)      share>=+100%=1.9%(4)
+  [P2-ladder-remaining-overhead] tail tests attempted: 40, 33 produced a p
+    raw p<0.05: 1 — dist to next zone NEAR(<1.5xADR) vs FAR/P90 (p=0.032)
+    surviving Bonferroni x40: 0 — NONE
+
+====================================================================================================
+PROBE 2 — NBIS STRUCTURE ENCODER (_533_nbis_structure_encoder.py), mi_ep_alerts
+population n=295, 54 sessions. Fixture gate
+already verified 8/8 PASS before this sweep ran (scripts/probes/_533n_gate.json).
+⚠ NO 20-DAY HORIZON EXISTS for this probe's own fwd_outcomes() — not fabricated here.
+====================================================================================================
+
+GOOD=177 (42 sessions) · POOR=118 (48 sessions)
+⚠ UNIT FIX: this probe's own fwd_outcomes() (docstring: 'Forward returns... % units')
+  returns ret_1d/ret_5d/mfe_5d ALREADY multiplied by 100 (e.g. +4.0 means +4%), unlike
+  the other four probes' DB columns which store FRACTIONS. run_tail_pair() applies its
+  own x100 (the house convention for fractions) — applying it to already-percent values
+  would double-scale a real +187% mover (HQ, 2026-06-15) into a nonsensical +18735%.
+  Normalized here by dividing by 100 before the shared harness re-multiplies.
+
+  GOOD vs POOR (full verdict)  [ret_5d]
+    POS n= 157 ( 37s) med(2ndry)=   0.04% P90=  +20.7% P95=  +33.6% share>=+50%=1.3%(2)        share>=+100%=0.6%(1)
+    NEG n= 110 ( 44s) med(2ndry)=  -0.37% P90=  +26.2% P95=  +48.2% share>=+50%=4.5%(5)        share>=+100%=0.9%(1)
+    P90           POS=  20.66 NEG=  26.21  diff=  -5.55pp  raw p=0.7156
+    P95           POS=  33.59 NEG=  48.23  diff= -14.64pp  raw p=0.3459
+    share>=+50%   POS=    1.3 NEG=    4.5  diff=  -3.20pp  raw p=0.2660
+    share>=+100%  POS=    0.6 NEG=    0.9  diff=  -0.30pp  N too coarse (perm resolution)
+
+  GOOD vs POOR (full verdict)  [mfe_5d]
+    POS n= 157 ( 37s) med(2ndry)=  12.32% P90=  +38.7% P95=  +50.2% share>=+50%=5.7%(9)        share>=+100%=0.6%(1)
+    NEG n= 110 ( 44s) med(2ndry)=  11.57% P90=  +54.2% P95=  +72.7% share>=+50%=10.9%(12)      share>=+100%=1.8%(2)
+    P90           POS=  38.73 NEG=  54.24  diff= -15.51pp  raw p=0.1300
+    P95           POS=  50.19 NEG=  72.65  diff= -22.46pp  raw p=0.0759
+    share>=+50%   POS=    5.7 NEG=   10.9  diff=  -5.20pp  raw p=0.2281
+    share>=+100%  POS=    0.6 NEG=    1.8  diff=  -1.20pp  N too coarse (perm resolution)
+
+  GOOD vs POOR (full verdict)  [ret_1d]
+    POS n= 172 ( 41s) med(2ndry)=   2.35% P90=  +19.4% P95=  +27.8% share>=+50%=0.6%(1)        share>=+100%=0.0%(0)
+    NEG n= 117 ( 47s) med(2ndry)=  -0.62% P90=  +24.0% P95=  +42.5% share>=+50%=5.1%(6)        share>=+100%=0.0%(0)
+    P90           POS=  19.41 NEG=  23.96  diff=  -4.55pp  raw p=0.5562
+    P95           POS=  27.77 NEG=  42.51  diff= -14.75pp  raw p=0.1880
+    share>=+50%   POS=    0.6 NEG=    5.1  diff=  -4.50pp  raw p=0.0428
+    share>=+100%  POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+  [P3-nbis-good-poor] tail tests attempted: 12, 9 produced a p
+    raw p<0.05: 1 — GOOD vs POOR (full verdict)/share>=+50% (p=0.043)
+    surviving Bonferroni x12: 0 — NONE
+
+====================================================================================================
+PROBE 3 — RS INFLECTION (_rs_inflection_read.py), low-RS(<50) 
+population n=1010 of 2347 total, 111 sessions.
+====================================================================================================
+
+  PRIMARY low-RS infl_1m6m sign  [ret_5d]
+    POS n= 431 ( 78s) med(2ndry)=  -1.04% P90=  +18.2% P95=  +29.5% share>=+50%=2.1%(9)        share>=+100%=0.5%(2)
+    NEG n= 523 ( 99s) med(2ndry)=  -0.08% P90=  +17.4% P95=  +25.2% share>=+50%=1.1%(6)        share>=+100%=0.4%(2)
+    P90           POS=  18.16 NEG=  17.38  diff=  +0.79pp  raw p=0.6910
+    P95           POS=  29.48 NEG=  25.17  diff=  +4.30pp  raw p=0.5134
+    share>=+50%   POS=    2.1 NEG=    1.1  diff=  +1.00pp  raw p=0.3160
+    share>=+100%  POS=    0.5 NEG=    0.4  diff=  +0.10pp  N too coarse (perm resolution)
+
+  PRIMARY low-RS infl_1m6m sign  [max_high_5d]
+    POS n= 431 ( 78s) med(2ndry)=   9.82% P90=  +31.3% P95=  +50.7% share>=+50%=5.6%(24)       share>=+100%=1.6%(7)
+    NEG n= 525 ( 99s) med(2ndry)=   9.98% P90=  +30.4% P95=  +39.2% share>=+50%=2.3%(12)       share>=+100%=0.6%(3)
+    P90           POS=  31.29 NEG=  30.36  diff=  +0.93pp  raw p=0.7894
+    P95           POS=  50.74 NEG=  39.21  diff= +11.53pp  raw p=0.0843
+    share>=+50%   POS=    5.6 NEG=    2.3  diff=  +3.30pp  raw p=0.0283
+    share>=+100%  POS=    1.6 NEG=    0.6  diff=  +1.00pp  N too coarse (perm resolution)
+
+  PRIMARY low-RS infl_1m6m sign  [max_high_20d]
+    POS n= 373 ( 65s) med(2ndry)=  15.67% P90=  +60.6% P95= +101.4% share>=+50%=13.7%(51)      share>=+100%=5.4%(20)
+    NEG n= 401 ( 84s) med(2ndry)=  12.17% P90=  +40.4% P95=  +57.1% share>=+50%=5.7%(23)       share>=+100%=1.7%(7)
+    P90           POS=  60.64 NEG=  40.37  diff= +20.27pp  raw p=0.0133
+    P95           POS= 101.36 NEG=  57.08  diff= +44.28pp  raw p=0.0071
+    share>=+50%   POS=   13.7 NEG=    5.7  diff=  +8.00pp  raw p=0.0019
+    share>=+100%  POS=    5.4 NEG=    1.7  diff=  +3.70pp  raw p=0.0063
+  [P4-rs-inflection] tail tests attempted: 12, 10 produced a p
+    raw p<0.05: 5 — PRIMARY low-RS infl_1m6m sign/share>=+50% (p=0.028); PRIMARY low-RS infl_1m6m sign/P90 (p=0.013); PRIMARY low-RS infl_1m6m sign/P95 (p=0.007); PRIMARY low-RS infl_1m6m sign/share>=+50% (p=0.002); PRIMARY low-RS infl_1m6m sign/share>=+100% (p=0.006)
+    surviving Bonferroni x12: 1 — PRIMARY low-RS infl_1m6m sign/share>=+50%
+
+--- CONFOUND CHECK (advisor-flagged, run after seeing the max_high_20d/share>=+50%
+    survivor) — is infl_1m6m separating on gap_pct or rs_composite level instead of
+    genuine RS trajectory? Same rule the ORIGINAL probe's own confound section used:
+    |rho| >= ~0.4 means this data cannot separate inflection from that variable. ---
+
+  [full low-RS (all)]
+    gap_pct   median POS=11.46% (n=456)  NEG=11.61% (n=554)  — no material separation
+    rs_composite median POS=19.0 (n=456)  NEG=14.3 (n=554)
+    Spearman(infl_1m6m, gap_pct) = -0.040
+    Spearman(infl_1m6m, rs_composite) = +0.037
+
+  [low-RS matured for max_high_20d (the surviving cell's own population)]
+    gap_pct   median POS=11.05% (n=373)  NEG=11.44% (n=401)  — no material separation
+    rs_composite median POS=17.9 (n=373)  NEG=11.9 (n=401)
+    Spearman(infl_1m6m, gap_pct) = -0.019
+    Spearman(infl_1m6m, rs_composite) = +0.086
+  READ: |rho|<~0.4 and near-equal gap medians would mean the tail effect above is NOT
+  simply gap size wearing an RS label — genuinely attributable to the RS trajectory
+  feature, to the extent this data can separate it.
+
+====================================================================================================
+PROBE 4 — GRADE OVERRIDE (_grade_override_outcome_read.py), n=503 judged
+alerts through 2026-08-14 (pinned to match the captured 2026-08-15 median report).
+====================================================================================================
+OVERRIDDEN n=147 · AGREED n=279
+
+  -- POOLED: overridden n=147  agreed n=279 --
+
+  POOLED: overridden vs agreed  [max_high_5d]
+    POS n= 138 ( 17s) med(2ndry)=  13.01% P90=  +55.0% P95=  +71.3% share>=+50%=14.5%(20)      share>=+100%=1.4%(2)
+    NEG n= 175 ( 31s) med(2ndry)=  11.29% P90=  +37.0% P95=  +45.0% share>=+50%=3.4%(6)        share>=+100%=0.0%(0)
+    P90           POS=  54.98 NEG=  36.95  diff= +18.03pp  raw p=0.0415
+    P95           POS=   71.3 NEG=  44.99  diff= +26.31pp  raw p=0.0570
+    share>=+50%   POS=   14.5 NEG=    3.4  diff= +11.10pp  raw p=0.0088
+    share>=+100%  POS=    1.4 NEG=    0.0  diff=  +1.40pp  N too coarse (perm resolution)
+
+  POOLED: overridden vs agreed  [max_high_20d]
+    POS n= 138 ( 17s) med(2ndry)=  18.84% P90=  +73.5% P95=  +80.1% share>=+50%=20.3%(28)      share>=+100%=1.4%(2)
+    NEG n= 105 ( 20s) med(2ndry)=  16.43% P90=  +50.6% P95=  +62.3% share>=+50%=13.3%(14)      share>=+100%=0.0%(0)
+    P90           POS=  73.54 NEG=  50.59  diff= +22.95pp  raw p=0.1986
+    P95           POS=  80.12 NEG=  62.27  diff= +17.85pp  raw p=0.1476
+    share>=+50%   POS=   20.3 NEG=   13.3  diff=  +7.00pp  raw p=0.4598
+    share>=+100%  POS=    1.4 NEG=    0.0  diff=  +1.40pp  N too coarse (perm resolution)
+
+  -- GAP 10-15%: overridden n=78  agreed n=137 --
+
+  GAP 10-15%: overridden vs agreed  [max_high_5d]
+    POS n=  73 ( 15s) med(2ndry)=  10.91% P90=  +50.2% P95=  +53.1% share>=+50%=11.0%(8)       share>=+100%=1.4%(1)
+    NEG n=  96 ( 24s) med(2ndry)=  10.82% P90=  +45.0% P95=  +48.7% share>=+50%=5.2%(5)        share>=+100%=0.0%(0)
+    P90           POS=  50.19 NEG=  44.99  diff=  +5.20pp  raw p=0.6950
+    P95           POS=  53.12 NEG=   48.7  diff=  +4.42pp  raw p=0.5660
+    share>=+50%   POS=   11.0 NEG=    5.2  diff=  +5.80pp  raw p=0.3468
+    share>=+100%  POS=    1.4 NEG=    0.0  diff=  +1.40pp  N too coarse (perm resolution)
+
+  GAP 10-15%: overridden vs agreed  [max_high_20d]
+    POS n=  73 ( 15s) med(2ndry)=  15.07% P90=  +50.2% P95=  +53.1% share>=+50%=11.0%(8)       share>=+100%=1.4%(1)
+    NEG n=  58 ( 14s) med(2ndry)=   18.9% P90=  +50.2% P95=  +78.2% share>=+50%=12.1%(7)       share>=+100%=0.0%(0)
+    P90           POS=  50.19 NEG=  50.17  diff=  +0.01pp  raw p=1.0000
+    P95           POS=  53.12 NEG=  78.17  diff= -25.04pp  raw p=0.6903
+    share>=+50%   POS=   11.0 NEG=   12.1  diff=  -1.10pp  raw p=0.9253
+    share>=+100%  POS=    1.4 NEG=    0.0  diff=  +1.40pp  N too coarse (perm resolution)
+
+  -- GAP 15-20%: overridden n=28  agreed n=78 --
+
+  GAP 15-20%: overridden vs agreed  [max_high_5d]
+    POS n=  26 (  8s) med(2ndry)=   4.92% P90=  +29.0% P95=    N<40 share>=+50%=11.5%(3)       share>=+100%=0.0%(0)
+    NEG n=  37 ( 11s) med(2ndry)=   9.62% P90=  +27.3% P95=    N<40 share>=+50%=0.0%(0)        share>=+100%=0.0%(0)
+    P90           POS=  29.03 NEG=   27.3  diff=  +1.73pp  raw p=0.7894
+    P95           N TOO THIN (n<40 for P95; pos n=26, neg n=37) — no test attempted
+    share>=+50%   POS=   11.5 NEG=    0.0  diff= +11.50pp  N too coarse (perm resolution)
+    share>=+100%  POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+
+  GAP 15-20%: overridden vs agreed  [max_high_20d]
+    POS n=  26 (  8s) med(2ndry)=  12.63% P90=  +86.4% P95=    N<40 share>=+50%=23.1%(6)       share>=+100%=0.0%(0)
+    NEG n=  19 (  6s) med(2ndry)=   9.51% P90=    N<20 P95=    N<40 share>=+50%=10.5%(2)       share>=+100%=0.0%(0)
+    P90           N TOO THIN (n<20 for P90; pos n=26, neg n=19) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=26, neg n=19) — no test attempted
+    share>=+50%   POS=   23.1 NEG=   10.5  diff= +12.60pp  raw p=0.5298
+    share>=+100%  POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+
+  -- GAP >=20%: overridden n=41  agreed n=64 --
+
+  GAP >=20%: overridden vs agreed  [max_high_5d]
+    POS n=  39 ( 13s) med(2ndry)=  27.45% P90=  +71.3% P95=    N<40 share>=+50%=23.1%(9)       share>=+100%=2.6%(1)
+    NEG n=  42 ( 14s) med(2ndry)=  11.53% P90=  +28.7% P95=  +44.1% share>=+50%=2.4%(1)        share>=+100%=0.0%(0)
+    P90           POS=   71.3 NEG=  28.66  diff= +42.63pp  raw p=0.0230
+    P95           N TOO THIN (n<40 for P95; pos n=39, neg n=42) — no test attempted
+    share>=+50%   POS=   23.1 NEG=    2.4  diff= +20.70pp  raw p=0.1034
+    share>=+100%  POS=    2.6 NEG=    0.0  diff=  +2.60pp  N too coarse (perm resolution)
+
+  GAP >=20%: overridden vs agreed  [max_high_20d]
+    POS n=  39 ( 13s) med(2ndry)=  27.97% P90=  +74.1% P95=    N<40 share>=+50%=35.9%(14)      share>=+100%=2.6%(1)
+    NEG n=  28 (  9s) med(2ndry)=  13.78% P90=  +50.6% P95=    N<40 share>=+50%=17.9%(5)       share>=+100%=0.0%(0)
+    P90           POS=  74.11 NEG=  50.59  diff= +23.51pp  raw p=0.0645
+    P95           N TOO THIN (n<40 for P95; pos n=39, neg n=28) — no test attempted
+    share>=+50%   POS=   35.9 NEG=   17.9  diff= +18.00pp  raw p=0.3199
+    share>=+100%  POS=    2.6 NEG=    0.0  diff=  +2.60pp  N too coarse (perm resolution)
+  [P5-grade-override] tail tests attempted: 32, 18 produced a p
+    raw p<0.05: 3 — POOLED: overridden vs agreed/P90 (p=0.042); POOLED: overridden vs agreed/share>=+50% (p=0.009); GAP >=20%: overridden vs agreed/P90 (p=0.023)
+    surviving Bonferroni x32: 0 — NONE
+
+====================================================================================================
+PROBE 5 — SKIP-REASON ATTRIBUTION (_skip_attribution_read.py), date-matched skip
+population n=781, taken benchmark n=22 >= 2026-07-06.
+====================================================================================================
+
+--- [5-0] DOES THE TAKEN BENCHMARK ITSELF EVER REACH THE TAIL? (descriptive census,
+    not a comparison — this is the honest first finding for this probe) ---
+  ret_1d        n= 21 (14s)  median=  -1.94%  share>=+50%=0/21  share>=+100%=0/21
+  ret_5d        n= 15 (11s)  median=  -7.49%  share>=+50%=0/15  share>=+100%=0/15
+  ret_20d       n=  5 ( 4s)  median=  -8.17%  share>=+50%=0/5  share>=+100%=0/5
+  max_high_5d   n= 15 (11s)  median=   9.31%  share>=+50%=0/15  share>=+100%=0/15
+  max_high_20d  n=  5 ( 4s)  median=   3.11%  share>=+50%=0/5  share>=+100%=0/5
+
+  PLAIN-COUNT FINDING (no permutation needed — this is a count, not a test): across
+  every one of the 22 trades we actually took, at EVERY horizon measured, ZERO ever
+  reached +50% maximum favorable excursion, let alone +100%. Under 'if we hit a real
+  EP we gain 10X,' our own trades have never once touched even a +50% tail outcome.
+  The date-matched SKIP population's SELECTION-kind reason reaches +50% at 14.9% and
+  +100% at 11.5% over 20 days (n=87, 8 sessions, descriptive — see [5-2] below; not
+  compared statistically to taken, whose own n is too thin for a permutation test, but
+  the plain counts stand on their own).
+
+--- [5-1] PRIMARY: gap_below_floor vs taken (his motivating case; N=7 pre-maturity —
+    same thinness the original probe already flagged; run through the same gates) ---
+
+  gap_below_floor vs taken  [max_high_5d]
+    POS n=   2 (  1s) med(2ndry)=  20.18% P90=    N<20 P95=    N<40 share>=+50%=N<10(0)        share>=+100%=N<10(0)
+    NEG n=  15 ( 11s) med(2ndry)=   9.31% P90=    N<20 P95=    N<40 share>=+50%=0.0%(0)        share>=+100%=0.0%(0)
+    P90           N TOO THIN (n<20 for P90; pos n=2, neg n=15) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=2, neg n=15) — no test attempted
+    share>=+50%   N TOO THIN (n<10 for a share; pos n=2, neg n=15) — no test attempted
+    share>=+100%  N TOO THIN (n<10 for a share; pos n=2, neg n=15) — no test attempted
+
+  gap_below_floor vs taken  [max_high_20d]
+    POS n=0
+    NEG n=   5 (  4s) med(2ndry)=   3.11% P90=    N<20 P95=    N<40 share>=+50%=N<10(0)        share>=+100%=N<10(0)
+    P90           N TOO THIN (n<20 for P90; pos n=0, neg n=5) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=0, neg n=5) — no test attempted
+    share>=+50%   N TOO THIN (n<10 for a share; pos n=0, neg n=5) — no test attempted
+    share>=+100%  N TOO THIN (n<10 for a share; pos n=0, neg n=5) — no test attempted
+
+--- [5-2] PER-KIND vs taken, max_high_5d / max_high_20d (date-matched population) ---
+
+  -- KIND=mechanics (n_raw=94) --
+
+  [mechanics] vs taken  [max_high_5d]
+    POS n=  48 ( 13s) med(2ndry)=  11.06% P90=  +28.3% P95=  +32.4% share>=+50%=2.1%(1)        share>=+100%=0.0%(0)
+    NEG n=  15 ( 11s) med(2ndry)=   9.31% P90=    N<20 P95=    N<40 share>=+50%=0.0%(0)        share>=+100%=0.0%(0)
+    P90           N TOO THIN (n<20 for P90; pos n=48, neg n=15) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=48, neg n=15) — no test attempted
+    share>=+50%   POS=    2.1 NEG=    0.0  diff=  +2.10pp  N too coarse (perm resolution)
+    share>=+100%  POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+
+  [mechanics] vs taken  [max_high_20d]
+    POS n=   2 (  1s) med(2ndry)=  29.33% P90=    N<20 P95=    N<40 share>=+50%=N<10(0)        share>=+100%=N<10(0)
+    NEG n=   5 (  4s) med(2ndry)=   3.11% P90=    N<20 P95=    N<40 share>=+50%=N<10(0)        share>=+100%=N<10(0)
+    P90           N TOO THIN (n<20 for P90; pos n=2, neg n=5) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=2, neg n=5) — no test attempted
+    share>=+50%   N TOO THIN (n<10 for a share; pos n=2, neg n=5) — no test attempted
+    share>=+100%  N TOO THIN (n<10 for a share; pos n=2, neg n=5) — no test attempted
+
+  -- KIND=selection (n_raw=606) --
+
+  [selection] vs taken  [max_high_5d]
+    POS n= 463 ( 24s) med(2ndry)=  10.41% P90=  +32.8% P95=  +54.9% share>=+50%=5.4%(25)       share>=+100%=3.0%(14)
+    NEG n=  15 ( 11s) med(2ndry)=   9.31% P90=    N<20 P95=    N<40 share>=+50%=0.0%(0)        share>=+100%=0.0%(0)
+    P90           N TOO THIN (n<20 for P90; pos n=463, neg n=15) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=463, neg n=15) — no test attempted
+    share>=+50%   POS=    5.4 NEG=    0.0  diff=  +5.40pp  N too coarse (perm resolution)
+    share>=+100%  POS=    3.0 NEG=    0.0  diff=  +3.00pp  N too coarse (perm resolution)
+
+  [selection] vs taken  [max_high_20d]
+    POS n=  87 (  8s) med(2ndry)=  12.18% P90= +106.8% P95= +156.2% share>=+50%=14.9%(13)      share>=+100%=11.5%(10)
+    NEG n=   5 (  4s) med(2ndry)=   3.11% P90=    N<20 P95=    N<40 share>=+50%=N<10(0)        share>=+100%=N<10(0)
+    P90           N TOO THIN (n<20 for P90; pos n=87, neg n=5) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=87, neg n=5) — no test attempted
+    share>=+50%   N TOO THIN (n<10 for a share; pos n=87, neg n=5) — no test attempted
+    share>=+100%  N TOO THIN (n<10 for a share; pos n=87, neg n=5) — no test attempted
+
+  -- KIND=risk_geometry (n_raw=44) --
+
+  [risk_geometry] vs taken  [max_high_5d]
+    POS n=  39 ( 17s) med(2ndry)=  22.15% P90=  +59.2% P95=    N<40 share>=+50%=15.4%(6)       share>=+100%=2.6%(1)
+    NEG n=  15 ( 11s) med(2ndry)=   9.31% P90=    N<20 P95=    N<40 share>=+50%=0.0%(0)        share>=+100%=0.0%(0)
+    P90           N TOO THIN (n<20 for P90; pos n=39, neg n=15) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=39, neg n=15) — no test attempted
+    share>=+50%   POS=   15.4 NEG=    0.0  diff= +15.40pp  N too coarse (perm resolution)
+    share>=+100%  POS=    2.6 NEG=    0.0  diff=  +2.60pp  N too coarse (perm resolution)
+
+  [risk_geometry] vs taken  [max_high_20d]
+    POS n=  15 (  7s) med(2ndry)=  15.98% P90=    N<20 P95=    N<40 share>=+50%=13.3%(2)       share>=+100%=0.0%(0)
+    NEG n=   5 (  4s) med(2ndry)=   3.11% P90=    N<20 P95=    N<40 share>=+50%=N<10(0)        share>=+100%=N<10(0)
+    P90           N TOO THIN (n<20 for P90; pos n=15, neg n=5) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=15, neg n=5) — no test attempted
+    share>=+50%   N TOO THIN (n<10 for a share; pos n=15, neg n=5) — no test attempted
+    share>=+100%  N TOO THIN (n<10 for a share; pos n=15, neg n=5) — no test attempted
+
+  -- KIND=portfolio (n_raw=35) --
+
+  [portfolio] vs taken  [max_high_5d]
+    POS n=  29 ( 13s) med(2ndry)=   9.09% P90=  +28.3% P95=    N<40 share>=+50%=0.0%(0)        share>=+100%=0.0%(0)
+    NEG n=  15 ( 11s) med(2ndry)=   9.31% P90=    N<20 P95=    N<40 share>=+50%=0.0%(0)        share>=+100%=0.0%(0)
+    P90           N TOO THIN (n<20 for P90; pos n=29, neg n=15) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=29, neg n=15) — no test attempted
+    share>=+50%   POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+    share>=+100%  POS=    0.0 NEG=    0.0  diff=  +0.00pp  N too coarse (perm resolution)
+
+  [portfolio] vs taken  [max_high_20d]
+    POS n=   7 (  4s) med(2ndry)=  16.67% P90=    N<20 P95=    N<40 share>=+50%=N<10(0)        share>=+100%=N<10(0)
+    NEG n=   5 (  4s) med(2ndry)=   3.11% P90=    N<20 P95=    N<40 share>=+50%=N<10(0)        share>=+100%=N<10(0)
+    P90           N TOO THIN (n<20 for P90; pos n=7, neg n=5) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=7, neg n=5) — no test attempted
+    share>=+50%   N TOO THIN (n<10 for a share; pos n=7, neg n=5) — no test attempted
+    share>=+100%  N TOO THIN (n<10 for a share; pos n=7, neg n=5) — no test attempted
+
+  -- KIND=other (n_raw=2) --
+
+  [other] vs taken  [max_high_5d]
+    POS n=   2 (  1s) med(2ndry)=  32.86% P90=    N<20 P95=    N<40 share>=+50%=N<10(1)        share>=+100%=N<10(0)
+    NEG n=  15 ( 11s) med(2ndry)=   9.31% P90=    N<20 P95=    N<40 share>=+50%=0.0%(0)        share>=+100%=0.0%(0)
+    P90           N TOO THIN (n<20 for P90; pos n=2, neg n=15) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=2, neg n=15) — no test attempted
+    share>=+50%   N TOO THIN (n<10 for a share; pos n=2, neg n=15) — no test attempted
+    share>=+100%  N TOO THIN (n<10 for a share; pos n=2, neg n=15) — no test attempted
+
+  [other] vs taken  [max_high_20d]
+    POS n=0
+    NEG n=   5 (  4s) med(2ndry)=   3.11% P90=    N<20 P95=    N<40 share>=+50%=N<10(0)        share>=+100%=N<10(0)
+    P90           N TOO THIN (n<20 for P90; pos n=0, neg n=5) — no test attempted
+    P95           N TOO THIN (n<40 for P95; pos n=0, neg n=5) — no test attempted
+    share>=+50%   N TOO THIN (n<10 for a share; pos n=0, neg n=5) — no test attempted
+    share>=+100%  N TOO THIN (n<10 for a share; pos n=0, neg n=5) — no test attempted
+  [P6-skip-attribution] tail tests attempted: 48, 0 produced a p
+    raw p<0.05: 0
+    surviving Bonferroni x48: 0 — NONE
+
+====================================================================================================
+GRAND MULTIPLICITY LEDGER — every tail-statistic test run this probe, by section
+(each ledger's own Bonferroni denominator is its own attempted-test count, per
+house convention; ledgers are NOT pooled into one shared denominator, matching how
+the five source probes each carry their own separate x15/x17/x54 figure)
+====================================================================================================
+  [P1-ladder-decisive] tail tests attempted: 56, 40 produced a p
+    raw p<0.05: 18 — zones_cleared 0 vs >=1/P90 (p=0.004); zones_cleared 0 vs >=1/P95 (p=0.008); zones_cleared 0 vs >=1/share>=+50% (p=0.006); zones_cleared 0 vs >=1/P90 (p=0.004); zones_cleared 0 vs >=1/P95 (p=0.021); zones_cleared 0 vs >=1/share>=+50% (p=0.015); zones_cleared 0 vs >=1/share>=+100% (p=0.008); gap_pct median split/P90 (p=0.048); gap_pct median split/P95 (p=0.025); gap_pct median split/share>=+50% (p=0.009); gap_pct median split/P90 (p=0.043); gap_pct median split/P95 (p=0.014); gap_pct median split/P95 (p=0.035); gap-high tercile: zones_cleared 0 vs >=1/P90 (p=0.000); gap-high tercile: zones_cleared 0 vs >=1/share>=+50% (p=0.005); IFFY (his word) vs not/P90 (p=0.038); IFFY (his word) vs not/P95 (p=0.008); dist-to-nearest NEAR(<1.5xADR) vs FAR/P90 (p=0.032)
+    surviving Bonferroni x56: 1 — gap-high tercile: zones_cleared 0 vs >=1/P90
+  [P2-ladder-remaining-overhead] tail tests attempted: 40, 33 produced a p
+    raw p<0.05: 1 — dist to next zone NEAR(<1.5xADR) vs FAR/P90 (p=0.032)
+    surviving Bonferroni x40: 0 — NONE
+  [P3-nbis-good-poor] tail tests attempted: 12, 9 produced a p
+    raw p<0.05: 1 — GOOD vs POOR (full verdict)/share>=+50% (p=0.043)
+    surviving Bonferroni x12: 0 — NONE
+  [P4-rs-inflection] tail tests attempted: 12, 10 produced a p
+    raw p<0.05: 5 — PRIMARY low-RS infl_1m6m sign/share>=+50% (p=0.028); PRIMARY low-RS infl_1m6m sign/P90 (p=0.013); PRIMARY low-RS infl_1m6m sign/P95 (p=0.007); PRIMARY low-RS infl_1m6m sign/share>=+50% (p=0.002); PRIMARY low-RS infl_1m6m sign/share>=+100% (p=0.006)
+    surviving Bonferroni x12: 1 — PRIMARY low-RS infl_1m6m sign/share>=+50%
+  [P5-grade-override] tail tests attempted: 32, 18 produced a p
+    raw p<0.05: 3 — POOLED: overridden vs agreed/P90 (p=0.042); POOLED: overridden vs agreed/share>=+50% (p=0.009); GAP >=20%: overridden vs agreed/P90 (p=0.023)
+    surviving Bonferroni x32: 0 — NONE
+  [P6-skip-attribution] tail tests attempted: 48, 0 produced a p
+    raw p<0.05: 0
+    surviving Bonferroni x48: 0 — NONE
+
+TOTAL TAIL TESTS ATTEMPTED THIS PROBE: 200
+N-INFEASIBLE / TOO-COARSE CELLS: 90 of 200 (45%)
+
+Full list of every N-too-thin / too-coarse cell (so none is silently absorbed into
+a 'null' verdict):
+  - P1-ladder-decisive / zones_cleared 0 vs >=1 / max_high_5d / share>=+100%: perm too coarse (n=374/116)
+  - P1-ladder-decisive / zones_cleared 0 vs >=1 / ret_5d / share>=+100%: perm too coarse (n=371/116)
+  - P1-ladder-decisive / gap_pct median split / max_high_5d / share>=+100%: perm too coarse (n=248/242)
+  - P1-ladder-decisive / gap_pct median split / max_high_20d / share>=+100%: perm too coarse (n=231/214)
+  - P1-ladder-decisive / gap_pct median split / ret_5d / share>=+50%: perm too coarse (n=247/240)
+  - P1-ladder-decisive / gap_pct median split / ret_5d / share>=+100%: perm too coarse (n=247/240)
+  - P1-ladder-decisive / gap-low tercile: zones_cleared 0 vs >=1 / max_high_5d / share>=+50%: perm too coarse (n=121/41)
+  - P1-ladder-decisive / gap-low tercile: zones_cleared 0 vs >=1 / max_high_5d / share>=+100%: perm too coarse (n=121/41)
+  - P1-ladder-decisive / gap-mid tercile: zones_cleared 0 vs >=1 / max_high_5d / share>=+100%: perm too coarse (n=119/41)
+  - P1-ladder-decisive / gap-high tercile: zones_cleared 0 vs >=1 / max_high_5d / P95: n=134/34 below floor
+  - P1-ladder-decisive / gap-high tercile: zones_cleared 0 vs >=1 / max_high_5d / share>=+100%: perm too coarse (n=134/34)
+  - P1-ladder-decisive / zones_cleared_and_held (Tier-A) 0 vs >=1 / max_high_5d / share>=+100%: perm too coarse (n=148/51)
+  - P1-ladder-decisive / IFFY (his word) vs not / max_high_5d / share>=+100%: perm too coarse (n=76/414)
+  - P1-ladder-decisive / BLUE_SKY vs not / max_high_5d / share>=+100%: perm too coarse (n=122/368)
+  - P1-ladder-decisive / dist-to-nearest NEAR(<1.5xADR) vs FAR / max_high_5d / share>=+100%: perm too coarse (n=261/89)
+  - P1-ladder-decisive / cleared ALL overhead MAs vs not / max_high_5d / share>=+100%: perm too coarse (n=163/167)
+  - P2-ladder-remaining-overhead / zones_remaining >=1 vs 0 / max_high_5d / share>=+100%: perm too coarse (n=350/140)
+  - P2-ladder-remaining-overhead / BLUE_SKY vs not (Part 2 framing) / max_high_5d / share>=+100%: perm too coarse (n=122/368)
+  - P2-ladder-remaining-overhead / BLUE_SKY vs not (Part 2 framing) / max_high_20d / share>=+100%: perm too coarse (n=119/326)
+  - P2-ladder-remaining-overhead / dist to next zone NEAR(<1.5xADR) vs FAR / max_high_5d / share>=+100%: perm too coarse (n=261/89)
+  - P2-ladder-remaining-overhead / low-ADR half: zones_remaining >=1 vs 0 / max_high_5d / share>=+50%: perm too coarse (n=159/81)
+  - P2-ladder-remaining-overhead / low-ADR half: zones_remaining >=1 vs 0 / max_high_5d / share>=+100%: perm too coarse (n=159/81)
+  - P2-ladder-remaining-overhead / low-ADR half: zones_remaining >=1 vs 0 / max_high_20d / share>=+100%: perm too coarse (n=137/77)
+  - P3-nbis-good-poor / GOOD vs POOR (full verdict) / ret_5d / share>=+100%: perm too coarse (n=157/110)
+  - P3-nbis-good-poor / GOOD vs POOR (full verdict) / mfe_5d / share>=+100%: perm too coarse (n=157/110)
+  - P3-nbis-good-poor / GOOD vs POOR (full verdict) / ret_1d / share>=+100%: perm too coarse (n=172/117)
+  - P4-rs-inflection / PRIMARY low-RS infl_1m6m sign / ret_5d / share>=+100%: perm too coarse (n=431/523)
+  - P4-rs-inflection / PRIMARY low-RS infl_1m6m sign / max_high_5d / share>=+100%: perm too coarse (n=431/525)
+  - P5-grade-override / POOLED: overridden vs agreed / max_high_5d / share>=+100%: perm too coarse (n=138/175)
+  - P5-grade-override / POOLED: overridden vs agreed / max_high_20d / share>=+100%: perm too coarse (n=138/105)
+  - P5-grade-override / GAP 10-15%: overridden vs agreed / max_high_5d / share>=+100%: perm too coarse (n=73/96)
+  - P5-grade-override / GAP 10-15%: overridden vs agreed / max_high_20d / share>=+100%: perm too coarse (n=73/58)
+  - P5-grade-override / GAP 15-20%: overridden vs agreed / max_high_5d / P95: n=26/37 below floor
+  - P5-grade-override / GAP 15-20%: overridden vs agreed / max_high_5d / share>=+50%: perm too coarse (n=26/37)
+  - P5-grade-override / GAP 15-20%: overridden vs agreed / max_high_5d / share>=+100%: perm too coarse (n=26/37)
+  - P5-grade-override / GAP 15-20%: overridden vs agreed / max_high_20d / P90: n=26/19 below floor
+  - P5-grade-override / GAP 15-20%: overridden vs agreed / max_high_20d / P95: n=26/19 below floor
+  - P5-grade-override / GAP 15-20%: overridden vs agreed / max_high_20d / share>=+100%: perm too coarse (n=26/19)
+  - P5-grade-override / GAP >=20%: overridden vs agreed / max_high_5d / P95: n=39/42 below floor
+  - P5-grade-override / GAP >=20%: overridden vs agreed / max_high_5d / share>=+100%: perm too coarse (n=39/42)
+  - P5-grade-override / GAP >=20%: overridden vs agreed / max_high_20d / P95: n=39/28 below floor
+  - P5-grade-override / GAP >=20%: overridden vs agreed / max_high_20d / share>=+100%: perm too coarse (n=39/28)
+  - P6-skip-attribution / gap_below_floor vs taken / max_high_5d / P90: n=2/15 below floor
+  - P6-skip-attribution / gap_below_floor vs taken / max_high_5d / P95: n=2/15 below floor
+  - P6-skip-attribution / gap_below_floor vs taken / max_high_5d / share>=+50%: n=2/15 below floor
+  - P6-skip-attribution / gap_below_floor vs taken / max_high_5d / share>=+100%: n=2/15 below floor
+  - P6-skip-attribution / gap_below_floor vs taken / max_high_20d / P90: n=0/5 below floor
+  - P6-skip-attribution / gap_below_floor vs taken / max_high_20d / P95: n=0/5 below floor
+  - P6-skip-attribution / gap_below_floor vs taken / max_high_20d / share>=+50%: n=0/5 below floor
+  - P6-skip-attribution / gap_below_floor vs taken / max_high_20d / share>=+100%: n=0/5 below floor
+  - P6-skip-attribution / [mechanics] vs taken / max_high_5d / P90: n=48/15 below floor
+  - P6-skip-attribution / [mechanics] vs taken / max_high_5d / P95: n=48/15 below floor
+  - P6-skip-attribution / [mechanics] vs taken / max_high_5d / share>=+50%: perm too coarse (n=48/15)
+  - P6-skip-attribution / [mechanics] vs taken / max_high_5d / share>=+100%: perm too coarse (n=48/15)
+  - P6-skip-attribution / [mechanics] vs taken / max_high_20d / P90: n=2/5 below floor
+  - P6-skip-attribution / [mechanics] vs taken / max_high_20d / P95: n=2/5 below floor
+  - P6-skip-attribution / [mechanics] vs taken / max_high_20d / share>=+50%: n=2/5 below floor
+  - P6-skip-attribution / [mechanics] vs taken / max_high_20d / share>=+100%: n=2/5 below floor
+  - P6-skip-attribution / [selection] vs taken / max_high_5d / P90: n=463/15 below floor
+  - P6-skip-attribution / [selection] vs taken / max_high_5d / P95: n=463/15 below floor
+  - P6-skip-attribution / [selection] vs taken / max_high_5d / share>=+50%: perm too coarse (n=463/15)
+  - P6-skip-attribution / [selection] vs taken / max_high_5d / share>=+100%: perm too coarse (n=463/15)
+  - P6-skip-attribution / [selection] vs taken / max_high_20d / P90: n=87/5 below floor
+  - P6-skip-attribution / [selection] vs taken / max_high_20d / P95: n=87/5 below floor
+  - P6-skip-attribution / [selection] vs taken / max_high_20d / share>=+50%: n=87/5 below floor
+  - P6-skip-attribution / [selection] vs taken / max_high_20d / share>=+100%: n=87/5 below floor
+  - P6-skip-attribution / [risk_geometry] vs taken / max_high_5d / P90: n=39/15 below floor
+  - P6-skip-attribution / [risk_geometry] vs taken / max_high_5d / P95: n=39/15 below floor
+  - P6-skip-attribution / [risk_geometry] vs taken / max_high_5d / share>=+50%: perm too coarse (n=39/15)
+  - P6-skip-attribution / [risk_geometry] vs taken / max_high_5d / share>=+100%: perm too coarse (n=39/15)
+  - P6-skip-attribution / [risk_geometry] vs taken / max_high_20d / P90: n=15/5 below floor
+  - P6-skip-attribution / [risk_geometry] vs taken / max_high_20d / P95: n=15/5 below floor
+  - P6-skip-attribution / [risk_geometry] vs taken / max_high_20d / share>=+50%: n=15/5 below floor
+  - P6-skip-attribution / [risk_geometry] vs taken / max_high_20d / share>=+100%: n=15/5 below floor
+  - P6-skip-attribution / [portfolio] vs taken / max_high_5d / P90: n=29/15 below floor
+  - P6-skip-attribution / [portfolio] vs taken / max_high_5d / P95: n=29/15 below floor
+  - P6-skip-attribution / [portfolio] vs taken / max_high_5d / share>=+50%: perm too coarse (n=29/15)
+  - P6-skip-attribution / [portfolio] vs taken / max_high_5d / share>=+100%: perm too coarse (n=29/15)
+  - P6-skip-attribution / [portfolio] vs taken / max_high_20d / P90: n=7/5 below floor
+  - P6-skip-attribution / [portfolio] vs taken / max_high_20d / P95: n=7/5 below floor
+  - P6-skip-attribution / [portfolio] vs taken / max_high_20d / share>=+50%: n=7/5 below floor
+  - P6-skip-attribution / [portfolio] vs taken / max_high_20d / share>=+100%: n=7/5 below floor
+  - P6-skip-attribution / [other] vs taken / max_high_5d / P90: n=2/15 below floor
+  - P6-skip-attribution / [other] vs taken / max_high_5d / P95: n=2/15 below floor
+  - P6-skip-attribution / [other] vs taken / max_high_5d / share>=+50%: n=2/15 below floor
+  - P6-skip-attribution / [other] vs taken / max_high_5d / share>=+100%: n=2/15 below floor
+  - P6-skip-attribution / [other] vs taken / max_high_20d / P90: n=0/5 below floor
+  - P6-skip-attribution / [other] vs taken / max_high_20d / P95: n=0/5 below floor
+  - P6-skip-attribution / [other] vs taken / max_high_20d / share>=+50%: n=0/5 below floor
+  - P6-skip-attribution / [other] vs taken / max_high_20d / share>=+100%: n=0/5 below floor
+
+====================================================================================================
+HOW TO READ THIS — every permutation shuffles whole SESSIONS on the STATISTIC being
+reported (P90/P95/share), not a median difference, per the task. A thin cell is a
+real result ('N cannot support a tail read here'), not evidence of no effect. THE
+LINE: this probe measures. Nothing here is wired into any grade, admission rule,
+sizing, or exit. A result that points at a change is a FORK for the operator, stated
+with no option pre-chosen.
+====================================================================================================

@@ -1,0 +1,100 @@
+set | n | artifact | no_bars | abstain | no_trade(orb rule) | no_entry | entered | settled | >=4R | >=2R | >0 | sumR | meanR | open_at_horizon(mark>=4R) | >=4R @09:36
+gap_floor_8_9 | 119 | 0 | 0 | 25 | 11 | 24 | 63 | 59 | 0 | 2 | 24 | -13.7 | -0.23 | 0(0) | 0
+    abstain reasons: {'no_930_bar_for_orb': 9, 'entry_window_gaps': 12, 'day0_fill_bar_straddles_stop': 2, 'day0_fill_bar_stop_and_target': 2}   no_trade reasons: {'setup': 11}
+    top settled: WHD 2026-07-30 +3.63R(gap 8.1), OUST 2026-07-30 +2.96R(gap 8.4), BE 2026-06-29 +1.74R(gap 8.1), LGN 2026-07-30 +1.45R(gap 8.1), HTHT 2026-08-17 +1.19R(gap 8.6), CIEN 2026-07-30 +1.03R(gap 8.8), NVT 2026-07-30 +0.93R(gap 8.5), CPNG 2026-06-11 +0.59R(gap 8.2)
+gap_floor_7_8 | 255 | 0 | 0 | 52 | 11 | 56 | 143 | 136 | 0 | 6 | 57 | -32.0 | -0.24 | 0(0) | 0
+    abstain reasons: {'entry_window_gaps': 34, 'fwd_stop_and_target_same_day': 4, 'no_930_bar_for_orb': 11, 'day0_fill_bar_straddles_stop': 3}   no_trade reasons: {'setup': 11}
+    top settled: AUGO 2026-08-05 +3.97R(gap 7.5), PENG 2026-07-30 +3.42R(gap 7.3), HL 2026-08-05 +3.28R(gap 7.0), AMPL 2026-07-01 +2.56R(gap 7.7), IMC 2026-08-03 +2.42R(gap 7.3), SLS 2026-08-12 +2.02R(gap 7.9), TSEM 2026-06-11 +1.95R(gap 7.0), MU 2026-07-30 +1.89R(gap 7.3)
+gap_floor_6_7 | 488 | 1 | 0 | 82 | 12 | 94 | 309 | 299 | 5 | 16 | 112 | -91.9 | -0.31 | 0(0) | 4
+    abstain reasons: {'entry_window_gaps': 59, 'day0_fill_bar_stop_and_target': 2, 'no_930_bar_for_orb': 13, 'fwd_stop_and_target_same_day': 3, 'day0_fill_bar_straddles_stop': 5}   no_trade reasons: {'setup': 12}
+    top settled: UMAC 2026-07-30 +8.40R(gap 6.5), BBVA 2026-07-30 +6.51R(gap 6.3), NEM 2026-08-05 +6.38R(gap 6.2), AEM 2026-08-05 +5.20R(gap 6.2), AGI 2026-08-05 +4.12R(gap 6.0), SBSW 2026-08-19 +3.76R(gap 6.8), ASTS 2026-06-29 +3.20R(gap 6.5), OI 2026-08-21 +3.14R(gap 6.9)
+gap_floor_5_6 | 818 | 4 | 0 | 130 | 33 | 149 | 519 | 502 | 6 | 26 | 206 | -103.9 | -0.21 | 0(0) | 6
+    abstain reasons: {'entry_window_gaps': 88, 'fwd_stop_and_target_same_day': 7, 'day0_fill_bar_straddles_stop': 9, 'no_930_bar_for_orb': 25, 'day0_fill_bar_stop_and_target': 1}   no_trade reasons: {'setup': 33}
+    top settled: SAP 2026-07-24 +14.51R(gap 5.0), KGC 2026-08-05 +8.81R(gap 5.9), WPM 2026-08-05 +6.27R(gap 5.3), CDE 2026-08-19 +6.13R(gap 6.0), ETN 2026-07-30 +4.31R(gap 5.4), WYFI 2026-06-15 +4.25R(gap 5.7), ARIS 2026-08-05 +3.99R(gap 5.4), ACMR 2026-06-11 +3.86R(gap 5.5)
+gap_floor_9to10_admitted_now | 72 | 0 | 0 | 16 | 7 | 16 | 33 | 33 | 0 | 0 | 11 | -16.9 | -0.51 | 0(0) | 0
+    abstain reasons: {'entry_window_gaps': 13, 'no_930_bar_for_orb': 3}   no_trade reasons: {'setup': 7}
+    top settled: LWLG 2026-07-30 +2.00R(gap 9.1), TSEM 2026-07-30 +1.71R(gap 9.5), PMI 2026-06-29 +0.34R(gap 9.2), FFAI 2026-06-01 +0.33R(gap 10.0), WOK 2026-06-15 +0.33R(gap 9.4), AEHL 2026-07-22 +0.33R(gap 9.2), ENTG 2026-07-30 +0.33R(gap 9.8), MRVL 2026-07-30 +0.33R(gap 9.2)
+silent_no_row | 119 | 4 | 0 | 21 | 8 | 30 | 61 | 56 | 1 | 2 | 28 | +1.7 | +0.03 | 0(0) | 1
+    abstain reasons: {'entry_window_gaps': 12, 'day0_fill_bar_stop_and_target': 3, 'day0_fill_bar_straddles_stop': 2, 'no_930_bar_for_orb': 4}   no_trade reasons: {'setup': 8}
+    top settled: LGCL 2026-06-30 +17.00R(gap 11.5), COHU 2026-07-30 +3.94R(gap 10.6), NEXR 2026-06-25 +0.85R(gap 34.4), GFUZ 2026-07-14 +0.34R(gap 14.3), DBGI 2026-06-02 +0.33R(gap 16.7), HKIT 2026-06-10 +0.33R(gap 48.7), TDIC 2026-06-08 +0.33R(gap 39.5), PAVS 2026-06-09 +0.33R(gap 64.8)
+MIN_PREV_CLOSE | 1230 | 11 | 0 | 291 | 217 | 173 | 558 | 536 | 8 | 13 | 283 | +111.0 | +0.21 | 2(0) | 4
+    abstain reasons: {'entry_window_gaps': 104, 'no_930_bar_for_orb': 167, 'day0_fill_bar_straddles_stop': 15, 'day0_fill_bar_stop_and_target': 4, 'day0_stop_and_target_same_bar': 1}   no_trade reasons: {'setup': 217}
+    top settled: NEXR 2026-07-30 +85.81R(gap 9.7), AERT 2026-06-11 +57.15R(gap 10.4), RGNT 2026-06-15 +35.60R(gap 13.3), STAK 2026-06-02 +23.48R(gap 23.1), DFNS 2026-07-27 +19.05R(gap 60.0), JLHL 2026-07-09 +13.35R(gap 21.9), CYCU 2026-07-30 +5.34R(gap 19.6), LUNG 2026-07-30 +4.59R(gap 12.0)
+    open_at_horizon marks: USDE 2026-08-21 mark +2.62R, VFF 2026-08-10 mark +1.69R
+MIN_PREV_DAY_VOLUME | 207 | 2 | 1 | 95 | 46 | 12 | 54 | 51 | 0 | 1 | 26 | -19.9 | -0.39 | 0(0) | 1
+    abstain reasons: {'entry_window_gaps': 16, 'no_930_bar_for_orb': 76, 'day0_fill_bar_straddles_stop': 2, 'no_minute_bars_fetched': 1, 'day0_fill_bar_stop_and_target': 1}   no_trade reasons: {'setup': 46}
+    top settled: RCMT 2026-08-14 +2.70R(gap 11.5), NCSM 2026-06-01 +1.99R(gap 11.8), FNWD 2026-07-22 +1.33R(gap 18.2), UFI 2026-08-17 +0.98R(gap 9.5), NDLS 2026-07-24 +0.89R(gap 24.4), FRD 2026-06-12 +0.47R(gap 18.3), HCAI 2026-06-10 +0.35R(gap 11.9), XAIR 2026-08-03 +0.35R(gap 12.6)
+unclassified_security_type | 165 | 165 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | +0.0 | +0.00 | 0(0) | 0
+    abstain reasons: {}   no_trade reasons: {}
+    top settled: 
+
+ALL settled >=2R winners (set, ticker, date, capture gap, entry, stop, R, final):
+  MIN_PREV_CLOSE               NEXR   2026-07-30 gap    9.7  entry 0.33 stop 0.31  +85.81R  stop_hit
+  MIN_PREV_CLOSE               AERT   2026-06-11 gap   10.4  entry 0.57 stop 0.49  +57.15R  stop_hit
+  MIN_PREV_CLOSE               RGNT   2026-06-15 gap   13.3  entry 1.71 stop 1.67  +35.60R  sma_trail_stop
+  MIN_PREV_CLOSE               STAK   2026-06-02 gap   23.1  entry 1.21 stop 1.09  +23.48R  stop_hit
+  MIN_PREV_CLOSE               DFNS   2026-07-27 gap   60.0  entry 7.03 stop 5.87  +19.05R  stop_hit
+  silent_no_row                LGCL   2026-06-30 gap   11.5  entry 0.95 stop 0.93  +17.00R  stop_hit
+  gap_floor_5_6                SAP    2026-07-24 gap    5.0  entry 155.01 stop 152.49  +14.51R  stop_hit
+  MIN_PREV_CLOSE               JLHL   2026-07-09 gap   21.9  entry 3.92 stop 3.52  +13.35R  sma_trail_stop
+  gap_floor_5_6                KGC    2026-08-05 gap    5.9  entry 25.18 stop 24.71  +8.81R  stop_hit
+  gap_floor_6_7                UMAC   2026-07-30 gap    6.5  entry 18.39 stop 17.61  +8.40R  stop_hit
+  gap_floor_6_7                BBVA   2026-07-30 gap    6.3  entry 27.28 stop 27.14  +6.51R  sma_trail_stop
+  gap_floor_6_7                NEM    2026-08-05 gap    6.2  entry 104.40 stop 101.86  +6.38R  stop_hit
+  gap_floor_5_6                WPM    2026-08-05 gap    5.3  entry 122.47 stop 119.18  +6.27R  stop_hit
+  gap_floor_5_6                CDE    2026-08-19 gap    6.0  entry 19.64 stop 19.53  +6.13R  stop_hit
+  MIN_PREV_CLOSE               CYCU   2026-07-30 gap   19.6  entry 0.34 stop 0.30  +5.34R  stop_hit
+  gap_floor_6_7                AEM    2026-08-05 gap    6.2  entry 161.70 stop 155.50  +5.20R  stop_hit
+  MIN_PREV_CLOSE               LUNG   2026-07-30 gap   12.0  entry 1.40 stop 1.28  +4.59R  stop_hit
+  gap_floor_5_6                ETN    2026-07-30 gap    5.4  entry 384.07 stop 373.09  +4.31R  stop_hit
+  gap_floor_5_6                WYFI   2026-06-15 gap    5.7  entry 26.49 stop 25.13  +4.25R  stop_hit
+  gap_floor_6_7                AGI    2026-08-05 gap    6.0  entry 30.94 stop 29.99  +4.12R  stop_hit
+  gap_floor_5_6                ARIS   2026-08-05 gap    5.4  entry 15.88 stop 15.12  +3.99R  stop_hit
+  gap_floor_7_8                AUGO   2026-08-05 gap    7.5  entry 63.16 stop 59.22  +3.97R  stop_hit
+  silent_no_row                COHU   2026-07-30 gap   10.6  entry 43.77 stop 42.99  +3.94R  sma_trail_stop
+  gap_floor_5_6                ACMR   2026-06-11 gap    5.5  entry 84.46 stop 79.93  +3.86R  stop_hit
+  gap_floor_5_6                EGO    2026-08-05 gap    5.0  entry 34.37 stop 32.43  +3.79R  stop_hit
+  gap_floor_5_6                BW     2026-07-30 gap    5.9  entry 8.44 stop 8.27  +3.78R  sma_trail_stop
+  gap_floor_5_6                LILA   2026-06-24 gap    5.3  entry 6.29 stop 6.15  +3.76R  sma_trail_stop
+  gap_floor_6_7                SBSW   2026-08-19 gap    6.8  entry 11.30 stop 11.20  +3.76R  stop_hit
+  MIN_PREV_CLOSE               AUTL   2026-08-03 gap   15.1  entry 1.76 stop 1.65  +3.76R  stop_hit
+  gap_floor_8_9                WHD    2026-07-30 gap    8.1  entry 56.54 stop 53.46  +3.63R  stop_hit
+  gap_floor_5_6                VIAV   2026-07-30 gap    5.5  entry 34.22 stop 33.64  +3.47R  sma_trail_stop
+  gap_floor_5_6                AU     2026-08-19 gap    5.7  entry 104.07 stop 102.30  +3.47R  stop_hit
+  gap_floor_7_8                PENG   2026-07-30 gap    7.3  entry 46.98 stop 45.76  +3.42R  sma_trail_stop
+  gap_floor_5_6                MWH    2026-07-30 gap    5.5  entry 25.44 stop 24.78  +3.35R  sma_trail_stop
+  gap_floor_7_8                HL     2026-08-05 gap    7.0  entry 16.47 stop 15.61  +3.28R  stop_hit
+  gap_floor_6_7                ASTS   2026-06-29 gap    6.5  entry 77.12 stop 74.84  +3.20R  stop_hit
+  gap_floor_6_7                OI     2026-08-21 gap    6.9  entry 6.82 stop 6.72  +3.14R  stop_hit
+  gap_floor_5_6                KB     2026-07-02 gap    6.0  entry 108.70 stop 106.64  +3.12R  stop_hit
+  gap_floor_6_7                PPTA   2026-08-05 gap    6.0  entry 22.05 stop 21.64  +3.07R  stop_hit
+  gap_floor_5_6                AEVA   2026-07-30 gap    5.8  entry 15.10 stop 14.50  +3.04R  sma_trail_stop
+  gap_floor_8_9                OUST   2026-07-30 gap    8.4  entry 33.97 stop 32.69  +2.96R  sma_trail_stop
+  gap_floor_5_6                VECO   2026-07-30 gap    5.8  entry 45.99 stop 44.95  +2.90R  sma_trail_stop
+  gap_floor_6_7                AIAI   2026-06-08 gap    6.2  entry 12.45 stop 11.55  +2.86R  stop_hit
+  gap_floor_5_6                USAR   2026-07-30 gap    5.3  entry 13.85 stop 13.55  +2.78R  sma_trail_stop
+  MIN_PREV_CLOSE               MNDR   2026-07-30 gap    9.7  entry 1.59 stop 1.51  +2.75R  sma_trail_stop
+  MIN_PREV_DAY_VOLUME          RCMT   2026-08-14 gap   11.5  entry 33.42 stop 31.23  +2.70R  stop_hit
+  gap_floor_7_8                AMPL   2026-07-01 gap    7.7  entry 8.27 stop 7.91  +2.56R  stop_hit
+  gap_floor_6_7                AOSL   2026-07-30 gap    6.6  entry 29.72 stop 29.10  +2.54R  sma_trail_stop
+  gap_floor_6_7                HELP   2026-08-12 gap    6.6  entry 10.96 stop 10.46  +2.51R  stop_hit
+  gap_floor_5_6                APLD   2026-07-20 gap    5.9  entry 27.49 stop 26.70  +2.49R  sma_trail_stop
+  MIN_PREV_CLOSE               OSRH   2026-08-17 gap    9.8  entry 0.35 stop 0.33  +2.48R  stop_hit
+  gap_floor_6_7                HP     2026-08-06 gap    6.7  entry 35.55 stop 33.21  +2.45R  stop_hit
+  gap_floor_7_8                IMC    2026-08-03 gap    7.3  entry 5.76 stop 5.07  +2.42R  stop_hit
+  gap_floor_5_6                WPM    2026-08-19 gap    5.2  entry 140.19 stop 136.93  +2.41R  stop_hit
+  gap_floor_6_7                ASM    2026-08-05 gap    6.1  entry 6.31 stop 6.15  +2.29R  stop_hit
+  gap_floor_6_7                VELO   2026-07-30 gap    6.8  entry 9.08 stop 8.72  +2.28R  sma_trail_stop
+  MIN_PREV_CLOSE               LEDS   2026-07-14 gap   11.8  entry 1.71 stop 1.51  +2.28R  stop_hit
+  gap_floor_5_6                HL     2026-08-19 gap    5.8  entry 19.12 stop 18.78  +2.19R  stop_hit
+  gap_floor_5_6                CTGO   2026-08-05 gap    5.4  entry 17.69 stop 17.15  +2.14R  sma_trail_stop
+  gap_floor_5_6                AUGO   2026-08-19 gap    5.1  entry 80.34 stop 79.08  +2.05R  stop_hit
+  gap_floor_6_7                FLNC   2026-07-30 gap    7.0  entry 12.88 stop 12.47  +2.04R  sma_trail_stop
+  MIN_PREV_CLOSE               IOVA   2026-08-06 gap   37.1  entry 6.27 stop 5.59  +2.04R  sma_trail_stop
+  gap_floor_5_6                RTX    2026-07-23 gap    5.2  entry 205.31 stop 199.71  +2.03R  stop_hit
+  gap_floor_7_8                SLS    2026-08-12 gap    7.9  entry 11.92 stop 11.14  +2.02R  stop_hit
+  gap_floor_5_6                CBRS   2026-07-30 gap    5.7  entry 179.22 stop 174.78  +2.02R  stop_hit
+  gap_floor_5_6                EQX    2026-08-19 gap    5.9  entry 12.20 stop 11.92  +2.01R  stop_hit
+
+ARTIFACTS excluded: 187 — APEOF 2026-06-01 (no_daily), ASWRF 2026-06-01 (no_daily), FBRKF 2026-06-01 (no_daily), GLTK 2026-06-01 (no_daily), MDRNF 2026-06-01 (no_daily), MEXGF 2026-06-01 (no_daily), NIMU 2026-06-01 (no_daily), SMTOF 2026-06-01 (no_daily), ZAIRF 2026-06-01 (no_daily), BABYF 2026-06-02 (no_daily), FOXO 2026-06-02 (split_gap 0.0 vs capture 900.0), LGSXY 2026-06-02 (no_daily), NIMU 2026-06-02 (no_daily), WCUFF 2026-06-02 (no_daily), WRDLY 2026-06-02 (no_daily), BNRG 2026-06-03 (no_daily), FOXO 2026-06-03 (split_gap 0.0 vs capture 100.0), GREH 2026-06-03 (no_daily), LINMF 2026-06-03 (no_daily), NIMU 2026-06-03 (no_daily), AVLNF 2026-06-04 (no_daily), CLLEF 2026-06-04 (no_daily), FRQN 2026-06-04 (no_daily), FUNR 2026-06-04 (no_daily), GURFF 2026-06-04 (no_daily) ...
+failed fetch chunks: []

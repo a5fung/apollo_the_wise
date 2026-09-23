@@ -1,0 +1,11 @@
+Pager usage is off.
+==== WITHIN the downgraded names, does each axis point the way we assume? ====
+(higher axis score = we believe a BETTER catalyst. outcome = stock, 20 settled sessions.)
+axis|n_high|med_high|n_low|med_low
+axis 1 revenue trajectory|15|-5.7|75|-0.2
+axis 2 EPS trajectory|55|0.0|43|-0.2
+axis 3 margin trajectory|21|-1.0|4|-9.5
+axis 4 beat vs consensus|65|1.0|12|-1.8
+axis 6 magnitude inflection|0||107|-0.3
+COMPOSITE (all axes)|75|0.8|19|-0.8
+(6 rows)

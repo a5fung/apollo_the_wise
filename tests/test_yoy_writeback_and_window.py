@@ -1,0 +1,672 @@
+"""#321 write-back + in-window recovery (2026-09-04) — the "fix YoY once and for all" card.
+
+Three failure modes were found behind the 19 missing-YoY cases of the 30d review
+(data_gated_reviews.yaml::yoy_missing_data_quality_investigation). This file locks the two
+that ship here:
+
+  (a) NSSC 8/24 — a correct answer computed at 07:25 was re-derived "missing" at 09:30:07 and
+      DOWNGRADED, because the recovery was never written anywhere a later tick could see.
+      Now: persist_yoy_recovery -> mi_ep_catalyst_metrics.yoy_recovered_json, read back by
+      lookup_cached_metrics under `_yoy_recovered`, honoured FIRST in the #321 block (a dict
+      read, so the 9:30-9:45 latency guard for the FETCH does not apply).
+  (b) BE 8/12 — first seen inside the ORB window, where the fetch is off by design. Now: a
+      DETACHED background fetch behind `live_yoy_recovery_inwindow` (default OFF — the
+      operator's flip), whose write-back the next tick reads through (a).
+
+Plus the DG date-sanity guard in compute_yoy_from_prior_year (fiscal-label convention mismatch
+-> a row TWO years back; fail-closed to None, never a wrong number).
+
+The third mode — the beat+guidance carve-out pre-empting the recovery for 12/19 — the operator
+approved 2026-09-04 (15-name replay: 9 keep on a real number, 4 [HGTY, PRGO, RPD, HRB] downgrade
+on a real number and all four fell the following week with no live entry, 2 [EROC, DG] have no
+prior-year row and fall through to the carve-out unchanged). Section (c) below pins that reorder.
+
+2026-09-13 (#653 cleanup): two tests over an actually-observable BEHAVIOR
+(`test_schema_adds_the_column_at_boot`, `test_get_fundamentals_records_period_ends_as_a_separate_map`)
+now call the REAL `initialize_schema()` / `get_fundamentals()` against a fake asyncpg pool / fake
+yfinance Ticker, instead of grepping a source-text copy. The remaining eleven stay TAGGED: the
+#321 and carve-out blocks live INLINE inside `run_ep_scan()` (ep_detector.py, ~2100 lines),
+reading closure-local variables (`_extracted`, `_downgrade_reason`, `ticker`, `today`, `now_et`,
+`catalyst_quality`) that are not parameters of anything independently callable. The one existing
+end-to-end `run_ep_scan` harness in this repo (test_624_lowcap_lane.py) mocks `is_earnings_day` to
+return `(False, ...)` by construction — a low-cap lane fixture, not an earnings-catalyst one — so
+it never reaches this block either and is not a usable seam. Building one would mean restructuring
+a 2100-line scan function under a suite that (per this file's own premise) does not reliably catch
+behavior changes: out of scope for a test-brittleness sweep, not a THE LINE call (no strategy or
+threshold changes here, only test shape). Two notes for whoever revisits this: the window-guard
+test (line ~53) is a regression pin on the exact NSSC 8/24 bug this file exists to fix — the one
+most worth a real harness if one gets built; the byte-identical carve-out condition test
+(line ~398) is close to redundant with the adjacent order pin plus the unflagged
+`_carveout_eligible`-based replay tests below, left tagged rather than deleted because the
+redundancy isn't certain enough to clear this sweep's own DELETE bar.
+"""
+import asyncio
+import json
+import re
+from datetime import date
+from pathlib import Path
+
+import pytest
+
+_EP_SRC = (Path(__file__).resolve().parent.parent
+           / "agents" / "market_intelligence" / "ep_detector.py").read_text()
+_BLOCK = _EP_SRC[_EP_SRC.find("# #321 LIVE rescue"):]
+_BLOCK = _BLOCK[:_BLOCK.find("# Extraction died and we deliberately kept the grade")]
+
+
+def _run(coro):
+    return asyncio.run(coro)
+
+
+# ── (a) source pins on the #321 block ─────────────────────────────────────────────────────
+
+def test_persisted_answer_is_read_before_any_fetch():
+    """The write-back must be consulted BEFORE compute_yoy_from_prior_year — that is the whole
+    NSSC fix: an answer already in hand is never re-derived."""
+    # source-pin-ok: ordering check inside run_ep_scan's inline #321 block — see the file
+    # docstring for why it cannot be driven end-to-end in this suite.
+    read = _BLOCK.find("_persisted_yoy_recovery(_extracted)")
+    fetch = _BLOCK.find("compute_yoy_from_prior_year(")
+    assert read != -1 and fetch != -1
+    assert read < fetch, "the persisted read must precede the fetch in the #321 block"
+
+
+def test_persisted_read_is_not_gated_by_the_orb_window():
+    """The top-level condition of the block carries the toggles only; `_in_orb_cutoff` gates the
+    FETCH branch (latency), never the dict read. Pre-fix the window sat in the top-level `if`
+    and that is what threw NSSC's answer away. (2026-09-04: the condition grew a third clause,
+    the ordering toggle -- still no window guard in it.)"""
+    # source-pin-ok: regression pin on the exact NSSC 8/24 bug (see file docstring) — the
+    # single most worth-a-real-harness case among these eleven if one is ever built.
+    cond = re.search(
+        r'if \(_downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"\s*'
+        r'and await get_runtime_toggle\("live_yoy_recovery", "LIVE_YOY_RECOVERY"\)\s*'
+        r'and \(await get_runtime_toggle\(\s*'
+        r'"yoy_recovery_before_carveout", "YOY_RECOVERY_BEFORE_CARVEOUT",\s*'
+        r'default=True\)\s*'
+        r'or not _should_apply_yoy_carveout\(_extracted\)\)\):',
+        _BLOCK)
+    assert cond, "the #321 top-level condition changed shape (window guard crept back in?)"
+    # 2026-09-21: `_in_orb_cutoff` was a bare local here until #679's Perplexity retry became
+    # a second caller of the same 9:30-9:45 boundary; it is now a module-level predicate and
+    # this guard CALLS it. The pin follows the rename — what this test protects is unchanged:
+    # the window gates the FETCH branch, never the top-level condition or the dict read.
+    fetch_guard = _BLOCK.find("if _rec is None and not _in_orb_cutoff(now_et):")
+    assert fetch_guard != -1 and fetch_guard > cond.end()
+
+
+def test_writeback_happens_before_the_floor_decision():
+    """A real BELOW-floor number must survive too — else the next tick re-derives 'missing' and
+    the `_recovered` reason (the real number) is lost. So the persist sits before the compare."""
+    # source-pin-ok: ordering check inside run_ep_scan's inline #321 block — see file docstring.
+    persist = _BLOCK.find("await persist_yoy_recovery(ticker, today, _rec)")
+    floor = _BLOCK.find("_ryoy >= EARNINGS_REVENUE_GATE_MIN_YOY")
+    assert persist != -1 and floor != -1
+    assert persist < floor
+
+
+def test_fetch_passes_alert_date_for_the_dg_guard():
+    # source-pin-ok: presence check inside run_ep_scan's inline #321 block — see file docstring.
+    assert "alert_date=today" in _BLOCK
+
+
+def test_apply_logic_unchanged_same_audit_same_floor():
+    """Behaviour identical except that the number survives: same audit event, same floor, same
+    `_recovered` reason label."""
+    # source-pin-ok: presence check inside run_ep_scan's inline #321 block — see file docstring.
+    assert 'catalyst_yoy_recovered_live' in _BLOCK
+    assert 'pct_recovered"' in _BLOCK
+    assert "timeout=4" in _BLOCK, "the out-of-window fetch keeps its 4s cap"
+
+
+# ── (b) in-window background fetch: toggle-gated, default OFF, never awaited ───────────────
+
+def test_inwindow_background_is_operator_toggle_default_off():
+    # source-pin-ok: operator-toggle default check inside the inline #321 block — file docstring.
+    assert ('get_runtime_toggle(\n                        "live_yoy_recovery_inwindow", '
+            '"LIVE_YOY_RECOVERY_INWINDOW", default=False)') in _BLOCK
+
+
+def test_inwindow_fetch_is_never_awaited_on_the_scan_path():
+    """The 6/28 latency guard's guarantee: nothing in the window waits on yfinance."""
+    # source-pin-ok: ordering/await-shape check inside the inline #321 block — file docstring.
+    spawn = _BLOCK.find("_spawn_yoy_recovery_background(")
+    assert spawn != -1
+    before = _BLOCK[max(0, spawn - 40):spawn]
+    assert "await" not in before, "the background spawn must not be awaited"
+    # and the spawn sits inside the in-window branch, i.e. after the out-of-window fetch branch
+    assert spawn > _BLOCK.find("if _rec is None and not _in_orb_cutoff(now_et):")
+
+
+def test_background_spawn_dedups_per_ticker_per_day_and_needs_inputs(monkeypatch):
+    from agents.market_intelligence import ep_detector as ep
+
+    monkeypatch.setattr(ep, "_yoy_bg_started", set())
+    monkeypatch.setattr(ep, "_yoy_bg_started_date", None)
+    monkeypatch.setattr(ep, "_yoy_bg_tasks", set())
+    started = []
+
+    async def _fake_compute(ticker, fp, val, alert_date=None):
+        started.append((ticker, alert_date))
+        return None
+
+    async def _drive():
+        from agents.market_intelligence import fundamentals as fm
+        monkeypatch.setattr(fm, "compute_yoy_from_prior_year", _fake_compute)
+        d = date(2026, 8, 12)
+        assert ep._spawn_yoy_recovery_background("BE", d, None, 1.0) is False      # no period
+        assert ep._spawn_yoy_recovery_background("BE", d, "Q2 2026", None) is False  # no value
+        assert ep._spawn_yoy_recovery_background("BE", d, "Q2 2026", 1.07e9) is True
+        assert ep._spawn_yoy_recovery_background("BE", d, "Q2 2026", 1.07e9) is False  # same day: dedup
+        assert ep._spawn_yoy_recovery_background("BE", date(2026, 8, 13), "Q2 2026", 1.07e9) is True  # new day
+        await asyncio.gather(*list(ep._yoy_bg_tasks))
+
+    _run(_drive())
+    assert started == [("BE", date(2026, 8, 12)), ("BE", date(2026, 8, 13))]
+    assert not ep._yoy_bg_tasks, "done-callback must drop the strong ref"
+
+
+def test_background_task_writes_back_on_a_result(monkeypatch):
+    from agents.market_intelligence import ep_detector as ep
+    from agents.market_intelligence import fundamentals as fm
+    from agents.market_intelligence import catalyst_metrics_extractor as cme
+
+    monkeypatch.setattr(ep, "_yoy_bg_started", set())
+    monkeypatch.setattr(ep, "_yoy_bg_started_date", None)
+    monkeypatch.setattr(ep, "_yoy_bg_tasks", set())
+    writes = []
+
+    async def _fake_compute(ticker, fp, val, alert_date=None):
+        return {"yoy_pct": 166.7, "prior_period": "Q2'25", "prior_revenue_m": 401.0,
+                "source": "yfinance_prior_year"}
+
+    async def _fake_persist(ticker, alert_date, rec):
+        writes.append((ticker, alert_date, rec["yoy_pct"]))
+        return True
+
+    async def _drive():
+        monkeypatch.setattr(fm, "compute_yoy_from_prior_year", _fake_compute)
+        monkeypatch.setattr(cme, "persist_yoy_recovery", _fake_persist)
+        assert ep._spawn_yoy_recovery_background("BE", date(2026, 8, 12), "Q2 2026", 1.07e9)
+        await asyncio.gather(*list(ep._yoy_bg_tasks))
+
+    _run(_drive())
+    assert writes == [("BE", date(2026, 8, 12), 166.7)]
+
+
+# ── the persisted-read helper ─────────────────────────────────────────────────────────────
+
+def test_persisted_yoy_recovery_shape_checked():
+    from agents.market_intelligence.ep_detector import _persisted_yoy_recovery
+    good = {"yoy_pct": 10.1, "prior_period": "Q4'25"}
+    assert _persisted_yoy_recovery({"_yoy_recovered": good}) == good
+    assert _persisted_yoy_recovery({}) is None
+    assert _persisted_yoy_recovery(None) is None
+    assert _persisted_yoy_recovery({"_yoy_recovered": {"prior_period": "Q4'25"}}) is None
+    assert _persisted_yoy_recovery({"_yoy_recovered": "10.1"}) is None
+
+
+# ── lookup_cached_metrics carries the write-back; persist_yoy_recovery is narrow + loud ────
+
+class _FakeConn:
+    def __init__(self, row, executed):
+        self._row = row
+        self._executed = executed
+        self.status = "UPDATE 1"
+
+    async def fetchrow(self, *a, **k):
+        return self._row
+
+    async def execute(self, sql, *params):
+        self._executed.append((sql, params))
+        return self.status
+
+
+class _FakeAcquire:
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *a):
+        return False
+
+
+class _FakePool:
+    def __init__(self, row, executed, status="UPDATE 1"):
+        self._conn = _FakeConn(row, executed)
+        self._conn.status = status
+
+    def acquire(self):
+        return _FakeAcquire(self._conn)
+
+
+def _wire(monkeypatch, row, status="UPDATE 1"):
+    from agents.market_intelligence import catalyst_metrics_extractor as cme
+    executed = []
+
+    async def _pool():
+        return _FakePool(row, executed, status)
+
+    monkeypatch.setattr(cme, "get_pool", _pool)
+    return cme, executed
+
+
+def test_lookup_merges_the_writeback_under_the_annotation_key(monkeypatch):
+    raw = {"extraction_quality": "medium", "fiscal_period": "Q4 FY2026",
+           "q_revenue_usd": {"value": 55_809_000, "yoy_pct": None}}
+    rec = {"yoy_pct": 10.1, "prior_period": "Q4'25", "prior_revenue_m": 50.7,
+           "source": "yfinance_prior_year"}
+    cme, _ = _wire(monkeypatch, {"q_revenue_yoy_pct": None, "extraction_quality": "medium",
+                                 "raw_json": dict(raw), "yoy_recovered_json": rec})
+    out = _run(cme.lookup_cached_metrics("NSSC", date(2026, 8, 24)))
+    assert out["_yoy_recovered"] == rec
+    # the extraction itself is untouched — the rubric's input stays exactly what the LLM said
+    assert out["q_revenue_usd"]["yoy_pct"] is None
+    assert cme.get_q_revenue_yoy_pct(out) is None
+
+
+def test_lookup_accepts_a_string_encoded_writeback(monkeypatch):
+    rec = {"yoy_pct": 24.7, "prior_period": "Q2'25"}
+    cme, _ = _wire(monkeypatch, {"q_revenue_yoy_pct": None, "extraction_quality": "medium",
+                                 "raw_json": {"extraction_quality": "medium"},
+                                 "yoy_recovered_json": json.dumps(rec)})
+    out = _run(cme.lookup_cached_metrics("GPRK", date(2026, 8, 31)))
+    assert out["_yoy_recovered"] == rec
+
+
+def test_lookup_without_a_writeback_has_no_annotation(monkeypatch):
+    cme, _ = _wire(monkeypatch, {"q_revenue_yoy_pct": None, "extraction_quality": "medium",
+                                 "raw_json": {"extraction_quality": "medium"},
+                                 "yoy_recovered_json": None})
+    out = _run(cme.lookup_cached_metrics("X", date(2026, 8, 24)))
+    assert "_yoy_recovered" not in out
+
+
+def test_lookup_still_refuses_a_failure_row_even_with_a_writeback(monkeypatch):
+    """#543 DoD stays ahead of the merge: a transport-failure row is never served as cache."""
+    cme, _ = _wire(monkeypatch, {"q_revenue_yoy_pct": None, "extraction_quality": "low",
+                                 "raw_json": {"extraction_quality": "low",
+                                              "extraction_error": "extraction_call_failed"},
+                                 "yoy_recovered_json": {"yoy_pct": 5.0}})
+    assert _run(cme.lookup_cached_metrics("X", date(2026, 8, 24))) is None
+
+
+def test_persist_writes_the_registered_statement_with_a_jsonb_param(monkeypatch):
+    cme, executed = _wire(monkeypatch, None)
+    rec = {"yoy_pct": 10.1, "prior_period": "Q4'25"}
+    assert _run(cme.persist_yoy_recovery("NSSC", date(2026, 8, 24), rec)) is True
+    assert len(executed) == 1
+    sql, params = executed[0]
+    assert sql is cme.YOY_RECOVERY_WRITEBACK_SQL
+    assert params[0] == "NSSC" and params[1] == date(2026, 8, 24)
+    # the DICT goes to the pool's JSONB codec — a pre-dumped string would double-encode
+    assert params[2] == rec and isinstance(params[2], dict)
+
+
+def test_persist_is_loud_and_false_when_no_row_matched(monkeypatch):
+    cme, _ = _wire(monkeypatch, None, status="UPDATE 0")
+    assert _run(cme.persist_yoy_recovery("X", date(2026, 8, 24), {"yoy_pct": 1.0})) is False
+
+
+def test_persist_never_raises(monkeypatch):
+    from agents.market_intelligence import catalyst_metrics_extractor as cme
+
+    async def _boom():
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(cme, "get_pool", _boom)
+    assert _run(cme.persist_yoy_recovery("X", date(2026, 8, 24), {"yoy_pct": 1.0})) is False
+
+
+def test_writeback_statement_is_registered_in_the_deploy_gate():
+    """The gate's own rule: register a writer when you add one — prepared from the REAL constant."""
+    from scripts.preflight_db_updates import SHADOW_WRITER_STATEMENTS
+    from agents.market_intelligence.catalyst_metrics_extractor import YOY_RECOVERY_WRITEBACK_SQL
+    assert any(sql is YOY_RECOVERY_WRITEBACK_SQL for _, sql in SHADOW_WRITER_STATEMENTS)
+
+
+class _FakeSchemaConn:
+    """Records every statement `initialize_schema()` sends to (a fake) Postgres at boot."""
+
+    def __init__(self, sink):
+        self._sink = sink
+
+    async def execute(self, sql, *a, **k):
+        self._sink.append(sql)
+        return "OK"
+
+    async def executemany(self, sql, seq, *a, **k):
+        self._sink.append(sql)
+
+    async def fetchval(self, sql, *a, **k):
+        return 0  # startup row-count log query -- value is unused by the guard below
+
+
+class _FakeSchemaAcquire:
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *a):
+        return False
+
+
+class _FakeSchemaPool:
+    def __init__(self, sink):
+        self._conn = _FakeSchemaConn(sink)
+
+    def acquire(self):
+        return _FakeSchemaAcquire(self._conn)
+
+
+def test_schema_adds_the_column_at_boot(monkeypatch):
+    """Calls the REAL initialize_schema() against a fake pool and inspects the literal DDL it
+    would send to Postgres at boot, instead of grepping a source-text copy of db.py.
+
+    MUTATION TARGET: delete the `ALTER TABLE mi_ep_catalyst_metrics ADD COLUMN IF NOT EXISTS
+    yoy_recovered_json JSONB;` statement from initialize_schema()'s DDL -- an existing deployment
+    (built before 2026-09-04) would boot with the OLD schema and every #321 write-back would fail
+    with an undefined-column error the moment persist_yoy_recovery runs."""
+    from agents.market_intelligence import db as db_mod
+
+    sink: list[str] = []
+
+    async def _pool():
+        return _FakeSchemaPool(sink)
+
+    monkeypatch.setattr(db_mod, "get_pool", _pool)
+    _run(db_mod.initialize_schema())
+    assert any(
+        re.search(r"ALTER TABLE mi_ep_catalyst_metrics\s+ADD COLUMN IF NOT EXISTS yoy_recovered_json JSONB", sql)
+        for sql in sink
+    ), "boot-time DDL must ADD the column to an EXISTING table, not just declare it in the CREATE"
+
+
+# ── the DG date-sanity guard ──────────────────────────────────────────────────────────────
+
+def _fake_gf(rows, ends):
+    async def _gf(ticker):
+        return {"quarterly_revenue": rows, "quarterly_period_ends": ends}
+    return _gf
+
+
+@pytest.mark.asyncio
+async def test_dg_shape_start_year_fiscal_naming_is_rejected_not_fabricated(monkeypatch):
+    """DG names its fiscal year by its STARTING calendar year: 'Q2 FY2026' = the quarter ending
+    Jul-2026. yfinance's end-year labels call that quarter Q2'27, so prior_key (2, 2025) lands on
+    the row ending Jul-2024 — TWO years back. With 8 quarters of history the old code returned
+    a confidently-wrong YoY; the guard turns it into None."""
+    from agents.market_intelligence import fundamentals
+    rows = [{"period": "Q2'25", "revenue_m": 10_200.0},   # ends 2024-07-31 (wrong year)
+            {"period": "Q3'25", "revenue_m": 10_180.0},
+            {"period": "Q4'25", "revenue_m": 10_300.0},
+            {"period": "Q1'26", "revenue_m": 10_436.0},
+            {"period": "Q2'26", "revenue_m": 10_727.7},   # ends 2025-07-31 (the real prior year)
+            {"period": "Q3'26", "revenue_m": 10_649.5},
+            {"period": "Q4'26", "revenue_m": 10_911.2},
+            {"period": "Q1'27", "revenue_m": 10_787.0}]
+    ends = {"Q2'25": "2024-07-31", "Q3'25": "2024-10-31", "Q4'25": "2025-01-31",
+            "Q1'26": "2025-04-30", "Q2'26": "2025-07-31", "Q3'26": "2025-10-31",
+            "Q4'26": "2026-01-31", "Q1'27": "2026-04-30"}
+    monkeypatch.setattr(fundamentals, "get_fundamentals", _fake_gf(rows, ends))
+    # without the alert date the label match still fires (the pre-guard behaviour) — wrong year
+    ungated = await fundamentals.compute_yoy_from_prior_year("DG", "Q2 FY2026", 11_290_000_000)
+    assert ungated is not None and ungated["prior_period"] == "Q2'25"
+    # with it, the two-years-back row is rejected — None, never a fabricated number
+    assert await fundamentals.compute_yoy_from_prior_year(
+        "DG", "Q2 FY2026", 11_290_000_000, alert_date=date(2026, 8, 27)) is None
+
+
+@pytest.mark.asyncio
+async def test_guard_passes_the_real_cohort_shapes(monkeypatch):
+    """Replayed 2026-09-04 against all 102 prior-year matches in the 35-day cohort: the band
+    changes none of them. Three representative shapes: a normal 37-day lag (INSM), a June-FYE
+    Q4 (HRB, 43 days), and the stalest fill seen (BRUN, ~134 days — kept: freshness is rubric
+    semantics, not this guard's)."""
+    from agents.market_intelligence import fundamentals
+    cases = [
+        ("INSM", "Q2 2026", 425_486_000, date(2026, 8, 6), "Q2'25", "2025-06-30", 107.0),
+        ("HRB", "Q4 FY2026", 1_145_000_000, date(2026, 8, 12), "Q4'25", "2025-06-30", 1111.0),
+        ("BRUN", "Q1 2026", 10_960_000, date(2026, 8, 12), "Q1'25", "2025-03-31", 4.1),
+    ]
+    for t, fp, val, ad, prior, end, prior_m in cases:
+        monkeypatch.setattr(fundamentals, "get_fundamentals",
+                            _fake_gf([{"period": prior, "revenue_m": prior_m}], {prior: end}))
+        rec = await fundamentals.compute_yoy_from_prior_year(t, fp, val, alert_date=ad)
+        assert rec is not None and rec["prior_period"] == prior, t
+
+
+def test_guard_cannot_judge_means_pass_through():
+    from agents.market_intelligence.fundamentals import _prior_year_end_plausible
+    d = date(2026, 8, 27)
+    assert _prior_year_end_plausible(None, d) is True          # no end date recorded
+    assert _prior_year_end_plausible("2025-07-31", None) is True  # no alert date (other callers)
+    assert _prior_year_end_plausible("garbage", d) is True     # unparseable
+    assert _prior_year_end_plausible("2025-07-31", d) is True  # the real prior year (27-day lag)
+    assert _prior_year_end_plausible("2024-07-31", d) is False  # two years back — the DG shape
+    assert _prior_year_end_plausible("2026-07-31", d) is False  # the CURRENT quarter, not a prior year
+
+
+def test_get_fundamentals_records_period_ends_as_a_separate_map():
+    """Period ends ride a top-level map, not a key on each row — the row lists' consumers and
+    their exact-shape fixtures are untouched. Calls the REAL get_fundamentals() through a fake
+    yfinance Ticker (the same pattern as test_fundamentals.py's structure tests) instead of
+    grepping a source-text copy of fundamentals.py.
+
+    MUTATION TARGET: delete `result["quarterly_period_ends"] = quarterly_period_ends` (the
+    top-level assignment) -- the map would never reach the caller, and compute_yoy_from_prior_year's
+    DG date-sanity guard (which reads it) would silently see nothing to check, every quarter."""
+    from unittest.mock import MagicMock, patch
+
+    import pandas as pd
+
+    from agents.market_intelligence.fundamentals import get_fundamentals
+
+    quarters = [pd.Timestamp("2022-03-31"), pd.Timestamp("2022-06-30"),
+                pd.Timestamp("2022-09-30"), pd.Timestamp("2022-12-31"),
+                pd.Timestamp("2023-03-31"), pd.Timestamp("2023-06-30"),
+                pd.Timestamp("2023-09-30"), pd.Timestamp("2023-12-31")]
+    eps = [0.10, 0.12, 0.14, 0.16, 0.18, 0.22, 0.28, 0.36]
+    rev = [40e6, 45e6, 50e6, 55e6, 60e6, 72e6, 88e6, 110e6]
+    data = {
+        "Basic EPS": dict(zip(quarters, eps)),
+        "Total Revenue": dict(zip(quarters, rev)),
+        "Gross Profit": {q: r * 0.55 for q, r in zip(quarters, rev)},
+    }
+    df = pd.DataFrame(data).T
+
+    t = MagicMock()
+    t.quarterly_income_stmt = df
+    t.quarterly_financials = df
+    t.income_stmt = df
+    t.financials = df
+    t.info = {"grossMargins": 0.55}
+    t.calendar = None
+
+    with patch("yfinance.Ticker", return_value=t):
+        result = _run(get_fundamentals("AXTI"))
+
+    ends = result["quarterly_period_ends"]
+    assert isinstance(ends, dict) and ends, "must be a non-empty top-level map"
+    row_labels = {r["period"] for r in result["quarterly_revenue"]}
+    assert set(ends) == row_labels, "keyed by the same period labels the row lists use"
+    assert ends["Q4'23"] == "2023-12-31"  # real yfinance column -> real end date, not a stub
+    assert all("period_end" not in r for r in result["quarterly_revenue"]), \
+        "the end date must NOT ride as a per-row key -- consumers of the row shape stay untouched"
+
+
+# ── (c) SHIPPED 2026-09-04 (operator-approved): #321 recovery now runs BEFORE the carve-out ──
+#
+# Pre-fix, the 2026-05-28 beat+guidance carve-out ran FIRST and, when its heuristic fired, set
+# `_downgrade_reason = None` — which made the #321 block's own top-level condition (it also
+# checks `_downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"`) false, so the real
+# prior-year number was never even looked up. 15-name $0 replay (docs/setups/catalyst_rubric.md,
+# Known limitations #5): 9 keep on a real number, 4 (HGTY, PRGO, RPD, HRB) get downgraded on a
+# real number and all four fell the following week with no live entry attached, 2 (EROC, DG)
+# have no prior-year row and fall through to the carve-out unchanged either way.
+
+def test_recovery_block_precedes_the_carveout_block_in_source():
+    """Fails against the pre-2026-09-04 file (carve-out marker before the #321 marker), passes
+    once the #321 block is moved above it -- pins the entire fix, which is a pure reorder."""
+    # source-pin-ok: marker-order check on an inline reorder inside run_ep_scan — file docstring.
+    rescue_marker = _EP_SRC.find('# #321 LIVE rescue (operator 6/28')
+    carveout_marker = _EP_SRC.find("# Carve-out (2026-05-28, data-gated review")
+    assert rescue_marker != -1 and carveout_marker != -1
+    assert rescue_marker < carveout_marker, (
+        "the #321 recovery block must sit BEFORE the 2026-05-28 carve-out block")
+
+
+def test_carveout_condition_is_byte_identical_after_the_move():
+    """The sign-off note: 'the carve-out's own condition is unchanged.' Confirm the exact `if`
+    shape survived the reorder verbatim -- this is a move, not a rewrite."""
+    # source-pin-ok: byte-identical text check on an inline reorder — file docstring flags this
+    # as the closest-to-redundant of the eleven, kept rather than deleted (bar not cleared).
+    assert (
+        'if (\n'
+        '                _downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"\n'
+        '                and _should_apply_yoy_carveout(_extracted)\n'
+        '            ):'
+    ) in _EP_SRC
+
+
+def test_reorder_revert_is_a_dedicated_toggle_default_on():
+    """The reorder's OWN revert is `yoy_recovery_before_carveout`, default ON -- NOT the existing
+    `live_yoy_recovery` toggle. `live_yoy_recovery` gates the whole #321 mechanism (fetch +
+    write-back + in-window background fill); turning IT off would revert all the way to
+    pre-2026-06-28 (no #321 at all) and would ALSO silently drop the rescue for every
+    carve-out-INELIGIBLE name (the QFIN/ESLT/LION class -- no guidance signal, so the carve-out
+    never touches them and #321 alone rescues them). The dedicated toggle reaches into only the
+    ordering decision."""
+    # source-pin-ok: dedicated-toggle presence/default check inside run_ep_scan — file docstring.
+    assert 'get_runtime_toggle(\n                            "yoy_recovery_before_carveout", ' \
+           '"YOY_RECOVERY_BEFORE_CARVEOUT",\n                            default=True)' in _EP_SRC
+
+
+def test_reorder_toggle_off_falls_back_to_the_carveout_predicate_not_a_blanket_skip():
+    """OFF must add `not _should_apply_yoy_carveout(_extracted)` to the condition -- i.e. it
+    exempts carve-out-eligible names only, leaving carve-out-INELIGIBLE names still recovered.
+    A blanket `and toggle` (no OR-fallback) would be the `live_yoy_recovery`-style over-revert
+    this toggle exists to avoid."""
+    # source-pin-ok: OR-fallback shape check inside run_ep_scan — file docstring.
+    assert "or not _should_apply_yoy_carveout(_extracted))):" in _EP_SRC
+
+
+@pytest.mark.parametrize("toggle_on, carveout_eligible, expect_recovery_runs", [
+    (True, True, True),     # shipped default: recovery always gets first look
+    (True, False, True),
+    (False, True, False),   # OFF + eligible: skip recovery, let the (2nd) carve-out claim it
+    (False, False, True),   # OFF + ineligible: recovery still runs -- #321 unaffected for these
+])
+def test_ordering_toggle_semantics_match_the_revert_contract(toggle_on, carveout_eligible, expect_recovery_runs):
+    """Direct evaluation of the shipped boolean expression `toggle_on or not carveout_eligible`,
+    which is the OR-clause added to the #321 condition. Confirms OFF reproduces the pre-2026-09-04
+    order (carve-out decides its own eligible names) while leaving ineligible names untouched."""
+    assert (toggle_on or not carveout_eligible) == expect_recovery_runs
+
+
+# Real recorded values from the 2026-09-04 replay table (catalyst_rubric.md Known limitations
+# #5). These mirror the two blocks' own merge semantics using the REAL predicate function and
+# the REAL floor constant (`EARNINGS_REVENUE_GATE_MIN_YOY`, imported below) -- not a duplicate
+# implementation of the fetch/persist machinery (already pinned above), just the two `if`s that
+# decide which side wins.
+from agents.market_intelligence.constants import EARNINGS_REVENUE_GATE_MIN_YOY  # noqa: E402
+
+_REPLAY_CASES = [
+    # ticker, beat_pct, g_dir, g_conf, recovered_yoy_pct (None = no prior-year row)
+    ("HGTY", 13.0, "raised",     "high",   -6.5),   # flips: DOWNGRADE on the real number
+    ("PRGO",  1.0, "reaffirmed", "medium", -3.2),   # flips: DOWNGRADE on the real number
+    ("RPD",   1.3, "raised",     "high",   -1.5),   # flips: DOWNGRADE on the real number
+    ("HRB",   2.4, "raised",     "high",    3.1),   # flips: DOWNGRADE on the real number (<5 floor)
+    ("SCSC", 18.8, "initiated",  "medium", 17.2),   # keeps: real number clears the floor too
+    ("EROC", 46.0, "initiated",  "medium", None),   # unchanged: no prior-year row -> carve-out
+]
+
+
+def _carveout_eligible(beat, g_dir, g_conf):
+    from agents.market_intelligence.ep_detector import _should_apply_yoy_carveout
+    extracted = {"q_revenue_usd": {"beat_vs_est_pct": beat}, "guidance_change": {"direction": g_dir, "confidence": g_conf}}
+    return _should_apply_yoy_carveout(extracted)
+
+
+def _old_order_reason(beat, g_dir, g_conf, recovered_yoy):
+    """Carve-out first (pre-2026-09-04): fires unconditionally on the heuristic, and the
+    recovered number is never consulted once it does."""
+    if _carveout_eligible(beat, g_dir, g_conf):
+        return None  # kept on the heuristic -- recovered_yoy never looked up
+    if recovered_yoy is None:
+        return "q_rev_yoy_missing_no_prior_year_comparable"
+    if recovered_yoy >= EARNINGS_REVENUE_GATE_MIN_YOY:
+        return None
+    return f"q_rev_yoy_{recovered_yoy:.1f}pct_below_{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct_recovered"
+
+
+def _new_order_reason(beat, g_dir, g_conf, recovered_yoy):
+    """#321 recovery first (shipped 2026-09-04, ordering toggle ON): a real number, when
+    computable, drives the gate outright; the carve-out only ever sees names with nothing
+    recovered."""
+    if recovered_yoy is not None:
+        return None if recovered_yoy >= EARNINGS_REVENUE_GATE_MIN_YOY \
+            else f"q_rev_yoy_{recovered_yoy:.1f}pct_below_{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct_recovered"
+    return None if _carveout_eligible(beat, g_dir, g_conf) else "q_rev_yoy_missing_no_prior_year_comparable"
+
+
+def _toggle_order_reason(beat, g_dir, g_conf, recovered_yoy, toggle_on):
+    """The SHIPPED merge: recovery runs iff `toggle_on or not eligible` (the exact OR-clause
+    added to the #321 condition, pinned byte-for-byte in
+    test_reorder_toggle_off_falls_back_to_the_carveout_predicate_not_a_blanket_skip). When it
+    doesn't run, the carve-out (second, unchanged) decides alone -- reproducing the old order for
+    exactly the names the toggle is meant to revert."""
+    eligible = _carveout_eligible(beat, g_dir, g_conf)
+    recovery_runs = toggle_on or not eligible
+    if recovery_runs and recovered_yoy is not None:
+        return None if recovered_yoy >= EARNINGS_REVENUE_GATE_MIN_YOY \
+            else f"q_rev_yoy_{recovered_yoy:.1f}pct_below_{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct_recovered"
+    return None if eligible else "q_rev_yoy_missing_no_prior_year_comparable"
+
+
+@pytest.mark.parametrize("ticker, beat, g_dir, g_conf, recovered_yoy", _REPLAY_CASES)
+def test_ordering_toggle_off_reproduces_the_old_order_for_the_real_names(ticker, beat, g_dir, g_conf, recovered_yoy):
+    """Proves the revert claim: toggle OFF on the shipped merge equals the OLD (pre-2026-09-04,
+    buggy) order for every one of the replayed names, including the four flips."""
+    assert _toggle_order_reason(beat, g_dir, g_conf, recovered_yoy, toggle_on=False) == \
+        _old_order_reason(beat, g_dir, g_conf, recovered_yoy), ticker
+
+
+@pytest.mark.parametrize("ticker, beat, g_dir, g_conf, recovered_yoy", _REPLAY_CASES)
+def test_ordering_toggle_on_reproduces_the_new_order_for_the_real_names(ticker, beat, g_dir, g_conf, recovered_yoy):
+    """Toggle ON (the shipped default) on the shipped merge equals the NEW order for every one
+    of the replayed names."""
+    assert _toggle_order_reason(beat, g_dir, g_conf, recovered_yoy, toggle_on=True) == \
+        _new_order_reason(beat, g_dir, g_conf, recovered_yoy), ticker
+
+
+@pytest.mark.parametrize("ticker, beat, g_dir, g_conf, recovered_yoy", _REPLAY_CASES)
+def test_old_order_waves_the_four_flips_through_on_the_heuristic(ticker, beat, g_dir, g_conf, recovered_yoy):
+    """This is the bug being fixed: under the OLD order the four flip names all get kept
+    (downgrade cleared) despite a real, computable YoY that says otherwise."""
+    old = _old_order_reason(beat, g_dir, g_conf, recovered_yoy)
+    if ticker in ("HGTY", "PRGO", "RPD", "HRB"):
+        assert old is None, f"{ticker}: old order should have kept the grade on the heuristic (the bug)"
+    elif ticker in ("SCSC", "EROC"):
+        assert old is None, f"{ticker}: kept either way (SCSC clears the floor; EROC has no prior-year row but passes the carve-out heuristic)"
+
+
+@pytest.mark.parametrize("ticker, beat, g_dir, g_conf, recovered_yoy", _REPLAY_CASES)
+def test_new_order_lets_the_real_number_govern(ticker, beat, g_dir, g_conf, recovered_yoy):
+    """After the fix: the four flip names are downgraded on their real (below-floor) YoY; SCSC
+    still keeps its grade (real YoY clears the floor too); EROC is unchanged (no prior-year row,
+    falls through to the same carve-out as before)."""
+    new = _new_order_reason(beat, g_dir, g_conf, recovered_yoy)
+    if ticker in ("HGTY", "PRGO", "RPD", "HRB"):
+        assert new is not None and new.endswith(f"pct_below_{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct_recovered"), (
+            f"{ticker}: new order should downgrade on the real recovered YoY {recovered_yoy}")
+    elif ticker == "SCSC":
+        assert new is None, f"{ticker}: real YoY {recovered_yoy} clears the 5% floor"
+    elif ticker == "EROC":
+        # unchanged: no prior-year row to recover, so it falls through to the SAME carve-out
+        # heuristic as the old order -- and this case happens to satisfy it either way
+        assert new is None, f"{ticker}: unchanged -- no prior-year row, carve-out heuristic still applies"

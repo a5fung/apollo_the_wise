@@ -1,0 +1,535 @@
+Pager usage is off.
+===R1_metric_exact_theme_count_active
+metric_value
+152
+(1 row)
+===R1b_metric_vs_live_by_day
+dd|metric_7d_distinct_names|live_latest_row_active|same_day_rows
+2026-08-26|166|104|104
+2026-08-25|163|106|105
+2026-08-24|160|104|104
+2026-08-23|153|114|0
+2026-08-22|153|114|0
+2026-08-21|159|114|113
+2026-08-20|146|107|107
+2026-08-19|141|113|112
+2026-08-18|132|100|100
+2026-08-17|130|94|94
+2026-08-16|120|90|0
+2026-08-15|120|90|0
+2026-08-14|131|90|90
+2026-08-13|134|87|87
+2026-08-12|135|88|88
+2026-08-11|127|82|82
+2026-08-10|120|85|85
+2026-08-09|110|86|0
+2026-08-08|110|86|0
+2026-08-07|115|86|85
+2026-08-06|124|92|91
+(21 rows)
+===R2_oil_theme_membership_history
+theme_date|name|stage|n|members
+2026-08-26|Oil Refining & Marketing|Nascent|46|RRC,EQNR,CNQ,DEC,DK,OXY,WDS,KMI,CVI,VG,PARR,SM,OVV,CVX,EC,PBF,EOG,CRGY,DVN,VLO,APA,VIST,MTDR,DINO,CHRD,NOG,FANG,TALO,XOM,CRK,PSX,COP,BP,DTM,PR,MPC,WMB,SU,EQT,CVE,EXE,VET,LNG,AR,YPF,OKE
+2026-08-25|Oil Refining & Marketing|Nascent|24|OKE,AEP,DINO,WES,MPC,TRGP,PBF,ATO,ET,XEL,KNTK,VLO,CVI,EXC,EVRG,UGI,PAGP,OGS,CMS,FE,PSX,SO,SR,DK
+2026-08-24|Oil Refining & Marketing|Nascent|24|DINO,UGI,CMS,SO,PAGP,FE,SR,DK,AEP,TRGP,ATO,ET,MPC,CVI,PBF,WES,PSX,OKE,EVRG,OGS,EXC,XEL,VLO,KNTK
+2026-08-21|Oil Refining & Marketing|Nascent|7|MPC,PSX,VLO,DK,DINO,PBF,CVI
+(4 rows)
+===R3_energy_cluster_theme_names_20d
+theme_date|name|stage|n
+2026-08-26|AI-Driven Power & Grid Infrastructure Boom|Fading|2
+2026-08-26|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|15
+2026-08-26|Electrical Connectivity & Utility Network Hardware|Fading|3
+2026-08-26|Industrial Automation & Power Transmission Components|Fading|2
+2026-08-26|Natural Gas Pipeline & Midstream Transport Infrastructure|Retired|0
+2026-08-26|Offshore Energy Equipment & Services|Mainstream|8
+2026-08-26|Oilfield Services & Drilling Equipment|Retired|0
+2026-08-26|Oilfield Services & Equipment Providers|Nascent|4
+2026-08-26|Oil Refining & Marketing|Nascent|46
+2026-08-26|Power Semiconductor & Electrification Components|Retired|0
+2026-08-25|AI-Driven Power & Grid Infrastructure Boom|Fading|3
+2026-08-25|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|15
+2026-08-25|Electrical Connectivity & Utility Network Hardware|Fading|2
+2026-08-25|Industrial Automation & Power Transmission Components|Fading|2
+2026-08-25|Natural Gas Pipeline & Midstream Transport Infrastructure|Nascent|4
+2026-08-25|Offshore Energy Equipment & Services|Nascent|8
+2026-08-25|Oilfield Services & Drilling Equipment|Nascent|38
+2026-08-25|Oil Refining & Marketing|Nascent|24
+2026-08-25|Power Semiconductor & Electrification Components|Fading|2
+2026-08-25|U.S. Oil & Gas E&P Rotation|Retired|0
+2026-08-24|AI-Driven Power & Grid Infrastructure Boom|Fading|2
+2026-08-24|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|15
+2026-08-24|Diversified Regulated Electric & Gas Utilities|Retired|0
+2026-08-24|Electrical Connectivity & Utility Network Hardware|Fading|2
+2026-08-24|Industrial Automation & Power Transmission Components|Fading|2
+2026-08-24|Natural Gas Value Chain & LNG Export Infrastructure|Retired|0
+2026-08-24|Offshore Drilling Rig Contractors|Retired|0
+2026-08-24|Offshore Energy Equipment & Services|Nascent|8
+2026-08-24|Oil Refining & Marketing|Nascent|24
+2026-08-24|Power Semiconductor & Electrification Components|Fading|2
+2026-08-24|Regulated Natural Gas Distribution Utilities|Retired|0
+2026-08-24|U.S. Oil & Gas E&P Rotation|Accelerating|39
+2026-08-21|AI-Driven Power & Grid Infrastructure Boom|Fading|2
+2026-08-21|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|15
+2026-08-21|Diversified Regulated Electric & Gas Utilities|Nascent|7
+2026-08-21|Electrical Connectivity & Utility Network Hardware|Fading|2
+2026-08-21|Industrial Automation & Power Transmission Components|Nascent|3
+2026-08-21|International Integrated Oil & Gas Majors|Retired|0
+2026-08-21|Natural Gas Midstream & LNG Export Infrastructure|Retired|0
+2026-08-21|Natural Gas Value Chain & LNG Export Infrastructure|Nascent|7
+2026-08-21|Offshore Drilling Rig Contractors|Nascent|3
+2026-08-21|Offshore Energy Equipment & Services|Nascent|8
+2026-08-21|Oil Refining & Marketing|Nascent|7
+2026-08-21|Power Semiconductor & Electrification Components|Fading|3
+2026-08-21|Regulated Electric Utility Holding Companies|Retired|0
+2026-08-21|Regulated Natural Gas Distribution Utilities|Nascent|4
+2026-08-21|U.S. Oil & Gas E&P Rotation|Accelerating|44
+2026-08-20|AI Data-Center Power & Physical Infrastructure Buildout|Retired|0
+2026-08-20|AI-Driven Power & Grid Infrastructure Boom|Fading|2
+2026-08-20|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|15
+2026-08-20|Diversified Regulated Electric & Gas Utilities|Retired|0
+2026-08-20|Electrical Connectivity & Utility Network Hardware|Fading|2
+2026-08-20|Independent Oil Refiners|Retired|0
+2026-08-20|Independent Petroleum Refiners & Marketers|Retired|0
+2026-08-20|Industrial Automation & Power Transmission Components|Retired|0
+2026-08-20|International Integrated Oil & Gas Majors|Nascent|3
+2026-08-20|Natural Gas Midstream & LNG Export Infrastructure|Nascent|8
+2026-08-20|Natural Gas Midstream & LNG Infrastructure|Retired|0
+2026-08-20|Offshore Energy Equipment & Services|Nascent|8
+2026-08-20|Power Semiconductor & Electrification Components|Fading|2
+2026-08-20|Regulated Electric Utility Holding Companies|Fading|9
+2026-08-20|Regulated Natural Gas Distribution Utilities|Retired|0
+2026-08-20|U.S. Oil & Gas E&P Rotation|Nascent|66
+2026-08-19|AI Data-Center Power & Physical Infrastructure Buildout|Fading|3
+2026-08-19|AI-Driven Power & Grid Infrastructure Boom|Nascent|4
+2026-08-19|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|15
+2026-08-19|Diversified Regulated Electric & Gas Utilities|Nascent|7
+2026-08-19|Electrical Connectivity & Utility Network Hardware|Mainstream|2
+2026-08-19|Independent Oil Refiners|Nascent|36
+2026-08-19|Independent Petroleum Refiners & Marketers|Nascent|19
+2026-08-19|Industrial Automation & Power Transmission Components|Nascent|3
+2026-08-19|International Integrated Oil & Gas Majors|Retired|0
+2026-08-19|Natural Gas E&P Producers|Retired|0
+2026-08-19|Natural Gas Midstream & LNG Infrastructure|Nascent|3
+2026-08-19|Offshore Energy Equipment & Services|Nascent|6
+2026-08-19|Power Semiconductor & Electrification Components|Fading|2
+2026-08-19|Regulated Electric Utility Holding Companies|Fading|9
+2026-08-19|Regulated Natural Gas Distribution Utilities|Nascent|4
+2026-08-19|U.S. Oil & Gas E&P Rotation|Nascent|9
+2026-08-18|AI Data-Center Power & Physical Infrastructure Buildout|Fading|3
+2026-08-18|AI-Driven Power & Grid Infrastructure Boom|Nascent|4
+2026-08-18|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|15
+2026-08-18|Electrical Connectivity & Utility Network Hardware|Mainstream|2
+2026-08-18|Electrical Infrastructure Products & Systems Installation|Retired|0
+2026-08-18|Independent Oil Refiners|Nascent|42
+2026-08-18|Independent Petroleum Refiners & Marketers|Nascent|8
+2026-08-18|International Integrated Oil & Gas Majors|Nascent|3
+2026-08-18|Natural Gas E&P Producers|Nascent|5
+2026-08-18|Natural Gas Midstream & LNG Infrastructure|Retired|0
+2026-08-18|Oilfield Equipment & Contract Drilling Services|Retired|0
+2026-08-18|Power Generation & Grid Infrastructure for AI Data Centers|Retired|0
+2026-08-18|Power Semiconductor & Electrification Components|Nascent|2
+2026-08-18|Regulated Electric Utility Holding Companies|Fading|9
+2026-08-18|U.S. Oil & Gas E&P Rotation|Retired|0
+2026-08-17|AI Data-Center Power & Physical Infrastructure Buildout|Fading|3
+2026-08-17|AI-Driven Power & Grid Infrastructure Boom|Nascent|4
+2026-08-17|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|14
+2026-08-17|Electrical Connectivity & Utility Network Hardware|Mainstream|2
+2026-08-17|Electrical Infrastructure Products & Systems Installation|Fading|2
+2026-08-17|Independent Oil Refiners|Nascent|8
+2026-08-17|Natural Gas Midstream & LNG Infrastructure|Nascent|3
+2026-08-17|Oilfield Equipment & Contract Drilling Services|Nascent|9
+2026-08-17|Power Generation & Grid Infrastructure for AI Data Centers|Accelerating|2
+2026-08-17|Regulated Electric Utility Holding Companies|Fading|9
+2026-08-17|U.S. Oil & Gas E&P Rotation|Nascent|9
+2026-08-14|AI Data-Center Power & Physical Infrastructure Buildout|Nascent|2
+2026-08-14|AI-Driven Power & Grid Infrastructure Boom|Nascent|5
+2026-08-14|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|14
+2026-08-14|Electrical Connectivity & Utility Network Hardware|Mainstream|2
+2026-08-14|Electrical Infrastructure Products & Systems Installation|Fading|2
+2026-08-14|Independent Oil Refiners|Nascent|7
+2026-08-14|Oilfield Equipment & Contract Drilling Services|Nascent|17
+2026-08-14|Oilfield Services & Drilling Rigs|Retired|0
+2026-08-14|Power Generation & Grid Infrastructure for AI Data Centers|Nascent|3
+2026-08-14|Regulated Electric Utility Holding Companies|Fading|9
+2026-08-13|AI Data-Center Power & Physical Infrastructure Buildout|Nascent|3
+2026-08-13|AI-Driven Power & Grid Infrastructure Boom|Nascent|5
+2026-08-13|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9
+2026-08-13|Electrical Connectivity & Utility Network Hardware|Mainstream|2
+2026-08-13|Electrical Infrastructure Products & Systems Installation|Fading|2
+2026-08-13|Independent Oil Refiners|Nascent|6
+2026-08-13|Oilfield Equipment & Contract Drilling Services|Nascent|5
+2026-08-13|Oilfield Services & Drilling Rigs|Nascent|12
+2026-08-13|Power Generation & Grid Infrastructure for AI Data Centers|Retired|0
+2026-08-13|Regulated Electric Utility Holding Companies|Nascent|16
+2026-08-13|U.S. Oil & Gas E&P Recovery|Retired|0
+2026-08-12|AI Data-Center Power & Physical Infrastructure Buildout|Nascent|5
+2026-08-12|AI-Driven Power & Grid Infrastructure Boom|Nascent|4
+2026-08-12|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9
+2026-08-12|Electrical Connectivity & Utility Network Hardware|Mainstream|3
+2026-08-12|Electrical Infrastructure Products & Systems Installation|Fading|2
+2026-08-12|Oilfield Equipment & Contract Drilling Services|Nascent|4
+2026-08-12|Oilfield Services & Drilling Rigs|Nascent|12
+2026-08-12|Power Generation & Grid Infrastructure for AI Data Centers|Nascent|3
+2026-08-12|U.S. Oil & Gas E&P Recovery|Nascent|5
+2026-08-11|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|7
+2026-08-11|Electrical Connectivity & Utility Network Hardware|Mainstream|2
+2026-08-11|Electrical Infrastructure Products & Systems Installation|Fading|2
+2026-08-11|Oilfield Equipment & Contract Drilling Services|Nascent|9
+2026-08-11|Oilfield Services & Drilling Rigs|Nascent|30
+2026-08-11|Regulated Water Utility Infrastructure|Retired|0
+2026-08-11|Smart Utility Metering & Water Infrastructure Hardware|Retired|0
+2026-08-11|U.S. Oil & Gas E&P Recovery|Retired|0
+2026-08-11|U.S. Petroleum Refining & Downstream Processing|Retired|0
+2026-08-10|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|3
+2026-08-10|Electrical Connectivity & Utility Network Hardware|Nascent|2
+2026-08-10|Electrical Infrastructure Products & Systems Installation|Mainstream|2
+2026-08-10|Oilfield Services & Drilling Rigs|Nascent|3
+2026-08-10|Regulated Water Utility Infrastructure|Fading|4
+2026-08-10|Smart Utility Metering & Water Infrastructure Hardware|Fading|2
+2026-08-10|U.S. Oil & Gas E&P Recovery|Nascent|5
+2026-08-10|U.S. Petroleum Refining & Downstream Processing|Mainstream|6
+2026-08-07|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|3
+2026-08-07|Electrical Connectivity & Utility Network Hardware|Nascent|2
+2026-08-07|Electrical Infrastructure Products & Systems Installation|Nascent|2
+2026-08-07|Regulated Water Utility Infrastructure|Fading|4
+2026-08-07|Smart Utility Metering & Water Infrastructure Hardware|Fading|2
+2026-08-07|U.S. Petroleum Refining & Downstream Processing|Fading|6
+2026-08-06|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|3
+2026-08-06|Electrical Connectivity & Utility Network Hardware|Nascent|2
+2026-08-06|Electrical Infrastructure Products & Systems Installation|Nascent|2
+2026-08-06|Regulated Water Utility Infrastructure|Fading|4
+2026-08-06|Smart Utility Metering & Water Infrastructure Hardware|Fading|2
+2026-08-06|U.S. Petroleum Refining & Downstream Processing|Fading|6
+(164 rows)
+===R4_stripped17_still_in_today_oil_theme
+===R5_cooldowns_by_dow_45d
+ERROR:  operator does not exist: text = text[]
+LINE 6: SELECT s.ticker, (s.ticker = ANY((SELECT tickers FROM t)))::...
+                                   ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+dow|d|n
+Wed|2026-08-26|24
+Tue|2026-08-25|1
+Mon|2026-08-24|5
+Fri|2026-08-21|13
+Wed|2026-08-19|5
+Tue|2026-08-18|2
+Mon|2026-08-17|10
+Fri|2026-08-14|1
+Wed|2026-08-12|9
+Tue|2026-08-11|2
+Mon|2026-08-10|1
+Fri|2026-08-07|1
+Thu|2026-08-06|1
+Wed|2026-08-05|13
+Tue|2026-08-04|1
+Mon|2026-08-03|6
+Fri|2026-07-31|8
+Wed|2026-07-29|8
+Tue|2026-07-28|3
+Mon|2026-07-27|11
+Fri|2026-07-24|2
+Thu|2026-07-23|1
+Wed|2026-07-22|1
+Tue|2026-07-21|1
+Mon|2026-07-20|3
+Fri|2026-07-17|1
+Wed|2026-07-15|3
+(27 rows)
+===R6_ticker_pruned_ever_in_audit
+event_type|n|first|last
+theme_composition_churn|12|2026-08-13|2026-08-26
+theme_constituent_churn|81|2026-05-15|2026-08-26
+(2 rows)
+===R7_constituent_churn_detail_8d
+t_et|event_type|summary|detail
+08-26 17:15|theme_composition_churn|Composition churn (on-demand): Gold & Precious Metals Miners Rotation: +AEM +ARIS +AU +B +CGAU +EGO +EQX +FNV +GFI +HMY +IAG +KGC +NEM +RGLD +SBSW +SSRM -NG · Hospital & Behavioral Health Facility Procedure Volume Recovery: +MD · B2B Digital Financial Infrastructure & Payment Rails Modernization:  -|
+08-26 17:11|theme_constituent_churn|18 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), ROK↔Industrial Automatio(2), TKR↔Industrial Automatio(2), CMCO↔Industrial Equipment(2), HRI↔Industrial Equipment(2)|European Bank Stocks | BBVA | reentries=2
+Industrial Automation & Power Transmission Components | ROK | reentries=2
+Industrial Automation & Power Transmission Components | TKR | reentries=2
+Industrial Equipment Rental & Material Handling | CMCO | reentries=2
+Industrial Equipment Rental & Material Handling | HRI | reentries=2
+Industrial Equipment Rental & Material Handling | SUNB | reentries=2
+Industrial Lifting, Material Handling & Equipment Rental | CMCO | reentries=2
+Industrial Lifting, Material Handling & Equipment Rental | HRI | reentries=2
+Industrial Lifting, Material Handling & Equipment
+08-26 17:10|theme_cap_drop|Cap: 1 theme(s) dropped below PRUNE_MIN_TICKERS=2|dropped 'Industrial Equipment Rental & Material Handling' size 0->0
+08-26 17:10|theme_sector_cap_dropped|'mRNA & Antiviral Vaccine Biotech Rebound' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=MRNA,BNTX,NVAX,VIR
+08-25 17:13|theme_composition_churn|Composition churn (on-demand): Copper Mining & Production: +RIO · Gold & Precious Metals Miners Rotation: +MUX · B2B Digital Financial Infrastructure & Payment Rails Modernization: +DLO · Video & Streaming Content Distribution Rebound: +FUBO · Medical Device Mean-Reversion & Rotation Recovery: +TMDX|
+08-25 17:09|theme_constituent_churn|15 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), ROK↔Industrial Automatio(2), TKR↔Industrial Automatio(2), CMCO↔Industrial Equipment(2), HRI↔Industrial Equipment(2)|European Bank Stocks | BBVA | reentries=2
+Industrial Automation & Power Transmission Components | ROK | reentries=2
+Industrial Automation & Power Transmission Components | TKR | reentries=2
+Industrial Equipment Rental & Material Handling | CMCO | reentries=2
+Industrial Equipment Rental & Material Handling | HRI | reentries=2
+Industrial Equipment Rental & Material Handling | SUNB | reentries=2
+U.S. Oil & Gas E&P Rotation | CHRD | reentries=2
+U.S. Oil & Gas E&P Rotation | CRGY | reentries=2
+U.S. Oil & Gas E&P Rotation | DVN | reentries=2
+U.S. Oil & Gas E&P Rotation | MTDR | reentries=2
+U.S. Oil 
+08-25 17:08|theme_cap_drop|Cap: 1 theme(s) dropped below PRUNE_MIN_TICKERS=2|dropped 'Business Development Companies & Specialty Direct Lending' size 1->1
+08-25 17:08|theme_sector_cap_dropped|'mRNA Vaccine & Therapeutics Innovation' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=NVAX,MRNA,BNTX,MRVI,MRK
+08-24 17:16|theme_composition_churn|Composition churn (on-demand): Enterprise Unstructured Data Storage Infrastructure:  -P · IT Consulting & Business Process Outsourcing Services:  -G · Life Science Tools & Analytical Instruments: +A +CRL +RVTY +TECH +TMO +WAT · B2B Digital Financial Infrastructure & Payment Rails Modernization: +ALK|
+08-24 17:11|theme_constituent_churn|318 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(3), ENTG↔AI Chip & Interconne(2), LRCX↔AI Chip & Interconne(2), SITM↔AI Chip & Interconne(2), SKHY↔AI Chip & Interconne(2)|European Bank Stocks | BBVA | reentries=3
+AI Chip & Interconnect Supply Chain Enablement | ENTG | reentries=2
+AI Chip & Interconnect Supply Chain Enablement | LRCX | reentries=2
+AI Chip & Interconnect Supply Chain Enablement | SITM | reentries=2
+AI Chip & Interconnect Supply Chain Enablement | SKHY | reentries=2
+AI-Driven Power & Grid Infrastructure Boom | ETN | reentries=2
+AI-Driven Power & Grid Infrastructure Boom | PWR | reentries=2
+AI-Powered Enterprise Analytics & Intelligent Workflow SaaS | AI | reentries=2
+AI-Powered Enterprise Analytics & Intelligent Workflow SaaS | AMPL | reentries=2
+
+08-24 17:10|theme_cap_drop|Cap: 7 theme(s) dropped below PRUNE_MIN_TICKERS=2|dropped 'Liquid Biopsy & Early Cancer Detection Diagnostics' size 0->0
+dropped 'Bioprocessing & Cell Culture Technology' size 0->0
+dropped 'Core Banking & Credit Union Software Platforms' size 0->0
+dropped 'Business Development Companies & Direct Lending' size 0->0
+dropped 'Custody & Trust Banks' size 0->0
+dropped 'Semiconductor Wafer Fab Equipment (Deposition & Lithography)' size 0->0
+dropped 'Industrial Equipment Rental & Material Handling' size 0->0
+08-24 17:10|theme_sector_cap_dropped|'Precision Gene Editing & Genetic Medicine Rotation' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=VRTX,CRSP,NTLA,BEAM
+08-24 17:10|theme_sector_cap_dropped|'mRNA Vaccine & Therapeutics Platforms' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=BNTX,MRNA
+08-21 17:18|theme_composition_churn|Composition churn (on-demand): Commercial, Office & Home Furniture Retailers and Manufacturers:  -BOBS · U.S. Oil & Gas E&P Rotation: +APA +CHRD +CNQ +COP +CRGY +CVE +CVX +DVN +EC +EOG +EQNR +ET +FANG +HP +KNTK +LNG +MTDR +NESR +NOG +OVV +OXY +PR +PTEN +SM +SU +TALO +TRGP +VET +VG +WES +WHD +XOM · E|
+08-21 17:12|theme_constituent_churn|6 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), CMCO↔Industrial Equipment(2), HRI↔Industrial Equipment(2), SUNB↔Industrial Equipment(2), EROC↔Power Generation & G(2)|European Bank Stocks | BBVA | reentries=2
+Industrial Equipment Rental & Material Handling | CMCO | reentries=2
+Industrial Equipment Rental & Material Handling | HRI | reentries=2
+Industrial Equipment Rental & Material Handling | SUNB | reentries=2
+Power Generation & Grid Infrastructure for AI Data Centers | EROC | reentries=2
+Power Generation & Grid Infrastructure for AI Data Centers | GEV | reentries=2
+08-21 17:11|theme_cap_drop|Cap: 6 theme(s) dropped below PRUNE_MIN_TICKERS=2|dropped 'Data & Analytics-as-a-Service Providers' size 1->1
+dropped 'South African Gold & PGM Mining Producers' size 0->0
+dropped 'Natural Gas Midstream & LNG Export Infrastructure' size 1->1
+dropped 'Business Development Companies & Specialty Direct Lending' size 0->0
+dropped 'Semiconductor Wafer Fab Capital Equipment' size 0->0
+dropped 'Semiconductor Deposition & Etch Equipment Makers' size 0->0
+08-21 17:11|theme_sector_cap_dropped|'Gene Editing & Precision Genetic Medicine Biotech Turnaround' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=CRSP,BEAM
+08-20 17:17|theme_composition_churn|Composition churn (on-demand): Copper Mining & Production: +BHP · Corporate Spend, Expense Management & Financial Operations Software: +VERX · Inflammatory Disease & Immunology Biologics: +AUPH +PHVS · IT Consulting & Business Process Outsourcing Services: +G · B2B Digital Financial Infrastructure &|
+08-20 17:11|theme_constituent_churn|3 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), EROC↔Power Generation & G(2), GEV↔Power Generation & G(2)|European Bank Stocks | BBVA | reentries=2
+Power Generation & Grid Infrastructure for AI Data Centers | EROC | reentries=2
+Power Generation & Grid Infrastructure for AI Data Centers | GEV | reentries=2
+08-20 17:11|theme_cap_drop|Cap: 3 theme(s) dropped below PRUNE_MIN_TICKERS=2|dropped 'Natural Gas Midstream & LNG Infrastructure' size 0->0
+dropped 'Industrial Equipment Rental & Material Handling' size 0->0
+dropped 'Rare Earth Elements & Critical Minerals Processing' size 0->0
+08-20 17:11|theme_sector_cap_dropped|'CRISPR Gene Editing Therapeutics' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=
+08-20 17:11|theme_sector_cap_dropped|'CRISPR & Gene-Editing Therapeutics' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=BEAM,CRSP,NTLA
+08-20 17:11|theme_sector_cap_dropped|'Emerging Oncology Therapeutics' dropped by sector cap (group 'biotech', family 'oncology' slot taken)|tickers=RVMD
+08-19 17:22|theme_composition_churn|Composition churn (on-demand): Genomics & DNA Sequencing Tools: +QGEN · Industrial Construction Execution & On-Site Supply Chain: +FLR · AI Chip & Interconnect Supply Chain Enablement: +AMBA +AMD +AXTI +MRVL +MU +NVDA +SITM +SKHY +SMTC · Inflammatory Disease & Immunology Biologics: +CLDX · Medical D|
+08-19 17:21|theme_composition_churn|Composition churn (on-demand): Genomics & DNA Sequencing Tools: +QGEN · Industrial Construction Execution & On-Site Supply Chain: +FLR · AI Chip & Interconnect Supply Chain Enablement: +AMBA +AMD +AXTI +MRVL +MU +NVDA +SITM +SKHY +SMTC · Inflammatory Disease & Immunology Biologics: +CLDX · Medical D|
+08-19 17:17|theme_constituent_churn|3 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), EROC↔Power Generation & G(2), GEV↔Power Generation & G(2)|European Bank Stocks | BBVA | reentries=2
+Power Generation & Grid Infrastructure for AI Data Centers | EROC | reentries=2
+Power Generation & Grid Infrastructure for AI Data Centers | GEV | reentries=2
+08-19 17:16|theme_cap_drop|Cap: 3 theme(s) dropped below PRUNE_MIN_TICKERS=2|dropped 'Data & Analytics-as-a-Service Providers' size 1->1
+dropped 'South African Gold & PGM Mining Producers' size 0->0
+dropped 'Americas-Focused Mid-Tier Gold & Silver Producers' size 0->0
+08-19 17:16|theme_sector_cap_dropped|'Gene Editing Therapeutics' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=BEAM,CRSP,NTLA
+08-19 17:16|theme_sector_cap_dropped|'Ophthalmology Drug Developers' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=OCUL,TARS
+08-19 17:16|theme_sector_cap_dropped|'Rare disease/specialty pharma earnings beats' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=OMER,ETON,ZVRA,CRMD,INSM,KNSA,RYTM,BMRN
+08-19 17:16|theme_constituent_churn|3 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), EROC↔Power Generation & G(2), GEV↔Power Generation & G(2)|European Bank Stocks | BBVA | reentries=2
+Power Generation & Grid Infrastructure for AI Data Centers | EROC | reentries=2
+Power Generation & Grid Infrastructure for AI Data Centers | GEV | reentries=2
+08-19 17:14|theme_cap_drop|Cap: 3 theme(s) dropped below PRUNE_MIN_TICKERS=2|dropped 'Data & Analytics-as-a-Service Providers' size 1->1
+dropped 'South African Gold & PGM Mining Producers' size 0->0
+dropped 'Americas-Focused Mid-Tier Gold & Silver Producers' size 0->0
+08-19 17:14|theme_sector_cap_dropped|'Ophthalmology-Focused Biopharma' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=OCUL,TARS
+08-19 17:14|theme_sector_cap_dropped|'Rare disease/specialty pharma earnings beats' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)|tickers=ETON,CRMD,RYTM,ZVRA,KNSA,INSM,OMER,TVTX,BMRN,SRRK
+(34 rows)
+===R8_r4_bonus_set_membership_of_stripped
+ticker|had_r4_bonus_yday|has_r4_bonus_today
+AEP|f|f
+ASST|f|t
+ATO|f|f
+BSP|t|f
+CMS|f|f
+ET|f|f
+EVRG|f|f
+EXC|f|f
+FE|f|f
+FLYW|t|f
+KNTK|f|f
+MMED|f|f
+NN|t|f
+OGS|f|f
+OKE|f|f
+PAGP|f|f
+PSKY|t|f
+SO|f|f
+SR|f|f
+TRGP|f|f
+UGI|f|f
+WES|f|f
+WK|t|f
+XEL|f|f
+(24 rows)
+===R9_ep_alerts_last_10d
+alert_date|ticker|score_tier|score|in_active_theme|gated_tier|src
+2026-08-21|UUUU|HIGH|51.6|f|-|live
+2026-08-20|BULL|HIGH|100.8|f|-|live
+2026-08-20|RARE|HIGH|72.0|f|-|live
+2026-08-20|SCSC|none|96.0|f|-|live
+2026-08-19|MRNA|HIGH|115.2|f|-|live
+2026-08-19|MRVL|HIGH|69.1|t|-|live
+2026-08-19|TEM|none|51.6|f|-|live
+2026-08-19|TWST|HIGH|84.0|t|-|live
+2026-08-18|AMLX|HIGH|96.0|f|-|live
+2026-08-17|ARGX|HIGH|86.4|f|-|live
+2026-08-17|CBRS|none|60.0|f|-|live
+(11 rows)
+===R10_theme_engine_run_timeline_today
+t_et|event_type|summary
+17:00:33|description_generated|Generated 3 new stock descriptions
+17:00:33|theme_load_state|theme_load_state n=106 stages={'Nascent': 29, 'Mainstream': 39, 'Fading': 31, 'Accelerating': 7} dates=2 DUPS_AT_LOAD=1
+17:00:41|ticker_revalidated_out|ASST removed from 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' by validation
+17:00:41|validation_cooldown_triggered|ASST → 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' cooldown 14d (removal #1)
+17:00:42|ticker_revalidated_out|FLYW removed from 'B2B Digital Financial Infrastructure & Payment Rails Modernization' by validation
+17:00:42|validation_cooldown_triggered|FLYW → 'B2B Digital Financial Infrastructure & Payment Rails Modernization' cooldown 14d (removal #1)
+17:00:44|theme_stage_flip_held|Altcoin & Diversified Digital-Asset Infrastructure Second Wave: Nascent→Fading held; y_Δ=+0.0
+17:00:53|theme_breadth_fade|Canadian Big Banks: breadth 20%, members 5
+17:01:09|ticker_revalidated_out|WK removed from 'Corporate Spend, Expense Management & Financial Operations Software' by validation
+17:01:09|validation_cooldown_triggered|WK → 'Corporate Spend, Expense Management & Financial Operations Software' cooldown 14d (removal #1)
+17:01:20|theme_breadth_fade|Defense Electronics & Aerospace Subsystem Suppliers: breadth 17%, members 6
+17:01:24|ticker_revalidated_out|MMED removed from 'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)' by validation
+17:01:24|validation_cooldown_triggered|MMED → 'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)' cooldown 14d (removal #1)
+17:02:07|theme_low_quality_description|Theme 'Life Science Tools & Analytical Instruments': capped Mainstream → Nascent (ticker_concat:A_AVTR)
+17:02:16|theme_breadth_fade|Network Security & Zero-Trust Edge: breadth 20%, members 15
+17:02:27|theme_low_quality_description|Theme 'Precious Metals Royalty & Streaming Companies': capped Mainstream → Nascent (ticker_concat:FNV_OR)
+17:02:49|theme_low_quality_description|Theme 'Software Development & DevOps Collaboration Platforms': capped Mainstream → Nascent (ticker_concat:FROG_GTLB)
+17:02:50|ticker_revalidated_out|PSKY removed from 'Video & Streaming Content Distribution Rebound' by validation
+17:02:50|validation_cooldown_triggered|PSKY → 'Video & Streaming Content Distribution Rebound' cooldown 14d (removal #1)
+17:02:54|ticker_revalidated_out|NN removed from 'AI Chip & Interconnect Supply Chain Enablement' by validation
+17:02:54|validation_cooldown_triggered|NN → 'AI Chip & Interconnect Supply Chain Enablement' cooldown 14d (removal #1)
+17:03:23|theme_breadth_fade|Emerging Defense & Aerospace Hardware Suppliers: breadth 17%, members 6
+17:03:24|ticker_revalidated_out|BSP removed from 'Mobile App Platform & Advertising Monetization' by validation
+17:03:24|validation_cooldown_triggered|BSP → 'Mobile App Platform & Advertising Monetization' cooldown 14d (removal #1)
+17:03:24|theme_dissolved_flagged_pair|Arm A dissolve: 'Mobile App Platform & Advertising Monetization' — validation flagged BSP at 2 members
+17:03:51|validation_mass_removal_name_suspect|'Oil Refining & Marketing': validation flagged 17/24 members — name likely narrower than the cluster (#214)
+17:03:51|ticker_revalidated_out|CMS removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|CMS → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|ATO removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|ATO → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|WES removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|WES → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|AEP removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|AEP → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|ET removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|ET → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|EXC removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|EXC → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|EVRG removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|EVRG → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|FE removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|FE → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|SO removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|SO → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|OGS removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|OGS → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|UGI removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|UGI → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|KNTK removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|KNTK → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|SR removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|SR → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|XEL removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|XEL → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|TRGP removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|TRGP → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|PAGP removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|PAGP → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|OKE removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|OKE → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:54|theme_carryforward_filter_stripped|Altcoin & Diversified Digital-Asset Infrastructure Second Wave: stripped 1 ticker(s) (sector_outlier)
+17:04:08|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 1/12, advisor_calls=0)
+17:04:25|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 2/12, advisor_calls=0)
+17:04:49|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 3/12, advisor_calls=0)
+17:05:11|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 4/12, advisor_calls=0)
+17:05:22|assignment_llm_proposed|Sonnet proposed 0 assignment(s) (batch 5/12, advisor_calls=0)
+17:05:41|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 6/12, advisor_calls=0)
+17:06:00|assignment_llm_proposed|Sonnet proposed 0 assignment(s) (batch 7/12, advisor_calls=0)
+17:06:18|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 8/12, advisor_calls=0)
+17:06:41|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 9/12, advisor_calls=0)
+17:07:02|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 10/12, advisor_calls=0)
+17:07:21|assignment_llm_proposed|Sonnet proposed 2 assignment(s) (batch 11/12, advisor_calls=0)
+17:07:30|assignment_llm_proposed|Sonnet proposed 2 assignment(s) (batch 12/12, advisor_calls=0)
+17:07:30|assignment_skipped_sector_outlier|MNTN (Technology) → 'Programmatic Digital Advertising Platforms' (members: ['Communication Services'])
+17:07:30|assignment_skipped_sector_outlier|GPN (Industrials) → 'B2B Digital Financial Infrastructure & Payment Rails Modernization' (members: ['Technology'])
+17:07:30|assignment_skipped_sector_outlier|BTU (Energy) → 'Metallurgical & Thermal Coal Mining Rebound' (members: ['Basic Materials'])
+17:07:30|assignment_skipped_sector_outlier|MSTR (Technology) → 'Corporate Digital Asset Treasury Vehicles' (members: ['Financial Services'])
+17:07:30|assignment_skipped_sector_outlier|NBIS (Communication Services) → 'Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers' (members: ['Technology'])
+17:08:35|theme_discovery_llm_call|stop=tool_use out_tok=3705 forced=False tool_uses=1 iter=1
+17:08:57|theme_discovery_llm_call|stop=tool_use out_tok=1765 forced=False tool_uses=1 iter=1
+17:09:20|theme_discovery_llm_call|stop=tool_use out_tok=2029 forced=False tool_uses=1 iter=1
+17:09:50|theme_discovery_llm_call|stop=tool_use out_tok=2928 forced=False tool_uses=1 iter=1
+17:10:10|theme_discovery_llm_call|stop=tool_use out_tok=1965 forced=False tool_uses=1 iter=1
+17:10:17|theme_birth_gate|2026-08-26 [lane1/observe] birth-gate: 1 birth / 0 join / 1 awaiting-2nd-sighting / 1 held-floor · ⚠ 15 previously-held later PASSED
+17:10:25|theme_engine_funnel|births: uncovered=10 v/t/e=14/1/30 discovery=ON → LLM=4 → survived=4 | retired=3
+17:10:25|theme_discovered|New theme: Coal Mining Relative Strength Breakout (2 stocks)
+17:10:25|theme_discovered|New theme: mRNA & Antiviral Vaccine Biotech Rebound (4 stocks)
+17:10:25|theme_discovered|New theme: Bitcoin Miner to AI/HPC Data Center Conversion (6 stocks)
+17:10:25|theme_discovered|New theme: Quantum Computing Pure-Plays (4 stocks)
+17:10:25|theme_retired|Retired: Power Semiconductor & Electrification Components
+17:10:25|theme_retired|Retired: Mobile App Platform & Advertising Monetization
+17:10:25|theme_retired|Retired: Electronics Manufacturing & Semiconductor Packaging Supply Chain
+17:10:25|theme_pass1_protect_strip|Pass1: stripped 3 ticker(s) from 'Industrial Equipment Rental & Material Handling' (protect 'Industrial Lifting, Material Handling & Equipment Rental')
+17:10:25|theme_pass1_5_skip|Pass1.5: 'Robotic Process Automation & Low-Code Workflow Execution' eligible but no target passed (1 candidate(s) skipped)
+17:10:25|theme_pass1_5_skip|Pass1.5: 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' eligible but no target passed (2 candidate(s) skipped)
+17:10:25|theme_pass1_5_absorption|Pass1.5: 'Crypto-Native Exchange & Treasury Platforms' -> 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave'
+17:10:25|theme_pass1_5_skip|Pass1.5: 'Bitcoin Mining & Digital Asset Infrastructure' eligible but no target passed (1 candidate(s) skipped)
+17:10:25|theme_pass1_5_absorption|Pass1.5: 'Bitcoin Mining & HPC Compute Pivot Operators' -> 'Bitcoin Mining & Digital Asset Infrastructure'
+17:10:25|theme_sector_cap_dropped|'mRNA & Antiviral Vaccine Biotech Rebound' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)
+17:10:25|theme_score_ties|9 score-tie group(s) after stage 'after_merge_1'
+17:10:25|theme_empty_tickers|1 theme(s) with empty ticker list after 'after_merge_1'
+17:10:25|theme_cap_drop|Cap: 1 theme(s) dropped below PRUNE_MIN_TICKERS=2
+17:10:25|theme_score_ties|9 score-tie group(s) after stage 'after_cap_1'
+17:10:34|theme_split|Split: 'Oilfield Services & Equipment Providers' from 'Oilfield Services & Drilling Equipment' (4 stocks)
+17:10:38|theme_score_ties|10 score-tie group(s) after stage 'after_split'
+17:10:38|theme_pass1_5_skip|Pass1.5: 'Robotic Process Automation & Low-Code Workflow Execution' eligible but no target passed (1 candidate(s) skipped)
+17:10:38|theme_score_ties|9 score-tie group(s) after stage 'after_merge_2'
+17:10:38|theme_orphan_sub|1 orphan sub-theme(s) after stage 'after_merge_2'
+17:10:38|theme_score_ties|9 score-tie group(s) after stage 'after_cap_2'
+17:10:38|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+17:10:42|theme_merge_distinct|Arm B: 'Defense Intelligence & Cybersecurity IT Contractors' vs 'Defense Electronics & Aerospace Subsystem Suppliers' DISTINCT — 30d pair cooldown
+17:10:48|theme_merge_distinct|Arm B: 'Property & Casualty Insurance Underwriters' vs 'Life Insurance & Annuity Providers' DISTINCT — 30d pair cooldown
+17:10:53|theme_thesis_merged|Arm B: 'Quantum Computing Pure-Plays' merged into 'Quantum Computing Pure-Plays (Federal Funding Cycle)' (4 members)
+17:11:02|theme_thesis_merged|Arm B: 'AI Data Center Component & Connectivity Semiconductor Suppliers' merged into 'AI Chip & Interconnect Supply Chain Enablement' (14 members)
+17:11:06|theme_merge_distinct|Arm B: 'Uranium Mining & Nuclear Fuel Cycle Producers' vs 'Offshore Energy Equipment & Services' DISTINCT — 30d pair cooldown
+17:11:11|theme_merge_distinct|Arm B: 'Coal Mining Relative Strength Breakout' vs 'Offshore Energy Equipment & Services' DISTINCT — 30d pair cooldown
+17:11:16|theme_merge_distinct|Arm B: 'Business Development Companies & Private Credit Lenders' vs 'Private Equity & Alternative Asset Management Platforms' DISTINCT — 30d pair cooldown
+17:11:20|theme_merge_distinct|Arm B: 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' vs 'Private Equity & Alternative Asset Management Platforms' DISTINCT — 30d pair cooldown
+17:11:20|theme_auto_retired|Auto-retired 8 theme(s) dropped during merge passes (3 with successor pointer)
+17:11:24|theme_ecosystem_assigned|'Oilfield Services & Equipment Providers' → E-ENER (haiku)
+17:11:29|theme_ecosystem_assigned|'Coal Mining Relative Strength Breakout' → E-ENER (haiku)
+17:11:33|theme_ecosystem_assigned|'Quantum Computing Pure-Plays (Federal Funding Cycle)' → E-QUANTUM (haiku)
+17:11:39|theme_ecosystem_assigned|'Bitcoin Miner to AI/HPC Data Center Conversion' → E-AIINFRA (haiku)
+17:11:39|theme_constituent_churn|18 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), ROK↔Industrial Automatio(2), TKR↔Industrial Automatio(2), CMCO↔Industrial Equipment(2), HRI↔Industrial Equipmen
+17:12:37|theme_discovery_llm_call|stop=tool_use out_tok=5311 forced=False tool_uses=1 iter=1
+17:13:32|theme_discovery_llm_call|stop=tool_use out_tok=5179 forced=False tool_uses=1 iter=1
+17:14:04|theme_discovery_llm_call|stop=tool_use out_tok=2922 forced=False tool_uses=1 iter=1
+17:14:47|theme_discovery_llm_call|stop=tool_use out_tok=4110 forced=False tool_uses=1 iter=1
+17:15:11|theme_discovery_llm_call|stop=tool_use out_tok=2187 forced=False tool_uses=1 iter=1
+17:15:11|theme_discovery_shadow_ran|Theme discovery shadow: 10 candidate themes written
+17:15:11|theme_renamed_for_continuity|2 theme(s) renamed to prior canonical names
+17:15:11|shadow_themes_promoted|Graduated 4 shadow cohort(s) into live mi_themes (3 new)
+17:15:11|theme_birth_gate|2026-08-26 [promote/observe] birth-gate: 1 birth / 7 join / 0 awaiting-2nd-sighting / 1 held-floor · ⚠ 15 previously-held later PASSED
+17:15:14|theme_ecosystem_assigned|'African Gold & Silver Mining Operators' → E-METAL (haiku)
+17:15:18|theme_ecosystem_assigned|'Liquid Biopsy & Multi-Cancer Early Detection Diagnostics' → E-MEDTECH (haiku)
+17:15:22|theme_ecosystem_assigned|'mRNA & Next-Gen Vaccine Platform Resurgence' → E-BIO (haiku)
+17:15:37|theme_composition_churn|Composition churn (on-demand): Gold & Precious Metals Miners Rotation: +AEM +ARIS +AU +B +CGAU +EGO +EQX +FNV +GFI +HMY +IAG +KGC +NEM +RGLD +SBSW +SSRM -NG · Hospital & Behavioral Health Facility Pro
+17:30:10|theme_quality_clean|clean: 0 retirement flag(s), 0 prune flag(s)
+18:05:35|theme_synthesis_run|62 candidates → 2 proposed → 1 kept
+(139 rows)
+===R11_theme_funnel_8d
+d|summary
+2026-08-26|births: uncovered=10 v/t/e=14/1/30 discovery=ON → LLM=4 → survived=4 | retired=3
+2026-08-25|births: uncovered=8 v/t/e=8/6/31 discovery=ON → LLM=3 → survived=3 | retired=4
+2026-08-24|births: uncovered=11 v/t/e=13/2/29 discovery=ON → LLM=3 → survived=3 | retired=3
+2026-08-21|births: uncovered=9 v/t/e=12/4/31 discovery=ON → LLM=5 → survived=5 | retired=4
+2026-08-20|births: uncovered=10 v/t/e=10/5/30 discovery=ON → LLM=4 → survived=4 | retired=5
+2026-08-19|births: uncovered=7 v/t/e=17/6/33 discovery=ON → LLM=7 → survived=7 | retired=1
+2026-08-19|births: uncovered=7 v/t/e=17/6/33 discovery=ON → LLM=6 → survived=6 | retired=1
+2026-08-18|births: uncovered=5 v/t/e=17/9/32 discovery=ON → LLM=6 → survived=6 | retired=4
+2026-08-18|births: uncovered=7 v/t/e=17/9/32 discovery=ON → LLM=5 → survived=5 | retired=4
+2026-08-17|births: uncovered=10 v/t/e=16/10/30 discovery=ON → LLM=5 → survived=5 | retired=0
+(10 rows)
+===R12_END
+?column?
+1
+(1 row)

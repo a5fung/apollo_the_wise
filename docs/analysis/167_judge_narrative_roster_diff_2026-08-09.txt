@@ -1,0 +1,96 @@
+#167 gate 2, PART 2 — roster channel (active_narratives), 2026-08-09
+Companion to 167_judge_narrative_differential_2026-08-09.txt (gate 2 part 1, the
+in_narrative_cohort BOOLEAN channel). This tests the OTHER channel v2 changes: the
+active_narratives roster block ep_grade_judge.py renders whenever non-empty.
+
+Roster used (real v2 replay output, mined verbatim, not invented):
+  name: "AI data center infrastructure buildout"
+  run_date: 2026-07-31 (last good snapshot before the replay's JSON-parse error days)
+  tickers (12, FIFO-capped at LANE2_REGISTRY_MAX_MEMBERS=12):
+    WULF, DOCN, PENG, CLSK, TSEM, SMCI, CORZ, TER, COHU, BLZE, FLNC, MPWR
+  thesis: "Both stocks gapped on fresh AI-driven infrastructure demand—AEHR's burn-in
+    equipment order for AI/data-center chips and JBL's AI data center hardware alliance
+    with Adani—reflecting the broader AI capex buildout cycle."
+  Source: /private/tmp/.../scratchpad/lane2_replay_full.json (45-day Lane-2 v2 replay,
+  2026-06-08 -> 2026-08-07). Cross-checked against scratchpad/lane2_review.md (an earlier
+  session's independent summary of the same replay) — dates/membership match exactly.
+
+Method: ONE new arm, 36 calls (all 36 corpus cases, ONE call each — not paired).
+active_narratives = the roster above; in_narrative_cohort LEFT AT CORPUS VALUE (never
+forced). Compared against the ALREADY-CAPTURED gate-2-part-1 baseline
+(base_tier/base_grade per case, in_narrative_cohort=false / no roster) for the 33
+cases that baseline covers. Model claude-opus-5, rubric v3-2026-06-12-catalyst-freshness
+(eef69fa4), corpus v1-2026-07-11 (04150fdd3a5e). Raw per-case verdicts + axis_reads:
+docs/analysis/167_judge_narrative_roster_raw_2026-08-09.txt (ROSTER_RESULTS_JSON block).
+
+Cost: measured $1.2219 / 36 calls ($0.03394/call) — pre-run estimate was ~$1.22-1.51,
+ceiling was $2.00. api_usage caller='judge_narrative_roster_eval'.
+
+=== RESULT: 33 comparable cases ===
+UP: 2   UNCHANGED: 26   DOWN: 5   NO_VERDICT: 0
+UP ids:   S01, D01   (both none -> MODERATE, grade held at routine — a quality-read
+                       bump, not a HIGH crossing)
+DOWN ids: S08, S09, S21, S27, D06
+CROSSED INTO HIGH: NONE (0 of 33)
+
+Per-case narrative axis_read: `lit=False` on EVERY ONE of the 7 cases that moved
+(S01, D01, S08, S09, S21, S27, D06) — the judge's own stated reason for holding/
+demoting never once credits the roster ("shares sector with AI infra names but not
+the story", "No shared story with the Lane 2 AI-capex cohort", "Does not join the AI
+data-center buildout cohort — sector adjacency only, no shared story"). Checked ALL
+36 cases: narrative axis_read lit=True count = 0/36. The movement that did occur is
+attributable to normal call-to-call rationale variance between two independently-
+sampled judge calls (baseline call vs this run's call are different API calls), not
+the roster — the roster is semantically inert on this corpus because none of its
+(fictional, adversarial) stories resemble "AI data-center capex buildout."
+
+=== 3 cases with no captured pre-roster baseline (S11, S24, S25 — already
+    in_narrative_cohort=true in corpus; gate-2-part-1 skipped them for the SAME
+    reason it skips them from the boolean arm — v2 cannot move a case already at the
+    state v2 flips TO). No prior per-case run exists at this exact rubric/model to
+    diff against, so these are graded against their corpus golden.must instead: ===
+  S11 (sympathy_no_own_catalyst, THE guardrail case — "membership alone must not
+       light HIGH"): tier=MODERATE grade=routine. golden tier_not=HIGH -> PASS.
+       Both channels active at once (in_narrative_cohort=true from corpus AND the
+       12-member roster) and the judge still held: narrative lit=False, direction=
+       demote, note "Cohort membership is by co-movement, not shared story arriving
+       at this name." This is the hardest combined test in the corpus and it holds.
+  S24 (structural_upgrade, positive control): tier=HIGH grade=game_changer.
+       golden tier_is=HIGH -> PASS. narrative lit=False: "no narrative join credit
+       given" despite in_narrative_cohort=true.
+  S25 (transformative_for_size, positive control): tier=HIGH grade=game_changer.
+       golden tier_is=HIGH -> PASS. narrative lit=False: same as S24.
+
+=== Conclusion ===
+Zero HIGH crossings from the roster channel on this corpus, zero cases where the
+judge credited the narrative axis to a roster/theme it doesn't actually match
+(including the two cases running BOTH channels simultaneously), and the guardrail
+case (S11) held under the combined-channel stress test. The channel is not proven
+safe in general (this corpus has no case whose story genuinely SHOULD join the
+roster — it can only show the judge doesn't falsely light on non-matches, which is
+the risk-relevant direction: inflation), but on the actual real v2 roster shape
+(12 members, 7-week-carried, real names/thesis) it produced no inflation and no
+reachable-HIGH risk.
+
+NOISE FLOOR (read part 1 and part 2 together, not in isolation): part 2 moved 7 of
+33 comparable cases (2 up, 5 down) with narrative axis_read lit=False on every single
+mover — i.e. this movement is pure call-to-call sampling variance between two
+independently-sampled judge calls, not a roster effect. That 7/33 wobble, roughly
+balanced up/down, is the measurement instrument's noise floor. Part 1 (the boolean
+channel, gate-2-part-1) moved 4 of 33 — smaller than this noise floor in magnitude,
+but ALL 4 were up and ZERO were down, a one-sided pattern the balanced part-2 noise
+does not show. Read correctly: part 1's signal sits AT this instrument's resolution
+limit, not below it — it is weak evidence of a small, real, one-directional (upward)
+push from the boolean channel, not proof of nothing. Neither channel's signal is
+large enough to separate cleanly from noise at n=33; both are small enough that
+their one observed HIGH-adjacent event (part 1's S19 crossing) being blocked
+upstream by the M&A filter matters a great deal to the overall risk read.
+
+Combined with gate-2-part-1 (boolean: 4 up / 0 down, one crossing blocked upstream
+by the M&A filter) and Task B (167_gate2_taskB_autopromote_2026-08-09.txt —
+the auto-promote path is already live via v1 today; v2 changes its INPUT shape,
+not whether it exists), the full gate-2 picture is: no evidence of grade inflation
+reaching a REACHABLE HIGH from either judge-prompt channel on this corpus, but the
+auto-promote path v2 would feed is real, live, and already collision-prone under
+today's v1 shape — that risk is orthogonal to the judge-prompt findings and is not
+mitigated by either result above.

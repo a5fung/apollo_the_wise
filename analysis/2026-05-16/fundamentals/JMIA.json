@@ -1,0 +1,125 @@
+{
+  "ticker": "JMIA",
+  "source_chain": [
+    "yfinance"
+  ],
+  "n_quarters": 7,
+  "n_quarters_with_revenue": 5,
+  "quarters": [
+    {
+      "source": "yfinance",
+      "end_date": "2026-03-31",
+      "revenue": 50562000.0,
+      "gross_profit": 29400000.0,
+      "operating_income": -13872000.0,
+      "net_income": -17730000.0,
+      "eps_basic": -0.143154,
+      "eps_diluted": -0.143154,
+      "gross_margin": 0.5814643408093034,
+      "op_margin": -0.2743562359083897,
+      "net_margin": -0.35065859736561056
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-12-31",
+      "revenue": 61394000.0,
+      "gross_profit": 34163000.0,
+      "operating_income": -9376000.0,
+      "net_income": -10311000.0,
+      "eps_basic": -0.083252,
+      "eps_diluted": -0.083252,
+      "gross_margin": 0.5564550281786493,
+      "op_margin": -0.15271850669446527,
+      "net_margin": -0.16794800794865947
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-09-30",
+      "revenue": 45632000.0,
+      "gross_profit": 23777000.0,
+      "operating_income": -17401000.0,
+      "net_income": -17939000.0,
+      "eps_basic": -0.146485,
+      "eps_diluted": -0.146485,
+      "gross_margin": 0.5210597826086957,
+      "op_margin": -0.38133327489481067,
+      "net_margin": -0.39312324684431976
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-06-30",
+      "revenue": 45642000.0,
+      "gross_profit": 23938000.0,
+      "operating_income": -16524000.0,
+      "net_income": -16592000.0,
+      "eps_basic": -0.135486,
+      "eps_diluted": -0.135486,
+      "gross_margin": 0.5244730730467552,
+      "op_margin": -0.3620349677928224,
+      "net_margin": -0.36352482362736077
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-03-31",
+      "revenue": 36261000.0,
+      "gross_profit": 19901000.0,
+      "operating_income": -18656000.0,
+      "net_income": -16710000.0,
+      "eps_basic": -0.13645,
+      "eps_diluted": -0.13645,
+      "gross_margin": 0.5488265629739941,
+      "op_margin": -0.5144921541049613,
+      "net_margin": -0.46082568048316375
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-12-31",
+      "revenue": null,
+      "gross_profit": null,
+      "operating_income": null,
+      "net_income": null,
+      "eps_basic": null,
+      "eps_diluted": null
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-09-30",
+      "revenue": null,
+      "gross_profit": null,
+      "operating_income": null,
+      "net_income": null,
+      "eps_basic": null,
+      "eps_diluted": null
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": 0.39439066765946884,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": 0.04913155001832181,
+    "eps_yoy_q1": null,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": -0.17643417923575588,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": null,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": -0.13645,
+    "margins_q0": {
+      "gross_margin": 0.5814643408093034,
+      "op_margin": -0.2743562359083897,
+      "net_margin": -0.35065859736561056
+    },
+    "margins_q1": {
+      "gross_margin": 0.5564550281786493,
+      "op_margin": -0.15271850669446527,
+      "net_margin": -0.16794800794865947
+    },
+    "margins_q2": {
+      "gross_margin": 0.5210597826086957,
+      "op_margin": -0.38133327489481067,
+      "net_margin": -0.39312324684431976
+    }
+  }
+}

@@ -1,0 +1,5 @@
+-- #559 supplement (read-only): catalyst-grade base rate among GRADED candidates, and
+-- what the delayed scan graded per day. Same capture-once discipline; $0.
+\copy (SELECT scan_date, catalyst_quality, count(DISTINCT ticker) AS n FROM mi_ep_scan_log WHERE scan_date >= '2026-08-03' AND catalyst_quality IS NOT NULL GROUP BY 1,2 ORDER BY 1,2) TO '/tmp/_559_catbase.tsv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true)
+\copy (SELECT ticker, alert_date, score_tier, ep_score, catalyst_quality FROM mi_ep_alerts WHERE COALESCE(source,'live')='live' AND alert_date >= '2026-08-03' ORDER BY alert_date, ticker) TO '/tmp/_559_alerts_window.tsv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true)
+\copy (SELECT ticker, alert_date, score_tier, (detected_at AT TIME ZONE 'America/New_York')::time AS detected_et, (created_at AT TIME ZONE 'America/New_York')::time AS created_et FROM mi_ep_alerts WHERE COALESCE(source,'live')='live' AND alert_date >= '2026-08-03' ORDER BY alert_date, ticker) TO '/tmp/_559_alerttimes.tsv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true)

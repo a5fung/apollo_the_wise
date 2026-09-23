@@ -1,0 +1,9 @@
+Pager usage is off.
+==== did the rubric PASS or DOWNGRADE the operator-labelled real EPs? ====
+ticker|d|rubric_verdict|reason|final_grade|ep_score|score_tier
+PLTR|2026-08-04|PASSED the rubric||game_changer|96|HIGH
+TEAM|2026-08-07|DOWNGRADED to routine|extraction_failed_extraction_call_failed|strong|115.2|HIGH
+HTFL|2026-08-14|PASSED the rubric||game_changer|96|HIGH
+MRNA|2026-08-19|no earnings extraction (rubric never ran)||strong|115.2|HIGH
+CHPT|2026-09-03|no earnings extraction (rubric never ran)||||
+(5 rows)

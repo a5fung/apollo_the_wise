@@ -1,0 +1,310 @@
+================================================================================================================
+STRUCTURE READ v2 — SUPPLY-LADDER MEASUREMENT (shadow, read-only, $0, nothing changed)
+================================================================================================================
+
+STEP 0 — PARITY: the REUSED level derivation, through this module's adapter,
+         against the four level values structure_model.md §4 documents.
+  OK  NBIS 2026-08-12    want   226.81  got   226.81
+  OK  EROC 2026-08-12    want    11.88  got    11.88
+  OK  SE 2026-08-11      want   118.09  got   118.09
+  OK  FRMI 2026-08-11    want     7.06  got     7.06
+  -> 4/4 reproduced. Any miss here invalidates every ladder number below.
+
+================================================================================================================
+STEP 1 — POPULATIONS, COVERAGE, AND THE NO-LOOKAHEAD GUARD
+================================================================================================================
+  real EPs: 26 name-days   rejects: 27 name-days   (the same 26 / 27 the 08-25 replay used)
+  real EPs   computable: 26/26
+  rejects    computable: 27/27
+  the alert-day bar is never read beyond its OPEN; structure_read_v2 asserts no bar
+  dated >= the alert date reaches any computation (the 08-25 capture rows are partial).
+
+  OPEN cross-check against the fixture's own gap_pct / prev_close (catches wrong-row bugs):
+    members whose replayed open-gap differs from the fixture by > 1pp: 0/26  
+    (a difference here is a split adjustment, not an error — every v2 output is a ratio,
+     an ADR-normalised distance or a volume FRACTION, all of which cancel a uniform split.)
+
+================================================================================================================
+STEP 2 — THE OPERATOR'S SECOND OBJECTION, MECHANICALLY: why CAPR reads as a tight base
+================================================================================================================
+  "how can CAPR have a tight base when there are two large gap downs?"
+
+  RMV-15 = mean(gap-aware true range, last 3 bars) / mean(the same, last 15), mapped to
+  0-100. A large bar INSIDE the 15-bar baseline inflates the DENOMINATOR, so the name
+  reads TIGHTER. A large gap OUTSIDE that window is invisible to it entirely.
+
+  CAPR 2026-08-24 — the 15 bars behind RMV-15 = 54.2 (the live 'tight' cutline is 30):
+      2026-08-03  daily true range  12.90% of close
+      2026-08-04  daily true range   7.91% of close
+      2026-08-05  daily true range  11.83% of close
+      2026-08-06  daily true range   8.18% of close
+      2026-08-07  daily true range  15.89% of close
+      2026-08-10  daily true range   7.79% of close
+      2026-08-11  daily true range   6.82% of close
+      2026-08-12  daily true range   9.55% of close
+      2026-08-13  daily true range   6.65% of close
+      2026-08-14  daily true range  59.25% of close
+      2026-08-17  daily true range  13.42% of close
+      2026-08-18  daily true range  21.55% of close
+      2026-08-19  daily true range  11.40% of close   <- the last-3 window
+      2026-08-20  daily true range  16.83% of close   <- the last-3 window
+      2026-08-21  daily true range  17.01% of close   <- the last-3 window
+      baseline mean 15.13%  vs last-3 mean 15.08%  -> ratio 0.996  -> RMV 54.2
+      gap-robust alternative: base close-to-close span / ADR20 = 6.33 ADR   (gaps inflate the span; ADR20 is a mean of INTRADAY ranges, which gaps do not)
+      true vacuums inside the 15-bar base: 1 at >=1 ADR (largest 2.48 ADR)  -> tight_v2 = False
+
+  CAPR 2026-08-25 — the 15 bars behind RMV-15 = 76.3 (the live 'tight' cutline is 30):
+      2026-08-04  daily true range   7.91% of close
+      2026-08-05  daily true range  11.83% of close
+      2026-08-06  daily true range   8.18% of close
+      2026-08-07  daily true range  15.89% of close
+      2026-08-10  daily true range   7.79% of close
+      2026-08-11  daily true range   6.82% of close
+      2026-08-12  daily true range   9.55% of close
+      2026-08-13  daily true range   6.65% of close
+      2026-08-14  daily true range  59.25% of close
+      2026-08-17  daily true range  13.42% of close
+      2026-08-18  daily true range  21.55% of close
+      2026-08-19  daily true range  11.40% of close
+      2026-08-20  daily true range  16.83% of close   <- the last-3 window
+      2026-08-21  daily true range  17.01% of close   <- the last-3 window
+      2026-08-24  daily true range  25.59% of close   <- the last-3 window
+      baseline mean 15.98%  vs last-3 mean 19.81%  -> ratio 1.240  -> RMV 76.3
+      gap-robust alternative: base close-to-close span / ADR20 = 6.02 ADR   (gaps inflate the span; ADR20 is a mean of INTRADAY ranges, which gaps do not)
+      true vacuums inside the 15-bar base: 1 at >=1 ADR (largest 2.36 ADR)  -> tight_v2 = False
+
+  every UNFILLED vacuum in CAPR's prior history (his 'huge gap down from July 27'):
+      2025-12-03  up   6.82 -> 21.50  span 230.9% of the prior close  unfilled 10.02 of 14.68
+      2026-07-27  down 7.85 -> 18.30  span 53.1% of the prior close  unfilled 10.02 of 10.46
+      2026-06-26  down 27.40 -> 29.29  span 6.2% of the prior close  unfilled 1.89 of 1.89
+      2026-08-14  up   4.42 -> 6.04  span 38.5% of the prior close  unfilled 1.59 of 1.62
+      2026-07-30  down 4.21 -> 5.67  span 22.1% of the prior close  unfilled 0.97 of 1.46
+      2026-05-08  down 31.27 -> 33.02  span 5.1% of the prior close  unfilled 0.47 of 1.75
+      2025-11-28  up   5.20 -> 5.22  span 0.4% of the prior close  unfilled 0.02 of 0.02
+
+================================================================================================================
+STEP 3 — THE PRE-REGISTERED TESTS (directions fixed before computing; ties count 0.5)
+================================================================================================================
+  AUC = chance a randomly picked real EP scores better than a randomly picked reject.
+  0.500 = a coin.  The live structure axis scores 0.481 here; the selection score 0.63-0.70.
+
+  measure                               AUC          95% CI  nEP  nRj     medEP    medRej    raw p
+  ------------------------------------------------------------------------------------------------------------
+  PRIMARY overhead_vol_frac           0.728  [0.591, 0.865]   26   27     0.093     0.515   0.0011  lower = less supply overhead
+  ------------------------------------------------------------------------------------------------------------
+  SECONDARY zones_cleared             0.770  [0.642, 0.898]   26   27     1.000     0.000   0.0000  more congestion zones cleared
+  SECONDARY base_range_adr            0.553  [0.397, 0.709]   26   27     3.672     3.880   0.5078  gap-robust base tightness
+  SECONDARY overhead_unfilled_gap_span_adr  0.497  [0.340, 0.654]   26   27     0.000     0.000   0.9716  untraded air above the open
+
+  Holm-Bonferroni over the 3-member SECONDARY family at family alpha 0.05:
+    step 1: zones_cleared                      p 0.0000 vs 0.0167 -> PASS
+    step 2: base_range_adr                     p 0.5078 vs 0.0250 -> fail
+    survive: ['zones_cleared']
+  the PRIMARY is a single pre-registered test and carries no correction: p = 0.0011
+
+================================================================================================================
+STEP 4 — IS THE PRIMARY NEW INFORMATION, OR TRAILING-HIGH DISTANCE IN DISGUISE?
+================================================================================================================
+  Spearman(overhead_vol_frac, near_high_frac), pooled n=53: -0.747
+  PRE-REGISTERED reading: |rho| >= 0.90 means it restates the live axis's own trailing-high
+  term computed a different way, NOT a new measure.
+  -> adds information beyond it
+  for reference, near_high_frac on the SAME populations here: AUC 0.662 (the 08-25 replay reported 0.662 on prod-sourced bars)
+
+================================================================================================================
+STEP 5 — THE HARD CUT: drop every name that opened above its own trailing high
+================================================================================================================
+  MRNA opened 35% above every prior print, so ANY overhead measure returns blue sky for it.
+  That separation tests 'did it open at a new high', which the live axis already computes.
+  This subgroup keeps ONLY name-days with real overhead to measure, both arms alike.
+  real EPs kept: 21/26   rejects kept: 25/27
+  dropped real EPs (opened at a new high): ['MRNA', 'SNDK', 'UMC', 'AMD', 'INTC']
+  dropped rejects (opened at a new high):  ['KURA', 'OESX']
+
+  measure                               AUC          95% CI  nEP  nRj     medEP    medRej    raw p
+  ------------------------------------------------------------------------------------------------------------
+  PRIMARY overhead_vol_frac           0.726  [0.576, 0.875]   21   25     0.127     0.541   0.0031  
+  zones_cleared                       0.828  [0.703, 0.952]   21   25     2.000     0.000   0.0000  
+  base_range_adr                      0.575  [0.408, 0.743]   21   25     3.616     3.709   0.3792  
+  overhead_unfilled_gap_span_adr      0.474  [0.306, 0.643]   21   25     0.043     0.000   0.7652  
+  [ref] near_high_frac                0.661  [0.501, 0.821]   21   25     0.751     0.581   0.0487  the live axis's own term
+
+================================================================================================================
+STEP 5b — IS THIS JUST GAP SIZE, OR JUST 'THE NAME HAD ZONES AT ALL'? (two controls)
+================================================================================================================
+  CONTROL 1 — raw gap % at the OPEN. Every labelled real EP gapped >= 8.1% at the open by
+  construction (the fixture's own admission basis); many rejects were logged on an INTRADAY
+  gap and barely moved at the open. So a measure keyed off the open can separate the arms
+  simply by separating gap size. structure_model.md §1 claim 4 makes this the decisive test:
+  zones-consumed vs raw gap %, AT COMPARABLE GAP SIZE.
+
+    Spearman(open gap %, overhead_vol_frac) pooled n=53: -0.003
+    Spearman(open gap %, zones_cleared) pooled n=53: 0.227
+    raw gap % ITSELF as a discriminator (bigger = 'more like a real EP'): AUC 0.578 [0.424, 0.733]  — reported as a CONTROL, not a claim; its direction was not pre-registered.
+
+  MATCHED ON GAP SIZE — both arms restricted to an open gap >= 8.1% (the labelled
+  real-EP arm's own minimum, so the floor is taken from the data's definition, not chosen):
+    real EPs 26/26   rejects 15/27   median open gap now 9.9% vs 14.4%
+  measure                               AUC          95% CI  nEP  nRj     medEP    medRej    raw p
+  ------------------------------------------------------------------------------------------------------------
+  PRIMARY overhead_vol_frac           0.763  [0.617, 0.908]   26   15     0.093     0.566   0.0004  
+  zones_cleared                       0.678  [0.513, 0.844]   26   15     1.000     0.000   0.0348  
+  base_range_adr                      0.559  [0.377, 0.741]   26   15     3.672     3.555   0.5258  
+  overhead_unfilled_gap_span_adr      0.582  [0.402, 0.762]   26   15     0.000     0.000   0.3716  
+  [control] raw gap %                 0.241  [0.079, 0.403]   26   15     9.861    14.425   0.0017  should now be ~0.5 if matched
+
+  BEST-ADMISSION-PRICE SENSITIVITY — the fairest possible version for the rejects. Instead of
+  the open, each reject is re-read at the HIGHEST price its own scan log ever showed that day
+  (prior close x (1 + its max logged gap)), i.e. the most favourable moment admission could
+  have fired. Every reject reached at least a 9.2% gap at some tick. Real EPs keep their opens.
+  measure                               AUC          95% CI  nEP  nRj     medEP    medRej    raw p
+  ------------------------------------------------------------------------------------------------------------
+  PRIMARY overhead_vol_frac           0.647  [0.499, 0.796]   26   27     0.093     0.435   0.0522  
+  zones_cleared                       0.650  [0.502, 0.799]   26   27     1.000     0.000   0.0473  
+  base_range_adr                      0.553  [0.397, 0.709]   26   27     3.672     3.880   0.5078  
+  overhead_unfilled_gap_span_adr      0.478  [0.321, 0.635]   26   27     0.000     0.000   0.7824  
+
+  CONTROL 2 — does zones_cleared measure CLEARING, or just 'this name has qualified zones'?
+  A level needs >=2 failed test EPISODES to qualify, so a name that collapsed and never
+  retested has NO qualified levels and scores 0 cleared for the wrong reason.
+    real EPs   have >=1 qualified overhead zone: 22/26   median zones overhead 6
+    rejects    have >=1 qualified overhead zone: 25/27   median zones overhead 8
+  measure                               AUC          95% CI  nEP  nRj     medEP    medRej    raw p
+  ------------------------------------------------------------------------------------------------------------
+  [post-hoc] cleared_frac             0.865  [0.755, 0.974]   22   25     0.225     0.000   0.0000  share of overhead zones cleared, names WITH zones only
+  ⚠ POST-HOC — not in the pre-registered family; run as a confound check, not as a finding.
+
+================================================================================================================
+STEP 6 — YOUNG NAMES (the live axis returns 'unknown' and zero credit for these)
+================================================================================================================
+  v2 needs no 200-session average: it reads whatever history exists, and says how much.
+  name-days with under 200 prior sessions: 8
+  ticker date        arm       bars   v1 axis  ovh_vol cleared  baseADR  gapADR  label
+  APMD   2026-08-25  reject      17   unknown    0.515       0     1.80    0.00  CLEARED_NOTHING
+  SCTX   2026-08-24  reject      21   unknown    0.047       0     4.28    0.00  CLEAR_AIR
+  MAIR   2026-08-25  reject      90   unknown    0.961       0     3.46    0.00  CLEARED_NOTHING
+  GRML   2026-08-25  reject     114   unknown    0.680       1     1.85    0.00  INTO_SUPPLY
+  DFNS   2026-08-25  reject     136   unknown    0.468       0     3.55    1.76  CLEARED_NOTHING
+  BBCQ   2026-08-24  reject     141   unknown    0.793       0     7.64    0.30  INTO_SUPPLY
+  FLY    2026-03-12  real EP    149   unknown    0.628       4     1.23    1.96  IFFY_AT_FIRST_ZONE
+  AERO   2026-08-24  reject     198   unknown    0.883       0     3.88    0.00  INTO_SUPPLY
+
+  SENSITIVITY (the headline above KEEPS them — short history means little overhead by
+  construction, so the 7 young rejects bias the primary AGAINST separating):
+  measure                               AUC          95% CI  nEP  nRj     medEP    medRej    raw p
+  ------------------------------------------------------------------------------------------------------------
+  PRIMARY overhead_vol_frac           0.710  [0.560, 0.860]   25   20     0.084     0.462   0.0062  
+  zones_cleared                       0.735  [0.590, 0.880]   25   20     1.000     0.000   0.0015  
+  base_range_adr                      0.576  [0.408, 0.744]   25   20     3.672     4.373   0.3760  
+  overhead_unfilled_gap_span_adr      0.527  [0.356, 0.698]   25   20     0.000     0.000   0.7569  
+
+================================================================================================================
+STEP 7 — CAPR vs MRNA (if a measure cannot separate these two it has not solved his problem)
+================================================================================================================
+  name                 open  ovh_vol  zones  clr  rem  nextADR  ovhGapADR  inGap   rmv15  baseADR  label
+  CAPR 2026-08-24      8.03    0.440     17    0   17     0.02      17.95  False    54.2     6.33  IFFY_AT_FIRST_ZONE
+  CAPR 2026-08-25      7.25    0.564     18    0   18     0.48      18.94  False    76.3     6.02  INTO_SUPPLY
+  MRNA 2026-08-19    116.02    0.000      0    0    0     blue       0.00  False    24.0     3.13  CLEAR_AIR
+  SNOW 2026-05-07    153.43    0.826     24    4   20     0.25       2.81  False    51.6     2.34  IFFY_AT_FIRST_ZONE
+  QURE 2026-05-29     28.75    0.294      5    1    4     0.01      12.86  False    16.8     2.40  IFFY_AT_FIRST_ZONE
+  OESX 2026-08-25     21.37    0.000      0    0    0     blue       0.00  False    15.7     5.95  CLEAR_AIR
+
+  the live structure axis gives every one of these the identical verdict: no_stage2, credit 0.
+
+================================================================================================================
+STEP 8 — CONFOUNDS, SENSITIVITIES, AND WHAT THE LABEL SAYS
+================================================================================================================
+  Spearman(overhead_vol_frac, 20-day dollar volume), pooled n=53: -0.403
+  Spearman(base_range_adr,  20-day dollar volume): 0.038
+  Spearman(rmv_15,          20-day dollar volume): -0.305   (the 08-25 replay measured -0.32 for this one)
+  the same correlation computed WITHIN each arm (if it only exists across the arms, it is
+  the between-group liquidity gap doing the work, not a within-name relationship):
+    real EPs   n=26  rho(overhead_vol_frac, dollar volume) = -0.248
+    rejects    n=27  rho(overhead_vol_frac, dollar volume) = -0.175
+  rejects inside the labelled real-EP liquidity band (>= $38.9M/day): ['CAPR 2026-08-24', 'CAPR 2026-08-25', 'FLNC 2026-08-25', 'MAIR 2026-08-25']
+  primary against ONLY those liquidity-comparable rejects: AUC 0.885 [0.747, 1.000]  n=4 on one side — a description, not a test
+
+  DATE CLUSTERING — these are not 26 vs 27 independent observations:
+    real EPs: 26 name-days on 10 market days (largest single day n=13, 2026-04-08)
+    rejects:  27 name-days on 2 market days
+    primary with the 13 members that all share 2026-04-08 dropped: AUC 0.738 [0.563, 0.913]  nEP 13
+
+  SENSITIVITY on the one inherited size constant (LARGE_GAP_ADR = 1.0, the encoder's
+  REJECT_ADR) — 'a base with a large vacuum in it is not tight' at three sizes:
+    gap >= 0.5 ADR inside the 15-bar base: real EPs 6/26   rejects 10/27
+    gap >= 1.0 ADR inside the 15-bar base: real EPs 2/26   rejects 8/27
+    gap >= 2.0 ADR inside the 15-bar base: real EPs 0/26   rejects 6/27
+    ⚠ the 2.0-ADR row is a one-sided screen (0/26 vs 6/27), and it comes out of a
+      three-point sensitivity sweep — descriptive, not a pre-registered test.
+      the 6 rejects carrying a >=2 ADR vacuum inside their base: ['BBCQ 2026-08-24', 'CAPR 2026-08-24', 'HVII 2026-08-24', 'CAPR 2026-08-25', 'HVII 2026-08-25', 'OESX 2026-08-25']
+
+  v1 vs v2 tightness, side by side (the live cutline is rmv_15 <= 30):
+    real EPs   rmv_tight (live): 2/26    tight_v2 (gap-aware): 2/26
+    rejects    rmv_tight (live): 5/27    tight_v2 (gap-aware): 3/27
+
+  DESCRIPTIVE label distribution (outside the tested set):
+    real EPs   CLEARED_NOTHING=2  CLEAR_AIR=6  IFFY_AT_FIRST_ZONE=10  INTO_SUPPLY=7  LADDER_CLIMBING=1
+    rejects    CLEARED_NOTHING=11  CLEAR_AIR=3  IFFY_AT_FIRST_ZONE=2  INTO_SUPPLY=10  LADDER_CLIMBING=1
+
+================================================================================================================
+STEP 9 — EVERY NAME, EVERY v2 OUTPUT
+================================================================================================================
+-- REAL EPs (labelled) ---------------------------------------------------------------------------------
+  ticker date         bars   gap%  ovh_vol  ovh60d zOvh clr rem  nextADR ovhGapADR inGap  rmv15 baseADR bGapADR  label
+  FLY    2026-03-12    149   15.0    0.628   0.551   16   4  12     0.23      1.96 False   53.8    1.23    0.00  IFFY_AT_FIRST_ZONE
+  SMTC   2026-03-30    271    8.1    0.147   0.656   10   2   8     0.66      0.00 False   47.8    3.24    0.16  INTO_SUPPLY
+  AEHR   2026-03-31    271   11.3    0.137   0.512    6   1   5     0.15      0.14 False   68.1    2.92    0.12  IFFY_AT_FIRST_ZONE
+  MRVL   2026-03-31    271    9.8    0.029   0.045    5   1   4     0.23      0.00 False   89.7    2.27    0.17  IFFY_AT_FIRST_ZONE
+  ALGM   2026-04-08    271    9.2    0.127   0.433   13   8   5     0.85      0.07 False   33.7    3.36    0.23  INTO_SUPPLY
+  AMKR   2026-04-08    271    9.0    0.044   0.120    5   3   2     0.25      0.00 False   37.1    3.24    0.27  INTO_SUPPLY
+  APLD   2026-04-08    271   13.0    0.252   0.703   14   2  12     0.10      0.00 False   39.1    4.20    0.26  IFFY_AT_FIRST_ZONE
+  ASX    2026-04-08    271    8.2    0.013   0.069    3   2   1     1.62      0.00 False   35.9    2.32    0.82  LADDER_CLIMBING
+  BE     2026-04-08    271    9.9    0.116   0.501   11   4   7     0.09      0.00 False   32.2    3.89    0.00  IFFY_AT_FIRST_ZONE
+  HUT    2026-04-08    271    8.4    0.057   0.273    9   3   6     0.05      0.00 False   52.5    3.62    0.35  IFFY_AT_FIRST_ZONE
+  IREN   2026-04-08    271    8.3    0.584   0.864   11   0  11     1.48      0.00 False   49.4    4.26    0.00  CLEARED_NOTHING
+  MU     2026-04-08    271    9.9    0.101   0.314    4   0   4     0.87      0.04 False   33.5    6.15    0.25  INTO_SUPPLY
+  NBIS   2026-04-08    271    8.1    0.038   0.026    6   2   4     0.61      0.00 False   51.4    3.67    0.32  INTO_SUPPLY
+  QBTS   2026-04-08    271   11.0    0.694   0.910   24   1  23     0.19      0.18 False   54.3    4.69    0.07  IFFY_AT_FIRST_ZONE
+  SNDK   2026-04-08    271   10.3    0.000   0.000    2   2   0     blue      0.00 False   36.4    3.67    0.18  CLEAR_AIR
+  STRL   2026-04-08    271    8.2    0.084   0.455    8   1   7     0.23      0.17 False   60.8    2.87    0.27  IFFY_AT_FIRST_ZONE
+  USAR   2026-04-08    267    9.4    0.727   0.927   13   1  12     0.25      0.18 False   68.6    4.27    0.15  INTO_SUPPLY
+  UMC    2026-04-17    272   11.6    0.011   0.046    0   0   0     blue      2.45 False   66.6    8.72    1.83  CLEARED_NOTHING
+  AMD    2026-04-24    272   10.3    0.000   0.000    0   0   0     blue      0.00 False   58.9    7.88    0.52  CLEAR_AIR
+  INTC   2026-04-24    272   23.1    0.000   0.000    1   1   0     blue      0.00 False   35.4    5.00    0.52  CLEAR_AIR
+  QCOM   2026-04-24    272    8.7    0.658   0.106   12   3   9     0.38      0.61 False   56.5    4.25    0.07  INTO_SUPPLY
+  ARM    2026-05-06    271   11.1    0.004   0.014    1   1   0     blue      0.00 False   39.3    6.33    0.63  CLEAR_AIR
+  UMC    2026-05-06    271    9.1    0.000   0.000    0   0   0     blue      0.00 False   34.6   10.26    1.97  CLEAR_AIR
+  SNOW   2026-05-07    272    9.8    0.826   0.518   24   4  20     0.25      2.81 False   51.6    2.34    0.28  IFFY_AT_FIRST_ZONE
+  QURE   2026-05-29    272   15.7    0.294   0.024    5   1   4     0.01     12.86 False   16.8    2.40    0.00  IFFY_AT_FIRST_ZONE
+  MRNA   2026-08-19    272   84.3    0.000   0.000    0   0   0     blue      0.00 False   24.0    3.13    0.00  CLEAR_AIR
+
+-- REJECTS (08-24 / 08-25) -----------------------------------------------------------------------------
+  ticker date         bars   gap%  ovh_vol  ovh60d zOvh clr rem  nextADR ovhGapADR inGap  rmv15 baseADR bGapADR  label
+  AERO   2026-08-24    198    2.0    0.883   0.953   19   0  19     0.30      0.00 False   87.6    3.88    0.00  INTO_SUPPLY
+  BBCQ   2026-08-24    141    4.3    0.793   0.991    8   0   8     1.05      0.30  True  100.0    7.64    2.70  INTO_SUPPLY
+  CAPR   2026-08-24    270   27.7    0.440   0.209   17   0  17     0.02     17.95 False   54.2    6.33    2.48  IFFY_AT_FIRST_ZONE
+  HVII   2026-08-24    245   15.9    0.997   0.987    4   0   4    18.04      8.05 False  100.0   16.76    5.11  CLEARED_NOTHING
+  JLHL   2026-08-24    271    6.4    0.762   0.803   10   0  10     1.65      0.00 False    0.0    3.03    0.70  CLEARED_NOTHING
+  NSSC   2026-08-24    271   21.2    0.017   0.000    8   7   1     0.88      0.00 False   34.6    3.35    0.02  INTO_SUPPLY
+  SCTX   2026-08-24     21    4.8    0.047   0.047    0   0   0     blue      0.00 False  100.0    4.28    0.00  CLEAR_AIR
+  SDOT   2026-08-24    271   63.3    0.287   0.317   23   3  20     3.95      0.00 False  100.0    2.64    0.00  LADDER_CLIMBING
+  SUPX   2026-08-24    271   13.8    0.714   0.150   22   1  21     0.19      0.24 False  100.0    2.94    0.03  IFFY_AT_FIRST_ZONE
+  AMIX   2026-08-25    271   41.7    0.541   0.496   14   0  14     0.82      0.00 False   11.9    7.91    1.51  INTO_SUPPLY
+  APMD   2026-08-25     17    3.8    0.515   0.515    1   0   1     2.14      0.00 False   37.0    1.80    0.00  CLEARED_NOTHING
+  CAPR   2026-08-25    270    6.6    0.564   0.396   18   0  18     0.48     18.94 False   76.3    6.02    2.36  INTO_SUPPLY
+  DFNS   2026-08-25    136   48.1    0.468   0.464    8   0   8     9.31      1.76 False  100.0    3.55    0.18  CLEARED_NOTHING
+  DTIL   2026-08-25    271   -0.2    0.091   0.236    2   0   2     1.91      0.00 False   70.8    3.71    0.11  CLEARED_NOTHING
+  FLNC   2026-08-25    271    8.4    0.872   0.960   23   0  23     2.26      1.40 False   38.4    5.08    0.21  CLEARED_NOTHING
+  GRML   2026-08-25    114   20.5    0.680   0.548   12   1  11     0.62      0.00 False  100.0    1.85    0.00  INTO_SUPPLY
+  HVII   2026-08-25    245    8.5    0.974   0.883    3   0   3    13.40      6.21 False  100.0   13.21    4.03  CLEARED_NOTHING
+  IMTX   2026-08-25    271   10.4    0.566   0.477   23   2  21     0.51      0.00 False   92.2    2.54    0.00  INTO_SUPPLY
+  KURA   2026-08-25    271    9.6    0.000   0.000    2   2   0     blue      0.00 False   74.9    5.40    0.94  CLEAR_AIR
+  MAIR   2026-08-25     90   11.4    0.961   0.924   12   0  12     2.64      0.00 False   56.9    3.46    0.00  CLEARED_NOTHING
+  MEI    2026-08-25    271   12.1    0.136   0.448    4   0   4     0.53      0.00 False   28.2    3.14    0.17  INTO_SUPPLY
+  NBBK   2026-08-25    271    0.0    0.090   0.327    4   0   4     0.49      0.00 False   79.0    2.84    0.00  INTO_SUPPLY
+  OESX   2026-08-25    271    1.8    0.000   0.000    0   0   0     blue      0.00 False   15.7    5.95    2.63  CLEAR_AIR
+  PMI    2026-08-25    240   14.4    0.585   0.514   19   0  19     1.90    455.58 False  100.0    4.58    1.16  CLEARED_NOTHING
+  REAX   2026-08-25    271    0.5    0.484   0.152   13   0  13     1.59      0.00 False   68.7    5.57    0.00  CLEARED_NOTHING
+  SPAI   2026-08-25    271    0.7    0.359   0.404    8   0   8     0.67      0.00 False   16.6    4.17    0.09  INTO_SUPPLY
+  WAFD   2026-08-25    271    0.2    0.188   0.848    4   0   4     1.41      0.00 False   45.3    3.24    0.05  CLEARED_NOTHING
+

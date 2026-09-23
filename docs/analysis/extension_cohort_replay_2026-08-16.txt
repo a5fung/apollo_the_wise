@@ -1,0 +1,29 @@
+================================================================================================
+EXTENSION COHORT — REALIZED-R UNDER OUR OWN MECHANICS (ORB-high entry, ORB-low stop)
+================================================================================================
+cohort rows=159  simulated=116
+not simulated: outcome:no_fill=36, outcome:stop_too_wide=5, outcome:zero_range=2
+
+⚠ Extension is entry discipline = THE LINE. This is measurement; nothing is proposed.
+⚠ Realized-R is RECONSTRUCTED, not lived: no slippage model, fills assumed at the
+  trigger, and these are names we never entered so there is no fill evidence.
+
+REALIZED R  n=116
+  median   +0.00R      mean +0.15R
+  P10/P90  -1.00R / +2.00R
+  max      +2.00R   min -5.50R
+  share >= +2R  32.8%   >= +5R  0.0%   >= +10R  0.0%
+  share <= -1R  42.2%  (full stop-outs)
+  SUM of R across the cohort: +17.4R  <- the number that decides it
+
+  TOP 10 by realized R:
+    ADVB   2026-07-23    +2.00R   (20d MFE 59.9%)
+    AIOS   2026-05-05    +2.00R   (20d MFE 102.8%)
+    AMPG   2026-06-11    +2.00R   (20d MFE 27.0%)
+    BIRD   2026-04-20    +2.00R   (20d MFE 11.6%)
+    BIRD   2026-06-22    +2.00R   (20d MFE 25.5%)
+    BRAI   2026-05-28    +2.00R   (20d MFE 42.9%)
+    BTM    2026-04-22    +2.00R   (20d MFE 27.1%)
+    CLRO   2026-07-07    +2.00R   (20d MFE 72.1%)
+    CLRO   2026-08-10    +2.00R   (20d MFE 32.3%)
+    CODX   2026-05-28    +2.00R   (20d MFE 66.5%)

@@ -1,0 +1,138 @@
+======================================================================================================================
+A. THE 26 LABELLED REAL EPs — liquidity/volatility profile re-derived from mi_daily_closes
+======================================================================================================================
+ticker date         prev_close    prev_vol   ADV$(20d med)   ATR%14   ext%5d  openGap%  bars
+MRNA   2026-08-19     62.96   4,297,110$  289.46M    5.97    0.00   84.28   148
+MU     2026-04-08    377.58  36,631,935$19053.53M    7.37   11.82    9.94    56
+UMC    2026-04-17     10.62  11,516,530$   73.43M    3.34   10.74   11.58    63
+STRL   2026-04-08    382.22     791,974$  179.25M    7.72    0.00    8.20    56
+MRVL   2026-03-31     87.81  21,332,717$ 1514.80M    5.42    0.00    9.78    51
+ASX    2026-04-08     22.19   4,819,000$  143.73M    4.14    2.35    8.16    56
+SNDK   2026-04-08    710.80  13,265,424$12276.02M    8.77   11.88   10.30    56
+SNOW   2026-05-07    139.74   7,343,331$ 1029.31M    5.23    2.40    9.80    77
+ALGM   2026-04-08     33.28   1,885,551$   52.47M    5.58    5.55    9.16    56
+NBIS   2026-04-08    117.40  12,084,620$ 1520.70M    7.25   15.15    8.07    56
+AMKR   2026-04-08     47.62   1,790,838$  150.90M    7.11    5.75    9.03    56
+AEHR   2026-03-31     30.11   1,519,328$   55.65M   13.02    0.00   11.27    51
+UMC    2026-05-06     14.01  23,302,330$  127.61M    5.56    9.88    9.14    76
+FLY    2026-03-12     20.60   2,608,764$   50.52M    8.76    6.24   15.05    38
+BE     2026-04-08    135.91   5,407,264$ 1472.35M   10.21    2.61    9.93    56
+USAR   2026-04-08     14.64  12,212,924$  205.78M    9.29    0.00    9.36    56
+QCOM   2026-04-24    133.95  10,077,152$ 1233.87M    2.38    0.00    8.70    68
+QBTS   2026-04-08     13.74  14,813,823$  327.92M    7.92    0.29   10.99    56
+AMD    2026-04-24    305.33  42,349,383$ 8470.67M    3.60   11.05   10.29    68
+HUT    2026-04-08     52.66   4,223,719$  200.50M    8.21   12.26    8.40    56
+QURE   2026-05-29     24.85     634,341$   38.93M    8.20    2.73   15.69    92
+ARM    2026-05-06    208.84   7,324,209$ 1128.71M    7.30    3.55   11.09    76
+SMTC   2026-03-30     72.16   3,604,725$  215.47M    7.73    0.00    8.12    50
+IREN   2026-04-08     35.74  22,163,509$ 1210.29M    8.01    4.84    8.28    56
+APLD   2026-04-08     25.18  18,587,530$  447.91M    8.42    6.07   12.97    56
+INTC   2026-04-24     66.78 133,235,262$ 6155.79M    5.09    2.31   23.09    68
+
+  ADV$      : n=26  min=38,928,873.50  p10=52,469,000.02  median=308,688,431.65  max=19,053,530,906.11
+  ATR%14    : n=26  min=2.38  p10=3.60  median=7.33  max=13.02
+  prev_close: n=26  min=10.62  p10=14.01  median=57.81  max=710.80
+  ext%5d    : n=26  min=0.00  p10=0.00  median=3.14  max=15.15
+  ADV$ >= $1M floor : 26/26
+  ATR% <= 15% cap   : 26/26
+
+======================================================================================================================
+B. THE TWO SILENT DAYS — every name past the D-1 universe floors, same measures
+======================================================================================================================
+
+--- 2026-08-24 ---
+ticker     gap% prev_close   ADV$(20dmed)   ATR%14   ext%5d  x fixture-median ADV$  kill
+SDOT      73.60   13.18$    1.72M   16.15   56.16                 0.006  quality filter: filter:atr_too_high: 16.2% > 15.0%
+NSSC      34.22   38.09$    9.32M    2.82    0.85                 0.030  score 52 < bar 65 (catalyst=strong)
+HVII      17.35    6.38$    0.61M    5.15    0.00                 0.002  quality filter: filter:adv_too_low: $600,114
+SUPX      15.02    8.52$    1.17M    7.99   26.22                 0.004  quality filter: filter:mcap_too_small: $368M < $500M
+SCTX      13.30   34.13$    3.74M   10.58   61.07                 0.012  score 60 < bar 65 (catalyst=strong)
+JLHL      11.32    6.60$    1.20M   25.13    0.00                 0.004  quality filter: filter:atr_too_high: 25.1% > 15.0%
+CAPR      10.33    6.29$   39.65M   14.34    0.00                 0.128  quality filter: filter:mcap_too_small: $466M < $500M
+BBCQ       9.68    9.71$    2.16M    0.93    0.00                 0.007  quality filter: filter:mcap_too_small: $372M < $500M
+AERO       9.18   13.72$    3.63M    5.27    3.31                 0.012  pre-mkt volume 3,037 < 25,000 shares
+
+--- 2026-08-25 ---
+ticker     gap% prev_close   ADV$(20dmed)   ATR%14   ext%5d  x fixture-median ADV$  kill
+AMIX      53.32    5.37$    2.03M   32.49    1.90                 0.007  quality filter: filter:atr_too_high: 32.5% > 15.0%
+PMI       32.16    5.13$    0.25M    9.98   69.31                 0.001  quality filter: filter:adv_too_low: $248,885
+DFNS      31.70   11.01$   19.16M   57.62    0.00                 0.062  quality filter: filter:atr_too_high: 57.6% > 15.0%
+NBBK      24.39   22.51$    8.53M    2.05    2.79                 0.028  score 60 < bar 65 (catalyst=strong)
+GRML      19.88    8.55$    0.53M   15.52    3.01                 0.002  quality filter: filter:adv_too_low: $533,390
+CAPR      15.07    6.80$   39.65M   14.75    8.11                 0.128  quality filter: filter:mcap_too_small: $491M < $500M
+MAIR      15.00   24.97$   47.60M    6.76    0.00                 0.154  M&A/buyout catalyst — no momentum trade
+MEI       12.69   14.03$    7.77M    9.20    0.00                 0.025  filter:session_rvol_too_low: session_rvol=0.33x (today 24,26
+OESX      10.53   20.99$    1.00M   10.42   12.73                 0.003  quality filter: filter:adv_too_low: $999,273
+HVII      10.36    6.97$    0.61M    6.10    9.16                 0.002  quality filter: filter:adv_too_low: $606,974
+SPAI      10.24    5.37$    0.51M    9.78    3.27                 0.002  quality filter: filter:adv_too_low: $505,443
+WAFD      10.22   36.29$   18.72M    1.52    0.00                 0.061  filter:pm_rvol_too_low: pm_rvol=0.68x (today 1,206 / baselin
+FLNC       9.80   10.86$   80.27M    8.34    0.00                 0.260  EP cooldown — alerted within last 60 days
+DTIL       9.59    8.45$    1.99M    5.48    2.67                 0.006  quality filter: filter:mcap_too_small: $233M < $500M
+REAX       9.58    2.40$   12.01M    8.51    0.00                 0.039  already up 900% in prior 5 days (extended)
+KURA       9.52   12.40$   13.64M    5.94    5.89                 0.044  EP cooldown — alerted within last 60 days
+IMTX       9.44    8.69$    3.90M    5.01    1.64                 0.013  routine catalyst, gap 9.4%
+APMD       9.21   25.63$    9.85M   13.67    0.00                 0.032  pre-mkt volume 622 < 25,000 shares
+
+======================================================================================================================
+C. UPSTREAM — names declined in real time that never reached the scan log
+======================================================================================================================
+
+--- 2026-08-24 ---
+ticker  prev_close   ADV$(20dmed)   ATR%14   ext%5d  gates it would face
+RUM        9.05$   19.89M    6.08   11.73  clears every mechanical gate we can re-derive (mcap not derivable here)
+USDE       7.41$    1.01M   10.17  165.59  extension 166% >= 75% FAIL
+NXTT       7.66$    0.62M   52.19   33.92  ADV$ $619,173 < $1,000,000 FAIL ; ATR 52.2% > 15% FAIL
+CLF       11.27$  216.76M    6.14    4.93  clears every mechanical gate we can re-derive (mcap not derivable here)
+SUJA       7.68$    5.63M   12.65   15.49  clears every mechanical gate we can re-derive (mcap not derivable here)
+WBTN       8.80$    3.06M    5.87    6.67  clears every mechanical gate we can re-derive (mcap not derivable here)
+NCTY       5.78$    1.11M   10.82   33.80  clears every mechanical gate we can re-derive (mcap not derivable here)
+PHOS      18.51$    1.27M   10.89   12.25  clears every mechanical gate we can re-derive (mcap not derivable here)
+
+--- 2026-08-25 ---
+ticker  prev_close   ADV$(20dmed)   ATR%14   ext%5d  gates it would face
+SPAI       5.37$    0.51M    9.78    3.27  ADV$ $505,443 < $1,000,000 FAIL
+HMN       51.20$   11.87M    2.92    1.61  clears every mechanical gate we can re-derive (mcap not derivable here)
+ABCL      10.61$   52.98M    9.87    0.00  clears every mechanical gate we can re-derive (mcap not derivable here)
+PSQH       5.91$    0.49M   11.05   41.05  ADV$ $488,222 < $1,000,000 FAIL
+CRML       6.67$   36.76M    8.34   15.00  clears every mechanical gate we can re-derive (mcap not derivable here)
+DBGI       8.34$    1.38M   39.97    0.00  ATR 40.0% > 15% FAIL
+PTHS      26.62$    1.28M    7.42    4.35  clears every mechanical gate we can re-derive (mcap not derivable here)
+FISI      40.82$    5.98M    1.64    0.07  clears every mechanical gate we can re-derive (mcap not derivable here)
+CLRO       5.51$    0.27M   10.15    3.18  ADV$ $272,737 < $1,000,000 FAIL
+
+======================================================================================================================
+D. MARGIN OF EACH REJECTION (how close was it?) + 2026-08-24 D0 outcome (bar is in)
+======================================================================================================================
+
+--- 2026-08-24 ---
+ticker margin description                       miss by   D0 (open/high/close vs prior close)
+SDOT   ATR 16.2% vs 15% cap                        8.0%   O  +63.3%  H +139.8%  C  +75.7%
+NSSC   score 52 vs bar 65                         20.0%   O  +21.2%  H  +35.9%  C   -1.3%
+HVII   ADV$ 600,114 vs $1,000,000 floor           40.0%   O  +15.9%  H  +21.2%  C   +9.2%
+SUPX   mcap $368M vs $500M floor                  26.4%   O  +13.8%  H  +24.4%  C  +23.7%
+SCTX   score 60 vs bar 65                          7.7%   O   +4.8%  H  +14.0%  C   +9.1%
+JLHL   ATR 25.1% vs 15% cap                       67.3%   O   +6.4%  H   +6.5%  C   -4.4%
+CAPR   mcap $466M vs $500M floor                   6.8%   O  +27.7%  H  +27.7%  C   +8.1%
+BBCQ   mcap $372M vs $500M floor                  25.6%   O   +4.3%  H  +10.0%  C   +7.6%
+AERO   pre-mkt 3,037 sh vs 25,000 floor           87.9%   O   +2.0%  H   +5.5%  C   +5.0%
+
+--- 2026-08-25 ---
+ticker margin description                       miss by   D0 (open/high/close vs prior close)
+AMIX   ATR 32.5% vs 15% cap                      116.7%   bar not in yet
+PMI    ADV$ 248,885 vs $1,000,000 floor           75.1%   bar not in yet
+DFNS   ATR 57.6% vs 15% cap                      284.0%   bar not in yet
+NBBK   score 60 vs bar 65                          7.7%   bar not in yet
+GRML   ADV$ 533,390 vs $1,000,000 floor           46.7%   bar not in yet
+CAPR   mcap $491M vs $500M floor                   1.8%   bar not in yet
+MAIR   M&A filter (binary)                            —   bar not in yet
+MEI    rvol 0.33x vs 1.0x floor                   67.0%   bar not in yet
+OESX   ADV$ 999,273 vs $1,000,000 floor            0.1%   bar not in yet
+HVII   ADV$ 606,974 vs $1,000,000 floor           39.3%   bar not in yet
+SPAI   ADV$ 505,443 vs $1,000,000 floor           49.5%   bar not in yet
+WAFD   rvol 0.68x vs 1.0x floor                   32.0%   bar not in yet
+FLNC   60-day EP cooldown (binary)                    —   bar not in yet
+DTIL   mcap $233M vs $500M floor                  53.4%   bar not in yet
+REAX   extension 900% vs 75% cap                1100.0%   bar not in yet
+KURA   60-day EP cooldown (binary)                    —   bar not in yet
+IMTX   routine grade + gap < 12% (binary)             —   bar not in yet
+APMD   pre-mkt 622 sh vs 25,000 floor             97.5%   bar not in yet

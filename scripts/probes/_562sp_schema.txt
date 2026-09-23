@@ -1,0 +1,94 @@
+== cols mi_live_trades ==
+column_name|data_type
+id|integer
+ticker|text
+alert_date|date
+ep_score|double precision
+catalyst_quality|text
+gap_pct|double precision
+regime|text
+status|text
+orb_high|double precision
+orb_low|double precision
+atr_14|double precision
+entry_price|double precision
+entry_shares|double precision
+stop_price|double precision
+hard_stop|double precision
+position_size|double precision
+risk_dollars|double precision
+entry_order_id|text
+stop_order_id|text
+exits|jsonb
+remaining_shares|double precision
+total_pnl|double precision
+hold_days|integer
+partial_taken|boolean
+breakeven_active|boolean
+running_closes|jsonb
+proposed_at|timestamp with time zone
+confirmed_at|timestamp with time zone
+skip_reason|text
+created_at|timestamp with time zone
+filled_at|timestamp with time zone
+closed_at|timestamp with time zone
+entry_attempt|integer
+signal_type|text
+account_mode|text
+lowest_price_seen|numeric
+highest_price_seen|numeric
+pnl_attribution|text
+risk_dollars_actual|double precision
+(39 rows)
+== cols mi_paper_trades ==
+column_name|data_type
+id|integer
+ticker|text
+alert_date|date
+ep_score|double precision
+catalyst_quality|text
+gap_pct|double precision
+regime|text
+status|text
+entries|jsonb
+exits|jsonb
+remaining_shares|double precision
+stop_price|double precision
+last_entry_price|double precision
+total_pnl|double precision
+hold_days|integer
+skip_reason|text
+created_at|timestamp with time zone
+closed_at|timestamp with time zone
+orb_high|double precision
+orb_low|double precision
+atr_14|double precision
+day1_low|double precision
+partial_taken|boolean
+breakeven_active|boolean
+running_closes|jsonb
+(25 rows)
+== cols mi_intraday_bars ==
+column_name|data_type
+ticker|text
+bar_time|timestamp with time zone
+open|double precision
+high|double precision
+low|double precision
+close|double precision
+volume|bigint
+vwap|double precision
+(8 rows)
+== mi_live_trades censuses ==
+== mi_live_trades date span ==
+ERROR:  column "strategy" does not exist
+LINE 1: SELECT strategy, account_mode, status, count(*) FROM mi_live...
+               ^
+min|max
+2026-03-30 13:31:00.142187+00|2026-08-28 13:31:00.862421+00
+(1 row)
+== mi_paper_trades census ==
+status|count|min|max
+closed|2|2026-03-28 05:48:14.335789+00|2026-04-14 20:45:00.711072+00
+skipped|2|2026-03-30 20:45:00.086861+00|2026-04-01 20:45:00.286184+00
+(2 rows)

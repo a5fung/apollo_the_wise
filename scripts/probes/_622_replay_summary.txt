@@ -1,0 +1,19 @@
+cohort | n | artifact | no_bars | abstain(other) | no_trade(orb rule) | no_entry | entered | settled | >=4R | >=2R | >0 | sumR | meanR | open_at_horizon(mark>=4R) | >=4R @09:36 | full_session(>=300bars)
+excluded  | 154 | 0 | 2 | 10 | 19 | 12 | 113 | 109 | 3 | 8 | 62 | +77.3 | +0.71 | 2(0) | 0 | 88
+    abstain reasons: {'entry_window_gaps': 8, 'day0_fill_bar_straddles_stop': 2, 'no_minute_bars_in_db': 2}   no_trade reasons: {'setup': 19}
+    R distribution: min -9.97  p25 -1.00  median +0.33  p75 +0.41  max +67.50  worst -9.97
+    top settled: AVBC 2026-07-24 +67.50R, FBRX 2026-07-09 +10.71R, WNC 2026-06-17 +7.87R, SENS 2026-08-07 +3.99R, ARQQ 2026-06-15 +3.96R, AMCX 2026-07-31 +2.97R, BLZE 2026-06-23 +2.93R, DCTH 2026-08-06 +2.55R, OPRT 2026-08-06 +1.99R, INFU 2026-08-04 +1.89R
+    worst settled: UNCY 2026-06-29 -9.97R, RNAC 2026-07-29 -1.50R, BETR 2026-08-31 -1.25R, ALMU 2026-07-29 -1.19R, AVNW 2026-08-27 -1.04R, CODA 2026-06-18 -1.03R, SILC 2026-07-29 -1.00R, ARTV 2026-06-08 -1.00R, RELL 2026-06-08 -1.00R, SRI 2026-06-08 -1.00R
+    open_at_horizon marks (unrealized, NOT counted in sumR/meanR): TITN 2026-08-31 mark +1.15R, CAPR 2026-08-25 mark +0.75R
+    DEGENERATE-STOP settled trades (risk/share <0.3% of entry — R is noise-amplified, flagged not excluded): RELL 2026-06-08 -1.00R (entry 16.53 stop 16.4900), AVBC 2026-07-24 +67.50R (entry 20.85 stop 20.8460)
+    -> EXCLUDING those 2: n=107 sumR=+10.85 meanR=+0.101 >=4R:2 >0:61
+    @09:36 (5-min-later detection): entered=68 settled=62 sumR=-11.30 meanR=-0.182 medianR=+0.054 >=4R:0 >0:32(52%) worst=-1.24
+control   | 417 | 0 | 6 | 50 | 44 | 56 | 272 | 253 | 4 | 18 | 155 | +50.6 | +0.20 | 8(1) | 1 | 360
+    abstain reasons: {'entry_window_gaps': 32, 'fwd_stop_and_target_same_day': 3, 'day0_fill_bar_straddles_stop': 7, 'no_930_bar_for_orb': 7, 'day0_fill_bar_stop_and_target': 1, 'no_minute_bars_in_db': 6}   no_trade reasons: {'setup': 44}
+    R distribution: min -1.22  p25 -1.00  median +0.33  p75 +0.35  max +10.32  worst -1.22
+    top settled: BAP 2026-06-09 +10.32R, ABT 2026-07-16 +9.10R, RNG 2026-07-24 +7.38R, GRMN 2026-07-29 +5.06R, MAN 2026-07-16 +3.86R, HQ 2026-06-15 +3.72R, CRML 2026-08-21 +2.87R, NIQ 2026-08-11 +2.65R, LMT 2026-07-23 +2.64R, DCTH 2026-08-06 +2.55R
+    worst settled: UMC 2026-06-22 -1.22R, KEEL 2026-06-22 -1.08R, NUAI 2026-06-22 -1.05R, PRAA 2026-08-07 -1.04R, NBIS 2026-07-31 -1.02R, MPWR 2026-07-31 -1.01R, WPP 2026-08-06 -1.00R, CGEM 2026-06-08 -1.00R, CECO 2026-06-09 -1.00R, HYMC 2026-06-15 -1.00R
+    open_at_horizon marks (unrealized, NOT counted in sumR/meanR): GPRK 2026-08-31 mark +7.86R, CRM 2026-08-27 mark +2.63R, HOOD 2026-09-03 mark +1.36R, ANF 2026-08-26 mark +1.08R, SMMT 2026-09-03 mark +0.94R, HSAI 2026-09-03 mark +0.61R, OKTA 2026-08-27 mark +0.15R, CLYM 2026-09-03 mark +0.09R
+    @09:36 (5-min-later detection): entered=150 settled=143 sumR=-9.24 meanR=-0.065 medianR=+0.216 >=4R:1 >0:74(52%) worst=-1.07
+
+ticker-days classified in BOTH cohorts (same day, different scan_log rows): 2 — [('ASPN', '2026-08-06'), ('DCTH', '2026-08-06')]

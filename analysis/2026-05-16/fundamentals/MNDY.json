@@ -1,0 +1,105 @@
+{
+  "ticker": "MNDY",
+  "source_chain": [
+    "yfinance"
+  ],
+  "n_quarters": 5,
+  "n_quarters_with_revenue": 5,
+  "quarters": [
+    {
+      "source": "yfinance",
+      "end_date": "2025-12-31",
+      "revenue": 333878000.0,
+      "gross_profit": 296545000.0,
+      "operating_income": 2385000.0,
+      "net_income": 76692000.0,
+      "eps_basic": 1.48,
+      "eps_diluted": 1.45,
+      "gross_margin": 0.8881837078214198,
+      "op_margin": 0.007143327802370926,
+      "net_margin": 0.2297006691066797
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-09-30",
+      "revenue": 316855000.0,
+      "gross_profit": 281067000.0,
+      "operating_income": -2378000.0,
+      "net_income": 13052000.0,
+      "eps_basic": 0.25,
+      "eps_diluted": 0.25,
+      "gross_margin": 0.8870524372346973,
+      "op_margin": -0.007505010178157201,
+      "net_margin": 0.04119234350097047
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-06-30",
+      "revenue": 299014000.0,
+      "gross_profit": 267841000.0,
+      "operating_income": -11551000.0,
+      "net_income": 1573000.0,
+      "eps_basic": 0.03,
+      "eps_diluted": 0.03,
+      "gross_margin": 0.8957473563110757,
+      "op_margin": -0.03863029824690483,
+      "net_margin": 0.0052606232484097735
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-03-31",
+      "revenue": 282250000.0,
+      "gross_profit": 253445000.0,
+      "operating_income": 9796000.0,
+      "net_income": 27425000.0,
+      "eps_basic": 0.54,
+      "eps_diluted": 0.52,
+      "gross_margin": 0.8979450841452613,
+      "op_margin": 0.03470682019486271,
+      "net_margin": 0.09716563330380867
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-12-31",
+      "revenue": 267976000.0,
+      "gross_profit": 237474000.0,
+      "operating_income": 9596000.0,
+      "net_income": 23005000.0,
+      "eps_basic": 0.45,
+      "eps_diluted": 0.43,
+      "gross_margin": 0.8861763740036421,
+      "op_margin": 0.035809176941218615,
+      "net_margin": 0.08584724005134788
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": 0.24592500820969043,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": 2.3720930232558137,
+    "eps_yoy_q1": null,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": 0.05372488993388136,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": null,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": 0.43,
+    "margins_q0": {
+      "gross_margin": 0.8881837078214198,
+      "op_margin": 0.007143327802370926,
+      "net_margin": 0.2297006691066797
+    },
+    "margins_q1": {
+      "gross_margin": 0.8870524372346973,
+      "op_margin": -0.007505010178157201,
+      "net_margin": 0.04119234350097047
+    },
+    "margins_q2": {
+      "gross_margin": 0.8957473563110757,
+      "op_margin": -0.03863029824690483,
+      "net_margin": 0.0052606232484097735
+    }
+  }
+}

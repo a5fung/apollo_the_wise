@@ -1,0 +1,92 @@
+walk reproduction: 602 fires (recorded 602); high-break 48 (recorded 48)
+48 high-break fires x 8 variants -> 384 rows written
+
+== Q1: ep_high_break under each stop basis — identical fires, own-R, MATURE settled only ==
+
+a_prior_low: of 48 fires — killed 0, no-stop-basis 0, settle-abstain 6, settled 42 (32 mature); median stop width 10.8%
+  M-none : n=32 mean=-0.41 med=-1.00 sum=-13.1 win=12% >=4R=2
+  M-trail: n=32 mean=-0.12 med=-0.39 sum=-3.8 win=34% >=4R=0
+  touched >=4R during the M-none hold (own-R MFE, pess): 2/32
+    2026-05: M-none n=15 mean=+0.04 med=-1.00 sum=+0.7 win=20% >=4R=2  immature=0
+    2026-06: M-none n=8 mean=-1.00 med=-1.00 sum=-8.0 win=0% >=4R=0  immature=0
+    2026-07: M-none n=9 mean=-0.64 med=-1.00 sum=-5.8 win=11% >=4R=0  immature=0
+    2026-08: M-none n=0  immature=16
+
+b_break_bar: of 48 fires — killed 21, no-stop-basis 0, settle-abstain 0, settled 27 (20 mature); median stop width 1.4%
+  M-none : n=20 mean=-1.00 med=-1.00 sum=-20.0 win=0% >=4R=0
+  M-trail: n=20 mean=-0.72 med=-1.00 sum=-14.5 win=5% >=4R=1
+  touched >=4R during the M-none hold (own-R MFE, pess): 8/20
+    2026-05: M-none n=8 mean=-1.00 med=-1.00 sum=-8.0 win=0% >=4R=0  immature=0
+    2026-06: M-none n=6 mean=-1.00 med=-1.00 sum=-6.0 win=0% >=4R=0  immature=0
+    2026-07: M-none n=6 mean=-1.00 med=-1.00 sum=-6.0 win=0% >=4R=0  immature=0
+    2026-08: M-none n=0  immature=7
+  killed fires (incumbent M-none R in brackets): ABVX 2026-06 [-1.00], AMBQ 2026-05 [+1.25], ARM 2026-05 [+4.45], ASAN 2026-05 [-1.00], CAI 2026-08 [None], CRSR 2026-05 [-1.00], DCTH 2026-08 [None], EME 2026-07 [-1.00], EROC 2026-08 [-1.00], FTK 2026-08 [-1.00], MRVL 2026-06 [-1.00], MRX 2026-08 [None], PENG 2026-07 [-1.00], QBTS 2026-05 [-0.19], QNST 2026-08 [-1.00], QUBT 2026-05 [-1.00], SITM 2026-08 [-1.00], TER 2026-07 [-0.62], U 2026-08 [None], VPG 2026-05 [+6.17], WYFI 2026-08 [-1.00]
+
+c_lod_at_fire: of 48 fires — killed 21, no-stop-basis 0, settle-abstain 0, settled 27 (20 mature); median stop width 2.2%
+  M-none : n=20 mean=-0.82 med=-1.00 sum=-16.5 win=5% >=4R=0
+  M-trail: n=20 mean=-0.72 med=-1.00 sum=-14.4 win=10% >=4R=0
+  touched >=4R during the M-none hold (own-R MFE, pess): 6/20
+    2026-05: M-none n=8 mean=-1.00 med=-1.00 sum=-8.0 win=0% >=4R=0  immature=0
+    2026-06: M-none n=6 mean=-1.00 med=-1.00 sum=-6.0 win=0% >=4R=0  immature=0
+    2026-07: M-none n=6 mean=-0.41 med=-1.00 sum=-2.5 win=17% >=4R=0  immature=0
+    2026-08: M-none n=0  immature=7
+  killed fires (incumbent M-none R in brackets): ABVX 2026-06 [-1.00], AMBQ 2026-05 [+1.25], ARM 2026-05 [+4.45], ASAN 2026-05 [-1.00], CAI 2026-08 [None], CRSR 2026-05 [-1.00], DCTH 2026-08 [None], EME 2026-07 [-1.00], EROC 2026-08 [-1.00], FTK 2026-08 [-1.00], MRVL 2026-06 [-1.00], MRX 2026-08 [None], PENG 2026-07 [-1.00], QBTS 2026-05 [-0.19], QNST 2026-08 [-1.00], QUBT 2026-05 [-1.00], SITM 2026-08 [-1.00], TER 2026-07 [-0.62], U 2026-08 [None], VPG 2026-05 [+6.17], WYFI 2026-08 [-1.00]
+
+d_adr_025: of 48 fires — killed 0, no-stop-basis 0, settle-abstain 2, settled 46 (32 mature); median stop width 1.4%
+  M-none : n=32 mean=+1.66 med=-1.00 sum=+53.2 win=6% >=4R=2
+  M-trail: n=32 mean=+1.18 med=-1.00 sum=+37.8 win=19% >=4R=3
+  touched >=4R during the M-none hold (own-R MFE, pess): 11/32
+    2026-05: M-none n=15 mean=+4.68 med=-1.00 sum=+70.2 win=13% >=4R=2  immature=0
+    2026-06: M-none n=8 mean=-1.00 med=-1.00 sum=-8.0 win=0% >=4R=0  immature=0
+    2026-07: M-none n=9 mean=-1.00 med=-1.00 sum=-9.0 win=0% >=4R=0  immature=0
+    2026-08: M-none n=0  immature=16
+
+d_adr_050: of 48 fires — killed 0, no-stop-basis 0, settle-abstain 3, settled 45 (32 mature); median stop width 2.8%
+  M-none : n=32 mean=+0.36 med=-1.00 sum=+11.6 win=6% >=4R=2
+  M-trail: n=32 mean=+0.23 med=-1.00 sum=+7.5 win=22% >=4R=3
+  touched >=4R during the M-none hold (own-R MFE, pess): 7/32
+    2026-05: M-none n=15 mean=+1.91 med=-1.00 sum=+28.6 win=13% >=4R=2  immature=0
+    2026-06: M-none n=8 mean=-1.00 med=-1.00 sum=-8.0 win=0% >=4R=0  immature=0
+    2026-07: M-none n=9 mean=-1.00 med=-1.00 sum=-9.0 win=0% >=4R=0  immature=0
+    2026-08: M-none n=0  immature=16
+
+d_adr_075: of 48 fires — killed 0, no-stop-basis 0, settle-abstain 4, settled 44 (32 mature); median stop width 4.3%
+  M-none : n=32 mean=+0.12 med=-1.00 sum=+3.9 win=9% >=4R=3
+  M-trail: n=32 mean=+0.10 med=-1.00 sum=+3.2 win=25% >=4R=3
+  touched >=4R during the M-none hold (own-R MFE, pess): 6/32
+    2026-05: M-none n=15 mean=+0.98 med=-1.00 sum=+14.7 win=13% >=4R=2  immature=0
+    2026-06: M-none n=8 mean=-1.00 med=-1.00 sum=-8.0 win=0% >=4R=0  immature=0
+    2026-07: M-none n=9 mean=-0.32 med=-1.00 sum=-2.9 win=11% >=4R=1  immature=0
+    2026-08: M-none n=0  immature=16
+
+d_adr_100: of 48 fires — killed 0, no-stop-basis 0, settle-abstain 4, settled 44 (32 mature); median stop width 5.7%
+  M-none : n=32 mean=+0.04 med=-1.00 sum=+1.2 win=12% >=4R=3
+  M-trail: n=32 mean=+0.03 med=-1.00 sum=+1.1 win=28% >=4R=2
+  touched >=4R during the M-none hold (own-R MFE, pess): 5/32
+    2026-05: M-none n=15 mean=+0.87 med=-1.00 sum=+13.1 win=20% >=4R=3  immature=0
+    2026-06: M-none n=8 mean=-1.00 med=-1.00 sum=-8.0 win=0% >=4R=0  immature=0
+    2026-07: M-none n=9 mean=-0.43 med=-1.00 sum=-3.9 win=11% >=4R=0  immature=0
+    2026-08: M-none n=0  immature=16
+
+e_ep_close: of 48 fires — killed 0, no-stop-basis 0, settle-abstain 2, settled 46 (32 mature); median stop width 2.2%
+  M-none : n=32 mean=+1.63 med=-1.00 sum=+52.3 win=9% >=4R=2
+  M-trail: n=32 mean=+0.88 med=-1.00 sum=+28.2 win=19% >=4R=3
+  touched >=4R during the M-none hold (own-R MFE, pess): 7/32
+    2026-05: M-none n=15 mean=+4.33 med=-1.00 sum=+65.0 win=13% >=4R=2  immature=0
+    2026-06: M-none n=8 mean=-0.97 med=-1.00 sum=-7.7 win=0% >=4R=0  immature=0
+    2026-07: M-none n=9 mean=-0.55 med=-1.00 sum=-5.0 win=11% >=4R=0  immature=0
+    2026-08: M-none n=0  immature=16
+
+== P14 both-directions: every fire the INCUMBENT harvested >= +2R (mature, M-none) — what each variant does on the same fire ==
+  ticker ep_date     a_prior_low  b_break_bar c_lod_at_fire    d_adr_025    d_adr_050    d_adr_075    d_adr_100   e_ep_close
+  VPG    2026-05-12       +6.17R       KILLED       KILLED      +49.45R      +24.73R      +16.48R      +12.36R      +23.30R
+  ARM    2026-05-20       +4.45R       KILLED       KILLED      +33.75R      +16.88R      +11.25R       +8.44R      +54.72R
+
+== and the reverse: fires a TIGHT variant banks >= +2R that the incumbent lost (mature) ==
+  b_break_bar: none
+  c_lod_at_fire: THC 2026-07 (+2.5R vs incumbent +1.8R)
+  d_adr_025: none
+  d_adr_050: none
+  d_adr_075: THC 2026-07 (+5.1R vs incumbent +1.8R)
+  d_adr_100: AMBQ 2026-05 (+4.3R vs incumbent +1.2R); THC 2026-07 (+3.9R vs incumbent +1.8R)
+  e_ep_close: THC 2026-07 (+2.3R vs incumbent +1.8R)

@@ -1,0 +1,4 @@
+ticker|~|event_date|~|kind|~|verdict|~|operator_grade|~|system_tier|~|root_cause|~|source
+MNTS|~|2026-05-26|~|injected|~||~|game_changer|~||~||~|operator
+FSLY|~|2026-02-12|~|injected|~||~|game_changer|~||~||~|trader:Ameet Rai (video)
+(2 rows)

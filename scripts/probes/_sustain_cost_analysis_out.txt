@@ -1,0 +1,346 @@
+==============================================================================
+#490 SUSTAIN RULE — WHAT THE DECLINED NAMES DID.  Capture 2026-08-24 19:14 ET
+==============================================================================
+
+## Toggle state read live from mi_safeguard_state
+  ep_rt_entry_gap_recheck          on   since 2026-08-01 20:34
+  ep_rt_gap_down_authoritative     on   since 2026-08-01 20:00
+  ep_rt_sustain_enabled            on   since 2026-08-02 09:53
+  ep_rt_universe_authoritative      NO ROW -> defaults False (SHADOW)
+  ep_rt_gap_authoritative           NO ROW -> defaults False (SHADOW)
+
+## Cohort sizes (ticker-days, deduped)
+  sustain REJECT events            106  -> 106 distinct ticker-days
+  sustain UNDECIDABLE (fail-OPEN)  74  -> 73 distinct ticker-days
+  universe CATCH (passed) >=08-03  185 distinct ticker-days
+  rejected then caught later same day (DELAYED, not declined): 40
+  NET DECLINED (rejected, never caught that day):              66
+
+  decline rate = declined / (declined + passed) = 66/251 = 26.3%
+  high-supply 08-03..08-07   declined  28 / arrivals 117 = 23.9%   (5.6 declined per trading day over 5 days)
+  low-supply 08-10..08-24    declined  38 / arrivals 134 = 28.4%   (3.5 declined per trading day over 11 days)
+
+## Per-day
+  date         declined  delayed  passed  undec  alerts
+  2026-08-03          5        2       6      4       2
+  2026-08-04          6        2      18      7      11
+  2026-08-05          1        6      18     12       9
+  2026-08-06          7        7      21      5      11
+  2026-08-07          9        6      26     11      16
+  2026-08-10          3        2      12      2       5
+  2026-08-11          3        2       9      3       5
+  2026-08-12          5        1      11      6      10
+  2026-08-13          2        1      10      3       6
+  2026-08-14          2        1       9      3       7
+  2026-08-17          2        1      10      3       2
+  2026-08-18          0        0       6      3       1
+  2026-08-19          0        4      10      2       4
+  2026-08-20          5        1       7      4       3
+  2026-08-21         12        2       8      4       1
+  2026-08-24          4        2       4      1       0
+
+==============================================================================
+## THE COMPARISON — declined vs passed, same days, same basis, same censoring
+==============================================================================
+
+### DECLINED by the sustain rule  (n=66)
+  bars available for 66/66; 5-session SETTLED 45, CENSORED 21
+  alerted anyway (live alert same ticker-day): 3/66
+  reached the delayed scan log that day: 21/66
+  5-session max high vs open                 n=66  med   +12.7%  P90   +33.7%  max    +73.7%
+  5-session close vs open (settled only)     n=45  med    +5.0%  P90   +25.3%  max    +48.8%
+  next-close vs open                         n=62  med    +3.1%  P90   +22.1%  max    +49.3%
+  gap-day open->close                        n=66  med    +4.3%  P90   +17.0%  max    +33.3%
+  tailx-so-far (ADR units, FLOOR)            n=62  med 1.01x  P90 4.37x  max 20.20x   >=8xADR: 3 (4.8%)
+  >= +20% 5-session max high: 20  -> IPST 08-20 +74%*, VEEE 08-10 +69%, ECOR 08-07 +55%, ZLAB 08-06 +40%, SION 08-12 +36%, ALGS 08-10 +36%, AIAI 08-17 +34%, CRWV 08-03 +34%, AVAH 08-13 +33%, BUUU 08-17 +32%, BRUN 08-12 +32%[alerted], ARCT 08-07 +31%, ARCT 08-21 +31%*, MATV 08-06 +26%, QMLS 08-07 +24%, DCTH 08-06 +24%[alerted], DMRC 08-03 +24%, CACI 08-06 +24%, CHRN 08-12 +23%, LUNR 08-04 +23%
+  >= +50% 5-session max high: 3  -> IPST 08-20 +74%*, VEEE 08-10 +69%, ECOR 08-07 +55%
+  >= +100% 5-session max high: 0
+
+### PASSED the sustain rule (universe catches)  (n=185)
+  bars available for 185/185; 5-session SETTLED 150, CENSORED 35
+  alerted anyway (live alert same ticker-day): 25/185
+  reached the delayed scan log that day: 127/185
+  5-session max high vs open                 n=185 med   +12.3%  P90   +32.9%  max   +283.5%
+  5-session close vs open (settled only)     n=150 med    +0.7%  P90   +17.3%  max    +77.7%
+  next-close vs open                         n=181 med    +1.9%  P90   +16.1%  max   +181.1%
+  gap-day open->close                        n=185 med    +3.5%  P90   +15.0%  max    +60.0%
+  tailx-so-far (ADR units, FLOOR)            n=181 med 1.22x  P90 3.09x  max 11.38x   >=8xADR: 1 (0.6%)
+  >= +20% 5-session max high: 48  -> SDOT 08-21 +283%*, PN 08-06 +111%, BANL 08-14 +94%, DFNS 08-03 +69%, AIAI 08-20 +58%*, STDN 08-10 +56%, ARCT 08-19 +54%*, MRNA 08-19 +52%*[alerted], MF 08-14 +51%, AGPU 08-17 +50%, SGHT 08-06 +49%, AEHL 08-19 +46%*, PSIX 08-04 +45%, AXTI 08-05 +42%, ALOY 08-07 +40%, BUUU 08-12 +39%, XHLD 08-17 +39%, TSAT 08-04 +38%[alerted], NCTY 08-24 +35%*, ALMR 08-11 +33%, CLRO 08-10 +32%, ZTG 08-12 +32%, MRVI 08-19 +32%*, MRDN 08-03 +31%, FCUV 08-10 +30%, RRGB 08-13 +29%, QMLS 08-11 +28%, U 08-06 +27%[alerted], NUCL 08-04 +27%, AMWL 08-05 +27%, OESX 08-06 +25%, ULBI 08-07 +25%, BVS 08-05 +25%, BANL 08-18 +25%*, MTW 08-07 +25%[alerted], DUOT 08-17 +24%, AAOI 08-14 +23%, DBGI 08-19 +23%*, PKOH 08-06 +23%, ELOX 08-20 +23%*, MARA 08-20 +22%*, STEM 08-13 +22%, ZETA 08-05 +21%, FCUV 08-04 +21%, CAPR 08-17 +21%, HBB 08-07 +20%, SUJA 08-24 +20%*, CRML 08-21 +20%*
+  >= +50% 5-session max high: 9  -> SDOT 08-21 +283%*, PN 08-06 +111%, BANL 08-14 +94%, DFNS 08-03 +69%, AIAI 08-20 +58%*, STDN 08-10 +56%, ARCT 08-19 +54%*, MRNA 08-19 +52%*[alerted], MF 08-14 +51%
+  >= +100% 5-session max high: 2  -> SDOT 08-21 +283%*, PN 08-06 +111%
+
+### REJECTED then CAUGHT later the same day (rule only delayed them)  (n=40)
+  bars available for 40/40; 5-session SETTLED 31, CENSORED 9
+  alerted anyway (live alert same ticker-day): 6/40
+  reached the delayed scan log that day: 32/40
+  5-session max high vs open                 n=40  med   +14.1%  P90   +30.5%  max   +111.0%
+  5-session close vs open (settled only)     n=31  med    +0.9%  P90   +15.8%  max    +50.4%
+  next-close vs open                         n=38  med    +4.1%  P90   +18.8%  max    +36.5%
+  gap-day open->close                        n=40  med    +5.9%  P90   +13.6%  max    +29.4%
+  tailx-so-far (ADR units, FLOOR)            n=38  med 1.10x  P90 3.20x  max 4.43x   >=8xADR: 0 (0.0%)
+  >= +20% 5-session max high: 13  -> PN 08-06 +111%, STDN 08-10 +56%, CLRO 08-10 +32%, MRVI 08-19 +32%*, MRDN 08-03 +31%, OESX 08-06 +25%, BVS 08-05 +25%, DUOT 08-17 +24%, DBGI 08-19 +23%*, PKOH 08-06 +23%, ZETA 08-05 +21%, HBB 08-07 +20%, SUJA 08-24 +20%*
+  >= +50% 5-session max high: 2  -> PN 08-06 +111%, STDN 08-10 +56%
+  >= +100% 5-session max high: 1  -> PN 08-06 +111%
+
+==============================================================================
+## HIGH-SUPPLY ERA 08-03..08-07
+==============================================================================
+
+### declined  (n=28)
+  bars available for 28/28; 5-session SETTLED 28, CENSORED 0
+  alerted anyway (live alert same ticker-day): 1/28
+  reached the delayed scan log that day: 11/28
+  5-session max high vs open                 n=28  med   +15.9%  P90   +31.1%  max    +55.1%
+  5-session close vs open (settled only)     n=28  med    +9.5%  P90   +25.0%  max    +48.8%
+  next-close vs open                         n=28  med    +3.7%  P90   +20.1%  max    +33.7%
+  gap-day open->close                        n=28  med    +4.8%  P90   +14.7%  max    +21.6%
+  tailx-so-far (ADR units, FLOOR)            n=28  med 1.53x  P90 4.74x  max 20.20x   >=8xADR: 2 (7.1%)
+  >= +20% 5-session max high: 10  -> ECOR 08-07 +55%, ZLAB 08-06 +40%, CRWV 08-03 +34%, ARCT 08-07 +31%, MATV 08-06 +26%, QMLS 08-07 +24%, DCTH 08-06 +24%[alerted], DMRC 08-03 +24%, CACI 08-06 +24%, LUNR 08-04 +23%
+  >= +50% 5-session max high: 1  -> ECOR 08-07 +55%
+  >= +100% 5-session max high: 0
+
+### passed  (n=89)
+  bars available for 89/89; 5-session SETTLED 89, CENSORED 0
+  alerted anyway (live alert same ticker-day): 12/89
+  reached the delayed scan log that day: 61/89
+  5-session max high vs open                 n=89  med   +11.7%  P90   +27.0%  max   +111.0%
+  5-session close vs open (settled only)     n=89  med    +3.4%  P90   +17.3%  max    +43.7%
+  next-close vs open                         n=89  med    +2.2%  P90   +15.7%  max    +29.0%
+  gap-day open->close                        n=89  med    +4.1%  P90   +13.3%  max    +46.7%
+  tailx-so-far (ADR units, FLOOR)            n=89  med 1.47x  P90 3.39x  max 6.10x   >=8xADR: 0 (0.0%)
+  >= +20% 5-session max high: 19  -> PN 08-06 +111%, DFNS 08-03 +69%, SGHT 08-06 +49%, PSIX 08-04 +45%, AXTI 08-05 +42%, ALOY 08-07 +40%, TSAT 08-04 +38%[alerted], MRDN 08-03 +31%, U 08-06 +27%[alerted], NUCL 08-04 +27%, AMWL 08-05 +27%, OESX 08-06 +25%, ULBI 08-07 +25%, BVS 08-05 +25%, MTW 08-07 +25%[alerted], PKOH 08-06 +23%, ZETA 08-05 +21%, FCUV 08-04 +21%, HBB 08-07 +20%
+  >= +50% 5-session max high: 2  -> PN 08-06 +111%, DFNS 08-03 +69%
+  >= +100% 5-session max high: 1  -> PN 08-06 +111%
+
+==============================================================================
+## LOW-SUPPLY ERA 08-10..08-24
+==============================================================================
+
+### declined  (n=38)
+  bars available for 38/38; 5-session SETTLED 17, CENSORED 21
+  alerted anyway (live alert same ticker-day): 2/38
+  reached the delayed scan log that day: 10/38
+  5-session max high vs open                 n=38  med   +12.3%  P90   +33.7%  max    +73.7%
+  5-session close vs open (settled only)     n=17  med    -4.6%  P90   +25.3%  max    +28.5%
+  next-close vs open                         n=34  med    +1.6%  P90   +22.1%  max    +49.3%
+  gap-day open->close                        n=38  med    +3.7%  P90   +17.3%  max    +33.3%
+  tailx-so-far (ADR units, FLOOR)            n=34  med 0.66x  P90 1.83x  max 16.50x   >=8xADR: 1 (2.9%)
+  >= +20% 5-session max high: 10  -> IPST 08-20 +74%*, VEEE 08-10 +69%, SION 08-12 +36%, ALGS 08-10 +36%, AIAI 08-17 +34%, AVAH 08-13 +33%, BUUU 08-17 +32%, BRUN 08-12 +32%[alerted], ARCT 08-21 +31%*, CHRN 08-12 +23%
+  >= +50% 5-session max high: 2  -> IPST 08-20 +74%*, VEEE 08-10 +69%
+  >= +100% 5-session max high: 0
+
+### passed  (n=96)
+  bars available for 96/96; 5-session SETTLED 61, CENSORED 35
+  alerted anyway (live alert same ticker-day): 13/96
+  reached the delayed scan log that day: 66/96
+  5-session max high vs open                 n=96  med   +13.5%  P90   +38.6%  max   +283.5%
+  5-session close vs open (settled only)     n=61  med    +0.0%  P90   +16.4%  max    +77.7%
+  next-close vs open                         n=92  med    +1.6%  P90   +16.1%  max   +181.1%
+  gap-day open->close                        n=96  med    +3.2%  P90   +17.1%  max    +60.0%
+  tailx-so-far (ADR units, FLOOR)            n=92  med 0.87x  P90 2.58x  max 11.38x   >=8xADR: 1 (1.1%)
+  >= +20% 5-session max high: 29  -> SDOT 08-21 +283%*, BANL 08-14 +94%, AIAI 08-20 +58%*, STDN 08-10 +56%, ARCT 08-19 +54%*, MRNA 08-19 +52%*[alerted], MF 08-14 +51%, AGPU 08-17 +50%, AEHL 08-19 +46%*, BUUU 08-12 +39%, XHLD 08-17 +39%, NCTY 08-24 +35%*, ALMR 08-11 +33%, CLRO 08-10 +32%, ZTG 08-12 +32%, MRVI 08-19 +32%*, FCUV 08-10 +30%, RRGB 08-13 +29%, QMLS 08-11 +28%, BANL 08-18 +25%*, DUOT 08-17 +24%, AAOI 08-14 +23%, DBGI 08-19 +23%*, ELOX 08-20 +23%*, MARA 08-20 +22%*, STEM 08-13 +22%, CAPR 08-17 +21%, SUJA 08-24 +20%*, CRML 08-21 +20%*
+  >= +50% 5-session max high: 7  -> SDOT 08-21 +283%*, BANL 08-14 +94%, AIAI 08-20 +58%*, STDN 08-10 +56%, ARCT 08-19 +54%*, MRNA 08-19 +52%*[alerted], MF 08-14 +51%
+  >= +100% 5-session max high: 1  -> SDOT 08-21 +283%*
+
+==============================================================================
+## THE OPERATOR'S PRE-REGISTERED TRIGGER (magna53_ep.md 2026-08-02)
+   "a rejected name running >=+20% once is a review, twice a revert"
+==============================================================================
+  net-declined names reaching >= +20% (5-session max high vs gap-day open): 20
+    IPST   2026-08-20   +73.7%  tailx 0.86x   CENSORED  never alerted  | scan: already up 342% in prior 5 days (extended)
+    VEEE   2026-08-10   +69.3%  tailx 1.21x   SETTLED  never alerted  | scan: not in scan log
+    ECOR   2026-08-07   +55.1%  tailx 3.93x   SETTLED  never alerted  | scan: not in scan log
+    ZLAB   2026-08-06   +39.9%  tailx 9.01x   SETTLED  never alerted  | scan: not in scan log
+    SION   2026-08-12   +36.3%  tailx 0.93x   SETTLED  never alerted  | scan: not in scan log
+    ALGS   2026-08-10   +36.2%  tailx 0.23x   SETTLED  never alerted  | scan: not in scan log
+    AIAI   2026-08-17   +33.7%  tailx 4.37x   SETTLED  never alerted  | scan: not in scan log
+    CRWV   2026-08-03   +33.7%  tailx 4.74x   SETTLED  never alerted  | scan: not in scan log
+    AVAH   2026-08-13   +32.8%  tailx 6.57x   SETTLED  never alerted  | scan: score 30 < 50 (catalyst=routine)
+    BUUU   2026-08-17   +31.9%  tailx 1.83x   SETTLED  never alerted  | scan: not in scan log
+    BRUN   2026-08-12   +31.8%  tailx 1.96x   SETTLED  ALERTED ANYWAY via the delayed path  | scan: already scored earlier today
+    ARCT   2026-08-07   +31.1%  tailx 20.20x  SETTLED  never alerted  | scan: not in scan log
+    ARCT   2026-08-21   +30.5%  tailx 1.13x   CENSORED  never alerted  | scan: not in scan log
+    MATV   2026-08-06   +26.2%  tailx 3.81x   SETTLED  never alerted  | scan: outside top-20 gap cap (gap 12.3%)
+    QMLS   2026-08-07   +24.5%  tailx 0.95x   SETTLED  never alerted  | scan: not in scan log
+    DCTH   2026-08-06   +24.2%  tailx 2.98x   SETTLED  ALERTED ANYWAY via the delayed path  | scan: <none>
+    DMRC   2026-08-03   +24.0%  tailx 1.37x   SETTLED  never alerted  | scan: not in scan log
+    CACI   2026-08-06   +23.7%  tailx 2.61x   SETTLED  never alerted  | scan: filter:session_rvol_too_low: session_rvol=0.21x (today 2,015 / baseline 9,577 n=22) < 1.0x
+    CHRN   2026-08-12   +23.1%  tailx 1.46x   SETTLED  never alerted  | scan: not in scan log
+    LUNR   2026-08-04   +22.8%  tailx 6.54x   SETTLED  never alerted  | scan: not in scan log
+
+  (for reference, rejected-then-caught names >= +20%: 13 — these were NOT declined)
+    PN     2026-08-06  +111.0%
+    STDN   2026-08-10   +55.9%
+    CLRO   2026-08-10   +32.3%
+    MRVI   2026-08-19   +32.1%
+    MRDN   2026-08-03   +30.5%
+    OESX   2026-08-06   +25.5%
+    BVS    2026-08-05   +25.2%
+    DUOT   2026-08-17   +24.0%
+    DBGI   2026-08-19   +23.3%
+    PKOH   2026-08-06   +23.3%
+    ZETA   2026-08-05   +21.3%
+    HBB    2026-08-07   +20.4%
+    SUJA   2026-08-24   +20.3%
+
+==============================================================================
+## COVERAGE / CENSORING
+==============================================================================
+  declined ticker-days with NO daily bar at all: 0
+  last session in mi_daily_closes: 2026-08-24
+  declined ticker-days present in mi_ep_missed_outcomes with a FRESH row (#583 guard): 21/66
+  passed   ticker-days present in mi_ep_missed_outcomes with a FRESH row: 123/185
+
+## Cross-check: mi_daily_closes vs mi_ep_missed_outcomes where BOTH exist and are fresh
+  n=144  max abs difference in max_high_5d: 0.000 pp (median 0.000 pp)
+
+==============================================================================
+## THE TAIL — every name reaching >=8xADR (the program's tail-winner bar)
+==============================================================================
+  DECLINED               3/62 (4.8%)
+      ARCT   2026-08-07  tailx 20.20x  5d max high +31.1%  fwd sessions 11  | scan: not in scan log
+      TNON   2026-08-11  tailx 16.50x  5d max high +12.0%  fwd sessions 9  | scan: not in scan log
+      ZLAB   2026-08-06  tailx 9.01x  5d max high +39.9%  fwd sessions 12  | scan: not in scan log
+  PASSED                 1/181 (0.6%)
+      SDOT   2026-08-21  tailx 11.38x  5d max high +283.5%  fwd sessions 1  | scan: not in scan log
+  DELAYED-THEN-PASSED    0/38 (0.0%)
+
+  >=8xADR density: declined 3/62 vs passed 1/181 — two-sided Fisher exact p = 0.052
+  >=+20% density:  declined 20/66 vs passed 48/185 — p = 0.521
+
+==============================================================================
+## DECLINE RATE — every denominator, so the '1 in 7 -> 1 in 3' claim is checkable
+==============================================================================
+  week            rejects declined delayed passed undec rej/arrivals declined/arr
+  08-03..08-07         51       28      23     89    39        28.5%        17.9%
+  08-10..08-14         22       15       7     51    17        24.4%        18.1%
+  08-17..08-21         27       19       8     41    16        32.1%        25.0%
+  08-24 (1 day)         6        4       2      4     1        54.5%        44.4%
+  arrivals = rejects + passed + undecidable (undecidable FAILS OPEN = admitted)
+
+==============================================================================
+## THE 2026-08-02 REPLAY'S OWN PREDICTION vs LIVE (pre-committed watch item)
+   replay, N=97 catches 07-27..08-02: 3-consecutive ADMITS med open->close +5.0%,
+   win>=+5% 50%; the unfiltered 1-bar pool was +3.9% / 41%.
+==============================================================================
+  live ADMITS (passed)       n=185  med open->close  +3.5%   win>=+5% 83/185 = 45%
+  live DECLINES              n=66   med open->close  +4.3%   win>=+5% 31/66 = 47%
+  live delayed-then-passed   n=40   med open->close  +5.9%   win>=+5% 22/40 = 55%
+  rule OFF (all arrivals)    n=291  med open->close  +4.2%   win>=+5% 136/291 = 47%
+
+## Censoring-matched (5-session SETTLED rows only, both cohorts)
+  declined   n=45   5d max high med +16.8% P90  +33.7% max   +69.3%   >=+20% 18/45 = 40%   5d close med  +5.0%
+  passed     n=150  5d max high med +12.3% P90  +32.3% max  +111.0%   >=+20% 35/150 = 23%   5d close med  +0.7%
+
+  SETTLED-only >=+20%: declined 18/45 vs passed 35/150 — two-sided Fisher exact p = 0.0355
+  era mix of the settled rows: declined 28/45 high-supply, passed 89/150 high-supply
+    high-supply  declined 10/28 = 36%   passed 19/89 = 21%   | 5d max high med: declined +15.9% vs passed +11.7%
+    low-supply   declined 8/17 = 47%   passed 16/61 = 26%   | 5d max high med: declined +16.8% vs passed +13.7%
+
+==============================================================================
+## MECHANISM — what shape of tape does the rule actually decline?
+   _sustain_ok reads the last 3 minute closes OLDEST->NEWEST and rejects unless
+   ALL THREE sit at or above the gap floor.
+==============================================================================
+  RISING into the level (newest bar is the high)  53/66 (80%)   5d max high med +12.7%, >=+20% 16
+  flat / mixed                                     9/66 (14%)   5d max high med +12.1%, >=+20% 2
+  FADING off the level (newest bar below the oldest)   4/66 (6%)   5d max high med +24.3%, >=+20% 2
+
+  examples of the RISING class (the operator's premise was a FADING spike):
+    BOW    2026-08-03  bar closes as % gap: [9.51, 9.84, 10.2]   -> 5d max high +3.6%
+    CRWV   2026-08-03  bar closes as % gap: [7.66, 9.11, 10.0]   -> 5d max high +33.7%
+    ELOX   2026-08-03  bar closes as % gap: [4.65, 3.93, 11.06]   -> 5d max high +6.1%
+    AHCO   2026-08-04  bar closes as % gap: [7.11, 10.8, 13.57]   -> 5d max high +5.3%
+    BR     2026-08-04  bar closes as % gap: [7.99, 8.55, 10.15]   -> 5d max high +5.1%
+    LDOS   2026-08-04  bar closes as % gap: [7.07, 8.06, 10.48]   -> 5d max high +14.6%
+    LUNR   2026-08-04  bar closes as % gap: [3.8, 3.81, 10.23]   -> 5d max high +22.8%
+    SDOT   2026-08-04  bar closes as % gap: [9.4, 8.25, 13.25]   -> 5d max high +18.6%
+
+==============================================================================
+## UPPER BOUND — declined names never faced the downstream gates.
+   Any scan-log row for the same TICKER anywhere in 08-01..08-24 that names a
+   STRUCTURAL disqualifier (market cap / ADV / extension) applies to the name,
+   not just to that date.
+==============================================================================
+  of the 20 declined names reaching >=+20%, 4 carry a recorded structural disqualifier elsewhere in the window:
+    IPST   2026-08-20  +73.7%  ->  already up 342% in prior 5 days (extended)
+    AIAI   2026-08-17  +33.7%  ->  quality filter: filter:adv_too_low: $881,539
+    ARCT   2026-08-07  +31.1%  ->  quality filter: filter:mcap_too_small: $233M < $500M
+    ARCT   2026-08-21  +30.5%  ->  quality filter: filter:mcap_too_small: $233M < $500M
+
+  of the 3 declined names reaching >=8xADR:
+    ARCT   2026-08-07  20.2xADR  ->  quality filter: filter:mcap_too_small: $233M < $500M
+    TNON   2026-08-11  16.5xADR  ->  quality filter: filter:adv_too_low: $159,684
+    ZLAB   2026-08-06  9.0xADR  ->  NO recorded structural block
+
+==============================================================================
+## CONTROL — did the level actually HOLD at the open?
+   gap_at_open = (open_d0 - prior session close) / prior session close,
+   against the floor in force that day (10.0% through 08-19, 9.0% from 08-20).
+   A declined name that opens BELOW the floor is a print that never became a
+   level: the rule was right, and its lower open_d0 mechanically INFLATES
+   max_high_5d/open_d0 relative to a name that held and opened high.
+==============================================================================
+  DECLINED               held the floor at the open: 8/66 = 12%   median gap at open +4.2%
+  PASSED                 held the floor at the open: 53/185 = 29%   median gap at open +5.3%
+  DELAYED-THEN-PASSED    held the floor at the open: 10/40 = 25%   median gap at open +4.8%
+
+## Re-run of Result 3 INSIDE the held-at-open subset (settled rows only)
+  declined   n=5    5d max high med +24.2%  >=+20% 3/5 = 60%   >=8xADR 0/5   5d close med +12.6%
+  passed     n=45   5d max high med  +7.6%  >=+20% 5/45 = 11%   >=8xADR 0/45   5d close med  -1.5%
+  held-at-open settled >=+20%: declined 3/5 vs passed 5/45 — two-sided Fisher exact p = 0.024
+
+## Re-run of Result 3 on ALL held-at-open rows (censored included)
+  declined   n=8    5d max high med +13.4%  >=+20% 3/8 = 38%
+  passed     n=53   5d max high med  +9.2%  >=+20% 9/53 = 17%
+
+## Result 5 re-stated under the control
+  DECLINED ARCT   2026-08-07 20.2xADR  gap at open +6.4% vs floor 10%  -> DID NOT HOLD — the rule was right
+  DECLINED TNON   2026-08-11 16.5xADR  gap at open +1.7% vs floor 10%  -> DID NOT HOLD — the rule was right
+  DECLINED ZLAB   2026-08-06 9.0xADR  gap at open +3.7% vs floor 10%  -> DID NOT HOLD — the rule was right
+  PASSED   SDOT   2026-08-21 11.4xADR  gap at open -2.4% vs floor 9%  -> DID NOT HOLD
+
+## The 20 declined names >=+20%, under the control
+  held the floor at the open: 3/20
+    IPST   2026-08-20  +73.7%  open gap   +4.0%  faded
+    VEEE   2026-08-10  +69.3%  open gap   +0.7%  faded
+    ECOR   2026-08-07  +55.1%  open gap   +0.0%  faded
+    ZLAB   2026-08-06  +39.9%  open gap   +3.7%  faded
+    SION   2026-08-12  +36.3%  open gap   -2.2%  faded
+    ALGS   2026-08-10  +36.2%  open gap   +2.7%  faded
+    AIAI   2026-08-17  +33.7%  open gap   +5.6%  faded
+    CRWV   2026-08-03  +33.7%  open gap   -1.7%  faded
+    AVAH   2026-08-13  +32.8%  open gap  +11.5%  HELD
+    BUUU   2026-08-17  +31.9%  open gap   +0.2%  faded
+    BRUN   2026-08-12  +31.8%  open gap   +9.7%  faded
+    ARCT   2026-08-07  +31.1%  open gap   +6.4%  faded
+    ARCT   2026-08-21  +30.5%  open gap   +1.3%  faded
+    MATV   2026-08-06  +26.2%  open gap  +12.2%  HELD
+    QMLS   2026-08-07  +24.5%  open gap   +4.2%  faded
+    DCTH   2026-08-06  +24.2%  open gap  +11.1%  HELD
+    DMRC   2026-08-03  +24.0%  open gap   +0.3%  faded
+    CACI   2026-08-06  +23.7%  open gap   +6.7%  faded
+    CHRN   2026-08-12  +23.1%  open gap   +5.3%  faded
+    LUNR   2026-08-04  +22.8%  open gap   +4.7%  faded
+
+## Result 7 Arm 2 recomputed with undecidables in BOTH sides
+  rule ON  (admitted)        n=258  med open->close  +2.8%   win>=+5% 103/258 = 40%
+  rule OFF (all arrivals)    n=324  med open->close  +3.1%   win>=+5% 134/324 = 41%
+
+==============================================================================
+## THE BOTTOM LINE — declines that BOTH held the floor at the open AND ran
+==============================================================================
+  candidates for a real cost: 3
+    AVAH   2026-08-13  open gap +11.5%  5d max high +32.8%  tailx 6.6x
+           alerted anyway: no   scan log that day: score 30 < 50 (catalyst=routine)
+    MATV   2026-08-06  open gap +12.2%  5d max high +26.2%  tailx 3.8x
+           alerted anyway: no   scan log that day: outside top-20 gap cap (gap 12.3%)
+    DCTH   2026-08-06  open gap +11.1%  5d max high +24.2%  tailx 3.0x
+           alerted anyway: YES   scan log that day: <none>
+
+  same filter applied to the PASSED cohort (held at open AND ran >=+20%): 9
+
+## Mechanism reconciled with the control — did the RISING names hold at the open?
+  RISING into the level (newest bar is the high) 5/53 held the floor at the open (9%)
+  flat / mixed                                   2/9 held the floor at the open (22%)
+  FADING off the level (newest bar below the oldest) 1/4 held the floor at the open (25%)

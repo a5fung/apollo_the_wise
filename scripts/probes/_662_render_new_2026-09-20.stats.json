@@ -1,0 +1,40 @@
+{
+  "tag": "new",
+  "parse_mode": "HTML",
+  "md_lines": 128,
+  "md_chars": 9157,
+  "html_chars": 9423,
+  "chunks": 3,
+  "report_meta": {
+    "needs_you": 3,
+    "needs_me": 2,
+    "needs_you_lines": [
+      "\ud83d\udd34 *#354 ADR 0026 C5 \u2014 Confirm(b) round 2: does the edge hold at >=20 DISTINCT entry days (operator bar 2026-08-0\u2026* _[ripe 56d]_ \u00b7 written 2026-07-19, 10 rule changes since (latest 2026-09-06) \u2014 re-check the question against the live rule \u2014 Re-run the round-1 readout (median AND mean AND win% together \u2014 never the mean alone \u2014 expectancy, distinct days + distinct tickers, outlier-carry, old-wiring vs post-7/14-re-wire split).",
+      "\u2022 *Did raising the extension cap 50% -> 75% actually admit the names it was raised for?* _[ripe 5d]_ \u2014 Read the forward outcomes (mi_ep_missed_outcomes, filtered on last_refreshed_at \u2014 the #583 stale-row class) for names skipped as extended since 2026-08-23, and for the band between 50% and 75% that the raise newly admitted.",
+      "\u2022 *Ranking rule \u2014 RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)* \u00b7 written 2026-08-16, 7 rule changes since (latest 2026-09-06) \u2014 re-check the question against the live rule \u2014 RUNNING READ \u2014 fires again every session a new out-of-sample alert_date lands, from the first one."
+    ],
+    "needs_me_lines": [
+      "nightly_data_pull: cancelled \u2014 process shutdown/restart mid-run (Sat 09-19 00:16 ET) \u2014 no re-run or hand-close in the job ledger",
+      "telegram_send_failed \u2014 AttributeError: '_R' object has no attribute 'raise_for_status' (Sat 09-19 17:51 ET)"
+    ],
+    "suppressed": [
+      {
+        "what": "job_cancelled_error at 2026-09-13T23:25:46.984855+00:00",
+        "rule": "quiet: crypto_category_refresh has not recurred in 6d (Sun 09-13 19:25 ET)"
+      },
+      {
+        "what": "wick_fill promotion blocker",
+        "rule": "held by operator ruling \u2014 no data can change it, so it is not pending"
+      }
+    ],
+    "head_lines": 11,
+    "fold_chars": 7504
+  },
+  "suggestions": [
+    "`audit_errors.total`=3: `job_cancelled_error` \u00d72 and `telegram_send_failed` \u00d71, both last seen 2026-09-19 (1d/0d ago). `l1_invariants` fired 1\u00d7 (`silent_audit_error_window`). Recent days_ago means these are still live in-window \u2014 check audit ground truth before assuming resolved.\\",
+    "`ep_outcomes.total`=5 but `trade_status` shows only 1 actually traded (3 filtered, 1 no_attempt); the 0% win rates cited by tier/catalyst (HIGH 4, MODERATE 1, strong 3, game_changer 2) describe the alert cohort, not the N=1 traded cohort \u2014 needs confirmation which population any read is drawn from.\\",
+    "`theme_churn.total_high_churn_pairs`=20, unchanged from last week's 20 (different tickers: BAH, SKHY, FE, PBR, RIOT this week vs COHR/GLW/LITE last week) \u2014 persistent churn level, mechanism/cause unverified.\\",
+    "\\"
+  ],
+  "audit_writes_attempted": 1
+}

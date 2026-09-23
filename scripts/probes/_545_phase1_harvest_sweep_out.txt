@@ -1,0 +1,213 @@
+population: 267 distinct live-source alert campaigns (270 rows, 3 same-ms duplicate inserts dropped) 2026-05-11 -> 2026-08-28; horizon 2026-08-31
+cells: 17 -> ['live_2r_partial_be_trail', 'no_partial_trail_only', 'no_partial_hold', 'partial_no_be_trail', 'partial_no_be_hard', 'adr_0.5_2ndR5_hard', 'adr_0.5_2ndR5_t3', 'adr_0.5_2ndR8_hard', 'adr_0.5_2ndR8_t3', 'adr_0.5_2ndR10_hard', 'adr_0.5_2ndR10_t3', 'orb_low_2ndR5_hard', 'orb_low_2ndR5_t3', 'orb_low_2ndR8_hard', 'orb_low_2ndR8_t3', 'orb_low_2ndR10_hard', 'orb_low_2ndR10_t3']
+written: /Users/alvinfung/apollo_the_wise/.claude/worktrees/agent-aa9e45bb87266585e/scripts/probes/_545_phase1_harvest_sweep.tsv (4539 rows)
+
+R = each cell's OWN unit at equal dollar risk. Near-zero (<0.5% of entry) stops: 0 in the Phase-3 capture this population shares (stated 2026-09-05, re-confirmed below).
+  near-zero-stop rows excluded from the LIVE cell: 0
+
+===== live_2r_partial_be_trail =====
+  settled, all alerts       n= 99  >=3R= 1  >=5R= 1  p90=+1.35  | med=+0.33 mean=+0.11 sum=  +11.3 win=56
+  settled, admitted         n= 65  >=3R= 0  >=5R= 0  p90=+1.43  | med=+0.21 mean=+0.05 sum=   +3.5 win=36
+  settled, admitted ex-May  n= 51  >=3R= 0  >=5R= 0  p90=+1.35  | med=+0.06 mean=-0.05 sum=   -2.6 win=26
+  settled+marks, admitted        n= 67  >=3R= 0  >=5R= 0  p90=+1.43  | med=+0.30 mean=+0.08 sum=   +5.5 win=38   (settled n=65 sum=+3.5 | open marks n=2 sum=+1.9)
+  drop-best (admitted, settled+marks): >=3R 0 -> 0 without the single largest R
+  regime Bull                   n= 40  >=3R= 0  >=5R= 0  p90=+1.43  | med=+0.33 mean=+0.19 sum=   +7.7 win=24
+  regime non-Bull               n= 25  >=3R= 0  >=5R= 0  p90=+1.14  | med=-0.10 mean=-0.17 sum=   -4.2 win=12
+  operator-labelled: {'PLTR': '+1.69R', 'TEAM': '+0.33R', 'HTFL': '+1.43R', 'MRNA': 'open mark +1.64R'}
+  >=3R names (settled+marks, admitted): []
+
+===== no_partial_trail_only =====
+  settled, all alerts       n= 99  >=3R= 5  >=5R= 2  p90=+2.04  | med=-1.00 mean=-0.02 sum=   -2.1 win=30
+  settled, admitted         n= 64  >=3R= 4  >=5R= 1  p90=+2.49  | med=-1.00 mean=+0.03 sum=   +2.1 win=22
+  settled, admitted ex-May  n= 50  >=3R= 2  >=5R= 1  p90=+2.04  | med=-1.00 mean=-0.01 sum=   -0.3 win=17
+  settled+marks, admitted        n= 67  >=3R= 4  >=5R= 1  p90=+2.06  | med=-1.00 mean=+0.10 sum=   +6.4 win=25   (settled n=64 sum=+2.1 | open marks n=3 sum=+4.3)
+  drop-best (admitted, settled+marks): >=3R 4 -> 3 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=64 dropped=1  d>=3R=+4 (cell 4 vs live 0)  dSum=-1.1  dMed=-1.19
+  regime Bull                   n= 40  >=3R= 3  >=5R= 0  p90=+2.55  | med=-0.81 mean=+0.08 sum=   +3.1 win=15
+  regime non-Bull               n= 24  >=3R= 1  >=5R= 1  p90=+2.04  | med=-1.00 mean=-0.04 sum=   -0.9 win= 7
+  operator-labelled: {'PLTR': '+2.04R', 'TEAM': '+2.55R', 'HTFL': '+1.64R', 'MRNA': 'open mark +1.96R'}
+  >=3R names (settled+marks, admitted): [('+7.4', 'FTK', '2026-08-03', ''), ('+4.0', 'INFQ', '2026-05-21', ''), ('+3.9', 'QBTS', '2026-05-21', ''), ('+3.3', 'ARGX', '2026-08-17', '')]
+
+===== no_partial_hold =====
+  settled, all alerts       n= 82  >=3R= 0  >=5R= 0  p90=-1.00  | med=-1.00 mean=-1.04 sum=  -85.2 win= 0
+  settled, admitted         n= 50  >=3R= 0  >=5R= 0  p90=-1.00  | med=-1.00 mean=-1.01 sum=  -50.4 win= 0
+  settled, admitted ex-May  n= 36  >=3R= 0  >=5R= 0  p90=-1.00  | med=-1.00 mean=-1.01 sum=  -36.3 win= 0
+  settled+marks, admitted        n= 67  >=3R= 3  >=5R= 1  p90=+1.85  | med=-1.00 mean=-0.28 sum=  -18.8 win=16   (settled n=50 sum=-50.4 | open marks n=17 sum=+31.6)
+  drop-best (admitted, settled+marks): >=3R 3 -> 2 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=50 dropped=15  d>=3R=+0 (cell 0 vs live 0)  dSum=-37.3  dMed=+0.00
+  regime Bull                   n= 31  >=3R= 0  >=5R= 0  p90=-1.00  | med=-1.00 mean=-1.01 sum=  -31.4 win= 0
+  regime non-Bull               n= 19  >=3R= 0  >=5R= 0  p90=-1.00  | med=-1.00 mean=-1.00 sum=  -19.0 win= 0
+  operator-labelled: {'PLTR': 'open mark +3.53R', 'TEAM': 'open mark +6.60R', 'HTFL': 'open mark +2.22R', 'MRNA': 'open mark +1.96R'}
+  >=3R names (settled+marks, admitted): [('+6.6', 'TEAM', '2026-08-07', 'MARK'), ('+4.2', 'ARGX', '2026-08-17', 'MARK'), ('+3.5', 'PLTR', '2026-08-04', 'MARK')]
+
+===== partial_no_be_trail =====
+  settled, all alerts       n= 98  >=3R= 2  >=5R= 2  p90=+1.69  | med=-0.33 mean=+0.10 sum=   +9.8 win=43
+  settled, admitted         n= 64  >=3R= 1  >=5R= 1  p90=+2.00  | med=-0.33 mean=+0.08 sum=   +5.3 win=28
+  settled, admitted ex-May  n= 50  >=3R= 1  >=5R= 1  p90=+1.69  | med=-0.33 mean=+0.01 sum=   +0.4 win=20
+  settled+marks, admitted        n= 67  >=3R= 1  >=5R= 1  p90=+1.71  | med=-0.33 mean=+0.13 sum=   +9.0 win=31   (settled n=64 sum=+5.3 | open marks n=3 sum=+3.6)
+  drop-best (admitted, settled+marks): >=3R 1 -> 0 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=64 dropped=1  d>=3R=+1 (cell 1 vs live 0)  dSum=+2.1  dMed=-0.52
+  regime Bull                   n= 40  >=3R= 0  >=5R= 0  p90=+2.03  | med=-0.05 mean=+0.17 sum=   +6.8 win=20
+  regime non-Bull               n= 24  >=3R= 1  >=5R= 1  p90=+1.69  | med=-0.67 mean=-0.06 sum=   -1.5 win= 8
+  operator-labelled: {'PLTR': '+1.69R', 'TEAM': '+2.03R', 'HTFL': '+1.43R', 'MRNA': 'open mark +1.64R'}
+  >=3R names (settled+marks, admitted): [('+5.3', 'FTK', '2026-08-03', '')]
+
+===== partial_no_be_hard =====
+  settled, all alerts       n= 83  >=3R= 0  >=5R= 0  p90=-0.33  | med=-0.44 mean=-0.65 sum=  -54.0 win= 2
+  settled, admitted         n= 52  >=3R= 0  >=5R= 0  p90=-0.33  | med=-0.70 mean=-0.65 sum=  -33.9 win= 2
+  settled, admitted ex-May  n= 38  >=3R= 0  >=5R= 0  p90=-0.33  | med=-1.00 mean=-0.70 sum=  -26.5 win= 2
+  settled+marks, admitted        n= 67  >=3R= 2  >=5R= 0  p90=+1.56  | med=-0.33 mean=-0.13 sum=   -9.0 win=17   (settled n=52 sum=-33.9 | open marks n=15 sum=+24.8)
+  drop-best (admitted, settled+marks): >=3R 2 -> 1 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=52 dropped=13  d>=3R=+0 (cell 0 vs live 0)  dSum=-20.9  dMed=+0.00
+  regime Bull                   n= 32  >=3R= 0  >=5R= 0  p90=-0.33  | med=-0.36 mean=-0.62 sum=  -19.8 win= 1
+  regime non-Bull               n= 20  >=3R= 0  >=5R= 0  p90=-0.33  | med=-1.00 mean=-0.70 sum=  -14.1 win= 1
+  operator-labelled: {'PLTR': 'open mark +2.69R', 'TEAM': 'open mark +4.73R', 'HTFL': 'open mark +1.81R', 'MRNA': 'open mark +1.64R'}
+  >=3R names (settled+marks, admitted): [('+4.7', 'TEAM', '2026-08-07', 'MARK'), ('+3.1', 'ARGX', '2026-08-17', 'MARK')]
+
+===== adr_0.5_2ndR5_hard =====
+  settled, all alerts       n= 77  >=3R= 0  >=5R= 0  p90=+1.05  | med=-1.00 mean=-0.46 sum=  -35.2 win=18
+  settled, admitted         n= 49  >=3R= 0  >=5R= 0  p90=+1.05  | med=-1.00 mean=-0.45 sum=  -22.1 win=13
+  settled, admitted ex-May  n= 38  >=3R= 0  >=5R= 0  p90=+0.61  | med=-1.00 mean=-0.51 sum=  -19.3 win= 9
+  settled+marks, admitted        n= 56  >=3R= 5  >=5R= 3  p90=+2.97  | med=-1.00 mean=+0.25 sum=  +14.0 win=20   (settled n=49 sum=-22.1 | open marks n=7 sum=+36.1)
+  drop-best (admitted, settled+marks): >=3R 5 -> 4 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=47 dropped=18  d>=3R=+0 (cell 0 vs live 0)  dSum=-14.5  dMed=-0.60
+  regime Bull                   n= 30  >=3R= 0  >=5R= 0  p90=+1.05  | med=-1.00 mean=-0.43 sum=  -12.9 win= 8
+  regime non-Bull               n= 19  >=3R= 0  >=5R= 0  p90=+0.61  | med=-1.00 mean=-0.48 sum=   -9.2 win= 5
+  operator-labelled: {'PLTR': 'open mark +7.45R', 'TEAM': '-1.00R', 'HTFL': 'open mark +9.12R', 'MRNA': '-1.00R'}
+  >=3R names (settled+marks, admitted): [('+9.1', 'HTFL', '2026-08-14', 'MARK'), ('+7.5', 'PLTR', '2026-08-04', 'MARK'), ('+6.4', 'ABCL', '2026-08-10', 'MARK'), ('+4.3', 'ARGX', '2026-08-17', 'MARK'), ('+3.6', 'CRWD', '2026-08-27', 'MARK')]
+
+===== adr_0.5_2ndR5_t3 =====
+  settled, all alerts       n= 84  >=3R=11  >=5R= 4  p90=+4.03  | med=-1.00 mean=+0.33 sum=  +28.0 win=25
+  settled, admitted         n= 55  >=3R= 8  >=5R= 4  p90=+4.45  | med=-1.00 mean=+0.51 sum=  +28.3 win=19
+  settled, admitted ex-May  n= 44  >=3R= 6  >=5R= 4  p90=+4.76  | med=-1.00 mean=+0.53 sum=  +23.5 win=15
+  settled+marks, admitted        n= 56  >=3R= 9  >=5R= 4  p90=+4.45  | med=-1.00 mean=+0.57 sum=  +31.8 win=20   (settled n=55 sum=+28.3 | open marks n=1 sum=+3.6)
+  drop-best (admitted, settled+marks): >=3R 9 -> 8 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=53 dropped=12  d>=3R=+8 (cell 8 vs live 0)  dSum=+27.1  dMed=-1.30
+  regime Bull                   n= 34  >=3R= 5  >=5R= 2  p90=+4.19  | med=-1.00 mean=+0.62 sum=  +21.1 win=12
+  regime non-Bull               n= 21  >=3R= 3  >=5R= 2  p90=+4.76  | med=-1.00 mean=+0.34 sum=   +7.2 win= 7
+  operator-labelled: {'PLTR': '+5.70R', 'TEAM': '-1.00R', 'HTFL': '+8.70R', 'MRNA': '-1.00R'}
+  >=3R names (settled+marks, admitted): [('+8.7', 'HTFL', '2026-08-14', ''), ('+5.9', 'FTK', '2026-08-03', ''), ('+5.9', 'ABCL', '2026-08-10', ''), ('+5.7', 'PLTR', '2026-08-04', ''), ('+4.8', 'ZBRA', '2026-08-04', ''), ('+4.5', 'ARGX', '2026-08-17', ''), ('+4.2', 'QBTS', '2026-05-21', ''), ('+3.6', 'CRWD', '2026-08-27', 'MARK'), ('+3.2', 'INFQ', '2026-05-21', '')]
+
+===== adr_0.5_2ndR8_hard =====
+  settled, all alerts       n= 77  >=3R= 0  >=5R= 0  p90=+1.01  | med=-1.00 mean=-0.46 sum=  -35.4 win=17
+  settled, admitted         n= 49  >=3R= 0  >=5R= 0  p90=+1.28  | med=-1.00 mean=-0.39 sum=  -18.9 win=12
+  settled, admitted ex-May  n= 38  >=3R= 0  >=5R= 0  p90=+0.34  | med=-1.00 mean=-0.48 sum=  -18.2 win= 8
+  settled+marks, admitted        n= 56  >=3R= 5  >=5R= 4  p90=+2.97  | med=-1.00 mean=+0.34 sum=  +18.8 win=19   (settled n=49 sum=-18.9 | open marks n=7 sum=+37.7)
+  drop-best (admitted, settled+marks): >=3R 5 -> 4 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=47 dropped=18  d>=3R=+0 (cell 0 vs live 0)  dSum=-11.3  dMed=-0.60
+  regime Bull                   n= 30  >=3R= 0  >=5R= 0  p90=+1.28  | med=-1.00 mean=-0.39 sum=  -11.8 win= 7
+  regime non-Bull               n= 19  >=3R= 0  >=5R= 0  p90=+1.01  | med=-1.00 mean=-0.37 sum=   -7.0 win= 5
+  operator-labelled: {'PLTR': 'open mark +8.55R', 'TEAM': '-1.00R', 'HTFL': 'open mark +9.12R', 'MRNA': '-1.00R'}
+  >=3R names (settled+marks, admitted): [('+9.1', 'HTFL', '2026-08-14', 'MARK'), ('+8.5', 'PLTR', '2026-08-04', 'MARK'), ('+6.1', 'ABCL', '2026-08-10', 'MARK'), ('+5.1', 'ARGX', '2026-08-17', 'MARK'), ('+3.6', 'CRWD', '2026-08-27', 'MARK')]
+
+===== adr_0.5_2ndR8_t3 =====
+  settled, all alerts       n= 84  >=3R=14  >=5R= 8  p90=+4.84  | med=-1.00 mean=+0.46 sum=  +38.8 win=25
+  settled, admitted         n= 55  >=3R=10  >=5R= 5  p90=+4.84  | med=-1.00 mean=+0.62 sum=  +33.9 win=19
+  settled, admitted ex-May  n= 44  >=3R= 7  >=5R= 5  p90=+5.28  | med=-1.00 mean=+0.61 sum=  +26.9 win=15
+  settled+marks, admitted        n= 56  >=3R=11  >=5R= 5  p90=+4.84  | med=-1.00 mean=+0.67 sum=  +37.4 win=20   (settled n=55 sum=+33.9 | open marks n=1 sum=+3.6)
+  drop-best (admitted, settled+marks): >=3R 11 -> 10 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=53 dropped=12  d>=3R=+10 (cell 10 vs live 0)  dSum=+32.7  dMed=-1.30
+  regime Bull                   n= 34  >=3R= 6  >=5R= 3  p90=+4.84  | med=-1.00 mean=+0.73 sum=  +24.9 win=12
+  regime non-Bull               n= 21  >=3R= 4  >=5R= 2  p90=+4.76  | med=-1.00 mean=+0.43 sum=   +9.0 win= 7
+  operator-labelled: {'PLTR': '+5.70R', 'TEAM': '-1.00R', 'HTFL': '+8.70R', 'MRNA': '-1.00R'}
+  >=3R names (settled+marks, admitted): [('+8.7', 'HTFL', '2026-08-14', ''), ('+6.7', 'FTK', '2026-08-03', ''), ('+5.9', 'ABCL', '2026-08-10', ''), ('+5.7', 'PLTR', '2026-08-04', ''), ('+5.3', 'ARGX', '2026-08-17', ''), ('+4.8', 'QBTS', '2026-05-21', ''), ('+4.8', 'ZBRA', '2026-08-04', ''), ('+3.7', 'INFQ', '2026-05-21', ''), ('+3.6', 'CLF', '2026-07-23', ''), ('+3.6', 'CRWD', '2026-08-27', 'MARK'), ('+3.2', 'QUBT', '2026-05-21', '')]
+
+===== adr_0.5_2ndR10_hard =====
+  settled, all alerts       n= 78  >=3R= 0  >=5R= 0  p90=+0.11  | med=-1.00 mean=-0.56 sum=  -43.6 win=12
+  settled, admitted         n= 50  >=3R= 0  >=5R= 0  p90=+0.34  | med=-1.00 mean=-0.48 sum=  -23.8 win= 9
+  settled, admitted ex-May  n= 39  >=3R= 0  >=5R= 0  p90=+0.07  | med=-1.00 mean=-0.57 sum=  -22.2 win= 6
+  settled+marks, admitted        n= 57  >=3R= 5  >=5R= 4  p90=+2.69  | med=-1.00 mean=+0.25 sum=  +14.5 win=16   (settled n=50 sum=-23.8 | open marks n=7 sum=+38.3)
+  drop-best (admitted, settled+marks): >=3R 5 -> 4 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=48 dropped=17  d>=3R=+0 (cell 0 vs live 0)  dSum=-16.5  dMed=-0.83
+  regime Bull                   n= 30  >=3R= 0  >=5R= 0  p90=+1.42  | med=-1.00 mean=-0.41 sum=  -12.3 win= 6
+  regime non-Bull               n= 20  >=3R= 0  >=5R= 0  p90=+0.01  | med=-1.00 mean=-0.57 sum=  -11.4 win= 3
+  operator-labelled: {'PLTR': 'open mark +8.55R', 'TEAM': '-1.00R', 'HTFL': 'open mark +9.12R', 'MRNA': '-1.00R'}
+  >=3R names (settled+marks, admitted): [('+9.1', 'HTFL', '2026-08-14', 'MARK'), ('+8.5', 'PLTR', '2026-08-04', 'MARK'), ('+6.1', 'ABCL', '2026-08-10', 'MARK'), ('+5.6', 'ARGX', '2026-08-17', 'MARK'), ('+3.6', 'CRWD', '2026-08-27', 'MARK')]
+
+===== adr_0.5_2ndR10_t3 =====
+  settled, all alerts       n= 85  >=3R=14  >=5R= 9  p90=+5.08  | med=-1.00 mean=+0.44 sum=  +37.8 win=24
+  settled, admitted         n= 56  >=3R=10  >=5R= 6  p90=+5.27  | med=-1.00 mean=+0.60 sum=  +33.6 win=19
+  settled, admitted ex-May  n= 45  >=3R= 8  >=5R= 5  p90=+5.51  | med=-1.00 mean=+0.61 sum=  +27.2 win=15
+  settled+marks, admitted        n= 57  >=3R=11  >=5R= 6  p90=+4.76  | med=-1.00 mean=+0.65 sum=  +37.2 win=20   (settled n=56 sum=+33.6 | open marks n=1 sum=+3.6)
+  drop-best (admitted, settled+marks): >=3R 11 -> 10 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=54 dropped=11  d>=3R=+10 (cell 10 vs live 0)  dSum=+32.1  dMed=-1.31
+  regime Bull                   n= 34  >=3R= 6  >=5R= 4  p90=+5.27  | med=-1.00 mean=+0.73 sum=  +25.0 win=12
+  regime non-Bull               n= 22  >=3R= 4  >=5R= 2  p90=+4.76  | med=-1.00 mean=+0.39 sum=   +8.7 win= 7
+  operator-labelled: {'PLTR': '+5.70R', 'TEAM': '-1.00R', 'HTFL': '+8.70R', 'MRNA': '-1.00R'}
+  >=3R names (settled+marks, admitted): [('+8.7', 'HTFL', '2026-08-14', ''), ('+7.2', 'FTK', '2026-08-03', ''), ('+5.9', 'ABCL', '2026-08-10', ''), ('+5.7', 'PLTR', '2026-08-04', ''), ('+5.5', 'ARGX', '2026-08-17', ''), ('+5.3', 'QBTS', '2026-05-21', ''), ('+4.8', 'ZBRA', '2026-08-04', ''), ('+4.1', 'INFQ', '2026-05-21', ''), ('+3.6', 'CLF', '2026-07-23', ''), ('+3.6', 'CRWD', '2026-08-27', 'MARK'), ('+3.4', 'EROC', '2026-08-12', '')]
+
+===== orb_low_2ndR5_hard =====
+  settled, all alerts       n= 83  >=3R= 0  >=5R= 0  p90=+2.00  | med=-1.00 mean=-0.41 sum=  -33.8 win=17
+  settled, admitted         n= 51  >=3R= 0  >=5R= 0  p90=+2.00  | med=-1.00 mean=-0.39 sum=  -19.8 win=11
+  settled, admitted ex-May  n= 38  >=3R= 0  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.52 sum=  -19.6 win= 6
+  settled+marks, admitted        n= 61  >=3R= 7  >=5R= 1  p90=+3.34  | med=-1.00 mean=+0.19 sum=  +11.5 win=21   (settled n=51 sum=-19.8 | open marks n=10 sum=+31.3)
+  drop-best (admitted, settled+marks): >=3R 7 -> 6 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=50 dropped=15  d>=3R=+0 (cell 0 vs live 0)  dSum=-11.7  dMed=-0.67
+  regime Bull                   n= 31  >=3R= 0  >=5R= 0  p90=+2.00  | med=-1.00 mean=-0.34 sum=  -10.5 win= 7
+  regime non-Bull               n= 20  >=3R= 0  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.46 sum=   -9.3 win= 4
+  operator-labelled: {'PLTR': 'open mark +4.69R', 'TEAM': '-1.00R', 'HTFL': 'open mark +3.63R', 'MRNA': 'open mark +3.64R'}
+  >=3R names (settled+marks, admitted): [('+5.1', 'ARGX', '2026-08-17', 'MARK'), ('+4.7', 'PLTR', '2026-08-04', 'MARK'), ('+3.8', 'ABCL', '2026-08-10', 'MARK'), ('+3.6', 'MRNA', '2026-08-19', 'MARK'), ('+3.6', 'HTFL', '2026-08-14', 'MARK'), ('+3.4', 'CRWD', '2026-08-27', 'MARK'), ('+3.3', 'U', '2026-08-06', 'MARK')]
+
+===== orb_low_2ndR5_t3 =====
+  settled, all alerts       n= 92  >=3R=14  >=5R= 5  p90=+3.46  | med=-1.00 mean=+0.31 sum=  +28.6 win=30
+  settled, admitted         n= 59  >=3R=12  >=5R= 4  p90=+3.58  | med=-1.00 mean=+0.58 sum=  +34.0 win=22
+  settled, admitted ex-May  n= 46  >=3R= 8  >=5R= 2  p90=+3.46  | med=-1.00 mean=+0.47 sum=  +21.5 win=17
+  settled+marks, admitted        n= 61  >=3R=13  >=5R= 4  p90=+3.58  | med=-1.00 mean=+0.62 sum=  +38.0 win=24   (settled n=59 sum=+34.0 | open marks n=2 sum=+4.0)
+  drop-best (admitted, settled+marks): >=3R 13 -> 12 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=57 dropped=8  d>=3R=+11 (cell 11 vs live 0)  dSum=+26.4  dMed=-1.21
+  regime Bull                   n= 37  >=3R= 9  >=5R= 3  p90=+4.29  | med=-1.00 mean=+0.78 sum=  +28.7 win=15
+  regime non-Bull               n= 22  >=3R= 3  >=5R= 1  p90=+3.04  | med=-1.00 mean=+0.24 sum=   +5.3 win= 7
+  operator-labelled: {'PLTR': '+3.58R', 'TEAM': '-1.00R', 'HTFL': '+3.46R', 'MRNA': '+4.84R'}
+  >=3R names (settled+marks, admitted): [('+7.8', 'FTK', '2026-08-03', ''), ('+6.7', 'INFQ', '2026-05-21', ''), ('+6.5', 'QBTS', '2026-05-21', ''), ('+5.4', 'ARGX', '2026-08-17', ''), ('+4.8', 'MRNA', '2026-08-19', ''), ('+4.3', 'QUBT', '2026-05-21', ''), ('+3.6', 'PLTR', '2026-08-04', ''), ('+3.5', 'ABCL', '2026-08-10', ''), ('+3.5', 'HTFL', '2026-08-14', ''), ('+3.4', 'CRWD', '2026-08-27', 'MARK'), ('+3.3', 'U', '2026-08-06', ''), ('+3.0', 'CLF', '2026-07-23', ''), ('+3.0', 'RDW', '2026-05-26', '')]
+
+===== orb_low_2ndR8_hard =====
+  settled, all alerts       n= 83  >=3R= 7  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.38 sum=  -31.8 win=15
+  settled, admitted         n= 51  >=3R= 5  >=5R= 0  p90=+2.82  | med=-1.00 mean=-0.31 sum=  -15.8 win=10
+  settled, admitted ex-May  n= 38  >=3R= 2  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.52 sum=  -19.6 win= 5
+  settled+marks, admitted        n= 61  >=3R=11  >=5R= 2  p90=+3.00  | med=-1.00 mean=+0.28 sum=  +17.4 win=20   (settled n=51 sum=-15.8 | open marks n=10 sum=+33.2)
+  drop-best (admitted, settled+marks): >=3R 11 -> 10 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=50 dropped=15  d>=3R=+5 (cell 5 vs live 0)  dSum=-7.7  dMed=-0.67
+  regime Bull                   n= 31  >=3R= 3  >=5R= 0  p90=+2.82  | med=-1.00 mean=-0.27 sum=   -8.5 win= 6
+  regime non-Bull               n= 20  >=3R= 2  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.36 sum=   -7.3 win= 4
+  operator-labelled: {'PLTR': 'open mark +5.37R', 'TEAM': '-1.00R', 'HTFL': 'open mark +3.63R', 'MRNA': 'open mark +4.64R'}
+  >=3R names (settled+marks, admitted): [('+6.1', 'ARGX', '2026-08-17', 'MARK'), ('+5.4', 'PLTR', '2026-08-04', 'MARK'), ('+4.6', 'MRNA', '2026-08-19', 'MARK'), ('+3.7', 'ABCL', '2026-08-10', 'MARK'), ('+3.6', 'HTFL', '2026-08-14', 'MARK'), ('+3.4', 'CRWD', '2026-08-27', 'MARK'), ('+3.0', 'RDW', '2026-05-26', ''), ('+3.0', 'INFQ', '2026-05-21', ''), ('+3.0', 'QUBT', '2026-05-21', ''), ('+3.0', 'FTK', '2026-08-03', ''), ('+3.0', 'CLF', '2026-07-23', '')]
+
+===== orb_low_2ndR8_t3 =====
+  settled, all alerts       n= 92  >=3R=17  >=5R= 6  p90=+3.68  | med=-1.00 mean=+0.43 sum=  +39.1 win=30
+  settled, admitted         n= 59  >=3R=13  >=5R= 5  p90=+3.68  | med=-1.00 mean=+0.66 sum=  +39.2 win=22
+  settled, admitted ex-May  n= 46  >=3R= 9  >=5R= 2  p90=+3.46  | med=-1.00 mean=+0.49 sum=  +22.7 win=17
+  settled+marks, admitted        n= 61  >=3R=14  >=5R= 5  p90=+3.68  | med=-1.00 mean=+0.71 sum=  +43.2 win=24   (settled n=59 sum=+39.2 | open marks n=2 sum=+4.0)
+  drop-best (admitted, settled+marks): >=3R 14 -> 13 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=57 dropped=8  d>=3R=+12 (cell 12 vs live 0)  dSum=+33.3  dMed=-1.21
+  regime Bull                   n= 37  >=3R=10  >=5R= 4  p90=+4.03  | med=-1.00 mean=+0.87 sum=  +32.2 win=15
+  regime non-Bull               n= 22  >=3R= 3  >=5R= 1  p90=+3.58  | med=-1.00 mean=+0.32 sum=   +6.9 win= 7
+  operator-labelled: {'PLTR': '+3.58R', 'TEAM': '-1.00R', 'HTFL': '+3.46R', 'MRNA': '+3.09R'}
+  >=3R names (settled+marks, admitted): [('+8.8', 'FTK', '2026-08-03', ''), ('+7.7', 'INFQ', '2026-05-21', ''), ('+7.5', 'QBTS', '2026-05-21', ''), ('+6.4', 'ARGX', '2026-08-17', ''), ('+5.3', 'QUBT', '2026-05-21', ''), ('+4.0', 'RDW', '2026-05-26', ''), ('+3.7', 'CLF', '2026-07-23', ''), ('+3.6', 'PLTR', '2026-08-04', ''), ('+3.5', 'ABCL', '2026-08-10', ''), ('+3.5', 'HTFL', '2026-08-14', ''), ('+3.4', 'CRWD', '2026-08-27', 'MARK'), ('+3.3', 'U', '2026-08-06', ''), ('+3.3', 'NBIS', '2026-08-12', ''), ('+3.1', 'MRNA', '2026-08-19', '')]
+
+===== orb_low_2ndR10_hard =====
+  settled, all alerts       n= 83  >=3R= 4  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.50 sum=  -41.2 win=12
+  settled, admitted         n= 51  >=3R= 4  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.37 sum=  -19.1 win= 8
+  settled, admitted ex-May  n= 38  >=3R= 1  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.58 sum=  -21.9 win= 4
+  settled+marks, admitted        n= 61  >=3R=10  >=5R= 2  p90=+3.63  | med=-1.00 mean=+0.22 sum=  +13.4 win=18   (settled n=51 sum=-19.1 | open marks n=10 sum=+32.5)
+  drop-best (admitted, settled+marks): >=3R 10 -> 9 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=50 dropped=15  d>=3R=+4 (cell 4 vs live 0)  dSum=-11.1  dMed=-0.67
+  regime Bull                   n= 31  >=3R= 3  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.31 sum=   -9.5 win= 5
+  regime non-Bull               n= 20  >=3R= 1  >=5R= 0  p90=+0.00  | med=-1.00 mean=-0.48 sum=   -9.6 win= 3
+  operator-labelled: {'PLTR': 'open mark +5.37R', 'TEAM': '-1.00R', 'HTFL': 'open mark +3.63R', 'MRNA': 'open mark +3.28R'}
+  >=3R names (settled+marks, admitted): [('+6.8', 'ARGX', '2026-08-17', 'MARK'), ('+5.4', 'PLTR', '2026-08-04', 'MARK'), ('+3.7', 'RDW', '2026-05-26', ''), ('+3.7', 'INFQ', '2026-05-21', ''), ('+3.7', 'FTK', '2026-08-03', ''), ('+3.7', 'ABCL', '2026-08-10', 'MARK'), ('+3.6', 'HTFL', '2026-08-14', 'MARK'), ('+3.5', 'QBTS', '2026-05-21', ''), ('+3.4', 'CRWD', '2026-08-27', 'MARK'), ('+3.3', 'MRNA', '2026-08-19', 'MARK')]
+
+===== orb_low_2ndR10_t3 =====
+  settled, all alerts       n= 92  >=3R=15  >=5R= 5  p90=+3.58  | med=-1.00 mean=+0.39 sum=  +36.1 win=29
+  settled, admitted         n= 59  >=3R=12  >=5R= 4  p90=+3.58  | med=-1.00 mean=+0.67 sum=  +39.5 win=22
+  settled, admitted ex-May  n= 46  >=3R= 9  >=5R= 2  p90=+3.46  | med=-1.00 mean=+0.51 sum=  +23.7 win=17
+  settled+marks, admitted        n= 61  >=3R=13  >=5R= 4  p90=+3.58  | med=-1.00 mean=+0.71 sum=  +43.5 win=24   (settled n=59 sum=+39.5 | open marks n=2 sum=+4.0)
+  drop-best (admitted, settled+marks): >=3R 13 -> 12 without the single largest R
+  PAIRED vs live (live's admitted+settled rows): n=57 dropped=8  d>=3R=+11 (cell 11 vs live 0)  dSum=+33.6  dMed=-1.21
+  regime Bull                   n= 37  >=3R= 9  >=5R= 3  p90=+3.55  | med=-1.00 mean=+0.86 sum=  +31.8 win=15
+  regime non-Bull               n= 22  >=3R= 3  >=5R= 1  p90=+3.58  | med=-1.00 mean=+0.35 sum=   +7.6 win= 7
+  operator-labelled: {'PLTR': '+3.58R', 'TEAM': '-1.00R', 'HTFL': '+3.46R', 'MRNA': '+3.09R'}
+  >=3R names (settled+marks, admitted): [('+9.5', 'FTK', '2026-08-03', ''), ('+8.4', 'INFQ', '2026-05-21', ''), ('+8.1', 'QBTS', '2026-05-21', ''), ('+6.7', 'ARGX', '2026-08-17', ''), ('+4.7', 'RDW', '2026-05-26', ''), ('+3.7', 'CLF', '2026-07-23', ''), ('+3.6', 'PLTR', '2026-08-04', ''), ('+3.5', 'ABCL', '2026-08-10', ''), ('+3.5', 'HTFL', '2026-08-14', ''), ('+3.4', 'CRWD', '2026-08-27', 'MARK'), ('+3.3', 'U', '2026-08-06', ''), ('+3.3', 'NBIS', '2026-08-12', ''), ('+3.1', 'MRNA', '2026-08-19', '')]
+
+abstain reasons (LIVE cell): {'day0_fill_bar_straddles_stop': 3, 'entry_window_gaps': 37, 'no_930_bar_for_orb': 5, 'fwd_stop_and_target_same_day': 1}
+
+written: /Users/alvinfung/apollo_the_wise/.claude/worktrees/agent-aa9e45bb87266585e/scripts/probes/_545_phase1_harvest_sweep.tsv

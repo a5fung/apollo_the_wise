@@ -1,0 +1,151 @@
+{
+  "ticker": "IDYA",
+  "source_chain": [
+    "polygon",
+    "yfinance_attempted_no_improvement"
+  ],
+  "n_quarters": 8,
+  "n_quarters_with_revenue": 3,
+  "quarters": [
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2026",
+      "end_date": "2026-03-31",
+      "filing_date": "2026-05-05",
+      "revenue": 6560000.0,
+      "gross_profit": null,
+      "operating_income": -108544000.0,
+      "net_income": -98539000.0,
+      "eps_basic": -1.11,
+      "eps_diluted": -1.11,
+      "op_margin": -16.546341463414635,
+      "net_margin": -15.021189024390244
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2025",
+      "end_date": "2025-09-30",
+      "filing_date": "2025-11-04",
+      "revenue": 207834000.0,
+      "gross_profit": null,
+      "operating_income": 108452000.0,
+      "net_income": 119244000.0,
+      "eps_basic": 1.35,
+      "eps_diluted": 1.33,
+      "op_margin": 0.5218202988923852,
+      "net_margin": 0.5737463552642975
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2025",
+      "end_date": "2025-06-30",
+      "filing_date": "2025-08-05",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -88806000.0,
+      "net_income": -77491000.0,
+      "eps_basic": -0.88,
+      "eps_diluted": -0.88
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2025",
+      "end_date": "2025-03-31",
+      "filing_date": "2025-05-06",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -84389000.0,
+      "net_income": -72178000.0,
+      "eps_basic": -0.82,
+      "eps_diluted": -0.82
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2024",
+      "end_date": "2024-09-30",
+      "filing_date": "2024-11-04",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -66893000.0,
+      "net_income": -51821000.0,
+      "eps_basic": -0.6,
+      "eps_diluted": -0.6
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2024",
+      "end_date": "2024-06-30",
+      "filing_date": "2024-08-06",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -64927000.0,
+      "net_income": -52772000.0,
+      "eps_basic": -0.68,
+      "eps_diluted": -0.68
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2024",
+      "end_date": "2024-03-31",
+      "filing_date": "2024-05-07",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -51017000.0,
+      "net_income": -39572000.0,
+      "eps_basic": -0.53,
+      "eps_diluted": -0.53
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2023",
+      "end_date": "2023-09-30",
+      "filing_date": "2023-11-07",
+      "revenue": 8038000.0,
+      "gross_profit": null,
+      "operating_income": -33526000.0,
+      "net_income": -27440000.0,
+      "eps_basic": -0.46,
+      "eps_diluted": -0.46,
+      "op_margin": -4.170938044289624,
+      "net_margin": -3.413784523513312
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": null,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": -1.0,
+    "eps_yoy_q0": 0.8500000000000003,
+    "eps_yoy_q1": -2.9558823529411766,
+    "eps_yoy_q2": 0.6603773584905659,
+    "rev_qoq_q0": -0.9684363482394603,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": 3.805882352941177,
+    "rev_yoy_max_prior_7q": -1.0,
+    "eps_qm4": -0.6,
+    "margins_q0": {
+      "gross_margin": null,
+      "op_margin": -16.546341463414635,
+      "net_margin": -15.021189024390244
+    },
+    "margins_q1": {
+      "gross_margin": null,
+      "op_margin": 0.5218202988923852,
+      "net_margin": 0.5737463552642975
+    },
+    "margins_q2": {
+      "gross_margin": null,
+      "op_margin": null,
+      "net_margin": null
+    }
+  }
+}

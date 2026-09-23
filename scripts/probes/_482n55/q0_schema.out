@@ -1,0 +1,95 @@
+table_name|column_name|data_type
+mi_daily_closes|trade_date|date
+mi_daily_closes|ticker|text
+mi_daily_closes|close|double precision
+mi_daily_closes|volume|bigint
+mi_daily_closes|open_price|double precision
+mi_daily_closes|high_price|double precision
+mi_daily_closes|low_price|double precision
+mi_live_trades|id|integer
+mi_live_trades|ticker|text
+mi_live_trades|alert_date|date
+mi_live_trades|ep_score|double precision
+mi_live_trades|catalyst_quality|text
+mi_live_trades|gap_pct|double precision
+mi_live_trades|regime|text
+mi_live_trades|status|text
+mi_live_trades|orb_high|double precision
+mi_live_trades|orb_low|double precision
+mi_live_trades|atr_14|double precision
+mi_live_trades|entry_price|double precision
+mi_live_trades|entry_shares|double precision
+mi_live_trades|stop_price|double precision
+mi_live_trades|hard_stop|double precision
+mi_live_trades|position_size|double precision
+mi_live_trades|risk_dollars|double precision
+mi_live_trades|entry_order_id|text
+mi_live_trades|stop_order_id|text
+mi_live_trades|exits|jsonb
+mi_live_trades|remaining_shares|double precision
+mi_live_trades|total_pnl|double precision
+mi_live_trades|hold_days|integer
+mi_live_trades|partial_taken|boolean
+mi_live_trades|breakeven_active|boolean
+mi_live_trades|running_closes|jsonb
+mi_live_trades|proposed_at|timestamp with time zone
+mi_live_trades|confirmed_at|timestamp with time zone
+mi_live_trades|skip_reason|text
+mi_live_trades|created_at|timestamp with time zone
+mi_live_trades|filled_at|timestamp with time zone
+mi_live_trades|closed_at|timestamp with time zone
+mi_live_trades|entry_attempt|integer
+mi_live_trades|signal_type|text
+mi_live_trades|account_mode|text
+mi_live_trades|lowest_price_seen|numeric
+mi_live_trades|highest_price_seen|numeric
+mi_live_trades|pnl_attribution|text
+mi_live_trades|risk_dollars_actual|double precision
+mi_orb_shadow_trades|id|integer
+mi_orb_shadow_trades|ticker|text
+mi_orb_shadow_trades|alert_date|date
+mi_orb_shadow_trades|bar_size_minutes|integer
+mi_orb_shadow_trades|signal_type|text
+mi_orb_shadow_trades|shape_tag|text
+mi_orb_shadow_trades|score_tier|text
+mi_orb_shadow_trades|orb_high|numeric
+mi_orb_shadow_trades|orb_low|numeric
+mi_orb_shadow_trades|atr_14|numeric
+mi_orb_shadow_trades|trigger_minute_et|time without time zone
+mi_orb_shadow_trades|entry_price|numeric
+mi_orb_shadow_trades|stop_price|numeric
+mi_orb_shadow_trades|hard_stop|numeric
+mi_orb_shadow_trades|risk_dollars|numeric
+mi_orb_shadow_trades|entry_shares|numeric
+mi_orb_shadow_trades|status|text
+mi_orb_shadow_trades|skip_reason|text
+mi_orb_shadow_trades|exits|jsonb
+mi_orb_shadow_trades|remaining_shares|numeric
+mi_orb_shadow_trades|partial_taken|boolean
+mi_orb_shadow_trades|breakeven_active|boolean
+mi_orb_shadow_trades|running_closes|jsonb
+mi_orb_shadow_trades|total_pnl|numeric
+mi_orb_shadow_trades|hold_days|integer
+mi_orb_shadow_trades|created_at|timestamp with time zone
+mi_orb_shadow_trades|closed_at|timestamp with time zone
+mi_orb_shadow_trades|quarantined|boolean
+mi_orb_shadow_trades|quarantine_reason|text
+mi_orb_shadow_trades|quarantined_at|timestamp with time zone
+mi_orb_shadow_trades|pre_replay_snapshot|jsonb
+mi_orb_shadow_trades|replayed_at|timestamp with time zone
+mi_strategies|strategy_id|text
+mi_strategies|name|text
+mi_strategies|family|text
+mi_strategies|phase|text
+mi_strategies|enabled|boolean
+mi_strategies|signal_type|text
+mi_strategies|outcomes_table|text
+mi_strategies|promotion_model|text
+mi_strategies|promotion_thresholds|jsonb
+mi_strategies|notes|text
+mi_strategies|created_at|timestamp with time zone
+mi_strategies|updated_at|timestamp with time zone
+mi_strategies|live_real_enabled|boolean
+mi_strategies|position_size_multiplier|numeric
+mi_strategies|max_concurrent_positions|integer
+(93 rows)

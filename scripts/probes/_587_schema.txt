@@ -1,0 +1,164 @@
+                                           Table "public.mi_live_trades"
+       Column       |           Type           | Collation | Nullable |                  Default                   
+--------------------+--------------------------+-----------+----------+--------------------------------------------
+ id                 | integer                  |           | not null | nextval('mi_live_trades_id_seq'::regclass)
+ ticker             | text                     |           | not null | 
+ alert_date         | date                     |           | not null | 
+ ep_score           | double precision         |           |          | 
+ catalyst_quality   | text                     |           |          | 
+ gap_pct            | double precision         |           |          | 
+ regime             | text                     |           |          | 
+ status             | text                     |           | not null | 'pending_confirmation'::text
+ orb_high           | double precision         |           |          | 
+ orb_low            | double precision         |           |          | 
+ atr_14             | double precision         |           |          | 
+ entry_price        | double precision         |           |          | 
+ entry_shares       | double precision         |           |          | 
+ stop_price         | double precision         |           |          | 
+ hard_stop          | double precision         |           |          | 
+ position_size      | double precision         |           |          | 
+ risk_dollars       | double precision         |           |          | 
+ entry_order_id     | text                     |           |          | 
+ stop_order_id      | text                     |           |          | 
+ exits              | jsonb                    |           |          | '[]'::jsonb
+ remaining_shares   | double precision         |           |          | 0
+ total_pnl          | double precision         |           |          | 0
+ hold_days          | integer                  |           |          | 0
+ partial_taken      | boolean                  |           |          | false
+ breakeven_active   | boolean                  |           |          | false
+ running_closes     | jsonb                    |           |          | '[]'::jsonb
+ proposed_at        | timestamp with time zone |           |          | 
+ confirmed_at       | timestamp with time zone |           |          | 
+ skip_reason        | text                     |           |          | 
+ created_at         | timestamp with time zone |           |          | now()
+ filled_at          | timestamp with time zone |           |          | 
+ closed_at          | timestamp with time zone |           |          | 
+ entry_attempt      | integer                  |           | not null | 1
+ signal_type        | text                     |           |          | 
+ account_mode       | text                     |           | not null | 'paper'::text
+ lowest_price_seen  | numeric                  |           |          | 
+ highest_price_seen | numeric                  |           |          | 
+ pnl_attribution    | text                     |           |          | 
+Indexes:
+    "mi_live_trades_pkey" PRIMARY KEY, btree (id)
+    "idx_live_trades_account_mode" btree (account_mode)
+    "idx_live_trades_signal_type" btree (signal_type)
+    "idx_live_trades_status" btree (status)
+    "mi_live_trades_ticker_alert_date_mode_key" UNIQUE CONSTRAINT, btree (ticker, alert_date, account_mode)
+Referenced by:
+    TABLE "mi_live_orders" CONSTRAINT "mi_live_orders_trade_id_fkey" FOREIGN KEY (trade_id) REFERENCES mi_live_trades(id)
+Triggers:
+    prevent_delete_mi_live_trades BEFORE DELETE ON mi_live_trades FOR EACH ROW EXECUTE FUNCTION protect_trade_tables()
+
+                                             Table "public.mi_ep_alerts"
+         Column          |           Type           | Collation | Nullable |                 Default                  
+-------------------------+--------------------------+-----------+----------+------------------------------------------
+ id                      | integer                  |           | not null | nextval('mi_ep_alerts_id_seq'::regclass)
+ ticker                  | text                     |           | not null | 
+ alert_date              | date                     |           | not null | 
+ gap_pct                 | double precision         |           | not null | 
+ rel_volume              | double precision         |           |          | 
+ ep_score                | double precision         |           | not null | 
+ score_tier              | text                     |           | not null | 
+ catalyst                | text                     |           |          | 
+ catalyst_quality        | text                     |           |          | 
+ claude_analysis         | text                     |           |          | 
+ gemini_validation       | text                     |           |          | 
+ confidence_multiplier   | double precision         |           |          | 1.0
+ vol_percentile          | double precision         |           |          | 
+ created_at              | timestamp with time zone |           |          | now()
+ source                  | text                     |           |          | 'live'::text
+ pm_rvol                 | double precision         |           |          | 
+ pm_rvol_baseline_n      | integer                  |           |          | 
+ detected_at             | timestamp with time zone |           |          | 
+ catalyst_type           | text                     |           |          | 
+ catalyst_type_rationale | text                     |           |          | 
+ theme_gated_tier        | text                     |           |          | 
+ theme_gated_score       | double precision         |           |          | 
+ in_active_theme         | boolean                  |           |          | 
+ in_narrative_cohort     | boolean                  |           |          | 
+ fire_status             | text                     |           |          | 
+ fire_axes               | text[]                   |           |          | 
+ materiality_tier        | text                     |           |          | 
+ materiality_source      | text                     |           |          | 
+ fire_status_mat_shadow  | text                     |           |          | 
+ grounded_text           | text                     |           |          | 
+ baseline_floor_tier     | text                     |           |          | 
+ judge_tier              | text                     |           |          | 
+ judge_direction         | text                     |           |          | 
+ judge_rationale         | text                     |           |          | 
+ judge_materiality_tier  | text                     |           |          | 
+ grade_engine_authority  | text                     |           |          | 
+ rubric_version          | text                     |           |          | 
+ setup_class             | text                     |           |          | 
+ tape_tier               | text                     |           |          | 
+ tape_spike_ct           | integer                  |           |          | 
+ tape_held               | integer                  |           |          | 
+ tape_rev                | integer                  |           |          | 
+ tape_bmr2               | double precision         |           |          | 
+ tape_ntr_med            | double precision         |           |          | 
+ vol_hist_n              | integer                  |           |          | 
+ vol_r5_50               | double precision         |           |          | 
+ vol_lab50               | integer                  |           |          | 
+ vol_lab50_ratio         | double precision         |           |          | 
+ vol_alert_vs_max        | double precision         |           |          | 
+Indexes:
+    "mi_ep_alerts_pkey" PRIMARY KEY, btree (id)
+    "idx_ep_alerts_alert_date" btree (alert_date)
+
+                                          Table "public.mi_ep_missed_outcomes"
+      Column       |           Type           | Collation | Nullable |                      Default                      
+-------------------+--------------------------+-----------+----------+---------------------------------------------------
+ id                | integer                  |           | not null | nextval('mi_ep_missed_outcomes_id_seq'::regclass)
+ ticker            | text                     |           | not null | 
+ alert_date        | date                     |           | not null | 
+ source            | text                     |           | not null | 
+ skip_reason       | text                     |           |          | 
+ skip_category     | text                     |           | not null | 
+ ep_score          | double precision         |           |          | 
+ gap_pct           | double precision         |           |          | 
+ rel_volume        | double precision         |           |          | 
+ catalyst_quality  | text                     |           |          | 
+ open_d0           | double precision         |           |          | 
+ close_d0          | double precision         |           |          | 
+ ret_1d            | double precision         |           |          | 
+ ret_5d            | double precision         |           |          | 
+ ret_20d           | double precision         |           |          | 
+ max_high_5d       | double precision         |           |          | 
+ max_high_20d      | double precision         |           |          | 
+ last_refreshed_at | timestamp with time zone |           |          | now()
+Indexes:
+    "mi_ep_missed_outcomes_pkey" PRIMARY KEY, btree (id)
+    "idx_missed_outcomes_alert_date" btree (alert_date DESC)
+    "idx_missed_outcomes_category" btree (skip_category, alert_date DESC)
+    "mi_ep_missed_outcomes_ticker_alert_date_source_key" UNIQUE CONSTRAINT, btree (ticker, alert_date, source)
+
+                   Table "public.mi_intraday_bars"
+  Column  |           Type           | Collation | Nullable | Default 
+----------+--------------------------+-----------+----------+---------
+ ticker   | text                     |           | not null | 
+ bar_time | timestamp with time zone |           | not null | 
+ open     | double precision         |           | not null | 
+ high     | double precision         |           | not null | 
+ low      | double precision         |           | not null | 
+ close    | double precision         |           | not null | 
+ volume   | bigint                   |           | not null | 
+ vwap     | double precision         |           |          | 
+Indexes:
+    "mi_intraday_bars_pkey" PRIMARY KEY, btree (ticker, bar_time)
+    "idx_intraday_bars_ticker" btree (ticker)
+
+                 Table "public.mi_daily_closes"
+   Column   |       Type       | Collation | Nullable | Default 
+------------+------------------+-----------+----------+---------
+ trade_date | date             |           | not null | 
+ ticker     | text             |           | not null | 
+ close      | double precision |           | not null | 
+ volume     | bigint           |           |          | 
+ open_price | double precision |           |          | 
+ high_price | double precision |           |          | 
+ low_price  | double precision |           |          | 
+Indexes:
+    "mi_daily_closes_pkey" PRIMARY KEY, btree (trade_date, ticker)
+    "idx_daily_closes_ticker" btree (ticker)
+

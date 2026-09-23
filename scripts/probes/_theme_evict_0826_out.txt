@@ -1,0 +1,1194 @@
+Pager usage is off.
+===Q0_now
+utc_now|et_today
+2026-08-27 01:33:10.771331+00|2026-08-26
+(1 row)
+===Q1_cooldowns_by_theme_today
+theme_name|n|tickers
+Oil Refining & Marketing|17|AEP,ATO,CMS,ET,EVRG,EXC,FE,KNTK,OGS,OKE,PAGP,SO,SR,TRGP,UGI,WES,XEL
+AI Chip & Interconnect Supply Chain Enablement|1|NN
+Altcoin & Diversified Digital-Asset Infrastructure Second Wave|1|ASST
+B2B Digital Financial Infrastructure & Payment Rails Modernization|1|FLYW
+Corporate Spend, Expense Management & Financial Operations Software|1|WK
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)|1|MMED
+Mobile App Platform & Advertising Monetization|1|BSP
+Video & Streaming Content Distribution Rebound|1|PSKY
+(8 rows)
+===Q2_cooldown_rows_today
+ticker|theme_name|removal_count|bypassed|removed_et|cd_until_et|reason
+NN|AI Chip & Interconnect Supply Chain Enablement|1|f|2026-08-26 17:02:54|2026-09-09|Description 'Positioning, navigation, timing infrastructure' does not match theme
+ASST|Altcoin & Diversified Digital-Asset Infrastructure Second Wave|1|f|2026-08-26 17:00:41|2026-09-09|Description 'Financial Services / Asset Management — Asset management, investment advisory services' does not match theme
+FLYW|B2B Digital Financial Infrastructure & Payment Rails Modernization|1|f|2026-08-26 17:00:42|2026-09-09|Description 'Healthcare payment processing, software platform' does not match theme
+WK|Corporate Spend, Expense Management & Financial Operations Software|1|f|2026-08-26 17:01:09|2026-09-09|Description 'Cloud reporting & compliance software, ESG & financial disclosures' does not match theme
+MMED|Diabetes Management Devices (CGM, Insulin Pumps & Delivery)|1|f|2026-08-26 17:01:24|2026-09-09|Description 'Diabetes management devices, insulin delivery' does not match theme
+BSP|Mobile App Platform & Advertising Monetization|1|f|2026-08-26 17:03:24|2026-09-09|Description 'Mobile app development, software platform acquisition' does not match theme
+AEP|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Electric — Regulated electric utility transmission, distribution, generation' does not match theme
+ATO|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Gas — Regulated natural gas distribution & pipeline' does not match theme
+CMS|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Electric — Regulated electric & natural gas utility Michigan' does not match theme
+ET|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Energy / Oil & Gas Midstream — Oil & gas pipeline transportation & storage' does not match theme
+EVRG|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Electric — Regulated electric generation, transmission, distribution' does not match theme
+EXC|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Electric — Regulated electric utility generation, transmission, distribution' does not match theme
+FE|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Electric — Regulated electric generation, transmission, distribution' does not match theme
+KNTK|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Midstream logistics, pipeline transportation Delaware' does not match theme
+OGS|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Gas — Regulated natural gas distribution utility' does not match theme
+OKE|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Oil & Gas Midstream' does not match theme
+PAGP|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Energy / Oil & Gas Midstream — Oil & gas midstream pipeline infrastructure' does not match theme
+SO|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Electric — Regulated electric utility generation, transmission, distribution' does not match theme
+SR|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Gas — Natural gas distribution & utilities' does not match theme
+TRGP|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Oil & gas midstream, infrastructure North America' does not match theme
+UGI|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Gas — Natural gas distribution, storage & transportation' does not match theme
+WES|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Energy / Oil & Gas Midstream — Natural gas gathering, processing & transportation' does not match theme
+XEL|Oil Refining & Marketing|1|f|2026-08-26 17:03:51|2026-09-09|Description 'Utilities / Utilities - Regulated Electric — Regulated electric & natural gas utility delivery' does not match theme
+PSKY|Video & Streaming Content Distribution Rebound|1|f|2026-08-26 17:02:50|2026-09-09|Description 'Communication Services / Entertainment — Film/TV studios, streaming services, broadcast television' does not match theme
+(24 rows)
+===Q3_mass_removal_tripwire_14d
+d|t_et|summary|detail
+2026-08-17|17:03:29|'Oilfield Equipment & Contract Drilling Services': validation flagged 9/16 members — name likely narrower than the cluster (#214)|Flagged: APA, DHT, FRO, INSW, NAT, NOG, OVV, TALO, TNK
+2026-08-19|17:07:05|'Independent Oil Refiners': validation flagged 42/42 members — name likely narrower than the cluster (#214)|Flagged: APA, AR, BKV, CHRD, CNQ, COP, CRGY, CRK, DVN, EOG, EQT, ET, EXE, FANG, FTI, HLX, HP, KGS, KNTK, LNG, MTDR, NESR, NOG, OII, OKE, OVV, OXY, PR, PTEN, RRC, SDRL, SM, SU, TALO, TDW, TRGP, VET, VG, VIST, WES, WHD, XPRO
+2026-08-26|17:03:51|'Oil Refining & Marketing': validation flagged 17/24 members — name likely narrower than the cluster (#214)|Flagged: AEP, ATO, CMS, ET, EVRG, EXC, FE, KNTK, OGS, OKE, PAGP, SO, SR, TRGP, UGI, WES, XEL
+(3 rows)
+===Q4_theme_event_daily_counts_14d
+d|event_type|n
+2026-08-26|validation_cooldown_triggered|24
+2026-08-26|ticker_revalidated_out|24
+2026-08-26|theme_retired|3
+2026-08-26|split_applied|3
+2026-08-26|validation_mass_removal_name_suspect|1
+2026-08-26|theme_auto_retired|1
+2026-08-25|theme_retired|4
+2026-08-25|split_applied|2
+2026-08-25|validation_cooldown_triggered|1
+2026-08-25|theme_auto_retired|1
+2026-08-25|ticker_revalidated_out|1
+2026-08-24|split_applied|15
+2026-08-24|validation_cooldown_triggered|5
+2026-08-24|ticker_revalidated_out|5
+2026-08-24|theme_retired|3
+2026-08-24|theme_auto_retired|1
+2026-08-21|validation_cooldown_triggered|13
+2026-08-21|ticker_revalidated_out|13
+2026-08-21|split_applied|8
+2026-08-21|theme_retired|4
+2026-08-21|validation_error|1
+2026-08-21|theme_auto_retired|1
+2026-08-20|theme_retired|5
+2026-08-20|split_applied|3
+2026-08-20|theme_auto_retired|1
+2026-08-19|ticker_revalidated_out|8
+2026-08-19|validation_cooldown_triggered|8
+2026-08-19|split_applied|4
+2026-08-19|theme_retired|2
+2026-08-19|theme_auto_retired|2
+2026-08-19|validation_error|1
+2026-08-19|validation_mass_removal_name_suspect|1
+2026-08-19|discovery_error|1
+2026-08-18|theme_retired|8
+2026-08-18|ticker_revalidated_out|2
+2026-08-18|split_applied|2
+2026-08-18|validation_cooldown_triggered|2
+2026-08-18|theme_auto_retired|2
+2026-08-17|ticker_revalidated_out|10
+2026-08-17|validation_cooldown_triggered|10
+2026-08-17|split_applied|4
+2026-08-17|theme_auto_retired|1
+2026-08-17|validation_mass_removal_name_suspect|1
+2026-08-14|split_applied|2
+2026-08-14|theme_retired|2
+2026-08-14|theme_auto_retired|1
+2026-08-14|ticker_revalidated_out|1
+2026-08-14|validation_cooldown_triggered|1
+2026-08-13|split_applied|5
+2026-08-13|theme_retired|2
+2026-08-13|theme_auto_retired|1
+(51 rows)
+===Q5_all_event_types_today
+event_type|n
+ep_rt_universe_coverage|38
+validation_cooldown_triggered|24
+ticker_revalidated_out|24
+stage_change|20
+metric_sample|13
+9m_ep_detected|12
+assignment_llm_proposed|12
+ep_rt_admit|12
+ep_rt_floor_flip_down|12
+theme_discovery_llm_call|10
+ep_rt_rvol_gate_flip|8
+ep_rt_volume_shadow|8
+ep_rt_universe_catch|8
+ep_rt_floor_flip_up|7
+theme_ecosystem_assigned|7
+theme_merge_distinct|6
+path_coverage_gap|6
+ep_filter_session_rvol|6
+ep_catalyst_provenance|6
+assignment_skipped_sector_outlier|5
+ep_rt_sustain_reject|5
+ep_rt_tick_quality_reject|5
+theme_score_ties|5
+anticipation_coil_buyout_pin_rejected|4
+telegram_markdown_fallback|4
+theme_pass1_5_skip|4
+theme_discovered|4
+theme_breadth_fade|4
+ep_filter_pm_rvol|4
+catalyst_earnings_revenue_weak_downgrade|3
+catalyst_earnings_boost|3
+theme_low_quality_description|3
+ep_rt_sustain_undecidable|3
+theme_retired|3
+intraday_low_vol_rest|3
+split_applied|3
+flag_stage_flip_held|2
+theme_pass1_5_absorption|2
+order_status_reconciled|2
+dual_account_creds_resolved|2
+review_escalation|2
+theme_thesis_merged|2
+anomaly_detected|2
+split_detected|2
+stop_refresh_ran|2
+theme_birth_gate|2
+account_mode_active|2
+stop_order_id_changed|1
+stop_replacement_confirmed_silent|1
+stop_updated|1
+stop_update_failed|1
+stop_update_retry_succeeded|1
+stop_update_started|1
+sugar_babies_cohort_refreshed|1
+theme_auto_retired|1
+theme_cap_drop|1
+theme_carryforward_filter_stripped|1
+theme_composition_churn|1
+theme_constituent_churn|1
+theme_discovery_shadow_ran|1
+theme_dissolved_flagged_pair|1
+theme_empty_tickers|1
+theme_engine_funnel|1
+theme_load_state|1
+theme_merge_pairs_proposed|1
+theme_orphan_sub|1
+theme_pass1_protect_strip|1
+theme_quality_clean|1
+theme_renamed_for_continuity|1
+theme_sector_cap_dropped|1
+theme_split|1
+theme_stage_flip_held|1
+theme_synthesis_run|1
+unified_allocation_decided|1
+validation_mass_removal_name_suspect|1
+watchdog_heartbeat|1
+9m_sugar_babies_confirmed|1
+9m_sugar_baby_filtered_destroyed_trend|1
+alert_rank_shadow_recorded|1
+anticipation_mna_check_capped|1
+book_concentration_snapshot|1
+cap_plus_one_shadow_recorded|1
+catalyst_lattice_monitor_alert|1
+cost_watchdog_check|1
+coverage_probe_ran|1
+crypto_ingest_completed|1
+db_growth_check|1
+description_generated|1
+detector_liveness_check|1
+dual_account_boot_verified|1
+ecosystem_reactivation_clean|1
+ep_delayed_residual_scan|1
+ep_provenance_daily|1
+ep_residual_outcomes_backfilled|1
+ep_rt_gap_clamped|1
+ep_rt_halt_suspect|1
+ep_rt_prev_close_mismatch|1
+ep_rt_shadow_capture|1
+evening_brief_sent|1
+exit_path_shadow_recorded|1
+flag_ma_pullbacks_reconciled|1
+global_ticker_ban_active|1
+health_heartbeat_ok|1
+health_job_liveness_flagged|1
+health_null_sweep_clean|1
+htf_management_shadow_run|1
+intraday_ma_pullback|1
+intraday_support_test|1
+jsonb_encoding_check|1
+market_close_digest_sent|1
+missed_outcomes_reconciled|1
+missed_outcomes_refreshed|1
+narrative_theme_discovery_ran|1
+pivot_stop_shadow_logged|1
+row_count_drift_sweep|1
+rs_deterioration|1
+rs_extreme_return|1
+seeded_pool_admission|1
+shadow_themes_promoted|1
+split_apply_skipped_no_data|1
+splits_ingest_fractional_skipped|1
+splits_ingest_summary|1
+(122 rows)
+===Q6_revalidated_out_rows_today
+t_et|summary|detail
+17:00:41|ASST removed from 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' by validation|Description: 'Financial Services / Asset Management — Asset management, investment advisory services' — validation (claude-sonnet-5) flagged as not matching theme
+17:00:42|FLYW removed from 'B2B Digital Financial Infrastructure & Payment Rails Modernization' by validation|Description: 'Healthcare payment processing, software platform' — validation (claude-sonnet-5) flagged as not matching theme
+17:01:09|WK removed from 'Corporate Spend, Expense Management & Financial Operations Software' by validation|Description: 'Cloud reporting & compliance software, ESG & financial disclosures' — validation (claude-sonnet-5) flagged as not matching theme
+17:01:24|MMED removed from 'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)' by validation|Description: 'Diabetes management devices, insulin delivery' — validation (claude-sonnet-5) flagged as not matching theme
+17:02:50|PSKY removed from 'Video & Streaming Content Distribution Rebound' by validation|Description: 'Communication Services / Entertainment — Film/TV studios, streaming services, broadcast television' — validation (claude-sonnet-5) flagged as not matching theme
+17:02:54|NN removed from 'AI Chip & Interconnect Supply Chain Enablement' by validation|Description: 'Positioning, navigation, timing infrastructure' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:24|BSP removed from 'Mobile App Platform & Advertising Monetization' by validation|Description: 'Mobile app development, software platform acquisition' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|CMS removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Electric — Regulated electric & natural gas utility Michigan' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|ATO removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Gas — Regulated natural gas distribution & pipeline' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|WES removed from 'Oil Refining & Marketing' by validation|Description: 'Energy / Oil & Gas Midstream — Natural gas gathering, processing & transportation' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|AEP removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Electric — Regulated electric utility transmission, distribution, generation' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|ET removed from 'Oil Refining & Marketing' by validation|Description: 'Energy / Oil & Gas Midstream — Oil & gas pipeline transportation & storage' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|EXC removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Electric — Regulated electric utility generation, transmission, distribution' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|EVRG removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Electric — Regulated electric generation, transmission, distribution' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|FE removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Electric — Regulated electric generation, transmission, distribution' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|SO removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Electric — Regulated electric utility generation, transmission, distribution' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|OGS removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Gas — Regulated natural gas distribution utility' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|UGI removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Gas — Natural gas distribution, storage & transportation' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|KNTK removed from 'Oil Refining & Marketing' by validation|Description: 'Midstream logistics, pipeline transportation Delaware' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|SR removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Gas — Natural gas distribution & utilities' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|XEL removed from 'Oil Refining & Marketing' by validation|Description: 'Utilities / Utilities - Regulated Electric — Regulated electric & natural gas utility delivery' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|TRGP removed from 'Oil Refining & Marketing' by validation|Description: 'Oil & gas midstream, infrastructure North America' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|PAGP removed from 'Oil Refining & Marketing' by validation|Description: 'Energy / Oil & Gas Midstream — Oil & gas midstream pipeline infrastructure' — validation (claude-sonnet-5) flagged as not matching theme
+17:03:51|OKE removed from 'Oil Refining & Marketing' by validation|Description: 'Oil & Gas Midstream' — validation (claude-sonnet-5) flagged as not matching theme
+(24 rows)
+===Q7_theme_counts_by_day_20d
+theme_date|n_themes|accel|mainstream|nascent|fading|retired|avg_members
+2026-08-26|114|4|47|27|26|10|5.48
+2026-08-25|112|7|39|29|30|7|5.60
+2026-08-24|123|6|43|25|30|19|4.87
+2026-08-21|128|7|41|35|30|15|4.85
+2026-08-20|127|1|42|30|34|20|5.01
+2026-08-19|120|1|47|38|26|8|5.13
+2026-08-18|107|6|43|27|24|7|5.27
+2026-08-17|100|6|40|24|24|6|4.97
+2026-08-14|94|6|38|26|20|4|5.15
+2026-08-13|95|8|38|24|17|8|4.74
+2026-08-12|98|6|36|28|18|10|4.45
+2026-08-11|95|9|33|18|22|13|4.11
+2026-08-10|96|9|34|15|27|11|3.11
+2026-08-07|93|8|28|12|37|8|2.99
+(14 rows)
+===Q8_stripped_theme_membership_prev_vs_today
+theme_name|n_removed|prev_date|prev_stage|prev_members|latest_date|latest_stage|latest_members|pct_of_prev
+Oil Refining & Marketing|17|2026-08-25|Nascent|24|2026-08-26|Nascent|46|70.8
+AI Chip & Interconnect Supply Chain Enablement|1|2026-08-25|Mainstream|12|2026-08-26|Mainstream|14|8.3
+Altcoin & Diversified Digital-Asset Infrastructure Second Wave|1|2026-08-25|Nascent|5|2026-08-26|Nascent|4|20.0
+B2B Digital Financial Infrastructure & Payment Rails Modernization|1|2026-08-25|Mainstream|12|2026-08-26|Mainstream|11|8.3
+Corporate Spend, Expense Management & Financial Operations Software|1|2026-08-25|Mainstream|6|2026-08-26|Mainstream|5|16.7
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)|1|2026-08-25|Nascent|4|2026-08-26|Nascent|3|25.0
+Mobile App Platform & Advertising Monetization|1|2026-08-25|Mainstream|2|2026-08-26|Retired|0|50.0
+Video & Streaming Content Distribution Rebound|1|2026-08-25|Mainstream|3|2026-08-26|Fading|3|33.3
+(8 rows)
+===Q9_rs_history_stripped_tickers
+ticker|score_date|rs
+AEP|2026-08-26|21.0
+AEP|2026-08-25|18.6
+AEP|2026-08-24|15.8
+AEP|2026-08-21|10.8
+AEP|2026-08-20|22.8
+AEP|2026-08-19|16.4
+AEP|2026-08-18|16.0
+AEP|2026-08-17|13.6
+ASST|2026-08-26|97.7
+ASST|2026-08-25|98.1
+ASST|2026-08-24|95.7
+ASST|2026-08-21|91.6
+ASST|2026-08-20|85.4
+ASST|2026-08-19|69.1
+ASST|2026-08-18|39.3
+ASST|2026-08-17|47.7
+ATO|2026-08-26|28.4
+ATO|2026-08-25|24.2
+ATO|2026-08-24|22.5
+ATO|2026-08-21|15.8
+ATO|2026-08-20|21.4
+ATO|2026-08-19|15.6
+ATO|2026-08-18|17.5
+ATO|2026-08-17|14.9
+BSP|2026-08-26|28.4
+BSP|2026-08-25|93.9
+BSP|2026-08-24|93.2
+BSP|2026-08-21|93.7
+BSP|2026-08-20|92.9
+BSP|2026-08-19|96.3
+BSP|2026-08-18|93.4
+BSP|2026-08-17|90.2
+CMS|2026-08-26|18.2
+CMS|2026-08-25|17.7
+CMS|2026-08-24|15.2
+CMS|2026-08-21|9.8
+CMS|2026-08-20|13.7
+CMS|2026-08-19|10.5
+CMS|2026-08-18|14.4
+CMS|2026-08-17|13.5
+ET|2026-08-26|75.7
+ET|2026-08-25|68.8
+ET|2026-08-24|70.6
+ET|2026-08-21|70.3
+ET|2026-08-20|73.0
+ET|2026-08-19|70.9
+ET|2026-08-18|77.0
+ET|2026-08-17|67.6
+EVRG|2026-08-26|37.8
+EVRG|2026-08-25|30.0
+EVRG|2026-08-24|29.1
+EVRG|2026-08-21|22.6
+EVRG|2026-08-20|37.6
+EVRG|2026-08-19|30.2
+EVRG|2026-08-18|27.9
+EVRG|2026-08-17|26.2
+EXC|2026-08-26|24.2
+EXC|2026-08-25|22.9
+EXC|2026-08-24|24.5
+EXC|2026-08-21|13.3
+EXC|2026-08-20|24.7
+EXC|2026-08-19|14.6
+EXC|2026-08-18|17.4
+EXC|2026-08-17|17.4
+FE|2026-08-26|27.9
+FE|2026-08-25|25.6
+FE|2026-08-24|23.4
+FE|2026-08-21|14.3
+FE|2026-08-20|21.7
+FE|2026-08-19|17.3
+FE|2026-08-18|17.1
+FE|2026-08-17|17.2
+FLYW|2026-08-26|76.4
+FLYW|2026-08-25|91.4
+FLYW|2026-08-24|94.3
+FLYW|2026-08-21|93.9
+FLYW|2026-08-20|91.6
+FLYW|2026-08-19|90.2
+FLYW|2026-08-18|88.5
+FLYW|2026-08-17|91.0
+KNTK|2026-08-26|85.0
+KNTK|2026-08-25|81.2
+KNTK|2026-08-24|83.8
+KNTK|2026-08-21|78.9
+KNTK|2026-08-20|80.8
+KNTK|2026-08-19|80.2
+KNTK|2026-08-18|84.6
+KNTK|2026-08-17|77.9
+MMED|2026-08-26|91.4
+MMED|2026-08-25|80.7
+MMED|2026-08-24|88.1
+MMED|2026-08-21|93.6
+MMED|2026-08-20|93.1
+MMED|2026-08-19|89.9
+MMED|2026-08-18|89.2
+MMED|2026-08-17|89.2
+NN|2026-08-26|34.2
+NN|2026-08-25|40.4
+NN|2026-08-24|46.5
+NN|2026-08-21|51.7
+NN|2026-08-20|51.4
+NN|2026-08-19|71.8
+NN|2026-08-18|82.3
+NN|2026-08-17|80.6
+OGS|2026-08-26|47.7
+OGS|2026-08-25|49.6
+OGS|2026-08-24|44.5
+OGS|2026-08-21|33.2
+OGS|2026-08-20|48.1
+OGS|2026-08-19|36.4
+OGS|2026-08-18|36.6
+OGS|2026-08-17|26.3
+OKE|2026-08-26|75.4
+OKE|2026-08-25|65.0
+OKE|2026-08-24|69.1
+OKE|2026-08-21|64.6
+OKE|2026-08-20|73.3
+OKE|2026-08-19|73.3
+OKE|2026-08-18|79.8
+OKE|2026-08-17|68.4
+PAGP|2026-08-26|89.5
+PAGP|2026-08-25|80.0
+PAGP|2026-08-24|78.6
+PAGP|2026-08-21|71.1
+PAGP|2026-08-20|68.5
+PAGP|2026-08-19|50.1
+PAGP|2026-08-18|61.6
+PAGP|2026-08-17|46.1
+PSKY|2026-08-26|68.9
+PSKY|2026-08-25|68.6
+PSKY|2026-08-24|62.6
+PSKY|2026-08-21|63.2
+PSKY|2026-08-20|63.9
+PSKY|2026-08-19|65.9
+PSKY|2026-08-18|65.1
+PSKY|2026-08-17|58.1
+SO|2026-08-26|22.1
+SO|2026-08-25|23.9
+SO|2026-08-24|24.4
+SO|2026-08-21|11.9
+SO|2026-08-20|19.9
+SO|2026-08-19|15.9
+SO|2026-08-18|17.9
+SO|2026-08-17|16.5
+SR|2026-08-26|52.2
+SR|2026-08-25|53.9
+SR|2026-08-24|49.6
+SR|2026-08-21|34.6
+SR|2026-08-20|47.9
+SR|2026-08-19|40.2
+SR|2026-08-18|37.9
+SR|2026-08-17|26.7
+TRGP|2026-08-26|86.4
+TRGP|2026-08-25|79.3
+TRGP|2026-08-24|84.5
+TRGP|2026-08-21|84.8
+TRGP|2026-08-20|87.7
+TRGP|2026-08-19|83.1
+TRGP|2026-08-18|86.9
+TRGP|2026-08-17|62.7
+UGI|2026-08-26|73.7
+UGI|2026-08-25|69.0
+UGI|2026-08-24|67.9
+UGI|2026-08-21|60.6
+UGI|2026-08-20|64.5
+UGI|2026-08-19|64.5
+UGI|2026-08-18|64.8
+UGI|2026-08-17|18.1
+WES|2026-08-26|79.8
+WES|2026-08-25|72.7
+WES|2026-08-24|75.2
+WES|2026-08-21|73.4
+WES|2026-08-20|72.9
+WES|2026-08-19|74.1
+WES|2026-08-18|80.5
+WES|2026-08-17|70.2
+WK|2026-08-26|96.8
+WK|2026-08-25|96.4
+WK|2026-08-24|96.5
+WK|2026-08-21|95.7
+WK|2026-08-20|96.8
+WK|2026-08-19|95.4
+WK|2026-08-18|93.5
+WK|2026-08-17|93.7
+XEL|2026-08-26|38.3
+XEL|2026-08-25|32.2
+XEL|2026-08-24|31.4
+XEL|2026-08-21|20.3
+XEL|2026-08-20|36.8
+XEL|2026-08-19|34.2
+XEL|2026-08-18|29.7
+XEL|2026-08-17|22.5
+(192 rows)
+===Q10_stripped_tickers_in_ep_surfaces_30d
+surface|ticker|d|score_tier|score|in_theme
+scan|ASST|2026-08-20|-|0.0|routine catalyst, gap 9.3%
+scan|ASST|2026-08-20|-|0.0|routine catalyst, gap 9.6%
+scan|ASST|2026-08-20|-|0.0|routine catalyst, gap 9.0%
+scan|ASST|2026-08-20|-|0.0|routine catalyst, gap 9.9%
+scan|ASST|2026-08-20|-|0.0|routine catalyst, gap 10.0%
+scan|ASST|2026-08-21|-|0.0|routine catalyst, gap 9.7%
+scan|ASST|2026-08-21|-|0.0|routine catalyst, gap 11.0%
+scan|ASST|2026-08-21|-|0.0|routine catalyst, gap 9.9%
+scan|ASST|2026-08-21|-|0.0|routine catalyst, gap 9.7%
+scan|ASST|2026-08-21|-|0.0|routine catalyst, gap 11.6%
+scan|ASST|2026-08-21|-|0.0|routine catalyst, gap 10.9%
+scan|ASST|2026-08-21|-|0.0|routine catalyst, gap 9.7%
+scan|ASST|2026-08-21|-|0.0|routine catalyst, gap 10.4%
+(13 rows)
+===Q11_stripped_tickers_theme_coverage_now
+ticker|still_in
+AEP|<none>
+ASST|Corporate Digital Asset Treasury Vehicles [Mainstream]
+ATO|<none>
+BSP|<none>
+CMS|<none>
+ET|<none>
+EVRG|<none>
+EXC|<none>
+FE|<none>
+FLYW|<none>
+KNTK|<none>
+MMED|<none>
+NN|<none>
+OGS|<none>
+OKE|Oil Refining & Marketing [Nascent]
+PAGP|<none>
+PSKY|<none>
+SO|<none>
+SR|<none>
+TRGP|<none>
+UGI|<none>
+WES|<none>
+WK|<none>
+XEL|<none>
+(24 rows)
+===Q12_audit_window_tonight
+t_et|event_type|summary
+08-25 16:15:00|metric_sample|audit_errors_per_day
+08-25 16:15:00|metric_sample|skip_count_infra
+08-25 16:15:00|metric_sample|skip_count_filter
+08-25 16:15:00|metric_sample|skip_count_setup
+08-25 16:15:00|metric_sample|skip_count_block
+08-25 16:15:00|metric_sample|skip_count_window
+08-25 16:15:00|metric_sample|9m_alerts_per_day
+08-25 16:15:00|metric_sample|bar_stream_disconnect_count_24h
+08-25 16:15:00|metric_sample|market_hours_boot_count
+08-25 16:18:00|book_concentration_snapshot|live book: 2 open, 0 flagged famil(ies), notional $695 (14% eq)
+08-25 16:20:00|stop_refresh_ran|post-close: examined 2, placed 0, already-covered 2, skipped 0 (none)
+08-25 16:22:00|path_coverage_gap|APMD 2026-08-25: 242/390 bars (alert-day persist)
+08-25 16:22:00|path_coverage_gap|HMN 2026-08-25: 109/390 bars (alert-day persist)
+08-25 16:22:00|path_coverage_gap|NBBK 2026-08-25: 132/390 bars (alert-day persist)
+08-25 16:22:00|path_coverage_gap|OESX 2026-08-25: 187/390 bars (alert-day persist)
+08-25 16:22:00|path_coverage_gap|PSQH 2026-08-25: 157/390 bars (alert-day persist)
+08-25 16:22:00|path_coverage_gap|SPAI 2026-08-25: 135/390 bars (alert-day persist)
+08-25 16:24:00|path_coverage_gap|THC 2026-08-25: 281/390 bars (forward alert-day persist, session 22 of 25)
+08-25 16:24:00|path_coverage_gap|WKC 2026-08-25: 229/390 bars (forward alert-day persist, session 22 of 25)
+08-25 16:35:16|ep_delayed_residual_scan|2026-08-25: 2 quality in-window crossers missed by the delay; 0 beyond the 5% hybrid (residual — flat-premkt-then-explode)
+08-25 16:35:17|telegram_markdown_fallback|Markdown parse failed — delivered as plain text
+08-25 16:35:17|ep_residual_outcomes_backfilled|G3: stamped fwd outcomes (cross-basis, #490 §9.4) on 2 settled residual row(s)
+08-25 16:35:17|ep_rt_shadow_capture|2026-08-25: 0/0 residual crossers had a same-day ep_rt_universe_catch
+08-25 16:45:00|stop_update_started|AMLX: $30.211219 → $30.51 (11 of 11 after 0 held)
+08-25 16:45:00|stop_update_failed|AMLX: place_stop_order raised on first attempt — APIError
+08-25 16:45:00|stop_order_id_changed|trade #372 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+08-25 16:45:03|stop_update_retry_succeeded|AMLX: retry placed stop @$30.51
+08-25 16:45:03|stop_replacement_confirmed_silent|AMLX: WS safety-net agrees with order_manager's own recorded evidence ($30.51, d2013c3d-18da-4025-a377-e3fe5200ed2b) via audit_price_only — Telegram s
+08-25 16:45:04|stop_updated|AMLX: stop now $30.51 (d2013c3d-18da-4025-a377-e3fe5200ed2b) for 11 sh
+08-25 16:55:00|market_close_digest_sent|Market Close Digest: 2 contribution(s) across 2 section(s)
+08-25 17:00:00|split_detected|BBKCF 2026-08-26 7:1
+08-25 17:00:00|split_detected|PDIYF 2026-08-26 5:1
+08-25 17:00:00|split_detected|VMAR 2026-08-26 10:1
+08-25 17:00:00|split_detected|GLTK 2026-08-27 3:1
+08-25 17:00:00|split_detected|LGVN 2026-08-27 10:1
+08-25 17:00:00|split_detected|LGHL 2026-09-10 20:1
+08-25 17:00:00|split_detected|IDTID 2026-09-14 100:192
+08-25 17:00:00|splits_ingest_fractional_skipped|45 non-integer ratios skipped (fund share-class reorgs, not splits)
+08-25 17:00:00|split_applied|GPUS 2026-08-25 5:1 — 165 bars overwritten
+08-25 17:00:00|split_applied|REAX 2026-08-25 10:1 — 171 bars overwritten
+08-25 17:00:00|splits_ingest_summary|new=7 applied=2 failed=0
+08-25 17:00:09|rs_extreme_return|3 tickers cleared legacy heuristic ceilings — sample: FBRX, REPL, XHLD
+08-25 17:00:19|9m_sugar_baby_filtered_destroyed_trend|QFIN 2026-08-25: prev_20d=-19.0% sma50_ratio=0.80 sma50_slope=-2.1% — all 3 destroyed-name markers
+08-25 17:00:19|9m_sugar_babies_confirmed|2 sugar babies on 2026-08-25 (1 filtered by trend gate)
+08-25 17:00:33|description_generated|Generated 9 new stock descriptions
+08-25 17:00:33|theme_load_state|theme_load_state n=104 stages={'Fading': 30, 'Nascent': 25, 'Mainstream': 43, 'Accelerating': 6} dates=1
+08-25 17:00:34|theme_stage_flip_held|Defense Intelligence & Cybersecurity IT Contractors: Nascent→Fading held; y_Δ=-5.4
+08-25 17:00:34|theme_stage_flip_held|Defense Electronics & Aerospace Subsystem Suppliers: Mainstream→Fading held; y_Δ=-6.6
+08-25 17:00:34|theme_low_quality_description|Theme 'Consumer Fintech & Digital Credit Platforms': capped Mainstream → Nascent (no_member_ticker_mentioned)
+08-25 17:00:34|theme_breadth_fade|Defense Electronics & Aerospace Subsystem Suppliers: breadth 33%, members 6
+08-25 17:00:34|theme_breadth_fade|Life Insurance & Annuity Providers: breadth 33%, members 9
+08-25 17:00:34|theme_breadth_fade|Emerging Defense & Aerospace Hardware Suppliers: breadth 14%, members 7
+08-25 17:00:34|theme_low_quality_description|Theme 'Precious Metals Miners Velocity Breakout': capped Mainstream → Nascent (ticker_concat:ASM_AYA)
+08-25 17:00:34|theme_breadth_fade|Containerboard & Corrugated Packaging Producers: breadth 25%, members 4
+08-25 17:00:34|theme_stage_flip_held|Network Security & Zero-Trust Edge: Mainstream→Fading held; y_Δ=-3.8
+08-25 17:00:34|theme_breadth_fade|Network Security & Zero-Trust Edge: breadth 20%, members 15
+08-25 17:00:38|theme_stage_flip_held|Crypto-Native Exchange & Blockchain Financial Software: Fading→Accelerating held; y_Δ=-7.0
+08-25 17:00:39|theme_stage_flip_held|Government AI & Public-Sector Digitization Breakout: Nascent→Fading held; y_Δ=+0.0
+08-25 17:00:40|theme_stage_flip_held|mRNA Vaccine & Therapeutics Innovation: Nascent→Fading held; y_Δ=+0.0
+08-25 17:00:41|theme_stage_flip_held|Lodging & Hotel REITs: Fading→Accelerating held; y_Δ=-4.7
+08-25 17:00:42|seeded_pool_admission|#491 M2: 7 seeded ticker(s) admitted to the assignment pool past the RS floor
+08-25 17:00:42|global_ticker_ban_active|1 tickers globally banned from theme assignment
+08-25 17:00:42|theme_carryforward_filter_stripped|Bitcoin Mining & HPC Compute Pivot Operators: stripped 1 ticker(s) (sector_outlier)
+08-25 17:00:42|theme_carryforward_filter_stripped|Wood-Based Building Materials Distribution: stripped 1 ticker(s) (sector_outlier)
+08-25 17:01:04|assignment_llm_proposed|Sonnet proposed 4 assignment(s) (batch 1/13, advisor_calls=0)
+08-25 17:01:20|assignment_llm_proposed|Sonnet proposed 0 assignment(s) (batch 2/13, advisor_calls=0)
+08-25 17:01:40|assignment_llm_proposed|Sonnet proposed 5 assignment(s) (batch 3/13, advisor_calls=0)
+08-25 17:02:04|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 4/13, advisor_calls=0)
+08-25 17:02:18|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 5/13, advisor_calls=0)
+08-25 17:02:34|assignment_llm_proposed|Sonnet proposed 0 assignment(s) (batch 6/13, advisor_calls=0)
+08-25 17:02:55|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 7/13, advisor_calls=0)
+08-25 17:03:10|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 8/13, advisor_calls=0)
+08-25 17:03:29|assignment_llm_proposed|Sonnet proposed 4 assignment(s) (batch 9/13, advisor_calls=0)
+08-25 17:03:51|assignment_llm_proposed|Sonnet proposed 5 assignment(s) (batch 10/13, advisor_calls=0)
+08-25 17:04:13|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 11/13, advisor_calls=0)
+08-25 17:04:31|assignment_llm_proposed|Sonnet proposed 5 assignment(s) (batch 12/13, advisor_calls=0)
+08-25 17:04:50|assignment_llm_proposed|Sonnet proposed 5 assignment(s) (batch 13/13, advisor_calls=0)
+08-25 17:04:50|assignment_skipped_sector_outlier|GPN (Industrials) → 'B2B Digital Financial Infrastructure & Payment Rails Modernization' (members: ['Technology'])
+08-25 17:04:50|assignment_skipped_sector_outlier|JHX (Basic Materials) → 'Building Products & Home Improvement Suppliers' (members: ['Industrials'])
+08-25 17:04:50|assignment_skipped_sector_outlier|CNR (Energy) → 'Metallurgical & Thermal Coal Mining Rebound' (members: ['Basic Materials'])
+08-25 17:04:50|assignment_skipped_sector_outlier|BTU (Energy) → 'Metallurgical & Thermal Coal Mining Rebound' (members: ['Basic Materials'])
+08-25 17:04:50|assignment_skipped_sector_outlier|MSTR (Technology) → 'Corporate Digital Asset Treasury Vehicles' (members: ['Financial Services'])
+08-25 17:04:50|assignment_skipped_sector_outlier|HLN (Healthcare) → 'Defensive Consumer Staples Rotation' (members: ['Consumer Defensive'])
+08-25 17:04:50|assignment_skipped_sector_outlier|NBIS (Communication Services) → 'Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers' (members: ['Technology'])
+08-25 17:05:52|theme_discovery_llm_call|stop=tool_use out_tok=2067 forced=False tool_uses=1 iter=1
+08-25 17:06:44|theme_discovery_llm_call|stop=tool_use out_tok=4829 forced=False tool_uses=1 iter=1
+08-25 17:07:03|theme_discovery_llm_call|stop=tool_use out_tok=1625 forced=False tool_uses=1 iter=1
+08-25 17:07:22|theme_discovery_llm_call|stop=tool_use out_tok=1751 forced=False tool_uses=1 iter=1
+08-25 17:07:40|theme_discovery_llm_call|stop=tool_use out_tok=1630 forced=False tool_uses=1 iter=1
+08-25 17:07:57|theme_discovery_llm_call|stop=tool_use out_tok=1479 forced=False tool_uses=1 iter=1
+08-25 17:08:00|theme_birth_gate|2026-08-25 [lane1/observe] birth-gate: 1 birth / 1 join / 1 awaiting-2nd-sighting / 0 held-floor · ⚠ 14 previously-held later PASSED
+08-25 17:08:05|theme_engine_funnel|births: uncovered=8 v/t/e=8/6/31 discovery=ON → LLM=3 → survived=3 | retired=4
+08-25 17:08:05|theme_discovered|New theme: For-Profit Postsecondary & Vocational Education (4 stocks)
+08-25 17:08:05|theme_discovered|New theme: Vaccine Manufacturers RS Breakout (2 stocks)
+08-25 17:08:05|theme_discovered|New theme: Residential Rental REITs (Apartment & Single-Family) (5 stocks)
+08-25 17:08:05|theme_retired|Retired: Specialty & Multi-line P&C Insurance Carriers
+08-25 17:08:05|theme_retired|Retired: Advanced Nuclear Fuel & Reactor Design Manufacturers
+08-25 17:08:05|theme_retired|Retired: Lumber & Building Products Manufacturing-Distribution
+08-25 17:08:05|theme_retired|Retired: For-Profit Postsecondary & Vocational Education
+08-25 17:08:05|stage_change|Business Development Companies & Specialty Direct Lending: Nascent → Accelerating
+08-25 17:08:05|stage_change|Canadian Big Banks: Fading → Mainstream
+08-25 17:08:05|stage_change|Containerboard & Corrugated Packaging Producers: Accelerating → Fading
+08-25 17:08:05|stage_change|Copper Mining & Production: Mainstream → Accelerating
+08-25 17:08:05|stage_change|Defense Electronics & Aerospace Subsystem Suppliers: Mainstream → Fading
+08-25 17:08:05|stage_change|Defensive Consumer Staples Rotation: Fading → Accelerating
+08-25 17:08:05|stage_change|Emerging Defense & Aerospace Hardware Suppliers: Mainstream → Fading
+08-25 17:08:05|stage_change|Gateway & Coastal Office REIT Stress Reversal: Fading → Accelerating
+08-25 17:08:05|stage_change|Network Security & Zero-Trust Edge: Mainstream → Fading
+08-25 17:08:05|stage_change|Video & Streaming Content Distribution Rebound: Fading → Mainstream
+08-25 17:08:06|theme_pass1_protect_strip|Pass1: stripped 3 ticker(s) from 'Business Development Companies & Specialty Direct Lending' (protect 'Private Equity & Alternative Asset Management P
+08-25 17:08:06|theme_pass1_5_skip|Pass1.5: 'Robotic Process Automation & Low-Code Workflow Execution' eligible but no target passed (1 candidate(s) skipped)
+08-25 17:08:06|theme_pass1_5_absorption|Pass1.5: 'Vaccine Manufacturers RS Breakout' -> 'mRNA Vaccine & Therapeutics Innovation'
+08-25 17:08:06|theme_pass1_5_skip|Pass1.5: 'Crypto Exchange & Stablecoin Platform Velocity Breakout' eligible but no target passed (1 candidate(s) skipped)
+08-25 17:08:06|theme_pass1_5_absorption|Pass1.5: 'Crypto-Native Exchange & Blockchain Financial Software' -> 'Crypto Exchange & Stablecoin Platform Velocity Breakout'
+08-25 17:08:06|theme_pass1_5_skip|Pass1.5: 'Bitcoin Mining & Digital Asset Infrastructure' eligible but no target passed (1 candidate(s) skipped)
+08-25 17:08:06|theme_sector_cap_dropped|'mRNA Vaccine & Therapeutics Innovation' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)
+08-25 17:08:06|theme_score_ties|12 score-tie group(s) after stage 'after_merge_1'
+08-25 17:08:06|theme_cap_drop|Cap: 1 theme(s) dropped below PRUNE_MIN_TICKERS=2
+08-25 17:08:06|theme_score_ties|11 score-tie group(s) after stage 'after_cap_1'
+08-25 17:08:14|theme_split|Split: 'Frozen Foods Producers' from 'Defensive Consumer Staples Rotation' (5 stocks)
+08-25 17:08:26|theme_split|Split: 'Oilfield Services & Drilling Equipment' from 'U.S. Oil & Gas E&P Rotation' (4 stocks)
+08-25 17:08:31|theme_score_ties|12 score-tie group(s) after stage 'after_split'
+08-25 17:08:31|theme_pass1_5_skip|Pass1.5: 'Robotic Process Automation & Low-Code Workflow Execution' eligible but no target passed (1 candidate(s) skipped)
+08-25 17:08:31|theme_pass1_5_skip|Pass1.5: 'Bitcoin Mining & Digital Asset Infrastructure' eligible but no target passed (1 candidate(s) skipped)
+08-25 17:08:31|theme_score_ties|12 score-tie group(s) after stage 'after_merge_2'
+08-25 17:08:31|theme_orphan_sub|2 orphan sub-theme(s) after stage 'after_merge_2'
+08-25 17:08:31|theme_score_ties|12 score-tie group(s) after stage 'after_cap_2'
+08-25 17:08:31|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+08-25 17:08:35|theme_merge_distinct|Arm B: 'Office REIT Recovery & Re-Rating' vs 'Residential Rental REITs (Apartment & Single-Family)' DISTINCT — 30d pair cooldown
+08-25 17:08:39|theme_merge_distinct|Arm B: 'Gateway & Coastal Office REIT Stress Reversal' vs 'Residential Rental REITs (Apartment & Single-Family)' DISTINCT — 30d pair cooldown
+08-25 17:08:43|theme_merge_distinct|Arm B: 'Wood-Based Building Materials Distribution' vs 'Gold & Precious Metals Miners Rotation' DISTINCT — 30d pair cooldown
+08-25 17:08:47|theme_merge_distinct|Arm B: 'Quick-Service & Fast-Casual Restaurant Chains' vs 'Restaurant Chain Recovery' DISTINCT — 30d pair cooldown
+08-25 17:08:52|theme_merge_distinct|Arm B: 'Bitcoin Mining & HPC Compute Pivot Operators' vs 'Private Equity & Alternative Asset Management Platforms' DISTINCT — 30d pair cooldown
+08-25 17:08:56|theme_merge_distinct|Arm B: 'Crypto Exchange & Stablecoin Platform Velocity Breakout' vs 'Private Equity & Alternative Asset Management Platforms' DISTINCT — 30d pair cool
+08-25 17:09:00|theme_merge_distinct|Arm B: 'Cloud Application Software Rotation (Oversold Turning Up)' vs 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS' DISTINCT — 30d pai
+08-25 17:09:06|theme_merge_distinct|Arm B: 'Government AI & Public-Sector Digitization Breakout' vs 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS' DISTINCT — 30d pair cool
+08-25 17:09:06|theme_auto_retired|Auto-retired 7 theme(s) dropped during merge passes (1 with successor pointer)
+08-25 17:09:06|theme_renamed_for_continuity|1 theme(s) renamed to prior canonical names
+08-25 17:09:11|theme_ecosystem_assigned|'Oilfield Services & Drilling Equipment' → E-ENER (haiku)
+08-25 17:09:16|theme_ecosystem_assigned|'Frozen Foods Producers' → E-CONS (haiku)
+08-25 17:09:20|theme_ecosystem_assigned|'Residential Rental REITs (Apartment & Single-Family)' → E-REIT (haiku)
+08-25 17:09:20|theme_constituent_churn|15 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), ROK↔Industrial Automatio(2), TKR↔Industrial Automatio(2), CMC
+08-25 17:09:22|description_generated|Generated 5 new stock descriptions
+08-25 17:09:57|theme_discovery_llm_call|stop=tool_use out_tok=2854 forced=False tool_uses=1 iter=1
+08-25 17:10:31|theme_discovery_llm_call|stop=tool_use out_tok=3348 forced=False tool_uses=1 iter=1
+08-25 17:11:18|theme_discovery_llm_call|stop=tool_use out_tok=4417 forced=False tool_uses=1 iter=1
+08-25 17:11:54|theme_discovery_llm_call|stop=tool_use out_tok=3444 forced=False tool_uses=1 iter=1
+08-25 17:12:10|theme_discovery_llm_call|stop=tool_use out_tok=1569 forced=False tool_uses=1 iter=1
+08-25 17:12:57|theme_discovery_llm_call|stop=tool_use out_tok=4309 forced=False tool_uses=1 iter=1
+08-25 17:12:57|theme_discovery_shadow_ran|Theme discovery shadow: 10 candidate themes written
+08-25 17:12:57|narrative_theme_discovery_ran|2026-08-25: v2reg 0 qualifying today — no evaluation (roster 4 active / 15 seeds)
+08-25 17:12:57|theme_renamed_for_continuity|2 theme(s) renamed to prior canonical names
+08-25 17:12:57|shadow_themes_promoted|Graduated 4 shadow cohort(s) into live mi_themes (4 new)
+08-25 17:12:57|theme_birth_gate|2026-08-25 [promote/observe] birth-gate: 1 birth / 2 join / 1 awaiting-2nd-sighting / 2 held-floor · ⚠ 15 previously-held later PASSED
+08-25 17:13:03|theme_ecosystem_assigned|'AI Data Center Component & Connectivity Semiconductor Suppliers' → E-AIINFRA (haiku)
+08-25 17:13:08|theme_ecosystem_assigned|'Business Development Companies & Private Credit Lenders' → E-BANKFIN (haiku)
+08-25 17:13:13|theme_ecosystem_assigned|'Natural Gas Pipeline & Midstream Transport Infrastructure' → E-ENER (haiku)
+08-25 17:13:17|theme_ecosystem_assigned|'Uranium Mining & Nuclear Fuel Cycle Producers' → E-ENER (haiku)
+08-25 17:13:31|missed_outcomes_refreshed|window 2026-07-26..2026-08-25: scan_filter=1019, moderate_alert=21, high_unentered=70
+08-25 17:13:31|missed_outcomes_reconciled|pruned=0, recategorized=0, backfilled=0
+08-25 17:13:31|cap_plus_one_shadow_recorded|ledger: 16 total (3 in 30d window)
+08-25 17:13:31|rs_deterioration|RS deterioration (per-name, on-demand): MANE 65→49 (-16) · CRWD 95→52 (-43) · DDOG 72→39 (-33) · FEIM 69→16 (-52) · CCXI 90→69 (-21) · UMAC 87→58 (-28
+08-25 17:13:31|ma_break|MA breaks (on-demand): BETA 20MA 1.5x (RS 82) · ORKA 20MA 1.7x (RS 86)
+08-25 17:13:31|theme_composition_churn|Composition churn (on-demand): Copper Mining & Production: +RIO · Gold & Precious Metals Miners Rotation: +MUX · B2B Digital Financial Infrastructure 
+08-25 17:22:00|sugar_babies_cohort_refreshed|Cohort size: 63 tickers (≥3 9M EOD prints in trailing 180d)
+08-25 17:25:04|flag_stage_flip_held|CHYM WATCH→held@TRIGGERED
+08-25 17:25:07|flag_stage_flip_held|WDAY TIGHTENING→held@COILED
+08-25 17:25:08|flag_stage_flip_held|CDNA WATCH→held@TIGHTENING
+08-25 17:25:43|flag_ma_pullbacks_reconciled|1 intraday ma-pullbacks marked parent_invalidated_eod=TRUE for 2026-08-25
+08-25 17:30:00|metric_sample|cooldowns_per_day
+08-25 17:30:00|metric_sample|theme_count_active
+08-25 17:30:00|anomaly_detected|L2 theme_count_active
+08-25 17:30:00|metric_sample|validation_rate_limited_count
+08-25 17:30:00|metric_sample|accel_dropout_count_7d
+08-25 17:30:01|health_null_sweep_clean|clean: 5 tables, 61 numeric cols
+08-25 17:30:08|row_count_drift_sweep|28 jobs · 0 drop(s) · 0 stale floor(s) · 0 error(s)
+08-25 17:30:08|db_growth_check|db 1.2 GB · +17.2 MB/6d
+08-25 17:30:08|detector_liveness_check|10 tables, 2 dark
+08-25 17:30:08|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+08-25 17:30:09|telegram_markdown_fallback|Markdown parse failed — delivered as plain text
+08-25 17:30:09|theme_member_pruned_while_rising|BLDR@Wood-Based Building Materials Distribution: pruned while RS rising (RS=10.0)
+08-25 17:30:09|ecosystem_reactivation_clean|clean: 0 flag(s), 0 deduped
+08-25 17:30:09|health_job_liveness_clean|clean: 4 jobs checked
+08-25 17:30:09|jsonb_encoding_check|0 string-typed jsonb row(s) across 28 column(s)
+08-25 17:35:30|anticipation_mna_check_capped|M&A checks capped at 40 this run — remaining coil candidates pass unchecked (fail-open, shadow-only)
+08-25 17:36:00|htf_management_shadow_run|2 candidates, 2 upserted, 0 trail-exit, 0 hard-stop
+08-25 17:37:59|anticipation_coil_buyout_pin_rejected|ITGR coil rejected — stop_floor
+08-25 17:38:24|anticipation_coil_buyout_pin_rejected|FBRX coil rejected — stop_floor
+08-25 17:38:25|anticipation_coil_buyout_pin_rejected|MKTX coil rejected — gap_to_flat
+08-25 17:38:34|anticipation_coil_buyout_pin_rejected|ATKR coil rejected — stop_floor
+08-25 17:42:00|pivot_stop_shadow_skipped|insufficient_forward_bars: MRVL trade 373
+08-25 17:50:00|exit_path_shadow_recorded|2 row(s) written/updated across 25 eligible live trade(s) for 2026-08-25 (0 error(s))
+08-25 17:52:00|cost_watchdog_check|0 caller anomaly(ies), 1 reduction opportunity(ies)
+08-25 17:53:00|alert_rank_shadow_recorded|0 row(s) written/updated across 0 date(s) needing processing (0 error(s))
+08-25 17:55:00|coverage_probe_ran|2026-08-25: no HIGH/MODERATE alerts — no-op
+08-25 18:00:00|evening_brief_sent|evening brief sent for 2026-08-25 (1148 chars)
+08-25 18:05:31|theme_synthesis_run|53 candidates → 1 proposed → 1 kept
+08-25 18:05:57|theme_operator_promoted|Operator promoted 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' (5 members)
+08-25 18:06:03|theme_ecosystem_assigned|'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' → E-CRYPTO (haiku)
+08-25 18:28:15|crypto_ingest_completed|date=2026-08-25 universe=211 scored=306 trigger=False shadow=False
+08-25 21:27:43|dual_account_creds_resolved|Alpaca creds status=intelligence_no_creds
+08-25 21:27:44|account_mode_active|mode=paper equity=n/a (intelligence role — no broker creds)
+08-25 21:29:58|dual_account_creds_resolved|Alpaca creds status=dual_ready
+08-25 21:29:58|dual_account_boot_verified|Alpaca clients verified for modes=['paper', 'live']
+08-25 21:29:59|account_mode_active|mode=paper equity=$89,846.04
+08-25 22:00:31|gdrive_secrets_success|Uploaded apollo-secrets-20260826.tar.gz.gpg (3573B) → drive_file_id=1nIncQAyTP3gTf9twvINzyLgKMdyltPE6
+08-25 22:00:35|gdrive_backup_success|Uploaded apollo-20260826.sql.gz (147MB) → drive_file_id=1NO4__fSXBMJDaz4U6ExmL-xCWZ_pSzdf
+08-25 23:30:40|backup_restore_check_ok|restored apollo-20260826.sql.gz in 39s: trades=323 audit=35874 ep_alerts=414 themes=5763 strategies=7 tables=99
+08-26 07:00:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:00 ET
+08-26 07:00:01|ep_rt_tick_quality_reject|BCAR rt 14.1% REJECTED (no_bar_confirm) @ 07:00 ET
+08-26 07:00:01|ep_rt_admit|SDOT rt 12.4% and delayed 10.7% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+08-26 07:00:01|ep_rt_admit|BRNX rt 14.0% and delayed 14.2% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+08-26 07:00:01|ep_rt_admit|BHVN rt 11.3% and delayed 13.3% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+08-26 07:00:01|ep_rt_admit|XPON rt 29.6% and delayed 27.3% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+08-26 07:00:02|ep_rt_volume_shadow|BHVN pm_rvol delayed=15.89x rt=17.10x
+08-26 07:00:15|ep_catalyst_provenance|BHVN strong direct=True
+08-26 07:00:17|ep_rt_volume_shadow|SDOT pm_rvol delayed=2.41x rt=2.27x
+08-26 07:05:00|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:05 ET
+08-26 07:05:01|ep_rt_universe_catch|PLAB rt 10.6% ≥9 vs delayed 4.5% @ 07:05 ET
+08-26 07:05:01|ep_rt_floor_flip_down|TH delayed 15.0% >=9 > rt 6.0% (stale false-admit REMOVED)
+08-26 07:05:01|ep_rt_admit|BCAR rt 14.1% and delayed 14.1% BOTH >=9 @ 07:05 ET — real-time AGREES with the admit
+08-26 07:05:01|ep_rt_floor_flip_down|BHVN delayed 12.1% >=9 > rt 6.7% (stale false-admit REMOVED)
+08-26 07:05:02|ep_rt_volume_shadow|BCAR pm_rvol delayed=0.15x rt=0.06x
+08-26 07:05:02|ep_rt_volume_shadow|PLAB pm_rvol delayed=2.81x rt=11.71x
+08-26 07:05:12|ep_catalyst_provenance|PLAB strong direct=True
+08-26 07:05:23|catalyst_earnings_revenue_weak_downgrade|PLAB: strong → routine (earnings catalyst, q_rev_yoy_2.7pct_below_5pct_recovered)
+08-26 07:10:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:10 ET
+08-26 07:10:01|ep_rt_sustain_undecidable|IMC sustain rule UNAVAILABLE (too_few_bars) @ 07:10 ET — admitted on today's behaviour
+08-26 07:10:01|ep_rt_universe_catch|IMC rt 9.4% ≥9 vs delayed n/a @ 07:10 ET
+08-26 07:10:01|ep_rt_floor_flip_up|SMMT rt 9.2% ≥9 > delayed 7.4% @ 07:10 ET (SHADOW — would have caught)
+08-26 07:10:12|ep_catalyst_provenance|IMC routine direct=False
+08-26 07:10:12|catalyst_earnings_boost|PLAB: routine → strong (earnings_day, source=earnings_dates)
+08-26 07:15:00|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:15 ET
+08-26 07:20:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:20 ET
+08-26 07:20:01|ep_rt_tick_quality_reject|IMC rt 9.4% REJECTED (stale_quote) @ 07:20 ET
+08-26 07:20:01|ep_rt_floor_flip_down|BCAR delayed 14.1% >=9 > rt 0.5% (stale false-admit REMOVED)
+08-26 07:20:01|ep_rt_admit|PLAB rt 17.3% and delayed 9.1% BOTH >=9 @ 07:20 ET — real-time AGREES with the admit
+08-26 07:25:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:25 ET
+08-26 07:25:01|ep_rt_floor_flip_up|TH rt 10.1% ≥9 > delayed 5.8% @ 07:25 ET (SHADOW — would have caught)
+08-26 07:25:01|ep_rt_floor_flip_down|SMMT delayed 9.1% >=9 > rt 7.9% (stale false-admit REMOVED)
+08-26 07:25:01|ep_rt_admit|IMC rt 9.4% and delayed 9.4% BOTH >=9 @ 07:25 ET — real-time AGREES with the admit
+08-26 07:30:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:30 ET
+08-26 07:30:01|ep_rt_floor_flip_down|IMC delayed 9.4% >=9 > rt 3.7% (stale false-admit REMOVED)
+08-26 07:35:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:35 ET
+08-26 07:35:01|ep_rt_sustain_reject|ANF rt 10.7% but the level did NOT hold 3 consecutive bars @ 07:35 ET — no catch
+08-26 07:40:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:40 ET
+08-26 07:40:01|ep_rt_universe_catch|ANF rt 11.0% ≥9 vs delayed 1.3% @ 07:40 ET
+08-26 07:40:02|ep_rt_volume_shadow|ANF pm_rvol delayed=3.83x rt=53.86x
+08-26 07:40:15|ep_catalyst_provenance|ANF game_changer direct=True
+08-26 07:40:30|catalyst_earnings_revenue_weak_downgrade|ANF: strong → routine (earnings catalyst, rubric_composite_19.0_below_22_label_routine)
+08-26 07:45:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:45 ET
+08-26 07:45:02|catalyst_earnings_boost|ANF: routine → strong (earnings_day, source=earnings_dates)
+08-26 07:50:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:50 ET
+08-26 07:50:01|ep_rt_admit|ANF rt 9.3% and delayed 11.1% BOTH >=9 @ 07:50 ET — real-time AGREES with the admit
+08-26 07:55:00|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 07:55 ET
+08-26 07:55:00|ep_rt_floor_flip_down|ANF delayed 11.2% >=9 > rt 8.5% (stale false-admit REMOVED)
+08-26 08:00:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:00 ET
+08-26 08:00:01|ep_rt_admit|SMMT rt 11.8% and delayed 9.2% BOTH >=9 @ 08:00 ET — real-time AGREES with the admit
+08-26 08:00:02|watchdog_heartbeat|service watchdog alive; watching: apollo-orchestrator apollo-market apollo-execution apollo-postgres apollo-redis
+08-26 08:00:04|ep_rt_volume_shadow|SMMT pm_rvol delayed=30.95x rt=40.26x
+08-26 08:00:16|ep_catalyst_provenance|SMMT strong direct=True
+08-26 08:05:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:05 ET
+08-26 08:05:01|ep_rt_sustain_undecidable|EVMN sustain rule UNAVAILABLE (too_few_bars) @ 08:05 ET — admitted on today's behaviour
+08-26 08:05:01|ep_rt_universe_catch|EVMN rt 9.5% ≥9 vs delayed 4.4% @ 08:05 ET
+08-26 08:05:01|ep_rt_floor_flip_up|ANF rt 9.6% ≥9 > delayed 8.8% @ 08:05 ET (SHADOW — would have caught)
+08-26 08:05:02|ep_rt_volume_shadow|EVMN pm_rvol delayed=0.41x rt=0.40x
+08-26 08:05:02|ep_filter_pm_rvol|EVMN pre-open pace below normal
+08-26 08:10:00|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:10 ET
+08-26 08:10:02|ep_filter_pm_rvol|EVMN pre-open pace below normal
+08-26 08:15:00|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:15 ET
+08-26 08:15:00|ep_rt_tick_quality_reject|EVMN rt 9.5% REJECTED (stale_quote) @ 08:15 ET
+08-26 08:20:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:20 ET
+08-26 08:20:01|ep_rt_floor_flip_up|NIPG rt 9.9% ≥9 > delayed 5.5% @ 08:20 ET (SHADOW — would have caught)
+08-26 08:20:01|ep_rt_admit|EVMN rt 9.5% and delayed 9.5% BOTH >=9 @ 08:20 ET — real-time AGREES with the admit
+08-26 08:20:03|ep_filter_pm_rvol|EVMN pre-open pace below normal
+08-26 08:25:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:25 ET
+08-26 08:25:02|ep_filter_pm_rvol|EVMN pre-open pace below normal
+08-26 08:30:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:30 ET
+08-26 08:30:01|ep_rt_floor_flip_down|EVMN delayed 9.5% >=9 > rt 1.6% (stale false-admit REMOVED)
+08-26 08:35:00|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:35 ET
+08-26 08:35:00|ep_rt_admit|NIPG rt 9.9% and delayed 9.9% BOTH >=9 @ 08:35 ET — real-time AGREES with the admit
+08-26 08:40:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:40 ET
+08-26 08:45:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:45 ET
+08-26 08:50:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:50 ET
+08-26 08:55:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 08:55 ET
+08-26 09:00:00|order_status_reconciled|AMLX order=d2013c3d: accepted -> new (live)
+08-26 09:00:00|order_status_reconciled|AMLX order=9e8588cc: new -> canceled (live)
+08-26 09:00:02|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:00 ET
+08-26 09:00:03|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:00 ET
+08-26 09:00:21|health_heartbeat_ok|guard alive: latest sweep audit 2026-08-25T21:30:09.736646+00:00 ≥ cutoff 2026-08-25T17:30:00-04:00
+08-26 09:05:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:05 ET
+08-26 09:10:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:10 ET
+08-26 09:15:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:15 ET
+08-26 09:20:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:20 ET
+08-26 09:20:01|ep_rt_floor_flip_down|NIPG delayed 10.8% >=9 > rt 7.9% (stale false-admit REMOVED)
+08-26 09:25:01|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:25 ET
+08-26 09:25:01|ep_rt_floor_flip_down|NIPG delayed 10.8% >=9 > rt 7.9% (stale false-admit REMOVED)
+08-26 09:30:01|9m_ep_detected|CRE vol=22.8M price=$6.42 gap=0.0%
+08-26 09:30:03|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:30 ET
+08-26 09:30:03|ep_rt_tick_quality_reject|STRT rt 17.6% REJECTED (no_bar_confirm) @ 09:30 ET
+08-26 09:30:03|ep_rt_floor_flip_down|NIPG delayed 10.8% >=9 > rt 3.5% (stale false-admit REMOVED)
+08-26 09:30:03|ep_rt_prev_close_mismatch|VMAR prev_close alpaca 0.7182 vs polygon 7.182 (date-keyed) — using delayed
+08-26 09:30:06|ep_rt_rvol_gate_flip|ANF session_rvol delayed=35.84x rt=0.00x — GATE WOULD FLIP (SHADOW)
+08-26 09:30:06|ep_rt_rvol_gate_flip|PLAB session_rvol delayed=35.14x rt=0.00x — GATE WOULD FLIP (SHADOW)
+08-26 09:30:06|ep_rt_rvol_gate_flip|SDOT session_rvol delayed=20.97x rt=0.00x — GATE WOULD FLIP (SHADOW)
+08-26 09:30:06|ep_rt_rvol_gate_flip|SMMT session_rvol delayed=18.88x rt=0.00x — GATE WOULD FLIP (SHADOW)
+08-26 09:31:02|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:31 ET
+08-26 09:31:02|ep_rt_tick_quality_reject|VOGX rt 11.0% REJECTED (stale_quote) @ 09:31 ET
+08-26 09:31:02|ep_rt_sustain_undecidable|STRT sustain rule UNAVAILABLE (too_few_bars) @ 09:31 ET — admitted on today's behaviour
+08-26 09:31:02|ep_rt_universe_catch|STRT rt 9.5% ≥9 vs delayed 5.0% @ 09:31 ET
+08-26 09:31:06|ep_rt_rvol_gate_flip|STRT session_rvol delayed=0.07x rt=3.10x — GATE WOULD FLIP (SHADOW)
+08-26 09:31:06|ep_filter_session_rvol|STRT session pace below normal
+08-26 09:35:00|unified_allocation_decided|empty queue for 2026-08-26
+08-26 09:35:00|stop_refresh_ran|Morning: examined 2, placed 0, already-covered 2, skipped 0 (none)
+08-26 09:35:02|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:35 ET
+08-26 09:35:02|ep_rt_universe_catch|BZ rt 12.0% ≥9 vs delayed n/a @ 09:35 ET
+08-26 09:35:02|ep_rt_halt_suspect|NIPG flip-up rt 9.2% but print frozen + quote dead — no RT-only admission this tick
+08-26 09:35:05|ep_rt_rvol_gate_flip|BZ session_rvol delayed=0.00x rt=12.82x — GATE WOULD FLIP (SHADOW)
+08-26 09:35:05|ep_filter_session_rvol|BZ session pace below normal
+08-26 09:40:03|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:40 ET
+08-26 09:40:04|ep_rt_floor_flip_down|PLAB delayed 26.2% >=9 > rt 8.2% (stale false-admit REMOVED)
+08-26 09:40:06|ep_filter_session_rvol|BZ session pace below normal
+08-26 09:45:05|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:45 ET
+08-26 09:45:05|ep_rt_sustain_reject|MOVE rt 9.7% but the level did NOT hold 3 consecutive bars @ 09:45 ET — no catch
+08-26 09:45:05|ep_rt_sustain_reject|BCAR rt 9.1% but the level did NOT hold 3 consecutive bars @ 09:45 ET — no catch
+08-26 09:45:05|ep_rt_sustain_reject|SMTC rt 9.5% but the level did NOT hold 3 consecutive bars @ 09:45 ET — no catch
+08-26 09:45:05|ep_rt_sustain_reject|TTMI rt 10.4% but the level did NOT hold 3 consecutive bars @ 09:45 ET — no catch
+08-26 09:45:08|ep_filter_session_rvol|BZ session pace below normal
+08-26 09:50:03|intraday_support_test|WDAY stage=COILED undercut=-0.69% bounce=+2.12%
+08-26 09:50:04|intraday_ma_pullback|DFTX stage=TIGHTENING ma=SMA20 undercut=-0.04% bounce=+0.75% vol_pct_adv=4%
+08-26 09:50:04|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:50 ET
+08-26 09:50:04|ep_rt_admit|BZ rt 15.7% and delayed 12.3% BOTH >=9 @ 09:50 ET — real-time AGREES with the admit
+08-26 09:50:04|ep_rt_floor_flip_up|FVN rt 10.5% ≥9 > delayed 5.7% @ 09:50 ET (SHADOW — would have caught)
+08-26 09:50:04|ep_rt_floor_flip_up|SMTC rt 13.7% ≥9 > delayed 7.6% @ 09:50 ET (SHADOW — would have caught)
+08-26 09:50:04|ep_rt_gap_clamped|XPON rt 58.4% vs delayed 24.1% (Δ>30pp) — keeping delayed
+08-26 09:50:04|ep_rt_floor_flip_down|NIPG delayed 9.2% >=9 > rt 3.3% (stale false-admit REMOVED)
+08-26 09:50:04|ep_rt_floor_flip_up|TTMI rt 10.7% ≥9 > delayed 5.8% @ 09:50 ET (SHADOW — would have caught)
+08-26 09:50:06|ep_rt_volume_shadow|BZ session_rvol delayed=4.13x rt=13.74x
+08-26 09:50:17|ep_catalyst_provenance|BZ strong direct=True
+08-26 09:50:33|catalyst_earnings_revenue_weak_downgrade|BZ: strong → routine (earnings catalyst, rubric_composite_8.1_below_22_label_weak)
+08-26 09:55:04|ep_rt_universe_coverage|RT snapshot coverage 3421/3421 (100.0%), 0 symbol(s) absent @ 09:55 ET
+08-26 09:55:04|ep_rt_universe_catch|ACHC rt 9.9% ≥9 vs delayed 4.6% @ 09:55 ET
+08-26 09:55:04|ep_rt_universe_catch|CAPR rt 9.8% ≥9 vs delayed 1.4% @ 09:55 ET
+08-26 09:55:06|ep_rt_rvol_gate_flip|ACHC session_rvol delayed=0.46x rt=1.69x — GATE WOULD FLIP (SHADOW)
+08-26 09:55:06|ep_filter_session_rvol|ACHC session pace below normal
+08-26 09:55:07|catalyst_earnings_boost|BZ: routine → strong (earnings_day, source=earnings_dates)
+08-26 09:55:07|ep_rt_rvol_gate_flip|CAPR session_rvol delayed=0.35x rt=1.02x — GATE WOULD FLIP (SHADOW)
+08-26 09:55:07|ep_filter_session_rvol|CAPR session pace below normal
+08-26 10:00:04|9m_ep_detected|BZ vol=4.1M price=$18.74 gap=2.9%
+08-26 10:00:05|9m_ep_detected|SMMT vol=3.0M price=$14.46 gap=10.4%
+08-26 10:00:05|9m_ep_detected|META vol=8.4M price=$564.76 gap=3.6%
+08-26 10:05:00|ep_provenance_daily|6 graded · 5 direct · 0 unknown(strong/gc,no-direct)
+08-26 10:05:02|9m_ep_detected|USAR vol=3.4M price=$20.23 gap=0.6%
+08-26 10:10:02|9m_ep_detected|SMTC vol=3.5M price=$145.33 gap=2.7%
+08-26 10:15:03|9m_ep_detected|PLAB vol=3.1M price=$30.99 gap=27.1%
+08-26 10:15:04|9m_ep_detected|BBWI vol=3.1M price=$17.66 gap=3.9%
+08-26 10:25:02|9m_ep_detected|DKS vol=5.1M price=$129.42 gap=-2.0%
+08-26 10:25:03|9m_ep_detected|ANF vol=3.2M price=$145.17 gap=20.6%
+08-26 10:30:03|intraday_low_vol_rest|CHYM stage=TRIGGERED range=2.02% vol_pct_adv=53% pos_in_base=87%
+08-26 10:30:03|intraday_low_vol_rest|PAY stage=TIGHTENING range=1.19% vol_pct_adv=13% pos_in_base=21%
+08-26 11:05:03|9m_ep_detected|BHVN vol=3.2M price=$15.15 gap=-1.0%
+08-26 12:06:10|dual_account_creds_resolved|Alpaca creds status=intelligence_no_creds
+08-26 12:06:12|account_mode_active|mode=paper equity=n/a (intelligence role — no broker creds)
+08-26 12:08:26|dual_account_creds_resolved|Alpaca creds status=dual_ready
+08-26 12:08:27|dual_account_boot_verified|Alpaca clients verified for modes=['paper', 'live']
+08-26 12:08:27|account_mode_active|mode=paper equity=$89,846.04
+08-26 12:25:02|9m_ep_detected|WSHP vol=5.9M price=$7.35 gap=3.4%
+08-26 15:15:02|intraday_low_vol_rest|WDAY stage=COILED range=2.85% vol_pct_adv=60% pos_in_base=6%
+08-26 16:02:06|telegram_markdown_fallback|Markdown parse failed — delivered as plain text
+08-26 16:15:00|metric_sample|audit_errors_per_day
+08-26 16:15:00|metric_sample|skip_count_infra
+08-26 16:15:00|metric_sample|skip_count_filter
+08-26 16:15:00|metric_sample|skip_count_setup
+08-26 16:15:00|metric_sample|skip_count_block
+08-26 16:15:00|metric_sample|skip_count_window
+08-26 16:15:00|metric_sample|9m_alerts_per_day
+08-26 16:15:00|metric_sample|bar_stream_disconnect_count_24h
+08-26 16:15:00|metric_sample|market_hours_boot_count
+08-26 16:18:00|book_concentration_snapshot|live book: 2 open, 0 flagged famil(ies), notional $695 (14% eq)
+08-26 16:20:00|stop_refresh_ran|post-close: examined 2, placed 0, already-covered 2, skipped 0 (none)
+08-26 16:22:00|path_coverage_gap|EVMN 2026-08-26: 199/390 bars (alert-day persist)
+08-26 16:22:00|path_coverage_gap|IMC 2026-08-26: 59/390 bars (alert-day persist)
+08-26 16:22:00|path_coverage_gap|STRT 2026-08-26: 230/390 bars (alert-day persist)
+08-26 16:24:00|path_coverage_gap|NVCR 2026-08-26: 299/390 bars (forward alert-day persist, session 24 of 25)
+08-26 16:24:00|path_coverage_gap|THC 2026-08-26: 252/390 bars (forward alert-day persist, session 23 of 25)
+08-26 16:24:00|path_coverage_gap|WKC 2026-08-26: 298/390 bars (forward alert-day persist, session 23 of 25)
+08-26 16:35:08|ep_delayed_residual_scan|2026-08-26: 2 quality in-window crossers missed by the delay; 2 beyond the 5% hybrid (residual — flat-premkt-then-explode)
+08-26 16:35:08|telegram_markdown_fallback|Markdown parse failed — delivered as plain text
+08-26 16:35:09|ep_residual_outcomes_backfilled|G3: stamped fwd outcomes (cross-basis, #490 §9.4) on 2 settled residual row(s)
+08-26 16:35:09|ep_rt_shadow_capture|2026-08-26: 2/2 residual crossers had a same-day ep_rt_universe_catch
+08-26 16:45:00|stop_update_started|AMLX: $30.51 → $31.85 (11 of 11 after 0 held)
+08-26 16:45:00|stop_update_failed|AMLX: place_stop_order raised on first attempt — APIError
+08-26 16:45:00|stop_order_id_changed|trade #372 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+08-26 16:45:03|stop_update_retry_succeeded|AMLX: retry placed stop @$31.85
+08-26 16:45:03|stop_replacement_confirmed_silent|AMLX: WS safety-net agrees with order_manager's own recorded evidence ($31.85, 84c932f0-9108-4684-8bd8-b6bf8f39e740) via audit_price_only — Telegram s
+08-26 16:45:03|stop_updated|AMLX: stop now $31.85 (84c932f0-9108-4684-8bd8-b6bf8f39e740) for 11 sh
+08-26 16:55:00|market_close_digest_sent|Market Close Digest: 2 contribution(s) across 2 section(s)
+08-26 17:00:00|split_detected|MWESX 2026-08-20 4:1
+08-26 17:00:00|split_detected|IGR 2026-09-08 3:1
+08-26 17:00:00|splits_ingest_fractional_skipped|45 non-integer ratios skipped (fund share-class reorgs, not splits)
+08-26 17:00:00|split_apply_skipped_no_data|MWESX 2026-08-20 4:1 — Polygon returned no bars; marking applied to stop retry
+08-26 17:00:00|split_applied|BBKCF 2026-08-26 7:1 — 170 bars overwritten
+08-26 17:00:00|split_applied|PDIYF 2026-08-26 5:1 — 111 bars overwritten
+08-26 17:00:01|split_applied|VMAR 2026-08-26 10:1 — 171 bars overwritten
+08-26 17:00:01|splits_ingest_summary|new=2 applied=3 failed=1
+08-26 17:00:10|rs_extreme_return|3 tickers cleared legacy heuristic ceilings — sample: FBRX, REPL, XHLD
+08-26 17:00:20|9m_sugar_baby_filtered_destroyed_trend|DKS 2026-08-26: prev_20d=-41.2% sma50_ratio=0.59 sma50_slope=-2.2% — all 3 destroyed-name markers
+08-26 17:00:20|9m_sugar_babies_confirmed|3 sugar babies on 2026-08-26 (1 filtered by trend gate)
+08-26 17:00:33|description_generated|Generated 3 new stock descriptions
+08-26 17:00:33|theme_load_state|theme_load_state n=106 stages={'Nascent': 29, 'Mainstream': 39, 'Fading': 31, 'Accelerating': 7} dates=2 DUPS_AT_LOAD=1
+08-26 17:00:44|theme_stage_flip_held|Altcoin & Diversified Digital-Asset Infrastructure Second Wave: Nascent→Fading held; y_Δ=+0.0
+08-26 17:00:53|theme_breadth_fade|Canadian Big Banks: breadth 20%, members 5
+08-26 17:01:20|theme_breadth_fade|Defense Electronics & Aerospace Subsystem Suppliers: breadth 17%, members 6
+08-26 17:02:07|theme_low_quality_description|Theme 'Life Science Tools & Analytical Instruments': capped Mainstream → Nascent (ticker_concat:A_AVTR)
+08-26 17:02:16|theme_breadth_fade|Network Security & Zero-Trust Edge: breadth 20%, members 15
+08-26 17:02:27|theme_low_quality_description|Theme 'Precious Metals Royalty & Streaming Companies': capped Mainstream → Nascent (ticker_concat:FNV_OR)
+08-26 17:02:49|theme_low_quality_description|Theme 'Software Development & DevOps Collaboration Platforms': capped Mainstream → Nascent (ticker_concat:FROG_GTLB)
+08-26 17:03:23|theme_breadth_fade|Emerging Defense & Aerospace Hardware Suppliers: breadth 17%, members 6
+08-26 17:03:24|theme_dissolved_flagged_pair|Arm A dissolve: 'Mobile App Platform & Advertising Monetization' — validation flagged BSP at 2 members
+08-26 17:03:51|validation_mass_removal_name_suspect|'Oil Refining & Marketing': validation flagged 17/24 members — name likely narrower than the cluster (#214)
+08-26 17:03:54|seeded_pool_admission|#491 M2: 6 seeded ticker(s) admitted to the assignment pool past the RS floor
+08-26 17:03:54|global_ticker_ban_active|3 tickers globally banned from theme assignment
+08-26 17:03:54|theme_carryforward_filter_stripped|Altcoin & Diversified Digital-Asset Infrastructure Second Wave: stripped 1 ticker(s) (sector_outlier)
+08-26 17:04:08|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 1/12, advisor_calls=0)
+08-26 17:04:25|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 2/12, advisor_calls=0)
+08-26 17:04:49|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 3/12, advisor_calls=0)
+08-26 17:05:11|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 4/12, advisor_calls=0)
+08-26 17:05:22|assignment_llm_proposed|Sonnet proposed 0 assignment(s) (batch 5/12, advisor_calls=0)
+08-26 17:05:41|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 6/12, advisor_calls=0)
+08-26 17:06:00|assignment_llm_proposed|Sonnet proposed 0 assignment(s) (batch 7/12, advisor_calls=0)
+08-26 17:06:18|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 8/12, advisor_calls=0)
+08-26 17:06:41|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 9/12, advisor_calls=0)
+08-26 17:07:02|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 10/12, advisor_calls=0)
+08-26 17:07:21|assignment_llm_proposed|Sonnet proposed 2 assignment(s) (batch 11/12, advisor_calls=0)
+08-26 17:07:30|assignment_llm_proposed|Sonnet proposed 2 assignment(s) (batch 12/12, advisor_calls=0)
+08-26 17:07:30|assignment_skipped_sector_outlier|MNTN (Technology) → 'Programmatic Digital Advertising Platforms' (members: ['Communication Services'])
+08-26 17:07:30|assignment_skipped_sector_outlier|GPN (Industrials) → 'B2B Digital Financial Infrastructure & Payment Rails Modernization' (members: ['Technology'])
+08-26 17:07:30|assignment_skipped_sector_outlier|BTU (Energy) → 'Metallurgical & Thermal Coal Mining Rebound' (members: ['Basic Materials'])
+08-26 17:07:30|assignment_skipped_sector_outlier|MSTR (Technology) → 'Corporate Digital Asset Treasury Vehicles' (members: ['Financial Services'])
+08-26 17:07:30|assignment_skipped_sector_outlier|NBIS (Communication Services) → 'Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers' (members: ['Technology'])
+08-26 17:08:35|theme_discovery_llm_call|stop=tool_use out_tok=3705 forced=False tool_uses=1 iter=1
+08-26 17:08:57|theme_discovery_llm_call|stop=tool_use out_tok=1765 forced=False tool_uses=1 iter=1
+08-26 17:09:20|theme_discovery_llm_call|stop=tool_use out_tok=2029 forced=False tool_uses=1 iter=1
+08-26 17:09:50|theme_discovery_llm_call|stop=tool_use out_tok=2928 forced=False tool_uses=1 iter=1
+08-26 17:10:10|theme_discovery_llm_call|stop=tool_use out_tok=1965 forced=False tool_uses=1 iter=1
+08-26 17:10:17|theme_birth_gate|2026-08-26 [lane1/observe] birth-gate: 1 birth / 0 join / 1 awaiting-2nd-sighting / 1 held-floor · ⚠ 15 previously-held later PASSED
+08-26 17:10:25|theme_engine_funnel|births: uncovered=10 v/t/e=14/1/30 discovery=ON → LLM=4 → survived=4 | retired=3
+08-26 17:10:25|theme_discovered|New theme: Coal Mining Relative Strength Breakout (2 stocks)
+08-26 17:10:25|theme_discovered|New theme: mRNA & Antiviral Vaccine Biotech Rebound (4 stocks)
+08-26 17:10:25|theme_discovered|New theme: Bitcoin Miner to AI/HPC Data Center Conversion (6 stocks)
+08-26 17:10:25|theme_discovered|New theme: Quantum Computing Pure-Plays (4 stocks)
+08-26 17:10:25|theme_retired|Retired: Power Semiconductor & Electrification Components
+08-26 17:10:25|theme_retired|Retired: Mobile App Platform & Advertising Monetization
+08-26 17:10:25|theme_retired|Retired: Electronics Manufacturing & Semiconductor Packaging Supply Chain
+08-26 17:10:25|stage_change|Canadian Big Banks: Mainstream → Fading
+08-26 17:10:25|stage_change|Clinical-Stage Oncology & Hematology Biotech Breakout: Nascent → Mainstream
+08-26 17:10:25|stage_change|Cloud Application Software Rotation (Oversold Turning Up): Nascent → Mainstream
+08-26 17:10:25|stage_change|Consumer Fintech & Digital Credit Platforms: Nascent → Mainstream
+08-26 17:10:25|stage_change|Containerboard & Corrugated Packaging Producers: Fading → Mainstream
+08-26 17:10:25|stage_change|Copper Mining & Production: Accelerating → Mainstream
+08-26 17:10:25|stage_change|Corporate Digital Asset Treasury Vehicles: Nascent → Mainstream
+08-26 17:10:25|stage_change|Crypto-Native Exchange & Treasury Platforms: Nascent → Mainstream
+08-26 17:10:25|stage_change|Defense Intelligence & Cybersecurity IT Contractors: Nascent → Fading
+08-26 17:10:25|stage_change|Development-Stage Gold Exploration & Project Juniors: Accelerating → Mainstream
+08-26 17:10:25|stage_change|Emerging Memory & Storage Semiconductor Makers: Fading → Mainstream
+08-26 17:10:25|stage_change|Latin American Silver & Gold Mining Operators: Accelerating → Mainstream
+08-26 17:10:25|stage_change|Life Insurance & Annuity Providers: Fading → Mainstream
+08-26 17:10:25|stage_change|Life Science Tools & Analytical Instruments: Mainstream → Nascent
+08-26 17:10:25|stage_change|Lodging & Hotel REITs: Fading → Accelerating
+08-26 17:10:25|stage_change|Offshore Energy Equipment & Services: Nascent → Mainstream
+08-26 17:10:25|stage_change|Precious Metals Miners Velocity Breakout: Nascent → Mainstream
+08-26 17:10:25|stage_change|Precious Metals Royalty & Streaming Companies: Accelerating → Nascent
+08-26 17:10:25|stage_change|Software Development & DevOps Collaboration Platforms: Mainstream → Nascent
+08-26 17:10:25|stage_change|U.S. Apparel & Fashion Recovery: Fading → Mainstream
+08-26 17:10:25|theme_pass1_protect_strip|Pass1: stripped 3 ticker(s) from 'Industrial Equipment Rental & Material Handling' (protect 'Industrial Lifting, Material Handling & Equipment Rental'
+08-26 17:10:25|theme_pass1_5_skip|Pass1.5: 'Robotic Process Automation & Low-Code Workflow Execution' eligible but no target passed (1 candidate(s) skipped)
+08-26 17:10:25|theme_pass1_5_skip|Pass1.5: 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' eligible but no target passed (2 candidate(s) skipped)
+08-26 17:10:25|theme_pass1_5_absorption|Pass1.5: 'Crypto-Native Exchange & Treasury Platforms' -> 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave'
+08-26 17:10:25|theme_pass1_5_skip|Pass1.5: 'Bitcoin Mining & Digital Asset Infrastructure' eligible but no target passed (1 candidate(s) skipped)
+08-26 17:10:25|theme_pass1_5_absorption|Pass1.5: 'Bitcoin Mining & HPC Compute Pivot Operators' -> 'Bitcoin Mining & Digital Asset Infrastructure'
+08-26 17:10:25|theme_sector_cap_dropped|'mRNA & Antiviral Vaccine Biotech Rebound' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)
+08-26 17:10:25|theme_score_ties|9 score-tie group(s) after stage 'after_merge_1'
+08-26 17:10:25|theme_empty_tickers|1 theme(s) with empty ticker list after 'after_merge_1'
+08-26 17:10:25|theme_cap_drop|Cap: 1 theme(s) dropped below PRUNE_MIN_TICKERS=2
+08-26 17:10:25|theme_score_ties|9 score-tie group(s) after stage 'after_cap_1'
+08-26 17:10:34|theme_split|Split: 'Oilfield Services & Equipment Providers' from 'Oilfield Services & Drilling Equipment' (4 stocks)
+08-26 17:10:38|theme_score_ties|10 score-tie group(s) after stage 'after_split'
+08-26 17:10:38|theme_pass1_5_skip|Pass1.5: 'Robotic Process Automation & Low-Code Workflow Execution' eligible but no target passed (1 candidate(s) skipped)
+08-26 17:10:38|theme_score_ties|9 score-tie group(s) after stage 'after_merge_2'
+08-26 17:10:38|theme_orphan_sub|1 orphan sub-theme(s) after stage 'after_merge_2'
+08-26 17:10:38|theme_score_ties|9 score-tie group(s) after stage 'after_cap_2'
+08-26 17:10:38|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+08-26 17:10:42|theme_merge_distinct|Arm B: 'Defense Intelligence & Cybersecurity IT Contractors' vs 'Defense Electronics & Aerospace Subsystem Suppliers' DISTINCT — 30d pair cooldown
+08-26 17:10:48|theme_merge_distinct|Arm B: 'Property & Casualty Insurance Underwriters' vs 'Life Insurance & Annuity Providers' DISTINCT — 30d pair cooldown
+08-26 17:10:53|theme_thesis_merged|Arm B: 'Quantum Computing Pure-Plays' merged into 'Quantum Computing Pure-Plays (Federal Funding Cycle)' (4 members)
+08-26 17:11:02|theme_thesis_merged|Arm B: 'AI Data Center Component & Connectivity Semiconductor Suppliers' merged into 'AI Chip & Interconnect Supply Chain Enablement' (14 members)
+08-26 17:11:06|theme_merge_distinct|Arm B: 'Uranium Mining & Nuclear Fuel Cycle Producers' vs 'Offshore Energy Equipment & Services' DISTINCT — 30d pair cooldown
+08-26 17:11:11|theme_merge_distinct|Arm B: 'Coal Mining Relative Strength Breakout' vs 'Offshore Energy Equipment & Services' DISTINCT — 30d pair cooldown
+08-26 17:11:16|theme_merge_distinct|Arm B: 'Business Development Companies & Private Credit Lenders' vs 'Private Equity & Alternative Asset Management Platforms' DISTINCT — 30d pair cool
+08-26 17:11:20|theme_merge_distinct|Arm B: 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' vs 'Private Equity & Alternative Asset Management Platforms' DISTINCT — 30d pa
+08-26 17:11:20|theme_auto_retired|Auto-retired 8 theme(s) dropped during merge passes (3 with successor pointer)
+08-26 17:11:24|theme_ecosystem_assigned|'Oilfield Services & Equipment Providers' → E-ENER (haiku)
+08-26 17:11:29|theme_ecosystem_assigned|'Coal Mining Relative Strength Breakout' → E-ENER (haiku)
+08-26 17:11:33|theme_ecosystem_assigned|'Quantum Computing Pure-Plays (Federal Funding Cycle)' → E-QUANTUM (haiku)
+08-26 17:11:39|theme_ecosystem_assigned|'Bitcoin Miner to AI/HPC Data Center Conversion' → E-AIINFRA (haiku)
+08-26 17:11:39|theme_constituent_churn|18 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), ROK↔Industrial Automatio(2), TKR↔Industrial Automatio(2), CMC
+08-26 17:12:37|theme_discovery_llm_call|stop=tool_use out_tok=5311 forced=False tool_uses=1 iter=1
+08-26 17:13:32|theme_discovery_llm_call|stop=tool_use out_tok=5179 forced=False tool_uses=1 iter=1
+08-26 17:14:04|theme_discovery_llm_call|stop=tool_use out_tok=2922 forced=False tool_uses=1 iter=1
+08-26 17:14:47|theme_discovery_llm_call|stop=tool_use out_tok=4110 forced=False tool_uses=1 iter=1
+08-26 17:15:11|theme_discovery_llm_call|stop=tool_use out_tok=2187 forced=False tool_uses=1 iter=1
+08-26 17:15:11|theme_discovery_shadow_ran|Theme discovery shadow: 10 candidate themes written
+08-26 17:15:11|narrative_theme_discovery_ran|2026-08-26: v2reg 0 qualifying today — no evaluation (roster 4 active / 15 seeds)
+08-26 17:15:11|theme_renamed_for_continuity|2 theme(s) renamed to prior canonical names
+08-26 17:15:11|shadow_themes_promoted|Graduated 4 shadow cohort(s) into live mi_themes (3 new)
+08-26 17:15:11|theme_birth_gate|2026-08-26 [promote/observe] birth-gate: 1 birth / 7 join / 0 awaiting-2nd-sighting / 1 held-floor · ⚠ 15 previously-held later PASSED
+08-26 17:15:14|theme_ecosystem_assigned|'African Gold & Silver Mining Operators' → E-METAL (haiku)
+08-26 17:15:18|theme_ecosystem_assigned|'Liquid Biopsy & Multi-Cancer Early Detection Diagnostics' → E-MEDTECH (haiku)
+08-26 17:15:22|theme_ecosystem_assigned|'mRNA & Next-Gen Vaccine Platform Resurgence' → E-BIO (haiku)
+08-26 17:15:37|missed_outcomes_refreshed|window 2026-07-27..2026-08-26: scan_filter=1205, moderate_alert=21, high_unentered=70
+08-26 17:15:37|missed_outcomes_reconciled|pruned=0, recategorized=0, backfilled=0
+08-26 17:15:37|cap_plus_one_shadow_recorded|ledger: 16 total (3 in 30d window)
+08-26 17:15:37|rs_deterioration|RS deterioration (per-name, on-demand): CRWD 93→56 (-37) · DDOG 77→41 (-36) · MANE 78→34 (-43) · FEIM 76→18 (-57) · BFLY 98→79 (-18) · FET 97→81 (-15)
+08-26 17:15:37|theme_composition_churn|Composition churn (on-demand): Gold & Precious Metals Miners Rotation: +AEM +ARIS +AU +B +CGAU +EGO +EQX +FNV +GFI +HMY +IAG +KGC +NEM +RGLD +SBSW +SS
+08-26 17:22:00|sugar_babies_cohort_refreshed|Cohort size: 63 tickers (≥3 9M EOD prints in trailing 180d)
+08-26 17:25:04|flag_stage_flip_held|CHYM COILED→held@TRIGGERED
+08-26 17:25:07|flag_stage_flip_held|WDAY TIGHTENING→held@COILED
+08-26 17:25:42|flag_ma_pullbacks_reconciled|1 intraday ma-pullbacks marked parent_invalidated_eod=TRUE for 2026-08-26
+08-26 17:30:00|metric_sample|cooldowns_per_day
+08-26 17:30:00|anomaly_detected|L2 cooldowns_per_day
+08-26 17:30:00|metric_sample|theme_count_active
+08-26 17:30:00|anomaly_detected|L2 theme_count_active
+08-26 17:30:01|metric_sample|validation_rate_limited_count
+08-26 17:30:01|metric_sample|accel_dropout_count_7d
+08-26 17:30:01|health_null_sweep_clean|clean: 5 tables, 61 numeric cols
+08-26 17:30:09|row_count_drift_sweep|28 jobs · 0 drop(s) · 0 stale floor(s) · 0 error(s)
+08-26 17:30:09|db_growth_check|db 1.2 GB · +17.9 MB/6d
+08-26 17:30:09|detector_liveness_check|10 tables, 2 dark
+08-26 17:30:10|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+08-26 17:30:10|telegram_markdown_fallback|Markdown parse failed — delivered as plain text
+08-26 17:30:10|theme_quality_clean|clean: 0 retirement flag(s), 0 prune flag(s)
+08-26 17:30:10|ecosystem_reactivation_clean|clean: 0 flag(s), 0 deduped
+08-26 17:30:11|telegram_markdown_fallback|Markdown parse failed — delivered as plain text
+08-26 17:30:11|health_job_liveness_flagged|1 job(s) ran but produced nothing: ep_scan→mi_ep_alerts
+08-26 17:30:11|jsonb_encoding_check|0 string-typed jsonb row(s) across 28 column(s)
+08-26 17:30:12|review_escalation|alert_rank_shadow_out_of_sample ready 7d
+08-26 17:30:12|review_escalation|orb_5m_reentry_hybrid_replay ready 56d
+08-26 17:35:30|anticipation_mna_check_capped|M&A checks capped at 40 this run — remaining coil candidates pass unchecked (fail-open, shadow-only)
+08-26 17:36:00|htf_management_shadow_run|2 candidates, 2 upserted, 0 trail-exit, 0 hard-stop
+08-26 17:38:01|anticipation_coil_buyout_pin_rejected|ITGR coil rejected — stop_floor
+08-26 17:38:27|anticipation_coil_buyout_pin_rejected|MKTX coil rejected — gap_to_flat
+08-26 17:38:36|anticipation_coil_buyout_pin_rejected|ATKR coil rejected — stop_floor
+08-26 17:38:49|anticipation_coil_buyout_pin_rejected|HZO coil rejected — stop_floor
+08-26 17:42:00|pivot_stop_shadow_logged|logged 1 pivot-stop shadow row(s) for 2026-08-26
+08-26 17:50:00|exit_path_shadow_recorded|2 row(s) written/updated across 25 eligible live trade(s) for 2026-08-26 (0 error(s))
+08-26 17:52:00|cost_watchdog_check|0 caller anomaly(ies), 1 reduction opportunity(ies)
+08-26 17:53:00|alert_rank_shadow_recorded|0 row(s) written/updated across 0 date(s) needing processing (0 error(s))
+08-26 17:55:00|coverage_probe_ran|2026-08-26: no HIGH/MODERATE alerts — no-op
+08-26 18:00:00|evening_brief_sent|evening brief sent for 2026-08-26 (1281 chars)
+08-26 18:05:35|theme_synthesis_run|62 candidates → 2 proposed → 1 kept
+08-26 18:28:12|crypto_ingest_completed|date=2026-08-26 universe=205 scored=307 trigger=False shadow=False
+(561 rows)
+===Q13_split_and_lifecycle_detail_08_20_onwards
+d|event_type|summary|detail
+2026-08-20|split_applied|ALCE 2026-08-20 2500:1 — 8 bars overwritten|
+2026-08-20|split_applied|CURX 2026-08-20 20:1 — 171 bars overwritten|
+2026-08-20|split_applied|TREO 2026-08-20 4:1 — 1 bars overwritten|
+2026-08-20|theme_retired|Retired: Apartment & Residential REITs|Last tickers: EQR, UDR
+2026-08-20|theme_retired|Retired: Skilled Nursing & Senior Housing REITs|Last tickers: CTRE, LTC
+2026-08-20|theme_retired|Retired: Bitcoin Mining & HPC Compute Pivot Operators|Last tickers: APLD, BTDR
+2026-08-20|theme_retired|Retired: Digital Payments Processing & Merchant Acquiring Networks|Last tickers: FOUR, FLYW
+2026-08-20|theme_retired|Retired: Uranium Feedstock & Mining Supply|Last tickers: UEC, UUUU
+2026-08-20|theme_auto_retired|Auto-retired 20 theme(s) dropped during merge passes (11 with successor pointer)|'AI data center infrastructure buildout' -> parent='Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers'
+'AI Data-Center Power & Physical Infrastructure Buildout' -> parent='Advanced Nuclear Fuel & Reactor Design Manufacturers'
+2026-08-21|split_applied|BTOG 2026-08-21 5:1 — 172 bars overwritten|
+2026-08-21|split_applied|ELAB 2026-08-21 10:1 — 172 bars overwritten|
+2026-08-21|split_applied|LIMN 2026-08-21 50:1 — 172 bars overwritten|
+2026-08-21|split_applied|MGN 2026-08-21 40:1 — 172 bars overwritten|
+2026-08-21|split_applied|SCNI 2026-08-21 10:1 — 172 bars overwritten|
+2026-08-21|split_applied|SFBS 2026-08-21 1:2 — 172 bars overwritten|
+2026-08-21|split_applied|SMTK 2026-08-21 50:1 — 172 bars overwritten|
+2026-08-21|split_applied|XCH 2026-08-21 20:1 — 172 bars overwritten|
+2026-08-21|theme_retired|Retired: Regulated Electric Utility Holding Companies|Last tickers: AEE, CNP, DTE, ED, ETR, IDA, LNT, OGE, WEC
+2026-08-21|theme_retired|Retired: U.S. Domestic Steel Producers|Last tickers: NUE, CLF
+2026-08-21|theme_retired|Retired: Industrial & Logistics Warehouse REITs|Last tickers: EGP, PLD, COLD
+2026-08-21|theme_retired|Retired: Automotive Dealership Groups|Last tickers: ABG, AN
+2026-08-21|theme_auto_retired|Auto-retired 13 theme(s) dropped during merge passes (7 with successor pointer)|'Automotive Dealership Groups' -> parent='(unknown)'
+'Business Development Companies & Specialty Direct Lending' -> parent='Private Equity & Alternative Asset Management Platforms'
+'Data & Analytics-as-a-Service Providers' -> parent='(unkno
+2026-08-24|split_applied|AXTU 2026-08-24 10:1 — 77 bars overwritten|
+2026-08-24|split_applied|BIAF 2026-08-24 15:1 — 171 bars overwritten|
+2026-08-24|split_applied|BRCC 2026-08-24 10:1 — 171 bars overwritten|
+2026-08-24|split_applied|CCUP 2026-08-24 10:1 — 171 bars overwritten|
+2026-08-24|split_applied|CRWU 2026-08-24 10:1 — 171 bars overwritten|
+2026-08-24|split_applied|GAME 2026-08-24 8:1 — 171 bars overwritten|
+2026-08-24|split_applied|GRML 2026-08-24 50:1 — 114 bars overwritten|
+2026-08-24|split_applied|IESC 2026-08-24 1:2 — 171 bars overwritten|
+2026-08-24|split_applied|INCR 2026-08-24 5:1 — 171 bars overwritten|
+2026-08-24|split_applied|MSTU 2026-08-24 10:1 — 171 bars overwritten|
+2026-08-24|split_applied|SBTU 2026-08-24 10:1 — 171 bars overwritten|
+2026-08-24|split_applied|SKYE 2026-08-24 8:1 — 171 bars overwritten|
+2026-08-24|split_applied|TEUP 2026-08-24 10:1 — 60 bars overwritten|
+2026-08-24|split_applied|TTDU 2026-08-24 10:1 — 171 bars overwritten|
+2026-08-24|split_applied|VCIG 2026-08-24 15:1 — 171 bars overwritten|
+2026-08-24|theme_retired|Retired: Broadband & Telecom Network Infrastructure Equipment|Last tickers: HLIT, MXL, NOK
+2026-08-24|theme_retired|Retired: U.S. Passenger Airlines|Last tickers: DAL, SKYW
+2026-08-24|theme_retired|Retired: Defense ISR & Unmanned Systems Intelligence|Last tickers: HAWK, AVEX
+2026-08-24|theme_auto_retired|Auto-retired 19 theme(s) dropped during merge passes (11 with successor pointer)|'Bioprocessing & Cell Culture Technology' -> parent='(unknown)'
+'Broadband & Telecom Network Infrastructure Equipment' -> parent='(unknown)'
+'Business Development Companies & Direct Lending' -> parent='Private Equity & Alternative Asset Man
+2026-08-25|split_applied|GPUS 2026-08-25 5:1 — 165 bars overwritten|
+2026-08-25|split_applied|REAX 2026-08-25 10:1 — 171 bars overwritten|
+2026-08-25|theme_retired|Retired: Specialty & Multi-line P&C Insurance Carriers|Last tickers: ACGL, CNA
+2026-08-25|theme_retired|Retired: Advanced Nuclear Fuel & Reactor Design Manufacturers|Last tickers: STDN, XE
+2026-08-25|theme_retired|Retired: Lumber & Building Products Manufacturing-Distribution|Last tickers: BCC, FBIN
+2026-08-25|theme_retired|Retired: For-Profit Postsecondary & Vocational Education|Last tickers: CVSA, STRA
+2026-08-25|theme_auto_retired|Auto-retired 7 theme(s) dropped during merge passes (1 with successor pointer)|'Advanced Nuclear Fuel & Reactor Design Manufacturers' -> parent='(unknown)'
+'Business Development Companies & Specialty Direct Lending' -> parent='(unknown)'
+'Crypto-Native Exchange & Blockchain Financial Software' -> parent='Crypto Exchan
+2026-08-26|split_applied|BBKCF 2026-08-26 7:1 — 170 bars overwritten|
+2026-08-26|split_applied|PDIYF 2026-08-26 5:1 — 111 bars overwritten|
+2026-08-26|split_applied|VMAR 2026-08-26 10:1 — 171 bars overwritten|
+2026-08-26|validation_mass_removal_name_suspect|'Oil Refining & Marketing': validation flagged 17/24 members — name likely narrower than the cluster (#214)|Flagged: AEP, ATO, CMS, ET, EVRG, EXC, FE, KNTK, OGS, OKE, PAGP, SO, SR, TRGP, UGI, WES, XEL
+2026-08-26|theme_retired|Retired: Power Semiconductor & Electrification Components|Last tickers: WOLF, MPWR
+2026-08-26|theme_retired|Retired: Mobile App Platform & Advertising Monetization|Last tickers: APPS, BSP
+2026-08-26|theme_retired|Retired: Electronics Manufacturing & Semiconductor Packaging Supply Chain|Last tickers: SANM, ASX
+2026-08-26|theme_auto_retired|Auto-retired 8 theme(s) dropped during merge passes (3 with successor pointer)|'Bitcoin Mining & HPC Compute Pivot Operators' -> parent='Bitcoin Mining & Digital Asset Infrastructure'
+'Crypto-Native Exchange & Treasury Platforms' -> parent='Altcoin & Diversified Digital-Asset Infrastructure Second Wave'
+'Electronics M
+(56 rows)
+===Q14_cooldown_history_30d_by_day
+d|n|n_themes
+2026-08-26|24|8
+2026-08-25|1|1
+2026-08-24|5|4
+2026-08-21|13|5
+2026-08-19|5|3
+2026-08-18|2|1
+2026-08-17|10|2
+2026-08-14|1|1
+2026-08-12|9|3
+2026-08-11|2|2
+2026-08-10|1|1
+2026-08-07|1|1
+2026-08-06|1|1
+2026-08-05|13|12
+2026-08-04|1|1
+2026-08-03|6|6
+2026-07-31|8|7
+2026-07-29|8|5
+2026-07-28|3|1
+2026-07-27|11|10
+2026-07-24|2|2
+2026-07-23|1|1
+2026-07-22|1|1
+2026-07-21|1|1
+2026-07-20|3|3
+2026-07-17|1|1
+2026-07-15|3|3
+(27 rows)
+===Q15_active_theme_ticker_set_size
+active_themes|accel_main_themes|r4_bonus_tickers
+104|51|374
+(1 row)
+===Q16_prune_events_today_detail
+t_et|event_type|summary
+(0 rows)
+===Q17_END
+?column?
+1
+(1 row)

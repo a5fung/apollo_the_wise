@@ -1,0 +1,85 @@
+==================================================================================================
+RS INFLECTION IN THE LOW-RS ALERT POPULATION — improvement, not level  (capture 2026-08-15, read-only)
+==================================================================================================
+population: 2941 distinct (ticker, alert_date) outcome rows, 116 sessions, 2026-02-11 .. 2026-08-14
+with point-in-time RS features: 2347 (113 sessions) — exclusions: no_score_history=34, no_row_before_alert=47, stale_gt_7d=513, null_fields=0
+⚠ outcome values are FRACTIONS in the DB; printed x100 as real percents.
+⚠ each horizon drops alerts too recent for the horizon to have elapsed (maturity filter vs data max 2026-08-14).
+
+POINT-IN-TIME VERIFICATION (lookahead would invalidate the whole read):
+  - structural: features picked by bisect on score_date STRICTLY < alert_date;
+    nightly scores mean the alert-day row holds the gap-day move — never used.
+  - runtime: asserted score_date < alert_date on every one of the 2347 feature rows (a violation raises).
+  - feature-row lag before alert: min 1d, max 7d, distribution 1d:1648, 2d:17, 3d:435, 4d:112, 5d:49, 6d:42, 7d:44
+  - staleness rule: rows lagging > 7 calendar days excluded (513 rows; scores were weekly before 2026-03-24).
+
+low-RS population (rs_composite < 50, the pre-registered threshold): 1010 rows over 111 sessions; high-RS complement: 1337
+
+==================================================================================================
+PRIMARY (pre-registered): low-RS · rs_1m − rs_6m positive vs non-positive · 5-day forward return
+==================================================================================================
+  PRIMARY low-RS(<50) infl_1m6m ret_5d           POS med  -1.04% (n=431, 78 sess, 46.2% up) | NEG med  -0.08% (n=523, 99 sess, 49.5% up) | diff -0.96pp | raw p=0.569  adj p(x17)=1.000
+  (POS = RS improving into the alert; NEG = not. adj p = Bonferroni across all 17 attempted tests — the adjusted p governs the verdict.)
+
+--------------------------------------------------------------------------------------------------
+EXPLORATORY 1 — sensitivity strip: same test at other low-RS thresholds (is the primary a knife-edge?)
+--------------------------------------------------------------------------------------------------
+  low-RS(<30) infl_1m6m ret_5d                   POS med  -0.96% (n=300, 73 sess, 47.3% up) | NEG med   0.12% (n=410, 87 sess, 50.2% up) | diff -1.08pp | raw p=0.621
+  low-RS(<40) infl_1m6m ret_5d                   POS med  -1.04% (n=373, 75 sess, 46.4% up) | NEG med    0.1% (n=474, 96 sess, 50.2% up) | diff -1.14pp | raw p=0.535
+  low-RS(<60) infl_1m6m ret_5d                   POS med  -0.64% (n=498, 80 sess, 48.0% up) | NEG med  -0.65% (n=592, 102 sess, 47.8% up) | diff +0.01pp | raw p=0.996
+  low-RS(<70) infl_1m6m ret_5d                   POS med  -0.68% (n=569, 82 sess, 47.1% up) | NEG med  -0.28% (n=682, 102 sess, 48.8% up) | diff -0.40pp | raw p=0.765
+
+--------------------------------------------------------------------------------------------------
+EXPLORATORY 2 — other horizons at the primary threshold
+--------------------------------------------------------------------------------------------------
+  low-RS(<50) infl_1m6m ret_1d                   POS med   1.52% (n=450, 82 sess, 58.9% up) | NEG med   0.53% (n=544, 102 sess, 54.2% up) | diff +0.99pp | raw p=0.404
+  low-RS(<50) infl_1m6m ret_20d                  POS med  -2.33% (n=319, 55 sess, 44.2% up) | NEG med   -5.1% (n=362, 73 sess, 38.1% up) | diff +2.77pp | raw p=0.425
+  low-RS(<50) infl_1m6m max_high_5d              POS med   9.82% (n=431, 78 sess, 96.8% up) | NEG med   9.98% (n=525, 99 sess, 99.4% up) | diff -0.16pp | raw p=0.918
+  low-RS(<50) infl_1m6m max_high_20d             POS med  15.67% (n=373, 65 sess, 97.1% up) | NEG med  12.17% (n=401, 84 sess, 99.5% up) | diff +3.50pp | raw p=0.012
+
+--------------------------------------------------------------------------------------------------
+EXPLORATORY 3 — scope check: does the restriction matter? (claim implies signal lives in LOW-RS)
+--------------------------------------------------------------------------------------------------
+  HIGH-RS(>=50) infl_1m6m ret_5d                 POS med  -1.38% (n=729, 87 sess, 46.6% up) | NEG med  -0.22% (n=567, 94 sess, 48.5% up) | diff -1.16pp | raw p=0.517
+  ALL alerts infl_1m6m ret_5d                    POS med  -1.21% (n=1160, 91 sess, 46.5% up) | NEG med  -0.17% (n=1090, 106 sess, 49.0% up) | diff -1.04pp | raw p=0.435
+
+--------------------------------------------------------------------------------------------------
+EXPLORATORY 4 — secondary features within low-RS, ret_5d
+--------------------------------------------------------------------------------------------------
+  low-RS infl_1m3m (rs_1m − rs_3m)               POS med   -0.7% (n=451, 82 sess, 48.3% up) | NEG med  -0.39% (n=503, 99 sess, 47.7% up) | diff -0.31pp | raw p=0.898
+  low-RS rank-pct improved over prior 5 sessions POS med  -1.29% (n=307, 62 sess, 45.3% up) | NEG med   0.53% (n=497, 76 sess, 53.7% up) | diff -1.82pp | raw p=0.301
+  low-RS rank-pct improved over prior 10 sessions POS med  -0.87% (n=240, 62 sess, 46.7% up) | NEG med   0.46% (n=541, 75 sess, 52.7% up) | diff -1.33pp | raw p=0.458
+  low-RS rank-pct improved over prior 20 sessions POS med  -0.39% (n=193, 58 sess, 47.7% up) | NEG med   0.42% (n=524, 69 sess, 51.7% up) | diff -0.81pp | raw p=0.660
+  low-RS flat-then-jumped flag                   POS med  -4.41% (n=13, 10 sess, 30.8% up) | NEG med   0.21% (n=701, 72 sess, 50.9% up) | diff -4.62pp | raw p=0.273
+  (flat-then-jumped fired on 18 low-RS rows; definition and a-priori constants in docstring)
+
+--------------------------------------------------------------------------------------------------
+EXPLORATORY 5 — alert-grade subset (rows that passed scan-stage filters; decision-surface population)
+--------------------------------------------------------------------------------------------------
+  alert-grade low-RS rows: 331 of 1010
+  alert-grade low-RS infl_1m6m ret_5d            POS med  -3.45% (n=132, 60 sess, 33.3% up) | NEG med  -2.39% (n=178, 79 sess, 40.4% up) | diff -1.06pp | raw p=0.513
+
+==================================================================================================
+MULTIPLICITY LEDGER — 17 tests attempted (planned 17), 17 produced a p
+==================================================================================================
+  raw p<0.05: 1 of 17 — low-RS(<50) infl_1m6m max_high_20d (p=0.012)
+  surviving Bonferroni x17 (adj p<0.05): 0
+  expected false positives at raw 0.05 across 17 tests: ~0.9 — a lone raw hit is what chance produces.
+
+--------------------------------------------------------------------------------------------------
+CONFOUND CHECK (descriptive) — is infl_1m6m just a proxy for gap size, ep_score, catalyst, or level?
+--------------------------------------------------------------------------------------------------
+  infl_1m6m vs gap_pct                      n= 956  Spearman rho=-0.04
+  infl_1m6m vs ep_score                     n= 241  Spearman rho=-0.11
+  infl_1m6m vs catalyst_quality (ordinal)   n= 155  Spearman rho=-0.10
+  infl_1m6m vs rs_composite (level)         n= 956  Spearman rho=+0.04
+  median gap_pct: POS bucket 11.4 vs NEG bucket 11.6 — if far apart, the buckets differ in gap, not just RS trajectory.
+  reading: |rho| >= ~0.4 would mean this data cannot separate inflection from that variable.
+
+==================================================================================================
+HOW TO READ THIS — the permutation shuffles whole SESSIONS (alerts on one morning share
+the tape). The verdict rests on the PRIMARY's ADJUSTED p; exploratory lines generate
+hypotheses only. The population is low-RS WITHIN the stored, liquidity-filtered universe
+(~2.4-3.9k names), not the whole market. Nothing here licenses a change to grading,
+admission, sizing, or exits — THE LINE; any suggested change is a FORK for the operator.
+==================================================================================================

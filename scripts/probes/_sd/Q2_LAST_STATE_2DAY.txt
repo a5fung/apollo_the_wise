@@ -1,0 +1,436 @@
+scan_date|~|ticker|~|last_tick_et|~|gap_pct|~|prev_close|~|rel_volume|~|ep_score|~|score_tier|~|catalyst_quality|~|adv|~|adv_source|~|pm_rvol|~|rank_by_gap|~|projected_vol_multiple|~|minutes_since_open|~|price_source|~|filter_reason
+2026-08-24|~|AEMD|~|08:20|~|8.058608058608066|~|2.73|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.73 < $5.00 floor
+2026-08-24|~|AEON|~|09:50|~|5.049453409682465|~|0.1921|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $0.19 < $5.00 floor
+2026-08-24|~|AERO|~|09:25|~|9.18|~|13.72|~|0.01|~||~||~||~|252892.4994255|~|polygon_20d|~|2.634|~|5|~||~||~|polygon_delayed|~|pre-mkt volume 3,037 < 25,000 shares
+2026-08-24|~|AGRZ|~|07:50|~|6.716672349130581|~|0.2933|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.29 < $5.00 floor
+2026-08-24|~|AIFC|~|07:00|~|5.045125018493863|~|0.6759|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor
+2026-08-24|~|AIFU|~|07:30|~|6.811388169665788|~|18.4999|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 47,973 < 50,000 shares floor
+2026-08-24|~|AIXI|~|09:10|~|5.987762237762233|~|0.4576|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.46 < $5.00 floor
+2026-08-24|~|AKTX|~|09:45|~|7.006369426751602|~|7.85|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 10,988 < 50,000 shares floor
+2026-08-24|~|ALVO|~|09:55|~|7.2234762979684035|~|4.43|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $4.43 < $5.00 floor
+2026-08-24|~|AMC|~|09:55|~|7.36078431372549|~|2.55|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.55 < $5.00 floor
+2026-08-24|~|ANY|~|09:45|~|6.130268199233722|~|2.61|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $2.61 < $5.00 floor
+2026-08-24|~|APRE|~|09:55|~|6.356395439637681|~|0.6403|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.64 < $5.00 floor
+2026-08-24|~|ARAI|~|09:15|~|5.7340382269215135|~|0.2459|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.25 < $5.00 floor
+2026-08-24|~|ARAY|~|09:55|~|6.405693950177921|~|0.281|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.28 < $5.00 floor
+2026-08-24|~|ARBB|~|09:55|~|5.696703296703294|~|4.55|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $4.55 < $5.00 floor
+2026-08-24|~|AREN|~|09:40|~|8.06754221388367|~|0.9061|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $0.91 < $5.00 floor
+2026-08-24|~|ARTL|~|07:35|~|5.491329479768792|~|0.692|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.69 < $5.00 floor
+2026-08-24|~|AVAT|~|09:55|~|10.17951856385149|~|0.4902|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.49 < $5.00 floor
+2026-08-24|~|AVX|~|09:55|~|10.942989214175647|~|3.245|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.25 < $5.00 floor
+2026-08-24|~|AXIL|~|09:00|~|17.97385620915032|~|6.12|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 28,762 < 50,000 shares floor
+2026-08-24|~|AZIO|~|07:15|~|5.172413793103453|~|1.16|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.16 < $5.00 floor
+2026-08-24|~|BAK|~|08:35|~|5.527638190954779|~|1.99|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.99 < $5.00 floor
+2026-08-24|~|BBCQ|~|07:20|~|9.68|~|9.71|~|0.86|~||~||~||~|219771.2533625|~|polygon_20d|~|95.759|~|4|~||~||~|polygon_delayed|~|quality filter: filter:mcap_too_small: $372M < $500M
+2026-08-24|~|BCAB|~|09:20|~|7.232704402515722|~|3.18|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $3.18 < $5.00 floor
+2026-08-24|~|BCTX|~|07:55|~|10.073710073710076|~|4.07|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $4.07 < $5.00 floor
+2026-08-24|~|BDRX|~|09:55|~|6.2992125984252025|~|1.27|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.27 < $5.00 floor
+2026-08-24|~|BGL|~|09:35|~|5.1724137931034395|~|0.203|~||~||~||~||~||~||~||~||~||~|5|~||~|filter:universe_prev_close_too_low: prior close $0.20 < $5.00 floor
+2026-08-24|~|BGM|~|09:45|~|6.3286313381624115|~|0.2623|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.26 < $5.00 floor
+2026-08-24|~|BIOX|~|09:10|~|6.41868904513495|~|0.4409|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.44 < $5.00 floor
+2026-08-24|~|BIYA|~|09:30|~|5.485232067510544|~|2.37|~||~||~||~||~||~||~||~||~||~|1|~||~|filter:universe_prev_close_too_low: prior close $2.37 < $5.00 floor
+2026-08-24|~|BMEA|~|09:55|~|16.07299270072992|~|1.37|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.37 < $5.00 floor
+2026-08-24|~|BMR|~|07:15|~|6.8702290076335775|~|1.31|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.31 < $5.00 floor
+2026-08-24|~|BNR|~|09:55|~|5.521472392638047|~|9.78|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 4,631 < 50,000 shares floor
+2026-08-24|~|BOLD|~|09:30|~|8.333333333333332|~|3|~||~||~||~||~||~||~||~||~||~|1|~||~|filter:universe_prev_close_too_low: prior close $3.00 < $5.00 floor
+2026-08-24|~|BRLS|~|09:55|~|8.01621621621621|~|1.85|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.85 < $5.00 floor
+2026-08-24|~|BRLT|~|09:50|~|5.32330827067669|~|1.33|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $1.33 < $5.00 floor
+2026-08-24|~|BRNX|~|09:55|~|10.455764075067027|~|3.73|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.73 < $5.00 floor
+2026-08-24|~|BRR|~|09:05|~|5.116279069767436|~|2.15|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.15 < $5.00 floor
+2026-08-24|~|BTCS|~|09:45|~|5.185185185185174|~|1.35|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.35 < $5.00 floor
+2026-08-24|~|BTCT|~|09:55|~|35.184210526315795|~|1.14|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.14 < $5.00 floor
+2026-08-24|~|CAAS|~|09:50|~|6.209850107066382|~|4.67|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $4.67 < $5.00 floor
+2026-08-24|~|CALC|~|07:15|~|5.115223463687149|~|0.5728|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.57 < $5.00 floor
+2026-08-24|~|CAN|~|09:45|~|9.83098591549297|~|0.355|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.35 < $5.00 floor
+2026-08-24|~|CANG|~|09:55|~|16.102803738317746|~|2.14|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.14 < $5.00 floor
+2026-08-24|~|CAPR|~|09:31|~|10.33|~|6.29|~|0.06|~||~||~||~|7703041.160356499|~|polygon_20d|~|1.637|~|4|~||~|1|~|polygon_delayed|~|quality filter: filter:mcap_too_small: $466M < $500M
+2026-08-24|~|CBAT|~|09:55|~|6.8731026108075275|~|0.8235|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.82 < $5.00 floor
+2026-08-24|~|CBK|~|09:25|~|6.477373558118893|~|33.81|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 43,997 < 50,000 shares floor
+2026-08-24|~|CCTG|~|09:45|~|13.838600797790724|~|0.6518|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.65 < $5.00 floor
+2026-08-24|~|CD|~|09:20|~|7.520891364902507|~|3.59|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $3.59 < $5.00 floor
+2026-08-24|~|CDIO|~|09:55|~|6.891625615763565|~|2.03|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.03 < $5.00 floor
+2026-08-24|~|CDTG|~|09:00|~|5.932203389830514|~|1.18|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.18 < $5.00 floor
+2026-08-24|~|CIRC|~|09:55|~|5.25803310613437|~|0.6162|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.62 < $5.00 floor
+2026-08-24|~|CLGN|~|09:45|~|6.833093294927182|~|0.31245|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.31 < $5.00 floor
+2026-08-24|~|CLIK|~|07:10|~|5.035971223021588|~|1.39|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.39 < $5.00 floor
+2026-08-24|~|CLRO|~|07:30|~|6.741573033707872|~|5.34|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 31,214 < 50,000 shares floor
+2026-08-24|~|CMND|~|08:20|~|5.172413793103453|~|1.74|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.74 < $5.00 floor
+2026-08-24|~|CNSP|~|09:55|~|6.17324185248713|~|5.83|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 8,111 < 50,000 shares floor
+2026-08-24|~|CNTN|~|09:40|~|5.9360730593607265|~|2.19|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $2.19 < $5.00 floor
+2026-08-24|~|CODX|~|09:45|~|7.438016528925627|~|1.21|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.21 < $5.00 floor
+2026-08-24|~|COE|~|07:25|~|5.599513085818635|~|16.43|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 12,705 < 50,000 shares floor
+2026-08-24|~|COOK|~|09:55|~|5.55455365193868|~|55.45|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 15,128 < 50,000 shares floor
+2026-08-24|~|COPR|~|09:55|~|12.359550561797755|~|2.67|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.67 < $5.00 floor
+2026-08-24|~|CRDF|~|09:55|~|11.36234518804681|~|0.8801|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.88 < $5.00 floor
+2026-08-24|~|CVRX|~|09:55|~|12.161971830985921|~|2.84|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.84 < $5.00 floor
+2026-08-24|~|CYAB|~|09:55|~|8.67381111855326|~|0.2986|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.30 < $5.00 floor
+2026-08-24|~|CYPH|~|09:55|~|23.94366197183099|~|1.42|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.42 < $5.00 floor
+2026-08-24|~|DAIC|~|09:55|~|195.77464788732397|~|0.426|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.43 < $5.00 floor
+2026-08-24|~|DDC|~|07:45|~|6.059096945551125|~|0.6024|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.60 < $5.00 floor
+2026-08-24|~|DEFT|~|09:55|~|5.618368411897721|~|0.5749|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.57 < $5.00 floor
+2026-08-24|~|DETX|~|09:55|~|6.162891986062716|~|3.6736|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.67 < $5.00 floor
+2026-08-24|~|DFDV|~|09:45|~|5.568527918781721|~|3.94|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $3.94 < $5.00 floor
+2026-08-24|~|DFSC|~|08:20|~|5.14193548387096|~|1.55|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.55 < $5.00 floor
+2026-08-24|~|DGNX|~|09:55|~|7.812499999999989|~|1.28|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.28 < $5.00 floor
+2026-08-24|~|DIT|~|09:45|~|5.992085924250982|~|70.76|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 833 < 50,000 shares floor
+2026-08-24|~|DOMH|~|08:00|~|5.813953488372089|~|2.58|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.58 < $5.00 floor
+2026-08-24|~|DTCX|~|09:55|~|5.725190839694653|~|2.62|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.62 < $5.00 floor
+2026-08-24|~|DWTX|~|09:55|~|5.220883534136542|~|2.49|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.49 < $5.00 floor
+2026-08-24|~|DXST|~|09:55|~|19.841269841269842|~|2.52|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.52 < $5.00 floor
+2026-08-24|~|EDSA|~|07:25|~|5.191873589164795|~|4.43|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $4.43 < $5.00 floor
+2026-08-24|~|EMAT|~|09:55|~|16.624685138539032|~|3.97|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.97 < $5.00 floor
+2026-08-24|~|ENLV|~|07:00|~|8.163265306122456|~|1.47|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.47 < $5.00 floor
+2026-08-24|~|EPOW|~|09:45|~|7.118946663691136|~|0.4481|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.45 < $5.00 floor
+2026-08-24|~|EXYN|~|09:55|~|14.479638009049767|~|2.21|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.21 < $5.00 floor
+2026-08-24|~|FAC|~|09:05|~|5.422993492407809|~|4.61|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $4.61 < $5.00 floor
+2026-08-24|~|FNGR|~|07:20|~|8.310626702997267|~|0.2202|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.22 < $5.00 floor
+2026-08-24|~|FOXX|~|09:55|~|6.060606060606051|~|2.97|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.97 < $5.00 floor
+2026-08-24|~|GEMI|~|09:50|~|6.542056074766339|~|4.28|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $4.28 < $5.00 floor
+2026-08-24|~|GETY|~|08:30|~|5.005688282138791|~|0.2637|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.26 < $5.00 floor
+2026-08-24|~|GGR|~|07:15|~|25.418502202643168|~|2.27|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.27 < $5.00 floor
+2026-08-24|~|GIFT|~|09:55|~|5.318520269471699|~|0.8461|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.85 < $5.00 floor
+2026-08-24|~|GNPX|~|09:45|~|5.822784810126571|~|3.95|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $3.95 < $5.00 floor
+2026-08-24|~|GOAI|~|09:55|~|10.708520179372192|~|2.23|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.23 < $5.00 floor
+2026-08-24|~|GOVX|~|09:55|~|9.926734820322181|~|0.6456|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.65 < $5.00 floor
+2026-08-24|~|GRI|~|09:55|~|9.696969696969706|~|1.65|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.65 < $5.00 floor
+2026-08-24|~|GTEC|~|09:50|~|5.198477433387718|~|0.9195|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $0.92 < $5.00 floor
+2026-08-24|~|HCAT|~|09:45|~|5.228758169934645|~|1.53|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.53 < $5.00 floor
+2026-08-24|~|HCTI|~|08:15|~|5.371571639922602|~|0.8787|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.88 < $5.00 floor
+2026-08-24|~|HCWB|~|09:45|~|6.422018348623839|~|2.18|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $2.18 < $5.00 floor
+2026-08-24|~|HMR|~|09:45|~|5.185185185185174|~|1.35|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.35 < $5.00 floor
+2026-08-24|~|HODO|~|09:55|~|8.22510822510822|~|0.462|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.46 < $5.00 floor
+2026-08-24|~|HPAI|~|09:45|~|7.102337190832765|~|0.4407|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.44 < $5.00 floor
+2026-08-24|~|HSCS|~|09:31|~|6.071428571428585|~|2.8|~||~||~||~||~||~||~||~||~||~|1|~||~|filter:universe_prev_close_too_low: prior close $2.80 < $5.00 floor
+2026-08-24|~|HSDT|~|09:55|~|5.195238095238083|~|2.1|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.10 < $5.00 floor
+2026-08-24|~|HUMA|~|09:45|~|5.29430084085955|~|0.6422|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.64 < $5.00 floor
+2026-08-24|~|HURA|~|09:45|~|7.499999999999996|~|2|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $2.00 < $5.00 floor
+2026-08-24|~|HVII|~|09:55|~|17.35|~|6.385|~|1.3|~||~||~||~|55795.009072500005|~|polygon_20d|~||~|2|~|20.3|~|25|~|polygon_delayed|~|quality filter: filter:adv_too_low: $600,114
+2026-08-24|~|HYNE|~|09:45|~|8.043217286914766|~|16.66|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 22,299 < 50,000 shares floor
+2026-08-24|~|HYPD|~|09:55|~|6.273584905660377|~|3.18|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.18 < $5.00 floor
+2026-08-24|~|ICCM|~|08:10|~|7.530864197530857|~|2.43|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.43 < $5.00 floor
+2026-08-24|~|ILLR|~|07:50|~|5.442101777238106|~|0.9059|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.91 < $5.00 floor
+2026-08-24|~|IMDX|~|09:25|~|5.299539170506922|~|4.34|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $4.34 < $5.00 floor
+2026-08-24|~|INCR|~|09:55|~|26.13035819142689|~|4.2575|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $4.26 < $5.00 floor
+2026-08-24|~|INEO|~|09:55|~|5.490271623964548|~|0.5191|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.52 < $5.00 floor
+2026-08-24|~|INM|~|09:55|~|10.273972602739736|~|1.46|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.46 < $5.00 floor
+2026-08-24|~|IPDN|~|08:40|~|6.2753036437246985|~|0.1482|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.15 < $5.00 floor
+2026-08-24|~|JAB|~|07:50|~|10.76458752515091|~|9.94|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 6,272 < 50,000 shares floor
+2026-08-24|~|JLHL|~|08:00|~|11.32|~|6.6|~|0.28|~||~||~||~|340967.817676|~|polygon_20d|~||~|4|~||~||~|polygon_delayed|~|quality filter: filter:atr_too_high: 25.1% > 15.0%
+2026-08-24|~|JZ|~|09:55|~|11.363636363636363|~|2.2|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.20 < $5.00 floor
+2026-08-24|~|LANV|~|09:55|~|9.980952380952381|~|1.05|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.05 < $5.00 floor
+2026-08-24|~|LEDS|~|09:55|~|8.1151832460733|~|1.91|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.91 < $5.00 floor
+2026-08-24|~|LESL|~|07:20|~|5.690515806988354|~|0.601|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.60 < $5.00 floor
+2026-08-24|~|LEXX|~|09:45|~|7.833256985799363|~|10.915|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 8,919 < 50,000 shares floor
+2026-08-24|~|LGHL|~|09:55|~|21.414473684210524|~|0.608|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.61 < $5.00 floor
+2026-08-24|~|LGVN|~|07:20|~|5.337909811812052|~|0.8449|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.84 < $5.00 floor
+2026-08-24|~|LHSW|~|09:45|~|7.200000000000006|~|2.5|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $2.50 < $5.00 floor
+2026-08-24|~|LITS|~|09:25|~|6.0927553804183106|~|0.9897|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.99 < $5.00 floor
+2026-08-24|~|LOBO|~|09:55|~|6.122135056145201|~|0.6501|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.65 < $5.00 floor
+2026-08-24|~|LONA|~|09:55|~|5.595315549772292|~|7.685|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 9,651 < 50,000 shares floor
+2026-08-24|~|LSTA|~|09:55|~|14.193548387096772|~|1.55|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.55 < $5.00 floor
+2026-08-24|~|LUCY|~|09:55|~|57.87395818102065|~|0.6839|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor
+2026-08-24|~|MBRX|~|09:45|~|5.817875210792576|~|0.593|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.59 < $5.00 floor
+2026-08-24|~|MDXH|~|07:05|~|7.65711209796798|~|0.7431|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.74 < $5.00 floor
+2026-08-24|~|MERC|~|09:45|~|5.734430082256177|~|0.4255|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.43 < $5.00 floor
+2026-08-24|~|MHH|~|09:45|~|5.73333333333333|~|7.5|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 9,608 < 50,000 shares floor
+2026-08-24|~|MINE|~|09:55|~|5.844155844155835|~|3.08|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.08 < $5.00 floor
+2026-08-24|~|MNOV|~|08:45|~|5.035971223021588|~|1.39|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.39 < $5.00 floor
+2026-08-24|~|MODD|~|09:40|~|5.367231638418078|~|3.54|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $3.54 < $5.00 floor
+2026-08-24|~|MPU|~|09:45|~|5.044371788883688|~|0.2141|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.21 < $5.00 floor
+2026-08-24|~|MREO|~|08:00|~|5.371900826446282|~|0.2904|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.29 < $5.00 floor
+2026-08-24|~|MRKR|~|09:55|~|7.187050359712238|~|1.39|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.39 < $5.00 floor
+2026-08-24|~|MSGM|~|09:45|~|5.689001264222495|~|3.955|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $3.96 < $5.00 floor
+2026-08-24|~|MTVA|~|09:00|~|5.815068493150683|~|1.46|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.46 < $5.00 floor
+2026-08-24|~|MVIS|~|09:50|~|6.024096385542174|~|1.66|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $1.66 < $5.00 floor
+2026-08-24|~|NCEL|~|09:45|~|5.814202960738031|~|3.2627|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $3.26 < $5.00 floor
+2026-08-24|~|NFE|~|07:15|~|5.418181818181806|~|0.275|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.28 < $5.00 floor
+2026-08-24|~|NIXX|~|09:35|~|5.008839127872721|~|0.6788|~||~||~||~||~||~||~||~||~||~|5|~||~|filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor
+2026-08-24|~|NPWR|~|09:55|~|11.470588235294121|~|1.7|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.70 < $5.00 floor
+2026-08-24|~|NRSN|~|09:20|~|6.032420940738771|~|0.3763|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.38 < $5.00 floor
+2026-08-24|~|NSSC|~|09:50|~|34.22|~|38.09|~|1.33|~|52.5|~||~|strong|~|272546.069019|~|polygon_20d|~|29.247|~|2|~|25.9|~|20|~|polygon_delayed|~|score 52 < bar 65 (catalyst=strong)
+2026-08-24|~|NTRB|~|09:55|~|5.003857363277888|~|4.6664|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $4.67 < $5.00 floor
+2026-08-24|~|OBAI|~|09:55|~|6.462489463332402|~|0.3559|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.36 < $5.00 floor
+2026-08-24|~|OLOX|~|09:55|~|13.875598086124405|~|2.09|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.09 < $5.00 floor
+2026-08-24|~|OMH|~|09:55|~|10.887949260042271|~|0.0946|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.09 < $5.00 floor
+2026-08-24|~|ORGO|~|09:45|~|5.538888888888883|~|1.8|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.80 < $5.00 floor
+2026-08-24|~|PDCC|~|09:45|~|14.009111617312078|~|8.78|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 1,872 < 50,000 shares floor
+2026-08-24|~|PDSB|~|09:15|~|5.263157894736847|~|0.2185|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.22 < $5.00 floor
+2026-08-24|~|PLAG|~|09:55|~|20.087655222790353|~|0.6845|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor
+2026-08-24|~|PMI|~|09:55|~|27.85046728971963|~|3.21|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.21 < $5.00 floor
+2026-08-24|~|POAS|~|09:55|~|5.331680099194046|~|0.1613|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.16 < $5.00 floor
+2026-08-24|~|POM|~|09:55|~|9.462161877697095|~|0.9501|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.95 < $5.00 floor
+2026-08-24|~|PPCB|~|09:45|~|7.407407407407393|~|1.08|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.08 < $5.00 floor
+2026-08-24|~|PRPL|~|09:55|~|5.177215189873413|~|5.53|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 10,652 < 50,000 shares floor
+2026-08-24|~|PSIG|~|09:55|~|6.810035842293905|~|2.79|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.79 < $5.00 floor
+2026-08-24|~|PUSA|~|09:55|~|12.244897959183671|~|3.43|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.43 < $5.00 floor
+2026-08-24|~|PWCM|~|09:05|~|5.185185185185174|~|1.35|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.35 < $5.00 floor
+2026-08-24|~|QNC|~|08:50|~|7.0422535211267565|~|2.13|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.13 < $5.00 floor
+2026-08-24|~|QNTM|~|07:40|~|6.686046511627906|~|3.44|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $3.44 < $5.00 floor
+2026-08-24|~|QTRX|~|09:45|~|8.361204013377927|~|2.99|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $2.99 < $5.00 floor
+2026-08-24|~|RAIN|~|09:50|~|5.665286812536953|~|0.8455|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $0.85 < $5.00 floor
+2026-08-24|~|RCBC|~|09:45|~|10.1141924959217|~|49.04|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 12,888 < 50,000 shares floor
+2026-08-24|~|RCKT|~|09:25|~|5.008547008547014|~|3.51|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $3.51 < $5.00 floor
+2026-08-24|~|RCT|~|09:40|~|5.179487179487178|~|0.195|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $0.20 < $5.00 floor
+2026-08-24|~|RDZN|~|07:45|~|6.225806451612905|~|1.55|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.55 < $5.00 floor
+2026-08-24|~|RECT|~|09:55|~|9.448818897637786|~|1.27|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.27 < $5.00 floor
+2026-08-24|~|REFR|~|09:45|~|5.97618512693777|~|0.4451|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.45 < $5.00 floor
+2026-08-24|~|RGNT|~|08:40|~|5.238095238095232|~|2.1|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.10 < $5.00 floor
+2026-08-24|~|RITR|~|09:55|~|26.923076923076927|~|0.0832|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.08 < $5.00 floor
+2026-08-24|~|RNAZ|~|09:50|~|10.452961672473862|~|2.87|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $2.87 < $5.00 floor
+2026-08-24|~|ROC|~|09:55|~|11.12469437652812|~|4.09|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $4.09 < $5.00 floor
+2026-08-24|~|RPGL|~|09:55|~|9.078260869565222|~|2.3|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.30 < $5.00 floor
+2026-08-24|~|SAFX|~|09:55|~|8.436078672403196|~|0.3254|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.33 < $5.00 floor
+2026-08-24|~|SCOR|~|09:50|~|5.13694581280788|~|5.075|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_day_illiquid: prior-day volume 48,264 < 50,000 shares floor
+2026-08-24|~|SCTX|~|07:25|~|13.3|~|34.13|~|0|~|60|~||~|strong|~|164867.841158|~|polygon_20d|~||~|4|~||~||~|polygon_delayed|~|score 60 < bar 65 (catalyst=strong)
+2026-08-24|~|SDEV|~|09:45|~|7.894736842105271|~|1.14|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.14 < $5.00 floor
+2026-08-24|~|SDOT|~|09:55|~|73.6|~|13.18|~|33.73|~||~||~||~|300755.6784875|~|polygon_20d|~|23.828|~|1|~|526.2|~|25|~|polygon_delayed|~|quality filter: filter:atr_too_high: 16.2% > 15.0%
+2026-08-24|~|SEV|~|08:40|~|8.502024291497975|~|2.47|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.47 < $5.00 floor
+2026-08-24|~|SGLY|~|07:30|~|7.003891050583665|~|2.57|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.57 < $5.00 floor
+2026-08-24|~|SLGB|~|09:05|~|5.49427679500521|~|0.4805|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.48 < $5.00 floor
+2026-08-24|~|SLQT|~|08:15|~|6.919454172201428|~|0.8281|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.83 < $5.00 floor
+2026-08-24|~|SORA|~|09:45|~|7.106598984771568|~|1.97|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.97 < $5.00 floor
+2026-08-24|~|SOS|~|07:15|~|6.350653296870261|~|0.9873|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.99 < $5.00 floor
+2026-08-24|~|SPRC|~|09:15|~|5.451829723674374|~|6.695|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 3,278 < 50,000 shares floor
+2026-08-24|~|SSII|~|08:25|~|5.718270571827059|~|3.585|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $3.58 < $5.00 floor
+2026-08-24|~|STKE|~|09:40|~|5.26315789473683|~|1.33|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $1.33 < $5.00 floor
+2026-08-24|~|STRR|~|09:55|~|5.115346038114341|~|9.97|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 2,348 < 50,000 shares floor
+2026-08-24|~|SUGP|~|07:45|~|6.212499999999996|~|1.6|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.60 < $5.00 floor
+2026-08-24|~|SUIG|~|09:35|~|5.5045871559632875|~|1.09|~||~||~||~||~||~||~||~||~||~|5|~||~|filter:universe_prev_close_too_low: prior close $1.09 < $5.00 floor
+2026-08-24|~|SUPX|~|09:50|~|15.02|~|8.52|~|0.8|~||~||~||~|216656.9541835|~|polygon_20d|~|4.126|~|4|~|15.6|~|20|~|polygon_delayed|~|quality filter: filter:mcap_too_small: $368M < $500M
+2026-08-24|~|SVRN|~|09:55|~|6.801007556675064|~|7.94|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 7,703 < 50,000 shares floor
+2026-08-24|~|TCRT|~|09:45|~|5.681818181818187|~|1.76|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.76 < $5.00 floor
+2026-08-24|~|THH|~|07:20|~|7.5630252100840405|~|2.38|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.38 < $5.00 floor
+2026-08-24|~|TOPS|~|08:10|~|5.725238036354644|~|0.8087|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.81 < $5.00 floor
+2026-08-24|~|TPET|~|09:40|~|5.797101449275368|~|0.207|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $0.21 < $5.00 floor
+2026-08-24|~|TRAW|~|09:45|~|5.660377358490571|~|0.53|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.53 < $5.00 floor
+2026-08-24|~|TURB|~|09:45|~|6.034482758620696|~|1.16|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.16 < $5.00 floor
+2026-08-24|~|UFG|~|09:55|~|8.616944243301951|~|0.5524|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.55 < $5.00 floor
+2026-08-24|~|VCIG|~|09:25|~|6.153123532174741|~|3.1935|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $3.19 < $5.00 floor
+2026-08-24|~|VMAR|~|07:00|~|9.791356184798804|~|0.671|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.67 < $5.00 floor
+2026-08-24|~|VNRX|~|09:25|~|5.540897097625332|~|0.4169|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.42 < $5.00 floor
+2026-08-24|~|VNTG|~|09:55|~|6.061106523534261|~|0.6055|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.61 < $5.00 floor
+2026-08-24|~|VSA|~|09:50|~|5.999999999999999|~|3.5|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $3.50 < $5.00 floor
+2026-08-24|~|VWAV|~|09:35|~|5.463636363636347|~|1.1|~||~||~||~||~||~||~||~||~||~|5|~||~|filter:universe_prev_close_too_low: prior close $1.10 < $5.00 floor
+2026-08-24|~|WRAP|~|07:50|~|5.263157894736847|~|1.52|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.52 < $5.00 floor
+2026-08-24|~|XBIO|~|09:55|~|5.849582172701949|~|3.59|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.59 < $5.00 floor
+2026-08-24|~|XCH|~|09:50|~|5.303030303030305|~|4.62|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $4.62 < $5.00 floor
+2026-08-24|~|XPON|~|09:55|~|120.37845705967976|~|3.435|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.44 < $5.00 floor
+2026-08-24|~|XXII|~|09:55|~|8.956336528221508|~|3.756|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.76 < $5.00 floor
+2026-08-24|~|YMAT|~|09:55|~|5.155555555555555|~|1.8|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.80 < $5.00 floor
+2026-08-24|~|ZEO|~|09:55|~|9.530864197530855|~|0.405|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.41 < $5.00 floor
+2026-08-24|~|ZJK|~|08:20|~|15.111111111111105|~|2.25|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.25 < $5.00 floor
+2026-08-24|~|ZOOZ|~|09:45|~|6.443574225703099|~|5.618|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 33,998 < 50,000 shares floor
+2026-08-24|~|ZSTK|~|09:45|~|6.1571125265392785|~|4.71|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $4.71 < $5.00 floor
+2026-08-25|~|ADGM|~|08:45|~|5.405863412980858|~|0.5901|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.59 < $5.00 floor
+2026-08-25|~|AEI|~|09:55|~|9.48407643312102|~|1.57|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.57 < $5.00 floor
+2026-08-25|~|AEON|~|09:55|~|7.725430597771031|~|0.1974|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.20 < $5.00 floor
+2026-08-25|~|AGMB|~|09:55|~|5.304212168486737|~|12.82|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 31,652 < 50,000 shares floor
+2026-08-25|~|AHMA|~|09:55|~|5.000000000000004|~|1.4|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.40 < $5.00 floor
+2026-08-25|~|AIHS|~|07:30|~|11.888111888111899|~|1.43|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.43 < $5.00 floor
+2026-08-25|~|AIRE|~|09:55|~|6.249999999999992|~|1.6|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.60 < $5.00 floor
+2026-08-25|~|AIRI|~|09:55|~|5.387931034482759|~|2.32|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.32 < $5.00 floor
+2026-08-25|~|AIXI|~|09:55|~|238.7237762237762|~|0.4576|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.46 < $5.00 floor
+2026-08-25|~|AKTX|~|09:55|~|6.157965194109772|~|7.47|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 41,371 < 50,000 shares floor
+2026-08-25|~|AMIX|~|09:55|~|53.32|~|5.37|~|14.91|~||~||~||~|668600.6905949999|~|polygon_20d|~||~|1|~|232.6|~|25|~|polygon_delayed|~|quality filter: filter:atr_too_high: 32.5% > 15.0%
+2026-08-25|~|AMPG|~|09:55|~|5.333333333333325|~|3.45|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.45 < $5.00 floor
+2026-08-25|~|AMST|~|09:50|~|6.293103448275877|~|1.16|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $1.16 < $5.00 floor
+2026-08-25|~|APMD|~|07:35|~|9.21|~|25.63|~|0|~||~||~||~|347944.815839|~|polygon_20d|~||~|7|~||~||~|polygon_delayed|~|pre-mkt volume 622 < 25,000 shares
+2026-08-25|~|APUS|~|08:00|~|18.73684210526315|~|4.75|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $4.75 < $5.00 floor
+2026-08-25|~|APWC|~|09:45|~|6.164383561643842|~|1.46|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.46 < $5.00 floor
+2026-08-25|~|AQMS|~|09:55|~|6.071428571428585|~|2.8|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.80 < $5.00 floor
+2026-08-25|~|ARAY|~|07:15|~|9.351988217967591|~|0.2716|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.27 < $5.00 floor
+2026-08-25|~|AVXL|~|09:55|~|14.14790996784566|~|3.11|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.11 < $5.00 floor
+2026-08-25|~|AZTR|~|08:20|~|5.718085106382976|~|0.1504|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.15 < $5.00 floor
+2026-08-25|~|BCTX|~|09:45|~|5.202312138728328|~|3.46|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $3.46 < $5.00 floor
+2026-08-25|~|BDL|~|09:45|~|5.179599126810874|~|50.39|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 44,134 < 50,000 shares floor
+2026-08-25|~|BDRX|~|09:55|~|19.166666666666664|~|1.2|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.20 < $5.00 floor
+2026-08-25|~|BGDE|~|09:45|~|6.904299583911231|~|7.21|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 30,502 < 50,000 shares floor
+2026-08-25|~|BGI|~|09:55|~|8.58773181169758|~|0.3505|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.35 < $5.00 floor
+2026-08-25|~|BJDX|~|07:55|~|6.116085314374586|~|0.9002|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.90 < $5.00 floor
+2026-08-25|~|BMRA|~|07:45|~|6.547619047619054|~|1.68|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.68 < $5.00 floor
+2026-08-25|~|BRBI|~|09:55|~|8.805031446540898|~|9.54|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 1,463 < 50,000 shares floor
+2026-08-25|~|BRNX|~|09:55|~|19.37799043062202|~|4.18|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $4.18 < $5.00 floor
+2026-08-25|~|BRTX|~|09:45|~|7.879924953095689|~|0.2132|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.21 < $5.00 floor
+2026-08-25|~|BSAA|~|09:55|~|9.55302366345311|~|11.41|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 19,804 < 50,000 shares floor
+2026-08-25|~|BTCT|~|09:55|~|25.856321839080472|~|1.74|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.74 < $5.00 floor
+2026-08-25|~|BTLN|~|09:55|~|6.2789230122002495|~|0.9508|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.95 < $5.00 floor
+2026-08-25|~|BXBL|~|09:45|~|5.65110565110564|~|4.07|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $4.07 < $5.00 floor
+2026-08-25|~|BYSI|~|09:45|~|5.0338409475465244|~|0.7092|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.71 < $5.00 floor
+2026-08-25|~|CABR|~|09:45|~|7.385185185185178|~|1.35|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.35 < $5.00 floor
+2026-08-25|~|CAPR|~|09:55|~|15.07|~|6.8|~|0.54|~||~||~||~|8235045.148197|~|polygon_20d|~|2.722|~|4|~|8.4|~|25|~|polygon_delayed|~|quality filter: filter:mcap_too_small: $491M < $500M
+2026-08-25|~|CCHH|~|09:45|~|8.000000000000007|~|1.25|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.25 < $5.00 floor
+2026-08-25|~|CIGL|~|09:05|~|5.929139551699207|~|0.4149|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.41 < $5.00 floor
+2026-08-25|~|CIRC|~|09:55|~|7.667272176808974|~|0.6606|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.66 < $5.00 floor
+2026-08-25|~|CISO|~|09:55|~|7.883622712341615|~|0.2131|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.21 < $5.00 floor
+2026-08-25|~|CLLS|~|09:45|~|6.896551724137938|~|3.19|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $3.19 < $5.00 floor
+2026-08-25|~|CNTB|~|07:50|~|5.2173913043478315|~|2.3|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.30 < $5.00 floor
+2026-08-25|~|CNTN|~|07:30|~|5.140186915887844|~|2.14|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.14 < $5.00 floor
+2026-08-25|~|COCP|~|09:55|~|5.639639639639638|~|1.11|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.11 < $5.00 floor
+2026-08-25|~|COSM|~|07:45|~|5.51790900290416|~|0.2066|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.21 < $5.00 floor
+2026-08-25|~|CRIS|~|08:10|~|5.69620253164556|~|1.58|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.58 < $5.00 floor
+2026-08-25|~|CTSO|~|09:55|~|5.321447866018382|~|0.3702|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.37 < $5.00 floor
+2026-08-25|~|CTXR|~|09:50|~|7.386166145290229|~|0.5754|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $0.58 < $5.00 floor
+2026-08-25|~|DAIC|~|09:55|~|165.95375722543352|~|1.73|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.73 < $5.00 floor
+2026-08-25|~|DCGO|~|09:55|~|6.079664570230608|~|0.3816|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.38 < $5.00 floor
+2026-08-25|~|DFNS|~|09:55|~|31.7|~|11.01|~|2.96|~||~||~||~|2299127.361634|~|polygon_20d|~|11.714|~|3|~|46.2|~|25|~|polygon_delayed|~|quality filter: filter:atr_too_high: 57.6% > 15.0%
+2026-08-25|~|DPU|~|09:55|~|5.63063063063063|~|2.22|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.22 < $5.00 floor
+2026-08-25|~|DTIL|~|08:10|~|9.59|~|8.45|~|0|~||~||~||~|301632.246819|~|polygon_20d|~||~|6|~||~||~|polygon_delayed|~|quality filter: filter:mcap_too_small: $233M < $500M
+2026-08-25|~|DTSS|~|09:55|~|5.879082696316887|~|0.7195|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.72 < $5.00 floor
+2026-08-25|~|DUO|~|09:55|~|5.171255876427126|~|0.67005|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.67 < $5.00 floor
+2026-08-25|~|DWSN|~|09:55|~|5.017543859649129|~|3.42|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.42 < $5.00 floor
+2026-08-25|~|DWTX|~|09:35|~|7.031250000000005|~|2.56|~||~||~||~||~||~||~||~||~||~|5|~||~|filter:universe_prev_close_too_low: prior close $2.56 < $5.00 floor
+2026-08-25|~|ECBK|~|07:55|~|9.884836852207288|~|20.84|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 6,305 < 50,000 shares floor
+2026-08-25|~|EDBL|~|09:45|~|6.382978723404261|~|1.41|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.41 < $5.00 floor
+2026-08-25|~|EEIQ|~|09:45|~|11.538461538461531|~|2.6|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $2.60 < $5.00 floor
+2026-08-25|~|ELBM|~|08:30|~|5.43933054393305|~|0.5975|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.60 < $5.00 floor
+2026-08-25|~|EMIS|~|09:55|~|7.632093933463789|~|10.22|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 109 < 50,000 shares floor
+2026-08-25|~|EVGN|~|09:45|~|5.545617173524135|~|0.559|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.56 < $5.00 floor
+2026-08-25|~|EYPT|~|09:55|~|7.143737166324438|~|4.87|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $4.87 < $5.00 floor
+2026-08-25|~|FAC|~|09:50|~|8.478260869565231|~|4.6|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $4.60 < $5.00 floor
+2026-08-25|~|FBDT|~|07:00|~|5.853658536585372|~|2.05|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.05 < $5.00 floor
+2026-08-25|~|FFAI|~|09:40|~|5.980066445182731|~|3.01|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $3.01 < $5.00 floor
+2026-08-25|~|FGL|~|08:50|~|29.629629629629633|~|0.2754|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.28 < $5.00 floor
+2026-08-25|~|FLNC|~|08:35|~|9.8|~|10.86|~|0.09|~||~||~||~|6946291.3900655005|~|polygon_20d|~|3.149|~|6|~||~||~|polygon_delayed|~|EP cooldown — alerted within last 60 days
+2026-08-25|~|FLUX|~|07:25|~|5.729389912844695|~|0.6999|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.70 < $5.00 floor
+2026-08-25|~|FNGR|~|09:25|~|7.471852610030708|~|0.1954|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.20 < $5.00 floor
+2026-08-25|~|FRSX|~|07:05|~|5.128205128205133|~|1.17|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.17 < $5.00 floor
+2026-08-25|~|GCDT|~|09:15|~|22.222222222222236|~|0.3681|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.37 < $5.00 floor
+2026-08-25|~|GELS|~|08:35|~|8.049652059432022|~|0.5317|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.53 < $5.00 floor
+2026-08-25|~|GEMI|~|09:55|~|9.231503579952268|~|4.19|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $4.19 < $5.00 floor
+2026-08-25|~|GEVO|~|09:55|~|6.660130718954241|~|1.53|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.53 < $5.00 floor
+2026-08-25|~|GHG|~|09:55|~|5.454545454545439|~|1.1|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.10 < $5.00 floor
+2026-08-25|~|GITS|~|09:25|~|15.64625850340136|~|1.47|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.47 < $5.00 floor
+2026-08-25|~|GLIBA|~|09:45|~|6.08365019011406|~|26.3|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 27,552 < 50,000 shares floor
+2026-08-25|~|GOAI|~|07:35|~|5.825242718446607|~|2.06|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.06 < $5.00 floor
+2026-08-25|~|GPUS|~|09:25|~|8.418803418803405|~|0.468|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.47 < $5.00 floor
+2026-08-25|~|GRDX|~|09:55|~|6.027397260273978|~|3.65|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.65 < $5.00 floor
+2026-08-25|~|GRI|~|09:55|~|5.5865921787709425|~|1.79|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.79 < $5.00 floor
+2026-08-25|~|GRML|~|09:45|~|19.88|~|8.55|~|5.16|~||~||~||~|115819.38178699999|~|polygon_20d|~||~|3|~|134.2|~|15|~|polygon_delayed|~|quality filter: filter:adv_too_low: $533,390
+2026-08-25|~|GROV|~|09:55|~|5.641304347826081|~|0.92|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.92 < $5.00 floor
+2026-08-25|~|GSUN|~|09:55|~|7.88579197824609|~|0.2942|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.29 < $5.00 floor
+2026-08-25|~|HAO|~|08:25|~|5.980066445182731|~|3.01|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $3.01 < $5.00 floor
+2026-08-25|~|HODO|~|09:40|~|5.455755156353949|~|0.4509|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $0.45 < $5.00 floor
+2026-08-25|~|HSCS|~|07:30|~|5.434782608695665|~|2.76|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.76 < $5.00 floor
+2026-08-25|~|HVII|~|07:50|~|10.36|~|6.97|~|1.8|~||~||~||~|57782.009072500005|~|polygon_20d|~||~|5|~||~||~|polygon_delayed|~|quality filter: filter:adv_too_low: $606,974
+2026-08-25|~|ILLR|~|08:10|~|21.60578481486099|~|0.8021|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.80 < $5.00 floor
+2026-08-25|~|IMTX|~|09:55|~|9.44|~|8.69|~|0.22|~||~||~||~|438095.271817|~|polygon_20d|~|2.035|~|8|~|3.4|~|25|~|polygon_delayed|~|routine catalyst, gap 9.4%
+2026-08-25|~|INDP|~|09:31|~|6.896551724137938|~|1.16|~||~||~||~||~||~||~||~||~||~|1|~||~|filter:universe_prev_close_too_low: prior close $1.16 < $5.00 floor
+2026-08-25|~|IPDN|~|09:45|~|6.000000000000005|~|0.15|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.15 < $5.00 floor
+2026-08-25|~|IPW|~|09:10|~|6.222222222222228|~|2.25|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.25 < $5.00 floor
+2026-08-25|~|ISPR|~|09:55|~|10.218978102189773|~|1.37|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.37 < $5.00 floor
+2026-08-25|~|JAGX|~|09:15|~|6.359649122807011|~|0.912|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.91 < $5.00 floor
+2026-08-25|~|JEM|~|09:55|~|33.50785340314136|~|3.82|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.82 < $5.00 floor
+2026-08-25|~|KDK|~|09:50|~|5.274406332453825|~|3.79|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $3.79 < $5.00 floor
+2026-08-25|~|KURA|~|09:40|~|9.52|~|12.4|~|0.1|~||~||~||~|1589929.8183745|~|polygon_20d|~|1.533|~|7|~||~|10|~|polygon_delayed|~|EP cooldown — alerted within last 60 days
+2026-08-25|~|LAB|~|09:45|~|7.538461538461528|~|0.65|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.65 < $5.00 floor
+2026-08-25|~|LEDS|~|09:55|~|9.54594594594595|~|1.85|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.85 < $5.00 floor
+2026-08-25|~|LHSW|~|09:55|~|7.220216606498202|~|2.77|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.77 < $5.00 floor
+2026-08-25|~|LNAI|~|09:45|~|5.633802816901413|~|2.13|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $2.13 < $5.00 floor
+2026-08-25|~|LNKS|~|07:10|~|5.8320198153568965|~|0.8882|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.89 < $5.00 floor
+2026-08-25|~|LSF|~|09:50|~|7.161803713527852|~|3.77|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $3.77 < $5.00 floor
+2026-08-25|~|LTRN|~|09:55|~|5.450236966824655|~|2.11|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.11 < $5.00 floor
+2026-08-25|~|MAIR|~|09:55|~|15|~|24.97|~|0.23|~||~||~||~|3183220.1163545|~|polygon_20d|~|3.084|~|5|~|3.6|~|25|~|polygon_delayed|~|M&A/buyout catalyst — no momentum trade
+2026-08-25|~|MAMO|~|07:00|~|8.490566037735846|~|0.954|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.95 < $5.00 floor
+2026-08-25|~|MB|~|09:45|~|7.47252747252747|~|4.55|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $4.55 < $5.00 floor
+2026-08-25|~|MDIA|~|09:55|~|5.188679245283013|~|1.06|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.06 < $5.00 floor
+2026-08-25|~|MEI|~|09:55|~|12.69|~|14.03|~|0.04|~||~||~||~|557340.4455945|~|polygon_20d|~|0.326|~|6|~|0.6|~|25|~|polygon_delayed|~|filter:session_rvol_too_low: session_rvol=0.33x (today 24,264 / baseline 74,466 n=22) < 1.0x
+2026-08-25|~|MERC|~|09:50|~|7.206982543640892|~|0.401|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $0.40 < $5.00 floor
+2026-08-25|~|MGYR|~|07:50|~|29.80269989615783|~|19.26|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 5,978 < 50,000 shares floor
+2026-08-25|~|MLCI|~|09:50|~|5.769230769230759|~|3.12|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $3.12 < $5.00 floor
+2026-08-25|~|MNOV|~|09:45|~|5.228758169934645|~|1.53|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.53 < $5.00 floor
+2026-08-25|~|MRM|~|09:50|~|7.3571203031259955|~|0.9501|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $0.95 < $5.00 floor
+2026-08-25|~|MRNO|~|08:55|~|6.904231625835183|~|0.2245|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.22 < $5.00 floor
+2026-08-25|~|MSN|~|09:05|~|5.138679853794878|~|0.4651|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.47 < $5.00 floor
+2026-08-25|~|MTEK|~|09:50|~|7.142857142857128|~|1.12|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $1.12 < $5.00 floor
+2026-08-25|~|MYO|~|09:55|~|5.755395683453243|~|1.39|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.39 < $5.00 floor
+2026-08-25|~|NBBK|~|09:25|~|24.39|~|22.51|~|0|~|60|~||~|strong|~|394131.377805|~|polygon_20d|~|1.255|~|3|~||~||~|polygon_delayed|~|score 60 < bar 65 (catalyst=strong)
+2026-08-25|~|NCPL|~|09:55|~|8.13453265545563|~|0.2557|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.26 < $5.00 floor
+2026-08-25|~|NEPH|~|08:00|~|8.843537414965978|~|4.41|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $4.41 < $5.00 floor
+2026-08-25|~|NEXR|~|09:00|~|5.455696202531635|~|2.37|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.37 < $5.00 floor
+2026-08-25|~|NMAD|~|09:50|~|6.024096385542168|~|4.15|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $4.15 < $5.00 floor
+2026-08-25|~|NNBR|~|07:15|~|5.479452054794526|~|3.65|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $3.65 < $5.00 floor
+2026-08-25|~|NNOX|~|09:45|~|5.357556121268226|~|0.8642|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.86 < $5.00 floor
+2026-08-25|~|NOMA|~|09:45|~|5.084745762711869|~|2.36|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $2.36 < $5.00 floor
+2026-08-25|~|NWGL|~|09:55|~|5.5881394591072|~|0.6138|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.61 < $5.00 floor
+2026-08-25|~|NXTS|~|09:00|~|5.61797752808988|~|1.78|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.78 < $5.00 floor
+2026-08-25|~|NYAX|~|09:55|~|11.97488090082287|~|46.18|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 28,022 < 50,000 shares floor
+2026-08-25|~|ODYS|~|09:50|~|5.706521739130434|~|3.68|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $3.68 < $5.00 floor
+2026-08-25|~|OESX|~|09:55|~|10.53|~|20.99|~|0.38|~||~||~||~|52179.9978005|~|polygon_20d|~||~|7|~|5.9|~|25|~|polygon_delayed|~|quality filter: filter:adv_too_low: $999,273
+2026-08-25|~|OFAL|~|09:55|~|42.32673267326732|~|0.7272|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.73 < $5.00 floor
+2026-08-25|~|OTAI|~|08:20|~|6.593406593406595|~|10.01|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 4,557 < 50,000 shares floor
+2026-08-25|~|PACB|~|09:55|~|7.031250000000005|~|1.28|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.28 < $5.00 floor
+2026-08-25|~|PARK|~|09:55|~|5.619943882519699|~|20.7422|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 26,178 < 50,000 shares floor
+2026-08-25|~|PAVS|~|08:30|~|6.213592233009697|~|5.15|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 32,767 < 50,000 shares floor
+2026-08-25|~|PBAM|~|09:40|~|17.51412429378531|~|88.5|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_day_illiquid: prior-day volume 28,728 < 50,000 shares floor
+2026-08-25|~|PDC|~|09:55|~|5.8823529411764754|~|3.06|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.06 < $5.00 floor
+2026-08-25|~|PDSB|~|07:25|~|5.627306273062739|~|0.2168|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.22 < $5.00 floor
+2026-08-25|~|PFSA|~|08:25|~|5.895196506550209|~|4.58|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $4.58 < $5.00 floor
+2026-08-25|~|PLYX|~|09:55|~|5.347593582887693|~|1.87|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.87 < $5.00 floor
+2026-08-25|~|PMEC|~|09:55|~|15.193730953417509|~|0.4594|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.46 < $5.00 floor
+2026-08-25|~|PMI|~|09:55|~|32.16|~|5.13|~|8.97|~||~||~||~|141528.7686745|~|polygon_20d|~||~|2|~|139.9|~|25|~|polygon_delayed|~|quality filter: filter:adv_too_low: $248,885
+2026-08-25|~|POAS|~|09:45|~|6.0240963855421565|~|0.166|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.17 < $5.00 floor
+2026-08-25|~|PODC|~|09:50|~|8.913207547169819|~|2.65|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $2.65 < $5.00 floor
+2026-08-25|~|PROP|~|09:55|~|5.106632752885934|~|0.5111|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.51 < $5.00 floor
+2026-08-25|~|PRZO|~|09:55|~|11.129753914988811|~|0.6258|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.63 < $5.00 floor
+2026-08-25|~|PUSA|~|09:55|~|5.2910052910052965|~|3.78|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.78 < $5.00 floor
+2026-08-25|~|RBNE|~|09:55|~|5.237354085603124|~|2.57|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.57 < $5.00 floor
+2026-08-25|~|RCON|~|09:45|~|7.317073170731706|~|2.87|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $2.87 < $5.00 floor
+2026-08-25|~|RCT|~|09:50|~|5.541752577319579|~|0.194|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $0.19 < $5.00 floor
+2026-08-25|~|RDZN|~|09:40|~|5.112540192926053|~|1.555|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $1.55 < $5.00 floor
+2026-08-25|~|REAX|~|09:40|~|9.58|~|24|~|0|~||~||~||~|580450.3281125|~|polygon_20d|~||~|6|~||~|10|~|polygon_delayed|~|already up 900% in prior 5 days (extended)
+2026-08-25|~|RECT|~|08:25|~|5.468750000000004|~|1.28|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.28 < $5.00 floor
+2026-08-25|~|RIME|~|09:31|~|17.393976644130298|~|0.3254|~||~||~||~||~||~||~||~||~||~|1|~||~|filter:universe_prev_close_too_low: prior close $0.33 < $5.00 floor
+2026-08-25|~|RMSG|~|09:35|~|31.883656509695303|~|0.361|~||~||~||~||~||~||~||~||~||~|5|~||~|filter:universe_prev_close_too_low: prior close $0.36 < $5.00 floor
+2026-08-25|~|RNAZ|~|09:40|~|6.296296296296293|~|2.7|~||~||~||~||~||~||~||~||~||~|10|~||~|filter:universe_prev_close_too_low: prior close $2.70 < $5.00 floor
+2026-08-25|~|RNXT|~|09:55|~|6.951999999999998|~|1.25|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.25 < $5.00 floor
+2026-08-25|~|RPGL|~|09:45|~|5.357142857142862|~|1.68|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $1.68 < $5.00 floor
+2026-08-25|~|RR|~|09:55|~|6.7901234567901145|~|1.62|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.62 < $5.00 floor
+2026-08-25|~|RUBI|~|07:20|~|5.619318181818181|~|1.76|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.76 < $5.00 floor
+2026-08-25|~|RYOJ|~|08:10|~|5.0955414012738895|~|4.71|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $4.71 < $5.00 floor
+2026-08-25|~|RZLV|~|09:55|~|15.020576131687232|~|2.43|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.43 < $5.00 floor
+2026-08-25|~|SANA|~|09:55|~|5.2910052910052965|~|3.78|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.78 < $5.00 floor
+2026-08-25|~|SDA|~|09:55|~|5.728571428571432|~|0.7|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.70 < $5.00 floor
+2026-08-25|~|SDST|~|09:00|~|5.675995270003951|~|0.5074|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.51 < $5.00 floor
+2026-08-25|~|SHPH|~|09:45|~|5.96590909090909|~|3.52|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $3.52 < $5.00 floor
+2026-08-25|~|SJT|~|09:55|~|5.035971223021588|~|2.78|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.78 < $5.00 floor
+2026-08-25|~|SKYA|~|08:00|~|5.970149253731331|~|1.34|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.34 < $5.00 floor
+2026-08-25|~|SLGB|~|09:45|~|5.824659727782218|~|0.4996|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.50 < $5.00 floor
+2026-08-25|~|SLNH|~|09:50|~|5.676855895196502|~|1.145|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $1.15 < $5.00 floor
+2026-08-25|~|SLQT|~|07:15|~|14.690721649484534|~|0.776|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.78 < $5.00 floor
+2026-08-25|~|SNYR|~|09:05|~|15.980861244019145|~|0.1045|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.10 < $5.00 floor
+2026-08-25|~|SOS|~|07:15|~|7.934782608695647|~|0.92|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.92 < $5.00 floor
+2026-08-25|~|SPAI|~|08:20|~|10.24|~|5.37|~|0.12|~||~||~||~|119081.378238|~|polygon_20d|~||~|6|~||~||~|polygon_delayed|~|quality filter: filter:adv_too_low: $505,443
+2026-08-25|~|SQFT|~|09:55|~|5.442176870748304|~|1.47|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.47 < $5.00 floor
+2026-08-25|~|SWVL|~|09:55|~|65.97959183673471|~|1.47|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.47 < $5.00 floor
+2026-08-25|~|TENX|~|09:55|~|16.756756756756758|~|1.85|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.85 < $5.00 floor
+2026-08-25|~|TGHL|~|09:50|~|5.713553676658991|~|0.7806|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $0.78 < $5.00 floor
+2026-08-25|~|THCH|~|09:55|~|6.521739130434799|~|1.15|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $1.15 < $5.00 floor
+2026-08-25|~|THH|~|08:35|~|5.882352941176466|~|2.21|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.21 < $5.00 floor
+2026-08-25|~|THRY|~|09:20|~|6.091370558375629|~|1.97|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.97 < $5.00 floor
+2026-08-25|~|TLSA|~|08:35|~|5.2173913043478315|~|1.15|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.15 < $5.00 floor
+2026-08-25|~|TMCI|~|09:55|~|11.354691075514873|~|4.37|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $4.37 < $5.00 floor
+2026-08-25|~|TNMG|~|09:55|~|74.38411261940674|~|0.3978|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.40 < $5.00 floor
+2026-08-25|~|TOPP|~|08:05|~|5.263157894736847|~|0.19|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.19 < $5.00 floor
+2026-08-25|~|TRIB|~|09:45|~|6.292352371732821|~|10.33|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_day_illiquid: prior-day volume 6,864 < 50,000 shares floor
+2026-08-25|~|TWAV|~|08:00|~|8.823529411764696|~|1.36|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.36 < $5.00 floor
+2026-08-25|~|TXMD|~|09:55|~|8.454106280193251|~|2.07|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $2.07 < $5.00 floor
+2026-08-25|~|UCL|~|08:20|~|5.392953929539304|~|0.369|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.37 < $5.00 floor
+2026-08-25|~|UPXI|~|08:15|~|6.26086956521741|~|1.035|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.03 < $5.00 floor
+2026-08-25|~|USCB|~|09:55|~|6.442959001782524|~|22.44|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_day_illiquid: prior-day volume 26,970 < 50,000 shares floor
+2026-08-25|~|UXIN|~|09:05|~|5.263157894736848|~|1.14|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.14 < $5.00 floor
+2026-08-25|~|VCIG|~|07:35|~|12.794612794612789|~|2.97|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.97 < $5.00 floor
+2026-08-25|~|VERI|~|09:45|~|6.073347348750298|~|0.8562|~||~||~||~||~||~||~||~||~||~|15|~||~|filter:universe_prev_close_too_low: prior close $0.86 < $5.00 floor
+2026-08-25|~|VNRX|~|07:25|~|5.601023017902806|~|0.391|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.39 < $5.00 floor
+2026-08-25|~|WAFD|~|09:05|~|10.22|~|36.29|~|0|~||~||~||~|657303.20221|~|polygon_20d|~|0.681|~|7|~||~||~|polygon_delayed|~|filter:pm_rvol_too_low: pm_rvol=0.68x (today 1,206 / baseline 1,770 n=16) < 1.0x
+2026-08-25|~|WBUY|~|09:10|~|8.888888888888882|~|0.765|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.77 < $5.00 floor
+2026-08-25|~|WKSP|~|09:10|~|5.763268283786242|~|0.5483|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $0.55 < $5.00 floor
+2026-08-25|~|WLDS|~|08:35|~|6.149779735682827|~|2.27|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $2.27 < $5.00 floor
+2026-08-25|~|WSBK|~|09:25|~|15.550423402617394|~|12.99|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_day_illiquid: prior-day volume 6,512 < 50,000 shares floor
+2026-08-25|~|WVVI|~|09:50|~|7.798165137614675|~|2.18|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $2.18 < $5.00 floor
+2026-08-25|~|XELB|~|09:55|~|7.7901234567901145|~|0.81|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $0.81 < $5.00 floor
+2026-08-25|~|XXII|~|07:35|~|8.315235096101633|~|3.6836|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $3.68 < $5.00 floor
+2026-08-25|~|YI|~|09:55|~|9.348441926345611|~|3.53|~||~||~||~||~||~||~||~||~||~|25|~||~|filter:universe_prev_close_too_low: prior close $3.53 < $5.00 floor
+2026-08-25|~|ZENA|~|09:25|~|5.027932960893847|~|1.79|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $1.79 < $5.00 floor
+2026-08-25|~|ZEPP|~|07:35|~|5.0100200400801596|~|4.99|~||~||~||~||~||~||~||~||~||~||~||~|filter:universe_prev_close_too_low: prior close $4.99 < $5.00 floor
+2026-08-25|~|ZSQR|~|09:50|~|5.191256830601091|~|3.66|~||~||~||~||~||~||~||~||~||~|20|~||~|filter:universe_prev_close_too_low: prior close $3.66 < $5.00 floor
+(434 rows)

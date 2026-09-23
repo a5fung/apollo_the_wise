@@ -1,0 +1,74 @@
+d	t	event_type	summary
+2026-07-27	09:56:55.272571	orb_out_of_window	NNE — window:out_of_orb: detected 09:56 ET
+2026-07-28	09:31:00.950771	orb_blocked	ORB CORZ — block:circuit_breaker: cooldown until 2026-07-28T14:37:45.699612+00:00
+2026-07-29	09:31:00.29139	orb_blocked	ORB TER — block:circuit_breaker: cooldown until 2026-07-29T13:36:25.188082+00:00
+2026-07-29	09:51:36.048067	orb_out_of_window	TEVA — window:out_of_orb: detected 09:51 ET
+2026-07-30	09:31:21.078476	orb_skipped	ORB SIMO — setup:size_too_small: $12 risk / $29.11 per-share < 1 share
+2026-07-30	09:31:21.64658	orb_skipped	ORB CORT — setup:stop_too_wide: ORB range $7.25 (6.9%) > 1.5x ATR $6.89
+2026-07-30	09:31:21.658227	orb_skipped	ORB EME — setup:size_too_small: $12 risk / $16.65 per-share < 1 share
+2026-07-30	09:31:25.402163	orb_skipped	ORB CORT — setup:stop_too_wide: ORB range $7.25 (6.9%) > 1.5x ATR $6.89
+2026-07-30	09:31:25.402372	orb_skipped	ORB EME — setup:size_too_small: $12 risk / $16.65 per-share < 1 share
+2026-07-30	09:31:25.403967	orb_skipped	ORB PWR — setup:size_too_small: $12 risk / $21.95 per-share < 1 share
+2026-07-30	09:31:31.798011	orb_skipped	ORB PWR — setup:size_too_small: $12 risk / $21.95 per-share < 1 share
+2026-07-30	09:51:06.118681	orb_out_of_window	LRCX — window:out_of_orb: detected 09:51 ET
+2026-07-31	09:31:00.684507	orb_blocked	ORB FLNC — block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00
+2026-07-31	09:31:00.719035	orb_blocked	ORB COHU — block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00
+2026-07-31	09:31:00.730097	orb_blocked	ORB NWL — block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00
+2026-07-31	09:31:00.761498	orb_blocked	ORB FET — block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00
+2026-07-31	09:35:42.835839	orb_blocked	ORB MPWR — block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00
+2026-07-31	09:56:31.533847	orb_out_of_window	BLZE — window:out_of_orb: detected 09:56 ET
+2026-08-03	09:31:04.81826	orb_gap_below_floor	ORB FTK — setup:gap_below_floor: rt 6.8% < 10% floor (alert said 10.4%, last $25.13 vs prev close $23.54)
+2026-08-03	09:31:10.904406	orb_gap_below_floor	ORB FTK — setup:gap_below_floor: rt 6.8% < 10% floor (alert said 10.4%, last $25.13 vs prev close $23.54)
+2026-08-03	09:55:41.587437	orb_out_of_window	LIND — window:out_of_orb: detected 09:55 ET
+2026-08-04	09:31:11.276169	orb_blocked	ORB AEIS — block:max_positions: 5/5 (mode=live)
+2026-08-04	09:31:11.31075	orb_blocked	ORB ZBRA — block:max_positions: 5/5 (mode=live)
+2026-08-04	09:31:11.456154	orb_skipped	ORB VOYG — setup:zero_range: open=high=low=$33.99
+2026-08-04	09:45:56.128407	orb_out_of_window	AMRC — window:out_of_orb: detected 09:45 ET
+2026-08-04	09:56:35.758029	orb_out_of_window	TSAT — window:out_of_orb: detected 09:56 ET
+2026-08-05	09:31:00.620681	orb_blocked	ORB KTOS — block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00
+2026-08-05	09:31:00.636373	orb_blocked	ORB APPS — block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00
+2026-08-05	09:31:00.646136	orb_blocked	ORB KMT — block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00
+2026-08-05	09:31:00.882814	orb_blocked	ORB KODK — block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00
+2026-08-05	09:31:01.437465	orb_blocked	ORB TATT — block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00
+2026-08-05	09:51:23.623677	orb_out_of_window	ECG — window:out_of_orb: detected 09:51 ET
+2026-08-05	09:55:54.083106	orb_out_of_window	HGTY — window:out_of_orb: detected 09:55 ET
+2026-08-06	09:31:00.842508	orb_skipped	ORB SITM — setup:size_too_small: $48 risk / $48.88 per-share < 1 share
+2026-08-06	09:31:01.014181	orb_skipped	ORB AEVA — setup:stop_too_wide: ORB range $3.08 (13.4%) > 1.5x ATR $2.33
+2026-08-06	09:31:10.790404	orb_gap_below_floor	ORB LFST — setup:gap_below_floor: rt -2.0% < 10% floor (alert said 18.8%, last $10.16 vs prev close $10.37)
+2026-08-06	09:31:11.364962	orb_gap_below_floor	ORB U — setup:gap_below_floor: rt 1.0% < 10% floor (alert said 18.4%, last $35.83 vs prev close $35.47)
+2026-08-06	09:53:23.759767	orb_out_of_window	CAI — window:out_of_orb: detected 09:53 ET
+2026-08-06	09:56:24.696269	orb_out_of_window	DCTH — window:out_of_orb: detected 09:56 ET
+2026-08-07	09:31:10.827557	orb_gap_below_floor	ORB ACMR — setup:gap_below_floor: rt 6.6% < 10% floor (alert said 15.1%, last $84.19 vs prev close $78.98)
+2026-08-07	09:31:11.821103	orb_blocked	ORB TWLO — block:max_positions: 5/5 (mode=live)
+2026-08-07	09:52:08.60105	orb_out_of_window	ONTO — window:out_of_orb: detected 09:52 ET
+2026-08-07	09:52:09.499076	orb_out_of_window	MTW — window:out_of_orb: detected 09:52 ET
+2026-08-10	09:31:06.152573	orb_gap_below_floor	ORB TH — setup:gap_below_floor: rt -5.0% < 10% floor (alert said 12.2%, last $15.68 vs prev close $16.51)
+2026-08-10	09:45:47.723316	orb_out_of_window	ACHR — window:out_of_orb: detected 09:45 ET
+2026-08-10	09:45:48.723333	orb_out_of_window	NESR — window:out_of_orb: detected 09:45 ET
+2026-08-11	09:31:10.968068	orb_gap_below_floor	ORB SE — setup:gap_below_floor: rt 9.2% < 10% floor (alert said 10.6%, last $125.36 vs prev close $114.80)
+2026-08-11	09:31:15.710291	orb_blocked	ORB BW — block:max_positions: 5/5 (mode=live)
+2026-08-11	09:31:15.802396	orb_blocked	ORB SE — block:max_positions: 5/5 (mode=live)
+2026-08-12	09:31:10.208505	orb_skipped	ORB ATRO — setup:stop_too_wide: ORB range $5.75 (7.2%) > 1.5x ATR $5.29
+2026-08-12	09:31:10.218846	orb_gap_below_floor	ORB GLBE — setup:gap_below_floor: rt 4.8% < 10% floor (alert said 10.7%, last $42.81 vs prev close $40.86)
+2026-08-12	09:31:10.844208	orb_gap_below_floor	ORB GLBE — setup:gap_below_floor: rt 4.8% < 10% floor (alert said 10.7%, last $42.81 vs prev close $40.86)
+2026-08-12	09:31:10.878899	orb_skipped	ORB ATRO — setup:stop_too_wide: ORB range $5.75 (7.2%) > 1.5x ATR $5.29
+2026-08-12	09:50:22.65409	orb_out_of_window	BE — window:out_of_orb: detected 09:50 ET
+2026-08-12	09:50:23.64451	orb_out_of_window	CRWV — window:out_of_orb: detected 09:50 ET
+2026-08-12	09:55:44.909707	orb_out_of_window	MRX — window:out_of_orb: detected 09:55 ET
+2026-08-13	09:31:20.75995	orb_skipped	ORB HLIT — infra:no_bar: 3 retries exhausted
+2026-08-13	09:31:20.85258	orb_skipped	ORB CRMD — infra:no_bar: 3 retries exhausted
+2026-08-13	09:31:21.49441	orb_skipped	ORB CGEM — infra:no_bar: 3 retries exhausted
+2026-08-13	09:31:26.677239	orb_gap_below_floor	ORB CGEM — setup:gap_below_floor: rt 1.8% < 10% floor (alert said 12.2%, last $19.95 vs prev close $19.60)
+2026-08-13	09:45:22.428133	orb_out_of_window	OMER — window:out_of_orb: detected 09:45 ET
+2026-08-13	09:51:26.859571	orb_out_of_window	KURA — window:out_of_orb: detected 09:51 ET
+2026-08-14	09:31:01.201175	orb_skipped	ORB HTFL — setup:stop_too_wide: ORB range $2.55 (7.0%) > 1.5x ATR $2.19
+2026-08-14	09:31:10.387032	orb_gap_below_floor	ORB VERA — setup:gap_below_floor: rt 5.6% < 10% floor (alert said 14.2%, last $30.50 vs prev close $28.89)
+2026-08-14	09:31:11.235382	orb_gap_below_floor	ORB VERA — setup:gap_below_floor: rt 3.0% < 10% floor (alert said 14.2%, last $29.75 vs prev close $28.89)
+2026-08-14	09:50:39.981464	orb_out_of_window	NMAX — window:out_of_orb: detected 09:50 ET
+2026-08-17	09:31:00.902194	orb_gap_below_floor	ORB ARGX — setup:gap_below_floor: rt 9.5% < 10% floor (alert said 10.5%, last $931.98 vs prev close $851.29)
+2026-08-19	09:31:11.835093	orb_blocked	ORB MRNA — block:max_positions: 5/5 (mode=live)
+2026-08-19	09:55:39.208914	orb_out_of_window	TWST — window:out_of_orb: detected 09:55 ET
+2026-08-20	09:31:00.931035	orb_skipped	ORB BULL — setup:stop_too_wide: ORB range $0.54 (5.7%) > 1.5x ATR $0.52
+2026-08-20	09:31:20.87737	orb_skipped	ORB RARE — infra:no_bar: 3 retries exhausted
+2026-08-20	09:31:23.578114	orb_gap_below_floor	ORB RARE — setup:gap_below_floor: rt 5.4% < 9% floor (alert said 11.4%, last $27.65 vs prev close $26.24)
+2026-08-21	09:55:39.815927	orb_out_of_window	UUUU — window:out_of_orb: detected 09:55 ET

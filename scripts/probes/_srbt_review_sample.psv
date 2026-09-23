@@ -1,0 +1,41 @@
+bucket|ticker|alert_date|adv_dollar_20d|overhead_vol_frac|overhead_vol_frac_60d|zones_cleared|zones_remaining|v2_label|gap_open_pct|ret_5d|max_high_5d|alerted|alert_tier|scan_filter_reason
+A|ASTC|2026-05-28|80852|0.0000|0.0000|0|0|CLEAR_AIR|57.06|0.7727|2.1743|0||already up 506% in prior 5 days (extended)
+A|CPSH|2026-05-26|2043090|0.0000|0.0000|2|0|CLEAR_AIR|17.83|0.3069|1.0354|0||quality filter: filter:mcap_too_small: $108M < $500M
+A|MXL|2026-04-21|18138700|0.0000|0.0000|0|0|CLEAR_AIR|5.64|0.5516|0.8950|0||score 18 < 50 (catalyst=routine)
+A|TRT|2026-04-23|367303|0.0000|0.0000|0|0|CLEAR_AIR|33.17|0.2791|0.7364|0||quality filter: filter:adv_too_low: $380,435
+A|MF|2026-08-14|1363840|0.0000|0.0000|1|0|CLEAR_AIR|30.40|0.2561|0.5054|0||quality filter: filter:atr_too_high: 15.1% > 15.0%
+A|OCC|2026-06-08|4192720|0.0000|0.0000|2|0|CLEAR_AIR|59.43|0.0566|0.4268|0||quality filter: filter:mcap_too_small: $109M < $500M
+A|ABCL|2026-08-10|26740500|0.0000|0.0000|1|0|CLEAR_AIR|26.41|0.2785|0.3293|1|HIGH|already scored earlier today
+A|AMPG|2026-06-09|31950600|0.0000|0.0000|0|0|CLEAR_AIR|8.07|0.2366|0.3099|0||quality filter: filter:mcap_too_small: $166M < $500M
+A|QUAD|2026-07-29|1103140|0.0000|0.0000|3|0|CLEAR_AIR|6.30|0.1477|0.2466|0||outside top-20 gap cap (gap 10.0%)
+A|ANIK|2026-07-29|852054|0.0000|0.0000|8|0|CLEAR_AIR|13.73|0.1138|0.2255|0||quality filter: filter:adv_too_low: $858,542
+B|GDC|2026-05-06|105398|0.0000|0.0000|0|0|CLEAR_AIR|25.21|-0.9793|0.0907|0||already up 77% in prior 5 days (extended)
+B|CAR|2026-04-22|1293550000|0.0000|0.0000|0|0|CLEAR_AIR|8.55|-0.7663|0.0938|0||already up 92% in prior 5 days (extended)
+B|CAR|2026-04-21|880935000|0.0000|0.0000|0|0|CLEAR_AIR|2.50|-0.7083|0.3585|0||low volume rel_vol 0.1x < 2.0x (post-open)
+B|ADVB|2026-07-24|75636|0.0000|0.0000|0|0|CLEAR_AIR|37.60|-0.6535|0.0493|0||already up 242% in prior 5 days (extended)
+B|JLHL|2026-06-08|846876|0.0000|0.0000|0|0|CLEAR_AIR|24.00|-0.6182|0.0432|0||already up 137% in prior 5 days (extended)
+B|QH|2026-06-18|751040|0.0000|0.0000|1|0|CLEAR_AIR|5.13|-0.5018|0.1582|0||already up 224% in prior 5 days (extended)
+B|MRAM|2026-05-13|15484500|0.0000|0.0000|0|0|CLEAR_AIR|14.09|-0.4236|0.0257|0||EP cooldown — alerted within last 60 days
+B|YOU|2026-08-05|56425500|0.0000|0.0000|7|0|CLEAR_AIR|16.22|-0.2873|0.0664|0||score 36 < 50 (catalyst=strong)
+B|AEHR|2026-08-14|211356000|0.0000|0.0000|0|0|CLEAR_AIR|8.36|-0.2386|0.1032|0||EP cooldown — alerted within last 60 days
+B|QTTB|2026-07-13|4608120|0.0000|0.0000|3|0|CLEAR_AIR|63.34|-0.1786|0.2873|0||quality filter: filter:mcap_too_small: $190M < $500M
+C|VEEE|2026-07-08|182622|0.9229|0.7774|0|30|INTO_SUPPLY|4.09|3.5375|7.3259|0||quality filter: filter:adv_too_low: $182,622
+C|IONL|2026-04-14|4825800|0.9036|0.8096|1|21|LADDER_CLIMBING|13.46|0.9845|1.1992|0||low rel volume 0.9x < 2.0x
+C|IONX|2026-04-14|30609600|0.9032|0.8191|1|24|LADDER_CLIMBING|14.04|0.9803|1.1875|0||low rel volume 0.7x < 2.0x
+C|ARQQ|2026-06-15|8148310|0.8925|0.6134|2|21|IFFY_AT_FIRST_ZONE|5.66|1.0209|1.0800|0||quality filter: filter:mcap_too_small: $304M < $500M
+C|HCAI|2026-05-18|929069|0.9059|0.9100|3|18|INTO_SUPPLY|63.18|0.0708|0.8761|0||quality filter: filter:adv_too_low: $929,069
+C|FJET|2026-05-22|5015990|0.9238|0.7685|0|10|INTO_SUPPLY|1.55|0.8164|0.8642|0||quality filter: filter:mcap_too_small: $253M < $500M
+C|OTLY|2026-07-22|562147|0.8442|0.3482|0|23|INTO_SUPPLY|8.51|0.5540|0.6060|0||quality filter: filter:adv_too_low: $545,992
+C|ARQQ|2026-06-09|7618390|0.9640|0.8588|0|21|INTO_SUPPLY|2.96|0.5106|0.5553|0||quality filter: filter:mcap_too_small: $223M < $500M
+C|BLSH|2026-08-13|27528600|0.9259|0.4748|1|22|IFFY_AT_FIRST_ZONE|1.50|0.1376|0.1748|1|MODERATE|
+C|RNA|2026-08-10|1361800|0.9946|0.7250|0|14|INTO_SUPPLY|-0.73|0.0580|0.0894|0||quality filter: filter:mcap_too_small: $211M < $500M
+D|SMX|2026-05-11|6229210|0.9794|0.9714|0|12|CLEARED_NOTHING|3.60|-0.7100|0.0000|0||outside top-20 gap cap (gap 8.1%)
+D|IPCX|2026-07-29|469915|0.9959|0.9797|0|0|CLEAR_AIR|10.35|-0.5312|0.1082|0||quality filter: filter:adv_too_low: $522,205
+D|GLND|2026-04-23|9773650|0.8510|0.8510|0|2|CLEARED_NOTHING|-0.95|-0.5096|0.2804|0||outside top-20 gap cap (gap 9.0%)
+D|RGC|2026-06-22|2130410|0.9876|0.9964|0|22|CLEARED_NOTHING|0.83|-0.4889|0.2106|0||quality filter: filter:atr_too_high: 18.1% > 15.0%
+D|APUS|2026-07-29|65128|0.9699|0.8190|0|20|IFFY_AT_FIRST_ZONE|1.25|-0.4259|0.0216|0||quality filter: filter:adv_too_low: $67,473
+D|BIRD|2026-06-18|1265580|0.8377|0.8528|2|8|IFFY_AT_FIRST_ZONE|17.34|-0.3142|0.2053|0||quality filter: filter:mcap_too_small: $48M < $500M
+D|LCID|2026-04-14|53614200|0.9390|0.7736|0|17|INTO_SUPPLY|4.76|-0.2655|0.0424|0||outside top-20 gap cap (gap 8.8%)
+D|NAKA|2026-05-29|1029110|0.9875|0.8209|0|23|CLEARED_NOTHING|2.68|-0.2504|0.2052|0||quality filter: filter:atr_too_high: 15.6% > 15.0%
+D|LENZ|2026-08-12|4180090|0.8687|0.3692|1|27|INTO_SUPPLY|13.82|-0.1703|0.1366|0||quality filter: filter:mcap_too_small: $163M < $500M
+D|AHCO|2026-08-04|10311100|1.0000|1.0000|0|8|CLEARED_NOTHING|-38.37|-0.1536|0.0532|0||M&A/buyout catalyst — no momentum trade

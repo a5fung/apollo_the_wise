@@ -1,0 +1,49 @@
+Pager usage is off.
+===T1_bldr_rs
+score_date|rs
+2026-08-26|5.2
+2026-08-25|10.0
+2026-08-24|13.8
+2026-08-21|25.7
+2026-08-20|29.4
+2026-08-19|29.2
+2026-08-18|5.9
+2026-08-17|8.9
+2026-08-14|11.9
+2026-08-13|21.6
+2026-08-12|21.5
+(11 rows)
+===T2_prune_while_rising_flags_14d
+t_et|event_type|summary|detail
+08-26 17:30|anomaly_detected|L2 theme_count_active|{"level": 2, "key": "theme_count_active", "current": 166.0, "baseline_p50": 127.5, "baseline_p95": 159.0, "mad": 7.5, "sample_n": 22, "z_score": 5.13, "ratio": 0.77, "regime_conditional": false, "to_band": 3, "event_deltas": [{"event_type": "ticker_revalidated_out", "today_count": 24, "baseline_median": 1.0, "baseline_label": "median", "firing_days": 7, "window_total": 40, "ratio": 24.0, "is_new":
+08-26 17:30|anomaly_detected|L2 cooldowns_per_day|{"level": 2, "key": "cooldowns_per_day", "current": 24.0, "baseline_p50": 2.0, "baseline_p95": 13.0, "mad": 2.0, "sample_n": 22, "z_score": 11.0, "ratio": 12.0, "regime_conditional": false, "to_band": 3, "event_deltas": [{"event_type": "ticker_revalidated_out", "today_count": 24, "baseline_median": 1.0, "baseline_label": "median", "firing_days": 7, "window_total": 40, "ratio": 24.0, "is_new": fals
+08-25 17:30|theme_member_pruned_while_rising|BLDR@Wood-Based Building Materials Distribution: pruned while RS rising (RS=10.0)|{'name': 'Wood-Based Building Materials Distribution', 'ticker': 'BLDR', 'rs_now': 10.0, 'hist': [10.0, 13.8, 25.7, 29.4, 29.2, 5.9]}
+08-25 17:30|anomaly_detected|L2 theme_count_active|{"level": 2, "key": "theme_count_active", "current": 162.0, "baseline_p50": 127.0, "baseline_p95": 159.0, "mad": 7.0, "sample_n": 21, "z_score": 5.0, "ratio": 0.78, "regime_conditional": false, "to_band": 3, "event_deltas": [{"event_type": "ep_filter_pm_rvol", "today_count": 31, "baseline_median": 2.75, "baseline_label": "firing_day_mean", "firing_days": 4, "window_total": 11, "ratio": 11.27272727
+08-24 17:30|anomaly_detected|L2 theme_count_active|{"level": 2, "key": "theme_count_active", "current": 159.0, "baseline_p50": 126.5, "baseline_p95": 145.0, "mad": 7.0, "sample_n": 20, "z_score": 4.64, "ratio": 0.8, "regime_conditional": false, "to_band": 3, "event_deltas": [{"event_type": "split_applied", "today_count": 15, "baseline_median": 2.0, "baseline_label": "median", "firing_days": 9, "window_total": 33, "ratio": 7.5, "is_new": false}, {"
+08-24 17:30|anomaly_detected|L3 cooldowns_per_day|{"level": 3, "key": "cooldowns_per_day", "current": 5.0, "baseline_p50": 2.0, "z_score": 1.5, "ratio": 2.5, "from_band": 3, "to_band": 1, "warming": false}
+08-24 16:15|anomaly_detected|L3 9m_alerts_per_day|{"level": 3, "key": "9m_alerts_per_day", "current": 8.0, "baseline_p50": 13.5, "z_score": -1.83, "ratio": 0.59, "from_band": 2, "to_band": 1, "warming": false}
+08-21 17:30|anomaly_detected|L2 theme_count_active|{"level": 2, "key": "theme_count_active", "current": 159.0, "baseline_p50": 122.0, "baseline_p95": 141.0, "mad": 8.0, "sample_n": 22, "z_score": 4.62, "ratio": 0.77, "regime_conditional": false, "to_band": 3, "event_deltas": [{"event_type": "ticker_revalidated_out", "today_count": 13, "baseline_median": 1.0, "baseline_label": "median", "firing_days": 7, "window_total": 35, "ratio": 13.0, "is_new":
+08-21 17:30|anomaly_detected|L2 cooldowns_per_day|{"level": 2, "key": "cooldowns_per_day", "current": 13.0, "baseline_p50": 1.5, "baseline_p95": 11.0, "mad": 1.0, "sample_n": 22, "z_score": 11.5, "ratio": 8.67, "regime_conditional": false, "to_band": 3, "event_deltas": [{"event_type": "ticker_revalidated_out", "today_count": 13, "baseline_median": 1.0, "baseline_label": "median", "firing_days": 7, "window_total": 35, "ratio": 13.0, "is_new": fals
+08-21 16:15|anomaly_detected|L3 9m_alerts_per_day|{"level": 3, "key": "9m_alerts_per_day", "current": 16.0, "baseline_p50": 12.0, "z_score": 2.0, "ratio": 1.33, "from_band": 3, "to_band": 2, "warming": false}
+08-21 16:15|anomaly_detected|L1 silent_audit_error_window|{"level": 1, "key": "silent_audit_error_window", "summary": "9 '*_error' events in last 24h", "count": 9, "drill_sql": "SELECT event_type, summary, detail, created_at FROM mi_audit_log\nWHERE event_type LIKE '%_error'\n  AND created_at >= NOW() - INTERVAL '24 hours'\nORDER BY created_at DESC LIMIT 50;", "code_pointers": [], "offending": ["theme_merge_adjudication_error: 8", "job_cancelled_error: 1
+08-20 16:15|anomaly_detected|L1 silent_audit_error_window|{"level": 1, "key": "silent_audit_error_window", "summary": "3 '*_error' events in last 24h", "count": 3, "drill_sql": "SELECT event_type, summary, detail, created_at FROM mi_audit_log\nWHERE event_type LIKE '%_error'\n  AND created_at >= NOW() - INTERVAL '24 hours'\nORDER BY created_at DESC LIMIT 50;", "code_pointers": [], "offending": ["discovery_error: 1", "job_cancelled_error: 1", "validation_
+08-19 16:15|anomaly_detected|L2 9m_alerts_per_day|{"level": 2, "key": "9m_alerts_per_day", "current": 29.0, "baseline_p50": 11.0, "baseline_p95": 25.0, "mad": 2.5, "sample_n": 20, "z_score": 7.2, "ratio": 2.64, "regime_conditional": false, "to_band": 3, "event_deltas": [{"event_type": "assignment_llm_proposed", "today_count": 28, "baseline_median": 1.0, "baseline_label": "median", "firing_days": 7, "window_total": 128, "ratio": 28.0, "is_new": fa
+08-18 17:30|anomaly_detected|L3 theme_count_active|{"level": 3, "key": "theme_count_active", "current": 133.0, "baseline_p50": 114.0, "z_score": 2.11, "ratio": 0.86, "from_band": 1, "to_band": 2, "warming": false}
+08-18 17:30|anomaly_detected|L3 cooldowns_per_day|{"level": 3, "key": "cooldowns_per_day", "current": 2.0, "baseline_p50": 1.0, "z_score": 1.0, "ratio": 2.0, "from_band": 3, "to_band": 1, "warming": false}
+08-17 17:30|anomaly_detected|L3 theme_count_active|{"level": 3, "key": "theme_count_active", "current": 129.0, "baseline_p50": 114.0, "z_score": 1.76, "ratio": 0.88, "from_band": 2, "to_band": 1, "warming": false}
+08-17 17:30|anomaly_detected|L2 cooldowns_per_day|{"level": 2, "key": "cooldowns_per_day", "current": 10.0, "baseline_p50": 1.0, "baseline_p95": 11.0, "mad": 0.5, "sample_n": 20, "z_score": 0.0, "ratio": 10.0, "regime_conditional": false, "to_band": 3, "event_deltas": [{"event_type": "assignment_llm_proposed", "today_count": 14, "baseline_median": 1.0, "baseline_label": "median", "firing_days": 7, "window_total": 117, "ratio": 14.0, "is_new": fal
+08-17 16:15|anomaly_detected|L3 9m_alerts_per_day|{"level": 3, "key": "9m_alerts_per_day", "current": 7.0, "baseline_p50": 11.5, "z_score": -1.5, "ratio": 0.61, "from_band": 2, "to_band": 1, "warming": false}
+08-17 16:15|anomaly_detected|L3 skip_count_window|{"level": 3, "key": "skip_count_window", "current": 0.0, "baseline_p50": 1.0, "z_score": -1.0, "ratio": 0.0, "from_band": 0, "to_band": 1, "warming": false}
+08-17 16:15|anomaly_detected|L1 silent_audit_error_window|{"level": 1, "key": "silent_audit_error_window", "summary": "1 '*_error' events in last 24h", "count": 1, "drill_sql": "SELECT event_type, summary, detail, created_at FROM mi_audit_log\nWHERE event_type LIKE '%_error'\n  AND created_at >= NOW() - INTERVAL '24 hours'\nORDER BY created_at DESC LIMIT 50;", "code_pointers": [], "offending": ["job_cancelled_error: 1"]}
+08-14 16:15|anomaly_detected|L3 9m_alerts_per_day|{"level": 3, "key": "9m_alerts_per_day", "current": 16.0, "baseline_p50": 11.0, "z_score": 2.0, "ratio": 1.45, "from_band": 1, "to_band": 2, "warming": false}
+08-13 17:30|anomaly_detected|L3 cooldowns_per_day|{"level": 3, "key": "cooldowns_per_day", "current": 0.0, "baseline_p50": 1.5, "z_score": -1.5, "ratio": 0.0, "from_band": 3, "to_band": 1, "warming": false}
+(22 rows)
+===T3_bldr_theme_membership
+theme_date|name|stage|n
+2026-08-24|Wood-Based Building Materials Distribution|Nascent|3
+2026-08-17|Lumber & Building Products Manufacturing-Distribution|Nascent|4
+(2 rows)
+===T4_END
+?column?
+1
+(1 row)

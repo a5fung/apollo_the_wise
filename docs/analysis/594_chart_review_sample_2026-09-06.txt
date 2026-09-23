@@ -1,0 +1,18 @@
+Pager usage is off.
+==== A. WE SAID HIGH AND IT FAILED — worst 5 (settled 20 sessions) ====
+ticker|alert_date|gap|ep_score|cat|pct_20d
+NVTX|2026-06-03|37.7|62.4|routine|-81
+NVTS|2026-06-03|15.4|84|strong|-53
+MRLN|2026-06-05|28.0|80|strong|-49
+AVGU|2026-06-02|13.1|42|routine|-44
+CRWG|2026-06-01|10.3|44.4|routine|-40
+(5 rows)
+
+==== B. WE SCORED IT BELOW THE BAR AND IT RAN — best 5 ====
+ticker|scan_date|gap|ep_score|why|pct_20d
+OMER|2026-07-27|16.8|38|score 38 < 50 (catalyst=routin|70
+ABVX|2026-06-03|13.8|43.2|score 43 < 50 (catalyst=routin|60
+CGEM|2026-06-08|10.6|42|score 42 < 50 (catalyst=strong|39
+RNG|2026-07-24|20.7|37|score 37 < 50 (catalyst=routin|39
+AVAH|2026-06-02|12.1|33.1|score 33 < 50 (catalyst=routin|37
+(5 rows)

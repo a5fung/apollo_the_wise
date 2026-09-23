@@ -1,0 +1,34 @@
+alpaca creds: dual_ready (legacy_fallback=False)
+ET now: 2026-08-14 09:51 · regular hours: True
+
+   1. market BUY 3 F …
+      filled, holding 3.0 @ ~$14.16
+
+   2. plain GTC stop SELL 2 @ 12.75 (the '2/3 breakeven stop') …
+      live: 48f97ebe-a10c-4d45-bf95-f53d3f19d9e4 status=OrderStatus.PENDING_NEW
+
+   3. Q1: OCO SELL 1 — limit 15.58 above + stop 13.46 below, GTC, alongside the separate plain stop …
+      shape A: LimitOrderRequest(limit_price=…, order_class=OCO, stop_loss=…)
+      shape A REJECTED — APIError: {"code":40010001,"message":"oco orders require take_profit.limit_price"}
+      shape B: + take_profit=TakeProfitRequest(limit_price=…) …
+      ACCEPTED —
+      id=84871762-4819-4cbf-8fbe-0d2e12a4fb49 class=OrderClass.OCO type=OrderType.LIMIT qty=1 status=OrderStatus.PENDING_NEW tif=TimeInForce.GTC limit=15.58 stop=None
+        LEG: id=6b8b573d-0e4d-4573-ba96-5c8972625493 type=OrderType.STOP qty=1 status=OrderStatus.HELD limit=None stop=13.46
+
+   4. Q2: read back F's open orders (coexistence check) …
+      id=84871762-4819-4cbf-8fbe-0d2e12a4fb49 class=oco type=limit qty=1.0 status=new tif=? limit=15.58 stop=None
+      id=48f97ebe-a10c-4d45-bf95-f53d3f19d9e4 class=simple type=stop qty=2.0 status=new tif=? limit=None stop=12.75
+      now submit ONE MORE 1-share limit sell — expecting 40310000 available:0 (proof all 3 shares are reserved) …
+      REJECTED — {"available":"0","code":40310000,"existing_qty":"3","held_for_orders":"3","message":"insufficient qty available for order (requested: 1, available: 0)","related_orders":["84871762-4819-4cbf-8fbe-0d2e12a4fb49","48f97ebe-a10c-4d45-bf95-f53d3f19d9e4"],"symbol":"F"}
+      ⇒ every share is reserved: 2 by the plain stop, 1 by the OCO.
+        The ETON hole (an uncovered 1/3) does not exist under this shape.
+
+   5. Q3: cancel the OCO parent — does the sibling leg die with it? …
+      both OCO legs terminal after one cancel — the pair unwinds as a unit.
+Failed to cancel order 480379ea-cb65-4a61-8d6e-fbd52677852b: {"code":42210000,"message":"order is already in \"filled\" state"}
+teardown: cancelled 3/4 (confirmed terminal — a request sent does not count)
+  ⚠ 1 order(s) had already FILLED — a cancel could not undo them:
+      F 3.0 (filled)
+  ✅ flattened 1 probe-created position(s):
+      F 3.0
+   teardown: {'cancelled': 3, 'filled': [{'id': '480379ea-cb65-4a61-8d6e-fbd52677852b', 'symbol': 'F', 'qty': 3.0, 'status': 'filled'}], 'flattened': [{'symbol': 'F', 'qty': 3.0}], 'errors': [], 'unconfirmed': [], 'unswept_symbols': []}

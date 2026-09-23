@@ -1,0 +1,43 @@
+alpaca creds: dual_ready (legacy_fallback=False)
+ET now: 2026-08-10 10:10 · regular hours: True
+
+── PHASE A — submission-time validation (flat account) ────────────────────
+   paper positions: (flat)
+   submitting a SELL STOP for 1 F while holding ZERO…
+   ACCEPTED — id=230d5ebe-685c-40e5-856b-0acfd519e699 status=OrderStatus.PENDING_NEW
+   ⇒ Alpaca does NOT validate sell qty at submission. A resting limit and a
+     full-size stop could then coexist, and the collision would surface only
+     at FILL time — which is the dangerous shape, not the safe one.
+teardown: cancelled 1/1
+  clean — nothing filled, nothing left behind
+   teardown: {'cancelled': 1, 'filled': [], 'flattened': [], 'errors': []}
+
+── inter-phase guard: waiting for Alpaca to release F ────────
+   {'cleared': True, 'elapsed_s': 0.268, 'polls': 2}
+   cleared after 0.268s (2 polls) — Phase B may proceed without the collision.
+
+── PHASE B — the three questions that remain ──────────────────────
+   1. market BUY 3 F …
+      filled, holding 3.0 @ ~$13.81
+   2. attach a FULL-SIZE stop (reserves every share) …
+      stop live: ef3e7077-9118-4b08-8627-5c4d95af1d3f
+   3. Q1: LIMIT sell for 1/3 while the stop holds every share …
+      REJECTED — {"available":"0","code":40310000,"existing_qty":"3","held_for_orders":"3","message":"insufficient qty available for order (requested: 1, available: 0)","symbol"
+      => same reservation rule as T5. EVERY design must reduce the stop
+         first; candidate C collapses into B and the choice is sequencing.
+   4. Q2: reduce the stop via cancel-then-new, then limit-sell the freed share …
+      board cleared before reducing: {'cleared': True, 'elapsed_s': 0.009, 'polls': 1}
+      reduced stop live: a0e47e0e-c71f-451e-9080-b30d3d1cc856 (qty=2, frees 1 share)
+      ACCEPTED on the FIRST try (12.8ms) — id=967356ee-ddb0-43b8-9790-684d56b08ef5 status=OrderStatus.PENDING_NEW
+      => the freed share is available IMMEDIATELY; no reservation lag for a
+         limit sell against a just cancel-then-new-reduced stop.
+   5. Q3: price-only replace of the (now-reduced) stop to breakeven …
+      ACCEPTED — new id=f4fdb66b-6a2b-48d5-9efe-f33209e7a25c (price-only replace works on a live stop)
+Failed to cancel order 4f0696bf-7d09-4024-a479-3e78097f22d4: {"code":42210000,"message":"order is already in \"filled\" state"}
+Failed to cancel order a0e47e0e-c71f-451e-9080-b30d3d1cc856: {"code":42210000,"message":"order pending replacement"}
+teardown: cancelled 4/4
+  ⚠ 1 order(s) had already FILLED — a cancel could not undo them:
+      F 3.0 (filled)
+  ✅ flattened 1 probe-created position(s):
+      F 3.0
+   teardown: {'cancelled': 4, 'filled': [{'id': '4f0696bf-7d09-4024-a479-3e78097f22d4', 'symbol': 'F', 'qty': 3.0, 'status': 'filled'}], 'flattened': [{'symbol': 'F', 'qty': 3.0}], 'errors': []}

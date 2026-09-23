@@ -1,0 +1,22 @@
+ERROR:  column "trade_date" does not exist
+LINE 1: SELECT 'census' AS q, count(*)::text AS a, min(trade_date)::...
+                                                       ^
+column_name|data_type
+trade_id|integer
+ticker|text
+alert_date|date
+account_mode|text
+baseline_exit_r|double precision
+p1_exit_r|double precision
+p1_exit_date|date
+p2_exit_r|double precision
+p2_exit_date|date
+mfe_r|double precision
+baseline_capture_pct|double precision
+p1_capture_pct|double precision
+p2_capture_pct|double precision
+profile|jsonb
+abstained|boolean
+abstain_reason|text
+computed_at|timestamp with time zone
+(17 rows)

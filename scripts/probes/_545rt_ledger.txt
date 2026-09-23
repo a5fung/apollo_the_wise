@@ -1,0 +1,69 @@
+common ex-May n=46
+
+== PER-NAME LEDGER (ex-May common set, ep_low_reclaim, policy either, M-trail) ==
+name   EP          0.75x1 |  0.25x1           0.25x3 attempts (R each)   total  worst |  0.50x3
+ABSI   2026-06-24   -0.59 |   -1.00                       -1.00s[firs]   -1.00   -1.0 |   -1.00
+ABVX   2026-06-03   +3.01 |   -1.00         -1.00s[firs] +22.95t[new_]  +21.95   -1.0 |  +10.48
+ACAD   2026-06-26   +0.59 |   -1.00 -1.00s[firs] -1.00s[same] +1.50t[same]   -0.50   -2.0 |   +0.88
+AEHR   2026-06-17   -1.00 |   -1.00                       -1.00s[firs]   -1.00   -1.0 |   -1.00
+AGX    2026-06-05   +1.31 |   -1.00 -1.00s[firs] -1.00s[new_] -1.00s[new_]   -3.00   -3.0 |   -3.00
+AKTS   2026-06-12   +5.13 |   -1.00 -1.00s[firs] -1.00s[new_] -1.00s[new_]   -3.00   -3.0 |   +7.70
+ARM    2026-07-30   +0.27 |   +0.80                       +0.80t[firs]   +0.80   +0.0 |   +0.40
+AUGO   2026-06-15   -1.00 |   -1.00 -1.00s[firs] -1.00s[same] -1.00s[same]   -3.00   -3.0 |   -3.00
+CAMT   2026-06-02   -1.00 |   -1.00 -1.00s[firs] -1.00s[same] -1.00s[same]   -3.00   -3.0 |   -3.00
+CHTR   2026-06-29   -1.00 |   -1.00          -1.00s[firs] -1.00s[same]   -2.00   -2.0 |   -2.00
+DOCN   2026-07-07   +0.44 |   +1.33                       +1.33t[firs]   +1.33   +0.0 |   +0.66
+EFOR   2026-07-22  +11.59 |   -1.00         -1.00s[firs] +34.18t[same]  +33.18   -1.0 |  +16.09
+FCEL   2026-06-24   -0.43 |   -1.00          -1.00s[firs] +4.56t[same]   +3.56   -1.0 |   +1.28
+GRND   2026-07-01   +0.36 |   -1.00 -1.00s[firs] -1.00s[same] +0.74t[same]   -1.26   -2.0 |   +0.54
+GRRR   2026-06-02   -1.00 |   -1.00                       -1.00s[firs]   -1.00   -1.0 |   -1.00
+HPE    2026-06-02   -1.00 |   -1.00          -1.00s[firs] -1.00s[same]   -2.00   -2.0 |   -1.00
+IDR    2026-06-15   -1.00 |   -1.00          -1.00s[firs] -1.00s[same]   -2.00   -2.0 |   -1.00
+JBL    2026-06-17   -1.00 |   -1.00 -1.00s[firs] -1.00s[same] -1.00s[same]   -3.00   -3.0 |   -2.53
+KYMR   2026-06-25   +0.40 |   -1.00                       -1.00s[firs]   -1.00   -1.0 |   -1.00
+LZB    2026-06-17   -1.00 |   -1.00 -1.00s[firs] -1.00s[same] -1.00s[same]   -3.00   -3.0 |   -3.00
+MANE   2026-07-15   -1.00 |   -1.00                       -1.00s[firs]   -1.00   -1.0 |   -1.00
+MLTX   2026-06-22   -0.10 |   -1.00 -1.00s[firs] -1.00s[same] -1.00s[same]   -3.00   -3.0 |   -0.15
+MRLN   2026-06-05   -1.00 |   -1.00          -1.00s[firs] -1.00s[same]   -2.00   -2.0 |   -2.00
+MRVL   2026-06-02   -0.05 |   -0.16                       -0.16t[firs]   -0.16   -0.2 |   -0.08
+MU     2026-06-25   -1.00 |   -1.00          -1.00s[firs] -1.00s[same]   -2.00   -2.0 |   -2.00
+NAVN   2026-06-11   +3.03 |   -1.00 -1.00s[firs] -1.00s[same] -1.00s[same]   -3.00   -3.0 |   +2.45
+NRIX   2026-06-08   -1.00 |   -1.00 -1.00s[firs] -1.00s[same] +38.28t[same]  +36.28   -2.0 |   -1.26
+NVTS   2026-06-03   -1.00 |   -1.00                       -1.00s[firs]   -1.00   -1.0 |   -1.00
+OUST   2026-06-29   +0.08 |   +0.23                       +0.23t[firs]   +0.23   +0.0 |   +0.12
+PENG   2026-07-08   -0.56 |   -1.00                       -1.00s[firs]   -1.00   -1.0 |   -0.83
+PGY    2026-06-04   +0.36 |   +1.09                       +1.09t[firs]   +1.09   +0.0 |   +0.54
+QBTS   2026-07-27   -0.16 |   -0.49                       -0.49t[firs]   -0.49   -0.5 |   -0.25
+QURE   2026-06-17   -0.40 |   -1.00 -1.00s[firs] -1.00s[same] -1.00s[same]   -3.00   -3.0 |   -0.60
+RUM    2026-06-04   -0.59 |   -1.00          -1.00s[firs] -1.00s[same]   -2.00   -2.0 |   -2.00
+RXT    2026-06-16   -0.03 |   -1.00          -1.00s[firs] +2.17t[same]   +1.17   -1.0 |   -0.04
+SAIC   2026-06-01   -1.00 |   -1.00          -1.00s[firs] +1.53t[same]   +0.53   -1.0 |   -0.23
+SEDG   2026-06-30   -0.21 |   -0.64                       -0.64t[firs]   -0.64   -0.6 |   -0.32
+SG     2026-07-17   -0.29 |   -1.00          -1.00s[firs] +0.21t[same]   -0.79   -1.0 |   -0.90
+SKM    2026-06-01   -1.00 |   -1.00          -1.00s[firs] +0.24t[same]   -0.76   -1.0 |   -0.88
+SMCI   2026-07-22   -1.00 |   -1.00 -1.00s[firs] -1.00s[same] +14.36t[same]  +12.36   -2.0 |   +5.18
+SWBI   2026-06-18   -1.00 |   -1.00 -1.00s[firs] -1.00s[same] -1.00s[same]   -3.00   -3.0 |   -3.00
+TNDM   2026-06-01   -0.11 |   -0.32                       -0.32t[firs]   -0.32   -0.3 |   -0.16
+UUUU   2026-06-18   -0.06 |   -1.00          -1.00s[firs] -1.00s[same]   -2.00   -2.0 |   -0.09
+WEN    2026-06-24   -1.00 |   -1.00 -1.00s[firs] -1.00s[same] -1.00s[same]   -3.00   -3.0 |   -0.76
+WULF   2026-07-06   +0.47 |   -1.00          -1.00s[firs] -0.55t[same]   -1.55   -1.6 |   +0.71
+XE     2026-06-15   +0.81 |   +2.43                       +2.43t[firs]   +2.43   +0.0 |   +1.21
+SUM                 +5.28 |  -32.74                                     +54.44        |   +8.18
+
+== ATTEMPT BREAKDOWN 0.25x3 trail either, ex-May common set ==
+  attempt 1: fired 46, stopped 37, sum -32.7R, >=4R 0, worst raw excursion on a stop (mae) -6.4425
+  attempt 2: fired 30, stopped 22, sum +43.3R, >=4R 3, worst raw excursion on a stop (mae) -6.9976
+  attempt 3: fired 15, stopped 11, sum +43.9R, >=4R 2, worst raw excursion on a stop (mae) -4.4358
+  stops with raw low below -1.5R (gap-through exposure hidden by the -1.0R convention): 23, worst -7.0R
+  baseline 0.75x1: stops with raw low below -1.5R: 11, worst -2.6R
+
+== re-entry timing on the ex-May common set, 0.25 either trail, attempts 2-3 ==
+  re-entries 45; median calendar days stop-out -> re-entry 2; max 14
+  by shape: same_pattern 40 (sum +68.2R), new_high_break 5 (sum +19.0R)
+
+== GAP-THROUGH ADJUSTMENT (stops on a later session whose OPEN was already below the stop are charged at the open) ==
+  0.75x1 trail    n=46 convention +5.3R -> gap-adjusted +5.0R · gap-through stops 2 · worst single gap-through -1.16R · worst-name cumulative (gap-adjusted) -1.16R (AEHR)
+  0.25x3 trail    n=46 convention +54.4R -> gap-adjusted +43.7R · gap-through stops 8 · worst single gap-through -3.67R · worst-name cumulative (gap-adjusted) -5.79R (AGX)
+  0.25x2 trail    n=46 convention +10.6R -> gap-adjusted +0.8R · gap-through stops 6 · worst single gap-through -3.67R · worst-name cumulative (gap-adjusted) -4.67R (AGX)
+  0.50x3 trail    n=46 convention +8.2R -> gap-adjusted +4.4R · gap-through stops 6 · worst single gap-through -1.83R · worst-name cumulative (gap-adjusted) -3.83R (AGX)
+  0.25xunl trail  n=46 convention +35.2R -> gap-adjusted +24.5R · gap-through stops 8 · worst single gap-through -3.67R · worst-name cumulative (gap-adjusted) -9.00R (CAMT)

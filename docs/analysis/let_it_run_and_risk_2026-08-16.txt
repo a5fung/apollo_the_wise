@@ -1,0 +1,205 @@
+====================================================================================================
+LET-WINNERS-RUN, FAITHFULLY — AND THE NO-STOP ARM'S RISK, PRICED   (2026-08-16)
+====================================================================================================
+
+VERDICT (details + Ns in the sections below; THE LINE — measured only, nothing proposed):
+  * The +36.8R SURVIVES a faithful implementation: +33.6R with the day-0 close checked,
+    +37.2R with day 0 exempt (ladder parity). 11.6% reach >=5R either way. 43 trades, 17 sessions.
+  * The 20-day picture CHANGES: the doc's 'no-stop looks worse at 20d' (-46.8R vs -21.1R)
+    was carried by the crude arm never testing day-0's close. Checked, the close-basis arm
+    is -21.0R vs live's -23.6R at 20 days (n=75) — it TIES live even at the short horizon.
+  * INTC's headline was inflated by truncated data: _case_daily.tsv ends AT the 05-08 peak,
+    so 'no intraday stop +14.46R' was a mark at the peak close. On full history the trail
+    exits day 15 for +9.02R. Still the sharpest single case (live took -1.00R); the number is +9.02R.
+  * THE RISK TERM, matched 43: median MAE -1.97R, P90 -3.95R, worst -6.80R intraday while
+    held. 11 of 43 traded <= -2R intraday and closed above the stop. 7 overnight gap-throughs,
+    worst -0.59R below the stop at the open. Realized worst case @60d: -3.64R (strict) /
+    -5.50R (day0-exempt). On the wider 20d cohort the true worst is MANE: a 0.6%-wide stop,
+    -19.6R MAE, -11.13R realized — tight ORB stops make R-denominated risk explode.
+  * At live sizing ($24 median risk/trade, n=20 closed live magna53): the whole-cohort reward
+    is +33.6R = +$806 over 43 trades; the worst single-name loss so far is -11.13R = -$267;
+    the worst momentary drawdown -19.6R = -$470 on one position. At paper sizing ($958/trade)
+    multiply by ~40: worst name -$10,663.
+  * THE DIP GRADIENT (sec 4): held-through dips are where the edge LIVES — names that dipped
+    <=-1R intraday and closed above the stop sum +39.3R; <=-2R dippers +13.9R (INTC-led);
+    <=-3R dippers -6.5R. Holding pays through -2R and stops paying below -3R, on this N.
+
+reconstructed fills: 75 of 161 HIGH alert rows (skips: outcome:no_fill=28, outcome:stop_too_wide=6, window_out_of_orb=52)
+matched cohorts: >=60 fwd days n=43 (sessions=17) · >=20 fwd days n=75 (sessions=38)
+
+----------------------------------------------------------------------------------------------------
+1 · ANCHOR — the doc's numbers reproduced with the CRUDE arms (X.simulate), same caches
+----------------------------------------------------------------------------------------------------
+  crude LIVE @20d on the >=20d cohort        n=75  sessions=38  median -1.00R  mean -0.28R  min -1.00R  max +8.45R  SUM -21.1R  >=5R 1.3%
+  crude NO-INTRADAY-STOP @20d on the >=20d cohort n=75  sessions=38  median -0.46R  mean -0.62R  min -11.13R  max +18.38R  SUM -46.8R  >=5R 5.3%
+
+  crude LIVE @60d on the >=60d cohort        n=43  sessions=17  median -1.00R  mean -0.14R  min -1.00R  max +7.13R  SUM -6.0R  >=5R 2.3%
+  crude NO-INTRADAY-STOP @60d on the >=60d cohort n=43  sessions=17  median +0.07R  mean +0.86R  min -5.50R  max +18.38R  SUM +36.8R  >=5R 11.6%
+
+  crude LIVE @20d on the >=60d cohort        n=43  sessions=17  median -1.00R  mean -0.11R  min -1.00R  max +8.45R  SUM -4.7R  >=5R 2.3%
+  crude NO-INTRADAY-STOP @20d on the >=60d cohort n=43  sessions=17  median +0.07R  mean +0.77R  min -5.50R  max +18.38R  SUM +33.2R  >=5R 9.3%
+
+----------------------------------------------------------------------------------------------------
+2 · FAITHFUL ARMS — live ladder rebuilt from exit_logic + scan_profit_triggers
+    LIVE  = hard stop & breakeven intraday at the broker · SMA trail close-basis
+    LWR-C = whole ladder CLOSING-basis (the let-winners-run fork), day-0 close included
+----------------------------------------------------------------------------------------------------
+  faithful LIVE @20d on the >=20d cohort     n=75  sessions=38  median -1.00R  mean -0.31R  min -4.70R  max +8.45R  SUM -23.6R  >=5R 1.3%
+  faithful LWR-C @20d on the >=20d cohort    n=75  sessions=38  median -0.67R  mean -0.28R  min -11.13R  max +18.38R  SUM -21.0R  >=5R 5.3%
+  faithful LWR-C day0-exempt @20d on the >=20d cohort n=75  sessions=38  median -0.46R  mean -0.59R  min -11.13R  max +18.38R  SUM -44.6R  >=5R 5.3%
+
+  faithful LIVE @60d on the >=60d cohort     n=43  sessions=17  median -1.00R  mean -0.14R  min -1.04R  max +7.13R  SUM -6.0R  >=5R 2.3%
+  faithful LWR-C @60d on the >=60d cohort    n=43  sessions=17  median -0.20R  mean +0.78R  min -3.64R  max +18.38R  SUM +33.6R  >=5R 11.6%
+  faithful LWR-C day0-exempt @60d on the >=60d cohort n=43  sessions=17  median +0.07R  mean +0.87R  min -5.50R  max +18.38R  SUM +37.2R  >=5R 11.6%
+
+  faithful LIVE @20d on the >=60d cohort     n=43  sessions=17  median -1.00R  mean -0.11R  min -1.04R  max +8.45R  SUM -4.7R  >=5R 2.3%
+  faithful LWR-C @20d on the >=60d cohort    n=43  sessions=17  median -0.20R  mean +0.70R  min -3.64R  max +18.38R  SUM +30.0R  >=5R 9.3%
+  faithful LWR-C day0-exempt @20d on the >=60d cohort n=43  sessions=17  median +0.07R  mean +0.78R  min -5.50R  max +18.38R  SUM +33.6R  >=5R 9.3%
+
+  (day0-exempt = the ladder-parity variant: live's EOD ladder skips the alert day,
+   so a close-basis hard stop implemented THROUGH that ladder would too. The strict
+   LWR-C checks day 0's close — the difference between them is entirely the 12
+   names whose day-0 close finished below the ORB low.)
+
+----------------------------------------------------------------------------------------------------
+3 · PER-NAME @60d, matched >=60d cohort — crude no-stop vs faithful LWR-C (delta = fidelity cost)
+----------------------------------------------------------------------------------------------------
+  name  alert        faithLIVE crudeNoStop faithLWR-C exitday  reason
+  STX   2026-04-29       -1.00       +1.70      -1.60       0  close_below_stop
+  FLNC  2026-05-07       -1.00       +0.27      -1.12       0  close_below_stop
+  ARRY  2026-05-07       -1.00       -1.85      -2.94       0  close_below_stop
+  AEHR  2026-04-16       -1.00       -1.23      -2.27       0  close_below_stop
+  HLIT  2026-05-12       -1.00       -1.85      -2.47       0  close_below_stop
+  AGYS  2026-05-19       -1.00       -3.06      -3.64       0  close_below_stop
+  ZBRA  2026-05-12       -1.00       -1.03      -1.56       0  close_below_stop
+  LASR  2026-05-08       +0.67       +0.33      -0.05       0  close_below_stop
+  AMBQ  2026-05-12       -1.00      +18.38     +18.38      13  close_below_ladder
+  AMD   2026-05-06       +0.67       +0.25      +0.25       1  close_below_ladder
+  BILL  2026-05-08       +0.67       -0.46      -0.46       3  close_below_ladder
+  BW    2026-05-11       +3.33       +3.33      +3.33       9  close_below_ladder
+  CRML  2026-04-27       -1.00       -0.38      -0.38       1  close_below_ladder
+  CSCO  2026-05-14       -1.00       -1.27      -1.27       4  close_below_ladder
+  EVER  2026-05-05       +0.67       +0.65      +0.65       5  close_below_ladder
+  FLEX  2026-05-06       +0.67       +2.38      +2.38       8  close_below_ladder
+  FTNT  2026-05-07       +7.13       +7.13      +7.13      22  close_below_ladder
+  FTRE  2026-05-05       +0.67       +0.53      +0.53       7  close_below_ladder
+  GEO   2026-05-06       -1.00       +0.07      +0.07       1  close_below_ladder
+  GHRS  2026-04-20       -1.00       -1.60      -1.60       1  close_below_ladder
+  INTC  2026-04-24       -1.00       +9.02      +9.02      15  close_below_ladder
+  KLAR  2026-05-14       -1.00       -1.01      -1.01       1  close_below_ladder
+  KURA  2026-04-17       +0.67       -0.15      -0.15       2  close_below_ladder
+  MRAM  2026-05-11       -1.00       -0.20      -0.20       5  close_below_ladder
+  OMCL  2026-04-28       -1.00       -3.00      -3.00       1  close_below_ladder
+  PACS  2026-05-12       +0.67       -1.69      -1.69       3  close_below_ladder
+  SE    2026-05-12       -1.00       -0.28      -0.28       1  close_below_ladder
+  SEZL  2026-05-07       -1.00       +6.95      +6.95      41  close_below_ladder
+  SIBN  2026-05-12       +1.61       +1.61      +1.61      10  close_below_ladder
+  SMCI  2026-05-06       -1.00       +0.40      +0.40       5  close_below_ladder
+  STRL  2026-05-05       +1.27       +1.27      +1.27       9  close_below_ladder
+  TEAM  2026-05-01       -1.00       +0.63      +0.63       7  close_below_ladder
+  TVTX  2026-04-14       -1.00       -1.48      -1.48       2  close_below_ladder
+  VG    2026-05-12       -1.00       +1.13      +1.13       9  close_below_ladder
+  VPG   2026-05-12       +0.67      +14.05     +14.05      17  close_below_ladder
+  VSNT  2026-05-14       +0.67       +0.47      +0.47       1  close_below_ladder
+  VSTS  2026-05-12       -1.00       -2.25      -2.25       1  close_below_ladder
+  NXPI  2026-04-29       +2.00       +2.00      +2.00       9  close_below_ladder
+  STUB  2026-05-14       -1.04       +1.18      +1.60      12  close_below_ladder
+  TE    2026-05-12       -1.00       -2.00      -1.47       0  close_below_stop
+  MNDY  2026-05-11       -1.00       -3.71      -2.46       0  close_below_stop
+  JMIA  2026-05-07       -1.00       -2.90      -1.28       0  close_below_stop
+  CRMD  2026-05-14       -1.00       -5.50      -3.62       0  close_below_stop
+
+----------------------------------------------------------------------------------------------------
+4 · THE RISK TERM — intraday adverse excursion while held under LWR-C @60d (n below)
+    day 0 = minute resolution from the fill · days 1+ = DAILY LOWS, a conservative
+    FLOOR that UNDERSTATES true intraday excursion (no minute bars exist for these
+    April-May hold windows; alert-day minute capture only began 2026-07-28).
+----------------------------------------------------------------------------------------------------
+  MAE while held, in R (negative = against us).  n=43 names, sessions=17
+    median -1.97R   P75 -3.09R   P90 -3.95R   worst -6.80R (GHRS 2026-04-20)
+    5 worst excursions:
+      GHRS  2026-04-20  -6.80R
+      OMCL  2026-04-28  -4.54R
+      AGYS  2026-05-19  -4.16R
+      VSTS  2026-05-12  -4.06R
+      CRMD  2026-05-14  -3.95R
+  traded <= -1R intraday AND that day closed above the prevailing stop: 22 of 43 names  (AMBQ, AMD, BILL, CRML, CSCO, GEO, GHRS, INTC…)
+      their final outcomes: median -0.06R · 11/22 finished positive · SUM +39.3R (did holding through the dip pay in aggregate?)
+  traded <= -2R intraday AND that day closed above the prevailing stop: 11 of 43 names  (BILL, CRML, GEO, GHRS, INTC, OMCL, PACS, SE…)
+      their final outcomes: median -0.38R · 4/11 finished positive · SUM +13.9R (did holding through the dip pay in aggregate?)
+  traded <= -3R intraday AND that day closed above the prevailing stop: 5 of 43 names  (GEO, GHRS, OMCL, PACS, SE)
+      their final outcomes: median -1.60R · 1/5 finished positive · SUM -6.5R (did holding through the dip pay in aggregate?)
+  traded <= -5R intraday AND that day closed above the prevailing stop: 1 of 43 names  (GHRS)
+      their final outcomes: median -1.60R · 0/1 finished positive · SUM -1.6R (did holding through the dip pay in aggregate?)
+  overnight gap-through (closed above the stop, next OPEN below it): 7 events on 7 of 43 names
+      BILL  2026-05-08  day 3: opened -0.59R below the prevailing stop
+      INTC  2026-04-24  day 2: opened -0.38R below the prevailing stop
+      TVTX  2026-04-14  day 2: opened -0.29R below the prevailing stop
+      CSCO  2026-05-14  day 1: opened -0.17R below the prevailing stop
+      FTNT  2026-05-07  day 1: opened -0.12R below the prevailing stop
+      SEZL  2026-05-07  day 2: opened -0.11R below the prevailing stop
+      STUB  2026-05-14  day 1: opened -0.04R below the prevailing stop
+
+----------------------------------------------------------------------------------------------------
+5 · SAME RISK READ, WIDER >=20d COHORT @20d under LWR-C — the later names live here
+----------------------------------------------------------------------------------------------------
+  MAE while held @20d, n=75, sessions=38: median -2.21R  P90 -4.54R  worst -19.58R (MANE 2026-07-15)
+  5 worst REALIZED outcomes under LWR-C @20d (the arm's true worst cases):
+      MANE  2026-07-15  -11.13R  (exit day 1, close_below_ladder)
+      JBL   2026-06-17  -5.54R  (exit day 0, close_below_stop)
+      TTAN  2026-06-05  -4.98R  (exit day 0, close_below_stop)
+      WDFC  2026-07-10  -3.78R  (exit day 0, close_below_stop)
+      SYRE  2026-06-22  -3.75R  (exit day 2, close_below_ladder)
+
+----------------------------------------------------------------------------------------------------
+6 · FOR SYMMETRY — the LIVE intraday stop also cannot cap a loss at -1R (gap-throughs)
+----------------------------------------------------------------------------------------------------
+  5 worst faithful-LIVE outcomes @20d (stop filled at the OPEN when gapped through):
+      SYRE  2026-06-22  -4.70R  (exit day 2)
+      STUB  2026-05-14  -1.04R  (exit day 1)
+      ACAD  2026-06-26  -1.00R  (exit day 0)
+      AEHR  2026-04-16  -1.00R  (exit day 0)
+      AEHR  2026-07-15  -1.00R  (exit day 0)
+
+----------------------------------------------------------------------------------------------------
+7 · CORRECTIONS, DOLLAR TERMS, AND WHERE DAILY RESOLUTION UNDERSTATES THE RISK
+----------------------------------------------------------------------------------------------------
+  INTC CORRECTION — the +14.46R told to the operator twice is a truncation artifact.
+    _case_daily.tsv (commit 95c9036) ends 2026-05-08 — the exact peak day — so the sim
+    ran out of bars and marked the open position at the peak close $124.92. On full
+    history (_468_daily_full.tsv) the SMA trail closes it day 15 (2026-05-15, close
+    $108.77) for +9.02R. Still 10R better than the live rule's -1.00R; quote +9.02R.
+    (SMCI's +0.40R reproduces exactly; only INTC's cache was truncated at the peak.)
+
+  DOLLAR TERMS at the operator's REAL sizing (prod read 2026-08-16: closed live
+  magna53 trades n=20, risk/trade min $11.96 · median $24.00 · max $48.92;
+  paper n=26, median $957.96):
+    reward, matched 43 @60d:  +33.6R  = +$806 (live $24)  /  +$32,187 (paper $958)
+    worst realized single name: MANE -11.13R = -$267 (live) / -$10,663 (paper)
+    worst momentary MAE:        MANE -19.58R = -$470 (live) / -$18,758 (paper)
+    typical (median) MAE:             -1.97R = -$47  (live) / -$1,887  (paper)
+    ⚠ R-based sizing makes the NOTIONAL balloon on tight stops: MANE's 0.6%-wide ORB
+      stop puts ~$3,900 of stock at risk for a $24 nominal R — the no-stop arm then
+      exposes that whole notional to a -10.9% two-day slide. The R unit hides this;
+      the dollar unit shows it.
+
+  WHERE DAILY RESOLUTION UNDERSTATES THE RISK (all conservative floors):
+    1. Days 1+ MAE uses DAILY LOWS — the true minute-path excursion is >= the daily low
+       only in timing, never magnitude, BUT sub-day sequencing is invisible: a day that
+       dipped -3R then closed green counts once; multiple intraday round-trips don't.
+       Magnitude itself IS the daily low, so the floor is exact per-day; what is
+       understated is DURATION and path (margin calls, panic behaviour, intraday
+       decision pressure are unmodelled).
+    2. No minute bars exist for ANY of the 43 hold windows beyond day 0 (April-May
+       cohort; alert-day minute capture began 2026-07-28 and the 08-15 backfill covers
+       alert ticker-days, not 60-day hold windows). Day-0 excursions ARE minute-true.
+    3. The close-basis exits assume the day's official CLOSE is attainable (MOC-style).
+       Auction slippage on thin names is unmodelled, as everywhere in this work.
+    4. Same-day stop-vs-target ordering at daily resolution is unknowable; the sim
+       assumes stop-first (conservative for the intraday arms; the close-basis arm is
+       unaffected except via the partial's bank).
+    5. One regime (Apr-Aug 2026), reconstructed not lived, no slippage, and the 43-name
+       60d cohort is ALL early-period — no out-of-sample half exists until October.
+
+  N ON EVERY HEADLINE: 43 names / 17 sessions (60d matched) · 75 names / 38 sessions
+  (20d cohort) · sizing n=20 closed live trades. THE LINE: nothing proposed here.

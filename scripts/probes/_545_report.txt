@@ -1,0 +1,76 @@
+== baseline reproduction (must match delayed_entry_backfill_2026-09-01.md) ==
+mature settled fires n=374 (published 374)
+M-none  sum=-147.1R (published -147.1) mean=-0.39 >=4R=18 (published 18)  base tail rate=4.8%
+M-trail sum=-65.5R (published -65.5)  mean=-0.18 >=4R=16 (published 16)  base tail rate=4.3%
+reproduction: OK
+tail clustering: 18 M-none tail fires sit on 14 campaigns; 16 M-trail on 14 campaigns
+ex-May mature fires n=194  M-none tails=6 (3.1%)  M-trail tails=8 (4.1%)
+
+== thresholds (Q1/median/Q3; campaign-level except stop width fire-level) ==
+  gap_pct  Q1=11.6  med=15.3  Q3=18.7
+  dvol     Q1=106,054,905.4  med=258,433,779.6  Q3=813,278,265.0
+  rs       Q1=14.7  med=38.8  Q3=79.8
+  ext      Q1=0.6  med=4.8  Q3=10.8
+  stop_w   Q1=1.2  med=2.9  Q3=5.4
+coverage on mature-fire campaigns (n=160): rs=160  theme non-null=71  dvol=160  ext=160
+
+== the 41 pre-registered cuts (PASS = >=8% on BOTH arms, full AND ex-May; n>=30) ==
+cut                                 n tailN  rateN tailT  rateT  nXM rateN-xm rateT-xm  meanR      pN verdict
+grade=game_changer                 85     2  2.4%     3  3.5%   76    2.6%    3.9%  -0.65   0.920 
+grade=strong                      217    12  5.5%    11  5.1%   83    1.2%    3.6%  -0.25   0.353 
+grade>=strong                     302    14  4.6%    14  4.6%  159    1.9%    3.8%  -0.36   0.595 
+gap_pct>=med(15.3)                184    10  5.4%     7  3.8%   99    2.0%    2.0%  -0.25   0.393 
+gap_pct>=Q3(18.7)                  96     0  0.0%     2  2.1%   51    0.0%    2.0%  -0.81   1.000 
+gap_pct<med(15.3)                 190     8  4.2%     9  4.7%   95    4.2%    6.3%  -0.53   0.699 
+gap_pct<=Q1(11.6)                  93     2  2.2%     2  2.2%   49    0.0%    2.0%  -0.76   0.942 
+dvol>=med(258,433,779.6)          198     8  4.0%     6  3.0%  119    2.5%    2.5%  -0.47   0.741 
+dvol>=Q3(813,278,265.0)            97     3  3.1%     3  3.1%   54    0.0%    1.9%  -0.50   0.851 
+dvol<med(258,433,779.6)           176    10  5.7%    10  5.7%   75    4.0%    6.7%  -0.30   0.341 
+dvol<=Q1(106,054,905.4)            91     4  4.4%     4  4.4%   36    2.8%    5.6%  -0.49   0.643 
+rs>=med(38.8)                     189    11  5.8%     8  4.2%   88    2.3%    3.4%  -0.22   0.303 
+rs>=Q3(79.8)                       94     7  7.4%     2  2.1%   47    4.3%    2.1%  -0.10   0.167 
+rs<med(38.8)                      185     7  3.8%     8  4.3%  106    3.8%    4.7%  -0.57   0.791 
+rs<=Q1(14.7)                       92     2  2.2%     1  1.1%   54    1.9%    0.0%  -0.74   0.940 
+rs-row-exists                     374    18  4.8%    16  4.3%  194    3.1%    4.1%  -0.39   0.534 
+theme=in_theme                     11     0  0.0%     2 18.2%   11    0.0%   18.2%  -0.72   1.000 
+theme=not_in_theme                153     5  3.3%     6  3.9%  153    3.3%    3.9%  -0.66   0.864 
+stop_w>=med(2.9)                  187    16  8.6%    10  5.3%   95    6.3%    6.3%  +0.04   0.019 near
+stop_w>=Q3(5.4)                    94     6  6.4%     3  3.2%   48    2.1%    2.1%  -0.17   0.299 
+stop_w<med(2.9)                   187     2  1.1%     6  3.2%   99    0.0%    2.0%  -0.83   0.999 
+stop_w<=Q1(1.2)                    94     1  1.1%     2  2.1%   45    0.0%    2.2%  -0.91   0.990 
+rung=ep_low_reclaim               130     6  4.6%     3  2.3%   70    2.9%    1.4%  -0.39   0.599 
+rung=ep_close_reclaim              86     2  2.3%     8  9.3%   42    2.4%   11.9%  -0.44   0.923 near
+rung=ep_high_break                 32     2  6.2%     0  0.0%   17    0.0%    0.0%  -0.41   0.460 
+rung=ep_close_620_prox            126     8  6.3%     5  4.0%   65    4.6%    3.1%  -0.35   0.262 
+session_idx=1                     201    12  6.0%    12  6.0%  117    3.4%    6.0%  -0.25   0.263 
+session_idx>=2                    173     6  3.5%     4  2.3%   77    2.6%    1.3%  -0.56   0.843 
+session_idx>=3                    115     5  4.3%     4  3.5%   46    4.3%    2.2%  -0.51   0.654 
+cofire=1                          218     8  3.7%     9  4.1%  108    1.9%    4.6%  -0.52   0.827 
+cofire>=2                         156    10  6.4%     7  4.5%   86    4.7%    3.5%  -0.22   0.220 
+cofire>=3                          28     0  0.0%     0  0.0%   22    0.0%    0.0%  -1.00   1.000 
+day1=stopped_day1                  91     4  4.4%     4  4.4%   39    5.1%    7.7%  -0.45   0.643 
+day1=survived_day1                 67     3  4.5%     2  3.0%   31    0.0%    0.0%  -0.36   0.631 
+day1=never_triggered               15     0  0.0%     0  0.0%   10    0.0%    0.0%  -0.79   1.000 
+day1=abstain                       53     3  5.7%     2  3.8%   46    2.2%    2.2%  +0.02   0.473 
+day1=not_in_pop                   148     8  5.4%     8  5.4%   68    4.4%    5.9%  -0.48   0.420 
+ext>=med(4.8)                     188    10  5.3%    10  5.3%   84    2.4%    6.0%  -0.28   0.419 
+ext>=Q3(10.8)                      94     7  7.4%     5  5.3%   40    0.0%    2.5%  +0.00   0.167 
+ext<med(4.8)                      186     8  4.3%     6  3.2%  110    3.6%    2.7%  -0.51   0.676 
+ext<=Q1(0.6)                       90     2  2.2%     2  2.2%   55    1.8%    0.0%  -0.70   0.934 
+
+pass count: 0 of 41
+
+== multiple-comparisons cost ==
+cuts tested: 41 (38 with n>=30). Expected number clearing the 8% bar on the
+M-none arm BY LUCK ALONE (binomial at the 4.8% base, fires independent): 2.2 cuts.
+Fires are NOT independent — tail fires cluster on campaigns (18 fires on 14 campaigns), which makes lucky clears MORE likely than binomial, not less.
+Bonferroni across 41 tests: a single cut needs p < 0.0012 to survive; the
+smallest one-sided binomial p observed is shown per row above.
+
+== P14 — what each >=8%-on-one-arm cut catches and MISSES (M-none tail fires) ==
+  stop_w>=med(2.9): catches 16 [ABVX 06-03, ALAB 05-20, ARM 05-20, BHVN 05-29, DFTX 06-22, FET 07-31, FPS 05-14, GO 05-14, MMYT 06-15, MMYT 06-15, NAVN 06-11, STUB 05-14, STUB 05-14, TE 05-12, TE 05-12, VPG 05-12]
+      misses 2 [ALAB 05-20, ANF 05-27]
+  rung=ep_close_reclaim: catches 2 [ALAB 05-20, FET 07-31]
+      misses 16 [ABVX 06-03, ALAB 05-20, ANF 05-27, ARM 05-20, BHVN 05-29, DFTX 06-22, FPS 05-14, GO 05-14, MMYT 06-15, MMYT 06-15, NAVN 06-11, STUB 05-14, STUB 05-14, TE 05-12, TE 05-12, VPG 05-12]
+
+per-fire feature rows written: _545_fires_features.tsv (602 rows)

@@ -1,0 +1,105 @@
+{
+  "ticker": "CPA",
+  "source_chain": [
+    "yfinance"
+  ],
+  "n_quarters": 5,
+  "n_quarters_with_revenue": 5,
+  "quarters": [
+    {
+      "source": "yfinance",
+      "end_date": "2025-12-31",
+      "revenue": 962888000.0,
+      "gross_profit": 324861000.0,
+      "operating_income": 216215000.0,
+      "net_income": 172623000.0,
+      "eps_basic": 4.18,
+      "eps_diluted": 4.18,
+      "gross_margin": 0.33738191773082643,
+      "op_margin": 0.22454844177100555,
+      "net_margin": 0.17927630212444232
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-09-30",
+      "revenue": 913149000.0,
+      "gross_profit": 336707000.0,
+      "operating_income": 212305000.0,
+      "net_income": 173350000.0,
+      "eps_basic": 4.2,
+      "eps_diluted": 4.2,
+      "gross_margin": 0.3687317184818688,
+      "op_margin": 0.23249765372354347,
+      "net_margin": 0.18983758400874337
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-06-30",
+      "revenue": 842604000.0,
+      "gross_profit": 291769000.0,
+      "operating_income": 176620000.0,
+      "net_income": 148908000.0,
+      "eps_basic": 3.61,
+      "eps_diluted": 3.61,
+      "gross_margin": 0.3462706087319785,
+      "op_margin": 0.20961210722949333,
+      "net_margin": 0.17672358545651337
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-03-31",
+      "revenue": 899181000.0,
+      "gross_profit": 333105000.0,
+      "operating_income": 213821000.0,
+      "net_income": 176766000.0,
+      "eps_basic": 4.28,
+      "eps_diluted": 4.28,
+      "gross_margin": 0.3704537796061082,
+      "op_margin": 0.2377952825960513,
+      "net_margin": 0.19658555952583517
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-12-31",
+      "revenue": 878620000.0,
+      "gross_profit": 325760000.0,
+      "operating_income": 203750000.0,
+      "net_income": 165770000.0,
+      "eps_basic": 3.99,
+      "eps_diluted": 3.99,
+      "gross_margin": 0.3707632423573331,
+      "op_margin": 0.23189774874234595,
+      "net_margin": 0.18867087022831258
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": 0.09590949443445407,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": 0.04761904761904745,
+    "eps_yoy_q1": null,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": 0.054469752471940414,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": null,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": 3.99,
+    "margins_q0": {
+      "gross_margin": 0.33738191773082643,
+      "op_margin": 0.22454844177100555,
+      "net_margin": 0.17927630212444232
+    },
+    "margins_q1": {
+      "gross_margin": 0.3687317184818688,
+      "op_margin": 0.23249765372354347,
+      "net_margin": 0.18983758400874337
+    },
+    "margins_q2": {
+      "gross_margin": 0.3462706087319785,
+      "op_margin": 0.20961210722949333,
+      "net_margin": 0.17672358545651337
+    }
+  }
+}

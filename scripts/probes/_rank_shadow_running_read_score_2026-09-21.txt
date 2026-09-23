@@ -1,0 +1,85 @@
+POPULATION
+  shadow rows out-of-sample (alert_date > 2026-08-16): 32 over 13 sessions
+  filled (traded)      : 11
+  in missed-outcomes tbl: 20  <- see reconciliation below
+  5d-matured (>=6 sessions of bars from d0): 27
+ 20d-matured (>=21 sessions of bars from d0): 10
+  confidence: THIN (n=13 of 25 decision-grade sessions, 52%) -- directional only, NOT a verdict
+
+=== EOD rank, 5-day horizon ===
+  scored population n=27 (matured); quartile-ELIGIBLE (day pool>=2) n=23; structurally ineligible (pool=1 -> rank 0.5) n=4
+  TOP-QUARTILE (composite<=0.25): n=2 | tail>=8.0xADR: 0/2 | broke-d0-low: 2/2 | median 1.70x | best 1.93x
+  REST OF POOL: n=25 | tail>=8.0xADR: 1/25 | broke-d0-low: 16/25 | median 1.83x | best 9.13x
+  score_both_directions: LOSS -- fewer winners AND more losers admitted
+  alert_rank_shadow running read: n=13 out-of-sample session(s) -- THIN (n=13 of 25 decision-grade sessions, 52%) -- directional only, NOT a verdict. Top-quartile: n=2, winners=0, losers-admitted=2/2. Rest-of-pool: n=25, winners=1, losers-admitted=16/25. Verdict vs rest-of-pool: LOSS -- fewer winners AND more losers admitted
+    TAIL: MRNA 2026-08-19 9.13xADR filled=True composite=0.8750 pool=4
+
+=== EOD rank, 20-day horizon ===
+  scored population n=10 (matured); quartile-ELIGIBLE (day pool>=2) n=9; structurally ineligible (pool=1 -> rank 0.5) n=1
+  TOP-QUARTILE (composite<=0.25): n=0
+  REST OF POOL: n=10 | tail>=8.0xADR: 1/10 | broke-d0-low: 4/10 | median 2.70x | best 9.13x
+    TAIL: MRNA 2026-08-19 9.13xADR filled=True composite=0.8750 pool=4
+
+=== AS-OF-09:45 rank, 5-day horizon ===
+  scored population n=27 (matured); quartile-ELIGIBLE (day pool>=2) n=23; structurally ineligible (pool=1 -> rank 0.5) n=4
+  TOP-QUARTILE (composite<=0.25): n=3 | tail>=8.0xADR: 0/3 | broke-d0-low: 3/3 | median 1.46x | best 1.93x
+  REST OF POOL: n=24 | tail>=8.0xADR: 1/24 | broke-d0-low: 15/24 | median 1.88x | best 9.13x
+  score_both_directions: LOSS -- fewer winners AND more losers admitted
+  alert_rank_shadow running read: n=13 out-of-sample session(s) -- THIN (n=13 of 25 decision-grade sessions, 52%) -- directional only, NOT a verdict. Top-quartile: n=3, winners=0, losers-admitted=3/3. Rest-of-pool: n=24, winners=1, losers-admitted=15/24. Verdict vs rest-of-pool: LOSS -- fewer winners AND more losers admitted
+    TAIL: MRNA 2026-08-19 9.13xADR filled=True composite=0.8750 pool=4
+
+=== AS-OF-09:45 rank, 20-day horizon ===
+  scored population n=10 (matured); quartile-ELIGIBLE (day pool>=2) n=9; structurally ineligible (pool=1 -> rank 0.5) n=1
+  TOP-QUARTILE (composite<=0.25): n=0
+  REST OF POOL: n=10 | tail>=8.0xADR: 1/10 | broke-d0-low: 4/10 | median 2.70x | best 9.13x
+    TAIL: MRNA 2026-08-19 9.13xADR filled=True composite=0.8750 pool=4
+
+=== TOP ADR MULTIPLES, 5d matured, all 32-row population ===
+  MRNA 2026-08-19 9.13x filled=True tier=HIGH c_eod=0.875 c_945=0.875 pool=4
+  AMLX 2026-08-18 5.73x filled=True tier=HIGH c_eod=0.500 c_945=0.500 pool=1
+  TEM 2026-08-19 4.97x filled=False tier=none c_eod=0.458 c_945=0.375 pool=4
+  ARGX 2026-08-17 4.87x filled=False tier=HIGH c_eod=0.583 c_945=0.583 pool=2
+  TWST 2026-08-19 2.92x filled=False tier=HIGH c_eod=0.375 c_945=0.458 pool=4
+  CRWD 2026-08-27 2.82x filled=True tier=HIGH c_eod=0.433 c_945=0.500 pool=5
+  SEI 2026-09-08 2.38x filled=True tier=HIGH c_eod=0.417 c_945=0.472 pool=6
+  VEEV 2026-08-27 2.31x filled=False tier=HIGH c_eod=0.633 c_945=0.633 pool=5
+  TWST 2026-08-19 2.92x filled=False tier=HIGH c_eod=0.375 c_945=0.458 pool=4
+  CRWD 2026-08-27 2.82x filled=True tier=HIGH c_eod=0.433 c_945=0.500 pool=5
+  SEI 2026-09-08 2.38x filled=True tier=HIGH c_eod=0.417 c_945=0.472 pool=6
+  VEEV 2026-08-27 2.31x filled=False tier=HIGH c_eod=0.633 c_945=0.633 pool=5
+
+=== QUARTILE MEMBERSHIP (5d-matured population, n=27) ===
+  ARGX  2026-08-17 pool=2 eod=0.5833(rest) 0945=0.5833(rest) x5=4.87 brokeLow=False filled=False
+  CBRS  2026-08-17 pool=2 eod=0.4167(rest) 0945=0.4167(rest) x5=1.55 brokeLow=True filled=False
+  AMLX  2026-08-18 pool=1 eod=0.5000(rest) 0945=0.5000(rest) x5=5.73 brokeLow=False filled=True
+  MRNA  2026-08-19 pool=4 eod=0.8750(rest) 0945=0.8750(rest) x5=9.13 brokeLow=False filled=True
+  MRVL  2026-08-19 pool=4 eod=0.2917(rest) 0945=0.2917(rest) x5=0.77 brokeLow=True filled=True
+  TEM   2026-08-19 pool=4 eod=0.4583(rest) 0945=0.3750(rest) x5=4.97 brokeLow=False filled=False
+  TWST  2026-08-19 pool=4 eod=0.3750(rest) 0945=0.4583(rest) x5=2.92 brokeLow=False filled=False
+  BULL  2026-08-20 pool=3 eod=0.5000(rest) 0945=0.5000(rest) x5=0.02 brokeLow=True filled=False
+  RARE  2026-08-20 pool=3 eod=0.2778(rest) 0945=0.3889(rest) x5=0.07 brokeLow=False filled=False
+  SCSC  2026-08-20 pool=3 eod=0.7222(rest) 0945=0.6111(rest) x5=0.84 brokeLow=True filled=False
+  UUUU  2026-08-21 pool=1 eod=0.5000(rest) 0945=0.5000(rest) x5=2.06 brokeLow=True filled=False
+  CHRN  2026-08-27 pool=5 eod=0.4333(rest) 0945=0.4333(rest) x5=0.89 brokeLow=True filled=False
+  CRWD  2026-08-27 pool=5 eod=0.4333(rest) 0945=0.5000(rest) x5=2.82 brokeLow=True filled=True
+  DG    2026-08-27 pool=5 eod=0.2333(TOP) 0945=0.2333(TOP) x5=1.93 brokeLow=True filled=False
+  OKTA  2026-08-27 pool=5 eod=0.7667(rest) 0945=0.7000(rest) x5=1.17 brokeLow=False filled=True
+  VEEV  2026-08-27 pool=5 eod=0.6333(rest) 0945=0.6333(rest) x5=2.31 brokeLow=True filled=False
+  SOLS  2026-08-28 pool=1 eod=0.5000(rest) 0945=0.5000(rest) x5=1.17 brokeLow=True filled=True
+  AGX   2026-09-03 pool=3 eod=0.2778(rest) 0945=0.2778(rest) x5=0.76 brokeLow=True filled=False
+  HOOD  2026-09-03 pool=3 eod=0.6111(rest) 0945=0.6111(rest) x5=2.05 brokeLow=True filled=True
+  SNOW  2026-09-03 pool=3 eod=0.6111(rest) 0945=0.6111(rest) x5=0.53 brokeLow=True filled=False
+  ALAB  2026-09-04 pool=1 eod=0.5000(rest) 0945=0.5000(rest) x5=2.15 brokeLow=True filled=False
+  ERO   2026-09-08 pool=6 eod=0.2500(TOP) 0945=0.1944(TOP) x5=1.46 brokeLow=True filled=False
+  IONQ  2026-09-08 pool=6 eod=0.4167(rest) 0945=0.2500(TOP) x5=0.91 brokeLow=True filled=False
+  PHVS  2026-09-08 pool=6 eod=0.8056(rest) 0945=0.8056(rest) x5=1.18 brokeLow=True filled=True
+  QCOM  2026-09-08 pool=6 eod=0.3611(rest) 0945=0.5833(rest) x5=1.83 brokeLow=True filled=False
+  ROIV  2026-09-08 pool=6 eod=0.7500(rest) 0945=0.6944(rest) x5=1.93 brokeLow=False filled=False
+  SEI   2026-09-08 pool=6 eod=0.4167(rest) 0945=0.4722(rest) x5=2.38 brokeLow=False filled=True
+
+=== rows NOT 5d-matured (bars end 2026-09-18) ===
+  DFTX 2026-09-14 sessions_avail=5
+  SRRK 2026-09-14 sessions_avail=5
+  CIFR 2026-09-16 sessions_avail=3
+  GNRC 2026-09-17 sessions_avail=2
+  VICR 2026-09-17 sessions_avail=2

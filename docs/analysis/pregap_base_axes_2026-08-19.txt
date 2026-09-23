@@ -1,0 +1,112 @@
+#569 TWO-AXIS STRUCTURE SPLIT — corpus measurement (pre-registered; see module docstring)
+binary line = 74 sessions · ceilings raw 40% / 6xADR20 · outcome = house tailx,
+tail-first: share >=8xADR + P90, median secondary. MRNA is n=1 reference, NOT evidence.
+
+==================================================================================================
+POPULATION: PRIMARY — 749 tier-A gap days (_552_cohort.psv) — n=749 rows, 92 sessions
+==================================================================================================
+  COVERAGE axis1 (pre-gap extension): 732/749 have >=50 prior closes + ADR20 (550 with an MA below the prior close, 182 no-MA-below -> 0.0 by the zero convention)
+  COVERAGE axis2 (base duration):     735/749 have >=20 H/L prior sessions (179 censored at the history edge — base_days is a lower bound there)
+
+AXIS 1 — PRE-GAP EXTENSION (D-1 close vs its own SMAs, ADR units)
+  -- median split at 0.90 xADR (zero-fill convention) --   << PRIMARY (pre-registered)
+  LESS pre-gap-extended (<=med)            n=366 (84s)  reach>=8xADR 43 = 11.7%  P90=+8.96x  med=+2.14x  winners=43
+  MORE pre-gap-extended (>med)             n=366 (81s)  reach>=8xADR 34 = 9.3%  P90=+7.24x  med=+2.37x  winners=34
+    perm p (session-shuffled): share>=8xADR p=0.5536 · P90 p=0.4058
+
+  quartiles of pre-gap extension (descriptive) (cuts at 0.02 / 0.91 / 1.91):
+    Q1 (lowest)                            n=184 (62s)  reach>=8xADR 21 = 11.4%  P90=+9.01x  med=+2.21x  winners=21
+    Q2                                     n=183 (71s)  reach>=8xADR 22 = 12.0%  P90=+8.82x  med=+2.14x  winners=22
+    Q3                                     n=183 (68s)  reach>=8xADR 10 = 5.5%  P90=+6.41x  med=+2.17x  winners=10
+    Q4 (highest)                           n=182 (59s)  reach>=8xADR 24 = 13.2%  P90=+8.91x  med=+2.50x  winners=24
+
+  -- sensitivity — no-MA-below rows EXCLUDED, median split at 1.33 --
+  LESS extended                            n=275 (79s)  reach>=8xADR 27 = 9.8%  P90=+7.96x  med=+2.14x  winners=27
+  MORE extended                            n=275 (73s)  reach>=8xADR 29 = 10.5%  P90=+8.35x  med=+2.37x  winners=29
+    perm p (session-shuffled): share>=8xADR p=0.8444 · P90 p=0.7790
+
+AXIS 2 — BASE DURATION x QUIETNESS (trailing containment, ceiling 40% raw)
+  binary decidability: 725/735 decidable at the 74d line (10 censored-below-74 excluded, never defaulted)
+  -- base >= 74d (his smallest annotated base) vs shorter --   << PRIMARY (pre-registered)
+  LONG base (>=74d quiet)                  n=242 (76s)  reach>=8xADR 20 = 8.3%  P90=+6.69x  med=+2.41x  winners=20
+  shorter base (<74d)                      n=483 (87s)  reach>=8xADR 58 = 12.0%  P90=+8.87x  med=+2.25x  winners=58
+    perm p (session-shuffled): share>=8xADR p=0.3635 · P90 p=0.2089
+
+  quartiles of base_days raw40 (descriptive; censoring above) (cuts at 20.00 / 46.00 / 89.00):
+    Q1 (lowest)                            n=190 (73s)  reach>=8xADR 24 = 12.6%  P90=+10.20x  med=+1.56x  winners=24
+    Q2                                     n=178 (65s)  reach>=8xADR 22 = 12.4%  P90=+8.82x  med=+2.50x  winners=22
+    Q3                                     n=189 (61s)  reach>=8xADR 18 = 9.5%  P90=+7.77x  med=+2.63x  winners=18
+    Q4 (highest)                           n=178 (58s)  reach>=8xADR 14 = 7.9%  P90=+6.41x  med=+2.23x  winners=14
+
+  -- SECONDARY variant — 6xADR20 ceiling, same 74d line --
+  LONG base (adr6)                         n=188 (76s)  reach>=8xADR 19 = 10.1%  P90=+6.90x  med=+1.46x  winners=19
+  shorter base (adr6)                      n=538 (86s)  reach>=8xADR 58 = 10.8%  P90=+8.27x  med=+2.50x  winners=58
+    perm p (session-shuffled): share>=8xADR p=0.8909 · P90 p=0.5651
+
+  CONFOUND: Spearman(base_days_raw40, ADR20) = -0.808 on n=735
+  -- binary repeated inside the low-ADR half --
+  LONG base (low-ADR half)                 n=220 (71s)  reach>=8xADR 19 = 8.6%  P90=+6.86x  med=+2.45x  winners=19
+  shorter (low-ADR half)                   n=141 (49s)  reach>=8xADR 17 = 12.1%  P90=+8.76x  med=+2.81x  winners=17
+    perm p (session-shuffled): share>=8xADR p=0.3278 · P90 p=0.3423
+
+  -- binary repeated inside the high-ADR half --
+  LONG base (high-ADR half)                n= 22 (20s)  reach>=8xADR  1 = 4.5%  P90=+4.18x  med=+1.66x  winners=1
+  shorter (high-ADR half)                  n=342 (85s)  reach>=8xADR 41 = 12.0%  P90=+8.87x  med=+1.96x  winners=41
+    perm p (session-shuffled): share>=8xADR p=0.4429 · P90 p=0.1103
+
+  descriptive: net displacement over the base, median 3.4 xADR (p25 1.6 / p75 6.2)
+
+==================================================================================================
+POPULATION: SECONDARY — live alert corpus with outcomes — n=205 rows, 55 sessions
+==================================================================================================
+  COVERAGE axis1 (pre-gap extension): 204/205 have >=50 prior closes + ADR20 (143 with an MA below the prior close, 61 no-MA-below -> 0.0 by the zero convention)
+  COVERAGE axis2 (base duration):     205/205 have >=20 H/L prior sessions (7 censored at the history edge — base_days is a lower bound there)
+
+AXIS 1 — PRE-GAP EXTENSION (D-1 close vs its own SMAs, ADR units)
+  -- median split at 0.61 xADR (zero-fill convention) --
+  LESS pre-gap-extended (<=med)            n=102 (47s)  reach>=8xADR  7 = 6.9%  P90=+5.47x  med=+2.02x
+  MORE pre-gap-extended (>med)             n=102 (40s)  reach>=8xADR  5 = 4.9%  P90=+5.55x  med=+1.82x
+    perm p (session-shuffled): share>=8xADR p=0.6966 · P90 p=0.9893
+
+  quartiles of pre-gap extension (descriptive) (cuts at 0.00 / 0.61 / 1.31):
+    Q1 (lowest)                            n= 61 (38s)  reach>=8xADR  5 = 8.2%  P90=+5.41x  med=+2.01x
+    Q2                                     n= 42 (29s)  reach>=8xADR  2 = 4.8%  P90=+5.47x  med=+1.91x
+    Q3                                     n= 51 (25s)  reach>=8xADR  2 = 3.9%  P90=+5.00x  med=+1.76x
+    Q4 (highest)                           n= 50 (27s)  reach>=8xADR  3 = 6.0%  P90=+5.55x  med=+1.97x
+
+  -- sensitivity — no-MA-below rows EXCLUDED, median split at 0.96 --
+  LESS extended                            n= 72 (34s)  reach>=8xADR  4 = 5.6%  P90=+5.68x  med=+1.97x
+  MORE extended                            n= 71 (35s)  reach>=8xADR  3 = 4.2%  P90=+5.33x  med=+1.76x
+    perm p (session-shuffled): share>=8xADR p=0.8870 · P90 p=0.7339
+
+AXIS 2 — BASE DURATION x QUIETNESS (trailing containment, ceiling 40% raw)
+  binary decidability: 204/205 decidable at the 74d line (1 censored-below-74 excluded, never defaulted)
+  -- base >= 74d (his smallest annotated base) vs shorter --
+  LONG base (>=74d quiet)                  n= 81 (36s)  reach>=8xADR  4 = 4.9%  P90=+4.54x  med=+2.00x
+  shorter base (<74d)                      n=123 (45s)  reach>=8xADR  7 = 5.7%  P90=+5.63x  med=+1.86x
+    perm p (session-shuffled): share>=8xADR p=0.9614 · P90 p=0.3466
+
+  quartiles of base_days raw40 (descriptive; censoring above) (cuts at 27.00 / 55.00 / 94.00):
+    Q1 (lowest)                            n= 53 (32s)  reach>=8xADR  3 = 5.7%  P90=+5.26x  med=+1.82x
+    Q2                                     n= 50 (30s)  reach>=8xADR  4 = 8.0%  P90=+6.43x  med=+2.00x
+    Q3                                     n= 51 (30s)  reach>=8xADR  1 = 2.0%  P90=+5.41x  med=+1.91x
+    Q4 (highest)                           n= 51 (30s)  reach>=8xADR  4 = 7.8%  P90=+4.68x  med=+1.93x
+
+  -- SECONDARY variant — 6xADR20 ceiling, same 74d line --
+  LONG base (adr6)                         n= 28 (19s)  reach>=8xADR  2 = 7.1%  P90=+5.68x  med=+1.90x
+  shorter base (adr6)                      n=174 (49s)  reach>=8xADR  8 = 4.6%  P90=+5.33x  med=+1.89x
+    perm p (session-shuffled): share>=8xADR p=0.6484 · P90 p=0.7804
+
+  CONFOUND: Spearman(base_days_raw40, ADR20) = -0.742 on n=205
+  -- binary repeated inside the low-ADR half --
+  LONG base (low-ADR half)                 n= 67 (31s)  reach>=8xADR  3 = 4.5%  P90=+4.24x  med=+1.78x
+  shorter (low-ADR half)                   n= 36 (25s)  reach>=8xADR  2 = 5.6%  P90=+6.26x  med=+2.24x
+    perm p (session-shuffled): share>=8xADR p=1.0000 · P90 p=0.1417
+
+  -- binary repeated inside the high-ADR half --
+  LONG base (high-ADR half)                n= 14 (11s)  reach>=8xADR  1 = 7.1%  P90=  N<20  med=+3.47x
+  shorter (high-ADR half)                  n= 87 (42s)  reach>=8xADR  5 = 5.7%  P90=+5.26x  med=+1.86x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+  descriptive: net displacement over the base, median 3.4 xADR (p25 1.7 / p75 6.4)
+

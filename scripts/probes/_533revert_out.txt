@@ -1,0 +1,39 @@
+===Q1_BOTH_SIDES_ON_THE_TWO_ZERO_ALERT_DAYS===
+ scan_date  | live_side  | rows | sep_high | legacy_high | legacy_moderate | best_sep | best_legacy 
+------------+------------+------+----------+-------------+-----------------+----------+-------------
+ 2026-09-02 | separation |    5 |        0 |           0 |               0 |     52.5 |        35.0
+ 2026-09-01 | separation |    3 |        0 |           1 |               0 |     55.0 |        70.0
+(2 rows)
+
+===Q2_ANY_NAME_THE_LEGACY_SIDE_WOULD_HAVE_ALERTED===
+ scan_date  | ticker | sep  | sep_tier_last | legacy | legacy_tier_last | legacy_bar 
+------------+--------+------+---------------+--------+------------------+------------
+ 2026-09-01 | FRVO   | 55.0 |               |   70.0 | HIGH             |         70
+(1 row)
+
+===Q3_THE_TOP_OF_EACH_SIDE_REGARDLESS_OF_TIER===
+ scan_date  | ticker | sep  | legacy | sep_bar | legacy_bar 
+------------+--------+------+--------+---------+------------
+ 2026-09-01 | FRVO   | 55.0 |   70.0 |      65 |         70
+ 2026-09-02 | TRAX   | 52.5 |   35.0 |      65 |         75
+ 2026-09-02 | GTLB   | 52.5 |   35.0 |      65 |         75
+ 2026-09-02 | DELL   | 46.2 |   30.0 |      65 |         75
+ 2026-09-01 | CRK    | 46.2 |   25.0 |      65 |         70
+ 2026-09-02 | DAKT   | 33.8 |   20.0 |      65 |         75
+ 2026-09-02 | YEXT   | 27.5 |   15.0 |      65 |         75
+ 2026-09-01 | YEXT   | 27.5 |   10.0 |      65 |         70
+(8 rows)
+
+===Q4_HOW_OFTEN_HAS_LEGACY_BEATEN_SEPARATION_SINCE_THE_FLIP===
+ scan_date  | sep_high | legacy_high 
+------------+----------+-------------
+ 2026-09-02 |        0 |           0
+ 2026-09-01 |        0 |           1
+ 2026-08-31 |        0 |           0
+ 2026-08-28 |        1 |           1
+ 2026-08-27 |        5 |           3
+ 2026-08-26 |        0 |           0
+ 2026-08-25 |        0 |           1
+ 2026-08-24 |        0 |           1
+(8 rows)
+

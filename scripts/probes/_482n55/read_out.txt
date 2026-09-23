@@ -1,0 +1,156 @@
+==============================================================================
+1. SHADOW LANE CENSUS (bar_size=5)
+==============================================================================
+  QUAR  closed         9m_day2    19
+  QUAR  closed         magna53    9
+  ok    closed         9m_day2    20
+  ok    closed         magna53    38
+  ok    gate_blocked   9m_day2    31
+  ok    gate_blocked   magna53    31
+  ok    no_entry       9m_day2    100
+  ok    no_entry       magna53    86
+  ok    open           9m_day2    2
+  ok    open           magna53    1
+
+closed non-quarantined total: 58
+  magna53: 38 (16 replayed from daily bars, 22 real-time-accrued)
+  9m_day2: 20 (14 replayed from daily bars, 6 real-time-accrued)
+
+==============================================================================
+2. 5-MIN LANE (magna53 only, closed, non-quarantined) — realized R
+==============================================================================
+ALL    n=38 sum=+0.7R mean=+0.02R med=-0.70R win=12/38 ge4R=1
+  A <08-01 no-partial ORBlow-stop      n=25 sum=-5.5R mean=-0.22R med=-0.99R win=5/25 ge4R=1
+  B 08-01..15 partial ORBlow-stop      n=10 sum=+5.9R mean=+0.59R med=+0.14R win=5/10 ge4R=0
+  C1 08-16..21 2R-stop oldscore        n=1 sum=+1.1R mean=+1.12R med=+1.12R win=1/1 ge4R=0
+  C2 08-22..29 2R-stop newscore        n=2 sum=-0.8R mean=-0.42R med=-0.42R win=1/2 ge4R=0
+  month 2026-05                        n=11 sum=+4.4R mean=+0.40R med=-0.67R win=4/11 ge4R=1
+  month 2026-06                        n=5 sum=-3.2R mean=-0.64R med=-0.66R win=0/5 ge4R=0
+  month 2026-07                        n=9 sum=-6.7R mean=-0.74R med=-0.99R win=1/9 ge4R=0
+  month 2026-08                        n=13 sum=+6.2R mean=+0.48R med=+0.16R win=7/13 ge4R=0
+  replayed-only  n=16 sum=+15.6R mean=+0.98R med=+0.30R win=9/16 ge4R=1
+  realtime-only  n=22 sum=-14.9R mean=-0.68R med=-0.99R win=3/22 ge4R=0
+  top rows: AMBQ 2026-05-12 +7.32R (replay), PLTR 2026-08-04 +3.43R (replay), ABCL 2026-08-10 +2.64R (replay), FTK 2026-08-03 +2.47R (replay), CRSR 2026-05-27 +1.39R (replay), EME 2026-07-30 +1.25R (replay), SIBN 2026-05-12 +1.16R (replay), AMLX 2026-08-18 +1.12R
+
+==============================================================================
+3. LIVE 1-MIN BASELINE (magna53, closed, filled) — realized R
+==============================================================================
+LIVE   n=26 sum=-7.9R mean=-0.30R med=-0.74R win=5/26 ge4R=0
+  A <08-01 no-partial ORBlow-stop      n=12 sum=-9.7R mean=-0.80R med=-0.81R win=0/12 ge4R=0
+  B 08-01..15 partial ORBlow-stop      n=10 sum=+1.9R mean=+0.19R med=-0.41R win=3/10 ge4R=0
+  C1 08-16..21 2R-stop oldscore        n=2 sum=+0.4R mean=+0.21R med=+0.21R win=1/2 ge4R=0
+  C2 08-22..29 2R-stop newscore        n=2 sum=-0.6R mean=-0.30R med=-0.30R win=1/2 ge4R=0
+PAPER  n=26 sum=-15.6R mean=-0.60R med=-0.72R win=5/26 ge4R=0
+  A <08-01 no-partial ORBlow-stop      n=26 sum=-15.6R mean=-0.60R med=-0.72R win=5/26 ge4R=0
+  month 2026-04 paper  n=4 sum=-2.2R mean=-0.56R med=-0.37R win=0/4 ge4R=0
+  month 2026-05 paper  n=15 sum=-3.1R mean=-0.21R med=-0.53R win=4/15 ge4R=0
+  month 2026-06 paper  n=7 sum=-10.2R mean=-1.46R med=-1.10R win=1/7 ge4R=0
+  month 2026-07 live   n=12 sum=-9.7R mean=-0.80R med=-0.81R win=0/12 ge4R=0
+  month 2026-08 live   n=14 sum=+1.8R mean=+0.13R med=-0.41R win=5/14 ge4R=0
+
+  re-entry rows (entry_attempt>1), the ONLY variant with real accrual:
+   n=6 sum=-6.5R mean=-1.09R med=-0.93R win=0/6 ge4R=0 -> OMCL 2026-04-28 -1.52, TEAM 2026-05-01 -0.28, AMD 2026-05-06 -0.84, SMCI 2026-05-06 -0.64, MNDY 2026-05-11 -1.03, MRAM 2026-05-11 -2.23
+
+==============================================================================
+4. PAIRED — same ticker-day in BOTH lanes (closed+filled both sides)
+==============================================================================
+pairs n=22
+  pair delta (5min − live): sum=+0.93R median=-0.16R 5min better on 6/22
+  A <08-01 no-partial ORBlow-stop      n=15 sum=+1.85R med=-0.14R
+  B 08-01..15 partial ORBlow-stop      n=4 sum=-0.50R med=-0.12R
+  C1 08-16..21 2R-stop oldscore        n=1 sum=-0.17R med=-0.17R
+  C2 08-22..29 2R-stop newscore        n=2 sum=-0.24R med=-0.12R
+  live-side mode=live   n=13 sum=-2.64R med=-0.19R
+  live-side mode=paper  n=9 sum=+3.57R med=-0.13R
+  partial fired: both 7 · live-only 0 · 5min-only 1 (mechanism-5 check)
+  largest |delta| rows:
+    SYRE   2026-06-22 5min -0.69 vs live -5.02 d=+4.32 (replay) mode=paper
+    MANE   2026-07-15 5min -0.99 vs live -0.11 d=-0.89  mode=live
+    QURE   2026-06-17 5min -0.24 vs live +0.51 d=-0.75 (replay) mode=paper
+    TEAM   2026-05-01 5min +0.26 vs live -0.28 d=+0.54 (replay) mode=paper
+    NET    2026-08-07 5min -0.70 vs live -0.32 d=-0.38  mode=live
+    SMCI   2026-07-22 5min -1.00 vs live -0.68 d=-0.32 (replay) mode=live
+    WULF   2026-07-06 5min -1.00 vs live -0.70 d=-0.30  mode=live
+    CRSR   2026-05-27 5min +1.39 vs live +1.69 d=-0.30 (replay) mode=paper
+
+  ASYMMETRY (what each lane does on the other's entries):
+  live closed+filled ticker-days, shadow status: {'closed': 22, 'NO SHADOW ROW': 9, 'gate_blocked': 7, 'no_entry': 14}
+  shadow-entered ticker-days, live status: {'closed': 22, 'cancelled': 3, 'skipped': 12, 'NO LIVE ROW': 1}
+
+==============================================================================
+5. #468b RE-TEST — losers vs what the stock did next (5 trading days)
+==============================================================================
+  LIVE lane losers   A <08-01 no-partial ORBlow-stop      rose-past-entry 9/32 (no-data 0)
+      up: INTC 2026-04-24 +19%, QBTS 2026-07-27 +10%, AMD 2026-05-06 +8%, TEAM 2026-05-01 +8%, THC 2026-07-24 +5%, HUT 2026-07-20 +1%, CSCO 2026-05-14 +1%, NRIX 2026-06-08 +0%, KLAR 2026-05-14 +0%
+  LIVE lane losers   B 08-01..15 partial ORBlow-stop      rose-past-entry 1/7 (no-data 0)
+      up: TEAM 2026-08-07 +10%
+  LIVE lane losers   C1 08-16..21 2R-stop oldscore        rose-past-entry 1/1 (no-data 0)
+      up: MRVL 2026-08-19 +1%
+  LIVE lane losers   C2 08-22..29 2R-stop newscore        rose-past-entry 0/0 (no-data 1)
+  5-MIN lane losers  A <08-01 no-partial ORBlow-stop      rose-past-entry 5/20 (no-data 0)
+      up: QURE 2026-06-17 +9%, QBTS 2026-07-27 +7%, TE 2026-05-12 +6%, TER 2026-07-29 +5%, AMD 2026-05-06 +4%
+  5-MIN lane losers  B 08-01..15 partial ORBlow-stop      rose-past-entry 2/5 (no-data 0)
+      up: VOYG 2026-08-04 +22%, VERA 2026-08-14 +3%
+  5-MIN lane losers  C2 08-22..29 2R-stop newscore        rose-past-entry 0/0 (no-data 1)
+
+==============================================================================
+6. TAIL — trades reaching >=4R realized, either lane
+==============================================================================
+  LIVE: 0 of 52  
+  5-MIN: 1 of 38 -> AMBQ 2026-05-12 +7.3R
+
+==============================================================================
+5b. #468b RE-TEST, DEFINITION-CONTROLLED (losers = realized R < -0.05)
+    orig metric = MFE: max HIGH of next 5 sessions vs day-0 CLOSE
+==============================================================================
+  1-MIN lane (live$)   A <08-01 no-partial ORBlow-stop    losers n=12 (data 12)
+      MFE>close0 (orig defn): 12/12 · settled c5>c0: 5/12 · settled c5>entry: 3/12
+      within 5d the stock offered >=2R past our entry: 6/12 · >=4R: 2/12
+  1-MIN lane (live$)   B 08-01..15 partial ORBlow-stop    losers n=7 (data 7)
+      MFE>close0 (orig defn): 7/7 · settled c5>c0: 3/7 · settled c5>entry: 1/7
+      within 5d the stock offered >=2R past our entry: 1/7 · >=4R: 0/7
+  1-MIN lane (live$)   C1 08-16..21 2R-stop oldscore      losers n=1 (data 1)
+      MFE>close0 (orig defn): 1/1 · settled c5>c0: 1/1 · settled c5>entry: 1/1
+      within 5d the stock offered >=2R past our entry: 0/1 · >=4R: 0/1
+  1-MIN lane (live$)   C2 08-22..29 2R-stop newscore      losers n=1 (data 1)
+      MFE>close0 (orig defn): 1/1 · settled c5>c0: 0/1 · settled c5>entry: 0/1
+      within 5d the stock offered >=2R past our entry: 0/1 · >=4R: 0/1
+  1-MIN lane (paper)   A <08-01 no-partial ORBlow-stop    losers n=20 (data 20)
+      MFE>close0 (orig defn): 19/20 · settled c5>c0: 8/20 · settled c5>entry: 6/20
+      within 5d the stock offered >=2R past our entry: 7/20 · >=4R: 1/20
+  5-MIN lane           A <08-01 no-partial ORBlow-stop    losers n=20 (data 20)
+      MFE>close0 (orig defn): 19/20 · settled c5>c0: 9/20 · settled c5>entry: 5/20
+      within 5d the stock offered >=2R past our entry: 3/20 · >=4R: 0/20
+  5-MIN lane           B 08-01..15 partial ORBlow-stop    losers n=5 (data 5)
+      MFE>close0 (orig defn): 5/5 · settled c5>c0: 4/5 · settled c5>entry: 2/5
+      within 5d the stock offered >=2R past our entry: 1/5 · >=4R: 1/5
+  5-MIN lane           C2 08-22..29 2R-stop newscore      losers n=1 (data 1)
+      MFE>close0 (orig defn): 1/1 · settled c5>c0: 0/1 · settled c5>entry: 0/1
+      within 5d the stock offered >=2R past our entry: 0/1 · >=4R: 0/1
+
+==============================================================================
+7. PAIRED HYGIENE — SYRE artifact + realtime-vs-replay split
+==============================================================================
+  pairs excl SYRE: n=21 sum=-3.39R median=-0.17R 5min better on 5/21
+  realtime-accrued shadow    n=13 sum=-2.73R med=-0.19R
+  daily-bar replay shadow    n=8 sum=-0.67R med=-0.08R
+
+==============================================================================
+8. BOTH DIRECTIONS (P14) — what each lane misses
+==============================================================================
+  Of live closed+filled ticker-days, by the 5-min lane's verdict on the SAME day:
+    5min=closed        n=22 sum=-5.6R mean=-0.25R med=-0.69R win=6/22 ge4R=0 | live winners here: CRSR +1.7, QURE +0.5, PLTR +3.3, ABCL +2.7, AMLX +1.3
+    5min=gate_blocked  n=7 sum=-7.1R mean=-1.01R med=-1.10R win=1/7 ge4R=0 | live winners here: none
+    5min=no_entry      n=14 sum=-8.9R mean=-0.64R med=-0.72R win=1/14 ge4R=0 | live winners here: none
+    5min=NO SHADOW ROW n=9 sum=-2.0R mean=-0.22R med=-0.48R win=2/9 ge4R=0 | live winners here: BW +2.5, RCAT +1.3
+
+  Of 5-min-entered ticker-days where live has NO closed fill:
+    n=16 sum=+5.4R mean=+0.34R med=-0.64R win=6/16 ge4R=1 -> AMBQ 2026-05-12 +7.3, FTK 2026-08-03 +2.5, EME 2026-07-30 +1.3, SIBN 2026-05-12 +1.2, EROC 2026-08-12 +0.8, TH 2026-08-10 +0.3
+
+==============================================================================
+9. LIVE-MODE AUGUST BY EXIT/POPULATION ERA (the one positive month)
+==============================================================================
+  B 08-01..15 partial ORBlow-stop      n=10 sum=+1.9R mean=+0.19R med=-0.41R win=3/10 ge4R=0
+  C1 08-16..21 2R-stop oldscore        n=2 sum=+0.4R mean=+0.21R med=+0.21R win=1/2 ge4R=0
+  C2 08-22..29 2R-stop newscore        n=2 sum=-0.6R mean=-0.30R med=-0.30R win=1/2 ge4R=0
+  open live trades not in any table above: 0 (status=open, excluded everywhere)

@@ -1,0 +1,387 @@
+"""Cross-ticker emerging-theme SYNTHESIS pass (#240 North Star advisory feed).
+
+The gap (memory project_cross_ticker_narrative_synthesis_gap, operator 2026-05-30):
+dev-session Claude can spot an RS-slope cohort recovering together (OKTA +
+CRWD/DDOG/TWLO on "SaaS ships AI"), infer the narrative, and name the emerging
+theme — but NO production tool does that reasoning. Lane 1 clusters bottom-up by
+correlation+sector (blind to cross-sector narrative rotations); Lane 2 (#167)
+catches same-day co-GAPS only (blind to slow-burn multi-week recoveries).
+
+This pass is the top-down half: take the two coordinated-RS-slope surfaces that
+already exist (get_rs_velocity = sustained acceleration; get_rs_turners =
+weak→strengthening turn), feed the combined candidate list + sector/description
+context to ONE Sonnet call, and let it propose 0–3 emerging cross-ticker
+narrative cohorts. Grounded by construction: members MUST come from the RS
+candidate list (mechanical subset check — the proto-#212 lesson: mechanical
+grounding > LLM-on-LLM skepticism), and cohorts that just restate one live
+mi_theme are dropped (not "emerging").
+
+ADVISORY, augment-not-automate (Pradeep: themes emerge from price action + the
+operator's read): proposals land in mi_theme_candidates_shadow under
+source='rs_slope_synthesis' — NEVER live mi_themes — where the operator reviews
+them (/themes) AND the judge's narrative axis reads them as active_narratives
+context (get_narrative_theme_candidates). Telegram pings only when something
+was proposed; silent runs are audit-only (feedback_alert_vs_audit).
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+from datetime import date
+
+from shared.llm_response import is_truncated
+from shared.output_ceilings import max_tokens_for
+from shared import llm_thinking
+
+logger = logging.getLogger(__name__)
+
+# One-tap promote button callback prefix (operator 2026-08-17: "is it possible make this
+# even easier like with one-click"). Resolved server-side in agent.py._handle_promotetheme_id.
+PROMOTE_CALLBACK_PREFIX = "tpromo:"
+
+# Mechanical validation bounds (the grounded part — never LLM-judged).
+_MIN_MEMBERS = 3
+_MAX_MEMBERS = 12
+_MAX_COHORTS = 3
+_MAX_NAME_LEN = 80
+# Drop a proposal when this fraction of members already sits in ONE live theme —
+# that's a restatement of an existing theme, not an emerging one.
+_LIVE_OVERLAP_DROP = 0.6
+
+_SYNTHESIS_TOOL = {
+    "name": "propose_emerging_cohorts",
+    "description": (
+        "Propose 0-3 EMERGING cross-ticker narrative cohorts from the supplied "
+        "RS-acceleration candidates. Reason in the scratchpad FIRST."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "analysis_scratchpad": {
+                "type": "string",
+                "description": (
+                    "Think step by step BEFORE proposing: which candidates are "
+                    "moving for a SHARED narrative reason (not just same "
+                    "sector)? What is the story? Is it already a known live "
+                    "theme? Prefer proposing NOTHING over a forced grouping."
+                ),
+            },
+            "cohorts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "thesis": {
+                            "type": "string",
+                            "description": "1-2 sentences: the shared narrative driving the cohort.",
+                        },
+                        "tickers": {"type": "array", "items": {"type": "string"}},
+                        "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+                    },
+                    "required": ["name", "thesis", "tickers", "confidence"],
+                },
+            },
+        },
+        "required": ["analysis_scratchpad", "cohorts"],
+    },
+}
+
+_PROMPT = """You are a momentum PM doing a nightly cross-ticker scan (Qullamaggie/Pradeep \
+methodology: themes emerge from price action). Below are stocks showing COORDINATED \
+relative-strength moves today — sustained accelerators and weak-to-strong turners.
+
+Your ONE job: spot groups of 3+ names moving for a SHARED NARRATIVE reason and name the \
+emerging theme. Cross-sector groupings are the prize (a drone-defense cohort spanning \
+industrials+tech; a "SaaS ships AI" re-rating spanning software names) — sector-clustering \
+alone is NOT a narrative. Exposure counts, not classification: a fund or supplier whose \
+description ties it to the narrative belongs with its theme.
+
+Rules:
+- Members MUST come from the candidate list below (no outside names).
+- 3-12 members per cohort, at most {max_cohorts} cohorts.
+- Do NOT restate the EXISTING live themes listed at the bottom — only EMERGING stories.
+- Proposing ZERO cohorts is a correct, common output. Never force a grouping.
+
+CANDIDATES (signal | ticker | sector | RS now | 4w RS path | description):
+{candidates}
+
+EXISTING LIVE THEMES (do not restate):
+{live_themes}
+"""
+
+
+def validate_cohorts(
+    cohorts: list[dict],
+    candidate_tickers: set[str],
+    live_theme_members: dict[str, set[str]],
+) -> tuple[list[dict], list[str]]:
+    """Mechanical post-filter (pure, unit-tested) — the grounding layer.
+
+    Keeps a proposal only if: members are a subset of the candidate list,
+    member count in [_MIN_MEMBERS, _MAX_MEMBERS], name fits, and the cohort is
+    not just a restatement of one live theme (>= _LIVE_OVERLAP_DROP of members
+    inside a single live theme). Returns (kept, drop_reasons)."""
+    kept: list[dict] = []
+    dropped: list[str] = []
+    for c in (cohorts or [])[:_MAX_COHORTS]:
+        name = (c.get("name") or "").strip()
+        tickers = [t.strip().upper() for t in (c.get("tickers") or []) if t and t.strip()]
+        tickers = list(dict.fromkeys(tickers))  # dedupe, keep order
+        if not name or len(name) > _MAX_NAME_LEN:
+            dropped.append(f"{name or '<unnamed>'}: bad name")
+            continue
+        outside = [t for t in tickers if t not in candidate_tickers]
+        if outside:
+            dropped.append(f"{name}: members outside candidate list {outside}")
+            continue
+        if not (_MIN_MEMBERS <= len(tickers) <= _MAX_MEMBERS):
+            dropped.append(f"{name}: {len(tickers)} members (need {_MIN_MEMBERS}-{_MAX_MEMBERS})")
+            continue
+        overlap_theme = None
+        for theme_name, members in live_theme_members.items():
+            if len(set(tickers) & members) / len(tickers) >= _LIVE_OVERLAP_DROP:
+                overlap_theme = theme_name
+                break
+        if overlap_theme:
+            dropped.append(f"{name}: restates live theme '{overlap_theme}'")
+            continue
+        kept.append({
+            "name": name,
+            "thesis": (c.get("thesis") or "").strip()[:400],
+            "tickers": tickers,
+            "confidence": c.get("confidence") or "low",
+        })
+    return kept, dropped
+
+
+def theme_candidate_short_id(name: str) -> str:
+    """Deterministic short id for a shadow theme-candidate NAME — the one-tap promote
+    button's callback_data (operator 2026-08-17). Telegram caps callback_data at 64
+    BYTES, far too small for a name like "Resilient PNT: GPS-Alternative Timing &
+    Navigation Infrastructure" (already over 64 bytes on its own). NOT a stored id —
+    recomputed from the name text both when the alert's buttons are built (this module,
+    at send time) and when a tap resolves it back (agent.py._handle_promotetheme_id,
+    matched against the SAME get_shadow_theme_candidates(days=7, include_probe=True)
+    window promote_candidate_by_name itself re-reads). No schema change, no id column,
+    no mapping that can go stale independently of the candidate row itself."""
+    return hashlib.sha1(name.strip().encode("utf-8")).hexdigest()[:12]
+
+
+def _button_label(name: str, max_len: int = 40) -> str:
+    """Button text is NOT parsed as Markdown/HTML by Telegram — use the raw name
+    (unescaped), just length-capped so a long theme name doesn't wrap awkwardly."""
+    name = name.strip()
+    return name if len(name) <= max_len else name[: max_len - 1].rstrip() + "…"
+
+
+def build_synthesis_keyboard(kept: list[dict]) -> dict:
+    """Inline keyboard for the synthesis alert — one 'Promote' button per kept cohort,
+    the tappable alternative to typing `/promotetheme <name>` (operator 2026-08-17).
+    One row per cohort so each is independently tappable; the alert can carry several
+    candidates and tapping one must never disturb the others' buttons.
+
+    Also the button for the #651 judge-named-group alert (judge_named_themes.py, 2026-09-12)
+    — only `name` is read, so any shadow-candidate row shape works; one keyboard builder
+    for every producer means the callback_data scheme can never drift between alerts."""
+    return {
+        "inline_keyboard": [
+            [{
+                "text": f"✅ Promote: {_button_label(c['name'])}",
+                "callback_data": f"{PROMOTE_CALLBACK_PREFIX}{theme_candidate_short_id(c['name'])}",
+            }]
+            for c in kept
+        ]
+    }
+
+
+def _candidate_line(signal: str, r: dict, desc: str | None) -> str:
+    rs_now = r.get("rs_now") if r.get("rs_now") is not None else r.get("rs_composite")
+    path = "→".join(
+        f"{r[k]:.0f}" for k in ("rs_28d", "rs_21d", "rs_14d", "rs_7d")
+        if r.get(k) is not None
+    )
+    return (
+        f"{signal} | {r['ticker']} | {r.get('sector') or 'Unknown'} | "
+        f"RS {rs_now:.0f} | {path or 'n/a'} | {(desc or '')[:120]}"
+    )
+
+
+def format_synthesis_digest(kept: list[dict]) -> str:
+    """Operator Telegram digest for the kept cohorts. #121 HTML surface:
+    name/thesis are LLM-generated prose — esc()'d via the helpers so a stray
+    & or < can never 400 the digest."""
+    from shared.telegram_format import b, code, esc, i
+
+    lines = ["🔭 <b>Emerging-theme synthesis</b> (advisory — operator read required)"]
+    for c in kept:
+        lines.append(
+            f"\n{b(c['name'])} ({esc(c['confidence'])})\n"
+            f"{code(' '.join(c['tickers']))}\n{i(c['thesis'])}"
+        )
+    lines.append(
+        "\n<i>RS-slope cohorts, cross-sector. Already feeds the judge's narrative axis (advisory).</i>"
+    )
+    lines.append(
+        "▶ Tap a button below to promote one to a live theme (your judgment) — or type "
+        "<code>/promotetheme &lt;name&gt;</code>. It then behaves like any other theme "
+        "(re-discovered while the cohort co-moves)."
+    )
+    return "\n".join(lines)
+
+
+async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
+    """Nightly synthesis pass. Returns a summary dict (n_candidates, n_proposed,
+    n_kept, dropped). Errors audit as theme_synthesis_error; an empty proposal
+    set is a normal, audit-only outcome."""
+    from agents.market_intelligence.collector import et_today, last_trading_day
+    from agents.market_intelligence.db import (
+        get_active_themes, get_descriptions_batch, get_rs_turners,
+        get_rs_velocity, log_audit_event, persist_synthesis_theme_candidates,
+    )
+    from agents.market_intelligence.theme_engine import _get_anthropic_client
+    from shared.llm_models import SYNTHESIS_MODEL
+
+    rd = run_date or et_today()
+    d = last_trading_day()
+
+    velocity = await get_rs_velocity(d, limit=30)
+    turners = await get_rs_turners(d, limit=40)
+    by_ticker: dict[str, tuple[str, dict]] = {}
+    for r in velocity:
+        by_ticker[r["ticker"]] = ("ACCEL", r)
+    for r in turners:
+        by_ticker.setdefault(r["ticker"], ("TURNER", r))
+
+    if len(by_ticker) < _MIN_MEMBERS * 2:
+        await log_audit_event(
+            "theme_synthesis_run",
+            f"skip — only {len(by_ticker)} RS candidates",
+            json.dumps({"run_date": str(rd), "n_candidates": len(by_ticker)}),
+        )
+        return {"n_candidates": len(by_ticker), "n_proposed": 0, "n_kept": 0, "dropped": []}
+
+    # Cached descriptions only (mi_ticker_overrides) — no new Haiku calls on
+    # this path; missing descriptions just give the LLM less context.
+    descs = await get_descriptions_batch(list(by_ticker))
+
+    live = await get_active_themes()
+    live_theme_members = {
+        t["name"]: {tk.upper() for tk in (t.get("tickers") or [])} for t in live
+    }
+    live_names = "\n".join(f"- {t['name']}" for t in live) or "(none)"
+
+    cand_lines = "\n".join(
+        _candidate_line(sig, r, descs.get(tk)) for tk, (sig, r) in sorted(by_ticker.items())
+    )
+    prompt = _PROMPT.format(
+        max_cohorts=_MAX_COHORTS, candidates=cand_lines, live_themes=live_names,
+    )
+
+    try:
+        client = _get_anthropic_client()
+        resp = await client.messages.create(
+            model=SYNTHESIS_MODEL,
+            # 8000 (was 4000, was 2000). The 4000 comment below described the bug exactly and
+            # then it happened anyway: 80% of synthesis calls in the last 7 days ended at
+            # EXACTLY 4000 output tokens. Its own prescription — "unless we record the
+            # stop_reason" — is now shipped (#543: api_usage.stop_reason + a daily truncation
+            # check), so this ceiling is no longer the only thing standing between a truncated
+            # forced-tool JSON and a silent "no cohorts".
+            # ⚠ If at-cap% does NOT fall after this raise, the cap was never the constraint —
+            # the prompt asks for more output than any envelope, and the fix is bounding the
+            # cohort count, not raising again.
+            # Original (4000, #325): a forced tool call whose cohorts JSON exceeds the cap
+            # truncates and silently yields an empty/partial `cohorts` — indistinguishable
+            # from a genuine "no cohorts". Discovery proposed 0 for 3 days straight (6/22-24)
+            # with no way to tell which; that silent ambiguity is the bug.
+            max_tokens=max_tokens_for("theme_synthesis"),
+            # thinking disabled (#575). #575's task text guessed this caller was
+            # freeform like theme_discovery — it is NOT: tool_choice is forced to
+            # propose_emerging_cohorts from turn 1, single-shot, no advisor branch,
+            # and analysis_scratchpad already carries the reasoning. Same shape as
+            # narrative_theme_discovery. See shared/llm_thinking.py.
+            thinking=llm_thinking.DISABLED,
+            tools=[_SYNTHESIS_TOOL],
+            tool_choice={"type": "tool", "name": "propose_emerging_cohorts"},
+            messages=[{"role": "user", "content": prompt}],
+        )
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
+        from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+        await log_anthropic_call_safe(model=SYNTHESIS_MODEL, caller="theme_synthesis",
+                                       response=resp)
+        stop_reason = getattr(resp, "stop_reason", None)
+
+        # TRUNCATION HONESTY (#582, same shape + same fix as
+        # theme_engine._split_fat_theme's 2026-08-10 incident): a
+        # stop_reason='max_tokens' response is a FAILED call, never a genuine
+        # "0 cohorts tonight". Twice on 2026-08-10 a truncated theme_split
+        # response parsed with its key missing and was read as an affirmative
+        # verdict; this caller has the identical hazard — a response cut
+        # mid-JSON parses with `cohorts` missing, indistinguishable from a
+        # real empty proposal unless checked explicitly. The #543 live alarm
+        # (llm_truncation_live) has already fired via log_anthropic_call_safe
+        # above; this is the refusal to also read the cut as a verdict.
+        if is_truncated(resp):
+            logger.warning(
+                f"theme synthesis response TRUNCATED at max_tokens "
+                f"({len(by_ticker)} candidates) — treating as a failed run, "
+                "not a genuine 0-cohort result"
+            )
+            await log_audit_event(
+                "theme_synthesis_error",
+                f"TRUNCATED at max_tokens ({len(by_ticker)} candidates) — "
+                "not a real 0-cohort result",
+                json.dumps({
+                    "run_date": str(rd), "n_candidates": len(by_ticker),
+                    "stop_reason": stop_reason,
+                }),
+            )
+            return {"n_candidates": len(by_ticker), "n_proposed": 0, "n_kept": 0,
+                    "dropped": ["truncated: max_tokens"]}
+
+        tool_input = next(
+            (b.input for b in resp.content if getattr(b, "type", "") == "tool_use"), {},
+        )
+        proposed = tool_input.get("cohorts") or []
+    except Exception as e:
+        # #376: credit exhaustion silently yields no cohorts — alert it (deduped).
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("theme synthesis", e)
+        logger.exception("theme synthesis LLM call failed")
+        await log_audit_event(
+            "theme_synthesis_error", f"LLM call failed: {e}",
+            json.dumps({"run_date": str(rd), "n_candidates": len(by_ticker)}),
+        )
+        return {"n_candidates": len(by_ticker), "n_proposed": 0, "n_kept": 0,
+                "dropped": [f"error: {e}"]}
+
+    kept, dropped = validate_cohorts(proposed, set(by_ticker), live_theme_members)
+    n_written = await persist_synthesis_theme_candidates(rd, kept)
+
+    await log_audit_event(
+        "theme_synthesis_run",
+        f"{len(by_ticker)} candidates → {len(proposed)} proposed → {len(kept)} kept",
+        json.dumps({
+            "run_date": str(rd), "n_candidates": len(by_ticker),
+            "n_proposed": len(proposed), "n_kept": len(kept),
+            # 'max_tokens' => truncated, raise the cap; 'tool_use'/'end_turn' + 0 proposed
+            # => the model genuinely found no emerging cohorts (a prompt/candidate-quality
+            # question, not a silent failure).
+            "stop_reason": stop_reason,
+            "kept": [{"name": c["name"], "tickers": c["tickers"],
+                      "confidence": c["confidence"]} for c in kept],
+            "dropped": dropped,
+        }),
+    )
+
+    if kept:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(
+            format_synthesis_digest(kept), parse_mode="HTML",
+            reply_markup=build_synthesis_keyboard(kept),
+        )
+
+    return {"n_candidates": len(by_ticker), "n_proposed": len(proposed),
+            "n_kept": len(kept), "dropped": dropped, "written": n_written}

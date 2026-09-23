@@ -1,0 +1,6 @@
+# Force LF line endings for shell scripts + git hooks. CRLF in a script
+# with a #!/usr/bin/env bash shebang breaks on Linux + WSL (interpreter
+# resolves to `bash\r` which doesn't exist). The hooks run inside Git
+# Bash on Windows, so LF is universally safe.
+*.sh         text eol=lf
+.githooks/*  text eol=lf

@@ -1,0 +1,143 @@
+REPLAY — 92 boards (2026-04-08 .. 2026-08-21), SHORTLIST_SIZE=20
+basis per day: LIVE = the scan log's own adv (2026-05-01 onward, 100% coverage) · ADVFILL = bars-based q6 backfill (04-13..04-30) · RECON = the reconstructed 04-08 open board
+==============================================================================
+2026-04-08 [RECON  ] board=119 theme_snap=2026-04-08 in_theme_on_board= 4 added=17 dropped=17  +AAL,AU,AXTI,BE,CCL,CDE,DAL,FTAI,HOOD,MU,NCLH,RCL,RGTI,SNDK,SOFI,TSEM,UAL  -ACMR,ALK,AMCI,CRML,ELAB,ELPW,EUDA,GFI,JEM,JTAI,LEVI,MGRT,MTEX,QNCX,RPM,RYAAY,TRAXV
+    [labelled EP] ALGM: gap_rank=106 prescore_rank=59 gap_top20=n prescore_top20=n in_theme=n
+    [labelled EP] AMKR: gap_rank=115 prescore_rank=35 gap_top20=n prescore_top20=n in_theme=n
+    [labelled EP] APLD: gap_rank=14 prescore_rank=15 gap_top20=Y prescore_top20=Y in_theme=n
+    [labelled EP] BE: gap_rank=65 prescore_rank=5 gap_top20=n prescore_top20=Y in_theme=n
+    [labelled EP] MU: gap_rank=64 prescore_rank=3 gap_top20=n prescore_top20=Y in_theme=n
+    [labelled EP] QBTS: gap_rank=39 prescore_rank=22 gap_top20=n prescore_top20=n in_theme=n
+    [labelled EP] SNDK: gap_rank=56 prescore_rank=1 gap_top20=n prescore_top20=Y in_theme=Y
+    [labelled EP] USAR: gap_rank=96 prescore_rank=32 gap_top20=n prescore_top20=n in_theme=n
+2026-04-13 [ADVFILL] board= 38 theme_snap=2026-04-13 in_theme_on_board= 3 added= 7 dropped= 7  +BBGI,CRDO,LABX,LWLG,MVLL,SDRL,SGML  -BBOT,CYD,NETG,SCLX,STK,TRT,XNDU
+2026-04-14 [ADVFILL] board=103 theme_snap=2026-04-14 in_theme_on_board= 3 added=16 dropped=16  +AAL,AAOX,ALSN,ASTX,CLSK,ETHU,GSAT,IONQ,IRDM,IRE,MSTX,NEBX,OKLO,ORCL,PRAX,RKLX  -ALMU,AVNS,BEG,BEX,CHPT,COIA,CONX,CRDU,CVNX,IONL,IONX,PSTV,RGTU,RGTX,TVTX,XZO
+2026-04-16 [ADVFILL] board= 59 theme_snap=2026-04-16 in_theme_on_board= 2 added=16 dropped=16  +BBGI,HIMS,IONQ,IONX,LITX,NNE,OKLL,OKLO,ORCX,PPG,QBTS,RGTI,RKLB,SMR,UMC,VOYG  -ABX,ANL,CDNA,HQ,MOVE,NEXA,OKTG,PLU,QBTX,QSU,RGTIW,RGTU,SMU,SMUP,WSHP,XNDU
+2026-04-17 [ADVFILL] board= 50 theme_snap=2026-04-17 in_theme_on_board= 0 added=11 dropped=11  +BJRI,CDRE,CRDU,CRVS,GDXU,HOOG,KORU,KURA,ROBN,ROLR,SMU  -AALG,AFRU,BTM,CRMU,CRMX,DSU,OILD,SILC,USAX,USGG,WTID
+    [labelled EP] UMC: gap_rank=18 prescore_rank=6 gap_top20=Y prescore_top20=Y in_theme=n
+2026-04-20 [ADVFILL] board= 55 theme_snap=2026-04-20 in_theme_on_board= 2 added=14 dropped=14  +ACLS,ALMR,AOSL,BIRD,DFTX,HIMZ,KSPI,LEGN,LWLG,MRVL,MVLL,SOC,USAR,VCX  -ASTN,ATXG,CADL,CMPS,FGI,GHRS,HELP,JLHL,MAAS,NXTC,PBM,SILA,USAX,USGG
+2026-04-21 [ADVFILL] board= 32 theme_snap=2026-04-21 in_theme_on_board= 1 added= 9 dropped= 9  +ALAB,CAR,FRMI,LCID,SOUN,UNH,UPBD,VCX,YSS  -BIOA,BTM,FJET,IMOS,JLHL,LZM,MOB,QTTB,SNSE
+2026-04-22 [ADVFILL] board= 59 theme_snap=2026-04-22 in_theme_on_board= 3 added=14 dropped=14  +ASTS,BSX,CAR,LEU,MSTR,NNE,NVTS,RCI,RDW,ROLR,TFX,USAR,VELO,WOLF  -BTM,DQ,FBYD,FCEL,GSIT,HCAI,HCSG,INBX,KYTX,MAAS,MPLT,NMAX,RCUS,WSHP
+2026-04-23 [ADVFILL] board= 43 theme_snap=2026-04-23 in_theme_on_board= 2 added=13 dropped=13  +APLD,CHDN,CMCSA,HAS,HIMS,HRI,HXL,NOK,OKLO,ON,PBM,STM,SUNB  -AKAN,EQPT,GSHD,HELE,MAAS,MNTS,PENN,RYM,SHMD,SUPX,TLRY,TRT,TZOO
+2026-04-24 [ADVFILL] board= 37 theme_snap=2026-04-24 in_theme_on_board= 3 added= 6 dropped= 6  +AMKR,AOSL,APPF,CAR,GNTX,RMBS  -ATOM,ELVR,MAAS,PDC,TRAX,WKC
+    [labelled EP] AMD: gap_rank=15 prescore_rank=2 gap_top20=Y prescore_top20=Y in_theme=n
+    [labelled EP] INTC: gap_rank=3 prescore_rank=1 gap_top20=Y prescore_top20=Y in_theme=Y
+    [labelled EP] QCOM: gap_rank=20 prescore_rank=4 gap_top20=Y prescore_top20=Y in_theme=n
+2026-04-27 [ADVFILL] board= 47 theme_snap=2026-04-27 in_theme_on_board= 2 added=14 dropped=14  +ALMU,AMSC,ATOM,BBIO,BEAM,BW,CRML,CRSP,LION,MXL,NTLA,PENG,POET,QCOM  -CVV,GLND,HTCO,INTT,INV,MX,QUIK,RMAX,SGMT,SUPX,TORO,TRAK,VWAV,XOMA
+2026-04-28 [ADVFILL] board= 32 theme_snap=2026-04-28 in_theme_on_board= 2 added= 8 dropped= 8  +CECO,HRI,LC,LGIH,ORKA,PKX,SKLZ,SKYQ  -ARMP,CLYM,CV,DDI,ELVR,KFRC,PDC,YDDL
+2026-04-29 [ADVFILL] board= 42 theme_snap=2026-04-29 in_theme_on_board= 4 added=12 dropped=12  +APH,AVT,AVTR,EAT,ETSY,FICO,GNRC,LMND,SKYQ,TEVA,UMC,WDC  -FCEL,FVRR,JLHL,KALV,LUD,MB,MTRN,NEO,PRCH,PRG,RSI,VRNS
+2026-04-30 [ADVFILL] board= 64 theme_snap=2026-04-30 in_theme_on_board= 2 added=13 dropped=13  +ALNY,BAX,CVNA,FORM,GOOG,GOOGL,MUSA,MXL,ORLY,QCOM,RCL,TER,USAR  -BAND,CWH,GKOS,GTX,HTZ,INSG,MRAM,MYRG,NVCR,OGE,PI,PS,VISN
+2026-05-01 [LIVE   ] board= 46 theme_snap=2026-05-01 in_theme_on_board= 1 added=12 dropped=12  +BTSG,GPCR,HUBS,INDV,MRNA,MTZ,PS,RIOT,ROKU,VEEV,XNDU,ZETA  -AIOS,AKAN,ANIK,ATOM,BOOM,CUE,CVV,FIVN,ISPC,MRAM,NUTX,PBM
+2026-05-04 [LIVE   ] board= 19 theme_snap=2026-05-04 in_theme_on_board= 0 added= 0 dropped= 0
+2026-05-05 [LIVE   ] board= 59 theme_snap=2026-05-05 in_theme_on_board= 5 added=15 dropped=15  +BUD,FLY,GFS,GPK,INTC,JBTM,LXU,MU,PINS,ROK,RYTM,UCTT,ULS,WAT,WOLF  -AIOS,ARBB,BDSX,CYRX,ELPW,EVER,EWTX,FTRE,IART,MED,PAY,SILC,VCX,VOYG,VRDN
+2026-05-06 [LIVE   ] board=132 theme_snap=2026-05-06 in_theme_on_board= 7 added=16 dropped=16  +ALAB,AMCR,ARM,BCS,DOC,FLY,GLW,HL,JOBY,MDGL,PAAS,POET,RCL,RIOT,STLA,YSS  -ACLS,AMWL,AVTX,BLMN,BXC,COMP,CRI,GDC,JLHL,OSS,PN,QMCO,SKK,SSRM,VCX,VECO
+    [labelled EP] ARM: gap_rank=100 prescore_rank=3 gap_top20=n prescore_top20=Y in_theme=Y
+    [labelled EP] UMC: gap_rank=103 prescore_rank=77 gap_top20=n prescore_top20=n in_theme=n
+2026-05-07 [LIVE   ] board= 80 theme_snap=2026-05-07 in_theme_on_board= 3 added=15 dropped=15  +ALB,BBSI,CGNX,DASH,EXK,FUN,GWW,HWM,IMOS,MDB,MRNA,PTC,RUN,SNOW,U  -AAON,ACVA,ATRA,BLBD,CCRN,DGII,ELA,ERNA,FLNC,HIMX,JMIA,NDLS,PCT,SEZL,XMTR
+    [labelled EP] SNOW: gap_rank=46 prescore_rank=3 gap_top20=n prescore_top20=Y in_theme=n
+2026-05-08 [LIVE   ] board= 66 theme_snap=2026-05-08 in_theme_on_board= 8 added=15 dropped=15  +AAOI,AEHR,AMPU,AXTI,BKSY,EOSE,IREN,MNST,MP,MXL,POET,REA,TXRH,XNDX,XYZ  -AMLX,ARLO,ARTV,ASYS,FLNC,GRPN,HIMX,INOD,LOCO,PGNY,PHOE,STFS,VCX,WEST,WLDN
+2026-05-11 [LIVE   ] board= 71 theme_snap=2026-05-11 in_theme_on_board= 9 added=13 dropped=13  +AAOI,FORM,FOXA,HIMX,INOD,KGS,LASR,LITE,MRNA,MU,NVTS,P,WOLF  -APT,BZH,CEPU,DGXX,GSIT,HTCO,INBX,LCUT,MRAM,MTUS,NBTX,NVEC,UP
+2026-05-12 [LIVE   ] board= 38 theme_snap=2026-05-12 in_theme_on_board= 0 added= 9 dropped= 9  +FCEL,MWH,QBTS,SGHC,SWMR,TE,TME,VCX,VG  -AMBQ,ARVN,DSP,HLIT,HTCO,PACS,SIBN,VPG,VSTS
+2026-05-13 [LIVE   ] board= 31 theme_snap=2026-05-13 in_theme_on_board= 5 added= 7 dropped= 7  +COHR,FCEL,GLBE,HIMX,NVTS,QS,REA  -AIP,HTLD,PSFE,PSNL,SLS,VELO,WYFI
+2026-05-14 [LIVE   ] board= 47 theme_snap=2026-05-14 in_theme_on_board= 2 added=11 dropped=11  +BIIB,BRUN,DDS,FHN,LGN,MTSI,NVMI,ONDS,PLGO,UMC,YETI  -ARX,DERM,FENC,IPST,JLHL,KPTI,MTC,SHAZ,STAA,STUB,TRT
+2026-05-15 [LIVE   ] board= 19 theme_snap=2026-05-15 in_theme_on_board= 0 added= 0 dropped= 0
+2026-05-18 [LIVE   ] board= 26 theme_snap=2026-05-18 in_theme_on_board= 2 added= 5 dropped= 5  +GHRS,MNTS,POET,PRAA,WOLF  -CVV,HCAI,LAKE,LICN,UP
+2026-05-19 [LIVE   ] board= 10 theme_snap=2026-05-19 in_theme_on_board= 0 added= 0 dropped= 0
+2026-05-20 [LIVE   ] board= 16 theme_snap=2026-05-20 in_theme_on_board= 2 added= 0 dropped= 0
+2026-05-21 [LIVE   ] board= 24 theme_snap=2026-05-21 in_theme_on_board= 1 added= 3 dropped= 3  +CRML,PURR,XNDU  -KVHI,MLGO,PPHC
+2026-05-22 [LIVE   ] board= 35 theme_snap=2026-05-22 in_theme_on_board= 1 added=10 dropped=10  +DELL,DXYZ,EL,PPTA,QBTS,QUBT,TTMI,WDAY,WOLF,XNDU  -AKTX,ASMB,CRBP,IMRX,LEE,MAKO,NAKA,SLMT,SMX,WW
+2026-05-26 [LIVE   ] board= 65 theme_snap=2026-05-26 in_theme_on_board= 8 added=15 dropped=15  +ACMR,APP,ASTS,ASX,BB,DXYZ,FLY,MRVL,MU,NVTS,OKLO,SMR,UMC,VICR,WULF  -ASPI,COAG,CODX,CPSH,HYLN,IPWR,MNTS,NNE,PONY,POWI,QNTM,RNAC,STFS,SVRN,TE
+2026-05-27 [LIVE   ] board= 34 theme_snap=2026-05-27 in_theme_on_board= 2 added=10 dropped=10  +AOSL,CLFD,LUNR,MX,POWI,RDW,SG,TE,UMC,YSS  -ASBP,CPSH,DTIL,IPWR,KVHI,LFVN,MBI,NHIC,OESX,QTTB
+2026-05-28 [LIVE   ] board= 38 theme_snap=2026-05-28 in_theme_on_board= 0 added=10 dropped=10  +AMPX,AVAV,BBY,HEI,KTOS,LION,MDB,NBIS,NCNO,VVV  -ASTC,BRAI,CHRN,CODX,CRSR,DPRO,IMOS,LTRX,MOB,SOTK
+2026-05-29 [LIVE   ] board= 32 theme_snap=2026-05-29 in_theme_on_board= 0 added= 6 dropped= 6  +BRUN,CLYM,ELMT,HPE,NOW,SOFI  -ASTC,BGDE,CGCT,CHA,CIA,DKI
+    [labelled EP] QURE: gap_rank=13 prescore_rank=13 gap_top20=Y prescore_top20=Y in_theme=n
+2026-06-01 [LIVE   ] board= 39 theme_snap=2026-06-01 in_theme_on_board= 1 added= 9 dropped= 9  +CIB,EC,ERAS,IBM,NBIS,NOW,SKM,SOC,TNDM  -ADVB,BUUU,CIA,ELMT,PHAT,PIII,SLMT,SMC,TTRX
+2026-06-02 [LIVE   ] board= 30 theme_snap=2026-06-02 in_theme_on_board= 4 added= 6 dropped= 6  +GNRC,HSAI,MCHP,POET,RLMD,TNK  -AVAH,CD,CNXU,CTRN,LFVN,NCSM
+2026-06-03 [LIVE   ] board= 12 theme_snap=2026-06-03 in_theme_on_board= 2 added= 0 dropped= 0
+2026-06-04 [LIVE   ] board= 17 theme_snap=2026-06-04 in_theme_on_board= 0 added= 0 dropped= 0
+2026-06-05 [LIVE   ] board= 13 theme_snap=2026-06-05 in_theme_on_board= 0 added= 0 dropped= 0
+2026-06-08 [LIVE   ] board= 25 theme_snap=2026-06-08 in_theme_on_board= 2 added= 3 dropped= 3  +CHRN,IPWR,PUSA  -DUKR,LUCK,TLYS
+2026-06-09 [LIVE   ] board= 26 theme_snap=2026-06-09 in_theme_on_board= 1 added= 5 dropped= 5  +APLD,CECO,CPSH,PANL,VCX  -BARK,BVC,PW,RNAC,SUNE
+2026-06-10 [LIVE   ] board= 14 theme_snap=2026-06-10 in_theme_on_board= 1 added= 0 dropped= 0
+2026-06-11 [LIVE   ] board= 20 theme_snap=2026-06-11 in_theme_on_board= 0 added= 0 dropped= 0
+2026-06-12 [LIVE   ] board= 19 theme_snap=2026-06-12 in_theme_on_board= 1 added= 0 dropped= 0
+2026-06-15 [LIVE   ] board= 81 theme_snap=2026-06-15 in_theme_on_board= 5 added=15 dropped=15  +AG,ASST,CHRN,CTGO,DRD,HL,INFQ,NVTS,PURR,QUBT,RGTI,SMR,STX,UEC,WDC  -ABSI,ALOY,ARQQ,AUGO,DGXX,HQ,HYMC,IDR,LII,MMYT,SDOT,SNSE,SVM,UBXG,XE
+2026-06-16 [LIVE   ] board= 18 theme_snap=2026-06-16 in_theme_on_board= 1 added= 0 dropped= 0
+2026-06-17 [LIVE   ] board= 30 theme_snap=2026-06-17 in_theme_on_board= 2 added= 7 dropped= 7  +AEHR,EOSE,HQ,JBL,PDYN,REPL,RGNX  -AIBZ,ALOT,BGDE,BRAI,NXTS,RGNT,SMHI
+2026-06-18 [LIVE   ] board= 27 theme_snap=2026-06-18 in_theme_on_board= 3 added= 5 dropped= 5  +BTQ,EOSE,FRMI,TBCH,VSH  -BRAI,CODA,ICCM,QXL,UBXG
+2026-06-22 [LIVE   ] board= 29 theme_snap=2026-06-22 in_theme_on_board= 1 added= 7 dropped= 7  +ACA,CHRN,FRVO,HQ,IMOS,JBIO,MLTX  -AZUL,BIRD,ICCM,NXTS,QXL,RGC,SSTK
+2026-06-23 [LIVE   ] board= 10 theme_snap=2026-06-23 in_theme_on_board= 0 added= 0 dropped= 0
+2026-06-24 [LIVE   ] board= 20 theme_snap=2026-06-24 in_theme_on_board= 1 added= 0 dropped= 0
+2026-06-25 [LIVE   ] board= 25 theme_snap=2026-06-25 in_theme_on_board= 4 added= 3 dropped= 3  +CHRN,GRPN,STX  -BNED,WAVE,WYY
+2026-06-26 [LIVE   ] board=  9 theme_snap=2026-06-26 in_theme_on_board= 1 added= 0 dropped= 0
+2026-06-29 [LIVE   ] board= 33 theme_snap=2026-06-29 in_theme_on_board= 3 added= 8 dropped= 8  +ACMR,BKSY,FUL,GRRR,OCC,PL,SLS,VRDN  -AOUT,CCXI,PAVS,POCI,PWRL,RGC,TVGN,WSHP
+2026-06-30 [LIVE   ] board= 22 theme_snap=2026-06-30 in_theme_on_board= 0 added= 2 dropped= 2  +APD,CAST  -EDSA,PAVS
+2026-07-01 [LIVE   ] board= 12 theme_snap=2026-07-01 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-02 [LIVE   ] board= 12 theme_snap=2026-07-02 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-06 [LIVE   ] board= 23 theme_snap=2026-07-06 in_theme_on_board= 1 added= 2 dropped= 2  +FRBT,IMOS  -JLHL,SOTK
+2026-07-07 [LIVE   ] board= 10 theme_snap=2026-07-07 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-08 [LIVE   ] board= 12 theme_snap=2026-07-08 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-09 [LIVE   ] board= 24 theme_snap=2026-07-09 in_theme_on_board= 1 added= 4 dropped= 4  +AMAT,AXTI,LRCX,UCTT  -AP,BGDE,CLRO,MAAS
+2026-07-10 [LIVE   ] board= 11 theme_snap=2026-07-10 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-13 [LIVE   ] board=  1 theme_snap=2026-07-13 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-14 [LIVE   ] board= 17 theme_snap=2026-07-14 in_theme_on_board= 1 added= 0 dropped= 0
+2026-07-15 [LIVE   ] board= 19 theme_snap=2026-07-15 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-16 [LIVE   ] board= 15 theme_snap=2026-07-16 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-17 [LIVE   ] board=  7 theme_snap=2026-07-17 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-20 [LIVE   ] board= 12 theme_snap=2026-07-20 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-21 [LIVE   ] board= 10 theme_snap=2026-07-21 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-22 [LIVE   ] board= 12 theme_snap=2026-07-22 in_theme_on_board= 1 added= 0 dropped= 0
+2026-07-23 [LIVE   ] board= 20 theme_snap=2026-07-23 in_theme_on_board= 1 added= 0 dropped= 0
+2026-07-24 [LIVE   ] board= 15 theme_snap=2026-07-24 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-27 [LIVE   ] board= 26 theme_snap=2026-07-27 in_theme_on_board= 0 added= 6 dropped= 6  +FHB,GENI,JACK,KZIA,NNE,PNW  -AGPU,BGDE,NIPG,PLRZ,PN,YYAI
+2026-07-28 [LIVE   ] board= 11 theme_snap=2026-07-28 in_theme_on_board= 0 added= 0 dropped= 0
+2026-07-29 [LIVE   ] board= 32 theme_snap=2026-07-29 in_theme_on_board= 1 added= 6 dropped= 6  +BE,GEHC,GFS,GNRC,LFUS,TEVA  -ANIK,BRAI,CLW,DFNS,PN,RCKY
+2026-07-30 [LIVE   ] board= 86 theme_snap=2026-07-30 in_theme_on_board= 3 added=14 dropped=14  +APLD,CMG,COHR,CRWV,FTNT,HUT,MKSI,MSFT,PBF,PWR,SNDK,STX,WDC,WULF  -AXTI,BOOM,CMCO,CORZ,DFNS,EFOR,FORM,MKTX,PLPC,PN,PRCH,SFM,SIMO,SMHI
+2026-07-31 [LIVE   ] board= 43 theme_snap=2026-07-31 in_theme_on_board= 2 added=12 dropped=12  +AEIS,ALAB,BELFB,DXCM,FLNC,GH,ICHR,NBIS,NVT,NXT,RYAN,VPG  -BGDE,BLZE,BSBR,CSTL,DAAQ,DUOT,FET,GFUZ,NWL,REPL,SCTX,TCX
+2026-08-03 [LIVE   ] board= 14 theme_snap=2026-08-03 in_theme_on_board= 1 added= 0 dropped= 0
+2026-08-04 [LIVE   ] board= 51 theme_snap=2026-08-04 in_theme_on_board= 4 added=15 dropped=15  +AEIS,ALAB,ARM,BR,BTDR,CAT,CIEN,COHR,FN,IMC,IT,LITE,MRVL,POET,SNAP  -ACLS,AMRC,ARVN,BLZE,DORM,IBTA,LIFE,LWLG,MED,PAY,SEAT,TSAT,UFPT,VOYG,WIX
+2026-08-05 [LIVE   ] board= 40 theme_snap=2026-08-05 in_theme_on_board= 2 added=12 dropped=12  +AMPX,ANET,COMP,CRL,ECG,FRPT,INTA,KTOS,LRN,WYNN,YOU,ZETA  -AMWL,APPS,BLMN,DBGI,FTK,GTE,JLHL,PRGO,ROCK,SWIM,TATT,TBI
+2026-08-06 [LIVE   ] board= 51 theme_snap=2026-08-06 in_theme_on_board= 2 added=13 dropped=13  +ATI,CACI,CHYM,DIOD,DNOW,EHC,ORA,PRAX,RDW,RELY,TIGO,U,VSNT  -AEVA,ASPN,ATNI,DCTH,FVN,KRO,LFST,OPRT,PAYS,SGHT,TASK,TRUP,WPP
+2026-08-07 [LIVE   ] board= 64 theme_snap=2026-08-07 in_theme_on_board= 7 added=17 dropped=17  +AAOI,ABNB,AKAM,AU,AUGO,AXTI,COHR,FROG,GFI,HMY,IAG,MCHP,NET,ONTO,RDW,SEI,TE  -CRSR,CTEV,DOCS,FIGS,FNKO,FRD,MITK,MTW,PCLA,PRAA,PSIX,PUBM,QNST,SENS,SPT,VATE,WLDN
+2026-08-10 [LIVE   ] board= 17 theme_snap=2026-08-10 in_theme_on_board= 0 added= 0 dropped= 0
+2026-08-11 [LIVE   ] board= 20 theme_snap=2026-08-11 in_theme_on_board= 1 added= 0 dropped= 0
+2026-08-12 [LIVE   ] board= 25 theme_snap=2026-08-12 in_theme_on_board= 0 added= 3 dropped= 3  +GLBE,KRNT,SMWB  -AII,DBGI,RSKD
+2026-08-13 [LIVE   ] board= 26 theme_snap=2026-08-13 in_theme_on_board= 2 added= 5 dropped= 5  +AMBP,CGEM,ENS,FOSL,WWW  -AZ,DERM,LNSR,RRGB,STEM
+2026-08-14 [LIVE   ] board= 25 theme_snap=2026-08-14 in_theme_on_board= 1 added= 4 dropped= 4  +ABX,CPS,DFH,RCAT  -AEYE,AKAN,BOXL,DAAQ
+2026-08-17 [LIVE   ] board= 14 theme_snap=2026-08-17 in_theme_on_board= 1 added= 0 dropped= 0
+2026-08-18 [LIVE   ] board= 10 theme_snap=2026-08-18 in_theme_on_board= 1 added= 0 dropped= 0
+2026-08-19 [LIVE   ] board= 17 theme_snap=2026-08-19 in_theme_on_board= 2 added= 0 dropped= 0
+    [labelled EP] MRNA: gap_rank=2 prescore_rank=4 gap_top20=Y prescore_top20=Y in_theme=n
+2026-08-20 [LIVE   ] board= 19 theme_snap=2026-08-20 in_theme_on_board= 0 added= 0 dropped= 0
+2026-08-21 [LIVE   ] board= 18 theme_snap=2026-08-21 in_theme_on_board= 0 added= 0 dropped= 0
+==============================================================================
+days with any top-20 difference: 54 of 92
+total added (prescore-only) name-days: 525; dropped (gap-only): 525
+
+Outcome distribution — fwd 5d MAX-HIGH vs d0 open:
+    ADDED by prescore : n=525 median=+8.3% >=+10%: 232 >=+20%: 107 >=+50%: 17 max=+179.7%
+    DROPPED by prescore: n=524 median=+12.3% >=+10%: 283 >=+20%: 179 >=+50%: 54 max=+352.0%
+  LIVE-basis days only (scan log's own ADV, 2026-05-01 onward):
+    ADDED by prescore : n=355 median=+8.1% >=+10%: 150 >=+20%: 60 >=+50%: 10 max=+179.7%
+    DROPPED by prescore: n=354 median=+12.0% >=+10%: 192 >=+20%: 118 >=+50%: 34 max=+330.4%
+
+Outcome distribution — fwd 5d close vs d0 open:
+    ADDED by prescore : n=525 median=+0.2% >=+10%: 106 >=+20%: 49 >=+50%: 6 max=+166.0%
+    DROPPED by prescore: n=524 median=-0.5% >=+10%: 141 >=+20%: 74 >=+50%: 19 max=+285.8%
+  LIVE-basis days only (scan log's own ADV, 2026-05-01 onward):
+    ADDED by prescore : n=355 median=-0.1% >=+10%: 67 >=+20%: 29 >=+50%: 4 max=+166.0%
+    DROPPED by prescore: n=354 median=-0.4% >=+10%: 94 >=+20%: 53 >=+50%: 10 max=+187.3%
+
+Labelled fixture members with NO board coverage in this replay (pre-scan-log day other than 04-08, or name absent from that day's log):
+    FLY 2026-03-12  (no board)
+    SMTC 2026-03-30  (no board)
+    AEHR 2026-03-31  (no board)
+    MRVL 2026-03-31  (no board)
+    ASX 2026-04-08  (day has a board; name not on it)
+    HUT 2026-04-08  (day has a board; name not on it)
+    IREN 2026-04-08  (day has a board; name not on it)
+    NBIS 2026-04-08  (day has a board; name not on it)
+    STRL 2026-04-08  (day has a board; name not on it)
+    TDIC 2026-05-12  (day has a board; name not on it)
+
+04-08 theme reconstruction: snapshot=2026-04-08, 22 tickers in Accelerating/Mainstream themes; 4 of them on the board

@@ -1,0 +1,190 @@
+Pager usage is off.
+===S1_stripped17_still_in_today
+ticker|still_in_today
+AEP|false
+ATO|false
+CMS|false
+ET|false
+EVRG|false
+EXC|false
+FE|false
+KNTK|false
+OGS|false
+OKE|true
+PAGP|false
+SO|false
+SR|false
+TRGP|false
+UGI|false
+WES|false
+XEL|false
+(17 rows)
+===S2_auto_retired_detail_today
+t_et|summary|detail
+17:10:25|Pass1.5: 'Crypto-Native Exchange & Treasury Platforms' -> 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave'|t='Crypto-Native Exchange & Treasury Platforms' t_score=73.8 t_protected=True t_size=2 unique_count=1 target='Altcoin & Diversified Digital-Asset Infrastructure Second Wave' target_score=77.3 target_protected=True
+17:10:25|Pass1.5: 'Bitcoin Mining & HPC Compute Pivot Operators' -> 'Bitcoin Mining & Digital Asset Infrastructure'|t='Bitcoin Mining & HPC Compute Pivot Operators' t_score=4.848000000000001 t_protected=True t_size=2 unique_count=0 target='Bitcoin Mining & Digital Asset Infrastructure' target_score=15.07328 target_protected=True
+17:10:34|Split: 'Oilfield Services & Equipment Providers' from 'Oilfield Services & Drilling Equipment' (4 stocks)|Tickers: ['HP', 'PTEN', 'NESR', 'WHD']
+Thesis: These are service/equipment providers to E&P operators (contract drilling rigs, hydraulic fracturing, coiled tubing, pressure control equipment) rather than oil & gas producers themselves, giving them a distinct revenue driver tied to drilling/completion activity levels and dayrates rather than commodity price realization.
+17:10:42|Arm B: 'Defense Intelligence & Cybersecurity IT Contractors' vs 'Defense Electronics & Aerospace Subsystem Suppliers' DISTINCT — 30d pair cooldown|driver_a='Aerospace/electronics subsystem production capacity recovery and missile demand surge' driver_b='Defense IT modernization and cybersecurity services contracting demand' reason='Different demand catalysts: hardware manufacturing/supply vs IT services/modernization. Defense-sector umbrella is shared, but underlying sub-industry drivers are independent and can move separately.'
+17:10:48|Arm B: 'Property & Casualty Insurance Underwriters' vs 'Life Insurance & Annuity Providers' DISTINCT — 30d pair cooldown|driver_a='Higher interest rates expand NIM and investment returns for life/annuity float; earnings re-rating catalyst' driver_b='Underwriting strength and loss-ratio improvement from operational discipline and premium adequacy' reason='Life/annuity driver is rate-driven margin expansion; P&C driver is underwriting performance. Different economic catalysts despite shared sector—rates can improve annuities while hurting P&C underwriting, and vice versa. Different demand drivers = distinct trades.'
+17:10:53|Arm B: 'Quantum Computing Pure-Plays' merged into 'Quantum Computing Pure-Plays (Federal Funding Cycle)' (4 members)|driver_a='U.S. federal quantum funding and contract flow via Commerce Department' driver_b='Anticipated federal quantum funding and White House support for quantum' reason='Both themes trade the identical driver: federal quantum investment expectations. No distinct catalyst, catalyst timing, or sub-driver separates them. Keeping separate is pure fragmentation.' merged_name='Quantum Computing Pure-Plays (Federal Funding Cycle)' scratchpad='THEME A driver: U.S. federal quantum funding/contract flow expectations, specifically Commerce letters of intent pointing to ~$100M in potential funding. THEME B driver: Anticipated federal quantum funding (~$100M) and continued White House support for quantum as national priority. Both themes have THE SAME directional driver: anticipation of U.S. government quantum investment and policy support. '
+17:11:02|Arm B: 'AI Data Center Component & Connectivity Semiconductor Suppliers' merged into 'AI Chip & Interconnect Supply Chain Enablement' (14 members)|driver_a='Broad AI-chip sector sentiment rally driven by Nvidia earnings momentum lifting semiconductor designers, equipment makers, and foundry suppliers' driver_b='AI data center component buildout: specialized connectivity, power delivery, and programmable logic components designed into AI server and rack infrastructure' reason="Theme B is a modality/purity slice (data center connectivity components) of Theme A's core driver (AI chip supply chain expansion). Same underlying catalyst: AI infrastructure capex. Theme B adds only a subset qualifier without independent catalyst. Merging eliminates fragmentation." merged_name='AI Chip & Interconnect Supply Chain Enablement' scratchpad='THEME A driver: Broad AI-chip sector rally on Nvidia earnings momentum, lifting sentiment across semiconductor chip designers and equipment makers (AMD, NVDA, MU, ASML, LRCX, etc.). This is a horizontal, macro sentiment driver — the entire semi supply chain rising on AI tailwinds.\n\nTHEME B driver: AI data center component buildout — specialized connectivity, power delivery, and programmable logic '
+17:11:06|Arm B: 'Uranium Mining & Nuclear Fuel Cycle Producers' vs 'Offshore Energy Equipment & Services' DISTINCT — 30d pair cooldown|driver_a='Offshore oil & gas capex recovery, M&A/funding optionality in drilling sector' driver_b='AI data-center nuclear power demand, Westinghouse IPO valuation inflection' reason='Different energy subsectors, opposite macro catalysts. Offshore oil services tied to commodity capex cycles; uranium/nuclear tied to clean energy & AI infrastructure. Incompatible end-markets and demand drivers warrant distinct tracking.'
+17:11:11|Arm B: 'Coal Mining Relative Strength Breakout' vs 'Offshore Energy Equipment & Services' DISTINCT — 30d pair cooldown|driver_a='Offshore oil-gas services recovery; M&A/capital deployment optionality; deepwater activity cycle' driver_b='Coal production recovery; mining operation stabilization; thermal coal demand rebound' reason='Different commodities, different demand catalysts. Offshore services driven by oil/gas price and E&P capex; coal by coal prices and mining efficiency. No shared directional driver despite both being "Energy."'
+17:11:16|Arm B: 'Business Development Companies & Private Credit Lenders' vs 'Private Equity & Alternative Asset Management Platforms' DISTINCT — 30d pair cooldown|driver_a='PE capital deployment momentum, deal activity, growth/infrastructure initiatives catalyzing alternatives adoption' driver_b='Macro credit-market risk-on tone, lower bond yields, BDC sector spread compression' reason='Same sector, overlapping members (FSK), but opposite catalysts: A driven by deal/deployment velocity; B driven by macro credit conditions. Member overlap masks distinct theses; a falling-yield BDC bounce and a PE-deal boom are independent forces.'
+17:11:20|Arm B: 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' vs 'Private Equity & Alternative Asset Management Platforms' DISTINCT — 30d pair cooldown|driver_a='Renewed institutional capital deployment and dealflow in alternative asset management, PE platforms' driver_b='Regulatory clarity and Trump-era crypto policy enablement for digital-asset infrastructure' reason='Different demand catalysts: PE capital cycle vs. crypto regulatory tailwind. No shared directional driver—separate value chains, separate buyer bases, separate policy vectors.'
+17:11:20|Auto-retired 8 theme(s) dropped during merge passes (3 with successor pointer)|'Bitcoin Mining & HPC Compute Pivot Operators' -> parent='Bitcoin Mining & Digital Asset Infrastructure'
+'Crypto-Native Exchange & Treasury Platforms' -> parent='Altcoin & Diversified Digital-Asset Infrastructure Second Wave'
+'Electronics Manufacturing & Semiconductor Packaging Supply Chain' -> parent='(unknown)'
+'Industrial Equipment Rental & Material Handling' -> parent='Industrial Lifting, Material Handling & Equipment Rental'
+'Mobile App Platform & Advertising Monetization' -> parent='(unknown)'
+'Natural Gas Pipeline & Midstream Transport Infrastructure' -> parent='(unknown)'
+'Oilfield Services & Drilling Equipment' -> parent='(unknown)'
+'Power Semiconductor & Electrification Components' -> parent='(unknown)'
+17:15:11|2 theme(s) renamed to prior canonical names|'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting' → 'Bitcoin Mining & HPC Compute Pivot Operators' (canonical from 2026-08-12)
+'For-Profit Higher Education Enrollment Rebound' → 'For-Profit Postsecondary & Vocational Education' (canonical from 2026-08-17)
+(13 rows)
+===S3_run_order_today
+t_et|event_type|summary
+17:00:33|theme_load_state|theme_load_state n=106 stages={'Nascent': 29, 'Mainstream': 39, 'Fading': 31, 'Accelerating': 7} dates=2 DUPS_AT_LOAD=1
+17:00:41|ticker_revalidated_out|ASST removed from 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' by validation
+17:00:41|validation_cooldown_triggered|ASST → 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' cooldown 14d (removal #1)
+17:00:42|ticker_revalidated_out|FLYW removed from 'B2B Digital Financial Infrastructure & Payment Rails Modernization' by validation
+17:00:42|validation_cooldown_triggered|FLYW → 'B2B Digital Financial Infrastructure & Payment Rails Modernization' cooldown 14d (removal #1)
+17:00:44|theme_stage_flip_held|Altcoin & Diversified Digital-Asset Infrastructure Second Wave: Nascent→Fading held; y_Δ=+0.0
+17:00:53|theme_breadth_fade|Canadian Big Banks: breadth 20%, members 5
+17:01:09|ticker_revalidated_out|WK removed from 'Corporate Spend, Expense Management & Financial Operations Software' by validation
+17:01:09|validation_cooldown_triggered|WK → 'Corporate Spend, Expense Management & Financial Operations Software' cooldown 14d (removal #1)
+17:01:20|theme_breadth_fade|Defense Electronics & Aerospace Subsystem Suppliers: breadth 17%, members 6
+17:01:24|ticker_revalidated_out|MMED removed from 'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)' by validation
+17:01:24|validation_cooldown_triggered|MMED → 'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)' cooldown 14d (removal #1)
+17:02:07|theme_low_quality_description|Theme 'Life Science Tools & Analytical Instruments': capped Mainstream → Nascent (ticker_concat:A_AVTR)
+17:02:16|theme_breadth_fade|Network Security & Zero-Trust Edge: breadth 20%, members 15
+17:02:27|theme_low_quality_description|Theme 'Precious Metals Royalty & Streaming Companies': capped Mainstream → Nascent (ticker_concat:FNV_OR)
+17:02:49|theme_low_quality_description|Theme 'Software Development & DevOps Collaboration Platforms': capped Mainstream → Nascent (ticker_concat:FROG_GTLB)
+17:02:50|ticker_revalidated_out|PSKY removed from 'Video & Streaming Content Distribution Rebound' by validation
+17:02:50|validation_cooldown_triggered|PSKY → 'Video & Streaming Content Distribution Rebound' cooldown 14d (removal #1)
+17:02:54|ticker_revalidated_out|NN removed from 'AI Chip & Interconnect Supply Chain Enablement' by validation
+17:02:54|validation_cooldown_triggered|NN → 'AI Chip & Interconnect Supply Chain Enablement' cooldown 14d (removal #1)
+17:03:23|theme_breadth_fade|Emerging Defense & Aerospace Hardware Suppliers: breadth 17%, members 6
+17:03:24|ticker_revalidated_out|BSP removed from 'Mobile App Platform & Advertising Monetization' by validation
+17:03:24|validation_cooldown_triggered|BSP → 'Mobile App Platform & Advertising Monetization' cooldown 14d (removal #1)
+17:03:24|theme_dissolved_flagged_pair|Arm A dissolve: 'Mobile App Platform & Advertising Monetization' — validation flagged BSP at 2 members
+17:03:51|validation_mass_removal_name_suspect|'Oil Refining & Marketing': validation flagged 17/24 members — name likely narrower than the cluster (#214)
+17:03:51|ticker_revalidated_out|CMS removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|CMS → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|ATO removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|ATO → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|WES removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|WES → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|AEP removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|AEP → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|ET removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|ET → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|EXC removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|EXC → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|EVRG removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|EVRG → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|FE removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|FE → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|SO removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|SO → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|OGS removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|OGS → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|UGI removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|UGI → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|KNTK removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|KNTK → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|SR removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|SR → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|XEL removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|XEL → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|TRGP removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|TRGP → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|PAGP removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|PAGP → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:51|ticker_revalidated_out|OKE removed from 'Oil Refining & Marketing' by validation
+17:03:51|validation_cooldown_triggered|OKE → 'Oil Refining & Marketing' cooldown 14d (removal #1)
+17:03:54|theme_carryforward_filter_stripped|Altcoin & Diversified Digital-Asset Infrastructure Second Wave: stripped 1 ticker(s) (sector_outlier)
+17:04:08|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 1/12, advisor_calls=0)
+17:04:25|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 2/12, advisor_calls=0)
+17:04:49|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 3/12, advisor_calls=0)
+17:05:11|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 4/12, advisor_calls=0)
+17:05:22|assignment_llm_proposed|Sonnet proposed 0 assignment(s) (batch 5/12, advisor_calls=0)
+17:05:41|assignment_llm_proposed|Sonnet proposed 1 assignment(s) (batch 6/12, advisor_calls=0)
+17:06:00|assignment_llm_proposed|Sonnet proposed 0 assignment(s) (batch 7/12, advisor_calls=0)
+17:06:18|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 8/12, advisor_calls=0)
+17:06:41|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 9/12, advisor_calls=0)
+17:07:02|assignment_llm_proposed|Sonnet proposed 3 assignment(s) (batch 10/12, advisor_calls=0)
+17:07:21|assignment_llm_proposed|Sonnet proposed 2 assignment(s) (batch 11/12, advisor_calls=0)
+17:07:30|assignment_llm_proposed|Sonnet proposed 2 assignment(s) (batch 12/12, advisor_calls=0)
+17:07:30|assignment_skipped_sector_outlier|MNTN (Technology) → 'Programmatic Digital Advertising Platforms' (members: ['Communication Services'])
+17:07:30|assignment_skipped_sector_outlier|GPN (Industrials) → 'B2B Digital Financial Infrastructure & Payment Rails Modernization' (members: ['Technology'])
+17:07:30|assignment_skipped_sector_outlier|BTU (Energy) → 'Metallurgical & Thermal Coal Mining Rebound' (members: ['Basic Materials'])
+17:07:30|assignment_skipped_sector_outlier|MSTR (Technology) → 'Corporate Digital Asset Treasury Vehicles' (members: ['Financial Services'])
+17:07:30|assignment_skipped_sector_outlier|NBIS (Communication Services) → 'Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers' (members: ['Technology'])
+17:08:35|theme_discovery_llm_call|stop=tool_use out_tok=3705 forced=False tool_uses=1 iter=1
+17:08:57|theme_discovery_llm_call|stop=tool_use out_tok=1765 forced=False tool_uses=1 iter=1
+17:09:20|theme_discovery_llm_call|stop=tool_use out_tok=2029 forced=False tool_uses=1 iter=1
+17:09:50|theme_discovery_llm_call|stop=tool_use out_tok=2928 forced=False tool_uses=1 iter=1
+17:10:10|theme_discovery_llm_call|stop=tool_use out_tok=1965 forced=False tool_uses=1 iter=1
+17:10:17|theme_birth_gate|2026-08-26 [lane1/observe] birth-gate: 1 birth / 0 join / 1 awaiting-2nd-sighting / 1 held-floor · ⚠ 15 previously-held later PASSED
+17:10:25|theme_engine_funnel|births: uncovered=10 v/t/e=14/1/30 discovery=ON → LLM=4 → survived=4 | retired=3
+17:10:25|theme_discovered|New theme: Coal Mining Relative Strength Breakout (2 stocks)
+17:10:25|theme_discovered|New theme: mRNA & Antiviral Vaccine Biotech Rebound (4 stocks)
+17:10:25|theme_discovered|New theme: Bitcoin Miner to AI/HPC Data Center Conversion (6 stocks)
+17:10:25|theme_discovered|New theme: Quantum Computing Pure-Plays (4 stocks)
+17:10:25|theme_retired|Retired: Power Semiconductor & Electrification Components
+17:10:25|theme_retired|Retired: Mobile App Platform & Advertising Monetization
+17:10:25|theme_retired|Retired: Electronics Manufacturing & Semiconductor Packaging Supply Chain
+17:10:25|theme_pass1_protect_strip|Pass1: stripped 3 ticker(s) from 'Industrial Equipment Rental & Material Handling' (protect 'Industrial Lifting, Material Handling & Equipme
+17:10:25|theme_pass1_5_skip|Pass1.5: 'Robotic Process Automation & Low-Code Workflow Execution' eligible but no target passed (1 candidate(s) skipped)
+17:10:25|theme_pass1_5_skip|Pass1.5: 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' eligible but no target passed (2 candidate(s) skipped)
+17:10:25|theme_pass1_5_absorption|Pass1.5: 'Crypto-Native Exchange & Treasury Platforms' -> 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave'
+17:10:25|theme_pass1_5_skip|Pass1.5: 'Bitcoin Mining & Digital Asset Infrastructure' eligible but no target passed (1 candidate(s) skipped)
+17:10:25|theme_pass1_5_absorption|Pass1.5: 'Bitcoin Mining & HPC Compute Pivot Operators' -> 'Bitcoin Mining & Digital Asset Infrastructure'
+17:10:25|theme_sector_cap_dropped|'mRNA & Antiviral Vaccine Biotech Rebound' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)
+17:10:25|theme_score_ties|9 score-tie group(s) after stage 'after_merge_1'
+17:10:25|theme_empty_tickers|1 theme(s) with empty ticker list after 'after_merge_1'
+17:10:25|theme_cap_drop|Cap: 1 theme(s) dropped below PRUNE_MIN_TICKERS=2
+17:10:25|theme_score_ties|9 score-tie group(s) after stage 'after_cap_1'
+17:10:34|theme_split|Split: 'Oilfield Services & Equipment Providers' from 'Oilfield Services & Drilling Equipment' (4 stocks)
+17:10:38|theme_score_ties|10 score-tie group(s) after stage 'after_split'
+17:10:38|theme_pass1_5_skip|Pass1.5: 'Robotic Process Automation & Low-Code Workflow Execution' eligible but no target passed (1 candidate(s) skipped)
+17:10:38|theme_score_ties|9 score-tie group(s) after stage 'after_merge_2'
+17:10:38|theme_orphan_sub|1 orphan sub-theme(s) after stage 'after_merge_2'
+17:10:38|theme_score_ties|9 score-tie group(s) after stage 'after_cap_2'
+17:10:38|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+17:10:42|theme_merge_distinct|Arm B: 'Defense Intelligence & Cybersecurity IT Contractors' vs 'Defense Electronics & Aerospace Subsystem Suppliers' DISTINCT — 30d pair co
+17:10:48|theme_merge_distinct|Arm B: 'Property & Casualty Insurance Underwriters' vs 'Life Insurance & Annuity Providers' DISTINCT — 30d pair cooldown
+17:10:53|theme_thesis_merged|Arm B: 'Quantum Computing Pure-Plays' merged into 'Quantum Computing Pure-Plays (Federal Funding Cycle)' (4 members)
+17:11:02|theme_thesis_merged|Arm B: 'AI Data Center Component & Connectivity Semiconductor Suppliers' merged into 'AI Chip & Interconnect Supply Chain Enablement' (14 me
+17:11:06|theme_merge_distinct|Arm B: 'Uranium Mining & Nuclear Fuel Cycle Producers' vs 'Offshore Energy Equipment & Services' DISTINCT — 30d pair cooldown
+17:11:11|theme_merge_distinct|Arm B: 'Coal Mining Relative Strength Breakout' vs 'Offshore Energy Equipment & Services' DISTINCT — 30d pair cooldown
+17:11:16|theme_merge_distinct|Arm B: 'Business Development Companies & Private Credit Lenders' vs 'Private Equity & Alternative Asset Management Platforms' DISTINCT — 30d
+17:11:20|theme_merge_distinct|Arm B: 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' vs 'Private Equity & Alternative Asset Management Platforms' DISTINC
+17:11:20|theme_auto_retired|Auto-retired 8 theme(s) dropped during merge passes (3 with successor pointer)
+17:11:24|theme_ecosystem_assigned|'Oilfield Services & Equipment Providers' → E-ENER (haiku)
+17:11:29|theme_ecosystem_assigned|'Coal Mining Relative Strength Breakout' → E-ENER (haiku)
+17:11:33|theme_ecosystem_assigned|'Quantum Computing Pure-Plays (Federal Funding Cycle)' → E-QUANTUM (haiku)
+17:11:39|theme_ecosystem_assigned|'Bitcoin Miner to AI/HPC Data Center Conversion' → E-AIINFRA (haiku)
+17:11:39|theme_constituent_churn|18 high-churn (theme,ticker) pair(s) in last 10d — sample: BBVA↔European Bank Stocks(2), ROK↔Industrial Automatio(2), TKR↔Industrial Automat
+17:12:37|theme_discovery_llm_call|stop=tool_use out_tok=5311 forced=False tool_uses=1 iter=1
+17:13:32|theme_discovery_llm_call|stop=tool_use out_tok=5179 forced=False tool_uses=1 iter=1
+17:14:04|theme_discovery_llm_call|stop=tool_use out_tok=2922 forced=False tool_uses=1 iter=1
+17:14:47|theme_discovery_llm_call|stop=tool_use out_tok=4110 forced=False tool_uses=1 iter=1
+17:15:11|theme_discovery_llm_call|stop=tool_use out_tok=2187 forced=False tool_uses=1 iter=1
+17:15:11|theme_discovery_shadow_ran|Theme discovery shadow: 10 candidate themes written
+17:15:11|theme_renamed_for_continuity|2 theme(s) renamed to prior canonical names
+17:15:11|theme_birth_gate|2026-08-26 [promote/observe] birth-gate: 1 birth / 7 join / 0 awaiting-2nd-sighting / 1 held-floor · ⚠ 15 previously-held later PASSED
+17:15:14|theme_ecosystem_assigned|'African Gold & Silver Mining Operators' → E-METAL (haiku)
+17:15:18|theme_ecosystem_assigned|'Liquid Biopsy & Multi-Cancer Early Detection Diagnostics' → E-MEDTECH (haiku)
+17:15:22|theme_ecosystem_assigned|'mRNA & Next-Gen Vaccine Platform Resurgence' → E-BIO (haiku)
+17:15:37|theme_composition_churn|Composition churn (on-demand): Gold & Precious Metals Miners Rotation: +AEM +ARIS +AU +B +CGAU +EGO +EQX +FNV +GFI +HMY +IAG +KGC +NEM +RGLD
+17:30:10|theme_quality_clean|clean: 0 retirement flag(s), 0 prune flag(s)
+18:05:35|theme_synthesis_run|62 candidates → 2 proposed → 1 kept
+(137 rows)
+===S4_END
+?column?
+1
+(1 row)

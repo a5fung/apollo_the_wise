@@ -1,0 +1,33 @@
+POPULATION: 569 settled fires · 18 reached >=4R · base tail rate 3.2%
+BAR: rate >= 8% AND n >= 30 AND holds ex-May AND holds on the trail arm
+
+  SKIP extension at EP: only 0 fires carry it — cannot support a cut
+cut                                         n  tail    rate   ex-May   trail   meanR  pass
+simulated day-1 group = U                   8     2  25.0%     0.0%   12.5%    4.78  
+signals fired together = 1                 30     4  13.3%     4.5%   10.0%    0.37  
+signals fired together = 2                209    13   6.2%     3.6%    4.3%   -0.19  
+in active theme = (none)                  210    13   6.2%     3.3%    3.8%   -0.18  
+stop width % of entry >= 2.38651          285    17   6.0%     3.4%    3.9%   -0.23  
+stop width % of entry >= 4.75888          143     8   5.6%     2.3%    2.8%   -0.23  
+prior-day RS >= 77.1                      144     7   4.9%     2.1%    1.4%   -0.41  
+buy signal = ep_high_break                 42     2   4.8%     0.0%    0.0%   -0.55  
+simulated day-1 group = B                 192     9   4.7%     2.9%    4.2%   -0.54  
+catalyst grade = routine                   90     4   4.4%     5.7%    2.2%   -0.61  
+EP-day gap % < 18.83                      425    18   4.2%     2.1%    3.5%   -0.51  
+stop width % of entry >= 1.0401           427    18   4.2%     2.1%    3.3%   -0.47  
+buy signal = ep_close_620_prox            198     8   4.0%     2.2%    2.5%   -0.59  
+prior-day RS >= 40.2                      286    11   3.8%     1.1%    2.8%   -0.48  
+catalyst grade = strong                   314    12   3.8%     0.6%    3.5%   -0.48  
+EP-day gap % >= 11.76                     429    16   3.7%     2.0%    3.5%   -0.52  
+EP-day $ volume < 2.81356e+08             283    10   3.5%     1.7%    3.9%   -0.55  
+EP-day $ volume < 9.4065e+08              426    15   3.5%     2.1%    3.3%   -0.58  
+prior-day RS >= 17.1                      428    15   3.5%     1.3%    3.3%   -0.55  
+EP-day gap % >= 15.33                     290    10   3.4%     1.0%    2.8%   -0.51  
+session index of fire < 3                 393    13   3.3%     1.4%    3.1%   -0.57  
+EP-day $ volume >= 9.63196e+07            428    14   3.3%     1.7%    2.8%   -0.57  
+
+CUTS TRIED: 49   CUTS PASSING: 0
+MULTIPLE COMPARISONS: at a 3.2% base rate, testing 49 cuts on 569 fires with 18 positives,
+  some cut clearing 8% by chance alone is EXPECTED — a single passing cut found after 49 tries is noise, not a finding.
+
+>>> NOTHING CLEARS THE PRE-REGISTERED BAR. This is the null, and it was written down in advance.

@@ -1,0 +1,37 @@
+Pager usage is off.
+===U1_cooldowns_0819
+ticker|theme_name|removal_count|t_et
+SHAZ|Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers|3|17:06:22
+NN|Emerging Defense & Aerospace Hardware Suppliers|1|17:01:50
+SPCX|Emerging Defense & Aerospace Hardware Suppliers|1|17:01:50
+HAPN|U.S. Regional & Mid-Cap Commercial Banks|2|17:09:18
+MCHB|U.S. Regional & Mid-Cap Commercial Banks|1|17:09:18
+(5 rows)
+===U2_revalidated_out_0819
+t_et|summary
+17:01:44|SHAZ removed from 'Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers' by validation
+17:01:50|NN removed from 'Emerging Defense & Aerospace Hardware Suppliers' by validation
+17:01:50|SPCX removed from 'Emerging Defense & Aerospace Hardware Suppliers' by validation
+17:04:16|SHAZ removed from 'Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers' by validation
+17:06:22|SHAZ removed from 'Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers' by validation
+17:06:55|HAPN removed from 'U.S. Regional & Mid-Cap Commercial Banks' by validation
+17:09:18|HAPN removed from 'U.S. Regional & Mid-Cap Commercial Banks' by validation
+17:09:18|MCHB removed from 'U.S. Regional & Mid-Cap Commercial Banks' by validation
+(8 rows)
+===U3_funnel_runs_per_day
+d|funnel_rows|times
+2026-08-26|1|17:10
+2026-08-25|1|17:08
+2026-08-24|1|17:10
+2026-08-21|1|17:11
+2026-08-20|1|17:11
+2026-08-19|2|17:14 , 17:16
+2026-08-18|2|17:08 , 17:14
+2026-08-17|1|17:12
+2026-08-14|1|17:10
+2026-08-13|1|17:08
+(10 rows)
+===U4_END
+?column?
+1
+(1 row)

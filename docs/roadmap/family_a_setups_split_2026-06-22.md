@@ -1,0 +1,122 @@
+# Family A — CONSOLIDATION Setups (the Split, Rebuild & Roadmap · 2026-06-22)
+
+> **Family A = the CONSOLIDATION setups (operator 2026-06-22).** Both members require a **run-up → a
+> CONSOLIDATION → an entry around the consolidation point** — HTF enters on the breakout, Anticipation
+> in the coil. So whenever we say **"consolidation," it means Family A** (a family of setups). Contrast
+> **Family B = EP / gap-ups** (MAGNA53 EP, 9M EP, gap-ups) — entries around the **GAP-UP area**, not a
+> consolidation. Sugar Babies is a CONDITION, not a member of either.
+
+**Durable home for the 2 setups + the Sugar-Babies condition, their next steps, and WHY.** This session uncovered a structurally
+broken consolidation detector + a chain of methodology mistakes; the operator split the work into 2
+distinct setups (Anticipation + HTF); Sugar Babies is a related CONDITION, not a setup. Read this before touching any of them. SSoT for the trackable next steps = the PLAN
+#-tasks cited below; SSoT for the methodology = `docs/methodology/operator_shared_notes.md` + ADR 0013.
+
+> **TIMELINE (operator 2026-06-22): this is a FAST-FOLLOW to Phase 2 real-money trading (~Wed 6/24 on
+> ACH settle) — COMPLETE BOTH SETUPS + RESOLVE THE SUGAR-BABIES ROLE THIS WEEK (target 2026-06-27).** Not July. All shadow / no money,
+> so it runs in parallel with the live launch without touching it. Tomorrow's FIRST priority is still
+> the money-critical #151 + Phase 2 (advisor); Family-A is the immediate fast-follow right after.
+
+## The arc — why we're here
+The flag→consolidation **merge** (#354, befb41e) built a Confirm/breakout entry on a consolidation
+detector that was structurally broken: the runup anchor measured the runup INSIDE the base (real
+setups like STM **excluded**), and the entry fired on quiet **declines** (BTU/UFO/DRUG) because it
+had **no consolidation/holds gate at all** — `is_entry_tight` only checked "quiet" (rmv + abs range
+≤7% + low vol), which a slow bleed-down passes. Investigating it surfaced that the code had **silently
+diverged from a methodology the operator already signed** (`operator_shared_notes.md` 6/16 + ADR 0013:
+tightness must be VOLATILITY-RELATIVE; the absolute ≤7% had been wrong for weeks). Operator decision:
+**un-merge into 2 setups (Anticipation + HTF) + 1 condition (Sugar Babies)** + rename for clarity. Full diagnosis:
+`docs/analysis/consolidation_runup_defect_2026-06-22.md`.
+
+---
+
+## Setup 1 — ANTICIPATION (the Pradeep tight-day play) · ACTIVE, paused for labels · #354
+**What it is:** runup (15%/10d leg) → the stock **HOLDS** the gains (Upper-Third ≤20–30% retrace +
+One-Strike ≤1 daily 4% breakdown, **volatility-relative**) → a **series of tight days** (volatility-
+relative contraction culminating in a Narrow-Range day) → enter **IN the coil, before the break**
+(ANTICIPATE). **Strictly anticipate** — NO breakout/Confirm, NO U&R (operator split 6/22).
+**Definition SSoT:** `operator_shared_notes.md` (Pradeep thread 6/16 + Gemini blueprint 6/22).
+**Progress (shadow, committed):** anchor refined to the recent runup-leg peak (3–20d base, not the
+global max); holds gate data-grounded on the 6/15 Pradeep cohort (declines 2–5 breakdowns/23–34%
+retrace vs tight names 0–1/≤11%); confirmed the gate must be volatility-relative (HYLN).
+**NEXT STEPS (in order):**
+1. **Operator labels** the shortlist `docs/analysis/anticipation_shortlist_to_label_2026-06-22.md`
+   (G/X) — includes the false-negative check section (canary + the §2-excluded names).
+2. **Calibrate** the volatility-relative holds/tightness thresholds against the labels — **2–3
+   monotonic knobs + a holdout** (anti-overfit; ~300 candidates / few labels = high overfit risk).
+3. **Reuse ADR 0013's anchor machinery** (`select_consolidation_keys` carry-forward / anchor-stability)
+   — replace the invented `[n−20, n−3]` heuristic, or supersede it with validation (search-before-build).
+4. **PIN the deliverable (operator decision):** shortlist-for-judgment (ADR §2.5 signed) vs strictly-
+   anticipate-entry. They have different pass criteria — this sets what "good vs garbage" means.
+5. **Wire** the calibrated gates into the detector (SHADOW; enforce ADR 0013's provenance rule — every
+   gate cites a source; sign-off for any threshold change).
+6. **Re-validate** against the de-biased labels (the COO canary must survive).
+
+▶ **FOLD-IN from the 6/22 /simplify** (don't refactor now — apply when rebuilding the detector): (a)
+`entry_signal_at` + `confirm_signal_at` share 6/10 return fields + the `rr`/`vols`/`adv` setup — extract
+one `_entry_record(...)` / telemetry-tail helper (keep the two detectors separate); (b) the Anticipate/
+Confirm display split is hand-duplicated across `scheduler.py` + `agent.py` (already drifting) — hoist
+the sub-header labels + `entry_mode` literals to shared constants in `anticipation.py`, or one
+`format_entry_fired_section`; (c) `db.py` `by_mode` is YAGNI (computed, no consumer, mirrors the dead
+`by_origin`) — wire a per-mode "edge so far" line OR cut it. (Note: the Confirm/U&R path is being DROPPED
+per the strict-anticipate split, so much of this dissolves anyway.)
+
+## Setup 2 — HTF (High Tight Flag) · SPEC GROUNDED 6/22, ready to build · #356
+**What it is:** the former flag / flag_continuation detector → its OWN setup: a massive runup → a
+shallow tight flag → enter on the **confirmed BREAKOUT** on volume. `flag_detector.py` is LIVE +
+load-bearing (`/flags`, the #94 intraday break, the digest) and was **UNCHANGED this session** (clean).
+**SPEC (grounded 6/22, `operator_shared_notes.md` — O'Neil/Minervini/Qullamaggie):** flagpole
+**90–100%+ / 4–8wk** (`C≥1.9×C₄₀` or `High₄₀≥1.9×Low₄₀`); flag **≤10–25% pullback near the 40d high**,
+3–5wk, volume dry-up + right-side tightening; trend above 10/20/50 MA; catalyst-backed; entry =
+breakout above the flag high on **≥150% ADV** (buy-stop-limit 5–10¢ above the pivot); stop below the
+tightest-day low / 10–20 EMA, max-loss 5–8%; manage = scale **33–50% at 3–5d → breakeven → trail
+10/20 EMA**.
+**NEXT STEPS (build — can quick-start):**
+0. **KEEP the existing 5-stage state machine** (unqualified→WATCH→TIGHTENING→COILED→TRIGGERED) — the
+   operator likes the per-stock stage display ("I like how it shows which stage a stock is at in the
+   flag", 6/22). Swap only the CRITERIA underneath each stage, NOT the staging/progression/display.
+1. **Reconcile `flag_detector`'s UNSOURCED `50%/60d`** → the sourced **90%/40d + ≤25% pullback**
+   (the 50/60 was a prior session's pick, first commit 2026-05-01, never validated). CHANGE_PROCESS +
+   N≥10 backtest + sign-off (load-bearing `/flags`).
+2. Add the **breakout entry** (flag-high + ≥150% ADV) + the **EMA-trail management** (scale → BE → trail).
+3. Refine/rename flag → HTF.
+
+## Related CONDITION (NOT a Family-A setup) — PERSISTENT SUGAR BABIES · TBD · #357
+**What it is (clarified 6/22):** NOT a setup — a stock **CONDITION** (recurring 9M-EP: ≥3 9M EOD
+prints / 180d, `mi_sugar_babies_cohort`). The Telegram surface overlays the flag/HTF **stage** on the
+9M cohort. Operator's thinking: any setup can include a sugar-baby stock or not → it's likely an
+**additional confluence point / score input** on a stock that's already in a setup, not a standalone
+play.
+**NEXT STEPS:**
+1. **Operator decides the role** — a confluence/scoring input on a setup, vs a standalone watchlist.
+2. Re-frame the surface accordingly (the cohort is Family-B/EP universe; the stage overlay becomes HTF).
+
+---
+
+## The mistakes + the systemic lesson (WHY the discipline matters)
+**The mistakes this session were all ONE pattern — asserting methodology from partial recall instead
+of reading the captured source of truth:** "high tight flag" (my invented label), "50/60 is validated/
+signed" (unverified), "let me define a base" (it was already captured), the unilateral "launch without
+partials" (retracted — THE LINE), the runup-inside-base mis-explanation (twice).
+**The systemic root (advisor):** a signed methodology existed (`operator_shared_notes.md` + ADR 0013),
+the code **silently diverged** from it, and **nothing checks code-against-captured-methodology** —
+`is_entry_tight`'s absolute range contradicted the operator's own signed 6/16 conclusion for weeks,
+uncaught.
+**Durable fix:** (a) grep `operator_shared_notes.md` + the relevant ADR BEFORE asserting any threshold
+or provenance (memories `feedback_capture_operator_shared_notes`, `feedback_search_before_build_primitive`,
+`feedback_no_unilateral_methodology_change`); (b) ENFORCE ADR 0013's provenance rule — a check that
+flags any live gate value with no source citation (currently unenforced) — filed as #358.
+
+## Advisor deep-review (2026-06-22) — the guidance
+- The split is RIGHT; test-first on live data + operator labels is the missing discipline; volatility-
+  relative tightness is grounded (not invented); keep it shadow / off the Phase-2 path.
+- De-bias the shortlist (DONE — false-negatives can't surface from a §2-derived list); **pin the
+  deliverable; reuse the anchor machinery; anti-overfit (2–3 knobs + holdout)**.
+- **Tomorrow's FIRST priority = the money-critical work (#151 partial-exit, Phase 2 funding/arming),
+  NOT more consolidation.**
+
+## Artifacts (all committed)
+- Diagnosis/defect: `docs/analysis/consolidation_runup_defect_2026-06-22.md`
+- Methodology SSoT: `docs/methodology/operator_shared_notes.md` · Design: ADR 0013
+- Acceptance test: `scripts/_consolidation_acceptance_test.py` · Holds measure: `scripts/probes/_anticipation_holds_measure.py`
+- Shortlist (to label): `scripts/probes/_anticipation_shortlist.py` + `docs/analysis/anticipation_shortlist_to_label_2026-06-22.md`
+- Fixtures: `tests/fixtures/{consolidation_acceptance,anticipation_pradeep_cohort,anticipation_universe}_bars.psv`

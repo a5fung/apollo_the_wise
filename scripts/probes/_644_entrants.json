@@ -1,0 +1,2045 @@
+[
+ {
+  "canonical_id": "K0141",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "GH",
+   "GRAL"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0140",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "DAVE",
+   "SEZL"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0136",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "NTLA",
+   "RGNX"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0131",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "CGON",
+   "ELVN",
+   "SNDX"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0135",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "MRNA",
+   "TWST"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0127",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "AGIO",
+   "AMLX",
+   "MIRM",
+   "RARE",
+   "RGNX"
+  ],
+  "n_tickers": 5,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0142",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "ALKT",
+   "QTWO"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0122",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "AEVA",
+   "ALGM",
+   "MEI",
+   "OUST"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0144",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "KNSL",
+   "PLMR",
+   "RYAN",
+   "WTW"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0123",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "NP",
+   "SLDE"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0145",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "APPS",
+   "MGNI"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0126",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "ABVX",
+   "ALMS",
+   "CLDX",
+   "TRAX",
+   "VERA",
+   "VOR"
+  ],
+  "n_tickers": 6,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0139",
+  "week_start": "2026-06-29",
+  "as_of_date": "2026-07-02",
+  "tickers": [
+   "DINO",
+   "DK",
+   "MPC",
+   "PBF",
+   "PSX",
+   "VLO"
+  ],
+  "n_tickers": 6,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0154",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "ABG",
+   "PAG",
+   "SAH"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0165",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "IMMX",
+   "RGNX",
+   "SRPT",
+   "SRRK",
+   "VOR"
+  ],
+  "n_tickers": 5,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0176",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "MELI",
+   "SE"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0157",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "GSHD",
+   "PRCH"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0175",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "ABVX",
+   "GMAB",
+   "ZYME"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0166",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "PAYP",
+   "WSE"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0125",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "ARCB",
+   "KNX",
+   "LSTR",
+   "SNDR",
+   "TFII",
+   "WERN"
+  ],
+  "n_tickers": 6,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0172",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "BILL",
+   "NAVN",
+   "WEX"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0105",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "MET",
+   "PFG",
+   "PRU",
+   "UNM"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0173",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "BLLN",
+   "QGEN",
+   "WGS"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0162",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "LZ",
+   "NSP"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0168",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "DDOG",
+   "DT"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0156",
+  "week_start": "2026-07-06",
+  "as_of_date": "2026-07-10",
+  "tickers": [
+   "CDP",
+   "HIW",
+   "SLG"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0200",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "CTAS",
+   "VSTS"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0203",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "GTLB",
+   "PRGS"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0142",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "ACIW",
+   "ALKT",
+   "PAY",
+   "QTWO"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0183",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "MAN",
+   "RHI"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0181",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "EVER",
+   "MAX"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0180",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "CBZ",
+   "CRAI"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0178",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "BRZE",
+   "HUBS",
+   "KVYO"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0195",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "ALIT",
+   "PCTY",
+   "WDAY"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0191",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "FOUR",
+   "PYPL"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0190",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "CROX",
+   "RVLV",
+   "UA"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0198",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "MANH",
+   "SPSC"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0202",
+  "week_start": "2026-07-13",
+  "as_of_date": "2026-07-17",
+  "tickers": [
+   "QLYS",
+   "RPD",
+   "TENB"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0221",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "EFOR",
+   "INGM"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0235",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "PCAR",
+   "WAB"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0232",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "DNOW",
+   "RYZ",
+   "SUNB",
+   "TPC"
+  ],
+  "n_tickers": 4,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0163",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "AMP",
+   "HOOD",
+   "LPLA",
+   "RJF",
+   "SCHW",
+   "SEIC",
+   "SF"
+  ],
+  "n_tickers": 7,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0215",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "ALRM",
+   "REZI"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0164",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "CIFR",
+   "HUT"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0216",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "CMC",
+   "MT",
+   "RYZ",
+   "TX"
+  ],
+  "n_tickers": 4,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0223",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "HOG",
+   "PII"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0231",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "ELVN",
+   "TGTX"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0129",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "NUE",
+   "STLD"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0217",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "IP",
+   "PKG",
+   "SW"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0234",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "DPC",
+   "FEIM",
+   "VVX"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0218",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "DELL",
+   "HPE",
+   "NTAP",
+   "STX"
+  ],
+  "n_tickers": 4,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0230",
+  "week_start": "2026-07-20",
+  "as_of_date": "2026-07-24",
+  "tickers": [
+   "DPC",
+   "HXL"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0247",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "APGE",
+   "FBRX"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0259",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "CSW",
+   "MLI"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0253",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "ATHM",
+   "BZ"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0097",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "BBVA",
+   "BCS",
+   "ING",
+   "LYG",
+   "NWG",
+   "SAN"
+  ],
+  "n_tickers": 6,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0207",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "CNMD",
+   "INSP",
+   "TNDM",
+   "XRAY"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0258",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "CBRL",
+   "JACK"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0246",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "CAKE",
+   "EAT"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0240",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "RLJ",
+   "XHR"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0255",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "FIVN",
+   "RNG"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0208",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "AMPL",
+   "AVPT",
+   "INTA"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0254",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "CNK",
+   "IMAX"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0191",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "FOUR",
+   "PYPL"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0174",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "MTD",
+   "TMO",
+   "WAT"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0198",
+  "week_start": "2026-07-27",
+  "as_of_date": "2026-07-31",
+  "tickers": [
+   "MANH",
+   "SPSC"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0268",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "KNSA",
+   "OMER"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0189",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "BLZE",
+   "SNOW"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0286",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "APPS",
+   "BSP"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0262",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "AADX",
+   "ARXS",
+   "DFNS",
+   "MRCY"
+  ],
+  "n_tickers": 4,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0277",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "AVEX",
+   "HAWK"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0265",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "GSHD",
+   "LIFE"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0232",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "DNOW",
+   "TPC"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0202",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "QLYS",
+   "RPD",
+   "TENB"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0263",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "BOBS",
+   "HNI",
+   "MLKN"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0216",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "MT",
+   "TX"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0275",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "CMCO",
+   "HRI",
+   "SUNB"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0278",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "BDC",
+   "PLPC"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0271",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "PLTR",
+   "TSAT",
+   "VOYG"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0266",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "ATKR",
+   "IESC"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0098",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "ALGT",
+   "ALK",
+   "DAL",
+   "LUV",
+   "SKYW",
+   "UAL"
+  ],
+  "n_tickers": 6,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0218",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "DELL",
+   "HPE",
+   "NTAP",
+   "STX"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0237",
+  "week_start": "2026-08-03",
+  "as_of_date": "2026-08-07",
+  "tickers": [
+   "THC",
+   "UHS"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0304",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "MGNI",
+   "QNST"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0221",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "EFOR",
+   "LDOS"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0295",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "BRKR",
+   "ILMN",
+   "TWST",
+   "TXG"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0140",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "AFRM",
+   "BFH",
+   "CHYM",
+   "DAVE",
+   "KLAR",
+   "PGY",
+   "SEZL",
+   "SOFI"
+  ],
+  "n_tickers": 8,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0303",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "BOX",
+   "DBX",
+   "P",
+   "QMCO"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0015",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "CRWD",
+   "CVLT",
+   "FFIV",
+   "FTNT",
+   "GEN",
+   "NET",
+   "NTSK",
+   "OKTA",
+   "PANW",
+   "RBRK",
+   "S",
+   "SAIL",
+   "VRNS",
+   "ZS"
+  ],
+  "n_tickers": 14,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0308",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "BLMN",
+   "CAKE",
+   "CBRL",
+   "DRI",
+   "EAT",
+   "JACK",
+   "SHAK",
+   "TXRH",
+   "WEN"
+  ],
+  "n_tickers": 9,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0322",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "DOCS",
+   "TEM",
+   "VEEV"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0142",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "ACIW",
+   "ALKT",
+   "PAY",
+   "QTWO"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0305",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "FROG",
+   "GTLB",
+   "TEAM"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0172",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "BILL",
+   "WEX"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0139",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "DINO",
+   "DK",
+   "MPC",
+   "PARR",
+   "PBF",
+   "PSX",
+   "VLO"
+  ],
+  "n_tickers": 7,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0168",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "DDOG",
+   "DT",
+   "PD"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0298",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "APA",
+   "CRK",
+   "DHT",
+   "FRO",
+   "HP",
+   "INSW",
+   "NAT",
+   "NESR",
+   "NOG",
+   "OII",
+   "OVV",
+   "SDRL",
+   "TALO",
+   "TDW",
+   "TNK",
+   "WHD",
+   "XPRO"
+  ],
+  "n_tickers": 17,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0272",
+  "week_start": "2026-08-10",
+  "as_of_date": "2026-08-14",
+  "tickers": [
+   "CRWV",
+   "SHAZ",
+   "SMCI"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0372",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "GH",
+   "GRAL",
+   "NTRA"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0349",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "APPF",
+   "DUOL",
+   "PCOR",
+   "ZM"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0369",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "AVTR",
+   "DHR",
+   "RGEN"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0376",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "APPN",
+   "PATH"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0365",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "BBNX",
+   "DXCM",
+   "TNDM"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0366",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "SPT",
+   "WIX",
+   "ZETA"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0348",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "CGON",
+   "ELVN",
+   "IDYA",
+   "INBX",
+   "KURA",
+   "OMER",
+   "SNDX",
+   "URGN"
+  ],
+  "n_tickers": 8,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0358",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "BNTX",
+   "MRNA"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0361",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "CAI",
+   "HTFL",
+   "IRTC",
+   "RDNT",
+   "TEM"
+  ],
+  "n_tickers": 5,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0174",
+  "week_start": "2026-08-17",
+  "as_of_date": "2026-08-21",
+  "tickers": [
+   "A",
+   "AVTR",
+   "CRL",
+   "DHR",
+   "MTD",
+   "RGEN",
+   "RVTY",
+   "TECH",
+   "TMO",
+   "WAT"
+  ],
+  "n_tickers": 10,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0140",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "AFRM",
+   "BFH",
+   "CHYM",
+   "DAVE",
+   "KSPI",
+   "NU",
+   "OMF",
+   "PGY",
+   "PYPL",
+   "SOFI"
+  ],
+  "n_tickers": 10,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0399",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "AEP",
+   "CNP",
+   "DTE",
+   "ETR",
+   "EVRG",
+   "FE",
+   "FTS",
+   "HP",
+   "LNT",
+   "NESR",
+   "OGE",
+   "PEG",
+   "PNW",
+   "PTEN",
+   "SLB",
+   "WEC",
+   "WHD"
+  ],
+  "n_tickers": 17,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0388",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "ANF",
+   "SHOO",
+   "URBN",
+   "WWW"
+  ],
+  "n_tickers": 4,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0344",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "FUBO",
+   "ROKU",
+   "RUM"
+  ],
+  "n_tickers": 3,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0401",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "DINO",
+   "DK",
+   "KNTK",
+   "MPC",
+   "OKE",
+   "PBF"
+  ],
+  "n_tickers": 6,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0015",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "CRWD",
+   "CVLT",
+   "FFIV",
+   "FTNT",
+   "GEN",
+   "GRRR",
+   "NET",
+   "NOK",
+   "NTSK",
+   "OKTA",
+   "PANW",
+   "RBRK",
+   "S",
+   "SAIL",
+   "SMTC",
+   "VRNS",
+   "ZS"
+  ],
+  "n_tickers": 17,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0301",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "ACN",
+   "CNXC",
+   "CTSH",
+   "EPAM",
+   "EXLS",
+   "GLOB",
+   "IT"
+  ],
+  "n_tickers": 7,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0350",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "ASST",
+   "BMNR",
+   "SBET"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0375",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "AMR",
+   "HCC",
+   "METC",
+   "SXC"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0391",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "BTU",
+   "CNR"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0212",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "BHP",
+   "ERO",
+   "FCX",
+   "HBM",
+   "RIO",
+   "SCCO",
+   "TECK"
+  ],
+  "n_tickers": 7,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0384",
+  "week_start": "2026-08-24",
+  "as_of_date": "2026-08-28",
+  "tickers": [
+   "FIGR",
+   "IOND",
+   "PURR"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0436",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "BLSH",
+   "BULL"
+  ],
+  "n_tickers": 2,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0403",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "MRNA",
+   "NVAX",
+   "VIR"
+  ],
+  "n_tickers": 3,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0434",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "ELVN",
+   "EXEL",
+   "GILD",
+   "KURA",
+   "RVMD",
+   "SLS",
+   "SMMT",
+   "SNDX",
+   "ZYME"
+  ],
+  "n_tickers": 9,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0233",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "FNV",
+   "OR",
+   "RGLD",
+   "TFPM",
+   "WPM"
+  ],
+  "n_tickers": 5,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0413",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "AMPL",
+   "BRZE"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0424",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "AMPL",
+   "BRZE",
+   "FRSH",
+   "HUBS",
+   "KVYO"
+  ],
+  "n_tickers": 5,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0422",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "AGCO",
+   "CF",
+   "CNH",
+   "CTVA",
+   "FMC",
+   "MOS",
+   "NTR",
+   "SQM"
+  ],
+  "n_tickers": 8,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0216",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "CLF",
+   "MT",
+   "NUE",
+   "TX"
+  ],
+  "n_tickers": 4,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0299",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "AG",
+   "CDE",
+   "EXK",
+   "HL",
+   "SVM"
+  ],
+  "n_tickers": 5,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0419",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "CBZ",
+   "HURN"
+  ],
+  "n_tickers": 2,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0260",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "AAUC",
+   "AEM",
+   "ARIS",
+   "AU",
+   "AUGO",
+   "B",
+   "CGAU",
+   "EGO",
+   "EQX",
+   "FNV",
+   "GFI",
+   "HMY",
+   "IAG",
+   "KGC",
+   "MUX",
+   "NEM",
+   "RGLD",
+   "SBSW",
+   "SSRM"
+  ],
+  "n_tickers": 19,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0139",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "AR",
+   "CVI",
+   "DINO",
+   "DK",
+   "EQT",
+   "EXE",
+   "MPC",
+   "PARR",
+   "PBF",
+   "PSX",
+   "RRC",
+   "VG",
+   "VLO"
+  ],
+  "n_tickers": 13,
+  "holds_next": true
+ },
+ {
+  "canonical_id": "K0435",
+  "week_start": "2026-08-31",
+  "as_of_date": "2026-09-04",
+  "tickers": [
+   "ALNY",
+   "BMRN",
+   "ETON",
+   "HALO",
+   "SION",
+   "TVTX"
+  ],
+  "n_tickers": 6,
+  "holds_next": false
+ },
+ {
+  "canonical_id": "K0097",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "BBVA",
+   "BCS",
+   "DB",
+   "HSBC",
+   "ING",
+   "LYG",
+   "NWG",
+   "SAN",
+   "UBS"
+  ],
+  "n_tickers": 9,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0297",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "AMD",
+   "ASML",
+   "MRVL",
+   "MU",
+   "NVDA",
+   "SKHY",
+   "SMTC",
+   "TSM"
+  ],
+  "n_tickers": 8,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0468",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "ATRC",
+   "PLSE"
+  ],
+  "n_tickers": 2,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0464",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "QRVO",
+   "SWKS"
+  ],
+  "n_tickers": 2,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0448",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "AEE",
+   "AEP",
+   "APA",
+   "BP",
+   "CHRD",
+   "CNP",
+   "CNQ",
+   "CNX",
+   "COP",
+   "CRC",
+   "CRGY",
+   "CVE",
+   "CVX",
+   "DEC",
+   "DUK",
+   "DVN",
+   "EC",
+   "EOG",
+   "EPD",
+   "EQNR",
+   "EQT",
+   "ES",
+   "EXE",
+   "FANG",
+   "FTK",
+   "HAL",
+   "HESM",
+   "LNG",
+   "MPLX",
+   "MTDR",
+   "MUR",
+   "NESR",
+   "NEXT",
+   "NOG",
+   "NOV",
+   "OKE",
+   "OVV",
+   "OXY",
+   "PAA",
+   "PAGP",
+   "PBA",
+   "PBR",
+   "PNW",
+   "PR",
+   "RRC",
+   "SHEL",
+   "SLB",
+   "SM",
+   "SO",
+   "SU",
+   "TTE",
+   "VET",
+   "VG",
+   "VIST",
+   "WDS",
+   "WHD",
+   "XOM",
+   "XPRO",
+   "YPF"
+  ],
+  "n_tickers": 59,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0255",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "FIVN",
+   "NICE",
+   "RNG",
+   "TWLO"
+  ],
+  "n_tickers": 4,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0455",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "CRSR",
+   "HPQ"
+  ],
+  "n_tickers": 2,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0414",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "ALAB",
+   "APH",
+   "COHR",
+   "GLW",
+   "LITE",
+   "RMBS"
+  ],
+  "n_tickers": 6,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0452",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "BNY",
+   "NTRS",
+   "STT"
+  ],
+  "n_tickers": 3,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0332",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "MU",
+   "SIMO",
+   "SKHY",
+   "SNDK"
+  ],
+  "n_tickers": 4,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0172",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "BILL",
+   "CPAY",
+   "WEX"
+  ],
+  "n_tickers": 3,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0105",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "LNC",
+   "MET",
+   "MFC",
+   "PFG",
+   "PRU",
+   "SLF",
+   "UNM",
+   "VOYA"
+  ],
+  "n_tickers": 8,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0391",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "BTU",
+   "CNR"
+  ],
+  "n_tickers": 2,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0430",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "CLMT",
+   "MEOH",
+   "SSL"
+  ],
+  "n_tickers": 3,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0218",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "ANET",
+   "CSCO",
+   "DELL",
+   "HPE",
+   "NTAP",
+   "NTNX",
+   "SMCI",
+   "STX"
+  ],
+  "n_tickers": 8,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0447",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "DELL",
+   "SMCI"
+  ],
+  "n_tickers": 2,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0423",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "DHT",
+   "FRO",
+   "INSW",
+   "LPG",
+   "NAT",
+   "STNG",
+   "TNK",
+   "TRMD"
+  ],
+  "n_tickers": 8,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0451",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "CNO",
+   "CRBG",
+   "EQH",
+   "JXN"
+  ],
+  "n_tickers": 4,
+  "holds_next": null
+ },
+ {
+  "canonical_id": "K0437",
+  "week_start": "2026-09-07",
+  "as_of_date": "2026-09-10",
+  "tickers": [
+   "ADM",
+   "AGCO",
+   "AGRO",
+   "BG",
+   "CNH",
+   "CTVA",
+   "DE",
+   "DOLE",
+   "FMC"
+  ],
+  "n_tickers": 9,
+  "holds_next": null
+ }
+]

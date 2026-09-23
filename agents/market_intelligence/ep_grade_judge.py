@@ -1,0 +1,579 @@
+"""EP Holistic Grade Judge (#240 / ADR 0011) — the North Star grade decision.
+
+ONE LLM call that judges the EP grade holistically over the full rubric (grounded
+catalyst + materiality + theme + narrative + technical structure + gap) and moves the
+grade BIDIRECTIONALLY — promote an under-rated outlier, demote an immaterial big-grade —
+superseding the conviction floor's gap+enum authority.
+
+STATUS — LOAD-BEARING (Wave 2 flipped; `holistic_judge_enabled` ON). The tier this
+module returns OVERWRITES `score_tier`, the field the alert and the ORB entry read:
+'none' suppresses the alert outright, MODERATE→HIGH promotes a name into entry. Measured
+2026-08-27 over 60 days: `grade_engine_authority='judge'` on 145 of 147 alerts, and the
+judge's tier differed from our score's on 43 of them (24 MODERATE→HIGH, 12 HIGH→MODERATE,
+7 →none). SCSC 2026-08-20 is the shape: our score said 96/HIGH, the judge read the 8-K,
+found a single director's retirement, and set 'none'.
+
+⚠ This docstring said "drives nothing" until 2026-08-27 — stale from the Wave-2 flip
+onward, and the origin of a long operator argument about what the judge actually does.
+See `docs/analysis/judge_authority_2026-08-27.md`.
+
+WHAT THE JUDGE DOES AND DOES NOT SET. It sets the ALERT TIER — final say, per above. It
+does NOT write `catalyst_quality`, the stored catalyst-grade label (the Claude grader owns
+that). Its own read of the catalyst (`judge_grade`) is NOT advisory: it is the primary
+input to the tier it sets. OMER 2026-08-13 proves the direction — the stored label was
+`routine`, the judge read the catalyst as materially better, and set HIGH. So the judge's
+catalyst view ACTS, via the tier; it just never relabels the grade.
+
+Pure-ish + testable: `grade_holistic(client, payload)` takes the Anthropic client (a fake
+in tests) and FAILS OPEN — returns None on any error/timeout, so the caller falls back to
+the floor and a real EP is never killed by a judge hiccup.
+"""
+from __future__ import annotations
+
+import asyncio
+import copy
+import hashlib
+import json
+import logging
+
+from agents.market_intelligence.catalyst_materiality import format_market_cap
+
+logger = logging.getLogger(__name__)
+
+from agents.market_intelligence.judge_transport import invoke_forced_tool
+from shared.llm_models import effective_model
+from shared.output_ceilings import max_tokens_for
+
+# The live judge model — #509 auto-resolution: RESOLVED_ROLES tracks the newest
+# opus release via the nightly-refreshed cache, fail-safe to shared.llm_models.
+# JUDGE_MODEL (the committed pin) on any error/missing cache/unparseable id.
+# Resolved ONCE at import (this module's first import = process boot), never
+# per-call — "the running process keeps its boot-time binding" (see
+# shared/llm_models.py AUTO-RESOLUTION docstring). This is the ONE real call
+# site #509 auto-switches; every other ROLE_MODEL constant stays hand-pinned.
+MODEL = effective_model("JUDGE_MODEL")
+
+GRADES = ("game_changer", "strong", "routine", "mna")
+TIERS = ("HIGH", "MODERATE", "none")
+DIRECTIONS = ("promote", "hold", "demote")
+MATERIALITY_TIERS = ("transformative", "material", "minor", "immaterial")
+
+# Locked output schema (ADR 0011). tool_choice forces a schema-valid object — no string
+# parsing, no silent fallback to a default tier.
+_JUDGE_TOOL = {
+    "name": "grade_ep",
+    "description": "Holistically grade an EP (Episodic Pivot) gap-up setup over the full rubric.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "grade": {"type": "string", "enum": list(GRADES)},
+            "tier": {"type": "string", "enum": list(TIERS)},
+            "direction_vs_floor": {"type": "string", "enum": list(DIRECTIONS)},
+            "materiality_tier": {"type": "string", "enum": list(MATERIALITY_TIERS)},
+            "fire_axes": {
+                "type": "array",
+                "items": {"type": "string", "enum": ["catalyst", "theme", "narrative"]},
+            },
+            "rationale": {"type": "string"},
+            "confidence": {"type": "number"},
+            # #602 (operator-signed 2026-08-27) — the WHY behind each of the judge's two
+            # calls, short enough to render inline on the alert. The full `rationale` stays
+            # as the long form; these are what the operator reads first.
+            "grade_reason": {"type": "string",
+                             "description": "<=1 short line: why you graded the catalyst as you did."},
+            "tier_reason": {"type": "string",
+                            "description": "<=1 short line: why the alert tier is what you set."},
+        },
+        # fire_axes REQUIRED (#249): it is THE fire signal — a model omission
+        # must not masquerade as "judge saw no fire" (empty list). Omission →
+        # None in _normalize_verdict → fire_axes column stays NULL (not adjudicated).
+        "required": ["grade", "tier", "direction_vs_floor", "fire_axes", "rationale",
+                     "grade_reason", "tier_reason"],
+    },
+}
+
+# Per-axis traceability (#329, Path A — operator-signed 2026-06-18). EVAL/DIAGNOSTIC ONLY:
+# adds an OPTIONAL `axis_reads` to the judge's output so every grade is reconstructable per
+# axis (theme/structure/gap/... : lit? direction? one-line why) WITHOUT a second model. It is
+# gated behind `include_axis_reads` (default False) so the LIVE tool def is byte-identical —
+# adding a schema property changes the tool spec sent to the model, which is NOT behavior-neutral
+# on the live (load-bearing) path the way a prompt-block addition is. The live flip rides #335.
+_AXIS_READS_PROP = {
+    "type": "array",
+    "description": "Per-axis read (diagnostic): which axes you weighed and how they moved the grade.",
+    "items": {
+        "type": "object",
+        "properties": {
+            "axis": {"type": "string",
+                     "enum": ["catalyst", "theme", "narrative", "structure", "gap", "materiality"]},
+            "lit": {"type": "boolean"},
+            "direction": {"type": "string", "enum": ["promote", "hold", "demote"]},
+            "note": {"type": "string"},
+        },
+        "required": ["axis", "lit"],
+    },
+}
+
+_AXIS_READS_NOTE = (
+    "\nADDITIONALLY populate `axis_reads`: one entry per axis you actually weighed "
+    "(catalyst / theme / narrative / structure / gap / materiality) with lit (bool), "
+    "direction vs the floor, and a <=1-line note. This is for traceability — it does not "
+    "change your tier/grade verdict."
+)
+
+
+def _judge_tool(include_axis_reads: bool = False) -> dict:
+    """Return the grade_ep tool spec. `include_axis_reads=False` (the LIVE default) returns the
+    base `_JUDGE_TOOL` UNCHANGED (same object) so the live tool def is byte-identical. The eval
+    arm passes True to get the diagnostic `axis_reads` property (still NOT required → fail-open)."""
+    if not include_axis_reads:
+        return _JUDGE_TOOL
+    tool = copy.deepcopy(_JUDGE_TOOL)
+    tool["input_schema"]["properties"]["axis_reads"] = _AXIS_READS_PROP
+    return tool
+
+# Rubric VERSIONING (operator directive 2026-06-11): every signed rubric change
+# bumps the human label; the hash is computed FROM the text so any edit — signed
+# or accidental — changes the recorded version. Both are stamped on every
+# ep_grade_decision payload + the alert row, so evals/replays can segment by
+# prompt era instead of silently mixing them (Phase A of #268 ran v1; Phase B
+# runs v2 — distinguishable forever).
+# v1 = ADR 0011 as signed 2026-06-08. v2 = #269 revenue-over-EPS amendment.
+# v3 = catalyst-freshness clause (operator-signed 2026-06-12; the AKTS case —
+# judge promoted MODERATE→HIGH on a May-2024 Lilly partnership surfaced undated
+# by a web-only corpus; materiality without freshness must never clear HIGH).
+# v4 = axis split + per-call reasons (#602, operator-signed 2026-08-27). Rule 2 taught
+# PROMOTES/DEMOTES as GRADE verbs while `direction_vs_floor` is a TIER field, so the model
+# answered it on the grade axis — OKTA 2026-08-27 wrote `demote` while holding HIGH and the
+# word reached the operator's alert. Rule 2 now says raises/lowers the GRADE, and an OUTPUT
+# FIELDS block states each field's axis literally. Same change adds `grade_reason` /
+# `tier_reason` so the alert can show WHY on each call instead of only the long rationale.
+# v4 also carries rule 7 (#233, same operator sign-off, same day): a differing second-model
+# grade is rendered to the judge as a re-read prompt, never as a vote — the anti-double-count
+# instruction, since that model's text is already in the judge's evidence. Both changes ride
+# ONE robustness-eval rerun rather than two (batch-judge-regrades discipline).
+RUBRIC_VERSION = "v4-2026-08-27-axis-split-second-opinion"
+
+_RUBRIC = """You are the EP (Episodic Pivot) grade judge for a momentum trading system
+(Qullamaggie / Pradeep Bonde methodology). You decide the grade HOLISTICALLY — you may move
+it UP or DOWN versus the raw gap magnitude on any axis. Output via the grade_ep tool.
+
+RUBRIC (in priority order):
+1. A REAL, MATERIAL catalyst is REQUIRED for HIGH. A gap alone NEVER earns HIGH — gap+volume
+   is only the market's vote that a reason might exist, never sufficient on its own.
+   FRESHNESS is part of REAL: the catalyst must be NEW — dated today/overnight, or confirmed
+   freshly disclosed by a direct primary source (SEC filing / press wire). An UNDATED catalyst,
+   or one the evidence shows predates the gap, CANNOT be the attributed driver no matter how
+   material (a years-old partnership resurfacing in a web summary is not today's catalyst).
+   If no fresh verifiable driver exists, say the driver is UNIDENTIFIED and grade only what is
+   verifiable — MODERATE at best, usually routine. has_direct_source=false combined with a
+   materiality-driven promotion is the highest-risk pattern: apply explicit skepticism and
+   prefer the floor tier unless freshness is established.
+2. MATERIALITY is bidirectional and judged RELATIVE TO COMPANY SIZE (market cap below):
+   - a catalyst that is transformative relative to a small company RAISES the GRADE (a
+     $30M deal for a $100M micro-cap is huge), even if the magnitude grader under-rated it;
+   - a catalyst that is immaterial for a large company LOWERS the GRADE (a $270M contract
+     for a $600B mega-cap is a rounding error) however positively worded.
+   ⚠ "raises/lowers the GRADE" here is about `grade` ONLY. Do NOT report it in
+   `direction_vs_floor`, which is a TIER field — see the OUTPUT FIELDS block below.
+3. Pradeep catalyst hierarchy (strongest first): theme > government policy > supply shortage
+   > sales acceleration / new product / management change.
+4. EARNINGS catalysts on GROWTH names: REVENUE growth/acceleration (Q/Q + Y/Y, ideally with
+   a guidance RAISE) is the load-bearing signal — the market does not pay for EPS changes on
+   growth stocks. An EPS beat with flat or missing revenue is NOT a HIGH catalyst. EPS becomes
+   the signal only in TURNAROUND situations (loss→profit inflection, first-profitability
+   flip) — and the turnaround must be SUSTAINABLE/structural (margin or demand inflection
+   confirmed by revenue), NOT a single-quarter anomaly from one-time or external items
+   (asset sale, litigation settlement, tax benefit) — the CBRL class.
+5. Theme heat + technical structure + gap alignment modulate the grade up or down (a strong
+   name can be lifted to game_changer by a hot theme + clean structure).
+6. M&A: if the company is being acquired (buyout/merger/tender/going-private), grade "mna" —
+   but this is advisory; a separate M&A filter is authoritative.
+7. SECOND OPINION: when a block below reports that another model graded this catalyst
+   differently, treat it as a PROMPT TO RE-READ THE EVIDENCE on the axis they differ on —
+   never as a vote. That model's web summary is already part of your evidence, so counting
+   its grade separately would count one source twice. If the evidence does not move you,
+   keep your own read and say so in grade_reason.
+
+Be skeptical: vague/numberless "earnings", boilerplate PR, broad sector drift, or a
+short-squeeze with no concrete company event = routine. State the load-bearing reason in the
+rationale (<= 3 sentences).
+
+OUTPUT FIELDS — two SEPARATE decisions. Never describe one in the other's field:
+- `grade` = the CATALYST GRADE (game_changer / strong / routine / mna). How big the news is.
+  `grade_reason` = ONE short line saying why, naming the number that decided it
+  (e.g. "a 1.4% revenue beat on a $23B company is material but not transformative").
+- `tier` = the ALERT TIER (HIGH / MODERATE / none). Whether this is worth alerting on.
+  `tier_reason` = ONE short line saying why THIS TIER (e.g. "a fresh, primary-sourced
+  beat-and-raise clears HIGH; it does not need to be transformative").
+- `direction_vs_floor` describes the TIER AND NOTHING ELSE: "promote" if your `tier` is
+  ABOVE the tier given below, "demote" if BELOW, "hold" if the SAME. Compare the two tier
+  values literally. If you lowered the GRADE but kept the TIER, that is "hold"."""
+
+# Auto-derived from the text — changes whenever ANY character of the rubric does.
+RUBRIC_HASH = hashlib.sha1(_RUBRIC.encode("utf-8")).hexdigest()[:8]
+
+
+def assemble_judge_inputs(
+    r: dict,
+    *,
+    grounded_text: str | None = None,
+    materiality_tier: str | None = None,
+    market_cap=None,
+    sector: str | None = None,
+    revenue_stage: bool | None = None,
+    has_direct_source: bool | None = None,
+    active_narratives: list[dict] | None = None,
+    tape: dict | None = None,
+    theme_stage: str | None = None,
+    theme_score: float | None = None,
+    setup_class: str | None = None,
+    second_opinion: str | None = None,
+) -> dict:
+    """Pack the per-candidate signals (already computed in run_ep_scan) into the judge
+    payload. Builds nothing new — pulls from the result dict `r` plus the few extras the
+    scan has in scope (grounded_text, materiality, profile).
+
+    `setup_class` (#332 / ADR 0028 C1) — the deterministic setup-class tag
+    (pradeep_explosive/mature_leader/episodic_neglect/unclassified). P0 is TAG VISIBILITY
+    ONLY (THE LINE: zero grade mutation, no salience weights, no composite/tier change — that
+    is a separate, future, operator-gated P1/P2/P3 flip). Unlike `theme_stage`/`tape`, this key
+    is included in the returned payload for eval/audit tooling but is DELIBERATELY NEVER wired
+    into `_build_judge_prompt` in P0 — not "None keeps the prompt byte-identical" (which would
+    still let a non-None value change what the judge sees), but "this value is never rendered
+    at all, regardless of its content," so the judge structurally cannot be influenced by it.
+
+    `materiality_tier` (W4 #245) is the DETERMINISTIC deal-size÷market-cap rule tier ONLY
+    (catalyst_materiality.rule_materiality) — the exact ratio the LLM can't compute. The
+    judge's own call owns the soft/abstain materiality (it outputs materiality_tier over the
+    same grounded_text+cap); None here means "no deal-context dollar value — judge it
+    yourself" (earnings revenue/guidance figures deliberately don't count, #251).
+
+    `active_narratives` (Lane-2 → theme axis, plan lane2-judge-theme-axis): recent
+    narrative cohorts as [{run_date, name, tickers, thesis}], NOT a boolean — the judge
+    semantically matches the catalyst against active narratives, so a NEW JOINER of a
+    spreading story lights the axis even when ticker-set membership (in_narrative_cohort)
+    is false (the RCAT 5/28 class). None/empty → prompt byte-identical to pre-change.
+
+    `tape` (v2.0-P2 / #299) is the structured tape-feature block — opening-range character
+    (OR range ÷ ATR; the violent-open KLAR/DELL/NVTS cohort), premarket-volume-curve shape
+    vs the minute-volume baselines (mi_minute_volume_curves), liquidity/spread flags. This
+    is the PAYLOAD STRUCTURE only (behavior-neutral, like active_narratives): the scan does
+    NOT pass it yet — wiring it into the live judge is gated on the with-vs-without eval +
+    sign-off (the judge is load-bearing). None → prompt byte-identical to pre-change."""
+    return {
+        "ticker": r.get("ticker"),
+        "grounded_text": (grounded_text or r.get("catalyst") or "")[:6000],
+        "catalyst": (r.get("catalyst") or "")[:1500],
+        "analysis": (r.get("claude_analysis") or "")[:1500],
+        "has_direct_source": has_direct_source,
+        "materiality_tier": materiality_tier,
+        # #233 (operator-signed 2026-08-27) — Perplexity's INDEPENDENT catalyst grade, passed
+        # as a labelled second opinion. Rendered ONLY when it DISAGREES with the grader's
+        # label (see _build_judge_prompt): agreement carries no measured information
+        # (docs/analysis/pplx_agreement_boost_233_2026-08-27.md), disagreement roughly doubles
+        # the odds this judge also disagrees (33% vs an 18% base) and the two point the same
+        # way 25 times in 29. None/equal → prompt byte-identical to the pre-change form.
+        "second_opinion": second_opinion,
+        "in_active_theme": bool(r.get("in_active_theme")),
+        "in_narrative_cohort": bool(r.get("in_narrative_cohort")),
+        # Theme HEAT (#329 Path A) — stage/score from get_theme_membership. Today the judge gets
+        # only the in_active_theme BOOLEAN, so it can't weight Accelerating-92 vs Fading-41 (the
+        # Pradeep #1 catalyst). Rendered in the prompt ONLY when theme_stage is present →
+        # byte-identical to the pre-change form when absent (the narrative/tape pattern). The scan
+        # does NOT pass these yet — the wire-in is the eval arm + the #335 flip (judge is load-bearing).
+        "theme_stage": theme_stage,
+        "theme_score": theme_score,
+        "active_narratives": [
+            {
+                "run_date": str(c.get("run_date") or ""),
+                "name": (c.get("name") or "")[:80],
+                "tickers": list(c.get("tickers") or [])[:12],
+                "thesis": (c.get("thesis") or "")[:200],
+            }
+            for c in (active_narratives or [])[:5]
+        ],
+        "gap_pct": r.get("gap_pct"),
+        "pm_rvol": r.get("pm_rvol"),
+        "vol_percentile": r.get("vol_percentile"),
+        "ep_score": r.get("ep_score"),
+        "floor_tier": r.get("score_tier"),
+        "floor_catalyst_quality": r.get("catalyst_quality"),
+        "market_cap": market_cap,
+        "sector": sector,
+        "revenue_stage": revenue_stage,
+        "tape": tape,
+        # #332 (ADR 0028 C1) — visibility only; NEVER read by _build_judge_prompt (see the
+        # docstring above). Present here so eval/audit tooling (DecisionContext consumers)
+        # can read it off the assembled payload without a second plumbing path.
+        "setup_class": setup_class,
+    }
+
+
+# ── the two boolean renderers ────────────────────────────────────────────────────────
+# MODULE SCOPE ON PURPOSE (2026-09-02): `grade_holistic`'s judge_signal_trace records
+# "the WORD we sent", and it must render through the SAME functions the prompt does.
+# While these were nested inside _build_judge_prompt the trace had to hand-copy their
+# mapping, which could drift silently and would have defeated the traceability the
+# operator asked for. Still TWO functions, deliberately — see each docstring.
+def _b3(v):
+    """yes / no / not checked — for a field whose UNKNOWN is real and common.
+
+    `revenue_stage` is only computed on earnings day (that is the only day rule 4 needs
+    it), so "we did not look" is the honest answer on most rows. Sending `_b`'s "no"
+    there would tell the judge every non-earnings company is pre-revenue — the exact
+    false assertion this whole thread is about. Kept separate from `_b` deliberately:
+    `has_direct_source` is now wired and its None is rare, and widening `_b` would change
+    that prompt too, unmeasured.
+    """
+    return "not checked" if v is None else ("yes" if v else "no")
+
+
+def _b(v):
+    # ⚠ KNOWN DEFECT, TRACED 2026-09-01 — DO NOT "tidy" this into three states without
+    # reading the note below. `None` is falsy, so an UNKNOWN direct-source flag renders as
+    # a definitive "no" — and the rubric above treats a `no` as grounds to "apply explicit
+    # skepticism and prefer the floor tier". The 09-01 monthly review measured the blast
+    # radius: 97 of 99 assessable rows HAD a direct source while the judge was shown "no".
+    # We are asserting a fact we do not have, on nearly every graded row, in the direction
+    # that suppresses the grade — and grades drive the alert tier.
+    # It is NOT fixed here because fixing it WILL move live grades (the same class as the
+    # max_tokens fix below, which was shipped deliberately for that reason). The operator
+    # decides that flip; `judge_direct_source_trace` below makes what we send visible in
+    # the meantime so the decision rests on rows, not on this comment. Tracked on #335.
+    return "yes" if v else "no"
+
+
+def _build_judge_prompt(p: dict) -> str:
+    # Theme HEAT (#329 Path A) — appended to the in_active_theme line ONLY when a stage is present,
+    # so the prompt is byte-identical to the pre-change form when theme_stage is None/absent.
+    theme_heat = ""
+    _ts = p.get("theme_stage")
+    if _ts:
+        _tsc = p.get("theme_score")
+        _tsc_txt = f", score {_tsc:.0f}" if isinstance(_tsc, (int, float)) else ""
+        theme_heat = f" (stage {_ts}{_tsc_txt})"
+    # Lane-2 narratives block (plan lane2-judge-theme-axis). Rendered ONLY when cohorts
+    # exist — empty/missing list keeps the prompt byte-identical to the pre-change form,
+    # so shipping this is behavior-neutral until the scan passes cohorts in.
+    narr_block = ""
+    if p.get("active_narratives"):
+        lines = "\n".join(
+            f"- {c.get('run_date')} \"{c.get('name')}\" ({', '.join(c.get('tickers') or [])}): {c.get('thesis')}"
+            for c in p["active_narratives"]
+        )
+        narr_block = f"""
+
+--- ACTIVE NARRATIVE COHORTS (Lane 2 — groups that recently gapped together on a SHARED story; discovered EOD on prior days) ---
+{lines}
+Match the CATALYST against these narratives: a catalyst that JOINS an active narrative (same story, new name — e.g. a drone-defense contract while a drone-defense cohort is active) lights the theme/narrative axis EVEN IF this ticker is not listed as a cohort member. A name merely sharing a sector with a cohort, without the story, does not."""
+    # Second-opinion block (#233, operator-signed 2026-08-27). Rendered ONLY when a second
+    # model's grade DISAGREES with the grader's label — agreement is not rendered at all, so
+    # the prompt stays byte-identical on the ~half of alerts where the two concur.
+    # ⚠ DOUBLE-COUNTING RISK, deliberately addressed in the wording below: this judge already
+    # reads Perplexity's [Web summary] TEXT, so the grade is NOT an independent witness. The
+    # block therefore says so and tells the judge to weigh the underlying evidence rather than
+    # the vote — otherwise the same source is counted twice. Whether that instruction holds is
+    # what the going-forward telemetry measures (mi_ep_alerts.pplx_disagreed).
+    second_op = ""
+    _so, _fl = p.get("second_opinion"), p.get("floor_catalyst_quality")
+    if _so and _fl and _so != _fl:
+        second_op = f"""
+
+--- SECOND OPINION (a different model graded the same catalyst) ---
+It graded this catalyst {_so}; the grader's label is {_fl}. They disagree.
+⚠ This is NOT independent corroboration — that model's web summary is part of the evidence you
+were given above, so treating its grade as a separate vote would count one source twice. Use the
+disagreement only as a prompt to re-read the EVIDENCE for the axis they differ on, and state in
+grade_reason what you found. If the evidence does not move you, keep your own read and say so."""
+    # Tape-feature block (v2.0-P2 / #299). Rendered ONLY when the scan passes a tape dict —
+    # absent/None keeps the prompt byte-identical to the pre-change form, so the structure
+    # ships behavior-neutral (the wire-in is eval-gated; the judge is load-bearing).
+    tape_block = ""
+    t = p.get("tape")
+    if t:
+        tape_block = f"""
+
+--- TAPE / INTRADAY CHARACTER (structured; opening-range vs the name's own volatility, premarket pace vs its baseline) ---
+Opening-range ÷ ATR: {t.get('opening_range_atr')} (>~0.25-0.30 = a violent open — bracket geometry is structurally poor; weigh entry quality, not just the catalyst)
+Premarket volume-curve vs baseline: {t.get('pm_vol_curve')}
+Liquidity / spread: {t.get('liquidity')}"""
+    return f"""{_RUBRIC}
+
+--- SETUP ---
+Ticker: {p.get('ticker')}  |  Sector: {p.get('sector') or 'unknown'}
+Market cap: {format_market_cap(p.get('market_cap'))}  |  Revenue-stage: {_b3(p.get('revenue_stage'))}
+Gap: {p.get('gap_pct')}%  |  Pre-mkt RVOL: {p.get('pm_rvol')}  |  Vol %ile: {p.get('vol_percentile')}
+Floor grade (the system's current gap+enum verdict): tier={p.get('floor_tier')} catalyst={p.get('floor_catalyst_quality')}
+In active theme (Lane 1): {_b(p.get('in_active_theme'))}{theme_heat}  |  In narrative cohort (Lane 2): {_b(p.get('in_narrative_cohort'))}
+Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {p.get('materiality_tier') or 'n/a — judge materiality yourself'}  |  Direct source present: {_b(p.get('has_direct_source'))}{narr_block}
+
+--- GROUNDED CATALYST CORPUS (SEC + wires + web) ---
+{p.get('grounded_text') or 'No grounded corpus.'}
+
+--- ANALYST NOTE ---
+{p.get('analysis') or '(none)'}{second_op}{tape_block}"""
+
+
+def format_tier_transition(base_tier, judge_tier) -> str:
+    """#253 presentation contract, ONE copy (digest + replay + delta review all use it):
+    `direction_vs_floor` and the tier can disagree, and this renderer shows only the TIER.
+
+    2026-08-27 correction: this docstring used to explain the disagreement as "a `promote`
+    with the tier held is a read on the CATALYST GRADE". That was the display layer
+    reverse-engineering intent, and the prompt does not support it — `_RUBRIC`'s closing
+    line specifies "direction_vs_floor compares your tier to the floor tier given", i.e.
+    TIER vs TIER. So a direction that disagrees with the tier outcome is the model
+    contradicting itself in one field, not a second axis. (Likely cause: rubric rule 2
+    teaches PROMOTES/DEMOTES as verbs about the GRADE, then the closing line redefines the
+    field as a tier comparison — OKTA 2026-08-27 wrote `demote` while holding HIGH and
+    argued the grade in its prose. Separating the two fields is a prompt change =
+    RUBRIC_VERSION bump on a load-bearing judge = operator sign-off; filed, not taken.)
+
+    `base_tier` is what our own EP score produced (column `baseline_floor_tier`). Both ends
+    of the arrow are ALWAYS alert tiers — a catalyst grade can never be one end of it.
+    2026-08-27: the held branch says which axis held and drops "quality read", which named
+    the other axis without naming it (operator: two ratings, one word)."""
+    if judge_tier != base_tier:
+        return f"{base_tier}→{judge_tier}"
+    return f"{base_tier} (alert tier held)"
+
+
+def _normalize_verdict(raw: dict) -> dict | None:
+    """Validate the tool output against the schema; return a clean dict or None if the
+    required enums are malformed (caller fails open)."""
+    try:
+        grade = (raw.get("grade") or "").lower()
+        tier = raw.get("tier") or ""
+        direction = (raw.get("direction_vs_floor") or "").lower()
+        if grade not in GRADES or tier not in TIERS or direction not in DIRECTIONS:
+            return None
+        mt = (raw.get("materiality_tier") or "").lower()
+        # Distinguish OMITTED (None → fire_axes column stays NULL = not
+        # adjudicated) from explicit [] (= judge saw no fire on any axis).
+        _axes_raw = raw.get("fire_axes")
+        axes = (None if _axes_raw is None
+                else [a for a in _axes_raw if a in ("catalyst", "theme", "narrative")])
+        # axis_reads (#329 Path A) — OPTIONAL diagnostic; preserved as-is when the (eval) tool
+        # variant elicited it, else None. Never required → its absence never fails the verdict.
+        _ar = raw.get("axis_reads")
+        axis_reads = _ar if isinstance(_ar, list) else None
+        return {
+            "grade": grade,
+            "tier": tier,
+            "direction_vs_floor": direction,
+            "materiality_tier": mt if mt in MATERIALITY_TIERS else None,
+            "fire_axes": axes,
+            "rationale": (raw.get("rationale") or "")[:1000],
+            "confidence": raw.get("confidence"),
+            "axis_reads": axis_reads,
+            # #602 — schema-REQUIRED, but absence must never kill an otherwise valid verdict
+            # (that would fail-open a real EP over a display field). Missing -> None -> the
+            # alert simply renders the line without its why, exactly as it did before.
+            "grade_reason": (raw.get("grade_reason") or "").strip()[:200] or None,
+            "tier_reason": (raw.get("tier_reason") or "").strip()[:200] or None,
+        }
+    except (AttributeError, TypeError):
+        return None
+
+
+async def grade_holistic(
+    client,
+    payload: dict,
+    *,
+    semaphore: asyncio.Semaphore | None = None,
+    timeout: float = 15.0,
+    model: str = MODEL,
+    image_png: bytes | None = None,
+    chart_note: str | None = None,
+    include_axis_reads: bool = False,
+    log_caller: str,
+) -> dict | None:
+    """One holistic judge call. Returns the verdict dict (schema), or None on any
+    error/timeout — the caller then falls back to the conviction floor (FAIL-OPEN). The
+    `semaphore` (shared with the catalyst grader in prod) bounds total Anthropic
+    concurrency; the `wait_for` bounds total time incl. queueing for the 9:45 cutoff.
+
+    `log_caller` (#377 cost meter) is the `api_usage` bucket this call's dollars land in.
+    **REQUIRED — no default (2026-08-02).** It used to default to `"ep_grade_judge"`, and that
+    default is exactly how the chart-vision shadow spent 336 calls invisibly: it took the
+    default, its dollars merged into the LIVE judge's bucket, and no cost surface could ever
+    separate an experiment from production. The meter, the board, the daily alarm, the
+    per-caller anomaly detector and the reduction detector all worked — they were reading a
+    bucket that had two things in it. A default that silently attributes experimental spend to
+    the production lane is the defect; removing it makes every new lane NAME itself.
+
+    `judge_divergence` already did this correctly (it overrode the default), which is the
+    tell: the mechanism existed and was documented, and the next lane still didn't use it.
+    Convention did not hold, so this is a signature now. `tests/test_judge_spend_attribution.py`
+    additionally pins that only the LIVE grade path may use the `"ep_grade_judge"` label.
+
+    `image_png` (#267 chart-vision, W4) optionally attaches a point-in-time daily chart so
+    the judge can read the price/MA/volume structure. `chart_note` is the CANDIDATE chart-axis
+    INSTRUCTION appended to the prompt — without it the image is unanchored (the base rubric is
+    catalyst/theme-oriented and never asks the judge to read a chart, so it likely wouldn't).
+    Both default None = byte-identical text-only call. The LIVE grade path passes None for both
+    (the rubric axis is sign-off-gated); ONLY the eval harness sets them, on its with-chart arm —
+    the chart_note text is precisely what the operator is labeling the value of.
+
+    `include_axis_reads` (#329 Path A) is EVAL/DIAGNOSTIC ONLY: True elicits the per-axis
+    `axis_reads` traceability (extended tool + a prompt note). Default False → the tool def AND
+    prompt are byte-identical to the pre-change live call. The live grade path leaves it False;
+    the eval harness sets it True. Wiring it live rides #335 (judge is load-bearing)."""
+    prompt = _build_judge_prompt(payload)
+    # TRACEABILITY (operator 2026-09-01: *"seems critical that we log this and make it
+    # traceable"*). Record, per graded ticker, the TRUTH we hold and the WORD we sent — the two
+    # differ whenever the flag is unknown, and that difference is invisible in every other
+    # surface. Never raises into the grade path.
+    #
+    # RENDERED THROUGH _b/_b3 THEMSELVES, not a hand-copy: this row's whole job is to say what
+    # the prompt said, so it must not be able to drift from the prompt. That is why those two
+    # are at module scope.
+    #
+    # `log_caller` IS PART OF THE ROW (2026-09-02). grade_holistic has SEVEN callers, not one:
+    # the live scan (log_caller="ep_grade_judge", ~3/day), the chart-axis shadow job (up to ~48/day
+    # — 8 candidates x 6 replicate grades), judge_divergence (~2-5/day), and four offline
+    # eval/replay scripts. Without the caller on the row, a single historical backfill replay
+    # writes hundreds of trace rows INDISTINGUISHABLE from live grades, and any read of this
+    # surface silently mixes them. Recorded rather than suppressed: the shadow/eval callers are
+    # exactly where a payload divergence from live shows up, so the rows are worth keeping —
+    # they just have to be attributable. ⚠ Any query of this event MUST filter on log_caller.
+    try:
+        # imported HERE, not at module scope: this module is imported by the offline
+        # eval/replay harnesses, and a top-level db import drags a connection pool into
+        # them. Same reason the rest of this file defers its db reach.
+        from agents.market_intelligence.db import log_audit_event
+        _hds = payload.get("has_direct_source")
+        _rev = payload.get("revenue_stage")
+        await log_audit_event(
+            "judge_signal_trace",
+            f"[{log_caller}] {payload.get('ticker') or '?'}: direct_source held={_hds!r} sent="
+            f"{_b(_hds)}"
+            f"{'  ⚠ UNKNOWN RENDERED AS NO' if _hds is None else ''}"
+            f" | revenue_stage held={_rev!r} sent={_b3(_rev)}",
+            json.dumps({"ticker": payload.get("ticker"), "log_caller": log_caller,
+                        "has_direct_source": _hds, "revenue_stage": _rev}),
+        )
+    except Exception as _e:  # loud-ok: telemetry must never break a grade
+        logger.warning(f"judge direct-source trace failed: {_e}")
+    if chart_note:
+        prompt = f"{prompt}\n{chart_note}"
+    if include_axis_reads:
+        prompt = f"{prompt}{_AXIS_READS_NOTE}"
+    return await invoke_forced_tool(
+        client, prompt,
+        tool=_judge_tool(include_axis_reads), tool_name="grade_ep",
+        normalize=_normalize_verdict, label="holistic judge",
+        subject=payload.get("ticker") or "",
+        semaphore=semaphore, timeout=timeout, model=model, image_png=image_png,
+        # max_tokens 1500 (was the transport default of 500) — 2026-08-07, #543.
+        # ⚠ LOAD-BEARING ON ENTRY (ADR 0011). 16% of ep_grade_judge calls in the last 7 days
+        # ended at EXACTLY 500 output tokens, i.e. the forced-tool verdict JSON was cut off
+        # mid-object and the whole call fell into invoke_forced_tool's fail-open (verdict=None
+        # → the caller's floor grade). One entry grade in six was decided by truncation rather
+        # than by the judge. This is a BUG FIX, not a criteria change: the rubric, the tool
+        # schema and the normalizer are untouched; the model simply gets room to finish the
+        # answer it was already giving. It WILL change live grades — that is the point.
+        # The number now lives in shared/output_ceilings.py with its evidence.
+        max_tokens=max_tokens_for("ep_grade_judge"),
+        log_caller=log_caller)  # #377 cost meter

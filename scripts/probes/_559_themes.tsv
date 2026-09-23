@@ -1,0 +1,1043 @@
+theme_date	name	stage	tickers
+2026-07-20	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,ACIW,QTWO,ALKT}
+2026-07-20	B2B Marketing Automation & Customer Engagement SaaS	Mainstream	{KVYO,BRZE,HUBS}
+2026-07-20	Casual Dining Restaurant Turnaround	Mainstream	{EAT,CBRL}
+2026-07-20	Cloud Observability & AIOps Monitoring Platforms	Mainstream	{DDOG,PD,DT}
+2026-07-20	Coastal & Suburban Residential Rental REITs	Mainstream	{EQR,AMH,ESS,AVB,INVH}
+2026-07-20	Commercial Real Estate Brokerage & Advisory Services	Accelerating	{CBRE,NMRK,CIGI,JLL,CWK}
+2026-07-20	Consumer Fintech & Digital Credit Platforms	Mainstream	{DAVE,SEZL}
+2026-07-20	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL,NAVN}
+2026-07-20	Custom AI Silicon & Chip Architecture Licensing	Mainstream	{CRDO,ALAB,ARM,MRVL,QUIK,CEVA}
+2026-07-20	Digital Advertising Technology Platforms	Mainstream	{QNST,MGNI}
+2026-07-20	Digital Insurance Distribution & Marketplace Platforms	Mainstream	{PRCH,GSHD}
+2026-07-20	Emerging Market Digital Commerce & Fintech Platforms	Mainstream	{SE,MELI}
+2026-07-20	European Bank Stocks	Mainstream	{BBVA,LYG,ING,SAN,BCS,NWG}
+2026-07-20	Franchise Auto Dealership Groups	Mainstream	{ABG,PAG,SAH}
+2026-07-20	Industrial & Logistics REITs	Accelerating	{FR,EGP,TRNO,STAG}
+2026-07-20	Inflammatory Disease & Immunology Biologics	Mainstream	{ORKA,SYRE}
+2026-07-20	Insurance Brokerage & Distribution Services	Mainstream	{BRO,AON,AJG}
+2026-07-20	Life Insurance & Annuity Providers	Mainstream	{MET,PFG,UNM,PRU}
+2026-07-20	Life Science Tools & Analytical Instruments	Mainstream	{WAT,MTD,DHR,TMO}
+2026-07-20	Liquid Biopsy & Multi-Cancer Early Detection	Mainstream	{GRAL,GH}
+2026-07-20	Network Security & Zero-Trust Edge	Mainstream	{CRWD,PANW,FTNT,BB,RBRK,CVLT,VRNS,OKTA,NET}
+2026-07-20	Office REIT Recovery & Re-Rating	Mainstream	{SLG,CDP,HIW}
+2026-07-20	Online Insurance Comparison & Digital Marketplace Platforms	Mainstream	{MAX,EVER}
+2026-07-20	Open-Air & Strip Mall Retail REITs	Accelerating	{FRT,KRG,KIM,REG,BRX,SKT,PECO,UE}
+2026-07-20	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{VKTX,PTGX,ASND,XERS,CORT,MBX}
+2026-07-20	Private Mortgage Insurance	Mainstream	{NMIH,ESNT,MTG,RDN}
+2026-07-20	Professional Advisory & Business Services	Mainstream	{CRAI,CBZ}
+2026-07-20	Property & Casualty Insurance Underwriters	Mainstream	{TRV,AXS,SKWD,HIG,ORI,CB,AFG,ALL,CINF,LMND,WRB,HCI,ACGL,THG}
+2026-07-20	SMB & Workforce Business Services Platforms	Mainstream	{LZ,NSP}
+2026-07-20	Specialty Catastrophe Property Insurance Underwriters	Mainstream	{SLDE,NP}
+2026-07-20	Specialty Insurance Underwriting & Brokerage	Mainstream	{KNSL,RYAN,PLMR}
+2026-07-20	Targeted Protein Degradation Oncology	Mainstream	{KYMR,GLUE}
+2026-07-20	Traditional Staffing & Talent Placement Services	Mainstream	{RHI,MAN}
+2026-07-20	Truckload & LTL Freight Carriers	Mainstream	{ARCB,RXO,SNDR,HUBG,KNX,TFII,WERN,LSTR}
+2026-07-20	U.S. Passenger Airlines	Mainstream	{ALK,ALGT,LUV,DAL,SKYW,UAL}
+2026-07-20	U.S. Petroleum Refining & Downstream Processing	Mainstream	{PBF,DK,PARR,VLO,PSX,MPC,DINO}
+2026-07-20	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{BOKF,WAL,CFG,WTFC,HBAN,WSFS,KEY,TFC,EWBC,USB,FHN,UMBF,ZION,RF,HWC,GBCI,PNC,SSB,FITB,MTB}
+2026-07-20	Wealth Management & Retail Brokerage Platforms	Mainstream	{HOOD,LPLA,SEIC,SF,RJF,SCHW,AMP}
+2026-07-21	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,ACIW,QTWO}
+2026-07-21	B2B Marketing Automation & Customer Engagement SaaS	Mainstream	{BRZE,KVYO,HUBS}
+2026-07-21	Casual Dining Restaurant Turnaround	Mainstream	{CBRL,EAT}
+2026-07-21	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,SNOW}
+2026-07-21	Commercial Real Estate Brokerage & Advisory Services	Accelerating	{CWK,CBRE,CIGI,NMRK,JLL}
+2026-07-21	Consumer Fintech & Digital Credit Platforms	Mainstream	{SEZL,DAVE}
+2026-07-21	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL,NAVN}
+2026-07-21	Custom AI Silicon & Chip Architecture Licensing	Mainstream	{ARM,QUIK,CEVA,ALAB,CRDO,MRVL}
+2026-07-21	Digital Advertising Technology Platforms	Mainstream	{QNST,MGNI}
+2026-07-21	Digital Insurance Distribution & Marketplace Platforms	Mainstream	{PRCH,GSHD}
+2026-07-21	Emerging Market Digital Commerce & Fintech Platforms	Mainstream	{SE,MELI}
+2026-07-21	European Bank Stocks	Mainstream	{LYG,SAN,BBVA,ING,BCS,NWG}
+2026-07-21	Franchise Auto Dealership Groups	Mainstream	{SAH,ABG,PAG}
+2026-07-21	Global Crude & Product Tanker Fleet Operators	Accelerating	{DHT,TNK,FRO,INSW,NAT,TRMD}
+2026-07-21	Industrial & Logistics REITs	Accelerating	{FR,TRNO,EGP,STAG}
+2026-07-21	Inflammatory Disease & Immunology Biologics	Mainstream	{ORKA,SYRE}
+2026-07-21	Insurance Brokerage & Distribution Services	Mainstream	{AON,BRO,AJG}
+2026-07-21	Life Insurance & Annuity Providers	Mainstream	{MET,PFG,PRU,UNM}
+2026-07-21	Life Science Tools & Analytical Instruments	Mainstream	{TMO,WAT,MTD}
+2026-07-21	Liquid Biopsy & Multi-Cancer Early Detection	Mainstream	{GRAL,GH}
+2026-07-21	Molecular Diagnostics & DNA-Based Genetic Testing	Mainstream	{QGEN,BLLN}
+2026-07-21	Network Security & Zero-Trust Edge	Mainstream	{NET,PANW,OKTA,CRWD,VRNS,CVLT,BB,FTNT,RBRK}
+2026-07-21	Office REIT Recovery & Re-Rating	Mainstream	{HIW,CDP,SLG}
+2026-07-21	Online Insurance Comparison & Digital Marketplace Platforms	Mainstream	{EVER,MAX}
+2026-07-21	Open-Air & Strip Mall Retail REITs	Accelerating	{SKT,UE,PECO,BRX,KRG,FRT,REG,KIM}
+2026-07-21	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{ASND,MBX,CORT,PTGX,VKTX,XERS}
+2026-07-21	Private Mortgage Insurance	Mainstream	{RDN,NMIH,MTG,ESNT}
+2026-07-21	Professional Advisory & Business Services	Mainstream	{CBZ,CRAI}
+2026-07-21	Property & Casualty Insurance Underwriters	Mainstream	{THG,LMND,CINF,ACGL,SKWD,AFG,CB,ALL,TRV,HIG,WRB,ORI,HCI,AXS}
+2026-07-21	Senior & Long-Term Care Healthcare REITs	Accelerating	{VTR,OHI,LTC,NHI}
+2026-07-21	SMB & Workforce Business Services Platforms	Mainstream	{LZ,NSP}
+2026-07-21	Specialty Insurance Underwriting & Brokerage	Mainstream	{PLMR,KNSL,RYAN}
+2026-07-21	Targeted Protein Degradation Oncology	Mainstream	{KYMR,GLUE}
+2026-07-21	Traditional Staffing & Talent Placement Services	Mainstream	{MAN,RHI}
+2026-07-21	Truckload & LTL Freight Carriers	Mainstream	{WERN,RXO,KNX,HUBG,TFII,LSTR,ARCB,SNDR}
+2026-07-21	U.S. Apparel & Fashion Recovery	Mainstream	{UA,CROX,RVLV}
+2026-07-21	U.S. Petroleum Refining & Downstream Processing	Mainstream	{VLO,PSX,PBF,DINO,MPC,PARR,DK}
+2026-07-21	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{ZION,CFG,BOKF,GBCI,HBAN,EWBC,WTFC,UMBF,PNC,USB,RF,FHN,KEY,MTB,WSFS,TFC,WAL,SSB,HWC,FITB}
+2026-07-21	Wealth Management & Retail Brokerage Platforms	Mainstream	{RJF,LPLA,SEIC,SCHW,SF,AMP,HOOD}
+2026-07-22	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,QTWO,ACIW}
+2026-07-22	Canadian Big Banks	Accelerating	{RY,CM,BNS,BMO,TD}
+2026-07-22	Casual Dining Restaurant Turnaround	Mainstream	{EAT,CBRL}
+2026-07-22	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,SNOW}
+2026-07-22	Consumer Fintech & Digital Credit Platforms	Mainstream	{SEZL,DAVE}
+2026-07-22	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{BILL,WEX,NAVN}
+2026-07-22	Custom AI Silicon & Chip Architecture Licensing	Mainstream	{CRDO,ARM,QUIK,ALAB,MRVL,CEVA}
+2026-07-22	European Bank Stocks	Mainstream	{NWG,ING,BCS,BBVA,SAN,LYG}
+2026-07-22	Franchise Auto Dealership Groups	Mainstream	{SAH,ABG,PAG}
+2026-07-22	Global Crude & Product Tanker Fleet Operators	Accelerating	{TNK,INSW,DHT,NAT,TRMD,FRO}
+2026-07-22	Industrial & Logistics REITs	Mainstream	{STAG,EGP,FR,TRNO}
+2026-07-22	Inflammatory Disease & Immunology Biologics	Mainstream	{SYRE,ORKA}
+2026-07-22	Life Insurance & Annuity Providers	Mainstream	{PFG,UNM,PRU,MET}
+2026-07-22	Life Science Tools & Analytical Instruments	Mainstream	{TMO,MTD,WAT}
+2026-07-22	Molecular Diagnostics & DNA-Based Genetic Testing	Mainstream	{QGEN,BLLN}
+2026-07-22	Network Security & Zero-Trust Edge	Mainstream	{CRWD,PANW,NET,OKTA,VRNS,CVLT,FTNT,RBRK,BB}
+2026-07-22	Open-Air & Strip Mall Retail REITs	Accelerating	{SKT,FRT,UE,KRG,REG,KIM,BRX,PECO}
+2026-07-22	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,ASND,XERS,VKTX,MBX,PTGX}
+2026-07-22	Private Mortgage Insurance	Mainstream	{NMIH,MTG,ESNT,RDN}
+2026-07-22	Professional Advisory & Business Services	Mainstream	{CBZ,CRAI}
+2026-07-22	Property & Casualty Insurance Underwriters	Mainstream	{AFG,TRV,AXS,HIG,LMND,ALL,WRB,CINF,THG,SKWD,ORI,HCI,ACGL,CB}
+2026-07-22	Senior & Long-Term Care Healthcare REITs	Accelerating	{LTC,VTR,OHI,NHI}
+2026-07-22	SMB & Workforce Business Services Platforms	Mainstream	{LZ,NSP}
+2026-07-22	Targeted Protein Degradation Oncology	Mainstream	{KYMR,GLUE}
+2026-07-22	Traditional Staffing & Talent Placement Services	Mainstream	{RHI,MAN}
+2026-07-22	Truckload & LTL Freight Carriers	Mainstream	{HUBG,RXO,SNDR,ARCB,KNX,TFII,WERN,LSTR}
+2026-07-22	U.S. Apparel & Fashion Recovery	Mainstream	{UA,CROX,RVLV}
+2026-07-22	U.S. Passenger Airlines	Mainstream	{ALGT,ALK,SKYW,UAL,DAL,LUV}
+2026-07-22	U.S. Petroleum Refining & Downstream Processing	Mainstream	{MPC,PSX,VLO,PBF,DINO,DK,PARR}
+2026-07-22	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{UMBF,MTB,SSB,EWBC,RF,ZION,HBAN,USB,WAL,PNC,GBCI,CFG,WTFC,BOKF,TFC,WSFS,HWC,FHN,FITB,KEY}
+2026-07-22	Wealth Management & Retail Brokerage Platforms	Mainstream	{RJF,SEIC,LPLA,HOOD,SF,AMP,SCHW}
+2026-07-23	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,QTWO,ACIW}
+2026-07-23	Bitcoin Mining & Crypto Infrastructure Operators	Accelerating	{CIFR,HUT}
+2026-07-23	Canadian Big Banks	Accelerating	{RY,CM,BNS,BMO,TD}
+2026-07-23	Casual Dining Restaurant Turnaround	Mainstream	{EAT,CBRL}
+2026-07-23	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,SNOW}
+2026-07-23	Consumer Fintech & Digital Credit Platforms	Mainstream	{SEZL,DAVE}
+2026-07-23	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{BILL,WEX,NAVN}
+2026-07-23	Custom AI Silicon & Chip Architecture Licensing	Mainstream	{CRDO,ARM,QUIK,ALAB,MRVL,CEVA}
+2026-07-23	Enterprise HR & Workforce Management SaaS	Mainstream	{PCTY,WDAY,ALIT}
+2026-07-23	European Bank Stocks	Mainstream	{NWG,ING,BCS,BBVA,SAN,LYG}
+2026-07-23	Franchise Auto Dealership Groups	Mainstream	{SAH,ABG,PAG}
+2026-07-23	Global Crude & Product Tanker Fleet Operators	Accelerating	{TNK,INSW,DHT,NAT,TRMD,FRO}
+2026-07-23	Industrial & Logistics REITs	Mainstream	{STAG,EGP,FR,TRNO}
+2026-07-23	Inflammatory Disease & Immunology Biologics	Mainstream	{SYRE,ORKA}
+2026-07-23	Life Insurance & Annuity Providers	Mainstream	{PFG,UNM,PRU,MET}
+2026-07-23	Life Science Tools & Analytical Instruments	Mainstream	{TMO,MTD,WAT}
+2026-07-23	Molecular Diagnostics & DNA-Based Genetic Testing	Mainstream	{QGEN,BLLN}
+2026-07-23	Open-Air & Strip Mall Retail REITs	Mainstream	{FRT,UE,KRG,REG,KIM,PECO,BRX,SKT}
+2026-07-23	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,ASND,XERS,VKTX,MBX,PTGX}
+2026-07-23	Private Mortgage Insurance	Mainstream	{NMIH,MTG,ESNT,RDN}
+2026-07-23	Professional Advisory & Business Services	Mainstream	{CBZ,CRAI}
+2026-07-23	Property & Casualty Insurance Underwriters	Mainstream	{AFG,TRV,AXS,HIG,ALL,WRB,CINF,THG,SKWD,ORI,HCI,ACGL,CB}
+2026-07-23	Senior & Long-Term Care Healthcare REITs	Accelerating	{VTR,OHI,LTC,NHI}
+2026-07-23	SMB & Workforce Business Services Platforms	Mainstream	{LZ,NSP}
+2026-07-23	Traditional Staffing & Talent Placement Services	Mainstream	{RHI,MAN}
+2026-07-23	Truckload & LTL Freight Carriers	Mainstream	{HUBG,RXO,SNDR,ARCB,KNX,TFII,WERN,LSTR}
+2026-07-23	Uniform Rental & Managed Workwear Services	Mainstream	{VSTS,CTAS}
+2026-07-23	U.S. Apparel & Fashion Recovery	Mainstream	{UA,CROX,RVLV}
+2026-07-23	U.S. Domestic Steel Producers	Accelerating	{STLD,NUE}
+2026-07-23	U.S. Petroleum Refining & Downstream Processing	Mainstream	{MPC,PSX,VLO,NWE,SR,PBF,DINO,BKH,AVA,POR,NJR,DK,PARR}
+2026-07-23	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{UMBF,MTB,SSB,EWBC,RF,ZION,HBAN,USB,WAL,PNC,GBCI,CFG,WTFC,BOKF,TFC,WSFS,HWC,FHN,FITB,KEY}
+2026-07-23	Wealth Management & Retail Brokerage Platforms	Mainstream	{RJF,SEIC,LPLA,HOOD,SF,AMP,SCHW}
+2026-07-24	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,QTWO,ACIW}
+2026-07-24	Bitcoin Mining & Crypto Infrastructure Operators	Accelerating	{CIFR,HUT}
+2026-07-24	Canadian Big Banks	Accelerating	{RY,TD,BNS,BMO,CM}
+2026-07-24	Casual Dining Restaurant Turnaround	Mainstream	{EAT,CBRL}
+2026-07-24	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,SNOW}
+2026-07-24	Consumer Fintech & Digital Credit Platforms	Mainstream	{SEZL,DAVE}
+2026-07-24	Containerboard & Corrugated Packaging Producers	Accelerating	{IP,PKG,SW}
+2026-07-24	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{BILL,NAVN,WEX}
+2026-07-24	Domestic Steel Producers	Accelerating	{STLD,NUE}
+2026-07-24	Enterprise HR & Workforce Management SaaS	Mainstream	{PCTY,ALIT,WDAY}
+2026-07-24	European Bank Stocks	Mainstream	{SAN,NWG,LYG,BBVA,BCS,ING}
+2026-07-24	Franchise Auto Dealership Groups	Mainstream	{ABG,SAH,PAG}
+2026-07-24	Global Crude & Product Tanker Fleet Operators	Mainstream	{DHT,TRMD,FRO,INSW,NAT,TNK}
+2026-07-24	Industrial & Logistics REITs	Mainstream	{STAG,FR,TRNO,EGP}
+2026-07-24	Life Insurance & Annuity Providers	Mainstream	{PFG,UNM,PRU,MET}
+2026-07-24	Life Science Tools & Analytical Instruments	Mainstream	{MTD,TMO,WAT}
+2026-07-24	Molecular Diagnostics & DNA-Based Genetic Testing	Mainstream	{BLLN,QGEN}
+2026-07-24	Office REIT Recovery & Re-Rating	Mainstream	{SLG,BXP,HIW,CDP}
+2026-07-24	Online Insurance Comparison & Digital Marketplace Platforms	Mainstream	{EVER,MAX}
+2026-07-24	Open-Air & Strip Mall Retail REITs	Mainstream	{KIM,UE,REG,PECO,KRG,BRX,SKT,FRT}
+2026-07-24	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,XERS,MBX,VKTX,PTGX}
+2026-07-24	Private Mortgage Insurance	Mainstream	{RDN,NMIH,ESNT,MTG}
+2026-07-24	Professional Advisory & Business Services	Mainstream	{CBZ,CRAI}
+2026-07-24	Property & Casualty Insurance Underwriters	Mainstream	{THG,WRB,ACGL,CINF,AXS,ORI,HIG,AFG,CB,ALL,TRV,HCI,SKWD}
+2026-07-24	Senior & Long-Term Care Healthcare REITs	Accelerating	{OHI,NHI,VTR,LTC}
+2026-07-24	SMB & Workforce Business Services Platforms	Mainstream	{NSP,LZ}
+2026-07-24	Traditional Staffing & Talent Placement Services	Mainstream	{MAN,RHI}
+2026-07-24	Truckload & LTL Freight Carriers	Mainstream	{HUBG,ARCB,LSTR,KNX,SNDR,RXO,WERN,TFII}
+2026-07-24	Uniform Rental & Managed Workwear Services	Mainstream	{VSTS,CTAS}
+2026-07-24	U.S. Apparel & Fashion Recovery	Mainstream	{RVLV,UA,CROX}
+2026-07-24	U.S. Passenger Airlines	Mainstream	{SKYW,LUV,UAL,ALGT,DAL,ALK}
+2026-07-24	U.S. Petroleum Refining & Downstream Processing	Mainstream	{MPC,DK,PSX,PBF,DINO,PARR,VLO}
+2026-07-24	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{MTB,HWC,TFC,UMBF,CFG,EWBC,PNC,BOKF,WTFC,GBCI,WSFS,ZION,FITB,SSB,USB,FHN,KEY,WAL,RF,HBAN}
+2026-07-24	Wealth Management & Retail Brokerage Platforms	Mainstream	{RJF,SCHW,SEIC,SF,HOOD,AMP,LPLA}
+2026-07-27	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{AMPL,INTA,AVPT}
+2026-07-27	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{ACIW,PAY,QTWO}
+2026-07-27	Canadian Big Banks	Accelerating	{RY,BMO,TD,CM,BNS}
+2026-07-27	Casual Dining Restaurant Turnaround	Mainstream	{EAT,CBRL}
+2026-07-27	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,SNOW}
+2026-07-27	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-07-27	Commercial Real Estate Brokerage & Advisory Services	Mainstream	{JLL,CBRE,NMRK}
+2026-07-27	Consumer Fintech & Digital Credit Platforms	Mainstream	{DAVE,SEZL}
+2026-07-27	Containerboard & Corrugated Packaging Producers	Accelerating	{SW,IP,PKG}
+2026-07-27	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{BILL,NAVN,WEX}
+2026-07-27	Cross-Border & International Payments Processing	Mainstream	{GPN,EEFT}
+2026-07-27	Enterprise HR & Workforce Management SaaS	Mainstream	{ALIT,WDAY,PCTY}
+2026-07-27	Franchise Auto Dealership Groups	Mainstream	{ABG,PAG,SAH}
+2026-07-27	Global Crude & Product Tanker Fleet Operators	Mainstream	{NAT,TNK,INSW,DHT,FRO,TRMD}
+2026-07-27	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Accelerating	{DCI,FELE,IR,IEX,KAI}
+2026-07-27	Industrial & Logistics REITs	Mainstream	{FR,TRNO,EGP,STAG}
+2026-07-27	Insurance Brokerage & Distribution Services	Mainstream	{AON,BRO,AJG}
+2026-07-27	Life Insurance & Annuity Providers	Mainstream	{UNM,PFG,MET,PRU}
+2026-07-27	Life Science Tools & Analytical Instruments	Mainstream	{WAT,MTD,TMO}
+2026-07-27	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{XRAY,INSP,TNDM,CNMD}
+2026-07-27	Molecular Diagnostics & DNA-Based Genetic Testing	Mainstream	{QGEN,BLLN}
+2026-07-27	Office REIT Recovery & Re-Rating	Mainstream	{HIW,BXP,SLG,CDP}
+2026-07-27	Open-Air & Strip Mall Retail REITs	Mainstream	{KRG,UE,FRT,BRX,SKT,PECO,KIM,REG}
+2026-07-27	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{MBX,PTGX,CORT,XERS,VKTX}
+2026-07-27	Private Mortgage Insurance	Mainstream	{MTG,RDN,NMIH,ESNT}
+2026-07-27	Professional Advisory & Business Services	Mainstream	{CBZ,CRAI}
+2026-07-27	Property & Casualty Insurance Underwriters	Mainstream	{CINF,THG,CB,HIG,ALL,HCI,WRB,TRV,ORI,SKWD,AFG,AXS,ACGL}
+2026-07-27	Semiconductor Wafer Foundry & Advanced IC Manufacturing	Mainstream	{MKSI,ACMR,KLAC,UCTT,AMAT,TSEM,UMC,ICHR}
+2026-07-27	Senior & Long-Term Care Healthcare REITs	Mainstream	{VTR,NHI,OHI,LTC}
+2026-07-27	Smart Home Security & Comfort Systems	Accelerating	{REZI,ALRM}
+2026-07-27	SMB & Workforce Business Services Platforms	Mainstream	{LZ,NSP}
+2026-07-27	Specialty Insurance Underwriting & Brokerage	Mainstream	{PLMR,RYAN}
+2026-07-27	Truckload & LTL Freight Carriers	Mainstream	{TFII,WERN,KNX,LSTR,ARCB,SNDR,RXO,HUBG}
+2026-07-27	Uniform Rental & Managed Workwear Services	Mainstream	{CTAS,VSTS}
+2026-07-27	U.S. Apparel & Fashion Recovery	Mainstream	{RVLV,UA,CROX}
+2026-07-27	U.S. Domestic Steel Producers	Accelerating	{STLD,NUE}
+2026-07-27	U.S. Petroleum Refining & Downstream Processing	Mainstream	{DK,PARR,PBF,VLO,PSX,MPC,DINO}
+2026-07-27	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{HBAN,USB,ZION,UMBF,WAL,RF,WSFS,FITB,EWBC,KEY,CFG,HWC,MTB,TFC,WTFC,GBCI,SSB,FHN,PNC,BOKF}
+2026-07-27	Wealth Management & Retail Brokerage Platforms	Mainstream	{HOOD,SF,SCHW,SEIC,RJF,LPLA,AMP}
+2026-07-28	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{INTA,AVPT,AMPL}
+2026-07-28	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,QTWO,ACIW}
+2026-07-28	B2B Marketing Automation & Customer Engagement SaaS	Accelerating	{HUBS,KVYO}
+2026-07-28	Canadian Big Banks	Mainstream	{BMO,TD,CM,BNS,RY}
+2026-07-28	Casual Dining Restaurant Turnaround	Mainstream	{CBRL,EAT}
+2026-07-28	Cloud Supply Chain & Warehouse Management Software	Accelerating	{MANH,SPSC}
+2026-07-28	Commercial Real Estate Brokerage & Advisory Services	Accelerating	{NMRK,CBRE,JLL}
+2026-07-28	Consumer Fintech & Digital Credit Platforms	Mainstream	{SEZL,DAVE}
+2026-07-28	Containerboard & Corrugated Packaging Producers	Accelerating	{PKG,IP,SW}
+2026-07-28	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{NAVN,BILL,WEX}
+2026-07-28	Cross-Border & International Payments Processing	Accelerating	{EEFT,GPN}
+2026-07-28	Digital Payments Processing & Merchant Acquiring Networks	Accelerating	{PYPL,FOUR}
+2026-07-28	Domestic Steel Producers	Accelerating	{NUE,STLD}
+2026-07-28	Enterprise HR & Workforce Management SaaS	Mainstream	{PCTY,WDAY,ALIT}
+2026-07-28	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{NTAP,HPE,STX,DELL}
+2026-07-28	Financial Compliance & Regulatory Reporting SaaS	Accelerating	{DFIN,WK}
+2026-07-28	Franchise Auto Dealership Groups	Mainstream	{SAH,ABG,PAG}
+2026-07-28	Global Crude & Product Tanker Fleet Operators	Mainstream	{TNK,TRMD,INSW,DHT,FRO,NAT}
+2026-07-28	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Accelerating	{DCI,FELE,KAI,IR,IEX}
+2026-07-28	Industrial & Logistics REITs	Mainstream	{FR,EGP,STAG,TRNO}
+2026-07-28	Insurance Brokerage & Distribution Services	Accelerating	{AJG,AON,BRO}
+2026-07-28	IT Distribution & Technology Services Providers	Mainstream	{INGM,EFOR}
+2026-07-28	Life Insurance & Annuity Providers	Mainstream	{MET,UNM,PFG,PRU}
+2026-07-28	Life Science Tools & Analytical Instruments	Mainstream	{MTD,WAT,TMO}
+2026-07-28	Medical Device Mean-Reversion & Rotation Recovery	Accelerating	{XRAY,CNMD,INSP,TNDM}
+2026-07-28	Molecular Diagnostics & DNA-Based Genetic Testing	Mainstream	{BLLN,QGEN}
+2026-07-28	Office REIT Recovery & Re-Rating	Mainstream	{CDP,HIW,SLG,BXP}
+2026-07-28	Open-Air & Strip Mall Retail REITs	Mainstream	{UE,PECO,SKT,FRT,KRG,KIM,BRX,REG}
+2026-07-28	Private Mortgage Insurance	Mainstream	{MTG,ESNT,RDN,NMIH}
+2026-07-28	Professional Advisory & Business Services	Mainstream	{CRAI,CBZ}
+2026-07-28	Property & Casualty Insurance Underwriters	Mainstream	{WRB,TRV,ALL,ACGL,CB,AFG,HCI,HIG,AXS,ORI,SKWD,THG,CINF}
+2026-07-28	Senior & Long-Term Care Healthcare REITs	Mainstream	{LTC,NHI,OHI,VTR}
+2026-07-28	Smart Home Security & Comfort Systems	Mainstream	{REZI,ALRM}
+2026-07-28	SMB & Workforce Business Services Platforms	Mainstream	{NSP,LZ}
+2026-07-28	Uniform Rental & Managed Workwear Services	Mainstream	{CTAS,VSTS}
+2026-07-28	U.S. Apparel & Fashion Recovery	Mainstream	{UA,RVLV,CROX}
+2026-07-28	U.S. Apparel & Lifestyle Brand Recovery	Mainstream	{VSXY,OXM}
+2026-07-28	U.S. Passenger Airlines	Accelerating	{ALK,LUV,SKYW,UAL,ALGT,DAL}
+2026-07-28	U.S. Petroleum Refining & Downstream Processing	Mainstream	{NJR,VLO,SR,DK,AVA,PBF,PSX,DINO,PARR,NWE,BKH,MPC}
+2026-07-28	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{WAL,SSB,EWBC,KEY,USB,UMBF,WSFS,ZION,PNC,FITB,HWC,FHN,GBCI,RF,TFC,WTFC,HBAN,CFG,BOKF,MTB}
+2026-07-28	Wealth Management & Retail Brokerage Platforms	Mainstream	{RJF,LPLA,AMP,SF,SCHW,HOOD,SEIC}
+2026-07-29	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Accelerating	{INTA,AMPL,AVPT}
+2026-07-29	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,QTWO,ACIW}
+2026-07-29	B2B Marketing Automation & Customer Engagement SaaS	Accelerating	{KVYO,HUBS}
+2026-07-29	Canadian Big Banks	Mainstream	{RY,BMO,TD,BNS,CM}
+2026-07-29	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,SNOW}
+2026-07-29	Cloud Supply Chain & Warehouse Management Software	Accelerating	{MANH,SPSC}
+2026-07-29	Containerboard & Corrugated Packaging Producers	Accelerating	{SW,IP,PKG}
+2026-07-29	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{BILL,WEX,NAVN}
+2026-07-29	Cross-Border & International Payments Processing	Accelerating	{EEFT,GPN}
+2026-07-29	Digital Payments Processing & Merchant Acquiring Networks	Accelerating	{PYPL,FOUR}
+2026-07-29	Enterprise HR & Workforce Management SaaS	Mainstream	{WDAY,ALIT,PCTY}
+2026-07-29	Financial Compliance & Regulatory Reporting SaaS	Accelerating	{DFIN,WK}
+2026-07-29	Franchise Auto Dealership Groups	Mainstream	{ABG,PAG,SAH}
+2026-07-29	Global Crude & Product Tanker Fleet Operators	Mainstream	{NAT,FRO,INSW,DHT,TRMD,TNK}
+2026-07-29	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Accelerating	{FELE,IR,IEX,DCI,KAI}
+2026-07-29	Inflammatory Disease & Immunology Biologics	Mainstream	{SYRE,ORKA}
+2026-07-29	Insurance Brokerage & Distribution Services	Accelerating	{AON,BRO,AJG}
+2026-07-29	IT Distribution & Technology Services Providers	Mainstream	{EFOR,INGM}
+2026-07-29	Life Insurance & Annuity Providers	Mainstream	{UNM,MET,PRU,PFG}
+2026-07-29	Life Science Tools & Analytical Instruments	Mainstream	{MTD,TMO,WAT}
+2026-07-29	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{INSP,TNDM,XRAY,CNMD}
+2026-07-29	Molecular Diagnostics & DNA-Based Genetic Testing	Mainstream	{BLLN,QGEN}
+2026-07-29	Network Security & Zero-Trust Edge	Mainstream	{PANW,FTNT,NET,CVLT,RBRK,BB,OKTA,CRWD,VRNS}
+2026-07-29	Office REIT Recovery & Re-Rating	Mainstream	{CDP,BXP,HIW,SLG}
+2026-07-29	Open-Air & Strip Mall Retail REITs	Mainstream	{BRX,REG,PECO,SKT,KRG,UE,FRT,KIM}
+2026-07-29	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{XERS,MBX,PTGX,CORT}
+2026-07-29	Private Mortgage Insurance	Mainstream	{ESNT,NMIH,MTG,RDN}
+2026-07-29	Property & Casualty Insurance Underwriters	Mainstream	{SKWD,ORI,HCI,AXS,AFG,WRB,ALL,ACGL,THG,CB,HIG,TRV,CINF}
+2026-07-29	Senior & Long-Term Care Healthcare REITs	Mainstream	{NHI,OHI,VTR,LTC}
+2026-07-29	Smart Home Security & Comfort Systems	Mainstream	{ALRM,REZI}
+2026-07-29	SMB & Workforce Business Services Platforms	Mainstream	{NSP,LZ}
+2026-07-29	Specialty Insurance Underwriting & Brokerage	Accelerating	{PLMR,RYAN}
+2026-07-29	Traditional Staffing & Talent Placement Services	Mainstream	{RHI,MAN}
+2026-07-29	Uniform Rental & Managed Workwear Services	Mainstream	{CTAS,VSTS}
+2026-07-29	U.S. Apparel & Fashion Recovery	Mainstream	{CROX,UA,RVLV}
+2026-07-29	U.S. Domestic Steel Producers	Accelerating	{STLD,NUE}
+2026-07-29	U.S. Petroleum Refining & Downstream Processing	Mainstream	{DINO,PBF,PARR,VLO,MPC,PSX,DK}
+2026-07-29	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{USB,PNC,UMBF,ZION,FHN,HBAN,RF,WAL,BOKF,SSB,KEY,HWC,WSFS,MTB,CFG,FITB,EWBC,WTFC,TFC}
+2026-07-29	Wealth Management & Retail Brokerage Platforms	Mainstream	{SEIC,SF,AMP,RJF,HOOD,LPLA,SCHW}
+2026-07-30	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Accelerating	{AVPT,INTA,AMPL}
+2026-07-30	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,ACIW,QTWO}
+2026-07-30	Canadian Big Banks	Mainstream	{CM,TD,BNS,RY,BMO}
+2026-07-30	Clinical-Stage Oncology Biotech	Mainstream	{ELVN,TGTX}
+2026-07-30	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,SNOW}
+2026-07-30	Cloud Observability & AIOps Monitoring Platforms	Accelerating	{DDOG,PD}
+2026-07-30	Cloud Supply Chain & Warehouse Management Software	Accelerating	{SPSC,MANH}
+2026-07-30	Commercial Real Estate Brokerage & Advisory Services	Accelerating	{NMRK,JLL,CBRE}
+2026-07-30	Containerboard & Corrugated Packaging Producers	Mainstream	{PKG,IP,SW}
+2026-07-30	Copper Mining & Production	Mainstream	{SCCO,FCX,TGB,HBM}
+2026-07-30	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL,NAVN}
+2026-07-30	Digital Payments Processing & Merchant Acquiring Networks	Accelerating	{PYPL,FOUR}
+2026-07-30	Enterprise HR & Workforce Management SaaS	Mainstream	{WDAY,ALIT,PCTY}
+2026-07-30	Franchise Auto Dealership Groups	Mainstream	{ABG,SAH,PAG}
+2026-07-30	Global Crude & Product Tanker Fleet Operators	Mainstream	{DHT,FRO,TRMD,NAT,TNK,INSW}
+2026-07-30	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Accelerating	{IEX,KAI,DCI,FELE,IR}
+2026-07-30	Inflammatory Disease & Immunology Biologics	Mainstream	{SYRE,ORKA}
+2026-07-30	Insurance Brokerage & Distribution Services	Accelerating	{AJG,AON,BRO}
+2026-07-30	IT Distribution & Technology Services Providers	Mainstream	{EFOR,INGM}
+2026-07-30	Life Insurance & Annuity Providers	Mainstream	{PRU,UNM,PFG,MET}
+2026-07-30	Life Science Tools & Analytical Instruments	Mainstream	{WAT,MTD,TMO}
+2026-07-30	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{XRAY,TNDM,CNMD,INSP}
+2026-07-30	Office REIT Recovery & Re-Rating	Mainstream	{BXP,SLG,HIW,CDP}
+2026-07-30	Open-Air & Strip Mall Retail REITs	Mainstream	{KRG,FRT,KIM,SKT,BRX,REG,PECO,UE}
+2026-07-30	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{XERS,PTGX,MBX,CORT}
+2026-07-30	Private Mortgage Insurance	Mainstream	{ESNT,NMIH,MTG,RDN}
+2026-07-30	Property & Casualty Insurance Underwriters	Mainstream	{HCI,CB,CINF,HIG,ORI,AFG,ACGL,SKWD,ALL,TRV,THG,AXS,WRB}
+2026-07-30	Senior & Long-Term Care Healthcare REITs	Mainstream	{OHI,VTR,LTC,NHI}
+2026-07-30	Smart Home Security & Comfort Systems	Mainstream	{ALRM,REZI}
+2026-07-30	SMB & Workforce Business Services Platforms	Mainstream	{LZ,NSP}
+2026-07-30	Traditional Staffing & Talent Placement Services	Mainstream	{MAN,RHI}
+2026-07-30	Uniform Rental & Managed Workwear Services	Mainstream	{CTAS,VSTS}
+2026-07-30	U.S. Apparel & Fashion Recovery	Mainstream	{RVLV,CROX,UA}
+2026-07-30	U.S. Domestic Steel Producers	Accelerating	{NUE,STLD}
+2026-07-30	U.S. Petroleum Refining & Downstream Processing	Mainstream	{BKH,DK,VLO,PSX,MPC,PBF,AVA,NWE,PARR,DINO,NJR}
+2026-07-30	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{UMBF,ZION,SSB,HWC,PNC,TFC,HBAN,MTB,FITB,WSFS,WAL,EWBC,WTFC,BOKF,KEY,RF,USB,CFG,FHN}
+2026-07-30	Wealth Management & Retail Brokerage Platforms	Mainstream	{HOOD,AMP,SEIC,SF,SCHW,LPLA,RJF}
+2026-07-31	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Accelerating	{AMPL,AVPT,INTA}
+2026-07-31	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,ACIW}
+2026-07-31	Canadian Big Banks	Mainstream	{TD,RY,CM,BNS,BMO}
+2026-07-31	Clinical-Stage Oncology Biotech	Mainstream	{ELVN,TGTX}
+2026-07-31	Cloud Data Storage & Analytics Infrastructure	Mainstream	{SNOW,BLZE}
+2026-07-31	Cloud Observability & AIOps Monitoring Platforms	Accelerating	{PD,DDOG}
+2026-07-31	Cloud Supply Chain & Warehouse Management Software	Accelerating	{SPSC,MANH}
+2026-07-31	Commercial Real Estate Brokerage & Advisory Services	Accelerating	{NMRK,JLL,CBRE}
+2026-07-31	Containerboard & Corrugated Packaging Producers	Mainstream	{PKG,IP,SW}
+2026-07-31	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,NAVN,BILL}
+2026-07-31	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{RPD,QLYS,TENB}
+2026-07-31	Digital Payments Processing & Merchant Acquiring Networks	Accelerating	{PYPL,FOUR}
+2026-07-31	Domestic Steel Producers	Accelerating	{STLD,NUE}
+2026-07-31	Enterprise HR & Workforce Management SaaS	Mainstream	{WDAY,PCTY,ALIT}
+2026-07-31	European Bank Stocks	Mainstream	{LYG,ING,BBVA,SAN,BCS,NWG}
+2026-07-31	Franchise Auto Dealership Groups	Mainstream	{SAH,ABG,PAG}
+2026-07-31	Global Crude & Product Tanker Fleet Operators	Mainstream	{INSW,TNK,TRMD,FRO,NAT,DHT}
+2026-07-31	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{DNOW,TPC,RYZ}
+2026-07-31	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Mainstream	{FELE,IR,DCI,KAI,IEX}
+2026-07-31	Inflammatory Disease & Immunology Biologics	Mainstream	{ORKA,SYRE}
+2026-07-31	Insurance Brokerage & Distribution Services	Mainstream	{BRO,AJG,AON}
+2026-07-31	Life Insurance & Annuity Providers	Mainstream	{UNM,PFG,PRU,MET}
+2026-07-31	Life Science Tools & Analytical Instruments	Mainstream	{TMO,WAT,MTD}
+2026-07-31	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{TNDM,INSP,CNMD,XRAY}
+2026-07-31	Office REIT Recovery & Re-Rating	Mainstream	{BXP,HIW,CDP,SLG}
+2026-07-31	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{PTGX,XERS,CORT,MBX}
+2026-07-31	Private Mortgage Insurance	Mainstream	{RDN,NMIH,ESNT,MTG}
+2026-07-31	Professional Advisory & Business Services	Mainstream	{CRAI,CBZ}
+2026-07-31	Property & Casualty Insurance Underwriters	Mainstream	{ALL,TRV,AFG,WRB,ACGL,AXS,HCI,CINF,SKWD,HIG,ORI,THG,CB}
+2026-07-31	SMB & Workforce Business Services Platforms	Mainstream	{NSP,LZ}
+2026-07-31	Traditional Staffing & Talent Placement Services	Mainstream	{MAN,RHI}
+2026-07-31	Truckload & LTL Freight Carriers	Mainstream	{TFII,ARCB,KNX,SNDR,HUBG}
+2026-07-31	Uniform Rental & Managed Workwear Services	Mainstream	{CTAS,VSTS}
+2026-07-31	U.S. Passenger Airlines	Mainstream	{DAL,ALGT,ALK,LUV,SKYW,UAL}
+2026-07-31	U.S. Petroleum Refining & Downstream Processing	Mainstream	{VLO,PARR,MPC,PBF,DINO,PSX}
+2026-07-31	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{EWBC,HWC,BOKF,PNC,FITB,USB,RF,FHN,KEY,HBAN,UMBF,CFG,SSB,ZION,WAL,MTB,WSFS,TFC,WTFC}
+2026-07-31	Wealth Management & Retail Brokerage Platforms	Mainstream	{SF,LPLA,AMP,SEIC,SCHW,RJF}
+2026-08-03	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{AVPT,AMPL,INTA}
+2026-08-03	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,ACIW}
+2026-08-03	Canadian Big Banks	Mainstream	{RY,BMO,TD,BNS,CM}
+2026-08-03	Cloud Data Storage & Analytics Infrastructure	Mainstream	{SNOW,BLZE}
+2026-08-03	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-03	Commercial Real Estate Brokerage & Advisory Services	Accelerating	{NMRK,JLL,CBRE}
+2026-08-03	Containerboard & Corrugated Packaging Producers	Mainstream	{SW,IP,PKG}
+2026-08-03	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,NAVN,BILL}
+2026-08-03	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{RPD,TENB,QLYS}
+2026-08-03	Department Store Retail Recovery	Mainstream	{KSS,DDS}
+2026-08-03	Digital Payments Processing & Merchant Acquiring Networks	Accelerating	{FOUR,PYPL}
+2026-08-03	Enterprise HR & Workforce Management SaaS	Mainstream	{PCTY,ALIT,WDAY}
+2026-08-03	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{HPE,STX,NTAP,DELL}
+2026-08-03	European Bank Stocks	Accelerating	{LYG,NWG,ING,BCS,SAN,BBVA}
+2026-08-03	Franchise Auto Dealership Groups	Mainstream	{ABG,PAG,SAH}
+2026-08-03	Global Crude & Product Tanker Fleet Operators	Mainstream	{INSW,TNK,FRO,DHT,TRMD,NAT}
+2026-08-03	Hospital & Behavioral Health Facility Procedure Volume Recovery	Accelerating	{THC,UHS}
+2026-08-03	Hotel REIT Recovery & Re-Rating	Mainstream	{RLJ,XHR}
+2026-08-03	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{TPC,DNOW,RYZ}
+2026-08-03	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Mainstream	{DCI,IEX,IR,FELE}
+2026-08-03	Inflammatory Disease & Immunology Biologics	Mainstream	{SYRE,ORKA}
+2026-08-03	Life Insurance & Annuity Providers	Mainstream	{UNM,MET,PRU}
+2026-08-03	Life Science Tools & Analytical Instruments	Mainstream	{MTD,WAT,TMO}
+2026-08-03	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{XRAY,TNDM,INSP,CNMD}
+2026-08-03	Network Security & Zero-Trust Edge	Mainstream	{NET,FTNT,CVLT,OKTA,PANW,VRNS,RBRK,CRWD}
+2026-08-03	Office REIT Recovery & Re-Rating	Mainstream	{CDP,SLG,BXP,HIW}
+2026-08-03	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,MBX,PTGX,XERS}
+2026-08-03	Private Mortgage Insurance	Mainstream	{MTG,ESNT,RDN,NMIH}
+2026-08-03	Professional Advisory & Business Services	Mainstream	{CBZ,CRAI}
+2026-08-03	Property & Casualty Insurance Underwriters	Mainstream	{ACGL,HCI,ORI,CINF,AXS,WRB,THG,TRV,HIG,AFG,ALL,CB,SKWD}
+2026-08-03	SMB & Workforce Business Services Platforms	Mainstream	{NSP,LZ}
+2026-08-03	Traditional Staffing & Talent Placement Services	Mainstream	{MAN,RHI}
+2026-08-03	U.S. Apparel & Fashion Recovery	Mainstream	{RVLV,CROX,UA}
+2026-08-03	U.S. Domestic Steel Producers	Accelerating	{NUE,STLD}
+2026-08-03	U.S. Passenger Airlines	Accelerating	{ALK,DAL,ALGT,UAL,SKYW,LUV}
+2026-08-03	U.S. Petroleum Refining & Downstream Processing	Mainstream	{PBF,DINO,VLO,PARR,MPC,PSX}
+2026-08-03	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{EWBC,FHN,KEY,WSFS,SSB,FITB,HBAN,MTB,PNC,BOKF,WAL,HWC,CFG,UMBF,TFC,ZION,RF,USB,WTFC}
+2026-08-03	Wealth Management & Retail Brokerage Platforms	Mainstream	{LPLA,SCHW,RJF,SF,AMP,SEIC}
+2026-08-04	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{AVPT,AMPL,INTA}
+2026-08-04	Asset Management & Fund Administration Platform Ecosystem	Mainstream	{BX,SSNC}
+2026-08-04	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{ACIW,PAY}
+2026-08-04	Cloud Data Storage & Analytics Infrastructure	Accelerating	{SNOW,BLZE,AMRC}
+2026-08-04	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-04	Commercial Real Estate Brokerage & Advisory Services	Accelerating	{NMRK,JLL,CBRE}
+2026-08-04	Consumer Fintech & Digital Credit Platforms	Accelerating	{DAVE,SEZL}
+2026-08-04	Containerboard & Corrugated Packaging Producers	Mainstream	{PKG,SW,IP}
+2026-08-04	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{NAVN,BILL,WEX}
+2026-08-04	Department Store Retail Recovery	Mainstream	{KSS,DDS}
+2026-08-04	Digital Payments Processing & Merchant Acquiring Networks	Mainstream	{PYPL,FOUR}
+2026-08-04	Enterprise HR & Workforce Management SaaS	Mainstream	{ALIT,WDAY,PCTY}
+2026-08-04	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{HPE,NTAP,STX,DELL}
+2026-08-04	European Bank Stocks	Mainstream	{BBVA,NWG,ING,BCS,SAN,LYG}
+2026-08-04	Franchise Auto Dealership Groups	Mainstream	{PAG,SAH,ABG}
+2026-08-04	Global Crude & Product Tanker Fleet Operators	Mainstream	{FRO,TNK,INSW,TRMD,DHT,NAT}
+2026-08-04	Hospital & Behavioral Health Facility Procedure Volume Recovery	Accelerating	{UHS,THC}
+2026-08-04	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Mainstream	{FELE,IEX,DCI,IR}
+2026-08-04	Inflammatory Disease & Immunology Biologics	Mainstream	{ORKA,SYRE}
+2026-08-04	Life Insurance & Annuity Providers	Mainstream	{MET,UNM,PRU}
+2026-08-04	Life Science Tools & Analytical Instruments	Mainstream	{MTD,WAT,TMO}
+2026-08-04	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{TNDM,CNMD,INSP,XRAY}
+2026-08-04	Network Security & Zero-Trust Edge	Mainstream	{CRWD,OKTA,NET,FTNT,VRNS,CVLT,PANW,RBRK}
+2026-08-04	Office REIT Recovery & Re-Rating	Mainstream	{HIW,CDP,BXP,SLG}
+2026-08-04	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,PTGX,MBX,XERS}
+2026-08-04	Private Mortgage Insurance	Mainstream	{RDN,ESNT,MTG,NMIH}
+2026-08-04	Professional Advisory & Business Services	Mainstream	{CRAI,CBZ}
+2026-08-04	Property & Casualty Insurance Underwriters	Mainstream	{THG,HCI,ACGL,WRB,AFG,CB,TRV,ORI,CINF,SKWD,ALL,HIG}
+2026-08-04	SMB & Workforce Business Services Platforms	Mainstream	{NSP,LZ}
+2026-08-04	Traditional Staffing & Talent Placement Services	Mainstream	{MAN,RHI}
+2026-08-04	U.S. Apparel & Fashion Recovery	Mainstream	{UA,CROX,RVLV}
+2026-08-04	U.S. Domestic Steel Producers	Accelerating	{STLD,NUE}
+2026-08-04	U.S. Passenger Airlines	Accelerating	{LUV,DAL,ALK,SKYW,UAL,ALGT}
+2026-08-04	U.S. Petroleum Refining & Downstream Processing	Mainstream	{PBF,MPC,PARR,VLO,DINO,PSX}
+2026-08-04	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{MTB,CFG,WSFS,SSB,WAL,FHN,HBAN,ZION,HWC,TFC,WTFC,USB,UMBF,FITB,BOKF,PNC,EWBC,RF,KEY}
+2026-08-04	Wealth Management & Retail Brokerage Platforms	Mainstream	{SF,SEIC,LPLA,AMP,RJF,SCHW}
+2026-08-05	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{AMPL,AVPT,INTA}
+2026-08-05	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,ACIW}
+2026-08-05	Casual Dining & Full-Service Restaurant Chain Recovery	Mainstream	{EAT,CAKE}
+2026-08-05	Cloud Data Storage & Analytics Infrastructure	Accelerating	{SNOW,BLZE}
+2026-08-05	Cloud Observability & AIOps Monitoring Platforms	Mainstream	{PD,DDOG}
+2026-08-05	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-05	Commercial Real Estate Brokerage & Advisory Services	Mainstream	{JLL,NMRK,CBRE}
+2026-08-05	Containerboard & Corrugated Packaging Producers	Mainstream	{PKG,SW,IP}
+2026-08-05	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL}
+2026-08-05	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{RPD,QLYS,TENB}
+2026-08-05	Digital Payments Processing & Merchant Acquiring Networks	Mainstream	{FOUR,PYPL}
+2026-08-05	Enterprise HR & Workforce Management SaaS	Mainstream	{WDAY,ALIT,PCTY}
+2026-08-05	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{HPE,NTAP,STX,DELL}
+2026-08-05	European Bank Stocks	Mainstream	{LYG,BBVA,SAN,BCS,NWG,ING}
+2026-08-05	Hospital & Behavioral Health Facility Procedure Volume Recovery	Accelerating	{UHS,THC}
+2026-08-05	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Mainstream	{DCI,FELE,IR,IEX}
+2026-08-05	Life Science Tools & Analytical Instruments	Mainstream	{TMO,MTD,WAT}
+2026-08-05	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{INSP,TNDM,XRAY,CNMD}
+2026-08-05	Network Security & Zero-Trust Edge	Mainstream	{CRWD,NET,PANW,OKTA,VRNS,CVLT,RBRK,FTNT}
+2026-08-05	Office REIT Recovery & Re-Rating	Mainstream	{CDP,BXP,HIW,SLG}
+2026-08-05	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,XERS,PTGX,MBX}
+2026-08-05	Private Mortgage Insurance	Mainstream	{ESNT,NMIH,MTG,RDN}
+2026-08-05	Property & Casualty Insurance Underwriters	Mainstream	{THG,TRV,SKWD,ORI,HIG,HCI,ACGL,ALL,AFG,WRB,CINF,CB}
+2026-08-05	SMB & Workforce Business Services Platforms	Mainstream	{NSP,LZ}
+2026-08-05	Traditional Staffing & Talent Placement Services	Mainstream	{RHI,MAN}
+2026-08-05	U.S. Domestic Steel Producers	Accelerating	{STLD,NUE}
+2026-08-05	U.S. Passenger Airlines	Accelerating	{DAL,UAL,ALGT,SKYW,ALK,LUV}
+2026-08-05	U.S. Petroleum Refining & Downstream Processing	Mainstream	{PARR,PBF,PSX,MPC,DINO,VLO}
+2026-08-05	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{KEY,MTB,RF,EWBC,CFG,WSFS,HBAN,FITB,ZION,HWC,FHN,SSB,USB,PNC,BOKF,UMBF,TFC,WTFC,WAL}
+2026-08-05	Wealth Management & Retail Brokerage Platforms	Mainstream	{RJF,LPLA,AMP,SCHW,SEIC,SF}
+2026-08-06	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{INTA,AVPT,AMPL}
+2026-08-06	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{PAY,ACIW}
+2026-08-06	Canadian Big Banks	Mainstream	{TD,BNS,BMO,RY,CM}
+2026-08-06	Casual Dining & Full-Service Restaurant Chain Recovery	Mainstream	{CAKE,EAT}
+2026-08-06	China Consumer Internet & Digital Marketplace Platforms	Mainstream	{BZ,ATHM}
+2026-08-06	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{CNK,IMAX}
+2026-08-06	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{RNG,FIVN}
+2026-08-06	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,SNOW}
+2026-08-06	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-06	Containerboard & Corrugated Packaging Producers	Mainstream	{IP,SW,PKG}
+2026-08-06	Copper Mining & Production	Accelerating	{SCCO,FCX,HBM}
+2026-08-06	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{BILL,WEX}
+2026-08-06	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{TENB,RPD,QLYS}
+2026-08-06	Enterprise HR & Workforce Management SaaS	Mainstream	{ALIT,WDAY,PCTY}
+2026-08-06	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{HPE,STX,DELL,NTAP}
+2026-08-06	European Bank Stocks	Mainstream	{ING,LYG,SAN,NWG,BBVA,BCS}
+2026-08-06	Global Crude & Product Tanker Fleet Operators	Mainstream	{NAT,FRO,INSW,TNK,DHT}
+2026-08-06	Global Steel & Metal Producers Recovery	Accelerating	{MT,TX}
+2026-08-06	Hospital & Behavioral Health Facility Procedure Volume Recovery	Accelerating	{UHS,THC}
+2026-08-06	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{DNOW,TPC}
+2026-08-06	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Mainstream	{DCI,FELE,IR,IEX}
+2026-08-06	Life Insurance & Annuity Providers	Mainstream	{PRU,UNM,MET}
+2026-08-06	Life Science Tools & Analytical Instruments	Mainstream	{WAT,MTD,TMO}
+2026-08-06	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{CNMD,XRAY,INSP,TNDM}
+2026-08-06	Network Security & Zero-Trust Edge	Mainstream	{RBRK,OKTA,FTNT,NET,VRNS,PANW,CRWD,CVLT}
+2026-08-06	Office REIT Recovery & Re-Rating	Mainstream	{HIW,BXP,CDP,SLG}
+2026-08-06	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{PTGX,MBX,XERS,CORT}
+2026-08-06	Private Mortgage Insurance	Mainstream	{NMIH,MTG,RDN,ESNT}
+2026-08-06	Property & Casualty Insurance Underwriters	Mainstream	{CB,ALL,ACGL,HIG,SKWD,HCI,ORI,CINF,THG,TRV,WRB,AFG}
+2026-08-06	Specialty Insurance Underwriting & Brokerage	Accelerating	{RYAN,PLMR}
+2026-08-06	Traditional Staffing & Talent Placement Services	Mainstream	{RHI,MAN}
+2026-08-06	U.S. Domestic Steel Producers	Accelerating	{NUE,STLD}
+2026-08-06	U.S. Passenger Airlines	Mainstream	{LUV,ALGT,DAL,ALK,UAL,SKYW}
+2026-08-06	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{CFG,SSB,FHN,UMBF,USB,HBAN,FITB,KEY,WTFC,TFC,WSFS,HWC,PNC,BOKF,WAL,EWBC,ZION,RF,MTB}
+2026-08-06	Wealth Management & Retail Brokerage Platforms	Mainstream	{SEIC,AMP,RJF,LPLA,SCHW,SF}
+2026-08-07	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{AVPT,INTA,AMPL}
+2026-08-07	Canadian Big Banks	Mainstream	{BMO,CM,RY,BNS,TD}
+2026-08-07	Casual Dining & Full-Service Restaurant Chain Recovery	Mainstream	{CAKE,EAT}
+2026-08-07	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{CNK,IMAX}
+2026-08-07	Cloud Data Storage & Analytics Infrastructure	Mainstream	{SNOW,BLZE}
+2026-08-07	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-07	Containerboard & Corrugated Packaging Producers	Mainstream	{IP,SW,PKG}
+2026-08-07	Copper Mining & Production	Accelerating	{HBM,SCCO,FCX}
+2026-08-07	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL}
+2026-08-07	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{RPD,TENB,QLYS}
+2026-08-07	Defense ISR & Unmanned Systems Intelligence	Accelerating	{HAWK,AVEX}
+2026-08-07	Enterprise HR & Workforce Management SaaS	Mainstream	{WDAY,PCTY,ALIT}
+2026-08-07	Enterprise Server, Storage & Data Infrastructure Hardware	Accelerating	{NTAP,STX,DELL,HPE}
+2026-08-07	European Bank Stocks	Mainstream	{ING,LYG,NWG,BCS,BBVA,SAN}
+2026-08-07	Family Dining & Quick-Service Restaurant Chain Recovery	Mainstream	{CBRL,JACK}
+2026-08-07	Global Crude & Product Tanker Fleet Operators	Mainstream	{NAT,DHT,INSW,TNK,FRO}
+2026-08-07	Global Steel & Metal Producers Recovery	Accelerating	{MT,TX}
+2026-08-07	Gold & Precious Metals Miners Rotation	Accelerating	{CGAU,EGO,CDE,FNV,RGLD,IAG,EQX,AG,SVM,AEM,KGC,HYMC,AU,HMY,NEM,PAAS,SSRM,AGI,GFI,SBSW,AUGO,HL,EXK}
+2026-08-07	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{THC,UHS}
+2026-08-07	Industrial Construction Execution & On-Site Supply Chain	Accelerating	{TPC,DNOW}
+2026-08-07	Industrial Equipment Rental & Material Handling	Accelerating	{HRI,SUNB,CMCO}
+2026-08-07	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Mainstream	{FELE,IEX,DCI,IR}
+2026-08-07	Industrial HVAC, Plumbing & Fabricated Copper Products	Mainstream	{CSW,MLI}
+2026-08-07	Inflammatory Disease & Immunology Biologics	Mainstream	{SYRE,ORKA}
+2026-08-07	Life Insurance & Annuity Providers	Mainstream	{PRU,MET,UNM}
+2026-08-07	Life Science Tools & Analytical Instruments	Mainstream	{WAT,TMO,MTD}
+2026-08-07	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{CNMD,TNDM,INSP,XRAY}
+2026-08-07	Network Security & Zero-Trust Edge	Mainstream	{VRNS,NET,FTNT,CVLT,PANW,CRWD,RBRK,OKTA}
+2026-08-07	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,MBX,XERS,PTGX}
+2026-08-07	Private Mortgage Insurance	Mainstream	{ESNT,NMIH,MTG,RDN}
+2026-08-07	Property & Casualty Insurance Underwriters	Mainstream	{ORI,SKWD,WRB,CINF,AFG,CB,THG,HIG,ACGL,TRV,ALL,HCI}
+2026-08-07	Traditional Staffing & Talent Placement Services	Mainstream	{MAN,RHI}
+2026-08-07	U.S. Government/Defense Contract Surge	Accelerating	{PLTR,VOYG,TSAT}
+2026-08-07	U.S. Passenger Airlines	Mainstream	{UAL,ALK,SKYW,LUV,DAL,ALGT}
+2026-08-07	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{TFC,HBAN,RF,ZION,USB,EWBC,WSFS,UMBF,BOKF,FHN,SSB,MTB,HWC,PNC,WTFC,WAL,FITB,KEY,CFG}
+2026-08-07	Wealth Management & Retail Brokerage Platforms	Mainstream	{LPLA,SCHW,AMP,RJF,SF}
+2026-08-10	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{AMPL,AVPT,INTA}
+2026-08-10	Canadian Big Banks	Accelerating	{TD,RY,BMO,CM,BNS}
+2026-08-10	Casual Dining & Full-Service Restaurant Chain Recovery	Mainstream	{EAT,CAKE}
+2026-08-10	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{CNK,IMAX}
+2026-08-10	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{FIVN,RNG}
+2026-08-10	Cloud Data Storage & Analytics Infrastructure	Mainstream	{SNOW,BLZE}
+2026-08-10	Cloud Supply Chain & Warehouse Management Software	Mainstream	{SPSC,MANH}
+2026-08-10	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{BOBS,MLKN,HNI}
+2026-08-10	Containerboard & Corrugated Packaging Producers	Mainstream	{PKG,IP,SW}
+2026-08-10	Copper Mining & Production	Accelerating	{HBM,SCCO,FCX}
+2026-08-10	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{BILL,WEX}
+2026-08-10	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{QLYS,RPD,TENB}
+2026-08-10	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{ARXS,DFNS,AADX,MRCY}
+2026-08-10	Defense ISR & Unmanned Systems Intelligence	Accelerating	{HAWK,AVEX}
+2026-08-10	Electrical Infrastructure Products & Systems Installation	Mainstream	{IESC,ATKR}
+2026-08-10	Enterprise HR & Workforce Management SaaS	Mainstream	{PCTY,WDAY,ALIT}
+2026-08-10	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{HPE,DELL,STX,NTAP}
+2026-08-10	European Bank Stocks	Mainstream	{BCS,ING,LYG,BBVA,NWG}
+2026-08-10	Family Dining & Quick-Service Restaurant Chain Recovery	Mainstream	{CBRL,JACK}
+2026-08-10	Global Crude & Product Tanker Fleet Operators	Mainstream	{INSW,NAT,FRO,DHT,TNK}
+2026-08-10	Global Steel & Metal Producers Recovery	Accelerating	{TX,MT}
+2026-08-10	Gold & Precious Metals Miners Rotation	Accelerating	{GFI,EXK,EQX,IAG,HL,EGO,FNV,AEM,KGC,AU,CDE,CGAU,AG,SSRM,HYMC,SVM,NEM,AUGO,HMY,AGI,SBSW,RGLD,PAAS}
+2026-08-10	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{THC,UHS}
+2026-08-10	Industrial Construction Execution & On-Site Supply Chain	Accelerating	{DNOW,TPC}
+2026-08-10	Industrial Equipment Rental & Material Handling	Accelerating	{SUNB,CMCO,HRI}
+2026-08-10	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Mainstream	{DCI,FELE,IEX,IR}
+2026-08-10	Industrial HVAC, Plumbing & Fabricated Copper Products	Mainstream	{CSW,MLI}
+2026-08-10	Inflammatory Disease & Immunology Biologics	Mainstream	{ORKA,SYRE}
+2026-08-10	Life Insurance & Annuity Providers	Mainstream	{UNM,PRU,MET}
+2026-08-10	Life Science Tools & Analytical Instruments	Mainstream	{TMO,MTD,WAT}
+2026-08-10	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{INSP,CNMD,TNDM}
+2026-08-10	Network Security & Zero-Trust Edge	Mainstream	{CVLT,CRWD,OKTA,NET,FTNT,PANW,VRNS,RBRK}
+2026-08-10	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{MBX,CORT,PTGX,XERS}
+2026-08-10	Private Mortgage Insurance	Mainstream	{MTG,ESNT,NMIH}
+2026-08-10	Property & Casualty Insurance Underwriters	Mainstream	{HIG,HCI,ACGL,WRB,ORI,CINF,ALL,TRV,CB,SKWD,THG,AFG}
+2026-08-10	Quantum Computing Hardware & Software	Mainstream	{RGTI,QBTS,QUBT,XNDU,INFQ}
+2026-08-10	Specialty Pharmaceutical Commercialization & Rare Disease Drugs	Mainstream	{OMER,KNSA}
+2026-08-10	U.S. Domestic Steel Producers	Accelerating	{STLD,NUE}
+2026-08-10	U.S. Government/Defense Contract Surge	Accelerating	{PLTR,TSAT}
+2026-08-10	U.S. Passenger Airlines	Mainstream	{ALK,LUV,UAL,DAL,ALGT,SKYW}
+2026-08-10	U.S. Petroleum Refining & Downstream Processing	Mainstream	{MPC,VLO,PSX,DINO,PARR,PBF}
+2026-08-10	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{TFC,BOKF,RF,HWC,UMBF,WSFS,FHN,CFG,EWBC,FITB,WTFC,HBAN,USB,PNC,ZION,MTB,SSB}
+2026-08-10	Wealth Management & Retail Brokerage Platforms	Mainstream	{RJF,LPLA,SCHW,SF,AMP}
+2026-08-11	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{AVPT,AMPL,INTA,APPN,PATH,MNDY,AI}
+2026-08-11	Canadian Big Banks	Accelerating	{BMO,BNS,TD,CM,RY}
+2026-08-11	Casual Dining & Full-Service Restaurant Chain Recovery	Mainstream	{CAKE,EAT,BLMN,TXRH,DRI}
+2026-08-11	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{CNK,IMAX}
+2026-08-11	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{FIVN,RNG}
+2026-08-11	Cloud Data Storage & Analytics Infrastructure	Mainstream	{SNOW,BLZE}
+2026-08-11	Cloud Supply Chain & Warehouse Management Software	Mainstream	{SPSC,MANH}
+2026-08-11	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{BOBS,HNI,MLKN}
+2026-08-11	Containerboard & Corrugated Packaging Producers	Mainstream	{PKG,SW,IP,GPK}
+2026-08-11	Copper Mining & Production	Accelerating	{HBM,FCX,SCCO,ERO,TECK}
+2026-08-11	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL}
+2026-08-11	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{QLYS,TENB,RPD}
+2026-08-11	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{BA,DPC,ATI,RTX,AADX,EMBJ,MRCY,ARXS,DFNS}
+2026-08-11	Defense ISR & Unmanned Systems Intelligence	Accelerating	{AVEX,HAWK}
+2026-08-11	Electrical Connectivity & Utility Network Hardware	Mainstream	{PLPC,BDC}
+2026-08-11	Enterprise HR & Workforce Management SaaS	Mainstream	{PCTY,WDAY,ALIT,PAYC,ADP,PAYX}
+2026-08-11	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{HPE,NTAP,DELL,STX,ANET}
+2026-08-11	European Bank Stocks	Mainstream	{BBVA,NWG,BCS,LYG,ING,DB,UBS}
+2026-08-11	Family Dining & Quick-Service Restaurant Chain Recovery	Mainstream	{JACK,CBRL}
+2026-08-11	Global Steel & Metal Producers Recovery	Accelerating	{MT,TX}
+2026-08-11	Gold & Precious Metals Miners Rotation	Accelerating	{AGI,SSRM,EQX,IAG,HYMC,EGO,CGAU,AU,SBSW,FNV,KGC,GFI,NEM,HMY,AUGO,AEM,RGLD}
+2026-08-11	Government & Defense IT Services Providers	Mainstream	{LDOS,EFOR}
+2026-08-11	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{UHS,THC,EHC}
+2026-08-11	Industrial Construction Execution & On-Site Supply Chain	Accelerating	{DNOW,TPC,J,ROAD}
+2026-08-11	Industrial Equipment Rental & Material Handling	Accelerating	{CMCO,SUNB,HRI}
+2026-08-11	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	Mainstream	{DCI,IEX,IR,FELE,VLTO}
+2026-08-11	Inflammatory Disease & Immunology Biologics	Mainstream	{SYRE,ORKA,CLYM,IMVT,DNTH}
+2026-08-11	Life Insurance & Annuity Providers	Mainstream	{UNM,MET,PRU,EQH,CRBG,LNC,JXN,CNO}
+2026-08-11	Life Science Tools & Analytical Instruments	Mainstream	{MTD,WAT,TMO,RGEN,A,TECH,RVTY,DHR}
+2026-08-11	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{CNMD,INSP,TNDM}
+2026-08-11	Network Security & Zero-Trust Edge	Mainstream	{PANW,VRNS,NET,FTNT,CRWD,RBRK,OKTA,CVLT,S,SAIL,ZS}
+2026-08-11	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{XERS,MBX,CORT,PTGX,CRNX}
+2026-08-11	Private Equity & Alternative Asset Management Platforms	Mainstream	{ARES,HLNE,OWL,BX,TPG,BAM,KKR,APO,FSK,STEP,MAIN}
+2026-08-11	Private Mortgage Insurance	Mainstream	{MTG,NMIH,ESNT}
+2026-08-11	Property & Casualty Insurance Underwriters	Mainstream	{HIG,TRV,ALL,SKWD,AFG,THG,WRB,HCI,ORI,CB,CINF,RLI}
+2026-08-11	Quantum Computing Hardware & Software	Mainstream	{RGTI,QBTS,XNDU,INFQ,QUBT,IONQ}
+2026-08-11	Specialty Pharmaceutical Commercialization & Rare Disease Drugs	Mainstream	{OMER,KNSA,LQDA,HRMY,RYTM,ETON,BCRX,INSM,ROIV}
+2026-08-11	U.S. Domestic Steel Producers	Accelerating	{STLD,NUE,CLF}
+2026-08-11	U.S. Government/Defense Contract Surge	Accelerating	{TSAT,PLTR}
+2026-08-11	U.S. Passenger Airlines	Mainstream	{UAL,SKYW,ALK,LUV,DAL}
+2026-08-11	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{TFC,HWC,FITB,EWBC,WTFC,UMBF,CFG,PNC,HBAN,SSB,ZION,BOKF,FHN,USB,RF,WSFS,MTB,FBP,PNFP,WSBC,MCHB}
+2026-08-11	Wealth Management & Retail Brokerage Platforms	Mainstream	{LPLA,AMP,RJF,SF,SCHW}
+2026-08-12	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{APPN,AI,AVPT,INTA,AMPL,MNDY,PATH,NOW,CRM}
+2026-08-12	Building Envelope, Ceilings & Interior Construction Products	Mainstream	{AWI,OC,CSL}
+2026-08-12	Canadian Big Banks	Accelerating	{BNS,TD,BMO,CM,RY}
+2026-08-12	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{IMAX,CNK}
+2026-08-12	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{RNG,FIVN}
+2026-08-12	Cloud Data Storage & Analytics Infrastructure	Mainstream	{SNOW,BLZE,MDB}
+2026-08-12	Cloud Supply Chain & Warehouse Management Software	Mainstream	{SPSC,MANH}
+2026-08-12	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{HNI,BOBS,MLKN,WSM,RH}
+2026-08-12	Containerboard & Corrugated Packaging Producers	Mainstream	{GPK,IP,SW,PKG}
+2026-08-12	Copper Mining & Production	Mainstream	{HBM,TECK,ERO,FCX,SCCO}
+2026-08-12	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL}
+2026-08-12	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{TENB,QLYS,RPD}
+2026-08-12	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{DFNS,MRCY,DPC,EMBJ,AADX,ARXS,BA,ATI,RTX}
+2026-08-12	Defense ISR & Unmanned Systems Intelligence	Accelerating	{AVEX,HAWK}
+2026-08-12	Digital Insurance Distribution & InsurTech Platforms	Mainstream	{LIFE,GSHD}
+2026-08-12	Electrical Connectivity & Utility Network Hardware	Mainstream	{PLPC,BDC,NVT}
+2026-08-12	Enterprise HR & Workforce Management SaaS	Mainstream	{PAYX,PAYC,PCTY,WDAY,ADP,ALIT}
+2026-08-12	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{DELL,ANET,HPE,STX,NTAP,CSCO}
+2026-08-12	European Bank Stocks	Mainstream	{NWG,DB,ING,BCS,LYG,BBVA,UBS}
+2026-08-12	Global Steel & Metal Producers Recovery	Mainstream	{MT,TX}
+2026-08-12	Gold & Precious Metals Miners Rotation	Accelerating	{SBSW,NEM,CGAU,HMY,GFI,EGO,AUGO,EQX,AEM,IAG,KGC,HYMC,RGLD,AGI,SSRM,FNV,AU,ARIS}
+2026-08-12	Government & Defense IT Services Providers	Mainstream	{EFOR,LDOS}
+2026-08-12	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{THC,EHC,UHS}
+2026-08-12	Industrial Construction Execution & On-Site Supply Chain	Accelerating	{DNOW,J,ROAD,TPC}
+2026-08-12	Industrial Equipment & Flow Control – Capex Cycle Recovery	Mainstream	{LECO,ITT,FLS,PH,EMR,VLTO,IR,FELE,DCI,IEX}
+2026-08-12	Industrial Equipment Rental & Material Handling	Accelerating	{CMCO,SUNB,HRI,EQPT}
+2026-08-12	Inflammatory Disease & Immunology Biologics	Mainstream	{CLYM,SYRE,ORKA,IMVT,DNTH,AVTX,APGE,ZBIO}
+2026-08-12	Life Insurance & Annuity Providers	Mainstream	{UNM,EQH,LNC,MET,CRBG,CNO,PRU,JXN}
+2026-08-12	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{INSP,TNDM,CNMD,BBNX}
+2026-08-12	Mobile App Platform & Advertising Monetization	Mainstream	{APPS,BSP}
+2026-08-12	Network Security & Zero-Trust Edge	Mainstream	{OKTA,NET,S,FTNT,PANW,RBRK,ZS,CRWD,VRNS,CVLT,SAIL,NTSK,FFIV}
+2026-08-12	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CRNX,CORT,XERS,MBX,PTGX}
+2026-08-12	Private Equity & Alternative Asset Management Platforms	Mainstream	{BAM,APO,HLNE,KKR,OWL,FSK,STEP,MAIN,TPG,ARES,BX}
+2026-08-12	Private Mortgage Insurance	Mainstream	{MTG,ESNT,NMIH}
+2026-08-12	Property & Casualty Insurance Underwriters	Mainstream	{HIG,AFG,THG,ORI,CB,ALL,SKWD,HCI,RLI,TRV,SLDE}
+2026-08-12	Quantum Computing Hardware & Software	Mainstream	{RGTI,IONQ,QUBT,INFQ,QBTS}
+2026-08-12	Restaurant Chain Recovery	Mainstream	{TXRH,CAKE,EAT,BLMN,DRI,JACK,CBRL,SHAK}
+2026-08-12	Specialty Pharmaceutical Commercialization & Rare Disease Drugs	Mainstream	{LQDA,ROIV,OMER,HRMY,ETON,INSM,BCRX,KNSA,RYTM,BMRN}
+2026-08-12	U.S. Government/Defense Contract Surge	Accelerating	{TSAT,PLTR}
+2026-08-12	U.S. Passenger Airlines	Mainstream	{SKYW,ALK,DAL,UAL,LUV}
+2026-08-12	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{FBP,HWC,FHN,WSFS,MCHB,USB,HBAN,BOKF,RF,UMBF,TFC,CFG,WTFC,EWBC,PNFP,ZION,PNC,SSB,MTB,FITB,WSBC,CBC}
+2026-08-12	Wealth Management & Retail Brokerage Platforms	Mainstream	{SCHW,SF,LPLA,AMP,RJF,NTRS}
+2026-08-13	AI GPU Compute Infrastructure & Cloud Services	Accelerating	{SMCI,CRWV}
+2026-08-13	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{AI,CRM,AMPL,INTA,NOW,MNDY,AVPT,PATH,APPN}
+2026-08-13	Building Envelope, Ceilings & Interior Construction Products	Mainstream	{CSL,OC,AWI}
+2026-08-13	Canadian Big Banks	Mainstream	{BMO,BNS,RY,TD,CM}
+2026-08-13	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{IMAX,CNK}
+2026-08-13	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{FIVN,RNG,TWLO,NICE}
+2026-08-13	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,MDB,SNOW,ESTC}
+2026-08-13	Cloud Observability & AIOps Monitoring Platforms	Accelerating	{PD,DDOG,DT}
+2026-08-13	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-13	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{MLKN,BOBS,HNI,WSM,RH,W}
+2026-08-13	Consumer Fintech & Digital Credit Platforms	Accelerating	{CHYM,DAVE,SEZL,BFH,PGY,KLAR,AFRM,SOFI}
+2026-08-13	Containerboard & Corrugated Packaging Producers	Mainstream	{GPK,SW,IP,PKG}
+2026-08-13	Copper Mining & Production	Mainstream	{HBM,TECK,SCCO,ERO,FCX}
+2026-08-13	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL}
+2026-08-13	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{RPD,TENB,QLYS}
+2026-08-13	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{DFNS,BA,DPC,ATI,EMBJ,MRCY,ARXS,RTX}
+2026-08-13	Digital Insurance Distribution & InsurTech Platforms	Mainstream	{GSHD,LIFE}
+2026-08-13	Electrical Connectivity & Utility Network Hardware	Mainstream	{NVT,PLPC}
+2026-08-13	Enterprise HR & Workforce Management SaaS	Mainstream	{PCTY,ALIT,WDAY,PAYX,PAYC,ADP}
+2026-08-13	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{CSCO,ANET,HPE,NTAP,STX,DELL}
+2026-08-13	European Bank Stocks	Mainstream	{UBS,NWG,DB,ING,BCS,LYG,BBVA}
+2026-08-13	Gold & Precious Metals Miners Rotation	Mainstream	{ARIS,EQX,HMY,KGC,AGI,GFI,AEM,FNV,AU,AUGO,HYMC,SBSW,IAG,NEM,RGLD,SSRM,CGAU,EGO}
+2026-08-13	Government & Defense IT Services Providers	Mainstream	{LDOS,EFOR}
+2026-08-13	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{THC,UHS,EHC}
+2026-08-13	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{J,TPC,DNOW,ROAD}
+2026-08-13	Industrial Equipment & Flow Control – Capex Cycle Recovery	Mainstream	{IEX,DCI,FELE,IR,PH,EMR,LECO,FLS,VLTO,ITT}
+2026-08-13	Industrial Equipment Rental & Material Handling	Accelerating	{CMCO,HRI,EQPT,SUNB}
+2026-08-13	Inflammatory Disease & Immunology Biologics	Mainstream	{CLYM,ZBIO,AVTX,ORKA,SYRE,APGE,IMVT,DNTH}
+2026-08-13	Insurance Brokerage & Distribution Services	Accelerating	{WTW,AJG,BWIN,AON,BRO}
+2026-08-13	Life Insurance & Annuity Providers	Mainstream	{PRU,CRBG,EQH,LNC,MET,CNO,UNM,JXN,GL}
+2026-08-13	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{TNDM,BBNX,INSP,CNMD,DXCM,EW}
+2026-08-13	Mobile App Platform & Advertising Monetization	Mainstream	{APPS,BSP}
+2026-08-13	Network Security & Zero-Trust Edge	Mainstream	{VRNS,FTNT,FFIV,ZS,OKTA,S,CVLT,PANW,CRWD,NET,RBRK,SAIL,NTSK}
+2026-08-13	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CRNX,PTGX,CORT,MBX,XERS}
+2026-08-13	Private Equity & Alternative Asset Management Platforms	Accelerating	{APO,HLNE,FSK,KKR,STEP,BAM,TPG,OWL,MAIN,BX,ARES,CG}
+2026-08-13	Private Mortgage Insurance	Mainstream	{ESNT,NMIH,MTG}
+2026-08-13	Property & Casualty Insurance Underwriters	Mainstream	{RLI,CB,SLDE,AFG,THG,SKWD,TRV,HCI,ORI,ALL}
+2026-08-13	Quantum Computing Hardware & Software	Mainstream	{QUBT,RGTI,IONQ,QBTS,INFQ}
+2026-08-13	Restaurant Chain Recovery	Mainstream	{BLMN,EAT,TXRH,SHAK,CBRL,JACK,CAKE,DRI}
+2026-08-13	Software Development & DevOps Collaboration Platforms	Accelerating	{GTLB,TEAM,FROG}
+2026-08-13	Specialty Pharmaceutical Commercialization & Rare Disease Drugs	Mainstream	{ROIV,BCRX,HRMY,BMRN,LQDA,INSM,KNSA,RYTM,ETON,OMER,SRRK}
+2026-08-13	U.S. Apparel & Fashion Recovery	Accelerating	{ANF,CROX,URBN,RVLV,SHOO,VSXY}
+2026-08-13	U.S. Government/Defense Contract Surge	Mainstream	{PLTR,TSAT}
+2026-08-13	U.S. Passenger Airlines	Mainstream	{DAL,UAL,SKYW,LUV,ALK,AAL}
+2026-08-13	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{RF,CBC,PNC,TFC,EWBC,FHN,ZION,MTB,BOKF,MCHB,CFG,WSFS,HBAN,FBP,FITB,WSBC,WTFC,PNFP,USB,SSB,UMBF,HWC,HAPN}
+2026-08-13	Wealth Management & Retail Brokerage Platforms	Mainstream	{LPLA,SF,AMP,NTRS,SCHW,RJF}
+2026-08-14	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{MNDY,INTA,NOW,APPN,AVPT,AI,CRM,AMPL,PATH,BRZE,FRSH,PLTR,DOCU,HUBS}
+2026-08-14	B2B Digital Financial Infrastructure & Payment Rails Modernization	Accelerating	{PAY,ALKT,ACIW,QTWO}
+2026-08-14	Building Envelope, Ceilings & Interior Construction Products	Mainstream	{CSL,OC,AWI}
+2026-08-14	Canadian Big Banks	Mainstream	{CM,BNS,RY,BMO,TD}
+2026-08-14	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{CNK,IMAX}
+2026-08-14	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{TWLO,NICE,RNG,FIVN}
+2026-08-14	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,MDB,ESTC,SNOW}
+2026-08-14	Cloud Observability & AIOps Monitoring Platforms	Accelerating	{DDOG,PD,DT}
+2026-08-14	Cloud Supply Chain & Warehouse Management Software	Mainstream	{SPSC,MANH}
+2026-08-14	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{BOBS,RH,WSM,HNI,W,MLKN}
+2026-08-14	Consumer Fintech & Digital Credit Platforms	Accelerating	{PGY,AFRM,SOFI,CHYM,BFH,KLAR,DAVE,SEZL}
+2026-08-14	Containerboard & Corrugated Packaging Producers	Mainstream	{PKG,IP,GPK,SW}
+2026-08-14	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL}
+2026-08-14	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{TENB,QLYS,RPD}
+2026-08-14	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{MRCY,RTX,DFNS,BA,EMBJ,ARXS,ATI,DPC,LOAR}
+2026-08-14	Defense ISR & Unmanned Systems Intelligence	Mainstream	{HAWK,AVEX}
+2026-08-14	Digital Insurance Distribution & InsurTech Platforms	Mainstream	{LIFE,GSHD,NP}
+2026-08-14	Electrical Connectivity & Utility Network Hardware	Mainstream	{PLPC,NVT}
+2026-08-14	Enterprise HR & Workforce Management SaaS	Mainstream	{WDAY,ALIT,PAYX,ADP,PCTY,PAYC}
+2026-08-14	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{DELL,STX,ANET,HPE,NTAP,CSCO}
+2026-08-14	European Bank Stocks	Mainstream	{NWG,LYG,BBVA,BCS,DB,ING,UBS,SAN}
+2026-08-14	Gold & Precious Metals Miners Rotation	Mainstream	{EQX,HYMC,AU,IAG,CGAU,SBSW,AGI,AUGO,KGC,RGLD,SSRM,HMY,ARIS,FNV,EGO,AEM,GFI,NEM}
+2026-08-14	Government & Defense IT Services Providers	Mainstream	{LDOS,EFOR}
+2026-08-14	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{EHC,THC,UHS}
+2026-08-14	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{J,TPC,DNOW,ROAD}
+2026-08-14	Industrial Equipment & Flow Control – Capex Cycle Recovery	Mainstream	{IEX,IR,LECO,PH,ITT,DCI,EMR,VLTO,FLS,FELE}
+2026-08-14	Industrial Equipment Rental & Material Handling	Mainstream	{CMCO,HRI,EQPT,SUNB}
+2026-08-14	Inflammatory Disease & Immunology Biologics	Mainstream	{DNTH,IMVT,CLYM,AVTX,APGE,ZBIO,SYRE,ORKA}
+2026-08-14	Insurance Brokerage & Distribution Services	Accelerating	{WTW,BWIN,AJG,BRO,AON}
+2026-08-14	Life Insurance & Annuity Providers	Mainstream	{MET,LNC,PRU,CRBG,CNO,UNM,GL,JXN,EQH,VOYA}
+2026-08-14	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{TNDM,EW,DXCM,INSP,BBNX,CNMD,BDX,ZBH,AORT}
+2026-08-14	Network Security & Zero-Trust Edge	Mainstream	{VRNS,ZS,FFIV,CRWD,NTSK,FTNT,RBRK,S,NET,PANW,SAIL,OKTA,CVLT,GEN}
+2026-08-14	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,PTGX,XERS,CRNX,MBX}
+2026-08-14	Private Equity & Alternative Asset Management Platforms	Mainstream	{BX,OWL,KKR,HLNE,BAM,TPG,ARES,MAIN,APO,FSK,CG,STEP}
+2026-08-14	Private Mortgage Insurance	Mainstream	{NMIH,MTG,ESNT}
+2026-08-14	Property & Casualty Insurance Underwriters	Mainstream	{TRV,SLDE,HCI,THG,ORI,SKWD,AFG,ALL,RLI,ARX}
+2026-08-14	Quantum Computing Hardware & Software	Mainstream	{QUBT,QBTS,IONQ,INFQ,RGTI}
+2026-08-14	Restaurant Chain Recovery	Mainstream	{CAKE,SHAK,JACK,TXRH,CBRL,WEN,BLMN,EAT,DRI}
+2026-08-14	Software Development & DevOps Collaboration Platforms	Accelerating	{FROG,TEAM,GTLB}
+2026-08-14	Specialty Pharmaceutical Commercialization & Rare Disease Drugs	Mainstream	{BCRX,BMRN,ETON,INSM,KNSA,LQDA,OMER,RYTM,ROIV,HRMY,SRRK,TVTX}
+2026-08-14	U.S. Apparel & Fashion Recovery	Accelerating	{CROX,RVLV,VSXY,URBN,ANF,SHOO,WWW}
+2026-08-14	U.S. Passenger Airlines	Mainstream	{AAL,LUV,DAL,SKYW,ALK,UAL}
+2026-08-14	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{FHN,SSB,PNFP,EWBC,TFC,FBP,USB,WSFS,HBAN,HAPN,WTFC,CFG,UMBF,WSBC,RF,BOKF,CBC,HWC,MCHB,PNC,MTB,ZION,FITB,HOPE,SBCF}
+2026-08-14	Wealth Management & Retail Brokerage Platforms	Mainstream	{SCHW,NTRS,SF,RJF,AMP,LPLA}
+2026-08-17	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{PLTR,AMPL,MNDY,NOW,FRSH,BRZE,INTA,AI,HUBS,CRM,AVPT,DOCU,APPN,PATH}
+2026-08-17	B2B Digital Financial Infrastructure & Payment Rails Modernization	Accelerating	{ACIW,QTWO,PAY,ALKT,RELY,NCNO,WSE}
+2026-08-17	Building Envelope, Ceilings & Interior Construction Products	Mainstream	{CSL,OC,AWI}
+2026-08-17	Canadian Big Banks	Mainstream	{TD,BMO,RY,CM,BNS}
+2026-08-17	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{IMAX,CNK}
+2026-08-17	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{NICE,FIVN,RNG,TWLO}
+2026-08-17	Cloud Data Storage & Analytics Infrastructure	Mainstream	{SNOW,MDB,BLZE,ESTC}
+2026-08-17	Cloud Observability & AIOps Monitoring Platforms	Mainstream	{PD,DDOG,DT}
+2026-08-17	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-17	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{BOBS,HNI,WSM,W,MLKN,RH}
+2026-08-17	Consumer Fintech & Digital Credit Platforms	Accelerating	{BFH,AFRM,SOFI,KLAR,DAVE,CHYM,PGY,OMF}
+2026-08-17	Copper Mining & Production	Mainstream	{FCX,TECK,SCCO,HBM,ERO}
+2026-08-17	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,BILL,WK,CPAY}
+2026-08-17	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{QLYS,TENB,RPD}
+2026-08-17	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{RTX,EMBJ,MRCY,DFNS,BA,ARXS,DPC,LOAR,ATI}
+2026-08-17	Digital Insurance Distribution & InsurTech Platforms	Mainstream	{NP,LIFE,GSHD}
+2026-08-17	Electrical Connectivity & Utility Network Hardware	Mainstream	{NVT,PLPC}
+2026-08-17	Enterprise HR & Workforce Management SaaS	Mainstream	{WDAY,PAYC,PAYX,ADP,PCTY,ALIT}
+2026-08-17	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{HPE,STX,CSCO,ANET,NTAP,DELL,NTNX}
+2026-08-17	European Bank Stocks	Mainstream	{SAN,BBVA,LYG,DB,UBS,NWG,BCS}
+2026-08-17	Genomics & DNA Sequencing Tools	Mainstream	{BRKR,TWST,ILMN,TXG,NTRA,WGS}
+2026-08-17	Gold & Precious Metals Miners Rotation	Mainstream	{SSRM,HYMC,CGAU,AEM,NEM,IAG,ARIS,AU,HMY,RGLD,FNV,SBSW,EQX,EGO,KGC,GFI,AUGO}
+2026-08-17	Government & Defense IT Services Providers	Mainstream	{EFOR,LDOS}
+2026-08-17	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{EHC,THC,UHS}
+2026-08-17	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{DNOW,TPC,J,ROAD}
+2026-08-17	Industrial Equipment & Flow Control – Capex Cycle Recovery	Mainstream	{PH,ITT,IR,DCI,EMR,IEX,VLTO,FELE,FLS,LECO}
+2026-08-17	Industrial Equipment Rental & Material Handling	Mainstream	{EQPT,SUNB,HRI,CMCO}
+2026-08-17	Inflammatory Disease & Immunology Biologics	Mainstream	{DNTH,APGE,AVTX,ORKA,ZBIO,CLYM,IMVT,SYRE,VERA}
+2026-08-17	Insurance Brokerage & Distribution Services	Accelerating	{BWIN,AJG,AON,BRO,WTW}
+2026-08-17	Life Insurance & Annuity Providers	Mainstream	{CNO,GL,EQH,LNC,VOYA,MET,JXN,UNM,PRU,CRBG}
+2026-08-17	Life Science Tools & Analytical Instruments	Mainstream	{WAT,RGEN,RVTY,A,TMO,TECH,DHR,MTD,CRL}
+2026-08-17	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{ZBH,TNDM,AORT,DXCM,EW,INSP,BDX,BBNX,CNMD,GKOS,MMSI,GEHC}
+2026-08-17	Mobile App Platform & Advertising Monetization	Mainstream	{BSP,APPS}
+2026-08-17	Network Security & Zero-Trust Edge	Mainstream	{RBRK,SAIL,PANW,NET,GEN,NTSK,VRNS,FFIV,OKTA,ZS,S,CRWD,CVLT,FTNT}
+2026-08-17	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{MBX,CRNX,CORT,XERS,PTGX}
+2026-08-17	Power Generation & Grid Infrastructure for AI Data Centers	Accelerating	{EROC,GEV}
+2026-08-17	Precious Metals Miners Velocity Breakout	Mainstream	{ASM,SKE,PPTA,SA,AYA,WPM,FSM}
+2026-08-17	Private Equity & Alternative Asset Management Platforms	Mainstream	{APO,BAM,CG,STEP,MAIN,OWL,KKR,HLNE,TPG,FSK,BX,ARES}
+2026-08-17	Private Mortgage Insurance	Mainstream	{MTG,ESNT,NMIH}
+2026-08-17	Property & Casualty Insurance Underwriters	Mainstream	{ALL,ARX,TRV,ORI,HCI,AFG,SLDE,RLI,SKWD,THG}
+2026-08-17	Quantum Computing Hardware & Software	Mainstream	{INFQ,RGTI,QBTS,QUBT,IONQ}
+2026-08-17	Restaurant Chain Recovery	Mainstream	{TXRH,EAT,CBRL,CAKE,JACK,WEN,BLMN,SHAK,DRI}
+2026-08-17	Software Development & DevOps Collaboration Platforms	Accelerating	{FROG,GTLB,TEAM}
+2026-08-17	U.S. Apparel & Fashion Recovery	Accelerating	{URBN,VSXY,CROX,SHOO,ANF,WWW}
+2026-08-17	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{MCHB,TFC,FITB,HOPE,MTB,WSBC,SBCF,ZION,USB,WSFS,CFG,HAPN,RF,BOKF,WTFC,SSB,CBC,FBP,PNFP,PNC,EWBC,UMBF,FHN,HWC,HBAN}
+2026-08-17	Wealth Management & Retail Brokerage Platforms	Mainstream	{SCHW,LPLA,NTRS,AMP,RJF,SF,IVZ,STT,BNY}
+2026-08-18	AI Chip & Interconnect Supply Chain Enablement	Mainstream	{AMBA,SKHY,TSEM,FORM,SITM,MPWR,ENTG,ASML,AXTI,LRCX,MRVL,GFS,ACMR,MU,SMTC,NVDA}
+2026-08-18	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{DOCU,PATH,AVPT,BRZE,AMPL,NOW,APPN,CRM,FRSH,MNDY,AI,HUBS,PLTR,INTA,SAP}
+2026-08-18	B2B Digital Financial Infrastructure & Payment Rails Modernization	Accelerating	{PAY,WSE,NCNO,QTWO,ACIW,ALKT,RELY}
+2026-08-18	Canadian Big Banks	Mainstream	{CM,BMO,BNS,RY,TD}
+2026-08-18	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{IMAX,CNK}
+2026-08-18	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{RNG,TWLO,NICE,FIVN,BAND}
+2026-08-18	Cloud Data Storage & Analytics Infrastructure	Mainstream	{ESTC,MDB,BLZE,SNOW}
+2026-08-18	Cloud Observability & AIOps Monitoring Platforms	Mainstream	{DT,DDOG,PD}
+2026-08-18	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-18	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{BOBS,MLKN,WSM,W,HNI,RH,ARHS}
+2026-08-18	Consumer Fintech & Digital Credit Platforms	Accelerating	{BFH,PGY,SOFI,AFRM,OMF,DAVE,CHYM}
+2026-08-18	Copper Mining & Production	Mainstream	{FCX,HBM,TECK,SCCO,ERO}
+2026-08-18	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,WK,BILL,CPAY}
+2026-08-18	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{QLYS,RPD,TENB}
+2026-08-18	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{DFNS,DPC,RTX,MRCY,ARXS,ATI,LOAR,EMBJ,BA,ATRO}
+2026-08-18	Digital Insurance Distribution & InsurTech Platforms	Mainstream	{NP,LIFE,GSHD,PRCH}
+2026-08-18	Electrical Connectivity & Utility Network Hardware	Mainstream	{PLPC,NVT}
+2026-08-18	Electronics Manufacturing & Semiconductor Packaging Supply Chain	Accelerating	{JBL,SANM,ASX}
+2026-08-18	Enterprise HR & Workforce Management SaaS	Mainstream	{WDAY,PAYC,ALIT,PCTY,ADP,PAYX}
+2026-08-18	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{ANET,NTAP,STX,CSCO,DELL,HPE,NTNX}
+2026-08-18	Enterprise Unstructured Data Storage Infrastructure	Mainstream	{DBX,BOX,P,QMCO}
+2026-08-18	European Bank Stocks	Mainstream	{LYG,NWG,SAN,UBS,DB,BCS,ING}
+2026-08-18	Genomics & DNA Sequencing Tools	Mainstream	{NTRA,TWST,WGS,BRKR,TXG,ILMN,GH,GRAL}
+2026-08-18	Gold & Precious Metals Miners Rotation	Mainstream	{IAG,ARIS,AU,SBSW,RGLD,SSRM,NEM,AUGO,GFI,AEM,HMY,HYMC,EQX,EGO,KGC,FNV,CGAU}
+2026-08-18	Government & Defense IT Services Providers	Mainstream	{LDOS,EFOR}
+2026-08-18	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{EHC,UHS,THC}
+2026-08-18	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{J,TPC,DNOW,ROAD}
+2026-08-18	Industrial Equipment & Flow Control – Capex Cycle Recovery	Mainstream	{DCI,FLS,EMR,IEX,LECO,VLTO,PH,ITT}
+2026-08-18	Industrial Equipment Rental & Material Handling	Mainstream	{CMCO,HRI,SUNB}
+2026-08-18	Inflammatory Disease & Immunology Biologics	Mainstream	{ORKA,ZBIO,CLYM,AVTX,IMVT,APGE,DNTH,VERA}
+2026-08-18	Insurance Brokerage & Distribution Services	Accelerating	{BRO,AON,BWIN,AJG,WTW}
+2026-08-18	IT Consulting & Business Process Outsourcing Services	Mainstream	{ACN,DXC,CTSH,EXLS,IT}
+2026-08-18	Life Insurance & Annuity Providers	Mainstream	{CRBG,CNO,EQH,LNC,MET,JXN,PRU,VOYA,UNM,GL}
+2026-08-18	Life Science Tools & Analytical Instruments	Mainstream	{CRL,MTD,TECH,DHR,RVTY,RGEN,TMO,WAT,A}
+2026-08-18	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{ZBH,MMSI,DXCM,BDX,TNDM,INSP,GKOS,CNMD,AORT,BBNX,EW,GEHC,HAE,AXGN,NVCR,MDT}
+2026-08-18	Mobile App Platform & Advertising Monetization	Mainstream	{BSP,APPS}
+2026-08-18	Network Security & Zero-Trust Edge	Mainstream	{CVLT,GEN,NET,SAIL,VRNS,CRWD,RBRK,ZS,NTSK,FFIV,S,PANW,OKTA,FTNT,GRRR}
+2026-08-18	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{XERS,PTGX,CORT,CRNX,MBX}
+2026-08-18	Precious Metals Miners Velocity Breakout	Mainstream	{WPM,FSM,PPTA,SKE,ASM,AYA,SA}
+2026-08-18	Private Equity & Alternative Asset Management Platforms	Mainstream	{BX,BAM,APO,HLNE,CG,FSK,TPG,KKR,STEP,MAIN,ARES,OWL}
+2026-08-18	Private Mortgage Insurance	Mainstream	{MTG,NMIH,ESNT}
+2026-08-18	Programmatic Digital Advertising Platforms	Mainstream	{QNST,MGNI}
+2026-08-18	Property & Casualty Insurance Underwriters	Mainstream	{HCI,SKWD,AFG,THG,SLDE,ORI,ALL,TRV,RLI,ARX}
+2026-08-18	Quantum Computing Hardware & Software	Mainstream	{QBTS,INFQ,IONQ,QUBT,RGTI}
+2026-08-18	Restaurant Chain Recovery	Mainstream	{DRI,EAT,JACK,TXRH,CBRL,WEN,BLMN,CAKE,SHAK}
+2026-08-18	Software Development & DevOps Collaboration Platforms	Accelerating	{FROG,TEAM,GTLB}
+2026-08-18	U.S. Apparel & Fashion Recovery	Accelerating	{WWW,ANF,URBN,CROX,SHOO}
+2026-08-18	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{WTFC,USB,HAPN,FBP,RF,UMBF,HWC,SBCF,CFG,HBAN,EWBC,TFC,FHN,FITB,HOPE,WSFS,MCHB,CBC,BOKF,MTB,WSBC,ZION,PNFP,PNC,SSB}
+2026-08-18	Wealth Management & Retail Brokerage Platforms	Mainstream	{IVZ,LPLA,SF,SCHW,AMP,RJF,NTRS,STT,BNY,WT}
+2026-08-19	AI Chip & Interconnect Supply Chain Enablement	Mainstream	{AMBA,SITM,ENTG,SMTC,NVDA,AMAT,ASML,GFS,SKHY,TSEM,MRVL,MU,FORM,MPWR,ACMR,AXTI,LRCX,AMD}
+2026-08-19	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{DOCU,NOW,AVPT,SAP,PLTR,AI,BRZE,APPN,FRSH,CRM,INTA,PATH,HUBS,MNDY,AMPL}
+2026-08-19	B2B Digital Financial Infrastructure & Payment Rails Modernization	Accelerating	{ALKT,WSE,QTWO,ACIW,RELY,PAY,NCNO,BR}
+2026-08-19	Building Envelope, Ceilings & Interior Construction Products	Mainstream	{CSL,OC,AWI}
+2026-08-19	Canadian Big Banks	Mainstream	{TD,RY,CM,BMO,BNS}
+2026-08-19	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{IMAX,CNK}
+2026-08-19	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{TWLO,NICE,RNG,FIVN,BAND}
+2026-08-19	Cloud Data Storage & Analytics Infrastructure	Mainstream	{MDB,SNOW,BLZE,ESTC}
+2026-08-19	Cloud Supply Chain & Warehouse Management Software	Mainstream	{SPSC,MANH}
+2026-08-19	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{W,ARHS,HNI,RH,BOBS,MLKN,WSM}
+2026-08-19	Consumer Fintech & Digital Credit Platforms	Mainstream	{AFRM,DAVE,CHYM,BFH,SOFI,PGY,OMF}
+2026-08-19	Containerboard & Corrugated Packaging Producers	Mainstream	{PKG,SW,GPK,IP}
+2026-08-19	Copper Mining & Production	Mainstream	{TECK,FCX,HBM,ERO,SCCO}
+2026-08-19	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WK,CPAY,WEX,BILL,NAVN}
+2026-08-19	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{QLYS,TENB,RPD}
+2026-08-19	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{MRCY,EMBJ,BA,ATRO,ATI,DPC,LOAR,RTX,ARXS}
+2026-08-19	Development-Stage Gold Exploration & Project Juniors	Mainstream	{HYMC,AUGO,NG}
+2026-08-19	Digital Insurance Distribution & InsurTech Platforms	Mainstream	{NP,GSHD,LIFE,PRCH}
+2026-08-19	Electrical Connectivity & Utility Network Hardware	Mainstream	{PLPC,NVT}
+2026-08-19	Enterprise HR & Workforce Management SaaS	Mainstream	{WDAY,PAYC,PCTY,ALIT,ADP,PAYX}
+2026-08-19	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{CSCO,NTNX,NTAP,HPE,STX,DELL,ANET}
+2026-08-19	Enterprise Unstructured Data Storage Infrastructure	Mainstream	{DBX,QMCO,BOX,P}
+2026-08-19	Genomics & DNA Sequencing Tools	Mainstream	{TWST,GH,GRAL,BRKR,WGS,TXG,ILMN,NTRA,QGEN}
+2026-08-19	Gold & Precious Metals Miners Rotation	Mainstream	{AU,FNV,ARIS,SSRM,EGO,EQX,NEM,AUGO,RGLD,SBSW,AEM,IAG,HMY,KGC,GFI,HYMC,CGAU,B}
+2026-08-19	Government & Defense IT Services Providers	Mainstream	{LDOS,EFOR}
+2026-08-19	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{THC,EHC,UHS}
+2026-08-19	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{ROAD,DNOW,J,TPC,FLR}
+2026-08-19	Industrial Equipment & Flow Control – Capex Cycle Recovery	Mainstream	{IEX,ITT,EMR,VLTO,DCI,PH,LECO,FLS}
+2026-08-19	Industrial Lifting, Material Handling & Equipment Rental	Mainstream	{SUNB,CMCO,HRI}
+2026-08-19	Inflammatory Disease & Immunology Biologics	Mainstream	{IMVT,APGE,AVTX,ORKA,VERA,DNTH,CLYM,ZBIO,CLDX}
+2026-08-19	Insurance Brokerage & Distribution Services	Mainstream	{BWIN,WTW,BRO,AJG}
+2026-08-19	IT Consulting & Business Process Outsourcing Services	Mainstream	{ACN,EXLS,CTSH,IT}
+2026-08-19	Life Insurance & Annuity Providers	Mainstream	{VOYA,UNM,LNC,GL,JXN,CRBG,MET,CNO,EQH,PRU}
+2026-08-19	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{AXGN,MMSI,INSP,GKOS,GEHC,DXCM,AORT,BDX,NVCR,HAE,CNMD,BBNX,EW,MDT,ZBH,TNDM,ABT,COO,RMD}
+2026-08-19	Network Security & Zero-Trust Edge	Mainstream	{S,FTNT,RBRK,GRRR,PANW,CVLT,SAIL,FFIV,NTSK,VRNS,CRWD,OKTA,ZS,NET,GEN}
+2026-08-19	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,MBX,PTGX,CRNX,XERS}
+2026-08-19	Precious Metals Miners Velocity Breakout	Mainstream	{PPTA,FSM,SKE,SA,WPM,AYA,ASM}
+2026-08-19	Precious Metals Royalty & Streaming Companies	Mainstream	{WPM,OR,RGLD,FNV}
+2026-08-19	Private Equity & Alternative Asset Management Platforms	Mainstream	{KKR,FSK,TPG,ARES,OWL,BX,HLNE,STEP,CG,MAIN,BAM,APO}
+2026-08-19	Private Mortgage Insurance	Mainstream	{MTG,NMIH,ESNT}
+2026-08-19	Programmatic Digital Advertising Platforms	Mainstream	{MGNI,QNST}
+2026-08-19	Property & Casualty Insurance Underwriters	Mainstream	{SLDE,HCI,AFG,ARX,RLI,SKWD,ORI,EG,TRV,THG,ALL}
+2026-08-19	Restaurant Chain Recovery	Mainstream	{TXRH,BLMN,CBRL,SHAK,JACK,DRI,WEN,CAKE,EAT}
+2026-08-19	Silver-Focused Primary Miners	Mainstream	{HL,AG,CDE,SVM,EXK}
+2026-08-19	Software Development & DevOps Collaboration Platforms	Mainstream	{FROG,GTLB,TEAM}
+2026-08-19	U.S. Apparel & Fashion Recovery	Mainstream	{URBN,SHOO,CROX,ANF,WWW}
+2026-08-19	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{WSFS,RF,PNFP,HOPE,HWC,CFG,UMBF,SBCF,FITB,USB,EWBC,WSBC,SSB,TFC,BOKF,MTB,FBP,PNC,CBC,HBAN,ZION}
+2026-08-19	Wealth Management & Retail Brokerage Platforms	Mainstream	{AMP,BNY,WT,SF,STT,NTRS,IVZ,LPLA,SCHW,RJF}
+2026-08-20	AI Chip & Interconnect Supply Chain Enablement	Mainstream	{SITM,SKHY,TSEM,MU,MRVL,ACMR,AMAT,AMBA,FORM,AXTI,LRCX,SMTC,NVDA,ENTG,ASML,AMD,MPWR}
+2026-08-20	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{CRM,AVPT,SAP,PATH,HUBS,NOW,AMPL,AI,DOCU,FRSH,MNDY,PLTR,APPN,BRZE,INTA}
+2026-08-20	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{ACIW,PAY,ALKT,NCNO,BR,WSE,RELY,QTWO,FLYW,JKHY}
+2026-08-20	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{IMAX,CNK}
+2026-08-20	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{RNG,TWLO,BAND,FIVN,NICE}
+2026-08-20	Cloud Data Storage & Analytics Infrastructure	Mainstream	{SNOW,ESTC,BLZE,MDB}
+2026-08-20	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-20	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{ARHS,MLKN,RH,HNI,W,WSM,BOBS}
+2026-08-20	Consumer Fintech & Digital Credit Platforms	Mainstream	{OMF,AFRM,SOFI,PGY,BFH,DAVE,CHYM}
+2026-08-20	Containerboard & Corrugated Packaging Producers	Mainstream	{SW,PKG,GPK,IP}
+2026-08-20	Copper Mining & Production	Mainstream	{SCCO,TECK,ERO,FCX,HBM,BHP}
+2026-08-20	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{CPAY,WEX,WK,NAVN,BILL,VERX}
+2026-08-20	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{QLYS,RPD,TENB}
+2026-08-20	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{LOAR,EMBJ,RTX,ATI,MRCY,ATRO,ARXS}
+2026-08-20	Development-Stage Gold Exploration & Project Juniors	Mainstream	{HYMC,AUGO,NG}
+2026-08-20	Digital Insurance Distribution & InsurTech Platforms	Mainstream	{PRCH,GSHD,LIFE,NP}
+2026-08-20	Enterprise HR & Workforce Management SaaS	Mainstream	{PAYC,PAYX,ALIT,ADP,WDAY,PCTY}
+2026-08-20	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{HPE,CSCO,DELL,NTAP,ANET,STX,NTNX}
+2026-08-20	Enterprise Unstructured Data Storage Infrastructure	Mainstream	{QMCO,P,BOX,DBX}
+2026-08-20	Genomics & DNA Sequencing Tools	Mainstream	{BRKR,ILMN,TXG,QGEN,GRAL,NTRA,TWST,WGS,GH}
+2026-08-20	Gold & Precious Metals Miners Rotation	Mainstream	{B,ARIS,AEM,EQX,IAG,EGO,AUGO,RGLD,GFI,HYMC,NEM,SBSW,HMY,FNV,AU,KGC,SSRM,CGAU}
+2026-08-20	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{UHS,EHC,THC}
+2026-08-20	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{DNOW,FLR,ROAD,TPC,J,KBR}
+2026-08-20	Industrial Equipment & Flow Control – Capex Cycle Recovery	Mainstream	{FLS,IEX,EMR,LECO,VLTO,ITT,DCI,PH}
+2026-08-20	Inflammatory Disease & Immunology Biologics	Mainstream	{DNTH,CLYM,CLDX,ZBIO,APGE,IMVT,VERA,AVTX,ORKA,PHVS,AUPH}
+2026-08-20	Insurance Brokerage & Distribution Services	Mainstream	{BWIN,AJG,BRO,WTW}
+2026-08-20	IT Consulting & Business Process Outsourcing Services	Mainstream	{CTSH,EXLS,ACN,IT,G}
+2026-08-20	Latin American Silver & Gold Mining Operators	Accelerating	{PAAS,BVN,FSM,AGI,AG}
+2026-08-20	Life Sciences & Healthcare Data/CRM Platforms	Mainstream	{VEEV,TEM,DOCS}
+2026-08-20	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{NVCR,MMSI,HAE,AXGN,EW,CNMD,ABT,GKOS,DXCM,INSP,AORT,BBNX,MDT,BDX,GEHC,RMD,TNDM,COO,ZBH,SOLV}
+2026-08-20	Network Security & Zero-Trust Edge	Mainstream	{NTSK,PANW,SAIL,ZS,GEN,S,NET,FTNT,RBRK,CVLT,CRWD,FFIV,GRRR,OKTA,VRNS}
+2026-08-20	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{MBX,PTGX,CORT,XERS,CRNX}
+2026-08-20	Precious Metals Miners Velocity Breakout	Mainstream	{PPTA,ASM,FSM,SKE,WPM,AYA,SA}
+2026-08-20	Precious Metals Royalty & Streaming Companies	Mainstream	{OR,FNV,WPM,RGLD}
+2026-08-20	Private Equity & Alternative Asset Management Platforms	Mainstream	{KKR,MAIN,FSK,OWL,BAM,STEP,CG,HLNE,TPG,ARES,APO,BX,HTGC}
+2026-08-20	Private Mortgage Insurance	Mainstream	{ESNT,NMIH,MTG}
+2026-08-20	Programmatic Digital Advertising Platforms	Mainstream	{QNST,MGNI}
+2026-08-20	Property & Casualty Insurance Underwriters	Mainstream	{AFG,RLI,EG,SKWD,THG,TRV,ARX,HCI,ALL,SLDE,ORI}
+2026-08-20	Restaurant Chain Recovery	Mainstream	{CAKE,WEN,TXRH,SHAK,CBRL,BLMN,DRI,EAT,JACK,JMKE}
+2026-08-20	Silver-Focused Primary Miners	Mainstream	{HL,SVM,EXK,CDE,AG}
+2026-08-20	Software Development & DevOps Collaboration Platforms	Mainstream	{TEAM,FROG,GTLB}
+2026-08-20	U.S. Apparel & Fashion Recovery	Mainstream	{WWW,ANF,SHOO,CROX}
+2026-08-20	Wealth Management & Retail Brokerage Platforms	Mainstream	{BNY,WT,RJF,SF,AMP,SCHW,IVZ,LPLA,STT,NTRS,SEIC}
+2026-08-21	AI Chip & Interconnect Supply Chain Enablement	Mainstream	{LRCX,SITM,NVDA,SKHY,AXTI,AMBA,ASML,MRVL,ENTG,FORM,MU,AMD,AMAT,SMTC,ACMR}
+2026-08-21	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{INTA,MNDY,BRZE,FRSH,NOW,SAP,AI,DOCU,PLTR,AMPL,AVPT,APPN,HUBS,CRM,PATH}
+2026-08-21	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{ALKT,FLYW,PAY,RELY,NCNO,JKHY,BR,QTWO,ACIW,WSE,SSNC}
+2026-08-21	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{NICE,RNG,TWLO,FIVN,BAND}
+2026-08-21	Cloud Data Storage & Analytics Infrastructure	Mainstream	{BLZE,MDB,ESTC,SNOW}
+2026-08-21	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-21	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{W,MLKN,HNI,WSM,RH,ARHS}
+2026-08-21	Consumer Fintech & Digital Credit Platforms	Mainstream	{OMF,PGY,DAVE,SOFI,AFRM,CHYM,BFH}
+2026-08-21	Copper Mining & Production	Accelerating	{TECK,ERO,FCX,HBM,SCCO,BHP}
+2026-08-21	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{WEX,CPAY,VERX,WK,NAVN,BILL}
+2026-08-21	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{RPD,TENB,QLYS}
+2026-08-21	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{RTX,ATI,ARXS,EMBJ,ATRO,LOAR}
+2026-08-21	Development-Stage Gold Exploration & Project Juniors	Accelerating	{NG,HYMC,AUGO}
+2026-08-21	Digital Insurance Distribution & InsurTech Platforms	Mainstream	{GSHD,NP,PRCH,LIFE}
+2026-08-21	Emerging Defense & Aerospace Hardware Suppliers	Mainstream	{VOYG,AVEX,UMAC,RDW,LPTH,VELO,BETA,RCAT,AVAV,KRMN,KTOS}
+2026-08-21	Enterprise HR & Workforce Management SaaS	Mainstream	{PCTY,PAYC,ADP,PAYX,WDAY,ALIT}
+2026-08-21	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{DELL,HPE,CSCO,STX,ANET,NTNX,NTAP}
+2026-08-21	Enterprise Unstructured Data Storage Infrastructure	Mainstream	{BOX,QMCO,P,DBX}
+2026-08-21	European Bank Stocks	Mainstream	{BBVA,UBS,ING,LYG,BCS,DB,SAN,NWG}
+2026-08-21	Genomics & DNA Sequencing Tools	Mainstream	{BRKR,GH,NTRA,ILMN,WGS,TXG,TWST,QGEN,GRAL}
+2026-08-21	Global Steel & Metal Producers Recovery	Accelerating	{TX,MT}
+2026-08-21	Gold & Precious Metals Miners Rotation	Mainstream	{IAG,RGLD,AU,GFI,SSRM,CGAU,B,KGC,SBSW,NEM,ARIS,HMY,FNV,EGO,AEM,EQX,HYMC,AUGO}
+2026-08-21	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{EHC,THC,UHS}
+2026-08-21	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{J,DNOW,FLR,ROAD,TPC,KBR,TTEK,EME}
+2026-08-21	Industrial Equipment & Flow Control – Capex Cycle Recovery	Mainstream	{IEX,VLTO,FLS,DCI,ITT,EMR,PH,LECO}
+2026-08-21	Inflammatory Disease & Immunology Biologics	Mainstream	{IMVT,APGE,DNTH,CLDX,CLYM,ZBIO,PHVS,VERA,AUPH,AVTX,ORKA}
+2026-08-21	Insurance Brokerage & Distribution Services	Mainstream	{WTW,BWIN,AJG,BRO}
+2026-08-21	IT Consulting & Business Process Outsourcing Services	Mainstream	{CTSH,EXLS,G,IT,ACN}
+2026-08-21	Latin American Silver & Gold Mining Operators	Accelerating	{PAAS,BVN,AG,AGI,FSM}
+2026-08-21	Life Sciences & Healthcare Data/CRM Platforms	Mainstream	{TEM,VEEV,DOCS}
+2026-08-21	Life Science Tools & Analytical Instruments	Mainstream	{CRL,RGEN,A,WAT,RVTY,MTD,TECH,DHR,AVTR,TMO}
+2026-08-21	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{ZBH,GKOS,AXGN,SOLV,COO,EW,MDT,CNMD,RMD,NVCR,AORT,ABT,INSP,BDX,GEHC,HAE,MMSI,BAX}
+2026-08-21	Mobile App Platform & Advertising Monetization	Mainstream	{APPS,BSP}
+2026-08-21	Network Security & Zero-Trust Edge	Mainstream	{NTSK,NET,RBRK,FTNT,PANW,GRRR,S,VRNS,CRWD,ZS,OKTA,GEN,SAIL,CVLT,FFIV}
+2026-08-21	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,XERS,PTGX,MBX,CRNX}
+2026-08-21	Precious Metals Miners Velocity Breakout	Mainstream	{PPTA,SA,ASM,AYA,SKE,FSM,WPM}
+2026-08-21	Precious Metals Royalty & Streaming Companies	Accelerating	{RGLD,OR,FNV,WPM}
+2026-08-21	Private Equity & Alternative Asset Management Platforms	Mainstream	{HLNE,STEP,BX,FSK,HTGC,ARES,APO,TPG,OWL,MAIN,BAM,KKR,CG}
+2026-08-21	Private Mortgage Insurance	Mainstream	{NMIH,MTG,ESNT}
+2026-08-21	Programmatic Digital Advertising Platforms	Mainstream	{QNST,MGNI}
+2026-08-21	Restaurant Chain Recovery	Mainstream	{BLMN,CAKE,CBRL,TXRH,JACK,WEN,EAT,SHAK,DRI,JMKE}
+2026-08-21	Silver-Focused Primary Miners	Mainstream	{SVM,CDE,AG,EXK,HL}
+2026-08-21	Software Development & DevOps Collaboration Platforms	Mainstream	{FROG,TEAM,GTLB}
+2026-08-21	Trucking & Freight Logistics	Accelerating	{FWRD,JBHT,SNDR,XPO,KNX}
+2026-08-21	U.S. Apparel & Fashion Recovery	Mainstream	{WWW,SHOO,CROX,ANF}
+2026-08-21	U.S. Oil & Gas E&P Rotation	Accelerating	{HP,KNTK,VET,PTEN,OVV,CNQ,APA,BP,LNG,EOG,PR,VG,CHRD,PARR,ET,SU,DVN,YPF,EQNR,EC,COP,OKE,OXY,WES,MTDR,VIST,WDS,WHD,XOM,EQT,NOG,KGS,TRGP,CVE,CVX,CRGY,CRK,RRC,TALO,EXE,SM,AR,NESR,FANG}
+2026-08-21	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{PNFP,MTB,CFG,FBP,EWBC,RF,SBCF,WSFS,WSBC,CBC,HBAN,HOPE,PNC,SSB,HWC,BOKF,FITB,UMBF,ZION,USB}
+2026-08-21	Wealth Management & Retail Brokerage Platforms	Mainstream	{RJF,IVZ,SCHW,WT,SEIC,AMP,STT,SF,BNY,LPLA,NTRS,HOOD}
+2026-08-24	AI Chip & Interconnect Supply Chain Enablement	Mainstream	{MRVL,AMBA,SMTC,ASML,AMAT,ENTG,MU,ACMR,AMD,NN,SKHY,SITM,NVDA,LRCX}
+2026-08-24	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	{AMPL,APPN,MNDY,PATH,AVPT,PLTR,INTA,CRM,SAP,HUBS,NOW,FRSH,BRZE,DOCU,AI}
+2026-08-24	B2B Digital Financial Infrastructure & Payment Rails Modernization	Mainstream	{JKHY,SSNC,PAY,WSE,FLYW,ALKT,RELY,NCNO,BR,ACIW,QTWO}
+2026-08-24	Cinema Exhibition & Premium Large-Format Recovery	Mainstream	{IMAX,CNK}
+2026-08-24	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	{RNG,NICE,TWLO,FIVN,BAND}
+2026-08-24	Cloud Data Storage & Analytics Infrastructure	Mainstream	{MDB,ESTC,SNOW,BLZE}
+2026-08-24	Cloud Supply Chain & Warehouse Management Software	Mainstream	{MANH,SPSC}
+2026-08-24	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	{MLKN,W,ARHS,HNI,WSM}
+2026-08-24	Containerboard & Corrugated Packaging Producers	Accelerating	{PKG,IP,SW,GPK}
+2026-08-24	Copper Mining & Production	Mainstream	{ERO,TECK,HBM,BHP,SCCO,FCX}
+2026-08-24	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	{NAVN,BILL,WEX,WK,CPAY,VERX}
+2026-08-24	Cyber Exposure Management & Vulnerability Assessment	Mainstream	{QLYS,TENB,RPD}
+2026-08-24	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	{ATRO,RTX,LOAR,EMBJ,ARXS,ATI}
+2026-08-24	Development-Stage Gold Exploration & Project Juniors	Accelerating	{NG,AUGO,HYMC}
+2026-08-24	Digital Insurance Distribution & InsurTech Platforms	Mainstream	{NP,GSHD,LIFE,PRCH}
+2026-08-24	Emerging Defense & Aerospace Hardware Suppliers	Mainstream	{VELO,RCAT,VOYG,AVEX,RDW,UMAC,KTOS,LPTH,BETA,KRMN}
+2026-08-24	Emerging Immunotherapy & Cell Therapy Biotech	Mainstream	{RCUS,CRVS,JBIO,JANX,IBRX,IMMX}
+2026-08-24	Enterprise HR & Workforce Management SaaS	Mainstream	{ADP,PAYC,PAYX,WDAY,PCTY,ALIT}
+2026-08-24	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	{NTNX,DELL,HPE,STX,NTAP,ANET,CSCO}
+2026-08-24	Enterprise Unstructured Data Storage Infrastructure	Mainstream	{QMCO,DBX,BOX}
+2026-08-24	European Bank Stocks	Mainstream	{UBS,SAN,LYG,BBVA,NWG,BCS,DB,ING}
+2026-08-24	Genomics & DNA Sequencing Tools	Mainstream	{GH,TXG,QGEN,TWST,NTRA,GRAL,BRKR,ILMN,WGS}
+2026-08-24	Gold & Precious Metals Miners Rotation	Mainstream	{GFI,B,IAG,EGO,EQX,KGC,NEM,AEM,CGAU,AUGO,RGLD,SBSW,ARIS,HMY,AU,SSRM,FNV,HYMC}
+2026-08-24	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	{THC,UHS,EHC}
+2026-08-24	Industrial Construction Execution & On-Site Supply Chain	Mainstream	{DNOW,TPC,TTEK,J,FLR,KBR}
+2026-08-24	Industrial Equipment & Flow Control – Capex Cycle Recovery	Mainstream	{IEX,FLS,LECO,ITT,PH,EMR,DCI,VLTO}
+2026-08-24	Inflammatory Disease & Immunology Biologics	Mainstream	{ZBIO,PHVS,AUPH,ORKA,VERA,IMVT,CLDX,APGE,CLYM,AVTX,DNTH}
+2026-08-24	Insurance Brokerage & Distribution Services	Mainstream	{BRO,AJG,WTW,BWIN,RYAN}
+2026-08-24	IT Consulting & Business Process Outsourcing Services	Mainstream	{EXLS,CTSH,IT,ACN}
+2026-08-24	Latin American Silver & Gold Mining Operators	Accelerating	{AG,AGI,PAAS,FSM,BVN}
+2026-08-24	Life Sciences & Healthcare Data/CRM Platforms	Mainstream	{TEM,DOCS,VEEV}
+2026-08-24	Life Science Tools & Analytical Instruments	Mainstream	{CRL,A,WAT,RVTY,TECH,RGEN,MTD,TMO,AVTR,DHR}
+2026-08-24	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	{GEHC,HAE,MMSI,INSP,GKOS,AORT,EW,AXGN,ZBH,COO,NVCR,CNMD,MDT,RMD,SOLV,BAX,ABT,BDX}
+2026-08-24	Mobile App Platform & Advertising Monetization	Mainstream	{BSP,APPS}
+2026-08-24	Network Security & Zero-Trust Edge	Mainstream	{OKTA,VRNS,GEN,CRWD,NET,S,NTSK,FFIV,GRRR,PANW,RBRK,SAIL,ZS,CVLT,FTNT}
+2026-08-24	Office REIT Recovery & Re-Rating	Accelerating	{HIW,BXP,SLG,CDP}
+2026-08-24	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	{CORT,CRNX,PTGX,MBX,XERS}
+2026-08-24	Precious Metals Royalty & Streaming Companies	Accelerating	{RGLD,WPM,FNV,OR}
+2026-08-24	Private Equity & Alternative Asset Management Platforms	Mainstream	{MAIN,HLNE,BAM,CG,APO,BX,ARES,FSK,HTGC,KKR,STEP,TPG,OWL}
+2026-08-24	Private Mortgage Insurance	Mainstream	{NMIH,MTG,ESNT}
+2026-08-24	Programmatic Digital Advertising Platforms	Mainstream	{QNST,MGNI}
+2026-08-24	Property & Casualty Insurance Underwriters	Mainstream	{EG,ALL,TRV,THG,HCI,SKWD,AFG,RLI,SLDE}
+2026-08-24	Restaurant Chain Recovery	Mainstream	{TXRH,DRI,EAT,SHAK,BLMN,JACK,CAKE,CBRL,WEN,JMKE}
+2026-08-24	Silver-Focused Primary Miners	Mainstream	{AG,HL,EXK,SVM,CDE}
+2026-08-24	Software Development & DevOps Collaboration Platforms	Mainstream	{GTLB,TEAM,FROG}
+2026-08-24	U.S. Apparel & Fashion Recovery	Mainstream	{CROX,SHOO,WWW,ANF}
+2026-08-24	U.S. Oil & Gas E&P Rotation	Accelerating	{RRC,WDS,AR,CNQ,CHRD,TALO,PARR,CVE,COP,EQNR,EXE,MTDR,XOM,VET,YPF,EOG,SU,OVV,OXY,WHD,NESR,KGS,CRK,HP,PTEN,SM,DVN,PR,EC,FANG,VG,CVX,BP,VIST,EQT,NOG,LNG,CRGY,APA}
+2026-08-24	U.S. Regional & Mid-Cap Commercial Banks	Mainstream	{EWBC,WSBC,CFG,PNC,PNFP,BOKF,HOPE,ZION,HBAN,FBP,UMBF,HWC,WSFS,FITB,MTB,SSB,SBCF,RF,USB,CBC}
+2026-08-24	Wealth Management & Retail Brokerage Platforms	Mainstream	{RJF,BNY,AMP,HOOD,LPLA,WT,STT,SCHW,NTRS,IVZ,SF,SEIC}

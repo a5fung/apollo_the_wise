@@ -1,0 +1,4 @@
+ERROR:  column o.created_at does not exist
+LINE 11:        to_char(o.created_at AT TIME ZONE 'America/New_York',...
+                        ^
+HINT:  Perhaps you meant to reference the column "t.created_at".

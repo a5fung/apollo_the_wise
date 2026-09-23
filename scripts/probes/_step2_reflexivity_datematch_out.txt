@@ -1,0 +1,89 @@
+=== Step-2 follow-up: date-matched reflexivity read (from _step2_theme_recall_rows.tsv) ===
+share = strong industry peers that gapped >=9% in the 20 sessions ending date-1 / strong peers; subjects with an industry, >=3 data-bearing peers and >=1 strong peer
+label dates: 2026-04-27 -> 2026-05-06 (8 sessions); yes rows 21 (uncovered/unusable 1), no rows 7 (unusable 2)
+
+## A. Pooled (as in the doc §8)
+  his YES rows        p25 9% · median 24% · p75 31% (n=21)
+  his NO rows         p25 0% · median 11% · p75 14% (n=7)
+  themeless alerts    p25 6% · median 14% · p75 22% (n=288)   (>=04-13, excluding the 31 labelled rows)
+  themeless controls  p25 0% · median 11% · p75 20% (n=1363)   (whole span)
+
+## B. Date-matched — controls and alerts drawn from the SAME sessions as his labels
+  his YES rows                     p25 9% · median 24% · p75 31% (n=21)
+  his NO rows                      p25 0% · median 11% · p75 14% (n=7)
+  themeless alerts, same dates     p25 0% · median 16% · p75 25% (n=31)
+  themeless controls, same dates   p25 0% · median 13% · p75 25% (n=229)
+  -- the same, one value per (industry, date) CELL (the measure's true unit):
+  YES cells                        p25 9% · median 24% · p75 31% (n=18)
+  NO cells                         p25 0% · median 11% · p75 14% (n=7)
+  themeless-alert cells, same dates p25 0% · median 12% · p75 25% (n=28)
+  control cells, same dates        p25 0% · median 11% · p75 20% (n=150)
+  control cells, window +-1 week (2026-04-20 -> 2026-05-13)  p25 0% · median 12% · p75 22% (n=314)
+
+## C. Per-date paired read — each label row against the SAME-DAY control cells
+  YES: rows above their same-day control median 13 · below 6 · tie 2 (of 21); median (row - same-day control median) +11 pts
+  NO: rows above their same-day control median 4 · below 3 · tie 0 (of 7); median (row - same-day control median) +1 pts
+  per label row (share | same-day control cells: n, median | same-industry control same day?):
+    Y MANE  2026-04-27 Biotechnology                  18/69 =  26% | controls n=14 median   3% | same-industry control cell EXISTS (equal by construction)
+    Y SKYQ  2026-04-28 Oil & Gas Integrated            0/12 =   0% | controls n=15 median   7% | no same-industry control that day
+    Y ICLR  2026-04-29 Diagnostics & Research          2/ 4 =  50% | controls n=19 median   6% | no same-industry control that day
+    Y NEO   2026-04-29 Diagnostics & Research          2/ 4 =  50% | controls n=19 median   6% | no same-industry control that day
+    Y NXPI  2026-04-29 Semiconductors                 15/48 =  31% | controls n=19 median   6% | same-industry control cell EXISTS (equal by construction)
+    Y SIMO  2026-04-29 Semiconductors                 15/48 =  31% | controls n=19 median   6% | same-industry control cell EXISTS (equal by construction)
+    N BAND  2026-04-30 Software - Infrastructure       2/41 =   5% | controls n=22 median  11% | no same-industry control that day
+    N DRVN  2026-04-30 Auto & Truck Dealerships        0/ 9 =   0% | controls n=22 median  11% | no same-industry control that day
+    N PI    2026-04-30 Semiconductors                 16/47 =  34% | controls n=22 median  11% | same-industry control cell EXISTS (equal by construction)
+    N TTMI  2026-04-30 Electronic Components           3/24 =  12% | controls n=22 median  11% | same-industry control cell EXISTS (equal by construction)
+    Y NVCR  2026-04-30 Medical Devices                 2/ 8 =  25% | controls n=22 median  11% | no same-industry control that day
+    Y CUE   2026-05-01 Biotechnology                  15/59 =  25% | controls n=19 median   9% | same-industry control cell EXISTS (equal by construction)
+    Y FIVN  2026-05-01 Software - Infrastructure       5/54 =   9% | controls n=19 median   9% | same-industry control cell EXISTS (equal by construction)
+    Y TEAM  2026-05-01 Software - Application          5/59 =   8% | controls n=19 median   9% | same-industry control cell EXISTS (equal by construction)
+    Y TWLO  2026-05-01 Software - Infrastructure       5/54 =   9% | controls n=19 median   9% | same-industry control cell EXISTS (equal by construction)
+    Y BB    2026-05-04 Software - Infrastructure       7/62 =  11% | controls n= 6 median  21% | no same-industry control that day
+    Y OUST  2026-05-04 Electronic Components           2/24 =   8% | controls n= 6 median  21% | no same-industry control that day
+    N GPK   2026-05-05 Packaging & Containers          0/ 2 =   0% | controls n=17 median  10% | no same-industry control that day
+    N PAY   2026-05-05 Software - Infrastructure       7/61 =  11% | controls n=17 median  10% | same-industry control cell EXISTS (equal by construction)
+    Y CYRX  2026-05-05 Integrated Freight & Logistics  0/11 =   0% | controls n=17 median  10% | no same-industry control that day
+    Y FTRE  2026-05-05 Biotechnology                  17/92 =  18% | controls n=17 median  10% | same-industry control cell EXISTS (equal by construction)
+    Y IART  2026-05-05 Medical Devices                 5/13 =  38% | controls n=17 median  10% | no same-industry control that day
+    Y STRL  2026-05-05 Engineering & Construction      3/26 =  12% | controls n=17 median  10% | no same-industry control that day
+    N BLMN  2026-05-06 Restaurants                     1/ 7 =  14% | controls n=38 median  12% | same-industry control cell EXISTS (equal by construction)
+    Y AVTX  2026-05-06 Biotechnology                  21/88 =  24% | controls n=38 median  12% | same-industry control cell EXISTS (equal by construction)
+    Y FLEX  2026-05-06 Electronic Components           2/22 =   9% | controls n=38 median  12% | same-industry control cell EXISTS (equal by construction)
+    Y LIVN  2026-05-06 Medical Devices                 5/12 =  42% | controls n=38 median  12% | same-industry control cell EXISTS (equal by construction)
+    Y OSS   2026-05-06 Computer Hardware               4/12 =  33% | controls n=38 median  12% | same-industry control cell EXISTS (equal by construction)
+
+## D. Within his own sample — yes vs no in the SAME industry (the cell view)
+  Electronic Components: YES OUST 05-04 8%, FLEX 05-06 9% | NO TTMI 04-30 12%
+  Semiconductors: YES NXPI 04-29 31%, SIMO 04-29 31% | NO PI 04-30 34%
+  Software - Infrastructure: YES FIVN 05-01 9%, TWLO 05-01 9%, BB 05-04 11% | NO BAND 04-30 5%, PAY 05-05 11%
+  industries with only YES: Biotechnology (4), Computer Hardware (1), Diagnostics & Research (2), Engineering & Construction (1), Integrated Freight & Logistics (1), Medical Devices (3), Oil & Gas Integrated (1), Software - Application (1)
+  industries with only NO:  Auto & Truck Dealerships (1), Packaging & Containers (1), Restaurants (1)
+
+## E. Is the 24% carried by a few names?
+  YES rows without ['AVTX', 'MANE', 'NXPI']: p25 9% · median 18% · p75 33% (n=18)
+  YES cells without them:          p25 9% · median 18% · p75 33% (n=16)
+  YES rows by industry family: biotech/med p25 25% · median 26% · p75 42% (n=9) · semis/electronics/hardware p25 9% · median 31% · p75 31% (n=5) · software p25 9% · median 9% · p75 11% (n=4) · other p25 0% · median 0% · p75 12% (n=3)
+
+## F. The calendar — control-cell median share by week over the whole span (is that fortnight unusual?)
+  week of 2026-04-13: control cells  51 · median   8% · p75  14%
+  week of 2026-04-20: control cells  77 · median   9% · p75  19%
+  week of 2026-04-27: control cells  89 · median   8% · p75  20%  <- label fortnight
+  week of 2026-05-04: control cells 105 · median  14% · p75  22%  <- label fortnight
+  week of 2026-05-11: control cells  63 · median  19% · p75  30%
+  week of 2026-05-18: control cells  42 · median  20% · p75  27%
+  week of 2026-05-25: control cells  52 · median  16% · p75  25%
+  week of 2026-06-01: control cells  51 · median  13% · p75  20%
+  week of 2026-06-08: control cells  54 · median  12% · p75  17%
+  week of 2026-06-15: control cells  53 · median  11% · p75  15%
+  week of 2026-06-22: control cells  41 · median   9% · p75  12%
+  week of 2026-06-29: control cells  28 · median   0% · p75  10%
+  week of 2026-07-06: control cells  34 · median   0% · p75   5%
+  week of 2026-07-13: control cells  22 · median   0% · p75   5%
+  week of 2026-07-20: control cells  34 · median   1% · p75   6%
+  week of 2026-07-27: control cells  65 · median   0% · p75   8%
+  week of 2026-08-03: control cells  78 · median   9% · p75  14%
+  week of 2026-08-10: control cells  28 · median  14% · p75  25%
+  week of 2026-08-17: control cells  22 · median  13% · p75  17%
+  week of 2026-08-24: control cells  16 · median  11% · p75  16%
+  week of 2026-08-31: control cells  10 · median   4% · p75  11%

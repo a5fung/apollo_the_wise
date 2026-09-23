@@ -1,0 +1,314 @@
+<<<JSON>>>
+{
+ "today": "2026-08-24",
+ "ready_n": 16,
+ "pending_count": 56,
+ "errored": [],
+ "ready": [
+  {
+   "review_id": "kill_scale_bands_quarterly_review",
+   "title": "Quarterly kill/scale band review (operator sign-off condition #1, 2026-06-12)",
+   "kind": "cadence",
+   "earliest_review_date": "2026-08-01",
+   "current_count": 23,
+   "threshold": 20,
+   "status": "pending",
+   "action_when_ready": "Part of the operator's QUARTERLY RULE REVIEW (rides the same 8/1 session\nas model_selection_quarterly_review; quarterly sweep cadence Feb/May/Aug/\nNov 1). Re-derive the band statistics from live trades + latest replay\n(scripts/_killscale_bands_268.py pattern over the live cohort), present\nkeep/retune to the operator, log the outcome as a safeguards.md\nchange-log entry (bands are never silently re-tuned). Re-bump\nearliest_review_date +1 quarter each run (recurring, not one-shot).",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": [
+     "mi_live_trades.signal_type"
+    ]
+   },
+   "population_breakdown": {
+    "mi_live_trades.signal_type": [
+     [
+      "magna53",
+      "23"
+     ]
+    ]
+   },
+   "question": "Are the SIGNED live-money kill/scale bands (safeguards.md, #268b) still\ncorrectly calibrated? Inputs: (a) live closed-trade R-distribution since\ncutover vs the Phase B calibration envelope (exp +0.95R, maxDD -24R,\nworst streak 15, trailing-20 p5 -0.63R); (b) the P6 replay-regression\nweekly reports (divergence between accruing replay and the calibration);\n(c) the override log (kill_scale_override audit rows + safeguards.md\nchange-log entries) - repeated overrides in one direction = the bands\nare mis-set, recalibrate rather than keep overriding; (d) the standing\ndemote-side watch-metric (judge-demoted cohort forward R - Phase B showed\ndemotes averaging +1.01R, i.e. NOT reliably saves).\n",
+   "linked_task": null
+  },
+  {
+   "review_id": "narrative_theme_discovery_promote_gate",
+   "title": "#167 narrative-theme discovery \u2014 shadow->canonize promote-gate",
+   "kind": "accrual",
+   "earliest_review_date": "2026-06-09",
+   "current_count": 11,
+   "threshold": 10,
+   "status": "pending",
+   "action_when_ready": "Evaluate the accrued narrative_cogap proposals on precision/recall/\nactionability (via the eval-harness if built, else manual): precision =\nfraction operator-judged real / that became live themes; recall = proposals\nwith NO live mi_themes counterpart (caught what live missed); actionability =\nmember fwd_5/10d. If precise + valuable -> PROMOTE to Stage-2: operator-\nconfirmed canonization into mi_themes (confirm each; never auto-canonize).\nElse ITERATE (tune the grouping prompt; add the rung-1.5 advisor-review loop).\nNB: load-bearing EP/TRADE impact is the SEPARATE North Star (~Q4; theme is\ndecorative +10 today, conviction-floor-overridden) \u2014 this gate is only\nshadow->canonization (advisory), NOT trade-gating.\nHINDSIGHT-SEGREGATION (2026-06-06): a persisting backfill front-loads the\ninspection set as source='narrative_cogap_backfill' (run via\n_backfill_narrative_discovery.py). These rows are SEPARATE-AND-LABELLED, NOT\nmixed into the readiness trigger (predicate above counts forward\n'narrative_cogap' only, so hindsight can't trip the gate). At review, read the\nbackfill cohort via evaluate_narrative_themes(include_backfill=True): trust its\nCOUNT/rate + run_date-anchored fwd returns; DISCOUNT its `live_unified` recall\n(scored vs TODAY's themes = anachronistic on backfill). PRECISION/canonize\ndecision = forward population.\nOrigin: 2026-06-02 #167 narrative-discovery ship.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "discover_narrative_themes (shadow since 2026-06-02) groups same-day EP\nalerts by shared catalyst-narrative into mi_theme_candidates_shadow\n(source=narrative_cogap), surfaced advisory in /themes. Over the accrued\nnights, does it clear the bar to PROMOTE shadow -> operator-confirmed\ncanonization into mi_themes? Judge on: (1) PRECISION \u2014 proposals are real\nemerging themes not forced noise (negative-control passed 6/2: declined on\nunrelated gappers); (2) RECALL \u2014 surfaces real themes the live RS+correlation\nengine MISSES (the drone class), earlier; (3) ACTIONABILITY \u2014 proposed-theme\nmembers show positive forward returns.\n",
+   "linked_task": null
+  },
+  {
+   "review_id": "orb_5m_reentry_hybrid_replay",
+   "title": "1m-entry + 5m-RE-entry hybrid \u2014 bounded replay (R3 untested variant)",
+   "kind": "accrual",
+   "earliest_review_date": "2026-07-01",
+   "current_count": 48,
+   "threshold": 20,
+   "status": "pending",
+   "action_when_ready": "Replay 5m-re-entry over the full Day-1-stop-out set (shadow_orb_tracker fetches\nthe bars); report fill-rate + forward outcome vs the 1m-re-entry 0/7. Symmetric\n(full set, not losers). Only file a forward track if it shows real signal.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": [
+     "mi_live_trades.account_mode"
+    ]
+   },
+   "population_breakdown": {
+    "mi_live_trades.account_mode": [
+     [
+      "paper",
+      "26"
+     ],
+     [
+      "live",
+      "22"
+     ]
+    ]
+   },
+   "question": "R3 (2026-05-17) disabled MAGNA53 same-day re-entry on 0/7 \u2014 but that is 1m-entry\n+ 1m-RE-entry. A 5m-RE-entry (re-enter only if price clears the more-selective\n5-min range post-stop, filtering dead-cat 1-min pokes) is a mechanism R3 never\ntested (advisor 2026-05-30 \"real gap\"). NOT a built track \u2014 bounded replay over\nthe FULL Day-1-stop-out set (NOT the losers): for each stop-out, did price clear\nthe 5-min range same day + forward outcome. 0-for-N -> dies free; real signal ->\nfile a forward shadow track. Reversal discipline: show R3 was WRONG before re-enable.\n",
+   "linked_task": null
+  },
+  {
+   "review_id": "catalyst_discovery_loop_sequencing",
+   "title": "Catalyst-discovery loop (investigator + advisor) \u2014 C2/C3 build sequencing gate (ADR 0006)",
+   "kind": "accrual",
+   "earliest_review_date": "2026-08-15",
+   "current_count": 174,
+   "threshold": 30,
+   "status": "pending",
+   "action_when_ready": "Build per ADR 0006 \u00a77 smallest-viable sequence: (1) cohort accessor + RS-slope filter\n(reuse correlation_engine + mi_stock_scores rs_1m/rs_6m), (2) rung-1 investigator on a\nSINGLE case, (3) rung-1.5 advisor pass (Sonnet critique + bounded revise), (4) nightly\njob + mi_catalyst_dossiers + Telegram surface (advisory/shadow). ACCEPTANCE TEST =\nreproduce the drones + software-AI cohorts read-only (ADR 0006 \u00a76) \u2014 that IS the proof\nof capability the operator asked for. Advisor + go-live sequencing review BEFORE any\ncode. Cross-ref ADR 0006, theme_engine_narrative_blindness, theme_as_ep_signal.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "Design captured in docs/decisions/0006-catalyst-discovery-loop.md (2026-05-30).\nPer-ticker C1 (catalyst_type) shipped advisory 2026-05-30; THIS is the cross-ticker,\nmulti-turn half \u2014 a tool-grounded INVESTIGATOR reviewed by an independent ADVISOR\n(rung 1.5, the in-session advisor() pattern), the dynamic version of the theme\nsynthesis pass. This entry is the SEQUENCING gate (WHEN to start the build), not the\ndesign. Gated on C1 accruing FORWARD (regime-diverse, post-deploy clean) settled data\nAND being past the 2026-06-22 live-cutover decision \u2014 do NOT open a new LLM subsystem\nmid-cutover. Build = smallest-viable per ADR 0006 \u00a77. NEVER gates entries (advisory/\nshadow; entry-gating is Phase 6).\n",
+   "linked_task": null
+  },
+  {
+   "review_id": "yoy_missing_data_quality_investigation",
+   "title": "Missing-YoY root cause \u2014 fill the data, don't layer carve-outs",
+   "kind": "accrual",
+   "earliest_review_date": "2026-08-07",
+   "current_count": 24,
+   "threshold": 5,
+   "status": "pending",
+   "action_when_ready": "For \u22655 representative cases: manually trace through\n`fetch_ep_fundamentals.py` execution path. Check:\n- Which sources were tried (Polygon, FMP, yfinance)?\n- Which sources have Q-4 data for that ticker today?\n- Did fetcher abort early on first None?\n- Are fiscal_year/fiscal_period attributes populated correctly?\n\nThen quantify the (a/b/c/d) class breakdown. If (a)+(b)+(c) \u2265\n60% of cases \u2014 fix the plumbing per class. If majority (d) \u2014\nsafety-net + carve-out architecture is actually correct, no\nfurther code change. Either way: the architectural question is\nanswered with data, not assumed.\n\nPost-fix: revisit whether the carve-out shipped 2026-05-28\nbecomes redundant (belt-and-suspenders) or stays load-bearing.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "Operator reframe 2026-05-28: missing data \u2260 weak signal. It's UNKNOWN.\nThe catalyst safety-net (and its 5/28 carve-out) treats missing\nq_revenue.yoy_pct as evidence of weakness or \u2014 post-carve-out \u2014 as\nevidence to bypass if OTHER signals are strong. Both are band-aids.\nThe principled fix is to find WHY YoY was missing and fill the gap\nupstream, so the rubric grades complete inputs.\n\nFor each cohort case (SNOW/BBWI/JOYY/etc), classify the root cause:\n  (a) fetcher tried Polygon-only and didn't fall back to FMP / yfinance\n  (b) fiscal_year/fiscal_period mismatch breaking the Y/Y join\n  (c) stale fundamentals cache (Q-4 didn't exist at extraction time)\n  (d) genuinely UNKNOWN (recent IPO, restated, ticker change) \u2014 no\n      local fix possible, safety-net or carve-out IS correct response\n\nQuantify the (a)+(b)+(c) class: how many of the 10 known cohort\ncases had recoverable prior-year data via a source we didn't try\nhard enough? Each one represents a fixable plumbing gap.\n",
+   "linked_task": null
+  },
+  {
+   "review_id": "l2_baseline_window_trending_metrics",
+   "title": "L2 baseline window too sluggish for trending metrics (earnings-season transitions)",
+   "kind": "accrual",
+   "earliest_review_date": "2026-08-20",
+   "current_count": 63,
+   "threshold": 6,
+   "status": "pending",
+   "action_when_ready": "With \u22656 L2 events in last 90d, categorize each:\n  - FP (false positive, metric in transition): supports change\n  - TP (real anomaly correctly surfaced): cautions against\n      window change\n\nIf \u22654 of 6 are FPs from trending-metric class:\n  Phase 1 \u2014 Telemetry-only ship: tag each L2 with a `trending`\n    classifier (monotonic-3-of-5d?, regression slope?) and emit\n    an audit event for FP-likely L2s. Keep firing the alert but\n    downgrade the framing. 30d telemetry.\n  Phase 2 \u2014 Threshold change: shift to EWMA OR shorter window\n    for metrics flagged trending, based on cohort outcomes.\n\nIf <4 of 6 are FPs: keep current 30d window. The L2 sensitivity\nis doing its job.\n\nCross-reference: silent_failure_taxonomy_audit (this is the\nobservability-class case: alarm fires but signal is noise).",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "30d trailing median lags on metrics with secular trend, producing\nfalse-positive L2 alerts during transitions (post-earnings tail-off,\netc). Confirmed evidence (2026-05-20):\n  - 2026-05-19 L2 9m_alerts_per_day: today=8, 30d median=17.5,\n    z=-3.17. Verified FP \u2014 earnings season ended, monotonic\n    decline 45 \u2192 8 over 13 days.\n  - 2026-05-12 L2 HIGH_ep_entry_rate: today=10, fired against\n    baseline trending down. Likely FP \u2014 same range as 5/06=10,\n    5/14=11 during the burst.\n\nCandidate fixes:\n  (a) Shorter window (7-14d) for trending metrics\n  (b) EWMA (exponentially weighted MA) \u2014 recent days weighted more\n  (c) Trend-aware test \u2014 if 30d shows monotonic decline, treat\n      current as within trend rather than anomalous\n  (d) Seasonal-aware \u2014 flag known transition periods (earnings\n      close, holiday weeks) and use conditional baselines\n\nNeed cohort evidence to pick. Each fix has tradeoffs (shorter\nwindow = more noise; EWMA = lag drift; trend-aware = false-\nnegative risk during real anomalies).\n",
+   "linked_task": null
+  },
+  {
+   "review_id": "flag_detector_graduation_evidence_n30",
+   "title": "Flag detector TRIGGERED-as-EOD-classification is structurally wrong (#92 \u2014 re-framed)",
+   "kind": "accrual",
+   "earliest_review_date": "2026-08-15",
+   "current_count": 41,
+   "threshold": 30,
+   "status": "pending",
+   "action_when_ready": "RE-FRAMED 2026-05-23 PM: this review's structural conclusion\nDOES NOT change with more N. EOD TRIGGERED classification is\nnot an entry trigger; more N just confirms the same artifact.\n\nAction at every monthly re-run:\n1. Verify TRIGGERED-EOD signal remains weak (negative or near-\n   zero forward returns at D+1-open entry). Drift to positive\n   would warrant investigation but is not expected given the\n   structural nature of the issue.\n2. Track TIGHTENING-stage signal sustainment. If +1%/25% WR\n   holds steadily over the next 3+ months, it confirms the\n   \"move leaks out before EOD\" thesis and strengthens the case\n   for the intraday detector.\n3. Once intraday flag-break detector (ADR 0005 / #93) ships,\n   this review can be CLOSED and superseded by an intraday-\n   entry-aware evaluation review.\n\nDecision branches:\n- Intraday detector (#93) ships and accumulates N\u226530 settled\n  intraday-entry cohort: file NEW review evaluating that\n  cohort's R-expectancy. Close this review.\n- Intraday detector NOT shipped by 2026-08-15: re-evaluate\n  the urgency in light of other strategy priorities.\n- TIGHTENING signal degrades to baseline: re-evaluate whether\n  the consolidation-entry thesis holds at all in current regime.\n\nCross-references:\n- #94 (intraday flag-break detector / ADR 0005 \u2014 supersedes\n  this review's scope when it ships)\n- #93 (TIGHTENING watchlist surface \u2014 informational tier per\n  ADR 0004 \u00a74; rides alongside #94)\n- #47 (Flag carryforward path stage 2 telemetry \u2014 earlier study)\n- ADR 0004 \u00a77 Phase 4 (flag detector migration to\n  mi_stocks_in_play awaits intraday-entry-aware validation)\n- feedback_validate_metric_before_decision.md (this re-framing\n  IS the discipline applied \u2014 original metric was post-hoc\n  classification, not entry-aware P&L)\n- feedback_methodology_insights_need_periodic_revalidation.md\n  (this entry IS the periodic re-evaluation)",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "INITIAL FRAMING (2026-05-23 AM): \"Does TRIGGERED stage earn\npaper-phase graduation at N\u226530 settled cases with positive\nforward returns?\"\n\nRE-FRAMED (2026-05-23 PM, user-corrected): TRIGGERED-as-currently-\nimplemented is a POST-HOC EOD CLASSIFICATION, not an entry\ntrigger. The 5:25 PM ET scan asks \"did close > base_high?\"\nAFTER the actual intraday breakout moment has passed. Our\ndetector can't execute the methodology-correct entry; we're\nmeasuring an artifact, not a trading signal.\n\nContinuation-flag detector (`mi_flag_candidates`, shipped shadow\nphase 2026-05-04) initial evaluation:\n\n  Stage      | N    | avg 10d  | WR\u2265+5% 10d\n  -----------+------+----------+-----------\n  TRIGGERED  |    5 |  -4.51%  |    0.0%\n  COILED     |   26 |  -1.94%  |   23.1%\n  TIGHTENING |  123 |  +1.14%  |   24.4%\n  WATCH      |  486 |  -2.23%  |   20.6%\n\nRe-framed conclusion: STRUCTURAL NO-GO regardless of N. The\n-2.66% TRIGGERED return at realistic D+1-open entry isn't\nevidence the breakout methodology is bad \u2014 it's evidence that\nEOD-entry-after-the-intraday-move is structurally wrong. The\ndata signature confirms: TRIGGERED stocks fade -2.03% from D\nclose to D+1 open on average (sellers-into-strength after\nbreakout-day close). The move plays out intraday; by EOD it's\ndone.\n\nTo trade flag breakouts properly requires an INTRADAY range-\nbreak detector (real-time 5-min scan; alert when price >\nbase_high with volume confirmation; bracket entry at that\nmoment). Filed as ADR 0005 / #94 separately. TIGHTENING\nwatchlist surface filed as #93.\n\nBright spot: TIGHTENING (pre-breakout stage) shows +1.73% avg\n10d / 28.8% WR / 21.2% big-winners \u2265+10% \u2014 entry-aware metric.\nThis is the move \"leaking out\" while we wait for EOD\nclassification. Confirms breakouts ARE happening intraday;\nour scan just can't catch them.\n\nRe-evaluation auto-refreshes monthly via quarterly_review.py.\nMonthly script tracks whether TIGHTENING signal sustains so\nthe intraday detector ships against current evidence, not stale.\n",
+   "linked_task": null
+  },
+  {
+   "review_id": "pivot_stop_shadow_review",
+   "title": "Pivot-stop SHADOW (ADR 0031) \u2014 first per-arm readout: does character-conditioned placement beat the global trail WITHOUT clipping the tail?",
+   "kind": "accrual",
+   "earliest_review_date": "2026-08-09",
+   "current_count": 10,
+   "threshold": 10,
+   "status": "pending",
+   "action_when_ready": "Per-arm table (baseline/p1/p2: mean, median, capture_pct) + the tail-clip count + the abstention rate. Rec-or-defer per ADR 0031 \u00a75/\u00a76; any flip = giveback-F1-resolved + CHANGE_PROCESS + operator sign-off. Cross-check the #146 whipsaw cohort (146_faithful_harness_verdict) against P1/P2 behavior. \u26a0 RED-TEAM PRE-FLIP GATE (docs/analysis/composition_redteam_2026-07-12.md RED-2, code-verified): before pivot becomes a 2nd live stop authority, harden broker.order_manager.update_stop \u2014 add an advisory lock + an IN-FUNCTION never-lower guard (today the guard lives only at the caller site, live_tracker.py:573). The \u00a70 \"never two concurrent live stop changes\" invariant is enforced today only by cron spacing, NOT mechanically \u2014 a 2nd authority raises the concurrent cancel/replace-race risk (the stop_update_failed collision). This is the concrete content of ADR 0029-D1 \u2014 land it before the flip.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": [
+     "mi_pivot_stop_shadow.account_mode"
+    ]
+   },
+   "population_breakdown": {},
+   "question": "mi_pivot_stop_shadow accrues per-arm counterfactual exits on closed live MAGNA53 trades (baseline SMA trail vs P1 confirmed-swing-pivot vs P2 character-MA). At >=10 settled NON-ABSTAINED rows: (a) per-arm mean/median exit R + MFE capture%% vs baseline, (b) THE TAIL-CLIP TEST (the dossier poison test): count trades where an arm exited EARLIER than baseline on a run that kept going \u2014 any arm that clips the +5R tail LOSES regardless of its mean, (c) the abstention rate (how often no profile exists \u2014 itself a GO/NO-GO input), (d) the #146 stop-geometry question: do the direct-trigger-class whipsaw names hold under P1/P2? GREEN -> the ADR 0031 live fork becomes sitting-eligible ONLY IF giveback F1 is already resolved (the \u00a70 sequencing gate \u2014 never two concurrent live stop changes).",
+   "linked_task": null
+  },
+  {
+   "review_id": "first_live_winner",
+   "title": "FIRST profitable live MAGNA53 close \u2014 the single event that most changes the exit analysis (#503/#508)",
+   "kind": "tripwire",
+   "earliest_review_date": "2026-08-04",
+   "current_count": 2,
+   "threshold": 1,
+   "status": "pending",
+   "action_when_ready": "Pull the full price path for that trade (minute bars, not the recorded peak -\nthe peak instrumentation is blind under ~10 minutes). Then re-run\nscripts/probes/_508_exit_rule_replay.py and read the cost/win column, which\nuntil now has rested on 2 paper trades that disagree in sign. Report what each\ncandidate rule WOULD have given up on the winner. Do NOT re-open the unit\nquestion (state doc 3.2) on this trigger; it has its own gate.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "Fires the first time a live MAGNA53 trade closes GREEN. Operator 2026-08-01\nasked for a trigger on \"winners come up\"; nothing watched for one.\n\nWHY THIS MATTERS MORE THAN A TRADE COUNT: every exit candidate scored so far\nhas been measured against LOSING trades only - the live cohort is 0-for-12,\nand the paper cohort's winners are confounded (22 of 24 Bull-regime, 19 of 24\npredate the 2026-06-05 ORB-window fix). So the cost of a profit-take rule -\nwhat the remaining 2/3 gives up when a trade RUNS - has never been observed on\nreal money. A single live winner is the first data point that can price it,\nand it directly unlocks docs/analysis/508_exit_discipline_STATE_2026-08-01.md\nsection 3.3 (partial vs full exit), which no amount of additional losing\ntrades can resolve.\n\nIt is also the first evidence that the strategy can work at all: the shadow\nORB control shows zero winners across BULL and Correcting months alike, so a\nlive winner would be genuinely new information about the setup, not only\nabout the exit.\n",
+   "linked_task": null
+  },
+  {
+   "review_id": "exit_tune_bull_regime_read",
+   "title": "Exit-rule read in a BULL tape \u2014 the regime cell the live cohort has never had",
+   "kind": "accrual",
+   "earliest_review_date": "2026-08-06",
+   "current_count": 8,
+   "threshold": 8,
+   "status": "pending",
+   "action_when_ready": "\u26a0 Threshold 8 is deliberately BELOW the parent's 20. This is not a\ncalibration cohort, it is a DIRECTIONAL read on a cell that has been empty\nfor the entire live program \u2014 8 trades cannot decide an exit rule but they\ncan say whether the non-bull conclusions transfer at all, and that is worth\nknowing early rather than at n=40.\n\n\u26a0 STALL CLAUSE, same as the parent: if live accrual halts (kill/scale band\naction, /pause, demotion) OR this sits below 8 on 2026-11-01, run it at\nwhatever n exists and say so. A smaller honest read beats an indefinite wait \u2014\n`escalate_overdue_reviews` only surfaces READY or ERRORING entries, so a\nhealthily-pending 3/8 goes silent forever.\n\n\u26a0 Do NOT blend bull trades into the parent's aggregate and call it done. The\npoint is the CONTRAST between cells. Report bull-only figures alongside the\nnon-bull baseline (Correcting 7 / Choppy 6 / Crisis 1, cohort -13.15R,\n0 winners, 10 of 14 closing on the alert date) so the difference is legible.\n\nRECURRING: on completion re-bump `threshold` 8 -> 20 -> 40, mirroring the\nparent's idiom, and record each run as its own dated doc.\n\n\ud83d\udd17 **RUNS INSIDE #545 (filed 2026-08-07)** \u2014 the entry/exit tactics program. This review\nowns ONE cell of its grid, and it is the cell nothing else can fill: the regime axis. Report\ninto #545, not as an orphan doc. See exit_tune_cohort_review's identical note.\n\n\u2696 THE LINE: evidence and a recommendation only. Any exit-rule change is\nCHANGE_PROCESS + #151 harness + operator sign-off.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": [
+     "mi_live_trades.signal_type"
+    ]
+   },
+   "population_breakdown": {
+    "mi_live_trades.signal_type": [
+     [
+      "magna53",
+      "8"
+     ]
+    ]
+   },
+   "question": "Every exit-rule conclusion we hold was measured on live trades taken in\nCorrecting, Choppy or Crisis tape. Do any of them survive a bull market?\n\n\u26a0 **CORRECTED 2026-08-07: THE CELL IS NO LONGER EMPTY \u2014 3 of 8.** NET, FIGS and TEAM were\nall entered on 08-07 in a **Bull** tape and all three stopped out (\u22121.0R combined). The\n\"zero bull trades, ever\" figure below was measured on 08-06 and was repeated on 08-07 without\nre-running it; the nightly sell-discipline digest had the correct split and I did not. The\nstructural point stands \u2014 14 of 17 live trades are non-bull \u2014 but the absolute claim does not,\nand the early bull read is not encouraging: 3 entries, 3 stops, the same day-one pattern.\n\nMEASURED 2026-08-06, and this is the whole reason the review exists: of the\n14 closed live trades, the regime split is **Correcting 7 / Choppy 6 /\nCrisis 1 \u2014 ZERO in Bull.** The methodology (Qullamaggie / Bonde momentum) is\na bull-market strategy, and it has never once been run live in one. So the\n0-for-14 record, the day-0 stop-out rate, the stop-floor refutation and the\n+2R partial's measured benefit are ALL non-bull results.\n\nThe tape turned Bull ~2026-08-04 (evening brief 08-06: \"Regime BULL, 3rd\nday\"), so this cell starts filling now.\n\nRe-run methods (a)-(e) of `exit_tune_cohort_review` restricted to the\nbull-tape live trades, and answer three things the parent review cannot:\n(1) Do trades still die on the entry day, or do they run? The non-bull cohort\n    closed 10 of 14 on the alert date with a mean hold well under a day.\n(2) Does the +2R partial still look like the best available rule, or does it\n    start capping runners? It is the only mechanism that helped the non-bull\n    cohort (-13.15R -> -7.33R), but every winner it produced was a +0.67R\n    bank and NO trade in the entire sweep rode to strength. If runners exist\n    in a bull tape, the same rule may be leaving the actual edge behind \u2014\n    which is the operator's own 2026-08-01 hypothesis (\"runners probably\n    happen more often in bull markets... more aggressive profit take on bear\n    markets and let runners go in bull markets\").\n(3) Does the stop-floor refutation still hold? See (e) \u2014 a floor that failed\n    when nothing trended is not automatically wrong when things run.\n",
+   "linked_task": null
+  },
+  {
+   "review_id": "lane2_narrative_grouping_quality",
+   "title": "#167 \u2014 Lane-2 narrative grouping: enough live runs to judge whether it finds subtle shared stories",
+   "kind": "accrual",
+   "earliest_review_date": "2026-07-27",
+   "current_count": 56,
+   "threshold": 50,
+   "status": "pending",
+   "action_when_ready": "Pull the no-story days accumulated since 2026-06-07. For each, check whether its alert tickers later shared a theme (any lane) or co-moved market-adjusted. Report genuine-miss count vs correctly-declined, split from any LLM opinion. Then the operator rules: leave / widen / retire. Rulings land on #167's PLAN line.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "Operator 2026-07-27: keep the lane and keep collecting, but answer the real question \u2014 \"are we discovering the subtle theme for 2+ EPs well?\" This is that re-surface, gated on DATA (live run count), not a calendar.\nWHY A RUN COUNT AND NOT A DATE: Lane-2 is a RARE-EVENT detector by design. It catches cross-sector / govt-policy stories the RS+correlation engine structurally misses (Lane 1 needs price CORRELATION; a story binding non-co-moving names is invisible to it \u2014 validated on the 2026-05-28 drone cohort). So low output is EXPECTED and a low proposal count is not evidence of failure. What makes it judgeable is the number of live OPPORTUNITIES, which is why this counts runs.\nSTATE AT REGISTRATION (forward-only, since 2026-06-07 \u2014 the earlier 90 runs were hindsight BACKFILL crammed into two days, 06-04 x67 and 06-06 x23, and must NEVER be pooled with live): 33 runs \u00b7 15 dropped below the 2-alert gate \u00b7 16 ran and found no shared story \u00b7 2 proposed. Both proposals look genuine (Bitcoin miners -> AI data centers 07-20; AI memory demand 06-25).\nTHE QUESTION WHEN THIS FIRES: on the accumulated no-story days, was \"no shared story\" CORRECT? Test it OBJECTIVELY, not by asking an LLM to re-grade an LLM \u2014 did those tickers later land in the SAME theme via any lane, or co-move market-adjusted afterwards? A later shared theme is ground truth that a story existed and Lane-2 missed it. Then rule: leave as-is, widen (input richness / prompt / the <2 gate), or retire.\nStanding input from the 2026-07-27 audit (docs/analysis/167_lane2_grouping_quality_2026-07-27.md): the leading hypothesis is INPUT RICHNESS \u2014 a subtle cross-sector link is undetectable if the per-ticker catalyst text the model sees is one truncated line.\nGrouping changes affect DETECTION => THE LINE: CHANGE_PROCESS + operator sign-off before any live change. The lane stays shadow/advisory meanwhile.",
+   "linked_task": null
+  },
+  {
+   "review_id": "theme_birth_gate_observe_calibration",
+   "title": "Birth gate observe-period: forward verdicts vs actual theme outcomes (observe -> on gate)",
+   "kind": "accrual",
+   "earliest_review_date": "2026-07-27",
+   "current_count": 18,
+   "threshold": 8,
+   "status": "pending",
+   "action_when_ready": "Pull the verdicts: SELECT summary, detail FROM mi_audit_log WHERE event_type='theme_birth_gate' AND summary LIKE '%/observe]%' ORDER BY created_at; parse the JSON details (per candidate: name, outcome, reason = deciding lever, rs_avg, traj5, join_target, join_overlap, sightings). Join each non-birth verdict to mi_themes forward rows for that theme name: matured = survived the 7d board OR reached Accelerating/Mainstream OR >=14 distinct days (the derivation's umbrella, docs/analysis/theme_birth_gate_derivation_2026-07-27.md). Report per lever: held_floor/held_no_rs forward FN rate vs the replay's 8.2%; the join pairs list (operator judges same-bet vs distinct \u2014 CHANGE_PROCESS r3: the filter list is the operator's call, state findings not rulings); await_second_sighting resolution split (>=2-day themes = delayed-not- lost, 1-day corpses = true kills); rising-arm rescues with their peak RS. Lane-1 caveat (documented in the SSoT): observe cannot re-sight a cohort the ungated engine already birthed, so Lane-1 sighting counts read verdict-at-first-sighting \u2014 judge (c) from mi_themes presence, not ledger sightings; the promote lane re-evaluates 'watching' cohorts nightly and accrues true progressions. THEN the operator rules: sign the derived cell + the forward FN list, or adjust the cell (a threshold change re-enters CHANGE_PROCESS with this data as the backtest). Flip gates after signing: fresh ADR-0030 judge-robustness eval (the preflight_judge_eval_gate WILL fire on the grade-surface drift \u2014 by design, never suppress), then set_theme_birth_gate_mode('on').",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "Does the birth gate's derived cell (RS>=70 OR pre-birth 5-session dRS>=0, two-sighting bar, join-or-new at 0.5 IoS) hold up on FORWARD evidence, not just the 254-birth replay? During the 'observe' deploy state every would-be birth gets a recorded verdict (outcome + deciding lever + member-avg RS + dRS + IoS overlaps, in mi_theme_birth_candidates + the theme_birth_gate audit rows) while the theme is born exactly as today \u2014 so each verdict has a ground-truth outcome to compare against. Specifically: (a) of the births the gate WOULD have held (held_floor / held_no_rs), how many went on to mature (survive the 7d board / reach Accelerating+ / last >=14 days)? \u2014 the forward false-negative rate vs the replay's 8.2%; (b) of the would-be JOIN verdicts, was the join target genuinely the same bet (operator eyeball on the named pairs)?; (c) did await_second_sighting verdicts resolve correctly (a theme present >=2 days would have birthed one day later \u2014 only 1-day corpses are true kills)?; (d) does the rising-arm rescue fire on the weak-born-then-matured class it was derived for?",
+   "linked_task": null
+  },
+  {
+   "review_id": "theme_assignment_steady_state_cost",
+   "title": "Steady-state cost of theme assignment after the 08-10 output-bounding fix \u2014 does the backlog cost decay, and did batch=18 hold?",
+   "kind": "accrual",
+   "earliest_review_date": "2026-08-18",
+   "current_count": 9,
+   "threshold": 5,
+   "status": "pending",
+   "action_when_ready": "Report cost/night and uncovered-pool size/night AS A PAIR (cost alone is uninterpretable \u2014 it is ~73 output tokens per unassigned stock, so it must be read against the pool), plus the trend and implied monthly run-rate. THEN the value side, or the cost means nothing: average theme membership and the count of themes holding <=3 tickers, against the 2026-08-10 baseline of 460 theme rows / avg 3.3 members / 350 of 460 at <=3. Three outcomes: (a) cost decays and membership rises => keep, report the floor; (b) cost flat and membership rises => real ongoing price for a working component, operator rules; (c) membership does NOT rise => the spend bought nothing, pull it. ALSO: if `theme_assignment` still shows stop_reason='max_tokens' rows, batch=18 was modelled too high (no untruncated sonnet-5 sample existed to measure it) \u2014 halve it.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "Assignment went from $0.20/night buying nothing to an estimated ~$1.90/night (+$50/mo). That was approved as a BACKLOG cost. After a week of real runs, what is the actual steady-state cost, is the uncovered-stock pool shrinking, and are calls still truncating at 8000 (which would mean batch=18 was modelled too high)?",
+   "linked_task": null
+  },
+  {
+   "review_id": "alert_rank_shadow_out_of_sample",
+   "title": "Ranking rule \u2014 RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)",
+   "kind": "accrual",
+   "earliest_review_date": null,
+   "current_count": 5,
+   "threshold": 1,
+   "status": "pending",
+   "action_when_ready": "RUNNING READ \u2014 fires again every session a new out-of-sample alert_date lands, from the first one. Every run: state n (COUNT(DISTINCT alert_date) WHERE alert_date > 2026-08-16) and its confidence label via `scripts/alert_rank_shadow_running_read.confidence_label` \u2014 n<25 is THIN/directional, NEVER presented as a verdict; n>=25 is DECISION-GRADE. Score catch-rate on the tail first (>=10R), medians second. Read the EOD version against the as-of-09:45 version separately (full-day tightness vs ORB-time-only \u2014 different questions). Report BOTH directions per quartile (winners admitted, losers admitted/excluded \u2014 see `score_both_directions`), never a winner count alone. Validates -> selection is actionable and the plan's sufficiency target stops depending entirely on conversion; does not -> the plan narrows to conversion alone.",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "The three-feature ranking rule (smaller gap + tighter EP day + less extension) put 16 of the 26 tradeable >=10R winners in its top quartile, a 2.5x lift - but its features were chosen on the SAME data it was tested on, 13 of the 26 targets sit on ONE session, and no time holdout is possible on that cohort. `mi_alert_rank_shadow` (live 2026-08-16) records the rank beside every alert from that date forward, so every day recorded is a day the rule never saw. Read: does the top quartile still hold a disproportionate share of the tail winners on alerts recorded AFTER 2026-08-16 only? Score catch-rate on the tail first, medians second. And read the EOD version against the as-of-09:45 version - the tested tightness feature uses the FULL day's range and is NOT knowable at 09:45, so the two answer different questions (an end-of-day selector vs an ORB-time one). ALSO (SELECTION rule, GOAL section, 2026-08-18): report BOTH winners admitted AND losers excluded per quartile, never a winner count alone \u2014 a change that surfaces the same winners while admitting fewer losers is a real gain and a numerator-only read would score it as zero.",
+   "linked_task": null
+  },
+  {
+   "review_id": "stop_2r_running_comparison",
+   "title": "2R stop \u2014 RUNNING comparison against the old rule, read every close (not gated)",
+   "kind": "accrual",
+   "earliest_review_date": null,
+   "current_count": null,
+   "threshold": 0,
+   "status": "pending",
+   "action_when_ready": "",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "The 2R stop went live 2026-08-16 (operator-signed). There is NO live control arm - every new trade uses the new rule - but one is not needed: `mi_exit_path_shadow` records `stop_ref` (the ORB low) and `touched_minus_1r` on every trading day, so the OLD rule's outcome is computable as a counterfactual on the SAME trades. If the path touched the ORB low, the old rule exited there at -1R. Read BOTH arms after every close: new-rule realized R vs old-rule counterfactual R, at EQUAL dollar risk (the new rule risks 2x the old unit, so halve its R before comparing - the 08-16 unit correction). Operator 2026-08-16: \"we should make frequent comparisons vs waiting for x samples since it's live.\" So this is deliberately NOT evidence-gated - it is read every time a position closes, from the first one.",
+   "linked_task": null
+  },
+  {
+   "review_id": "exit_path_shadow_first_read",
+   "title": "Exit-path shadow \u2014 first read on LIVE data (the stop fork's out-of-sample)",
+   "kind": "accrual",
+   "earliest_review_date": null,
+   "current_count": null,
+   "threshold": 0,
+   "status": "pending",
+   "action_when_ready": "",
+   "evidence_flags": {
+    "date_fire": false,
+    "population_mismatch": []
+   },
+   "population_breakdown": {},
+   "question": "The stop fork (hold through -2R vs exit at the ORB low) is currently decided on 43 RECONSTRUCTED trades from one regime, April-May 2026, with no out-of-sample. `mi_exit_path_shadow` (shipped 2026-08-16) records each live position's actual path - the R unit, daily adverse/favourable excursion, the -1/-2/-3/-5R touches, whether it closed back above the stop, overnight gap-through events, the trail level, and the realized exit. Score the SAME rules offline on live data and compare: does the bounded hold (through -2R, out at -3R) still beat the live ORB-low stop, at EQUAL RISK (see the 08-16 unit correction - the bounded rule risks 2x the old unit, so its R must be halved before comparison)? Also read: how often does day-0 minute coverage actually fire (the bar_source column IS the coverage measurement), and does the -2R-pays / -3R-does-not split reproduce live?",
+   "linked_task": null
+  }
+ ]
+}

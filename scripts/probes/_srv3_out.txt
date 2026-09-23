@@ -1,0 +1,182 @@
+==============================================================================================
+STRUCTURE READ v3 — THE EXCLUSION TEST.  MEASUREMENT ONLY, WIRED INTO NOTHING.
+generated 2026-08-25T16:35:48+00:00  ·  $0, re-read captures
+==============================================================================================
+populations: 11/11 BAD_CHART readable · 26/26 must-not-miss readable · 2/2 extra must-not-reject anchors
+
+§1  THE OVERLAP — what the LIVE stack already does with these 11
+----------------------------------------------------------------------------------------------
+ticker date         ext_live%  >=75?  live-stack gate that actually rejected it
+GDC    2026-05-06        76.7    YES  already up 77% in prior 5 days (extended)
+CAR    2026-04-22        92.4    YES  already up 92% in prior 5 days (extended)
+CAR    2026-04-21        64.1     no  low volume rel_vol 0.1x < 2.0x (post-open)
+ADVB   2026-07-24       242.4    YES  already up 242% in prior 5 days (extended)
+JLHL   2026-06-08       137.0    YES  already up 137% in prior 5 days (extended)
+IPCX   2026-07-29         0.0     no  quality filter: filter:adv_too_low: $522,205
+QH     2026-06-18       223.7    YES  already up 224% in prior 5 days (extended)
+MRAM   2026-05-13       134.7    YES  EP cooldown — alerted within last 60 days
+YOU    2026-08-05         4.7     no  score 36 < 50 (catalyst=strong)
+AEHR   2026-08-14        24.8     no  EP cooldown — alerted within last 60 days
+QTTB   2026-07-13         0.0     no  quality filter: filter:mcap_too_small: $190M < $500M
+
+  the LIVE EXTENSION GATE alone (>= 75.0%) already rejects 6 of 11
+  the LIVE STACK as a whole already rejects 11 of 11 — none of these 11 was ever admitted or traded
+  and it costs 0 of the 26 real EPs (their highest extension reading is 27.2%, against the 75.0% cap)
+
+§2  THE COUNT PAIR AT THE TWO PRE-DECLARED CUTLINES
+----------------------------------------------------------------------------------------------
+    'of 11' = BAD_CHART labels rejected (higher is better).
+    'of 26' = must-not-miss real EPs WRONGLY rejected (must be 0 — under-admission is
+              invisible and fatal, P14).
+    'anchors' = CAR 2026-04-01 (he STATED it was ok'ish) and MXL 2026-04-24 (he only
+              POINTED AT it while saying 04-21 was the wrong date). Rejecting the first
+              contradicts his words; rejecting the second is a flag, not a proven miss.
+
+metric                   cutlinebasis       composed(of11/of26)  ext-alone(of11/of26)  anchors wrongly rejected
+ext_close_pct_5            75.00ANCHOR-75                   5/0                   5/0  (none)
+ext_close_pct_5            11.88ANCHOR-EP                   8/0                   8/2  MXL 2026-04-24[POINTED_AT]
+ext_close_pct_10           75.00ANCHOR-75                   7/0                   7/0  (none)
+ext_close_pct_10           24.68ANCHOR-EP                   8/0                   8/1  MXL 2026-04-24[POINTED_AT]
+ext_close_pct_20           75.00ANCHOR-75                   8/0                   8/0  MXL 2026-04-24[POINTED_AT]
+ext_close_pct_20           62.13ANCHOR-EP                   8/0                   8/0  MXL 2026-04-24[POINTED_AT]
+ext_close_pct_60           75.00ANCHOR-75                   9/2                   9/3  MXL 2026-04-24[POINTED_AT]
+ext_close_pct_60           88.35ANCHOR-EP                   9/0                   9/1  MXL 2026-04-24[POINTED_AT]
+runup_low_pct_5            75.00ANCHOR-75                   7/0                   7/0  (none)
+runup_low_pct_5            22.89ANCHOR-EP                   8/0                   8/0  MXL 2026-04-24[POINTED_AT]
+runup_low_pct_20           75.00ANCHOR-75                   8/0                   8/0  MXL 2026-04-24[POINTED_AT]
+runup_low_pct_20           64.37ANCHOR-EP                   8/0                   8/0  MXL 2026-04-24[POINTED_AT]
+runup_adr_5                 4.25ANCHOR-EP                   2/0                   2/1  MXL 2026-04-24[POINTED_AT]
+runup_adr_20               10.32ANCHOR-EP                   0/0                   0/0  (none)
+pct_of_captured_range       0.97ANCHOR-EP                   3/0                   3/0  (none)
+
+  ⚠ every ANCHOR-EP row's 0-of-26 is ARITHMETICALLY FORCED — the cutline is the 26's own
+    maximum. Only its of-11 count is information.
+
+§2b THE FULL SWEEP on the primary metric — the trade-off with nothing chosen
+----------------------------------------------------------------------------------------------
+ cutline %   of 11   of 26  anchors lost   which of the 11
+         0      11       6             1   ADVB AEHR CAR CAR GDC IPCX JLHL MRAM QH QTTB YOU
+         5       8       3             1   ADVB AEHR CAR CAR GDC JLHL MRAM QH
+        10       8       2             1   ADVB AEHR CAR CAR GDC JLHL MRAM QH
+        12       8       0             1   ADVB AEHR CAR CAR GDC JLHL MRAM QH
+        15       8       0             1   ADVB AEHR CAR CAR GDC JLHL MRAM QH
+        20       7       0             1   ADVB CAR CAR GDC JLHL MRAM QH
+        25       7       0             1   ADVB CAR CAR GDC JLHL MRAM QH
+        30       7       0             1   ADVB CAR CAR GDC JLHL MRAM QH
+        35       7       0             0   ADVB CAR CAR GDC JLHL MRAM QH
+        40       7       0             0   ADVB CAR CAR GDC JLHL MRAM QH
+        45       6       0             0   ADVB CAR CAR GDC JLHL MRAM
+        50       6       0             0   ADVB CAR CAR GDC JLHL MRAM
+        60       5       0             0   ADVB CAR GDC JLHL MRAM
+        75       5       0             0   ADVB CAR GDC JLHL MRAM
+       100       3       0             0   ADVB JLHL MRAM
+       150       1       0             0   ADVB
+       250       0       0             0   
+
+§2c HOW MUCH OF ANCHOR-EP RESTS ON ONE NAME (leave-one-out over the 26)
+----------------------------------------------------------------------------------------------
+  ANCHOR-EP on ext_close_pct_5 = 11.88% — set by SNDK 2026-04-08 at 11.88%
+  the clear-air real EPs, most-extended first: SNDK 11.9%, AMD 11.0%, UMC 9.9%, ARM 3.5%, INTC 2.3%, MRNA 0.0%
+  drop that one name and the cutline falls to 11.05% -> counts become 8/11 and 1/26
+
+§3  WHAT THE CHART READ ADDS BEYOND THE RUN-UP NUMBER ALONE
+----------------------------------------------------------------------------------------------
+  ext_close_pct_5 @ ANCHOR-75 (75.00): composed 5/0  ·  extension-alone 5/0  ·  difference on the 11: []
+  ext_close_pct_5 @ ANCHOR-EP (11.88): composed 8/0  ·  extension-alone 8/2  ·  difference on the 11: []
+  ext_close_pct_20 @ ANCHOR-75 (75.00): composed 8/0  ·  extension-alone 8/0  ·  difference on the 11: []
+  ext_close_pct_20 @ ANCHOR-EP (62.13): composed 8/0  ·  extension-alone 8/0  ·  difference on the 11: []
+
+  ⚠ APPLES-TO-APPLES: above, extension-alone is judged at a cutline fitted to the
+    CLEAR-AIR real EPs only, which is not its own population. Refitted to all 26:
+    ext_close_pct_5 @ its OWN ANCHOR-EP (15.16): extension-alone 8/0  ·  composed at the same cutline 8/0
+    ext_close_pct_20 @ its OWN ANCHOR-EP (62.13): extension-alone 8/0  ·  composed at the same cutline 8/0
+
+  the two must-not-reject anchors, both cutlines, composed vs extension-alone:
+    CAR 2026-04-01  clear_air=0  ext5=17.9%  |@75: composed=pass alone=pass  |@EP: composed=pass alone=REJECT
+    MXL 2026-04-24  clear_air=1  ext5=30.4%  |@75: composed=pass alone=pass  |@EP: composed=REJECT alone=REJECT
+
+§4  THE NATURAL EXPERIMENTS — same ticker, opposite operator verdicts
+----------------------------------------------------------------------------------------------
+tickerdate           ext5%   ext20%  rADR20 clear_air  overhead  zones  operator verdict
+AEHR  2026-03-31       0.0      0.0    0.29         0     0.188      5  REAL EP (must_not_miss)
+AEHR  2026-08-14      19.6     88.5    3.86         1     0.000      0  BAD_CHART
+CAR   2026-04-01      17.9     52.1    5.26         0     0.429     13  OKISH_EARLIER (he says good)
+CAR   2026-04-21      53.8    467.5    5.41         1     0.000      0  BAD_CHART
+CAR   2026-04-22      80.4    507.7    5.18         1     0.000      0  BAD_CHART
+MXL   2026-04-21      47.2     97.3    8.36         1     0.000      0  WRONG_DAY (he says the setup is 4/24)
+MXL   2026-04-24      30.4    113.0    7.96         1     0.000      0  the date he named — MUST NOT REJECT
+
+§5  THE COST AT SCALE — what it would exclude across the whole scan cohort
+----------------------------------------------------------------------------------------------
+  cohort: 2867 readable name-days over 92 scan days (2026-04-13 -> 2026-08-24), median 25 names/day
+
+metric                   cutlinebasis        flagged  % of cohort  NEW (not already ext-blocked)  per day
+ext_close_pct_5            75.00ANCHOR-75         43         1.5%                              0      0.0
+ext_close_pct_5            11.88ANCHOR-EP        280         9.8%                            222      2.4
+ext_close_pct_20           75.00ANCHOR-75        149         5.2%                             91      1.0
+ext_close_pct_20           62.13ANCHOR-EP        189         6.6%                            131      1.4
+
+§6  ON THE NAMES THE LIVE STACK ACTUALLY ADMITTED — where a new filter could bite
+----------------------------------------------------------------------------------------------
+  260 alert name-days readable (183 HIGH). These are the ONLY names
+  a new exclusion could actually change, because everything else was already rejected.
+
+metric                   cutlinebasis        HIGH flagged  their median 5d  unflagged median 5d
+ext_close_pct_5            75.00ANCHOR-75               0              n/a                +3.0%
+ext_close_pct_5            11.88ANCHOR-EP              10            +0.9%                +3.0%
+ext_close_pct_20           75.00ANCHOR-75               2            +4.8%                +2.9%
+ext_close_pct_20           62.13ANCHOR-EP               5            -9.3%                +3.0%
+
+  the flagged HIGH alerts, name by name (ANCHOR-EP on ext_close_pct_5):
+    GRRR  2026-06-02   ext5=   29.5%  5d=    -30.6%  best_high=    +1.4%
+    HPE   2026-06-02   ext5=   26.3%  5d=    -23.5%  best_high=    +1.9%
+    FPS   2026-05-14   ext5=   14.7%  5d=     -3.0%  best_high=    +2.0%
+    ABCL  2026-08-10   ext5=   18.9%  5d= unsettled  best_high=        -
+    BLZE  2026-08-04   ext5=   37.0%  5d= unsettled  best_high=        -
+    DELL  2026-05-29   ext5=   25.4%  5d= unsettled  best_high=        -
+    MRAM  2026-05-11   ext5=   43.9%  5d= unsettled  best_high=        -
+    RDW   2026-05-26   ext5=   25.7%  5d=     +4.8%  best_high=   +35.6%
+    SLS   2026-05-20   ext5=   16.2%  5d=    +10.9%  best_high=   +11.6%
+    AMBQ  2026-05-12   ext5=   20.2%  5d=    +33.9%  best_high=   +38.7%
+
+§6b THE UNFITTED RESULT — his own 75% cap, read over 20 sessions instead of 5
+----------------------------------------------------------------------------------------------
+  ext_close_pct_5 @ 75.0%: 5/11 and 0/26 -> ADVB CAR GDC JLHL MRAM
+  ext_close_pct_20 @ 75.0%: 8/11 and 0/26 -> ADVB AEHR CAR CAR GDC JLHL MRAM QH
+  the ones the 20-session window adds over the live 5-session gate:
+    AEHR 2026-08-14  5-session 19.6%  20-session 88.5%  (live gate reads 24.8%, under the 75.0% cap)
+    CAR 2026-04-21  5-session 53.8%  20-session 467.5%  (live gate reads 64.1%, under the 75.0% cap)
+  headroom on the 26 real EPs: highest 20-session run-up is INTC at 62.1%, then AMD 55.7%, UMC 47.9% — against the 75.0% cap
+  sweep of the 20-session window (composed), so nothing is hidden:
+ cutline %   of 11   of 26  anchors lost
+        40       8       4             1
+        50       8       2             1
+        62       8       1             1
+        75       8       0             1
+        88       8       0             1
+       100       6       0             1
+       120       6       0             0
+       150       6       0             0
+
+  SETTLED-OUTCOME ACCOUNTING for the flagged HIGH alerts (the medians above):
+    ext_close_pct_5 @ ANCHOR-75: 0 flagged, 0 with a settled 5-session outcome
+    ext_close_pct_5 @ ANCHOR-EP: 10 flagged, 6 with a settled 5-session outcome
+    ext_close_pct_20 @ ANCHOR-75: 2 flagged, 1 with a settled 5-session outcome
+    ext_close_pct_20 @ ANCHOR-EP: 5 flagged, 4 with a settled 5-session outcome
+  denominator note: 183 HIGH alerts are READABLE here; the 08-25 backtest's 173 is
+  the count with a SETTLED outcome. Settled here: 136.
+
+§7  THE 11 ARE NOT ONE POPULATION — which does the run-up mechanism actually explain?
+----------------------------------------------------------------------------------------------
+ticker date           ext5%  overhead  zones     advd20 $  what makes this one junk
+GDC    2026-05-06      76.7     0.000      0      105,398  RUN-UP — and the LIVE 75% gate already rejects it. Nothing new here.
+CAR    2026-04-22      80.4     0.000      01,293,549,347  RUN-UP — and the LIVE 75% gate already rejects it. Nothing new here.
+CAR    2026-04-21      53.8     0.000      0  880,935,477  RUN-UP — milder, BELOW the live 75% cap. THIS is the new ground.
+ADVB   2026-07-24     233.6     0.000      0       75,636  RUN-UP — and the LIVE 75% gate already rejects it. Nothing new here.
+JLHL   2026-06-08     137.0     0.000      0      846,876  RUN-UP — and the LIVE 75% gate already rejects it. Nothing new here.
+IPCX   2026-07-29       0.0     0.996      0      469,915  NOT run-up — buried under its own volume; the v2 supply read sees this one
+QH     2026-06-18      43.3     0.000      0      751,040  RUN-UP — and the LIVE 75% gate already rejects it. Nothing new here.
+MRAM   2026-05-13     104.6     0.000      0   15,484,547  RUN-UP — and the LIVE 75% gate already rejects it. Nothing new here.
+YOU    2026-08-05       1.1     0.000      0   56,425,524  NOT run-up and NOT buried — junk for reasons no chart read here encodes
+AEHR   2026-08-14      19.6     0.000      0  211,355,970  RUN-UP — milder, BELOW the live 75% cap. THIS is the new ground.
+QTTB   2026-07-13       0.0     0.000      0    4,608,118  NOT run-up and NOT buried — junk for reasons no chart read here encodes

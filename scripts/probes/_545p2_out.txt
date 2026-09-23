@@ -1,0 +1,149 @@
+===Q1_BUCKET_TAIL_SHARE===
+   skip_category    |  n  | tail_ge20pct | tail_pct | losers | mean_ret20_pct | median_ret20_pct | best_ret20_pct 
+--------------------+-----+--------------+----------+--------+----------------+------------------+----------------
+ outside_top20      | 174 |           34 |     19.5 |     88 |            3.8 |             -0.2 |          126.9
+ session_rvol_low   | 129 |           29 |     22.5 |     75 |            3.1 |             -2.8 |          170.2
+ score_below_50     | 109 |           17 |     15.6 |     54 |           -1.3 |              0.1 |           71.7
+ duplicate_scan     |  90 |           18 |     20.0 |     50 |            0.4 |             -2.7 |           78.0
+ extension_gate     |  64 |            6 |      9.4 |     53 |          -38.8 |            -49.6 |          129.9
+ mcap_low           |  62 |           13 |     21.0 |     36 |           -3.4 |             -7.2 |          122.2
+ adv_low            |  61 |           12 |     19.7 |     35 |           -7.5 |             -8.8 |           98.2
+ atr_high           |  37 |            7 |     18.9 |     28 |          -19.4 |            -31.5 |          130.0
+ ma_filter          |  34 |            1 |      2.9 |     14 |           -2.1 |              0.3 |           25.0
+ cooldown           |  34 |            4 |     11.8 |     26 |          -18.3 |            -22.6 |           30.1
+ high_unentered     |  31 |            3 |      9.7 |     21 |           -6.9 |             -5.0 |           31.7
+ moderate_tier      |  24 |            4 |     16.7 |     15 |           -0.6 |             -4.9 |           78.0
+ pm_rvol_low        |  17 |            2 |     11.8 |     12 |           -0.7 |             -3.5 |           89.1
+ catalyst_downgrade |  10 |            2 |     20.0 |      5 |            8.5 |              4.1 |           53.8
+ window_missed      |   9 |            0 |      0.0 |      3 |            0.0 |              2.6 |           11.9
+ infra_skip         |   7 |            2 |     28.6 |      4 |            7.6 |             -7.2 |           45.6
+ breaker_blocked    |   6 |            1 |     16.7 |      5 |           -6.3 |            -11.4 |           31.2
+ setup_other        |   5 |            0 |      0.0 |      4 |           -6.7 |             -3.0 |            0.4
+ cap_blocked        |   5 |            1 |     20.0 |      2 |            1.9 |              4.1 |           28.8
+ stop_too_wide      |   4 |            0 |      0.0 |      1 |           -3.8 |              4.8 |            5.3
+(20 rows)
+
+===Q2_SKIP_REASON_WITHIN_BUCKET===
+  skip_category   |                              skip_reason                               | n  | tail_ge20pct | best_ret20_pct 
+------------------+------------------------------------------------------------------------+----+--------------+----------------
+ adv_low          | quality filter: filter:adv_no_data                                     | 10 |            3 |           77.7
+ breaker_blocked  | block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00 |  5 |            1 |           31.2
+ cap_blocked      | block:max_positions: 5/5 (mode=paper)                                  |  3 |            1 |           28.8
+ cooldown         | EP cooldown — alerted within last 60 days                              | 34 |            4 |           30.1
+ duplicate_scan   | already scored earlier today                                           | 90 |           18 |           78.0
+ high_unentered   | ORB window unfilled                                                    | 19 |            1 |           28.1
+ high_unentered   |                                                                        |  7 |            1 |           23.2
+ high_unentered   | cancelled                                                              |  3 |            0 |            7.3
+ infra_skip       | setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'                      |  7 |            2 |           45.6
+ ma_filter        | M&A/buyout catalyst — no momentum trade                                | 34 |            1 |           25.0
+ moderate_tier    |                                                                        | 24 |            4 |           78.0
+ outside_top20    | outside top-20 gap cap (gap 10.1%)                                     |  9 |            5 |          106.5
+ outside_top20    | outside top-20 gap cap (gap 10.7%)                                     |  7 |            0 |           -1.1
+ outside_top20    | outside top-20 gap cap (gap 10.2%)                                     |  6 |            1 |           21.4
+ outside_top20    | outside top-20 gap cap (gap 10.5%)                                     |  6 |            0 |            7.3
+ outside_top20    | outside top-20 gap cap (gap 11.2%)                                     |  6 |            2 |           27.8
+ outside_top20    | outside top-20 gap cap (gap 11.4%)                                     |  5 |            1 |           29.3
+ outside_top20    | outside top-20 gap cap (gap 11.7%)                                     |  5 |            1 |           24.6
+ outside_top20    | outside top-20 gap cap (gap 11.3%)                                     |  5 |            0 |           -3.9
+ outside_top20    | outside top-20 gap cap (gap 9.6%)                                      |  4 |            2 |           55.3
+ outside_top20    | outside top-20 gap cap (gap 14.2%)                                     |  4 |            1 |           89.8
+ outside_top20    | outside top-20 gap cap (gap 10.6%)                                     |  4 |            0 |            9.9
+ outside_top20    | outside top-20 gap cap (gap 12.3%)                                     |  4 |            0 |            8.3
+ outside_top20    | outside top-20 gap cap (gap 8.2%)                                      |  4 |            1 |          126.9
+ outside_top20    | outside top-20 gap cap (gap 10.4%)                                     |  4 |            0 |            1.9
+ outside_top20    | outside top-20 gap cap (gap 10.0%)                                     |  4 |            0 |           16.0
+ outside_top20    | outside top-20 gap cap (gap 8.4%)                                      |  3 |            1 |           40.2
+ outside_top20    | outside top-20 gap cap (gap 10.8%)                                     |  3 |            1 |           22.7
+ outside_top20    | outside top-20 gap cap (gap 12.7%)                                     |  3 |            0 |           -3.2
+ outside_top20    | outside top-20 gap cap (gap 9.7%)                                      |  3 |            1 |           40.1
+ outside_top20    | outside top-20 gap cap (gap 12.2%)                                     |  3 |            0 |           16.6
+ outside_top20    | outside top-20 gap cap (gap 9.8%)                                      |  3 |            0 |           17.5
+ outside_top20    | outside top-20 gap cap (gap 8.5%)                                      |  3 |            1 |           34.2
+ outside_top20    | outside top-20 gap cap (gap 10.3%)                                     |  3 |            0 |            8.5
+ outside_top20    | outside top-20 gap cap (gap 8.7%)                                      |  3 |            1 |           69.6
+ outside_top20    | outside top-20 gap cap (gap 12.5%)                                     |  3 |            1 |           28.1
+ outside_top20    | outside top-20 gap cap (gap 8.6%)                                      |  3 |            2 |           47.9
+ outside_top20    | outside top-20 gap cap (gap 14.7%)                                     |  3 |            1 |           27.1
+ score_below_50   | score 42 < 50 (catalyst=routine)                                       | 11 |            4 |           27.7
+ score_below_50   | score 30 < 50 (catalyst=routine)                                       |  9 |            1 |           30.2
+ score_below_50   | score 40 < 50 (catalyst=routine)                                       |  7 |            0 |            8.1
+ score_below_50   | score 32 < 50 (catalyst=routine)                                       |  6 |            1 |           38.8
+ score_below_50   | score 12 < 50 (catalyst=routine)                                       |  6 |            1 |           33.2
+ score_below_50   | score 45 < 50 (catalyst=routine)                                       |  5 |            0 |           10.7
+ score_below_50   | score 37 < 50 (catalyst=routine)                                       |  5 |            0 |           16.8
+ score_below_50   | score 48 < 50 (catalyst=routine)                                       |  4 |            1 |           24.5
+ score_below_50   | score 14 < 50 (catalyst=routine)                                       |  4 |            1 |           33.4
+ score_below_50   | score 36 < 50 (catalyst=routine)                                       |  4 |            0 |            6.1
+ score_below_50   | score 46 < 50 (catalyst=routine)                                       |  3 |            0 |           11.6
+ score_below_50   | score 25 < 50 (catalyst=routine)                                       |  3 |            0 |            0.3
+ score_below_50   | score 38 < 50 (catalyst=routine)                                       |  3 |            2 |           71.7
+ session_rvol_low | low volume rel_vol 0.1x < 2.0x (post-open)                             | 15 |            4 |          109.9
+ session_rvol_low | low volume rel_vol 0.2x < 2.0x (post-open)                             |  7 |            2 |          114.0
+ session_rvol_low | low rel volume 0.3x < 2.0x                                             |  4 |            3 |          108.7
+ session_rvol_low | low volume rel_vol 0.0x < 2.0x (post-open)                             |  4 |            0 |           17.7
+ session_rvol_low | low volume projected 1.0x < 2.0x (post-open)                           |  3 |            0 |           -1.2
+ session_rvol_low | low volume rel_vol 0.3x < 2.0x (post-open)                             |  3 |            2 |           63.6
+ session_rvol_low | low rel volume 0.4x < 2.0x                                             |  3 |            2 |          158.1
+ session_rvol_low | low rel volume 0.3x < 2.0x (post-open)                                 |  3 |            0 |           18.8
+ window_missed    | window:out_of_orb: detected 09:51 ET                                   |  3 |            0 |           11.9
+(60 rows)
+
+===Q3_COVERAGE_HONESTY===
+ all_rows | gapped_at_open | did_not_gap | unclassified | gapped_but_no_ret20 | first_date | last_date  
+----------+----------------+-------------+--------------+---------------------+------------+------------
+     4433 |           1419 |        3012 |            2 |                 507 | 2026-04-13 | 2026-09-01
+(1 row)
+
+===Q4_THE_HTFL_CLASS_ROWS===
+ ticker | alert_date |  skip_category   |                     skip_reason                      | ep_score | open_gap | ret20_pct 
+--------+------------+------------------+------------------------------------------------------+----------+----------+-----------
+ IONL   | 2026-04-14 | session_rvol_low | low rel volume 0.9x < 2.0x                           |          |      0.1 |     170.2
+ IONX   | 2026-04-14 | session_rvol_low | low rel volume 0.7x < 2.0x                           |          |      0.1 |     168.1
+ CRDU   | 2026-04-13 | session_rvol_low | low rel volume 0.4x < 2.0x                           |          |      3.3 |     158.1
+ SDOT   | 2026-06-17 | atr_high         | quality filter: filter:atr_too_high: 104.3% > 15.0%  |          |      0.3 |     130.0
+ JLHL   | 2026-04-21 | extension_gate   | already up 60% in prior 5 days (extended)            |          |      0.1 |     129.9
+ VCX    | 2026-04-30 | outside_top20    | outside top-20 gap cap (gap 8.2%)                    |          |      0.1 |     126.9
+ AGL    | 2026-05-07 | mcap_low         | quality filter: filter:mcap_too_small: $464M < $500M |          |      0.6 |     122.2
+ FCEL   | 2026-04-29 | session_rvol_low | low volume rel_vol 0.2x < 2.0x (post-open)           |          |      0.1 |     114.0
+ BAND   | 2026-04-30 | session_rvol_low | low volume rel_vol 0.1x < 2.0x (post-open)           |          |      0.3 |     109.9
+ APLX   | 2026-04-14 | session_rvol_low | low rel volume 0.3x < 2.0x                           |          |      0.1 |     108.7
+ QMCO   | 2026-07-30 | outside_top20    | outside top-20 gap cap (gap 10.1%)                   |          |      0.1 |     106.5
+ ALMU   | 2026-04-13 | mcap_low         | quality filter: Market cap too low ($194M)           |          |      0.3 |     100.9
+ LVLU   | 2026-07-14 | adv_low          | quality filter: filter:adv_too_low: $68,429          |          |      0.2 |      98.2
+ QPUX   | 2026-04-14 | outside_top20    | outside top-20 gap cap (gap 11.9%)                   |          |      0.1 |      97.8
+ QBTX   | 2026-04-14 | outside_top20    | outside top-20 gap cap (gap 14.2%)                   |          |      0.1 |      89.8
+ BRUNW  | 2026-05-13 | pm_rvol_low      | pre-mkt volume 4,961 < 25,000 shares                 |          |      0.2 |      89.1
+ AKAN   | 2026-04-23 | extension_gate   | already up 226% in prior 5 days (extended)           |          |      0.2 |      84.9
+ MXL    | 2026-04-24 | extension_gate   | already up 59% in prior 5 days (extended)            |          |      0.6 |      83.6
+ DLLL   | 2026-04-16 | session_rvol_low | low rel volume 0.2x < 2.0x (post-open)               |          |      7.1 |      83.4
+ VELO   | 2026-05-13 | mcap_low         | quality filter: filter:mcap_too_small: $419M < $500M |          |      0.2 |      82.9
+ ABVX   | 2026-06-03 | moderate_tier    |                                                      |     50.4 |      0.1 |      78.0
+ ABVX   | 2026-06-03 | duplicate_scan   | already scored earlier today                         |          |      0.1 |      78.0
+ BRUNW  | 2026-05-14 | adv_low          | quality filter: filter:adv_no_data                   |          |      0.1 |      77.7
+ LABX   | 2026-04-13 | session_rvol_low | low rel volume 0.6x < 2.0x                           |          |      5.1 |      76.7
+ BEX    | 2026-04-14 | session_rvol_low | low rel volume 0.5x < 2.0x                           |          |      0.3 |      73.5
+ OMER   | 2026-07-27 | score_below_50   | score 38 < 50 (catalyst=routine)                     |       38 |      0.1 |      71.7
+ BEG    | 2026-04-14 | session_rvol_low | low rel volume 0.3x < 2.0x                           |          |      0.3 |      70.8
+ ARM    | 2026-05-06 | outside_top20    | outside top-20 gap cap (gap 8.7%)                    |          |      0.1 |      69.6
+ BB     | 2026-05-04 | score_below_50   | score -14 < 50 (catalyst=routine)                    |    -14.4 |      0.1 |      69.2
+ MVLL   | 2026-04-13 | session_rvol_low | low rel volume 0.9x < 2.0x                           |          |      2.1 |      65.4
+ OSS    | 2026-05-06 | mcap_low         | quality filter: filter:mcap_too_small: $350M < $500M |          |      0.2 |      65.4
+ GLXU   | 2026-04-14 | outside_top20    | outside top-20 gap cap (gap 10.1%)                   |          |      0.1 |      65.2
+ SILC   | 2026-04-17 | session_rvol_low | low volume rel_vol 0.3x < 2.0x (post-open)           |          |      0.2 |      63.6
+ CTEV   | 2026-05-20 | atr_high         | quality filter: filter:atr_too_high: 23.8% > 15.0%   |          |      0.1 |      62.8
+ AXTI   | 2026-07-30 | atr_high         | quality filter: filter:atr_too_high: 19.4% > 15.0%   |          |      0.1 |      62.3
+ EFOR   | 2026-07-22 | moderate_tier    |                                                      |     50.4 |      0.1 |      59.5
+ EFOR   | 2026-07-22 | duplicate_scan   | already scored earlier today                         |          |      0.1 |      59.5
+ QUIK   | 2026-04-27 | mcap_low         | quality filter: filter:mcap_too_small: $232M < $500M |          |      0.1 |      55.7
+ SNOW   | 2026-05-07 | outside_top20    | outside top-20 gap cap (gap 9.6%)                    |          |      0.1 |      55.3
+ STFS   | 2026-05-26 | adv_low          | quality filter: filter:adv_too_low: $770,048         |          |      0.1 |      55.0
+(40 rows)
+
+===Q5_DELAYED_LANE_REENTRY_ROWS===
+ reentry_shape  |  n   | settled |   first    |    last    
+----------------+------+---------+------------+------------
+ first          | 1740 |    1447 | 2026-08-25 | 2026-08-31
+ same_pattern   |  654 |     405 | 2026-08-26 | 2026-09-01
+ new_high_break |  275 |     129 | 2026-08-26 | 2026-09-01
+(3 rows)
+

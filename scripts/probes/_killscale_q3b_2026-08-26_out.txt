@@ -1,0 +1,59 @@
+=== Q9 OPEN BOOK (live) ===
+    {'id': 372, 'ticker': 'AMLX', 'alert_date': datetime.date(2026, 8, 18), 'status': 'filled', 'regime': 'Bull', 'entry_price': 30.211219, 'entry_shares': 16.0, 'hard_stop': 27.089999999999996, 'stop_price': 31.85, 'remaining_shares': 11.0, 'total_pnl': 16.293904999999995, 'partial_taken': True, 'breakeven_active': True, 'hold_days': 8, 'risk_dollars': 48.72, 'risk_dollars_actual': None, 'highest_price_seen': Decimal('41.1400000000000005684341886080801486968994140625'), 'exits': [{'pnl': 16.293904999999995, 'time': '2026-08-18T17:33:44.327277+00:00', 'price': 33.47, 'reason': 'partial_profit', 'shares': 5, 'order_id': 'c6a6354b-0b5f-4066-87f3-e48195318659'}]}
+    {'id': 374, 'ticker': 'MRNA', 'alert_date': datetime.date(2026, 8, 19), 'status': 'filled', 'regime': 'Bull', 'entry_price': 120.75, 'entry_shares': 4.0, 'hard_stop': 109.85, 'stop_price': 120.75, 'remaining_shares': 3.0, 'total_pnl': 17.710000000000008, 'partial_taken': True, 'breakeven_active': True, 'hold_days': 7, 'risk_dollars': 50.02, 'risk_dollars_actual': None, 'highest_price_seen': Decimal('176.659999999999996589394868351519107818603515625'), 'exits': [{'pnl': 17.710000000000008, 'time': '2026-08-19T13:55:04.089795+00:00', 'price': 138.46, 'reason': 'partial_profit', 'shares': 1, 'order_id': 'ecb9e3b9-a41d-4310-90a6-94f6c385b079'}]}
+OPEN_POSITION_STATUSES = ['filled', 'order_placed', 'confirmed']
+
+=== Q10 2R ERA (hard_stop vs ORB geometry), every filled live trade ===
+hdr: id|ticker|filled_d|status|orb_high|orb_low|hard_stop|orblow_stop_dist|2R_stop|is_2R|entry_shares|total_pnl
+row: 245|WULF|2026-07-06|closed|24.61|23.8|23.8|0.81|22.99|False|40.0|-32.80000000000001
+row: 250|CRCL|2026-07-10|closed|70.66|69.29|69.29|1.37|67.92|False|14.0|-19.180000000000064
+row: 251|WDFC|2026-07-10|closed|295.0|287.06|287.06|7.94|279.12|False|2.0|-19.029999999999973
+row: 258|TSEM|2026-07-14|closed|273.25|266.34|266.34|6.91|259.43|False|3.0|-23.010000000000048
+row: 261|MANE|2026-07-15|closed|118.75|118.02|118.02|0.73|117.29|False|8.0|-2.3999999999999773
+row: 266|HUT|2026-07-20|closed|103.48|101.4482|101.4482|2.0318|99.4164|False|9.0|-19.530000000000015
+row: 271|SMCI|2026-07-22|closed|29.48|28.5|28.5|0.98|27.52|False|22.0|-14.959999999999994
+row: 273|NVCR|2026-07-23|closed|19.05|18.0|18.0|1.05|16.95|False|21.0|-24.133199999999935
+row: 275|THC|2026-07-24|closed|240.47|233.58|233.58|6.89|226.69|False|2.0|-16.279999999999973
+row: 276|WKC|2026-07-24|closed|39.995|39.0|39.0|0.995|38.005|False|20.0|-23.799999999999955
+row: 279|QBTS|2026-07-27|closed|18.17|17.75|17.75|0.42|17.33|False|53.0|-22.26000000000009
+row: 291|FTNT|2026-07-30|closed|166.65|160.185|160.185|6.465|153.72|False|1.0|-6.6299999999999955
+row: 303|BLZE|2026-08-04|closed|21.7499|20.1|20.1|1.6499|18.4501|False|21.0|-36.79410000000004
+row: 307|PLTR|2026-08-04|closed|148.63|143.28|143.28|5.35|137.93|False|6.0|118.60200000000003
+row: 304|BTDR|2026-08-04|closed|12.85|12.48|12.48|0.37|12.11|False|74.0|-28.119999999999926
+row: 333|TEAM|2026-08-07|closed|146.8|143.21|143.21|3.59|139.62|False|6.0|-23.940000000000055
+row: 332|FIGS|2026-08-07|closed|15.5|15.19|15.19|0.31|14.88|False|61.0|-6.838002000000003
+row: 328|NET|2026-08-07|closed|318.0|311.0|311.0|7.0|304.0|False|3.0|-15.389999999999986
+row: 337|ABCL|2026-08-10|closed|8.96|8.4|8.4|0.56|7.84|False|85.0|127.76979999999998
+row: 342|FRMI|2026-08-11|closed|7.24|7.05|7.05|0.19|6.86|False|134.0|-31.490000000000045
+row: 345|BW|2026-08-11|closed|12.08|11.5|11.5|0.58|10.92|False|80.0|-49.60000000000008
+row: 367|ETON|2026-08-14|closed|55.4427|53.01|53.01|2.4327|50.5773|False|17.0|19.323599999999942
+row: 372|AMLX|2026-08-18|filled|30.07|28.58|27.089999999999996|1.49|27.09|True|16.0|16.293904999999995
+row: 373|MRVL|2026-08-19|closed|241.53|235.84|230.15|5.69|230.15|True|4.0|-43.27999999999997
+row: 374|MRNA|2026-08-19|filled|120.15|115.0|109.85|5.15|109.85|True|4.0|17.710000000000008
+
+=== Q11 EXIT LEGS on closed live cohort ===
+    {'id': 245, 'ticker': 'WULF', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -32.80000000000001, 'time': '2026-07-06T13:57:29.841951+00:00', 'price': 23.8, 'reason': 'stop_hit', 'shares': 40.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 250, 'ticker': 'CRCL', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -19.180000000000064, 'time': '2026-07-10T13:40:34.350606+00:00', 'price': 69.28, 'reason': 'stop_hit', 'shares': 14.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 251, 'ticker': 'WDFC', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -19.029999999999973, 'time': '2026-07-10T13:40:35.912087+00:00', 'price': 286.72, 'reason': 'stop_hit', 'shares': 2.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 258, 'ticker': 'TSEM', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -23.010000000000048, 'time': '2026-07-14T13:44:34.430954+00:00', 'price': 266.33, 'reason': 'stop_hit', 'shares': 3.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 261, 'ticker': 'MANE', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -2.3999999999999773, 'time': '2026-07-16T13:30:06.279232+00:00', 'price': 119.04, 'reason': 'stop_hit', 'shares': 8.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 266, 'ticker': 'HUT', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -19.530000000000015, 'time': '2026-07-20T13:31:57.296402+00:00', 'price': 101.31, 'reason': 'stop_hit', 'shares': 9.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 271, 'ticker': 'SMCI', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 2, 'exits': [{'pnl': -14.959999999999994, 'time': '2026-07-27T14:37:45.699526+00:00', 'price': 28.79, 'reason': 'stop_hit', 'shares': 22.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 273, 'ticker': 'NVCR', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -24.133199999999935, 'time': '2026-07-24T19:36:57.558381+00:00', 'price': 18.0008, 'reason': 'stop_hit', 'shares': 21.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 275, 'ticker': 'THC', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -16.279999999999973, 'time': '2026-07-24T16:43:37.736066+00:00', 'price': 233.53, 'reason': 'stop_hit', 'shares': 2.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 276, 'ticker': 'WKC', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -23.799999999999955, 'time': '2026-07-24T16:02:39.726060+00:00', 'price': 38.97, 'reason': 'stop_hit', 'shares': 20.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 279, 'ticker': 'QBTS', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -22.26000000000009, 'time': '2026-07-28T13:36:25.187984+00:00', 'price': 17.75, 'reason': 'stop_hit', 'shares': 53.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 291, 'ticker': 'FTNT', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -6.6299999999999955, 'time': '2026-07-30T13:37:50.539687+00:00', 'price': 160.02, 'reason': 'stop_hit', 'shares': 1.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 303, 'ticker': 'BLZE', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -36.79410000000004, 'time': '2026-08-04T19:50:00.523729+00:00', 'price': 20.06, 'reason': 'stop_hit', 'shares': 21.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 304, 'ticker': 'BTDR', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -28.119999999999926, 'time': '2026-08-04T13:46:20.104809+00:00', 'price': 12.47, 'reason': 'stop_hit', 'shares': 74.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 307, 'ticker': 'PLTR', 'partial_taken': True, 'breakeven_active': True, 'hold_days': 14, 'exits': [{'pnl': 33.27000000000004, 'time': '2026-08-05T13:45:00.592881+00:00', 'price': 165.6895, 'reason': 'partial_profit', 'shares': 2, 'order_id': '7e38d875-6438-4787-a1d6-fa5d75874e8b'}, {'pnl': 85.332, 'time': '2026-08-19T14:03:18.965657+00:00', 'price': 170.3875, 'reason': 'stop_hit', 'shares': 4, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 328, 'ticker': 'NET', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -15.389999999999986, 'time': '2026-08-07T14:32:01.073090+00:00', 'price': 311.0, 'reason': 'stop_hit', 'shares': 3.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 332, 'ticker': 'FIGS', 'partial_taken': True, 'breakeven_active': True, 'hold_days': 0, 'exits': [{'pnl': 6.900359999999992, 'time': '2026-08-07T13:35:04.544908+00:00', 'price': 15.8401, 'reason': 'partial_profit', 'shares': 20, 'order_id': '676b9bad-2fc6-4567-bcb8-7f0c001181b6'}, {'pnl': -13.738361999999995, 'time': '2026-08-07T13:51:02.672791+00:00', 'price': 15.16, 'reason': 'stop_hit', 'shares': 41.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 333, 'ticker': 'TEAM', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -23.940000000000055, 'time': '2026-08-07T13:43:54.130227+00:00', 'price': 143.14, 'reason': 'stop_hit', 'shares': 6.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 337, 'ticker': 'ABCL', 'partial_taken': True, 'breakeven_active': True, 'hold_days': 11, 'exits': [{'pnl': 31.359999999999978, 'time': '2026-08-11T14:34:55.402903+00:00', 'price': 10.08, 'reason': 'partial_profit', 'shares': 28, 'order_id': '7ca81e06-52df-4cce-b469-7d657694ec2a'}, {'pnl': 96.40979999999999, 'time': '2026-08-24T13:32:11.190745+00:00', 'price': 10.6514, 'reason': 'stop_hit', 'shares': 57, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 342, 'ticker': 'FRMI', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -31.490000000000045, 'time': '2026-08-11T13:31:40.487196+00:00', 'price': 7.055, 'reason': 'stop_hit', 'shares': 134.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 345, 'ticker': 'BW', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -49.60000000000008, 'time': '2026-08-11T13:31:56.783838+00:00', 'price': 11.45, 'reason': 'stop_hit', 'shares': 80.0, 'source': 'websocket', 'attempt': 1}]}
+    {'id': 367, 'ticker': 'ETON', 'partial_taken': True, 'breakeven_active': True, 'hold_days': 0, 'exits': [{'pnl': -2.570400000000049, 'time': '2026-08-14T13:45:11.150854+00:00', 'price': 55.05, 'reason': 'stop_hit', 'shares': 17.0, 'source': 'websocket', 'attempt': 1}, {'pnl': 21.89399999999999, 'time': '2026-08-14T19:58:02.361900+00:00', 'price': 59.58, 'reason': 'partial_profit', 'shares': 5, 'order_id': 'ee925e6b-43eb-4db1-b040-7eae9568fb49'}]}
+    {'id': 373, 'ticker': 'MRVL', 'partial_taken': False, 'breakeven_active': False, 'hold_days': 0, 'exits': [{'pnl': -43.27999999999997, 'time': '2026-08-19T14:03:04.536270+00:00', 'price': 230.68, 'reason': 'stop_hit', 'shares': 4.0, 'source': 'websocket', 'attempt': 1}]}
+
+=== DONE2 ===

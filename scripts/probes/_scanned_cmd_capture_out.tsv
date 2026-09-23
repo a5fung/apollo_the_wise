@@ -1,0 +1,393 @@
+q	scan_date	ticker	gap_pct	prev_close	rel_volume	filter_reason	ep_score	score_tier	catalyst_quality	adv	pm_rvol	rank_by_gap
+scan	2026-08-07	AAOI	11.45	124.22	0.49	outside top-20 gap cap (gap 11.4%)				10303291.787234		35
+scan	2026-08-07	ABNB	14.15	151.64	0.7	outside top-20 gap cap (gap 14.2%)				3538649.067701		22
+scan	2026-08-07	ACMR	15.22	78.98	0.08	already scored earlier today				1322956.0848019999	4.318	19
+scan	2026-08-07	AKAM	11.51	118.55	0.01	outside top-20 gap cap (gap 11.5%)				3710783.4604554996		22
+scan	2026-08-07	AU	10.43	87.59	0.33	outside top-20 gap cap (gap 10.4%)				2514878.11594		47
+scan	2026-08-07	AUGO	10.48	65.63	0.17	outside top-20 gap cap (gap 10.5%)				868764.7663075		46
+scan	2026-08-07	AXTI	11.28	75.17	0.27	outside top-20 gap cap (gap 11.3%)				9764287.183109		38
+scan	2026-08-07	CART	14.06	45.03	0.03	score 18 < 50 (catalyst=routine)	18		routine	4199067.123548	4.255	20
+scan	2026-08-07	CENX	11.87	45.95	0.17	outside top-20 gap cap (gap 11.9%)				2070200.870925		31
+scan	2026-08-07	CLRO	12.96	9.8	6.16	outside top-20 gap cap (gap 13.0%)				557167.871967		24
+scan	2026-08-07	COHR	10.78	334.22	0.36	outside top-20 gap cap (gap 10.8%)				5511561.354783		42
+scan	2026-08-07	CRML	11.35	6.55	0.18	outside top-20 gap cap (gap 11.3%)				6111516.0864375		36
+scan	2026-08-07	CRSR	29.93	10.61	0.78	already scored earlier today				1646785.5515315	10.098	8
+scan	2026-08-07	CTEV	33.53	26.84	0.16	pre-mkt volume 13,640 < 25,000 shares				83075.69141500001	2.619	5
+scan	2026-08-07	DCH	12.7	5.67	0.1	outside top-20 gap cap (gap 12.7%)				3123085.1652504997		26
+scan	2026-08-07	DOCS	66.94	20.66	5.9	already scored earlier today				3562105.632134	137.35	1
+scan	2026-08-07	DV	12.94	11.71	6.44	outside top-20 gap cap (gap 12.9%)				2220744.0225885		24
+scan	2026-08-07	FIGS	38.43	11.24	0.49	already scored earlier today				3468621.17856	12.174	3
+scan	2026-08-07	FLR	11.49	48.75	0.26	outside top-20 gap cap (gap 11.5%)				2230747.7150075		34
+scan	2026-08-07	FNKO	18.97	5.28	0.52	quality filter: filter:mcap_too_small: $295M < $500M				987718.907691		14
+scan	2026-08-07	FOXF	10.71	18.86	0	outside top-20 gap cap (gap 10.7%)				575586.8948985001		25
+scan	2026-08-07	FRD	17.36	37.72	0.29	quality filter: filter:mcap_too_small: $272M < $500M				88291.913787		19
+scan	2026-08-07	FROG	16.81	83.04	0.01	filter:session_rvol_too_low: session_rvol=0.60x (today 32,426 / baseline 54,175 n=23) < 1.0x				2415650.7339805	0.599	13
+scan	2026-08-07	GFI	11.03	37.34	0.21	outside top-20 gap cap (gap 11.0%)				3900640.4237025		40
+scan	2026-08-07	GRDN	12.67	39.47	0.06	outside top-20 gap cap (gap 12.7%)				310744.60100599995		27
+scan	2026-08-07	GRPN	10.79	25.15	0	outside top-20 gap cap (gap 10.8%)				1774829.8145845		24
+scan	2026-08-07	GTLB	10.02	35.68	0.12	outside top-20 gap cap (gap 10.0%)				4004576.9089745		38
+scan	2026-08-07	HALO	11.5	85.76	0.44	outside top-20 gap cap (gap 11.5%)				1802666.2796510002		33
+scan	2026-08-07	HASI	16.24	38.24	0	filter:pm_rvol_too_low: pm_rvol=0.73x (today 269 / baseline 368 n=10) < 1.0x				875982.50406	0.73	12
+scan	2026-08-07	HBB	13.96	27	0.25	outside top-20 gap cap (gap 14.0%)				34533.0936825		23
+scan	2026-08-07	HMY	10.3	18.05	0.4	outside top-20 gap cap (gap 10.3%)				3181636.1997435		49
+scan	2026-08-07	HYMC	12.52	23.8	0.23	outside top-20 gap cap (gap 12.5%)				1707827.656678		28
+scan	2026-08-07	IAG	11.29	16.03	0.19	outside top-20 gap cap (gap 11.3%)				5363577.749563		37
+scan	2026-08-07	ICUI	12.85	166.37	0.15	outside top-20 gap cap (gap 12.8%)				342887.7902095		25
+scan	2026-08-07	INOD	15.29	65.48	0.09	already scored earlier today				1238047.1108175	3.504	17
+scan	2026-08-07	KRT	12.32	42.37	0.2	outside top-20 gap cap (gap 12.3%)				145846.1835625		29
+scan	2026-08-07	MCHP	11.82	74.36	0.13	outside top-20 gap cap (gap 11.8%)				12767939.4368775		32
+scan	2026-08-07	MITK	20.76	16.81	0.02	filter:session_rvol_too_low: session_rvol=0.35x (today 11,041 / baseline 31,086 n=22) < 1.0x				729584.1050994999	0.355	10
+scan	2026-08-07	MTW	33.85	14.21	0.4	already scored earlier today				225743.33994550002		4
+scan	2026-08-07	NET	12.09	284.43	0.42	outside top-20 gap cap (gap 12.1%)				3222370.7166275		30
+scan	2026-08-07	NTRA	18.72	265.38	0.23	score 18 < 50 (catalyst=routine)	18		routine	1344996.7700395	3.665	15
+scan	2026-08-07	OMDA	10.54	19.54	0.29	outside top-20 gap cap (gap 10.5%)				1361181.9932074999		44
+scan	2026-08-07	ONTO	14.96	268.7	0.25	outside top-20 gap cap (gap 15.0%)				1428941.26768		21
+scan	2026-08-07	PBYI	10.71	8.12	0.22	outside top-20 gap cap (gap 10.7%)				411955.768441		33
+scan	2026-08-07	PCLA	20.29	6.85	0.52	quality filter: filter:adv_too_low: $343,511				203378.09502200002		13
+scan	2026-08-07	PHR	10.25	11.42	0.15	outside top-20 gap cap (gap 10.2%)				807033.8453325001		50
+scan	2026-08-07	PRAA	17.96	18.15	0.09	already scored earlier today				390056.6996075	1.097	17
+scan	2026-08-07	PSIX	21.96	33.02	0.49	already scored earlier today				461873.06814	5.639	12
+scan	2026-08-07	PUBM	29.45	13.48	1.36	already scored earlier today				490423.387992	14.414	9
+scan	2026-08-07	QNST	32.06	15.22	0.44	already scored earlier today				675278.8406595	7.821	7
+scan	2026-08-07	RDW	10.9	11.83	0.23	outside top-20 gap cap (gap 10.9%)				19079045.490445502		41
+scan	2026-08-07	ROAD	16.74	100.16	0.12	score 30 < 50 (catalyst=routine)	30		routine	889761.157375	1.929	20
+scan	2026-08-07	SEI	11.19	57.01	0	outside top-20 gap cap (gap 11.2%)				3891304.8134904997		23
+scan	2026-08-07	SENS	18.35	5.15	0.26	quality filter: filter:mcap_too_small: $328M < $500M				558912.7034285		16
+scan	2026-08-07	SPT	24.66	8.19	0.32	quality filter: filter:mcap_too_small: $492M < $500M				1029161.6252325	4.24	10
+scan	2026-08-07	TE	10.43	5.55	0.18	outside top-20 gap cap (gap 10.4%)				46216170.561144		48
+scan	2026-08-07	TEAM	32.22	110.17	0.85	already scored earlier today				4023906.902292	8.559	6
+scan	2026-08-07	TILE	10.51	35.1	0.27	outside top-20 gap cap (gap 10.5%)				429985.0083505		45
+scan	2026-08-07	TWLO	22.37	193.2	0.33	already scored earlier today				1834889.81168	4.23	11
+scan	2026-08-07	ULBI	11.09	5.32	1.31	outside top-20 gap cap (gap 11.1%)				33825.3711225		39
+scan	2026-08-07	UUUU	10.78	12.9	0.25	outside top-20 gap cap (gap 10.8%)				7546081.8724259995		43
+scan	2026-08-07	VATE	43.59	7.41	58.24	quality filter: filter:adv_too_low: $745,625				109492.6471705		2
+scan	2026-08-07	WLDN	17.81	73.69	0.21	already scored earlier today				321385.85141799995	4.429	18
+scan	2026-08-07	YELP	15.26	25.04	0.03	filter:session_rvol_too_low: session_rvol=0.69x (today 29,523 / baseline 42,455 n=23) < 1.0x				1037417.7107004999	0.695	19
+scan	2026-08-24	AEMD	8.058608058608066	2.73		filter:universe_prev_close_too_low: prior close $2.73 < $5.00 floor						
+scan	2026-08-24	AEON	5.049453409682465	0.1921		filter:universe_prev_close_too_low: prior close $0.19 < $5.00 floor						
+scan	2026-08-24	AERO	9.18	13.72	0.01	pre-mkt volume 3,037 < 25,000 shares				252892.4994255	2.634	5
+scan	2026-08-24	AGRZ	6.716672349130581	0.2933		filter:universe_prev_close_too_low: prior close $0.29 < $5.00 floor						
+scan	2026-08-24	AIFC	5.045125018493863	0.6759		filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor						
+scan	2026-08-24	AIFU	6.811388169665788	18.4999		filter:universe_prev_day_illiquid: prior-day volume 47,973 < 50,000 shares floor						
+scan	2026-08-24	AIXI	5.987762237762233	0.4576		filter:universe_prev_close_too_low: prior close $0.46 < $5.00 floor						
+scan	2026-08-24	AKTX	7.006369426751602	7.85		filter:universe_prev_day_illiquid: prior-day volume 10,988 < 50,000 shares floor						
+scan	2026-08-24	ALVO	7.2234762979684035	4.43		filter:universe_prev_close_too_low: prior close $4.43 < $5.00 floor						
+scan	2026-08-24	AMC	7.36078431372549	2.55		filter:universe_prev_close_too_low: prior close $2.55 < $5.00 floor						
+scan	2026-08-24	ANY	6.130268199233722	2.61		filter:universe_prev_close_too_low: prior close $2.61 < $5.00 floor						
+scan	2026-08-24	APRE	6.356395439637681	0.6403		filter:universe_prev_close_too_low: prior close $0.64 < $5.00 floor						
+scan	2026-08-24	ARAI	5.7340382269215135	0.2459		filter:universe_prev_close_too_low: prior close $0.25 < $5.00 floor						
+scan	2026-08-24	ARAY	6.405693950177921	0.281		filter:universe_prev_close_too_low: prior close $0.28 < $5.00 floor						
+scan	2026-08-24	ARBB	5.696703296703294	4.55		filter:universe_prev_close_too_low: prior close $4.55 < $5.00 floor						
+scan	2026-08-24	AREN	8.06754221388367	0.9061		filter:universe_prev_close_too_low: prior close $0.91 < $5.00 floor						
+scan	2026-08-24	ARTL	5.491329479768792	0.692		filter:universe_prev_close_too_low: prior close $0.69 < $5.00 floor						
+scan	2026-08-24	AVAT	10.17951856385149	0.4902		filter:universe_prev_close_too_low: prior close $0.49 < $5.00 floor						
+scan	2026-08-24	AVX	10.942989214175647	3.245		filter:universe_prev_close_too_low: prior close $3.25 < $5.00 floor						
+scan	2026-08-24	AXIL	17.97385620915032	6.12		filter:universe_prev_day_illiquid: prior-day volume 28,762 < 50,000 shares floor						
+scan	2026-08-24	AZIO	5.172413793103453	1.16		filter:universe_prev_close_too_low: prior close $1.16 < $5.00 floor						
+scan	2026-08-24	BAK	5.527638190954779	1.99		filter:universe_prev_close_too_low: prior close $1.99 < $5.00 floor						
+scan	2026-08-24	BBCQ	9.68	9.71	0.86	quality filter: filter:mcap_too_small: $372M < $500M				219771.2533625	95.759	4
+scan	2026-08-24	BCAB	7.232704402515722	3.18		filter:universe_prev_close_too_low: prior close $3.18 < $5.00 floor						
+scan	2026-08-24	BCTX	10.073710073710076	4.07		filter:universe_prev_close_too_low: prior close $4.07 < $5.00 floor						
+scan	2026-08-24	BDRX	6.2992125984252025	1.27		filter:universe_prev_close_too_low: prior close $1.27 < $5.00 floor						
+scan	2026-08-24	BGL	5.1724137931034395	0.203		filter:universe_prev_close_too_low: prior close $0.20 < $5.00 floor						
+scan	2026-08-24	BGM	6.3286313381624115	0.2623		filter:universe_prev_close_too_low: prior close $0.26 < $5.00 floor						
+scan	2026-08-24	BIOX	6.41868904513495	0.4409		filter:universe_prev_close_too_low: prior close $0.44 < $5.00 floor						
+scan	2026-08-24	BIYA	5.485232067510544	2.37		filter:universe_prev_close_too_low: prior close $2.37 < $5.00 floor						
+scan	2026-08-24	BMEA	16.07299270072992	1.37		filter:universe_prev_close_too_low: prior close $1.37 < $5.00 floor						
+scan	2026-08-24	BMR	6.8702290076335775	1.31		filter:universe_prev_close_too_low: prior close $1.31 < $5.00 floor						
+scan	2026-08-24	BNR	5.521472392638047	9.78		filter:universe_prev_day_illiquid: prior-day volume 4,631 < 50,000 shares floor						
+scan	2026-08-24	BOLD	8.333333333333332	3		filter:universe_prev_close_too_low: prior close $3.00 < $5.00 floor						
+scan	2026-08-24	BRLS	8.01621621621621	1.85		filter:universe_prev_close_too_low: prior close $1.85 < $5.00 floor						
+scan	2026-08-24	BRLT	5.32330827067669	1.33		filter:universe_prev_close_too_low: prior close $1.33 < $5.00 floor						
+scan	2026-08-24	BRNX	10.455764075067027	3.73		filter:universe_prev_close_too_low: prior close $3.73 < $5.00 floor						
+scan	2026-08-24	BRR	5.116279069767436	2.15		filter:universe_prev_close_too_low: prior close $2.15 < $5.00 floor						
+scan	2026-08-24	BTCS	5.185185185185174	1.35		filter:universe_prev_close_too_low: prior close $1.35 < $5.00 floor						
+scan	2026-08-24	BTCT	35.184210526315795	1.14		filter:universe_prev_close_too_low: prior close $1.14 < $5.00 floor						
+scan	2026-08-24	CAAS	6.209850107066382	4.67		filter:universe_prev_close_too_low: prior close $4.67 < $5.00 floor						
+scan	2026-08-24	CALC	5.115223463687149	0.5728		filter:universe_prev_close_too_low: prior close $0.57 < $5.00 floor						
+scan	2026-08-24	CAN	9.83098591549297	0.355		filter:universe_prev_close_too_low: prior close $0.35 < $5.00 floor						
+scan	2026-08-24	CANG	16.102803738317746	2.14		filter:universe_prev_close_too_low: prior close $2.14 < $5.00 floor						
+scan	2026-08-24	CAPR	10.33	6.29	0.06	quality filter: filter:mcap_too_small: $466M < $500M				7703041.160356499	1.637	4
+scan	2026-08-24	CBAT	6.8731026108075275	0.8235		filter:universe_prev_close_too_low: prior close $0.82 < $5.00 floor						
+scan	2026-08-24	CBK	6.477373558118893	33.81		filter:universe_prev_day_illiquid: prior-day volume 43,997 < 50,000 shares floor						
+scan	2026-08-24	CCTG	13.838600797790724	0.6518		filter:universe_prev_close_too_low: prior close $0.65 < $5.00 floor						
+scan	2026-08-24	CD	7.520891364902507	3.59		filter:universe_prev_close_too_low: prior close $3.59 < $5.00 floor						
+scan	2026-08-24	CDIO	6.891625615763565	2.03		filter:universe_prev_close_too_low: prior close $2.03 < $5.00 floor						
+scan	2026-08-24	CDTG	5.932203389830514	1.18		filter:universe_prev_close_too_low: prior close $1.18 < $5.00 floor						
+scan	2026-08-24	CIRC	5.25803310613437	0.6162		filter:universe_prev_close_too_low: prior close $0.62 < $5.00 floor						
+scan	2026-08-24	CLGN	6.833093294927182	0.31245		filter:universe_prev_close_too_low: prior close $0.31 < $5.00 floor						
+scan	2026-08-24	CLIK	5.035971223021588	1.39		filter:universe_prev_close_too_low: prior close $1.39 < $5.00 floor						
+scan	2026-08-24	CLRO	6.741573033707872	5.34		filter:universe_prev_day_illiquid: prior-day volume 31,214 < 50,000 shares floor						
+scan	2026-08-24	CMND	5.172413793103453	1.74		filter:universe_prev_close_too_low: prior close $1.74 < $5.00 floor						
+scan	2026-08-24	CNSP	6.17324185248713	5.83		filter:universe_prev_day_illiquid: prior-day volume 8,111 < 50,000 shares floor						
+scan	2026-08-24	CNTN	5.9360730593607265	2.19		filter:universe_prev_close_too_low: prior close $2.19 < $5.00 floor						
+scan	2026-08-24	CODX	7.438016528925627	1.21		filter:universe_prev_close_too_low: prior close $1.21 < $5.00 floor						
+scan	2026-08-24	COE	5.599513085818635	16.43		filter:universe_prev_day_illiquid: prior-day volume 12,705 < 50,000 shares floor						
+scan	2026-08-24	COOK	5.55455365193868	55.45		filter:universe_prev_day_illiquid: prior-day volume 15,128 < 50,000 shares floor						
+scan	2026-08-24	COPR	12.359550561797755	2.67		filter:universe_prev_close_too_low: prior close $2.67 < $5.00 floor						
+scan	2026-08-24	CRDF	11.36234518804681	0.8801		filter:universe_prev_close_too_low: prior close $0.88 < $5.00 floor						
+scan	2026-08-24	CVRX	12.161971830985921	2.84		filter:universe_prev_close_too_low: prior close $2.84 < $5.00 floor						
+scan	2026-08-24	CYAB	8.67381111855326	0.2986		filter:universe_prev_close_too_low: prior close $0.30 < $5.00 floor						
+scan	2026-08-24	CYPH	23.94366197183099	1.42		filter:universe_prev_close_too_low: prior close $1.42 < $5.00 floor						
+scan	2026-08-24	DAIC	195.77464788732397	0.426		filter:universe_prev_close_too_low: prior close $0.43 < $5.00 floor						
+scan	2026-08-24	DDC	6.059096945551125	0.6024		filter:universe_prev_close_too_low: prior close $0.60 < $5.00 floor						
+scan	2026-08-24	DEFT	5.618368411897721	0.5749		filter:universe_prev_close_too_low: prior close $0.57 < $5.00 floor						
+scan	2026-08-24	DETX	6.162891986062716	3.6736		filter:universe_prev_close_too_low: prior close $3.67 < $5.00 floor						
+scan	2026-08-24	DFDV	5.568527918781721	3.94		filter:universe_prev_close_too_low: prior close $3.94 < $5.00 floor						
+scan	2026-08-24	DFSC	5.14193548387096	1.55		filter:universe_prev_close_too_low: prior close $1.55 < $5.00 floor						
+scan	2026-08-24	DGNX	7.812499999999989	1.28		filter:universe_prev_close_too_low: prior close $1.28 < $5.00 floor						
+scan	2026-08-24	DIT	5.992085924250982	70.76		filter:universe_prev_day_illiquid: prior-day volume 833 < 50,000 shares floor						
+scan	2026-08-24	DOMH	5.813953488372089	2.58		filter:universe_prev_close_too_low: prior close $2.58 < $5.00 floor						
+scan	2026-08-24	DTCX	5.725190839694653	2.62		filter:universe_prev_close_too_low: prior close $2.62 < $5.00 floor						
+scan	2026-08-24	DWTX	5.220883534136542	2.49		filter:universe_prev_close_too_low: prior close $2.49 < $5.00 floor						
+scan	2026-08-24	DXST	19.841269841269842	2.52		filter:universe_prev_close_too_low: prior close $2.52 < $5.00 floor						
+scan	2026-08-24	EDSA	5.191873589164795	4.43		filter:universe_prev_close_too_low: prior close $4.43 < $5.00 floor						
+scan	2026-08-24	EMAT	16.624685138539032	3.97		filter:universe_prev_close_too_low: prior close $3.97 < $5.00 floor						
+scan	2026-08-24	ENLV	8.163265306122456	1.47		filter:universe_prev_close_too_low: prior close $1.47 < $5.00 floor						
+scan	2026-08-24	EPOW	7.118946663691136	0.4481		filter:universe_prev_close_too_low: prior close $0.45 < $5.00 floor						
+scan	2026-08-24	EXYN	14.479638009049767	2.21		filter:universe_prev_close_too_low: prior close $2.21 < $5.00 floor						
+scan	2026-08-24	FAC	5.422993492407809	4.61		filter:universe_prev_close_too_low: prior close $4.61 < $5.00 floor						
+scan	2026-08-24	FNGR	8.310626702997267	0.2202		filter:universe_prev_close_too_low: prior close $0.22 < $5.00 floor						
+scan	2026-08-24	FOXX	6.060606060606051	2.97		filter:universe_prev_close_too_low: prior close $2.97 < $5.00 floor						
+scan	2026-08-24	GEMI	6.542056074766339	4.28		filter:universe_prev_close_too_low: prior close $4.28 < $5.00 floor						
+scan	2026-08-24	GETY	5.005688282138791	0.2637		filter:universe_prev_close_too_low: prior close $0.26 < $5.00 floor						
+scan	2026-08-24	GGR	25.418502202643168	2.27		filter:universe_prev_close_too_low: prior close $2.27 < $5.00 floor						
+scan	2026-08-24	GIFT	5.318520269471699	0.8461		filter:universe_prev_close_too_low: prior close $0.85 < $5.00 floor						
+scan	2026-08-24	GNPX	5.822784810126571	3.95		filter:universe_prev_close_too_low: prior close $3.95 < $5.00 floor						
+scan	2026-08-24	GOAI	10.708520179372192	2.23		filter:universe_prev_close_too_low: prior close $2.23 < $5.00 floor						
+scan	2026-08-24	GOVX	9.926734820322181	0.6456		filter:universe_prev_close_too_low: prior close $0.65 < $5.00 floor						
+scan	2026-08-24	GRI	9.696969696969706	1.65		filter:universe_prev_close_too_low: prior close $1.65 < $5.00 floor						
+scan	2026-08-24	GTEC	5.198477433387718	0.9195		filter:universe_prev_close_too_low: prior close $0.92 < $5.00 floor						
+scan	2026-08-24	HCAT	5.228758169934645	1.53		filter:universe_prev_close_too_low: prior close $1.53 < $5.00 floor						
+scan	2026-08-24	HCTI	5.371571639922602	0.8787		filter:universe_prev_close_too_low: prior close $0.88 < $5.00 floor						
+scan	2026-08-24	HCWB	6.422018348623839	2.18		filter:universe_prev_close_too_low: prior close $2.18 < $5.00 floor						
+scan	2026-08-24	HMR	5.185185185185174	1.35		filter:universe_prev_close_too_low: prior close $1.35 < $5.00 floor						
+scan	2026-08-24	HODO	8.22510822510822	0.462		filter:universe_prev_close_too_low: prior close $0.46 < $5.00 floor						
+scan	2026-08-24	HPAI	7.102337190832765	0.4407		filter:universe_prev_close_too_low: prior close $0.44 < $5.00 floor						
+scan	2026-08-24	HSCS	6.071428571428585	2.8		filter:universe_prev_close_too_low: prior close $2.80 < $5.00 floor						
+scan	2026-08-24	HSDT	5.195238095238083	2.1		filter:universe_prev_close_too_low: prior close $2.10 < $5.00 floor						
+scan	2026-08-24	HUMA	5.29430084085955	0.6422		filter:universe_prev_close_too_low: prior close $0.64 < $5.00 floor						
+scan	2026-08-24	HURA	7.499999999999996	2		filter:universe_prev_close_too_low: prior close $2.00 < $5.00 floor						
+scan	2026-08-24	HVII	17.35	6.385	1.3	quality filter: filter:adv_too_low: $600,114				55795.009072500005		2
+scan	2026-08-24	HYNE	8.043217286914766	16.66		filter:universe_prev_day_illiquid: prior-day volume 22,299 < 50,000 shares floor						
+scan	2026-08-24	HYPD	6.273584905660377	3.18		filter:universe_prev_close_too_low: prior close $3.18 < $5.00 floor						
+scan	2026-08-24	ICCM	7.530864197530857	2.43		filter:universe_prev_close_too_low: prior close $2.43 < $5.00 floor						
+scan	2026-08-24	ILLR	5.442101777238106	0.9059		filter:universe_prev_close_too_low: prior close $0.91 < $5.00 floor						
+scan	2026-08-24	IMDX	5.299539170506922	4.34		filter:universe_prev_close_too_low: prior close $4.34 < $5.00 floor						
+scan	2026-08-24	INCR	26.13035819142689	4.2575		filter:universe_prev_close_too_low: prior close $4.26 < $5.00 floor						
+scan	2026-08-24	INEO	5.490271623964548	0.5191		filter:universe_prev_close_too_low: prior close $0.52 < $5.00 floor						
+scan	2026-08-24	INM	10.273972602739736	1.46		filter:universe_prev_close_too_low: prior close $1.46 < $5.00 floor						
+scan	2026-08-24	IPDN	6.2753036437246985	0.1482		filter:universe_prev_close_too_low: prior close $0.15 < $5.00 floor						
+scan	2026-08-24	JAB	10.76458752515091	9.94		filter:universe_prev_day_illiquid: prior-day volume 6,272 < 50,000 shares floor						
+scan	2026-08-24	JLHL	11.32	6.6	0.28	quality filter: filter:atr_too_high: 25.1% > 15.0%				340967.817676		4
+scan	2026-08-24	JZ	11.363636363636363	2.2		filter:universe_prev_close_too_low: prior close $2.20 < $5.00 floor						
+scan	2026-08-24	LANV	9.980952380952381	1.05		filter:universe_prev_close_too_low: prior close $1.05 < $5.00 floor						
+scan	2026-08-24	LEDS	8.1151832460733	1.91		filter:universe_prev_close_too_low: prior close $1.91 < $5.00 floor						
+scan	2026-08-24	LESL	5.690515806988354	0.601		filter:universe_prev_close_too_low: prior close $0.60 < $5.00 floor						
+scan	2026-08-24	LEXX	7.833256985799363	10.915		filter:universe_prev_day_illiquid: prior-day volume 8,919 < 50,000 shares floor						
+scan	2026-08-24	LGHL	21.414473684210524	0.608		filter:universe_prev_close_too_low: prior close $0.61 < $5.00 floor						
+scan	2026-08-24	LGVN	5.337909811812052	0.8449		filter:universe_prev_close_too_low: prior close $0.84 < $5.00 floor						
+scan	2026-08-24	LHSW	7.200000000000006	2.5		filter:universe_prev_close_too_low: prior close $2.50 < $5.00 floor						
+scan	2026-08-24	LITS	6.0927553804183106	0.9897		filter:universe_prev_close_too_low: prior close $0.99 < $5.00 floor						
+scan	2026-08-24	LOBO	6.122135056145201	0.6501		filter:universe_prev_close_too_low: prior close $0.65 < $5.00 floor						
+scan	2026-08-24	LONA	5.595315549772292	7.685		filter:universe_prev_day_illiquid: prior-day volume 9,651 < 50,000 shares floor						
+scan	2026-08-24	LSTA	14.193548387096772	1.55		filter:universe_prev_close_too_low: prior close $1.55 < $5.00 floor						
+scan	2026-08-24	LUCY	57.87395818102065	0.6839		filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor						
+scan	2026-08-24	MBRX	5.817875210792576	0.593		filter:universe_prev_close_too_low: prior close $0.59 < $5.00 floor						
+scan	2026-08-24	MDXH	7.65711209796798	0.7431		filter:universe_prev_close_too_low: prior close $0.74 < $5.00 floor						
+scan	2026-08-24	MERC	5.734430082256177	0.4255		filter:universe_prev_close_too_low: prior close $0.43 < $5.00 floor						
+scan	2026-08-24	MHH	5.73333333333333	7.5		filter:universe_prev_day_illiquid: prior-day volume 9,608 < 50,000 shares floor						
+scan	2026-08-24	MINE	5.844155844155835	3.08		filter:universe_prev_close_too_low: prior close $3.08 < $5.00 floor						
+scan	2026-08-24	MNOV	5.035971223021588	1.39		filter:universe_prev_close_too_low: prior close $1.39 < $5.00 floor						
+scan	2026-08-24	MODD	5.367231638418078	3.54		filter:universe_prev_close_too_low: prior close $3.54 < $5.00 floor						
+scan	2026-08-24	MPU	5.044371788883688	0.2141		filter:universe_prev_close_too_low: prior close $0.21 < $5.00 floor						
+scan	2026-08-24	MREO	5.371900826446282	0.2904		filter:universe_prev_close_too_low: prior close $0.29 < $5.00 floor						
+scan	2026-08-24	MRKR	7.187050359712238	1.39		filter:universe_prev_close_too_low: prior close $1.39 < $5.00 floor						
+scan	2026-08-24	MSGM	5.689001264222495	3.955		filter:universe_prev_close_too_low: prior close $3.96 < $5.00 floor						
+scan	2026-08-24	MTVA	5.815068493150683	1.46		filter:universe_prev_close_too_low: prior close $1.46 < $5.00 floor						
+scan	2026-08-24	MVIS	6.024096385542174	1.66		filter:universe_prev_close_too_low: prior close $1.66 < $5.00 floor						
+scan	2026-08-24	NCEL	5.814202960738031	3.2627		filter:universe_prev_close_too_low: prior close $3.26 < $5.00 floor						
+scan	2026-08-24	NFE	5.418181818181806	0.275		filter:universe_prev_close_too_low: prior close $0.28 < $5.00 floor						
+scan	2026-08-24	NIXX	5.008839127872721	0.6788		filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor						
+scan	2026-08-24	NPWR	11.470588235294121	1.7		filter:universe_prev_close_too_low: prior close $1.70 < $5.00 floor						
+scan	2026-08-24	NRSN	6.032420940738771	0.3763		filter:universe_prev_close_too_low: prior close $0.38 < $5.00 floor						
+scan	2026-08-24	NSSC	34.22	38.09	1.33	score 52 < bar 65 (catalyst=strong)	52.5		strong	272546.069019	29.247	2
+scan	2026-08-24	NTRB	5.003857363277888	4.6664		filter:universe_prev_close_too_low: prior close $4.67 < $5.00 floor						
+scan	2026-08-24	OBAI	6.462489463332402	0.3559		filter:universe_prev_close_too_low: prior close $0.36 < $5.00 floor						
+scan	2026-08-24	OLOX	13.875598086124405	2.09		filter:universe_prev_close_too_low: prior close $2.09 < $5.00 floor						
+scan	2026-08-24	OMH	10.887949260042271	0.0946		filter:universe_prev_close_too_low: prior close $0.09 < $5.00 floor						
+scan	2026-08-24	ORGO	5.538888888888883	1.8		filter:universe_prev_close_too_low: prior close $1.80 < $5.00 floor						
+scan	2026-08-24	PDCC	14.009111617312078	8.78		filter:universe_prev_day_illiquid: prior-day volume 1,872 < 50,000 shares floor						
+scan	2026-08-24	PDSB	5.263157894736847	0.2185		filter:universe_prev_close_too_low: prior close $0.22 < $5.00 floor						
+scan	2026-08-24	PLAG	20.087655222790353	0.6845		filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor						
+scan	2026-08-24	PMI	27.85046728971963	3.21		filter:universe_prev_close_too_low: prior close $3.21 < $5.00 floor						
+scan	2026-08-24	POAS	5.331680099194046	0.1613		filter:universe_prev_close_too_low: prior close $0.16 < $5.00 floor						
+scan	2026-08-24	POM	9.462161877697095	0.9501		filter:universe_prev_close_too_low: prior close $0.95 < $5.00 floor						
+scan	2026-08-24	PPCB	7.407407407407393	1.08		filter:universe_prev_close_too_low: prior close $1.08 < $5.00 floor						
+scan	2026-08-24	PRPL	5.177215189873413	5.53		filter:universe_prev_day_illiquid: prior-day volume 10,652 < 50,000 shares floor						
+scan	2026-08-24	PSIG	6.810035842293905	2.79		filter:universe_prev_close_too_low: prior close $2.79 < $5.00 floor						
+scan	2026-08-24	PUSA	12.244897959183671	3.43		filter:universe_prev_close_too_low: prior close $3.43 < $5.00 floor						
+scan	2026-08-24	PWCM	5.185185185185174	1.35		filter:universe_prev_close_too_low: prior close $1.35 < $5.00 floor						
+scan	2026-08-24	QNC	7.0422535211267565	2.13		filter:universe_prev_close_too_low: prior close $2.13 < $5.00 floor						
+scan	2026-08-24	QNTM	6.686046511627906	3.44		filter:universe_prev_close_too_low: prior close $3.44 < $5.00 floor						
+scan	2026-08-24	QTRX	8.361204013377927	2.99		filter:universe_prev_close_too_low: prior close $2.99 < $5.00 floor						
+scan	2026-08-24	RAIN	5.665286812536953	0.8455		filter:universe_prev_close_too_low: prior close $0.85 < $5.00 floor						
+scan	2026-08-24	RCBC	10.1141924959217	49.04		filter:universe_prev_day_illiquid: prior-day volume 12,888 < 50,000 shares floor						
+scan	2026-08-24	RCKT	5.008547008547014	3.51		filter:universe_prev_close_too_low: prior close $3.51 < $5.00 floor						
+scan	2026-08-24	RCT	5.179487179487178	0.195		filter:universe_prev_close_too_low: prior close $0.20 < $5.00 floor						
+scan	2026-08-24	RDZN	6.225806451612905	1.55		filter:universe_prev_close_too_low: prior close $1.55 < $5.00 floor						
+scan	2026-08-24	RECT	9.448818897637786	1.27		filter:universe_prev_close_too_low: prior close $1.27 < $5.00 floor						
+scan	2026-08-24	REFR	5.97618512693777	0.4451		filter:universe_prev_close_too_low: prior close $0.45 < $5.00 floor						
+scan	2026-08-24	RGNT	5.238095238095232	2.1		filter:universe_prev_close_too_low: prior close $2.10 < $5.00 floor						
+scan	2026-08-24	RITR	26.923076923076927	0.0832		filter:universe_prev_close_too_low: prior close $0.08 < $5.00 floor						
+scan	2026-08-24	RNAZ	10.452961672473862	2.87		filter:universe_prev_close_too_low: prior close $2.87 < $5.00 floor						
+scan	2026-08-24	ROC	11.12469437652812	4.09		filter:universe_prev_close_too_low: prior close $4.09 < $5.00 floor						
+scan	2026-08-24	RPGL	9.078260869565222	2.3		filter:universe_prev_close_too_low: prior close $2.30 < $5.00 floor						
+scan	2026-08-24	SAFX	8.436078672403196	0.3254		filter:universe_prev_close_too_low: prior close $0.33 < $5.00 floor						
+scan	2026-08-24	SCOR	5.13694581280788	5.075		filter:universe_prev_day_illiquid: prior-day volume 48,264 < 50,000 shares floor						
+scan	2026-08-24	SCTX	13.3	34.13	0	score 60 < bar 65 (catalyst=strong)	60		strong	164867.841158		4
+scan	2026-08-24	SDEV	7.894736842105271	1.14		filter:universe_prev_close_too_low: prior close $1.14 < $5.00 floor						
+scan	2026-08-24	SDOT	73.6	13.18	33.73	quality filter: filter:atr_too_high: 16.2% > 15.0%				300755.6784875	23.828	1
+scan	2026-08-24	SEV	8.502024291497975	2.47		filter:universe_prev_close_too_low: prior close $2.47 < $5.00 floor						
+scan	2026-08-24	SGLY	7.003891050583665	2.57		filter:universe_prev_close_too_low: prior close $2.57 < $5.00 floor						
+scan	2026-08-24	SLGB	5.49427679500521	0.4805		filter:universe_prev_close_too_low: prior close $0.48 < $5.00 floor						
+scan	2026-08-24	SLQT	6.919454172201428	0.8281		filter:universe_prev_close_too_low: prior close $0.83 < $5.00 floor						
+scan	2026-08-24	SORA	7.106598984771568	1.97		filter:universe_prev_close_too_low: prior close $1.97 < $5.00 floor						
+scan	2026-08-24	SOS	6.350653296870261	0.9873		filter:universe_prev_close_too_low: prior close $0.99 < $5.00 floor						
+scan	2026-08-24	SPRC	5.451829723674374	6.695		filter:universe_prev_day_illiquid: prior-day volume 3,278 < 50,000 shares floor						
+scan	2026-08-24	SSII	5.718270571827059	3.585		filter:universe_prev_close_too_low: prior close $3.58 < $5.00 floor						
+scan	2026-08-24	STKE	5.26315789473683	1.33		filter:universe_prev_close_too_low: prior close $1.33 < $5.00 floor						
+scan	2026-08-24	STRR	5.115346038114341	9.97		filter:universe_prev_day_illiquid: prior-day volume 2,348 < 50,000 shares floor						
+scan	2026-08-24	SUGP	6.212499999999996	1.6		filter:universe_prev_close_too_low: prior close $1.60 < $5.00 floor						
+scan	2026-08-24	SUIG	5.5045871559632875	1.09		filter:universe_prev_close_too_low: prior close $1.09 < $5.00 floor						
+scan	2026-08-24	SUPX	15.02	8.52	0.8	quality filter: filter:mcap_too_small: $368M < $500M				216656.9541835	4.126	4
+scan	2026-08-24	SVRN	6.801007556675064	7.94		filter:universe_prev_day_illiquid: prior-day volume 7,703 < 50,000 shares floor						
+scan	2026-08-24	TCRT	5.681818181818187	1.76		filter:universe_prev_close_too_low: prior close $1.76 < $5.00 floor						
+scan	2026-08-24	THH	7.5630252100840405	2.38		filter:universe_prev_close_too_low: prior close $2.38 < $5.00 floor						
+scan	2026-08-24	TOPS	5.725238036354644	0.8087		filter:universe_prev_close_too_low: prior close $0.81 < $5.00 floor						
+scan	2026-08-24	TPET	5.797101449275368	0.207		filter:universe_prev_close_too_low: prior close $0.21 < $5.00 floor						
+scan	2026-08-24	TRAW	5.660377358490571	0.53		filter:universe_prev_close_too_low: prior close $0.53 < $5.00 floor						
+scan	2026-08-24	TURB	6.034482758620696	1.16		filter:universe_prev_close_too_low: prior close $1.16 < $5.00 floor						
+scan	2026-08-24	UFG	8.616944243301951	0.5524		filter:universe_prev_close_too_low: prior close $0.55 < $5.00 floor						
+scan	2026-08-24	VCIG	6.153123532174741	3.1935		filter:universe_prev_close_too_low: prior close $3.19 < $5.00 floor						
+scan	2026-08-24	VMAR	9.791356184798804	0.671		filter:universe_prev_close_too_low: prior close $0.67 < $5.00 floor						
+scan	2026-08-24	VNRX	5.540897097625332	0.4169		filter:universe_prev_close_too_low: prior close $0.42 < $5.00 floor						
+scan	2026-08-24	VNTG	6.061106523534261	0.6055		filter:universe_prev_close_too_low: prior close $0.61 < $5.00 floor						
+scan	2026-08-24	VSA	5.999999999999999	3.5		filter:universe_prev_close_too_low: prior close $3.50 < $5.00 floor						
+scan	2026-08-24	VWAV	5.463636363636347	1.1		filter:universe_prev_close_too_low: prior close $1.10 < $5.00 floor						
+scan	2026-08-24	WRAP	5.263157894736847	1.52		filter:universe_prev_close_too_low: prior close $1.52 < $5.00 floor						
+scan	2026-08-24	XBIO	5.849582172701949	3.59		filter:universe_prev_close_too_low: prior close $3.59 < $5.00 floor						
+scan	2026-08-24	XCH	5.303030303030305	4.62		filter:universe_prev_close_too_low: prior close $4.62 < $5.00 floor						
+scan	2026-08-24	XPON	120.37845705967976	3.435		filter:universe_prev_close_too_low: prior close $3.44 < $5.00 floor						
+scan	2026-08-24	XXII	8.956336528221508	3.756		filter:universe_prev_close_too_low: prior close $3.76 < $5.00 floor						
+scan	2026-08-24	YMAT	5.155555555555555	1.8		filter:universe_prev_close_too_low: prior close $1.80 < $5.00 floor						
+scan	2026-08-24	ZEO	9.530864197530855	0.405		filter:universe_prev_close_too_low: prior close $0.41 < $5.00 floor						
+scan	2026-08-24	ZJK	15.111111111111105	2.25		filter:universe_prev_close_too_low: prior close $2.25 < $5.00 floor						
+scan	2026-08-24	ZOOZ	6.443574225703099	5.618		filter:universe_prev_day_illiquid: prior-day volume 33,998 < 50,000 shares floor						
+scan	2026-08-24	ZSTK	6.1571125265392785	4.71		filter:universe_prev_close_too_low: prior close $4.71 < $5.00 floor						
+q	scan_date	ticker	live_tier	live_ep_score	live_quality_last	gap_pct_last	adv_dollar	live_side
+graded	2026-08-24	AERO			strong	9.18	3469685.09211786	lattice
+graded	2026-08-24	NSSC		52.5	strong	34.22	10381279.76893371	lattice
+graded	2026-08-24	SCTX		60	strong	13.3	5626939.41872254	lattice
+q	alert_date	ticker	ep_score	score_tier	gap_pct	catalyst_quality
+alert	2026-08-07	ACMR	100.8	HIGH	15.09	strong
+alert	2026-08-07	CRSR	84	MODERATE	16.87	strong
+alert	2026-08-07	DOCS	54	MODERATE	178.8	routine
+alert	2026-08-07	FIGS	96	HIGH	26.69	game_changer
+alert	2026-08-07	FROG	100.8	HIGH	17.51	strong
+alert	2026-08-07	INOD	51.6	MODERATE	14.83	strong
+alert	2026-08-07	MTW	50.4	HIGH	33.08	routine
+alert	2026-08-07	NET	100.8	HIGH	15.67	strong
+alert	2026-08-07	ONTO	96	HIGH	15.31	game_changer
+alert	2026-08-07	PRAA	84	MODERATE	16.61	strong
+alert	2026-08-07	PSIX	68.4	MODERATE	25.77	routine
+alert	2026-08-07	PUBM	96	MODERATE	36.87	strong
+alert	2026-08-07	QNST	96	HIGH	27.92	game_changer
+alert	2026-08-07	TEAM	115.2	HIGH	31.66	strong
+alert	2026-08-07	TWLO	84	HIGH	17.97	strong
+alert	2026-08-07	WLDN	51.6	MODERATE	14.67	strong
+q	alert_date	ticker	status	skip_reason	total_pnl	account_mode
+trade	2026-08-07	ACMR	skipped	setup:gap_below_floor: rt 6.6% < 10% floor (alert said 15.1%, last $84.19 vs prev close $78.98)	0	live
+trade	2026-08-07	FIGS	closed	block:r3_reentry_disabled	-6.838002000000003	live
+trade	2026-08-07	FROG	cancelled	ORB window unfilled	0	live
+trade	2026-08-07	MTW	skipped	window:out_of_orb: detected 09:52 ET	0	live
+trade	2026-08-07	NET	closed	block:r3_reentry_disabled	-15.389999999999986	live
+trade	2026-08-07	ONTO	skipped	window:out_of_orb: detected 09:52 ET	0	live
+trade	2026-08-07	QNST	cancelled	broker:entry_cancelled: last $19.59 at/below trigger $19.80 at event	0	live
+trade	2026-08-07	TEAM	closed	block:r3_reentry_disabled	-23.940000000000055	live
+trade	2026-08-07	TWLO	skipped	block:max_positions: 5/5 (mode=live)	0	live
+q	alert_date	ticker	skip_category	ret_1d	ret_5d	max_high_5d	last_refreshed_at
+outcome	2026-08-07	AAOI	outside_top20	-0.06786917462099935	0.05474452554744534	0.07657215047725995	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	ABNB	outside_top20	0.12143290831815423	0.11754705525197337	0.13612629022465098	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	ACMR	duplicate_scan	-0.1419773095623987	-0.13106428957320362	0	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	ACMR	setup_other	-0.1419773095623987	-0.13106428957320362	0	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	AKAM	outside_top20	-0.05117907029259	0.00801638762540727	0.024549179005774472	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	AU	outside_top20	0.009969882646172953	0.00010385294423087449	0.05171876622702243	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	AUGO	outside_top20	0.09053203661327229	0.0872425629290617	0.12900457665903883	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	AXTI	outside_top20	-0.06734900176901691	0.03158958807177154	0.14215314632297193	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	CART	score_below_50	0.011200000000000045	-0.022399999999999948	0.021200000000000045	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	CENX	outside_top20	0.08422152560083597	-0.023615464994775393	0.16091954022988497	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	CLRO	outside_top20	-0.15838800374882844	-0.5107778819119025	0.3197750702905343	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	COHR	outside_top20	-0.09685573023720906	-0.09496694628076217	0.08706460752180442	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	CRML	outside_top20	-0.0071530758226036936	-0.04721030042918456	0.0643776824034335	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	CRSR	duplicate_scan	0.08105976975240502	0.024286390159280857	0.1810439993691846	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	CRSR	moderate_tier	0.08105976975240502	0.024286390159280857	0.1810439993691846	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	CTEV	pm_rvol_low	0.1693839025227389	0.30839196842285893	0.4576969280933584	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	DCH	outside_top20	0.0692431561996779	0.08373590982286643	0.13687600644122377	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	DOCS	duplicate_scan	-0.3405377589090442	-0.36189373472275826	0.029203653672970488	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	DOCS	moderate_tier	-0.3405377589090442	-0.36189373472275826	0.029203653672970488	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	DV	outside_top20	-0.0007558578987150254	0.004535147392290152	0.00944822373393802	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	FLR	outside_top20	-0.04163609684519448	-0.03943506969919306	0.06254585473220829	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	FNKO	mcap_low	-0.10354815351194784	-0.11078928312816808	0.01955104996379432	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	FOXF	outside_top20	-0.009420631182289179	-0.009891662741403713	0.04050871408384359	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	FRD	mcap_low	0.07584756248453366	0.13462014352882962	0.15540460282108404	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	FROG	session_rvol_low	-0.08420341800425941	-0.0008830710092981533	0.023011791595241842	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	FROG	high_unentered	-0.08420341800425941	-0.0008830710092981533	0.023011791595241842	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	GFI	outside_top20	0.003663003663003628	-0.017338217338217356	0.03604395604395602	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	GRDN	outside_top20	-0.03893395133256083	-0.1093858632676709	0.08968713789107774	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	GRPN	outside_top20	-0.16575790621592157	-0.21810250817884405	0.006906579425663312	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	GTLB	outside_top20	0.0848315354907443	0.1351711279797575	0.1668664269543215	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	HALO	outside_top20	0.14022222222222228	0.09622222222222218	0.16422222222222224	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	HASI	pm_rvol_low	0.01985922574157866	0.05882352941176461	0.08220211161387622	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	HBB	outside_top20	0.15952213633169357	0.17146872803935356	0.20379479971890363	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	HMY	outside_top20	-0.005497251374312992	-0.028485757121439293	0.010494752623688021	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	HYMC	outside_top20	0.03253878168747633	0.024214907302308006	0.1263715474839198	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	IAG	outside_top20	0.06840579710144926	0.06086956521739135	0.09391304347826093	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	ICUI	outside_top20	0.0003838771593089837	0.003454894433781165	0.05758157389635317	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	INOD	moderate_tier	-0.1803872497365648	-0.1589831401475237	0.046364594309799737	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	INOD	duplicate_scan	-0.1803872497365648	-0.1589831401475237	0.046364594309799737	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	KRT	outside_top20	0.07364427583128759	0.06918098638696707	0.13389645168489167	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	MCHP	outside_top20	0.0004917025199754918	-0.02679778733866002	0.05674001229256309	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	MITK	session_rvol_low	-0.09503366182066544	-0.052102644160405956	0.008586203532051829	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	MTW	window_missed	0.10210035005834306	0.2065344224037339	0.24504084014002328	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	MTW	duplicate_scan	0.10210035005834306	0.2065344224037339	0.24504084014002328	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	NTRA	score_below_50	-0.0079464007478964	-0.034185104393892086	0.01598628856341538	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	OMDA	outside_top20	0.206954841825646	0.16107220478145381	0.21564839410770364	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	ONTO	window_missed	-0.028833333333333256	0.10569999999999993	0.15633333333333327	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	ONTO	outside_top20	-0.028833333333333256	0.10569999999999993	0.15633333333333327	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	PBYI	outside_top20	0.06625766871165634	0.08343558282208585	0.15336196319018408	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	PCLA	adv_low	0.22117962466487928	-0.09383378016085793	1.6290884718498657	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	PHR	outside_top20	-0.01269841269841271	-0.02539682539682542	0.03253968253968255	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	PRAA	moderate_tier	-0.0673880964092473	0.013280865715691252	0.05705853418593213	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	PRAA	duplicate_scan	-0.0673880964092473	0.013280865715691252	0.05705853418593213	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	PSIX	duplicate_scan	0.07338991512730897	0.01198202695956058	0.10259610584123813	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	PSIX	moderate_tier	0.07338991512730897	0.01198202695956058	0.10259610584123813	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	PUBM	duplicate_scan	0.023041474654378002	0.013248847926267305	0.06218317972350228	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	PUBM	moderate_tier	0.023041474654378002	0.013248847926267305	0.06218317972350228	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	QNST	high_unentered	0.11833417978669365	0.0411376333164042	0.13204672422549507	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	QNST	duplicate_scan	0.11833417978669365	0.0411376333164042	0.13204672422549507	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	RDW	outside_top20	0.05636070853462152	0.09339774557165863	0.12882447665056357	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	ROAD	score_below_50	0.07223230490018143	0.10299455535390194	0.12032667876588013	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	SEI	outside_top20	0.0115656827205248	0.09269808389435522	0.09873985844985325	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	SENS	mcap_low	0.30902777777777785	0.35590277777777773	0.47916666666666663	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	SPT	mcap_low	0.045785639958376825	0.029136316337148922	0.0988553590010407	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	TE	outside_top20	-0.0844827586206897	-0.11896551724137923	0.0844827586206897	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	TILE	outside_top20	-0.0068874172185429934	0.005562913907284791	0.0728476821192053	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	TWLO	duplicate_scan	0.06295430393198725	0.012539851222104097	0.0982040382571733	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	TWLO	cap_blocked	0.06295430393198725	0.012539851222104097	0.0982040382571733	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	ULBI	outside_top20	0.137704918032787	0.2311475409836066	0.2540983606557378	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	UUUU	outside_top20	0.030281182408074977	0.0886806056236482	0.10793078586878167	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	VATE	adv_low	-0.35416666666666663	-0.2789855072463768	0.2681159420289856	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	WLDN	duplicate_scan	-0.042517303553771896	0.005060198918164395	0.032047926481707616	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	WLDN	moderate_tier	-0.042517303553771896	0.005060198918164395	0.032047926481707616	2026-08-21 21:18:10.431287+00
+outcome	2026-08-07	YELP	session_rvol_low	-0.09443009959424561	-0.08889708594614534	0.07819992622648474	2026-08-21 21:18:10.431287+00

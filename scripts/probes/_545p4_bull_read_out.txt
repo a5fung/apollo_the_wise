@@ -1,0 +1,145 @@
+=== 0. STAMP RULE VALIDATION (stamp = latest regime row strictly before the fill day) ===
+  known stamps reproduced: 22/22
+  inferred (no prior record): ABCL=Bull, AMLX=Bull, CRWD=Choppy, SOLS=Bull
+  stamp counts: {'Choppy': 8, 'Correcting': 7, 'Crisis': 1, 'Bull': 10}
+  join  counts: {'Bull': 14, 'Choppy': 5, 'Correcting': 7}
+  disagreements (stamp -> join): WULF 2026-07-06 Choppy->Bull, TSEM 2026-07-14 Correcting->Choppy, FTNT 2026-07-30 Crisis->Correcting, BLZE 2026-08-04 Choppy->Bull, BTDR 2026-08-04 Choppy->Bull, PLTR 2026-08-04 Choppy->Bull, CRWD 2026-08-27 Choppy->Bull, SOLS 2026-08-28 Bull->Choppy
+
+=== 1. BRIEF FACT CHECK (26 closed live) ===
+  n=26  winners=5  cash=-165.65
+  r_real    sum -11.27  best PLTR +3.42  worst BW -1.09  >=4R: 0
+  r_plan    sum -11.89  best PLTR +3.69  worst FRMI -1.24  >=4R: 0
+  r_budget  sum -7.82  best PLTR +3.31  worst WKC -1.18  >=4R: 0
+  capped rows where the BUDGET basis misstates a full stop-out (r_real <= -0.95 but r_budget > -0.6): FTNT real -1.03 budget -0.55, NET real -1.00 budget -0.32, TEAM real -1.02 budget -0.50
+  risk_dollars_actual reconstruction check: CRWD col 28.92 vs sh*(orb_high-hard_stop) 28.92, SOLS col 48.72 vs sh*(orb_high-hard_stop) 48.72
+
+=== 2. PER-TRADE FORENSIC (a) — all 26, sorted by fill ===
+  tkr  fill   era stamp      join          entry    stop stop% s/ADR ADR% R_real  R_bud  peakR pkADRsrc        hold d0 part  exit
+  WULF 07-06  A   Choppy     Bull          24.62   23.80   3.3  0.39  8.5  -1.00  -0.70   0.65  0.25bars          1  Y       stop_hit (24m)
+  CRCL 07-10  A   Choppy     Choppy        70.65   69.29   1.9  0.27  7.2  -1.01  -0.81   1.62  0.43bars          1  Y       stop_hit (9m)
+  WDFC 07-10  A   Choppy     Choppy       296.24  287.06   3.1  1.12  2.8  -1.04  -0.80   0.23  0.26bars          1  Y       stop_hit (9m)
+  TSEM 07-14  A   Correcting Choppy       274.00  266.34   2.8  0.41  6.8  -1.00  -1.05   0.00  0.00bars          1  Y       stop_hit (12m)
+  MANE 07-15  A   Choppy     Choppy       119.34  118.02   1.1  0.15  7.3  -0.23  -0.11   7.92  1.21bars          2          stop_hit (1437m)
+  HUT  07-20  A   Correcting Correcting   103.48  101.45   2.0  0.20  9.7  -1.07  -0.98   0.00  0.00bars          1  Y       stop_hit (1m)
+  SMCI 07-22  A   Correcting Correcting    29.47   28.50   3.3  0.55  6.0  -0.70  -0.68   3.21  1.77daily_mid     4          stop_hit (7264m)
+  NVCR 07-23  A   Correcting Correcting    19.15   18.00   6.0  1.19  5.1  -1.00  -1.07   2.00  2.37bars          2          stop_hit (1804m)
+  THC  07-24  A   Correcting Correcting   241.67  233.58   3.3  0.95  3.5  -1.01  -0.81   0.64  0.61bars          1  Y       stop_hit (192m)
+  WKC  07-24  A   Correcting Correcting    40.16   39.00   2.9  1.11  2.6  -1.03  -1.18   0.90  1.00bars          1  Y       stop_hit (149m)
+  QBTS 07-27  A   Correcting Correcting    18.17   17.75   2.3  0.35  6.6  -1.00  -0.92   3.74  1.30bars          2          stop_hit (1445m)
+  FTNT 07-30  A   Crisis     Correcting   166.65  160.19   3.9  0.91  4.3  -1.03  -0.55   0.07  0.06bars          1  Y       stop_hit (6m)
+  BLZE 08-04  A   Choppy     Bull          21.81   20.10   7.8  0.86  9.1  -1.02  -1.03   1.27  1.10bars          1  Y       stop_hit (379m)
+  BTDR 08-04  A   Choppy     Bull          12.85   12.48   2.9  0.29 10.1  -1.03  -0.78   0.22  0.06bars          1  Y       stop_hit (11m)
+  PLTR 08-04  A   Choppy     Bull         149.05  143.28   3.9  0.86  4.5   3.42   3.31   5.39  4.62daily_mid    12       Y  stop_hit (21632m)
+  FIGS 08-07  B   Bull       Bull          15.50   15.19   2.0  0.41  4.8  -0.37  -0.14   2.90  1.18bars          1  Y    Y  stop_hit (19m)
+  NET  08-07  B   Bull       Bull         316.13  311.00   1.6  0.31  5.3  -1.00  -0.32   1.68  0.51bars          1  Y       stop_hit (59m)
+  TEAM 08-07  B   Bull       Bull         147.13  143.21   2.7  0.42  6.3  -1.02  -0.50   1.08  0.46bars          1  Y       stop_hit (13m)
+  ABCL 08-10  B   Bull       Bull           8.96    8.40   6.3  0.83  7.5   2.68   2.66   5.70  4.75daily_mid    11       Y  stop_hit (20158m)
+  BW   08-11  B   Bull       Bull          12.07   11.50   4.7  0.58  8.2  -1.09  -1.02   0.00  0.00bars          1  Y       stop_hit (0m)
+  FRMI 08-11  B   Bull       Bull           7.29    7.05   3.3  0.36  9.1  -0.98  -0.65   0.00  0.00bars          1  Y       stop_hit (1m)
+  ETON 08-14  B   Bull       Bull          55.20   53.01   4.0  0.66  6.0   0.52   0.40   2.09  1.38bars          1  Y    Y  partial_profit (14m)
+  AMLX 08-18  C   Bull       Bull          30.21   27.09  10.3  1.58  6.6   1.26   1.29   3.50  5.52daily_mid    10       Y  stop_hit (18721m)
+  MRVL 08-19  C   Bull       Bull         241.50  230.15   4.7  0.70  6.7  -0.95  -0.87   0.35  0.25bars          1  Y       stop_hit (31m)
+  CRWD 08-27  C   Choppy     Bull         213.31  201.28   5.6  1.29  4.4   0.40   0.50   1.31  1.70bars          2       Y  stop_hit (1469m)
+  SOLS 08-28  C   Bull       Choppy        66.77   62.69   6.1  1.85  3.3  -1.00  -1.01   0.18  0.33bars          2          stop_hit (4469m)
+
+=== 3. REGIME CELLS (c0) — ENTRY-STAMPED, realized per-share R ===
+  Bull (stamped)                     n=10  sumR  -1.95 meanR -0.19 medR -0.97 wins 3/10 day0 7/10 hold med 1d max 11d | peakR mean +1.75 max +5.70 >=2R 4 >=4R 1 | peakADR med 0.48 >=1.5ADR 2
+                                     eras {'B': 7, 'C': 3}  FIGS-0.37 NET-1.00 TEAM-1.02 ABCL+2.68 BW-1.09 FRMI-0.98 ETON+0.52 AMLX+1.26 MRVL-0.95 SOLS-1.00
+  non-Bull (stamped)                 n=16  sumR  -9.33 meanR -0.58 medR -1.00 wins 2/16 day0 10/16 hold med 1d max 12d | peakR mean +1.82 max +7.92 >=2R 5 >=4R 2 | peakADR med 0.80 >=1.5ADR 4
+                                     eras {'A': 15, 'C': 1}  WULF-1.00 CRCL-1.01 WDFC-1.04 TSEM-1.00 MANE-0.23 HUT-1.07 SMCI-0.70 NVCR-1.00 THC-1.01 WKC-1.03 QBTS-1.00 FTNT-1.03 BLZE-1.02 BTDR-1.03 PLTR+3.42 CRWD+0.40
+    Choppy                           n=8   sumR  -1.50 meanR -0.19 medR -1.00 wins 2/8 day0 5/8 hold med 1d max 12d | peakR mean +2.33 max +7.92 >=2R 2 >=4R 2 | peakADR med 0.77 >=1.5ADR 2
+                                     eras {'A': 7, 'C': 1}  WULF-1.00 CRCL-1.01 WDFC-1.04 MANE-0.23 BLZE-1.02 BTDR-1.03 PLTR+3.42 CRWD+0.40
+    Correcting                       n=7   sumR  -6.80 meanR -0.97 medR -1.00 wins 0/7 day0 4/7 hold med 1d max 4d | peakR mean +1.50 max +3.74 >=2R 3 >=4R 0 | peakADR med 1.00 >=1.5ADR 2
+                                     eras {'A': 7}  TSEM-1.00 HUT-1.07 SMCI-0.70 NVCR-1.00 THC-1.01 WKC-1.03 QBTS-1.00
+    Crisis                           n=1   sumR  -1.03 meanR -1.03 medR -1.03 wins 0/1 day0 1/1 hold med 1d max 1d | peakR mean +0.07 max +0.07 >=2R 0 >=4R 0 | peakADR med 0.06 >=1.5ADR 0
+                                     eras {'A': 1}  FTNT-1.03
+  -- era inside each cell --
+  Bull era A                         n=0
+  non-Bull era A                     n=15  sumR  -9.73 meanR -0.65 medR -1.01 wins 1/15 day0 10/15 hold med 1d max 12d | peakR mean +1.86 max +7.92 >=2R 5 >=4R 2 | peakADR med 0.61 >=1.5ADR 3
+                                     eras {'A': 15}  WULF-1.00 CRCL-1.01 WDFC-1.04 TSEM-1.00 MANE-0.23 HUT-1.07 SMCI-0.70 NVCR-1.00 THC-1.01 WKC-1.03 QBTS-1.00 FTNT-1.03 BLZE-1.02 BTDR-1.03 PLTR+3.42
+  Bull era B                         n=7   sumR  -1.25 meanR -0.18 medR -0.98 wins 2/7 day0 6/7 hold med 1d max 11d | peakR mean +1.92 max +5.70 >=2R 3 >=4R 1 | peakADR med 0.51 >=1.5ADR 1
+                                     eras {'B': 7}  FIGS-0.37 NET-1.00 TEAM-1.02 ABCL+2.68 BW-1.09 FRMI-0.98 ETON+0.52
+  non-Bull era B                     n=0
+  Bull era C                         n=3   sumR  -0.70 meanR -0.23 medR -0.95 wins 1/3 day0 1/3 hold med 2d max 10d | peakR mean +1.34 max +3.50 >=2R 1 >=4R 0 | peakADR med 0.33 >=1.5ADR 1
+                                     eras {'C': 3}  AMLX+1.26 MRVL-0.95 SOLS-1.00
+  non-Bull era C                     n=1   sumR  +0.40 meanR +0.40 medR +0.40 wins 1/1 day0 0/1 hold med 2d max 2d | peakR mean +1.31 max +1.31 >=2R 0 >=4R 0 | peakADR med 1.70 >=1.5ADR 1
+                                     eras {'C': 1}  CRWD+0.40
+  -- era-A non-bull excl PLTR (the 08-06 baseline) --
+  non-Bull era A excl PLTR           n=14  sumR -13.15 meanR -0.94 medR -1.01 wins 0/14 day0 10/14 hold med 1d max 4d | peakR mean +1.61 max +7.92 >=2R 4 >=4R 1 | peakADR med 0.52 >=1.5ADR 2
+                                     eras {'A': 14}  WULF-1.00 CRCL-1.01 WDFC-1.04 TSEM-1.00 MANE-0.23 HUT-1.07 SMCI-0.70 NVCR-1.00 THC-1.01 WKC-1.03 QBTS-1.00 FTNT-1.03 BLZE-1.02 BTDR-1.03
+  -- sensitivity: DATE-JOIN basis --
+  Bull (date-join)                   n=14  sumR  -0.17 meanR -0.01 medR -0.97 wins 5/14 day0 10/14 hold med 1d max 12d | peakR mean +1.87 max +5.70 >=2R 5 >=4R 2 | peakADR med 0.81 >=1.5ADR 4
+                                     eras {'A': 4, 'B': 7, 'C': 3}  WULF-1.00 BLZE-1.02 BTDR-1.03 PLTR+3.42 FIGS-0.37 NET-1.00 TEAM-1.02 ABCL+2.68 BW-1.09 FRMI-0.98 ETON+0.52 AMLX+1.26 MRVL-0.95 CRWD+0.40
+  non-Bull (date-join)               n=12  sumR -11.10 meanR -0.93 medR -1.01 wins 0/12 day0 7/12 hold med 1d max 4d | peakR mean +1.71 max +7.92 >=2R 4 >=4R 1 | peakADR med 0.52 >=1.5ADR 2
+                                     eras {'A': 11, 'C': 1}  CRCL-1.01 WDFC-1.04 TSEM-1.00 MANE-0.23 HUT-1.07 SMCI-0.70 NVCR-1.00 THC-1.01 WKC-1.03 QBTS-1.00 FTNT-1.03 SOLS-1.00
+
+=== 4. THE PARTIAL, PRICED ON REAL FILLS (b) — every trade whose partial fired live ===
+  tkr  stamp      era   peakR actualR holdAllR partial_effect  legs
+  PLTR Choppy     A      5.39    3.42     3.69          -0.27  partial_profit@165.6895x2; stop_hit@170.3875x4
+  FIGS Bull       B      2.90   -0.37    -1.10          +0.73  partial_profit@15.8401x20; stop_hit@15.16x41
+  ABCL Bull       B      5.70    2.68     3.02          -0.34  partial_profit@10.08x28; stop_hit@10.6514x57
+  ETON Bull       B      2.09    0.52    -0.07          +0.59  stop_hit@55.05x17; partial_profit@59.58x5
+  AMLX Bull       C      3.50    1.26     1.36          -0.10  partial_profit@33.47x5; stop_hit@34.45x11
+  CRWD Choppy     C      1.31    0.40    -0.00          +0.40  partial_profit@227.72x1; stop_hit@213.3x2
+  holdAllR = every share exits at the SAME terminal leg price (the trailed stop / the stop) — the partial's exact cost or benefit, no sim.
+  ETON: terminal for hold-all = the 55.05 stop_hit leg; its 59.58 'partial' was the #566 defect fill six hours after the position was flat.
+
+=== 5. RUNNERS (peak >= +2R) by cell — what each stack kept ===
+  MANE  Choppy      era A peak +7.92R (1.21 ADR) kept -0.23R capture -3%  src=bars
+  ABCL  Bull        era B peak +5.70R (4.75 ADR) kept +2.68R capture +47%  src=daily_mid
+  PLTR  Choppy      era A peak +5.39R (4.62 ADR) kept +3.42R capture +64%  src=daily_mid
+  QBTS  Correcting  era A peak +3.74R (1.30 ADR) kept -1.00R capture -27%  src=bars
+  AMLX  Bull        era C peak +3.50R (5.52 ADR) kept +1.26R capture +36%  src=daily_mid
+  SMCI  Correcting  era A peak +3.21R (1.77 ADR) kept -0.70R capture -22%  src=daily_mid
+  FIGS  Bull        era B peak +2.90R (1.18 ADR) kept -0.37R capture -13%  src=bars
+  ETON  Bull        era B peak +2.09R (1.38 ADR) kept +0.52R capture +25%  src=bars
+  NVCR  Correcting  era A peak +2.00R (2.37 ADR) kept -1.00R capture -50%  src=bars
+
+=== 6. HOLDING PERIOD (d) ===
+  Bull      1d×7 2d×1 10d×1 11d×1   day0 exits 7/10   <10min 2/10
+  non-Bull  1d×10 2d×4 4d×1 12d×1   day0 exits 10/16   <10min 4/16
+
+=== 7. CHARACTER (c) — ADR20 tiers, Bull vs non-Bull ===
+  slow <3.5% Bull                    n=1   sumR  -1.00 meanR -1.00 medR -1.00 wins 0/1 day0 0/1 hold med 2d max 2d | peakR mean +0.18 max +0.18 >=2R 0 >=4R 0 | peakADR med 0.33 >=1.5ADR 0
+                                     eras {'C': 1}  SOLS-1.00
+  slow <3.5% non-Bull                n=2   sumR  -2.06 meanR -1.03 medR -1.03 wins 0/2 day0 2/2 hold med 1d max 1d | peakR mean +0.57 max +0.90 >=2R 0 >=4R 0 | peakADR med 0.63 >=1.5ADR 0
+                                     eras {'A': 2}  WDFC-1.04 WKC-1.03
+  mid 3.5-6.5% Bull                  n=4   sumR  -1.87 meanR -0.47 medR -0.68 wins 1/4 day0 4/4 hold med 1d max 1d | peakR mean +1.94 max +2.90 >=2R 2 >=4R 0 | peakADR med 0.85 >=1.5ADR 0
+                                     eras {'B': 4}  FIGS-0.37 NET-1.00 TEAM-1.02 ETON+0.52
+  mid 3.5-6.5% non-Bull              n=6   sumR  +0.09 meanR +0.02 medR -0.85 wins 2/6 day0 2/6 hold med 2d max 12d | peakR mean +2.10 max +5.39 >=2R 3 >=4R 1 | peakADR med 1.73 >=1.5ADR 4
+                                     eras {'A': 5, 'C': 1}  SMCI-0.70 NVCR-1.00 THC-1.01 FTNT-1.03 PLTR+3.42 CRWD+0.40
+  fast >6.5% Bull                    n=5   sumR  +0.92 meanR +0.18 medR -0.95 wins 2/5 day0 3/5 hold med 1d max 11d | peakR mean +1.91 max +5.70 >=2R 2 >=4R 1 | peakADR med 0.25 >=1.5ADR 2
+                                     eras {'B': 3, 'C': 2}  ABCL+2.68 BW-1.09 FRMI-0.98 AMLX+1.26 MRVL-0.95
+  fast >6.5% non-Bull                n=8   sumR  -7.35 meanR -0.92 medR -1.00 wins 0/8 day0 6/8 hold med 1d max 2d | peakR mean +1.93 max +7.92 >=2R 2 >=4R 1 | peakADR med 0.34 >=1.5ADR 0
+                                     eras {'A': 8}  WULF-1.00 CRCL-1.01 TSEM-1.00 MANE-0.23 HUT-1.07 QBTS-1.00 BLZE-1.02 BTDR-1.03
+
+=== 8. STOP GEOMETRY (e) — width vs ADR20; floored-stop DAY-0 survival on the Bull ORB-low trades ===
+  Bull ORB-low (era B)       n=7 stop/ADR min 0.31 med 0.42 max 0.83  <1.0: 7/7
+  non-Bull ORB-low (era A)   n=15 stop/ADR min 0.15 med 0.55 max 1.19  <1.0: 12/15
+  Bull 2R-stop (era C)       n=3 stop/ADR min 0.70 med 1.58 max 1.85  <1.0: 1/3
+  non-Bull 2R-stop (era C)   n=1 stop/ADR min 1.29 med 1.29 max 1.29  <1.0: 0/1
+  floored stop = min(hard_stop, entry*(1-k*ADR20/100)) — may only WIDEN. Day 0 on minute bars (fill bar needs a CLOSE below); forward = first session whose daily low <= stop (floor alone, partial off), else session-10 close.
+  FIGS  entry 15.50 ORB-low stop 15.19 (0.41 ADR) actual -0.37R | k0.5: d0 stop 10:02 k0.75: d0 stop 10:11 k1.0: d0 stop 11:04
+  NET   entry 316.13 ORB-low stop 311.00 (0.31 ADR) actual -1.00R | k0.5: d0 stop 10:39 k0.75: d0 stop 10:49 k1.0: d0 stop 14:18
+  TEAM  entry 147.13 ORB-low stop 143.21 (0.42 ADR) actual -1.02R | k0.5: d0 stop 09:55 k0.75: survives d0, s10 close +3.54R(k-unit) k1.0: survives d0, s10 close +2.66R(k-unit)
+  ABCL  entry 8.96 ORB-low stop 8.40 (0.83 ADR) actual +2.68R | k0.5: survives d0, s10 close +2.95R(k-unit) k0.75: survives d0, s10 close +2.95R(k-unit) k1.0: survives d0, s10 close +2.46R(k-unit)
+  BW    entry 12.07 ORB-low stop 11.50 (0.58 ADR) actual -1.09R | k0.5: d0 stop 09:31 k0.75: d0 stop 09:32 k1.0: d0 stop 09:32
+  FRMI  entry 7.29 ORB-low stop 7.05 (0.36 ADR) actual -0.98R | k0.5: d0 stop 09:37 k0.75: d0 stop 09:44 k1.0: survives d0, stopped s2
+  ETON  entry 55.20 ORB-low stop 53.01 (0.66 ADR) actual +0.52R | k0.5: survives d0, s10 close +2.09R(k-unit) k0.75: survives d0, s10 close +1.84R(k-unit) k1.0: survives d0, s10 close +1.38R(k-unit)
+  -- Bull ORB-low era B n=7: floor ALONE (partial off), R in the WIDENED unit; exit = stop or session-10 close --
+    k=0.0  sumR  +0.04  wins 2/7  day0-stops 5  later-stops 0   FIGS-1.00(d0) NET-1.00(d0) TEAM-1.00(d0) ABCL+2.95(s10) BW-1.00(d0) FRMI-1.00(d0) ETON+2.09(s10)
+    k=0.5  sumR  +0.04  wins 2/7  day0-stops 5  later-stops 0   FIGS-1.00(d0) NET-1.00(d0) TEAM-1.00(d0) ABCL+2.95(s10) BW-1.00(d0) FRMI-1.00(d0) ETON+2.09(s10)
+    k=0.75 sumR  +4.33  wins 3/7  day0-stops 4  later-stops 0   FIGS-1.00(d0) NET-1.00(d0) TEAM+3.54(s10) ABCL+2.95(s10) BW-1.00(d0) FRMI-1.00(d0) ETON+1.84(s10)
+    k=1.0  sumR  +2.49  wins 3/7  day0-stops 3  later-stops 1   FIGS-1.00(d0) NET-1.00(d0) TEAM+2.66(s10) ABCL+2.46(s10) BW-1.00(d0) FRMI-1.00(s2) ETON+1.38(s10)
+  -- non-Bull ORB-low era A excl PLTR (08-06 calibration set) n=14: floor ALONE (partial off), R in the WIDENED unit; exit = stop or session-10 close --
+    k=0.0  sumR -14.00  wins 0/14  day0-stops 10  later-stops 4   WULF-1.00(d0) CRCL-1.00(d0) WDFC-1.00(d0) TSEM-1.00(d0) MANE-1.00(s1) HUT-1.00(d0) SMCI-1.00(s3) NVCR-1.00(s1) THC-1.00(d0) WKC-1.00(d0) QBTS-1.00(s1) FTNT-1.00(d0) BLZE-1.00(d0) BTDR-1.00(d0)
+    k=0.5  sumR -14.00  wins 0/14  day0-stops 9  later-stops 5   WULF-1.00(d0) CRCL-1.00(d0) WDFC-1.00(d0) TSEM-1.00(d0) MANE-1.00(s1) HUT-1.00(s6) SMCI-1.00(s3) NVCR-1.00(s1) THC-1.00(d0) WKC-1.00(d0) QBTS-1.00(s1) FTNT-1.00(d0) BLZE-1.00(d0) BTDR-1.00(d0)
+    k=0.75 sumR -14.00  wins 0/14  day0-stops 9  later-stops 5   WULF-1.00(d0) CRCL-1.00(d0) WDFC-1.00(d0) TSEM-1.00(d0) MANE-1.00(s1) HUT-1.00(s6) SMCI-1.00(s4) NVCR-1.00(s1) THC-1.00(d0) WKC-1.00(d0) QBTS-1.00(s1) FTNT-1.00(d0) BLZE-1.00(d0) BTDR-1.00(d0)
+    k=1.0  sumR -14.00  wins 0/14  day0-stops 9  later-stops 5   WULF-1.00(d0) CRCL-1.00(d0) WDFC-1.00(d0) TSEM-1.00(d0) MANE-1.00(s1) HUT-1.00(s6) SMCI-1.00(s4) NVCR-1.00(s1) THC-1.00(d0) WKC-1.00(d0) QBTS-1.00(s2) FTNT-1.00(d0) BLZE-1.00(d0) BTDR-1.00(d0)
+  daily closes, sanity: TEAM 08-07:149.07 08-10:151.87 08-11:154.08 08-12:155.24 08-13:165.98 08-14:162.22 08-17:158.34 08-18:163.00 08-19:174.23 08-20:174.91 08-21:171.81 08-24:171.33 | ABCL 08-07:6.93 08-10:9.34 08-11:9.76 08-12:10.36 08-13:10.97 08-14:11.38 08-17:11.20 08-18:11.12 08-19:12.01 08-20:11.57 08-21:11.32 08-24:10.61 | ETON 08-07:44.60 08-10:43.67 08-11:42.05 08-12:41.58 08-13:40.80 08-14:58.86 08-17:61.73 08-18:63.43 08-19:61.48 08-20:59.91 08-21:63.47 08-24:64.43
+
+=== 9. THE ERA-C MATCHED CELL (the only era-clean contrast) ===
+  AMLX  stamp Bull       join Bull       R +1.26 peak +3.50R (5.52 ADR) hold 10d stop/ADR 1.58 exit stop_hit
+  MRVL  stamp Bull       join Bull       R -0.95 peak +0.35R (0.25 ADR) hold 1d stop/ADR 0.70 exit stop_hit
+  CRWD  stamp Choppy     join Bull       R +0.40 peak +1.31R (1.70 ADR) hold 2d stop/ADR 1.29 exit stop_hit
+  SOLS  stamp Bull       join Choppy     R -1.00 peak +0.18R (0.33 ADR) hold 2d stop/ADR 1.85 exit stop_hit

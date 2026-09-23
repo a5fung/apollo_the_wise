@@ -1,0 +1,1299 @@
+"""
+Thin async wrapper around alpaca-py SDK for live EP trading.
+
+Dual-account architecture (#66, 2026-05-10): per-mode TradingClient
+singletons keyed by account_mode ∈ {'paper','live'}. Credentials resolved
+from ALPACA_{PAPER,LIVE}_API_KEY / _SECRET_KEY env vars (legacy
+ALPACA_API_KEY/SECRET_KEY remapped to paper at boot — see agent.py
+_bootstrap_alpaca_credentials).
+
+Wrapper functions accept an optional `account_mode` param. When None,
+falls back to constants.current_account_mode() for backward compat
+during the migration window (Step 3 → Step 6 of plan). After all callers
+are migrated to pass explicit mode, the None default will be removed.
+
+Market data client (`_data_client`) stays singleton — market data is
+account-agnostic. Authenticates with paper credentials (cheaper +
+always present per boot bootstrap).
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
+import time
+from datetime import date, datetime, timedelta
+from decimal import Decimal, ROUND_DOWN
+
+from alpaca.trading.client import TradingClient
+from alpaca.trading.requests import (
+    GetOrdersRequest,
+    LimitOrderRequest,
+    MarketOrderRequest,
+    ReplaceOrderRequest,
+    StopLimitOrderRequest,
+    StopLossRequest,
+    StopOrderRequest,
+    TakeProfitRequest,
+)
+from alpaca.trading.enums import OrderClass, OrderSide, OrderType, TimeInForce, QueryOrderStatus
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.requests import StockBarsRequest
+from alpaca.data.timeframe import TimeFrame
+from alpaca.data.enums import DataFeed
+
+logger = logging.getLogger(__name__)
+
+# ── Data feed selection ──────────────────────────────────────────────────────
+# Gated on ALPACA_DATA_FEED env var so the SIP cutover is a single env flip
+# (plus Alpaca dashboard subscription), not a code deploy. See
+# `Changes Made 2026-04-23` in CLAUDE.md for the full rollout rationale.
+#
+#   unset / "iex"  → DataFeed.IEX  (default; free; single exchange, ~2-3% volume)
+#   "sip"          → DataFeed.SIP  (requires Algo Trader Plus $99/mo subscription)
+
+
+def get_data_feed() -> DataFeed:
+    """DataFeed enum for the active feed. The env resolution is single-sourced
+    in execution_client.get_data_feed_name() (#279 — dedup; it lives there, not
+    here, so the intelligence service can resolve the feed name without a broker
+    import); this only maps the resolved string onto the alpaca-py enum."""
+    # Function-local import: execution_client is broker-import-free at module
+    # level, so this can never cycle — kept lazy to match the seam's style.
+    from agents.market_intelligence.execution_client import get_data_feed_name
+    return DataFeed.SIP if get_data_feed_name() == "sip" else DataFeed.IEX
+
+
+def extract_stop_leg_id(order) -> str | None:
+    """Return the stop-loss leg's order ID from a bracket/OTO parent order.
+
+    Works with alpaca-py Order objects (WS events, live API returns) and
+    dicts produced by _order_to_dict. Uses `stop_price` as primary signal
+    and falls back to case-insensitive type substring — Python 3.11+
+    changed `str(Enum)` to "ClassName.MEMBER", which broke the older
+    `== "stop"` equality check and left submit-time IDs uncaptured.
+    """
+    if order is None:
+        return None
+
+    def _get(obj, key, default=None):
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
+
+    for leg in (_get(order, "legs") or []):
+        has_stop_price = bool(_get(leg, "stop_price"))
+        type_str = str(_get(leg, "type", "") or "").lower()
+        if has_stop_price or "stop" in type_str:
+            lid = _get(leg, "id")
+            if lid:
+                return str(lid)
+    return None
+
+
+# ── Per-mode singleton clients (#66 dual-account) ────────────────────────────
+
+_TRADING_CLIENTS: dict[str, TradingClient] = {}
+_data_client: StockHistoricalDataClient | None = None
+
+
+def _resolve_account_mode(account_mode: str | None) -> str:
+    """Resolve account_mode argument; fall back to legacy global env var.
+
+    During the Step 3 → Step 6 migration window, callers may pass None and
+    rely on the legacy current_account_mode() resolver. After all ~25 call
+    sites are updated to pass explicit mode (Step 6), the None branch will
+    be removed and this helper deleted.
+    """
+    if account_mode is not None:
+        return account_mode
+    from agents.market_intelligence.constants import current_account_mode
+    return current_account_mode()
+
+
+def _require_alpaca_env(name: str, account_mode: str) -> str:
+    """Boot-guard for Alpaca env vars (#139, 2026-05-28).
+
+    Returns os.environ[name] with a diagnostic-rich RuntimeError when
+    missing. The 2026-05-13 outage was caused by bare `os.environ[K]`
+    raising KeyError with no context — operator couldn't tell whether
+    boot bootstrap failed, env var was misspelled, or
+    ENABLE_LIVE_MODE was off. This helper makes the cause explicit.
+    """
+    val = os.environ.get(name)
+    if val:
+        return val
+    raise RuntimeError(
+        f"Required Alpaca credential env var {name!r} is not set "
+        f"(needed for account_mode={account_mode!r}). The boot bootstrap "
+        f"(agent._bootstrap_alpaca_credentials) should have set this. "
+        f"If you bypassed the boot path (e.g. docker exec python -c), "
+        f"run via the agent process instead. If ENABLE_LIVE_MODE=false, "
+        f"only ALPACA_PAPER_* vars are required — verify the strategy's "
+        f"phase resolves to 'paper'. See CLAUDE.md 'Required Env Vars'."
+    )
+
+
+def get_trading_client(account_mode: str | None = None) -> TradingClient:
+    """Return the per-mode TradingClient singleton.
+
+    Each (paper, live) mode gets its own TradingClient instance with its
+    own underlying HTTP session — alpaca-py's default behavior, no shared
+    pool. This isolates concurrent submissions: 5 paper + 2 live orders at
+    9:31 ET don't contend on a single connection pool.
+
+    Credentials sourced from ALPACA_{PAPER,LIVE}_API_KEY / _SECRET_KEY.
+    The boot bootstrap (agent._bootstrap_alpaca_credentials) guarantees
+    these are set OR remaps legacy ALPACA_API_KEY → ALPACA_PAPER_*.
+    Bare os.environ[K] would raise KeyError with no context if bootstrap
+    is bypassed — `_require_alpaca_env` raises with diagnostic detail.
+    """
+    mode = _resolve_account_mode(account_mode)
+    if mode not in _TRADING_CLIENTS:
+        env_prefix = f"ALPACA_{mode.upper()}_"
+        api_key = _require_alpaca_env(f"{env_prefix}API_KEY", mode)
+        secret_key = _require_alpaca_env(f"{env_prefix}SECRET_KEY", mode)
+        # paper= flag tells alpaca-py which API URL family to use:
+        #   True  → paper-api.alpaca.markets
+        #   False → api.alpaca.markets
+        _TRADING_CLIENTS[mode] = TradingClient(
+            api_key, secret_key, paper=(mode == "paper")
+        )
+        logger.info(f"Alpaca TradingClient initialized for mode={mode}")
+    return _TRADING_CLIENTS[mode]
+
+
+# Legacy alias — preserved so any in-flight code still works during migration.
+# All wrappers below have been updated to accept account_mode explicitly,
+# but a few external callers may still import _get_trading_client directly.
+def _get_trading_client(account_mode: str | None = None) -> TradingClient:
+    """LEGACY alias for get_trading_client. Prefer the public name."""
+    return get_trading_client(account_mode)
+
+
+def _get_data_client() -> StockHistoricalDataClient:
+    """Market data client — account-agnostic singleton.
+
+    Authenticates with paper credentials (always present per boot
+    bootstrap, no live-account billing implication for market data).
+    """
+    global _data_client
+    if _data_client is None:
+        api_key = _require_alpaca_env("ALPACA_PAPER_API_KEY", "paper")
+        secret_key = _require_alpaca_env("ALPACA_PAPER_SECRET_KEY", "paper")
+        _data_client = StockHistoricalDataClient(api_key, secret_key)
+        logger.info("Alpaca StockHistoricalDataClient initialized")
+    return _data_client
+
+
+# ── Mode-bound client_order_id (collision prevention) ────────────────────────
+
+
+def make_client_order_id(account_mode: str, strategy_id: str, ticker: str) -> str:
+    """Generate a strict mode-bound client_order_id.
+
+    Format: ``apollo_{mode}_{strategy}_{ticker}_{ms_epoch}``
+
+    Example: ``apollo_live_magna53_AAPL_1715450123456``
+
+    Critical correctness invariant (reviewer 2026-05-10): if two strategies
+    (one paper, one live) submit the same setup concurrently and
+    `client_order_id` is generated deterministically from strategy data alone,
+    the same string lands in BOTH Alpaca accounts. Subsequent WebSocket
+    execution-report lookups by `order_id` could return the wrong row or
+    raise `MultipleResultsFound`, dropping a real fill.
+
+    Mode prefix is non-optional. Use this helper at every order submission
+    site to prevent ad-hoc generation drift.
+    """
+    return f"apollo_{account_mode}_{strategy_id}_{ticker}_{int(time.time() * 1000)}"
+
+
+async def verify_dual_account_clients() -> dict:
+    """Boot-time smoke test: instantiate both clients, verify get_account works.
+
+    Returns ``{'paper': {'equity': ..., 'ok': True}, 'live': {...}}``. Caller
+    (agent.py startup) audits the result and emits dual_account_boot_verified
+    on success or dual_account_boot_failed with details on partial/failed init.
+    Idempotent; safe to call repeatedly.
+    """
+    from agents.market_intelligence.constants import active_account_modes
+    result: dict = {}
+    modes = active_account_modes()
+    for mode in modes:
+        try:
+            client = get_trading_client(mode)
+            account = await _sdk(client.get_account)
+            result[mode] = {
+                "ok": True,
+                "equity": float(account.equity),
+                "trading_blocked": account.trading_blocked,
+            }
+        except Exception as e:
+            result[mode] = {"ok": False, "error": str(e)}
+            logger.error(f"Dual-account boot verify FAILED for mode={mode}: {e}")
+    return result
+
+
+# ── Blocking-SDK offload (#464, money-path audit R3) ─────────────────────────
+# alpaca-py's TradingClient is SYNCHRONOUS network I/O. Called bare inside `async
+# def`, a hung Alpaca endpoint freezes the ENTIRE event loop — WebSocket fill
+# handling, every scheduled job, and the order-status reconcile that is supposed to
+# be the safety net for exactly that failure. Latent since day one.
+#
+# `_sdk()` offloads the call to a worker thread and bounds it. Two properties worth
+# stating because they are the whole safety case:
+#   * to_thread does NOT reorder awaits WITHIN a coroutine — `await _sdk(f)` still
+#     completes before the next line, so read-modify-write sequences keep their
+#     order. What changes is that OTHER tasks may now interleave, which is the
+#     point; the per-trade advisory locks (#151) already guard the DB side.
+#   * A timeout raises TimeoutError to the CALLER rather than hanging. Every call
+#     site here is already inside try/except and returns a failure sentinel, so a
+#     timeout degrades to the same path as any other API error.
+# Budgets are generous — this is a hang breaker, not a latency SLO.
+_SDK_TIMEOUT_DEFAULT = 30.0     # reads: account, orders, positions
+_SDK_TIMEOUT_WRITE = 45.0       # writes: submit / replace / cancel / close
+
+
+# #664 (2026-09-18) — the pool `_sdk` borrows from is min(32, cpus+4) = SEVEN threads
+# on apollo-execution, shared with every other `to_thread` caller in the process,
+# and nothing measured its depth. `_pool_telemetry` records, in memory and per
+# call, the real slot wait (measured on the worker thread), the depth at start,
+# and — for a caller that timed out — how long the thread kept its slot past the
+# budget. INSTRUMENTATION ONLY: the timeout, the executor and the call path are
+# unchanged; the recorder is the `fn` argument to `to_thread` and is guarded so
+# it cannot throw into the broker call (see sdk_pool_telemetry.py). Flushed to
+# `mi_audit_log` by the `sdk_pool_rollup` job every 5 minutes.
+from agents.market_intelligence.broker.sdk_pool_telemetry import TELEMETRY as _pool_telemetry
+
+
+async def _sdk(fn, *args, timeout: float = _SDK_TIMEOUT_DEFAULT, **kwargs):
+    """Run a blocking alpaca-py call off the event loop, bounded."""
+    call = _pool_telemetry.submit(fn, timeout)
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_pool_telemetry.run, call, fn, *args, **kwargs), timeout)
+    except (asyncio.TimeoutError, TimeoutError):
+        _pool_telemetry.mark_timeout(call)   # the thread keeps its slot; recorded as an overrun
+        raise
+
+
+# ── Account ──────────────────────────────────────────────────────────────────
+
+
+async def get_account(account_mode: str | None = None) -> dict:
+    """Get account info (equity, buying power, etc.).
+
+    account_mode: 'paper' | 'live'. None falls back to current_account_mode()
+    for legacy callers (Step 6 of #66 plan migrates them to explicit).
+    """
+    try:
+        client = get_trading_client(account_mode)
+        account = await _sdk(client.get_account)
+        return {
+            "equity": float(account.equity),
+            "buying_power": float(account.buying_power),
+            "cash": float(account.cash),
+            "portfolio_value": float(account.portfolio_value),
+            "trading_blocked": account.trading_blocked,
+            "account_blocked": account.account_blocked,
+            # PDT fields (pattern_day_trader / daytrade_count) dropped 2026-06-04
+            # (#181): FINRA Rule 4210 retired the PDT designation; Alpaca removes
+            # these fields by 2026-07-06. The prior direct `account.pattern_day_trader`
+            # access would have raised AttributeError post-removal.
+        }
+    except Exception as e:
+        logger.error(f"Failed to get account: {e}")
+        # #370 input-side: a broker READ failing = a genuine alpaca API outage (not a per-call data
+        # condition). Fire the deduped provider alert (per error-class / ~6h), THEN re-raise — the
+        # caller's behavior is unchanged. The alert is alert-only + swallow-safe (never masks the raise).
+        #
+        # ⚠ #407 reviewed extracting these three call sites into a shared helper and RULED KEEP
+        # INLINE. The reason recorded then — a "raise-vs-[] asymmetry" between the sites — was the
+        # wrong reason; that asymmetry is surmountable and would not have blocked a helper. The
+        # REAL reason is that this is a MONEY PATH: three visible lines at each broker read say
+        # plainly what happens when the broker is down, and a helper would move that behaviour one
+        # indirection away from the code that depends on it. Two lines of duplication buys explicit
+        # money-path clarity. Do not "simplify" it without re-reading this.
+        from agents.market_intelligence.llm_health import maybe_alert_api_failure
+        await maybe_alert_api_failure("alpaca", e, context="get_account")
+        raise
+
+
+# ── Orders ───────────────────────────────────────────────────────────────────
+
+
+async def place_bracket_order(
+    ticker: str,
+    qty: float,
+    stop_price: float,
+    limit_price: float,
+    stop_loss_price: float,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """
+    Place a bracket order: stop-limit buy entry with attached stop-loss.
+    - Entry: stop-limit buy triggers at stop_price, fills up to limit_price
+    - Stop-loss: hard stop at stop_loss_price
+
+    account_mode: 'paper' | 'live'. Routes to the per-mode TradingClient
+    singleton. None falls back to current_account_mode() (legacy).
+
+    client_order_id: pre-generated mode-bound ID via make_client_order_id.
+    Highly recommended in dual-mode to prevent cross-account collisions.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.BUY,
+            type=OrderType.STOP_LIMIT,
+            time_in_force=TimeInForce.DAY,
+            stop_price=round(stop_price, 2),
+            limit_price=round(limit_price, 2),
+            order_class=OrderClass.OTO,
+            stop_loss=StopLossRequest(stop_price=round(stop_loss_price, 2)),
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = await _sdk(client.submit_order, StopLimitOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
+        # Safety: Alpaca must accept the stop_loss leg, otherwise the position is
+        # unprotected on fill. alpaca-py silently drops invalid fields; verify legs
+        # came back before we trust this order.
+        legs = getattr(order, "legs", None) or []
+        if not extract_stop_leg_id(order):
+            # Abort: cancel the entry order so we don't fill naked, then raise so
+            # the caller's retry fires (or the trade fails cleanly).
+            try:
+                await _sdk(client.cancel_order_by_id, order.id, timeout=_SDK_TIMEOUT_WRITE)
+            except Exception as cancel_err:
+                logger.error(f"Failed to cancel naked bracket {ticker} {order.id}: {cancel_err}")
+            raise RuntimeError(
+                f"Bracket order {order.id} for {ticker} returned no stop_loss leg — "
+                f"Alpaca rejected the stop. Entry cancelled."
+            )
+        logger.info(
+            f"Bracket order placed: {ticker} qty={qty} "
+            f"stop={stop_price:.2f} limit={limit_price:.2f} SL={stop_loss_price:.2f} "
+            f"order_id={order.id} legs={len(legs)}"
+        )
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to place bracket order for {ticker}: {e}")
+        raise
+
+
+async def place_stop_order(
+    ticker: str,
+    qty: float,
+    stop_price: float,
+    side: str = "sell",
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Place a stop order (for Day 2+ stop updates)."""
+    try:
+        client = get_trading_client(account_mode)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.SELL if side == "sell" else OrderSide.BUY,
+            type=OrderType.STOP,
+            time_in_force=TimeInForce.GTC,
+            stop_price=round(stop_price, 2),
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = await _sdk(client.submit_order, StopOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
+        logger.info(f"Stop order placed: {ticker} qty={qty} stop={stop_price:.2f} id={order.id}")
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to place stop order for {ticker}: {e}")
+        raise
+
+
+async def place_market_on_open_sell(
+    ticker: str,
+    qty: float,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Place a market-on-open sell (TimeInForce.OPG) — fills at the NEXT
+    opening auction. Used by the time-stop path (#91, 2026-05-23): an
+    EOD-flagged 9M Day 2 meanderer is exited at the next regular-session
+    open, freeing the slot for fresh entries.
+
+    Submission window per Alpaca: OPG orders must be submitted between
+    7:00 PM ET prior day and 9:25 AM ET next day. Intraday submissions
+    are rejected. Caller must surface that error to the operator.
+
+    Across long weekends / holidays, OPG queues for the next ACTUAL
+    trading session — so Friday-evening submit on a 3-day weekend (e.g.
+    Memorial Day Monday closed) correctly fills at Tuesday's open.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.SELL,
+            type=OrderType.MARKET,
+            time_in_force=TimeInForce.OPG,
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = await _sdk(client.submit_order, MarketOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
+        logger.info(f"Market-on-open sell placed: {ticker} qty={qty} id={order.id}")
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to place market-on-open sell for {ticker}: {e}")
+        raise
+
+
+async def place_market_sell(
+    ticker: str,
+    qty: float,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Place a market sell order (for partials or full exits)."""
+    try:
+        client = get_trading_client(account_mode)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.SELL,
+            type=OrderType.MARKET,
+            time_in_force=TimeInForce.DAY,
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = await _sdk(client.submit_order, MarketOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
+        logger.info(f"Market sell placed: {ticker} qty={qty} id={order.id}")
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to place market sell for {ticker}: {e}")
+        raise
+
+
+async def place_limit_sell(
+    ticker: str,
+    qty: float,
+    limit_price: float,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Place a resting LIMIT sell (#548, the +2R profit-take third).
+
+    A limit fills AT the price or better — the whole point of the resting-limit
+    design. FIGS 2026-08-07: the poll noticed +2R two seconds after the high and
+    sent a MARKET sell that filled +1.13R against a +2R target; a limit resting
+    at the target keeps the arithmetic the operator's rules depend on.
+
+    TIF = GTC, deliberately matching `place_stop_order` (our protective stops
+    are GTC): the resting third and the reduced stop share one lifetime, so
+    there is no 16:00 expiry state where the third sits with NO order at all
+    overnight and the morning has to re-arm through the dedup/adopt paths.
+
+    Price is rounded to Alpaca's tick (whole cents above $1) — the RCAT
+    2026-06-01 sub-penny rejection class applies to limits exactly as to stops.
+
+    Broker-behaviour basis (paper probes, 2026-08-10): a limit sell is REJECTED
+    (40310000 insufficient qty) while a full-size stop holds the shares — same
+    reservation rule as a market sell (T5) — so callers MUST reduce the stop
+    first; after a VERIFIED-CLEAR reduction the freed shares' limit was accepted
+    first try in 12.8ms, and the price-only replace of that reduced stop to
+    breakeven was accepted too — i.e. the ENTIRE shipped sequence is vetted
+    end-to-end against live Alpaca paper, not inferred:
+    `scripts/probes/_548_resting_limit_smoke.py` Phase B, run 2026-08-10 10:10 ET
+    (Q1 reject / Q2 12.8ms accept / Q3 replace accept).
+    """
+    try:
+        client = get_trading_client(account_mode)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.SELL,
+            type=OrderType.LIMIT,
+            time_in_force=TimeInForce.GTC,
+            limit_price=round(limit_price, 2),
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = await _sdk(client.submit_order, LimitOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
+        logger.info(
+            f"Limit sell placed: {ticker} qty={qty} limit={limit_price:.2f} id={order.id}"
+        )
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to place limit sell for {ticker}: {e}")
+        raise
+
+
+async def place_oco_sell(
+    ticker: str,
+    qty: float,
+    limit_price: float,
+    stop_price: float,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Place ONE OCO sell for the +2R carve-out third (#566): a GTC LIMIT at the
+    target with a sibling GTC STOP at breakeven — whichever side fills cancels
+    the other, so the third is NEVER limit-only (the ETON 2026-08-14 hole: a
+    resting limit above the market protects nothing on a decline; 5 shares sat
+    for hours with no stop).
+
+    Broker-behaviour basis (paper probe `scripts/probes/_548_oco_alongside_stop_probe.py`,
+    run 2026-08-14 09:51 ET, full output docs/analysis/548_oco_probe_run_2026-08-14.log):
+    - `order_class=oco` REQUIRES `take_profit.limit_price` — a bare top-level
+      `limit_price` is rejected 40010001. The accepted shape carries BOTH the
+      top-level limit_price and the matching TakeProfitRequest (probe shape B).
+    - The OCO COEXISTS with a separate plain stop on the same position; the
+      probe's extra 1-share sell was rejected 40310000 `available:0` naming both
+      orders — every share reserved, the uncovered-third hole cannot exist.
+    - The sibling stop rides as a HELD leg on the parent; one cancel of the
+      parent kills both legs (the pair unwinds as a unit).
+    - Sequencing (08-10 probe, unchanged): callers must reduce the covering
+      stop FIRST — any sell is rejected 40310000 while a full-size stop holds
+      the shares. execute_partial_exit already does this.
+
+    Both prices tick-rounded (the RCAT 2026-06-01 sub-penny rejection class);
+    the stop floors AWAY from the trigger via _round_stop_to_tick.
+
+    NAKED-THIRD GUARD: if the accepted parent comes back without a stop leg
+    (alpaca-py silently drops invalid fields — the place_bracket_order lesson),
+    the third would rest limit-only, i.e. the exact defect this order exists to
+    close. Cancel the parent and raise so the caller's abort path re-protects.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        lp = round(limit_price, 2)
+        sp = _round_stop_to_tick(stop_price)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.SELL,
+            time_in_force=TimeInForce.GTC,
+            limit_price=lp,
+            order_class=OrderClass.OCO,
+            take_profit=TakeProfitRequest(limit_price=lp),
+            stop_loss=StopLossRequest(stop_price=sp),
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = await _sdk(client.submit_order, LimitOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
+        if not extract_stop_leg_id(order):
+            try:
+                await _sdk(client.cancel_order_by_id, order.id, timeout=_SDK_TIMEOUT_WRITE)
+            except Exception as cancel_err:
+                logger.error(
+                    f"Failed to cancel stop-less OCO {ticker} {order.id}: {cancel_err}"
+                )
+            raise RuntimeError(
+                f"OCO sell {order.id} for {ticker} returned no stop leg — the third "
+                f"would rest limit-only (the ETON hole). Parent cancelled."
+            )
+        logger.info(
+            f"OCO sell placed: {ticker} qty={qty} limit={lp:.2f} stop={sp:.2f} "
+            f"id={order.id}"
+        )
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to place OCO sell for {ticker}: {e}")
+        raise
+
+
+def _round_stop_to_tick(price: float) -> float:
+    """Round a protective sell-stop to Alpaca's minimum tick, flooring AWAY
+    from the trigger so rounding can never nudge a stop toward current price
+    (which could trip it). Alpaca tick rules: prices > $1.00 must be whole
+    cents ($0.01); prices <= $1.00 allow sub-penny ($0.0001).
+
+    RCAT 2026-06-01: a 3-decimal stop (11.955, from the ORB low) was submitted
+    raw to replace_order → Alpaca rejected it (42210000 sub-penny) → the atomic
+    replace failed leaving the OLD stop live, but the abort handler
+    false-flagged the position naked. Rounding at this submission boundary
+    removes the trigger. (place_stop_order / bracket legs already round; this
+    was the lone unrounded boundary.)
+    """
+    d = Decimal(str(price))
+    tick = Decimal("0.01") if d >= Decimal("1") else Decimal("0.0001")
+    return float(d.quantize(tick, rounding=ROUND_DOWN))
+
+
+async def replace_order(
+    order_id: str,
+    *,
+    qty: float | None = None,
+    stop_price: float | None = None,
+    limit_price: float | None = None,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Atomically replace an existing order's qty/stop_price/limit_price.
+
+    Used by partial-exit flow to reduce stop-order qty without the
+    cancel-then-new race that releases-and-re-reserves shares (IBM
+    2026-05-27 false-naked: 43ms between cancel + new submit, Alpaca's
+    share reservation hadn't cleared → "insufficient qty available").
+    Replace is atomic on broker side: no share release window.
+
+    Alpaca issues a new order_id on replace; caller must persist the
+    returned id. The original order is auto-cancelled by Alpaca.
+
+    Raises on broker error (caller handles fallback).
+    """
+    client = get_trading_client(account_mode)
+    kwargs: dict = {}
+    # NOTE: pass numerics as numbers, not str(...). The original #136 ship
+    # wrapped these as `str(qty)` etc., which fires `TypeError: '<=' not
+    # supported between instances of 'str' and 'int'` in alpaca-py's
+    # Pydantic validation. The Pydantic failure happens BEFORE the HTTP
+    # call, so the original order stays alive broker-side; Apollo clears
+    # stop_order_id thinking it's already cancelled → false-naked alert.
+    # IBM 2026-05-28 16:45 fired this path. Fixed 2026-05-28 evening.
+    if qty is not None:
+        kwargs["qty"] = qty
+    if stop_price is not None:
+        # Round to Alpaca's tick before submit. An unrounded 3+ decimal stop
+        # (e.g. ORB-low 11.955) is rejected (42210000 sub-penny); the atomic
+        # replace then fails, leaving the OLD stop live but tripping the abort
+        # handler's false-naked. RCAT 2026-06-01.
+        kwargs["stop_price"] = _round_stop_to_tick(stop_price)
+    if limit_price is not None:
+        kwargs["limit_price"] = limit_price
+    if client_order_id is not None:
+        kwargs["client_order_id"] = client_order_id
+    request = ReplaceOrderRequest(**kwargs)
+    new_order = await _sdk(client.replace_order_by_id, order_id, request, timeout=_SDK_TIMEOUT_WRITE)
+    logger.info(
+        f"Order replaced: {order_id} → {new_order.id} "
+        f"(qty={qty} stop_price={stop_price})"
+    )
+    return _order_to_dict(new_order)
+
+
+async def cancel_order(order_id: str, account_mode: str | None = None) -> bool:
+    """Cancel an order by ID. Returns True if successful."""
+    try:
+        client = get_trading_client(account_mode)
+        await _sdk(client.cancel_order_by_id, order_id, timeout=_SDK_TIMEOUT_WRITE)
+        logger.info(f"Order cancelled: {order_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to cancel order {order_id}: {e}")
+        return False
+
+
+async def get_order(order_id: str, account_mode: str | None = None,
+                    timeout: float | None = None) -> dict | None:
+    """Get order details by ID.
+
+    `timeout` overrides `_SDK_TIMEOUT_DEFAULT` (30s) for THIS call only; None keeps it.
+    Added 2026-09-05 for the #600 re-protect floor, which reads a DEAD stop's price purely
+    to raise a placement it will make anyway: it fails open to the DB price, so waiting the
+    full 30s buys nothing and delays arming a protective stop. Every other caller is
+    unchanged — they read a LIVE order whose answer they actually need.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        order = (await _sdk(client.get_order_by_id, order_id, timeout=timeout)
+                 if timeout is not None else await _sdk(client.get_order_by_id, order_id))
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to get order {order_id}: {e}")
+        return None
+
+
+async def get_open_orders(
+    ticker: str | None = None,
+    account_mode: str | None = None,
+    raise_on_error: bool = False,
+) -> list[dict]:
+    """Get all open orders, optionally filtered by ticker.
+
+    raise_on_error (F16, 2026-07-03): callers whose NEXT ACTION depends on
+    distinguishing "no open orders" from "couldn't read the broker" MUST pass
+    True — with the default [] fallback, a transient API failure is
+    indistinguishable from an empty book, and `_ensure_stop_coverage` would
+    place a stop while the real one may still be live (duplicate-stop /
+    oversell hazard; an accepted duplicate then wedges repair via the
+    >1-stops ambiguous branch). The alert still fires before the re-raise.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        request = GetOrdersRequest(status=QueryOrderStatus.OPEN)
+        if ticker:
+            request.symbols = [ticker]
+        orders = await _sdk(client.get_orders, request)
+        return [_order_to_dict(o) for o in orders]
+    except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then [] or re-raise
+        logger.error(f"Failed to get open orders: {e}")
+        # #370 input-side: an orders-read failure silently returning [] looks like "no open orders" —
+        # the silent-failure class. Fire the deduped alpaca alert, then [] fallback or re-raise (F16).
+        from agents.market_intelligence.llm_health import maybe_alert_api_failure
+        await maybe_alert_api_failure("alpaca", e, context="get_open_orders")
+        if raise_on_error:
+            raise
+        return []
+
+
+# ── Positions ────────────────────────────────────────────────────────────────
+
+
+async def get_position(ticker: str, account_mode: str | None = None) -> dict | None:
+    """Get position for a specific ticker."""
+    try:
+        client = get_trading_client(account_mode)
+        pos = await _sdk(client.get_open_position, ticker)
+        return _position_to_dict(pos)
+    except Exception as e:
+        # 404 = no position, not an error
+        if "404" in str(e) or "position does not exist" in str(e).lower():
+            return None
+        logger.error(f"Failed to get position for {ticker}: {e}")
+        return None
+
+
+async def get_all_positions(
+    account_mode: str | None = None,
+    raise_on_error: bool = False,
+) -> list[dict]:
+    """Get all open positions.
+
+    raise_on_error (#184 increment 2, 2026-07-05): mirrors get_open_orders'
+    F16 pattern — callers whose NEXT ACTION depends on distinguishing "flat"
+    from "couldn't read the broker" MUST pass True. With the default []
+    fallback, a transient API failure is indistinguishable from a genuinely
+    empty book (the #137 mass-close class: an empty/degraded read must never
+    be interpreted as "everything's gone"). The alert still fires before the
+    re-raise.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        positions = await _sdk(client.get_all_positions)
+        return [_position_to_dict(p) for p in positions]
+    except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then [] or re-raise
+        logger.error(f"Failed to get all positions: {e}")
+        # #370 input-side: a positions-read failure that SILENTLY returns [] looks like "no positions"
+        # to sync_positions (the exact silent-failure class — a transient API error → false "gone from
+        # Alpaca"). Fire the deduped alpaca alert, then [] fallback or re-raise (raise_on_error).
+        from agents.market_intelligence.llm_health import maybe_alert_api_failure
+        await maybe_alert_api_failure("alpaca", e, context="get_all_positions")
+        if raise_on_error:
+            raise
+        return []
+
+
+async def close_position(
+    ticker: str,
+    qty: float | None = None,
+    account_mode: str | None = None,
+) -> dict | None:
+    """Close a position (full or partial)."""
+    try:
+        client = get_trading_client(account_mode)
+        if qty:
+            order = await _sdk(client.close_position, ticker, close_options={"qty": str(qty)}, timeout=_SDK_TIMEOUT_WRITE)
+        else:
+            order = await _sdk(client.close_position, ticker, timeout=_SDK_TIMEOUT_WRITE)
+        logger.info(f"Position closed: {ticker} qty={qty or 'all'}")
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to close position for {ticker}: {e}")
+        raise
+
+
+# ── Market Data ──────────────────────────────────────────────────────────────
+
+
+async def _persist_first_bar(
+    ticker: str, bar_time, open_: float, high: float, low: float, close: float,
+    volume: int, vwap: float | None,
+) -> None:
+    """Background fire-and-forget INSERT into mi_intraday_bars for the live
+    ORB cohort (#127). Errors are logged but never raised — this must not
+    affect the entry-decision path."""
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO mi_intraday_bars
+                    (ticker, bar_time, open, high, low, close, volume, vwap)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (ticker, bar_time) DO NOTHING
+                """,
+                ticker, bar_time, open_, high, low, close, volume, vwap,
+            )
+    except Exception as e:
+        logger.warning(
+            f"mi_intraday_bars write-through failed for {ticker} {bar_time}: {e}"
+        )
+
+
+async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
+    """
+    Get the first 1-minute bar for a ticker on a given date.
+    Fetches the 9:30-9:35 window and returns the earliest bar available.
+    Handles delayed opens and bars that aren't finalized at exactly 9:31.
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        client = _get_data_client()
+        et = ZoneInfo("America/New_York")
+        start = datetime.combine(trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=et)
+        end = start + timedelta(minutes=5)
+        request = StockBarsRequest(
+            symbol_or_symbols=ticker,
+            timeframe=TimeFrame.Minute,
+            start=start,
+            end=end,
+            feed=get_data_feed(),
+        )
+        bars = await _sdk(client.get_stock_bars, request)
+        bar_data = bars.data if hasattr(bars, 'data') else bars
+        bar_set = bar_data.get(ticker, [])
+        if not bar_set:
+            logger.warning(f"No bars for {ticker} in 9:30-9:35 window on {trade_date}")
+            return None
+        b = bar_set[0]
+        logger.info(f"ORB bar for {ticker}: {b.timestamp} O={b.open} H={b.high} L={b.low} C={b.close} V={b.volume}")
+        # Write-through to mi_intraday_bars (#127) so future backward-checks
+        # have the live cohort's 9:30 bar. Fired as background task — the
+        # 9:31 ORB entry decision must not wait on DB I/O.
+        if b.timestamp is not None:
+            asyncio.create_task(_persist_first_bar(
+                ticker, b.timestamp,
+                float(b.open), float(b.high), float(b.low), float(b.close),
+                int(b.volume),
+                float(b.vwap) if getattr(b, "vwap", None) is not None else None,
+            ))
+        return {
+            "open": float(b.open),
+            "high": float(b.high),
+            "low": float(b.low),
+            "close": float(b.close),
+            "volume": int(b.volume),
+            "timestamp": b.timestamp.isoformat() if b.timestamp else None,
+        }
+    except Exception as e:
+        logger.error(f"Failed to get first bar for {ticker} on {trade_date}: {e}")
+        return None
+
+
+async def get_minute_bars_window(
+    ticker: str, trade_date: date, start_minute: int, end_minute: int,
+) -> list[dict]:
+    """Fetch 1-minute bars between [start_minute, end_minute) from market open.
+
+    start_minute/end_minute are minutes from 9:30 ET (so 0..30 = 9:30–10:00).
+    Used by shadow_orb_tracker to compute the 5-min ORB and scan for trigger
+    in the 9:35–10:00 window.
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        client = _get_data_client()
+        et = ZoneInfo("America/New_York")
+        open_dt = datetime.combine(
+            trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=et,
+        )
+        start = open_dt + timedelta(minutes=start_minute)
+        end = open_dt + timedelta(minutes=end_minute)
+        request = StockBarsRequest(
+            symbol_or_symbols=ticker,
+            timeframe=TimeFrame.Minute,
+            start=start,
+            end=end,
+            feed=get_data_feed(),
+        )
+        bars = await _sdk(client.get_stock_bars, request)
+        bar_data = bars.data if hasattr(bars, 'data') else bars
+        bar_set = bar_data.get(ticker, []) or []
+        return [
+            {
+                "open": float(b.open),
+                "high": float(b.high),
+                "low": float(b.low),
+                "close": float(b.close),
+                "volume": int(b.volume),
+                "timestamp": b.timestamp.astimezone(et) if b.timestamp else None,
+            }
+            for b in bar_set
+        ]
+    except Exception as e:
+        logger.error(
+            f"Failed to get minute-bar window for {ticker} on {trade_date} "
+            f"[{start_minute}..{end_minute}): {e}"
+        )
+        return []
+
+
+async def get_minute_bars_range(ticker: str, start: datetime, end: datetime) -> list[dict]:
+    """Fetch 1-minute bars for `ticker` over [start, end] (tz-aware ET datetimes).
+
+    Real-time Alpaca counterpart to `collector.get_minute_bars` (Polygon, ~15-17
+    min delayed on our Starter plan) — built for the #306 intraday path recorder
+    (`order_manager.track_open_position_extremes`) so the live book's minute path
+    is captured while a fast trade is still open, not 15+ minutes after it closed.
+    `end` is typically `now_et` for an in-progress day, or a day's 16:00 ET close
+    for the EOD sweep's per-day backfill.
+
+    Returns `[]` on any exception — callers already per-ticker try/except and
+    `continue`, so a failed fetch degrades to "no bars this poll for this
+    ticker," self-healing on the next poll (the fetch window is always the full
+    day-so-far, never incremental, so nothing is permanently lost).
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        client = _get_data_client()
+        et = ZoneInfo("America/New_York")
+        request = StockBarsRequest(
+            symbol_or_symbols=ticker,
+            timeframe=TimeFrame.Minute,
+            start=start,
+            end=end,
+            feed=get_data_feed(),
+        )
+        # The alpaca-py SDK call is SYNCHRONOUS network I/O; the Polygon fetch it
+        # replaces here (collector.get_minute_bars) is async aiohttp. A naive
+        # `client.get_stock_bars(request)` would ADD blocking to the execution
+        # event loop during RTH (incl. the ORB window) — asyncio.to_thread offloads
+        # the call to a worker thread instead (#306 mandate; money-path hygiene,
+        # not style).
+        bars = await asyncio.to_thread(client.get_stock_bars, request)
+        bar_data = bars.data if hasattr(bars, 'data') else bars
+        bar_set = bar_data.get(ticker, []) or []
+        return [
+            {
+                "t_et": b.timestamp.astimezone(et),
+                "open": float(b.open),
+                "high": float(b.high),
+                "low": float(b.low),
+                "close": float(b.close),
+                "volume": int(b.volume),
+                "vwap": float(b.vwap) if getattr(b, "vwap", None) is not None else None,
+            }
+            for b in bar_set
+            if b.timestamp is not None
+        ]
+    except Exception as e:
+        logger.error(f"Failed to get minute-bar range for {ticker} [{start}..{end}]: {e}")
+        return []
+
+
+async def persist_intraday_bars(ticker: str, bars: list[dict]) -> None:
+    """Batch upsert 1-minute bars (from `get_minute_bars_range`) into
+    `mi_intraday_bars` (#306 intraday path recorder).
+
+    Mirrors `_persist_first_bar`'s fire-and-forget contract: errors are logged,
+    never raised — this is a shadow analytics writer and must never affect the
+    caller (`track_open_position_extremes`, which also touches
+    lowest/highest_price_seen in the same job). `ON CONFLICT (ticker, bar_time)
+    DO NOTHING` makes re-polling the same window idempotent by construction —
+    the 5-min poll always refetches the full day-so-far, so a duplicate bar on
+    every call is expected and harmless, not an error case.
+    """
+    if not bars:
+        return
+    try:
+        from agents.market_intelligence.db import get_pool
+        records = [
+            (ticker, b["t_et"], b["open"], b["high"], b["low"], b["close"], b["volume"], b.get("vwap"))
+            for b in bars
+            if b.get("t_et") is not None
+        ]
+        if not records:
+            return
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.executemany(
+                """
+                INSERT INTO mi_intraday_bars
+                    (ticker, bar_time, open, high, low, close, volume, vwap)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (ticker, bar_time) DO NOTHING
+                """,
+                records,
+            )
+    except Exception as e:
+        logger.warning(f"mi_intraday_bars batch write-through failed for {ticker}: {e}")
+
+
+# ── Price Data ──────────────────────────────────────────────────────────────
+
+
+async def fetch_broker_reject_reason(
+    order_id: str, at, account_mode: str | None = None, window_s: int = 4,
+) -> str | None:
+    """Alpaca's OWN words for why it killed an order — the one place they exist.
+
+    ⚠ WHY THIS EXISTS — INSM, 2026-08-06. A live entry was rejected 3.4ms after submit on a
+    stock that then ran +33%. The order object carries NO reason field (confirmed on the REST
+    payload, every key), and `TradeUpdate` — the SDK model our trade stream receives — has no
+    `reason` field either, so with `raw_data=False` the SDK parses the reason away before our
+    handler ever sees it. We had been discarding it on every rejection.
+
+    It IS present, on the `rejected` EVENT (not the order) in the trade-updates history:
+
+        "reason": "[6098] Stop Price Already Triggered/Exceeds $ Threshold"
+
+    That single line identified the cause after hours of inference. Deliberately a targeted
+    lookup rather than flipping the stream to raw_data=True: that flip would rewrite every
+    handler on the fill path — the money path — to work on dicts, to recover a field needed
+    only on a terminal failure.
+
+    Returns None on anything unexpected. NEVER raises: a diagnostic must not be able to break
+    the rejection handling it is diagnosing.
+
+    ⚠ ONE ATTEMPT, ON PURPOSE — this runs INLINE in the trade-stream handler, which is the money
+    path. Do not add sleeps or retries here; use `fetch_broker_reject_reason_later` off the hot
+    path instead (2026-08-07).
+    """
+    import json as _json
+    import urllib.request
+    from datetime import timedelta
+    try:
+        # Reuse the module's own mode resolution + env contract rather than inventing a
+        # second one — a diverging credential path is how a paper key ends up querying live.
+        mode = _resolve_account_mode(account_mode)
+        env_prefix = f"ALPACA_{mode.upper()}_"
+        key = _require_alpaca_env(f"{env_prefix}API_KEY", mode)
+        secret = _require_alpaca_env(f"{env_prefix}SECRET_KEY", mode)
+        base = ("https://paper-api.alpaca.markets" if mode == "paper"
+                else "https://api.alpaca.markets")
+        lo = (at - timedelta(seconds=window_s)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        hi = (at + timedelta(seconds=window_s)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        url = f"{base}/v2/events/trades?since={lo}&until={hi}"
+        req = urllib.request.Request(url, headers={
+            "APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            for raw in r:
+                line = raw.decode(errors="replace").strip()
+                if not line.startswith("data:"):
+                    continue
+                ev = _json.loads(line[5:])
+                if str((ev.get("order") or {}).get("id")) == str(order_id) and ev.get("reason"):
+                    return str(ev["reason"])[:300]
+    except Exception as e:  # loud-ok: logged; a missing diagnosis must never break the handler
+        logger.warning(f"broker reject-reason lookup failed for {order_id}: {e}")
+    return None
+
+
+async def get_latest_trade(ticker: str) -> dict | None:
+    """Fetch the latest trade price for a ticker. Used for price-aware re-entry."""
+    try:
+        from alpaca.data.requests import StockLatestTradeRequest
+        client = _get_data_client()
+        # ⚠ feed= IS REQUIRED (2026-08-06). Without it alpaca-py defaults to IEX — roughly 2-3%
+        # of consolidated volume — while this account pays for SIP. Every other request in this
+        # module passes get_data_feed(); this one did not, so the price-aware entry guard (#500,
+        # order_manager.py:448 — "has price already run past the ORB high?") was deciding off a
+        # partial tape and could read a stale, lower last trade.
+        # Found while investigating the INSM rejection; it did NOT cause that one (the SIP tape
+        # showed the same 128.96 prints) — it is a real defect on its own merits.
+        result = await _sdk(client.get_stock_latest_trade,
+            StockLatestTradeRequest(symbol_or_symbols=ticker, feed=get_data_feed())
+        )
+        t = result.get(ticker)
+        if t:
+            return {"price": float(t.price), "timestamp": t.timestamp.isoformat()}
+        return None
+    except Exception as e:
+        logger.error(f"Failed to get latest trade for {ticker}: {e}")
+        return None
+
+
+async def fetch_broker_reject_reason_later(
+    order_id: str, at, account_mode: str | None = None,
+    delays: tuple[int, ...] = (3, 10, 30),
+) -> str | None:
+    """Re-ask for the broker's reason AFTER a delay. Run this OFF the hot path.
+
+    ⚠ WHY, and it is the whole reason #540's first live firing failed. QNST was cancelled
+    2026-08-07 13:31:10.777 with `"Unsolicited: Bad Stop 19.8"` sitting on the event stream, and
+    the inline lookup 76 MILLISECONDS later returned NULL — while the identical query by hand,
+    minutes afterwards, returned it immediately. The lookup was never wrong; it was too early.
+    Alpaca's trade-events history has not indexed an event that recent.
+
+    Yesterday's INSM test passed only because it read a rejection that was already hours old, so
+    it could not have caught this. That is the trap in verifying a live mechanism against a
+    historical replay.
+
+    Deliberately a SEPARATE function rather than retries inside the inline call: the caller runs
+    in the trade-stream handler, and sleeping there would stall processing of every other order
+    event behind it. The order is already dead — the reason is a post-mortem, so it can arrive
+    late, but it must not arrive at the cost of the money path.
+    """
+    for delay in delays:
+        await asyncio.sleep(delay)
+        found = await fetch_broker_reject_reason(order_id, at, account_mode=account_mode)
+        if found:
+            return found
+    return None
+
+
+async def get_latest_quote(ticker: str) -> dict | None:
+    """Latest NBBO bid/ask. Used by the #500 price-aware entry guard.
+
+    ⚠ WHY THE ASK AND NOT THE LAST TRADE (2026-08-07). #500 asks "has price already
+    run past the ORB high, so a stop-limit trigger would be in-the-money?" — and it
+    answered that with `get_latest_trade`. The VENUE answers it with the OFFER, and
+    on a thin first-minute gapper those diverge badly:
+
+        QNST 08-07  trigger 19.80   last trade 19.50   ASK 19.83  -> cancelled
+        INSM 08-06  trigger 129.41  last trade 128.67  ASK 129.48 -> cancelled
+
+    Both read as "price has not passed the ORB high" on trades and as "already
+    through" on the offer. Alpaca cancelled both in single-digit milliseconds
+    ("Unsolicited: Bad Stop 19.8" / "[6098] Stop Price Already Triggered"), which is
+    exactly the class #500 exists to catch — it simply could not see it.
+
+    Same `feed=get_data_feed()` discipline as get_latest_trade: an IEX-only quote is
+    a partial book and would understate the offer, re-creating the blind spot one
+    level down.
+    """
+    try:
+        from alpaca.data.requests import StockLatestQuoteRequest
+        client = _get_data_client()
+        result = await _sdk(client.get_stock_latest_quote,
+            StockLatestQuoteRequest(symbol_or_symbols=ticker, feed=get_data_feed())
+        )
+        q = result.get(ticker)
+        if not q:
+            return None
+        ask = float(getattr(q, "ask_price", 0) or 0)
+        bid = float(getattr(q, "bid_price", 0) or 0)
+        # A zero/absent ask is no information, not a cheap offer — never let it read
+        # as "the market is below our trigger".
+        if ask <= 0:
+            return None
+        return {"ask": ask, "bid": bid,
+                "timestamp": q.timestamp.isoformat() if getattr(q, "timestamp", None) else None}
+    except Exception as e:
+        logger.error(f"Failed to get latest quote for {ticker}: {e}")
+        return None
+
+
+# ── Limit Buy (for re-entry when price > ORB high) ─────────────────────────
+
+
+async def place_limit_buy_with_stop(
+    ticker: str,
+    qty: float,
+    limit_price: float,
+    stop_loss_price: float,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """
+    Place a limit buy with attached stop-loss.
+    Used for re-entry AND the #500 initial-entry fallback when price has
+    already passed ORB high (a stop-limit's trigger would be in-the-money —
+    Alpaca cancels those instead of filling).
+
+    #500 hardening (2026-07-23): explicit OrderClass.OTO + StopLossRequest —
+    alpaca-py silently drops a bare `stop_loss` kwarg without the order_class
+    (the documented place_bracket_order gotcha; this path previously passed a
+    plain dict and no order_class, risking a NAKED limit buy). Same
+    naked-order guard as place_bracket_order: no stop leg back from Alpaca →
+    cancel the entry and raise so the caller's retry/failure path fires.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.BUY,
+            type=OrderType.LIMIT,
+            time_in_force=TimeInForce.DAY,
+            limit_price=round(limit_price, 2),
+            order_class=OrderClass.OTO,
+            stop_loss=StopLossRequest(stop_price=round(stop_loss_price, 2)),
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = await _sdk(client.submit_order, LimitOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
+        # Safety: Alpaca must accept the stop_loss leg, otherwise the position
+        # would be unprotected on fill. Verify before trusting this order.
+        if not extract_stop_leg_id(order):
+            try:
+                await _sdk(client.cancel_order_by_id, order.id, timeout=_SDK_TIMEOUT_WRITE)
+            except Exception as cancel_err:
+                logger.error(
+                    f"Failed to cancel naked limit-buy {ticker} {order.id}: {cancel_err}"
+                )
+            raise RuntimeError(
+                f"Limit-buy {order.id} for {ticker} returned no stop_loss leg — "
+                f"Alpaca rejected the stop. Entry cancelled."
+            )
+        logger.info(
+            f"Limit buy placed: {ticker} qty={qty} "
+            f"limit={limit_price:.2f} SL={stop_loss_price:.2f} "
+            f"order_id={order.id}"
+        )
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Limit buy failed for {ticker}: {e}")
+        raise
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+
+def _enum_value(x) -> str | None:
+    """'OrderStatus.NEW' -> 'new', 'OrderSide.BUY' -> 'buy', 'new' -> 'new'.
+    The wire contract for _order_to_dict dicts: status/side/type are ALWAYS
+    plain lowercase values (#183; same rule as order_manager._canonical_order_status,
+    defined here because order_manager imports alpaca_client, not vice versa)."""
+    if x is None:
+        return None
+    return str(x).split(".")[-1].lower()
+
+
+def _order_to_dict(order) -> dict:
+    """Convert Alpaca Order object to a plain dict."""
+    return {
+        "id": str(order.id),
+        "client_order_id": order.client_order_id,
+        "symbol": order.symbol,
+        "side": _enum_value(order.side),
+        "type": _enum_value(order.type),
+        "qty": float(order.qty) if order.qty else None,
+        "filled_qty": float(order.filled_qty) if order.filled_qty else 0,
+        "filled_avg_price": float(order.filled_avg_price) if order.filled_avg_price else None,
+        "stop_price": float(order.stop_price) if order.stop_price else None,
+        "limit_price": float(order.limit_price) if order.limit_price else None,
+        "status": _enum_value(order.status),
+        # #508 (2026-08-04): 'oto'/'oco'/'bracket'/'otoco' vs 'simple'. Load-
+        # bearing for execute_partial_exit's leg-safe routing — Alpaca REJECTS
+        # qty changes on advanced-order legs (42210000), and a fetched LEG
+        # carries its parent's order_class (probe: _508_oto_leg_probe.py T2b).
+        "order_class": _enum_value(getattr(order, "order_class", None)),
+        "created_at": order.created_at.isoformat() if order.created_at else None,
+        "filled_at": order.filled_at.isoformat() if order.filled_at else None,
+        "legs": [_order_to_dict(leg) for leg in order.legs] if order.legs else [],
+    }
+
+
+def _position_to_dict(pos) -> dict:
+    """Convert Alpaca Position object to a plain dict."""
+    return {
+        "symbol": pos.symbol,
+        "qty": float(pos.qty),
+        "avg_entry_price": float(pos.avg_entry_price),
+        "market_value": float(pos.market_value),
+        "cost_basis": float(pos.cost_basis),
+        "unrealized_pl": float(pos.unrealized_pl),
+        "unrealized_plpc": float(pos.unrealized_plpc),
+        "current_price": float(pos.current_price),
+        "side": _enum_value(pos.side),
+        # #151: shares FREE to sell right now. Differs from qty when an order
+        # is reserving shares — e.g. an old stop stuck in pending_replace after
+        # a partial-exit stop replace (the FPS 2026-06-04/05 failure surface).
+        "qty_available": float(getattr(pos, "qty_available", pos.qty)),
+    }

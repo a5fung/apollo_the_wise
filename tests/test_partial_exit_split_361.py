@@ -1,0 +1,441 @@
+"""#361 (2026-06-23) — partial-exit SPLIT to a market-hours (3:45 PM) trigger.
+
+The Day 3-5 partial-profit decision was moved OUT of the 4:45 PM EOD
+`update_open_positions_live` job into `run_partial_exits` (3:45 PM), so the
+partial's stop-replace settles intraday instead of parking in
+`pending_replace` after the close. These tests freeze the two correctness
+properties the split must hold:
+
+  1. NO DOUBLE-FIRE — the partial fires in run_partial_exits and NEVER in the
+     4:45 job (which passes skip_partial_decision=True). execute_partial_exit
+     is reached by exactly one of the two jobs.
+  2. PARTIAL LOGIC UNCHANGED — run_partial_exits reuses apply_daily_exit_step
+     (the single source of truth) and acts on step.partial_fired /
+     step.partial_shares; the 4:45 job suppresses the decision via the
+     skip_partial_decision flag (not by re-implementing it).
+
+Run: python -m pytest tests/test_partial_exit_split_361.py -v
+"""
+import asyncio
+import sys
+from datetime import date, timedelta
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from agents.market_intelligence.broker import live_tracker
+from agents.market_intelligence.broker.exit_logic import ExitStep
+
+
+# ── Fake async DB pool ───────────────────────────────────────────────────────
+
+
+class _FakeConn:
+    def __init__(self, rows):
+        self._rows = rows
+        self.executed = []
+
+    async def fetch(self, *_a, **_k):
+        return self._rows
+
+    async def execute(self, *a, **_k):
+        self.executed.append(a)
+
+
+class _FakeAcquire:
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FakePool:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def acquire(self):
+        return _FakeAcquire(self._conn)
+
+
+def _trade_row():
+    # A Day-4 open position eligible for a partial (90 shares filled).
+    return {
+        "id": 1,
+        "ticker": "TEST",
+        "alert_date": date(2026, 6, 18),  # 3 trading days before "today"
+        "remaining_shares": 90,
+        "entry_price": 100.0,
+        "hard_stop": 95.0,
+        "stop_price": 95.0,
+        "partial_taken": False,
+        "breakeven_active": False,
+        "exits": [],
+        "running_closes": [101.0] * 25,  # enough history for SMA
+    }
+
+
+def _partial_step():
+    # A step where the partial fired (30 of 90 shares), position stays open.
+    return ExitStep(
+        action="partial_only", closed=False,
+        close_reason=None, close_price=None, close_shares=None, close_pnl=None,
+        partial_fired=True, partial_shares=30,
+        partial_price=110.0, partial_pnl=300.0,
+        effective_stop=100.0, active_sma=101.0,
+        bar_low=108.0, bar_close=110.0, hold_days=4,
+        new_remaining=60, new_partial_taken=True, new_breakeven_active=True,
+        new_running_closes=[101.0] * 25 + [110.0], new_exits=[], new_total_pnl=300.0,
+    )
+
+
+def _install_common(monkeypatch, step, exec_spy, *, captured_kwargs=None):
+    """Wire up the shared fakes; record apply_daily_exit_step kwargs."""
+    conn = _FakeConn([_trade_row()])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    monkeypatch.setattr(live_tracker, "et_today", lambda: date(2026, 6, 23))
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[{"l": 108.0, "c": 110.0, "h": 111.0, "o": 109.0}]))
+
+    def _ades(state, bar, today, **kwargs):
+        if captured_kwargs is not None:
+            captured_kwargs.append(kwargs)
+        return step
+    monkeypatch.setattr(live_tracker, "apply_daily_exit_step", _ades)
+
+    monkeypatch.setattr(live_tracker, "execute_partial_exit",
+                        lambda *a, **k: exec_spy(*a, **k))
+    # Suppress real broker / telegram side effects in the 4:45 path.
+    monkeypatch.setattr(live_tracker, "update_stop",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+    monkeypatch.setattr(live_tracker, "execute_full_exit",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+    monkeypatch.setattr(live_tracker, "send_live_trade_summary",
+                        lambda *a, **k: asyncio.sleep(0))
+    return conn
+
+
+# ── Property 1: run_partial_exits TAKES the partial ──────────────────────────
+
+
+def test_run_partial_exits_fires_partial(monkeypatch):
+    # #508: ownership of the partial is now conditional. With PROFIT_TRIGGER_R set,
+    # the intraday trigger owns it and this job stands down. Pin the LEGACY path by
+    # forcing the flag OFF rather than depending on whatever the shipped default is —
+    # a test that silently changes meaning when a constant moves is worse than no test.
+    import agents.market_intelligence.constants as _c
+    monkeypatch.setattr(_c, "PROFIT_TRIGGER_R", None)
+    calls = []
+
+    async def exec_spy(trade_id, shares, **k):
+        calls.append((trade_id, shares))
+        return True
+
+    kwargs_seen = []
+    _install_common(monkeypatch, _partial_step(), exec_spy,
+                    captured_kwargs=kwargs_seen)
+
+    results = asyncio.run(live_tracker.run_partial_exits())
+
+    assert calls == [(1, 30)], f"partial not taken in 3:45 job: {calls}"
+    assert results[0]["action"] == "partial_submitted"
+    # SINGLE SOURCE OF TRUTH: it reuses apply_daily_exit_step WITHOUT
+    # skip_partial_decision (the partial decision is alive here).
+    assert kwargs_seen, "apply_daily_exit_step not called"
+    assert not kwargs_seen[0].get("skip_partial_decision", False), \
+        "3:45 job must NOT skip the partial decision"
+    # skip_hard_stop_close=True so an intraday wick to hard_stop doesn't
+    # short-circuit before the partial branch (matches the 4:45 post-verify
+    # re-run; the real resting Alpaca stop is the actual stop mechanism).
+    assert kwargs_seen[0].get("skip_hard_stop_close") is True, \
+        "3:45 job must pass skip_hard_stop_close=True"
+
+
+def test_run_partial_exits_writes_no_db_rows(monkeypatch):
+    # The 3:45 job persists NOTHING (finalize_partial_exit on WS fill + the
+    # 4:45 job own all state writes; writing running_closes here would
+    # double-append today's close and corrupt the SMA basis).
+    async def exec_spy(trade_id, shares, **k):
+        return True
+
+    conn = _install_common(monkeypatch, _partial_step(), exec_spy)
+    asyncio.run(live_tracker.run_partial_exits())
+    assert conn.executed == [], f"3:45 job must not UPDATE mi_live_trades: {conn.executed}"
+
+
+# ── Property 2: the 4:45 job NEVER takes a partial (no double-fire) ──────────
+
+
+def test_eod_job_skips_partial_decision_and_never_fires(monkeypatch):
+    calls = []
+
+    async def exec_spy(trade_id, shares, **k):
+        calls.append((trade_id, shares))
+        return True
+
+    kwargs_seen = []
+    # Even if the (suppressed) decision WOULD have fired, the 4:45 job must
+    # pass skip_partial_decision=True. We assert the flag is set AND that
+    # execute_partial_exit is never reached from this job.
+    _install_common(monkeypatch, _partial_step(), exec_spy,
+                    captured_kwargs=kwargs_seen)
+
+    asyncio.run(live_tracker.update_open_positions_live())
+
+    assert calls == [], f"4:45 job DOUBLE-FIRED the partial: {calls}"
+    assert kwargs_seen, "apply_daily_exit_step not called by 4:45 job"
+    for kw in kwargs_seen:
+        assert kw.get("skip_partial_decision") is True, \
+            f"4:45 job must pass skip_partial_decision=True, got {kw}"
+
+
+def test_wick_day_still_fires_partial_with_real_decision(monkeypatch):
+    import agents.market_intelligence.constants as _c
+    monkeypatch.setattr(_c, "PROFIT_TRIGGER_R", None)   # legacy path — see above
+    # REGRESSION (advisor #361): a Day-4 position whose forming 3:45 bar wicked
+    # to/through its hard_stop intraday but recovered green must STILL take the
+    # partial. Without skip_hard_stop_close=True, apply_daily_exit_step would
+    # short-circuit at its hard-stop close (partial_fired=False) and the partial
+    # would be silently dropped. This test lets the REAL decision function run.
+    calls = []
+
+    async def exec_spy(trade_id, shares, **k):
+        calls.append((trade_id, shares))
+        return True
+
+    # Trade: entry 100, hard_stop 95, 90 shares, alert 3 trading days ago.
+    row = _trade_row()
+    conn = _FakeConn([row])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    monkeypatch.setattr(live_tracker, "et_today", lambda: date(2026, 6, 23))
+    # Wick bar: low 94 (<= hard_stop 95) but close 110 (> entry 100), green.
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[{"l": 94.0, "c": 110.0, "h": 111.0, "o": 109.0}]))
+    monkeypatch.setattr(live_tracker, "execute_partial_exit",
+                        lambda *a, **k: exec_spy(*a, **k))
+    # NOTE: apply_daily_exit_step is NOT mocked here — the real one runs.
+
+    results = asyncio.run(live_tracker.run_partial_exits())
+
+    # hold_days = (2026-06-23 - 2026-06-18) = 5 calendar days >= 3, green ->
+    # partial of int(90)//3 = 30 shares must fire despite the intraday wick.
+    assert calls == [(1, 30)], f"wick-day partial dropped: calls={calls}, results={results}"
+    assert results[0]["action"] == "partial_submitted"
+
+
+def test_no_double_fire_across_both_jobs(monkeypatch):
+    # Run BOTH jobs against the same trade on the same day; the partial must be
+    # submitted exactly once (by the 3:45 job).
+    calls = []
+
+    async def exec_spy(trade_id, shares, **k):
+        calls.append((trade_id, shares))
+        return True
+
+    _install_common(monkeypatch, _partial_step(), exec_spy)
+    asyncio.run(live_tracker.run_partial_exits())
+    _install_common(monkeypatch, _partial_step(), exec_spy)  # fresh fakes, same day
+    asyncio.run(live_tracker.update_open_positions_live())
+
+    assert calls == [(1, 30)], f"partial must fire exactly once: {calls}"
+
+
+def test_3_45_job_stands_down_when_the_intraday_trigger_owns_the_partial(monkeypatch):
+    """#508 companion to the two above: the SAME no-double-fire property, now across
+    THREE actors. With PROFIT_TRIGGER_R set the intraday trigger owns the partial, so
+    the 3:45 job must pass skip_partial_decision=True and take nothing."""
+    import agents.market_intelligence.constants as _c
+    monkeypatch.setattr(_c, "PROFIT_TRIGGER_R", 2.0)
+    calls = []
+
+    async def exec_spy(trade_id, shares, **k):
+        calls.append((trade_id, shares))
+        return True
+
+    kwargs_seen = []
+    _install_common(monkeypatch, _partial_step(), exec_spy, captured_kwargs=kwargs_seen)
+    asyncio.run(live_tracker.run_partial_exits())
+
+    assert kwargs_seen, "apply_daily_exit_step not called"
+    assert kwargs_seen[0].get("skip_partial_decision") is True, \
+        "with the intraday trigger ON, the 3:45 job must suppress its own decision"
+
+
+# ── #363: shared `_load_exit_state` preamble ─────────────────────────────────
+#
+# Both jobs now load per-trade state through ONE function instead of two
+# byte-identical copies. These tests pin (a) both jobs actually route through
+# it with the SAME (trade, today) args — the anti-divergence property the
+# extraction exists to create — and (b) its three outcomes (silent skip /
+# no_data / success) are exactly what the pre-extraction inline code did.
+
+
+def test_both_jobs_route_through_the_same_shared_loader(monkeypatch):
+    real_loader = live_tracker._load_exit_state
+    calls = []
+
+    async def spy(trade, today):
+        calls.append((dict(trade), today))
+        return await real_loader(trade, today)
+
+    monkeypatch.setattr(live_tracker, "_load_exit_state", spy)
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(_FakeConn([_trade_row()]))))
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[{"l": 108.0, "c": 110.0, "h": 111.0, "o": 109.0}]))
+    monkeypatch.setattr(live_tracker, "apply_daily_exit_step",
+                        lambda state, bar, today, **kw: _partial_step())
+    monkeypatch.setattr(live_tracker, "execute_partial_exit",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+    monkeypatch.setattr(live_tracker, "update_stop",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+    monkeypatch.setattr(live_tracker, "execute_full_exit",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+    monkeypatch.setattr(live_tracker, "send_telegram_message",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+
+    asyncio.run(live_tracker.run_partial_exits(today=date(2026, 6, 23)))
+    asyncio.run(live_tracker.update_open_positions_live(today=date(2026, 6, 23)))
+
+    assert len(calls) == 2, f"expected exactly 1 loader call per job: {calls}"
+    (trade_a, today_a), (trade_b, today_b) = calls
+    assert trade_a == trade_b, "both jobs must load state for the SAME trade row"
+    assert today_a == today_b == date(2026, 6, 23)
+
+
+def test_load_exit_state_silent_skip_on_zero_remaining():
+    row = _trade_row()
+    row["remaining_shares"] = 0
+    result = asyncio.run(live_tracker._load_exit_state(row, date(2026, 6, 23)))
+    assert result == (None, None, "silent")
+
+
+def test_load_exit_state_silent_skip_on_same_day_alert():
+    row = _trade_row()  # alert_date = 2026-06-18
+    result = asyncio.run(live_tracker._load_exit_state(row, row["alert_date"]))
+    assert result == (None, None, "silent")
+
+
+def test_load_exit_state_no_data(monkeypatch):
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[]))
+    result = asyncio.run(live_tracker._load_exit_state(_trade_row(), date(2026, 6, 23)))
+    assert result == (None, None, "no_data")
+
+
+def test_load_exit_state_success_builds_expected_state_and_bars(monkeypatch):
+    bar = {"l": 108.0, "c": 110.0, "h": 111.0, "o": 109.0}
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[bar]))
+    row = _trade_row()
+    state, daily_bars, skip = asyncio.run(live_tracker._load_exit_state(row, date(2026, 6, 23)))
+    assert skip is None
+    assert daily_bars == [bar]
+    assert state == {
+        "alert_date": row["alert_date"],
+        "remaining_shares": row["remaining_shares"],
+        "entry_price": row["entry_price"],
+        "hard_stop": row["hard_stop"],
+        "partial_taken": row["partial_taken"],
+        "breakeven_active": row["breakeven_active"],
+        "exits": row["exits"],
+        "running_closes": row["running_closes"],
+        # #548: the MA trail is the STOCK's 10/20-day average, so the state now also carries
+        # the stock's closes from BEFORE entry. The stub returns the same bar for both fetches.
+        "prior_closes": [110.0],
+    }
+
+
+def test_load_exit_state_fetches_prior_closes_from_BEFORE_the_entry(monkeypatch):
+    """The trail must average the STOCK's history, not our holding period (#548, operator:
+    *"10d MA exists regardless of how long we traded it"*). Two things have to be true and
+    only the second is obvious:
+
+    1. a prior-close window is requested at all, and
+    2. it ENDS THE DAY BEFORE alert_date — the entry day's own close arrives separately via
+       `running_closes` on the first daily pass, so including it here double-counts it into
+       the mean."""
+    calls = []
+
+    def _hist(ticker, start, end, *a, **k):
+        calls.append((start, end))
+        return asyncio.sleep(0, result=[{"l": 1.0, "c": 2.0}])
+
+    monkeypatch.setattr(live_tracker, "get_index_history", _hist)
+    row = _trade_row()
+    state, _bars, _skip = asyncio.run(
+        live_tracker._load_exit_state(row, date(2026, 6, 23)))
+
+    assert len(calls) == 2, f"expected today's bar + a prior-close window, got {calls}"
+    _start, end = calls[1]
+    alert = row["alert_date"]
+    assert end == (alert - timedelta(days=1)).strftime("%Y-%m-%d"), (
+        f"prior-close window ends {end}, must end the day BEFORE alert_date {alert} — "
+        "otherwise the entry day's close is counted twice in the moving average")
+    assert state["prior_closes"] == [2.0]
+
+
+def test_a_failed_prior_close_fetch_does_not_break_position_management(monkeypatch):
+    """This pass also carries the HARD STOP. An indicator-input hiccup must degrade to the
+    pre-#548 behavior (held-period closes only), never abort the pass."""
+    seen = {"n": 0}
+
+    def _hist(*_a, **_k):
+        seen["n"] += 1
+        if seen["n"] == 1:
+            return asyncio.sleep(0, result=[{"l": 108.0, "c": 110.0}])
+        raise RuntimeError("history provider down")
+
+    monkeypatch.setattr(live_tracker, "get_index_history", _hist)
+    state, bars, skip = asyncio.run(
+        live_tracker._load_exit_state(_trade_row(), date(2026, 6, 23)))
+    assert skip is None, "a prior-close failure aborted the position-management pass"
+    assert bars == [{"l": 108.0, "c": 110.0}]
+    assert state["prior_closes"] == []
+
+
+def test_run_partial_exits_no_data_appends_exactly_one_result(monkeypatch):
+    conn = _FakeConn([_trade_row()])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[]))
+    results = asyncio.run(live_tracker.run_partial_exits(today=date(2026, 6, 23)))
+    assert results == [{"ticker": "TEST", "action": "no_data"}]
+
+
+def test_run_partial_exits_silent_skip_appends_nothing(monkeypatch):
+    row = _trade_row()
+    row["remaining_shares"] = 0
+    conn = _FakeConn([row])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    results = asyncio.run(live_tracker.run_partial_exits(today=date(2026, 6, 23)))
+    assert results == []
+
+
+def test_update_open_positions_live_no_data_appends_exactly_one_result(monkeypatch):
+    conn = _FakeConn([_trade_row()])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[]))
+    results = asyncio.run(live_tracker.update_open_positions_live(today=date(2026, 6, 23)))
+    assert results == [{"ticker": "TEST", "action": "no_data"}]
+
+
+def test_update_open_positions_live_silent_skip_appends_nothing(monkeypatch):
+    row = _trade_row()
+    row["remaining_shares"] = 0
+    conn = _FakeConn([row])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    results = asyncio.run(live_tracker.update_open_positions_live(today=date(2026, 6, 23)))
+    assert results == []

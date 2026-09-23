@@ -1,0 +1,105 @@
+SET
+===Q0_BOOK_SIZE===
+account_mode|status|n|with_exits
+live|cancelled|18|0
+live|closed|23|23
+live|filled|2|2
+live|skipped|61|0
+paper|cancelled|36|0
+paper|closed|34|34
+paper|skipped|149|0
+(7 rows)
+===Q1_LIVE_SHARE_MISMATCH===
+id|ticker|account_mode|alert_date|status|signal_type|entry_shares|remaining_shares|total_pnl|entry_attempt|partial_taken|entry_price|n_exits|exit_shares|over_by
+17|BSX|paper|2026-04-23|closed|magna53|201|0|-252.2|1|f|66.744726|1|0|-201
+34|OMCL|paper|2026-04-28|closed|magna53|432|0|-1506.6302400000022|2|f|46|2|864.0|432
+57|TEAM|paper|2026-05-01|closed|magna53|229|0|-269.019909999998|2|t|85.19|3|458.0|229
+81|AMD|paper|2026-05-06|closed|magna53|48|0|-831.4799040000025|2|f|413.309375|2|96.0|48
+82|SMCI|paper|2026-05-06|closed|magna53|612|0|-639.339263999999|2|t|32.567614|3|1224.0|612
+107|ARM|paper|2026-05-07|closed|9m_day2|89|0|-391.5|2|f|224|1|87|-2
+120|MRAM|paper|2026-05-11|closed|magna53|419|0|-2199.709776|2|f|36.5|2|838.0|419
+183|FPS|paper|2026-06-01|closed|9m_day2|163|0|159.77693200000002|1|t|53.793681|1|28.0|-135
+367|ETON|live|2026-08-14|closed|magna53|17|0|19.323599999999942|1|t|55.2012|2|22.0|5
+(9 rows)
+===Q1B_CLOSED_ONLY_MISMATCH===
+id|ticker|account_mode|alert_date|status|entry_shares|remaining_shares|total_pnl|entry_attempt|exit_shares|over_by
+17|BSX|paper|2026-04-23|closed|201|0|-252.2|1|0|-201
+34|OMCL|paper|2026-04-28|closed|432|0|-1506.6302400000022|2|864.0|432
+57|TEAM|paper|2026-05-01|closed|229|0|-269.019909999998|2|458.0|229
+82|SMCI|paper|2026-05-06|closed|612|0|-639.339263999999|2|1224.0|612
+81|AMD|paper|2026-05-06|closed|48|0|-831.4799040000025|2|96.0|48
+107|ARM|paper|2026-05-07|closed|89|0|-391.5|2|87|-2
+120|MRAM|paper|2026-05-11|closed|419|0|-2199.709776|2|838.0|419
+183|FPS|paper|2026-06-01|closed|163|0|159.77693200000002|1|28.0|-135
+367|ETON|live|2026-08-14|closed|17|0|19.323599999999942|1|22.0|5
+(9 rows)
+===Q2_EXITS_OUT_OF_TIME_ORDER===
+id|ticker|account_mode|alert_date|ord|prev_ts|ts
+(0 rows)
+===Q2B_EXIT_LEGS_MISSING_TIME===
+legs_without_time
+1
+(1 row)
+===Q3_ORDERS_FOR_MISMATCHED===
+===Q4_EXIT_LEGS_FOR_MISMATCHED===
+id|ticker|account_mode|entry_shares|entry_price|total_pnl|exits
+17|BSX|paper|201|66.744726|-252.2|[{"at": "2026-04-23T15:49:04Z", "qty": 201, "price": 65.49, "reason": "manual_exit_bracket_bug"}]
+34|OMCL|paper|432|46|-1506.6302400000022|[{"pnl": -1078.9502400000015, "time": "2026-04-28T13:36:08.363775", "price": 43.5, "reason": "stop_hit", "shares": 432.0, "source": "websocket", "attempt": 1}, {"pnl": -427.68000000000086, "time": "2026-04-28T14:13:09.359857", "price": 45.01, "reason": "stop_hit", "shares": 432.0, "source": "websocket", "attempt": 2}]
+57|TEAM|paper|229|85.19|-269.019909999998|[{"pnl": -595.8099099999986, "time": "2026-05-01T14:21:05.211477", "price": 82.55821, "reason": "stop_hit", "shares": 229.0, "source": "websocket", "attempt": 1}, {"pnl": 328.32000000000056, "time": "2026-05-06T13:32:20.299374", "price": 89.51, "reason": "partial_profit", "shares": 76, "order_id": "9c2d2250-4d77-4910-b888-71730efcc267"}, {"pnl": -1.53, "time": "2026-05-06T13:51:08", "price": 85.18, "reason": "stop_hit", "shares": 153, "source": "backfill_5_07", "attempt": 2, "order_id": "3069e3fe-8283-4b42-b704-890bbfdf9720"}]
+81|AMD|paper|48|413.309375|-831.4799040000025|[{"pnl": -460.9499040000019, "time": "2026-05-06T14:19:50.400826", "price": 405.571043, "reason": "stop_hit", "shares": 48.0, "source": "websocket", "attempt": 1}, {"pnl": -370.53000000000065, "time": "2026-05-07T16:07:41.865061", "price": 405.59, "reason": "stop_hit", "shares": 48.0, "source": "websocket", "attempt": 2}]
+82|SMCI|paper|612|32.567614|-639.339263999999|[{"pnl": -720.7695360000012, "time": "2026-05-06T13:35:41.604111", "price": 31.228448, "reason": "stop_hit", "shares": 612.0, "source": "websocket", "attempt": 1}, {"pnl": 82.13692800000084, "time": "2026-05-12T13:34:43.472983", "price": 32.970246, "reason": "partial_profit", "shares": 204, "order_id": "4baad913-cee0-44b7-90a2-d70eb7812df4"}, {"pnl": -0.7066559999987589, "time": "2026-05-12T13:56:55.847113", "price": 32.565882, "reason": "stop_hit", "shares": 408.0, "source": "websocket", "attempt": 2}]
+107|ARM|paper|89|224|-391.5|[{"pnl": -391.50, "time": "2026-05-07T13:41:08", "price": 219.50, "reason": "stop_hit", "shares": 87, "source": "backfill_5_08", "attempt": 1, "order_id": "85d17d04-4088-4872-8249-eb62b22ea226"}]
+120|MRAM|paper|419|36.5|-2199.709776|[{"pnl": -1101.9297760000013, "time": "2026-05-11T13:42:02.739966", "price": 33.890096, "reason": "stop_hit", "shares": 419.0, "source": "websocket", "attempt": 1}, {"pnl": -1097.7799999999988, "time": "2026-05-11T13:59:15.309119", "price": 33.88, "reason": "stop_hit", "shares": 419.0, "source": "websocket", "attempt": 2}]
+183|FPS|paper|163|53.793681|159.77693200000002|[{"pnl": 159.77693200000002, "time": "2026-06-25T13:43:28.150011+00:00", "price": 59.5, "reason": "stop_hit", "shares": 28.0, "source": "websocket", "attempt": 1}]
+367|ETON|live|17|55.2012|19.323599999999942|[{"pnl": -2.570400000000049, "time": "2026-08-14T13:45:11.150854+00:00", "price": 55.05, "reason": "stop_hit", "shares": 17.0, "source": "websocket", "attempt": 1}, {"pnl": 21.89399999999999, "time": "2026-08-14T19:58:02.361900+00:00", "price": 59.58, "reason": "partial_profit", "shares": 5, "order_id": "ee925e6b-43eb-4db1-b040-7eae9568fb49"}]
+(9 rows)
+===Q5_PAPER_TABLE_MISMATCH===
+id|ticker|alert_date|status|remaining_shares|total_pnl|entry_shares|exit_shares
+(0 rows)
+===Q5B_PAPER_TABLE_SIZE===
+n_rows|with_exits
+4|2
+(1 row)
+===Q6_SHADOW_TABLE_MISMATCH===
+n_mismatch
+0
+(1 row)
+===Q7_SELL_RECORDS_FOR_MISMATCHED===
+trade_id|ticker|account_mode|alert_date|entry_price|risk_per_share|entry_shares|realized_pnl|realized_r|partial_taken
+17|BSX|paper|2026-04-23|66.744726|1.174726|201|-252.2|-1.0681|f
+34|OMCL|paper|2026-04-28|46|1|432|-1506.6302400000022|-3.4876|f
+57|TEAM|paper|2026-05-01|85.19|2.4|229|-269.019909999998|-0.4895|t
+81|AMD|paper|2026-05-06|413.309375|7.679375|48|-831.4799040000025|-2.2557|f
+82|SMCI|paper|2026-05-06|32.567614|1.307614|612|-639.339263999999|-0.7989|t
+120|MRAM|paper|2026-05-11|36.5|2.43|419|-2199.709776|-2.1605|f
+183|FPS|paper|2026-06-01|53.793681|6.143681|163|159.77693200000002|0.1596|t
+367|ETON|live|2026-08-14|55.2012|2.1912|17|19.323599999999942|0.5187|t
+(8 rows)
+===Q8_R3_BLOCKED_ROWS===
+et|event_type|summary
+2026-05-21 09:40:57|r3_day1_reentry_blocked|RLAY: Day-1 re-entry disabled by R3 ship
+2026-05-27 11:33:49|r3_day1_reentry_blocked|DY: Day-1 re-entry disabled by R3 ship
+2026-05-29 09:46:14|r3_day1_reentry_blocked|DELL: Day-1 re-entry disabled by R3 ship
+2026-06-03 09:49:07|r3_day1_reentry_blocked|NVTS: Day-1 re-entry disabled by R3 ship
+2026-06-04 09:49:09|r3_day1_reentry_blocked|RUM: Day-1 re-entry disabled by R3 ship
+2026-06-08 09:55:03|r3_day1_reentry_blocked|NRIX: Day-1 re-entry disabled by R3 ship
+2026-06-11 10:01:39|r3_day1_reentry_blocked|NAVN: Day-1 re-entry disabled by R3 ship
+2026-06-17 10:02:10|r3_day1_reentry_blocked|JBL: Day-1 re-entry disabled by R3 ship
+2026-07-06 09:57:29|r3_day1_reentry_blocked|WULF: Day-1 re-entry disabled by R3 ship
+2026-07-10 09:40:34|r3_day1_reentry_blocked|CRCL: Day-1 re-entry disabled by R3 ship
+2026-07-10 09:40:35|r3_day1_reentry_blocked|WDFC: Day-1 re-entry disabled by R3 ship
+2026-07-14 09:44:34|r3_day1_reentry_blocked|TSEM: Day-1 re-entry disabled by R3 ship
+2026-07-20 09:31:57|r3_day1_reentry_blocked|HUT: Day-1 re-entry disabled by R3 ship
+2026-07-24 12:02:39|r3_day1_reentry_blocked|WKC: Day-1 re-entry disabled by R3 ship
+2026-07-24 12:43:37|r3_day1_reentry_blocked|THC: Day-1 re-entry disabled by R3 ship
+2026-07-30 09:37:50|r3_day1_reentry_blocked|FTNT: Day-1 re-entry disabled by R3 ship
+2026-08-04 09:46:20|r3_day1_reentry_blocked|BTDR: Day-1 re-entry disabled by R3 ship
+2026-08-04 15:50:00|r3_day1_reentry_blocked|BLZE: Day-1 re-entry disabled by R3 ship
+2026-08-07 09:43:54|r3_day1_reentry_blocked|TEAM: Day-1 re-entry disabled by R3 ship
+2026-08-07 09:51:02|r3_day1_reentry_blocked|FIGS: Day-1 re-entry disabled by R3 ship
+2026-08-07 10:32:01|r3_day1_reentry_blocked|NET: Day-1 re-entry disabled by R3 ship
+2026-08-11 09:31:40|r3_day1_reentry_blocked|FRMI: Day-1 re-entry disabled by R3 ship
+2026-08-11 09:31:56|r3_day1_reentry_blocked|BW: Day-1 re-entry disabled by R3 ship
+2026-08-14 09:45:11|r3_day1_reentry_blocked|ETON: Day-1 re-entry disabled by R3 ship
+2026-08-19 10:03:04|r3_day1_reentry_blocked|MRVL: Day-1 re-entry disabled by R3 ship
+(25 rows)

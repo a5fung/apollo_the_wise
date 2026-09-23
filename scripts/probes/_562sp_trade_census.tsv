@@ -1,0 +1,11 @@
+signal_type|account_mode|status|count
+9m_day2|paper|cancelled|7
+9m_day2|paper|closed|8
+9m_day2|paper|skipped|47
+magna53|live|cancelled|18
+magna53|live|closed|26
+magna53|live|filled|2
+magna53|live|skipped|64
+magna53|paper|cancelled|23
+magna53|paper|closed|22
+magna53|paper|skipped|60

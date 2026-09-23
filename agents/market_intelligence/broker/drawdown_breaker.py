@@ -1,0 +1,507 @@
+"""Drawdown-based circuit breaker (#39, shadow shipped 2026-05-08).
+
+Replaces the count-based `CIRCUIT_BREAKER_CONSEC_LOSSES` check on flip day
+(env: `DRAWDOWN_BREAKER_PHASE=active`). Methodology-aware: trips on equity
+drawdown from recent peak — Alpaca `account.equity` already includes
+unrealized P&L, so open winners' MTM lifts equity and prevents the
+self-perpetuating-streak / methodology-blind problems of the count-based
+check.
+
+Architecture (per plan `~/.claude/plans/let-s-go-into-plan-glittery-graham.md`):
+- Daily snapshot at 16:10 ET (after eod_cleanup) writes one row to
+  `mi_account_equity_snapshots` per (snapshot_date, account_mode).
+- Same job calls `recompute_drawdown_state(mode)` which evaluates the
+  state machine and persists to `mi_safeguard_state`.
+- State transitions emit a single audit event each (`drawdown_breaker_tripped`
+  / `drawdown_breaker_released` / `drawdown_check_unavailable`).
+- `_check_safeguards()` (active phase only, env-gated) does a cheap PK
+  lookup via `read_breaker_state` — zero per-call compute, zero audit
+  emission.
+
+Hysteresis is state-aware (advisor-flagged): when state='OK', only the
+trip threshold is checked; when state='TRIPPED', only the release
+threshold. Eliminates the `-5.1% → -4.9% → -5.1%` flap-and-spam scenario
+that a stateless threshold-comparator would produce.
+
+Stale-data guard (advisor-flagged): if the most recent snapshot is older
+than 48 hours, `sufficient_history=False` and the breaker fails OPEN
+(allows trading) regardless of count. Protects against silent cron
+failures locking the system on a week-old peak.
+
+SSoT: `docs/setups/safeguards.md`. Promotion plan: ≥14d post-live-cutover
+shadow telemetry, then env flip + replace count-based block in
+`live_tracker._check_safeguards`.
+"""
+from __future__ import annotations
+
+import json
+import logging
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta, timezone
+from typing import Optional
+
+from agents.market_intelligence.broker import alpaca_client as alpaca
+from agents.market_intelligence.constants import (
+    DRAWDOWN_PEAK_WINDOW_DAYS,
+    DRAWDOWN_WATCH_TRIP_PCT,
+    DRAWDOWN_WATCH_RELEASE_PCT,
+    DRAWDOWN_REDUCE_TRIP_PCT,
+    DRAWDOWN_REDUCE_RELEASE_PCT,
+    DRAWDOWN_BLOCK_TRIP_PCT,
+    DRAWDOWN_BLOCK_RELEASE_PCT,
+    DRAWDOWN_TIER_MULTIPLIER,
+    MIN_SNAPSHOT_HISTORY_DAYS,
+    current_account_mode,
+)
+from agents.market_intelligence.db import (
+    claim_safeguard_state_transition,
+    get_pool,
+    get_safeguard_state,
+    log_audit_event,
+)
+
+logger = logging.getLogger(__name__)
+
+_SAFEGUARD_NAME = "drawdown_breaker"
+
+# State enum (tiered 2026-05-18)
+_STATE_OK = "OK"
+_STATE_WATCH = "WATCH"
+_STATE_REDUCE = "REDUCE"
+_STATE_BLOCK = "BLOCK"
+_STATES = (_STATE_OK, _STATE_WATCH, _STATE_REDUCE, _STATE_BLOCK)
+_STATE_DEPTH = {_STATE_OK: 0, _STATE_WATCH: 1, _STATE_REDUCE: 2, _STATE_BLOCK: 3}
+
+# Legacy state name (pre-2026-05-18) — auto-migrated to WATCH on first
+# recompute under tiered design (today's drawdown -6% lands in WATCH).
+_LEGACY_STATE_TRIPPED = "TRIPPED"
+
+_STALE_DATA_HOURS = 48
+
+
+def _next_state(prev_state: str, drawdown_pct: float) -> str:
+    """Compute next state given previous state + current drawdown.
+
+    Trip-side: jump to deepest applicable tier immediately (a -15% one-day
+    drop from OK lands in BLOCK, not WATCH).
+
+    Release-side: step up at most ONE tier per evaluation, gated on the
+    per-tier release threshold (asymmetric hysteresis).
+
+    Legacy 'TRIPPED' state auto-migrates: treats as REDUCE for transition
+    logic (closest tier to old binary semantics).
+    """
+    # Auto-migrate legacy TRIPPED to REDUCE for transition computation
+    if prev_state == _LEGACY_STATE_TRIPPED:
+        prev_state = _STATE_REDUCE
+
+    # Determine the deepest applicable tier given current drawdown (trip-side
+    # is one-step: a deep drop crosses all relevant thresholds in one snapshot).
+    if drawdown_pct <= DRAWDOWN_BLOCK_TRIP_PCT:
+        deepest = _STATE_BLOCK
+    elif drawdown_pct <= DRAWDOWN_REDUCE_TRIP_PCT:
+        deepest = _STATE_REDUCE
+    elif drawdown_pct <= DRAWDOWN_WATCH_TRIP_PCT:
+        deepest = _STATE_WATCH
+    else:
+        deepest = _STATE_OK
+
+    # If deepest is strictly deeper than prev, jump straight to it.
+    if _STATE_DEPTH[deepest] > _STATE_DEPTH[prev_state]:
+        return deepest
+
+    # If deepest is same as prev, stay.
+    if _STATE_DEPTH[deepest] == _STATE_DEPTH[prev_state]:
+        return prev_state
+
+    # Otherwise we may release UP one tier per evaluation. Check per-tier
+    # release threshold for the step-up boundary.
+    if prev_state == _STATE_BLOCK:
+        # BLOCK → REDUCE if drawdown ≥ -7%
+        if drawdown_pct >= DRAWDOWN_BLOCK_RELEASE_PCT:
+            return _STATE_REDUCE
+        return _STATE_BLOCK
+    if prev_state == _STATE_REDUCE:
+        # REDUCE → WATCH if drawdown ≥ -4%
+        if drawdown_pct >= DRAWDOWN_REDUCE_RELEASE_PCT:
+            return _STATE_WATCH
+        return _STATE_REDUCE
+    if prev_state == _STATE_WATCH:
+        # WATCH → OK if drawdown ≥ -2.5%
+        if drawdown_pct >= DRAWDOWN_WATCH_RELEASE_PCT:
+            return _STATE_OK
+        return _STATE_WATCH
+
+    # Default safety
+    return prev_state
+
+
+def get_tier_multiplier(state: str) -> float:
+    """Return the sizing multiplier for a given drawdown state.
+
+    Used by entry_pipeline to scale entry_shares post-spec_builder.
+    Composes with mi_strategies.position_size_multiplier (#65).
+
+    Legacy 'TRIPPED' state maps to REDUCE multiplier (0.5×) until next
+    recompute migrates to the new state enum.
+    """
+    if state == _LEGACY_STATE_TRIPPED:
+        return DRAWDOWN_TIER_MULTIPLIER[_STATE_REDUCE]
+    return DRAWDOWN_TIER_MULTIPLIER.get(state, 1.0)
+
+
+@dataclass
+class DrawdownState:
+    current: float
+    peak: float
+    peak_date: Optional[date]
+    drawdown_pct: float
+    snapshots_count: int
+    most_recent_snapshot_date: Optional[date]
+    sufficient_history: bool
+
+
+# ── Snapshot ────────────────────────────────────────────────────────────────
+
+
+async def snapshot_account_equity(
+    source: str = "eod",
+    account_mode: str | None = None,
+) -> Optional[dict]:
+    """Fetch Alpaca equity and persist a row for today's ET date.
+
+    Idempotent via UNIQUE (snapshot_date, account_mode). On Alpaca API
+    failure: emits `drawdown_check_unavailable` audit event and returns None
+    (caller skips the recompute step). Never raises into caller.
+
+    account_mode: 'paper' | 'live'. None falls back to current_account_mode()
+    for legacy callers; dual-account scheduler iterates and passes explicit
+    mode per call.
+    """
+    mode = account_mode or current_account_mode()
+    today_et = _today_et()
+
+    try:
+        account = await alpaca.get_account(account_mode=mode)
+    except Exception as e:
+        logger.warning(f"snapshot_account_equity: Alpaca get_account failed: {e}")
+        await log_audit_event(
+            "drawdown_check_unavailable",
+            f"snapshot failed for {mode}: {type(e).__name__}",
+            json.dumps({
+                "stage": "snapshot",
+                "account_mode": mode,
+                "snapshot_date": today_et.isoformat(),
+                "error": str(e)[:200],
+            }),
+        )
+        return None
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO mi_account_equity_snapshots
+                (snapshot_date, account_mode, equity, cash, portfolio_value, source)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (snapshot_date, account_mode) DO NOTHING
+            RETURNING id, snapshot_date, account_mode, equity, cash, portfolio_value, source
+            """,
+            today_et,
+            mode,
+            float(account["equity"]),
+            float(account.get("cash") or 0.0),
+            float(account.get("portfolio_value") or 0.0),
+            source,
+        )
+
+    if row is None:
+        # Already snapshotted today — return the existing row for callers.
+        async with pool.acquire() as conn:
+            existing = await conn.fetchrow(
+                """
+                SELECT id, snapshot_date, account_mode, equity, cash, portfolio_value, source
+                FROM mi_account_equity_snapshots
+                WHERE snapshot_date = $1 AND account_mode = $2
+                """,
+                today_et, mode,
+            )
+        return dict(existing) if existing else None
+
+    logger.info(
+        f"Equity snapshot: {mode} {today_et} equity=${float(row['equity']):,.2f} source={source}"
+    )
+    return dict(row)
+
+
+# ── Compute drawdown state (read-only) ──────────────────────────────────────
+
+
+async def compute_drawdown_state(mode: str) -> Optional[DrawdownState]:
+    """Read current Alpaca equity + last 30d snapshots, return drawdown state.
+
+    Returns None if the Alpaca account fetch fails (caller emits an audit
+    event; recompute should not transition state without current equity).
+    """
+    today_et = _today_et()
+    cutoff = today_et - timedelta(days=DRAWDOWN_PEAK_WINDOW_DAYS)
+
+    try:
+        account = await alpaca.get_account(account_mode=mode)
+        current = float(account["equity"])
+    except Exception as e:
+        logger.warning(f"compute_drawdown_state: Alpaca get_account failed: {e}")
+        return None
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT snapshot_date, equity
+            FROM mi_account_equity_snapshots
+            WHERE account_mode = $1 AND snapshot_date >= $2
+            ORDER BY snapshot_date DESC
+            """,
+            mode, cutoff,
+        )
+
+    if not rows:
+        # No history at all — fail open.
+        return DrawdownState(
+            current=current,
+            peak=current,
+            peak_date=None,
+            drawdown_pct=0.0,
+            snapshots_count=0,
+            most_recent_snapshot_date=None,
+            sufficient_history=False,
+        )
+
+    peak_row = max(rows, key=lambda r: float(r["equity"]))
+    peak = float(peak_row["equity"])
+    peak_date = peak_row["snapshot_date"]
+    most_recent = rows[0]["snapshot_date"]  # ORDER BY DESC
+
+    drawdown_pct = (current - peak) / peak if peak > 0 else 0.0
+
+    # Stale-data fail-open: even with 30 rows, if the most-recent is >48h old,
+    # the snapshot cron likely failed silently — treat as insufficient.
+    snapshots_count = len(rows)
+    days_since_recent = (today_et - most_recent).days
+    sufficient_history = (
+        snapshots_count >= MIN_SNAPSHOT_HISTORY_DAYS
+        and days_since_recent <= 2  # 48h in calendar-day terms
+    )
+
+    return DrawdownState(
+        current=current,
+        peak=peak,
+        peak_date=peak_date,
+        drawdown_pct=drawdown_pct,
+        snapshots_count=snapshots_count,
+        most_recent_snapshot_date=most_recent,
+        sufficient_history=sufficient_history,
+    )
+
+
+# ── State machine driver ────────────────────────────────────────────────────
+
+
+async def recompute_drawdown_state(mode: str) -> tuple[str, str, dict]:
+    """Evaluate state machine and persist. Emit audit event on transitions.
+
+    Returns (prev_state, new_state, details). Hysteresis is state-aware:
+    OK→TRIPPED only when drawdown ≤ TRIP threshold; TRIPPED→OK only when
+    drawdown ≥ RELEASE threshold. Eliminates flap-and-spam.
+
+    Active-phase only blocks on `state='TRIPPED'` AND `sufficient_history`
+    (the latter check happens in `read_breaker_state`'s caller pattern; this
+    function transitions state regardless because we want shadow calibration
+    data even when history is sparse).
+    """
+    state_obj = await compute_drawdown_state(mode)
+    if state_obj is None:
+        await log_audit_event(
+            "drawdown_check_unavailable",
+            f"recompute failed for {mode}: get_account error during compute",
+            json.dumps({"stage": "compute", "account_mode": mode}),
+        )
+        return _read_state_or_default(mode), _read_state_or_default(mode), {}
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        existing = await conn.fetchrow(
+            """
+            SELECT state FROM mi_safeguard_state
+            WHERE safeguard = $1 AND account_mode = $2
+            """,
+            _SAFEGUARD_NAME, mode,
+        )
+    prev_state = existing["state"] if existing else _STATE_OK
+
+    # Tiered state machine (2026-05-18). See _next_state docstring:
+    #   Trip-side: jump to deepest applicable tier in one snapshot
+    #   Release-side: step up one tier per evaluation, gated on per-tier
+    #                 release threshold (asymmetric hysteresis at each boundary)
+    new_state = _next_state(prev_state, state_obj.drawdown_pct)
+    now = datetime.now(timezone.utc)
+
+    # Atomic single-winner transition claim (simplify GROUP 4, 2026-07-03) — `prev_state`
+    # above is an UNLOCKED read, so two concurrent evaluations (a scheduled EOD run + an
+    # on-demand /audit, say) can both compute the SAME new_state from the SAME stale
+    # prev_state and both believe they "transitioned" — the SAME TOCTOU the S12 kill/
+    # scale-band fix (F21) addressed, duplicate tier Telegrams/audit rows. Route the
+    # transition itself through the shared claim primitive and gate the alert on ITS
+    # result, not the local comparison; a losing concurrent caller sees
+    # transitioned=False and skips the audit/Telegram below.
+    transitioned = await claim_safeguard_state_transition(_SAFEGUARD_NAME, mode, new_state)
+    if existing is None and new_state == _STATE_OK:
+        # The claim primitive's INSERT branch always returns a row (nothing to compare
+        # against yet), so it reports True even when the very first-ever observation for
+        # this mode lands at the OK baseline — not a real "transition" (mirrors the
+        # kill_scale_bands ∅→HOLD baseline carve-out: prime silently, don't alert).
+        transitioned = False
+
+    # Telemetry fields refresh on EVERY evaluation regardless of the transition-claim
+    # outcome — a plain UPDATE (the claim call above already guarantees the row exists,
+    # via its own INSERT branch on a brand-new (safeguard, account_mode) pair).
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE mi_safeguard_state
+            SET last_evaluation_at = $3,
+                last_drawdown_pct  = $4,
+                last_peak          = $5,
+                last_peak_date     = $6,
+                updated_at         = $7
+            WHERE safeguard = $1 AND account_mode = $2
+            """,
+            _SAFEGUARD_NAME,
+            mode,
+            now,  # last_evaluation_at
+            state_obj.drawdown_pct,
+            state_obj.peak,
+            state_obj.peak_date,
+            now,  # updated_at
+        )
+
+    details = {
+        "account_mode": mode,
+        "current": state_obj.current,
+        "peak": state_obj.peak,
+        "peak_date": state_obj.peak_date.isoformat() if state_obj.peak_date else None,
+        "drawdown_pct": state_obj.drawdown_pct,
+        "snapshots_count": state_obj.snapshots_count,
+        "most_recent_snapshot_date": (
+            state_obj.most_recent_snapshot_date.isoformat()
+            if state_obj.most_recent_snapshot_date else None
+        ),
+        "sufficient_history": state_obj.sufficient_history,
+        "prev_state": prev_state,
+        "new_state": new_state,
+    }
+
+    if transitioned:
+        # Tiered audit events (2026-05-18). Distinct event per tier
+        # entry/exit; downstream filters can key on event_type for tier
+        # context. No legacy dual-emit (verified 0 production readers of
+        # the old event names at refactor time).
+        prev_depth = _STATE_DEPTH.get(prev_state, _STATE_DEPTH[_STATE_OK])
+        new_depth = _STATE_DEPTH[new_state]
+        direction_is_deeper = new_depth > prev_depth
+
+        event_map_deeper = {
+            _STATE_WATCH:  "drawdown_watch_entered",
+            _STATE_REDUCE: "drawdown_reduce_entered",
+            _STATE_BLOCK:  "drawdown_block_entered",
+        }
+        event_map_released = {
+            _STATE_OK:     "drawdown_watch_released",   # WATCH → OK
+            _STATE_WATCH:  "drawdown_reduce_released",  # REDUCE → WATCH
+            _STATE_REDUCE: "drawdown_block_released",   # BLOCK → REDUCE
+        }
+        if direction_is_deeper:
+            event_name = event_map_deeper.get(new_state, "drawdown_state_change")
+            summary = (
+                f"{mode}: {prev_state} → {new_state} "
+                f"(dd {state_obj.drawdown_pct*100:.2f}%, "
+                f"peak ${state_obj.peak:,.2f} → current ${state_obj.current:,.2f})"
+            )
+        else:
+            event_name = event_map_released.get(new_state, "drawdown_state_change")
+            summary = (
+                f"{mode}: {prev_state} → {new_state} "
+                f"(recovered to {state_obj.drawdown_pct*100:.2f}%, "
+                f"peak ${state_obj.peak:,.2f} → current ${state_obj.current:,.2f})"
+            )
+        await log_audit_event(event_name, summary, json.dumps(details))
+        logger.info(
+            f"Drawdown breaker transition {mode}: {prev_state} → {new_state} "
+            f"(dd={state_obj.drawdown_pct*100:.2f}%, event={event_name})"
+        )
+        # Operator alert (2026-06-12): tier transitions change SIZING
+        # (REDUCE 0.5x / BLOCK 0x) — terminal/actionable class per the
+        # alerting rules, so they Telegram. Transition-only (daily cron,
+        # state machine) — no flap/spam risk. Was audit-only before: the
+        # 6/05 REDUCE entry was never surfaced to the operator.
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            from shared.telegram_format import b, esc
+            tier_icons = {"WATCH": "🟡", "REDUCE": "🟠", "BLOCK": "🛑", "OK": "✅"}
+            tier_effect = {
+                "WATCH": "full size, monitoring",
+                "REDUCE": "sizing HALVED (0.5x) on new entries",
+                "BLOCK": "new entries BLOCKED (0x)",
+                "OK": "full size restored",
+            }
+            head = "DRAWDOWN TIER" if direction_is_deeper else "DRAWDOWN RECOVERY"
+            await send_telegram_message(
+                f"{tier_icons.get(new_state, 'ℹ️')} {b(head)} ({esc(mode)}): "
+                f"{esc(prev_state)} → {esc(new_state)}\n"
+                f"Drawdown {state_obj.drawdown_pct*100:.2f}% "
+                f"(peak ${state_obj.peak:,.2f} → ${state_obj.current:,.2f})\n"
+                f"Effect: {esc(tier_effect.get(new_state, new_state))}",
+                parse_mode="HTML",
+            )
+        except Exception:
+            logger.exception("drawdown tier transition telegram failed")
+
+    return prev_state, new_state, details
+
+
+# ── State read (called from _check_safeguards in active phase) ──────────────
+
+
+async def read_breaker_state(mode: str) -> str:
+    """Cheap PK lookup. Returns 'OK' if no row exists (fail-open default).
+
+    Used by _check_safeguards() in active phase. Zero compute, single index hit.
+    Fail-safe: any DB error returns 'OK' (don't block on infra failure).
+
+    #348: now via db.get_safeguard_state (shared read); fail-direction UNCHANGED,
+    still applied here, not inside the shared helper.
+    """
+    try:
+        row = await get_safeguard_state(_SAFEGUARD_NAME, mode)
+        return row["state"] if row else _STATE_OK
+    except Exception as e:
+        logger.warning(f"read_breaker_state failed for {mode}: {e}")
+        return _STATE_OK
+
+
+# ── Internals ───────────────────────────────────────────────────────────────
+
+
+def _today_et() -> date:
+    """Today's date in ET. Uses zoneinfo (matches CLAUDE.md ET-everywhere rule)."""
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/New_York")).date()
+
+
+def _read_state_or_default(mode: str) -> str:
+    # Sync helper for the unavailable-data path. Synchronous wrapper would
+    # require pool acquisition; for this rare error path we just return OK
+    # (the audit event already records the failure). Active-phase reads use
+    # `read_breaker_state` which IS async and does the PK lookup.
+    return _STATE_OK

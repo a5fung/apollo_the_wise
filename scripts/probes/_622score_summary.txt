@@ -1,0 +1,180 @@
+#622 follow-on -- "does our catalyst/EP scorer separate small-cap winners from
+small-cap garbage?" (operator's own idea: score the 90 days we already have,
+point-in-time, EOD, instead of waiting 60 forward days)
+
+READ-ONLY measurement. No threshold, filter, or scoring code changed.
+
+============================== HEADLINE ==============================
+
+NO. On this sample, our own catalyst grader + rubric does not separate the
+small-cap winners from the small-cap losers -- it runs essentially at a coin
+flip, and on two of three readings it leans slightly the WRONG way (rating
+losers a little higher than winners).
+
+  ep_score (CURRENT live rubric, separation ON since 2026-08-22):
+    winners (n=24): mean 46.9, median 37.5
+    losers  (n=24): mean 51.4, median 37.5   <- losers score HIGHER on average
+    AUC = 0.467  (0.5 = coin flip; below 0.5 = runs backwards)
+
+  ep_score_legacy (the rubric actually live for 46 of these 48 scan dates,
+  i.e. before the 2026-08-22 change):
+    winners: mean 43.0, median 35.0
+    losers:  mean 46.6, median 32.5          <- losers score higher again
+    AUC = 0.476
+
+  Live HIGH bar (65, current rubric) -- how many would the scorer alone have
+  flagged, if the market-cap floor were the only thing removed:
+    winners crossing:  2 of 24 (FBRX 2026-07-09, SENS 2026-08-07)
+    losers  crossing:  4 of 24 (AGPU 2026-07-23, RGNX 2026-06-22,
+                                 DUOT 2026-08-17, PESI 2026-08-12)
+  MORE losers than winners would clear the bar. A pure "drop the cap floor,
+  keep the score bar" lane would admit more garbage than winners.
+
+  Legacy per-regime bar (65/70/75/80, the rubric actually live for 46 of 48
+  scan dates) on the SAME 48 names: 6 winners vs 5 losers clear it -- still a
+  coin flip, not a real catch (detail in the CHPT section below).
+
+  Catalyst LABEL alone barely differs either: winners 8 strong + 2 game_changer
+  of 24 (42%); losers 7 strong + 4 game_changer of 24 (46%). The grader is
+  finding real, dated, material-sounding catalysts on plenty of the losers
+  too -- this isn't a grading-quality problem, it's a "a real catalyst still
+  doesn't predict the trade" problem.
+
+============================== THE EXAMPLE THAT STARTED THIS: CHPT ==============================
+
+CHPT (2026-09-03, $134M) is NOT one of the 24 winners in the sample above --
+under the SAME sampling rule used for this probe, its 09:31-settled R was only
++0.33 (below the >+0.5R winner cutoff; by 09:36 it was already marked +2.0R
+unrealized, still open). It is reported here separately as a named case study
+of the specific stock that prompted this whole question, same pipeline, same
+point-in-time rules -- not as a member of the winner group above:
+
+  catalyst_quality = "strong" (correctly grounded: Q2 revenue +18% YoY beat,
+    adjusted EBITDA loss narrowed $22.1M -> $4.8M, record 38% gross margin --
+    a real, dated, material catalyst for a $134M name)
+  ep_score (CURRENT rubric)  = 52.5  -- BELOW the 65 HIGH bar. The scorer
+    would NOT have flagged his own example.
+  ep_score_legacy (pre-8/22) = 80.0  -- comfortably clears every regime's old
+    bar (65-80).
+
+  WHY THE GAP, AND WHY THAT IS NOT "THE OLD SCORER WOULD HAVE CAUGHT IT":
+  CHPT's gap was 49.8% -- huge. The CURRENT rubric flattened gap size to a
+  flat 10 points (any qualifying gap, #533 2026-08-22, because gap SIZE ran
+  BACKWARDS -- AUC 0.34 -- on the labelled real-EP set that change was
+  measured against; this probe's own prior #622 finding agrees: gap size does
+  not separate, 15.5% vs 14.9% medians). The OLD rubric paid a 20%+ gap 25
+  points and would trip CHPT's conviction floor to 80, comfortably clearing
+  its regime's bar. But checked against the SAME 48-name sample, the legacy
+  rubric's bar-crossing is 6 winners vs 5 losers -- also a coin flip (AUC
+  0.476 overall, see above). The legacy rubric does not single out CHPT; it
+  rewards big gaps INDISCRIMINATELY, and on this sample that pays winners
+  (BLZE, FBRX, DCTH, OPRT, SENS, QMCO) and losers (AII, DUOT 08-17, FF, PESI
+  08-12, SILC) at essentially the same rate. CHPT clears the old bar not
+  because the old rubric found something real about CHPT specifically, but
+  because it paid every big gap, real catalyst or not -- the same mechanism
+  that flags PESI 08-12 (-1.0R) and FF 08-11 (-1.0R). Reverting #533 would
+  not fix separation; it would just admit more big-gap names of both kinds.
+
+============================== WHAT THIS DOES AND DOES NOT SUPPORT ==============================
+
+- n=48 (24/24) clears the N>=10 CHANGE_PROCESS floor for evidence volume, but
+  this is a NULL result (no separation, borderline-backwards), not a
+  borderline one -- more data would sharpen a weak signal, it would not turn
+  a coin-flip into a strong one on its own.
+- It supports: "catalyst-quality score, as currently computed, is not a
+  viable STANDALONE mechanism for widening the cap floor." Building a
+  cap-relaxation lane on today's ep_score alone is not supported by this
+  evidence.
+- It does NOT support "no mechanism can ever work" -- only that score alone,
+  on THIS 90-day window, does not. Gap size and ADV/liquidity were already
+  shown (prior #622 work) not to separate either; market cap is still the
+  only recorded feature that does.
+- The #533 gap-flattening change is why today's score (52.5) falls short of
+  the bar on CHPT specifically -- but the evidence here says reverting it
+  would NOT fix separation: the pre-8/22 rubric is also a coin flip on this
+  same 48-name sample (6 winners vs 5 losers clear its bar). It would catch
+  CHPT by paying every big gap indiscriminately, real catalyst or not, which
+  is the same mechanism that would re-admit PESI 08-12 and FF 08-11.
+- The holistic judge (`ep_grade_judge`), which can further override the score
+  tier including all the way to suppression, was NOT run here (scope
+  decision -- see driver docstring) -- it could only narrow the "would have
+  fired" set further, never widen it, so it would not change this NO answer.
+
+============================== METHOD, BRIEFLY ==============================
+
+Real production entry points, not reimplemented: `ep_detector._classify_catalyst_claude`
+(the actual `ep_catalyst_grade` LLM call) feeding `ep_detector._score_ep` with
+`ep_rubric.SCORE_WEIGHTS` (current) and `SCORE_WEIGHTS_LEGACY` (pre-8/22, free
+to also compute since `_score_ep` is a pure function).
+
+No lookahead: grounded text via `scripts._grounded_reconstruct.reconstruct_grounded_text`
+(SEC 8-K/6-K filed <= scan date, Alpaca/Benzinga wires created_at <= 09:31 ET
+that morning). Web/Perplexity was not run at all (can't be pinned to a past
+date) -- there is no "contaminated" leg to flag; it's simply absent. Market
+cap fed to the grader/scorer is the POINT-IN-TIME `mcap_m` from the #622
+replay's feature capture, not a live lookup. Regime multiplier and theme
+membership are read from `mi_market_regime`/`mi_themes` STRICTLY BEFORE the
+scan date (both tables get that day's own row written that evening, in the
+nightly pull -- at 09:31 ET only the prior day's row exists; this exactly
+mirrors how the live scan's own `get_latest_regime()` behaves at premarket-
+scan time). 2 of 48 rows (HELP 2026-07-16 winner, DUOT 2026-08-17 loser) carry
+`sec_same_day_risk=True` -- the nearest SEC filing was dated the scan day
+itself and either has no acceptance timestamp or an acceptance time after
+09:31 ET, so those two grades carry a small residual same-day-timing caveat
+(SEC's public feed is date- not minute-precise for older filings). Dropping
+both (23 winners / 23 losers) moves the live-rubric AUC from 0.467 to 0.508
+(closer to neutral, not further backwards) and bar-crossing to 2 winners / 3
+losers -- the "no separation, if anything losers edge it" conclusion holds
+either way.
+
+Sample: all 24 winners (realized_r_0931 > +0.5) + a random sample of 24
+losers (realized_r_0931 <= -0.9) matched to that count, `random.seed(622)`,
+from the two degenerate-stop rows excluded per the task (RELL 2026-06-08,
+AVBC 2026-07-24). Exact keys: `scripts/probes/_622score_sample.json`.
+
+Simplifications (documented in the driver's docstring, not hidden):
+vol_percentile defaulted to 50 (no bonus either way, +/-5pt max, not
+directionally biased); the earnings Q-rev downgrade gate
+(catalyst_metrics_extractor) was not run (can only lower a score, so this is
+a slight upper-bound on a handful of earnings-catalyst rows, not a source of
+the null result).
+
+============================== SPEND ==============================
+
+Projected (printed before the first paid call): 48 x $0.011522 (14-day
+`ep_catalyst_grade` meter average) = $0.5530.
+Actual, verified against `api_usage` post-run: 48 calls / $0.4523 for the main
+sample + 1 call / $0.0120 for the CHPT case study = $0.4643 total.
+Budget: $6.00. Used: 7.7%. Only `ep_catalyst_grade` calls were made -- no
+perplexity, catalyst_metrics_extractor, or ep_grade_judge calls, confirmed by
+`api_usage` grouped by caller for the run window.
+
+============================== ARTIFACTS ==============================
+
+scripts/probes/_622score_sample.json    -- the exact 48-name sample + seed
+scripts/probes/_622score_driver.py      -- the driver (exact SQL inline, run
+                                            instructions, full no-lookahead
+                                            + simplification rationale)
+scripts/probes/_622score_chpt.py        -- the CHPT case-study addendum
+scripts/probes/_622score_raw.jsonl      -- raw captured grades (48 rows),
+                                            written the instant each paid
+                                            call returned
+scripts/probes/_622score_out.jsonl      -- full per-row records (score,
+                                            breakdown, regime, theme, flags)
+scripts/probes/_622score_chpt_out.json  -- the CHPT case-study record
+scripts/probes/_622score_run.log        -- full run console log (spend plan
+                                            + all 48 lines + DONE)
+
+============================== OPERATOR DECISIONS -- SURFACED, NOT MADE ==============================
+
+1. The #533 gap-flattening change is why today's scorer misses CHPT
+   specifically -- but this probe's own evidence says reverting it would NOT
+   restore separation (the pre-8/22 rubric is a coin flip on this same
+   sample, 6 winners vs 5 losers). Whether to revisit #533 anyway, keep it,
+   or treat CHPT as an acceptable miss under a rule that is evidence-based
+   for the labelled real-EP set, is his call.
+2. Given score alone does not separate this population, whether to pursue a
+   DIFFERENT mechanism (e.g. the live holistic judge's fuller read, or some
+   other signal not yet tried) or to treat "no viable mechanism found yet" as
+   the answer for now, is his call -- this probe closes the "we never even
+   scored them" gap, it does not close the search.

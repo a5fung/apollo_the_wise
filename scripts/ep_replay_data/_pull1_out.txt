@@ -1,0 +1,150 @@
+=== SCHEMA mi_live_trades ===
+column_name|data_type
+id|integer
+ticker|text
+alert_date|date
+ep_score|double precision
+catalyst_quality|text
+gap_pct|double precision
+regime|text
+status|text
+orb_high|double precision
+orb_low|double precision
+atr_14|double precision
+entry_price|double precision
+entry_shares|double precision
+stop_price|double precision
+hard_stop|double precision
+position_size|double precision
+risk_dollars|double precision
+entry_order_id|text
+stop_order_id|text
+exits|jsonb
+remaining_shares|double precision
+total_pnl|double precision
+hold_days|integer
+partial_taken|boolean
+breakeven_active|boolean
+running_closes|jsonb
+proposed_at|timestamp with time zone
+confirmed_at|timestamp with time zone
+skip_reason|text
+created_at|timestamp with time zone
+filled_at|timestamp with time zone
+closed_at|timestamp with time zone
+entry_attempt|integer
+signal_type|text
+account_mode|text
+lowest_price_seen|numeric
+highest_price_seen|numeric
+pnl_attribution|text
+risk_dollars_actual|double precision
+(39 rows)
+=== SCHEMA mi_ep_alerts ===
+column_name|data_type
+id|integer
+ticker|text
+alert_date|date
+gap_pct|double precision
+rel_volume|double precision
+ep_score|double precision
+score_tier|text
+catalyst|text
+catalyst_quality|text
+claude_analysis|text
+gemini_validation|text
+confidence_multiplier|double precision
+vol_percentile|double precision
+created_at|timestamp with time zone
+source|text
+pm_rvol|double precision
+pm_rvol_baseline_n|integer
+detected_at|timestamp with time zone
+catalyst_type|text
+catalyst_type_rationale|text
+theme_gated_tier|text
+theme_gated_score|double precision
+in_active_theme|boolean
+in_narrative_cohort|boolean
+fire_status|text
+fire_axes|ARRAY
+materiality_tier|text
+materiality_source|text
+fire_status_mat_shadow|text
+grounded_text|text
+baseline_floor_tier|text
+judge_tier|text
+judge_direction|text
+judge_rationale|text
+judge_materiality_tier|text
+grade_engine_authority|text
+rubric_version|text
+setup_class|text
+tape_tier|text
+tape_spike_ct|integer
+tape_held|integer
+tape_rev|integer
+tape_bmr2|double precision
+tape_ntr_med|double precision
+vol_hist_n|integer
+vol_r5_50|double precision
+vol_lab50|integer
+vol_lab50_ratio|double precision
+vol_alert_vs_max|double precision
+judge_grade|text
+judge_grade_reason|text
+judge_tier_reason|text
+(52 rows)
+=== SCHEMA mi_intraday_bars ===
+column_name|data_type
+ticker|text
+bar_time|timestamp with time zone
+open|double precision
+high|double precision
+low|double precision
+close|double precision
+volume|bigint
+vwap|double precision
+(8 rows)
+=== SCHEMA mi_daily_closes ===
+column_name|data_type
+trade_date|date
+ticker|text
+close|double precision
+volume|bigint
+open_price|double precision
+high_price|double precision
+low_price|double precision
+(7 rows)
+=== SCHEMA mi_market_regime ===
+column_name|data_type
+regime_date|date
+regime|text
+spy_vs_50ma|double precision
+spy_vs_200ma|double precision
+qqq_vs_50ma|double precision
+vix|double precision
+breadth_pct_above_40ma|double precision
+bo_bd_ratio_5d|double precision
+pct4_ratio_10d|double precision
+description|text
+ep_threshold|integer
+created_at|timestamp with time zone
+t2108|double precision
+pradeep_1m_50|integer
+pradeep_3m_25|integer
+full_up4_count|integer
+full_down4_count|integer
+consec_breakdown_days|integer
+breadth_monitor|jsonb
+qqq_ema_10|double precision
+qqq_ema_20|double precision
+qqq_ema_bullish|boolean
+(22 rows)
+=== COUNTS ===
+k|count
+live_trades_closed_magna53|52
+ep_alerts_live|270
+intraday_bars|15187384
+daily_closes|3275482
+(4 rows)

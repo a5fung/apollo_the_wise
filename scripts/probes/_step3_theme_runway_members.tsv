@@ -1,0 +1,3001 @@
+lineage	ticker	class	founder	first_join	ep_class	ep_date	covered	lag
+1	AGX	grind	False	2026-04-01	post	2026-03-27	False	6
+1	BE	grind	True	2026-03-19	post	2026-04-14	True	17
+1	FCEL	grind	False	2026-05-14	none			
+1	FPS	grind	False	2026-06-01	none			
+1	GEV	grind	True	2026-03-19	none			
+1	NXT	grind	True	2026-03-19	none			
+1	PWR	grind	True	2026-03-19	none			
+1	VRT	grind	True	2026-03-19	none			
+2	BTBT	grind	True	2026-03-19	none			
+2	CIFR	grind	True	2026-03-19	none			
+2	CLSK	grind	True	2026-03-19	post	2026-04-14	True	17
+2	COIN	grind	True	2026-03-19	none			
+2	HUT	grind	True	2026-03-19	none			
+2	MARA	grind	True	2026-03-19	none			
+2	MSTR	grind	True	2026-03-19	none			
+2	RIOT	grind	True	2026-03-19	none			
+2	WULF	grind	False	2026-06-08	none			
+3	CRCL	grind	True	2026-03-19	none			
+3	XFLT	grind	False	2026-03-23	none			
+4	FANG	grind	True	2026-03-19	none			
+4	MPC	grind	True	2026-03-19	none			
+4	VLO	grind	True	2026-03-19	none			
+5	CVX	grind	True	2026-03-19	none			
+5	HAL	grind	True	2026-03-19	none			
+5	XLE	grind	True	2026-03-19	none			
+6	ACDC	grind	False	2026-04-08	none			
+6	AESI	grind	False	2026-04-08	none			
+6	AMPX	grind	False	2026-04-08	none			
+6	ANNA	grind	False	2026-04-08	post	2026-03-24	False	3
+6	APA	grind	False	2026-04-08	none			
+6	BATL	grind	False	2026-04-08	post	2026-04-02	False	10
+6	BNO	grind	False	2026-04-08	none			
+6	BW	grind	False	2026-04-08	none			
+6	CHRD	grind	False	2026-04-08	none			
+6	COP	grind	True	2026-03-19	none			
+6	CRGY	grind	False	2026-04-08	none			
+6	CVE	grind	False	2026-04-08	none			
+6	CVX	grind	False	2026-04-08	none			
+6	DBO	grind	False	2026-04-08	none			
+6	DCH	grind	False	2026-04-08	none			
+6	DELL	grind	False	2026-04-08	none			
+6	DOW	grind	False	2026-04-08	none			
+6	E	grind	False	2026-04-08	none			
+6	EOG	grind	True	2026-03-19	none			
+6	EQNR	grind	False	2026-04-08	none			
+6	FANG	grind	False	2026-04-08	none			
+6	GLNG	grind	False	2026-04-08	none			
+6	GTE	grind	False	2026-04-08	none			
+6	HAL	grind	False	2026-04-08	none			
+6	ICHR	grind	False	2026-04-08	none			
+6	LBRT	grind	False	2026-04-08	none			
+6	LNG	grind	False	2026-04-08	none			
+6	LRCX	grind	False	2026-04-08	none			
+6	LYB	grind	False	2026-04-08	none			
+6	MPC	grind	False	2026-04-08	none			
+6	MTDR	grind	False	2026-04-08	none			
+6	OVV	grind	False	2026-04-08	none			
+6	OXY	grind	False	2026-04-08	none			
+6	PARR	grind	False	2026-04-08	none			
+6	PBF	grind	False	2026-04-08	none			
+6	PBR	grind	False	2026-04-08	none			
+6	PTEN	grind	False	2026-04-08	none			
+6	PUMP	grind	False	2026-04-08	none			
+6	SEDG	grind	False	2026-04-08	none			
+6	SM	grind	False	2026-04-08	none			
+6	SOC	grind	False	2026-04-08	none			
+6	TALO	grind	False	2026-04-08	none			
+6	TEN	grind	False	2026-04-08	none			
+6	USO	grind	False	2026-04-08	none			
+6	VAL	grind	False	2026-04-08	none			
+6	VET	grind	False	2026-04-08	none			
+6	VG	grind	False	2026-04-08	none			
+6	VIST	grind	False	2026-04-08	none			
+6	VLO	grind	False	2026-04-08	none			
+6	WDS	grind	False	2026-04-08	none			
+6	XLE	grind	False	2026-04-08	none			
+6	XOM	grind	True	2026-03-19	none			
+7	AAOI	cogap	False	2026-03-24	none			
+7	ADTN	cogap	False	2026-03-23	none			
+7	AXTI	cogap	False	2026-03-27	none			
+7	CIEN	cogap	True	2026-03-19	none			
+7	COHR	cogap	True	2026-03-19	none			
+7	GLW	cogap	True	2026-03-19	none			
+7	LASR	cogap	False	2026-03-27	none			
+7	LITE	cogap	True	2026-03-19	none			
+7	MRVL	cogap	True	2026-03-19	none			
+7	TSEM	cogap	False	2026-03-27	none			
+7	VIAV	cogap	False	2026-03-27	none			
+8	AAOI	grind	False	2026-04-01	none			
+8	ADTN	grind	False	2026-04-01	none			
+8	AMD	grind	False	2026-04-01	none			
+8	ARM	grind	False	2026-04-01	none			
+8	AXTI	grind	False	2026-04-01	none			
+8	CIEN	grind	True	2026-03-19	none			
+8	COHR	grind	True	2026-03-19	none			
+8	GLW	grind	False	2026-03-21	none			
+8	LASR	grind	False	2026-04-01	none			
+8	LITE	grind	True	2026-03-19	none			
+8	MRVL	grind	False	2026-03-21	none			
+8	PLAB	grind	False	2026-04-01	none			
+8	SNDK	grind	False	2026-04-01	none			
+8	SVCO	grind	False	2026-04-01	none			
+8	TSEM	grind	False	2026-04-01	none			
+8	UNIT	grind	False	2026-04-01	none			
+8	VIAV	grind	False	2026-04-01	none			
+9	GILD	grind	True	2026-03-19	none			
+9	MRNA	grind	True	2026-03-19	none			
+9	PFE	grind	True	2026-03-19	none			
+10	BDTX	grind	True	2026-03-19	none			
+10	BFLY	grind	True	2026-03-19	none			
+10	EDIT	grind	True	2026-03-19	none			
+10	FIG	grind	True	2026-03-19	none			
+10	HYLN	grind	True	2026-03-19	none			
+10	IRBT	grind	True	2026-03-19	none			
+10	NVEI	grind	True	2026-03-19	none			
+10	TSLA	grind	True	2026-03-19	none			
+11	AEHR	grind	False	2026-04-02	post	2026-03-31	False	8
+11	AMAT	grind	True	2026-03-19	none			
+11	COHU	grind	False	2026-06-09	none			
+11	FORM	grind	False	2026-03-24	none			
+11	KLAC	grind	True	2026-03-19	none			
+11	LRCX	grind	True	2026-03-19	none			
+11	ONTO	grind	False	2026-04-08	post	2026-04-16	True	19
+11	PLAB	grind	False	2026-03-24	none			
+11	TER	grind	False	2026-04-08	none			
+11	TSEM	grind	False	2026-04-08	none			
+11	UCTT	grind	False	2026-03-25	none			
+12	AJRD	grind	True	2026-03-19	none			
+12	ASTS	grind	True	2026-03-19	none			
+12	BETR	grind	False	2026-04-14	none			
+12	BKSY	grind	True	2026-03-19	none			
+12	FLY	grind	False	2026-04-02	none			
+12	IRDM	grind	False	2026-04-13	post	2026-04-14	True	17
+12	JOBY	grind	True	2026-03-19	none			
+12	KTOS	grind	True	2026-03-19	none			
+12	LIFE	grind	False	2026-04-14	none			
+12	LMT	grind	False	2026-04-13	none			
+12	LUNR	grind	True	2026-03-19	none			
+12	MNTS	grind	True	2026-03-19	none			
+12	NOC	grind	False	2026-04-13	none			
+12	PL	grind	True	2026-03-19	none			
+12	RKLB	grind	True	2026-03-19	post	2026-04-16	True	19
+12	RTX	grind	False	2026-04-13	none			
+12	SPIR	grind	True	2026-03-19	none			
+12	TH	grind	False	2026-04-14	post	2026-04-01	False	9
+12	VSEC	grind	False	2026-04-14	none			
+12	WLTH	grind	False	2026-04-14	none			
+12	YSS	grind	False	2026-04-13	none			
+13	AJRD	grind	False	2026-04-23	none			
+13	ALM	grind	False	2026-04-23	none			
+13	AVBP	grind	False	2026-04-16	none			
+13	BKSY	grind	False	2026-04-23	none			
+13	DAWN	grind	False	2026-04-16	none			
+13	DELL	grind	False	2026-04-23	none			
+13	FLY	grind	False	2026-04-23	none			
+13	GD	grind	True	2026-03-19	none			
+13	GMTL	grind	False	2026-04-23	none			
+13	INFQ	grind	False	2026-04-23	none			
+13	INKT	grind	False	2026-04-16	none			
+13	IONQ	grind	False	2026-04-23	post	2026-04-14	False	17
+13	IRDM	grind	False	2026-03-25	post	2026-04-14	True	17
+13	LMT	grind	True	2026-03-19	none			
+13	LUNR	grind	False	2026-04-23	none			
+13	MDA	grind	False	2026-04-23	none			
+13	MNTS	grind	False	2026-04-23	none			
+13	NOC	grind	True	2026-03-19	none			
+13	PL	grind	False	2026-03-25	none			
+13	RKLB	grind	False	2026-04-23	post	2026-04-16	False	19
+13	RTX	grind	True	2026-03-19	none			
+13	RVMD	grind	False	2026-04-16	post	2026-04-13	False	16
+13	SPIR	grind	False	2026-04-23	none			
+13	YSS	grind	False	2026-04-23	none			
+14	ICHR	grind	False	2026-05-12	none			
+14	LRCX	grind	True	2026-03-20	none			
+14	MRAM	grind	True	2026-03-20	post	2026-04-14	True	16
+14	MU	grind	True	2026-03-20	none			
+14	QMCO	grind	False	2026-06-22	none			
+14	SIMO	grind	False	2026-05-08	none			
+14	SNDK	grind	True	2026-03-20	none			
+14	STX	grind	True	2026-03-20	none			
+14	TSEM	grind	False	2026-05-12	none			
+14	TSM	grind	True	2026-03-20	none			
+14	WDC	grind	True	2026-03-20	none			
+15	ARM	grind	True	2026-03-20	none			
+15	MRVL	grind	True	2026-03-20	post	2026-04-20	True	20
+16	AIP	grind	False	2026-05-14	none			
+16	ALAB	grind	False	2026-05-20	none			
+16	AMD	grind	False	2026-04-20	none			
+16	ARM	grind	True	2026-03-20	none			
+16	CEVA	grind	False	2026-05-14	none			
+16	CRDO	grind	False	2026-06-05	post	2026-04-13	False	15
+16	INTC	grind	False	2026-05-19	none			
+16	MRVL	grind	True	2026-03-20	post	2026-04-20	True	20
+16	MXL	grind	False	2026-06-26	post	2026-04-20	False	20
+16	QUIK	grind	False	2026-05-15	none			
+17	DDOG	grind	True	2026-03-20	none			
+17	FTNT	grind	True	2026-03-20	none			
+18	BB	grind	False	2026-06-26	none			
+18	CHKP	grind	False	2026-08-31	none			
+18	CRWD	grind	False	2026-06-01	none			
+18	CVLT	grind	False	2026-07-07	none			
+18	DDOG	grind	True	2026-03-20	none			
+18	FFIV	grind	False	2026-08-12	none			
+18	FTNT	grind	True	2026-03-20	none			
+18	GEN	grind	False	2026-08-14	none			
+18	GRRR	grind	False	2026-06-01	none			
+18	NET	grind	False	2026-07-17	none			
+18	NOK	grind	False	2026-08-28	none			
+18	NTSK	grind	False	2026-08-12	none			
+18	OKTA	grind	False	2026-06-05	none			
+18	PANW	grind	False	2026-06-01	none			
+18	QLYS	grind	False	2026-07-02	none			
+18	RBRK	grind	False	2026-07-06	none			
+18	RPD	grind	False	2026-07-06	none			
+18	S	grind	False	2026-08-11	none			
+18	SAIL	grind	False	2026-08-11	none			
+18	SMTC	grind	False	2026-08-28	none			
+18	TENB	grind	False	2026-06-30	none			
+18	VRNS	grind	False	2026-07-02	none			
+18	ZS	grind	False	2026-08-11	none			
+19	AJRD	grind	False	2026-03-21	none			
+19	ASTS	grind	False	2026-03-21	none			
+19	BKSY	grind	True	2026-03-20	none			
+19	FLY	grind	False	2026-04-09	none			
+19	GD	grind	False	2026-04-09	none			
+19	IRDM	grind	False	2026-04-09	post	2026-04-14	True	16
+19	JOBY	grind	False	2026-03-21	none			
+19	KTOS	grind	False	2026-03-21	none			
+19	LMT	grind	False	2026-04-09	none			
+19	LUNR	grind	False	2026-03-21	none			
+19	MNTS	grind	False	2026-03-21	none			
+19	NOC	grind	False	2026-04-09	none			
+19	PL	grind	True	2026-03-20	none			
+19	RKLB	grind	False	2026-03-21	post	2026-04-16	True	18
+19	RTX	grind	False	2026-04-09	none			
+19	SPIR	grind	True	2026-03-20	none			
+19	YSS	grind	False	2026-04-09	none			
+20	BNAI	cogap	True	2026-03-21	post	2026-04-14	True	16
+20	SVCO	cogap	True	2026-03-21	none			
+21	ADEA	grind	False	2026-04-02	none			
+21	AGRO	grind	True	2026-03-21	none			
+21	DAR	grind	False	2026-03-30	none			
+21	RYAM	grind	False	2026-04-01	none			
+21	SSL	grind	True	2026-03-21	none			
+21	YOU	grind	False	2026-04-02	none			
+22	ADEA	grind	False	2026-04-14	none			
+22	AGRO	grind	False	2026-04-14	none			
+22	ASIX	grind	False	2026-04-13	none			
+22	BW	grind	False	2026-05-07	none			
+22	CC	grind	False	2026-04-13	none			
+22	CE	grind	False	2026-04-13	none			
+22	CF	grind	False	2026-04-02	none			
+22	CLMT	grind	False	2026-04-13	none			
+22	DAR	grind	False	2026-04-14	none			
+22	DOW	grind	False	2026-04-13	none			
+22	GPRE	grind	False	2026-03-30	post	2026-04-13	True	15
+22	KODK	grind	False	2026-04-13	none			
+22	LXU	grind	False	2026-04-02	none			
+22	LYB	grind	True	2026-03-21	none			
+22	MEOH	grind	False	2026-04-13	none			
+22	OLN	grind	False	2026-04-13	none			
+22	RYAM	grind	False	2026-04-13	none			
+22	SSL	grind	True	2026-03-21	none			
+22	WLK	grind	False	2026-04-13	none			
+22	YOU	grind	False	2026-04-14	none			
+23	AXTI	cogap	True	2026-03-21	none			
+23	SVCO	cogap	True	2026-03-21	none			
+24	AAOI	cogap	False	2026-03-25	none			
+24	ADTN	cogap	False	2026-03-25	none			
+24	AEIS	cogap	False	2026-04-09	none			
+24	AMD	cogap	False	2026-04-02	none			
+24	ARM	cogap	False	2026-04-02	none			
+24	AXTI	cogap	True	2026-03-21	none			
+24	CIEN	cogap	False	2026-03-25	none			
+24	COHR	cogap	False	2026-03-25	none			
+24	FN	cogap	False	2026-04-09	none			
+24	GLW	cogap	False	2026-03-25	none			
+24	ICHR	cogap	False	2026-04-09	none			
+24	LASR	cogap	True	2026-03-21	none			
+24	LITE	cogap	False	2026-03-25	none			
+24	LWLG	cogap	False	2026-04-13	post	2026-04-13	False	15
+24	MRVL	cogap	False	2026-03-25	post	2026-04-20	True	20
+24	MTZ	cogap	False	2026-04-09	none			
+24	PARK	cogap	False	2026-04-09	none			
+24	PLAB	cogap	False	2026-04-02	none			
+24	RJET	cogap	False	2026-04-09	none			
+24	SBAC	cogap	False	2026-04-09	none			
+24	SNDK	cogap	False	2026-04-02	none			
+24	SVCO	cogap	False	2026-04-02	none			
+24	TSEM	cogap	True	2026-03-21	none			
+24	UNIT	cogap	False	2026-04-02	none			
+24	VIAV	cogap	False	2026-03-25	none			
+24	VSAT	cogap	False	2026-04-09	none			
+25	ACDC	cogap	True	2026-03-21	none			
+25	AESI	cogap	False	2026-03-24	none			
+25	AMPX	cogap	False	2026-03-24	none			
+25	ANNA	cogap	False	2026-03-24	post	2026-03-24	False	2
+25	APA	cogap	False	2026-03-24	none			
+25	BATL	cogap	True	2026-03-21	post	2026-04-02	True	9
+25	BETR	cogap	False	2026-04-13	none			
+25	BNO	cogap	True	2026-03-21	none			
+25	BW	cogap	False	2026-03-24	none			
+25	CHRD	cogap	False	2026-03-24	none			
+25	COP	cogap	False	2026-03-24	none			
+25	CRGY	cogap	False	2026-03-26	none			
+25	CVE	cogap	False	2026-04-13	none			
+25	CVX	cogap	False	2026-03-24	none			
+25	DBO	cogap	True	2026-03-21	none			
+25	DCH	cogap	False	2026-04-13	none			
+25	DELL	cogap	False	2026-04-01	none			
+25	DOW	cogap	False	2026-03-24	none			
+25	E	cogap	False	2026-04-01	none			
+25	EOG	cogap	False	2026-03-24	none			
+25	EQNR	cogap	True	2026-03-21	none			
+25	FANG	cogap	False	2026-03-24	none			
+25	GLNG	cogap	False	2026-04-01	none			
+25	GTE	cogap	True	2026-03-21	none			
+25	HAL	cogap	False	2026-03-24	none			
+25	ICHR	cogap	False	2026-03-24	none			
+25	LBRT	cogap	False	2026-03-24	none			
+25	LIFE	cogap	False	2026-04-13	none			
+25	LNG	cogap	False	2026-04-01	none			
+25	LRCX	cogap	False	2026-03-24	none			
+25	LYB	cogap	False	2026-03-24	none			
+25	MPC	cogap	False	2026-03-24	none			
+25	MTDR	cogap	False	2026-03-26	none			
+25	OVV	cogap	False	2026-03-26	none			
+25	OXY	cogap	False	2026-03-26	none			
+25	PARR	cogap	False	2026-03-24	none			
+25	PBF	cogap	False	2026-03-24	none			
+25	PBR	cogap	False	2026-03-24	none			
+25	PTEN	cogap	True	2026-03-21	none			
+25	PUMP	cogap	False	2026-03-24	none			
+25	SEDG	cogap	False	2026-04-01	none			
+25	SM	cogap	True	2026-03-21	none			
+25	SNDK	cogap	False	2026-04-13	none			
+25	SOC	cogap	False	2026-03-24	post	2026-04-20	True	20
+25	TALO	cogap	False	2026-03-24	none			
+25	TEN	cogap	False	2026-04-13	none			
+25	TH	cogap	False	2026-04-13	post	2026-04-01	False	8
+25	TSEM	cogap	False	2026-04-01	none			
+25	USO	cogap	True	2026-03-21	none			
+25	VAL	cogap	False	2026-03-26	none			
+25	VET	cogap	True	2026-03-21	none			
+25	VG	cogap	False	2026-03-24	none			
+25	VIST	cogap	False	2026-03-24	none			
+25	VLO	cogap	False	2026-03-24	none			
+25	VSEC	cogap	False	2026-04-13	none			
+25	WDS	cogap	True	2026-03-21	none			
+25	WLTH	cogap	False	2026-04-13	none			
+25	XLE	cogap	False	2026-03-24	none			
+25	XOM	cogap	False	2026-03-24	none			
+26	AMPX	grind	True	2026-03-21	none			
+26	SEDG	grind	True	2026-03-21	none			
+27	BNAI	grind	True	2026-03-21	post	2026-04-14	True	16
+27	DOCN	grind	True	2026-03-21	none			
+27	FSLY	grind	True	2026-03-21	none			
+27	PAYP	grind	False	2026-04-02	none			
+27	SVCO	grind	False	2026-04-01	none			
+28	AESI	cogap	True	2026-03-21	none			
+28	AMPX	cogap	True	2026-03-21	none			
+28	ANNA	cogap	True	2026-03-21	post	2026-03-24	True	2
+28	APA	cogap	True	2026-03-21	none			
+28	BW	cogap	True	2026-03-21	none			
+28	CHRD	cogap	True	2026-03-21	none			
+28	COP	cogap	True	2026-03-21	none			
+28	CVX	cogap	True	2026-03-21	none			
+28	DOW	cogap	True	2026-03-21	none			
+28	EOG	cogap	True	2026-03-21	none			
+28	FANG	cogap	True	2026-03-21	none			
+28	HAL	cogap	True	2026-03-21	none			
+28	LBRT	cogap	True	2026-03-21	none			
+28	LYB	cogap	True	2026-03-21	none			
+28	MPC	cogap	True	2026-03-21	none			
+28	PARR	cogap	True	2026-03-21	none			
+28	PBF	cogap	True	2026-03-21	none			
+28	PBR	cogap	False	2026-03-23	none			
+28	PTEN	cogap	True	2026-03-21	none			
+28	PUMP	cogap	True	2026-03-21	none			
+28	SM	cogap	True	2026-03-21	none			
+28	SOC	cogap	True	2026-03-21	post	2026-04-20	True	20
+28	TALO	cogap	True	2026-03-21	none			
+28	VET	cogap	True	2026-03-21	none			
+28	VG	cogap	True	2026-03-21	none			
+28	VIST	cogap	True	2026-03-21	none			
+28	VLO	cogap	True	2026-03-21	none			
+28	XLE	cogap	True	2026-03-21	none			
+28	XOM	cogap	True	2026-03-21	none			
+29	SNDK	grind	True	2026-03-21	none			
+29	TSEM	grind	True	2026-03-21	none			
+30	ADEA	grind	False	2026-04-15	none			
+30	AGRO	grind	False	2026-04-15	none			
+30	ASIX	grind	False	2026-04-10	none			
+30	BW	grind	False	2026-05-06	none			
+30	CC	grind	False	2026-04-10	none			
+30	CE	grind	False	2026-04-10	none			
+30	CF	grind	True	2026-03-21	none			
+30	CLMT	grind	False	2026-04-10	none			
+30	DAR	grind	False	2026-04-15	none			
+30	DOW	grind	False	2026-04-10	none			
+30	GPRE	grind	False	2026-03-31	post	2026-04-13	True	15
+30	KODK	grind	False	2026-04-10	none			
+30	LXU	grind	True	2026-03-21	none			
+30	LYB	grind	False	2026-03-31	none			
+30	MEOH	grind	False	2026-04-10	none			
+30	OLN	grind	False	2026-04-10	none			
+30	RYAM	grind	False	2026-04-10	none			
+30	SSL	grind	False	2026-03-24	none			
+30	WLK	grind	False	2026-04-10	none			
+30	YOU	grind	False	2026-04-15	none			
+31	AVEX	grind	False	2026-06-01	post	2026-04-20	False	19
+31	ELMT	grind	False	2026-06-12	none			
+31	ISSC	grind	True	2026-03-23	none			
+31	KTOS	grind	True	2026-03-23	none			
+32	ADEA	grind	True	2026-03-23	none			
+32	AGRO	grind	False	2026-04-06	none			
+32	DAR	grind	False	2026-04-06	none			
+32	RYAM	grind	False	2026-03-31	none			
+32	SSL	grind	False	2026-04-06	none			
+32	YOU	grind	True	2026-03-23	none			
+33	ADEA	grind	True	2026-03-24	none			
+33	RYAM	grind	True	2026-03-24	none			
+34	E	grind	True	2026-03-24	none			
+34	EQNR	grind	True	2026-03-24	none			
+34	GLNG	grind	True	2026-03-24	none			
+34	LNG	grind	True	2026-03-24	none			
+34	PTEN	grind	True	2026-03-24	none			
+34	PUMP	grind	True	2026-03-24	none			
+34	VG	grind	True	2026-03-24	none			
+35	ADEA	grind	False	2026-04-30	none			
+35	ASIX	grind	True	2026-03-24	none			
+35	CC	grind	True	2026-03-24	none			
+35	CE	grind	True	2026-03-24	none			
+35	CF	grind	False	2026-04-07	none			
+35	CLMT	grind	False	2026-03-30	none			
+35	DOW	grind	False	2026-03-26	none			
+35	GPRE	grind	False	2026-04-07	post	2026-04-13	True	13
+35	KODK	grind	False	2026-04-02	none			
+35	LXU	grind	True	2026-03-24	none			
+35	LYB	grind	False	2026-03-26	none			
+35	MEOH	grind	False	2026-03-27	none			
+35	OLN	grind	False	2026-04-01	none			
+35	RYAM	grind	True	2026-03-24	none			
+35	SSL	grind	False	2026-04-07	none			
+35	WLK	grind	False	2026-04-01	none			
+36	ICHR	grind	True	2026-03-24	none			
+36	SNDK	grind	False	2026-04-29	none			
+36	TSEM	grind	True	2026-03-24	none			
+37	RYAM	cogap	True	2026-03-24	none			
+37	SSL	cogap	True	2026-03-24	none			
+38	ACDC	cogap	False	2026-04-02	none			
+38	AESI	cogap	False	2026-04-02	none			
+38	AMPX	cogap	False	2026-04-02	none			
+38	ANNA	cogap	False	2026-04-02	pre	2026-03-24		1
+38	APA	cogap	False	2026-04-02	none			
+38	BATL	cogap	False	2026-04-02	post	2026-04-02	False	6
+38	BNO	cogap	False	2026-04-02	none			
+38	BW	cogap	True	2026-03-25	none			
+38	CHRD	cogap	False	2026-04-02	none			
+38	COP	cogap	False	2026-04-02	none			
+38	CRGY	cogap	False	2026-04-02	none			
+38	CVE	cogap	False	2026-04-07	none			
+38	CVX	cogap	False	2026-04-02	none			
+38	DBO	cogap	False	2026-04-02	none			
+38	DCH	cogap	False	2026-04-07	none			
+38	DELL	cogap	True	2026-03-25	none			
+38	DOW	cogap	False	2026-04-02	none			
+38	E	cogap	False	2026-04-02	none			
+38	EOG	cogap	False	2026-04-02	none			
+38	EQNR	cogap	False	2026-04-02	none			
+38	FANG	cogap	False	2026-04-02	none			
+38	GLNG	cogap	False	2026-04-02	none			
+38	GTE	cogap	False	2026-04-02	none			
+38	HAL	cogap	False	2026-04-02	none			
+38	ICHR	cogap	False	2026-04-02	none			
+38	LBRT	cogap	False	2026-04-02	none			
+38	LNG	cogap	False	2026-04-02	none			
+38	LRCX	cogap	False	2026-04-02	none			
+38	LYB	cogap	False	2026-04-02	none			
+38	MPC	cogap	False	2026-04-02	none			
+38	MTDR	cogap	False	2026-04-02	none			
+38	OVV	cogap	False	2026-04-02	none			
+38	OXY	cogap	False	2026-04-02	none			
+38	PARR	cogap	False	2026-04-02	none			
+38	PBF	cogap	False	2026-04-02	none			
+38	PBR	cogap	False	2026-04-02	none			
+38	PTEN	cogap	False	2026-04-02	none			
+38	PUMP	cogap	False	2026-04-02	none			
+38	SEDG	cogap	False	2026-04-02	none			
+38	SM	cogap	False	2026-04-02	none			
+38	SOC	cogap	False	2026-04-02	post	2026-04-20	True	17
+38	TALO	cogap	False	2026-04-02	none			
+38	TEN	cogap	False	2026-04-02	none			
+38	TSEM	cogap	False	2026-04-02	none			
+38	USO	cogap	False	2026-04-02	none			
+38	VAL	cogap	False	2026-04-02	none			
+38	VET	cogap	False	2026-04-02	none			
+38	VG	cogap	False	2026-04-02	none			
+38	VIST	cogap	False	2026-04-02	none			
+38	VLO	cogap	False	2026-04-02	none			
+38	WDS	cogap	False	2026-04-02	none			
+38	XLE	cogap	False	2026-04-02	none			
+38	XOM	cogap	False	2026-04-02	none			
+39	LINC	grind	True	2026-03-26	none			
+39	SWBI	grind	True	2026-03-26	none			
+40	AAOI	grind	False	2026-04-06	none			
+40	ACMR	grind	False	2026-05-26	none			
+40	ADTN	grind	False	2026-04-06	none			
+40	AEHR	grind	False	2026-04-07	post	2026-03-31	False	3
+40	AEIS	grind	False	2026-04-10	none			
+40	AMAT	grind	False	2026-04-07	none			
+40	AMD	grind	False	2026-04-06	post	2026-04-24	True	20
+40	ARM	grind	False	2026-04-06	post	2026-04-24	True	20
+40	ATOM	grind	False	2026-05-27	post	2026-04-24	False	20
+40	AXTI	grind	False	2026-04-06	none			
+40	CIEN	grind	False	2026-04-06	none			
+40	COHR	grind	False	2026-04-06	none			
+40	FN	grind	False	2026-04-10	none			
+40	FORM	grind	False	2026-04-07	none			
+40	GFS	grind	False	2026-05-21	none			
+40	GLW	grind	False	2026-04-06	none			
+40	ICHR	grind	False	2026-04-10	none			
+40	KLAC	grind	False	2026-04-07	none			
+40	KLIC	grind	False	2026-06-25	none			
+40	LASR	grind	False	2026-04-06	none			
+40	LITE	grind	False	2026-04-06	none			
+40	LRCX	grind	False	2026-04-07	none			
+40	MKSI	grind	False	2026-06-25	none			
+40	MRVL	grind	False	2026-04-06	post	2026-04-20	True	16
+40	MTZ	grind	False	2026-04-10	none			
+40	PARK	grind	False	2026-04-10	none			
+40	PDFS	grind	False	2026-06-08	post	2026-04-24	False	20
+40	PLAB	grind	True	2026-03-26	none			
+40	RJET	grind	False	2026-04-10	none			
+40	SBAC	grind	False	2026-04-10	none			
+40	SNDK	grind	False	2026-04-06	none			
+40	SVCO	grind	False	2026-04-06	none			
+40	TSEM	grind	True	2026-03-26	none			
+40	UCTT	grind	False	2026-04-07	none			
+40	UMC	grind	False	2026-05-14	post	2026-04-16	False	14
+40	UNIT	grind	False	2026-04-06	none			
+40	VECO	grind	False	2026-06-09	none			
+40	VIAV	grind	False	2026-04-06	none			
+40	VSAT	grind	False	2026-04-10	none			
+41	AMD	grind	True	2026-03-27	post	2026-04-24	True	19
+41	ARM	grind	True	2026-03-27	post	2026-04-24	True	19
+41	INFQ	grind	False	2026-04-09	none			
+41	STM	grind	False	2026-04-09	post	2026-04-23	True	18
+41	ZBAI	grind	False	2026-04-09	none			
+42	AAOI	grind	False	2026-03-31	none			
+42	ADTN	grind	True	2026-03-27	none			
+42	AXTI	grind	False	2026-03-31	none			
+42	CIEN	grind	False	2026-03-31	none			
+42	COHR	grind	False	2026-03-31	none			
+42	GLW	grind	False	2026-03-31	none			
+42	LASR	grind	False	2026-03-31	none			
+42	LITE	grind	False	2026-03-31	none			
+42	MRVL	grind	False	2026-03-31	post	2026-04-20	True	15
+42	TSEM	grind	False	2026-03-31	none			
+42	VIAV	grind	True	2026-03-27	none			
+43	AOSL	grind	True	2026-03-27	post	2026-04-14	True	11
+43	HIMX	grind	True	2026-03-27	none			
+43	NVTS	grind	False	2026-05-21	post	2026-04-21	False	16
+43	SYNA	grind	False	2026-05-22	none			
+43	VSH	grind	False	2026-06-18	none			
+44	CAR	grind	True	2026-04-01	post	2026-04-21	True	13
+44	DELL	grind	False	2026-04-08	none			
+44	TSSI	grind	True	2026-04-01	none			
+45	AA	grind	False	2026-04-09	none			
+45	ALOY	grind	False	2026-06-05	none			
+45	CENX	grind	True	2026-04-01	none			
+45	CSTM	grind	False	2026-04-09	none			
+45	EMAT	grind	True	2026-04-01	none			
+45	RYZ	grind	False	2026-04-08	none			
+46	BMM	grind	True	2026-04-02	post	2026-04-14	True	7
+46	SGML	grind	True	2026-04-02	pre	2026-03-30		3
+47	KELYB	cogap	True	2026-04-02	none			
+47	RCMT	cogap	False	2026-04-07	none			
+47	TH	cogap	True	2026-04-02	pre	2026-04-01		1
+48	KYTX	grind	True	2026-04-07	post	2026-04-22	True	11
+48	SWMR	grind	True	2026-04-07	none			
+49	ARCT	grind	True	2026-04-07	none			
+49	VOR	grind	True	2026-04-07	none			
+50	LOVE	grind	True	2026-04-07	pre	2026-03-26		7
+50	SEAT	grind	True	2026-04-07	post	2026-05-05	True	20
+51	ARIS	grind	False	2026-04-08	none			
+51	AU	grind	True	2026-04-07	none			
+51	AUGO	grind	True	2026-04-07	none			
+51	NUCL	grind	False	2026-04-08	post	2026-04-16	True	7
+51	ORLA	grind	False	2026-04-08	none			
+51	SSRM	grind	False	2026-04-08	none			
+52	MLEC	cogap	True	2026-04-07	post	2026-04-28	True	15
+52	RYM	cogap	True	2026-04-07	post	2026-04-23	True	12
+53	ECOR	grind	True	2026-04-07	none			
+53	FEIM	grind	True	2026-04-07	post	2026-05-01	True	18
+54	ACDC	grind	False	2026-04-10	none			
+54	AESI	grind	False	2026-04-10	none			
+54	AMPX	grind	False	2026-04-10	none			
+54	ANNA	grind	False	2026-04-10	pre	2026-03-24		9
+54	APA	grind	False	2026-04-10	none			
+54	BATL	grind	False	2026-04-10	pre	2026-04-02		2
+54	BETR	grind	True	2026-04-07	none			
+54	BNO	grind	False	2026-04-10	none			
+54	BW	grind	False	2026-04-10	post	2026-04-27	True	14
+54	CHRD	grind	False	2026-04-10	none			
+54	COP	grind	False	2026-04-10	none			
+54	CRGY	grind	False	2026-04-10	none			
+54	CVE	grind	False	2026-04-10	none			
+54	CVX	grind	False	2026-04-10	none			
+54	DBO	grind	False	2026-04-10	none			
+54	DCH	grind	False	2026-04-10	none			
+54	DELL	grind	False	2026-04-10	none			
+54	DOW	grind	False	2026-04-10	none			
+54	E	grind	False	2026-04-10	none			
+54	EOG	grind	False	2026-04-10	none			
+54	EQNR	grind	False	2026-04-10	none			
+54	FANG	grind	False	2026-04-10	none			
+54	GLNG	grind	False	2026-04-10	none			
+54	GTE	grind	False	2026-04-10	none			
+54	HAL	grind	False	2026-04-10	none			
+54	ICHR	grind	False	2026-04-10	none			
+54	LBRT	grind	False	2026-04-10	none			
+54	LIFE	grind	False	2026-04-10	none			
+54	LNG	grind	False	2026-04-10	none			
+54	LRCX	grind	False	2026-04-10	none			
+54	LYB	grind	False	2026-04-10	none			
+54	MPC	grind	False	2026-04-10	none			
+54	MTDR	grind	False	2026-04-10	none			
+54	OVV	grind	False	2026-04-10	none			
+54	OXY	grind	False	2026-04-10	none			
+54	PARR	grind	False	2026-04-10	none			
+54	PBF	grind	False	2026-04-10	none			
+54	PBR	grind	False	2026-04-10	none			
+54	PTEN	grind	False	2026-04-10	none			
+54	PUMP	grind	False	2026-04-10	none			
+54	SEDG	grind	False	2026-04-10	none			
+54	SM	grind	False	2026-04-10	none			
+54	SNDK	grind	False	2026-04-10	none			
+54	SOC	grind	False	2026-04-10	post	2026-04-20	True	9
+54	TALO	grind	False	2026-04-10	none			
+54	TEN	grind	False	2026-04-10	none			
+54	TH	grind	False	2026-04-10	pre	2026-04-01		3
+54	USO	grind	False	2026-04-10	none			
+54	VAL	grind	False	2026-04-10	none			
+54	VET	grind	False	2026-04-10	none			
+54	VG	grind	False	2026-04-10	none			
+54	VIST	grind	False	2026-04-10	none			
+54	VLO	grind	False	2026-04-10	none			
+54	VSEC	grind	False	2026-04-10	none			
+54	WDS	grind	False	2026-04-10	none			
+54	WLTH	grind	True	2026-04-07	none			
+54	XLE	grind	False	2026-04-10	none			
+54	XOM	grind	False	2026-04-10	none			
+55	INKT	grind	True	2026-04-07	none			
+55	TXG	grind	True	2026-04-07	none			
+56	NUCL	grind	True	2026-04-07	post	2026-04-16	True	7
+56	ORLA	grind	True	2026-04-07	none			
+57	APGE	grind	False	2026-06-22	none			
+57	AUPH	grind	False	2026-08-20	none			
+57	AVTX	grind	False	2026-08-12	post	2026-05-06	False	20
+57	CLDX	grind	False	2026-08-19	none			
+57	CLYM	grind	False	2026-08-11	post	2026-04-28	False	14
+57	DNTH	grind	False	2026-04-09	none			
+57	IMVT	grind	False	2026-08-11	none			
+57	NRIX	grind	False	2026-08-31	none			
+57	ORKA	grind	True	2026-04-08	post	2026-04-27	True	13
+57	PHVS	grind	False	2026-08-20	none			
+57	SYRE	grind	True	2026-04-08	post	2026-04-13	True	3
+57	TGTX	grind	False	2026-08-31	post	2026-05-06	False	20
+57	VERA	grind	False	2026-08-17	none			
+57	ZBIO	grind	False	2026-08-12	post	2026-04-30	False	16
+58	APLD	grind	False	2026-08-20	post	2026-04-23	False	10
+58	BTDR	grind	False	2026-08-20	post	2026-05-06	False	19
+58	CIFR	grind	False	2026-08-20	none			
+58	CLSK	grind	False	2026-08-20	post	2026-04-14	False	3
+58	CORZ	grind	False	2026-08-20	post	2026-05-06	False	19
+58	HUT	grind	True	2026-04-09	post	2026-05-06	True	19
+58	MARA	grind	False	2026-08-20	none			
+58	RIOT	grind	True	2026-04-09	post	2026-05-01	True	16
+58	WULF	grind	False	2026-08-20	none			
+59	EQX	grind	True	2026-04-09	none			
+59	HSLV	grind	True	2026-04-09	post	2026-05-06	True	19
+59	HYMC	grind	True	2026-04-09	post	2026-05-06	True	19
+59	SA	grind	True	2026-04-09	post	2026-05-06	True	19
+59	VMET	grind	True	2026-04-09	post	2026-04-20	True	7
+60	ARIS	grind	False	2026-04-10	none			
+60	AUGO	grind	False	2026-04-10	post	2026-05-06	True	19
+60	FSM	grind	True	2026-04-09	none			
+60	KGC	grind	True	2026-04-09	none			
+60	OR	grind	True	2026-04-09	none			
+60	PPTA	grind	True	2026-04-09	none			
+60	SSRM	grind	False	2026-04-10	post	2026-05-06	True	19
+61	INTC	grind	True	2026-04-09	post	2026-04-24	True	11
+61	STM	grind	False	2026-05-15	post	2026-04-23	False	10
+61	WOLF	grind	True	2026-04-09	post	2026-04-22	True	9
+62	COHR	grind	True	2026-04-14	none			
+62	FN	grind	True	2026-04-14	none			
+62	GLW	grind	True	2026-04-14	post	2026-05-06	True	16
+62	LITE	grind	True	2026-04-14	post	2026-05-11	True	19
+63	BKSY	grind	True	2026-04-14	post	2026-05-08	True	18
+63	CVE	grind	False	2026-04-15	none			
+63	IRDM	grind	False	2026-04-15	pre	2026-04-14		0
+63	LMT	grind	False	2026-04-15	none			
+63	NOC	grind	False	2026-04-15	none			
+63	PL	grind	True	2026-04-14	none			
+63	RTX	grind	False	2026-04-15	none			
+63	SPIR	grind	True	2026-04-14	none			
+63	TEN	grind	False	2026-04-15	none			
+64	AAOI	cogap	True	2026-04-16	post	2026-05-08	True	16
+64	ADTN	cogap	False	2026-04-20	none			
+64	AEIS	cogap	False	2026-04-24	none			
+64	AMD	cogap	False	2026-04-21	post	2026-04-24	True	6
+64	ARM	cogap	False	2026-04-22	post	2026-04-24	True	6
+64	AXTI	cogap	False	2026-04-21	post	2026-05-01	True	11
+64	CIEN	cogap	False	2026-04-20	none			
+64	COHR	cogap	True	2026-04-16	post	2026-05-13	True	19
+64	FN	cogap	True	2026-04-16	none			
+64	GLW	cogap	True	2026-04-16	post	2026-05-06	True	14
+64	ICHR	cogap	False	2026-04-20	none			
+64	LASR	cogap	True	2026-04-16	post	2026-05-08	True	16
+64	LITE	cogap	True	2026-04-16	post	2026-05-11	True	17
+64	LWLG	cogap	False	2026-04-20	pre	2026-04-13		3
+64	MRVL	cogap	False	2026-04-22	post	2026-04-20	False	2
+64	MTZ	cogap	False	2026-04-24	post	2026-05-01	True	11
+64	OPTX	cogap	False	2026-06-01	pre	2026-04-13		3
+64	PARK	cogap	False	2026-04-20	none			
+64	PLAB	cogap	False	2026-04-20	none			
+64	POET	cogap	False	2026-05-14	post	2026-04-20	False	2
+64	RJET	cogap	False	2026-04-20	none			
+64	SBAC	cogap	False	2026-04-20	none			
+64	SNDK	cogap	False	2026-04-20	none			
+64	SVCO	cogap	False	2026-04-21	none			
+64	TSEM	cogap	False	2026-04-20	post	2026-05-13	True	19
+64	UNIT	cogap	False	2026-04-20	none			
+64	VIAV	cogap	False	2026-04-20	post	2026-04-30	True	10
+64	VSAT	cogap	False	2026-04-24	none			
+65	AJRD	grind	False	2026-04-21	none			
+65	ALM	grind	False	2026-04-21	none			
+65	ASTS	grind	False	2026-04-21	post	2026-04-22	True	3
+65	AVBP	grind	False	2026-04-21	none			
+65	BETR	grind	False	2026-04-22	none			
+65	BKSY	grind	True	2026-04-17	post	2026-05-08	True	15
+65	DAWN	grind	False	2026-04-21	none			
+65	DELL	grind	False	2026-04-21	none			
+65	FLY	grind	False	2026-04-24	post	2026-05-05	True	12
+65	GMTL	grind	False	2026-04-21	none			
+65	INFQ	grind	False	2026-04-21	none			
+65	INKT	grind	False	2026-04-21	post	2026-05-15	True	20
+65	IONQ	grind	False	2026-04-21	pre	2026-04-14		3
+65	IRDM	grind	False	2026-04-21	pre	2026-04-14		3
+65	LIFE	grind	False	2026-04-22	none			
+65	LUNR	grind	False	2026-04-24	none			
+65	MDA	grind	True	2026-04-17	post	2026-05-07	True	14
+65	MNTS	grind	False	2026-04-22	post	2026-04-23	True	4
+65	PL	grind	True	2026-04-17	none			
+65	RKLB	grind	False	2026-04-24	pre	2026-04-16		1
+65	RVMD	grind	False	2026-04-21	pre	2026-04-13		4
+65	SATL	grind	False	2026-05-22	post	2026-05-01	False	10
+65	SPIR	grind	True	2026-04-17	none			
+65	STM	grind	False	2026-04-30	post	2026-04-23	False	4
+65	TH	grind	False	2026-04-22	pre	2026-04-01		11
+65	WLTH	grind	False	2026-04-22	none			
+65	YSS	grind	False	2026-04-21	post	2026-04-21	False	2
+66	BKSY	grind	False	2026-04-27	post	2026-05-08	True	12
+66	FLY	grind	True	2026-04-22	post	2026-05-05	True	9
+66	INFQ	grind	False	2026-04-27	none			
+66	IONQ	grind	False	2026-04-27	pre	2026-04-14		6
+66	IRDM	grind	False	2026-04-27	pre	2026-04-14		6
+66	LUNR	grind	True	2026-04-22	none			
+66	MDA	grind	False	2026-04-27	post	2026-05-07	True	11
+66	MNTS	grind	False	2026-04-27	post	2026-04-23	False	1
+66	PL	grind	False	2026-04-27	none			
+66	RKLB	grind	True	2026-04-22	pre	2026-04-16		4
+66	SPIR	grind	False	2026-04-27	none			
+66	YSS	grind	False	2026-04-27	pre	2026-04-21		1
+67	ACDC	grind	True	2026-04-23	none			
+67	AESI	grind	True	2026-04-23	none			
+67	AMPX	grind	False	2026-04-30	none			
+67	ANNA	grind	False	2026-04-27	pre	2026-03-26		19
+67	APA	grind	False	2026-04-27	none			
+67	BATL	grind	False	2026-04-27	pre	2026-04-02		14
+67	BNO	grind	False	2026-04-27	none			
+67	BW	grind	False	2026-04-27	post	2026-04-27	False	2
+67	CHRD	grind	False	2026-04-27	none			
+67	COP	grind	False	2026-04-27	none			
+67	CRGY	grind	False	2026-04-27	none			
+67	CVX	grind	False	2026-04-27	none			
+67	DBO	grind	False	2026-04-27	none			
+67	DELL	grind	False	2026-04-30	none			
+67	DOW	grind	False	2026-04-30	none			
+67	E	grind	False	2026-04-27	none			
+67	EOG	grind	False	2026-04-27	none			
+67	EQNR	grind	False	2026-04-27	none			
+67	FANG	grind	False	2026-04-27	none			
+67	GLNG	grind	False	2026-04-27	none			
+67	GTE	grind	False	2026-04-27	none			
+67	HAL	grind	False	2026-04-27	none			
+67	ICHR	grind	False	2026-04-30	none			
+67	LBRT	grind	True	2026-04-23	none			
+67	LNG	grind	False	2026-04-27	none			
+67	LRCX	grind	False	2026-04-30	none			
+67	LYB	grind	False	2026-04-27	none			
+67	MPC	grind	False	2026-04-27	none			
+67	MTDR	grind	False	2026-04-27	none			
+67	OVV	grind	False	2026-04-27	none			
+67	OXY	grind	False	2026-04-27	none			
+67	PARR	grind	False	2026-04-27	none			
+67	PBF	grind	False	2026-04-27	none			
+67	PBR	grind	False	2026-04-27	none			
+67	PTEN	grind	True	2026-04-23	none			
+67	PUMP	grind	True	2026-04-23	none			
+67	SEDG	grind	False	2026-05-05	none			
+67	SM	grind	False	2026-04-27	none			
+67	SOC	grind	False	2026-04-27	pre	2026-04-20		3
+67	TALO	grind	False	2026-04-27	none			
+67	TSSI	grind	False	2026-05-08	none			
+67	USO	grind	False	2026-04-27	none			
+67	VAL	grind	False	2026-04-27	none			
+67	VET	grind	False	2026-04-27	none			
+67	VG	grind	False	2026-04-27	post	2026-05-12	True	13
+67	VIST	grind	False	2026-04-27	none			
+67	VLO	grind	False	2026-04-27	none			
+67	WDS	grind	False	2026-04-27	none			
+67	XLE	grind	False	2026-04-27	none			
+67	XOM	grind	False	2026-04-27	none			
+68	AAOI	grind	True	2026-04-24	post	2026-05-08	True	10
+68	AEIS	grind	False	2026-04-29	none			
+68	COHR	grind	True	2026-04-24	post	2026-05-13	True	13
+68	FN	grind	True	2026-04-24	none			
+68	LITE	grind	True	2026-04-24	post	2026-05-11	True	11
+68	MRVL	grind	True	2026-04-24	pre	2026-04-20		4
+68	MXL	grind	False	2026-05-08	pre	2026-04-20		4
+69	ACDC	grind	True	2026-05-05	none			
+69	AESI	grind	True	2026-05-05	none			
+69	ANNA	grind	False	2026-05-06	pre	2026-04-13		16
+69	APA	grind	False	2026-05-06	none			
+69	BATL	grind	False	2026-05-06	none			
+69	BNO	grind	False	2026-05-06	none			
+69	BW	grind	False	2026-05-06	pre	2026-04-27		6
+69	CHRD	grind	False	2026-05-06	none			
+69	COP	grind	False	2026-05-06	none			
+69	CRGY	grind	False	2026-05-06	none			
+69	CVX	grind	False	2026-05-06	none			
+69	DBO	grind	False	2026-05-06	none			
+69	DOW	grind	False	2026-05-06	none			
+69	E	grind	False	2026-05-06	none			
+69	EOG	grind	False	2026-05-06	none			
+69	EQNR	grind	False	2026-05-06	none			
+69	FANG	grind	False	2026-05-06	none			
+69	GLNG	grind	False	2026-05-06	none			
+69	GTE	grind	False	2026-05-06	none			
+69	HAL	grind	False	2026-05-06	none			
+69	LBRT	grind	True	2026-05-05	none			
+69	LNG	grind	False	2026-05-06	none			
+69	LYB	grind	False	2026-05-06	none			
+69	MPC	grind	True	2026-05-05	none			
+69	MTDR	grind	False	2026-05-06	none			
+69	OVV	grind	False	2026-05-06	none			
+69	OXY	grind	False	2026-05-06	none			
+69	PARR	grind	True	2026-05-05	none			
+69	PBF	grind	True	2026-05-05	none			
+69	PBR	grind	False	2026-05-06	none			
+69	PTEN	grind	True	2026-05-05	none			
+69	PUMP	grind	True	2026-05-05	none			
+69	SM	grind	False	2026-05-06	none			
+69	SOC	grind	False	2026-05-06	pre	2026-04-20		11
+69	TALO	grind	False	2026-05-06	none			
+69	USO	grind	False	2026-05-06	none			
+69	VAL	grind	False	2026-05-06	none			
+69	VET	grind	False	2026-05-06	none			
+69	VG	grind	False	2026-05-06	post	2026-05-12	True	5
+69	VIST	grind	False	2026-05-06	none			
+69	VLO	grind	True	2026-05-05	none			
+69	WDS	grind	False	2026-05-06	none			
+69	XLE	grind	False	2026-05-06	none			
+69	XOM	grind	False	2026-05-06	none			
+70	ACDC	grind	False	2026-05-13	none			
+70	AESI	grind	False	2026-05-13	none			
+70	ANNA	grind	False	2026-05-13	pre	2026-04-13		19
+70	APA	grind	True	2026-05-08	none			
+70	BATL	grind	False	2026-05-13	none			
+70	CHRD	grind	True	2026-05-08	none			
+70	COP	grind	False	2026-05-13	none			
+70	CRGY	grind	True	2026-05-08	none			
+70	CVX	grind	False	2026-05-13	none			
+70	E	grind	False	2026-05-13	none			
+70	EOG	grind	False	2026-05-13	none			
+70	EQNR	grind	False	2026-05-13	none			
+70	FANG	grind	True	2026-05-08	none			
+70	GLNG	grind	False	2026-05-13	none			
+70	GTE	grind	True	2026-05-08	none			
+70	HAL	grind	False	2026-05-13	none			
+70	LBRT	grind	False	2026-05-13	none			
+70	LNG	grind	False	2026-05-13	none			
+70	MPC	grind	False	2026-05-13	none			
+70	MTDR	grind	False	2026-05-13	none			
+70	OVV	grind	True	2026-05-08	none			
+70	OXY	grind	False	2026-05-13	none			
+70	PARR	grind	False	2026-05-13	none			
+70	PBF	grind	False	2026-05-13	none			
+70	PBR	grind	False	2026-05-13	none			
+70	PTEN	grind	False	2026-05-13	none			
+70	PUMP	grind	False	2026-05-13	none			
+70	SM	grind	True	2026-05-08	none			
+70	SOC	grind	False	2026-05-13	pre	2026-04-20		14
+70	TALO	grind	True	2026-05-08	none			
+70	VAL	grind	False	2026-05-13	none			
+70	VET	grind	False	2026-05-13	none			
+70	VG	grind	False	2026-05-13	post	2026-05-12	False	2
+70	VIST	grind	False	2026-05-13	none			
+70	VLO	grind	False	2026-05-13	none			
+70	WDS	grind	False	2026-05-13	none			
+70	XOM	grind	False	2026-05-13	none			
+71	ACDC	grind	True	2026-05-14	none			
+71	AESI	grind	False	2026-05-15	none			
+71	ANNA	grind	False	2026-05-15	none			
+71	APA	grind	False	2026-05-15	none			
+71	BATL	grind	False	2026-05-15	none			
+71	BNO	grind	False	2026-05-15	none			
+71	CHRD	grind	False	2026-05-15	none			
+71	COP	grind	False	2026-05-15	none			
+71	CRGY	grind	False	2026-05-15	none			
+71	CVX	grind	False	2026-05-15	none			
+71	DBO	grind	False	2026-05-15	none			
+71	E	grind	False	2026-05-15	none			
+71	EOG	grind	False	2026-05-15	none			
+71	EQNR	grind	False	2026-05-15	none			
+71	FANG	grind	False	2026-05-15	none			
+71	GLNG	grind	False	2026-05-15	none			
+71	GTE	grind	False	2026-05-15	none			
+71	HAL	grind	True	2026-05-14	none			
+71	LBRT	grind	True	2026-05-14	none			
+71	LNG	grind	False	2026-05-15	none			
+71	MPC	grind	False	2026-05-15	none			
+71	MTDR	grind	False	2026-05-15	none			
+71	OVV	grind	False	2026-05-15	none			
+71	OXY	grind	False	2026-05-15	none			
+71	PARR	grind	False	2026-05-15	none			
+71	PBF	grind	False	2026-05-15	none			
+71	PBR	grind	False	2026-05-15	none			
+71	PTEN	grind	True	2026-05-14	none			
+71	PUMP	grind	True	2026-05-14	none			
+71	SM	grind	False	2026-05-15	none			
+71	SOC	grind	False	2026-05-15	pre	2026-04-20		18
+71	TALO	grind	False	2026-05-15	none			
+71	USO	grind	False	2026-05-15	none			
+71	VAL	grind	False	2026-05-15	none			
+71	VET	grind	False	2026-05-15	none			
+71	VG	grind	False	2026-05-15	pre	2026-05-12		2
+71	VIST	grind	False	2026-05-15	none			
+71	VLO	grind	False	2026-05-15	none			
+71	WDS	grind	False	2026-05-15	none			
+71	XLE	grind	False	2026-05-15	none			
+71	XOM	grind	False	2026-05-15	none			
+72	AESI	grind	False	2026-06-26	none			
+72	DHT	grind	True	2026-06-22	none			
+72	ECO	grind	True	2026-06-22	none			
+72	LBRT	grind	False	2026-06-26	none			
+72	NAT	grind	True	2026-06-22	none			
+72	PUMP	grind	False	2026-06-26	none			
+72	STNG	grind	True	2026-06-22	none			
+72	TNK	grind	True	2026-06-22	pre	2026-06-02		13
+72	TRMD	grind	True	2026-06-22	none			
+72	WTTR	grind	False	2026-06-26	none			
+73	BBVA	grind	True	2026-06-22	none			
+73	BCS	grind	True	2026-06-22	none			
+73	DB	grind	False	2026-08-11	none			
+73	HSBC	grind	False	2026-09-01	none			
+73	ING	grind	True	2026-06-22	none			
+73	LYG	grind	True	2026-06-22	none			
+73	NWG	grind	True	2026-06-22	none			
+73	SAN	grind	True	2026-06-22	none			
+73	UBS	grind	False	2026-08-11	none			
+74	CBRL	grind	True	2026-06-25	pre	2026-06-10		10
+74	EAT	grind	True	2026-06-25	none			
+75	ASND	grind	True	2026-06-25	none			
+75	CORT	grind	False	2026-06-26	none			
+75	CRNX	grind	False	2026-07-13	post	2026-07-07	False	7
+75	MBX	grind	True	2026-06-25	none			
+75	PTGX	grind	False	2026-07-07	none			
+75	VKTX	grind	True	2026-06-25	none			
+75	XERS	grind	True	2026-06-25	none			
+76	ARQQ	grind	True	2026-06-25	pre	2026-06-09		11
+76	HQ	grind	False	2026-06-29	pre	2026-06-15		7
+76	QNT	grind	True	2026-06-25	none			
+77	BKD	grind	True	2026-06-25	none			
+77	JAN	grind	True	2026-06-25	none			
+78	AAL	grind	False	2026-08-13	none			
+78	ALGT	grind	True	2026-06-25	none			
+78	ALK	grind	True	2026-06-25	none			
+78	DAL	grind	True	2026-06-25	none			
+78	LUV	grind	True	2026-06-25	none			
+78	SKYW	grind	True	2026-06-25	none			
+78	UAL	grind	True	2026-06-25	none			
+79	BRUN	cogap	False	2026-06-30	pre	2026-05-29		19
+79	PENG	cogap	False	2026-06-30	pre	2026-05-29		19
+79	SHAZ	cogap	True	2026-06-26	pre	2026-06-12		9
+79	WYFI	cogap	True	2026-06-26	pre	2026-06-16		7
+80	CBRE	grind	True	2026-06-26	none			
+80	CIGI	grind	False	2026-07-16	none			
+80	CWK	grind	True	2026-06-26	none			
+80	JLL	grind	True	2026-06-26	none			
+80	NMRK	grind	True	2026-06-26	none			
+81	CRH	grind	True	2026-06-26	none			
+81	MLM	grind	True	2026-06-26	none			
+81	VMC	grind	True	2026-06-26	none			
+82	CALY	grind	True	2026-06-26	none			
+82	GOLF	grind	True	2026-06-26	none			
+83	AJG	grind	True	2026-06-26	none			
+83	AON	grind	True	2026-06-26	none			
+83	BRO	grind	True	2026-06-26	none			
+83	BWIN	grind	False	2026-08-11	pre	2026-06-22		4
+83	RYAN	grind	False	2026-08-24	none			
+83	WTW	grind	True	2026-06-26	none			
+84	CNO	grind	False	2026-08-11	none			
+84	CRBG	grind	False	2026-08-11	none			
+84	EQH	grind	False	2026-08-11	none			
+84	GL	grind	False	2026-08-13	none			
+84	JXN	grind	False	2026-08-11	none			
+84	LNC	grind	True	2026-06-26	none			
+84	MET	grind	True	2026-06-26	none			
+84	MFC	grind	False	2026-09-03	none			
+84	PFG	grind	True	2026-06-26	none			
+84	PRU	grind	True	2026-06-26	none			
+84	UNM	grind	True	2026-06-26	none			
+84	VOYA	grind	False	2026-08-14	none			
+85	AESI	grind	False	2026-06-30	none			
+85	AM	grind	True	2026-06-26	none			
+85	DHT	grind	False	2026-07-01	none			
+85	DTM	grind	True	2026-06-26	none			
+85	ENB	grind	True	2026-06-26	none			
+85	HESM	grind	True	2026-06-26	none			
+85	KMI	grind	True	2026-06-26	none			
+85	LBRT	grind	False	2026-06-30	none			
+85	NAT	grind	False	2026-07-01	none			
+85	OKE	grind	True	2026-06-26	none			
+85	PBA	grind	True	2026-06-26	none			
+85	PUMP	grind	False	2026-06-30	none			
+85	SOBO	grind	True	2026-06-26	none			
+85	TRGP	grind	True	2026-06-26	none			
+85	TRP	grind	True	2026-06-26	none			
+85	WMB	grind	True	2026-06-26	none			
+85	WTTR	grind	False	2026-06-30	none			
+86	AVB	grind	False	2026-07-31	none			
+86	CPT	grind	True	2026-06-26	none			
+86	EQR	grind	False	2026-07-31	none			
+86	IRT	grind	True	2026-06-26	none			
+86	MAA	grind	True	2026-06-26	none			
+86	UDR	grind	True	2026-06-26	none			
+87	ESNT	grind	True	2026-06-26	none			
+87	GNW	grind	False	2026-09-01	none			
+87	MTG	grind	True	2026-06-26	none			
+87	NMIH	grind	True	2026-06-26	none			
+87	RDN	grind	True	2026-06-26	none			
+88	ACGL	grind	True	2026-06-26	none			
+88	AFG	grind	True	2026-06-26	none			
+88	ALL	grind	True	2026-06-26	none			
+88	ARX	grind	False	2026-08-14	none			
+88	AXS	grind	True	2026-06-26	none			
+88	CB	grind	True	2026-06-26	none			
+88	CINF	grind	True	2026-06-26	none			
+88	EG	grind	False	2026-08-19	none			
+88	HCI	grind	True	2026-06-26	none			
+88	HIG	grind	True	2026-06-26	none			
+88	LMND	grind	False	2026-07-06	none			
+88	ORI	grind	True	2026-06-26	none			
+88	PGR	grind	True	2026-06-26	none			
+88	RLI	grind	False	2026-08-11	none			
+88	SKWD	grind	True	2026-06-26	none			
+88	SLDE	grind	False	2026-08-12	none			
+88	THG	grind	True	2026-06-26	none			
+88	TRV	grind	True	2026-06-26	none			
+88	WRB	grind	True	2026-06-26	none			
+89	ANAB	grind	True	2026-06-28	none			
+89	AVTX	grind	True	2026-06-28	none			
+89	KNSA	grind	True	2026-06-28	none			
+89	VERA	grind	True	2026-06-28	none			
+89	VOR	grind	True	2026-06-28	none			
+89	ZBIO	grind	True	2026-06-28	none			
+90	AMR	grind	True	2026-06-28	none			
+90	BTU	grind	True	2026-06-28	none			
+90	HCC	grind	True	2026-06-28	none			
+91	AVAV	cogap	True	2026-06-28	pre	2026-05-28		20
+91	KTOS	cogap	True	2026-06-28	pre	2026-05-28		20
+91	ONDS	cogap	True	2026-06-28	pre	2026-05-28		20
+91	RCAT	cogap	True	2026-06-28	pre	2026-05-28		20
+91	UMAC	cogap	True	2026-06-28	pre	2026-05-28		20
+92	GD	grind	True	2026-06-28	none			
+92	LHX	grind	True	2026-06-28	none			
+92	LMT	grind	True	2026-06-28	post	2026-07-23	True	18
+92	NOC	grind	True	2026-06-28	none			
+92	RTX	grind	True	2026-06-28	none			
+93	ATEC	grind	True	2026-06-28	none			
+93	BDX	grind	True	2026-06-28	none			
+93	STE	grind	True	2026-06-28	none			
+93	SYK	grind	True	2026-06-28	none			
+94	MRNA	grind	True	2026-06-28	none			
+94	RGNX	grind	True	2026-06-28	pre	2026-06-17		6
+94	TWST	grind	True	2026-06-28	none			
+95	GENB	grind	True	2026-06-28	none			
+95	GLUE	grind	True	2026-06-28	none			
+95	IDYA	grind	True	2026-06-28	none			
+95	KYMR	grind	True	2026-06-28	pre	2026-06-25		1
+96	LQDA	grind	True	2026-06-28	none			
+96	RYTM	grind	True	2026-06-28	none			
+96	SION	grind	True	2026-06-28	none			
+96	TVTX	grind	True	2026-06-28	none			
+97	ALAB	grind	True	2026-06-29	post	2026-07-09	True	7
+97	CRDO	grind	True	2026-06-29	pre	2026-06-22		5
+98	AEVA	grind	False	2026-06-30	pre	2026-06-15		9
+98	ALGM	grind	True	2026-06-29	none			
+98	MEI	grind	True	2026-06-29	pre	2026-06-25		2
+98	OUST	grind	False	2026-06-30	pre	2026-06-15		9
+99	NP	grind	True	2026-06-29	none			
+99	SLDE	grind	True	2026-06-29	none			
+100	ABVX	grind	True	2026-06-30	pre	2026-06-03		18
+100	ALMS	grind	True	2026-06-30	none			
+100	ANNX	grind	False	2026-07-09	pre	2026-06-01		20
+100	CLDX	grind	True	2026-06-30	none			
+100	DNTH	grind	False	2026-07-09	none			
+100	TRAX	grind	True	2026-06-30	post	2026-07-23	True	16
+100	VERA	grind	True	2026-06-30	none			
+100	VOR	grind	True	2026-06-30	none			
+100	ZBIO	grind	False	2026-07-09	none			
+101	CGON	grind	True	2026-06-30	none			
+101	ELVN	grind	True	2026-06-30	pre	2026-06-11		12
+101	SNDX	grind	True	2026-06-30	none			
+102	CLF	grind	False	2026-08-11	post	2026-07-23	False	16
+102	CMC	grind	True	2026-06-30	none			
+102	NUE	grind	True	2026-06-30	none			
+102	RS	grind	True	2026-06-30	none			
+102	STLD	grind	True	2026-06-30	none			
+102	TX	grind	False	2026-07-13	none			
+103	NTLA	cogap	True	2026-06-30	pre	2026-06-15		10
+103	RGNX	cogap	True	2026-06-30	pre	2026-06-17		8
+104	ETN	grind	True	2026-06-30	none			
+104	GNRC	grind	True	2026-06-30	pre	2026-06-02		19
+104	HUBB	grind	True	2026-06-30	none			
+104	RRX	grind	True	2026-06-30	none			
+105	BWIN	grind	True	2026-06-30	pre	2026-06-22		6
+105	MRSH	grind	True	2026-06-30	none			
+105	WTW	grind	True	2026-06-30	none			
+106	AEM	cogap	True	2026-06-30	none			
+106	AG	cogap	True	2026-06-30	pre	2026-06-15		10
+106	AU	cogap	True	2026-06-30	none			
+106	CDE	cogap	True	2026-06-30	none			
+106	EGO	cogap	True	2026-06-30	pre	2026-06-04		17
+106	EXK	cogap	True	2026-06-30	pre	2026-06-15		10
+106	FNV	cogap	True	2026-06-30	none			
+106	FSM	cogap	True	2026-06-30	none			
+106	HL	cogap	True	2026-06-30	pre	2026-06-15		10
+106	HMY	cogap	True	2026-06-30	pre	2026-06-15		10
+106	IAG	cogap	True	2026-06-30	pre	2026-06-15		10
+106	KGC	cogap	True	2026-06-30	none			
+106	MUX	cogap	True	2026-06-30	pre	2026-06-15		10
+106	NEM	cogap	True	2026-06-30	none			
+106	NG	cogap	True	2026-06-30	pre	2026-06-15		10
+106	OR	cogap	True	2026-06-30	none			
+106	PAAS	cogap	True	2026-06-30	none			
+106	RGLD	cogap	True	2026-06-30	none			
+106	SA	cogap	True	2026-06-30	pre	2026-06-11		12
+106	SSRM	cogap	True	2026-06-30	none			
+106	WPM	cogap	True	2026-06-30	none			
+107	AADX	grind	True	2026-06-30	none			
+107	ELMT	grind	True	2026-06-30	pre	2026-06-01		20
+108	LASR	grind	True	2026-06-30	none			
+108	LPTH	grind	True	2026-06-30	none			
+108	OPTX	grind	True	2026-06-30	none			
+109	INFQ	cogap	True	2026-06-30	pre	2026-06-15		10
+109	QBTS	cogap	True	2026-06-30	pre	2026-06-15		10
+109	RGTI	cogap	True	2026-06-30	pre	2026-06-15		10
+110	AGIO	grind	True	2026-06-30	post	2026-07-07	True	4
+110	AMLX	grind	True	2026-06-30	none			
+110	MIRM	grind	True	2026-06-30	none			
+110	RARE	grind	True	2026-06-30	none			
+110	RGNX	grind	True	2026-06-30	pre	2026-06-17		8
+110	RYTM	grind	False	2026-07-06	none			
+110	SRRK	grind	False	2026-07-06	none			
+111	ASTS	cogap	True	2026-06-30	none			
+111	GD	cogap	False	2026-07-01	none			
+111	MDA	cogap	True	2026-06-30	none			
+111	PL	cogap	True	2026-06-30	pre	2026-06-29		1
+111	RTX	cogap	False	2026-07-01	none			
+111	SPIR	cogap	True	2026-06-30	none			
+111	VSAT	cogap	True	2026-06-30	pre	2026-06-29		1
+112	ARCB	grind	True	2026-06-30	none			
+112	HUBG	grind	False	2026-07-17	none			
+112	KNX	grind	True	2026-06-30	none			
+112	LSTR	grind	True	2026-06-30	none			
+112	RXO	grind	False	2026-07-17	none			
+112	SNDR	grind	True	2026-06-30	none			
+112	TFII	grind	True	2026-06-30	none			
+112	WERN	grind	True	2026-06-30	none			
+112	XPO	grind	True	2026-06-30	none			
+113	AFRM	grind	False	2026-08-11	none			
+113	BFH	grind	False	2026-08-12	none			
+113	CHYM	grind	False	2026-08-11	none			
+113	DAVE	grind	True	2026-07-01	none			
+113	KLAR	grind	False	2026-08-11	pre	2026-07-01		0
+113	KSPI	grind	False	2026-08-27	none			
+113	NU	grind	False	2026-08-25	none			
+113	OMF	grind	False	2026-08-17	none			
+113	PGY	grind	False	2026-08-11	pre	2026-06-04		18
+113	PYPL	grind	False	2026-08-25	post	2026-07-15	False	9
+113	SEZL	grind	True	2026-07-01	none			
+113	SOFI	grind	False	2026-08-13	none			
+113	XYZ	grind	False	2026-08-31	none			
+114	GH	grind	True	2026-07-01	none			
+114	GRAL	grind	True	2026-07-01	none			
+115	AEE	grind	False	2026-08-27	none			
+115	AEP	grind	False	2026-08-27	none			
+115	APA	grind	False	2026-08-14	none			
+115	AR	grind	False	2026-08-18	none			
+115	AROC	grind	False	2026-07-07	none			
+115	ATO	grind	False	2026-08-19	none			
+115	AVA	grind	False	2026-07-23	none			
+115	BKH	grind	False	2026-07-23	none			
+115	BKV	grind	False	2026-08-18	none			
+115	BP	grind	False	2026-08-19	none			
+115	CHRD	grind	False	2026-08-18	none			
+115	CNP	grind	False	2026-08-27	none			
+115	CNQ	grind	False	2026-08-18	none			
+115	CNX	grind	False	2026-09-03	none			
+115	COP	grind	False	2026-08-18	none			
+115	CPK	grind	False	2026-08-19	none			
+115	CRGY	grind	False	2026-08-18	none			
+115	CRK	grind	False	2026-08-14	none			
+115	CVE	grind	False	2026-08-19	none			
+115	CVI	grind	False	2026-08-17	post	2026-07-30	False	20
+115	CVX	grind	False	2026-08-19	none			
+115	DEC	grind	False	2026-09-02	none			
+115	DHT	grind	False	2026-08-14	none			
+115	DINO	grind	True	2026-07-01	none			
+115	DK	grind	True	2026-07-01	none			
+115	DTE	grind	False	2026-08-27	none			
+115	DVN	grind	False	2026-08-18	none			
+115	EC	grind	False	2026-08-19	none			
+115	EOG	grind	False	2026-08-18	none			
+115	EQNR	grind	False	2026-08-19	none			
+115	EQT	grind	False	2026-08-18	none			
+115	ET	grind	False	2026-08-18	none			
+115	ETR	grind	False	2026-08-27	none			
+115	EVRG	grind	False	2026-08-27	none			
+115	EXE	grind	False	2026-08-18	none			
+115	FANG	grind	False	2026-08-18	none			
+115	FE	grind	False	2026-08-27	none			
+115	FRO	grind	False	2026-08-14	none			
+115	FTI	grind	False	2026-08-18	none			
+115	FTS	grind	False	2026-08-27	none			
+115	HLX	grind	False	2026-08-17	none			
+115	HP	grind	False	2026-08-11	none			
+115	IDA	grind	False	2026-08-27	none			
+115	INSW	grind	False	2026-08-14	none			
+115	KGS	grind	False	2026-07-07	none			
+115	KNTK	grind	False	2026-08-18	none			
+115	LNG	grind	False	2026-08-18	none			
+115	LNT	grind	False	2026-08-27	none			
+115	MPC	grind	True	2026-07-01	none			
+115	MTDR	grind	False	2026-08-18	none			
+115	NAT	grind	False	2026-08-14	none			
+115	NE	grind	False	2026-08-20	none			
+115	NESR	grind	False	2026-08-11	none			
+115	NEXT	grind	False	2026-09-02	none			
+115	NJR	grind	False	2026-07-23	none			
+115	NOG	grind	False	2026-08-14	none			
+115	NOV	grind	False	2026-08-28	none			
+115	NWE	grind	False	2026-07-23	none			
+115	OGE	grind	False	2026-08-27	none			
+115	OGS	grind	False	2026-08-19	none			
+115	OII	grind	False	2026-08-12	post	2026-07-23	False	15
+115	OKE	grind	False	2026-08-18	none			
+115	OVV	grind	False	2026-08-14	none			
+115	OXY	grind	False	2026-08-18	none			
+115	PARR	grind	False	2026-07-17	none			
+115	PBA	grind	False	2026-09-02	none			
+115	PBF	grind	True	2026-07-01	post	2026-07-30	True	20
+115	PBR	grind	False	2026-09-02	none			
+115	PEG	grind	False	2026-08-27	none			
+115	PNW	grind	False	2026-08-27	post	2026-07-27	False	17
+115	POR	grind	False	2026-07-23	none			
+115	PPL	grind	False	2026-08-27	none			
+115	PR	grind	False	2026-08-18	none			
+115	PSX	grind	True	2026-07-01	none			
+115	PTEN	grind	False	2026-08-17	none			
+115	RRC	grind	False	2026-08-18	none			
+115	SDRL	grind	False	2026-08-14	none			
+115	SHEL	grind	False	2026-09-02	none			
+115	SLB	grind	False	2026-08-27	none			
+115	SM	grind	False	2026-08-18	none			
+115	SR	grind	False	2026-07-23	none			
+115	STNG	grind	False	2026-09-03	none			
+115	SU	grind	False	2026-08-18	none			
+115	TALO	grind	False	2026-08-14	none			
+115	TDW	grind	False	2026-08-14	none			
+115	TNK	grind	False	2026-08-14	pre	2026-06-02		20
+115	TRGP	grind	False	2026-08-18	none			
+115	TRMD	grind	False	2026-09-03	none			
+115	UGI	grind	False	2026-08-31	none			
+115	VAL	grind	False	2026-08-20	none			
+115	VET	grind	False	2026-08-18	none			
+115	VG	grind	False	2026-08-18	none			
+115	VIST	grind	False	2026-08-18	none			
+115	VLO	grind	True	2026-07-01	none			
+115	WDS	grind	False	2026-08-19	none			
+115	WEC	grind	False	2026-08-27	none			
+115	WES	grind	False	2026-08-18	none			
+115	WHD	grind	False	2026-08-13	none			
+115	XOM	grind	False	2026-09-02	none			
+115	XPRO	grind	False	2026-08-11	none			
+115	YPF	grind	False	2026-08-19	none			
+116	BOKF	grind	True	2026-07-01	none			
+116	CBC	grind	False	2026-08-12	none			
+116	CFG	grind	True	2026-07-01	none			
+116	EWBC	grind	True	2026-07-01	none			
+116	FBP	grind	False	2026-08-11	none			
+116	FHN	grind	True	2026-07-01	none			
+116	FITB	grind	True	2026-07-01	none			
+116	GBCI	grind	True	2026-07-01	none			
+116	HAPN	grind	False	2026-08-13	none			
+116	HBAN	grind	True	2026-07-01	none			
+116	HOPE	grind	False	2026-08-14	none			
+116	HWC	grind	True	2026-07-01	none			
+116	KEY	grind	True	2026-07-01	none			
+116	MCHB	grind	False	2026-08-11	none			
+116	MTB	grind	True	2026-07-01	none			
+116	PNC	grind	True	2026-07-01	none			
+116	PNFP	grind	False	2026-08-11	none			
+116	RF	grind	True	2026-07-01	none			
+116	SBCF	grind	False	2026-08-14	none			
+116	SSB	grind	True	2026-07-01	none			
+116	TFC	grind	True	2026-07-01	none			
+116	UMBF	grind	True	2026-07-01	none			
+116	USB	grind	True	2026-07-01	none			
+116	WAL	grind	True	2026-07-01	none			
+116	WSBC	grind	False	2026-08-11	none			
+116	WSFS	grind	True	2026-07-01	none			
+116	WTFC	grind	True	2026-07-01	none			
+116	ZION	grind	True	2026-07-01	none			
+117	ACIW	grind	False	2026-07-16	none			
+117	ALKT	grind	True	2026-07-02	none			
+117	BR	grind	False	2026-08-19	none			
+117	CXT	grind	True	2026-07-02	none			
+117	DLO	grind	False	2026-08-25	none			
+117	FLYW	grind	False	2026-08-20	none			
+117	JKHY	grind	False	2026-08-20	none			
+117	NCNO	grind	False	2026-08-17	none			
+117	PAY	grind	True	2026-07-02	none			
+117	QTWO	grind	False	2026-07-06	none			
+117	RELY	grind	False	2026-08-17	none			
+117	SSNC	grind	False	2026-08-21	post	2026-07-24	False	15
+117	WSE	grind	True	2026-07-02	none			
+118	APPS	grind	True	2026-07-02	none			
+118	MGNI	grind	True	2026-07-02	none			
+118	QNST	grind	False	2026-07-15	none			
+119	ALKT	grind	True	2026-07-02	none			
+119	QTWO	grind	True	2026-07-02	none			
+120	GD	grind	False	2026-07-14	none			
+120	HII	grind	True	2026-07-02	post	2026-07-30	True	19
+120	LHX	grind	True	2026-07-02	none			
+120	LMT	grind	True	2026-07-02	post	2026-07-23	True	14
+120	NOC	grind	True	2026-07-02	none			
+121	KNSL	grind	True	2026-07-02	none			
+121	PLMR	grind	True	2026-07-02	none			
+121	RYAN	grind	True	2026-07-02	post	2026-07-31	True	20
+121	WTW	grind	True	2026-07-02	none			
+122	BAM	grind	True	2026-07-06	none			
+122	BN	grind	True	2026-07-06	none			
+122	CG	grind	True	2026-07-06	none			
+122	KKR	grind	True	2026-07-06	none			
+122	TPG	grind	True	2026-07-06	none			
+123	AMH	grind	True	2026-07-06	none			
+123	AVB	grind	True	2026-07-06	none			
+123	EQR	grind	True	2026-07-06	none			
+123	ESS	grind	True	2026-07-06	none			
+123	INVH	grind	True	2026-07-06	none			
+124	GSHD	grind	True	2026-07-06	none			
+124	PRCH	grind	True	2026-07-06	post	2026-07-30	True	18
+125	ABG	grind	True	2026-07-06	none			
+125	AN	grind	True	2026-07-06	none			
+125	PAG	grind	True	2026-07-06	post	2026-07-22	True	12
+125	SAH	grind	True	2026-07-06	none			
+126	ALHC	grind	True	2026-07-06	none			
+126	AVAH	grind	True	2026-07-06	none			
+127	COLD	grind	False	2026-08-20	none			
+127	EGP	grind	True	2026-07-06	none			
+127	FR	grind	True	2026-07-06	none			
+127	PLD	grind	True	2026-07-06	none			
+127	REXR	grind	True	2026-07-06	none			
+127	STAG	grind	True	2026-07-06	none			
+127	TRNO	grind	True	2026-07-06	none			
+128	BXP	grind	False	2026-07-22	none			
+128	CDP	grind	True	2026-07-06	none			
+128	HIW	grind	True	2026-07-06	none			
+128	SLG	grind	True	2026-07-06	none			
+129	AESI	grind	True	2026-07-06	none			
+129	AROC	grind	True	2026-07-06	none			
+129	KGS	grind	True	2026-07-06	none			
+129	LBRT	grind	True	2026-07-06	none			
+129	PUMP	grind	True	2026-07-06	none			
+130	BRX	grind	True	2026-07-06	none			
+130	FRT	grind	True	2026-07-06	none			
+130	KIM	grind	True	2026-07-06	none			
+130	KRG	grind	True	2026-07-06	none			
+130	PECO	grind	True	2026-07-06	none			
+130	REG	grind	True	2026-07-06	none			
+130	SKT	grind	True	2026-07-06	none			
+130	UE	grind	True	2026-07-06	none			
+131	CUBE	grind	True	2026-07-06	none			
+131	EXR	grind	True	2026-07-06	none			
+131	NSA	grind	True	2026-07-06	none			
+131	PSA	grind	True	2026-07-06	none			
+132	LTC	grind	True	2026-07-06	none			
+132	NHI	grind	True	2026-07-06	none			
+132	OHI	grind	True	2026-07-06	none			
+132	SBRA	grind	True	2026-07-06	none			
+132	VTR	grind	True	2026-07-06	none			
+133	ELVN	grind	True	2026-07-07	pre	2026-06-11		16
+133	IMNM	grind	True	2026-07-07	none			
+133	RVMD	grind	True	2026-07-07	none			
+133	SNDX	grind	True	2026-07-07	none			
+133	TGTX	grind	True	2026-07-07	none			
+134	CRNX	grind	True	2026-07-07	pre	2026-07-07		0
+134	LQDA	grind	True	2026-07-07	none			
+134	MLYS	grind	True	2026-07-07	none			
+134	NAMS	grind	True	2026-07-07	none			
+135	GPCR	grind	True	2026-07-07	none			
+135	MAZE	grind	True	2026-07-07	none			
+135	VRDN	grind	True	2026-07-07	pre	2026-06-29		5
+136	FA	grind	True	2026-07-07	none			
+136	LZ	grind	True	2026-07-07	none			
+136	NSP	grind	True	2026-07-07	none			
+137	APLD	cogap	False	2026-07-21	pre	2026-06-09		19
+137	CIFR	cogap	True	2026-07-08	pre	2026-07-06		2
+137	CORZ	cogap	True	2026-07-08	post	2026-07-28	True	14
+137	HUT	cogap	True	2026-07-08	pre	2026-07-06		2
+137	IREN	cogap	True	2026-07-08	pre	2026-07-06		2
+137	WULF	cogap	True	2026-07-08	pre	2026-07-06		2
+138	DDOG	grind	True	2026-07-08	none			
+138	DT	grind	True	2026-07-08	post	2026-08-05	True	20
+138	PD	grind	False	2026-07-13	none			
+139	FOUR	grind	True	2026-07-08	none			
+139	PAYP	grind	True	2026-07-08	none			
+139	WSE	grind	True	2026-07-08	none			
+140	IMMX	grind	True	2026-07-08	none			
+140	RGNX	grind	True	2026-07-08	pre	2026-06-17		13
+140	SRPT	grind	True	2026-07-08	none			
+140	SRRK	grind	True	2026-07-08	none			
+140	VOR	grind	True	2026-07-08	none			
+141	FOUR	grind	False	2026-07-09	none			
+141	FRHC	grind	True	2026-07-08	none			
+141	PAYP	grind	True	2026-07-08	none			
+141	SE	grind	True	2026-07-08	none			
+141	WSE	grind	True	2026-07-08	none			
+142	INFQ	grind	False	2026-07-16	pre	2026-06-15		15
+142	IONQ	grind	True	2026-07-08	post	2026-07-27	True	13
+142	QBTS	grind	False	2026-07-16	pre	2026-06-15		15
+142	QUBT	grind	False	2026-07-16	pre	2026-06-15		15
+142	RGTI	grind	True	2026-07-08	pre	2026-06-15		15
+142	XNDU	grind	False	2026-08-03	pre	2026-06-15		15
+143	AMP	grind	True	2026-07-08	none			
+143	APAM	grind	False	2026-08-26	none			
+143	BEN	grind	False	2026-08-27	none			
+143	BGC	grind	False	2026-08-27	none			
+143	BNY	grind	False	2026-08-17	none			
+143	FUTU	grind	False	2026-08-25	none			
+143	HOOD	grind	False	2026-07-15	none			
+143	IBKR	grind	False	2026-08-25	none			
+143	IVZ	grind	False	2026-08-17	none			
+143	LPLA	grind	True	2026-07-08	none			
+143	NTRS	grind	False	2026-08-12	none			
+143	RJF	grind	True	2026-07-08	none			
+143	SCHW	grind	True	2026-07-08	none			
+143	SEIC	grind	True	2026-07-08	none			
+143	SF	grind	True	2026-07-08	none			
+143	STT	grind	False	2026-08-17	none			
+143	VCTR	grind	False	2026-08-27	none			
+143	VIRT	grind	False	2026-08-27	none			
+143	WT	grind	False	2026-08-18	none			
+143	XP	grind	False	2026-09-01	none			
+144	CRVS	grind	True	2026-07-09	none			
+144	IMMX	grind	True	2026-07-09	none			
+144	IMNM	grind	True	2026-07-09	none			
+144	KURA	grind	True	2026-07-09	none			
+144	RVMD	grind	True	2026-07-09	none			
+144	SNDX	grind	True	2026-07-09	none			
+145	BILL	grind	True	2026-07-09	none			
+145	BL	grind	False	2026-08-27	none			
+145	CPAY	grind	False	2026-08-17	none			
+145	NAVN	grind	True	2026-07-09	pre	2026-06-11		18
+145	VERX	grind	False	2026-08-20	none			
+145	WEX	grind	True	2026-07-09	none			
+145	WK	grind	False	2026-08-17	none			
+146	BLLN	grind	True	2026-07-09	none			
+146	QGEN	grind	True	2026-07-09	none			
+146	WGS	grind	True	2026-07-09	post	2026-08-04	True	18
+147	ACAD	cogap	True	2026-07-09	pre	2026-06-26		8
+147	AMLX	cogap	True	2026-07-09	none			
+147	BBIO	cogap	True	2026-07-09	pre	2026-07-09		0
+147	CRNX	cogap	True	2026-07-09	pre	2026-07-07		2
+147	SRRK	cogap	True	2026-07-09	none			
+147	XENE	cogap	True	2026-07-09	none			
+148	ABVX	grind	True	2026-07-10	pre	2026-06-30		7
+148	GMAB	grind	True	2026-07-10	none			
+148	ZYME	grind	True	2026-07-10	none			
+149	MELI	grind	True	2026-07-10	none			
+149	SE	grind	True	2026-07-10	none			
+150	A	grind	False	2026-08-11	none			
+150	AVTR	grind	False	2026-08-19	post	2026-07-29	False	13
+150	AZTA	grind	False	2026-08-28	none			
+150	CRL	grind	False	2026-08-17	post	2026-08-05	False	18
+150	DHR	grind	True	2026-07-10	none			
+150	FTRE	grind	False	2026-08-27	none			
+150	ICLR	grind	False	2026-09-04	post	2026-07-28	False	12
+150	IQV	grind	False	2026-08-31	post	2026-07-28	False	12
+150	MTD	grind	True	2026-07-10	none			
+150	RGEN	grind	False	2026-08-11	post	2026-07-28	False	12
+150	RVTY	grind	False	2026-08-11	none			
+150	TECH	grind	False	2026-08-11	pre	2026-06-25		10
+150	TMO	grind	True	2026-07-10	post	2026-07-23	True	9
+150	WAT	grind	True	2026-07-10	none			
+151	BRZE	grind	True	2026-07-13	none			
+151	HUBS	grind	True	2026-07-13	none			
+151	KVYO	grind	True	2026-07-13	none			
+152	BRBR	grind	True	2026-07-13	none			
+152	SMPL	grind	True	2026-07-13	pre	2026-07-09		2
+152	VITL	grind	True	2026-07-13	none			
+153	EVER	grind	True	2026-07-13	none			
+153	MAX	grind	True	2026-07-13	none			
+154	CNMD	grind	True	2026-07-13	none			
+154	SYK	grind	True	2026-07-13	none			
+155	CBZ	grind	True	2026-07-13	post	2026-07-29	True	12
+155	CRAI	grind	True	2026-07-13	none			
+155	FA	grind	True	2026-07-13	none			
+156	MAN	grind	True	2026-07-13	post	2026-07-16	True	3
+156	RHI	grind	True	2026-07-13	none			
+157	AMRC	grind	False	2026-08-04	post	2026-08-04	False	15
+157	BLZE	grind	True	2026-07-14	pre	2026-06-23		14
+157	ESTC	grind	False	2026-08-13	none			
+157	MDB	grind	False	2026-08-12	none			
+157	SNOW	grind	True	2026-07-14	none			
+158	DHT	grind	True	2026-07-14	none			
+158	FRO	grind	True	2026-07-14	none			
+158	INSW	grind	True	2026-07-14	none			
+158	STNG	grind	True	2026-07-14	none			
+158	TNK	grind	True	2026-07-14	none			
+158	TRMD	grind	True	2026-07-14	none			
+159	BAX	grind	False	2026-07-23	post	2026-07-30	True	12
+159	BDX	grind	True	2026-07-14	none			
+159	COO	grind	True	2026-07-14	none			
+159	PODD	grind	True	2026-07-14	none			
+159	STE	grind	True	2026-07-14	none			
+159	VLTO	grind	True	2026-07-14	none			
+160	AEM	cogap	True	2026-07-14	none			
+160	AG	cogap	True	2026-07-14	pre	2026-06-15		19
+160	AGI	cogap	True	2026-07-14	none			
+160	ARIS	cogap	False	2026-07-24	pre	2026-06-15		19
+160	AU	cogap	True	2026-07-14	post	2026-08-07	True	18
+160	AUGO	cogap	False	2026-07-24	pre	2026-06-15		19
+160	CDE	cogap	True	2026-07-14	none			
+160	EGO	cogap	True	2026-07-14	pre	2026-06-15		19
+160	EQX	cogap	False	2026-07-24	none			
+160	EXK	cogap	True	2026-07-14	pre	2026-06-15		19
+160	FNV	cogap	True	2026-07-14	none			
+160	FSM	cogap	True	2026-07-14	none			
+160	GFI	cogap	True	2026-07-14	post	2026-08-07	True	18
+160	HL	cogap	True	2026-07-14	pre	2026-06-15		19
+160	HMY	cogap	True	2026-07-14	pre	2026-06-15		19
+160	IAG	cogap	True	2026-07-14	pre	2026-06-15		19
+160	KGC	cogap	True	2026-07-14	none			
+160	MUX	cogap	True	2026-07-14	pre	2026-06-15		19
+160	NEM	cogap	True	2026-07-14	none			
+160	NG	cogap	True	2026-07-14	pre	2026-06-15		19
+160	OR	cogap	True	2026-07-14	none			
+160	ORLA	cogap	True	2026-07-14	none			
+160	PAAS	cogap	True	2026-07-14	none			
+160	PPTA	cogap	True	2026-07-14	pre	2026-06-15		19
+160	RGLD	cogap	True	2026-07-14	none			
+160	SA	cogap	True	2026-07-14	pre	2026-06-15		19
+160	SBSW	cogap	True	2026-07-14	pre	2026-06-15		19
+160	SSRM	cogap	True	2026-07-14	none			
+160	TFPM	cogap	True	2026-07-14	none			
+160	WPM	cogap	True	2026-07-14	none			
+161	ASTS	grind	True	2026-07-14	none			
+161	LUNR	grind	True	2026-07-14	none			
+161	RCAT	grind	True	2026-07-14	none			
+161	RKLB	grind	True	2026-07-14	pre	2026-06-29		10
+162	AEO	grind	False	2026-09-04	none			
+162	ANF	grind	False	2026-08-11	none			
+162	CROX	grind	False	2026-07-16	none			
+162	GAP	grind	False	2026-09-02	none			
+162	RVLV	grind	True	2026-07-14	none			
+162	SHOO	grind	False	2026-08-11	none			
+162	UA	grind	True	2026-07-14	none			
+162	URBN	grind	False	2026-08-11	none			
+162	VSXY	grind	False	2026-08-13	none			
+162	WWW	grind	False	2026-08-14	none			
+163	FLYW	grind	False	2026-08-11	none			
+163	FOUR	grind	True	2026-07-15	none			
+163	PYPL	grind	True	2026-07-15	pre	2026-07-15		0
+164	MANH	grind	True	2026-07-16	post	2026-07-29	True	9
+164	SPSC	grind	True	2026-07-16	post	2026-07-31	True	11
+165	ADP	grind	False	2026-08-11	none			
+165	ALIT	grind	True	2026-07-16	none			
+165	PAYC	grind	False	2026-08-11	post	2026-08-06	False	15
+165	PAYX	grind	False	2026-08-11	none			
+165	PCTY	grind	True	2026-07-16	none			
+165	WDAY	grind	True	2026-07-16	none			
+166	GWRE	grind	True	2026-07-16	none			
+166	JKHY	grind	True	2026-07-16	none			
+166	SSNC	grind	True	2026-07-16	post	2026-07-24	True	6
+167	CVSA	grind	True	2026-07-16	none			
+167	LAUR	grind	True	2026-07-16	none			
+167	LINC	grind	True	2026-07-16	post	2026-07-31	True	11
+167	PRDO	grind	True	2026-07-16	none			
+167	STRA	grind	True	2026-07-16	none			
+167	UTI	grind	True	2026-07-16	none			
+168	HURN	grind	True	2026-07-16	post	2026-07-29	True	9
+168	ICFI	grind	True	2026-07-16	none			
+169	BSX	grind	True	2026-07-16	none			
+169	ISRG	grind	True	2026-07-16	none			
+169	PEN	grind	True	2026-07-16	none			
+170	CAG	grind	True	2026-07-16	none			
+170	CPB	grind	True	2026-07-16	none			
+170	GIS	grind	True	2026-07-16	none			
+170	KHC	grind	True	2026-07-16	none			
+171	CTAS	grind	True	2026-07-16	none			
+171	VSTS	grind	True	2026-07-16	none			
+172	GTLB	grind	True	2026-07-17	post	2026-08-07	True	15
+172	PRGS	grind	True	2026-07-17	pre	2026-07-01		11
+173	NIQ	grind	True	2026-07-17	post	2026-08-11	True	17
+173	TRI	grind	True	2026-07-17	none			
+174	QLYS	grind	True	2026-07-17	post	2026-08-05	True	13
+174	RPD	grind	True	2026-07-17	post	2026-08-11	True	17
+174	TENB	grind	True	2026-07-17	none			
+175	DHT	grind	True	2026-07-17	none			
+175	ECO	grind	True	2026-07-17	none			
+175	FRO	grind	True	2026-07-17	none			
+175	INSW	grind	True	2026-07-17	none			
+175	NAT	grind	True	2026-07-17	none			
+175	STNG	grind	True	2026-07-17	none			
+175	TNK	grind	True	2026-07-17	none			
+175	TRMD	grind	True	2026-07-17	none			
+176	AI	grind	False	2026-08-11	none			
+176	AMPL	grind	True	2026-07-20	none			
+176	APPN	grind	False	2026-08-11	none			
+176	ASAN	grind	False	2026-08-27	none			
+176	AVPT	grind	True	2026-07-20	none			
+176	BRZE	grind	False	2026-08-14	none			
+176	CACI	grind	False	2026-09-02	post	2026-08-06	False	13
+176	CRM	grind	False	2026-08-12	none			
+176	DOCU	grind	False	2026-08-14	none			
+176	FRSH	grind	False	2026-08-14	none			
+176	HUBS	grind	False	2026-08-14	none			
+176	INTA	grind	True	2026-07-20	post	2026-08-05	True	12
+176	KVYO	grind	False	2026-08-28	none			
+176	MNDY	grind	False	2026-08-11	none			
+176	MSFT	grind	False	2026-09-01	post	2026-07-30	False	8
+176	NOW	grind	False	2026-08-12	none			
+176	PATH	grind	False	2026-08-11	none			
+176	PEGA	grind	False	2026-08-27	none			
+176	PLTR	grind	False	2026-08-14	post	2026-08-04	False	11
+176	SAP	grind	False	2026-08-18	none			
+176	TTAN	grind	False	2026-08-31	none			
+176	TYL	grind	False	2026-09-02	none			
+177	BMO	grind	True	2026-07-20	none			
+177	BNS	grind	True	2026-07-20	none			
+177	CM	grind	True	2026-07-20	none			
+177	RY	grind	True	2026-07-20	none			
+177	TD	grind	True	2026-07-20	none			
+178	BAND	grind	True	2026-07-20	none			
+178	FIVN	grind	True	2026-07-20	none			
+179	EEFT	grind	True	2026-07-20	none			
+179	GPN	grind	True	2026-07-20	none			
+180	DFIN	grind	True	2026-07-20	none			
+180	WK	grind	True	2026-07-20	none			
+181	AME	grind	True	2026-07-20	none			
+181	HLIO	grind	True	2026-07-20	none			
+181	HUBB	grind	True	2026-07-20	none			
+181	ROK	grind	True	2026-07-20	none			
+182	ABT	grind	False	2026-08-19	pre	2026-07-16		2
+182	AORT	grind	False	2026-08-14	none			
+182	ATRC	grind	False	2026-09-02	none			
+182	AXGN	grind	False	2026-08-18	none			
+182	BAX	grind	False	2026-08-21	post	2026-07-30	False	8
+182	BBNX	grind	False	2026-08-12	none			
+182	BDX	grind	False	2026-08-14	none			
+182	CNMD	grind	True	2026-07-20	none			
+182	COO	grind	False	2026-08-19	none			
+182	DXCM	grind	False	2026-08-13	post	2026-07-31	False	9
+182	EW	grind	False	2026-08-13	none			
+182	GEHC	grind	False	2026-08-17	post	2026-07-29	False	7
+182	GKOS	grind	False	2026-08-17	post	2026-07-30	False	8
+182	HAE	grind	False	2026-08-18	none			
+182	INSP	grind	True	2026-07-20	post	2026-08-04	True	11
+182	LIVN	grind	False	2026-08-31	none			
+182	MDT	grind	False	2026-08-18	none			
+182	MMSI	grind	False	2026-08-17	none			
+182	NVCR	grind	False	2026-08-18	post	2026-07-23	False	3
+182	RMD	grind	False	2026-08-19	none			
+182	SOLV	grind	False	2026-08-20	none			
+182	TFX	grind	False	2026-08-31	none			
+182	TMDX	grind	False	2026-08-25	none			
+182	TNDM	grind	True	2026-07-20	none			
+182	XRAY	grind	True	2026-07-20	none			
+182	ZBH	grind	False	2026-08-14	none			
+183	BHP	grind	False	2026-08-20	none			
+183	ERO	grind	True	2026-07-21	none			
+183	FCX	grind	True	2026-07-21	none			
+183	HBM	grind	True	2026-07-21	none			
+183	RIO	grind	False	2026-08-25	none			
+183	SCCO	grind	True	2026-07-21	none			
+183	TECK	grind	False	2026-08-11	none			
+183	TGB	grind	True	2026-07-21	none			
+184	ALRM	grind	True	2026-07-21	none			
+184	REZI	grind	True	2026-07-21	none			
+185	BXP	grind	True	2026-07-21	none			
+185	DEI	grind	True	2026-07-21	none			
+185	SLG	grind	True	2026-07-21	none			
+186	ADNT	grind	True	2026-07-22	none			
+186	GT	grind	True	2026-07-22	none			
+187	GPK	grind	False	2026-08-11	none			
+187	IP	grind	True	2026-07-22	none			
+187	PKG	grind	True	2026-07-22	none			
+187	SW	grind	True	2026-07-22	none			
+188	ANET	grind	False	2026-08-11	post	2026-08-05	False	10
+188	CSCO	grind	False	2026-08-12	none			
+188	DELL	grind	True	2026-07-22	none			
+188	HPE	grind	True	2026-07-22	none			
+188	NTAP	grind	True	2026-07-22	none			
+188	NTNX	grind	False	2026-08-17	none			
+188	SMCI	grind	False	2026-08-27	pre	2026-07-22		0
+188	STX	grind	False	2026-07-23	pre	2026-06-25		18
+189	CLF	grind	False	2026-09-02	post	2026-07-23	False	1
+189	CMC	grind	True	2026-07-22	none			
+189	MT	grind	True	2026-07-22	none			
+189	NUE	grind	False	2026-09-02	none			
+189	RYZ	grind	True	2026-07-22	none			
+189	TX	grind	True	2026-07-22	none			
+190	EFOR	grind	True	2026-07-22	pre	2026-07-22		0
+190	INGM	grind	True	2026-07-22	none			
+191	CEG	grind	True	2026-07-22	none			
+191	TLN	grind	True	2026-07-22	none			
+191	VST	grind	True	2026-07-22	none			
+192	KB	grind	True	2026-07-22	none			
+192	SHG	grind	True	2026-07-22	none			
+193	HOG	grind	True	2026-07-22	none			
+193	PII	grind	True	2026-07-22	none			
+194	OXM	grind	True	2026-07-22	none			
+194	VSXY	grind	True	2026-07-22	none			
+195	CAR	grind	True	2026-07-22	none			
+195	KMX	grind	True	2026-07-22	none			
+196	DPC	grind	True	2026-07-23	none			
+196	HXL	grind	True	2026-07-23	none			
+197	ADI	grind	True	2026-07-23	none			
+197	MCHP	grind	True	2026-07-23	post	2026-08-07	True	11
+197	NXPI	grind	True	2026-07-23	none			
+197	ON	grind	True	2026-07-23	none			
+197	TXN	grind	True	2026-07-23	none			
+198	ELVN	grind	True	2026-07-23	none			
+198	TGTX	grind	True	2026-07-23	none			
+199	HII	grind	True	2026-07-23	post	2026-07-30	True	5
+199	LHX	grind	True	2026-07-23	none			
+199	LMT	grind	True	2026-07-23	pre	2026-07-23		0
+199	RTX	grind	True	2026-07-23	none			
+200	CVSA	grind	True	2026-07-23	none			
+200	LINC	grind	True	2026-07-23	post	2026-07-31	True	6
+200	PRDO	grind	True	2026-07-23	none			
+200	STRA	grind	True	2026-07-23	none			
+201	DCI	grind	True	2026-07-23	none			
+201	EMR	grind	False	2026-08-05	none			
+201	FELE	grind	True	2026-07-23	none			
+201	FLS	grind	False	2026-08-05	post	2026-07-30	False	5
+201	IEX	grind	True	2026-07-23	none			
+201	IR	grind	True	2026-07-23	none			
+201	ITT	grind	False	2026-08-11	none			
+201	KAI	grind	True	2026-07-23	none			
+201	LECO	grind	False	2026-08-05	none			
+201	MWA	grind	True	2026-07-23	none			
+201	PH	grind	False	2026-08-11	none			
+201	VLTO	grind	False	2026-08-11	none			
+202	DPC	grind	True	2026-07-24	none			
+202	FEIM	grind	True	2026-07-24	none			
+202	HXL	grind	False	2026-07-27	none			
+202	VVX	grind	True	2026-07-24	none			
+203	PCAR	grind	True	2026-07-24	none			
+203	WAB	grind	True	2026-07-24	none			
+204	DNOW	grind	True	2026-07-24	post	2026-08-06	True	9
+204	EME	grind	False	2026-08-21	post	2026-07-30	False	4
+204	FLR	grind	False	2026-08-19	post	2026-08-07	False	10
+204	J	grind	False	2026-08-11	none			
+204	KBR	grind	False	2026-08-20	none			
+204	ROAD	grind	False	2026-08-11	post	2026-08-07	False	10
+204	RYZ	grind	True	2026-07-24	none			
+204	SUNB	grind	True	2026-07-24	none			
+204	TPC	grind	True	2026-07-24	post	2026-08-06	True	9
+204	TTEK	grind	False	2026-08-21	none			
+205	FNV	grind	True	2026-07-24	none			
+205	OR	grind	True	2026-07-24	none			
+205	RGLD	grind	True	2026-07-24	none			
+205	TFPM	grind	False	2026-09-04	none			
+205	WPM	grind	True	2026-07-24	none			
+206	LIND	grind	True	2026-07-27	post	2026-08-03	True	5
+206	NCLH	grind	True	2026-07-27	none			
+206	RCL	grind	True	2026-07-27	none			
+207	DDS	grind	True	2026-07-27	none			
+207	KSS	grind	True	2026-07-27	none			
+207	M	grind	False	2026-08-11	none			
+208	BSX	grind	True	2026-07-27	none			
+208	EHC	grind	False	2026-08-11	post	2026-08-06	False	8
+208	HCA	grind	True	2026-07-27	none			
+208	MD	grind	False	2026-08-26	none			
+208	THC	grind	True	2026-07-27	pre	2026-07-24		1
+208	UHS	grind	True	2026-07-27	none			
+209	RLJ	grind	True	2026-07-27	none			
+209	XHR	grind	True	2026-07-27	none			
+210	AVA	grind	True	2026-07-27	none			
+210	BKH	grind	True	2026-07-27	none			
+210	NJR	grind	True	2026-07-27	none			
+210	NWE	grind	True	2026-07-27	none			
+210	POR	grind	True	2026-07-27	none			
+210	SR	grind	True	2026-07-27	none			
+211	BX	grind	True	2026-07-28	none			
+211	SSNC	grind	True	2026-07-28	pre	2026-07-24		2
+212	CAG	grind	True	2026-07-28	none			
+212	LW	grind	True	2026-07-28	none			
+212	UTZ	grind	True	2026-07-28	pre	2026-07-21		5
+213	KNSA	grind	True	2026-07-28	pre	2026-07-28		0
+213	LQDA	grind	True	2026-07-28	none			
+214	EXLS	grind	True	2026-07-29	none			
+214	G	grind	True	2026-07-29	none			
+215	BLMN	grind	False	2026-08-11	post	2026-08-05	False	5
+215	CAKE	grind	True	2026-07-29	none			
+215	CBRL	grind	False	2026-08-12	none			
+215	DRI	grind	False	2026-08-11	none			
+215	EAT	grind	True	2026-07-29	none			
+215	JACK	grind	False	2026-08-12	pre	2026-06-30		20
+215	JMKE	grind	False	2026-08-20	none			
+215	SHAK	grind	False	2026-08-12	none			
+215	TXRH	grind	False	2026-08-11	none			
+215	WEN	grind	False	2026-08-14	none			
+216	APGE	grind	True	2026-07-29	none			
+216	FBRX	grind	True	2026-07-29	pre	2026-07-09		14
+217	IT	grind	True	2026-07-29	post	2026-08-04	True	4
+217	MORN	grind	True	2026-07-29	none			
+218	HRB	grind	True	2026-07-29	post	2026-08-12	True	10
+218	INTU	grind	True	2026-07-29	none			
+219	ARM	cogap	True	2026-07-30	pre	2026-07-30		0
+219	LRCX	cogap	True	2026-07-30	pre	2026-07-09		15
+219	SIMO	cogap	True	2026-07-30	pre	2026-07-30		0
+220	ATHM	grind	True	2026-07-30	none			
+220	BZ	grind	True	2026-07-30	post	2026-08-26	True	19
+221	CNK	grind	True	2026-07-30	none			
+221	IMAX	grind	True	2026-07-30	none			
+222	BAND	grind	False	2026-08-18	none			
+222	FIVN	grind	True	2026-07-30	none			
+222	NICE	grind	False	2026-08-13	none			
+222	RNG	grind	True	2026-07-30	pre	2026-07-24		4
+222	TWLO	grind	False	2026-08-13	post	2026-08-07	False	6
+223	BZ	grind	True	2026-07-30	post	2026-08-26	True	19
+223	HAS	grind	True	2026-07-30	pre	2026-07-21		7
+223	MAT	grind	True	2026-07-30	none			
+223	SONO	grind	True	2026-07-30	none			
+224	HGV	grind	True	2026-07-30	none			
+224	TNL	grind	True	2026-07-30	none			
+224	VAC	grind	True	2026-07-30	none			
+225	BE	cogap	False	2026-08-12	pre	2026-07-29		2
+225	BLZE	cogap	True	2026-07-31	pre	2026-07-31		0
+225	CRWV	cogap	False	2026-08-12	pre	2026-07-30		1
+225	EROC	cogap	False	2026-08-12	pre	2026-07-30		1
+225	FLNC	cogap	True	2026-07-31	pre	2026-07-31		0
+225	GEV	cogap	False	2026-08-13	none			
+225	MPWR	cogap	True	2026-07-31	pre	2026-07-31		0
+225	NBIS	cogap	False	2026-08-12	pre	2026-07-30		1
+225	WYFI	cogap	False	2026-08-12	pre	2026-07-30		1
+226	CBRL	grind	True	2026-07-31	none			
+226	JACK	grind	True	2026-07-31	pre	2026-07-27		4
+227	LAUR	grind	True	2026-07-31	none			
+227	LINC	grind	True	2026-07-31	pre	2026-07-31		0
+227	LOPE	grind	True	2026-07-31	none			
+227	PRDO	grind	True	2026-07-31	none			
+227	STRA	grind	True	2026-07-31	none			
+227	UTI	grind	True	2026-07-31	none			
+228	CSW	grind	True	2026-07-31	none			
+228	MLI	grind	True	2026-07-31	none			
+229	GOOG	grind	True	2026-08-03	none			
+229	GOOGL	grind	True	2026-08-03	none			
+229	GOOGM	grind	True	2026-08-03	none			
+229	GOOGN	grind	True	2026-08-03	none			
+230	ARHS	grind	False	2026-08-18	none			
+230	BOBS	grind	True	2026-08-03	none			
+230	ETD	grind	False	2026-09-02	none			
+230	HNI	grind	True	2026-08-03	none			
+230	MLKN	grind	True	2026-08-03	none			
+230	RH	grind	False	2026-08-12	none			
+230	W	grind	False	2026-08-13	post	2026-08-04	False	1
+230	WSM	grind	False	2026-08-12	none			
+231	AADX	grind	True	2026-08-03	none			
+231	ARXS	grind	True	2026-08-03	none			
+231	ATI	grind	False	2026-08-11	post	2026-08-06	False	3
+231	ATRO	grind	False	2026-08-18	post	2026-08-12	False	7
+231	BA	grind	False	2026-08-11	none			
+231	DFNS	grind	True	2026-08-03	pre	2026-07-28		4
+231	DPC	grind	False	2026-08-11	none			
+231	EMBJ	grind	False	2026-08-11	none			
+231	HONA	grind	False	2026-08-27	none			
+231	LOAR	grind	False	2026-08-14	none			
+231	MRCY	grind	True	2026-08-03	post	2026-08-17	True	10
+231	RTX	grind	False	2026-08-11	none			
+232	GSHD	grind	True	2026-08-03	none			
+232	LIFE	grind	True	2026-08-03	post	2026-08-04	True	1
+232	NP	grind	False	2026-08-14	none			
+232	PRCH	grind	False	2026-08-18	pre	2026-07-30		2
+233	ATKR	cogap	True	2026-08-03	pre	2026-08-03		0
+233	IESC	cogap	True	2026-08-03	pre	2026-07-31		1
+234	AAUC	grind	False	2026-08-27	none			
+234	AEM	grind	False	2026-08-04	none			
+234	AG	grind	True	2026-08-03	none			
+234	AGI	grind	True	2026-08-03	none			
+234	ARIS	grind	False	2026-08-12	none			
+234	AU	grind	True	2026-08-03	post	2026-08-07	True	4
+234	AUGO	grind	False	2026-08-05	post	2026-08-07	True	4
+234	B	grind	False	2026-08-19	none			
+234	CDE	grind	True	2026-08-03	none			
+234	CGAU	grind	True	2026-08-03	none			
+234	EGO	grind	True	2026-08-03	none			
+234	EQX	grind	False	2026-08-04	none			
+234	EXK	grind	True	2026-08-03	none			
+234	FNV	grind	False	2026-08-06	none			
+234	FSM	grind	True	2026-08-03	none			
+234	GFI	grind	True	2026-08-03	post	2026-08-07	True	4
+234	HL	grind	True	2026-08-03	none			
+234	HMY	grind	False	2026-08-04	post	2026-08-07	True	4
+234	HYMC	grind	True	2026-08-03	post	2026-08-07	True	4
+234	IAG	grind	True	2026-08-03	post	2026-08-07	True	4
+234	KGC	grind	True	2026-08-03	none			
+234	MUX	grind	False	2026-08-25	none			
+234	NEM	grind	True	2026-08-03	none			
+234	OR	grind	False	2026-08-04	none			
+234	PAAS	grind	True	2026-08-03	none			
+234	PPTA	grind	True	2026-08-03	none			
+234	RGLD	grind	False	2026-08-06	none			
+234	SBSW	grind	True	2026-08-03	none			
+234	SSRM	grind	True	2026-08-03	none			
+234	SVM	grind	False	2026-08-04	none			
+235	NNE	grind	True	2026-08-03	pre	2026-07-27		5
+235	OKLO	grind	True	2026-08-03	none			
+235	SMR	grind	True	2026-08-03	none			
+235	UUUU	grind	False	2026-08-12	post	2026-08-07	False	4
+236	ITRI	grind	True	2026-08-03	pre	2026-07-28		4
+236	MWA	grind	True	2026-08-03	none			
+237	BCRX	cogap	False	2026-08-11	none			
+237	BMRN	cogap	False	2026-08-12	none			
+237	ETON	cogap	False	2026-08-11	post	2026-08-14	True	9
+237	HRMY	cogap	False	2026-08-11	none			
+237	INSM	cogap	False	2026-08-11	post	2026-08-06	False	3
+237	KNSA	cogap	True	2026-08-03	pre	2026-07-28		4
+237	LQDA	cogap	False	2026-08-11	none			
+237	OMER	cogap	True	2026-08-03	pre	2026-07-27		5
+237	ROIV	cogap	False	2026-08-11	none			
+237	RYTM	cogap	False	2026-08-11	none			
+237	SRRK	cogap	False	2026-08-13	none			
+237	TVTX	cogap	False	2026-08-14	post	2026-08-05	False	2
+238	APLD	cogap	True	2026-08-04	pre	2026-07-30		3
+238	BRUN	cogap	False	2026-08-18	post	2026-08-12	False	6
+238	CBRS	cogap	True	2026-08-04	post	2026-08-17	True	9
+238	CRWV	cogap	True	2026-08-04	pre	2026-07-30		3
+238	EROC	cogap	False	2026-08-20	pre	2026-07-30		3
+238	SHAZ	cogap	False	2026-08-13	pre	2026-07-14		15
+238	SMCI	cogap	False	2026-08-11	pre	2026-07-22		9
+238	WYFI	cogap	False	2026-08-21	pre	2026-07-30		3
+239	BA	grind	True	2026-08-04	none			
+239	DPC	grind	True	2026-08-04	none			
+239	HONA	grind	True	2026-08-04	none			
+240	AVEX	grind	True	2026-08-04	none			
+240	HAWK	grind	True	2026-08-04	pre	2026-07-09		18
+241	ATKR	cogap	False	2026-08-26	pre	2026-08-03		1
+241	BDC	cogap	True	2026-08-04	pre	2026-07-30		3
+241	NVT	cogap	False	2026-08-12	pre	2026-07-31		2
+241	PLPC	cogap	True	2026-08-04	pre	2026-07-30		3
+242	CVSA	grind	True	2026-08-04	none			
+242	LINC	grind	True	2026-08-04	pre	2026-07-31		2
+242	LOPE	grind	True	2026-08-04	none			
+242	PRDO	grind	True	2026-08-04	none			
+242	UTI	grind	True	2026-08-04	none			
+243	CACI	grind	False	2026-08-19	post	2026-08-06	False	2
+243	DXC	grind	True	2026-08-04	none			
+243	EFOR	grind	True	2026-08-04	pre	2026-07-22		9
+243	INGM	grind	False	2026-08-05	none			
+243	LDOS	grind	True	2026-08-04	none			
+244	CMCO	grind	True	2026-08-04	pre	2026-07-30		3
+244	EQPT	grind	False	2026-08-12	pre	2026-07-10		17
+244	HRI	grind	True	2026-08-04	none			
+244	SUNB	grind	True	2026-08-04	none			
+245	CMCO	grind	True	2026-08-04	pre	2026-07-30		3
+245	HRI	grind	True	2026-08-04	none			
+245	SUNB	grind	False	2026-08-05	none			
+246	FSM	grind	True	2026-08-04	none			
+246	PPTA	grind	True	2026-08-04	none			
+247	HURN	cogap	True	2026-08-04	pre	2026-07-29		4
+247	IT	cogap	True	2026-08-04	pre	2026-08-04		0
+248	NNN	grind	True	2026-08-04	none			
+248	O	grind	True	2026-08-04	none			
+248	WPC	grind	True	2026-08-04	none			
+249	APO	grind	False	2026-08-11	none			
+249	ARES	grind	True	2026-08-04	none			
+249	BAM	grind	False	2026-08-11	none			
+249	BX	grind	False	2026-08-11	none			
+249	CG	grind	False	2026-08-13	none			
+249	FSK	grind	False	2026-08-11	none			
+249	HLNE	grind	True	2026-08-04	none			
+249	HTGC	grind	False	2026-08-20	none			
+249	KKR	grind	False	2026-08-11	none			
+249	MAIN	grind	False	2026-08-11	none			
+249	OWL	grind	False	2026-08-11	none			
+249	STEP	grind	False	2026-08-11	none			
+249	TPG	grind	False	2026-08-11	none			
+250	AWK	grind	True	2026-08-04	none			
+250	AWR	grind	True	2026-08-04	none			
+250	CWT	grind	True	2026-08-04	none			
+250	WTRG	grind	True	2026-08-04	none			
+251	DLB	cogap	True	2026-08-04	pre	2026-07-31		2
+251	IDCC	cogap	True	2026-08-04	pre	2026-07-30		3
+252	AMRC	cogap	True	2026-08-04	pre	2026-08-04		0
+252	PLTR	cogap	True	2026-08-04	pre	2026-08-04		0
+252	TSAT	cogap	True	2026-08-04	pre	2026-08-04		0
+252	VOYG	cogap	True	2026-08-04	pre	2026-08-04		0
+253	AMRC	cogap	True	2026-08-04	pre	2026-08-04		0
+253	PLTR	cogap	True	2026-08-04	pre	2026-08-04		0
+253	TSAT	cogap	True	2026-08-04	pre	2026-08-04		0
+253	VOYG	cogap	True	2026-08-04	pre	2026-08-04		0
+254	AWI	cogap	True	2026-08-05	pre	2026-07-28		6
+254	CSL	cogap	True	2026-08-05	pre	2026-07-30		4
+254	OC	cogap	False	2026-08-11	none			
+255	APPS	grind	True	2026-08-05	pre	2026-08-05		0
+255	BSP	grind	True	2026-08-05	none			
+256	ACMR	cogap	False	2026-08-18	pre	2026-07-30		7
+256	AEHR	cogap	True	2026-08-10	pre	2026-07-15		18
+256	ALAB	cogap	False	2026-08-17	pre	2026-07-30		7
+256	AMAT	cogap	False	2026-08-19	pre	2026-07-30		7
+256	AMBA	cogap	False	2026-08-14	none			
+256	AMD	cogap	False	2026-08-19	none			
+256	APH	cogap	False	2026-08-12	none			
+256	ASML	cogap	False	2026-08-17	none			
+256	AXTI	cogap	True	2026-08-10	pre	2026-07-14		19
+256	CBRS	cogap	True	2026-08-10	post	2026-08-17	True	5
+256	COHR	cogap	True	2026-08-10	pre	2026-07-30		7
+256	COHU	cogap	False	2026-08-11	pre	2026-07-31		6
+256	CRDO	cogap	False	2026-08-11	none			
+256	ENTG	cogap	False	2026-08-11	none			
+256	FORM	cogap	False	2026-08-12	pre	2026-07-30		7
+256	GFS	cogap	False	2026-08-11	pre	2026-07-29		8
+256	LITE	cogap	False	2026-08-13	pre	2026-07-30		7
+256	LRCX	cogap	False	2026-08-13	pre	2026-07-30		7
+256	MPWR	cogap	False	2026-08-14	pre	2026-07-31		6
+256	MRAM	cogap	False	2026-09-02	pre	2026-08-04		4
+256	MRVL	cogap	False	2026-08-17	pre	2026-08-04		4
+256	MU	cogap	False	2026-08-18	none			
+256	MXL	cogap	False	2026-08-26	pre	2026-07-30		7
+256	NN	cogap	False	2026-08-24	none			
+256	NVDA	cogap	False	2026-08-18	none			
+256	ONTO	cogap	False	2026-08-11	pre	2026-07-30		7
+256	SIMO	cogap	False	2026-09-02	pre	2026-07-30		7
+256	SITM	cogap	True	2026-08-10	pre	2026-08-06		2
+256	SKHY	cogap	False	2026-08-14	none			
+256	SMTC	cogap	False	2026-08-18	pre	2026-07-14		19
+256	SNDK	cogap	False	2026-08-31	pre	2026-07-30		7
+256	TER	cogap	False	2026-08-12	pre	2026-07-29		8
+256	TSEM	cogap	False	2026-08-14	pre	2026-07-14		19
+257	AMKR	grind	True	2026-08-10	pre	2026-07-24		11
+257	AMSC	grind	True	2026-08-10	none			
+257	ASX	grind	False	2026-08-14	none			
+257	JBL	grind	False	2026-08-11	none			
+257	SANM	grind	True	2026-08-10	none			
+257	TTMI	grind	True	2026-08-10	none			
+258	CLSK	cogap	True	2026-08-10	pre	2026-07-14		19
+258	CORZ	cogap	True	2026-08-10	pre	2026-07-28		9
+258	IREN	cogap	True	2026-08-10	pre	2026-07-20		15
+258	MARA	cogap	True	2026-08-10	none			
+258	NBIS	cogap	True	2026-08-10	pre	2026-07-30		7
+258	RIOT	cogap	True	2026-08-10	pre	2026-07-30		7
+258	WULF	cogap	True	2026-08-10	pre	2026-07-30		7
+259	BRKR	grind	True	2026-08-10	none			
+259	GH	grind	False	2026-08-18	pre	2026-07-31		6
+259	GRAL	grind	False	2026-08-18	none			
+259	ILMN	grind	False	2026-08-11	none			
+259	NTRA	grind	False	2026-08-17	pre	2026-08-07		1
+259	QGEN	grind	False	2026-08-19	none			
+259	TWST	grind	True	2026-08-10	post	2026-08-19	True	7
+259	TXG	grind	True	2026-08-10	none			
+259	WGS	grind	False	2026-08-17	pre	2026-08-04		4
+260	AEE	grind	False	2026-08-11	none			
+260	AEP	grind	False	2026-08-11	none			
+260	APA	grind	False	2026-08-11	none			
+260	CMS	grind	False	2026-08-11	none			
+260	CNP	grind	False	2026-08-11	none			
+260	CRK	grind	False	2026-08-11	post	2026-09-01	True	16
+260	DHT	grind	False	2026-08-11	none			
+260	DTE	grind	False	2026-08-11	none			
+260	DUK	grind	False	2026-08-11	none			
+260	ED	grind	False	2026-08-11	none			
+260	ETR	grind	False	2026-08-11	none			
+260	EVRG	grind	False	2026-08-11	none			
+260	EXC	grind	False	2026-08-11	none			
+260	FE	grind	False	2026-08-11	none			
+260	FRO	grind	False	2026-08-11	none			
+260	HP	grind	True	2026-08-10	none			
+260	IDA	grind	False	2026-08-11	none			
+260	INSW	grind	False	2026-08-11	none			
+260	LNT	grind	False	2026-08-11	none			
+260	NAT	grind	False	2026-08-11	none			
+260	NESR	grind	True	2026-08-10	pre	2026-08-10		0
+260	NOG	grind	False	2026-08-11	none			
+260	OGE	grind	False	2026-08-11	none			
+260	OTTR	grind	False	2026-08-11	none			
+260	OVV	grind	False	2026-08-11	none			
+260	PNW	grind	False	2026-08-11	pre	2026-07-27		10
+260	SDRL	grind	True	2026-08-10	none			
+260	SO	grind	False	2026-08-11	none			
+260	TALO	grind	False	2026-08-11	none			
+260	TDW	grind	False	2026-08-12	none			
+260	TNK	grind	False	2026-08-11	none			
+260	WEC	grind	False	2026-08-11	none			
+260	XEL	grind	False	2026-08-11	none			
+261	ASM	grind	True	2026-08-10	none			
+261	AYA	grind	True	2026-08-10	none			
+261	FSM	grind	True	2026-08-10	none			
+261	PPTA	grind	True	2026-08-10	none			
+261	SA	grind	True	2026-08-10	none			
+261	SKE	grind	True	2026-08-10	none			
+261	WPM	grind	True	2026-08-10	none			
+262	CEVA	cogap	True	2026-08-10	none			
+262	COHR	cogap	True	2026-08-10	pre	2026-07-30		7
+262	ENTG	cogap	True	2026-08-10	none			
+262	GFS	cogap	True	2026-08-10	pre	2026-07-29		8
+262	RMBS	cogap	True	2026-08-10	none			
+263	AVAV	cogap	True	2026-08-10	none			
+263	KRMN	cogap	True	2026-08-10	none			
+263	KTOS	cogap	True	2026-08-10	pre	2026-08-05		3
+263	RDW	cogap	False	2026-08-11	pre	2026-08-06		2
+263	SPCX	cogap	True	2026-08-10	none			
+263	VOYG	cogap	True	2026-08-10	pre	2026-08-04		4
+264	ARCB	grind	False	2026-09-04	none			
+264	FWRD	grind	False	2026-08-20	pre	2026-07-21		14
+264	HUBG	grind	True	2026-08-10	none			
+264	JBHT	grind	True	2026-08-10	none			
+264	KNX	grind	False	2026-08-18	none			
+264	ODFL	grind	True	2026-08-10	none			
+264	SNDR	grind	True	2026-08-10	none			
+264	WERN	grind	False	2026-09-04	none			
+264	XPO	grind	True	2026-08-10	none			
+265	APA	grind	True	2026-08-10	none			
+265	CRK	grind	True	2026-08-10	post	2026-09-01	True	16
+265	NOG	grind	True	2026-08-10	none			
+265	OVV	grind	True	2026-08-10	none			
+265	TALO	grind	True	2026-08-10	none			
+266	CSQR	grind	False	2026-08-12	none			
+266	FRMI	grind	False	2026-08-12	pre	2026-08-11		0
+266	NNE	grind	False	2026-08-13	pre	2026-07-27		11
+266	SMR	grind	True	2026-08-11	none			
+266	STDN	grind	False	2026-08-12	pre	2026-08-10		1
+266	XE	grind	True	2026-08-11	post	2026-08-13	True	2
+267	BOX	grind	False	2026-08-13	none			
+267	DBX	grind	False	2026-08-12	none			
+267	P	grind	True	2026-08-11	none			
+267	QMCO	grind	True	2026-08-11	pre	2026-07-15		19
+268	ACN	grind	True	2026-08-11	none			
+268	CNXC	grind	False	2026-08-27	none			
+268	CTSH	grind	True	2026-08-11	none			
+268	DXC	grind	False	2026-08-13	none			
+268	EPAM	grind	False	2026-08-27	none			
+268	EXLS	grind	False	2026-08-12	none			
+268	G	grind	False	2026-08-20	none			
+268	GLOB	grind	False	2026-08-27	none			
+268	IT	grind	True	2026-08-11	pre	2026-08-04		5
+268	KD	grind	False	2026-08-13	none			
+269	DRH	grind	True	2026-08-11	none			
+269	HST	grind	True	2026-08-11	none			
+269	PEB	grind	True	2026-08-11	none			
+269	PK	grind	False	2026-08-20	none			
+269	RHP	grind	False	2026-08-25	none			
+269	RLJ	grind	False	2026-09-01	none			
+269	SHO	grind	True	2026-08-11	none			
+270	MGNI	cogap	True	2026-08-11	pre	2026-08-06		3
+270	QNST	cogap	True	2026-08-11	pre	2026-08-07		2
+271	AG	grind	True	2026-08-11	none			
+271	CDE	grind	True	2026-08-11	none			
+271	EXK	grind	True	2026-08-11	none			
+271	HL	grind	True	2026-08-11	none			
+271	PAAS	grind	True	2026-08-11	none			
+271	SVM	grind	True	2026-08-11	none			
+272	FROG	cogap	False	2026-08-12	pre	2026-08-07		2
+272	GTLB	cogap	True	2026-08-11	pre	2026-08-07		2
+272	TEAM	cogap	True	2026-08-11	pre	2026-08-07		2
+273	BE	cogap	True	2026-08-12	pre	2026-07-29		10
+273	EME	cogap	True	2026-08-12	pre	2026-07-30		9
+273	EROC	cogap	True	2026-08-12	pre	2026-07-30		9
+273	ETN	cogap	False	2026-08-13	none			
+273	PWR	cogap	True	2026-08-12	pre	2026-07-30		9
+274	AVB	grind	True	2026-08-12	none			
+274	ELS	grind	True	2026-08-12	none			
+274	EQR	grind	True	2026-08-12	none			
+274	UDR	grind	True	2026-08-12	none			
+275	APLD	cogap	True	2026-08-12	pre	2026-07-30		9
+275	BTDR	cogap	False	2026-08-14	pre	2026-07-30		9
+275	CIFR	cogap	True	2026-08-12	pre	2026-07-20		17
+275	CLSK	cogap	True	2026-08-12	pre	2026-07-30		9
+275	CORZ	cogap	True	2026-08-12	pre	2026-07-28		11
+275	HUT	cogap	True	2026-08-12	pre	2026-07-20		17
+275	MARA	cogap	True	2026-08-12	none			
+275	RIOT	cogap	True	2026-08-12	pre	2026-07-30		9
+275	WULF	cogap	True	2026-08-12	pre	2026-07-30		9
+276	AUGO	cogap	True	2026-08-12	pre	2026-08-07		3
+276	HYMC	cogap	True	2026-08-12	pre	2026-08-07		3
+276	NG	cogap	True	2026-08-12	none			
+277	CVSA	grind	False	2026-08-17	none			
+277	LAUR	grind	False	2026-08-27	none			
+277	LOPE	grind	True	2026-08-12	none			
+277	PRDO	grind	True	2026-08-12	none			
+277	STRA	grind	True	2026-08-12	none			
+278	AAOI	cogap	False	2026-08-14	pre	2026-07-30		9
+278	ALAB	cogap	False	2026-08-18	pre	2026-07-30		9
+278	APH	cogap	False	2026-08-18	none			
+278	COHR	cogap	True	2026-08-12	pre	2026-07-30		9
+278	CRDO	cogap	True	2026-08-12	none			
+278	LITE	cogap	True	2026-08-12	pre	2026-07-30		9
+279	AMRC	cogap	True	2026-08-12	pre	2026-08-04		6
+279	EROC	cogap	True	2026-08-12	pre	2026-07-30		9
+279	GEV	cogap	True	2026-08-12	none			
+280	CTRE	grind	True	2026-08-12	none			
+280	LTC	grind	True	2026-08-12	none			
+280	NHI	grind	True	2026-08-12	none			
+280	OHI	grind	True	2026-08-12	none			
+281	CCJ	grind	False	2026-08-25	none			
+281	NXE	grind	False	2026-08-25	none			
+281	UEC	grind	True	2026-08-12	none			
+281	UUUU	grind	True	2026-08-12	pre	2026-08-07		3
+282	ABG	grind	True	2026-08-13	none			
+282	AN	grind	True	2026-08-13	none			
+282	GPI	grind	True	2026-08-13	none			
+283	LII	grind	True	2026-08-13	none			
+283	MAS	grind	True	2026-08-13	none			
+283	PPG	grind	True	2026-08-13	none			
+283	SITE	grind	True	2026-08-13	none			
+283	SWK	grind	False	2026-08-20	none			
+283	TREX	grind	False	2026-08-14	none			
+284	DOCS	grind	True	2026-08-13	pre	2026-08-07		4
+284	TEM	grind	True	2026-08-13	post	2026-08-19	True	4
+284	VEEV	grind	True	2026-08-13	post	2026-08-27	True	10
+285	AEE	grind	True	2026-08-13	none			
+285	AEP	grind	True	2026-08-13	none			
+285	CMS	grind	True	2026-08-13	none			
+285	CNP	grind	True	2026-08-13	none			
+285	DTE	grind	True	2026-08-13	none			
+285	ED	grind	True	2026-08-13	none			
+285	ETR	grind	True	2026-08-13	none			
+285	EVRG	grind	True	2026-08-13	none			
+285	EXC	grind	True	2026-08-13	none			
+285	FE	grind	True	2026-08-13	none			
+285	IDA	grind	True	2026-08-13	none			
+285	LNT	grind	True	2026-08-13	none			
+285	OGE	grind	True	2026-08-13	none			
+285	SO	grind	True	2026-08-13	none			
+285	WEC	grind	True	2026-08-13	none			
+285	XEL	grind	True	2026-08-13	none			
+286	HLIT	cogap	True	2026-08-14	pre	2026-08-13		1
+286	MXL	cogap	True	2026-08-14	pre	2026-07-30		11
+286	NOK	cogap	True	2026-08-14	none			
+287	AVAV	cogap	False	2026-08-17	none			
+287	AVEX	cogap	False	2026-08-21	none			
+287	BETA	cogap	False	2026-08-18	none			
+287	KRMN	cogap	False	2026-08-17	none			
+287	KTOS	cogap	False	2026-08-17	pre	2026-08-05		7
+287	LPTH	cogap	True	2026-08-14	pre	2026-08-14		0
+287	NN	cogap	True	2026-08-14	none			
+287	RCAT	cogap	False	2026-08-21	pre	2026-08-14		0
+287	RDW	cogap	False	2026-08-17	pre	2026-08-06		6
+287	SPCX	cogap	False	2026-08-17	none			
+287	UMAC	cogap	True	2026-08-14	pre	2026-08-14		0
+287	VELO	cogap	True	2026-08-14	pre	2026-08-12		2
+287	VOYG	cogap	False	2026-08-17	pre	2026-08-04		8
+288	CRMD	cogap	True	2026-08-14	pre	2026-08-13		1
+288	ETON	cogap	True	2026-08-14	pre	2026-08-14		0
+288	INSM	cogap	False	2026-08-18	pre	2026-08-06		6
+288	KNSA	cogap	False	2026-08-18	pre	2026-07-28		13
+288	KURA	cogap	True	2026-08-14	pre	2026-08-13		1
+288	OMER	cogap	True	2026-08-14	pre	2026-07-27		14
+288	RYTM	cogap	False	2026-08-18	none			
+288	VERA	cogap	True	2026-08-14	pre	2026-08-14		0
+288	ZVRA	cogap	False	2026-08-18	pre	2026-08-06		6
+289	NNE	cogap	False	2026-08-20	pre	2026-07-27		15
+289	STDN	cogap	True	2026-08-17	pre	2026-08-10		5
+289	XE	cogap	True	2026-08-17	pre	2026-08-13		2
+290	BNTX	grind	False	2026-08-26	post	2026-08-19	False	2
+290	CRVS	grind	False	2026-08-19	none			
+290	IBRX	grind	True	2026-08-17	none			
+290	IMMX	grind	True	2026-08-17	none			
+290	JANX	grind	False	2026-08-18	none			
+290	JBIO	grind	True	2026-08-17	none			
+290	RCUS	grind	False	2026-08-20	none			
+291	MRAM	cogap	True	2026-08-17	pre	2026-08-04		9
+291	MU	cogap	False	2026-09-02	none			
+291	SIMO	cogap	True	2026-08-17	pre	2026-07-30		12
+291	SKHY	cogap	False	2026-09-02	none			
+291	SNDK	cogap	True	2026-08-17	pre	2026-07-30		12
+292	BCC	grind	True	2026-08-17	none			
+292	BLDR	grind	True	2026-08-17	none			
+292	FBIN	grind	True	2026-08-17	none			
+292	UFPI	grind	True	2026-08-17	none			
+293	KGS	grind	True	2026-08-17	none			
+293	TRGP	grind	True	2026-08-17	none			
+293	VG	grind	True	2026-08-17	none			
+294	INFQ	cogap	True	2026-08-17	none			
+294	IONQ	cogap	True	2026-08-17	pre	2026-07-27		15
+294	NN	cogap	True	2026-08-17	none			
+294	RGTI	cogap	False	2026-08-20	pre	2026-07-27		15
+294	SITM	cogap	True	2026-08-17	pre	2026-08-06		7
+295	AEHR	cogap	True	2026-08-17	pre	2026-07-21		19
+295	COHU	cogap	True	2026-08-17	pre	2026-07-31		11
+295	ONTO	cogap	True	2026-08-17	pre	2026-07-30		12
+295	TER	cogap	True	2026-08-17	pre	2026-07-29		13
+296	ACGL	grind	True	2026-08-17	none			
+296	CNA	grind	True	2026-08-17	none			
+296	KMPR	grind	True	2026-08-17	none			
+296	L	grind	True	2026-08-17	none			
+297	AEP	grind	False	2026-08-20	none			
+297	APA	grind	False	2026-08-20	none			
+297	AR	grind	False	2026-08-20	none			
+297	ATO	grind	False	2026-08-20	none			
+297	BKV	grind	False	2026-08-20	none			
+297	BP	grind	False	2026-08-20	none			
+297	CHRD	grind	True	2026-08-17	none			
+297	CMS	grind	False	2026-08-20	none			
+297	CNQ	grind	False	2026-08-20	none			
+297	COP	grind	False	2026-08-20	none			
+297	CPK	grind	False	2026-08-20	none			
+297	CRGY	grind	True	2026-08-17	none			
+297	CRK	grind	False	2026-08-20	post	2026-09-01	True	11
+297	CVE	grind	False	2026-08-20	none			
+297	CVI	grind	False	2026-08-20	pre	2026-07-30		12
+297	CVX	grind	False	2026-08-20	none			
+297	DINO	grind	False	2026-08-20	none			
+297	DK	grind	False	2026-08-20	none			
+297	DTM	grind	False	2026-08-20	none			
+297	DVN	grind	True	2026-08-17	none			
+297	EC	grind	False	2026-08-20	none			
+297	EOG	grind	False	2026-08-20	none			
+297	EQNR	grind	False	2026-08-20	none			
+297	EQT	grind	False	2026-08-20	none			
+297	ET	grind	False	2026-08-20	none			
+297	EVRG	grind	False	2026-08-20	none			
+297	EXC	grind	False	2026-08-20	none			
+297	EXE	grind	False	2026-08-20	none			
+297	FANG	grind	False	2026-08-20	none			
+297	FE	grind	False	2026-08-20	none			
+297	HP	grind	False	2026-08-20	none			
+297	KGS	grind	False	2026-08-20	none			
+297	KMI	grind	False	2026-08-20	none			
+297	KNTK	grind	False	2026-08-20	none			
+297	LNG	grind	False	2026-08-20	none			
+297	MPC	grind	False	2026-08-20	none			
+297	MTDR	grind	True	2026-08-17	none			
+297	NESR	grind	False	2026-08-20	pre	2026-08-10		5
+297	NOG	grind	True	2026-08-17	none			
+297	OGS	grind	False	2026-08-20	none			
+297	OKE	grind	False	2026-08-20	none			
+297	OVV	grind	False	2026-08-20	none			
+297	OXY	grind	False	2026-08-20	none			
+297	PARR	grind	False	2026-08-20	none			
+297	PBF	grind	False	2026-08-20	pre	2026-07-30		12
+297	PR	grind	False	2026-08-20	none			
+297	PSX	grind	False	2026-08-20	none			
+297	PTEN	grind	False	2026-08-20	none			
+297	RRC	grind	False	2026-08-20	none			
+297	SM	grind	True	2026-08-17	none			
+297	SO	grind	False	2026-08-20	none			
+297	SR	grind	False	2026-08-20	none			
+297	SU	grind	False	2026-08-20	none			
+297	TALO	grind	True	2026-08-17	none			
+297	TRGP	grind	False	2026-08-20	none			
+297	UGI	grind	False	2026-08-20	none			
+297	VET	grind	True	2026-08-17	none			
+297	VG	grind	False	2026-08-20	none			
+297	VIST	grind	True	2026-08-17	none			
+297	VLO	grind	False	2026-08-20	none			
+297	WDS	grind	False	2026-08-20	none			
+297	WES	grind	False	2026-08-20	none			
+297	WHD	grind	False	2026-08-20	none			
+297	WMB	grind	False	2026-08-20	none			
+297	XEL	grind	False	2026-08-20	none			
+297	XOM	grind	False	2026-08-21	none			
+297	YPF	grind	False	2026-08-20	none			
+298	AGI	grind	True	2026-08-18	none			
+298	BVN	grind	True	2026-08-18	none			
+298	PAAS	grind	True	2026-08-18	none			
+299	IQV	cogap	True	2026-08-18	pre	2026-07-28		15
+299	ITRI	cogap	True	2026-08-18	pre	2026-07-28		15
+299	NIQ	cogap	True	2026-08-18	pre	2026-08-11		5
+300	AVEX	grind	True	2026-08-18	none			
+300	BETA	grind	True	2026-08-18	none			
+300	RCAT	grind	True	2026-08-18	pre	2026-08-14		2
+301	BP	grind	True	2026-08-18	none			
+301	WDS	grind	True	2026-08-18	none			
+301	YPF	grind	True	2026-08-18	none			
+302	AG	grind	True	2026-08-18	none			
+302	AGI	grind	True	2026-08-18	none			
+302	BVN	grind	True	2026-08-18	none			
+302	FSM	grind	True	2026-08-18	none			
+302	PAAS	grind	True	2026-08-18	none			
+303	AR	grind	True	2026-08-18	none			
+303	CRK	grind	True	2026-08-18	post	2026-09-01	True	10
+303	EQT	grind	True	2026-08-18	none			
+303	EXE	grind	True	2026-08-18	none			
+303	RRC	grind	True	2026-08-18	none			
+304	MPWR	grind	False	2026-08-21	pre	2026-07-31		12
+304	VICR	grind	True	2026-08-18	none			
+304	WOLF	grind	True	2026-08-18	none			
+305	CINF	grind	True	2026-08-18	none			
+305	EG	grind	True	2026-08-18	none			
+305	L	grind	True	2026-08-18	none			
+305	ORI	grind	True	2026-08-18	none			
+305	RNR	grind	True	2026-08-18	none			
+306	ACMR	cogap	True	2026-08-18	pre	2026-07-30		13
+306	AMAT	cogap	True	2026-08-18	pre	2026-07-30		13
+306	ASML	cogap	False	2026-08-20	none			
+306	ENTG	cogap	False	2026-08-20	none			
+306	FORM	cogap	False	2026-08-20	pre	2026-07-30		13
+306	LRCX	cogap	True	2026-08-18	pre	2026-07-30		13
+307	AAUC	cogap	False	2026-08-26	none			
+307	AU	cogap	True	2026-08-18	pre	2026-08-07		7
+307	GFI	cogap	True	2026-08-18	pre	2026-08-07		7
+307	HMY	cogap	True	2026-08-18	pre	2026-08-07		7
+307	SBSW	cogap	True	2026-08-18	none			
+308	ECHO	grind	True	2026-08-18	none			
+308	FUBO	grind	False	2026-08-25	none			
+308	PSKY	grind	True	2026-08-18	none			
+308	ROKU	grind	False	2026-08-26	none			
+308	RUM	grind	True	2026-08-18	none			
+309	BEAM	grind	True	2026-08-19	none			
+309	CRSP	grind	True	2026-08-19	none			
+309	MGTX	grind	False	2026-09-03	none			
+309	NTLA	grind	True	2026-08-19	none			
+309	QURE	grind	False	2026-09-02	none			
+309	SRPT	grind	False	2026-08-27	none			
+310	BEAM	grind	True	2026-08-19	none			
+310	CRSP	grind	True	2026-08-19	none			
+310	NTLA	grind	True	2026-08-19	none			
+310	VRTX	grind	False	2026-08-21	none			
+311	AGIO	cogap	False	2026-08-27	none			
+311	CGON	cogap	False	2026-08-20	none			
+311	ELVN	cogap	False	2026-08-20	none			
+311	IDYA	cogap	False	2026-08-20	none			
+311	INBX	cogap	True	2026-08-19	none			
+311	INCY	cogap	False	2026-08-25	none			
+311	KURA	cogap	True	2026-08-19	pre	2026-08-13		4
+311	KYMR	cogap	False	2026-08-25	none			
+311	OMER	cogap	True	2026-08-19	pre	2026-07-27		17
+311	ORIC	cogap	False	2026-08-25	none			
+311	RLAY	cogap	False	2026-08-24	none			
+311	RVMD	cogap	False	2026-08-25	none			
+311	SNDX	cogap	True	2026-08-19	none			
+311	TGTX	cogap	False	2026-08-25	none			
+311	URGN	cogap	True	2026-08-19	none			
+312	APPF	grind	True	2026-08-19	none			
+312	DUOL	grind	True	2026-08-19	none			
+312	PCOR	grind	True	2026-08-19	none			
+312	ZM	grind	True	2026-08-19	none			
+313	ASST	grind	True	2026-08-19	post	2026-08-20	True	1
+313	BMNR	grind	True	2026-08-19	pre	2026-07-27		17
+313	COIN	grind	False	2026-09-04	none			
+313	CRCL	grind	False	2026-09-04	post	2026-09-03	False	11
+313	MSTR	grind	True	2026-08-19	post	2026-08-20	True	1
+313	PURR	grind	False	2026-09-04	pre	2026-08-17		2
+313	SBET	grind	True	2026-08-19	none			
+314	ASST	cogap	False	2026-08-25	post	2026-08-20	False	1
+314	BLSH	cogap	True	2026-08-19	pre	2026-08-13		4
+314	FIGR	cogap	False	2026-08-25	none			
+314	IOND	cogap	False	2026-08-25	none			
+314	PURR	cogap	True	2026-08-19	pre	2026-08-17		2
+315	CAG	grind	False	2026-08-21	none			
+315	CCEP	grind	False	2026-08-25	none			
+315	CELH	grind	False	2026-08-26	none			
+315	CLX	grind	False	2026-08-24	none			
+315	COST	grind	True	2026-08-19	none			
+315	CPB	grind	False	2026-08-20	none			
+315	DEO	grind	False	2026-08-25	none			
+315	DG	grind	False	2026-09-01	post	2026-08-27	False	6
+315	DLTR	grind	False	2026-08-24	none			
+315	EPC	grind	False	2026-08-25	none			
+315	GIS	grind	False	2026-08-21	none			
+315	GO	grind	False	2026-08-25	none			
+315	KDP	grind	False	2026-08-26	none			
+315	KHC	grind	False	2026-08-28	none			
+315	KO	grind	False	2026-08-20	none			
+315	KR	grind	True	2026-08-19	none			
+315	LW	grind	False	2026-08-24	none			
+315	MDLZ	grind	False	2026-08-24	none			
+315	MICC	grind	False	2026-08-24	none			
+315	MKC	grind	False	2026-08-24	none			
+315	MNST	grind	False	2026-08-25	none			
+315	PEP	grind	True	2026-08-19	none			
+315	PM	grind	False	2026-08-25	none			
+315	PPC	grind	False	2026-08-26	pre	2026-08-19		0
+315	SJM	grind	False	2026-08-24	none			
+315	TBBB	grind	False	2026-08-28	pre	2026-08-13		4
+315	TGT	grind	False	2026-09-02	none			
+315	UL	grind	False	2026-08-28	none			
+315	UTZ	grind	False	2026-08-24	none			
+316	AEP	grind	True	2026-08-19	none			
+316	CMS	grind	True	2026-08-19	none			
+316	EVRG	grind	True	2026-08-19	none			
+316	EXC	grind	True	2026-08-19	none			
+316	FE	grind	True	2026-08-19	none			
+316	SO	grind	True	2026-08-19	none			
+316	XEL	grind	True	2026-08-19	none			
+317	KURA	grind	True	2026-08-19	pre	2026-08-13		4
+317	SNDX	grind	True	2026-08-19	none			
+317	URGN	grind	True	2026-08-19	none			
+318	BXP	grind	True	2026-08-19	none			
+318	DEI	grind	True	2026-08-19	none			
+318	VNO	grind	True	2026-08-19	none			
+319	AIN	grind	True	2026-08-19	none			
+319	ROK	grind	True	2026-08-19	none			
+319	TKR	grind	True	2026-08-19	none			
+320	AIN	grind	True	2026-08-19	none			
+320	ROK	grind	True	2026-08-19	none			
+320	TKR	grind	True	2026-08-19	none			
+321	ALM	grind	False	2026-08-27	none			
+321	ALOY	grind	True	2026-08-19	pre	2026-07-29		15
+321	MP	grind	True	2026-08-19	none			
+321	USAR	grind	True	2026-08-19	none			
+322	ALOY	grind	True	2026-08-19	pre	2026-07-29		15
+322	MP	grind	True	2026-08-19	none			
+322	USAR	grind	True	2026-08-19	none			
+323	ATO	grind	True	2026-08-19	none			
+323	OGS	grind	True	2026-08-19	none			
+323	SR	grind	True	2026-08-19	none			
+323	UGI	grind	True	2026-08-19	none			
+324	BNTX	cogap	True	2026-08-19	pre	2026-08-19		0
+324	MRK	cogap	False	2026-08-24	pre	2026-08-19		0
+324	MRNA	cogap	True	2026-08-19	pre	2026-08-19		0
+324	MRVI	cogap	False	2026-08-24	pre	2026-08-19		0
+324	NVAX	cogap	False	2026-08-26	none			
+324	PFE	cogap	False	2026-09-03	none			
+324	QDEL	cogap	False	2026-08-31	none			
+324	VIR	cogap	False	2026-08-26	none			
+325	ADM	grind	False	2026-09-02	none			
+325	AGCO	grind	False	2026-08-28	none			
+325	AGRO	grind	False	2026-09-02	none			
+325	BG	grind	False	2026-08-31	none			
+325	CNH	grind	True	2026-08-20	pre	2026-08-03		13
+325	CTVA	grind	False	2026-08-31	none			
+325	DE	grind	True	2026-08-20	none			
+325	DOLE	grind	False	2026-09-02	none			
+325	FMC	grind	False	2026-09-02	none			
+325	JBS	grind	False	2026-09-02	none			
+325	OSK	grind	True	2026-08-20	none			
+326	FSK	grind	True	2026-08-20	none			
+326	HTGC	grind	True	2026-08-20	none			
+326	MAIN	grind	True	2026-08-20	none			
+327	ADPT	grind	False	2026-08-28	none			
+327	CAI	grind	False	2026-08-20	pre	2026-08-06		10
+327	CDNA	grind	False	2026-08-25	pre	2026-07-31		14
+327	DGX	grind	False	2026-09-03	pre	2026-07-23		20
+327	HTFL	grind	True	2026-08-20	pre	2026-08-14		4
+327	IRTC	grind	True	2026-08-20	none			
+327	LH	grind	False	2026-09-03	none			
+327	RDNT	grind	True	2026-08-20	none			
+327	TEM	grind	False	2026-08-20	pre	2026-08-19		1
+328	BBNX	cogap	False	2026-08-21	none			
+328	DXCM	cogap	True	2026-08-20	pre	2026-07-31		14
+328	INSP	cogap	True	2026-08-20	pre	2026-08-04		12
+328	MMED	cogap	False	2026-08-25	none			
+328	TNDM	cogap	True	2026-08-20	none			
+329	BRX	grind	True	2026-08-20	none			
+329	FRT	grind	True	2026-08-20	none			
+329	KIM	grind	False	2026-09-03	none			
+329	KRG	grind	False	2026-09-03	none			
+329	PECO	grind	True	2026-08-20	none			
+329	REG	grind	True	2026-08-20	none			
+330	GDDY	cogap	False	2026-08-24	none			
+330	KVYO	cogap	False	2026-08-27	none			
+330	SPT	cogap	True	2026-08-20	pre	2026-08-07		9
+330	WIX	cogap	True	2026-08-20	pre	2026-08-04		12
+330	ZETA	cogap	True	2026-08-20	pre	2026-08-05		11
+331	DTM	grind	True	2026-08-20	none			
+331	ET	grind	True	2026-08-20	none			
+331	KMI	grind	True	2026-08-20	none			
+331	KNTK	grind	True	2026-08-20	none			
+331	LNG	grind	True	2026-08-20	none			
+331	OKE	grind	True	2026-08-20	none			
+331	TRGP	grind	True	2026-08-20	none			
+331	WMB	grind	True	2026-08-20	none			
+332	AVTR	cogap	True	2026-08-21	pre	2026-07-29		17
+332	DHR	cogap	True	2026-08-21	none			
+332	RGEN	cogap	True	2026-08-21	pre	2026-07-28		18
+333	JKHY	grind	True	2026-08-21	none			
+333	NCNO	grind	True	2026-08-21	none			
+333	QTWO	grind	True	2026-08-21	none			
+334	COIN	grind	True	2026-08-21	none			
+334	CRCL	grind	False	2026-08-24	post	2026-09-03	True	9
+334	FIGR	grind	True	2026-08-21	none			
+335	BNY	grind	True	2026-08-21	none			
+335	NTRS	grind	True	2026-08-21	none			
+335	STT	grind	True	2026-08-21	none			
+336	AGCO	grind	False	2026-09-02	none			
+336	BG	grind	False	2026-09-02	none			
+336	CF	grind	True	2026-08-21	none			
+336	CNH	grind	False	2026-09-02	pre	2026-08-03		14
+336	CTVA	grind	False	2026-09-02	none			
+336	FMC	grind	False	2026-09-02	none			
+336	MOS	grind	True	2026-08-21	none			
+336	NTR	grind	True	2026-08-21	none			
+336	SQM	grind	True	2026-08-21	none			
+337	GH	cogap	True	2026-08-21	pre	2026-07-31		15
+337	GRAL	cogap	True	2026-08-21	none			
+337	NTRA	cogap	True	2026-08-21	pre	2026-08-07		10
+337	WGS	cogap	False	2026-08-26	pre	2026-08-04		13
+338	AMR	grind	True	2026-08-21	none			
+338	HCC	grind	True	2026-08-21	none			
+338	METC	grind	False	2026-08-27	none			
+338	SXC	grind	False	2026-08-27	none			
+339	AR	grind	True	2026-08-21	none			
+339	EQT	grind	True	2026-08-21	none			
+339	KGS	grind	True	2026-08-21	none			
+339	LNG	grind	True	2026-08-21	none			
+339	OKE	grind	True	2026-08-21	none			
+339	RRC	grind	True	2026-08-21	none			
+339	TRGP	grind	True	2026-08-21	none			
+340	NE	grind	True	2026-08-21	none			
+340	SDRL	grind	True	2026-08-21	none			
+340	VAL	grind	True	2026-08-21	none			
+341	AEP	cogap	False	2026-08-24	none			
+341	APA	cogap	False	2026-08-26	none			
+341	AR	cogap	False	2026-08-26	none			
+341	ATO	cogap	False	2026-08-24	none			
+341	BP	cogap	False	2026-08-26	none			
+341	CHRD	cogap	False	2026-08-26	none			
+341	CMS	cogap	False	2026-08-24	none			
+341	CNQ	cogap	False	2026-08-26	none			
+341	COP	cogap	False	2026-08-26	none			
+341	CRGY	cogap	False	2026-08-26	none			
+341	CRK	cogap	False	2026-08-26	post	2026-09-01	True	7
+341	CVE	cogap	False	2026-08-26	none			
+341	CVI	cogap	True	2026-08-21	pre	2026-07-30		16
+341	CVX	cogap	False	2026-08-26	none			
+341	DEC	cogap	False	2026-08-26	none			
+341	DINO	cogap	True	2026-08-21	none			
+341	DK	cogap	True	2026-08-21	none			
+341	DTM	cogap	False	2026-08-26	none			
+341	DVN	cogap	False	2026-08-26	none			
+341	EC	cogap	False	2026-08-26	none			
+341	EOG	cogap	False	2026-08-26	none			
+341	EQNR	cogap	False	2026-08-26	none			
+341	EQT	cogap	False	2026-08-26	none			
+341	ET	cogap	False	2026-08-24	none			
+341	EVRG	cogap	False	2026-08-24	none			
+341	EXC	cogap	False	2026-08-24	none			
+341	EXE	cogap	False	2026-08-26	none			
+341	FANG	cogap	False	2026-08-26	none			
+341	FE	cogap	False	2026-08-24	none			
+341	KMI	cogap	False	2026-08-26	none			
+341	KNTK	cogap	False	2026-08-24	none			
+341	LNG	cogap	False	2026-08-26	none			
+341	MPC	cogap	True	2026-08-21	none			
+341	MTDR	cogap	False	2026-08-26	none			
+341	NOG	cogap	False	2026-08-26	none			
+341	OGS	cogap	False	2026-08-24	none			
+341	OKE	cogap	False	2026-08-24	none			
+341	OVV	cogap	False	2026-08-26	none			
+341	OXY	cogap	False	2026-08-26	none			
+341	PAGP	cogap	False	2026-08-24	none			
+341	PARR	cogap	False	2026-08-26	none			
+341	PBF	cogap	True	2026-08-21	pre	2026-07-30		16
+341	PR	cogap	False	2026-08-26	none			
+341	PSX	cogap	True	2026-08-21	none			
+341	RRC	cogap	False	2026-08-26	none			
+341	SM	cogap	False	2026-08-26	none			
+341	SO	cogap	False	2026-08-24	none			
+341	SR	cogap	False	2026-08-24	none			
+341	SU	cogap	False	2026-08-26	none			
+341	TALO	cogap	False	2026-08-26	none			
+341	TRGP	cogap	False	2026-08-24	none			
+341	UGI	cogap	False	2026-08-24	none			
+341	VET	cogap	False	2026-08-26	none			
+341	VG	cogap	False	2026-08-26	none			
+341	VIST	cogap	False	2026-08-26	none			
+341	VLO	cogap	True	2026-08-21	none			
+341	WDS	cogap	False	2026-08-26	none			
+341	WES	cogap	False	2026-08-24	none			
+341	WMB	cogap	False	2026-08-26	none			
+341	XEL	cogap	False	2026-08-24	none			
+341	XOM	cogap	False	2026-08-26	none			
+341	YPF	cogap	False	2026-08-26	none			
+342	APPN	grind	True	2026-08-21	none			
+342	PATH	grind	True	2026-08-21	none			
+343	CACI	cogap	True	2026-08-24	pre	2026-08-06		12
+343	GRRR	cogap	True	2026-08-24	none			
+343	PLTR	cogap	True	2026-08-24	pre	2026-08-04		14
+343	TYL	cogap	True	2026-08-24	none			
+344	EZPW	grind	True	2026-08-24	none			
+344	FCFS	grind	True	2026-08-24	none			
+345	CMG	grind	True	2026-08-24	pre	2026-07-30		17
+345	FWRG	grind	True	2026-08-24	none			
+345	QSR	grind	False	2026-08-25	none			
+345	SBUX	grind	True	2026-08-24	none			
+345	YUM	grind	True	2026-08-24	none			
+346	ACAD	cogap	False	2026-08-26	none			
+346	BMRN	cogap	False	2026-08-25	none			
+346	ETON	cogap	True	2026-08-24	pre	2026-08-14		6
+346	HALO	cogap	True	2026-08-24	pre	2026-08-07		11
+346	INSM	cogap	False	2026-08-25	pre	2026-08-06		12
+346	SRRK	cogap	False	2026-08-26	none			
+346	TVTX	cogap	False	2026-08-26	pre	2026-08-05		13
+347	BCC	grind	True	2026-08-24	none			
+347	BLDR	grind	True	2026-08-24	none			
+347	EXP	grind	False	2026-08-31	none			
+347	JHX	grind	False	2026-09-04	none			
+347	UFPI	grind	True	2026-08-24	none			
+348	ALAB	cogap	True	2026-08-25	pre	2026-07-30		18
+348	FLEX	cogap	True	2026-08-25	none			
+348	LITE	cogap	False	2026-08-31	pre	2026-07-30		18
+348	LSCC	cogap	True	2026-08-25	none			
+348	MXL	cogap	True	2026-08-25	pre	2026-07-30		18
+348	VICR	cogap	True	2026-08-25	none			
+349	ARCC	grind	True	2026-08-25	none			
+349	CSWC	grind	False	2026-08-31	none			
+349	FSK	grind	True	2026-08-25	none			
+349	OBDC	grind	True	2026-08-25	none			
+349	OTF	grind	True	2026-08-25	none			
+349	TRIN	grind	False	2026-08-26	none			
+350	CAG	grind	True	2026-08-25	none			
+350	LW	grind	True	2026-08-25	none			
+350	MICC	grind	True	2026-08-25	none			
+350	NOMD	grind	True	2026-08-25	none			
+350	SJM	grind	True	2026-08-25	none			
+351	AMH	grind	True	2026-08-25	none			
+351	CPT	grind	True	2026-08-25	none			
+351	ESS	grind	False	2026-08-27	none			
+351	INVH	grind	True	2026-08-25	none			
+351	IRT	grind	True	2026-08-25	none			
+351	MAA	grind	True	2026-08-25	none			
+351	UDR	grind	False	2026-08-27	none			
+352	APLD	cogap	True	2026-08-26	pre	2026-07-30		19
+352	CIFR	cogap	True	2026-08-26	pre	2026-07-30		19
+352	CLSK	cogap	True	2026-08-26	pre	2026-07-30		19
+352	CORZ	cogap	True	2026-08-26	pre	2026-07-30		19
+352	HUT	cogap	True	2026-08-26	pre	2026-07-30		19
+352	MARA	cogap	False	2026-08-27	none			
+352	RIOT	cogap	False	2026-08-27	pre	2026-07-30		19
+352	WULF	cogap	True	2026-08-26	pre	2026-07-30		19
+353	BTU	grind	True	2026-08-26	none			
+353	CNR	grind	True	2026-08-26	none			
+354	GRRR	grind	True	2026-08-27	none			
+354	NOK	grind	True	2026-08-27	none			
+354	SMTC	grind	True	2026-08-27	pre	2026-07-30		20
+355	AEIS	cogap	True	2026-08-27	pre	2026-07-31		19
+355	BELFA	cogap	True	2026-08-27	none			
+355	BELFB	cogap	True	2026-08-27	pre	2026-07-31		19
+355	KN	cogap	True	2026-08-27	none			
+356	CB	grind	True	2026-08-27	none			
+356	EG	grind	True	2026-08-27	none			
+356	MKL	grind	True	2026-08-27	none			
+356	RNR	grind	True	2026-08-27	none			
+356	SPNT	grind	False	2026-09-01	none			
+356	TRV	grind	True	2026-08-27	none			
+357	AAL	grind	True	2026-08-27	none			
+357	ALK	grind	True	2026-08-27	none			
+357	DAL	grind	True	2026-08-27	none			
+357	LUV	grind	True	2026-08-27	none			
+357	UAL	grind	True	2026-08-27	none			
+358	DEC	cogap	True	2026-08-27	none			
+358	EROC	cogap	True	2026-08-27	pre	2026-07-30		20
+358	HNRG	cogap	True	2026-08-27	none			
+358	WLDN	cogap	True	2026-08-27	pre	2026-08-07		14
+359	CAPR	cogap	True	2026-08-27	pre	2026-08-24		3
+359	ETON	cogap	True	2026-08-27	pre	2026-08-14		9
+359	MIRM	cogap	True	2026-08-27	none			
+360	AGX	grind	True	2026-08-28	post	2026-09-03	True	4
+360	ECG	grind	True	2026-08-28	pre	2026-08-05		17
+360	EME	grind	True	2026-08-28	none			
+360	FIX	grind	True	2026-08-28	none			
+360	GEV	grind	True	2026-08-28	none			
+360	PWR	grind	True	2026-08-28	none			
+361	APA	grind	False	2026-08-31	none			
+361	AR	grind	False	2026-08-31	none			
+361	BP	grind	False	2026-08-31	none			
+361	CHRD	grind	False	2026-08-31	none			
+361	CNQ	grind	False	2026-08-31	none			
+361	COP	grind	False	2026-08-31	none			
+361	CRGY	grind	False	2026-08-31	none			
+361	CRK	grind	False	2026-08-31	post	2026-09-01	True	2
+361	CVE	grind	False	2026-08-31	none			
+361	CVI	grind	False	2026-08-31	none			
+361	CVX	grind	False	2026-08-31	none			
+361	DEC	grind	False	2026-08-31	none			
+361	DINO	grind	True	2026-08-28	none			
+361	DK	grind	True	2026-08-28	none			
+361	DTM	grind	False	2026-08-31	none			
+361	DVN	grind	False	2026-08-31	none			
+361	EC	grind	False	2026-08-31	none			
+361	EOG	grind	False	2026-08-31	none			
+361	EQNR	grind	False	2026-08-31	none			
+361	EQT	grind	False	2026-08-31	none			
+361	ET	grind	False	2026-08-31	none			
+361	EXE	grind	False	2026-08-31	none			
+361	FANG	grind	False	2026-08-31	none			
+361	FRO	grind	False	2026-09-01	none			
+361	HAL	grind	False	2026-08-31	none			
+361	INSW	grind	False	2026-09-01	none			
+361	INVX	grind	False	2026-08-31	none			
+361	KMI	grind	False	2026-08-31	none			
+361	KNTK	grind	True	2026-08-28	none			
+361	LNG	grind	False	2026-08-31	none			
+361	MPC	grind	True	2026-08-28	none			
+361	MTDR	grind	False	2026-08-31	none			
+361	NAT	grind	False	2026-09-01	none			
+361	NEXT	grind	False	2026-08-31	none			
+361	NOG	grind	False	2026-08-31	none			
+361	OKE	grind	True	2026-08-28	none			
+361	OVV	grind	False	2026-08-31	none			
+361	OXY	grind	False	2026-08-31	none			
+361	PAGP	grind	False	2026-08-31	none			
+361	PARR	grind	False	2026-08-31	none			
+361	PBA	grind	False	2026-08-31	none			
+361	PBF	grind	True	2026-08-28	none			
+361	PBR	grind	False	2026-08-31	none			
+361	PR	grind	False	2026-08-31	none			
+361	PSX	grind	False	2026-08-31	none			
+361	RRC	grind	False	2026-08-31	none			
+361	SHEL	grind	False	2026-08-31	none			
+361	SLB	grind	False	2026-08-31	none			
+361	SM	grind	False	2026-08-31	none			
+361	SU	grind	False	2026-08-31	none			
+361	TALO	grind	False	2026-08-31	none			
+361	TNK	grind	False	2026-09-01	none			
+361	TRGP	grind	False	2026-08-31	none			
+361	VET	grind	False	2026-08-31	none			
+361	VG	grind	False	2026-08-31	none			
+361	VIST	grind	False	2026-08-31	none			
+361	VLO	grind	False	2026-08-31	none			
+361	WDS	grind	False	2026-08-31	none			
+361	WES	grind	False	2026-08-31	none			
+361	WMB	grind	False	2026-08-31	none			
+361	XOM	grind	False	2026-08-31	none			
+361	YPF	grind	False	2026-08-31	none			
+362	NVAX	grind	True	2026-08-28	none			
+362	QDEL	grind	True	2026-08-28	none			
+362	VIR	grind	True	2026-08-28	none			
+363	CCEP	grind	True	2026-08-28	none			
+363	CELH	grind	True	2026-08-28	none			
+363	KDP	grind	True	2026-08-28	none			
+363	KO	grind	True	2026-08-28	none			
+363	MNST	grind	True	2026-08-28	none			
+364	HAL	grind	True	2026-08-28	none			
+364	INVX	grind	True	2026-08-28	none			
+364	SLB	grind	True	2026-08-28	none			
+365	KEYS	grind	True	2026-08-28	none			
+365	KLIC	grind	True	2026-08-28	none			
+365	ROG	grind	True	2026-08-28	none			
+366	CTAS	grind	True	2026-08-28	none			
+366	UNF	grind	True	2026-08-28	none			
+367	AFRM	grind	True	2026-08-31	pre	2026-08-28		1
+367	PGY	grind	True	2026-08-31	none			
+367	SEZL	grind	True	2026-08-31	none			
+368	AMPL	grind	True	2026-08-31	none			
+368	BRZE	grind	True	2026-08-31	none			
+368	FRSH	grind	False	2026-09-02	none			
+368	HUBS	grind	False	2026-09-02	none			
+368	KVYO	grind	False	2026-09-02	none			
+369	APLD	grind	True	2026-08-31	none			
+369	CIFR	grind	True	2026-08-31	none			
+369	CORZ	grind	True	2026-08-31	none			
+369	RIOT	grind	True	2026-08-31	pre	2026-08-11		14
+370	HD	grind	True	2026-08-31	none			
+370	IBP	grind	True	2026-08-31	none			
+370	LOW	grind	True	2026-08-31	none			
+370	LPX	grind	True	2026-08-31	none			
+371	DHI	grind	True	2026-08-31	none			
+371	KBH	grind	True	2026-08-31	none			
+371	LEN	grind	True	2026-08-31	none			
+371	MHO	grind	True	2026-08-31	none			
+371	MTH	grind	True	2026-08-31	none			
+371	NVR	grind	True	2026-08-31	none			
+371	PHM	grind	True	2026-08-31	none			
+371	TOL	grind	True	2026-08-31	none			
+372	LCII	grind	True	2026-08-31	none			
+372	PATK	grind	True	2026-08-31	none			
+372	THO	grind	True	2026-08-31	none			
+373	COHR	cogap	True	2026-09-01	pre	2026-08-04		20
+373	GLW	cogap	True	2026-09-01	none			
+373	LITE	cogap	True	2026-09-01	pre	2026-08-04		20
+373	RMBS	cogap	True	2026-09-01	none			
+374	AGRO	grind	True	2026-09-01	none			
+374	BG	grind	True	2026-09-01	none			
+374	DOLE	grind	True	2026-09-01	none			
+374	JBS	grind	True	2026-09-01	none			
+375	AAL	grind	True	2026-09-01	none			
+375	ALK	grind	False	2026-09-02	none			
+375	DAL	grind	True	2026-09-01	none			
+375	LUV	grind	True	2026-09-01	none			
+375	UAL	grind	True	2026-09-01	none			
+376	CBZ	grind	True	2026-09-01	none			
+376	GIB	grind	True	2026-09-01	none			
+376	HURN	grind	True	2026-09-01	none			
+377	PSKY	grind	True	2026-09-01	none			
+377	SPOT	grind	True	2026-09-01	none			
+378	ALAB	cogap	False	2026-09-02	pre	2026-08-04		20
+378	COHR	cogap	True	2026-09-01	pre	2026-08-04		20
+378	GLW	cogap	True	2026-09-01	none			
+378	LITE	cogap	True	2026-09-01	pre	2026-08-04		20
+379	CNMD	grind	True	2026-09-01	none			
+379	MMSI	grind	True	2026-09-01	none			
+379	ZBH	grind	True	2026-09-01	none			
+380	CTRE	grind	True	2026-09-01	none			
+380	NHI	grind	True	2026-09-01	none			
+380	OHI	grind	True	2026-09-01	none			
+380	SBRA	grind	True	2026-09-01	none			
+380	WELL	grind	False	2026-09-02	none			
+381	DEC	grind	True	2026-09-01	none			
+381	LNG	grind	True	2026-09-01	none			
+381	NEXT	grind	True	2026-09-01	none			
+381	PBA	grind	True	2026-09-01	none			
+382	CNQ	grind	True	2026-09-02	none			
+382	CVE	grind	True	2026-09-02	none			
+382	SU	grind	True	2026-09-02	none			
+383	DHT	grind	True	2026-09-02	none			
+383	FRO	grind	True	2026-09-02	none			
+383	INSW	grind	True	2026-09-02	none			
+383	NAT	grind	True	2026-09-02	none			
+383	STNG	grind	True	2026-09-02	none			
+383	TNK	grind	True	2026-09-02	none			
+384	ALKT	grind	True	2026-09-02	none			
+384	JKHY	grind	True	2026-09-02	none			
+384	NCNO	grind	True	2026-09-02	none			
+384	QTWO	grind	True	2026-09-02	none			
+385	EC	grind	True	2026-09-02	none			
+385	PBR	grind	True	2026-09-02	none			
+385	YPF	grind	True	2026-09-02	none			
+386	BLLN	grind	True	2026-09-02	none			
+386	CDNA	grind	True	2026-09-02	none			
+386	VCYT	grind	True	2026-09-02	none			
+387	FANG	grind	True	2026-09-02	none			
+387	MTDR	grind	True	2026-09-02	none			
+387	PR	grind	True	2026-09-02	none			
+388	CLMT	grind	True	2026-09-02	none			
+388	MEOH	grind	True	2026-09-02	none			
+388	SSL	grind	True	2026-09-02	none			
+389	ALNY	grind	True	2026-09-02	none			
+389	ETON	grind	True	2026-09-02	pre	2026-08-14		13
+389	MLYS	grind	True	2026-09-02	none			
+389	NBIX	grind	True	2026-09-02	none			
+389	TARS	grind	True	2026-09-02	none			
+390	AR	grind	True	2026-09-03	none			
+390	EQT	grind	True	2026-09-03	none			
+390	EXE	grind	True	2026-09-03	none			
+390	RRC	grind	True	2026-09-03	none			
+391	ITUB	grind	True	2026-09-03	none			
+391	PAGS	grind	True	2026-09-03	none			
+391	PAM	grind	True	2026-09-03	none			
+391	SUZ	grind	True	2026-09-03	none			
+391	XP	grind	True	2026-09-03	none			
+392	DHI	grind	True	2026-09-03	none			
+392	KBH	grind	True	2026-09-03	none			
+392	LEN	grind	True	2026-09-03	none			
+392	MHO	grind	True	2026-09-03	none			
+392	MTH	grind	True	2026-09-03	none			
+392	NVR	grind	True	2026-09-03	none			
+392	PHM	grind	True	2026-09-03	none			
+392	SHW	grind	True	2026-09-03	none			
+392	TOL	grind	True	2026-09-03	none			
+393	BLSH	cogap	True	2026-09-03	pre	2026-08-13		15
+393	BULL	cogap	True	2026-09-03	pre	2026-08-20		10
+394	ELVN	cogap	False	2026-09-04	none			
+394	EXEL	cogap	False	2026-09-04	none			
+394	GILD	cogap	True	2026-09-03	none			
+394	KURA	cogap	True	2026-09-03	pre	2026-08-13		15
+394	RVMD	cogap	False	2026-09-04	none			
+394	SLS	cogap	False	2026-09-04	none			
+394	SMMT	cogap	True	2026-09-03	pre	2026-08-26		6
+394	SNDX	cogap	True	2026-09-03	none			
+394	ZYME	cogap	False	2026-09-04	none			
+395	ALNY	cogap	True	2026-09-03	none			
+395	BMRN	cogap	False	2026-09-04	none			
+395	ETON	cogap	True	2026-09-03	pre	2026-08-14		14
+395	HALO	cogap	True	2026-09-03	pre	2026-08-07		19
+395	SION	cogap	True	2026-09-03	none			
+395	TVTX	cogap	False	2026-09-04	none			
+396	AGX	cogap	True	2026-09-04	pre	2026-09-03		1
+396	ALAB	cogap	True	2026-09-04	pre	2026-09-04		0
+396	SNOW	cogap	True	2026-09-04	pre	2026-09-03		1
+397	AMH	grind	True	2026-09-04	none			
+397	CPT	grind	True	2026-09-04	none			
+397	ESS	grind	True	2026-09-04	none			
+397	INVH	grind	True	2026-09-04	none			
+397	MAA	grind	True	2026-09-04	none			
+397	UDR	grind	True	2026-09-04	none			
+398	BP	grind	True	2026-09-04	none			
+398	CVX	grind	True	2026-09-04	none			
+398	PBR	grind	True	2026-09-04	none			
+398	SHEL	grind	True	2026-09-04	none			

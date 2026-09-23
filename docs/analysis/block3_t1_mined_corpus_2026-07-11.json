@@ -1,0 +1,849 @@
+{
+ "_meta": {
+  "built": "2026-07-11",
+  "source": "scripts/probes/_block3_t1_corpus_mine.py",
+  "note": "mined half of the Block 3 T1 judge-robustness corpus; Fable adds the synthetic adversarial half + designs the taxonomy/eval/gate"
+ },
+ "cases": [
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "CCC",
+   "alert_date": "2026-07-10",
+   "payload": "CCC appears to be moving on a broad value-rotation backdrop rather than a company-specific headline. The latest catalyst in the available material is a market narrative that value stocks are regaining",
+   "system_action": "mna_filter_fired (quality=mna)",
+   "fwd_max5d_pct": null,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "ENVX",
+   "alert_date": "2026-07-09",
+   "payload": "[SEC 8-K filed 2026-07-09, items 5.02,9.01] ENVX gapped up most recently on renewed optimism around its silicon\u2011anode battery commercialization, driven by progress with its lead smartphone customer, e",
+   "system_action": "mna_filter_fired (quality=routine)",
+   "fwd_max5d_pct": 1.3,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "CRNX",
+   "alert_date": "2026-07-07",
+   "payload": "[SEC 8-K filed 2026-07-06, items 1.01,8.01,9.01] CRNX gapped up on the back of a major M&A announcement: Vertex Pharmaceuticals agreed to acquire Crinetics Pharmaceuticals in a roughly $10 billion dea",
+   "system_action": "mna_filter_fired (quality=mna)",
+   "fwd_max5d_pct": 0.3,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "ESI",
+   "alert_date": "2026-07-06",
+   "payload": "I am not seeing any credible news, filings, or mainstream market commentary tied specifically to an \u201cESI\u201d ticker that would explain a fundamental catalyst for the recent gap up. Given that, the most l",
+   "system_action": "mna_filter_fired (quality=mna)",
+   "fwd_max5d_pct": -0.5,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "CLRO",
+   "alert_date": "2026-07-02",
+   "payload": "",
+   "system_action": "mna_filter_fired (quality=None)",
+   "fwd_max5d_pct": 154.6,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "MRNA",
+   "alert_date": "2026-07-02",
+   "payload": "",
+   "system_action": "mna_filter_fired (quality=None)",
+   "fwd_max5d_pct": 7.3,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "EROC",
+   "alert_date": "2026-07-01",
+   "payload": "I do not have any reliable, up\u2011to\u2011date information tying a listed stock with ticker EROC to a specific news catalyst or event that would explain a recent gap up in the price.\n\nGiven the lack of concre",
+   "system_action": "mna_filter_fired (quality=routine)",
+   "fwd_max5d_pct": 5.3,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "UMAC",
+   "alert_date": "2026-06-30",
+   "payload": "UMAC gapped up on a mix of a fresh index inclusion and a broader drone-sector tailwind. The clearest immediate catalyst is that Unusual Machines was added to the Russell 2000 in the 2026 index reconst",
+   "system_action": "mna_filter_fired (quality=routine)",
+   "fwd_max5d_pct": 16.3,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "IRDM",
+   "alert_date": "2026-06-29",
+   "payload": "",
+   "system_action": "mna_filter_fired (quality=None)",
+   "fwd_max5d_pct": 4.7,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "CMCSA",
+   "alert_date": "2026-06-29",
+   "payload": "",
+   "system_action": "mna_filter_fired (quality=None)",
+   "fwd_max5d_pct": 3.4,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "FUL",
+   "alert_date": "2026-06-29",
+   "payload": "[SEC 8-K filed 2026-06-26, items 1.01,2.03,7.01,9.01] I don\u2019t have any reliable, up\u2011to\u2011the\u2011minute data showing FUL (H.B. Fuller Company) had a gap up today or what specifically triggered it, and I can",
+   "system_action": "mna_filter_fired (quality=mna)",
+   "fwd_max5d_pct": 1.2,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "RKLB",
+   "alert_date": "2026-06-29",
+   "payload": "RKLB likely gapped up on a mix of fresh fundamental catalysts and sector flow, led by Rocket Lab\u2019s 10th consecutive successful Electron launch and the recent NASA award for three dedicated Electron mi",
+   "system_action": "mna_filter_fired (quality=mna)",
+   "fwd_max5d_pct": 9.8,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "LBRDA",
+   "alert_date": "2026-06-29",
+   "payload": "The recent gap up in LBRDA is primarily driven by the ongoing Charter Communications merger catalyst and related valuation re-rating rather than a new, standalone company-specific news event.\n\nKey poi",
+   "system_action": "mna_filter_fired (quality=mna)",
+   "fwd_max5d_pct": 0.6,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "A_mna_misdirection",
+   "ticker": "LBRDK",
+   "alert_date": "2026-06-29",
+   "payload": "Liberty Broadband Series C (LBRDK) most recently gapped up on index-related and deal-arbitrage dynamics tied to its role as a Charter Communications tracking stock and its inclusion in the Russell 100",
+   "system_action": "mna_filter_fired (quality=routine)",
+   "fwd_max5d_pct": -0.3,
+   "golden": "REJECT_MNA",
+   "golden_rationale": "M&A / acquirer-pop / broad-rotation move \u2014 NOT a company-specific fundamental catalyst; the grader must not treat it as a HIGH growth catalyst."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "EQPT",
+   "alert_date": "2026-07-10",
+   "payload": "news_corpus_sparse_no_q_rev",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": null,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "UCTT",
+   "alert_date": "2026-07-09",
+   "payload": "news_corpus_sparse_no_q_rev",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 1.5,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "SMPL",
+   "alert_date": "2026-07-09",
+   "payload": "rubric_composite_12.0_below_22_label_weak",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": -0.1,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "ALNY",
+   "alert_date": "2026-07-09",
+   "payload": "rubric_composite_20.2_below_22_label_routine",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 3.1,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "NEXA",
+   "alert_date": "2026-07-02",
+   "payload": "news_corpus_sparse_no_q_rev",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 15.1,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "PRGS",
+   "alert_date": "2026-07-01",
+   "payload": "rubric_composite_16.0_below_22_label_routine",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 2.2,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "ENPH",
+   "alert_date": "2026-06-30",
+   "payload": "rubric_composite_5.4_below_22_label_weak",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 2.6,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "AVAV",
+   "alert_date": "2026-06-30",
+   "payload": "rubric_composite_17.9_below_22_label_routine",
+   "system_action": "downgrade game_changer\u2192routine",
+   "fwd_max5d_pct": 21.4,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "VSAT",
+   "alert_date": "2026-06-29",
+   "payload": "rubric_composite_9.4_below_22_label_weak",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 21.3,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "CHTR",
+   "alert_date": "2026-06-29",
+   "payload": "q_rev_yoy_missing_no_prior_year_comparable",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": -0.4,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "WGO",
+   "alert_date": "2026-06-25",
+   "payload": "rubric_composite_2.0_below_22_label_weak",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 3.8,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "MLKN",
+   "alert_date": "2026-06-25",
+   "payload": "rubric_composite_10.0_below_22_label_weak",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 11.2,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "AYI",
+   "alert_date": "2026-06-25",
+   "payload": "rubric_composite_9.4_below_22_label_weak",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 5.4,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "B_beat_masks_weak_revenue",
+   "ticker": "BB",
+   "alert_date": "2026-06-25",
+   "payload": "rubric_composite_21.0_below_22_label_routine",
+   "system_action": "downgrade strong\u2192routine",
+   "fwd_max5d_pct": 31.4,
+   "golden": "DOWNGRADE",
+   "golden_rationale": "Headline beat but the load-bearing revenue signal is weak \u2014 grader must downgrade, not reward the beat headline."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "EQPT",
+   "alert_date": "2026-07-10",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": null,
+   "golden": "PASS_UNVERIFIED",
+   "golden_rationale": "Boost to strong; no forward outcome on file to confirm."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "UCTT",
+   "alert_date": "2026-07-09",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 1.5,
+   "golden": "FALSE_BOOST",
+   "golden_rationale": "Strong print but NO follow-through (1.5% 5d-max) \u2014 a boost the grader should have been cautious on."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "SMPL",
+   "alert_date": "2026-07-09",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": -0.1,
+   "golden": "FALSE_BOOST",
+   "golden_rationale": "Strong print but NO follow-through (-0.1% 5d-max) \u2014 a boost the grader should have been cautious on."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "ALNY",
+   "alert_date": "2026-07-09",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 3.1,
+   "golden": "FALSE_BOOST",
+   "golden_rationale": "Strong print but NO follow-through (3.1% 5d-max) \u2014 a boost the grader should have been cautious on."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "NEXA",
+   "alert_date": "2026-07-02",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 15.1,
+   "golden": "PASS_CONFIRMED",
+   "golden_rationale": "Boost justified \u2014 the name followed through (+15.1% 5d-max)."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "PRGS",
+   "alert_date": "2026-07-01",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 2.2,
+   "golden": "FALSE_BOOST",
+   "golden_rationale": "Strong print but NO follow-through (2.2% 5d-max) \u2014 a boost the grader should have been cautious on."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "ENPH",
+   "alert_date": "2026-06-30",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 2.6,
+   "golden": "FALSE_BOOST",
+   "golden_rationale": "Strong print but NO follow-through (2.6% 5d-max) \u2014 a boost the grader should have been cautious on."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "VSAT",
+   "alert_date": "2026-06-29",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 21.3,
+   "golden": "PASS_CONFIRMED",
+   "golden_rationale": "Boost justified \u2014 the name followed through (+21.3% 5d-max)."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "CHTR",
+   "alert_date": "2026-06-29",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": -0.4,
+   "golden": "FALSE_BOOST",
+   "golden_rationale": "Strong print but NO follow-through (-0.4% 5d-max) \u2014 a boost the grader should have been cautious on."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "WGO",
+   "alert_date": "2026-06-25",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 3.8,
+   "golden": "FALSE_BOOST",
+   "golden_rationale": "Strong print but NO follow-through (3.8% 5d-max) \u2014 a boost the grader should have been cautious on."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "MLKN",
+   "alert_date": "2026-06-25",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 11.2,
+   "golden": "PASS_CONFIRMED",
+   "golden_rationale": "Boost justified \u2014 the name followed through (+11.2% 5d-max)."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "AYI",
+   "alert_date": "2026-06-25",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 5.4,
+   "golden": "FALSE_BOOST",
+   "golden_rationale": "Strong print but NO follow-through (5.4% 5d-max) \u2014 a boost the grader should have been cautious on."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "BB",
+   "alert_date": "2026-06-25",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": 31.4,
+   "golden": "PASS_CONFIRMED",
+   "golden_rationale": "Boost justified \u2014 the name followed through (+31.4% 5d-max)."
+  },
+  {
+   "class": "C_earnings_boost",
+   "ticker": "WDC",
+   "alert_date": "2026-06-25",
+   "payload": "boost routine\u2192strong",
+   "system_action": "catalyst_earnings_boost",
+   "fwd_max5d_pct": -1.7,
+   "golden": "FALSE_BOOST",
+   "golden_rationale": "Strong print but NO follow-through (-1.7% 5d-max) \u2014 a boost the grader should have been cautious on."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-sourced 8-K/EX-99.1 dated 2026-07-09 shows revenue +24% YoY ($195.1M) with 47% operating income growth and an upward guidance update \u2014 the load-bearing revenue-acceleration signal is real and confirmed, so HIGH is warranted. However WDFC is a mature $3.2B consumer/industrial brand (not a growth-stage re-rater) and matches n",
+   "system_action": "judge demote\u2192strong/HIGH (theme=False, cap=3221492224, sector=Basic Materials)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, dated (2026-07-10) company-specific catalyst: OCC approval for a National Digital Currency Bank \u2014 a federal banking charter that structurally upgrades a $16.8B stablecoin infrastructure company's business model, moat, and addressable market (government policy tier, transformative materiality). The web-summary noise about ARK flow /",
+   "system_action": "judge promote\u2192game_changer/HIGH (theme=False, cap=16841986048, sector=Financial Services)",
+   "fwd_max5d_pct": null,
+   "golden": "promote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-sourced 8-K/press release dated 2026-07-07 reports record net sales of $479M up 48% YoY with a full-year guidance RAISE on both sales and EPS \u2014 the load-bearing revenue-acceleration signal the market pays for on a growth name, not an EPS-only beat. The AI-driven memory/AI-infrastructure demand narrative aligns with a hot se",
+   "system_action": "judge hold\u2192game_changer/HIGH (theme=False, cap=3791684352, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The only fresh, verifiable driver is a Morgan Stanley Overweight initiation ($15 PT) on Kingsoft Cloud \u2014 a legitimate analyst catalyst but not a company operating event; a single-firm initiation is a soft driver that does not merit HIGH per the Pradeep hierarchy. The 6-K is a routine monthly share-movement report and the wheat-futures web",
+   "system_action": "judge hold\u2192routine/MODERATE (theme=False, cap=3068539136, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-source 8-K (Item 2.02, filed today 2026-07-07) pre-announces revenue growth RE-ACCELERATING to 29% YoY from 14% \u2014 the load-bearing signal for a growth name \u2014 plus RPO surging 10X to >$800M and an implicit guidance raise, exactly the revenue+demand inflection the rubric rewards. On a $13.7B AI-cloud platform this is transfor",
+   "system_action": "judge hold\u2192game_changer/HIGH (theme=False, cap=13710322688, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh 8-K + EX-99.1 wire dated today confirm a 20-year Anthropic lease expected to generate ~$19B of contracted revenue \u2014 transformative against a $10.5B cap and ~$34M/quarter revenue \u2014 plus a $450M JV monetization at a premium. Direct primary source and named investment-grade counterparty make this a genuine, material, freshly-disclosed ",
+   "system_action": "judge hold\u2192game_changer/HIGH (theme=False, cap=10495381504, sector=Financial Services)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The only fresh, dated driver is a Morgan Stanley upgrade to Overweight (PT $15\u2192$18) \u2014 a sell-side rating change, which sits at the bottom of the Pradeep hierarchy and is not a company operational event; the Q1 revenue beat cited as reinforcement is not freshly disclosed today and cannot be the attributed driver. No direct primary source, ",
+   "system_action": "judge hold\u2192routine/MODERATE (theme=False, cap=2884492544, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The load-bearing driver is a Jefferies analyst upgrade with a macro thesis (European energy volatility \u2192 solar demand) \u2014 sentiment/opinion, not a fresh company event, and no direct primary source confirms freshness; the Nexis launch is undated product flow, not a today catalyst. Per the rubric an analyst call plus a thesis-based re-rating",
+   "system_action": "judge hold\u2192routine/MODERATE (theme=False, cap=3366895616, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-source 8-K/EX-99.1 dated June 29, 2026 shows record Q4 revenue of $641.6M (+133% YoY) and FY revenue +141% with a 1.4x book-to-bill on $2.7B bookings \u2014 exactly the revenue-acceleration signal the market pays for on a defense/drone growth name, not a thin EPS beat. Materiality is transformative relative to the $7B cap, and t",
+   "system_action": "judge promote\u2192game_changer/HIGH (theme=False, cap=7034104832, sector=Industrials)",
+   "fwd_max5d_pct": null,
+   "golden": "promote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The catalyst is concrete and company-specific \u2014 an expanded 10-year Benchmark manufacturing deal (100K+ Rev8 units/yr) plus a deepened AIM commercial agreement \u2014 signaling a prototype-to-mass-scale shift, which is operationally meaningful for a $3.3B lidar name. But has_direct_source=false (web summary only, no dated SEC filing or press w",
+   "system_action": "judge hold\u2192strong/MODERATE (theme=False, cap=3328503552, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The only identifiable news is a CFO appointment (Micah Young, eff. July 6) \u2014 a routine leadership transition with the outgoing CFO staying on in advisory, which is low on the Pradeep hierarchy and carries no earnings, guidance, FDA, or contract catalyst to justify a 33% gap on a $1.3B name. The true driver of the move is UNIDENTIFIED, and",
+   "system_action": "judge hold\u2192routine/MODERATE (theme=False, cap=1291196416, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "No fresh, company-specific catalyst is identifiable \u2014 the corpus attributes the gap to a macro/sector rate-sensitive rotation, not a Charter event, and the only CHTR-specific item is a bearish valuation note. With no direct source and no verifiable driver, this is an UNIDENTIFIED catalyst that cannot support HIGH or even MODERATE. The 26%",
+   "system_action": "judge demote\u2192routine/none (theme=False, cap=23404615680, sector=Communication Services)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The load-bearing driver is a fresh, dated (2026-06-26) CHMP positive opinion recommending EU marketing authorization for DAYBU in Rett Syndrome \u2014 a high-conviction regulatory milestone and the near-final step before EU approval, qualifying as a real, material, company-specific catalyst. The web corpus's M&A chatter/short-covering/sector-r",
+   "system_action": "judge hold\u2192strong/HIGH (theme=False, cap=4061714688, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The two sources conflict: the grounded SEC/wire corpus attributes the move to a momentum run plus a $45M director option-exercise sale (an insider SELL, which is not a positive operating catalyst), while only the unsourced analyst note claims a fresh enrollment-completion 8-K \u2014 and with has_direct_source=false I cannot confirm the trial m",
+   "system_action": "judge demote\u2192routine/MODERATE (theme=False, cap=10178964480, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-source earnings (8-K filed 2026-06-25) show revenue +31% YoY to $19.6B significantly above the high end of guidance \u2014 genuine top-line acceleration, the load-bearing signal for HIGH, not just an EPS beat. This clears the catalyst bar and justifies HIGH/strong. But $19.6B revenue on a $22.8B distributor is a thin-margin (6.8",
+   "system_action": "judge hold\u2192strong/HIGH (theme=False, cap=22835007488, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-sourced 8-K earnings (filed today) show record revenue of $41.46B \u2014 +74% Q/Q and +346% Y/Y \u2014 with gross margin exploding to 84.6%, a Q4 guidance raise, and multi-year \"transformational Strategic Customer Agreements,\" the load-bearing revenue-acceleration signal that the market pays for on a growth/AI-memory name. This rides",
+   "system_action": "judge hold\u2192game_changer/HIGH (theme=True, cap=1182440357888, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The fresh, SEC-sourced catalyst is a CFO/Chief Strategy Officer appointment \u2014 a management change, the weakest rung of the Pradeep hierarchy, with no earnings, revenue, guidance, or contract attached. A single exec swap rarely justifies a sustained EP move and does not warrant promotion above the routine floor despite the large gap and 10",
+   "system_action": "judge hold\u2192routine/MODERATE (theme=False, cap=1191456384, sector=Consumer Cyclical)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh primary-source 8-K + EX-99.1 (dated June 22\u201323, 2026) confirms a real, new catalyst: a Capital Equipment Purchase Agreement with Fit Energy for up to 380 MW of fuel-cell power for AI/data-center applications \u2014 squarely in the hot data-center power theme (Pradeep's strongest tier). For a $1.5B company this is materially significant w",
+   "system_action": "judge hold\u2192strong/HIGH (theme=True, cap=1475210368, sector=Industrials)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh primary-source catalyst: an 8-K filed today (2026-06-24) with a press release reporting positive interim Phase 1 safety/PK data for ABS-201, including a clean blinded safety profile and a ~65-day half-life enabling convenient dosing plus advancement into the MAD/AGA portion. For a $1.2B clinical-stage no-revenue biotech, this is a m",
+   "system_action": "judge hold\u2192strong/HIGH (theme=False, cap=1155256448, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The genuinely material catalyst \u2014 the June 1 Phase 1 JADE-001 readout \u2014 is two weeks stale and explicitly NOT today's driver; the corpus confirms the gap is a technical/positioning catch-up after dilution absorption, not a fresh headline. The only thing dated today is a single UBS Buy initiation at $45, which is boilerplate sell-side cove",
+   "system_action": "judge demote\u2192routine/none (theme=False, cap=1116474368, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "A fresh, dated primary-wire catalyst (Benzinga 2026-06-22) reports a successful Phase 3 readout for DT120 in MDD that met its primary endpoint AND all key secondary endpoints \u2014 for a clinical-stage biotech this is the single most transformative, program-de-risking event possible, dwarfing the secondary psychedelic-policy sector noise. Mat",
+   "system_action": "judge promote\u2192game_changer/HIGH (theme=False, cap=2669954816, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "promote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, dated (2026-06-15) Benzinga wire reports Spyre's Phase 2 SKYLINE study of SPY002 in ulcerative colitis MET its primary endpoint with clean safety \u2014 for a clinical-stage biotech with no approved products this is a transformative, binary de-risking event for the lead asset, exactly the type of catalyst that earns HIGH/game_changer. T",
+   "system_action": "judge promote\u2192game_changer/HIGH (theme=True, cap=7671556096, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "promote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, dated (June 21\u201322, 2026) Phase 3 VELA 52-week readout with strong, clean efficacy (67.2% HiSCR75, no new safety signals) plus a concrete BLA timeline (late Sept 2026) and Investor Day \u2014 a multi-layered, company-defining catalyst for a $1.4B clinical-stage biotech that materially de-risks the lead asset. Successful late-stage data i",
+   "system_action": "judge hold\u2192game_changer/HIGH (theme=False, cap=1414151552, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The load-bearing driver is the fresh June 18 Pentagon Office of Strategic Capital $725M conditional loan \u2014 a government-policy-tier catalyst (highest in the hierarchy) worth ~19% of the $3.8B cap, dated to the gap day and squarely on the hot domestic critical-minerals/rare-earth theme. While no direct SEC source is attached, the dated Ben",
+   "system_action": "judge hold\u2192game_changer/HIGH (theme=False, cap=3822965248, sector=Energy)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh 8-K (items 2.02/9.01, filed 2026-06-17) confirms a real, dated earnings catalyst: net sales +26.7% YoY to $178.4M with gross-margin and EBITDAS expansion \u2014 revenue acceleration is the load-bearing signal for HIGH, satisfying both freshness and the growth-name rubric. The SEC corpus framing it as a flow move is contradicted by the pr",
+   "system_action": "judge hold\u2192strong/HIGH (theme=False, cap=610899072, sector=Industrials)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-sourced 8-K (filed 2026-06-16) carries a large adjusted EPS beat ($1.26 vs ~$0.82) backed by REAL operational substance \u2014 50bps margin expansion and double-digit Retail written/delivered sales growth (+11%/+9%), so the EPS isn't a hollow print on a flat top line. As a mature consumer cyclical the load-bearing signal is the ",
+   "system_action": "judge promote\u2192strong/HIGH (theme=False, cap=1803611264, sector=Consumer Cyclical)",
+   "fwd_max5d_pct": null,
+   "golden": "promote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The grounded corpus attributes the move to broad AI/semi sector strength and 52-week-high group action, not a verified stock-specific event; no direct primary source is present (has_direct_source=false). The analyst's claimed follow-on FOX-XP order is unquantified and, for a $3.6B name, a single-system production order is minor \u2014 not enou",
+   "system_action": "judge demote\u2192routine/MODERATE (theme=True, cap=3617753088, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-sourced 8-K/press release dated today (June 17, 2026) showing a beat with an explicit FY2026 guidance RAISE across revenue, core margins, core EPS, and FCF \u2014 the load-bearing revenue + raise signal on a growth-adjacent name, amplified by a \"meaningfully higher\" AI infrastructure revenue outlook. This is a genuine HIGH catal",
+   "system_action": "judge hold\u2192strong/HIGH (theme=False, cap=44706738176, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-sourced 8-K/press wire dated 2026-06-17 confirms FDA accepted the 3-year Phase I/II data as the primary basis for a Q3-2026 BLA for AMT-130 in Huntington's \u2014 a near-term regulatory green light for the lead asset in an incurable indication. This is company-defining and transformative relative to the $1.7B cap (multi-billion-",
+   "system_action": "judge hold\u2192game_changer/HIGH (theme=False, cap=1702191360, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Fresh, primary-source-confirmed catalyst: a same-day (2026-06-16) SEC 8-K + press wire announcing a definitive GPUaaS agreement with AMD for a 30 MW dedicated AI-compute footprint, which is materially significant relative to RXT's $1.5B cap and rides the hottest theme (AI infrastructure). Freshness and a real named strategic partner clear",
+   "system_action": "judge hold\u2192strong/HIGH (theme=False, cap=1474151040, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The only fresh, primary-sourced event is an 8-K disclosing an EVP employment agreement \u2014 a routine 5.02 administrative item with no financial materiality and not a Pradeep-hierarchy catalyst. The web summary explicitly attributes the gap to broad silver/precious-metals sector sympathy and speculative small-cap flow, not a verifiable HYMC-",
+   "system_action": "judge hold\u2192routine/MODERATE (theme=False, cap=2649457408, sector=Basic Materials)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "No fresh, verifiable company-specific catalyst exists \u2014 the gap is attributed to short-covering, nuclear/advanced-energy sector rotation, and a technical bounce, none of which is a real material driver. The only company items (IPO liquidity, UK design submission, NRC environmental finding) are undated and not confirmed fresh today, and th",
+   "system_action": "judge demote\u2192routine/none (theme=False, cap=6145867264, sector=Industrials)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "No fresh, verifiable company-specific catalyst exists \u2014 no PR, filing, earnings, guidance, or M&A is tied to the gap, and there is no direct source. A gap+volume vote alone never earns HIGH, and the move appears purely technical/flow-driven (short-covering or sector sympathy), which is routine. With the driver UNIDENTIFIED I grade only wh",
+   "system_action": "judge demote\u2192routine/none (theme=False, cap=5734779904, sector=Basic Materials)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The fresh, dated catalyst is real but soft: a hardware-testbed expansion adding access to an IonQ system carries no revenue, contract value, or guidance \u2014 it's a credibility/capability headline, not a sales-acceleration or supply/policy driver in the Pradeep hierarchy. With no direct primary source attached and no financial materiality di",
+   "system_action": "judge demote\u2192routine/MODERATE (theme=False, cap=722635456, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The only fresh primary source is an 8-K Item 5.07 (routine annual meeting voting results), which has zero fundamental catalyst significance, and the web summary explicitly states no company-specific news drives the gap, attributing it to macro/risk-on and possible short-covering. With the driver UNIDENTIFIED, no direct source, and a gap+v",
+   "system_action": "judge demote\u2192routine/none (theme=False, cap=674262016, sector=Basic Materials)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The only news item is a Benzinga \"earnings call transcript\" headline with no reported EPS, revenue, or guidance numbers, and the web summary explicitly admits it cannot identify the driver \u2014 so the catalyst is UNIDENTIFIED and unverifiable. No direct source, no concrete fresh company event, and a numberless \"earnings\" mention cannot be tr",
+   "system_action": "judge hold\u2192routine/MODERATE (theme=False, cap=4517575680, sector=Consumer Cyclical)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "A reported ~$1.1B Lilly partnership for clinical-stage Aktis Oncology is near-market-cap in scale \u2014 a transformative big-pharma validation of its radioconjugate platform that promotes above the gap+enum floor. But the sourcing is materially compromised: AKTS also maps to the delisted Akoustis (AKTSQ), no upfront/milestone terms or direct ",
+   "system_action": "judge promote\u2192strong/HIGH (theme=False, cap=1191228928, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "promote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "SEC 8-K confirms a six-year NVIDIA compute collaboration valued at up to $4.88B against a $1.2B market cap \u2014 roughly 4x the entire company, a clearly transformative catalyst that anchors HIGH/game_changer. The catalyst sits at the apex of the Pradeep hierarchy (AI infrastructure theme + a named strategic partner providing capital-efficien",
+   "system_action": "judge hold\u2192game_changer/HIGH (theme=False, cap=1207131136, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The real, named catalyst is a patent license deal with Amazon (Benzinga, 6/11/26) \u2014 for a $7.5B IP-licensing company, signing one of the world's largest tech conglomerates validates the portfolio and adds high-quality recurring royalty revenue, a genuine sales-acceleration/new-license event. The web \"guidance/momentum\" narrative is unsupp",
+   "system_action": "judge hold\u2192strong/HIGH (theme=False, cap=7479939072, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Concrete, stock-specific catalyst: positive Phase 1 ENABLE data for ELVN-001 (61% MMR by 24 weeks, n=161) paired with FDA alignment on the Phase 3 dose and population for pivotal ENABLE-2 \u2014 a genuine de-risking event, not boilearplate. This is material for a $2.3B clinical-stage biotech and supports HIGH/strong. Falls short of game_change",
+   "system_action": "judge hold\u2192strong/HIGH (theme=False, cap=2253483008, sector=Healthcare)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "Concrete, numbered earnings catalyst: revenue +40% YoY ($220M) with growth accelerating, record GBV +50% YoY, and a 600bps full-year guidance raise (24%\u219230%) plus improved operating profit outlook \u2014 a genuine sales-acceleration event, not boilerplate. Material for a $5.3B name and corroborated by a clean 17.9% gap on extreme RVOL (49x), s",
+   "system_action": "judge hold\u2192strong/HIGH (theme=False, cap=5270772224, sector=Technology)",
+   "fwd_max5d_pct": null,
+   "golden": "hold_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  },
+  {
+   "class": "D_live_judge_verdict",
+   "ticker": null,
+   "alert_date": null,
+   "payload": "The 25% gap is misleading \u2014 the headline GAAP EPS beat ($1.90) is almost entirely a one-time $47.4M litigation settlement, not operational improvement; adjusted EPS of $0.29 fell sharply YoY ($0.58 prior) and EBITDA declined from $48.1M to $40.3M. Revenue was down 2.9% YoY and the guidance raise is anchored to a non-recurring item, meanin",
+   "system_action": "judge demote\u2192routine/none (theme=False, cap=1058989312, sector=Consumer Cyclical)",
+   "fwd_max5d_pct": null,
+   "golden": "demote_unverified",
+   "golden_rationale": "Live judge decision \u2014 the eval measures whether the demote/keep matched the forward outcome."
+  }
+ ]
+}

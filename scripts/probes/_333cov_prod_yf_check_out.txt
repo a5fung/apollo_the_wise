@@ -1,0 +1,6 @@
+ticker|period_end_date|revenue_avg|revenue_low|revenue_high|num_analysts_revenue
+HTFL|2026-09-28|65264500|64793000|65900000|8
+HTFL|2026-12-28|66790380|66000000|68546000|8
+VERA|2026-09-25|0|0|0|11
+VERA|2026-12-25|16716000|0|34896000|12
+(4 rows)

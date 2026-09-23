@@ -1,0 +1,268 @@
+ticker|ep_date|mon|mode|group|sub|detail
+ABCL|2026-08-10|2026-08|live|A|partial_then_stop|stop_date=2026-08-24
+ABSI|2026-06-24|2026-06|live|D|order_cancelled_unfilled|minute_orb=9.66 daily_high=11 (daily fallback)
+ABVX|2026-06-03|2026-06|none|D|no_order|minute_orb=85.75 post945_high=92.14
+ACAD|2026-06-26|2026-06|live|D|order_cancelled_unfilled|minute_orb=26.49 daily_high=27.31 (daily fallback)
+ACHR|2026-08-10|2026-08|live|D|no_order|minute_orb=6.62 post945_high=6.87
+ACMR|2026-08-07|2026-08|live|B|no_order|minute_orb=93.42 post945_high=85.52
+AEHR|2026-06-17|2026-06|none|B|no_order|minute_orb=123.5 post945_high=119.4
+AEHR|2026-07-15|2026-07|live|D|order_cancelled_unfilled|minute_orb=102.5 daily_high=110.2 (daily fallback)
+AEIS|2026-08-04|2026-08|live|D|no_order|minute_orb=342.4 post945_high=344.5
+AEVA|2026-08-06|2026-08|live|D|no_order|minute_orb=26.09 post945_high=28.42
+AGX|2026-06-05|2026-06|paper|D|no_order|minute_orb=697.7 daily_high=779 (daily fallback)
+AGYS|2026-05-19|2026-05|paper|B|order_cancelled_unfilled|minute_orb=94.77 post945_high=92.98
+AIP|2026-05-13|2026-05|paper|D|no_order|minute_orb=35.68 post945_high=36.17
+AKTS|2026-06-12|2026-06|paper|D|no_order|minute_orb=21.99 post945_high=22.6
+ALAB|2026-05-20|2026-05|none|U|no_orb_basis|no trade-row orb_high and no 9:30-9:45 bars in mi_intraday_bars
+ALOY|2026-06-01|2026-06|paper|D|no_order|minute_orb=10.8 post945_high=11.47
+AMBQ|2026-05-12|2026-05|paper|D|no_order|minute_orb=58.31 post945_high=66.59
+AMLX|2026-08-18|2026-08|live|A|partial_then_stop|stop_date=2026-08-31
+AMRC|2026-08-04|2026-08|live|B|no_order|minute_orb=31.93 post945_high=29.75
+ANF|2026-05-27|2026-05|paper|D|no_order|minute_orb=84.9 post945_high=87.2
+APPS|2026-08-05|2026-08|live|D|no_order|minute_orb=13.97 post945_high=14.1
+ARGX|2026-08-17|2026-08|live|D|no_order|minute_orb=977.8 post945_high=1002
+ARM|2026-05-20|2026-05|none|D|no_order|minute_orb=248.3 post945_high=259.4
+ARM|2026-07-30|2026-07|live|B|order_cancelled_unfilled|minute_orb=268.5 post945_high=246
+ARWR|2026-07-22|2026-07|live|D|order_cancelled_unfilled|minute_orb=87.92 daily_high=95.49 (daily fallback)
+ARX|2026-05-14|2026-05|paper|D|no_order|minute_orb=15.15 post945_high=15.42
+ASAN|2026-05-29|2026-05|none|B|no_order|minute_orb=7.95 post945_high=7.82
+ASPI|2026-05-26|2026-05|none|B|no_order|minute_orb=7.04 post945_high=7.03
+ASTI|2026-05-27|2026-05|none|D|no_order|minute_orb=6.5 post945_high=7.44
+ATRO|2026-08-12|2026-08|live|D|no_order|minute_orb=89.95 post945_high=92.5
+AUGO|2026-06-15|2026-06|none|B|no_order|minute_orb=69.99 post945_high=69.4
+AVAV|2026-05-28|2026-05|paper|D|order_cancelled_unfilled|minute_orb=204.9 daily_high=217.8 (daily fallback)
+AVAV|2026-06-30|2026-06|live|B|order_cancelled_unfilled|minute_orb=178.5 daily_high=178.5 (daily fallback)
+AVEX|2026-05-12|2026-05|none|D|no_order|minute_orb=27.44 post945_high=28.56
+BBWI|2026-05-27|2026-05|paper|D|no_order|minute_orb=20.76 post945_high=20.9
+BE|2026-08-12|2026-08|live|B|no_order|minute_orb=250 post945_high=244
+BHVN|2026-05-29|2026-05|none|B|no_order|minute_orb=12 post945_high=11.57
+BLSH|2026-08-13|2026-08|none|D|no_order|minute_orb=27.8 post945_high=28.24
+BLZE|2026-07-31|2026-07|live|B|no_order|minute_orb=14.71 post945_high=14.32
+BLZE|2026-08-04|2026-08|live|A|pure_stop|stop_date=2026-08-04
+BRUN|2026-08-12|2026-08|none|D|no_order|minute_orb=21.33 post945_high=22.2
+BTDR|2026-08-04|2026-08|live|A|pure_stop|stop_date=2026-08-04
+BTGO|2026-05-26|2026-05|none|B|no_order|minute_orb=7.61 post945_high=6.7
+BULL|2026-08-20|2026-08|live|B|no_order|minute_orb=9.95 post945_high=9.87
+BW|2026-05-11|2026-05|paper|C|closed_sma_trail_stop|
+BW|2026-08-11|2026-08|live|A|pure_stop|stop_date=2026-08-11
+BZH|2026-05-11|2026-05|paper|D|order_cancelled_unfilled|minute_orb=25.39 post945_high=25.6
+CAI|2026-08-06|2026-08|live|D|no_order|minute_orb=19.5 post945_high=20.11
+CAMT|2026-06-02|2026-06|none|D|no_order|minute_orb=187 post945_high=190.4
+CAT|2026-08-04|2026-08|live|B|order_cancelled_unfilled|minute_orb=935 post945_high=916
+CBRL|2026-06-10|2026-06|none|B|no_order|minute_orb=48.91 post945_high=48.9
+CBRS|2026-08-17|2026-08|none|D|no_order|minute_orb=254.8 post945_high=261.1
+CGEM|2026-08-13|2026-08|live|B|no_order|minute_orb=21 post945_high=20.95
+CHA|2026-05-29|2026-05|none|D|no_order|minute_orb=12.05 post945_high=12.96
+CHRN|2026-08-27|2026-08|live|B|no_order|minute_orb=24.37 post945_high=24
+CHTR|2026-06-29|2026-06|none|B|no_order|minute_orb=168.6 post945_high=155
+CLF|2026-07-23|2026-07|none|D|no_order|minute_orb=11.25 post945_high=11.46
+CLSK|2026-07-14|2026-07|live|B|order_cancelled_unfilled|minute_orb=15.1 daily_high=15.1 (daily fallback)
+COHU|2026-07-31|2026-07|live|B|no_order|minute_orb=57.88 post945_high=50.87
+CORT|2026-07-30|2026-07|live|D|no_order|minute_orb=117.5 post945_high=122.2
+CORZ|2026-07-28|2026-07|live|D|no_order|minute_orb=20.97 post945_high=21.26
+CPA|2026-05-14|2026-05|paper|D|no_order|minute_orb=131.9 post945_high=136
+CRCL|2026-07-10|2026-07|live|A|pure_stop|stop_date=2026-07-10
+CRMD|2026-05-14|2026-05|paper|U|entered_unclassifiable_exit|manual_emergency_close
+CRMD|2026-08-13|2026-08|live|B|no_order|minute_orb=8.98 post945_high=8.89
+CRSR|2026-05-27|2026-05|paper|A|partial_then_stop|stop_date=2026-06-08
+CRSR|2026-08-07|2026-08|none|D|no_order|minute_orb=14.24 post945_high=14.58
+CRWD|2026-08-27|2026-08|live|A|partial_then_stop|stop_date=2026-08-28
+CRWV|2026-08-12|2026-08|live|B|no_order|minute_orb=111.8 post945_high=110
+CSCO|2026-05-14|2026-05|paper|A|pure_stop|stop_date=2026-05-14
+DCTH|2026-08-06|2026-08|live|D|no_order|minute_orb=15.44 post945_high=15.62
+DELL|2026-05-29|2026-05|paper|A|pure_stop|stop_date=2026-05-29
+DFTX|2026-06-22|2026-06|paper|B|order_cancelled_unfilled|minute_orb=39.16 daily_high=39.16 (daily fallback)
+DG|2026-08-27|2026-08|live|D|no_order|minute_orb=130.8 post945_high=132.5
+DOCN|2026-07-07|2026-07|live|D|order_cancelled_unfilled|minute_orb=146.6 daily_high=148.1 (daily fallback)
+DOCS|2026-08-07|2026-08|none|B|no_order|minute_orb=40 post945_high=33.27
+DRTS|2026-05-11|2026-05|none|D|no_order|minute_orb=10.08 post945_high=10.8
+DY|2026-05-27|2026-05|paper|A|pure_stop|stop_date=2026-05-27
+DYN|2026-05-20|2026-05|none|U|no_orb_basis|no trade-row orb_high and no 9:30-9:45 bars in mi_intraday_bars
+ECG|2026-08-05|2026-08|live|B|no_order|minute_orb=156 post945_high=155.9
+EFOR|2026-07-22|2026-07|none|D|no_order|minute_orb=21.23 post945_high=21.37
+ELVN|2026-06-11|2026-06|paper|B|order_cancelled_unfilled|minute_orb=45.52 daily_high=45.52 (daily fallback)
+EME|2026-07-30|2026-07|live|D|no_order|minute_orb=794 post945_high=808.7
+EOSE|2026-05-13|2026-05|paper|B|order_cancelled_unfilled|minute_orb=9.99 post945_high=9.445
+EROC|2026-08-12|2026-08|live|D|order_cancelled_unfilled|minute_orb=13.84 post945_high=14.28
+ETON|2026-08-14|2026-08|live|C|closed_partial_profit|
+EVTC|2026-05-19|2026-05|none|D|no_order|minute_orb=24.56 post945_high=25.37
+FCEL|2026-06-24|2026-06|live|B|order_cancelled_unfilled|minute_orb=25.2 daily_high=25.2 (daily fallback)
+FET|2026-07-31|2026-07|live|B|no_order|minute_orb=64.6 post945_high=63
+FIG|2026-05-15|2026-05|none|D|no_order|minute_orb=22.62 post945_high=23.93
+FIGS|2026-08-07|2026-08|live|A|partial_then_stop|stop_date=2026-08-07
+FLNC|2026-07-31|2026-07|live|B|no_order|minute_orb=15.12 post945_high=14.22
+FPS|2026-05-14|2026-05|paper|D|no_order|minute_orb=51 post945_high=51
+FRMI|2026-08-11|2026-08|live|A|pure_stop|stop_date=2026-08-11
+FROG|2026-08-07|2026-08|live|B|order_cancelled_unfilled|minute_orb=96.25 post945_high=91.54
+FTK|2026-08-03|2026-08|none|D|no_order|minute_orb=26.49 post945_high=26.88
+FTNT|2026-07-30|2026-07|live|A|pure_stop|stop_date=2026-07-30
+FUTU|2026-05-26|2026-05|none|D|no_order|minute_orb=105.4 post945_high=107.8
+GEMI|2026-05-15|2026-05|paper|B|order_cancelled_unfilled|minute_orb=6.96 post945_high=6.806
+GH|2026-05-20|2026-05|none|U|no_orb_basis|no trade-row orb_high and no 9:30-9:45 bars in mi_intraday_bars
+GLBE|2026-08-12|2026-08|live|B|no_order|minute_orb=43.99 post945_high=42.85
+GLOB|2026-05-15|2026-05|paper|D|no_order|minute_orb=40.27 post945_high=40.46
+GO|2026-05-14|2026-05|paper|B|no_order|minute_orb=9.44 post945_high=8.38
+GRND|2026-07-01|2026-07|none|B|no_order|minute_orb=16.36 post945_high=16.3
+GRRR|2026-06-02|2026-06|paper|B|order_cancelled_unfilled|minute_orb=23.49 daily_high=23.49 (daily fallback)
+HAS|2026-07-21|2026-07|live|D|no_order|minute_orb=92.21 post945_high=93.05
+HGTY|2026-08-05|2026-08|live|D|no_order|minute_orb=13.11 post945_high=13.97
+HLIT|2026-05-12|2026-05|paper|B|no_order|minute_orb=15.39 post945_high=14.15
+HLIT|2026-08-13|2026-08|live|B|no_order|minute_orb=15.06 post945_high=14.44
+HPE|2026-06-02|2026-06|paper|D|order_cancelled_unfilled|minute_orb=63.95 daily_high=64.25 (daily fallback)
+HQ|2026-06-15|2026-06|none|D|no_order|minute_orb=14 post945_high=18.05
+HRB|2026-08-12|2026-08|none|B|no_order|minute_orb=58.67 post945_high=55.67
+HTFL|2026-08-14|2026-08|live|D|no_order|minute_orb=39.88 post945_high=43
+HUT|2026-07-20|2026-07|live|A|pure_stop|stop_date=2026-07-20
+HYMC|2026-06-15|2026-06|none|D|no_order|minute_orb=29.34 post945_high=29.49
+IBRX|2026-05-20|2026-05|paper|B|no_order|minute_orb=8.64 post945_high=8.56
+IDCC|2026-06-11|2026-06|paper|B|no_order|minute_orb=298.8 post945_high=294.4
+IDR|2026-06-15|2026-06|none|B|no_order|minute_orb=43.5 post945_high=43.14
+IMVT|2026-05-20|2026-05|none|D|no_order|minute_orb=32.87 post945_high=36.28
+INFQ|2026-05-21|2026-05|paper|D|order_cancelled_unfilled|minute_orb=15.4 post945_high=16.09
+INOD|2026-08-07|2026-08|none|B|no_order|minute_orb=79.44 post945_high=65.5
+INSM|2026-08-06|2026-08|live|D|order_cancelled_unfilled|minute_orb=133 post945_high=137.7
+INSP|2026-08-04|2026-08|none|B|no_order|minute_orb=66.2 post945_high=64.39
+IREN|2026-07-20|2026-07|live|D|no_order|minute_orb=39.17 post945_high=41.09
+JBIO|2026-06-22|2026-06|none|D|no_order|minute_orb=19.45 post945_high=20.09
+JBL|2026-06-17|2026-06|paper|A|pure_stop|stop_date=2026-06-17
+KC|2026-07-08|2026-07|none|D|no_order|minute_orb=10.63 post945_high=10.68
+KLAR|2026-05-14|2026-05|paper|A|pure_stop|stop_date=2026-05-14
+KMT|2026-08-05|2026-08|live|B|no_order|minute_orb=41.12 post945_high=37.24
+KODK|2026-08-05|2026-08|live|B|no_order|minute_orb=10.03 post945_high=9.98
+KSS|2026-05-28|2026-05|none|B|no_order|minute_orb=16.22 post945_high=15.84
+KTOS|2026-05-28|2026-05|none|D|no_order|minute_orb=64.72 post945_high=66.83
+KTOS|2026-08-05|2026-08|live|B|no_order|minute_orb=62.34 post945_high=57.5
+KURA|2026-08-13|2026-08|live|B|no_order|minute_orb=11.31 post945_high=11.31
+KYMR|2026-06-25|2026-06|none|B|no_order|minute_orb=130.1 post945_high=126
+LAC|2026-06-02|2026-06|none|D|no_order|minute_orb=6.36 post945_high=6.36
+LFST|2026-08-06|2026-08|live|B|no_order|minute_orb=10.99 post945_high=10.97
+LIFE|2026-08-04|2026-08|live|D|order_cancelled_unfilled|minute_orb=28.79 post945_high=29.39
+LIND|2026-08-03|2026-08|none|B|no_order|minute_orb=34.5 post945_high=34.23
+LPTH|2026-08-14|2026-08|none|D|no_order|minute_orb=15.29 post945_high=15.61
+LRCX|2026-07-30|2026-07|live|B|no_order|minute_orb=319.5 post945_high=312.2
+LZB|2026-06-17|2026-06|none|B|no_order|minute_orb=44.9 post945_high=43.92
+MANE|2026-07-15|2026-07|live|A|pure_stop|stop_date=2026-07-16
+MLTX|2026-06-22|2026-06|paper|D|order_cancelled_unfilled|minute_orb=20.02 daily_high=23.29 (daily fallback)
+MMYT|2026-06-15|2026-06|none|B|no_order|minute_orb=49.99 post945_high=48.24
+MNDY|2026-05-11|2026-05|paper|A|pure_stop|stop_date=2026-05-11
+MPWR|2026-07-31|2026-07|live|B|no_order|minute_orb=1568 post945_high=1489
+MRAM|2026-05-11|2026-05|paper|A|pure_stop|stop_date=2026-05-11
+MRLN|2026-06-05|2026-06|none|B|no_order|minute_orb=10.25 post945_high=9.66
+MRNA|2026-08-19|2026-08|live|C|open|
+MRVL|2026-06-02|2026-06|paper|D|order_cancelled_unfilled|minute_orb=259.8 daily_high=291.3 (daily fallback)
+MRVL|2026-08-19|2026-08|live|A|pure_stop|stop_date=2026-08-19
+MRX|2026-08-12|2026-08|live|D|no_order|minute_orb=68.26 post945_high=71.62
+MTW|2026-08-07|2026-08|live|D|no_order|minute_orb=19.14 post945_high=19.8
+MU|2026-06-25|2026-06|paper|D|no_order|minute_orb=1235 daily_high=1255 (daily fallback)
+NAVN|2026-06-11|2026-06|paper|A|pure_stop|stop_date=2026-06-11
+NBIS|2026-08-12|2026-08|none|D|no_order|minute_orb=228.7 post945_high=259.4
+NESR|2026-08-10|2026-08|live|D|no_order|minute_orb=34.23 post945_high=36.6
+NET|2026-08-07|2026-08|live|A|pure_stop|stop_date=2026-08-07
+NMAX|2026-08-14|2026-08|live|D|no_order|minute_orb=11.51 post945_high=11.59
+NNE|2026-05-26|2026-05|none|B|no_order|minute_orb=31.48 post945_high=30.8
+NNE|2026-07-27|2026-07|live|D|no_order|minute_orb=17.43 post945_high=17.5
+NOW|2026-06-01|2026-06|none|D|no_order|minute_orb=138.4 post945_high=139.2
+NRIX|2026-06-08|2026-06|paper|A|pure_stop|stop_date=2026-06-08
+NVCR|2026-07-23|2026-07|live|A|pure_stop|stop_date=2026-07-24
+NVTS|2026-06-03|2026-06|paper|A|pure_stop|stop_date=2026-06-03
+NWL|2026-07-31|2026-07|live|B|no_order|minute_orb=7.13 post945_high=6.565
+OKLO|2026-05-26|2026-05|none|B|no_order|minute_orb=73.29 post945_high=71.35
+OKTA|2026-08-27|2026-08|live|C|open|
+OMER|2026-08-13|2026-08|live|B|no_order|minute_orb=18.14 post945_high=18
+ONTO|2026-08-07|2026-08|live|D|no_order|minute_orb=314 post945_high=314.2
+OUST|2026-06-29|2026-06|none|D|no_order|minute_orb=50.5 post945_high=54.49
+PACS|2026-05-12|2026-05|paper|B|no_order|minute_orb=41.74 post945_high=41.35
+PD|2026-05-29|2026-05|none|D|no_order|minute_orb=9.44 post945_high=10.02
+PENG|2026-07-08|2026-07|paper|D|no_order|minute_orb=72 post945_high=80
+PGY|2026-06-04|2026-06|paper|D|no_order|minute_orb=15.55 post945_high=16.27
+PHR|2026-05-28|2026-05|none|B|no_order|minute_orb=10.96 post945_high=10.07
+PLTR|2026-08-04|2026-08|live|A|partial_then_stop|stop_date=2026-08-19
+PONY|2026-05-26|2026-05|paper|B|no_order|minute_orb=10.4 post945_high=9.72
+POWI|2026-05-26|2026-05|paper|B|no_order|minute_orb=84.9 post945_high=84.39
+PPTA|2026-05-22|2026-05|paper|B|order_cancelled_unfilled|minute_orb=29.15 post945_high=27.35
+PRAA|2026-08-07|2026-08|none|B|no_order|minute_orb=21.49 post945_high=21.05
+PRG|2026-07-15|2026-07|none|D|no_order|minute_orb=45.76 post945_high=46.94
+PRGO|2026-08-05|2026-08|none|D|no_order|minute_orb=13.61 post945_high=13.65
+PSIX|2026-08-07|2026-08|none|B|no_order|minute_orb=42.03 post945_high=41.31
+PUBM|2026-08-07|2026-08|none|D|no_order|minute_orb=18 post945_high=18.44
+PWR|2026-07-30|2026-07|live|B|no_order|minute_orb=679.8 post945_high=660.7
+QBTS|2026-05-21|2026-05|none|D|no_order|minute_orb=23.71 post945_high=25.83
+QBTS|2026-07-27|2026-07|live|A|pure_stop|stop_date=2026-07-28
+QDEL|2026-06-29|2026-06|none|B|no_order|minute_orb=19.8 post945_high=19.15
+QFIN|2026-05-27|2026-05|paper|B|no_order|minute_orb=16.47 post945_high=16.45
+QNST|2026-08-07|2026-08|live|D|order_cancelled_unfilled|minute_orb=20.5 post945_high=21.28
+QUBT|2026-05-21|2026-05|none|D|no_order|minute_orb=11.12 post945_high=11.45
+QURE|2026-06-17|2026-06|paper|A|partial_then_stop|stop_date=2026-07-02
+RARE|2026-08-20|2026-08|live|B|no_order|minute_orb=28.5 post945_high=26.67
+RCAT|2026-05-28|2026-05|paper|A|partial_then_stop|stop_date=2026-06-05
+RDDT|2026-08-14|2026-08|none|D|no_order|minute_orb=181.7 post945_high=184.3
+RDW|2026-05-26|2026-05|paper|D|order_cancelled_unfilled|minute_orb=21.01 post945_high=23.1
+RDW|2026-08-06|2026-08|live|B|order_cancelled_unfilled|minute_orb=12.75 post945_high=12.42
+RIOT|2026-08-11|2026-08|live|B|order_cancelled_unfilled|minute_orb=23.66 post945_high=21.62
+RLAY|2026-05-21|2026-05|paper|A|pure_stop|stop_date=2026-05-21
+ROCK|2026-08-05|2026-08|none|D|no_order|minute_orb=57.17 post945_high=57.58
+RPD|2026-08-11|2026-08|none|D|no_order|minute_orb=14.06 post945_high=14.79
+RUM|2026-06-04|2026-06|paper|A|pure_stop|stop_date=2026-06-04
+RXT|2026-06-16|2026-06|paper|B|order_cancelled_unfilled|minute_orb=7.16 daily_high=7.16 (daily fallback)
+SAIC|2026-06-01|2026-06|none|D|no_order|minute_orb=121 post945_high=123.4
+SCSC|2026-08-20|2026-08|none|B|no_order|minute_orb=66.78 post945_high=64.42
+SE|2026-05-12|2026-05|paper|D|no_order|minute_orb=94.99 post945_high=98.1
+SE|2026-08-11|2026-08|live|D|no_order|minute_orb=130 post945_high=131.9
+SEDG|2026-06-30|2026-06|none|D|no_order|minute_orb=60.71 post945_high=60.94
+SG|2026-07-17|2026-07|none|D|no_order|minute_orb=7.45 post945_high=7.52
+SHAZ|2026-06-12|2026-06|paper|D|order_cancelled_unfilled|minute_orb=74.77 daily_high=74.81 (daily fallback)
+SIBN|2026-05-12|2026-05|paper|D|no_order|minute_orb=13.52 post945_high=13.96
+SIMO|2026-07-30|2026-07|live|B|no_order|minute_orb=285 post945_high=267
+SITM|2026-08-06|2026-08|live|D|no_order|minute_orb=685.5 post945_high=693.7
+SKM|2026-06-01|2026-06|none|D|no_order|minute_orb=41.6 post945_high=44.79
+SLN|2026-08-10|2026-08|none|D|no_order|minute_orb=17 post945_high=17.58
+SLS|2026-05-20|2026-05|none|D|no_order|minute_orb=9 post945_high=9.1
+SMCI|2026-07-22|2026-07|live|A|pure_stop|stop_date=2026-07-27
+SNOW|2026-05-28|2026-05|none|D|no_order|minute_orb=238 post945_high=244.9
+SNX|2026-06-25|2026-06|live|B|order_cancelled_unfilled|minute_orb=295.2 daily_high=295.2 (daily fallback)
+SOLS|2026-08-28|2026-08|live|A|pure_stop|stop_date=2026-08-31
+SOUN|2026-08-06|2026-08|none|B|no_order|minute_orb=8.19 post945_high=7.82
+STAA|2026-05-14|2026-05|paper|B|no_order|minute_orb=35.87 post945_high=33.81
+STC|2026-05-19|2026-05|none|B|no_order|minute_orb=68.74 post945_high=68.64
+STDN|2026-08-14|2026-08|none|B|no_order|minute_orb=13.79 post945_high=13.79
+STUB|2026-05-14|2026-05|paper|D|no_order|minute_orb=9.072 post945_high=9.17
+SWBI|2026-06-18|2026-06|paper|D|order_cancelled_unfilled|minute_orb=16.09 daily_high=17.56 (daily fallback)
+SYRE|2026-06-22|2026-06|paper|A|pure_stop|stop_date=2026-06-24
+TASK|2026-08-06|2026-08|none|D|no_order|minute_orb=7.6 post945_high=8.225
+TATT|2026-05-20|2026-05|none|D|no_order|minute_orb=39.15 post945_high=40.73
+TATT|2026-08-05|2026-08|live|B|no_order|minute_orb=52.99 post945_high=50.89
+TE|2026-05-12|2026-05|paper|B|no_order|minute_orb=6.51 post945_high=6.255
+TEAM|2026-08-07|2026-08|live|A|pure_stop|stop_date=2026-08-07
+TEM|2026-08-19|2026-08|none|D|no_order|minute_orb=59.04 post945_high=61.98
+TER|2026-07-29|2026-07|live|B|no_order|minute_orb=372.2 post945_high=362.4
+TEVA|2026-07-29|2026-07|live|B|no_order|minute_orb=35.69 post945_high=35.16
+TH|2026-08-10|2026-08|live|D|no_order|minute_orb=17.44 post945_high=17.54
+THC|2026-07-24|2026-07|live|A|pure_stop|stop_date=2026-07-24
+TNDM|2026-06-01|2026-06|none|D|no_order|minute_orb=19.7 post945_high=20.04
+TRUP|2026-08-06|2026-08|none|B|no_order|minute_orb=29.28 post945_high=28.74
+TSAT|2026-08-04|2026-08|live|D|no_order|minute_orb=46 post945_high=55.52
+TSEM|2026-07-14|2026-07|live|A|pure_stop|stop_date=2026-07-14
+TTAN|2026-06-05|2026-06|paper|D|order_cancelled_unfilled|minute_orb=84.08 daily_high=84.09 (daily fallback)
+TWLO|2026-08-07|2026-08|live|D|no_order|minute_orb=240 post945_high=254.5
+TWST|2026-08-19|2026-08|live|D|no_order|minute_orb=138.7 post945_high=142.8
+U|2026-08-06|2026-08|live|D|no_order|minute_orb=39.75 post945_high=41.66
+UUUU|2026-06-18|2026-06|paper|B|order_cancelled_unfilled|minute_orb=18.06 daily_high=18.06 (daily fallback)
+UUUU|2026-08-21|2026-08|live|D|no_order|minute_orb=15.29 post945_high=15.55
+VEEV|2026-08-27|2026-08|live|D|no_order|minute_orb=289.8 post945_high=296.2
+VERA|2026-08-14|2026-08|live|D|no_order|minute_orb=32.3 post945_high=32.31
+VG|2026-05-12|2026-05|paper|D|no_order|minute_orb=12.73 post945_high=13.6
+VIK|2026-05-14|2026-05|paper|B|no_order|minute_orb=92 post945_high=91.75
+VOYG|2026-08-04|2026-08|live|D|no_order|minute_orb=35.98 post945_high=35.98
+VPG|2026-05-12|2026-05|paper|B|no_order|minute_orb=87.88 post945_high=87
+VSNT|2026-05-14|2026-05|paper|B|no_order|minute_orb=45.58 post945_high=45.08
+VSTS|2026-05-12|2026-05|paper|D|no_order|minute_orb=12.23 post945_high=12.46
+WDFC|2026-07-10|2026-07|live|A|pure_stop|stop_date=2026-07-10
+WEN|2026-06-24|2026-06|none|B|no_order|minute_orb=8.887 post945_high=8.34
+WKC|2026-07-24|2026-07|live|A|pure_stop|stop_date=2026-07-24
+WLDN|2026-08-07|2026-08|none|B|no_order|minute_orb=88.72 post945_high=86.72
+WULF|2026-07-06|2026-07|live|A|pure_stop|stop_date=2026-07-06
+WYFI|2026-05-11|2026-05|none|D|no_order|minute_orb=25.75 post945_high=29
+WYFI|2026-08-12|2026-08|none|D|no_order|minute_orb=28.76 post945_high=28.87
+XE|2026-06-15|2026-06|none|D|no_order|minute_orb=22.11 post945_high=22.22
+ZBRA|2026-05-12|2026-05|paper|D|no_order|minute_orb=256.4 post945_high=259.3
+ZBRA|2026-08-04|2026-08|live|D|no_order|minute_orb=360.6 post945_high=369.8

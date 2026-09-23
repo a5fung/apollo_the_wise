@@ -1,0 +1,242 @@
+[
+ {
+  "ticker": "ADUR",
+  "scan_date": "2026-06-09"
+ },
+ {
+  "ticker": "AMPG",
+  "scan_date": "2026-06-09"
+ },
+ {
+  "ticker": "ARQQ",
+  "scan_date": "2026-06-09"
+ },
+ {
+  "ticker": "KZIA",
+  "scan_date": "2026-06-11"
+ },
+ {
+  "ticker": "ASYS",
+  "scan_date": "2026-06-12"
+ },
+ {
+  "ticker": "EIKN",
+  "scan_date": "2026-06-12"
+ },
+ {
+  "ticker": "TENX",
+  "scan_date": "2026-06-12"
+ },
+ {
+  "ticker": "LIXT",
+  "scan_date": "2026-06-15"
+ },
+ {
+  "ticker": "OSS",
+  "scan_date": "2026-06-16"
+ },
+ {
+  "ticker": "SHMD",
+  "scan_date": "2026-06-16"
+ },
+ {
+  "ticker": "CLPT",
+  "scan_date": "2026-06-17"
+ },
+ {
+  "ticker": "TRT",
+  "scan_date": "2026-06-17"
+ },
+ {
+  "ticker": "TBCH",
+  "scan_date": "2026-06-18"
+ },
+ {
+  "ticker": "JACK",
+  "scan_date": "2026-06-24"
+ },
+ {
+  "ticker": "BNED",
+  "scan_date": "2026-06-25"
+ },
+ {
+  "ticker": "MEI",
+  "scan_date": "2026-06-25"
+ },
+ {
+  "ticker": "XNET",
+  "scan_date": "2026-06-26"
+ },
+ {
+  "ticker": "UNCY",
+  "scan_date": "2026-06-29"
+ },
+ {
+  "ticker": "DPRO",
+  "scan_date": "2026-06-30"
+ },
+ {
+  "ticker": "JACK",
+  "scan_date": "2026-06-30"
+ },
+ {
+  "ticker": "ARCT",
+  "scan_date": "2026-07-02"
+ },
+ {
+  "ticker": "SILC",
+  "scan_date": "2026-07-02"
+ },
+ {
+  "ticker": "AGPU",
+  "scan_date": "2026-07-06"
+ },
+ {
+  "ticker": "CV",
+  "scan_date": "2026-07-08"
+ },
+ {
+  "ticker": "AP",
+  "scan_date": "2026-07-09"
+ },
+ {
+  "ticker": "QTTB",
+  "scan_date": "2026-07-13"
+ },
+ {
+  "ticker": "TRT",
+  "scan_date": "2026-07-15"
+ },
+ {
+  "ticker": "EAF",
+  "scan_date": "2026-07-16"
+ },
+ {
+  "ticker": "OWLT",
+  "scan_date": "2026-07-16"
+ },
+ {
+  "ticker": "DUOT",
+  "scan_date": "2026-07-20"
+ },
+ {
+  "ticker": "NUCL",
+  "scan_date": "2026-07-20"
+ },
+ {
+  "ticker": "AGPU",
+  "scan_date": "2026-07-21"
+ },
+ {
+  "ticker": "FWRD",
+  "scan_date": "2026-07-21"
+ },
+ {
+  "ticker": "BNAI",
+  "scan_date": "2026-07-27"
+ },
+ {
+  "ticker": "QUAD",
+  "scan_date": "2026-07-29"
+ },
+ {
+  "ticker": "RNAC",
+  "scan_date": "2026-07-29"
+ },
+ {
+  "ticker": "CMCO",
+  "scan_date": "2026-07-30"
+ },
+ {
+  "ticker": "OCC",
+  "scan_date": "2026-08-04"
+ },
+ {
+  "ticker": "AMWL",
+  "scan_date": "2026-08-05"
+ },
+ {
+  "ticker": "FRD",
+  "scan_date": "2026-08-07"
+ },
+ {
+  "ticker": "SPT",
+  "scan_date": "2026-08-07"
+ },
+ {
+  "ticker": "RNA",
+  "scan_date": "2026-08-10"
+ },
+ {
+  "ticker": "AZ",
+  "scan_date": "2026-08-13"
+ },
+ {
+  "ticker": "DERM",
+  "scan_date": "2026-08-13"
+ },
+ {
+  "ticker": "IMXI",
+  "scan_date": "2026-08-14"
+ },
+ {
+  "ticker": "CNXU",
+  "scan_date": "2026-08-17"
+ },
+ {
+  "ticker": "DUOT",
+  "scan_date": "2026-08-18"
+ },
+ {
+  "ticker": "OPHC",
+  "scan_date": "2026-08-19"
+ },
+ {
+  "ticker": "BKKT",
+  "scan_date": "2026-08-21"
+ },
+ {
+  "ticker": "GLSI",
+  "scan_date": "2026-08-21"
+ },
+ {
+  "ticker": "SUPX",
+  "scan_date": "2026-08-24"
+ },
+ {
+  "ticker": "CAPR",
+  "scan_date": "2026-08-25"
+ },
+ {
+  "ticker": "FWDI",
+  "scan_date": "2026-08-27"
+ },
+ {
+  "ticker": "LTRX",
+  "scan_date": "2026-08-27"
+ },
+ {
+  "ticker": "BETR",
+  "scan_date": "2026-08-31"
+ },
+ {
+  "ticker": "CNXU",
+  "scan_date": "2026-08-31"
+ },
+ {
+  "ticker": "TITN",
+  "scan_date": "2026-08-31"
+ },
+ {
+  "ticker": "PRLD",
+  "scan_date": "2026-09-01"
+ },
+ {
+  "ticker": "JLHL",
+  "scan_date": "2026-09-02"
+ },
+ {
+  "ticker": "GMTL",
+  "scan_date": "2026-09-03"
+ }
+]
