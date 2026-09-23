@@ -800,8 +800,10 @@ async def test_settled_winner_walks_from_its_own_tick_and_records_the_overnight_
     written, _ = _wire_walker(monkeypatch, day0=day0, sessions=sessions, filings=filings)
     out = _out()
     tick = datetime(2026, 9, 3, 9, 33, 40, tzinfo=_ET)
+    # run_date 09-05 = the last day BEFORE the 09-06 exit flip, so this walk is the era C stack
+    # (+2R partial). The era D walk of the same tape is test_era_d_walk_* below.
     await lcl._record_one_signal(conn=object(), sig=_sig(tick=tick), last_session=date(2026, 9, 9),
-                                 run_date=date(2026, 9, 10), out=out)
+                                 run_date=date(2026, 9, 5), out=out)
     assert out["errors"] == 0 and len(written) == 1
     f = written[0]
     assert f["submit_time_et"] == time(9, 33) and f["window_out_of_orb"] is False
@@ -820,8 +822,63 @@ async def test_settled_winner_walks_from_its_own_tick_and_records_the_overnight_
     assert f["realized_r"] == pytest.approx((2.0 / 3 + (7.0 - 10.5) * 2 / 3) / 2.0, abs=1e-3)
     assert f["meets_positive"] is False and f["meets_3r"] is False
     assert f["admission_era"] == rule_eras.admission_era_as_of(SESSION_DATE)
-    assert f["replay_exit_era"] == rule_eras.exit_era_label(date(2026, 9, 10))
+    assert f["replay_exit_era"] == "era_c" and f["target_r"] == 2.0
     assert f["signal_id"] == 7 and f["tick_wallclock_et"] == tick
+
+
+_ERA_D_DAY0 = ([_m(9, 30, 10.0, 10.5, 9.5, 10.3), _m(9, 31, 10.3, 10.4, 10.2, 10.35),
+                _m(9, 32, 10.3, 10.4, 10.2, 10.35), _m(9, 33, 10.3, 10.45, 10.2, 10.4),
+                _m(9, 34, 10.4, 10.6, 10.3, 10.55)]
+               + [_m(9, 35 + i, 10.55, 10.7, 10.5, 10.6) for i in range(25)])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("d1_high, expect_partial, expect_r", [
+    # d1 high 13.0 is under BOTH the +8R partial (18.5) and the +3R breakeven arm (13.5): the
+    # stop stays at 8.5 and the day-2 7.0 open gaps through it -> (7.0-10.5)/2.0 = -1.75R. Under
+    # the old +2R stack the same tape took a partial at 12.5 and lost only -0.83R.
+    (13.0, False, (7.0 - 10.5) / 2.0),
+    # d1 high 19.0 fires the +8R partial at 18.5 (1/3 off, +8.0/share), breakeven follows, and
+    # the runner gaps through at 7.0 -> (8.0/3 + (7.0-10.5)*2/3) / 2.0 = +0.17R.
+    (19.0, True, (8.0 / 3 + (7.0 - 10.5) * 2 / 3) / 2.0),
+])
+async def test_era_d_walk_uses_the_8r_partial_not_the_old_2r(monkeypatch, d1_high, expect_partial,
+                                                             expect_r):
+    """2026-09-22: the lane now walks MAGNA53's era D bracket. Before, the partial was a +2R
+    constant and the breakeven arm was never passed, so an era D stamp would have sat on an
+    era C walk."""
+    d1, d2 = SESSION_DATE + timedelta(days=1), SESSION_DATE + timedelta(days=5)
+    sessions = [(d1, {"o": 11.0, "h": d1_high, "l": 10.8, "c": 12.8}),
+                (d2, {"o": 7.0, "h": 7.5, "l": 6.5, "c": 6.8})]
+    written, _ = _wire_walker(monkeypatch, day0=_ERA_D_DAY0, sessions=sessions)
+    out = _out()
+    await lcl._record_one_signal(conn=object(), sig=_sig(tick=datetime(2026, 9, 3, 9, 33, 40, tzinfo=_ET)),
+                                 last_session=date(2026, 9, 9), run_date=date(2026, 9, 22), out=out)
+    assert out["errors"] == 0 and len(written) == 1
+    f = written[0]
+    assert f["replay_exit_era"] == "era_d" and f["target_r"] == 8.0
+    assert f["replay_exit_rules"]["breakeven_at_r"] == 3.0
+    assert f["target_price"] == pytest.approx(18.5)              # 10.5 + 8 x (10.5 - 9.5)
+    assert f["partial_fired"] is expect_partial and f["gap_through"] is True
+    assert f["realized_r"] == pytest.approx(expect_r, abs=1e-3)
+
+@pytest.mark.asyncio
+async def test_era_d_walk_arms_breakeven_on_price_at_3r(monkeypatch):
+    """d1 trades to 14.0 — past the +3R arm (13.5), short of the +8R partial (18.5) — so the stop
+    rises to entry with no partial. d2 opens 11.0 and trades down to 10.0: the armed stop exits
+    at breakeven (0R). Without the arm the 8.5 stop is never touched and the row does not settle
+    at 0R on that bar."""
+    d1, d2 = SESSION_DATE + timedelta(days=1), SESSION_DATE + timedelta(days=5)
+    sessions = [(d1, {"o": 11.0, "h": 14.0, "l": 10.8, "c": 13.0}),
+                (d2, {"o": 11.0, "h": 11.2, "l": 10.0, "c": 10.2})]
+    written, _ = _wire_walker(monkeypatch, day0=_ERA_D_DAY0, sessions=sessions)
+    out = _out()
+    await lcl._record_one_signal(conn=object(), sig=_sig(tick=datetime(2026, 9, 3, 9, 33, 40, tzinfo=_ET)),
+                                 last_session=date(2026, 9, 9), run_date=date(2026, 9, 22), out=out)
+    f = written[0]
+    assert f["partial_fired"] is False and f["exit_session"] == 2
+    assert f["realized_r"] == pytest.approx(0.0, abs=1e-6)
+
 
 
 @pytest.mark.asyncio

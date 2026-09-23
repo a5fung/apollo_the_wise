@@ -9979,11 +9979,12 @@ reviews:
       positive (all the +0.33R scratch) and none reached 3R. Two weeks of a tail question cannot
       answer it. (3) The uncovered 10-15% gap band at $400-500M: 7 names since 06-23 (TITN, PRLD,
       EPRX, BBCP, GMTL, CAL, ALLT), none with a 20-day outcome yet, median 5-day -2.0%, well short
-      of the N>=15 this read asks for. ⚠ THE LANE IS PRICED UNDER ITS OWN BRACKET, NOT MAGNA53'S:
-      the 09-06 exit flip was scoped to magna53 only, so magna53_lowcap rows walk the +2R
-      partial. A name admitted by LOWERING THE FLOOR would trade MAGNA53's era D bracket instead,
-      so on 10-17 the lane's rows answer the floor question only after a re-walk under era D
-      ($0, stored bars). Found alongside: the two MAGNA53 near-miss lanes were walking era_c by
+      of the N>=15 this read asks for. ⚠ THOSE 13 WERE PRICED UNDER THE WRONG BRACKET: the 09-06 exit flip
+      was scoped to magna53 only, so the lane walked the +2R partial. The operator ruled on
+      2026-09-22 that the lane follows MAGNA53's bracket (a name admitted by lowering the floor
+      would trade it); the code now passes "magna53" and the 13 rows are re-walked under era D
+      from stored bars by the first nightly after the deploy, so the 10-17 read uses the right
+      prices. Found alongside: the two MAGNA53 near-miss lanes were walking era_c by
       mistake — fixed 2026-09-22 (magna53_ep.md change log). No operator action.
     status: pending
     added_on: 2026-06-23

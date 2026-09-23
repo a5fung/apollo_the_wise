@@ -133,7 +133,6 @@ from agents.market_intelligence.live_fill_counterfactuals import (
 logger = logging.getLogger(__name__)
 
 SETTLE_VERSION = "gnm_v1"
-TARGET_R = 2.0                    # the +2R partial level, matching live_fill_counterfactuals.TARGET_R
 NEAR_MISS_BAND_WIDTH_PCT = 2.0     # the near-miss band is [floor-2, floor) — 7-9% today. NOT 5-6%
                                    # (module docstring SCOPE) — do not widen without a new card.
 SUBMIT_TIME = time(9, 31)         # the most optimistic detection time for an excluded name — matches
@@ -212,7 +211,7 @@ def _fresh_fields(ticker: str, session_date: date, open_gap_pct: Optional[float]
         "orb_valid": None, "orb_skip_reason": None,
         "submit_time_et": SUBMIT_TIME, "entry_status": None, "entry_reason": None,
         "entry_price": None, "entry_minute": None,
-        "stop_price": None, "target_price": None, "target_r": TARGET_R,
+        "stop_price": None, "target_price": None, "target_r": replay_exit_rules.get("intraday_partial_r"),
         "outcome": None, "final_reason": None, "realized_r": None, "realized_pct": None,
         "mark_r": None, "meets_4r": None, "meets_positive": None, "mark_meets_4r": None,
         "mark_meets_positive": None,
@@ -338,9 +337,14 @@ async def _record_one_near_miss(conn, row: dict, last_session: date, run_date: d
             await _write(fields, out, label)
             return
         fields["stop_price"] = stop
-        target = (pinned_target(entry_px, orb_low, TARGET_R)
-                 if replay_exit_rules["intraday_partial_r"] else None)
+        # The partial level and the price-armed breakeven come from the SAME rule stack the row is
+        # stamped with (era D for MAGNA53: +8R partial, breakeven armed at +3R). Before 2026-09-22
+        # the partial was pinned at a +2R constant and the breakeven arm never passed, so the walk could
+        # only ever be the +2R stack whatever the stamp said.
+        partial_r = replay_exit_rules["intraday_partial_r"]
+        target = pinned_target(entry_px, orb_low, partial_r) if partial_r else None
         fields["target_price"] = target
+        r_frame_ps = (entry_px - orb_low) if (orb_low is not None and orb_low < entry_px) else None
 
         fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
 
@@ -349,7 +353,8 @@ async def _record_one_near_miss(conn, row: dict, last_session: date, run_date: d
                        harvest="live_ladder", fill_day=session_date,
                        breakeven_at_partial=bool(replay_exit_rules["breakeven_at_partial"]),
                        trail_prior_closes=bool(replay_exit_rules["trail_prior_closes"]),
-                       ladder_partial=bool(replay_exit_rules["ladder_partial"]))
+                       ladder_partial=bool(replay_exit_rules["ladder_partial"]),
+                       breakeven_at_r=replay_exit_rules["breakeven_at_r"], r_frame_ps=r_frame_ps)
         status = res["status"]
 
         if status == "pending":

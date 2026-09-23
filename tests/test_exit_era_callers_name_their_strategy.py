@@ -62,16 +62,49 @@ def test_every_exit_rule_lookup_names_its_strategy():
 
 
 def test_the_magna53_lanes_price_under_magna53s_current_bracket():
-    """Behavioural half: a post-flip walk in each MAGNA53 near-miss lane is stamped era_d with
-    the +8R partial, and the low-cap lane (its own, deliberately unflipped strategy) is not."""
+    """Behavioural half: a post-flip walk in all three MAGNA53 lanes is stamped era_d with the
+    +8R partial. The low-cap lane included — operator 2026-09-22: it is a lane of MAGNA53, so it
+    prices under MAGNA53's bracket, not its own registry row's (which the 09-06 flip left alone)."""
     from datetime import date
     from agents.market_intelligence import rule_eras
     d = date(2026, 9, 22)
-    for sig, era, partial in (("magna53", "era_d", 8.0), ("magna53_lowcap", "era_c", 2.0)):
-        assert rule_eras.exit_era_label(d, sig) == era
-        assert rule_eras.exit_rules_as_of(d, sig)["intraday_partial_r"] == partial
+    assert rule_eras.exit_era_label(d, "magna53") == "era_d"
+    assert rule_eras.exit_rules_as_of(d, "magna53")["intraday_partial_r"] == 8.0
     for f, sig in (("gap_near_miss_replay.py", '"magna53"'),
                    ("sustain_reject_replay.py", '"magna53"'),
-                   ("lowcap_lane_replay.py", '"magna53_lowcap"')):
+                   ("lowcap_lane_replay.py", '"magna53"')):
         src = (REPO / "agents/market_intelligence" / f).read_text()
         assert f"exit_rules_as_of(run_date, {sig})" in src and f"exit_era_label(run_date, {sig})" in src, f
+
+
+def _walk_arm_calls() -> list[tuple[str, int, ast.Call]]:
+    found = []
+    for pkg in PACKAGES:
+        root = REPO / pkg
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*.py")):
+            for node in ast.walk(ast.parse(path.read_text(), filename=str(path))):
+                if isinstance(node, ast.Call) and getattr(node.func, "id", getattr(node.func, "attr", None)) == "walk_arm":
+                    found.append((str(path.relative_to(REPO)), node.lineno, node))
+    return found
+
+
+def test_every_walk_passes_the_stamped_rules_breakeven_arm():
+    """A stamp is only true if the walk reads the same stack. Until 2026-09-22 the three lanes
+    stamped their rows from `exit_rules_as_of` but never passed its `breakeven_at_r` to the
+    walker (and pinned the partial at a +2R constant), so an era D stamp would have sat on an
+    era C walk. Derived over every production `walk_arm` call, named below so the walk cannot
+    silently go blind."""
+    calls = _walk_arm_calls()
+    files = {f for f, _, _ in calls}
+    assert {"agents/market_intelligence/live_fill_counterfactuals.py",
+            "agents/market_intelligence/gap_near_miss_replay.py",
+            "agents/market_intelligence/sustain_reject_replay.py",
+            "agents/market_intelligence/lowcap_lane_replay.py"} <= files
+    missing = [f"{f}:{ln}" for f, ln, c in calls
+               if not any(k.arg == "breakeven_at_r" for k in c.keywords)]
+    assert not missing, "walk_arm without breakeven_at_r:\n  " + "\n  ".join(missing)
+    for f in ("gap_near_miss_replay.py", "sustain_reject_replay.py", "lowcap_lane_replay.py"):
+        src = (REPO / "agents/market_intelligence" / f).read_text()
+        assert "pinned_target(entry_px, orb_low, partial_r)" in src and "TARGET_R" not in src, f

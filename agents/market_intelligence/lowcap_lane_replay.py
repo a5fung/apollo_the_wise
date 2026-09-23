@@ -92,7 +92,6 @@ from agents.market_intelligence.live_fill_counterfactuals import (
 logger = logging.getLogger(__name__)
 
 SETTLE_VERSION = "lcl_v1"
-TARGET_R = 2.0                    # the +2R partial level, matching live_fill_counterfactuals.TARGET_R
 TAIL_R = 3.0                      # the graduation gate counts walks >= 3R (4 of 46 on the evidence)
 SPLIT_DIVERGENCE_ABS_PCT = 0.05   # daily-row open vs raw 09:30 intraday open tolerance (gap_near_miss precedent)
 ATR_LOOKBACK_CAL_DAYS = 40        # calendar days read for the ATR-14-prior window (mirrors the siblings)
@@ -164,7 +163,7 @@ def _fresh_fields(sig: dict, admission_era: str, replay_exit_era: str, replay_ex
         "orb_high": None, "orb_low": None, "atr14_prior": None, "atr14_prior_n": None,
         "orb_valid": None, "orb_skip_reason": None, "day0_bars_source": None,
         "entry_status": None, "entry_reason": None, "entry_price": None, "entry_minute": None,
-        "stop_price": None, "stop_pct_of_entry": None, "target_price": None, "target_r": TARGET_R,
+        "stop_price": None, "stop_pct_of_entry": None, "target_price": None, "target_r": replay_exit_rules.get("intraday_partial_r"),
         "outcome": None, "final_reason": None, "realized_r": None, "realized_pct": None,
         "mark_r": None, "meets_3r": None, "meets_4r": None, "meets_positive": None,
         "mark_meets_3r": None, "mark_meets_4r": None, "mark_meets_positive": None,
@@ -234,12 +233,12 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
     out["candidates"] += 1
 
     admission_era = rule_eras.admission_era_as_of(session_date)
-    # The lane is its own strategy (`mi_strategies.magna53_lowcap`); the 2026-09-06 flip was
-    # scoped to magna53 only, so this walks the lane's own (unflipped) bracket. Named explicitly so
-    # that is visible, not a default. Whether the lane should follow MAGNA53's bracket instead is
-    # an open question for the operator (magna53_ep.md, 2026-09-22 entry).
-    replay_exit_rules = rule_eras.exit_rules_as_of(run_date, "magna53_lowcap")
-    replay_exit_era = rule_eras.exit_era_label(run_date, "magna53_lowcap")
+    # The lane prices under MAGNA53's CURRENT bracket, not its own registry row's: it is "a lane
+    # of MAGNA53, not a setup", and the question it answers (should the floor admit these names)
+    # is about names that would trade MAGNA53's exit. Operator ruling 2026-09-22. Until then it
+    # walked the unflipped global stack, because the 09-06 flip was scoped to magna53 only.
+    replay_exit_rules = rule_eras.exit_rules_as_of(run_date, "magna53")
+    replay_exit_era = rule_eras.exit_era_label(run_date, "magna53")
     fields = _fresh_fields(sig, admission_era, replay_exit_era, replay_exit_rules,
                            run_date, last_session)
 
@@ -332,9 +331,14 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
             return
         fields["stop_price"] = stop
         fields["stop_pct_of_entry"] = stop_pct_of_entry(entry_px, stop)
-        target = (pinned_target(entry_px, orb_low, TARGET_R)
-                  if replay_exit_rules["intraday_partial_r"] else None)
+        # The partial level and the price-armed breakeven come from the SAME rule stack the row is
+        # stamped with (era D for MAGNA53: +8R partial, breakeven armed at +3R). Before 2026-09-22
+        # the partial was pinned at a +2R constant and the breakeven arm never passed, so the walk could
+        # only ever be the +2R stack whatever the stamp said.
+        partial_r = replay_exit_rules["intraday_partial_r"]
+        target = pinned_target(entry_px, orb_low, partial_r) if partial_r else None
         fields["target_price"] = target
+        r_frame_ps = (entry_px - orb_low) if (orb_low is not None and orb_low < entry_px) else None
 
         fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
 
@@ -343,7 +347,8 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
                        harvest="live_ladder", fill_day=session_date,
                        breakeven_at_partial=bool(replay_exit_rules["breakeven_at_partial"]),
                        trail_prior_closes=bool(replay_exit_rules["trail_prior_closes"]),
-                       ladder_partial=bool(replay_exit_rules["ladder_partial"]))
+                       ladder_partial=bool(replay_exit_rules["ladder_partial"]),
+                       breakeven_at_r=replay_exit_rules["breakeven_at_r"], r_frame_ps=r_frame_ps)
         status = res["status"]
 
         held_past_day0 = res.get("exit_session") != 0

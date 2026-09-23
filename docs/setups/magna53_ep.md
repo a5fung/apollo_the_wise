@@ -444,14 +444,28 @@ fix commit's headline said 539 — that counted every row, not the post-flip wal
 it did not evaluate these two. The low-cap lane is NOT affected: it is its own strategy
 (`magna53_lowcap`), and the flip was scoped to magna53 only (pinned by
 `test_era_d_labels_only_the_flipped_strategy_after_the_flip_date` — a record of the flip's scope,
-not a ruling on the lane); it now names that strategy explicitly, behaviour unchanged. ⚖ **OPEN,
-the operator's:** should the lane price under its own bracket (today) or follow MAGNA53's? Its
-§"Low-cap lane" text says it "walks the SAME live ladder" and that every row is re-walked under a
-new exit era before it counts, and the floor question (`ep_mcap_floor_500m_review`) needs era D
-prices either way.
+not a ruling on the lane); ⚖ **RULED by the operator 2026-09-22 ("Yes"): the lane follows MAGNA53's
+bracket too** — it is "a lane of MAGNA53, not a setup" (§"Low-cap lane"), it "walks the SAME live
+ladder", and the floor question (`ep_mcap_floor_500m_review`) is about names that would trade
+MAGNA53's exit. It now passes `"magna53"` like the other two. Its 13 existing rows (all walked
+under the +2R partial) are deleted after the deploy — backed up first — so the next nightly
+re-walks them under era D from stored bars; the 40-session window covers all of them. This
+changes only what the REPLAY prices; which exit the lane would trade if it ever went to paper is
+a separate question for that promotion.
 
-**Anticipated effect**: rows walked from the next nightly run on carry `replay_exit_era = 'era_d'`
-and `intraday_partial_r = 8.0`. Settled era_c rows keep their stamp and are NOT re-walked: #617's
+⚠ **And the stamp alone was not the whole defect — found before the fix deployed.** All three
+walkers pinned the partial at a `TARGET_R = 2.0` constant and never passed the stack's
+`breakeven_at_r` to `walk_arm`, so passing `"magna53"` by itself would have stamped rows era D
+while still walking the +2R stack — a mislabel, worse than the honest era_c stamp it replaced. Each
+now builds its target from the stamped stack's `intraday_partial_r` and passes `breakeven_at_r`
+with the ORB-R frame (`entry − orb_low`), the same arguments `live_fill_counterfactuals` passes.
+Proven by an era D walk of one tape three ways in `test_624_lowcap_lane.py` (no partial and a
+gap-through at −1.75R; the +8R partial firing at 18.5; the +3R price arm exiting at breakeven),
+each red under its mutation, and by an AST test that every production `walk_arm` call passes
+`breakeven_at_r`.
+
+**Anticipated effect**: rows walked from the next nightly run on carry `replay_exit_era = 'era_d'`,
+`target_r = 8.0`, a target 8R above entry, and a breakeven arm at +3R. Settled era_c rows keep their stamp and are NOT re-walked: #617's
 trigger pools eras by design and segments its action on them, and #593's predicate reads a
 trailing 30 sessions, so it rolls onto era D rows on its own. Every caller of either lookup must
 now name its strategy (`tests/test_exit_era_callers_name_their_strategy.py`, AST-derived).
@@ -459,6 +473,7 @@ now name its strategy (`tests/test_exit_era_callers_name_their_strategy.py`, AST
 **Reversion-flag**: REFINEMENT of the 2026-09-06 per-strategy flip (a caller it missed).
 
 **Status**: shipped, awaiting field validation — the first post-deploy nightly writes era D rows.
+WOULD-FAIL-IF: a new row reads `era_d` with `target_r = 2` or a target 2R above entry.
 
 ### 2026-09-13 (late evening, same day) — BELONGING is TWO-STAGE: correlation SHORTLISTS, the nightly assignment judgement DECIDES (bug-fix REFINEMENT, shipped ON, same revert flag)
 
