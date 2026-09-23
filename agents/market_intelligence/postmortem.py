@@ -18,6 +18,7 @@ from datetime import date
 from typing import Any
 
 import anthropic
+from shared.llm_client import make_async_anthropic
 
 from agents.market_intelligence.db import get_pool
 
@@ -191,7 +192,7 @@ async def generate_postmortem_narrative(
         return _fallback_narrative(ctx)
 
     try:
-        client = anthropic.AsyncAnthropic(api_key=api_key)
+        client = make_async_anthropic(api_key=api_key)
         user_prompt = f"TRADE CONTEXT:\n{json.dumps(ctx, default=str, indent=2)}"
         resp = await client.messages.create(
             model=_MODEL,

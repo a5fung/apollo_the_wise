@@ -171,6 +171,11 @@ def _mock_refresh_deps(monkeypatch, tmp_path, ids, audit=None, telegram=None):
     monkeypatch.setattr(mr, "log_audit_event", audit_mock)
     tg_mock = telegram if telegram is not None else AsyncMock()
     monkeypatch.setattr(mr, "_send_telegram", tg_mock)
+    # The pre-adoption canary (2026-09-23) makes real API calls through the factory; these
+    # tests are about the resolver's bookkeeping, so every release passes here. The canary's
+    # own adopt/refuse paths are pinned in tests/test_model_compat_adapter.py.
+    monkeypatch.setattr(mr, "_canary_model", AsyncMock(return_value=(True, "")))
+    monkeypatch.setattr(mr, "audit_event_exists", AsyncMock(return_value=False))
     return audit_mock, tg_mock
 
 

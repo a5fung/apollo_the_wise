@@ -15,6 +15,7 @@ import uuid
 from typing import Any, Callable, Optional
 
 import anthropic
+from shared.llm_client import make_async_anthropic
 import httpx
 
 from core.confirmations import request_confirmation
@@ -61,7 +62,7 @@ class Apollo:
             send_message_fn: Async function (user_id, text) -> None
                              Used to send Telegram messages (confirmations, etc.)
         """
-        self._client = anthropic.AsyncAnthropic(api_key=get_secrets().anthropic_api_key)
+        self._client = make_async_anthropic(api_key=get_secrets().anthropic_api_key)
         self._send_message = send_message_fn
         self._tools = get_orchestrator_tools()
         self._cached_tools: list[dict[str, Any]] | None = None

@@ -17,6 +17,7 @@ from datetime import date, datetime
 from typing import Any
 
 import anthropic
+from shared.llm_client import make_async_anthropic
 from fastapi import BackgroundTasks, Depends
 from shared.env_flags import env_is_true
 
@@ -493,7 +494,7 @@ def _strip_lifecycle_summary(summary: str, ticker: str) -> str:
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
-        self._claude = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        self._claude = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
         self._refresh_lock = asyncio.Lock()
         self._register_extra_routes()
 

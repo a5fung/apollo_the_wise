@@ -58,7 +58,11 @@ touches the literals above:
      IN-CONTAINER (only there is ANTHROPIC_API_KEY reachable): calls
      `models.list`, computes the newest id per tier, writes the cache. A new
      release is NEVER silent — Telegram + audit event, before it can take
-     effect anywhere.
+     effect anywhere. Since 2026-09-23 a new release must first PASS a canary
+     (every production request shape, sent through shared/llm_client's
+     transport adapter) or the tier keeps its last working id and he is told
+     the exact error — opus-5-5 had been adopted while rejecting every
+     forced-tool call the judges make.
   3. RESOLVED_ROLES below — the opt-in list of ROLE bindings whose ACTUAL live
      calls track the resolver (today: JUDGE_MODEL only — the one role the
      ADR-0030 robustness eval polices; every other role stays hand-pinned,

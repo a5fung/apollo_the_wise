@@ -180,8 +180,8 @@ def build_prompt(ticker: str, alert_date: Any, rationale: str) -> str:
 def _get_client():
     global _client
     if _client is None:
-        import anthropic
-        _client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        from shared.llm_client import make_async_anthropic
+        _client = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     return _client
 
 

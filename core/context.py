@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 import anthropic
+from shared.llm_client import make_async_anthropic
 
 from shared.llm_models import COMPRESSION_MODEL
 from shared.output_ceilings import max_tokens_for
@@ -24,7 +25,7 @@ COMPRESSION_THRESHOLD = 20
 
 
 def _build_anthropic_client() -> anthropic.AsyncAnthropic:
-    return anthropic.AsyncAnthropic(api_key=get_secrets().anthropic_api_key)
+    return make_async_anthropic(api_key=get_secrets().anthropic_api_key)
 
 
 def messages_to_claude_format(

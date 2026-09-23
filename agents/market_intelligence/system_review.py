@@ -28,6 +28,7 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import anthropic
+from shared.llm_client import make_async_anthropic
 
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.failure_policy import advisory_fail_open
@@ -2671,7 +2672,7 @@ def _finalize_bucket(b: dict) -> dict:
 
 
 async def _synthesize(metrics: dict, prior: dict | None) -> str:
-    client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    client = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     prior_block = ""
     if prior:
         prior_block = (

@@ -44,6 +44,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, NamedTuple, Optional
 
 import anthropic
+from shared.llm_client import make_async_anthropic
 
 from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.collector import (
@@ -597,7 +598,7 @@ _JUDGE_SEMAPHORE = asyncio.Semaphore(3)
 def _get_claude():
     global _claude
     if _claude is None:
-        _claude = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        _claude = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     return _claude
 
 

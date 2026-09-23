@@ -66,8 +66,8 @@ def _get_claude():
     be wasteful and could leak connections across the ~2-5 calls/day this module makes."""
     global _claude
     if _claude is None:
-        import anthropic
-        _claude = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        from shared.llm_client import make_async_anthropic
+        _claude = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     return _claude
 
 

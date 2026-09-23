@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import anthropic
+from shared.llm_client import make_async_anthropic
 
 # #246: the transient-failure handlers below do `isinstance(e, (anthropic.APIError, …))`.
 # In some local/CI envs the `anthropic` module is stubbed/shadowed so `anthropic.APIError`
@@ -54,7 +55,7 @@ _VALIDATION_SEMAPHORE = asyncio.Semaphore(1)
 def _get_anthropic_client() -> anthropic.AsyncAnthropic:
     global _anthropic_client
     if _anthropic_client is None:
-        _anthropic_client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        _anthropic_client = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     return _anthropic_client
 
 from agents.market_intelligence.collector import (

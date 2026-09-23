@@ -1254,9 +1254,9 @@ class TelegramChannel:
 
     async def _check_claude(self) -> tuple[bool, str]:
         try:
-            import anthropic
+            from shared.llm_client import make_anthropic
             from shared.secrets import get_secrets
-            client = anthropic.Anthropic(api_key=get_secrets().anthropic_api_key)
+            client = make_anthropic(api_key=get_secrets().anthropic_api_key)
             resp = client.messages.create(
                 model=HEALTHCHECK_MODEL,
                 # registry: truncation BY DESIGN on this liveness ping

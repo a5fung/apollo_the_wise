@@ -531,9 +531,9 @@ async def _nightly_data_pull():
 
             if stock_lines:
                 import os
-                import anthropic
+                from shared.llm_client import make_async_anthropic
                 from agents.market_intelligence.theme_engine import FUND_EXPOSURE_PROMPT_RULE
-                client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                client = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
                 prompt = (
                     "Generate concise trading-relevant descriptions for these stocks. "
@@ -5304,6 +5304,7 @@ async def _run_chart_axis_shadow(today):
     """
     import os
     import anthropic
+    from shared.llm_client import make_async_anthropic
     from agents.market_intelligence import chart_axis as ca
     from agents.market_intelligence.db import (
         get_chart_axis_shadow_cohort, get_chart_axis_shadow_processed_tickers, log_audit_event,
@@ -5327,7 +5328,7 @@ async def _run_chart_axis_shadow(today):
         if not api_key:
             logger.warning("chart-axis shadow: no ANTHROPIC_API_KEY — skip")
             return
-        client = anthropic.AsyncAnthropic(api_key=api_key)
+        client = make_async_anthropic(api_key=api_key)
         sem = asyncio.Semaphore(3)  # OWN bound; never the live grader's semaphore
 
         graded = deltas = norender = 0

@@ -79,7 +79,11 @@ Guardrails in the refresh (fail-safe by construction):
     listing yanking a tier backwards);
   * a tier absent from the listing keeps its cached value (loud, not silent);
   * any API failure leaves the cache untouched (the job fails loud via
-    audit_wrap; the trading system keeps running on the existing resolution).
+    audit_wrap; the trading system keeps running on the existing resolution);
+  * a NEW release must pass the pre-adoption canary (`_canary_model`: every production
+    request shape, through shared/llm_client's adapter) before it is written to the
+    cache — a refused release keeps the tier on its last working id, audit + Telegram
+    with the exact error, re-tried nightly (2026-09-23, after opus-5-5 broke both judges).
 """
 from __future__ import annotations
 
@@ -90,6 +94,7 @@ from pathlib import Path
 
 from agents.market_intelligence.constants import runs_intelligence_jobs
 from agents.market_intelligence.db import (
+    audit_event_exists,
     get_latest_model_resolution,
     insert_model_resolution,
     log_audit_event,
@@ -310,12 +315,70 @@ def stale_tier_pins(resolved: dict, changed_at: dict, now=None) -> list[tuple]:
 # ── Nightly refresh ──────────────────────────────────────────────────────────
 
 async def _list_model_ids() -> list[str]:
-    import anthropic
-    client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    from shared.llm_client import make_async_anthropic
+    client = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     try:
         return [m.id async for m in client.models.list()]
     finally:
         await client.close()
+
+
+# ── Pre-adoption canary (2026-09-23) ─────────────────────────────────────────
+# claude-opus-5-5 was adopted by this job on 09-22 and rejected every forced-tool call the
+# judges make (HTTP 400) — the refresh had no idea, because it only ever asked models.list
+# which ids EXIST, never whether OUR request shapes work on them. Now, before a new release
+# becomes a tier's cached id, it must pass every production request shape THROUGH the
+# transport adapter (shared/llm_client.run_canary): a forced tool, thinking disabled, a
+# plain call, and "any" over two tools. Pass → adopted exactly as before (automatic, no eval —
+# operator rulings 2026-07-30 and 2026-09-22). Fail → the tier KEEPS its last working id, an
+# audit row + Telegram carry the exact error, and the id is re-tried at the next nightly run
+# (so a fix on either side is picked up without anyone remembering to re-enable anything).
+# Cost: four ~100-token calls per NEW release only; nothing on an ordinary night.
+
+async def _canary_model(model_id: str) -> tuple[bool, str]:
+    """(passed, failure_text) for `model_id`, via a factory client. Never raises."""
+    from shared.llm_client import make_async_anthropic, run_canary
+    try:
+        client = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    except Exception as e:  # loud-ok: reported as a failure, never a crash of the refresh
+        return False, f"client construction failed: {type(e).__name__}: {e}"
+    try:
+        results = await run_canary(client, model_id)
+    finally:
+        try:
+            await client.close()
+        except Exception:  # loud-ok: nothing to do with the verdict
+            pass
+    failed = [r for r in results if not r.ok]
+    if not failed:
+        return True, ""
+    return False, "; ".join(f"{r.check}: {r.detail}" for r in failed)
+
+
+async def _report_rejected_release(tier: str, keep: str, new: str, error: str) -> None:
+    """Audit + Telegram a release the canary refused — ONCE per (tier, new, keep) triple, so a
+    release that stays broken does not page every weeknight. A dedupe-lookup failure SENDS
+    (a skipped release must never be silent)."""
+    from shared.llm_models import pretty_model
+    from shared.telegram_format import code, esc
+
+    summary = f"{tier}: {new} failed the pre-adoption canary — keeping {keep}"
+    try:
+        if await audit_event_exists("model_release_rejected", summary):
+            logger.info("model_resolution: %s (already reported)", summary)
+            return
+    except Exception as e:  # loud-ok: fail toward SENDING
+        logger.warning(f"_report_rejected_release: dedupe lookup failed, sending: {e}")
+    await log_audit_event("model_release_rejected", summary, f"canary: {error[:900]}")
+    await _send_telegram(
+        "🚫 <b>New Claude model NOT adopted</b>\n"
+        f"<b>{esc(pretty_model(new))}</b> ({code(esc(new))}) failed the request-shape check, so "
+        f"the {esc(tier)} tier stays on {code(esc(keep))}.\n"
+        f"Error: <code>{esc(error[:600])}</code>\n"
+        "It is re-checked every night and adopts automatically once it passes. Nothing to do "
+        "unless you want to force it: pin the tier in <code>_TIER_OVERRIDES</code> "
+        "(shared/llm_models.py)."
+    )
 
 
 async def refresh_model_resolution() -> int:
@@ -371,6 +434,21 @@ async def refresh_model_resolution() -> int:
         resolved[tier] = new_id
         if new_id != old_id:
             changes.append((tier, old_id, new_id))
+
+    # PRE-ADOPTION CANARY — see _canary_model. Only tiers that would CHANGE are checked; a
+    # refused release leaves the tier on its last working id (or the committed pin when there
+    # is no prior record), so nothing downstream can ever bind to an id the judges cannot call.
+    rejected: list[tuple[str, str, str, str]] = []  # (tier, keep, new, error)
+    for tier, old_id, new_id in list(changes):
+        passed, error = await _canary_model(new_id)
+        if passed:
+            continue
+        keep = old_id or llm_models._TIER_PINS[tier]
+        resolved[tier] = keep
+        changes.remove((tier, old_id, new_id))
+        rejected.append((tier, keep, new_id, error))
+    for tier, keep, new_id, error in rejected:
+        await _report_rejected_release(tier, keep, new_id, error)
 
     changed_at = dict(prev_changed)
     from datetime import datetime, timezone
