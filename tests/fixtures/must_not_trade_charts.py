@@ -107,7 +107,7 @@ RULING_DATE = "2026-08-25"          # session 1 — the original eleven
 # review sample #1 (ten names where our score and the outcome disagreed). Every member
 # carries its own `ruling_date`; this set is what a test may check membership against, so
 # a typo cannot invent a session that never happened.
-RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06"})
+RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23"})
 # The eleven BAD_CHART members of session 1 are the population the v3 backtest measured.
 # Later BAD_CHART rulings are NOT in it — the doc's numbers are against these only.
 V3_MEASURED_POPULATION_SIZE = 11
@@ -517,6 +517,78 @@ CHART_RULINGS: list[ChartRuling] = [
         live_stack_exclusion="quality filter: filter:adv_too_low: $182,622",
         extension_live_pct=13.1,
     ),
+    # ── Session 3, 2026-09-23 — review sample #2 (docs/analysis/594_chart_review_sample_2026-09-21.txt),
+    #    shown as point-in-time charts (bars to the day before) on one page. Words verbatim. ──
+    ChartRuling(
+        ticker='RARE', alert_date='2026-08-20', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words="bad (stuck in multi year downtrend, recent gap down and gap up didn't clear any of these areas).",
+        gap_open_pct=11.4, ret_5d=None,
+        prior_runup_note="WE ALERTED HIGH: score 72, catalyst=game changer. 20 sessions later -49% from the open — the worst of sample #2's arm A.",
+    ),
+    ChartRuling(
+        ticker='BW', alert_date='2026-08-11', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words="bad (gap up weak, didn't clear much of left side, still below 50d, but this is context moving avg is not black or white).",
+        gap_open_pct=34.9, ret_5d=None,
+        prior_runup_note="WE ALERTED HIGH: score 96, catalyst=game changer. 20 sessions later -37%. His note on the 50-day is context, not a rule: 'moving avg is not black or white'.",
+    ),
+    ChartRuling(
+        ticker='LPTH', alert_date='2026-08-14', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words="bad (don't see a gap up, just chopping in range).",
+        gap_open_pct=10.0, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 54.7, catalyst=strong. 20 sessions later -37%. A 10.0% open gap that did not read as a gap to him on the chart.',
+    ),
+    ChartRuling(
+        ticker='WYFI', alert_date='2026-08-12', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words="ok (gap up ok, but not super strong, didn't clear local highs in may nor 50d)",
+        gap_open_pct=17.3, ret_5d=None,
+        prior_runup_note="WE ALERTED HIGH: score 84, catalyst=strong. 20 sessions later -32% — an ok'ish chart that still failed.",
+    ),
+    ChartRuling(
+        ticker='FRMI', alert_date='2026-08-11', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words="bad (didn't clear anything on left side of chart)",
+        gap_open_pct=17.0, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 96, catalyst=game changer. 20 sessions later -22%.',
+    ),
+    ChartRuling(
+        ticker='AVAH', alert_date='2026-08-13', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words='good (cleared highs, long base, looks amazing)',
+        gap_open_pct=14.5, ret_5d=None,
+        prior_runup_note="WE SKIPPED IT: best score all day 30, catalyst=routine. 20 sessions later +40%. This is the date he POINTED AT on 2026-09-06 ('AVAH's is 08-13 not 06-02'); ruling it here converts that pointer into a label.",
+    ),
+    ChartRuling(
+        ticker='NIQ', alert_date='2026-08-11', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words='ok (looks decent, cleared low of basing area into previous highs area, could see resistance)',
+        gap_open_pct=21.9, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 42, catalyst=routine. 20 sessions later +32%.',
+    ),
+    ChartRuling(
+        ticker='TBBB', alert_date='2026-08-13', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words='good',
+        gap_open_pct=16.7, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 36, catalyst=routine. 20 sessions later +10%.',
+    ),
+    ChartRuling(
+        ticker='MRVI', alert_date='2026-08-19', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words='ok (decent but bumping into recent highs so can see resistance)',
+        gap_open_pct=26.4, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 48, catalyst=routine. 20 sessions later +8%.',
+    ),
+    ChartRuling(
+        ticker='HAE', alert_date='2026-08-18', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-09-23",
+        operator_words='good',
+        gap_open_pct=16.5, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 12, catalyst=routine. 20 sessions later +4%.',
+    ),
 ]
 
 
@@ -541,4 +613,6 @@ MUST_NOT_REJECT_DATES: list[tuple[str, str, str]] = [
 POINTED_AT_DATES: list[tuple[str, str, str]] = [
     (r.ticker, r.better_date, r.verdict) for r in CHART_RULINGS
     if r.better_date and r.better_date_provenance == POINTED_AT
+    # a date he later RULED directly is a label now, not a pointer (AVAH 08-13, 2026-09-23)
+    and (r.ticker, r.better_date) not in {(x.ticker, x.alert_date) for x in CHART_RULINGS}
 ]
