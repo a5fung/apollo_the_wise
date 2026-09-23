@@ -1556,3 +1556,13 @@ ETSY, DOCU, PTON, PINS, NIO, SQ, SNAP, RARE, ZM, Z, TSLA — where to buy, add a
 pivot breakouts from proper bases (≥5 weeks flat, ≥7 other), pocket pivots, constructive shakeouts
 to the MA each stock respects, sells on closes below that MA, and failure-prone shapes (too fast up
 the right side, stage 3, wide and loose). Winners only — they teach the read, not the failure rate.
+
+## 2026-09-23 — 11 leaders through their run AND their top (John Boik, *Monster Stock Lessons*), operator-shared (photos)
+
+**Full transcription and synthesis: `docs/methodology/boik_monster_stock_lessons_2026-09-23.md`**;
+images in `docs/methodology/operator_shared_charts/2026-09-23_boik_monster_stock_lessons_2020_2021/`.
+His words: *"Here's stocks that went up, topped and subsequently went down"* — the failure examples,
+shared right after the TraderLion winners. ZM, PTON, DOCU, PDD, NIO, FSLY, GRWG, ROKU, FVRR, PINS,
+DKNG, each 2020 run over 2021 decline. The tops share: price cutting through both the 21- and 50-day
+on heavy volume, those averages then acting as resistance, climax runs, volume drying up or flipping,
+and chop. FVRR 2020 is the caution: the same heavy-volume break was an add when it reclaimed fast.

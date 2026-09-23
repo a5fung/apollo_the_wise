@@ -275,6 +275,19 @@ Base plan: *cheapest-first* (won fit and decision). Trap-prevention grafted from
 **Is there any stop × target × exit combination under which one of the four delayed-entry patterns
 pays — beyond what buying the same names on a random session in the same window would have paid?**
 
+### 📎 Read first — his own entry-and-exit examples (shared 2026-09-23)
+
+He shared 24 marked-up leader charts the day after this block was scoped. They are the vocabulary
+his exits are written in, so the grid's exit arms should be drawn from them rather than invented:
+- `docs/methodology/traderlion_2020_leaders_2026-09-23.md` — where to buy and add (proper base,
+  pocket pivot, shakeout to the MA the stock respects) and where to sell (close below that MA; a
+  23-EMA close two days running → partial; a 50-DMA / 65-EMA close → out).
+- `docs/methodology/boik_monster_stock_lessons_2026-09-23.md` — the same kind of leaders through
+  their tops: heavy-volume cuts through the 21- and 50-day that then act as resistance, climax runs,
+  volume flipping. **FVRR 2020 is the caution:** the same break was an ADD when it reclaimed fast, so
+  an exit arm must measure the reclaim, not only the break.
+⚖ Choosing an exit remains his call (THE LINE); these name the candidates, they do not pick one.
+
 ### What 2026-09-22 established, and the one thing it got wrong
 
 ✅ **STANDS — the decisive fact, directly recorded, not derived.** `r_none_s20` is **−1.00R with
