@@ -1640,3 +1640,23 @@ EVIDENCE: read from prod on 2026-09-23 after the 09:00 ET morning briefing.
   attribute 'raise_for_status'`; 09-20 11:41 ET, `TelegramSendRefused ... (captured #1)`). Both are
   weekend rows whose shape is a stubbed/test HTTP layer, not a formatting failure, and both
   predate the three-weekday window. Recorded here rather than silently passed over.
+
+## #666 — the catalyst monitor counts what the fact-check prevented and withholds the revert when it cannot account for the drop (2026-09-23)
+
+BAR: "DoD: the nightly message states the number of alerts the fact-check actually prevented in the
+window and NAMES them, and it withholds the revert SQL when that count cannot account for the
+shortfall it is reporting." WOULD-FAIL-IF: "it still prints revert SQL on a rate comparison alone,
+or reports a prevented-count it cannot name the tickers for." DONE-WHEN: "three consecutive nightly
+messages each either name their prevented alerts or say plainly why they withheld the SQL."
+
+EVIDENCE: prod `mi_audit_log`, `catalyst_lattice_monitor_alert`, read 2026-09-23.
+
+- **Three consecutive nights — 09-21, 09-22, 09-23 — each carry `prevented: []` with
+  `accounts_for_shortfall: false` and `revert_withheld_reason: "correlation_unexplained"`.** The count
+  is stated (zero, so there are no tickers to name) and the SQL was withheld every night, with the
+  reason given. The 09-23 message the operator received reads *"The fact-check names ZERO alerts it
+  prevented in this window, against a shortfall of 4.3"* and *"A revert is NOT indicated and the SQL
+  is deliberately withheld."*
+- **WOULD-FAIL-IF refuted on all three:** no revert SQL printed, and no prevented-count without names.
+- The same night the operator called the repeated message noise; the Telegram for a withheld,
+  non-actionable finding is gated off in the following commit, while the audit row stays nightly.
