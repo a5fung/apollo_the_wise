@@ -9982,9 +9982,12 @@ reviews:
       of the N>=15 this read asks for. ⚠ THOSE 13 WERE PRICED UNDER THE WRONG BRACKET: the 09-06 exit flip
       was scoped to magna53 only, so the lane walked the +2R partial. The operator ruled on
       2026-09-22 that the lane follows MAGNA53's bracket (a name admitted by lowering the floor
-      would trade it); the code now passes "magna53" and the 13 rows are re-walked under era D
-      from stored bars by the first nightly after the deploy, so the 10-17 read uses the right
-      prices. Found alongside: the two MAGNA53 near-miss lanes were walking era_c by
+      would trade it); the code now passes "magna53", and after the 21:19 ET deploy the 13 rows
+      were deleted (backup: scripts/probes/_lowcap_lane_replays_backup_2026-09-22.csv) and re-walked
+      at once, operator-authorized. All 13 now read era_d, target 8R. Under the live rule the 7
+      settled fills average -0.95R (five at -1R, VEEA -1.65R, RLGT 0R at the +3R breakeven); the
+      three +0.33R scratches were artifacts of the old +2R partial. PCLA 09-10 abstains
+      (stop and breakeven arm on the same daily bar, unorderable without minutes). Found alongside: the two MAGNA53 near-miss lanes were walking era_c by
       mistake — fixed 2026-09-22 (magna53_ep.md change log). No operator action.
     status: pending
     added_on: 2026-06-23

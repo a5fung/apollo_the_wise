@@ -474,6 +474,10 @@ now name its strategy (`tests/test_exit_era_callers_name_their_strategy.py`, AST
 
 **Status**: shipped, awaiting field validation — the first post-deploy nightly writes era D rows.
 WOULD-FAIL-IF: a new row reads `era_d` with `target_r = 2` or a target 2R above entry.
+✅ **Low-cap half verified live 2026-09-22 ~21:25 ET:** the 13 rows were deleted (backup
+`scripts/probes/_lowcap_lane_replays_backup_2026-09-22.csv`) and re-walked by the deployed code in
+`apollo-market` — 13 written, 0 errors, all `era_d` with `target_r = 8`. The other two lanes verify
+on the 2026-09-23 nightly.
 
 ### 2026-09-13 (late evening, same day) — BELONGING is TWO-STAGE: correlation SHORTLISTS, the nightly assignment judgement DECIDES (bug-fix REFINEMENT, shipped ON, same revert flag)
 
