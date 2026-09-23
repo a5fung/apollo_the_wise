@@ -188,8 +188,7 @@ This bug class has recurred many times.
 ## Key Domain Concepts
 
 ### RS Scoring
-- Composite = 40% × 1M + 30% × 3M + 30% × 6M percentile rank
-- Universe ~9,700 stocks via Polygon grouped daily (adjusted=true always). ⚠ **`rs_rank`'s denominator = the ~2,400 rows `mi_stock_scores` keeps, NOT 9,700.**
+- Polygon grouped daily is always `adjusted=true`. ⚠ **`rs_rank`'s denominator = the ~2,400 rows `mi_stock_scores` keeps, NOT the ~9,700-stock universe.**
 - Sector enrichment: only top 300 by rank get sector in `mi_stock_scores`. For theme tickers outside top 60, fetch sector from `mi_ticker_overrides` (persistent cache) via `get_sectors_batch()`.
 
 ### Theme Engine
@@ -223,8 +222,6 @@ One container, two Alpaca accounts (paper + live), routed per-strategy via `mi_s
 L1 breach → Telegram + audit row · L2 anomaly → Telegram + hypothesis · L3 drift → audit row, Sunday digest. Silent theme-engine failures land in `mi_audit_log`, and Telegram if any fire within 2h of the nightly run. **Job times, cold-start tiers, `/audit <topic>`, event names: `docs/architecture/market_agent_reference.md`.**
 
 ### Paper Trading (Alpaca)
-- `mi_paper_trades` = EOD simulation table (LIVE_TRADING_ENABLED=true, ALPACA_PAPER=true)
-- `mi_live_trades` = actual Alpaca order table
 - ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, OTO with stop-loss at ORB low. Always `order_class=OrderClass.OTO` — alpaca-py silently drops `stop_loss` kwarg without it.
 - Safeguards — **SSoT `docs/setups/safeguards.md`**: max 5 positions, 2% daily loss limit, tiered drawdown breaker, AND the count-based circuit breaker (10 losses), which he ruled KEPT 2026-07-31. BOTH run. ⚠ The count breaker is self-perpetuating: a loss closing during cooldown re-arms it 24h from THAT close, so its expiry can land inside the 9:31-9:45 ORB window and cancel most of a day's entries (6 alerts / 0 entries, 2026-07-31).
 - Kill switch: `LIVE_TRADING_ENABLED=false` (boot-read) · `/pause` (instant runtime halt, #345)
@@ -251,7 +248,6 @@ No job was moved — both windows were already empty. Why + the 66-job census: m
 `deploy-timing-avoid-market-windows`.
 
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
-- Service names: `orchestrator`, `market-agent`, `postgres`, `redis`, `uptime-kuma`
 - **Disaster recovery**: if the host dies, follow `docs/ops/disaster_recovery.md` (operator runbook + `infra/restore.sh` driver). RTO ~95 min. Nightly cron writes pg_dump + GPG-encrypted secrets bundle to gdrive; `_backup_health_check_job` (04:33 ET) Telegrams if either blob is stale >36h. OAuth recovery (gdrive upload failing): `docs/ops/gdrive_backup_recovery.md`.
 
 **Use the script, never raw `docker compose`.** It chains git pull → build → up → wait-for-boot → preflight, failing non-zero at any step. Scope is REQUIRED (#154 tier-1); it also aborts (exit 11) if the pull touched files owned by a service outside your scope.
@@ -260,7 +256,7 @@ bash scripts/deploy.sh market-agent    # market agent only
 bash scripts/deploy.sh orchestrator    # orchestrator only
 bash scripts/deploy.sh both            # both services
 ```
-Ownership map for the scope-drift guard: `channels/ core/ main.py` → orchestrator; `agents/market_intelligence/ scripts/` → market-agent; anything else (`shared/`, `docker/`, `requirements/`) → both. (New Telegram slash commands touch `channels/telegram.py`, orchestrator-owned — need `orchestrator`/`both`, not the market-agent default that silently dropped `/partialnow` on 2026-05-28.)
+The scope-drift guard's ownership map lives in `scripts/deploy.sh`. ⚠ New Telegram slash commands touch `channels/telegram.py`, orchestrator-owned — they need `orchestrator`/`both`, not the market-agent default that silently dropped `/partialnow` on 2026-05-28.
 
 The preflight walks every enabled non-shadow strategy through `_check_safeguards` — the path that fires on real ORB entries. `setup:*`/`infra:*` = failure; only `block:*` passes.
 
@@ -279,8 +275,4 @@ Older entries → `CHANGELOG.md` (search any concept).
 ---
 
 ## Adding a "Changes Made" entry
-Keep new entries in **Recent** above. After ~2 weeks compress each to ONE bullet (`topic — key change & lesson`) and **graduate it into `CHANGELOG.md`** (don't keep the compressed form here). Drop "Files Changed" (git has it), "Post-deploy verification" once verified, cleanup SQL once applied. **⚠ Always leave ≥1 dated `### YYYY-MM-DD` entry** — `system_audit._recent_changes_context` + `test_system_audit_recent_changes` require it; emptying Recent reds CI (6/19). Docs-only pushes skip the pre-push gate, so run that test before graduating.
-
-Older history: see `CHANGELOG.md` (compressed log, on-demand only — not auto-loaded). For genuinely architectural decisions where the *why* outlives the code, optionally write a short `docs/decisions/NNNN-topic.md` ADR.
-
-Target CLAUDE.md size: under 30k chars. Hard ceiling: 40k (warning threshold).
+How-to (compress, graduate to `CHANGELOG.md`, what to drop) → project skill `claude-md-changelog`. **⚠ Always leave ≥1 dated `### YYYY-MM-DD` entry** — emptying Recent reds CI. Size: target under 30k chars, hard ceiling 40k.
