@@ -754,7 +754,7 @@ def test_walker_reuses_the_siblings_primitives_never_a_sixth_walker():
     import agents.market_intelligence.live_fill_counterfactuals as lfc
     assert lcl.srr.entry_walk is srr.entry_walk and lcl.srr.submit_time_and_window is srr.submit_time_and_window
     assert lcl.srr.current_era_stop is srr.current_era_stop and lcl.srr.mark_pnl_per_share is srr.mark_pnl_per_share
-    assert lcl.walk_arm is lfc.walk_arm and lcl.pinned_target is lfc.pinned_target
+    assert lcl.walk_arm is lfc.walk_arm and lcl.stack_walk_inputs is lfc.stack_walk_inputs
 
 
 def _wire_walker(monkeypatch, *, day0, sessions, stored=True, fetched=None, filings=None):

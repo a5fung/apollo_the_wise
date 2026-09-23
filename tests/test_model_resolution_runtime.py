@@ -259,9 +259,9 @@ def test_divergence_silent_when_running_matches_evaluated(monkeypatch, tmp_path)
 def _no_prior_notice(monkeypatch, rows=None):
     """The dedupe reads its own prior audit rows; default to 'never announced'."""
     import agents.market_intelligence.db as db
-    async def _fake(**kw):
-        return list(rows or [])
-    monkeypatch.setattr(db, "get_audit_log", _fake)
+    async def _fake(event_type, summary):
+        return any(r.get("summary") == summary for r in (rows or []))
+    monkeypatch.setattr(db, "audit_event_exists", _fake)
 
 
 def test_divergence_notifies_never_blocks_on_mismatch(monkeypatch, tmp_path):
@@ -305,9 +305,9 @@ def test_the_same_change_is_announced_ONCE_not_every_weeknight(monkeypatch, tmp_
     rows: list = []
     import agents.market_intelligence.db as db
 
-    async def _fake(**kw):
-        return list(rows)
-    monkeypatch.setattr(db, "get_audit_log", _fake)
+    async def _fake(event_type, summary):
+        return any(r["event_type"] == event_type and r["summary"] == summary for r in rows)
+    monkeypatch.setattr(db, "audit_event_exists", _fake)
 
     async def _record(event_type, summary, detail="", **kw):
         rows.append({"event_type": event_type, "summary": summary})
@@ -338,9 +338,9 @@ def test_a_failed_dedupe_lookup_SENDS_rather_than_goes_silent(monkeypatch, tmp_p
     breaks, the direction is 'send a duplicate', never 'drop the change'."""
     import agents.market_intelligence.db as db
 
-    async def _boom(**kw):
+    async def _boom(event_type, summary):
         raise RuntimeError("db down")
-    monkeypatch.setattr(db, "get_audit_log", _boom)
+    monkeypatch.setattr(db, "audit_event_exists", _boom)
     _, tg_mock = _mock_divergence_deps(
         monkeypatch, tmp_path, {"judge_model": "claude-opus-5"}, running="claude-opus-5-5")
     _run(mr.check_judge_eval_divergence())

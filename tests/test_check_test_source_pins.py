@@ -61,6 +61,23 @@ def test_read_text_on_a_scoped_module_is_flagged():
     assert [h["name"] for h in hits] == ["test_conflict_target_matches_the_key"]
 
 
+def test_a_filename_held_on_a_loop_variable_is_flagged():
+    """2026-09-22: `for f in ("x.py", ...): (DIR / f).read_text()` read three lanes' source and
+    went unseen — the read's own node carried only the directory, and the `.py` lived on the loop
+    variable. Deleting the loop-target binding in `_collect_path_vars` turns this red."""
+    src = _src("""
+        from pathlib import Path
+        REPO = Path(".")
+
+        def test_each_lane_mentions_the_stack():
+            for f, sig in (("gap_near_miss_replay.py", "magna53"), ("lowcap_lane_replay.py", "x")):
+                src = (REPO / "agents/market_intelligence" / f).read_text()
+                assert sig in src
+    """)
+    hits = find_source_pin_functions(src, "<t>")
+    assert [h["name"] for h in hits] == ["test_each_lane_mentions_the_stack"]
+
+
 def test_open_on_a_scoped_path_is_flagged():
     """MUTATION: removing `_is_scoped_open_read` from the `_is_inline_source_read` `or` chain
     reddened this (dropped to zero hits). Restored, re-verified green."""

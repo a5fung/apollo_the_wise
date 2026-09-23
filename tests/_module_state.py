@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+from functools import lru_cache
 from typing import Any
 
 #: The modules whose state a `run_ep_scan` comparison can carry between calls.
@@ -55,7 +56,14 @@ _OWN_RESET = {"agents.market_intelligence.ep_theme_belonging": "_reset_cache"}
 
 def state_holders(module: Any) -> "dict[str, str]":
     """{name: kind} for every module-level mutable container and `global`-rebound name in
-    `module`'s own source. Kind is 'container' or 'rebound'."""
+    `module`'s own source. Kind is 'container' or 'rebound'. The parse is cached per module (the
+    source does not change inside a test session; ep_detector alone is ~6,800 lines and
+    `reset_all` runs before every compared scan); callers get their own copy."""
+    return dict(_state_holders_parsed(module))
+
+
+@lru_cache(maxsize=None)
+def _state_holders_parsed(module: Any) -> "dict[str, str]":
     try:
         tree = ast.parse(inspect.getsource(module))
     except (OSError, TypeError, SyntaxError):

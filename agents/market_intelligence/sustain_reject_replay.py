@@ -115,7 +115,7 @@ from agents.market_intelligence.db import (
 )
 from agents.market_intelligence.live_fill_counterfactuals import (
     n_trading_days_back,
-    pinned_target,
+    stack_walk_inputs,
     walk_arm,
 )
 
@@ -421,14 +421,8 @@ async def _record_one_reject(conn, row: dict, last_session: date, run_date: date
             await _write(fields, out, label)
             return
         fields["stop_price"] = stop
-        # The partial level and the price-armed breakeven come from the SAME rule stack the row is
-        # stamped with (era D for MAGNA53: +8R partial, breakeven armed at +3R). Before 2026-09-22
-        # the partial was pinned at a +2R constant and the breakeven arm never passed, so the walk could
-        # only ever be the +2R stack whatever the stamp said.
-        partial_r = replay_exit_rules["intraday_partial_r"]
-        target = pinned_target(entry_px, orb_low, partial_r) if partial_r else None
+        target, walk_kw = stack_walk_inputs(replay_exit_rules, entry_px, orb_low)
         fields["target_price"] = target
-        r_frame_ps = (entry_px - orb_low) if (orb_low is not None and orb_low < entry_px) else None  # None -> walk_arm falls back to entry − stop
 
         fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
         # `sessions` was already fetched above (before the window/day0 checks) — reused here
@@ -436,11 +430,7 @@ async def _record_one_reject(conn, row: dict, last_session: date, run_date: date
 
         res = walk_arm(entry=entry_px, stop=stop, target=target, day0_bars=bars0,
                        fill_idx=fill_idx, sessions=sessions, prior_closes=prior_closes,
-                       harvest="live_ladder", fill_day=decline_date,
-                       breakeven_at_partial=bool(replay_exit_rules["breakeven_at_partial"]),
-                       trail_prior_closes=bool(replay_exit_rules["trail_prior_closes"]),
-                       ladder_partial=bool(replay_exit_rules["ladder_partial"]),
-                       breakeven_at_r=replay_exit_rules["breakeven_at_r"], r_frame_ps=r_frame_ps)
+                       harvest="live_ladder", fill_day=decline_date, **walk_kw)
         status = res["status"]
 
         if status == "pending":

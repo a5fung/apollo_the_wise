@@ -458,7 +458,9 @@ walkers pinned the partial at a `TARGET_R = 2.0` constant and never passed the s
 `breakeven_at_r` to `walk_arm`, so passing `"magna53"` by itself would have stamped rows era D
 while still walking the +2R stack — a mislabel, worse than the honest era_c stamp it replaced. Each
 now builds its target from the stamped stack's `intraday_partial_r` and passes `breakeven_at_r`
-with the ORB-R frame (`entry − orb_low`), the same arguments `live_fill_counterfactuals` passes.
+with the ORB-R frame (`entry − orb_low`) — since the same evening's review, through ONE helper,
+`live_fill_counterfactuals.stack_walk_inputs(rules, entry, orb_low)`, so a lane cannot stamp one
+stack and walk another.
 Proven by an era D walk of one tape three ways in `test_624_lowcap_lane.py` (no partial and a
 gap-through at −1.75R; the +8R partial firing at 18.5; the +3R price arm exiting at breakeven),
 each red under its mutation, and by an AST test that every production `walk_arm` call passes

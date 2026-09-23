@@ -504,10 +504,8 @@ async def check_judge_eval_divergence() -> None:
         # alone, so an exact match on a prior row is an exact "already said this".
         summary = f"JUDGE_MODEL now on {running}; last evaluated model {evaluated}"
         try:
-            from agents.market_intelligence.db import get_audit_log
-            prior = await get_audit_log(limit=50, event_type="judge_model_eval_divergence",
-                                        since_hours=24 * 400)
-            if any((r.get("summary") or "") == summary for r in prior):
+            from agents.market_intelligence.db import audit_event_exists
+            if await audit_event_exists("judge_model_eval_divergence", summary):
                 return  # already announced this exact change — once, not nightly
         except Exception as e:  # loud-ok: fail toward SENDING — a missed change is worse
             logger.warning(f"check_judge_eval_divergence: dedupe lookup failed, sending: {e}")

@@ -152,6 +152,17 @@ def _collect_path_vars(tree: ast.AST) -> dict:
         lits = _literal_strings(n.value)
         if lits:
             path_vars[n.targets[0].id] = lits
+    # `for f in ("x.py", "y.py"): (DIR / f).read_text()` — the filename lives on the loop
+    # variable, so the read's own node holds only the directory and never looked like a source
+    # path. Found 2026-09-22 when three new lane pins went unseen. Every Name the target binds
+    # takes every literal in the iterable (coarse, and false positives are the safe side).
+    for n in ast.walk(tree):
+        if isinstance(n, (ast.For, ast.AsyncFor, ast.comprehension)):
+            lits = _literal_strings(n.iter)
+            if lits:
+                for t in ast.walk(n.target):
+                    if isinstance(t, ast.Name):
+                        path_vars.setdefault(t.id, []).extend(lits)
     return path_vars
 
 

@@ -322,14 +322,38 @@ def compute_adr20_pct(pre_bars: list[dict]) -> tuple[Optional[float], int]:
     return sum(vals) / len(vals), len(vals)
 
 
+def orb_r_frame(entry: Optional[float], orb_low: Optional[float]) -> Optional[float]:
+    """entry − orb_low: MAGNA53's ORB-R frame (R per share, NOT the placed stop). None when no
+    valid frame exists — the ADR 0014 rule: skip, never fabricate."""
+    if entry is None or entry <= 0 or orb_low is None or orb_low >= entry:
+        return None
+    return entry - orb_low
+
+
 def pinned_target(entry: Optional[float], orb_low: Optional[float],
                   target_r: float = TARGET_R) -> Optional[float]:
     """entry + target_r × (entry − orb_low): the ORB-R frame `order_manager.
-    profit_target_r_per_share` pins for MAGNA53 (R = entry − orb_low, NOT the placed stop).
-    None when no valid frame exists — the ADR 0014 rule: skip, never fabricate."""
-    if entry is None or entry <= 0 or orb_low is None or orb_low >= entry:
-        return None
-    return entry + target_r * (entry - orb_low)
+    profit_target_r_per_share` pins for MAGNA53. None when no valid frame exists."""
+    r = orb_r_frame(entry, orb_low)
+    return None if r is None else entry + target_r * r
+
+
+def stack_walk_inputs(rules: dict, entry: float,
+                      orb_low: Optional[float]) -> tuple[Optional[float], dict[str, Any]]:
+    """(target, walk_arm kwargs) for walking ONE `rule_eras.exit_rules_as_of` stack on the live
+    ladder. A caller that stamps its row with `rules` and walks with these cannot stamp one stack
+    and walk another — the 2026-09-22 defect: three replay lanes pinned a +2R partial and never
+    passed the breakeven arm, so an era D stamp would have sat on an era C walk."""
+    partial_r = rules["intraday_partial_r"]
+    target = pinned_target(entry, orb_low, partial_r) if partial_r else None
+    return target, {
+        "breakeven_at_partial": bool(rules["breakeven_at_partial"]),
+        "trail_prior_closes": bool(rules["trail_prior_closes"]),
+        "ladder_partial": bool(rules["ladder_partial"]),
+        "breakeven_at_r": rules["breakeven_at_r"],
+        # None -> walk_arm falls back to entry − stop for the breakeven arm's R
+        "r_frame_ps": orb_r_frame(entry, orb_low),
+    }
 
 
 def arm_stop_price(stop_rule: str, *, entry: Optional[float], orb_low: Optional[float],
@@ -346,9 +370,8 @@ def arm_stop_price(stop_rule: str, *, entry: Optional[float], orb_low: Optional[
     if stop_rule == "orb_3r":
         # #631: entry − 3R in the ORB frame (R = entry − orb_low), the rung below the live
         # entry − 2R. Same validity rule as pinned_target: no frame → None, never a guess.
-        if entry is None or entry <= 0 or orb_low is None or orb_low >= entry:
-            return None
-        return entry - 3.0 * (entry - orb_low)
+        r = orb_r_frame(entry, orb_low)
+        return None if r is None else entry - 3.0 * r
     raise ValueError(f"unknown stop_rule {stop_rule!r}")
 
 

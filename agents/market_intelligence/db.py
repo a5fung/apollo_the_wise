@@ -16036,6 +16036,17 @@ async def get_correlation_clusters(cluster_date: str | date) -> list[dict]:
     return list(groups.values())
 
 
+async def audit_event_exists(event_type: str, summary: str) -> bool:
+    """True if mi_audit_log has EVER recorded `event_type` with exactly `summary` — an existence
+    check, not a recent-window read: a once-per-change notice must stay quiet however long ago it
+    was sent (model_resolution.check_judge_eval_divergence)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return bool(await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM mi_audit_log WHERE event_type = $1 AND summary = $2)",
+            event_type, summary))
+
+
 async def get_audit_log(
     limit: int = 30,
     event_type: str | None = None,
