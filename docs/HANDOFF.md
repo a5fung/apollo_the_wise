@@ -1082,3 +1082,28 @@ themes are discovered"*, and `parent_theme` is set on **1 of 94** live themes. R
 
 ⚠ **Do not spend time on the EXPECT/DONE-WHEN backlog** — checked 09-22, those 12 tasks already
 carry `DoD:` + `DONE-WHEN:` + `WOULD-FAIL-IF:`; only the literal marker is missing.
+
+## 2026-09-22 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the "NEXT RECOMMENDED: #505" line above.
+
+**Board 54** (day began 61; his standing ceiling 59). Seven closes today: #664, #672, #659, #610,
+#682, #680, #632. #505 moved to **Saturday** on his word; #354 is Sunday on its final signed bump.
+
+**Deployed 21:19 ET: market-agent + execution** (`dfb15d8f`). Opus 5.5 is bound; the model notice
+no longer asks for an eval and fires once per model change.
+
+**🔴 WEDNESDAY 09-23 — two checks, both declared before they run:**
+1. **~18:13 ET replay nightly:** new rows in `mi_sustain_reject_replays` and
+   `mi_gap_near_miss_replays` read `replay_exit_era='era_d'`, `target_r=8`. WOULD-FAIL-IF: `era_d`
+   with `target_r=2`, or still `era_c`. Carried on #359's line; record in both reviews' notes.
+   (The low-cap lane was already re-walked tonight on his OK: 13 rows, all era D.)
+2. **18:09 ET model notice:** exactly ONE "Grading judge is running a new model" Telegram naming
+   claude-opus-5-5, with the `_TIER_OVERRIDES` rollback line and no eval request; Thursday none.
+   Plus **#675** closes after Wednesday's digest if the fallback count stays zero.
+
+**UNDEPLOYED on purpose (tonight's review fixes, behaviour-neutral, tested):**
+`live_fill_counterfactuals.stack_walk_inputs`, `db.audit_event_exists`, the source-pin gate's
+loop-variable fix. `db.py` is execution-loaded → the next deploy is `both` then `execution`,
+AFTER Wednesday's 18:13 check so that check tests the code that shipped.
+
+**⛔ Never delete rows in `mi_sustain_reject_replays` / `mi_gap_near_miss_replays`** — pre-09-07
+walks are correctly era_c; post-flip ones stay labelled era_c by design.
