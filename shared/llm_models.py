@@ -165,7 +165,15 @@ def tier_of(model_id: str) -> "str | None":
 # rationale. (This overrides the RUNTIME binding only — it never touches the
 # committed *_PIN the deploy gate validates.)
 _TIER_OVERRIDES: dict[str, str | None] = {
-    "opus": None,
+    # 2026-09-23 ROLLBACK: claude-opus-5-5 (adopted by the resolver at the 09-22 21:19 ET
+    # deploy) rejects forced tool_choice — HTTP 400 "tool_choice: type 'tool' and 'any' are not
+    # supported for this model". Both JUDGE_MODEL callers force a tool through
+    # judge_transport.invoke_forced_tool, so every call fails open: the 09-23 16:02 ET
+    # management-judge pass returned no verdict for OKTA or VICR, and the EP grade judge would
+    # have done the same at the next 09:31 scan. Pinned back to the evaluated, working model;
+    # clear to None only once the judges can call the newer model (a transport change the
+    # ADR-0030 eval gate must clear).
+    "opus": "claude-opus-5",
     "sonnet": None,
     "haiku": None,
 }
