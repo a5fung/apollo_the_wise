@@ -15,8 +15,19 @@ warranted centralization here.
 """
 from __future__ import annotations
 
+import os
 import sys
 import types
+
+# ── A test must never reach the REAL repository through git's own environment. ──────────────
+# Git hooks export GIT_DIR / GIT_INDEX_FILE (etc.) to the process they run. When the pre-push
+# suite runs from a git WORKTREE those paths are absolute, so a test that does `git init` or
+# `git config` in a tmp dir silently acts on the real repo instead. 2026-09-23: a push from a
+# worktree re-initialised the main repo as BARE and wrote a fake `user.name = t` into its config
+# (tests/test_641_second_repo_is_visible.py). Cleared once, here, for every test.
+for _git_var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
+                 "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_PREFIX"):
+    os.environ.pop(_git_var, None)
 from unittest.mock import AsyncMock, MagicMock
 
 
