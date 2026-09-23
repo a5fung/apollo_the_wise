@@ -33,7 +33,7 @@ from agents.market_intelligence.system_audit import (
 from shared.llm_models import PRICING_PER_MTOK, SONNET
 from shared.output_ceilings import (
     CEILINGS, DO_NOT_RAISE_FOR_AT_CAP_PRESSURE, NEAR_CEILING_FRACTION,
-    TRUNCATION_BY_DESIGN, diagnose_truncation,
+    TRUNCATION_BY_DESIGN, TRUNCATION_SELF_HEALS, diagnose_truncation,
 )
 
 logger = logging.getLogger(__name__)
@@ -870,7 +870,18 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
         calls, trunc = int(r["calls"]), int(r["truncated"])
         if trunc and r["caller"] not in _TRUNC_BY_DESIGN:
             pct = round(100.0 * trunc / calls, 1)
-            if trunc >= _TRUNC_MIN_CALLS or pct >= _TRUNC_PCT_FLOOR:
+            # 2026-09-23 (operator noise triage): a TRUNCATION_SELF_HEALS caller (theme_discovery)
+            # truncates on its FIRST attempt by design — the forced schema-bounded retry is what
+            # recovers it (see output_ceilings.py's block above) — so its healthy baseline is a
+            # small, steady COUNT every night (2 of 15 on the evidence night, #543-class). The
+            # count arm (_TRUNC_MIN_CALLS) alone therefore pages it at its normal, recovering
+            # rate; only a RATE spike still means the batch size is wrong again (the scope note
+            # in output_ceilings.py: "the RATE is a real signal"). So this caller checks the pct
+            # arm ONLY — never exempted outright, since a real regression (most calls truncating)
+            # must still page.
+            worth_paging = (pct >= _TRUNC_PCT_FLOOR if r["caller"] in TRUNCATION_SELF_HEALS
+                             else trunc >= _TRUNC_MIN_CALLS or pct >= _TRUNC_PCT_FLOOR)
+            if worth_paging:
                 truncating.append({"caller": r["caller"], "calls": calls, "truncated": trunc,
                                    "pct": pct, "cap": r["cap_hit"]})
         # Only a caller reporting NOTHING is a wiring gap. A partial NULL count means the

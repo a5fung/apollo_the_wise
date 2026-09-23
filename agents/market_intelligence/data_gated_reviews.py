@@ -286,6 +286,31 @@ async def _evaluate_breakdown(sql: str) -> list[tuple[Any, int]] | None:
     return [(r[0], int(r[1])) for r in rows]
 
 
+_RESOLUTION_KEY_RE = re.compile(r"^resolution_(\d{4})_(\d{2})_(\d{2})$")
+
+
+def _latest_resolution_date(entry: dict[str, Any]) -> date | None:
+    """2026-09-23 — a RUNNING review (threshold met once, re-run every session) records each
+    run as a `resolution_YYYY_MM_DD` key rather than closing — `alert_rank_shadow_out_of_sample`
+    carries one for every session it has been read since 2026-08-16. `escalate_overdue_reviews`
+    only ever anchored age on `first_ready_date` (the day it FIRST flipped ready, back in
+    mid-August), so a review being run and recorded every session still read "READY 35d" — the
+    overdue-nag this fixes. Returns the newest such key parsed into a date, or None for an entry
+    that has never recorded one (unaffected — same as today)."""
+    latest: date | None = None
+    for key in entry:
+        m = _RESOLUTION_KEY_RE.match(key)
+        if not m:
+            continue
+        try:
+            d = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            continue
+        if latest is None or d > latest:
+            latest = d
+    return latest
+
+
 async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
     """Walk the registry; return ready + pending summaries for the digest."""
     if today is None:
@@ -336,6 +361,10 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
         # #517 2026-08-17 — readiness sanity check. See the module docstring block above for the
         # two failure classes these catch (date-fire, population mismatch) and why they're static.
         last_run_inconclusive_on = e.get("last_run_inconclusive_on")
+        # 2026-09-23 — mirrors last_run_inconclusive_on's plumbing above: read out of the
+        # entry once here, carried in the payload so escalate_overdue_reviews (below) can
+        # anchor age on it without re-parsing the registry itself. See _latest_resolution_date.
+        last_resolution_date = _latest_resolution_date(e)
         declared_columns = e.get("discriminates_on")
         evidence_flags = {
             "date_fire": is_date_fire_predicate(predicate_sql),
@@ -371,6 +400,12 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
                                           if hasattr(last_run_inconclusive_on, "isoformat")
                                           else last_run_inconclusive_on),
             "last_run_note": e.get("last_run_note"),
+            # 2026-09-23 — newest `resolution_YYYY_MM_DD` key on the entry, or None. Distinct
+            # from last_run_inconclusive_on (a single hand-set field for one specific stalled
+            # run) — this is derived fresh every call from however many resolution keys a
+            # RUNNING review has accumulated.
+            "last_resolution_date": (last_resolution_date.isoformat()
+                                      if last_resolution_date else None),
             # #662 2026-09-20 — the date the review was WRITTEN. A ripe review is only actionable
             # if its question still matches the live rule: the extension-cap review surfaced
             # "ripe 5d" this morning and was asking about a cap reverted three weeks earlier. The
@@ -441,6 +476,17 @@ async def escalate_overdue_reviews(
         if rid in ready:                       # ready takes precedence over a stale error flag
             kind, ref = "ready", ready[rid]
             first_ready = st.get("first_ready_date") or today
+            # 2026-09-23 — a RUNNING review (alert_rank_shadow_out_of_sample's class) stays
+            # "ready" continuously once its (deliberately low, e.g. threshold=1) bar is first
+            # met, so first_ready_date alone pins age to that FIRST flip forever — 35d and
+            # counting on a review actually being run and recorded every session. Anchor on
+            # whichever is LATER: the original first-ready date, or the newest resolution_*
+            # key the registry carries for it. Persisted forward below (not just read here) so
+            # next run's `first_ready_date` starts from the last real run, not the 08-17 flip —
+            # the 7-day clock restarts from there, same as a genuinely fresh ready review would.
+            last_resolution = ref.get("last_resolution_date")
+            if last_resolution:
+                first_ready = max(first_ready, date.fromisoformat(last_resolution))
             first_error = None
             anchor = first_ready
         else:

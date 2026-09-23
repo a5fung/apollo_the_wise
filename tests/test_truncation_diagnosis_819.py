@@ -330,10 +330,17 @@ def _wire_nightly(monkeypatch, agg_rows, hist_rows=()):
 
 
 def _truncating_scenario(monkeypatch):
+    # 2026-09-23: theme_discovery is a TRUNCATION_SELF_HEALS caller — its documented healthy
+    # baseline is 2 of 15 (13.3%), well under the 50% pct floor, and the count arm alone
+    # (2 >= _TRUNC_MIN_CALLS) used to page it at that healthy rate every night. This scenario
+    # is deliberately a RATE SPIKE (5 of 9, 55.6%) — the case the pct arm exists to still
+    # catch (a batch-size regression, "recovery starts firing on most calls" per
+    # output_ceilings.py's own scope note) — so it still demonstrates the do-not-raise
+    # diagnosis attaching. The healthy-rate non-page case is pinned separately below.
     return _wire_nightly(
         monkeypatch,
         agg_rows=[
-            {"caller": "theme_discovery", "calls": 9, "truncated": 2, "unreported": 0,
+            {"caller": "theme_discovery", "calls": 9, "truncated": 5, "unreported": 0,
              "cap_hit": 8000, "max_completed": 6700},
             {"caller": "ep_catalyst_grade", "calls": 300, "truncated": 2, "unreported": 0,
              "cap_hit": 1500, "max_completed": 140},
@@ -343,6 +350,36 @@ def _truncating_scenario(monkeypatch):
             {"caller": "ep_catalyst_grade", "mean_completed": 65.0, "max_completed": 140},
         ],
     )
+
+
+def test_theme_discoverys_healthy_self_heal_rate_does_not_page(monkeypatch):
+    """2026-09-23 (operator noise triage): theme_discovery's documented healthy baseline (2 of
+    15, 13.3% — the forced schema-bounded retry recovering on its first attempt, per
+    output_ceilings.py's TRUNCATION_SELF_HEALS block) must NOT page the nightly digest — it
+    used to, on the count arm alone (2 >= _TRUNC_MIN_CALLS), every night this shape occurred.
+    A non-self-heals caller at the SAME 2-of-N count (ep_catalyst_grade, 2 of 300) still pages
+    — this isn't a blanket exemption, only the count arm is turned off for self-heals callers.
+
+    MUTATION PROVEN: removing the TRUNCATION_SELF_HEALS branch (falling back to the plain
+    `trunc >= _TRUNC_MIN_CALLS or pct >= _TRUNC_PCT_FLOOR` for every caller) makes
+    `"theme_discovery" not in by_caller` fail — restored before commit."""
+    cb = _wire_nightly(
+        monkeypatch,
+        agg_rows=[
+            {"caller": "theme_discovery", "calls": 15, "truncated": 2, "unreported": 0,
+             "cap_hit": 8000, "max_completed": 6700},
+            {"caller": "ep_catalyst_grade", "calls": 300, "truncated": 2, "unreported": 0,
+             "cap_hit": 1500, "max_completed": 140},
+        ],
+        hist_rows=[
+            {"caller": "theme_discovery", "mean_completed": 6100.0, "max_completed": 6700},
+            {"caller": "ep_catalyst_grade", "mean_completed": 65.0, "max_completed": 140},
+        ],
+    )
+    out = asyncio.run(cb.compute_truncation_check())
+    by_caller = {x["caller"]: x for x in out["truncating"]}
+    assert "theme_discovery" not in by_caller           # healthy self-heal rate, no page
+    assert "ep_catalyst_grade" in by_caller              # same count arm, not self-heals -> still pages
 
 
 def test_nightly_check_attaches_a_diagnosis_per_truncating_caller(monkeypatch):
@@ -450,22 +487,31 @@ def test_the_give_up_path_is_the_one_that_alarms():
     """Guard the trade: silencing the recovery is only defensible because the FAILURE is loud.
     If discovery exhausts its loop guard the forced retry did not land either, so that batch
     yields NO themes — the engine going dark for the night, which used to be a logger.warning
-    nobody reads while the healthy retry Telegrammed every time."""
+    nobody reads while the healthy retry Telegrammed every time.
+
+    2026-09-23: both give-up paths (loop_guard>8, AND the forced-retry-also-truncated path
+    added below) now route through one shared helper, `_alarm_discovery_batch_lost` — see
+    test_a_forced_retry_that_ALSO_truncates_alarms_loudly for the behavioural pin on the
+    second path; this one stays a source check on the FIRST (triggering loop_guard>8
+    behaviourally needs a multi-turn advisor-call fake client, not worth the weight next to a
+    real behavioural test of the same shared helper right below it)."""
+    # source-pin-ok: a wiring check that the loop_guard>8 give-up path CALLS the shared alarm; reaching that branch needs a multi-turn advisor fake, and the alarm itself is behaviour-tested in test_a_forced_retry_that_ALSO_truncates_alarms_loudly
     import inspect
 
     from agents.market_intelligence import theme_engine
-    src = inspect.getsource(theme_engine.discover_themes_llm) if hasattr(
-        theme_engine, "discover_themes_llm") else pathlib.Path(
-        "agents/market_intelligence/theme_engine.py").read_text(encoding="utf-8")
+    src = pathlib.Path("agents/market_intelligence/theme_engine.py").read_text(encoding="utf-8")
     seg = src[src.index("loop_guard > 8"):]
     # Slice to the END OF THE GIVE-UP BLOCK, not a fixed character count: a 2000-char window
     # silently stopped covering the audit call the moment a comment was added above it
     # (2026-09-02), and the test then failed for a reason that had nothing to do with the code
     # it guards.
     seg = seg[:seg.index("response = await client.messages.create(")]
-    assert '"discovery_recovery_error"' in seg, (
-        "the give-up path must write its own audit event — it is the failure the live alarm "
-        "was suppressed in favour of")
+    assert "_alarm_discovery_batch_lost(" in seg, (
+        "the give-up path must raise the shared batch-lost alarm — it is the failure the live "
+        "alarm was suppressed in favour of")
+    helper_src = inspect.getsource(theme_engine._alarm_discovery_batch_lost)
+    assert '"discovery_recovery_error"' in helper_src, (
+        "the shared alarm must write its own audit event")
     # THE NAME, not just the presence (2026-09-02). _check_nightly_silent_errors, /audit and
     # `show errors 7d` all select on event_type LIKE '%error%' / '%rate_limited%' /
     # '%api_failure%'. The original name matched none of them, so the event existed and was
@@ -475,5 +521,61 @@ def test_the_give_up_path_is_the_one_that_alarms():
     assert any(pat in "discovery_recovery_error" for pat in _SWEEP_PATTERNS), (
         "the give-up event name matches none of the nightly error sweep's LIKE patterns, so it "
         "is invisible to /audit, `show errors` and the nightly digest")
-    assert "send_telegram_message" in seg, (
+    assert "send_telegram_message" in helper_src, (
         "returning no themes must reach the operator; a logger.warning is not an alarm")
+
+
+def test_a_forced_retry_that_ALSO_truncates_alarms_loudly(monkeypatch):
+    """2026-09-23 (operator noise triage) — THE REAL GAP: until now, a FORCED schema-bounded
+    retry that ALSO truncates only logged a warning nobody reads and silently returned [] —
+    the batch's themes were gone with nothing in mi_audit_log and no Telegram, the opposite of
+    the loop_guard>8 give-up path a few lines up (which always alarmed). Behavioural, not a
+    source check: drives `_discover_new_themes_single` through a real truncate-then-still-
+    truncate sequence and asserts the alarm actually fires.
+
+    MUTATION PROVEN: removing the `await _alarm_discovery_batch_lost(...)` call from the
+    forced-truncation branch (leaving only the pre-existing `logger.warning`) makes
+    `audit.assert_awaited_once()` fail (0 calls, not 1); restored before commit."""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from agents.market_intelligence import theme_engine as te
+    from agents.market_intelligence import universe as universe_mod
+    from agents.market_intelligence import spend_tracker as spend_tracker_mod
+    import agents.market_intelligence.briefing as briefing_mod
+
+    class _TruncResp:
+        content = []                # no tool_use — a truncated call never completed one
+        stop_reason = "max_tokens"
+        usage = SimpleNamespace(output_tokens=8000)
+
+    calls = {"n": 0}
+
+    async def fake_create(**kwargs):
+        calls["n"] += 1
+        return _TruncResp()
+
+    client = SimpleNamespace(messages=SimpleNamespace(create=fake_create))
+    monkeypatch.setattr(te, "_get_anthropic_client", lambda: client)
+    monkeypatch.setattr(universe_mod, "TICKER_DESC", {"AAA": "AI infrastructure name"})
+
+    audit = AsyncMock()
+    tg = AsyncMock(return_value=True)
+    monkeypatch.setattr(te, "log_audit_event", audit)
+    monkeypatch.setattr(briefing_mod, "send_telegram_message", tg)
+
+    async def _noop(*a, **k):
+        return None
+    monkeypatch.setattr(spend_tracker_mod, "log_anthropic_call_safe", _noop)
+
+    stock = {"ticker": "AAA", "rs_composite": 90.0, "rs_rank": 1, "sector": "Technology"}
+    out = asyncio.run(te._discover_new_themes_single(
+        uncovered_stocks=[stock], existing_themes=[], stocks_by_ticker={"AAA": stock}))
+
+    assert out == []
+    assert calls["n"] == 2, "must retry exactly once (forced) before giving up"
+    # audit also carries a "theme_discovery_llm_call" telemetry row per iteration (unrelated
+    # to this alarm) — isolate the event this fix actually adds.
+    recovery_calls = [c for c in audit.await_args_list if c.args[0] == "discovery_recovery_error"]
+    assert len(recovery_calls) == 1
+    tg.assert_awaited_once()
+    assert "gave up" in tg.await_args.args[0]

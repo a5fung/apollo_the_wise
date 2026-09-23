@@ -98,9 +98,17 @@ TRUNCATION_BY_DESIGN = frozenset({
 #
 # ⚠ SCOPE: this suppresses only the LIVE alarm. The nightly cost-board digest still counts these
 # truncations, because the RATE is a real signal — if recovery starts firing on most calls, the
-# batch size is wrong again and we want to see it. And the actual failure — the forced retry ALSO
-# missing, so discovery returns NO themes — Telegrams on its own from theme_engine's loop guard
-# (`discovery_recovery_error`). Alarm on the failure, not on the recovery.
+# batch size is wrong again and we want to see it.
+#
+# 🔴 CORRECTED 2026-09-23 — the line that used to be here ("the forced retry ALSO missing ...
+# Telegrams on its own from theme_engine's loop guard") was WRONG, not just imprecise. The
+# forced retry truncating is a DIFFERENT code path from the loop_guard>8 give-up this
+# referenced, and until 2026-09-23 that path only ever hit `logger.warning` — no audit row, no
+# Telegram, the batch's themes silently gone. Found while fixing the same class of noise
+# elsewhere in the stack (four false Telegram alerts triaged the same night). Both paths now
+# share one alarm, `theme_engine._alarm_discovery_batch_lost`, called from the loop_guard>8
+# site AND from the forced-retry-truncated site — so this comment cannot drift out of sync
+# with the code again the way it just did.
 TRUNCATION_SELF_HEALS = frozenset({
     "theme_discovery",  # forced schema-bounded retry lands it; see the block above
 })

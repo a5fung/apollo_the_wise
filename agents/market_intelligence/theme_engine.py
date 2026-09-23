@@ -6284,6 +6284,30 @@ async def _discover_new_themes(
     return _out
 
 
+async def _alarm_discovery_batch_lost(reason: str) -> None:
+    """2026-09-23 — ONE shared alarm for BOTH ways a discovery batch can lose its themes
+    silently, so they cannot drift apart the way they already had: the loop_guard>8 give-up
+    (many iterations, nothing ever committed) always Telegrammed; the FORCED schema-bounded
+    retry ALSO truncating only ever logged a `logger.warning` nobody reads — the exact
+    backwards shape (silent failure, loud recovery) the loop_guard path itself was built on
+    2026-09-01 to fix, recreated one branch over. Same event name both paths use
+    (`discovery_recovery_error`) so the existing nightly-silent-errors sweep and `/audit`
+    still catch it — see the loop_guard call site's own comment on why that name is
+    load-bearing. Never raises — a health guard that breaks the return path is worse than one
+    silent batch."""
+    try:
+        await log_audit_event(
+            "discovery_recovery_error",
+            f"theme discovery gave up — NO THEMES from this batch ({reason})",
+        )
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(
+            f"🔴 *Theme discovery gave up* — {reason}. The engine is dark for that batch; "
+            "tonight's theme set is incomplete.")
+    except Exception as _e:  # loud-ok: never let the alarm break the return path
+        logger.warning(f"theme discovery give-up alarm failed: {_e}")
+
+
 async def _discover_new_themes_single(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
@@ -6552,38 +6576,22 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 # `theme_discovery` moved to TRUNCATION_BY_DESIGN on 2026-09-01: the alarm now
                 # sits on the failure instead of the recovery.
                 logger.warning("Theme discovery: loop guard tripped (>8 iterations) — returning no themes")
-                try:
-                    # NO function-local import here. `log_audit_event` is already bound at
-                    # module level (line ~63), and a local `from ... import` makes the name
-                    # LOCAL for the WHOLE function — so every earlier reference in
-                    # _discover_new_themes_single would raise UnboundLocalError. That is the
-                    # 2026-05-20 outage class (#433, EP scans dead for 1h21m); the deploy gate
-                    # [5d/7] caught this one before it shipped, 2026-09-01.
-                    # EVENT NAME IS LOAD-BEARING (renamed 2026-09-02). The nightly sweep
-                    # `_check_nightly_silent_errors` matches event_type LIKE '%error%' /
-                    # '%rate_limited%' / '%api_failure%', and so do `/audit` and
-                    # `show errors 7d`. `theme_discovery_recovery_failed` matched NONE of them,
-                    # so this failure was invisible everywhere except the bespoke Telegram send
-                    # below — which is presumably why the send had to be bespoke. The sibling
-                    # failures in this same function (discovery_api_failure /
-                    # discovery_rate_limited / discovery_error, ~200 lines down) are named
-                    # deliberately so transient ones do NOT trip the L1 invariant and hard ones
-                    # DO; this is a hard one. The direct send STAYS: batching into the digest
-                    # would be one bucketed line, and the operator chose loudness for this
-                    # (2026-09-01). Redundant now, not wrong.
-                    await log_audit_event(
-                        "discovery_recovery_error",
-                        f"theme discovery gave up after {loop_guard - 1} iterations — "
-                        f"NO THEMES from this batch (the forced schema-bounded retry did not "
-                        f"land either)",
-                    )
-                    from agents.market_intelligence.briefing import send_telegram_message
-                    await send_telegram_message(
-                        "🔴 *Theme discovery gave up* — a batch produced NO themes after the "
-                        "forced-schema retry also failed. The engine is dark for that batch; "
-                        "tonight's theme set is incomplete.")
-                except Exception as _e:  # loud-ok: never let the alarm break the return path
-                    logger.warning(f"theme discovery give-up alarm failed: {_e}")
+                # EVENT NAME IS LOAD-BEARING (renamed 2026-09-02). The nightly sweep
+                # `_check_nightly_silent_errors` matches event_type LIKE '%error%' /
+                # '%rate_limited%' / '%api_failure%', and so do `/audit` and
+                # `show errors 7d`. `theme_discovery_recovery_failed` matched NONE of them,
+                # so this failure was invisible everywhere except the Telegram send — which is
+                # presumably why the send had to exist at all. The sibling failures in this
+                # same function (discovery_api_failure / discovery_rate_limited /
+                # discovery_error, ~200 lines down) are named deliberately so transient ones do
+                # NOT trip the L1 invariant and hard ones DO; this is a hard one.
+                # 2026-09-23: extracted into `_alarm_discovery_batch_lost` (module level, above
+                # `_discover_new_themes_single`) — a second give-up path (forced retry ALSO
+                # truncating, below) needed the identical alarm and had only ever logged a
+                # warning; one helper so the two cannot drift apart again.
+                await _alarm_discovery_batch_lost(
+                    f"gave up after {loop_guard - 1} iterations — the forced schema-bounded "
+                    f"retry did not land either")
                 return []
             response = await client.messages.create(
                 model=THEME_MODEL,
@@ -6656,9 +6664,24 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                         "partial and forcing a bounded report")
                     force_report = True
                     continue
+                # 2026-09-23 — THE REAL GAP this alarm plugs: until now, the FORCED retry ALSO
+                # truncating only ever hit `logger.warning` two lines up + this comment's own
+                # "give up LOUDLY" claim, which the code never did — the batch's themes were
+                # lost with nothing in mi_audit_log and no Telegram. Same shared alarm the
+                # loop_guard>8 give-up path uses (`_alarm_discovery_batch_lost`, defined above
+                # `_discover_new_themes_single`) — the llm_truncation_live alarm noted below
+                # says the CALL truncated; this says the BATCH lost its themes because of it,
+                # which llm_truncation_live does not say on its own.
                 logger.warning(
                     "Theme discovery: FORCED report also truncated — returning no themes for "
                     f"this call ({_TRUNCATION_ALARM_NOTE})")
+                # No literal "max_tokens" (or any other single-underscore token) in this
+                # string — it rides straight into a Markdown V1 Telegram send (no md_to_html
+                # here, unlike the catalyst lattice monitor), and ONE unmatched underscore is
+                # exactly the #477/#647 400 class ("magna53_ep.md" did this for months).
+                await _alarm_discovery_batch_lost(
+                    f"a forced schema-bounded retry also hit the output cap on iteration "
+                    f"{loop_guard}")
                 return []
 
             # Model produced no tool call. Don't silently discard the whole discovery

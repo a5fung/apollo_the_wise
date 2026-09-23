@@ -168,7 +168,10 @@ def test_module_constant_covers_the_required_tables():
     assert covered == {
         "mi_flag_undercut_rally", "mi_flag_breaks",
         "mi_htf_breakout_shadow", "mi_consolidation_entry_shadow",
-        "mi_9m_ep_alerts", "mi_ep_alerts",
+        # mi_9m_ep_alerts REMOVED 2026-09-23 — 9m_day2 has been permanently gated off
+        # since 2026-09-08 (scheduler.py::_9m_scan_job's should_run guard); the table is
+        # dead by design, not by failure, so watching it alarmed every night for nothing.
+        "mi_ep_alerts",
         "mi_exit_path_shadow", "mi_alert_rank_shadow",
         # 2026-08-22: the shortlist pre-score counterfactual recorder — same
         # can-fail-100%-silently class (fire-and-forget writer, read by nothing
@@ -327,7 +330,7 @@ _HEALTHY_TABLES = {
     "mi_flag_breaks": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 5)], None),
     "mi_htf_breakout_shadow": (date(2026, 8, 14), [{"d": d} for d in _days_ending(date(2026, 8, 14), 8, 5)], None),
     "mi_consolidation_entry_shadow": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 5)], None),
-    "mi_9m_ep_alerts": (date(2026, 8, 16), [{"d": d} for d in _days_ending(date(2026, 8, 16), 8, 2)], None),
+    # mi_9m_ep_alerts REMOVED 2026-09-23 (see the module-constant comment above).
     "mi_ep_alerts": (date(2026, 8, 16), [{"d": d} for d in _days_ending(date(2026, 8, 16), 8, 2)], None),
     "mi_flag_undercut_rally": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 5)], None),
     "mi_exit_path_shadow": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 1)], None),
@@ -344,7 +347,7 @@ def test_clean_run_is_silent_audit_only(monkeypatch):
     out = asyncio.run(hc.run_detector_liveness_check())
     assert out["flags"] == [] and sent == []
     assert [e for e, _, _ in logged] == ["detector_liveness_check"]
-    assert out["tables_scanned"] == 8
+    assert out["tables_scanned"] == 7  # 7 wired since mi_9m_ep_alerts was removed 2026-09-23
 
 
 # These orchestration-level "dark" fixtures deliberately use >= MIN_ACTIVE_DAYS active
@@ -527,7 +530,7 @@ def test_history_read_failure_fails_open_toward_silence_not_alarm(monkeypatch):
     _conn.fetch = _fetch_with_history_failure
 
     out = asyncio.run(hc.run_detector_liveness_check())
-    assert out["tables_scanned"] == 8  # sweep proceeded despite the failed history read
+    assert out["tables_scanned"] == 7  # sweep proceeded despite the failed history read (7 wired since 2026-09-23)
     flagged = next(f for f in out["flags"] if f["table"] == "mi_exit_path_shadow")
     assert flagged["in_grace"] is True  # failed open -> treated as newly first-seen -> silent
     assert sent == []
@@ -543,7 +546,7 @@ def test_one_bad_table_does_not_kill_the_sweep(monkeypatch):
     tables["mi_flag_undercut_rally"] = _DARK_UNDERCUT_RALLY
     _conn, logged, sent = _wire(monkeypatch, per_table=tables)
     out = asyncio.run(hc.run_detector_liveness_check())
-    assert out["tables_scanned"] == 7  # 8 tables minus the one that raised
+    assert out["tables_scanned"] == 6  # 7 tables minus the one that raised (2026-09-23)
     assert any(e.get("table") == "mi_htf_breakout_shadow" for e in out["errors"])
     assert any(f["table"] == "mi_flag_undercut_rally" for f in out["flags"])
 

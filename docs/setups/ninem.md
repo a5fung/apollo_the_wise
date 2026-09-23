@@ -8,14 +8,22 @@
 > HISTORY, marked RETIRED — do not implement from it.** It stays because the 6/18 evidence and the
 > reasoning are why the next reader will not re-litigate a retired entry; deleting the section would
 > lose the argument and keep the temptation.
+>
+> ⚠ **UPDATE 2026-09-23 (the gate shipped 2026-09-08; this doc wasn't updated until now) — the
+> intraday scan clause above is stale.** `_9m_scan_job`
+> (`9m_ep_scan`) gates on `should_run("9m_day2")`, and that flag has been permanently gated off
+> since 2026-09-08 — see the change log below. The intraday scan does not run and
+> `mi_9m_ep_alerts` does not write. The sugar-baby EOD sweep and `mi_sugar_babies_cohort` are
+> unaffected (a separate, ungated job) and still run nightly.
 
-**Phase**: Stages 1–2 (intraday 9M + sugar-baby EOD) **LIVE** (paper/telemetry).
+**Phase**: Stage 1 (intraday 9M) GATED OFF since 2026-09-08 (`should_run("9m_day2")`, see change
+log); Stage 2 (sugar-baby EOD) **LIVE** (paper/telemetry).
 **Stage 3 (Day-2 ORB): RETIRED → shadow 2026-06-18** (operator-signed, #327 read — see change log),
 **DEPRECATED (terminal) 2026-07-05/06** (#424, ADR 0022 §1), **CODE DELETED 2026-08-02** (#515).
 Replacement entry = consolidation tightness→expansion (#327 Phase B, shadow-first).
 **Origin**: Pradeep Bonde virgin 9-million-share (9M) day methodology.
 **Code (what exists TODAY)**:
-- Intraday detection: `agents/market_intelligence/ninem_detector.py`, scheduler every 5 min 9:30-16:00 ET (`9m_ep_scan`) — **LIVE**
+- Intraday detection: `agents/market_intelligence/ninem_detector.py`, scheduler every 5 min 9:30-16:00 ET (`9m_ep_scan`) — **GATED OFF 2026-09-08** (`_9m_scan_job` returns early on `should_run("9m_day2")` — the flag, not the code, decides; re-enable revives it)
 - EOD sweep: `run_9m_eod_sweep` called from nightly_data_pull — **LIVE**. ⚠ It no longer writes the
   Day-2 candidate list; the `mi_9m_day2_candidates` TABLE is retained for history (rows kept, writer gone).
 - Pradeep cohort: `mi_sugar_babies_cohort` — **LIVE, and a DIFFERENT table** from
@@ -127,6 +135,17 @@ digest at all.
 3. **9M Day-2 ORB = legacy/bridge mechanism, NOT the methodology entry (#65, architecture direction analyzed 2026-05-31, advisor-reviewed).** Per Pradeep methodology the 9M event is a WATCH-UNIVERSE trigger; the *intended* entry comes from tightness→expansion (the flag-class / entry-technique layer). That path is **already wired and running in shadow** (P7.3b `ninem_universe_watch` carryforward, 2026-05-17) and is the **TARGET** 9M entry. The mechanical Day-2 ORB (Stage 3 above) runs in **parallel as a legacy/bridge** — the only 9M *paper* entry until the entry-technique detectors (flag-break #94 / support-test #95 / MA-pullback #96 / U&R #98) graduate (N≥10, earliest 7/15). Evidence 2026-05-31: N=4 clean-closed = −$1,541 / 75% loss; it mechanically enters clinical biotechs (ROIV/PURR) the MAGNA53 revenue-stage gate would block — a *gateable* defect, not proof the strategy is worthless. **Which mechanism trades the cohort is a layer-2 (evidence-gated) decision** — do NOT demote `9m_day2` on N=4 (demote→shadow freezes the cohort at N=4 forever; shadow = no fills). Operational options A (deprecate) / B (revenue-stage gate now) / C (rename) in `data_gated_reviews.yaml::ninem_day2_mechanical_vs_methodology_alignment`. Portfolio map: `docs/setups/PORTFOLIO.md`. **→ RESOLVED 2026-06-18 (option A, deprecate): #327 replay (N=36, not N=4) confirmed Day-2 ORB has no robust edge → retired to shadow, consolidation entry is the replacement. See the 2026-06-18 change-log entry (the layer-2 evidence-gated decision this limitation deferred).**
 
 ## Change log (newest first)
+
+### 2026-09-23 — doc fix: intraday scan has been gated off since 2026-09-08, not LIVE
+
+`_9m_scan_job` (`9m_ep_scan`) gates on `should_run("9m_day2")`; that strategy row has been
+`phase='deprecated', enabled=false` since 2026-09-08 (see scheduler.py's own comment on the
+job — the gate was added that day to stop the scan paging an L2 anomaly for a lane that
+cannot place an order). `mi_9m_ep_alerts` has not received a row since. This doc's "LIVE"
+claims for the intraday stage were never updated when the gate shipped — corrected here, no
+code change. `mi_9m_ep_alerts` also dropped out of `health_checks._DETECTOR_LIVENESS_TABLES`
+the same day (watching a deliberately-silenced writer alarms on the outcome the gate exists
+to produce). Sugar-baby EOD is a separate, ungated job and is unaffected.
 
 ### 2026-08-02 — Day-2 ORB entry DELETED (the strategy, not the character) [#515, operator-directed]
 

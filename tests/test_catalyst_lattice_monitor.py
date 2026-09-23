@@ -337,9 +337,13 @@ async def test_trigger_b_high_collapse_names_the_numbers(monkeypatch):
     """A genuine halving, with the flip well outside the whole lookback span (self-healed —
     see _lattice_era_windows), MUST still fire exactly as before the era-scope fix.
 
-    The `hc._LATTICE_REVERT_SQL not in msg` line is MUTATION PROVEN: hardcoding
-    `_withhold_correlation_only = False` in the source made this assertion fail (the SQL
-    printed anyway); restored before commit."""
+    2026-09-23 (operator noise triage): this fixture has no hard evidence alongside it, so
+    since the SEND gate (below) it no longer pages — it's the exact shape that paged three
+    nights running (09-21/22/23) with the same "revert NOT indicated" verdict. Message-text
+    assertions moved to test_trigger_b_unexplained_does_not_block_a_hard_evidence_revert,
+    which keeps a P1 alongside (b) so the message still gets sent and can still be read;
+    this test now only pins that the trigger data + the withhold reason are unchanged and
+    that nothing pages for a correlation-only, no-hard-evidence finding."""
     audit, tg = _patch_common(monkeypatch)
     conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
                       flip_date=date(2026, 1, 1))
@@ -351,17 +355,17 @@ async def test_trigger_b_high_collapse_names_the_numbers(monkeypatch):
     assert t["recent_avg"] == 1.0 and t["prior_avg"] == 4.0 and t["drop_pct"] == 75.0
     assert t["recent_supply"] > 0 and t["prior_supply"] > 0
     assert t["flip_date"] == "2026-01-01" and t["flip_date_source"] == "shadow_acting_record"
-    msg = tg.call_args[0][0]
-    assert "CONVERTING LESS OF WHAT THE TAPE OFFERS" in msg
-    assert "75.0%" in msg and "2026-01-01" in msg
     # #666 (2026-09-19): a RATE comparison alone — no named prevented alerts recorded — must
     # no longer print the revert SQL. This is the exact case that tripped 2026-09-15 at
     # p=0.086: printing revert SQL here would be exactly the WOULD-FAIL-IF this fix exists for.
     assert t["shortfall"] == 15.0 and t["prevented"] == [] and t["accounts_for_shortfall"] is False
-    assert hc._LATTICE_REVERT_SQL not in msg
     assert out["revert_withheld_reason"] == "correlation_unexplained"
-    assert "ZERO alerts it prevented" in msg and "shortfall of 15.0" in msg
-    assert "not evidence the lattice caused it" in msg
+    # MUTATION PROVEN (2026-09-23): removing the SEND gate's `reason is None` check made this
+    # withheld-and-no-hard-evidence case page again; restored before commit.
+    assert tg.called is False
+    # the audit row is unconditional — still written with the withhold reason (also pinned in
+    # test_the_withhold_reason_is_in_the_audit_row).
+    assert any(c.args[0] == "catalyst_lattice_monitor_alert" for c in audit.call_args_list)
 
 
 @pytest.mark.asyncio
@@ -430,9 +434,41 @@ async def test_trigger_b_unexplained_does_not_block_a_hard_evidence_revert(monke
     assert kinds == {"p1_member_routine", "high_conversion_drop"}
     b = [t for t in out["triggers"] if t["kind"] == "high_conversion_drop"][0]
     assert b["accounts_for_shortfall"] is False          # (b) alone is still unexplained...
+    # Same fixture as test_trigger_b_high_collapse_names_the_numbers (recent_high=1,
+    # prior_high=4) — a genuine halving, still reported by name even though the SQL prints
+    # for a different reason (P1) than the halving itself would justify alone.
+    assert b["recent_avg"] == 1.0 and b["prior_avg"] == 4.0 and b["drop_pct"] == 75.0
+    assert b["shortfall"] == 15.0 and b["prevented"] == []
     msg = tg.call_args[0][0]
+    assert "CONVERTING LESS OF WHAT THE TAPE OFFERS" in msg
+    assert "75.0%" in msg and "2026-01-01" in msg
+    assert "ZERO alerts it prevented" in msg and "shortfall of 15.0" in msg
     assert hc._LATTICE_REVERT_SQL in msg                 # ...but the P1 miss still prints it
     assert out["revert_withheld_reason"] is None
+    assert tg.called is True                             # hard evidence present -> still pages
+
+
+@pytest.mark.asyncio
+async def test_a_withheld_correlation_only_finding_does_not_page(monkeypatch):
+    """2026-09-23 (operator noise triage): a same-day triage of four noise alerts found this
+    one — `revert_withheld_reason == "correlation_unexplained"` with nothing else to act on —
+    paged three nights running (09-21/22/23) with the identical verdict "revert NOT
+    indicated" (the other three noise alerts were unrelated: the retired-detector watch,
+    this monitor's overdue-review nag, and the truncation check). The audit row is the
+    permanent record either way; only the Telegram SEND is gated on there being something to
+    act on (a hard trigger, or a revert actually indicated).
+
+    MUTATION PROVEN: reverting the `if _hard_evidence_present or reason is None:` guard back
+    to an unconditional send makes `tg.called is False` fail (`True is False`); restored
+    before commit."""
+    audit, tg = _patch_common(monkeypatch)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
+                      flip_date=date(2026, 1, 1))
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert out["revert_withheld_reason"] == "correlation_unexplained"
+    assert tg.called is False
+    payloads = [c.args for c in audit.call_args_list if c.args[0] == "catalyst_lattice_monitor_alert"]
+    assert len(payloads) == 1  # the audit row is unconditional — unaffected by the SEND gate
 
 
 @pytest.mark.asyncio
@@ -882,12 +918,20 @@ def test_the_supply_floors_in_the_message_follow_the_constants():
 
 @pytest.mark.asyncio
 async def test_the_message_states_the_unknown_share_and_names_the_mix(monkeypatch):
+    """2026-09-23: this fixture is correlation-only (no prevented rows) and would now be
+    withheld from SEND on its own — a P1 shadow row is added purely so the message still
+    gets composed and sent, so this test can keep reading it; that hard-evidence trigger is
+    incidental to what's being pinned here (the unknown-share wording), not the point."""
     audit, tg = _patch_common(monkeypatch)
-    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=0, prior_high=1),
-                     flip_date=date(2026, 1, 1),
-                     unknown_rows=[{"looking": "unknown", "n": 4},
-                                   {"looking": "forward", "n": 4},
-                                   {"looking": "mixed_fwd", "n": 1}])
+    conn = _FakeConn(
+        shadow_rows=[{"scan_date": date(2026, 8, 19), "ticker": "MRNA",
+                      "live_quality_last": "strong", "shadow_tier_last": "routine",
+                      "live_side": "lattice"}],
+        alert_rows=_alert_rows(_FRI, recent_high=0, prior_high=1),
+        flip_date=date(2026, 1, 1),
+        unknown_rows=[{"looking": "unknown", "n": 4},
+                      {"looking": "forward", "n": 4},
+                      {"looking": "mixed_fwd", "n": 1}])
     await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
     msg = tg.call_args[0][0]
     assert "9 grade change(s)" in msg, msg
@@ -917,7 +961,11 @@ async def test_a_majority_unknown_WITHHOLDS_the_revert_sql(monkeypatch):
     t = [x for x in out["triggers"] if x["kind"] == "high_conversion_drop"][0]
     assert len(t["prevented"]) == 5, "half (a) must still account for the shortfall here"
     assert t["accounts_for_shortfall"] is False, "80% unknown must withhold"
-    assert hc._LATTICE_REVERT_SQL not in tg.call_args[0][0]
+    assert out["revert_withheld_reason"] == "correlation_unexplained"
+    # 2026-09-23 (operator noise triage): withheld + no hard evidence alongside it -> nothing
+    # to act on, so the SEND itself is gated too now (the audit row stays unconditional).
+    assert tg.called is False
+    assert any(c.args[0] == "catalyst_lattice_monitor_alert" for c in audit.call_args_list)
 
 
 @pytest.mark.asyncio
@@ -937,7 +985,12 @@ async def test_an_unreadable_share_withholds_rather_than_reading_as_fine(monkeyp
     out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
     t = [x for x in out["triggers"] if x["kind"] == "high_conversion_drop"][0]
     assert t["accounts_for_shortfall"] is False
-    assert "Could NOT read" in tg.call_args[0][0]
+    assert out["revert_withheld_reason"] == "correlation_unexplained"
+    # 2026-09-23 (operator noise triage): withheld + no hard evidence -> the SEND is gated
+    # too (the "Could NOT read" wording is still composed into the audit-logged verdict's
+    # withhold reason; it just no longer pages on its own).
+    assert tg.called is False
+    assert any(c.args[0] == "catalyst_lattice_monitor_alert" for c in audit.call_args_list)
 
 
 @pytest.mark.asyncio
@@ -957,7 +1010,13 @@ async def test_a_malformed_row_cannot_take_the_nightly_page_down(monkeypatch):
                  flip_date=date(2026, 1, 1))
     out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
     assert any(x["kind"] == "high_conversion_drop" for x in out["triggers"])
-    assert tg.called
+    # 2026-09-23: the page-down check is that it doesn't CRASH, not that it pages — this
+    # fixture is withheld + no hard evidence (same as the other correlation-only cases
+    # above), so since the SEND gate it correctly stays silent; the audit row is the proof
+    # the monitor still ran to completion and recorded a verdict.
+    assert out["revert_withheld_reason"] == "correlation_unexplained"
+    assert tg.called is False
+    assert any(c.args[0] == "catalyst_lattice_monitor_alert" for c in audit.call_args_list)
 
 
 def test_the_qualifier_treats_no_decisions_and_no_read_alike():

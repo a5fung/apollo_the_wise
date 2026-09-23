@@ -1702,7 +1702,15 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     ("mi_flag_breaks", "flag breaks", "break_date", None),
     ("mi_htf_breakout_shadow", "HTF breakout shadow", "break_date", None),
     ("mi_consolidation_entry_shadow", "consolidation entry shadow", "entry_date", None),
-    ("mi_9m_ep_alerts", "9M EP alerts", "alert_date", None),
+    # RETIRED 2026-09-23 — `mi_9m_ep_alerts` is not a broken detector, it is a GATED-OFF
+    # one, and a watch on a deliberately-silenced writer cries wolf forever (the same
+    # #604 class the mi_anticipation_lifecycle removal above already fixed once). Ground
+    # truth checked tonight: `9m_day2` has been permanently gated off since 2026-09-08
+    # (`scheduler.py::_9m_scan_job`: `if not await should_run("9m_day2"): return` — the
+    # strategy row itself is `mi_strategies.9m_day2` phase='deprecated', enabled=false).
+    # The table isn't dead by accident, it's dead by design, so every night since 09-08
+    # this watch alarmed on exactly the outcome the gate exists to produce. If 9m_day2 is
+    # ever re-enabled, re-add this line with it.
     ("mi_ep_alerts", "EP alerts", "alert_date", LIVE_SOURCE_SQL),
     ("mi_exit_path_shadow", "exit-path shadow", "trading_day", None),
     ("mi_alert_rank_shadow", "alert-rank shadow", "alert_date", None),
@@ -4798,13 +4806,23 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     await _log("catalyst_lattice_p1_miss",
                                f"{t['ticker']} {t['date']} graded routine by the acting tier",
                                json.dumps(t))
-            from agents.market_intelligence.briefing import send_telegram_message
-            from shared.telegram_format import md_to_html
-            # #647: HTML layer — the fenced revert SQL rides <pre> byte-for-byte, and the
-            # `magna53_ep.md` underscore in the italic line can no longer 400 the send
-            # (4 of the last 14 days it did, and the plain retry then stripped the SQL's `_`).
-            out["spoke"] = bool(await send_telegram_message(
-                md_to_html("\n".join(lines)), parse_mode="HTML"))
+            # 2026-09-23 (operator noise triage): the audit row above is unconditional — it's
+            # the historical record — but the SEND is gated. Withheld-and-correlation-only
+            # (`reason == "correlation_unexplained"`, no hard evidence) paged three nights
+            # running (09-21/22/23) with the identical verdict "revert NOT indicated" and
+            # nothing new to act on; `lattice_inert` withheld the same way when it's the only
+            # thing that fired. Same test as the SQL-print decision three lines up
+            # (`_hard_evidence_present or reason is None`) — a hard trigger (P1 miss,
+            # zero-alert-days) or an ACTUALLY-indicated revert still pages; a withheld,
+            # correlation-only finding goes to the audit log only.
+            if _hard_evidence_present or reason is None:
+                from agents.market_intelligence.briefing import send_telegram_message
+                from shared.telegram_format import md_to_html
+                # #647: HTML layer — the fenced revert SQL rides <pre> byte-for-byte, and the
+                # `magna53_ep.md` underscore in the italic line can no longer 400 the send
+                # (4 of the last 14 days it did, and the plain retry then stripped the SQL's `_`).
+                out["spoke"] = bool(await send_telegram_message(
+                    md_to_html("\n".join(lines)), parse_mode="HTML"))
         except Exception as e:
             logger.warning("catalyst_lattice_monitor: announce failed: %s", e)
             out["errors"].append({"announce": str(e)})

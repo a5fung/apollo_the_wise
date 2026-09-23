@@ -1102,6 +1102,13 @@ def test_nothing_outside_this_module_imports_alert_rank_shadow():
         # import of the alert_rank_shadow module itself. Same non-decision, string-key
         # shape as the data_gated_reviews.py exemption above.
         str(REPO / "tests/test_scripts_root_hygiene.py"),
+        # 2026-09-23 (overdue-review escalation anchoring fix): pins the review_id STRING
+        # `alert_rank_shadow_out_of_sample` in comments/docstrings as the real-world example
+        # of a RUNNING review whose resolution_* keys must restart the escalation clock — no
+        # import of the alert_rank_shadow module, no DB access, no decision path. Same
+        # string-key, non-decision shape as the data_gated_reviews.py exemption above (this
+        # review_id's own registry entry lives there).
+        str(REPO / "tests/test_review_escalation.py"),
     }
     unexpected = hits - allowed
     assert not unexpected, f"unexpected references to alert_rank_shadow: {unexpected}"
