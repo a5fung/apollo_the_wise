@@ -1107,3 +1107,35 @@ AFTER Wednesday's 18:13 check so that check tests the code that shipped.
 
 **⛔ Never delete rows in `mi_sustain_reject_replays` / `mi_gap_near_miss_replays`** — pre-09-07
 walks are correctly era_c; post-flip ones stay labelled era_c by design.
+
+## 2026-09-23 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 09-22 close above.
+
+**Board 53** (day began 54). Closed today: #675 (Telegram conversion path), #666 (catalyst monitor
+explains itself). #683 filed on his instruction and deployed the same day.
+
+**Deployed 21:21 ET, `both` + `execution` (3a375fd5):** #683 — ONE Anthropic client factory
+(`shared/llm_client.py`) that rewrites whatever a new model rejects (forced tool → structured output;
+thinking-off → dropped with headroom) plus a pre-adoption canary in the model refresh. **Opus 5.5 is
+live** for the judge and theme advisor. His ruling: *"the update process needs to be automatic and
+needs to work"* — never propose staying on an old model. Also shipped: four noise pages stopped
+(9M liveness, catalyst withheld-finding Telegram, running-review overdue nag, self-healing
+truncation) and a lost theme-discovery batch now pages.
+
+**🔴 THURSDAY 09-24 — first checks, in order:**
+1. **09:31 ET scan:** every EP grade-judge call returns a verdict on opus-5-5 (never exercised live).
+   A judge 400 is EXPECTED once per rewrite per boot (the adapter learning) — the failure signal is a
+   fail-open, not a 400 line. 16:02 ET: management judge verdict for each open position (#683).
+2. **No noise pages:** no 9M-quiet, no withheld catalyst Telegram, no `alert_rank` overdue nag, no
+   theme_discovery page at its 2-in-15 rate; the catalyst audit row still written.
+3. **#519 (chart vision, due Thursday):** his ruling — build the FREE step first, hold the ~$190
+   paid run. Turn his marked-up charts (`docs/methodology/traderlion_2020_leaders_2026-09-23.md`,
+   `boik_monster_stock_lessons_2026-09-23.md`) into $0 daily-bar measures and score them against his
+   35 rulings (no cutline search).
+
+**⚠ Repo incident, resolved:** a test run from a git worktree corrupted this laptop's repo config
+and I pushed a commit that deleted most files (6a27baa8, author `t`). Reverted (5f5e8b3b), fixed
+(86faf640), never deployed; `tests/conftest.py` now clears GIT_* for every test. Leave the history
+alone. Before any push: `git show --stat HEAD` (files + author).
+
+**Weekend:** Sat 09-26 `run fable weekend block 5` (exit day; now reads his 24 marked charts first) +
+#505/#506/#668. Sun 09-27 #354 (final signed bump) + #662/#677 verifies.
