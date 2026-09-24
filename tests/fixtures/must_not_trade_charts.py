@@ -188,7 +188,8 @@ class ChartRuling(NamedTuple):
     live_stack_exclusion: Optional[str] = None
     # The live extension gate's own value, recomputed point-in-time on the live basis
     # (MIN close over [alert_date - 10 calendar days, alert_date), vs prior close).
-    # `MAX_EXTENSION_PCT` is 75.0 since 2026-08-22 (operator-signed), 50.0 before.
+    # `MAX_EXTENSION_PCT` is 50.0: raised to 75.0 on 2026-08-22, REVERTED to 50.0 on 2026-08-29
+    # (operator-signed; the raise rested on corrupt evidence, #595 — docs/setups/magna53_ep.md).
     extension_live_pct: Optional[float] = None
 
 

@@ -28,8 +28,8 @@ WHAT IS REUSED, NOT RE-IMPLEMENTED (P15)
     one v2 parameter is adjusted here; v3 only appends fields and composes a verdict.
   * The LIVE extension rule is replicated to the line, not approximated: `ep_detector.py`
     fetches `MIN(close)` over `[alert_date - 10 calendar days, alert_date)` and skips when
-    `(prev_close - MIN) / MIN * 100 >= MAX_EXTENSION_PCT` (75.0 since 2026-08-22,
-    operator-signed; 50.0 before). `extension_live_pct()` below computes exactly that, from
+    `(prev_close - MIN) / MIN * 100 >= MAX_EXTENSION_PCT` (50.0 — raised to 75.0
+    on 2026-08-22, REVERTED to 50.0 on 2026-08-29, operator-signed, #595). `extension_live_pct()` below computes exactly that, from
     the same bars, so "what does v3 add BEYOND the rule we already have" is answerable
     rather than rhetorical. `MAX_EXTENSION_PCT` is IMPORTED from the live module — if the
     operator moves it, this file moves with it.
