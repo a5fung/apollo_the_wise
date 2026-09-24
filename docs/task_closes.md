@@ -1658,5 +1658,10 @@ EVIDENCE: prod `mi_audit_log`, `catalyst_lattice_monitor_alert`, read 2026-09-23
   prevented in this window, against a shortfall of 4.3"* and *"A revert is NOT indicated and the SQL
   is deliberately withheld."*
 - **WOULD-FAIL-IF refuted on all three:** no revert SQL printed, and no prevented-count without names.
-- The same night the operator called the repeated message noise; the Telegram for a withheld,
-  non-actionable finding is gated off in the following commit, while the audit row stays nightly.
+- ⚠ **Proxy, stated:** the Telegram text is not stored, so for 09-21 and 09-22 the evidence is the
+  audit row the monitor writes from the same computation just before it sends; only 09-23's text is
+  quoted from the message he received.
+- ⚠ **Contract change the same night:** #666's UNINTENDED said the monitor *"must still report"*.
+  After the operator called the repeated message noise, a withheld, correlation-only finding became
+  audit-row only (commit 3a375fd5); a hard trigger or an actually-indicated revert still Telegrams.
+  "Still reports" now means the nightly audit row for the withheld case, not a message.
