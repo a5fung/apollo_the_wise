@@ -3754,14 +3754,14 @@ async def _lattice_retier_rows(days) -> list:
     """The lattice's verdict vs the raw LLM grade for the given scan dates.
 
     Read-only, and fail-CLOSED for the caller's purpose: on any error it returns [] , which
-    `lattice_altered_nothing` reads as "no evidence the lattice acted" — so a database hiccup
+    `lattice_lowered_nothing` reads as "no evidence the lattice acted" — so a database hiccup
     withholds a revert RECOMMENDATION rather than manufacturing one. The trigger still fires and
     still says the lane was silent; only the prescription is held back."""
     try:
         pool = await get_pool()
         async with pool.acquire(timeout=5.0) as conn:
             rows = await conn.fetch(
-                "SELECT scan_date, ticker, live_quality_last, shadow_tier_last "
+                "SELECT scan_date, ticker, live_quality_last, shadow_tier_last, live_ep_score "
                 "FROM mi_catalyst_tier_shadow WHERE scan_date = ANY($1::date[])",
                 list(days), timeout=5.0)
         return [dict(r) for r in rows]
@@ -3770,8 +3770,9 @@ async def _lattice_retier_rows(days) -> list:
         return []
 
 
-def lattice_altered_nothing(retier_rows) -> "bool | None":
-    """True when the lattice's verdict matched the raw LLM grade on EVERY row in the window.
+def lattice_lowered_nothing(retier_rows) -> "bool | None":
+    """True when the lattice LOWERED no SCORED candidate's grade in the window — the only change that
+    can hide an alert.
 
     THE POINT (#638, 2026-09-10). Trigger (c) fired on two zero-alert days and printed revert SQL
     for `catalyst_tier_lattice`. Measured on prod that morning: the lattice's verdict was IDENTICAL
@@ -3794,12 +3795,36 @@ def lattice_altered_nothing(retier_rows) -> "bool | None":
     treating that as "inert" would silently mute the prescription exactly when it was most needed.
     Unknown keeps the revert SQL and says it could not be verified; only OBSERVED sameness
     withholds it.
+
+    ⚠ 2026-09-24 — "altered" means LOWERED. The first cut counted ANY difference, so a lattice that
+    only RAISED grades read as "acting" and justified a revert. That night both zero-alert days
+    (09-23, 09-24) carried exactly one lattice change — QNT raised from routine to strong — and the
+    monitor paged the revert SQL. A raised grade adds catalyst points; it cannot suppress an alert,
+    so turning the lattice off would have LOWERED QNT's score and restored nothing (the day's best
+    scores were 61.2 against a bar of 65). The ranking is the rubric's own catalyst points
+    (`ep_rubric.SCORE_WEIGHTS["catalyst"]`), not a hand-kept order.
+
+    ⚠ …and only on a name that REACHED SCORING. The same window's one real demotion, VKTX 09-22
+    (game_changer -> strong), was filtered at the gap floor (5-6% against 9%) before any grade was
+    consumed; a grade read at scoring cannot hide a name that never got there. `live_ep_score` is
+    the discriminator: NULL on exactly the rows the scan log never scored (51 of 51, and non-NULL on
+    112 of 112 scored rows, prod 2026-09-24). A change TO `mna` hard-filters the name, so it counts
+    as lowered even though the rubric scores it 0 like `routine` (the lattice has never emitted it
+    from a non-mna grade — 0 of 163 rows — but the rule must not depend on that).
     """
     rows = list(retier_rows or [])
     if not rows:
         return None          # UNKNOWN — nothing recorded; do not read that as evidence either way
-    return all((r.get("shadow_tier_last") or r.get("shadow_tier"))
-               == (r.get("live_quality_last") or r.get("live_quality")) for r in rows)
+    from agents.market_intelligence.ep_rubric import SCORE_WEIGHTS
+    cat = SCORE_WEIGHTS["catalyst"]
+
+    def _pts(q):
+        return cat["points"].get(q, cat.get("default", 0))
+    def _lowered(r):
+        acted = r.get("shadow_tier_last") or r.get("shadow_tier")
+        raw = r.get("live_quality_last") or r.get("live_quality")
+        return (_pts(acted) < _pts(raw)) or (acted == "mna" and raw != "mna")
+    return not any(_lowered(r) and r.get("live_ep_score") is not None for r in rows)
 
 
 _LATTICE_TOGGLE = ("catalyst_tier_lattice", "CATALYST_TIER_LATTICE_ENABLED")
@@ -4619,7 +4644,7 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
         # revert is byte-identical and prescribing one is noise dressed as a finding — whichever
         # trigger fired. No dates at all (should not happen) reads as UNKNOWN, not as inert.
         _win_rows = await _lattice_retier_rows(sorted(set(_implicated))) if _implicated else []
-        out["lattice_inert"] = lattice_altered_nothing(_win_rows)
+        out["lattice_inert"] = lattice_lowered_nothing(_win_rows)
         out["lattice_rows_seen"] = len(_win_rows)
         out["lattice_days_checked"] = [d.isoformat() for d in sorted(set(_implicated))]
 
@@ -4753,9 +4778,10 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
             else "correlation_unexplained" if _withhold_correlation_only else None)
         if reason == "lattice_inert":
             lines.append(
-                "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The lattice's "
-                "verdict matched the raw LLM grade on every candidate in this window, so turning "
-                "it off would be byte-identical — it suppressed nothing. Look at the tape, the "
+                "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The lattice "
+                "lowered no scored candidate's grade in this window — any change it made raised a "
+                "grade or touched a name filtered before scoring — so turning it off could not "
+                "bring back a single alert. Look at the tape, the "
                 "score bar and the scan log instead. To revert anyway, the flag is in "
                 "`docs/setups/magna53_ep.md` 2026-08-22.")
         elif reason == "correlation_unexplained":

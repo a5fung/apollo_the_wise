@@ -19,11 +19,12 @@ is what the 2026-08-26 note in the source argues. What changes is what the messa
 """
 import pytest
 
-from agents.market_intelligence.health_checks import lattice_altered_nothing
+from agents.market_intelligence.health_checks import lattice_lowered_nothing
 
 
-def _row(llm, lattice):
-    return {"live_quality_last": llm, "shadow_tier_last": lattice}
+def _row(llm, lattice, score=60.0):
+    """`score` = the shadow row's `live_ep_score`; None = the name never reached scoring."""
+    return {"live_quality_last": llm, "shadow_tier_last": lattice, "live_ep_score": score}
 
 
 def test_the_real_2026_09_09_window_reads_as_inert():
@@ -31,13 +32,42 @@ def test_the_real_2026_09_09_window_reads_as_inert():
     rows = [_row(q, q) for q in
             ("routine", "routine", "routine", "mna", "mna", "strong",
              "routine", "routine", "routine", "routine", "strong", "strong")]
-    assert lattice_altered_nothing(rows) is True
+    assert lattice_lowered_nothing(rows) is True
 
 
-def test_one_changed_grade_is_enough_to_justify_the_prescription():
-    """The bar is deliberately low — a single re-tier means the mechanism WAS acting."""
-    rows = [_row("routine", "routine"), _row("routine", "strong")]
-    assert lattice_altered_nothing(rows) is False
+def test_one_lowered_grade_is_enough_to_justify_the_prescription():
+    """The bar is deliberately low — a single DEMOTION means the mechanism could have hidden an alert."""
+    rows = [_row("routine", "routine"), _row("strong", "routine")]
+    assert lattice_lowered_nothing(rows) is False
+    assert lattice_lowered_nothing([_row("game_changer", "strong")]) is False
+
+
+def test_a_lattice_that_only_raised_grades_suppressed_nothing():
+    """2026-09-24, the real rows: both zero-alert days carried one lattice change, QNT raised
+    routine -> strong. The monitor paged the revert SQL on it. A raised grade adds catalyst points;
+    turning the lattice off would have LOWERED QNT's score (61.2, bar 65) and restored nothing."""
+    # The REAL window the 2026-09-24 page checked (09-18 -> 09-24): every lattice change, verbatim.
+    rows = [_row("routine", "strong", 58.8),        # DSP 09-18
+            _row("routine", "strong", 65.0),        # MSTR 09-21
+            _row("routine", "strong", 58.8),        # USAR 09-21
+            _row("game_changer", "strong", None),   # VKTX 09-22 — filtered at the gap floor
+            _row("routine", "strong", 52.5),        # SCTX 09-22
+            _row("routine", "strong", 58.8),        # MAZE 09-22
+            _row("routine", "strong", 61.2)]        # QNT 09-23
+    assert lattice_lowered_nothing(rows) is True
+
+
+def test_a_lowered_grade_on_a_name_that_never_reached_scoring_hid_nothing():
+    """VKTX 09-22: game_changer -> strong, but every scan tick filtered it at the gap floor, so no
+    grade was ever consumed. The same demotion on a SCORED name is a real candidate suppression."""
+    assert lattice_lowered_nothing([_row("game_changer", "strong", None)]) is True
+    assert lattice_lowered_nothing([_row("game_changer", "strong", 58.8)]) is False
+
+
+def test_a_change_to_mna_counts_as_lowered():
+    """`mna` hard-filters the name, so it suppresses even though the rubric scores it 0 like routine."""
+    assert lattice_lowered_nothing([_row("routine", "mna", 55.0)]) is False
+    assert lattice_lowered_nothing([_row("mna", "mna", 55.0)]) is True
 
 
 def test_no_rows_is_UNKNOWN_not_inert():
@@ -49,8 +79,8 @@ def test_no_rows_is_UNKNOWN_not_inert():
     prescription exactly when it was needed. Unknown keeps the SQL and says it could not be
     verified; only OBSERVED sameness withholds it.
     """
-    assert lattice_altered_nothing([]) is None
-    assert lattice_altered_nothing(None) is None
+    assert lattice_lowered_nothing([]) is None
+    assert lattice_lowered_nothing(None) is None
 
 
 def test_unknown_keeps_the_sql_and_says_so():
@@ -103,10 +133,11 @@ def _monitor_src():
 
 
 def test_the_verdict_is_computed_once_and_outside_every_trigger_branch():
+    # source-pin-ok: a placement check (one verdict, after every trigger appends) that behaviour cannot show without driving all three trigger paths against a live DB; edited 2026-09-24 only for the helper rename.
     src = _monitor_src()
-    assert src.count('out["lattice_inert"] = lattice_altered_nothing(') == 1, (
+    assert src.count('out["lattice_inert"] = lattice_lowered_nothing(') == 1, (
         "the verdict is computed in more than one place, or not at all")
-    verdict = src.index('out["lattice_inert"] = lattice_altered_nothing(')
+    verdict = src.index('out["lattice_inert"] = lattice_lowered_nothing(')
     last_append = src.rindex('out["triggers"].append(')
     assert verdict > last_append, (
         "the inertness verdict sits inside a trigger's branch — the other triggers skip it")
