@@ -1566,3 +1566,16 @@ shared right after the TraderLion winners. ZM, PTON, DOCU, PDD, NIO, FSLY, GRWG,
 DKNG, each 2020 run over 2021 decline. The tops share: price cutting through both the 21- and 50-day
 on heavy volume, those averages then acting as resistance, climax runs, volume drying up or flipping,
 and chop. FVRR 2020 is the caution: the same heavy-volume break was an add when it reclaimed fast.
+
+## 2026-09-24 — charts support a decision, they never make it (operator note, verbatim)
+
+> *"One note is that, like everything else, charts are not 100%, there's no perfect accuracy or
+> predictive value with charts so there's ones that work and ones that don't, we need to account for
+> it and can't make definitive statements either way, charts can only help/support"*
+
+- **Applied the same turn to #519's chart read** (`docs/analysis/519_paid_run_scoping_2026-09-24.md`):
+  the pass bar went from a filter (one real EP read "bad" = fail) to a LEAN (how much more often it
+  reads "bad" on his condemned charts than on the ones that worked). Revised before anything ran.
+- **General rule:** a chart read, his or a model's, is a supporting input to a decision. Score it as
+  a lean over a population, never as a verdict on one chart; never let it block on its own.
+

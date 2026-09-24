@@ -7,9 +7,10 @@ Nothing here is authorised; it is the menu. The free step is re-run first on fiv
 
 ## The question the money would answer
 
-Can a model looking at the chart see what he sees — catch the charts he condemns that our run-up
-rule misses (12 of 21 on the 09-23 scoring), **without** rejecting any of the 30 real EPs or his
-9 approved dates?
+Does a model looking at the chart lean the way he does — read "bad" clearly more often on the charts
+he condemns (including the 12 of 21 our run-up rule misses) than on the 30 real EPs and his 9 approved
+dates? Charts only support a decision, never make it (his note, 2026-09-24), so the question is a lean,
+not a perfect split.
 
 ## Method and population
 
@@ -66,39 +67,48 @@ reasons are about what the gap cleared; `render_prior_day_chart` stops at the pr
 marker is the one $0 addition. A weekly view needs tonight's five-year reload to land first (without
 it, "multi-year downtrend" — RARE — cannot be seen). Then one scorecard against his labels:
 
-| line | what is counted | the bar | today's run-up rule on the same line |
+⚖ **Revised before anything ran, on his note (2026-09-24): *"charts are not 100%… there's ones that
+work and ones that don't… we can't make definitive statements either way, charts can only
+help/support."*** The first version of these rules treated a chart read as a filter (one real EP
+read "bad" = fail). That is the wrong question: a chart read can only lean the odds, so it is
+scored as a LEAN — how much more often it says "bad" on the charts he condemned than on the ones that
+worked — never as a verdict. Its only possible use is a supporting note beside an alert; it never
+blocks one, and any use in the live grade is his call.
+
+| line | what is counted | n | the bar |
 |---|---|---|---|
-| 1. Real EPs it would reject | of the 30 must-not-miss EPs, how many it reads "bad" | **0** | 0 |
-| 2. His approved charts it would reject | of his 9 approved (good or ok), how many it reads "bad" | **0** | 0 |
-| 3. Condemned charts it catches | of his 21 condemned, how many it reads "bad" | more than the rule | 8 of 20 evaluable |
-| 4. …of the ones the rule misses | of the 12 condemned the run-up rule lets through | **6 or more** | 0 of 12 |
-| 5. Stable reads | dates where all 3 reads agree | **2 of 3 dates or more** | n/a |
-| 6. Reasons | its reason beside his words, per condemned chart | for him to judge | — |
+| 1. "Bad" on his condemned charts | of 21, how many it reads "bad" | n=21 | — (feeds line 3) |
+| 2. "Bad" on the charts that worked | of 39 (30 real EPs + 9 approved), how many it reads "bad" | n=39 | — (feeds line 3) |
+| 3. **The lean** | line 1's rate ÷ line 2's rate | 21 vs 39 | **3× or more** |
+| 4. The lean on what we don't already catch | its "bad" rate on the 12 condemned the run-up rule misses ÷ line 2's rate | 12 vs 39 | **2× or more** |
+| 5. The same lean from the other side | "good" rate on the 39 ÷ "good" rate on the 21 | 39 vs 21 | reported beside line 3 |
+| 6. Stable reads | dates where all 3 reads agree | n=64 | **2 of 3 dates or more** |
+| 7. Reasons | its reason beside his words, per chart | n=64 | for him to judge |
 
 **Decision rules, fixed now:**
-- **PASS** — lines 1 and 2 are zero, line 4 is 6 or more, line 5 holds → it sees something he sees
-  that our rules do not. Next: decide on C (~$65), or run it as a shadow read on new alerts.
-- **TOO STRICT** — it catches condemned charts but rejects any real EP or approved chart → not usable
-  as a filter; at most a warning flag. Stop; no C.
-- **FAIL** — fewer than 3 of the 12, or reads unstable on most dates → the model does not see what he
-  sees at this task. Stop; no C.
-- In between (3-5 of the 12, zero losses) → report it plainly and let him decide; no automatic next step.
+- **USEFUL SUPPORT** — line 3 at 3× or more, line 4 at 2× or more, line 6 holds → worth running as a
+  supporting note beside each new alert (collecting data, never blocking). C (~$65) only if he wants the
+  full list to label.
+- **WEAK** — line 3 between 1.5× and 3× → reported plainly; his call; no automatic next step.
+- **NO LEAN** — line 3 under 1.5×, or unstable reads on most dates → stop; no further spend.
 
 **Open fork — his 24 marked-up book charts (TraderLion 13, Boik 11, shared 2026-09-23).** As scoped,
 A does not show them to the model. Option: a second arm that carries them in the prompt (cached) as
-worked examples of a good base versus a topping chart, scored on the same bar — it answers whether
+worked examples of a good base versus a topping chart, scored on the same lean — it answers whether
 those examples sharpen the read, for roughly $10 more in the same run. They cannot be a scored test
 themselves: they are 2020–21 and our history (after the 09-24 reload) starts 2021-09. His call.
 
-**The expected result, stated before it runs:** the free read found no daily-bar measure that tells
-the 12 misses from his 9 approved without rejecting real EPs. So the likeliest outcome is **in between
-or TOO STRICT**; a PASS would mean the model reads a judgement (which highs matter) that our measures
-cannot, and would be the surprise. The 4 other rejected dates are shown, not scored.
+**The expected result, stated before it runs:** most likely **WEAK**. On the same lean, the best rule
+from the books in Thursday's free read flagged his condemned charts about 1.5× as often as the ones
+that worked (base under 5 weeks: 14 of 20 against 18 of 39; no volume dry-up: 11 of 20 against 15 of
+39), and three of them flagged the ones that worked MORE often. Only the run-up rule leans cleanly (8 of
+20 against 0 of 39), and it already runs. USEFUL SUPPORT would mean the model reads a judgement (which
+highs matter) our measures cannot — the surprise. The 4 other rejected dates are shown, not scored.
 
 **What A cannot tell us:** how it would change the live judge's grade (it sees no catalyst text),
-anything about returns, or how it reads names nobody has labelled. With 12 missed charts and 30
-real EPs, a pass is a strong hint, not proof. One wrong call on a real EP flips it to TOO STRICT —
-deliberately.
+anything about returns, or how it reads names nobody has labelled. With 21 condemned and 39 that
+worked, a 3× lean is a real hint with a wide margin, not proof — and even a strong lean is support,
+never a verdict on one chart.
 
 ## What would change the recommendation
 
