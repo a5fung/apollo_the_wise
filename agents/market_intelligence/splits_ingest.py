@@ -37,9 +37,12 @@ logger = logging.getLogger(__name__)
 # Polygon caps split queries — 60 calendar days is wide enough to catch missed
 # weekend/holiday runs without hammering the endpoint.
 LOOKBACK_DAYS = 60
-# History to overwrite per affected ticker — 250 calendar days ≈ 180 trading
-# bars, which is wider than the 6M RS lookback. Polygon caps day-aggs limit at
-# 50000, so 250 days fits in a single page.
+# MINIMUM history to overwrite per affected ticker. The real window is the ticker's WHOLE
+# stored history (`_stored_history_days`): a split re-fetch that stops short leaves every
+# older row in pre-split units, so one ticker's series carries two scales with a cliff
+# between them. 250 days was enough while mi_daily_closes held ~13 months; the five-year
+# reload of 2026-09-24 made it cover a fifth of the table, and flag_detector already reads
+# 262 trading days (~380 calendar). Polygon caps day-aggs at 50000 bars — five years is ~1,260.
 HISTORY_DAYS = 250
 # Concurrency cap — splits-ingest typically touches < 30 tickers/day; Sem(5)
 # keeps Polygon happy and finishes in seconds.
@@ -90,6 +93,20 @@ async def fetch_ticker_history(ticker: str, days: int = HISTORY_DAYS) -> list[di
         return []
 
 
+async def _stored_history_days(ticker: str) -> int:
+    """Calendar days from the ticker's earliest stored row to today — the window a split
+    re-fetch must cover so no stored row is left in pre-split units. Never below
+    HISTORY_DAYS (a ticker with little stored history still gets the old window)."""
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        earliest = await conn.fetchval(
+            "SELECT min(trade_date) FROM mi_daily_closes WHERE ticker=$1", ticker)
+    if earliest is None:
+        return HISTORY_DAYS
+    return max(HISTORY_DAYS, (et_today() - earliest).days + 1)
+
+
 async def _get_old_close(ticker: str, trade_date) -> float | None:
     """Look up the close in mi_daily_closes for (ticker, date), if any.
 
@@ -134,7 +151,7 @@ async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
     split_from = int(split_row["split_from"])
     split_to = int(split_row["split_to"])
     async with _SEM:
-        bars = await fetch_ticker_history(ticker)
+        bars = await fetch_ticker_history(ticker, days=await _stored_history_days(ticker))
         if not bars:
             # Polygon Starter doesn't carry OTC / pink-sheet / foreign-suffix
             # tickers (.F / .Y / etc.). They re-queue every nightly run and
