@@ -84,6 +84,12 @@ blocks one, and any use in the live grade is his call.
 | 5. The same lean from the other side | "good" rate on the 39 ÷ "good" rate on the 21 | 39 vs 21 | reported beside line 3 |
 | 6. Stable reads | dates where all 3 reads agree | n=64 | **2 of 3 dates or more** |
 | 7. Reasons | its reason beside his words, per chart | n=64 | for him to judge |
+| 8. **Really-bad filter** | dates it reads **"garbage"** (his word for the worst, e.g. ABVX *"absolute garbage"*) in all 3 reads: how many of the 12 run-up misses, and how many of the 39 that worked — each one named | 12 vs 39 | **3 or more of the 12, and at most 1 of the 39** |
+
+⚖ **Added 2026-09-24, before anything ran — his hope for it:** *"at least help filter out really bad
+charts/stocks."* So the model answers in four words, not three — **garbage / bad / ok / good** — and
+line 8 scores only the extreme end, where a filter would act. A filter is where losing a real EP costs
+most, so its bar is strict on the 39 that worked; every one it would have removed is named for him.
 
 **Decision rules, fixed now:**
 - **USEFUL SUPPORT** — line 3 at 3× or more, line 4 at 2× or more, line 6 holds → worth running as a
@@ -91,6 +97,9 @@ blocks one, and any use in the live grade is his call.
   full list to label.
 - **WEAK** — line 3 between 1.5× and 3× → reported plainly; his call; no automatic next step.
 - **NO LEAN** — line 3 under 1.5×, or unstable reads on most dates → stop; no further spend.
+- **Line 8 is decided on its own:** met → a "really bad" flag is worth running beside each new alert
+  as data collection; whether it ever demotes or removes an alert is his call (THE LINE). Not met →
+  no filter from this read, whatever the lean says.
 
 **Open fork — his 24 marked-up book charts (TraderLion 13, Boik 11, shared 2026-09-23).** As scoped,
 A does not show them to the model. Option: a second arm that carries them in the prompt (cached) as
@@ -104,6 +113,8 @@ that worked (base under 5 weeks: 14 of 20 against 18 of 39; no volume dry-up: 11
 39), and three of them flagged the ones that worked MORE often. Only the run-up rule leans cleanly (8 of
 20 against 0 of 39), and it already runs. USEFUL SUPPORT would mean the model reads a judgement (which
 highs matter) our measures cannot — the surprise. The 4 other rejected dates are shown, not scored.
+Line 8's specific risk: 13 of the 30 real EPs gapped on one market-bottom day (2026-04-08) out of charts
+in correction; read before the gap, those can look like garbage — the likeliest way line 8 fails.
 
 **What A cannot tell us:** how it would change the live judge's grade (it sees no catalyst text),
 anything about returns, or how it reads names nobody has labelled. With 21 condemned and 39 that
