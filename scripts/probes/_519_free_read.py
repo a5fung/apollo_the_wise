@@ -131,6 +131,46 @@ _BARS: dict[str, list[dict]] = defaultdict(list)
 _ARTIFACT_DAYS: dict[str, list[date]] = defaultdict(list)
 
 
+def detect_artifact_days(bs: list[dict]) -> list[date]:
+    """Scale-defect artifact days for ONE ticker's bars (ascending by trade_date, each carrying
+    at least open_price/close/volume/trade_date). See the module docstring's 'DATA ARTIFACTS'
+    section for the rule. Pure function — factored out of `_load_bars` (2026-09-24, #519 option
+    A) so the paid-run probe (`scripts/probes/_519_option_a.py`) can reuse the IDENTICAL rule
+    against freshly DB-fetched bars, not only this module's captured PSV. Behaviour is
+    UNCHANGED from the inline loop it replaces — same inputs give the same artifact-day list."""
+    out: list[date] = []
+    for i, b in enumerate(bs):
+        r_row = b["open_price"] / b["close"] if b["close"] else 1.0
+        if r_row > 2.5 or r_row < 0.4:
+            out.append(b["trade_date"])
+            continue
+        if i == 0:
+            continue
+        pc = bs[i - 1]["close"]
+        r = b["open_price"] / pc if pc else 1.0
+        if r > 2.5 or r < 0.4:
+            med = st.median(x["volume"] for x in bs[max(0, i - 20):i])
+            if b["volume"] < med or b["volume"] < 1000:
+                out.append(b["trade_date"])
+    return out
+
+
+def clean_len_for(prior: list[dict], artifact_days: list[date]) -> int:
+    """Number of `prior` sessions (ascending, each carrying trade_date) AFTER the last artifact
+    day at or before the last prior session — the usable window. Pure (no module-level ticker
+    lookup), factored out of `_clean_len` (2026-09-24, #519 option A) for the same reuse reason
+    as `detect_artifact_days`: a caller fetching bars fresh from the DB has no entry in this
+    module's `_ARTIFACT_DAYS` dict to key off of. `_clean_len` below is now a thin wrapper and
+    its own behaviour is unchanged."""
+    if not prior:
+        return 0
+    arts = [d for d in artifact_days if d <= prior[-1]["trade_date"]]
+    if not arts:
+        return len(prior)
+    last = max(arts)
+    return sum(1 for b in prior if b["trade_date"] > last)
+
+
 def _load_bars() -> None:
     for ln in BARS_PSV.read_text().splitlines():
         if not ln.strip():
@@ -143,20 +183,11 @@ def _load_bars() -> None:
                           "volume": float(v) if v else 0.0})
     for t in _BARS:
         _BARS[t].sort(key=lambda b: b["trade_date"])
-        bs = _BARS[t]
-        for i, b in enumerate(bs):
-            r_row = b["open_price"] / b["close"] if b["close"] else 1.0
-            if r_row > 2.5 or r_row < 0.4:
-                _ARTIFACT_DAYS[t].append(b["trade_date"])
-                continue
-            if i == 0:
-                continue
-            pc = bs[i - 1]["close"]
-            r = b["open_price"] / pc if pc else 1.0
-            if r > 2.5 or r < 0.4:
-                med = st.median(x["volume"] for x in bs[max(0, i - 20):i])
-                if b["volume"] < med or b["volume"] < 1000:
-                    _ARTIFACT_DAYS[t].append(b["trade_date"])
+        arts = detect_artifact_days(_BARS[t])
+        if arts:  # preserves the pre-refactor defaultdict-on-append behaviour: a ticker with
+            _ARTIFACT_DAYS[t] = arts  # zero artifacts never gets a key (the diagnostic print
+            # below iterates _ARTIFACT_DAYS.items(), so an unconditional assign would have
+            # listed every clean ticker as "[]" — a display change this refactor must not make).
 
 
 def _split(ticker: str, iso: str):
@@ -170,11 +201,7 @@ def _split(ticker: str, iso: str):
 
 def _clean_len(ticker: str, prior: list[dict]) -> int:
     """Number of prior sessions AFTER the last artifact day (= the usable window)."""
-    arts = [d for d in _ARTIFACT_DAYS.get(ticker, []) if d <= prior[-1]["trade_date"]] if prior else []
-    if not arts:
-        return len(prior)
-    last = max(arts)
-    return sum(1 for b in prior if b["trade_date"] > last)
+    return clean_len_for(prior, _ARTIFACT_DAYS.get(ticker, []))
 
 
 # ── the new measures ──────────────────────────────────────────────────────────────────

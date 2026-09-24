@@ -238,6 +238,11 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
       # trigger (a) — a member edit MUST rebuild market-agent or the prod member list goes stale
       # silently. Must precede the generic tests/* deploy-irrelevant arm below.
       tests/fixtures/must_not_miss_eps.py)    NEED_MARKET=1 ;;
+      # #519 option A (2026-09-24): the sibling chart-ruling fixture, same reason and same
+      # Dockerfile COPY pattern — `scripts/probes/_519_option_a.py` runs in the market image and
+      # reads it at invocation time (the labelled population). A ruling edit here must rebuild
+      # market-agent or the paid run scores against a stale fixture. Must precede tests/* below.
+      tests/fixtures/must_not_trade_charts.py) NEED_MARKET=1 ;;
       # 2026-08-29 — the docs/ TREE is now baked into the market-agent image (Dockerfile.market
       # `COPY docs/ docs/`, added the same day) and read AT RUNTIME by the nightly drift-check
       # job (health_checks.run_drift_check → scripts/live_rules.py's load_setup_docs, which

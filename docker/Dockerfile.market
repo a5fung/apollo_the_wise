@@ -45,7 +45,12 @@ COPY docs/ docs/
 # routine). Importable as tests.fixtures.must_not_miss_eps via PYTHONPATH=/app namespace
 # packages; stdlib-only imports. deploy.sh carries a matching case arm so a member edit
 # rebuilds this image instead of going stale under the generic tests/* deploy-irrelevant arm.
+# #519 option A (2026-09-24): the sibling chart-ruling fixture — read at invocation time by
+# scripts/probes/_519_option_a.py (the labelled population the paid vision read is scored
+# against). stdlib-only imports (typing.NamedTuple), same as must_not_miss_eps.py above. deploy.sh
+# carries a matching case arm so a ruling edit rebuilds this image instead of going stale.
 COPY tests/fixtures/must_not_miss_eps.py tests/fixtures/must_not_miss_eps.py
+COPY tests/fixtures/must_not_trade_charts.py tests/fixtures/must_not_trade_charts.py
 
 RUN useradd -m -u 1000 apollo && chown -R apollo:apollo /app
 USER apollo
