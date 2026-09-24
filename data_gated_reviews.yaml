@@ -14303,6 +14303,10 @@ reviews:
       per-strategy flip. Fixed 2026-09-22; rows from the next nightly carry era_d. Settled rows
       keep their era_c stamp (not re-walked), so any read of this table splits on
       replay_exit_era before it concludes anything about the current bracket.
+    note_2026_09_23_verified: >-
+      VERIFIED LIVE 2026-09-23: the first nightly after the fix (18:13-18:15 ET) wrote every row it
+      walked as replay_exit_era = era_d with target_r = 8 (sustain-reject 4, gap-near-miss 10,
+      low-cap 1) and no era_c row. From here on this table's new rows price MAGNA53's live bracket.
     status: pending
     kind: tripwire
     # tripwire, not accrual: while the rate stays under 10% this predicate reads 0, which is
@@ -14440,6 +14444,10 @@ reviews:
       per-strategy flip. Fixed 2026-09-22; rows from the next nightly carry era_d. Settled rows
       keep their era_c stamp (not re-walked), so any read of this table splits on
       replay_exit_era before it concludes anything about the current bracket.
+    note_2026_09_23_verified: >-
+      VERIFIED LIVE 2026-09-23: the first nightly after the fix (18:13-18:15 ET) wrote every row it
+      walked as replay_exit_era = era_d with target_r = 8 (sustain-reject 4, gap-near-miss 10,
+      low-cap 1) and no era_c row. From here on this table's new rows price MAGNA53's live bracket.
     status: pending
     kind: accrual
     added_on: 2026-09-03
