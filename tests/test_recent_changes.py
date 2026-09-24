@@ -251,6 +251,10 @@ class TestPurgeOldData:
         # destroyed each quarter's earnings-window reference set before the next
         # quarter's comparison test could read it. A DELETE against it is a regression.
         assert "mi_ep_alerts" not in tables_deleted
+        # 2026-09-24: mi_daily_closes is EXEMPT — a 400-day cutoff silently deleted the
+        # operator-approved five-year price history (backfilled 2026-09-06, ~12M rows) at the
+        # next Sunday run. Multi-year chart reads need it; a DELETE against it is a regression.
+        assert "mi_daily_closes" not in tables_deleted
 
     def test_purge_returns_row_counts(self):
         """Return dict should map table names to deleted row counts."""

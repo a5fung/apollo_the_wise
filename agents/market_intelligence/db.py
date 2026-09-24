@@ -11654,13 +11654,18 @@ async def purge_old_data() -> dict[str, int]:
             # (capture audit item 1); see the retention policy in the docstring.
             # mi_exit_path_shadow / mi_alert_rank_shadow deliberately ABSENT — kept
             # forever since 2026-08-16, same reason; see the retention policy above.
+            # mi_daily_closes deliberately ABSENT — kept forever since 2026-09-24. A 400-day
+            # cutoff here silently deleted the operator-approved five-year backfill of
+            # 2026-09-06 (~12M rows) at the next Sunday run, so every multi-year chart read
+            # since has had 13 months to work with. Growth is ~0.5 GB a year on a disk with
+            # ~49 GB free; the 32 read sites all bound trade_date (#594), so depth costs no
+            # query time.
             # mi_delayed_entry_watch / mi_delayed_entry_trigger deliberately ABSENT —
             # #327 shadow evidence (2026-08-30): the accrual review reads these
             # months later; the evidence must not age out from under it.
             "mi_stock_scores": today - timedelta(days=365),
             "mi_themes":       today - timedelta(days=365),
             "mi_fundamental_flags": today - timedelta(days=30),
-            "mi_daily_closes": today - timedelta(days=400),  # 13M — feeds 12M RS lookback
             "mi_data_quality": today - timedelta(days=90),
             "mi_signal_outcomes": today - timedelta(days=365),
             # 120d → 5 years (2026-08-15 capture audit item 2): a real backtest needs
@@ -11684,7 +11689,6 @@ async def purge_old_data() -> dict[str, int]:
             "mi_stock_scores": "score_date",
             "mi_themes":       "theme_date",
             "mi_fundamental_flags": "flag_date",
-            "mi_daily_closes": "trade_date",
             "mi_data_quality": "run_date",
             "mi_signal_outcomes": "signal_date",
             "mi_intraday_bars": "bar_time",
