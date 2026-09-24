@@ -241,7 +241,13 @@ def _strip_identity(fig) -> None:
     fig.suptitle("")
 
 
-def _build_fig(df, mas: dict[int, Any], window: int, *, open_line: float | None = None):
+# One fixed colour per average, and a legend naming each, so "below the 50-day" is readable off the
+# picture rather than guessed from line smoothness (added 2026-09-24 on reviewing the previews).
+_MA_COLOURS = {10: "tab:blue", 20: "tab:orange", 40: "tab:green", 50: "tab:green", 200: "tab:red"}
+
+
+def _build_fig(df, mas: dict[int, Any], window: int, *, open_line: float | None = None,
+               unit: str = "day"):
     """One candle+volume+MA figure, built from a REAL-dated OHLCV DataFrame `df` (MAs already
     computed on the FULL `df` so a long MA has runway) but drawn against a SYNTHETIC sequential
     index — no real calendar date reaches the pixels, hidden ticks or not. Returns the matplotlib
@@ -266,7 +272,7 @@ def _build_fig(df, mas: dict[int, Any], window: int, *, open_line: float | None 
     for w, s in view_mas.items():
         sr = s.copy()
         sr.index = synth
-        addplots.append(mpf.make_addplot(sr, width=0.9))
+        addplots.append(mpf.make_addplot(sr, width=0.9, color=_MA_COLOURS.get(w, "tab:purple")))
 
     style = mpf.make_mpf_style(base_mpf_style="charles", rc={"font.size": 9})
     kw = dict(type="candle", volume=True, style=style, figsize=(10, 7),
@@ -274,6 +280,12 @@ def _build_fig(df, mas: dict[int, Any], window: int, *, open_line: float | None 
     if addplots:
         kw["addplot"] = addplots
     fig, axes = mpf.plot(view_r, **kw)
+    if view_mas:
+        from matplotlib.lines import Line2D
+        axes[0].legend(
+            [Line2D([0], [0], color=_MA_COLOURS.get(w, "tab:purple"), linewidth=1.2) for w in view_mas],
+            [f"{w}-{unit}" for w in view_mas], loc="lower left", bbox_to_anchor=(0, 1.0),
+            ncol=len(view_mas), fontsize=8, frameon=False)
     if open_line is not None:
         ax = axes[0]
         # A real gap can sit ABOVE every visible high (that is the whole point of an EP gap) —
@@ -284,7 +296,7 @@ def _build_fig(df, mas: dict[int, Any], window: int, *, open_line: float | None 
         lo, hi = ax.get_ylim()
         lo2, hi2 = min(lo, open_line), max(hi, open_line)
         if (lo2, hi2) != (lo, hi):
-            pad = (hi2 - lo2) * 0.04
+            pad = (hi2 - lo2) * 0.08
             ax.set_ylim(lo2 - pad, hi2 + pad)
         ax.axhline(open_line, linestyle="--", linewidth=1.0, color="black")
         va = "bottom" if open_line >= (lo + hi) / 2 else "top"
@@ -303,9 +315,10 @@ def _fig_to_png(fig) -> bytes:
     return buf.getvalue()
 
 
-def _render_one(df, mas: dict[int, Any], window: int, *, open_line: float | None = None):
+def _render_one(df, mas: dict[int, Any], window: int, *, open_line: float | None = None,
+                unit: str = "day"):
     """PNG bytes (or None) for one candle+volume+MA panel — see `_build_fig`."""
-    fig = _build_fig(df, mas, window, open_line=open_line)
+    fig = _build_fig(df, mas, window, open_line=open_line, unit=unit)
     return None if fig is None else _fig_to_png(fig)
 
 
@@ -342,7 +355,7 @@ def render_point_in_time_charts(
         weekly_mas = {w: weekly["Close"].rolling(w).mean() for w in WEEKLY_MA_WINDOWS
                       if len(weekly) >= w}
         meta["weekly_mas_available"] = sorted(weekly_mas)
-        weekly_png = _render_one(weekly, weekly_mas, weekly_window, open_line=None)
+        weekly_png = _render_one(weekly, weekly_mas, weekly_window, open_line=None, unit="week")
     else:
         meta["weekly_unavailable"] = True
     return daily_png, weekly_png, meta
