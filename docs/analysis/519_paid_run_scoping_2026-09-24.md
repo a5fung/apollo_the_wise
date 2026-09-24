@@ -56,6 +56,36 @@ $5/$25 per million tokens); image calls ≈ $0.02–0.03 each.
 labels, and it answers his actual question. Only if A shows the model does see what he sees is C
 worth its cost — and then as a list for him to label, not as a verdict.
 
+## Option A — outcomes declared BEFORE it runs (operator asked 2026-09-24: *"be clear and specific on expectations so we know prior to running what we'd get"*)
+
+**What it produces.** For each of his ~67 labelled dates: the model's read of the point-in-time
+chart (bars to the day before; a daily chart of ~8 months plus a weekly chart of ~3 years, now that
+five years are loaded), in his vocabulary — **bad / ok / good** — with a one-line reason, read 3
+times. Then one scorecard against his labels:
+
+| line | what is counted | the bar | today's run-up rule on the same line |
+|---|---|---|---|
+| 1. Real EPs it would reject | of the 30 must-not-miss EPs, how many it reads "bad" | **0** | 0 |
+| 2. His approved charts it would reject | of his 9 approved, how many it reads "bad" | **0** | 0 |
+| 3. Condemned charts it catches | of his condemned charts, how many it reads "bad" | more than the rule | 8-9 of ~21 |
+| 4. …of the ones the rule misses | of the 12 condemned the run-up rule lets through | **6 or more** | 0 of 12 |
+| 5. Stable reads | dates where all 3 reads agree | **2 of 3 dates or more** | n/a |
+| 6. Reasons | its reason beside his words, per condemned chart | for him to judge | — |
+
+**Decision rules, fixed now:**
+- **PASS** — lines 1 and 2 are zero, line 4 is 6 or more, line 5 holds → it sees something he sees
+  that our rules do not. Next: decide on C (~$65), or run it as a shadow read on new alerts.
+- **TOO STRICT** — it catches condemned charts but rejects any real EP or approved chart → not usable
+  as a filter; at most a warning flag. Stop; no C.
+- **FAIL** — fewer than 3 of the 12, or reads unstable on most dates → the model does not see what he
+  sees at this task. Stop; no C.
+- In between (3-5 of the 12, zero losses) → report it plainly and let him decide; no automatic next step.
+
+**What A cannot tell us:** how it would change the live judge's grade (it sees no catalyst text),
+anything about returns, or how it reads names nobody has labelled. With 12 missed charts and 30
+real EPs, a pass is a strong hint, not proof. One wrong call on a real EP flips it to TOO STRICT —
+deliberately.
+
 ## What would change the recommendation
 
 - If A's reads disagree with each other across the 3 repeats on most charts, the model is noise at
