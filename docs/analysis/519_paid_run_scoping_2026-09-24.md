@@ -84,6 +84,12 @@ it, "multi-year downtrend" — RARE — cannot be seen). Then one scorecard agai
   sees at this task. Stop; no C.
 - In between (3-5 of the 12, zero losses) → report it plainly and let him decide; no automatic next step.
 
+**Open fork — his 24 marked-up book charts (TraderLion 13, Boik 11, shared 2026-09-23).** As scoped,
+A does not show them to the model. Option: a second arm that carries them in the prompt (cached) as
+worked examples of a good base versus a topping chart, scored on the same bar — it answers whether
+those examples sharpen the read, for roughly $10 more in the same run. They cannot be a scored test
+themselves: they are 2020–21 and our history (after the 09-24 reload) starts 2021-09. His call.
+
 **The expected result, stated before it runs:** the free read found no daily-bar measure that tells
 the 12 misses from his 9 approved without rejecting real EPs. So the likeliest outcome is **in between
 or TOO STRICT**; a PASS would mean the model reads a judgement (which highs matter) that our measures
