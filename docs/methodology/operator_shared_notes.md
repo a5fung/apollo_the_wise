@@ -1579,3 +1579,10 @@ and chop. FVRR 2020 is the caution: the same heavy-volume break was an add when 
 - **General rule:** a chart read, his or a model's, is a supporting input to a decision. Score it as
   a lean over a population, never as a verdict on one chart; never let it block on its own.
 
+## 2026-09-24 — CDNA high tight flag follow-up (Leif Soreide tweet + MarketSurge chart), operator-shared
+
+- **Images:** `docs/methodology/operator_shared_charts/2026-09-24_htf_cdna_leif_soreide/` (`01_tweet.jpg`, `02_marketsurge_daily.jpg`).
+- **Tweet, verbatim (2026-09-24 11:37 AM):** *"$CDNA High Tight Flag. Took a first scale after a few risk multiples. Still long. Name is extended and the greater genomics theme is still hot. This is not the kind of action you typically see when you should be on the sidelines. Leaders that keep paying while the average stock looks soft are exactly the kind of follow-through I want on the board for the next high tight flag masterclass. @RichardMoglen"*
+- **Chart marks:** pole 6/22 close 25.05 → 8/3 high 49.76 (+99%, 30 bars); flag 8/3 → 8/17, high 49.76 / low 45.02 (−9.5%, 11 bars); a second shelf topping at 53.67; 9/24 at $62.61, +15.3% on +144% volume, RS 99, "+169% from pivot in 78 days".
+- **Role:** a labelled HTF example for the detector (his rule 2026-08-25), the same name he shared on 08-25. Our board's read on every date is in `docs/analysis/htf_surfacing_gap_2026-08-25.md` §CDNA follow-up: TIGHTENING on both flags, never COILED, so neither breakout could trigger. HTF stays behind EP.
+
