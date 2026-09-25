@@ -579,3 +579,18 @@ def test_a_forced_retry_that_ALSO_truncates_alarms_loudly(monkeypatch):
     assert len(recovery_calls) == 1
     tg.assert_awaited_once()
     assert "gave up" in tg.await_args.args[0]
+
+
+def test_a_self_healing_caller_near_its_cap_takes_no_near_ceiling_page():
+    """2026-09-24 17:52 ET: theme_discovery completed at 7,978 of its 8,000 cap and the NEAR CEILING
+    arm paged. Its first attempt is designed to reach the cap (the forced retry lands it) and its
+    cap is do-not-raise, so there is nothing to do; a caller outside the set at the same margin
+    still pages."""
+    from agents.market_intelligence.cost_board import _near_ceiling
+    assert "theme_discovery" in oc.TRUNCATION_SELF_HEALS
+    cap_td = oc.max_tokens_for("theme_discovery")
+    cap_pm = oc.max_tokens_for("postmortem")
+    rows = [{"caller": "theme_discovery", "max_completed": int(cap_td * 0.997)},
+            {"caller": "postmortem", "max_completed": int(cap_pm * 0.95)}]
+    assert [x["caller"] for x in _near_ceiling(rows, already=set())] == ["postmortem"]
+

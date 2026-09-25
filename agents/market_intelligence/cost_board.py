@@ -802,13 +802,20 @@ def _near_ceiling(rows, already: set) -> list[dict]:
 
     `already` = callers the truncation arm is reporting this run (reported harder
     there); by-design pings and unregistered callers are skipped — no cap, no margin.
+
+    Self-healing callers (`TRUNCATION_SELF_HEALS`, today theme_discovery) are skipped too
+    (2026-09-24): hitting the cap is their DESIGNED first attempt — the forced schema-bounded
+    retry lands it — and raising the cap is on the do-not-raise list, so "near ceiling" has no
+    action. The case that matters, a retry that also truncates, has its own alarm (the lost
+    discovery batch). It paged at 7,978 of 8,000 on 2026-09-24, the night after the same caller's
+    truncation-count page was gated for the same reason.
     """
     tight = []
     for r in rows:
         entry = CEILINGS.get(r["caller"])
         mc = r["max_completed"]
         if (entry is None or mc is None or r["caller"] in _TRUNC_BY_DESIGN
-                or r["caller"] in already):
+                or r["caller"] in TRUNCATION_SELF_HEALS or r["caller"] in already):
             continue
         if mc >= NEAR_CEILING_FRACTION * entry.max_tokens:
             tight.append({"caller": r["caller"], "max_completed": int(mc),
