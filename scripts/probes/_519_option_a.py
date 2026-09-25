@@ -82,6 +82,7 @@ MODEL = effective_model("JUDGE_MODEL")
 REPLICATES = 3
 ARMS = ("plain", "books")
 CONCURRENCY = 6
+PILOT_CALLS = 6          # first paid batch, used to re-price the whole run from real output
 CALL_TIMEOUT_S = 120.0
 
 # ── render windows (declared, not tuned) ──────────────────────────────────────────────
@@ -1035,23 +1036,54 @@ async def run_paid(client, out_dir: Path, *, max_usd: float, resume: bool,
         return None
 
     jsonl_path = out_dir / "calls.jsonl"
+    # --score-only re-derives "the 12" and the n/a set from this; a paid run must leave it behind.
+    (out_dir / "run_meta.json").write_text(json.dumps(
+        {"not_extended": sorted(map(list, not_extended)), "na_keys": sorted(map(list, na_keys))}))
     done = completed_keys(jsonl_path) if resume else set()
     max_tokens = max(2 * int(math.ceil(out_mean)) if out_mean else 0, 2048)
     sem = asyncio.Semaphore(CONCURRENCY)
     lock = asyncio.Lock()
+    specs = [(arm, tk, d, rep_i)
+             for tk, d in callable_rows for arm in ARMS for rep_i in range(REPLICATES)
+             if (arm, tk, d, rep_i) not in done]
+
+    async def _run(batch, f):
+        return await asyncio.gather(*[
+            one_call(client, sem, MODEL, arm, tk, d, rep_i,
+                     rendered[(tk, d)]["daily_png"], rendered[(tk, d)].get("weekly_png"),
+                     book_blocks if arm == "books" else None, max_tokens, f, lock)
+            for arm, tk, d, rep_i in batch]) if batch else []
+
     with jsonl_path.open("a" if resume else "w") as f:
-        tasks = []
-        for tk, d in callable_rows:
-            r = rendered[(tk, d)]
-            for arm in ARMS:
-                bb = book_blocks if arm == "books" else None
-                for rep_i in range(REPLICATES):
-                    if (arm, tk, d, rep_i) in done:
-                        continue
-                    tasks.append(one_call(client, sem, MODEL, arm, tk, d, rep_i,
-                                          r["daily_png"], r.get("weekly_png"), bb,
-                                          max_tokens, f, lock))
-        results = await asyncio.gather(*tasks) if tasks else []
+        results = []
+        if specs and not done:
+            # PILOT (2026-09-24, before the first paid call): the price above assumes the mean
+            # output of recent judge calls, but this model always thinks and these are image
+            # reads, so real output can run several times longer. Run a small first batch — ONE
+            # books call alone first so the book prefix is cached once, not by six concurrent
+            # misses — then re-price the WHOLE run from the observed output and stop before the
+            # rest if it would exceed --max-usd. Pilot calls are captured; --resume keeps them.
+            books_first = next((s for s in specs if s[0] == "books"), None)
+            pilot = ([books_first] if books_first else []) + \
+                [s for s in specs if s is not books_first][:PILOT_CALLS - (1 if books_first else 0)]
+            results += await _run(pilot[:1], f)
+            results += await _run(pilot[1:], f)
+            outs = [r["usage"]["output_tokens"] for r in results if r.get("usage")]
+            if outs:
+                observed = sum(outs) / len(outs)
+                repriced = price_whole_run(
+                    n_dates=len(callable_rows), replicates=REPLICATES, arm1_input_tokens=t1,
+                    arm2_input_tokens_total=t2, out_mean_tokens=observed, model=MODEL)
+                print(f"PILOT: {len(outs)} calls, mean output {observed:.0f} tokens -> "
+                      f"whole run re-priced at ${repriced['total_usd']:.2f}")
+                if repriced["total_usd"] > max_usd:
+                    print(f"ABORT after pilot: ${repriced['total_usd']:.2f} exceeds --max-usd "
+                          f"{max_usd:.2f}. {len(results)} pilot calls captured in {jsonl_path}; "
+                          "--resume continues from them once a new budget is signed.")
+                    return None
+            pilot_keys = set(pilot)
+            specs = [s for s in specs if s not in pilot_keys]
+        results += await _run(specs, f)
     print(f"{len(results)} calls made ({len(done)} already resumed)")
 
     calls = load_calls_jsonl(jsonl_path)

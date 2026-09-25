@@ -19,6 +19,7 @@ functions are either monkeypatched or exercised only at the source-text level).
 from __future__ import annotations
 
 import asyncio
+import json
 import inspect
 import math
 import re
@@ -610,3 +611,66 @@ def test_output_config_schema_is_the_pre_registered_four_words():
     assert schema["properties"]["rating"]["enum"] == ["garbage", "bad", "ok", "good"]
     assert schema["properties"]["reason"]["type"] == "string"
     assert schema.get("additionalProperties") is False
+
+
+def _fake_resp(output_tokens):
+    from types import SimpleNamespace as NS
+    return NS(content=[NS(type="text", text='{"rating": "bad", "reason": "stub"}')],
+              usage=NS(input_tokens=2500, output_tokens=output_tokens,
+                       cache_creation_input_tokens=0, cache_read_input_tokens=0),
+              stop_reason="end_turn")
+
+
+def _pilot_setup(monkeypatch, n_rows):
+    pop = [("REAL_EP", f"T{i}", "2026-01-05", "REAL_EP") for i in range(n_rows)]
+    monkeypatch.setattr(mod, "load_population", lambda: pop)
+
+    async def fake_prepare_all_rows(population):
+        return {(tk, d): {"ticker": tk, "date": d, "daily_png": b"FAKE-DAILY",
+                          "weekly_png": None, "render_failed": False, "na_scoring": False,
+                          "anchor75": False, "clean_n": 100}
+               for _, tk, d, _ in population}
+    monkeypatch.setattr(mod, "prepare_all_rows", fake_prepare_all_rows)
+    import agents.market_intelligence.spend_tracker as st
+
+    async def _no_log(**kw):
+        return None
+    monkeypatch.setattr(st, "log_anthropic_call_safe", _no_log)
+
+
+def test_pilot_reprices_from_real_output_and_stops_before_the_rest(tmp_path, monkeypatch):
+    """The pre-run price assumes recent judge output; if the first PILOT_CALLS show far longer
+    output (thinking on image reads), the whole run is re-priced and stops before the rest."""
+    _pilot_setup(monkeypatch, n_rows=10)
+    client = AsyncMock()
+    client.messages.count_tokens = AsyncMock(return_value=_FakeCountTokensResp(2500))
+    client.messages.create = AsyncMock(return_value=_fake_resp(output_tokens=200_000))
+
+    async def fake_mean(model):
+        return 250.0, 30
+    result = asyncio.run(mod.run_paid(client, tmp_path / "out", max_usd=20.0, resume=False,
+                                      mean_output_tokens_fn=fake_mean))
+    assert result is None
+    assert client.messages.create.await_count == mod.PILOT_CALLS
+    lines = (tmp_path / "out" / "calls.jsonl").read_text().strip().splitlines()
+    assert len(lines) == mod.PILOT_CALLS
+    assert json.loads(lines[0])["arm"] == "books", "the first call runs alone and writes the book cache"
+    assert (tmp_path / "out" / "run_meta.json").exists()
+
+
+def test_pilot_within_budget_runs_every_call_once(tmp_path, monkeypatch):
+    _pilot_setup(monkeypatch, n_rows=4)
+    client = AsyncMock()
+    client.messages.count_tokens = AsyncMock(return_value=_FakeCountTokensResp(2500))
+    client.messages.create = AsyncMock(return_value=_fake_resp(output_tokens=300))
+
+    async def fake_mean(model):
+        return 250.0, 30
+    result = asyncio.run(mod.run_paid(client, tmp_path / "out", max_usd=20.0, resume=False,
+                                      mean_output_tokens_fn=fake_mean))
+    assert result is not None
+    total = 4 * len(mod.ARMS) * mod.REPLICATES
+    assert client.messages.create.await_count == total
+    lines = (tmp_path / "out" / "calls.jsonl").read_text().strip().splitlines()
+    keys = {(r["arm"], r["ticker"], r["date"], r["replicate"]) for r in map(json.loads, lines)}
+    assert len(lines) == total and len(keys) == total, "no call made twice"
