@@ -81,3 +81,33 @@ def test_apply_one_requests_the_stored_history_window(monkeypatch):
     asyncio.run(si._apply_one({"ticker": "QH", "execution_date": date(2026, 7, 1),
                                "split_from": 1, "split_to": 10}))
     assert date(2026, 9, 24) - timedelta(days=seen["days"]) <= earliest
+
+
+def test_split_pagination_sends_the_cursor_as_a_param_and_stops_on_a_repeat(monkeypatch):
+    """2026-09-24: next_url passed as the PATH lost its cursor (httpx `params=` replaces a URL's own
+    query string), so page 2 was Polygon's unfiltered default with its own next_url — forever."""
+    calls = []
+    pages = {
+        None: {"results": [{"ticker": "A"}], "next_url": "https://api.polygon.io/v3/reference/splits?cursor=C1&apiKey=k"},
+        "C1": {"results": [{"ticker": "B"}], "next_url": "https://api.polygon.io/v3/reference/splits?cursor=C2&apiKey=k"},
+        "C2": {"results": [{"ticker": "C"}]},
+    }
+
+    async def _get(path, params=None):
+        calls.append((path, dict(params or {})))
+        assert path == "/v3/reference/splits"
+        return pages[(params or {}).get("cursor")]
+    monkeypatch.setattr(si, "_polygon_get", _get)
+    out = asyncio.run(si.fetch_splits(date(2025, 8, 18)))
+    assert [r["ticker"] for r in out] == ["A", "B", "C"]
+    assert [c[1].get("cursor") for c in calls] == [None, "C1", "C2"]
+
+    loop = {"results": [{"ticker": "X"}], "next_url": "https://api.polygon.io/v3/reference/splits?cursor=SAME&apiKey=k"}
+
+    async def _loop(path, params=None):
+        calls.append(params)
+        return loop
+    calls.clear()
+    monkeypatch.setattr(si, "_polygon_get", _loop)
+    asyncio.run(si.fetch_splits(date(2025, 8, 18)))
+    assert len(calls) == 2   # first page + one follow; the repeated cursor stops it

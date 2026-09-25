@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import urllib.parse
 from datetime import date, timedelta
 
 from agents.market_intelligence.collector import _polygon_get, et_today
@@ -50,12 +51,20 @@ _SEM = asyncio.Semaphore(5)
 
 
 async def _fetch_splits_page(since: date, cursor_url: str | None = None) -> dict:
-    """Single page from /v3/reference/splits (or follow next_url cursor)."""
+    """Single page from /v3/reference/splits (or follow next_url cursor).
+
+    ⚠ The cursor is passed as a PARAM, never left in the path (2026-09-24). `_polygon_get` sends
+    `params=` to httpx, which REPLACES a URL's own query string — so a next_url passed as the path
+    lost its cursor, page 2 came back as Polygon's unfiltered default (10 rows, newest first) with
+    its own next_url, and the loop never ended. It only surfaced when a query first needed a second
+    page (the five-year split repair); `get_ticker_types` in collector.py already did it this way.
+    """
     if cursor_url:
-        # next_url already includes apiKey (Polygon convention) — strip leading
-        # base if present so _polygon_get's path concat works.
-        path = cursor_url.replace("https://api.polygon.io", "")
-        return await _polygon_get(path)
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(cursor_url).query)
+        cursor = (qs.get("cursor") or [None])[0]
+        if not cursor:
+            return {}
+        return await _polygon_get("/v3/reference/splits", {"cursor": cursor})
     return await _polygon_get(
         "/v3/reference/splits",
         {"execution_date.gte": since.isoformat(), "limit": 1000, "order": "asc"},
@@ -65,12 +74,17 @@ async def _fetch_splits_page(since: date, cursor_url: str | None = None) -> dict
 async def fetch_splits(since: date) -> list[dict]:
     """All Polygon split records with execution_date >= `since`. Paginated."""
     all_results: list[dict] = []
+    seen_cursors: set[str] = set()
     page = await _fetch_splits_page(since)
     while True:
         all_results.extend(page.get("results") or [])
         next_url = page.get("next_url")
         if not next_url:
             break
+        if next_url in seen_cursors:   # a cursor that repeats would page forever — stop loudly
+            logger.error(f"fetch_splits: cursor repeated after {len(seen_cursors)} page(s); stopping")
+            break
+        seen_cursors.add(next_url)
         page = await _fetch_splits_page(since, cursor_url=next_url)
     return all_results
 
