@@ -1665,3 +1665,34 @@ EVIDENCE: prod `mi_audit_log`, `catalyst_lattice_monitor_alert`, read 2026-09-23
   After the operator called the repeated message noise, a withheld, correlation-only finding became
   audit-row only (commit 3a375fd5); a hard trigger or an actually-indicated revert still Telegrams.
   "Still reports" now means the nightly audit row for the withheld case, not a message.
+
+## #683 — a model release applies automatically through one adapter, and no judge failed open on it (2026-09-25)
+
+BAR: "DoD: the opus pin is removed and both JUDGE_MODEL and THEME_ADVISOR_MODEL run live on the newest
+opus release, with the management judge returning verdicts, no judge failing open, and the canary
+checks passing through the deployed factory for every tier's current model." WOULD-FAIL-IF: "any
+`position_mgmt_judge_null` row, or a judge call that fails open, after the unpin."
+
+EVIDENCE: prod `api_usage` and `mi_audit_log`, read 2026-09-24 and 2026-09-25 — the EP grade judge returned an opus-5-5 verdict for AKAM at 07:01 ET 09-25 and the management judge for both open positions at 16:02 ET 09-24, with no null or fail-open; one line per DoD clause below.
+
+- **"the opus pin is removed":** `shared/llm_models.py` `_TIER_OVERRIDES["opus"] = None` (unpinned
+  2026-09-23, deployed 21:21 ET `both` + `execution`).
+- **"JUDGE_MODEL … run live on the newest opus release":** the EP grade judge on claude-opus-5-5 at
+  2026-09-25 07:01 ET for AKAM — 560 output tokens, stop `tool_use`, and `ep_grade_decision` recorded
+  *"judge HIGH · judge note hold · outcome verdict"*; the management judge on claude-opus-5-5 at
+  2026-09-24 16:02 ET (below).
+- **"THEME_ADVISOR_MODEL run live on the newest opus release":** `theme_advisor_discovery` on
+  claude-opus-5-5 at 2026-09-23 17:10 ET, 475 output tokens. ⚠ That call predates the adapter's deploy,
+  so it proves opus-5-5 accepts this request shape live; it is not itself a call through the factory.
+  The advisor is consulted only when theme discovery asks (2 calls in 14 days) and made none since.
+- **"with the management judge returning verdicts":** 2026-09-24 16:02 ET, both open positions (OKTA,
+  VICR) — opus-5-5, 83 and 73 output tokens, stop `tool_use`; the operator saw the digest
+  (*"Mgmt judge works"*).
+- **"no judge failing open":** zero `position_mgmt_judge_null` rows since the unpin; the grade judge's
+  one call returned a verdict. Adapter rewrite rows: two at the probe's 21:21 ET process, one at 16:02 ET
+  (first forced-tool call in that process since boot) — all for opus-5-5, as expected.
+- **"the canary checks passing through the deployed factory for every tier's current model":**
+  `scripts/probes/_model_compat_canary.py` run through `make_async_anthropic` on the production
+  container 2026-09-23 21:21 ET — opus-5-5, opus-5, sonnet-5 and haiku-4-5 passed every request shape.
+- **WOULD-FAIL-IF refuted:** no null verdict and no fail-open on either judge.
+
