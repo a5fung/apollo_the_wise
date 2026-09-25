@@ -1586,3 +1586,14 @@ and chop. FVRR 2020 is the caution: the same heavy-volume break was an add when 
 - **Chart marks:** pole 6/22 close 25.05 → 8/3 high 49.76 (+99%, 30 bars); flag 8/3 → 8/17, high 49.76 / low 45.02 (−9.5%, 11 bars); a second shelf topping at 53.67; 9/24 at $62.61, +15.3% on +144% volume, RS 99, "+169% from pivot in 78 days".
 - **Role:** a labelled HTF example for the detector (his rule 2026-08-25), the same name he shared on 08-25. Our board's read on every date is in `docs/analysis/htf_surfacing_gap_2026-08-25.md` §CDNA follow-up: TIGHTENING on both flags, never COILED, so neither breakout could trigger. HTF stays behind EP.- **Source weight (operator, same day):** *"This author specializes in htf so these examples are good study."* Leif Soreide (@LeifSoreide) posts are a primary study source for the HTF detector: save each one he shares with its images, record our board's read on the dates, and keep them together as the HTF reference set.
 
+## 2026-09-25 — charts are the basis of his trading: discretionary, imprecise by design, critical (verbatim)
+
+> *"Ok, align with a pause here but not a full stop, we need to figure out how best to incorporate
+> charts as that is the basis of my trading, is discretionary and imprecise by design but critical
+> nonetheless"*
+
+- Said on the #519 option A result (`docs/analysis/519_option_a_result_2026-09-25.md`): a model's chart
+  read leaned the right way but weakly. The paid path is PAUSED, not stopped.
+- **Standing frame for any chart work:** the goal is how charts enter the process, not whether a
+  machine passes a test. Pairs with his 09-24 note that charts only support a decision.
+
