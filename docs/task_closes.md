@@ -1696,3 +1696,26 @@ EVIDENCE: prod `api_usage` and `mi_audit_log`, read 2026-09-24 and 2026-09-25 �
   container 2026-09-23 21:21 ET — opus-5-5, opus-5, sonnet-5 and haiku-4-5 passed every request shape.
 - **WOULD-FAIL-IF refuted:** no null verdict and no fail-open on either judge.
 
+## #652 — the shared Telegram sender converts and sends safely by default (2026-09-25)
+
+BAR: "DoD: `send_telegram_message` converts and sends safely BY DEFAULT, so a sender that does nothing
+special cannot 400 on an identifier; any caller still needing raw legacy Markdown opts IN explicitly."
+WOULD-FAIL-IF: "a message whose body contains `SELECT * FROM mi_live_trades WHERE stop_order_id IS NULL`
+is sent through an unmodified sender and arrives with the underscores gone (or does not arrive)."
+DONE-WHEN: "5 market days with (a) observed at least once on a default sender AND zero
+`mode=HTML(default)` fallback rows."
+
+EVIDENCE: prod `mi_audit_log`, read 2026-09-25 18:30 ET — zero `telegram_markdown_fallback` rows from
+the 09-19 flip through five market days (09-21 to 09-25); code-block-bearing default senders delivered on
+their first send with no fallback and no failure row behind them (the `llm_truncation_check` pages of
+09-21 and 09-24, the 09-23 `detector_liveness_alert`, which the operator received and pasted back).
+
+- **The WOULD-FAIL-IF case itself** was run in the running image on 09-19 with the transport stubbed: an
+  unmodified default sender posted `parse_mode=HTML` with that exact SQL verbatim, `stop_order_id` intact.
+- The two `telegram_send_failed` rows in the window are test artifacts, not fallbacks: 09-19's is that
+  acceptance run's stub (`'_R' object has no attribute 'raise_for_status'`), 09-20's a captured-send
+  refusal from a probe harness.
+- ⚠ **"Opts IN explicitly" is now stricter than written:** since #675 (09-20) an explicit
+  `parse_mode="Markdown"` is converted too; the last two direct bot sends in legacy Markdown (`/spend`,
+  the TradingView webhook) were moved to HTML under #647 on 09-25.
+
