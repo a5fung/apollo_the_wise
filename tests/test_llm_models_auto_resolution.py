@@ -190,3 +190,15 @@ def test_every_tracked_role_has_an_operator_facing_label():
     """
     missing = sorted(set(llm_models.RESOLVED_ROLES) - set(llm_models.ROLE_LABELS))
     assert not missing, f"role(s) with no operator-facing label: {missing}"
+
+
+def test_opus_5_5_prices_at_its_published_rate_with_its_cache_discount():
+    """2026-09-25: claude-opus-5-5 is $4/$20 with cache hits at 0.05x (published pricing page), and
+    it sat on opus-5's $5/$25 tier fallback from its adoption until this entry."""
+    from agents.market_intelligence.spend_tracker import _cost_for_call
+    p = llm_models.pricing_for("claude-opus-5-5")
+    assert (p["input"], p["output"]) == (4.00, 20.00)
+    # 1M cache-read tokens at 0.05x of $4 = $0.20; the other models keep 0.1x.
+    assert abs(_cost_for_call("claude-opus-5-5", 1_000_000, 0, 0, 1_000_000) - 0.20) < 1e-9
+    assert abs(_cost_for_call(llm_models.OPUS_PIN, 1_000_000, 0, 0, 1_000_000) - 0.50) < 1e-9
+

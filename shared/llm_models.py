@@ -408,6 +408,11 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     # ITSELF on 09-01 instead of needing a calendar task nobody will action. Under-pricing
     # after the intro ends would be the worse error, so the fallback direction is standard.
     SONNET_5:   {"input": 2.00, "output": 10.00},   # standard since launch; see the note above
+    # claude-opus-5-5 — verified against https://platform.claude.com/docs/en/about-claude/pricing
+    # (fetched 2026-09-25): $4 in / $20 out, CHEAPER than opus-5's $5/$25, so the tier fallback it
+    # sat on since the 09-22 adoption overstated every judge call by 25%. Its cache hits are 0.05x
+    # the base input, not the usual 0.1x — `cache_read_mult` carries that to the spend tracker.
+    "claude-opus-5-5": {"input": 4.00, "output": 20.00, "cache_read_mult": 0.05},
     # ── Perplexity (#377 cost meter) ─────────────────────────────────────────
     # Token rates verified against https://docs.perplexity.ai/guides/pricing
     # (fetched 2026-06-25). Perplexity bills BOTH per-token AND a per-request

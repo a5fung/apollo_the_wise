@@ -193,7 +193,7 @@ def _cost_for_call(
     cost = (
         (regular_input / 1_000_000) * base_input
         + (cache_creation_tokens / 1_000_000) * base_input * 1.25
-        + (cache_read_tokens / 1_000_000) * base_input * 0.10
+        + (cache_read_tokens / 1_000_000) * base_input * prices.get("cache_read_mult", 0.10)
         + (output_tokens / 1_000_000) * prices["output"]
     )
     return round(cost, 6)
