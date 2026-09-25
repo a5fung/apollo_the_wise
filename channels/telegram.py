@@ -1383,7 +1383,10 @@ class TelegramChannel:
         try:
             from core.spend import get_spend_summary
             summary = await get_spend_summary()
-            await update.message.reply_text(summary, parse_mode="Markdown")
+            # HTML, not legacy Markdown (#647): the summary carries caller and model ids
+            # (ep_grade_judge, claude-opus-5-5) whose underscores 400 a Markdown send.
+            from shared.telegram_format import md_to_html
+            await update.message.reply_text(md_to_html(summary), parse_mode="HTML")
         except Exception as e:
             await update.message.reply_text(f"Error fetching spend data: {e}")
 

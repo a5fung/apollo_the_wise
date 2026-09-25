@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 from telegram import Update
 
 from shared.models import TradingViewAlert
+from shared.telegram_format import md_to_html
 from shared.secrets import get_secrets
 
 logger = logging.getLogger(__name__)
@@ -195,8 +196,10 @@ async def _handle_tradingview_alert(alert: TradingViewAlert) -> None:
         try:
             await _telegram_app.bot.send_message(
                 chat_id=user_id,
-                text=notification,
-                parse_mode="Markdown",
+                # HTML, not legacy Markdown (#647): a ticker like BRK_B or an alert message
+                # carrying an identifier 400s a Markdown send and the alert never arrives.
+                text=md_to_html(notification),
+                parse_mode="HTML",
             )
         except Exception as e:
             logger.error(f"Failed to send TV alert to {user_id}: {e}")

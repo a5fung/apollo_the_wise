@@ -484,3 +484,24 @@ def test_the_rt_miss_digest_body_that_400d_every_day_converts_and_keeps_its_iden
         "an underscore was read as emphasis — the exact v1 behaviour that 400'd this body"
     )
     assert out.count("<") == out.count(">"), "unbalanced tags would 400 on the HTML layer too"
+
+
+def test_spend_command_reply_keeps_identifiers_via_html(monkeypatch):
+    """#647 (2026-09-25): /spend replied in legacy Markdown while its summary carries caller and
+    model ids (ep_grade_judge, claude-opus-5-5); an underscore pair 400s that send."""
+    import asyncio
+    from types import SimpleNamespace as NS
+    from unittest.mock import AsyncMock
+    import core.spend
+    from channels.telegram import TelegramChannel
+
+    async def _summary():
+        return "*API spend*\nep_grade_judge  claude-opus-5-5  $1.23\nmgmt_judge  $0.40"
+    monkeypatch.setattr(core.spend, "get_spend_summary", _summary)
+    reply = AsyncMock()
+    update = NS(effective_user=NS(id=1), message=NS(reply_text=reply))
+    stub = NS(_is_allowed=lambda uid: True)
+    asyncio.run(TelegramChannel._handle_spend(stub, update, None))
+    text, kw = reply.await_args.args[0], reply.await_args.kwargs
+    assert kw.get("parse_mode") == "HTML"
+    assert "ep_grade_judge" in text and "mgmt_judge" in text and "<b>API spend</b>" in text
