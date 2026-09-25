@@ -1139,3 +1139,33 @@ alone. Before any push: `git show --stat HEAD` (files + author).
 
 **Weekend:** Sat 09-26 `run fable weekend block 5` (exit day; now reads his 24 marked charts first) +
 #505/#506/#668. Sun 09-27 #354 (final signed bump) + #662/#677 verifies.
+
+## 2026-09-24 (Thu) CLOSE — 🔴 RESUME HERE. Supersedes the 09-23 close above.
+
+**Board 53** (day began 53; nothing opened, nothing closed). His rulings today: #519 option A signed
+(~$20 whole path, one run, rules pre-registered in `docs/analysis/519_paid_run_scoping_2026-09-24.md`);
+*"charts can only help/support"* → the read is scored as a LEAN, never a filter; *"at least help filter
+out really bad charts"* → a separate garbage-filter line; Leif Soreide's HTF posts are primary study.
+
+**Shipped and live (deploy 21:21 ET, `both` + `execution`, head 00d559e6):** split re-fetch covers a
+ticker's whole stored history; catalyst monitor prescribes a lattice revert only when it LOWERED a grade
+on a SCORED name (tonight's revert page was wrong — verified on prod rows: 38 rows, withheld); the
+#519 option A harness (`scripts/probes/_519_option_a.py`, dry run by default); weekly purge keeps
+`mi_daily_closes` (verified in the container). **Data:** five-year reload landed (2021-09-27 →, 1,254
+sessions, 13.6M rows); split repair re-adjusted 1,100 of 1,100 split tickers (707k bars).
+
+**NOT yet deployed (window closed):** `9b3ccdd6` split-list paging (cursor as param + repeat guard —
+the repair hung an hour on it) and `bf144e9a` (self-healing caller near its cap no longer pages).
+
+**🔴 FRIDAY 09-25 — in order:**
+1. **09:31 ET:** if any EP alert, the grade judge's opus-5-5 verdict closes #683 — quote each DoD clause
+   under its own evidence (mgmt judge 09-24 16:02; theme advisor 09-23 17:10 = shape accepted; the
+   factory path = the 09-23 21:21 canary). No alert → verify-date follows the first alert day.
+2. **12:00–13:00 ET:** `bash scripts/deploy.sh market-agent` (ships 9b3ccdd6 + bf144e9a).
+3. **#519:** re-pull bars (5 years) → re-run `_519_free_read.py` (refactor verified byte-identical on
+   Thursday's bars) → option A dry run in the container → price ≤ $20 → `--paid --max-usd 20` → the
+   scorecard to him. Pre-run checks in the #519 line (QH continuous at its old seams ✓; QH still n/a).
+4. **17:30 ET:** a `db_growth_check` page, if any, is the authorised reload — not a leak.
+
+**Weekend:** Sat 09-26 `run fable weekend block 5` + #505/#506/#668. Sun 09-27 #354 + #662/#677 verifies.
+
