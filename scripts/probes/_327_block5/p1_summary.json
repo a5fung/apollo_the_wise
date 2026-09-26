@@ -1,0 +1,206 @@
+{
+  "generated": "2026-09-26T12:48:10.183900",
+  "n_settled": 3304,
+  "n_attempted_scored": 1283,
+  "n_abstained_no_offline_day0_data": 2007,
+  "n_other_abstain": 14,
+  "n_probe_unscoreable_but_prod_settled": 0,
+  "day0_source_breakdown": {
+    "no_day0_minute_source": 2007,
+    "real_intraday_bars": 224,
+    "not_needed": 867,
+    "cached_pseudo_bars": 206
+  },
+  "m_none": {
+    "outcome_match": 1281,
+    "outcome_mismatch": 2,
+    "outcome_match_pct": 99.844,
+    "r_match": 1281,
+    "r_mismatch": 2,
+    "r_match_pct": 99.844
+  },
+  "m_trail": {
+    "n_scored": 1283,
+    "outcome_match": 1283,
+    "outcome_mismatch": 0,
+    "r_match": 1283,
+    "r_mismatch": 0
+  },
+  "documented_hole_mismatches": 0,
+  "n_inferred_corporate_action_rows": 16,
+  "n_unexplained_nonclean_rows": 0,
+  "readings": {
+    "scored": {
+      "n": 1283,
+      "outcome_match_pct": 99.844,
+      "r_match_pct": 99.844
+    },
+    "strict_all_attempted": {
+      "n": 1297,
+      "outcome_match_pct": 98.766
+    },
+    "split_adjusted": {
+      "n": 1281,
+      "outcome_match_pct": 100.0
+    }
+  },
+  "pass_bar": {
+    "verdict": "PASS",
+    "reading_claimed": "scored (== split_adjusted here)",
+    "n_scored_floor_500": true,
+    "outcome_pct_floor_99": 99.844,
+    "r_pct_floor_99": 99.844
+  },
+  "mismatch_sample": [
+    {
+      "ticker": "CLGN",
+      "fire_date": "2026-08-26",
+      "rung": "ep_low_reclaim",
+      "day0_source": "not_needed",
+      "recorded_outcome": "stop",
+      "probe_outcome": "time_exit",
+      "recorded_r": -1.0,
+      "probe_r": 126.412,
+      "has_daily_bar_hole_in_window": false,
+      "inferred_corporate_action_ratio": 10.0
+    },
+    {
+      "ticker": "EPOW",
+      "fire_date": "2026-08-28",
+      "rung": "ep_high_break",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 25.0
+    },
+    {
+      "ticker": "NRSN",
+      "fire_date": "2026-08-25",
+      "rung": "ep_high_break",
+      "day0_source": "not_needed",
+      "recorded_outcome": "stop",
+      "probe_outcome": "time_exit",
+      "recorded_r": -1.0,
+      "probe_r": 375.4011,
+      "has_daily_bar_hole_in_window": false,
+      "inferred_corporate_action_ratio": 20.0
+    },
+    {
+      "ticker": "KITT",
+      "fire_date": "2026-08-31",
+      "rung": "ep_low_reclaim",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 6.0
+    },
+    {
+      "ticker": "KITT",
+      "fire_date": "2026-08-31",
+      "rung": "ep_close_620_prox",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 6.0
+    },
+    {
+      "ticker": "SFWL",
+      "fire_date": "2026-08-31",
+      "rung": "ep_high_break",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 15.0
+    },
+    {
+      "ticker": "SFWL",
+      "fire_date": "2026-08-31",
+      "rung": "ep_high_break",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 15.0
+    },
+    {
+      "ticker": "NRSN",
+      "fire_date": "2026-09-02",
+      "rung": "ep_close_620_prox",
+      "reason": "probe abstained (window_open) despite day0 source=cached_pseudo_bars",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 20.0
+    },
+    {
+      "ticker": "GOSS",
+      "fire_date": "2026-09-02",
+      "rung": "ep_close_620_prox",
+      "reason": "probe abstained (window_open) despite day0 source=cached_pseudo_bars",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 80.0
+    },
+    {
+      "ticker": "GOSS",
+      "fire_date": "2026-09-04",
+      "rung": "ep_close_reclaim",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 80.0
+    },
+    {
+      "ticker": "GOSS",
+      "fire_date": "2026-09-04",
+      "rung": "ep_close_620_prox",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 80.0
+    },
+    {
+      "ticker": "IPDN",
+      "fire_date": "2026-09-10",
+      "rung": "ep_close_reclaim",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 30.0
+    },
+    {
+      "ticker": "IPDN",
+      "fire_date": "2026-09-10",
+      "rung": "ep_low_reclaim",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 30.0
+    },
+    {
+      "ticker": "IPDN",
+      "fire_date": "2026-09-10",
+      "rung": "ep_close_620_prox",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 30.0
+    },
+    {
+      "ticker": "UZX",
+      "fire_date": "2026-09-11",
+      "rung": "ep_low_reclaim",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 23.0
+    },
+    {
+      "ticker": "UZX",
+      "fire_date": "2026-09-11",
+      "rung": "ep_low_reclaim",
+      "reason": "probe abstained (window_open) despite day0 source=not_needed",
+      "recorded_outcome": "stop",
+      "recorded_r": -1.0,
+      "inferred_corporate_action_ratio": 23.0
+    }
+  ]
+}
