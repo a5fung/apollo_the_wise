@@ -1169,3 +1169,30 @@ the repair hung an hour on it) and `bf144e9a` (self-healing caller near its cap 
 
 **Weekend:** Sat 09-26 `run fable weekend block 5` + #505/#506/#668. Sun 09-27 #354 + #662/#677 verifies.
 
+## 2026-09-25 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 09-24 close above.
+
+**Board 51** (day began 53). Closed: #683 (model updates apply automatically — EP judge verdict on
+opus-5-5, AKAM 07:01 ET), #652 (Telegram safe by default — 5 market days, zero fallbacks).
+
+**His rulings today:** #519 option A ran ($9.22 real; WEAK/NO LEAN) → *"align with a pause here but not a
+full stop … charts … the basis of my trading, discretionary and imprecise by design but critical"* → #519
+paused, next = how charts enter the process (design pass Sat 10-03). #657: *"Yes to both"* → Shape A (the
+tape also decides for singleton-sector members, ending the admit/strip loop) + the sector-cap re-home fix
+(fail closed). Both DEPLOYED 01:50 ET Sat (`e2009945`, both + execution). HTF corpus: CDNA follow-up
+(Leif Soreide = primary HTF source) and MRNA (PBA; rejected on flag depth, 27% vs 25%).
+
+**Also shipped:** split paging fix + near-ceiling noise fix (12:01 ET); opus-5-5 priced at $4/$20 with
+0.05× cache hits; /spend on the ET day, short and bulleted; /spend + TradingView alerts as HTML (#647).
+
+**🔴 SATURDAY 09-26 — first, in order:**
+1. **#657 decision (he set it for tomorrow):** the fix does not undo the 29 current memberships it would
+   reject — 11 gas E&Ps form most of the Mainstream tanker theme (+10 to an EP score). Deadline = **Mon
+   07:00 ET premarket scan**. Prep a DRY RUN of the removal first (which roster rows change), then ask:
+   remove the 29, or leave and watch Monday. List: `docs/analysis/657_comove_removals_2026-09-25.md`
+   §Re-homing defect.
+2. **One-line offer:** restate `api_usage.cost_usd` for claude-opus-5-5 since 09-22 (overstated ~25%;
+   cache reads 2.5×) — $0, a prod data change, his call.
+3. `run fable weekend block 5` + #505/#506/#668 (Saturday build slot).
+**Sunday 09-27:** #354 (final signed bump) + #662/#677 verifies. **Monday:** arm the #657 VERIFY-LIVE check
+after the 17:00 ET theme run (first live evidence for both theme fixes).
+
