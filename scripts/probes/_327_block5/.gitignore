@@ -1,3 +1,4 @@
 # raw prod extracts — regenerate via extract_p0.sh; never commit bulky pulls
 *.csv
 *.csv.gz
+bigwin_*.csv

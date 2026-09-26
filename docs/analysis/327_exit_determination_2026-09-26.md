@@ -291,3 +291,33 @@ CHANGE_PROCESS and sign-off.
   and regenerable via `extract_p0.sh` / `extract_p3.sh`.
 - The one production change: `agents/market_intelligence/delayed_entry_shadow.py::compute_settlement(target_r=None)`,
   inert by default, pinned by `tests/test_delayed_entry_shadow.py::test_the_lane_never_passes_target_r`.
+
+## Addendum 2026-09-26 — were there big winners we were in but lost? (operator question, $0)
+
+**Method and population:** every watched (ticker, EP date) with EP date ≤ 2026-09-04 and ≥10 later sessions
+of bars (n = 1,259; prices from `mi_daily_closes` on one scale, base = the EP-day close). "Ran" = the
+highest high within 15 sessions ≥ +50% over the base; "held" = still ≥ +30% at session 15. Joined to every
+lane fire for that (ticker, EP date).
+
+| | all prices | EP close ≥ $5 |
+|---|---|---|
+| watched pairs | 1,259 | 279 |
+| ran +50% within 15 sessions | 142 | 24 |
+| …and still +30% at session 15 | 68 | 6 |
+| of the 142 / 24: the lane never fired | 40 | 8 |
+| the lane fired | 102 | 16 |
+| any fire kept ≥ 3R | 14 | 1 |
+| best fire's result, median | −1.00R | −1.00R |
+| best fire's peak open gain before exit (MFE), median | +6.2R | +4.1R |
+
+**Reading:** the big runners are there, the lane was in about 70% of them, and it was stopped out of most
+while they were up several R — e.g. HVII (EP 08-28) peaked at +37.6R and closed −1R, VMAR (08-24) +10.6R
+and −1R. So yes, winners were reached and not kept. But the stop × target × exit grid above already asked
+whether ANY rule keeps them while limiting the losses on everyone else, and none did: holding on for the
+runners cost more on the losers than it earned. And the runners are mostly penny stocks — among names over
+$5 only 24 ran and 6 held.
+
+**What this does not answer:** peak gain is recorded up to the stop session, including that session's
+high, so on a session where both the high and the stop were touched the order is unknown and some of the
+peak may have come after the stop; "ran" uses highs, not a price anyone was sure to get.
+
