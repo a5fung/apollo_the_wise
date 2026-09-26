@@ -3840,36 +3840,36 @@
      "fire_rate": 15.43,
      "ctl_rate": 17.37,
      "gap_pp": -1.94,
-     "ctl_reweighted_rate": 16.97,
-     "within_stratum_pp": -1.54,
-     "composition_pp": -0.4,
+     "ctl_reweighted_rate": 17.4,
+     "within_stratum_pp": -1.97,
+     "composition_pp": 0.03,
      "fire_median": 0.0,
      "ctl_median": 1.0,
      "strata": {
       "T1": {
        "cut_hi": 1.0,
        "n_fire": 2951,
-       "n_ctl": 5172,
+       "n_ctl": 4992,
        "fire_rate": 15.08,
-       "ctl_rate": 16.82,
+       "ctl_rate": 17.45,
        "fire_median": 0.0,
        "ctl_median": 1.0
       },
       "T2": {
        "cut_hi": 2.0,
        "n_fire": 250,
-       "n_ctl": 1300,
+       "n_ctl": 1343,
        "fire_rate": 16.8,
-       "ctl_rate": 16.92,
+       "ctl_rate": 16.53,
        "fire_median": 2.0,
        "ctl_median": 2.0
       },
       "T3": {
        "cut_hi": 12.0,
        "n_fire": 157,
-       "n_ctl": 1381,
+       "n_ctl": 1518,
        "fire_rate": 19.75,
-       "ctl_rate": 19.84,
+       "ctl_rate": 17.85,
        "fire_median": 3.0,
        "ctl_median": 4.0
       }
@@ -4094,36 +4094,36 @@
      "fire_rate": 14.71,
      "ctl_rate": 17.37,
      "gap_pp": -2.66,
-     "ctl_reweighted_rate": 16.98,
-     "within_stratum_pp": -2.26,
-     "composition_pp": -0.39,
+     "ctl_reweighted_rate": 17.4,
+     "within_stratum_pp": -2.68,
+     "composition_pp": 0.03,
      "fire_median": 0.0,
      "ctl_median": 1.0,
      "strata": {
       "T1": {
        "cut_hi": 1.0,
        "n_fire": 2743,
-       "n_ctl": 5172,
+       "n_ctl": 4992,
        "fire_rate": 14.76,
-       "ctl_rate": 16.82,
+       "ctl_rate": 17.45,
        "fire_median": 0.0,
        "ctl_median": 1.0
       },
       "T2": {
        "cut_hi": 2.0,
        "n_fire": 245,
-       "n_ctl": 1300,
+       "n_ctl": 1343,
        "fire_rate": 12.24,
-       "ctl_rate": 16.92,
+       "ctl_rate": 16.53,
        "fire_median": 2.0,
        "ctl_median": 2.0
       },
       "T3": {
        "cut_hi": 12.0,
        "n_fire": 152,
-       "n_ctl": 1381,
+       "n_ctl": 1518,
        "fire_rate": 17.76,
-       "ctl_rate": 19.84,
+       "ctl_rate": 17.85,
        "fire_median": 3.0,
        "ctl_median": 4.0
       }

@@ -330,8 +330,9 @@ def load_scan_log():
 
 # ── the walk for the still-open rows + the anchor ─────────────────────────────────────
 
-def walk_arm(entry, stop, d0_bars, sess_bars, closes_before, fire_close, k=PRIMARY_K):
-    """The lane's own arm from bars on one scale. d0_bars: [(h,l)] post-fire (day 0);
+def lane_arm_walk(entry, stop, d0_bars, sess_bars, closes_before, fire_close, k=PRIMARY_K):
+    """The lane's own arm from bars on one scale (named so it is not mistaken for the live-stack
+    `walk_arm`, whose callers `tests/test_exit_era_callers_name_their_strategy.py` gates). d0_bars: [(h,l)] post-fire (day 0);
     sess_bars: [(o,h,l,c)] sessions 1..k (None = hole). Returns dict with stop_idx (0 = day 0),
     trail_exit_idx, r_trail_k, r_none_k, peak_strict_r, or status abstain."""
     risk = entry - stop
@@ -547,7 +548,7 @@ def main():
                 continue
             closes_before = [ser[j][4] for j in range(max(0, i_fire - 25), i_fire)] if i_fire is not None else []
             fire_close = ser[i_fire][4] if i_fire is not None else None
-            wr = walk_arm(entry, stop, d0, sess_bars, closes_before, fire_close)
+            wr = lane_arm_walk(entry, stop, d0, sess_bars, closes_before, fire_close)
             if wr.get("status") == "abstain":
                 row.update({"path": "abstain_hole", "r10": None, "stopped_by_s10": None, "src": "abstain"})
                 open_walk[wr["reason"]] += 1
@@ -591,7 +592,7 @@ def main():
         # anchor (a): our walk vs the recorded settlement on settled rows with a resolvable day 0
         if settled and d0 is not None and i_fire is not None:
             closes_before = [ser[j][4] for j in range(max(0, i_fire - 25), i_fire)]
-            wr = walk_arm(entry, stop, d0, sess_bars, closes_before, ser[i_fire][4])
+            wr = lane_arm_walk(entry, stop, d0, sess_bars, closes_before, ser[i_fire][4])
             if wr.get("status") == "abstain":
                 anchor["abstain"] += 1
             else:
