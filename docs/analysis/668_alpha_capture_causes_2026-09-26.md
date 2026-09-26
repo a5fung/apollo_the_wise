@@ -70,8 +70,9 @@ Expected admissions = R3 rows inside the 7-day lookback of each scan day; actual
 | **post-fix, 08-12 → 09-25** (`93dcd212`, committed 08-11) | n=32 | 39 | **39** | **0** | 9 admitted; **0 admissions unexplained by the rule** |
 
 - **It is not broken.** Since the first scan under the fix (08-12) every admission the rule calls
-  for has fired and none has fired outside it. The re-gate's "7 distinct tickers since 08-11" (now
-  9) is the rule's full output, not a shortfall.
+  for has fired and none has fired outside it. The re-gate's "7 distinct tickers since 08-11" is
+  the rule's full output, not a shortfall (7 aged 21+ days; 9 admitted in total since 08-12, PHVS
+  and DFTX not yet aged).
 - **It is quiet because its source is small.** 19 live R3 events in 10 weeks = 1.9 a week, each
   admitting a name for 5 scan days. That is the whole population the path can ever touch.
 - **Against the 55 uncaptured: the rule applies to 3** (HUT 07-20, THC 07-24 — both in the dark
@@ -96,7 +97,7 @@ each name ever reached (gates in the order `compute_flag_metrics` evaluates them
 | liquidity floor (ADV < 500k shares or ADR < 4%) | 11 | rejected before geometry; stored rejects split ADR 70 rows / ADV 64 rows |
 | below SMA20 (pole ≥ 1.90 but trend broke) | 3 | ARM 1.96×, CRWV 1.94×, TWST 1.92× |
 | MA stack not 10 ≥ 20 ≥ 50 (pole ≥ 1.90) | 1 | AEVA 2.10× |
-| no usable history | 1 | EROC (fewer than 60 bars on file — unmeasured) |
+| no usable history | 1 | EROC (bars begin 2026-06-10: ~44 sessions before its 08-12 alert, under the detector's 60-bar floor — unmeasured) |
 | **reached WATCH or better on any day** | **0** | — |
 
 | the pole, per name (best `pivot_high / 40-session low` seen in-window) | n | |
@@ -122,8 +123,9 @@ since no lane could have evaluated it either.**
 ## 4. The residual
 
 **0 of 55.** No uncaptured name promotes in the replay on a day the board did not evaluate it (a
-universe gap), with or without an R3 row. The one name outside the measurement is EROC — too few
-bars to run the detector at all — and that is a data-coverage limit on a 2026 listing, not a lane
+universe gap), with or without an R3 row. The one name outside the measurement is EROC — its bars
+begin 2026-06-10, so at its 08-12 alert it had ~44 sessions against the detector's 60-bar floor and
+cannot be replayed (nor was it ever on the board) — a history limit on a 2026 listing, not a lane
 failure. Nothing is left that a working carryforward or a wider universe would have caught.
 
 ## 5. What the 60–70% target was pointing at — ⚖ THE LINE
@@ -134,8 +136,8 @@ sourced one on 2026-06-26, deliberately and signed; promotion fell to ~2%. On to
 
 | to reach | flag leg needs | that means |
 |---|---:|---|
-| 60% of n=69 | ≥ 34 more flag captures than the 6 it has (if the 9M legs stay gone) | admitting ~33 of the 43 names that sit between a 1.50× and a 1.90× pole — i.e. the retired bar |
-| 20% without the 9M legs | ≥ 7 more | same names, same knob |
+| 60% of n=69 = 42 captures, with the 9M legs gone (7 today) | ≥ 35 more flag captures | admitting the 33 names that sit between a 1.50× and a 1.90× pole gets to 40 of 69 = 58% — **the retired bar does not reach it either** once the 9M legs are gone (47 of 69 = 68% only with them, as the window had them) |
+| 20% of n=69 = 14 captures, with the 9M legs gone | ≥ 7 more | same names, same knob |
 
 **Reaching it means re-widening flag promotion — partially undoing #356. That is a detection
 criterion and the operator's sole authority. It is surfaced here, not proposed.** Capture is a reach
