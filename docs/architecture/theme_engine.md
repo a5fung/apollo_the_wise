@@ -33,7 +33,7 @@
 - **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
 - **Birth validation (#266, 2026-06-17, operator-signed)**: newly DISCOVERED themes run the SAME `_validate_theme_membership` on their founding members before `_save_themes` — discovery previously skipped it, so bad members sat ~6d until the next Mon/Wed/Fri (evidence: `docs/analysis/theme_birth_validation_evidence_2026-06-17.md`). Changes WHEN, not WHAT; min-survivor guard keeps small/born-bad themes intact; emits `theme_birth_validated`.
 - **Tool schemas**: all three tools (assignment, discovery, split) have `analysis_scratchpad` as required first field — forces reasoning before JSON output.
-- **Membership test = the TAPE, not the sector label (2026-09-13, OPERATOR-SIGNED)**: a proposed (stock, theme) pair is admitted when the stock's market-adjusted (SPY-subtracted) daily returns over the 60 sessions STRICTLY BEFORE the run date correlate at ≥ `ASSIGN_COMOVE_BAR` (0.35 — a PER-PAIR bar; derivation at the constant) with the theme's equal-weight member basket (leave-one-out; ≥3 members with history, ≥30 overlapping sessions — `market_adjusted_correlation`'s maths and guards, imported by both the EP scan and this engine, never re-derived; #660 moved them out of `ep_theme_belonging` 2026-09-18, a pure move). The two strip sites — the birth strip (`_strip_sector_outliers`) and the nightly carryforward strip (`_apply_carryforward_deterministic_filter`) — now RECEIVE the context too (**#657 Shape A, 2026-09-25, OPERATOR-SIGNED "Yes to both"**; from 2026-09-13 to 2026-09-25 they accepted the parameter but their call sites withheld it — operator 2026-09-13: *"swap job 1 and leave job 2"*). This can only re-judge a SINGLETON-sector member (the only member either strip ever touches): kept when it co-moves with the theme at ≥ `ASSIGN_COMOVE_BAR`, stripped when it does not or is unjudgeable — exactly what the label already strips at most, never more; it can never evict a same-sector member (that would be "Shape B", NOT adopted — #657 found it evidence-mixed and it stays undecided). Consequence measured: 16 of 21 cross-sector names the tape admitted since 09-13 were being stripped by the label within 7 days (observed 1-3), a loop; Shape A ends it. Whether the tape should ALSO decide same-sector removals (Shape B / down-weight / leave) is still answered, not pre-decided, in #657: `docs/analysis/657_comove_removals_2026-09-25.md` (§CORRECTED; recommendation down-weight, not evict — his sign-off pending on that separate question). Change log 2026-09-25. **Fail direction**: a pair the tape cannot judge (no history / thin basket / closes read failed / toggle off) runs TODAY's sector test — `_sector_identity_gate`, verbatim: the singleton-sector rejection, the sector-keyword fallback with its description rescue, and the Unknown-sector description-overlap check — never a silent admit. **Two passes per run**: a pair thin only for want of members is re-judged after the run's other admits have landed, the label's own yeses first (IREN was proposed before BTDR in the same batch on 2026-09-08 and met a 2-name basket). ONE `mi_daily_closes` read per run (`_load_comove_context`, in `run_theme_engine`, handed to the three sites as `comove_ctx`; `None` = the pre-change engine byte-for-byte). Toggle `theme_assign_comove` (`mi_safeguard_state` / env `THEME_ASSIGN_COMOVE_ENABLED`, DEFAULT ON). Audit: `assignment_comove_admitted_over_sector`, `assignment_skipped_comove_below_bar` (both carry the sector counterfactual), `assignment_comove_summary` (the nightly positive observable), `theme_comove_context_failed`; the strip's aggregate row gains `comove_kept=` / `comove_below_bar=`. Change log 2026-09-13.
+- **Membership test = the TAPE, not the sector label (2026-09-13, OPERATOR-SIGNED)**: a proposed (stock, theme) pair is admitted when the stock's market-adjusted (SPY-subtracted) daily returns over the 60 sessions STRICTLY BEFORE the run date correlate at ≥ `ASSIGN_COMOVE_BAR` (0.35 — a PER-PAIR bar; derivation at the constant) with the theme's equal-weight member basket (leave-one-out; ≥3 members with history, ≥30 overlapping sessions — `market_adjusted_correlation`'s maths and guards, imported by both the EP scan and this engine, never re-derived; #660 moved them out of `ep_theme_belonging` 2026-09-18, a pure move). The two strip sites — the birth strip (`_strip_sector_outliers`) and the nightly carryforward strip (`_apply_carryforward_deterministic_filter`) — now RECEIVE the context too (**#657 Shape A, 2026-09-25, OPERATOR-SIGNED "Yes to both"**; from 2026-09-13 to 2026-09-25 they accepted the parameter but their call sites withheld it — operator 2026-09-13: *"swap job 1 and leave job 2"*). This can only re-judge a SINGLETON-sector member (the only member either strip ever touches): kept when it co-moves with the theme at ≥ `ASSIGN_COMOVE_BAR`, stripped when it does not or is unjudgeable — exactly what the label already strips at most, never more; it can never evict a same-sector member (that would be "Shape B", NOT adopted — #657 found it evidence-mixed and it stays undecided). Consequence measured: 16 of 21 cross-sector names the tape admitted since 09-13 were being stripped by the label within 7 days (observed 1-3), a loop; Shape A ends it. Whether the tape should ALSO decide same-sector removals (Shape B / down-weight / leave) is still answered, not pre-decided, in #657: `docs/analysis/657_comove_removals_2026-09-25.md` (§CORRECTED; recommendation down-weight, not evict — his sign-off pending on that separate question). Change log 2026-09-25. **Fail direction**: a pair the tape cannot judge (no history / thin basket / closes read failed / toggle off) runs TODAY's sector test — `_sector_identity_gate`, verbatim: the singleton-sector rejection, the sector-keyword fallback with its description rescue, and the Unknown-sector description-overlap check — never a silent admit. **Two passes per run**: a pair thin only for want of members is re-judged after the run's other admits have landed, the label's own yeses first (IREN was proposed before BTDR in the same batch on 2026-09-08 and met a 2-name basket). ONE `mi_daily_closes` read per run (`_load_comove_context`, in `run_theme_engine`, handed to the three sites as `comove_ctx`; and, since 2026-09-25, to a fourth: the Pass-2 sector cap's re-homed members (`_admit_rehomed_members`), which until then were moved by blind union with no test at all — change log 2026-09-25, BUG FIX; `None` = the pre-change engine byte-for-byte). Toggle `theme_assign_comove` (`mi_safeguard_state` / env `THEME_ASSIGN_COMOVE_ENABLED`, DEFAULT ON). Audit: `assignment_comove_admitted_over_sector`, `assignment_skipped_comove_below_bar` (both carry the sector counterfactual), `assignment_comove_summary` (the nightly positive observable), `theme_comove_context_failed`; the strip's aggregate row gains `comove_kept=` / `comove_below_bar=`. Change log 2026-09-13.
 - **Description chunking**: `_ensure_descriptions()` sends max 15 tickers per Haiku call.
 - **`get_active_themes(stale_after_days=7)`**: recency cap is the de-facto retirement mechanism — themes that stop appearing in daily snapshots age out after a week.
 - **Phase 2 re-granularization (ADR 0032, behind `THEME_SUBTHEME_ARM` DB toggle, fail-closed OFF)**: Route A protect-strip→PARENT_CHILD adjudication (inert on DISTINCT verdicts — fail-closed to today's strip) + Route B sole-sub-theme ecosystem-dominant split via `_split_fat_theme` (self-disarms: post-split the ecosystem has 2 themes). Split children persist via `parent_theme` (rebuilt into `sub_theme_parents` each run); covered-ticker exclusion keeps split-offs out of the discovery pool.
@@ -1001,6 +1001,63 @@ matching the Shape A dry read (7 of 8 named tickers above, board composition per
 `tests/test_theme_assign_comove.py` (4 new, through the real call sites — `run_theme_engine` and
 `_discover_new_themes`/`_discover_new_themes_single` — each pinned red against the pre-2026-09-25
 wiring before the fix; 17 total in the file).
+
+### 2026-09-25 — BUG FIX: the sector cap moved members into a theme they never passed the membership test for (SR / ATO in a tanker theme)
+
+**Symptom (verified on prod).** 'Regulated Natural Gas Distribution Utilities' (SR, ATO) was retired on
+2026-09-24 with `parent='(unknown)'` and both names appeared in 'Crude & Product Tanker Shipping' the
+same night, reading 0.105 and 0.2665 against it (`ASSIGN_COMOVE_BAR` 0.35). No LLM judged the pair.
+
+**Mechanism.** `_merge_overlapping_themes` Pass 2 (the keyword sector cap — `_SECTOR_KEYWORD_GROUPS`)
+keeps the top N themes whose NAME matches a group and, in the int-cap branch, absorbed every further
+match into the group's top theme by blind union: `top_theme["tickers"] = list(existing | extra)`. "gas"
+put a utilities theme in `oil_gas`; the Mainstream tanker theme ("crude") held the top slot. No ticker
+overlap was required (unlike Pass 1 and Pass 1.5, which fire only on shared members), no verdict, no
+validator, and no audit row — which is also why the retire path had no successor pointer. Prod log line
+`2026-09-24 21:08:30 … Theme merge (sector cap): 'Regulated Natural Gas Distribution Utilities' → 'Crude
+& Product Tanker Shipping' (sector group 'oil_gas', 2 tickers absorbed)`. The prod file logs (eleven
+rotations, from 2026-04-15) carry 470 such lines; the 203 absorbs since 04-30 that the replay can
+reconstruct moved 1,783 members — 177 of 207 names two or more times (TALO 32×), because a strip or the
+validator took most out within a day (834 of 1,559 departed arrivals lasted one day) and the next
+night's cap put them back. It fed the #214 mass-flag rename three nights running this month, and on
+09-25 fat-split the tanker theme (11 gas E&Ps in, 4 real tankers out to a child). Finding:
+`docs/analysis/657_comove_removals_2026-09-25.md` § "Re-homing defect (fixed 2026-09-25)" — every
+current membership that arrived this way, derived by `scripts/probes/_rehome_sector_cap.py` (45 on the
+09-25 board; the fixed code rejects 29 of them at the branch, admits 16; EMBJ / RTX / AGRO, the
+"untraceable" joins in #657's body, are among them).
+
+**Fix (`_admit_rehomed_members`).** A member the cap would move now passes the SAME membership test
+any other admission passes, in the assignment funnel's order: operator exclusion and live validation
+cooldown for the target first; the tape (`_comove_verdict` against the target's current members) wherever
+it can judge the pair; `_validate_theme_membership` — the validator a net-new assignment is checked by —
+for every pair it cannot (no context / no history / thin basket). Never a silent admit on None; what
+fails is not moved and returns to the pools. All of the validator's removals are applied (it writes the
+14-day cooldown for each name it removes). `_merge_overlapping_themes` takes the run's `comove_ctx`,
+`changelog`, `protected`, `cooldown_set`, `theme_exclusions` (both call sites in `run_theme_engine` pass
+them; defaults None keep every other caller's signature). The cap's keep/absorb structure, the per-family
+biotech branch, the cap-0 drop and every Pass-1/1.5 guard are unchanged.
+
+**Audit + successor.** One row per absorb: `theme_sector_cap_absorbed` (≥ 1 admitted; summary
+`Pass2: 'source' -> 'target': admitted k of n member(s) (sector group 'g')`, detail = every member's
+path / reading / verdict as JSON) or `theme_sector_cap_not_absorbed` (all rejected; the source was
+absorbed by nothing, so no successor, and its retire note says "dropped by the sector cap — no member
+passed the membership test for 'target'"). The engine-drop retire lookup now reads both rows through the
+pure `_successor_pointers_from_audit_rows`, so a cap-retired theme points at its successor instead of
+`(unknown)`.
+
+**Tests.** `tests/test_theme_sector_cap_rehome.py` reproduces the SR/ATO shape (three oil_gas-named
+themes, disjoint rosters so only Pass 2 can move a member): the tape rejects SR/ATO and admits a
+co-moving control; no context → the validator decides; an unjudgeable pair goes to the validator, never a
+silent admit; cooldown and exclusion hold; the audit row carries the successor pointer; an all-rejected
+source has none. Observed RED on the pre-fix branch (`SR` in the tanker roster), green after.
+`test_sector_cap_int_groups_unchanged` now patches the validator (admit-all) and locks the cap structure
+alone.
+
+**Not changed, stated.** Pass 1 (overlap ≥ 0.6 with ≥ 3 shared) and Pass 1.5 (≤ 3 members, ≤ 1 unique,
+≥ 1 shared with the target) still union on overlap evidence without a per-member verdict; they are not
+the zero-evidence path and were left alone — whether they should carry the same test is a separate
+question for him. Deploy: `theme_engine.py` loads in `apollo-execution` too — two steps (`market-agent`
++ `execution`).
 
 ### 2026-09-20 — #661: the assignment LLM call has a SEAM — the EP money path no longer runs through the nightly batch driver (REFACTOR ONLY; old-vs-new replay byte-identical)
 

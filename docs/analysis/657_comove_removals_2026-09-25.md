@@ -569,3 +569,112 @@ Tightness = mean leave-one-out co-movement of each member with the rest (no engi
 - **Shape A (as built — pass the context to the two strip sites)** is NOT an eviction rule: on today's board it strips 1 of 8 singleton-sector members (AGRO 0.09, which the label strips too) and keeps the other 7 (OKLO 0.90, LEU 0.84, MAS 0.68, PUBM 0.66, TNET 0.61, VSAT 0.49, WLTH 0.40) that the label removes tomorrow. His 09-13 ruling ("leave job 2") predates the loop this created: 16 of 21 cross-sector pairs the tape admitted were stripped by the label within days and 9 of 21 bounced two or more times, each bounce re-spending a proposal and a validation. **Surfaced for his decision**, not pre-decided: closing the loop is a smaller change than the eviction question, and it removes fewer names, never more.
 
 **Stopping rule for a follow-up, if he wants one**: pre-register the rolling W2 (every board date with 30 sessions after it) and the persistence rule (N = 5 / 10 readings) BEFORE running; sign-off only on numbers from that document.
+
+
+---
+
+## Re-homing defect (fixed 2026-09-25)
+
+**The mechanism, confirmed on prod rather than inferred.** `_merge_overlapping_themes` Pass 2 caps each
+NAME-keyword group (`_SECTOR_KEYWORD_GROUPS`: "gas", "crude", "oil", "drilling", "refin"… = `oil_gas`,
+cap 2) and, until this fix, unioned every capped theme's whole roster into the group's top-scoring theme
+— `top_theme["tickers"] = list(existing | extra)`. No ticker overlap was required, no co-movement
+verdict was read, no validator ran, and no audit row was written, so the engine-drop retire path found no
+successor and wrote `parent='(unknown)'`. Prod log, 2026-09-24 21:08:30 UTC:
+`Theme merge (sector cap): 'Regulated Natural Gas Distribution Utilities' → 'Crude & Product Tanker
+Shipping' (sector group 'oil_gas', 2 tickers absorbed)` — "gas" put a utilities theme in the oil_gas group,
+the Mainstream tanker theme held the group's top slot, and SR / ATO went in reading 0.105 / 0.2665 against
+it (bar 0.35). Audit row 47690 (`theme_auto_retired`) then retired the source to `(unknown)`.
+
+**How often.** The prod file logs run from 2026-04-15 (eleven rotations, checked in full — a first draft
+of this section said they began 09-10 off a truncated listing; they do not) and carry 470 of these lines.
+The 203 absorbs since 2026-04-30 (when the merge-input snapshot the replay rests on was first logged) moved
+1,783 members; 177 of the 207 distinct names were moved two or more times (TALO 32 times, APA and OVV 31),
+because a strip or the validator took most of them out again — 834 of the 1,559 since-departed arrivals
+lasted one day, 86 lasted zero — and the next night's cap put them back. It drove the `#214` mass-flag
+rename three nights running this month (a refiners theme is now 'Global Oil & Gas Producers and
+Refiners') and fat-split the tanker theme on 09-25 (four real tanker names left for a 'Product Tanker
+Shipping' child; the parent kept seven tankers and eleven gas E&Ps). It is the "merge:unlogged" join class
+the body above could not tie to an event — EMBJ / RTX (08-11) and AGRO (09-02), listed there as
+untraceable, are cap absorbs (below).
+
+**The fix (`_admit_rehomed_members`, `theme_engine.py`).** A member the cap would move now passes the
+membership test every other admission passes, in the assignment funnel's order: the operator exclusion
+and the live validation cooldown for the target first, then the tape (`_comove_verdict` against the
+target's CURRENT members at `ASSIGN_COMOVE_BAR`) wherever it can judge the pair, and
+`_validate_theme_membership` for every pair it cannot (no context, no history, thin basket) — never a
+silent admit. What fails is not moved (it returns to the pools). The cap itself is unchanged. One audit
+row per absorb — `theme_sector_cap_absorbed` (carries the `'source' -> 'target'` successor pointer the
+retire path now reads) or `theme_sector_cap_not_absorbed` (nothing admitted → no successor, and the
+retire note says so; a source stripped empty upstream is "empty at the cap", not a rejection) — with
+every member's reading and path in the detail, so the next such question is a SQL query. Tests:
+`tests/test_theme_sector_cap_rehome.py` (red on the old branch — SR / ATO landed in the tanker roster —
+green on the new).
+
+**Every CURRENT membership that arrived by this path — derived, not hand-listed.**
+`scripts/probes/_rehome_sector_cap.py` replays each merge call's logged Pass-1 / 1.5 operations to
+rebuild the exact rosters at the branch (the replayed source size is asserted equal to the logged
+"N tickers absorbed" on all 203 calls), takes `arrived = source − target − target(D−1)`, keeps a
+membership only when the name sat in the target (following renames) on EVERY board from arrival through
+2026-09-25, and reads each pair with the LIVE `_comove_verdict` **as the fixed code would have that
+night** — against the target's pre-absorb members, sessions strictly before the run date. (Read against
+today's roster the eleven E&Ps in the tanker theme score 0.45–0.81 — they ARE the basket now; the
+at-branch reading is the one that decides.) The probe calibrates first: SR 0.105 / ATO 0.2665 against the
+09-24 tanker roster, reproduced exactly. Coverage boundary, stated: the 267 cap lines from 04-15 … 04-29
+predate the snapshot and cannot be replayed (1,133 logged moves); the closes pull starts 04-01, so an
+at-branch reading for an arrival before late June is unjudgeable here — none of those is current.
+
+**45 current memberships on the 2026-09-25 board arrived this way; the fixed code rejects 29 of them on
+the tape, admits 16, and none is unjudgeable.** Nothing has been removed from prod — that is his call.
+
+| theme today (name at absorb) | arrived | from | member | co-movement at the branch (basket) | fixed code | vs today's roster |
+|---|---|---|---|---|---|---|
+| Crude & Product Tanker Shipping | 2026-09-25 | Appalachian & Natural Gas-Weighted E&P Producers | AR | 0.2353 (15) | **REJECT — not moved** | 0.6543 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Appalachian & Natural Gas-Weighted E&P Producers | CNX | 0.3307 (15) | **REJECT — not moved** | 0.6999 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Appalachian & Natural Gas-Weighted E&P Producers | CRK | 0.0664 (15) | **REJECT — not moved** | 0.4545 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Appalachian & Natural Gas-Weighted E&P Producers | EQT | 0.1666 (15) | **REJECT — not moved** | 0.5907 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Appalachian & Natural Gas-Weighted E&P Producers | EXE | 0.3031 (15) | **REJECT — not moved** | 0.7029 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Appalachian & Natural Gas-Weighted E&P Producers | GPOR | 0.2451 (15) | **REJECT — not moved** | 0.6245 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Onshore Oil & Gas E&P Recovery | MUR | 0.2018 (11) | **REJECT — not moved** | 0.6767 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Onshore Oil & Gas E&P Recovery | OXY | 0.3241 (11) | **REJECT — not moved** | 0.8117 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Onshore Oil & Gas E&P Recovery | PNRG | 0.2519 (11) | **REJECT — not moved** | 0.6226 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Appalachian & Natural Gas-Weighted E&P Producers | RRC | 0.3142 (15) | **REJECT — not moved** | 0.7134 |
+| Crude & Product Tanker Shipping | 2026-09-25 | Onshore Oil & Gas E&P Recovery | TALO | 0.1630 (11) | **REJECT — not moved** | 0.6787 |
+| Global Oil & Gas Producers and Refiners (was 'Petroleum Refiners & Marketers') | 2026-09-23 | Integrated Oil & Gas Majors | BP | 0.7158 (16) | admit | 0.7840 |
+| Global Oil & Gas Producers and Refiners (was 'Petroleum Refiners & Marketers') | 2026-09-23 | Integrated Oil & Gas Majors | CVX | 0.7706 (16) | admit | 0.8525 |
+| Global Oil & Gas Producers and Refiners (was 'Petroleum Refiners & Marketers') | 2026-09-23 | Integrated Oil & Gas Majors | E | 0.6519 (16) | admit | 0.7305 |
+| Global Oil & Gas Producers and Refiners (was 'Petroleum Refiners & Marketers') | 2026-09-23 | Integrated Oil & Gas Majors | EQNR | 0.7139 (16) | admit | 0.7788 |
+| Global Oil & Gas Producers and Refiners (was 'Petroleum Refiners & Marketers') | 2026-09-23 | Integrated Oil & Gas Majors | SHEL | 0.6578 (16) | admit | 0.7411 |
+| Global Oil & Gas Producers and Refiners (was 'Petroleum Refiners & Marketers') | 2026-09-23 | Integrated Oil & Gas Majors | TTE | 0.5828 (16) | admit | 0.6692 |
+| Global Oil & Gas Producers and Refiners (was 'Petroleum Refiners & Marketers') | 2026-09-23 | Integrated Oil & Gas Majors | XOM | 0.6882 (16) | admit | 0.7599 |
+| Global Oil & Gas Producers and Refiners (was 'Petroleum Refiners & Marketers') | 2026-09-23 | Appalachian Basin Natural Gas E&P | AR | 0.3426 (10) | **REJECT — not moved** | 0.6025 |
+| Global Oil & Gas Producers and Refiners (was 'Petroleum Refiners & Marketers') | 2026-09-23 | Appalachian Basin Natural Gas E&P | RRC | 0.3469 (10) | **REJECT — not moved** | 0.6320 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | HLX | 0.3989 (4) | admit | 0.8204 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | NE | 0.4077 (4) | admit | 0.7259 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | SDRL | 0.4256 (4) | admit | 0.7517 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | WES | 0.3961 (4) | admit | 0.3824 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | ET | 0.3249 (4) | **REJECT — not moved** | 0.4811 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | FTK | -0.2323 (4) | **REJECT — not moved** | 0.0100 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | HP | 0.3202 (4) | **REJECT — not moved** | 0.7747 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | KMI | 0.2638 (4) | **REJECT — not moved** | 0.3892 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | KNTK | 0.3349 (4) | **REJECT — not moved** | 0.4451 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | NESR | 0.1707 (4) | **REJECT — not moved** | 0.5253 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | OII | 0.2964 (4) | **REJECT — not moved** | 0.5690 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | TDW | 0.3034 (4) | **REJECT — not moved** | 0.5673 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | TS | 0.2708 (4) | **REJECT — not moved** | 0.4395 |
+| Energy Infrastructure & Services Complex (was 'Renewable Diesel / Renewable Fuels Refiners') | 2026-09-15 | Independent Petroleum Refiners RS Breakout | WHD | 0.2664 (4) | **REJECT — not moved** | 0.4717 |
+| Defense Electronics & Aerospace Subsystem Suppliers | 2026-08-11 | Aerospace Precision Components & Supply Chain | ATI | 0.0011 (4) | **REJECT — not moved** | 0.3875 |
+| Defense Electronics & Aerospace Subsystem Suppliers | 2026-08-11 | Aerospace Precision Components & Supply Chain | EMBJ | 0.1732 (4) | **REJECT — not moved** | 0.1375 |
+| Defense Electronics & Aerospace Subsystem Suppliers | 2026-08-11 | Aerospace Precision Components & Supply Chain | RTX | 0.0691 (4) | **REJECT — not moved** | 0.1151 |
+| Defense Electronics & Aerospace Subsystem Suppliers | 2026-09-22 | Small Launch Vehicle & Space Platform Manufacturers | MDA | 0.2744 (4) | **REJECT — not moved** | 0.6318 |
+| Defense Electronics & Aerospace Subsystem Suppliers | 2026-09-22 | Small Launch Vehicle & Space Platform Manufacturers | RKLB | 0.2775 (4) | **REJECT — not moved** | 0.6170 |
+| Space Economy: Satellite Communications & Launch Services | 2026-09-24 | Small Satellite & Space Services Rotation | BKSY | 0.6680 (4) | admit | 0.7717 |
+| Space Economy: Satellite Communications & Launch Services | 2026-09-24 | Small Satellite & Space Services Rotation | FLY | 0.8071 (4) | admit | 0.8949 |
+| Space Economy: Satellite Communications & Launch Services | 2026-09-24 | Small Satellite & Space Services Rotation | LUNR | 0.7082 (4) | admit | 0.8287 |
+| Space Economy: Satellite Communications & Launch Services | 2026-09-24 | Small Satellite & Space Services Rotation | MDA | 0.6612 (4) | admit | 0.6186 |
+| Space Economy: Satellite Communications & Launch Services | 2026-09-24 | Small Satellite & Space Services Rotation | RKLB | 0.7726 (4) | admit | 0.8682 |
+| Global Agriculture Value Chain Recovery (was 'Pure-Play Agricultural Tractor & Farm Machinery Manufacturers') | 2026-09-02 | Agricultural Commodity Farming & Food Processing | AGRO | 0.2668 (5) | **REJECT — not moved** | 0.0908 |
+
+Full derivation with every arrival since 2026-04-30 (current or since departed): `scripts/probes/_657_out/rehome_sector_cap_2026-09-25.psv`; inputs `rehome_merge_trace.log` (all eleven log rotations), `rehome_themes_since_0401.psv`, `rehome_renames_since_0401.psv`, `rehome_rename_events_since_0401.psv` beside it.
+
+⚖ THE LINE: the fix changes how a merge-moved member is judged (it now gets the test every admission gets); no bar, cap, toggle or roster was changed by hand, and the 29 names above are listed, not evicted.

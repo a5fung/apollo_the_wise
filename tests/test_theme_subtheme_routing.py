@@ -655,13 +655,22 @@ async def test_sector_cap_per_family_biotech(monkeypatch):
 @pytest.mark.asyncio
 async def test_sector_cap_int_groups_unchanged(monkeypatch):
     """The per-family mode is biotech-only — int-capped groups (oil_gas cap 2)
-    keep the pre-#476 keep/absorb behavior byte-identically."""
+    keep the pre-#476 keep/absorb STRUCTURE: the top two survive, the third is
+    absorbed into the top theme, nothing is dropped. Since 2026-09-25 the absorbed
+    members pass the membership test first (tests/test_theme_sector_cap_rehome.py);
+    with no co-movement context that is the validator, patched here to admit all so
+    this test keeps locking the cap structure alone."""
     from unittest.mock import AsyncMock
 
     from agents.market_intelligence import theme_engine as te
 
     audit = AsyncMock()
     monkeypatch.setattr(te, "log_audit_event", audit)
+
+    async def _admit_all(theme_name, tickers, changelog, protected=None, **kw):
+        return list(tickers)
+
+    monkeypatch.setattr(te, "_validate_theme_membership", _admit_all)
     themes = [
         {"name": "Permian Oil Producers", "tickers": ["A1", "A2", "A3"], "score": 90, "stage": "Nascent"},
         {"name": "LNG Export Infrastructure", "tickers": ["B1", "B2", "B3"], "score": 80, "stage": "Nascent"},

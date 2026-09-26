@@ -5685,8 +5685,10 @@ ASSIGN_COMOVE_DEFAULT_ON: bool = True
 class ComoveContext:
     """The nightly run's price context, built ONCE per run by `_load_comove_context`:
     market-adjusted log returns per ticker over the sessions STRICTLY BEFORE `before_date` (the
-    run date — no lookahead). Passed down to the three membership-test sites; `None` at any site
-    means "cannot judge" and that site runs today's sector test."""
+    run date — no lookahead). Passed down to the three membership-test sites (and, since
+    2026-09-25, to the sector cap's re-homing — `_admit_rehomed_members`); `None` at any site
+    means "cannot judge" and that site runs its fallback (the sector test; the validator for a
+    re-homed member)."""
     before_date: date
     excess: dict[str, Any]        # ticker -> np.ndarray, aligned to the N return sessions
     n_sessions: int               # N
@@ -7313,12 +7315,178 @@ async def _route_a_subtheme(
         return None
 
 
+async def _admit_rehomed_members(
+    target: dict,
+    source: dict,
+    group: str,
+    comove_ctx: ComoveContext | None,
+    changelog: list[dict] | None,
+    protected: set[tuple[str, str]] | None,
+    cooldown_set: set[tuple[str, str]] | None,
+    theme_exclusions: dict[str, set[str]] | None,
+) -> list[str]:
+    """The membership test for a member the SECTOR CAP would move from `source` into `target`
+    (2026-09-25 bug fix — SR/ATO). Returns the members admitted; `target["tickers"]` is NOT
+    mutated here except when the validator removes an EXISTING member (see below).
+
+    The 09-24 defect: Pass 2 unioned the whole roster of a theme whose NAME matched a keyword
+    group into the group's top theme — no ticker overlap, no verdict, no validator, no audit row.
+    Two regulated gas utilities landed in a tanker theme reading 0.105 and 0.2665 against it (bar
+    0.35). Every other admission in this engine passes a membership test; this one did not.
+
+    The test is the ASSIGNMENT funnel's, in the same order: the two hard guards first (an
+    operator exclusion, a live validation cooldown from the target — a merge must not bypass
+    either), then the tape (`_comove_verdict`, market-adjusted co-movement with the target's
+    CURRENT members at ASSIGN_COMOVE_BAR) wherever it can judge the pair, and
+    `_validate_theme_membership` — the same validator a net-new assignment is checked by — for
+    every pair it cannot (no context, no history, thin basket). Never a silent admit on None.
+    The validator judges the target's roster plus the unjudged candidates; ALL of its removals
+    are applied (it writes the 14-day cooldown for each name it removes, so ignoring one would
+    leave a cooldown row for a member still in the theme).
+
+    Writes ONE audit row per absorb: `theme_sector_cap_absorbed` (>= 1 member admitted; the
+    summary carries the `'source' -> 'target'` pointer the engine-drop retire path reads) or
+    `theme_sector_cap_not_absorbed` (every member rejected — the source was absorbed BY nothing,
+    so it gets no successor). The detail carries every member's verdict, reading and path, so a
+    re-homing is a SQL query, not a grep over rotating container logs.
+    """
+    target_name = target["name"]
+    source_name = source["name"]
+    existing: list[str] = list(target.get("tickers") or [])
+    existing_set = set(existing)
+    candidates = [tk for tk in (source.get("tickers") or []) if tk not in existing_set]
+    already = [tk for tk in (source.get("tickers") or []) if tk in existing_set]
+    excluded = (_get_excluded_tickers_for_theme(target_name, theme_exclusions)
+                if theme_exclusions else set())
+
+    if not candidates:
+        # Nothing to judge. Either the source was stripped empty upstream (Pass 1 protect
+        # strip — "0 tickers absorbed" in the old log line) → it was absorbed BY nothing, or
+        # every member already sits in the target → the target IS its successor.
+        if already:
+            await log_audit_event(
+                "theme_sector_cap_absorbed",
+                summary=(f"Pass2: '{source_name}' -> '{target_name}': all {len(already)} member(s) "
+                         f"already in the target (sector group '{group}')"),
+                detail=json.dumps({"source": source_name, "target": target_name, "group": group,
+                                   "already_in_target": already, "admitted": [], "rejected": [],
+                                   "members": {}}),
+            )
+        else:
+            await log_audit_event(
+                "theme_sector_cap_not_absorbed",
+                summary=(f"Pass2: '{source_name}' dropped — empty at the cap, nothing to move into "
+                         f"'{target_name}' (sector group '{group}')"),
+                detail=json.dumps({"source": source_name, "target": target_name, "group": group,
+                                   "already_in_target": [], "admitted": [], "rejected": [],
+                                   "members": {}}),
+            )
+        return []
+
+    verdicts: dict[str, dict] = {}
+    admitted: list[str] = []
+    to_validate: list[str] = []
+    for tk in candidates:
+        if tk in excluded:
+            verdicts[tk] = {"path": "exclusion", "verdict": "reject"}
+            continue
+        if cooldown_set and (tk, target_name) in cooldown_set:
+            verdicts[tk] = {"path": "cooldown", "verdict": "reject"}
+            continue
+        cv = _comove_verdict(tk, existing, comove_ctx)
+        if cv is not None and cv.admit is not None:
+            verdicts[tk] = {"path": "tape", "corr": cv.corr, "overlap": cv.overlap,
+                            "basket_n": cv.basket_n, "verdict": "admit" if cv.admit else "reject"}
+            if cv.admit:
+                admitted.append(tk)
+        else:
+            verdicts[tk] = {"path": "validator", "reason": cv.reason if cv else "no_context",
+                            "verdict": None}
+            to_validate.append(tk)
+
+    removed_existing: list[str] = []
+    if to_validate:
+        validated = await _validate_theme_membership(
+            target_name, existing + to_validate,
+            changelog if changelog is not None else [], protected=protected,
+        )
+        kept = set(validated)
+        for tk in to_validate:
+            ok = tk in kept
+            verdicts[tk]["verdict"] = "admit" if ok else "reject"
+            if ok:
+                admitted.append(tk)
+        removed_existing = [tk for tk in existing if tk not in kept]
+        if removed_existing:
+            target["tickers"] = [tk for tk in existing if tk in kept]
+            logger.info(f"Theme merge (sector cap): validator removed existing member(s) "
+                        f"{removed_existing} from '{target_name}' while judging '{source_name}'")
+
+    detail = json.dumps({
+        "source": source_name, "target": target_name, "group": group,
+        "bar": ASSIGN_COMOVE_BAR, "context": comove_ctx is not None,
+        "already_in_target": already, "admitted": admitted,
+        "rejected": [tk for tk in candidates if tk not in admitted],
+        "existing_removed_by_validator": removed_existing,
+        "members": verdicts,
+    })
+    if admitted:
+        await log_audit_event(
+            "theme_sector_cap_absorbed",
+            summary=(f"Pass2: '{source_name}' -> '{target_name}': admitted {len(admitted)} of "
+                     f"{len(candidates)} member(s) (sector group '{group}')"),
+            detail=detail,
+        )
+    else:
+        await log_audit_event(
+            "theme_sector_cap_not_absorbed",
+            summary=(f"Pass2: '{source_name}' dropped — 0 of {len(candidates)} member(s) passed the "
+                     f"membership test for '{target_name}' (sector group '{group}')"),
+            detail=detail,
+        )
+    return admitted
+
+
+_SUCCESSOR_RE = re.compile(r"'([^']+)' -> '([^']+)'")
+_CAP_REJECTED_RE = re.compile(r"^Pass2: '([^']+)' dropped — 0 of \d+ member\(s\) passed the membership test for '([^']+)'")
+
+
+def _successor_pointers_from_audit_rows(rows) -> tuple[dict[str, str], dict[str, str]]:
+    """Pure. From today's merge-machinery audit rows, (lost theme -> successor) for the retire
+    rows the engine-drop path synthesizes, and (lost theme -> the cap target that rejected every
+    member) for the retire NOTE. First pointer wins (setdefault). Rows: dicts/records with
+    event_type / summary / detail."""
+    successor_by_lost: dict[str, str] = {}
+    cap_rejected_by_lost: dict[str, str] = {}
+    for r in rows:
+        et = r["event_type"]
+        if et in ("theme_pass1_5_absorption", "theme_sector_cap_absorbed"):
+            m = _SUCCESSOR_RE.search(r["summary"] or "")
+            if m:
+                successor_by_lost.setdefault(m.group(1), m.group(2))
+        elif et == "theme_sector_cap_not_absorbed":
+            m = _CAP_REJECTED_RE.search(r["summary"] or "")
+            if m:
+                cap_rejected_by_lost.setdefault(m.group(1), m.group(2))
+        else:  # theme_pass1_protect_strip
+            im = re.search(r"i='([^']+)'", r["detail"] or "")
+            jm = re.search(r"j='([^']+)'", r["detail"] or "")
+            if im and jm:
+                successor_by_lost.setdefault(jm.group(1), im.group(1))
+    return successor_by_lost, cap_rejected_by_lost
+
+
 async def _merge_overlapping_themes(
     themes: list[dict],
     stocks_by_ticker: dict[str, dict],
     protected_names: set[str] | None = None,
     sub_theme_parents: dict[str, str] | None = None,
     subtheme_ctx: dict | None = None,
+    comove_ctx: ComoveContext | None = None,
+    changelog: list[dict] | None = None,
+    protected: set[tuple[str, str]] | None = None,
+    cooldown_set: set[tuple[str, str]] | None = None,
+    theme_exclusions: dict[str, set[str]] | None = None,
 ) -> list[dict]:
     """
     Two-pass theme consolidation:
@@ -7336,6 +7504,12 @@ async def _merge_overlapping_themes(
     None or disabled (THEME_SUBTHEME_ARM off — the default) ⇒ every Route-A
     branch is skipped and this function is byte-identical to pre-Phase-2
     behavior.
+
+    comove_ctx / changelog / protected / cooldown_set / theme_exclusions (2026-09-25): the
+    run's membership-test inputs, handed to `_admit_rehomed_members` for every member the
+    Pass-2 sector cap would move into a group's top theme. Without them (every pre-fix caller)
+    the cap still runs the test — the tape cannot judge, so the validator decides — a member is
+    never moved on a blind union again.
     """
     if len(themes) <= 1:
         return themes
@@ -7645,12 +7819,25 @@ async def _merge_overlapping_themes(
                 None,
             )
             if top_theme:
-                existing = set(top_theme.get("tickers") or [])
-                extra = set(t.get("tickers") or [])
-                top_theme["tickers"] = list(existing | extra)
+                # 2026-09-25 bug fix: the members the cap moves pass the membership test
+                # (tape where it can judge, validator otherwise) — never a blind union.
+                # Until then this branch was `existing | extra` with no test and no
+                # audit row: two gas utilities in a tanker theme (SR 0.105, ATO 0.2665),
+                # 470 such absorptions in five months of prod logs (most members stripped
+                # again within a day and re-absorbed the next night), and the mass-flag
+                # rename then generalised the target's NAME to fit the mush.
+                extra = [tk for tk in (t.get("tickers") or [])]
+                admitted = await _admit_rehomed_members(
+                    top_theme, t, group,
+                    comove_ctx=comove_ctx, changelog=changelog, protected=protected,
+                    cooldown_set=cooldown_set, theme_exclusions=theme_exclusions,
+                )
+                current = list(top_theme.get("tickers") or [])
+                top_theme["tickers"] = current + [tk for tk in admitted if tk not in current]
                 logger.info(
                     f"Theme merge (sector cap): '{t['name']}' → '{top_theme['name']}' "
-                    f"(sector group '{group}', {len(extra)} tickers absorbed)"
+                    f"(sector group '{group}', {len(admitted)} of {len(extra)} tickers admitted "
+                    f"by the membership test)"
                 )
             else:
                 # cap-0 groups (biotech since 2026-03-20) have NO survivor to
@@ -8713,6 +8900,9 @@ async def run_theme_engine(
         protected_names=existing_names,
         sub_theme_parents=prior_sub_parents,
         subtheme_ctx=subtheme_ctx,
+        # 2026-09-25: the sector cap's re-homed members pass the run's membership test
+        comove_ctx=comove_ctx, changelog=changelog, protected=protected_set,
+        cooldown_set=cooldown_set, theme_exclusions=theme_exclusions,
     )
     await _emit_pipeline_diagnostic(all_themes, "after_merge_1", sub_theme_parents=prior_sub_parents)
     all_themes.sort(key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))
@@ -8806,6 +8996,8 @@ async def run_theme_engine(
             ),
             sub_theme_parents=combined_sub_parents,
             subtheme_ctx=subtheme_ctx,
+            comove_ctx=comove_ctx, changelog=changelog, protected=protected_set,
+            cooldown_set=cooldown_set, theme_exclusions=theme_exclusions,
         )
         await _emit_pipeline_diagnostic(all_themes, "after_merge_2", sub_theme_parents=combined_sub_parents)
         all_themes.sort(key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))
@@ -8853,33 +9045,32 @@ async def run_theme_engine(
         successor_by_lost: dict[str, str] = dict(renamed_map)
         pool = await get_pool()
         async with pool.acquire() as conn:
+            # 2026-09-25: the sector-cap absorb now writes its own row (it wrote nothing
+            # before — every cap-dropped theme retired to parent='(unknown)'), so the
+            # successor pointer covers all three merge mechanisms.
             rows = await conn.fetch("""
                 SELECT event_type, summary, detail
                 FROM mi_audit_log
-                WHERE event_type IN ('theme_pass1_5_absorption', 'theme_pass1_protect_strip')
+                WHERE event_type IN ('theme_pass1_5_absorption', 'theme_pass1_protect_strip',
+                                     'theme_sector_cap_absorbed', 'theme_sector_cap_not_absorbed')
                   AND (created_at AT TIME ZONE 'America/New_York')::date
                       = (NOW() AT TIME ZONE 'America/New_York')::date
             """)
-        import re as _re
-        for r in rows:
-            if r["event_type"] == "theme_pass1_5_absorption":
-                m = _re.search(r"'([^']+)' -> '([^']+)'", r["summary"] or "")
-                if m:
-                    successor_by_lost.setdefault(m.group(1), m.group(2))
-            else:  # theme_pass1_protect_strip
-                im = _re.search(r"i='([^']+)'", r["detail"] or "")
-                jm = _re.search(r"j='([^']+)'", r["detail"] or "")
-                if im and jm:
-                    successor_by_lost.setdefault(jm.group(1), im.group(1))
+        _succ, cap_rejected_by_lost = _successor_pointers_from_audit_rows(rows)
+        for _lost_name, _succ_name in _succ.items():
+            successor_by_lost.setdefault(_lost_name, _succ_name)
 
         retire_rows = []
         for t in lost:
             successor = successor_by_lost.get(t["name"])
+            cap_target = cap_rejected_by_lost.get(t["name"])
             note = (
                 f"Auto-retired {today_str}: "
                 + (f"renamed to '{successor}' — name was narrower than the cluster (#214)"
                    if t["name"] in renamed_map else
                    f"absorbed/superseded by '{successor}'" if successor
+                   else f"dropped by the sector cap — no member passed the membership test for "
+                        f"'{cap_target}'" if cap_target
                    else f"dropped during merge/absorption (no successor found)")
                 + f" (prior stage {t.get('stage', 'Unknown')}, "
                 + f"{len(t.get('tickers') or [])} tickers)."
