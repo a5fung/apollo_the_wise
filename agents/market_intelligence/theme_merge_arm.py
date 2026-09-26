@@ -411,9 +411,9 @@ the parent's story — rather than a thesis of its own?
 
 Verdicts:
 - CHILD_OF: the CANDIDATE CHILD genuinely sits inside the CANDIDATE PARENT — its stocks ride a
-  sub-driver that lives inside the parent's broader thesis (e.g. "Fab Equipment Makers" is
-  CHILD_OF "Semiconductor Foundry Buildout": equipment capex is a leading indicator of foundry
-  demand, nested inside it, even though it can move somewhat independently).
+  sub-driver that lives inside the parent's broader thesis (e.g. "Gold Royalty & Streaming
+  Companies" is CHILD_OF "Precious Metals Miners": royalty income rides the same metal-price
+  thesis through a narrower mechanism, even though the stocks can move somewhat independently).
 - INVERTED: the relationship is real but the labels are backwards for THIS pair — the CANDIDATE
   PARENT is actually the narrower sub-theme sitting inside the CANDIDATE CHILD's broader thesis.
 - PEERS: the two themes are related (same industry, adjacent supply chain, shared sector) but sit
