@@ -5227,6 +5227,12 @@ reviews:
 
   - review_id: p74_alpha_capture_stage2
     title: "Phase 7 Stage 2 — re-run Block D after 21d of P7.2/P7.3b firing"
+    resolution_2026_09_26: >-
+      TARGET RETIRED by the operator 2026-09-26 (#668 closed): "any EP related trades are low winrate
+      by default, what we want is always to catch big winners while limiting losses". The 60-70% was set
+      against the retired flag detector; post-swap the carryforward adds 0 of 55 and 54 of 54 names never
+      form the sourced setup (docs/analysis/668_alpha_capture_causes_2026-09-26.md). Second-chance EPs are
+      now judged in the delayed-entry lane by big winners caught and losses limited, not by a capture rate.
     question: |
       Did P7.2 (MAGNA53→flag carryforward) and P7.3b (9M
       universe-watch) materially lift the alpha-capture rate of

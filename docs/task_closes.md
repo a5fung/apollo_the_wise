@@ -1719,3 +1719,16 @@ their first send with no fallback and no failure row behind them (the `llm_trunc
   `parse_mode="Markdown"` is converted too; the last two direct bot sends in legacy Markdown (`/spend`,
   the TradingView webhook) were moved to HTML under #647 on 09-25.
 
+## #668 — the post-swap alpha-capture shortfall split by cause; the 60–70% target retired by him (2026-09-26)
+
+BAR: "DoD: (a) and (c) measured separately against the post-swap baseline with a number per cause; the
+residual named; then either a fix or a recommendation to retire the target — his ruling either way."
+
+EVIDENCE: `docs/analysis/668_alpha_capture_causes_2026-09-26.md` (§VERIFIED — an independent verifier
+re-pulled prod byte-identical and re-ran the probe): baseline 14 of 69 = 20.3% post-swap; **(a) the
+carryforward adds 0 of 55** (39 of 39 expected admissions fired since the 08-11 fix); **(c) 54 of 54
+measured names never form the sourced HTF setup**; **residual 0** (EROC unmeasurable). Recommendation:
+retire the target. **His ruling 2026-09-26:** *"Aligned, not sure where 60-70% comes from, any EP related
+trades are low winrate by default, what we want is always to catch big winners while limiting losses."*
+No fix was owed and no lane was loosened.
+
