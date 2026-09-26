@@ -198,7 +198,20 @@ def test_opus_5_5_prices_at_its_published_rate_with_its_cache_discount():
     from agents.market_intelligence.spend_tracker import _cost_for_call
     p = llm_models.pricing_for("claude-opus-5-5")
     assert (p["input"], p["output"]) == (4.00, 20.00)
-    # 1M cache-read tokens at 0.05x of $4 = $0.20; the other models keep 0.1x.
-    assert abs(_cost_for_call("claude-opus-5-5", 1_000_000, 0, 0, 1_000_000) - 0.20) < 1e-9
-    assert abs(_cost_for_call(llm_models.OPUS_PIN, 1_000_000, 0, 0, 1_000_000) - 0.50) < 1e-9
+    # 1M cache-read tokens at 0.05x of $4 = $0.20; the other models keep 0.1x. (No uncached input
+    # here: Anthropic's input_tokens excludes cached tokens, so it is passed as 0.)
+    assert abs(_cost_for_call("claude-opus-5-5", 0, 0, 0, 1_000_000) - 0.20) < 1e-9
+    assert abs(_cost_for_call(llm_models.OPUS_PIN, 0, 0, 0, 1_000_000) - 0.50) < 1e-9
+
+
+def test_uncached_input_is_billed_alongside_cache_tokens_in_both_writers():
+    """2026-09-26: both cost copies subtracted the cache fields from input_tokens, which Anthropic
+    reports WITHOUT them, so a cached call's uncached input cost \$0. Measured: theme_assignment's
+    30-day input_tokens (804k) is below its cache_read (2.6M)."""
+    from agents.market_intelligence.spend_tracker import _cost_for_call as mkt
+    from core.spend import _cost_for_call as orch
+    # 2,500 uncached + 86,500 cache-read + 300 output on opus-5-5: 0.01 + 0.0173 + 0.006
+    want = 2_500 / 1e6 * 4 + 86_500 / 1e6 * 4 * 0.05 + 300 / 1e6 * 20
+    for f in (mkt, orch):
+        assert abs(f("claude-opus-5-5", 2_500, 300, 0, 86_500) - want) < 1e-9
 

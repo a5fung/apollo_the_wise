@@ -184,19 +184,12 @@ def _cost_for_call(
     cache_creation_tokens: int = 0,
     cache_read_tokens: int = 0,
 ) -> float:
-    """`pricing_for` (not a raw dict `.get`) so an auto-resolved RESOLVED_ROLES
-    id not yet in PRICING_PER_MTOK prices at its tier's rate instead of the
-    flat default (#509)."""
-    prices = _pricing_for(model)
-    base_input = prices["input"]
-    regular_input = max(input_tokens - cache_creation_tokens - cache_read_tokens, 0)
-    cost = (
-        (regular_input / 1_000_000) * base_input
-        + (cache_creation_tokens / 1_000_000) * base_input * 1.25
-        + (cache_read_tokens / 1_000_000) * base_input * prices.get("cache_read_mult", 0.10)
-        + (output_tokens / 1_000_000) * prices["output"]
-    )
-    return round(cost, 6)
+    """Delegates to `shared.llm_models.cost_for_call`, the one copy (2026-09-26: this copy and
+    core/spend.py's subtracted the cache fields from `input_tokens`, which Anthropic reports
+    WITHOUT them, so the uncached input of every cached call was dropped)."""
+    from shared.llm_models import cost_for_call
+    return cost_for_call(model, input_tokens, output_tokens,
+                         cache_creation_tokens, cache_read_tokens)
 
 
 _SCHEMA_ENSURED = False

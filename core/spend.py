@@ -34,24 +34,12 @@ def _cost_for_call(
     cache_creation_tokens: int = 0,
     cache_read_tokens: int = 0,
 ) -> float:
-    """Compute dollar cost for a single API call. `pricing_for` (not a raw dict
-    `.get`) so an auto-resolved RESOLVED_ROLES id not yet in PRICING_PER_MTOK
-    prices at its tier's rate instead of silently falling to the flat default
-    (#509 — a resolved id could otherwise be mispriced)."""
-    prices = _pricing_for(model)
-    base_input = prices["input"]
-
-    # Regular input tokens (exclude cached portions)
-    regular_input = input_tokens - cache_creation_tokens - cache_read_tokens
-    regular_input = max(regular_input, 0)
-
-    cost = (
-        (regular_input / 1_000_000) * base_input
-        + (cache_creation_tokens / 1_000_000) * base_input * 1.25
-        + (cache_read_tokens / 1_000_000) * base_input * 0.10
-        + (output_tokens / 1_000_000) * prices["output"]
-    )
-    return round(cost, 6)
+    """Delegates to `shared.llm_models.cost_for_call`, the one copy shared with the market-agent
+    (2026-09-26: this copy subtracted the cache fields from `input_tokens`, which Anthropic reports
+    WITHOUT them, and ignored a model's own cache-read rate)."""
+    from shared.llm_models import cost_for_call
+    return cost_for_call(model, input_tokens, output_tokens,
+                         cache_creation_tokens, cache_read_tokens)
 
 
 # ── Database ──────────────────────────────────────────────────────────────────

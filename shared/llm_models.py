@@ -426,6 +426,26 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
 DEFAULT_PRICING_PER_MTOK: dict[str, float] = {"input": 3.00, "output": 15.00}
 
 
+def cost_for_call(model_id: str, input_tokens: int, output_tokens: int,
+                  cache_creation_tokens: int = 0, cache_read_tokens: int = 0) -> float:
+    """$ for one Anthropic call. ONE copy for both spend writers (market-agent and orchestrator).
+
+    Anthropic's `usage.input_tokens` EXCLUDES cached input: cache writes and cache reads are reported
+    in their own fields and each is billed on its own. The two older copies subtracted the cache
+    fields from `input_tokens` first, which zeroed the uncached input on every call that also used
+    the cache (fixed 2026-09-26). Proof it excludes: theme_assignment's 30-day `input_tokens` (804k)
+    is smaller than its `cache_read` (2.6M), impossible if input included the cache.
+    Cache writes at 1.25x base input (5-minute cache); cache reads at the model's `cache_read_mult`
+    (0.1x unless the table says otherwise, e.g. claude-opus-5-5 at 0.05x)."""
+    prices = pricing_for(model_id)
+    base = prices["input"]
+    return round(
+        input_tokens / 1_000_000 * base
+        + cache_creation_tokens / 1_000_000 * base * 1.25
+        + cache_read_tokens / 1_000_000 * base * prices.get("cache_read_mult", 0.10)
+        + output_tokens / 1_000_000 * prices["output"], 6)
+
+
 def pricing_for(model_id: str) -> dict[str, float]:
     """$/MTok {input, output} for `model_id`. Exact match first (covers every
     literal id already in PRICING_PER_MTOK, current + historical). Falls back
