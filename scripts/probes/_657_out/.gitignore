@@ -2,3 +2,5 @@
 *.csv
 run_stdout.txt
 run_stderr.txt
+rehome_merge_trace.log
+rehome_themes_since_0401.psv

@@ -370,8 +370,9 @@ async def test_fresh_deploy_is_on_even_with_the_db_unreachable_and_a_row_off_rev
 # above pins that in isolation, calling them directly with an explicit ctx) — but their real
 # production callers, `run_theme_engine` and `_discover_new_themes_single`, never passed one, so
 # the loop measured in #657 (16 of 21 cross-sector admits stripped by the label within days) kept
-# firing regardless of section 5's pins. These tests go through the CALL SITES themselves and are
-# RED on the pre-2026-09-25 wiring: a call site that omits `comove_ctx=` silently defaults it to
+# firing regardless of section 5's pins. These tests go through the CALL SITES themselves; the two
+# context-present ones are RED on the pre-2026-09-25 wiring (the two no-context ones pin the
+# unchanged path and pass on both): a call site that omits `comove_ctx=` silently defaults it to
 # `None` (the bug — no crash, just the sector test deciding), so IREN would be stripped exactly
 # like NOIS. Verified RED by temporarily reverting just the two call-site kwargs before this fix
 # was committed.
