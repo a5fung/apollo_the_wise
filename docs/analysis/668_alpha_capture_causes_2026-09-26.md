@@ -14,6 +14,24 @@ number. Reaching it on today's detector means re-widening flag promotion, i.e. p
 
 MEASURE-ONLY, $0, read-only against prod. No code, config, toggle, table or PLAN.md line touched.
 
+## ⚠ VERIFIED THE SAME DAY — the answer holds; five details corrected (this section wins)
+
+An independent verifier re-pulled the prod data (byte-identical) and re-ran the probe (identical output).
+**The recommendation is supported**: the carryforward adds 0 of 55, 54 of 54 measured names never form the
+sourced setup, the residual is 0. Corrections to the text below:
+
+| text below | what holds |
+|---|---|
+| "the 3 R3 names were on the board every admission day and rejected on the pole" | THC was rejected on liquidity and base age, MRVL on base age on 4 of 5 days, and HUT sat on the board on only 2 days (via the 9M watch). None would have promoted. |
+| "33 of the 43 clear the retired 1.50× bar" | That used the NEW 40-session low; the retired detector used a 60-session low, on which **41 of 54** clear 1.50×. Lowering the pole alone promotes **10 of 55**, so the 53%→20% gap is the whole #356 spec, not the pole threshold alone. |
+| "admitting the 1.50 names tops out at 40 of 69 = 58%" | No detector produces that figure; drop it. |
+| "the 11 liquidity names never form the pole" | Not measured in the doc; the verifier's floors-off replay confirms it (highest FET 1.87×). |
+| "with the 9M legs gone" | The 9M EP writer stopped 09-08; the Day-2 sweep still writes (21 rows since 09-09). This window is unaffected. |
+
+Also added by the verifier: a positive control — the replay reproduces the stored WATCH/TIGHTENING days of
+all 6 flag-captured names day for day, so the "never promotes" result is not an artifact of a replay that
+cannot promote.
+
 ## The decision it serves
 
 #668's DoD: *"(a) and (c) measured separately against the post-swap baseline with a number per
