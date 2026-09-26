@@ -19,6 +19,30 @@ hard case, HOOD: *"the theme of wealth management is only partially correct, Hoo
 crypto sometimes, and long with the market during high speculative times"* — a membership can be
 partially correct, so the options are **evict**, **down-weight**, or **leave**, not only evict.
 
+## ⛔ CORRECTED THE SAME NIGHT — two independent verifiers re-ran the probe; read this before anything below
+
+Both reproduced the counts byte-for-byte and both rejected the recommendation. Where this section and
+the text below disagree, **this section wins**; the body is left as written so the corrections can be
+checked against it.
+
+| claim below | what holds |
+|---|---|
+| "Evicting on one reading is wrong more often than right: 14 of 25 moved with the theme afterwards" | **Not shown.** 14 vs 11 is a coin flip (p ≈ 0.69); 8 of the 25 come from one theme; 21 of W2's 30 "out-of-sample" sessions fall BEFORE 09-13 and overlap the window that set the 0.35 bar. The only window wholly after 09-13 (W1) splits **29 of 58 vs 29 of 58**. Kept names that read 0.35–0.50 in-sample fell below the bar afterwards **14 of 31 (45%)** — the same as the evictees (44%) — so there is no matched difference either way. |
+| "16 of 52 entered through the merge machinery; no LLM judged the pair at join" | **About 5, not 16.** 11 (DB, BCS, BBVA, SAN, LYG, ITUB, XP, CHYM, PGY, KSPI, HTFL) were existing members of a theme an Arm-B merge RENAMED, and Arm B runs `_validate_theme_membership` on the whole union (theme_engine.py ~7941). The SR/ATO example (two gas utilities in a tanker theme, 0.10 and 0.27) does hold. |
+| "9 of 21 cross-sector pairs re-admitted two or more times" | **3 of 21** (BAH, IRDM, VSAT) were re-admitted twice or more; 9 of 21 were admitted at least twice. The loop itself holds: **16 of 21 pairs the tape admitted since 09-13 were stripped by the sector label within 1–3 days.** |
+| "Leave has a measured money-path cost (18 names carrying +10)" | **Exposure, not a measured cost** — no EP outcome or `mi_ep_theme_belonging_shadow` row was read (AGRO, one of the 18, is stripped by the label anyway). |
+| "5.5×", "36 of 109 are 3-member themes" | 5.63×; 24 themes have 3 judgeable members and 12 have 2. |
+| Tightness vs random removal | Mildly **favours evict**: tape removals beat random in 12 of 15 themes (W1) and 4 of 6 (W2), though only 3 of 15 and 0 of 6 clear the 95th percentile, and the most-evicted themes are excluded (fewer than 3 members left). |
+| Pre-registration | **Cannot be verified**: method, probe and results landed in one commit (a959847c); the join-path labels were changed after the first run (the doc says so). |
+
+**Corrected answer to the DoD:** the evidence does **not** separate evict, down-weight and leave. What
+it does establish: (1) the tape's rejects are a genuinely weaker group (44% below the bar afterwards vs
+a 10.5% base rate), but no better than kept names that read near the bar; (2) the 09-13 split created a
+**loop** — the tape admits a cross-sector name and the nightly sector strip removes it within days
+(16 of 21); (3) passing the tape to the strip sites as the code already allows ("Shape A") would touch
+only singleton-sector members — on today's board it keeps 7 of 8 and removes 1 (AGRO, 0.09) — which
+ends the loop without evicting anyone else. Any of these is his call behind CHANGE_PROCESS.
+
 ⚖ **THE LINE**: a removal rule is a detection criterion. Nothing here flips anything — no toggle,
 no context passed, no table touched; the removal sites run exactly what they ran yesterday. Any
 change goes through `docs/setups/CHANGE_PROCESS.md` and his sign-off.
