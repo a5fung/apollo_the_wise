@@ -86,9 +86,36 @@ Q_SECT = (
 )
 
 
+def _psql_direct(query: str) -> list[list[str]]:
+    """Inside the container (no ssh, but the DB and the API key are there — the only place
+    `--adjudicate` can run): the same query through the app's own pool, rows returned in the
+    same shape as the ssh path (strings, NULL as '')."""
+    import asyncio
+
+    import agents.market_intelligence.db as db
+
+    async def _q():
+        # A fresh pool per query, closed after: each call is its own asyncio.run, and the app's
+        # cached pool is bound to the loop that created it.
+        db._pool = None
+        pool = await db.get_pool()
+        try:
+            async with pool.acquire() as conn:
+                return await conn.fetch(query)
+        finally:
+            await pool.close()
+            db._pool = None
+    return [["" if v is None else str(v) for v in r.values()] for r in asyncio.run(_q())]
+
+
 def psql(query: str) -> list[list[str]]:
     """Unaligned, tuples-only psql over ssh. Skips any `(N rows)` footer line
-    defensively (scripts/probes/README.md — #623 fed one to Polygon)."""
+    defensively (scripts/probes/README.md — #623 fed one to Polygon). Without ssh (inside the
+    container) it reads the DB directly — added 2026-09-26 so the paid preview can run where
+    the API key lives."""
+    import shutil
+    if shutil.which("ssh") is None:
+        return _psql_direct(query)
     out = subprocess.run(
         ["ssh", "-o", "ConnectTimeout=20", HOST, f'{PSQL} "{query}"'],
         check=True, capture_output=True, text=True,
