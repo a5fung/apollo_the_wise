@@ -1,0 +1,23 @@
+theme|stage|evict|members_n|before|after|ctrl_mean|ctrl_ge_real|ctrl_n
+AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|DGX, CDNA, HTFL, LH|9|0.39053333333333334|0.57304|0.34105440000000004|6|300
+AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|MSFT, ORCL|18|0.6827277777777777|0.76785625|0.6779350416666667|1|300
+Bank Stocks: Rising-Rate NIM Expansion|Fading|BBVA, BCS, LYG, SAN, C, MFG, DB|45|0.6101911111111111|0.6920315789473682|0.6080265526315789|0|300
+Bitcoin Mining Stocks Rotation Reversal|Mainstream|IOND|10|0.76178|0.8294222222222223|0.7589605555555554|32|300
+Cloud Data Storage & Analytics Infrastructure|Mainstream|ESTC, APLD|4|0.243675||||0
+Commercial, Office & Home Furniture Retailers and Manufacturers|Fading|ARHS|5|0.49391999999999997|0.5414749999999999|0.4710850000000001|64|300
+Crude & Product Tanker Shipping|Mainstream|SR, ATO|13|0.7608615384615386|0.8710363636363637|0.7588215454545455|5|300
+Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|EMBJ, RTX|9|0.4244222222222222|0.5152571428571429|0.40205899999999994|11|300
+Defense Intelligence & Cybersecurity IT Contractors|Mainstream|EFOR, VVX|7|0.5225714285714286|0.65068|0.48888380000000004|17|300
+Defensive Consumer Staples Rotation|Fading|TBBB, GO|17|0.5632882352941176|0.6147266666666666|0.5583764666666666|1|300
+Digital Advertising & Ad-Tech Monetization Platforms|Mainstream|MGNI|4|0.49517500000000003||||0
+Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|HNRG, AES, OGE, EVRG|5|0.28375999999999996||||0
+Energy Infrastructure & Services Complex|Fading|FTK, WKC|16|0.49360000000000004|0.5773785714285714|0.48434285714285713|1|300
+Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|NTNX|8|0.50015|0.6038428571428571|0.4985935238095238|49|300
+Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|XP, ITUB, PGY, KSPI, CHYM|22|0.4508318181818181|0.5131823529411764|0.4414007843137255|0|300
+Genetic Medicine: Gene Editing & Gene Therapy Innovators|Fading|QURE|4|0.435425||||0
+Global Agriculture Value Chain Recovery|Mainstream|AGRO|4|0.5606000000000001||||0
+Industrial Construction Execution & On-Site Supply Chain|Fading|TTEK, J, AGX, ACA, KBR|8|0.1745||||0
+Inflammatory Disease & Immunology Biologics|Fading|AUPH, TRAX|9|0.48647777777777773|0.5800571428571429|0.46518328571428574|4|300
+Medical Device Mean-Reversion & Rotation Recovery|Fading|GKOS, INSP|14|0.5451714285714285|0.6006416666666666|0.5385899166666667|2|300
+Network Security & Zero-Trust Edge|Mainstream|BLZE|18|0.7132055555555554|0.7404764705882352|0.7128508431372548|22|300
+Wealth Management & Retail Brokerage Platforms|Mainstream|XP, HOOD|13|0.4182923076923077|0.4863363636363637|0.410175696969697|6|300

@@ -1,0 +1,12 @@
+theme|stage|evict|members_n|before_in|after_in|before|after|ctrl_mean|ctrl_ge_real|ctrl_n
+AI data center infrastructure buildout|Nascent|BLZE, MPWR|8|0.5618875|0.66515|0.5771958496744233|0.6232037500043403|0.5535779546083656|31|300
+Consumer Fintech & Digital Credit Platforms|Fading|BFH|7|0.5078142857142858|0.5542666666666667|0.5766338836554861|0.5642277773618893|0.5650714661900799|137|300
+Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|DFNS, MRCY, DPC, EMBJ, AADX, ARXS, ATI, RTX|9|0.15357777777777779||0.3071573246788371||||0
+Industrial Construction Execution & On-Site Supply Chain|Accelerating|J, ROAD, TPC|4|0.22984999999999997||0.3407261124833882||||0
+Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|FLS, VLTO|10|0.5897|0.653575|0.6100040869373237|0.6697730394569537|0.5963840497631264|44|300
+Industrial Equipment Rental & Material Handling|Accelerating|CMCO, EQPT|4|0.346425||0.4738043993530662||||0
+Medical Device Mean-Reversion & Rotation Recovery|Mainstream|CNMD|4|0.402||0.23018426192343594||||0
+Network Security & Zero-Trust Edge|Mainstream|CVLT|13|0.6310769230769231|0.6570083333333332|0.8125854245247262|0.8099543360061818|0.8102743995854985|81|300
+Peptide & Hormone Therapies for Metabolic & Endocrine Disorders|Mainstream|CORT|5|0.41841999999999996|0.4629|0.2876430943224476||||0
+Private Equity & Alternative Asset Management Platforms|Mainstream|FSK|11|0.6807636363636363|0.7296100000000001|0.7495883647655166|0.7603267291622398|0.747216518750835|50|300
+Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|OMER, INSM, BMRN|10|0.41853999999999997|0.5246285714285714|0.30275507013296343|0.35220676496542025|0.2716436971878166|66|300

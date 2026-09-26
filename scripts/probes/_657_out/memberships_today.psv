@@ -1,0 +1,705 @@
+ticker|theme|stage|corr|overlap|basket_n|members_n|verdict|sector|singleton_sector|paying
+BDC|AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers|Accelerating|0.5538|60|5|6|admit|Technology|False|True
+ALAB|AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers|Accelerating|0.6998|60|5|6|admit|Technology|False|True
+COHR|AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers|Accelerating|0.8563|60|5|6|admit|Technology|False|True
+GLW|AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers|Accelerating|0.8713|60|5|6|admit|Technology|False|True
+LITE|AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers|Accelerating|0.8385|60|5|6|admit|Technology|False|True
+APH|AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers|Accelerating|0.6715|60|5|6|admit|Technology|False|True
+ADPT|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.5632|60|8|9|admit|Healthcare|False|True
+TEM|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.6429|60|8|9|admit|Healthcare|False|True
+DGX|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.2808|60|8|9|reject|Healthcare|False|True
+PSNL|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.5245|60|8|9|admit|Healthcare|False|True
+CAI|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.534|60|8|9|admit|Healthcare|False|True
+CDNA|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.1527|60|8|9|reject|Healthcare|False|True
+RDNT|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.4061|60|8|9|admit|Healthcare|False|True
+HTFL|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.1208|60|8|9|reject|Healthcare|False|True
+LH|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.2898|60|8|9|reject|Healthcare|False|True
+MRVL|AI-Driven Memory & Storage Supply Shortage|Mainstream|0.8005|60|6|7|admit|Technology|False|True
+TSM|AI-Driven Memory & Storage Supply Shortage|Mainstream|0.8173|60|6|7|admit|Technology|False|True
+SMTC|AI-Driven Memory & Storage Supply Shortage|Mainstream|0.7575|60|6|7|admit|Technology|False|True
+AMD|AI-Driven Memory & Storage Supply Shortage|Mainstream|0.8066|60|6|7|admit|Technology|False|True
+SKHY|AI-Driven Memory & Storage Supply Shortage|Mainstream|0.7628|52|6|7|admit|Technology|False|True
+MU|AI-Driven Memory & Storage Supply Shortage|Mainstream|0.8642|60|6|7|admit|Technology|False|True
+NVDA|AI-Driven Memory & Storage Supply Shortage|Mainstream|0.389|60|6|7|admit|Technology|False|True
+PATH|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.7828|60|17|18|admit|Technology|False|False
+PD|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.7652|60|17|18|admit|Technology|False|False
+ASAN|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.8528|60|17|18|admit|Technology|False|False
+INTA|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.7108|60|17|18|admit|Technology|False|False
+AI|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.6578|60|17|18|admit|Technology|False|False
+WK|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.8547|60|17|18|admit|Technology|False|False
+MNDY|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.7642|60|17|18|admit|Technology|False|False
+APPN|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.8712|60|17|18|admit|Technology|False|False
+DOCU|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.7756|60|17|18|admit|Technology|False|False
+MSFT|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.1925|60|17|18|reject|Technology|False|False
+SAP|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.8283|60|17|18|admit|Technology|False|False
+CRM|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.772|60|17|18|admit|Technology|False|False
+NOW|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.8972|60|17|18|admit|Technology|False|False
+AVPT|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.7494|60|17|18|admit|Technology|False|False
+PRGS|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.6909|60|17|18|admit|Technology|False|False
+ORCL|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|-0.1372|60|17|18|reject|Technology|False|False
+PLTR|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.4401|60|17|18|admit|Technology|False|False
+PEGA|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.8208|60|17|18|admit|Technology|False|False
+JXN|Annuity-Focused Insurers|Mainstream|0.4995|60|3|4|admit|Financial Services|False|True
+EQH|Annuity-Focused Insurers|Mainstream|0.8056|60|3|4|admit|Financial Services|False|True
+CNO|Annuity-Focused Insurers|Mainstream|0.4269|60|3|4|admit|Financial Services|False|True
+CRBG|Annuity-Focused Insurers|Mainstream|0.8316|60|3|4|admit|Financial Services|False|True
+OSBC|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.8207|60|44|45|admit|Financial Services|False|False
+JPM|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.4753|60|44|45|admit|Financial Services|False|False
+HIFS|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.5102|60|44|45|admit|Financial Services|False|False
+BBVA|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2479|60|44|45|reject|Financial Services|False|False
+HWC|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7824|60|44|45|admit|Financial Services|False|False
+RBCAA|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7129|60|44|45|admit|Financial Services|False|False
+AMAL|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.73|60|44|45|admit|Financial Services|False|False
+FCF|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7626|60|44|45|admit|Financial Services|False|False
+CHCO|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7041|60|44|45|admit|Financial Services|False|False
+BCS|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2378|60|44|45|reject|Financial Services|False|False
+CBSH|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7364|60|44|45|admit|Financial Services|False|False
+FSUN|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.4795|60|44|45|admit|Financial Services|False|False
+TRMK|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7897|60|44|45|admit|Financial Services|False|False
+CATY|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.8327|60|44|45|admit|Financial Services|False|False
+STBA|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.729|60|44|45|admit|Financial Services|False|False
+ING|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.3604|60|44|45|admit|Financial Services|False|False
+FITB|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.8099|60|44|45|admit|Financial Services|False|False
+DCOM|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7964|60|44|45|admit|Financial Services|False|False
+HOMB|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7734|60|44|45|admit|Financial Services|False|False
+HSBC|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.3634|60|44|45|admit|Financial Services|False|False
+CVBF|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.8017|60|44|45|admit|Financial Services|False|False
+SFNC|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7164|60|44|45|admit|Financial Services|False|False
+NBN|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.5507|60|44|45|admit|Financial Services|False|False
+WFC|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.5935|60|44|45|admit|Financial Services|False|False
+LYG|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.3448|60|44|45|reject|Financial Services|False|False
+SAN|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2785|60|44|45|reject|Financial Services|False|False
+OFG|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7049|60|44|45|admit|Financial Services|False|False
+NWBI|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7821|60|44|45|admit|Financial Services|False|False
+C|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.3094|60|44|45|reject|Financial Services|False|False
+QCRH|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.8188|60|44|45|admit|Financial Services|False|False
+BUSE|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7909|60|44|45|admit|Financial Services|False|False
+ESQ|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.5683|60|44|45|admit|Financial Services|False|False
+SMFG|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.3527|60|44|45|admit|Financial Services|False|False
+MFG|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2423|60|44|45|reject|Financial Services|False|False
+CFG|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.8057|60|44|45|admit|Financial Services|False|False
+NWG|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.3507|60|44|45|admit|Financial Services|False|False
+NBTB|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7495|60|44|45|admit|Financial Services|False|False
+HOPE|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7785|60|44|45|admit|Financial Services|False|False
+MUFG|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.413|60|44|45|admit|Financial Services|False|False
+FBP|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.6941|60|44|45|admit|Financial Services|False|False
+CBC|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7281|60|44|45|admit|Financial Services|False|False
+FIBK|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7933|60|44|45|admit|Financial Services|False|False
+PFBC|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.6947|60|44|45|admit|Financial Services|False|False
+WABC|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.7186|60|44|45|admit|Financial Services|False|False
+DB|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2227|60|44|45|reject|Financial Services|False|False
+COIN|Bitcoin Holding & Trading Proxy Equities|Mainstream||0|2|3|unjudgeable:thin_basket|Financial Services|False|True
+GLXY|Bitcoin Holding & Trading Proxy Equities|Mainstream||0|2|3|unjudgeable:thin_basket|Financial Services|False|True
+ASST|Bitcoin Holding & Trading Proxy Equities|Mainstream||0|2|3|unjudgeable:thin_basket|Financial Services|False|True
+CLSK|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.9257|60|9|10|admit|Financial Services|False|True
+MARA|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.869|60|9|10|admit|Financial Services|False|True
+HUT|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.8783|60|9|10|admit|Financial Services|False|True
+IOND|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.1811|41|9|10|reject|Financial Services|False|True
+CIFR|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.8859|60|9|10|admit|Technology|False|True
+RIOT|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.8772|60|9|10|admit|Financial Services|False|True
+WULF|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.8458|60|9|10|admit|Financial Services|False|True
+BTDR|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.8011|60|9|10|admit|Technology|False|True
+IREN|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.8052|60|9|10|admit|Financial Services|False|True
+ABTC|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.5485|60|9|10|admit|Financial Services|False|True
+SBET|Bitcoin Treasury & Crypto Proxy Equities Correlation Basket|Mainstream|0.8908|60|4|5|admit|Financial Services|False|True
+PURR|Bitcoin Treasury & Crypto Proxy Equities Correlation Basket|Mainstream|0.7578|60|4|5|admit|Financial Services|False|True
+CRCL|Bitcoin Treasury & Crypto Proxy Equities Correlation Basket|Mainstream|0.7902|60|4|5|admit|Financial Services|False|True
+BMNR|Bitcoin Treasury & Crypto Proxy Equities Correlation Basket|Mainstream|0.8408|60|4|5|admit|Financial Services|False|True
+ASST|Bitcoin Treasury & Crypto Proxy Equities Correlation Basket|Mainstream|0.7978|60|4|5|admit|Financial Services|False|True
+FSK|Business Development Companies & Private Credit Lenders|Nascent|0.8049|60|6|7|admit|Financial Services|False|False
+TRIN|Business Development Companies & Private Credit Lenders|Nascent|0.6397|60|6|7|admit|Financial Services|False|False
+OTF|Business Development Companies & Private Credit Lenders|Nascent|0.6748|60|6|7|admit|Financial Services|False|False
+BXSL|Business Development Companies & Private Credit Lenders|Nascent|0.7937|60|6|7|admit|Financial Services|False|False
+OBDC|Business Development Companies & Private Credit Lenders|Nascent|0.8147|60|6|7|admit|Financial Services|False|False
+HTGC|Business Development Companies & Private Credit Lenders|Nascent|0.6057|60|6|7|admit|Financial Services|False|False
+ARCC|Business Development Companies & Private Credit Lenders|Nascent|0.7656|60|6|7|admit|Financial Services|False|False
+TD|Canadian Big Banks|Nascent|0.873|60|4|5|admit|Financial Services|False|False
+BNS|Canadian Big Banks|Nascent|0.8244|60|4|5|admit|Financial Services|False|False
+CM|Canadian Big Banks|Nascent|0.9095|60|4|5|admit|Financial Services|False|False
+RY|Canadian Big Banks|Nascent|0.936|60|4|5|admit|Financial Services|False|False
+BMO|Canadian Big Banks|Nascent|0.8838|60|4|5|admit|Financial Services|False|False
+ATRC|Cardiac & Bioelectric Ablation Device Innovators|Mainstream||0|1|2|unjudgeable:thin_basket|Healthcare|False|True
+PLSE|Cardiac & Bioelectric Ablation Device Innovators|Mainstream||0|1|2|unjudgeable:thin_basket|Healthcare|False|True
+DDOG|Cloud Application Delivery & Observability Infrastructure|Mainstream|0.7458|60|3|4|admit|Technology|False|True
+ATEN|Cloud Application Delivery & Observability Infrastructure|Mainstream|0.6261|60|3|4|admit|Technology|False|True
+DT|Cloud Application Delivery & Observability Infrastructure|Mainstream|0.4057|60|3|4|admit|Technology|False|True
+FSLY|Cloud Application Delivery & Observability Infrastructure|Mainstream|0.6534|60|3|4|admit|Technology|False|True
+APPF|Cloud Application Software Rotation (Oversold Turning Up)|Fading||0|2|3|unjudgeable:thin_basket|Technology|False|False
+PCOR|Cloud Application Software Rotation (Oversold Turning Up)|Fading||0|2|3|unjudgeable:thin_basket|Technology|False|False
+DUOL|Cloud Application Software Rotation (Oversold Turning Up)|Fading||0|2|3|unjudgeable:thin_basket|Technology|False|False
+NICE|Cloud Contact Center & CCaaS Communication Platforms|Mainstream|0.7248|60|3|4|admit|Technology|False|True
+FIVN|Cloud Contact Center & CCaaS Communication Platforms|Mainstream|0.789|60|3|4|admit|Technology|False|True
+TWLO|Cloud Contact Center & CCaaS Communication Platforms|Mainstream|0.539|60|3|4|admit|Technology|False|True
+RNG|Cloud Contact Center & CCaaS Communication Platforms|Mainstream|0.5785|60|3|4|admit|Technology|False|True
+MDB|Cloud Data Storage & Analytics Infrastructure|Mainstream|0.4001|60|3|4|admit|Technology|False|True
+ESTC|Cloud Data Storage & Analytics Infrastructure|Mainstream|0.2566|60|3|4|reject|Technology|False|True
+SNOW|Cloud Data Storage & Analytics Infrastructure|Mainstream|0.5002|60|3|4|admit|Technology|False|True
+APLD|Cloud Data Storage & Analytics Infrastructure|Mainstream|-0.1822|60|3|4|reject|Technology|False|True
+SPSC|Cloud Supply Chain & Warehouse Management Software|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+MANH|Cloud Supply Chain & Warehouse Management Software|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+DSGX|Cloud Supply Chain & Warehouse Management Software|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+HNI|Commercial, Office & Home Furniture Retailers and Manufacturers|Fading|0.5296|60|4|5|admit|Consumer Cyclical|False|False
+MLKN|Commercial, Office & Home Furniture Retailers and Manufacturers|Fading|0.5214|60|4|5|admit|Consumer Cyclical|False|False
+W|Commercial, Office & Home Furniture Retailers and Manufacturers|Fading|0.3799|60|4|5|admit|Consumer Cyclical|False|False
+WSM|Commercial, Office & Home Furniture Retailers and Manufacturers|Fading|0.7092|60|4|5|admit|Consumer Cyclical|False|False
+ARHS|Commercial, Office & Home Furniture Retailers and Manufacturers|Fading|0.3295|60|4|5|reject|Consumer Cyclical|False|False
+LOGI|Consumer PC & Gaming Hardware Refresh Cycle|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+HPQ|Consumer PC & Gaming Hardware Refresh Cycle|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+CRSR|Consumer PC & Gaming Hardware Refresh Cycle|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+ERO|Copper Mining & Production|Accelerating|0.8809|60|6|7|admit|Basic Materials|False|True
+IE|Copper Mining & Production|Accelerating|0.7701|60|6|7|admit|Basic Materials|False|True
+HBM|Copper Mining & Production|Accelerating|0.9101|60|6|7|admit|Basic Materials|False|True
+RIO|Copper Mining & Production|Accelerating|0.6865|60|6|7|admit|Basic Materials|False|True
+SCCO|Copper Mining & Production|Accelerating|0.8686|60|6|7|admit|Basic Materials|False|True
+FCX|Copper Mining & Production|Accelerating|0.9291|60|6|7|admit|Basic Materials|False|True
+TECK|Copper Mining & Production|Accelerating|0.7523|60|6|7|admit|Basic Materials|False|True
+CPAY|Corporate Spend, Expense Management & Financial Operations Software|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+BILL|Corporate Spend, Expense Management & Financial Operations Software|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+WEX|Corporate Spend, Expense Management & Financial Operations Software|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+ECO|Crude & Product Tanker Shipping|Mainstream|0.8025|60|12|13|admit|Industrials|False|True
+HAFN|Crude & Product Tanker Shipping|Mainstream|0.8413|60|12|13|admit|Industrials|False|True
+TNK|Crude & Product Tanker Shipping|Mainstream|0.859|60|12|13|admit|Energy|False|True
+TRMD|Crude & Product Tanker Shipping|Mainstream|0.8721|60|12|13|admit|Energy|False|True
+ASC|Crude & Product Tanker Shipping|Mainstream|0.9046|60|12|13|admit|Industrials|False|True
+INSW|Crude & Product Tanker Shipping|Mainstream|0.9016|60|12|13|admit|Energy|False|True
+NAT|Crude & Product Tanker Shipping|Mainstream|0.887|60|12|13|admit|Energy|False|True
+FRO|Crude & Product Tanker Shipping|Mainstream|0.8946|60|12|13|admit|Energy|False|True
+TEN|Crude & Product Tanker Shipping|Mainstream|0.8834|60|12|13|admit|Energy|False|True
+SR|Crude & Product Tanker Shipping|Mainstream|0.105|60|12|13|reject|Utilities|False|True
+ATO|Crude & Product Tanker Shipping|Mainstream|0.2665|60|12|13|reject|Utilities|False|True
+STNG|Crude & Product Tanker Shipping|Mainstream|0.8062|60|12|13|admit|Energy|False|True
+DHT|Crude & Product Tanker Shipping|Mainstream|0.8674|60|12|13|admit|Energy|False|True
+AMPL|Customer Engagement & Marketing/CX SaaS Platforms|Fading||0|1|2|unjudgeable:thin_basket|Technology|False|False
+FRSH|Customer Engagement & Marketing/CX SaaS Platforms|Fading||0|1|2|unjudgeable:thin_basket|Technology|False|False
+EMBJ|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.0863|60|8|9|reject|Industrials|False|True
+ARXS|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.4159|60|8|9|admit|Industrials|False|True
+AVAV|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.4104|60|8|9|admit|Industrials|False|True
+RTX|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.1573|60|8|9|reject|Industrials|False|True
+MDA|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.6359|60|8|9|admit|Industrials|False|True
+RKLB|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.5812|60|8|9|admit|Industrials|False|True
+DPC|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.4275|60|8|9|admit|Industrials|False|True
+ATI|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.4721|60|8|9|admit|Industrials|False|True
+DCO|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.6332|60|8|9|admit|Industrials|False|True
+ICFI|Defense Intelligence & Cybersecurity IT Contractors|Mainstream|0.5052|60|6|7|admit|Industrials|False|True
+CACI|Defense Intelligence & Cybersecurity IT Contractors|Mainstream|0.6402|60|6|7|admit|Technology|False|True
+LDOS|Defense Intelligence & Cybersecurity IT Contractors|Mainstream|0.6162|60|6|7|admit|Technology|False|True
+SAIC|Defense Intelligence & Cybersecurity IT Contractors|Mainstream|0.686|60|6|7|admit|Technology|False|True
+BAH|Defense Intelligence & Cybersecurity IT Contractors|Mainstream|0.682|60|6|7|admit|Industrials|False|True
+EFOR|Defense Intelligence & Cybersecurity IT Contractors|Mainstream|0.1894|60|6|7|reject|Technology|False|True
+VVX|Defense Intelligence & Cybersecurity IT Contractors|Mainstream|0.339|60|6|7|reject|Industrials|False|True
+SPB|Defensive Consumer Staples Rotation|Fading|0.4417|60|16|17|admit|Consumer Defensive|False|False
+SJM|Defensive Consumer Staples Rotation|Fading|0.6838|60|16|17|admit|Consumer Defensive|False|False
+DG|Defensive Consumer Staples Rotation|Fading|0.6317|60|16|17|admit|Consumer Defensive|False|False
+EPC|Defensive Consumer Staples Rotation|Fading|0.5079|60|16|17|admit|Consumer Defensive|False|False
+PM|Defensive Consumer Staples Rotation|Fading|0.6071|60|16|17|admit|Consumer Defensive|False|False
+KR|Defensive Consumer Staples Rotation|Fading|0.6094|60|16|17|admit|Consumer Defensive|False|False
+KHC|Defensive Consumer Staples Rotation|Fading|0.6891|60|16|17|admit|Consumer Defensive|False|False
+TGT|Defensive Consumer Staples Rotation|Fading|0.5933|60|16|17|admit|Consumer Defensive|False|False
+MDLZ|Defensive Consumer Staples Rotation|Fading|0.764|60|16|17|admit|Consumer Defensive|False|False
+DEO|Defensive Consumer Staples Rotation|Fading|0.6388|60|16|17|admit|Consumer Defensive|False|False
+TBBB|Defensive Consumer Staples Rotation|Fading|0.1861|60|16|17|reject|Consumer Defensive|False|False
+PG|Defensive Consumer Staples Rotation|Fading|0.6552|60|16|17|admit|Consumer Defensive|False|False
+GO|Defensive Consumer Staples Rotation|Fading|0.3186|60|16|17|reject|Consumer Defensive|False|False
+EL|Defensive Consumer Staples Rotation|Fading|0.4374|60|16|17|admit|Consumer Defensive|False|False
+UL|Defensive Consumer Staples Rotation|Fading|0.7395|60|16|17|admit|Consumer Defensive|False|False
+PPC|Defensive Consumer Staples Rotation|Fading|0.5826|60|16|17|admit|Consumer Defensive|False|False
+MICC|Defensive Consumer Staples Rotation|Fading|0.4897|60|16|17|admit|Consumer Defensive|False|False
+DXCM|Diabetes Management Devices (CGM, Insulin Pumps & Delivery)|Fading||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+BBNX|Diabetes Management Devices (CGM, Insulin Pumps & Delivery)|Fading||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+MMED|Diabetes Management Devices (CGM, Insulin Pumps & Delivery)|Fading||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+MGNI|Digital Advertising & Ad-Tech Monetization Platforms|Mainstream|0.2585|60|3|4|reject|Communication Services|False|True
+DV|Digital Advertising & Ad-Tech Monetization Platforms|Mainstream|0.6749|60|3|4|admit|Communication Services|False|True
+ZD|Digital Advertising & Ad-Tech Monetization Platforms|Mainstream|0.3882|60|3|4|admit|Communication Services|False|True
+PUBM|Digital Advertising & Ad-Tech Monetization Platforms|Mainstream|0.6591|60|3|4|admit|Technology|True|True
+LIFE|Digital Insurance Distribution & InsurTech Platforms|Fading||0|1|2|unjudgeable:thin_basket|Financial Services|False|False
+PRCH|Digital Insurance Distribution & InsurTech Platforms|Fading||0|1|2|unjudgeable:thin_basket|Financial Services|False|False
+HNRG|Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|0.1687|60|4|5|reject|Utilities|False|False
+AES|Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|0.2008|60|4|5|reject|Utilities|False|False
+OGE|Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|0.3293|60|4|5|reject|Utilities|False|False
+CEG|Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|0.4354|60|4|5|admit|Utilities|False|False
+EVRG|Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|0.2846|60|4|5|reject|Utilities|False|False
+INSP|Emerging Medical Device Innovators Breakout|Mainstream||0|2|3|unjudgeable:thin_basket|Healthcare|False|True
+ITGR|Emerging Medical Device Innovators Breakout|Mainstream||0|2|3|unjudgeable:thin_basket|Healthcare|False|True
+ATEC|Emerging Medical Device Innovators Breakout|Mainstream||0|2|3|unjudgeable:thin_basket|Healthcare|False|True
+QBTS|Emerging Quantum Computing Rally|Nascent|0.8799|60|4|5|admit|Technology|False|False
+IONQ|Emerging Quantum Computing Rally|Nascent|0.9144|60|4|5|admit|Technology|False|False
+RGTI|Emerging Quantum Computing Rally|Nascent|0.9516|60|4|5|admit|Technology|False|False
+INFQ|Emerging Quantum Computing Rally|Nascent|0.8726|60|4|5|admit|Technology|False|False
+QUBT|Emerging Quantum Computing Rally|Nascent|0.8936|60|4|5|admit|Technology|False|False
+TDW|Energy Infrastructure & Services Complex|Fading|0.5673|60|15|16|admit|Energy|False|False
+KMI|Energy Infrastructure & Services Complex|Fading|0.3892|60|15|16|admit|Energy|False|False
+WES|Energy Infrastructure & Services Complex|Fading|0.3824|60|15|16|admit|Energy|False|False
+HLX|Energy Infrastructure & Services Complex|Fading|0.8204|44|15|16|admit|Energy|False|False
+ET|Energy Infrastructure & Services Complex|Fading|0.4811|60|15|16|admit|Energy|False|False
+FTK|Energy Infrastructure & Services Complex|Fading|0.01|60|15|16|reject|Energy|False|False
+NESR|Energy Infrastructure & Services Complex|Fading|0.5253|60|15|16|admit|Energy|False|False
+FET|Energy Infrastructure & Services Complex|Fading|0.4255|60|15|16|admit|Energy|False|False
+SDRL|Energy Infrastructure & Services Complex|Fading|0.7517|60|15|16|admit|Energy|False|False
+WKC|Energy Infrastructure & Services Complex|Fading|0.1188|60|15|16|reject|Energy|False|False
+KNTK|Energy Infrastructure & Services Complex|Fading|0.4451|60|15|16|admit|Energy|False|False
+NE|Energy Infrastructure & Services Complex|Fading|0.7259|60|15|16|admit|Energy|False|False
+WHD|Energy Infrastructure & Services Complex|Fading|0.4717|60|15|16|admit|Energy|False|False
+OII|Energy Infrastructure & Services Complex|Fading|0.569|60|15|16|admit|Energy|False|False
+TS|Energy Infrastructure & Services Complex|Fading|0.4395|60|15|16|admit|Energy|False|False
+HP|Energy Infrastructure & Services Complex|Fading|0.7747|60|15|16|admit|Energy|False|False
+EOG|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.9257|60|14|15|admit|Energy|False|False
+PR|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.9351|60|14|15|admit|Energy|False|False
+DEC|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.7316|60|14|15|admit|Energy|False|False
+CRGY|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.8991|60|14|15|admit|Energy|False|False
+COP|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.9308|60|14|15|admit|Energy|False|False
+LNG|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.5553|60|14|15|admit|Energy|False|False
+APA|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.8982|60|14|15|admit|Energy|False|False
+TALO|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.8342|60|14|15|admit|Energy|False|False
+CRC|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.8705|60|14|15|admit|Energy|False|False
+XPRO|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.3816|60|14|15|admit|Energy|False|False
+NOV|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.5507|60|14|15|admit|Energy|False|False
+SM|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.9251|60|14|15|admit|Energy|False|False
+REPX|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.8697|60|14|15|admit|Energy|False|False
+DVN|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.9461|60|14|15|admit|Energy|False|False
+WDS|Energy Supply Disruption: Middle East Geopolitical Risk|Fading|0.7914|60|14|15|admit|Energy|False|False
+PCTY|Enterprise HR & Workforce Management SaaS|Mainstream|0.7717|60|5|6|admit|Technology|False|True
+ADP|Enterprise HR & Workforce Management SaaS|Mainstream|0.8162|60|5|6|admit|Technology|False|True
+ALIT|Enterprise HR & Workforce Management SaaS|Mainstream|0.4647|60|5|6|admit|Technology|False|True
+PAYC|Enterprise HR & Workforce Management SaaS|Mainstream|0.6251|60|5|6|admit|Technology|False|True
+WDAY|Enterprise HR & Workforce Management SaaS|Mainstream|0.6221|60|5|6|admit|Technology|False|True
+TNET|Enterprise HR & Workforce Management SaaS|Mainstream|0.6109|60|5|6|admit|Industrials|True|True
+HPE|Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|0.7782|60|7|8|admit|Technology|False|False
+SMCI|Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|0.5999|60|7|8|admit|Technology|False|False
+DELL|Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|0.7596|60|7|8|admit|Technology|False|False
+STX|Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|0.4536|60|7|8|admit|Technology|False|False
+NTAP|Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|0.5315|60|7|8|admit|Technology|False|False
+NTNX|Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|-0.1898|60|7|8|reject|Technology|False|False
+ANET|Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|0.6548|60|7|8|admit|Technology|False|False
+CSCO|Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|0.4134|60|7|8|admit|Technology|False|False
+QMCO|Enterprise Unstructured Data Storage Infrastructure|Fading||0|2|3|unjudgeable:thin_basket|Technology|False|False
+DBX|Enterprise Unstructured Data Storage Infrastructure|Fading||0|2|3|unjudgeable:thin_basket|Technology|False|False
+BOX|Enterprise Unstructured Data Storage Infrastructure|Fading||0|2|3|unjudgeable:thin_basket|Technology|False|False
+AGCO|Farm Economy Value Chain Re-Rating|Nascent|0.7003|60|3|4|admit|Industrials|False|False
+CNH|Farm Economy Value Chain Re-Rating|Nascent|0.6451|60|3|4|admit|Industrials|False|False
+NTR|Farm Economy Value Chain Re-Rating|Nascent|0.4461|60|3|4|admit|Basic Materials|False|False
+MOS|Farm Economy Value Chain Re-Rating|Nascent|0.61|60|3|4|admit|Basic Materials|False|False
+SLM|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.4753|60|21|22|admit|Financial Services|False|False
+OMF|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.6017|60|21|22|admit|Financial Services|False|False
+BFH|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.4045|60|21|22|admit|Financial Services|False|False
+DLO|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.5665|60|21|22|admit|Technology|False|False
+MQ|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.6059|60|21|22|admit|Technology|False|False
+XP|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.2032|60|21|22|reject|Financial Services|False|False
+BR|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.4298|60|21|22|admit|Technology|False|False
+PYPL|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.371|60|21|22|admit|Financial Services|False|False
+PAGS|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.3703|60|21|22|admit|Technology|False|False
+XYZ|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.6799|60|21|22|admit|Technology|False|False
+NU|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.3772|60|21|22|admit|Financial Services|False|False
+SSNC|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.4915|60|21|22|admit|Technology|False|False
+ITUB|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.1741|60|21|22|reject|Financial Services|False|False
+PGY|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.3373|60|21|22|reject|Technology|False|False
+NCNO|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.6525|60|21|22|admit|Technology|False|False
+JKHY|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.4674|60|21|22|admit|Technology|False|False
+ACIW|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.5446|60|21|22|admit|Technology|False|False
+KSPI|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.3406|60|21|22|reject|Technology|False|False
+QTWO|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.6495|60|21|22|admit|Technology|False|False
+DAVE|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.4481|60|21|22|admit|Technology|False|False
+PAY|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.4452|60|21|22|admit|Technology|False|False
+CHYM|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.2822|60|21|22|reject|Technology|False|False
+LAUR|For-Profit Postsecondary & Vocational Education|Mainstream|0.7347|60|4|5|admit|Consumer Defensive|False|True
+STRA|For-Profit Postsecondary & Vocational Education|Mainstream|0.9227|60|4|5|admit|Consumer Defensive|False|True
+CVSA|For-Profit Postsecondary & Vocational Education|Mainstream|0.8224|60|4|5|admit|Consumer Defensive|False|True
+PRDO|For-Profit Postsecondary & Vocational Education|Mainstream|0.9253|60|4|5|admit|Consumer Defensive|False|True
+LOPE|For-Profit Postsecondary & Vocational Education|Mainstream|0.8302|60|4|5|admit|Consumer Defensive|False|True
+MGTX|Genetic Medicine: Gene Editing & Gene Therapy Innovators|Fading|0.5227|60|3|4|admit|Healthcare|False|False
+QURE|Genetic Medicine: Gene Editing & Gene Therapy Innovators|Fading|0.2851|60|3|4|reject|Healthcare|False|False
+SRPT|Genetic Medicine: Gene Editing & Gene Therapy Innovators|Fading|0.3568|60|3|4|admit|Healthcare|False|False
+FDMT|Genetic Medicine: Gene Editing & Gene Therapy Innovators|Fading|0.5771|60|3|4|admit|Healthcare|False|False
+WGS|Genomics & DNA Sequencing Tools|Mainstream|0.5417|60|11|12|admit|Healthcare|False|True
+BRKR|Genomics & DNA Sequencing Tools|Mainstream|0.3836|60|11|12|admit|Healthcare|False|True
+NTLA|Genomics & DNA Sequencing Tools|Mainstream|0.4146|60|11|12|admit|Healthcare|False|True
+GRAL|Genomics & DNA Sequencing Tools|Mainstream|0.4622|58|11|12|admit|Healthcare|False|True
+TXG|Genomics & DNA Sequencing Tools|Mainstream|0.7318|60|11|12|admit|Healthcare|False|True
+QGEN|Genomics & DNA Sequencing Tools|Mainstream|0.4077|60|11|12|admit|Healthcare|False|True
+CRSP|Genomics & DNA Sequencing Tools|Mainstream|0.5125|60|11|12|admit|Healthcare|False|True
+NTRA|Genomics & DNA Sequencing Tools|Mainstream|0.6168|60|11|12|admit|Healthcare|False|True
+ILMN|Genomics & DNA Sequencing Tools|Mainstream|0.5297|60|11|12|admit|Healthcare|False|True
+TWST|Genomics & DNA Sequencing Tools|Mainstream|0.6586|60|11|12|admit|Healthcare|False|True
+GH|Genomics & DNA Sequencing Tools|Mainstream|0.5044|60|11|12|admit|Healthcare|False|True
+BLLN|Genomics & DNA Sequencing Tools|Mainstream|0.433|60|11|12|admit|Healthcare|False|True
+AGCO|Global Agriculture Value Chain Recovery|Mainstream|0.7547|60|3|4|admit|Industrials|False|True
+CNH|Global Agriculture Value Chain Recovery|Mainstream|0.663|60|3|4|admit|Industrials|False|True
+DE|Global Agriculture Value Chain Recovery|Mainstream|0.7339|60|3|4|admit|Industrials|False|True
+AGRO|Global Agriculture Value Chain Recovery|Mainstream|0.0908|60|3|4|reject|Consumer Defensive|True|True
+MT|Global Steel & Metal Producers Recovery|Fading|0.3769|60|4|5|admit|Basic Materials|False|False
+STLD|Global Steel & Metal Producers Recovery|Fading|0.7362|60|4|5|admit|Basic Materials|False|False
+NUE|Global Steel & Metal Producers Recovery|Fading|0.7592|60|4|5|admit|Basic Materials|False|False
+TX|Global Steel & Metal Producers Recovery|Fading|0.4977|60|4|5|admit|Basic Materials|False|False
+CLF|Global Steel & Metal Producers Recovery|Fading|0.6274|60|4|5|admit|Basic Materials|False|False
+SKY|Homebuilders & Residential Construction Supply Chain|Nascent|0.7105|60|6|7|admit|Consumer Cyclical|False|False
+CVCO|Homebuilders & Residential Construction Supply Chain|Nascent|0.831|60|6|7|admit|Consumer Cyclical|False|False
+DHI|Homebuilders & Residential Construction Supply Chain|Nascent|0.8979|60|6|7|admit|Consumer Cyclical|False|False
+PHM|Homebuilders & Residential Construction Supply Chain|Nascent|0.9265|60|6|7|admit|Consumer Cyclical|False|False
+MHO|Homebuilders & Residential Construction Supply Chain|Nascent|0.8459|60|6|7|admit|Consumer Cyclical|False|False
+TOL|Homebuilders & Residential Construction Supply Chain|Nascent|0.8959|60|6|7|admit|Consumer Cyclical|False|False
+MTH|Homebuilders & Residential Construction Supply Chain|Nascent|0.8958|60|6|7|admit|Consumer Cyclical|False|False
+EHC|Hospital & Behavioral Health Facility Procedure Volume Recovery|Mainstream|0.434|60|5|6|admit|Healthcare|False|True
+THC|Hospital & Behavioral Health Facility Procedure Volume Recovery|Mainstream|0.6848|60|5|6|admit|Healthcare|False|True
+HCA|Hospital & Behavioral Health Facility Procedure Volume Recovery|Mainstream|0.8165|60|5|6|admit|Healthcare|False|True
+MD|Hospital & Behavioral Health Facility Procedure Volume Recovery|Mainstream|0.6367|60|5|6|admit|Healthcare|False|True
+SGRY|Hospital & Behavioral Health Facility Procedure Volume Recovery|Mainstream|0.5196|60|5|6|admit|Healthcare|False|True
+UHS|Hospital & Behavioral Health Facility Procedure Volume Recovery|Mainstream|0.802|60|5|6|admit|Healthcare|False|True
+MITK|Identity & Access Management Security Software|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+OKTA|Identity & Access Management Security Software|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+SAIL|Identity & Access Management Security Software|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+TTEK|Industrial Construction Execution & On-Site Supply Chain|Fading|-0.1155|60|7|8|reject|Industrials|False|False
+TPC|Industrial Construction Execution & On-Site Supply Chain|Fading|0.563|60|7|8|admit|Industrials|False|False
+J|Industrial Construction Execution & On-Site Supply Chain|Fading|-0.0785|60|7|8|reject|Industrials|False|False
+AGX|Industrial Construction Execution & On-Site Supply Chain|Fading|0.1964|60|7|8|reject|Industrials|False|False
+FLR|Industrial Construction Execution & On-Site Supply Chain|Fading|0.3943|60|7|8|admit|Industrials|False|False
+ACA|Industrial Construction Execution & On-Site Supply Chain|Fading|-0.1573|60|7|8|reject|Industrials|False|False
+DNOW|Industrial Construction Execution & On-Site Supply Chain|Fading|0.4719|60|7|8|admit|Industrials|False|False
+KBR|Industrial Construction Execution & On-Site Supply Chain|Fading|0.1217|60|7|8|reject|Industrials|False|False
+ZBIO|Inflammatory Disease & Immunology Biologics|Fading|0.5434|60|8|9|admit|Healthcare|False|False
+SYRE|Inflammatory Disease & Immunology Biologics|Fading|0.5891|60|8|9|admit|Healthcare|False|False
+AUPH|Inflammatory Disease & Immunology Biologics|Fading|0.3025|60|8|9|reject|Healthcare|False|False
+TRAX|Inflammatory Disease & Immunology Biologics|Fading|0.2152|60|8|9|reject|Healthcare|False|False
+CLYM|Inflammatory Disease & Immunology Biologics|Fading|0.5798|60|8|9|admit|Healthcare|False|False
+NRIX|Inflammatory Disease & Immunology Biologics|Fading|0.5407|60|8|9|admit|Healthcare|False|False
+ORKA|Inflammatory Disease & Immunology Biologics|Fading|0.5299|60|8|9|admit|Healthcare|False|False
+VRDN|Inflammatory Disease & Immunology Biologics|Fading|0.5346|60|8|9|admit|Healthcare|False|False
+PHVS|Inflammatory Disease & Immunology Biologics|Fading|0.5431|60|8|9|admit|Healthcare|False|False
+RYAN|Insurance Brokerage & Distribution Services|Fading||0|1|2|unjudgeable:thin_basket|Financial Services|False|False
+WTW|Insurance Brokerage & Distribution Services|Fading||0|1|2|unjudgeable:thin_basket|Financial Services|False|False
+MORN|Investment Research & Financial Data Platforms|Fading||0|1|2|unjudgeable:thin_basket|Financial Services|False|False
+FDS|Investment Research & Financial Data Platforms|Fading||0|1|2|unjudgeable:thin_basket|Financial Services|False|False
+ACN|IT Consulting & Business Process Outsourcing Services|Fading|0.8624|60|7|8|admit|Technology|False|False
+EPAM|IT Consulting & Business Process Outsourcing Services|Fading|0.6437|60|7|8|admit|Technology|False|False
+CNXC|IT Consulting & Business Process Outsourcing Services|Fading|0.5447|60|7|8|admit|Technology|False|False
+KD|IT Consulting & Business Process Outsourcing Services|Fading|0.7578|60|7|8|admit|Technology|False|False
+CTSH|IT Consulting & Business Process Outsourcing Services|Fading|0.8705|60|7|8|admit|Technology|False|False
+DXC|IT Consulting & Business Process Outsourcing Services|Fading|0.8386|60|7|8|admit|Technology|False|False
+EXLS|IT Consulting & Business Process Outsourcing Services|Fading|0.7639|60|7|8|admit|Technology|False|False
+IBM|IT Consulting & Business Process Outsourcing Services|Fading|0.4865|60|7|8|admit|Technology|False|False
+TDS|Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound|Mainstream||0|2|3|unjudgeable:thin_basket|Communication Services|False|True
+ECHO|Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound|Mainstream||0|2|3|unjudgeable:thin_basket|Communication Services|False|True
+NMAX|Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound|Mainstream||0|2|3|unjudgeable:thin_basket|Communication Services|False|True
+MFC|Life Insurance & Annuity Providers|Mainstream|0.7047|60|8|9|admit|Financial Services|False|True
+LNC|Life Insurance & Annuity Providers|Mainstream|0.5552|60|8|9|admit|Financial Services|False|True
+PRU|Life Insurance & Annuity Providers|Mainstream|0.7791|60|8|9|admit|Financial Services|False|True
+PFG|Life Insurance & Annuity Providers|Mainstream|0.7636|60|8|9|admit|Financial Services|False|True
+RGA|Life Insurance & Annuity Providers|Mainstream|0.5959|60|8|9|admit|Financial Services|False|True
+UNM|Life Insurance & Annuity Providers|Mainstream|0.5293|60|8|9|admit|Financial Services|False|True
+VOYA|Life Insurance & Annuity Providers|Mainstream|0.776|60|8|9|admit|Financial Services|False|True
+SLF|Life Insurance & Annuity Providers|Mainstream|0.5622|60|8|9|admit|Financial Services|False|True
+MET|Life Insurance & Annuity Providers|Mainstream|0.8095|60|8|9|admit|Financial Services|False|True
+DOCS|Life Sciences & Healthcare Data/CRM Platforms|Mainstream||0|2|3|unjudgeable:thin_basket|Healthcare|False|True
+TEM|Life Sciences & Healthcare Data/CRM Platforms|Mainstream||0|2|3|unjudgeable:thin_basket|Healthcare|False|True
+VEEV|Life Sciences & Healthcare Data/CRM Platforms|Mainstream||0|2|3|unjudgeable:thin_basket|Healthcare|False|True
+AVTR|Life Science Tools & Analytical Instruments|Mainstream|0.5054|60|14|15|admit|Healthcare|False|True
+MEDP|Life Science Tools & Analytical Instruments|Mainstream|0.5914|60|14|15|admit|Healthcare|False|True
+WAT|Life Science Tools & Analytical Instruments|Mainstream|0.6394|60|14|15|admit|Healthcare|False|True
+DHR|Life Science Tools & Analytical Instruments|Mainstream|0.6176|60|14|15|admit|Healthcare|False|True
+TMO|Life Science Tools & Analytical Instruments|Mainstream|0.8456|60|14|15|admit|Healthcare|False|True
+A|Life Science Tools & Analytical Instruments|Mainstream|0.7604|60|14|15|admit|Healthcare|False|True
+MTD|Life Science Tools & Analytical Instruments|Mainstream|0.6472|60|14|15|admit|Healthcare|False|True
+AZTA|Life Science Tools & Analytical Instruments|Mainstream|0.5639|60|14|15|admit|Healthcare|False|True
+RVTY|Life Science Tools & Analytical Instruments|Mainstream|0.737|60|14|15|admit|Healthcare|False|True
+RGEN|Life Science Tools & Analytical Instruments|Mainstream|0.5833|60|14|15|admit|Healthcare|False|True
+CRL|Life Science Tools & Analytical Instruments|Mainstream|0.7022|60|14|15|admit|Healthcare|False|True
+ICLR|Life Science Tools & Analytical Instruments|Mainstream|0.6352|60|14|15|admit|Healthcare|False|True
+IQV|Life Science Tools & Analytical Instruments|Mainstream|0.7767|60|14|15|admit|Healthcare|False|True
+BIO|Life Science Tools & Analytical Instruments|Mainstream|0.8192|60|14|15|admit|Healthcare|False|True
+FTRE|Life Science Tools & Analytical Instruments|Mainstream|0.7244|60|14|15|admit|Healthcare|False|True
+LYV|Live Music & Concert Promotion|Fading|0.5564|60|3|4|admit|Communication Services|False|False
+LLYVK|Live Music & Concert Promotion|Fading|0.6022|60|3|4|admit|Communication Services|False|False
+MSGE|Live Music & Concert Promotion|Fading|0.5181|60|3|4|admit|Communication Services|False|False
+SPHR|Live Music & Concert Promotion|Fading|0.3978|60|3|4|admit|Communication Services|False|False
+PK|Lodging & Hotel REITs|Nascent|0.796|60|6|7|admit|Real Estate|False|False
+DRH|Lodging & Hotel REITs|Nascent|0.8897|60|6|7|admit|Real Estate|False|False
+PEB|Lodging & Hotel REITs|Nascent|0.8539|60|6|7|admit|Real Estate|False|False
+RLJ|Lodging & Hotel REITs|Nascent|0.7611|60|6|7|admit|Real Estate|False|False
+SHO|Lodging & Hotel REITs|Nascent|0.8658|60|6|7|admit|Real Estate|False|False
+RHP|Lodging & Hotel REITs|Nascent|0.7804|60|6|7|admit|Real Estate|False|False
+APLE|Lodging & Hotel REITs|Nascent|0.8474|60|6|7|admit|Real Estate|False|False
+LUV|Low-Cost & Regional Passenger Airline Rebound|Mainstream|0.7157|60|3|4|admit|Industrials|False|True
+ULCC|Low-Cost & Regional Passenger Airline Rebound|Mainstream|0.7086|60|3|4|admit|Industrials|False|True
+LTM|Low-Cost & Regional Passenger Airline Rebound|Mainstream|0.615|60|3|4|admit|Industrials|False|True
+SKYW|Low-Cost & Regional Passenger Airline Rebound|Mainstream|0.5767|60|3|4|admit|Industrials|False|True
+WIX|Marketing & Digital Presence SaaS Platforms|Mainstream|0.6264|60|3|4|admit|Technology|False|True
+SPT|Marketing & Digital Presence SaaS Platforms|Mainstream|0.4947|60|3|4|admit|Technology|False|True
+ZETA|Marketing & Digital Presence SaaS Platforms|Mainstream|0.4647|60|3|4|admit|Technology|False|True
+GDDY|Marketing & Digital Presence SaaS Platforms|Mainstream|0.5362|60|3|4|admit|Technology|False|True
+PSKY|Media Streaming & Entertainment Content Turnaround|Fading||0|2|3|unjudgeable:thin_basket|Communication Services|False|False
+DIS|Media Streaming & Entertainment Content Turnaround|Fading||0|2|3|unjudgeable:thin_basket|Communication Services|False|False
+WBD|Media Streaming & Entertainment Content Turnaround|Fading||0|2|3|unjudgeable:thin_basket|Communication Services|False|False
+ABT|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.6152|60|13|14|admit|Healthcare|False|False
+BAX|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.6284|60|13|14|admit|Healthcare|False|False
+ATRC|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.5421|60|13|14|admit|Healthcare|False|False
+ISRG|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.5255|60|13|14|admit|Healthcare|False|False
+HAE|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.466|60|13|14|admit|Healthcare|False|False
+EW|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.5275|60|13|14|admit|Healthcare|False|False
+MDT|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.7845|60|13|14|admit|Healthcare|False|False
+GKOS|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.3066|60|13|14|reject|Healthcare|False|False
+INSP|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.2085|60|13|14|reject|Healthcare|False|False
+TMDX|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.5781|60|13|14|admit|Healthcare|False|False
+RMD|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.5907|60|13|14|admit|Healthcare|False|False
+BDX|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.699|60|13|14|admit|Healthcare|False|False
+LIVN|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.5853|60|13|14|admit|Healthcare|False|False
+ICUI|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.575|60|13|14|admit|Healthcare|False|False
+SWKS|Mobile SoC & Wireless Connectivity Semiconductors|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+QCOM|Mobile SoC & Wireless Connectivity Semiconductors|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+QRVO|Mobile SoC & Wireless Connectivity Semiconductors|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+BNTX|mRNA Vaccine & Personalized Cancer Therapy Platforms|Mainstream|0.8497|60|3|4|admit|Healthcare|False|True
+MRNA|mRNA Vaccine & Personalized Cancer Therapy Platforms|Mainstream|0.7367|60|3|4|admit|Healthcare|False|True
+MRK|mRNA Vaccine & Personalized Cancer Therapy Platforms|Mainstream|0.7092|60|3|4|admit|Healthcare|False|True
+ARCT|mRNA Vaccine & Personalized Cancer Therapy Platforms|Mainstream|0.5467|60|3|4|admit|Healthcare|False|True
+FTNT|Network Security & Zero-Trust Edge|Mainstream|0.8449|60|17|18|admit|Technology|False|True
+CHKP|Network Security & Zero-Trust Edge|Mainstream|0.4596|60|17|18|admit|Technology|False|True
+ZS|Network Security & Zero-Trust Edge|Mainstream|0.85|60|17|18|admit|Technology|False|True
+CVLT|Network Security & Zero-Trust Edge|Mainstream|0.4999|60|17|18|admit|Technology|False|True
+RPD|Network Security & Zero-Trust Edge|Mainstream|0.7719|60|17|18|admit|Technology|False|True
+NTSK|Network Security & Zero-Trust Edge|Mainstream|0.8219|60|17|18|admit|Technology|False|True
+SAIL|Network Security & Zero-Trust Edge|Mainstream|0.7947|60|17|18|admit|Technology|False|True
+VRNS|Network Security & Zero-Trust Edge|Mainstream|0.5666|60|17|18|admit|Technology|False|True
+PANW|Network Security & Zero-Trust Edge|Mainstream|0.8173|60|17|18|admit|Technology|False|True
+FFIV|Network Security & Zero-Trust Edge|Mainstream|0.3712|60|17|18|admit|Technology|False|True
+RBRK|Network Security & Zero-Trust Edge|Mainstream|0.823|60|17|18|admit|Technology|False|True
+BLZE|Network Security & Zero-Trust Edge|Mainstream|0.3036|60|17|18|reject|Technology|False|True
+NET|Network Security & Zero-Trust Edge|Mainstream|0.6727|60|17|18|admit|Technology|False|True
+CRWD|Network Security & Zero-Trust Edge|Mainstream|0.8757|60|17|18|admit|Technology|False|True
+OKTA|Network Security & Zero-Trust Edge|Mainstream|0.8401|60|17|18|admit|Technology|False|True
+QLYS|Network Security & Zero-Trust Edge|Mainstream|0.7457|60|17|18|admit|Technology|False|True
+S|Network Security & Zero-Trust Edge|Mainstream|0.9203|60|17|18|admit|Technology|False|True
+TENB|Network Security & Zero-Trust Edge|Mainstream|0.8586|60|17|18|admit|Technology|False|True
+CCEP|Non-Alcoholic Beverages & Energy Drinks|Accelerating|0.7149|60|4|5|admit|Consumer Defensive|False|True
+KDP|Non-Alcoholic Beverages & Energy Drinks|Accelerating|0.6123|60|4|5|admit|Consumer Defensive|False|True
+KO|Non-Alcoholic Beverages & Energy Drinks|Accelerating|0.7054|60|4|5|admit|Consumer Defensive|False|True
+KOF|Non-Alcoholic Beverages & Energy Drinks|Accelerating|0.4487|60|4|5|admit|Consumer Defensive|False|True
+COKE|Non-Alcoholic Beverages & Energy Drinks|Accelerating|0.6542|60|4|5|admit|Consumer Defensive|False|True
+PSIX|On-Site Power Generation & Distribution Equipment for Data Centers|Mainstream|0.568|60|5|6|admit|Industrials|False|True
+ETN|On-Site Power Generation & Distribution Equipment for Data Centers|Mainstream|0.6789|60|5|6|admit|Industrials|False|True
+BE|On-Site Power Generation & Distribution Equipment for Data Centers|Mainstream|0.6566|60|5|6|admit|Industrials|False|True
+FPS|On-Site Power Generation & Distribution Equipment for Data Centers|Mainstream|0.7849|60|5|6|admit|Industrials|False|True
+EROC|On-Site Power Generation & Distribution Equipment for Data Centers|Mainstream|0.6096|60|5|6|admit|Industrials|False|True
+GNRC|On-Site Power Generation & Distribution Equipment for Data Centers|Mainstream|0.5477|60|5|6|admit|Industrials|False|True
+ZBH|Orthopedic Surgical Devices & Instruments|Accelerating|0.6818|60|3|4|admit|Healthcare|False|True
+CNMD|Orthopedic Surgical Devices & Instruments|Accelerating|0.5031|60|3|4|admit|Healthcare|False|True
+SIBN|Orthopedic Surgical Devices & Instruments|Accelerating|0.6184|60|3|4|admit|Healthcare|False|True
+MMSI|Orthopedic Surgical Devices & Instruments|Accelerating|0.598|60|3|4|admit|Healthcare|False|True
+MBX|Peptide & Hormone Therapies for Metabolic & Endocrine Disorders|Fading||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+PTGX|Peptide & Hormone Therapies for Metabolic & Endocrine Disorders|Fading||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+CORT|Peptide & Hormone Therapies for Metabolic & Endocrine Disorders|Fading||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+OPCH|Post-Acute & Home-Based Healthcare Services|Fading||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+ADUS|Post-Acute & Home-Based Healthcare Services|Fading||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+GRDN|Post-Acute & Home-Based Healthcare Services|Fading||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+FSM|Precious Metals Miners Velocity Breakout|Mainstream||0|2|3|unjudgeable:thin_basket|Basic Materials|False|True
+WPM|Precious Metals Miners Velocity Breakout|Mainstream||0|2|3|unjudgeable:thin_basket|Basic Materials|False|True
+AYA|Precious Metals Miners Velocity Breakout|Mainstream||0|2|3|unjudgeable:thin_basket|Basic Materials|False|True
+ACT|Private Mortgage Insurance|Fading|0.856|60|3|4|admit|Financial Services|False|False
+NMIH|Private Mortgage Insurance|Fading|0.8844|60|3|4|admit|Financial Services|False|False
+MTG|Private Mortgage Insurance|Fading|0.8704|60|3|4|admit|Financial Services|False|False
+ESNT|Private Mortgage Insurance|Fading|0.8705|60|3|4|admit|Financial Services|False|False
+SNDK|Pure-Play NAND/DRAM Memory Chip Makers|Mainstream|0.8691|52|3|4|admit|Technology|False|True
+SKHY|Pure-Play NAND/DRAM Memory Chip Makers|Mainstream|0.8153|52|3|4|admit|Technology|False|True
+MU|Pure-Play NAND/DRAM Memory Chip Makers|Mainstream|0.8973|52|3|4|admit|Technology|False|True
+SIMO|Pure-Play NAND/DRAM Memory Chip Makers|Mainstream|0.749|52|3|4|admit|Technology|False|True
+CRML|Rare Earth Elements Mining & Processing|Fading|0.7253|60|3|4|admit|Basic Materials|False|False
+MP|Rare Earth Elements Mining & Processing|Fading|0.7937|60|3|4|admit|Basic Materials|False|False
+ALOY|Rare Earth Elements Mining & Processing|Fading|0.737|60|3|4|admit|Basic Materials|False|False
+USAR|Rare Earth Elements Mining & Processing|Fading|0.8871|60|3|4|admit|Basic Materials|False|False
+ED|Regulated Electric Utility Defensive Rotation|Fading|0.906|60|3|4|admit|Utilities|False|False
+FTS|Regulated Electric Utility Defensive Rotation|Fading|0.9104|60|3|4|admit|Utilities|False|False
+TXNM|Regulated Electric Utility Defensive Rotation|Fading|0.7396|60|3|4|admit|Utilities|False|False
+EVRG|Regulated Electric Utility Defensive Rotation|Fading|0.8671|60|3|4|admit|Utilities|False|False
+RNW|Renewable Power Generation Operators|Fading||0|1|2|unjudgeable:thin_basket|Utilities|False|False
+FRVO|Renewable Power Generation Operators|Fading||0|1|2|unjudgeable:thin_basket|Utilities|False|False
+MEOH|Renewable & Specialty Fuels Chemical Producers|Mainstream||0|2|3|unjudgeable:thin_basket|Basic Materials|False|True
+SSL|Renewable & Specialty Fuels Chemical Producers|Mainstream||0|2|3|unjudgeable:thin_basket|Basic Materials|False|True
+CLMT|Renewable & Specialty Fuels Chemical Producers|Mainstream||0|2|3|unjudgeable:thin_basket|Basic Materials|False|True
+DRI|Restaurant Chain Recovery|Mainstream|0.6014|60|4|5|admit|Consumer Cyclical|False|True
+CAKE|Restaurant Chain Recovery|Mainstream|0.7824|60|4|5|admit|Consumer Cyclical|False|True
+BJRI|Restaurant Chain Recovery|Mainstream|0.5835|60|4|5|admit|Consumer Cyclical|False|True
+EAT|Restaurant Chain Recovery|Mainstream|0.6395|60|4|5|admit|Consumer Cyclical|False|True
+CBRL|Restaurant Chain Recovery|Mainstream|0.578|60|4|5|admit|Consumer Cyclical|False|True
+INTC|Semiconductor Foundry & Advanced Packaging Manufacturing|Mainstream|0.7876|60|4|5|admit|Technology|False|True
+UMC|Semiconductor Foundry & Advanced Packaging Manufacturing|Mainstream|0.7084|60|4|5|admit|Technology|False|True
+TSM|Semiconductor Foundry & Advanced Packaging Manufacturing|Mainstream|0.8137|60|4|5|admit|Technology|False|True
+TSEM|Semiconductor Foundry & Advanced Packaging Manufacturing|Mainstream|0.6327|60|4|5|admit|Technology|False|True
+ASX|Semiconductor Foundry & Advanced Packaging Manufacturing|Mainstream|0.8373|60|4|5|admit|Technology|False|True
+TER|Semiconductor Test, Yield & Assembly Supply Chain|Accelerating|0.8923|60|6|7|admit|Technology|False|True
+PDFS|Semiconductor Test, Yield & Assembly Supply Chain|Accelerating|0.8682|60|6|7|admit|Technology|False|True
+CAMT|Semiconductor Test, Yield & Assembly Supply Chain|Accelerating|0.826|60|6|7|admit|Technology|False|True
+COHU|Semiconductor Test, Yield & Assembly Supply Chain|Accelerating|0.9223|60|6|7|admit|Technology|False|True
+FORM|Semiconductor Test, Yield & Assembly Supply Chain|Accelerating|0.9411|60|6|7|admit|Technology|False|True
+SANM|Semiconductor Test, Yield & Assembly Supply Chain|Accelerating|0.8152|60|6|7|admit|Technology|False|True
+AEHR|Semiconductor Test, Yield & Assembly Supply Chain|Accelerating|0.8052|60|6|7|admit|Technology|False|True
+JAN|Skilled Nursing & Senior Housing Healthcare REITs|Fading|0.7325|60|3|4|admit|Real Estate|False|False
+WELL|Skilled Nursing & Senior Housing Healthcare REITs|Fading|0.8208|60|3|4|admit|Real Estate|False|False
+LTC|Skilled Nursing & Senior Housing Healthcare REITs|Fading|0.838|60|3|4|admit|Real Estate|False|False
+OHI|Skilled Nursing & Senior Housing Healthcare REITs|Fading|0.8701|60|3|4|admit|Real Estate|False|False
+NNE|Small Modular Reactor & Advanced Nuclear Fission Technology|Nascent|0.9027|60|3|4|admit|Industrials|False|False
+OKLO|Small Modular Reactor & Advanced Nuclear Fission Technology|Nascent|0.8964|60|3|4|admit|Utilities|True|False
+SMR|Small Modular Reactor & Advanced Nuclear Fission Technology|Nascent|0.8967|60|3|4|admit|Industrials|False|False
+LEU|Small Modular Reactor & Advanced Nuclear Fission Technology|Nascent|0.8406|60|3|4|admit|Energy|True|False
+GTLB|Software Development & DevOps Collaboration Platforms|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+TEAM|Software Development & DevOps Collaboration Platforms|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+FROG|Software Development & DevOps Collaboration Platforms|Mainstream||0|2|3|unjudgeable:thin_basket|Technology|False|True
+BKSY|Space Economy: Satellite Communications & Launch Services|Mainstream|0.7561|60|8|9|admit|Industrials|False|True
+RDW|Space Economy: Satellite Communications & Launch Services|Mainstream|0.8957|60|8|9|admit|Industrials|False|True
+VSAT|Space Economy: Satellite Communications & Launch Services|Mainstream|0.4931|60|8|9|admit|Technology|True|True
+FLY|Space Economy: Satellite Communications & Launch Services|Mainstream|0.8905|60|8|9|admit|Industrials|False|True
+MDA|Space Economy: Satellite Communications & Launch Services|Mainstream|0.6502|60|8|9|admit|Industrials|False|True
+VOYG|Space Economy: Satellite Communications & Launch Services|Mainstream|0.7089|60|8|9|admit|Industrials|False|True
+RKLB|Space Economy: Satellite Communications & Launch Services|Mainstream|0.858|60|8|9|admit|Industrials|False|True
+SPCX|Space Economy: Satellite Communications & Launch Services|Mainstream|0.4574|60|8|9|admit|Industrials|False|True
+LUNR|Space Economy: Satellite Communications & Launch Services|Mainstream|0.8115|60|8|9|admit|Industrials|False|True
+EG|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.8895|60|14|15|admit|Financial Services|False|False
+WRB|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.8641|60|14|15|admit|Financial Services|False|False
+PLMR|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.791|60|14|15|admit|Financial Services|False|False
+HCI|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.6738|60|14|15|admit|Financial Services|False|False
+RNR|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.8655|60|14|15|admit|Financial Services|False|False
+PGR|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.8007|60|14|15|admit|Financial Services|False|False
+SKWD|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.8172|60|14|15|admit|Financial Services|False|False
+RLI|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.8962|60|14|15|admit|Financial Services|False|False
+ACGL|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.9276|60|14|15|admit|Financial Services|False|False
+SPNT|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.7479|60|14|15|admit|Financial Services|False|False
+AFG|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.814|60|14|15|admit|Financial Services|False|False
+THG|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.8146|60|14|15|admit|Financial Services|False|False
+TRV|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.7886|60|14|15|admit|Financial Services|False|False
+CB|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.903|60|14|15|admit|Financial Services|False|False
+SLDE|Specialty P&C Insurance Underwriters Rotation Reversal|Fading|0.7991|60|14|15|admit|Financial Services|False|False
+GME|Specialty Retail Short-Squeeze Momentum Basket|Mainstream||0|2|3|unjudgeable:thin_basket|Consumer Cyclical|False|True
+ASO|Specialty Retail Short-Squeeze Momentum Basket|Mainstream||0|2|3|unjudgeable:thin_basket|Consumer Cyclical|False|True
+SIG|Specialty Retail Short-Squeeze Momentum Basket|Mainstream||0|2|3|unjudgeable:thin_basket|Consumer Cyclical|False|True
+ROST|U.S. Apparel & Fashion Recovery|Mainstream|0.3985|60|9|10|admit|Consumer Cyclical|False|True
+CROX|U.S. Apparel & Fashion Recovery|Mainstream|0.4118|60|9|10|admit|Consumer Cyclical|False|True
+ANF|U.S. Apparel & Fashion Recovery|Mainstream|0.472|60|9|10|admit|Consumer Cyclical|False|True
+URBN|U.S. Apparel & Fashion Recovery|Mainstream|0.7099|60|9|10|admit|Consumer Cyclical|False|True
+GAP|U.S. Apparel & Fashion Recovery|Mainstream|0.5332|60|9|10|admit|Consumer Cyclical|False|True
+SHOE|U.S. Apparel & Fashion Recovery|Mainstream|0.5691|60|9|10|admit|Consumer Cyclical|False|True
+KSS|U.S. Apparel & Fashion Recovery|Mainstream|0.4737|60|9|10|admit|Consumer Cyclical|False|True
+SHOO|U.S. Apparel & Fashion Recovery|Mainstream|0.4063|60|9|10|admit|Consumer Cyclical|False|True
+WWW|U.S. Apparel & Fashion Recovery|Mainstream|0.4246|60|9|10|admit|Consumer Cyclical|False|True
+DDS|U.S. Apparel & Fashion Recovery|Mainstream|0.3854|60|9|10|admit|Consumer Cyclical|False|True
+LUV|U.S. Domestic Passenger Airlines|Nascent||0|2|3|unjudgeable:thin_basket|Industrials|False|False
+UAL|U.S. Domestic Passenger Airlines|Nascent||0|2|3|unjudgeable:thin_basket|Industrials|False|False
+DAL|U.S. Domestic Passenger Airlines|Nascent||0|2|3|unjudgeable:thin_basket|Industrials|False|False
+MRNA|Vaccine & Antiviral Therapeutics Rebound|Mainstream|0.5097|60|3|4|admit|Healthcare|False|True
+GILD|Vaccine & Antiviral Therapeutics Rebound|Mainstream|0.367|60|3|4|admit|Healthcare|False|True
+NVAX|Vaccine & Antiviral Therapeutics Rebound|Mainstream|0.6812|60|3|4|admit|Healthcare|False|True
+VIR|Vaccine & Antiviral Therapeutics Rebound|Mainstream|0.4408|60|3|4|admit|Healthcare|False|True
+WT|Wealth Management & Retail Brokerage Platforms|Mainstream|0.4592|60|12|13|admit|Financial Services|False|True
+SCHW|Wealth Management & Retail Brokerage Platforms|Mainstream|0.3764|60|12|13|admit|Financial Services|False|True
+XP|Wealth Management & Retail Brokerage Platforms|Mainstream|0.0722|60|12|13|reject|Financial Services|False|True
+IVZ|Wealth Management & Retail Brokerage Platforms|Mainstream|0.6297|60|12|13|admit|Financial Services|False|True
+BEN|Wealth Management & Retail Brokerage Platforms|Mainstream|0.5071|60|12|13|admit|Financial Services|False|True
+HOOD|Wealth Management & Retail Brokerage Platforms|Mainstream|0.313|60|12|13|reject|Financial Services|False|True
+AMG|Wealth Management & Retail Brokerage Platforms|Mainstream|0.4105|60|12|13|admit|Financial Services|False|True
+VCTR|Wealth Management & Retail Brokerage Platforms|Mainstream|0.3938|60|12|13|admit|Financial Services|False|True
+OPY|Wealth Management & Retail Brokerage Platforms|Mainstream|0.5654|60|12|13|admit|Financial Services|False|True
+AAMI|Wealth Management & Retail Brokerage Platforms|Mainstream|0.5015|60|12|13|admit|Financial Services|False|True
+AMP|Wealth Management & Retail Brokerage Platforms|Mainstream|0.4358|60|12|13|admit|Financial Services|False|True
+SEIC|Wealth Management & Retail Brokerage Platforms|Mainstream|0.3722|60|12|13|admit|Financial Services|False|True
+WLTH|Wealth Management & Retail Brokerage Platforms|Mainstream|0.401|60|12|13|admit|Technology|True|True
+BHE|Electronics Manufacturing Services (EMS) Providers|Nascent|0.8711|60|3|4|admit|Technology|False|False
+CLS|Electronics Manufacturing Services (EMS) Providers|Nascent|0.513|60|3|4|admit|Technology|False|False
+PLXS|Electronics Manufacturing Services (EMS) Providers|Nascent|0.7743|60|3|4|admit|Technology|False|False
+SANM|Electronics Manufacturing Services (EMS) Providers|Nascent|0.6495|60|3|4|admit|Technology|False|False
+ACMR|Front-End Semiconductor Fabrication Equipment Makers|Nascent|0.8421|60|3|4|admit|Technology|False|False
+LRCX|Front-End Semiconductor Fabrication Equipment Makers|Nascent|0.9383|60|3|4|admit|Technology|False|False
+ASML|Front-End Semiconductor Fabrication Equipment Makers|Nascent|0.7984|60|3|4|admit|Technology|False|False
+AMAT|Front-End Semiconductor Fabrication Equipment Makers|Nascent|0.9038|60|3|4|admit|Technology|False|False
+E|Petroleum Refiners & Marketers|Fading|0.7385|60|19|20|admit|Energy|False|False
+EQNR|Petroleum Refiners & Marketers|Fading|0.7922|60|19|20|admit|Energy|False|False
+PSX|Petroleum Refiners & Marketers|Fading|0.8527|60|19|20|admit|Energy|False|False
+SHEL|Petroleum Refiners & Marketers|Fading|0.7496|60|19|20|admit|Energy|False|False
+VLO|Petroleum Refiners & Marketers|Fading|0.7967|60|19|20|admit|Energy|False|False
+CVX|Petroleum Refiners & Marketers|Fading|0.8589|60|19|20|admit|Energy|False|False
+CVI|Petroleum Refiners & Marketers|Fading|0.6756|60|19|20|admit|Energy|False|False
+TTE|Petroleum Refiners & Marketers|Fading|0.6813|60|19|20|admit|Energy|False|False
+PARR|Petroleum Refiners & Marketers|Fading|0.6772|60|19|20|admit|Energy|False|False
+PBF|Petroleum Refiners & Marketers|Fading|0.6871|60|19|20|admit|Energy|False|False
+DK|Petroleum Refiners & Marketers|Fading|0.6524|60|19|20|admit|Energy|False|False
+MPC|Petroleum Refiners & Marketers|Fading|0.8072|60|19|20|admit|Energy|False|False
+XOM|Petroleum Refiners & Marketers|Fading|0.7706|60|19|20|admit|Energy|False|False
+SU|Petroleum Refiners & Marketers|Fading|0.8497|60|19|20|admit|Energy|False|False
+SUNC|Petroleum Refiners & Marketers|Fading|0.7185|60|19|20|admit|Energy|False|False
+EQT|Petroleum Refiners & Marketers|Fading|0.5266|60|19|20|admit|Energy|False|False
+DINO|Petroleum Refiners & Marketers|Fading|0.7768|60|19|20|admit|Energy|False|False
+RRC|Petroleum Refiners & Marketers|Fading|0.659|60|19|20|admit|Energy|False|False
+BP|Petroleum Refiners & Marketers|Fading|0.7929|60|19|20|admit|Energy|False|False
+AR|Petroleum Refiners & Marketers|Fading|0.6315|60|19|20|admit|Energy|False|False
+SVM|Precious Metals Complex Rebound|Fading|0.8582|60|34|35|admit|Basic Materials|False|False
+BVN|Precious Metals Complex Rebound|Fading|0.7799|60|34|35|admit|Basic Materials|False|False
+OR|Precious Metals Complex Rebound|Fading|0.8822|60|34|35|admit|Basic Materials|False|False
+PPTA|Precious Metals Complex Rebound|Fading|0.8555|60|34|35|admit|Basic Materials|False|False
+CGAU|Precious Metals Complex Rebound|Fading|0.8589|60|34|35|admit|Basic Materials|False|False
+EGO|Precious Metals Complex Rebound|Fading|0.8737|60|34|35|admit|Basic Materials|False|False
+EQX|Precious Metals Complex Rebound|Fading|0.9289|60|34|35|admit|Basic Materials|False|False
+AAUC|Precious Metals Complex Rebound|Fading|0.5434|60|34|35|admit|Basic Materials|False|False
+NEM|Precious Metals Complex Rebound|Fading|0.9246|60|34|35|admit|Basic Materials|False|False
+AG|Precious Metals Complex Rebound|Fading|0.924|60|34|35|admit|Basic Materials|False|False
+TFPM|Precious Metals Complex Rebound|Fading|0.8348|60|34|35|admit|Basic Materials|False|False
+HL|Precious Metals Complex Rebound|Fading|0.9152|60|34|35|admit|Basic Materials|False|False
+ARIS|Precious Metals Complex Rebound|Fading|0.9176|60|34|35|admit|Basic Materials|False|False
+FNV|Precious Metals Complex Rebound|Fading|0.8447|60|34|35|admit|Basic Materials|False|False
+AGI|Precious Metals Complex Rebound|Fading|0.9187|60|34|35|admit|Basic Materials|False|False
+FSM|Precious Metals Complex Rebound|Fading|0.9576|60|34|35|admit|Basic Materials|False|False
+B|Precious Metals Complex Rebound|Fading|0.8521|60|34|35|admit|Basic Materials|False|False
+OGC|Precious Metals Complex Rebound|Fading|0.8909|60|34|35|admit|Basic Materials|False|False
+SKE|Precious Metals Complex Rebound|Fading|0.9005|60|34|35|admit|Basic Materials|False|False
+GFI|Precious Metals Complex Rebound|Fading|0.8643|60|34|35|admit|Basic Materials|False|False
+AU|Precious Metals Complex Rebound|Fading|0.905|60|34|35|admit|Basic Materials|False|False
+EXK|Precious Metals Complex Rebound|Fading|0.8532|60|34|35|admit|Basic Materials|False|False
+CDE|Precious Metals Complex Rebound|Fading|0.8765|60|34|35|admit|Basic Materials|False|False
+PAAS|Precious Metals Complex Rebound|Fading|0.893|60|34|35|admit|Basic Materials|False|False
+HYMC|Precious Metals Complex Rebound|Fading|0.8592|60|34|35|admit|Basic Materials|False|False
+WPM|Precious Metals Complex Rebound|Fading|0.9467|60|34|35|admit|Basic Materials|False|False
+AEM|Precious Metals Complex Rebound|Fading|0.895|60|34|35|admit|Basic Materials|False|False
+SBSW|Precious Metals Complex Rebound|Fading|0.8742|60|34|35|admit|Basic Materials|False|False
+HMY|Precious Metals Complex Rebound|Fading|0.8432|60|34|35|admit|Basic Materials|False|False
+IAG|Precious Metals Complex Rebound|Fading|0.9178|60|34|35|admit|Basic Materials|False|False
+MUX|Precious Metals Complex Rebound|Fading|0.893|60|34|35|admit|Basic Materials|False|False
+AUGO|Precious Metals Complex Rebound|Fading|0.8574|60|34|35|admit|Basic Materials|False|False
+RGLD|Precious Metals Complex Rebound|Fading|0.9023|60|34|35|admit|Basic Materials|False|False
+SSRM|Precious Metals Complex Rebound|Fading|0.9172|60|34|35|admit|Basic Materials|False|False
+NG|Precious Metals Complex Rebound|Fading|0.8842|60|34|35|admit|Basic Materials|False|False
+FEIM|Precision Timing & Motion Control Component Makers|Nascent||0|2|3|unjudgeable:thin_basket|Technology|False|False
+ALNT|Precision Timing & Motion Control Component Makers|Nascent||0|2|3|unjudgeable:thin_basket|Technology|False|False
+SITM|Precision Timing & Motion Control Component Makers|Nascent||0|2|3|unjudgeable:thin_basket|Technology|False|False
+ENTG|Semiconductor Equipment & Materials Velocity Surge|Nascent||0|2|3|unjudgeable:thin_basket|Technology|False|False
+ONTO|Semiconductor Equipment & Materials Velocity Surge|Nascent||0|2|3|unjudgeable:thin_basket|Technology|False|False
+AXTI|Semiconductor Equipment & Materials Velocity Surge|Nascent||0|2|3|unjudgeable:thin_basket|Technology|False|False
+KNX|Trucking & Freight Carrier Rebound|Fading||0|1|2|unjudgeable:thin_basket|Industrials|False|False
+ARCB|Trucking & Freight Carrier Rebound|Fading||0|1|2|unjudgeable:thin_basket|Industrials|False|False
+RMBS|AI Server Power & Signal-Integrity Analog ICs|Fading||0|1|2|unjudgeable:thin_basket|Technology|False|False
+MPWR|AI Server Power & Signal-Integrity Analog ICs|Fading||0|1|2|unjudgeable:thin_basket|Technology|False|False
+BXC|Building Products Distribution & Supply|Fading||0|1|2|unjudgeable:thin_basket|Industrials|False|False
+BLDR|Building Products Distribution & Supply|Fading||0|1|2|unjudgeable:thin_basket|Industrials|False|False
+BTU|Coal Mining Producers|Fading|0.808|60|3|4|admit|Energy|False|False
+CNR|Coal Mining Producers|Fading|0.7781|60|3|4|admit|Energy|False|False
+AMR|Coal Mining Producers|Fading|0.822|60|3|4|admit|Basic Materials|False|False
+HCC|Coal Mining Producers|Fading|0.8419|60|3|4|admit|Basic Materials|False|False
+DOCN|Emerging AI Compute & Cloud Infrastructure Platforms|Nascent|0.6277|60|3|4|admit|Technology|False|False
+CBRS|Emerging AI Compute & Cloud Infrastructure Platforms|Nascent|0.5953|60|3|4|admit|Technology|False|False
+PENG|Emerging AI Compute & Cloud Infrastructure Platforms|Nascent|0.5759|60|3|4|admit|Technology|False|False
+CRWV|Emerging AI Compute & Cloud Infrastructure Platforms|Nascent|0.7657|60|3|4|admit|Technology|False|False
+BETA|Electric & Unmanned Aircraft Innovators|Fading||0|1|2|unjudgeable:thin_basket|Industrials|False|False
+AVEX|Electric & Unmanned Aircraft Innovators|Fading||0|1|2|unjudgeable:thin_basket|Industrials|False|False
+UEC|Uranium Mining & Extraction|Fading||0|1|2|unjudgeable:thin_basket|Energy|False|False
+UUUU|Uranium Mining & Extraction|Fading||0|1|2|unjudgeable:thin_basket|Energy|False|False
+OUST|Autonomous Vehicle & ADAS Technology Enablers|Nascent||0|2|3|unjudgeable:thin_basket|Technology|False|False
+AMBA|Autonomous Vehicle & ADAS Technology Enablers|Nascent||0|2|3|unjudgeable:thin_basket|Technology|False|False
+BB|Autonomous Vehicle & ADAS Technology Enablers|Nascent||0|2|3|unjudgeable:thin_basket|Technology|False|False
+MSTR|Bitcoin Balance Sheet Proxies|Nascent|0.8299|60|3|4|admit|Technology|False|False
+COIN|Bitcoin Balance Sheet Proxies|Nascent|0.8908|60|3|4|admit|Financial Services|False|False
+BLSH|Bitcoin Balance Sheet Proxies|Nascent|0.7221|60|3|4|admit|Technology|False|False
+CRCL|Bitcoin Balance Sheet Proxies|Nascent|0.8322|60|3|4|admit|Financial Services|False|False
+INTR|Brazilian Fintech & Digital Payments|Nascent||0|1|2|unjudgeable:thin_basket|Financial Services|False|False
+STNE|Brazilian Fintech & Digital Payments|Nascent||0|1|2|unjudgeable:thin_basket|Technology|False|False
+MAS|Home Improvement Retail & Building Products|Nascent|0.6762|60|3|4|admit|Industrials|True|False
+FND|Home Improvement Retail & Building Products|Nascent|0.7118|60|3|4|admit|Consumer Cyclical|False|False
+LOW|Home Improvement Retail & Building Products|Nascent|0.8016|60|3|4|admit|Consumer Cyclical|False|False
+HD|Home Improvement Retail & Building Products|Nascent|0.8513|60|3|4|admit|Consumer Cyclical|False|False
+GRAL|Liquid Biopsy & Molecular Cancer Diagnostics Testing|Nascent||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+NTRA|Liquid Biopsy & Molecular Cancer Diagnostics Testing|Nascent||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+CDNA|Liquid Biopsy & Molecular Cancer Diagnostics Testing|Nascent||0|2|3|unjudgeable:thin_basket|Healthcare|False|False
+MUR|Onshore Oil & Gas E&P Recovery|Nascent|0.807|60|3|4|admit|Energy|False|False
+TALO|Onshore Oil & Gas E&P Recovery|Nascent|0.8412|60|3|4|admit|Energy|False|False
+PNRG|Onshore Oil & Gas E&P Recovery|Nascent|0.6825|60|3|4|admit|Energy|False|False
+OXY|Onshore Oil & Gas E&P Recovery|Nascent|0.8244|60|3|4|admit|Energy|False|False

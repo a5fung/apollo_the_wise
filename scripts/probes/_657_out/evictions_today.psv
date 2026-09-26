@@ -1,0 +1,53 @@
+ticker|theme|stage|corr|overlap|basket_n|members_n|sector|singleton_sector|paying|join|path|validated_at_join|rescores_survived|llm_passed|operator|in_backtest95
+HTFL|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.1208|60|8|9|Healthcare|False|True|2026-08-21|merge:unlogged|False|13|True|False|False
+CDNA|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.1527|60|8|9|Healthcare|False|True|2026-08-25|assignment_llm|True|12|True|False|True
+DGX|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.2808|60|8|9|Healthcare|False|True|2026-09-03|assignment_llm|True|8|True|False|True
+LH|AI-Driven Diagnostics & Imaging Re-Rating|Mainstream|0.2898|60|8|9|Healthcare|False|True|2026-09-03|assignment_llm|True|8|True|False|True
+ORCL|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|-0.1372|60|17|18|Technology|False|False|2026-09-08|assignment_llm|True|7|True|False|True
+MSFT|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Fading|0.1925|60|17|18|Technology|False|False|2026-09-01|assignment_llm|True|9|True|False|True
+DB|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2227|60|44|45|Financial Services|False|False|2026-09-14|merge:unlogged|False|4|True|False|False
+BCS|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2378|60|44|45|Financial Services|False|False|2026-09-14|merge:unlogged|False|4|True|False|False
+MFG|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2423|60|44|45|Financial Services|False|False|2026-09-17|assignment_llm|True|3|True|False|False
+BBVA|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2479|60|44|45|Financial Services|False|False|2026-09-14|merge:unlogged|False|4|True|False|False
+SAN|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.2785|60|44|45|Financial Services|False|False|2026-09-14|merge:unlogged|False|4|True|False|False
+C|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.3094|60|44|45|Financial Services|False|False|2026-09-16|assignment_llm|True|3|True|False|False
+LYG|Bank Stocks: Rising-Rate NIM Expansion|Fading|0.3448|60|44|45|Financial Services|False|False|2026-09-14|merge:unlogged|False|4|True|False|False
+IOND|Bitcoin Mining Stocks Rotation Reversal|Mainstream|0.1811|41|9|10|Financial Services|False|True|2026-09-11|shadow_promoted|False|5|True|False|False
+APLD|Cloud Data Storage & Analytics Infrastructure|Mainstream|-0.1822|60|3|4|Technology|False|True|2026-09-17|merge:unlogged|False|3|True|False|False
+ESTC|Cloud Data Storage & Analytics Infrastructure|Mainstream|0.2566|60|3|4|Technology|False|True|2026-08-13|assignment_llm|True|17|True|False|False
+ARHS|Commercial, Office & Home Furniture Retailers and Manufacturers|Fading|0.3295|60|4|5|Consumer Cyclical|False|False|2026-08-18|assignment_llm|True|15|True|False|False
+SR|Crude & Product Tanker Shipping|Mainstream|0.105|60|12|13|Utilities|False|True|2026-09-24|merge:unlogged|False|0|False|False|False
+ATO|Crude & Product Tanker Shipping|Mainstream|0.2665|60|12|13|Utilities|False|True|2026-09-24|merge:unlogged|False|0|False|False|False
+EMBJ|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.0863|60|8|9|Industrials|False|True|2026-08-11|unknown|False|18|True|False|False
+RTX|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|0.1573|60|8|9|Industrials|False|True|2026-08-11|unknown|False|18|True|False|False
+EFOR|Defense Intelligence & Cybersecurity IT Contractors|Mainstream|0.1894|60|6|7|Technology|False|True|2026-08-19|shadow_promoted|False|14|True|False|False
+VVX|Defense Intelligence & Cybersecurity IT Contractors|Mainstream|0.339|60|6|7|Industrials|False|True|2026-09-21|assignment_llm|True|1|True|False|False
+TBBB|Defensive Consumer Staples Rotation|Fading|0.1861|60|16|17|Consumer Defensive|False|False|2026-08-28|assignment_llm|True|10|True|False|True
+GO|Defensive Consumer Staples Rotation|Fading|0.3186|60|16|17|Consumer Defensive|False|False|2026-08-25|assignment_llm|True|12|True|False|False
+MGNI|Digital Advertising & Ad-Tech Monetization Platforms|Mainstream|0.2585|60|3|4|Communication Services|False|True|2026-09-14|assignment_llm|True|4|True|False|False
+HNRG|Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|0.1687|60|4|5|Utilities|False|False|2026-09-08|shadow_promoted|False|7|True|False|False
+AES|Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|0.2008|60|4|5|Utilities|False|False|2026-09-16|assignment_llm|True|3|True|False|False
+EVRG|Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|0.2846|60|4|5|Utilities|False|False|2026-09-15|unknown|False|4|True|False|False
+OGE|Diversified Power Generation Capacity Expansion for AI Electricity Demand|Fading|0.3293|60|4|5|Utilities|False|False|2026-09-08|shadow_promoted|False|7|True|False|False
+FTK|Energy Infrastructure & Services Complex|Fading|0.01|60|15|16|Energy|False|False|2026-09-15|merge:merge_pass_successor|False|4|True|False|False
+WKC|Energy Infrastructure & Services Complex|Fading|0.1188|60|15|16|Energy|False|False|2026-09-16|assignment_llm|True|3|True|False|False
+NTNX|Enterprise Server, Storage & Data Infrastructure Hardware|Nascent|-0.1898|60|7|8|Technology|False|False|2026-08-17|assignment_llm|True|15|True|False|True
+ITUB|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.1741|60|21|22|Financial Services|False|False|2026-09-16|merge:unlogged|False|3|True|False|False
+XP|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.2032|60|21|22|Financial Services|False|False|2026-09-16|merge:unlogged|False|3|True|False|False
+CHYM|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.2822|60|21|22|Technology|False|False|2026-09-16|merge:unlogged|False|3|True|False|False
+PGY|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.3373|60|21|22|Technology|False|False|2026-09-16|merge:unlogged|False|3|True|False|False
+KSPI|Fintech & Digital Finance Sector Re-rating on Fed Easing|Fading|0.3406|60|21|22|Technology|False|False|2026-09-16|merge:unlogged|False|3|True|False|False
+QURE|Genetic Medicine: Gene Editing & Gene Therapy Innovators|Fading|0.2851|60|3|4|Healthcare|False|False|2026-09-02|assignment_llm|True|8|True|False|True
+AGRO|Global Agriculture Value Chain Recovery|Mainstream|0.0908|60|3|4|Consumer Defensive|True|True|2026-09-02|unknown|False|8|True|False|False
+ACA|Industrial Construction Execution & On-Site Supply Chain|Fading|-0.1573|60|7|8|Industrials|False|False|2026-09-09|assignment_llm|True|6|True|False|True
+TTEK|Industrial Construction Execution & On-Site Supply Chain|Fading|-0.1155|60|7|8|Industrials|False|False|2026-08-21|assignment_llm|True|13|True|False|True
+J|Industrial Construction Execution & On-Site Supply Chain|Fading|-0.0785|60|7|8|Industrials|False|False|2026-08-11|assignment_llm|True|18|True|False|False
+KBR|Industrial Construction Execution & On-Site Supply Chain|Fading|0.1217|60|7|8|Industrials|False|False|2026-08-20|assignment_llm|True|14|True|False|True
+AGX|Industrial Construction Execution & On-Site Supply Chain|Fading|0.1964|60|7|8|Industrials|False|False|2026-09-14|assignment_llm|True|4|True|False|True
+TRAX|Inflammatory Disease & Immunology Biologics|Fading|0.2152|60|8|9|Healthcare|False|False|2026-09-08|assignment_llm|True|7|True|False|True
+AUPH|Inflammatory Disease & Immunology Biologics|Fading|0.3025|60|8|9|Healthcare|False|False|2026-08-20|assignment_llm|True|14|True|False|False
+INSP|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.2085|60|13|14|Healthcare|False|False|2026-07-20|shadow_promoted|False|27|True|False|False
+GKOS|Medical Device Mean-Reversion & Rotation Recovery|Fading|0.3066|60|13|14|Healthcare|False|False|2026-08-17|assignment_llm|True|15|True|False|True
+BLZE|Network Security & Zero-Trust Edge|Mainstream|0.3036|60|17|18|Technology|False|True|2026-09-22|merge:unlogged|False|1|True|False|False
+XP|Wealth Management & Retail Brokerage Platforms|Mainstream|0.0722|60|12|13|Financial Services|False|True|2026-09-01|assignment_llm|True|9|True|False|True
+HOOD|Wealth Management & Retail Brokerage Platforms|Mainstream|0.313|60|12|13|Financial Services|False|True|2026-08-21|assignment_llm|True|13|True|False|True

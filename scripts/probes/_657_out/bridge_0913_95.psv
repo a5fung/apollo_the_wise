@@ -1,0 +1,96 @@
+ticker|theme|corr_0913|member_today|corr_today|verdict_today
+BB|Network Security & Zero-Trust Edge|0.26|False||not a member
+CORT|Peptide & Hormone Therapies for Metabolic & Endocrine D|0.25|True||unjudgeable:thin_basket
+PENG|AI Cloud GPU & Datacenter Colocation Platforms|0.25|False||not a member
+LQDA|Rare & Orphan Disease Biotech Re-Rating|0.24|False||not a member
+LMND|Property & Casualty Insurance Underwriters|0.26|False||not a member
+CVLT|Network Security & Zero-Trust Edge|0.31|True|0.4999|admit
+LQDA|Rare & Orphan Disease Biotech|0.17|False||not a member
+BBIO|Rare & Orphan Disease Biotech|0.35|False||not a member
+CRNX|Rare & Orphan Disease Biotech|0.3|False||not a member
+LQDA|Rare & Orphan Disease Biotech|0.17|False||not a member
+HOOD|Wealth Management & Retail Brokerage Platforms|-0.01|True|0.313|reject
+EMBJ|Aerospace Precision Components & Supply Chain|-0.09|False||not a member
+FSK|Private Equity & Alternative Asset Management Platforms|0.16|False||not a member
+HRMY|Specialty Pharmaceutical Commercialization & Rare Disea|0.34|False||not a member
+INSM|Specialty Pharmaceutical Commercialization & Rare Disea|0.27|False||not a member
+MAIN|Private Equity & Alternative Asset Management Platforms|0.27|False||not a member
+ROAD|Industrial Construction Execution & On-Site Supply Chai|0.29|False||not a member
+RTX|Aerospace Precision Components & Supply Chain|0.14|False||not a member
+BFH|Consumer Fintech & Digital Credit Platforms|0.23|False||not a member
+BMRN|Specialty Pharmaceutical Commercialization & Rare Disea|0.26|False||not a member
+EQPT|Industrial Equipment Rental & Material Handling|0.33|False||not a member
+TDW|Oilfield Services & Drilling Rigs|0.29|False||not a member
+BOX|Enterprise Unstructured Data Storage Infrastructure|-0.17|True||unjudgeable:thin_basket
+HAPN|U.S. Regional & Mid-Cap Commercial Banks|0.22|False||not a member
+LOAR|Defense Electronics & Aerospace Subsystem Suppliers|0.18|False||not a member
+GKOS|Medical Device Mean-Reversion & Rotation Recovery|0.29|True|0.3066|reject
+IVZ|Wealth Management & Retail Brokerage Platforms|0.25|True|0.6297|admit
+NTNX|Enterprise Server, Storage & Data Infrastructure Hardwa|0.06|True|-0.1898|reject
+OMF|Consumer Fintech & Digital Credit Platforms|0.32|False||not a member
+ATRO|Defense Electronics & Aerospace Subsystem Suppliers|0.14|False||not a member
+AXGN|Medical Device Mean-Reversion & Rotation Recovery|0.29|False||not a member
+BAND|Cloud Contact Center & CCaaS Communication Platforms|0.33|False||not a member
+INSM|Rare disease/specialty pharma earnings beats|0.07|False||not a member
+KNSA|Rare disease/specialty pharma earnings beats|0.22|False||not a member
+NVCR|Medical Device Mean-Reversion & Rotation Recovery|0.26|False||not a member
+PRCH|Digital Insurance Distribution & InsurTech Platforms|0.05|True||unjudgeable:thin_basket
+RYTM|Rare disease/specialty pharma earnings beats|0.22|False||not a member
+TRAX|Inflammatory Disease & Immunology Biologics|0.21|True|0.2152|reject
+ZVRA|Rare disease/specialty pharma earnings beats|0.29|False||not a member
+BMRN|Rare disease/specialty pharma earnings beats|0.17|False||not a member
+TVTX|Rare disease/specialty pharma earnings beats|0.3|False||not a member
+ELVN|Clinical-Stage Oncology & Hematology Biotech Breakout|0.24|False||not a member
+FWRD|Trucking & Freight Logistics|0.32|False||not a member
+HTGC|Private Equity & Alternative Asset Management Platforms|0.29|False||not a member
+IDYA|Clinical-Stage Oncology & Hematology Biotech Breakout|0.33|False||not a member
+KBR|Industrial Construction Execution & On-Site Supply Chai|0.1|True|0.1217|reject
+RVMD|Clinical-Stage Oncology & Hematology Biotech Breakout|0.34|False||not a member
+RVMD|Emerging Oncology Therapeutics|0.33|False||not a member
+EME|Industrial Construction Execution & On-Site Supply Chai|0.21|False||not a member
+HOOD|Wealth Management & Retail Brokerage Platforms|0.01|True|0.313|reject
+TTEK|Industrial Construction Execution & On-Site Supply Chai|0.19|True|-0.1155|reject
+DLTR|Defensive Consumer Staples Rotation|0.35|False||not a member
+UTZ|Defensive Consumer Staples Rotation|0.09|False||not a member
+CDNA|AI-Driven Diagnostics & Imaging Re-Rating|0.14|True|0.1527|reject
+EME|Industrial Construction Execution & On-Site Supply Chai|0.07|False||not a member
+FUBO|Video & Streaming Content Distribution Rebound|0.22|False||not a member
+FUTU|Wealth Management & Retail Brokerage Platforms|0.24|False||not a member
+INCY|Clinical-Stage Oncology & Hematology Biotech Breakout|0.28|False||not a member
+INSM|Rare Disease & Specialty Drug Delivery Pharmaceuticals|0.19|False||not a member
+MMED|Diabetes Management Devices (CGM, Insulin Pumps & Deliv|0.32|True||unjudgeable:thin_basket
+ORIC|Clinical-Stage Oncology & Hematology Biotech Breakout|0.34|False||not a member
+PYPL|Consumer Fintech & Digital Credit Platforms|0.08|False||not a member
+APAM|Wealth Management & Retail Brokerage Platforms|0.3|False||not a member
+CELH|Defensive Consumer Staples Rotation|0.3|False||not a member
+EME|Industrial Construction Execution & On-Site Supply Chai|0.06|False||not a member
+ROKU|Video & Streaming Content Distribution Rebound|-0.03|False||not a member
+HONA|Defense Electronics & Aerospace Subsystem Suppliers|-0.07|False||not a member
+KSPI|Consumer Fintech & Digital Credit Platforms|0.26|False||not a member
+TBBB|Defensive Consumer Staples Rotation|0.33|True|0.1861|reject
+CHKP|Network Security & Zero-Trust Edge|0.27|True|0.4596|admit
+HRMY|Rare & Orphan Disease Specialty Therapeutics|0.1|False||not a member
+MSFT|AI-Powered Enterprise Analytics & Intelligent Workflow|0.3|True|0.1925|reject
+NESR|Independent Oil Refining & Fuel Distribution|0.25|False||not a member
+XP|Wealth Management & Retail Brokerage Platforms|0.26|True|0.0722|reject
+QURE|Genetic Medicine: Gene Editing & Gene Therapy Innovator|0.23|True|0.2851|reject
+BHVN|Specialty & Rare Disease Pharmaceutical Innovators|0.19|False||not a member
+DGX|AI-Driven Diagnostics & Imaging Re-Rating|0.27|True|0.2808|reject
+LH|AI-Driven Diagnostics & Imaging Re-Rating|0.22|True|0.2898|reject
+BMRN|Rare Disease & Specialty Biopharmaceutical Innovators|-0.31|False||not a member
+ELVN|Oncology Therapeutics RS Turnaround|0.35|False||not a member
+TVTX|Rare Disease & Specialty Biopharmaceutical Innovators|0.12|False||not a member
+ORCL|AI-Powered Enterprise Analytics & Intelligent Workflow|0.04|True|-0.1372|reject
+REPL|Oncology Therapeutics RS Turnaround|0.32|False||not a member
+SRRK|Rare Disease & Specialty Biopharmaceutical Innovators|0.27|False||not a member
+TRAX|Inflammatory Disease & Immunology Biologics|0.15|True|0.2152|reject
+VRDN|Rare Disease & Specialty Biopharmaceutical Innovators|0.24|False||not a member
+ZVRA|Rare Disease & Specialty Biopharmaceutical Innovators|0.1|False||not a member
+ACA|Industrial Construction Execution & On-Site Supply Chai|0.18|True|-0.1573|reject
+AGX|Industrial Construction Execution & On-Site Supply Chai|0.09|True|0.1964|reject
+CME|Wealth Management & Retail Brokerage Platforms|0.31|False||not a member
+ZLAB|Oncology Therapeutics RS Turnaround|0.1|False||not a member
+ACHC|Hospital & Behavioral Health Facility Procedure Volume|0.06|False||not a member
+FTK|Energy Supply Disruption: Strait of Hormuz Crisis|-0.1|False||not a member
+NESR|Energy Supply Disruption: Strait of Hormuz Crisis|0.28|False||not a member
+WTTR|Energy Supply Disruption: Strait of Hormuz Crisis|0.3|False||not a member

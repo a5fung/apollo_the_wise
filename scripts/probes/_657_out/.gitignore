@@ -1,0 +1,4 @@
+# pulled inputs (6.9 MB) stay local — re-pull with scripts/probes/_657_pull.sh
+*.csv
+run_stdout.txt
+run_stderr.txt

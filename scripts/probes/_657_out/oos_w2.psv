@@ -1,0 +1,339 @@
+ticker|theme|stage|members_n|corr_in|verdict_in|corr_oos|oos_overlap|sector|paying
+APPN|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9|0.8616|admit|0.8651|30|Technology|True
+AI|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9|0.6041|admit|0.7174|30|Technology|True
+AVPT|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9|0.7559|admit|0.8137|30|Technology|True
+INTA|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9|0.7613|admit|0.85|30|Technology|True
+AMPL|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9|0.7595|admit|0.8804|30|Technology|True
+MNDY|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9|0.775|admit|0.862|30|Technology|True
+PATH|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9|0.8342|admit|0.7245|30|Technology|True
+NOW|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9|0.8865|admit|0.8368|30|Technology|True
+CRM|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|Mainstream|9|0.8898|admit|0.7743|30|Technology|True
+BNS|Canadian Big Banks|Accelerating|5|0.8975|admit|0.7821|30|Financial Services|True
+TD|Canadian Big Banks|Accelerating|5|0.8761|admit|0.8046|30|Financial Services|True
+BMO|Canadian Big Banks|Accelerating|5|0.8856|admit|0.8442|30|Financial Services|True
+CM|Canadian Big Banks|Accelerating|5|0.8134|admit|0.8876|30|Financial Services|True
+RY|Canadian Big Banks|Accelerating|5|0.9139|admit|0.9023|30|Financial Services|True
+HNI|Commercial, Office & Home Furniture Retailers and Manufacturers|Mainstream|5|0.6938|admit|0.5774|30|Consumer Cyclical|True
+BOBS|Commercial, Office & Home Furniture Retailers and Manufacturers|Mainstream|5|0.606|admit|0.6405|30|Consumer Cyclical|True
+MLKN|Commercial, Office & Home Furniture Retailers and Manufacturers|Mainstream|5|0.7247|admit|0.5324|30|Consumer Cyclical|True
+WSM|Commercial, Office & Home Furniture Retailers and Manufacturers|Mainstream|5|0.6721|admit|0.5864|30|Consumer Cyclical|True
+RH|Commercial, Office & Home Furniture Retailers and Manufacturers|Mainstream|5|0.5427|admit|0.4911|30|Consumer Cyclical|True
+PGY|Consumer Fintech & Digital Credit Platforms|Fading|7|0.4915|admit|0.7127|30|Technology|False
+KLAR|Consumer Fintech & Digital Credit Platforms|Fading|7|0.5937|admit|0.3211|30|Financial Services|False
+AFRM|Consumer Fintech & Digital Credit Platforms|Fading|7|0.6552|admit|0.6418|30|Financial Services|False
+DAVE|Consumer Fintech & Digital Credit Platforms|Fading|7|0.6185|admit|0.601|30|Technology|False
+CHYM|Consumer Fintech & Digital Credit Platforms|Fading|7|0.398|admit|0.4751|30|Technology|False
+SEZL|Consumer Fintech & Digital Credit Platforms|Fading|7|0.5724|admit|0.7091|30|Financial Services|False
+BFH|Consumer Fintech & Digital Credit Platforms|Fading|7|0.2254|reject|0.5757|30|Financial Services|False
+GPK|Containerboard & Corrugated Packaging Producers|Mainstream|4|0.4605|admit|0.6462|30|Consumer Cyclical|True
+IP|Containerboard & Corrugated Packaging Producers|Mainstream|4|0.8645|admit|0.7677|30|Consumer Cyclical|True
+SW|Containerboard & Corrugated Packaging Producers|Mainstream|4|0.8423|admit|0.8842|30|Consumer Cyclical|True
+PKG|Containerboard & Corrugated Packaging Producers|Mainstream|4|0.7526|admit|0.6607|30|Consumer Cyclical|True
+HBM|Copper Mining & Production|Mainstream|5|0.8987|admit|0.9551|30|Basic Materials|True
+TECK|Copper Mining & Production|Mainstream|5|0.7624|admit|0.8608|30|Basic Materials|True
+ERO|Copper Mining & Production|Mainstream|5|0.8583|admit|0.9183|30|Basic Materials|True
+FCX|Copper Mining & Production|Mainstream|5|0.9124|admit|0.9455|30|Basic Materials|True
+SCCO|Copper Mining & Production|Mainstream|5|0.8434|admit|0.9307|30|Basic Materials|True
+DFNS|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|9|0.0647|reject|0.1519|30|Industrials|True
+MRCY|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|9|0.2782|reject|0.3375|30|Industrials|True
+DPC|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|9|0.1407|reject|0.6346|30|Industrials|True
+EMBJ|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|9|0.163|reject|0.0671|30|Industrials|True
+AADX|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|9|0.1169|reject|0.4733|30|Industrials|True
+ARXS|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|9|0.0723|reject|0.4217|30|Industrials|True
+BA|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|9|0.3999|admit|0.2124|30|Industrials|True
+ATI|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|9|0.0259|reject|0.2549|30|Industrials|True
+RTX|Defense Electronics & Aerospace Subsystem Suppliers|Mainstream|9|0.1206|reject|0.2109|30|Industrials|True
+PAYX|Enterprise HR & Workforce Management SaaS|Mainstream|6|0.7886|admit|0.6849|30|Technology|True
+PAYC|Enterprise HR & Workforce Management SaaS|Mainstream|6|0.7076|admit|0.7966|30|Technology|True
+PCTY|Enterprise HR & Workforce Management SaaS|Mainstream|6|0.8349|admit|0.7492|30|Technology|True
+WDAY|Enterprise HR & Workforce Management SaaS|Mainstream|6|0.7096|admit|0.5683|30|Technology|True
+ADP|Enterprise HR & Workforce Management SaaS|Mainstream|6|0.8029|admit|0.781|30|Technology|True
+ALIT|Enterprise HR & Workforce Management SaaS|Mainstream|6|0.3952|admit|0.4592|30|Technology|True
+DELL|Enterprise Server, Storage & Data Infrastructure Hardware|Mainstream|6|0.6786|admit|0.5695|30|Technology|True
+ANET|Enterprise Server, Storage & Data Infrastructure Hardware|Mainstream|6|0.6181|admit|0.6926|30|Technology|True
+HPE|Enterprise Server, Storage & Data Infrastructure Hardware|Mainstream|6|0.7153|admit|0.7379|30|Technology|True
+STX|Enterprise Server, Storage & Data Infrastructure Hardware|Mainstream|6|0.4888|admit|0.1537|30|Technology|True
+NTAP|Enterprise Server, Storage & Data Infrastructure Hardware|Mainstream|6|0.5474|admit|0.7282|30|Technology|True
+CSCO|Enterprise Server, Storage & Data Infrastructure Hardware|Mainstream|6|0.5105|admit|0.2918|30|Technology|True
+NWG|European Bank Stocks|Mainstream|7|0.7929|admit|0.7341|30|Financial Services|True
+DB|European Bank Stocks|Mainstream|7|0.7837|admit|0.6867|30|Financial Services|True
+ING|European Bank Stocks|Mainstream|7|0.8566|admit|0.7854|30|Financial Services|True
+BCS|European Bank Stocks|Mainstream|7|0.8565|admit|0.8001|30|Financial Services|True
+LYG|European Bank Stocks|Mainstream|7|0.9054|admit|0.7846|30|Financial Services|True
+BBVA|European Bank Stocks|Mainstream|7|0.7704|admit|0.7277|30|Financial Services|True
+UBS|European Bank Stocks|Mainstream|7|0.669|admit|0.5264|30|Financial Services|True
+SBSW|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8623|admit|0.8786|30|Basic Materials|True
+NEM|Gold & Precious Metals Miners Rotation|Accelerating|18|0.9286|admit|0.9601|30|Basic Materials|True
+CGAU|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8841|admit|0.8912|30|Basic Materials|True
+HMY|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8947|admit|0.8378|30|Basic Materials|True
+GFI|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8458|admit|0.8921|30|Basic Materials|True
+EGO|Gold & Precious Metals Miners Rotation|Accelerating|18|0.9106|admit|0.8788|30|Basic Materials|True
+AUGO|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8581|admit|0.8642|30|Basic Materials|True
+EQX|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8678|admit|0.9609|30|Basic Materials|True
+AEM|Gold & Precious Metals Miners Rotation|Accelerating|18|0.9074|admit|0.929|30|Basic Materials|True
+IAG|Gold & Precious Metals Miners Rotation|Accelerating|18|0.9246|admit|0.9401|30|Basic Materials|True
+KGC|Gold & Precious Metals Miners Rotation|Accelerating|18|0.9541|admit|0.8243|30|Basic Materials|True
+HYMC|Gold & Precious Metals Miners Rotation|Accelerating|18|0.7839|admit|0.7713|30|Basic Materials|True
+RGLD|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8944|admit|0.915|30|Basic Materials|True
+AGI|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8488|admit|0.9618|30|Basic Materials|True
+SSRM|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8892|admit|0.9326|30|Basic Materials|True
+FNV|Gold & Precious Metals Miners Rotation|Accelerating|18|0.7317|admit|0.9416|30|Basic Materials|True
+AU|Gold & Precious Metals Miners Rotation|Accelerating|18|0.9224|admit|0.9221|30|Basic Materials|True
+ARIS|Gold & Precious Metals Miners Rotation|Accelerating|18|0.8942|admit|0.9676|30|Basic Materials|True
+DNOW|Industrial Construction Execution & On-Site Supply Chain|Accelerating|4|0.4225|admit|0.221|30|Industrials|True
+J|Industrial Construction Execution & On-Site Supply Chain|Accelerating|4|-0.0028|reject|0.049|30|Industrials|True
+ROAD|Industrial Construction Execution & On-Site Supply Chain|Accelerating|4|0.2828|reject|0.5695|30|Industrials|True
+TPC|Industrial Construction Execution & On-Site Supply Chain|Accelerating|4|0.2169|reject|0.5234|30|Industrials|True
+CMCO|Industrial Equipment Rental & Material Handling|Accelerating|4|0.1638|reject|0.4027|30|Industrials|True
+SUNB|Industrial Equipment Rental & Material Handling|Accelerating|4|0.4502|admit|0.4468|30|Industrials|True
+HRI|Industrial Equipment Rental & Material Handling|Accelerating|4|0.4482|admit|0.5071|30|Industrials|True
+EQPT|Industrial Equipment Rental & Material Handling|Accelerating|4|0.3235|reject|0.5387|30|Industrials|True
+CLYM|Inflammatory Disease & Immunology Biologics|Mainstream|8|0.4528|admit|0.7327|30|Healthcare|True
+SYRE|Inflammatory Disease & Immunology Biologics|Mainstream|8|0.6633|admit|0.4408|30|Healthcare|True
+ORKA|Inflammatory Disease & Immunology Biologics|Mainstream|8|0.6927|admit|0.6832|30|Healthcare|True
+IMVT|Inflammatory Disease & Immunology Biologics|Mainstream|8|0.5574|admit|0.6949|30|Healthcare|True
+DNTH|Inflammatory Disease & Immunology Biologics|Mainstream|8|0.5808|admit|0.6273|30|Healthcare|True
+AVTX|Inflammatory Disease & Immunology Biologics|Mainstream|8|0.5723|admit|0.4115|30|Healthcare|True
+APGE|Inflammatory Disease & Immunology Biologics|Mainstream|8|0.5349|admit||15|Healthcare|True
+ZBIO|Inflammatory Disease & Immunology Biologics|Mainstream|8|0.5007|admit|0.6478|30|Healthcare|True
+WTW|Insurance Brokerage & Distribution Services|Fading|5|0.7024|admit|0.8712|30|Financial Services|False
+AJG|Insurance Brokerage & Distribution Services|Fading|5|0.8394|admit|0.9161|30|Financial Services|False
+AON|Insurance Brokerage & Distribution Services|Fading|5|0.8492|admit|0.635|30|Financial Services|False
+BRO|Insurance Brokerage & Distribution Services|Fading|5|0.9134|admit|0.8754|30|Financial Services|False
+BWIN|Insurance Brokerage & Distribution Services|Fading|5|0.5034|admit|0.639|30|Financial Services|False
+UNM|Life Insurance & Annuity Providers|Mainstream|8|0.6081|admit|0.6511|30|Financial Services|True
+EQH|Life Insurance & Annuity Providers|Mainstream|8|0.6854|admit|0.8251|30|Financial Services|True
+LNC|Life Insurance & Annuity Providers|Mainstream|8|0.6973|admit|0.8387|30|Financial Services|True
+MET|Life Insurance & Annuity Providers|Mainstream|8|0.7719|admit|0.8791|30|Financial Services|True
+CRBG|Life Insurance & Annuity Providers|Mainstream|8|0.6851|admit|0.8459|30|Financial Services|True
+CNO|Life Insurance & Annuity Providers|Mainstream|8|0.7054|admit|0.8323|30|Financial Services|True
+PRU|Life Insurance & Annuity Providers|Mainstream|8|0.7575|admit|0.7527|30|Financial Services|True
+JXN|Life Insurance & Annuity Providers|Mainstream|8|0.6101|admit|0.6851|30|Financial Services|True
+DHR|Life Science Tools & Analytical Instruments|Nascent|8|0.6344|admit|0.7769|30|Healthcare|False
+RVTY|Life Science Tools & Analytical Instruments|Nascent|8|0.7543|admit|0.7793|30|Healthcare|False
+WAT|Life Science Tools & Analytical Instruments|Nascent|8|0.6864|admit|0.6799|30|Healthcare|False
+RGEN|Life Science Tools & Analytical Instruments|Nascent|8|0.6405|admit|0.7409|30|Healthcare|False
+MTD|Life Science Tools & Analytical Instruments|Nascent|8|0.7399|admit|0.6258|30|Healthcare|False
+A|Life Science Tools & Analytical Instruments|Nascent|8|0.7253|admit|0.7487|30|Healthcare|False
+TMO|Life Science Tools & Analytical Instruments|Nascent|8|0.831|admit|0.7689|30|Healthcare|False
+TECH|Life Science Tools & Analytical Instruments|Nascent|8|0.5288|admit|0.1288|30|Healthcare|False
+INSP|Medical Device Mean-Reversion & Rotation Recovery|Mainstream|4|0.3966|admit|-0.1573|30|Healthcare|True
+TNDM|Medical Device Mean-Reversion & Rotation Recovery|Mainstream|4|0.4579|admit|0.3388|30|Healthcare|True
+CNMD|Medical Device Mean-Reversion & Rotation Recovery|Mainstream|4|0.2696|reject|0.3099|30|Healthcare|True
+BBNX|Medical Device Mean-Reversion & Rotation Recovery|Mainstream|4|0.4839|admit|0.4294|30|Healthcare|True
+OKTA|Network Security & Zero-Trust Edge|Mainstream|13|0.7589|admit|0.8774|30|Technology|True
+NET|Network Security & Zero-Trust Edge|Mainstream|13|0.6332|admit|0.7656|30|Technology|True
+S|Network Security & Zero-Trust Edge|Mainstream|13|0.5548|admit|0.937|30|Technology|True
+FTNT|Network Security & Zero-Trust Edge|Mainstream|13|0.7413|admit|0.9287|30|Technology|True
+PANW|Network Security & Zero-Trust Edge|Mainstream|13|0.7412|admit|0.8837|30|Technology|True
+RBRK|Network Security & Zero-Trust Edge|Mainstream|13|0.7783|admit|0.8334|30|Technology|True
+ZS|Network Security & Zero-Trust Edge|Mainstream|13|0.6305|admit|0.8789|30|Technology|True
+CRWD|Network Security & Zero-Trust Edge|Mainstream|13|0.8217|admit|0.9252|30|Technology|True
+VRNS|Network Security & Zero-Trust Edge|Mainstream|13|0.6244|admit|0.5576|30|Technology|True
+CVLT|Network Security & Zero-Trust Edge|Mainstream|13|0.3326|reject|0.8318|30|Technology|True
+SAIL|Network Security & Zero-Trust Edge|Mainstream|13|0.6347|admit|0.8705|30|Technology|True
+NTSK|Network Security & Zero-Trust Edge|Mainstream|13|0.6016|admit|0.8625|30|Technology|True
+FFIV|Network Security & Zero-Trust Edge|Mainstream|13|0.3508|admit|0.4112|30|Technology|True
+CDP|Office REIT Recovery & Re-Rating|Fading|4|0.7307|admit|0.3179|30|Real Estate|False
+SLG|Office REIT Recovery & Re-Rating|Fading|4|0.7219|admit|0.745|30|Real Estate|False
+HIW|Office REIT Recovery & Re-Rating|Fading|4|0.8371|admit|0.8227|30|Real Estate|False
+BXP|Office REIT Recovery & Re-Rating|Fading|4|0.8215|admit|0.7025|30|Real Estate|False
+CRNX|Peptide & Hormone Therapies for Metabolic & Endocrine Disorders|Mainstream|5|0.3503|admit||13|Healthcare|True
+CORT|Peptide & Hormone Therapies for Metabolic & Endocrine Disorders|Mainstream|5|0.2135|reject|0.4952|30|Healthcare|True
+XERS|Peptide & Hormone Therapies for Metabolic & Endocrine Disorders|Mainstream|5|0.5437|admit|0.1637|30|Healthcare|True
+MBX|Peptide & Hormone Therapies for Metabolic & Endocrine Disorders|Mainstream|5|0.4042|admit|0.1996|30|Healthcare|True
+PTGX|Peptide & Hormone Therapies for Metabolic & Endocrine Disorders|Mainstream|5|0.5804|admit|0.2921|30|Healthcare|True
+RGLD|Precious Metals Royalty & Streaming Companies|Nascent|4|0.9011|admit|0.9266|30|Basic Materials|False
+WPM|Precious Metals Royalty & Streaming Companies|Nascent|4|0.912|admit|0.9503|30|Basic Materials|False
+OR|Precious Metals Royalty & Streaming Companies|Nascent|4|0.8686|admit|0.9227|30|Basic Materials|False
+FNV|Precious Metals Royalty & Streaming Companies|Nascent|4|0.8455|admit|0.9434|30|Basic Materials|False
+BAM|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.7668|admit|0.702|30|Financial Services|True
+APO|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.711|admit|0.7551|30|Financial Services|True
+HLNE|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.7436|admit|0.8331|30|Financial Services|True
+KKR|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.8407|admit|0.8179|30|Financial Services|True
+OWL|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.7521|admit|0.8603|30|Financial Services|True
+FSK|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.2068|reject|0.6245|30|Financial Services|True
+STEP|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.6166|admit|0.805|30|Financial Services|True
+MAIN|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.3741|admit|0.3377|30|Financial Services|True
+TPG|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.8213|admit|0.8575|30|Financial Services|True
+ARES|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.8183|admit|0.8518|30|Financial Services|True
+BX|Private Equity & Alternative Asset Management Platforms|Mainstream|11|0.8371|admit|0.8006|30|Financial Services|True
+HIG|Property & Casualty Insurance Underwriters|Mainstream|11|0.91|admit|0.9127|30|Financial Services|True
+AFG|Property & Casualty Insurance Underwriters|Mainstream|11|0.8876|admit|0.7617|30|Financial Services|True
+THG|Property & Casualty Insurance Underwriters|Mainstream|11|0.8889|admit|0.8957|30|Financial Services|True
+ORI|Property & Casualty Insurance Underwriters|Mainstream|11|0.9394|admit|0.8531|30|Financial Services|True
+CB|Property & Casualty Insurance Underwriters|Mainstream|11|0.9262|admit|0.8552|30|Financial Services|True
+ALL|Property & Casualty Insurance Underwriters|Mainstream|11|0.8768|admit|0.8332|30|Financial Services|True
+SKWD|Property & Casualty Insurance Underwriters|Mainstream|11|0.8459|admit|0.6775|30|Financial Services|True
+HCI|Property & Casualty Insurance Underwriters|Mainstream|11|0.7943|admit|0.7764|30|Financial Services|True
+RLI|Property & Casualty Insurance Underwriters|Mainstream|11|0.8852|admit|0.7905|30|Financial Services|True
+TRV|Property & Casualty Insurance Underwriters|Mainstream|11|0.8508|admit|0.8527|30|Financial Services|True
+SLDE|Property & Casualty Insurance Underwriters|Mainstream|11|0.8037|admit|0.7343|30|Financial Services|True
+RGTI|Quantum Computing Hardware & Software|Mainstream|5|0.9601|admit|0.9373|30|Technology|True
+IONQ|Quantum Computing Hardware & Software|Mainstream|5|0.8608|admit|0.8865|30|Technology|True
+QUBT|Quantum Computing Hardware & Software|Mainstream|5|0.9223|admit|0.8703|30|Technology|True
+INFQ|Quantum Computing Hardware & Software|Mainstream|5|0.8606|admit|0.8586|30|Technology|True
+QBTS|Quantum Computing Hardware & Software|Mainstream|5|0.9233|admit|0.8885|30|Technology|True
+LQDA|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.4817|admit|0.5252|30|Healthcare|True
+ROIV|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.4698|admit|0.0676|30|Healthcare|True
+OMER|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.1234|reject|-0.2253|30|Healthcare|True
+HRMY|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.5014|admit|0.3788|30|Healthcare|True
+ETON|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.4993|admit|0.1924|30|Healthcare|True
+INSM|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.3004|reject|0.5133|30|Healthcare|True
+BCRX|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.472|admit|0.2245|30|Healthcare|True
+KNSA|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.465|admit|0.5897|30|Healthcare|True
+RYTM|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.6281|admit|0.5293|30|Healthcare|True
+BMRN|Specialty Pharmaceutical Commercialization & Rare Disease Drugs|Mainstream|10|0.2443|reject|0.2319|30|Healthcare|True
+SHOO|U.S. Apparel & Fashion Recovery|Fading|5|0.4406|admit|0.2608|30|Consumer Cyclical|False
+RVLV|U.S. Apparel & Fashion Recovery|Fading|5|0.691|admit|0.069|30|Consumer Cyclical|False
+CROX|U.S. Apparel & Fashion Recovery|Fading|5|0.48|admit|0.3206|30|Consumer Cyclical|False
+ANF|U.S. Apparel & Fashion Recovery|Fading|5|0.6749|admit|0.4922|30|Consumer Cyclical|False
+URBN|U.S. Apparel & Fashion Recovery|Fading|5|0.7434|admit|0.7606|30|Consumer Cyclical|False
+SKYW|U.S. Passenger Airlines|Mainstream|5|0.7233|admit|0.7194|30|Industrials|True
+ALK|U.S. Passenger Airlines|Mainstream|5|0.9135|admit|0.8338|30|Industrials|True
+DAL|U.S. Passenger Airlines|Mainstream|5|0.9206|admit|0.893|30|Industrials|True
+UAL|U.S. Passenger Airlines|Mainstream|5|0.9154|admit|0.9071|30|Industrials|True
+LUV|U.S. Passenger Airlines|Mainstream|5|0.8256|admit|0.8315|30|Industrials|True
+FBP|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.8237|admit|0.8039|30|Financial Services|True
+HWC|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.9212|admit|0.8826|30|Financial Services|True
+FHN|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.7948|admit|0.8923|30|Financial Services|True
+WSFS|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.8693|admit|0.7764|30|Financial Services|True
+MCHB|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.7524|admit|0.5045|30|Financial Services|True
+USB|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.9034|admit|0.9158|30|Financial Services|True
+HBAN|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.8267|admit|0.86|30|Financial Services|True
+BOKF|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.9489|admit|0.9027|30|Financial Services|True
+RF|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.9461|admit|0.922|30|Financial Services|True
+UMBF|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.8319|admit|0.693|30|Financial Services|True
+TFC|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.8659|admit|0.8751|30|Financial Services|True
+CFG|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.8918|admit|0.9103|30|Financial Services|True
+WTFC|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.9135|admit|0.9221|30|Financial Services|True
+EWBC|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.8881|admit|0.8743|30|Financial Services|True
+PNFP|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.7174|admit|0.8395|30|Financial Services|True
+ZION|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.8875|admit|0.9342|30|Financial Services|True
+PNC|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.9122|admit|0.9066|30|Financial Services|True
+SSB|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.882|admit|0.9078|30|Financial Services|True
+MTB|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.9171|admit|0.8362|30|Financial Services|True
+FITB|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.9289|admit|0.8672|30|Financial Services|True
+WSBC|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.865|admit|0.8868|30|Financial Services|True
+CBC|U.S. Regional & Mid-Cap Commercial Banks|Mainstream|22|0.7687|admit|0.6311|30|Financial Services|True
+SCHW|Wealth Management & Retail Brokerage Platforms|Mainstream|6|0.7784|admit|0.7522|30|Financial Services|True
+SF|Wealth Management & Retail Brokerage Platforms|Mainstream|6|0.7552|admit|0.7303|30|Financial Services|True
+LPLA|Wealth Management & Retail Brokerage Platforms|Mainstream|6|0.7739|admit|0.8091|30|Financial Services|True
+AMP|Wealth Management & Retail Brokerage Platforms|Mainstream|6|0.8629|admit|0.699|30|Financial Services|True
+RJF|Wealth Management & Retail Brokerage Platforms|Mainstream|6|0.9014|admit|0.8431|30|Financial Services|True
+NTRS|Wealth Management & Retail Brokerage Platforms|Mainstream|6|0.4539|admit|0.6492|30|Financial Services|True
+TWST|Genomics & DNA Sequencing Tools|Nascent|4|0.5074|admit|0.711|30|Healthcare|False
+ILMN|Genomics & DNA Sequencing Tools|Nascent|4|0.3645|admit|0.7155|30|Healthcare|False
+TXG|Genomics & DNA Sequencing Tools|Nascent|4|0.5957|admit|0.7681|30|Healthcare|False
+BRKR|Genomics & DNA Sequencing Tools|Nascent|4|0.58|admit|0.562|30|Healthcare|False
+INSW|Oilfield Services & Drilling Rigs|Nascent|12|0.57|admit|0.628|30|Energy|False
+SDRL|Oilfield Services & Drilling Rigs|Nascent|12|0.7286|admit|0.593|30|Energy|False
+OVV|Oilfield Services & Drilling Rigs|Nascent|12|0.8102|admit|0.7379|30|Energy|False
+NAT|Oilfield Services & Drilling Rigs|Nascent|12|0.5605|admit|0.6918|30|Energy|False
+APA|Oilfield Services & Drilling Rigs|Nascent|12|0.81|admit|0.7564|30|Energy|False
+DHT|Oilfield Services & Drilling Rigs|Nascent|12|0.4924|admit|0.5141|30|Energy|False
+NOG|Oilfield Services & Drilling Rigs|Nascent|12|0.685|admit|0.7753|30|Energy|False
+FRO|Oilfield Services & Drilling Rigs|Nascent|12|0.5243|admit|0.5775|30|Energy|False
+TNK|Oilfield Services & Drilling Rigs|Nascent|12|0.6261|admit|0.5536|30|Energy|False
+TALO|Oilfield Services & Drilling Rigs|Nascent|12|0.6732|admit|0.614|30|Energy|False
+CRK|Oilfield Services & Drilling Rigs|Nascent|12|0.3764|admit|0.1949|30|Energy|False
+TDW|Oilfield Services & Drilling Rigs|Nascent|12|0.428|admit|0.6506|30|Energy|False
+SKE|Precious Metals Miners Velocity Breakout|Nascent|7|0.9122|admit|0.886|30|Basic Materials|False
+AYA|Precious Metals Miners Velocity Breakout|Nascent|7|0.8528|admit|0.8498|30|Basic Materials|False
+PPTA|Precious Metals Miners Velocity Breakout|Nascent|7|0.8788|admit|0.8331|30|Basic Materials|False
+WPM|Precious Metals Miners Velocity Breakout|Nascent|7|0.8985|admit|0.8454|30|Basic Materials|False
+ASM|Precious Metals Miners Velocity Breakout|Nascent|7|0.9133|admit|0.819|30|Basic Materials|False
+SA|Precious Metals Miners Velocity Breakout|Nascent|7|0.8731|admit|0.7034|30|Basic Materials|False
+FSM|Precious Metals Miners Velocity Breakout|Nascent|7|0.9264|admit|0.9277|30|Basic Materials|False
+CEVA|Semiconductor Components & Optical Interconnect|Nascent|5|0.7824|admit|0.6836|30|Technology|False
+COHR|Semiconductor Components & Optical Interconnect|Nascent|5|0.8083|admit|0.6981|30|Technology|False
+ENTG|Semiconductor Components & Optical Interconnect|Nascent|5|0.8265|admit|0.8087|30|Technology|False
+GFS|Semiconductor Components & Optical Interconnect|Nascent|5|0.8322|admit|0.7763|30|Technology|False
+RMBS|Semiconductor Components & Optical Interconnect|Nascent|5|0.8674|admit|0.7473|30|Technology|False
+AVAV|Space & Unmanned Defense Systems|Nascent|6|0.7403|admit|0.5736|30|Industrials|False
+VOYG|Space & Unmanned Defense Systems|Nascent|6|0.7965|admit|0.4364|30|Industrials|False
+KTOS|Space & Unmanned Defense Systems|Nascent|6|0.7798|admit|0.6998|30|Industrials|False
+SPCX|Space & Unmanned Defense Systems|Nascent|6|0.3707|admit|0.3427|30|Industrials|False
+RDW|Space & Unmanned Defense Systems|Nascent|6|0.7089|admit|0.6876|30|Industrials|False
+KRMN|Space & Unmanned Defense Systems|Nascent|6|0.5674|admit|0.3481|30|Industrials|False
+TALO|U.S. Oil & Gas E&P Recovery|Nascent|5|0.8592|admit|0.7801|30|Energy|False
+CRK|U.S. Oil & Gas E&P Recovery|Nascent|5|0.6929|admit|0.383|30|Energy|False
+OVV|U.S. Oil & Gas E&P Recovery|Nascent|5|0.8643|admit|0.8975|30|Energy|False
+NOG|U.S. Oil & Gas E&P Recovery|Nascent|5|0.8181|admit|0.8107|30|Energy|False
+APA|U.S. Oil & Gas E&P Recovery|Nascent|5|0.8981|admit|0.7958|30|Energy|False
+SITM|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.7248|admit|0.8096|30|Technology|False
+ONTO|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.8833|admit|0.9342|30|Technology|False
+ENTG|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.8618|admit|0.8594|30|Technology|False
+AEHR|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.7435|admit|0.8878|30|Technology|False
+GFS|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.8164|admit|0.7507|30|Technology|False
+CRDO|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.7416|admit|0.5807|30|Technology|False
+COHR|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.8254|admit|0.8481|30|Technology|False
+COHU|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.8553|admit|0.8724|30|Technology|False
+AXTI|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.6286|admit|0.8436|30|Technology|False
+APH|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.5629|admit|0.6358|30|Technology|False
+TER|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.8512|admit|0.9358|30|Technology|False
+FORM|AI Chip & Interconnect Supply Chain Enablement|Nascent|12|0.8942|admit|0.9086|30|Technology|False
+IT|IT Consulting & Business Process Outsourcing Services|Nascent|4|0.7074|admit|0.848|30|Technology|False
+ACN|IT Consulting & Business Process Outsourcing Services|Nascent|4|0.8498|admit|0.8292|30|Technology|False
+CTSH|IT Consulting & Business Process Outsourcing Services|Nascent|4|0.8897|admit|0.9066|30|Technology|False
+EXLS|IT Consulting & Business Process Outsourcing Services|Nascent|4|0.8365|admit|0.8185|30|Technology|False
+NESR|Oilfield Equipment & Contract Drilling Services|Nascent|4|0.5904|admit|0.2327|30|Energy|False
+XPRO|Oilfield Equipment & Contract Drilling Services|Nascent|4|0.7168|admit|0.4525|30|Energy|False
+HP|Oilfield Equipment & Contract Drilling Services|Nascent|4|0.6797|admit|0.5705|30|Energy|False
+OII|Oilfield Equipment & Contract Drilling Services|Nascent|4|0.6425|admit|0.3994|30|Energy|False
+AG|Silver-Focused Primary Miners|Nascent|6|0.9635|admit|0.9675|30|Basic Materials|False
+HL|Silver-Focused Primary Miners|Nascent|6|0.9476|admit|0.9498|30|Basic Materials|False
+EXK|Silver-Focused Primary Miners|Nascent|6|0.9608|admit|0.8899|30|Basic Materials|False
+PAAS|Silver-Focused Primary Miners|Nascent|6|0.9199|admit|0.8095|30|Basic Materials|False
+SVM|Silver-Focused Primary Miners|Nascent|6|0.8808|admit|0.9294|30|Basic Materials|False
+CDE|Silver-Focused Primary Miners|Nascent|6|0.8968|admit|0.9377|30|Basic Materials|False
+BLZE|AI data center infrastructure buildout|Nascent|8|0.2223|reject|0.3439|30|Technology|False
+FLNC|AI data center infrastructure buildout|Nascent|8|0.5509|admit|0.2585|30|Utilities|False
+MPWR|AI data center infrastructure buildout|Nascent|8|0.2858|reject|0.5098|30|Technology|False
+EROC|AI data center infrastructure buildout|Nascent|8|0.6036|admit|0.6591|30|Industrials|False
+BE|AI data center infrastructure buildout|Nascent|8|0.6034|admit|0.6517|30|Industrials|False
+WYFI|AI data center infrastructure buildout|Nascent|8|0.6424|admit|0.6723|30|Technology|False
+NBIS|AI data center infrastructure buildout|Nascent|8|0.812|admit|0.7142|30|Communication Services|False
+CRWV|AI data center infrastructure buildout|Nascent|8|0.7747|admit|0.8081|30|Technology|False
+EME|AI-Driven Power & Grid Infrastructure Boom|Nascent|4|0.7579|admit|0.6989|30|Industrials|False
+PWR|AI-Driven Power & Grid Infrastructure Boom|Nascent|4|0.6742|admit|0.6175|30|Industrials|False
+EROC|AI-Driven Power & Grid Infrastructure Boom|Nascent|4|0.4694|admit|0.6825|30|Industrials|False
+BE|AI-Driven Power & Grid Infrastructure Boom|Nascent|4|0.728|admit|0.579|30|Industrials|False
+AVB|Apartment & Residential REITs|Nascent|4|0.9346|admit||0|Real Estate|False
+ELS|Apartment & Residential REITs|Nascent|4|0.8705|admit||0|Real Estate|False
+EQR|Apartment & Residential REITs|Nascent|4|0.9654|admit||0|Real Estate|False
+UDR|Apartment & Residential REITs|Nascent|4|0.9219|admit||0|Real Estate|False
+CIFR|Bitcoin Mining & HPC Compute Pivot Operators|Nascent|8|0.8941|admit|0.9165|30|Technology|False
+CLSK|Bitcoin Mining & HPC Compute Pivot Operators|Nascent|8|0.8295|admit|0.9506|30|Financial Services|False
+CORZ|Bitcoin Mining & HPC Compute Pivot Operators|Nascent|8|0.9084|admit|0.8754|30|Technology|False
+HUT|Bitcoin Mining & HPC Compute Pivot Operators|Nascent|8|0.9159|admit|0.9226|30|Financial Services|False
+MARA|Bitcoin Mining & HPC Compute Pivot Operators|Nascent|8|0.8516|admit|0.7919|30|Financial Services|False
+WULF|Bitcoin Mining & HPC Compute Pivot Operators|Nascent|8|0.8708|admit|0.9177|30|Financial Services|False
+APLD|Bitcoin Mining & HPC Compute Pivot Operators|Nascent|8|0.7768|admit|0.884|30|Technology|False
+RIOT|Bitcoin Mining & HPC Compute Pivot Operators|Nascent|8|0.8719|admit|0.8868|30|Financial Services|False
+LECO|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.7402|admit|0.7087|30|Industrials|True
+ITT|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.5976|admit|0.5588|30|Industrials|True
+FLS|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.3207|reject|0.7308|30|Industrials|True
+PH|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.5667|admit|0.7043|30|Industrials|True
+EMR|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.5811|admit|0.784|30|Industrials|True
+VLTO|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.3179|reject|-0.024|30|Industrials|True
+IR|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.66|admit|0.6649|30|Industrials|True
+FELE|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.8026|admit|0.5449|30|Industrials|True
+DCI|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.7456|admit|0.6449|30|Industrials|True
+IEX|Industrial Equipment & Flow Control – Capex Cycle Recovery|Mainstream|10|0.5646|admit|0.7827|30|Industrials|True
+NNE|Nuclear Fuel Cycle & Microreactor Development|Nascent|4|0.852|admit|0.8771|30|Industrials|False
+OKLO|Nuclear Fuel Cycle & Microreactor Development|Nascent|4|0.894|admit|0.8895|30|Utilities|False
+SMR|Nuclear Fuel Cycle & Microreactor Development|Nascent|4|0.8835|admit|0.8715|30|Industrials|False
+UUUU|Nuclear Fuel Cycle & Microreactor Development|Nascent|4|0.8524|admit|0.6696|30|Energy|False
+TXRH|Restaurant Chain Recovery|Mainstream|8|0.6342|admit|0.7299|30|Consumer Cyclical|True
+CAKE|Restaurant Chain Recovery|Mainstream|8|0.5685|admit|0.8273|30|Consumer Cyclical|True
+EAT|Restaurant Chain Recovery|Mainstream|8|0.5559|admit|0.6565|30|Consumer Cyclical|True
+BLMN|Restaurant Chain Recovery|Mainstream|8|0.6186|admit|0.8042|30|Consumer Cyclical|True
+DRI|Restaurant Chain Recovery|Mainstream|8|0.6184|admit|0.7256|30|Consumer Cyclical|True
+JACK|Restaurant Chain Recovery|Mainstream|8|0.4044|admit|0.5495|30|Consumer Cyclical|True
+CBRL|Restaurant Chain Recovery|Mainstream|8|0.5377|admit|0.6122|30|Consumer Cyclical|True
+SHAK|Restaurant Chain Recovery|Mainstream|8|0.5936|admit|0.655|30|Consumer Cyclical|True
+CTRE|Skilled Nursing & Senior Housing REITs|Nascent|4|0.9182|admit|0.7872|30|Real Estate|False
+LTC|Skilled Nursing & Senior Housing REITs|Nascent|4|0.9332|admit|0.7915|30|Real Estate|False
+NHI|Skilled Nursing & Senior Housing REITs|Nascent|4|0.9366|admit|0.7877|30|Real Estate|False
+OHI|Skilled Nursing & Senior Housing REITs|Nascent|4|0.9445|admit|0.8988|30|Real Estate|False
