@@ -80,12 +80,13 @@ from agents.market_intelligence.db import (
 # byte-identical to pre-ADR behavior.
 from agents.market_intelligence.theme_merge_arm import (
     merge_arm_enabled, propose_merge_pairs, adjudicate_merge_pair,
+    adjudicate_containment_pair,
     family_of, pair_key,
     MAX_MERGES_PER_NIGHT, MERGE_DISTINCT_COOLDOWN_DAYS,
 )
 from agents.market_intelligence.audit_events import (
     THEME_PARENT_PASS_RAN, THEME_PARENT_PASS_LINKED, THEME_PARENT_PASS_DISTINCT,
-    THEME_PARENT_PASS_MERGE_SIGNAL, THEME_PARENT_PASS_INVERTED, THEME_PARENT_PASS_ERROR,
+    THEME_PARENT_PASS_INVERTED, THEME_PARENT_PASS_ERROR,
 )
 from shared.llm_response import content_block_types, first_text, is_truncated, stop_reason
 from shared.output_ceilings import max_tokens_for
@@ -342,17 +343,26 @@ DOM_SPLITS_PER_NIGHT = 2   # Route B: global nightly cap on dominant-split nomin
 # ── #505 nightly PARENT PASS — behind the `theme_parent_pass` DB toggle ──────
 # (`get_theme_parent_pass_enabled`, default OFF / fail-closed). Every CHILDLESS
 # live theme, whatever path bore it (Lane-1 discovery, shadow_promoted, a split,
-# /promotetheme), is offered its best same-ecosystem candidate parent to the
-# ADR-0025 adjudicator once per night. The trigger is deterministic and pure
-# (`propose_parent_candidates`) so the dry-run probe prints EXACTLY what an armed
-# night would ask. Measured 2026-09-26 before building: ticker containment
-# (SUBTHEME_C_MIN, ≥MIN_SHARED_FOR_MERGE shared) fires on 1 of ~6,800 board pairs
-# — the 10 links that exist are ticker-DISJOINT thesis relationships from Arm B —
-# so ticker overlap is a PRIORITY signal here, never the gate.
-PARENT_PASS_CAP_PER_NIGHT = 6     # adjudications per armed night (Haiku, ~$0.002 each)
+# /promotetheme), is offered its best same-ecosystem candidate parent to
+# `theme_merge_arm.adjudicate_containment_pair` — the pass's OWN CONTAINMENT
+# adjudicator (Sonnet), never Arm B's same-catalyst MERGE adjudicator. The trigger
+# is deterministic and pure (`propose_parent_candidates`) so the dry-run probe
+# prints EXACTLY what an armed night would ask. Measured 2026-09-26 before
+# building: ticker containment (SUBTHEME_C_MIN, ≥MIN_SHARED_FOR_MERGE shared)
+# fires on 1 of ~6,800 board pairs — the 10 links that exist are ticker-DISJOINT
+# thesis relationships from Arm B — so ticker overlap is a PRIORITY signal here,
+# never the gate. A paid preview the same day of the ORIGINAL design (asking Arm
+# B's merge adjudicator instead) confirmed it answers the wrong question for
+# parenting — see `scripts/probes/_505_parent_pass_preview_2026-09-26.txt` and
+# `adjudicate_containment_pair`'s docstring in theme_merge_arm.py.
+PARENT_PASS_CAP_PER_NIGHT = 6     # adjudications per armed night (Sonnet, ~$0.01 each)
 PARENT_PASS_NAME_TOKEN_MIN = 5    # shared name-token edge, ecosystem_discovery's own rule
-PARENT_PASS_MERGE_SIGNAL_COOLDOWN_DAYS = 7  # a MERGE verdict is audited, never executed;
-                                            # the short cooldown stops nightly re-asking
+PARENT_PASS_INVERTED_COOLDOWN_DAYS = 7  # INVERTED → recorded, no link — a shorter cooldown
+    # than PEERS/UNRELATED's 30d (our call, stated in the SSoT docs/architecture/
+    # theme_engine.md): the two themes DO have a real containment relationship, just
+    # backwards from what was asked, so membership drift re-broadening one side is worth
+    # re-checking sooner than a genuine no-relationship (PEERS/UNRELATED) pair — never zero,
+    # so a stable-membership pair isn't re-asked every night for free.
 
 # Semaphore: max concurrent Perplexity search calls (5 = ~2 rounds for 10 themes vs 4 at 3)
 _SEARCH_SEM = asyncio.Semaphore(5)
@@ -8260,8 +8270,10 @@ def propose_parent_candidates(
     `parent_theme`) mapped to a real ecosystem, pick its ONE best candidate
     parent among the same-ecosystem live themes that are strictly BROADER
     (more members), then rank the children. Skipped candidates:
-      - pair under a live merge cooldown (a DISTINCT/MERGE verdict already
-        stands — move on to the next candidate),
+      - pair under a live cooldown in the shared `mi_theme_merge_cooldowns` table
+        (a DISTINCT/MERGE verdict from Arm B, or a PEERS/UNRELATED/INVERTED verdict
+        from this pass's own containment adjudicator, already stands — move on to
+        the next candidate),
       - the child is already an ANCESTOR of the candidate (no cycles; chains
         such as materials → components → primes are allowed and were seen live).
     Arm B's territory (`propose_merge_pairs` uncapped — every pair its Stage-A
@@ -8362,19 +8374,30 @@ async def _run_parent_pass(
     """#505 — the nightly parent pass. Mutates `all_themes` (child `parent_theme`)
     and `sub_theme_parents` (so `_restore_sub_theme_links`, the final authority
     right before `_save_themes`, re-sets the link against the truly final list)
-    for every PARENT_CHILD verdict. Runs AFTER the auto-retire block and Arm B
+    for every CHILD_OF verdict. Runs AFTER the auto-retire block and Arm B
     (`_run_thesis_merge_pass`) — Arm B adjudicates its own territory first, and
     a theme it absorbed is a Retired row here, never a candidate.
 
+    Asks `adjudicate_containment_pair` (theme_merge_arm, Sonnet tier) — its OWN
+    CONTAINMENT question ("does the child sit inside the parent?"), never Arm B's
+    same-catalyst MERGE question (`adjudicate_merge_pair`). Built 2026-09-26 after a
+    paid preview (`scripts/probes/_505_parent_pass_preview_2026-09-26.txt`) showed the
+    merge question is the wrong one for parenting: 3 PARENT_CHILD / 5 MERGE / 29
+    DISTINCT of 37 pairs, DISTINCT on pairs that ARE containment (e.g. 'Pure-Play
+    NAND/DRAM Memory Chip Makers' vs 'AI-Driven Memory & Storage Supply Shortage').
+
     `enabled=False` (the default, any read error) returns [] BEFORE any I/O:
     the engine is byte-identical to pre-#505. When ON:
-      PARENT_CHILD (child = B)  → link set + THEME_PARENT_PASS_LINKED
-      PARENT_CHILD (child = A)  → inverted: NO link (a broader theme is never
-                                  nested under a narrower one), 30d cooldown
-      DISTINCT                  → 30d pair cooldown (Arm B's exact semantics)
-      MERGE                     → audited as a SIGNAL only, 7d cooldown; NEVER
-                                  executed — merging is Arm B's live behaviour
-      ERROR / raised            → audited, no cooldown (re-asked next night)
+      CHILD_OF            → link set + THEME_PARENT_PASS_LINKED
+      INVERTED            → the labels were backwards for this pair (the candidate
+                             PARENT actually sits inside the candidate CHILD) — NO
+                             link (a broader theme is never nested under a narrower
+                             one), PARENT_PASS_INVERTED_COOLDOWN_DAYS (7d) cooldown
+      PEERS / UNRELATED    → NO link, 30d pair cooldown (MERGE_DISTINCT_COOLDOWN_DAYS
+                             — the same cooldown table and duration the old DISTINCT
+                             verdict wrote; verdict label carried through unchanged
+                             so `get_merge_distinct_pairs` keeps working on either)
+      ERROR / raised       → audited, no cooldown (re-asked next night)
     Fail-open per pair AND for the whole pass: the pass must never break the
     run (2026-07-28: a crashing add-on took the whole nightly pull down — a
     crash is not a parity failure any parity test can catch). Emits ONE
@@ -8384,7 +8407,7 @@ async def _run_parent_pass(
     if not enabled:
         return []
     cands: list[dict] = []
-    counts = {"linked": 0, "distinct": 0, "merge_signal": 0, "inverted": 0, "error": 0}
+    counts = {"linked": 0, "no_containment": 0, "inverted": 0, "error": 0}
     try:
         if eco_map is None:
             from agents.market_intelligence.theme_ecosystems import load_ecosystem_assignments
@@ -8418,14 +8441,14 @@ async def _run_parent_pass(
         for cand in cands:
             child, parent = by_name[cand["child"]], by_name[cand["parent"]]
             try:
-                verdict = await adjudicate_merge_pair(
-                    parent, child,  # parent = theme A, child = theme B (Route A's convention)
+                verdict = await adjudicate_containment_pair(
+                    child, parent,
                     client=client, semaphore=_VALIDATION_SEMAPHORE,
                     sectors_by_ticker=sectors_by_ticker, log_spend=True,
                 )
             except Exception as e:  # loud-ok: surfaced as an ERROR verdict → theme_parent_pass_error audit row + warning below
                 logger.warning(
-                    f"[parent pass] adjudication raised for '{parent['name']}' × '{child['name']}': {e}"
+                    f"[parent pass] adjudication raised for '{child['name']}' × '{parent['name']}': {e}"
                 )
                 verdict = {"verdict": "ERROR", "reason": f"{type(e).__name__}: {e}"[:300]}
             v = verdict.get("verdict")
@@ -8433,7 +8456,7 @@ async def _run_parent_pass(
             reason = str(verdict.get("reason") or "")[:200]
             detail = (f"child='{child['name']}' parent='{parent['name']}' {cand['why']} "
                       f"verdict={v!r} reason={reason!r}")
-            if v == "PARENT_CHILD" and verdict.get("child", "B") != "A":
+            if v == "CHILD_OF":
                 child["parent_theme"] = parent["name"]
                 sub_theme_parents[child["name"]] = parent["name"]
                 counts["linked"] += 1
@@ -8442,33 +8465,23 @@ async def _run_parent_pass(
                     summary=f"Parent pass: '{child['name']}' → sub-theme of '{parent['name']}'",
                     detail=detail,
                 )
-            elif v == "PARENT_CHILD":
+            elif v == "INVERTED":
                 counts["inverted"] += 1
-                await _parent_pass_cooldown(child, parent, reason, MERGE_DISTINCT_COOLDOWN_DAYS,
-                                            "PARENT_CHILD_INVERTED")
+                await _parent_pass_cooldown(child, parent, reason,
+                                            PARENT_PASS_INVERTED_COOLDOWN_DAYS, "INVERTED")
                 await log_audit_event(
                     THEME_PARENT_PASS_INVERTED,
-                    summary=(f"Parent pass: adjudicator named the BROADER '{parent['name']}' the child "
-                             f"of '{child['name']}' — no link written"),
+                    summary=(f"Parent pass: adjudicator says the BROADER '{parent['name']}' actually "
+                             f"sits inside '{child['name']}' — no link written"),
                     detail=detail,
                 )
-            elif v == "DISTINCT":
-                counts["distinct"] += 1
-                await _parent_pass_cooldown(child, parent, reason, MERGE_DISTINCT_COOLDOWN_DAYS, "DISTINCT")
+            elif v in ("PEERS", "UNRELATED"):
+                counts["no_containment"] += 1
+                await _parent_pass_cooldown(child, parent, reason, MERGE_DISTINCT_COOLDOWN_DAYS, v)
                 await log_audit_event(
                     THEME_PARENT_PASS_DISTINCT,
-                    summary=(f"Parent pass: '{child['name']}' vs '{parent['name']}' DISTINCT — "
-                             f"{MERGE_DISTINCT_COOLDOWN_DAYS}d pair cooldown"),
-                    detail=detail,
-                )
-            elif v == "MERGE":
-                counts["merge_signal"] += 1
-                await _parent_pass_cooldown(child, parent, reason,
-                                            PARENT_PASS_MERGE_SIGNAL_COOLDOWN_DAYS, "MERGE")
-                await log_audit_event(
-                    THEME_PARENT_PASS_MERGE_SIGNAL,
-                    summary=(f"Parent pass: adjudicator says '{child['name']}' and '{parent['name']}' "
-                             f"share ONE driver (MERGE) — NOT executed; Arm B never pairs them"),
+                    summary=(f"Parent pass: '{child['name']}' vs '{parent['name']}' {v} — no "
+                             f"containment, {MERGE_DISTINCT_COOLDOWN_DAYS}d pair cooldown"),
                     detail=detail,
                 )
             else:
@@ -8481,7 +8494,7 @@ async def _run_parent_pass(
         await log_audit_event(
             THEME_PARENT_PASS_RAN,
             summary=(f"Parent pass: {len(cands)} candidate(s) adjudicated — {counts['linked']} linked, "
-                     f"{counts['distinct']} distinct, {counts['merge_signal']} merge signal, "
+                     f"{counts['no_containment']} no containment (peers/unrelated), "
                      f"{counts['inverted']} inverted, {counts['error']} error"),
             detail="\n".join(
                 f"'{c['child']}' → '{c['parent']}' [{c.get('verdict')}] {c['why']}" for c in cands

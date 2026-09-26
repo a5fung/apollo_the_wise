@@ -160,15 +160,19 @@ def test_adjudicate_sends_the_real_description_to_the_adjudicator(monkeypatch):
     # `load_board` carries real descriptions, `_adjudicate` needs no separate fetch —
     # it already has them. Pin that wiring here so a future refactor can't silently
     # reintroduce a second, blank-defaulting theme dict for the adjudication path.
+    #
+    # Also proves `_adjudicate` calls the pass's OWN containment adjudicator
+    # (`adjudicate_containment_pair`, child first, parent second) — never Arm B's
+    # same-catalyst `adjudicate_merge_pair` (#505 2026-09-26).
     captured: dict = {}
 
-    async def _fake_adjudicate_merge_pair(theme_a, theme_b, *, client, sectors_by_ticker,
-                                          log_spend=False):
-        captured["theme_a_desc"] = theme_a.get("description")
-        captured["theme_b_desc"] = theme_b.get("description")
-        return {"verdict": "DISTINCT", "reason": "ok"}
+    async def _fake_adjudicate_containment_pair(child, parent, *, client, sectors_by_ticker,
+                                                 log_spend=False):
+        captured["child_desc"] = child.get("description")
+        captured["parent_desc"] = parent.get("description")
+        return {"verdict": "PEERS", "reason": "ok"}
 
-    fake_module = types.SimpleNamespace(adjudicate_merge_pair=_fake_adjudicate_merge_pair)
+    fake_module = types.SimpleNamespace(adjudicate_containment_pair=_fake_adjudicate_containment_pair)
     monkeypatch.setitem(sys.modules, "agents.market_intelligence.theme_merge_arm", fake_module)
     monkeypatch.setattr("shared.llm_client.make_async_anthropic", lambda: object())
 
@@ -180,5 +184,5 @@ def test_adjudicate_sends_the_real_description_to_the_adjudicator(monkeypatch):
 
     asyncio.run(probe._adjudicate(queue, by_name, sectors={}, out_path=None))
 
-    assert captured["theme_a_desc"] == "Parent thesis"
-    assert captured["theme_b_desc"] == "Child thesis"
+    assert captured["child_desc"] == "Child thesis"
+    assert captured["parent_desc"] == "Parent thesis"

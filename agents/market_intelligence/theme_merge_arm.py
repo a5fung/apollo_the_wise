@@ -18,6 +18,18 @@ scratchpad-first tool schema, retry-once on parse failure, validation-style 429
 backoff. The mechanical merge executor lives in theme_engine._run_thesis_merge_pass
 (it needs the engine's validator + audit plumbing).
 
+ALSO HOME OF the #505 nightly PARENT PASS's OWN adjudicator
+(`adjudicate_containment_pair`, Sonnet tier, below) — a SEPARATE Stage-B variant that
+asks CONTAINMENT ("does the child sit inside the parent?") instead of this module's
+same-catalyst MERGE question. Built 2026-09-26 after a paid preview
+(`scripts/probes/_505_parent_pass_preview_2026-09-26.txt`) showed `adjudicate_merge_pair`
+is the wrong question for parenting: 3 PARENT_CHILD / 5 MERGE / 29 DISTINCT of 37 pairs,
+DISTINCT on pairs that ARE containment (e.g. 'Pure-Play NAND/DRAM Memory Chip Makers' vs
+'AI-Driven Memory & Storage Supply Shortage'), and its own reasoning sometimes named the
+wrong side "Theme A"/"Theme B". ONLY consumer: `theme_engine._run_parent_pass` — Arm B's
+merge/DISTINCT/PARENT_CHILD path (`adjudicate_merge_pair`, every other caller in this
+file) is completely untouched by that change.
+
 Non-money surface: themes feed only the shadow judge theme-axis (#328) + briefs.
 """
 from __future__ import annotations
@@ -32,9 +44,10 @@ from collections import Counter
 
 import anthropic
 
-from shared.llm_models import HAIKU
+from shared.llm_models import HAIKU, THEME_PARENT_ADJUDICATION_MODEL
 from shared.output_ceilings import max_tokens_for
 from shared.env_flags import env_flag_on
+from shared import llm_thinking
 
 logger = logging.getLogger(__name__)
 
@@ -287,18 +300,31 @@ def build_adjudication_prompt(
 # retry-once on parse failure) now carries that load alone. Adjudication is
 # non-deterministic where it used to be pinned — a real reduction, accepted
 # because the alternative is an arm that cannot run at all.
-async def _create_with_backoff(client, prompt: str, model: str, semaphore) -> "anthropic.types.Message":
-    """messages.create with the validation-style 429 backoff (3 attempts)."""
+async def _create_with_backoff(
+    client, prompt: str, model: str, semaphore,
+    *, tool: dict = MERGE_ADJUDICATION_TOOL, max_tokens: int | None = None,
+    thinking: dict | None = None,
+) -> "anthropic.types.Message":
+    """messages.create with the validation-style 429 backoff (3 attempts).
+
+    `tool`/`max_tokens`/`thinking` let a SECOND caller (the #505 containment
+    adjudicator, Sonnet tier, below) reuse this backoff+semaphore machinery with its
+    OWN tool schema, ceiling and thinking config. `adjudicate_merge_pair`'s call site
+    is UNCHANGED — it passes none of these, so it keeps getting exactly its own tool,
+    its own `theme_merge_adjudication` ceiling, and no `thinking` kwarg at all
+    (Haiku has no extended-thinking lever to begin with)."""
     backoffs = [(30, 15), (60, 30)]
+    mt = max_tokens if max_tokens is not None else max_tokens_for("theme_merge_adjudication")
     for attempt in range(len(backoffs) + 1):
         try:
             async with (semaphore if semaphore is not None else contextlib.nullcontext()):
                 return await client.messages.create(
                     model=model,
-                    max_tokens=max_tokens_for("theme_merge_adjudication"),
-                    tools=[MERGE_ADJUDICATION_TOOL],
-                    tool_choice={"type": "tool", "name": MERGE_ADJUDICATION_TOOL["name"]},
+                    max_tokens=mt,
+                    tools=[tool],
+                    tool_choice={"type": "tool", "name": tool["name"]},
                     messages=[{"role": "user", "content": prompt}],
+                    **({"thinking": thinking} if thinking else {}),
                 )
         except Exception as e:
             is_429 = (_RATELIMIT_EXC and isinstance(e, _RATELIMIT_EXC)) \
@@ -360,4 +386,149 @@ async def adjudicate_merge_pair(
             return data
         last_err = f"invalid/missing verdict {verdict!r} (attempt {parse_attempt + 1})"
         logger.warning(f"[merge arm] {last_err} for '{theme_a.get('name')}' × '{theme_b.get('name')}'")
+    return {"verdict": "ERROR", "reason": last_err[:300]}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# #505 nightly PARENT PASS — its OWN adjudicator (Sonnet), asking CONTAINMENT,
+# never this module's same-catalyst MERGE question. See the module docstring for
+# the 2026-09-26 preview that motivated this. ONLY caller: theme_engine._run_parent_pass.
+# ═════════════════════════════════════════════════════════════════════════════
+
+CONTAINMENT_VERDICTS = frozenset({"CHILD_OF", "INVERTED", "PEERS", "UNRELATED"})
+
+CONTAINMENT_ADJUDICATION_PROMPT_VERSION = "v1-2026-09-26-containment"
+
+# The two themes are labelled by ROLE (CANDIDATE CHILD / CANDIDATE PARENT), never A/B —
+# the 2026-09-26 preview found `adjudicate_merge_pair`'s reasoning sometimes named the
+# wrong side "Theme A"/"Theme B", and a role label cannot be misassigned the way a
+# positional letter can.
+CONTAINMENT_ADJUDICATION_PROMPT = """You adjudicate whether one stock-market THEME is a narrower
+SUB-THEME that sits INSIDE another, broader theme. The question is CONTAINMENT, not shared
+catalyst: does the CANDIDATE CHILD's stock selection ride a narrower SUB-DRIVER of the CANDIDATE
+PARENT's broader thesis — a slice, segment, sub-catalyst or specific mechanism that lives inside
+the parent's story — rather than a thesis of its own?
+
+Verdicts:
+- CHILD_OF: the CANDIDATE CHILD genuinely sits inside the CANDIDATE PARENT — its stocks ride a
+  sub-driver that lives inside the parent's broader thesis (e.g. "Fab Equipment Makers" is
+  CHILD_OF "Semiconductor Foundry Buildout": equipment capex is a leading indicator of foundry
+  demand, nested inside it, even though it can move somewhat independently).
+- INVERTED: the relationship is real but the labels are backwards for THIS pair — the CANDIDATE
+  PARENT is actually the narrower sub-theme sitting inside the CANDIDATE CHILD's broader thesis.
+- PEERS: the two themes are related (same industry, adjacent supply chain, shared sector) but sit
+  at the SAME level — neither one's thesis nests inside the other's.
+- UNRELATED: no containment relationship between the two at all.
+
+Member overlap alone is NEVER sufficient for CHILD_OF: the same companies can carry two theses at
+different levels, or two unrelated ones. Decide on whether the CHILD's story is a piece OF the
+PARENT's story.
+
+CANDIDATE CHILD: {child_name}
+{child_members}  {child_desc}
+
+CANDIDATE PARENT: {parent_name}
+{parent_members}  {parent_desc}
+
+Adjudicate with the tool. Fill analysis_scratchpad FIRST: state the CANDIDATE PARENT's broad
+thesis, then the CANDIDATE CHILD's thesis, then decide whether the child's thesis is a sub-driver
+riding inside the parent's (CHILD_OF), the reverse (INVERTED), a same-level relative (PEERS), or
+unconnected (UNRELATED)."""
+
+CONTAINMENT_ADJUDICATION_TOOL = {
+    "name": "adjudicate_theme_containment",
+    "description": "Record the containment adjudication for the candidate child/parent theme pair.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "analysis_scratchpad": {
+                "type": "string",
+                "description": "Reason FIRST: what is the CANDIDATE PARENT's broad thesis? What "
+                               "is the CANDIDATE CHILD's thesis — a sub-driver riding inside the "
+                               "parent's, the reverse, a same-level relative, or unconnected?",
+            },
+            "verdict": {"type": "string", "enum": ["CHILD_OF", "INVERTED", "PEERS", "UNRELATED"]},
+            "reason": {"type": "string", "description": "One sentence, ≤25 words"},
+        },
+        "required": ["analysis_scratchpad", "verdict", "reason"],
+    },
+}
+
+
+def build_containment_prompt(
+    child: dict, parent: dict,
+    sectors_by_ticker: dict[str, str] | None = None,
+) -> str:
+    return CONTAINMENT_ADJUDICATION_PROMPT.format(
+        child_name=child.get("name") or "",
+        child_desc=(child.get("description") or "")[:280],
+        child_members=_member_line(child, sectors_by_ticker),
+        parent_name=parent.get("name") or "",
+        parent_desc=(parent.get("description") or "")[:280],
+        parent_members=_member_line(parent, sectors_by_ticker),
+    )
+
+
+async def adjudicate_containment_pair(
+    child: dict,
+    parent: dict,
+    *,
+    client,
+    model: str = THEME_PARENT_ADJUDICATION_MODEL,
+    semaphore=None,
+    sectors_by_ticker: dict[str, str] | None = None,
+    log_spend: bool = False,
+) -> dict:
+    """#505 nightly PARENT PASS's OWN adjudicator — asks CONTAINMENT ("does the child sit
+    inside the parent?"), never the same-catalyst MERGE question `adjudicate_merge_pair`
+    asks. See the module docstring for the 2026-09-26 preview that motivated this (3
+    PARENT_CHILD / 5 MERGE / 29 DISTINCT of 37, DISTINCT on pairs that ARE containment).
+    ONLY caller: theme_engine._run_parent_pass — Arm B's own merge/DISTINCT/PARENT_CHILD
+    path (adjudicate_merge_pair, every other caller in this file) is untouched.
+
+    Runs on the SONNET tier (operator-approved 2026-09-26: "give the pass a CONTAINMENT
+    question and run it on the Sonnet tier"), via THEME_PARENT_ADJUDICATION_MODEL — a
+    tracked RESOLVED_ROLES binding, never a hardcoded id, so it upgrades with every other
+    auto-tracked sonnet role. Hardened the same way as adjudicate_merge_pair: forced
+    tool_choice, retry ONCE on a missing/invalid verdict, validation-style 429 backoff.
+    thinking=DISABLED (llm_thinking.THINKING_DISABLED) — Sonnet's unset-thinking default
+    SHARES max_tokens with the tool output (#575), and analysis_scratchpad already IS the
+    reasoning surface. Never raises — returns {"verdict": "ERROR", "reason": ...} so the
+    nightly pass fail-opens per pair.
+    """
+    prompt = build_containment_prompt(child, parent, sectors_by_ticker)
+    last_err = ""
+    for parse_attempt in range(2):
+        try:
+            resp = await _create_with_backoff(
+                client, prompt, model, semaphore,
+                tool=CONTAINMENT_ADJUDICATION_TOOL,
+                max_tokens=max_tokens_for("theme_parent_adjudication"),
+                thinking=llm_thinking.DISABLED,
+            )
+        except Exception as e:
+            logger.warning(
+                f"[parent pass] containment adjudication call failed for "
+                f"'{child.get('name')}' × '{parent.get('name')}': {e}"
+            )
+            return {"verdict": "ERROR", "reason": f"{type(e).__name__}: {e}"[:300]}
+        if log_spend:
+            try:
+                from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+                await log_anthropic_call_safe(model=model, caller="theme_parent_adjudication",
+                                              response=resp)
+            except Exception as e:  # spend telemetry must never break the pass
+                logger.debug(f"[parent pass] spend telemetry failed (non-fatal): {e}")
+        block = next(
+            (b for b in (getattr(resp, "content", None) or [])
+             if getattr(b, "type", "") == "tool_use"),
+            None,
+        )
+        data = dict(getattr(block, "input", None) or {}) if block is not None else {}
+        verdict = data.get("verdict")
+        if verdict in CONTAINMENT_VERDICTS:
+            data["prompt_version"] = CONTAINMENT_ADJUDICATION_PROMPT_VERSION
+            return data
+        last_err = f"invalid/missing verdict {verdict!r} (attempt {parse_attempt + 1})"
+        logger.warning(f"[parent pass] {last_err} for '{child.get('name')}' × '{parent.get('name')}'")
     return {"verdict": "ERROR", "reason": last_err[:300]}

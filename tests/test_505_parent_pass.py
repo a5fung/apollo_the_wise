@@ -8,10 +8,11 @@ What is pinned here, all RED on the pre-#505 engine:
     territory, no cycle, catch-all / Fading / Retired never on either side,
     priority = shared tickers > shared name tokens > parent breadth, cap.
   * `_run_parent_pass` — toggle OFF returns [] before ANY I/O (byte-identical
-    engine); ON: PARENT_CHILD links (source-blind — a `shadow_promoted` theme
-    is parented exactly like a `live` one), DISTINCT → 30d cooldown, MERGE →
-    signal only (never executed), inverted → no link, ERROR → fail-open, a
-    raising adjudicator never breaks the pass, one RAN heartbeat per run.
+    engine); ON: asks `adjudicate_containment_pair` (Sonnet), NEVER Arm B's
+    `adjudicate_merge_pair`; CHILD_OF links (source-blind — a `shadow_promoted`
+    theme is parented exactly like a `live` one), PEERS/UNRELATED → 30d
+    cooldown, INVERTED → no link + its own shorter cooldown, ERROR → fail-open,
+    a raising adjudicator never breaks the pass, one RAN heartbeat per run.
   * `run_theme_engine` wiring order: after Arm B, before `_restore_sub_theme_links`.
   * `theme_ecosystems.containment_parent` / `resolve_theme_parent` — the
     overloaded-column split (a Retired successor pointer is NOT a parent) and
@@ -20,6 +21,13 @@ What is pinned here, all RED on the pre-#505 engine:
     relationship's first operator surface; `_compute_scored_themes` carries
     `parent_theme` through so the board has something to nest.
   * The DB toggle fails CLOSED.
+
+2026-09-26 (#505): the pass switched from reusing Arm B's same-catalyst MERGE
+adjudicator to its own CONTAINMENT adjudicator (`adjudicate_containment_pair`,
+Sonnet) — a paid preview showed the merge question answers the wrong thing for
+parenting (`scripts/probes/_505_parent_pass_preview_2026-09-26.txt`: 3
+PARENT_CHILD / 5 MERGE / 29 DISTINCT of 37). Verdict vocabulary is now
+CHILD_OF / INVERTED / PEERS / UNRELATED (never MERGE — that stays Arm B's own).
 
 Run: pytest tests/test_505_parent_pass.py -v
 """
@@ -57,8 +65,12 @@ ECO = {BROAD: "E-INS", NARROW: "E-INS", OTHER_ECO: "E-BANKFIN"}
 
 
 def _wire(monkeypatch, verdict_by_child: dict, *, raise_for: set[str] = frozenset()):
-    """Fake adjudicator keyed by the CHILD's name; captured audits + cooldowns;
-    no DB (cooldown read + Arm-B territory are injected as empty)."""
+    """Fake CONTAINMENT adjudicator keyed by the CHILD's name; captured audits +
+    cooldowns; no DB (cooldown read + Arm-B territory are injected as empty).
+
+    Also proves the pass never falls back to Arm B's `adjudicate_merge_pair`: that
+    name is wired to an assertion-raising fake, so any test that reaches it fails
+    loudly instead of silently answering the wrong question."""
     events: list[tuple[str, str, str]] = []
     cooldowns: list[tuple[tuple[str, str], str, int]] = []
 
@@ -71,16 +83,21 @@ def _wire(monkeypatch, verdict_by_child: dict, *, raise_for: set[str] = frozense
     async def fake_add_cooldown(a, b, reason="", days=30, verdict="DISTINCT"):
         cooldowns.append((pair_key(a, b), verdict, days))
 
-    async def fake_adjudicate(theme_a, theme_b, **kw):
-        # parent = A, child = B (Route A's convention)
-        if theme_b["name"] in raise_for:
+    async def fake_adjudicate_containment(child, parent, **kw):
+        if child["name"] in raise_for:
             raise RuntimeError("adjudicator exploded")
-        return verdict_by_child[theme_b["name"]]
+        return verdict_by_child[child["name"]]
+
+    async def fake_adjudicate_merge_never(*a, **kw):
+        raise AssertionError(
+            "parent pass called Arm B's adjudicate_merge_pair — it must ask "
+            "adjudicate_containment_pair (#505 2026-09-26)")
 
     monkeypatch.setattr(te, "log_audit_event", fake_audit)
     monkeypatch.setattr(te, "get_merge_distinct_pairs", fake_get_pairs)
     monkeypatch.setattr(te, "add_merge_distinct_cooldown", fake_add_cooldown)
-    monkeypatch.setattr(te, "adjudicate_merge_pair", fake_adjudicate)
+    monkeypatch.setattr(te, "adjudicate_containment_pair", fake_adjudicate_containment)
+    monkeypatch.setattr(te, "adjudicate_merge_pair", fake_adjudicate_merge_never)
     monkeypatch.setattr(te, "_get_anthropic_client", lambda: object())
     return events, cooldowns
 
@@ -215,6 +232,7 @@ async def test_toggle_off_returns_before_any_io(monkeypatch):
         raise AssertionError("parent pass touched I/O with the toggle off")
 
     monkeypatch.setattr(te, "get_merge_distinct_pairs", boom)
+    monkeypatch.setattr(te, "adjudicate_containment_pair", boom)
     monkeypatch.setattr(te, "adjudicate_merge_pair", boom)
     monkeypatch.setattr(te, "log_audit_event", boom)
     board = _board()
@@ -225,16 +243,40 @@ async def test_toggle_off_returns_before_any_io(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_parent_child_verdict_sets_link_and_map(monkeypatch):
-    events, cooldowns = _wire(monkeypatch, {NARROW: {"verdict": "PARENT_CHILD", "child": "B",
-                                                     "reason": "annuity slice"}})
+async def test_pass_calls_containment_adjudicator_never_the_merge_one(monkeypatch):
+    """#505's own CONTAINMENT question, never Arm B's same-catalyst MERGE question —
+    the exact fix for the 2026-09-26 preview (the merge adjudicator returned 29/37
+    DISTINCT on pairs that ARE containment, e.g. 'Pure-Play NAND/DRAM Memory Chip
+    Makers' vs 'AI-Driven Memory & Storage Supply Shortage')."""
+    containment_calls: list[tuple[str, str]] = []
+    merge_calls: list[tuple[str, str]] = []
+
+    async def fake_containment(child, parent, **kw):
+        containment_calls.append((child["name"], parent["name"]))
+        return {"verdict": "CHILD_OF", "reason": "sub-driver"}
+
+    async def fake_merge(theme_a, theme_b, **kw):
+        merge_calls.append((theme_a["name"], theme_b["name"]))
+        return {"verdict": "PARENT_CHILD", "child": "B"}
+
+    _wire(monkeypatch, {})
+    monkeypatch.setattr(te, "adjudicate_containment_pair", fake_containment)
+    monkeypatch.setattr(te, "adjudicate_merge_pair", fake_merge)
+    await te._run_parent_pass(_board(), {}, enabled=True, eco_map=ECO)
+    assert containment_calls == [(NARROW, BROAD)]
+    assert merge_calls == []
+
+
+@pytest.mark.asyncio
+async def test_child_of_verdict_sets_link_and_map(monkeypatch):
+    events, cooldowns = _wire(monkeypatch, {NARROW: {"verdict": "CHILD_OF", "reason": "annuity slice"}})
     board = _board()
     parents: dict[str, str] = {}
     out = await te._run_parent_pass(board, parents, enabled=True, eco_map=ECO)
     child = next(t for t in board if t["name"] == NARROW)
     assert child["parent_theme"] == BROAD
     assert parents == {NARROW: BROAD}          # _restore_sub_theme_links re-sets from this
-    assert out[0]["verdict"] == "PARENT_CHILD"
+    assert out[0]["verdict"] == "CHILD_OF"
     assert cooldowns == []
     types = [e[0] for e in events]
     assert types.count("theme_parent_pass_linked") == 1
@@ -245,7 +287,7 @@ async def test_parent_child_verdict_sets_link_and_map(monkeypatch):
 async def test_shadow_promoted_theme_parented_exactly_like_live(monkeypatch):
     """The path that NEVER reached the adjudicator (theme_engine.py:1926-27 in
     July). The pass reads the board, not the birth path — source is ignored."""
-    _wire(monkeypatch, {NARROW: {"verdict": "PARENT_CHILD", "child": "B"}})
+    _wire(monkeypatch, {NARROW: {"verdict": "CHILD_OF"}})
     board = _board()
     next(t for t in board if t["name"] == NARROW)["source"] = "shadow_promoted"
     parents: dict[str, str] = {}
@@ -255,38 +297,35 @@ async def test_shadow_promoted_theme_parented_exactly_like_live(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_distinct_writes_30d_cooldown_no_link(monkeypatch):
-    events, cooldowns = _wire(monkeypatch, {NARROW: {"verdict": "DISTINCT", "reason": "different driver"}})
+async def test_peers_writes_30d_cooldown_no_link(monkeypatch):
+    events, cooldowns = _wire(monkeypatch, {NARROW: {"verdict": "PEERS", "reason": "same level, different driver"}})
     board = _board()
     await te._run_parent_pass(board, {}, enabled=True, eco_map=ECO)
     assert next(t for t in board if t["name"] == NARROW)["parent_theme"] is None
-    assert cooldowns == [(pair_key(NARROW, BROAD), "DISTINCT", te.MERGE_DISTINCT_COOLDOWN_DAYS)]
+    assert cooldowns == [(pair_key(NARROW, BROAD), "PEERS", te.MERGE_DISTINCT_COOLDOWN_DAYS)]
     assert any(e[0] == "theme_parent_pass_distinct" for e in events)
 
 
 @pytest.mark.asyncio
-async def test_merge_verdict_is_a_signal_never_executed(monkeypatch):
-    events, cooldowns = _wire(monkeypatch, {NARROW: {"verdict": "MERGE", "reason": "same driver"}})
+async def test_unrelated_writes_30d_cooldown_no_link(monkeypatch):
+    events, cooldowns = _wire(monkeypatch, {NARROW: {"verdict": "UNRELATED", "reason": "no relationship"}})
     board = _board()
-    n_before = len(board)
     await te._run_parent_pass(board, {}, enabled=True, eco_map=ECO)
-    assert len(board) == n_before                       # nothing merged / retired
-    assert all(t["stage"] != "Retired" for t in board)
     assert next(t for t in board if t["name"] == NARROW)["parent_theme"] is None
-    assert cooldowns == [(pair_key(NARROW, BROAD), "MERGE", te.PARENT_PASS_MERGE_SIGNAL_COOLDOWN_DAYS)]
-    sig = [e for e in events if e[0] == "theme_parent_pass_merge_signal"]
-    assert len(sig) == 1 and "NOT executed" in sig[0][1]
+    assert cooldowns == [(pair_key(NARROW, BROAD), "UNRELATED", te.MERGE_DISTINCT_COOLDOWN_DAYS)]
+    assert any(e[0] == "theme_parent_pass_distinct" for e in events)
 
 
 @pytest.mark.asyncio
-async def test_inverted_parent_child_writes_no_link(monkeypatch):
-    """The adjudicator naming the BROADER theme the child: fail-closed, no link."""
-    events, cooldowns = _wire(monkeypatch, {NARROW: {"verdict": "PARENT_CHILD", "child": "A"}})
+async def test_inverted_writes_no_link_shorter_cooldown(monkeypatch):
+    """The adjudicator saying the candidate PARENT actually sits inside the
+    candidate CHILD: fail-closed, no link, its OWN (shorter) cooldown."""
+    events, cooldowns = _wire(monkeypatch, {NARROW: {"verdict": "INVERTED", "reason": "labels backwards"}})
     board = _board()
     parents: dict[str, str] = {}
     await te._run_parent_pass(board, parents, enabled=True, eco_map=ECO)
     assert all(t["parent_theme"] is None for t in board) and parents == {}
-    assert cooldowns[0][1] == "PARENT_CHILD_INVERTED"
+    assert cooldowns == [(pair_key(NARROW, BROAD), "INVERTED", te.PARENT_PASS_INVERTED_COOLDOWN_DAYS)]
     assert any(e[0] == "theme_parent_pass_inverted" for e in events)
 
 

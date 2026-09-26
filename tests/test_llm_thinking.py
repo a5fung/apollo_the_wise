@@ -60,10 +60,17 @@ def test_expected_schema_bounded_callers():
 
     theme_rename joined 2026-08-26 (#214 rename-instead-of-strip): it is a forced
     report_themes tool call over ONE cohort with a terse analysis_scratchpad — the
-    same schema-bounded shape as theme_split, which is already on this list."""
+    same schema-bounded shape as theme_split, which is already on this list.
+
+    theme_parent_adjudication joined 2026-09-26 (#505's own containment adjudicator,
+    Sonnet tier): forced tool_choice, terse analysis_scratchpad + verdict + one-sentence
+    reason — the same schema-bounded shape, now on a tier where an unset thinking budget
+    silently shares max_tokens with the tool output (the #575 root cause this whole
+    registry exists for)."""
     assert llm_thinking.THINKING_DISABLED == {
         "theme_validation", "theme_assignment", "theme_split",
         "narrative_theme_discovery", "theme_synthesis", "theme_rename",
+        "theme_parent_adjudication",
     }
 
 

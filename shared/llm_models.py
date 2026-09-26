@@ -205,6 +205,7 @@ ROLE_LABELS: dict[str, str] = {
     "CATALYST_TYPE_MODEL": "catalyst type",
     "DESCRIPTION_MODEL": "descriptions",
     "ECOSYSTEM_ASSIGN_MODEL": "ecosystem assignment",
+    "THEME_PARENT_ADJUDICATION_MODEL": "theme parent check",
     "POSTMORTEM_MODEL": "trade postmortems",
     "SYSTEM_REVIEW_MODEL": "weekly review",
     "COMPRESSION_MODEL": "conversation compression",
@@ -242,6 +243,11 @@ RESOLVED_ROLES: dict[str, str] = {
     "ORCHESTRATOR_MODEL": "sonnet",
     "THEME_MODEL": "sonnet",
     "SYNTHESIS_MODEL": "sonnet",
+    # #505 parent-pass containment adjudicator (2026-09-26, operator-approved: "give the
+    # pass a CONTAINMENT question and run it on the Sonnet tier"). A brand-new role, not a
+    # binding change to an existing one — opts straight into the tracked pool so it never
+    # starts life stale.
+    "THEME_PARENT_ADJUDICATION_MODEL": "sonnet",
     "GROUNDED_GRADE_MODEL": "sonnet",
     "MATERIALITY_MODEL": "sonnet",
     "METRICS_EXTRACTION_MODEL": "sonnet",
@@ -325,6 +331,12 @@ ECOSYSTEM_ASSIGN_MODEL = effective_model("ECOSYSTEM_ASSIGN_MODEL")
 # Cross-ticker emerging-theme synthesis (theme_synthesis.py — #240 advisory
 # feed; Sonnet: the same cross-sector narrative reasoning tier as THEME_MODEL)
 SYNTHESIS_MODEL = effective_model("SYNTHESIS_MODEL")
+# #505 nightly PARENT PASS's own adjudicator (theme_merge_arm.adjudicate_containment_pair) —
+# asks CONTAINMENT ("does the child sit inside the parent?"), never Arm B's same-catalyst
+# MERGE question. Sonnet, operator-approved 2026-09-26 after the paid preview
+# (scripts/probes/_505_parent_pass_preview_2026-09-26.txt) showed the merge question answers
+# the wrong thing for parenting.
+THEME_PARENT_ADJUDICATION_MODEL = effective_model("THEME_PARENT_ADJUDICATION_MODEL")
 
 # EP holistic grade judge (ADR 0011; W1 eval owns this choice).
 # OPUS since 2026-06-10: operator-labeled closed-gap eval (lit Lane-2 theme

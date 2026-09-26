@@ -294,6 +294,16 @@ CEILINGS: dict[str, OutputCeiling] = {
         700, None, "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "107 haiku calls, max completed 457 (65% of cap). Model passed per-call "
         "(default HAIKU tier constant, no tracked role)."),
+    "theme_parent_adjudication": OutputCeiling(
+        1000, "THEME_PARENT_ADJUDICATION_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        "NEW caller 2026-09-26 (#505's own containment adjudicator, replacing a reuse of "
+        "theme_merge_adjudication's Haiku call). No sample yet — sized by ANALOGY: identical "
+        "output shape to theme_merge_adjudication (terse analysis_scratchpad + verdict enum + "
+        "<=25-word reason, no merged_name/driver_a/driver_b fields), same 700-token envelope "
+        "measured there, plus headroom for Sonnet's typically longer prose and "
+        "thinking=DISABLED (llm_thinking.THINKING_DISABLED) so this is a text-only budget from "
+        "day one, not a shared thinking+text one (#575). PROVISIONAL: re-derive from api_usage "
+        "after the first real firings (cap PARENT_PASS_CAP_PER_NIGHT=6/night)."),
     "theme_ecosystem_assignment": OutputCeiling(
         1000, "ECOSYSTEM_ASSIGN_MODEL", "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "240 haiku calls, max completed 757 (76% of cap)."),

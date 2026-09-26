@@ -24,7 +24,8 @@ def test_role_constants_exist():
                  "THEME_ADVISOR_MODEL", "JUDGE_MODEL", "GROUNDED_GRADE_MODEL",
                  "MATERIALITY_MODEL", "METRICS_EXTRACTION_MODEL",
                  "CATALYST_TYPE_MODEL", "POSTMORTEM_MODEL", "SYSTEM_REVIEW_MODEL",
-                 "DESCRIPTION_MODEL", "COMPRESSION_MODEL", "HEALTHCHECK_MODEL"):
+                 "DESCRIPTION_MODEL", "COMPRESSION_MODEL", "HEALTHCHECK_MODEL",
+                 "THEME_PARENT_ADJUDICATION_MODEL"):
         assert hasattr(llm_models, role), f"registry missing role constant {role}"
 
 

@@ -155,6 +155,7 @@ def test_call_sites_bind_the_expected_registry_keys():
         "agents/market_intelligence/catalyst_metrics_extractor.py":
             'max_tokens_for("catalyst_metrics_extractor")',
         "agents/market_intelligence/theme_engine.py": 'max_tokens_for("theme_advisor_discovery")',
+        "agents/market_intelligence/theme_merge_arm.py": 'max_tokens_for("theme_parent_adjudication")',
         "core/context.py": 'max_tokens_for("context_compression")',
         "channels/telegram.py": 'max_tokens_for("healthcheck")',
     }

@@ -253,3 +253,130 @@ def test_member_lines_included_when_present_and_omitted_for_corpus_pairs():
     corpus_style = arm.build_adjudication_prompt(
         {"name": "A", "description": "a"}, {"name": "B", "description": "b"})
     assert "Members:" not in corpus_style
+
+
+# ── Stage B variant: the #505 containment adjudicator (Sonnet) ──────────────
+# Built 2026-09-26 after a paid preview showed adjudicate_merge_pair (above) asks
+# the wrong question for parenting (scripts/probes/_505_parent_pass_preview_2026-09-26.txt:
+# 3 PARENT_CHILD / 5 MERGE / 29 DISTINCT of 37). ONLY consumer:
+# theme_engine._run_parent_pass — every test here proves it is a SEPARATE adjudicator
+# from adjudicate_merge_pair, never a variant of it.
+
+def test_containment_tool_schema_scratchpad_first_required_no_a_b_fields():
+    required = arm.CONTAINMENT_ADJUDICATION_TOOL["input_schema"]["required"]
+    assert required[0] == "analysis_scratchpad"
+    assert "verdict" in required
+    props = arm.CONTAINMENT_ADJUDICATION_TOOL["input_schema"]["properties"]
+    assert props["verdict"]["enum"] == ["CHILD_OF", "INVERTED", "PEERS", "UNRELATED"]
+    # The MERGE tool's A/B disambiguator ("child": enum ["A", "B"]) has no equivalent
+    # here — the containment prompt never needs one, it labels by ROLE.
+    assert "child" not in props
+    assert "driver_a" not in props and "driver_b" not in props
+
+
+def test_containment_prompt_labels_child_and_parent_never_a_b():
+    p = arm.build_containment_prompt(
+        {"name": "Narrow Theme", "description": "narrow thesis"},
+        {"name": "Broad Theme", "description": "broad thesis"},
+    )
+    assert "CANDIDATE CHILD: Narrow Theme" in p
+    assert "CANDIDATE PARENT: Broad Theme" in p
+    assert "narrow thesis" in p and "broad thesis" in p
+    assert "THEME A" not in p and "THEME B" not in p
+
+
+def test_containment_prompt_member_lines_included_when_present():
+    p = arm.build_containment_prompt(
+        {"name": "Child", "description": "c", "tickers": ["NVDA", "AMD"]},
+        {"name": "Parent", "description": "p"},
+        sectors_by_ticker={"NVDA": "Technology"},
+    )
+    assert "Members: NVDA (Technology), AMD" in p
+
+
+def test_adjudicate_containment_defaults_to_sonnet_role_never_hardcoded():
+    import inspect
+    sig = inspect.signature(arm.adjudicate_containment_pair)
+    assert sig.parameters["model"].default == arm.THEME_PARENT_ADJUDICATION_MODEL
+    # The role constant itself must resolve to a real Claude model id, not a bare tier
+    # literal — proves it goes through effective_model()/RESOLVED_ROLES, not a hardcode.
+    assert arm.THEME_PARENT_ADJUDICATION_MODEL.startswith("claude-")
+
+
+def test_adjudicate_containment_happy_path_pins_tool_choice_ceiling_and_thinking():
+    client = _FakeClient([_Resp([_ToolBlock({
+        "analysis_scratchpad": "parent thesis; child sub-driver", "verdict": "CHILD_OF",
+        "reason": "child rides a sub-driver of the parent's thesis",
+    })])])
+    v = asyncio.run(arm.adjudicate_containment_pair(
+        {"name": "Child", "description": "c"}, {"name": "Parent", "description": "p"},
+        client=client))
+    assert v["verdict"] == "CHILD_OF"
+    kw = client.calls[0]
+    assert "temperature" not in kw
+    assert kw["tool_choice"] == {"type": "tool", "name": "adjudicate_theme_containment"}
+    assert kw["tools"] == [arm.CONTAINMENT_ADJUDICATION_TOOL]
+    assert kw["model"] == arm.THEME_PARENT_ADJUDICATION_MODEL
+    assert kw["max_tokens"] == arm.max_tokens_for("theme_parent_adjudication")
+    # Sonnet's unset-thinking default SHARES max_tokens with the tool output (#575) —
+    # this forced-tool/terse-scratchpad shape disables it explicitly.
+    assert kw["thinking"] == arm.llm_thinking.DISABLED
+
+
+def test_adjudicate_merge_pair_call_site_unaffected_by_the_generalization():
+    """`_create_with_backoff` grew tool/max_tokens/thinking kwargs for the containment
+    adjudicator above — adjudicate_merge_pair's own call site passes none of them, so
+    it must still get its OWN tool/ceiling and NO thinking kwarg at all (Haiku has no
+    extended-thinking lever)."""
+    client = _FakeClient([_Resp([_ToolBlock({
+        "analysis_scratchpad": "s", "verdict": "DISTINCT",
+        "driver_a": "a", "driver_b": "b", "reason": "r",
+    })])])
+    asyncio.run(arm.adjudicate_merge_pair(
+        {"name": "A", "description": "a"}, {"name": "B", "description": "b"}, client=client))
+    kw = client.calls[0]
+    assert kw["tools"] == [arm.MERGE_ADJUDICATION_TOOL]
+    assert kw["max_tokens"] == arm.max_tokens_for("theme_merge_adjudication")
+    assert "thinking" not in kw
+
+
+def test_adjudicate_containment_retries_parse_failure_then_errors():
+    client = _FakeClient([
+        _Resp([]),                                       # no tool block
+        _Resp([_ToolBlock({"verdict": "MAYBE"})]),        # invalid verdict
+    ])
+    v = asyncio.run(arm.adjudicate_containment_pair(
+        {"name": "Child", "description": "c"}, {"name": "Parent", "description": "p"},
+        client=client))
+    assert v["verdict"] == "ERROR"
+    assert len(client.calls) == 2                        # exactly one retry
+
+
+def test_adjudicate_containment_recovers_on_retry():
+    client = _FakeClient([
+        _Resp([]),
+        _Resp([_ToolBlock({"analysis_scratchpad": "s", "verdict": "PEERS", "reason": "r"})]),
+    ])
+    v = asyncio.run(arm.adjudicate_containment_pair(
+        {"name": "Child", "description": "c"}, {"name": "Parent", "description": "p"},
+        client=client))
+    assert v["verdict"] == "PEERS"
+
+
+def test_adjudicate_containment_logs_spend_as_theme_parent_adjudication(monkeypatch):
+    client = _FakeClient([_Resp([_ToolBlock({
+        "analysis_scratchpad": "s", "verdict": "CHILD_OF", "reason": "sub-driver",
+    })])])
+    logged: dict = {}
+
+    async def fake_log_spend(*, model, caller, response):
+        logged["model"] = model
+        logged["caller"] = caller
+
+    monkeypatch.setattr(
+        "agents.market_intelligence.spend_tracker.log_anthropic_call_safe", fake_log_spend)
+    v = asyncio.run(arm.adjudicate_containment_pair(
+        {"name": "Child", "description": "c"}, {"name": "Parent", "description": "p"},
+        client=client, log_spend=True))
+    assert v["verdict"] == "CHILD_OF"
+    assert logged == {"model": arm.THEME_PARENT_ADJUDICATION_MODEL, "caller": "theme_parent_adjudication"}

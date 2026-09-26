@@ -5,8 +5,10 @@ What it prints, for the latest `mi_themes` snapshot:
      ecosystem is the default parent): CHILD of a real theme / ROOT under its
      ecosystem / CATCH-ALL root under E-UNASSIGNED — via the SAME
      `theme_ecosystems.resolve_theme_parent` the /themes render uses.
-  2. What an ARMED night would ask the ADR-0025 adjudicator — via the SAME
-     pure `theme_engine.propose_parent_candidates` the nightly pass calls:
+  2. What an ARMED night would ask the pass's OWN containment adjudicator
+     (`theme_merge_arm.adjudicate_containment_pair`, Sonnet tier — never Arm B's
+     same-catalyst merge adjudicator) — via the SAME pure
+     `theme_engine.propose_parent_candidates` the nightly pass calls:
      child → best candidate parent + why, tonight's capped slice and the
      whole backfill queue.
   3. Counts: themes / already parented / would-ask / roots / catch-all, the 5
@@ -54,9 +56,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from agents.market_intelligence import theme_engine as te  # noqa: E402
 from agents.market_intelligence import theme_ecosystems as tx  # noqa: E402
 from agents.market_intelligence.theme_merge_arm import (  # noqa: E402
-    build_adjudication_prompt, pair_key, propose_merge_pairs,
+    build_containment_prompt, pair_key, propose_merge_pairs,
 )
-from shared.llm_models import HAIKU, pricing_for  # noqa: E402
+from shared.llm_models import THEME_PARENT_ADJUDICATION_MODEL, pricing_for  # noqa: E402
 
 HOST = "apollo@87.99.134.162"
 PSQL = "docker exec -i apollo-postgres psql -U apollo -d apollo -At -F '|' -c"
@@ -66,7 +68,7 @@ TICK_SEP = ","
 Q_BOARD = (
     "SELECT name, stage, COALESCE(parent_theme,''), source, "
     "array_to_string(tickers, ','), COALESCE(score,0), "
-    # Real description — the same row `build_adjudication_prompt` reads in
+    # Real description — the same row `build_containment_prompt` reads in
     # production (--adjudicate needs it; a blank description was #505's own
     # sign-off tooling defect, fixed here). Newlines flattened and any literal
     # '|' escaped so this probe's own line/pipe-split `psql()` parser (below)
@@ -151,7 +153,7 @@ def load_board() -> tuple[str, list[dict]]:
             "name": name, "stage": stage, "parent_theme": parent or None, "source": source,
             "tickers": [t for t in tickers.split(TICK_SEP) if t], "score": float(score),
             # The real mi_themes description for this exact board row — what
-            # `build_adjudication_prompt` reads (`--adjudicate` truncates to 280
+            # `build_containment_prompt` reads (`--adjudicate` truncates to 280
             # chars itself). A prior version of this probe hardcoded "" here with
             # a comment claiming --adjudicate refetched it; it never did, so every
             # --adjudicate run sent the adjudicator a BLANK thesis for both sides.
@@ -221,14 +223,16 @@ def main() -> int:
                if t["name"] not in would_ask and eco_map.get(t["name"], tx.E_UNASSIGNED) != tx.E_UNASSIGNED]
     P(f"  childless non-Fading themes with NO eligible candidate (alone in their ecosystem, or every "
       f"broader theme is cooled-down / Arm-B territory): {len(no_cand)} → stay ROOT")
-    # Cost as ONE number (pricing_for): prompt length from the REAL prompt builder.
-    price = pricing_for(HAIKU)
+    # Cost as ONE number (pricing_for): prompt length from the REAL prompt builder, the
+    # REAL model (THEME_PARENT_ADJUDICATION_MODEL — the pass's own containment
+    # adjudicator, Sonnet tier, not Arm B's Haiku merge adjudicator).
+    price = pricing_for(THEME_PARENT_ADJUDICATION_MODEL)
     by_name = {t["name"]: t for t in board}
-    in_tok = sum(len(build_adjudication_prompt(by_name[c["parent"]], by_name[c["child"]], sectors)) / 4
+    in_tok = sum(len(build_containment_prompt(by_name[c["child"]], by_name[c["parent"]], sectors)) / 4
                  for c in queue)
     out_tok = 350 * len(queue)
     cost = in_tok / 1e6 * price["input"] + out_tok / 1e6 * price["output"]
-    P(f"BACKFILL COST (whole queue, {HAIKU}): ~${cost:.2f} for {len(queue)} call(s) "
+    P(f"BACKFILL COST (whole queue, {THEME_PARENT_ADJUDICATION_MODEL}): ~${cost:.2f} for {len(queue)} call(s) "
       f"(~{in_tok/ max(len(queue),1):.0f} prompt tokens each); steady state ≤{te.PARENT_PASS_CAP_PER_NIGHT} calls/night")
     P("")
 
@@ -296,7 +300,8 @@ def main() -> int:
                 line += f"   ask: → '{ask['parent']}' ({'tonight' if ask in tonight else 'queued'})"
             P(line)
     P("")
-    P("NOT IN THIS REPORT: verdicts. PARENT_CHILD/DISTINCT/MERGE come from the paid adjudicator — the flip gate.")
+    P("NOT IN THIS REPORT: verdicts. CHILD_OF/INVERTED/PEERS/UNRELATED come from the paid "
+      "containment adjudicator — the flip gate.")
 
     report = "\n".join(L)
     print(report)
@@ -309,18 +314,18 @@ def main() -> int:
 
 
 async def _adjudicate(queue, by_name, sectors, out_path):
-    """OPERATOR-AUTHORISED ONLY. Real verdicts for the queue, log_spend=False."""
-    from agents.market_intelligence.theme_merge_arm import adjudicate_merge_pair
+    """OPERATOR-AUTHORISED ONLY. Real verdicts for the queue, log_spend=False — the SAME
+    `adjudicate_containment_pair` an armed night calls, so this preview is exactly what an
+    armed night would ask (never Arm B's `adjudicate_merge_pair`)."""
+    from agents.market_intelligence.theme_merge_arm import adjudicate_containment_pair
     from shared.llm_client import make_async_anthropic
     client = make_async_anthropic()
     lines = ["", "ADJUDICATED (real verdicts, no spend rows):"]
     tally = Counter()
     for c in queue:
-        v = await adjudicate_merge_pair(by_name[c["parent"]], by_name[c["child"]], client=client,
-                                        sectors_by_ticker=sectors, log_spend=False)
+        v = await adjudicate_containment_pair(by_name[c["child"]], by_name[c["parent"]], client=client,
+                                              sectors_by_ticker=sectors, log_spend=False)
         verdict = v.get("verdict")
-        if verdict == "PARENT_CHILD" and v.get("child", "B") == "A":
-            verdict = "PARENT_CHILD_INVERTED"
         tally[verdict] += 1
         lines.append(f"  '{c['child']}' → '{c['parent']}': {verdict}  {str(v.get('reason') or '')[:160]!r}")
     lines.append(f"  tally: {dict(tally)}")

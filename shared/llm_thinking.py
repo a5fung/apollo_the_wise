@@ -52,4 +52,8 @@ THINKING_DISABLED = frozenset({
     "theme_split",                 # forced tool (tool_choice=any) + analysis_scratchpad
     "narrative_theme_discovery",   # forced tool from turn 1 (report_narrative_themes), no advisor branch
     "theme_synthesis",             # forced tool from turn 1 (propose_emerging_cohorts), single-shot, no advisor branch
+    "theme_parent_adjudication",   # #505 containment adjudicator (Sonnet): forced tool, terse
+                                    # analysis_scratchpad + verdict + one-sentence reason — same
+                                    # schema-bounded shape as theme_merge_adjudication (Haiku,
+                                    # untouched, has no thinking lever to begin with).
 })
