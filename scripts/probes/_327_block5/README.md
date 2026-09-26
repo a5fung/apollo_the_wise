@@ -1,4 +1,4 @@
-# Block 5 (2026-09-26) — P0 · P1 · P2 · P3 · P5 · P6
+# Block 5 (2026-09-26) — P0 · P1 · P2 · P3 · P5 · P6 · P7
 
 The write-up (the deliverable, with the fork) is `docs/analysis/327_exit_determination_2026-09-26.md`.
 
@@ -27,6 +27,12 @@ python3 p6_leaders_mgmt.py   # -> p6_summary.json + p6_cells.tsv (committed) + p
                               #    gitignored): leader selection x EP-style management (partial /
                               #    breakeven / trail) x 3 stops, both checkpoints, matched control,
                               #    the big-runner read (needs the P0 + P3 pulls; ~8 s)
+./extract_p7.sh              # three more read-only pulls (gitignored): SPY/QQQ/IWM daily bars, the EP
+                              #    scan log 08-20..09-25, mi_ep_alerts since July (ep_scan_log.pulled_at)
+python3 p7_diagnosis.py      # -> p7_summary.json (committed) + p7_rows.csv / p7_q2_rows.csv (gitignored):
+                              #    the DIAGNOSIS — cohort cut (EP-alert vs screen-rejected), the path (Q1),
+                              #    fire vs P2's control with pre-entry features (Q2), buckets + runner AUCs
+                              #    (Q3), the EP's own sessions 1-3 (Q4), loss shares (~4 s)
 ```
 
 ## P0 result — PASS, checkpoint stays s10
@@ -315,6 +321,30 @@ non-fire control beats the fire cells on mean in 40 of 40 cells at both checkpoi
 `walk_arm(trail_only)`, 235 = the live ladder's resting stop ratcheted to the trail line and hit on the LOW
 (a mechanism difference: live exits on an intraday touch of yesterday's MA, compute_settlement on a close
 below), 11 = the day-0 close in the SMA window, 3 pending at a hole.
+
+## P7 — the diagnosis (his 09-26 question: "we need to understand what the issue is")
+
+The write-up is `docs/analysis/327_delayed_entry_diagnosis_2026-09-26.md`; the probe's docstring is the
+pre-registration of record (committed before any result, `0f8fa521`). Population = the 3,398 fires with >= 10
+sessions elapsed, cut FIRST by what our own EP screen did on the gap day (live `mi_ep_alerts` join; scan-log
+rejection stage). Outcome = the lane's own arm at s10 from production's recorded settlement (+ the 259 still-open
+rows walked with the real `sma_trail_line`), Block 5's 0.5% width floor applied. Anchors: the walk reproduces
+production on 1,139 of 1,141 settled rows; this read on P3's own ids is -0.283R vs P3's verified -0.290R.
+
+| | value |
+|---|---|
+| fires on campaigns our screen REJECTED on the gap day | 3,347 of 3,398 (98.5%); 3,460 of all 3,767 fires — 92% at the universe floor, 783 campaigns for a prior close under $5 |
+| fires on real EP alerts | 51 (44 floored) on 15 names; 22 alert campaigns / 100 fires in the whole extract |
+| total R10, floored (n = 3,228) | -1,278.6R, mean -0.40R, 88.9% stopped by s10, 2.26% kept >= 3R |
+| stopped on the fire session / within two sessions | 1,383 (42.8%) = 108% of the loss / 2,346 (72.7%) = 135% of the loss; the 882 survivors net +451.5R (+0.51R a fire) |
+| ten sessions after a same-session stop | 72% below the stop level, 21% above the entry (n = 1,370) — the stock kept falling |
+| fire vs P2's matched control, both at the close, +2ADR before -1ADR | 15.4% vs 17.4% (n = 3,358 / 7,853); within-stratum -2.0, composition +0.05 — not overhead, not the bounce; the reclaim session itself |
+| real-EP cohort | -0.81R mean, 68% stopped within one session, 0 kept >= 3R; fires 6 of 51 vs control 21 of 58 reach +2ADR first; the fires arrive after a +1.5 ADR three-session bounce (control +0.06) |
+| runners (+50% campaigns, 324 fires) | 0 on alerts; AUC adr20 0.72, stop width 0.68, price 0.34 — volatility proxies only; ep_score / catalyst / theme DARK on 98% |
+| EP failed within 3 sessions (a close below the EP low) | 467 of 931 campaigns; 52% of fires, 73% of the loss — but on fires at session >= 4 (label knowable) HELD -0.46 / FADED -0.40 / FAILED -0.34: no separation |
+
+Files: `p7_diagnosis.py` -> `p7_summary.json` (committed) + `p7_rows.csv` / `p7_q2_rows.csv` (gitignored);
+`extract_p7.sh` -> `index_daily.csv`, `ep_scan_log.csv`, `ep_alerts.csv` (gitignored) + `ep_scan_log.pulled_at`.
 
 ## Files
 
