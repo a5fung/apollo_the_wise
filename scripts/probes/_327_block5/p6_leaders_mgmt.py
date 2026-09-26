@@ -422,6 +422,17 @@ def walk_arm_sessions(row):
     return out
 
 
+# walk_arm books its final exit as `stop_hit` (the resting stop — the hard stop, or that stop after the
+# ladder raised it to the trail line / breakeven) or `sma_trail_stop` (a close below the line); the
+# aggregate buckets on `stop` / `trail` / `open`, so every walk_arm reason is mapped here, never left
+# unbucketed (the first cut left them unmapped and the M1 rows read "stopped 0%").
+_WALK_ARM_KIND = {"stop_hit": "stop", "sma_trail_stop": "trail", "time_close": "trail", "horizon": "open"}
+
+
+def _kind_of(final_reason):
+    return _WALK_ARM_KIND.get(final_reason or "open", "open")
+
+
 def run_m1(row, st, conv, arm, K, sessions_wa):
     """walk_arm on the live stack as of the fire date. Returns (status, R, meta)."""
     entry_row, stop = row["entry"], st["level"]
@@ -438,7 +449,7 @@ def run_m1(row, st, conv, arm, K, sessions_wa):
                    prior_closes=row["prior_40"], harvest="live_ladder", fill_day=row["fire_date"],
                    horizon=K, trail_mode="sma", **kw)
     meta = {"src": src, "partial": bool(res.get("partial_fired")), "reason": res.get("reason"),
-            "final": res.get("final_reason"), "gap": bool(res.get("gap_through")), "entry": entry,
+            "final": _kind_of(res.get("final_reason")), "gap": bool(res.get("gap_through")), "entry": entry,
             "target_r": (target - entry) / risk if target else None,
             "be_r": (kw["breakeven_at_r"] * kw["r_frame_ps"] / risk) if kw["breakeven_at_r"] else None}
     if res["status"] == "settled":
@@ -815,7 +826,7 @@ def main():
                                        sessions=sw[:K], prior_closes=row["prior_40"], harvest="live_ladder",
                                        fill_day=row["fire_date"], horizon=K, trail_mode="sma", **kw)
                         if res["status"] == "settled":
-                            rec["R"][K], rec["kind"][K] = res["pnl_per_share"] / st["risk"], res["final_reason"]
+                            rec["R"][K], rec["kind"][K] = res["pnl_per_share"] / st["risk"], _kind_of(res["final_reason"])
                         elif res["status"] == "horizon":
                             rec["R"][K], rec["kind"][K] = res["mark_pnl_per_share"] / st["risk"], "open"
                         rec["partial"] = rec["partial"] or bool(res.get("partial_fired"))
