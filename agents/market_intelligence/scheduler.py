@@ -3989,6 +3989,25 @@ async def _post_nightly_audit_job():
         logger.error(f"Ecosystem reactivation check failed: {e}", exc_info=True)
         await notify_job_failure("ecosystem_reactivation_check", str(e))
 
+    # THEME-HIERARCHY health check (#506, operator 2026-07-27: parent_theme sat at 1-of-94 for
+    # 11 days and NOTHING could have told anyone — no operator surface reads it. Four metrics
+    # (orphan rate / lost-parent-link / catch-all size / ecosystem concentration drift), each
+    # threshold DERIVED fresh every run off mi_themes' own history, never a picked constant —
+    # see health_checks.py's #506 section header for the full derivation + why the "childless
+    # parents" framing was tried and rejected. Runs HERE (17:30 ET), same slot and same reason as
+    # the ecosystem reactivation check just above: after the 17:00 engine so tonight's board and
+    # its ecosystem mappings exist. Own try/except — a health guard that dies silently is the
+    # failure it exists to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_theme_hierarchy_health_check
+        hh = await run_theme_hierarchy_health_check()
+        logger.info(
+            f"Theme-hierarchy health check: skipped={hh['skipped']}, "
+            f"{len(hh['flags'])} flag(s), {len(hh['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Theme-hierarchy health check failed: {e}", exc_info=True)
+        await notify_job_failure("theme_hierarchy_health_check", str(e))
+
     try:
         from agents.market_intelligence.health_checks import run_job_liveness_sweep
         jl = await run_job_liveness_sweep()

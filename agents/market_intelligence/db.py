@@ -16787,6 +16787,102 @@ async def get_theme_history_window(
     return out
 
 
+async def get_theme_hierarchy_window(
+    conn, asof: "date", lookback_days: int = 100
+) -> list[dict]:
+    """ALL `mi_themes` rows (name, theme_date, stage, parent_theme) in
+    [asof-lookback_days, asof], oldest-first per name — the raw material #506's nightly
+    theme-hierarchy health check derives EVERY threshold from at runtime (orphan-rate
+    growth noise floor, lost-parent-link rate), rather than a hardcoded constant.
+    `lookback_days=100` comfortably covers the ~90-day / 60-distinct-theme-date
+    derivation windows measured 2026-09-26 (health_checks.py's #506 section header)."""
+    rows = await conn.fetch(
+        """
+        SELECT name, theme_date, stage, parent_theme
+        FROM mi_themes
+        WHERE theme_date >= $1::date - ($2 || ' days')::interval
+          AND theme_date <= $1::date
+        ORDER BY name, theme_date ASC
+        """,
+        asof, str(lookback_days),
+    )
+    return [dict(r) for r in rows]
+
+
+async def get_theme_hierarchy_baseline(conn) -> dict | None:
+    """#506: yesterday's own `theme_hierarchy_health` audit row's `metrics` dict — the
+    day-over-day comparison point for the orphan-rate / catch-all / concentration checks.
+    18h-4d age bound: old enough it can't be TONIGHT's own row (a same-day re-run), young
+    enough a weekend/holiday gap doesn't silently reach back to a stale reading."""
+    row = await conn.fetchrow(
+        """
+        SELECT detail FROM mi_audit_log
+        WHERE event_type = 'theme_hierarchy_health'
+          AND created_at <= NOW() - INTERVAL '18 hours'
+          AND created_at >= NOW() - INTERVAL '4 days'
+        ORDER BY created_at DESC LIMIT 1
+        """
+    )
+    if row is None:
+        return None
+    payload = json.loads(row["detail"])
+    return payload.get("metrics")
+
+
+async def get_theme_hierarchy_own_history(conn, limit: int = 45) -> list[dict]:
+    """#506: this check's own last `limit` nights' `metrics` dicts, oldest-first — the
+    self-collected series the catch-all-growth / concentration-drift checks bootstrap a noise
+    floor from (mi_theme_ecosystems carries no date column, so there is no other history to
+    derive one from). Skips a night's row it can't parse (e.g. a 'skipped, thin board' row)
+    rather than let one bad row break the whole series."""
+    rows = await conn.fetch(
+        """
+        SELECT detail FROM mi_audit_log
+        WHERE event_type = 'theme_hierarchy_health'
+        ORDER BY created_at DESC LIMIT $1
+        """,
+        limit,
+    )
+    out: list[dict] = []
+    for r in reversed(rows):
+        try:
+            m = json.loads(r["detail"]).get("metrics")
+        except (json.JSONDecodeError, TypeError, KeyError, AttributeError):
+            continue
+        if m:
+            out.append(m)
+    return out
+
+
+async def get_theme_hierarchy_evening_summary(conn) -> str | None:
+    """#506: tonight's own `theme_hierarchy_health` audit row's `summary` text (written by
+    `_post_nightly_audit_job` at 17:30 ET) — what `get_theme_hierarchy_evening_line` renders
+    onto the 18:00 ET evening briefing. 16h floor so a STALE (yesterday's) row is never mistaken
+    for tonight's — silence is the correct degrade, not a lying old number."""
+    row = await conn.fetchrow(
+        """
+        SELECT summary FROM mi_audit_log
+        WHERE event_type = 'theme_hierarchy_health'
+          AND created_at >= NOW() - INTERVAL '16 hours'
+        ORDER BY created_at DESC LIMIT 1
+        """
+    )
+    return row["summary"] if row is not None else None
+
+
+async def get_theme_ecosystem_map(conn, names: list[str]) -> dict[str, str]:
+    """theme_name -> e_code for the given names (`mi_theme_ecosystems`, current-state-only
+    — #506's catch-all / concentration metrics are necessarily self-baselined night over
+    night rather than derived from history, because this table carries no date column)."""
+    if not names:
+        return {}
+    rows = await conn.fetch(
+        "SELECT theme_name, e_code FROM mi_theme_ecosystems WHERE theme_name = ANY($1::text[])",
+        names,
+    )
+    return {r["theme_name"]: r["e_code"] for r in rows}
+
+
 async def get_theme_member_departures(conn, today: "date", prior_date: "date") -> list[dict]:
     """Tickers present in a theme's PRIOR snapshot but absent from its TODAY
     snapshot, for themes alive (stage != 'Retired') on BOTH dates — a theme

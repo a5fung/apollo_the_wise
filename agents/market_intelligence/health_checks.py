@@ -75,9 +75,16 @@ from agents.market_intelligence.db import (
     get_reactivation_sessions, get_high_ep_ticker_days,
     get_ticker_ecosystem_membership, get_mapped_theme_stages_before,
     get_reactivation_alerted_ecosystems, persist_reactivation_seed,
+    get_theme_hierarchy_window, get_theme_ecosystem_map,
+    get_theme_hierarchy_baseline, get_theme_hierarchy_own_history,
+    get_theme_hierarchy_evening_summary,
 )
 from shared.dates import et_today  # canonical ET-today (tz-bug-class centralization, /simplify 6/25)
 from agents.market_intelligence.rule_eras import SEP_SCORE_DATE  # #665: the ONE dated switch
+from agents.market_intelligence.theme_ecosystems import (
+    containment_parent, resolve_theme_parent,
+    PARENT_KIND_CHILD, PARENT_KIND_ROOT, PARENT_KIND_CATCH_ALL,
+)  # #505/#506: the ONE reader of the overloaded parent_theme column
     # table — see _LATTICE_FLIP_DATE_FALLBACK below, which used to carry its own copy of this
     # same operator-signed 2026-08-22 date.
 
@@ -3079,6 +3086,456 @@ async def run_ecosystem_reactivation_check(conn=None) -> dict[str, Any]:
 
     return summary
 
+
+# ── #506 NIGHTLY THEME-HIERARCHY HEALTH CHECK (2026-09-26) ────────────────────────────────────
+#
+# WHY. `parent_theme` sat at 1-of-94 live themes for 11 days after the #471 arm flipped and
+# NOTHING could have told anyone — it is written by four internal engine files and read by ZERO
+# operator surfaces. The operator noticed unprompted ("I recall only seeing one layer"); no gate,
+# counter or digest did. Same shape as #274 (an arm live a full day while its own status line
+# still read `pending`) — a mechanism with no surface and no counter cannot be known to be
+# working.
+#
+# THE OVERLOAD SPLIT — #505 (same day, `b0bd97c9`) already shipped it: `theme_ecosystems.
+# containment_parent` / `resolve_theme_parent` is now THE ONE reader of the overloaded
+# `parent_theme` column (containment link on a live row; retirement/rename SUCCESSOR pointer on a
+# Retired row — theme_engine.py's IDENTITY section). #506 reads through those functions, nothing
+# else — never re-derives the split. `resolve_theme_parent` also gives ruling-(5)'s full
+# vocabulary: every live theme is a **child** of a real theme, a **root** directly under its
+# ecosystem, or a **catch_all** root under E-UNASSIGNED — so "every theme has a parent" is true by
+# that ruling, and this check's real question is the MIX (how many child vs root vs catch_all),
+# not a bare has-a-parent/doesn't.
+#
+# FOUR METRICS, operator's own words 2026-07-27, each re-derived from real history below (never a
+# picked constant):
+#   1. SHARE WITH A REAL (CONTAINMENT) PARENT — live themes (mirrors `get_active_themes`'s own
+#      7-day/non-Retired definition) that are `resolve_theme_parent`'s "child" kind, as a share of
+#      all. Measured 2026-09-26: 8.5% (10/118) — and EXPECTED to stay low until the operator flips
+#      `theme_parent_pass` ON (THE LINE: CHANGE_PROCESS + sign-off on #505's dry run first), since
+#      today's 10 links are a side-effect of one adjudication path (ADR-0025 Route A) that has
+#      fired exactly TWICE in its lifetime, not #505's new pass. Paging on the LEVEL would page
+#      every single night on a known, already-tracked condition, so this fires on a day-over-day
+#      DROP in the non-child share instead (equivalently, a rise in "orphan" = root+catch_all),
+#      against a noise floor derived FRESH EVERY RUN from the last ~60 distinct `theme_date`s' own
+#      day-over-day moves (`_derive_orphan_growth_alert_pp`) — never hardcoded, so it keeps
+#      re-calibrating through whatever the flip does to the population instead of needing a
+#      follow-up edit. The flip can only RAISE the child share, never lower it, so the derived
+#      floor is structurally silent on the fix landing.
+#   2. LOST-PARENT-LINK — a theme that carried a real containment parent on an earlier day and
+#      lost it on a LATER day without itself retiring — the operator's own "half-completed
+#      nesting," and the documented #471 known gap (`_canonicalize_theme_names` colliding with
+#      `_restore_sub_theme_links`) actually firing in prod. Two framings were tried and rejected
+#      before this one, both measured 2026-09-26: (a) a PARENT-centric "parent with zero
+#      children" — all 4 of today's candidates were single-child parents whose one child retired
+#      NATURALLY months ago (an explicit Retired tombstone); ordinary attrition, not breakage. (b)
+#      a bare "child lost its link" scan over 90 days found 16 events, but the biggest cluster (3
+#      on one day) turned out to be the PARENT itself retiring/renaming that night — `_restore_
+#      sub_theme_links` correctly clearing the dangling pointer, the engine working AS DESIGNED,
+#      not the bug. **The fix**: only count a loss when the lost parent NAME is still a live theme
+#      as of the loss date — a link can go missing because the child dropped it (the bug) or
+#      because the parent stopped existing (not the bug), and only the DB can tell you which.
+#      Fires when the trailing-7-day count of genuine losses exceeds every trailing-7-day count
+#      observed over the last ~90 days (`_derive_lost_link_alert`) — derived fresh every run.
+#   3. CATCH-ALL SIZE — `resolve_theme_parent`'s "catch_all" kind (E-UNASSIGNED or unmapped) as a
+#      share of the live board. Measured 2026-09-26: 3/118 (2.5%) — healthy, per ruling (5) that
+#      the ecosystem IS the default parent (a root theme sits under its ecosystem, never literally
+#      nowhere). Operator: "when catch all grow too big, that's a red flag itself" — fires on
+#      GROWTH.
+#   4. ECOSYSTEM CONCENTRATION DRIFT — one `e_code`'s share of the live board swelling while
+#      others empty, which usually means classifier drift, not a real market move. Measured
+#      2026-09-26: 21 buckets, top = E-SAAS at 12/118 (10.2%). Two-sided (a share can drift up
+#      OR the rest of the board can hollow out around it) unlike 1-3, which only ever page on
+#      growth.
+#
+# METRICS 1-2 are derived LIVE, every run, straight off `mi_themes`' own history — never a picked
+# constant. METRICS 3-4 CANNOT be derived that way: `mi_theme_ecosystems` is CURRENT-STATE-ONLY
+# (no date column — there is no history to compute a noise floor from). So, exactly like
+# `run_db_growth_check` above, they self-baseline against THIS CHECK'S OWN accruing
+# `theme_hierarchy_health` audit rows and stay silent (recording only, never paging) until
+# `_HIER_MIN_OWN_HISTORY` nights of self-collected history exist to derive a noise floor from —
+# n=0 at ship. That is the honest state, not a placeholder; inventing a number with nothing to
+# derive it from is exactly the ship-revert-restore oscillation CLAUDE.md warns against.
+#
+# Wired into `_post_nightly_audit_job` (17:30 ET) right after `run_ecosystem_reactivation_check`
+# — same slot, same reason: after the 17:00 engine so tonight's board + ecosystem mappings exist.
+# Own try/except in scheduler.py — a health guard that dies silently is the failure it exists to
+# prevent. Skips (writes a "skipped" audit row, computes nothing) when the live board is thinner
+# than `_HIER_MIN_LIVE_THEMES` — the 2026-07-28 zero-row crash night would otherwise compute
+# garbage ratios off a near-empty table. One line on the operator's evening briefing every night
+# (`get_theme_hierarchy_evening_line`, read-only off tonight's own audit row, fails silent) closes
+# the actual gap this check exists for: NO operator surface ever rendered this, at all, before.
+#
+# Tests: `tests/test_506_theme_hierarchy_health.py`.
+
+_HIER_ACTIVE_WINDOW_DAYS = 7        # mirrors get_active_themes(stale_after_days=7)
+_HIER_LOOKBACK_DAYS = 100           # comfortably covers every derivation window below
+_HIER_MIN_LIVE_THEMES = 10          # thinner than this and every ratio is noise (07-28 crash night)
+_HIER_MIN_ORPHAN_HISTORY_DATES = 20   # distinct theme_dates needed before trusting a derived floor
+_HIER_MIN_LOSTLINK_HISTORY_DAYS = 20  # evaluated trailing-windows needed before trusting one
+_HIER_ORPHAN_GROWTH_MARGIN_PP = 0.5   # added on top of the derived historical max day-over-day
+                                       # move — a genuine new regime, not a repeat of the worst
+                                       # night already on record
+_HIER_MIN_OWN_HISTORY = 10          # nights of self-collected audit rows before catch-all /
+                                     # concentration-drift will EVER page (bootstrap; see header)
+_HIER_CONCENTRATION_MARGIN_PP = 0.5   # same margin idiom, applied to the self-collected series
+
+
+def _hier_active_snapshot(rows: list[dict], asof: "date",
+                          window_days: int = _HIER_ACTIVE_WINDOW_DAYS) -> dict[str, dict]:
+    """Pure: mirrors `get_active_themes(stale_after_days=window_days)` over an in-memory row
+    list — the latest row per name in [asof-window_days, asof], keeping only names whose latest
+    row is non-Retired (the RETIRED-GAP fix `get_active_themes` itself documents: filter AFTER
+    picking latest-per-name, never before)."""
+    lo = asof - timedelta(days=window_days)
+    latest: dict[str, dict] = {}
+    for r in rows:
+        d = r["theme_date"]
+        if d < lo or d > asof:
+            continue
+        cur = latest.get(r["name"])
+        if cur is None or d > cur["theme_date"]:
+            latest[r["name"]] = r
+    return {n: r for n, r in latest.items() if r["stage"] != "Retired"}
+
+
+def _hier_orphan_point(snapshot: dict[str, dict]) -> dict[str, Any]:
+    """Pure: one day's (n_live, n_parented, orphan_pct) off an already-built active snapshot.
+    `n_parented` = `resolve_theme_parent`'s "child" kind — a real containment parent, via
+    `containment_parent` (#505's own reader of the overloaded column; #506 never re-derives the
+    split). `_hier_active_snapshot` has already dropped every Retired row, so this is belt-and-
+    suspenders, not the fix itself."""
+    n_live = len(snapshot)
+    n_parented = sum(1 for r in snapshot.values() if containment_parent(r))
+    orphan_pct = (100.0 * (n_live - n_parented) / n_live) if n_live else None
+    return {"n_live": n_live, "n_parented": n_parented, "orphan_pct": orphan_pct}
+
+
+def _hier_orphan_series(rows: list[dict], asof: "date", lookback_days: int = _HIER_LOOKBACK_DAYS,
+                        window_days: int = _HIER_ACTIVE_WINDOW_DAYS) -> list[dict]:
+    """Pure: one orphan point per distinct theme_date in the last `lookback_days`, STRICTLY
+    BEFORE `asof` (oldest-first) — each computed against that date's OWN active window, the same
+    recomputation `run_theme_hierarchy_health_check` does for `asof` itself, just replayed
+    backward over history so the growth-alert margin below is derived off real day-to-day noise,
+    not guessed. `asof` itself is deliberately EXCLUDED: it is tonight's own reading, and the
+    whole point of the alert is to judge it against a floor derived from nights BEFORE it — an
+    early version included it and the derivation self-contaminated (a real spike raised its own
+    ceiling high enough to hide itself; caught by this file's own test suite). `rows` may carry a
+    few extra days BEFORE the lookback floor (the caller pads the DB fetch by `window_days`) so
+    the earliest reported date still gets a full, un-truncated active window."""
+    min_d = asof - timedelta(days=lookback_days)
+    dates = sorted({r["theme_date"] for r in rows if min_d <= r["theme_date"] < asof})
+    out = []
+    for d in dates:
+        snap = _hier_active_snapshot(rows, d, window_days)
+        if not snap:
+            continue
+        pt = _hier_orphan_point(snap)
+        pt["theme_date"] = d
+        out.append(pt)
+    return out
+
+
+def _derive_orphan_growth_alert_pp(series: list[dict]) -> float | None:
+    """Pure: the day-over-day orphan_pct INCREASE that would not have happened on any ordinary
+    night in the observed series — max historical daily increase + a small margin. None (never
+    page) when there isn't enough history to trust a floor yet."""
+    if len(series) < _HIER_MIN_ORPHAN_HISTORY_DATES:
+        return None
+    diffs = [series[i]["orphan_pct"] - series[i - 1]["orphan_pct"]
+             for i in range(1, len(series))]
+    if not diffs:
+        return None
+    return max(0.0, max(diffs)) + _HIER_ORPHAN_GROWTH_MARGIN_PP
+
+
+def _hier_lost_parent_link_events(rows: list[dict]) -> list[dict]:
+    """Pure: for every theme name, walk its rows in recorded order (whatever days it actually
+    has — NOT filled to every calendar day) and flag a transition from (a real containment
+    parent) to (none) while the theme itself stayed alive (never a retirement) AND the lost
+    parent NAME was still a live theme as of the loss date. That last clause is the whole check:
+    measured 2026-09-26, a bare (parent -> no parent, child alive) scan found 16 events over 90
+    days, but the biggest cluster (3 in one day) was the PARENT retiring/renaming that same
+    night — `_restore_sub_theme_links` correctly clearing the now-dangling pointer, the engine
+    working AS DESIGNED, not the "half-completed nesting" bug this metric exists to catch. A link
+    can go missing because the CHILD dropped it (the bug) or because the PARENT stopped existing
+    (not the bug) — only checking whether the parent is still on the board tells you which.
+    Returns one event per genuine transition, dated at the LATER row's theme_date, carrying the
+    parent name that was lost."""
+    by_name: dict[str, list[dict]] = {}
+    for r in rows:
+        by_name.setdefault(r["name"], []).append(r)
+    events = []
+    for name, group in by_name.items():
+        group.sort(key=lambda r: r["theme_date"])
+        for prev, cur in zip(group, group[1:]):
+            prev_parent = containment_parent(prev)
+            if not prev_parent or cur["stage"] == "Retired" or containment_parent(cur):
+                continue
+            still_live = prev_parent in _hier_active_snapshot(rows, cur["theme_date"])
+            if still_live:
+                events.append({"name": name, "theme_date": cur["theme_date"],
+                              "lost_parent": prev_parent})
+    return events
+
+
+def _hier_trailing_counts(event_dates: list["date"], asof: "date", lookback_days: int,
+                          window_days: int = _HIER_ACTIVE_WINDOW_DAYS) -> list[int]:
+    """Pure: for every day from (asof - lookback_days) to asof-1 — STRICTLY BEFORE `asof`, tonight's
+    own reading, deliberately excluded for the same self-contamination reason `_hier_orphan_series`
+    documents — the count of events landing in that day's OWN trailing [d-window_days, d] window.
+    A rolling count series, replayed backward exactly the way `run_theme_hierarchy_health_check`
+    evaluates `asof` itself, so the alert floor below is derived off real historical clustering,
+    never guessed and never including the very reading it is meant to judge."""
+    out = []
+    d = asof - timedelta(days=lookback_days)
+    while d < asof:
+        lo = d - timedelta(days=window_days)
+        out.append(sum(1 for e in event_dates if lo <= e <= d))
+        d += timedelta(days=1)
+    return out
+
+
+def _derive_lost_link_alert(historical_counts: list[int]) -> int | None:
+    """Pure: the trailing-window lost-link count that would not have happened on any ordinary
+    week in the observed series — the historical max. None (never page) when there isn't enough
+    history to trust a floor yet."""
+    if len(historical_counts) < _HIER_MIN_LOSTLINK_HISTORY_DAYS:
+        return None
+    return max(historical_counts)
+
+
+def _hier_ecosystem_breakdown(snapshot: dict[str, dict],
+                              eco_map: dict[str, str]) -> dict[str, Any]:
+    """Pure: catch-all size + the top ecosystem's share of the live board. `E-UNASSIGNED` and a
+    name with no mapping row at all are the SAME bucket — both mean nothing owns it (#505 ruling:
+    ecosystem is the default parent; nothing floats)."""
+    n_live = len(snapshot)
+    counts: dict[str, int] = {}
+    for name in snapshot:
+        code = eco_map.get(name, "E-UNASSIGNED")
+        counts[code] = counts.get(code, 0) + 1
+    catch_all_n = counts.get("E-UNASSIGNED", 0)
+    top_code, top_n = (max(counts.items(), key=lambda kv: kv[1]) if counts else (None, 0))
+    return {
+        "n_buckets": len(counts), "catch_all_n": catch_all_n,
+        "catch_all_pct": (100.0 * catch_all_n / n_live) if n_live else None,
+        "top_e_code": top_code, "top_n": top_n,
+        "top_pct": (100.0 * top_n / n_live) if n_live else None,
+    }
+
+
+def _hier_parent_kind_counts(snapshot: dict[str, dict], eco_map: dict[str, str]) -> dict[str, int]:
+    """Pure: ruling-(5) vocabulary — how many live themes are `resolve_theme_parent`'s child /
+    root / catch_all kind. Plain-words framing for the evening line and Telegram (#506): a board
+    reading "91% orphan" contradicts the SSoT's own "117 of 117 have a parent" (ruling 5 says a
+    root under its ecosystem IS a parent) — "N nested under a real theme, M root under their
+    ecosystem, K in the catch-all" is the same numbers, honestly worded."""
+    counts = {PARENT_KIND_CHILD: 0, PARENT_KIND_ROOT: 0, PARENT_KIND_CATCH_ALL: 0}
+    for name, r in snapshot.items():
+        kind, _ = resolve_theme_parent(r, eco_map)
+        counts[kind] = counts.get(kind, 0) + 1
+    return counts
+
+
+def _evaluate_theme_hierarchy(
+    today: dict[str, Any], baseline: dict[str, Any] | None, own_history: list[dict],
+) -> list[dict]:
+    """Pure decision over pre-aggregated dicts (the file's idiom — testable mock-free).
+    `today` = {orphan_pct, orphan_growth_alert_pp, lost_link_7d, lost_link_alert,
+    catch_all_n, catch_all_pct, top_e_code, top_pct}. `baseline` = yesterday's own
+    detail dict, or None (no usable baseline yet). `own_history` = prior self-collected
+    (catch_all_pct, top_pct) points, oldest-first, for the metrics with no independent
+    history to derive from. Returns a list of flag dicts (empty = healthy)."""
+    flags: list[dict] = []
+
+    if (today.get("orphan_growth_alert_pp") is not None and baseline is not None
+            and baseline.get("orphan_pct") is not None):
+        delta = today["orphan_pct"] - baseline["orphan_pct"]
+        if delta > today["orphan_growth_alert_pp"]:
+            flags.append({"kind": "orphan_growth", "delta_pp": round(delta, 1),
+                         "orphan_pct": today["orphan_pct"],
+                         "alert_pp": round(today["orphan_growth_alert_pp"], 1)})
+
+    if (today.get("lost_link_alert") is not None
+            and today["lost_link_7d"] > today["lost_link_alert"]):
+        flags.append({"kind": "lost_link", "n": today["lost_link_7d"],
+                     "alert_n": today["lost_link_alert"]})
+
+    if len(own_history) >= _HIER_MIN_OWN_HISTORY:
+        cat_diffs = [own_history[i]["catch_all_pct"] - own_history[i - 1]["catch_all_pct"]
+                    for i in range(1, len(own_history))
+                    if own_history[i].get("catch_all_pct") is not None
+                    and own_history[i - 1].get("catch_all_pct") is not None]
+        if cat_diffs and today.get("catch_all_pct") is not None and baseline is not None:
+            cat_alert = max(0.0, max(cat_diffs)) + _HIER_CONCENTRATION_MARGIN_PP
+            cat_delta = today["catch_all_pct"] - (baseline.get("catch_all_pct") or 0.0)
+            if cat_delta > cat_alert:
+                flags.append({"kind": "catch_all_growth", "delta_pp": round(cat_delta, 1),
+                             "catch_all_pct": round(today["catch_all_pct"], 1),
+                             "alert_pp": round(cat_alert, 1)})
+
+        top_diffs = [abs(own_history[i]["top_pct"] - own_history[i - 1]["top_pct"])
+                    for i in range(1, len(own_history))
+                    if own_history[i].get("top_pct") is not None
+                    and own_history[i - 1].get("top_pct") is not None]
+        if top_diffs and today.get("top_pct") is not None and baseline is not None:
+            drift_alert = max(0.0, max(top_diffs)) + _HIER_CONCENTRATION_MARGIN_PP
+            top_delta = abs(today["top_pct"] - (baseline.get("top_pct") or 0.0))
+            if top_delta > drift_alert:
+                flags.append({"kind": "concentration_drift", "e_code": today.get("top_e_code"),
+                             "delta_pp": round(top_delta, 1), "top_pct": round(today["top_pct"], 1),
+                             "alert_pp": round(drift_alert, 1)})
+
+    return flags
+
+
+def _format_hierarchy_flag(f: dict[str, Any]) -> str:
+    """Plain-words operator lines — no lingo, every number carries its meaning."""
+    if f["kind"] == "orphan_growth":
+        return (f"Share of themes with NO real parent link rose {f['delta_pp']}pp to "
+                f"{f['orphan_pct']:.1f}% (bigger than any overnight move in the last two "
+                f"months, {f['alert_pp']}pp) — a regression, never the future parent-pass "
+                f"flip, which can only LOWER this number")
+    if f["kind"] == "lost_link":
+        return (f"{f['n']} themes lost their parent link this week without retiring "
+                f"(worse than any week in the last three months, {f['alert_n']})")
+    if f["kind"] == "catch_all_growth":
+        return (f"The no-ecosystem catch-all grew {f['delta_pp']}pp to "
+                f"{f['catch_all_pct']}% of all live themes")
+    if f["kind"] == "concentration_drift":
+        return (f"{f['e_code']} swung {f['delta_pp']}pp to {f['top_pct']}% of the live "
+                f"board — check for classifier drift, not a real market move")
+    return str(f)
+
+
+async def run_theme_hierarchy_health_check(conn=None) -> dict[str, Any]:
+    """Nightly #506 theme-hierarchy health check — see the section header above for the four
+    metrics, why each threshold is derived rather than picked, and the overload split. Returns
+    {today (date str), skipped (str|None), metrics (dict), flags (list), errors (list)}.
+    Never raises — a health guard that dies silently is the failure it exists to prevent."""
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            return await run_theme_hierarchy_health_check(acquired)
+
+    today_d = et_today()
+    out: dict[str, Any] = {"today": today_d.isoformat(), "skipped": None,
+                           "metrics": {}, "flags": [], "errors": []}
+    try:
+        # Padded by the active-window width: _hier_orphan_series reports dates only back to
+        # `_HIER_LOOKBACK_DAYS`, but the OLDEST of those still needs a full, un-truncated
+        # [d-7, d] window behind it to avoid an artificially-thin active snapshot at the edge.
+        rows = await get_theme_hierarchy_window(
+            conn, today_d, _HIER_LOOKBACK_DAYS + _HIER_ACTIVE_WINDOW_DAYS)
+    except Exception as e:
+        logger.error("theme_hierarchy_health: window query failed: %s", e, exc_info=True)
+        out["errors"].append(f"window query: {e}")
+        return out
+
+    snapshot = _hier_active_snapshot(rows, today_d)
+    if len(snapshot) < _HIER_MIN_LIVE_THEMES:
+        out["skipped"] = f"only {len(snapshot)} live themes (need {_HIER_MIN_LIVE_THEMES})"
+        try:
+            await log_audit_event("theme_hierarchy_health", f"skipped: {out['skipped']}",
+                                  json.dumps(out, default=str))
+        except Exception as e:
+            logger.warning("theme_hierarchy_health: audit log failed: %s", e)
+        return out
+
+    try:
+        eco_map = await get_theme_ecosystem_map(conn, list(snapshot.keys()))
+    except Exception as e:
+        logger.warning("theme_hierarchy_health: ecosystem map failed (catch-all/drift skipped "
+                       "tonight): %s", e)
+        out["errors"].append(f"ecosystem map: {e}")
+        eco_map = {}
+
+    orphan_pt = _hier_orphan_point(snapshot)
+    orphan_series = _hier_orphan_series(rows, today_d)
+    orphan_growth_alert_pp = _derive_orphan_growth_alert_pp(orphan_series)
+
+    lost_events = _hier_lost_parent_link_events(rows)
+    lo7 = today_d - timedelta(days=_HIER_ACTIVE_WINDOW_DAYS)
+    lost_link_7d = sum(1 for e in lost_events if lo7 <= e["theme_date"] <= today_d)
+    hist_counts = _hier_trailing_counts([e["theme_date"] for e in lost_events],
+                                        today_d, _HIER_LOOKBACK_DAYS)
+    lost_link_alert = _derive_lost_link_alert(hist_counts)
+
+    eco = _hier_ecosystem_breakdown(snapshot, eco_map)
+    kinds = _hier_parent_kind_counts(snapshot, eco_map)
+
+    metrics = {
+        "n_live": orphan_pt["n_live"], "n_parented": orphan_pt["n_parented"],
+        "orphan_pct": orphan_pt["orphan_pct"], "orphan_growth_alert_pp": orphan_growth_alert_pp,
+        "lost_link_7d": lost_link_7d, "lost_link_alert": lost_link_alert,
+        "lost_link_names": [e["name"] for e in lost_events
+                           if lo7 <= e["theme_date"] <= today_d][:10],
+        "n_child": kinds[PARENT_KIND_CHILD], "n_root": kinds[PARENT_KIND_ROOT],
+        "n_catch_all_kind": kinds[PARENT_KIND_CATCH_ALL],
+        **eco,
+    }
+    out["metrics"] = metrics
+
+    # ── Baselines: yesterday's own row (day-over-day) + own history (catch-all/drift bootstrap) ──
+    baseline = None
+    own_history: list[dict] = []
+    try:
+        baseline = await get_theme_hierarchy_baseline(conn)
+        own_history = await get_theme_hierarchy_own_history(conn)
+    except Exception as e:
+        logger.warning("theme_hierarchy_health: baseline read failed (measuring only "
+                       "tonight): %s", e)
+        out["errors"].append(f"baseline read: {e}")
+
+    out["flags"] = _evaluate_theme_hierarchy(metrics, baseline, own_history)
+
+    # Record tonight's measurement — this row IS tomorrow's baseline AND the self-collected
+    # history metrics 3-4 bootstrap off — must be written every run, flagged or not.
+    try:
+        await log_audit_event(
+            "theme_hierarchy_health",
+            f"{today_d} {kinds[PARENT_KIND_CHILD]} nested under a real theme · "
+            f"{kinds[PARENT_KIND_ROOT]} root under their ecosystem · "
+            f"{kinds[PARENT_KIND_CATCH_ALL]} in the catch-all (of {metrics['n_live']}) · "
+            f"lost-link {lost_link_7d}/7d · top {eco['top_e_code']} {eco['top_pct']:.1f}%" +
+            (f" · {len(out['flags'])} FLAG(S)" if out["flags"] else ""),
+            json.dumps(out, default=str),
+        )
+    except Exception as e:
+        logger.warning("theme_hierarchy_health: audit log failed: %s", e)
+        out["errors"].append(f"audit log: {e}")
+
+    if not out["flags"]:
+        return out
+    lines = ["*Theme-hierarchy health*", "```"]
+    for f in out["flags"]:
+        lines.append(_format_hierarchy_flag(f))
+    lines.append("```")
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.warning("theme_hierarchy_health: telegram send failed: %s", e)
+        out["errors"].append(f"telegram: {e}")
+    return out
+
+
+async def get_theme_hierarchy_evening_line() -> str | None:
+    """One plain-words line for the evening briefing (#506 DoD: an operator surface must render
+    this, every night, not just on a breach — the actual gap the 1-of-94 incident exposed).
+    Reads TONIGHT's own audit row (written by `_post_nightly_audit_job` at 17:30 ET, before the
+    18:00 ET evening briefing) — never re-computes. Returns None (silent) if the check hasn't
+    run tonight, was skipped, or anything fails; a missing line must never break the brief."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            summary = await get_theme_hierarchy_evening_summary(conn)
+        if summary is None:
+            return None
+        return f"🌳 Theme hierarchy: {summary}"
+    except Exception as e:
+        logger.warning("theme_hierarchy_health: evening line unavailable: %s", e)
+        return None
 
 
 # ── DEAD-COLUMN SWEEP (#543, 2026-08-08) ──────────────────────────────────────────────────

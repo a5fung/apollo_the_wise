@@ -1670,6 +1670,20 @@ async def send_evening_briefing(
             eco_map=eco_map,
         )
 
+    # THEME-HIERARCHY health line (#506, operator: no operator surface ever rendered
+    # `parent_theme` — the 1-of-94-for-11-days blind spot). Isolated OUTSIDE the gather above and
+    # its own try/except, mirroring the strength_map pattern in this same function: a health-line
+    # failure must never break the operator's primary nightly message. Reads TONIGHT's own
+    # `theme_hierarchy_health` audit row (written by `_post_nightly_audit_job` at 17:30 ET,
+    # before this 18:00 ET job) — never re-computes.
+    try:
+        from agents.market_intelligence.health_checks import get_theme_hierarchy_evening_line
+        hier_line = await get_theme_hierarchy_evening_line()
+        if hier_line:
+            text = text + "\n\n" + hier_line
+    except Exception as e:
+        logger.warning(f"Theme-hierarchy evening line unavailable, brief continues without it: {e}")
+
     # dry_run: COMPOSE ONLY — no Telegram, no audit row, no chart mosaic, no Twitter post.
     # Added 2026-08-04 after I rendered this brief for review by monkey-patching
     # `send_telegram_message` on the module, the patch did not take, and the operator received a
