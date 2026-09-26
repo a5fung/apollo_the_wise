@@ -239,10 +239,10 @@ async def get_spend_summary() -> str:
     def _top(rows, n):
         out = []
         for row in rows[:n]:
-            out.append(f"  {row['caller'].replace('_', ' ')} ${float(row.get('cost') or 0):.2f}")
+            out.append(f"  • {row['caller'].replace('_', ' ')} ${float(row.get('cost') or 0):.2f}")
         rest = rows[n:]
         if rest:
-            out.append(f"  {len(rest)} others ${sum(float(r.get('cost') or 0) for r in rest):.2f}")
+            out.append(f"  • {len(rest)} others ${sum(float(r.get('cost') or 0) for r in rest):.2f}")
         return out
 
     lines = ["💰 *API spend*", f"*Today* ${today_cost:.2f} ({today_calls} calls, ET day)"]
