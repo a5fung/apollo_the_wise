@@ -1,4 +1,6 @@
-# Block 5 (2026-09-26) — P0 · P1 · P2 · P3
+# Block 5 (2026-09-26) — P0 · P1 · P2 · P3 · P5
+
+The write-up (the deliverable, with the fork) is `docs/analysis/327_exit_determination_2026-09-26.md`.
 
 $0, read-only prod extract + offline replay. Raw CSVs are gitignored (regenerate with
 `extract_p0.sh`); only scripts + the small JSON summaries are committed.
@@ -18,6 +20,9 @@ python3 p2_probe.py          # -> p2_summary.json + p2_fire_walks.csv / p2_contr
 python3 p3_grid.py           # -> p3_summary.json + p3_cells.tsv (every cell, both entry
                               #    conventions; committed) + p3_events.csv (33 MB, gitignored:
                               #    per row x stop x target decisions with straddle DATES, for P4)
+python3 p5_abstain_direction.py   # -> p5_summary.json: the recorded outcomes of the 2,042 fires
+                              #    the grid cannot walk on the incumbent stop vs the walked ones
+                              #    (needs trigger.csv + p3_events.csv)
 ```
 
 ## P0 result — PASS, checkpoint stays s10
@@ -256,8 +261,33 @@ above a reclaim entry). Both are counted per cell (`n_killed`, `n_abstain`), nev
 ⚖ **THE LINE:** nothing here picks a stop, a target or an exit. The grid is the deliverable;
 the fork is P5's to state.
 
+## P5 — the line item P3 left: which way do the 2,042 unwalkable fires lean? (they lean nowhere)
+
+P3 scores the incumbent-stop cells on ~1,320 of the 3,398 s10 fires; 2,042 abstain (a minute-grade
+fire whose day low reached its tight stop, no $0 minute source). Production settled them live, so
+`trigger.csv` carries their recorded outcomes. `p5_abstain_direction.py` rebuilds the grid's own s10
+population (elapsed via the real `_trading_days`), takes SCORED = the ids in `p3_events.csv` for
+(recorded, incumbent, none), KILLED = stop at/above entry (3), ABSTAINED = the rest — the counts
+reproduce P3's (1,353 / 2,042 / 3) — and compares the recorded columns, width-floored at >= 0.5%
+like the cell:
+
+| recorded, incumbent stop (floored) | walked n=1,325 (1,116 settled) | abstained n=1,961 (1,916 settled) |
+|---|---:|---:|
+| outcome = stop | 97.3% | 98.3% |
+| trail arm >= 3R | 1.5% | 1.8% |
+| trail arm median R | -0.94 | -1.00 |
+| mfe reached +3R | 11.7% | 14.5% |
+| `ep_high_break` | n=211, 89% stopped, trail >= 3R 1.7% | n=26, 26 of 26 stopped at -1.00R |
+
+Same lane on both sides; the hole hides no winners, and for `ep_high_break` the grid's walkable
+subset is the slightly flattering one. The no-target MEAN is not read on either side: a stop is
+always exactly -1.00R, so a mean above -0.95 at a 98% stop rate is a few enormous near-zero-stop
+time-exits (max +1,599R unfloored, +22.66R floored) — the 09-22 artifact. A minute fetch for the
+2,042 would fill cells without moving the answer. Verdict and fork: the analysis doc.
+
 ## Files
 
+- `p5_abstain_direction.py` -> `p5_summary.json` — the abstain-direction read above.
 - `extract_p0.sh` — the one prod extract (gitignored CSV outputs).
 - `p0_completeness.py` -> `p0_summary.json` — bar-completeness / abstain-rate / day-0
   minute-hole read + the pass-bar verdict.
