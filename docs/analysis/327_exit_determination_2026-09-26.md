@@ -26,8 +26,10 @@ and is not cited here; every path below is re-walked from bars.
 ## Method and population
 
 **Population: every row of `mi_delayed_entry_trigger` — 3,767 fires on 700 tickers, fire_date 2026-08-25
-→ 2026-09-21, extracted once on 2026-09-26 (`extract_p0.sh`) together with `mi_daily_closes` for every
-name 2025-12-01 → 2026-09-25 and the day-0 minute bars that exist in `mi_intraday_bars`.** The lane
+→ 2026-09-25, extracted once on 2026-09-26 (`extract_p0.sh`) together with `mi_daily_closes` for every
+name 2025-12-01 → 2026-09-25 and the day-0 minute bars that exist in `mi_intraday_bars`.** (The 09-22
+read's window ended 09-21 with 3,652 rows; the four later fire dates add 115 rows, none of which has
+10 sessions elapsed, so no s10 cell reads them.) The lane
 watches every EP name for 20 sessions and fires four patterns — `ep_low_reclaim`, `ep_close_reclaim`,
 `ep_high_break`, `ep_close_620_prox` — each with a recorded entry and stop; it is a passive observer, not
 conditioned on outcome. Conventions, all pre-registered in the block or in the probes' docstrings:
@@ -214,12 +216,12 @@ artifact, not a signal.)
 
 ## What this does not answer
 
-- **One month, one regime.** Every fire is 2026-08-25 → 09-21; the "second half" leg is four fire dates
+- **One month, one regime.** Every fire read at s10 is 2026-08-25 → 09-11; the "second half" leg is four fire dates
   (n=217–256 per cell, `ep_high_break` n=23). The matched same-window control holds regime fixed for the
   entry question, but nothing here says what these patterns do in a different tape.
 - **This population is what the lane admits, not what he would buy.** The lane fires on every EP name;
-  64–69% of fires close below their 50/65-day line within ten sessions, and the median name is a
-  low-priced gapper. Whether a leader-only selection (above rising averages, the shape of his marked
+  64–69% of fires close below their 50/65-day line within ten sessions, and the median entry price is
+  $1.70 (n=3,767; 84% of fires under $5, 34% under $1). Whether a leader-only selection (above rising averages, the shape of his marked
   charts) changes the answer is not measured — it is the revive question, below.
 - **Partials are not modelled.** TraderLion's "at least a partial sale" on two closes below the 23-EMA is
   scored as a full exit; a partial-plus-runner arm needs a position model the grid does not have.
