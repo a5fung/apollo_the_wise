@@ -117,3 +117,26 @@ read from prod 2026-09-24 (n = 20 scan days). The COILED and TRIGGERED gates wer
   our rules (#354).
 - **09-24 itself:** tonight's scan row was not yet written when this was recorded.
 
+## MRNA, 2026-09-24 — a "model book" flag our detector rejected on depth every day (operator-shared)
+
+**The post** (PBA @801010athlete, 2026-09-24 6:50 PM; image `docs/methodology/operator_shared_charts/2026-09-24_htf_mrna_pba/`):
+*"Who knows what happens but this is a model book looking HTF. $MRNA"* — his chart: $194.82, +26.4% on
+09-24, *"+128% from Pivot in 6 weeks"*, RS 99; the prior base 43.68–59.55 (Mar–Aug), a handle in August,
+the 08-19 gap (a labelled real EP in `must_not_miss_eps.py`), then a tight flag in the 150–180 area.
+
+**Method and population:** every `mi_flag_candidates` row for MRNA, 2026-08-17 to 2026-09-25 (n = 29),
+read from prod 2026-09-25.
+
+| scan dates | our stage | reason |
+|---|---|---|
+| 08-20 → 08-24 | unqualified | base 0–2 sessions old |
+| 08-25 → 09-22 (not 09-16/17/18) | unqualified | `flag_low_128.61_below_75%_of_pole_176.66` — the flag's low sat 27% under the pole's high, the rule allows 25% |
+| 09-16 | INVALIDATED | close 145.62 under the 20-day 145.67 |
+| 09-17 → 09-18 | unqualified | moving averages not stacked (the 50-day far below) |
+| 09-23 → 09-25 | unqualified | new highs moved the pivot; base 0–1 sessions |
+
+- **A different failure from CDNA and HNGE:** not surfacing (CDNA) and not the pole window (HNGE, #592) —
+  the **flag-depth rule** (low ≥ 75% of the pole's high) rejected it on every day of the flag, by about
+  two points (27% vs 25%). The pole itself was measured correctly (+235% from 08-03).
+- One labelled example; no threshold is changed on it. HTF stays behind EP.
+

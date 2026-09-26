@@ -1597,3 +1597,10 @@ and chop. FVRR 2020 is the caution: the same heavy-volume break was an add when 
 - **Standing frame for any chart work:** the goal is how charts enter the process, not whether a
   machine passes a test. Pairs with his 09-24 note that charts only support a decision.
 
+## 2026-09-24 — MRNA high tight flag (PBA @801010athlete tweet), operator-shared
+
+- **Image:** `docs/methodology/operator_shared_charts/2026-09-24_htf_mrna_pba/01_tweet.jpg`.
+- **Tweet, verbatim (2026-09-24 6:50 PM):** *"Who knows what happens but this is a model book looking HTF. $MRNA"*
+- **Chart marks:** $194.82, +40.78 (+26.4%) at 4:00 PM ET 09-24; *"+128% from Pivot in 6 weeks"*; base 43.68–59.55; an earlier low 22.28 (Dec 2025); RS 99.
+- **Our board:** rejected every day of the flag on depth (flag low 27% under the pole's high; the rule allows 25%) — `docs/analysis/htf_surfacing_gap_2026-08-25.md` §MRNA.
+
