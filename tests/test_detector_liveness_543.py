@@ -219,6 +219,12 @@ def test_module_constant_covers_the_required_tables():
         # degradation via a different mechanism, llm_health.alert_endpoint_shape_anomaly);
         # this registry is the only watchdog for the writer itself going dark.
         "mi_tv_news_shadow",
+        # 2026-09-26 (#506, adversarial review): the theme-hierarchy health check's own
+        # liveness — it had no watchdog at all, the exact "1-of-94 for 11 days, nothing
+        # could have told anyone" failure mode #506 exists to catch, reproduced one layer
+        # up. Keyed on `mi_audit_log` itself (`extra_where` filters to this check's own
+        # event type) since there is no separate output table for a health check.
+        "mi_audit_log",
     }
 
 

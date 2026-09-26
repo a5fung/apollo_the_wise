@@ -44,16 +44,23 @@ from agents.market_intelligence.health_checks import (
     _derive_lost_link_alert,
     _hier_ecosystem_breakdown,
     _hier_parent_kind_counts,
+    _hier_extract_nominated_parent,
+    _hier_childless_nominated_parents,
+    _hier_ecosystem_name,
+    _hier_format_summary,
     _evaluate_theme_hierarchy,
     _HIER_MIN_ORPHAN_HISTORY_DATES,
     _HIER_MIN_LOSTLINK_HISTORY_DAYS,
     _HIER_MIN_OWN_HISTORY,
+    _HIER_LOOKBACK_DAYS,
+    _HIER_POST_471_FIX,
     run_theme_hierarchy_health_check,
     get_theme_hierarchy_evening_line,
 )
 from agents.market_intelligence.theme_ecosystems import (
-    PARENT_KIND_CHILD, PARENT_KIND_ROOT, PARENT_KIND_CATCH_ALL,
+    PARENT_KIND_CHILD, PARENT_KIND_ROOT, PARENT_KIND_CATCH_ALL, E_UNASSIGNED,
 )
+from agents.market_intelligence.db import PARENT_NOMINATION_EVENT_TYPES
 
 
 def _row(name, d, stage, parent=None):
@@ -264,6 +271,68 @@ def test_parent_kind_counts_a_retired_rows_parent_theme_never_counts_as_child():
     assert counts[PARENT_KIND_CATCH_ALL] == 1
 
 
+# ── _hier_extract_nominated_parent / _hier_childless_nominated_parents — #506 item 4, the
+# operator's own 2026-07-27 "nominated parents with no children" framing made measurable ────────
+
+
+def test_extract_nominated_parent_parses_route_a_phrasing():
+    # Route A's theme_subtheme_routed summary: "Route A: '<child>' → child of '<parent>' ..."
+    s = "Route A: 'Small Cap Widget Rotation' → child of 'Widget Makers' (PARENT_CHILD, strip averted)"
+    assert _hier_extract_nominated_parent(s) == "Widget Makers"
+
+
+def test_extract_nominated_parent_parses_arm_b_and_parent_pass_phrasing():
+    # Arm B (theme_merge_parent_child) and #505's own pass (theme_parent_pass_linked) share the
+    # SAME "sub-theme of" phrasing — one regex covers both on purpose.
+    assert _hier_extract_nominated_parent(
+        "Arm B: 'Child Theme' → sub-theme of 'Parent Theme'") == "Parent Theme"
+    assert _hier_extract_nominated_parent(
+        "Parent pass: 'Child Theme' → sub-theme of 'Parent Theme'") == "Parent Theme"
+
+
+def test_extract_nominated_parent_none_on_unrecognised_text():
+    assert _hier_extract_nominated_parent("some unrelated audit summary") is None
+    assert _hier_extract_nominated_parent("") is None
+    assert _hier_extract_nominated_parent(None) is None
+
+
+def test_childless_nominated_parents_flags_a_nominee_with_no_live_child():
+    summaries = ["Route A: 'X' → child of 'NominatedParent' (PARENT_CHILD, strip averted)"]
+    # NominatedParent is live tonight but nothing in the snapshot points at it as a parent —
+    # exactly the operator's "nominated parent with no children" half-completed nesting.
+    snapshot = {
+        "NominatedParent": {"name": "NominatedParent", "stage": "Mainstream", "parent_theme": None},
+        "SomeOtherChild": {"name": "SomeOtherChild", "stage": "Nascent", "parent_theme": "Unrelated"},
+    }
+    assert _hier_childless_nominated_parents(summaries, snapshot) == ["NominatedParent"]
+
+
+def test_childless_nominated_parents_silent_when_a_real_child_exists():
+    summaries = ["Arm B: 'X' → sub-theme of 'RealParent'"]
+    snapshot = {
+        "RealParent": {"name": "RealParent", "stage": "Mainstream", "parent_theme": None},
+        "X": {"name": "X", "stage": "Nascent", "parent_theme": "RealParent"},
+    }
+    assert _hier_childless_nominated_parents(summaries, snapshot) == []
+
+
+def test_childless_nominated_parents_silent_when_the_nominee_later_retired():
+    # THE FALSE POSITIVE THIS FILE'S OWN LOST-LINK METRIC ALREADY REJECTED, applied here too: a
+    # nominee that is no longer a LIVE theme at all is attrition, not half-completed nesting.
+    summaries = ["Route A: 'X' → child of 'GoneNow' (PARENT_CHILD, strip averted)"]
+    snapshot = {"SomeLiveTheme": {"name": "SomeLiveTheme", "stage": "Nascent", "parent_theme": None}}
+    assert _hier_childless_nominated_parents(summaries, snapshot) == []
+
+
+def test_childless_nominated_parents_dedupes_repeat_nominations():
+    summaries = [
+        "Route A: 'X' → child of 'NominatedParent' (PARENT_CHILD, strip averted)",
+        "Arm B: 'Y' → sub-theme of 'NominatedParent'",
+    ]
+    snapshot = {"NominatedParent": {"name": "NominatedParent", "stage": "Nascent", "parent_theme": None}}
+    assert _hier_childless_nominated_parents(summaries, snapshot) == ["NominatedParent"]
+
+
 # ── _evaluate_theme_hierarchy — pure decision ────────────────────────────────────────────────────
 
 
@@ -329,6 +398,53 @@ def test_concentration_drift_is_two_sided():
     assert any(f["kind"] == "concentration_drift" for f in flags)
 
 
+def test_childless_nominated_parent_growth_silent_with_thin_own_history():
+    # Same bootstrap idiom as catch-all/concentration — n=0 self-collected history at ship
+    # must never page, no matter how big the jump looks.
+    baseline = {"childless_nominated_parents_n": 0}
+    thin_history = [{"childless_nominated_parents_n": 0}] * (_HIER_MIN_OWN_HISTORY - 1)
+    flags = _evaluate_theme_hierarchy(
+        _today(childless_nominated_parents_n=5), baseline, thin_history)
+    assert not any(f["kind"] == "childless_nominated_parent_growth" for f in flags)
+
+
+def test_childless_nominated_parent_growth_fires_once_own_history_is_long_enough():
+    history = [{"childless_nominated_parents_n": 0} for _ in range(_HIER_MIN_OWN_HISTORY)]
+    baseline = {"childless_nominated_parents_n": 0}
+    flags = _evaluate_theme_hierarchy(
+        _today(childless_nominated_parents_n=5, childless_nominated_parents=["A", "B"]),
+        baseline, history)
+    flag = next(f for f in flags if f["kind"] == "childless_nominated_parent_growth")
+    assert flag["n"] == 5
+    assert flag["names"] == ["A", "B"]
+
+
+def test_childless_nominated_parent_growth_silent_on_a_small_move():
+    history = [{"childless_nominated_parents_n": 2} for _ in range(_HIER_MIN_OWN_HISTORY)]
+    baseline = {"childless_nominated_parents_n": 2}
+    # No historical day-over-day movement at all -> alert floor is margin-only (1); a move of
+    # exactly 1 must NOT fire (day-over-day comparison is strictly >, not >=).
+    flags = _evaluate_theme_hierarchy(
+        _today(childless_nominated_parents_n=3), baseline, history)
+    assert not any(f["kind"] == "childless_nominated_parent_growth" for f in flags)
+
+
+def test_empty_metrics_baseline_never_manufactures_a_false_spike():
+    # ADVERSARIAL-REVIEW FIX: a `theme_hierarchy_health` row written by the thin-board skip OR
+    # (post-#506-fix) the loud failure path (`_hier_report_failure`) carries `metrics={}` — a
+    # real DICT, not None. `baseline is not None` alone used to pass, and `baseline.get(x) or
+    # 0.0` then substituted 0 for every missing field, manufacturing a false day-over-day SPIKE
+    # off a read/skip failure the very next night. All three self-baselined checks must require
+    # the SPECIFIC field to be present in baseline, not just a non-None baseline dict.
+    baseline = {}  # the empty-metrics shape a skip/error row actually writes
+    history = [{"catch_all_pct": 2.5, "top_pct": 10.0, "childless_nominated_parents_n": 0}
+              for _ in range(_HIER_MIN_OWN_HISTORY)]
+    flags = _evaluate_theme_hierarchy(
+        _today(catch_all_pct=2.6, top_pct=10.3, childless_nominated_parents_n=1),
+        baseline, history)
+    assert flags == []
+
+
 # ── Integration: run_theme_hierarchy_health_check end-to-end (db.py layer monkeypatched) ──────────
 
 
@@ -347,10 +463,14 @@ def _captured_telegram(monkeypatch):
 
 @pytest.fixture
 def _captured_audit(monkeypatch):
+    # (event_type, summary, detail, conn) — `conn` captured (not just accepted) so the #506
+    # pool-deadlock fix (log_audit_event called WITH the already-held connection, never a
+    # second pool.acquire while holding one — the 2026-09-18 pattern) has something to assert
+    # against, not just something that no longer TypeErrors.
     events: list[tuple] = []
 
-    async def _audit(event_type, summary, detail=""):
-        events.append((event_type, summary, detail))
+    async def _audit(event_type, summary, detail="", *, conn=None):
+        events.append((event_type, summary, detail, conn))
 
     monkeypatch.setattr(health_checks, "log_audit_event", _audit)
     return events
@@ -363,7 +483,7 @@ def _healthy_rows(today, n=15):
     return [_row(f"T{i}", today, "Nascent", None) for i in range(n)]
 
 
-def _wire(monkeypatch, rows, eco_map=None, baseline=None, own_history=None):
+def _wire(monkeypatch, rows, eco_map=None, baseline=None, own_history=None, nominations=None):
     async def _window(conn, asof, lookback_days=100):
         return rows
 
@@ -376,10 +496,14 @@ def _wire(monkeypatch, rows, eco_map=None, baseline=None, own_history=None):
     async def _hist(conn, limit=45):
         return own_history or []
 
+    async def _nominations(conn, since):
+        return nominations or []
+
     monkeypatch.setattr(health_checks, "get_theme_hierarchy_window", _window)
     monkeypatch.setattr(health_checks, "get_theme_ecosystem_map", _eco)
     monkeypatch.setattr(health_checks, "get_theme_hierarchy_baseline", _baseline)
     monkeypatch.setattr(health_checks, "get_theme_hierarchy_own_history", _hist)
+    monkeypatch.setattr(health_checks, "get_theme_parent_nominations", _nominations)
 
 
 @pytest.mark.asyncio
@@ -432,6 +556,264 @@ async def test_orphan_spike_fires_telegram_and_audit(_captured_telegram, _captur
     assert len(_captured_telegram) == 1
     assert "real parent link" in _captured_telegram[0]
     assert any(e[0] == "theme_hierarchy_health" and "FLAG" in e[1] for e in _captured_audit)
+
+
+@pytest.mark.asyncio
+async def test_eco_map_failure_skips_catchall_not_a_false_100pct(
+        _captured_telegram, _captured_audit, monkeypatch):
+    # HIGH severity adversarial-review finding: an eco_map read failure used to fall through to
+    # `eco_map = {}`, and EVERY live theme resolves to E_UNASSIGNED against an empty map — a false
+    # 100% catch-all / 100% concentration computed from a pure READ FAILURE, which could then page
+    # against real history. Must degrade those two metrics to None, record why, and fire NOTHING.
+    today = date(2026, 9, 26)
+    rows = _healthy_rows(today, n=15)
+    rows[0]["parent_theme"] = "T1"  # one real containment link so n_child > 0 independent of eco_map
+    rows.append(_row("T1", today, "Mainstream", None))
+
+    async def _broken_eco(conn, names):
+        raise RuntimeError("mi_theme_ecosystems unreachable")
+
+    _wire(monkeypatch, rows)
+    monkeypatch.setattr(health_checks, "get_theme_ecosystem_map", _broken_eco)
+    # Rich, quiet self-collected history so catch_all_growth/concentration_drift WOULD otherwise
+    # be armed — proving the None-guard, not just "no history yet".
+    own_history = [{"catch_all_pct": 2.0, "top_pct": 10.0}] * _HIER_MIN_OWN_HISTORY
+    monkeypatch.setattr(health_checks, "get_theme_hierarchy_own_history",
+                        lambda conn, limit=45: _async_return(own_history))
+    monkeypatch.setattr(health_checks, "get_theme_hierarchy_baseline",
+                        lambda conn: _async_return({"catch_all_pct": 2.0, "top_pct": 10.0}))
+    monkeypatch.setattr(health_checks, "et_today", lambda: today)
+
+    summary = await run_theme_hierarchy_health_check(conn=object())
+
+    assert summary["metrics"]["catch_all_pct"] is None
+    assert summary["metrics"]["top_pct"] is None
+    assert summary["metrics"]["n_root"] is None
+    assert summary["metrics"]["n_catch_all_kind"] is None
+    assert summary["metrics"]["ecosystem_skipped_reason"]
+    # n_child is INDEPENDENT of eco_map (pure containment) and must still be real, not skipped.
+    assert summary["metrics"]["n_child"] == 1
+    assert not any(f["kind"] in ("catch_all_growth", "concentration_drift")
+                   for f in summary["flags"])
+    assert _captured_telegram == []
+    # Still a clean, audited run — an eco_map failure is a DEGRADE, not the loud failure path.
+    assert any(e[0] == "theme_hierarchy_health" and "error" not in e[1] for e in _captured_audit)
+
+
+async def _async_return(value):
+    return value
+
+
+@pytest.mark.asyncio
+async def test_window_query_failure_is_loud_audit_row_and_notify(
+        _captured_telegram, _captured_audit, monkeypatch):
+    # THE #506 ADVERSARIAL-REVIEW BUG: a failed window query returned early with NO audit row and
+    # NO alert — the function never raises, so the scheduler's own `except: notify_job_failure`
+    # around this call is unreachable, and the evening line silently vanishes with no trace.
+    notified = []
+
+    async def _broken_window(conn, asof, lookback_days=100):
+        raise RuntimeError("mi_themes window query timed out")
+
+    async def _notify(job_name, error):
+        notified.append((job_name, error))
+
+    monkeypatch.setattr(health_checks, "get_theme_hierarchy_window", _broken_window)
+    monkeypatch.setattr(health_checks, "et_today", lambda: date(2026, 9, 26))
+    import core.notifications as notifications
+    monkeypatch.setattr(notifications, "notify_job_failure", _notify)
+
+    summary = await run_theme_hierarchy_health_check(conn=object())
+
+    assert summary["status"] == "error"
+    assert any("window query" in e for e in summary["errors"])
+    # LOUD: an audit row was written (not silently skipped)...
+    assert any(e[0] == "theme_hierarchy_health" and "error" in e[1].lower()
+               for e in _captured_audit)
+    # ...AND the scheduler's own job-failure notifier was called directly, since this function
+    # itself never raises (the scheduler's wrapping try/except would otherwise never see it).
+    assert len(notified) == 1
+    assert notified[0][0] == "theme_hierarchy_health_check"
+
+
+@pytest.mark.asyncio
+async def test_unexpected_internal_failure_is_also_loud_not_dark(
+        _captured_telegram, _captured_audit, monkeypatch):
+    # Generalizes the window-query fix: ANY unexpected internal failure (not just that one query)
+    # must be audited + notified, never swallowed into a quiet early return.
+    today = date(2026, 9, 26)
+    notified = []
+
+    async def _notify(job_name, error):
+        notified.append((job_name, error))
+
+    def _broken_orphan_point(snapshot):
+        raise RuntimeError("boom — simulated unexpected bug")
+
+    _wire(monkeypatch, _healthy_rows(today, n=15))
+    monkeypatch.setattr(health_checks, "_hier_orphan_point", _broken_orphan_point)
+    monkeypatch.setattr(health_checks, "et_today", lambda: today)
+    import core.notifications as notifications
+    monkeypatch.setattr(notifications, "notify_job_failure", _notify)
+
+    summary = await run_theme_hierarchy_health_check(conn=object())
+
+    assert summary["status"] == "error"
+    assert any(e[0] == "theme_hierarchy_health" and "error" in e[1].lower()
+               for e in _captured_audit)
+    assert len(notified) == 1
+    assert notified[0][0] == "theme_hierarchy_health_check"
+
+
+@pytest.mark.asyncio
+async def test_conn_is_threaded_through_every_audit_write(
+        _captured_telegram, _captured_audit, monkeypatch):
+    # #506 pool-deadlock fix (the 2026-09-18 pattern): this function HOLDS a pooled connection for
+    # its whole run — every log_audit_event call must reuse it (`conn=conn`), never ask the pool
+    # for a second one while the first is still held.
+    today = date(2026, 9, 26)
+    sentinel_conn = object()
+    _wire(monkeypatch, _healthy_rows(today, n=15))
+    monkeypatch.setattr(health_checks, "et_today", lambda: today)
+
+    await run_theme_hierarchy_health_check(conn=sentinel_conn)
+
+    assert _captured_audit  # at least one audit row was written
+    assert all(e[3] is sentinel_conn for e in _captured_audit)
+
+
+def test_orphan_growth_history_excludes_the_pre_471_fix_era(monkeypatch):
+    # #471 fixed parent_theme persistence 2026-07-25 — the "1-of-94 for 11 days" incident this
+    # whole check exists because of. A huge swing recorded BEFORE that date is known-broken
+    # behaviour, not ordinary noise, and must not calibrate the derived growth-alert floor.
+    today = date(2026, 9, 26)
+    pre_fix_day = _HIER_POST_471_FIX - date.resolution  # 2026-07-24, one day before the fix
+    # A single wild pre-fix swing (0% -> 95% orphan in one day) that WOULD set an enormous floor
+    # if it leaked into the derivation.
+    pre_fix_rows = [
+        _row("PreA", pre_fix_day - date.resolution, "Nascent", "P"),
+        _row("PreA", pre_fix_day, "Nascent", None),
+    ]
+    # Comfortably enough POST-fix history (flat, no movement) to actually trust a derived floor.
+    from datetime import timedelta
+    post_fix_rows = []
+    for i in range(_HIER_MIN_ORPHAN_HISTORY_DATES + 5):
+        d = _HIER_POST_471_FIX + timedelta(days=i)
+        post_fix_rows.append(_row(f"H{i}", d, "Nascent", "P"))
+
+    hist_rows_all = pre_fix_rows + post_fix_rows
+    hist_rows_post_fix_only = [r for r in hist_rows_all if r["theme_date"] >= _HIER_POST_471_FIX]
+
+    series_all = _hier_orphan_series(hist_rows_all, today)
+    series_filtered = _hier_orphan_series(hist_rows_post_fix_only, today)
+    alert_all = _derive_orphan_growth_alert_pp(series_all)
+    alert_filtered = _derive_orphan_growth_alert_pp(series_filtered)
+
+    # The pre-fix swing inflates the floor when included (proves the fixture is meaningful)...
+    assert alert_all is not None and alert_filtered is not None
+    assert alert_all > alert_filtered
+    # ...and `run_theme_hierarchy_health_check` must use the FILTERED (post-fix-only) series,
+    # not the raw one — pinned via the integration test below.
+
+
+@pytest.mark.asyncio
+async def test_run_check_excludes_pre_471_fix_rows_from_the_derived_floor(monkeypatch):
+    today = date(2026, 9, 26)
+    from datetime import timedelta
+    pre_fix_day = _HIER_POST_471_FIX - timedelta(days=1)
+    pre_fix_rows = [
+        _row("PreA", pre_fix_day - timedelta(days=1), "Nascent", "P"),
+        _row("PreA", pre_fix_day, "Nascent", None),
+    ]
+    post_fix_rows = []
+    for i in range(_HIER_MIN_ORPHAN_HISTORY_DATES + 5):
+        d = _HIER_POST_471_FIX + timedelta(days=i)
+        post_fix_rows.append(_row(f"H{i}", d, "Nascent", "P"))
+    today_rows = _healthy_rows(today, n=15)
+
+    monkeypatch.setattr(health_checks, "et_today", lambda: today)
+    _wire(monkeypatch, pre_fix_rows + post_fix_rows + today_rows)
+
+    summary = await run_theme_hierarchy_health_check(conn=object())
+
+    # Only the flat post-fix history (+ margin) sets the floor — a wild pre-fix swing must not
+    # have leaked in and inflated it.
+    assert summary["metrics"]["orphan_growth_alert_pp"] == pytest.approx(0.5, abs=0.01)
+    assert summary["metrics"]["hist_window_days"] <= _HIER_LOOKBACK_DAYS
+
+
+def test_hier_format_summary_plain_words_no_date_no_codes():
+    metrics = {
+        "n_live": 118, "n_child": 10, "n_root": 108, "n_catch_all_kind": 0,
+        "lost_link_7d": 0, "top_e_code": "E-SAAS", "top_pct": 10.2,
+        "ecosystem_skipped_reason": None, "childless_nominated_parents_n": 0,
+    }
+    line = _hier_format_summary(metrics, [])
+
+    assert line == (
+        "10 of 118 themes sit under a parent theme, 108 under their sector group, "
+        "none unassigned; no links lost this week; largest group is Enterprise software at 10%"
+    )
+    assert "2026-" not in line          # no redundant date — the brief already carries one
+    assert "E-SAAS" not in line         # ecosystem CODE never in operator-facing text
+    assert "Theme hierarchy" not in line  # the emoji wrapper adds that label; never duplicated
+
+
+def test_hier_format_summary_names_the_flag_in_words_when_flagged():
+    metrics = {
+        "n_live": 118, "n_child": 10, "n_root": 108, "n_catch_all_kind": 0,
+        "lost_link_7d": 0, "top_e_code": "E-SAAS", "top_pct": 10.2,
+        "ecosystem_skipped_reason": None, "childless_nominated_parents_n": 0,
+    }
+    flags = [{"kind": "lost_link", "n": 3, "alert_n": 1, "window_days": 60}]
+    line = _hier_format_summary(metrics, flags)
+    assert "FLAGGED" in line
+    assert "3 themes lost their parent link this week" in line
+
+
+def test_hier_format_summary_degrades_gracefully_when_ecosystem_skipped():
+    metrics = {
+        "n_live": 118, "n_child": 10, "n_root": None, "n_catch_all_kind": None,
+        "lost_link_7d": 2, "top_e_code": None, "top_pct": None,
+        "ecosystem_skipped_reason": "ecosystem map unavailable", "childless_nominated_parents_n": 0,
+    }
+    line = _hier_format_summary(metrics, [])
+    assert "ecosystem map unavailable" in line
+    assert "2 link(s) lost this week" in line
+    assert "largest-group share unavailable tonight" in line
+
+
+def test_hier_ecosystem_name_maps_code_to_human_name():
+    assert _hier_ecosystem_name(E_UNASSIGNED) == "Unassigned"
+    assert _hier_ecosystem_name(None) == "no ecosystem"
+    assert _hier_ecosystem_name("E-DOES-NOT-EXIST") == "E-DOES-NOT-EXIST"
+
+
+def test_parent_nomination_event_types_covers_all_three_adjudicators():
+    # #506 item 4: the metric reads through Route A / Arm B / #505's own pass — a 4th
+    # nomination path silently missing from this registry would under-count forever.
+    from agents.market_intelligence.audit_events import THEME_PARENT_PASS_LINKED
+    assert set(PARENT_NOMINATION_EVENT_TYPES) == {
+        "theme_subtheme_routed", "theme_merge_parent_child", "theme_parent_pass_linked",
+    }
+    assert THEME_PARENT_PASS_LINKED in PARENT_NOMINATION_EVENT_TYPES
+
+
+@pytest.mark.asyncio
+async def test_childless_nominated_parents_metric_flows_end_to_end(
+        _captured_telegram, _captured_audit, monkeypatch):
+    today = date(2026, 9, 26)
+    rows = _healthy_rows(today, n=15)
+    rows.append(_row("NominatedParent", today, "Mainstream", None))  # live, but no live child
+    nominations = ["Route A: 'Gone' → child of 'NominatedParent' (PARENT_CHILD, strip averted)"]
+
+    _wire(monkeypatch, rows, nominations=nominations)
+    monkeypatch.setattr(health_checks, "et_today", lambda: today)
+
+    summary = await run_theme_hierarchy_health_check(conn=object())
+
+    assert summary["metrics"]["childless_nominated_parents_n"] == 1
+    assert summary["metrics"]["childless_nominated_parents"] == ["NominatedParent"]
 
 
 # ── Wiring pins — the derive-the-population discipline: a check that exists but isn't called

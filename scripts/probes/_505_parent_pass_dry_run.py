@@ -5,18 +5,35 @@ What it prints, for the latest `mi_themes` snapshot:
      ecosystem is the default parent): CHILD of a real theme / ROOT under its
      ecosystem / CATCH-ALL root under E-UNASSIGNED — via the SAME
      `theme_ecosystems.resolve_theme_parent` the /themes render uses.
-  2. Exactly what an ARMED night would ask the ADR-0025 adjudicator — via the
-     SAME pure `theme_engine.propose_parent_candidates` the nightly pass calls,
-     fed the SAME inputs (live merge cooldowns, Arm B's uncapped territory,
-     sector map): child → best candidate parent + why, tonight's capped slice
-     and the whole backfill queue.
+  2. What an ARMED night would ask the ADR-0025 adjudicator — via the SAME
+     pure `theme_engine.propose_parent_candidates` the nightly pass calls:
+     child → best candidate parent + why, tonight's capped slice and the
+     whole backfill queue.
   3. Counts: themes / already parented / would-ask / roots / catch-all, the 5
      biggest families, and the backfill priced as ONE number (pricing_for).
 
+⚠ APPROXIMATION, NOT A BYTE-FOR-BYTE REPLAY OF AN ARMED NIGHT — say so, never
+over-claim "same inputs". This probe reads YESTERDAY's already-saved
+`mi_themes` snapshot (`MAX(theme_date)`) and sectors from a single
+`mi_stock_scores` join (the top ~300 tickers by rank only). The real engine
+instead runs over the FINAL board it just built TONIGHT (`all_themes` —
+includes tonight's own splits/retirements/newborns, which this probe cannot
+see a day early) and a `stocks_by_ticker` map assembled from the top-
+`ASSIGN_POOL_CEILING` RS leaders PLUS every existing theme ticker outside that
+list, backfilled via `get_rs_for_tickers` + the persistent `mi_ticker_
+overrides` sector cache (`get_sectors_batch`) — a wider, same-night
+population this probe's one-shot SQL join does not reproduce. So the counts
+above are a same-day APPROXIMATION of what an armed night would ask, good
+enough to sign off the design, not identical to and not a substitute for a
+real run.
+
 The verdicts themselves need the paid adjudicator — that is the flip gate, not
-this probe. `--adjudicate` runs the REAL `adjudicate_merge_pair` on the queue
-(log_spend=False, needs ANTHROPIC_API_KEY) — OPERATOR-authorised only; never
-run it from here without his word.
+this probe. `--adjudicate` is a PREVIEW ONLY: it prints the real verdicts
+(log_spend=False, needs ANTHROPIC_API_KEY) but WRITES NOTHING — no
+`parent_theme` link, no merge cooldown row, no DB mutation at all. Links are
+written only by the armed nightly `theme_engine._run_parent_pass`, once the
+operator flips `theme_parent_pass` ON. OPERATOR-authorised only; never run it
+from here without his word.
 
 Reads prod over ssh (psql, SELECTs only). Run from the repo root:
     python scripts/probes/_505_parent_pass_dry_run.py [--out FILE] [--adjudicate]
@@ -48,7 +65,14 @@ TICK_SEP = ","
 
 Q_BOARD = (
     "SELECT name, stage, COALESCE(parent_theme,''), source, "
-    "array_to_string(tickers, ','), COALESCE(score,0) "
+    "array_to_string(tickers, ','), COALESCE(score,0), "
+    # Real description — the same row `build_adjudication_prompt` reads in
+    # production (--adjudicate needs it; a blank description was #505's own
+    # sign-off tooling defect, fixed here). Newlines flattened and any literal
+    # '|' escaped so this probe's own line/pipe-split `psql()` parser (below)
+    # never mis-splits a row on a description's own punctuation.
+    "regexp_replace(regexp_replace(COALESCE(description,''), E'[\\n\\r]+', ' ', 'g'), "
+    "'\\|', '/', 'g') "
     "FROM mi_themes WHERE theme_date=(SELECT MAX(theme_date) FROM mi_themes) "
     "ORDER BY score DESC, name"
 )
@@ -77,14 +101,34 @@ def psql(query: str) -> list[list[str]]:
     return rows
 
 
+def shadow_promoted_split(live: list[dict], queue: list[dict], tonight: list[dict]) -> dict:
+    """Pure: how many `source='shadow_promoted'` themes are on the board, in the
+    WHOLE backfill queue, and in TONIGHT's capped slice specifically.
+
+    #505 sign-off fix: the prior version of this probe printed the QUEUE-wide
+    count next to the words "in tonight's queue" — a 37-item count mislabeled
+    as a 6-item one. Report all three counts explicitly so nobody has to guess
+    which population a number describes."""
+    return {
+        "board": sum(1 for t in live if t.get("source") == "shadow_promoted"),
+        "queue": sum(1 for c in queue if c.get("child_source") == "shadow_promoted"),
+        "tonight": sum(1 for c in tonight if c.get("child_source") == "shadow_promoted"),
+    }
+
+
 def load_board() -> tuple[str, list[dict]]:
     day = psql(Q_DATE)[0][0]
     board = []
-    for name, stage, parent, source, tickers, score in psql(Q_BOARD):
+    for name, stage, parent, source, tickers, score, description in psql(Q_BOARD):
         board.append({
             "name": name, "stage": stage, "parent_theme": parent or None, "source": source,
             "tickers": [t for t in tickers.split(TICK_SEP) if t], "score": float(score),
-            "description": "",  # the adjudication prompt wants one; --adjudicate refetches it
+            # The real mi_themes description for this exact board row — what
+            # `build_adjudication_prompt` reads (`--adjudicate` truncates to 280
+            # chars itself). A prior version of this probe hardcoded "" here with
+            # a comment claiming --adjudicate refetched it; it never did, so every
+            # --adjudicate run sent the adjudicator a BLANK thesis for both sides.
+            "description": description,
         })
     return day, board
 
@@ -124,6 +168,10 @@ def main() -> int:
     P = L.append
     P(f"#505 PARENT PASS — DRY RUN over the live board of {day} (read-only, $0)")
     P(f"toggle theme_parent_pass: OFF (nothing below was written; this is what an armed night would do)")
+    P("APPROXIMATION, not an exact replay of an armed night: board = yesterday's saved "
+      "mi_themes snapshot (not tonight's final list, so no tonight-only newborns/splits); "
+      "sectors = a single mi_stock_scores join (top ~300 by rank), not the engine's wider "
+      "leaders + existing-theme-ticker cache. See the file docstring for why.")
     P("")
     n_live = len(live)
     n_child = kinds["child"]
@@ -131,8 +179,10 @@ def main() -> int:
       f"ROOT under ecosystem {kinds['root']} · CATCH-ALL (E-UNASSIGNED) {kinds['catch_all']}")
     P(f"Every theme has a parent under ruling (5): {n_child + kinds['root'] + kinds['catch_all']} of {n_live}")
     P(f"Fading themes on the board (left alone by the pass): {sum(1 for t in live if t['stage'] == 'Fading')}")
-    P(f"shadow_promoted themes on the board: {sum(1 for t in live if t['source'] == 'shadow_promoted')} "
-      f"(the path that never reached the adjudicator in July — {sum(1 for c in queue if c['child_source'] == 'shadow_promoted')} of them are in tonight's queue)")
+    sp = shadow_promoted_split(live, queue, tonight)
+    P(f"shadow_promoted themes on the board: {sp['board']} (the path that never reached the "
+      f"adjudicator in July — {sp['queue']} of them are in the whole backfill queue; "
+      f"{sp['tonight']} of tonight's {len(tonight)} capped ask(s))")
     P("")
     P(f"WOULD ASK the adjudicator: {len(queue)} childless theme(s) have an eligible same-ecosystem "
       f"candidate parent; cap {te.PARENT_PASS_CAP_PER_NIGHT}/night → {tonight and len(tonight)} tonight, "

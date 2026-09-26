@@ -16883,6 +16883,34 @@ async def get_theme_ecosystem_map(conn, names: list[str]) -> dict[str, str]:
     return {r["theme_name"]: r["e_code"] for r in rows}
 
 
+# The audit events a PARENT_CHILD adjudicator verdict is logged under when the link actually
+# stuck — Route A's protect-strip adjudication, Arm B's own merge pass, and #505's own nightly
+# parent pass. All three phrase their summary as "... → child of 'PARENT'" or "... → sub-theme
+# of 'PARENT'" (health_checks._hier_extract_nominated_parent parses either shape with one
+# regex). Kept here, not re-derived from audit_events.py, because two of the three
+# (theme_subtheme_routed / theme_merge_parent_child) are inline string literals in
+# theme_engine.py, not centralized constants — a pre-existing gap, out of scope here.
+PARENT_NOMINATION_EVENT_TYPES = (
+    "theme_subtheme_routed", "theme_merge_parent_child", "theme_parent_pass_linked",
+)
+
+
+async def get_theme_parent_nominations(conn, since: date) -> list[str]:
+    """#506 operator metric (2026-07-27: "nominated parents with no children" —
+    half-completed nesting): every summary text from a PARENT_CHILD-linking adjudicator
+    verdict (`PARENT_NOMINATION_EVENT_TYPES`) since `since` (a plain ET date). Returned as
+    raw summary strings — `health_checks._hier_extract_nominated_parent` parses the
+    nominated PARENT name out of each one; this function does no parsing, so a 4th
+    nomination event type is one entry in the tuple away from being covered, never a
+    query change."""
+    rows = await conn.fetch(
+        "SELECT summary FROM mi_audit_log WHERE event_type = ANY($1::text[]) "
+        "AND created_at >= $2::date",
+        list(PARENT_NOMINATION_EVENT_TYPES), since,
+    )
+    return [r["summary"] for r in rows]
+
+
 async def get_theme_member_departures(conn, today: "date", prior_date: "date") -> list[dict]:
     """Tickers present in a theme's PRIOR snapshot but absent from its TODAY
     snapshot, for themes alive (stage != 'Retired') on BOTH dates — a theme
