@@ -13,6 +13,23 @@ today, so the whole lane still nets −0.32 to −0.35R per fire. The Method sec
 before any cell was computed (`2868bdc2`); nothing in it changed. Nothing is picked here — no stop, no
 target, no selection rule (THE LINE).
 
+
+## ⚠ VERIFIED THE SAME DAY — the fork (NO LIFT) holds; these numbers are corrected (this section wins)
+
+An independent verifier re-ran the probe (cells byte-identical) and confirmed: 0 of 122 cells clear at either
+checkpoint, no cell has a positive mean on either selection or entry, leaders read worse than all fires in
+every cell, and the live EP stack was walked with the repo's own tools. Corrections:
+
+| text below | what holds |
+|---|---|
+| the lane's own arm read on settled rows | breaks the sessions-elapsed rule: on all walkable rows at s10 it reads −0.29R (not −0.48R); leaders −0.76R (not −0.88R); the 204 still-open rows average +0.74R |
+| "stops 99.2% of leader fires" / "95% stopped" | that column is the no-exit arm's; the trail arm's own stop rate is 78% (leaders) and 59% (all) |
+| runners kept at ≥3R: 26% (breakeven-hold) vs 5.6% (lane trail) | the two cells differ in stop and population; the lane's own trail on the same 320 runner fires keeps **8.8%** |
+| the other fires lose −0.69R each; break-even needs runners > ~24% | −0.60R across all 3,163; break-even ~22% (runners are 9%) |
+| control beats fires in 40 of 40 | ~65% of control sessions at s10 on the trail arms are instant 0R trades; dropping them, control still beats fires in 30 of 36 |
+| the 3.0% tail bar as "3× the incumbent's 1.01%" | Block 5 had already reported 2.6% on this extract; the verdict fails on mean first, so it does not rest on this bar |
+
+
 ## The question it serves
 
 Block 5 (`327_exit_determination_2026-09-26.md`) found no stop × target × FULL-exit cell pays on the
