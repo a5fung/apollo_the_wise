@@ -505,3 +505,27 @@ def test_spend_command_reply_keeps_identifiers_via_html(monkeypatch):
     text, kw = reply.await_args.args[0], reply.await_args.kwargs
     assert kw.get("parse_mode") == "HTML"
     assert "ep_grade_judge" in text and "mgmt_judge" in text and "<b>API spend</b>" in text
+
+
+def test_spend_summary_is_short_totals_first_with_the_tail_summed(monkeypatch):
+    """Operator 2026-09-25 on /spend: "hard to read". Totals first, top callers, the rest summed."""
+    import asyncio
+    import core.spend as sp
+
+    async def _today():
+        return {"date": "2026-09-25", "total": {"cost": 15.33, "calls": 500},
+                "by_caller": [{"caller": f"c_{i}", "cost": 5.0 - i, "calls": 10} for i in range(4)]}
+
+    async def _month():
+        return {"month": "September 2026", "total": {"cost": 47.97, "calls": 4647},
+                "by_caller": [{"caller": f"m_{i}", "cost": 10.0 - i, "calls": 10} for i in range(8)]}
+    monkeypatch.setattr(sp, "get_spend_today", _today)
+    monkeypatch.setattr(sp, "get_spend_month", _month)
+    monkeypatch.setenv("ANTHROPIC_MONTHLY_BUDGET", "150")
+    text = asyncio.run(sp.get_spend_summary())
+    lines = text.splitlines()
+    assert "$15.33" in lines[1] and "ET day" in lines[1]
+    assert "1 others $2.00" in text                     # today: top 3 of 4
+    assert "3 others $12.00" in text                    # month: top 5 of 8 (5+4+3)
+    assert "$47.97 of $150 budget (32%), $102.03 left" in text
+    assert len(lines) <= 14

@@ -13,9 +13,12 @@ from __future__ import annotations
 import logging
 import os
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from typing import Any, Optional
 
 from shared.llm_models import pricing_for as _pricing_for
+
+_ET = ZoneInfo("America/New_York")
 from shared.llm_response import (
     stop_reason as _stop_reason_of,
     usage_tokens as _usage_tokens_of,
@@ -161,7 +164,8 @@ async def get_spend_today() -> dict[str, Any]:
                 SUM(cache_read) AS cache_read,
                 SUM(cost_usd) AS cost
             FROM api_usage
-            WHERE created_at >= CURRENT_DATE
+            WHERE (created_at AT TIME ZONE 'America/New_York')::date
+                  = (NOW() AT TIME ZONE 'America/New_York')::date
             GROUP BY caller
             ORDER BY cost DESC
         """)
@@ -173,10 +177,13 @@ async def get_spend_today() -> dict[str, Any]:
                 SUM(cache_read) AS cache_read,
                 SUM(cost_usd) AS cost
             FROM api_usage
-            WHERE created_at >= CURRENT_DATE
+            WHERE (created_at AT TIME ZONE 'America/New_York')::date
+                  = (NOW() AT TIME ZONE 'America/New_York')::date
         """)
     return {
-        "date": date.today().isoformat(),  # tz-ok: paired with SQL CURRENT_DATE (server UTC) above
+        # ET day, the same day the spend alarm uses (2026-09-25): the old CURRENT_DATE was the
+        # server's UTC day, so after 20:00 ET "Today" rolled over and read $0.00.
+        "date": datetime.now(_ET).date().isoformat(),
         "by_caller": [dict(r) for r in rows],
         "total": dict(total) if total else {},
     }
@@ -185,7 +192,7 @@ async def get_spend_today() -> dict[str, Any]:
 async def get_spend_month() -> dict[str, Any]:
     """Return current month's spend breakdown."""
     pool = await _get_pool()
-    first_of_month = date.today().replace(day=1)  # tz-ok: month-boundary for server-relative cost query ($1 below)
+    first_of_month = datetime.now(_ET).date().replace(day=1)
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT
@@ -196,17 +203,17 @@ async def get_spend_month() -> dict[str, Any]:
                 SUM(cache_read) AS cache_read,
                 SUM(cost_usd) AS cost
             FROM api_usage
-            WHERE created_at >= $1
+            WHERE (created_at AT TIME ZONE 'America/New_York')::date >= $1
             GROUP BY caller
             ORDER BY cost DESC
-        """, datetime(first_of_month.year, first_of_month.month, first_of_month.day))
+        """, first_of_month)
         total = await conn.fetchrow("""
             SELECT
                 COUNT(*) AS calls,
                 SUM(cost_usd) AS cost
             FROM api_usage
-            WHERE created_at >= $1
-        """, datetime(first_of_month.year, first_of_month.month, first_of_month.day))
+            WHERE (created_at AT TIME ZONE 'America/New_York')::date >= $1
+        """, first_of_month)
     return {
         "month": first_of_month.strftime("%B %Y"),
         "by_caller": [dict(r) for r in rows],
@@ -227,33 +234,24 @@ async def get_spend_summary() -> str:
     month_cost = month["total"].get("cost") or 0
     month_calls = month["total"].get("calls") or 0
 
-    lines = [f"💰 *API Spend*\n"]
+    # Short by design (operator 2026-09-25: "hard to read"): totals first, then the few callers
+    # that carry the money, the long tail summed into one line.
+    def _top(rows, n):
+        out = []
+        for row in rows[:n]:
+            out.append(f"  {row['caller'].replace('_', ' ')} ${float(row.get('cost') or 0):.2f}")
+        rest = rows[n:]
+        if rest:
+            out.append(f"  {len(rest)} others ${sum(float(r.get('cost') or 0) for r in rest):.2f}")
+        return out
 
-    # Today
-    lines.append(f"*Today* — ${today_cost:.2f} ({today_calls} calls)")
-    if today_cache and today_cache > 0:
-        lines.append(f"  Cache hits: {today_cache:,} tokens")
-    for row in today.get("by_caller", []):
-        cost = row.get("cost") or 0
-        calls = row.get("calls") or 0
-        caller = row["caller"].replace("_", " ")
-        lines.append(f"  {caller}: ${cost:.3f} ({calls} calls)")
-
-    # Month
-    lines.append(f"\n*{month['month']}* — ${month_cost:.2f} ({month_calls} calls)")
-    for row in month.get("by_caller", []):
-        cost = row.get("cost") or 0
-        calls = row.get("calls") or 0
-        caller = row["caller"].replace("_", " ")
-        lines.append(f"  {caller}: ${cost:.3f} ({calls} calls)")
-
-    # Budget
+    lines = ["💰 *API spend*", f"*Today* ${today_cost:.2f} ({today_calls} calls, ET day)"]
+    lines += _top(today.get("by_caller", []), 3)
+    head = f"*{month['month']}* ${month_cost:.2f}"
     if budget > 0:
-        pct = (month_cost / budget) * 100
-        remaining = budget - month_cost
-        lines.append(f"\n*Budget:* ${month_cost:.2f} / ${budget:.0f} ({pct:.0f}%)")
-        lines.append(f"  Remaining: ${remaining:.2f}")
-
+        head += f" of ${budget:.0f} budget ({(month_cost / budget) * 100:.0f}%), ${budget - month_cost:.2f} left"
+    lines += ["", head]
+    lines += _top(month.get("by_caller", []), 5)
     return "\n".join(lines)
 
 
