@@ -304,7 +304,7 @@ breakeven at +1R/+2R/after the partial x remainder on SMA10 / SMA20 / held to s2
 | cells clearing | **0 of 122** | **0 of 122** |
 | cells with mean R > 0 (either selection) | 0 | 0 |
 | best mean, all fires | -0.07 (adr_050 / P2_B1R_sma20, n=864) | -0.20 (incumbent / P2_B1R_sma10, n=1,316) |
-| best kept>=3R, all fires | 4.4% (adr_100 / P3_Bpart_hold, mean -0.33) | 3.7% |
+| best kept>=3R, all fires | 4.4% (adr_100 / P3_Bpart_hold, mean -0.34) | 3.6% |
 | leaders: mean range / best kept>=3R | -0.49..-1.06 (n=18-33) / 1 of 19 | -0.48..-0.84 (n=73-130) / 2.8% |
 
 Leaders read WORSE than the population in every cell (M0 stops 99.2% of leader fires, n=117); the matched

@@ -112,36 +112,40 @@ it did yesterday.
 | cells with kept-≥3R ≥ 3% — all fires | 7 (all with mean −0.27 to −0.40) | 7 (mean −0.23 to −0.43) |
 | cells with kept-≥3R ≥ 3% — leaders | 6 (n = 19 each, mean −0.49 to −0.80) | **0** |
 | best mean R, all fires | −0.07 (`0.5×ADR / partial +2R, BE +1R, SMA20 trail`, n = 864, kept ≥3R 1.7%) | −0.20 (`incumbent / +2R, BE +1R, SMA10`, n = 1,316, 2.4%) |
-| best kept-≥3R, all fires | 4.4% (`1.0×ADR / partial +3R, BE after, hold`, n = 1,111, mean −0.33) | 3.7% (`0.5×ADR / +3R, BE after, hold`, n = 2,556, mean −0.43) |
+| best kept-≥3R, all fires | 4.4% (`1.0×ADR / partial +3R, BE after, hold`, n = 1,107, mean −0.34) | 3.6% (`0.5×ADR / +3R, BE after, hold`, n = 2,555, mean −0.43) |
 | the lane's own arm M0 (incumbent stop, trail) | n = 1,171 on 455 names: mean −0.32, kept ≥3R 2.4%, stop rate 94.7% | n = 3,032 on 673 names: −0.47, 1.9%, stopped 98.0% |
 | fillable entry, cells clearing | 0 | 0 |
 
 Every cell fails the first leg (mean R > 0), so the noise band (≤ 1 of 122) is never reached — this is a null,
-not a near-miss. The average-loss leg is met by 83 of 122 cells at s20 (on all fires the trails keep the average loss to
+not a near-miss. One honesty note on the tail bar: it was set at 3.0% as "3× the incumbent's 1.01%", the 09-22
+whole-population read; on THIS checkpoint's population the incumbent's own arms read 2.4% (trail) and 2.65%
+(no exit), n = 1,171, so the bar is ~1.2× the incumbent here, not 3×. The verdict does not rest on it — every
+cell fails on mean before the tail leg is reached. The average-loss leg is met by 83 of 122 cells at s20 (on all fires the trails keep the average loss to
 −0.48 to −0.89R); the 39 that fail it are the hold arms (−0.95 to −1.07R on all fires, gap-charged) and
 the thinner leader cells — losses can be limited, but not while also keeping the runners.
 
-### All fires, session 20, stop = entry − 1.0×ADR$ — what each management arm did (n = 1,100–1,124 fires on 432–436 names)
+### All fires, session 20, stop = entry − 1.0×ADR$ — what each management arm did (n = 1,096–1,120 fires on 429–435 names)
 
 | arm | mean R | kept ≥ 3R | avg loss | win rate | partial fired | stopped | trailed out | control mean / kept ≥3R (n = 367–378 non-fire sessions) |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
 | M0 — the lane's own trail (incumbent stop, n = 1,171) | −0.32 | 2.4% | −0.87 (house) | 22% | — | 95% | — | — |
-| M1 — the LIVE MAGNA53 stack, lane stop = live stop (era C: partial +1R, BE at partial) | −0.21 | 0.6% | −0.58 | 34% | 18% | 0%* | 55% | −0.09 / 0.8% |
-| M1 — the live stack, ORB-R = stop distance (era C: partial +2R) | −0.21 | 1.3% | −0.58 | 30% | 8% | 0%* | 57% | −0.05 / 1.4% |
-| partial +2R · BE at +1R · SMA10 trail | −0.17 | 1.3% | −0.48 | 25% | 7% | 24% | 75% | −0.06 / 1.6% |
-| partial +2R · BE at +1R · SMA20 trail | −0.15 | 1.5% | −0.54 | 27% | 7% | 29% | 69% | **+0.18 / 3.4%** |
-| partial +2R · BE at +1R · hold to s20 | −0.27 | 3.6% | −1.00 | 16% | 15% | 90% | — | −0.07 / 3.7% |
-| partial +2R · BE after the partial · hold | −0.32 | 4.1% | −1.02 | 22% | 19% | 84% | — | −0.11 / 4.3% |
+| M1 — the LIVE MAGNA53 stack, lane stop = live stop (era C: partial +1R, BE at partial) | −0.21 | 0.6% | −0.58 | 34% | 18% | 45%* | 55% | −0.09 / 0.8% |
+| M1 — the live stack, ORB-R = stop distance (era C: partial +2R) | −0.22 | 1.2% | −0.58 | 30% | 8% | 43%* | 57% | −0.05 / 1.4% |
+| partial +2R · BE at +1R · SMA10 trail | −0.18 | 1.2% | −0.48 | 25% | 7% | 25% | 75% | −0.06 / 1.6% |
+| partial +2R · BE at +1R · SMA20 trail | −0.15 | 1.4% | −0.54 | 27% | 7% | 30% | 69% | **+0.18 / 3.4%** |
+| partial +2R · BE at +1R · hold to s20 | −0.28 | 3.6% | −1.00 | 16% | 15% | 90% | — | −0.07 / 3.7% |
+| partial +2R · BE after the partial · hold | −0.33 | 4.2% | −1.02 | 21% | 19% | 84% | — | −0.11 / 4.3% |
 | partial +3R · BE at +2R · hold | −0.32 | 4.3% | −1.01 | 17% | 12% | 84% | — | −0.10 / 4.6% |
-| partial +3R · BE after the partial · hold | −0.33 | 4.4% | −1.01 | 18% | 13% | 82% | — | −0.06 / 5.1% |
+| partial +3R · BE after the partial · hold | −0.34 | 4.4% | −1.01 | 18% | 13% | 83% | — | −0.06 / 5.1% |
 
-\* under the live ladder a stop-out on a session after day 0 is booked by the ladder as a trail/stop close (`walk_arm` ratchets the resting stop to the trail line — see Validation); the 55–57% "trailed out" includes hard-stop hits at the raised level.
+\* under the live ladder "stopped" is a hit of the RESTING stop on the low — the hard stop, or that stop after the ladder raised it to the trail line or to breakeven (`walk_arm` ratchets it after every session, see Validation); "trailed out" is a close below the line. The two sum to 100% with the 0.1% still open.
 
 The pattern is the same as Block 5's: **every trail raises the mean and cuts the tail; every hold keeps the
 tail and pays −1R on the rest.** No arm does both. The matched control — the same rule on a random non-fire
-session of the same names, same window — beats the fire cells on mean in **40 of 40** cells at s20 and
-**40 of 40** at s10 (n = 7,101–7,910 control sessions at s10), and is itself positive in 16 of 40 cells at
-s20. The fire session is a worse entry than a random session of the same stock, which is P2's finding
+session of the same names, same window — beats the all-fires cells on mean in **40 of 40** cells at s20
+(n = 342–378 control sessions) and **40 of 40** at s10 (n = 7,101–7,910), and is itself positive in 16 of
+40 cells at s20. On leaders the control (n = 314–371 at s10) also beats the fires in 40 of 40; at s20 the
+leader control is 20 sessions and the fires beat it in 9 of 40 — too thin to read. The fire session is a worse entry than a random session of the same stock, which is P2's finding
 again, now under management.
 
 ### Leaders — the selection makes it worse, at every stop and under every arm
@@ -153,7 +157,7 @@ again, now under management.
 | cells with kept-≥3R ≥ 3% | 0 of 60 (best 2.8% = 3 of 106, `0.5×ADR / +2R BE +2R`) | 6 of 60, each 1 of 19 |
 | mean R range across the 60 cells | −0.48 to −0.84 (n = 73–130) | −0.49 to −1.06 (n = 18–33) |
 | M0 — the lane's own arm on leaders | n = 117 on 47 names: −0.84, kept ≥3R 0.9%, **stopped 99.2%** | n = 33: −0.91, 0%, stopped 97% |
-| matched non-fire control on leaders | n = 314–371: −0.25 to −0.51, kept 1.1–5.1% | n = 20 (thin) |
+| matched non-fire control on leaders | n = 314–371: −0.25 to −0.52, kept 1.1–5.7% | n = 20 (thin) |
 | leader fires inside a +50% runner campaign | 7 of 143 (BUUU, RDIB) | — |
 | leader fires that ever reached +3R open (recorded MFE) | 13 of 128 with a recorded excursion | — |
 
@@ -184,8 +188,8 @@ them; the fired set is identical). Marked at session 20 or the last available cl
 
 So yes: **a breakeven stop plus a held remainder keeps four to five times as many of the runners as the
 lane's trail does (26% vs 5.6% of runner fires; 32 vs 14 campaigns) and the runner fires average +2.15R.**
-And it costs: the runner fires are 320 of 3,488 (9.2%); every other fire under that arm loses −0.69R
-against −0.55R under M0, and nine of them arrive for each runner. The arithmetic that would flip it is
+And it costs: the runner fires are 320 of 3,483 (9.2%); every other fire under that arm loses −0.69R
+against −0.55R under M0, and ten of them arrive for each runner. The arithmetic that would flip it is
 plain — at +2.15R on runners and −0.69R on the rest, the lane nets positive only when runners are more
 than 24% of fires (they are 9%) — and it is a selection number, not an exit number. The trails do the
 opposite: they hold the non-runner cost to −0.33R and keep 8% of the runners. Nothing nets positive.
@@ -193,14 +197,17 @@ opposite: they hold the non-runner cost to −0.33R and keep 8% of the runners. 
 ### M1 — the live MAGNA53 stack, per era, and what it actually does
 
 Fires with 20 sessions elapsed are all **era C** (the retired +2R partial, breakeven only at the partial):
-n = 1,100–1,108 on the 1.0×ADR stop, mean −0.21, kept ≥ 3R 0.6–1.3%. **Era D** (today's +8R / breakeven at
+n = 1,096–1,104 on the 1.0×ADR stop, mean −0.21 to −0.22, kept ≥ 3R 0.6–1.2%. **Era D** (today's +8R / breakeven at
 +3R) governs only the 09-08 → 09-11 fires at s10: n = 180–246, mean −0.51 to −0.71, kept ≥ 3R 0% — and
 that is the second time half, which is worse for every arm (the incumbent M0 reads −0.62 there, n = 193),
 so it is the tape, not the rule. Under either frame the live stack sits between the trails and the holds
 on this lane and clears nothing. One mechanism fact surfaced by wiring it: **the live ladder ratchets the
 broker's resting stop up to the trail line after every session, so a LOW touching yesterday's
 max(SMA10, SMA20) stops the position out at that level** — `compute_settlement` (and this probe's M2..M19)
-exit only on a close below the line. That is how "our EP" manages today; it is not what the lane records.
+exit only on a close below the line. That is how "our EP" manages today; it is not what the lane records. And the one positive thread Block 5
+found returns unchanged: under M1 on the 0.5×ADR stop, `ep_high_break` reads +0.31R with 6.6% kept ≥ 3R
+(n = 76, recorded level entry) and **−0.15R with 2.8% on the fillable entry (n = 71)** — the level-priced head
+start P2 measured, not the pattern.
 
 ### Validation — both checks pass, every difference named
 
@@ -213,7 +220,7 @@ exit only on a close below the line. That is how "our EP" manages today; it is n
   close that `walk_arm`'s SMA window excludes** (verified on TC 08-27: line 2.109 without it, 2.085 with it,
   close 2.09); 3 pending at a data hole. All 1,033 accounted for; the M1 path is wired as intended.
 - `walk_arm`'s own abstains on M1 (a bar holding both the stop and the target or the breakeven trigger):
-  12–58 per stop and frame at s20, named in `p6_summary.json`; M1's scored n is 2–6% below the grid arms', as declared.
+  12–58 per stop and frame at s20, named in `p6_summary.json`; M1's scored n is 2–7% below the grid arms', as declared.
 - Degenerate stops: 5 fires on 1.0×ADR and 1 on 0.5×ADR had a stop below zero (an ADR$ wider than the
   price on a split-rescaled name) and 3 incumbent stops sat at/above the entry — killed and counted.
 
@@ -256,7 +263,7 @@ The task allowed exactly one of three, chosen by the pass bars:
 - **No lift.** This is where the bars land. The winners are there and management keeps four to five times
   more of them than the lane's trail (26% vs 5.6% of runner fires, 32 vs 14 campaigns); they are 9% of the
   lane and the other 91% pay −0.60 to −0.70R each for holding, so nothing nets positive and the matched
-  control beats the fires in 40 of 40 cells at both checkpoints.
+  control beats the all-fires cells in 40 of 40 cells at both checkpoints.
 
 **What would change the answer** (candidates for his ruling — nothing here is a change):
 
