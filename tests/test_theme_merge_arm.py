@@ -296,11 +296,17 @@ def test_containment_prompt_member_lines_included_when_present():
 
 def test_adjudicate_containment_defaults_to_sonnet_role_never_hardcoded():
     import inspect
+    from shared import llm_models
+
     sig = inspect.signature(arm.adjudicate_containment_pair)
     assert sig.parameters["model"].default == arm.THEME_PARENT_ADJUDICATION_MODEL
     # The role constant itself must resolve to a real Claude model id, not a bare tier
     # literal — proves it goes through effective_model()/RESOLVED_ROLES, not a hardcode.
     assert arm.THEME_PARENT_ADJUDICATION_MODEL.startswith("claude-")
+    # AND it must be the SONNET tier specifically (operator: "run it on the Sonnet
+    # tier") — startswith("claude-") alone would also pass a haiku/opus id, so pin the
+    # actual RESOLVED_ROLES tier binding, not just "looks like a model id".
+    assert llm_models.RESOLVED_ROLES.get("THEME_PARENT_ADJUDICATION_MODEL") == "sonnet"
 
 
 def test_adjudicate_containment_happy_path_pins_tool_choice_ceiling_and_thinking():

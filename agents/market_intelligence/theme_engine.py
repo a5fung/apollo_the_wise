@@ -8352,8 +8352,12 @@ def propose_parent_candidates(
 
 async def _parent_pass_cooldown(child: dict, parent: dict, reason: str, days: int, verdict: str) -> None:
     """Pair cooldown write for a non-linking verdict — loud on failure, never fatal
-    (Arm B's own idiom). Shares mi_theme_merge_cooldowns with Arm B on purpose:
-    the SAME adjudicator gave the verdict, so neither pass re-asks for `days`."""
+    (Arm B's own idiom). Shares mi_theme_merge_cooldowns with Arm B on purpose (operator
+    call, not a technical necessity — the two passes ask DIFFERENT adjudicators DIFFERENT
+    questions since 2026-09-26): a live row from EITHER pass blocks the pair from BOTH,
+    so a pair one already ruled on isn't re-asked by the other for `days` either.
+    `get_merge_distinct_pairs` is pair-EXISTENCE only — it never reads which pass or
+    verdict wrote the row."""
     try:
         await add_merge_distinct_cooldown(
             parent["name"], child["name"], reason=reason, days=days, verdict=verdict,
