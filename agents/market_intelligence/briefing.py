@@ -697,6 +697,9 @@ def _compute_scored_themes(
             "tickers": tickers,
             "n_stocks": len(tickers),
             "n_scored": len(comps),
+            # #505: the containment link rides into the render — without it the
+            # /themes board had nothing to nest (four internal files, zero surfaces).
+            "parent_theme": t.get("parent_theme"),
         })
 
     scored_themes.sort(key=lambda x: -x["comp"])

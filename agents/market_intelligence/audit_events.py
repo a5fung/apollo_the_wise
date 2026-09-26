@@ -283,3 +283,15 @@ TV_NEWS_ENDPOINT_ERROR = "tv_news_endpoint_error"
 # written on every run, healthy or not. Deliberately does NOT contain "error" (a
 # healthy run must not appear in the %error% nightly sweep as noise).
 TV_NEWS_SHADOW_RUN = "tv_news_shadow_run"
+
+# ── #505 nightly theme PARENT PASS (2026-09-26, behind `theme_parent_pass`) ──
+# One RAN heartbeat per armed run (candidate / verdict counts — the "a rule is
+# not live until it has fired once" surface), then one row per adjudicated pair
+# by verdict. None contains "error" except the real failure row, so a healthy
+# night never shows up in the %error% sweep.
+THEME_PARENT_PASS_RAN = "theme_parent_pass_ran"
+THEME_PARENT_PASS_LINKED = "theme_parent_pass_linked"           # PARENT_CHILD → parent_theme set
+THEME_PARENT_PASS_DISTINCT = "theme_parent_pass_distinct"       # DISTINCT → 30d pair cooldown
+THEME_PARENT_PASS_MERGE_SIGNAL = "theme_parent_pass_merge_signal"  # MERGE → audited, NEVER executed
+THEME_PARENT_PASS_INVERTED = "theme_parent_pass_inverted"       # adjudicator named the larger theme the child
+THEME_PARENT_PASS_ERROR = "theme_parent_pass_error"             # adjudication raised / ERROR verdict / pass raised

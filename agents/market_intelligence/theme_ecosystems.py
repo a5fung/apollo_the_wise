@@ -23,9 +23,18 @@ discovery/validation/lifecycle; this module is an AGGREGATE on top:
      the brief-sized sibling (same grouping/scoring via
      _group_and_rank_ecosystems) used by the evening-briefing scorecard.
 
+  5. Parent resolution (#505, 2026-09-26) — `containment_parent` /
+     `resolve_theme_parent`: the ONE reader of the overloaded `parent_theme`
+     column (containment link on a live row; retirement SUCCESSOR pointer on a
+     Retired row) and the ruling-(5) resolver — every theme is a CHILD of a
+     real theme, a ROOT under its ecosystem, or a CATCH-ALL root under
+     E-UNASSIGNED. `format_ecosystem_board` nests children under their parent
+     (↳) — the relationship's first operator surface.
+
 NO MONEY PATH: themes feed briefs + the shadow-judge theme-axis only. This
-module never touches trade state, discovery/validation/lifecycle logic, or
-the parent_theme machinery (re-granularization is Phase 2).
+module never touches trade state or discovery/validation/lifecycle logic; it
+READS parent_theme (never writes it — the engine's parent pass and Phase-2
+routes own the writes).
 """
 from __future__ import annotations
 
@@ -52,6 +61,38 @@ logger = logging.getLogger(__name__)
 _PATH = Path(__file__).resolve().parents[2] / "theme_ecosystems.yaml"
 
 E_UNASSIGNED = "E-UNASSIGNED"
+
+# ── #505 parent resolution (ruling (5), operator 2026-07-27) ───────────────
+PARENT_KIND_CHILD = "child"          # nested under a real theme (containment link)
+PARENT_KIND_ROOT = "root"            # sits directly under its ecosystem
+PARENT_KIND_CATCH_ALL = "catch_all"  # root under E-UNASSIGNED (or not mapped yet)
+
+
+def containment_parent(theme: dict) -> "str | None":
+    """The theme's CONTAINMENT parent, or None. `mi_themes.parent_theme` is
+    OVERLOADED: on a Retired row it is the retirement SUCCESSOR pointer
+    (theme_auto_retired / Arm-B absorption / the #214 rename tombstone), never
+    a sub-theme link. Reading it through this one function is the semantics
+    split #506's orphan metric needs — a count of `parent_theme IS NOT NULL`
+    without the stage guard reported 8 links on 2026-07-27 when 3 were real."""
+    if theme.get("stage") == "Retired":
+        return None
+    return theme.get("parent_theme") or None
+
+
+def resolve_theme_parent(theme: dict, eco_map: dict[str, str]) -> tuple[str, str]:
+    """Ruling (5): every theme has a parent. Returns (kind, parent):
+      ("child", <theme name>)   — a real containment parent exists
+      ("root", <E-code>)        — no containment parent; its ecosystem is the parent
+      ("catch_all", E-UNASSIGNED) — unmapped or in the reserved catch-all bucket
+    Pure; the dry-run probe and the render share it."""
+    parent = containment_parent(theme)
+    if parent:
+        return PARENT_KIND_CHILD, parent
+    code = eco_map.get(theme.get("name") or "", E_UNASSIGNED) or E_UNASSIGNED
+    if code == E_UNASSIGNED:
+        return PARENT_KIND_CATCH_ALL, E_UNASSIGNED
+    return PARENT_KIND_ROOT, code
 
 # ── D3 score constants (ADR 0032 — illustrative pins; CHANGE_PROCESS N>=10
 #    backtest before any of these gates a live decision. They gate NOTHING
@@ -615,21 +656,68 @@ def _member_preview(tickers: list[str], theme_rs_data: dict[str, dict],
     return " · ".join(f"{tk} {int(rs)}" for tk, rs in pairs[:top_n])
 
 
+CHILD_MARKER = "↳ "   # #505: a nested child line starts with this (after its indent)
+
+
 def _theme_line(st: dict, rank: int | None, theme_rs_data: dict[str, dict],
-                indent: str = "  ") -> list[str]:
+                indent: str = "  ", marker: str = "") -> list[str]:
     """One rendered sub-theme (or flat-list) entry: rank + name + stage tag +
-    RS + delta, then a member preview line."""
+    RS + delta, then a member preview line. `marker` (#505) prefixes the
+    first line only — the preview keeps its column under the name."""
     stage = st.get("stage", "?")
     emoji = STAGE_EMOJI.get(stage, "")
     delta_str = f"  Δ{st['delta']:+.1f}" if st.get("delta") is not None else ""
     rank_str = f"#{rank} " if rank is not None else ""
     lines = [
-        f"{indent}{rank_str}{emoji}*{st['name']}*{_conviction_suffix(st)}"
+        f"{indent}{marker}{rank_str}{emoji}*{st['name']}*{_conviction_suffix(st)}"
         f"  _[{stage}]_  RS {int(st['comp'])}{delta_str}"
     ]
     preview = _member_preview(st.get("tickers") or [], theme_rs_data)
     if preview:
-        lines.append(f"{indent}    {preview}")
+        lines.append(f"{indent}{' ' * len(marker)}    {preview}")
+    return lines
+
+
+def _nested_theme_lines(group_active: list[dict], global_rank: dict[str, int],
+                        theme_rs_data: dict[str, dict]) -> list[str]:
+    """#505 — one ecosystem group's active themes with every CHILD nested under
+    its containment parent (`↳`, one extra indent per level; chains render as
+    deeper indents). Order is unchanged for roots (the group's comp order);
+    children follow their parent, in comp order. A child whose parent is not
+    an active theme of THIS group (Fading, retired, mapped elsewhere) stays in
+    place and carries an inline `↳ under <parent>` tag instead — the link is
+    shown, never hidden. Cycle-safe (a visited set), so a bad row can't loop."""
+    names = {st["name"] for st in group_active}
+    kids_of: dict[str, list[dict]] = {}
+    for st in group_active:
+        p = containment_parent(st)
+        if p and p in names and p != st["name"]:
+            kids_of.setdefault(p, []).append(st)
+    nested = {k["name"] for kids in kids_of.values() for k in kids}
+    lines: list[str] = []
+    seen: set[str] = set()
+
+    def emit(st: dict, depth: int) -> None:
+        if st["name"] in seen:
+            return
+        seen.add(st["name"])
+        indent = "  " + "    " * depth
+        marker = CHILD_MARKER if depth else ""
+        entry = _theme_line(st, global_rank.get(st["name"]), theme_rs_data,
+                            indent=indent, marker=marker)
+        p = containment_parent(st)
+        if depth == 0 and p and p != st["name"]:
+            entry[0] += f"  {CHILD_MARKER}_under {p}_"
+        lines.extend(entry)
+        for kid in kids_of.get(st["name"], []):
+            emit(kid, depth + 1)
+
+    for st in group_active:
+        if st["name"] in nested:
+            continue  # rendered under its parent
+        emit(st, 0)
+    for st in group_active:   # safety net: a cycle among children never drops a theme
+        emit(st, 0)
     return lines
 
 
@@ -739,10 +827,15 @@ def format_ecosystem_board(
                     f"\n{title} — {stat} · {len(s['member_union'])} names "
                     f"· {s['strong']} RS80+")
 
-        for st in group_active:   # already comp-desc within the group
-            lines.extend(_theme_line(st, global_rank.get(st["name"]), theme_rs_data))
+        # #505: children nested under their containment parent (↳); roots keep
+        # the group's comp order.
+        lines.extend(_nested_theme_lines(group_active, global_rank, theme_rs_data))
         for t in group_fading:    # struck-through INSIDE the ecosystem
-            lines.append(f"  🔻 {_strike(t.get('name') or '?')} _(Fading)_")
+            fade_line = f"  🔻 {_strike(t.get('name') or '?')} _(Fading)_"
+            fade_parent = containment_parent(t)
+            if fade_parent:
+                fade_line += f"  {CHILD_MARKER}_under {fade_parent}_"
+            lines.append(fade_line)
 
     return lines
 

@@ -5939,6 +5939,35 @@ async def set_theme_subtheme_arm_enabled(enabled: bool) -> None:
     await set_safeguard_state(*_SUBTHEME_ARM_TOGGLE, "on" if enabled else "off")
 
 
+_PARENT_PASS_TOGGLE = ("theme_parent_pass", "paper")  # (safeguard, account_mode) PK
+
+
+async def get_theme_parent_pass_enabled() -> bool:
+    """#505 — DB-backed toggle for the nightly theme PARENT PASS
+    (`theme_engine._run_parent_pass`): every childless live theme, whatever
+    discovery path bore it, is offered its best same-ecosystem candidate
+    parent to the ADR-0025 adjudicator; PARENT_CHILD sets `parent_theme`.
+    Durable across restarts (mi_safeguard_state), instant flip with NO
+    redeploy — the get_theme_subtheme_arm_enabled idiom.
+    FAIL-CLOSED: any error or missing row → False. OFF ⇒ run_theme_engine is
+    byte-identical to the pre-#505 engine (no candidates, no LLM call, no
+    cooldown write, no audit row). Theme structure feeds the judge's theme
+    axis + allocation, so the flip is OPERATOR-gated behind CHANGE_PROCESS
+    sign-off on the dry-run (scripts/probes/_505_parent_pass_dry_run.py)."""
+    try:
+        row = await get_safeguard_state(*_PARENT_PASS_TOGGLE)
+        return bool(row) and row["state"] == "on"
+    except Exception as e:  # noqa: BLE001 — fail-closed to today's engine is the contract
+        logger.warning(f"theme_parent_pass read failed → pass OFF (fail-closed): {e}")
+        return False
+
+
+async def set_theme_parent_pass_enabled(enabled: bool) -> None:
+    """Flip the #505 parent pass (OPERATOR-gated — never self-authorize).
+    Upserts the mi_safeguard_state row via the shared always-bump upsert."""
+    await set_safeguard_state(*_PARENT_PASS_TOGGLE, "on" if enabled else "off")
+
+
 _LANE2_V2_TOGGLE = ("lane2_grouping_v2", "paper")  # (safeguard, account_mode) PK
 
 

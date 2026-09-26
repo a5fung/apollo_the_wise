@@ -12,6 +12,7 @@
     "tests/test_490_entry_gap_recheck.py": 1,
     "tests/test_490_rt_universe.py": 3,
     "tests/test_490_rt_volume_nodata_fallback.py": 2,
+    "tests/test_505_parent_pass.py": 1,
     "tests/test_515_9m_day2_removed.py": 1,
     "tests/test_533_catalyst_tier_flip.py": 8,
     "tests/test_533_separation_flip.py": 6,
@@ -139,6 +140,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 420,
-  "unescaped": 372
+  "total": 421,
+  "unescaped": 370
 }
