@@ -2340,8 +2340,8 @@
  "runners": {
   "stats": {
    "watched": 1064,
-   "watched_ge5": 198,
    "no_ep_bar": 196,
+   "watched_ge5": 198,
    "ran": 120,
    "ran_ge5": 18,
    "lt_10_sessions": 13,
@@ -3528,19 +3528,59 @@
    }
   },
   "detail": {
-   "DAIC|2026-08-24": {
-    "base": 1.73,
-    "max_up_pct": 286.7,
+   "PPCB|2026-08-24": {
+    "base": 1.155,
+    "max_up_pct": 257.6,
     "fired": true
    },
-   "VIOT|2026-08-26": {
-    "base": 0.815,
-    "max_up_pct": 130.5,
+   "DAIC|2026-08-25": {
+    "base": 3.88,
+    "max_up_pct": 72.4,
     "fired": true
    },
-   "FNGR|2026-08-27": {
-    "base": 0.1734,
-    "max_up_pct": 309.5,
+   "CDTG|2026-08-26": {
+    "base": 1.15,
+    "max_up_pct": 60.9,
+    "fired": true
+   },
+   "GRI|2026-08-24": {
+    "base": 1.79,
+    "max_up_pct": 87.7,
+    "fired": true
+   },
+   "ETS|2026-08-26": {
+    "base": 0.80845,
+    "max_up_pct": 184.5,
+    "fired": true
+   },
+   "HVII|2026-08-24": {
+    "base": 6.97,
+    "max_up_pct": 72.9,
+    "fired": true
+   },
+   "DUO|2026-08-25": {
+    "base": 0.67,
+    "max_up_pct": 71.6,
+    "fired": true
+   },
+   "EEIQ|2026-08-25": {
+    "base": 2.405,
+    "max_up_pct": 60.1,
+    "fired": true
+   },
+   "NCPL|2026-08-31": {
+    "base": 0.7156,
+    "max_up_pct": 77.5,
+    "fired": false
+   },
+   "ZTG|2026-08-28": {
+    "base": 0.9049,
+    "max_up_pct": 165.2,
+    "fired": true
+   },
+   "QNME|2026-08-28": {
+    "base": 0.354,
+    "max_up_pct": 191.0,
     "fired": true
    },
    "GITS|2026-08-25": {
@@ -3553,44 +3593,9 @@
     "max_up_pct": 62.1,
     "fired": true
    },
-   "TGL|2026-08-27": {
-    "base": 2.52,
-    "max_up_pct": 80.2,
-    "fired": true
-   },
-   "RDIB|2026-08-26": {
-    "base": 15.38,
-    "max_up_pct": 56.0,
-    "fired": true
-   },
-   "AGRZ|2026-08-24": {
-    "base": 0.2754,
-    "max_up_pct": 59.8,
-    "fired": true
-   },
    "HCWB|2026-08-24": {
     "base": 2.31,
     "max_up_pct": 64.9,
-    "fired": true
-   },
-   "AEMD|2026-08-26": {
-    "base": 2.28,
-    "max_up_pct": 316.7,
-    "fired": true
-   },
-   "NCPL|2026-08-25": {
-    "base": 0.58,
-    "max_up_pct": 98.3,
-    "fired": true
-   },
-   "VNRX|2026-08-25": {
-    "base": 0.3846,
-    "max_up_pct": 87.2,
-    "fired": true
-   },
-   "AEON|2026-08-24": {
-    "base": 0.1974,
-    "max_up_pct": 92.5,
     "fired": true
    },
    "OMH|2026-08-24": {
@@ -3598,164 +3603,9 @@
     "max_up_pct": 114.0,
     "fired": true
    },
-   "PDSB|2026-08-26": {
-    "base": 0.2232,
-    "max_up_pct": 374.9,
-    "fired": true
-   },
-   "HSDT|2026-08-31": {
-    "base": 2.21,
-    "max_up_pct": 54.8,
-    "fired": false
-   },
-   "NCPL|2026-08-28": {
-    "base": 0.6916,
-    "max_up_pct": 83.6,
-    "fired": true
-   },
-   "GOAI|2026-08-25": {
-    "base": 1.87,
-    "max_up_pct": 64.7,
-    "fired": true
-   },
-   "SNYR|2026-08-25": {
-    "base": 0.1,
-    "max_up_pct": 540.0,
-    "fired": true
-   },
-   "CDTG|2026-08-26": {
-    "base": 1.15,
-    "max_up_pct": 60.9,
-    "fired": true
-   },
-   "BRR|2026-08-24": {
-    "base": 2.15,
-    "max_up_pct": 54.4,
-    "fired": true
-   },
-   "FNGR|2026-08-24": {
-    "base": 0.1954,
-    "max_up_pct": 263.4,
-    "fired": true
-   },
-   "CAPR|2026-08-24": {
-    "base": 6.8,
-    "max_up_pct": 61.8,
-    "fired": true
-   },
-   "AVAT|2026-08-31": {
-    "base": 0.7239,
-    "max_up_pct": 221.9,
-    "fired": false
-   },
-   "RNXT|2026-08-26": {
-    "base": 1.49,
-    "max_up_pct": 73.8,
-    "fired": true
-   },
-   "WBUY|2026-08-25": {
-    "base": 0.7801,
-    "max_up_pct": 51.3,
-    "fired": true
-   },
-   "AKTX|2026-08-25": {
-    "base": 7.87,
-    "max_up_pct": 54.4,
-    "fired": true
-   },
-   "BUUU|2026-08-27": {
-    "base": 31.84,
-    "max_up_pct": 51.1,
-    "fired": true
-   },
-   "SQFT|2026-08-25": {
-    "base": 1.48,
-    "max_up_pct": 58.1,
-    "fired": true
-   },
-   "AVAT|2026-08-28": {
-    "base": 0.6522,
-    "max_up_pct": 225.1,
-    "fired": true
-   },
-   "CRDF|2026-08-24": {
-    "base": 0.998,
-    "max_up_pct": 50.8,
-    "fired": true
-   },
-   "VNRX|2026-08-24": {
-    "base": 0.391,
-    "max_up_pct": 84.1,
-    "fired": true
-   },
-   "BUUU|2026-08-31": {
-    "base": 30.64,
-    "max_up_pct": 72.7,
-    "fired": false
-   },
-   "RDAC|2026-08-26": {
-    "base": 5.35,
-    "max_up_pct": 60.4,
-    "fired": true
-   },
-   "EEIQ|2026-08-25": {
-    "base": 2.405,
-    "max_up_pct": 60.1,
-    "fired": true
-   },
-   "AIXI|2026-08-24": {
-    "base": 3.2032,
-    "max_up_pct": 278.1,
-    "fired": true
-   },
-   "WKSP|2026-08-25": {
-    "base": 0.4895,
-    "max_up_pct": 71.9,
-    "fired": true
-   },
-   "BRNX|2026-08-25": {
-    "base": 5.56,
-    "max_up_pct": 86.3,
-    "fired": true
-   },
-   "CYPH|2026-08-27": {
-    "base": 1.89,
-    "max_up_pct": 96.3,
-    "fired": true
-   },
-   "GCDT|2026-08-25": {
-    "base": 0.3775,
-    "max_up_pct": 209.9,
-    "fired": true
-   },
-   "SWVL|2026-08-25": {
-    "base": 2.21,
-    "max_up_pct": 283.5,
-    "fired": true
-   },
-   "GCDT|2026-08-31": {
-    "base": 0.41,
-    "max_up_pct": 185.4,
-    "fired": false
-   },
-   "FNGR|2026-08-25": {
-    "base": 0.1709,
-    "max_up_pct": 315.4,
-    "fired": true
-   },
-   "AVAT|2026-08-24": {
-    "base": 0.538,
-    "max_up_pct": 106.3,
-    "fired": true
-   },
-   "GRI|2026-08-25": {
-    "base": 1.96,
-    "max_up_pct": 71.4,
-    "fired": true
-   },
-   "ATER|2026-08-26": {
-    "base": 0.4151,
-    "max_up_pct": 145.7,
+   "REFR|2026-08-27": {
+    "base": 0.485,
+    "max_up_pct": 93.8,
     "fired": true
    },
    "SUIG|2026-08-28": {
@@ -3763,54 +3613,14 @@
     "max_up_pct": 57.2,
     "fired": true
    },
-   "CLGN|2026-08-24": {
-    "base": 3.008,
-    "max_up_pct": 219.1,
+   "PDSB|2026-08-26": {
+    "base": 0.2232,
+    "max_up_pct": 374.9,
     "fired": true
    },
-   "PPBT|2026-08-28": {
-    "base": 1.68,
-    "max_up_pct": 54.2,
-    "fired": true
-   },
-   "COSM|2026-08-31": {
-    "base": 0.2428,
-    "max_up_pct": 54.8,
-    "fired": false
-   },
-   "AKTX|2026-08-24": {
-    "base": 7.47,
-    "max_up_pct": 62.7,
-    "fired": true
-   },
-   "TNON|2026-08-28": {
-    "base": 5.0,
-    "max_up_pct": 116.8,
-    "fired": true
-   },
-   "COSM|2026-08-28": {
-    "base": 0.2247,
-    "max_up_pct": 55.3,
-    "fired": true
-   },
-   "CYAB|2026-08-24": {
-    "base": 0.3022,
-    "max_up_pct": 108.1,
-    "fired": true
-   },
-   "GPRO|2026-08-27": {
-    "base": 0.6051,
-    "max_up_pct": 238.8,
-    "fired": true
-   },
-   "HSCS|2026-08-24": {
-    "base": 2.76,
-    "max_up_pct": 57.6,
-    "fired": true
-   },
-   "AEON|2026-08-26": {
-    "base": 0.2515,
-    "max_up_pct": 51.1,
+   "CAPR|2026-08-24": {
+    "base": 6.8,
+    "max_up_pct": 61.8,
     "fired": true
    },
    "LOBO|2026-08-28": {
@@ -3818,29 +3628,14 @@
     "max_up_pct": 108.1,
     "fired": true
    },
-   "TP|2026-08-28": {
-    "base": 7.83,
-    "max_up_pct": 55.0,
+   "FNGR|2026-08-25": {
+    "base": 0.1709,
+    "max_up_pct": 315.4,
     "fired": true
    },
-   "MNTK|2026-08-28": {
-    "base": 1.77,
-    "max_up_pct": 54.2,
-    "fired": true
-   },
-   "GPRO|2026-08-31": {
-    "base": 0.8762,
-    "max_up_pct": 134.0,
-    "fired": false
-   },
-   "NTRP|2026-08-26": {
-    "base": 1.17,
-    "max_up_pct": 62.4,
-    "fired": true
-   },
-   "ABVC|2026-08-27": {
-    "base": 0.7957,
-    "max_up_pct": 52.1,
+   "ATER|2026-08-26": {
+    "base": 0.4151,
+    "max_up_pct": 145.7,
     "fired": true
    },
    "BRNX|2026-08-24": {
@@ -3848,249 +3643,19 @@
     "max_up_pct": 147.8,
     "fired": true
    },
-   "GRI|2026-08-24": {
-    "base": 1.79,
-    "max_up_pct": 87.7,
+   "NWGL|2026-08-28": {
+    "base": 0.8666,
+    "max_up_pct": 128.5,
     "fired": true
-   },
-   "FBDT|2026-08-31": {
-    "base": 0.705,
-    "max_up_pct": 77.3,
-    "fired": false
-   },
-   "PDSB|2026-08-25": {
-    "base": 0.2215,
-    "max_up_pct": 378.6,
-    "fired": true
-   },
-   "DUO|2026-08-25": {
-    "base": 0.67,
-    "max_up_pct": 71.6,
-    "fired": true
-   },
-   "CELU|2026-08-26": {
-    "base": 0.8804,
-    "max_up_pct": 189.6,
-    "fired": true
-   },
-   "VNRX|2026-08-26": {
-    "base": 0.3392,
-    "max_up_pct": 112.3,
-    "fired": true
-   },
-   "SST|2026-08-31": {
-    "base": 2.24,
-    "max_up_pct": 143.3,
-    "fired": false
-   },
-   "TURB|2026-08-31": {
-    "base": 1.18,
-    "max_up_pct": 74.6,
-    "fired": false
-   },
-   "RNXT|2026-08-25": {
-    "base": 1.42,
-    "max_up_pct": 82.4,
-    "fired": true
-   },
-   "CYPH|2026-08-31": {
-    "base": 1.825,
-    "max_up_pct": 120.3,
-    "fired": false
-   },
-   "VRME|2026-08-28": {
-    "base": 0.6399,
-    "max_up_pct": 204.7,
-    "fired": true
-   },
-   "SST|2026-08-28": {
-    "base": 1.89,
-    "max_up_pct": 188.4,
-    "fired": true
-   },
-   "INDP|2026-08-25": {
-    "base": 1.095,
-    "max_up_pct": 237.4,
-    "fired": true
-   },
-   "AVAT|2026-08-26": {
-    "base": 0.5519,
-    "max_up_pct": 101.1,
-    "fired": true
-   },
-   "DFDV|2026-08-24": {
-    "base": 4.09,
-    "max_up_pct": 51.8,
-    "fired": true
-   },
-   "UFG|2026-08-28": {
-    "base": 0.5601,
-    "max_up_pct": 68.2,
-    "fired": true
-   },
-   "NCPL|2026-08-27": {
-    "base": 0.5386,
-    "max_up_pct": 113.5,
-    "fired": true
-   },
-   "SWVL|2026-08-28": {
-    "base": 3.12,
-    "max_up_pct": 171.7,
-    "fired": false
-   },
-   "PMI|2026-08-24": {
-    "base": 5.13,
-    "max_up_pct": 131.4,
-    "fired": true
-   },
-   "CLGN|2026-08-26": {
-    "base": 3.075,
-    "max_up_pct": 212.2,
-    "fired": true
-   },
-   "BNC|2026-08-27": {
-    "base": 3.01,
-    "max_up_pct": 113.3,
-    "fired": true
-   },
-   "PDSB|2026-08-24": {
-    "base": 0.2168,
-    "max_up_pct": 248.4,
-    "fired": true
-   },
-   "NCPL|2026-08-31": {
-    "base": 0.7156,
-    "max_up_pct": 77.5,
-    "fired": false
-   },
-   "NWGL|2026-08-25": {
-    "base": 0.671,
-    "max_up_pct": 195.1,
-    "fired": true
-   },
-   "ZTG|2026-08-31": {
-    "base": 0.8986,
-    "max_up_pct": 167.1,
-    "fired": false
    },
    "GELS|2026-08-25": {
     "base": 0.5476,
     "max_up_pct": 104.5,
     "fired": true
    },
-   "ETS|2026-08-26": {
-    "base": 0.80845,
-    "max_up_pct": 184.5,
-    "fired": true
-   },
-   "HVII|2026-08-25": {
-    "base": 7.84,
-    "max_up_pct": 53.7,
-    "fired": true
-   },
-   "HVII|2026-08-31": {
-    "base": 7.89,
-    "max_up_pct": 52.7,
-    "fired": false
-   },
-   "LGPS|2026-08-26": {
-    "base": 0.8693,
-    "max_up_pct": 84.1,
-    "fired": true
-   },
-   "CDTG|2026-08-24": {
-    "base": 1.17,
-    "max_up_pct": 58.1,
-    "fired": true
-   },
-   "DAIC|2026-08-25": {
-    "base": 3.88,
-    "max_up_pct": 72.4,
-    "fired": true
-   },
-   "NWGL|2026-08-28": {
-    "base": 0.8666,
-    "max_up_pct": 128.5,
-    "fired": true
-   },
-   "ZTG|2026-08-28": {
-    "base": 0.9049,
-    "max_up_pct": 165.2,
-    "fired": true
-   },
-   "UFG|2026-08-24": {
-    "base": 0.5749,
-    "max_up_pct": 63.9,
-    "fired": true
-   },
-   "CYPH|2026-08-24": {
-    "base": 1.68,
-    "max_up_pct": 92.0,
-    "fired": true
-   },
-   "HVII|2026-08-28": {
-    "base": 7.46,
-    "max_up_pct": 61.5,
-    "fired": true
-   },
-   "MERC|2026-08-25": {
-    "base": 0.4265,
-    "max_up_pct": 52.4,
-    "fired": true
-   },
-   "BRNX|2026-08-26": {
-    "base": 6.24,
-    "max_up_pct": 66.0,
-    "fired": true
-   },
-   "GSUN|2026-08-25": {
-    "base": 0.2947,
-    "max_up_pct": 62.9,
-    "fired": true
-   },
-   "AGRZ|2026-08-31": {
-    "base": 0.2196,
-    "max_up_pct": 100.4,
-    "fired": false
-   },
-   "PPCB|2026-08-24": {
-    "base": 1.155,
-    "max_up_pct": 257.6,
-    "fired": true
-   },
-   "CTOR|2026-08-31": {
-    "base": 0.7632,
-    "max_up_pct": 51.3,
-    "fired": false
-   },
-   "EXYN|2026-08-24": {
-    "base": 2.3,
-    "max_up_pct": 87.8,
-    "fired": true
-   },
-   "ATER|2026-08-28": {
-    "base": 0.3913,
-    "max_up_pct": 160.7,
-    "fired": true
-   },
-   "ZEO|2026-08-31": {
-    "base": 0.2377,
-    "max_up_pct": 206.8,
-    "fired": false
-   },
-   "XPON|2026-08-24": {
-    "base": 6.2,
-    "max_up_pct": 90.2,
-    "fired": true
-   },
-   "REFR|2026-08-27": {
-    "base": 0.485,
-    "max_up_pct": 93.8,
-    "fired": true
-   },
-   "LHSW|2026-08-24": {
-    "base": 2.77,
-    "max_up_pct": 97.1,
+   "GRI|2026-08-25": {
+    "base": 1.96,
+    "max_up_pct": 71.4,
     "fired": true
    },
    "MNOV|2026-08-25": {
@@ -4098,9 +3663,14 @@
     "max_up_pct": 66.9,
     "fired": true
    },
-   "AEON|2026-08-25": {
-    "base": 0.2119,
-    "max_up_pct": 79.3,
+   "WKSP|2026-08-25": {
+    "base": 0.4895,
+    "max_up_pct": 71.9,
+    "fired": true
+   },
+   "ABVC|2026-08-27": {
+    "base": 0.7957,
+    "max_up_pct": 52.1,
     "fired": true
    },
    "IPDN|2026-08-25": {
@@ -4108,24 +3678,454 @@
     "max_up_pct": 64.2,
     "fired": true
    },
+   "MERC|2026-08-25": {
+    "base": 0.4265,
+    "max_up_pct": 52.4,
+    "fired": true
+   },
+   "CTOR|2026-08-31": {
+    "base": 0.7632,
+    "max_up_pct": 51.3,
+    "fired": false
+   },
+   "WBUY|2026-08-25": {
+    "base": 0.7801,
+    "max_up_pct": 51.3,
+    "fired": true
+   },
+   "FBDT|2026-08-31": {
+    "base": 0.705,
+    "max_up_pct": 77.3,
+    "fired": false
+   },
+   "NCPL|2026-08-25": {
+    "base": 0.58,
+    "max_up_pct": 98.3,
+    "fired": true
+   },
+   "AEON|2026-08-25": {
+    "base": 0.2119,
+    "max_up_pct": 79.3,
+    "fired": true
+   },
+   "GPRO|2026-08-31": {
+    "base": 0.8762,
+    "max_up_pct": 134.0,
+    "fired": false
+   },
+   "NCPL|2026-08-28": {
+    "base": 0.6916,
+    "max_up_pct": 83.6,
+    "fired": true
+   },
+   "PDSB|2026-08-24": {
+    "base": 0.2168,
+    "max_up_pct": 248.4,
+    "fired": true
+   },
+   "AEMD|2026-08-26": {
+    "base": 2.28,
+    "max_up_pct": 316.7,
+    "fired": true
+   },
+   "VNRX|2026-08-25": {
+    "base": 0.3846,
+    "max_up_pct": 87.2,
+    "fired": true
+   },
+   "SWVL|2026-08-28": {
+    "base": 3.12,
+    "max_up_pct": 171.7,
+    "fired": false
+   },
+   "PPBT|2026-08-28": {
+    "base": 1.68,
+    "max_up_pct": 54.2,
+    "fired": true
+   },
+   "HSDT|2026-08-31": {
+    "base": 2.21,
+    "max_up_pct": 54.8,
+    "fired": false
+   },
+   "CYPH|2026-08-31": {
+    "base": 1.825,
+    "max_up_pct": 120.3,
+    "fired": false
+   },
    "AEMD|2026-08-28": {
     "base": 2.49,
     "max_up_pct": 281.5,
     "fired": false
    },
-   "QNME|2026-08-28": {
-    "base": 0.354,
-    "max_up_pct": 191.0,
+   "TNON|2026-08-28": {
+    "base": 5.0,
+    "max_up_pct": 116.8,
     "fired": true
    },
-   "HVII|2026-08-24": {
-    "base": 6.97,
-    "max_up_pct": 72.9,
+   "RDAC|2026-08-26": {
+    "base": 5.35,
+    "max_up_pct": 60.4,
+    "fired": true
+   },
+   "GPRO|2026-08-27": {
+    "base": 0.6051,
+    "max_up_pct": 238.8,
+    "fired": true
+   },
+   "BNC|2026-08-27": {
+    "base": 3.01,
+    "max_up_pct": 113.3,
+    "fired": true
+   },
+   "SST|2026-08-31": {
+    "base": 2.24,
+    "max_up_pct": 143.3,
+    "fired": false
+   },
+   "BRR|2026-08-24": {
+    "base": 2.15,
+    "max_up_pct": 54.4,
+    "fired": true
+   },
+   "AIXI|2026-08-24": {
+    "base": 3.2032,
+    "max_up_pct": 278.1,
+    "fired": true
+   },
+   "BUUU|2026-08-31": {
+    "base": 30.64,
+    "max_up_pct": 72.7,
+    "fired": false
+   },
+   "PDSB|2026-08-25": {
+    "base": 0.2215,
+    "max_up_pct": 378.6,
+    "fired": true
+   },
+   "AEON|2026-08-24": {
+    "base": 0.1974,
+    "max_up_pct": 92.5,
+    "fired": true
+   },
+   "AGRZ|2026-08-31": {
+    "base": 0.2196,
+    "max_up_pct": 100.4,
+    "fired": false
+   },
+   "NWGL|2026-08-25": {
+    "base": 0.671,
+    "max_up_pct": 195.1,
+    "fired": true
+   },
+   "NCPL|2026-08-27": {
+    "base": 0.5386,
+    "max_up_pct": 113.5,
+    "fired": true
+   },
+   "CLGN|2026-08-26": {
+    "base": 3.075,
+    "max_up_pct": 212.2,
+    "fired": true
+   },
+   "VNRX|2026-08-24": {
+    "base": 0.391,
+    "max_up_pct": 84.1,
+    "fired": true
+   },
+   "COSM|2026-08-31": {
+    "base": 0.2428,
+    "max_up_pct": 54.8,
+    "fired": false
+   },
+   "ATER|2026-08-28": {
+    "base": 0.3913,
+    "max_up_pct": 160.7,
+    "fired": true
+   },
+   "LHSW|2026-08-24": {
+    "base": 2.77,
+    "max_up_pct": 97.1,
+    "fired": true
+   },
+   "GOAI|2026-08-25": {
+    "base": 1.87,
+    "max_up_pct": 64.7,
+    "fired": true
+   },
+   "RNXT|2026-08-26": {
+    "base": 1.49,
+    "max_up_pct": 73.8,
+    "fired": true
+   },
+   "CDTG|2026-08-24": {
+    "base": 1.17,
+    "max_up_pct": 58.1,
+    "fired": true
+   },
+   "UFG|2026-08-28": {
+    "base": 0.5601,
+    "max_up_pct": 68.2,
+    "fired": true
+   },
+   "MNTK|2026-08-28": {
+    "base": 1.77,
+    "max_up_pct": 54.2,
+    "fired": true
+   },
+   "CELU|2026-08-26": {
+    "base": 0.8804,
+    "max_up_pct": 189.6,
+    "fired": true
+   },
+   "AKTX|2026-08-24": {
+    "base": 7.47,
+    "max_up_pct": 62.7,
     "fired": true
    },
    "VMAR|2026-08-24": {
     "base": 7.082,
     "max_up_pct": 83.0,
+    "fired": true
+   },
+   "TURB|2026-08-31": {
+    "base": 1.18,
+    "max_up_pct": 74.6,
+    "fired": false
+   },
+   "SWVL|2026-08-25": {
+    "base": 2.21,
+    "max_up_pct": 283.5,
+    "fired": true
+   },
+   "BRNX|2026-08-26": {
+    "base": 6.24,
+    "max_up_pct": 66.0,
+    "fired": true
+   },
+   "SST|2026-08-28": {
+    "base": 1.89,
+    "max_up_pct": 188.4,
+    "fired": true
+   },
+   "VIOT|2026-08-26": {
+    "base": 0.815,
+    "max_up_pct": 130.5,
+    "fired": true
+   },
+   "TGL|2026-08-27": {
+    "base": 2.52,
+    "max_up_pct": 80.2,
+    "fired": true
+   },
+   "HVII|2026-08-31": {
+    "base": 7.89,
+    "max_up_pct": 52.7,
+    "fired": false
+   },
+   "CRDF|2026-08-24": {
+    "base": 0.998,
+    "max_up_pct": 50.8,
+    "fired": true
+   },
+   "CLGN|2026-08-24": {
+    "base": 3.008,
+    "max_up_pct": 219.1,
+    "fired": true
+   },
+   "EXYN|2026-08-24": {
+    "base": 2.3,
+    "max_up_pct": 87.8,
+    "fired": true
+   },
+   "GCDT|2026-08-31": {
+    "base": 0.41,
+    "max_up_pct": 185.4,
+    "fired": false
+   },
+   "PMI|2026-08-24": {
+    "base": 5.13,
+    "max_up_pct": 131.4,
+    "fired": true
+   },
+   "CYPH|2026-08-24": {
+    "base": 1.68,
+    "max_up_pct": 92.0,
+    "fired": true
+   },
+   "COSM|2026-08-28": {
+    "base": 0.2247,
+    "max_up_pct": 55.3,
+    "fired": true
+   },
+   "UFG|2026-08-24": {
+    "base": 0.5749,
+    "max_up_pct": 63.9,
+    "fired": true
+   },
+   "AVAT|2026-08-26": {
+    "base": 0.5519,
+    "max_up_pct": 101.1,
+    "fired": true
+   },
+   "TP|2026-08-28": {
+    "base": 7.83,
+    "max_up_pct": 55.0,
+    "fired": true
+   },
+   "CYPH|2026-08-27": {
+    "base": 1.89,
+    "max_up_pct": 96.3,
+    "fired": true
+   },
+   "AKTX|2026-08-25": {
+    "base": 7.87,
+    "max_up_pct": 54.4,
+    "fired": true
+   },
+   "AVAT|2026-08-28": {
+    "base": 0.6522,
+    "max_up_pct": 225.1,
+    "fired": true
+   },
+   "XPON|2026-08-24": {
+    "base": 6.2,
+    "max_up_pct": 90.2,
+    "fired": true
+   },
+   "RDIB|2026-08-26": {
+    "base": 15.38,
+    "max_up_pct": 56.0,
+    "fired": true
+   },
+   "NTRP|2026-08-26": {
+    "base": 1.17,
+    "max_up_pct": 62.4,
+    "fired": true
+   },
+   "GSUN|2026-08-25": {
+    "base": 0.2947,
+    "max_up_pct": 62.9,
+    "fired": true
+   },
+   "HSCS|2026-08-24": {
+    "base": 2.76,
+    "max_up_pct": 57.6,
+    "fired": true
+   },
+   "ZTG|2026-08-31": {
+    "base": 0.8986,
+    "max_up_pct": 167.1,
+    "fired": false
+   },
+   "AGRZ|2026-08-24": {
+    "base": 0.2754,
+    "max_up_pct": 59.8,
+    "fired": true
+   },
+   "BUUU|2026-08-27": {
+    "base": 31.84,
+    "max_up_pct": 51.1,
+    "fired": true
+   },
+   "DAIC|2026-08-24": {
+    "base": 1.73,
+    "max_up_pct": 286.7,
+    "fired": true
+   },
+   "AVAT|2026-08-31": {
+    "base": 0.7239,
+    "max_up_pct": 221.9,
+    "fired": false
+   },
+   "HVII|2026-08-25": {
+    "base": 7.84,
+    "max_up_pct": 53.7,
+    "fired": true
+   },
+   "ZEO|2026-08-31": {
+    "base": 0.2377,
+    "max_up_pct": 206.8,
+    "fired": false
+   },
+   "VRME|2026-08-28": {
+    "base": 0.6399,
+    "max_up_pct": 204.7,
+    "fired": true
+   },
+   "SNYR|2026-08-25": {
+    "base": 0.1,
+    "max_up_pct": 540.0,
+    "fired": true
+   },
+   "RNXT|2026-08-25": {
+    "base": 1.42,
+    "max_up_pct": 82.4,
+    "fired": true
+   },
+   "HVII|2026-08-28": {
+    "base": 7.46,
+    "max_up_pct": 61.5,
+    "fired": true
+   },
+   "GCDT|2026-08-25": {
+    "base": 0.3775,
+    "max_up_pct": 209.9,
+    "fired": true
+   },
+   "AVAT|2026-08-24": {
+    "base": 0.538,
+    "max_up_pct": 106.3,
+    "fired": true
+   },
+   "SQFT|2026-08-25": {
+    "base": 1.48,
+    "max_up_pct": 58.1,
+    "fired": true
+   },
+   "AEON|2026-08-26": {
+    "base": 0.2515,
+    "max_up_pct": 51.1,
+    "fired": true
+   },
+   "VNRX|2026-08-26": {
+    "base": 0.3392,
+    "max_up_pct": 112.3,
+    "fired": true
+   },
+   "BRNX|2026-08-25": {
+    "base": 5.56,
+    "max_up_pct": 86.3,
+    "fired": true
+   },
+   "FNGR|2026-08-24": {
+    "base": 0.1954,
+    "max_up_pct": 263.4,
+    "fired": true
+   },
+   "CYAB|2026-08-24": {
+    "base": 0.3022,
+    "max_up_pct": 108.1,
+    "fired": true
+   },
+   "DFDV|2026-08-24": {
+    "base": 4.09,
+    "max_up_pct": 51.8,
+    "fired": true
+   },
+   "LGPS|2026-08-26": {
+    "base": 0.8693,
+    "max_up_pct": 84.1,
+    "fired": true
+   },
+   "INDP|2026-08-25": {
+    "base": 1.095,
+    "max_up_pct": 237.4,
+    "fired": true
+   },
+   "FNGR|2026-08-27": {
+    "base": 0.1734,
+    "max_up_pct": 309.5,
     "fired": true
    }
   }

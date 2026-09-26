@@ -629,7 +629,9 @@ def main():
         res = walk_arm(entry=entry, stop=st["level"], target=None, day0_bars=d0, fill_idx=idx, sessions=sw,
                        prior_closes=row["prior_40"], harvest="trail_only", fill_day=row["fire_date"],
                        horizon=WINDOW, trail_mode="sma", breakeven_at_partial=True, trail_prior_closes=True,
-                       ladder_partial=False)
+                       ladder_partial=False,
+                       breakeven_at_r=None)   # the trail_only validation arm has no breakeven by its own rule
+                                              # (walk_arm rejects one); stated, never left to the default
         ex, remn, cs, _, _ = walk_mgmt(row["entry"], st["level"], st["d0_bars"], row["sess"], row["allc"], row["P"], None, None, "max10_20", trail_day0=False)
         r_mine, _k = r_at(ex, cs, row["entry"], st["risk"], row["allc"], row["P"], row["n_avail"], WINDOW, gap=True)
         if res["status"] == "settled":
