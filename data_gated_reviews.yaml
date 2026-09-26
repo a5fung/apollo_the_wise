@@ -12643,6 +12643,12 @@ reviews:
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_09_26: >-
+      RAN 2026-09-26, same SQL (scripts/probes/_verify_rank_shadow_2026-09-21.sql): n = 16 sessions,
+      36 rows. The only new session since the 09-22 read is 2026-09-25, a single alert (AKAM, HIGH,
+      pool of 1, rank 0.5) — a pool of one never enters the top quartile, and its outcome has 1
+      session behind it, so the read CANNOT move on it. Conclusion unchanged from 09-22: THIN,
+      directional only, against the rule.
     resolution_2026_09_22: >-
       RAN 2026-09-22 at close, same method and SQL as the 09-21 re-run
       (scripts/probes/_verify_rank_shadow_2026-09-21.sql, outcomes recomputed from mi_daily_closes
