@@ -1,0 +1,251 @@
+ticker,alert_date,ep_score,gap_pct,catalyst_quality,day1_class,d1_status,d1_pnl,d1_skip_reason,d1_mode,d1_closed_at,d1_entry,next_9m_ep_date,next_day2_date,next_flag_date,next_flag_date_incl_tightening,flag_rows_in_window,first_flag_scan_in_window,next_ep_date,max_high_21d,d0_open,r3_rows
+BIO,2026-05-18,54,10.984527128024896,strong,NO_TRADE_ROW,,,,,,,,,,,10,2026-05-22,,319.86,274.72,0
+CMPS,2026-05-18,72,12.198649951783999,game_changer,NO_TRADE_ROW,,,,,,,,,2026-05-29,2026-05-29,15,2026-05-19,,14.76,11.635,0
+D,2026-05-18,32.4,11.19390895836709,mna,NO_TRADE_ROW,,,,,,,,,,,11,2026-05-19,,68.89,68.64,0
+RAMP,2026-05-18,48,27.44436952124072,mna,NO_TRADE_ROW,,,,,,,,,2026-05-22,2026-05-22,14,2026-05-19,,37.9,37.8,0
+SATG,2026-05-18,42,12.747353888633222,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,23.44,24.5,0
+SHAZ,2026-05-18,72,11.348043760430182,game_changer,NO_TRADE_ROW,,,,,,,,,2026-05-19,2026-05-19,13,2026-05-19,,86.94,60.05,0
+TE,2026-05-18,48,18.165784832451504,routine,NO_TRADE_ROW,,,,,,,,,2026-06-02,2026-06-02,15,2026-05-19,,12.49,6.7,0
+AGYS,2026-05-19,96,29.85754985754985,strong,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,94.5229,,,2026-05-27,2026-05-27,14,2026-05-20,,93.81,91.16,0
+BKKT,2026-05-19,56.4,13.876146788990814,routine,NO_TRADE_ROW,,,,,,,,,,,11,2026-05-20,,13.04,9.93,0
+ALAB,2026-05-20,100.8,15.68,strong,NO_TRADE_ROW,,,,,,,,,2026-06-03,2026-06-03,15,2026-05-21,,372.37,251.41,0
+ARM,2026-05-20,100.8,16.36,strong,NO_TRADE_ROW,,,,,,,,,2026-06-08,2026-06-08,15,2026-05-21,,427.99,226.54,0
+DYN,2026-05-20,84,17.86,strong,NO_TRADE_ROW,,,,,,,,,,,2,2026-05-29,,19.61,16.18,0
+GH,2026-05-20,96,17.01,game_changer,NO_TRADE_ROW,,,,,,,,,2026-06-04,2026-06-04,14,2026-05-21,,134.28,100.84,0
+IBRX,2026-05-20,72,10.18,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:50 ET,paper,,,,,,,10,2026-05-21,,8.295,8.42,0
+IMVT,2026-05-20,115.2,35.26,strong,NO_TRADE_ROW,,,,,,,,,2026-05-28,2026-05-28,15,2026-05-21,,35.76,30.44,0
+SLS,2026-05-20,100.8,19.89,strong,NO_TRADE_ROW,,,,,,,,,2026-05-27,2026-05-27,13,2026-05-21,,9.51,8.275,0
+TATT,2026-05-20,84,16.05995717344754,strong,NO_TRADE_ROW,,,,,,,,,,,11,2026-05-26,,47.05,37.94,0
+AAP,2026-05-21,50.4,12.39266198282592,strong,NO_TRADE_ROW,,,,,,,,,,,10,2026-05-28,,62.32,57.59,0
+BIRK,2026-05-21,30,10.62932851550738,routine,NO_TRADE_ROW,,,,,,,,,,,14,2026-05-22,,46.63,36.74,0
+GFS,2026-05-21,56.4,10.283938409379836,strong,NO_TRADE_ROW,,,,,,,,,2026-06-02,2026-06-02,13,2026-05-22,,92.55,78.07,0
+INFQ,2026-05-21,115.2,22,strong,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,13.7,,,2026-05-29,2026-05-22,15,2026-05-22,,20.75,13.5,0
+QBTS,2026-05-21,57.6,12.746113989637308,strong,NO_TRADE_ROW,,,,,,,,,2026-05-29,2026-05-29,14,2026-05-22,,31.55,21.76,0
+QBTX,2026-05-21,62.4,25.963149078726964,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,115.16,60.16,0
+QPUX,2026-05-21,54,18.524040253447644,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,55.2793,31.8,0
+QUBX,2026-05-21,62.4,21.659751037344392,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,92.7996,58.64,0
+RGTI,2026-05-21,68.4,10.693127962085306,strong,NO_TRADE_ROW,,,,,,,,,2026-05-29,2026-05-29,13,2026-05-22,,28.06,18.685,0
+RGTX,2026-05-21,62.4,20.907079646017706,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,44.33,21.86,0
+RLAY,2026-05-21,72,11.6,game_changer,LOST_DAY1,closed,-642.5502080000006,block:r3_reentry_disabled,paper,2026-05-21 13:40:57.233588+00,15.298413,,,2026-05-22,2026-05-22,15,2026-05-22,2026-06-02,17.47,14.98,1
+DLLL,2026-05-22,42,11.517355834345413,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,30.6238,10.9613,0
+EL,2026-05-22,26.4,12.736028386769735,routine,NO_TRADE_ROW,,,,,,,,,,,3,2026-06-09,,92.35,88.96,0
+HLIT,2026-05-22,32.4,12.598425196850405,routine,NO_TRADE_ROW,,,,,,,,,2026-06-01,2026-05-25,15,2026-05-25,,17.68,14.3,0
+IMAX,2026-05-22,36,13.695395513577333,mna,NO_TRADE_ROW,,,,,,,,,,,13,2026-05-26,,43.31,38.52,0
+IMRX,2026-05-22,78,14.75095785440614,strong,NO_TRADE_ROW,,,,,,,,,,,10,2026-05-25,,5.955,5.99,0
+PPTA,2026-05-22,72,11,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,29.15,,,,,0,,,27.84,28.95,0
+SG,2026-05-22,54,10.467706013363024,strong,NO_TRADE_ROW,,,,,,,,,2026-05-29,2026-05-29,13,2026-05-25,,10.58,9.92,0
+WW,2026-05-22,50.4,12.19028741328048,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,19.9,11.32,0
+APPX,2026-05-26,44.4,14.51398135818909,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,61,43,0
+ASPI,2026-05-26,66,14.954954954954957,strong,NO_TRADE_ROW,,,,,,,,,2026-06-08,2026-06-08,14,2026-05-27,,8.54,6.38,0
+CCOI,2026-05-26,68.4,10.958149779735674,strong,NO_TRADE_ROW,,,,,,,,,,,3,2026-05-27,,21.72,20.15,0
+ESLT,2026-05-26,50.4,11.678518402750639,strong,NO_TRADE_ROW,,,,,,,,,,,6,2026-05-28,,916.51,857.49,0
+IPWR,2026-05-26,48,13.438045375218142,routine,NO_TRADE_ROW,,,,,,,,,2026-06-02,2026-06-02,11,2026-05-27,2026-05-27,9.3,6.5,0
+JOYY,2026-05-26,54,11.852260198456442,strong,NO_TRADE_ROW,,,,,,,,,,,14,2026-05-27,,69.93,60.87,0
+LUNL,2026-05-26,60,20.781171757636464,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,56.68,48.24,0
+LUNR,2026-05-26,39.6,10.350235232618926,routine,NO_TRADE_ROW,,,,,,,,,,,12,2026-05-27,,46.75,42.22,0
+MNTS,2026-05-26,72,75.60975609756099,routine,NO_TRADE_ROW,,,,,,,,,2026-06-04,2026-06-04,15,2026-05-27,,22.2,12.96,0
+MOD,2026-05-26,96,17.829725165054526,game_changer,NO_TRADE_ROW,,,,,,,,,2026-06-02,2026-06-02,8,2026-06-02,,318.61,306.97,0
+PONY,2026-05-26,84,15.470852017937228,strong,SKIPPED,skipped,0,setup:stop_too_wide: ORB range $0.74 (7.6%) > 1.5x ATR $0.73,paper,,,,,,,10,2026-05-27,,11.28,10.3,0
+POWI,2026-05-26,84,17.52,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:52 ET,paper,,,,,2026-06-02,2026-06-02,12,2026-05-27,,89,79.235,0
+QNTM,2026-05-26,54,13.74458874458874,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,7.83,10.51,0
+RDW,2026-05-26,84,15.04,strong,NO_ENTRY,cancelled,0,expired,paper,,19.68,,,2026-06-04,2026-06-04,11,2026-05-27,,26.64,19.645,0
+RDWU,2026-05-26,56.4,26.68621700879766,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,59.29,34.56,0
+SOFX,2026-05-26,44.4,10.18181818181818,routine,NO_TRADE_ROW,,,,,,,,,,,0,,2026-05-29,11.7699,9.09,0
+ANF,2026-05-27,57.6,11.23,routine,SKIPPED,skipped,0,window:out_of_orb: detected 09:55 ET,paper,,,,,,,7,2026-06-08,,94.805,80.7,0
+APPS,2026-05-27,96,34.92723492723494,strong,NO_TRADE_ROW,,,,,,,,,2026-06-05,2026-06-05,15,2026-05-28,,10.8,6.49,0
+ASTI,2026-05-27,38.4,13.475177304964554,routine,NO_TRADE_ROW,,,,,,,,,2026-06-04,2026-06-04,15,2026-05-28,,9.8,6.4,0
+BBWI,2026-05-27,54.7,15,routine,SKIPPED,skipped,0,window:out_of_orb: detected 09:51 ET,paper,,,,,,,14,2026-05-28,,21.705,19.5,0
+CRSR,2026-05-27,100.8,15.33,strong,WON_DAY1,closed,1390.7991939999974,,paper,2026-06-08 19:22:50.746763+00,8.772422,,,,2026-06-11,14,2026-05-28,2026-05-28,13.1,8.77,0
+DY,2026-05-27,96,27.35748091421504,game_changer,LOST_DAY1,closed,-438.24000000000285,block:r3_reentry_disabled,paper,2026-05-27 15:33:49.537591+00,546.46,,,,2026-06-11,12,2026-05-28,,551.86,535.5,1
+IPWR,2026-05-27,63.6,27.89017341040462,routine,NO_TRADE_ROW,,,,,,,,,2026-06-02,2026-06-02,10,2026-05-28,,9.0401,8.85,0
+QFIN,2026-05-27,68.4,10.405083399523434,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:51 ET,paper,,,,,2026-06-10,2026-06-10,14,2026-05-28,,17.2501,13.9,0
+A,2026-05-28,48,14.813535911602207,strong,NO_TRADE_ROW,,,,,,,,,,,14,2026-05-29,,141.09,133,0
+AIRO,2026-05-28,56.4,10.150891632373105,routine,NO_TRADE_ROW,,,,,,,,,2026-06-08,2026-06-08,12,2026-05-29,,9.88,8.03,0
+AVAV,2026-05-28,72,10.33,strong,NO_ENTRY,cancelled,0,cancelled,paper,,204.86,,,,,8,2026-05-29,,216.275,199.935,0
+CRSR,2026-05-28,51.6,12.932790224032582,routine,NO_TRADE_ROW,,,,,,,,,,2026-06-11,13,2026-05-29,,12.785,11.09,0
+CTRN,2026-05-28,72,14.377682403433468,game_changer,NO_TRADE_ROW,,,,,,,,,2026-06-09,2026-06-09,11,2026-05-29,,63.1,53.3,0
+DLTR,2026-05-28,84,15.79221862939397,strong,NO_TRADE_ROW,,,,,,,,,,,14,2026-05-29,,117.41,111.01,0
+DOO,2026-05-28,36,10.046527658107872,routine,NO_TRADE_ROW,,,,,,,,,,,7,2026-06-03,,63.335,63.86,0
+DPRO,2026-05-28,74.4,11.54422788605698,strong,NO_TRADE_ROW,,,,,,,,,2026-06-04,2026-06-04,13,2026-05-29,,8.04,7.44,0
+KSS,2026-05-28,45.6,19.953596287703018,routine,NO_TRADE_ROW,,,,,,,,,2026-06-18,2026-06-18,15,2026-05-29,,18.12,15.51,0
+KTOS,2026-05-28,44.4,11.623036649214667,routine,NO_TRADE_ROW,,,,,,,,,,,10,2026-05-29,,66.75,63.96,0
+LTRX,2026-05-28,44.4,16.689655172413804,routine,NO_TRADE_ROW,,,,,,,,,,,5,2026-05-29,,7.96,8.46,0
+ONDG,2026-05-28,50.4,12.74961597542243,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,10.74,7.34,0
+ONDL,2026-05-28,50.4,13.654390934844193,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,29.085,20.06,0
+PHR,2026-05-28,84,18.07228915662649,strong,NO_TRADE_ROW,,,,,,,,,,,3,2026-06-01,,10.66,10.78,0
+RCAT,2026-05-28,100.8,16.07,strong,WON_DAY1,closed,1165.5900000000004,,paper,2026-06-05 16:42:53.983457+00,12.57,,,2026-06-11,2026-06-11,15,2026-05-29,,15.79,12.405,0
+SNOW,2026-05-28,96,35.22766175967135,game_changer,NO_TRADE_ROW,,,,,,,,,2026-06-08,2026-06-08,15,2026-05-29,,284.99,237,0
+UMAC,2026-05-28,54,32.766861391396716,routine,NO_TRADE_ROW,,,,,,,,,2026-06-11,2026-06-11,15,2026-05-29,,34.36,25,0
+ARTV,2026-05-29,42,10.643889618922465,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,10.4958,8.42,0
+CHA,2026-05-29,74.4,14.665354330708663,strong,NO_TRADE_ROW,,,,,,,,,,,10,2026-06-01,,13.4,11.65,0
+DELL,2026-05-29,115.2,36.26,strong,LOST_DAY1,closed,-271.92003000000125,block:r3_reentry_disabled,paper,2026-05-29 13:46:14.41856+00,421.112609,,,2026-06-08,2026-06-08,15,2026-06-01,,469.47,418,1
+HPE,2026-05-29,32.4,11.960219837738812,routine,NO_TRADE_ROW,,,,,,,,,2026-06-08,2026-06-08,14,2026-06-01,2026-06-02,64.25,42.78,0
+HPEpC,2026-05-29,36,10.871101241546393,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,163.5,109.84,0
+MX,2026-05-29,54,17.967599410898377,routine,NO_TRADE_ROW,,,,,,,,,2026-06-04,2026-06-04,9,2026-06-01,,9.86,8.01,0
+NTAP,2026-05-29,96,24.080056179775276,strong,NO_TRADE_ROW,,,,,,,,,2026-06-04,2026-06-04,15,2026-06-01,,186.53,176.69,0
+NXT,2026-05-29,44.4,13.698330538747555,strong,NO_TRADE_ROW,,,,,,,,,,,3,2026-06-01,,154.53,155.96,0
+PD,2026-05-29,96,25.40322580645161,strong,NO_TRADE_ROW,,,,,,,,,2026-06-10,2026-06-10,14,2026-06-01,,10.7,9.33,0
+QURE,2026-05-29,50.4,15.694164989939633,routine,NO_TRADE_ROW,,,,,,,,,2026-06-10,2026-06-01,12,2026-06-01,2026-06-17,50.08,28.75,0
+REPL,2026-05-29,96,69.44444444444446,game_changer,NO_TRADE_ROW,,,,,,,,,2026-06-11,2026-06-11,15,2026-06-01,,10.86,7.93,0
+SOFX,2026-05-29,48,14.74226804123713,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,11.7699,11.13,0
+TSSI,2026-05-29,62.4,15.952732644017727,routine,NO_TRADE_ROW,,,,,,,,,2026-06-15,2026-06-01,15,2026-06-01,,16.17,15.7,0
+ALOY,2026-06-01,86.4,14.25,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:56 ET,paper,,,,,2026-06-12,2026-06-12,14,2026-06-02,,19.76,9.39,0
+ARMG,2026-06-01,48,20.897204688908936,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,65.9499,53.63,0
+CRWG,2026-06-01,44.4,10.271178305735544,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,59.74,45.95,0
+ELMT,2026-06-01,96,24.672774869109958,game_changer,NO_TRADE_ROW,,,,,,,,,,,0,,,22.51,19.05,0
+EWTX,2026-06-01,36,18.852459016393457,mna,NO_TRADE_ROW,,,,,,,,,,,4,2026-06-02,,40.38,40.6,0
+FLNC,2026-06-01,54,24.04661016949154,routine,NO_TRADE_ROW,,,,,,,,,2026-06-08,2026-06-08,15,2026-06-02,,29.97,23.42,0
+MGM,2026-06-01,32.4,10.96862834898099,mna,NO_TRADE_ROW,,,,,,,,,,,13,2026-06-02,,50.5,48.46,0
+SAIC,2026-06-01,84,15.345489443378113,strong,NO_TRADE_ROW,,,,,,,,,,,10,2026-06-02,,118.42,120.19,0
+TMHC,2026-06-01,48,22.350427350427353,mna,NO_TRADE_ROW,,,,,,,,,,,4,2026-06-02,,72.26,71.575,0
+AVGU,2026-06-02,42,13.063814106890714,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,63.455,61.98,0
+GLWG,2026-06-02,36,11.307565789473683,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,33.23,27.07,0
+GRRR,2026-06-02,100.8,17.64,strong,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,23.49,,,2026-06-16,2026-06-11,13,2026-06-03,,19.77,23.16,0
+HPE,2026-06-02,115.2,25.28,strong,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,63.95,,,2026-06-08,2026-06-08,12,2026-06-03,,55.99,63.06,0
+MRVL,2026-06-02,115.2,24.87,strong,NO_ENTRY,cancelled,0,cancelled,paper,,259.8,,,2026-06-09,2026-06-09,15,2026-06-03,,329.88,253.46,0
+MRVU,2026-06-02,54,31.37514918445829,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,308.77,198.14,0
+MVLL,2026-06-02,54,30.96959665476086,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,77.6667,50.1133,0
+RLAY,2026-06-02,84,16.760168302945296,strong,NO_TRADE_ROW,,,,,,,,,2026-06-08,2026-06-08,15,2026-06-03,,17.7,16.65,0
+GME,2026-06-03,72,11.281070745697894,game_changer,NO_TRADE_ROW,,,,,,,,,,,10,2026-06-04,,23.065,23.28,0
+GMEU,2026-06-03,60,22.23667100130039,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,9.31,9.4,0
+NVTS,2026-06-03,84,15.39,strong,LOST_DAY1,closed,-830.1402160000002,block:r3_reentry_disabled,paper,2026-06-03 13:49:07.660866+00,31.79,,,2026-06-04,2026-06-04,5,2026-06-04,,31.55,30.645,1
+NVTX,2026-06-03,62.4,37.68545994065282,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,175,167.04,0
+PGY,2026-06-04,66,10.21,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:56 ET,paper,,,,,2026-06-05,2026-06-05,10,2026-06-05,,16.68,14.355,0
+RUM,2026-06-04,84,15.49,strong,LOST_DAY1,closed,-983.4593429999984,block:r3_reentry_disabled,paper,2026-06-04 13:49:09.037289+00,9.935633,,,,,15,2026-06-05,,8.71,9.43,1
+AGX,2026-06-05,86.4,10.96,game_changer,SKIPPED,skipped,0,block:max_positions: 5/5 (mode=paper),paper,,,,,2026-06-17,2026-06-17,4,2026-06-17,,791.38,697.68,0
+ETHD,2026-06-05,40,12.437139703176745,routine,NO_TRADE_ROW,,,,,,,,,,,0,,,99.59,91.67,0
+GIII,2026-06-05,45,11.86017478152311,strong,NO_TRADE_ROW,,,,,,,,,,,7,2026-06-08,,36.53,35.84,0
+MRLN,2026-06-05,80,27.99442896935933,strong,NO_TRADE_ROW,,,,,,,,,,,9,2026-06-10,,9.115,9.19,0
+TTAN,2026-06-05,100.8,16.28,strong,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,84.0775,,,2026-06-15,2026-06-15,5,2026-06-08,,78.7799,83.05,0
+NRIX,2026-06-08,75.6,11.5,game_changer,LOST_DAY1,closed,-378.2401519999998,block:r3_reentry_disabled,paper,2026-06-08 13:55:03.263012+00,16.956238,,,,,15,2026-06-09,,24.03,16.725,1
+ELVN,2026-06-11,84,18.33,strong,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,45.5171,,,2026-06-18,2026-06-18,14,2026-06-12,,52.39,45.01,0
+IDCC,2026-06-11,84,15.2,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:51 ET,paper,,,,,,,6,2026-06-12,,301.84,275,0
+NAVN,2026-06-11,80,17.87,game_changer,LOST_DAY1,closed,-319.46998400000007,block:r3_reentry_disabled,paper,2026-06-11 14:01:39.954252+00,24.399071,,,2026-06-17,2026-06-17,12,2026-06-12,,25.855,24.25,1
+AKTS,2026-06-12,54,11.92,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:55 ET,paper,,,,,,,4,2026-06-29,,34.1899,21.36,0
+SHAZ,2026-06-12,86.4,11.87,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,74.77,,,2026-06-16,2026-06-16,11,2026-06-16,,97.48,74.6,0
+RXT,2026-06-16,84,17.5,strong,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,7.16,,,,2026-06-17,13,2026-06-17,,8.6,6.765,0
+JBL,2026-06-17,60,10.77,game_changer,LOST_DAY1,closed,-164.11997800000086,block:r3_reentry_disabled,paper,2026-06-17 14:02:10.034212+00,413.835454,,,,,5,2026-06-18,,390.05,412.36,1
+LZB,2026-06-17,54,26.5,routine,NO_TRADE_ROW,,,,,,,,,,,4,2026-06-23,,42.335,42.18,0
+QURE,2026-06-17,80,75.2,game_changer,WON_DAY1,closed,215.6200000000007,,paper,2026-07-02 13:31:21.294445+00,44.69,,,2026-06-24,2026-06-24,13,2026-06-18,,50.47,43.55,0
+SWBI,2026-06-18,70,15.59,strong,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,16.09,,,,,4,2026-06-22,,17.5,15.8,0
+UUUU,2026-06-18,72,12.36,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,18.06,,,,,10,2026-06-19,,16.93,17.92,0
+DFTX,2026-06-22,60,14.38,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,39.16,,,2026-07-07,2026-07-07,15,2026-06-23,,49.2,38.58,0
+MLTX,2026-06-22,96,19.1,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,paper,,20.025,,,,,1,2026-06-23,,22.32,20.025,0
+SYRE,2026-06-22,60,12.35,game_changer,LOST_DAY1,closed,-1483.349999999999,,paper,2026-06-24 13:32:58.217781+00,98.49,,,,,11,2026-06-23,,102.06,95,0
+ABSI,2026-06-24,100.8,16.33,strong,NO_TRADE_ROW,,,,,,,,,2026-07-06,2026-07-06,15,2026-06-25,,12.055,9.51,0
+FCEL,2026-06-24,84,17.51,strong,NO_TRADE_ROW,,,,,,,2026-06-26,,,,15,2026-06-25,,37.88,25.11,0
+MU,2026-06-25,96,17.71,game_changer,SKIPPED,skipped,0,setup:price_exceeds_cap: $1235.00/share > $1000 (20% of $5000),paper,,,,,,,4,2026-06-26,,1198.7121,1233,0
+SNX,2026-06-25,72,11.22,game_changer,NO_TRADE_ROW,,,,,,,,,,,1,2026-06-26,,282.29,283.2,0
+ACAD,2026-06-26,84,15.34,strong,NO_TRADE_ROW,,,,,,,,,,,12,2026-06-29,,26.51,26.38,0
+AVAV,2026-06-30,54,25.3,routine,NO_ENTRY,cancelled,0,ORB window unfilled,live,,178.5,,,,,10,2026-07-01,,200.38,176.5,0
+WULF,2026-07-06,96,19.92,game_changer,LOST_DAY1,closed,-32.80000000000001,block:r3_reentry_disabled,live,2026-07-06 13:57:29.842241+00,24.62,2026-07-08,,,,11,2026-07-08,,24.575,24.15,1
+DOCN,2026-07-07,115.2,15.62,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,live,,146.57,,,,,0,,,148.395,145,0
+PENG,2026-07-08,72,10.52,game_changer,SKIPPED,skipped,0,window:out_of_orb: detected 09:55 ET,paper,,,2026-07-09,,,,15,2026-07-09,,89.86,67.85,0
+CRCL,2026-07-10,60,10.76,game_changer,LOST_DAY1,closed,-19.180000000000064,block:r3_reentry_disabled,live,2026-07-10 13:40:34.350753+00,70.65,2026-07-21,,,,15,2026-07-13,,72.675,70.66,1
+WDFC,2026-07-10,72,14.23,game_changer,LOST_DAY1,closed,-19.029999999999973,block:r3_reentry_disabled,live,2026-07-10 13:40:35.912242+00,296.235,,,,,2,2026-07-13,,267.39,292.093,1
+CLSK,2026-07-14,96,17.15,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,live,,15.1,2026-07-15,,,,14,2026-07-15,,16.0995,14.685,0
+TSEM,2026-07-14,80,18.57,game_changer,LOST_DAY1,closed,-23.010000000000048,block:r3_reentry_disabled,live,2026-07-14 13:44:34.431088+00,274,,,,,3,2026-07-23,,270.85,271.5,1
+AEHR,2026-07-15,96,29.5,game_changer,NO_ENTRY,cancelled,0,rejected,live,,102.46,,,,,13,2026-07-16,,111,98.155,0
+MANE,2026-07-15,72,10.66,game_changer,LOST_DAY1,closed,-2.3999999999999773,,live,2026-07-16 13:30:06.279318+00,119.34,,,,,0,,,125.165,118.75,0
+HUT,2026-07-20,72,11.54,game_changer,LOST_DAY1,closed,-19.530000000000015,block:r3_reentry_disabled,live,2026-07-20 13:31:57.29657+00,103.48,,,,,9,2026-07-21,,120.38,101.51,1
+IREN,2026-07-20,72,13.15,game_changer,SKIPPED,skipped,0,window:out_of_orb: detected 09:51 ET,live,,,,,,,8,2026-07-23,,43.72,36.392,0
+HAS,2026-07-21,72,10.61,game_changer,SKIPPED,skipped,0,window:out_of_orb: detected 09:50 ET,live,,,,,,,13,2026-07-22,,97.89,84.51,0
+ARWR,2026-07-22,80,19.57,game_changer,NO_ENTRY,cancelled,0,cancelled,live,,87.92,,,,,13,2026-07-23,,90.97,85.46,0
+SMCI,2026-07-22,70,15.88,strong,LOST_DAY1,closed,-14.959999999999994,,live,2026-07-27 14:37:45.699612+00,29.47,2026-08-12,2026-08-12,,,14,2026-07-23,,38.15,28.89,0
+NVCR,2026-07-23,84,15.54,strong,LOST_DAY1,closed,-24.133199999999935,,live,2026-07-24 19:36:57.558497+00,19.15,,,,,9,2026-07-24,,21.4506,18,0
+THC,2026-07-24,60,14.31,game_changer,LOST_DAY1,closed,-16.279999999999973,block:r3_reentry_disabled,live,2026-07-24 16:43:37.73624+00,241.67,,,,,13,2026-07-27,,270.5652,235.01,1
+WKC,2026-07-24,60,11.63,game_changer,LOST_DAY1,closed,-23.799999999999955,block:r3_reentry_disabled,live,2026-07-24 16:02:39.726184+00,40.16,,,,,6,2026-07-27,,40.85,39.995,1
+NNE,2026-07-27,57,10.38,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:56 ET,live,,,,,,,5,2026-08-07,,21.13,16.6,0
+QBTS,2026-07-27,54,11.29,strong,LOST_DAY1,closed,-22.26000000000009,,live,2026-07-28 13:36:25.188082+00,18.17,,,,,9,2026-08-04,,22,17.86,0
+CORZ,2026-07-28,72,11.28,game_changer,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-07-28T14:37:45.699612+00:00,live,,,2026-07-30,,,,10,2026-07-30,,23.6,20.95,0
+TER,2026-07-29,60,10.4,game_changer,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-07-29T13:36:25.188082+00:00,live,,,,,,,13,2026-07-30,,444.17,367.895,0
+TEVA,2026-07-29,50.4,11.4,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:51 ET,live,,,,,,,13,2026-07-30,,37.83,33.67,0
+ARM,2026-07-30,60,10.77,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,live,,268.48,,,,,9,2026-07-31,,299.285,258,0
+CORT,2026-07-30,96,24.21,strong,SKIPPED,skipped,0,setup:stop_too_wide: ORB range $7.25 (6.9%) > 1.5x ATR $6.89,live,,,,,,,13,2026-07-31,,121.72,112,0
+EME,2026-07-30,60,10.56,game_changer,SKIPPED,skipped,0,setup:size_too_small: $12 risk / $16.65 per-share < 1 share,live,,,,,,,3,2026-08-17,,864.83,771.66,0
+FTNT,2026-07-30,60,10.1,game_changer,LOST_DAY1,closed,-6.6299999999999955,block:r3_reentry_disabled,live,2026-07-30 13:37:50.539792+00,166.65,,,,,9,2026-07-31,,172.09,164,1
+LRCX,2026-07-30,84,18.95,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:51 ET,live,,,,,,,12,2026-07-31,,345.28,318.29,0
+PWR,2026-07-30,60,12.09,game_changer,SKIPPED,skipped,0,setup:size_too_small: $12 risk / $21.95 per-share < 1 share,live,,,,,,,3,2026-08-17,,724.8,647,0
+SIMO,2026-07-30,80,19.18,game_changer,SKIPPED,skipped,0,setup:size_too_small: $12 risk / $29.11 per-share < 1 share,live,,,,,,,4,2026-08-04,,275,259.99,0
+BLZE,2026-07-31,72,13.06,game_changer,SKIPPED,skipped,0,window:out_of_orb: detected 09:56 ET,live,,,,,,,14,2026-08-04,2026-08-04,23.99,13.47,0
+COHU,2026-07-31,80,22.71,game_changer,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00,live,,,,,,,12,2026-08-04,,63.53,57.7,0
+FET,2026-07-31,84,16.04,strong,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00,live,,,,,,,14,2026-08-04,,87.42,61.42,0
+FLNC,2026-07-31,60,10.02,game_changer,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00,live,,,,,,,1,2026-08-04,,15.84,15.125,0
+MPWR,2026-07-31,60,13.96,game_changer,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00,live,,,,,,,0,,,1464.99,1499,0
+NWL,2026-07-31,60,13.42,game_changer,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00,live,,,,,2026-08-13,2026-08-11,14,2026-08-04,,6.64,6.6,0
+FTK,2026-08-03,60,10.45,game_changer,NO_TRADE_ROW,,,,,,,,,,,11,2026-08-05,,39.67,25.1,0
+LIND,2026-08-03,70,15.55,strong,NO_TRADE_ROW,,,,,,,,,,,10,2026-08-04,,35,31,0
+AEIS,2026-08-04,84,15.39,strong,SKIPPED,skipped,0,block:max_positions: 5/5 (mode=live),live,,,,,,,7,2026-08-05,,350.69,337.27,0
+AMRC,2026-08-04,50,38.72,routine,SKIPPED,skipped,0,window:out_of_orb: detected 09:45 ET,live,,,,,,,11,2026-08-05,,28.82,31.93,0
+BLZE,2026-08-04,80,19.14,game_changer,LOST_DAY1,closed,-36.79410000000004,block:r3_reentry_disabled,live,2026-08-04 19:50:00.523877+00,21.8121,,,,,13,2026-08-05,,20.91,20.16,1
+BTDR,2026-08-04,80,24.1,game_changer,LOST_DAY1,closed,-28.119999999999926,block:r3_reentry_disabled,live,2026-08-04 13:46:20.105029+00,12.85,2026-08-05,,,,15,2026-08-05,,12.25,12.785,1
+CAT,2026-08-04,60,10,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,live,,934.9994,,,,,0,,,905.72,922,0
+LIFE,2026-08-04,80,16.29,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,live,,28.79,,,2026-08-20,2026-08-20,15,2026-08-05,,38.94,27.33,0
+PLTR,2026-08-04,96,15.96,game_changer,WON_DAY1,closed,118.60200000000003,,live,2026-08-19 14:03:18.965774+00,149.0545,,,,,14,2026-08-05,,182.44,145.145,0
+TSAT,2026-08-04,60,14.46,game_changer,SKIPPED,skipped,0,window:out_of_orb: detected 09:56 ET,live,,,,,,,9,2026-08-06,,61.5399,44,0
+VOYG,2026-08-04,80,16.96,game_changer,SKIPPED,skipped,0,setup:zero_range: open=high=low=$33.99,live,,,,,2026-08-21,2026-08-21,14,2026-08-05,,45.4,33.99,0
+ZBRA,2026-08-04,60,10.75,game_changer,SKIPPED,skipped,0,block:max_positions: 5/5 (mode=live),live,,,,,,,14,2026-08-05,,386.23,330.1,0
+APPS,2026-08-05,115.2,28.29,strong,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00,live,,,,,2026-08-13,2026-08-13,14,2026-08-06,,15.335,11.95,0
+ECG,2026-08-05,72,10.96,game_changer,SKIPPED,skipped,0,window:out_of_orb: detected 09:51 ET,live,,,,,,,3,2026-08-06,,145.99,147.16,0
+HGTY,2026-08-05,60.5,11.69,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:55 ET,live,,,,,,,0,,,13.94,12.66,0
+KMT,2026-08-05,72,14.39,game_changer,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00,live,,,,,,,0,,,34.53,40.5,0
+KODK,2026-08-05,54.7,10.86,strong,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00,live,,,,,,,0,,,10.31,10.025,0
+KTOS,2026-08-05,64.8,11.26,strong,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00,live,,,,,,,12,2026-08-06,,67.1,58.87,0
+TATT,2026-08-05,61.9,11.79,strong,SKIPPED,skipped,0,block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00,live,,,,,,,0,,,43.46,49.28,0
+AEVA,2026-08-06,96,22.28,strong,SKIPPED,skipped,0,setup:stop_too_wide: ORB range $3.08 (13.4%) > 1.5x ATR $2.33,live,,,,,,,10,2026-08-07,,28.3,25.8,0
+CAI,2026-08-06,50.4,17.11,routine,SKIPPED,skipped,0,window:out_of_orb: detected 09:53 ET,live,,,,,,,15,2026-08-07,,28.32,19,0
+DCTH,2026-08-06,54,21.3,routine,SKIPPED,skipped,0,window:out_of_orb: detected 09:56 ET,live,,,,,,,0,,,17.42,14.03,0
+INSM,2026-08-06,96,16.14,game_changer,NO_ENTRY,cancelled,0,broker:entry_rejected: last $128.96 at/below trigger $129.41 at event,live,,129.41,,,,,14,2026-08-07,,135.5,128.22,0
+LFST,2026-08-06,96,18.8,game_changer,SKIPPED,skipped,0,"setup:gap_below_floor: rt -2.0% < 10% floor (alert said 18.8%, last $10.16 vs prev close $10.37)",live,,,2026-08-10,,,,14,2026-08-10,,12.965,10.99,0
+RDW,2026-08-06,64.8,12.46,strong,NO_ENTRY,cancelled,0,ORB window unfilled,live,,12.75,,,,,13,2026-08-07,,14.19,12.24,0
+SITM,2026-08-06,96,28.88,game_changer,SKIPPED,skipped,0,setup:size_too_small: $48 risk / $48.88 per-share < 1 share,live,,,,,,,12,2026-08-07,,762.6499,684.88,0
+U,2026-08-06,96,18.41,game_changer,SKIPPED,skipped,0,"setup:gap_below_floor: rt 1.0% < 10% floor (alert said 18.4%, last $35.83 vs prev close $35.47)",live,,,,,,,15,2026-08-07,,48.46,36.01,0
+ACMR,2026-08-07,100.8,15.09,strong,SKIPPED,skipped,0,"setup:gap_below_floor: rt 6.6% < 10% floor (alert said 15.1%, last $84.19 vs prev close $78.98)",live,,,,,,,2,2026-08-18,,88.81,92.55,0
+FIGS,2026-08-07,96,26.69,game_changer,LOST_DAY1,closed,-6.838002000000003,block:r3_reentry_disabled,live,2026-08-07 13:51:02.672915+00,15.495082,,,,,15,2026-08-10,,15.61,15.2,1
+FROG,2026-08-07,100.8,17.51,strong,NO_ENTRY,cancelled,0,ORB window unfilled,live,,96.255,,,,,11,2026-08-13,,105.7598,96.255,0
+MTW,2026-08-07,50.4,33.08,routine,SKIPPED,skipped,0,window:out_of_orb: detected 09:52 ET,live,,,,,,,0,,,21.34,17.14,0
+NET,2026-08-07,100.8,15.67,strong,LOST_DAY1,closed,-15.389999999999986,block:r3_reentry_disabled,live,2026-08-07 14:32:01.073202+00,316.13,,,,,11,2026-08-10,,332.22,318,1
+ONTO,2026-08-07,96,15.31,game_changer,SKIPPED,skipped,0,window:out_of_orb: detected 09:52 ET,live,,,,,,,11,2026-08-10,,353.8362,300,0
+QNST,2026-08-07,96,27.92,game_changer,NO_ENTRY,cancelled,0,broker:entry_cancelled: last $19.59 at/below trigger $19.80 at event,live,,19.8,,,,,14,2026-08-10,,22.29,19.69,0
+TEAM,2026-08-07,115.2,31.66,strong,LOST_DAY1,closed,-23.940000000000055,block:r3_reentry_disabled,live,2026-08-07 13:43:54.13041+00,147.13,,,2026-08-19,2026-08-19,15,2026-08-10,,194.96,145.135,1
+TWLO,2026-08-07,84,17.97,strong,SKIPPED,skipped,0,block:max_positions: 5/5 (mode=live),live,,,,,,,14,2026-08-10,,258.3525,235.25,0
+ABCL,2026-08-10,96,17.6,game_changer,WON_DAY1,closed,127.76979999999998,,live,2026-08-24 13:32:11.190839+00,8.96,,,2026-08-25,2026-08-25,15,2026-08-11,,12.5799,8.76,0
+ACHR,2026-08-10,54,14.85,routine,SKIPPED,skipped,0,window:out_of_orb: detected 09:45 ET,live,,,,,,,13,2026-08-11,,7.29,6.41,0
+NESR,2026-08-10,53.3,11.99,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:45 ET,live,,,,,,,14,2026-08-11,,36.94,32,0
+TH,2026-08-10,50.4,12.17,strong,SKIPPED,skipped,0,"setup:gap_below_floor: rt -5.0% < 10% floor (alert said 12.2%, last $15.68 vs prev close $16.51)",live,,,,,,,9,2026-08-18,,19.65,15.53,0
+BW,2026-08-11,96,34.91,game_changer,LOST_DAY1,closed,-49.60000000000008,block:r3_reentry_disabled,live,2026-08-11 13:31:56.783978+00,12.07,,,,,10,2026-08-12,,10.6,11.86,1
+FRMI,2026-08-11,96,17.01,game_changer,LOST_DAY1,closed,-31.490000000000045,block:r3_reentry_disabled,live,2026-08-11 13:31:40.487398+00,7.29,2026-08-12,,,,11,2026-08-12,,7.675,7.07,1
+RIOT,2026-08-11,115.2,17.92,game_changer,NO_ENTRY,cancelled,0,ORB window unfilled,live,,23.66,2026-08-12,,,,11,2026-08-12,,22.21,23.57,0
+SE,2026-08-11,54.7,10.58,strong,SKIPPED,skipped,0,"setup:gap_below_floor: rt 9.2% < 10% floor (alert said 10.6%, last $125.36 vs prev close $114.80)",live,,,,,,,10,2026-08-12,,131.9,127.87,0
+ATRO,2026-08-12,72,11.29,game_changer,SKIPPED,skipped,0,setup:stop_too_wide: ORB range $5.75 (7.2%) > 1.5x ATR $5.29,live,,,,,,,7,2026-08-13,,94.46,84.22,0
+BE,2026-08-12,84,15.16,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:50 ET,live,,,2026-08-25,,,,15,2026-08-13,,253.31,236.71,0
+CRWV,2026-08-12,51.6,19.51,routine,SKIPPED,skipped,0,window:out_of_orb: detected 09:50 ET,live,,,,,,,10,2026-08-13,,117.49,108.7,0
+EROC,2026-08-12,96,16.09,game_changer,NO_ENTRY,cancelled,0,"setup:chase_cap_exceeded: limit $13.50 risk $0.75/sh vs planned $0.41/sh (cap 1.50x, ORB high $13.16)",live,,13.16,,,,,0,,,17.75,13.12,0
+GLBE,2026-08-12,72,10.67,game_changer,SKIPPED,skipped,0,"setup:gap_below_floor: rt 4.8% < 10% floor (alert said 10.7%, last $42.81 vs prev close $40.86)",live,,,,,,,2,2026-08-13,,42.745,41.06,0
+MRX,2026-08-12,53.3,12.45,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:55 ET,live,,,,,,,9,2026-08-18,,75.4,62.6,0
+CGEM,2026-08-13,72,12.24,game_changer,SKIPPED,skipped,0,infra:no_bar: 3 retries exhausted,live,,,,,,,15,2026-08-14,,23.19,20.72,0
+CRMD,2026-08-13,64.8,10,strong,SKIPPED,skipped,0,infra:no_bar: 3 retries exhausted,live,,,,,,,1,2026-08-25,,8.745,8.39,0
+HLIT,2026-08-13,96,23.79,game_changer,SKIPPED,skipped,0,infra:no_bar: 3 retries exhausted,live,,,,,,,10,2026-08-14,,13.9822,14.48,0
+KURA,2026-08-13,60.5,13.43,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:51 ET,live,,,,,,,13,2026-08-18,,13.9,10.605,0
+OMER,2026-08-13,60,22.54,routine,SKIPPED,skipped,0,window:out_of_orb: detected 09:45 ET,live,,,,,2026-08-19,2026-08-19,15,2026-08-14,,19.6497,16.65,0
+ETON,2026-08-14,96,23.28,game_changer,WON_DAY1,closed,19.323599999999942,block:r3_reentry_disabled,live,2026-08-14 13:45:11.151019+00,55.2012,,,2026-08-21,2026-08-21,14,2026-08-17,,66.37,54.93,1
+HTFL,2026-08-14,96,25.12,game_changer,SKIPPED,skipped,0,setup:stop_too_wide: ORB range $2.55 (7.0%) > 1.5x ATR $2.19,live,,,,,2026-08-31,2026-08-31,15,2026-08-17,,51.778,39.06,0
+NMAX,2026-08-14,100.8,16.75,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:50 ET,live,,,,,,,0,,,11.78,9.895,0
+VERA,2026-08-14,86.4,14.23,game_changer,SKIPPED,skipped,0,"setup:gap_below_floor: rt 5.6% < 10% floor (alert said 14.2%, last $30.50 vs prev close $28.89)",live,,,,,,,8,2026-08-25,,36.96,31.29,0
+ARGX,2026-08-17,86.4,10.53,game_changer,SKIPPED,skipped,0,"setup:gap_below_floor: rt 9.5% < 10% floor (alert said 10.5%, last $931.98 vs prev close $851.29)",live,,,,,,,14,2026-08-18,,1072.75,927.33,0
+AMLX,2026-08-18,96,21.33,game_changer,WON_DAY1,closed,62.92049600000003,,live,2026-08-31 13:32:51.994395+00,30.211219,,,2026-08-27,2026-08-27,15,2026-08-19,,41.14,29.91,0
+MRNA,2026-08-19,115.2,33.1,strong,WON_DAY1,closed,90.79059999999998,,live,2026-09-03 13:32:47.915582+00,120.75,2026-09-01,2026-09-01,,,15,2026-08-20,,161.37,116.02,0
+MRVL,2026-08-19,69.1,11.38,strong,LOST_DAY1,closed,-43.27999999999997,block:r3_reentry_disabled,live,2026-08-19 14:03:04.536415+00,241.5,,,,,7,2026-08-20,,254.6,240.13,1
+TWST,2026-08-19,84,16.7,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:55 ET,live,,,,,,,13,2026-08-20,,155.44,128,0
+BULL,2026-08-20,100.8,15.16,strong,SKIPPED,skipped,0,setup:stop_too_wide: ORB range $0.54 (5.7%) > 1.5x ATR $0.52,live,,,2026-08-21,,,,15,2026-08-21,,10.19,9.94,0
+RARE,2026-08-20,72,11.39,game_changer,SKIPPED,skipped,0,infra:no_bar: 3 retries exhausted,live,,,2026-09-04,,,,5,2026-09-04,,26.915,28.39,0
+UUUU,2026-08-21,51.6,9.28,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:55 ET,live,,,,,,,11,2026-08-24,,16.5,14.63,0
+CHRN,2026-08-27,105,12.2,game_changer,SKIPPED,skipped,0,window:out_of_orb: detected 09:50 ET,live,,,,,,,0,,,22.22,22.36,0
+CRWD,2026-08-27,75,9.42,strong,WON_DAY1,closed,14.402600000000007,,live,2026-08-28 14:00:07.28177+00,213.3058,2026-08-31,2026-09-14,,,15,2026-08-28,,250.32,208.25,0
+DG,2026-08-27,70.5,10.92,strong,SKIPPED,skipped,0,"setup:gap_below_floor: rt 3.6% < 9% floor (alert said 10.9%, last $127.26 vs prev close $122.78)",live,,,,,,,8,2026-09-01,,134.125,127.84,0
+OKTA,2026-08-27,90,20.15,game_changer,filled,filled,0,,live,,167.879,,,,,15,2026-08-28,,192.59,166.15,0
+VEEV,2026-08-27,85.5,15.1,strong,SKIPPED,skipped,0,window:out_of_orb: detected 09:50 ET,live,,,,,,,13,2026-08-28,,290.47,275.355,0
+SOLS,2026-08-28,67.5,16.26,strong,LOST_DAY1,closed,-49.19999999999993,,live,2026-08-31 16:03:29.957844+00,66.77,,,,,14,2026-08-31,,65.68,65,0
+AGX,2026-09-03,65,9.57,strong,SKIPPED,skipped,0,"setup:gap_below_floor: rt 3.0% < 9% floor (alert said 9.6%, last $422.86 vs prev close $410.40)",live,,,,,,,0,,,444.5267,427.27,0
+HOOD,2026-09-03,77.5,9.77,strong,LOST_DAY1,closed,-27.400000000000034,,live,2026-09-15 13:30:00.274914+00,118.37,,,,,10,2026-09-04,,126.74,113.8,0
+SNOW,2026-09-03,77.5,23.79,strong,NO_ENTRY,cancelled,0,ORB window unfilled,live,,384.56,,,,,14,2026-09-04,,356.83,377.245,0

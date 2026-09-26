@@ -1,0 +1,53 @@
+## 1. Baseline reproduction — alpha capture, split at the 2026-06-26 swap
+flag leg = any of WATCH/TIGHTENING/COILED/TRIGGERED (the 09-16 read's definition;
+the shipped ep_delayed_capture_audit.py omits TIGHTENING — noted, both shown)
+PRE: failed-Day-1 n=132, alpha n=96, captured 51 (53.1%), without the two 9M legs 50 (52.1%), script-definition (no TIGHTENING) 49; legs {'flag': 49, 'later_ep': 5, 'ninem_ep': 1, 'ninem_day2': 0, 'flag_only': 45, 'ninem_only': 1}
+POST: failed-Day-1 n=102, alpha n=69, captured 14 (20.3%), without the two 9M legs 7 (10.1%), script-definition (no TIGHTENING) 14; legs {'flag': 6, 'later_ep': 1, 'ninem_ep': 7, 'ninem_day2': 1, 'ninem_only': 7, 'flag_only': 6}
+POST uncaptured n=55; day1_class mix {'NO_ENTRY': 9, 'LOST_DAY1': 6, 'SKIPPED': 38, 'NO_TRADE_ROW': 2}
+POST alpha day1_class mix {'NO_ENTRY': 11, 'SKIPPED': 47, 'LOST_DAY1': 9, 'NO_TRADE_ROW': 2}
+POST uncaptured with an R3 row (the carryforward's ONLY trigger): [('HUT', '2026-07-20'), ('THC', '2026-07-24'), ('MRVL', '2026-08-19')]
+
+## 2. (a) carryforward path — expected admissions under its own rule vs actual
+paper_era_<06-22: scan days 14, expected ticker-days 29, fired 29, missed 0; expected tickers 7, missed tickers 0 []
+dark_06-22..08-11: scan days 35, expected ticker-days 58, fired 3, missed 55; expected tickers 14, missed tickers 13 ['BLZE', 'BTDR', 'CRCL', 'FIGS', 'FTNT', 'HUT', 'NET', 'TEAM', 'THC', 'TSEM', 'WDFC', 'WKC', 'WULF']
+post_fix_>=08-12: scan days 32, expected ticker-days 39, fired 39, missed 0; expected tickers 9, missed tickers 0 []
+admissions NOT explained by the rule: 0 []
+live R3 events total 19 from 2026-07-06 to 2026-09-14 = 1.9/week
+
+## 3. (c) the uncaptured names under the sourced HTF spec — stored verdicts + replay
+uncaptured n=55; board evaluated 49 of them on >=1 window day (median days evaluated 11 of a median 15-day window); never evaluated: ['MANE', 'HGTY', 'DCTH', 'MTW', 'EROC', 'NMAX']
+board's furthest gate reached (stored rows):
+   ma_stack: 1
+   below_sma20: 3
+   pole_under_90pct: 36
+   liquidity: 9
+   never_in_universe: 6
+replay (era detector, name in the universe EVERY window day) — furthest gate reached:
+   ma_stack: 1
+   below_sma20: 3
+   pole_under_90pct: 39
+   liquidity: 11
+   None: 1
+replay — modal blocking gate per name:
+   pole_under_90pct: 31
+   liquidity: 15
+   base_too_young: 6
+   broke_base_low: 2
+   None: 1
+best pole ratio (pivot_high / 40d low) seen in-window per name: n=43, median 1.60, >=1.90 on 4 names, >=1.50 (the retired n=1 bar) on 33 names
+replay promotes (WATCH+) on >=1 window day: 0 of 55: []
+  ...of which promoted on a day the board did NOT evaluate the name (universe gap): 0: []
+replay-vs-stored agreement on the same ticker-day: gate 535/538, stage 538/538
+  disagreements (stored -> replay): [(('base_too_young', 'pole_under_90pct'), 1), (('pole_under_90pct', 'base_too_young'), 1), (('liquidity', 'base_too_young'), 1)]
+
+## 4. (a) against the 55 — what the carryforward would have added if it had fired as written
+names the rule applies to (R3-stopped): 3 of 55
+   HUT 2026-07-20: board evaluated 9 window days (first 2026-07-21), 7-day admission window uncovered by the board on 0 days, replay promotes on those: 0; board best pole_under_90pct, replay best pole_under_90pct
+   THC 2026-07-24: board evaluated 13 window days (first 2026-07-27), 7-day admission window uncovered by the board on 0 days, replay promotes on those: 0; board best pole_under_90pct, replay best pole_under_90pct
+   MRVL 2026-08-19: board evaluated 7 window days (first 2026-08-20), 7-day admission window uncovered by the board on 0 days, replay promotes on those: 0; board best pole_under_90pct, replay best pole_under_90pct
+(a) captures the carryforward would have ADDED: 0 of 55  (upper bound if every R3 name based: 3 of 55)
+
+## 5. residual — uncaptured names neither (a) nor (c) explains
+replay promotes on a day the board never evaluated AND no R3 row (so no lane owned admission): 0 []
+(c) names that never form a qualifying base under the spec on ANY window day, universe or not: 55 of 55
+names the board DID evaluate and rejected every day, and the replay agrees never promotes: 49 of 55

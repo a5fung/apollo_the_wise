@@ -119,3 +119,6 @@ scripts/probes/_step3_clusters.tsv
 scripts/probes/_step3_census_out.txt
 scripts/probes/_step3_*.err
 scripts/probes/_lat_*
+
+# #668 alpha-capture cause split — raw bar pull (611 KB), re-derivable by re-running _668_pull.py --bars
+scripts/probes/_668_out/bars.csv.gz

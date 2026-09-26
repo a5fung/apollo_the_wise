@@ -1,0 +1,56 @@
+ticker,alert_date,day1_class,d1_skip_reason,has_r3_row,mfe_21d_pct,window_trading_days,days_board_evaluated,board_first_eval,board_best_gate,replay_best_gate,replay_modal_gate,replay_max_pole_ratio,replay_promoted_days,replay_promoted_on_unevaluated_day,r3_window_days_uncovered_by_board,r3_window_replay_promotes_on_uncovered_day
+AVAV,2026-06-30,NO_ENTRY,ORB window unfilled,False,13.5,14,10,2026-07-01,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.48,0,0,0,0
+AEHR,2026-07-15,NO_ENTRY,rejected,False,13.1,15,13,2026-07-16,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.74,0,0,0,0
+MANE,2026-07-15,LOST_DAY1,,False,5.4,15,0,,never_in_universe,pole_under_90pct,pole_under_90pct,1.49,0,0,5,0
+HUT,2026-07-20,LOST_DAY1,block:r3_reentry_disabled,True,18.6,15,9,2026-07-21,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.87,0,0,0,0
+IREN,2026-07-20,SKIPPED,window:out_of_orb: detected 09:51 ET,False,20.1,15,8,2026-07-23,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.5,0,0,4,0
+HAS,2026-07-21,SKIPPED,window:out_of_orb: detected 09:50 ET,False,15.8,15,13,2026-07-22,liquidity,liquidity,liquidity,,0,0,0,0
+ARWR,2026-07-22,NO_ENTRY,cancelled,False,6.4,15,13,2026-07-23,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.38,0,0,0,0
+NVCR,2026-07-23,LOST_DAY1,,False,19.2,15,9,2026-07-24,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.6,0,0,0,0
+THC,2026-07-24,LOST_DAY1,block:r3_reentry_disabled,True,15.1,15,13,2026-07-27,pole_under_90pct,pole_under_90pct,liquidity,1.67,0,0,0,0
+NNE,2026-07-27,SKIPPED,window:out_of_orb: detected 09:56 ET,False,27.3,15,5,2026-08-07,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.28,0,0,5,0
+QBTS,2026-07-27,LOST_DAY1,,False,23.2,15,9,2026-08-04,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.56,0,0,5,0
+TER,2026-07-29,SKIPPED,block:circuit_breaker: cooldown until 2026-07-29T13:36:25.18,False,20.7,15,13,2026-07-30,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.58,0,0,1,0
+TEVA,2026-07-29,SKIPPED,window:out_of_orb: detected 09:51 ET,False,12.4,15,13,2026-07-30,liquidity,liquidity,liquidity,,0,0,1,0
+ARM,2026-07-30,NO_ENTRY,ORB window unfilled,False,16.0,15,9,2026-07-31,below_sma20,below_sma20,pole_under_90pct,1.96,0,0,1,0
+CORT,2026-07-30,SKIPPED,setup:stop_too_wide: ORB range $7.25 (6.9%) > 1.5x ATR $6.89,False,8.7,15,13,2026-07-31,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.74,0,0,1,0
+EME,2026-07-30,SKIPPED,setup:size_too_small: $12 risk / $16.65 per-share < 1 share,False,12.1,15,3,2026-08-17,liquidity,liquidity,liquidity,,0,0,5,0
+LRCX,2026-07-30,SKIPPED,window:out_of_orb: detected 09:51 ET,False,8.5,15,12,2026-07-31,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.72,0,0,1,0
+PWR,2026-07-30,SKIPPED,setup:size_too_small: $12 risk / $21.95 per-share < 1 share,False,12.0,15,3,2026-08-17,pole_under_90pct,pole_under_90pct,liquidity,1.28,0,0,5,0
+SIMO,2026-07-30,SKIPPED,setup:size_too_small: $12 risk / $29.11 per-share < 1 share,False,5.8,15,4,2026-08-04,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.82,0,0,3,0
+COHU,2026-07-31,SKIPPED,block:circuit_breaker: cooldown until 2026-07-31T13:37:50.53,False,10.1,15,12,2026-08-04,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.8,0,0,1,0
+FET,2026-07-31,SKIPPED,block:circuit_breaker: cooldown until 2026-07-31T13:37:50.53,False,42.3,15,14,2026-08-04,liquidity,liquidity,liquidity,,0,0,1,0
+FTK,2026-08-03,NO_TRADE_ROW,,False,58.0,15,11,2026-08-05,pole_under_90pct,pole_under_90pct,liquidity,1.83,0,0,1,0
+LIND,2026-08-03,NO_TRADE_ROW,,False,12.9,15,10,2026-08-04,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.62,0,0,0,0
+TSAT,2026-08-04,SKIPPED,window:out_of_orb: detected 09:56 ET,False,39.9,15,9,2026-08-06,liquidity,liquidity,liquidity,,0,0,1,0
+ZBRA,2026-08-04,SKIPPED,block:max_positions: 5/5 (mode=live),False,17.0,15,14,2026-08-05,pole_under_90pct,pole_under_90pct,liquidity,1.78,0,0,0,0
+HGTY,2026-08-05,SKIPPED,window:out_of_orb: detected 09:55 ET,False,10.1,15,0,,never_in_universe,liquidity,liquidity,,0,0,5,0
+KTOS,2026-08-05,SKIPPED,block:circuit_breaker: cooldown until 2026-08-05T19:50:00.52,False,14.0,15,12,2026-08-06,pole_under_90pct,pole_under_90pct,base_too_young,1.56,0,0,0,0
+AEVA,2026-08-06,SKIPPED,setup:stop_too_wide: ORB range $3.08 (13.4%) > 1.5x ATR $2.3,False,9.7,15,10,2026-08-07,ma_stack,ma_stack,broke_base_low,2.1,0,0,0,0
+CAI,2026-08-06,SKIPPED,window:out_of_orb: detected 09:53 ET,False,49.1,15,15,2026-08-07,pole_under_90pct,pole_under_90pct,base_too_young,1.55,0,0,0,0
+DCTH,2026-08-06,SKIPPED,window:out_of_orb: detected 09:56 ET,False,24.2,15,0,,never_in_universe,pole_under_90pct,pole_under_90pct,1.53,0,0,5,0
+INSM,2026-08-06,NO_ENTRY,broker:entry_rejected: last $128.96 at/below trigger $129.41,False,5.7,15,14,2026-08-07,liquidity,liquidity,liquidity,,0,0,0,0
+RDW,2026-08-06,NO_ENTRY,ORB window unfilled,False,15.9,15,13,2026-08-07,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.83,0,0,0,0
+SITM,2026-08-06,SKIPPED,setup:size_too_small: $48 risk / $48.88 per-share < 1 share,False,11.4,15,12,2026-08-07,liquidity,liquidity,liquidity,,0,0,0,0
+U,2026-08-06,SKIPPED,setup:gap_below_floor: rt 1.0% < 10% floor (alert said 18.4%,False,34.6,15,15,2026-08-07,pole_under_90pct,pole_under_90pct,base_too_young,1.87,0,0,0,0
+FROG,2026-08-07,NO_ENTRY,ORB window unfilled,False,9.9,15,11,2026-08-13,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.6,0,0,3,0
+MTW,2026-08-07,SKIPPED,window:out_of_orb: detected 09:52 ET,False,24.5,15,0,,never_in_universe,liquidity,liquidity,,0,0,5,0
+ONTO,2026-08-07,SKIPPED,window:out_of_orb: detected 09:52 ET,False,17.9,15,11,2026-08-10,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.65,0,0,0,0
+QNST,2026-08-07,NO_ENTRY,broker:entry_cancelled: last $19.59 at/below trigger $19.80 ,False,13.2,15,14,2026-08-10,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.85,0,0,0,0
+TWLO,2026-08-07,SKIPPED,block:max_positions: 5/5 (mode=live),False,9.8,15,14,2026-08-10,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.42,0,0,0,0
+ACHR,2026-08-10,SKIPPED,window:out_of_orb: detected 09:45 ET,False,13.7,15,13,2026-08-11,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.7,0,0,0,0
+NESR,2026-08-10,SKIPPED,window:out_of_orb: detected 09:45 ET,False,15.4,15,14,2026-08-11,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.55,0,0,0,0
+TH,2026-08-10,SKIPPED,setup:gap_below_floor: rt -5.0% < 10% floor (alert said 12.2,False,26.5,15,9,2026-08-18,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.28,0,0,5,0
+ATRO,2026-08-12,SKIPPED,setup:stop_too_wide: ORB range $5.75 (7.2%) > 1.5x ATR $5.29,False,12.2,15,7,2026-08-13,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.47,0,0,0,0
+CRWV,2026-08-12,SKIPPED,window:out_of_orb: detected 09:50 ET,False,8.1,15,10,2026-08-13,below_sma20,below_sma20,broke_base_low,1.94,0,0,0,0
+EROC,2026-08-12,NO_ENTRY,setup:chase_cap_exceeded: limit $13.50 risk $0.75/sh vs plan,False,35.3,15,0,,never_in_universe,,,,0,0,5,0
+MRX,2026-08-12,SKIPPED,window:out_of_orb: detected 09:55 ET,False,20.4,15,9,2026-08-18,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.3,0,0,4,0
+CGEM,2026-08-13,SKIPPED,infra:no_bar: 3 retries exhausted,False,11.9,15,15,2026-08-14,pole_under_90pct,pole_under_90pct,base_too_young,1.54,0,0,0,0
+KURA,2026-08-13,SKIPPED,window:out_of_orb: detected 09:51 ET,False,31.1,15,13,2026-08-18,pole_under_90pct,pole_under_90pct,base_too_young,1.58,0,0,2,0
+NMAX,2026-08-14,SKIPPED,window:out_of_orb: detected 09:50 ET,False,19.1,15,0,,never_in_universe,pole_under_90pct,pole_under_90pct,1.78,0,0,5,0
+VERA,2026-08-14,SKIPPED,setup:gap_below_floor: rt 5.6% < 10% floor (alert said 14.2%,False,18.1,15,8,2026-08-25,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.41,0,0,5,0
+ARGX,2026-08-17,SKIPPED,setup:gap_below_floor: rt 9.5% < 10% floor (alert said 10.5%,False,15.7,14,14,2026-08-18,liquidity,liquidity,liquidity,,0,0,0,0
+MRVL,2026-08-19,LOST_DAY1,block:r3_reentry_disabled,True,6.0,14,7,2026-08-20,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.55,0,0,0,0
+TWST,2026-08-19,SKIPPED,window:out_of_orb: detected 09:55 ET,False,21.4,14,13,2026-08-20,below_sma20,below_sma20,base_too_young,1.92,0,0,0,0
+UUUU,2026-08-21,SKIPPED,window:out_of_orb: detected 09:55 ET,False,12.8,14,11,2026-08-24,pole_under_90pct,pole_under_90pct,pole_under_90pct,1.52,0,0,0,0
+VEEV,2026-08-27,SKIPPED,window:out_of_orb: detected 09:50 ET,False,5.5,14,13,2026-08-28,liquidity,liquidity,liquidity,,0,0,0,0
