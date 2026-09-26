@@ -6733,12 +6733,16 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 valid = [t for t in raw_themes if len(t.get("tickers", []) or []) >= NEW_THEME_MIN_STOCKS]
                 result_themes = []
                 for t in valid:
-                    # JOB 2 (REMOVALS) LEFT ON THE SECTOR TEST — operator 2026-09-13, "swap job 1
-                    # and leave job 2". The admission swap was signed on measured evidence; the
-                    # removal side was never measured and would evict 95 current members (MSFT
-                    # 0.30, HOOD -0.01, ORCL 0.04, PYPL 0.08 — 75 had passed validation). Passing
-                    # no context is the byte-identical pre-change path.
-                    t = _strip_sector_outliers(t, stocks_by_ticker)
+                    # #657 SHAPE A (2026-09-25, OPERATOR-SIGNED "Yes to both"): the birth strip now
+                    # gets the run's comove_ctx too. This can ONLY re-judge a SINGLETON-sector
+                    # member (the only member `_strip_sector_outliers` ever touches) — it can never
+                    # evict a same-sector member, so it strips at most what the label already
+                    # strips tonight. The 95-eviction number from 2026-09-13 ("would evict MSFT
+                    # 0.30, HOOD -0.01, ORCL 0.04, PYPL 0.08") is Shape B (every judgeable member,
+                    # sector ignored) — a different, NOT-adopted rule; it never bears on this arm.
+                    # `comove_ctx=None` (toggle off / context load failed) is the byte-identical
+                    # pre-change path. See docs/architecture/theme_engine.md change log 2026-09-25.
+                    t = _strip_sector_outliers(t, stocks_by_ticker, comove_ctx=comove_ctx)
                     # Post-LLM ban filter — catches banned tickers reintroduced via
                     # correlation_clusters or LLM ignoring the absent input.
                     if globally_banned:
@@ -8439,11 +8443,18 @@ async def run_theme_engine(
     else:
         logger.info("Theme membership test: co-movement toggle OFF — sector test decides tonight")
 
-    # JOB 2 (REMOVALS) STAYS ON THE SECTOR TEST — operator 2026-09-13, *"swap job 1 and leave
-    # job 2"*. Withholding the context is the byte-identical pre-change path; the co-movement
-    # code stays in place, unused here, ready for the evaluation he asked to be filed.
+    # #657 SHAPE A (2026-09-25, OPERATOR-SIGNED "Yes to both") — operator 2026-09-13 was "swap
+    # job 1 and leave job 2"; #657 measured the consequence he asked to be filed: 16 of 21
+    # cross-sector names the tape admitted since 09-13 were stripped by this filter's sector-label
+    # arm within 7 days (observed 1-3), a loop. Passing comove_ctx here can ONLY re-judge a
+    # SINGLETON-sector member — it can never evict a same-sector member, so it strips at most
+    # what the label already strips tonight; on the 09-25 board it keeps 7 of 8 singleton-sector
+    # members and removes 1 (AGRO, 0.09, which the label removes anyway). `comove_ctx=None`
+    # (toggle off / context load failed) is the byte-identical pre-change path. See
+    # docs/architecture/theme_engine.md change log 2026-09-25.
     await _apply_carryforward_deterministic_filter(
         updated_themes, globally_banned, cooldown_set, stocks_by_ticker,
+        comove_ctx=comove_ctx,
         as_of=today,          # #671 arm 4: a bought-out name leaves the themes it is ALREADY in
     )
 

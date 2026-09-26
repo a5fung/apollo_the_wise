@@ -19,7 +19,13 @@ What is pinned:
      drop one that does not, and drop an unjudgeable one exactly as before;
   6. the toggle — fresh deploy is ON even with the DB unreachable; a row 'off' reverts — through
      the real db.get_runtime_toggle;
-  7. the bar is registered in the provenance registry at its live value.
+  7. the bar is registered in the provenance registry at its live value;
+  8. #657 SHAPE A (2026-09-25, OPERATOR-SIGNED "Yes to both"): the run's comove_ctx now reaches
+     the two removal CALL SITES, not just the strip functions in isolation — `run_theme_engine`'s
+     call to `_apply_carryforward_deterministic_filter` and `_discover_new_themes_single`'s call
+     to `_strip_sector_outliers` both thread it through. A singleton-sector member at/above the
+     bar is KEPT by both when the run has a context; one below the bar is removed; with
+     `comove_ctx=None` both behave exactly as before (the pre-2026-09-25 wiring).
 """
 from __future__ import annotations
 
@@ -33,7 +39,8 @@ import pytest
 
 from agents.market_intelligence import ep_theme_belonging as etb
 from agents.market_intelligence import theme_engine as te
-from tests.test_theme_batching import _assign_tool_resp, _fake_client, _quiet_infra
+from tests.test_theme_batching import _assign_tool_resp, _disc_report, _fake_client, _quiet_infra
+from tests.test_theme_birth_gate import _drive_engine
 
 BEFORE = date(2026, 9, 8)
 
@@ -354,3 +361,141 @@ async def test_fresh_deploy_is_on_even_with_the_db_unreachable_and_a_row_off_rev
     monkeypatch.setattr(db, "get_safeguard_state", AsyncMock(return_value={"state": "off"}))
     assert await te._read_assign_comove_toggle() is False
     db._runtime_toggle_cache.pop(te.ASSIGN_COMOVE_TOGGLE[0], None)
+
+
+# ── 7. #657 Shape A: the run's comove_ctx now reaches BOTH removal call sites ─────────────
+#
+# operator-signed 2026-09-25 ("Yes to both", docs/analysis/657_comove_removals_2026-09-25.md
+# §CORRECTED). Before this change the two strip FUNCTIONS already honoured comove_ctx (section 5
+# above pins that in isolation, calling them directly with an explicit ctx) — but their real
+# production callers, `run_theme_engine` and `_discover_new_themes_single`, never passed one, so
+# the loop measured in #657 (16 of 21 cross-sector admits stripped by the label within days) kept
+# firing regardless of section 5's pins. These tests go through the CALL SITES themselves and are
+# RED on the pre-2026-09-25 wiring: a call site that omits `comove_ctx=` silently defaults it to
+# `None` (the bug — no crash, just the sector test deciding), so IREN would be stripped exactly
+# like NOIS. Verified RED by temporarily reverting just the two call-site kwargs before this fix
+# was committed.
+
+def test_birth_strip_call_site_keeps_the_comoving_singleton_when_the_run_has_a_context(monkeypatch):
+    """`_discover_new_themes_single` (via `_discover_new_themes`, the real entry `run_theme_engine`
+    calls) must pass its `comove_ctx` argument into `_strip_sector_outliers` at the birth-strip call
+    site, not just accept the parameter unused."""
+    _quiet_infra(monkeypatch)
+    ctx = _ctx(_tape())
+    sbt = {**_members_sbt(), "IREN": {"sector": "Financial Services"}, "NOIS": {"sector": "Energy"}}
+    from agents.market_intelligence import universe
+    monkeypatch.setitem(universe.TICKER_DESC, "SEED1", "a widget maker")
+    monkeypatch.setitem(universe.TICKER_DESC, "SEED2", "another widget maker")
+    uncovered = [{"ticker": "SEED1", "rs_composite": 90, "sector": "Technology"},
+                 {"ticker": "SEED2", "rs_composite": 90, "sector": "Technology"}]
+    discovered = {"name": "Miners", "tickers": ["CIFR", "CORZ", "BTDR", "IREN", "NOIS"]}
+    client, _calls = _fake_client([_disc_report([discovered])])
+    monkeypatch.setattr(te, "_get_anthropic_client", lambda: client)
+
+    out = asyncio.run(te._discover_new_themes(uncovered, [], sbt, comove_ctx=ctx))
+
+    assert len(out) == 1
+    assert sorted(out[0]["tickers"]) == ["BTDR", "CIFR", "CORZ", "IREN"]   # IREN kept, NOIS dropped
+
+
+def test_birth_strip_call_site_is_unchanged_without_a_context(monkeypatch):
+    """`comove_ctx=None` (toggle off / context load failed) must stay the byte-identical
+    pre-2026-09-25 path at the call site: both cross-sector singletons fall to the sector test."""
+    _quiet_infra(monkeypatch)
+    sbt = {**_members_sbt(), "IREN": {"sector": "Financial Services"}, "NOIS": {"sector": "Energy"}}
+    from agents.market_intelligence import universe
+    monkeypatch.setitem(universe.TICKER_DESC, "SEED1", "a widget maker")
+    monkeypatch.setitem(universe.TICKER_DESC, "SEED2", "another widget maker")
+    uncovered = [{"ticker": "SEED1", "rs_composite": 90, "sector": "Technology"},
+                 {"ticker": "SEED2", "rs_composite": 90, "sector": "Technology"}]
+    discovered = {"name": "Miners", "tickers": ["CIFR", "CORZ", "BTDR", "IREN", "NOIS"]}
+    client, _calls = _fake_client([_disc_report([discovered])])
+    monkeypatch.setattr(te, "_get_anthropic_client", lambda: client)
+
+    out = asyncio.run(te._discover_new_themes(uncovered, [], sbt))   # no comove_ctx passed
+
+    assert len(out) == 1
+    assert sorted(out[0]["tickers"]) == ["BTDR", "CIFR", "CORZ"]   # both singletons dropped
+
+
+_NIGHTLY_MON = date(2026, 7, 27)
+
+
+@pytest.mark.asyncio
+async def test_nightly_carryforward_call_site_keeps_the_comoving_singleton_when_the_run_has_a_context(monkeypatch):
+    """`run_theme_engine`'s call to `_apply_carryforward_deterministic_filter` must pass the run's
+    own `comove_ctx` (built just above the call from the toggle + `_load_comove_context`), not
+    withhold it. Spies on the real function so the assertion is behavioural, not just a kwarg
+    check: IREN (cross-sector co-mover) survives the night, NOIS (cross-sector noise) does not."""
+    ctx = _ctx(_tape())
+    real_filter = te._apply_carryforward_deterministic_filter
+    seen_kwargs: dict = {}
+
+    async def _spy(*a, **kw):
+        seen_kwargs.update(kw)
+        return await real_filter(*a, **kw)
+
+    saved, discover, accel_mock, _audits = _drive_engine(monkeypatch, mode="off", discovered=[])
+    monkeypatch.setattr(te, "_apply_carryforward_deterministic_filter", _spy)
+    monkeypatch.setattr(te, "_read_assign_comove_toggle", AsyncMock(return_value=True))
+    monkeypatch.setattr(te, "_load_comove_context", AsyncMock(return_value=ctx))
+    from agents.market_intelligence import db as _dbmod
+    monkeypatch.setattr(_dbmod, "get_deal_pinned_tickers", AsyncMock(return_value=set()))
+    base_leaders = [{"ticker": f"L{i:02d}", "rs_composite": 99.0 - i, "rs_rank": i + 1,
+                      "sector": "Tech"} for i in range(6)]
+    tape_leaders = [
+        {"ticker": "CIFR", "rs_composite": 90.0, "rs_rank": 50, "sector": "Technology"},
+        {"ticker": "CORZ", "rs_composite": 90.0, "rs_rank": 51, "sector": "Technology"},
+        {"ticker": "BTDR", "rs_composite": 90.0, "rs_rank": 52, "sector": "Technology"},
+        {"ticker": "IREN", "rs_composite": 90.0, "rs_rank": 53, "sector": "Financial Services"},
+        {"ticker": "NOIS", "rs_composite": 90.0, "rs_rank": 54, "sector": "Energy"},
+    ]
+    monkeypatch.setattr(te, "get_rs_leaders", AsyncMock(return_value=base_leaders + tape_leaders))
+    ex_theme = {"name": "Existing Live Theme", "stage": "Accelerating", "score": 60.0,
+                "tickers": ["CIFR", "CORZ", "BTDR", "IREN", "NOIS"], "description": "d",
+                "rs_avg": 88.0}
+    monkeypatch.setattr(te, "get_active_themes", AsyncMock(return_value=[dict(ex_theme)]))
+
+    await te.run_theme_engine(trade_date=_NIGHTLY_MON)
+
+    assert seen_kwargs.get("comove_ctx") is ctx
+    kept = next(t for t in saved if t["name"] == "Existing Live Theme")["tickers"]
+    assert sorted(kept) == ["BTDR", "CIFR", "CORZ", "IREN"]   # IREN kept, NOIS dropped
+
+
+@pytest.mark.asyncio
+async def test_nightly_carryforward_call_site_is_unchanged_without_a_context(monkeypatch):
+    """Toggle OFF -> `comove_ctx=None` reaches the call site exactly as before 2026-09-25: both
+    cross-sector singletons fall to the sector test and are stripped."""
+    real_filter = te._apply_carryforward_deterministic_filter
+    seen_kwargs: dict = {}
+
+    async def _spy(*a, **kw):
+        seen_kwargs.update(kw)
+        return await real_filter(*a, **kw)
+
+    saved, discover, accel_mock, _audits = _drive_engine(monkeypatch, mode="off", discovered=[])
+    monkeypatch.setattr(te, "_apply_carryforward_deterministic_filter", _spy)
+    monkeypatch.setattr(te, "_read_assign_comove_toggle", AsyncMock(return_value=False))
+    from agents.market_intelligence import db as _dbmod
+    monkeypatch.setattr(_dbmod, "get_deal_pinned_tickers", AsyncMock(return_value=set()))
+    base_leaders = [{"ticker": f"L{i:02d}", "rs_composite": 99.0 - i, "rs_rank": i + 1,
+                      "sector": "Tech"} for i in range(6)]
+    tape_leaders = [
+        {"ticker": "CIFR", "rs_composite": 90.0, "rs_rank": 50, "sector": "Technology"},
+        {"ticker": "CORZ", "rs_composite": 90.0, "rs_rank": 51, "sector": "Technology"},
+        {"ticker": "BTDR", "rs_composite": 90.0, "rs_rank": 52, "sector": "Technology"},
+        {"ticker": "IREN", "rs_composite": 90.0, "rs_rank": 53, "sector": "Financial Services"},
+        {"ticker": "NOIS", "rs_composite": 90.0, "rs_rank": 54, "sector": "Energy"},
+    ]
+    monkeypatch.setattr(te, "get_rs_leaders", AsyncMock(return_value=base_leaders + tape_leaders))
+    ex_theme = {"name": "Existing Live Theme", "stage": "Accelerating", "score": 60.0,
+                "tickers": ["CIFR", "CORZ", "BTDR", "IREN", "NOIS"], "description": "d",
+                "rs_avg": 88.0}
+    monkeypatch.setattr(te, "get_active_themes", AsyncMock(return_value=[dict(ex_theme)]))
+
+    await te.run_theme_engine(trade_date=_NIGHTLY_MON)
+
+    assert seen_kwargs.get("comove_ctx") is None
+    kept = next(t for t in saved if t["name"] == "Existing Live Theme")["tickers"]
+    assert sorted(kept) == ["BTDR", "CIFR", "CORZ"]   # both singletons dropped, exactly as before
