@@ -678,3 +678,10 @@ the tape, admits 16, and none is unjudgeable.** Nothing has been removed from pr
 Full derivation with every arrival since 2026-04-30 (current or since departed): `scripts/probes/_657_out/rehome_sector_cap_2026-09-25.psv`; inputs `rehome_merge_trace.log` (all eleven log rotations), `rehome_themes_since_0401.psv`, `rehome_renames_since_0401.psv`, `rehome_rename_events_since_0401.psv` beside it.
 
 ⚖ THE LINE: the fix changes how a merge-moved member is judged (it now gets the test every admission gets); no bar, cap, toggle or roster was changed by hand, and the 29 names above are listed, not evicted.
+
+⚠ **Revised the same night after review:** the fix above first fell back to the LLM validator for a pair
+the tape could not judge. It now does not move such a pair at all (fail closed): the validator returns its
+input unchanged on any error, and it also judged and cooled down the target's own members. The 29 names
+listed above as "the fixed code rejects" are unaffected; the unjudgeable cases, which the first cut sent to
+the validator, are now simply not moved.
+

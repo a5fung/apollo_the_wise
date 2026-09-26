@@ -7334,24 +7334,27 @@ async def _admit_rehomed_members(
     Two regulated gas utilities landed in a tanker theme reading 0.105 and 0.2665 against it (bar
     0.35). Every other admission in this engine passes a membership test; this one did not.
 
-    The test is the ASSIGNMENT funnel's, in the same order: the two hard guards first (an
-    operator exclusion, a live validation cooldown from the target — a merge must not bypass
-    either), then the tape (`_comove_verdict`, market-adjusted co-movement with the target's
-    CURRENT members at ASSIGN_COMOVE_BAR) wherever it can judge the pair, and
-    `_validate_theme_membership` — the same validator a net-new assignment is checked by — for
-    every pair it cannot (no context, no history, thin basket). Never a silent admit on None.
-    The validator judges the target's roster plus the unjudged candidates; ALL of its removals
-    are applied (it writes the 14-day cooldown for each name it removes, so ignoring one would
-    leave a cooldown row for a member still in the theme).
+    The test: the two hard guards first (an operator exclusion, a live validation cooldown from
+    the target — a merge must not bypass either), then the tape (`_comove_verdict`,
+    market-adjusted co-movement with the target's CURRENT members at ASSIGN_COMOVE_BAR). **A pair
+    the tape cannot judge (no context, no history, thin basket) is NOT moved — fail closed.**
+    ⚠ Revised the same night after review (2026-09-25): the first cut sent unjudged pairs to
+    `_validate_theme_membership`, which (a) returns its input unchanged on any LLM error, so an
+    outage re-created the blind union it was meant to end, and (b) judged and cooled down the
+    TARGET's existing members and wrote per-name removal rows under the target's name that the
+    #214 mass-eviction check reads as a mass eviction (blocking its name for 30 days). A member
+    not moved here is not lost for good: the normal assignment funnel can still admit it on a
+    later night, through the full test. With no context at all, nothing moves.
 
     Writes ONE audit row per absorb: `theme_sector_cap_absorbed` (>= 1 member admitted; the
     summary carries the `'source' -> 'target'` pointer the engine-drop retire path reads) or
-    `theme_sector_cap_not_absorbed` (every member rejected — the source was absorbed BY nothing,
-    so it gets no successor). The detail carries every member's verdict, reading and path, so a
+    `theme_sector_cap_not_absorbed` (no member admitted and none already in the target — the
+    source was absorbed BY nothing, so it gets no successor). The detail carries every member's verdict, reading and path, so a
     re-homing is a SQL query, not a grep over rotating container logs.
     """
     target_name = target["name"]
     source_name = source["name"]
+    del changelog, protected  # kept in the signature for the call sites; unused since fail-closed
     existing: list[str] = list(target.get("tickers") or [])
     existing_set = set(existing)
     candidates = [tk for tk in (source.get("tickers") or []) if tk not in existing_set]
@@ -7385,7 +7388,6 @@ async def _admit_rehomed_members(
 
     verdicts: dict[str, dict] = {}
     admitted: list[str] = []
-    to_validate: list[str] = []
     for tk in candidates:
         if tk in excluded:
             verdicts[tk] = {"path": "exclusion", "verdict": "reject"}
@@ -7400,37 +7402,20 @@ async def _admit_rehomed_members(
             if cv.admit:
                 admitted.append(tk)
         else:
-            verdicts[tk] = {"path": "validator", "reason": cv.reason if cv else "no_context",
-                            "verdict": None}
-            to_validate.append(tk)
-
-    removed_existing: list[str] = []
-    if to_validate:
-        validated = await _validate_theme_membership(
-            target_name, existing + to_validate,
-            changelog if changelog is not None else [], protected=protected,
-        )
-        kept = set(validated)
-        for tk in to_validate:
-            ok = tk in kept
-            verdicts[tk]["verdict"] = "admit" if ok else "reject"
-            if ok:
-                admitted.append(tk)
-        removed_existing = [tk for tk in existing if tk not in kept]
-        if removed_existing:
-            target["tickers"] = [tk for tk in existing if tk in kept]
-            logger.info(f"Theme merge (sector cap): validator removed existing member(s) "
-                        f"{removed_existing} from '{target_name}' while judging '{source_name}'")
+            verdicts[tk] = {"path": "unjudgeable", "reason": cv.reason if cv else "no_context",
+                            "verdict": "reject"}
 
     detail = json.dumps({
         "source": source_name, "target": target_name, "group": group,
         "bar": ASSIGN_COMOVE_BAR, "context": comove_ctx is not None,
         "already_in_target": already, "admitted": admitted,
         "rejected": [tk for tk in candidates if tk not in admitted],
-        "existing_removed_by_validator": removed_existing,
         "members": verdicts,
     })
-    if admitted:
+    if admitted or already:
+        # A source some of whose members already sit in the target has the target as its
+        # successor whether or not any NEW member passed — the same pointer the all-already
+        # branch above writes (review 2026-09-25: the two cases used to disagree).
         await log_audit_event(
             "theme_sector_cap_absorbed",
             summary=(f"Pass2: '{source_name}' -> '{target_name}': admitted {len(admitted)} of "

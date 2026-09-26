@@ -7,9 +7,9 @@ was the THIRD oil_gas-keyword theme of the night ("gas" matches the group), so P
 was read (SR 0.105, ATO 0.2665 against the tanker basket — the admission bar is 0.35), no validator
 ran, and no audit row was written, so the retired source pointed at parent '(unknown)'.
 
-The fix: a member the cap moves passes the SAME membership test any other admission passes — the
-tape (`_comove_verdict`) where it can judge the pair, `_validate_theme_membership` otherwise — and
-is otherwise not moved. The cap itself (keep the top N per keyword group, absorb the rest into the
+The fix: a member the cap moves must pass the tape (`_comove_verdict`) against the target; a pair
+the tape cannot judge is NOT moved (fail closed — revised 2026-09-25 after review, the first cut
+fell back to the LLM validator, which returns its input unchanged on error). The cap itself (keep the top N per keyword group, absorb the rest into the
 top theme) is unchanged; only WHAT is absorbed is now judged.
 
 Run: pytest tests/test_theme_sector_cap_rehome.py -v
@@ -115,47 +115,52 @@ async def test_sector_cap_absorb_passes_the_tape(audit, validator_admits_all):
     assert validator_admits_all == []
 
 
-@pytest.mark.asyncio
-async def test_sector_cap_absorb_falls_to_the_validator_without_a_context(audit, monkeypatch):
-    """No context (toggle OFF / closes read failed): the membership validator decides, exactly as
-    it does for a net-new assignment. It is asked about the TARGET theme with the union roster;
-    what it rejects is not moved, what it keeps is."""
-    calls: list[tuple[str, list[str]]] = []
-
+def _validator_must_not_run(monkeypatch):
     async def fake(theme_name, tickers, changelog, protected=None, **kw):
-        calls.append((theme_name, list(tickers)))
-        return [tk for tk in tickers if tk not in ("SR", "ATO")]
-
+        raise AssertionError("fail-closed: the cap must never hand a pair to the LLM validator")
     monkeypatch.setattr(te, "_validate_theme_membership", fake)
+
+
+@pytest.mark.asyncio
+async def test_sector_cap_moves_nothing_without_a_context(audit, monkeypatch):
+    """No context (toggle OFF / closes read failed): no pair can be judged, so NOTHING is moved —
+    fail closed. The first cut asked the LLM validator here, which returns its input unchanged on
+    any error (an outage re-created the blind union) and cooled down the target's own members."""
+    _validator_must_not_run(monkeypatch)
     out = await te._merge_overlapping_themes(_themes(), {}, protected_names=set(), comove_ctx=None)
     tanker = next(t for t in out if t["name"] == TANKER)
-    assert "SR" not in tanker["tickers"] and "ATO" not in tanker["tickers"], tanker["tickers"]
-    assert "XCO" in tanker["tickers"]
-    assert len(calls) == 1
-    name, roster = calls[0]
-    assert name == TANKER
-    assert set(roster) == set(TANKER_MEMBERS) | {"SR", "ATO", "XCO"}
+    assert set(tanker["tickers"]) == set(TANKER_MEMBERS), tanker["tickers"]
 
 
 @pytest.mark.asyncio
-async def test_sector_cap_unjudgeable_pair_goes_to_the_validator_not_a_silent_admit(audit, monkeypatch):
-    """A pair the tape cannot judge (no price history) is never admitted on the None — it goes to
-    the validator, the same fail direction every other membership site has."""
+async def test_sector_cap_unjudgeable_pair_is_not_moved(audit, monkeypatch):
+    """A pair the tape cannot judge (no price history) is not moved and never reaches the
+    validator; the judgeable ones are still decided by the tape."""
     ctx = _synthetic_ctx()
     del ctx.excess["ATO"]  # ATO: no_history → unjudgeable
-    seen: list[list[str]] = []
-
-    async def fake(theme_name, tickers, changelog, protected=None, **kw):
-        seen.append(list(tickers))
-        return [tk for tk in tickers if tk != "ATO"]
-
-    monkeypatch.setattr(te, "_validate_theme_membership", fake)
+    _validator_must_not_run(monkeypatch)
     out = await te._merge_overlapping_themes(_themes(), {}, protected_names=set(), comove_ctx=ctx)
     tanker = next(t for t in out if t["name"] == TANKER)
-    assert "ATO" not in tanker["tickers"]
+    assert "ATO" not in tanker["tickers"]     # unjudgeable: not moved
     assert "SR" not in tanker["tickers"]      # tape: below bar
     assert "XCO" in tanker["tickers"]         # tape: admitted
-    assert seen == [TANKER_MEMBERS + ["ATO"]]  # only the unjudged name reached the validator
+    absorbed = [c for c in audit.await_args_list if c.args and c.args[0] == "theme_sector_cap_absorbed"]
+    import json as _json
+    detail = _json.loads(absorbed[0].kwargs.get("detail") or absorbed[0].args[2])
+    assert detail["members"]["ATO"]["path"] == "unjudgeable"
+
+
+@pytest.mark.asyncio
+async def test_sector_cap_partial_overlap_source_keeps_its_successor(audit, monkeypatch):
+    """A source with a member already in the target and every NEW member rejected still points at
+    the target as its successor — the same as when all its members are already there."""
+    ctx = _synthetic_ctx()
+    themes = _themes()
+    themes[2]["tickers"] = ["SR", "ATO", TANKER_MEMBERS[0]]
+    _validator_must_not_run(monkeypatch)
+    await te._merge_overlapping_themes(themes, {}, protected_names=set(), comove_ctx=ctx)
+    names = [c.args[0] for c in audit.await_args_list if c.args]
+    assert "theme_sector_cap_absorbed" in names and "theme_sector_cap_not_absorbed" not in names
 
 
 @pytest.mark.asyncio

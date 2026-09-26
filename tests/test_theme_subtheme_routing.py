@@ -657,9 +657,9 @@ async def test_sector_cap_int_groups_unchanged(monkeypatch):
     """The per-family mode is biotech-only — int-capped groups (oil_gas cap 2)
     keep the pre-#476 keep/absorb STRUCTURE: the top two survive, the third is
     absorbed into the top theme, nothing is dropped. Since 2026-09-25 the absorbed
-    members pass the membership test first (tests/test_theme_sector_cap_rehome.py);
-    with no co-movement context that is the validator, patched here to admit all so
-    this test keeps locking the cap structure alone."""
+    members pass the membership test first (tests/test_theme_sector_cap_rehome.py): the
+    tape, fail closed (no context = nothing moves). The tape is patched here to admit all
+    so this test keeps locking the cap structure alone."""
     from unittest.mock import AsyncMock
 
     from agents.market_intelligence import theme_engine as te
@@ -667,16 +667,16 @@ async def test_sector_cap_int_groups_unchanged(monkeypatch):
     audit = AsyncMock()
     monkeypatch.setattr(te, "log_audit_event", audit)
 
-    async def _admit_all(theme_name, tickers, changelog, protected=None, **kw):
-        return list(tickers)
+    from types import SimpleNamespace
 
-    monkeypatch.setattr(te, "_validate_theme_membership", _admit_all)
+    monkeypatch.setattr(te, "_comove_verdict", lambda tk, basket, ctx: SimpleNamespace(
+        admit=True, corr=0.9, overlap=60, basket_n=len(basket), reason="stub"))
     themes = [
         {"name": "Permian Oil Producers", "tickers": ["A1", "A2", "A3"], "score": 90, "stage": "Nascent"},
         {"name": "LNG Export Infrastructure", "tickers": ["B1", "B2", "B3"], "score": 80, "stage": "Nascent"},
         {"name": "Oilfield Services Rebound", "tickers": ["C1", "C2", "C3"], "score": 70, "stage": "Nascent"},
     ]
-    out = await te._merge_overlapping_themes(themes, {}, protected_names=set())
+    out = await te._merge_overlapping_themes(themes, {}, protected_names=set(), comove_ctx=object())
     surviving = {t["name"] for t in out}
     assert surviving == {"Permian Oil Producers", "LNG Export Infrastructure"}
     # 3rd absorbed into the top oil_gas theme (existing behavior), not dropped
