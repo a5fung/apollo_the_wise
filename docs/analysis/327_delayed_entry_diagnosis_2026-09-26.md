@@ -9,14 +9,17 @@ finds by how much of the loss each explains. The Method section was committed be
 computed (`0f8fa521`; `p7_diagnosis.py`'s docstring is the pre-registration of record); nothing in it changed.
 Two descriptive reads were ADDED after the tables were seen and are labelled as such wherever they appear.
 
-> **THE ISSUE (one sentence):** the cohort is not the one the lane exists for, and on it the loss is made at
-> the trigger — **97% of the lane's fires are on stocks our own EP screen rejected on the gap day** (the 08-31
-> first-run population the 09-01 ruling voided; a prior close under $5 on 92% of fires), and on those fires
-> **the stop is hit inside the fire session on 43% and within two sessions on 73%, which alone exceeds the
-> lane's whole loss** — the stocks then keep falling (72% sit below the stop ten sessions later), so this is
-> a bad-moment buyer, not a harvest or a stop-width problem — while the cohort the lane is for, **real EP
-> alerts, is 51 fires on 15 names** and shows the same early-stop shape with a random session of the same
-> stocks reaching +2×ADR first three times as often (36% vs 12%).
+> **THE ISSUE (one sentence):** the lane has been trading the wrong stocks — 98.5% of its fires are on names our
+> own EP screen rejected on the gap day — and on those it buys a reclaim that hits its stop inside the session on
+> 43% of fires and within two sessions on 73%, after which the stock keeps falling; the 51 fires on real EPs show
+> the same shape.
+>
+> In numbers: 3,347 of the 3,398 fires with ten sessions of read (97% of all 3,767) sit on campaigns the screen
+> rejected — 86% for a prior close under $5 — the 08-31 first-run population the 09-01 ruling voided; the fires
+> stopped within two sessions carry 135% of the lane's loss while the rest net +0.51R a fire; 72% of the
+> same-session-stopped stocks sit below the stop ten sessions later; the fire session is a slightly worse entry
+> than a random session of the same stock at the same place; on the 51 real-EP fires a random session of the same
+> stocks reached +2×ADR first three times as often (36% vs 12%).
 
 ## The decision it serves
 
@@ -52,7 +55,7 @@ RVOL / pre-market volume, quality filter, extension, cooldown, scored below the 
 fired campaigns are alerts (100 fires; 51 with ≥ 10 sessions elapsed); 855 campaigns — 3,460 fires, 92% — were
 rejected at the universe floor, 783 of them for a prior close under $5**; the six 08-24 → 08-31 alerts (CHRN, CRWD,
 DG, OKTA, SOLS, VEEV) reproduce the seed query's own docstring ("1,269 campaigns, SIX were EP alerts"); and 1,457
-of the 3,075 settled stops in the population fell on the fire session itself. No other Q1–Q4 number was computed
+of the 3,075 settled stops in the population fell on the fire session itself (1,383 after the width floor). No other Q1–Q4 number was computed
 before the registration commit. **Every table carries the two cohorts side by side**; the EP-ALERT cohort is small
 and is reported as small, never pooled away.
 
@@ -343,7 +346,7 @@ Declared with the Method; the run added the last four.
 - **The 09-22 tail read and both Block 5 documents measured this same population** — the 08-31 first-run cohort
   the 09-01 ruling voided — without applying that ruling. Their cells stand as measurements of that cohort; what
   they are not is a read of delayed entry on EPs. Nothing in them is retracted here; the population fact is
-  recorded in `docs/setups/delayed_ep_reentry.md` beside their rows.
+  recorded in `docs/setups/delayed_ep_reentry.md` — this document's row, and a one-line note on theirs.
 - **Seven still-open rows walk to a stop within ten sessions on today's daily table** (FEED ×2, CTSO ×4, SFWL)
   although production has not settled them — a hole production hit that the table has since filled. They are
   scored as walked and counted in `p7_summary.json` (`open_walk`); 7 of 3,228.
@@ -352,7 +355,7 @@ Declared with the Method; the run added the last four.
 
 **"We should have a good cohort already."** We have 3,228 fires of the wrong thing and 51 of the right one. The
 3,228 are re-entries into stocks our screen rejected on the gap day — 92% for a prior close under $5 — the
-population he voided on 09-01 (*"the lane was a gap-watcher wearing a delayed-entry name"*). Every downstream
+population he voided on 09-01 (*"delayed entry is only a trading entry/exit tactic, not a EP finding system"*). Every downstream
 test since (the 09-22 read, Block 5's 1,176 cells, the addendum, P6's 244 cells) ran on it. On that population the
 answer is now also *why*: the trigger buys a reclaim that fails inside the session on 43% of fires and within two
 sessions on 73%; the stocks keep falling (72% below the stop ten sessions later); the fires are slightly worse
