@@ -1604,3 +1604,20 @@ and chop. FVRR 2020 is the caution: the same heavy-volume break was an add when 
 - **Chart marks:** $194.82, +40.78 (+26.4%) at 4:00 PM ET 09-24; *"+128% from Pivot in 6 weeks"*; base 43.68–59.55; an earlier low 22.28 (Dec 2025); RS 99.
 - **Our board:** rejected every day of the flag on depth (flag low 27% under the pole's high; the rule allows 25%) — `docs/analysis/htf_surfacing_gap_2026-08-25.md` §MRNA.
 
+## 2026-09-26 — true EPs we were stopped out of, that kept working (operator, verbatim)
+
+> *"If you recall, we were stopped on team but I traded it myself after and it's still on. Mrna is another
+> one still working after we got stopped"*
+
+Our live trades, read from `mi_live_trades` the same day:
+
+| stock | EP date | our entry | what happened to our trade | price 2026-09-25 |
+|---|---|---|---|---|
+| TEAM | 2026-08-07 | $147.13, stop $143.21 (the opening-range low) | stopped at $143.14 at 09:43 ET, twelve minutes after entry (−$23.94) | $187.74 (+28% from our entry); he re-entered himself and still holds |
+| MRNA | 2026-08-19 | $120.75 | partial at $138.46 the same morning, stop to breakeven, trailed out at $145.20 on 09-03 (+$90.79) | $198.88 (+65% from our entry) |
+
+- **Two different failures on true EPs:** TEAM = stopped by opening noise on day one; MRNA = caught, but exited
+  early on the trail while the move doubled again.
+- **Use:** named cases for the winners study (which EPs are the real ones, and how to trade them) and for
+  EP exit discipline (#508). Both are on his labelled real-EP list (`tests/fixtures/must_not_miss_eps.py`).
+
