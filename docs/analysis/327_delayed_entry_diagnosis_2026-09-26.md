@@ -21,6 +21,25 @@ Two descriptive reads were ADDED after the tables were seen and are labelled as 
 > than a random session of the same stock at the same place; on the 51 real-EP fires a random session of the same
 > stocks reached +2×ADR first three times as often (36% vs 12%).
 
+## ⚠ VERIFIED THE SAME DAY — the population finding holds; the rest of THE ISSUE sentence does not, as written (this section wins)
+
+An independent verifier re-ran the probe (rows byte-identical) and ran one read-only prod query.
+
+| claim | what holds |
+|---|---|
+| 98.5% of ten-session fires on names our scan did not alert | **Confirmed** (3,347 of 3,398; 51 EP-alert fires on 15 names). ⚠ They are all from EP dates 08-24 to 08-28: **since 09-01 the lane enrols only EP alerts (19 of 19).** So the live finding is not "the lane trades the wrong stocks" but "**the 09-22 read, Block 5, its addendum and the leaders/management read all measured that voided pre-09-01 cohort**". The doc's word "screen" is not the lane's `screen_v1` stamp (which is never FALSE on any fire). |
+| stopped inside the fire session on 43% | Confirmed. |
+| within two sessions on 73%; those carry 135% of the loss, the rest net +0.51R | An **outcome split** (by when the stop hit), so it describes, it does not diagnose. On the lane's own exit arm it is 54% within two sessions; the survivors net +0.32R. |
+| "after which the stock keeps falling" | 72% of same-session-stopped stocks close below the stop at session 10 — but so do 68% of random 10-session windows on the same stocks: that is the cohort's drift. |
+| the fire session is slightly worse than a random session | −1.9 points, 95% range −4.6 to +0.7 by stock; every per-pattern range includes zero. Not shown. |
+| on the 51 real-EP fires a random session hit +2×ADR first 36% vs 12% | Directionally so, but the 6 fire wins are 3 stock-days, 14 of 21 control wins come from OKTA, CRWD and CHRN, all in one two-week window; "non-fire" sessions include clean breakouts by construction. **Too thin to conclude.** |
+| text errors | "92% under $5" at the doc's summary → 86–88%; "3,228 are re-entries" → 1,566; fire-day dollar volume and same-day SPY are full-day values on intraday fires (no separator is rescued by them); the Q2 `prior_reclaims` decomposition is hash-seed dependent and is not cited. |
+
+**Corrected one-sentence issue:** the delayed-entry analyses of 09-22 and 09-26 measured a cohort of mostly
+non-EP, sub-$5 gappers that the lane stopped watching on 09-01; on real EPs the lane has too few fires to judge,
+and the right-population evidence is the May–Aug replay of 267 caught EPs (`delayed_entry_backfill_2026-09-01.md`
+and its follow-ups in the setup ledger).
+
 ## The decision it serves
 
 His standing frame (2026-09-26): *"any EP related trades are low winrate by default, what we want is always to

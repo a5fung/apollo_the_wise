@@ -1,5 +1,12 @@
 # #327 — leaders plus EP-style management on the delayed-entry lane: does any cell keep the winners while limiting losses? NO — no lift
 
+> ⚠ **POPULATION NOTE (2026-09-26, verified):** this analysis measured the lane's pre-09-01 cohort — 98.5% of its
+> ten-session fires are on names our EP scan did NOT alert (EP dates 08-24 to 08-28, 86–88% under $5), the population
+> the 09-01 ruling voided; since 09-01 the lane enrols only EP alerts. Its conclusions describe that cohort, **not
+> real EPs**. On real EPs the live lane has 51 fires on 15 stocks — too few to judge. See
+> `327_delayed_entry_diagnosis_2026-09-26.md` §VERIFIED.
+
+
 **2026-09-26 (Saturday build slot, after Block 5 and its addendum).** **0 of 122 cells clear the pre-registered
 bar at session 20 and 0 of 122 at session 10; not one cell has a positive mean R — on all fires or on
 leaders, on any of 3 stops × 20 management arms, on the recorded or the fillable entry.** The leader

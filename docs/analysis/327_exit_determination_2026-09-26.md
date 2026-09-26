@@ -1,5 +1,12 @@
 # #327 Block 5 — is there any stop × target × exit under which a delayed-entry pattern pays? NO, on this population
 
+> ⚠ **POPULATION NOTE (2026-09-26, verified):** this analysis measured the lane's pre-09-01 cohort — 98.5% of its
+> ten-session fires are on names our EP scan did NOT alert (EP dates 08-24 to 08-28, 86–88% under $5), the population
+> the 09-01 ruling voided; since 09-01 the lane enrols only EP alerts. Its conclusions describe that cohort, **not
+> real EPs**. On real EPs the live lane has 51 fires on 15 stocks — too few to judge. See
+> `327_delayed_entry_diagnosis_2026-09-26.md` §VERIFIED.
+
+
 **2026-09-26 (Saturday build slot).** **0 of 588 stop × target × exit cells clear the pre-registered bar at
 session 10, on the recorded entry AND on a fillable entry (1,176 cells in all); no cell has a positive
 pooled mean (best −0.10R, n=3,314); and the one pattern that showed an entry edge, `ep_high_break`
