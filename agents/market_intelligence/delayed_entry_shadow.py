@@ -739,7 +739,8 @@ def day0_needs_minutes(fire_minute: Optional[int], fire_day_low: Optional[float]
 def compute_settlement(*, entry: float, stop: float, fire_minute: Optional[int],
                        fire_day_bar: dict, post_fire_bars5: Optional[list],
                        sessions: list[date], bars_by_day: dict,
-                       closes_before_fire: list[float]) -> dict:
+                       closes_before_fire: list[float],
+                       target_r: Optional[float] = None) -> dict:
     """Settle one trigger's TWO arms from its bars, or ABSTAIN. Pure.
 
     Returns one of:
@@ -753,6 +754,19 @@ def compute_settlement(*, entry: float, stop: float, fire_minute: Optional[int],
     (an EMPTY list means fetched-fine-but-fire-was-last-bar, which is not missing);
     `closes_before_fire` = stored closes strictly before the fire date, ascending (the
     SMA seed).
+
+    `target_r` — INERT BY DEFAULT (#327 Block 5 P3, 2026-09-26). None = the walk below
+    is exactly what it was before the parameter existed; the LANE NEVER SETS IT (the
+    two production call sites pass no target, pinned by test), so no recorded
+    settlement can change. It exists so an OFFLINE grid can score a profit target
+    through the SAME walk instead of a re-implementation. When set, a bar whose high
+    reaches entry + target_r x risk exits BOTH still-open arms at the target level
+    (outcome "target", realized = target_r — the house convention, like exiting at the
+    stop level) — tested AFTER the stop on that bar (pess: a bar holding both resolves
+    to the stop) and after the 4R telemetry. Day 0 follows the reached_4r credit rule:
+    only a LEVEL (daily-grade) entry may credit its own day-0 high; a minute fire's
+    post-fire 5-min bars are walked, its day-0 daily high is never credited. The
+    returned dict has no extra key — a caller forwards every key to the settle write.
 
     The walk (first touch decides, stop live across the hold — _bt_replay conventions):
       per session, pess stop-first: the low folds and tests the stop BEFORE the close
@@ -772,6 +786,7 @@ def compute_settlement(*, entry: float, stop: float, fire_minute: Optional[int],
         return {"status": "abstain", "reason": "missing_fire_day_bar"}
 
     tail_target = entry + SETTLE_TAIL_R * risk
+    target_level = (entry + target_r * risk) if (target_r is not None and target_r > 0) else None
     none_open = trail_open = True
     none_outcome = none_r = none_exit = None
     trail_outcome = trail_r = trail_exit_s = None
@@ -788,6 +803,16 @@ def compute_settlement(*, entry: float, stop: float, fire_minute: Optional[int],
             trail_open = False
             trail_outcome, trail_r, trail_exit_s = "stop", -1.0, sess_idx
 
+    def _target_both(sess_idx: int) -> None:
+        # only ever reached with target_level set (offline grids); mirrors _stop_both
+        nonlocal none_open, trail_open, none_outcome, none_r, none_exit
+        nonlocal trail_outcome, trail_r, trail_exit_s
+        none_open = False
+        none_outcome, none_r, none_exit = "target", float(target_r), sess_idx
+        if trail_open:
+            trail_open = False
+            trail_outcome, trail_r, trail_exit_s = "target", float(target_r), sess_idx
+
     # ── day 0: the fire day itself, from the fire forward ──
     if day0_needs_minutes(fire_minute, f_lo, stop):
         if post_fire_bars5 is None:
@@ -801,6 +826,9 @@ def compute_settlement(*, entry: float, stop: float, fire_minute: Optional[int],
                 break
             if hi >= tail_target:
                 reached4 = True
+            if target_level is not None and hi >= target_level:
+                _target_both(0)
+                break
     else:
         # daily grade: fold the whole-day excursion (ceiling/floor telemetry — pre-fire
         # range is indistinguishable at this grade and mfe/mae are never the result)
@@ -812,6 +840,9 @@ def compute_settlement(*, entry: float, stop: float, fire_minute: Optional[int],
             # level on the way there. A minute fire's day-0 daily high is ambiguous
             # (it may predate the fire) and is never credited.
             reached4 = True
+        if (target_level is not None and none_open and fire_minute is None
+                and f_hi >= target_level):
+            _target_both(0)             # same level-entry-only credit rule as reached_4r
     closes = [c for c in closes_before_fire if c is not None] + [f_c]
     if trail_open:
         line = sma_trail_line(closes)
@@ -838,6 +869,10 @@ def compute_settlement(*, entry: float, stop: float, fire_minute: Optional[int],
             break
         if hi >= tail_target:
             reached4 = True
+        if target_level is not None and hi >= target_level:
+            _target_both(i)             # offline grids only (target_r set); inert otherwise
+            marks[i] = c
+            break
         if trail_open:
             line = sma_trail_line(closes)
             if line is not None and c < line:

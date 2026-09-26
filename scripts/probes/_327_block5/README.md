@@ -1,4 +1,4 @@
-# Block 5 (2026-09-26) — P0 + P1
+# Block 5 (2026-09-26) — P0 · P1 · P2 · P3
 
 $0, read-only prod extract + offline replay. Raw CSVs are gitignored (regenerate with
 `extract_p0.sh`); only scripts + the small JSON summaries are committed.
@@ -12,6 +12,12 @@ python3 p1_probe.py          # -> p1_summary.json (needs trigger.csv, daily_clos
                               #    intraday_day0_raw.csv from extract_p0.sh)
 python3 p2_probe.py          # -> p2_summary.json + p2_fire_walks.csv / p2_control_walks.csv
                               #    (gitignored; per-row checkpoint outcomes for P3/P4)
+./extract_p3.sh              # the ONE extra read-only pull: MA warm-up daily bars 2025-12-01..
+                              #    2026-06-20 for the same names (daily_closes_warmup.csv, gitignored;
+                              #    pulled 2026-09-26T20:26:04Z — see daily_closes_warmup.pulled_at)
+python3 p3_grid.py           # -> p3_summary.json + p3_cells.tsv (every cell, both entry
+                              #    conventions; committed) + p3_events.csv (33 MB, gitignored:
+                              #    per row x stop x target decisions with straddle DATES, for P4)
 ```
 
 ## P0 result — PASS, checkpoint stays s10
@@ -161,6 +167,95 @@ Straddle-decided fires (s10 outcome differs between bounds): 26 / 19 / 7 / 19 of
 790 / 223 / 1,099; straddle-decided control sessions 88 / 60 / 16 / 54. Day-0 abstains
 (minute fire, day low reached the 1×ADR stop, no $0 minute source): 132 / 82 / 21 / 23.
 
+## P3 result — KILL on the block's rule: 0 of 588 cells clear, under either entry convention
+
+**The draws, listed before the run** (the block sized 294 = 7 × 7 × 6; this grid is
+7 stops × 7 targets × **12** exits = **588** per convention). Exits = the block's six
+(none · trail SMA10 · trail SMA20 · time s3 · s5 · s10) **+ `trail_max10_20`** (the
+incumbent arm, the production `sma_trail_line`, so the lane's recorded exit sits inside
+the grid as its baseline) **+ five arms drawn from his marked charts** (2026-09-23):
+`sma21_2x` (a close below the 21-day SMA two sessions running — Boik), `ema23_2x` (the
+same on the 23-EMA — TraderLion's "at least a partial", scored as a full exit),
+`sma50_1x` (a close below the 50-DMA), `ema65_1x` (a close below the 65-EMA), and
+`hv21_50_noreclaim2` — the FVRR caution: a close below BOTH the 21-day SMA and the 50-DMA
+on volume >= 1.5x the prior 50 sessions' mean, having closed at/above at least one of them
+the session before; a close back above the 21-day SMA within the next two sessions makes
+it an add-on (no exit, scanning resumes), otherwise the exit is the close of the second
+session after the break. Every definition is in `p3_grid.py`'s docstring; MA lines include
+the session's own close, an EMA is seeded with its first N closes, a line needs N closes or
+cannot exit (the live None-guard). **Tail-eligible draws: 324 of 588** (a 1R/2R target,
+and a 1×ADR target over a wide stop, can never reach 3R — those cells are dead on arrival
+for the tail leg, not draws in the noise sense). The noise band scales to <= 6 of 588 /
+<= 3 of 324; a family is >= 50 / >= 28.
+
+**Cross-checks first, both clean.** (a) The incumbent cell reproduces the recorded
+settlement on **1,296 of 1,297** M-none and **1,295 of 1,297** M-trail rows the $0 day-0
+sources can walk (the misses are AIXI and NRSN, P1's two reverse-split rounding rows;
+2,007 rows have no offline day-0 minute source and are abstained, never scored). (b)
+**Every (stop, target) cell at s10 under exit none / time s5 / trail_max matches the REAL
+`compute_settlement(target_r=…)` on the same scaled inputs: 107,604 of 107,604** — the
+only production change the block allows (an inert-by-default `target_r`, existing tests
+byte-identical and results diffed, mutation proof + lane-never-sets-it pin appended to
+`tests/test_delayed_entry_shadow.py`) is the oracle for the grid's own scorer. 329
+(stop, target) rows are excluded from (b) because the grid walks real post-fire 5-min bars
+whenever they exist while production only consults minutes when the day low reached the
+stop — the grid is the more informative of the two on those, and they are counted.
+
+**The bar, applied on the width-floored (>= 0.5% in the cell's OWN stop units) s10
+population, every leg at once: mean R > 0 · >=3R rate >= 3.0% · both time halves > 0
+(split at fire_date 09-08; the second half is the four fire dates 09-08..09-11, n = 217–256
+per cell) · >= 3 of 4 patterns mean > 0 · survives dropping the best NAME by summed R ·
+n >= 300.**
+
+| | recorded entry (the bar) | fillable entry (beside it) |
+|---|---:|---:|
+| cells clearing every leg | **0 of 588** | **0 of 588** |
+| cells with mean R > 0 (pooled) | **0** | **0** |
+| cells with >=3R rate >= 3% | 203 | 170 |
+| both halves positive | 0 | 0 |
+| best pooled mean R | −0.10 (`adr_150/1ADR/ema65_1x`, n=3,314) | −0.12 |
+| cells clearing mean+tail only WITHOUT the floor | 0 | 0 |
+| incumbent baseline cell (`incumbent/none/trail_max10_20`) | n=1,320, mean −0.29, >=3R 2.6%, H2 −0.48 | n=1,323, −0.33, 2.3% |
+
+So the kill rule fires on its first arm — **zero cells clear** — and not through the
+floor: no cell even has a positive pooled mean before the floor is applied. The
+>=3R leg is met by 203 cells (tightest stops, 3R/3ADR targets, exits that let a run
+extend), but every one of them carries a negative mean and a negative second half, so
+the tail exists and the stop-outs around it cost more than it pays.
+
+**Tail-first, per pattern (recorded entry):** the three pullback patterns have no cell
+with mean R > 0 at n >= 50 (best means −0.09 / −0.05 / −0.10; their >=3R rates reach
+15%/17%/14% only in cells whose mean is negative). **`ep_high_break` alone has 189 cells
+with mean > 0 and >=3R >= 3% (n = 181–235), best +0.69R at `adr_025/none/ema65_1x`** — and
+all three of P2's caveats land on it at once: (1) on the FILLABLE entry (a resting stop-buy
+fills at the open when the session opens above the level) it has **0** such cells and its
+best mean is −0.001; (2) the positive cells cluster on the tightest stop (0.25×ADR under a
+level entry), the head-start P2 measured; (3) on the second time half its n is **23**, and
+across those 189 cells its second-half mean tops out at +0.06R (positive in a handful of
+cells, negative in the rest — a four-fire-date read that cannot carry a leg either way). The pattern's own incumbent cell reads −0.004R (n=181, >=3R
+3.8%). It is one pattern on one entry convention on one time half — the block's >= 3-of-4
+and both-halves legs are exactly the guards that keep it from being called a finding.
+
+**What the exits did (stop = 1×ADR, no target, s10):** the trail arms fire on 66–78% of
+fires and cut the mean from −0.37 (none) to −0.22..−0.26 while cutting the >=3R rate from
+3.1% to 1.4–1.8%; `sma50_1x`/`ema65_1x` fire on 64–69% (these EP names mostly sit BELOW
+their 50/65-day lines at the fire — a penny-stock gap inside a downtrend, not a leader
+above a rising average); `sma21_2x`/`ema23_2x` fire on 52–54%; `hv21_50_noreclaim2` fires on
+**0.3%** — the heavy-volume cut-through-both-and-no-reclaim shape is real but the stop
+almost always arrives first, so that arm reads as "none" here. No exit arm turns any
+stop/target cell positive. A target of 1R/1×ADR is reached on 32%, 2R on 15%, 3R on 8%
+(stop-first); the straddle-decided count per cell is in `p3_cells.tsv` (e.g. 70 fires for
+`adr_100/2ADR`) with the straddle session DATES per row in `p3_events.csv` for P4.
+
+**Population honesty:** 3,398 fires have >= 10 sessions elapsed. The incumbent stop is
+scorable on only ~1,320 of them (2,042 abstain: a minute fire whose day low reached its
+tight stop, no $0 minute source); the ADR stops widen out of that hole (adr_100 abstains
+236, adr_150 75). `prior_low` kills 298 fires at birth (the prior session's low sits at or
+above a reclaim entry). Both are counted per cell (`n_killed`, `n_abstain`), never scored.
+
+⚖ **THE LINE:** nothing here picks a stop, a target or an exit. The grid is the deliverable;
+the fork is P5's to state.
+
 ## Files
 
 - `extract_p0.sh` — the one prod extract (gitignored CSV outputs).
@@ -171,3 +266,9 @@ Straddle-decided fires (s10 outcome differs between bounds): 26 / 19 / 7 / 19 of
 - `p2_probe.py` -> `p2_summary.json` (+ gitignored `p2_fire_walks.csv`,
   `p2_control_walks.csv`) — the ADR$ entry-edge grid vs the matched control, both
   bounds, s5/s10/s20, the tail ladder, the fillable-stop-buy read, the walker's anchor.
+- `extract_p3.sh` -> `daily_closes_warmup.csv` (gitignored) + `daily_closes_warmup.pulled_at`
+  — the MA warm-up pull for the chart-drawn exit arms.
+- `p3_grid.py` -> `p3_summary.json` (verdict, cross-checks, per-convention counts, per-pattern
+  tail-first), `p3_cells.tsv` (all 1,176 cells: n / mean / >=3R / halves / per pattern /
+  drop-best-name / exit-fired / straddle / opt-bound / gap-charged / every leg), gitignored
+  `p3_events.csv` (per row x stop x target: pess/opt decision, straddle date, exit sessions).

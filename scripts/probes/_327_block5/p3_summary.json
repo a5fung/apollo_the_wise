@@ -1,0 +1,391 @@
+{
+ "generated": "2026-09-26T13:36:56.446204",
+ "last_session_in_extract": "2026-09-25",
+ "warmup_pulled_at": "pulled_at_utc=2026-09-26T20:26:04Z",
+ "draws": {
+  "stops": [
+   "incumbent",
+   "adr_025",
+   "adr_050",
+   "adr_075",
+   "adr_100",
+   "adr_150",
+   "prior_low"
+  ],
+  "targets": [
+   "none",
+   "1R",
+   "2R",
+   "3R",
+   "1ADR",
+   "2ADR",
+   "3ADR"
+  ],
+  "exits": [
+   "none",
+   "trail_sma10",
+   "trail_sma20",
+   "trail_max10_20",
+   "time_s3",
+   "time_s5",
+   "time_s10",
+   "sma21_2x",
+   "ema23_2x",
+   "sma50_1x",
+   "ema65_1x",
+   "hv21_50_noreclaim2"
+  ],
+  "total_per_convention": 588,
+  "added_exit_arms_beyond_the_block": [
+   "trail_max10_20 (the incumbent arm)",
+   "sma21_2x",
+   "ema23_2x",
+   "sma50_1x",
+   "ema65_1x",
+   "hv21_50_noreclaim2"
+  ]
+ },
+ "conventions": {
+  "primary_checkpoint": 10,
+  "population": "sessions elapsed >= K, never settlement status",
+  "half_split": "2026-09-08",
+  "width_floor_pct": 0.5,
+  "pass_bar": "mean R>0 \u00b7 >=3R rate>=3% \u00b7 both halves mean>0 \u00b7 >=3 of 4 patterns mean>0 \u00b7 drop best NAME by summed R keeps mean>0 and >=3R>=3% \u00b7 n>=300; all on the floored population at s10",
+  "hv_arm": "vol >= 1.5x mean of prior 50 sessions (>= 10); reclaim = close > SMA21 within 2 sessions; exit at close of break+2",
+  "redundancy": "exit=none and exit=time_s10 are the same reading at the s10 checkpoint (both are the s10 close); counted as the block's distinct draws"
+ },
+ "rows": {
+  "recorded": {
+   "built": 3767,
+   "excluded": {},
+   "s10_population": 3398,
+   "killed_at_birth": {
+    "incumbent": 3,
+    "adr_025": 0,
+    "adr_050": 0,
+    "adr_075": 0,
+    "adr_100": 0,
+    "adr_150": 0,
+    "prior_low": 298
+   },
+   "day0_abstain": {
+    "incumbent": 2042,
+    "adr_025": 1586,
+    "adr_050": 824,
+    "adr_075": 420,
+    "adr_100": 236,
+    "adr_150": 75,
+    "prior_low": 1118
+   },
+   "day0_kind": {
+    "no_source": 2261,
+    "daily_fold": 1024,
+    "real_intraday_bars": 276,
+    "cached_pseudo_bars": 206
+   }
+  },
+  "fillable": {
+   "built": 3767,
+   "excluded": {},
+   "s10_population": 3398,
+   "killed_at_birth": {
+    "incumbent": 1,
+    "adr_025": 0,
+    "adr_050": 0,
+    "adr_075": 0,
+    "adr_100": 0,
+    "adr_150": 0,
+    "prior_low": 296
+   },
+   "day0_abstain": {
+    "incumbent": 2042,
+    "adr_025": 1586,
+    "adr_050": 824,
+    "adr_075": 420,
+    "adr_100": 236,
+    "adr_150": 75,
+    "prior_low": 1118
+   },
+   "day0_kind": {
+    "no_source": 2261,
+    "daily_fold": 1024,
+    "real_intraday_bars": 276,
+    "cached_pseudo_bars": 206
+   }
+  }
+ },
+ "cross_checks": {
+  "a_incumbent_vs_recorded": {
+   "day0_abstain_or_killed": 2007,
+   "none_match": 1296,
+   "trail_match": 1295,
+   "none_mismatch": 1,
+   "trail_mismatch": 2
+  },
+  "b_grid_vs_compute_settlement_target_r": {
+   "match": 107604,
+   "walker_has_day0_bars_oracle_would_not_consult": 329,
+   "day0_abstain_walker": 2598
+  },
+  "b_examples": []
+ },
+ "verdict": {
+  "verdict": "kill",
+  "recorded_clearing": 0,
+  "fillable_clearing": 0,
+  "cells_clearing_under_both_conventions": 0
+ },
+ "by_convention": {
+  "recorded": {
+   "draws": 588,
+   "cells_tested": 588,
+   "cells_clearing_all_legs": 0,
+   "clearing_cells": [],
+   "tail_eligible_draws": 324,
+   "noise_band_scaled": {
+    "block_said": "1-3 of 294 = noise; >=25 = family",
+    "scaled_to_draws": "<= 6 of 588 = noise; >= 50 = family",
+    "scaled_to_eligible": "<= 3 of 324 = noise; >= 28 = family"
+   },
+   "leg_failure_counts": {
+    "mean_r_gt_0": 588,
+    "both_halves_positive": 588,
+    "patterns_ge_3_of_4": 588,
+    "drop_best_name": 588,
+    "tail3_ge_3pct": 385
+   },
+   "cells_mean_r_positive": 0,
+   "cells_tail3_ge_3pct": 203,
+   "cells_mean_pos_and_tail_ok": 0,
+   "cells_clearing_mean_and_tail_only_without_floor": 0,
+   "best_cell_mean_r": -0.0998,
+   "per_pattern_tail_first": {
+    "ep_low_reclaim": {
+     "cells_mean_pos_and_tail_ge_3pct_n_ge_50": 0,
+     "cells_mean_pos": 0,
+     "max_tail3_pct": 15.21,
+     "max_mean_r": -0.0915,
+     "n_at_s10_in_none_none_none_cell": 412,
+     "incumbent_cell_mean_r": -0.3133,
+     "incumbent_cell_tail3_pct": 1.45,
+     "example_cells_mean_pos_and_tail": []
+    },
+    "ep_close_reclaim": {
+     "cells_mean_pos_and_tail_ge_3pct_n_ge_50": 0,
+     "cells_mean_pos": 0,
+     "max_tail3_pct": 17.04,
+     "max_mean_r": -0.0507,
+     "n_at_s10_in_none_none_none_cell": 311,
+     "incumbent_cell_mean_r": -0.3056,
+     "incumbent_cell_tail3_pct": 3.18,
+     "example_cells_mean_pos_and_tail": []
+    },
+    "ep_high_break": {
+     "cells_mean_pos_and_tail_ge_3pct_n_ge_50": 189,
+     "cells_mean_pos": 252,
+     "max_tail3_pct": 25.62,
+     "max_mean_r": 0.6927,
+     "n_at_s10_in_none_none_none_cell": 206,
+     "incumbent_cell_mean_r": -0.004,
+     "incumbent_cell_tail3_pct": 3.83,
+     "example_cells_mean_pos_and_tail": [
+      "incumbent/none/none",
+      "incumbent/none/trail_sma10",
+      "incumbent/none/time_s10",
+      "incumbent/none/hv21_50_noreclaim2",
+      "incumbent/3R/none",
+      "incumbent/3R/trail_sma10",
+      "incumbent/3R/trail_sma20",
+      "incumbent/3R/trail_max10_20",
+      "incumbent/3R/time_s10",
+      "incumbent/3R/sma21_2x",
+      "incumbent/3R/ema23_2x",
+      "incumbent/3R/sma50_1x"
+     ]
+    },
+    "ep_close_620_prox": {
+     "cells_mean_pos_and_tail_ge_3pct_n_ge_50": 0,
+     "cells_mean_pos": 0,
+     "max_tail3_pct": 13.53,
+     "max_mean_r": -0.0984,
+     "n_at_s10_in_none_none_none_cell": 383,
+     "incumbent_cell_mean_r": -0.4094,
+     "incumbent_cell_tail3_pct": 2.61,
+     "example_cells_mean_pos_and_tail": []
+    }
+   },
+   "incumbent_baseline_cell": {
+    "n": 1320,
+    "mean_r": -0.2904,
+    "tail3_pct": 2.58,
+    "per_pattern": {
+     "ep_low_reclaim": {
+      "n": 414,
+      "mean_r": -0.3133,
+      "tail3": 6,
+      "tail3_pct": 1.45
+     },
+     "ep_close_reclaim": {
+      "n": 314,
+      "mean_r": -0.3056,
+      "tail3": 10,
+      "tail3_pct": 3.18
+     },
+     "ep_high_break": {
+      "n": 209,
+      "mean_r": -0.004,
+      "tail3": 8,
+      "tail3_pct": 3.83
+     },
+     "ep_close_620_prox": {
+      "n": 383,
+      "mean_r": -0.4094,
+      "tail3": 10,
+      "tail3_pct": 2.61
+     }
+    },
+    "halves": {
+     "H1": {
+      "n": 1090,
+      "mean_r": -0.2511,
+      "tail3": 33,
+      "ep_high_break_n": 186,
+      "ep_high_break_mean_r": 0.0464
+     },
+     "H2": {
+      "n": 230,
+      "mean_r": -0.4764,
+      "tail3": 1,
+      "ep_high_break_n": 23,
+      "ep_high_break_mean_r": -0.4114
+     }
+    },
+    "status": {
+     "abstain": 2049,
+     "scored": 1346,
+     "killed": 3,
+     "not_in_population": 346
+    }
+   }
+  },
+  "fillable": {
+   "draws": 588,
+   "cells_tested": 588,
+   "cells_clearing_all_legs": 0,
+   "clearing_cells": [],
+   "tail_eligible_draws": 324,
+   "noise_band_scaled": {
+    "block_said": "1-3 of 294 = noise; >=25 = family",
+    "scaled_to_draws": "<= 6 of 588 = noise; >= 50 = family",
+    "scaled_to_eligible": "<= 3 of 324 = noise; >= 28 = family"
+   },
+   "leg_failure_counts": {
+    "mean_r_gt_0": 588,
+    "both_halves_positive": 588,
+    "patterns_ge_3_of_4": 588,
+    "drop_best_name": 588,
+    "tail3_ge_3pct": 418
+   },
+   "cells_mean_r_positive": 0,
+   "cells_tail3_ge_3pct": 170,
+   "cells_mean_pos_and_tail_ok": 0,
+   "cells_clearing_mean_and_tail_only_without_floor": 0,
+   "best_cell_mean_r": -0.1178,
+   "per_pattern_tail_first": {
+    "ep_low_reclaim": {
+     "cells_mean_pos_and_tail_ge_3pct_n_ge_50": 0,
+     "cells_mean_pos": 0,
+     "max_tail3_pct": 14.64,
+     "max_mean_r": -0.1054,
+     "n_at_s10_in_none_none_none_cell": 412,
+     "incumbent_cell_mean_r": -0.323,
+     "incumbent_cell_tail3_pct": 1.45,
+     "example_cells_mean_pos_and_tail": []
+    },
+    "ep_close_reclaim": {
+     "cells_mean_pos_and_tail_ge_3pct_n_ge_50": 0,
+     "cells_mean_pos": 0,
+     "max_tail3_pct": 15.79,
+     "max_mean_r": -0.1173,
+     "n_at_s10_in_none_none_none_cell": 311,
+     "incumbent_cell_mean_r": -0.3224,
+     "incumbent_cell_tail3_pct": 3.18,
+     "example_cells_mean_pos_and_tail": []
+    },
+    "ep_high_break": {
+     "cells_mean_pos_and_tail_ge_3pct_n_ge_50": 0,
+     "cells_mean_pos": 0,
+     "max_tail3_pct": 17.73,
+     "max_mean_r": -0.0012,
+     "n_at_s10_in_none_none_none_cell": 208,
+     "incumbent_cell_mean_r": -0.1836,
+     "incumbent_cell_tail3_pct": 2.36,
+     "example_cells_mean_pos_and_tail": []
+    },
+    "ep_close_620_prox": {
+     "cells_mean_pos_and_tail_ge_3pct_n_ge_50": 0,
+     "cells_mean_pos": 0,
+     "max_tail3_pct": 13.24,
+     "max_mean_r": -0.1084,
+     "n_at_s10_in_none_none_none_cell": 383,
+     "incumbent_cell_mean_r": -0.4167,
+     "incumbent_cell_tail3_pct": 2.61,
+     "example_cells_mean_pos_and_tail": []
+    }
+   },
+   "incumbent_baseline_cell": {
+    "n": 1323,
+    "mean_r": -0.3276,
+    "tail3_pct": 2.34,
+    "per_pattern": {
+     "ep_low_reclaim": {
+      "n": 414,
+      "mean_r": -0.323,
+      "tail3": 6,
+      "tail3_pct": 1.45
+     },
+     "ep_close_reclaim": {
+      "n": 314,
+      "mean_r": -0.3224,
+      "tail3": 10,
+      "tail3_pct": 3.18
+     },
+     "ep_high_break": {
+      "n": 212,
+      "mean_r": -0.1836,
+      "tail3": 5,
+      "tail3_pct": 2.36
+     },
+     "ep_close_620_prox": {
+      "n": 383,
+      "mean_r": -0.4167,
+      "tail3": 10,
+      "tail3_pct": 2.61
+     }
+    },
+    "halves": {
+     "H1": {
+      "n": 1093,
+      "mean_r": -0.2923,
+      "tail3": 30,
+      "ep_high_break_n": 189,
+      "ep_high_break_mean_r": -0.1412
+     },
+     "H2": {
+      "n": 230,
+      "mean_r": -0.4955,
+      "tail3": 1,
+      "ep_high_break_n": 23,
+      "ep_high_break_mean_r": -0.5324
+     }
+    },
+    "status": {
+     "abstain": 2049,
+     "scored": 1348,
+     "killed": 1,
+     "not_in_population": 346
+    }
+   }
+  }
+ }
+}

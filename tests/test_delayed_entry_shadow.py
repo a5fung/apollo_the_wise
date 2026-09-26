@@ -1659,3 +1659,126 @@ async def test_cached_day0_lets_the_pass_settle_a_minute_fire_without_a_refetch(
     assert f100["outcome"] == "stop" and f100["realized_r"] == -1.0
     assert f100["realized_r_trail"] == pytest.approx(round(-0.2 / 1.2, 4))  # 4-dp settle rounding
     assert f100["mfe_r"] == pytest.approx(0.9 / 1.2)         # cache again, own units
+
+
+# ── #327 Block 5 P3 (2026-09-26): the INERT-BY-DEFAULT `target_r` on compute_settlement ──
+# The block allows exactly one production change for the offline exit grid: a profit
+# target the walk can score through the SAME code, never set by the lane. Every test
+# above this line is unchanged (byte-identical, results diffed before/after in the
+# commit); these four are the inert-default proof, the mutation proof, the pess
+# straddle and the level-entry day-0 rule, plus the wiring pin that the lane's real
+# settle path never passes the parameter.
+
+
+def test_target_r_default_is_none_and_the_walk_is_unchanged_without_it():
+    """Inert by default: the parameter defaults to None, and passing None explicitly
+    returns EXACTLY the dict the same bars return without it — a 2R touch on day 2
+    followed by a stop on day 3 is still the recorded stop at -1.0R (no target, no
+    early settle), byte for byte the pre-parameter behaviour."""
+    assert inspect.signature(des.compute_settlement).parameters["target_r"].default is None
+    specs = [(10.5, 9.8, 10.1), (12.2, 9.9, 12.0), (10.0, 8.9, 9.1)]
+    before = _settle(specs=specs)
+    explicit = des.compute_settlement(
+        entry=10.0, stop=9.0, fire_minute=None, fire_day_bar=dict(_FD),
+        post_fire_bars5=None, sessions=_sess(3), bars_by_day=_bars(specs),
+        closes_before_fire=[], target_r=None)
+    assert explicit == before
+    assert before["outcome"] == "stop" and before["realized_r"] == -1.0
+    assert before["r_none_s1"] == pytest.approx(0.1) and before["r_none_s5"] == -1.0
+    assert "target_session_idx" not in before          # no new key reaches the settle write
+
+
+def test_target_r_mutation_proof_exits_both_arms_at_the_target_and_freezes_checkpoints():
+    """MUTATION TARGET: with target_r=2.0 the SAME two bars that abstain (window_open)
+    without a target settle at the target on day 2 — both arms 'target' at +2.0R, every
+    later checkpoint frozen at +2.0, no stop_session_idx, and only two sessions of bars
+    were needed. Ignoring the parameter would return the abstain."""
+    specs = [(10.5, 9.8, 10.1), (12.2, 9.9, 12.0)]         # day 2 high 12.2 >= 10 + 2x1.0
+    assert _settle(specs=specs) == {"status": "abstain", "reason": "window_open"}
+    res = des.compute_settlement(
+        entry=10.0, stop=9.0, fire_minute=None, fire_day_bar=dict(_FD),
+        post_fire_bars5=None, sessions=_sess(2), bars_by_day=_bars(specs),
+        closes_before_fire=[], target_r=2.0)
+    assert res["status"] == "settled"
+    assert res["outcome"] == "target" and res["realized_r"] == 2.0
+    assert res["outcome_trail"] == "target" and res["realized_r_trail"] == 2.0
+    assert res["r_none_s1"] == pytest.approx(0.1)          # day-1 mark, before the target
+    assert res["r_none_s5"] == 2.0 and res["r_none_s10"] == 2.0 and res["r_none_s20"] == 2.0
+    assert res["r_trail_s20"] == 2.0
+    assert res["stop_session_idx"] is None
+    assert res["reached_4r"] is False and res["mfe_r"] == pytest.approx(2.2)
+    assert "target_session_idx" not in res
+
+
+def test_target_r_pess_a_bar_holding_both_levels_is_a_stop_and_a_trail_exit_keeps_its_own():
+    """Pess ordering: day 1 spans both the stop (8.9) and +2R (12.5) -> stop, -1.0R,
+    target never credited. Separately, an arm that already trail-exited keeps that exit
+    when the target hits later: closes [10]*10 seed SMA10; day-1 close 9.5 < line ->
+    trail_exit -0.5R; day-2 high 12.5 -> M-none 'target' +2.0R while M-trail stays."""
+    both = [(12.5, 8.9, 10.0)]
+    res = des.compute_settlement(
+        entry=10.0, stop=9.0, fire_minute=None, fire_day_bar=dict(_FD),
+        post_fire_bars5=None, sessions=_sess(1), bars_by_day=_bars(both),
+        closes_before_fire=[], target_r=2.0)
+    assert res["outcome"] == "stop" and res["realized_r"] == -1.0
+    assert res["outcome_trail"] == "stop" and res["stop_session_idx"] == 1
+    specs = [(10.5, 9.4, 9.5), (12.5, 9.6, 12.0)]
+    res = des.compute_settlement(
+        entry=10.0, stop=9.0, fire_minute=None, fire_day_bar=dict(_FD),
+        post_fire_bars5=None, sessions=_sess(2), bars_by_day=_bars(specs),
+        closes_before_fire=[10.0] * 10, target_r=2.0)
+    assert res["outcome_trail"] == "trail_exit" and res["realized_r_trail"] == pytest.approx(-0.5)
+    assert res["outcome"] == "target" and res["realized_r"] == 2.0
+    assert res["r_trail_s5"] == pytest.approx(-0.5) and res["r_none_s5"] == 2.0
+
+
+def test_target_r_day0_credit_follows_the_level_entry_rule():
+    """Day 0 mirrors reached_4r: a LEVEL (daily-grade) entry whose fire-day high reaches
+    the target settles 'target' on day 0 with zero forward sessions; a MINUTE fire with
+    the same daily bar (day low above the stop, so no minutes are consulted) is never
+    credited its ambiguous day-0 high and stays open; a minute fire that needs minutes
+    settles on the post-fire 5-min bar that reaches the target."""
+    fd = {"h": 12.5, "l": 9.9, "c": 12.0}
+    res = des.compute_settlement(
+        entry=10.0, stop=9.0, fire_minute=None, fire_day_bar=fd, post_fire_bars5=None,
+        sessions=[], bars_by_day={}, closes_before_fire=[], target_r=2.0)
+    assert res["status"] == "settled" and res["outcome"] == "target"
+    assert res["r_none_s1"] == 2.0 and res["stop_session_idx"] is None
+    res = des.compute_settlement(
+        entry=10.0, stop=9.0, fire_minute=600, fire_day_bar=fd, post_fire_bars5=None,
+        sessions=[], bars_by_day={}, closes_before_fire=[], target_r=2.0)
+    assert res == {"status": "abstain", "reason": "window_open"}
+    fd_undercut = {"h": 12.5, "l": 8.5, "c": 12.0}          # day low <= stop: minutes needed
+    post = [_b5(605, 9.4, 9.8, 9.3, 9.5), _b5(610, 9.6, 12.1, 9.5, 12.0)]
+    res = des.compute_settlement(
+        entry=10.0, stop=9.0, fire_minute=600, fire_day_bar=fd_undercut,
+        post_fire_bars5=post, sessions=[], bars_by_day={}, closes_before_fire=[],
+        target_r=2.0)
+    assert res["status"] == "settled" and res["outcome"] == "target"
+    assert res["realized_r"] == 2.0 and res["mfe_r"] == pytest.approx(2.1)
+
+
+@pytest.mark.asyncio
+async def test_the_lane_never_passes_target_r(monkeypatch):
+    """Wiring pin (behavioural, not a source pin): drive the real settle pass — the
+    incumbent settle plus its three #616 variants — through a recording wrapper around
+    the real compute_settlement and assert NO call carries target_r. The lane records
+    what happened; a target is an offline-grid instrument only."""
+    post = [_b5(585, 9.7, 9.9, 9.65, 9.8)]
+    trig = _trigger_row(ep_adr20_n=1, stop_price_025=9.4,
+                        stop_price_075=9.0, stop_price_100=8.8)
+    settles, _ = _wire_settle(monkeypatch, trigger=trig, window=_WINDOW, minute_bars=post)
+    _wire_variant_capture(monkeypatch)
+    real, seen = des.compute_settlement, []
+
+    def _record(**kw):
+        seen.append(dict(kw))
+        return real(**kw)
+
+    monkeypatch.setattr(des, "compute_settlement", _record)
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["settle_settled"] == 1
+    assert len(seen) >= 4                                   # incumbent + 025/075/100
+    assert all("target_r" not in kw for kw in seen)
+    (_, fields), = settles
+    assert fields["outcome"] == "stop" and fields["realized_r"] == -1.0

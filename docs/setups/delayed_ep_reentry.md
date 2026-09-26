@@ -132,6 +132,12 @@ never substituted; triggers fired before the deploy keep every variant column NU
 (`ep_adr20_n IS NULL` marks them). RECORDING ONLY — nothing live reads any variant
 column. Accrual gate `delayed_entry_adr_stop_variant_616` (30 trail-settled
 `ep_low_reclaim` 0.75×ADR fires) reads the grid's candidate band out of sample.
+**`compute_settlement(target_r=None)` (2026-09-26, #327 Block 5 P3):** the walk carries an
+INERT-BY-DEFAULT profit-target parameter so the offline stop × target × exit grid
+(`scripts/probes/_327_block5/p3_grid.py`, its README carries the result) scores a target through
+the SAME walk rather than a re-implementation. The lane never sets it — pinned by
+`tests/test_delayed_entry_shadow.py::test_the_lane_never_passes_target_r` — and with it unset the
+function's output is unchanged; no recorded settlement can move.
 ⚠ **The long-wait variant converges into Family A** (`docs/decisions/0013-consolidation-plays-post-runup.md`) — 81% of ≥5R 20-day-reclaim names were already on the Family A detector. Short-wait (3–10 day) variants stay distinct.
 
 ---
