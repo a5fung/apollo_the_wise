@@ -1,4 +1,4 @@
-# Block 5 (2026-09-26) — P0 · P1 · P2 · P3 · P5
+# Block 5 (2026-09-26) — P0 · P1 · P2 · P3 · P5 · P6
 
 The write-up (the deliverable, with the fork) is `docs/analysis/327_exit_determination_2026-09-26.md`.
 
@@ -23,6 +23,10 @@ python3 p3_grid.py           # -> p3_summary.json + p3_cells.tsv (every cell, bo
 python3 p5_abstain_direction.py   # -> p5_summary.json: the recorded outcomes of the 2,042 fires
                               #    the grid cannot walk on the incumbent stop vs the walked ones
                               #    (needs trigger.csv + p3_events.csv)
+python3 p6_leaders_mgmt.py   # -> p6_summary.json + p6_cells.tsv (committed) + p6_events.csv (49 MB,
+                              #    gitignored): leader selection x EP-style management (partial /
+                              #    breakeven / trail) x 3 stops, both checkpoints, matched control,
+                              #    the big-runner read (needs the P0 + P3 pulls; ~8 s)
 ```
 
 ## P0 result — PASS, checkpoint stays s10
@@ -285,8 +289,36 @@ always exactly -1.00R, so a mean above -0.95 at a 98% stop rate is a few enormou
 time-exits (max +1,599R unfloored, +22.66R floored) — the 09-22 artifact. A minute fetch for the
 2,042 would fill cells without moving the answer. Verdict and fork: the analysis doc.
 
+## P6 — leaders + EP-style management (his 09-26 response to Block 5): NO LIFT, 0 of 122 cells clear
+
+The write-up (the deliverable, with the fork) is `docs/analysis/327_leaders_ep_management_2026-09-26.md`;
+the probe's docstring is the pre-registration of record (committed before any result, `2868bdc2`).
+Draws: 2 selections (all / leaders: >= $5, above a rising 50-day, above the 20-day) x (M0 + 3 stops x
+20 arms) = 122 per checkpoint; s20 the bar, s10 beside it. Arms: M0 = the lane's recorded trail; M1 = the
+LIVE MAGNA53 stack via `rule_eras.exit_rules_as_of` + `live_fill_counterfactuals.stack_walk_inputs` +
+`walk_arm(harvest="live_ladder")` in two declared ORB-R frames; 18 grid arms = partial 1/3 at +2R/+3R x
+breakeven at +1R/+2R/after the partial x remainder on SMA10 / SMA20 / held to s20. Gap-charged R.
+
+| | s20 (bar) | s10 |
+|---|---:|---:|
+| cells clearing | **0 of 122** | **0 of 122** |
+| cells with mean R > 0 (either selection) | 0 | 0 |
+| best mean, all fires | -0.07 (adr_050 / P2_B1R_sma20, n=864) | -0.20 (incumbent / P2_B1R_sma10, n=1,316) |
+| best kept>=3R, all fires | 4.4% (adr_100 / P3_Bpart_hold, mean -0.33) | 3.7% |
+| leaders: mean range / best kept>=3R | -0.49..-1.06 (n=18-33) / 1 of 19 | -0.48..-0.84 (n=73-130) / 2.8% |
+
+Leaders read WORSE than the population in every cell (M0 stops 99.2% of leader fires, n=117); the matched
+non-fire control beats the fire cells on mean in 40 of 40 cells at both checkpoints. Runner read (120 ran
++50%, the lane fired on 102 = the addendum's 102): hold-with-breakeven keeps >=3R on 26% of runner fires
+(82 of 320) vs 5.6% for M0 (15 of 267), runner mean +2.15R — and the other 91% of fires cost -0.69R vs
+-0.55R under M0, net -0.35R/fire. Validation: (a) 1,296/1,297 and 1,295/1,297 vs recorded; (b) 784 exact vs
+`walk_arm(trail_only)`, 235 = the live ladder's resting stop ratcheted to the trail line and hit on the LOW
+(a mechanism difference: live exits on an intraday touch of yesterday's MA, compute_settlement on a close
+below), 11 = the day-0 close in the SMA window, 3 pending at a hole.
+
 ## Files
 
+- `p6_leaders_mgmt.py` -> `p6_summary.json` + `p6_cells.tsv` (+ gitignored `p6_events.csv`) — the P6 read above.
 - `p5_abstain_direction.py` -> `p5_summary.json` — the abstain-direction read above.
 - `extract_p0.sh` — the one prod extract (gitignored CSV outputs).
 - `p0_completeness.py` -> `p0_summary.json` — bar-completeness / abstain-rate / day-0
