@@ -1196,3 +1196,37 @@ tape also decides for singleton-sector members, ending the admit/strip loop) + t
 **Sunday 09-27:** #354 (final signed bump) + #662/#677 verifies. **Monday:** arm the #657 VERIFY-LIVE check
 after the 17:00 ET theme run (first live evidence for both theme fixes).
 
+## 2026-09-26 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 09-25 close above.
+
+**Board 50** (day began 51; closed #668 on his ruling — the 60–70% capture target retired: *"any EP related
+trades are low winrate by default, what we want is always to catch big winners while limiting losses"*).
+
+**Shipped and live today:** #657 cleanup (29 misplaced theme memberships removed on his word); cost fix (one
+shared cost function; September restated $37.98 → $35.06); #506 theme-hierarchy health check; #505 parent pass
+with a containment question on Sonnet, **switched ON by him** (first run Mon 17:00 ET); the delayed-entry
+population guard (nightly; pages on any non-EP row), and the 3,667 voided non-EP trades + 4,397 watch rows moved to
+`*_voided_0901` archive tables on his word.
+
+**🔴 What went wrong today (his words: "This is not acceptable"):** Block 5 and the leaders/management read
+(~1.5M agent tokens) measured the delayed-entry lane's voided first week — 98.5% non-EP gappers left in the table
+after the 09-01 fix. Caught by the diagnosis; all three docs carry banners; memory
+`check-the-population-before-the-analysis`; guard + archive make it mechanical. He said "I don't trust you
+anymore" — every analysis now opens with its population checked against the database, the run halts on a
+mismatch, and the verifier checks the population before the math.
+
+**The right answer, verified (277 real EPs, May → 11 Sep, split at the 08-22 rule change per his option 1):** no
+stop, target, exit or management rule makes the delayed-entry lane pay; both periods agree. The loss is made at
+the stop (62% shaken out); the ceiling is selection (runners ~2% of trades). The "daily-range stop gets to ~0R"
+read is one period only — not yet proven.
+
+**🔴 SUNDAY 09-27 — in order:**
+1. **#354** (merge the continuation-flag detector into Family A) — SHIPS today, his final-bump ruling.
+2. **#327 stop × re-entry study** on the 277 real EPs (split at 08-22): daily-range stops × 1/2/3 tries, per
+   pattern. Bar: survives dropping the best TWO names, gap-through stops charged at the open, both periods the
+   same sign. **Population-first:** the run must reproduce 261 / 16 campaigns before any number; the verifier
+   checks the population before the math.
+3. **#662 / #677** verifies on the Sunday weekly review.
+**Monday:** #505's first parent-pass run and #506's first row (17:00/17:30 ET), #657 nightly verify, the new
+population guard's first nightly row (expect breach 0, legacy 0). **Capacity:** ~5.3M agent tokens used today —
+stagger cards, one at a time.
+
