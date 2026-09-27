@@ -22,6 +22,8 @@ One **end-to-end trade tactic**, three layers, built as one unit (memory
 
 ## 🗂 THE CONTEXT LEDGER — read this before ANY delayed-entry work (operator 2026-08-29)
 
+> 🗄 **2026-09-26 — the voided first-week rows are OUT of the live tables (operator: *"Ok, move them out"*).** 3,667 trigger and 4,397 watch rows on non-EP gappers (EP dates before 2026-09-01, no live EP alert) moved to `mi_delayed_entry_trigger_voided_0901` / `mi_delayed_entry_watch_voided_0901`; the live tables now hold only real-EP rows (100 trigger, 329 watch). A nightly check (`health_checks.run_delayed_entry_population_check`) pages if a non-EP row ever appears again. Analyses dated before 2026-09-26 that read the live tables include that cohort.
+
 > *"i don't want delay entry to be re-discussed everytime with no context, make sure everything
 > is saved 100%, history, convo, context and linked everywhere we have delay entries, all tasks,
 > etc. and whatever finding when we're done."*
