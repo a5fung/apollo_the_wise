@@ -5,3 +5,4 @@ minute_pull.sql
 extract_2.log
 events.csv
 __pycache__/
+cells.tsv

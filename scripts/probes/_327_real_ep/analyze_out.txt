@@ -1,0 +1,39 @@
+fires 632 on 247 names; draws 654 = 588 grid + 66 mgmt
+rows built 632 / 632; excluded {}; d0 kinds {'real_intraday_bars': 579, 'daily_fold': 35, 'cached_pseudo_bars': 9, 'no_source': 9}; level-priced fires opening above the level 20
+ANCHOR 4 — grid incumbent cell vs REAL compute_settlement: {'s10_none_match': 611, 's10_trail_max10_20_match': 611, 's20_none_match': 588, 's20_trail_max10_20_match': 588, 'settle_abstain': 18, 'killed_or_abstain': 7}
+INCUMBENT (incumbent stop / no target / trail max10_20) s10: ERA A n=540 mean -0.1291 kept>=3R 34 (6.3%) stopped 61.67% | ERA B n=20 mean -0.8462 kept>=3R 0.0% | pooled n=560 mean -0.1547 kept>=3R 6.07%;  no-exit arm ERA A mean -0.1939 kept>=3R 6.48%
+INCUMBENT (incumbent stop / no target / trail max10_20) s20: ERA A n=536 mean -0.1908 kept>=3R 31 (5.78%) stopped 62.13% | ERA B n=0 mean None kept>=3R None% | pooled n=536 mean -0.1908 kept>=3R 5.78%;  no-exit arm ERA A mean -0.4057 kept>=3R 5.78%
+TAIL BAR = 3 x 6.3% = 18.90% (3.0% absolute reported beside)
+[recorded s10] draws 654: clearing 0 (ERA A only 0; with 3% abs tail 0); mean>0 ERA A 202 / ERA B 0 / both 0 / pooled 119; tail>=bar ERA A 39; best ERA A cell ('grid', 'prior_low', 'none', 'time_s3') mean 0.2205 n 408 (ERA B -0.6527 n 20)
+[recorded s20] draws 654: clearing 0 (ERA A only 0; with 3% abs tail 0); mean>0 ERA A 169 / ERA B 0 / both 0 / pooled 169; tail>=bar ERA A 46; best ERA A cell ('grid', 'prior_low', 'none', 'time_s3') mean 0.2285 n 405 (ERA B None n 0)
+[fillable s10] draws 654: clearing 0 (ERA A only 0; with 3% abs tail 0); mean>0 ERA A 133 / ERA B 0 / both 0 / pooled 59; tail>=bar ERA A 32; best ERA A cell ('grid', 'prior_low', 'none', 'time_s3') mean 0.2061 n 408 (ERA B -0.6547 n 20)
+[fillable s20] draws 654: clearing 0 (ERA A only 0; with 3% abs tail 0); mean>0 ERA A 114 / ERA B 0 / both 0 / pooled 114; tail>=bar ERA A 40; best ERA A cell ('grid', 'prior_low', 'none', 'time_s3') mean 0.214 n 405 (ERA B None n 0)
+A ep_low_reclaim       ERA A n=201/3599 pess 27.86 vs 21.73 → 6.13pp (close-entry 5.14pp; fillable 6.13pp; drop {'name': 'CRMD', 'gap_pp': 5.41}) | ERA B n=11 pess 27.27 vs 27.27 → 0.0pp | opt all 5.96pp
+A ep_close_reclaim     ERA A n=141/2498 pess 26.95 vs 20.26 → 6.69pp (close-entry 5.27pp; fillable 6.69pp; drop {'name': 'ABCL', 'gap_pp': 6.18}) | ERA B n=9 pess 11.11 vs 37.5 → -26.39pp | opt all 5.43pp
+A ep_high_break        ERA A n=48/836 pess 33.33 vs 18.3 → 15.03pp (close-entry 6.7pp; fillable 8.78pp; drop {'name': 'ABVX', 'gap_pp': 13.82}) | ERA B n=2 pess 0.0 vs 0.0 → 0.0pp | opt all 13.53pp
+A ep_close_620_prox    ERA A n=203/3614 pess 24.63 vs 22.88 → 1.75pp (close-entry 1.75pp; fillable 1.75pp; drop {'name': 'ABSI', 'gap_pp': 1.26}) | ERA B n=11 pess 0.0 vs 27.78 → -27.78pp | opt all 0.93pp
+D runners: {'classifiable': 270, 'ran_50': 11, 'incomplete_15_sessions': 1, 'ran_50_held_30': 7, 'unclassifiable_ep_after_09_04': 6, 'runner_campaigns_lane_fired': 7}
+   HQ     2026-06-15 era A MODERATE +152.5% max, s15 +33.3%, fires [('ep_close_reclaim', 1, 'minute_5')]
+   TE     2026-05-12 era A HIGH     +111.5% max, s15 +96.6%, fires [('ep_low_reclaim', 1, 'minute_5'), ('ep_close_620_prox', 1, 'minute_5')]
+   ALOY   2026-06-01 era A HIGH     +87.4% max, s15 +74.4%, fires [('ep_close_reclaim', 1, 'minute_5'), ('ep_close_620_prox', 1, 'minute_5')]
+   ARM    2026-05-20 era A HIGH     +66.7% max, s15 +33.3%, fires [('ep_high_break', 1, 'daily')]
+   EFOR   2026-07-22 era A MODERATE +65.5% max, s15 +60.5%, fires [('ep_low_reclaim', 1, 'minute_5'), ('ep_close_620_prox', 1, 'minute_5')]
+   VPG    2026-05-12 era A HIGH     +59.2% max, s15 +51.8%, fires [('ep_high_break', 1, 'daily')]
+   NRIX   2026-06-08 era A HIGH     +59.1% max, s15 +55.1%, fires [('ep_low_reclaim', 1, 'minute_5'), ('ep_close_620_prox', 2, 'minute_5')]
+   D arm adr_100/M1_orb2                          runner fires  11 kept>=3R   9 runner mean 4.9191 | rest n 616 mean -0.1856
+   D arm adr_100/M1_orb1                          runner fires  11 kept>=3R   9 runner mean 4.9191 | rest n 620 mean -0.2019
+   D arm adr_100/P2_B1R_hold                      runner fires  11 kept>=3R   8 runner mean 4.356 | rest n 620 mean -0.2049
+   D arm adr_100/P3_B1R_hold                      runner fires  11 kept>=3R   8 runner mean 4.6287 | rest n 620 mean -0.2085
+   D arm grid:adr_100/none/sma21_2x               runner fires  11 kept>=3R   8 runner mean 5.4983 | rest n 620 mean -0.2582
+   D arm adr_100/P2_B2R_hold                      runner fires  11 kept>=3R   8 runner mean 4.356 | rest n 620 mean -0.3077
+   D arm adr_100/P2_Bpart_hold                    runner fires  11 kept>=3R   8 runner mean 4.356 | rest n 620 mean -0.3077
+   D arm adr_100/P3_B2R_hold                      runner fires  11 kept>=3R   8 runner mean 4.6287 | rest n 620 mean -0.3164
+   D arm adr_100/P3_Bpart_hold                    runner fires  11 kept>=3R   8 runner mean 4.6287 | rest n 620 mean -0.325
+   D arm grid:adr_150/none/none                   runner fires  11 kept>=3R   8 runner mean 4.9474 | rest n 621 mean -0.3561
+   D arm grid:adr_100/none/none                   runner fires  11 kept>=3R   8 runner mean 5.8067 | rest n 620 mean -0.3742
+   D arm adr_100/P3_B1R_sma10                     runner fires  11 kept>=3R   7 runner mean 3.5749 | rest n 620 mean -0.0804
+E TEAM 2026-08-07: EP close 149.07, 09-25 close 187.74; fires 2
+    ep_close_reclaim     2026-08-10 s1 09:40 entry 149.39 stop 145.0 (2.94%) after_exit=True max_high 11.21R close09-25 8.74R (25.7%) inc/none {'s10': (5.0, 'open', None), 's20': (6.16, 'open', None)} inc/trail {'s10': (5.0, 'open', None), 's20': (6.16, 'exit', 20)} M1t_orb2@inc {'final': None, 'partial': False, 'abstain': {10: 'abstain:fwd_stop_and_breakeven_same_day:2026-08-11', 20: 'abstain:fwd_stop_and_breakeven_same_day:2026-08-11'}} +2ADR {'pess': 'target', 'opt': 'target'}
+    ep_close_620_prox    2026-08-10 s1 10:50 entry 148.06 stop 145.0 (2.07%) after_exit=True max_high 16.52R close09-25 12.97R (26.8%) inc/none {'s10': (7.6, 'open', None), 's20': (9.27, 'open', None)} inc/trail {'s10': (7.6, 'open', None), 's20': (9.27, 'exit', 20)} M1t_orb2@inc {'s10': (6.4, 'open'), 's20': (5.05, 'stop'), 'final': (5.05, 'stop'), 'partial': True, 'abstain': None} +2ADR {'pess': 'target', 'opt': 'target'}
+E MRNA 2026-08-19: EP close 174.38, 09-25 close 198.88; fires 0
+wrote summary.json, cells.tsv, events.csv
