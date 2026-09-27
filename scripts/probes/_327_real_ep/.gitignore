@@ -1,0 +1,7 @@
+# raw prod extracts and bulk outputs (>500 KB) — regenerate with extract_1.sh / extract_2.sh / rerun.py
+daily.tsv
+minute.tsv.gz
+minute_pull.sql
+extract_2.log
+events.csv
+__pycache__/

@@ -1,0 +1,182 @@
+{
+ "anchor1_old_files": {
+  "fires_replayed": 602,
+  "fires_recorded_09_01": 602,
+  "row_for_row_match": 602,
+  "campaigns": 267
+ },
+ "anchor2_today_pull_267": {
+  "fires_replayed": 602,
+  "row_for_row_match": 594,
+  "only_09_01": 8,
+  "only_today": 8,
+  "reasons": {
+   "only_09_01:other": 7,
+   "only_09_01:minute_coverage_differs_dropped_lt100": 1,
+   "only_today:other": 8
+  },
+  "detail": [
+   [
+    "only_09_01",
+    "minute_coverage_differs_dropped_lt100",
+    "HGTY",
+    "2026-08-05",
+    "ep_low_reclaim",
+    "2026-08-12",
+    12.66,
+    12.64
+   ],
+   [
+    "only_09_01",
+    "other",
+    "ACAD",
+    "2026-06-26",
+    "ep_close_620_prox",
+    "2026-06-29",
+    25.06,
+    24.96
+   ],
+   [
+    "only_09_01",
+    "other",
+    "DOCN",
+    "2026-07-07",
+    "ep_close_620_prox",
+    "2026-07-08",
+    136.438,
+    134.5
+   ],
+   [
+    "only_09_01",
+    "other",
+    "JBL",
+    "2026-06-17",
+    "ep_close_620_prox",
+    "2026-06-22",
+    370.03,
+    362.0
+   ],
+   [
+    "only_09_01",
+    "other",
+    "MLTX",
+    "2026-06-22",
+    "ep_close_620_prox",
+    "2026-06-23",
+    21.68,
+    20.65
+   ],
+   [
+    "only_09_01",
+    "other",
+    "STC",
+    "2026-05-19",
+    "ep_close_620_prox",
+    "2026-05-20",
+    67.705,
+    66.49
+   ],
+   [
+    "only_09_01",
+    "other",
+    "SYRE",
+    "2026-06-22",
+    "ep_close_620_prox",
+    "2026-06-23",
+    98.628,
+    97.14
+   ],
+   [
+    "only_09_01",
+    "other",
+    "UUUU",
+    "2026-06-18",
+    "ep_close_620_prox",
+    "2026-06-22",
+    16.29,
+    15.777
+   ],
+   [
+    "only_today",
+    "other",
+    "ACAD",
+    "2026-06-26",
+    "ep_close_620_prox",
+    "2026-06-29",
+    25.07,
+    24.96
+   ],
+   [
+    "only_today",
+    "other",
+    "DOCN",
+    "2026-07-07",
+    "ep_close_620_prox",
+    "2026-07-08",
+    139.585,
+    134.5
+   ],
+   [
+    "only_today",
+    "other",
+    "HGTY",
+    "2026-08-05",
+    "ep_low_reclaim",
+    "2026-08-13",
+    12.825,
+    12.64
+   ],
+   [
+    "only_today",
+    "other",
+    "JBL",
+    "2026-06-17",
+    "ep_close_620_prox",
+    "2026-06-18",
+    368.525,
+    368.19
+   ],
+   [
+    "only_today",
+    "other",
+    "MLTX",
+    "2026-06-22",
+    "ep_close_620_prox",
+    "2026-06-23",
+    21.7168,
+    20.65
+   ],
+   [
+    "only_today",
+    "other",
+    "STC",
+    "2026-05-19",
+    "ep_close_620_prox",
+    "2026-05-22",
+    67.89,
+    67.55
+   ],
+   [
+    "only_today",
+    "other",
+    "SYRE",
+    "2026-06-22",
+    "ep_close_620_prox",
+    "2026-06-23",
+    98.94,
+    97.14
+   ],
+   [
+    "only_today",
+    "other",
+    "UUUU",
+    "2026-06-18",
+    "ep_close_620_prox",
+    "2026-06-22",
+    16.2399,
+    15.777
+   ]
+  ],
+  "sessions_dropped_lt100_bars": 67
+ }
+}

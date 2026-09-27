@@ -1,0 +1,10 @@
+id|ticker|alert_date|status|signal_type|account_mode|entry_price|entry_shares|stop_price|hard_stop|orb_high|orb_low|exits|remaining_shares|total_pnl|partial_taken|breakeven_active|confirmed_et|lowest_price_seen|highest_price_seen|skip_reason
+374|MRNA|2026-08-19|closed|magna53|live|120.75|4|145.2|109.85|120.15|115|[{"pnl": 17.710000000000008, "time": "2026-08-19T13:55:04.089795+00:00", "price": 138.46, "reason": "partial_profit", "shares": 1, "order_id": "ecb9e3b9-a41d-4310-90a6-94f6c385b079"}, {"pnl": 73.08059999999998, "time": "2026-09-03T13:32:47.915474+00:00", "price": 145.1102, "reason": "stop_hit", "shares": 3, "source": "websocket", "attempt": 1}]|0|90.79059999999998|t|t|2026-08-19 09:31:08.851176|116|176.659999999999996589394868351519107818603515625|
+333|TEAM|2026-08-07|closed|magna53|live|147.13|6|143.21|143.21|146.8|143.21|[{"pnl": -23.940000000000055, "time": "2026-08-07T13:43:54.130227+00:00", "price": 143.14, "reason": "stop_hit", "shares": 6.0, "source": "websocket", "attempt": 1}]|0|-23.940000000000055|f|f|2026-08-07 09:31:11.164922|142.6200000000000045474735088646411895751953125|151.3700000000000045474735088646411895751953125|block:r3_reentry_disabled
+(2 rows)
+ticker|trade_date|close
+MRNA|2026-09-24|194.82
+MRNA|2026-09-25|198.88
+TEAM|2026-09-24|192.61
+TEAM|2026-09-25|187.74
+(4 rows)
