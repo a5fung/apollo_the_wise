@@ -132,8 +132,11 @@ a better price, off a chart saying the turn was in. Same stock, same thesis, dif
   forming bottom".
 - He entered ~25 min after the MACD signal and **~20 min before the EMA cross** — i.e. inside the
   exact window the source says to use, and ahead of the confirmation that arrives too late.
-- Apollo, by contrast, entered the opening break at $147.13 and was stopped at $143.21 within
-  20 minutes. Low of day was $141.51 at 13:55 ET, after his entry.
+- Apollo, by contrast, entered the opening break at $147.13 and was stopped out (stop $143.21, filled
+  $143.14 at 09:43 ET) within about 12 minutes. Low of day was $141.51 at **09:56 ET** — 13 minutes
+  after our stop-out and about two hours BEFORE his entry. *(Corrected 2026-09-27: this line read
+  "13:55 ET, after his entry" — a UTC time stamp read as ET; `mi_intraday_bars` and the trade's own
+  exit record settle it.)*
 
 His stated rule — *"I waited for the 6 period stretched and turning while price chart also forming
 bottom"* — is therefore **three computable conditions**: MACD extended below its recent floor, the

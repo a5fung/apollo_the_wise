@@ -13581,25 +13581,41 @@ reviews:
     # lane's real-tail rate" would have read the calibration set as its own validation. Reads
     # 1,325 prospective settled today - still far past 30, so readiness is unchanged; what
     # changed is which rows the action may quote.
+    # ⚠ MATURE-ONLY since 2026-09-27 (found by the #327 hypotheses critic, verified on prod): a stop
+    # settles the day it is hit, a non-stop only when its ~20-session window closes, so "settled"
+    # alone is a LOSERS-FIRST sample. After the 09-26 archive left only real-EP rows, 66 of 66
+    # settled rows were stops at -1.00R and 29 were still open — the review would have fired on
+    # 09-29 reading a 0% tail and taken the "< 1.3% -> stop" branch by construction. Now it counts
+    # only fires whose whole window has elapsed (30 calendar days ≥ 20 sessions), where settled
+    # no longer depends on the outcome. Reads 0 on 2026-09-27; the first real-EP fires mature
+    # ~2026-10-01 and ~30 are expected by late October at ~100 fires a month.
+    # ⚠ AND THE BANDS in action_when_ready were calibrated on the outcome-selected missed-EP
+    # cohort (delayed_entry_campaign_policies_327_2026-08-30.md), not on real EPs — the read must
+    # restate each policy's break-even p* on the 277 real-EP campaigns before applying them
+    # (docs/analysis/327_hypotheses_2026-09-27.md).
     predicate_sql: >-
       SELECT CASE WHEN to_regclass('mi_delayed_entry_trigger') IS NULL THEN 0
                   ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger
                         WHERE realized_r IS NOT NULL
-                          AND fire_date >= DATE '2026-08-31') END
+                          AND fire_date >= DATE '2026-08-31'
+                          AND fire_date <= CURRENT_DATE - 30) END
     threshold: 30
     discriminates_on: [mi_delayed_entry_trigger.rung]
     can_fire:
-      predicate_runs: "2026-09-19 (#669 audit) - runs against prod: 1,325 with the prospective
-        clause, 3,029 without. Clean SQL."
-      nonzero_possible: "The recorder (delayed_ep_reentry, live since 2026-08-31) writes a row per
-        rung fire on the day it fires (1,716 same-day rows) and the settle path fills realized_r
-        ~20 sessions later; 555 of the 865 rows fired since 09-02 are already settled."
+      predicate_runs: "2026-09-27 - runs against prod: 0 mature settled rows (66 settled, all
+        stops, all younger than 30 days). 2026-09-19 (#669 audit): 1,325 with the prospective
+        clause, 3,029 without, before the voided rows were archived. Clean SQL."
+      nonzero_possible: "The recorder (delayed_ep_reentry, live since 2026-08-31, real EP alerts
+        only since the 09-01 fix) holds 95 fires dated 08-31..09-25 on 2026-09-27; the earliest
+        cross the 30-day line from 2026-09-30, and the settle path fills realized_r at the end of
+        the ~20-session window, so every mature fire is settled whatever its outcome."
       lane_live: "The delayed-entry watch lane is SHADOW by design (docs/setups/delayed_ep_reentry.md);
         its recorder runs every session. Promotion is the question, so no paper/live rung exists."
-      threshold_vs_observed: "30 against 1,325 - met 44x over. The bar is trivially satisfied
-        on this table because it counts every rung; the action reads PER RUNG and per
-        screen_member, where the decision-relevant cells are far thinner, which is why it says
-        'too few settled fires -> extend' per cell rather than trusting the total."
+      threshold_vs_observed: "30 against 0 mature on 2026-09-27 (66 settled rows were all
+        stops, which is why settled-only was a losers-first count). ~100 real-EP fires a month
+        puts 30 mature fires around late October. The action still reads PER RUNG and per
+        screen_member, where the cells are thinner; 'too few settled fires -> extend' applies
+        per cell."
       era_scoped: "Prospective rows only (fire_date >= 2026-08-31, the recorder's first live
         session). The action's realized_r is the M-none arm's HARVESTED R through the lane's own
         exit ladder - not the magna53 stack - so the 09-06 magna53 flip does not straddle it.
