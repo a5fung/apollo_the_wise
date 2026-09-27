@@ -4009,6 +4009,16 @@ async def _post_nightly_audit_job():
         await notify_job_failure("theme_hierarchy_health_check", str(e))
 
     try:
+        from agents.market_intelligence.health_checks import run_delayed_entry_population_check
+        dp = await run_delayed_entry_population_check()
+        logger.info(
+            f"Delayed-entry population check: {dp['breach_rows']} breach row(s), "
+            f"{dp['legacy_rows']} legacy row(s), {len(dp['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Delayed-entry population check failed: {e}", exc_info=True)
+        await notify_job_failure("delayed_entry_population_check", str(e))
+
+    try:
         from agents.market_intelligence.health_checks import run_job_liveness_sweep
         jl = await run_job_liveness_sweep()
         logger.info(

@@ -1806,6 +1806,10 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # `mi_audit_log` carries no separate business-date column.
     ("mi_audit_log", "theme hierarchy health check (#506)", "created_at",
      "event_type = 'theme_hierarchy_health'"),
+    # #327 population guard (2026-09-26): its own nightly row is its liveness evidence, same
+    # mi_audit_log + extra_where shape as the #506 entry above.
+    ("mi_audit_log", "delayed-entry population check (#327)", "created_at",
+     "event_type = 'delayed_entry_population_check'"),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median
@@ -4338,6 +4342,81 @@ def _evaluate_jsonb_growth(
         if count > before:
             flags.append({"key": key, "before": before, "after": count, "delta": count - before})
     return flags
+
+
+# ── #327 delayed-entry population guard (2026-09-26) ─────────────────────────────────────────
+# On 2026-09-01 the delayed-entry lane was re-seeded to live EP alerts only (e77436c2), but its
+# first week's rows on ~680 non-EP gappers stayed in mi_delayed_entry_trigger, and three analyses on
+# 2026-09-26 read them as EPs (98.5% of their fires; ~1.5M agent tokens spent on the wrong stocks).
+# This check makes the invariant mechanical: every trigger row whose EP date is on or after the fix
+# must belong to a live EP alert. A breach pages; every night writes a row with the counts, including
+# the pre-fix legacy count, so any analysis can see how many voided rows are still in the table.
+_DELAYED_ENTRY_POP_FIX_DATE = date(2026, 9, 1)
+_DE_NON_EP_WHERE = (
+    "NOT EXISTS (SELECT 1 FROM mi_ep_alerts a WHERE a.ticker = t.ticker "
+    "AND a.alert_date = t.ep_date AND COALESCE(a.source, 'live') = 'live')")
+
+
+async def run_delayed_entry_population_check(conn=None) -> dict[str, Any]:
+    """Nightly: count delayed-entry trigger rows that are NOT on a live EP alert. Rows dated on or
+    after 2026-09-01 must be zero (a breach pages); earlier rows are the known voided first week,
+    counted and reported so a reader of the table is warned. Never raises; a failure writes an
+    error row and pages through notify_job_failure."""
+    from agents.market_intelligence.db import get_pool as _gp, log_audit_event as _log
+
+    async def _run(c) -> dict[str, Any]:
+        out: dict[str, Any] = {"breach_rows": None, "breach_campaigns": [], "legacy_rows": None,
+                               "spoke": False, "errors": []}
+        try:
+            out["breach_rows"] = int(await c.fetchval(
+                f"SELECT COUNT(*) FROM mi_delayed_entry_trigger t WHERE t.ep_date >= $1 "
+                f"AND {_DE_NON_EP_WHERE}", _DELAYED_ENTRY_POP_FIX_DATE))
+            out["legacy_rows"] = int(await c.fetchval(
+                f"SELECT COUNT(*) FROM mi_delayed_entry_trigger t WHERE t.ep_date < $1 "
+                f"AND {_DE_NON_EP_WHERE}", _DELAYED_ENTRY_POP_FIX_DATE))
+            if out["breach_rows"]:
+                rows = await c.fetch(
+                    f"SELECT t.ticker, t.ep_date::text AS ep_date FROM mi_delayed_entry_trigger t "
+                    f"WHERE t.ep_date >= $1 AND {_DE_NON_EP_WHERE} "
+                    f"GROUP BY 1, 2 ORDER BY 2 DESC, 1 LIMIT 10", _DELAYED_ENTRY_POP_FIX_DATE)
+                out["breach_campaigns"] = [f"{r['ticker']} {r['ep_date']}" for r in rows]
+        except Exception as e:
+            logger.error("delayed_entry_population_check: read failed: %s", e, exc_info=True)
+            out["errors"].append(str(e))
+            await _log("delayed_entry_population_check", f"error: {e}",
+                       json.dumps({"status": "error", "error": str(e)}), conn=c)
+            from core.notifications import notify_job_failure
+            await notify_job_failure("delayed_entry_population_check", str(e))
+            return out
+
+        await _log(
+            "delayed_entry_population_check",
+            f"{out['breach_rows']} non-EP trigger row(s) since {_DELAYED_ENTRY_POP_FIX_DATE}; "
+            f"{out['legacy_rows']} voided pre-fix row(s) still in the table",
+            json.dumps({"status": "ok", "breach_rows": out["breach_rows"],
+                        "legacy_rows": out["legacy_rows"],
+                        "breach_campaigns": out["breach_campaigns"],
+                        "fix_date": str(_DELAYED_ENTRY_POP_FIX_DATE)}),
+            conn=c)
+        if not out["breach_rows"]:
+            return out
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            msg = (f"⚠️ **Delayed-entry lane is watching non-EP stocks again**\n"
+                   f"{out['breach_rows']} trade row(s) since {_DELAYED_ENTRY_POP_FIX_DATE} are on "
+                   f"stocks with no live EP alert, e.g. {', '.join(out['breach_campaigns'][:5])}. "
+                   f"Any analysis of the lane will read them as EPs until this is fixed.")
+            out["spoke"] = bool(await send_telegram_message(msg))
+        except Exception as e:
+            logger.error("delayed_entry_population_check: announce failed: %s", e, exc_info=True)
+            out["errors"].append(f"announce: {e}")
+        return out
+
+    if conn is not None:
+        return await _run(conn)
+    pool = await _gp()
+    async with pool.acquire() as c:
+        return await _run(c)
 
 
 async def run_jsonb_encoding_check(conn=None) -> dict[str, Any]:
