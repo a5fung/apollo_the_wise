@@ -1621,3 +1621,19 @@ Our live trades, read from `mi_live_trades` the same day:
 - **Use:** named cases for the winners study (which EPs are the real ones, and how to trade them) and for
   EP exit discipline (#508). Both are on his labelled real-EP list (`tests/fixtures/must_not_miss_eps.py`).
 
+## 2026-09-27 — delayed-EP entries and stops: pivot proximity, and close-based mental stops (operator, verbatim)
+
+> *"A couple more ideas
+> 1. Entries can be proximity to a pivot, on team, I looked at the 620 chart for intraday low entry
+> 2. Stops can be varies, what I mean by that is that I sometimes hold mental stops, so if it's 10sma I don't
+> immediately sell but sell if it closes below it to avoid intraday churn, but if it slices though strongly then
+> I may sell. So there's art in this"*
+
+- **Entry:** near a pivot, timed by the 6/20 MACD (620) chart turning at the intraday low — on TEAM 08-07 he
+  entered ~$144.39 around 12:05 ET, two hours after the 09:56 low (`docs/methodology/620_chart.md`). The lane's
+  only 620 pattern anchors to the EP-day close alone.
+- **Stop:** a mental stop under a level (e.g. the 10-day SMA) judged on the CLOSE, to avoid intraday churn —
+  with an intraday exit only when price slices through strongly. "Art" = the judgement of what counts as strong.
+- **Filed as H12 and H13** in `docs/analysis/327_hypotheses_2026-09-27.md` (#327); both are $0 replays on the
+  277 real EPs. Adopting either in live trading is a stop/entry change — his call, CHANGE_PROCESS.
+
