@@ -1775,3 +1775,24 @@ running container:
 - **No live render failure:** the 11:59–12:03 UTC container log has no "missed_opportunities section
   render failed" line. (Rebuilding from the stored JSON needs its date strings parsed back; the live
   path renders in-process from date objects and is the only caller.)
+
+## #354 — flag_continuation merged into the consolidation family; the undercut item dropped on his ruling (2026-09-27)
+
+BAR: "DoD: one strategy, flag_continuation absorbed, undercut→U&R, gates reconciled to the signed model, /flags
+unbroken."
+
+EVIDENCE: four items verified in code and prod on 2026-09-27; the fifth dropped by the operator the same day.
+
+- **One strategy:** prod `mi_strategies` reads `Continuation Flag (post-runup tightening) | deprecated | f`.
+- **Absorbed:** the breakout is the family's Confirm entry, `anticipation.confirm_signal_at`, called by
+  `scheduler.py:4689` in the consolidation readiness job; prod `mi_consolidation_entry_shadow` holds 157
+  `entry_mode='confirm'` rows over 37 entry days, latest 2026-09-25.
+- **Gates reconciled to the signed model:** that job pre-filters with `get_anticipation_universe`
+  (`scheduler.py:4582`, the signed §2 universe); the detector keeping its own parameters is his 2026-08-02
+  ruling, recorded in `docs/setups/flag_continuation.md` §"Why the DETECTOR exists but the STRATEGY does not".
+- **/flags unbroken:** the 2026-09-25 scan wrote 494 `mi_flag_candidates` rows (481 unqualified, 6 WATCH,
+  7 INVALIDATED).
+- **undercut→U&R — DROPPED, not built, on his ruling.** It failed ADR 0026 D3's own signed ship rule on the
+  2026-07-26 probe (mean +0.09R, 95% interval spanning zero, false-revival 53.4% against a 40% bar; on today's
+  board n=19, mean −0.64R, false-revival 87.5%). Asked what shipping it would change, he said *"these are just
+  data collection and nothing we trade"*, then *"ok"* to closing without it. Recorded in the SSoT change log.

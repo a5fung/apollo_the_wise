@@ -177,8 +177,8 @@ model that `confirm_signal_at` already inherits by running on the §2 universe:
 | Universe floor | Flag-specific (`$5M` ADV, RS-based) | `$20M/day` median dollar volume, price ≥ $5 | `db.get_anticipation_universe(dvol_min=20_000_000.0, price_min=5.0)` (`db.py:7285-7286`) |
 
 `entry_mode` currently accepts `'anticipate'` \| `'confirm'` only (`mi_cons_entry_shadow_mode_chk`,
-`db.py:1829-1831`) — `'ur'` is **not yet added**; ADR 0026's D3 (undercut → `WATCH_UR`) is signed but its own
-card (C3) has not landed, so U&R has no wiring to reconcile yet. Not this card's scope.
+`db.py:1829-1831`) — `'ur'` is **not added and will not be**: ADR 0026's D3 (undercut → `WATCH_UR`) was
+**dropped 2026-09-27 on his ruling** after failing its own ship rule (change log, 2026-09-27).
 
 **Regression pins verified (not touched by this card):** the #94 intraday scan still reads
 `mi_flag_candidates` stages (HTF board, `flag_detector.py`) unchanged; HTF detection (#356) still consumes
@@ -186,6 +186,22 @@ the same 5-stage state machine unchanged; `/flags` routing (`test_execute_task_r
 none of these read the `mi_strategies` registry row or `anticipation.py`.
 
 ## Change log (newest first)
+
+### 2026-09-27 — #354 closed; the undercut → `WATCH_UR` item (ADR 0026 D3) DROPPED, board unchanged
+
+- **What:** nothing in code changes. `/flags` keeps invalidating a close below `base_low_close`; no
+  `WATCH_UR` stage and no `'ur'` shadow rows will be built.
+- **Why:** D3's own signed ship rule (reclaim forward R positive at N≥10 AND false-revival < 40%) failed on
+  the 2026-07-26 probe (`docs/analysis/354_undercut_reclaim_probe_2026-07-26.md`): n=439, mean +0.09R
+  with a 95% interval spanning zero, median −0.43R, win 39%, false-revival 53.4% at 5 days; on today's
+  high-tight-flag board alone n=19, mean −0.64R, win 11%, false-revival 87.5%.
+- **Operator ruling 2026-09-27:** asked what shipping it would change — *"these are just data collection
+  and nothing we trade"* — he took the recommendation to close without it (*"ok"*). It would only have
+  kept failing names on his board, and the probe was measured from rows this table already stores
+  (`reason` carries the frozen `base_low_close`), so the question stays re-measurable without new capture.
+- **Reversion flag:** none — this reverts nothing; D1 (retire the standalone strategy, absorbed as the
+  Confirm entry) stands. The Confirm entry's own round-2 read (2026-09-27) failed his 8/9 bar on the
+  current wiring and is recorded in `data_gated_reviews.yaml` (`consolidation_unification_review`).
 
 ### 2026-09-13 — #354 Sunday shadow sub-piece: failure telemetry (`failed_at` / `low_after_breakout` / `undercut_after_breakout`)
 
