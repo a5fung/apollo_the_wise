@@ -7969,15 +7969,26 @@ async def get_yesterday_flag_stages(scan_date: "str | date") -> dict[str, str]:
     return {r["ticker"]: r["stage"] for r in rows}
 
 
+# #592 (2026-09-27): how far back a ticker's last anchored row may be and still seed the stable
+# anchor. It was 5 days (sized for a weekend), so a name that left the scan for a week came back
+# with NO carried top and re-anchored fresh — which skips `_flag_resolved_by` and lets a wick over
+# an unresolved flag become the pole top, the exact defect #592 fixed. Measured on prod
+# 09-05..09-25: 7 of the 8 wick-walks left after the fix were this gap (MRVL, ORCL, SMR, ASAN,
+# LITE, NMAX, VERA). 40 calendar days covers the finder's 25-session lookback, and
+# `_find_pivot_high` still ignores a carried pivot that has fallen out of that lookback.
+FLAG_PIVOT_CARRY_DAYS = 40
+
+
 async def get_yesterday_flag_pivots(
     scan_date: "str | date",
+    carry_days: int = FLAG_PIVOT_CARRY_DAYS,
 ) -> dict[str, tuple[date, float]]:
     """Map ticker → (pivot_high_date, pivot_high_price) from the most recent
-    prior scan that had a real pivot anchor. Mirrors get_yesterday_flag_stages
-    shape (5-day lookback so Mon picks up Fri's row across weekends/holidays).
-    Filters NULL pivot fields — `unqualified` rows from the no_pivot_in_lookback
-    branch persist without anchors and must NOT seed stable-anchor logic.
-    Returns {} if no prior rows.
+    prior scan that had a real pivot anchor, within `carry_days` calendar days
+    (long enough that a name absent from the scan for a week keeps its top —
+    see FLAG_PIVOT_CARRY_DAYS). Filters NULL pivot fields — `unqualified` rows
+    from the no_pivot_in_lookback branch persist without anchors and must NOT
+    seed stable-anchor logic. Returns {} if no prior rows.
     """
     pool = await get_pool()
     if isinstance(scan_date, str):
@@ -7987,11 +7998,11 @@ async def get_yesterday_flag_pivots(
             SELECT DISTINCT ON (ticker) ticker, pivot_high_date, pivot_high_price
             FROM mi_flag_candidates
             WHERE scan_date < $1
-              AND scan_date >= $1 - INTERVAL '5 days'
+              AND scan_date >= $1 - make_interval(days => $2)
               AND pivot_high_date IS NOT NULL
               AND pivot_high_price IS NOT NULL
             ORDER BY ticker, scan_date DESC
-        """, scan_date)
+        """, scan_date, carry_days)
     return {r["ticker"]: (r["pivot_high_date"], float(r["pivot_high_price"])) for r in rows}
 
 

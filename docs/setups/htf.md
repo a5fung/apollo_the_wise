@@ -184,6 +184,19 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    NULL and are NOT recommended.** What remains is his ruling on the fork below.
 
 ## Change log
+- **2026-09-27 — #592 follow-through: a name that leaves the scan for over 5 days keeps its pole top.
+  Enforces the signed 09-04 rule (a wick over an unresolved flag never becomes the top); no threshold moved.**
+  **What**: `db.get_yesterday_flag_pivots` carries the last anchored top for `FLAG_PIVOT_CARRY_DAYS = 40`
+  calendar days (was 5, sized for a weekend); `_find_pivot_high` still ignores a carried top outside its
+  25-session lookback. **Why**: verified live on prod — among flags with a formed flag whose top moved up,
+  moves on a wick with no close above the old top fell from 135 of 885 (07-01..09-03) to 8 of 146
+  (09-05..09-25), and 7 of the 8 (MRVL, ORCL, SMR, ASAN, LITE, NMAX, VERA) were names back after 6+ days out
+  of the scan, re-anchored fresh with no carried top. The 8th, ARQT 09-21, is the existing volume rule (a
+  retest within 2% of the top on higher volume takes the anchor) — not this defect, unchanged.
+  **Impact, replayed in the running image on the 278 rows 09-05..09-25 with a 6–40-day gap**: 257 identical
+  tops, 21 differ (~1.4 a day) — 12 where the fresh anchor had taken a higher wick, 9 where the stable anchor
+  holds a top the volume rule would have swapped for a lower bar in the 2% band; both are what a name scanned
+  every day already gets. **Reversion flag**: none. Tests: `tests/test_592_flag_pivot_carry.py`.
 - **2026-09-19 — #610 THE FOUR-READING OBSERVER IS BUILT. Telemetry only — THE LIVE GATE IS
   UNCHANGED (flag LOW ÷ pole high ≥ 75%). Built in a card, NOT yet deployed; the deploy is TWO
   steps (`db.py` is execution-loaded: `deploy.sh market-agent`, then `execution`).** Implements
