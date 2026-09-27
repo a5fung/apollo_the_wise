@@ -1,0 +1,37 @@
+ok  A   campaigns                    gate_out=261          loaded=261
+ok  A   first_alert_date             gate_out=2026-05-11   loaded=2026-05-11
+ok  A   has_HTFL_2026-08-14          gate_out=1            loaded=1
+ok  A   has_MRNA_2026-08-19          gate_out=1            loaded=1
+ok  A   has_PLTR_2026-08-04          gate_out=1            loaded=1
+ok  A   has_TEAM_2026-08-07          gate_out=1            loaded=1
+ok  A   last_alert_date              gate_out=2026-08-21   loaded=2026-08-21
+ok  A   median_gap_pct               gate_out=15.38        loaded=15.38
+ok  A   median_prior_close           gate_out=26.72        loaded=26.72
+ok  A   month_2026-05                gate_out=74           loaded=74
+ok  A   month_2026-06                gate_out=53           loaded=53
+ok  A   month_2026-07                gate_out=41           loaded=41
+ok  A   month_2026-08                gate_out=93           loaded=93
+ok  A   names                        gate_out=243          loaded=243
+ok  A   tier_HIGH                    gate_out=184          loaded=184
+ok  A   tier_MODERATE                gate_out=66           loaded=66
+ok  A   tier_none                    gate_out=11           loaded=11
+ok  A   prior_close_lt5              gate_out=(no row = 0) loaded=0 (null 0)
+ok  B   campaigns                    gate_out=16           loaded=16
+ok  B   first_alert_date             gate_out=2026-08-27   loaded=2026-08-27
+ok  B   last_alert_date              gate_out=2026-09-08   loaded=2026-09-08
+ok  B   median_gap_pct               gate_out=10.90        loaded=10.90
+ok  B   median_prior_close           gate_out=114.89       loaded=114.89
+ok  B   month_2026-08                gate_out=6            loaded=6
+ok  B   month_2026-09                gate_out=10           loaded=10
+ok  B   names                        gate_out=16           loaded=16
+ok  B   tier_HIGH                    gate_out=14           loaded=14
+ok  B   tier_MODERATE                gate_out=2            loaded=2
+ok  B   prior_close_lt5              gate_out=(no row = 0) loaded=0 (null 0)
+ok  ALL campaigns                    gate_out=277          loaded=277
+ok  ALL names                        gate_out=256          loaded=256
+ok  campaigns.tsv keys == alerts.tsv keys: 277 vs 277
+ok  fires.tsv campaigns subset of the 277: 267 campaigns, 632 first fires (ERA A 595, ERA B 37)
+ok  lane-recorded first fires = 23 on the 10 uncovered ERA B campaigns: 23 rows on 9 campaigns; uncovered ERA B campaigns 10 ['AGX', 'ALAB', 'CHRN', 'DG', 'ERO', 'IONQ', 'QCOM', 'ROIV', 'SNOW', 'VEEV']
+    ERA A alert dates 2026-05-11 -> 2026-08-21; ERA B sessions after the alert through 2026-09-25: CHRN 2026-08-27: 20, CRWD 2026-08-27: 20, DG 2026-08-27: 20, OKTA 2026-08-27: 20, VEEV 2026-08-27: 20, SOLS 2026-08-28: 19, AGX 2026-09-03: 15, HOOD 2026-09-03: 15, SNOW 2026-09-03: 15, ALAB 2026-09-04: 14, ERO 2026-09-08: 13, IONQ 2026-09-08: 13, PHVS 2026-09-08: 13, QCOM 2026-09-08: 13, ROIV 2026-09-08: 13, SEI 2026-09-08: 13
+
+GATE PASSED

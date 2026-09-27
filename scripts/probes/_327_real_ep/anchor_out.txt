@@ -1,0 +1,4 @@
+ANCHOR A — chain logic on the 09-02 files (horizon 08-31, 4 ADR stops x 2 arms, policy either, unlimited): 602 first fires, 4816 chains, 10239 attempt rows checked, drift 0
+ANCHOR B — first attempt, incumbent stop, horizon 09-25 vs fires.tsv: {('replay', 'match'): 606, ('lane_recorded', 'match'): 15, ('lane_recorded', 'status:settled->abstain:missing_day0_minutes'): 7, ('lane_recorded', 'status:open->abstain:window_open'): 1, ('replay', 'status:abstain->abstain:window_open'): 3}
+ADR$ cross-check: campaigns.tsv vs compute_ep_adr_dollar on the loaded daily bars — 277 campaigns, 0 differ
+ANCHOR C — mark-at-horizon (sessions truncated to 10) vs compute_settlement r_none_s10 / r_trail_s10: {'stopped_or_exited_within_10': 883, 'mark_match': 293}
