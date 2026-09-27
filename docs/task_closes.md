@@ -1732,3 +1732,46 @@ retire the target. **His ruling 2026-09-26:** *"Aligned, not sure where 60-70% c
 trades are low winrate by default, what we want is always to catch big winners while limiting losses."*
 No fix was owed and no lane was loosened.
 
+
+## #662 — the weekly review opens with what needs him, the rest folded, every trailing number era-split (2026-09-27)
+
+BAR: "DoD: on a week with no action, the report opens with one sentence saying so and fits on a phone
+screen; on a week with action, every actionable item appears ABOVE any counter; and no trailing-window
+comparison renders without its era and n."
+
+EVIDENCE: the 2026-09-27 08:00 ET edition (`mi_system_reviews` id=23; log "Weekly review complete:
+2026-09-20..2026-09-27 — 2 for him, 0 for me, 3 suppressed"), rebuilt in the running container from its
+stored metrics through `_assemble_report` + `render_review_html`, the same code that sent it:
+
+- **Action week, action first:** a 7-line head — "Needs you (2)": #354 C5 round 2 (ripe 63 days, with
+  the ripe-30-day alarm) and the ranking-rule read — then ONE "Also checked" counter line; everything
+  else sits in the fold.
+- **Folded:** the fold is a `<blockquote expandable>`; zero `telegram_markdown_fallback` rows today, so
+  it went out as HTML on the first send.
+- **Era and n on every trailing comparison:** replay-regression live-vs-calibration carries "under the
+  current rules (since 2026-09-06): 3 trades · older rules: 28 trades — current rules n<5, no read";
+  the early-window drift and band lines carry the same clause (t20: 3 current, 17 older).
+- **Quiet-week half:** not exercisable on a week with action; pinned by
+  `tests/test_weekly_review_report_layout.py::test_quiet_week_opens_with_one_sentence_and_fits_a_phone`
+  and `::test_a_quiet_week_says_so_and_names_what_was_checked`.
+- **Found in this check and fixed the same day:** the cumulative winner-capture line (19%) still pooled
+  every exit rule; it now carries the same era clause (commit of 2026-09-27).
+
+## #677 — a missed EP and its source status on one line of the weekly review (2026-09-27)
+
+BAR: "DoD: for every should've-entered name whose skip is tier- or catalyst-related, the weekly review
+states whether we HAD a direct source for it — so a source gap and a missed EP appear as ONE line, not
+two sections."
+
+EVIDENCE: the 2026-09-27 edition's should've-entered table, rebuilt from `mi_system_reviews` id=23 in the
+running container:
+
+- **Both tier-related skips carry a source marker:** `CIFR 09/16 +24% SRC MODERATE — not entered` and
+  `ALAB 09/04 +12% GAP MODERATE — not entered`; the cooldown rows carry `—` (not tier/catalyst).
+- **The count with its denominator:** "Strong-catalyst MODERATE caps (60d, n=18): 3 capped for want of a
+  direct source, 15 had one".
+- **WOULD-FAIL-IF checked:** there is no separate source-gap section any more; the marker sits on the
+  missed-EP row itself.
+- **No live render failure:** the 11:59–12:03 UTC container log has no "missed_opportunities section
+  render failed" line. (Rebuilding from the stored JSON needs its date strings parsed back; the live
+  path renders in-process from date objects and is the only caller.)

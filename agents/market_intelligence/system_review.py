@@ -852,7 +852,7 @@ async def _aggregate_mfe_capture(window_start: date) -> dict:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT ticker, account_mode, total_pnl,
+            SELECT ticker, account_mode, total_pnl, alert_date, signal_type,
                    (highest_price_seen - entry_price) * entry_shares AS mfe_dollars,
                    (closed_at AT TIME ZONE 'America/New_York')::date AS closed_et
             FROM mi_live_trades
@@ -883,6 +883,22 @@ async def _aggregate_mfe_capture(window_start: date) -> dict:
         for r in rows
         if r["closed_et"] and r["closed_et"] >= window_start
     ]
+    # #662: the cumulative number pools every exit rule, so the line also says how many of its
+    # trades ran under TODAY's rules and, where that era can carry one, their own capture.
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.rule_eras import split_current_vs_older
+    era_split = None
+    if all(r["alert_date"] is not None for r in rows):
+        split = split_current_vs_older(
+            list(range(len(rows))),
+            [{"alert_date": r["alert_date"], "signal_type": r["signal_type"]} for r in rows],
+            et_today())
+        cur = [rows[i] for i in split["current"]]
+        cur_mfe = sum(float(r["mfe_dollars"]) for r in cur)
+        era_split = {"current": split["current"], "older": split["older"],
+                     "current_since": split["current_since"],
+                     "current_capture_pct": (round(sum(float(r["total_pnl"]) for r in cur)
+                                                   / cur_mfe * 100) if cur_mfe > 0 else None)}
     return {
         "n": len(rows),
         "mfe_dollars": round(mfe_total),
@@ -890,6 +906,7 @@ async def _aggregate_mfe_capture(window_start: date) -> dict:
         "capture_pct": round(kept_total / mfe_total * 100),
         "bar_pct": 50,  # v2.0 tier-one bar (roadmap PART II)
         "window_closes": window_closes[:5],
+        "era_split": era_split,
     }
 
 
@@ -2611,6 +2628,18 @@ def _format_mfe_capture_section(data: dict) -> str:
         f"${data.get('mfe_dollars', 0):,.0f} peak "
         f"(n={data['n']} partial-taken closed · bar >{data.get('bar_pct', 50)}%)",
     ]
+    split = data.get("era_split")
+    if split is None:
+        lines.append("  rule eras: UNAVAILABLE — read the cumulative number as pooled across "
+                     "exit rules (#662)")
+    else:
+        from agents.market_intelligence.replay_regression import _ERA_READ_MIN_N
+        from agents.market_intelligence.rule_eras import era_split_sentence
+        n_cur, pct_cur = len(split["current"]), split.get("current_capture_pct")
+        read = (f" — current rules capture {pct_cur}%"
+                if n_cur >= _ERA_READ_MIN_N and pct_cur is not None
+                else f" — current rules n<{_ERA_READ_MIN_N}, no read" if n_cur else "")
+        lines.append(f"  rule eras: {era_split_sentence(split)}{read}")
     for w in data.get("window_closes") or []:
         lines.append(
             f"• `{w['ticker']}` closed this week: {w['capture_pct']}% "
