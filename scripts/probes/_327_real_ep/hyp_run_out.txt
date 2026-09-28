@@ -1,0 +1,7 @@
+wrote hyp_rows_h2.tsv: 53852 rows
+wrote hyp_rows_stops.tsv: 632 rows
+wrote hyp_rows_h4.tsv: 1256 rows
+wrote hyp_rows_h5.tsv: 277 rows
+wrote hyp_rows_h12.tsv: 277 rows
+wrote hyp_team_handwalk.txt
+wrote hyp_rows_h13.tsv: 25280 rows

@@ -1,0 +1,28 @@
+ok  ERA A era label == alert_date rule
+ok  ERA A campaigns      loaded=261 gate_out=261
+ok  ERA A names          loaded=243 gate_out=243
+ok  ERA A tier_HIGH      loaded=184 gate_out=184
+ok  ERA A tier_MODERATE  loaded=66 gate_out=66
+ok  ERA A tier_none      loaded=11 gate_out=11
+ok  ERA A median_prior_close 26.72 gate_out=26.72
+ok  ERA B era label == alert_date rule
+ok  ERA B campaigns      loaded=16 gate_out=16
+ok  ERA B names          loaded=16 gate_out=16
+ok  ERA B tier_HIGH      loaded=14 gate_out=14
+ok  ERA B tier_MODERATE  loaded=2 gate_out=2
+ok  ERA B tier_none      loaded=0 gate_out=0
+ok  ERA B median_prior_close 114.89 gate_out=114.89
+ok  ALL campaigns 277 / names 256 vs gate_out 277 / 256
+ok  campaigns.tsv keys == alerts.tsv keys (277 vs 277)
+ok  fires.tsv: 632 first fires on 267 campaigns (ERA A 595, ERA B 37); all in the 277
+ok  lane-recorded first fires (no minute bars) = 23
+ok  named campaign present: TEAM 2026-08-07
+ok  named campaign present: MRNA 2026-08-19
+ok  named campaign present: PLTR 2026-08-04
+ok  named campaign present: HTFL 2026-08-14
+    SPLIT: DISCOVERY 250 campaigns / 573 fires; HELD-OUT A 11 / 22 fires (weeks ['2026-W34']: ['AMLX', 'ARGX', 'BULL', 'CBRS', 'MRNA', 'MRVL', 'RARE', 'SCSC', 'TEM', 'TWST', 'UUUU']); ERA B 16 / 37 fires (23 lane-recorded)
+ok  era-C verdict joins all 261 ERA A campaigns: {'reject': 81, 'admit': 136, 'abstain_float_band_straddles_bar': 44} (the task's 142 admits include 6 ERA B campaigns of 08-27/28)
+    era-C verdicts on ERA B campaigns: Counter({None: 10, 'admit': 6})
+ok  rank_shadow.tsv keys == the 277 (277)
+
+GATE PASSED

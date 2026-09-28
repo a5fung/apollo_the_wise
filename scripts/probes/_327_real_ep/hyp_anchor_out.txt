@@ -1,0 +1,6 @@
+ANCHOR A — 09-01 walker @ horizon 09-25 on rerun's loaders: 609 fires vs 609 replayed rows in fires.tsv; 609 match on (rung, fire_date, fire_minute, entry, stop); drift 0; lane-recorded rows taken as-is: 23 (the walker's own 6 fires on the 10 uncovered ERA B campaigns were replaced by those rows in the rerun, as pre-registered)
+ANCHOR D — to_rth_5min_v vs the lane's to_rth_5min on o/h/l/c/m: 5106 sessions, 0 differ
+ANCHOR B — settle_first (lane's compute_settlement) with the lane's own stop vs reentry_rows attempt 1 / incumbent, both arms: {'match': 1264}
+ANCHOR C — walk_h13 rule=touch vs the same rows, both arms: {'match': 1264}
+
+ANCHORS PASSED

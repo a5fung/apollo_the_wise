@@ -1,0 +1,496 @@
+#327 hypothesis tests — report (pre-registration: hyptests.py docstring). Draws 35; noise band <= 2 clearing anywhere; family >= 5 on one mechanism; permutation 2000 draws seed 327; held-out minimum n 8.
+tail sets: his labelled EPs in the 277 [('HTFL', '2026-08-14'), ('MRNA', '2026-08-19'), ('PLTR', '2026-08-04'), ('TEAM', '2026-08-07')]; the rerun's 7 big winners [('ALOY', '2026-06-01'), ('ARM', '2026-05-20'), ('EFOR', '2026-07-22'), ('HQ', '2026-06-15'), ('NRIX', '2026-06-08'), ('TE', '2026-05-12'), ('VPG', '2026-05-12')]
+
+========================================================================================================================
+H2 — is the reclaim patterns' entry edge a volatility-timing artefact? (+2-first AND -1-first rates, fires vs controls)
+========================================================================================================================
+  rates = share of NON-abstaining walks resolved by session 10 as +2 first (edge) / -1 first (the artefact tell); pess = stop-first on a straddle.
+
+  ep_low_reclaim
+    orig/pess/rec            DISC fires 197 (abstain 0) vs ctl 3547 | +2 first 28.4% vs 21.7% -> +6.7 pts (drop-2 +5.6 ['ABVX', 'CRMD']; p 0.086) | -1 first 63.5% vs 65.3% -> -1.8 pts (p 0.226)
+    orig/pess/rec            HOA  fires   4 (abstain 0) vs ctl   67 | +2 first 0.0% vs 26.9% -> -26.9 pts (drop-2 -26.9 []; p —) | -1 first 75.0% vs 62.7% -> +12.3 pts (p —)
+    orig/pess/rec            B    fires  11 (abstain 0) vs ctl   59 | +2 first 27.3% vs 25.4% -> +1.8 pts (drop-2 -7.9 ['CRWD', 'DG']; p —) | -1 first 72.7% vs 64.4% -> +8.3 pts (p —)
+    orig/pess/close          DISC fires 197 (abstain 0) vs ctl 3547 | +2 first 26.9% vs 21.7% -> +5.2 pts (drop-2 +4.1 ['AGX', 'CRMD']; p 0.200) | -1 first 62.4% vs 65.3% -> -2.8 pts (p 0.147)
+    orig/pess/close          HOA  fires   4 (abstain 0) vs ctl   67 | +2 first 25.0% vs 26.9% -> -1.9 pts (drop-2 -24.5 ['BULL']; p —) | -1 first 50.0% vs 62.7% -> -12.7 pts (p —)
+    orig/pess/close          B    fires  11 (abstain 0) vs ctl   59 | +2 first 18.2% vs 25.4% -> -7.2 pts (drop-2 -19.0 ['CRWD', 'DG']; p —) | -1 first 72.7% vs 64.4% -> +8.3 pts (p —)
+    orig/pess/fill           DISC fires 197 (abstain 0) vs ctl 3547 | +2 first 27.4% vs 21.7% -> +5.7 pts (drop-2 +5.0 ['ABVX', 'AGX']; p 0.153) | -1 first 64.0% vs 65.3% -> -1.3 pts (p 0.276)
+    orig/pess/fill           HOA  fires   4 (abstain 0) vs ctl   67 | +2 first 0.0% vs 26.9% -> -26.9 pts (drop-2 -26.9 []; p —) | -1 first 75.0% vs 62.7% -> +12.3 pts (p —)
+    orig/pess/fill           B    fires   5 (abstain 0) vs ctl   59 | +2 first 20.0% vs 25.4% -> -5.4 pts (drop-2 -19.6 ['CRWD']; p —) | -1 first 80.0% vs 64.4% -> +15.6 pts (p —)
+    scaled/pess/rec          DISC fires 197 (abstain 0) vs ctl 3547 | +2 first 20.3% vs 22.8% -> -2.4 pts (drop-2 -3.2 ['ABVX', 'AGX']; p 0.177) | -1 first 53.3% vs 67.0% -> -13.7 pts (p 0.001) | yardstick/ADR fire 1.19 ctl 0.94; session-1 fires 79: +2 gap +14.7 -1 gap -6.3
+    scaled/pess/rec          HOA  fires   4 (abstain 0) vs ctl   67 | +2 first 0.0% vs 22.4% -> -22.4 pts (drop-2 -22.4 []; p —) | -1 first 50.0% vs 67.2% -> -17.2 pts (p —) | yardstick/ADR fire 1.12 ctl 0.87; session-1 fires 1: +2 gap +0.0 -1 gap +0.0
+    scaled/pess/rec          B    fires  11 (abstain 0) vs ctl   59 | +2 first 27.3% vs 16.9% -> +10.3 pts (drop-2 +4.0 ['CRWD', 'DG']; p —) | -1 first 63.6% vs 66.1% -> -2.5 pts (p —) | yardstick/ADR fire 1.32 ctl 1.07; session-1 fires 4: +2 gap -33.3 -1 gap +41.7
+    scaled/pess/close        DISC fires 197 (abstain 0) vs ctl 3547 | +2 first 19.3% vs 22.8% -> -3.5 pts (drop-2 -4.3 ['ABVX', 'AGX']; p 0.113) | -1 first 55.3% vs 67.0% -> -11.7 pts (p 0.004) | yardstick/ADR fire 1.19 ctl 0.94; session-1 fires 79: +2 gap +12.1 -1 gap -2.5
+    scaled/pess/close        HOA  fires   4 (abstain 0) vs ctl   67 | +2 first 0.0% vs 22.4% -> -22.4 pts (drop-2 -22.4 []; p —) | -1 first 50.0% vs 67.2% -> -17.2 pts (p —) | yardstick/ADR fire 1.12 ctl 0.87; session-1 fires 1: +2 gap +0.0 -1 gap +0.0
+    scaled/pess/close        B    fires  11 (abstain 0) vs ctl   59 | +2 first 18.2% vs 16.9% -> +1.2 pts (drop-2 -8.0 ['CRWD', 'QCOM']; p —) | -1 first 63.6% vs 66.1% -> -2.5 pts (p —) | yardstick/ADR fire 1.32 ctl 1.07; session-1 fires 4: +2 gap -33.3 -1 gap +41.7
+    scaled/pess/fill         DISC fires 197 (abstain 0) vs ctl 3547 | +2 first 19.3% vs 22.8% -> -3.5 pts (drop-2 -4.3 ['ABVX', 'AGX']; p 0.109) | -1 first 54.3% vs 67.0% -> -12.7 pts (p 0.002) | yardstick/ADR fire 1.19 ctl 0.94; session-1 fires 79: +2 gap +13.4 -1 gap -5.0
+    scaled/pess/fill         HOA  fires   4 (abstain 0) vs ctl   67 | +2 first 0.0% vs 22.4% -> -22.4 pts (drop-2 -22.4 []; p —) | -1 first 50.0% vs 67.2% -> -17.2 pts (p —) | yardstick/ADR fire 1.12 ctl 0.87; session-1 fires 1: +2 gap +0.0 -1 gap +0.0
+    scaled/pess/fill         B    fires   5 (abstain 0) vs ctl   59 | +2 first 20.0% vs 16.9% -> +3.1 pts (drop-2 -7.8 ['CRWD']; p —) | -1 first 60.0% vs 66.1% -> -6.1 pts (p —) | yardstick/ADR fire 1.19 ctl 1.07; session-1 fires 3: +2 gap -33.3 -1 gap +33.3
+    scaled_partial/pess/rec  DISC fires 197 (abstain 0) vs ctl 3547 | +2 first 25.4% vs 22.8% -> +2.6 pts (drop-2 +1.9 ['ABVX', 'AGX']; p 0.292) | -1 first 57.4% vs 67.0% -> -9.7 pts (p 0.014) | yardstick/ADR fire 0.98 ctl 0.94; session-1 fires 79: +2 gap +26.1 -1 gap -3.8
+    scaled_partial/pess/rec  HOA  fires   4 (abstain 0) vs ctl   67 | +2 first 0.0% vs 22.4% -> -22.4 pts (drop-2 -22.4 []; p —) | -1 first 75.0% vs 67.2% -> +7.8 pts (p —) | yardstick/ADR fire 1.07 ctl 0.87; session-1 fires 1: +2 gap +0.0 -1 gap +100.0
+    scaled_partial/pess/rec  B    fires   5 (abstain 0) vs ctl   59 | +2 first 20.0% vs 16.9% -> +3.1 pts (drop-2 -7.8 ['CRWD']; p —) | -1 first 80.0% vs 66.1% -> +13.9 pts (p —) | yardstick/ADR fire 0.91 ctl 1.07; session-1 fires 3: +2 gap -33.3 -1 gap +66.7
+    scaled/opt/rec           DISC fires 197 (abstain 0) vs ctl 3547 | +2 first 20.3% vs 22.8% -> -2.5 pts (drop-2 -3.3 ['ABVX', 'AGX']; p 0.177) | -1 first 53.3% vs 67.0% -> -13.7 pts (p 0.001) | yardstick/ADR fire 1.19 ctl 0.94; session-1 fires 79: +2 gap +14.7 -1 gap -6.3
+    scaled/opt/rec           HOA  fires   4 (abstain 0) vs ctl   67 | +2 first 0.0% vs 22.4% -> -22.4 pts (drop-2 -22.4 []; p —) | -1 first 50.0% vs 67.2% -> -17.2 pts (p —) | yardstick/ADR fire 1.12 ctl 0.87; session-1 fires 1: +2 gap +0.0 -1 gap +0.0
+    scaled/opt/rec           B    fires  11 (abstain 0) vs ctl   59 | +2 first 27.3% vs 16.9% -> +10.3 pts (drop-2 +4.0 ['CRWD', 'DG']; p —) | -1 first 63.6% vs 66.1% -> -2.5 pts (p —) | yardstick/ADR fire 1.32 ctl 1.07; session-1 fires 4: +2 gap -33.3 -1 gap +41.7
+    => original barriers DISC: +2 gap +6.7 / -1 gap -1.8; scaled: +2 gap -2.4 / -1 gap -13.7 -> artefact tell (-1 gap >= half the +2 gap) False; DISC fail · HOA can't tell · B + · VERDICT fails
+
+  ep_close_reclaim
+    orig/pess/rec            DISC fires 135 (abstain 0) vs ctl 2413 | +2 first 27.4% vs 20.5% -> +6.9 pts (drop-2 +6.1 ['ABCL', 'ALAB']; p 0.067) | -1 first 66.7% vs 66.0% -> +0.7 pts (p 0.577)
+    orig/pess/rec            HOA  fires   6 (abstain 0) vs ctl  100 | +2 first 16.7% vs 15.0% -> +1.7 pts (drop-2 -16.9 ['ARGX']; p —) | -1 first 83.3% vs 80.0% -> +3.3 pts (p —)
+    orig/pess/rec            B    fires   9 (abstain 0) vs ctl   40 | +2 first 11.1% vs 37.5% -> -26.4 pts (drop-2 -38.5 ['QCOM']; p —) | -1 first 77.8% vs 55.0% -> +22.8 pts (p —)
+    orig/pess/close          DISC fires 135 (abstain 0) vs ctl 2413 | +2 first 25.9% vs 20.5% -> +5.5 pts (drop-2 +4.8 ['AKTS', 'ALAB']; p 0.150) | -1 first 65.9% vs 66.0% -> -0.1 pts (p 0.429)
+    orig/pess/close          HOA  fires   6 (abstain 0) vs ctl  100 | +2 first 16.7% vs 15.0% -> +1.7 pts (drop-2 -16.9 ['ARGX']; p —) | -1 first 50.0% vs 80.0% -> -30.0 pts (p —)
+    orig/pess/close          B    fires   9 (abstain 0) vs ctl   40 | +2 first 0.0% vs 37.5% -> -37.5 pts (drop-2 -37.5 []; p —) | -1 first 88.9% vs 55.0% -> +33.9 pts (p —)
+    orig/pess/fill           DISC fires 135 (abstain 0) vs ctl 2413 | +2 first 25.9% vs 20.5% -> +5.5 pts (drop-2 +4.6 ['ABCL', 'ALAB']; p 0.149) | -1 first 66.7% vs 66.0% -> +0.7 pts (p 0.575)
+    orig/pess/fill           HOA  fires   6 (abstain 0) vs ctl  100 | +2 first 16.7% vs 15.0% -> +1.7 pts (drop-2 -16.9 ['ARGX']; p —) | -1 first 83.3% vs 80.0% -> +3.3 pts (p —)
+    orig/pess/fill           B    fires   5 (abstain 0) vs ctl   40 | +2 first 0.0% vs 37.5% -> -37.5 pts (drop-2 -37.5 []; p —) | -1 first 80.0% vs 55.0% -> +25.0 pts (p —)
+    scaled/pess/rec          DISC fires 135 (abstain 0) vs ctl 2413 | +2 first 18.5% vs 21.4% -> -2.9 pts (drop-2 -4.2 ['ABCL', 'AKTS']; p 0.308) | -1 first 57.8% vs 66.4% -> -8.7 pts (p 0.127) | yardstick/ADR fire 1.38 ctl 0.96; session-1 fires 98: +2 gap -12.9 -1 gap +2.0
+    scaled/pess/rec          HOA  fires   6 (abstain 0) vs ctl  100 | +2 first 16.7% vs 14.0% -> +2.7 pts (drop-2 -14.5 ['ARGX']; p —) | -1 first 83.3% vs 84.0% -> -0.7 pts (p —) | yardstick/ADR fire 0.86 ctl 0.82; session-1 fires 4: +2 gap +25.0 -1 gap -25.0
+    scaled/pess/rec          B    fires   9 (abstain 0) vs ctl   40 | +2 first 11.1% vs 37.5% -> -26.4 pts (drop-2 -38.5 ['QCOM']; p —) | -1 first 77.8% vs 52.5% -> +25.3 pts (p —) | yardstick/ADR fire 1.10 ctl 1.03; session-1 fires 5: +2 gap +20.0 -1 gap +80.0
+    scaled/pess/close        DISC fires 135 (abstain 0) vs ctl 2413 | +2 first 20.0% vs 21.4% -> -1.4 pts (drop-2 -2.7 ['ABCL', 'AKTS']; p 0.477) | -1 first 59.3% vs 66.4% -> -7.2 pts (p 0.213) | yardstick/ADR fire 1.38 ctl 0.96; session-1 fires 98: +2 gap -9.9 -1 gap +3.1
+    scaled/pess/close        HOA  fires   6 (abstain 0) vs ctl  100 | +2 first 33.3% vs 14.0% -> +19.3 pts (drop-2 -16.9 ['ARGX', 'UUUU']; p —) | -1 first 50.0% vs 84.0% -> -34.0 pts (p —) | yardstick/ADR fire 0.86 ctl 0.82; session-1 fires 4: +2 gap +50.0 -1 gap -75.0
+    scaled/pess/close        B    fires   9 (abstain 0) vs ctl   40 | +2 first 11.1% vs 37.5% -> -26.4 pts (drop-2 -38.5 ['QCOM']; p —) | -1 first 77.8% vs 52.5% -> +25.3 pts (p —) | yardstick/ADR fire 1.10 ctl 1.03; session-1 fires 5: +2 gap +20.0 -1 gap +80.0
+    scaled/pess/fill         DISC fires 135 (abstain 0) vs ctl 2413 | +2 first 17.8% vs 21.4% -> -3.6 pts (drop-2 -4.9 ['ABCL', 'AKTS']; p 0.235) | -1 first 58.5% vs 66.4% -> -7.9 pts (p 0.170) | yardstick/ADR fire 1.38 ctl 0.96; session-1 fires 98: +2 gap -13.9 -1 gap +3.1
+    scaled/pess/fill         HOA  fires   6 (abstain 0) vs ctl  100 | +2 first 16.7% vs 14.0% -> +2.7 pts (drop-2 -14.5 ['ARGX']; p —) | -1 first 83.3% vs 84.0% -> -0.7 pts (p —) | yardstick/ADR fire 0.86 ctl 0.82; session-1 fires 4: +2 gap +25.0 -1 gap -25.0
+    scaled/pess/fill         B    fires   5 (abstain 0) vs ctl   40 | +2 first 0.0% vs 37.5% -> -37.5 pts (drop-2 -37.5 []; p —) | -1 first 80.0% vs 52.5% -> +27.5 pts (p —) | yardstick/ADR fire 1.10 ctl 1.03; session-1 fires 2: +2 gap +0.0 -1 gap +100.0
+    scaled_partial/pess/rec  DISC fires 135 (abstain 0) vs ctl 2413 | +2 first 27.4% vs 21.4% -> +6.0 pts (drop-2 +4.8 ['ABCL', 'AIP']; p 0.072) | -1 first 66.7% vs 66.4% -> +0.2 pts (p 0.276) | yardstick/ADR fire 0.88 ctl 0.96; session-1 fires 98: +2 gap -1.7 -1 gap +13.3
+    scaled_partial/pess/rec  HOA  fires   6 (abstain 0) vs ctl  100 | +2 first 16.7% vs 14.0% -> +2.7 pts (drop-2 -15.9 ['UUUU']; p —) | -1 first 83.3% vs 84.0% -> -0.7 pts (p —) | yardstick/ADR fire 0.60 ctl 0.82; session-1 fires 4: +2 gap +25.0 -1 gap -25.0
+    scaled_partial/pess/rec  B    fires   5 (abstain 0) vs ctl   40 | +2 first 0.0% vs 37.5% -> -37.5 pts (drop-2 -37.5 []; p —) | -1 first 80.0% vs 52.5% -> +27.5 pts (p —) | yardstick/ADR fire 1.05 ctl 1.03; session-1 fires 2: +2 gap +0.0 -1 gap +100.0
+    scaled/opt/rec           DISC fires 135 (abstain 0) vs ctl 2413 | +2 first 18.5% vs 21.5% -> -2.9 pts (drop-2 -4.2 ['ABCL', 'AKTS']; p 0.308) | -1 first 57.8% vs 66.4% -> -8.6 pts (p 0.127) | yardstick/ADR fire 1.38 ctl 0.96; session-1 fires 98: +2 gap -12.9 -1 gap +2.0
+    scaled/opt/rec           HOA  fires   6 (abstain 0) vs ctl  100 | +2 first 16.7% vs 14.0% -> +2.7 pts (drop-2 -14.5 ['ARGX']; p —) | -1 first 83.3% vs 84.0% -> -0.7 pts (p —) | yardstick/ADR fire 0.86 ctl 0.82; session-1 fires 4: +2 gap +25.0 -1 gap -25.0
+    scaled/opt/rec           B    fires   9 (abstain 0) vs ctl   40 | +2 first 11.1% vs 37.5% -> -26.4 pts (drop-2 -38.5 ['QCOM']; p —) | -1 first 77.8% vs 52.5% -> +25.3 pts (p —) | yardstick/ADR fire 1.10 ctl 1.03; session-1 fires 5: +2 gap +20.0 -1 gap +80.0
+    => original barriers DISC: +2 gap +6.9 / -1 gap +0.7; scaled: +2 gap -2.9 / -1 gap -8.7 -> artefact tell (-1 gap >= half the +2 gap) False; DISC fail · HOA can't tell · B - · VERDICT fails
+
+  ep_high_break
+    orig/pess/rec            DISC fires  46 (abstain 0) vs ctl  807 | +2 first 30.4% vs 18.6% -> +11.8 pts (drop-2 +9.4 ['ABVX', 'AMBQ']; p 0.319) | -1 first 67.4% vs 69.9% -> -2.5 pts (p 0.613)
+    orig/pess/rec            HOA  fires   2 (abstain 0) vs ctl   29 | +2 first 100.0% vs 10.3% -> +89.7 pts (drop-2 — ; p —) | -1 first 0.0% vs 79.3% -> -79.3 pts (p —)
+    orig/pess/rec            B    fires   2 (abstain 0) vs ctl    3 | +2 first 0.0% vs 0.0% -> +0.0 pts (drop-2 +0.0 []; p —) | -1 first 100.0% vs 100.0% -> +0.0 pts (p —)
+    orig/pess/close          DISC fires  46 (abstain 0) vs ctl  807 | +2 first 26.1% vs 18.6% -> +7.5 pts (drop-2 +5.6 ['AKTS', 'ARM']; p 0.508) | -1 first 65.2% vs 69.9% -> -4.7 pts (p 0.407)
+    orig/pess/close          HOA  fires   2 (abstain 0) vs ctl   29 | +2 first 0.0% vs 10.3% -> -10.3 pts (drop-2 -10.3 []; p —) | -1 first 100.0% vs 79.3% -> +20.7 pts (p —)
+    orig/pess/close          B    fires   2 (abstain 0) vs ctl    3 | +2 first 0.0% vs 0.0% -> +0.0 pts (drop-2 +0.0 []; p —) | -1 first 100.0% vs 100.0% -> +0.0 pts (p —)
+    orig/pess/fill           DISC fires  46 (abstain 0) vs ctl  807 | +2 first 21.7% vs 18.6% -> +3.2 pts (drop-2 +0.5 ['ABVX', 'ARM']; p 0.794) | -1 first 76.1% vs 69.9% -> +6.2 pts (p 0.138)
+    orig/pess/fill           HOA  fires   2 (abstain 0) vs ctl   29 | +2 first 100.0% vs 10.3% -> +89.7 pts (drop-2 — ; p —) | -1 first 0.0% vs 79.3% -> -79.3 pts (p —)
+    orig/pess/fill           B    fires   2 (abstain 0) vs ctl    3 | +2 first 0.0% vs 0.0% -> +0.0 pts (drop-2 +0.0 []; p —) | -1 first 100.0% vs 100.0% -> +0.0 pts (p —)
+    scaled/pess/rec          DISC fires  46 (abstain 0) vs ctl  807 | +2 first 19.6% vs 21.3% -> -1.7 pts (drop-2 -4.5 ['AKTS', 'ARM']; p 0.187) | -1 first 43.5% vs 69.3% -> -25.8 pts (p 0.009) | yardstick/ADR fire 1.54 ctl 0.99; session-1 fires 42: +2 gap -81.0 -1 gap +42.9
+    scaled/pess/rec          HOA  fires   2 (abstain 0) vs ctl   29 | +2 first 0.0% vs 10.3% -> -10.3 pts (drop-2 -10.3 []; p —) | -1 first 0.0% vs 82.8% -> -82.8 pts (p —) | yardstick/ADR fire 1.78 ctl 1.02; session-1 fires 2: +2 gap — -1 gap —
+    scaled/pess/rec          B    fires   2 (abstain 0) vs ctl    3 | +2 first 0.0% vs 0.0% -> +0.0 pts (drop-2 +0.0 []; p —) | -1 first 100.0% vs 100.0% -> +0.0 pts (p —) | yardstick/ADR fire 1.08 ctl 1.19; session-1 fires 1: +2 gap — -1 gap —
+    scaled/pess/close        DISC fires  46 (abstain 0) vs ctl  807 | +2 first 17.4% vs 21.3% -> -3.9 pts (drop-2 -6.8 ['AKTS', 'ARM']; p 0.114) | -1 first 54.3% vs 69.3% -> -14.9 pts (p 0.195) | yardstick/ADR fire 1.54 ctl 0.99; session-1 fires 42: +2 gap -85.7 -1 gap +54.8
+    scaled/pess/close        HOA  fires   2 (abstain 0) vs ctl   29 | +2 first 0.0% vs 10.3% -> -10.3 pts (drop-2 -10.3 []; p —) | -1 first 50.0% vs 82.8% -> -32.8 pts (p —) | yardstick/ADR fire 1.78 ctl 1.02; session-1 fires 2: +2 gap — -1 gap —
+    scaled/pess/close        B    fires   2 (abstain 0) vs ctl    3 | +2 first 0.0% vs 0.0% -> +0.0 pts (drop-2 +0.0 []; p —) | -1 first 100.0% vs 100.0% -> +0.0 pts (p —) | yardstick/ADR fire 1.08 ctl 1.19; session-1 fires 1: +2 gap — -1 gap —
+    scaled/pess/fill         DISC fires  46 (abstain 0) vs ctl  807 | +2 first 17.4% vs 21.3% -> -3.9 pts (drop-2 -6.8 ['AKTS', 'ARM']; p 0.116) | -1 first 56.5% vs 69.3% -> -12.7 pts (p 0.265) | yardstick/ADR fire 1.54 ctl 0.99; session-1 fires 42: +2 gap -83.3 -1 gap +54.8
+    scaled/pess/fill         HOA  fires   2 (abstain 0) vs ctl   29 | +2 first 0.0% vs 10.3% -> -10.3 pts (drop-2 -10.3 []; p —) | -1 first 0.0% vs 82.8% -> -82.8 pts (p —) | yardstick/ADR fire 1.78 ctl 1.02; session-1 fires 2: +2 gap — -1 gap —
+    scaled/pess/fill         B    fires   2 (abstain 0) vs ctl    3 | +2 first 0.0% vs 0.0% -> +0.0 pts (drop-2 +0.0 []; p —) | -1 first 100.0% vs 100.0% -> +0.0 pts (p —) | yardstick/ADR fire 1.08 ctl 1.19; session-1 fires 1: +2 gap — -1 gap —
+    scaled_partial/pess/rec  DISC fires  15 (abstain 0) vs ctl  807 | +2 first 13.3% vs 21.3% -> -8.0 pts (drop-2 -22.3 ['DCTH', 'FTK']; p 0.208) | -1 first 86.7% vs 69.3% -> +17.4 pts (p 0.026) | yardstick/ADR fire 0.62 ctl 0.99; session-1 fires 14: +2 gap -85.7 -1 gap +85.7
+    scaled/opt/rec           DISC fires  46 (abstain 0) vs ctl  807 | +2 first 19.6% vs 21.3% -> -1.7 pts (drop-2 -4.5 ['AKTS', 'ARM']; p 0.187) | -1 first 43.5% vs 69.3% -> -25.8 pts (p 0.009) | yardstick/ADR fire 1.54 ctl 0.99; session-1 fires 42: +2 gap -81.0 -1 gap +42.9
+    scaled/opt/rec           HOA  fires   2 (abstain 0) vs ctl   29 | +2 first 0.0% vs 10.3% -> -10.3 pts (drop-2 -10.3 []; p —) | -1 first 0.0% vs 82.8% -> -82.8 pts (p —) | yardstick/ADR fire 1.78 ctl 1.02; session-1 fires 2: +2 gap — -1 gap —
+    scaled/opt/rec           B    fires   2 (abstain 0) vs ctl    3 | +2 first 0.0% vs 0.0% -> +0.0 pts (drop-2 +0.0 []; p —) | -1 first 100.0% vs 100.0% -> +0.0 pts (p —) | yardstick/ADR fire 1.08 ctl 1.19; session-1 fires 1: +2 gap — -1 gap —
+    => original barriers DISC: +2 gap +11.8 / -1 gap -2.5; scaled: +2 gap -1.7 / -1 gap -25.8 -> artefact tell (-1 gap >= half the +2 gap) False; DISC fail · HOA can't tell · B can't tell · VERDICT fails
+
+  ep_close_620_prox
+    orig/pess/rec            DISC fires 195 (abstain 0) vs ctl 3502 | +2 first 25.1% vs 23.1% -> +2.1 pts (drop-2 +1.0 ['ABSI', 'ACHR']; p 0.504) | -1 first 66.2% vs 63.7% -> +2.4 pts (p 0.407)
+    orig/pess/rec            HOA  fires   8 (abstain 0) vs ctl  112 | +2 first 12.5% vs 17.0% -> -4.5 pts (drop-2 -18.9 ['ARGX']; p —) | -1 first 75.0% vs 74.1% -> +0.9 pts (p —)
+    orig/pess/rec            B    fires  10 (abstain 1) vs ctl   57 | +2 first 0.0% vs 29.8% -> -29.8 pts (drop-2 -29.8 []; p —) | -1 first 100.0% vs 59.6% -> +40.4 pts (p —)
+    orig/pess/close          DISC fires 195 (abstain 0) vs ctl 3502 | +2 first 24.6% vs 23.1% -> +1.5 pts (drop-2 +0.7 ['ACHR', 'AGX']; p 0.545) | -1 first 65.6% vs 63.7% -> +1.9 pts (p 0.484)
+    orig/pess/close          HOA  fires   8 (abstain 0) vs ctl  112 | +2 first 25.0% vs 17.0% -> +8.0 pts (drop-2 -16.0 ['ARGX', 'BULL']; p —) | -1 first 37.5% vs 74.1% -> -36.6 pts (p —)
+    orig/pess/close          B    fires  11 (abstain 0) vs ctl   57 | +2 first 9.1% vs 29.8% -> -20.7 pts (drop-2 -31.2 ['DG']; p —) | -1 first 81.8% vs 59.6% -> +22.2 pts (p —)
+    orig/pess/fill           DISC fires 195 (abstain 0) vs ctl 3502 | +2 first 25.1% vs 23.1% -> +2.1 pts (drop-2 +1.0 ['ABSI', 'ACHR']; p 0.504) | -1 first 67.2% vs 63.7% -> +3.5 pts (p 0.289)
+    orig/pess/fill           HOA  fires   8 (abstain 0) vs ctl  112 | +2 first 12.5% vs 17.0% -> -4.5 pts (drop-2 -18.9 ['ARGX']; p —) | -1 first 75.0% vs 74.1% -> +0.9 pts (p —)
+    orig/pess/fill           B    fires   6 (abstain 0) vs ctl   57 | +2 first 0.0% vs 29.8% -> -29.8 pts (drop-2 -29.8 []; p —) | -1 first 100.0% vs 59.6% -> +40.4 pts (p —)
+    scaled/pess/rec          DISC fires 195 (abstain 0) vs ctl 3502 | +2 first 20.5% vs 24.0% -> -3.5 pts (drop-2 -4.2 ['AGX', 'AGYS']; p 0.126) | -1 first 59.0% vs 65.2% -> -6.2 pts (p 0.167) | yardstick/ADR fire 1.24 ctl 0.94; session-1 fires 84: +2 gap +11.5 -1 gap +5.4
+    scaled/pess/rec          HOA  fires   8 (abstain 0) vs ctl  112 | +2 first 25.0% vs 15.2% -> +9.8 pts (drop-2 -18.1 ['ARGX', 'UUUU']; p —) | -1 first 62.5% vs 78.6% -> -16.1 pts (p —) | yardstick/ADR fire 1.01 ctl 0.83; session-1 fires 4: +2 gap +50.0 -1 gap -25.0
+    scaled/pess/rec          B    fires  11 (abstain 0) vs ctl   57 | +2 first 9.1% vs 19.3% -> -10.2 pts (drop-2 -19.6 ['QCOM']; p —) | -1 first 81.8% vs 66.7% -> +15.2 pts (p —) | yardstick/ADR fire 0.95 ctl 1.07; session-1 fires 10: +2 gap -90.0 -1 gap +90.0
+    scaled/pess/close        DISC fires 195 (abstain 0) vs ctl 3502 | +2 first 23.1% vs 24.0% -> -0.9 pts (drop-2 -1.6 ['AGX', 'AGYS']; p 0.390) | -1 first 56.9% vs 65.2% -> -8.3 pts (p 0.056) | yardstick/ADR fire 1.24 ctl 0.94; session-1 fires 84: +2 gap +13.9 -1 gap +6.6
+    scaled/pess/close        HOA  fires   8 (abstain 0) vs ctl  112 | +2 first 25.0% vs 15.2% -> +9.8 pts (drop-2 -18.1 ['ARGX', 'UUUU']; p —) | -1 first 37.5% vs 78.6% -> -41.1 pts (p —) | yardstick/ADR fire 1.01 ctl 0.83; session-1 fires 4: +2 gap +50.0 -1 gap -50.0
+    scaled/pess/close        B    fires  11 (abstain 0) vs ctl   57 | +2 first 9.1% vs 19.3% -> -10.2 pts (drop-2 -19.6 ['QCOM']; p —) | -1 first 72.7% vs 66.7% -> +6.1 pts (p —) | yardstick/ADR fire 0.95 ctl 1.07; session-1 fires 10: +2 gap -90.0 -1 gap +80.0
+    scaled/pess/fill         DISC fires 195 (abstain 0) vs ctl 3502 | +2 first 20.5% vs 24.0% -> -3.5 pts (drop-2 -4.2 ['AGX', 'AGYS']; p 0.126) | -1 first 59.0% vs 65.2% -> -6.2 pts (p 0.166) | yardstick/ADR fire 1.24 ctl 0.94; session-1 fires 84: +2 gap +11.5 -1 gap +5.4
+    scaled/pess/fill         HOA  fires   8 (abstain 0) vs ctl  112 | +2 first 25.0% vs 15.2% -> +9.8 pts (drop-2 -18.1 ['ARGX', 'UUUU']; p —) | -1 first 62.5% vs 78.6% -> -16.1 pts (p —) | yardstick/ADR fire 1.01 ctl 0.83; session-1 fires 4: +2 gap +50.0 -1 gap -25.0
+    scaled/pess/fill         B    fires   6 (abstain 0) vs ctl   57 | +2 first 0.0% vs 19.3% -> -19.3 pts (drop-2 -19.3 []; p —) | -1 first 100.0% vs 66.7% -> +33.3 pts (p —) | yardstick/ADR fire 1.07 ctl 1.07; session-1 fires 6: +2 gap -100.0 -1 gap +100.0
+    scaled_partial/pess/rec  DISC fires 195 (abstain 0) vs ctl 3502 | +2 first 22.6% vs 24.0% -> -1.4 pts (drop-2 -2.2 ['AGX', 'AGYS']; p 0.318) | -1 first 59.5% vs 65.2% -> -5.7 pts (p 0.198) | yardstick/ADR fire 1.12 ctl 0.94; session-1 fires 84: +2 gap +12.7 -1 gap +7.8
+    scaled_partial/pess/rec  HOA  fires   8 (abstain 0) vs ctl  112 | +2 first 25.0% vs 15.2% -> +9.8 pts (drop-2 -18.1 ['ARGX', 'UUUU']; p —) | -1 first 62.5% vs 78.6% -> -16.1 pts (p —) | yardstick/ADR fire 0.95 ctl 0.83; session-1 fires 4: +2 gap +50.0 -1 gap -25.0
+    scaled_partial/pess/rec  B    fires   6 (abstain 0) vs ctl   57 | +2 first 0.0% vs 19.3% -> -19.3 pts (drop-2 -19.3 []; p —) | -1 first 100.0% vs 66.7% -> +33.3 pts (p —) | yardstick/ADR fire 0.81 ctl 1.07; session-1 fires 6: +2 gap -100.0 -1 gap +100.0
+    scaled/opt/rec           DISC fires 195 (abstain 0) vs ctl 3502 | +2 first 20.5% vs 24.0% -> -3.5 pts (drop-2 -4.3 ['AGX', 'AGYS']; p 0.126) | -1 first 59.0% vs 65.2% -> -6.2 pts (p 0.167) | yardstick/ADR fire 1.24 ctl 0.94; session-1 fires 84: +2 gap +11.5 -1 gap +5.4
+    scaled/opt/rec           HOA  fires   8 (abstain 0) vs ctl  112 | +2 first 25.0% vs 15.2% -> +9.8 pts (drop-2 -18.1 ['ARGX', 'UUUU']; p —) | -1 first 62.5% vs 78.6% -> -16.1 pts (p —) | yardstick/ADR fire 1.01 ctl 0.83; session-1 fires 4: +2 gap +50.0 -1 gap -25.0
+    scaled/opt/rec           B    fires  11 (abstain 0) vs ctl   57 | +2 first 9.1% vs 19.3% -> -10.2 pts (drop-2 -19.6 ['QCOM']; p —) | -1 first 81.8% vs 66.7% -> +15.2 pts (p —) | yardstick/ADR fire 0.95 ctl 1.07; session-1 fires 10: +2 gap -90.0 -1 gap +90.0
+    => original barriers DISC: +2 gap +2.1 / -1 gap +2.4; scaled: +2 gap -3.5 / -1 gap -6.2 -> artefact tell (-1 gap >= half the +2 gap) False; DISC fail · HOA + · B - · VERDICT fails
+
+========================================================================================================================
+H1b — stop scaled to the stock's range AFTER the gap (k x mean high-low of the last <=3 post-gap sessions, EP day = session 0), trail arm; vs the lane's own stop AND vs 1xADR pre-EP
+========================================================================================================================
+  population: 632 first fires; lane readable 625; fillable readable 613; lane stops under 0.5% wide 60 (kept in the primary read, shown ex-floored beside); fires whose post-gap window is the EP day alone 334
+  k=0.5 x post-gap range (median width 4.97% vs lane 2.47%), trail, vs the lane's own stop
+    DISC n 573 (227 names) | variant -0.09 vs base -0.26 -> diff +0.17R/fire (sum +96.2; drop-2 +64.2 ['EFOR +16.9', 'AKTS +15.1']; p 0.001) | fillable n 572 diff +0.21 | worst -3.12 (base -3.30) | losses<-1.5R 11 (base 12) | tail: labelled 1/3 (base 1), runners 4/7 (base 3)
+    HOA  n  22 (9 names) | variant +0.10 vs base -0.37 -> diff +0.48R/fire (sum +10.5; drop-2 +1.0 ['TWST +5.8', 'TEM +3.7']; p —) | fillable n 22 diff +0.47 | worst -1.41 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (14 names) | variant -0.45 vs base -0.97 -> diff +0.53R/fire (sum +15.3; drop-2 +5.5 ['IONQ +6.0', 'QCOM +3.8']; p —) | fillable n 19 diff +0.26 | worst -1.62 (base -3.31) | losses<-1.5R 1 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC pass · HOA + · B + · VERDICT holds
+  k=0.5 x post-gap range vs 1xADR pre-EP (same fires, trail) — descriptive
+    DISC n 573 (227 names) | variant -0.09 vs base -0.03 -> diff -0.06R/fire (sum -37.0; drop-2 -46.1 ['AKTS +5.5', 'TEAM +3.6']; p 0.015) | fillable n 0 diff — | worst -3.12 (base -2.81) | losses<-1.5R 11 (base 11) | tail: labelled 1/3 (base 2), runners 4/7 (base 5)
+    HOA  n  22 (9 names) | variant +0.10 vs base +0.05 -> diff +0.06R/fire (sum +1.2; drop-2 -2.5 ['TWST +2.3', 'BULL +1.4']; p —) | fillable n 0 diff — | worst -1.41 (base -1.16) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  35 (15 names) | variant -0.53 vs base -0.52 -> diff -0.02R/fire (sum -0.5; drop-2 -3.5 ['IONQ +2.2', 'PHVS +0.7']; p —) | fillable n 0 diff — | worst -2.06 (base -1.54) | losses<-1.5R 2 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    ex-floored: DISC n 521 diff +0.09 drop-2 +15.1 p 0.100
+      DISC ep_low_reclaim       n 197 diff +0.22 (variant +0.01, lane -0.21)
+      DISC ep_close_reclaim     n 135 diff -0.05 (variant -0.29, lane -0.24)
+      DISC ep_high_break        n  46 diff -0.11 (variant -0.27, lane -0.16)
+      DISC ep_close_620_prox    n 195 diff +0.33 (variant -0.02, lane -0.35)
+  k=0.75 x post-gap range (median width 7.45% vs lane 2.47%), trail, vs the lane's own stop
+    DISC n 573 (227 names) | variant -0.04 vs base -0.26 -> diff +0.22R/fire (sum +126.5; drop-2 +92.8 ['EFOR +23.0', 'AKTS +10.7']; p 0.000) | fillable n 572 diff +0.26 | worst -3.13 (base -3.30) | losses<-1.5R 7 (base 12) | tail: labelled 1/3 (base 1), runners 4/7 (base 3)
+    HOA  n  22 (9 names) | variant +0.05 vs base -0.37 -> diff +0.42R/fire (sum +9.3; drop-2 +2.9 ['TWST +4.2', 'TEM +2.2']; p —) | fillable n 22 diff +0.46 | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (14 names) | variant -0.35 vs base -0.97 -> diff +0.62R/fire (sum +18.0; drop-2 +10.2 ['IONQ +4.6', 'SEI +3.2']; p —) | fillable n 19 diff +0.42 | worst -1.17 (base -3.31) | losses<-1.5R 0 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC pass · HOA + · B + · VERDICT holds
+  k=0.75 x post-gap range vs 1xADR pre-EP (same fires, trail) — descriptive
+    DISC n 573 (227 names) | variant -0.04 vs base -0.03 -> diff -0.01R/fire (sum -6.7; drop-2 -16.0 ['TEVA +5.0', 'CSCO +4.3']; p 0.322) | fillable n 0 diff — | worst -3.13 (base -2.81) | losses<-1.5R 7 (base 11) | tail: labelled 1/3 (base 2), runners 4/7 (base 5)
+    HOA  n  22 (9 names) | variant +0.05 vs base +0.05 -> diff +0.00R/fire (sum +0.0; drop-2 -2.9 ['BULL +2.3', 'TWST +0.7']; p —) | fillable n 0 diff — | worst -1.00 (base -1.16) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  35 (15 names) | variant -0.39 vs base -0.52 -> diff +0.13R/fire (sum +4.6; drop-2 +2.5 ['PHVS +1.1', 'SOLS +1.0']; p —) | fillable n 0 diff — | worst -1.37 (base -1.54) | losses<-1.5R 0 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    ex-floored: DISC n 521 diff +0.16 drop-2 +47.4 p 0.046
+      DISC ep_low_reclaim       n 197 diff +0.30 (variant +0.09, lane -0.21)
+      DISC ep_close_reclaim     n 135 diff +0.02 (variant -0.23, lane -0.24)
+      DISC ep_high_break        n  46 diff +0.01 (variant -0.16, lane -0.16)
+      DISC ep_close_620_prox    n 195 diff +0.33 (variant -0.02, lane -0.35)
+  k=1.0 x post-gap range (median width 9.94% vs lane 2.47%), trail, vs the lane's own stop
+    DISC n 573 (227 names) | variant -0.05 vs base -0.26 -> diff +0.21R/fire (sum +120.3; drop-2 +90.3 ['EFOR +17.7', 'AKTS +12.3']; p 0.005) | fillable n 572 diff +0.25 | worst -2.75 (base -3.30) | losses<-1.5R 8 (base 12) | tail: labelled 0/3 (base 1), runners 3/7 (base 3)
+    HOA  n  22 (9 names) | variant +0.05 vs base -0.37 -> diff +0.42R/fire (sum +9.2; drop-2 +3.7 ['TWST +3.4', 'BULL +2.1']; p —) | fillable n 22 diff +0.45 | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (14 names) | variant -0.24 vs base -0.97 -> diff +0.74R/fire (sum +21.4; drop-2 +12.0 ['SEI +5.4', 'IONQ +4.0']; p —) | fillable n 19 diff +0.58 | worst -1.00 (base -3.31) | losses<-1.5R 0 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC pass · HOA + · B + · VERDICT holds
+  k=1.0 x post-gap range vs 1xADR pre-EP (same fires, trail) — descriptive
+    DISC n 573 (227 names) | variant -0.05 vs base -0.03 -> diff -0.02R/fire (sum -12.9; drop-2 -20.2 ['TEVA +4.2', 'SKM +3.1']; p 0.186) | fillable n 0 diff — | worst -2.75 (base -2.81) | losses<-1.5R 8 (base 11) | tail: labelled 0/3 (base 2), runners 3/7 (base 5)
+    HOA  n  22 (9 names) | variant +0.05 vs base +0.05 -> diff -0.00R/fire (sum -0.0; drop-2 -2.4 ['BULL +2.3', 'MRVL +0.1']; p —) | fillable n 0 diff — | worst -1.00 (base -1.16) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  35 (15 names) | variant -0.27 vs base -0.52 -> diff +0.25R/fire (sum +8.7; drop-2 +5.8 ['SOLS +1.6', 'PHVS +1.2']; p —) | fillable n 0 diff — | worst -1.03 (base -1.54) | losses<-1.5R 0 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    ex-floored: DISC n 521 diff +0.15 drop-2 +46.2 p 0.055
+      DISC ep_low_reclaim       n 197 diff +0.25 (variant +0.04, lane -0.21)
+      DISC ep_close_reclaim     n 135 diff +0.04 (variant -0.20, lane -0.24)
+      DISC ep_high_break        n  46 diff -0.00 (variant -0.17, lane -0.16)
+      DISC ep_close_620_prox    n 195 diff +0.33 (variant -0.02, lane -0.35)
+
+========================================================================================================================
+H1c — the age / testedness of the stop-defining low
+========================================================================================================================
+  (c1) stop = the fire session's first-30-minute low, fires at/after 10:00 ET (fires before that 214; stop at/above entry 123), trail, vs the lane's own stop
+    DISC n 226 (162 names) | variant -0.29 vs base -0.18 -> diff -0.11R/fire (sum -25.9; drop-2 -29.6 ['IREN +2.0', 'NAVN +1.7']; p 0.259) | fillable n 226 diff -0.14 | worst -2.65 (base -2.65) | losses<-1.5R 8 (base 8) | tail: labelled 1/2 (base 1), runners 0/3 (base 1)
+    HOA  n   8 (7 names) | variant -0.39 vs base -0.41 -> diff +0.01R/fire (sum +0.1; drop-2 +0.0 ['SCSC +0.1', 'ARGX +0.0']; p —) | fillable n 8 diff +0.01 | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n   8 (6 names) | variant -1.00 vs base -1.29 -> diff +0.29R/fire (sum +2.3; drop-2 +0.0 ['SEI +2.3', 'CRWD +0.0']; p —) | fillable n 8 diff +0.24 | worst -1.00 (base -3.31) | losses<-1.5R 0 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA + · B + · VERDICT fails
+  (c1) stop = the fire session's first-60-minute low, fires at/after 10:30 ET (fires before that 280; stop at/above entry 85), trail, vs the lane's own stop
+    DISC n 198 (158 names) | variant -0.18 vs base -0.19 -> diff +0.01R/fire (sum +1.7; drop-2 -2.0 ['IREN +2.0', 'NAVN +1.7']; p 0.330) | fillable n 198 diff -0.02 | worst -2.86 (base -2.65) | losses<-1.5R 9 (base 8) | tail: labelled 1/2 (base 1), runners 1/4 (base 1)
+    HOA  n  10 (7 names) | variant -0.52 vs base -0.52 -> diff +0.01R/fire (sum +0.1; drop-2 +0.0 ['SCSC +0.1', 'ARGX +0.0']; p —) | fillable n 10 diff -0.01 | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n   6 (5 names) | variant -1.00 vs base -1.00 -> diff +0.00R/fire (sum +0.0; drop-2 +0.0 ['HOOD +0.0', 'OKTA +0.0']; p —) | fillable n 6 diff +0.00 | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA + · B can't tell · VERDICT fails
+  (c2) age of the stop-defining low at the fire (5-min bars since the low printed; DISC tercile cuts at 4.0 and 31.0 bars); same-session lows 350, earlier-session lows 204 (reclaims only; 620 / high-break stops are day-low-so-far / prior-session lows)
+      youngest tercile     DISC n 107 lane arm mean -0.26 | stopped within 2 sessions 77% | 1xADR trail mean +0.01
+      youngest tercile     HOA  n   6 lane arm mean -0.69 | stopped within 2 sessions 83% | 1xADR trail mean -0.48
+      youngest tercile     B    n   3 lane arm mean -1.00 | stopped within 2 sessions 100% | 1xADR trail mean -0.97
+      middle               DISC n 111 lane arm mean -0.22 | stopped within 2 sessions 68% | 1xADR trail mean +0.09
+      middle               HOA  n   3 lane arm mean -1.00 | stopped within 2 sessions 67% | 1xADR trail mean -0.52
+      middle               B    n   2 lane arm mean -1.00 | stopped within 2 sessions 100% | 1xADR trail mean -0.65
+      oldest tercile       DISC n 109 lane arm mean -0.18 | stopped within 2 sessions 55% | 1xADR trail mean -0.13
+      oldest tercile       HOA  n   4 lane arm mean -0.13 | stopped within 2 sessions 50% | 1xADR trail mean -0.10
+      oldest tercile       B    n   5 lane arm mean -1.00 | stopped within 2 sessions 100% | 1xADR trail mean -0.63
+      earlier-session low  DISC n 192 lane arm mean -0.33 | stopped within 2 sessions 71% | 1xADR trail mean -0.01
+      earlier-session low  HOA  n   7 lane arm mean -0.09 | stopped within 2 sessions 29% | 1xADR trail mean +0.85
+      earlier-session low  B    n   5 lane arm mean -1.46 | stopped within 2 sessions 100% | 1xADR trail mean -0.72
+  (c2) oldest tercile + earlier-session lows vs youngest tercile, lane's own arm (predicted: old better)
+    DISC old n 301 mean -0.27 | young n 107 mean -0.26 | diff -0.01 (drop-2 -0.11 ['KURA', 'MMYT']; p 0.466)
+    HOA  old n  11 mean -0.10 | young n   6 mean -0.69 | diff +0.58 (drop-2 +0.38 ['ARGX', 'TEM']; p —)
+    B    old n  10 mean -1.23 | young n   3 mean -1.00 | diff -0.23 (drop-2 -0.29 ['HOOD', 'OKTA']; p —)
+    => DISC fail · HOA can't tell · B can't tell · VERDICT fails
+
+========================================================================================================================
+H3 — the trigger: fire time of day, and the reclaim bar's volume
+========================================================================================================================
+    (a) 0930       DISC n 106 lane arm mean -0.20 | 1xADR trail -0.11 | stopped within 2 sessions 68%
+    (a) 0930       HOA  n   5 lane arm mean -0.11 | 1xADR trail +1.17 | stopped within 2 sessions 40%
+    (a) 0930       B    n   6 lane arm mean -0.86 | 1xADR trail -0.51 | stopped within 2 sessions 83%
+    (a) 0935_0959  DISC n  93 lane arm mean -0.04 | 1xADR trail -0.05 | stopped within 2 sessions 63%
+    (a) 0935_0959  HOA  n   3 lane arm mean -0.77 | 1xADR trail -0.62 | stopped within 2 sessions 67%
+    (a) 0935_0959  B    n   5 lane arm mean -1.00 | 1xADR trail -0.91 | stopped within 2 sessions 100%
+    (a) 1000plus   DISC n 343 lane arm mean -0.36 | 1xADR trail -0.01 | stopped within 2 sessions 69%
+    (a) 1000plus   HOA  n  12 lane arm mean -0.45 | 1xADR trail -0.25 | stopped within 2 sessions 58%
+    (a) 1000plus   B    n  17 lane arm mean -1.06 | 1xADR trail -0.24 | stopped within 2 sessions 94%
+  (a) fires at 10:00 or later vs before 10:00, lane's own arm (predicted: later better)
+    DISC 10:00+ n 343 mean -0.36 | <10:00 n 199 mean -0.12 | diff -0.24 (drop-2 -0.34 ['TE', 'TEAM']; p 0.111)
+    HOA  10:00+ n  12 mean -0.45 | <10:00 n   8 mean -0.36 | diff -0.08 (drop-2 -0.41 ['ARGX', 'UUUU']; p —)
+    B    10:00+ n  17 mean -1.06 | <10:00 n  11 mean -0.92 | diff -0.14 (drop-2 -0.24 ['CRWD', 'ERO']; p —)
+    => DISC fail · HOA - · B - · VERDICT fails
+      (same at 1xADR trail — descriptive)
+    DISC 10:00+ n 343 mean -0.01 | <10:00 n 199 mean -0.08 | diff +0.07 (drop-2 -0.01 ['BHVN', 'TE']; p 0.353)
+    HOA  10:00+ n  12 mean -0.25 | <10:00 n   8 mean +0.50 | diff -0.75 (drop-2 -0.95 ['ARGX', 'SCSC']; p —)
+    B    10:00+ n  17 mean -0.24 | <10:00 n  11 mean -0.69 | diff +0.45 (drop-2 +0.14 ['IONQ', 'SEI']; p —)
+  (b1) reclaim bar volume >= the undercut (defining-low) bar's volume vs below it, lane's own arm (predicted: >= better)
+    DISC vol>=undercut n  64 mean -0.01 | vol<undercut n 263 mean -0.27 | diff +0.26 (drop-2 -0.00 ['STUB', 'TE']; p 0.183)
+    HOA  vol>=undercut n   3 mean -0.37 | vol<undercut n  10 mean -0.65 | diff +0.28 (drop-2 — ['SCSC', 'UUUU']; p —)
+    B    vol>=undercut n   0 mean — | vol<undercut n  10 mean -1.00 | diff — (drop-2 — ; p —)
+    => DISC fail · HOA can't tell · B can't tell · VERDICT fails
+  (b2) reclaim bar volume / the session's earlier 5-min mean: top tercile (>= 0.93x) vs bottom (< 0.54x), >= 3 earlier bars, lane's own arm
+    DISC top tercile n 128 mean -0.22 | bottom tercile n 127 mean -0.57 | diff +0.35 (drop-2 +0.18 ['QBTS', 'TE']; p 0.059)
+    HOA  top tercile n   5 mean -0.05 | bottom tercile n   4 mean -1.00 | diff +0.95 (drop-2 +0.43 ['ARGX', 'RARE']; p —)
+    B    top tercile n   3 mean -1.77 | bottom tercile n   6 mean -1.00 | diff -0.77 (drop-2 -2.31 ['OKTA', 'SOLS']; p —)
+    => DISC fail · HOA can't tell · B can't tell · VERDICT fails
+      (same at 1xADR trail — descriptive)
+    DISC top n 128 mean +0.10 | bottom n 127 mean -0.18 | diff +0.28 (drop-2 +0.18 ['BHVN', 'TE']; p 0.060)
+    HOA  top n   5 mean +0.16 | bottom n   4 mean -0.58 | diff +0.75 (drop-2 +0.43 ['ARGX', 'SCSC']; p —)
+    B    top n   3 mean -0.53 | bottom n   6 mean -0.54 | diff +0.01 (drop-2 -0.46 ['OKTA', 'SEI']; p —)
+  opening-bar fires have no earlier bar for (b2): 117 of 590 minute fires; lane-recorded fires (no bars) 23
+
+========================================================================================================================
+H4 — tape vs rule: the two named cells on ERA A campaigns today's rules ADMIT vs REJECT (undecided separate), vs ERA A overall and ERA B
+========================================================================================================================
+  1xADR ep_low_reclaim trail                       ERA A admit                        n 102 (97 names) mean -0.12 ± 0.09 SE | sum -11.9 | >=3R 1 | stopped 24%
+  1xADR ep_low_reclaim trail                       ERA A reject                       n  64 (62 names) mean +0.35 ± 0.23 SE | sum +22.2 | >=3R 7 | stopped 30%
+  1xADR ep_low_reclaim trail                       ERA A undecided                    n  36 (35 names) mean +0.61 ± 0.34 SE | sum +21.9 | >=3R 3 | stopped 19%
+  1xADR ep_low_reclaim trail                       ERA A all                          n 202 (189 names) mean +0.16 ± 0.11 SE | sum +32.2 | >=3R 11 | stopped 25%
+  1xADR ep_low_reclaim trail                       ERA B all                          n  13 (13 names) mean -0.34 ± 0.18 SE | sum -4.5 | >=3R 0 | stopped 31%
+  1xADR ep_low_reclaim trail                       ERA B era-C-scored (6, all admit)  n   5 (5 names) mean -0.69 ± 0.17 SE | sum -3.5 | >=3R 0 | stopped 60%
+      admit vs reject (ERA A, within-week permutation) p 0.049; admitted-only by alert month: 05: -0.08 (n 23, sum -1.9), 06: -0.33 (n 18, sum -5.9), 07: -0.12 (n 24, sum -2.9), 08: -0.03 (n 37, sum -1.2)
+      => admitted-only differs from ERA A overall; not separable from ERA B at this n
+  the lane's own cell (own stop, trail), all patterns ERA A admit                        n 310 (120 names) mean -0.32 ± 0.09 SE | sum -98.2 | >=3R 17 | stopped 63%
+  the lane's own cell (own stop, trail), all patterns ERA A reject                       n 182 (77 names) mean -0.37 ± 0.10 SE | sum -67.6 | >=3R 9 | stopped 68%
+  the lane's own cell (own stop, trail), all patterns ERA A undecided                    n 103 (43 names) mean +0.07 ± 0.27 SE | sum +7.3 | >=3R 7 | stopped 63%
+  the lane's own cell (own stop, trail), all patterns ERA A all                          n 595 (234 names) mean -0.27 ± 0.07 SE | sum -158.5 | >=3R 33 | stopped 65%
+  the lane's own cell (own stop, trail), all patterns ERA B all                          n  30 (14 names) mean -0.93 ± 0.10 SE | sum -28.0 | >=3R 0 | stopped 87%
+  the lane's own cell (own stop, trail), all patterns ERA B era-C-scored (6, all admit)  n  12 (6 names) mean -0.93 ± 0.07 SE | sum -11.1 | >=3R 0 | stopped 92%
+      admit vs reject (ERA A, within-week permutation) p 0.522; admitted-only by alert month: 05: -0.29 (n 68, sum -19.7), 06: -0.62 (n 45, sum -28.1), 07: -0.21 (n 75, sum -16.0), 08: -0.28 (n 122, sum -34.5)
+      => admitted-only reads like ERA A overall; and unlike ERA B -> the era split is tape/time, not the 08-22 rule
+
+========================================================================================================================
+H5 — selection re-cut, stop-independent: max high over sessions 1-15 above the EP close, in ADR$, vs the EP-day features (IN-SAMPLE on discovery by construction — only the held-out sign can count)
+========================================================================================================================
+  campaigns with an outcome 277 of 277 (censored under 15 sessions: 7, all ERA B); runners (>= 5 ADR) 26; his 4 labelled: HTFL 4.4 ADR, MRNA -1.3 ADR, PLTR 2.7 ADR, TEAM 4.9 ADR
+  ext_xadr_eod           predicted - | DISC n 231 rho -0.109 p 0.034 | top third runner share 19.5% vs bottom 9.1% (mean 3.02 vs 2.33 ADR; runners in top third 5/7, labelled 0/3) | HOA n 11 rho +0.15 | B n 14 rho -0.29 | fails held-out
+  ext_xadr_pregap        predicted - | DISC n 172 rho +0.002 p 0.444 | top third runner share 15.8% vs bottom 12.3% (mean 2.79 vs 2.80 ADR; runners in top third 2/4, labelled 1/3) | HOA n 9 rho +0.40 | B n 8 rho -0.62 | can't tell (in-sample; held-out direction only)
+  tightness_pct_eod      predicted - | DISC n 250 rho +0.099 p 0.017 | top third runner share 7.2% vs bottom 10.8% (mean 2.17 vs 2.71 ADR; runners in top third 1/7, labelled 1/3) | HOA n 11 rho -0.22 | B n 16 rho +0.06 | can't tell (in-sample; held-out direction only)
+  composite_rank_eod     predicted + | DISC n 246 rho -0.025 p 0.346 | top third runner share 8.5% vs bottom 12.2% (mean 2.45 vs 2.64 ADR; runners in top third 1/7, labelled 2/3) | HOA n 11 rho +0.22 | B n 16 rho -0.28 | can't tell (in-sample; held-out direction only)
+  open_range_position    predicted + | DISC n 180 rho +0.057 p 0.127 | top third runner share 8.3% vs bottom 10.0% (mean 2.53 vs 2.15 ADR; runners in top third 1/2, labelled 2/3) | HOA n 11 rho -0.19 | B n 16 rho -0.14 | can't tell (in-sample; held-out direction only)
+  expct_scheduled        DISC: scheduled n152 2.42 ADR 9% run (r7 3, lab 3), unscheduled n62 2.59 ADR 15% run (r7 3, lab 0), unknown n36 2.46 ADR 8% run (r7 1, lab 0) | HOA: unscheduled n6 0.86 ADR 0% run (r7 0, lab 1), scheduled n5 2.36 ADR 0% run (r7 0, lab 0) | B: scheduled n8 1.76 ADR 0% run (r7 0, lab 0), unscheduled n7 2.11 ADR 14% run (r7 0, lab 0), unknown n1 0.59 ADR 0% run (r7 0, lab 0)
+  expct_looking          DISC: mixed_fwd n69 2.29 ADR 7% run (r7 0, lab 2), unknown n66 2.56 ADR 8% run (r7 2, lab 0), forward n62 2.62 ADR 15% run (r7 4, lab 0), backward n31 2.56 ADR 13% run (r7 1, lab 1), analyst_only n22 2.19 ADR 9% run (r7 0, lab 0) | HOA: forward n6 1.40 ADR 0% run (r7 0, lab 1), mixed_fwd n2 3.22 ADR 0% run (r7 0, lab 0), analyst_only n2 0.53 ADR 0% run (r7 0, lab 0), unknown n1 1.08 ADR 0% run (r7 0, lab 0) | B: forward n7 2.42 ADR 14% run (r7 0, lab 0), mixed_fwd n5 1.90 ADR 0% run (r7 0, lab 0), backward n2 1.03 ADR 0% run (r7 0, lab 0), analyst_only n1 0.33 ADR 0% run (r7 0, lab 0), unknown n1 0.59 ADR 0% run (r7 0, lab 0)
+  expct_beat             DISC: f n190 2.47 ADR 10% run (r7 5, lab 1), t n60 2.48 ADR 10% run (r7 2, lab 2) | HOA: f n8 1.14 ADR 0% run (r7 0, lab 1), t n3 2.63 ADR 0% run (r7 0, lab 0) | B: f n11 1.87 ADR 9% run (r7 0, lab 0), t n5 1.76 ADR 0% run (r7 0, lab 0)
+  catalyst_type          DISC: sales_acceleration n108 2.38 ADR 9% run (r7 1, lab 3), none n74 2.93 ADR 9% run (r7 3, lab 0), policy n16 2.42 ADR 12% run (r7 1, lab 0), theme n14 1.64 ADR 7% run (r7 0, lab 0), unknown n12 2.09 ADR 17% run (r7 0, lab 0), other n12 1.48 ADR 8% run (r7 0, lab 0), pre_catalyst_anticipation n5 2.80 ADR 20% run (r7 1, lab 0), new_product n4 4.07 ADR 25% run (r7 1, lab 0), management_change n3 2.02 ADR 0% run (r7 0, lab 0), shortage n2 1.28 ADR 0% run (r7 0, lab 0) | HOA: sales_acceleration n4 1.13 ADR 0% run (r7 0, lab 1), policy n3 2.26 ADR 0% run (r7 0, lab 0), unknown n2 2.29 ADR 0% run (r7 0, lab 0), pre_catalyst_anticipation n1 -0.38 ADR 0% run (r7 0, lab 0), new_product n1 1.44 ADR 0% run (r7 0, lab 0) | B: sales_acceleration n13 1.70 ADR 0% run (r7 0, lab 0), theme n2 0.52 ADR 0% run (r7 0, lab 0), policy n1 6.25 ADR 100% run (r7 0, lab 0)
+  tier                   DISC: HIGH n176 2.70 ADR 11% run (r7 5, lab 3), MODERATE n66 2.04 ADR 8% run (r7 2, lab 0), none n8 1.04 ADR 0% run (r7 0, lab 0) | HOA: HIGH n8 1.60 ADR 0% run (r7 0, lab 1), none n3 1.40 ADR 0% run (r7 0, lab 0) | B: HIGH n14 1.80 ADR 7% run (r7 0, lab 0), MODERATE n2 2.14 ADR 0% run (r7 0, lab 0)
+  => none of the ten features can 'hold' on this program: the features were chosen on 05-11..08-14 alerts (in-sample) and the held-out parts are 11 and 16 campaigns.
+
+========================================================================================================================
+H12 (operator) — a 620 turn within 0.5xADR of ANY pivot on the fixed list, stop under the turn's session low; per campaign vs the lane's FIRST fire (own stop)
+========================================================================================================================
+  fired on 267 of 277 campaigns (ERA {'A': 259, 'B': 8}); the lane fired on 267; blind sessions 126 on 9 campaigns; pivots named on the fires {'sma10_rising': 37, 'ep_close': 154, 'swing_low': 23, 'ep_low': 94, 'base20': 51, 'base60': 35, 'sma20_rising': 17}; within 0.5 ADR of the EP close (the lane's own rung) 154 of 267; median stop width 1.86%; fire session [(1, 140), (2, 53), (3, 22), (4, 14), (5, 12), (6, 5), (7, 5), (8, 4)]
+  620-near-any-pivot, stop = turn's session low, trail arm, vs the lane's first fire (own stop, trail) on the same campaigns
+    DISC n 242 (226 names) | variant -0.53 vs base -0.08 -> diff -0.45R/fire (sum -109.3; drop-2 -118.3 ['DFTX +5.6', 'ELVN +3.4']; p 0.003) | fillable n 242 diff -0.42 | worst -8.50 (base -2.43) | losses<-1.5R 11 (base 3) | tail: labelled 1/3 (base 1), runners 1/6 (base 2)
+    HOA  n   8 (8 names) | variant +0.14 vs base -0.62 -> diff +0.76R/fire (sum +6.1; drop-2 -1.5 ['SCSC +4.8', 'ARGX +2.7']; p —) | fillable n 8 diff +0.71 | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n   8 (8 names) | variant -1.04 vs base -0.86 -> diff -0.18R/fire (sum -1.4; drop-2 -1.4 ['CHRN +0.0', 'CRWD +0.0']; p —) | fillable n 8 diff -0.17 | worst -1.35 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA + · B - · VERDICT fails
+     (same fires with a 1xADR stop, trail — descriptive)
+    DISC n 242 (226 names) | variant -0.09 vs base -0.08 -> diff -0.01R/fire (sum -2.4; drop-2 -19.9 ['EFOR +9.9', 'BHVN +7.6']; p 0.474) | fillable n 242 diff +0.06 | worst -2.81 (base -2.43) | losses<-1.5R 5 (base 3) | tail: labelled 2/3 (base 1), runners 2/6 (base 2)
+    HOA  n   8 (8 names) | variant -0.19 vs base -0.62 -> diff +0.43R/fire (sum +3.5; drop-2 +0.6 ['ARGX +1.9', 'TWST +0.9']; p —) | fillable n 8 diff +0.44 | worst -1.16 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n   8 (8 names) | variant -1.00 vs base -0.86 -> diff -0.14R/fire (sum -1.1; drop-2 -1.1 ['CHRN +0.0', 'CRWD +0.0']; p —) | fillable n 8 diff -0.06 | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+  620-near-any-pivot, stop = turn's session low, none arm, vs the lane's first fire (own stop, none) on the same campaigns
+    DISC n 242 (226 names) | variant -0.70 vs base -0.36 -> diff -0.34R/fire (sum -83.2; drop-2 -93.5 ['DFTX +5.6', 'CRMD +4.7']; p 0.011) | fillable n 242 diff -0.30 | worst -8.50 (base -2.43) | losses<-1.5R 14 (base 6) | tail: labelled 1/3 (base 1), runners 1/6 (base 2)
+    HOA  n   8 (8 names) | variant -1.00 vs base -0.67 -> diff -0.33R/fire (sum -2.6; drop-2 -2.6 ['ARGX +0.0', 'BULL +0.0']; p —) | fillable n 8 diff -0.34 | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n   8 (8 names) | variant -1.04 vs base -0.73 -> diff -0.31R/fire (sum -2.5; drop-2 -2.5 ['CHRN +0.0', 'CRWD +0.0']; p —) | fillable n 8 diff -0.27 | worst -1.35 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+     (same fires with a 1xADR stop, none — descriptive)
+    DISC n 242 (226 names) | variant -0.22 vs base -0.36 -> diff +0.13R/fire (sum +31.6; drop-2 +10.6 ['NRIX +10.7', 'EFOR +10.3']; p 0.154) | fillable n 242 diff +0.20 | worst -2.81 (base -2.43) | losses<-1.5R 5 (base 6) | tail: labelled 1/3 (base 1), runners 3/6 (base 2)
+    HOA  n   8 (8 names) | variant -0.65 vs base -0.67 -> diff +0.02R/fire (sum +0.2; drop-2 -1.0 ['ARGX +0.6', 'SCSC +0.5']; p —) | fillable n 8 diff +0.05 | worst -1.16 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n   8 (8 names) | variant -1.00 vs base -0.73 -> diff -0.27R/fire (sum -2.2; drop-2 -2.2 ['CHRN +0.0', 'CRWD +0.0']; p —) | fillable n 8 diff -0.18 | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+     (vs the lane's BEST first fire on the campaign, trail — descriptive, favours the lane)
+    DISC n 242 (226 names) | variant -0.53 vs base +0.43 -> diff -0.96R/fire (sum -233.4; drop-2 -239.7 ['ELVN +3.4', 'DRTS +2.9']; p 0.000) | fillable n 0 diff — | worst -8.50 (base -1.28) | losses<-1.5R 11 (base 0) | tail: labelled 1/3 (base 1), runners 1/6 (base 2)
+    HOA  n   8 (8 names) | variant +0.14 vs base +0.20 -> diff -0.06R/fire (sum -0.4; drop-2 -5.3 ['SCSC +4.8', 'ARGX +0.0']; p —) | fillable n 0 diff — | worst -1.00 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n   8 (8 names) | variant -1.04 vs base -0.86 -> diff -0.18R/fire (sum -1.4; drop-2 -1.4 ['CHRN +0.0', 'CRWD +0.0']; p —) | fillable n 0 diff — | worst -1.35 (base -1.00) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+      tail campaign ALOY 2026-06-01: H12 fire 2026-06-02 s1 min 895 entry 11.36 stop 10.72 (5.59%) near ep_close@0.39 -> trail -1.00R none -1.00R | lane first ep_close_reclaim 2026-06-02 trail -1.00R
+      tail campaign ARM 2026-05-20: H12 fire 2026-06-08 s12 min 930 entry 349.45 stop 339.01 (2.99%) near sma10_rising@0.48 -> trail -0.29R none -1.00R | lane first ep_high_break 2026-05-21 trail +2.50R
+      tail campaign EFOR 2026-07-22: H12 fire 2026-07-23 s1 min 665 entry 19.86 stop 19.75 (0.55%) near ep_low@0.02;base20@0.13;ep_close@0.39 -> trail -1.00R none -1.00R | lane first ep_low_reclaim 2026-07-23 trail -1.00R
+      tail campaign HQ 2026-06-15: H12 fire 2026-07-10 s17 min 670 entry 23.54 stop 22.75 (3.36%) near sma20_rising@0.01 -> trail -0.70R none -1.81R | lane first ep_close_reclaim 2026-06-16 trail +4.09R
+      tail campaign HTFL 2026-08-14: H12 fire 2026-08-17 s1 min 700 entry 42.05 stop 41.18 (2.07%) near ep_close@0.01 -> trail -1.00R none -1.00R | lane first ep_close_reclaim 2026-08-17 trail -1.00R
+      tail campaign MRNA 2026-08-19: H12 fire 2026-08-28 s7 min 655 entry 134.46 stop 133.33 (0.84%) near swing_low_s3@0.45 -> trail +9.81R none -1.00R | lane first   trail —R
+      tail campaign NRIX 2026-06-08: H12 fire 2026-06-10 s2 min 770 entry 15.48 stop 15.24 (1.55%) near ep_low@0.15;ep_close@0.21 -> trail -1.00R none -1.00R | lane first ep_low_reclaim 2026-06-09 trail -1.00R
+      tail campaign PLTR 2026-08-04: H12 fire 2026-08-05 s1 min 845 entry 159.63 stop 158.53 (0.69%) near ep_close@0.41 -> trail -1.00R none -1.00R | lane first ep_close_reclaim 2026-08-05 trail -1.00R
+      tail campaign TE 2026-05-12: H12 fire 2026-05-13 s1 min 945 entry 5.61 stop 5.26 (6.16%) near ep_low@0.21;sma10_rising@0.47;ep_close@0.50 -> trail +11.09R none +8.30R | lane first ep_low_reclaim 2026-05-13 trail +14.16R
+      tail campaign TEAM 2026-08-07: H12 fire 2026-08-10 s1 min 650 entry 148.06 stop 145.00 (2.07%) near ep_close@0.11 -> trail +9.27R none +9.27R | lane first ep_close_reclaim 2026-08-10 trail +6.16R
+
+  TEAM hand-walk (hyp_team_handwalk.txt):
+    TEAM 2026-08-07: ADR$ 9.41 -> pivot band 0.5xADR = $4.71; basing band 0.4xADR = $3.76; EP day O 145.135 H 153.2 L 141.51 C 149.07
+      DAY 0 (08-07, the EP day — outside the lane by his 08-30 ruling; his entry ~12:05 ET ~$144.39): 78 buckets; warm-up sessions ['2026-08-05', '2026-08-06'] on disk: [] (0 warm buckets; MIN_CROSS_IDX=12 is the binding guard when the seed is short)
+        pivots known on day 0 (EP close/low not yet known): base20=113.55, base60=119.38, sma10_rising=108.58, sma20_rising=99.40
+        11:10  close 144.00  MACD -1.86  signal -1.28  (620_chart.md: 11:10 -1.86/-1.28, 11:15 -1.72/-1.37, 11:40 -1.54/-1.58, ~12:05 -0.89/-1.27)
+        11:15  close 144.49  MACD -1.72  signal -1.37  (620_chart.md: 11:10 -1.86/-1.28, 11:15 -1.72/-1.37, 11:40 -1.54/-1.58, ~12:05 -0.89/-1.27)
+        11:40  close 143.68  MACD -1.54  signal -1.58  (620_chart.md: 11:10 -1.86/-1.28, 11:15 -1.72/-1.37, 11:40 -1.54/-1.58, ~12:05 -0.89/-1.27)
+        12:05  close 143.91  MACD -0.89  signal -1.27  (620_chart.md: 11:10 -1.86/-1.28, 11:15 -1.72/-1.37, 11:40 -1.54/-1.58, ~12:05 -0.89/-1.27)
+        cross 10:05 close 149.62 MACD -1.24 sig -1.60 | idx>=12 False MACD<0 True basing +9.86<= 3.76 False hook False => QUALIFIED False | low so far 141.51 (stop; 5.42% wide) | nearest day_low_so_far=141.51 at 0.86 ADR | within 0.5 ADR: none
+        cross 11:40 close 143.68 MACD -1.54 sig -1.58 | idx>=12 True MACD<0 True basing +2.10<= 3.76 True hook True => QUALIFIED True | low so far 141.51 (stop; 1.51% wide) | nearest day_low_so_far=141.51 at 0.23 ADR | within 0.5 ADR: ['day_low_so_far=141.51 (0.23 ADR)']
+        cross 13:15 close 146.53 MACD +0.35 sig +0.20 | idx>=12 True MACD<0 False basing +1.78<= 3.76 True hook False => QUALIFIED False | low so far 141.51 (stop; 3.43% wide) | nearest day_low_so_far=141.51 at 0.53 ADR | within 0.5 ADR: none
+        IF entered at the 11:40 cross 143.68, stop 141.51 (his: 144.39 / 141.51): recorded trail +21.15R none +21.15R (status settled, mfe +25.31); fillable (next bucket open+5bps) trail +20.59R
+      SESSION 1 (08-10): 78 buckets; warm-up sessions ['2026-08-06', '2026-08-07'] on disk: ['2026-08-07'] (78 warm buckets; MIN_CROSS_IDX=12 is the binding guard when the seed is short)
+        pivots at the open of session 1: ep_low=141.51, ep_close=149.07, base20=113.55, base60=119.38, sma10_rising=108.58, sma20_rising=99.40
+        cross 09:50 close 150.17 MACD -0.20 sig -0.28 | idx>=12 True MACD<0 True basing +8.99<= 3.76 False hook True => QUALIFIED False | low so far 145.00 (stop; 3.45% wide) | nearest ep_close=149.07 at 0.12 ADR | within 0.5 ADR: ['ep_close=149.07 (0.12 ADR)']
+        cross 10:50 close 148.06 MACD -0.53 sig -0.57 | idx>=12 True MACD<0 True basing +2.16<= 3.76 True hook True => QUALIFIED True | low so far 145.00 (stop; 2.07% wide) | nearest ep_close=149.07 at 0.11 ADR | within 0.5 ADR: ['ep_close=149.07 (0.11 ADR)']
+        cross 11:05 close 148.17 MACD -0.46 sig -0.54 | idx>=12 True MACD<0 True basing +2.42<= 3.76 True hook True => QUALIFIED True | low so far 145.00 (stop; 2.14% wide) | nearest ep_close=149.07 at 0.10 ADR | within 0.5 ADR: ['ep_close=149.07 (0.10 ADR)']
+        cross 11:30 close 147.61 MACD -0.48 sig -0.51 | idx>=12 True MACD<0 True basing +2.34<= 3.76 True hook False => QUALIFIED False | low so far 145.00 (stop; 1.77% wide) | nearest ep_close=149.07 at 0.16 ADR | within 0.5 ADR: ['ep_close=149.07 (0.16 ADR)']
+        cross 13:45 close 152.51 MACD +1.03 sig +1.02 | idx>=12 True MACD<0 False basing +1.51<= 3.76 True hook False => QUALIFIED False | low so far 145.00 (stop; 4.92% wide) | nearest ep_close=149.07 at 0.37 ADR | within 0.5 ADR: ['ep_close=149.07 (0.37 ADR)']
+        cross 15:30 close 152.82 MACD +0.16 sig +0.16 | idx>=12 True MACD<0 False basing +1.74<= 3.76 True hook True => QUALIFIED False | low so far 145.00 (stop; 5.12% wide) | nearest ep_close=149.07 at 0.40 ADR | within 0.5 ADR: ['ep_close=149.07 (0.40 ADR)']
+      lane ep_close_reclaim: fired 2026-08-10 min 580 entry 149.39 stop 145.0 -> own stop, trail: trail_exit +6.16R
+      lane ep_close_620_prox: fired 2026-08-10 min 650 entry 148.06 stop 145.0 -> own stop, trail: trail_exit +9.27R
+
+========================================================================================================================
+H13 (operator) — close-based stops with a violence override, per fire vs the TOUCH stop at the same level (that level's R; SMA10 rows also in the lane's R)
+========================================================================================================================
+
+  level = the lane's own stop; inapplicable (level at/above the entry, or no SMA10): 0 of 632
+  close         none  vs touch at the same level
+    DISC n 573 (227 names) | variant -1.05 vs base -0.50 -> diff -0.55R/fire (sum -316.2; drop-2 -609.9 ['VSTS +231.9', 'NRIX +61.9']; p 0.208) | fillable n 572 diff -0.48 | worst -44.20 (base -3.81) | losses<-1.5R 295 (base 20) | tail: labelled 2/3 (base 1), runners 5/7 (base 3)
+    HOA  n  22 (9 names) | variant -1.63 vs base -0.57 -> diff -1.06R/fire (sum -23.3; drop-2 -23.3 ['TEM +0.0', 'TWST -0.0']; p —) | fillable n 22 diff -1.06 | worst -11.50 (base -1.00) | losses<-1.5R 6 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  30 (14 names) | variant +2.81 vs base -0.96 -> diff +3.77R/fire (sum +113.2; drop-2 -88.1 ['QCOM +183.1', 'IONQ +18.2']; p —) | fillable n 19 diff -2.17 | worst -25.75 (base -3.31) | losses<-1.5R 16 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B + · VERDICT fails
+      ex lane stops under 0.5% wide DISC n 521 | variant -0.90 vs touch -0.45 -> diff -0.46 (drop-2 -334.8; p 0.081) | worst -37.90 | losses<-1.5R 250 (touch 19)
+      ex lane stops under 0.5% wide HOA  n  21 | variant -1.16 vs touch -0.55 -> diff -0.61 (drop-2 -12.8; p —) | worst -5.23 | losses<-1.5R 5 (touch 0)
+      ex lane stops under 0.5% wide B    n  23 | variant -1.88 vs touch -0.95 -> diff -0.93 (drop-2 -39.5; p —) | worst -12.06 | losses<-1.5R 11 (touch 1)
+  close_adr050  none  vs touch at the same level
+    DISC n 573 (227 names) | variant -1.43 vs base -0.50 -> diff -0.93R/fire (sum -535.3; drop-2 -621.8 ['CSCO +46.6', 'BBWI +39.9']; p 0.011) | fillable n 572 diff -0.77 | worst -32.88 (base -3.81) | losses<-1.5R 312 (base 20) | tail: labelled 2/3 (base 1), runners 5/7 (base 3)
+    HOA  n  22 (9 names) | variant -1.87 vs base -0.57 -> diff -1.30R/fire (sum -28.6; drop-2 -28.5 ['TEM +0.0', 'TWST -0.0']; p —) | fillable n 22 diff -1.29 | worst -12.51 (base -1.00) | losses<-1.5R 6 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  30 (14 names) | variant +1.35 vs base -0.96 -> diff +2.32R/fire (sum +69.5; drop-2 -69.4 ['QCOM +120.8', 'IONQ +18.2']; p —) | fillable n 19 diff -1.52 | worst -18.99 (base -3.31) | losses<-1.5R 17 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B + · VERDICT fails
+      ex lane stops under 0.5% wide DISC n 521 | variant -0.90 vs touch -0.45 -> diff -0.45 (drop-2 -303.1; p 0.041) | worst -32.88 | losses<-1.5R 266 (touch 19)
+      ex lane stops under 0.5% wide HOA  n  21 | variant -1.36 vs touch -0.55 -> diff -0.81 (drop-2 -17.0; p —) | worst -7.40 | losses<-1.5R 5 (touch 0)
+      ex lane stops under 0.5% wide B    n  23 | variant -1.40 vs touch -0.95 -> diff -0.45 (drop-2 -28.4; p —) | worst -7.53 | losses<-1.5R 11 (touch 1)
+  close_adr100  none  vs touch at the same level
+    DISC n 573 (227 names) | variant -1.05 vs base -0.50 -> diff -0.55R/fire (sum -314.8; drop-2 -608.5 ['VSTS +231.9', 'NRIX +61.9']; p 0.206) | fillable n 572 diff -0.48 | worst -44.20 (base -3.81) | losses<-1.5R 299 (base 20) | tail: labelled 2/3 (base 1), runners 5/7 (base 3)
+    HOA  n  22 (9 names) | variant -1.72 vs base -0.57 -> diff -1.14R/fire (sum -25.2; drop-2 -25.1 ['TEM +0.0', 'TWST -0.0']; p —) | fillable n 22 diff -1.14 | worst -11.50 (base -1.00) | losses<-1.5R 6 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  30 (14 names) | variant +2.86 vs base -0.96 -> diff +3.82R/fire (sum +114.7; drop-2 -86.7 ['QCOM +183.1', 'IONQ +18.2']; p —) | fillable n 19 diff -2.41 | worst -18.99 (base -3.31) | losses<-1.5R 16 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B + · VERDICT fails
+      ex lane stops under 0.5% wide DISC n 521 | variant -0.92 vs touch -0.45 -> diff -0.48 (drop-2 -346.4; p 0.070) | worst -32.88 | losses<-1.5R 254 (touch 19)
+      ex lane stops under 0.5% wide HOA  n  21 | variant -1.25 vs touch -0.55 -> diff -0.70 (drop-2 -14.6; p —) | worst -5.23 | losses<-1.5R 5 (touch 0)
+      ex lane stops under 0.5% wide B    n  23 | variant -1.79 vs touch -0.95 -> diff -0.84 (drop-2 -37.5; p —) | worst -12.06 | losses<-1.5R 11 (touch 1)
+  close_vol3x   none  vs touch at the same level (volume override blind on 67 sessions)
+    DISC n 573 (227 names) | variant -1.21 vs base -0.50 -> diff -0.71R/fire (sum -406.9; drop-2 -515.3 ['NRIX +61.9', 'CSCO +46.6']; p 0.037) | fillable n 572 diff -0.55 | worst -39.60 (base -3.81) | losses<-1.5R 246 (base 20) | tail: labelled 2/3 (base 1), runners 5/7 (base 3)
+    HOA  n  22 (9 names) | variant -1.69 vs base -0.57 -> diff -1.12R/fire (sum -24.6; drop-2 -24.5 ['TEM +0.0', 'TWST -0.1']; p —) | fillable n 22 diff -1.13 | worst -12.95 (base -1.00) | losses<-1.5R 6 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  30 (14 names) | variant +3.81 vs base -0.96 -> diff +4.77R/fire (sum +143.2; drop-2 -58.2 ['QCOM +183.1', 'IONQ +18.2']; p —) | fillable n 19 diff -0.75 | worst -25.75 (base -3.31) | losses<-1.5R 16 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B + · VERDICT fails
+      ex lane stops under 0.5% wide DISC n 521 | variant -0.77 vs touch -0.45 -> diff -0.33 (drop-2 -267.2; p 0.105) | worst -39.60 | losses<-1.5R 201 (touch 19)
+      ex lane stops under 0.5% wide HOA  n  21 | variant -1.15 vs touch -0.55 -> diff -0.60 (drop-2 -12.6; p —) | worst -5.23 | losses<-1.5R 5 (touch 0)
+      ex lane stops under 0.5% wide B    n  23 | variant -1.00 vs touch -0.95 -> diff -0.05 (drop-2 -20.2; p —) | worst -5.40 | losses<-1.5R 12 (touch 1)
+  close         trail vs touch at the same level
+    DISC n 573 (227 names) | variant -0.48 vs base -0.26 -> diff -0.22R/fire (sum -125.4; drop-2 -281.3 ['BBWI +79.1', 'VSTS +76.8']; p 0.293) | fillable n 572 diff -0.20 | worst -44.20 (base -3.30) | losses<-1.5R 179 (base 12) | tail: labelled 2/3 (base 1), runners 4/7 (base 3)
+    HOA  n  22 (9 names) | variant -0.92 vs base -0.37 -> diff -0.55R/fire (sum -12.2; drop-2 -17.9 ['ARGX +5.7', 'RARE +0.0']; p —) | fillable n 22 diff -0.59 | worst -11.50 (base -1.00) | losses<-1.5R 4 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  30 (14 names) | variant -1.80 vs base -0.93 -> diff -0.86R/fire (sum -25.9; drop-2 -76.4 ['QCOM +32.2', 'IONQ +18.2']; p —) | fillable n 19 diff -2.15 | worst -25.75 (base -3.31) | losses<-1.5R 13 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      ex lane stops under 0.5% wide DISC n 521 | variant -0.45 vs touch -0.20 -> diff -0.25 (drop-2 -167.3; p 0.099) | worst -37.90 | losses<-1.5R 147 (touch 11)
+      ex lane stops under 0.5% wide HOA  n  21 | variant -0.42 vs touch -0.34 -> diff -0.08 (drop-2 -7.4; p —) | worst -4.45 | losses<-1.5R 3 (touch 0)
+      ex lane stops under 0.5% wide B    n  23 | variant -1.59 vs touch -0.91 -> diff -0.68 (drop-2 -34.5; p —) | worst -12.06 | losses<-1.5R 9 (touch 1)
+  close_adr050  trail vs touch at the same level
+    DISC n 573 (227 names) | variant -0.73 vs base -0.26 -> diff -0.47R/fire (sum -267.4; drop-2 -412.5 ['BBWI +81.9', 'CSCO +63.2']; p 0.056) | fillable n 572 diff -0.38 | worst -32.88 (base -3.30) | losses<-1.5R 197 (base 12) | tail: labelled 2/3 (base 1), runners 4/7 (base 3)
+    HOA  n  22 (9 names) | variant -1.06 vs base -0.37 -> diff -0.69R/fire (sum -15.2; drop-2 -21.0 ['ARGX +5.7', 'RARE +0.0']; p —) | fillable n 22 diff -0.72 | worst -12.51 (base -1.00) | losses<-1.5R 4 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  30 (14 names) | variant -1.65 vs base -0.93 -> diff -0.72R/fire (sum -21.5; drop-2 -58.5 ['QCOM +18.9', 'IONQ +18.2']; p —) | fillable n 19 diff -1.49 | worst -18.99 (base -3.31) | losses<-1.5R 14 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      ex lane stops under 0.5% wide DISC n 521 | variant -0.47 vs touch -0.20 -> diff -0.26 (drop-2 -173.9; p 0.027) | worst -32.88 | losses<-1.5R 162 (touch 11)
+      ex lane stops under 0.5% wide HOA  n  21 | variant -0.52 vs touch -0.34 -> diff -0.18 (drop-2 -9.5; p —) | worst -6.45 | losses<-1.5R 3 (touch 0)
+      ex lane stops under 0.5% wide B    n  23 | variant -1.15 vs touch -0.91 -> diff -0.23 (drop-2 -24.3; p —) | worst -7.53 | losses<-1.5R 9 (touch 1)
+  close_adr100  trail vs touch at the same level
+    DISC n 573 (227 names) | variant -0.47 vs base -0.26 -> diff -0.20R/fire (sum -116.6; drop-2 -271.7 ['BBWI +78.3', 'VSTS +76.8']; p 0.300) | fillable n 572 diff -0.19 | worst -44.20 (base -3.30) | losses<-1.5R 182 (base 12) | tail: labelled 2/3 (base 1), runners 4/7 (base 3)
+    HOA  n  22 (9 names) | variant -1.01 vs base -0.37 -> diff -0.64R/fire (sum -14.0; drop-2 -19.7 ['ARGX +5.7', 'RARE +0.0']; p —) | fillable n 22 diff -0.67 | worst -11.50 (base -1.00) | losses<-1.5R 4 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  30 (14 names) | variant -1.75 vs base -0.93 -> diff -0.81R/fire (sum -24.4; drop-2 -74.9 ['QCOM +32.2', 'IONQ +18.2']; p —) | fillable n 19 diff -2.39 | worst -18.99 (base -3.31) | losses<-1.5R 13 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      ex lane stops under 0.5% wide DISC n 521 | variant -0.46 vs touch -0.20 -> diff -0.26 (drop-2 -171.4; p 0.084) | worst -32.88 | losses<-1.5R 150 (touch 11)
+      ex lane stops under 0.5% wide HOA  n  21 | variant -0.51 vs touch -0.34 -> diff -0.17 (drop-2 -9.2; p —) | worst -4.58 | losses<-1.5R 3 (touch 0)
+      ex lane stops under 0.5% wide B    n  23 | variant -1.50 vs touch -0.91 -> diff -0.59 (drop-2 -32.4; p —) | worst -12.06 | losses<-1.5R 9 (touch 1)
+  close_vol3x   trail vs touch at the same level (volume override blind on 11 sessions)
+    DISC n 573 (227 names) | variant -0.55 vs base -0.26 -> diff -0.29R/fire (sum -167.3; drop-2 -309.6 ['BBWI +79.1', 'CSCO +63.2']; p 0.183) | fillable n 572 diff -0.24 | worst -39.60 (base -3.30) | losses<-1.5R 163 (base 12) | tail: labelled 2/3 (base 1), runners 4/7 (base 3)
+    HOA  n  22 (9 names) | variant -0.98 vs base -0.37 -> diff -0.61R/fire (sum -13.4; drop-2 -19.2 ['ARGX +5.7', 'RARE +0.0']; p —) | fillable n 22 diff -0.65 | worst -12.95 (base -1.00) | losses<-1.5R 4 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  30 (14 names) | variant -0.80 vs base -0.93 -> diff +0.14R/fire (sum +4.1; drop-2 -46.4 ['QCOM +32.2', 'IONQ +18.2']; p —) | fillable n 19 diff -0.73 | worst -25.75 (base -3.31) | losses<-1.5R 13 (base 1) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B + · VERDICT fails
+      ex lane stops under 0.5% wide DISC n 521 | variant -0.42 vs touch -0.20 -> diff -0.22 (drop-2 -152.2; p 0.075) | worst -39.60 | losses<-1.5R 129 (touch 11)
+      ex lane stops under 0.5% wide HOA  n  21 | variant -0.41 vs touch -0.34 -> diff -0.07 (drop-2 -7.2; p —) | worst -4.43 | losses<-1.5R 3 (touch 0)
+      ex lane stops under 0.5% wide B    n  23 | variant -0.71 vs touch -0.91 -> diff +0.20 (drop-2 -14.5; p —) | worst -5.40 | losses<-1.5R 10 (touch 1)
+      touch baseline none  DISC n 573 mean -0.50 worst -3.81 stopped 88%
+      touch baseline none  HOA  n  22 mean -0.57 worst -1.00 stopped 77%
+      touch baseline none  B    n  30 mean -0.96 worst -3.31 stopped 93%
+      touch baseline trail DISC n 573 mean -0.26 worst -3.30 stopped 65%
+      touch baseline trail HOA  n  22 mean -0.37 worst -1.00 stopped 55%
+      touch baseline trail B    n  30 mean -0.93 worst -3.31 stopped 87%
+
+  level = SMA10 (through the prior session); inapplicable (level at/above the entry, or no SMA10): 126 of 632
+  close         none  vs touch at the same level
+    DISC n 459 (209 names) | variant -0.16 vs base -0.01 -> diff -0.15R/fire (sum -69.6; drop-2 -131.1 ['TE +42.2', 'BHVN +19.2']; p 0.163) | fillable n 460 diff -0.19 | worst -17.90 (base -12.34) | losses<-1.5R 44 (base 6) | tail: labelled 0/3 (base 0), runners 2/6 (base 1)
+    HOA  n  18 (8 names) | variant -0.43 vs base -0.10 -> diff -0.34R/fire (sum -6.0; drop-2 -7.2 ['SCSC +0.8', 'ARGX +0.3']; p —) | fillable n 18 diff -0.32 | worst -4.76 (base -1.22) | losses<-1.5R 3 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (13 names) | variant -1.04 vs base -0.34 -> diff -0.71R/fire (sum -20.5; drop-2 -24.3 ['QCOM +3.7', 'SOLS +0.0']; p —) | fillable n 17 diff -1.08 | worst -18.09 (base -3.60) | losses<-1.5R 4 (base 2) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      in the lane's R: DISC diff -0.35 (variant -0.70 vs touch -0.36; worst -70.20; losses<-1.5R 178)
+  close_adr050  none  vs touch at the same level
+    DISC n 459 (209 names) | variant -0.07 vs base -0.01 -> diff -0.06R/fire (sum -27.4; drop-2 -97.8 ['TE +51.2', 'BHVN +19.2']; p 0.348) | fillable n 460 diff -0.09 | worst -16.98 (base -12.34) | losses<-1.5R 37 (base 6) | tail: labelled 0/3 (base 0), runners 2/6 (base 1)
+    HOA  n  18 (8 names) | variant -0.21 vs base -0.10 -> diff -0.12R/fire (sum -2.1; drop-2 -3.1 ['SCSC +0.8', 'AMLX +0.1']; p —) | fillable n 18 diff -0.11 | worst -1.22 (base -1.22) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (13 names) | variant -0.59 vs base -0.34 -> diff -0.25R/fire (sum -7.2; drop-2 -10.2 ['QCOM +3.0', 'SOLS +0.0']; p —) | fillable n 17 diff -0.49 | worst -7.17 (base -3.60) | losses<-1.5R 4 (base 2) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      in the lane's R: DISC diff -0.24 (variant -0.60 vs touch -0.36; worst -70.20; losses<-1.5R 184)
+  close_adr100  none  vs touch at the same level
+    DISC n 459 (209 names) | variant -0.16 vs base -0.01 -> diff -0.15R/fire (sum -68.7; drop-2 -136.5 ['TE +48.6', 'BHVN +19.2']; p 0.197) | fillable n 460 diff -0.16 | worst -33.78 (base -12.34) | losses<-1.5R 47 (base 6) | tail: labelled 0/3 (base 0), runners 2/6 (base 1)
+    HOA  n  18 (8 names) | variant -0.36 vs base -0.10 -> diff -0.26R/fire (sum -4.7; drop-2 -5.9 ['SCSC +0.8', 'ARGX +0.3']; p —) | fillable n 18 diff -0.25 | worst -3.61 (base -1.22) | losses<-1.5R 2 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (13 names) | variant -0.98 vs base -0.34 -> diff -0.64R/fire (sum -18.6; drop-2 -22.3 ['QCOM +3.7', 'SOLS +0.0']; p —) | fillable n 17 diff -1.02 | worst -15.17 (base -3.60) | losses<-1.5R 4 (base 2) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      in the lane's R: DISC diff -0.29 (variant -0.65 vs touch -0.36; worst -70.20; losses<-1.5R 183)
+  close_vol3x   none  vs touch at the same level (volume override blind on 77 sessions)
+    DISC n 459 (209 names) | variant -0.14 vs base -0.01 -> diff -0.13R/fire (sum -59.7; drop-2 -121.2 ['TE +42.2', 'BHVN +19.2']; p 0.179) | fillable n 460 diff -0.12 | worst -18.23 (base -12.34) | losses<-1.5R 39 (base 6) | tail: labelled 0/3 (base 0), runners 2/6 (base 1)
+    HOA  n  18 (8 names) | variant -0.45 vs base -0.10 -> diff -0.35R/fire (sum -6.3; drop-2 -7.5 ['SCSC +0.8', 'ARGX +0.3']; p —) | fillable n 18 diff -0.33 | worst -4.77 (base -1.22) | losses<-1.5R 3 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (13 names) | variant -1.11 vs base -0.34 -> diff -0.77R/fire (sum -22.4; drop-2 -26.4 ['QCOM +3.7', 'SOLS +0.2']; p —) | fillable n 17 diff -1.18 | worst -18.09 (base -3.60) | losses<-1.5R 4 (base 2) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      in the lane's R: DISC diff -0.64 (variant -1.00 vs touch -0.36; worst -68.20; losses<-1.5R 187)
+  close         trail vs touch at the same level
+    DISC n 459 (209 names) | variant -0.08 vs base -0.04 -> diff -0.04R/fire (sum -20.5; drop-2 -81.9 ['TE +42.2', 'BHVN +19.2']; p 0.381) | fillable n 460 diff -0.09 | worst -17.90 (base -12.34) | losses<-1.5R 29 (base 5) | tail: labelled 0/3 (base 0), runners 2/6 (base 1)
+    HOA  n  18 (8 names) | variant -0.39 vs base -0.08 -> diff -0.31R/fire (sum -5.5; drop-2 -6.6 ['SCSC +0.8', 'AMLX +0.2']; p —) | fillable n 18 diff -0.29 | worst -4.76 (base -1.22) | losses<-1.5R 2 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (13 names) | variant -0.36 vs base -0.33 -> diff -0.03R/fire (sum -0.8; drop-2 -7.1 ['QCOM +3.7', 'AGX +2.6']; p —) | fillable n 17 diff -0.05 | worst -4.88 (base -3.60) | losses<-1.5R 3 (base 2) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      in the lane's R: DISC diff -0.12 (variant -0.21 vs touch -0.09; worst -50.37; losses<-1.5R 156)
+  close_adr050  trail vs touch at the same level
+    DISC n 459 (209 names) | variant -0.03 vs base -0.04 -> diff +0.01R/fire (sum +2.5; drop-2 -67.9 ['TE +51.2', 'BHVN +19.2']; p 0.487) | fillable n 460 diff -0.03 | worst -16.98 (base -12.34) | losses<-1.5R 26 (base 5) | tail: labelled 0/3 (base 0), runners 2/6 (base 1)
+    HOA  n  18 (8 names) | variant -0.20 vs base -0.08 -> diff -0.11R/fire (sum -2.0; drop-2 -3.1 ['SCSC +0.8', 'AMLX +0.2']; p —) | fillable n 18 diff -0.11 | worst -1.22 (base -1.22) | losses<-1.5R 0 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (13 names) | variant -0.58 vs base -0.33 -> diff -0.25R/fire (sum -7.2; drop-2 -10.2 ['QCOM +3.0', 'SOLS +0.0']; p —) | fillable n 17 diff -0.49 | worst -7.17 (base -3.60) | losses<-1.5R 4 (base 2) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      in the lane's R: DISC diff -0.08 (variant -0.17 vs touch -0.09; worst -44.20; losses<-1.5R 161)
+  close_adr100  trail vs touch at the same level
+    DISC n 459 (209 names) | variant -0.09 vs base -0.04 -> diff -0.05R/fire (sum -24.8; drop-2 -92.6 ['TE +48.6', 'BHVN +19.2']; p 0.375) | fillable n 460 diff -0.07 | worst -33.78 (base -12.34) | losses<-1.5R 30 (base 5) | tail: labelled 0/3 (base 0), runners 2/6 (base 1)
+    HOA  n  18 (8 names) | variant -0.31 vs base -0.08 -> diff -0.22R/fire (sum -4.0; drop-2 -5.1 ['SCSC +0.8', 'AMLX +0.2']; p —) | fillable n 18 diff -0.21 | worst -3.61 (base -1.22) | losses<-1.5R 1 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (13 names) | variant -0.39 vs base -0.33 -> diff -0.06R/fire (sum -1.8; drop-2 -8.1 ['QCOM +3.7', 'AGX +2.6']; p —) | fillable n 17 diff -0.14 | worst -4.31 (base -3.60) | losses<-1.5R 3 (base 2) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      in the lane's R: DISC diff -0.07 (variant -0.16 vs touch -0.09; worst -51.84; losses<-1.5R 160)
+  close_vol3x   trail vs touch at the same level (volume override blind on 58 sessions)
+    DISC n 459 (209 names) | variant -0.06 vs base -0.04 -> diff -0.03R/fire (sum -12.8; drop-2 -74.2 ['TE +42.2', 'BHVN +19.2']; p 0.427) | fillable n 460 diff -0.02 | worst -18.23 (base -12.34) | losses<-1.5R 27 (base 5) | tail: labelled 0/3 (base 0), runners 2/6 (base 1)
+    HOA  n  18 (8 names) | variant -0.39 vs base -0.08 -> diff -0.31R/fire (sum -5.6; drop-2 -6.6 ['SCSC +0.8', 'AMLX +0.2']; p —) | fillable n 18 diff -0.29 | worst -4.77 (base -1.22) | losses<-1.5R 2 (base 0) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    B    n  29 (13 names) | variant -0.43 vs base -0.33 -> diff -0.10R/fire (sum -2.9; drop-2 -9.2 ['QCOM +3.7', 'AGX +2.6']; p —) | fillable n 17 diff -0.17 | worst -4.88 (base -3.60) | losses<-1.5R 3 (base 2) | tail: labelled 0/0 (base 0), runners 0/0 (base 0)
+    => DISC fail · HOA - · B - · VERDICT fails
+      in the lane's R: DISC diff -0.23 (variant -0.32 vs touch -0.09; worst -50.31; losses<-1.5R 161)
+      touch baseline none  DISC n 459 mean -0.01 worst -12.34 stopped 100%
+      touch baseline none  HOA  n  18 mean -0.10 worst -1.22 stopped 89%
+      touch baseline none  B    n  29 mean -0.34 worst -3.60 stopped 93%
+      touch baseline trail DISC n 459 mean -0.04 worst -12.34 stopped 86%
+      touch baseline trail HOA  n  18 mean -0.08 worst -1.22 stopped 78%
+      touch baseline trail B    n  29 mean -0.33 worst -3.60 stopped 86%
+
+========================================================================================================================
+VERDICT TABLE — 35 draws listed (pre-registered 35); HOLDS 3 (noise band <= 2); pass discovery only 3
+========================================================================================================================
+  H2   ep_low_reclaim scaled-barrier edge           DISC fail HOA can't tell  B +           -> fails
+  H2   ep_close_reclaim scaled-barrier edge         DISC fail HOA can't tell  B -           -> fails
+  H2   ep_high_break scaled-barrier edge            DISC fail HOA can't tell  B can't tell  -> fails
+  H2   ep_close_620_prox scaled-barrier edge        DISC fail HOA +           B -           -> fails
+  H1b  k=0.5 post-gap stop vs lane                  DISC pass HOA +           B +           -> holds
+  H1b  k=0.75 post-gap stop vs lane                 DISC pass HOA +           B +           -> holds
+  H1b  k=1.0 post-gap stop vs lane                  DISC pass HOA +           B +           -> holds
+  H1c  first-30-min low stop                        DISC fail HOA +           B +           -> fails
+  H1c  first-60-min low stop                        DISC fail HOA +           B can't tell  -> fails
+  H1c  old vs young defining low                    DISC fail HOA can't tell  B can't tell  -> fails
+  H3   10:00+ vs earlier fires                      DISC fail HOA -           B -           -> fails
+  H3   reclaim vol >= undercut vol                  DISC fail HOA can't tell  B can't tell  -> fails
+  H3   reclaim vol top vs bottom tercile            DISC fail HOA can't tell  B can't tell  -> fails
+  H4   adr100 admit vs reject                       DISC fail HOA n/a         B n/a         -> admitted-only differs from ERA A overall; not separable from ERA B at this n
+  H4   lane admit vs reject                         DISC fail HOA n/a         B n/a         -> admitted-only reads like ERA A overall; and unlike ERA B -> the era split is tape/time, not the 08-22 rule
+  H5   ext_xadr_eod                                 DISC fail HOA -           B +           -> fails held-out
+  H5   ext_xadr_pregap                              DISC fail HOA -           B +           -> can't tell (in-sample; held-out direction only)
+  H5   tightness_pct_eod                            DISC fail HOA +           B -           -> can't tell (in-sample; held-out direction only)
+  H5   composite_rank_eod                           DISC fail HOA +           B -           -> can't tell (in-sample; held-out direction only)
+  H5   open_range_position                          DISC fail HOA -           B -           -> can't tell (in-sample; held-out direction only)
+  H5   expct_scheduled                              DISC fail HOA —           B —           -> descriptive classes only (in-sample)
+  H5   expct_looking                                DISC fail HOA —           B —           -> descriptive classes only (in-sample)
+  H5   expct_beat                                   DISC fail HOA —           B —           -> descriptive classes only (in-sample)
+  H5   catalyst_type                                DISC fail HOA —           B —           -> descriptive classes only (in-sample)
+  H5   tier                                         DISC fail HOA —           B —           -> descriptive classes only (in-sample)
+  H12  620-near-pivot trail vs lane first fire      DISC fail HOA +           B -           -> fails
+  H12  620-near-pivot none vs lane first fire       DISC fail HOA -           B -           -> fails
+  H13  lane close none vs touch                     DISC fail HOA -           B +           -> fails
+  H13  lane close_adr050 none vs touch              DISC fail HOA -           B +           -> fails
+  H13  lane close_adr100 none vs touch              DISC fail HOA -           B +           -> fails
+  H13  lane close_vol3x none vs touch               DISC fail HOA -           B +           -> fails
+  H13  sma10 close none vs touch                    DISC fail HOA -           B -           -> fails
+  H13  sma10 close_adr050 none vs touch             DISC fail HOA -           B -           -> fails
+  H13  sma10 close_adr100 none vs touch             DISC fail HOA -           B -           -> fails
+  H13  sma10 close_vol3x none vs touch              DISC fail HOA -           B -           -> fails
