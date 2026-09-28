@@ -23,6 +23,13 @@ section governs). Nothing here cites the voided-cohort docs.
 - **H13 in context:** the lane's trailing exit ALREADY works the way he described — `compute_settlement` exits the
   trail arm on a daily CLOSE below the moving-average line, never on an intraday touch. What failed here is applying
   a close rule to the INITIAL stop (the tight one under the reclaim): with no hard floor, losers ran to −2R to −40R.
+- **Follow-up read, stop-independent (orchestrator, `hyp_rows_h5.tsv` × `campaigns_era_c.tsv`, ERA A, uncensored):
+  today's score does NOT throw away the big runners — it just does not find them.** Share of EPs that ran ≥ 5 ADR
+  within 15 sessions: admitted 7.4% (10 of 136), rejected 11.1% (9 of 81), undecided 13.6% (6 of 44); by score band
+  14.3% (<50, n 28) · 9.4% (50–65, n 53) · 10.7% (65–80, n 56) · 9.5% (80+, n 74) — flat within noise at these n.
+  All 4 of his labelled EPs are admitted. So H4's "10 of 11 ≥ 3R lane fires are rejected" is a small-n fact about
+  the lane's entries, not evidence that the score rejects runners; the scoring finding is that no score band
+  predicts who runs.
 - **Label fix carried to the hypotheses doc:** 545p3's "142 admit" includes 6 ERA B campaigns; on ERA A the era-C
   verdict is 136 admit / 81 reject / 44 undecided.
 
