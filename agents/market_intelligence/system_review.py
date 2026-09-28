@@ -889,16 +889,11 @@ async def _aggregate_mfe_capture(window_start: date) -> dict:
     from agents.market_intelligence.rule_eras import split_current_vs_older
     era_split = None
     if all(r["alert_date"] is not None for r in rows):
-        split = split_current_vs_older(
-            list(range(len(rows))),
+        # values = (kept $, peak $) per trade, so each era's own capture can be read from them
+        era_split = split_current_vs_older(
+            [(float(r["total_pnl"]), float(r["mfe_dollars"])) for r in rows],
             [{"alert_date": r["alert_date"], "signal_type": r["signal_type"]} for r in rows],
             et_today())
-        cur = [rows[i] for i in split["current"]]
-        cur_mfe = sum(float(r["mfe_dollars"]) for r in cur)
-        era_split = {"current": split["current"], "older": split["older"],
-                     "current_since": split["current_since"],
-                     "current_capture_pct": (round(sum(float(r["total_pnl"]) for r in cur)
-                                                   / cur_mfe * 100) if cur_mfe > 0 else None)}
     return {
         "n": len(rows),
         "mfe_dollars": round(mfe_total),
@@ -2613,6 +2608,12 @@ async def _setup_performance_review(lookback_days: int = 90) -> tuple[str, list[
     return "\n".join(L), asks
 
 
+def _capture_read(pairs: list) -> str:
+    """One era's winner capture from its (kept $, peak $) pairs — the #662 clause's read."""
+    peak = sum(m for _, m in pairs)
+    return f"capture {round(sum(k for k, _ in pairs) / peak * 100)}%" if peak > 0 else "capture n/a"
+
+
 def _format_mfe_capture_section(data: dict) -> str:
     """W3 winner-harvest KPI (#306) — deterministic; SURFACES the cumulative
     MFE-capture number against the v2.0 tier-one bar, never prescribes.
@@ -2628,18 +2629,8 @@ def _format_mfe_capture_section(data: dict) -> str:
         f"${data.get('mfe_dollars', 0):,.0f} peak "
         f"(n={data['n']} partial-taken closed · bar >{data.get('bar_pct', 50)}%)",
     ]
-    split = data.get("era_split")
-    if split is None:
-        lines.append("  rule eras: UNAVAILABLE — read the cumulative number as pooled across "
-                     "exit rules (#662)")
-    else:
-        from agents.market_intelligence.replay_regression import _ERA_READ_MIN_N
-        from agents.market_intelligence.rule_eras import era_split_sentence
-        n_cur, pct_cur = len(split["current"]), split.get("current_capture_pct")
-        read = (f" — current rules capture {pct_cur}%"
-                if n_cur >= _ERA_READ_MIN_N and pct_cur is not None
-                else f" — current rules n<{_ERA_READ_MIN_N}, no read" if n_cur else "")
-        lines.append(f"  rule eras: {era_split_sentence(split)}{read}")
+    from agents.market_intelligence.replay_regression import era_split_line
+    lines.append(era_split_line(data.get("era_split"), read=_capture_read))
     for w in data.get("window_closes") or []:
         lines.append(
             f"• `{w['ticker']}` closed this week: {w['capture_pct']}% "

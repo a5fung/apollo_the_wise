@@ -61,26 +61,26 @@ def test_renders_window_closes_as_bullets():
     assert "`SMCI` closed this week: -27% ($-639 of $2,327)" in lines[3]
 
 
-def _era_data(n_current, pct_current, n_older=14):
+def _era_data(n_current, n_older=14):
+    # (kept $, peak $) per trade: current-rules trades keep 41%, older-rules trades keep 10%
     return {"n": n_current + n_older, "mfe_dollars": 33810, "kept_dollars": 6369,
             "capture_pct": 19, "bar_pct": 50, "window_closes": [],
-            "era_split": {"current": list(range(n_current)),
-                          "older": list(range(n_current, n_current + n_older)),
-                          "current_since": date(2026, 9, 6),
-                          "current_capture_pct": pct_current}}
+            "era_split": {"current": [(410.0, 1000.0)] * n_current,
+                          "older": [(100.0, 1000.0)] * n_older,
+                          "current_since": date(2026, 9, 6)}}
 
 
 def test_era_clause_small_current_era_gives_count_not_number():
     # #662: 3 trades under today's rules is too few for a capture number of its own.
-    out = _format_mfe_capture_section(_era_data(3, 41))
+    out = _format_mfe_capture_section(_era_data(3))
     assert ("rule eras: under the current rules (since 2026-09-06): 3 trades · "
-            "older rules: 14 trades — current rules n<5, no read") in out
+            "older rules: 14 trades — current rules n<5, no read · older rules capture 10%") in out
     assert "41%" not in out
 
 
 def test_era_clause_reads_current_capture_once_era_can_carry_it():
-    out = _format_mfe_capture_section(_era_data(6, 41))
-    assert "6 trades · older rules: 14 trades — current rules capture 41%" in out
+    out = _format_mfe_capture_section(_era_data(6))
+    assert "6 trades · older rules: 14 trades — current rules capture 41% · older rules capture 10%" in out
 
 
 # ── #412: deterministic Reviews-ready section (title can't be LLM-truncated) ──

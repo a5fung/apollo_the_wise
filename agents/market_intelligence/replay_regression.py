@@ -75,10 +75,15 @@ _PERSISTED_KEYS = ("n", "expectancy_r", "win_rate", "avg_win_r", "avg_loss_r",
 _ERA_READ_MIN_N = 5   # below this an era's own expectancy is noise — say the count, not a number
 
 
-def era_split_line(split: dict | None, *, indent: str = "  ") -> str:
+def _expectancy_read(rs: list) -> str:
+    return f"exp {sum(rs) / len(rs):+.2f}R"
+
+
+def era_split_line(split: dict | None, *, indent: str = "  ", read=_expectancy_read) -> str:
     """The #662 era clause for a trailing-window line: which rules the trades ran under and how
-    many, with a per-era expectancy only where the era can carry one. `split` is
-    `rule_eras.split_current_vs_older(...)` over the SAME values the line reports."""
+    many, with a per-era read only where the era can carry one. `split` is
+    `rule_eras.split_current_vs_older(...)` over the SAME values the line reports; `read` turns
+    one era's values into its read (expectancy in R by default)."""
     from agents.market_intelligence.rule_eras import era_split_sentence
     if not split:
         return (f"{indent}rule eras: UNAVAILABLE — the cohort's era split could not be built, so "
@@ -87,7 +92,7 @@ def era_split_line(split: dict | None, *, indent: str = "  ") -> str:
     parts = []
     for name, rs in (("current rules", split["current"]), ("older rules", split["older"])):
         if len(rs) >= _ERA_READ_MIN_N:
-            parts.append(f"{name} exp {sum(rs) / len(rs):+.2f}R")
+            parts.append(f"{name} {read(rs)}")
         elif rs:
             parts.append(f"{name} n<{_ERA_READ_MIN_N}, no read")
     tail = f" — {' · '.join(parts)}" if parts else ""

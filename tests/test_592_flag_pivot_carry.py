@@ -17,9 +17,9 @@ from agents.market_intelligence import flag_detector as fd
 from tests.conftest import make_mock_pool
 
 
-def test_carry_window_covers_the_pivot_lookback():
-    # 25 sessions is ~35 calendar days; a carried top the finder can still use must be fetchable.
-    assert db.FLAG_PIVOT_CARRY_DAYS * 5 / 7 >= fd._PIVOT_LOOKBACK_DAYS
+def test_carry_window_is_derived_from_the_pivot_lookback():
+    # A carried top the finder can still use (inside its session lookback) must be fetchable.
+    assert fd._PIVOT_CARRY_DAYS * 5 / 7 >= fd._PIVOT_LOOKBACK_DAYS
 
 
 @pytest.mark.asyncio
@@ -30,12 +30,12 @@ async def test_carry_query_uses_the_window_and_shapes_rows(monkeypatch):
     ])
     monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
 
-    out = await db.get_yesterday_flag_pivots(date(2026, 9, 8))
+    out = await db.get_yesterday_flag_pivots(date(2026, 9, 8), carry_days=fd._PIVOT_CARRY_DAYS)
 
     assert out == {"MRVL": (date(2026, 8, 20), 251.73)}
     args = conn.fetch.await_args.args
     assert args[1] == date(2026, 9, 8)
-    assert args[2] == db.FLAG_PIVOT_CARRY_DAYS
+    assert args[2] == fd._PIVOT_CARRY_DAYS == 40
 
 
 def _bars(highs_closes, start=date(2026, 7, 1)):

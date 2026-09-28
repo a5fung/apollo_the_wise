@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import json
 import logging
+import asyncio
 import random
 import statistics
 from collections import defaultdict
@@ -70,7 +71,6 @@ G3_PASS_PCT = 90.0            # >= 90% of themes beat the matched control's p95
 G3_N_DRAWS = 500
 G3_SEED = 655
 G4_SMALL_MAX_PCT = 10.0       # <= 10% of the board may be under 3 members
-SHARD_BAR = 0.70
 
 LATENCY_LOOKBACK_SESSIONS = 40     # cluster lookback before a birth night (critic_latency.py)
 LATENCY_WINDOW_DAYS = 30           # trailing window over which births are scored each night
@@ -83,6 +83,13 @@ RENAME_JACCARD_DAYS = 10
 
 
 # ── shared helpers ──────────────────────────────────────────────────────────────────────────────
+
+def _bar(rate: float | None, bar_pct: float, *, at_most: bool = False) -> dict[str, Any]:
+    """The rate / bar / pass triple every signed read reports: a rate at or above the bar passes,
+    or at or below it for an `at_most` bar; no rate (nothing judgeable) is neither pass nor fail."""
+    return {"rate_pct": None if rate is None else round(rate, 1), "bar_pct": bar_pct,
+            "pass_bar": None if rate is None else (rate <= bar_pct if at_most else rate >= bar_pct)}
+
 def usable_set(excess: dict[str, np.ndarray]) -> set[str]:
     """Tickers with a real reading (>= BELONGING_MIN_OVERLAP_SESSIONS finite sessions)."""
     return {t for t, v in excess.items() if mac.usable(v, mac.BELONGING_MIN_OVERLAP_SESSIONS)}
@@ -197,14 +204,8 @@ def compute_g1_g2(themes: list[dict], excess: dict[str, np.ndarray], *,
         "n_slots": len(rows),
         "n_judgeable": n_judg,
         "judgeable_share_pct": round(100.0 * n_judg / len(rows), 1) if rows else None,
-        "g1": {"pass": g1_pass, "n": n_judg,
-              "rate_pct": None if g1_rate is None else round(g1_rate, 1),
-              "bar_pct": G1_PASS_PCT,
-              "pass_bar": None if g1_rate is None else g1_rate >= G1_PASS_PCT},
-        "g2": {"flagged": len(g2_flagged), "n": n_judg,
-              "rate_pct": None if g2_rate is None else round(g2_rate, 1),
-              "bar_pct": G2_FAIL_PCT,
-              "pass_bar": None if g2_rate is None else g2_rate <= G2_FAIL_PCT,
+        "g1": {"pass": g1_pass, "n": n_judg, **_bar(g1_rate, G1_PASS_PCT)},
+        "g2": {"flagged": len(g2_flagged), "n": n_judg, **_bar(g2_rate, G2_FAIL_PCT, at_most=True),
               "list": [(r.ticker, r.theme, r.best_other_theme) for r in g2_flagged]},
         "era_breakdown": era_breakdown,
     }
@@ -225,8 +226,8 @@ def compute_g3(themes: list[dict], excess: dict[str, np.ndarray], usable: set[st
     board = {m for th in themes for m in (th.get("tickers") or [])}
     uni = [t for t in scores if t in usable and scores[t].get("rs") is not None]
     if not uni:
-        return {"n_board": len(themes), "n_judgeable": 0, "pass": 0, "rate_pct": None,
-                "bar_pct": G3_PASS_PCT, "pass_bar": None, "themes": [], "fail_list": []}
+        return {"n_board": len(themes), "n_judgeable": 0, "pass": 0, **_bar(None, G3_PASS_PCT),
+                "themes": [], "fail_list": []}
 
     _vol_cache: dict[str, float] = {}
 
@@ -328,8 +329,7 @@ def compute_g3(themes: list[dict], excess: dict[str, np.ndarray], usable: set[st
     rate = (100.0 * passed / len(judgeable)) if judgeable else None
     return {
         "n_board": len(themes), "n_judgeable": len(judgeable),
-        "pass": passed, "rate_pct": None if rate is None else round(rate, 1),
-        "bar_pct": G3_PASS_PCT, "pass_bar": None if rate is None else rate >= G3_PASS_PCT,
+        "pass": passed, **_bar(rate, G3_PASS_PCT),
         "fail_list": [r["name"] for r in judgeable if not r["pass_g3"]],
         "themes": trows,
     }
@@ -341,13 +341,9 @@ def compute_g4(themes: list[dict], *, small_max_pct: float = G4_SMALL_MAX_PCT) -
     (the only bar of its several G4 reads that was signed 2026-09-27 — shard/dual-homed/homeless
     are informational in the probe and are NOT reproduced here)."""
     n = len(themes)
-    if n == 0:
-        return {"n_board": 0, "small": 0, "rate_pct": None, "bar_pct": small_max_pct, "pass_bar": None,
-               "list": []}
     small = [th["name"] for th in themes if len(th.get("tickers") or []) < 3]
-    pct = round(100.0 * len(small) / n, 1)
-    return {"n_board": n, "small": len(small), "rate_pct": pct, "bar_pct": small_max_pct,
-           "pass_bar": pct <= small_max_pct, "list": small}
+    rate = 100.0 * len(small) / n if n else None
+    return {"n_board": n, "small": len(small), **_bar(rate, small_max_pct, at_most=True), "list": small}
 
 
 # ── Step-2 naming latency (re-mint exclusion per critic_latency.py) ────────────────────────────────
@@ -401,11 +397,14 @@ def compute_theme_latency(
         if old in names and new in names:
             _union(parent, new, old)
 
-    by_date: dict[date, list[tuple[str, list[str], str]]] = defaultdict(list)
-    for n, rs in names.items():
+    by_date_bucket: dict[date, list[dict]] = defaultdict(list)
+    for rs in names.values():
         for r in rs:
-            if r.get("tickers") and r["stage"] != "Retired":
-                by_date[r["date"]].append((n, r["tickers"], r["stage"]))
+            by_date_bucket[r["date"]].append(r)
+    by_date: dict[date, list[tuple[str, list[str], str]]] = {
+        d: [(r["name"], r["tickers"], r["stage"]) for r in rs
+            if r.get("tickers") and r["stage"] != "Retired"]
+        for d, rs in by_date_bucket.items()}
 
     first_row: dict[str, dict] = {}
     for n, rs in names.items():
@@ -459,10 +458,6 @@ def compute_theme_latency(
                     break
         return hits
 
-    by_date_bucket: dict[date, list[dict]] = defaultdict(list)
-    for n, rs in names.items():
-        for r in rs:
-            by_date_bucket[r["date"]].append(r)
     bdates = sorted({r["date"] for r in history})
     _board_cache: dict[date, list[dict]] = {}
 
@@ -631,12 +626,16 @@ async def run_theme_correctness_check(conn: Any = None) -> dict[str, Any]:
             for r in cluster_rows:
                 cluster_by_date[r["cluster_date"]][r["cluster_hash"]].add(r["ticker"])
 
-            latency = compute_theme_latency(history, renames, cluster_by_date, all_spy_sessions, today)
             theme_history_by_name: dict[str, dict[date, set[str]]] = defaultdict(dict)
             for r in history:
                 theme_history_by_name[r["name"]][r["date"]] = set(r["tickers"])
-            report = build_correctness_report(themes, excess, scores, sector,
-                                              history=theme_history_by_name, latency=latency)
+
+            def _compute() -> dict[str, Any]:
+                latency = compute_theme_latency(history, renames, cluster_by_date, all_spy_sessions, today)
+                return build_correctness_report(themes, excess, scores, sector,
+                                                history=theme_history_by_name, latency=latency)
+            # ~4 s of NumPy/Python work: off the event loop so the scheduler's other jobs keep running.
+            report = await asyncio.to_thread(_compute)
             out["report"] = report
         except Exception as e:
             logger.error("theme_correctness_check: load/compute failed: %s", e, exc_info=True)

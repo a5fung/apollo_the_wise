@@ -53,6 +53,11 @@ _HISTORY_DAYS     = 262     # TRADING days (2026-09-05: get_recent_daily_history
 
 # ── Universe / runup gates ──────────────────────────────────────────────────
 _PIVOT_LOOKBACK_DAYS = 25       # Walk back this far to find pivot-high bar
+# #592 (2026-09-27): how many CALENDAR days back a ticker's last anchored row may be and still seed
+# the stable anchor — derived from the lookback (sessions -> calendar days, plus a week of holidays)
+# so a name out of the scan for a week keeps its top; the finder ignores a carried top outside
+# its own lookback anyway. Was 5 days, sized for a weekend.
+_PIVOT_CARRY_DAYS = math.ceil(_PIVOT_LOOKBACK_DAYS * 7 / 5) + 5
 _PIVOT_HIGH_BAND     = 0.02     # Volume candidate's high must be within 2% of max_high
                                 # (was 0.05 — VECO 5/06 case: 5/5 high $52.16 was 2.4%
                                 # below period max $53.43 with 3M vol vs 1.5M at the
@@ -1359,7 +1364,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         db.get_recent_flag_stages(scan_date, lookback_days=_COILED_LOOKBACK_DAYS),
         db.get_rs_for_tickers(scan_date, universe),
         db.get_sectors_batch(universe),
-        db.get_yesterday_flag_pivots(scan_date),
+        db.get_yesterday_flag_pivots(scan_date, carry_days=_PIVOT_CARRY_DAYS),
         db.get_flag_failure_carry(scan_date),
     )
 

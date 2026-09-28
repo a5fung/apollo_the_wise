@@ -186,8 +186,8 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
 ## Change log
 - **2026-09-27 — #592 follow-through: a name that leaves the scan for over 5 days keeps its pole top.
   Enforces the signed 09-04 rule (a wick over an unresolved flag never becomes the top); no threshold moved.**
-  **What**: `db.get_yesterday_flag_pivots` carries the last anchored top for `FLAG_PIVOT_CARRY_DAYS = 40`
-  calendar days (was 5, sized for a weekend); `_find_pivot_high` still ignores a carried top outside its
+  **What**: `db.get_yesterday_flag_pivots` carries the last anchored top for `flag_detector._PIVOT_CARRY_DAYS` =
+  40 calendar days, derived from the 25-session pivot lookback (was 5, sized for a weekend); `_find_pivot_high` still ignores a carried top outside its
   25-session lookback. **Why**: verified live on prod — among flags with a formed flag whose top moved up,
   moves on a wick with no close above the old top fell from 135 of 885 (07-01..09-03) to 8 of 146
   (09-05..09-25), and 7 of the 8 (MRVL, ORCL, SMR, ASAN, LITE, NMAX, VERA) were names back after 6+ days out
