@@ -1,0 +1,26 @@
+rows 278 same 257 differ 21 (fresh top HIGHER than carried: 12) errors 0
+
+HELD-TOP CASE — a fresh anchor would take a higher top; the carried top holds (no close above it, or the new high did not beat the walk floor) (12): ticker, scan date, fresh top, carried top
+  CERT 2026-09-25 9.125 8.885
+  DFDV 2026-09-14 6.21 6.13
+  GRAL 2026-09-21 85.49 84.49
+  HSAI 2026-09-08 19.4 19.345
+  LITE 2026-09-18 1026.76 999.675
+  MRVL 2026-09-08 254.6 251.73
+  MUX 2026-09-22 21.93 21.785
+  NMAX 2026-09-21 12.11 11.59
+  ORCL 2026-09-08 159.7 159.26
+  SMR 2026-09-08 10.255 10.025
+  VERA 2026-09-22 37.14 36.7
+  VOYG 2026-09-16 45.4 45.33
+
+STABLE-ANCHOR CASE — the carried top is HIGHER; the volume rule would have swapped it for a lower bar in the 2% band (9). NOT covered by the signed 09-04 fix; disclosed to him 2026-09-27:
+  ABSI 2026-09-18 9.83 10.015
+  CMPS 2026-09-09 14.71 14.92
+  DCH 2026-09-08 6.985 7.06
+  FLUT 2026-09-08 106.94 108.15
+  TMDX 2026-09-21 94.52 94.99
+  UEC 2026-09-08 13.67 13.8
+  VIA 2026-09-17 28.75 29.11
+  WAY 2026-09-15 26.86 26.87
+  ZS 2026-09-14 190.0 190.3
