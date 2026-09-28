@@ -1,0 +1,71 @@
+#685 depth-trigger follow-up — INDEPENDENT CHECK verdict (2026-09-28; check_depth.py, $0, no prod)
+Own code: own D05/D10 walker, own SMA line, own ADR20, day-0 state from the harness (not study.day0_state); nothing imported from study.py / depth.py.
+
+VERDICT: every number in the follow-up reproduces exactly (79 of 79 trades to 4 dp, all totals, FTK/INFQ), and the depth trigger uses no future information and fills at prices that could trade. WRONG: the better/worse counts in depth_out.txt and three wording claims (doc lines 278, 292, 296). The INFQ gain under D10 depends on measuring ADR at entry.
+
+SURVIVE
+- Per trade: D05 and D10 match depth_per_trade.tsv on 79 of 79 (4 dp). Own A0/A1 match arms_per_trade.tsv on 84 of 84 (0.005R).
+- Totals, 79 trades: today -5.77; D05 -8.33 (-2.56 vs today); D10 -7.59 (-1.82); close-only -9.85 (-4.08).
+  Stored A2k2 -9.79 (-4.02) and A3 -6.46 (-0.69) check by arithmetic only; they were not rewalked.
+- Totals, 77 trades without FTK/INFQ: today -16.02; D05 -17.50 (-1.47); D10 -15.32 (+0.70); close-only -15.32 (+0.70); A2k2 +0.58; A3 +1.56.
+- p-values agree within Monte Carlo noise (own seed 11): D05 0.066 vs 0.058; D10 0.215 vs 0.194; 77-trade 0.296 / 0.760.
+- Worst trade -1.27 in every arm. No losses beyond -1.5R.
+- FTK: D10 5.07, D05 5.67, close-only 3.22. INFQ: D10 2.67, D05 3.49, close-only 2.26.
+  Breach depth: FTK 3.148 x ADR, INFQ 1.414 x ADR.
+- D10 equals close-only on all 77 trades without FTK/INFQ (+0.0000R).
+  D10 fires on only 2 trades (FTK, INFQ); neither fire was on a day that recovered.
+- No look-ahead in the line or the ADR:
+  - The line is the previous evening's broker stop. The own line matches the probe's on 41 of 41 line-test days.
+  - ADR20 is taken over the 20 sessions strictly before the alert date. Harness and own ADR agree on 51 of 51.
+- Fillable prices:
+  - Every depth fire is seen inside a stored minute bar. The minute-only variant gives identical totals, so no fire rests on the daily-low fallback.
+  - Every fill lies between the bar's low and its open.
+  - Two bars opened below the trigger (ZBRA 08-18 09:46, ETON 08-28 12:44) and are charged at that bar's open.
+  - No depth trigger was gapped through at the 09:30 open.
+- Worst-case fill at the fill minute's low: FTK D10 4.58, D05 4.58; INFQ D10 2.65. Both are still better than close-only.
+  D10 over 79 becomes -8.10 (-2.33 vs today).
+- Symmetric worst case: the same minute's low also applies to today's stop on FTK (the earlier check put A0 FTK at 4.58).
+  FTK then TIES across D10 and today (both 4.58), and D10 vs today over 79 is about -0.6R, not -1.82.
+  This adjusts FTK only; today's other touch fills are still booked at the stop.
+- Trades with no line test: 59 of 79 (35 stopped on day 0).
+  A0/A1/A2k2/A2k3/A3/D05/D10 (stored and own) are identical within 0.0005R on all 59. All 6 held-out trades are among them.
+- D05's cost on the 77 trades is -2.17R vs close-only:
+  - -1.70R comes from its 2 sales on days that recovered (TEAM 08-26 alone -1.42R).
+  - -0.46R comes from 8 slice days sold at the trigger, below where they closed.
+
+WRONG
+- depth_out.txt and depth_summary.tsv better/worse (D05, D10 vs today):
+  - Printed: ALL 15/17 and 18/14; ALL_ex 15/15 and 18/12; DISC likewise.
+  - Correct: ALL 5/15 and 8/12; ALL_ex 5/13 and 8/10.
+  - Cause: 12 differences below 0.0005R are rounding (full-precision D walk vs the 4-dp stored A0). The doc table does not show these counts.
+- Doc line 292: "FTK and INFQ closed 20.5% and 13.2% below their line." Those are the intraday LOWS.
+  The closes were 16.6% below (28.66 vs 34.35) and 11.7% below (14.56 vs 16.48).
+- Doc line 296: "the price never fell that far on any of them" (the other 77). CAMT 06-05 (in the 79) fell 1.25 x ADR (7.4%) below its line of 176.04.
+  D10 equals close-only there (-1.00R) only because CAMT's hard stop (169.84) sits above the 1-ADR level (165.67) and fires first. The equality survives; the stated reason does not.
+- Doc line 278: "A0/A1/A2k2/A3 ... re-derived independently and matched to 0.005R."
+  depth.py's gate rewalks only A0 and A1, with study.py's own walk_hybrid_arm, so it is not independent. A2k2 and A3 are not re-derived.
+  The numbers are still right: the own walker matches A0/A1 on 84 of 84.
+
+NOTE (presentation, not wrong): the "sold a day that recovered" column (doc table; line 298, "2 of the 19 days")
+- The cells label their own denominators: the slice arms count per sale (6 of 16, 2 of 14); the D arms count per recovered day (2 of 19, 0 of 19).
+- The 19 recovered days span the 25-trade line-test population, the main study's own convention. 4 of them are on names outside the 79 (THC 08-12, HTFL 08-31, HTFL 09-03, ARGX 08-31).
+- Like for like on the 79: D05 2 of 12 sales, D10 0 of 2 sales (slice k=2: 6 of 16). Per recovered day on the 79: 2 of 15.
+- Stricter reading, a day that close-only held:
+  - D05 sold only 1 such day (TEAM 08-26, -1.42R).
+  - Close-only also sold KLAR on 06-03 (-0.28R, a fill-price cost).
+  - The same caveat applies to the slice arm's 6 (KLAR 06-03 and QBTS 06-04 were also close-only sales).
+
+WOULD A BROKEN REPLAY GIVE THE SAME HEADLINE?
+- A D10 that never fires gives the identical 77-trade result (-15.32, +0.70). That claim cannot tell the difference on its own.
+  The positive evidence is the own depth list: on the 79, only 3 line-test days reach 1 x ADR:
+  - FTK 3.15
+  - INFQ 1.41
+  - CAMT 1.25 (its hard stop sits above the 1-ADR level)
+- ADR from the wrong date: the 77-trade D10 result is unchanged (+0.70), so that claim cannot tell the difference either. The FTK/INFQ gain does move:
+  - ADR as of the sell day: D10 over 79 is -2.46 vs today; INFQ 2.29 vs close-only 2.26, so the INFQ gain is gone.
+  - ADR including the sell day: INFQ 2.26, equal to close-only.
+  - So "D10 catches INFQ better" holds only with ADR measured at entry.
+- Depth measured from the wrong line (the 16:45 SMA including that day's close): the headline changes.
+  - D10 over 77: -0.54 vs today, with 8 trades different.
+  - D05 over 79: -0.93 vs today.
+  The probe used the correct, causal line.

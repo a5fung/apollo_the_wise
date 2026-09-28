@@ -1,0 +1,53 @@
+own line + own ADR20 vs depth_line_tests.tsv: 41 of 41 line-test days match (line to the cent, depth to 0.002 ADR); probe rows 41
+max depth below the line on every line-test day, in ADR multiples (own line, own ADR20 at entry), >= 0.5 flagged:
+   FTK   2026-08-17 in79=True line 34.35 low 27.3 close 28.66 depth 3.148 ADR (20.52% low, +16.56% close) >=1.0 | D10 level 32.11 D05 level 33.23 entry 25.16 hard 23.92
+   INFQ  2026-06-05 in79=True line 16.48 low 14.3 close 14.56 depth 1.414 ADR (13.23% low, +11.65% close) >=1.0 | D10 level 14.94 D05 level 15.71 entry 13.7 hard 13.08
+   CAMT  2026-06-05 in79=True line 176.04 low 163.04 close 164.21 depth 1.254 ADR (7.38% low, +6.72% close) >=1.0 | D10 level 165.67 D05 level 170.86 entry 180.16 hard 169.84
+   THC   2026-08-27 in79=False line 271.63 low 264.2201 close 267.75 depth 0.773 ADR (2.73% low, +1.43% close) >=0.5 | D10 level 262.05 D05 level 266.84 entry 240.47 hard 226.69
+   VG    2026-05-26 in79=True line 13.37 low 12.86 close 12.89 depth 0.723 ADR (3.81% low, +3.59% close) >=0.5 | D10 level 12.66 D05 level 13.02 entry 12.68 hard 12.07
+   KLAR  2026-06-03 in79=True line 16.91 low 16.375 close 16.95 depth 0.703 ADR (3.16% low, -0.24% close) >=0.5 | D10 level 16.15 D05 level 16.53 entry 15.92 hard 14.44
+   TH    2026-08-26 in79=True line 17.31 low 16.7 close 16.78 depth 0.701 ADR (3.52% low, +3.06% close) >=0.5 | D10 level 16.44 D05 level 16.87 entry 16.09 hard 14.95
+   TEAM  2026-09-08 in79=True line 183.42 low 175.53 close 176.42 depth 0.681 ADR (4.30% low, +3.82% close) >=0.5 | D10 level 171.84 D05 level 177.63 entry 146.8 hard 139.62
+   AMLX  2026-08-31 in79=True line 34.46 low 32.98 close 33.75 depth 0.655 ADR (4.29% low, +2.06% close) >=0.5 | D10 level 32.20 D05 level 33.33 entry 30.07 hard 27.09
+   MRNA  2026-09-04 in79=True line 146.76 low 141.52 close 145.55 depth 0.624 ADR (3.57% low, +0.82% close) >=0.5 | D10 level 138.36 D05 level 142.56 entry 120.15 hard 109.85
+   ZBRA  2026-08-18 in79=True line 366.78 low 358.68 close 366.42 depth 0.567 ADR (2.21% low, +0.10% close) >=0.5 | D10 level 352.50 D05 level 359.64 entry 345.6 hard 313.48
+   ETON  2026-08-28 in79=True line 60.36 low 58.3265 close 59.78 depth 0.560 ADR (3.37% low, +0.96% close) >=0.5 | D10 level 56.73 D05 level 58.54 entry 55.44 hard 50.58
+   CLF   2026-08-14 in79=True line 12.15 low 11.83 close 11.9 depth 0.560 ADR (2.63% low, +2.06% close) >=0.5 | D10 level 11.58 D05 level 11.86 entry 10.85 hard 10.35
+   TEAM  2026-08-26 in79=True line 166.35 low 160.962 close 168.47 depth 0.513 ADR (3.24% low, -1.27% close) >=0.5 | D10 level 155.85 D05 level 161.10 entry 146.8 hard 139.62
+   U     2026-08-25 in79=False line 45.94 low 44.7926 close 44.99 depth 0.455 ADR (2.50% low, +2.07% close)  | D10 level 43.42 D05 level 44.68 entry 36.61 hard 32.99
+   HTFL  2026-09-03 in79=False line 49.23 low 48.1 close 49.71 depth 0.442 ADR (2.30% low, -0.98% close)  | D10 level 46.67 D05 level 47.95 entry 39.06 hard 33.96
+   EROC  2026-08-20 in79=True line 13.29 low 12.68 close 13.01 depth 0.435 ADR (4.59% low, +2.11% close)  | D10 level 11.89 D05 level 12.59 entry 13.16 hard 12.34
+   PLTR  2026-08-24 in79=True line 174.74 low 171.31 close 175.89 depth 0.434 ADR (1.96% low, -0.66% close)  | D10 level 166.83 D05 level 170.79 entry 148.63 hard 137.93
+   ROIV  2026-09-21 in79=False line 39.27 low 38.72 close 38.99 depth 0.429 ADR (1.40% low, +0.71% close)  | D10 level 37.99 D05 level 38.63 entry 40.4 hard 36.60
+   QNST  2026-08-21 in79=True line 20.25 low 19.96 close 20.62 depth 0.363 ADR (1.43% low, -1.83% close)  | D10 level 19.45 D05 level 19.85 entry 19.8 hard 18.62
+   PLTR  2026-08-25 in79=True line 174.81 low 172.2004 close 172.73 depth 0.330 ADR (1.49% low, +1.19% close)  | D10 level 166.90 D05 level 170.86 entry 148.63 hard 137.93
+   ATRO  2026-08-19 in79=True line 82.21 low 81.02 close 81.67 depth 0.309 ADR (1.45% low, +0.66% close)  | D10 level 78.36 D05 level 80.28 entry 85.25 hard 73.75
+   MRNA  2026-09-03 in79=True line 145.20 low 142.78 close 148.87 depth 0.291 ADR (1.67% low, -2.53% close)  | D10 level 136.89 D05 level 141.05 entry 120.15 hard 109.85
+   ABCL  2026-08-24 in79=True line 10.66 low 10.44 close 10.61 depth 0.275 ADR (2.06% low, +0.47% close)  | D10 level 9.86 D05 level 10.26 entry 8.96 hard 7.84
+   ARGX  2026-09-01 in79=False line 1029.52 low 1021.5501 close 1028.51 depth 0.266 ADR (0.77% low, +0.10% close)  | D10 level 999.59 D05 level 1014.56 entry 936.78 hard 914.24
+   HTFL  2026-09-04 in79=False line 49.52 low 48.87 close 48.91 depth 0.253 ADR (1.31% low, +1.23% close)  | D10 level 46.95 D05 level 48.23 entry 39.06 hard 33.96
+   CAMT  2026-06-04 in79=True line 176.04 low 173.43 close 181.16 depth 0.252 ADR (1.48% low, -2.91% close)  | D10 level 165.67 D05 level 170.86 entry 180.16 hard 169.84
+   CSCO  2026-06-05 in79=True line 122.15 low 121.55 close 121.64 depth 0.200 ADR (0.49% low, +0.42% close)  | D10 level 119.15 D05 level 120.65 entry 117.55 hard 112.51
+   ARGX  2026-08-31 in79=False line 1011.49 low 1005.78 close 1031.66 depth 0.194 ADR (0.56% low, -1.99% close)  | D10 level 982.09 D05 level 996.79 entry 936.78 hard 914.24
+   QBTS  2026-06-04 in79=True line 26.85 low 26.45 close 27.64 depth 0.182 ADR (1.49% low, -2.94% close)  | D10 level 24.65 D05 level 25.75 entry 22.2 hard 21.02
+   PLTR  2026-08-21 in79=True line 173.95 low 172.55 close 179.94 depth 0.178 ADR (0.80% low, -3.44% close)  | D10 level 166.08 D05 level 170.01 entry 148.63 hard 137.93
+   HTFL  2026-08-31 in79=False line 47.42 low 47.13 close 50.39 depth 0.118 ADR (0.61% low, -6.26% close)  | D10 level 44.96 D05 level 46.19 entry 39.06 hard 33.96
+   QUBT  2026-06-03 in79=True line 11.27 low 11.1703 close 11.2 depth 0.100 ADR (0.88% low, +0.62% close)  | D10 level 10.27 D05 level 10.77 entry 10.6 hard 10.04
+   TH    2026-08-13 in79=True line 16.08 low 16.0 close 16.27 depth 0.099 ADR (0.50% low, -1.18% close)  | D10 level 15.27 D05 level 15.68 entry 16.09 hard 14.95
+   THC   2026-08-12 in79=False line 257.15 low 256.285 close 266.79 depth 0.095 ADR (0.34% low, -3.75% close)  | D10 level 248.08 D05 level 252.61 entry 240.47 hard 226.69
+   PLTR  2026-08-19 in79=True line 170.47 low 169.7705 close 175.19 depth 0.091 ADR (0.41% low, -2.77% close)  | D10 level 162.76 D05 level 166.61 entry 148.63 hard 137.93
+   TH    2026-08-25 in79=True line 17.24 low 17.2 close 17.39 depth 0.046 ADR (0.23% low, -0.87% close)  | D10 level 16.37 D05 level 16.81 entry 16.09 hard 14.95
+   CLF   2026-08-13 in79=True line 12.10 low 12.09 close 12.15 depth 0.018 ADR (0.08% low, -0.41% close)  | D10 level 11.53 D05 level 11.82 entry 10.85 hard 10.35
+   PLTR  2026-08-20 in79=True line 172.15 low 172.03 close 173.96 depth 0.015 ADR (0.07% low, -1.05% close)  | D10 level 164.36 D05 level 168.26 entry 148.63 hard 137.93
+   TEAM  2026-08-25 in79=True line 165.11 low 165.1 close 166.49 depth 0.001 ADR (0.01% low, -0.84% close)  | D10 level 154.69 D05 level 159.90 entry 146.8 hard 139.62
+   QUBT  2026-06-01 in79=True line 11.03 low 11.03 close 12.39 depth 0.000 ADR (0.00% low, -12.33% close)  | D10 level 10.05 D05 level 10.54 entry 10.6 hard 10.04
+broken / alternative replays (paired on the same 79 keys):
+   D05                  CORRECT: 79 -8.33 (vs A0 -2.56); 77 -17.50 (vs A0 -1.47); FTK +5.67 INFQ +3.49
+   D10                  CORRECT: 79 -7.59 (vs A0 -1.82); 77 -15.32 (vs A0 +0.70); FTK +5.07 INFQ +2.67
+   D10_lookahead_line   79 -8.23 (vs A0 -2.46); 77 -16.56 (vs A0 -0.54); FTK +5.33 INFQ +3.00; trades differing from correct D10: 8
+   D05_lookahead_line   79 -6.70 (vs A0 -0.93); 77 -16.47 (vs A0 -0.45); FTK +5.94 INFQ +3.84; trades differing from correct D05: 17
+   D10_adr_asof_day     79 -8.23 (vs A0 -2.46); 77 -15.32 (vs A0 +0.70); FTK +4.81 INFQ +2.29; trades differing from correct D10: 2
+   D05_adr_asof_day     79 -8.68 (vs A0 -2.91); 77 -17.54 (vs A0 -1.51); FTK +5.54 INFQ +3.31; trades differing from correct D05: 11
+   D10_adr_incl_today   79 -8.49 (vs A0 -2.72); 77 -15.32 (vs A0 +0.70); FTK +4.58 INFQ +2.26; trades differing from correct D10: 2
+   D05_adr_incl_today   79 -8.87 (vs A0 -3.10); 77 -17.59 (vs A0 -1.57); FTK +5.43 INFQ +3.29; trades differing from correct D05: 11
+   D_never_fires        79 -9.85 (vs A0 -4.08); 77 -15.32 (vs A0 +0.70); FTK +3.22 INFQ +2.26; trades differing from correct D10: 2

@@ -1,0 +1,73 @@
+every D05/D10 exit after day 0 (own walk, study semantics: a daily-low touch is booked on every day):
+   D05 MRAM  2026-05-11 exit 2026-05-12 09:30 @36.06 rest 36.42 depth-trigger=False line 36.42 | fill bar o/h/l/c 36.06/36.7981/35.0/35.5628 | day open 36.465 close 44.01 | bars 390 first 09:30 [562bf] grain minute gap True in79 True
+   D05 VG    2026-05-12 exit 2026-05-26 12:35 @13.02 rest 13.02 depth-trigger=True line 13.37 | fill bar o/h/l/c 13.02/13.05/13.01/13.035 | day open 13.3 close 12.89 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 ZBRA  2026-05-12 exit 2026-05-13 09:43 @238.00 rest 238.00 depth-trigger=False line 238.00 | fill bar o/h/l/c 238.555/238.6399/237.84/238.0 | day open 248.68 close 246.76 | bars 355 first 09:30 [562bf] grain minute gap False in79 True
+   D05 KLAR  2026-05-14 exit 2026-06-03 09:45 @16.53 rest 16.53 depth-trigger=True line 16.91 | fill bar o/h/l/c 16.65/16.65/16.53/16.545 | day open 17.23 close 16.95 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 FIG   2026-05-15 exit 2026-05-20 09:30 @22.43 rest 22.62 depth-trigger=False line 22.62 | fill bar o/h/l/c 22.43/22.64/22.3601/22.54 | day open 22.43 close 22.58 | bars 390 first 09:30 [562bf] grain minute gap True in79 True
+   D05 INFQ  2026-05-21 exit 2026-06-05 09:35 @15.71 rest 15.71 depth-trigger=True line 16.48 | fill bar o/h/l/c 15.89/15.89/15.71/15.78 | day open 16.16 close 14.56 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 RDW   2026-05-26 exit 2026-06-03 09:30 @19.50 rest 19.68 depth-trigger=False line 19.68 | fill bar o/h/l/c 19.5/19.69/19.19/19.2056 | day open 19.5 close 18.62 | bars 390 first 09:30 [562bf] grain minute gap True in79 True
+   D05 KTOS  2026-05-28 exit 2026-06-03 09:44 @59.02 rest 59.02 depth-trigger=False line 59.02 | fill bar o/h/l/c 59.06/59.12/58.88/59.095 | day open 61.62 close 58.43 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 NOW   2026-06-01 exit 2026-06-02 09:30 @129.90 rest 131.24 depth-trigger=False line 131.24 | fill bar o/h/l/c 129.9/132.7399/129.503/130.86 | day open 129.9 close 127.65 | bars 390 first 09:30 [562bf] grain minute gap True in79 True
+   D05 CAMT  2026-06-02 exit 2026-06-05 10:00 @170.86 rest 170.86 depth-trigger=True line 176.04 | fill bar o/h/l/c 170.9/171.4/170.29/170.8 | day open 176.2 close 164.21 | bars 218 first 09:30 [562bf] grain minute gap False in79 True
+   D05 LAC   2026-06-02 exit 2026-06-03 daily @5.53 rest 5.53 depth-trigger=False line 5.53 | fill bar o/h/l/c 5.55/5.55/5.17/5.2 | day open 5.55 close 5.2 | bars 0 first - [None] grain daily (no bars) gap False in79 True
+   D05 MANE  2026-07-15 exit 2026-07-16 09:30 @118.75 rest 118.75 depth-trigger=False line 118.75 | fill bar o/h/l/c 123.12/123.12/115.241/120.05 | day open 123.12 close 105.83 | bars 368 first 09:30 [562bf] grain minute gap False in79 True
+   D05 SMCI  2026-07-22 exit 2026-07-24 10:40 @29.48 rest 29.48 depth-trigger=False line 29.48 | fill bar o/h/l/c 29.545/29.55/29.44/29.46 | day open 30.62 close 30.1 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 CLF   2026-07-23 exit 2026-08-14 14:20 @11.86 rest 11.86 depth-trigger=True line 12.15 | fill bar o/h/l/c 11.875/11.875/11.86/11.865 | day open 12.17 close 11.9 | bars 389 first 09:30 [562bf] grain minute gap False in79 True
+   D05 THC   2026-07-24 exit 2026-08-27 daily @266.84 rest 266.84 depth-trigger=True line 271.63 | fill bar o/h/l/c 270.35/273.13/264.2201/267.75 | day open 270.35 close 267.75 | bars 0 first - [None] grain daily (no bars) gap False in79 False
+   D05 QBTS  2026-07-27 exit 2026-07-28 09:32 @18.17 rest 18.17 depth-trigger=False line 18.17 | fill bar o/h/l/c 18.3501/18.38/18.11/18.1385 | day open 18.65 close 17.635 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 EME   2026-07-30 exit 2026-08-03 09:30 @787.99 rest 788.31 depth-trigger=False line 788.31 | fill bar o/h/l/c 787.99/788.0/783.5/783.82 | day open 787.99 close 817.42 | bars 349 first 09:30 [562bf] grain minute gap True in79 True
+   D05 FTK   2026-08-03 exit 2026-08-17 09:30 @33.23 rest 33.23 depth-trigger=True line 34.35 | fill bar o/h/l/c 35.6/35.99/31.2/31.95 | day open 35.6 close 28.66 | bars 369 first 09:30 [562bf] grain minute gap False in79 True
+   D05 BLZE  2026-08-04 exit 2026-08-05 09:33 @18.45 rest 18.45 depth-trigger=False line 18.45 | fill bar o/h/l/c 18.68/18.735/18.42/18.47 | day open 19.79 close 18.62 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 ZBRA  2026-08-04 exit 2026-08-18 09:46 @359.58 rest 359.64 depth-trigger=True line 366.78 | fill bar o/h/l/c 359.58/359.97/359.05/359.05 | day open 368.15 close 366.42 | bars 251 first 09:30 [562bf] grain minute gap True in79 True
+   D05 KTOS  2026-08-05 exit 2026-08-06 09:30 @54.07 rest 54.07 depth-trigger=False line 54.07 | fill bar o/h/l/c 54.21/55.32/54.04/55.11 | day open 54.41 close 57.41 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 INSM  2026-08-06 exit 2026-08-14 10:32 @122.89 rest 122.89 depth-trigger=False line 122.89 | fill bar o/h/l/c 123.14/123.3/122.67/122.8446 | day open 125.67 close 123.74 | bars 382 first 09:30 [562bf] grain minute gap False in79 True
+   D05 TEAM  2026-08-07 exit 2026-08-26 09:30 @161.10 rest 161.10 depth-trigger=True line 166.35 | fill bar o/h/l/c 161.85/165.73/160.962/165.27 | day open 161.98 close 168.47 | bars 388 first 09:30 [562bf] grain minute gap False in79 True
+   D05 TH    2026-08-10 exit 2026-08-26 12:19 @16.87 rest 16.87 depth-trigger=True line 17.31 | fill bar o/h/l/c 16.91/16.91/16.86/16.87 | day open 18.35 close 16.78 | bars 364 first 09:30 [562bf] grain minute gap False in79 True
+   D05 EROC  2026-08-12 exit 2026-08-20 12:26 @13.16 rest 13.16 depth-trigger=False line 13.29 | fill bar o/h/l/c 13.23/13.26/13.15/13.15 | day open 14.14 close 13.01 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 NBIS  2026-08-12 exit 2026-08-19 09:36 @228.44 rest 228.44 depth-trigger=False line 228.44 | fill bar o/h/l/c 231.28/231.5099/227.8/227.8258 | day open 232.32 close 223.9 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 ETON  2026-08-14 exit 2026-08-28 12:44 @58.53 rest 58.54 depth-trigger=True line 60.36 | fill bar o/h/l/c 58.53/58.55/58.3265/58.52 | day open 61.98 close 59.78 | bars 274 first 09:30 [562bf] grain minute gap True in79 True
+   D05 AMLX  2026-08-18 exit 2026-08-31 12:23 @33.33 rest 33.33 depth-trigger=True line 34.46 | fill bar o/h/l/c 33.46/33.46/33.31/33.34 | day open 34.77 close 33.75 | bars 374 first 09:30 [562bf] grain minute gap False in79 True
+   D05 MRNA  2026-08-19 exit 2026-09-04 10:51 @142.56 rest 142.56 depth-trigger=True line 146.76 | fill bar o/h/l/c 143.3/143.4195/142.36/142.75 | day open 153.62 close 145.55 | bars 390 first 09:30 [new] grain minute gap False in79 True
+   D05 CRWD  2026-08-27 exit 2026-08-28 10:06 @210.99 rest 210.99 depth-trigger=False line 210.99 | fill bar o/h/l/c 211.69/211.79/210.53/210.6775 | day open 228.23 close 218.4 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D05 SOLS  2026-08-28 exit 2026-08-31 12:03 @62.69 rest 62.69 depth-trigger=False line 62.69 | fill bar o/h/l/c 62.865/62.87/62.62/62.71 | day open 63.47 close 63.39 | bars 388 first 09:30 [562bf] grain minute gap False in79 True
+   D05 SEI   2026-09-08 exit 2026-09-14 09:30 @62.78 rest 62.78 depth-trigger=False line 62.78 | fill bar o/h/l/c 62.89/62.89/61.18/61.94 | day open 62.89 close 61.11 | bars 385 first 09:30 [new] grain minute gap False in79 True
+   D05 MSTR  2026-09-21 exit 2026-09-23 daily @162.54 rest 162.54 depth-trigger=False line 162.54 | fill bar o/h/l/c 167.225/169.5/161.837/162.2 | day open 167.225 close 162.2 | bars 0 first - [None] grain daily (no bars) gap False in79 True
+   D10 MRAM  2026-05-11 exit 2026-05-12 09:30 @36.06 rest 36.42 depth-trigger=False line 36.42 | fill bar o/h/l/c 36.06/36.7981/35.0/35.5628 | day open 36.465 close 44.01 | bars 390 first 09:30 [562bf] grain minute gap True in79 True
+   D10 ZBRA  2026-05-12 exit 2026-05-13 09:43 @238.00 rest 238.00 depth-trigger=False line 238.00 | fill bar o/h/l/c 238.555/238.6399/237.84/238.0 | day open 248.68 close 246.76 | bars 355 first 09:30 [562bf] grain minute gap False in79 True
+   D10 FIG   2026-05-15 exit 2026-05-20 09:30 @22.43 rest 22.62 depth-trigger=False line 22.62 | fill bar o/h/l/c 22.43/22.64/22.3601/22.54 | day open 22.43 close 22.58 | bars 390 first 09:30 [562bf] grain minute gap True in79 True
+   D10 INFQ  2026-05-21 exit 2026-06-05 11:33 @14.94 rest 14.94 depth-trigger=True line 16.48 | fill bar o/h/l/c 15.02/15.02/14.92/14.94 | day open 16.16 close 14.56 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D10 RDW   2026-05-26 exit 2026-06-03 09:30 @19.50 rest 19.68 depth-trigger=False line 19.68 | fill bar o/h/l/c 19.5/19.69/19.19/19.2056 | day open 19.5 close 18.62 | bars 390 first 09:30 [562bf] grain minute gap True in79 True
+   D10 KTOS  2026-05-28 exit 2026-06-03 09:44 @59.02 rest 59.02 depth-trigger=False line 59.02 | fill bar o/h/l/c 59.06/59.12/58.88/59.095 | day open 61.62 close 58.43 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D10 NOW   2026-06-01 exit 2026-06-02 09:30 @129.90 rest 131.24 depth-trigger=False line 131.24 | fill bar o/h/l/c 129.9/132.7399/129.503/130.86 | day open 129.9 close 127.65 | bars 390 first 09:30 [562bf] grain minute gap True in79 True
+   D10 CAMT  2026-06-02 exit 2026-06-05 11:43 @169.84 rest 169.84 depth-trigger=False line 176.04 | fill bar o/h/l/c 170.72/171.01/169.01/169.131 | day open 176.2 close 164.21 | bars 218 first 09:30 [562bf] grain minute gap False in79 True
+   D10 LAC   2026-06-02 exit 2026-06-03 daily @5.53 rest 5.53 depth-trigger=False line 5.53 | fill bar o/h/l/c 5.55/5.55/5.17/5.2 | day open 5.55 close 5.2 | bars 0 first - [None] grain daily (no bars) gap False in79 True
+   D10 MANE  2026-07-15 exit 2026-07-16 09:30 @118.75 rest 118.75 depth-trigger=False line 118.75 | fill bar o/h/l/c 123.12/123.12/115.241/120.05 | day open 123.12 close 105.83 | bars 368 first 09:30 [562bf] grain minute gap False in79 True
+   D10 SMCI  2026-07-22 exit 2026-07-24 10:40 @29.48 rest 29.48 depth-trigger=False line 29.48 | fill bar o/h/l/c 29.545/29.55/29.44/29.46 | day open 30.62 close 30.1 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D10 QBTS  2026-07-27 exit 2026-07-28 09:32 @18.17 rest 18.17 depth-trigger=False line 18.17 | fill bar o/h/l/c 18.3501/18.38/18.11/18.1385 | day open 18.65 close 17.635 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D10 EME   2026-07-30 exit 2026-08-03 09:30 @787.99 rest 788.31 depth-trigger=False line 788.31 | fill bar o/h/l/c 787.99/788.0/783.5/783.82 | day open 787.99 close 817.42 | bars 349 first 09:30 [562bf] grain minute gap True in79 True
+   D10 FTK   2026-08-03 exit 2026-08-17 09:30 @32.11 rest 32.11 depth-trigger=True line 34.35 | fill bar o/h/l/c 35.6/35.99/31.2/31.95 | day open 35.6 close 28.66 | bars 369 first 09:30 [562bf] grain minute gap False in79 True
+   D10 BLZE  2026-08-04 exit 2026-08-05 09:33 @18.45 rest 18.45 depth-trigger=False line 18.45 | fill bar o/h/l/c 18.68/18.735/18.42/18.47 | day open 19.79 close 18.62 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D10 KTOS  2026-08-05 exit 2026-08-06 09:30 @54.07 rest 54.07 depth-trigger=False line 54.07 | fill bar o/h/l/c 54.21/55.32/54.04/55.11 | day open 54.41 close 57.41 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D10 INSM  2026-08-06 exit 2026-08-14 10:32 @122.89 rest 122.89 depth-trigger=False line 122.89 | fill bar o/h/l/c 123.14/123.3/122.67/122.8446 | day open 125.67 close 123.74 | bars 382 first 09:30 [562bf] grain minute gap False in79 True
+   D10 EROC  2026-08-12 exit 2026-08-20 12:26 @13.16 rest 13.16 depth-trigger=False line 13.29 | fill bar o/h/l/c 13.23/13.26/13.15/13.15 | day open 14.14 close 13.01 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D10 NBIS  2026-08-12 exit 2026-08-19 09:36 @228.44 rest 228.44 depth-trigger=False line 228.44 | fill bar o/h/l/c 231.28/231.5099/227.8/227.8258 | day open 232.32 close 223.9 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D10 CRWD  2026-08-27 exit 2026-08-28 10:06 @210.99 rest 210.99 depth-trigger=False line 210.99 | fill bar o/h/l/c 211.69/211.79/210.53/210.6775 | day open 228.23 close 218.4 | bars 390 first 09:30 [562bf] grain minute gap False in79 True
+   D10 SOLS  2026-08-28 exit 2026-08-31 12:03 @62.69 rest 62.69 depth-trigger=False line 62.69 | fill bar o/h/l/c 62.865/62.87/62.62/62.71 | day open 63.47 close 63.39 | bars 388 first 09:30 [562bf] grain minute gap False in79 True
+   D10 SEI   2026-09-08 exit 2026-09-14 09:30 @62.78 rest 62.78 depth-trigger=False line 62.78 | fill bar o/h/l/c 62.89/62.89/61.18/61.94 | day open 62.89 close 61.11 | bars 385 first 09:30 [new] grain minute gap False in79 True
+   D10 MSTR  2026-09-21 exit 2026-09-23 daily @162.54 rest 162.54 depth-trigger=False line 162.54 | fill bar o/h/l/c 167.225/169.5/161.837/162.2 | day open 167.225 close 162.2 | bars 0 first - [None] grain daily (no bars) gap False in79 True
+D05 depth fires failing a causality/fill check: none
+D10 depth fires failing a causality/fill check: none
+D05_minonly  ALL   : total -8.33 vs A0 -2.56 vs A1 +1.52
+D05_minonly  ALL_ex: total -17.50 vs A0 -1.47 vs A1 -2.17
+   D05_minonly: FTK +5.67 INFQ +3.49 (A1: FTK +3.22 INFQ +2.26)
+D10_minonly  ALL   : total -7.59 vs A0 -1.82 vs A1 +2.26
+D10_minonly  ALL_ex: total -15.32 vs A0 +0.70 vs A1 +0.00
+   D10_minonly: FTK +5.07 INFQ +2.67 (A1: FTK +3.22 INFQ +2.26)
+D05_barlow   ALL   : total -9.59 vs A0 -3.82 vs A1 +0.26
+D05_barlow   ALL_ex: total -17.67 vs A0 -1.65 vs A1 -2.34
+   D05_barlow: FTK +4.58 INFQ +3.49 (A1: FTK +3.22 INFQ +2.26)
+D10_barlow   ALL   : total -8.10 vs A0 -2.33 vs A1 +1.75
+D10_barlow   ALL_ex: total -15.32 vs A0 +0.70 vs A1 +0.00
+   D10_barlow: FTK +4.58 INFQ +2.65 (A1: FTK +3.22 INFQ +2.26)
+FTK 2026-08-17 first 6 minute bars [562bf] (o/h/l/c): 09:30 35.6/35.99/31.2/31.95; 09:31 32.7016/32.7016/30.8/31.35; 09:32 31.11/31.9/30.55/30.6; 09:33 30.68/31.38/30.6/31.38; 09:34 31.55/32.1/31.55/32.09; 09:35 31.7462/32.39/31.7462/32.39 | daily o/h/l/c 35.6/35.99/27.3/28.66
+INFQ 2026-06-05 first 6 minute bars [562bf] (o/h/l/c): 09:30 16.16/16.4/15.89/16.0077; 09:31 16.035/16.1/15.83/15.955; 09:32 15.931/16.0/15.86/15.885; 09:33 15.9/15.92/15.8601/15.91; 09:34 15.9/16.0/15.88/15.9; 09:35 15.89/15.89/15.71/15.78 | daily o/h/l/c 16.16/16.4/14.3/14.56

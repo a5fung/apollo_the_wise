@@ -1,0 +1,51 @@
+population: reached day 1 51 (probe 51), settled day 0 35 (probe 35); set == arms_per_trade.tsv: True; 79-paired keys from arms_per_trade.tsv 79
+ADR20 at entry: harness adr_pct vs own ADR20 (20 sessions strictly before the alert date) disagree on 0 of 51 []
+A0: own walk agrees with arms_per_trade.tsv within 0.005R on 84 of 84 settled
+A1: own walk agrees with arms_per_trade.tsv within 0.005R on 84 of 84 settled
+D05: own walk vs depth_per_trade.tsv on the 79: 79 of 79 agree to 4 dp; mismatches []
+D10: own walk vs depth_per_trade.tsv on the 79: 79 of 79 agree to 4 dp; mismatches []
+BLOCK ALL n=79: A0 -5.77
+   A1   total -9.85 vs A0 -4.08 p(own perm, seed 11) 0.069 better/worse (|diff|>0.0005R) 8/12  [at 1e-9, full precision own walk: 8/12]
+   D05  total -8.33 vs A0 -2.56 p(own perm, seed 11) 0.066 better/worse (|diff|>0.0005R) 5/15  [at 1e-9, full precision own walk: 5/15]
+   D10  total -7.59 vs A0 -1.82 p(own perm, seed 11) 0.215 better/worse (|diff|>0.0005R) 8/12  [at 1e-9, full precision own walk: 8/12]
+BLOCK ALL_ex n=77: A0 -16.02
+   A1   total -15.32 vs A0 +0.70 p(own perm, seed 11) 0.760 better/worse (|diff|>0.0005R) 8/10  [at 1e-9, full precision own walk: 8/10]
+   D05  total -17.50 vs A0 -1.47 p(own perm, seed 11) 0.296 better/worse (|diff|>0.0005R) 5/13  [at 1e-9, full precision own walk: 5/13]
+   D10  total -15.32 vs A0 +0.70 p(own perm, seed 11) 0.760 better/worse (|diff|>0.0005R) 8/10  [at 1e-9, full precision own walk: 8/10]
+BLOCK DISC n=73: A0 -0.77
+   A1   total -4.85 vs A0 -4.08 p(own perm, seed 11) 0.064 better/worse (|diff|>0.0005R) 8/12  [at 1e-9, full precision own walk: 8/12]
+   D05  total -3.33 vs A0 -2.56 p(own perm, seed 11) 0.062 better/worse (|diff|>0.0005R) 5/15  [at 1e-9, full precision own walk: 5/15]
+   D10  total -2.59 vs A0 -1.82 p(own perm, seed 11) 0.207 better/worse (|diff|>0.0005R) 8/12  [at 1e-9, full precision own walk: 8/12]
+BLOCK HELD n=6: A0 -5.00
+   A1   total -5.00 vs A0 +0.00 p(own perm, seed 11) 1.000 better/worse (|diff|>0.0005R) 0/0  [at 1e-9, full precision own walk: 0/0]
+   D05  total -5.00 vs A0 +0.00 p(own perm, seed 11) 1.000 better/worse (|diff|>0.0005R) 0/0  [at 1e-9, full precision own walk: 0/0]
+   D10  total -5.00 vs A0 +0.00 p(own perm, seed 11) 1.000 better/worse (|diff|>0.0005R) 0/0  [at 1e-9, full precision own walk: 0/0]
+   probe-style better/worse (D05 full precision vs 4-dp stored A0, 1e-9): ALL 15/17; of which |diff| < 0.0005R (rounding only): 12
+   probe-style better/worse (D10 full precision vs 4-dp stored A0, 1e-9): ALL 18/14; of which |diff| < 0.0005R (rounding only): 12
+   probe-style better/worse (D05 full precision vs 4-dp stored A0, 1e-9): ALL_ex 15/15; of which |diff| < 0.0005R (rounding only): 12
+   probe-style better/worse (D10 full precision vs 4-dp stored A0, 1e-9): ALL_ex 18/12; of which |diff| < 0.0005R (rounding only): 12
+per-trade: every one of the 79 where D05 or D10 differs from close-only (A1), own walk:
+   VG    2026-05-12 A0 +1.02 A1 +0.34 D05 +0.56 (+0.21 vs A1) D10 +0.34 (+0.00 vs A1) | D05 fire: 2026-05-26 12:35 @13.02 depth=True close 12.89 line 13.37
+   KLAR  2026-05-14 A0 +0.67 A1 +0.70 D05 +0.41 (-0.28 vs A1) D10 +0.70 (+0.00 vs A1) | D05 fire: 2026-06-03 09:45 @16.53 depth=True close 16.95 line 16.91
+   INFQ  2026-05-21 A0 +3.98 A1 +2.26 D05 +3.49 (+1.24 vs A1) D10 +2.67 (+0.41 vs A1) | D05 fire: 2026-06-05 09:35 @15.71 depth=True close 14.56 line 16.48
+   CAMT  2026-06-02 A0 -0.40 A1 -1.00 D05 -0.90 (+0.10 vs A1) D10 -1.00 (+0.00 vs A1) | D05 fire: 2026-06-05 10:00 @170.86 depth=True close 164.21 line 176.04
+   CLF   2026-07-23 A0 +3.00 A1 +2.73 D05 +2.68 (-0.05 vs A1) D10 +2.73 (+0.00 vs A1) | D05 fire: 2026-08-14 14:20 @11.86 depth=True close 11.90 line 12.15
+   FTK   2026-08-03 A0 +6.27 A1 +3.22 D05 +5.67 (+2.46 vs A1) D10 +5.07 (+1.85 vs A1) | D05 fire: 2026-08-17 09:30 @33.23 depth=True close 28.66 line 34.35
+   ZBRA  2026-08-04 A0 +0.66 A1 +0.65 D05 +0.44 (-0.21 vs A1) D10 +0.65 (+0.00 vs A1) | D05 fire: 2026-08-18 09:46 @359.58 depth=True close 366.42 line 366.78
+   TEAM  2026-08-07 A0 +3.03 A1 +4.08 D05 +2.66 (-1.42 vs A1) D10 +4.08 (+0.00 vs A1) | D05 fire: 2026-08-26 09:30 @161.10 depth=True close 168.47 line 166.35
+   TH    2026-08-10 A0 -0.03 A1 +0.61 D05 +0.68 (+0.08 vs A1) D10 +0.61 (+0.00 vs A1) | D05 fire: 2026-08-26 12:19 @16.87 depth=True close 16.78 line 17.31
+   ETON  2026-08-14 A0 +1.01 A1 +0.89 D05 +0.63 (-0.26 vs A1) D10 +0.89 (+0.00 vs A1) | D05 fire: 2026-08-28 12:44 @58.53 depth=True close 59.78 line 60.36
+   AMLX  2026-08-18 A0 +1.47 A1 +1.23 D05 +1.09 (-0.14 vs A1) D10 +1.23 (+0.00 vs A1) | D05 fire: 2026-08-31 12:23 @33.33 depth=True close 33.75 line 34.46
+   MRNA  2026-08-19 A0 +2.95 A1 +2.98 D05 +2.78 (-0.19 vs A1) D10 +2.98 (+0.00 vs A1) | D05 fire: 2026-09-04 10:51 @142.56 depth=True close 145.55 line 146.76
+D05 vs close-only on the 77 (FTK/INFQ out): -2.17R; D10 vs close-only on the 77: +0.0000R
+FTK: A0 +6.27 A1 +3.22 D05 +5.67 D10 +5.07
+INFQ: A0 +3.98 A1 +2.26 D05 +3.49 D10 +2.67
+stored A2k2 (arithmetic only, not rewalked): 79 -9.79 (vs A0 -4.02); 77 -15.45 (vs A0 +0.58); worst -1.27
+stored A3 (arithmetic only, not rewalked): 79 -6.46 (vs A0 -0.69); 77 -14.46 (vs A0 +1.56); worst -1.27
+A0: worst trade on the 79 -1.27; losses beyond -1.5R 0
+A1: worst trade on the 79 -1.27; losses beyond -1.5R 0
+D05: worst trade on the 79 -1.27; losses beyond -1.5R 0
+D10: worst trade on the 79 -1.27; losses beyond -1.5R 0
+A1-path line tests 41 on 25 trades; RECLAIM days 19 (15 on the 79)
+D05: depth fires 13 (12 on the 79); fires on a day that closed at/above the line 2 (2 on the 79): [('KLAR', '2026-06-03'), ('TEAM', '2026-08-26')]; of those, close-only ALSO sold that same day (close below the 16:45 line): [('KLAR', '2026-06-03')]
+D10: depth fires 2 (2 on the 79); fires on a day that closed at/above the line 0 (0 on the 79): []; of those, close-only ALSO sold that same day (close below the 16:45 line): []

@@ -1,0 +1,47 @@
+# #685 depth-trigger follow-up run 2026-09-28T14:05:25-04:00
+## POPULATION (from arms_per_trade.tsv, unchanged): 79-paired = 79 (expect 79); DISC 73 HELD 6
+## REBUILT POPULATION (walked past day 0 or settled day 0): 86 (51 reached day 1, 35 settled day 0); stored population 86; 79-set present: 79/79
+## FIDELITY GATE (A0/A1 rewalked vs arms_per_trade.tsv, 86 campaigns): PASS (0 mismatches)
+## LINE TESTS (descriptive, broader population): 41 days on 25 trades (in the scored 79: 32 days); RECLAIM 19 / SLICE 22
+## D05 false sells on the 19 RECLAIM days: 2 (sold on a day that closed back above the line)
+## D10 false sells on the 19 RECLAIM days: 0 (sold on a day that closed back above the line)
+## CLOSE-TEST EQUIVALENCE (D05/D10 vs A1, days neither fired intraday): PASS
+## FTK breach depth: 20.52% = 3.148 x ADR (line 34.35, low 27.3)
+## INFQ breach depth: 13.23% = 1.414 x ADR (line 16.48, low 14.3)
+## BLOCK ALL: n=79 A0 total -5.77
+   A1    n= 79 total   -9.85 vs A0  -4.08 p=0.061 better/worse 8/12 | >=3ORB-R 8 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+   A2k2  n= 79 total   -9.79 vs A0  -4.02 p=0.029 better/worse 5/14 | >=3ORB-R 8 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0
+   A3    n= 79 total   -6.46 vs A0  -0.69 p=0.635 better/worse 6/14 | >=3ORB-R 8 >=8ORB-R 3 | worst -1.27 (NOW) | losses<-1.5R 0
+   D05   n= 79 total   -8.33 vs A0  -2.56 p=0.058 better/worse 15/17 | >=3ORB-R 8 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+   D10   n= 79 total   -7.59 vs A0  -1.82 p=0.194 better/worse 18/14 | >=3ORB-R 8 >=8ORB-R 3 | worst -1.27 (NOW) | losses<-1.5R 0
+## BLOCK ALL_ex: n=77 A0 total -16.02
+   A1    n= 77 total  -15.32 vs A0  +0.70 p=0.758 better/worse 8/10 | >=3ORB-R 6 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+   A2k2  n= 77 total  -15.45 vs A0  +0.58 p=0.935 better/worse 5/12 | >=3ORB-R 6 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0
+   A3    n= 77 total  -14.46 vs A0  +1.56 p=0.524 better/worse 6/12 | >=3ORB-R 6 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+   D05   n= 77 total  -17.50 vs A0  -1.47 p=0.296 better/worse 15/15 | >=3ORB-R 6 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0
+   D10   n= 77 total  -15.32 vs A0  +0.70 p=0.761 better/worse 18/12 | >=3ORB-R 6 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+## BLOCK DISC: n=73 A0 total -0.77
+   A1    n= 73 total   -4.85 vs A0  -4.08 p=0.058 better/worse 8/12 | >=3ORB-R 8 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+   A2k2  n= 73 total   -4.79 vs A0  -4.02 p=0.031 better/worse 5/14 | >=3ORB-R 8 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0
+   A3    n= 73 total   -1.46 vs A0  -0.69 p=0.639 better/worse 6/14 | >=3ORB-R 8 >=8ORB-R 3 | worst -1.27 (NOW) | losses<-1.5R 0
+   D05   n= 73 total   -3.33 vs A0  -2.56 p=0.063 better/worse 15/17 | >=3ORB-R 8 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+   D10   n= 73 total   -2.59 vs A0  -1.82 p=0.202 better/worse 18/14 | >=3ORB-R 8 >=8ORB-R 3 | worst -1.27 (NOW) | losses<-1.5R 0
+## BLOCK DISC_ex: n=71 A0 total -11.02
+   A1    n= 71 total  -10.32 vs A0  +0.70 p=0.769 better/worse 8/10 | >=3ORB-R 6 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+   A2k2  n= 71 total  -10.45 vs A0  +0.58 p=0.941 better/worse 5/12 | >=3ORB-R 6 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0
+   A3    n= 71 total   -9.46 vs A0  +1.56 p=0.520 better/worse 6/12 | >=3ORB-R 6 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+   D05   n= 71 total  -12.50 vs A0  -1.47 p=0.300 better/worse 15/15 | >=3ORB-R 6 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0
+   D10   n= 71 total  -10.32 vs A0  +0.70 p=0.763 better/worse 18/12 | >=3ORB-R 6 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0
+## BLOCK HELD: n=6 A0 total -5.00
+   A1    n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+   A2k2  n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+   A3    n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+   D05   n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+   D10   n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+## BLOCK HELD_ex: n=6 A0 total -5.00
+   A1    n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+   A2k2  n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+   A3    n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+   D05   n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+   D10   n=  6 total   -5.00 vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (DFTX) | losses<-1.5R 0
+## DONE
