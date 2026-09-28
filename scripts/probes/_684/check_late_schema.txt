@@ -1,0 +1,81 @@
+table_name|column_name|data_type
+mi_live_trades|id|integer
+mi_live_trades|ticker|text
+mi_live_trades|alert_date|date
+mi_live_trades|ep_score|double precision
+mi_live_trades|catalyst_quality|text
+mi_live_trades|gap_pct|double precision
+mi_live_trades|regime|text
+mi_live_trades|status|text
+mi_live_trades|orb_high|double precision
+mi_live_trades|orb_low|double precision
+mi_live_trades|atr_14|double precision
+mi_live_trades|entry_price|double precision
+mi_live_trades|entry_shares|double precision
+mi_live_trades|stop_price|double precision
+mi_live_trades|hard_stop|double precision
+mi_live_trades|position_size|double precision
+mi_live_trades|risk_dollars|double precision
+mi_live_trades|entry_order_id|text
+mi_live_trades|stop_order_id|text
+mi_live_trades|exits|jsonb
+mi_live_trades|remaining_shares|double precision
+mi_live_trades|total_pnl|double precision
+mi_live_trades|hold_days|integer
+mi_live_trades|partial_taken|boolean
+mi_live_trades|breakeven_active|boolean
+mi_live_trades|running_closes|jsonb
+mi_live_trades|proposed_at|timestamp with time zone
+mi_live_trades|confirmed_at|timestamp with time zone
+mi_live_trades|skip_reason|text
+mi_live_trades|created_at|timestamp with time zone
+mi_live_trades|filled_at|timestamp with time zone
+mi_live_trades|closed_at|timestamp with time zone
+mi_live_trades|entry_attempt|integer
+mi_live_trades|signal_type|text
+mi_live_trades|account_mode|text
+mi_live_trades|lowest_price_seen|numeric
+mi_live_trades|highest_price_seen|numeric
+mi_live_trades|pnl_attribution|text
+mi_live_trades|risk_dollars_actual|double precision
+mi_live_trades|dead_stop_price|double precision
+mi_live_trades|dead_stop_order_id|text
+mi_live_trades|dead_stop_status|text
+mi_live_trades|dead_stop_recorded_at|timestamp with time zone
+mi_safeguard_state|safeguard|text
+mi_safeguard_state|account_mode|text
+mi_safeguard_state|state|text
+mi_safeguard_state|last_transition_at|timestamp with time zone
+mi_safeguard_state|last_evaluation_at|timestamp with time zone
+mi_safeguard_state|last_drawdown_pct|numeric
+mi_safeguard_state|last_peak|numeric
+mi_safeguard_state|last_peak_date|date
+mi_safeguard_state|updated_at|timestamp with time zone
+(52 rows)
+table_name
+mi_sell_discipline_skips
+(1 row)
+table_name|column_name|data_type
+mi_audit_log|id|integer
+mi_audit_log|created_at|timestamp with time zone
+mi_audit_log|event_type|text
+mi_audit_log|summary|text
+mi_audit_log|detail|text
+mi_strategies|strategy_id|text
+mi_strategies|name|text
+mi_strategies|family|text
+mi_strategies|phase|text
+mi_strategies|enabled|boolean
+mi_strategies|signal_type|text
+mi_strategies|outcomes_table|text
+mi_strategies|promotion_model|text
+mi_strategies|promotion_thresholds|jsonb
+mi_strategies|notes|text
+mi_strategies|created_at|timestamp with time zone
+mi_strategies|updated_at|timestamp with time zone
+mi_strategies|live_real_enabled|boolean
+mi_strategies|position_size_multiplier|numeric
+mi_strategies|max_concurrent_positions|integer
+mi_strategies|profit_trigger_r|numeric
+mi_strategies|breakeven_arm_r|numeric
+(22 rows)

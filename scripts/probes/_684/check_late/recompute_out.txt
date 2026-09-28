@@ -1,0 +1,112 @@
+LATE 99 -> HIGH 55; CTRL 164 -> HIGH 126
+LATE labelled runners: 14, of which HIGH 6: FROG 2026-05-08, ALOY 2026-06-01, AKTS 2026-06-12, BLZE 2026-07-31, CAI 2026-08-06, KURA 2026-08-13
+LATE non-HIGH runners: RIOT 2026-05-01, VCX 2026-05-05, VOYG 2026-05-05, BHVN 2026-05-29, HQ 2026-06-15, MMYT 2026-06-15, EFOR 2026-07-22, BLSH 2026-08-13
+
+== REPRODUCE study (all 99 / 164, study mechanics, era gates) ==
+OPT1 study-repro 10:30: n=99 fills=41 settled=39 R/trade=-0.05 loss_rate=54% worst=-1.15 <-1.5R=0 runs>=5ADR_from_fill=5 labelled_runners_filled=6 sumR=-1.80
+   OPT1 study-repro 10:30 drop-best-two: n=97 fills=39 settled=37 R/trade=-0.24 loss_rate=57% worst=-1.15 <-1.5R=0 runs>=5ADR_from_fill=4 labelled_runners_filled=5 sumR=-9.02
+   status: {'filled:filled': 41, 'orb_invalid': 11, 'no_930_bar': 3, 'no_entry': 43, 'abstain': 1}
+   by month (n, R/trade, sumR): 2026-05 n=13 +0.17 sum=+2.3; 2026-06 n=10 +0.13 sum=+1.3; 2026-07 n=4 -0.41 sum=-1.6; 2026-08 n=12 -0.31 sum=-3.8
+CTRL study-repro (era cancel): n=164 fills=115 settled=110 R/trade=+0.08 loss_rate=55% worst=-1.27 <-1.5R=0 runs>=5ADR_from_fill=14 labelled_runners_filled=10 sumR=+9.06
+   CTRL study-repro (era cancel) drop-best-two: n=162 fills=113 settled=108 R/trade=-0.05 loss_rate=56% worst=-1.27 <-1.5R=0 runs>=5ADR_from_fill=12 labelled_runners_filled=10 sumR=-5.25
+   status: {'orb_invalid': 15, 'filled:filled': 115, 'no_entry': 21, 'gap_below_floor': 13}
+   by month (n, R/trade, sumR): 2026-05 n=51 +0.35 sum=+17.8; 2026-06 n=8 -0.50 sum=-4.0; 2026-07 n=21 -0.15 sum=-3.2; 2026-08 n=30 -0.05 sum=-1.6
+
+== HIGH only, study mechanics ==
+OPT1 HIGH study 10:30: n=55 fills=21 settled=19 R/trade=-0.20 loss_rate=53% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=2 labelled_runners_filled=2 sumR=-3.88
+   OPT1 HIGH study 10:30 drop-best-two: n=53 fills=19 settled=17 R/trade=-0.39 loss_rate=59% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=2 labelled_runners_filled=2 sumR=-6.65
+   status: {'filled:filled': 21, 'orb_invalid': 5, 'no_entry': 27, 'abstain': 1, 'no_930_bar': 1}
+   by month (n, R/trade, sumR): 2026-05 n=7 -0.00 sum=-0.0; 2026-06 n=2 -0.50 sum=-1.0; 2026-07 n=2 -0.50 sum=-1.0; 2026-08 n=8 -0.23 sum=-1.9
+CTRL HIGH study (era cancel): n=126 fills=84 settled=82 R/trade=+0.11 loss_rate=55% worst=-1.01 <-1.5R=0 runs>=5ADR_from_fill=14 labelled_runners_filled=10 sumR=+8.78
+   CTRL HIGH study (era cancel) drop-best-two: n=124 fills=82 settled=80 R/trade=-0.07 loss_rate=56% worst=-1.01 <-1.5R=0 runs>=5ADR_from_fill=12 labelled_runners_filled=10 sumR=-5.53
+   status: {'filled:filled': 84, 'no_entry': 17, 'orb_invalid': 12, 'gap_below_floor': 13}
+   by month (n, R/trade, sumR): 2026-05 n=39 +0.40 sum=+15.4; 2026-07 n=19 -0.43 sum=-8.1; 2026-08 n=24 +0.06 sum=+1.4
+
+== HIGH only, submit at ACTUAL detection minute, study mechanics ==
+detection minute vs first-pass minute: Counter({0: 30, 1: 17, 2: 7, 3: 1})
+OPT1 HIGH detect-min study 10:30: n=55 fills=20 settled=18 R/trade=-0.27 loss_rate=56% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=1 labelled_runners_filled=1 sumR=-4.80
+   OPT1 HIGH detect-min study 10:30 drop-best-two: n=53 fills=18 settled=16 R/trade=-0.47 loss_rate=62% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=1 labelled_runners_filled=1 sumR=-7.57
+   status: {'filled:filled': 20, 'orb_invalid': 5, 'no_entry': 28, 'abstain': 1, 'no_930_bar': 1}
+   by month (n, R/trade, sumR): 2026-05 n=7 -0.00 sum=-0.0; 2026-06 n=2 -0.50 sum=-1.0; 2026-07 n=2 -0.50 sum=-1.0; 2026-08 n=7 -0.40 sum=-2.8
+
+== TODAY'S RULES uniformly (9% rt gap all dates, #500 chase + cap, 10:00 CTRL cancel / 10:30 OPT1) ==
+OPT1 HIGH detect-min live500:open 10:30: n=55 fills=16 settled=16 R/trade=-0.21 loss_rate=56% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=1 labelled_runners_filled=1 sumR=-3.39
+   OPT1 HIGH detect-min live500:open 10:30 drop-best-two: n=53 fills=14 settled=14 R/trade=-0.43 loss_rate=64% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=1 labelled_runners_filled=1 sumR=-6.06
+   status: {'filled:filled_chase': 12, 'orb_invalid': 5, 'filled:filled': 4, 'chase_cap_skip': 24, 'no_entry': 6, 'gap_below_floor': 2, 'abstain': 1, 'no_930_bar': 1}
+   by month (n, R/trade, sumR): 2026-05 n=8 -0.15 sum=-1.2; 2026-08 n=8 -0.28 sum=-2.2
+   chase-cap skips: 24; price above ORB high at submit, in ORB ranges: [0.91, 1.04, 1.16, 1.17, 1.18, 1.29, 1.51, 1.57, 1.65, 2.03, 2.05, 2.21, 2.51, 2.52, 2.57, 2.63, 2.8, 2.84, 2.87, 3.18, 3.26, 3.32, 3.7, 6.13]
+CTRL HIGH live500:open uniform 10:00: n=126 fills=74 settled=72 R/trade=+0.20 loss_rate=51% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=13 labelled_runners_filled=9 sumR=+14.36
+   CTRL HIGH live500:open uniform 10:00 drop-best-two: n=124 fills=72 settled=70 R/trade=+0.00 loss_rate=53% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=11 labelled_runners_filled=9 sumR=+0.05
+   status: {'filled:filled': 67, 'no_entry': 21, 'filled:filled_chase': 7, 'orb_invalid': 11, 'gap_below_floor': 19, 'chase_cap_skip': 1}
+   by month (n, R/trade, sumR): 2026-05 n=31 +0.46 sum=+14.3; 2026-07 n=15 -0.27 sum=-4.1; 2026-08 n=25 +0.20 sum=+5.0; 2026-09 n=1 -0.83 sum=-0.8
+OPT1 HIGH detect-min live500:prevclose 10:30: n=55 fills=16 settled=16 R/trade=-0.03 loss_rate=50% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=1 labelled_runners_filled=1 sumR=-0.54
+   OPT1 HIGH detect-min live500:prevclose 10:30 drop-best-two: n=53 fills=14 settled=14 R/trade=-0.28 loss_rate=57% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=1 labelled_runners_filled=1 sumR=-3.87
+   status: {'filled:filled_chase': 12, 'orb_invalid': 5, 'filled:filled': 4, 'chase_cap_skip': 23, 'no_entry': 7, 'gap_below_floor': 2, 'abstain': 1, 'no_930_bar': 1}
+   by month (n, R/trade, sumR): 2026-05 n=8 +0.21 sum=+1.7; 2026-08 n=8 -0.28 sum=-2.2
+   chase-cap skips: 23; price above ORB high at submit, in ORB ranges: [1.07, 1.16, 1.19, 1.3, 1.38, 1.58, 1.59, 1.71, 2.03, 2.19, 2.24, 2.51, 2.57, 2.57, 2.6, 2.62, 2.8, 3.02, 3.02, 3.17, 3.32, 3.85, 6.39]
+CTRL HIGH live500:prevclose uniform 10:00: n=126 fills=74 settled=72 R/trade=+0.20 loss_rate=51% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=13 labelled_runners_filled=9 sumR=+14.36
+   CTRL HIGH live500:prevclose uniform 10:00 drop-best-two: n=124 fills=72 settled=70 R/trade=+0.00 loss_rate=53% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=11 labelled_runners_filled=9 sumR=+0.05
+   status: {'filled:filled': 73, 'no_entry': 21, 'orb_invalid': 11, 'gap_below_floor': 19, 'chase_cap_skip': 1, 'filled:filled_chase': 1}
+   by month (n, R/trade, sumR): 2026-05 n=31 +0.46 sum=+14.3; 2026-07 n=15 -0.27 sum=-4.1; 2026-08 n=25 +0.20 sum=+5.0; 2026-09 n=1 -0.83 sum=-0.8
+OPT1 HIGH detect-min study-mech uniform-gates 10:30: n=55 fills=19 settled=17 R/trade=-0.28 loss_rate=59% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=1 labelled_runners_filled=1 sumR=-4.80
+   OPT1 HIGH detect-min study-mech uniform-gates 10:30 drop-best-two: n=53 fills=17 settled=15 R/trade=-0.50 loss_rate=67% worst=-1.00 <-1.5R=0 runs>=5ADR_from_fill=1 labelled_runners_filled=1 sumR=-7.57
+   status: {'filled:filled': 19, 'orb_invalid': 5, 'no_entry': 27, 'gap_below_floor': 2, 'abstain': 1, 'no_930_bar': 1}
+   by month (n, R/trade, sumR): 2026-05 n=7 -0.00 sum=-0.0; 2026-06 n=2 -0.50 sum=-1.0; 2026-07 n=1 -1.00 sum=-1.0; 2026-08 n=7 -0.40 sum=-2.8
+CTRL HIGH study-mech uniform (10:00 cancel, 9% all dates): n=126 fills=74 settled=72 R/trade=+0.20 loss_rate=51% worst=-1.01 <-1.5R=0 runs>=5ADR_from_fill=13 labelled_runners_filled=9 sumR=+14.18
+   CTRL HIGH study-mech uniform (10:00 cancel, 9% all dates) drop-best-two: n=124 fills=72 settled=70 R/trade=-0.00 loss_rate=53% worst=-1.01 <-1.5R=0 runs>=5ADR_from_fill=11 labelled_runners_filled=9 sumR=-0.13
+   status: {'filled:filled': 74, 'no_entry': 22, 'orb_invalid': 11, 'gap_below_floor': 19}
+   by month (n, R/trade, sumR): 2026-05 n=31 +0.46 sum=+14.3; 2026-07 n=16 -0.32 sum=-5.1; 2026-08 n=25 +0.20 sum=+5.0
+
+== anatomy of the study's Option-1 fills (99 pop, study mechanics) ==
+   HIGH=True above_H_at_submit pullback_limit fill_minute==first_pass=False: 11
+   HIGH=False above_H_at_submit pullback_limit fill_minute==first_pass=False: 9
+   HIGH=False below_H_at_submit fill_at_trigger fill_minute==first_pass=False: 6
+   HIGH=True above_H_at_submit pullback_limit fill_minute==first_pass=True: 4
+   HIGH=False above_H_at_submit fill_at_open fill_minute==first_pass=True: 3
+   HIGH=True below_H_at_submit fill_at_trigger fill_minute==first_pass=False: 2
+   HIGH=True below_H_at_submit fill_at_trigger fill_minute==first_pass=True: 2
+   HIGH=True above_H_at_submit fill_at_open fill_minute==first_pass=True: 2
+   HIGH=False above_H_at_submit pullback_limit fill_minute==first_pass=True: 1
+   HIGH=False below_H_at_submit fill_at_trigger fill_minute==first_pass=True: 1
+   per fill (key, HIGH, where, kind, fill_min, R, (open-H)/ORBrange at submit):
+     (('AXTI', '2026-05-01'), True, 'above_H_at_submit', 'pullback_limit', '09:50', 1.3, 0.15)
+     (('OLED', '2026-05-01'), False, 'below_H_at_submit', 'fill_at_trigger', '10:04', 0.36, -0.99)
+     (('RIOT', '2026-05-01'), False, 'above_H_at_submit', 'fill_at_open', '09:50', 4.08, 0.15)
+     (('IART', '2026-05-05'), True, 'below_H_at_submit', 'fill_at_trigger', '10:13', 1.47, -0.67)
+     (('VOYG', '2026-05-05'), False, 'above_H_at_submit', 'pullback_limit', '09:53', -1.0, 2.0)
+     (('HUT', '2026-05-06'), True, 'above_H_at_submit', 'pullback_limit', '09:52', -0.65, 0.93)
+     (('VIK', '2026-05-14'), True, 'below_H_at_submit', 'fill_at_trigger', '09:55', -1.0, -0.47)
+     (('GLOB', '2026-05-15'), True, 'above_H_at_submit', 'pullback_limit', '10:01', 0.07, 0.15)
+     (('POWI', '2026-05-26'), True, 'below_H_at_submit', 'fill_at_trigger', '09:50', -0.21, -0.04)
+     (('ANF', '2026-05-27'), True, 'above_H_at_submit', 'pullback_limit', '09:59', -1.0, 0.39)
+     (('ASTI', '2026-05-27'), False, 'below_H_at_submit', 'fill_at_trigger', '09:57', 0.0, -2.8)
+     (('SNOW', '2026-05-28'), False, 'below_H_at_submit', 'fill_at_trigger', '09:52', 0.0, -0.71)
+     (('BHVN', '2026-05-29'), False, 'above_H_at_submit', 'pullback_limit', '10:15', -1.15, 0.78)
+     (('SKM', '2026-06-01'), False, 'above_H_at_submit', 'pullback_limit', '09:57', 0.97, 0.61)
+     (('IDCC', '2026-06-11'), True, 'above_H_at_submit', 'pullback_limit', '10:26', 0.0, 3.04)
+     (('AUGO', '2026-06-15'), False, 'above_H_at_submit', 'pullback_limit', '09:50', -0.42, 0.16)
+     (('HYMC', '2026-06-15'), False, 'below_H_at_submit', 'fill_at_trigger', '09:59', -1.0, -0.33)
+     (('IDR', '2026-06-15'), False, 'above_H_at_submit', 'pullback_limit', '10:12', -1.0, 0.85)
+     (('MMYT', '2026-06-15'), False, 'above_H_at_submit', 'fill_at_open', '09:50', 1.54, 0.02)
+     (('XE', '2026-06-15'), False, 'above_H_at_submit', 'pullback_limit', '10:06', 0.11, 0.23)
+     (('AEHR', '2026-06-17'), False, 'below_H_at_submit', 'fill_at_trigger', '09:51', -1.0, -0.75)
+     (('LZB', '2026-06-17'), True, 'above_H_at_submit', 'pullback_limit', '10:14', -1.0, 3.26)
+     (('JBIO', '2026-06-22'), False, 'above_H_at_submit', 'pullback_limit', '09:51', 3.14, 0.57)
+     (('GRND', '2026-07-01'), False, 'above_H_at_submit', 'pullback_limit', '09:52', -0.42, 0.9)
+     (('KC', '2026-07-08'), False, 'below_H_at_submit', 'fill_at_trigger', '10:25', -0.23, -1.81)
+     (('NNE', '2026-07-27'), True, 'above_H_at_submit', 'pullback_limit', '10:17', -1.0, 1.78)
+     (('TEVA', '2026-07-29'), True, 'above_H_at_submit', 'pullback_limit', '10:02', 0.0, 1.61)
+     (('BLZE', '2026-07-31'), True, 'above_H_at_submit', 'pullback_limit', '10:07', None, 2.21)
+     (('ECG', '2026-08-05'), True, 'above_H_at_submit', 'pullback_limit', '10:03', -1.0, 1.0)
+     (('CAI', '2026-08-06'), True, 'above_H_at_submit', 'fill_at_open', '09:50', 0.91, 0.03)
+     (('TRUP', '2026-08-06'), False, 'above_H_at_submit', 'fill_at_open', '09:50', 0.74, 0.08)
+     (('ONTO', '2026-08-07'), True, 'above_H_at_submit', 'fill_at_open', '09:50', 0.09, 0.1)
+     (('PRAA', '2026-08-07'), False, 'above_H_at_submit', 'pullback_limit', '10:00', -1.03, 0.67)
+     (('PSIX', '2026-08-07'), False, 'below_H_at_submit', 'fill_at_trigger', '09:50', -0.61, -0.05)
+     (('ACHR', '2026-08-10'), True, 'above_H_at_submit', 'pullback_limit', '09:45', -1.0, 0.33)
+     (('NESR', '2026-08-10'), True, 'above_H_at_submit', 'pullback_limit', '09:45', 0.25, 0.48)
+     (('BE', '2026-08-12'), True, 'above_H_at_submit', 'pullback_limit', '09:50', -1.0, 0.55)
+     (('HRB', '2026-08-12'), False, 'above_H_at_submit', 'pullback_limit', '09:47', -1.0, 3.59)
+     (('OMER', '2026-08-13'), True, 'below_H_at_submit', 'fill_at_trigger', '09:47', 0.89, -0.2)
+     (('UUUU', '2026-08-21'), True, 'above_H_at_submit', 'pullback_limit', '10:14', None, 2.57)
+     (('CHRN', '2026-08-27'), True, 'above_H_at_submit', 'pullback_limit', '09:54', -1.0, 0.37)

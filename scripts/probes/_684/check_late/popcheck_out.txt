@@ -1,0 +1,5 @@
+my SQL (05-11..09-03 alert rows): {('inwin', True): 144, ('inwin', False): 38, ('late', True): 42, 'no_scored_pass_tick': 7, ('late', False): 39}
+study late post-0511 81 mine 81 overlap 81 study-only [] mine-only []
+study ctrl post-0511 142 mine in-window 182 overlap 142 mine-only (unreadable in study?) 40
+live WINDOW_OUT_OF_ORB skip rows 05-01..09-03: 53  in study LATE: 53
+window rows NOT in study LATE: []

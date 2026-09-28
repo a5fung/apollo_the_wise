@@ -611,6 +611,27 @@ status/fill/outcome detail, all 667 rows).
 
 ## Late alerts (first pass 09:45–09:59): three options, replayed
 
+> ⚠ **REFUTED BY THE INDEPENDENT CHECK, 2026-09-28 — this section's headline does not hold; read this first.** The
+> arithmetic reproduces (41 fills, −0.05R, control +0.08R), but the assumptions do not match the live system:
+> - **Population:** live only ever orders HIGH alerts. The 99 "late alerts" are 55 HIGH + 44 MODERATE/none (never
+>   orderable by any rule); the 164 control rows are 126 HIGH + 38 MODERATE/none. All 53 real WINDOW_OUT_OF_ORB skip
+>   rows in prod fall inside the 55.
+> - **Fill mechanics:** 27 of the 41 fills are pullback-to-limit fills the live order never makes. Today's order path
+>   (#500, ON since 08-07) buys at market ×1.002 or SKIPS when the chase cap (1.5×) is exceeded; on the 55 late HIGH
+>   alerts that is **16 fills and 24 chase-cap skips**. 13 of the 41 fills happened inside the first-pass minute, before
+>   the order could exist (the window check runs on scan-finish time).
+> - **Result on the live frame (55 late HIGH alerts, today's code):** about 16 trades in four months, **−0.21 to −0.03R
+>   per trade** (one name, CPA, swings it), vs in-window HIGH alerts under today's rules **+0.20R (+0.00 without the best
+>   two)**. Late HIGH runners caught: **1 of 6** (CAI). Measured against the planned risk the late fills are about
+>   −0.31R; chase fills lose more than they were sized for (CALY −1.43R, ECG −1.42R, BE −1.28R).
+> - **Not modelled and adverse:** portfolio safeguards (27 of 126 in-window HIGH alerts were blocked live — 15 circuit
+>   breaker, 12 max positions; about 18 of the 55 late alerts would have hit a full cap), the 10:00 cancel job, and
+>   late positions taking slots from later in-window entries.
+> - **Also corrected upstream:** the earlier summary "a third of EP alerts arrive after the cutoff, 40% of alerted
+>   runners" counted MODERATE scan passes; on orderable HIGH alerts, 55 of 181 were late and 6 late HIGH alerts ran big.
+> - **Verdict: no change to the live entry window is supported.** Evidence: `scripts/probes/_684/check_late_*.txt`.
+
+
 **MEASUREMENT ONLY, $0, read-only. No recommendation — the choice is his.** Probe:
 `scripts/probes/_684/late_alerts.py` (pre-registered docstring, written before any number below).
 Population = live-source ALERTED rows only. LATE = 99 rows whose first pass is 09:45–09:59 ET

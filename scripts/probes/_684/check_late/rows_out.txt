@@ -1,0 +1,44 @@
+live500:open
+   ('AXTI', '2026-05-01') filled_chase 09:50 px 87.97 H 86.695 L 78.05 R 1.19 run 4.0 walk settled None 
+   ('IART', '2026-05-05') filled 10:13 px 12.99 H 12.99 L 12.165 R 1.47 run 3.7 walk settled None 
+   ('HUT', '2026-05-06') filled_chase 09:52 px 102.95 H 102.13 L 97.63 R -0.66 run 3.4 walk settled None BLOCKED
+   ('CALY', '2026-05-08') filled_chase 09:55 px 16.69 H 16.25 L 15.74 R -1.0 run 2.1 walk settled None BLOCKED
+   ('VIK', '2026-05-14') filled 09:55 px 90.48 H 90.48 L 89.53 R -1.0 run 1.1 walk settled None 
+   ('GLOB', '2026-05-15') filled_chase 09:50 px 39.68 H 39.34 L 37.12 R 0.04 run 2.4 walk settled None 
+   ('POWI', '2026-05-26') filled 09:52 px 82.25 H 82.25 L 78.0 R -0.21 run 1.3 walk settled None BLOCKED
+   ('ANF', '2026-05-27') filled_chase 09:55 px 82.5 H 81.85 L 80.18 R -1.0 run 3.5 walk settled None 
+   ('ECG', '2026-08-05') filled_chase 09:51 px 154.01 H 150.78 L 146.89 R -1.0 run 0.1 walk settled None BLOCKED
+   ('CAI', '2026-08-06') filled_chase 09:53 px 19.2 H 19.0 L 17.945 R 0.77 run 8.7 walk settled None 
+   ('ONTO', '2026-08-07') filled_chase 09:52 px 311.19 H 307.89 L 295.0 R 0.02 run 1.9 walk settled None 
+   ('ACHR', '2026-08-10') filled_chase 09:45 px 6.58 H 6.5 L 6.26 R -1.0 run 1.7 walk settled None 
+   ('NESR', '2026-08-10') filled_chase 09:45 px 33.15 H 32.73 L 31.86 R 0.1 run 2.2 walk settled None 
+   ('BE', '2026-08-12') filled_chase 09:50 px 242.49 H 239.9 L 235.21 R -1.0 run 0.4 walk settled None 
+   ('OMER', '2026-08-13') filled 09:47 px 17.26 H 17.26 L 16.54 R 0.89 run 2.3 walk settled None 
+   ('CHRN', '2026-08-27') filled_chase 09:50 px 23.37 H 23.0 L 22.0 R -1.0 run 0.3 walk settled None 
+   all settled n 16 mean -0.212  excl safeguard-blocked n 12 mean -0.044
+live500:prevclose
+   ('AXTI', '2026-05-01') filled_chase 09:50 px 87.97 H 86.695 L 78.05 R 1.19 run 4.0 walk settled None 
+   ('IART', '2026-05-05') filled 10:13 px 12.99 H 12.99 L 12.165 R 1.47 run 3.7 walk settled None 
+   ('HUT', '2026-05-06') filled_chase 09:52 px 102.95 H 102.13 L 97.63 R -0.66 run 3.4 walk settled None BLOCKED
+   ('CALY', '2026-05-08') filled_chase 09:55 px 16.69 H 16.25 L 15.74 R -1.0 run 2.1 walk settled None BLOCKED
+   ('CPA', '2026-05-14') filled_chase 09:55 px 128.62 H 127.0 L 125.21 R 1.85 run 3.7 walk settled None 
+   ('VIK', '2026-05-14') filled 09:55 px 90.48 H 90.48 L 89.53 R -1.0 run 1.1 walk settled None 
+   ('GLOB', '2026-05-15') filled_chase 09:50 px 39.68 H 39.34 L 37.12 R 0.04 run 2.4 walk settled None 
+   ('POWI', '2026-05-26') filled 09:52 px 82.25 H 82.25 L 78.0 R -0.21 run 1.3 walk settled None BLOCKED
+   ('ECG', '2026-08-05') filled_chase 09:51 px 154.01 H 150.78 L 146.89 R -1.0 run 0.1 walk settled None BLOCKED
+   ('CAI', '2026-08-06') filled_chase 09:53 px 19.2 H 19.0 L 17.945 R 0.77 run 8.7 walk settled None 
+   ('ONTO', '2026-08-07') filled_chase 09:52 px 311.19 H 307.89 L 295.0 R 0.02 run 1.9 walk settled None 
+   ('ACHR', '2026-08-10') filled_chase 09:45 px 6.58 H 6.5 L 6.26 R -1.0 run 1.7 walk settled None 
+   ('NESR', '2026-08-10') filled_chase 09:45 px 33.15 H 32.73 L 31.86 R 0.1 run 2.2 walk settled None 
+   ('BE', '2026-08-12') filled_chase 09:50 px 242.49 H 239.9 L 235.21 R -1.0 run 0.4 walk settled None 
+   ('OMER', '2026-08-13') filled 09:47 px 17.26 H 17.26 L 16.54 R 0.89 run 2.3 walk settled None 
+   ('CHRN', '2026-08-27') filled_chase 09:50 px 23.37 H 23.0 L 22.0 R -1.0 run 0.3 walk settled None 
+   all settled n 16 mean -0.034  excl safeguard-blocked n 12 mean 0.194
+study-repro abstain reasons:
+  OPT1 ('BLZE', '2026-07-31') abstain fwd_stop_and_breakeven_same_day:2026-08-03 run 8.815163447822261
+  OPT1 ('UUUU', '2026-08-21') abstain fwd_stop_and_breakeven_same_day:2026-08-25 run 1.74156271271755
+  CTRL ('RDDT', '2026-05-01') abstain fwd_stop_and_breakeven_same_day:2026-05-04 run 1.2
+  CTRL ('SE', '2026-05-12') abstain day0_fill_bar_straddles_stop run 1.5
+  CTRL ('PD', '2026-05-29') abstain day0_fill_bar_straddles_stop run 2.4
+  CTRL ('TWLO', '2026-08-07') abstain day0_fill_bar_straddles_stop run 1.8
+  CTRL ('WYFI', '2026-08-12') abstain fwd_stop_and_breakeven_same_day:2026-08-13 run 1.2
