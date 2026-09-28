@@ -425,6 +425,11 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     # sat on since the 09-22 adoption overstated every judge call by 25%. Its cache hits are 0.05x
     # the base input, not the usual 0.1x — `cache_read_mult` carries that to the spend tracker.
     "claude-opus-5-5": {"input": 4.00, "output": 20.00, "cache_read_mult": 0.05},
+    # claude-sonnet-5-5 — verified against https://platform.claude.com/docs/en/about-claude/models/overview
+    # (fetched 2026-09-28, the day the resolver detected it): $2 in / $10 out, cache reads at the usual
+    # 0.1x. Same rate as sonnet-5's tier fallback, so explicit only to stop the fallback warning and to
+    # pin the rate to a source.
+    "claude-sonnet-5-5": {"input": 2.00, "output": 10.00},
     # ── Perplexity (#377 cost meter) ─────────────────────────────────────────
     # Token rates verified against https://docs.perplexity.ai/guides/pricing
     # (fetched 2026-06-25). Perplexity bills BOTH per-token AND a per-request
