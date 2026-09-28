@@ -1796,3 +1796,24 @@ EVIDENCE: four items verified in code and prod on 2026-09-27; the fifth dropped 
   2026-07-26 probe (mean +0.09R, 95% interval spanning zero, false-revival 53.4% against a 40% bar; on today's
   board n=19, mean −0.64R, false-revival 87.5%). Asked what shipping it would change, he said *"these are just
   data collection and nothing we trade"*, then *"ok"* to closing without it. Recorded in the SSoT change log.
+
+## #684 — what, known on the gap day, marks the EPs that run big: none demonstrated at this power (2026-09-28)
+
+BAR: "DoD: a pre-registered read that names which gap-day features separate the ≥ 5-ADR runners from the rest (or
+states that none do), each with its n, held-out sign and permutation p, plus a one-paragraph proposal for his ruling"
+
+EVIDENCE: `docs/analysis/684_ep_runner_selection_2026-09-28.md` (read its VERIFIED AND CORRECTED section first);
+probe `scripts/probes/_684/`.
+
+- **Population, re-derived independently from prod:** 670 scored gap-day candidates (546 names, 05-01 → 09-03), 307
+  alerted / 363 rejected; the 277 / 261 live-source alerts reproduced; 667 with a 15-session outcome; 71 runners.
+- **The read:** 63 features tagged by when they are known, each with n, discovery permutation p, held-out sign, and
+  drop-best-week / drop-best-two; one passes all four conditions (least-traded third, 31 of 201 vs 36 of 403, p 0.01),
+  which is the rate chance produces — so none is demonstrated; the 09-27 extension lead does not confirm.
+- **The score in force at the time was neutral:** 36 of 361 rejected rows ran vs 35 of 306 alerted; today's rule is
+  unmeasured on the then-rejected rows.
+- **Proposal for his ruling:** section "Proposal for his ruling" — no change to score or admission is supported;
+  three forks put to him 2026-09-28 (a next-block read registered now, an opening-range-high outcome frame, whether
+  the rejected runners are a population any lane should watch).
+- ⚠ The critic could not prove WHEN the registration text was written (the probe was edited after the run; its
+  outputs are byte-identical under the current code, so the edit changed text only).

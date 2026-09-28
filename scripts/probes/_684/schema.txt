@@ -1,0 +1,269 @@
+mi_alert_rank_shadow|alert_id|integer
+mi_alert_rank_shadow|ticker|text
+mi_alert_rank_shadow|alert_date|date
+mi_alert_rank_shadow|score_tier|text
+mi_alert_rank_shadow|alerted_high|boolean
+mi_alert_rank_shadow|trade_exists|boolean
+mi_alert_rank_shadow|trade_filled|boolean
+mi_alert_rank_shadow|account_mode|text
+mi_alert_rank_shadow|prior_trading_day|date
+mi_alert_rank_shadow|prior_close|double precision
+mi_alert_rank_shadow|prior_bars_count|integer
+mi_alert_rank_shadow|sma10|double precision
+mi_alert_rank_shadow|sma20|double precision
+mi_alert_rank_shadow|sma50|double precision
+mi_alert_rank_shadow|adr20_frac|double precision
+mi_alert_rank_shadow|atr14_prior|double precision
+mi_alert_rank_shadow|day_open|double precision
+mi_alert_rank_shadow|day_high|double precision
+mi_alert_rank_shadow|day_low|double precision
+mi_alert_rank_shadow|day_close|double precision
+mi_alert_rank_shadow|day_bar_source|text
+mi_alert_rank_shadow|gap_pct_eod|double precision
+mi_alert_rank_shadow|tightness_pct_eod|double precision
+mi_alert_rank_shadow|ext_xadr_eod|double precision
+mi_alert_rank_shadow|ext_no_ma_below_eod|boolean
+mi_alert_rank_shadow|qualifies_for_rank_eod|boolean
+mi_alert_rank_shadow|rank_gap_eod|double precision
+mi_alert_rank_shadow|rank_tightness_eod|double precision
+mi_alert_rank_shadow|rank_ext_eod|double precision
+mi_alert_rank_shadow|composite_rank_eod|double precision
+mi_alert_rank_shadow|pool_size_eod|integer
+mi_alert_rank_shadow|minute_bars_available|boolean
+mi_alert_rank_shadow|minute_bar_count|integer
+mi_alert_rank_shadow|orb_open_0945|double precision
+mi_alert_rank_shadow|orb_high_0945|double precision
+mi_alert_rank_shadow|orb_low_0945|double precision
+mi_alert_rank_shadow|orb_close_0945|double precision
+mi_alert_rank_shadow|gap_pct_asof0945|double precision
+mi_alert_rank_shadow|tightness_pct_asof0945|double precision
+mi_alert_rank_shadow|ext_xadr_asof0945|double precision
+mi_alert_rank_shadow|ext_no_ma_below_asof0945|boolean
+mi_alert_rank_shadow|qualifies_for_rank_asof0945|boolean
+mi_alert_rank_shadow|rank_gap_asof0945|double precision
+mi_alert_rank_shadow|rank_tightness_asof0945|double precision
+mi_alert_rank_shadow|rank_ext_asof0945|double precision
+mi_alert_rank_shadow|composite_rank_asof0945|double precision
+mi_alert_rank_shadow|pool_size_asof0945|integer
+mi_alert_rank_shadow|orb_range_over_atr14|double precision
+mi_alert_rank_shadow|orb_range_over_adr20|double precision
+mi_alert_rank_shadow|open_range_position|double precision
+mi_alert_rank_shadow|bar_contraction|double precision
+mi_alert_rank_shadow|bar_contraction_bar_count|integer
+mi_alert_rank_shadow|expct_scheduled|text
+mi_alert_rank_shadow|expct_scheduled_src|text
+mi_alert_rank_shadow|expct_looking|text
+mi_alert_rank_shadow|expct_beat|boolean
+mi_alert_rank_shadow|expct_growth_yoy_pct|double precision
+mi_alert_rank_shadow|expct_growth_src|text
+mi_alert_rank_shadow|computed_at|timestamp with time zone
+mi_alert_rank_shadow|expct_combined_class|text
+mi_alert_rank_shadow|expct_classifiable_frac|double precision
+mi_alert_rank_shadow|ext_xadr_pregap|double precision
+mi_alert_rank_shadow|ext_no_ma_below_pregap|boolean
+mi_alert_rank_shadow|base_days_raw40|integer
+mi_alert_rank_shadow|base_depth_raw40|double precision
+mi_alert_rank_shadow|base_censored_raw40|boolean
+mi_alert_rank_shadow|base_days_adr6|integer
+mi_alert_rank_shadow|base_depth_adr6|double precision
+mi_alert_rank_shadow|base_censored_adr6|boolean
+mi_alert_rank_shadow|base_net_disp_xadr|double precision
+mi_alert_rank_shadow|base_lookback_bars|integer
+mi_daily_closes|trade_date|date
+mi_daily_closes|ticker|text
+mi_daily_closes|close|double precision
+mi_daily_closes|volume|bigint
+mi_daily_closes|open_price|double precision
+mi_daily_closes|high_price|double precision
+mi_daily_closes|low_price|double precision
+mi_ep_alerts|id|integer
+mi_ep_alerts|ticker|text
+mi_ep_alerts|alert_date|date
+mi_ep_alerts|gap_pct|double precision
+mi_ep_alerts|rel_volume|double precision
+mi_ep_alerts|ep_score|double precision
+mi_ep_alerts|score_tier|text
+mi_ep_alerts|catalyst|text
+mi_ep_alerts|catalyst_quality|text
+mi_ep_alerts|claude_analysis|text
+mi_ep_alerts|gemini_validation|text
+mi_ep_alerts|confidence_multiplier|double precision
+mi_ep_alerts|vol_percentile|double precision
+mi_ep_alerts|created_at|timestamp with time zone
+mi_ep_alerts|source|text
+mi_ep_alerts|pm_rvol|double precision
+mi_ep_alerts|pm_rvol_baseline_n|integer
+mi_ep_alerts|detected_at|timestamp with time zone
+mi_ep_alerts|catalyst_type|text
+mi_ep_alerts|catalyst_type_rationale|text
+mi_ep_alerts|theme_gated_tier|text
+mi_ep_alerts|theme_gated_score|double precision
+mi_ep_alerts|in_active_theme|boolean
+mi_ep_alerts|in_narrative_cohort|boolean
+mi_ep_alerts|fire_status|text
+mi_ep_alerts|fire_axes|ARRAY
+mi_ep_alerts|materiality_tier|text
+mi_ep_alerts|materiality_source|text
+mi_ep_alerts|fire_status_mat_shadow|text
+mi_ep_alerts|grounded_text|text
+mi_ep_alerts|baseline_floor_tier|text
+mi_ep_alerts|judge_tier|text
+mi_ep_alerts|judge_direction|text
+mi_ep_alerts|judge_rationale|text
+mi_ep_alerts|judge_materiality_tier|text
+mi_ep_alerts|grade_engine_authority|text
+mi_ep_alerts|rubric_version|text
+mi_ep_alerts|setup_class|text
+mi_ep_alerts|tape_tier|text
+mi_ep_alerts|tape_spike_ct|integer
+mi_ep_alerts|tape_held|integer
+mi_ep_alerts|tape_rev|integer
+mi_ep_alerts|tape_bmr2|double precision
+mi_ep_alerts|tape_ntr_med|double precision
+mi_ep_alerts|vol_hist_n|integer
+mi_ep_alerts|vol_r5_50|double precision
+mi_ep_alerts|vol_lab50|integer
+mi_ep_alerts|vol_lab50_ratio|double precision
+mi_ep_alerts|vol_alert_vs_max|double precision
+mi_ep_alerts|judge_grade|text
+mi_ep_alerts|judge_grade_reason|text
+mi_ep_alerts|judge_tier_reason|text
+mi_ep_catalyst_metrics|ticker|text
+mi_ep_catalyst_metrics|alert_date|date
+mi_ep_catalyst_metrics|q_revenue_yoy_pct|double precision
+mi_ep_catalyst_metrics|extraction_quality|text
+mi_ep_catalyst_metrics|raw_json|jsonb
+mi_ep_catalyst_metrics|extracted_at|timestamp with time zone
+mi_ep_catalyst_metrics|raw_polygon_news_json|jsonb
+mi_ep_catalyst_metrics|raw_alpaca_news_json|jsonb
+mi_ep_catalyst_metrics|raw_fmp_news_json|jsonb
+mi_ep_catalyst_metrics|raw_perplexity_text|text
+mi_ep_catalyst_metrics|raw_claude_analysis_text|text
+mi_ep_catalyst_metrics|yoy_recovered_json|jsonb
+mi_ep_scan_log|id|integer
+mi_ep_scan_log|scan_date|date
+mi_ep_scan_log|ticker|text
+mi_ep_scan_log|gap_pct|double precision
+mi_ep_scan_log|prev_close|double precision
+mi_ep_scan_log|rel_volume|double precision
+mi_ep_scan_log|filter_reason|text
+mi_ep_scan_log|ep_score|double precision
+mi_ep_scan_log|score_tier|text
+mi_ep_scan_log|catalyst_quality|text
+mi_ep_scan_log|created_at|timestamp with time zone
+mi_ep_scan_log|scan_time_et|timestamp with time zone
+mi_ep_scan_log|rank_by_gap|integer
+mi_ep_scan_log|projected_vol_multiple|double precision
+mi_ep_scan_log|pm_rvol|double precision
+mi_ep_scan_log|adv|double precision
+mi_ep_scan_log|adv_source|text
+mi_ep_scan_log|minutes_since_open|integer
+mi_ep_scan_log|gap_pct_rt|double precision
+mi_ep_scan_log|gap_pct_delayed|double precision
+mi_ep_scan_log|price_source|text
+mi_ep_scan_log|rt_price_age_s|double precision
+mi_ep_scan_log|prev_close_alpaca|double precision
+mi_ep_scan_log|reject_stage|text
+mi_ep_scan_log|current_price|double precision
+mi_ep_scan_log|prev_day_volume|bigint
+mi_ep_scan_log|today_volume|bigint
+mi_ep_scan_log|pm_rvol_baseline_n|integer
+mi_ep_scan_log|days_since_prior_alert|integer
+mi_ep_scan_log|extension_pct|double precision
+mi_ep_scan_log|quality_adv_dollar|double precision
+mi_ep_scan_log|atr_pct|double precision
+mi_ep_scan_log|market_cap|double precision
+mi_ep_scan_log|vol_percentile|double precision
+mi_ep_scan_log|prior_3m_change|double precision
+mi_ep_scan_log|float_shares|double precision
+mi_ep_scan_log|in_active_theme|boolean
+mi_ep_scan_log|llm_catalyst_quality|text
+mi_ep_scan_log|score_breakdown|jsonb
+mi_ep_scan_log|ep_bar|double precision
+mi_ep_scan_log|score_side|text
+mi_ep_scan_log|rank_by_prescore|integer
+mi_intraday_bars|ticker|text
+mi_intraday_bars|bar_time|timestamp with time zone
+mi_intraday_bars|open|double precision
+mi_intraday_bars|high|double precision
+mi_intraday_bars|low|double precision
+mi_intraday_bars|close|double precision
+mi_intraday_bars|volume|bigint
+mi_intraday_bars|vwap|double precision
+mi_market_regime|regime_date|date
+mi_market_regime|regime|text
+mi_market_regime|spy_vs_50ma|double precision
+mi_market_regime|spy_vs_200ma|double precision
+mi_market_regime|qqq_vs_50ma|double precision
+mi_market_regime|vix|double precision
+mi_market_regime|breadth_pct_above_40ma|double precision
+mi_market_regime|bo_bd_ratio_5d|double precision
+mi_market_regime|pct4_ratio_10d|double precision
+mi_market_regime|description|text
+mi_market_regime|ep_threshold|integer
+mi_market_regime|created_at|timestamp with time zone
+mi_market_regime|t2108|double precision
+mi_market_regime|pradeep_1m_50|integer
+mi_market_regime|pradeep_3m_25|integer
+mi_market_regime|full_up4_count|integer
+mi_market_regime|full_down4_count|integer
+mi_market_regime|consec_breakdown_days|integer
+mi_market_regime|breadth_monitor|jsonb
+mi_market_regime|qqq_ema_10|double precision
+mi_market_regime|qqq_ema_20|double precision
+mi_market_regime|qqq_ema_bullish|boolean
+mi_stock_scores|ticker|text
+mi_stock_scores|score_date|date
+mi_stock_scores|rs_1m|double precision
+mi_stock_scores|rs_3m|double precision
+mi_stock_scores|rs_6m|double precision
+mi_stock_scores|rs_composite|double precision
+mi_stock_scores|rs_rank|integer
+mi_stock_scores|sector|text
+mi_stock_scores|adv_20|double precision
+mi_stock_scores|market_cap|double precision
+mi_stock_scores|sma_10|double precision
+mi_stock_scores|sma_20|double precision
+mi_stock_scores|sma_50|double precision
+mi_stock_scores|close|double precision
+mi_stock_scores|raw_1m|double precision
+mi_stock_scores|raw_3m|double precision
+mi_stock_scores|raw_6m|double precision
+mi_stock_scores|sma_40|double precision
+mi_structure_axis_shadow|id|integer
+mi_structure_axis_shadow|ticker|text
+mi_structure_axis_shadow|alert_date|date
+mi_structure_axis_shadow|grade|text
+mi_structure_axis_shadow|prior_close|double precision
+mi_structure_axis_shadow|stage2|boolean
+mi_structure_axis_shadow|sma_200|double precision
+mi_structure_axis_shadow|trailing_high|double precision
+mi_structure_axis_shadow|rmv_15|double precision
+mi_structure_axis_shadow|rmv_tight|boolean
+mi_structure_axis_shadow|extension_ratio|double precision
+mi_structure_axis_shadow|sma_10|double precision
+mi_structure_axis_shadow|credit_steps|integer
+mi_structure_axis_shadow|marker|text
+mi_structure_axis_shadow|reason|text
+mi_structure_axis_shadow|created_at|timestamp with time zone
+mi_themes|id|integer
+mi_themes|theme_date|date
+mi_themes|name|text
+mi_themes|stage|text
+mi_themes|score|double precision
+mi_themes|description|text
+mi_themes|tickers|ARRAY
+mi_themes|created_at|timestamp with time zone
+mi_themes|rs_avg|double precision
+mi_themes|parent_theme|text
+mi_themes|days_active|integer
+mi_themes|consecutive_accelerating|integer
+mi_themes|pct_above_20sma|real
+mi_themes|source|text
+mi_ticker_overrides|ticker|text
+mi_ticker_overrides|description|text
+mi_ticker_overrides|notes|text
+mi_ticker_overrides|updated_at|timestamp with time zone
+mi_ticker_overrides|sector|text
+mi_ticker_overrides|industry|text
+mi_ticker_overrides|company_name|text

@@ -1,0 +1,33 @@
+rows 670 with outcome 667 censored []
+runners>=5 71 >=8 26
+alerted 35 306  not 36 361
+outcome mismatches >0.01 ADR vs study: 0 []
+runner label mismatches []
+chosen tick time buckets Counter({'0945+': 333, 'pre0930': 306, '0930-0944': 31})
+chosen tick time buckets, alerted Counter({'pre0930': 203, '0945+': 99, '0930-0944': 5})
+chosen tick time buckets, not alerted Counter({'0945+': 234, 'pre0930': 103, '0930-0944': 26})
+first pass time buckets (alerted): Counter({'pre0930': 203, '0945+': 99, '0930-0944': 5})
+--- recompute (own code, seed differs, 5000 perms) ---
+20d dollar volume LOWER: cut <= 3.246e+07 | disc fav 31/201=15.4% vs rest 36/403=8.9% diff +6.5pp perm p 0.006 | held fav 2/24 vs rest 2/39
+EP score HIGHER: cut >= 60 | disc fav 29/205=14.1% vs rest 38/399=9.5% diff +4.6pp perm p 0.126 | held fav 0/25 vs rest 4/38
+ADR% HIGHER: cut >= 6.417 | disc fav 28/202=13.9% vs rest 39/402=9.7% diff +4.2pp perm p 0.017 | held fav 0/11 vs rest 4/52
+--- the reversed "already moving" leads, stated as the doc states them (opposite third vs rest) ---
+20d close range/price WIDEST third: cut >= 27.99 | disc fav 24/202=11.9% vs rest 43/402=10.7% diff +1.2pp perm p 0.297 | held fav 0/13 vs rest 4/50
+20d close range/price TIGHTEST third (the registered draw): cut <= 16.35 | disc fav 13/201=6.5% vs rest 54/403=13.4% diff -6.9pp perm p 0.999 | held fav 1/25 vs rest 3/38
+prev close above 5d low, FURTHEST third: cut >= 7.693 | disc fav 29/202=14.4% vs rest 38/402=9.5% diff +4.9pp perm p 0.064 | held fav 0/7 vs rest 4/56
+prev close above 5d low, LEAST third (the registered draw): cut <= 2.208 | disc fav 14/201=7.0% vs rest 53/403=13.2% diff -6.2pp perm p 0.992 | held fav 3/40 vs rest 1/23
+overlap: widest-range third 202, top-ADR% third 202, both 146; spearman-ish corr:
+  spearman range20 vs ADR% 0.77  ext5 vs ADR% 0.344  dv20 vs ADR% 0.065
+20d range in ADR units, WIDEST third: cut >= 4.564 | disc fav 27/202=13.4% vs rest 40/402=10.0% diff +3.4pp perm p 0.110 | held fav 1/23 vs rest 3/40
+20d range in ADR units, TIGHTEST third: cut <= 3.426 | disc fav 22/201=10.9% vs rest 45/403=11.2% diff -0.2pp perm p 0.674 | held fav 1/24 vs rest 3/39
+ext off 5d low in ADR units, FURTHEST third: cut >= 1.425 | disc fav 25/202=12.4% vs rest 42/402=10.4% diff +1.9pp perm p 0.350 | held fav 0/9 vs rest 4/54
+--- widest-range-third vs rest WITHIN each ADR% tercile (discovery) ---
+  low ADR%: n 201 wide 4/9 vs rest 12/192
+  mid ADR%: n 201 wide 4/47 vs rest 19/154
+  high ADR%: n 202 wide 16/146 vs rest 12/56
+--- percent label (peak >= 25% from the close) ---
+ADR% HIGHER, %-label: cut >= 6.417 | disc fav 61/202=30.2% vs rest 34/402=8.5% diff +21.7pp perm p 0.000 | held fav 0/11 vs rest 3/52
+20d range WIDEST third, %-label: cut >= 27.99 | disc fav 56/202=27.7% vs rest 39/402=9.7% diff +18.0pp perm p 0.000 | held fav 0/13 vs rest 3/50
+dollar volume LOWER, %-label: cut <= 3.246e+07 | disc fav 35/201=17.4% vs rest 60/403=14.9% diff +2.5pp perm p 0.204 | held fav 1/24 vs rest 2/39
+runners >=5 ADR by ISO week and share in W19: 18 of 67
+tickers with >1 runner row: {'UMC': ['2026-05-06', '2026-05-14'], 'CRSR': ['2026-05-08', '2026-05-27'], 'AVAH': ['2026-06-02', '2026-08-13']}

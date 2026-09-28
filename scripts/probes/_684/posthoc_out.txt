@@ -1,0 +1,27 @@
+#684 POST-HOC — the 09-27 extension lead under its own definition (NOT a pre-registered draw)
+replication check on alerted rows carrying the stored column: n 246, spearman 1.000, median |diff| 0.000 ADR, rows within 0.1 ADR 246
+pregap replication: n 182, spearman 1.000, rows within 0.1 ADR 182
+rows with no SMA below the open (undefined, excluded as in the 09-27 read): 36 of 667
+
+09:30 open vs the SMAs below it (the 09-27 `ext_xadr_eod` definition): discovery tercile cut 1.83 / 3.37 ADR (least-extended third = <= 1.83)
+  discovery ALL: least-extended 25/187 = 13.4%  vs rest 38/376 = 10.1%  diff +3.3pp  week-block p 0.040  | >= 8 ADR 5.9% vs 3.5%
+  discovery alerted: least-extended 15/90 = 16.7%  vs rest 18/174 = 10.3%  diff +6.3pp  week-block p 0.032  | >= 8 ADR 7.8% vs 2.9%
+  discovery not alerted: least-extended 10/97 = 10.3%  vs rest 20/202 = 9.9%  diff +0.4pp  week-block p 0.450  | >= 8 ADR 4.1% vs 4.0%
+  discovery alerted era-A alert-row (the 09-27 population): least-extended 14/82 = 17.1%  vs rest 10/143 = 7.0%  diff +10.1pp  week-block p 0.010  | >= 8 ADR 8.5% vs 2.8%
+  HELD-OUT all: least-extended 2/22 = 9.1%  vs rest 2/37 = 5.4%  diff +3.7pp  | >= 8 ADR 0.0% vs 0.0%
+  HELD-OUT alerted: least-extended 0/8 = 0.0%  vs rest 0/11 = 0.0%  diff +0.0pp  | >= 8 ADR 0.0% vs 0.0%
+  HELD-OUT not alerted: least-extended 2/14 = 14.3%  vs rest 2/26 = 7.7%  diff +6.6pp  | >= 8 ADR 0.0% vs 0.0%
+  labelled EPs: BFLY 4.40 ADR (rest); PLTR 2.50 ADR (rest); TEAM 5.32 ADR (rest); HTFL 5.34 ADR (rest); MRNA 8.32 ADR (rest)
+  by month (least-extended vs rest): 2026-05 7/54 vs 29/159; 2026-06 7/48 vs 3/52; 2026-07 6/47 vs 3/58; 2026-08 5/38 vs 3/107
+
+prev close vs the SMAs below it (the 09-27 `ext_xadr_pregap` definition): discovery tercile cut 0.83 / 1.75 ADR (least-extended third = <= 0.83)
+  discovery ALL: least-extended 14/148 = 9.5%  vs rest 35/296 = 11.8%  diff -2.4pp  week-block p 0.689  | >= 8 ADR 3.4% vs 4.4%
+  discovery alerted: least-extended 12/80 = 15.0%  vs rest 15/123 = 12.2%  diff +2.8pp  week-block p 0.266  | >= 8 ADR 5.0% vs 3.3%
+  discovery not alerted: least-extended 2/68 = 2.9%  vs rest 20/173 = 11.6%  diff -8.6pp  week-block p 0.992  | >= 8 ADR 1.5% vs 5.2%
+  discovery alerted era-A alert-row (the 09-27 population): least-extended 9/70 = 12.9%  vs rest 9/98 = 9.2%  diff +3.7pp  week-block p 0.311  | >= 8 ADR 5.7% vs 3.1%
+  HELD-OUT all: least-extended 3/19 = 15.8%  vs rest 0/28 = 0.0%  diff +15.8pp  | >= 8 ADR 0.0% vs 0.0%
+  HELD-OUT alerted: least-extended 0/7 = 0.0%  vs rest 0/6 = 0.0%  diff +0.0pp  | >= 8 ADR 0.0% vs 0.0%
+  HELD-OUT not alerted: least-extended 3/12 = 25.0%  vs rest 0/22 = 0.0%  diff +25.0pp  | >= 8 ADR 0.0% vs 0.0%
+  labelled EPs: BFLY 1.90 ADR (rest); PLTR 0.07 ADR (least-extended third); TEAM 1.98 ADR (rest); HTFL 1.73 ADR (rest); MRNA 0.61 ADR (least-extended third)
+  by month (least-extended vs rest): 2026-05 5/43 vs 28/137; 2026-06 4/26 vs 1/50; 2026-07 2/27 vs 1/41; 2026-08 3/52 vs 5/68
+

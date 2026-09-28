@@ -1,0 +1,75 @@
+RUNNERS (>= 5 ADR within 15 sessions) the gap-day scan scored but did NOT alert: 36 of 71 runners; alerted runners 35 of 306.0 alerted rows (11.4 %); not-alerted runners 36 of 361 (10.0 %)
+ticker | scan_date | block | ep_score | catalyst | scan verdict | gap % scan | prev close | run ADRs | run % | peak session | ext_5d % | close loc | orb pos
+UMC | 2026-05-06 | DISCOVERY | 22 | strong | rejected: score below bar | 13.1 | 14.01 | 17.3 | 56 | 14 | 9.9 | 0.71 | 0.49
+CRSR | 2026-05-08 | DISCOVERY | 38 | strong | rejected: score below bar | 11.8 | 7.09 | 16.8 | 66 | 13 | 2.9 | 0.71 | 0.1
+HPE | 2026-05-29 | DISCOVERY | 0 | routine | rejected: score below bar | 10.9 | 38.21 | 12.6 | 49 | 2 | 12.5 | 0.5 | 0.15
+PSNL | 2026-05-13 | DISCOVERY | 46 | strong | rejected: score below bar | 14.7 | 6.04 | 12.5 | 96 | 15 | 4.5 | 0.04 | 0.05
+UMC | 2026-05-14 | DISCOVERY | 0 | strong | rejected: score below bar | 9.1 | 15.92 | 9.8 | 38 | 8 | 5.0 | 0.86 | 0.78
+QURE | 2026-05-29 | DISCOVERY | 32 | routine | rejected: score below bar | 16.3 | 24.85 | 9.1 | 76 | 14 | 2.7 | 0.5 | 0.11
+SHLS | 2026-05-05 | DISCOVERY | 30 | routine | rejected: score below bar | 20.1 | 8.27 | 9.0 | 54 | 15 | 12.7 | 0.22 | 0.02
+RDW | 2026-05-18 | DISCOVERY | 36 | strong | rejected: score below bar | 10.8 | 14.06 | 8.9 | 91 | 7 | 22.7 | 0.35 | 0.01
+BB | 2026-05-04 | DISCOVERY | -7 | routine | rejected: score below bar | 15.3 | 5.42 | 8.7 | 54 | 15 | 5.4 | 0.05 | 0.35
+OMER | 2026-07-27 | DISCOVERY | 38 | routine | rejected: score below bar | 15.5 | 9.79 | 8.6 | 60 | 13 | 2.7 | 0.73 | 0.15
+RNG | 2026-07-24 | DISCOVERY | 37 | routine | rejected: score below bar | 20.7 | 38.62 | 8.5 | 42 | 14 | 2.5 | 0.81 | 0.97
+SLS | 2026-05-13 | DISCOVERY | 7 | routine | rejected: score below bar | 18.8 | 5.22 | 8.2 | 46 | 11 | 5.9 | 0.82 | 0.98
+ARM | 2026-05-06 | DISCOVERY | -12 | routine | rejected: score below bar | 12.2 | 208.84 | 8.0 | 47 | 15 | 3.5 | 0.89 | 0.5
+PENG | 2026-05-13 | DISCOVERY | 0 | routine | rejected: score below bar | 18.5 | 44.13 | 7.4 | 52 | 13 | 13.2 | 0.13 | 0.04
+VOD | 2026-07-10 | DISCOVERY | 42 | strong | rejected: score below bar | 11.6 | 13.08 | 7.2 | 11 | 12 | 0.2 | 0.6 | 0.88
+CGEM | 2026-06-08 | DISCOVERY | 42 | strong | rejected: score below bar | 11.0 | 13.51 | 7.1 | 46 | 13 | 0.0 | 0.48 | 0.06
+RLAY | 2026-05-19 | DISCOVERY | 33 | strong | rejected: score below bar | 10.4 | 12.10 | 7.0 | 45 | 9 | 0.0 | 0.21 | 0.53
+AVAH | 2026-06-02 | DISCOVERY | 33 | routine | rejected: score below bar | 12.1 | 6.67 | 6.8 | 33 | 15 | 0.0 | 0.02 | 0.21
+PURR | 2026-05-19 | DISCOVERY | 7 | strong | rejected: score below bar | 11.2 | 6.93 | 6.6 | 49 | 8 | 14.2 | 0.8 | 0.46
+AVAH | 2026-08-13 | DISCOVERY | 30 | routine | rejected: score below bar | 14.5 | 9.05 | 6.6 | 24 | 10 | 1.1 | 0.87 | 0.96
+GPRK | 2026-08-31 | HELD-OUT | 52 | strong | rejected: score below bar | 11.8 | 9.83 | 6.6 | 19 | 3 | 1.2 | 0.78 | 0.99
+ABSI | 2026-06-15 | DISCOVERY | 6 | routine | rejected: score below bar | 16.0 | 6.80 | 6.6 | 66 | 9 | 6.6 | 0.13 | 0.4
+AAOI | 2026-07-31 | DISCOVERY | 37 | routine | rejected: score below bar | 13.9 | 90.11 | 6.5 | 71 | 11 | 17.8 | 0.27 | 0.02
+COHR | 2026-07-31 | DISCOVERY | 30 | routine | rejected: score below bar | 12.5 | 249.06 | 6.4 | 49 | 5 | 12.2 | 0.23 | 0.06
+DDOG | 2026-05-07 | DISCOVERY | 48 | routine | rejected: score below bar | 30.5 | 143.71 | 6.2 | 32 | 15 | 8.7 | 0.48 | 0.14
+NVAX | 2026-05-06 | DISCOVERY | 34 | routine | rejected: score below bar | 15.4 | 8.10 | 6.0 | 24 | 14 | 2.2 | 0.83 | 0.39
+GFS | 2026-05-05 | DISCOVERY | 0 | strong | rejected: score below bar | 9.2 | 67.75 | 5.9 | 25 | 14 | 13.9 | 0.95 | 0.06
+MRVI | 2026-08-19 | HELD-OUT | 48 | routine | rejected: score below bar | 25.4 | 5.74 | 5.9 | 30 | 5 | 1.1 | 0.51 | 0.94
+SMMT | 2026-08-26 | HELD-OUT | 55 | strong | rejected: score below bar | 9.0 | 13.36 | 5.8 | 32 | 12 | 7.5 | 0.12 | 0.6
+CEVA | 2026-05-11 | DISCOVERY | 14 | strong | rejected: score below bar | 10.8 | 36.97 | 5.8 | 36 | 15 | 13.6 | 0.86 | 0.5
+NTSK | 2026-09-03 | HELD-OUT | 49 | routine | rejected: score below bar | 11.2 | 13.75 | 5.6 | 32 | 13 | 0.0 | 0.32 | 0.44
+SHAZ | 2026-05-14 | DISCOVERY | 29 | routine | rejected: score below bar | 13.1 | 55.03 | 5.2 | 56 | 13 | 5.6 | 0.2 | 0.31
+WDAY | 2026-05-22 | DISCOVERY | 43 | routine | rejected: score below bar | 10.1 | 121.85 | 5.2 | 24 | 5 | 0.0 | 0.35 | 0.88
+CSTL | 2026-07-31 | DISCOVERY | 40 | routine | rejected: score below bar | 12.4 | 26.79 | 5.1 | 24 | 15 | 12.1 | 0.15 | 0.29
+YETI | 2026-05-14 | DISCOVERY | 36 | strong | rejected: score below bar | 10.7 | 38.33 | 5.1 | 20 | 10 | 0.0 | 0.18 | 0.11
+WIX | 2026-08-04 | DISCOVERY | 35 | routine | rejected: score below bar | 14.4 | 56.84 | 5.0 | 29 | 15 | 3.3 | 0.88 | 1.0
+
+ALERTED runners, for comparison:
+VOYG | 2026-05-05 | DISCOVERY | 54 | routine | alerted MODERATE | 12.5 | 25.57 | 13.5 | 92 | 14
+TE | 2026-05-12 | DISCOVERY | 84 | strong | alerted HIGH | 18.2 | 6.04 | 13.3 | 111 | 15
+HQ | 2026-06-15 | DISCOVERY | 84 | strong | alerted HIGH | 19.7 | 10.91 | 12.4 | 153 | 4
+NRIX | 2026-06-08 | DISCOVERY | 76 | game_changer | alerted HIGH | 11.5 | 14.64 | 11.9 | 59 | 15
+VPG | 2026-05-12 | DISCOVERY | 101 | strong | alerted HIGH | 17.1 | 66.60 | 11.6 | 59 | 14
+VCX | 2026-05-05 | DISCOVERY | 60 | routine | alerted MODERATE | 20.6 | 115.00 | 10.9 | 125 | 5
+ALOY | 2026-06-01 | DISCOVERY | 86 | strong | alerted HIGH | 14.2 | 9.16 | 10.4 | 87 | 15
+EFOR | 2026-07-22 | DISCOVERY | 50 | routine | alerted MODERATE | 12.4 | 18.31 | 10.1 | 66 | 13
+HLIT | 2026-05-12 | DISCOVERY | 84 | strong | alerted HIGH | 15.2 | 12.83 | 9.7 | 37 | 11
+FET | 2026-07-31 | DISCOVERY | 84 | strong | alerted HIGH | 16.0 | 51.43 | 9.3 | 39 | 12
+BLZE | 2026-07-31 | DISCOVERY | 72 | game_changer | alerted MODERATE | 13.1 | 12.63 | 8.8 | 75 | 2
+AKTS | 2026-06-12 | DISCOVERY | 54 | strong | alerted MODERATE | 11.9 | 19.46 | 8.7 | 56 | 11
+FTNT | 2026-05-07 | DISCOVERY | 96 | game_changer | alerted HIGH | 15.0 | 89.95 | 8.5 | 28 | 15
+KURA | 2026-08-13 | DISCOVERY | 60 | strong | alerted MODERATE | 13.4 | 9.94 | 8.0 | 38 | 8
+CAI | 2026-08-06 | DISCOVERY | 50 | routine | alerted MODERATE | 17.1 | 16.45 | 7.9 | 42 | 13
+PCT | 2026-05-07 | DISCOVERY | 100 | strong | alerted HIGH | 22.7 | 7.62 | 7.5 | 49 | 7
+FTK | 2026-08-03 | DISCOVERY | 60 | game_changer | alerted MODERATE | 10.4 | 23.54 | 7.4 | 48 | 7
+RIOT | 2026-05-01 | DISCOVERY | 58 | strong | alerted MODERATE | 11.2 | 17.24 | 6.2 | 40 | 6
+FLNC | 2026-05-07 | DISCOVERY | 96 | strong | alerted HIGH | 29.7 | 13.56 | 6.1 | 44 | 2
+BLSH | 2026-08-13 | DISCOVERY | 54 | routine | alerted MODERATE | 12.4 | 24.63 | 6.1 | 35 | 15
+LFST | 2026-08-06 | DISCOVERY | 96 | game_changer | alerted HIGH | 18.8 | 10.37 | 6.1 | 22 | 10
+CRSR | 2026-05-27 | DISCOVERY | 101 | strong | alerted HIGH | 15.3 | 8.09 | 6.1 | 33 | 1
+INOD | 2026-05-08 | DISCOVERY | 100 | strong | alerted HIGH | 35.6 | 45.64 | 6.0 | 38 | 15
+DFTX | 2026-06-22 | DISCOVERY | 60 | game_changer | alerted MODERATE | 14.4 | 24.48 | 5.7 | 34 | 6
+AMD | 2026-05-06 | DISCOVERY | 96 | game_changer | alerted HIGH | 19.2 | 355.26 | 5.6 | 25 | 15
+BHVN | 2026-05-29 | DISCOVERY | 65 | strong | alerted MODERATE | 11.5 | 10.24 | 5.6 | 42 | 15
+LIFE | 2026-08-04 | DISCOVERY | 80 | game_changer | alerted HIGH | 16.3 | 22.83 | 5.5 | 41 | 15
+ELVN | 2026-06-11 | DISCOVERY | 84 | strong | alerted HIGH | 18.3 | 37.00 | 5.5 | 30 | 12
+MMYT | 2026-06-15 | DISCOVERY | 60 | routine | alerted MODERATE | 12.8 | 43.15 | 5.4 | 33 | 14
+TER | 2026-07-29 | DISCOVERY | 60 | game_changer | alerted HIGH | 10.4 | 320.65 | 5.3 | 39 | 13
+MTSI | 2026-05-07 | DISCOVERY | 84 | strong | alerted HIGH | 17.1 | 309.81 | 5.3 | 22 | 13
+CSCO | 2026-05-14 | DISCOVERY | 101 | strong | alerted HIGH | 16.3 | 101.87 | 5.2 | 13 | 14
+SMCI | 2026-05-06 | DISCOVERY | 65 | strong | alerted HIGH | 15.0 | 27.83 | 5.1 | 26 | 15
+FROG | 2026-05-08 | DISCOVERY | 60 | strong | alerted HIGH | 12.9 | 57.02 | 5.1 | 26 | 15
+FCEL | 2026-06-24 | DISCOVERY | 84 | strong | alerted HIGH | 17.5 | 21.82 | 5.0 | 76 | 4

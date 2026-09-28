@@ -1,0 +1,67 @@
+Output format is unaligned.
+Field separator is "|".
+?column?|e
+end_date|2026-09-03
+scored_ticks|5818
+pairs|670
+names|546
+scan_dates|86
+pairs_any_pass|307
+pairs_null_reason_but_no_tier|0
+ticks_tier_set_but_reason_set|0
+ticks_reason_not_score_prefix|0
+ticks_created_not_same_et_day|0
+ticks_scan_time_not_same_et_day|0
+dup_ticks_same_ticker_same_time|0
+month_2026-07_pairs/pass|119/41
+month_2026-06_pairs/pass|110/53
+month_2026-08_pairs/pass|198/99
+month_2026-09_pairs/pass|15/3
+month_2026-05_pairs/pass|228/111
+era_B_pairs/pass|40/9
+era_A_pairs/pass|630/298
+block_DISC_pairs/pass|607/287
+block_HELD_pairs/pass|63/20
+live_alert_pairs_0501_end|270
+live_alert_pairs_0501_0911|277
+live_alert_pairs_0501_0821|261
+live_alert_rows_dup_pairs|3
+alerts_min_date_any_source|2026-05-11
+alerts_source_live|280
+alerts_source_historical_scan|150
+pass_pairs_with_live_alert|263
+pass_pairs_no_live_alert|44
+pass_pairs_no_live_alert_date_range|2026-05-01..2026-05-08
+pass_pairs_no_live_alert_on_or_after_0511|0
+nopass_pairs_with_live_alert:IMVT_2026-05-20|18:40
+nopass_pairs_with_live_alert:SLS_2026-05-20|18:41
+live_alerts_in_window_with_no_scored_pair|5
+live_alerts_in_window_with_no_scored_pair:ALAB_2026-05-20|0 scanlog rows any
+live_alerts_in_window_with_no_scored_pair:DYN_2026-05-20|0 scanlog rows any
+live_alerts_in_window_with_no_scored_pair:TATT_2026-05-20|20 scanlog rows any
+live_alerts_in_window_with_no_scored_pair:GH_2026-05-20|0 scanlog rows any
+live_alerts_in_window_with_no_scored_pair:ARM_2026-05-20|0 scanlog rows any
+scanlog_scored_pairs_by_week_2026-04-13|3
+scanlog_scored_pairs_by_week_2026-04-20|41
+scanlog_scored_pairs_by_week_2026-04-27|38
+scanlog_scored_pairs_by_week_2026-05-04|65
+scanlog_scored_pairs_by_week_2026-05-11|56
+scanlog_scored_pairs_by_week_2026-05-18|34
+scanlog_scored_pairs_by_week_2026-05-25|61
+scanlog_scored_pairs_by_week_2026-06-01|31
+scanlog_scored_pairs_by_week_2026-06-08|19
+scanlog_scored_pairs_by_week_2026-06-15|24
+scanlog_scored_pairs_by_week_2026-06-22|28
+scanlog_scored_pairs_by_week_2026-06-29|11
+scanlog_scored_pairs_by_week_2026-07-06|17
+scanlog_scored_pairs_by_week_2026-07-13|13
+scanlog_scored_pairs_by_week_2026-07-20|24
+scanlog_scored_pairs_by_week_2026-07-27|62
+scanlog_scored_pairs_by_week_2026-08-03|96
+scanlog_scored_pairs_by_week_2026-08-10|54
+scanlog_scored_pairs_by_week_2026-08-17|23
+scanlog_scored_pairs_by_week_2026-08-24|22
+scanlog_scored_pairs_by_week_2026-08-31|24
+scanlog_scored_pairs_by_week_2026-09-07|23
+scanlog_first_date|2026-04-13
+pairs_prevclose_lt5|0

@@ -1,0 +1,70 @@
+#684 STEP 0 — POPULATION GATE (composition only; no outcome computed here)
+source files: pop.tsv (extract.sh, pulled pulled_at_utc=2026-09-28T13:58:36Z)
+population = mi_ep_scan_log rows with ep_score NOT NULL, scan_date 2026-05-01..2026-09-03, one row per (ticker, scan_date)
+dedupe rule = prefer the PASS tick (filter_reason NULL and score_tier set), else max ep_score, ties -> latest scan_time_et
+  (gate_sql_out.txt: 5,818 scored ticks -> 670 pairs; 0 pairs change admission under a last-tick rule; all ticks created same day, i.e. live scans, no backfill)
+
+n_total = 670   names = 546   scan_dates = 86
+
+BY MONTH (n / alerted=scan_pass / not):
+  2026-05:  228   alerted  111   scored-not-alerted  117
+  2026-06:  110   alerted   53   scored-not-alerted   57
+  2026-07:  119   alerted   41   scored-not-alerted   78
+  2026-08:  198   alerted   99   scored-not-alerted   99
+  2026-09:   15   alerted    3   scored-not-alerted   12
+
+BY ERA (A = scan_date < 2026-08-22 old score; B = 08-22 on, #533 separated score, bar 65):
+  era A: n 630   alerted 298   not 332   tiers {'HIGH': 201, 'MODERATE': 97, 'none': 332}   score bands {'50-65': 128, '65-80': 36, '80+': 134, '<50': 332}
+  era B: n 40   alerted 9   not 31   tiers {'none': 31, 'HIGH': 9}   score bands {'50-65': 17, '65-80': 6, '80+': 3, '<50': 14}
+
+BY BLOCK (DISCOVERY = scan_date <= 2026-08-14; HELD-OUT = 08-15..09-03):
+  DISCOVERY: n 607   alerted 287   not 320   ISO weeks 16
+  HELD-OUT: n 63   alerted 20   not 43   ISO weeks 3
+
+PRICE BANDS (prev_close from the scan log; universe floor is $5 so nothing sits under it):
+  $5-20   :  248   alerted  122   not  126
+  $20-100 :  270   alerted  119   not  151
+  $100+   :  152   alerted   66   not   86
+  median prev_close $33.75
+
+GAP % (scan-log gap_pct at the chosen tick):
+  median all 14.25%   alerted 15.39%   not 13.06%
+  median ep_score alerted 72.0   not 32.4
+
+CATALYST QUALITY (scan log): {'strong': 275, 'routine': 314, 'game_changer': 81}
+SCORED-NOT-ALERTED reasons: {'score < 50 (era A cutline)': 332, 'score < bar 65 (era B)': 31}
+
+RECONCILIATION against the known 277 live-source alerts 05-01..09-11 (261 before 08-22) — gate_sql_out.txt + gate_alarms_out.txt:
+  277 / 261 reproduced from mi_ep_alerts by the same DISTINCT ON (ticker, alert_date) + live-source rule.
+  270 of the 277 fall inside the population window (<= 09-03); the other 7 are dated 09-04 (ALAB) and 09-08 (ERO IONQ PHVS QCOM ROIV SEI) — no 15-session outcome yet.
+  265 of the 270 join a scored scan-log row; the 5 that do not are ALL 2026-05-20 (ALAB ARM DYN GH TATT), inserted 18:40 ET by an evening re-run after that
+    morning's scan outage (CHANGELOG 2026-05-20) — never scored by a gap-day scan, so outside this population by definition.
+  In the population: 265 rows carry a live alert row; 307 rows carry a scan PASS tick.
+    pass-but-no-alert-row = 44: all scan_date 05-01..05-08 (['2026-05-01', '2026-05-05', '2026-05-06', '2026-05-07', '2026-05-08']) —
+      mi_ep_alerts holds NO row before 2026-05-11 (the old 90-day purge, ep_profitability_program.md:843) so the alert record is gone; the scan-log pass
+      row is the surviving evidence the scan alerted them. Counted as ALERTED.
+    alert-row-but-no-pass-tick = 2: ['IMVT 2026-05-20', 'SLS 2026-05-20'] — the 05-20 evening re-run;
+      the gap-day scan rejected both (max ticks 48 and 20.4 < 50). Kept as scored-NOT-alerted (the scan's own verdict); tagged evening_rerun_0520.
+  => alerted (scan_pass) = 307 = 265 alert rows − 2 evening re-run + 44 purged-era passes.
+
+HIS LABELLED EPs (operator_labelled_eps.md) in this population:
+  BFLY 2026-06-18: IN — score 25 tier none alerted=False reason=score 25 < 50 (catalyst=routine)
+  PLTR 2026-08-04: IN — score 96 tier HIGH alerted=True reason=pass
+  ABNB 2026-08-07: NOT IN — never scored — cut by the top-20 gap cap (2 scan rows, both 'outside top-20')
+  TEAM 2026-08-07: IN — score 115.2 tier HIGH alerted=True reason=pass
+  HTFL 2026-08-14: IN — score 96 tier HIGH alerted=True reason=pass
+  MRNA 2026-08-19: IN — score 115.2 tier HIGH alerted=True reason=pass
+  CHPT 2026-09-03: NOT IN — never scored — filter:mcap_too_small before scoring
+
+PRE-08-22 DATA FACT (checked on prod 2026-09-27 and again here): era A rows carry only ep_score + catalyst_quality;
+  extension_pct / market_cap / float / atr_pct / prior_3m_change / score_breakdown / in_active_theme are EMPTY on every era A row
+    era A extension_pct filled: 0 of 630;  era B: 18 of 40
+    era A market_cap filled: 0 of 630;  era B: 18 of 40
+    era A float_shares filled: 0 of 630;  era B: 18 of 40
+    era A atr_pct filled: 0 of 630;  era B: 18 of 40
+    era A prior_3m_change filled: 0 of 630;  era B: 18 of 40
+    era A score_breakdown filled: 0 of 630;  era B: 18 of 40
+  -> every gap-day feature is COMPUTED from mi_daily_closes / mi_stock_scores / mi_themes / mi_market_regime / mi_intraday_bars (features.py).
+
+SURPRISES CHECKED: no sub-$5 rows (universe floor); May is the largest month (228 of 670 — the first-week-of-May earnings cluster, 05-01..05-08 = 77 rows); era B is small (40 rows, 9 alerted) because the window ends 09-03 and the 08-22 rescale cut admissions.
+GATE PASSED — the alerted subset reconciles to the 277 (270 in window = 265 joined + 5 evening-re-run rows never scored); no unexplained trait.

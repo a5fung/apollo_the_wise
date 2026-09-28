@@ -1,0 +1,80 @@
+Output format is unaligned.
+Field separator is "|".
+k|v
+a1_0520_live_alerts|IBRX/HIGH/72/09:50 IMVT/HIGH/115.2/18:40 TATT/HIGH/64.8/18:40 SLS/HIGH/100.8/18:40 DYN/HIGH/84/18:40 GH/HIGH/96/18:40 ARM/HIGH/100.8/18:40 ALAB/HIGH/100.8/18:40
+a1_0520_scanlog_prefix_already up 66% in prior 5 |1
+a1_0520_scanlog_prefix_EP cooldown — alerted with|2
+a1_0520_scanlog_prefix_filter:pm_rvol_too_low: pm|16
+a1_0520_scanlog_prefix_filter:session_rvol_too_lo|5
+a1_0520_scanlog_prefix_M&A/buyout catalyst — no m|2
+a1_0520_scanlog_prefix_pass|1
+a1_0520_scanlog_prefix_quality filter: filter:adv|22
+a1_0520_scanlog_prefix_quality filter: filter:atr|4
+a1_0520_scanlog_prefix_quality filter: filter:mca|21
+a1_0520_scanlog_prefix_routine catalyst, gap 10.4|1
+a1_0520_scanlog_prefix_routine catalyst, gap 11.5|1
+a1_0520_scanlog_prefix_routine catalyst, gap 11.6|1
+a1_0520_scanlog_prefix_routine catalyst, gap 11.7|1
+a1_0520_scanlog_prefix_score 18 < 50 (catalyst=ro|1
+a1_0520_scanlog_prefix_score 20 < 50 (catalyst=st|2
+a1_0520_scanlog_prefix_score 22 < 50 (catalyst=ro|6
+a1_0520_scanlog_prefix_score 24 < 50 (catalyst=ro|4
+a1_0520_scanlog_prefix_score 30 < 50 (catalyst=ro|11
+a1_0520_scanlog_prefix_score 32 < 50 (catalyst=ro|1
+a1_0520_scanlog_prefix_score 42 < 50 (catalyst=ro|2
+a1_0520_scanlog_prefix_score 48 < 50 (catalyst=ro|1
+a1_0520_scanlog_rows_scored|29
+a1_0520_scanlog_rows_total|106
+a1_dates_with_live_alert_but_zero_scored_scanlog_rows|
+a1_scanlog_rows_by_date_0518_0522_2026-05-18|375 scored=56
+a1_scanlog_rows_by_date_0518_0522_2026-05-19|214 scored=57
+a1_scanlog_rows_by_date_0518_0522_2026-05-20|106 scored=29
+a1_scanlog_rows_by_date_0518_0522_2026-05-21|280 scored=55
+a1_scanlog_rows_by_date_0518_0522_2026-05-22|357 scored=32
+a2_pass_no_live_alert_AKAM_2026-05-08|tier=HIGH max_score=96 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_AMD_2026-05-06|tier=HIGH max_score=96 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_ARRY_2026-05-07|tier=HIGH max_score=54.7 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_AXTI_2026-05-01|tier=HIGH max_score=84 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_BILL_2026-05-08|tier=HIGH max_score=54.7 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_BLMN_2026-05-06|tier=HIGH max_score=96 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_BTSG_2026-05-01|tier=MODERATE max_score=57.6 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_CALY_2026-05-08|tier=HIGH max_score=57.6 n_ticks=1 first_pass=09:55 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_COMP_2026-05-06|tier=HIGH max_score=100 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_CRI_2026-05-06|tier=HIGH max_score=84 n_ticks=1 first_pass=09:55 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_CYRX_2026-05-05|tier=HIGH max_score=100 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_EVER_2026-05-05|tier=HIGH max_score=100 n_ticks=1 first_pass=07:35 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_FIVN_2026-05-01|tier=MODERATE max_score=54.7 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_FLEX_2026-05-06|tier=HIGH max_score=96 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_FLNC_2026-05-07|tier=HIGH max_score=96 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_FROG_2026-05-08|tier=HIGH max_score=60.5 n_ticks=11 first_pass=09:50 any_alert_sources=NONE reasons=pass;score 43 < 50 (catalyst=strong)
+a2_pass_no_live_alert_FTNT_2026-05-07|tier=HIGH max_score=96 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_FTRE_2026-05-05|tier=HIGH max_score=84 n_ticks=1 first_pass=09:15 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_GEO_2026-05-06|tier=HIGH max_score=100 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_GLW_2026-05-06|tier=HIGH max_score=84 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_HUT_2026-05-06|tier=HIGH max_score=100 n_ticks=4 first_pass=09:50 any_alert_sources=NONE reasons=pass;score 7 < 50 (catalyst=strong)
+a2_pass_no_live_alert_IART_2026-05-05|tier=HIGH max_score=100 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_INOD_2026-05-08|tier=HIGH max_score=100 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_JMIA_2026-05-07|tier=HIGH max_score=96 n_ticks=6 first_pass=09:15 any_alert_sources=NONE reasons=pass;score 46 < 50 (catalyst=strong)
+a2_pass_no_live_alert_LASR_2026-05-08|tier=HIGH max_score=72 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_LIVN_2026-05-06|tier=HIGH max_score=72 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_MTSI_2026-05-07|tier=HIGH max_score=84 n_ticks=1 first_pass=08:20 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_OLED_2026-05-01|tier=MODERATE max_score=54.7 n_ticks=1 first_pass=09:55 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_PAR_2026-05-08|tier=MODERATE max_score=54 n_ticks=1 first_pass=07:40 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_PCT_2026-05-07|tier=HIGH max_score=100 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_PGNY_2026-05-08|tier=HIGH max_score=84 n_ticks=8 first_pass=09:50 any_alert_sources=NONE reasons=pass;score 46 < 50 (catalyst=strong)
+a2_pass_no_live_alert_RDDT_2026-05-01|tier=MODERATE max_score=54.7 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_RIOT_2026-05-01|tier=MODERATE max_score=57.6 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_SEZL_2026-05-07|tier=HIGH max_score=84 n_ticks=1 first_pass=08:10 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_SITM_2026-05-07|tier=HIGH max_score=96 n_ticks=1 first_pass=09:15 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_SMCI_2026-05-06|tier=HIGH max_score=64.8 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_STRL_2026-05-05|tier=HIGH max_score=96 n_ticks=1 first_pass=08:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_TEAM_2026-05-01|tier=HIGH max_score=100 n_ticks=1 first_pass=07:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_TWLO_2026-05-01|tier=HIGH max_score=100 n_ticks=1 first_pass=07:10 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_VCX_2026-05-05|tier=MODERATE max_score=60 n_ticks=1 first_pass=09:55 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_VOYG_2026-05-05|tier=MODERATE max_score=54 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_VRDN_2026-05-05|tier=MODERATE max_score=50.4 n_ticks=1 first_pass=08:00 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_WEST_2026-05-08|tier=HIGH max_score=100 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a2_pass_no_live_alert_WLDN_2026-05-08|tier=HIGH max_score=76.3 n_ticks=1 first_pass=09:50 any_alert_sources=NONE reasons=pass
+a3_alert_no_pass_tick_IMVT_2026-05-20|max_score=48 n_ticks=18 reasons=score 24 < 50 (catalyst=routine);score 30 < 50 (catalyst=routine);score 42 < 50 (catalyst=routine);score 48 < 50 (catalyst=routine) alert=HIGH/115.2/live/18:40
+a3_alert_no_pass_tick_SLS_2026-05-20|max_score=20.4 n_ticks=2 reasons=score 20 < 50 (catalyst=strong) alert=HIGH/100.8/live/18:40
+(76 rows)

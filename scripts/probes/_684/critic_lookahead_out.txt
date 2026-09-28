@@ -1,0 +1,15 @@
+Output format is unaligned.
+Field separator is "|".
+?column?|count
+theme_joined|186
+theme_row_created_on_or_before_scan_date|186
+theme_row_created_after_scan_date|0
+theme_joined_source_shadow_promoted|19
+theme_joined_source_live|167
+mi_themes_rows_0425_0902_by_created_lag_0-1d|5678
+mi_themes_rows_0425_0902_by_created_lag_2-7d|2
+rank_shadow_rows|265
+rank_shadow_computed_same_day|17
+rank_shadow_computed_later_8-30d|87
+rank_shadow_computed_later_1-7d|26
+rank_shadow_computed_later_>30d|135

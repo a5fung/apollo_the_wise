@@ -1,0 +1,95 @@
+#684 RESULTS — 670 population rows; 667 with a 15-session outcome; 3 censored: AVEX 2026-05-12, CHRN 2026-05-28, BRUN 2026-05-29
+draws declared: 63   permutation draws per test: 2000   seed 684   expected chance clears of p<0.05 alone: 3.2 -> up to 3 is noise
+
+ANCHOR: rows with a live alert row, era A, gap-day scan pass: n 253, >= 5 ADR 24 (9.5 %) — 09-27 read: 25 of 261 = 9.6 %
+  score band <50: n 0, >= 5 ADR 0 (0.0 %)
+  score band 50-65: n 113, >= 5 ADR 10 (8.8 %)
+  score band 65-80: n 33, >= 5 ADR 2 (6.1 %)
+  score band 80+: n 107, >= 5 ADR 12 (11.2 %)
+
+DISCOVERY: n 604   runners>=5 67 (11.1 %)   >=8 26   alerted n 286.0 runners 35   not-alerted n 318 runners 32
+HELD-OUT: n 63   runners>=5 4 (6.3 %)   >=8 0   alerted n 20.0 runners 0   not-alerted n 43 runners 4
+runners by ISO week (discovery): {'2026-W18': 1, '2026-W19': 18, '2026-W20': 11, '2026-W21': 4, '2026-W22': 4, '2026-W23': 2, '2026-W24': 4, '2026-W25': 3, '2026-W26': 2, '2026-W28': 1, '2026-W30': 2, '2026-W31': 7, '2026-W32': 5, '2026-W33': 3}   best week = 2026-W19   best two names = ['UMC', 'CRSR']
+labelled EPs: BFLY 2026-06-18 run_xadr=1.233463393460769; PLTR 2026-08-04 run_xadr=2.6875146060576416; TEAM 2026-08-07 run_xadr=4.87648850321876; HTFL 2026-08-14 run_xadr=4.435825073526385; MRNA 2026-08-19 run_xadr=-1.3037221718949157
+
+PER-FEATURE (discovery cut points; rates = share >= 5 ADR):
+feature | when | n disc | fav n / rate | rest n / rate | diff | AUC | p disc | held-out fav n/rate vs rest n/rate (sign) | drop best week diff/p | drop best two diff/p | labelled in fav | verdict
+ep_score | PRE | 604 | 205 / 14.1% | 399 / 9.5% | +4.6pp | 0.528 | 0.135 | 25/0% vs 38/11% (-) | +3.5pp/0.126 | +4.9pp/0.107 | 4 of 5 | can't tell (discovery p >= 0.05)
+PRE_gap_pct_scan | PRE | 604 | 202 / 9.9% | 402 / 11.7% | -1.8pp | 0.491 | 0.908 | 16/6% vs 47/6% (-) | -2.8pp/0.851 | -0.9pp/0.849 | 4 of 5 | fail (wrong way)
+PRE_ext_5d_pct | PRE | 604 | 201 / 7.0% | 403 / 13.2% | -6.2pp | 0.434 | 0.993 | 40/8% vs 23/4% (+) | -4.2pp/0.986 | -5.4pp/0.984 | 1 of 5 | fail (wrong way), p=0.007 the other way
+PRE_ext_sma10_xadr | PRE | 604 | 201 / 10.0% | 403 / 11.7% | -1.7pp | 0.454 | 0.745 | 31/6% vs 32/6% (+) | +1.6pp/0.404 | -0.9pp/0.658 | 0 of 5 | fail (wrong way)
+PRE_ext_sma20_xadr | PRE | 604 | 201 / 9.0% | 403 / 12.2% | -3.2pp | 0.435 | 0.867 | 22/9% vs 41/5% (+) | -0.7pp/0.689 | -2.4pp/0.810 | 1 of 5 | fail (wrong way)
+PRE_ext_sma50_xadr | PRE | 596 | 198 / 8.6% | 398 / 12.3% | -3.7pp | 0.430 | 0.862 | 15/13% vs 47/4% (+) | -2.2pp/0.777 | -3.0pp/0.834 | 1 of 5 | fail (wrong way)
+PRE_ext_ma_mean_xadr | PRE | 596 | 198 / 8.6% | 398 / 12.3% | -3.7pp | 0.437 | 0.903 | 21/10% vs 41/5% (+) | -1.4pp/0.755 | -3.0pp/0.885 | 1 of 5 | fail (wrong way)
+PRE_ext_20d_low_pct | PRE | 604 | 201 / 8.0% | 403 / 12.7% | -4.7pp | 0.405 | 0.986 | 30/10% vs 33/3% (+) | -2.0pp/0.889 | -3.9pp/0.986 | 1 of 5 | fail (wrong way), p=0.014 the other way
+PRE_chg_1m_pct | PRE | 604 | 201 / 8.5% | 403 / 12.4% | -3.9pp | 0.412 | 0.796 | 13/8% vs 50/6% (+) | -1.2pp/0.629 | -3.2pp/0.729 | 1 of 5 | fail (wrong way)
+PRE_chg_3m_pct | PRE | 589 | 196 / 12.2% | 393 / 9.9% | +2.3pp | 0.493 | 0.357 | 14/14% vs 48/4% (+) | +3.7pp/0.139 | +3.2pp/0.255 | 1 of 5 | can't tell (discovery p >= 0.05)
+PRE_base_range40_pct | PRE | 598 | 199 / 8.0% | 399 / 12.5% | -4.5pp | 0.476 | 0.983 | 32/6% vs 30/7% (-) | -0.9pp/0.723 | -3.7pp/0.969 | 1 of 5 | fail (wrong way), p=0.017 the other way
+PRE_base_range20_pct | PRE | 604 | 201 / 6.5% | 403 / 13.4% | -6.9pp | 0.436 | 0.999 | 25/4% vs 38/8% (-) | -4.4pp/0.981 | -6.2pp/0.999 | 1 of 5 | fail (wrong way), p=0.001 the other way
+PRE_base_absdisp40_xadr | PRE | 598 | 199 / 13.1% | 399 / 10.0% | +3.0pp | 0.496 | 0.147 | 30/13% vs 32/0% (+) | +5.1pp/0.026 | +3.9pp/0.083 | 4 of 5 | can't tell (discovery p >= 0.05)
+PRE_days_since_6m_high | PRE | 604 | 209 / 10.5% | 395 / 11.4% | -0.9pp | 0.478 | 0.812 | 23/4% vs 40/8% (-) | -1.0pp/0.723 | -0.1pp/0.701 | 1 of 5 | fail (wrong way)
+PRE_base_depth_6m_pct | PRE | 604 | 202 / 11.9% | 402 / 10.7% | +1.2pp | 0.500 | 0.290 | 16/6% vs 47/6% (-) | +0.5pp/0.431 | +2.0pp/0.213 | 0 of 5 | can't tell (discovery p >= 0.05)
+PRE_dist_52w_high_xadr | PRE | 604 | 201 / 10.4% | 403 / 11.4% | -1.0pp | 0.520 | 0.866 | 15/0% vs 48/8% (-) | -1.0pp/0.864 | -1.3pp/0.861 | 1 of 5 | fail (wrong way)
+PRE_cleared_6m_scanprice | PRE | 604 | 210 / 11.0% | 394 / 11.2% | -0.2pp | 0.498 | 0.723 | 21/0% vs 42/10% (-) | -0.6pp/0.750 | -1.8pp/0.863 | 3 of 5 | fail (wrong way)
+PRE_cleared_52w_scanprice | PRE | 604 | 166 / 11.4% | 438 / 11.0% | +0.5pp | 0.505 | 0.745 | 14/0% vs 49/8% (-) | +0.8pp/0.654 | -0.0pp/0.743 | 1 of 5 | can't tell (discovery p >= 0.05)
+PRE_cleared_ath_scanprice | PRE | 553 | 89 / 10.1% | 464 / 10.8% | -0.7pp | 0.495 | 0.791 | 5/0% vs 48/6% (- thin) | -0.9pp/0.743 | -2.1pp/0.865 | 0 of 5 | fail (wrong way)
+PRE_above_sma50 | PRE | 596 | 364 / 11.3% | 232 / 10.8% | +0.5pp | 0.506 | 0.625 | 41/5% vs 21/10% (-) | -1.8pp/0.826 | -0.4pp/0.713 | 4 of 5 | can't tell (discovery p >= 0.05)
+PRE_above_sma200 | PRE | 559 | 349 / 10.6% | 210 / 10.0% | +0.6pp | 0.508 | 0.424 | 33/9% vs 22/5% (+) | +0.2pp/0.559 | -0.3pp/0.569 | 4 of 5 | can't tell (discovery p >= 0.05)
+PRE_n_ma_above | PRE | 596 | 268 / 12.7% | 328 / 9.8% | +2.9pp | 0.531 | 0.298 | 22/5% vs 40/8% (-) | -0.8pp/0.724 | +1.7pp/0.437 | 4 of 5 | can't tell (discovery p >= 0.05)
+PRE_stage2 | PRE | 553 | 187 / 10.2% | 366 / 10.7% | -0.5pp | 0.494 | 0.680 | 14/7% vs 40/8% (-) | +0.0pp/0.666 | -0.8pp/0.699 | 2 of 5 | fail (wrong way)
+PRE_rs_composite | PRE | 562 | 188 / 13.3% | 374 / 10.4% | +2.9pp | 0.534 | 0.327 | 12/0% vs 38/8% (-) | -0.3pp/0.786 | +1.2pp/0.532 | 3 of 5 | can't tell (discovery p >= 0.05)
+PRE_in_rs_pool | PRE | 604 | 562 / 11.4% | 42 / 7.1% | +4.2pp | 0.514 | 0.804 | 50/6% vs 13/8% (-) | +2.1pp/0.804 | +3.7pp/0.796 | 5 of 5 | can't tell (discovery p >= 0.05)
+PRE_catalyst_ord | PRE | 604 | 320 / 12.8% | 284 / 9.2% | +3.7pp | 0.543 | 0.356 | 35/6% vs 28/7% (-) | +3.4pp/0.272 | +2.5pp/0.483 | 4 of 5 | can't tell (discovery p >= 0.05)
+PRE_themed | PRE | 604 | 159 / 8.2% | 445 / 12.1% | -4.0pp | 0.461 | 0.774 | 27/4% vs 36/8% (-) | -4.2pp/0.900 | -3.0pp/0.701 | 2 of 5 | fail (wrong way)
+PRE_themed_7d | PRE | 604 | 95 / 8.4% | 509 / 11.6% | -3.2pp | 0.479 | 0.870 | 21/5% vs 42/7% (-) | -5.2pp/0.966 | -2.2pp/0.820 | 0 of 5 | fail (wrong way)
+PRE_theme_early | PRE | 604 | 47 / 10.6% | 557 / 11.1% | -0.5pp | 0.498 | 0.519 | 7/0% vs 56/7% (- thin) | -1.9pp/0.614 | +0.1pp/0.481 | 0 of 5 | fail (wrong way)
+PRE_regime_bull | PRE | 604 | 413 / 12.1% | 191 / 8.9% | +3.2pp | 0.535 | 0.780 | 27/4% vs 36/8% (-) | +0.3pp/0.779 | +2.4pp/0.774 | 3 of 5 | can't tell (discovery p >= 0.05)
+PRE_spy_vs_50ma | PRE | 604 | 203 / 14.3% | 401 / 9.5% | +4.8pp | 0.593 | 0.501 | 0/0% vs 63/6% (— thin) | +4.4pp/0.524 | +3.8pp/0.516 | 0 of 5 | can't tell (discovery p >= 0.05)
+PRE_prev_close | PRE | 604 | 201 / 15.4% | 403 / 8.9% | +6.5pp | 0.611 | 0.018 | 22/18% vs 41/0% (+) | +6.7pp/0.009 | +4.8pp/0.053 | 1 of 5 | can't tell (does not survive dropping the best two names)
+PRE_adr20_pct | PRE | 604 | 202 / 13.9% | 402 / 9.7% | +4.2pp | 0.559 | 0.020 | 11/0% vs 52/8% (-) | +5.2pp/0.029 | +5.0pp/0.010 | 1 of 5 | can't tell (held-out sign against)
+PRE_dollar_vol_20d | PRE | 604 | 201 / 15.4% | 403 / 8.9% | +6.5pp | 0.560 | 0.010 | 24/8% vs 39/5% (+) | +9.0pp/0.001 | +6.1pp/0.007 | 2 of 5 | PASS
+PRE_repeat_scored_90d | PRE | 604 | 507 / 11.8% | 97 / 7.2% | +4.6pp | 0.532 | 0.369 | 49/8% vs 14/0% (+) | +4.6pp/0.170 | +6.0pp/0.181 | 5 of 5 | can't tell (discovery p >= 0.05)
+PRE_pm_rvol | PRE | 545 | 182 / 15.4% | 363 / 9.6% | +5.7pp | 0.544 | 0.175 | 30/3% vs 31/10% (-) | +3.8pp/0.177 | +6.0pp/0.160 | 4 of 5 | can't tell (discovery p >= 0.05)
+PRE_projected_vol_multiple | PRE | 297 | 100 / 7.0% | 197 / 10.7% | -3.7pp | 0.470 | 0.849 | 24/12% vs 10/0% (+) | -4.7pp/0.913 | -4.8pp/0.920 | 1 of 1 | fail (wrong way)
+PRE_first_tick_preopen | PRE | 604 | 430 / 11.2% | 174 / 10.9% | +0.2pp | 0.503 | 0.501 | 44/7% vs 19/5% (+) | -1.9pp/0.816 | +0.2pp/0.481 | 5 of 5 | can't tell (discovery p >= 0.05)
+O930_gap_open_pct | 0930 | 604 | 202 / 10.4% | 402 / 11.4% | -1.0pp | 0.451 | 0.809 | 15/7% vs 48/6% (+) | -1.3pp/0.699 | -0.1pp/0.703 | 5 of 5 | fail (wrong way)
+O930_cleared_6m_open | 0930 | 604 | 173 / 11.0% | 431 / 11.1% | -0.2pp | 0.498 | 0.704 | 16/0% vs 47/9% (-) | -1.4pp/0.748 | -1.4pp/0.828 | 4 of 5 | fail (wrong way)
+O930_cleared_52w_open | 0930 | 604 | 130 / 10.8% | 474 / 11.2% | -0.4pp | 0.496 | 0.787 | 11/0% vs 52/8% (-) | -1.3pp/0.818 | -1.2pp/0.834 | 2 of 5 | fail (wrong way)
+O930_cleared_ath_open | 0930 | 553 | 69 / 11.6% | 484 / 10.5% | +1.1pp | 0.506 | 0.598 | 3/0% vs 50/6% (- thin) | -0.0pp/0.628 | -0.8pp/0.737 | 0 of 5 | can't tell (discovery p >= 0.05)
+O930_ext_open_sma50_xadr | 0930 | 596 | 198 / 12.1% | 398 / 10.6% | +1.6pp | 0.466 | 0.124 | 20/5% vs 42/7% (-) | +4.0pp/0.048 | +2.4pp/0.084 | 0 of 5 | can't tell (discovery p >= 0.05)
+O930_ext_open_sma20_xadr | 0930 | 604 | 201 / 12.4% | 403 / 10.4% | +2.0pp | 0.492 | 0.125 | 20/10% vs 43/5% (+) | +4.7pp/0.067 | +2.8pp/0.092 | 0 of 5 | can't tell (discovery p >= 0.05)
+O930_stage2_open | 0930 | 553 | 239 / 10.5% | 314 / 10.5% | -0.0pp | 0.499 | 0.539 | 21/10% vs 33/6% (+) | +1.5pp/0.474 | -0.1pp/0.541 | 2 of 5 | fail (wrong way)
+O945_orb_position | 0945 | 547 | 183 / 9.3% | 364 / 12.1% | -2.8pp | 0.445 | 0.747 | 19/11% vs 42/5% (+) | -1.5pp/0.642 | -2.8pp/0.773 | 2 of 5 | fail (wrong way)
+O945_orb_range_xadr | 0945 | 547 | 182 / 11.5% | 365 / 11.0% | +0.6pp | 0.531 | 0.177 | 16/6% vs 45/7% (-) | +3.9pp/0.105 | +1.4pp/0.146 | 1 of 5 | can't tell (discovery p >= 0.05)
+O945_gap_0945_pct | 0945 | 547 | 183 / 7.1% | 364 / 13.2% | -6.1pp | 0.413 | 0.997 | 17/6% vs 44/7% (-) | -8.2pp/0.999 | -5.4pp/0.994 | 5 of 5 | fail (wrong way), p=0.003 the other way
+O945_close_vs_open_pct | 0945 | 547 | 183 / 9.8% | 364 / 11.8% | -2.0pp | 0.460 | 0.737 | 25/8% vs 36/6% (+) | -2.1pp/0.716 | -1.3pp/0.664 | 3 of 5 | fail (wrong way)
+O945_orb_vol_vs_20d | 0945 | 547 | 183 / 10.9% | 364 / 11.3% | -0.3pp | 0.491 | 0.795 | 39/8% vs 22/5% (+) | -1.8pp/0.858 | -0.4pp/0.757 | 5 of 5 | fail (wrong way)
+O945_orb_high_above_6m | 0945 | 547 | 196 / 9.7% | 351 / 12.0% | -2.3pp | 0.474 | 0.898 | 24/4% vs 37/8% (-) | -3.6pp/0.946 | -3.5pp/0.959 | 4 of 5 | fail (wrong way)
+CLOSE_close_loc | CLOSE | 604 | 203 / 12.3% | 401 / 10.5% | +1.8pp | 0.492 | 0.468 | 25/4% vs 38/8% (-) | +0.1pp/0.653 | +0.1pp/0.713 | 4 of 5 | can't tell (discovery p >= 0.05)
+CLOSE_range_xadr | CLOSE | 604 | 202 / 7.4% | 402 / 12.9% | -5.5pp | 0.478 | 0.997 | 23/9% vs 40/5% (+) | -5.5pp/0.986 | -6.1pp/0.998 | 4 of 5 | fail (wrong way), p=0.003 the other way
+CLOSE_vol_vs_max250 | CLOSE | 604 | 202 / 12.9% | 402 / 10.2% | +2.7pp | 0.511 | 0.260 | 22/5% vs 41/7% (-) | +4.0pp/0.101 | +3.1pp/0.210 | 5 of 5 | can't tell (discovery p >= 0.05)
+CLOSE_vol_vs_avg50 | CLOSE | 604 | 202 / 11.4% | 402 / 10.9% | +0.4pp | 0.510 | 0.674 | 30/7% vs 33/6% (+) | +1.7pp/0.420 | +0.6pp/0.646 | 5 of 5 | can't tell (discovery p >= 0.05)
+CLOSE_close_vs_open_pct | CLOSE | 604 | 202 / 8.4% | 402 / 12.4% | -4.0pp | 0.461 | 0.953 | 24/8% vs 39/5% (+) | -5.1pp/0.974 | -4.6pp/0.979 | 4 of 5 | fail (wrong way), p=0.047 the other way
+CLOSE_gap_close_pct | CLOSE | 604 | 202 / 10.4% | 402 / 11.4% | -1.0pp | 0.443 | 0.832 | 15/7% vs 48/6% (+) | -2.8pp/0.850 | -0.9pp/0.785 | 5 of 5 | fail (wrong way)
+CLOSE_ext_sma50_xadr | CLOSE | 596 | 198 / 10.6% | 398 / 11.3% | -0.7pp | 0.469 | 0.416 | 21/10% vs 41/5% (+) | +1.6pp/0.223 | +0.1pp/0.345 | 0 of 5 | fail (wrong way)
+CLOSE_ext_sma20_xadr | CLOSE | 604 | 201 / 10.9% | 403 / 11.2% | -0.2pp | 0.486 | 0.399 | 24/8% vs 39/5% (+) | +2.1pp/0.288 | +0.6pp/0.334 | 0 of 5 | fail (wrong way)
+CLOSE_cleared_6m | CLOSE | 604 | 189 / 10.1% | 415 / 11.6% | -1.5pp | 0.484 | 0.887 | 19/0% vs 44/9% (-) | -3.2pp/0.933 | -3.3pp/0.962 | 4 of 5 | fail (wrong way)
+CLOSE_cleared_52w | CLOSE | 604 | 147 / 10.2% | 457 / 11.4% | -1.2pp | 0.489 | 0.871 | 13/0% vs 50/8% (-) | -1.4pp/0.843 | -1.8pp/0.895 | 3 of 5 | fail (wrong way)
+CLOSE_cleared_ath | CLOSE | 553 | 82 / 12.2% | 471 / 10.4% | +1.8pp | 0.512 | 0.674 | 5/0% vs 48/6% (- thin) | +0.1pp/0.804 | +0.3pp/0.786 | 1 of 5 | can't tell (discovery p >= 0.05)
+ALERT_expct_unscheduled | ALERT | 208 | 60 / 15.0% | 148 / 8.1% | +6.9pp | 0.578 | 0.282 | 9/0% vs 11/0% (0 thin) | +6.9pp/0.284 | +7.5pp/0.226 | 1 of 4 | can't tell (discovery p >= 0.05)
+
+DESCRIPTIVE (no draw, no verdict) — discovery + held-out pooled, share >= 5 ADR by level (n):
+  PRE_sector: Technology 14% (33/233); Healthcare 17% (21/122); Industrials 5% (5/92); null 2% (1/63); Consumer Cyclical 4% (2/46); Financial Services 8% (3/36); Communication Services 4% (1/23); Basic Materials 5% (1/22); Consumer Defensive 0% (0/11); Energy 30% (3/10); Utilities 14% (1/7)
+  PRE_theme_stage: none 12% (57/481); Fading 6% (4/66); Mainstream 8% (5/66); Nascent 7% (2/29); Accelerating 12% (3/25)
+  PRE_regime: Bull 12% (51/440); Choppy 8% (9/110); Correcting 11% (11/97); Crisis 0% (0/20)
+  score_tier: null 10% (36/361); HIGH 10% (22/210); MODERATE 14% (13/96)
+  PRE_catalyst_quality: routine 9% (28/312); strong 12% (34/274); game_changer 11% (9/81)
+  era: A 11% (68/627); B 8% (3/40)
+  ALERT_judge_tier: null 11% (55/492); HIGH 9% (12/129); MODERATE 12% (4/34); none 0% (0/12)
+  ALERT_judge_grade: null 11% (55/492); strong 8% (6/72); game_changer 10% (6/63); routine 10% (4/40)
+  ALERT_catalyst_type: null 11% (53/471); sales_acceleration 8% (10/119); policy 11% (2/19); theme 6% (1/16); unknown 14% (2/14); other 8% (1/12); pre_catalyst_anticipation 17% (1/6); new_product 20% (1/5)
+  ALERT_expct_scheduled: null 12% (47/403); scheduled 8% (12/159); unscheduled 13% (9/69); unknown 8% (3/36)
+  ALERT_expct_beat: null 12% (47/403); f 10% (19/200); t 8% (5/64)
+  ALERT_q_revenue_yoy_pct: filled 224 of 306.0 alerted — too thin for a draw; runners among filled 14
+
+RUNNERS (>= 5 ADR within 15 sessions) the gap-day scan scored but did NOT alert: 36 of 71 runners; alerted runners 35 of 306.0 alerted rows (11.4 %); not-alerted runners 36 of 361 (10.0 %)

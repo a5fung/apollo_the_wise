@@ -1,0 +1,520 @@
+ticker|sector|industry
+A|Healthcare|Diagnostics & Research
+AAOI|Technology|Communication Equipment
+AAON|Industrials|Building Products & Equipment
+AAP||
+ABCL|Healthcare|Biotechnology
+ABSI|Healthcare|Biotechnology
+ABT|Healthcare|Medical Devices
+ABVX|Healthcare|Biotechnology
+ACAD|Healthcare|Biotechnology
+ACHR|Industrials|Aerospace & Defense
+ACLS|Technology|Semiconductor Equipment & Materials
+ACMR|Technology|Semiconductor Equipment & Materials
+ACVA|Consumer Cyclical|Auto & Truck Dealerships
+AEHR|Technology|Semiconductor Equipment & Materials
+AEIS|Industrials|Electrical Equipment & Parts
+AEVA|Technology|Software - Infrastructure
+AFRM|Financial Services|Credit Services
+AGIO|Healthcare|Biotechnology
+AGX|Industrials|Engineering & Construction
+AGYS|Technology|Software - Application
+AIP|Technology|Semiconductors
+AKAM|Technology|Software - Infrastructure
+AKTS|Healthcare|Biotechnology
+ALLE|Industrials|Security & Protection Services
+ALNY|Healthcare|Biotechnology
+ALOY|Basic Materials|Other Industrial Metals & Mining
+AMBQ|Technology|Semiconductors
+AMD|Technology|Semiconductors
+AMKR|Technology|Semiconductor Equipment & Materials
+AMLX|Healthcare|Drug Manufacturers - Specialty & Generic
+AMPX|Industrials|Electrical Equipment & Parts
+AMRC|Industrials|Engineering & Construction
+AMZN|Consumer Cyclical|Internet Retail
+ANET|Technology|Computer Hardware
+ANF|Consumer Cyclical|Apparel Retail
+AOSL|Technology|Semiconductors
+AP|Industrials|Metal Fabrication
+APEI||
+APOG|Industrials|Building Products & Equipment
+APPS|Technology|Software - Application
+ARGX|Healthcare|Biotechnology
+ARLO|Industrials|Building Products & Equipment
+ARM|Technology|Semiconductors
+ARWR|Healthcare|Biotechnology
+ARX|Financial Services|Insurance Brokers
+ASAN|Technology|Software - Application
+ASPI|Basic Materials|Chemicals
+ASPN|Industrials|Building Products & Equipment
+ASTI|Technology|Solar
+ATRO|Industrials|Aerospace & Defense
+AUGO|Basic Materials|Gold
+AVAH|Healthcare|Medical Care Facilities
+AVAV|Industrials|Aerospace & Defense
+AVEX|Industrials|Aerospace & Defense
+AVO||
+AVTR|Healthcare|Medical Instruments & Supplies
+AVY||
+AWI|Industrials|Building Products & Equipment
+AXTI|Technology|Semiconductor Equipment & Materials
+AYI|Industrials|Electrical Equipment & Parts
+BAP|Financial Services|Banks - Regional
+BAX|Healthcare|Medical Instruments & Supplies
+BB|Technology|Software - Infrastructure
+BBIO|Healthcare|Biotechnology
+BBWI||
+BBY|Consumer Cyclical|Specialty Retail
+BDC|Technology|Communication Equipment
+BE|Industrials|Electrical Equipment & Parts
+BEKE||
+BFLY|Healthcare|Medical Devices
+BHVN|Healthcare|Biotechnology
+BILL|Technology|Software - Application
+BIO|Healthcare|Medical Devices
+BIRK|Consumer Cyclical|Footwear & Accessories
+BLMN|Consumer Cyclical|Restaurants
+BLSH|Technology|Software - Infrastructure
+BLZE|Technology|Software - Infrastructure
+BMNR|Financial Services|Capital Markets
+BNTX|Healthcare|Biotechnology
+BRUN|Technology|Software - Infrastructure
+BTDR|Technology|Software - Application
+BTGO|Financial Services|Capital Markets
+BTSG|Healthcare|Health Information Services
+BULL|Technology|Software - Application
+BW|Industrials|Specialty Industrial Machinery
+BWIN|Financial Services|Insurance Brokers
+BZ|Communication Services|Internet Content & Information
+BZH|Consumer Cyclical|Residential Construction
+CAI|Healthcare|Biotechnology
+CALY|Consumer Cyclical|Leisure
+CAMT|Technology|Semiconductor Equipment & Materials
+CART|Consumer Cyclical|Internet Retail
+CASY|Consumer Cyclical|Specialty Retail
+CAT|Industrials|Farm & Heavy Construction Machinery
+CAVA|Consumer Cyclical|Restaurants
+CBRL|Consumer Cyclical|Restaurants
+CBRS|Technology|Semiconductors
+CBZ|Industrials|Specialty Business Services
+CCOI||
+CDNA|Healthcare|Diagnostics & Research
+CECO|Industrials|Pollution & Treatment Controls
+CEVA|Technology|Semiconductors
+CGEM|Healthcare|Biotechnology
+CHA|Consumer Cyclical|Restaurants
+CHRN|Technology|Information Technology Services
+CHTR|Communication Services|Telecom Services
+CLF|Basic Materials|Steel
+CLFD|Technology|Communication Equipment
+CLSK|Financial Services|Capital Markets
+CLYM|Healthcare|Biotechnology
+CNH|Industrials|Farm & Heavy Construction Machinery
+CODI|Industrials|Conglomerates
+COHR|Technology|Scientific & Technical Instruments
+COHU|Technology|Semiconductor Equipment & Materials
+COMP|Real Estate|Real Estate Services
+CORT|Healthcare|Biotechnology
+CORZ|Technology|Software - Infrastructure
+CPA|Industrials|Airlines
+CRCL|Financial Services|Capital Markets
+CRI||
+CRK|Energy|Oil & Gas E&P
+CRM|Technology|Software - Application
+CRMD|Healthcare|Biotechnology
+CRML|Basic Materials|Other Industrial Metals & Mining
+CRSR|Technology|Computer Hardware
+CRWD|Technology|Software - Infrastructure
+CRWV|Technology|Software - Infrastructure
+CSCO|Technology|Communication Equipment
+CSTL|Healthcare|Diagnostics & Research
+CYRX|Industrials|Integrated Freight & Logistics
+CYTK|Healthcare|Biotechnology
+DCTH||
+DDOG|Technology|Software - Application
+DELL|Technology|Computer Hardware
+DFTX|Healthcare|Biotechnology
+DG|Consumer Defensive|Discount Stores
+DGX|Healthcare|Diagnostics & Research
+DLTR|Consumer Defensive|Discount Stores
+DOCN|Technology|Software - Infrastructure
+DOCS|Healthcare|Health Information Services
+DORM|Consumer Cyclical|Auto Parts
+DRD|Basic Materials|Gold
+DRTS|Healthcare|Biotechnology
+DSGN|Healthcare|Biotechnology
+DT|Technology|Software - Application
+DXCM|Healthcare|Medical Devices
+DY|Industrials|Engineering & Construction
+ECG|Industrials|Engineering & Construction
+EFOR|Technology|Information Technology Services
+EIKN|Healthcare|Biotechnology
+EL|Consumer Defensive|Household & Personal Products
+ELMT|Industrials|Aerospace & Defense
+ELPC|Utilities|Utilities - Regulated Electric
+ELVN|Healthcare|Biotechnology
+ELVR|Basic Materials|Other Industrial Metals & Mining
+EME|Industrials|Engineering & Construction
+ENPH|Technology|Solar
+ENS|Industrials|Electrical Equipment & Parts
+EQPT|Industrials|Rental & Leasing Services
+EROC|Industrials|Specialty Industrial Machinery
+EROK||
+ESLT|Industrials|Aerospace & Defense
+ESTC|Technology|Software - Application
+ETON|Healthcare|Drug Manufacturers - Specialty & Generic
+EVER|Communication Services|Internet Content & Information
+EVTC|Technology|Software - Infrastructure
+EWTX|Healthcare|Biotechnology
+FCEL|Industrials|Electrical Equipment & Parts
+FET|Energy|Oil & Gas Equipment & Services
+FIG|Technology|Software - Application
+FIGS|Consumer Cyclical|Apparel Manufacturing
+FIVN|Technology|Software - Infrastructure
+FLEX|Technology|Electronic Components
+FLNC|Utilities|Utilities - Renewable
+FLR|Industrials|Engineering & Construction
+FLY|Industrials|Aerospace & Defense
+FN|Technology|Electronic Components
+FORM|Technology|Semiconductor Equipment & Materials
+FPS|Industrials|Electrical Equipment & Parts
+FRMI|Real Estate|REIT - Specialty
+FROG|Technology|Software - Application
+FRPT|Consumer Defensive|Packaged Foods
+FRVO|Utilities|Utilities - Renewable
+FSLY|Technology|Software - Application
+FTAI||
+FTH|Healthcare|Biotechnology
+FTK|Energy|Oil & Gas Equipment & Services
+FTNT|Technology|Software - Infrastructure
+FTRE|Healthcare|Biotechnology
+FUTU|Financial Services|Capital Markets
+GAP|Consumer Cyclical|Apparel Retail
+GBTG|Consumer Cyclical|Travel Services
+GCT|Technology|Software - Infrastructure
+GEHC|Healthcare|Medical Devices
+GEMI|Financial Services|Capital Markets
+GENI|Communication Services|Internet Content & Information
+GEO|Industrials|Security & Protection Services
+GFS|Technology|Semiconductors
+GHRS|Healthcare|Biotechnology
+GKOS|Healthcare|Medical Devices
+GLBE|Consumer Cyclical|Internet Retail
+GLOB|Technology|Information Technology Services
+GLW|Technology|Electronic Components
+GME|Consumer Cyclical|Specialty Retail
+GNRC|Industrials|Specialty Industrial Machinery
+GO|Consumer Defensive|Grocery Stores
+GPK|Consumer Cyclical|Packaging & Containers
+GPRK|Energy|Oil & Gas E&P
+GRMN|Technology|Scientific & Technical Instruments
+GRND|Technology|Software - Application
+GRRR|Technology|Software - Infrastructure
+GTLB|Technology|Software - Infrastructure
+HAE|Healthcare|Medical Devices
+HAS|Consumer Cyclical|Leisure
+HGTY||
+HII|Industrials|Aerospace & Defense
+HLIT|Technology|Communication Equipment
+HNRG|Utilities|Utilities - Independent Power Producers
+HOOD|Financial Services|Capital Markets
+HPE|Technology|Communication Equipment
+HQ|Technology|Software - Infrastructure
+HRB|Consumer Cyclical|Personal Services
+HSAI||
+HTFL|Healthcare|Health Information Services
+HURN|Industrials|Consulting Services
+HUT|Financial Services|Capital Markets
+HYLN|Consumer Cyclical|Auto Parts
+HYMC|Basic Materials|Gold
+IART|Healthcare|Medical Devices
+IBM|Technology|Information Technology Services
+IBRX|Healthcare|Biotechnology
+IBTA|Technology|Software - Application
+ICHR|Technology|Semiconductor Equipment & Materials
+ICLR|Healthcare|Diagnostics & Research
+IDCC|Technology|Software - Application
+IFF|Basic Materials|Specialty Chemicals
+IMAX|Communication Services|Entertainment
+IMOS|Technology|Semiconductors
+IMVT|Healthcare|Biotechnology
+INFQ|Technology|Software - Infrastructure
+INOD|Technology|Information Technology Services
+INSM|Healthcare|Biotechnology
+INSP|Healthcare|Medical Devices
+INTA|Technology|Software - Application
+INV|Financial Services|Asset Management
+IQV|Healthcare|Diagnostics & Research
+IREN|Financial Services|Capital Markets
+ITRI|Technology|Scientific & Technical Instruments
+JBIO|Healthcare|Biotechnology
+JBL|Technology|Electronic Components
+JMIA||
+JOYY|Communication Services|Internet Content & Information
+KBH|Consumer Cyclical|Residential Construction
+KC|Technology|Software - Application
+KEEL|Technology|Information Technology Services
+KLAR|Financial Services|Credit Services
+KLIC|Technology|Semiconductor Equipment & Materials
+KMT||
+KNSA|Healthcare|Drug Manufacturers - Specialty & Generic
+KODK|Industrials|Specialty Business Services
+KRO|Basic Materials|Specialty Chemicals
+KSS|Consumer Cyclical|Department Stores
+KTOS|Industrials|Aerospace & Defense
+KURA|Healthcare|Biotechnology
+KYMR|Healthcare|Biotechnology
+LAC|Basic Materials|Other Industrial Metals & Mining
+LASR|Technology|Semiconductors
+LBRDK||
+LEGN|Healthcare|Biotechnology
+LFST|Healthcare|Medical Care Facilities
+LFUS|Technology|Electronic Components
+LGN|Industrials|Engineering & Construction
+LIFE|Financial Services|Insurance Brokers
+LIND|Consumer Cyclical|Travel Services
+LION||
+LITE|Technology|Communication Equipment
+LIVN|Healthcare|Medical Devices
+LMT|Industrials|Aerospace & Defense
+LPTH|Technology|Electronic Components
+LRCX|Technology|Semiconductor Equipment & Materials
+LUNR|Industrials|Aerospace & Defense
+LWLG|Basic Materials|Specialty Chemicals
+LZB|Consumer Cyclical|Furnishings, Fixtures & Appliances
+MAN|Industrials|Staffing & Employment Services
+MANE|Healthcare|Biotechnology
+MANH|Technology|Software - Application
+MCHP|Technology|Semiconductors
+MDA|Industrials|Aerospace & Defense
+MEDP|Healthcare|Diagnostics & Research
+MGNI|Communication Services|Advertising Agencies
+MKTX|Financial Services|Capital Markets
+MLKN|Consumer Cyclical|Furnishings, Fixtures & Appliances
+MLTX|Healthcare|Biotechnology
+MMYT|Consumer Cyclical|Travel Services
+MNDY|Technology|Software - Application
+MOD|Consumer Cyclical|Auto Parts
+MPWR|Technology|Semiconductors
+MRAM|Technology|Semiconductors
+MRK|Healthcare|Drug Manufacturers - General
+MRLN|Industrials|Aerospace & Defense
+MRNA|Healthcare|Biotechnology
+MRVI|Healthcare|Biotechnology
+MRVL|Technology|Semiconductors
+MRX|Financial Services|Capital Markets
+MTSI|Technology|Semiconductors
+MTW||
+MU|Technology|Semiconductors
+NAVN|Technology|Software - Application
+NBIS|Communication Services|Internet Content & Information
+NCNO|Technology|Software - Application
+NEO|Healthcare|Diagnostics & Research
+NESR|Energy|Oil & Gas Equipment & Services
+NET|Technology|Software - Infrastructure
+NEXA|Basic Materials|Other Industrial Metals & Mining
+NIQ||
+NMAX|Communication Services|Broadcasting
+NN|Technology|Software - Infrastructure
+NNE|Industrials|Specialty Industrial Machinery
+NOW|Technology|Software - Application
+NPKI||
+NRIX|Healthcare|Biotechnology
+NTAP|Technology|Software - Infrastructure
+NTRA|Healthcare|Diagnostics & Research
+NTSK|Technology|Software - Infrastructure
+NU|Financial Services|Banks - Regional
+NUAI|Technology|Software - Infrastructure
+NVAX|Healthcare|Biotechnology
+NVCR|Healthcare|Medical Devices
+NVT|Industrials|Electrical Equipment & Parts
+NVTS|Technology|Semiconductors
+NWL|Consumer Defensive|Household & Personal Products
+NXT|Technology|Solar
+OCUL|Healthcare|Biotechnology
+OII|Energy|Oil & Gas Equipment & Services
+OKLO|Utilities|Utilities - Independent Power Producers
+OKTA|Technology|Software - Infrastructure
+OMER|Healthcare|Biotechnology
+ONTO|Technology|Semiconductor Equipment & Materials
+OOMA|Technology|Software - Application
+OUST|Technology|Electronic Components
+PACS|Healthcare|Medical Care Facilities
+PAG|Consumer Cyclical|Auto & Truck Dealerships
+PAR|Technology|Software - Application
+PAY|Technology|Software - Infrastructure
+PAYC|Technology|Software - Application
+PAYS|Technology|Software - Infrastructure
+PCT|Industrials|Pollution & Treatment Controls
+PD|Technology|Software - Application
+PENG|Technology|Information Technology Services
+PGEN|Healthcare|Biotechnology
+PGNY|Healthcare|Healthcare Plans
+PGY|Technology|Software - Infrastructure
+PHR||
+PKE|Industrials|Aerospace & Defense
+PLAB|Technology|Semiconductor Equipment & Materials
+PLOW|Consumer Cyclical|Auto Parts
+PLTR|Technology|Software - Infrastructure
+POET|Technology|Semiconductors
+PONY||
+POWI|Technology|Semiconductors
+POWL|Industrials|Electrical Equipment & Parts
+PPTA|Basic Materials|Other Precious Metals & Mining
+PRAA|Financial Services|Credit Services
+PRCH|Financial Services|Insurance - Property & Casualty
+PRG|Industrials|Rental & Leasing Services
+PRGO|Healthcare|Drug Manufacturers - Specialty & Generic
+PRGS|Technology|Software - Infrastructure
+PSIX|Industrials|Specialty Industrial Machinery
+PSNL|Healthcare|Diagnostics & Research
+PUBM|Technology|Software - Application
+PURR|Financial Services|Capital Markets
+PWP|Financial Services|Capital Markets
+PWR|Industrials|Engineering & Construction
+QBTS|Technology|Computer Hardware
+QDEL|Healthcare|Medical Devices
+QFIN||
+QLYS|Technology|Software - Infrastructure
+QNST|Communication Services|Advertising Agencies
+QUBT|Technology|Computer Hardware
+QURE|Healthcare|Biotechnology
+RAL|Technology|Electronic Components
+RARE|Healthcare|Biotechnology
+RCAT|Industrials|Aerospace & Defense
+RDDT|Communication Services|Internet Content & Information
+RDW|Industrials|Aerospace & Defense
+RELY|Technology|Software - Infrastructure
+RGNX|Healthcare|Biotechnology
+RIOT|Financial Services|Capital Markets
+RL||
+RLAY|Healthcare|Biotechnology
+RNG|Technology|Software - Application
+ROAD|Industrials|Engineering & Construction
+ROCK|Industrials|Building Products & Equipment
+ROIV|Healthcare|Biotechnology
+ROKU|Communication Services|Entertainment
+RPD|Technology|Software - Infrastructure
+RSKD|Technology|Software - Application
+RUM|Communication Services|Internet Content & Information
+RXT|Technology|Software - Infrastructure
+RYTM|Healthcare|Biotechnology
+SAIC|Technology|Information Technology Services
+SBSW|Basic Materials|Other Precious Metals & Mining
+SCSC|Technology|Electronics & Computer Distribution
+SE|Consumer Cyclical|Internet Retail
+SEDG|Technology|Solar
+SEZL|Financial Services|Credit Services
+SFM||
+SG|Consumer Cyclical|Restaurants
+SGHC|Consumer Cyclical|Gambling
+SHAZ|Technology|Information Technology Services
+SHLS|Technology|Solar
+SHOP|Technology|Software - Application
+SIBN|Healthcare|Medical Devices
+SIMO|Technology|Semiconductors
+SITM|Technology|Semiconductors
+SKM|Communication Services|Telecom Services
+SLN|Healthcare|Biotechnology
+SLS|Healthcare|Biotechnology
+SMCI|Technology|Computer Hardware
+SMMT|Healthcare|Biotechnology
+SMPL|Consumer Defensive|Packaged Foods
+SMTC|Technology|Semiconductors
+SMWB|Technology|Software - Application
+SNDK|Technology|Computer Hardware
+SNOW|Technology|Software - Application
+SNX|Technology|Electronics & Computer Distribution
+SOFI|Financial Services|Credit Services
+SOLS|Basic Materials|Specialty Chemicals
+SOUN||
+SPIR|Industrials|Specialty Business Services
+SPSC|Technology|Software - Application
+SSNC|Technology|Software - Application
+SSRM|Basic Materials|Gold
+STAA|Healthcare|Medical Instruments & Supplies
+STDN|Basic Materials|Specialty Chemicals
+STGW|Communication Services|Advertising Agencies
+STM|Technology|Semiconductors
+STRL|Industrials|Engineering & Construction
+STUB|Communication Services|Internet Content & Information
+SVM|Basic Materials|Silver
+SWBI|Industrials|Aerospace & Defense
+SYRE|Healthcare|Biotechnology
+TAL|Consumer Defensive|Education & Training Services
+TASK||
+TATT||
+TBBB|Consumer Defensive|Discount Stores
+TBI|Industrials|Staffing & Employment Services
+TE|Industrials|Electrical Equipment & Parts
+TEAM|Technology|Software - Application
+TEM|Healthcare|Health Information Services
+TER|Technology|Semiconductor Equipment & Materials
+TEVA|Healthcare|Drug Manufacturers - Specialty & Generic
+TH|Industrials|Specialty Business Services
+THC|Healthcare|Medical Care Facilities
+TMO|Healthcare|Diagnostics & Research
+TNDM|Healthcare|Medical Devices
+TNGX|Healthcare|Biotechnology
+TPC|Industrials|Engineering & Construction
+TRAX|Healthcare|Biotechnology
+TRUP|Financial Services|Insurance - Property & Casualty
+TRVI|Healthcare|Biotechnology
+TSAT|Technology|Communication Equipment
+TSEM|Technology|Semiconductors
+TTAN|Technology|Software - Application
+TVTX|Healthcare|Biotechnology
+TWLO|Technology|Software - Infrastructure
+TWST|Healthcare|Diagnostics & Research
+TXRH|Consumer Cyclical|Restaurants
+U|Technology|Software - Application
+UCTT|Technology|Semiconductor Equipment & Materials
+UFPT|Healthcare|Medical Devices
+UMAC|Technology|Computer Hardware
+UMC|Technology|Semiconductors
+UPST||
+URI|Industrials|Rental & Leasing Services
+UUUU|Energy|Uranium
+VCX||
+VECO|Technology|Semiconductor Equipment & Materials
+VEEV|Healthcare|Health Information Services
+VELO|Technology|Computer Hardware
+VERA|Healthcare|Biotechnology
+VG|Energy|Oil & Gas Midstream
+VICR|Technology|Electronic Components
+VIK|Consumer Cyclical|Travel Services
+VNET||
+VOD|Communication Services|Telecom Services
+VOYG|Industrials|Aerospace & Defense
+VPG|Technology|Scientific & Technical Instruments
+VRDN|Healthcare|Biotechnology
+VSAT|Technology|Communication Equipment
+VSH|Technology|Semiconductors
+VSNT|Communication Services|Entertainment
+VSTS|Industrials|Rental & Leasing Services
+W|Consumer Cyclical|Internet Retail
+WAT|Healthcare|Diagnostics & Research
+WDAY|Technology|Software - Application
+WDC|Technology|Computer Hardware
+WDFC|Basic Materials|Specialty Chemicals
+WEN|Consumer Cyclical|Restaurants
+WEST|Consumer Defensive|Packaged Foods
+WGS|Healthcare|Diagnostics & Research
+WIX|Technology|Software - Infrastructure
+WKC|Energy|Oil & Gas Refining & Marketing
+WLDN|Industrials|Engineering & Construction
+WOLF|Technology|Semiconductors
+WPP|Communication Services|Advertising Agencies
+WSC|Industrials|Rental & Leasing Services
+WULF|Financial Services|Capital Markets
+WWW|Consumer Cyclical|Footwear & Accessories
+WYFI|Technology|Information Technology Services
+XE|Industrials|Specialty Industrial Machinery
+XMTR|Industrials|Industrial Distribution
+YETI|Consumer Cyclical|Leisure
+YOU|Technology|Software - Application
+ZBRA|Technology|Communication Equipment
+ZETA|Technology|Software - Infrastructure
+ZM|Technology|Software - Application
+ZSQR|Technology|Software - Infrastructure
+(518 rows)

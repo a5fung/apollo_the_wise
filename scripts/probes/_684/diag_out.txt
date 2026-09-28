@@ -1,0 +1,30 @@
+(1) BRIDGE to the 09-27 lead (ext_xadr_eod, least-extended third 19.5% vs 9.1%, n 231, alerts <= 08-14):
+   alerted rows with a live alert row, discovery: 242
+   alerted: RS_ext_xadr_eod LOWER: fav 14/75 = 18.7%  rest 10/150 = 6.7%
+   alerted: RS_ext_xadr_pregap LOWER: fav 8/56 = 14.3%  rest 10/112 = 8.9%
+   alerted: CLOSE_ext_sma50_xadr LOWER: fav 6/79 = 7.6%  rest 18/160 = 11.2%
+   alerted: CLOSE_ext_sma20_xadr LOWER: fav 10/80 = 12.5%  rest 14/162 = 8.6%
+   alerted: PRE_ext_sma50_xadr LOWER: fav 3/79 = 3.8%  rest 21/160 = 13.1%
+   alerted: PRE_ext_ma_mean_xadr LOWER: fav 4/79 = 5.1%  rest 20/160 = 12.5%
+   alerted: PRE_ext_5d_pct LOWER: fav 5/80 = 6.2%  rest 19/162 = 11.7%
+   alerted: PRE_base_range20_pct LOWER: fav 8/80 = 10.0%  rest 16/162 = 9.9%
+   -- same features on the scored-NOT-alerted discovery rows:
+   not-alerted: CLOSE_ext_sma50_xadr LOWER: fav 11/104 = 10.6%  rest 21/210 = 10.0%
+   not-alerted: PRE_ext_sma50_xadr LOWER: fav 12/104 = 11.5%  rest 20/210 = 9.5%
+   not-alerted: PRE_ext_5d_pct LOWER: fav 7/106 = 6.6%  rest 25/212 = 11.8%
+   not-alerted: PRE_base_range20_pct LOWER: fav 6/106 = 5.7%  rest 26/212 = 12.3%
+   spearman RS_ext_xadr_eod vs CLOSE_ext_sma50_xadr on 225 alerted rows: 0.69; vs PRE_ext_ma_mean_xadr: 0.61
+
+(2) The reverse cluster (wide 20-day range / extended off the 5-day low = already moving) — repeat-gap check:
+   rows with a scored gap in the prior 30 days: 51 (runners 4 = 7.8%); without: 553 (runners 63 = 11.4%)
+   fresh-only (no scored gap in 30d): PRE_base_range20_pct HIGHER: fav 25/185 = 13.5%  rest 38/368 = 10.3%
+   %-label run>=25 fresh-only: PRE_base_range20_pct HIGHER: fav 24.3% (n185) vs rest 9.0% (n368)
+   fresh-only (no scored gap in 30d): PRE_ext_5d_pct HIGHER: fav 29/185 = 15.7%  rest 34/368 = 9.2%
+   %-label run>=25 fresh-only: PRE_ext_5d_pct HIGHER: fav 22.7% (n185) vs rest 9.8% (n368)
+   fresh-only (no scored gap in 30d): PRE_ext_20d_low_pct HIGHER: fav 32/185 = 17.3%  rest 31/368 = 8.4%
+   %-label run>=25 fresh-only: PRE_ext_20d_low_pct HIGHER: fav 25.4% (n185) vs rest 8.4% (n368)
+   wide-range tercile: median 20d range%, median 1m chg%, share themed, median price:
+     wide: n202 range20 38.1% chg1m 9.0% themed 44% price 32.7 ADR% 8.00 $vol 116M runners8 8
+     rest: n402 range20 16.3% chg1m 3.0% themed 17% price 35.3 ADR% 4.55 $vol 52M runners8 18
+
+(3) HELD-OUT (08-15..09-03) detail: rows 63 runners [('MRVI', '2026-08-19', 5.9, 'rejected', ''), ('SMMT', '2026-08-26', 5.8, 'rejected', ''), ('GPRK', '2026-08-31', 6.6, 'rejected', ''), ('NTSK', '2026-09-03', 5.6, 'rejected', '')]
