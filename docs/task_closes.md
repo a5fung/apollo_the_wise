@@ -1817,3 +1817,4 @@ probe `scripts/probes/_684/`.
   the rejected runners are a population any lane should watch).
 - ⚠ The critic could not prove WHEN the registration text was written (the probe was edited after the run; its
   outputs are byte-identical under the current code, so the edit changed text only).
+- **His rulings on the three forks, 2026-09-28 (*"ok"* to the recs):** (1) re-check on the September block once it has 15 sessions (~10-16) — YES, filed as a task once a close makes room; (2) measure runs from the opening-range high — YES, running the same day as an addendum; (3) a lane for the rejected runners — NOT YET.
