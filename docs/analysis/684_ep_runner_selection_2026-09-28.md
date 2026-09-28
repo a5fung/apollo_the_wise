@@ -374,6 +374,9 @@ they are.
 
 ## Addendum 2026-09-28 — measured from the actual live MAGNA53 entry (replayed bar-by-bar)
 
+> ⚠ **CAVEAT added after the late-alert check (2026-09-28):** this addendum's fills use the stop-limit pullback walk (`entry_walk`), not today's order path (#500, ON since 08-07: buy at market ×1.002 or SKIP when the 1.5× chase cap is exceeded), and model no portfolio safeguards. Its fill counts therefore OVERSTATE what the live system would get after 08-07 — the late-alert check found 27 of 41 replay fills were pullback fills the live order never makes, and live got ~40 in-window fills where the replay shows 74–84. Read its fill and 'buyable runner' counts as upper bounds.
+
+
 > ⚠ **VERIFIED by the orchestrator 2026-09-28 against what we actually traded:** of the 59 live fills with alert dates 05-01..09-03, 51 are in this population; the replay marks 39 filled, 12 unreadable (minute-bar gaps) and 1 not filled (`triggered_above_limit_never_filled` — a real fill the replay misses). So 39 of the 40 readable real fills reproduce, with entry prices within cents (e.g. TEAM 05-01 $85.19 real vs $85.13 replay). The other 8 real fills (GOOGL 05-01, ARM 05-07, KLAR 05-15, PURR 05-20, ROIV 05-21, IBM 05-22 among them) are not in the scored population.
 
 
