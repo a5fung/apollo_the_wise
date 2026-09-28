@@ -1650,3 +1650,20 @@ Our live trades, read from `mi_live_trades` the same day:
   the intraday trail (`docs/setups/magna53_ep.md`, in-sample, no holdout). His hybrid (close-based unless it slices
   through hard — H13 in `docs/analysis/327_hypotheses_2026-09-27.md`) was never tested on the live exit stack.
 - **Any change to the live trail is his call** (THE LINE, CHANGE_PROCESS).
+
+### 2026-09-28 (later) — tests of a pivot are buy points when they hold; how a slice-through looks (operator, verbatim)
+
+> *"we took a pretty poor stop as the stock is up nicely now. THis is something i've observed, stocks may come back to
+> test pivot areas, in this case the 10SMA, and often these are buy points if test is successful vs sell points. In
+> this case, it did a quick U&R of the 10day, vs slice through. I know this will add a lot more complexity to our system
+> if we need to monitor all our stocks vs have stop in place, but i think this will shake us out of big winners
+> sometimes which i want to prevent. Also, much of the volatility around these areas often happen in first hour of
+> market open. For slice through, what i often see is mutliple intraday bars breaking lower (i.e. red bars) and bars
+> that close at lower end of their range."*
+
+- **Undercut & reclaim (U&R) of the line = hold (often a buy point); a slice-through = sell.**
+- **Where the noise is:** the first hour after the open.
+- **What a slice looks like intraday:** several bars in a row breaking lower (red), each closing in the lower part of its
+  own range.
+- **His trade-off, stated:** more monitoring complexity than a resting stop, accepted to stop being shaken out of big
+  winners. Carried into #685's test design.
