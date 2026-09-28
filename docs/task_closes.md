@@ -1833,3 +1833,21 @@ ruling"); probe `scripts/probes/_685/` (pre-registration in `study.py`'s docstri
   grace −6.5R; trades ≥ 3 ORB-R 9 / 8 / 8; no loss beyond −1.5R in any arm (0 of 79).
 - **Check's correction:** the gap is FTK and INFQ; without them every hold arm is flat or better (+0.04R to +1.56R).
 - **Proposal written;** his options (a) keep and close, (b) keep and record the first-hour-grace exit in shadow — rec (b).
+
+## #592 — the high-tight-flag pole: the anchor fix verified live, its carry hole closed and verified (2026-09-28)
+
+BAR: "DoD: measure both changes against a labelled set of REAL HTFs (HNGE included) before proposing anything — how
+many true flags are recovered, and how many extra names are admitted per day. Report both directions (P14)"
+
+EVIDENCE:
+- **Measured both directions before proposing (09-04):** `docs/analysis/htf_pole_window_grid_2026-09-04.md` — the two
+  named causes were wrong; the real anchor defect's fix measured +26 actionable rows on 8 names, −5 on 3 (both
+  directions), and the pole-window alternative (board 10 → 42 names a day) reported and not taken. Labelled corpus N=7
+  (`tests/fixtures/htf_labelled.py`), the fix agreeing with him on 6 of 7; his sign-off on the full ledger 09-04.
+- **The author check his 09-16 ruling asked for:** Leif Soreide's own labelled MRNA and CDNA pass the 40-session pole.
+- **Live, fix 09-04:** formed-flag tops moving on a wick fell from 135 of 885 (07-01..09-03) to 8 of 146
+  (09-05..09-25); 7 of the 8 were names back after 6+ days out of the scan.
+- **Live, carry fix (deployed 09-27, his ruling 09-28 that the 9 stable-anchor tops stand):** the 09-28 17:25 ET scan —
+  3 names returned after 6–40 days; IRD (last row 09-22) and PBF (09-18) KEPT their carried tops (09-09, 09-11); ARHS
+  (last row 08-26) re-anchored because its old top (08-18) had aged past the 25-session lookback, as designed. No
+  returning name took a wick top above an unresolved carried top.
