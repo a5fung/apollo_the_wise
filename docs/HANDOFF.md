@@ -1230,3 +1230,25 @@ read is one period only — not yet proven.
 population guard's first nightly row (expect breach 0, legacy 0). **Capacity:** ~5.3M agent tokens used today —
 stagger cards, one at a time.
 
+
+## 2026-09-27 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 09-26 close above.
+
+**Board 50 → 48** (closed #354, #662, #677; filed #684 on his ok). Growth gate held.
+
+**Shipped and verified today**
+- **#662 / #677 closed** on the 09-27 weekly review (action head + fold; missed-EP rows carry SRC/GAP and the 3-of-18 count). The review's winner-capture line now carries its rule era (live: 17 old-rules trades, 0 current).
+- **#354 closed** on his ruling — the undercut "watch for reclaim" item dropped (it failed its own signed test in July; board unchanged).
+- **Confirm-entry review answered:** loses on the current wiring (42 trades, 24 days, −0.20R, 31% winners) — his 8/9 bar fails.
+- **#327 (delayed-entry lane):** re-entry × stop study → eras disagree; hypotheses doc (H1–H13, his two ideas captured as H12/H13); free tests → no new edge, 3 of 35 draws clear, one mechanism. Stop-independent read: today's EP score is FLAT on who runs big (7–14% in every band). His ruling: keep observing. Six lane hypotheses (H6–H11) still untested — after #684.
+- **The 09-29 first-read gate** now counts mature fires only (66 of 66 settled live rows were stops).
+- **#592 (HTF pole):** 09-04 fix verified live (wick-walks 135/885 → 8/146); carry window widened to 40 days (derived from the lookback), deployed both services. ⚠ **9 of the 21 changed tops are outside his signed fix — his call Monday** (`scripts/probes/_592_carry_replay_out.txt`).
+- **#655 (right themes):** step 1 SIGNED (four grouping bars: fit ≥90% · misfiled ≤5% · beats random ≥90% · under-3 ≤10%; baseline 90.7 / 3.4 / 87.3 fails / 8.5); step 2 SIGNED (new groups named within a median 10 sessions, tighten to 5 later; baseline 37, n=9). Nightly scorer deployed at 00:10 ET on his override; first live row matches.
+- **#684 filed** (Sat 10-03): what, known on the gap day, marks the EPs that run big — ALL EPs, every scored candidate; pre-08-22 scan-log features are empty, compute from price history.
+
+**Monday 09-28 — in order**
+1. **12:00–13:00 ET: deploy the simplify commit** (`deploy.sh market-agent`, then `execution` — db.py and scheduler.py are execution-loaded). Behaviour identical except the winner-capture line also reads the older rules' capture.
+2. **His calls:** the 9 flag tops (#592); #491 date (rec 10-03, cost the paid check for the cross-day theme switch) and #594 date (rec 10-05). He said "discuss tmr".
+3. **Evening verifies:** #592 carry on the 17:25 ET flag scan; #505 first parent pass (17:00 ET); #506 row; #657; the #327 population guard (expect 0/0); the #655 nightly `theme_correctness_check` row.
+4. Tuesday: #647 verify.
+
+**Capacity:** ~3.9M subagent tokens today; he hit his session limit mid-day. Stagger cards.
