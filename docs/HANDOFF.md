@@ -1252,3 +1252,16 @@ stagger cards, one at a time.
 4. Tuesday: #647 verify.
 
 **Capacity:** ~3.9M subagent tokens today; he hit his session limit mid-day. Stagger cards.
+
+## 2026-09-28 (Mon) mid-session save — 🔴 RESUME HERE (he is updating Claude Code; NOT a close)
+
+**Board 48.** All work committed and pushed (`c9e924ca`).
+
+**Do first on resume**
+1. **Deploy in 21:15–22:15 ET tonight (18:15–19:15 PDT), else Tue 12:00–13:00 ET:** `deploy.sh market-agent`, then `deploy.sh execution`. Carries the extension-cap watch fix (only EPs the cap alone blocked are sent) and the claude-sonnet-5-5 price entry. **It also binds Sonnet 5.5** (resolver adopted it 18:08 ET; canary passed with both adapter rewrites). Read the delta first.
+2. **Tue 09:31 ET:** first catalyst grades on Sonnet 5.5 — sane grades, no adapter errors.
+3. **Tue evening:** #505 night 2 (close if heartbeat + links hold), #506 night 2 of 3, #657 night 2 of 5, #655 nightly row.
+
+**Done today:** closed #684, #685, #592; filed #686 (Sept re-read, 10-16) and #687 (depth trail, Sat 10-03); his rulings recorded (#592's 9 tops stand; #491 → 10-03; #594 → 10-05; late-alert window change refuted; safeguard-blocked EPs stay in every EP study); first live +8R partial (KOD) verified at the broker.
+
+**Open for him (not urgent):** #655 — both halves signed and the scorer is live; ask where the funnel-map strand should live before closing it.
