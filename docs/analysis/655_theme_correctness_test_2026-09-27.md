@@ -14,7 +14,7 @@ said below.
 chosen after the data was seen, and two of its reads cannot tell a broken board from a good one. What survives is
 a GROUPING test whose bars were written before its first run, today's baselines, and a named-case list for identity.
 
-**✅ SIGNED BY HIM 2026-09-27 (*"Signed"*) — the four grouping bars below, as proposed.** The step-2 latency target is still his pick.
+**✅ SIGNED BY HIM 2026-09-27 (*"Signed"*) — the four grouping bars below, as proposed.** **✅ STEP-2 TARGET SIGNED 2026-09-27 (*"aligned"*): a genuinely new group is named within 10 trading sessions of its first stored cluster (median, re-mints excluded); tighten to 5 once 10 holds and the four grouping checks still pass.** Baseline: 37 sessions (n = 9, censored at 40).
 
 **What goes to him for signature (the grouping half, bars pre-registered in `scripts/probes/_655/grouping/grouping_test.py`
 before any number printed; scored forward nightly, today's values are the BASELINE, not a verdict):**
