@@ -1810,6 +1810,10 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # mi_audit_log + extra_where shape as the #506 entry above.
     ("mi_audit_log", "delayed-entry population check (#327)", "created_at",
      "event_type = 'delayed_entry_population_check'"),
+    # #655 signed theme-correctness test (2026-09-27): the nightly scorer's own row is its
+    # liveness evidence, same mi_audit_log + extra_where shape as the #327/#506 entries above.
+    ("mi_audit_log", "theme correctness check (#655)", "created_at",
+     "event_type = 'theme_correctness_check'"),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median

@@ -4018,6 +4018,19 @@ async def _post_nightly_audit_job():
         logger.error(f"Delayed-entry population check failed: {e}", exc_info=True)
         await notify_job_failure("delayed_entry_population_check", str(e))
 
+    # #655 signed theme-correctness test (2026-09-27, operator-signed bars): G1-G4 (are the right
+    # stocks together) + the step-2 naming-latency read, on the live board exactly as the engine
+    # defines it. READ-ONLY (never touches mi_themes/membership), no Telegram except on a load
+    # failure (own try/except, same contract as every check in this job) — see
+    # agents/market_intelligence/theme_correctness.py and docs/architecture/theme_engine.md.
+    try:
+        from agents.market_intelligence.theme_correctness import run_theme_correctness_check
+        tcc = await run_theme_correctness_check()
+        logger.info(f"Theme correctness check: {len(tcc['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Theme correctness check failed: {e}", exc_info=True)
+        await notify_job_failure("theme_correctness_check", str(e))
+
     try:
         from agents.market_intelligence.health_checks import run_job_liveness_sweep
         jl = await run_job_liveness_sweep()

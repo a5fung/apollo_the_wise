@@ -72,6 +72,16 @@
 
   **Metrics 1-2 derive LIVE off `mi_themes`' own history every run — EXCLUDING history from before 2026-07-25** (the #471 persistence fix; adversarial-review fix, 2026-09-26): the 1-of-94 incident ran for 11 days on that known bug, so a max-of-history floor built off it would calibrate against broken behaviour as if it were normal noise. Only the HISTORICAL series each derivation replays is filtered — today's own reading never is. **Metrics 3-5 CANNOT be derived off `mi_themes` history at all**: `mi_theme_ecosystems` is current-state-only (no date column) and the nomination metric is an audit-log EVENT scan, not a daily snapshot column — none of the three has independent history to derive a floor from. So, like `run_db_growth_check`, all three self-baseline against this check's OWN accruing `theme_hierarchy_health` audit rows and stay silent until enough self-collected history exists (n=0 at ship, same bootstrap idiom). The evening line and audit summary render ruling-(5)'s own vocabulary in PLAIN WORDS, no shorthand, no internal codes and no redundant date (`health_checks._hier_format_summary`; ecosystem codes mapped to their human `theme_ecosystems.yaml` name via `_hier_ecosystem_name` — never the bare code) — e.g. *"10 of 118 themes sit under a parent theme, 108 under their sector group, none unassigned; no links lost this week; largest group is Enterprise software at 10%"* — never "orphan," so the wording cannot contradict the SSoT's "117 of 118 have a parent" claim (a root under its ecosystem IS a parent, by that ruling), and a flagged night names WHICH flag fired in words, not just a count. One such line renders on the operator's evening briefing EVERY night (`get_theme_hierarchy_evening_line`, reads tonight's own audit row, fails silent) — the actual gap the 1-of-94 incident exposed, since no surface rendered this at all before #505/#506. **Skips (writes a "skipped" audit row, computes nothing)** below `_HIER_MIN_LIVE_THEMES=10` live themes (the 07-28 zero-row crash night). Tests: `tests/test_506_theme_hierarchy_health.py`.
 
+- **#655 signed THEME-CORRECTNESS test (2026-09-27, operator-signed bars, `agents/market_intelligence/theme_correctness.py::run_theme_correctness_check`, wired into `_post_nightly_audit_job` at 17:30 ET right after the #327 population check)**: are the right stocks together, and is a new group named fast enough — read-only, $0, no LLM, never touches `mi_themes`/membership. Full derivation + the probe numbers the bars were signed against: `docs/analysis/655_theme_correctness_test_2026-09-27.md` (its CORRECTED section wins). Four signed bars, all on the engine's own market-adjusted co-movement scale (`market_adjusted_correlation.py`, 60 sessions, imported not re-derived):
+  - **G1 member fit** — leave-one-out tie of each member to its own theme's basket ≥ `ASSIGN_COMOVE_BAR` (0.35) for ≥ 90% of judgeable member-pairs (signed baseline 2026-09-25 board: 90.7%, 534 of 589).
+  - **G2 misfiled** — a member tied < 0.35 to its own theme AND ≥ 0.35 (and ≥ own + 0.20) to a DIFFERENT live theme, ≤ 5% of judgeable pairs (baseline 3.4%, 20 of 589).
+  - **G3 beats a random basket** — theme cohesion (mean pairwise tie) beats a size-matched random control's p95 (RS-composite × volatility tercile, 500 draws) for ≥ 90% of themes (baseline 87.3%, 103 of 118 — the one bar failing today; small 2-3 member themes are the shape defect).
+  - **G4 shape** — themes under 3 members ≤ 10% of the board (baseline 8.5%, 10 of 118).
+  - Plus, no bar: the judgeable-theme share (themes with ≥ 1 judgeable member).
+  - **Step-2 naming latency** (separate signed target, same section): a genuinely NEW group — re-mints excluded via `compute_theme_latency`'s `held_between` (≥ half the founders already sitting in ONE live theme on ANY board night between first sighting and birth, ported from `scripts/probes/_655/critic_latency.py`) — is named within a median ≤ 10 trading sessions of its first stored `mi_correlation_clusters` sighting (baseline 37 sessions, n=9, censored at the 40-session lookback cap; tighten to 5 once 10 holds).
+  - **Design**: every check is a PURE function over plain inputs (board rows / excess-return vectors / scored-universe rows / theme+cluster history) — no DB needed to test the maths; `run_theme_correctness_check` does the ONE async load (the live board via `db.get_active_themes(stale_after_days=7)` — never re-derived, the closes `ep_theme_belonging.fetch_closes` already reads, `mi_stock_scores`, `mi_themes` history, `mi_theme_renames`, `mi_correlation_clusters`) and writes ONE `mi_audit_log` row a night (`event_type='theme_correctness_check'`) carrying every value, its n, its bar, pass/fail, and tonight's births with lag + re-mint flag. Never raises: a failed load writes an error row and pages `notify_job_failure`, same contract as `run_delayed_entry_population_check` (#327); registered in `_DETECTOR_LIVENESS_TABLES` on that row. G3's random draws consume a LOCAL `random.Random(655)` in the exact call sequence the probe's global `random` module consumed — reproduced bit-for-bit by `tests/test_655_theme_correctness.py`'s anchor test against `scripts/probes/_655/grouping/`'s captured board (534/589, 20/589, 103/118, 10/118). Measured wall time on the anchor's real scale (118 themes / 711 slots / ~2,500 tickers × 60 sessions) plus a synthetic ~6,700-row theme history / ~4,000-row cluster history: ~3.7s of pure compute (G1+G2 ~1.3s, G3 ~2.4s, G4 + latency negligible) — DB I/O is additional but the same shape of query the engine's own `_load_comove_context` already runs nightly at similar scale.
+  - **Not built here**: identity (is the theme named for its real driver) — the 2026-09-27 doc found no board-wide bar that beats a random alternative; it stays a named-case list (the miners/#491) for the operator, not a nightly check.
+
 ## Two-lane detection architecture + the judge-inference feed (#322)
 
 Theme DETECTION runs on two structurally different lanes, both bottom-up (Pradeep:
@@ -959,6 +969,19 @@ perplexity doesn't affect live trades, just render as no-op or unavailable input
 demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
+
+### 2026-09-27 — #655: the operator's four signed correctness bars now score the board every night
+
+**Trigger**: three probes measured whether the board's own stocks are grouped right and whether new
+groups get named fast enough (`docs/analysis/655_theme_correctness_test_2026-09-27.md`); the
+operator signed four grouping bars (G1-G4) and the step-2 naming-latency target the same day. This
+entry wires that sign-off into a nightly scorer — see the top-level `#655` bullet above for the
+bars, the design, and the reproduced anchor numbers. **What changed**: new module
+`agents/market_intelligence/theme_correctness.py`; `scheduler.py::_post_nightly_audit_job` gained
+one more try/except calling `run_theme_correctness_check`, right after the #327 population check;
+`health_checks._DETECTOR_LIVENESS_TABLES` gained the row's own liveness entry. Nothing here changes
+a threshold, a gate, or live theme state — it is a read-only nightly measurement, same class as
+#327/#506 above.
 
 ### 2026-09-25 — #657 Shape A: the two REMOVAL sites now get the run's co-movement context (OPERATOR-SIGNED "Yes to both")
 
