@@ -1,0 +1,7 @@
+board nights since 05-04: 102; non-#491 priced-driver theme-nights 586, flagged 38 (6%)
+nights on which #5 (bar 0) FAILS with the #491 cohort removed: 31 of 102 (30%)
+last 20 nights: 08-28:0 08-31:0 09-01:0 09-02:0 09-03:1 09-04:1 09-08:0 09-09:1 09-10:0 09-11:1 09-14:0 09-15:0 09-16:0 09-17:0 09-18:0 09-21:1 09-22:1 09-23:0 09-24:0 09-25:0
+[persistence re-run, same script with per-night flagged-theme tracking]
+longest consecutive-night run per falsely-flagged theme: [(12, 'Industrial HVAC, Plumbing & Fabricated Copper'), (8, 'Global Crude & Product Tanker Fleet Operators'), (5, 'Emerging Bitcoin & AI Cloud Compute Miners'), (4, 'Crude & Product Tanker Operators'), (2, 'Pure-Play Oil Refining & Marketing'), (2, 'Petroleum Refiners & Marketers'), (2, 'Crude & Product Tanker Shipping'), (1, 'Oil Refining & Marketing'), (1, 'Oil & Product Tanker Shipping')]
+nights failing a PERSISTENCE bar (same theme flagged 3+ consecutive nights), #491 removed: 18 of 102
+nights failing a PERSISTENCE bar (same theme flagged 5+ consecutive nights), #491 removed: 12 of 102

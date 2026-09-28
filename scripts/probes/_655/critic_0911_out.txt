@@ -1,0 +1,15 @@
+09-11 board: 119 themes; empty 0; at 2 21; <=5 83 (70%)
+#1 all judgeable 532/592 = 89.9% (bar 90%) | GUARD 592/718 = 82.5% (bar 80%) | themes with no judgeable member 49/119
+empty themes contribute 0 slots to the guard and 0 members to #1/#2, and have no basket for #3/#4 -> invisible to every grouping read: 0
+#4 duplicate pairs on 09-11: 11
+119|0|21|83
+119|0|21
+162|0|32|71
+2026-09-09|103|0|13
+2026-09-10|116|0|17
+2026-09-11|118|0|20
+Accelerating|9|0
+Fading|63|0
+Mainstream|13|0
+Nascent|33|0
+Retired|9|9

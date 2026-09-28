@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/Users/alvinfung/apollo_the_wise/scripts/probes/_655/grouping_test.py", line 107, in <module>
+    for l in open(os.path.join(HERE, "scores_0925.psv")):
+             ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/alvinfung/apollo_the_wise/scripts/probes/_655/scores_0925.psv'

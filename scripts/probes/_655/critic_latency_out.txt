@@ -1,0 +1,59 @@
+births 08-26..09-25 with a pre-birth cluster: 52 median lead 27.0
+founders already >=half in ONE live theme on the FIRST-sighting night: 28
+  of those, the holding theme was Fading: 5
+founders >=half in one live theme on ANY pre-birth sighting night: 38
+median lead EXCLUDING births already held on first-sighting night: 35.5 n= 24
+median lead EXCLUDING births held on ANY sighting night: 35.0 n= 14  >10: 13
+  2026-08-26 lead 40 held@first 0.00 [Accelerating] 'U.S. Passenger Airlines' <- birth 'Coal Mining Relative Strength Breakout'
+  2026-08-31 lead 40 held@first 0.25 [Fading] 'Crypto Asset Recovery' <- birth 'Emerging Bitcoin Miners Diversifying into AI/HPC H'
+  2026-09-01 lead 40 held@first 0.00 [Accelerating] 'U.S. Regional & Mid-Cap Commercial Banks' <- birth 'Management & Business Advisory Consulting Firms'
+  2026-09-02 lead 40 held@first 0.00 [Nascent] 'Wealth Management & Retail Brokerage Platform' <- birth 'Crude Oil & Product Tanker Shipping'
+  2026-09-10 lead 40 held@first 0.67 [Fading] 'Pure-Play Quantum Computing Hardware' <- birth 'Emerging Quantum Computing Pure-Plays (RGTI/IONQ/Q'
+  2026-09-22 lead 40 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'AI Server Power & Signal-Integrity Analog ICs'
+  2026-09-10 lead 39 held@first 1.00 [Mainstream] 'U.S. Regional & Mid-Cap Commercial Banks' <- birth 'Super-Regional Bank RS Reversal'
+  2026-09-10 lead 39 held@first 0.80 [Mainstream] 'U.S. Regional & Mid-Cap Commercial Banks' <- birth 'Super-Regional & National Consumer Bank Rally'
+  2026-09-15 lead 39 held@first 0.67 [Nascent] 'AI Compute & GPU Data Center Hosting Operator' <- birth 'Crypto Miners Pivoting to Data Center Colocation'
+  2026-09-15 lead 39 held@first 0.67 [Nascent] 'AI Compute & GPU Data Center Hosting Operator' <- birth 'Second-Tier Bitcoin Mining & Colocation Operators'
+  2026-09-17 lead 39 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'Silver & Mid-Cap Gold Miners Momentum Basket'
+  2026-09-14 lead 38 held@first 0.50 [Mainstream] 'Network Security & Zero-Trust Edge' <- birth 'Identity & Access Management Security Software'
+  2026-09-15 lead 38 held@first 0.67 [Nascent] 'Multifamily Apartment REITs' <- birth 'Residential Rental REIT Basket (Apartment & Single'
+  2026-09-21 lead 38 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'Small Launch Vehicle & Space Platform Manufacturer'
+  2026-08-27 lead 37 held@first 0.00 [Accelerating] 'U.S. Regional & Mid-Cap Commercial Banks' <- birth 'Electronic Components & Power Conversion Manufactu'
+  2026-09-10 lead 37 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'Agency Mortgage REITs'
+  2026-09-10 lead 37 held@first 0.33 [Fading] 'Speculative Space & Defense New Space Venture' <- birth 'Space Economy: Satellite Communications & Launch S'
+  2026-09-23 lead 36 held@first 0.33 [Mainstream] 'Property & Casualty Insurance Underwriters' <- birth 'Global Reinsurance Underwriters'
+  2026-09-23 lead 36 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'Uranium Mining & Extraction'
+  2026-09-24 lead 35 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'Onshore Oil & Gas E&P Recovery'
+  2026-09-25 lead 35 held@first 0.25 [Mainstream] 'Global Crude & Product Tanker Fleet Operators' <- birth 'Product Tanker Shipping'
+  2026-09-18 lead 34 held@first 1.00 [Fading] 'Network Security & Zero-Trust Edge' <- birth 'Enterprise Data Backup & Cyber Resilience Software'
+  2026-09-25 lead 33 held@first 0.67 [Nascent] 'Semiconductor Components & Optical Interconne' <- birth 'Fabless Semiconductor IP Licensing'
+  2026-09-04 lead 32 held@first 0.50 [Nascent] 'Multifamily Apartment REITs' <- birth 'Apartment & Single-Family Rental REITs'
+  2026-09-04 lead 28 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'Integrated Oil Majors RS Reversal'
+  2026-09-23 lead 36 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'Uranium Mining & Extraction'
+  2026-09-24 lead 35 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'Onshore Oil & Gas E&P Recovery'
+  2026-09-25 lead 35 held@first 0.25 [Mainstream] 'Global Crude & Product Tanker Fleet Operators' <- birth 'Product Tanker Shipping'
+  2026-09-18 lead 34 held@first 1.00 [Fading] 'Network Security & Zero-Trust Edge' <- birth 'Enterprise Data Backup & Cyber Resilience Software'
+  2026-09-25 lead 33 held@first 0.67 [Nascent] 'Semiconductor Components & Optical Interconne' <- birth 'Fabless Semiconductor IP Licensing'
+  2026-09-04 lead 32 held@first 0.50 [Nascent] 'Multifamily Apartment REITs' <- birth 'Apartment & Single-Family Rental REITs'
+  2026-09-04 lead 28 held@first 0.00 [Mainstream] 'Wealth Management & Retail Brokerage Platform' <- birth 'Integrated Oil Majors RS Reversal'
+
+--- #491 miner births since 06-01 (>=2 miners among founders) ---
+  2026-07-08 lead 2 first-sighting 2026-07-06: held 0.40 by [Fading] 'Crypto Asset Recovery' <- 'Bitcoin Mining & Crypto Infrastructure Operators' ['CIFR', 'CORZ', 'HUT', 'IREN', 'WULF']
+  2026-08-10 lead 24 first-sighting 2026-07-07: held 0.14 by [Fading] 'Crypto Asset Recovery' <- 'Emerging Bitcoin & AI Cloud Compute Miners' ['CLSK', 'CORZ', 'IREN', 'MARA', 'NBIS', 'RIOT', 'WULF']
+  2026-08-12 lead 27 first-sighting 2026-07-06: held 0.38 by [Fading] 'Crypto Asset Recovery' <- 'Bitcoin Mining & HPC Compute Pivot Operators' ['APLD', 'CIFR', 'CLSK', 'CORZ', 'HUT', 'MARA', 'RIOT', 'WULF']
+  2026-08-20 lead 33 first-sighting 2026-07-06: held 0.33 by [Fading] 'Crypto Asset Recovery' <- 'Bitcoin Mining & Digital Asset Infrastructure' ['APLD', 'BTDR', 'CIFR', 'CLSK', 'CORZ', 'HUT', 'MARA', 'RIOT', 'WULF']
+  2026-08-31 lead 40 first-sighting 2026-07-06: held 0.25 by [Fading] 'Crypto Asset Recovery' <- 'Emerging Bitcoin Miners Diversifying into AI/HPC Hostin' ['APLD', 'CIFR', 'CORZ', 'RIOT']
+  2026-09-15 lead 39 first-sighting 2026-07-21: held 0.67 by [Nascent] 'AI Compute & GPU Data Center Hosting Operators' <- 'Crypto Miners Pivoting to Data Center Colocation' ['CORZ', 'HUT', 'WULF']
+  2026-09-15 lead 39 first-sighting 2026-07-21: held 0.67 by [Nascent] 'AI Compute & GPU Data Center Hosting Operators' <- 'Second-Tier Bitcoin Mining & Colocation Operators' ['CORZ', 'RIOT', 'WULF']
+
+--- all births 06-01..09-25 ---
+n 164 median 27.0 held on some sighting night 79 clean median 26 clean n 85
+births at the 40-session lookback cap (lead>=39), last-30d set: 11 of 52
+births at the 40-session lookback cap (lead>=39), last-30d set: 11 of 52
+
+--- held by ONE live theme (>= half the founders) on ANY board night from first sighting to the night before birth ---
+last-30d births with pre-birth cluster: 52 ; group held by a live theme on some night in the lead window: 43
+never held in the lead window: n 9 median lead 37 >10: 8
+  miner birth 2026-08-31 Emerging Bitcoin Miners Diversifying into AI/HPC H lead 40 held: (datetime.date(2026, 7, 8), 'Bitcoin Mining & Crypto Infrastructure Operators', 'Nascent')
+  miner birth 2026-09-15 Crypto Miners Pivoting to Data Center Colocation lead 39 held: (datetime.date(2026, 7, 21), 'AI Compute & GPU Data Center Hosting Operators', 'Nascent')
+  miner birth 2026-09-15 Second-Tier Bitcoin Mining & Colocation Operators lead 39 held: (datetime.date(2026, 7, 21), 'AI Compute & GPU Data Center Hosting Operators', 'Nascent')

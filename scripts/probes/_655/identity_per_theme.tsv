@@ -1,0 +1,237 @@
+variant	theme	stage	source	method	named	best_alt	n_members	n_judgeable	F_named	F_alt	gap	share_prefer_alt	sep	named_rank	verdict	named_ref_size	alt_ref_size
+A	AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers	Mainstream	live	haiku	E-AIINFRA	E-AISEMI	7	7	0.624	0.777	0.153	0.86	0.778	3	UNJUDGEABLE_COLLINEAR	5	8
+A	AI data-center power buildout	Nascent	shadow_promoted	haiku	E-AIINFRA	E-AISEMI	7	7	0.602	0.592	-0.010	0.57	0.819	1	CONSISTENT	6	8
+A	AI-Driven Diagnostics & Imaging Re-Rating	Mainstream	live	haiku	E-MEDTECH	E-BIO	9	9	0.369	0.221	-0.148	0.11	0.314	1	CONSISTENT	2	3
+A	AI-Driven Memory & Storage Supply Shortage	Mainstream	live	haiku	E-AISEMI	E-AIINFRA	7	7	0.714	0.701	-0.012	0.57	0.758	1	CONSISTENT	4	6
+A	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Fading	live	haiku	E-SAAS	E-CYBR	18	18	0.572	0.463	-0.110	0.06	0.639	1	CONSISTENT	4	11
+A	AI Server Power & Signal-Integrity Analog ICs	Fading	live	haiku	E-AISEMI	E-AIINFRA	3	3	0.770	0.668	-0.102	0.00	0.819	1	CONSISTENT	8	6
+A	Annuity-Focused Insurers	Mainstream	live	haiku	E-INS	E-COMM	4	4	0.145	0.360	0.215	1.00	0.351	3	MISMATCH	3	3
+A	Autonomous Vehicle & ADAS Technology Enablers	Nascent	live	haiku	E-ROBOT	E-AISEMI	3	3	0.505	0.552	0.046	1.00	0.594	3	CONSISTENT	3	8
+A	Bank Stocks: Rising-Rate NIM Expansion	Fading	live	haiku	E-BANKFIN	E-TRANS	47	47	-0.162	0.414	0.576	0.77	-0.031	12	MISMATCH	4	3
+A	Bitcoin Balance Sheet Proxies	Nascent	live	haiku	E-CRYPTO	E-BANKFIN	4	4	0.445	0.609	0.164	1.00	0.412	2	MISMATCH	2	3
+A	Bitcoin Holding & Trading Proxy Equities	Mainstream	live	haiku	E-CRYPTO	E-BANKFIN	3	3	0.682	0.631	-0.050	0.00	0.534	1	CONSISTENT	3	3
+A	Bitcoin Mining Stocks Rotation Reversal	Nascent	live	haiku	E-CRYPTO	E-AISEMI	9	9	0.412	0.598	0.186	0.78	0.180	5	MISMATCH	1	8
+A	Bitcoin Treasury & Crypto Proxy Equities Correlation Basket	Mainstream	live	haiku	E-CRYPTO	E-BANKFIN	4	4	0.699	0.711	0.012	0.50	0.632	2	CONSISTENT	3	4
+A	Brazilian Fintech & Digital Payments	Fading	live	haiku	E-BANKFIN	E-COMM	2	2	0.157	0.232	0.075	1.00	0.229	3	CONSISTENT	4	3
+A	Building Products Distribution & Supply	Fading	live	haiku	E-INDL	E-REIT	2	2	-0.057	0.447	0.503	1.00	-0.317	19	MISMATCH	3	3
+A	Business Development Companies & Private Credit Lenders	Nascent	live	haiku	E-BANKFIN	E-TRANS	7	7	-0.127	0.210	0.337	1.00	-0.031	15	MISMATCH	4	3
+A	Canadian Big Banks	Mainstream	live	haiku	E-BANKFIN	E-COMM	5	5	-0.059	0.172	0.231	1.00	0.229	13	MISMATCH	4	3
+A	Cardiac & Bioelectric Ablation Device Innovators	Mainstream	live	haiku	E-MEDTECH	E-CONS	2	2	0.164	0.283	0.119	1.00	0.151	8	MISMATCH	2	3
+A	Cloud Application Delivery & Observability Infrastructure	Mainstream	live	haiku	E-SAAS	E-CYBR	4	4	0.336	0.491	0.155	1.00	0.602	2	UNJUDGEABLE_COLLINEAR	5	11
+A	Cloud Application Software Rotation (Oversold Turning Up)	Fading	live	haiku	E-SAAS	E-CYBR	3	3	0.586	0.386	-0.201	0.00	0.642	1	CONSISTENT	6	11
+A	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	live	haiku	E-SAAS	E-CYBR	4	4	0.621	0.461	-0.160	0.00	0.642	1	CONSISTENT	6	11
+A	Cloud Data Storage & Analytics Infrastructure	Mainstream	live	haiku	E-SAAS	E-CYBR	4	4	0.506	0.386	-0.120	0.50	0.570	1	CONSISTENT	4	11
+A	Cloud Supply Chain & Warehouse Management Software	Mainstream	live	haiku	E-SAAS	E-CYBR	3	3	0.580	0.302	-0.278	0.00	0.642	1	CONSISTENT	6	11
+A	Coal Mining Producers	Fading	live	keyword	E-METAL	E-ENER	4	4	0.426	0.260	-0.166	0.00	0.351	1	CONSISTENT	3	3
+A	Commercial, Office & Home Furniture Retailers and Manufacturers	Fading	live	haiku	E-CONS	E-REIT	5	5	0.169	0.423	0.253	1.00	0.279	4	MISMATCH	3	3
+A	Consumer PC & Gaming Hardware Refresh Cycle	Mainstream	live	haiku	E-CONS	E-TRANS	3	3	0.058	0.193	0.135	0.67	0.100	10	MISMATCH	3	3
+A	Copper Mining & Production	Mainstream	live	haiku	E-METAL	E-AISEMI	7	7	0.618	0.452	-0.166	0.00	0.310	1	CONSISTENT	3	8
+A	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	live	haiku	E-SAAS	E-COMM	3	3	0.256	0.469	0.213	0.67	0.140	5	MISMATCH	6	3
+A	Crude & Product Tanker Shipping	Mainstream	live	haiku	E-TRANS	E-CONS	7	7	-0.140	0.093	0.233	1.00	0.100	17	MISMATCH	3	3
+A	Customer Engagement & Marketing/CX SaaS Platforms	Fading	live	haiku	E-SAAS	E-CYBR	2	2	0.714	0.559	-0.155	0.00	0.642	1	CONSISTENT	6	11
+A	Data Backup & Cyber Resiliency Software	Nascent	live	haiku	E-CYBR	E-SAAS	3	3	0.474	0.325	-0.149	0.00	0.642	1	CONSISTENT	11	6
+A	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	live	haiku	E-DEF	E-INDL	3	3	0.329	0.527	0.198	0.67	0.240	5	MISMATCH	3	3
+A	Defense Intelligence & Cybersecurity IT Contractors	Mainstream	live	haiku	E-DEF	E-SAAS	7	7	0.292	0.249	-0.043	0.43	-0.052	1	CONSISTENT	3	6
+A	Defensive Consumer Staples Rotation	Fading	live	keyword	E-CONS	E-REIT	18	18	0.289	0.347	0.058	0.61	0.279	3	CONSISTENT	3	3
+A	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Fading	live	haiku	E-MEDTECH	E-HLTH	3	3	0.200	0.252	0.052	0.33	0.118	3	CONSISTENT	2	3
+A	Digital Advertising & Ad-Tech Monetization Platforms	Mainstream	live	haiku	E-COMM	E-SAAS	3	3	0.155	0.389	0.234	0.67	0.140	6	MISMATCH	3	6
+A	Digital Insurance Distribution & InsurTech Platforms	Fading	live	haiku	E-INS	E-QUANTUM	2	2	0.125	0.350	0.225	1.00	0.031	9	MISMATCH	3	4
+A	Direct-to-Consumer Health & Wellness Subscription Brands	Nascent	shadow_promoted	haiku	E-CONS	E-BIO	3	3	-0.026	0.352	0.378	1.00	0.137	17	MISMATCH	3	3
+A	Diversified Power Generation Capacity Expansion for AI Electricity Demand	Fading	live	haiku	E-AIINFRA	E-HLTH	3	3	-0.203	0.260	0.463	0.67	-0.398	15	MISMATCH	6	3
+A	Diversified Property & Casualty Insurance Carriers	Nascent	live	haiku	E-INS	E-HLTH	5	5	0.102	0.509	0.407	1.00	0.046	6	MISMATCH	2	3
+A	Electric & Unmanned Aircraft Innovators	Fading	live	haiku	E-DEF	E-QUANTUM	2	2	0.421	0.324	-0.097	0.00	0.412	1	CONSISTENT	3	4
+A	Electronics Manufacturing Services (EMS) Providers	Nascent	live	keyword	E-HLTH	E-AISEMI	4	4	-0.350	0.722	1.072	1.00	-0.521	20	MISMATCH	3	8
+A	Emerging AI Compute & Cloud Infrastructure Platforms	Nascent	live	haiku	E-AIINFRA	E-AISEMI	5	5	0.715	0.623	-0.092	0.20	0.819	1	CONSISTENT	6	8
+A	Emerging Medical Device Innovators Breakout	Mainstream	live	haiku	E-MEDTECH	E-COMM	3	3	0.124	0.217	0.092	0.67	-0.143	6	CONSISTENT	2	3
+A	Emerging Quantum Computing Rally	Mainstream	live	haiku	E-QUANTUM		5	5	nan	nan	nan	nan	nan		UNJUDGEABLE	0	
+A	Energy Infrastructure & Services Complex	Fading	live	haiku	E-ENER	E-MEDTECH	6	6	0.069	0.025	-0.045	0.33	0.243	1	CONSISTENT	3	2
+A	Energy Supply Disruption: Middle East Geopolitical Risk	Fading	live	haiku	E-ENER	E-MEDTECH	15	15	0.102	0.163	0.061	0.67	0.243	2	CONSISTENT	3	2
+A	Enterprise HR & Workforce Management SaaS	Nascent	live	haiku	E-SAAS	E-COMM	5	5	0.472	0.353	-0.119	0.40	0.140	1	CONSISTENT	6	3
+A	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	live	haiku	E-AIINFRA	E-AISEMI	8	8	0.480	0.549	0.069	0.50	0.808	2	CONSISTENT	3	8
+A	Enterprise Unstructured Data Storage Infrastructure	Fading	live	keyword	E-INDL	E-SAAS	3	3	-0.545	0.598	1.143	0.67	-0.394	19	MISMATCH	3	6
+A	Fabless Semiconductor IP Licensing	Nascent	shadow_promoted	haiku	E-AISEMI	E-AIINFRA	3	3	0.769	0.621	-0.148	0.00	0.830	1	CONSISTENT	7	6
+A	Farm Economy Value Chain Re-Rating	Fading	live	unassigned			4	4	nan	nan	nan	nan	nan		UNJUDGEABLE		
+A	Fintech & Digital Finance Sector Re-rating on Fed Easing	Fading	live	haiku	E-BANKFIN	E-COMM	20	20	0.108	0.361	0.253	0.80	0.141	7	MISMATCH	3	3
+A	For-Profit Postsecondary & Vocational Education	Mainstream	live	unassigned			5	5	nan	nan	nan	nan	nan		UNJUDGEABLE		
+A	Front-End Semiconductor Fabrication Equipment Makers	Nascent	live	haiku	E-AISEMI	E-AIINFRA	4	4	0.797	0.721	-0.076	0.00	0.819	1	CONSISTENT	8	6
+A	Genetic Medicine: Gene Editing & Gene Therapy Innovators	Fading	live	haiku	E-BIO	E-METAL	4	4	0.416	0.301	-0.115	0.00	0.417	1	CONSISTENT	3	3
+A	Genomics & DNA Sequencing Tools	Mainstream	live	haiku	E-MEDTECH	E-METAL	12	12	0.101	0.318	0.217	1.00	-0.036	10	MISMATCH	1	3
+A	Global Agriculture Value Chain Recovery	Fading	live	unassigned			3	3	nan	nan	nan	nan	nan		UNJUDGEABLE		
+A	Global Oil & Gas Producers and Refiners	Fading	live	haiku	E-ENER	E-MEDTECH	17	17	-0.311	0.127	0.437	1.00	0.190	18	MISMATCH	2	2
+A	Global Steel & Metal Producers Recovery	Fading	live	haiku	E-METAL	E-HLTH	5	5	0.099	0.190	0.091	0.60	-0.128	5	CONSISTENT	2	3
+A	Homebuilders & Residential Construction Supply Chain	Nascent	live	haiku	E-REIT	E-TRANS	7	7	0.701	0.373	-0.328	0.00	0.489	1	CONSISTENT	2	3
+A	Home Improvement Retail & Building Products	Fading	live	haiku	E-CONS	E-REIT	3	3	0.253	0.744	0.490	1.00	0.279	4	MISMATCH	3	3
+A	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	live	haiku	E-HLTH	E-REIT	6	6	0.203	0.330	0.127	0.67	0.098	3	MISMATCH	1	3
+A	Identity & Access Management Security Software	Fading	live	haiku	E-CYBR	E-SAAS	3	3	0.493	0.605	0.112	0.67	0.637	2	UNJUDGEABLE_COLLINEAR	10	6
+A	Industrial Construction Execution & On-Site Supply Chain	Fading	live	haiku	E-INDL	E-DEF	8	8	-0.010	0.223	0.233	0.62	0.240	12	MISMATCH	3	3
+A	Inflammatory Disease & Immunology Biologics	Fading	live	haiku	E-BIO	E-ENER	8	8	0.219	0.261	0.042	0.50	0.337	2	CONSISTENT	3	3
+A	Insurance Brokerage & Distribution Services	Fading	live	haiku	E-INS	E-HLTH	2	2	0.287	0.425	0.137	0.50	0.131	3	MISMATCH	3	3
+A	IT Consulting & Business Process Outsourcing Services	Nascent	live	keyword	E-HLTH	E-SAAS	7	7	0.334	0.496	0.162	0.86	0.108	2	MISMATCH	3	6
+A	Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound	Fading	live	haiku	E-COMM	E-ROBOT	3	3	0.342	0.204	-0.138	0.33	-0.044	1	CONSISTENT	3	3
+A	Life Insurance & Annuity Providers	Nascent	live	haiku	E-INS	E-COMM	9	9	0.207	0.343	0.137	0.78	0.351	3	MISMATCH	3	3
+A	Life Sciences & Healthcare Data/CRM Platforms	Mainstream	live	haiku	E-SAAS	E-MEDTECH	3	3	0.585	0.279	-0.306	0.33	0.232	1	CONSISTENT	6	2
+A	Life Science Tools & Analytical Instruments	Nascent	live	operator_fix	E-MEDTECH	E-REIT	15	15	0.290	0.329	0.039	0.73	0.175	2	CONSISTENT	2	3
+A	Liquid Biopsy & Molecular Cancer Diagnostics Testing	Nascent	live	haiku	E-MEDTECH	E-QUANTUM	3	3	0.197	0.315	0.118	0.33	0.108	5	CONSISTENT	2	4
+A	Live Music & Concert Promotion	Accelerating	live	haiku	E-COMM	E-CONS	4	4	0.354	0.321	-0.034	0.50	0.210	1	CONSISTENT	3	3
+A	Lodging & Hotel REITs	Nascent	live	haiku	E-REIT	E-TRANS	7	7	0.243	0.251	0.008	0.57	0.471	2	CONSISTENT	3	3
+A	Low-Cost & Regional Passenger Airline Rebound	Mainstream	live	haiku	E-TRANS	E-REIT	4	4	0.175	0.291	0.115	1.00	0.471	6	MISMATCH	3	3
+A	Marketing & Digital Presence SaaS Platforms	Fading	live	haiku	E-SAAS	E-COMM	4	4	0.555	0.348	-0.207	0.50	0.140	1	CONSISTENT	6	3
+A	Media Streaming & Entertainment Content Turnaround	Accelerating	live	haiku	E-COMM	E-DEF	3	3	0.129	0.154	0.026	0.67	-0.177	4	CONSISTENT	3	3
+A	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	live	keyword	E-MEDTECH	E-HLTH	15	15	-0.055	0.327	0.382	0.93	0.013	14	MISMATCH	1	3
+A	Mobile SoC & Wireless Connectivity Semiconductors	Mainstream	live	haiku	E-AISEMI	E-ENER	3	3	0.360	0.228	-0.132	0.00	0.269	1	CONSISTENT	8	3
+A	mRNA Vaccine & Personalized Cancer Therapy Platforms	Mainstream	live	haiku	E-BIO	E-CONS	4	4	0.513	0.363	-0.150	0.25	0.137	1	CONSISTENT	3	3
+A	Network Security & Zero-Trust Edge	Mainstream	live	haiku	E-CYBR		15	15	nan	nan	nan	nan	nan		UNJUDGEABLE	0	
+A	Non-Alcoholic Beverages & Energy Drinks	Accelerating	live	haiku	E-CONS	E-HLTH	5	5	0.374	0.394	0.020	0.80	0.166	2	CONSISTENT	3	3
+A	Offshore Drilling Rig Contractors	Nascent	shadow_promoted	haiku	E-ENER	E-METAL	4	4	0.140	0.230	0.090	0.75	0.351	3	CONSISTENT	3	3
+A	On-Site Power Generation & Distribution Equipment for Data Centers	Mainstream	live	haiku	E-AIINFRA	E-AISEMI	7	7	0.644	0.642	-0.002	0.43	0.819	1	CONSISTENT	6	8
+A	Orthopedic Surgical Devices & Instruments	Mainstream	live	haiku	E-MEDTECH	E-HLTH	4	4	0.230	0.435	0.205	0.75	0.118	6	MISMATCH	2	3
+A	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Fading	live	haiku	E-BIO	E-ENER	3	3	0.156	0.165	0.009	0.33	0.337	3	CONSISTENT	3	3
+A	Post-Acute & Home-Based Healthcare Services	Mainstream	live	haiku	E-HLTH	E-MEDTECH	5	5	0.521	0.304	-0.218	0.20	0.118	1	CONSISTENT	3	2
+A	Precious Metals Complex Rebound	Fading	live	haiku	E-METAL	E-BIO	35	35	0.118	0.419	0.301	1.00	0.060	12	MISMATCH	1	3
+A	Precious Metals Miners Velocity Breakout	Mainstream	live	haiku	E-METAL	E-BIO	3	3	0.806	0.453	-0.353	0.00	0.417	1	CONSISTENT	3	3
+A	Precision Timing & Motion Control Component Makers	Nascent	live	haiku	E-DEF	E-AISEMI	3	3	0.214	0.625	0.411	1.00	0.185	7	MISMATCH	3	8
+A	Private Mortgage Insurance	Fading	live	haiku	E-BANKFIN	E-TRANS	4	4	-0.257	0.417	0.673	1.00	-0.031	14	MISMATCH	4	3
+A	Product Tanker Shipping	Nascent	live	haiku	E-TRANS	E-CONS	4	4	-0.140	0.114	0.254	0.75	0.100	15	MISMATCH	3	3
+A	Pure-Play NAND/DRAM Memory Chip Makers	Nascent	live	haiku	E-AISEMI	E-AIINFRA	4	4	0.766	0.676	-0.090	0.00	0.814	1	CONSISTENT	7	6
+A	Rare Earth Elements Mining & Processing	Fading	live	haiku	E-METAL	E-QUANTUM	4	4	0.258	0.688	0.430	1.00	0.294	11	MISMATCH	3	4
+A	Regulated Electric Utility Defensive Rotation	Fading	live	haiku	E-INDL	E-HLTH	4	4	-0.182	0.284	0.467	1.00	-0.431	12	MISMATCH	3	3
+A	Regulated Natural Gas Distribution Utilities	Nascent	shadow_promoted	haiku	E-INDL	E-HLTH	5	5	-0.361	0.324	0.685	1.00	-0.431	15	MISMATCH	3	3
+A	Renewable & Specialty Fuels Chemical Producers	Fading	live	haiku	E-ENER	E-MEDTECH	3	3	0.117	0.041	-0.076	0.33	0.243	1	CONSISTENT	3	2
+A	Restaurant Chain Recovery	Mainstream	live	haiku	E-CONS	E-HLTH	5	5	0.413	0.199	-0.214	0.00	0.166	1	CONSISTENT	3	3
+A	RF & Analog Wireless Connectivity Semiconductor Makers	Mainstream	live	haiku	E-AISEMI	E-ENER	3	3	0.360	0.228	-0.132	0.00	0.269	1	CONSISTENT	8	3
+A	Semiconductor Design, Test & Assembly Enablement Tools	Nascent	shadow_promoted	keyword	E-AISEMI	E-AIINFRA	3	3	0.766	0.723	-0.043	0.67	0.819	1	CONSISTENT	8	6
+A	Semiconductor Equipment & Materials Velocity Surge	Nascent	live	haiku	E-AISEMI	E-AIINFRA	3	3	0.827	0.769	-0.058	0.33	0.819	1	CONSISTENT	8	6
+A	Semiconductor Foundry & Advanced Packaging Manufacturing	Mainstream	live	haiku	E-AISEMI	E-AIINFRA	5	5	0.800	0.678	-0.122	0.00	0.819	1	CONSISTENT	8	6
+A	Semiconductor Test, Yield & Assembly Supply Chain	Accelerating	live	keyword	E-AISEMI	E-AIINFRA	7	7	0.780	0.737	-0.043	0.00	0.819	1	CONSISTENT	8	6
+A	Skilled Nursing & Senior Housing Healthcare REITs	Fading	live	haiku	E-REIT	E-HLTH	4	4	0.219	0.346	0.127	0.75	0.405	3	MISMATCH	3	3
+A	Small Modular Reactor & Advanced Nuclear Fission Technology	Fading	live	haiku	E-ENER	E-QUANTUM	2	2	0.451	0.741	0.290	1.00	0.372	6	MISMATCH	3	4
+A	Small Satellite & Space Services Rotation	Nascent	shadow_promoted	haiku	E-DEF	E-QUANTUM	5	5	-0.081	0.712	0.793	1.00	-0.234	15	MISMATCH	2	4
+A	Software Development & DevOps Collaboration Platforms	Mainstream	live	haiku	E-SAAS	E-CYBR	3	3	0.518	0.513	-0.005	0.33	0.676	1	CONSISTENT	5	11
+A	Space Economy: Satellite Communications & Launch Services	Mainstream	live	haiku	E-DEF	E-QUANTUM	9	9	-0.035	0.640	0.675	1.00	-0.234	14	MISMATCH	2	4
+A	Specialty P&C Insurance Underwriters Rotation Reversal	Fading	live	haiku	E-INS	E-HLTH	15	15	0.277	0.423	0.146	0.93	0.131	4	MISMATCH	3	3
+A	Specialty Retail Short-Squeeze Momentum Basket	Mainstream	live	keyword	E-CONS	E-HLTH	3	3	0.099	0.272	0.172	1.00	0.166	4	MISMATCH	3	3
+A	Trucking & Freight Carrier Rebound	Fading	live	haiku	E-TRANS	E-CYBR	2	2	0.515	0.223	-0.292	0.00	0.084	1	CONSISTENT	3	11
+A	Uranium Mining & Extraction	Fading	live	haiku	E-ENER	E-QUANTUM	2	2	0.529	0.653	0.124	1.00	0.372	3	MISMATCH	3	4
+A	U.S. Apparel & Fashion Recovery	Mainstream	live	haiku	E-CONS	E-REIT	9	9	0.238	0.234	-0.003	0.67	0.279	1	CONSISTENT	3	3
+A	U.S. Domestic Passenger Airlines	Nascent	live	haiku	E-TRANS	E-COMM	4	4	-0.176	0.295	0.471	1.00	-0.009	20	MISMATCH	2	3
+A	Vaccine & Antiviral Therapeutics Rebound	Mainstream	live	haiku	E-BIO	E-BANKFIN	4	4	0.601	0.286	-0.315	0.00	0.516	1	CONSISTENT	3	4
+A	Value Retail & Grocery Wholesale Trade-Down Basket	Nascent	shadow_promoted	haiku	E-CONS	E-REIT	3	3	0.332	0.307	-0.025	0.67	0.279	1	CONSISTENT	3	3
+A	Wealth Management & Retail Brokerage Platforms	Mainstream	live	haiku	E-BANKFIN	E-ROBOT	12	12	0.187	0.191	0.005	0.33	0.428	2	CONSISTENT	3	3
+B	AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers	Mainstream	live	haiku	E-AIINFRA	E-AISEMI	7	7	0.625	0.777	0.151	0.86	0.733	3	UNJUDGEABLE_COLLINEAR	4	8
+B	AI data-center power buildout	Nascent	shadow_promoted	haiku	E-AIINFRA	E-AISEMI	7	7	0.530	0.592	0.062	0.71	0.733	3	CONSISTENT	4	8
+B	AI-Driven Diagnostics & Imaging Re-Rating	Mainstream	live	haiku	E-MEDTECH	E-BIO	9	9	0.369	0.221	-0.148	0.11	0.314	1	CONSISTENT	2	3
+B	AI-Driven Memory & Storage Supply Shortage	Mainstream	live	haiku	E-AISEMI	E-INDL	7	7	0.714	0.619	-0.095	0.29	0.599	1	CONSISTENT	4	3
+B	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Fading	live	haiku	E-SAAS	E-CYBR	18	18	0.572	0.463	-0.110	0.06	0.639	1	CONSISTENT	4	11
+B	AI Server Power & Signal-Integrity Analog ICs	Fading	live	haiku	E-AISEMI	E-INDL	3	3	0.770	0.613	-0.157	0.00	0.679	1	CONSISTENT	8	3
+B	Annuity-Focused Insurers	Mainstream	live	haiku	E-INS	E-COMM	4	4	0.145	0.360	0.215	1.00	0.351	3	MISMATCH	3	3
+B	Autonomous Vehicle & ADAS Technology Enablers	Nascent	live	haiku	E-ROBOT	E-AISEMI	3	3	0.505	0.552	0.046	1.00	0.594	3	CONSISTENT	3	8
+B	Bank Stocks: Rising-Rate NIM Expansion	Fading	live	haiku	E-BANKFIN	E-TRANS	47	47	-0.162	0.414	0.576	0.77	-0.031	12	MISMATCH	4	3
+B	Bitcoin Balance Sheet Proxies	Nascent	live	haiku	E-CRYPTO	E-BANKFIN	4	4	0.699	0.609	-0.090	0.25	0.453	1	CONSISTENT	1	3
+B	Bitcoin Holding & Trading Proxy Equities	Mainstream	live	haiku	E-CRYPTO	E-BANKFIN	3	3	0.700	0.631	-0.069	0.33	0.453	1	CONSISTENT	1	3
+B	Bitcoin Mining Stocks Rotation Reversal	Nascent	live	haiku	E-CRYPTO	E-AISEMI	9	9	0.331	0.598	0.267	0.78	0.065	7	MISMATCH	1	8
+B	Bitcoin Treasury & Crypto Proxy Equities Correlation Basket	Mainstream	live	haiku	E-CRYPTO	E-BANKFIN	4	4	0.697	0.711	0.014	0.50	0.618	2	CONSISTENT	1	4
+B	Brazilian Fintech & Digital Payments	Fading	live	haiku	E-BANKFIN	E-COMM	2	2	0.157	0.232	0.075	1.00	0.229	3	CONSISTENT	4	3
+B	Building Products Distribution & Supply	Fading	live	haiku	E-INDL	E-REIT	2	2	-0.057	0.447	0.503	1.00	-0.317	19	MISMATCH	3	3
+B	Business Development Companies & Private Credit Lenders	Nascent	live	haiku	E-BANKFIN	E-TRANS	7	7	-0.127	0.210	0.337	1.00	-0.031	16	MISMATCH	4	3
+B	Canadian Big Banks	Mainstream	live	haiku	E-BANKFIN	E-COMM	5	5	-0.059	0.172	0.231	1.00	0.229	13	MISMATCH	4	3
+B	Cardiac & Bioelectric Ablation Device Innovators	Mainstream	live	haiku	E-MEDTECH	E-CONS	2	2	0.164	0.283	0.119	1.00	0.151	8	MISMATCH	2	3
+B	Cloud Application Delivery & Observability Infrastructure	Mainstream	live	haiku	E-SAAS	E-CYBR	4	4	0.336	0.491	0.155	1.00	0.602	2	UNJUDGEABLE_COLLINEAR	5	11
+B	Cloud Application Software Rotation (Oversold Turning Up)	Fading	live	haiku	E-SAAS	E-CYBR	3	3	0.586	0.386	-0.201	0.00	0.642	1	CONSISTENT	6	11
+B	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	live	haiku	E-SAAS	E-CYBR	4	4	0.621	0.461	-0.160	0.00	0.642	1	CONSISTENT	6	11
+B	Cloud Data Storage & Analytics Infrastructure	Mainstream	live	haiku	E-SAAS	E-CYBR	4	4	0.506	0.386	-0.120	0.50	0.570	1	CONSISTENT	4	11
+B	Cloud Supply Chain & Warehouse Management Software	Mainstream	live	haiku	E-SAAS	E-CYBR	3	3	0.580	0.302	-0.278	0.00	0.642	1	CONSISTENT	6	11
+B	Coal Mining Producers	Fading	live	keyword	E-METAL	E-ENER	4	4	0.426	0.260	-0.166	0.00	0.351	1	CONSISTENT	3	3
+B	Commercial, Office & Home Furniture Retailers and Manufacturers	Fading	live	haiku	E-CONS	E-REIT	5	5	0.169	0.423	0.253	1.00	0.279	4	MISMATCH	3	3
+B	Consumer PC & Gaming Hardware Refresh Cycle	Mainstream	live	haiku	E-CONS	E-TRANS	3	3	0.058	0.193	0.135	0.67	0.100	10	MISMATCH	3	3
+B	Copper Mining & Production	Mainstream	live	haiku	E-METAL	E-AISEMI	7	7	0.618	0.452	-0.166	0.00	0.310	1	CONSISTENT	3	8
+B	Corporate Spend, Expense Management & Financial Operations Software	Mainstream	live	haiku	E-SAAS	E-COMM	3	3	0.256	0.469	0.213	0.67	0.140	5	MISMATCH	6	3
+B	Crude & Product Tanker Shipping	Mainstream	live	haiku	E-TRANS	E-CONS	7	7	-0.140	0.093	0.233	1.00	0.100	17	MISMATCH	3	3
+B	Customer Engagement & Marketing/CX SaaS Platforms	Fading	live	haiku	E-SAAS	E-CYBR	2	2	0.714	0.559	-0.155	0.00	0.642	1	CONSISTENT	6	11
+B	Data Backup & Cyber Resiliency Software	Nascent	live	haiku	E-CYBR	E-SAAS	3	3	0.474	0.325	-0.149	0.00	0.642	1	CONSISTENT	11	6
+B	Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	live	haiku	E-DEF	E-INDL	3	3	0.329	0.527	0.198	0.67	0.240	4	MISMATCH	3	3
+B	Defense Intelligence & Cybersecurity IT Contractors	Mainstream	live	haiku	E-DEF	E-SAAS	7	7	0.292	0.249	-0.043	0.43	-0.052	1	CONSISTENT	3	6
+B	Defensive Consumer Staples Rotation	Fading	live	keyword	E-CONS	E-REIT	18	18	0.289	0.347	0.058	0.61	0.279	3	CONSISTENT	3	3
+B	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Fading	live	haiku	E-MEDTECH	E-HLTH	3	3	0.200	0.252	0.052	0.33	0.118	3	CONSISTENT	2	3
+B	Digital Advertising & Ad-Tech Monetization Platforms	Mainstream	live	haiku	E-COMM	E-SAAS	3	3	0.155	0.389	0.234	0.67	0.140	6	MISMATCH	3	6
+B	Digital Insurance Distribution & InsurTech Platforms	Fading	live	haiku	E-INS	E-QUANTUM	2	2	0.125	0.350	0.225	1.00	0.031	9	MISMATCH	3	4
+B	Direct-to-Consumer Health & Wellness Subscription Brands	Nascent	shadow_promoted	haiku	E-CONS	E-BIO	3	3	-0.026	0.352	0.378	1.00	0.137	16	MISMATCH	3	3
+B	Diversified Power Generation Capacity Expansion for AI Electricity Demand	Fading	live	haiku	E-AIINFRA	E-HLTH	3	3	-0.111	0.260	0.371	0.67	-0.364	13	MISMATCH	4	3
+B	Diversified Property & Casualty Insurance Carriers	Nascent	live	haiku	E-INS	E-HLTH	5	5	0.102	0.509	0.407	1.00	0.046	6	MISMATCH	2	3
+B	Electric & Unmanned Aircraft Innovators	Fading	live	haiku	E-DEF	E-QUANTUM	2	2	0.421	0.324	-0.097	0.00	0.412	1	CONSISTENT	3	4
+B	Electronics Manufacturing Services (EMS) Providers	Nascent	live	keyword	E-HLTH	E-AISEMI	4	4	-0.350	0.722	1.072	1.00	-0.521	20	MISMATCH	3	8
+B	Emerging AI Compute & Cloud Infrastructure Platforms	Nascent	live	haiku	E-AIINFRA	E-AISEMI	5	5	0.660	0.623	-0.037	0.60	0.701	1	CONSISTENT	3	8
+B	Emerging Medical Device Innovators Breakout	Mainstream	live	haiku	E-MEDTECH	E-COMM	3	3	0.124	0.217	0.092	0.67	-0.143	6	CONSISTENT	2	3
+B	Emerging Quantum Computing Rally	Mainstream	live	haiku	E-QUANTUM		5	5	nan	nan	nan	nan	nan		UNJUDGEABLE	0	
+B	Energy Infrastructure & Services Complex	Fading	live	haiku	E-ENER	E-MEDTECH	6	6	0.069	0.025	-0.045	0.33	0.243	1	CONSISTENT	3	2
+B	Energy Supply Disruption: Middle East Geopolitical Risk	Fading	live	haiku	E-ENER	E-MEDTECH	15	15	0.102	0.163	0.061	0.67	0.243	2	CONSISTENT	3	2
+B	Enterprise HR & Workforce Management SaaS	Nascent	live	haiku	E-SAAS	E-COMM	5	5	0.472	0.353	-0.119	0.40	0.140	1	CONSISTENT	6	3
+B	Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	live	haiku	E-AIINFRA	E-AISEMI	8	8	0.503	0.549	0.046	0.62	0.696	2	CONSISTENT	3	8
+B	Enterprise Unstructured Data Storage Infrastructure	Fading	live	keyword	E-INDL	E-SAAS	3	3	-0.545	0.598	1.143	0.67	-0.394	18	MISMATCH	3	6
+B	Fabless Semiconductor IP Licensing	Nascent	shadow_promoted	haiku	E-AISEMI	E-QUANTUM	3	3	0.769	0.576	-0.193	0.00	0.577	1	CONSISTENT	7	4
+B	Farm Economy Value Chain Re-Rating	Fading	live	unassigned			4	4	nan	nan	nan	nan	nan		UNJUDGEABLE		
+B	Fintech & Digital Finance Sector Re-rating on Fed Easing	Fading	live	haiku	E-BANKFIN	E-COMM	20	20	0.108	0.361	0.253	0.80	0.141	7	MISMATCH	3	3
+B	For-Profit Postsecondary & Vocational Education	Mainstream	live	unassigned			5	5	nan	nan	nan	nan	nan		UNJUDGEABLE		
+B	Front-End Semiconductor Fabrication Equipment Makers	Nascent	live	haiku	E-AISEMI	E-INDL	4	4	0.797	0.705	-0.092	0.00	0.679	1	CONSISTENT	8	3
+B	Genetic Medicine: Gene Editing & Gene Therapy Innovators	Fading	live	haiku	E-BIO	E-METAL	4	4	0.416	0.301	-0.115	0.00	0.417	1	CONSISTENT	3	3
+B	Genomics & DNA Sequencing Tools	Mainstream	live	haiku	E-MEDTECH	E-METAL	12	12	0.101	0.318	0.217	1.00	-0.036	10	MISMATCH	1	3
+B	Global Agriculture Value Chain Recovery	Fading	live	unassigned			3	3	nan	nan	nan	nan	nan		UNJUDGEABLE		
+B	Global Oil & Gas Producers and Refiners	Fading	live	haiku	E-ENER	E-MEDTECH	17	17	-0.311	0.127	0.437	1.00	0.190	18	MISMATCH	2	2
+B	Global Steel & Metal Producers Recovery	Fading	live	haiku	E-METAL	E-HLTH	5	5	0.099	0.190	0.091	0.60	-0.128	6	CONSISTENT	2	3
+B	Homebuilders & Residential Construction Supply Chain	Nascent	live	haiku	E-REIT	E-TRANS	7	7	0.701	0.373	-0.328	0.00	0.489	1	CONSISTENT	2	3
+B	Home Improvement Retail & Building Products	Fading	live	haiku	E-CONS	E-REIT	3	3	0.253	0.744	0.490	1.00	0.279	4	MISMATCH	3	3
+B	Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	live	haiku	E-HLTH	E-REIT	6	6	0.203	0.330	0.127	0.67	0.098	3	MISMATCH	1	3
+B	Identity & Access Management Security Software	Fading	live	haiku	E-CYBR	E-SAAS	3	3	0.493	0.605	0.112	0.67	0.637	2	UNJUDGEABLE_COLLINEAR	10	6
+B	Industrial Construction Execution & On-Site Supply Chain	Fading	live	haiku	E-INDL	E-DEF	8	8	-0.010	0.223	0.233	0.62	0.240	12	MISMATCH	3	3
+B	Inflammatory Disease & Immunology Biologics	Fading	live	haiku	E-BIO	E-ENER	8	8	0.219	0.261	0.042	0.50	0.337	2	CONSISTENT	3	3
+B	Insurance Brokerage & Distribution Services	Fading	live	haiku	E-INS	E-HLTH	2	2	0.287	0.425	0.137	0.50	0.131	3	MISMATCH	3	3
+B	IT Consulting & Business Process Outsourcing Services	Nascent	live	keyword	E-HLTH	E-SAAS	7	7	0.334	0.496	0.162	0.86	0.108	2	MISMATCH	3	6
+B	Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound	Fading	live	haiku	E-COMM	E-ROBOT	3	3	0.342	0.204	-0.138	0.33	-0.044	1	CONSISTENT	3	3
+B	Life Insurance & Annuity Providers	Nascent	live	haiku	E-INS	E-COMM	9	9	0.207	0.343	0.137	0.78	0.351	3	MISMATCH	3	3
+B	Life Sciences & Healthcare Data/CRM Platforms	Mainstream	live	haiku	E-SAAS	E-MEDTECH	3	3	0.585	0.279	-0.306	0.33	0.232	1	CONSISTENT	6	2
+B	Life Science Tools & Analytical Instruments	Nascent	live	operator_fix	E-MEDTECH	E-REIT	15	15	0.290	0.329	0.039	0.73	0.175	2	CONSISTENT	2	3
+B	Liquid Biopsy & Molecular Cancer Diagnostics Testing	Nascent	live	haiku	E-MEDTECH	E-QUANTUM	3	3	0.197	0.315	0.118	0.33	0.108	5	CONSISTENT	2	4
+B	Live Music & Concert Promotion	Accelerating	live	haiku	E-COMM	E-CONS	4	4	0.354	0.321	-0.034	0.50	0.210	1	CONSISTENT	3	3
+B	Lodging & Hotel REITs	Nascent	live	haiku	E-REIT	E-TRANS	7	7	0.243	0.251	0.008	0.57	0.471	2	CONSISTENT	3	3
+B	Low-Cost & Regional Passenger Airline Rebound	Mainstream	live	haiku	E-TRANS	E-REIT	4	4	0.175	0.291	0.115	1.00	0.471	6	MISMATCH	3	3
+B	Marketing & Digital Presence SaaS Platforms	Fading	live	haiku	E-SAAS	E-COMM	4	4	0.555	0.348	-0.207	0.50	0.140	1	CONSISTENT	6	3
+B	Media Streaming & Entertainment Content Turnaround	Accelerating	live	haiku	E-COMM	E-DEF	3	3	0.129	0.154	0.026	0.67	-0.177	4	CONSISTENT	3	3
+B	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	live	keyword	E-MEDTECH	E-HLTH	15	15	-0.055	0.327	0.382	0.93	0.013	15	MISMATCH	1	3
+B	Mobile SoC & Wireless Connectivity Semiconductors	Mainstream	live	haiku	E-AISEMI	E-ENER	3	3	0.360	0.228	-0.132	0.00	0.269	1	CONSISTENT	8	3
+B	mRNA Vaccine & Personalized Cancer Therapy Platforms	Mainstream	live	haiku	E-BIO	E-CONS	4	4	0.513	0.363	-0.150	0.25	0.137	1	CONSISTENT	3	3
+B	Network Security & Zero-Trust Edge	Mainstream	live	haiku	E-CYBR		15	15	nan	nan	nan	nan	nan		UNJUDGEABLE	0	
+B	Non-Alcoholic Beverages & Energy Drinks	Accelerating	live	haiku	E-CONS	E-HLTH	5	5	0.374	0.394	0.020	0.80	0.166	2	CONSISTENT	3	3
+B	Offshore Drilling Rig Contractors	Nascent	shadow_promoted	haiku	E-ENER	E-METAL	4	4	0.140	0.230	0.090	0.75	0.351	3	CONSISTENT	3	3
+B	On-Site Power Generation & Distribution Equipment for Data Centers	Mainstream	live	haiku	E-AIINFRA	E-AISEMI	7	7	0.615	0.642	0.027	0.71	0.733	2	CONSISTENT	4	8
+B	Orthopedic Surgical Devices & Instruments	Mainstream	live	haiku	E-MEDTECH	E-HLTH	4	4	0.230	0.435	0.205	0.75	0.118	6	MISMATCH	2	3
+B	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Fading	live	haiku	E-BIO	E-ENER	3	3	0.156	0.165	0.009	0.33	0.337	3	CONSISTENT	3	3
+B	Post-Acute & Home-Based Healthcare Services	Mainstream	live	haiku	E-HLTH	E-MEDTECH	5	5	0.521	0.304	-0.218	0.20	0.118	1	CONSISTENT	3	2
+B	Precious Metals Complex Rebound	Fading	live	haiku	E-METAL	E-BIO	35	35	0.118	0.419	0.301	1.00	0.060	12	MISMATCH	1	3
+B	Precious Metals Miners Velocity Breakout	Mainstream	live	haiku	E-METAL	E-BIO	3	3	0.806	0.453	-0.353	0.00	0.417	1	CONSISTENT	3	3
+B	Precision Timing & Motion Control Component Makers	Nascent	live	haiku	E-DEF	E-AISEMI	3	3	0.214	0.625	0.411	1.00	0.185	6	MISMATCH	3	8
+B	Private Mortgage Insurance	Fading	live	haiku	E-BANKFIN	E-TRANS	4	4	-0.257	0.417	0.673	1.00	-0.031	15	MISMATCH	4	3
+B	Product Tanker Shipping	Nascent	live	haiku	E-TRANS	E-CONS	4	4	-0.140	0.114	0.254	0.75	0.100	16	MISMATCH	3	3
+B	Pure-Play NAND/DRAM Memory Chip Makers	Nascent	live	haiku	E-AISEMI	E-INDL	4	4	0.766	0.624	-0.142	0.00	0.661	1	CONSISTENT	7	3
+B	Rare Earth Elements Mining & Processing	Fading	live	haiku	E-METAL	E-QUANTUM	4	4	0.258	0.688	0.430	1.00	0.294	10	MISMATCH	3	4
+B	Regulated Electric Utility Defensive Rotation	Fading	live	haiku	E-INDL	E-HLTH	4	4	-0.182	0.284	0.467	1.00	-0.431	13	MISMATCH	3	3
+B	Regulated Natural Gas Distribution Utilities	Nascent	shadow_promoted	haiku	E-INDL	E-HLTH	5	5	-0.361	0.324	0.685	1.00	-0.431	16	MISMATCH	3	3
+B	Renewable & Specialty Fuels Chemical Producers	Fading	live	haiku	E-ENER	E-MEDTECH	3	3	0.117	0.041	-0.076	0.33	0.243	1	CONSISTENT	3	2
+B	Restaurant Chain Recovery	Mainstream	live	haiku	E-CONS	E-HLTH	5	5	0.413	0.199	-0.214	0.00	0.166	1	CONSISTENT	3	3
+B	RF & Analog Wireless Connectivity Semiconductor Makers	Mainstream	live	haiku	E-AISEMI	E-ENER	3	3	0.360	0.228	-0.132	0.00	0.269	1	CONSISTENT	8	3
+B	Semiconductor Design, Test & Assembly Enablement Tools	Nascent	shadow_promoted	keyword	E-AISEMI	E-INDL	3	3	0.766	0.712	-0.054	0.00	0.679	1	CONSISTENT	8	3
+B	Semiconductor Equipment & Materials Velocity Surge	Nascent	live	haiku	E-AISEMI	E-AIINFRA	3	3	0.827	0.718	-0.109	0.00	0.733	1	CONSISTENT	8	4
+B	Semiconductor Foundry & Advanced Packaging Manufacturing	Mainstream	live	haiku	E-AISEMI	E-AIINFRA	5	5	0.800	0.636	-0.164	0.00	0.733	1	CONSISTENT	8	4
+B	Semiconductor Test, Yield & Assembly Supply Chain	Accelerating	live	keyword	E-AISEMI	E-INDL	7	7	0.780	0.726	-0.054	0.00	0.679	1	CONSISTENT	8	3
+B	Skilled Nursing & Senior Housing Healthcare REITs	Fading	live	haiku	E-REIT	E-HLTH	4	4	0.219	0.346	0.127	0.75	0.405	3	MISMATCH	3	3
+B	Small Modular Reactor & Advanced Nuclear Fission Technology	Fading	live	haiku	E-ENER	E-QUANTUM	2	2	0.451	0.741	0.290	1.00	0.372	6	MISMATCH	3	4
+B	Small Satellite & Space Services Rotation	Nascent	shadow_promoted	haiku	E-DEF	E-QUANTUM	5	5	-0.081	0.712	0.793	1.00	-0.234	15	MISMATCH	2	4
+B	Software Development & DevOps Collaboration Platforms	Mainstream	live	haiku	E-SAAS	E-CYBR	3	3	0.518	0.513	-0.005	0.33	0.676	1	CONSISTENT	5	11
+B	Space Economy: Satellite Communications & Launch Services	Mainstream	live	haiku	E-DEF	E-QUANTUM	9	9	-0.035	0.640	0.675	1.00	-0.234	13	MISMATCH	2	4
+B	Specialty P&C Insurance Underwriters Rotation Reversal	Fading	live	haiku	E-INS	E-HLTH	15	15	0.277	0.423	0.146	0.93	0.131	4	MISMATCH	3	3
+B	Specialty Retail Short-Squeeze Momentum Basket	Mainstream	live	keyword	E-CONS	E-HLTH	3	3	0.099	0.272	0.172	1.00	0.166	4	MISMATCH	3	3
+B	Trucking & Freight Carrier Rebound	Fading	live	haiku	E-TRANS	E-CYBR	2	2	0.515	0.223	-0.292	0.00	0.084	1	CONSISTENT	3	11
+B	Uranium Mining & Extraction	Fading	live	haiku	E-ENER	E-QUANTUM	2	2	0.529	0.653	0.124	1.00	0.372	3	MISMATCH	3	4
+B	U.S. Apparel & Fashion Recovery	Mainstream	live	haiku	E-CONS	E-REIT	9	9	0.238	0.234	-0.003	0.67	0.279	1	CONSISTENT	3	3
+B	U.S. Domestic Passenger Airlines	Nascent	live	haiku	E-TRANS	E-COMM	4	4	-0.176	0.295	0.471	1.00	-0.009	20	MISMATCH	2	3
+B	Vaccine & Antiviral Therapeutics Rebound	Mainstream	live	haiku	E-BIO	E-BANKFIN	4	4	0.601	0.286	-0.315	0.00	0.516	1	CONSISTENT	3	4
+B	Value Retail & Grocery Wholesale Trade-Down Basket	Nascent	shadow_promoted	haiku	E-CONS	E-REIT	3	3	0.332	0.307	-0.025	0.67	0.279	1	CONSISTENT	3	3
+B	Wealth Management & Retail Brokerage Platforms	Mainstream	live	haiku	E-BANKFIN	E-ROBOT	12	12	0.187	0.191	0.005	0.33	0.428	2	CONSISTENT	3	3

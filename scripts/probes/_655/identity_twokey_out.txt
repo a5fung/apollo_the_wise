@@ -1,0 +1,83 @@
+#655 IDENTITY TEST — TWO-KEY FORM (POST-HOC addendum; bars unchanged from identity_test.py)
+RUN_DATE=2026-09-26 window=2026-07-02..2026-09-25 BAR=0.1 SEP_GUARD=0.6
+
+== KEY 1: dual-homing on the board ==
+members by number of live themes holding them: [(1, 633), (2, 39)]
+(theme, member, other-ecosystem) evidence rows: 12; themes with >=1 named alternative: 10 of 115 mapped themes
+
+== KEY 2, variant A ==
+  SPLIT                  AI data-center power buildout                              E-AIINFRA->E-CRYPTO share 0.29 sep 0.41 n=7 refs (6, 3) misfits ['SNOW', 'CIFR'] | named by [('CIFR', 'Bitcoin Mining Stocks Rotation R')]
+  CONSISTENT             AI-Driven Diagnostics & Imaging Re-Rating                  E-MEDTECH->E-SAAS share 0.00 sep 0.23 n=9 refs (2, 6) misfits [] | named by [('TEM', 'Life Sciences & Healthcare Data/')]
+  SPLIT                  Bitcoin Mining Stocks Rotation Reversal                    E-CRYPTO->E-AIINFRA share 0.44 sep 0.02 n=9 refs (1, 6) misfits ['HUT', 'CIFR', 'CLSK', 'IREN'] | named by [('CIFR', 'AI data-center power buildout')]
+  SPLIT                  Cloud Data Storage & Analytics Infrastructure              E-SAAS->E-AIINFRA share 0.25 sep -0.39 n=4 refs (4, 6) misfits ['APLD'] | named by [('SNOW', 'AI data-center power buildout')]
+  UNJUDGEABLE_COLLINEAR  Diversified Power Generation Capacity Expansion for AI Ele E-AIINFRA->E-INDL share 0.00 sep 0.72 n=3 refs (6, 3) misfits [] | named by [('EVRG', 'Regulated Electric Utility Defen')]
+  MISMATCH               Electronics Manufacturing Services (EMS) Providers         E-HLTH->E-AISEMI share 1.00 sep -0.52 n=4 refs (3, 8) misfits ['CLS', 'SANM', 'PLXS', 'BHE'] | named by [('SANM', 'Semiconductor Test, Yield & Asse')]
+  UNJUDGEABLE_COLLINEAR  Industrial Construction Execution & On-Site Supply Chain   E-INDL->E-AIINFRA share 0.00 sep 0.72 n=8 refs (3, 6) misfits [] | named by [('AGX', 'AI data-center power buildout')]
+  SPLIT                  Life Sciences & Healthcare Data/CRM Platforms              E-SAAS->E-MEDTECH share 0.33 sep 0.23 n=3 refs (6, 2) misfits ['TEM'] | named by [('TEM', 'AI-Driven Diagnostics & Imaging ')]
+  UNJUDGEABLE_COLLINEAR  Regulated Electric Utility Defensive Rotation              E-INDL->E-AIINFRA share 0.00 sep 0.72 n=4 refs (3, 6) misfits [] | named by [('EVRG', 'Diversified Power Generation Cap')]
+  CONSISTENT             Semiconductor Test, Yield & Assembly Supply Chain          E-AISEMI->E-HLTH share 0.00 sep -0.52 n=7 refs (8, 3) misfits [] | named by [('SANM', 'Electronics Manufacturing Servic')]
+verdicts (best alternative per theme): {'SPLIT': 4, 'CONSISTENT': 2, 'UNJUDGEABLE_COLLINEAR': 3, 'MISMATCH': 1}; members judged 58, misfits 12
+NULL (random alternative, 200 draws): MISMATCH rate median 0.30 (p95 0.40); MISMATCH-or-SPLIT median 0.60 (p95 0.80) | REAL mismatch 1/7 = 0.14, mismatch-or-split 5/7 = 0.71
+
+== KEY 2, variant B ==
+  SPLIT                  AI data-center power buildout                              E-AIINFRA->E-CRYPTO share 0.14 sep -0.08 n=7 refs (4, 1) misfits ['SNOW'] | named by [('CIFR', 'Bitcoin Mining Stocks Rotation R')]
+  CONSISTENT             AI-Driven Diagnostics & Imaging Re-Rating                  E-MEDTECH->E-SAAS share 0.00 sep 0.23 n=9 refs (2, 6) misfits [] | named by [('TEM', 'Life Sciences & Healthcare Data/')]
+  MISMATCH               Bitcoin Mining Stocks Rotation Reversal                    E-CRYPTO->E-AIINFRA share 0.56 sep -0.08 n=9 refs (1, 4) misfits ['HUT', 'CIFR', 'CLSK', 'RIOT', 'IREN'] | named by [('CIFR', 'AI data-center power buildout')]
+  SPLIT                  Cloud Data Storage & Analytics Infrastructure              E-SAAS->E-AIINFRA share 0.25 sep -0.39 n=4 refs (4, 4) misfits ['APLD'] | named by [('SNOW', 'AI data-center power buildout')]
+  UNJUDGEABLE_COLLINEAR  Diversified Power Generation Capacity Expansion for AI Ele E-AIINFRA->E-INDL share 0.00 sep 0.64 n=3 refs (4, 3) misfits [] | named by [('EVRG', 'Regulated Electric Utility Defen')]
+  MISMATCH               Electronics Manufacturing Services (EMS) Providers         E-HLTH->E-AISEMI share 1.00 sep -0.52 n=4 refs (3, 8) misfits ['CLS', 'SANM', 'PLXS', 'BHE'] | named by [('SANM', 'Semiconductor Test, Yield & Asse')]
+  UNJUDGEABLE_COLLINEAR  Industrial Construction Execution & On-Site Supply Chain   E-INDL->E-AIINFRA share 0.00 sep 0.64 n=8 refs (3, 4) misfits [] | named by [('AGX', 'AI data-center power buildout')]
+  SPLIT                  Life Sciences & Healthcare Data/CRM Platforms              E-SAAS->E-MEDTECH share 0.33 sep 0.23 n=3 refs (6, 2) misfits ['TEM'] | named by [('TEM', 'AI-Driven Diagnostics & Imaging ')]
+  UNJUDGEABLE_COLLINEAR  Regulated Electric Utility Defensive Rotation              E-INDL->E-AIINFRA share 0.00 sep 0.64 n=4 refs (3, 4) misfits [] | named by [('EVRG', 'Diversified Power Generation Cap')]
+  CONSISTENT             Semiconductor Test, Yield & Assembly Supply Chain          E-AISEMI->E-HLTH share 0.00 sep -0.52 n=7 refs (8, 3) misfits [] | named by [('SANM', 'Electronics Manufacturing Servic')]
+verdicts (best alternative per theme): {'SPLIT': 3, 'CONSISTENT': 2, 'MISMATCH': 2, 'UNJUDGEABLE_COLLINEAR': 3}; members judged 58, misfits 12
+NULL (random alternative, 200 draws): MISMATCH rate median 0.25 (p95 0.40); MISMATCH-or-SPLIT median 0.60 (p95 0.80) | REAL mismatch 2/7 = 0.29, mismatch-or-split 5/7 = 0.71
+
+== #491: Bitcoin Mining Stocks Rotation Reversal, named E-CRYPTO vs E-AIINFRA (named by CIFR's dual-home) ==
+variant A: verdict SPLIT share 0.44 sep 0.02 refs (1, 6)
+   CIFR  crypto +0.24  AI-infra +0.60  diff +0.36  MISFIT
+   IREN  crypto +0.28  AI-infra +0.62  diff +0.35  MISFIT
+   HUT   crypto +0.23  AI-infra +0.57  diff +0.34  MISFIT
+   CLSK  crypto +0.41  AI-infra +0.53  diff +0.12  MISFIT
+   RIOT  crypto +0.43  AI-infra +0.53  diff +0.10  
+   BTDR  crypto +0.51  AI-infra +0.50  diff -0.01  
+   IOND  crypto +0.06  AI-infra +0.05  diff -0.01  
+   MARA  crypto +0.52  AI-infra +0.45  diff -0.07  
+   ABTC  crypto +0.58  AI-infra +0.16  diff -0.42  
+   theme median: crypto +0.41  AI-infra +0.53
+variant B: verdict MISMATCH share 0.56 sep -0.08 refs (1, 4)
+   IREN  crypto +0.15  AI-infra +0.69  diff +0.54  MISFIT
+   HUT   crypto +0.15  AI-infra +0.62  diff +0.47  MISFIT
+   CIFR  crypto +0.19  AI-infra +0.64  diff +0.45  MISFIT
+   RIOT  crypto +0.33  AI-infra +0.59  diff +0.26  MISFIT
+   CLSK  crypto +0.35  AI-infra +0.58  diff +0.24  MISFIT
+   BTDR  crypto +0.47  AI-infra +0.53  diff +0.06  
+   MARA  crypto +0.46  AI-infra +0.46  diff +0.00  
+   IOND  crypto +0.10  AI-infra +0.08  diff -0.02  
+   ABTC  crypto +0.47  AI-infra +0.23  diff -0.24  
+   theme median: crypto +0.33  AI-infra +0.58
+
+== Homeless / mis-homed converts: best live-theme basket by the engine's own co-movement (0.35 bar) ==
+  CORZ  Bitcoin Mining Stocks Rotation Reversal [Nascent] 0.85 | Emerging AI Compute & Cloud Infrastructu [Nascent] 0.76 | AI data-center power buildout [Nascent] 0.75
+  WULF  Bitcoin Mining Stocks Rotation Reversal [Nascent] 0.85 | AI data-center power buildout [Nascent] 0.81 | Emerging AI Compute & Cloud Infrastructu [Nascent] 0.76
+  APLD  Bitcoin Mining Stocks Rotation Reversal [Nascent] 0.87 | AI data-center power buildout [Nascent] 0.80 | Emerging AI Compute & Cloud Infrastructu [Nascent] 0.77
+  IREN  Bitcoin Mining Stocks Rotation Reversal [Nascent] 0.80 | AI data-center power buildout [Nascent] 0.74 | Emerging AI Compute & Cloud Infrastructu [Nascent] 0.71
+  HUT   Bitcoin Mining Stocks Rotation Reversal [Nascent] 0.86 | AI data-center power buildout [Nascent] 0.75 | Emerging AI Compute & Cloud Infrastructu [Nascent] 0.64
+  CIFR  Bitcoin Mining Stocks Rotation Reversal [Nascent] 0.87 | Emerging AI Compute & Cloud Infrastructu [Nascent] 0.66 | Electronics Manufacturing Services (EMS) [Nascent] 0.63
+  ABTC  Bitcoin Treasury & Crypto Proxy Equities [Mainstream] 0.66 | Bitcoin Holding & Trading Proxy Equities [Mainstream] 0.62 | Bitcoin Balance Sheet Proxies [Nascent] 0.62
+  MARA  Bitcoin Mining Stocks Rotation Reversal [Nascent] 0.87 | Bitcoin Holding & Trading Proxy Equities [Mainstream] 0.70 | AI data-center power buildout [Nascent] 0.67
+
+== TEXT LEG (whole-word stems, cross-check) ==
+member latest-catalysts with a whole-word call: 46; text driver != theme's named driver: 17
+  HUT   2026-07-20 text-driver=None hits={'E-AIINFRA': 1, 'E-METAL': 1}
+  ABTC  no alert in 90d
+  CIFR  2026-09-16 text-driver=E-CRYPTO hits={'E-AIINFRA': 1, 'E-ENER': 1, 'E-INDL': 1, 'E-CRYPTO': 2}
+  IOND  no alert in 90d
+  BTDR  2026-08-04 text-driver=None hits={'E-AIINFRA': 1, 'E-INDL': 1}
+  CLSK  2026-07-14 text-driver=E-AIINFRA hits={'E-AIINFRA': 1}
+  MARA  no alert in 90d
+  RIOT  2026-08-11 text-driver=E-CRYPTO hits={'E-AIINFRA': 1, 'E-METAL': 1, 'E-CRYPTO': 2}
+  IREN  2026-07-20 text-driver=None hits={'E-AISEMI': 1, 'E-SAAS': 1}
+  CORZ  2026-07-28 text-driver=None hits={'E-CYBR': 0, 'E-AISEMI': 0, 'E-AIINFRA': 0, 'E-SAAS': 0, 'E-BIO': 0, 'E-MEDTECH': 0, 'E-INS': 0, 'E-BANKFIN': 0, 'E-REIT': 0, 'E-ENER': 0, 'E-METAL': 0, 'E-DEF': 0, 'E-TRANS': 0, 'E-CONS': 0, 'E-INDL': 0, 'E-CRYPTO': 0, 'E-COMM': 0, 'E-HLTH': 0, 'E-QUANTUM': 0, 'E-ROBOT': 0}
+  WULF  2026-07-06 text-driver=None hits={'E-CYBR': 0, 'E-AISEMI': 0, 'E-AIINFRA': 0, 'E-SAAS': 0, 'E-BIO': 0, 'E-MEDTECH': 0, 'E-INS': 0, 'E-BANKFIN': 0, 'E-REIT': 0, 'E-ENER': 0, 'E-METAL': 0, 'E-DEF': 0, 'E-TRANS': 0, 'E-CONS': 0, 'E-INDL': 0, 'E-CRYPTO': 0, 'E-COMM': 0, 'E-HLTH': 0, 'E-QUANTUM': 0, 'E-ROBOT': 0}
+  APLD  no alert in 90d

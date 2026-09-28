@@ -1,0 +1,23 @@
+#1 all judgeable: 534/589 = 90.7% | guard 589/711 = 82.8% | themes with no judgeable member 44/118
+#4 pairs overlap>=half & tie>=0.70: 6
+    (1.0, 1.0, 'Mobile SoC & Wireless Connectivity Semic', '2026-09-24', 'RF & Analog Wireless Connectivity Semico', '2026-09-25')
+    (0.97, 1.0, 'Small Satellite & Space Services Rotatio', '2026-09-25', 'Space Economy: Satellite Communications ', '2026-09-25')
+    (0.97, 0.67, 'Precious Metals Complex Rebound', '2026-09-25', 'Precious Metals Miners Velocity Breakout', '2026-09-25')
+    (0.94, 0.5, 'AI-Driven Memory & Storage Supply Shorta', '2026-09-25', 'Pure-Play NAND/DRAM Memory Chip Makers', '2026-09-25')
+    (0.9, 0.5, 'Energy Infrastructure & Services Complex', '2026-09-25', 'Offshore Drilling Rig Contractors', '2026-09-25')
+    (0.89, 0.67, 'Farm Economy Value Chain Re-Rating', '2026-09-25', 'Global Agriculture Value Chain Recovery', '2026-09-25')
+   shard pairs tie>=0.70: 163; of which tie>=0.90 and overlap<half (NOT counted by #4): 9
+      (0.97, 0.0, 'Diversified Property & Casualty Insurance Car', 'Specialty P&C Insurance Underwriters Rotation')
+      (0.96, 0.25, 'Vaccine & Antiviral Therapeutics Rebound', 'mRNA Vaccine & Personalized Cancer Therapy Pl')
+      (0.93, 0.0, 'Regulated Electric Utility Defensive Rotation', 'Regulated Natural Gas Distribution Utilities')
+      (0.91, 0.25, 'Low-Cost & Regional Passenger Airline Rebound', 'U.S. Domestic Passenger Airlines')
+      (0.91, 0.25, 'Bitcoin Balance Sheet Proxies', 'Bitcoin Treasury & Crypto Proxy Equities Corr')
+      (0.91, 0.0, 'Front-End Semiconductor Fabrication Equipment', 'Semiconductor Test, Yield & Assembly Supply C')
+      (0.91, 0.0, 'Crude & Product Tanker Shipping', 'Product Tanker Shipping')
+      (0.9, 0.2, 'AI-Driven Memory & Storage Supply Shortage', 'Semiconductor Foundry & Advanced Packaging Ma')
+      (0.9, 0.0, 'AI Data Center High-Speed Interconnect & Sign', 'Semiconductor Equipment & Materials Velocity ')
+#6 >=4 names: 32/118
+   size 2-3: n=44 flagged(>=4 names) 2 (5%) median names 1.0
+   size 4-5: n=39 flagged(>=4 names) 13 (33%) median names 2
+   size 6-9: n=22 flagged(>=4 names) 9 (41%) median names 2.0
+   size 10-99: n=13 flagged(>=4 names) 8 (62%) median names 5

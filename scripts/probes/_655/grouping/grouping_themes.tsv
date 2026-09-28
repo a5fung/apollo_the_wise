@@ -1,0 +1,119 @@
+theme	stage	size	cohesion	c1_median	c1_p95	c1_pctile	c2_median	c2_p95	c2_pctile
+AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers	Mainstream	7	0.6088	0.0230	0.1298	1.000	0.0529	0.2463	1.000
+AI data-center power buildout	Nascent	7	0.2977	0.0337	0.1622	0.998	0.0628	0.3037	0.944
+AI-Driven Diagnostics & Imaging Re-Rating	Mainstream	9	0.2128	0.0135	0.0794	1.000	0.1255	0.2059	0.966
+AI-Driven Memory & Storage Supply Shortage	Mainstream	7	0.5903	0.0149	0.1146	1.000	0.0566	0.2526	1.000
+AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Fading	18	0.4839	0.0301	0.0837	1.000	0.0811	0.1727	1.000
+AI Server Power & Signal-Integrity Analog ICs	Fading	3	0.7205	-0.0118	0.1973	1.000	-0.0212	0.4384	1.000
+Annuity-Focused Insurers	Mainstream	4	0.5122	0.1026	0.3350	1.000	0.1782	0.4302	0.984
+Autonomous Vehicle & ADAS Technology Enablers	Nascent	3	0.4973	0.0329	0.2966	0.992	0.0542	0.5565	0.930
+Bank Stocks: Rising-Rate NIM Expansion	Fading	47	0.3862	0.1483	0.1922	1.000	0.1577	0.1927	1.000
+Bitcoin Balance Sheet Proxies	Nascent	4	0.7539	0.0399	0.2320	1.000	0.0211	0.2251	1.000
+Bitcoin Holding & Trading Proxy Equities	Mainstream	3	0.6198	0.0368	0.3395	0.996	0.1383	0.5329	0.992
+Bitcoin Mining Stocks Rotation Reversal	Nascent	9	0.5964	0.0461	0.1672	1.000	0.1077	0.2240	1.000
+Bitcoin Treasury & Crypto Proxy Equities Correlation Basket	Mainstream	4	0.7498	0.0426	0.2198	1.000	0.0848	0.3242	1.000
+Brazilian Fintech & Digital Payments	Fading	2	0.6542	0.0870	0.4581	0.990	0.1128	0.4659	0.992
+Building Products Distribution & Supply	Fading	2	0.5244	-0.0049	0.3160	0.986	0.0211	0.3545	0.996
+Business Development Companies & Private Credit Lenders	Nascent	7	0.5963	0.1756	0.3388	1.000	0.2927	0.4674	0.998
+Canadian Big Banks	Mainstream	5	0.8264	0.1845	0.3963	1.000	0.2719	0.5229	1.000
+Cardiac & Bioelectric Ablation Device Innovators	Mainstream	2	0.0810	0.0097	0.3873	0.636	0.1054	0.4015	0.440
+Cloud Application Delivery & Observability Infrastructure	Mainstream	4	0.4674	0.0062	0.1653	0.998	0.0170	0.3336	0.988
+Cloud Application Software Rotation (Oversold Turning Up)	Fading	3	0.5311	0.0537	0.3515	0.992	0.0669	0.6143	0.894
+Cloud Contact Center & CCaaS Communication Platforms	Mainstream	4	0.5508	0.0394	0.2605	1.000	0.0936	0.5252	0.964
+Cloud Data Storage & Analytics Infrastructure	Mainstream	4	0.1924	0.0109	0.2128	0.938	0.0512	0.4161	0.796
+Cloud Supply Chain & Warehouse Management Software	Mainstream	3	0.5914	-0.0073	0.2045	0.998	0.0217	0.4370	0.986
+Coal Mining Producers	Fading	4	0.7303	0.0027	0.1641	1.000	0.0951	0.2355	1.000
+Commercial, Office & Home Furniture Retailers and Manufacturers	Fading	5	0.4121	0.0068	0.1318	1.000	0.1171	0.2274	1.000
+Consumer PC & Gaming Hardware Refresh Cycle	Mainstream	3	0.4435	-0.0040	0.2153	0.996	-0.0278	0.4399	0.950
+Copper Mining & Production	Mainstream	7	0.7233	0.0081	0.1072	1.000	0.3094	0.6506	0.976
+Corporate Spend, Expense Management & Financial Operations Software	Mainstream	3	0.6524	0.0656	0.3121	1.000	-0.0070	0.4351	0.996
+Crude & Product Tanker Shipping	Mainstream	7	0.8077	0.0337	0.1625	1.000	0.2126	0.3539	1.000
+Customer Engagement & Marketing/CX SaaS Platforms	Fading	2	0.7045	0.0448	0.5008	0.984	0.1219	0.7426	0.936
+Data Backup & Cyber Resiliency Software	Nascent	3	0.4138	0.0533	0.3283	0.974	0.0690	0.5642	0.870
+Defense Electronics & Aerospace Subsystem Suppliers	Mainstream	3	0.2702	0.0127	0.2460	0.960	0.1017	0.4785	0.784
+Defense Intelligence & Cybersecurity IT Contractors	Mainstream	7	0.3696	0.0202	0.1361	1.000	0.0149	0.1463	0.998
+Defensive Consumer Staples Rotation	Fading	18	0.3519	0.0815	0.1520	1.000	0.1472	0.2004	1.000
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Fading	3	0.2317	0.0013	0.2409	0.938	0.0990	0.2907	0.878
+Digital Advertising & Ad-Tech Monetization Platforms	Mainstream	3	0.2505	-0.0041	0.2378	0.960	0.0623	0.2424	0.956
+Digital Insurance Distribution & InsurTech Platforms	Fading	2	0.1402	0.0556	0.5254	0.684	0.1335	0.7254	0.510
+Direct-to-Consumer Health & Wellness Subscription Brands	Nascent	3	0.2667	0.0486	0.3193	0.904	0.1229	0.3567	0.858
+Diversified Power Generation Capacity Expansion for AI Electricity Demand	Fading	3	0.0827	0.1005	0.3761	0.444	0.1241	0.3784	0.408
+Diversified Property & Casualty Insurance Carriers	Nascent	5	0.8023	0.2011	0.4005	1.000	0.2457	0.4592	1.000
+Electric & Unmanned Aircraft Innovators	Fading	2	0.1729	0.0479	0.5217	0.706	0.2389	0.6642	0.416
+Electronics Manufacturing Services (EMS) Providers	Nascent	4	0.6256	0.0246	0.2244	1.000	0.0554	0.3784	1.000
+Emerging AI Compute & Cloud Infrastructure Platforms	Nascent	5	0.5687	0.0475	0.2320	1.000	0.0667	0.3402	1.000
+Emerging Medical Device Innovators Breakout	Mainstream	3	0.1346	0.0025	0.2111	0.842	0.1072	0.3078	0.610
+Emerging Quantum Computing Rally	Mainstream	5	0.8485	0.0416	0.2327	1.000	0.0823	0.4010	1.000
+Energy Infrastructure & Services Complex	Fading	6	0.3361	0.0370	0.1729	1.000	0.3290	0.5490	0.524
+Energy Supply Disruption: Middle East Geopolitical Risk	Fading	15	0.6708	0.0229	0.0809	1.000	0.3700	0.4772	1.000
+Enterprise HR & Workforce Management SaaS	Nascent	5	0.5370	0.0149	0.1554	1.000	0.0536	0.3177	0.992
+Enterprise Server, Storage & Data Infrastructure Hardware	Mainstream	8	0.2962	0.0140	0.0941	1.000	0.0393	0.2074	0.986
+Enterprise Unstructured Data Storage Infrastructure	Fading	3	0.1028	0.0006	0.2459	0.782	-0.0155	0.4635	0.680
+Fabless Semiconductor IP Licensing	Nascent	3	0.7244	0.0505	0.3373	1.000	0.0699	0.5631	0.994
+Farm Economy Value Chain Re-Rating	Fading	4	0.4822	0.0128	0.1931	1.000	0.0498	0.2166	1.000
+Fintech & Digital Finance Sector Re-rating on Fed Easing	Fading	20	0.2384	0.0299	0.0860	1.000	0.0299	0.0729	1.000
+For-Profit Postsecondary & Vocational Education	Mainstream	5	0.7661	0.0228	0.1756	1.000	0.2146	0.4108	1.000
+Front-End Semiconductor Fabrication Equipment Makers	Nascent	4	0.8064	0.0170	0.1914	1.000	0.0415	0.3532	1.000
+Genetic Medicine: Gene Editing & Gene Therapy Innovators	Fading	4	0.3133	0.0420	0.2742	0.968	0.1166	0.2704	0.974
+Genomics & DNA Sequencing Tools	Mainstream	12	0.3263	0.0286	0.0987	1.000	0.1057	0.1671	1.000
+Global Agriculture Value Chain Recovery	Fading	3	0.7804	0.0069	0.2253	1.000	0.0407	0.3758	1.000
+Global Oil & Gas Producers and Refiners	Fading	17	0.6148	0.0254	0.0804	1.000	0.3397	0.4285	1.000
+Global Steel & Metal Producers Recovery	Fading	5	0.4546	0.0309	0.1983	1.000	0.1507	0.3439	0.994
+Homebuilders & Residential Construction Supply Chain	Nascent	7	0.7666	0.1307	0.2720	1.000	0.2142	0.3271	1.000
+Home Improvement Retail & Building Products	Fading	3	0.7535	0.1449	0.4120	1.000	0.1692	0.3651	1.000
+Hospital & Behavioral Health Facility Procedure Volume Recovery	Mainstream	6	0.5094	0.0117	0.1327	1.000	0.1243	0.2165	1.000
+Identity & Access Management Security Software	Fading	3	0.3543	0.0124	0.2431	0.984	0.0192	0.5277	0.886
+Industrial Construction Execution & On-Site Supply Chain	Fading	8	0.0753	0.0351	0.1374	0.778	0.0693	0.1908	0.550
+Inflammatory Disease & Immunology Biologics	Fading	8	0.3259	0.0193	0.1102	1.000	0.1257	0.2243	0.998
+Insurance Brokerage & Distribution Services	Fading	2	0.5075	0.1071	0.4236	0.978	0.1390	0.6350	0.904
+IT Consulting & Business Process Outsourcing Services	Nascent	7	0.5588	0.0382	0.1799	1.000	0.1146	0.4211	0.996
+Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound	Fading	3	0.0886	0.0095	0.2543	0.754	0.0635	0.2765	0.574
+Life Insurance & Annuity Providers	Nascent	9	0.5049	0.1298	0.2662	1.000	0.2276	0.3979	0.992
+Life Sciences & Healthcare Data/CRM Platforms	Mainstream	3	0.2398	0.0089	0.2562	0.944	0.1079	0.2935	0.872
+Life Science Tools & Analytical Instruments	Nascent	15	0.4943	0.0373	0.1030	1.000	0.1965	0.2508	1.000
+Liquid Biopsy & Molecular Cancer Diagnostics Testing	Nascent	3	0.1935	0.0657	0.3402	0.782	0.1221	0.3124	0.722
+Live Music & Concert Promotion	Accelerating	4	0.4342	0.0264	0.2152	1.000	0.0728	0.2455	1.000
+Lodging & Hotel REITs	Nascent	7	0.7252	0.1559	0.3052	1.000	0.1703	0.3266	1.000
+Low-Cost & Regional Passenger Airline Rebound	Mainstream	4	0.5441	0.0138	0.1755	1.000	0.0577	0.2677	0.998
+Marketing & Digital Presence SaaS Platforms	Fading	4	0.4021	0.0437	0.2812	0.986	0.0789	0.5220	0.908
+Media Streaming & Entertainment Content Turnaround	Accelerating	3	0.2700	0.0974	0.3610	0.870	0.1428	0.4118	0.792
+Medical Device Mean-Reversion & Rotation Recovery	Mainstream	15	0.3539	0.0426	0.1161	1.000	0.1745	0.2343	1.000
+Mobile SoC & Wireless Connectivity Semiconductors	Mainstream	3	0.6243	0.0107	0.2508	1.000	0.0234	0.4265	0.988
+mRNA Vaccine & Personalized Cancer Therapy Platforms	Mainstream	4	0.6308	0.0160	0.1803	1.000	0.1009	0.2460	1.000
+Network Security & Zero-Trust Edge	Mainstream	15	0.5978	0.0333	0.0987	1.000	0.0750	0.1822	1.000
+Non-Alcoholic Beverages & Energy Drinks	Accelerating	5	0.5014	0.0792	0.2522	1.000	0.2828	0.4515	0.982
+Offshore Drilling Rig Contractors	Nascent	4	0.8749	0.0588	0.2673	1.000	0.3675	0.6593	1.000
+On-Site Power Generation & Distribution Equipment for Data Centers	Mainstream	7	0.5088	0.0377	0.1637	1.000	0.0955	0.3097	1.000
+Orthopedic Surgical Devices & Instruments	Mainstream	4	0.5108	0.0059	0.2039	1.000	0.1411	0.2738	1.000
+Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Fading	3	0.3102	-0.0058	0.2385	0.976	0.1028	0.2717	0.976
+Post-Acute & Home-Based Healthcare Services	Mainstream	5	0.4106	0.0405	0.2114	1.000	0.2204	0.3461	0.984
+Precious Metals Complex Rebound	Fading	35	0.7740	0.0255	0.0523	1.000	0.1321	0.1585	1.000
+Precious Metals Miners Velocity Breakout	Mainstream	3	0.7930	-0.0075	0.2232	1.000	0.3247	0.7972	0.942
+Precision Timing & Motion Control Component Makers	Nascent	3	0.5305	0.0560	0.3513	0.984	0.0631	0.5586	0.926
+Private Mortgage Insurance	Fading	4	0.8192	0.1946	0.4077	1.000	0.2770	0.5117	1.000
+Product Tanker Shipping	Nascent	4	0.7777	0.0423	0.2307	1.000	0.2065	0.4471	1.000
+Pure-Play NAND/DRAM Memory Chip Makers	Nascent	4	0.7681	0.0563	0.2959	1.000	0.0856	0.4404	1.000
+Rare Earth Elements Mining & Processing	Fading	4	0.7255	0.0424	0.2504	1.000	0.2875	0.5326	0.996
+Regulated Electric Utility Defensive Rotation	Fading	4	0.7856	0.1871	0.4079	1.000	0.4215	0.5957	1.000
+Regulated Natural Gas Distribution Utilities	Nascent	5	0.7902	0.2050	0.4073	1.000	0.8273	0.8780	0.244
+Renewable & Specialty Fuels Chemical Producers	Fading	3	0.5321	0.0150	0.2358	1.000	0.4578	0.8170	0.530
+Restaurant Chain Recovery	Mainstream	5	0.5077	0.0021	0.1568	1.000	0.1106	0.2652	1.000
+RF & Analog Wireless Connectivity Semiconductor Makers	Mainstream	3	0.6243	0.0046	0.2407	0.998	0.0169	0.4635	0.990
+Semiconductor Design, Test & Assembly Enablement Tools	Nascent	3	0.4099	-0.0084	0.2469	1.000	-0.0062	0.4651	0.930
+Semiconductor Equipment & Materials Velocity Surge	Nascent	3	0.7446	0.0565	0.3401	1.000	0.0725	0.5478	0.996
+Semiconductor Foundry & Advanced Packaging Manufacturing	Mainstream	5	0.6513	0.0081	0.1450	1.000	0.0328	0.3390	1.000
+Semiconductor Test, Yield & Assembly Supply Chain	Accelerating	7	0.7865	0.0459	0.1820	1.000	0.0826	0.3078	1.000
+Skilled Nursing & Senior Housing Healthcare REITs	Fading	4	0.7436	0.1845	0.3929	1.000	0.4532	0.5838	1.000
+Small Modular Reactor & Advanced Nuclear Fission Technology	Fading	2	0.8097	0.0405	0.4433	0.998	0.0219	0.4426	1.000
+Small Satellite & Space Services Rotation	Nascent	5	0.6876	0.0450	0.2306	1.000	0.1171	0.4239	1.000
+Software Development & DevOps Collaboration Platforms	Mainstream	3	0.5595	0.0500	0.3437	0.990	0.0749	0.5533	0.950
+Space Economy: Satellite Communications & Launch Services	Mainstream	9	0.6075	0.0283	0.1206	1.000	0.0650	0.2095	1.000
+Specialty P&C Insurance Underwriters Rotation Reversal	Fading	15	0.7062	0.1082	0.1881	1.000	0.1598	0.2392	1.000
+Specialty Retail Short-Squeeze Momentum Basket	Mainstream	3	0.3648	0.0127	0.2435	0.982	0.0622	0.2187	0.996
+Trucking & Freight Carrier Rebound	Fading	2	0.7313	0.0852	0.4408	0.998	0.1646	0.5521	0.992
+Uranium Mining & Extraction	Fading	2	0.8165	0.0423	0.3567	1.000	0.3662	0.7004	1.000
+U.S. Apparel & Fashion Recovery	Mainstream	9	0.2799	0.0138	0.0999	1.000	0.1452	0.2357	0.996
+U.S. Domestic Passenger Airlines	Nascent	4	0.7793	0.0645	0.2471	1.000	0.0935	0.3011	1.000
+Vaccine & Antiviral Therapeutics Rebound	Mainstream	4	0.4569	-0.0085	0.1597	1.000	0.1196	0.2605	1.000
+Value Retail & Grocery Wholesale Trade-Down Basket	Nascent	3	0.2050	0.0371	0.2524	0.886	0.0898	0.3792	0.744
+Wealth Management & Retail Brokerage Platforms	Mainstream	12	0.2175	0.0840	0.1674	0.990	0.1430	0.2417	0.894

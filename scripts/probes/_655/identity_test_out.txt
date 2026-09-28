@@ -1,0 +1,241 @@
+#655 IDENTITY TEST — declared constants (pre-registered before the pulls)
+RUN_DATE=2026-09-26 window=2026-07-02..2026-09-25 (60 returns) GAP_BAR=0.1 neighbours=(0.05, 0.15) MAJORITY=0.5 SEP_GUARD=0.6 MIN_JUDGEABLE=2 NULL_DRAWS=200 SUSTAIN=10
+
+== POPULATION ==
+themes on board: 118
+stage: Counter({'Mainstream': 44, 'Fading': 41, 'Nascent': 29, 'Accelerating': 4})
+source: Counter({'live': 110, 'shadow_promoted': 8})
+e_code method: Counter({'haiku': 105, 'keyword': 9, 'unassigned': 3, 'operator_fix': 1})
+e_code: Counter({'E-SAAS': 12, 'E-AISEMI': 11, 'E-CONS': 10, 'E-MEDTECH': 9, 'E-BANKFIN': 7, 'E-ENER': 7, 'E-AIINFRA': 6, 'E-INS': 6, 'E-METAL': 6, 'E-DEF': 6, 'E-INDL': 5, 'E-TRANS': 5, 'E-BIO': 5, 'E-CRYPTO': 4, 'E-COMM': 4, 'E-HLTH': 4, 'E-CYBR': 3, 'E-UNASSIGNED': 3, 'E-REIT': 3, 'E-ROBOT': 1, 'E-QUANTUM': 1})
+distinct members: 672; with usable 60-session history: 672
+
+== VARIANT A ==
+judgeable themes: 113 of 118
+bar 0.05: {'UNJUDGEABLE_COLLINEAR': 4, 'CONSISTENT': 56, 'MISMATCH': 53, 'UNJUDGEABLE': 5} | mismatches in AI family (noise band): 0 | outside: 53
+bar 0.10: {'UNJUDGEABLE_COLLINEAR': 3, 'CONSISTENT': 63, 'MISMATCH': 47, 'UNJUDGEABLE': 5} | mismatches in AI family (noise band): 0 | outside: 47
+bar 0.15: {'UNJUDGEABLE_COLLINEAR': 2, 'CONSISTENT': 73, 'MISMATCH': 38, 'UNJUDGEABLE': 5} | mismatches in AI family (noise band): 0 | outside: 38
+named ecosystem's rank among references (1 = members move most with the named driver): [(1, 45), (2, 12), (3, 13), (4, 5), (5, 5), (6, 6), (7, 2), (8, 1), (9, 1), (10, 2), (11, 1), (12, 4), (13, 1), (14, 3), (15, 5), (17, 2), (18, 1), (19, 2), (20, 2)]
+-- MISMATCH list at bar 0.1 --
+  UNJUDGEABLE_COLLINEAR  AI Data Center High-Speed Interconnect & Signal Integrity Chip [Mainstream,haiku] named E-AIINFRA 0.62 -> E-AISEMI 0.78 gap 0.15 share 0.86 sep 0.78 n=7 refsz 5/8
+  MISMATCH               Annuity-Focused Insurers                                       [Mainstream,haiku] named E-INS 0.14 -> E-COMM 0.36 gap 0.22 share 1.00 sep 0.35 n=4 refsz 3/3
+  MISMATCH               Bank Stocks: Rising-Rate NIM Expansion                         [Fading,haiku] named E-BANKFIN -0.16 -> E-TRANS 0.41 gap 0.58 share 0.77 sep -0.03 n=47 refsz 4/3
+  MISMATCH               Bitcoin Balance Sheet Proxies                                  [Nascent,haiku] named E-CRYPTO 0.44 -> E-BANKFIN 0.61 gap 0.16 share 1.00 sep 0.41 n=4 refsz 2/3
+  MISMATCH               Bitcoin Mining Stocks Rotation Reversal                        [Nascent,haiku] named E-CRYPTO 0.41 -> E-AISEMI 0.60 gap 0.19 share 0.78 sep 0.18 n=9 refsz 1/8
+  MISMATCH               Building Products Distribution & Supply                        [Fading,haiku] named E-INDL -0.06 -> E-REIT 0.45 gap 0.50 share 1.00 sep -0.32 n=2 refsz 3/3
+  MISMATCH               Business Development Companies & Private Credit Lenders        [Nascent,haiku] named E-BANKFIN -0.13 -> E-TRANS 0.21 gap 0.34 share 1.00 sep -0.03 n=7 refsz 4/3
+  MISMATCH               Canadian Big Banks                                             [Mainstream,haiku] named E-BANKFIN -0.06 -> E-COMM 0.17 gap 0.23 share 1.00 sep 0.23 n=5 refsz 4/3
+  MISMATCH               Cardiac & Bioelectric Ablation Device Innovators               [Mainstream,haiku] named E-MEDTECH 0.16 -> E-CONS 0.28 gap 0.12 share 1.00 sep 0.15 n=2 refsz 2/3
+  UNJUDGEABLE_COLLINEAR  Cloud Application Delivery & Observability Infrastructure      [Mainstream,haiku] named E-SAAS 0.34 -> E-CYBR 0.49 gap 0.16 share 1.00 sep 0.6 n=4 refsz 5/11
+  MISMATCH               Commercial, Office & Home Furniture Retailers and Manufacturer [Fading,haiku] named E-CONS 0.17 -> E-REIT 0.42 gap 0.25 share 1.00 sep 0.28 n=5 refsz 3/3
+  MISMATCH               Consumer PC & Gaming Hardware Refresh Cycle                    [Mainstream,haiku] named E-CONS 0.06 -> E-TRANS 0.19 gap 0.14 share 0.67 sep 0.1 n=3 refsz 3/3
+  MISMATCH               Corporate Spend, Expense Management & Financial Operations Sof [Mainstream,haiku] named E-SAAS 0.26 -> E-COMM 0.47 gap 0.21 share 0.67 sep 0.14 n=3 refsz 6/3
+  MISMATCH               Crude & Product Tanker Shipping                                [Mainstream,haiku] named E-TRANS -0.14 -> E-CONS 0.09 gap 0.23 share 1.00 sep 0.1 n=7 refsz 3/3
+  MISMATCH               Defense Electronics & Aerospace Subsystem Suppliers            [Mainstream,haiku] named E-DEF 0.33 -> E-INDL 0.53 gap 0.20 share 0.67 sep 0.24 n=3 refsz 3/3
+  MISMATCH               Digital Advertising & Ad-Tech Monetization Platforms           [Mainstream,haiku] named E-COMM 0.15 -> E-SAAS 0.39 gap 0.23 share 0.67 sep 0.14 n=3 refsz 3/6
+  MISMATCH               Digital Insurance Distribution & InsurTech Platforms           [Fading,haiku] named E-INS 0.12 -> E-QUANTUM 0.35 gap 0.23 share 1.00 sep 0.03 n=2 refsz 3/4
+  MISMATCH               Direct-to-Consumer Health & Wellness Subscription Brands       [Nascent,haiku] named E-CONS -0.03 -> E-BIO 0.35 gap 0.38 share 1.00 sep 0.14 n=3 refsz 3/3
+  MISMATCH               Diversified Power Generation Capacity Expansion for AI Electri [Fading,haiku] named E-AIINFRA -0.20 -> E-HLTH 0.26 gap 0.46 share 0.67 sep -0.4 n=3 refsz 6/3
+  MISMATCH               Diversified Property & Casualty Insurance Carriers             [Nascent,haiku] named E-INS 0.10 -> E-HLTH 0.51 gap 0.41 share 1.00 sep 0.05 n=5 refsz 2/3
+  MISMATCH               Electronics Manufacturing Services (EMS) Providers             [Nascent,keyword] named E-HLTH -0.35 -> E-AISEMI 0.72 gap 1.07 share 1.00 sep -0.52 n=4 refsz 3/8
+  MISMATCH               Enterprise Unstructured Data Storage Infrastructure            [Fading,keyword] named E-INDL -0.55 -> E-SAAS 0.60 gap 1.14 share 0.67 sep -0.39 n=3 refsz 3/6
+  MISMATCH               Fintech & Digital Finance Sector Re-rating on Fed Easing       [Fading,haiku] named E-BANKFIN 0.11 -> E-COMM 0.36 gap 0.25 share 0.80 sep 0.14 n=20 refsz 3/3
+  MISMATCH               Genomics & DNA Sequencing Tools                                [Mainstream,haiku] named E-MEDTECH 0.10 -> E-METAL 0.32 gap 0.22 share 1.00 sep -0.04 n=12 refsz 1/3
+  MISMATCH               Global Oil & Gas Producers and Refiners                        [Fading,haiku] named E-ENER -0.31 -> E-MEDTECH 0.13 gap 0.44 share 1.00 sep 0.19 n=17 refsz 2/2
+  MISMATCH               Home Improvement Retail & Building Products                    [Fading,haiku] named E-CONS 0.25 -> E-REIT 0.74 gap 0.49 share 1.00 sep 0.28 n=3 refsz 3/3
+  MISMATCH               Hospital & Behavioral Health Facility Procedure Volume Recover [Mainstream,haiku] named E-HLTH 0.20 -> E-REIT 0.33 gap 0.13 share 0.67 sep 0.1 n=6 refsz 1/3
+  UNJUDGEABLE_COLLINEAR  Identity & Access Management Security Software                 [Fading,haiku] named E-CYBR 0.49 -> E-SAAS 0.61 gap 0.11 share 0.67 sep 0.64 n=3 refsz 10/6
+  MISMATCH               Industrial Construction Execution & On-Site Supply Chain       [Fading,haiku] named E-INDL -0.01 -> E-DEF 0.22 gap 0.23 share 0.62 sep 0.24 n=8 refsz 3/3
+  MISMATCH               Insurance Brokerage & Distribution Services                    [Fading,haiku] named E-INS 0.29 -> E-HLTH 0.42 gap 0.14 share 0.50 sep 0.13 n=2 refsz 3/3
+  MISMATCH               IT Consulting & Business Process Outsourcing Services          [Nascent,keyword] named E-HLTH 0.33 -> E-SAAS 0.50 gap 0.16 share 0.86 sep 0.11 n=7 refsz 3/6
+  MISMATCH               Life Insurance & Annuity Providers                             [Nascent,haiku] named E-INS 0.21 -> E-COMM 0.34 gap 0.14 share 0.78 sep 0.35 n=9 refsz 3/3
+  MISMATCH               Low-Cost & Regional Passenger Airline Rebound                  [Mainstream,haiku] named E-TRANS 0.18 -> E-REIT 0.29 gap 0.12 share 1.00 sep 0.47 n=4 refsz 3/3
+  MISMATCH               Medical Device Mean-Reversion & Rotation Recovery              [Mainstream,keyword] named E-MEDTECH -0.06 -> E-HLTH 0.33 gap 0.38 share 0.93 sep 0.01 n=15 refsz 1/3
+  MISMATCH               Orthopedic Surgical Devices & Instruments                      [Mainstream,haiku] named E-MEDTECH 0.23 -> E-HLTH 0.43 gap 0.20 share 0.75 sep 0.12 n=4 refsz 2/3
+  MISMATCH               Precious Metals Complex Rebound                                [Fading,haiku] named E-METAL 0.12 -> E-BIO 0.42 gap 0.30 share 1.00 sep 0.06 n=35 refsz 1/3
+  MISMATCH               Precision Timing & Motion Control Component Makers             [Nascent,haiku] named E-DEF 0.21 -> E-AISEMI 0.62 gap 0.41 share 1.00 sep 0.19 n=3 refsz 3/8
+  MISMATCH               Private Mortgage Insurance                                     [Fading,haiku] named E-BANKFIN -0.26 -> E-TRANS 0.42 gap 0.67 share 1.00 sep -0.03 n=4 refsz 4/3
+  MISMATCH               Product Tanker Shipping                                        [Nascent,haiku] named E-TRANS -0.14 -> E-CONS 0.11 gap 0.25 share 0.75 sep 0.1 n=4 refsz 3/3
+  MISMATCH               Rare Earth Elements Mining & Processing                        [Fading,haiku] named E-METAL 0.26 -> E-QUANTUM 0.69 gap 0.43 share 1.00 sep 0.29 n=4 refsz 3/4
+  MISMATCH               Regulated Electric Utility Defensive Rotation                  [Fading,haiku] named E-INDL -0.18 -> E-HLTH 0.28 gap 0.47 share 1.00 sep -0.43 n=4 refsz 3/3
+  MISMATCH               Regulated Natural Gas Distribution Utilities                   [Nascent,haiku] named E-INDL -0.36 -> E-HLTH 0.32 gap 0.69 share 1.00 sep -0.43 n=5 refsz 3/3
+  MISMATCH               Skilled Nursing & Senior Housing Healthcare REITs              [Fading,haiku] named E-REIT 0.22 -> E-HLTH 0.35 gap 0.13 share 0.75 sep 0.41 n=4 refsz 3/3
+  MISMATCH               Small Modular Reactor & Advanced Nuclear Fission Technology    [Fading,haiku] named E-ENER 0.45 -> E-QUANTUM 0.74 gap 0.29 share 1.00 sep 0.37 n=2 refsz 3/4
+  MISMATCH               Small Satellite & Space Services Rotation                      [Nascent,haiku] named E-DEF -0.08 -> E-QUANTUM 0.71 gap 0.79 share 1.00 sep -0.23 n=5 refsz 2/4
+  MISMATCH               Space Economy: Satellite Communications & Launch Services      [Mainstream,haiku] named E-DEF -0.03 -> E-QUANTUM 0.64 gap 0.67 share 1.00 sep -0.23 n=9 refsz 2/4
+  MISMATCH               Specialty P&C Insurance Underwriters Rotation Reversal         [Fading,haiku] named E-INS 0.28 -> E-HLTH 0.42 gap 0.15 share 0.93 sep 0.13 n=15 refsz 3/3
+  MISMATCH               Specialty Retail Short-Squeeze Momentum Basket                 [Mainstream,keyword] named E-CONS 0.10 -> E-HLTH 0.27 gap 0.17 share 1.00 sep 0.17 n=3 refsz 3/3
+  MISMATCH               Uranium Mining & Extraction                                    [Fading,haiku] named E-ENER 0.53 -> E-QUANTUM 0.65 gap 0.12 share 1.00 sep 0.37 n=2 refsz 3/4
+  MISMATCH               U.S. Domestic Passenger Airlines                               [Nascent,haiku] named E-TRANS -0.18 -> E-COMM 0.30 gap 0.47 share 1.00 sep -0.01 n=4 refsz 2/3
+confusion (named -> best alt): [(('E-BANKFIN', 'E-TRANS'), 3), (('E-INS', 'E-HLTH'), 3), (('E-INS', 'E-COMM'), 2), (('E-BANKFIN', 'E-COMM'), 2), (('E-CONS', 'E-REIT'), 2), (('E-TRANS', 'E-CONS'), 2), (('E-MEDTECH', 'E-HLTH'), 2), (('E-INDL', 'E-HLTH'), 2), (('E-ENER', 'E-QUANTUM'), 2), (('E-DEF', 'E-QUANTUM'), 2), (('E-AIINFRA', 'E-AISEMI'), 1), (('E-CRYPTO', 'E-BANKFIN'), 1), (('E-CRYPTO', 'E-AISEMI'), 1), (('E-INDL', 'E-REIT'), 1), (('E-MEDTECH', 'E-CONS'), 1), (('E-SAAS', 'E-CYBR'), 1), (('E-CONS', 'E-TRANS'), 1), (('E-SAAS', 'E-COMM'), 1), (('E-DEF', 'E-INDL'), 1), (('E-COMM', 'E-SAAS'), 1), (('E-INS', 'E-QUANTUM'), 1), (('E-CONS', 'E-BIO'), 1), (('E-AIINFRA', 'E-HLTH'), 1), (('E-HLTH', 'E-AISEMI'), 1), (('E-INDL', 'E-SAAS'), 1), (('E-MEDTECH', 'E-METAL'), 1), (('E-ENER', 'E-MEDTECH'), 1), (('E-HLTH', 'E-REIT'), 1), (('E-CYBR', 'E-SAAS'), 1), (('E-INDL', 'E-DEF'), 1), (('E-HLTH', 'E-SAAS'), 1), (('E-TRANS', 'E-REIT'), 1), (('E-METAL', 'E-BIO'), 1), (('E-DEF', 'E-AISEMI'), 1), (('E-METAL', 'E-QUANTUM'), 1), (('E-REIT', 'E-HLTH'), 1), (('E-CONS', 'E-HLTH'), 1), (('E-TRANS', 'E-COMM'), 1)]
+mismatches by mapping method: Counter({'haiku': 42, 'keyword': 5})
+-- controls --
+  [POS] Electronics Manufacturing Services (EMS) Providers: MISMATCH named E-HLTH F=-0.35 rank 20/20 best alt E-AISEMI 0.72 gap 1.07 share 1.00 sep -0.52
+  [POS] IT Consulting & Business Process Outsourcing Services: MISMATCH named E-HLTH F=0.33 rank 2/20 best alt E-SAAS 0.50 gap 0.16 share 0.86 sep 0.11
+  [NEG] Network Security & Zero-Trust Edge: UNJUDGEABLE (judgeable members 15)
+  [NEG] Emerging Quantum Computing Rally: UNJUDGEABLE (judgeable members 5)
+  [491] Bitcoin Mining Stocks Rotation Reversal: MISMATCH named E-CRYPTO F=0.41 rank 5/20 best alt E-AISEMI 0.60 gap 0.19 share 0.78 sep 0.18
+  [491] AI data-center power buildout: CONSISTENT named E-AIINFRA F=0.60 rank 1/20 best alt E-AISEMI 0.59 gap -0.01 share 0.57 sep 0.82
+  [491] Cloud Data Storage & Analytics Infrastructure: CONSISTENT named E-SAAS F=0.51 rank 1/20 best alt E-CYBR 0.39 gap -0.12 share 0.50 sep 0.57
+  [491] Emerging AI Compute & Cloud Infrastructure Platforms: CONSISTENT named E-AIINFRA F=0.72 rank 1/20 best alt E-AISEMI 0.62 gap -0.09 share 0.20 sep 0.82
+NULL (e_codes shuffled across 113 judgeable themes, 200 draws): mismatch rate median 0.86 (p5 0.81, p95 0.92) vs REAL 47/113 = 0.42
+
+== VARIANT B ==
+judgeable themes: 113 of 118
+bar 0.05: {'UNJUDGEABLE_COLLINEAR': 4, 'CONSISTENT': 57, 'MISMATCH': 52, 'UNJUDGEABLE': 5} | mismatches in AI family (noise band): 0 | outside: 52
+bar 0.10: {'UNJUDGEABLE_COLLINEAR': 3, 'CONSISTENT': 64, 'MISMATCH': 46, 'UNJUDGEABLE': 5} | mismatches in AI family (noise band): 0 | outside: 46
+bar 0.15: {'UNJUDGEABLE_COLLINEAR': 2, 'CONSISTENT': 74, 'MISMATCH': 37, 'UNJUDGEABLE': 5} | mismatches in AI family (noise band): 0 | outside: 37
+named ecosystem's rank among references (1 = members move most with the named driver): [(1, 44), (2, 12), (3, 14), (4, 6), (5, 2), (6, 8), (7, 2), (8, 1), (9, 1), (10, 3), (12, 3), (13, 4), (15, 3), (16, 4), (17, 1), (18, 2), (19, 1), (20, 2)]
+-- MISMATCH list at bar 0.1 --
+  UNJUDGEABLE_COLLINEAR  AI Data Center High-Speed Interconnect & Signal Integrity Chip [Mainstream,haiku] named E-AIINFRA 0.63 -> E-AISEMI 0.78 gap 0.15 share 0.86 sep 0.73 n=7 refsz 4/8
+  MISMATCH               Annuity-Focused Insurers                                       [Mainstream,haiku] named E-INS 0.14 -> E-COMM 0.36 gap 0.22 share 1.00 sep 0.35 n=4 refsz 3/3
+  MISMATCH               Bank Stocks: Rising-Rate NIM Expansion                         [Fading,haiku] named E-BANKFIN -0.16 -> E-TRANS 0.41 gap 0.58 share 0.77 sep -0.03 n=47 refsz 4/3
+  MISMATCH               Bitcoin Mining Stocks Rotation Reversal                        [Nascent,haiku] named E-CRYPTO 0.33 -> E-AISEMI 0.60 gap 0.27 share 0.78 sep 0.06 n=9 refsz 1/8
+  MISMATCH               Building Products Distribution & Supply                        [Fading,haiku] named E-INDL -0.06 -> E-REIT 0.45 gap 0.50 share 1.00 sep -0.32 n=2 refsz 3/3
+  MISMATCH               Business Development Companies & Private Credit Lenders        [Nascent,haiku] named E-BANKFIN -0.13 -> E-TRANS 0.21 gap 0.34 share 1.00 sep -0.03 n=7 refsz 4/3
+  MISMATCH               Canadian Big Banks                                             [Mainstream,haiku] named E-BANKFIN -0.06 -> E-COMM 0.17 gap 0.23 share 1.00 sep 0.23 n=5 refsz 4/3
+  MISMATCH               Cardiac & Bioelectric Ablation Device Innovators               [Mainstream,haiku] named E-MEDTECH 0.16 -> E-CONS 0.28 gap 0.12 share 1.00 sep 0.15 n=2 refsz 2/3
+  UNJUDGEABLE_COLLINEAR  Cloud Application Delivery & Observability Infrastructure      [Mainstream,haiku] named E-SAAS 0.34 -> E-CYBR 0.49 gap 0.16 share 1.00 sep 0.6 n=4 refsz 5/11
+  MISMATCH               Commercial, Office & Home Furniture Retailers and Manufacturer [Fading,haiku] named E-CONS 0.17 -> E-REIT 0.42 gap 0.25 share 1.00 sep 0.28 n=5 refsz 3/3
+  MISMATCH               Consumer PC & Gaming Hardware Refresh Cycle                    [Mainstream,haiku] named E-CONS 0.06 -> E-TRANS 0.19 gap 0.14 share 0.67 sep 0.1 n=3 refsz 3/3
+  MISMATCH               Corporate Spend, Expense Management & Financial Operations Sof [Mainstream,haiku] named E-SAAS 0.26 -> E-COMM 0.47 gap 0.21 share 0.67 sep 0.14 n=3 refsz 6/3
+  MISMATCH               Crude & Product Tanker Shipping                                [Mainstream,haiku] named E-TRANS -0.14 -> E-CONS 0.09 gap 0.23 share 1.00 sep 0.1 n=7 refsz 3/3
+  MISMATCH               Defense Electronics & Aerospace Subsystem Suppliers            [Mainstream,haiku] named E-DEF 0.33 -> E-INDL 0.53 gap 0.20 share 0.67 sep 0.24 n=3 refsz 3/3
+  MISMATCH               Digital Advertising & Ad-Tech Monetization Platforms           [Mainstream,haiku] named E-COMM 0.15 -> E-SAAS 0.39 gap 0.23 share 0.67 sep 0.14 n=3 refsz 3/6
+  MISMATCH               Digital Insurance Distribution & InsurTech Platforms           [Fading,haiku] named E-INS 0.12 -> E-QUANTUM 0.35 gap 0.23 share 1.00 sep 0.03 n=2 refsz 3/4
+  MISMATCH               Direct-to-Consumer Health & Wellness Subscription Brands       [Nascent,haiku] named E-CONS -0.03 -> E-BIO 0.35 gap 0.38 share 1.00 sep 0.14 n=3 refsz 3/3
+  MISMATCH               Diversified Power Generation Capacity Expansion for AI Electri [Fading,haiku] named E-AIINFRA -0.11 -> E-HLTH 0.26 gap 0.37 share 0.67 sep -0.36 n=3 refsz 4/3
+  MISMATCH               Diversified Property & Casualty Insurance Carriers             [Nascent,haiku] named E-INS 0.10 -> E-HLTH 0.51 gap 0.41 share 1.00 sep 0.05 n=5 refsz 2/3
+  MISMATCH               Electronics Manufacturing Services (EMS) Providers             [Nascent,keyword] named E-HLTH -0.35 -> E-AISEMI 0.72 gap 1.07 share 1.00 sep -0.52 n=4 refsz 3/8
+  MISMATCH               Enterprise Unstructured Data Storage Infrastructure            [Fading,keyword] named E-INDL -0.55 -> E-SAAS 0.60 gap 1.14 share 0.67 sep -0.39 n=3 refsz 3/6
+  MISMATCH               Fintech & Digital Finance Sector Re-rating on Fed Easing       [Fading,haiku] named E-BANKFIN 0.11 -> E-COMM 0.36 gap 0.25 share 0.80 sep 0.14 n=20 refsz 3/3
+  MISMATCH               Genomics & DNA Sequencing Tools                                [Mainstream,haiku] named E-MEDTECH 0.10 -> E-METAL 0.32 gap 0.22 share 1.00 sep -0.04 n=12 refsz 1/3
+  MISMATCH               Global Oil & Gas Producers and Refiners                        [Fading,haiku] named E-ENER -0.31 -> E-MEDTECH 0.13 gap 0.44 share 1.00 sep 0.19 n=17 refsz 2/2
+  MISMATCH               Home Improvement Retail & Building Products                    [Fading,haiku] named E-CONS 0.25 -> E-REIT 0.74 gap 0.49 share 1.00 sep 0.28 n=3 refsz 3/3
+  MISMATCH               Hospital & Behavioral Health Facility Procedure Volume Recover [Mainstream,haiku] named E-HLTH 0.20 -> E-REIT 0.33 gap 0.13 share 0.67 sep 0.1 n=6 refsz 1/3
+  UNJUDGEABLE_COLLINEAR  Identity & Access Management Security Software                 [Fading,haiku] named E-CYBR 0.49 -> E-SAAS 0.61 gap 0.11 share 0.67 sep 0.64 n=3 refsz 10/6
+  MISMATCH               Industrial Construction Execution & On-Site Supply Chain       [Fading,haiku] named E-INDL -0.01 -> E-DEF 0.22 gap 0.23 share 0.62 sep 0.24 n=8 refsz 3/3
+  MISMATCH               Insurance Brokerage & Distribution Services                    [Fading,haiku] named E-INS 0.29 -> E-HLTH 0.42 gap 0.14 share 0.50 sep 0.13 n=2 refsz 3/3
+  MISMATCH               IT Consulting & Business Process Outsourcing Services          [Nascent,keyword] named E-HLTH 0.33 -> E-SAAS 0.50 gap 0.16 share 0.86 sep 0.11 n=7 refsz 3/6
+  MISMATCH               Life Insurance & Annuity Providers                             [Nascent,haiku] named E-INS 0.21 -> E-COMM 0.34 gap 0.14 share 0.78 sep 0.35 n=9 refsz 3/3
+  MISMATCH               Low-Cost & Regional Passenger Airline Rebound                  [Mainstream,haiku] named E-TRANS 0.18 -> E-REIT 0.29 gap 0.12 share 1.00 sep 0.47 n=4 refsz 3/3
+  MISMATCH               Medical Device Mean-Reversion & Rotation Recovery              [Mainstream,keyword] named E-MEDTECH -0.06 -> E-HLTH 0.33 gap 0.38 share 0.93 sep 0.01 n=15 refsz 1/3
+  MISMATCH               Orthopedic Surgical Devices & Instruments                      [Mainstream,haiku] named E-MEDTECH 0.23 -> E-HLTH 0.43 gap 0.20 share 0.75 sep 0.12 n=4 refsz 2/3
+  MISMATCH               Precious Metals Complex Rebound                                [Fading,haiku] named E-METAL 0.12 -> E-BIO 0.42 gap 0.30 share 1.00 sep 0.06 n=35 refsz 1/3
+  MISMATCH               Precision Timing & Motion Control Component Makers             [Nascent,haiku] named E-DEF 0.21 -> E-AISEMI 0.62 gap 0.41 share 1.00 sep 0.19 n=3 refsz 3/8
+  MISMATCH               Private Mortgage Insurance                                     [Fading,haiku] named E-BANKFIN -0.26 -> E-TRANS 0.42 gap 0.67 share 1.00 sep -0.03 n=4 refsz 4/3
+  MISMATCH               Product Tanker Shipping                                        [Nascent,haiku] named E-TRANS -0.14 -> E-CONS 0.11 gap 0.25 share 0.75 sep 0.1 n=4 refsz 3/3
+  MISMATCH               Rare Earth Elements Mining & Processing                        [Fading,haiku] named E-METAL 0.26 -> E-QUANTUM 0.69 gap 0.43 share 1.00 sep 0.29 n=4 refsz 3/4
+  MISMATCH               Regulated Electric Utility Defensive Rotation                  [Fading,haiku] named E-INDL -0.18 -> E-HLTH 0.28 gap 0.47 share 1.00 sep -0.43 n=4 refsz 3/3
+  MISMATCH               Regulated Natural Gas Distribution Utilities                   [Nascent,haiku] named E-INDL -0.36 -> E-HLTH 0.32 gap 0.69 share 1.00 sep -0.43 n=5 refsz 3/3
+  MISMATCH               Skilled Nursing & Senior Housing Healthcare REITs              [Fading,haiku] named E-REIT 0.22 -> E-HLTH 0.35 gap 0.13 share 0.75 sep 0.41 n=4 refsz 3/3
+  MISMATCH               Small Modular Reactor & Advanced Nuclear Fission Technology    [Fading,haiku] named E-ENER 0.45 -> E-QUANTUM 0.74 gap 0.29 share 1.00 sep 0.37 n=2 refsz 3/4
+  MISMATCH               Small Satellite & Space Services Rotation                      [Nascent,haiku] named E-DEF -0.08 -> E-QUANTUM 0.71 gap 0.79 share 1.00 sep -0.23 n=5 refsz 2/4
+  MISMATCH               Space Economy: Satellite Communications & Launch Services      [Mainstream,haiku] named E-DEF -0.03 -> E-QUANTUM 0.64 gap 0.67 share 1.00 sep -0.23 n=9 refsz 2/4
+  MISMATCH               Specialty P&C Insurance Underwriters Rotation Reversal         [Fading,haiku] named E-INS 0.28 -> E-HLTH 0.42 gap 0.15 share 0.93 sep 0.13 n=15 refsz 3/3
+  MISMATCH               Specialty Retail Short-Squeeze Momentum Basket                 [Mainstream,keyword] named E-CONS 0.10 -> E-HLTH 0.27 gap 0.17 share 1.00 sep 0.17 n=3 refsz 3/3
+  MISMATCH               Uranium Mining & Extraction                                    [Fading,haiku] named E-ENER 0.53 -> E-QUANTUM 0.65 gap 0.12 share 1.00 sep 0.37 n=2 refsz 3/4
+  MISMATCH               U.S. Domestic Passenger Airlines                               [Nascent,haiku] named E-TRANS -0.18 -> E-COMM 0.30 gap 0.47 share 1.00 sep -0.01 n=4 refsz 2/3
+confusion (named -> best alt): [(('E-BANKFIN', 'E-TRANS'), 3), (('E-INS', 'E-HLTH'), 3), (('E-INS', 'E-COMM'), 2), (('E-BANKFIN', 'E-COMM'), 2), (('E-CONS', 'E-REIT'), 2), (('E-TRANS', 'E-CONS'), 2), (('E-MEDTECH', 'E-HLTH'), 2), (('E-INDL', 'E-HLTH'), 2), (('E-ENER', 'E-QUANTUM'), 2), (('E-DEF', 'E-QUANTUM'), 2), (('E-AIINFRA', 'E-AISEMI'), 1), (('E-CRYPTO', 'E-AISEMI'), 1), (('E-INDL', 'E-REIT'), 1), (('E-MEDTECH', 'E-CONS'), 1), (('E-SAAS', 'E-CYBR'), 1), (('E-CONS', 'E-TRANS'), 1), (('E-SAAS', 'E-COMM'), 1), (('E-DEF', 'E-INDL'), 1), (('E-COMM', 'E-SAAS'), 1), (('E-INS', 'E-QUANTUM'), 1), (('E-CONS', 'E-BIO'), 1), (('E-AIINFRA', 'E-HLTH'), 1), (('E-HLTH', 'E-AISEMI'), 1), (('E-INDL', 'E-SAAS'), 1), (('E-MEDTECH', 'E-METAL'), 1), (('E-ENER', 'E-MEDTECH'), 1), (('E-HLTH', 'E-REIT'), 1), (('E-CYBR', 'E-SAAS'), 1), (('E-INDL', 'E-DEF'), 1), (('E-HLTH', 'E-SAAS'), 1), (('E-TRANS', 'E-REIT'), 1), (('E-METAL', 'E-BIO'), 1), (('E-DEF', 'E-AISEMI'), 1), (('E-METAL', 'E-QUANTUM'), 1), (('E-REIT', 'E-HLTH'), 1), (('E-CONS', 'E-HLTH'), 1), (('E-TRANS', 'E-COMM'), 1)]
+mismatches by mapping method: Counter({'haiku': 41, 'keyword': 5})
+-- controls --
+  [POS] Electronics Manufacturing Services (EMS) Providers: MISMATCH named E-HLTH F=-0.35 rank 20/20 best alt E-AISEMI 0.72 gap 1.07 share 1.00 sep -0.52
+  [POS] IT Consulting & Business Process Outsourcing Services: MISMATCH named E-HLTH F=0.33 rank 2/20 best alt E-SAAS 0.50 gap 0.16 share 0.86 sep 0.11
+  [NEG] Network Security & Zero-Trust Edge: UNJUDGEABLE (judgeable members 15)
+  [NEG] Emerging Quantum Computing Rally: UNJUDGEABLE (judgeable members 5)
+  [491] Bitcoin Mining Stocks Rotation Reversal: MISMATCH named E-CRYPTO F=0.33 rank 7/20 best alt E-AISEMI 0.60 gap 0.27 share 0.78 sep 0.06
+  [491] AI data-center power buildout: CONSISTENT named E-AIINFRA F=0.53 rank 3/20 best alt E-AISEMI 0.59 gap 0.06 share 0.71 sep 0.73
+  [491] Cloud Data Storage & Analytics Infrastructure: CONSISTENT named E-SAAS F=0.51 rank 1/20 best alt E-CYBR 0.39 gap -0.12 share 0.50 sep 0.57
+  [491] Emerging AI Compute & Cloud Infrastructure Platforms: CONSISTENT named E-AIINFRA F=0.66 rank 1/20 best alt E-AISEMI 0.62 gap -0.04 share 0.60 sep 0.7
+NULL (e_codes shuffled across 113 judgeable themes, 200 draws): mismatch rate median 0.86 (p5 0.81, p95 0.92) vs REAL 46/113 = 0.41
+
+== #491 COHORT — member-level affinity today (cohort excluded from every reference) ==
+variant A: crypto ref = ['MSTR'], AI-infra ref = ['VRT', 'SMCI', 'ANET', 'DELL', 'CIEN', 'CRDO']; sep(crypto, AI-infra) = 0.02139741392090348
+  HUT   crypto +0.23  AI-infra +0.57  diff +0.34  top3 [('E-INDL', 0.69), ('E-AISEMI', 0.6), ('E-AIINFRA', 0.57)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  ABTC  crypto +0.58  AI-infra +0.16  diff -0.42  top3 [('E-CRYPTO', 0.58), ('E-BANKFIN', 0.56), ('E-QUANTUM', 0.38)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  CIFR  crypto +0.24  AI-infra +0.60  diff +0.36  top3 [('E-INDL', 0.67), ('E-AIINFRA', 0.6), ('E-AISEMI', 0.59)]  themes ['AI data-center power buildout', 'Bitcoin Mining Stocks Rotation Reversal']
+  IOND  crypto +0.06  AI-infra +0.05  diff -0.01  top3 [('E-CONS', 0.26), ('E-INDL', 0.14), ('E-MEDTECH', 0.09)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  BTDR  crypto +0.51  AI-infra +0.50  diff -0.01  top3 [('E-AISEMI', 0.63), ('E-QUANTUM', 0.58), ('E-BANKFIN', 0.56)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  CLSK  crypto +0.41  AI-infra +0.53  diff +0.12  top3 [('E-INDL', 0.63), ('E-AISEMI', 0.62), ('E-ROBOT', 0.55)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  MARA  crypto +0.52  AI-infra +0.45  diff -0.07  top3 [('E-AISEMI', 0.6), ('E-CRYPTO', 0.52), ('E-BANKFIN', 0.5)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  RIOT  crypto +0.43  AI-infra +0.53  diff +0.10  top3 [('E-AISEMI', 0.64), ('E-INDL', 0.54), ('E-AIINFRA', 0.53)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  IREN  crypto +0.28  AI-infra +0.62  diff +0.35  top3 [('E-AISEMI', 0.66), ('E-INDL', 0.63), ('E-AIINFRA', 0.62)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  CORZ  crypto +0.14  AI-infra +0.63  diff +0.48  top3 [('E-INDL', 0.66), ('E-AISEMI', 0.63), ('E-AIINFRA', 0.63)]  themes []
+  WULF  crypto +0.21  AI-infra +0.68  diff +0.46  top3 [('E-INDL', 0.69), ('E-AISEMI', 0.68), ('E-AIINFRA', 0.68)]  themes []
+  APLD  crypto +0.27  AI-infra +0.67  diff +0.40  top3 [('E-AISEMI', 0.73), ('E-AIINFRA', 0.67), ('E-INDL', 0.64)]  themes ['Cloud Data Storage & Analytics Infrastructure']
+variant B: crypto ref = ['IBIT'], AI-infra ref = ['NVDA', 'SMCI', 'VRT', 'CRWV']; sep(crypto, AI-infra) = -0.07908055819333473
+  HUT   crypto +0.15  AI-infra +0.62  diff +0.47  top3 [('E-INDL', 0.69), ('E-AIINFRA', 0.62), ('E-AISEMI', 0.6)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  ABTC  crypto +0.47  AI-infra +0.23  diff -0.24  top3 [('E-BANKFIN', 0.56), ('E-CRYPTO', 0.47), ('E-QUANTUM', 0.38)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  CIFR  crypto +0.19  AI-infra +0.64  diff +0.45  top3 [('E-INDL', 0.67), ('E-AIINFRA', 0.64), ('E-AISEMI', 0.59)]  themes ['AI data-center power buildout', 'Bitcoin Mining Stocks Rotation Reversal']
+  IOND  crypto +0.10  AI-infra +0.08  diff -0.02  top3 [('E-CONS', 0.26), ('E-INDL', 0.14), ('E-CRYPTO', 0.1)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  BTDR  crypto +0.47  AI-infra +0.53  diff +0.06  top3 [('E-AISEMI', 0.63), ('E-QUANTUM', 0.58), ('E-BANKFIN', 0.56)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  CLSK  crypto +0.35  AI-infra +0.58  diff +0.24  top3 [('E-INDL', 0.63), ('E-AISEMI', 0.62), ('E-AIINFRA', 0.58)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  MARA  crypto +0.46  AI-infra +0.46  diff +0.00  top3 [('E-AISEMI', 0.6), ('E-BANKFIN', 0.5), ('E-INDL', 0.5)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  RIOT  crypto +0.33  AI-infra +0.59  diff +0.26  top3 [('E-AISEMI', 0.64), ('E-AIINFRA', 0.59), ('E-INDL', 0.54)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  IREN  crypto +0.15  AI-infra +0.69  diff +0.54  top3 [('E-AIINFRA', 0.69), ('E-AISEMI', 0.66), ('E-INDL', 0.63)]  themes ['Bitcoin Mining Stocks Rotation Reversal']
+  CORZ  crypto +0.08  AI-infra +0.71  diff +0.64  top3 [('E-AIINFRA', 0.71), ('E-INDL', 0.66), ('E-AISEMI', 0.63)]  themes []
+  WULF  crypto +0.09  AI-infra +0.72  diff +0.64  top3 [('E-AIINFRA', 0.72), ('E-INDL', 0.69), ('E-AISEMI', 0.68)]  themes []
+  APLD  crypto +0.08  AI-infra +0.75  diff +0.68  top3 [('E-AIINFRA', 0.75), ('E-AISEMI', 0.73), ('E-INDL', 0.64)]  themes ['Cloud Data Storage & Analytics Infrastructure']
+
+== TIME LEG — rolling cohort median [a(AI-infra) - a(crypto)] ==
+variant A: first window end 2025-12-29 .. 2026-09-26; first sustained flip 2026-05-08; current sustained regime began 2026-05-08
+   2025-12-29  median diff -0.01  crypto +0.42  AI +0.41  n=11
+   2026-01-13  median diff -0.06  crypto +0.46  AI +0.44  n=11
+   2026-01-28  median diff -0.06  crypto +0.47  AI +0.46  n=11
+   2026-02-11  median diff -0.04  crypto +0.55  AI +0.51  n=11
+   2026-02-26  median diff -0.06  crypto +0.47  AI +0.44  n=11
+   2026-03-12  median diff -0.08  crypto +0.53  AI +0.47  n=11
+   2026-03-26  median diff -0.11  crypto +0.51  AI +0.43  n=11
+   2026-04-10  median diff -0.02  crypto +0.51  AI +0.49  n=11
+   2026-04-24  median diff -0.02  crypto +0.54  AI +0.48  n=11
+   2026-05-08  median diff +0.03  crypto +0.40  AI +0.45  n=11
+   2026-05-22  median diff +0.05  crypto +0.42  AI +0.49  n=11
+   2026-06-08  median diff +0.15  crypto +0.27  AI +0.44  n=11
+   2026-06-23  median diff +0.12  crypto +0.31  AI +0.44  n=11
+   2026-07-08  median diff +0.26  crypto +0.16  AI +0.44  n=11
+   2026-07-22  median diff +0.34  crypto +0.11  AI +0.48  n=11
+   2026-08-05  median diff +0.40  crypto +0.09  AI +0.53  n=11
+   2026-08-19  median diff +0.39  crypto +0.06  AI +0.52  n=11
+   2026-09-02  median diff +0.37  crypto +0.21  AI +0.55  n=11
+   2026-09-17  median diff +0.32  crypto +0.21  AI +0.53  n=12
+   2026-09-26  median diff +0.23  crypto +0.27  AI +0.55  n=12
+   sessions from current-regime start 2026-05-08 to 2026-09-26: 97
+variant B: first window end 2025-12-29 .. 2026-09-26; first sustained flip 2025-12-29; current sustained regime began 2026-02-13
+   2025-12-29  median diff +0.10  crypto +0.29  AI +0.37  n=11
+   2026-01-13  median diff +0.01  crypto +0.39  AI +0.44  n=11
+   2026-01-28  median diff +0.06  crypto +0.44  AI +0.52  n=11
+   2026-02-11  median diff +0.05  crypto +0.53  AI +0.58  n=11
+   2026-02-26  median diff +0.10  crypto +0.47  AI +0.57  n=11
+   2026-03-12  median diff +0.07  crypto +0.53  AI +0.62  n=11
+   2026-03-26  median diff +0.04  crypto +0.53  AI +0.56  n=11
+   2026-04-10  median diff +0.11  crypto +0.47  AI +0.62  n=11
+   2026-04-24  median diff +0.13  crypto +0.46  AI +0.60  n=11
+   2026-05-08  median diff +0.23  crypto +0.30  AI +0.52  n=11
+   2026-05-22  median diff +0.22  crypto +0.36  AI +0.57  n=11
+   2026-06-08  median diff +0.27  crypto +0.23  AI +0.50  n=11
+   2026-06-23  median diff +0.30  crypto +0.23  AI +0.53  n=11
+   2026-07-08  median diff +0.31  crypto +0.18  AI +0.49  n=11
+   2026-07-22  median diff +0.38  crypto +0.15  AI +0.53  n=11
+   2026-08-05  median diff +0.45  crypto +0.14  AI +0.60  n=11
+   2026-08-19  median diff +0.45  crypto +0.09  AI +0.57  n=11
+   2026-09-02  median diff +0.43  crypto +0.19  AI +0.59  n=11
+   2026-09-17  median diff +0.39  crypto +0.15  AI +0.59  n=12
+   2026-09-26  median diff +0.36  crypto +0.17  AI +0.61  n=12
+   sessions from current-regime start 2026-02-13 to 2026-09-26: 155
+
+== CATALYST-TEXT LEG (cross-check; taxonomy keyword_stems on mi_ep_alerts.catalyst, 90d) ==
+member-catalysts with a text call: 45 across 32 themes; text driver != named: 16
+  ('AI data-center power buildout', 'ALAB', datetime.date(2026, 9, 4), 'E-AIINFRA', 'E-INDL', 'ALAB’s latest gap-up appears tied primarily to investor positioning ahead of its appearance at Citi’s 2026 Glo')
+  ('AI data-center power buildout', 'CIFR', datetime.date(2026, 9, 16), 'E-AIINFRA', 'E-CRYPTO', 'The gap appears driven by a mix of sector-wide tailwinds (falling oil, easing yields, crypto/Bitcoin sentiment')
+cohort catalysts (latest in 90d, any theme or none):
+  HUT 2026-07-20 text-driver=None :: The fresh catalyst today (2026-07-20) is Hut 8's announcement of a 15-year, $9.8B capacity lease for 352MW at the second phase of its Beacon Point (Te
+  ABTC: no alert in 90d
+  CIFR 2026-09-16 text-driver=E-CRYPTO :: The gap appears driven by a mix of sector-wide tailwinds (falling oil, easing yields, crypto/Bitcoin sentiment rally) plus an analyst reiteration (Ros
+  IOND: no alert in 90d
+  BTDR 2026-08-04 text-driver=None :: The fresh catalyst is the August 4, 2026 Benzinga report disclosing that Bitdeer AI executed a 16-year, ~$4.7B lease deal through its Tydal Data Cente
+  CLSK 2026-07-14 text-driver=None :: CleanSpark announced today (July 14, 2026) a 20-year triple-net lease with a high-investment-grade global technology company for its Sandersville, Geo
+  MARA: no alert in 90d
+  RIOT 2026-08-11 text-driver=E-CRYPTO :: Riot's Q2 2026 earnings release (8-K filed 8/10/26) disclosed a landmark 20-year, 191 MW data center lease with a "leading frontier AI lab" at its Roc
+  IREN 2026-07-20 text-driver=None :: IREN announced $2.8 billion in new multi-year AI Cloud contracts with leading AI developers (including Microsoft, NVIDIA, Perplexity, Figure AI, and o
+  CORZ 2026-07-28 text-driver=None :: Core Scientific reported Q2 2026 earnings today with explosive revenue acceleration: colocation revenue surged to $136.7M (vs. $77.5M in Q1 2026 and j
+  WULF 2026-07-06 text-driver=E-BIO :: TeraWulf announced two transformative transactions today: (1) a 20-year lease agreement with Anthropic for ~401 MW of critical IT load at its Justifie
+  APLD: no alert in 90d

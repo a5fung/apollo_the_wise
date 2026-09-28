@@ -1,0 +1,16 @@
+window 2026-07-02..2026-09-25; bitcoin-proxy themes basket n=9 ['ASST', 'BLSH', 'BMNR', 'COIN', 'CRCL', 'GLXY', 'MSTR', 'PURR', 'SBET']
+AI-infra themes basket n=33; sep(bitcoin-proxy, AI-infra themes) = 0.20
+reference affinity to IBIT: bitcoin-proxy basket 0.78 | AI-infra basket -0.08
+  HUT   bitcoin-proxy themes +0.40  AI-infra themes +0.62  diff +0.23 MISFIT
+  ABTC  bitcoin-proxy themes +0.67  AI-infra themes +0.27  diff -0.39 
+  CIFR  bitcoin-proxy themes +0.38  AI-infra themes +0.65  diff +0.27 MISFIT
+  IOND  bitcoin-proxy themes +0.07  AI-infra themes +0.11  diff +0.05 
+  BTDR  bitcoin-proxy themes +0.63  AI-infra themes +0.58  diff -0.04 
+  CLSK  bitcoin-proxy themes +0.56  AI-infra themes +0.63  diff +0.07 
+  MARA  bitcoin-proxy themes +0.64  AI-infra themes +0.51  diff -0.13 
+  RIOT  bitcoin-proxy themes +0.57  AI-infra themes +0.60  diff +0.03 
+  IREN  bitcoin-proxy themes +0.49  AI-infra themes +0.68  diff +0.19 MISFIT
+  CORZ  bitcoin-proxy themes +0.34  AI-infra themes +0.69  diff +0.35 MISFIT
+  WULF  bitcoin-proxy themes +0.37  AI-infra themes +0.75  diff +0.38 MISFIT
+  APLD  bitcoin-proxy themes +0.45  AI-infra themes +0.77  diff +0.32 MISFIT
+cohort median diff +0.13; misfits 6 of 12

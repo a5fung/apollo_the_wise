@@ -1,0 +1,287 @@
+====================================================================================================
+#655 GROUPING TEST — live board of 2026-09-25 (latest row per name, theme_date >= CURRENT_DATE-7, stage <> Retired)
+====================================================================================================
+POPULATION: n = 118 live themes (Accelerating 4, Fading 41, Mainstream 44, Nascent 29); 711 member slots, 672 distinct tickers; 672 with >=30 of 60 sessions of history.
+  latest theme_date: 2026-09-25 (117 on 09-25, 1 carried from 09-24).
+  window: 60 returns, 2026-07-02 -> 2026-09-25; SPY-subtracted; universe = 2397 scored stocks on 2026-09-25 (2369 usable).
+  DELTA vs the brief's 09-11 board (127 themes, 9 empty, 20 at 2): today 118 themes, 0 empty, 10 at 2, 34 at 3.
+  REGIME: the 0.35 co-movement admission gate is live since 2026-09-14 (assignment); Shape A (the two strips judged by the tape) since 2026-09-25. Members admitted since 09-14 were pair-tested at 0.35 -> see G1 era split.
+
+----------------------------------------------------------------------------------------------------
+G1  MEMBER FIT — leave-one-out tie of each member to its own theme (engine maths; bar 0.35)
+----------------------------------------------------------------------------------------------------
+member-pairs on the board: n = 711; judgeable by the engine's instrument: n = 589 (83%); unjudgeable n = 122
+themes where NO member can be judged (fewer than 4 members with history): 44 of 118 (37%)
+own-fit distribution (n = 589): p10 0.37 · p25 0.54 · median 0.73 · p75 0.84
+PASS RATE: 534 of 589 judgeable member-pairs tie >= 0.35 = 90.7%   [proposed bar >= 90%]
+by era (how the member got into the theme):
+  founder            n =  306  median 0.79  >=0.35: 281 (92%)
+  carried-pre-May    n =    3  median 0.55  >=0.35: 3 (100%)
+  joined-pre-09-14   n =  141  median 0.62  >=0.35: 119 (84%)
+  joined-09-14+      n =  139  median 0.70  >=0.35: 131 (94%)
+by stage:
+  Nascent       n =  121  median 0.80  >=0.35: 98%
+  Accelerating  n =   16  median 0.73  >=0.35: 100%
+  Mainstream    n =  203  median 0.65  >=0.35: 91%
+  Fading        n =  249  median 0.73  >=0.35: 87%
+
+----------------------------------------------------------------------------------------------------
+G2  MISFILED — own tie < 0.35 AND best other theme >= 0.35 AND >= own + 0.2
+----------------------------------------------------------------------------------------------------
+members failing their own theme (own < 0.35): 55 of 589
+  of which MISFILED (a better home exists at >= 0.35, margin >= 0.2): 20 = 3.4% of judgeable pairs   [proposed bar <= 5%]
+  of which fit NOWHERE (no theme >= 0.35): 16
+  split: destination is a SHARD of the own theme (baskets >= 0.7): 0 · a DIFFERENT group: 20
+  (sector view: destination theme holds the member's own sector in 13 of 20)
+softer read, not barred: members tied MORE to some other theme than their own (any margin): 216 of 589 (37%) — best-of-117 maximum vs a single own tie, inflated by construction
+MISFILED list (ticker · own theme -> better home · own / best):
+  NTNX   Enterprise Server, Storage & Data Infrastructure -> AI-Powered Enterprise Analytics & Intelligent Wo -0.19 / +0.72
+  ACA    Industrial Construction Execution & On-Site Supp -> Regulated Electric Utility Defensive Rotation    -0.17 / +0.75
+  APLD   Cloud Data Storage & Analytics Infrastructure    -> Bitcoin Mining Stocks Rotation Reversal          -0.16 / +0.87
+  TTEK   Industrial Construction Execution & On-Site Supp -> Enterprise HR & Workforce Management SaaS        -0.10 / +0.63
+  ORCL   AI-Powered Enterprise Analytics & Intelligent Wo -> On-Site Power Generation & Distribution Equipmen -0.10 / +0.56
+  J      Industrial Construction Execution & On-Site Supp -> Home Improvement Retail & Building Products      -0.09 / +0.47
+  SNOW   AI data-center power buildout                    -> Identity & Access Management Security Software   +0.07 / +0.47
+  HTFL   AI-Driven Diagnostics & Imaging Re-Rating        -> Legacy Telecom & Pay-TV/Broadcasting Distributio +0.10 / +0.46
+  KBR    Industrial Construction Execution & On-Site Supp -> Defense Intelligence & Cybersecurity IT Contract +0.13 / +0.68
+  WKC    Energy Infrastructure & Services Complex         -> Global Oil & Gas Producers and Refiners          +0.18 / +0.42
+  DB     Bank Stocks: Rising-Rate NIM Expansion           -> Annuity-Focused Insurers                         +0.18 / +0.40
+  AGX    Industrial Construction Execution & On-Site Supp -> Bitcoin Mining Stocks Rotation Reversal          +0.18 / +0.71
+  WES    Energy Infrastructure & Services Complex         -> Regulated Natural Gas Distribution Utilities     +0.24 / +0.66
+  DGX    AI-Driven Diagnostics & Imaging Re-Rating        -> Life Science Tools & Analytical Instruments      +0.26 / +0.66
+  HOOD   Wealth Management & Retail Brokerage Platforms   -> Bitcoin Balance Sheet Proxies                    +0.26 / +0.74
+  ESTC   Cloud Data Storage & Analytics Infrastructure    -> AI-Powered Enterprise Analytics & Intelligent Wo +0.27 / +0.62
+  AKAM   AI data-center power buildout                    -> Cloud Application Delivery & Observability Infra +0.27 / +0.54
+  LH     AI-Driven Diagnostics & Imaging Re-Rating        -> Life Science Tools & Analytical Instruments      +0.28 / +0.58
+  SEIC   Wealth Management & Retail Brokerage Platforms   -> Enterprise HR & Workforce Management SaaS        +0.28 / +0.54
+  AMP    Wealth Management & Retail Brokerage Platforms   -> Annuity-Focused Insurers                         +0.33 / +0.65
+
+----------------------------------------------------------------------------------------------------
+G3  COHESION vs MATCHED RANDOM CONTROL (mean pairwise tie; 500 member-matched draws)
+----------------------------------------------------------------------------------------------------
+(pair matrix: 2377 tickers, 2365 with all 60 sessions)
+fast-vs-exact cohesion check: 0.609/0.609; 0.298/0.298; 0.213/0.213; 0.592/0.590; 0.484/0.484; 0.721/0.721; 0.512/0.512; 0.497/0.497
+themes judgeable (>= 2 members with history): n = 118 of 118
+theme cohesion: median 0.53 (p25 0.35, p75 0.72)
+C1 control (RS x vol matched) median cohesion: 0.04; C2 (+ same sector): 0.11
+PASS C1 (beats a random matched basket at p95): 103 of 118 = 87.3%   [proposed bar >= 90%]
+beats its OWN SECTOR (C2 p95) — not barred: 87 of 118 = 73.7%
+  Nascent       n =  29  pass C1 26  beat sector 20
+  Accelerating  n =   4  pass C1 3  beat sector 3
+  Mainstream    n =  44  pass C1 40  beat sector 37
+  Fading        n =  41  pass C1 34  beat sector 27
+  size 2    n =  10  pass C1 7 (70%)
+  size 3    n =  34  pass C1 24 (71%)
+  size 4-5  n =  39  pass C1 38 (97%)
+  size 6+   n =  35  pass C1 34 (97%)
+FAIL C1 (not distinguishable from a random matched basket):
+  Industrial Construction Execution & On-Site Supply Chain     [Fading, 8] cohesion +0.08 vs control p95 +0.14
+  Cardiac & Bioelectric Ablation Device Innovators             [Mainstream, 2] cohesion +0.08 vs control p95 +0.39
+  Diversified Power Generation Capacity Expansion for AI Elect [Fading, 3] cohesion +0.08 vs control p95 +0.38
+  Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound    [Fading, 3] cohesion +0.09 vs control p95 +0.25
+  Enterprise Unstructured Data Storage Infrastructure          [Fading, 3] cohesion +0.10 vs control p95 +0.25
+  Emerging Medical Device Innovators Breakout                  [Mainstream, 3] cohesion +0.13 vs control p95 +0.21
+  Digital Insurance Distribution & InsurTech Platforms         [Fading, 2] cohesion +0.14 vs control p95 +0.53
+  Electric & Unmanned Aircraft Innovators                      [Fading, 2] cohesion +0.17 vs control p95 +0.52
+  Cloud Data Storage & Analytics Infrastructure                [Mainstream, 4] cohesion +0.19 vs control p95 +0.21
+  Liquid Biopsy & Molecular Cancer Diagnostics Testing         [Nascent, 3] cohesion +0.19 vs control p95 +0.34
+  Value Retail & Grocery Wholesale Trade-Down Basket           [Nascent, 3] cohesion +0.20 vs control p95 +0.25
+  Diabetes Management Devices (CGM, Insulin Pumps & Delivery)  [Fading, 3] cohesion +0.23 vs control p95 +0.24
+  Life Sciences & Healthcare Data/CRM Platforms                [Mainstream, 3] cohesion +0.24 vs control p95 +0.26
+  Direct-to-Consumer Health & Wellness Subscription Brands     [Nascent, 3] cohesion +0.27 vs control p95 +0.32
+  Media Streaming & Entertainment Content Turnaround           [Accelerating, 3] cohesion +0.27 vs control p95 +0.36
+
+----------------------------------------------------------------------------------------------------
+G4  SHAPE
+----------------------------------------------------------------------------------------------------
+themes under 3 members: 10 of 118 = 8.5%   [proposed bar <= 10%]
+themes of 3 members: 34; <= 5 members: 83 of 118 (70%)
+themes the engine's own co-movement test cannot judge ANY member of: 44 of 118
+SHARD PAIRS (two live themes whose baskets correlate >= 0.7): 163
+  themes in >=1 shard pair: 69 of 118; small themes (<=3) that are a shard of another: 22 of 44
+  1.00  Mobile SoC & Wireless Connectivity Semiconductors  [3] ~ RF & Analog Wireless Connectivity Semiconductor Ma [3]
+  0.97  Small Satellite & Space Services Rotation          [5] ~ Space Economy: Satellite Communications & Launch S [9]
+  0.97  Precious Metals Complex Rebound                    [35] ~ Precious Metals Miners Velocity Breakout           [3]
+  0.97  Diversified Property & Casualty Insurance Carriers [5] ~ Specialty P&C Insurance Underwriters Rotation Reve [15]
+  0.96  mRNA Vaccine & Personalized Cancer Therapy Platfor [4] ~ Vaccine & Antiviral Therapeutics Rebound           [4]
+  0.94  AI-Driven Memory & Storage Supply Shortage         [7] ~ Pure-Play NAND/DRAM Memory Chip Makers             [4]
+  0.93  Regulated Electric Utility Defensive Rotation      [4] ~ Regulated Natural Gas Distribution Utilities       [5]
+  0.91  Crude & Product Tanker Shipping                    [7] ~ Product Tanker Shipping                            [4]
+  0.91  Low-Cost & Regional Passenger Airline Rebound      [4] ~ U.S. Domestic Passenger Airlines                   [4]
+  0.91  Front-End Semiconductor Fabrication Equipment Make [4] ~ Semiconductor Test, Yield & Assembly Supply Chain  [7]
+  0.91  Bitcoin Balance Sheet Proxies                      [4] ~ Bitcoin Treasury & Crypto Proxy Equities Correlati [4]
+  0.90  AI Data Center High-Speed Interconnect & Signal In [7] ~ Semiconductor Equipment & Materials Velocity Surge [3]
+  0.90  AI-Driven Memory & Storage Supply Shortage         [7] ~ Semiconductor Foundry & Advanced Packaging Manufac [5]
+  0.90  Energy Infrastructure & Services Complex           [6] ~ Offshore Drilling Rig Contractors                  [4]
+  0.89  Semiconductor Foundry & Advanced Packaging Manufac [5] ~ Semiconductor Test, Yield & Assembly Supply Chain  [7]
+  0.89  AI Data Center High-Speed Interconnect & Signal In [7] ~ AI-Driven Memory & Storage Supply Shortage         [7]
+  0.89  AI Data Center High-Speed Interconnect & Signal In [7] ~ Semiconductor Test, Yield & Assembly Supply Chain  [7]
+  0.89  Farm Economy Value Chain Re-Rating                 [4] ~ Global Agriculture Value Chain Recovery            [3]
+  0.88  AI-Powered Enterprise Analytics & Intelligent Work [18] ~ Customer Engagement & Marketing/CX SaaS Platforms  [2]
+  0.88  Bitcoin Balance Sheet Proxies                      [4] ~ Bitcoin Holding & Trading Proxy Equities           [3]
+  0.88  Bitcoin Holding & Trading Proxy Equities           [3] ~ Bitcoin Treasury & Crypto Proxy Equities Correlati [4]
+  0.88  AI-Driven Memory & Storage Supply Shortage         [7] ~ Semiconductor Test, Yield & Assembly Supply Chain  [7]
+  0.87  AI Data Center High-Speed Interconnect & Signal In [7] ~ Semiconductor Foundry & Advanced Packaging Manufac [5]
+  0.87  Semiconductor Equipment & Materials Velocity Surge [3] ~ Semiconductor Test, Yield & Assembly Supply Chain  [7]
+  0.87  AI-Driven Memory & Storage Supply Shortage         [7] ~ Front-End Semiconductor Fabrication Equipment Make [4]
+DUAL-HOMED tickers (in >= 2 live themes): 39 of 672 (5.8%)
+  AGCO: Farm Economy Value Chain Re-Rating +0.68 | Global Agriculture Value Chain Recovery n/a
+  AGX: AI data-center power buildout +0.73 | Industrial Construction Execution & On-S +0.18
+  ALAB: AI Data Center High-Speed Interconnect & +0.73 | AI data-center power buildout +0.69
+  ATRC: Cardiac & Bioelectric Ablation Device In n/a | Medical Device Mean-Reversion & Rotation +0.53
+  BJ: Defensive Consumer Staples Rotation +0.63 | Value Retail & Grocery Wholesale Trade-D n/a
+  BKSY: Small Satellite & Space Services Rotatio +0.76 | Space Economy: Satellite Communications  +0.79
+  CDNA: AI-Driven Diagnostics & Imaging Re-Ratin +0.15 | Liquid Biopsy & Molecular Cancer Diagnos n/a
+  CIFR: AI data-center power buildout +0.61 | Bitcoin Mining Stocks Rotation Reversal +0.87
+  CNH: Farm Economy Value Chain Re-Rating +0.65 | Global Agriculture Value Chain Recovery n/a
+  COIN: Bitcoin Balance Sheet Proxies +0.89 | Bitcoin Holding & Trading Proxy Equities n/a
+  CRCL: Bitcoin Balance Sheet Proxies +0.86 | Bitcoin Treasury & Crypto Proxy Equities +0.80
+  EVRG: Diversified Power Generation Capacity Ex n/a | Regulated Electric Utility Defensive Rot +0.87
+  FLY: Small Satellite & Space Services Rotatio +0.87 | Space Economy: Satellite Communications  +0.88
+  FSM: Precious Metals Complex Rebound +0.96 | Precious Metals Miners Velocity Breakout n/a
+  GNRC: AI data-center power buildout +0.43 | On-Site Power Generation & Distribution  +0.59
+  GRAL: Genomics & DNA Sequencing Tools +0.47 | Liquid Biopsy & Molecular Cancer Diagnos n/a
+  INSP: Emerging Medical Device Innovators Break n/a | Medical Device Mean-Reversion & Rotation +0.20
+  LUNR: Small Satellite & Space Services Rotatio +0.84 | Space Economy: Satellite Communications  +0.83
+  LUV: Low-Cost & Regional Passenger Airline Re +0.72 | U.S. Domestic Passenger Airlines +0.82
+  MDA: Small Satellite & Space Services Rotatio +0.61 | Space Economy: Satellite Communications  +0.62
+  MRNA: mRNA Vaccine & Personalized Cancer Thera +0.74 | Vaccine & Antiviral Therapeutics Rebound +0.52
+  MU: AI-Driven Memory & Storage Supply Shorta +0.85 | Pure-Play NAND/DRAM Memory Chip Makers +0.90
+  NE: Energy Infrastructure & Services Complex +0.77 | Offshore Drilling Rig Contractors +0.88
+  NTRA: Genomics & DNA Sequencing Tools +0.61 | Liquid Biopsy & Molecular Cancer Diagnos n/a
+  OKTA: Identity & Access Management Security So n/a | Network Security & Zero-Trust Edge +0.86
+  QCOM: Mobile SoC & Wireless Connectivity Semic n/a | RF & Analog Wireless Connectivity Semico n/a
+  QRVO: Mobile SoC & Wireless Connectivity Semic n/a | RF & Analog Wireless Connectivity Semico n/a
+  RKLB: Small Satellite & Space Services Rotatio +0.88 | Space Economy: Satellite Communications  +0.87
+  RMBS: AI Server Power & Signal-Integrity Analo n/a | Fabless Semiconductor IP Licensing n/a
+  SANM: Electronics Manufacturing Services (EMS) +0.65 | Semiconductor Test, Yield & Assembly Sup +0.82
+  SDRL: Energy Infrastructure & Services Complex +0.75 | Offshore Drilling Rig Contractors +0.87
+  SKHY: AI-Driven Memory & Storage Supply Shorta +0.76 | Pure-Play NAND/DRAM Memory Chip Makers +0.81
+  SNOW: AI data-center power buildout +0.07 | Cloud Data Storage & Analytics Infrastru +0.49
+  SWKS: Mobile SoC & Wireless Connectivity Semic n/a | RF & Analog Wireless Connectivity Semico n/a
+  TEM: AI-Driven Diagnostics & Imaging Re-Ratin +0.63 | Life Sciences & Healthcare Data/CRM Plat n/a
+  TSM: AI-Driven Memory & Storage Supply Shorta +0.81 | Semiconductor Foundry & Advanced Packagi +0.82
+  VICR: AI data-center power buildout +0.66 | On-Site Power Generation & Distribution  +0.66
+  WPM: Precious Metals Complex Rebound +0.94 | Precious Metals Miners Velocity Breakout n/a
+  XP: Fintech & Digital Finance Sector Re-rati +0.16 | Wealth Management & Retail Brokerage Pla +0.04
+HOMELESS STRONG CO-MOVERS (in no live theme; best theme tie >= max(0.35, that theme's median member tie)):
+  universe checked: 1705 scored stocks in no theme (307 of them at rs_composite >= 70)
+  WITH the engine's RS floor (rs_composite >= 70): 33; WITHOUT the floor: 354
+  (floor) they fit 21 distinct themes; top themes by homeless count:
+      5  Defensive Consumer Staples Rotation  e.g. CTAS,ECL,GPC,MAN,VLTO
+      3  Genetic Medicine: Gene Editing & Gene Therapy Innovators  e.g. CMPS,IBRX,GMAB
+      3  Electronics Manufacturing Services (EMS) Providers  e.g. KN,LFUS,AVT
+      3  Inflammatory Disease & Immunology Biologics  e.g. KYMR,ROIV,ARQT
+      2  AI-Driven Diagnostics & Imaging Re-Rating  e.g. CSTL,ABCL
+      2  Genomics & DNA Sequencing Tools  e.g. ABSI,NEO
+      1  Orthopedic Surgical Devices & Instruments  e.g. AVY
+      1  Non-Alcoholic Beverages & Energy Drinks  e.g. MA
+      1  AI Data Center High-Speed Interconnect & Signal Integrity Ch  e.g. MRAM
+      1  Live Music & Concert Promotion  e.g. MSGS
+  best-of-many NULL: 363 of 400 random NON-board scored stocks have a best theme tie >= 0.35 (91%) — so '>= 0.35 to SOME theme' alone is not evidence of belonging
+
+----------------------------------------------------------------------------------------------------
+#491 — the ex-bitcoin miners that pivoted to AI data centres
+----------------------------------------------------------------------------------------------------
+Bitcoin Mining Stocks Rotation Reversal [Nascent, 9]: cohesion +0.60 vs matched p95 +0.17 -> PASS G3; beats own sector: yes
+    HUT    own +0.86  best other +0.75 AI data-center power buildout              era joined-09-14+    fits
+    ABTC   own +0.55  best other +0.66 Bitcoin Treasury & Crypto Proxy Equities C era joined-09-14+    fits
+    CIFR   own +0.87  best other +0.66 Emerging AI Compute & Cloud Infrastructure era joined-09-14+    fits
+    IOND   own +0.20  best other +0.37 For-Profit Postsecondary & Vocational Educ era founder          fails own
+    BTDR   own +0.81  best other +0.72 Bitcoin Holding & Trading Proxy Equities   era joined-09-14+    fits
+    CLSK   own +0.93  best other +0.76 AI data-center power buildout              era founder          fits
+    MARA   own +0.87  best other +0.70 Bitcoin Holding & Trading Proxy Equities   era joined-09-14+    fits
+    RIOT   own +0.88  best other +0.73 AI data-center power buildout              era founder          fits
+    IREN   own +0.80  best other +0.74 AI data-center power buildout              era joined-09-14+    fits
+AI data-center power buildout [Nascent, 7]: cohesion +0.30 vs matched p95 +0.16 -> PASS G3; beats own sector: no
+    AGX    own +0.73  best other +0.71 Bitcoin Mining Stocks Rotation Reversal    era founder          fits
+    SNOW   own +0.07  best other +0.47 Identity & Access Management Security Soft era founder          MISFILED
+    ALAB   own +0.69  best other +0.81 Semiconductor Foundry & Advanced Packaging era founder          fits
+    CIFR   own +0.61  best other +0.66 Emerging AI Compute & Cloud Infrastructure era joined-09-14+    fits
+    GNRC   own +0.43  best other +0.52 Semiconductor Test, Yield & Assembly Suppl era joined-09-14+    fits
+    VICR   own +0.66  best other +0.71 Semiconductor Test, Yield & Assembly Suppl era joined-09-14+    fits
+    AKAM   own +0.27  best other +0.54 Cloud Application Delivery & Observability era joined-09-14+    MISFILED
+Cloud Data Storage & Analytics Infrastructure [Mainstream, 4]: cohesion +0.19 vs matched p95 +0.21 -> FAIL G3; beats own sector: no
+    APLD   own -0.16  best other +0.87 Bitcoin Mining Stocks Rotation Reversal    era joined-09-14+    MISFILED
+    SNOW   own +0.49  best other +0.47 Identity & Access Management Security Soft era founder          fits
+    MDB    own +0.42  best other +0.65 Network Security & Zero-Trust Edge         era joined-pre-09-14 fits
+    ESTC   own +0.27  best other +0.62 AI-Powered Enterprise Analytics & Intellig era joined-pre-09-14 MISFILED
+  CORZ: homes NONE; rs_composite 19.3; tie to miners basket +0.85; homeless-flag no
+  WULF: homes NONE; rs_composite 19.0; tie to miners basket +0.85; homeless-flag no
+  APLD: homes ['Cloud Data Storage & Analytics Infrastructure']; rs_composite 41.2; tie to miners basket +0.87; homeless-flag no
+  NBIS: homes ['Emerging AI Compute & Cloud Infrastructure Platforms']; rs_composite 91.2; tie to miners basket +0.61; homeless-flag no
+  CRWV: homes ['Emerging AI Compute & Cloud Infrastructure Platforms']; rs_composite 62.4; tie to miners basket +0.61; homeless-flag no
+  GLXY: homes ['Bitcoin Holding & Trading Proxy Equities']; rs_composite 36.2; tie to miners basket +0.84; homeless-flag no
+  miners basket ~ AI power basket (theme-theme): +0.79; ~ cloud-storage basket: +0.35
+
+IDENTITY ADD-ON (one number, not part of the grouping test): does price still say 'bitcoin'?
+  window ending   miners~IBIT   miners~AI-interconnect   miners~AI-power(ex-CIFR)
+  2025-09-30      +0.32          -0.13                   -0.00
+  2025-12-31      +0.40          +0.48                   +0.45
+  2026-03-31      +0.66          +0.45                   +0.66
+  2026-06-30      +0.36          +0.31                   +0.26
+  2026-09-25      +0.28          +0.66                   +0.67
+
+----------------------------------------------------------------------------------------------------
+POST-HOC READS (added after the first run; they explain the pre-registered numbers, they do not replace them)
+----------------------------------------------------------------------------------------------------
+(1) best-theme tie of ALL 1705 unthemed scored stocks: p50 0.54 · p75 0.68 · p90 0.79 · p95 0.84 · p99 0.90  -> 0.35 is below the MEDIAN unthemed stock's best fit
+(2) homeless variant A — best tie >= unthemed p95 (0.84): 86 names; with RS floor 2
+    CORZ in A: True · WULF in A: True  (the declared rule missed both: 0.85 vs the miners' median member tie 0.86; the RS floor also drops them at rs_composite 19)
+    declared-rule miss margin on the miners theme: CORZ -0.003, WULF -0.010
+    variant A destinations (top 8):
+       15  Regulated Electric Utility Defensive Rotation  e.g. AVA,D,EMA,IDA,PPL,PNW,EXC,SO,DTE,DUK
+       13  Energy Supply Disruption: Middle East Geopolitical Risk  e.g. IMO,VNOM,CNQ,MGY,PTEN,CHRD,NOG,FANG,OVV,LYB
+        9  Bank Stocks: Rising-Rate NIM Expansion  e.g. ASB,BFC,EFSC,EWBC,FNB,FULT,INDB,ONB,UBSI
+        8  Semiconductor Test, Yield & Assembly Supply Chain  e.g. AEIS,AMKR,JBL,LSCC,MKSI,NVMI,PLAB,TTMI
+        8  Regulated Natural Gas Distribution Utilities  e.g. NWN,LNT,WEC,AEP,NJR,PEG,ES,SWX
+        4  Front-End Semiconductor Fabrication Equipment Makers  e.g. ACLS,KLAC,UCTT,VECO
+        4  Skilled Nursing & Senior Housing Healthcare REITs  e.g. AHR,NHI,VTR,CTRE
+        3  Specialty P&C Insurance Underwriters Rotation Reversal  e.g. CNA,KNSL,ALL
+(3) of the 163 shard pairs: 6 share >= half their members (duplicates); 157 hold different names that trade as one block
+    basket-to-basket tie across all 6903 theme pairs: p50 0.03 · p90 0.41 · p95 0.57 · p99 0.80
+      dup 0.94 overlap 0.50  AI-Driven Memory & Storage Supply Shortage [2026-09-25] ~ Pure-Play NAND/DRAM Memory Chip Makers [2026-09-25]
+      dup 0.90 overlap 0.50  Energy Infrastructure & Services Complex [2026-09-25] ~ Offshore Drilling Rig Contractors [2026-09-25]
+      dup 0.89 overlap 0.67  Farm Economy Value Chain Re-Rating [2026-09-25] ~ Global Agriculture Value Chain Recovery [2026-09-25]
+      dup 1.00 overlap 1.00  Mobile SoC & Wireless Connectivity Semiconduc [2026-09-24] ~ RF & Analog Wireless Connectivity Semiconduct [2026-09-25]
+      dup 0.97 overlap 0.67  Precious Metals Complex Rebound [2026-09-25] ~ Precious Metals Miners Velocity Breakout [2026-09-25]
+      dup 0.97 overlap 1.00  Small Satellite & Space Services Rotation [2026-09-25] ~ Space Economy: Satellite Communications & Lau [2026-09-25]
+(4) G1 pass rate on members NEVER pair-tested (founders + joined before 09-14): 403 of 450 = 89.6%
+(5) size 2   : median control p95 0.44 (a theme this small must clear this to pass G3)
+(5) size 3   : median control p95 0.25 (a theme this small must clear this to pass G3)
+(5) size 4-5 : median control p95 0.23 (a theme this small must clear this to pass G3)
+(5) size 6+  : median control p95 0.13 (a theme this small must clear this to pass G3)
+(6) 'Emerging AI Compute & Cloud Infrastructure Platforms' ['DOCN', 'PENG', 'CBRS', 'CRWV', 'NBIS']: cohesion +0.57; miners basket ~ it +0.65
+      HUT   tie to miners +0.86 · to AI-compute +0.64 · to AI-power +0.75
+      CIFR  tie to miners +0.87 · to AI-compute +0.66 · to AI-power +0.61
+      CLSK  tie to miners +0.93 · to AI-compute +0.62 · to AI-power +0.76
+      RIOT  tie to miners +0.88 · to AI-compute +0.61 · to AI-power +0.73
+      MARA  tie to miners +0.87 · to AI-compute +0.49 · to AI-power +0.67
+      IREN  tie to miners +0.80 · to AI-compute +0.71 · to AI-power +0.74
+      BTDR  tie to miners +0.81 · to AI-compute +0.57 · to AI-power +0.65
+      CORZ  tie to miners +0.85 · to AI-compute +0.76 · to AI-power +0.75
+      WULF  tie to miners +0.85 · to AI-compute +0.76 · to AI-power +0.81
+      APLD  tie to miners +0.87 · to AI-compute +0.77 · to AI-power +0.80
+(7) homeless variant B — A, restricted to themes that beat their own sector: 75 names (RS floor 2); CORZ True · WULF True
+       15  Regulated Electric Utility Defensive Rotation  AVA,D,EMA,IDA,PPL,PNW,EXC,SO,DTE,DUK,OGE,FE,XEL,AEE,CMS
+       13  Energy Supply Disruption: Middle East Geopolitical Risk  IMO,VNOM,CNQ,MGY,PTEN,CHRD,NOG,FANG,OVV,LYB,MTDR,OXY,VET
+        9  Bank Stocks: Rising-Rate NIM Expansion  ASB,BFC,EFSC,EWBC,FNB,FULT,INDB,ONB,UBSI
+        8  Semiconductor Test, Yield & Assembly Supply Chain  AEIS,AMKR,JBL,LSCC,MKSI,NVMI,PLAB,TTMI
+        4  Front-End Semiconductor Fabrication Equipment Makers  ACLS,KLAC,UCTT,VECO
+        4  Skilled Nursing & Senior Housing Healthcare REITs  AHR,NHI,VTR,CTRE
+        3  Specialty P&C Insurance Underwriters Rotation Reversal  CNA,KNSL,ALL
+        3  AI Data Center High-Speed Interconnect & Signal Integrity Ch  LWLG,MTSI,VIAV
+        2  IT Consulting & Business Process Outsourcing Services  GIB,INFY
+        2  Bitcoin Mining Stocks Rotation Reversal  WULF,CORZ
+        2  Homebuilders & Residential Construction Supply Chain  KBH,LEN
+        1  AI-Powered Enterprise Analytics & Intelligent Workflow SaaS  ADBE
+        1  Diversified Property & Casualty Insurance Carriers  AIG
+        1  U.S. Domestic Passenger Airlines  ALGT
+        1  On-Site Power Generation & Distribution Equipment for Data C  AMSC
+        1  Small Satellite & Space Services Rotation  ASTS
+        1  Electronics Manufacturing Services (EMS) Providers  FLEX
+        1  Semiconductor Foundry & Advanced Packaging Manufacturing  MXL
+        1  Global Oil & Gas Producers and Refiners  CVE
+        1  Precious Metals Complex Rebound  KGC
+        1  Copper Mining & Production  TGB
+(8) misfiled destinations: 15 of 20 tie above the unthemed MEDIAN best fit (0.54); 1 above its p95 (0.84)

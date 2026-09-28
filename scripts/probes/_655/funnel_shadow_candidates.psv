@@ -1,0 +1,677 @@
+2026-06-02|AI custom silicon & networking buildout|HPE,MRVL,CAMT|narrative_cogap_backfill
+2026-06-24|Commercial Aerospace Aftermarket Boom|AIR,VSEC,WLFC,WWD|rs_slope_synthesis
+2026-06-24|Next-Gen Oncology Platform Re-Rating|IDYA,GLUE,NRIX,CGON,NTRA|rs_slope_synthesis
+2026-06-25|AI memory and infrastructure demand surge|MU,SNX|narrative_cogap
+2026-06-25|Protein Degradation & Targeted Molecular Therapeutics Re-rating|KYMR,GLUE,GENB,IDYA|rs_slope_synthesis
+2026-06-26|Clinical-Stage Autoimmune & Inflammatory Disease Biologics|VERA,VOR,ZBIO,ANAB,KNSA,AVTX|shadow_v2
+2026-06-26|Rare & Orphan Disease Specialty Pharma|LQDA,TVTX,SION,RYTM|shadow_v2
+2026-06-26|Nucleic Acid Therapeutics & Gene Synthesis Platforms|MRNA,RGNX,TWST|shadow_v2
+2026-06-26|Cancer Genomic Diagnostics & Early Detection|GRAL,VCYT|shadow_v2
+2026-06-26|Life Science Tools & Cell Therapy Bioprocessing|TECH,BLFS|shadow_v2
+2026-06-26|Defense Drones & Unmanned Aerial Systems|AVAV,KTOS,ONDS,RCAT,UMAC|shadow_v2
+2026-06-26|Large Defense Contractors & Aerospace Primes|GD,LHX,LMT,NOC,RTX|shadow_v2
+2026-06-26|Aerospace & Defense Precision Components & Subsystems|AADX,ELMT|shadow_v2
+2026-06-26|Medical Devices & Surgical Equipment|ATEC,BDX,STE,SYK|shadow_v2
+2026-06-26|Coal Mining & Export (Metallurgical & Thermal)|AMR,BTU,HCC|shadow_v2
+2026-06-26|Digital Insurance Marketplace & Distribution|EVER,BWIN|shadow_v2
+2026-06-29|Rare & Orphan Disease Biotech Re-Rating|RARE,MIRM,RGNX,AGIO,AMLX|rs_slope_synthesis
+2026-06-30|Autoimmune & Inflammatory Disease Biopharmaceuticals|VERA,VOR,ALMS,ABVX,CLDX,TRAX|shadow_v2
+2026-06-30|Clinical-Stage Oncology Therapeutics|ELVN,CGON,SNDX|shadow_v2
+2026-06-30|Satellite Communications & Space Data Services|VSAT,MDA,SPIR,PL,ASTS|shadow_v2
+2026-06-30|Cloud Data Storage & Backup Platforms|BLZE,P|shadow_v2
+2026-06-30|Precious Metals Miners (Gold & Silver)|AEM,AG,AU,CDE,EGO,EXK,FNV,FSM,HL,HMY,IAG,KGC,MUX,NEM,NG,OR,PAAS,RGLD,SA,SSRM,WPM|shadow_v2
+2026-06-30|Insurance Brokerage & Risk Advisory|BWIN,MRSH,WTW|shadow_v2
+2026-06-30|Domestic Steel Producers|CMC,NUE,RS,STLD|shadow_v2
+2026-06-30|Precision Optics & Photonic Components|OPTX,LPTH,LASR|shadow_v2
+2026-06-30|Optical Networking Components & Systems|CIEN,LITE|shadow_v2
+2026-06-30|Quick-Service & Specialty Restaurant Operators|WEN,KRUS|shadow_v2
+2026-06-30|Payment Technology & Consumer Credit Platforms|SEZL,CXT|shadow_v2
+2026-07-01|Clinical-Stage Autoimmune & Inflammatory Disease Therapeutics|VOR,VERA,ALMS,CLDX,ABVX|shadow_v2
+2026-07-01|Cloud Storage & Data Backup Platforms|BLZE,P|shadow_v2
+2026-07-01|Mobile & App-Based Advertising Technology Platforms|APP,APPS|shadow_v2
+2026-07-01|Robotics, Physical Automation & AI Deployment Vehicles|PATH,NOVT|shadow_v2
+2026-07-01|Direct-to-Consumer Beauty & Personal Care Brands|ODD,ELF|shadow_v2
+2026-07-01|Cardiometabolic & Cardiopulmonary Drug Developers|LQDA,NAMS|shadow_v2
+2026-07-01|Specialty & Excess-Surplus Lines Insurance Underwriters|KNSL,PLMR|shadow_v2
+2026-07-01|Clinical-Stage Oncology Drug Developers|CGON,NRIX|shadow_v2
+2026-07-01|B2B Digital Financial Infrastructure & Payment Rails Modernization|ALKT,WSE,CXT,PAY|rs_slope_synthesis
+2026-07-06|Rare & Orphan Disease Biotech|RARE,RGNX,RYTM,MIRM,SRRK|shadow_v2
+2026-07-06|Video Game Development & Digital Gaming Platforms|RBLX,TTWO|shadow_v2
+2026-07-06|Open-Air & Strip Mall Retail REITs|BRX,FRT,KIM,KRG,PECO,REG,SKT,UE|shadow_v2
+2026-07-06|Industrial & Logistics REITs|EGP,FR,PLD,REXR,STAG,TRNO|shadow_v2
+2026-07-06|Senior & Long-Term Care Healthcare REITs|LTC,NHI,OHI,SBRA,VTR|shadow_v2
+2026-07-06|Alternative Asset Management Platforms|BAM,BN,CG,KKR,TPG|shadow_v2
+2026-07-06|Oilfield Pressure Pumping & Completion Services|AESI,AROC,KGS,LBRT,PUMP|shadow_v2
+2026-07-06|HR Outsourcing & Workforce Services|NSP,FA|shadow_v2
+2026-07-06|Outpatient Diagnostic Imaging Services|LMRI,RDNT|shadow_v2
+2026-07-06|Office REIT Recovery & Re-Rating|CDP,HIW,SLG|shadow_v2
+2026-07-07|Oncology Targeted Therapy Biotechs|TGTX,RVMD,ELVN,SNDX,IMNM|shadow_v2
+2026-07-07|Gene Therapy & In Vivo Genetic Medicine|RGNX,SRPT|shadow_v2
+2026-07-07|Rare Cardiometabolic & Endocrine Specialty Pharma|CRNX,LQDA,MLYS,NAMS|shadow_v2
+2026-07-07|Peptide & Small Molecule Metabolic Drug Development|PBLS,KLRA|shadow_v2
+2026-07-07|Consumer Wellness & Better-For-You Brands|ODD,BRBR|shadow_v2
+2026-07-07|SMB & Workforce Business Services Platforms|NSP,FA,LZ|shadow_v2
+2026-07-07|Online Marketplace & Commerce Aggregation Platforms|GRPN,PTRN|shadow_v2
+2026-07-07|Commercial Real Estate Advisory & Brokerage Services|CBRE,JLL,CWK,NMRK|shadow_v2
+2026-07-07|Rare Disease Small Molecule Precision Therapeutics|GPCR,MAZE,VRDN|shadow_v2
+2026-07-07|In Vivo Gene & Engineered Cell Therapy Clinical Re-Rating|RGNX,SRPT,IMMX,SRRK,VOR|rs_slope_synthesis
+2026-07-07|Non-US & Frontier Market Digital Financial Services Re-Rating|SE,WSE,PAYP,FRHC|rs_slope_synthesis
+2026-07-09|Clinical-Stage Autoimmune & Inflammatory Disease Therapeutics|DNTH,ZBIO,ALMS,VERA,ANNX|shadow_v2
+2026-07-09|Clinical-Stage Oncology Drug Development|RVMD,KURA,IMNM,CRVS,SNDX,IMMX|shadow_v2
+2026-07-09|Rare Neurological, Neuromuscular & Genetic Disease Biotech|CRNX,XENE,BBIO,SRRK,AMLX,ACAD|shadow_v2
+2026-07-09|Rare Pulmonary & Cardiopulmonary Disease Specialty Pharma|INSM,LQDA|shadow_v2
+2026-07-09|Molecular Diagnostics & DNA-Based Genetic Testing|BLLN,WGS,QGEN|shadow_v2
+2026-07-09|Corporate Spend, Expense Management & Financial Operations Software|NAVN,WEX,BILL|shadow_v2
+2026-07-13|B2B Marketing Automation & Customer Engagement SaaS|BRZE,KVYO,HUBS|shadow_v2
+2026-07-13|Health & Wellness Consumer Nutrition Brands|BRBR,VITL,SMPL|shadow_v2
+2026-07-13|Clinical-Stage Genetic Disease & Immunology Biotech|BBIO,ZBIO|shadow_v2
+2026-07-13|Professional Advisory & Business Services|FA,CBZ,CRAI|shadow_v2
+2026-07-13|U.S. Domestic Steel Producers|CMC,NUE,RS,STLD,TX|shadow_v2
+2026-07-14|Precious Metals Miners & Royalty Streamers|AEM,AG,AGI,AU,CDE,EGO,EXK,FNV,FSM,GFI,HL,HMY,IAG,KGC,MUX,NEM,NG,OR,ORLA,PAAS,PPTA,RGLD,SA,SBSW,SSRM,TFPM,WPM|shadow_v2
+2026-07-14|Crude & Product Tanker Operators|DHT,FRO,INSW,STNG,TNK,TRMD|shadow_v2
+2026-07-14|U.S. Defense Prime Contractors|GD,HII,LHX,LMT,NOC|shadow_v2
+2026-07-14|Speculative Space & Defense New Space Ventures|ASTS,LUNR,RCAT,RKLB|shadow_v2
+2026-07-14|Diversified Medical Device & Life Science Instrument Manufacturers|BDX,COO,PODD,STE,VLTO|shadow_v2
+2026-07-14|Office & Home Furnishings Recovery|MLKN,BOBS|shadow_v2
+2026-07-14|Healthcare Payment & Claims Administration Software|WAY,PHR|shadow_v2
+2026-07-16|Financial & Tax Compliance SaaS|WK,VERX|shadow_v2
+2026-07-16|Orthopedic & Rehabilitation Medical Device Recovery|ENOV,HNGE|shadow_v2
+2026-07-16|Off-Price Apparel & Merchandise Retail|BURL,ROST|shadow_v2
+2026-07-16|Healthcare Payment & Patient Intake Software|PHR,WAY|shadow_v2
+2026-07-16|Financial Services Vertical SaaS|GWRE,JKHY,SSNC|shadow_v2
+2026-07-16|Physical Security & Identity Verification Services|BCO,FA|shadow_v2
+2026-07-16|Data Analytics & Market Intelligence Platforms|NIQ,EFX|shadow_v2
+2026-07-16|Minimally Invasive & Robotic Surgical Device Platforms|ISRG,BSX,PEN|shadow_v2
+2026-07-16|Bitcoin Mining & Digital Asset Compute Infrastructure|CIFR,CORZ,HUT,IREN,WULF|shadow_v2
+2026-07-16|Quantum Computing Hardware & Software|IONQ,QBTS,QUBT,RGTI,INFQ|shadow_v2
+2026-07-16|Packaged & Shelf-Stable Food Manufacturers|CAG,CPB,GIS,KHC|shadow_v2
+2026-07-17|Cash Logistics & ATM Payment Network Operators|BCO,EEFT|shadow_v2
+2026-07-17|Financial Compliance & Regulatory Reporting Software|DFIN,WK|shadow_v2
+2026-07-17|Bitcoin & Crypto Mining Infrastructure|CIFR,CORZ,HUT,IREN,WULF|shadow_v2
+2026-07-17|Global Crude & Product Tanker Fleet Operators|DHT,ECO,NAT,STNG,TNK,FRO,INSW,TRMD|shadow_v2
+2026-07-17|Specialty Chemicals & Renewable Fuels Producers|CLMT,GPRE|shadow_v2
+2026-07-17|Precision Oncology Resistance Mechanism Targeting|RVMD,ORIC|shadow_v2
+2026-07-17|Private Equity & Alternative Asset Management|BAM,CG|shadow_v2
+2026-07-20|Judge: Financial Services 2026-07-20|HUT,IREN|judge_inferred
+2026-07-20|Medical Device Mean-Reversion & Rotation Recovery|XRAY,TNDM,INSP,CNMD|shadow_v2
+2026-07-20|AI-Powered Enterprise Analytics & Intelligent Workflow SaaS|AMPL,INTA,AVPT|shadow_v2
+2026-07-20|Home Services & Smart Property Management SaaS|TTAN,ALRM|shadow_v2
+2026-07-20|Specialty Industrial & Performance Chemicals|CLMT,PRM|shadow_v2
+2026-07-20|Power Generation & Grid Electrification Infrastructure|GEV,TAC|shadow_v2
+2026-07-20|Clinical-Stage Autoimmune Disease Therapeutics|DNTH,CGEM|shadow_v2
+2026-07-20|Industrial Automation & Electrical Control Systems|AME,HLIO,HUBB,ROK|shadow_v2
+2026-07-20|B2B Consumer & Credit Data Analytics Platforms|EFX,NIQ|shadow_v2
+2026-07-20|Bitcoin miners pivoting to AI data centers|HUT,IREN|narrative_cogap
+2026-07-22|Freight & Rail Transportation Equipment Manufacturers|WAB,WNC|shadow_v2
+2026-07-22|Engineering, Procurement & Construction (EPC) Services|FLR,TPC|shadow_v2
+2026-07-22|Independent Power Producers & Nuclear Generation|VST,TLN,CEG|shadow_v2
+2026-07-23|Physical Security Services & Access Control Hardware|BCO,ALLE|shadow_v2
+2026-07-23|Infrastructure & Civil Construction Contractors|TPC,STRL|shadow_v2
+2026-07-23|Heavy Construction Machinery & Vocational Vehicle Manufacturers|TEX,OSK|shadow_v2
+2026-07-23|Automotive Electronic Components & Connectors|MEI,KN|shadow_v2
+2026-07-23|Asset Management & Custody Services|STT,IVZ|shadow_v2
+2026-07-23|Aerospace & Defense Electronic Components|FEIM,ATRO|shadow_v2
+2026-07-23|For-Profit Education & Career Training Providers|CVSA,LINC,PRDO,STRA|shadow_v2
+2026-07-23|Medical Device Sterilization & Surgical Supply Infrastructure|BAX,BDX,COO,STE|shadow_v2
+2026-07-23|Defense Precision Components & Mission-Critical Subsystems|DPC,FEIM,VVX|rs_slope_synthesis
+2026-07-23|Industrial Construction Execution & On-Site Supply Chain|TPC,SUNB,DNOW,RYZ|rs_slope_synthesis
+2026-07-24|Pure-Play LTL Freight Carriers|FDXF,ODFL|shadow_v2
+2026-07-24|Ocean Freight Shipping — Bulk & Containership Charter Operators|GSL,SBLK|shadow_v2
+2026-07-24|Physical Security Infrastructure & Cash Logistics Services|BCO,ALLE|shadow_v2
+2026-07-24|Nitrogen Fertilizer & Ammonia Chemical Producers|MEOH,CF|shadow_v2
+2026-07-24|Sunbelt & Mid-Market Apartment REITs|IRT,MAA|shadow_v2
+2026-07-27|Judge: Technology 2026-07-27|QBTS|judge_inferred
+2026-07-27|Judge: Industrials 2026-07-27|NNE|judge_inferred
+2026-07-27|Hospital & Behavioral Health Facility Procedure Volume Recovery|BSX,HCA,UHS,THC|shadow_v2
+2026-07-27|Financial & Legal Professional Information Services Recovery|SSNC,TRI|shadow_v2
+2026-07-27|Atopic Dermatitis & Allergic Disease Biologics|FBRX,APGE|shadow_v2
+2026-07-27|Cruise Line & Ocean Travel Recovery|LIND,RCL,NCLH|shadow_v2
+2026-07-27|Regulated Gas & Electric Distribution Utilities|AVA,BKH,NJR,NWE,POR,SR|shadow_v2
+2026-07-27|Online & Specialty Furniture Retail|W,BOBS|shadow_v2
+2026-07-27|Website Builder & Digital Presence Platforms|GDDY,WIX|shadow_v2
+2026-07-28|Judge: Technology 2026-07-28|CORZ|judge_inferred
+2026-07-28|Consumer Staples Packaged Food & Snack Brand Recovery|LW,UTZ,CAG|shadow_v2
+2026-07-28|Professional Information Services & Research Database Platforms|RELX,TRI|shadow_v2
+2026-07-28|Online Travel Booking & Marketplace Platforms|BKNG,TRIP|shadow_v2
+2026-07-28|Freight Transportation Equipment Manufacturers|WAB,WNC|shadow_v2
+2026-07-28|Executive Search, Management Consulting & Organizational Advisory Services|KFY,HURN|shadow_v2
+2026-07-28|Domestic Flat-Rolled & Fabricated Steel Producers|CLF,CMC|shadow_v2
+2026-07-29|Judge: Technology 2026-07-29|TER|judge_inferred
+2026-07-29|US-China Tariff Truce — Consumer Goods & Digital Beneficiaries|HAS,MAT,SONO,BZ|rs_slope_synthesis
+2026-07-30|Judge: Industrials 2026-07-30|EME|judge_inferred
+2026-07-30|Judge: Technology 2026-07-30|SIMO|judge_inferred
+2026-07-30|Vessel Charter & Ship Leasing Owners|GSL,SFL|shadow_v2
+2026-07-30|China Private K-12 Tutoring & Education Recovery|TAL,EDU|shadow_v2
+2026-07-30|AI & Data Center Semiconductor Surge|LRCX,SIMO,ARM|narrative_cogap
+2026-07-30|AI-Driven Power & Grid Infrastructure Boom|EME,PWR|narrative_cogap
+2026-07-31|Semiconductor test recovery AI-driven demand|COHU,MPWR|narrative_cogap
+2026-07-31|Judge: Technology 2026-07-31|COHU,MPWR|judge_inferred
+2026-07-31|Judge: Utilities 2026-07-31|FLNC|judge_inferred
+2026-07-31|AI data center infrastructure buildout|BLZE,FLNC,MPWR|narrative_cogap
+2026-08-03|Judge: Energy 2026-08-03|FTK|judge_inferred
+2026-08-03|Satellite ISR & Unmanned Aerial Defense Systems|HAWK,AVEX|shadow_v2
+2026-08-03|Defense Electronics & Aerospace Subsystem Suppliers|ARXS,MRCY,DFNS,AADX|shadow_v2
+2026-08-03|Quantum Computing Hardware & Software|QBTS,QUBT,RGTI,INFQ,XNDU|shadow_v2
+2026-08-03|Technology IP Licensing & Patent Monetization|DLB,IDCC|shadow_v2
+2026-08-03|AI Edge Inference & Compute Hardware|AMBA,CBRS|shadow_v2
+2026-08-03|Optical & Eyewear Retail|WRBY,EYE|shadow_v2
+2026-08-03|LiDAR Sensor Systems for Autonomy & Robotics|OUST,HSAI|shadow_v2
+2026-08-03|Alphabet (Google) Platform Re-Rating|GOOG,GOOGL,GOOGM,GOOGN|shadow_v2
+2026-08-04|Judge: Technology 2026-08-04|BTDR,PLTR,TSAT|judge_inferred
+2026-08-04|Judge: Industrials 2026-08-04|AEIS,AMRC,CAT,VOYG|judge_inferred
+2026-08-04|Government & Defense IT Services Providers|EFOR,LDOS,DXC|shadow_v2
+2026-08-04|AI Data Center Infrastructure Buildout|BTDR,AMRC,BLZE|narrative_cogap
+2026-08-04|U.S. Government/Defense Spending Surge|PLTR,TSAT,VOYG,AMRC|narrative_cogap
+2026-08-04|Semiconductor Equipment Cycle Recovery|AEIS,ZBRA|narrative_cogap
+2026-08-05|Judge: Industrials 2026-08-05|ECG,KTOS|judge_inferred
+2026-08-05|AI Datacenter Optical Interconnect Components|AAOI,COHR|shadow_v2
+2026-08-05|Consumer Home Appliance Brands & Manufacturers|SN,WHR|shadow_v2
+2026-08-05|Online Travel Agency & Booking Platforms|EXPE,BKNG|shadow_v2
+2026-08-05|Advanced & Next-Generation Nuclear Reactor Technology|XE,SMR|shadow_v2
+2026-08-05|Reactivation: E-DEF|AMRC,PLTR,TSAT,VOYG|ecosystem_reactivation
+2026-08-06|Judge: Technology 2026-08-06|AEVA,SITM,U|judge_inferred
+2026-08-06|Judge: Industrials 2026-08-06|RDW|judge_inferred
+2026-08-07|AI Chip Enablement: Test, Substrate & Photonic/Timing Component Suppliers|AEHR,AXTI,SITM,COHR,CBRS|rs_slope_synthesis
+2026-08-07|Judge: Technology 2026-08-07|ACMR,FROG,ONTO,TEAM|judge_inferred
+2026-08-10|Gaming Hardware & Software Platforms|CRSR,U|shadow_v2
+2026-08-10|Judge: Industrials 2026-08-10|ACHR|judge_inferred
+2026-08-10|Seed: ABCL|ABCL|narrative_seed
+2026-08-10|Seed: SLN|SLN|narrative_seed
+2026-08-10|Seed: ACHR|ACHR|narrative_seed
+2026-08-10|Seed: NESR|NESR|narrative_seed
+2026-08-10|Seed: TH|TH|narrative_seed
+2026-08-10|Precious Metals Miners Velocity Breakout|FSM,SKE,ASM,WPM,SA,AYA,PPTA|shadow_v2
+2026-08-10|Emerging Copper Developers|ERO,IE|shadow_v2
+2026-08-10|Advanced Nuclear Reactor & Fuel Technology|STDN,XE|shadow_v2
+2026-08-10|Space & Unmanned Defense Systems|VOYG,SPCX,KTOS,AVAV,KRMN|shadow_v2
+2026-08-10|Technology IP Licensing|IDCC,DLB|shadow_v2
+2026-08-10|Data Center & Storage Infrastructure Buildout|P,CSQR|shadow_v2
+2026-08-10|Genomics & DNA Sequencing Tools|TWST,TXG,BRKR|shadow_v2
+2026-08-10|Semiconductor Components & Optical Interconnect|CEVA,COHR,ENTG,GFS,RMBS|shadow_v2
+2026-08-10|Electronics Manufacturing & Semiconductor Packaging Supply Chain|AMKR,SANM,TTMI,AMSC|shadow_v2
+2026-08-10|Trucking & Freight Logistics|HUBG,JBHT,ODFL,SNDR,XPO|shadow_v2
+2026-08-10|Emerging Bitcoin & AI Cloud Compute Miners|CLSK,CORZ,IREN,MARA,NBIS,RIOT,WULF|shadow_v2
+2026-08-10|AI-Driven Consumer Lending & Digital Banking|PGY,CHYM|shadow_v2
+2026-08-10|Digital Performance Advertising & Programmatic Media|QNST,MGNI|shadow_v2
+2026-08-10|U.S. Oil & Gas E&P Recovery|TALO,CRK,OVV,NOG,APA|shadow_v2
+2026-08-10|Oilfield Services & Drilling Rigs|HP,SDRL,NESR|shadow_v2
+2026-08-10|AI-Driven Cancer Diagnostics & Healthcare Data Platforms|CAI,TEM|shadow_v2
+2026-08-10|Autonomous Vehicle Sensing & Software|HSAI,AUR|shadow_v2
+2026-08-11|Judge: Real Estate 2026-08-11|FRMI|judge_inferred
+2026-08-11|Judge: Industrials 2026-08-11|BW|judge_inferred
+2026-08-11|Judge: Financial Services 2026-08-11|RIOT|judge_inferred
+2026-08-11|IT Consulting & Business Process Outsourcing Services|CTSH,ACN,IT|shadow_v2
+2026-08-11|LiDAR Sensing for Autonomous Vehicles & Robotics|AEVA,HSAI|shadow_v2
+2026-08-11|Gaming Hardware & Platform Software|U,CRSR|shadow_v2
+2026-08-11|Consumer & Marketing Data Analytics Platforms|ZETA,NIQ|shadow_v2
+2026-08-11|Precious Metals Royalty & Streaming Companies|OR,WPM,FNV,RGLD|shadow_v2
+2026-08-11|AI Data Center & Power Infrastructure REITs|FRMI,CSQR|shadow_v2
+2026-08-11|AI Data-Center Power & Physical Infrastructure Buildout|FRMI,CSQR,SMR,XE,STDN|rs_slope_synthesis
+2026-08-12|Judge: Industrials 2026-08-12|BE,EROC|judge_inferred
+2026-08-12|Judge: Technology 2026-08-12|CRWV|judge_inferred
+2026-08-12|Nuclear Fuel Cycle & Microreactor Development|NNE,OKLO,SMR,UUUU|shadow_v2
+2026-08-12|LiDAR Sensing for Autonomous Vehicles & Robotics|AEVA,HSAI|shadow_v2
+2026-08-12|AI Compute Infrastructure & Processor Providers|NBIS,CBRS|shadow_v2
+2026-08-12|Power Generation & Grid Infrastructure for AI Data Centers|GEV,EROC,AMRC|shadow_v2
+2026-08-12|Data Center Colocation & Interconnection Services|CSQR,WYFI|shadow_v2
+2026-08-12|Emerging GPU Cloud Compute Platforms|CRWV,SHAZ|shadow_v2
+2026-08-12|Optical Interconnect & Photonics for AI Data Center Networking|LITE,COHR,CRDO|shadow_v2
+2026-08-12|Edge Cloud & CDN Content Delivery Platforms|FSLY,NET|shadow_v2
+2026-08-12|Development-Stage Gold Exploration & Project Juniors|HYMC,NG,AUGO|shadow_v2
+2026-08-12|Regulated Municipal Water Utilities|AWR,CWT|shadow_v2
+2026-08-12|RV & Marine Component Suppliers|LCII,PATK|shadow_v2
+2026-08-12|AI data center infrastructure buildout|BLZE,FLNC,MPWR,EROC,BE,WYFI,NBIS,CRWV|narrative_cogap
+2026-08-12|AI-Driven Power & Grid Infrastructure Boom|EME,PWR,EROC,BE|narrative_cogap
+2026-08-12|Seed: HRB|HRB|narrative_seed
+2026-08-12|Seed: MRX|MRX|narrative_seed
+2026-08-12|Seed: BRUN|BRUN|narrative_seed
+2026-08-12|Seed: GLBE|GLBE|narrative_seed
+2026-08-13|Insurance Technology & Risk Exchange Platforms|PRCH,ARX|shadow_v2
+2026-08-13|SMB Financial & Accounting Automation Software|BL,INTU|shadow_v2
+2026-08-13|SMB Digital Presence & Marketing Platforms|GDDY,HUBS|shadow_v2
+2026-08-13|Real Estate Listings & Digital Marketplace Platforms|ZG,Z|shadow_v2
+2026-08-13|Managed Care & Health Insurance Marketplace Platforms|MOH,OSCR|shadow_v2
+2026-08-13|Broadband Access Software & Connectivity Services|HLIT,LBRDK|shadow_v2
+2026-08-13|Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers|SHAZ,CRWV,SMCI|shadow_v2
+2026-08-13|Aerospace & Defense Precision Component and Navigation Suppliers|NN,VELO|shadow_v2
+2026-08-13|Independent Oil Refiners|DINO,DK,MPC,PARR,PSX,VLO|shadow_v2
+2026-08-13|Industrial & Logistics Warehouse REITs|EGP,FR,PLD,TRNO|shadow_v2
+2026-08-13|Building Products & Home Improvement Suppliers|LII,MAS,PPG,SITE|shadow_v2
+2026-08-13|Small-Cap Regulated Water Utilities|AWR,CWT|shadow_v2
+2026-08-13|RV & Recreational Vehicle Components Manufacturers|LCII,PATK|shadow_v2
+2026-08-13|Seed: HLIT|HLIT|narrative_seed
+2026-08-13|Seed: CGEM|CGEM|narrative_seed
+2026-08-13|Seed: CRMD|CRMD|narrative_seed
+2026-08-13|Seed: KURA|KURA|narrative_seed
+2026-08-13|Seed: OMER|OMER|narrative_seed
+2026-08-13|Seed: BLSH|BLSH|narrative_seed
+2026-08-14|Judge: Communication Services 2026-08-14|NMAX|judge_inferred
+2026-08-14|Advanced Nuclear Reactor & Fuel Manufacturing Technology|XE,STDN|shadow_v2
+2026-08-14|Managed Care & Medicaid/Medicare Health Plan Operators|MOH,ASTH|shadow_v2
+2026-08-14|Broadcast & Cable Sports/News Media Duopoly|FOX,FOXA|shadow_v2
+2026-08-14|Alternative Social & Community Video Platforms|RDDT,RUM|shadow_v2
+2026-08-14|Optical Transceiver & Interconnect Components for AI Networking|AAOI,LITE,COHR,CRDO|shadow_v2
+2026-08-14|Tactical Drone & Satellite ISR Intelligence|RCAT,BKSY|shadow_v2
+2026-08-14|Emerging Defense & Aerospace Hardware Suppliers|VELO,NN,LPTH,UMAC|shadow_v2
+2026-08-14|Emerging Small-Cap Quantum Computing Platforms|QNT,XNDU|shadow_v2
+2026-08-14|Broadband & Telecom Network Infrastructure Equipment|HLIT,MXL,NOK|shadow_v2
+2026-08-14|Regulated Water Utilities|AWR,CWT|shadow_v2
+2026-08-14|RV & Marine Recreational Component Manufacturers|LCII,PATK|shadow_v2
+2026-08-14|Emerging AI Compute & Colocation Infrastructure Small-Caps|PENG,APLD|shadow_v2
+2026-08-14|Rare disease/specialty pharma earnings beats|ETON,VERA,CRMD,KURA,OMER|narrative_cogap
+2026-08-14|Seed: NMAX|NMAX|narrative_seed
+2026-08-14|Seed: RDDT|RDDT|narrative_seed
+2026-08-14|Seed: LPTH|LPTH|narrative_seed
+2026-08-17|U.S. Oil & Gas E&P Rotation|SM,MTDR,VIST,CHRD,DVN,VET,TALO,CRGY,NOG|shadow_v2
+2026-08-17|Natural Gas Midstream & LNG Infrastructure|VG,TRGP,KGS|shadow_v2
+2026-08-17|For-Profit Postsecondary & Vocational Education|CVSA,LOPE,PRDO,STRA|shadow_v2
+2026-08-17|Advanced Aerospace Propulsion & Unmanned Systems Hardware|BETA,AVEX|shadow_v2
+2026-08-17|Power Semiconductor & Conversion Components|NVTS,VICR|shadow_v2
+2026-08-17|Fabless Semiconductor IP Licensing|CEVA,RMBS|shadow_v2
+2026-08-17|Emerging Memory & Storage Semiconductor Makers|MRAM,SIMO,SNDK|shadow_v2
+2026-08-17|Warehouse & Industrial Automation Vision/Tracking Hardware|ZBRA,CGNX|shadow_v2
+2026-08-17|Emerging AI Compute Hardware & Cloud GPU Upstarts|BRUN,CBRS|shadow_v2
+2026-08-17|Defense & Intelligence Data Services|CACI,BKSY|shadow_v2
+2026-08-17|Bitcoin Miners Pivoting to AI/HPC Hosting|CIFR,CLSK,CORZ,MARA,WULF,APLD,HUT,RIOT|shadow_v2
+2026-08-17|Small-Cap Regulated Water Utilities|AWR,CWT|shadow_v2
+2026-08-17|RV & Marine OEM Component Suppliers|LCII,PATK|shadow_v2
+2026-08-17|Lumber & Building Products Manufacturing-Distribution|BCC,BLDR,FBIN,UFPI|shadow_v2
+2026-08-17|Seed: ARGX|ARGX|narrative_seed
+2026-08-17|Seed: CBRS|CBRS|narrative_seed
+2026-08-17|Resilient PNT: GPS-Alternative Timing & Navigation Infrastructure|NN,SITM,INFQ,IONQ|rs_slope_synthesis
+2026-08-18|Offshore & Land Drilling Contractors|NE,NBR|shadow_v2
+2026-08-18|International Integrated Oil & Gas Majors|BP,WDS,YPF|shadow_v2
+2026-08-18|Commodity Chemical & Fuel Feedstock Producers|MEOH,SSL|shadow_v2
+2026-08-18|Video & Streaming Content Distribution Rebound|RUM,PSKY,ECHO|shadow_v2
+2026-08-18|Oncology Biopharmaceutical Momentum|LEGN,KURA|shadow_v2
+2026-08-18|Semiconductor Deposition & Etch Equipment Makers|AMAT,LRCX,ACMR|shadow_v2
+2026-08-18|Medical Device & Component Contract Manufacturing Supply Chain|INSP,UFPT|shadow_v2
+2026-08-18|South African Gold & PGM Mining Producers|AU,GFI,HMY,SBSW|shadow_v2
+2026-08-18|Small-Cap Regulated Water Utilities|AWR,CWT|shadow_v2
+2026-08-18|RV & Manufactured Housing Component Suppliers|LCII,PATK|shadow_v2
+2026-08-18|Data & Analytics-as-a-Service Providers|NIQ,IQV,ITRI|shadow_v2
+2026-08-18|Seed: AMLX|AMLX|narrative_seed
+2026-08-19|CRISPR & Gene-Editing Therapeutics|BEAM,CRSP,NTLA|shadow_v2
+2026-08-19|Rare Earth Elements & Critical Minerals Processing|MP,USAR,ALOY|shadow_v2
+2026-08-19|Boutique M&A & Financial Advisory Firms|MC,LAZ|shadow_v2
+2026-08-19|Specialty & Rare Disease Pharmaceuticals|ETON,HALO|shadow_v2
+2026-08-19|Clinical-Stage Oncology & Hematology Biotech Breakout|KURA,URGN,SNDX,INBX,OMER|shadow_v2
+2026-08-19|Ophthalmology Disease Therapeutics|OCUL,TARS|shadow_v2
+2026-08-19|GLP-1 & Metabolic Disease Therapeutics|LLY,VKTX|shadow_v2
+2026-08-19|Distributed & Gas-Fired Power Generation Equipment|EROC,INIO|shadow_v2
+2026-08-19|Regulated Natural Gas Distribution Utilities|UGI,ATO,OGS,SR|shadow_v2
+2026-08-19|Vertical Cloud SaaS for Real Asset Management|PCOR,APPF|shadow_v2
+2026-08-19|Small Modular & Microreactor Nuclear Developers|SMR,NNE|shadow_v2
+2026-08-19|Diversified Regulated Electric & Gas Utilities|AEP,CMS,EVRG,EXC,FE,SO,XEL|shadow_v2
+2026-08-19|Industrial Automation & Precision Bearings Manufacturers|AIN,ROK,TKR|shadow_v2
+2026-08-19|AI-driven biotech/R&D acceleration|TWST,TEM|narrative_cogap
+2026-08-19|Seed: MRNA|MRNA|narrative_seed
+2026-08-20|Metallurgical & Thermal Coal Mining Rebound|AMR,BTU|shadow_v2
+2026-08-20|Stablecoin & Blockchain Financial Infrastructure|FIGR,CRCL|shadow_v2
+2026-08-20|CRISPR & Gene Editing Therapeutics|CRSP,NTLA|shadow_v2
+2026-08-20|Agricultural Commodity Processors|PPC,BG|shadow_v2
+2026-08-20|Critical Minerals Supply Chain Independence|ALM,MP|shadow_v2
+2026-08-20|Used Vehicle & Aftermarket Parts Value Chain|CVNA,LKQ|shadow_v2
+2026-08-20|Cardiac & Diagnostic Imaging Recovery|HTFL,RDNT,IRTC|shadow_v2
+2026-08-20|Agricultural & Heavy Construction Equipment Manufacturers|CNH,DE,OSK|shadow_v2
+2026-08-20|Workforce & Employment Data Services|MAN,EFX|shadow_v2
+2026-08-20|Semiconductor Wafer Fab Capital Equipment|AMAT,LRCX,ASML,ACMR,ENTG,FORM|shadow_v2
+2026-08-20|Diabetes Management & Continuous Glucose Monitoring Devices|DXCM,INSP,TNDM|shadow_v2
+2026-08-20|Natural Gas Midstream & LNG Export Infrastructure|LNG,KMI,WMB,OKE,TRGP,KNTK,ET,DTM|shadow_v2
+2026-08-20|AI Datacenter Networking Switches & Routers|ANET,CSCO|shadow_v2
+2026-08-20|Business Development Companies & Specialty Direct Lending|MAIN,FSK,HTGC|shadow_v2
+2026-08-20|Probe: Electronics & Computer Distribution 2026-08-13|BLSH,BULL,SCSC|coverage_probe
+2026-08-20|AI-Native Diagnostics & Computational Medicine Re-Rating|CAI,HTFL,TEM|rs_slope_synthesis
+2026-08-21|Judge: Energy 2026-08-21|UUUU|judge_inferred
+2026-08-21|Fertilizer & Crop Nutrient Producers|CF,MOS,NTR,SQM|shadow_v2
+2026-08-21|Ammonia & Nitrogen-Based Chemical Feedstock Producers|CF,MEOH|shadow_v2
+2026-08-21|Next-Generation Vehicle Technology (EV & Autonomous Driving)|MBLY,RIVN|shadow_v2
+2026-08-21|Emerging Strategic & Specialty Metals Explorers|IE,ALM|shadow_v2
+2026-08-21|Precision Gene Editing & Genetic Medicine Rotation|CRSP,BEAM,VRTX|shadow_v2
+2026-08-21|Muscular Dystrophy Gene & Cell Therapy|SRPT,CAPR|shadow_v2
+2026-08-21|Rare Disease Specialty Pharmaceuticals Breakout|ETON,INSM|shadow_v2
+2026-08-21|Electronic Trading & Market-Making Infrastructure|VIRT,TW|shadow_v2
+2026-08-21|Liquid Biopsy & Early Cancer Detection Diagnostics|GH,NTRA,GRAL|shadow_v2
+2026-08-21|Offshore Drilling Rig Contractors|SDRL,NE,VAL|shadow_v2
+2026-08-21|Core Banking & Credit Union Software Platforms|JKHY,NCNO,QTWO|shadow_v2
+2026-08-21|Business Development Companies & Direct Lending|HTGC,FSK,MAIN|shadow_v2
+2026-08-21|Natural Gas Value Chain & LNG Export Infrastructure|LNG,TRGP,OKE,KGS,EQT,AR,RRC|shadow_v2
+2026-08-21|Semiconductor Wafer Fab Equipment (Deposition & Lithography)|LRCX,AMAT,ASML,ACMR|shadow_v2
+2026-08-21|Bioprocessing & Cell Culture Technology|RGEN,AVTR,DHR|shadow_v2
+2026-08-21|Custody & Trust Banks|BNY,NTRS,STT|shadow_v2
+2026-08-21|Sleep Apnea Treatment Devices|RMD,INSP|shadow_v2
+2026-08-21|Wood-Based Building Products & Lumber Distribution|BCC,BLDR,FBIN,UFPI|shadow_v2
+2026-08-21|Seed: UUUU|UUUU|narrative_seed
+2026-08-24|Quick-Service & Fast-Casual Restaurant Chains|CMG,FWRG,YUM,SBUX|shadow_v2
+2026-08-24|Entertainment Content & Media Rights Monetization|WMG,PSKY|shadow_v2
+2026-08-24|Steelmaking Raw Materials Producers|CLF,METC|shadow_v2
+2026-08-24|Household & Personal Care Products Manufacturers|CL,CLX|shadow_v2
+2026-08-24|Critical & Strategic Metals for Defense-Industrial Applications|ALM,MP|shadow_v2
+2026-08-24|Agricultural Producers & Crop Input Providers|CTVA,AGRO|shadow_v2
+2026-08-24|Crypto Exchange & Stablecoin Platform Velocity Breakout|COIN,CRCL,FIGR|shadow_v2
+2026-08-24|For-Profit Higher Education Enrollment Rebound|CVSA,LOPE,PRDO,STRA|shadow_v2
+2026-08-24|mRNA Vaccine & Therapeutics Innovation|MRNA,BNTX,MRK,MRVI|shadow_v2
+2026-08-24|B-Cell Targeted Autoimmune & Oncology Biotech Breakout|TGTX,TRAX|shadow_v2
+2026-08-24|Electrification & Power Buildout Infrastructure Suppliers|ATKR,EROC|shadow_v2
+2026-08-24|Bitcoin Miners Pivoting to AI/HPC Data Center Hosting|APLD,CIFR,CLSK,CORZ,HUT,MARA,RIOT,WULF|shadow_v2
+2026-08-24|Inflammatory Disease Biopharma Breakout|INCY,KNSA|shadow_v2
+2026-08-24|Government AI & Public-Sector Digitization Breakout|CACI,PLTR,TYL,GRRR|rs_slope_synthesis
+2026-08-25|Uranium Mining & Nuclear Fuel Cycle Producers|UEC,UUUU,CCJ,NXE|shadow_v2
+2026-08-25|Toy & Game Brand Manufacturers|MAT,HAS|shadow_v2
+2026-08-25|Strategic & Defense-Critical Minerals Mining|MP,ALM|shadow_v2
+2026-08-25|Coal Mining Momentum Breakout|BTU,METC|shadow_v2
+2026-08-25|AI Data Center Component & Connectivity Semiconductor Suppliers|ALAB,FLEX,LSCC,MXL,VICR|shadow_v2
+2026-08-25|Connected TV & Video Advertising Platforms|MNTN,MGNI|shadow_v2
+2026-08-25|Direct-to-Device Satellite Connectivity|GSAT,ASTS|shadow_v2
+2026-08-25|Business Development Companies & Private Credit Lenders|ARCC,FSK,OBDC,OTF|shadow_v2
+2026-08-25|Micro-Cap Quantum Computing Speculative Plays|QBTS,QUBT|shadow_v2
+2026-08-25|Natural Gas Pipeline & Midstream Transport Infrastructure|DTM,KMI,OKE,WMB|shadow_v2
+2026-08-25|Altcoin & Diversified Digital-Asset Infrastructure Second Wave|PURR,FIGR,IOND,BLSH,ASST|rs_slope_synthesis
+2026-08-26|Tungsten & Rare Earth Critical Minerals Mining|ALM,MP|shadow_v2
+2026-08-26|Emerging LNG Export & Liquefaction Infrastructure Developers|NEXT,LNG|shadow_v2
+2026-08-26|Beauty & Personal Care Consumer Brands|ELF,VSXY|shadow_v2
+2026-08-26|Streaming & Broadcast Media Turnaround|PSKY,RUM|shadow_v2
+2026-08-26|African Gold & Silver Mining Operators|AAUC,HMY,SBSW|shadow_v2
+2026-08-26|mRNA & Next-Gen Vaccine Platform Resurgence|MRNA,BNTX,MRK,NVAX,VIR|shadow_v2
+2026-08-26|Satellite Broadband & Space Launch Infrastructure|ASTS,SPCX|shadow_v2
+2026-08-26|Distributed Power Generation & Grid Infrastructure Services|EROC,WLDN|shadow_v2
+2026-08-26|Outsourced Corporate Staffing & Business Advisory Services|CBZ,MAN|shadow_v2
+2026-08-26|Liquid Biopsy & Multi-Cancer Early Detection Diagnostics|NTRA,GH,GRAL,WGS|shadow_v2
+2026-08-26|5G/IoT Edge Connectivity Hardware Re-Acceleration|NOK,SMTC,GRRR|rs_slope_synthesis
+2026-08-27|Judge: Technology 2026-08-27|CHRN,CRWD,OKTA|judge_inferred
+2026-08-27|Rare & Orphan Disease Specialty Therapeutics|ETON,MIRM,CAPR|shadow_v2
+2026-08-27|RAS/MAPK Pathway-Targeted Oncology Therapeutics|ERAS,RVMD|shadow_v2
+2026-08-27|Molecular Diagnostics & DNA-Based Testing|BLLN,CDNA|shadow_v2
+2026-08-27|mRNA Vaccine & Therapeutics Platform|MRNA,BNTX|shadow_v2
+2026-08-27|Genetic Medicine: Gene Editing & Gene Therapy Innovators|BEAM,CRSP,NTLA,SRPT|shadow_v2
+2026-08-27|Vaccine & Antiviral Infectious Disease Therapeutics|NVAX,VIR|shadow_v2
+2026-08-27|Distributed Power Generation & Grid Infrastructure Buildout|EROC,WLDN|shadow_v2
+2026-08-27|Multifamily Apartment REIT Rotation|IRT,MAA,CPT,ESS,UDR|shadow_v2
+2026-08-27|Power Generation Buildout for AI Data Center Electricity Demand|EROC,WLDN,HNRG,DEC|rs_slope_synthesis
+2026-08-28|Oilfield Services, Completions & Drilling Equipment|INVX,HAL,SLB|shadow_v2
+2026-08-28|Onshore & International Oil E&P Production Recovery|MUR,PBR|shadow_v2
+2026-08-28|Infectious Disease Vaccines, Antivirals & Diagnostics Rebound|NVAX,VIR,QDEL|shadow_v2
+2026-08-28|Pure-Play Agricultural Tractor & Farm Machinery Manufacturers|AGCO,CNH,DE|shadow_v2
+2026-08-28|Online Real Estate Marketplace & Listings|Z,ZG|shadow_v2
+2026-08-28|Payment Processing & Card Issuing Platforms|MQ,FOUR|shadow_v2
+2026-08-28|Nearline HDD & AI Data Center Storage Media|WDC,STX|shadow_v2
+2026-08-28|Connected Mobility & Vehicle Data Platforms|VIA,MBGL|shadow_v2
+2026-08-28|Enterprise Information Governance & Regulatory Reporting Software|WK,OTEX|shadow_v2
+2026-08-28|IT Incident Detection & Response Tooling|PD,NTCT|shadow_v2
+2026-08-28|Water Infrastructure & Treatment Technology|AOS,VLTO|shadow_v2
+2026-08-28|Semiconductor Packaging, Test & Specialty Materials Equipment|KEYS,KLIC,ROG|shadow_v2
+2026-08-28|Semiconductor Equipment Subsystem & Component Makers|ICHR,UCTT|shadow_v2
+2026-08-28|Seed: SOLS|SOLS|narrative_seed
+2026-08-31|Emerging Market Retail Brokerage & Capital Markets Platforms|FRHC,XP|shadow_v2
+2026-08-31|Digital-First Beauty & Cosmetics Brands|ELF,ODD|shadow_v2
+2026-08-31|Global Agricultural Commodity Producers & Crop Inputs|AGRO,DOLE|shadow_v2
+2026-08-31|Buy Now Pay Later & Point-of-Sale Consumer Credit|SEZL,AFRM,PGY|shadow_v2
+2026-08-31|Specialty & Rare Disease Pharmaceutical Innovators|ARGX,ETON|shadow_v2
+2026-08-31|HBM & AI-Driven Memory Chip Makers|SKHY,MU,SNDK|shadow_v2
+2026-08-31|Waste Management & Environmental Remediation Services|ONT,GFL|shadow_v2
+2026-08-31|Bitcoin-Native Public Equities (Exchanges & Treasury Vehicles)|BLSH,MSTR|shadow_v2
+2026-08-31|Power Electronics & Passive Component Manufacturers|AEIS,BELFA,BELFB,KN|shadow_v2
+2026-08-31|Emerging Bitcoin Miners Diversifying into AI/HPC Hosting|APLD,CIFR,CORZ,RIOT|shadow_v2
+2026-08-31|Building Products & Construction Materials Manufacturing|BCC,BLDR,EXP,UFPI|shadow_v2
+2026-08-31|Online Real Estate Listing Marketplaces|Z,ZG|shadow_v2
+2026-08-31|Quantum Computing Hardware Pure-Plays|IONQ,RGTI,QUBT,INFQ|shadow_v2
+2026-09-01|DTC Beauty & Skincare Retail Momentum|ELF,ODD|shadow_v2
+2026-09-01|Crop Protection & Seed Genetics Agricultural Inputs|CTVA,FMC|shadow_v2
+2026-09-01|Agricultural Commodity Farming & Food Processing|BG,AGRO,DOLE,JBS|shadow_v2
+2026-09-01|Alternative Fuel & Nat-Gas-Based Specialty Chemical Producers|MEOH,CLMT|shadow_v2
+2026-09-01|Bitcoin Treasury & Crypto Exchange Financial Platforms|BLSH,MSTR|shadow_v2
+2026-09-01|Rare Disease & Orphan Drug Specialty Pharmaceuticals|ETON,SION|shadow_v2
+2026-09-01|Retail Pharmacy & Home Healthcare Services Distribution|CVS,BTSG|shadow_v2
+2026-09-01|Major US Network Airlines Rebound|AAL,DAL,LUV,UAL|shadow_v2
+2026-09-01|Bioprocessing & Cell/Gene Therapy Manufacturing Tools|BLFS,RGEN|shadow_v2
+2026-09-01|Electrical Contractors & Power Equipment for Grid/Data Center Buildout|AGX,ECG,FIX,GEV,EME,PWR|shadow_v2
+2026-09-01|Management & Business Advisory Consulting Firms|CBZ,GIB,HURN|shadow_v2
+2026-09-01|AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers|COHR,GLW,LITE,RMBS|shadow_v2
+2026-09-01|Online Real Estate Marketplace & Listings Platforms|Z,ZG|shadow_v2
+2026-09-01|US LNG Export Value Chain Buildout|DEC,PBA,LNG,NEXT|rs_slope_synthesis
+2026-09-02|mRNA Vaccine Platform Pure-Plays|MRNA,BNTX|shadow_v2
+2026-09-02|CRISPR Gene Editing Pure-Plays|NTLA,BEAM,CRSP|shadow_v2
+2026-09-02|Renewable & Specialty Fuels Chemical Producers|MEOH,CLMT,SSL|shadow_v2
+2026-09-02|Off-Mall Apparel & Department Store Retail Turnaround|AEO,KSS|shadow_v2
+2026-09-02|Oilfield Completions & Production Services|HAL,SLB|shadow_v2
+2026-09-02|Specialty & Rare Disease Pharmaceutical Innovators|ETON,MLYS,NBIX,ALNY,TARS|shadow_v2
+2026-09-02|Global Pharmaceutical Majors|NVS,NVO|shadow_v2
+2026-09-02|Molecular & Genomic Diagnostic Testing|BLLN,VCYT,CDNA|shadow_v2
+2026-09-02|Latin American Digital Payments & Fintech Rails|DLO,NU|shadow_v2
+2026-09-02|Crypto Exchange & Derivatives Trading Platforms Second Wave|COIN,CRCL|shadow_v2
+2026-09-02|Argentine Energy & Petrochemical Conglomerates|PAM,YPF|shadow_v2
+2026-09-02|Pure-Play NAND/DRAM Memory Chip Makers|SNDK,MU,SKHY,SIMO,MRAM|shadow_v2
+2026-09-02|Permian Basin Pure-Play Shale Producers|MTDR,FANG,PR|shadow_v2
+2026-09-02|Canadian Oil Sands & Integrated Producers|CNQ,SU,CVE|shadow_v2
+2026-09-02|Latin American National Oil & Gas Companies|PBR,YPF,EC|shadow_v2
+2026-09-02|U.S. Downstream Refining & Marketing|PSX,VLO,MPC,DK,PBF,CVI,DINO|shadow_v2
+2026-09-02|Buy Now Pay Later & AI Consumer Lending|AFRM,SEZL,PGY|shadow_v2
+2026-09-02|Digital Banking Core Platform Providers|NCNO,QTWO,ALKT,JKHY|shadow_v2
+2026-09-02|Farm Economy Value Chain Re-Rating|AGCO,CNH,BG,CTVA,FMC,MOS,CF,NTR,SQM|rs_slope_synthesis
+2026-09-03|Appalachian Natural Gas E&P Producers|AR,EQT,EXE,RRC|shadow_v2
+2026-09-03|Aluminum Smelting & Production|CENX,AA|shadow_v2
+2026-09-03|Automotive Powertrain & Electrical Systems Suppliers|LEA,DAN|shadow_v2
+2026-09-03|Music & Audio Content Royalty Platforms|WMG,SIRI|shadow_v2
+2026-09-03|Legacy US Telecom & Broadband Carriers Turnaround|LUMN,TDS|shadow_v2
+2026-09-03|Bitcoin Mining Equities Momentum Basket|CIFR,CLSK,HUT,MARA,RIOT,WULF|shadow_v2
+2026-09-03|Rare Disease & Specialty Biopharmaceutical Innovators|ETON,HALO,SION,ALNY|shadow_v2
+2026-09-03|Brazilian Financial Services Rally|PAGS,ITUB|shadow_v2
+2026-09-03|AI-Embedded Vertical Enterprise Software Breakout|CRM,GWRE|shadow_v2
+2026-09-03|Major U.S. Network Airlines Correlation|AAL,DAL,LUV,UAL|shadow_v2
+2026-09-03|Development-Stage Gold Mining Optionality Plays|HYMC,NG|shadow_v2
+2026-09-03|Grocery-Anchored Shopping Center REIT Momentum Reversal|KIM,KRG,BRX,FRT,PECO,REG|shadow_v2
+2026-09-03|Optical Components for AI Data Center Interconnects|COHR,GLW,LITE|shadow_v2
+2026-09-03|Homebuilders & Housing Supply Chain Recovery|DHI,KBH,LEN,MHO,MTH,NVR,PHM,TOL,SHW|shadow_v2
+2026-09-03|AI Data Center Power & Electrical Infrastructure Buildout|EME,FIX,GEV,PWR|shadow_v2
+2026-09-03|Quantum Computing Hardware Momentum Reversal|IONQ,RGTI,QUBT,INFQ|shadow_v2
+2026-09-03|AI data-center power buildout|AGX,SNOW|narrative_cogap
+2026-09-03|Seed: HOOD|HOOD|narrative_seed
+2026-09-03|Brazil/LatAm Macro Risk-On Rotation|ITUB,PAGS,XP,PAM,SUZ|rs_slope_synthesis
+2026-09-04|AI data-center power buildout|AGX,SNOW,ALAB|narrative_cogap
+2026-09-04|Judge: Technology 2026-09-04|ALAB|judge_inferred
+2026-09-04|Integrated Oil Majors RS Reversal|CVX,BP,SHEL,PBR|shadow_v2
+2026-09-04|Onshore Oil & Gas E&P Reacceleration|MUR,MTDR|shadow_v2
+2026-09-04|LNG & LPG Export Infrastructure and Shipping|LNG,LPG|shadow_v2
+2026-09-04|Music Rights & Streaming Monetization Recovery|WMG,SPOT|shadow_v2
+2026-09-04|Critical & Industrial Metals Mining Breakout|ALM,VALE|shadow_v2
+2026-09-04|Vaccine & Antiviral Therapeutics Rebound|MRNA,NVAX,VIR|shadow_v2
+2026-09-04|Argentina Energy & Industrial Complex|YPF,TS|shadow_v2
+2026-09-04|Crypto-Adjacent Data Center & Digital Asset Infrastructure|IREN,GLXY|shadow_v2
+2026-09-04|Electrification & Connectivity Infrastructure Components|ATKR,APH|shadow_v2
+2026-09-04|Home & Alternate-Site Pharmacy Care Services|OPCH,GRDN|shadow_v2
+2026-09-04|Bitcoin Treasury & Crypto Proxy Equities Correlation Basket|SBET,BMNR,ASST,COIN,CRCL,PURR|shadow_v2
+2026-09-04|International Digital Payment Platforms (Japan/LatAm Fintech)|PAYP,PAGS|shadow_v2
+2026-09-08|Judge: Energy 2026-09-08|SEI|judge_inferred
+2026-09-08|Judge: Technology 2026-09-08|QCOM|judge_inferred
+2026-09-08|Natural Gas Shale Drilling Value Chain: E&P, Proppant & Tubular Steel|CRK,AESI,TS|shadow_v2
+2026-09-08|Critical & Strategic Minerals for Defense/Energy Security|ALM,LEU|shadow_v2
+2026-09-08|Advanced Nuclear Reactor Developers & Radiation Technology|SMR,NNE,XE,MIR|shadow_v2
+2026-09-08|Business & Industrial Rental Services Recovery|EQPT,VSTS|shadow_v2
+2026-09-08|Diversified Power Generation Capacity Expansion for AI Electricity Demand|HNRG,OGE,CEG,KEP,FRVO|shadow_v2
+2026-09-08|Semiconductor Foundry & Advanced Packaging Manufacturing|INTC,ASX,TSM|shadow_v2
+2026-09-08|Bitcoin Treasury Holdings & Mining Proxy Momentum|MSTR,BTDR|shadow_v2
+2026-09-08|Enterprise IT Resilience & Identity Security SaaS Surge|PD,OKTA|shadow_v2
+2026-09-08|Bradykinin-mediated angioedema oral therapies|PHVS,ROIV|narrative_cogap
+2026-09-08|Seed: SEI|SEI|narrative_seed
+2026-09-08|Seed: ERO|ERO|narrative_seed
+2026-09-09|Critical & Industrial Metal Smelters (Tungsten/Aluminum)|ALM,CENX|shadow_v2
+2026-09-09|Specialty & Safety Chemicals Producers|SOLS,PRM|shadow_v2
+2026-09-09|Legacy Telecom & Satellite Pay-TV Distribution Turnaround|TDS,ECHO|shadow_v2
+2026-09-09|Optical Transceiver & Photonics Component Makers for AI Data Centers|LITE,COHR,GLW|shadow_v2
+2026-09-09|RF Front-End & Filter Component Suppliers for Wireless Infrastructure|MTSI,KN|shadow_v2
+2026-09-09|Independent Cloud & GPU Infrastructure Providers for AI Workloads|CRWV,DOCN|shadow_v2
+2026-09-09|Bitcoin Treasury & Mining Hybrid Equities|MSTR,BTDR|shadow_v2
+2026-09-09|Semiconductor Test, Yield & Assembly Supply Chain|TER,PDFS,SANM|shadow_v2
+2026-09-09|Multifamily Apartment REITs|MAA,CPT,UDR,ESS|shadow_v2
+2026-09-09|Single-Family & Manufactured Home Rental REITs|AMH,INVH,ELS|shadow_v2
+2026-09-09|U.S. Domestic Passenger Airlines|ALK,DAL,UAL,LUV|shadow_v2
+2026-09-09|Senior Care Services & Real Estate Value Chain|GRDN,LTC,OHI,SBRA|rs_slope_synthesis
+2026-09-10|Brazilian Export Commodity Producers|VALE,SUZ|shadow_v2
+2026-09-10|Super-Regional Bank RS Reversal|FITB,FHN,CFG,HBAN|shadow_v2
+2026-09-10|Specialty Retail Short-Squeeze Momentum Basket|ASO,SIG,GME|shadow_v2
+2026-09-10|Brazilian Financial Services Momentum|ITUB,XP,INTR|shadow_v2
+2026-09-10|Super-Regional & National Consumer Bank Rally|USB,PNC,MTB,KEY,VLY|shadow_v2
+2026-09-10|P&C Insurance Rotation Turnaround|SPNT,SAFT|shadow_v2
+2026-09-10|Content Delivery Network & Edge Cloud Platforms|NET,FSLY|shadow_v2
+2026-09-10|Corporate Bitcoin Treasury Holding Companies|SBET,BMNR,ASST,PURR|shadow_v2
+2026-09-10|Electronics Manufacturing Services for Tech & AI Hardware|CLS,SANM|shadow_v2
+2026-09-10|Mobile SoC & Wireless Connectivity Semiconductors|QCOM,SWKS,QRVO|shadow_v2
+2026-09-10|Brazilian Fintech & Digital Payment Platforms|PAGS,STNE|shadow_v2
+2026-09-10|Drug Delivery & Infusion Administration Technology|HALO,ICUI|shadow_v2
+2026-09-10|Regulated Natural Gas Distribution Utilities|SR,NJR,OGS,SWX,ATO|shadow_v2
+2026-09-10|Orbital Launch Vehicle Manufacturers|FLY,RKLB|shadow_v2
+2026-09-11|Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound|CHTR,TDS,ECHO,NMAX|shadow_v2
+2026-09-11|Digital Advertising & Ad-Tech Monetization Platforms|DV,TJGC,RBLX|shadow_v2
+2026-09-11|Grain Merchandising & Agribusiness Origination|ANDE,ADM,BG|shadow_v2
+2026-09-11|Bitcoin Mining Stocks Rotation Reversal|IOND,CLSK,RIOT|shadow_v2
+2026-09-11|Neurology & Rare Disease CNS Biopharmaceuticals|AXSM,BIIB,EWTX,BMRN,ARWR|shadow_v2
+2026-09-11|Rare Disease & Orphan Drug Clinical-Stage Biotech|SION,INSM|shadow_v2
+2026-09-11|Electrical Grid Electrification & Power Infrastructure Buildout|ATKR,PWR|shadow_v2
+2026-09-11|Distributed & On-Site Power Generation Solutions|BE,AMRC|shadow_v2
+2026-09-11|Medicaid/Medicare-Focused Healthcare Services|GRDN,MOH|shadow_v2
+2026-09-11|Brazilian Merchant Payment Processing & Fintech|PAGS,STNE|shadow_v2
+2026-09-11|CPaaS Voice & Messaging API Communications Platforms|BAND,TWLO|shadow_v2
+2026-09-11|Precision RF & Frequency Control Electronic Component Makers|FEIM,KN|shadow_v2
+2026-09-11|EMS & Contract Manufacturing for AI/Data Center Hardware|CLS,SANM|shadow_v2
+2026-09-11|mRNA Vaccine & Therapeutics Pure-Plays|MRNA,BNTX|shadow_v2
+2026-09-11|CRISPR Gene Editing Pure-Plays|CRSP,NTLA|shadow_v2
+2026-09-11|Regulated Natural Gas Distribution Utilities|SR,OGS,NJR,SWX|shadow_v2
+2026-09-11|Regulated Electric Utilities in AI Data Center Load Corridors|AEP,XEL|shadow_v2
+2026-09-11|Residential Rental REIT Rotation (Multifamily & Single-Family)|ESS,CPT,MAA,UDR,AMH,INVH|shadow_v2
+2026-09-11|Microreactor & Small Modular Reactor Pure-Play Developers|SMR,XE,NNE,OKLO|shadow_v2
+2026-09-14|Discount Store Retail Rotation|DG,OLLI|shadow_v2
+2026-09-14|Digital-Native DTC Consumer Brand Rebound|ODD,FIGS|shadow_v2
+2026-09-14|Precision Oncology & Genomic Diagnostics Innovators|TXG,GH,TEM|shadow_v2
+2026-09-14|Emerging Medical Device Innovators Breakout|ATEC,INSP,ITGR|shadow_v2
+2026-09-14|Crypto Miners Pivoting to Data Center Colocation|CORZ,WULF,HUT|shadow_v2
+2026-09-14|Vulnerability Management & Penetration Testing Platforms|RPD,TENB,QLYS|shadow_v2
+2026-09-14|AI-Driven Endpoint & Cloud Threat Detection Platforms|CRWD,NTSK,S|shadow_v2
+2026-09-14|SMB Marketing Automation & Customer Data SaaS|HUBS,KVYO|shadow_v2
+2026-09-14|Developer-Focused Edge & Cloud Infrastructure Platforms|FSLY,DOCN|shadow_v2
+2026-09-14|Digital Payment Processors — Global RS Acceleration|PAGS,PAYP|shadow_v2
+2026-09-14|Blockchain Infrastructure & Digital Asset Treasury Software|MSTR,SECZ|shadow_v2
+2026-09-14|IT Operations Management & Incident Response Software|PD,NOW,OCTV|shadow_v2
+2026-09-14|Marketing Automation & Consumer Data Analytics Platforms|ZETA,SPT|shadow_v2
+2026-09-14|Regulated Electric Utilities RS Rotation Reversal|OGE,FE,AEP,EVRG|shadow_v2
+2026-09-14|mRNA Vaccine & Immunotherapy Platform Developers|MRNA,BNTX|shadow_v2
+2026-09-14|CRISPR Gene Editing & Synthetic DNA Tool Makers|CRSP,NTLA,TWST|shadow_v2
+2026-09-14|Quantum Computing Sector-Wide Momentum Reversal|INFQ,QUBT,RGTI,IONQ,QBTS|shadow_v2
+2026-09-14|Seed: DFTX|DFTX|narrative_seed
+2026-09-14|Seed: SRRK|SRRK|narrative_seed
+2026-09-14|Brazil Macro Re-Rating: Energy + Financials + Fintech|PBR,ITUB,PAGS|rs_slope_synthesis
+2026-09-14|AI monetization|NMAX,TEAM,U|judge_named
+2026-09-14|Semiconductor Equipment Cycle Recovery|ACMR,ONTO|judge_named
+2026-09-15|Blank-Check SPAC Shell Speculation Revival|QETA,NMP,LATA|shadow_v2
+2026-09-15|Commodity Chemicals & Polymers Producers|LYB,CE|shadow_v2
+2026-09-15|Unmanned Systems & Space Defense Technology|AVAV,VOYG|shadow_v2
+2026-09-15|Distributed On-Site Power Generation for AI Data Centers|PSIX,BE|shadow_v2
+2026-09-15|Freight & Trucking Rate Bottom Turnaround|ARCB,KNX,FDXF|shadow_v2
+2026-09-15|Defense Electronics & Aerospace Component Momentum Basket|ESLT,AVAV|shadow_v2
+2026-09-15|Cloud Application Delivery & Observability Infrastructure|FSLY,DDOG,ATEN|shadow_v2
+2026-09-15|CRISPR & In-Vivo Gene Editing Therapeutics|CRSP,NTLA|shadow_v2
+2026-09-15|Residential Rental REIT Basket (Apartment & Single-Family)|MAA,UDR,INVH|shadow_v2
+2026-09-15|Second-Tier Bitcoin Mining & Colocation Operators|RIOT,CORZ,WULF|shadow_v2
+2026-09-15|Advanced Nuclear Fuel Cycle & Microreactor Developers|LEU,NNE,OKLO,SMR|shadow_v2
+2026-09-16|Commodity Chemicals & Polymer Producers Rebound|DOW,LYB,CE|shadow_v2
+2026-09-16|Student Loan Servicing & Education Finance|NNI,SLM|shadow_v2
+2026-09-16|Packaged & Frozen Food Producers Turnaround|UTZ,KHC,CAG|shadow_v2
+2026-09-16|Smart Home & Security Surveillance Hardware|ADIG,ARLO|shadow_v2
+2026-09-16|Infrastructure & Utility Distribution Products|ATKR,CNM|shadow_v2
+2026-09-16|Regulated Electric Utilities Momentum Rotation (Turning Up)|ED,AEP,FTS|shadow_v2
+2026-09-16|IT & Electronics Hardware Supply Chain Reacceleration|CDW,CLS|shadow_v2
+2026-09-16|Cloud AI Developer & Data Platform Infrastructure|TDC,DOCN|shadow_v2
+2026-09-16|Seaborne Metallurgical & Thermal Coal Exporters|BTU,CNR,HCC,AMR|shadow_v2
+2026-09-16|AI data-center power buildout|AGX,SNOW,ALAB,CIFR|narrative_cogap
+2026-09-17|Judge: Technology 2026-09-17|VICR|judge_inferred
+2026-09-17|Judge: Industrials 2026-09-17|GNRC|judge_inferred
+2026-09-17|Online Marketplace & Auction Platforms|EBAY,ACVA|shadow_v2
+2026-09-17|Footwear & Accessories Brands Rebound|CROX,CPRI|shadow_v2
+2026-09-17|Mobile & Modular Power Generation for Oilfield and Data Center Sites|SEI,PSIX|shadow_v2
+2026-09-17|Bitcoin Miners Pivoting to AI/HPC Hosting (New RS Leaders)|IOND,IREN|shadow_v2
+2026-09-17|Dermatology-Focused Biotech Therapeutics|ARQT,MANE,ORKA|shadow_v2
+2026-09-17|Rocket Launch & Space Vehicle Manufacturing|FLY,SPCX,RDW|shadow_v2
+2026-09-17|Semiconductor & Electronic Test Equipment Upcycle|FORM,COHU,AEHR,KEYS|shadow_v2
+2026-09-17|Optical & Photonic Materials for AI Datacenter Interconnects|AXTI,COHR|shadow_v2
+2026-09-17|Low-Cost & Regional Passenger Airline Rebound|LUV,ULCC,LTM|shadow_v2
+2026-09-17|New Space Satellite Broadband & Launch Leaders|ASTS,RKLB|shadow_v2
+2026-09-17|Emerging Quantum Computing Software & Hardware Platforms|QNT,QBTS,QUBT,INFQ|shadow_v2
+2026-09-17|Regulated Utility Rotation Reversal (Oversold Turn-Up)|TXNM,NI,DUK,CNP,FTS,WEC,PEG,CMS,LNT|shadow_v2
+2026-09-17|Semiconductor Automated Test Equipment|TER,COHU|shadow_v2
+2026-09-17|Silver & Mid-Cap Gold Miners Momentum Basket|EXK,SVM,AG,PAAS,NG,ASM,MUX,KGC,EQX|shadow_v2
+2026-09-17|Single-Family Rental Housing REITs|AMH,INVH|shadow_v2
+2026-09-17|Regional Freight & LTL Trucking Carriers|SAIA,WERN,TFII|shadow_v2
+2026-09-17|Diversified Multi-Metal Mining Majors|BHP,TGB|shadow_v2
+2026-09-17|AI data-center power buildout|AGX,SNOW,ALAB,CIFR,GNRC,VICR|narrative_cogap
+2026-09-21|Seed: MSTR|MSTR|narrative_seed
+2026-09-21|Legacy Network Carrier Airlines Rotation|ALK,DAL,UAL|shadow_v2
+2026-09-21|Small Launch Vehicle & Space Platform Manufacturers|RKLB,FLY,MDA|shadow_v2
+2026-09-21|Optical Transceiver & Fiber-Optic Module Makers|AAOI,COHR,LITE|shadow_v2
+2026-09-21|Front-End Semiconductor Fabrication Equipment Makers|AMAT,ACMR,ASML|shadow_v2
+2026-09-21|Electronics Manufacturing Services (EMS) Providers|CLS,BHE,SANM|shadow_v2
+2026-09-21|Bitcoin Miners Pivoting to AI/HPC Data Center Hosting|BTDR,APLD|shadow_v2
+2026-09-21|Gas-Fired Backup Generator & On-Site Power Equipment Makers|GNRC,INIO,PSIX|shadow_v2
+2026-09-21|Semiconductor Wafer Fab Equipment (Etch, Deposition, Inspection & Metrology)|LRCX,KLAC|shadow_v2
+2026-09-21|Semiconductor Yield Optimization & Probe Test Solutions|FORM,PDFS|shadow_v2
+2026-09-21|Optical Fiber & Photonic Materials for AI Data Networks|GLW,COHR,LITE|shadow_v2
+2026-09-21|Bitcoin Beta Correlation Basket: Treasury, Exchange & Stablecoin Proxies|CRCL,BLSH|shadow_v2
+2026-09-21|Enterprise AI Infrastructure & Cloud GPU Compute Platforms|PENG,SHAZ|shadow_v2
+2026-09-21|Semiconductor IP & Timing Solutions for High-Speed Data Infrastructure|RMBS,SITM|shadow_v2
+2026-09-21|Emerging Small-Cap Silver, Gold & Critical Mineral Miners|CDE,HL,HYMC,PPTA|shadow_v2
+2026-09-21|Trucking & Freight Carrier Rebound|KNX,ARCB,SNDR,SAIA,TFII,WERN|shadow_v2
+2026-09-21|Nuclear Fission Reactor & Fuel Cycle Renaissance|SMR,OKLO,NNE,LEU|shadow_v2
+2026-09-21|Seed: INTC|INTC|narrative_seed
+2026-09-22|Seed: ONON|ONON|narrative_seed
+2026-09-22|Bitcoin Balance Sheet Proxies|MSTR,COIN,BLSH,CRCL|shadow_v2
+2026-09-22|Wireless & Broadband Connectivity Semiconductor IP/SoC Providers|CEVA,MXL|shadow_v2
+2026-09-22|Direct-to-Device Satellite Connectivity|ASTS,IRDM|shadow_v2
+2026-09-22|AI Data Center Power Conversion Modules|VICR,MPWR|shadow_v2
+2026-09-22|Emerging AI Compute & Cloud Infrastructure Platforms|DOCN,PENG,CBRS|shadow_v2
+2026-09-22|Precision Oncology Clinical-Stage Biotech Momentum|TNGX,AVBP|shadow_v2
+2026-09-22|Dermatology-Focused Biopharma Momentum|ARQT,MANE|shadow_v2
+2026-09-22|Small Satellite & Space Services Rotation|LUNR,BKSY,MDA,FLY,RKLB|shadow_v2
+2026-09-22|Junior Gold-Silver-Antimony Mining Developers|PPTA,HYMC|shadow_v2
+2026-09-22|Brazilian Fintech & Digital Banking|XP,ITUB,PAGS,INTR,STNE|shadow_v2
+2026-09-23|Nuclear Fuel Enrichment & Fission Power Plant Developers|OKLO,LEU|shadow_v2
+2026-09-23|Offshore Drilling Contractors|SDRL,NE,VAL,RIG|shadow_v2
+2026-09-23|Single-Family & Luxury Homebuilders|DHI,LEN,PHM,MHO,TOL,MTH,KBH|shadow_v2
+2026-09-23|AI Datacenter Copper Cabling & High-Speed Connectors|BDC,APH|shadow_v2
+2026-09-23|Silicon Photonics & Optical Engines for AI Datacenters|COHR,ALAB,LITE|shadow_v2
+2026-09-23|Regulated Natural Gas Distribution Utilities|SR,ATO,OGS,NI,CNP|shadow_v2
+2026-09-23|Enterprise Data Storage & Management Software Velocity Leaders|QMCO,P|shadow_v2
+2026-09-23|Semiconductor IP Licensing & Royalty Business Models|RMBS,SNPS|shadow_v2
+2026-09-23|Precision Scientific & Industrial Instrumentation Automation|FTV,NOVT|shadow_v2
+2026-09-23|Specialty Chemicals & Advanced Materials Producers|NGVT,ESI|shadow_v2
+2026-09-23|Alternative & Institutional Asset Management Managers|PS,CNS|shadow_v2
+2026-09-23|Small-Cap Space Launch & Rocket Vehicle Providers|AADX,FLY|shadow_v2
+2026-09-24|Offshore Contract Drilling Rig Operators|SDRL,NE,VAL,RIG|shadow_v2
+2026-09-24|Latin American Fintech, Banking & Telecom Currency Play|XP,ITUB,PAGS,TIGO,INTR,STNE|shadow_v2
+2026-09-24|Truckload Freight Carriers|KNX,WERN,SNDR|shadow_v2
+2026-09-24|Less-Than-Truckload (LTL) Freight Carriers|SAIA,TFII,ARCB|shadow_v2
+2026-09-24|Appalachian Natural Gas Producers|GPOR,CNX,EXE,AR,RRC,EQT|shadow_v2
+2026-09-24|Enterprise Data Storage Hardware & Management Platforms|QMCO,P|shadow_v2
+2026-09-24|Discrete & Analog Power Management Semiconductors|DIOD,MPWR|shadow_v2
+2026-09-24|Chip Design & Verification Tools Stack|CDNS,KEYS|shadow_v2
+2026-09-24|AI Networking Retimer & DSP Interconnect Chips|CRDO,ALAB|shadow_v2
+2026-09-24|Autonomous Vehicle & ADAS Technology Enablers|OUST,AMBA,BB|shadow_v2
+2026-09-24|Fabless Semiconductor IP Licensing|ARM,CEVA,RMBS|shadow_v2
+2026-09-24|Oilfield Modular Power Generation Equipment|SEI,EROC|shadow_v2
+2026-09-24|Emerging Small-Cap Defense & Space Breakout|AADX,AVEX|shadow_v2
+2026-09-24|Onshore Oil & Gas E&P Recovery|MUR,TALO,PNRG,OXY|shadow_v2
+2026-09-24|Luxury & Specialty Apparel Retail Momentum|CPRI,VSXY|shadow_v2
+2026-09-24|Social & Interactive Platforms Rotation Reversal|META,RBLX|shadow_v2
+2026-09-24|Gaming Platform Advertising & Monetization|TJGC,RBLX|shadow_v2
+2026-09-24|U.S. Oil & Gas Exploration, Production & Royalty Momentum|DVN,EOG,COP,CRGY,CHRD,KRP|shadow_v2
+2026-09-25|AI data-center power buildout|AGX,SNOW,ALAB,CIFR,GNRC,VICR,AKAM|narrative_cogap
+2026-09-25|Offshore Drilling Rig Contractors|SDRL,VAL,NE,RIG|shadow_v2
+2026-09-25|Less-Than-Truckload & Truckload Freight Carriers|SNDR,TFII,SAIA,WERN,ARCB,KNX|shadow_v2
+2026-09-25|Semiconductor Thin-Film Deposition & Process Equipment|VECO,ACMR|shadow_v2
+2026-09-25|Programmatic Ad Exchange Supply-Side Platforms|PUBM,MGNI|shadow_v2
+2026-09-25|Niche Memory Semiconductor IP & Chips|RMBS,MRAM|shadow_v2
+2026-09-25|Value-Based Care & Population Health Management|HUM,NUTX|shadow_v2
+2026-09-25|Semiconductor Design, Test & Assembly Enablement Tools|KEYS,CDNS,KLIC|shadow_v2
+2026-09-25|Direct-to-Consumer Health & Wellness Subscription Brands|HIMS,WRBY,MANE|shadow_v2
+2026-09-25|Precision Oncology Targeted Therapy Biotechs|TNGX,RVMD|shadow_v2
+2026-09-25|GLP-1 & Metabolic Disorder Drug Innovators|HIMS,VKTX|shadow_v2
+2026-09-25|Direct-to-Consumer Beauty & Specialty Apparel Brands|VSXY,FIGS|shadow_v2
+2026-09-25|Value Retail & Grocery Wholesale Trade-Down Basket|OLLI,BJ,UNFI|shadow_v2
+2026-09-25|Judge: Technology 2026-09-25|AKAM|judge_inferred

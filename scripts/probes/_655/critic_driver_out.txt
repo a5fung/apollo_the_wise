@@ -1,0 +1,10 @@
+window before 2026-05-05 (2026-02-06..2026-05-04): miners(10) ~IBIT 0.52 | best other theme 0.65 'Semiconductor Wafer Foundry & Advanced IC Man' [8] | FLAG=False | themes beating IBIT by >=0.15: 0 of 16 || MSTR+COIN ~IBIT 0.86 vs best other 0.39 'Satellite Earth Observation & '
+window before 2026-05-16 (2026-02-20..2026-05-15): miners(10) ~IBIT 0.35 | best other theme 0.66 'Semiconductor Wafer Foundry & Advanced IC Man' [10] | FLAG=True | themes beating IBIT by >=0.15: 4 of 21 || MSTR+COIN ~IBIT 0.80 vs best other 0.38 'Optical Components & Transceiv'
+window before 2026-06-02 (2026-03-06..2026-06-01): miners(10) ~IBIT 0.32 | best other theme 0.57 'Semiconductor Wafer Foundry & Advanced IC Man' [10] | FLAG=True | themes beating IBIT by >=0.15: 3 of 14 || MSTR+COIN ~IBIT 0.69 vs best other 0.34 'Inflammatory Disease & Immunol'
+window before 2026-07-02 (2026-04-07..2026-07-01): miners(10) ~IBIT 0.34 | best other theme 0.60 'AI Cloud GPU & Datacenter Colocation Platform' [4] | FLAG=True | themes beating IBIT by >=0.15: 2 of 25 || MSTR+COIN ~IBIT 0.74 vs best other 0.40 'Quantum Computing Hardware & A'
+window before 2026-09-26 (2026-07-02..2026-09-25): miners(10) ~IBIT 0.32 | best other theme 0.69 'AI-Driven Memory & Storage Supply Shortage' [7] | FLAG=True | themes beating IBIT by >=0.15: 15 of 103 || MSTR+COIN ~IBIT 0.82 vs best other 0.44 'Precious Metals Complex Reboun'
+
+--- the doc's proposed END STATE: the six converts leave, the bitcoin name stays on the 'true miners' — does #5 pass it? (window to 09-25, today's board) ---
+  remainder ['ABTC', 'MARA', 'BTDR']: ~IBIT 0.54 vs best other 0.63 'AI data-center power buildout' -> FLAG=False
+  remainder ['ABTC', 'MARA', 'BTDR', 'CLSK', 'RIOT']: ~IBIT 0.48 vs best other 0.71 'AI data-center power buildout' -> FLAG=True
+  remainder ['ABTC', 'MARA', 'BTDR', 'CLSK', 'RIOT', 'IOND']: ~IBIT 0.47 vs best other 0.72 'AI data-center power buildout' -> FLAG=True

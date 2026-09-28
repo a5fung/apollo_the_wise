@@ -1,0 +1,25 @@
+variant	theme	named	alt_named_by_dualhome	n_judged	misfit_share	sep	verdict	misfits
+A	AI data-center power buildout	E-AIINFRA	E-CRYPTO	7	0.29	0.41	SPLIT	SNOW,CIFR
+A	AI data-center power buildout	E-AIINFRA	E-INDL	7	0.00	0.72	UNJUDGEABLE_COLLINEAR	
+A	AI data-center power buildout	E-AIINFRA	E-SAAS	7	0.14	-0.33	SPLIT	SNOW
+A	AI-Driven Diagnostics & Imaging Re-Rating	E-MEDTECH	E-SAAS	9	0.00	0.23	CONSISTENT	
+A	Bitcoin Mining Stocks Rotation Reversal	E-CRYPTO	E-AIINFRA	9	0.44	0.02	SPLIT	HUT,CIFR,CLSK,IREN
+A	Cloud Data Storage & Analytics Infrastructure	E-SAAS	E-AIINFRA	4	0.25	-0.39	SPLIT	APLD
+A	Diversified Power Generation Capacity Expansion for AI Electricity Demand	E-AIINFRA	E-INDL	3	0.00	0.72	UNJUDGEABLE_COLLINEAR	
+A	Electronics Manufacturing Services (EMS) Providers	E-HLTH	E-AISEMI	4	1.00	-0.52	MISMATCH	CLS,SANM,PLXS,BHE
+A	Industrial Construction Execution & On-Site Supply Chain	E-INDL	E-AIINFRA	8	0.00	0.72	UNJUDGEABLE_COLLINEAR	
+A	Life Sciences & Healthcare Data/CRM Platforms	E-SAAS	E-MEDTECH	3	0.33	0.23	SPLIT	TEM
+A	Regulated Electric Utility Defensive Rotation	E-INDL	E-AIINFRA	4	0.00	0.72	UNJUDGEABLE_COLLINEAR	
+A	Semiconductor Test, Yield & Assembly Supply Chain	E-AISEMI	E-HLTH	7	0.00	-0.52	CONSISTENT	
+B	AI data-center power buildout	E-AIINFRA	E-CRYPTO	7	0.14	-0.08	SPLIT	SNOW
+B	AI data-center power buildout	E-AIINFRA	E-INDL	7	0.00	0.64	UNJUDGEABLE_COLLINEAR	
+B	AI data-center power buildout	E-AIINFRA	E-SAAS	7	0.14	-0.35	SPLIT	SNOW
+B	AI-Driven Diagnostics & Imaging Re-Rating	E-MEDTECH	E-SAAS	9	0.00	0.23	CONSISTENT	
+B	Bitcoin Mining Stocks Rotation Reversal	E-CRYPTO	E-AIINFRA	9	0.56	-0.08	MISMATCH	HUT,CIFR,CLSK,RIOT,IREN
+B	Cloud Data Storage & Analytics Infrastructure	E-SAAS	E-AIINFRA	4	0.25	-0.39	SPLIT	APLD
+B	Diversified Power Generation Capacity Expansion for AI Electricity Demand	E-AIINFRA	E-INDL	3	0.00	0.64	UNJUDGEABLE_COLLINEAR	
+B	Electronics Manufacturing Services (EMS) Providers	E-HLTH	E-AISEMI	4	1.00	-0.52	MISMATCH	CLS,SANM,PLXS,BHE
+B	Industrial Construction Execution & On-Site Supply Chain	E-INDL	E-AIINFRA	8	0.00	0.64	UNJUDGEABLE_COLLINEAR	
+B	Life Sciences & Healthcare Data/CRM Platforms	E-SAAS	E-MEDTECH	3	0.33	0.23	SPLIT	TEM
+B	Regulated Electric Utility Defensive Rotation	E-INDL	E-AIINFRA	4	0.00	0.64	UNJUDGEABLE_COLLINEAR	
+B	Semiconductor Test, Yield & Assembly Supply Chain	E-AISEMI	E-HLTH	7	0.00	-0.52	CONSISTENT	

@@ -1,0 +1,45 @@
+window 2026-07-02..2026-09-25; BAR 0.1 SEP 0.6; themes with a dual-home alternative: 10
+  SPLIT                  AI data-center power buildout                              E-AIINFRA->E-CRYPTO share 0.14 sep 0.45 refs (27, 17) misfits ['SNOW']
+  CONSISTENT             AI-Driven Diagnostics & Imaging Re-Rating                  E-MEDTECH->E-SAAS share 0.00 sep 0.37 refs (52, 55) misfits []
+  SPLIT                  Bitcoin Mining Stocks Rotation Reversal                    E-CRYPTO->E-AIINFRA share 0.33 sep 0.20 refs (9, 33) misfits ['HUT', 'CIFR', 'IREN']
+  SPLIT                  Cloud Data Storage & Analytics Infrastructure              E-SAAS->E-AIINFRA share 0.25 sep -0.58 refs (52, 33) misfits ['APLD']
+  MISMATCH               Diversified Power Generation Capacity Expansion for AI Ele E-AIINFRA->E-INDL share 0.67 sep -0.03 refs (31, 21) misfits ['AES', 'EVRG']
+  MISMATCH               Electronics Manufacturing Services (EMS) Providers         E-HLTH->E-AISEMI share 1.00 sep -0.76 refs (18, 37) misfits ['CLS', 'SANM', 'PLXS', 'BHE']
+  MISMATCH               Industrial Construction Execution & On-Site Supply Chain   E-INDL->E-AIINFRA share 0.50 sep -0.32 refs (14, 33) misfits ['TPC', 'DNOW', 'FLR', 'AGX']
+  SPLIT                  Life Sciences & Healthcare Data/CRM Platforms              E-SAAS->E-MEDTECH share 0.33 sep 0.35 refs (53, 60) misfits ['TEM']
+  CONSISTENT             Regulated Electric Utility Defensive Rotation              E-INDL->E-AIINFRA share 0.00 sep 0.05 refs (18, 33) misfits []
+  CONSISTENT             Semiconductor Test, Yield & Assembly Supply Chain          E-AISEMI->E-HLTH share 0.00 sep -0.63 refs (31, 21) misfits []
+verdicts: {'SPLIT': 4, 'CONSISTENT': 3, 'MISMATCH': 3}
+NULL random alternative: MISMATCH median 0.20 p95 0.33; MISMATCH-or-SPLIT median 0.44 p95 0.67 | REAL MISMATCH 3/10, MISMATCH-or-SPLIT 7/10
+SEARCHED form with board-theme references: 31 of 113 flagged
+    ('Annuity-Focused Insurers', 'E-INS', 'E-BANKFIN', 0.17)
+    ('Building Products Distribution & Supply', 'E-INDL', 'E-CONS', 0.34)
+    ('Business Development Companies & Private Credit Le', 'E-BANKFIN', 'E-INDL', 0.21)
+    ('Corporate Spend, Expense Management & Financial Op', 'E-SAAS', 'E-INS', 0.13)
+    ('Defense Intelligence & Cybersecurity IT Contractor', 'E-DEF', 'E-INDL', 0.45)
+    ('Digital Advertising & Ad-Tech Monetization Platfor', 'E-COMM', 'E-SAAS', 0.29)
+    ('Digital Insurance Distribution & InsurTech Platfor', 'E-INS', 'E-QUANTUM', 0.52)
+    ('Direct-to-Consumer Health & Wellness Subscription ', 'E-CONS', 'E-BIO', 0.49)
+    ('Diversified Power Generation Capacity Expansion fo', 'E-AIINFRA', 'E-INS', 0.71)
+    ('Electronics Manufacturing Services (EMS) Providers', 'E-HLTH', 'E-AISEMI', 1.3)
+    ('Emerging Medical Device Innovators Breakout', 'E-MEDTECH', 'E-SAAS', 0.1)
+    ('Enterprise Unstructured Data Storage Infrastructur', 'E-INDL', 'E-SAAS', 0.73)
+    ('Homebuilders & Residential Construction Supply Cha', 'E-REIT', 'E-CONS', 0.38)
+    ('Industrial Construction Execution & On-Site Supply', 'E-INDL', 'E-DEF', 0.15)
+    ('IT Consulting & Business Process Outsourcing Servi', 'E-HLTH', 'E-SAAS', 0.57)
+    ('Low-Cost & Regional Passenger Airline Rebound', 'E-TRANS', 'E-BANKFIN', 0.37)
+    ('Medical Device Mean-Reversion & Rotation Recovery', 'E-MEDTECH', 'E-HLTH', 0.14)
+    ('mRNA Vaccine & Personalized Cancer Therapy Platfor', 'E-BIO', 'E-MEDTECH', 0.16)
+    ('Orthopedic Surgical Devices & Instruments', 'E-MEDTECH', 'E-HLTH', 0.17)
+    ('Post-Acute & Home-Based Healthcare Services', 'E-HLTH', 'E-INS', 0.17)
+    ('Precision Timing & Motion Control Component Makers', 'E-DEF', 'E-AISEMI', 0.22)
+    ('Private Mortgage Insurance', 'E-BANKFIN', 'E-INS', 0.3)
+    ('Rare Earth Elements Mining & Processing', 'E-METAL', 'E-QUANTUM', 0.35)
+    ('Regulated Electric Utility Defensive Rotation', 'E-INDL', 'E-INS', 0.17)
+    ('Regulated Natural Gas Distribution Utilities', 'E-INDL', 'E-INS', 0.42)
+    ('Skilled Nursing & Senior Housing Healthcare REITs', 'E-REIT', 'E-INS', 0.31)
+    ('Small Modular Reactor & Advanced Nuclear Fission T', 'E-ENER', 'E-QUANTUM', 0.97)
+    ('Space Economy: Satellite Communications & Launch S', 'E-DEF', 'E-QUANTUM', 0.12)
+    ('Trucking & Freight Carrier Rebound', 'E-TRANS', 'E-CYBR', 0.44)
+    ('Uranium Mining & Extraction', 'E-ENER', 'E-METAL', 0.8)
+    ('U.S. Domestic Passenger Airlines', 'E-TRANS', 'E-CONS', 0.39)

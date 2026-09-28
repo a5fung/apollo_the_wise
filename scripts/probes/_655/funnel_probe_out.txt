@@ -1,0 +1,330 @@
+=== #655 FUNNEL TEST probe — board of 2026-09-25, co-movement window = 60 sessions strictly before 2026-09-26 ===
+BAR (ASSIGN_COMOVE_BAR, read from theme_engine.py) = 0.35; tickers with a usable 60-session vector: 2466
+
+## C1 SHAPE — live board
+live themes n=118; stages {'Mainstream': 44, 'Nascent': 29, 'Fading': 41, 'Accelerating': 4}
+members: 0 -> 0, 2 -> 10, 3 -> 34, <=5 -> 83 of 118 (70%), >=4 (judgeable by the engine's own leave-one-out) -> 74 of 118 (63%)
+
+## C2 GROUPING — median leave-one-out member fit >= BAR, themes with >=4 usable members
+judgeable 74 of 118 (63%); PASS 72 of 74 (97%) of judgeable; = 72 of 118 (61%) of the whole board
+median of theme median-fits = 0.72 (p25 0.61, p75 0.84)
+   weakest: 0.16  Industrial Construction Execution & On-Site Supply Chain [Fading] n=8
+   weakest: 0.34  Cloud Data Storage & Analytics Infrastructure [Mainstream] n=4
+   weakest: 0.37  AI-Driven Diagnostics & Imaging Re-Rating [Mainstream] n=9
+   weakest: 0.40  U.S. Apparel & Fashion Recovery [Mainstream] n=9
+   weakest: 0.42  Wealth Management & Retail Brokerage Platforms [Mainstream] n=12
+   weakest: 0.44  Genetic Medicine: Gene Editing & Gene Therapy Innovators [Fading] n=4
+   weakest: 0.47  Fintech & Digital Finance Sector Re-rating on Fed Easing [Fading] n=20
+   weakest: 0.49  Vaccine & Antiviral Therapeutics Rebound [Mainstream] n=4
+thin themes (2-3 members; the engine's own test cannot judge them): n=44; median PAIRWISE corr >= 0.35: 25 of 44 (57%)  (secondary read — pairwise runs lower than member-to-basket)
+CONTROL random baskets (same sizes, 20 draws per judged theme): PASS 41 of 1480 (3%)
+CONTROL same-SECTOR random baskets (modal sector of each theme): PASS 520 of 1480 (35%)  <- a sector bucket passes grouping this often: grouping CANNOT tell a theme from a sector
+
+## M1 MISFILED — a member that fails its own theme but fits another
+themed member-slots judged n=589; own fit < 0.35: 55 of 589 (9%)
+  own<0.35 & other>=0.35: 39 of 589 (7%)
+     APLD   own -0.16 in 'Cloud Data Storage & Analytics Infrastructure'  -> best other 0.87 'Bitcoin Mining Stocks Rotation Reversal'
+     ACA    own -0.17 in 'Industrial Construction Execution & On-Site Supply Chain'  -> best other 0.75 'Regulated Electric Utility Defensive Rotation'
+     NTNX   own -0.19 in 'Enterprise Server, Storage & Data Infrastructure Hardware'  -> best other 0.72 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS'
+     TTEK   own -0.10 in 'Industrial Construction Execution & On-Site Supply Chain'  -> best other 0.63 'Enterprise HR & Workforce Management SaaS'
+     ORCL   own -0.10 in 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS'  -> best other 0.56 'On-Site Power Generation & Distribution Equipment for Data Centers'
+     J      own -0.09 in 'Industrial Construction Execution & On-Site Supply Chain'  -> best other 0.47 'Home Improvement Retail & Building Products'
+     KBR    own 0.13 in 'Industrial Construction Execution & On-Site Supply Chain'  -> best other 0.68 'Defense Intelligence & Cybersecurity IT Contractors'
+     AGX    own 0.18 in 'Industrial Construction Execution & On-Site Supply Chain'  -> best other 0.71 'Bitcoin Mining Stocks Rotation Reversal'
+     HOOD   own 0.26 in 'Wealth Management & Retail Brokerage Platforms'  -> best other 0.74 'Bitcoin Balance Sheet Proxies'
+     WES    own 0.24 in 'Energy Infrastructure & Services Complex'  -> best other 0.66 'Regulated Natural Gas Distribution Utilities'
+     SNOW   own 0.07 in 'AI data-center power buildout'  -> best other 0.47 'Identity & Access Management Security Software'
+     DGX    own 0.26 in 'AI-Driven Diagnostics & Imaging Re-Rating'  -> best other 0.66 'Life Science Tools & Analytical Instruments'
+  own<0.35 & other>=0.50 & margin>=0.15 (PROPOSED): 15 of 589 (3%)
+     APLD   own -0.16 in 'Cloud Data Storage & Analytics Infrastructure'  -> best other 0.87 'Bitcoin Mining Stocks Rotation Reversal'
+     ACA    own -0.17 in 'Industrial Construction Execution & On-Site Supply Chain'  -> best other 0.75 'Regulated Electric Utility Defensive Rotation'
+     NTNX   own -0.19 in 'Enterprise Server, Storage & Data Infrastructure Hardware'  -> best other 0.72 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS'
+     TTEK   own -0.10 in 'Industrial Construction Execution & On-Site Supply Chain'  -> best other 0.63 'Enterprise HR & Workforce Management SaaS'
+     ORCL   own -0.10 in 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS'  -> best other 0.56 'On-Site Power Generation & Distribution Equipment for Data Centers'
+     KBR    own 0.13 in 'Industrial Construction Execution & On-Site Supply Chain'  -> best other 0.68 'Defense Intelligence & Cybersecurity IT Contractors'
+     AGX    own 0.18 in 'Industrial Construction Execution & On-Site Supply Chain'  -> best other 0.71 'Bitcoin Mining Stocks Rotation Reversal'
+     HOOD   own 0.26 in 'Wealth Management & Retail Brokerage Platforms'  -> best other 0.74 'Bitcoin Balance Sheet Proxies'
+     WES    own 0.24 in 'Energy Infrastructure & Services Complex'  -> best other 0.66 'Regulated Natural Gas Distribution Utilities'
+     DGX    own 0.26 in 'AI-Driven Diagnostics & Imaging Re-Rating'  -> best other 0.66 'Life Science Tools & Analytical Instruments'
+     ESTC   own 0.27 in 'Cloud Data Storage & Analytics Infrastructure'  -> best other 0.62 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS'
+     AMP    own 0.33 in 'Wealth Management & Retail Brokerage Platforms'  -> best other 0.65 'Annuity-Focused Insurers'
+
+## M2 HOMELESS CO-MOVERS — strong or recently-themed names in NO live theme that fit one
+population = un-themed AND (RS composite >= 70 OR in a live-board theme row since 08-26): n=668 (307 by RS, 428 recently themed)
+  best fit >= 0.35 & margin over runner-up >= 0.00: 618 of 668 (93%)
+  best fit >= 0.35 & margin over runner-up >= 0.15: 56 of 668 (8%)
+  best fit >= 0.50 & margin over runner-up >= 0.00: 427 of 668 (64%)
+  best fit >= 0.50 & margin over runner-up >= 0.15: 55 of 668 (8%)
+   of the 55 flagged: RS>=70 -> 8
+   of the 55 flagged: recently themed, RS<70 -> 47
+  RS>=70 only (n=307): best >= 0.35 & margin >= 0.00: 271 of 307 (88%)
+  RS>=70 only (n=307): best >= 0.35 & margin >= 0.15: 9 of 307 (3%)
+  RS>=70 only (n=307): best >= 0.50 & margin >= 0.00: 155 of 307 (50%)
+  RS>=70 only (n=307): best >= 0.50 & margin >= 0.15: 8 of 307 (3%)
+     CHRD   RS  38.4  fit 0.95 'Energy Supply Disruption: Middle East Geopolitical Risk' (runner-up 0.79)
+     KBH    RS  23.3  fit 0.92 'Homebuilders & Residential Construction Supply Chain' (runner-up 0.74)
+     OVV    RS  40.3  fit 0.92 'Energy Supply Disruption: Middle East Geopolitical Risk' (runner-up 0.77)
+     MTDR   RS  26.5  fit 0.91 'Energy Supply Disruption: Middle East Geopolitical Risk' (runner-up 0.72)
+     CTRE   RS  30.4  fit 0.89 'Skilled Nursing & Senior Housing Healthcare REITs' (runner-up 0.60)
+     NHI    RS  20.5  fit 0.88 'Skilled Nursing & Senior Housing Healthcare REITs' (runner-up 0.59)
+     NOG    RS  43.3  fit 0.88 'Energy Supply Disruption: Middle East Geopolitical Risk' (runner-up 0.72)
+     UBSI   RS  67.5  fit 0.86 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.64)
+     EWBC   RS  60.5  fit 0.84 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.53)
+     TGB    RS  92.4  fit 0.84 'Copper Mining & Production' (runner-up 0.62)
+     BOKF   RS  48.6  fit 0.83 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.54)
+     WSBC   RS  48.9  fit 0.82 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.63)
+     WSFS   RS  66.9  fit 0.81 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.60)
+     AR     RS  29.5  fit 0.80 'Energy Supply Disruption: Middle East Geopolitical Risk' (runner-up 0.60)
+     RF     RS  25.3  fit 0.80 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.53)
+     RRC    RS  34.8  fit 0.80 'Energy Supply Disruption: Middle East Geopolitical Risk' (runner-up 0.61)
+     SSB    RS  56.3  fit 0.79 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.60)
+     PNC    RS  31.3  fit 0.78 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.59)
+     SBRA   RS  35.4  fit 0.78 'Skilled Nursing & Senior Housing Healthcare REITs' (runner-up 0.50)
+     VLY    RS  31.0  fit 0.78 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.47)
+     USB    RS  45.6  fit 0.77 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.57)
+     EXE    RS  18.9  fit 0.77 'Energy Supply Disruption: Middle East Geopolitical Risk' (runner-up 0.62)
+     GIS    RS  24.4  fit 0.76 'Defensive Consumer Staples Rotation' (runner-up 0.59)
+     SBCF   RS  60.1  fit 0.76 'Bank Stocks: Rising-Rate NIM Expansion' (runner-up 0.49)
+     TXRH   RS   7.3  fit 0.76 'Restaurant Chain Recovery' (runner-up 0.59)
+   #491 name CORZ: themes []; best 0.85 'Bitcoin Mining Stocks Rotation Reversal', runner-up 0.76 'Emerging AI Compute & Cloud Infrastructure Platforms'
+   #491 name WULF: themes []; best 0.85 'Bitcoin Mining Stocks Rotation Reversal', runner-up 0.81 'AI data-center power buildout'
+   #491 name APLD: themes ['Cloud Data Storage & Analytics Infrastructure']; best 0.87 'Bitcoin Mining Stocks Rotation Reversal', runner-up 0.80 'AI data-center power buildout'
+   #491 name IREN: themes ['Bitcoin Mining Stocks Rotation Reversal']; best 0.80 'Bitcoin Mining Stocks Rotation Reversal', runner-up 0.74 'AI data-center power buildout'
+   #491 name CIFR: themes ['AI data-center power buildout', 'Bitcoin Mining Stocks Rotation Reversal']; best 0.87 'Bitcoin Mining Stocks Rotation Reversal', runner-up 0.66 'Emerging AI Compute & Cloud Infrastructure Platforms'
+   #491 name HUT: themes ['Bitcoin Mining Stocks Rotation Reversal']; best 0.86 'Bitcoin Mining Stocks Rotation Reversal', runner-up 0.75 'AI data-center power buildout'
+  CONTROL random un-themed RS<50 names (n=300): best >= 0.35 & margin >= 0.00: 263 of 300 (88%)
+  CONTROL random un-themed RS<50 names (n=300): best >= 0.35 & margin >= 0.15: 14 of 300 (5%)
+  CONTROL random un-themed RS<50 names (n=300): best >= 0.50 & margin >= 0.00: 148 of 300 (49%)
+  CONTROL random un-themed RS<50 names (n=300): best >= 0.50 & margin >= 0.15: 11 of 300 (4%)
+
+## I1 PRICED-DRIVER LEG — a theme whose NAME claims a priced driver must co-move with that driver
+live themes whose name names a priced driver: 11 of 118 (the rest are OUT OF REACH of this leg)
+   pass driver IBIT fit 0.77  n=4  'Bitcoin Balance Sheet Proxies'  | best competing theme 0.46 'Bitcoin Mining Stocks Rotation Reversal'
+   pass driver IBIT fit 0.72  n=3  'Bitcoin Holding & Trading Proxy Equities'  | best competing theme 0.88 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket'
+   pass driver IBIT fit 0.37  n=9  'Bitcoin Mining Stocks Rotation Reversal'  | best competing theme 0.69 'Bitcoin Holding & Trading Proxy Equities'
+   pass driver IBIT fit 0.76  n=4  'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket'  | best competing theme 0.88 'Bitcoin Holding & Trading Proxy Equities'
+   pass driver COPX fit 0.95  n=7  'Copper Mining & Production'  | best competing theme 0.74 'Precious Metals Complex Rebound'
+   FAIL driver USO  fit 0.33  n=7  'Crude & Product Tanker Shipping'  | best competing theme 0.91 'Product Tanker Shipping'
+   pass driver USO  fit 0.74  n=17  'Global Oil & Gas Producers and Refiners'  | best competing theme 0.85 'Renewable & Specialty Fuels Chemical Producers'
+   pass driver GLD  fit 0.82  n=35  'Precious Metals Complex Rebound'  | best competing theme 0.74 'Copper Mining & Production'
+   pass driver GLD  fit 0.78  n=3  'Precious Metals Miners Velocity Breakout'  | best competing theme 0.73 'Copper Mining & Production'
+   pass driver USO  fit 0.38  n=4  'Product Tanker Shipping'  | best competing theme 0.91 'Crude & Product Tanker Shipping'
+   pass driver URA  fit 0.9  n=2  'Uranium Mining & Extraction'  | best competing theme 0.80 'Rare Earth Elements Mining & Processing'
+
+## I1r RELATIVE IDENTITY RULE — the named driver must explain the group at least as well as any live theme with a DIFFERENT driver
+   theme flag: best different-driver theme fit >= named-driver fit + 0.15; member flag: member's other-theme fit >= 0.50 and >= its driver fit + 0.15
+   themes in reach: 11; theme-level FLAG: 1 of 11 (9%)
+   ok   IBIT driver 0.77 vs 0.40 'Precious Metals Complex Rebound'  | members flagged 0 of 4:   'Bitcoin Balance Sheet Proxies'
+   ok   IBIT driver 0.72 vs 0.51 'Emerging Quantum Computing Rally'  | members flagged 1 of 3: GLXY(0.44->0.66)  'Bitcoin Holding & Trading Proxy Equities'
+   FLAG IBIT driver 0.37 vs 0.68 'AI-Driven Memory & Storage Supply Shortage'  | members flagged 6 of 9: BTDR(0.47->0.64), CIFR(0.19->0.66), CLSK(0.35->0.66), HUT(0.15->0.64), IREN(0.15->0.71), RIOT(0.33->0.63)  'Bitcoin Mining Stocks Rotation Reversal'
+   ok   IBIT driver 0.76 vs 0.47 'Precious Metals Miners Velocity Breakout'  | members flagged 0 of 4:   'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket'
+   ok   COPX driver 0.95 vs 0.74 'Precious Metals Complex Rebound'  | members flagged 0 of 7:   'Copper Mining & Production'
+   ok   USO  driver 0.33 vs 0.30 'Renewable & Specialty Fuels Chemical Producers'  | members flagged 0 of 7:   'Crude & Product Tanker Shipping'
+   ok   USO  driver 0.74 vs 0.85 'Renewable & Specialty Fuels Chemical Producers'  | members flagged 6 of 17: CVI(0.36->0.55), DINO(0.45->0.65), MPC(0.52->0.68), PARR(0.36->0.53), PBF(0.35->0.52), VLO(0.49->0.66)  'Global Oil & Gas Producers and Refiners'
+   ok   GLD  driver 0.82 vs 0.74 'Copper Mining & Production'  | members flagged 0 of 35:   'Precious Metals Complex Rebound'
+   ok   GLD  driver 0.78 vs 0.73 'Copper Mining & Production'  | members flagged 0 of 3:   'Precious Metals Miners Velocity Breakout'
+   ok   USO  driver 0.38 vs 0.36 'Renewable & Specialty Fuels Chemical Producers'  | members flagged 0 of 4:   'Product Tanker Shipping'
+   ok   URA  driver 0.90 vs 0.80 'Rare Earth Elements Mining & Processing'  | members flagged 0 of 2:   'Uranium Mining & Extraction'
+
+## I1b THE #491 CASE, member by member — fit to BTC vs fit to the live AI-compute theme vs the pure-bitcoin proxies
+  window before 2026-05-01: MINERS BASKET (11 ex-APLD) vs bitcoin (IBIT) 0.64 | vs AI-compute theme 0.71 | vs bitcoin-proxy theme (MSTR/COIN/..) 0.64
+  window before 2026-06-01: MINERS BASKET (11 ex-APLD) vs bitcoin (IBIT) 0.36 | vs AI-compute theme 0.60 | vs bitcoin-proxy theme (MSTR/COIN/..) 0.46
+      HUT:btc 0.17/ai 0.48/mstr 0.28  IREN:btc 0.29/ai 0.52/mstr 0.33  CIFR:btc 0.36/ai 0.52/mstr 0.32  CORZ:btc 0.10/ai 0.71/mstr 0.18  WULF:btc 0.34/ai 0.42/mstr 0.27  CLSK:btc 0.35/ai 0.33/mstr 0.44  BTDR:btc 0.23/ai 0.38/mstr 0.44  APLD:btc 0.24/ai 0.53/mstr 0.39  RIOT:btc 0.30/ai 0.43/mstr 0.32  MARA:btc 0.24/ai 0.30/mstr 0.44  IOND:btc None/ai None/mstr None  ABTC:btc 0.34/ai 0.39/mstr 0.48
+  window before 2026-07-01: MINERS BASKET (11 ex-APLD) vs bitcoin (IBIT) 0.40 | vs AI-compute theme 0.48 | vs bitcoin-proxy theme (MSTR/COIN/..) 0.44
+  window before 2026-08-01: MINERS BASKET (11 ex-APLD) vs bitcoin (IBIT) 0.17 | vs AI-compute theme 0.72 | vs bitcoin-proxy theme (MSTR/COIN/..) 0.29
+  window before 2026-09-01: MINERS BASKET (11 ex-APLD) vs bitcoin (IBIT) 0.29 | vs AI-compute theme 0.67 | vs bitcoin-proxy theme (MSTR/COIN/..) 0.38
+  window before 2026-09-26: MINERS BASKET (11 ex-APLD) vs bitcoin (IBIT) 0.32 | vs AI-compute theme 0.69 | vs bitcoin-proxy theme (MSTR/COIN/..) 0.43
+      HUT:btc 0.15/ai 0.64/mstr 0.24  IREN:btc 0.15/ai 0.71/mstr 0.35  CIFR:btc 0.19/ai 0.66/mstr 0.22  CORZ:btc 0.08/ai 0.76/mstr 0.20  WULF:btc 0.09/ai 0.76/mstr 0.21  CLSK:btc 0.35/ai 0.62/mstr 0.41  BTDR:btc 0.47/ai 0.57/mstr 0.50  APLD:btc 0.08/ai 0.77/mstr 0.31  RIOT:btc 0.33/ai 0.61/mstr 0.43  MARA:btc 0.46/ai 0.49/mstr 0.51  IOND:btc 0.10/ai 0.10/mstr 0.02  ABTC:btc 0.47/ai 0.25/mstr 0.62
+
+## I1h WHEN WOULD THE RELATIVE IDENTITY RULE HAVE FIRED ON THE #491 COHORT? (board as of each date, window strictly before it)
+   board dates with a priced-driver-named theme holding >=3 of the cohort: 52; FLAGGED on 52 of 52 (100%); first flag 2026-06-08
+   by month (flagged / nights in reach): 2026-06 17/17, 2026-07 5/5, 2026-08 12/12, 2026-09 18/18
+      2026-06-08 FLAG driver 0.28 vs 0.59 'Semiconductor Wafer Foundry & Advanced IC Man' | 'Crypto Asset Recovery' members flagged 3 of 3
+      2026-06-12 FLAG driver 0.25 vs 0.64 'Semiconductor Wafer Foundry & Advanced IC Man' | 'Crypto Asset Recovery' members flagged 3 of 3
+      2026-06-18 FLAG driver 0.26 vs 0.62 'Semiconductor Wafer Foundry & Advanced IC Man' | 'Crypto Asset Recovery' members flagged 3 of 3
+      2026-06-25 FLAG driver 0.28 vs 0.52 'Semiconductor Wafer Foundry & Advanced IC Man' | 'Crypto Asset Recovery' members flagged 1 of 3
+      2026-06-30 FLAG driver 0.31 vs 0.59 'Precious Metals Miners (Gold & Silver)' | 'Crypto Asset Recovery' members flagged 2 of 3
+      2026-07-08 FLAG driver 0.13 vs 0.68 'AI Cloud GPU & Datacenter Colocation Platform' | 'Bitcoin Mining & Crypto Infrastructure Operators' members flagged 5 of 5
+      2026-08-14 FLAG driver 0.09 vs 0.71 'AI data center infrastructure buildout' | 'Bitcoin Mining & HPC Compute Pivot Operators' members flagged 3 of 3
+      2026-08-24 FLAG driver 0.16 vs 0.65 'Emerging Memory & Storage Semiconductor Maker' | 'Bitcoin Mining & HPC Compute Pivot Operators' members flagged 7 of 8
+      2026-08-28 FLAG driver 0.3 vs 0.62 'AI Chip & Interconnect Supply Chain Enablemen' | 'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting' members flagged 3 of 4
+      2026-09-03 FLAG driver 0.31 vs 0.57 'AI-Driven Memory & Storage Supply Shortage' | 'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting' members flagged 3 of 4
+      2026-09-03 FLAG driver 0.25 vs 0.59 'AI-Driven Memory & Storage Supply Shortage' | 'Bitcoin Mining Equities Momentum Basket' members flagged 5 of 6
+      2026-09-10 FLAG driver 0.25 vs 0.59 'AI-Driven Memory & Storage Supply Shortage' | 'Bitcoin Mining Equities Momentum Basket' members flagged 4 of 5
+      2026-09-16 FLAG driver 0.25 vs 0.83 'AI data-center power buildout' | 'Bitcoin Mining Stocks Rotation Reversal' members flagged 5 of 6
+      2026-09-22 FLAG driver 0.32 vs 0.68 'AI-Driven Memory & Storage Supply Shortage' | 'Bitcoin Mining Stocks Rotation Reversal' members flagged 7 of 10
+   every priced-driver theme, every 5th board date since 05-04 (flagged / theme-nights): 491 cohort 13/13, COPX 2/12, GLD 6/56, IBIT 14/27, SLV 2/6, URA 0/6, USO 3/31
+
+## I2 IDENTITY SETTLED? — distinct names the SYSTEM gave one cohort in the last 30 days (live rows + its own shadow proposals)
+per live theme, distinct names (live+shadow) for its cohort over 30d: median 2.0, p90 7, max 13 (n=118)
+   >= 3 names: 42 of 118 (36%)
+   >= 4 names: 32 of 118 (27%)
+   >= 5 names: 25 of 118 (21%)
+   >= 6 names: 18 of 118 (15%)
+   13 names (11 live) — 'Precious Metals Complex Rebound' (35 members)
+   12 names (12 live) — 'Global Oil & Gas Producers and Refiners' (17 members)
+   12 names (11 live) — 'Energy Supply Disruption: Middle East Geopolitical Risk' (15 members)
+   12 names (9 live) — 'Fintech & Digital Finance Sector Re-rating on Fed Easing' (20 members)
+   11 names (4 live) — 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers' (7 members)
+    9 names (7 live) — 'Offshore Drilling Rig Contractors' (4 members)
+    9 names (7 live) — 'Genomics & DNA Sequencing Tools' (12 members)
+    9 names (7 live) — 'Energy Infrastructure & Services Complex' (6 members)
+    9 names (5 live) — 'mRNA Vaccine & Personalized Cancer Therapy Platforms' (4 members)
+    8 names (8 live) — 'Product Tanker Shipping' (4 members)
+    8 names (4 live) — 'Bitcoin Balance Sheet Proxies' (4 members)
+    7 names (7 live) — 'Crude & Product Tanker Shipping' (7 members)
+    7 names (6 live) — 'Emerging Quantum Computing Rally' (5 members)
+    7 names (6 live) — 'Bitcoin Mining Stocks Rotation Reversal' (9 members)
+#491 cohort 'Bitcoin Mining Stocks Rotation Reversal': 6 live names + 1 other shadow names in 30d:
+      L  Bitcoin Miner to AI/HPC Data Center Conversion
+      L  Bitcoin Miners Pivoting to AI/HPC Data Center Hosting
+      S  Bitcoin Miners Pivoting to AI/HPC Hosting (New RS Leaders)
+      L  Bitcoin Mining & Digital Asset Infrastructure
+      L  Bitcoin Mining Equities Momentum Basket
+      L  Bitcoin Mining Stocks Rotation Reversal
+      L  Emerging Bitcoin Miners Diversifying into AI/HPC Hosting
+
+## I3 SPLIT CLAIM — a ticker held by two live themes whose baskets do NOT move together
+tickers in >=2 live themes: 39; theme-pairs they bridge: 39
+bridged pairs whose two baskets (ticker left out) correlate < 0.35: 4 of 38 (11%)
+   EVRG   baskets -0.02 | fits -0.0 'Diversified Power Generation Capacity Expansion for AI Electricity Demand' / 0.87 'Regulated Electric Utility Defensive Rotation'
+   AGX    baskets 0.02 | fits 0.73 'AI data-center power buildout' / 0.18 'Industrial Construction Execution & On-Site Supply Chain'
+   TEM    baskets 0.18 | fits 0.63 'AI-Driven Diagnostics & Imaging Re-Rating' / 0.19 'Life Sciences & Healthcare Data/CRM Platforms'
+   XP     baskets 0.32 | fits 0.16 'Fintech & Digital Finance Sector Re-rating on Fed Easing' / 0.04 'Wealth Management & Retail Brokerage Platforms'
+
+## S1 UNNAMED PERSISTENT GROUPS — stored clusters (uncovered by construction) chained day to day
+   (stored clusters are deduped against the board BEFORE that night's births; 4 of 7 alive on 2026-09-25 were named the same night and are excluded)
+cluster days 2026-04-10..2026-09-25; cluster-lineages 584; alive on 2026-09-25: 3
+   age   8 sessions (9 stored days), 5 names: AJG,BRO,MRSH,SONY,WTW
+   age   2 sessions (3 stored days), 7 names: AR,CNX,CRK,EQT,EXE,GPOR,RRC
+   age   2 sessions (3 stored days), 6 names: ARCB,KNX,SAIA,SNDR,TFII,WERN
+   alive on 2026-09-25 and aged >= 5 sessions: 1
+   alive on 2026-09-25 and aged >= 10 sessions: 0
+   alive on 2026-09-25 and aged >= 20 sessions: 0
+   same read per night (alive & aged >= 5 sessions):
+   09-04:2/8 09-08:2/12 09-09:1/8 09-10:0/8 09-11:0/7 09-14:0/7 09-15:0/10 09-16:0/10 09-17:0/12 09-18:0/13 09-21:0/10 09-22:1/7 09-23:1/10 09-24:1/10 09-25:1/7
+
+## R1 CHURN per ISO week (mi_audit_log rows; one row = one theme event)
+   week      absorb merge rename | absorb+merge+rename | born retired
+   2026-W30       6     0      4 |                  10 |   32      21
+   2026-W31       3     1      5 |                   9 |   32      43
+   2026-W32       9     3      6 |                  18 |   30      33
+   2026-W33      11     3      0 |                  14 |   23      41
+   2026-W34      28     3     10 |                  41 |   45      26
+   2026-W35      19     2      7 |                  28 |   26      22
+   2026-W36      19     2      9 |                  30 |   20      21
+   2026-W37      17     5      5 |                  27 |   28      17
+   2026-W38      25    11     11 |                  47 |   31      20
+   2026-W39       7     4      8 |                  19 |   27      18
+   complete weeks 2026-W33..2026-W38: identity-churn (absorb+merge+rename) mean 31.2/week
+
+## L1 NAMING LATENCY — births since 2026-06-01 (lineage = rename table + Jaccard >= 0.4 vs names alive in the prior 10 days)
+rename edges unioned: mi_theme_renames + 73 from audit (continuity + mass-flag renames, names present since 05-01)
+lineages with a first live row since 06-01: 395 (names since 05-01 used for the 10-day look-back)
+  all births 06-01..09-25: births n=395; had a stored cluster holding >= half the founders BEFORE the birth day: 164 of 395 (42%); same-night only: 39
+     sessions from FIRST such cluster to birth: median 27.0, p25 12, p75 36; from the LAST one: median 5.0; first-lead > 10 sessions: 126 of 164 (77%); > 5: 144 of 164 (88%)
+  births Jun-Jul: births n=149; had a stored cluster holding >= half the founders BEFORE the birth day: 65 of 149 (44%); same-night only: 12
+     sessions from FIRST such cluster to birth: median 21, p25 7, p75 34; from the LAST one: median 2; first-lead > 10 sessions: 44 of 65 (68%); > 5: 53 of 65 (82%)
+  births Aug: births n=142; had a stored cluster holding >= half the founders BEFORE the birth day: 52 of 142 (37%); same-night only: 22
+     sessions from FIRST such cluster to birth: median 28.0, p25 15, p75 36; from the LAST one: median 6.0; first-lead > 10 sessions: 41 of 52 (79%); > 5: 48 of 52 (92%)
+  births last 30 days (08-26..09-25) = TODAY'S VALUE: births n=124; had a stored cluster holding >= half the founders BEFORE the birth day: 52 of 124 (42%); same-night only: 12
+     sessions from FIRST such cluster to birth: median 27.0, p25 17, p75 38; from the LAST one: median 9.0; first-lead > 10 sessions: 46 of 52 (88%); > 5: 48 of 52 (92%)
+  births 06-01..09-04 (overlap with the 09-07 study): births n=317; had a stored cluster holding >= half the founders BEFORE the birth day: 128 of 317 (40%); same-night only: 35
+     sessions from FIRST such cluster to birth: median 26.5, p25 10, p75 35; from the LAST one: median 4.0; first-lead > 10 sessions: 94 of 128 (73%); > 5: 110 of 128 (86%)
+  #491 cohort births since 06-01 (>=2 miners among founders): n=7
+     2026-07-08 lead_first=2 lead_last=1 same_night=True 'Bitcoin Mining & Crypto Infrastructure Operators' CIFR,CORZ,HUT,IREN,WULF
+     2026-08-10 lead_first=24 lead_last=2 same_night=True 'Emerging Bitcoin & AI Cloud Compute Miners' CLSK,CORZ,IREN,MARA,NBIS,RIOT,WULF
+     2026-08-12 lead_first=27 lead_last=2 same_night=True 'Bitcoin Mining & HPC Compute Pivot Operators' CIFR,CLSK,CORZ,HUT,MARA,WULF,APLD,RIOT
+     2026-08-20 lead_first=33 lead_last=3 same_night=True 'Bitcoin Mining & Digital Asset Infrastructure' APLD,BTDR,CIFR,CLSK,CORZ,HUT,MARA,RIOT,WULF
+     2026-08-31 lead_first=40 lead_last=3 same_night=True 'Emerging Bitcoin Miners Diversifying into AI/HPC Hosting' APLD,CIFR,CORZ,RIOT
+     2026-09-15 lead_first=39 lead_last=1 same_night=True 'Crypto Miners Pivoting to Data Center Colocation' CORZ,WULF,HUT
+     2026-09-15 lead_first=39 lead_last=1 same_night=True 'Second-Tier Bitcoin Mining & Colocation Operators' RIOT,CORZ,WULF
+  SHORT-LIVED — births 06-01..09-18: lineage gone within 5 sessions of birth: 86 of 371 (23%); within 2: 38 of 371 (10%)
+  SHORT-LIVED — births 08-26..09-18 (TODAY'S VALUE): lineage gone within 5 sessions of birth: 33 of 100 (33%); within 2: 16 of 100 (16%)
+  SHORT-LIVED — births Jun-Jul: lineage gone within 5 sessions of birth: 21 of 149 (14%); within 2: 10 of 149 (7%)
+  cross-check vs the 09-07 study's lineage table (same birth date+name): matched 314; 'had a pre-birth cluster' agrees on 265 of 314 (84%) (theirs = eventual-member leg, mine = founders; expect <100%)
+
+## X LABEL CROSS-CHECK — themed alert labels since 2026-05-01 against the rules above
+  label y: n=59; theme judgeable 30 -> grouping PASS 30 of 30 (100%); ticker fit judgeable 31 -> ticker fit >= 0.35 25 of 31 (81%); identity-unsettled (>=4 names) 3 of 59 (5%)
+  label n: n=30; theme judgeable 11 -> grouping PASS 11 of 11 (100%); ticker fit judgeable 11 -> ticker fit >= 0.35 10 of 11 (91%); identity-unsettled (>=4 names) 5 of 30 (17%)
+  the #491 rows (his notes: 'crypto to AI'):
+     HUT   2026-05-06 label=n theme='Crypto Asset Recovery' grouping=None ticker_fit=None driver_fit=0.37 names30d=1 note='This is the case where crypto miners are'
+     WULF  2026-07-06 label=n theme='Crypto Asset Recovery' grouping=None ticker_fit=None driver_fit=0.18 names30d=1 note='Crypto miner to AI infra conversion play'
+     CLSK  2026-07-14 label=n theme='Crypto Asset Recovery' grouping=None ticker_fit=None driver_fit=0.12 names30d=1 note='Crypto to AI'
+     HUT   2026-07-20 label=n theme='Bitcoin & Crypto Mining Infrastructure' grouping=0.8 ticker_fit=0.75 driver_fit=0.11 names30d=6 note='Crypto to AI'
+     IREN  2026-07-20 label=n theme='Bitcoin & Crypto Mining Infrastructure' grouping=0.8 ticker_fit=0.8 driver_fit=0.11 names30d=6 note='Crypto to AI'
+     RIOT  2026-08-11 label=y theme='Emerging Bitcoin & AI Cloud Compute Miners' grouping=None ticker_fit=None driver_fit=0.02 names30d=1 note=''
+
+## I1f APPENDIX — every non-#491 priced-driver FLAG on every 5th board date since 05-04
+   2026-05-04 IBIT driver 0.47 vs 0.68 'Semiconductor Wafer Foundry & Advanced I' | 'Crypto Asset Recovery' HUT,RIOT
+   2026-05-11 IBIT driver 0.26 vs 0.60 'Semiconductor Wafer Foundry & Advanced I' | 'Crypto Asset Recovery' HUT,RIOT
+   2026-05-18 IBIT driver 0.25 vs 0.59 'Semiconductor Wafer Foundry & Advanced I' | 'Crypto Asset Recovery' HUT,RIOT
+   2026-05-26 IBIT driver 0.30 vs 0.62 'Semiconductor Wafer Foundry & Advanced I' | 'Crypto Asset Recovery' RIOT,HUT
+   2026-06-02 IBIT driver 0.16 vs 0.46 'Semiconductor Wafer Foundry & Advanced I' | 'Crypto Asset Recovery' HUT,RIOT
+   2026-06-30 USO  driver -0.01 vs 0.48 'Life Insurance & Annuity Providers' | 'Crude & Product Tanker Shipping' NAT,DHT
+   2026-07-15 IBIT driver 0.07 vs 0.70 'AI Cloud GPU & Datacenter Colocation Pla' | 'Bitcoin Mining & Crypto Infrastructure Operators' CIFR,CORZ
+   2026-07-15 USO  driver 0.23 vs 0.41 'Life Insurance & Annuity Providers' | 'Crude & Product Tanker Operators' INSW,TRMD
+   2026-07-22 IBIT driver 0.10 vs 0.61 'Custom AI Silicon & Chip Architecture Li' | 'Bitcoin Mining & Crypto Infrastructure Operators' CIFR,HUT
+   2026-07-22 USO  driver 0.17 vs 0.34 'Property & Casualty Insurance Underwrite' | 'Global Crude & Product Tanker Fleet Operators' TNK,INSW,DHT,NAT,TRMD,FRO
+   2026-07-29 IBIT driver 0.07 vs 0.49 'Copper Mining & Production' | 'Bitcoin Mining & Crypto Infrastructure Operators' CIFR,HUT
+   2026-08-05 IBIT driver 0.07 vs 0.52 'AI Data Center Infrastructure Buildout' | 'Bitcoin Mining & Crypto Infrastructure Operators' CIFR,HUT
+   2026-08-05 COPX driver 0.13 vs 0.60 'Industrial Process Equipment, Automation' | 'Industrial HVAC, Plumbing & Fabricated Copper Products' MLI,CSW
+   2026-08-12 COPX driver 0.14 vs 0.64 'Industrial Equipment & Flow Control – Ca' | 'Industrial HVAC, Plumbing & Fabricated Copper Products' CSW,MLI
+   2026-08-12 IBIT driver 0.01 vs 0.84 'AI GPU Compute Infrastructure & Cloud Se' | 'Emerging Bitcoin & AI Cloud Compute Miners' NBIS,RIOT
+   2026-08-12 GLD  driver 0.70 vs 0.96 'Silver-Focused Primary Miners' | 'Precious Metals Miners Velocity Breakout' SKE,AYA,PPTA,WPM,ASM,SA,FSM
+   2026-08-12 GLD  driver 0.74 vs 0.90 'Silver-Focused Primary Miners' | 'Development-Stage Gold Exploration & Project Juniors' HYMC,NG,AUGO
+   2026-08-19 IBIT driver 0.11 vs 0.71 'Emerging Cloud GPU Rental & AI Infrastru' | 'Bitcoin Mining & HPC Compute Pivot Operators' APLD,BTDR
+   2026-08-19 GLD  driver 0.73 vs 0.96 'Silver-Focused Primary Miners' | 'Precious Metals Miners Velocity Breakout' PPTA,FSM,SKE,SA,WPM,AYA,ASM
+   2026-08-26 GLD  driver 0.73 vs 0.96 'Silver-Focused Primary Miners' | 'Precious Metals Miners Velocity Breakout' ASM,SKE,PPTA,WPM,SA,FSM,AYA
+   2026-08-26 IBIT driver 0.35 vs 0.60 'Emerging Cloud GPU Rental & AI Infrastru' | 'Bitcoin Mining & Digital Asset Infrastructure' RIOT,MARA
+   2026-09-02 GLD  driver 0.77 vs 0.95 'Silver-Focused Primary Miners' | 'Precious Metals Miners Velocity Breakout' AYA,FSM,ASM,SA,SKE,WPM,PPTA
+   2026-09-02 IBIT driver 0.06 vs 0.62 'AI-Driven Memory & Storage Supply Shorta' | 'Emerging Bitcoin Miners Diversifying into AI/HPC Hosting' CIFR,CORZ
+   2026-09-10 GLD  driver 0.78 vs 0.94 'Silver-Focused Primary Miners' | 'Precious Metals Miners Velocity Breakout' AYA,ASM,FSM,PPTA,SA,SKE,WPM
+   2026-09-10 SLV  driver 0.79 vs 0.94 'Precious Metals Miners Velocity Breakout' | 'Silver-Focused Primary Miners' EXK,HL,CDE,SVM,AG
+   2026-09-17 SLV  driver 0.76 vs 0.93 'Silver & Mid-Cap Gold Miners Momentum Ba' | 'Silver-Focused Primary Miners' HL,CDE
+   2026-09-17 IBIT driver 0.07 vs 0.74 'Cloud Data Storage & Analytics Infrastru' | 'Bitcoin Miners Diversifying into AI/HPC Data Center Hosting ' WULF,CORZ
+
+## I1v2 NAMED-DRIVER CHECK, v2 lexicon — today's board
+   themes in reach: 10 of 118; FLAG 1 of 10 (10%)
+   ok   IBIT    driver 0.77 vs 0.40 'Precious Metals Complex Rebound' | members moving with another driver 0 of 4  'Bitcoin Balance Sheet Proxies'
+   ok   IBIT    driver 0.72 vs 0.51 'Emerging Quantum Computing Rally' | members moving with another driver 1 of 3: GLXY  'Bitcoin Holding & Trading Proxy Equities'
+   FLAG IBIT    driver 0.37 vs 0.68 'AI-Driven Memory & Storage Supply Shortage' | members moving with another driver 6 of 9: BTDR, CIFR, CLSK, HUT, IREN, RIOT  'Bitcoin Mining Stocks Rotation Reversal'
+   ok   IBIT    driver 0.76 vs 0.47 'Precious Metals Miners Velocity Breakout' | members moving with another driver 0 of 4  'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket'
+   ok   COPX    driver 0.95 vs 0.74 'Precious Metals Complex Rebound' | members moving with another driver 0 of 7  'Copper Mining & Production'
+   ok   USO     driver 0.33 vs 0.30 'Renewable & Specialty Fuels Chemical Producer' | members moving with another driver 0 of 7  'Crude & Product Tanker Shipping'
+   ok   USO     driver 0.74 vs 0.85 'Renewable & Specialty Fuels Chemical Producer' | members moving with another driver 6 of 17: CVI, DINO, MPC, PARR, PBF, VLO  'Global Oil & Gas Producers and Refiners'
+   ok   GLD|SLV driver 0.86 vs 0.74 'Copper Mining & Production' | members moving with another driver 0 of 35  'Precious Metals Complex Rebound'
+   ok   GLD|SLV driver 0.85 vs 0.73 'Copper Mining & Production' | members moving with another driver 0 of 3  'Precious Metals Miners Velocity Breakout'
+   ok   URA     driver 0.90 vs 0.80 'Rare Earth Elements Mining & Processing' | members moving with another driver 0 of 2  'Uranium Mining & Extraction'
+      other-theme flag 2026-06-30 USO -0.01 vs 0.48 'Life Insurance & Annuity Providers' | 'Crude & Product Tanker Shipping'
+      other-theme flag 2026-07-15 USO 0.23 vs 0.41 'Life Insurance & Annuity Providers' | 'Crude & Product Tanker Operators'
+      other-theme flag 2026-07-21 USO 0.16 vs 0.34 'Life Insurance & Annuity Providers' | 'Global Crude & Product Tanker Fleet Operators'
+      other-theme flag 2026-07-24 USO 0.19 vs 0.36 'Property & Casualty Insurance Under' | 'Global Crude & Product Tanker Fleet Operators'
+      other-theme flag 2026-07-27 USO 0.20 vs 0.36 'Property & Casualty Insurance Under' | 'Global Crude & Product Tanker Fleet Operators'
+      other-theme flag 2026-08-03 USO 0.21 vs 0.36 'Property & Casualty Insurance Under' | 'Global Crude & Product Tanker Fleet Operators'
+      other-theme flag 2026-08-03 COPX 0.12 vs 0.59 'Industrial Fluid Control, Filtratio' | 'Industrial HVAC, Plumbing & Fabricated Copper Prod'
+      other-theme flag 2026-08-06 COPX 0.13 vs 0.59 'Industrial Equipment Rental & Mater' | 'Industrial HVAC, Plumbing & Fabricated Copper Prod'
+      other-theme flag 2026-08-12 COPX 0.14 vs 0.64 'Industrial Equipment & Flow Control' | 'Industrial HVAC, Plumbing & Fabricated Copper Prod'
+      other-theme flag 2026-08-12 IBIT 0.01 vs 0.84 'AI GPU Compute Infrastructure & Clo' | 'Emerging Bitcoin & AI Cloud Compute Miners'
+      other-theme flag 2026-09-03 USO 0.47 vs 0.67 'Renewable & Specialty Fuels Chemica' | 'Pure-Play Oil Refining & Marketing'
+      other-theme flag 2026-09-09 USO 0.44 vs 0.66 'Renewable & Specialty Fuels Chemica' | 'Oil Refining & Marketing'
+      other-theme flag 2026-09-21 USO 0.43 vs 0.62 'Renewable & Specialty Fuels Chemica' | 'Petroleum Refiners & Marketers'
+   EVERY board date since 05-04: 491 cohort (>=2 of the miners): flagged 98 of 98 (100%) theme-nights; every other priced-driver theme: flagged 38 of 586 (6%) theme-nights
+
+## X2 LABELS vs the NAMED-DRIVER CHECK (v2) — themed rows since 05-01 whose credited theme is in the check's reach
+   HUT   2026-05-06 label=n FLAG driver 0.37 vs 0.66 'Semiconductor Wafer Foundry & Advan' | this ticker moving with another driver: True | 'Crypto Asset Recovery' note='This is the case where crypto '
+   BW    2026-05-11 label=y ok   driver 0.86 vs 0.84 'Hydraulic Fracturing & Well Complet' | this ticker moving with another driver: False | 'Petroleum Refining & Downstream Fuels' note=''
+   VG    2026-05-12 label=y ok   driver 0.86 vs 0.68 'Nitrogen Fertilizer & Ammonia Produ' | this ticker moving with another driver: False | 'Petroleum Refining & Downstream Fuels' note=''
+   PPTA  2026-05-22 label=y ok   driver 0.60 vs 0.34 'Rare Earth Magnets & Critical Batte' | this ticker moving with another driver: False | 'Precious & Streaming Metals Royalty & Junior ' note=''
+   WULF  2026-07-06 label=n FLAG driver 0.18 vs 0.59 'AI Cloud GPU & Datacenter Colocatio' | this ticker moving with another driver: True | 'Crypto Asset Recovery' note='Crypto miner to AI infra conve'
+   CLSK  2026-07-14 label=n FLAG driver 0.12 vs 0.63 'AI Cloud GPU & Datacenter Colocatio' | this ticker moving with another driver: False | 'Crypto Asset Recovery' note='Crypto to AI'
+   HUT   2026-07-20 label=n FLAG driver 0.11 vs 0.60 'Custom AI Silicon & Chip Architectu' | this ticker moving with another driver: False | 'Bitcoin & Crypto Mining Infrastructure' note='Crypto to AI'
+   IREN  2026-07-20 label=n FLAG driver 0.11 vs 0.60 'Custom AI Silicon & Chip Architectu' | this ticker moving with another driver: True | 'Bitcoin & Crypto Mining Infrastructure' note='Crypto to AI'
+   RIOT  2026-08-11 label=y FLAG driver 0.02 vs 0.81 'AI GPU Compute Infrastructure & Clo' | this ticker moving with another driver: True | 'Emerging Bitcoin & AI Cloud Compute Miners' note=''
+   NBIS  2026-08-12 label=y FLAG driver 0.01 vs 0.81 'AI GPU Compute Infrastructure & Clo' | this ticker moving with another driver: True | 'Emerging Bitcoin & AI Cloud Compute Miners' note=''
+   UUUU  2026-08-21 label=n ok   driver 0.90 vs 0.68 'Quantum Computing Pure-Plays' | this ticker moving with another driver: False | 'Uranium Feedstock & Mining Supply' note=''
+   ERO   2026-09-08 label=y ok   driver 0.95 vs 0.78 'Latin American Silver & Gold Mining' | this ticker moving with another driver: False | 'Copper Mining & Production' note=''
+
+## L2 LATENCY ROBUSTNESS — pre-birth sighting days per birth (40 sessions back, >= half the founders in one stored cluster)
+  births 08-26..09-25: births with a pre-birth sighting n=52; sighting days per birth median 3.0, 1 only 11, >=3 30; 'firm' first sighting (followed by another within 10 sessions) -> naming: median 26.0, >10: 43 of 52 (83%)
+  births 06-01..09-25: births with a pre-birth sighting n=164; sighting days per birth median 4.0, 1 only 35, >=3 105; 'firm' first sighting (followed by another within 10 sessions) -> naming: median 25.0, >10: 117 of 164 (71%)
