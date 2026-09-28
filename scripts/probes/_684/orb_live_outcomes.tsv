@@ -1,0 +1,668 @@
+ticker	scan_date	block	alerted	orb_readable	orb_status	filled	fill_minute	entry_px	run_xadr	runner5	run_xadr_B	runnerB5	runnerB8
+AXTI	2026-05-01	DISCOVERY	1	1	window_out_of_orb	0			3.431	0		0	0
+BTSG	2026-05-01	DISCOVERY	1	1	window_out_of_orb	0			4.118	0		0	0
+EL	2026-05-01	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			4.179	0		0	0
+FIVN	2026-05-01	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:1.37>1.5x_ATR_0.87	0			2.677	0		0	0
+NVT	2026-05-01	DISCOVERY	0	1	window_out_of_orb	0			3.212	0		0	0
+OLED	2026-05-01	DISCOVERY	1	1	window_out_of_orb	0			1.511	0		0	0
+RDDT	2026-05-01	DISCOVERY	1	1	filled	1	13:16	167.5	1.308	0	1.183	0	0
+RIOT	2026-05-01	DISCOVERY	1	1	window_out_of_orb	0			6.184	1		0	0
+ROKU	2026-05-01	DISCOVERY	0	1	filled	1	09:31	125.8836	1.546	0	1.090	0	0
+TEAM	2026-05-01	DISCOVERY	1	1	filled	1	09:31	85.13	1.375	0	2.068	0	0
+TWLO	2026-05-01	DISCOVERY	1	1	filled	1	13:03	179.475	2.262	0	2.691	0	0
+ZETA	2026-05-01	DISCOVERY	0	0	no_930_bar	None			1.244	0		None	None
+BB	2026-05-04	DISCOVERY	0	1	filled	1	09:31	6.18	8.737	1	7.001	1	0
+GBTG	2026-05-04	DISCOVERY	0	1	filled	1	09:31	9.31	0.570	0	0.655	0	0
+CYRX	2026-05-05	DISCOVERY	1	1	window_out_of_orb	0			4.277	0		0	0
+CYTK	2026-05-05	DISCOVERY	0	1	window_out_of_orb	0			0.709	0		0	0
+DOCN	2026-05-05	DISCOVERY	0	1	window_out_of_orb	0			1.053	0		0	0
+EVER	2026-05-05	DISCOVERY	1	1	filled	1	09:31	19.15	-0.104	0	3.860	0	0
+EWTX	2026-05-05	DISCOVERY	0	1	window_out_of_orb	0			0.120	0		0	0
+FSLY	2026-05-05	DISCOVERY	0	1	window_out_of_orb	0			0.049	0		0	0
+FTRE	2026-05-05	DISCOVERY	1	1	filled	1	09:31	14.3119	1.750	0	1.978	0	0
+GFS	2026-05-05	DISCOVERY	0	1	filled	1	09:31	70.58	5.936	1	7.045	1	0
+GPK	2026-05-05	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			1.681	0		0	0
+IART	2026-05-05	DISCOVERY	1	1	window_out_of_orb	0			3.333	0		0	0
+POWL	2026-05-05	DISCOVERY	0	1	window_out_of_orb	0			2.026	0		0	0
+RYTM	2026-05-05	DISCOVERY	0	1	window_out_of_orb	0			1.338	0		0	0
+SHLS	2026-05-05	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			9.029	1		0	0
+STRL	2026-05-05	DISCOVERY	1	1	filled	1	09:31	739.1199	2.263	0	4.000	0	0
+VCX	2026-05-05	DISCOVERY	1	1	window_out_of_orb	0			10.910	1		0	0
+VOYG	2026-05-05	DISCOVERY	1	1	window_out_of_orb	0			13.473	1		0	0
+VRDN	2026-05-05	DISCOVERY	1	1	filled	1	09:31	19.34	-0.273	0	0.750	0	0
+WAT	2026-05-05	DISCOVERY	0	1	window_out_of_orb	0			1.282	0		0	0
+AMD	2026-05-06	DISCOVERY	1	1	filled	1	09:31	413.26	5.592	1	6.022	1	0
+ARM	2026-05-06	DISCOVERY	0	1	filled	1	11:17	234.79	7.989	1	8.168	1	1
+BLMN	2026-05-06	DISCOVERY	1	1	window_out_of_orb	0			1.451	0		0	0
+COMP	2026-05-06	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			0.401	0		0	0
+CRI	2026-05-06	DISCOVERY	1	1	window_out_of_orb	0			2.457	0		0	0
+FLEX	2026-05-06	DISCOVERY	1	1	filled	1	09:31	122.0	2.637	0	5.215	1	0
+GEO	2026-05-06	DISCOVERY	1	1	filled	1	09:31	21.7	2.325	0	3.043	0	0
+GLW	2026-05-06	DISCOVERY	1	1	window_out_of_orb	0			3.255	0		0	0
+HUT	2026-05-06	DISCOVERY	1	1	window_out_of_orb	0			2.558	0		0	0
+IFF	2026-05-06	DISCOVERY	0	1	window_out_of_orb	0			0.396	0		0	0
+LIVN	2026-05-06	DISCOVERY	1	1	window_out_of_orb	0			4.311	0		0	0
+NVAX	2026-05-06	DISCOVERY	0	1	filled	1	09:39	8.87	6.049	1	7.366	1	0
+SBSW	2026-05-06	DISCOVERY	0	1	filled	1	09:31	12.88	1.368	0	2.529	0	0
+SMCI	2026-05-06	DISCOVERY	1	1	filled	1	09:31	32.5	5.060	1	6.289	1	0
+SSRM	2026-05-06	DISCOVERY	0	1	window_out_of_orb	0			2.657	0		0	0
+UMC	2026-05-06	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			17.308	1		0	0
+AAON	2026-05-07	DISCOVERY	0	1	window_out_of_orb	0			2.500	0		0	0
+ARRY	2026-05-07	DISCOVERY	1	1	filled	1	09:31	9.18	2.913	0	0.664	0	0
+DDOG	2026-05-07	DISCOVERY	0	1	window_out_of_orb	0			6.233	1		0	0
+FLNC	2026-05-07	DISCOVERY	1	1	filled	1	09:31	20.2	6.147	1	5.249	1	0
+FTNT	2026-05-07	DISCOVERY	1	1	filled	1	09:31	107.68	8.528	1	8.610	1	1
+GCT	2026-05-07	DISCOVERY	0	1	orb_invalid:setup:stop_too_wide:5.86>1.5x_ATR_2.80	0			0.110	0		0	0
+HNRG	2026-05-07	DISCOVERY	0	1	orb_invalid:setup:stop_too_wide:1.96>1.5x_ATR_0.96	0			1.039	0		0	0
+JMIA	2026-05-07	DISCOVERY	1	0	no_930_bar	None			0.116	0		None	None
+KLIC	2026-05-07	DISCOVERY	0	1	orb_invalid:setup:stop_too_wide:6.91>1.5x_ATR_3.49	0			3.136	0		0	0
+MTSI	2026-05-07	DISCOVERY	1	0	abstain:entry_window_gaps:11_of_389	None			5.251	1		None	None
+PCT	2026-05-07	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			7.536	1		0	0
+PGY	2026-05-07	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			0.454	0		0	0
+SEZL	2026-05-07	DISCOVERY	1	1	filled	1	09:31	101.99	3.168	0	2.856	0	0
+SITM	2026-05-07	DISCOVERY	1	0	abstain:entry_window_gaps:13_of_389	None			2.562	0		None	None
+XMTR	2026-05-07	DISCOVERY	0	1	window_out_of_orb	0			4.069	0		0	0
+AKAM	2026-05-08	DISCOVERY	1	1	filled	1	13:55	145.45	2.216	0	2.498	0	0
+ARLO	2026-05-08	DISCOVERY	0	1	orb_invalid:setup:stop_too_wide:1.04>1.5x_ATR_0.53	0			0.166	0		0	0
+BILL	2026-05-08	DISCOVERY	1	1	filled	1	09:31	41.23	0.928	0	1.248	0	0
+CALY	2026-05-08	DISCOVERY	1	1	window_out_of_orb	0			0.760	0		0	0
+CRSR	2026-05-08	DISCOVERY	0	1	window_out_of_orb	0			16.809	1		0	0
+FROG	2026-05-08	DISCOVERY	1	1	window_out_of_orb	0			5.051	1		0	0
+INOD	2026-05-08	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:5.90>1.5x_ATR_2.75	0			5.960	1		0	0
+LASR	2026-05-08	DISCOVERY	1	1	filled	1	09:31	77.05	2.472	0	1.906	0	0
+PAR	2026-05-08	DISCOVERY	1	0	abstain:entry_window_gaps:35_of_389	None			2.303	0		None	None
+PGNY	2026-05-08	DISCOVERY	1	1	window_out_of_orb	0			3.493	0		0	0
+TXRH	2026-05-08	DISCOVERY	0	1	window_out_of_orb	0			2.098	0		0	0
+WEST	2026-05-08	DISCOVERY	1	1	window_out_of_orb	0			1.631	0		0	0
+WLDN	2026-05-08	DISCOVERY	1	1	window_out_of_orb	0			2.013	0		0	0
+WSC	2026-05-08	DISCOVERY	0	1	window_out_of_orb	0			0.295	0		0	0
+BW	2026-05-11	DISCOVERY	1	1	filled	1	09:53	16.9999	2.014	0	3.247	0	0
+BZH	2026-05-11	DISCOVERY	1	1	filled	1	14:18	25.39	1.421	0	1.224	0	0
+CEVA	2026-05-11	DISCOVERY	0	1	filled	1	11:08	36.02	5.769	1	5.962	1	0
+DRTS	2026-05-11	DISCOVERY	1	1	filled	1	09:40	9.86	1.760	0	2.421	0	0
+FORM	2026-05-11	DISCOVERY	0	1	filled	1	09:32	156.505	-0.529	0	0.110	0	0
+HYMC	2026-05-11	DISCOVERY	0	1	window_out_of_orb	0			0.854	0		0	0
+INV	2026-05-11	DISCOVERY	0	1	filled	1	09:32	7.24	1.159	0	0.826	0	0
+LITE	2026-05-11	DISCOVERY	0	1	window_out_of_orb	0			0.415	0		0	0
+MNDY	2026-05-11	DISCOVERY	1	1	filled	1	09:37	86.6558	4.847	0	2.530	0	0
+MRAM	2026-05-11	DISCOVERY	1	1	filled	1	09:32	36.425	2.945	0	3.814	0	0
+NVTS	2026-05-11	DISCOVERY	0	1	window_out_of_orb	0			4.098	0		0	0
+VICR	2026-05-11	DISCOVERY	0	1	window_out_of_orb	0			1.872	0		0	0
+WYFI	2026-05-11	DISCOVERY	1	1	filled	1	09:31	23.7735	2.879	0	4.366	0	0
+AMBQ	2026-05-12	DISCOVERY	1	1	filled	1	09:31	54.02	4.954	0	8.108	1	1
+ARVN	2026-05-12	DISCOVERY	0	0	abstain:entry_window_gaps:31_of_389	None			1.011	0		None	None
+FCEL	2026-05-12	DISCOVERY	0	1	filled	1	09:33	16.415	4.949	0	5.264	1	0
+HLIT	2026-05-12	DISCOVERY	1	1	filled	1	09:31	14.55	9.670	1	6.399	1	0
+PACS	2026-05-12	DISCOVERY	1	1	filled	1	09:36	39.0	0.864	0	2.007	0	0
+RAL	2026-05-12	DISCOVERY	0	1	filled	1	09:40	59.17	2.238	0	2.233	0	0
+SE	2026-05-12	DISCOVERY	1	1	filled	1	09:34	94.71	1.095	0	1.458	0	0
+SGHC	2026-05-12	DISCOVERY	0	1	filled	1	09:31	13.42	1.939	0	1.161	0	0
+SIBN	2026-05-12	DISCOVERY	1	1	filled	1	09:37	13.13	1.595	0	2.619	0	0
+TE	2026-05-12	DISCOVERY	1	1	filled	1	09:35	6.51	13.277	1	11.933	1	1
+VG	2026-05-12	DISCOVERY	1	1	filled	1	09:31	12.68	2.399	0	3.242	0	0
+VPG	2026-05-12	DISCOVERY	1	1	filled	1	09:34	83.99	11.633	1	11.996	1	1
+VSTS	2026-05-12	DISCOVERY	1	1	filled	1	09:32	12.05	2.656	0	2.550	0	0
+ZBRA	2026-05-12	DISCOVERY	1	1	filled	1	09:31	256.0	2.664	0	0.920	0	0
+AIP	2026-05-13	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:3.18>1.5x_ATR_2.01	0			1.633	0		0	0
+EOSE	2026-05-13	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			1.863	0		0	0
+FCEL	2026-05-13	DISCOVERY	0	1	filled	1	09:31	18.15	3.042	0	3.735	0	0
+NVTS	2026-05-13	DISCOVERY	0	1	filled	1	11:37	20.99	4.592	0	4.656	0	0
+PENG	2026-05-13	DISCOVERY	0	1	filled	1	09:31	51.8	7.372	1	6.330	1	0
+PSNL	2026-05-13	DISCOVERY	0	1	filled	1	09:31	7.1	12.546	1	11.095	1	1
+SLS	2026-05-13	DISCOVERY	0	1	filled	1	09:41	6.49	8.250	1	8.360	1	1
+TSEM	2026-05-13	DISCOVERY	0	1	filled	1	09:35	262.9899	1.805	0	2.242	0	0
+VNET	2026-05-13	DISCOVERY	0	1	filled	1	09:34	11.3	0.703	0	1.406	0	0
+WOLF	2026-05-13	DISCOVERY	0	1	filled	1	09:31	67.21	2.078	0	1.552	0	0
+ARX	2026-05-14	DISCOVERY	1	1	window_out_of_orb	0			3.786	0		0	0
+CPA	2026-05-14	DISCOVERY	1	1	window_out_of_orb	0			2.187	0		0	0
+CRMD	2026-05-14	DISCOVERY	1	1	filled	1	09:31	8.65	2.676	0	0.952	0	0
+CSCO	2026-05-14	DISCOVERY	1	1	filled	1	09:32	117.55	5.227	1	4.515	0	0
+FPS	2026-05-14	DISCOVERY	1	1	filled	1	15:55	50.9997	4.895	0	4.637	0	0
+GO	2026-05-14	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:0.71>1.5x_ATR_0.40	0			2.784	0		0	0
+KLAR	2026-05-14	DISCOVERY	1	1	filled	1	09:31	15.92	2.804	0	3.546	0	0
+LGN	2026-05-14	DISCOVERY	0	0	abstain:entry_window_gaps:1_of_389	None			0.287	0		None	None
+SHAZ	2026-05-14	DISCOVERY	0	1	filled	1	09:48	59.0	5.226	1	4.663	0	0
+STAA	2026-05-14	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:2.12>1.5x_ATR_1.20	0			1.323	0		0	0
+STUB	2026-05-14	DISCOVERY	1	1	filled	1	09:37	9.0	4.009	0	3.044	0	0
+UMC	2026-05-14	DISCOVERY	0	1	filled	1	09:33	16.87	9.760	1	10.147	1	1
+VIK	2026-05-14	DISCOVERY	1	1	window_out_of_orb	0			2.294	0		0	0
+VSNT	2026-05-14	DISCOVERY	1	1	filled	1	09:31	43.25	-0.447	0	1.707	0	0
+YETI	2026-05-14	DISCOVERY	0	1	window_out_of_orb	0			5.074	1		0	0
+FIG	2026-05-15	DISCOVERY	1	1	filled	1	09:49	22.6199	3.288	0	3.492	0	0
+GEMI	2026-05-15	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			0.105	0		0	0
+GLOB	2026-05-15	DISCOVERY	1	1	window_out_of_orb	0			2.739	0		0	0
+BIO	2026-05-18	DISCOVERY	0	1	window_out_of_orb	0			3.633	0		0	0
+DSGN	2026-05-18	DISCOVERY	0	1	window_out_of_orb	0			1.431	0		0	0
+POET	2026-05-18	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			0.668	0		0	0
+PRAA	2026-05-18	DISCOVERY	0	0	abstain:entry_window_gaps:190_of_389	None			1.416	0		None	None
+RDW	2026-05-18	DISCOVERY	0	1	window_out_of_orb	0			8.868	1		0	0
+SHAZ	2026-05-18	DISCOVERY	0	1	window_out_of_orb	0			4.925	0		0	0
+WOLF	2026-05-18	DISCOVERY	0	1	window_out_of_orb	0			2.454	0		0	0
+AGYS	2026-05-19	DISCOVERY	1	1	filled	1	09:31	94.5229	4.062	0	0.067	0	0
+EVTC	2026-05-19	DISCOVERY	1	1	filled	1	10:00	24.65	1.069	0	0.781	0	0
+PURR	2026-05-19	DISCOVERY	0	1	filled	1	09:34	7.515	6.624	1	7.099	1	0
+RLAY	2026-05-19	DISCOVERY	0	1	filled	1	10:08	13.15	6.954	1	5.563	1	0
+STC	2026-05-19	DISCOVERY	1	0	abstain:entry_window_gaps:302_of_389	None			1.069	0		None	None
+CAVA	2026-05-20	DISCOVERY	0	1	window_out_of_orb	0			2.183	0		0	0
+IBRX	2026-05-20	DISCOVERY	1	1	window_out_of_orb	0			0.439	0		0	0
+IMVT	2026-05-20	DISCOVERY	0	1	window_out_of_orb	0			0.113	0		0	0
+ROIV	2026-05-20	DISCOVERY	0	1	orb_invalid:setup:stop_too_wide:1.53>1.5x_ATR_0.91	0			0.292	0		0	0
+SLS	2026-05-20	DISCOVERY	0	1	window_out_of_orb	0			0.849	0		0	0
+AAP	2026-05-21	DISCOVERY	0	1	window_out_of_orb	0			1.342	0		0	0
+ENS	2026-05-21	DISCOVERY	0	1	window_out_of_orb	0			0.629	0		0	0
+GFS	2026-05-21	DISCOVERY	0	1	window_out_of_orb	0			2.602	0		0	0
+INFQ	2026-05-21	DISCOVERY	1	1	filled	1	09:31	13.7	4.400	0	5.127	1	0
+NBIS	2026-05-21	DISCOVERY	0	1	window_out_of_orb	0			2.902	0		0	0
+PURR	2026-05-21	DISCOVERY	0	1	filled	1	09:36	8.53	4.948	0	4.869	0	0
+QBTS	2026-05-21	DISCOVERY	1	1	filled	1	09:31	22.2	2.756	0	4.435	0	0
+QUBT	2026-05-21	DISCOVERY	1	1	filled	1	09:32	10.6	1.959	0	2.760	0	0
+RL	2026-05-21	DISCOVERY	0	1	window_out_of_orb	0			2.699	0		0	0
+RLAY	2026-05-21	DISCOVERY	1	1	filled	1	09:34	15.22	3.693	0	2.181	0	0
+ELVR	2026-05-22	DISCOVERY	0	1	window_out_of_orb	0			1.673	0		0	0
+IMAX	2026-05-22	DISCOVERY	0	1	window_out_of_orb	0			2.776	0		0	0
+LION	2026-05-22	DISCOVERY	0	1	window_out_of_orb	0			0.099	0		0	0
+PPTA	2026-05-22	DISCOVERY	1	0	abstain:entry_window_gaps:2_of_389	None			1.777	0		None	None
+SG	2026-05-22	DISCOVERY	0	1	window_out_of_orb	0			1.073	0		0	0
+WDAY	2026-05-22	DISCOVERY	0	1	filled	1	09:31	129.86	5.163	1	4.872	0	0
+ZM	2026-05-22	DISCOVERY	0	1	window_out_of_orb	0			2.180	0		0	0
+ASPI	2026-05-26	DISCOVERY	1	1	filled	1	09:31	6.68	3.031	0	3.502	0	0
+BTGO	2026-05-26	DISCOVERY	1	0	abstain:entry_window_gaps:5_of_389	None			0.742	0		None	None
+CCOI	2026-05-26	DISCOVERY	0	1	filled	1	09:31	20.325	1.174	0	0.931	0	0
+CLFD	2026-05-26	DISCOVERY	0	1	filled	1	10:15	47.6703	1.529	0	1.360	0	0
+ESLT	2026-05-26	DISCOVERY	0	1	window_out_of_orb	0			2.605	0		0	0
+FLY	2026-05-26	DISCOVERY	0	1	window_out_of_orb	0			0.543	0		0	0
+FUTU	2026-05-26	DISCOVERY	1	1	window_out_of_orb	0			1.818	0		0	0
+HYLN	2026-05-26	DISCOVERY	0	1	window_out_of_orb	0			2.177	0		0	0
+JOYY	2026-05-26	DISCOVERY	0	1	window_out_of_orb	0			3.580	0		0	0
+LUNR	2026-05-26	DISCOVERY	0	1	window_out_of_orb	0			3.217	0		0	0
+MDA	2026-05-26	DISCOVERY	0	1	filled	1	11:18	44.67	1.744	0	1.790	0	0
+MOD	2026-05-26	DISCOVERY	0	1	window_out_of_orb	0			1.249	0		0	0
+NNE	2026-05-26	DISCOVERY	1	1	filled	1	09:33	29.2	1.031	0	0.978	0	0
+OKLO	2026-05-26	DISCOVERY	1	1	filled	1	09:33	72.1	0.930	0	0.317	0	0
+PONY	2026-05-26	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			4.330	0		0	0
+POWI	2026-05-26	DISCOVERY	1	1	window_out_of_orb	0			0.964	0		0	0
+RDW	2026-05-26	DISCOVERY	1	1	filled	1	09:32	19.68	1.880	0	2.844	0	0
+SPIR	2026-05-26	DISCOVERY	0	1	filled	1	09:33	22.87	0.955	0	1.340	0	0
+UMC	2026-05-26	DISCOVERY	0	1	window_out_of_orb	0			2.876	0		0	0
+VICR	2026-05-26	DISCOVERY	0	1	filled	1	09:33	296.76	1.054	0	2.372	0	0
+VSAT	2026-05-26	DISCOVERY	0	1	filled	1	09:46	79.365	1.909	0	2.372	0	0
+WOLF	2026-05-26	DISCOVERY	0	1	filled	1	09:35	79.85	0.047	0	0.012	0	0
+ANF	2026-05-27	DISCOVERY	1	1	window_out_of_orb	0			3.835	0		0	0
+AOSL	2026-05-27	DISCOVERY	0	0	abstain:entry_window_gaps:40_of_389	None			1.347	0		None	None
+ASTI	2026-05-27	DISCOVERY	1	1	window_out_of_orb	0			3.485	0		0	0
+BBWI	2026-05-27	DISCOVERY	1	1	window_out_of_orb	0			2.517	0		0	0
+CRSR	2026-05-27	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			6.066	1		None	None
+DY	2026-05-27	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			1.005	0		None	None
+LUNR	2026-05-27	DISCOVERY	0	1	filled	1	09:51	38.02	1.292	0	1.760	0	0
+OOMA	2026-05-27	DISCOVERY	0	1	window_out_of_orb	0			1.855	0		0	0
+QFIN	2026-05-27	DISCOVERY	1	1	window_out_of_orb	0			2.708	0		0	0
+SMTC	2026-05-27	DISCOVERY	0	0	abstain:entry_window_gaps:1_of_389	None			1.894	0		None	None
+UMC	2026-05-27	DISCOVERY	0	1	window_out_of_orb	0			1.166	0		0	0
+A	2026-05-28	DISCOVERY	0	1	window_out_of_orb	0			1.407	0		0	0
+AVAV	2026-05-28	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.168	0		None	None
+BBY	2026-05-28	DISCOVERY	0	1	window_out_of_orb	0			2.197	0		0	0
+DLTR	2026-05-28	DISCOVERY	0	1	window_out_of_orb	0			0.988	0		0	0
+HEI	2026-05-28	DISCOVERY	0	1	window_out_of_orb	0			0.618	0		0	0
+IMOS	2026-05-28	DISCOVERY	0	1	window_out_of_orb	0			1.540	0		0	0
+KSS	2026-05-28	DISCOVERY	1	1	window_out_of_orb	0			3.058	0		0	0
+KTOS	2026-05-28	DISCOVERY	1	1	filled	1	09:38	64.34	0.454	0	0.725	0	0
+NBIS	2026-05-28	DISCOVERY	0	1	filled	1	11:22	230.78	3.625	0	3.403	0	0
+NCNO	2026-05-28	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			1.932	0		0	0
+PHR	2026-05-28	DISCOVERY	1	1	window_out_of_orb	0			2.799	0		0	0
+RCAT	2026-05-28	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			1.770	0		None	None
+SNOW	2026-05-28	DISCOVERY	1	1	window_out_of_orb	0			4.282	0		0	0
+UMAC	2026-05-28	DISCOVERY	0	1	window_out_of_orb	0			1.685	0		0	0
+ASAN	2026-05-29	DISCOVERY	1	1	window_out_of_orb	0			3.269	0		0	0
+BHVN	2026-05-29	DISCOVERY	1	1	window_out_of_orb	0			5.589	1		0	0
+CHA	2026-05-29	DISCOVERY	1	1	filled	1	09:31	11.79	1.335	0	3.359	0	0
+DELL	2026-05-29	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			2.090	0		None	None
+HPE	2026-05-29	DISCOVERY	0	1	window_out_of_orb	0			12.638	1		0	0
+NTAP	2026-05-29	DISCOVERY	0	1	window_out_of_orb	0			1.797	0		0	0
+NXT	2026-05-29	DISCOVERY	0	1	window_out_of_orb	0			-0.158	0		0	0
+OKTA	2026-05-29	DISCOVERY	0	1	window_out_of_orb	0			3.508	0		0	0
+PD	2026-05-29	DISCOVERY	1	1	filled	1	09:34	9.39	1.378	0	2.407	0	0
+PENG	2026-05-29	DISCOVERY	0	1	window_out_of_orb	0			4.439	0		0	0
+QURE	2026-05-29	DISCOVERY	0	1	window_out_of_orb	0			9.085	1		0	0
+SOFI	2026-05-29	DISCOVERY	0	1	filled	1	09:40	18.375	0.722	0	0.528	0	0
+ALOY	2026-06-01	DISCOVERY	1	1	window_out_of_orb	0			10.385	1		0	0
+EWTX	2026-06-01	DISCOVERY	0	1	window_out_of_orb	0			0.063	0		0	0
+IBM	2026-06-01	DISCOVERY	0	1	filled	1	10:45	323.55	1.116	0	0.826	0	0
+JBIO	2026-06-01	DISCOVERY	0	1	filled	1	09:33	20.605	2.737	0	1.179	0	0
+NOW	2026-06-01	DISCOVERY	1	1	filled	1	09:37	136.17	-0.447	0	0.434	0	0
+PURR	2026-06-01	DISCOVERY	0	1	window_out_of_orb	0			0.418	0		0	0
+SAIC	2026-06-01	DISCOVERY	1	1	window_out_of_orb	0			0.816	0		0	0
+SKM	2026-06-01	DISCOVERY	1	1	window_out_of_orb	0			1.519	0		0	0
+TNDM	2026-06-01	DISCOVERY	1	1	filled	1	11:46	19.7	0.950	0	0.583	0	0
+AVAH	2026-06-02	DISCOVERY	0	1	filled	1	09:32	7.2	6.791	1	4.496	0	0
+CAMT	2026-06-02	DISCOVERY	1	1	filled	1	09:34	180.165	1.536	0	2.202	0	0
+GNRC	2026-06-02	DISCOVERY	0	1	filled	1	09:33	293.0	1.019	0	0.270	0	0
+GRRR	2026-06-02	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			-1.292	0		None	None
+HPE	2026-06-02	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			-0.063	0		None	None
+HSAI	2026-06-02	DISCOVERY	0	1	filled	1	09:42	21.7	-0.293	0	0.747	0	0
+LAC	2026-06-02	DISCOVERY	1	1	filled	1	09:31	5.97	-0.529	0	1.032	0	0
+LEGN	2026-06-02	DISCOVERY	0	1	window_out_of_orb	0			0.440	0		0	0
+MCHP	2026-06-02	DISCOVERY	0	1	filled	1	09:32	97.78	1.706	0	1.508	0	0
+MRVL	2026-06-02	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			1.946	0		None	None
+PENG	2026-06-02	DISCOVERY	0	1	window_out_of_orb	0			1.057	0		0	0
+STM	2026-06-02	DISCOVERY	0	1	window_out_of_orb	0			0.578	0		0	0
+ABVX	2026-06-03	DISCOVERY	1	1	filled	1	09:33	85.0	3.869	0	4.974	0	0
+GME	2026-06-03	DISCOVERY	0	1	window_out_of_orb	0			1.197	0		0	0
+NN	2026-06-03	DISCOVERY	0	1	window_out_of_orb	0			1.999	0		0	0
+NVTS	2026-06-03	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.182	0		None	None
+ELPC	2026-06-04	DISCOVERY	0	1	window_out_of_orb	0			1.962	0		0	0
+PGY	2026-06-04	DISCOVERY	1	1	window_out_of_orb	0			1.184	0		0	0
+RUM	2026-06-04	DISCOVERY	1	0	abstain:entry_window_gaps:380_of_380	None			0.753	0		None	None
+AGX	2026-06-05	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			2.836	0		None	None
+MRLN	2026-06-05	DISCOVERY	1	1	filled	1	09:31	9.5	0.491	0	0.715	0	0
+TTAN	2026-06-05	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.312	0		None	None
+CGEM	2026-06-08	DISCOVERY	0	1	filled	1	09:32	14.2455	7.074	1	5.964	1	0
+NRIX	2026-06-08	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			11.885	1		None	None
+TNGX	2026-06-08	DISCOVERY	0	1	window_out_of_orb	0			1.418	0		0	0
+ACLS	2026-06-09	DISCOVERY	0	1	window_out_of_orb	0			3.368	0		0	0
+AVO	2026-06-09	DISCOVERY	0	1	window_out_of_orb	0			3.766	0		0	0
+BAP	2026-06-09	DISCOVERY	0	1	window_out_of_orb	0			3.417	0		0	0
+CECO	2026-06-09	DISCOVERY	0	1	filled	1	09:31	86.8	1.036	0	2.581	0	0
+VECO	2026-06-09	DISCOVERY	0	1	window_out_of_orb	0			4.876	0		0	0
+VSH	2026-06-09	DISCOVERY	0	1	window_out_of_orb	0			2.252	0		0	0
+CASY	2026-06-10	DISCOVERY	0	1	window_out_of_orb	0			0.427	0		0	0
+CBRL	2026-06-10	DISCOVERY	1	1	window_out_of_orb	0			4.679	0		0	0
+ELVN	2026-06-11	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			5.472	1		None	None
+IDCC	2026-06-11	DISCOVERY	1	1	window_out_of_orb	0			2.887	0		0	0
+IMOS	2026-06-11	DISCOVERY	0	1	filled	1	09:35	60.7	3.357	0	4.363	0	0
+MH	2026-06-11	DISCOVERY	0	1	filled	1	09:31	12.06	0.052	0	1.061	0	0
+NAVN	2026-06-11	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			2.602	0		None	None
+VELO	2026-06-11	DISCOVERY	0	1	window_out_of_orb	0			-0.045	0		0	0
+AKTS	2026-06-12	DISCOVERY	1	1	window_out_of_orb	0			8.655	1		0	0
+SHAZ	2026-06-12	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			4.444	0		None	None
+ABSI	2026-06-15	DISCOVERY	0	1	window_out_of_orb	0			6.556	1		0	0
+ATRO	2026-06-15	DISCOVERY	0	0	abstain:entry_window_gaps:52_of_389	None			3.248	0		None	None
+AUGO	2026-06-15	DISCOVERY	1	1	window_out_of_orb	0			1.261	0		0	0
+HQ	2026-06-15	DISCOVERY	1	1	window_out_of_orb	0			12.434	1		0	0
+HYMC	2026-06-15	DISCOVERY	1	1	window_out_of_orb	0			0.299	0		0	0
+IDR	2026-06-15	DISCOVERY	1	1	window_out_of_orb	0			0.642	0		0	0
+MMYT	2026-06-15	DISCOVERY	1	1	window_out_of_orb	0			5.406	1		0	0
+SVM	2026-06-15	DISCOVERY	0	1	window_out_of_orb	0			0.943	0		0	0
+USAS	2026-06-15	DISCOVERY	0	1	window_out_of_orb	0			1.161	0		0	0
+WDC	2026-06-15	DISCOVERY	0	1	window_out_of_orb	0			3.717	0		0	0
+XE	2026-06-15	DISCOVERY	1	1	window_out_of_orb	0			1.611	0		0	0
+PURR	2026-06-16	DISCOVERY	0	1	window_out_of_orb	0			0.413	0		0	0
+RXT	2026-06-16	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			2.380	0		None	None
+WDC	2026-06-16	DISCOVERY	0	1	filled	1	09:31	696.925	2.831	0	2.453	0	0
+ACMR	2026-06-17	DISCOVERY	0	1	window_out_of_orb	0			3.498	0		0	0
+AEHR	2026-06-17	DISCOVERY	1	1	window_out_of_orb	0			0.636	0		0	0
+JBL	2026-06-17	DISCOVERY	1	0	abstain:entry_window_gaps:385_of_385	None			0.961	0		None	None
+LZB	2026-06-17	DISCOVERY	1	1	window_out_of_orb	0			1.576	0		0	0
+QURE	2026-06-17	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.779	0		None	None
+BFLY	2026-06-18	DISCOVERY	0	1	window_out_of_orb	0			1.233	0		0	0
+CHRN	2026-06-18	DISCOVERY	0	1	window_out_of_orb	0			1.491	0		0	0
+SWBI	2026-06-18	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			2.854	0		None	None
+UUUU	2026-06-18	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.312	0		None	None
+WDC	2026-06-18	DISCOVERY	0	1	window_out_of_orb	0			0.734	0		0	0
+BWIN	2026-06-22	DISCOVERY	0	1	filled	1	09:32	23.77	3.523	0	3.345	0	0
+DFTX	2026-06-22	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			5.682	1		None	None
+FRVO	2026-06-22	DISCOVERY	0	1	filled	1	09:45	38.8899	-0.253	0	0.843	0	0
+JBIO	2026-06-22	DISCOVERY	1	1	window_out_of_orb	0			2.371	0		0	0
+KEEL	2026-06-22	DISCOVERY	0	1	window_out_of_orb	0			0.353	0		0	0
+MLTX	2026-06-22	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.146	0		None	None
+NUAI	2026-06-22	DISCOVERY	0	1	window_out_of_orb	0			0.348	0		0	0
+PENG	2026-06-22	DISCOVERY	0	1	window_out_of_orb	0			3.094	0		0	0
+SYRE	2026-06-22	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.853	0		None	None
+UMC	2026-06-22	DISCOVERY	0	1	window_out_of_orb	0			1.091	0		0	0
+ZETA	2026-06-23	DISCOVERY	0	1	filled	1	09:31	20.06	2.966	0	2.540	0	0
+ABSI	2026-06-24	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			1.763	0		None	None
+FCEL	2026-06-24	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			5.004	1		None	None
+KBH	2026-06-24	DISCOVERY	0	1	window_out_of_orb	0			1.077	0		0	0
+RUN	2026-06-24	DISCOVERY	0	1	window_out_of_orb	0			0.699	0		0	0
+WEN	2026-06-24	DISCOVERY	1	1	filled	1	09:31	8.12	4.244	0	3.550	0	0
+AYI	2026-06-25	DISCOVERY	0	1	window_out_of_orb	0			1.558	0		0	0
+BB	2026-06-25	DISCOVERY	0	1	window_out_of_orb	0			3.677	0		0	0
+KYMR	2026-06-25	DISCOVERY	1	1	window_out_of_orb	0			0.739	0		0	0
+MLKN	2026-06-25	DISCOVERY	0	1	window_out_of_orb	0			3.552	0		0	0
+MU	2026-06-25	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			-0.172	0		None	None
+SNDK	2026-06-25	DISCOVERY	0	1	window_out_of_orb	0			-0.299	0		0	0
+SNX	2026-06-25	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.437	0		None	None
+WDC	2026-06-25	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			-0.255	0		0	0
+WGO	2026-06-25	DISCOVERY	0	1	window_out_of_orb	0			0.878	0		0	0
+ACAD	2026-06-26	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			1.538	0		None	None
+APOG	2026-06-26	DISCOVERY	0	1	filled	1	09:33	46.025	-0.357	0	2.840	0	0
+ZSQR	2026-06-26	DISCOVERY	0	1	window_out_of_orb	0			0.344	0		0	0
+CHTR	2026-06-29	DISCOVERY	1	1	window_out_of_orb	0			-0.093	0		0	0
+LBRDK	2026-06-29	DISCOVERY	0	1	window_out_of_orb	0			-0.057	0		0	0
+OUST	2026-06-29	DISCOVERY	1	1	window_out_of_orb	0			1.460	0		0	0
+QDEL	2026-06-29	DISCOVERY	1	1	window_out_of_orb	0			0.702	0		0	0
+VSAT	2026-06-29	DISCOVERY	0	1	window_out_of_orb	0			2.486	0		0	0
+AVAV	2026-06-30	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			3.673	0		None	None
+ENPH	2026-06-30	DISCOVERY	0	1	window_out_of_orb	0			0.298	0		0	0
+SEDG	2026-06-30	DISCOVERY	1	1	filled	1	10:32	60.7099	0.279	0	0.043	0	0
+GRND	2026-07-01	DISCOVERY	1	1	window_out_of_orb	0			0.829	0		0	0
+PRGS	2026-07-01	DISCOVERY	0	1	window_out_of_orb	0			1.042	0		0	0
+NEXA	2026-07-02	DISCOVERY	0	1	window_out_of_orb	0			2.409	0		0	0
+IREN	2026-07-06	DISCOVERY	0	1	window_out_of_orb	0			0.403	0		0	0
+RGNX	2026-07-06	DISCOVERY	0	1	window_out_of_orb	0			0.728	0		0	0
+WULF	2026-07-06	DISCOVERY	1	1	filled	1	09:33	24.61	1.260	0	0.288	0	0
+AGIO	2026-07-07	DISCOVERY	0	1	window_out_of_orb	0			-0.005	0		0	0
+DOCN	2026-07-07	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.976	0		None	None
+BBOT	2026-07-08	DISCOVERY	0	1	filled	1	09:49	8.93	0.727	0	0.896	0	0
+KC	2026-07-08	DISCOVERY	1	1	window_out_of_orb	0			1.621	0		0	0
+PENG	2026-07-08	DISCOVERY	1	1	window_out_of_orb	0			1.286	0		0	0
+ALNY	2026-07-09	DISCOVERY	0	1	window_out_of_orb	0			0.975	0		0	0
+BBIO	2026-07-09	DISCOVERY	0	1	window_out_of_orb	0			0.269	0		0	0
+ICHR	2026-07-09	DISCOVERY	0	1	window_out_of_orb	0			0.503	0		0	0
+SMPL	2026-07-09	DISCOVERY	0	1	window_out_of_orb	0			0.857	0		0	0
+UCTT	2026-07-09	DISCOVERY	0	1	window_out_of_orb	0			0.380	0		0	0
+CRCL	2026-07-10	DISCOVERY	1	1	filled	1	09:31	70.66	1.373	0	0.461	0	0
+EQPT	2026-07-10	DISCOVERY	0	1	filled	1	09:32	18.0	0.793	0	1.249	0	0
+VOD	2026-07-10	DISCOVERY	0	1	window_out_of_orb	0			7.239	1		0	0
+WDFC	2026-07-10	DISCOVERY	1	1	filled	1	09:31	295.0	0.337	0	0.530	0	0
+CLSK	2026-07-14	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			2.435	0		None	None
+TSEM	2026-07-14	DISCOVERY	1	1	filled	1	09:32	273.25	0.880	0	0.043	0	0
+AEHR	2026-07-15	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			2.682	0		None	None
+ANGO	2026-07-15	DISCOVERY	0	1	window_out_of_orb	0			1.726	0		0	0
+MANE	2026-07-15	DISCOVERY	1	1	filled	1	09:33	118.75	0.163	0	1.232	0	0
+PRG	2026-07-15	DISCOVERY	1	1	filled	1	09:36	45.46	0.609	0	1.133	0	0
+ABT	2026-07-16	DISCOVERY	0	1	window_out_of_orb	0			4.429	0		0	0
+CDNA	2026-07-16	DISCOVERY	0	1	window_out_of_orb	0			4.798	0		0	0
+GHRS	2026-07-16	DISCOVERY	0	1	window_out_of_orb	0			0.963	0		0	0
+MAN	2026-07-16	DISCOVERY	0	1	window_out_of_orb	0			2.044	0		0	0
+DCBO	2026-07-17	DISCOVERY	0	1	window_out_of_orb	0			2.205	0		0	0
+SG	2026-07-17	DISCOVERY	1	1	window_out_of_orb	0			0.086	0		0	0
+TRVI	2026-07-17	DISCOVERY	0	1	filled	1	09:31	17.76	0.259	0	2.132	0	0
+HUT	2026-07-20	DISCOVERY	1	1	filled	1	09:31	103.48	1.981	0	1.721	0	0
+IREN	2026-07-20	DISCOVERY	1	1	window_out_of_orb	0			1.016	0		0	0
+PLOW	2026-07-20	DISCOVERY	0	1	window_out_of_orb	0			1.301	0		0	0
+HAS	2026-07-21	DISCOVERY	1	1	window_out_of_orb	0			4.216	0		0	0
+PKE	2026-07-21	DISCOVERY	0	1	window_out_of_orb	0			2.105	0		0	0
+ARWR	2026-07-22	DISCOVERY	1	0	abstain:entry_window_gaps:389_of_389	None			0.514	0		None	None
+EFOR	2026-07-22	DISCOVERY	1	1	window_out_of_orb	0			10.068	1		0	0
+FTAI	2026-07-22	DISCOVERY	0	1	filled	1	09:31	228.8999	0.805	0	0.356	0	0
+PAG	2026-07-22	DISCOVERY	0	1	window_out_of_orb	0			2.106	0		0	0
+SMCI	2026-07-22	DISCOVERY	1	1	filled	1	09:33	29.48	4.155	0	4.747	0	0
+ALLE	2026-07-23	DISCOVERY	0	1	window_out_of_orb	0			3.974	0		0	0
+CLF	2026-07-23	DISCOVERY	1	1	filled	1	09:31	10.85	3.673	0	3.887	0	0
+DGX	2026-07-23	DISCOVERY	0	1	window_out_of_orb	0			2.241	0		0	0
+LMT	2026-07-23	DISCOVERY	0	1	window_out_of_orb	0			3.097	0		0	0
+MEDP	2026-07-23	DISCOVERY	0	1	window_out_of_orb	0			0.309	0		0	0
+NVCR	2026-07-23	DISCOVERY	1	1	filled	1	09:31	19.05	1.445	0	2.375	0	0
+OII	2026-07-23	DISCOVERY	0	1	window_out_of_orb	0			3.226	0		0	0
+TMO	2026-07-23	DISCOVERY	0	1	window_out_of_orb	0			2.166	0		0	0
+URI	2026-07-23	DISCOVERY	0	1	window_out_of_orb	0			1.171	0		0	0
+AMKR	2026-07-24	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			0.005	0		0	0
+RNG	2026-07-24	DISCOVERY	0	1	window_out_of_orb	0			8.454	1		0	0
+SSNC	2026-07-24	DISCOVERY	0	1	window_out_of_orb	0			4.357	0		0	0
+THC	2026-07-24	DISCOVERY	1	1	filled	1	09:31	240.47	4.541	0	3.658	0	0
+WKC	2026-07-24	DISCOVERY	1	1	filled	1	09:33	39.995	2.738	0	1.217	0	0
+BMNR	2026-07-27	DISCOVERY	0	1	window_out_of_orb	0			1.200	0		0	0
+GENI	2026-07-27	DISCOVERY	0	1	window_out_of_orb	0			3.093	0		0	0
+NNE	2026-07-27	DISCOVERY	1	1	window_out_of_orb	0			3.930	0		0	0
+OMER	2026-07-27	DISCOVERY	0	1	window_out_of_orb	0			8.623	1		0	0
+QBTS	2026-07-27	DISCOVERY	1	1	filled	1	09:31	18.17	1.920	0	2.953	0	0
+TRAX	2026-07-27	DISCOVERY	0	1	window_out_of_orb	0			1.595	0		0	0
+AWI	2026-07-28	DISCOVERY	0	1	window_out_of_orb	0			2.319	0		0	0
+CORZ	2026-07-28	DISCOVERY	1	1	filled	1	14:47	20.97	1.913	0	1.762	0	0
+ICLR	2026-07-28	DISCOVERY	0	1	window_out_of_orb	0			0.335	0		0	0
+IQV	2026-07-28	DISCOVERY	0	1	window_out_of_orb	0			1.197	0		0	0
+ITRI	2026-07-28	DISCOVERY	0	1	window_out_of_orb	0			-0.006	0		0	0
+KNSA	2026-07-28	DISCOVERY	0	1	window_out_of_orb	0			1.086	0		0	0
+AVTR	2026-07-29	DISCOVERY	0	1	window_out_of_orb	0			0.839	0		0	0
+CBZ	2026-07-29	DISCOVERY	0	1	window_out_of_orb	0			0.257	0		0	0
+GEHC	2026-07-29	DISCOVERY	0	1	window_out_of_orb	0			1.638	0		0	0
+GFS	2026-07-29	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			3.302	0		0	0
+GNRC	2026-07-29	DISCOVERY	0	0	abstain:entry_window_gaps:2_of_389	None			3.263	0		None	None
+GRMN	2026-07-29	DISCOVERY	0	1	window_out_of_orb	0			2.644	0		0	0
+HURN	2026-07-29	DISCOVERY	0	1	window_out_of_orb	0			0.166	0		0	0
+LFUS	2026-07-29	DISCOVERY	0	1	window_out_of_orb	0			4.271	0		0	0
+MANH	2026-07-29	DISCOVERY	0	1	window_out_of_orb	0			0.364	0		0	0
+MBIN	2026-07-29	DISCOVERY	0	1	window_out_of_orb	0			1.508	0		0	0
+NEO	2026-07-29	DISCOVERY	0	1	window_out_of_orb	0			2.254	0		0	0
+TER	2026-07-29	DISCOVERY	1	1	filled	1	09:34	369.3	5.338	1	3.203	0	0
+TEVA	2026-07-29	DISCOVERY	1	1	window_out_of_orb	0			3.050	0		0	0
+ARM	2026-07-30	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			3.325	0		0	0
+AVY	2026-07-30	DISCOVERY	0	0	no_930_bar	None			2.186	0		None	None
+BAX	2026-07-30	DISCOVERY	0	1	window_out_of_orb	0			1.899	0		0	0
+BDC	2026-07-30	DISCOVERY	0	0	no_930_bar	None			4.989	0		None	None
+CORT	2026-07-30	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:7.25>1.5x_ATR_4.59	0			0.638	0		0	0
+EFOR	2026-07-30	DISCOVERY	0	1	window_out_of_orb	0			3.534	0		0	0
+EME	2026-07-30	DISCOVERY	1	1	filled	1	09:32	788.31	2.150	0	2.634	0	0
+FORM	2026-07-30	DISCOVERY	0	1	window_out_of_orb	0			4.131	0		0	0
+FTNT	2026-07-30	DISCOVERY	1	1	filled	1	09:32	166.65	2.705	0	0.825	0	0
+GKOS	2026-07-30	DISCOVERY	0	1	filled	1	09:34	180.2201	3.114	0	1.537	0	0
+HII	2026-07-30	DISCOVERY	0	1	filled	1	09:35	307.01	1.555	0	2.924	0	0
+LRCX	2026-07-30	DISCOVERY	1	1	window_out_of_orb	0			2.414	0		0	0
+MKTX	2026-07-30	DISCOVERY	0	1	window_out_of_orb	0			0.042	0		0	0
+NPKI	2026-07-30	DISCOVERY	0	1	orb_invalid:setup:zero_range	0			3.579	0		0	0
+PRCH	2026-07-30	DISCOVERY	0	0	abstain:entry_window_gaps:1_of_389	None			3.936	0		None	None
+PWR	2026-07-30	DISCOVERY	1	1	filled	1	09:31	670.0	2.712	0	2.224	0	0
+SFM	2026-07-30	DISCOVERY	0	1	window_out_of_orb	0			0.991	0		0	0
+SIMO	2026-07-30	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			0.957	0		0	0
+STGW	2026-07-30	DISCOVERY	0	1	filled	1	15:37	8.34	3.023	0	3.451	0	0
+TAL	2026-07-30	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			0.723	0		0	0
+AAOI	2026-07-31	DISCOVERY	0	1	window_out_of_orb	0			6.496	1		0	0
+AMZN	2026-07-31	DISCOVERY	0	1	window_out_of_orb	0			2.169	0		0	0
+BLZE	2026-07-31	DISCOVERY	1	1	window_out_of_orb	0			8.772	1		0	0
+COHR	2026-07-31	DISCOVERY	0	1	window_out_of_orb	0			6.407	1		0	0
+COHU	2026-07-31	DISCOVERY	1	0	abstain:entry_window_gaps:6_of_389	None			4.049	0		None	None
+CSTL	2026-07-31	DISCOVERY	0	1	window_out_of_orb	0			5.100	1		0	0
+DXCM	2026-07-31	DISCOVERY	0	1	window_out_of_orb	0			3.210	0		0	0
+FET	2026-07-31	DISCOVERY	1	1	filled	1	09:34	61.42	9.251	1	9.718	1	1
+FLNC	2026-07-31	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			1.660	0		0	0
+MPWR	2026-07-31	DISCOVERY	1	1	filled	1	09:38	1522.57	0.550	0	0.190	0	0
+NBIS	2026-07-31	DISCOVERY	0	1	filled	1	09:33	204.31	4.302	0	3.640	0	0
+NVT	2026-07-31	DISCOVERY	0	1	window_out_of_orb	0			3.320	0		0	0
+NWL	2026-07-31	DISCOVERY	1	1	filled	1	09:31	6.66	3.307	0	1.494	0	0
+NXT	2026-07-31	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			3.325	0		0	0
+PWP	2026-07-31	DISCOVERY	0	1	window_out_of_orb	0			0.500	0		0	0
+SPSC	2026-07-31	DISCOVERY	0	1	window_out_of_orb	0			2.963	0		0	0
+SPXC	2026-07-31	DISCOVERY	0	1	window_out_of_orb	0			0.357	0		0	0
+CNH	2026-08-03	DISCOVERY	0	1	window_out_of_orb	0			3.556	0		0	0
+FTH	2026-08-03	DISCOVERY	0	1	gap_below_floor	0			2.538	0		0	0
+FTK	2026-08-03	DISCOVERY	1	1	gap_below_floor	0			7.401	1		0	0
+LIND	2026-08-03	DISCOVERY	1	1	window_out_of_orb	0			1.469	0		0	0
+AAOI	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			2.036	0		0	0
+AEIS	2026-08-04	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			0.466	0		0	0
+AMRC	2026-08-04	DISCOVERY	1	1	window_out_of_orb	0			0.506	0		0	0
+ARVN	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			2.292	0		0	0
+BLZE	2026-08-04	DISCOVERY	1	1	filled	1	09:31	21.7499	0.624	0	1.247	0	0
+BTDR	2026-08-04	DISCOVERY	1	1	filled	1	09:34	12.85	0.758	0	0.070	0	0
+CAT	2026-08-04	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			0.835	0		0	0
+COHR	2026-08-04	DISCOVERY	0	1	filled	1	09:33	326.655	2.656	0	2.541	0	0
+DORM	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			-0.045	0		0	0
+EWTX	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			0.682	0		0	0
+FN	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			2.216	0		0	0
+IBTA	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			1.058	0		0	0
+INSP	2026-08-04	DISCOVERY	1	1	window_out_of_orb	0			-0.285	0		0	0
+LIFE	2026-08-04	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			5.524	1		0	0
+LITE	2026-08-04	DISCOVERY	0	1	gap_below_floor	0			2.079	0		0	0
+LWLG	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			0.572	0		0	0
+MED	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			0.578	0		0	0
+PAY	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			-0.452	0		0	0
+PLTR	2026-08-04	DISCOVERY	1	1	filled	1	09:31	148.63	2.688	0	4.594	0	0
+POET	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			2.144	0		0	0
+TSAT	2026-08-04	DISCOVERY	1	1	window_out_of_orb	0			1.860	0		0	0
+UFPT	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			-0.299	0		0	0
+VOYG	2026-08-04	DISCOVERY	1	1	orb_invalid:setup:zero_range	0			4.336	0		0	0
+W	2026-08-04	DISCOVERY	0	1	window_out_of_orb	0			-0.095	0		0	0
+WGS	2026-08-04	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			3.369	0		0	0
+WIX	2026-08-04	DISCOVERY	0	1	gap_below_floor	0			5.024	1		0	0
+ZBRA	2026-08-04	DISCOVERY	1	1	filled	1	09:31	345.6	1.212	0	2.829	0	0
+AMPX	2026-08-05	DISCOVERY	0	1	window_out_of_orb	0			2.060	0		0	0
+ANET	2026-08-05	DISCOVERY	0	1	filled	1	09:31	213.99	1.328	0	0.085	0	0
+APPS	2026-08-05	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:1.25>1.5x_ATR_0.73	0			2.073	0		0	0
+BLMN	2026-08-05	DISCOVERY	0	1	window_out_of_orb	0			0.545	0		0	0
+DT	2026-08-05	DISCOVERY	0	1	window_out_of_orb	0			0.586	0		0	0
+ECG	2026-08-05	DISCOVERY	1	1	window_out_of_orb	0			0.736	0		0	0
+FRPT	2026-08-05	DISCOVERY	0	1	gap_below_floor	0			1.738	0		0	0
+HGTY	2026-08-05	DISCOVERY	1	1	window_out_of_orb	0			1.084	0		0	0
+INTA	2026-08-05	DISCOVERY	0	1	gap_below_floor	0			2.367	0		0	0
+KMT	2026-08-05	DISCOVERY	1	1	gap_below_floor	0			0.312	0		0	0
+KODK	2026-08-05	DISCOVERY	1	1	orb_invalid:setup:zero_range	0			1.153	0		0	0
+KTOS	2026-08-05	DISCOVERY	1	1	filled	1	09:31	59.93	3.695	0	2.253	0	0
+PGEN	2026-08-05	DISCOVERY	0	1	gap_below_floor	0			2.070	0		0	0
+PRGO	2026-08-05	DISCOVERY	1	1	filled	1	09:32	12.98	2.610	0	3.106	0	0
+QLYS	2026-08-05	DISCOVERY	0	1	window_out_of_orb	0			1.242	0		0	0
+ROCK	2026-08-05	DISCOVERY	1	1	window_out_of_orb	0			-0.089	0		0	0
+SHOP	2026-08-05	DISCOVERY	0	1	window_out_of_orb	0			2.097	0		0	0
+SWIM	2026-08-05	DISCOVERY	0	1	window_out_of_orb	0			1.749	0		0	0
+TATT	2026-08-05	DISCOVERY	1	1	filled	1	09:31	51.22	0.383	0	0.806	0	0
+TBI	2026-08-05	DISCOVERY	0	1	window_out_of_orb	0			1.888	0		0	0
+TVTX	2026-08-05	DISCOVERY	0	1	window_out_of_orb	0			1.668	0		0	0
+UPST	2026-08-05	DISCOVERY	0	1	gap_below_floor	0			0.992	0		0	0
+YOU	2026-08-05	DISCOVERY	0	1	filled	1	09:35	66.0	0.119	0	1.179	0	0
+AEVA	2026-08-06	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:3.08>1.5x_ATR_1.55	0			1.427	0		0	0
+ASPN	2026-08-06	DISCOVERY	0	1	window_out_of_orb	0			0.589	0		0	0
+CAI	2026-08-06	DISCOVERY	1	1	window_out_of_orb	0			7.905	1		0	0
+CDRE	2026-08-06	DISCOVERY	0	1	window_out_of_orb	0			0.019	0		0	0
+DCTH	2026-08-06	DISCOVERY	1	1	window_out_of_orb	0			2.981	0		0	0
+INSM	2026-08-06	DISCOVERY	1	1	filled	1	09:31	129.41	0.641	0	1.801	0	0
+KRO	2026-08-06	DISCOVERY	0	1	window_out_of_orb	0			2.089	0		0	0
+LFST	2026-08-06	DISCOVERY	1	1	gap_below_floor	0			6.103	1		0	0
+MGNI	2026-08-06	DISCOVERY	0	1	window_out_of_orb	0			1.131	0		0	0
+ORA	2026-08-06	DISCOVERY	0	1	filled	1	09:31	108.42	3.059	0	2.728	0	0
+PAYC	2026-08-06	DISCOVERY	0	1	window_out_of_orb	0			2.451	0		0	0
+PAYS	2026-08-06	DISCOVERY	0	1	window_out_of_orb	0			3.295	0		0	0
+RDW	2026-08-06	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			2.601	0		0	0
+RELY	2026-08-06	DISCOVERY	0	1	gap_below_floor	0			0.941	0		0	0
+SITM	2026-08-06	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			1.748	0		0	0
+SOUN	2026-08-06	DISCOVERY	1	1	window_out_of_orb	0			2.585	0		0	0
+TASK	2026-08-06	DISCOVERY	1	1	window_out_of_orb	0			0.937	0		0	0
+TPC	2026-08-06	DISCOVERY	0	1	window_out_of_orb	0			1.778	0		0	0
+TRUP	2026-08-06	DISCOVERY	1	1	window_out_of_orb	0			3.568	0		0	0
+U	2026-08-06	DISCOVERY	1	1	gap_below_floor	0			3.413	0		0	0
+WPP	2026-08-06	DISCOVERY	0	1	window_out_of_orb	0			2.298	0		0	0
+ACMR	2026-08-07	DISCOVERY	1	1	gap_below_floor	0			0.713	0		0	0
+AKAM	2026-08-07	DISCOVERY	0	1	gap_below_floor	0			3.368	0		0	0
+CART	2026-08-07	DISCOVERY	0	1	gap_below_floor	0			1.200	0		0	0
+CRSR	2026-08-07	DISCOVERY	1	1	filled	1	09:34	12.69	0.759	0	2.766	0	0
+DOCS	2026-08-07	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:1.62>1.5x_ATR_0.97	0			-0.410	0		0	0
+FIGS	2026-08-07	DISCOVERY	1	1	filled	1	09:32	15.5	1.954	0	1.274	0	0
+FLR	2026-08-07	DISCOVERY	0	1	no_entry:never_crossed_orb_high	0			0.447	0		0	0
+FROG	2026-08-07	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			2.831	0		0	0
+INOD	2026-08-07	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			1.141	0		0	0
+MTW	2026-08-07	DISCOVERY	1	1	window_out_of_orb	0			3.389	0		0	0
+NET	2026-08-07	DISCOVERY	1	1	filled	1	09:31	318.5	2.002	0	0.860	0	0
+NTRA	2026-08-07	DISCOVERY	0	1	window_out_of_orb	0			1.610	0		0	0
+ONTO	2026-08-07	DISCOVERY	1	1	window_out_of_orb	0			2.061	0		0	0
+PRAA	2026-08-07	DISCOVERY	1	1	window_out_of_orb	0			1.928	0		0	0
+PSIX	2026-08-07	DISCOVERY	1	1	window_out_of_orb	0			1.190	0		0	0
+PUBM	2026-08-07	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:0.82>1.5x_ATR_0.53	0			0.613	0		0	0
+QNST	2026-08-07	DISCOVERY	1	1	filled	1	09:31	19.8	1.454	0	2.993	0	0
+ROAD	2026-08-07	DISCOVERY	0	1	window_out_of_orb	0			0.703	0		0	0
+TEAM	2026-08-07	DISCOVERY	1	1	filled	1	09:31	146.8	4.876	0	5.118	1	0
+TWLO	2026-08-07	DISCOVERY	1	1	filled	1	09:31	237.0	1.449	0	1.813	0	0
+WLDN	2026-08-07	DISCOVERY	1	1	filled	1	09:35	86.7475	0.708	0	0.569	0	0
+ABCL	2026-08-10	DISCOVERY	1	1	filled	1	09:34	8.96	4.626	0	5.168	1	0
+ACHR	2026-08-10	DISCOVERY	1	1	window_out_of_orb	0			2.434	0		0	0
+ALOY	2026-08-10	DISCOVERY	0	1	gap_below_floor	0			1.555	0		0	0
+NESR	2026-08-10	DISCOVERY	1	1	window_out_of_orb	0			0.664	0		0	0
+SLN	2026-08-10	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			0.897	0		0	0
+TH	2026-08-10	DISCOVERY	1	1	gap_below_floor	0			4.430	0		0	0
+ACVA	2026-08-11	DISCOVERY	0	1	filled	1	09:36	8.27	2.902	0	0.225	0	0
+AP	2026-08-11	DISCOVERY	0	1	filled	1	09:31	9.59	0.641	0	0.954	0	0
+APEI	2026-08-11	DISCOVERY	0	1	gap_below_floor	0			0.670	0		0	0
+BW	2026-08-11	DISCOVERY	1	1	filled	1	09:31	12.08	1.882	0	0.000	0	0
+CODI	2026-08-11	DISCOVERY	0	1	window_out_of_orb	0			1.947	0		0	0
+FRMI	2026-08-11	DISCOVERY	1	1	filled	1	09:31	7.24	0.853	0	0.669	0	0
+NIQ	2026-08-11	DISCOVERY	0	1	window_out_of_orb	0			4.314	0		0	0
+RIOT	2026-08-11	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			1.039	0		0	0
+RPD	2026-08-11	DISCOVERY	1	1	window_out_of_orb	0			0.501	0		0	0
+SE	2026-08-11	DISCOVERY	1	1	gap_below_floor	0			0.087	0		0	0
+ATRO	2026-08-12	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:5.75>1.5x_ATR_3.52	0			1.594	0		0	0
+BE	2026-08-12	DISCOVERY	1	1	window_out_of_orb	0			0.602	0		0	0
+BRUN	2026-08-12	DISCOVERY	1	1	no_entry:never_crossed_orb_high	0			1.955	0		0	0
+CAVA	2026-08-12	DISCOVERY	0	1	window_out_of_orb	0			1.774	0		0	0
+CRWV	2026-08-12	DISCOVERY	1	1	window_out_of_orb	0			1.098	0		0	0
+EROC	2026-08-12	DISCOVERY	1	1	filled	1	09:31	13.16	2.697	0	3.150	0	0
+GLBE	2026-08-12	DISCOVERY	1	1	gap_below_floor	0			1.622	0		0	0
+HRB	2026-08-12	DISCOVERY	1	1	window_out_of_orb	0			0.271	0		0	0
+KRNT	2026-08-12	DISCOVERY	0	1	gap_below_floor	0			1.610	0		0	0
+MRX	2026-08-12	DISCOVERY	1	1	window_out_of_orb	0			1.450	0		0	0
+NBIS	2026-08-12	DISCOVERY	1	1	filled	1	09:38	228.44	0.758	0	1.836	0	0
+RSKD	2026-08-12	DISCOVERY	0	1	window_out_of_orb	0			2.172	0		0	0
+SMWB	2026-08-12	DISCOVERY	0	1	window_out_of_orb	0			1.400	0		0	0
+WYFI	2026-08-12	DISCOVERY	1	1	filled	1	09:36	28.31	1.119	0	1.199	0	0
+AEBI	2026-08-13	DISCOVERY	0	1	window_out_of_orb	0			0.697	0		0	0
+AVAH	2026-08-13	DISCOVERY	0	1	window_out_of_orb	0			6.618	1		0	0
+BIRK	2026-08-13	DISCOVERY	0	1	window_out_of_orb	0			-0.334	0		0	0
+BLSH	2026-08-13	DISCOVERY	1	1	window_out_of_orb	0			6.125	1		0	0
+CGEM	2026-08-13	DISCOVERY	1	1	gap_below_floor	0			3.175	0		0	0
+CRMD	2026-08-13	DISCOVERY	1	1	filled	1	09:37	8.75	1.781	0	0.677	0	0
+ELMT	2026-08-13	DISCOVERY	0	1	gap_below_floor	0			3.015	0		0	0
+ENS	2026-08-13	DISCOVERY	0	1	window_out_of_orb	0			1.458	0		0	0
+HLIT	2026-08-13	DISCOVERY	1	1	filled	1	09:31	14.48	1.683	0	1.082	0	0
+KURA	2026-08-13	DISCOVERY	1	1	window_out_of_orb	0			8.039	1		0	0
+OMER	2026-08-13	DISCOVERY	1	1	window_out_of_orb	0			2.240	0		0	0
+TBBB	2026-08-13	DISCOVERY	0	1	window_out_of_orb	0			1.240	0		0	0
+WWW	2026-08-13	DISCOVERY	0	0	no_930_bar	None			2.024	0		None	None
+ETON	2026-08-14	DISCOVERY	1	1	filled	1	09:31	55.4427	2.119	0	3.084	0	0
+HTFL	2026-08-14	DISCOVERY	1	1	orb_invalid:setup:stop_too_wide:2.55>1.5x_ATR_1.46	0			4.436	0		0	0
+LPTH	2026-08-14	DISCOVERY	1	1	filled	1	09:31	14.93	0.238	0	0.523	0	0
+NMAX	2026-08-14	DISCOVERY	1	1	window_out_of_orb	0			1.829	0		0	0
+NU	2026-08-14	DISCOVERY	0	1	window_out_of_orb	0			1.225	0		0	0
+RCAT	2026-08-14	DISCOVERY	0	1	filled	1	09:31	11.66	-0.195	0	0.115	0	0
+RDDT	2026-08-14	DISCOVERY	1	1	filled	1	09:31	176.62	0.025	0	0.757	0	0
+STDN	2026-08-14	DISCOVERY	1	1	window_out_of_orb	0			2.474	0		0	0
+UMAC	2026-08-14	DISCOVERY	0	1	window_out_of_orb	0			-0.191	0		0	0
+VCX	2026-08-14	DISCOVERY	0	1	gap_below_floor	0			3.087	0		0	0
+VERA	2026-08-14	DISCOVERY	1	1	gap_below_floor	0			3.282	0		0	0
+ARGX	2026-08-17	HELD-OUT	1	1	gap_below_floor	0			2.957	0		0	0
+CBRS	2026-08-17	HELD-OUT	1	1	window_out_of_orb	0			-0.381	0		0	0
+OCUL	2026-08-17	HELD-OUT	0	1	gap_below_floor	0			2.356	0		0	0
+AMLX	2026-08-18	HELD-OUT	1	1	filled	1	09:32	30.07	2.619	0	4.808	0	0
+HAE	2026-08-18	HELD-OUT	0	1	window_out_of_orb	0			1.430	0		0	0
+BNTX	2026-08-19	HELD-OUT	0	1	window_out_of_orb	0			2.321	0		0	0
+DRD	2026-08-19	HELD-OUT	0	1	window_out_of_orb	0			4.481	0		0	0
+EIKN	2026-08-19	HELD-OUT	0	1	window_out_of_orb	0			1.027	0		0	0
+EL	2026-08-19	HELD-OUT	0	1	window_out_of_orb	0			3.968	0		0	0
+KC	2026-08-19	HELD-OUT	0	1	no_entry:never_crossed_orb_high	0			-1.715	0		0	0
+MRK	2026-08-19	HELD-OUT	0	1	window_out_of_orb	0			1.327	0		0	0
+MRNA	2026-08-19	HELD-OUT	1	1	filled	1	09:33	120.15	-1.304	0	5.663	1	0
+MRVI	2026-08-19	HELD-OUT	0	1	window_out_of_orb	0			5.904	1		0	0
+MRVL	2026-08-19	HELD-OUT	1	1	filled	1	09:32	241.53	1.085	0	0.818	0	0
+TEM	2026-08-19	HELD-OUT	1	1	window_out_of_orb	0			3.133	0		0	0
+TWST	2026-08-19	HELD-OUT	1	1	window_out_of_orb	0			1.270	0		0	0
+BULL	2026-08-20	HELD-OUT	1	1	orb_invalid:setup:stop_too_wide:0.54>1.5x_ATR_0.34	0			3.480	0		0	0
+FUTU	2026-08-20	HELD-OUT	0	1	gap_below_floor	0			4.468	0		0	0
+MRVI	2026-08-20	HELD-OUT	0	1	window_out_of_orb	0			2.400	0		0	0
+RARE	2026-08-20	HELD-OUT	1	1	gap_below_floor	0			1.216	0		0	0
+SCSC	2026-08-20	HELD-OUT	1	1	no_entry:never_crossed_orb_high	0			1.453	0		0	0
+CRML	2026-08-21	HELD-OUT	0	1	window_out_of_orb	0			2.678	0		0	0
+UUUU	2026-08-21	HELD-OUT	1	1	window_out_of_orb	0			1.444	0		0	0
+NSSC	2026-08-24	HELD-OUT	0	1	orb_invalid:setup:stop_too_wide:2.70>1.5x_ATR_1.07	0			0.343	0		0	0
+SCTX	2026-08-24	HELD-OUT	0	1	gap_below_floor	0			0.268	0		0	0
+NBBK	2026-08-25	HELD-OUT	0	0	abstain:entry_window_gaps:26_of_29	None			1.664	0		None	None
+ANF	2026-08-26	HELD-OUT	0	1	window_out_of_orb	0			1.215	0		0	0
+BHVN	2026-08-26	HELD-OUT	0	1	gap_below_floor	0			0.119	0		0	0
+BZ	2026-08-26	HELD-OUT	0	1	window_out_of_orb	0			-0.175	0		0	0
+PLAB	2026-08-26	HELD-OUT	0	1	orb_invalid:setup:stop_too_wide:3.75>1.5x_ATR_1.29	0			0.731	0		0	0
+SMMT	2026-08-26	HELD-OUT	0	1	window_out_of_orb	0			5.829	1		0	0
+CHRN	2026-08-27	HELD-OUT	1	1	window_out_of_orb	0			0.710	0		0	0
+CRM	2026-08-27	HELD-OUT	0	1	window_out_of_orb	0			1.872	0		0	0
+CRWD	2026-08-27	HELD-OUT	1	1	filled	1	09:31	210.99	2.250	0	3.957	0	0
+DG	2026-08-27	HELD-OUT	1	1	gap_below_floor	0			2.568	0		0	0
+MBUU	2026-08-27	HELD-OUT	0	1	filled	1	09:31	30.15	0.305	0	0.207	0	0
+OKTA	2026-08-27	HELD-OUT	1	1	filled	1	09:49	167.88	2.552	0	3.204	0	0
+OOMA	2026-08-27	HELD-OUT	0	1	window_out_of_orb	0			0.741	0		0	0
+VEEV	2026-08-27	HELD-OUT	1	1	window_out_of_orb	0			0.900	0		0	0
+AFRM	2026-08-28	HELD-OUT	0	1	window_out_of_orb	0			-0.241	0		0	0
+BEKE	2026-08-28	HELD-OUT	0	1	gap_below_floor	0			-0.260	0		0	0
+EROK	2026-08-28	HELD-OUT	0	0	abstain:entry_window_gaps:21_of_29	None			1.487	0		None	None
+ESTC	2026-08-28	HELD-OUT	0	1	window_out_of_orb	0			0.551	0		0	0
+GAP	2026-08-28	HELD-OUT	0	1	window_out_of_orb	0			-0.357	0		0	0
+SOLS	2026-08-28	HELD-OUT	1	1	filled	1	09:34	66.75	1.026	0	0.358	0	0
+GPRK	2026-08-31	HELD-OUT	0	1	window_out_of_orb	0			6.565	1		0	0
+SAIC	2026-08-31	HELD-OUT	0	0	abstain:entry_window_gaps:2_of_29	None			2.157	0		None	None
+XE	2026-08-31	HELD-OUT	0	1	window_out_of_orb	0			0.690	0		0	0
+CRK	2026-09-01	HELD-OUT	0	1	window_out_of_orb	0			-0.269	0		0	0
+FRVO	2026-09-01	HELD-OUT	0	1	window_out_of_orb	0			-0.248	0		0	0
+YEXT	2026-09-01	HELD-OUT	0	1	window_out_of_orb	0			3.857	0		0	0
+DAKT	2026-09-02	HELD-OUT	0	1	orb_invalid:setup:stop_too_wide:1.18>1.5x_ATR_0.50	0			1.555	0		0	0
+DELL	2026-09-02	HELD-OUT	0	1	window_out_of_orb	0			3.830	0		0	0
+GTLB	2026-09-02	HELD-OUT	0	1	window_out_of_orb	0			0.513	0		0	0
+TRAX	2026-09-02	HELD-OUT	0	1	window_out_of_orb	0			0.097	0		0	0
+YEXT	2026-09-02	HELD-OUT	0	1	window_out_of_orb	0			1.352	0		0	0
+AGX	2026-09-03	HELD-OUT	1	0	abstain:entry_window_gaps:1_of_29	None			1.507	0		None	None
+CLYM	2026-09-03	HELD-OUT	0	1	gap_below_floor	0			1.357	0		0	0
+HOOD	2026-09-03	HELD-OUT	1	1	no_entry:triggered_above_limit_never_filled	0			0.331	0		0	0
+HSAI	2026-09-03	HELD-OUT	0	1	window_out_of_orb	0			0.940	0		0	0
+NTSK	2026-09-03	HELD-OUT	0	1	no_entry:never_crossed_orb_high	0			5.636	1		0	0
+SMMT	2026-09-03	HELD-OUT	0	1	window_out_of_orb	0			1.782	0		0	0
+SNOW	2026-09-03	HELD-OUT	1	1	no_entry:never_crossed_orb_high	0			0.027	0		0	0

@@ -372,6 +372,243 @@ none by a later gate — are a population he wants any lane to watch, which is a
 what the delayed lane sees, not a proposal. Selection, admission and the bar itself stay exactly where
 they are.
 
+## Addendum 2026-09-28 — measured from the actual live MAGNA53 entry (replayed bar-by-bar)
+
+> ⚠ **VERIFIED by the orchestrator 2026-09-28 against what we actually traded:** of the 59 live fills with alert dates 05-01..09-03, 51 are in this population; the replay marks 39 filled, 12 unreadable (minute-bar gaps) and 1 not filled (`triggered_above_limit_never_filled` — a real fill the replay misses). So 39 of the 40 readable real fills reproduce, with entry prices within cents (e.g. TEAM 05-01 $85.19 real vs $85.13 replay). The other 8 real fills (GOOGL 05-01, ARM 05-07, KLAR 05-15, PURR 05-20, ROIV 05-21, IBM 05-22 among them) are not in the scored population.
+
+
+**v1 RETRACTED, one line:** an earlier version of this addendum measured FILLED against a
+09:30–09:44 15-minute "opening range" that does not exist in the live code. Those numbers are not
+carried forward as findings; this section replaces it entirely.
+
+**MEASUREMENT ONLY, $0, read-only.** Probe: `scripts/probes/_684/study_orb_live.py` (imports
+`study.py` + `study_orb.py`'s functions, does not overwrite their outputs), `live_entry_bars.sql` /
+`live_entry_bars.tsv` (one new pull: every 1-minute bar 09:30–16:00 ET for all 670 rows, 236,265
+bars). Same 63 features, same DISCOVERY/HELD-OUT split, same permutation and pass bar.
+
+**The live entry, read from code, not summarized:**
+- **ORB = the single 09:30–09:31 ET one-minute bar's high/low** (`alpaca_client.get_first_bar`,
+  `order_manager.py:564-565`) — NOT a 15-minute range.
+- **Submit time = the row's own scan time.** Alerted rows: the FIRST-PASS tick (`pop.tsv:
+  first_pass_time`). Rejected rows never passed, so there is no "first pass" — they use the row's
+  own CHOSEN tick (`pop.tsv: scan_time`, the same highest-score/latest-tie tick that already
+  supplies every other feature for that row), per the coordinator's instruction to apply the
+  mechanics "at their scan time." **This choice is NOT robust and materially changes the fill
+  count** — checked, not assumed: re-running the fill walk with rejected rows submitting at their
+  EARLIEST tick instead (`first_tick_time`) drops WINDOW_OUT_OF_ORB from 232 to 106 of 361 rejected
+  rows and roughly doubles their raw pre-admission fill count (82 → 188). The alerted-vs-rejected
+  fill-rate comparison below should be read as anchored to one defensible choice, not as a robust
+  finding either way.
+- Floored UP to 09:31 (an order cannot submit before the open); a tick at/after 09:45 ET is
+  **WINDOW_OUT_OF_ORB** — never placed (`scheduler.py:1119`, `skip_reasons.WINDOW_OUT_OF_ORB`).
+- **Admission, in the real pipeline's own order** (`submit_trade_entry` steps 4b then 5):
+  1. Real-time gap re-check (`entry_pipeline.check_rt_gap_floor`, wired for MAGNA53
+     `live_tracker.py:606`) — toggle `ep_rt_entry_gap_recheck` live since 2026-08-02
+     (`docs/setups/magna53_ep.md:1127`, OFF/not modeled before that date); floor = `MIN_GAP_PCT`
+     10.0% before 2026-08-19, 9.0% from (`docs/setups/magna53_ep.md:1917`). Real-time price is a
+     tick (`alpaca.get_latest_trade`); this replay approximates it with the submit-minute bar's
+     OPEN — the finest grain stored, not exact — and fails OPEN on a missing price, matching the
+     real function.
+  2. `validate_orb_entry` (`backtester/filters.py:207`, called from `order_manager.py:569`): zero
+     ORB range, or ORB range > 1.5× ATR-14-prior (`alert_rank_shadow.compute_atr14_prior`, mirrored
+     exactly — simple mean of the last 14 true ranges, 40 calendar days back, >=10 prior rows
+     required else skipped).
+  3. **Fade guard — verified, not assumed, to be a no-op.** The real MAGNA53 call site
+     (`live_tracker.py:603`) passes `fade_midpoint_ratio=None` explicitly ("Sonnet+Perplexity
+     validation + ATR stop width + 10:00 ET cleanup already cover dead-cat fills"). Nothing to
+     model.
+- **Fill walk** (`entry_walk`, mirrored verbatim from `sustain_reject_replay.entry_walk` — the same
+  mirroring pattern that module itself uses against `scripts/ep_replay.entry_walk`): limit =
+  `stop_limit_buy_price(orb_high)` (the 0.5%-or-$0.02 buffer). **A bar already trading above the
+  trigger AT submission is not special-cased** — the code checks the FIRST scanned bar exactly like
+  any later one: its own open decides fill-at-open, limit-arming, or an intra-bar cross at the
+  trigger, same as every subsequent bar.
+- **Cancel = 10:00 ET for scan_date >= 2026-08-01, else no cancel (fills any time through the
+  close).** This date is `sustain_reject_replay.entry_cancel_asof`'s own documented inference
+  ("era-A fills as late as 11:35 prove no cancel then") — attributed to that module, not read
+  directly off a live cleanup-job deploy date.
+- **NOT modeled:** portfolio-state safeguards (`_check_safeguards` — LIVE_TRADING_ENABLED, /pause,
+  max-concurrent-positions, daily-loss limit, drawdown breaker) and sizing multipliers. These depend
+  on the rest of the book at the exact historical moment, which this per-name replay does not
+  reconstruct — same scope boundary the original study drew. A row marked FILLED here means "would
+  have triggered," never "would have executed regardless of the rest of the book."
+
+**Outcome (RUN_B):** (max high from the fill minute through session +15 − the ACTUAL FILL PRICE, not
+the trigger) / `adr_dollar_ep` (frame A's own denominator). Day 0's own contribution reads from the
+same `mi_intraday_bars` pull (fill minute through 16:00); only sessions +1..+15 fall back to
+`mi_daily_closes`, as frame A already does.
+
+**Readable population = 609 of the 667 frame-A-scored rows** (58 unreadable). 53 of those 58 are
+`abstain` (a scan-window gap wide enough that a cross could be hidden) and **skew heavily toward
+alerted rows — 42 of 53, vs 11 of 53 rejected** — the single unreadable slice most likely to move a
+number if resolved. 5 more lack a 09:30 bar entirely; 3 lack a 15-session forward outcome (frame A's
+own censoring). 6 of the 58 unreadable rows are frame-A runners (fillability unknown).
+
+**Fill rate: 183 of 609 readable rows filled (30.0%).** Alerted rows fill MORE often (115 of 263 =
+43.7%) than rejected rows (68 of 346 = 19.7%) — **subject to the submit-time caveat above.** The
+dominant reason a row never fills is simply never being placed: 331 of 609 readable rows (54%) are
+WINDOW_OUT_OF_ORB (99 alerted, 232 rejected — rejected rows are hit harder by this because their
+"scan time" here is the highest-score/latest tick, which skews later as a move develops). Of the
+remainder: 37 no_entry (placed, never crossed), 34 gap_below_floor, 24 orb_invalid (mostly
+stop-too-wide vs 1.5× ATR).
+
+**Runner composition:** published frame A (all 667) 71 (10.6%); frame A on the readable population
+(609) 65 (10.7% — the readable subset is not a biased slice); frame B (609) 27 (4.4%). 20 runners
+are runners in both frames. 7 are frame-B-only (not frame-A runners): ABCL 08-10, AMBQ 05-12, FCEL
+05-12, FLEX 05-06, INFQ 05-21, **MRNA 08-19, TEAM 08-07** (both his labelled EPs — see below). 45 are
+frame-A-only (never placed/filled, or filled short of 5 ADR).
+
+**Of the 71 published frame-A runners: 65 are readable, 40 of those were never placed or never
+filled** (25 were). 6 are unreadable (fillability unknown): MTSI 05-07, CRSR 05-27, NRIX 06-08, ELVN
+06-11, DFTX 06-22, FCEL 06-24.
+
+**Held-out power collapses further in frame B: only 1 runner in the whole HELD-OUT block** (MRNA,
+below) vs frame A's 4 — below the pass bar's own 3-runner floor, so **no feature can clear the
+four-condition bar in frame B by construction.** `0` PASS below is mechanical, not a null finding.
+Frame A′ (same 609 rows) still shows 2 PASS (`dollar_vol_20d`, matching published; `prev_close`,
+which read "can't tell" published) — both fall to "can't tell" in frame B.
+
+**Per-feature results (readable population, 609 rows; rates = share >= 5 ADR in each frame):**
+
+| feature (plain words) · favourable side | when | n | frame A′ (readable pop) fav vs rest | frame A′ verdict | frame B fav vs rest | frame B verdict | changed |
+|---|---|---|---|---|---|---|---|
+| today's EP score · HIGHER | PRE | 550 | 12.2% (197) vs 10.5% (353) | can't tell (discovery p >= 0.05) | 6.6% (197) vs 3.7% (353) | can't tell (discovery p >= 0.05) |  |
+| gap % at the scan · HIGHER | PRE | 550 | 9.8% (184) vs 11.8% (366) | fail (wrong way) | 6.0% (184) vs 4.1% (366) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| prev close above its 5-day low close (live gate def) · LOWER | PRE | 550 | 6.6% (183) vs 13.4% (367) | fail (wrong way), p=0.006 the other way | 1.6% (183) vs 6.3% (367) | fail (wrong way), p=0.004 the other way |  |
+| prev close vs SMA10, in ADRs · LOWER | PRE | 550 | 10.4% (183) vs 11.4% (367) | fail (wrong way) | 2.2% (183) vs 6.0% (367) | fail (wrong way), p=0.007 the other way |  |
+| prev close vs SMA20, in ADRs · LOWER | PRE | 550 | 8.7% (183) vs 12.3% (367) | fail (wrong way) | 2.2% (183) vs 6.0% (367) | fail (wrong way), p=0.026 the other way |  |
+| prev close vs SMA50, in ADRs · LOWER | PRE | 542 | 8.3% (180) vs 12.4% (362) | fail (wrong way) | 2.8% (180) vs 5.8% (362) | fail (wrong way) |  |
+| mean distance to SMA10/20/50, in ADRs · LOWER | PRE | 542 | 8.3% (180) vs 12.4% (362) | fail (wrong way) | 2.8% (180) vs 5.8% (362) | fail (wrong way) |  |
+| prev close above its 20-day low · LOWER | PRE | 550 | 8.2% (183) vs 12.5% (367) | fail (wrong way), p=0.021 the other way | 2.2% (183) vs 6.0% (367) | fail (wrong way), p=0.006 the other way |  |
+| 1-month change before the gap · LOWER | PRE | 550 | 7.6% (183) vs 12.8% (367) | fail (wrong way) | 2.2% (183) vs 6.0% (367) | fail (wrong way) |  |
+| 3-month change before the gap · LOWER | PRE | 535 | 12.9% (178) vs 9.5% (357) | can't tell (discovery p >= 0.05) | 3.9% (178) vs 5.3% (357) | fail (wrong way) | **CHANGED** |
+| 40-day close range / price (base tightness) · LOWER | PRE | 544 | 7.7% (181) vs 12.7% (363) | fail (wrong way), p=0.009 the other way | 1.1% (181) vs 6.6% (363) | fail (wrong way), p=0.000 the other way |  |
+| 20-day close range / price · LOWER | PRE | 550 | 6.6% (183) vs 13.4% (367) | fail (wrong way), p=0.002 the other way | 1.6% (183) vs 6.3% (367) | fail (wrong way), p=0.000 the other way |  |
+| net 40-day drift, in ADRs (flat base) · LOWER | PRE | 544 | 13.3% (181) vs 9.9% (363) | can't tell (discovery p >= 0.05) | 2.8% (181) vs 5.8% (363) | fail (wrong way), p=0.029 the other way | **CHANGED** |
+| sessions since the 6-month high (neglect) · HIGHER | PRE | 550 | 9.8% (184) vs 11.8% (366) | fail (wrong way) | 1.6% (184) vs 6.3% (366) | fail (wrong way), p=0.000 the other way |  |
+| prev close below the 6-month high, % (depth) · HIGHER | PRE | 550 | 12.0% (184) vs 10.7% (366) | can't tell (discovery p >= 0.05) | 3.3% (184) vs 5.5% (366) | fail (wrong way) | **CHANGED** |
+| overhead to the 52-week high, in ADRs · LOWER | PRE | 550 | 10.9% (183) vs 11.2% (367) | fail (wrong way) | 8.7% (183) vs 2.7% (367) | can't tell (held-out too thin) | **CHANGED** |
+| scan price above the 6-month high · yes | PRE | 550 | 10.8% (186) vs 11.3% (364) | fail (wrong way) | 8.1% (186) vs 3.0% (364) | can't tell (held-out too thin) | **CHANGED** |
+| scan price above the 52-week high · yes | PRE | 550 | 11.6% (146) vs 10.9% (404) | can't tell (discovery p >= 0.05) | 8.9% (146) vs 3.2% (404) | can't tell (discovery p >= 0.05) |  |
+| scan price above the all-time high · yes | PRE | 504 | 10.7% (75) vs 10.7% (429) | fail (wrong way) | 6.7% (75) vs 4.2% (429) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| prev close above SMA50 · yes | PRE | 542 | 11.3% (328) vs 10.8% (214) | can't tell (discovery p >= 0.05) | 5.8% (328) vs 3.3% (214) | can't tell (discovery p >= 0.05) |  |
+| prev close above SMA200 · yes | PRE | 510 | 10.4% (316) vs 10.3% (194) | can't tell (discovery p >= 0.05) | 6.0% (316) vs 2.1% (194) | can't tell (held-out too thin) |  |
+| how many of SMA10/20/50 the prev close is above · HIGHER | PRE | 542 | 12.4% (241) vs 10.0% (301) | can't tell (discovery p >= 0.05) | 7.9% (241) vs 2.3% (301) | can't tell (held-out too thin) |  |
+| Stage 2 (close > SMA50 > rising SMA200) · yes | PRE | 504 | 10.1% (169) vs 10.8% (335) | fail (wrong way) | 7.1% (169) vs 3.3% (335) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| RS composite the prior day · HIGHER | PRE | 508 | 13.5% (170) vs 10.4% (338) | can't tell (discovery p >= 0.05) | 9.4% (170) vs 2.7% (338) | can't tell (held-out too thin) |  |
+| in the RS pool the prior day · yes | PRE | 550 | 11.4% (508) vs 7.1% (42) | can't tell (discovery p >= 0.05) | 4.9% (508) vs 2.4% (42) | can't tell (discovery p >= 0.05) |  |
+| catalyst grade (game_changer/strong vs routine) · HIGHER | PRE | 550 | 12.8% (274) vs 9.4% (276) | can't tell (discovery p >= 0.05) | 7.7% (274) vs 1.8% (276) | can't tell (discovery p >= 0.05) |  |
+| in an active theme the prior night (any age) · yes | PRE | 550 | 8.5% (141) vs 12.0% (409) | fail (wrong way) | 2.8% (141) vs 5.4% (409) | fail (wrong way) |  |
+| in an active theme the prior night (7-day bounded) · yes | PRE | 550 | 8.3% (84) vs 11.6% (466) | fail (wrong way) | 4.8% (84) vs 4.7% (466) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| theme stage Nascent/Accelerating · yes | PRE | 550 | 9.1% (44) vs 11.3% (506) | fail (wrong way) | 2.3% (44) vs 4.9% (506) | fail (wrong way) |  |
+| market regime Bull · yes | PRE | 550 | 12.4% (380) vs 8.2% (170) | can't tell (discovery p >= 0.05) | 6.3% (380) vs 1.2% (170) | can't tell (discovery p >= 0.05) |  |
+| SPY vs its 50-day · HIGHER | PRE | 550 | 16.4% (195) vs 8.2% (355) | can't tell (discovery p >= 0.05) | 10.3% (195) vs 1.7% (355) | can't tell (discovery p >= 0.05) |  |
+| share price · LOWER | PRE | 550 | 15.8% (183) vs 8.7% (367) | PASS ⚠ labelled-EP conflict | 7.6% (183) vs 3.3% (367) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| ADR % · HIGHER | PRE | 550 | 14.7% (184) vs 9.3% (366) | can't tell (held-out sign against) | 5.4% (184) vs 4.4% (366) | can't tell (discovery p >= 0.05) |  |
+| 20-day dollar volume · LOWER | PRE | 550 | 15.3% (183) vs 9.0% (367) | PASS | 5.5% (183) vs 4.4% (367) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| a scored gap on this name in the prior 90 days · no | PRE | 550 | 12.3% (465) vs 4.7% (85) | can't tell (discovery p >= 0.05) | 4.7% (465) vs 4.7% (85) | can't tell (discovery p >= 0.05) |  |
+| pre-market relative volume · HIGHER | PRE | 492 | 14.0% (164) vs 10.4% (328) | can't tell (discovery p >= 0.05) | 11.0% (164) vs 2.4% (328) | can't tell (held-out too thin) |  |
+| projected volume multiple at the scan · HIGHER | PRE | 297 | 7.0% (100) vs 10.7% (197) | fail (wrong way) | 0.0% (100) vs 0.0% (197) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| first scored tick before 09:30 · yes ⚠ mechanical | PRE | 550 | 11.1% (378) vs 11.1% (172) | can't tell (discovery p >= 0.05) | 6.9% (378) vs 0.0% (172) | can't tell (held-out too thin) |  |
+| gap % at the open print · HIGHER | 0930 | 550 | 9.8% (184) vs 11.8% (366) | fail (wrong way) | 6.5% (184) vs 3.8% (366) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| open above the 6-month high · yes | 0930 | 550 | 10.4% (154) vs 11.4% (396) | fail (wrong way) | 9.1% (154) vs 3.0% (396) | can't tell (held-out too thin) | **CHANGED** |
+| open above the 52-week high · yes | 0930 | 550 | 10.5% (114) vs 11.2% (436) | fail (wrong way) | 10.5% (114) vs 3.2% (436) | can't tell (held-out too thin) | **CHANGED** |
+| open above the all-time high · yes | 0930 | 504 | 11.9% (59) vs 10.6% (445) | can't tell (discovery p >= 0.05) | 8.5% (59) vs 4.0% (445) | can't tell (discovery p >= 0.05) |  |
+| open vs SMA50, in ADRs · LOWER | 0930 | 542 | 12.8% (180) vs 10.2% (362) | can't tell (discovery p >= 0.05) | 3.3% (180) vs 5.5% (362) | fail (wrong way) | **CHANGED** |
+| open vs SMA20, in ADRs · LOWER | 0930 | 550 | 12.6% (183) vs 10.3% (367) | can't tell (discovery p >= 0.05) | 2.2% (183) vs 6.0% (367) | fail (wrong way), p=0.049 the other way | **CHANGED** |
+| Stage 2 with the open · yes | 0930 | 504 | 9.9% (213) vs 11.0% (291) | fail (wrong way) | 6.6% (213) vs 3.1% (291) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| where 09:44 sits in the opening range · HIGHER | 0945 | 531 | 9.6% (177) vs 12.2% (354) | fail (wrong way) | 5.1% (177) vs 4.5% (354) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| opening range / ADR · LOWER | 0945 | 531 | 11.9% (177) vs 11.0% (354) | can't tell (discovery p >= 0.05) | 4.5% (177) vs 4.8% (354) | fail (wrong way) | **CHANGED** |
+| gap % at 09:44 · HIGHER | 0945 | 531 | 7.3% (177) vs 13.3% (354) | fail (wrong way), p=0.005 the other way | 6.2% (177) vs 4.0% (354) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| 09:44 vs the open · HIGHER | 0945 | 531 | 10.2% (177) vs 11.9% (354) | fail (wrong way) | 4.0% (177) vs 5.1% (354) | fail (wrong way) |  |
+| first-15-minute volume / 20-day avg daily volume · HIGHER | 0945 | 531 | 11.3% (177) vs 11.3% (354) | can't tell (discovery p >= 0.05) | 7.9% (177) vs 3.1% (354) | can't tell (discovery p >= 0.05) |  |
+| opening-range high above the 6-month high · yes | 0945 | 531 | 9.4% (191) vs 12.3% (340) | fail (wrong way) | 7.3% (191) vs 3.2% (340) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| close location in the day's range · HIGHER | CLOSE | 550 | 11.4% (184) vs 10.9% (366) | can't tell (discovery p >= 0.05) | 7.1% (184) vs 3.5% (366) | can't tell (discovery p >= 0.05) |  |
+| day range / ADR · HIGHER | CLOSE | 550 | 7.1% (184) vs 13.1% (366) | fail (wrong way), p=0.004 the other way | 4.3% (184) vs 4.9% (366) | fail (wrong way) |  |
+| volume vs the biggest day in a year · HIGHER | CLOSE | 550 | 12.5% (184) vs 10.4% (366) | can't tell (discovery p >= 0.05) | 7.1% (184) vs 3.5% (366) | can't tell (discovery p >= 0.05) |  |
+| volume vs 50-day average · HIGHER | CLOSE | 550 | 10.3% (184) vs 11.5% (366) | fail (wrong way) | 8.2% (184) vs 3.0% (366) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| close vs open · HIGHER | CLOSE | 550 | 8.7% (184) vs 12.3% (366) | fail (wrong way) | 4.3% (184) vs 4.9% (366) | fail (wrong way) |  |
+| gap % at the close · HIGHER | CLOSE | 550 | 10.3% (184) vs 11.5% (366) | fail (wrong way) | 6.5% (184) vs 3.8% (366) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| close vs SMA50, in ADRs (the 09-27 EOD lead) · LOWER | CLOSE | 542 | 10.0% (180) vs 11.6% (362) | fail (wrong way) | 2.8% (180) vs 5.8% (362) | fail (wrong way) |  |
+| close vs SMA20, in ADRs · LOWER | CLOSE | 550 | 10.4% (183) vs 11.4% (367) | fail (wrong way) | 2.2% (183) vs 6.0% (367) | fail (wrong way) |  |
+| close above the 6-month high · yes | CLOSE | 550 | 9.2% (174) vs 12.0% (376) | fail (wrong way), p=0.041 the other way | 7.5% (174) vs 3.5% (376) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| close above the 52-week high · yes | CLOSE | 550 | 9.6% (136) vs 11.6% (414) | fail (wrong way) | 8.1% (136) vs 3.6% (414) | can't tell (discovery p >= 0.05) | **CHANGED** |
+| close above the all-time high · yes | CLOSE | 504 | 12.2% (74) vs 10.5% (430) | can't tell (discovery p >= 0.05) | 6.8% (74) vs 4.2% (430) | can't tell (discovery p >= 0.05) |  |
+| unscheduled catalyst (alerted rows only) · yes | ALERT | 175 | 11.6% (43) vs 8.3% (132) | can't tell (discovery p >= 0.05) | 2.3% (43) vs 3.8% (132) | fail (wrong way) | **CHANGED** |
+
+**27 of 63 verdicts change — read this as "frame A's negative/reversed reads mostly wash out to
+noise," NOT as a new confirmed signal.** 24 of the 27 flip sign in the raw rate difference, but
+almost every frame-B side lands on "can't tell" (does not clear discovery p<0.05), and the held-out
+block has exactly ONE runner (MRNA) — the pass bar is unclearable by construction this time, so
+nothing can be promoted regardless. **This does NOT reproduce the earlier (retracted) v1 addendum's
+"day-0/close-strength persists conditional on fill" claim** — re-checked directly on this frame's
+183 filled rows (not assumed to carry over): the pattern does not hold cleanly here, because the
+filled population itself is composed completely differently once WINDOW_OUT_OF_ORB is modeled as a
+real, dominant gate. No cluster claim is made in this replacement. **Two features clear discovery
+p<0.05 in the favourable direction and read as leads, but are flagged mechanical, not continuation
+signal:** `first_tick_preopen` (p=0.000) and `pm_rvol` (p=0.0125) both predict how MUCH WINDOW a
+candidate gets before the 09:45/10:00 cutoffs (a pre-open first tick submits at 09:31 with the full
+window; a 09:40 first tick has 5 minutes) — they predict FILL, not what happens after a fill, and
+should not be read as selection leads without separating that out. **0 PASS in frame B**, mechanically
+(see held-out above); the two frame-A′ PASSes (share price, dollar volume) both fall to "can't tell."
+
+**Timing: alerts by when they first passed, in frame B** (alerted, readable rows with a computed
+outcome): pre-open, n 161, filled 113, runnerB5 14 (8.7%); 09:30–09:44 (still inside the order
+window), n 3, filled 2, runnerB5 0; 09:45+ (WINDOW_OUT_OF_ORB), n 99, filled 0 by construction,
+runnerB5 0. Rejected rows for comparison, n 346, runnerB5 13 (3.8%). **This inverts the published
+doc's "late-passing alerts run more" lead**: in the live frame, alerts that first pass AFTER 09:45
+never get an order placed at all (0% by construction, not by outcome), so the finding that mattered
+for a close-based read (late-passing alerts ran more) is not translatable to a live-entry frame —
+those are exactly the alerts the live order never touches.
+
+**His labelled EPs — status / fill / outcome (verified against the actual code, not the earlier
+frame):** **BFLY 06-18 — WINDOW_OUT_OF_ORB**, never placed (its scan time was at/after 09:45).
+**TEAM 08-07 — FILLED at 09:31, px $146.80** (run_xadr from the close 4.88 → run_xadr_B from the
+fill 5.12 — a runner in BOTH frames now, not "never filled" as v1 wrongly said). **HTFL 08-14 —
+orb_invalid: ORB range $2.55 > 1.5× ATR $1.46 (stop_too_wide)** — never placed; the admission gate
+itself, not the fill window, is why. **PLTR 08-04 — FILLED at 09:31, px $148.63** (run_xadr 2.69 →
+run_xadr_B 4.59, short of the 5-ADR bar). **MRNA 08-19 — FILLED at 09:33, px $120.15** (run_xadr
+−1.30 → run_xadr_B **5.66, a runner** — the only held-out-block runner in frame B, and the sharpest
+reversal of the five: frame A's close-based read said MRNA never ran; measured from the actual live
+fill, it did).
+
+**What changes for the live entry.** Two of his five labelled EPs never get an order placed at all —
+one on timing (BFLY, scan time too late), one on the ATR admission gate (HTFL, opening range too
+wide relative to its own volatility) — neither is a gap-day SELECTION question; both happen before
+any of the 63 features could act. Two others (TEAM, MRNA) fill at 09:31–09:33 and are runners in the
+live frame that frame A's close-based read missed or understated — MRNA specifically flips from "no
+recovery" to "a real runner" once measured from where the order actually bought. Across the whole
+population, the single largest determinant of "ran big or not" is whether the order was ever placed
+or ever filled at all (54% never placed, mostly WINDOW_OUT_OF_ORB) — a fill/timing-mechanics
+question the 63 gap-day features were never built to answer, not a selection-rule gap. Nothing here
+argues for a rule change: 0 features pass in frame B, and the bar is mechanically unclearable this
+time (1 held-out runner). The frame-B-only runners (ABCL, AMBQ, FCEL 05-12, FLEX, INFQ, plus TEAM
+and MRNA above) are worth his eye only as names where the actual live entry outperformed the
+close-based read — descriptive, not a rule.
+
+**What this addendum does not answer / known approximations (stated, not hidden):**
+- The submit-time choice for REJECTED rows (chosen tick vs earliest tick) is not robust — see the
+  sensitivity check above; the fill-rate split by alerted/rejected should not be over-read.
+- The real-time gap re-check uses the submit-minute bar's OPEN as a proxy for a live tick
+  (`get_latest_trade`) — a coarser signal than the real gate sees.
+- Portfolio-state safeguards (position caps, daily-loss limit, drawdown breaker, /pause) are not
+  modeled — a FILLED row here is "would have triggered," not "would have executed regardless of the
+  rest of the book."
+- The 53 `abstain` (scan-window-gap) rows skew heavily toward alerted candidates (42 of 53) — the
+  single unreadable slice most likely to move a number if resolved.
+- Whether a limit-price buffer failure (price gaps clean through the limit before ever printing
+  below it again) affects any of the 183 fills was not separately audited beyond what `entry_walk`
+  already returns (`triggered_above_limit_never_filled` is counted inside `no_entry`, 37 total,
+  not broken out further).
+- Same 63 features only, no add/drop; the two reversed leads from the main study are not
+  re-registered here (out of scope).
+
+**Files:** `scripts/probes/_684/live_entry_bars.sql` (the one new pull) → `live_entry_bars.tsv`
+(236,265 rows, gitignored) → `study_orb_live.py` (imports `study.py` + `study_orb.py`, mirrors
+`sustain_reject_replay.entry_walk` verbatim) → `orb_live_status_out.txt`, `orb_live_results.tsv`
+(frame B), `orb_live_results_A.tsv` (frame A′, same population), `orb_live_outcomes.tsv` (per-row
+status/fill/outcome detail, all 667 rows).
+
 ## THE LINE
 
 Measurement only. No strategy, score, threshold, admission rule, stop, size, safeguard or live trade

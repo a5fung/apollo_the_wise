@@ -1,4 +1,5 @@
 # raw prod extracts and bulk outputs (>500 KB) — regenerate with extract.sh
 daily.tsv
 daily.tsv.gz
+live_entry_bars.tsv
 __pycache__/

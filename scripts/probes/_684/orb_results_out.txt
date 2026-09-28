@@ -1,0 +1,129 @@
+#684 ADDENDUM RESULTS — 667 rows with a frame-A 15-session outcome; 602 ORB-readable (>= 12/15 bars both [09:30,09:44) and [09:45,10:00)); 65 unreadable (0 had no orb_minutes.tsv row at all)
+unreadable by alerted: alerted 44 of 306 alerted rows; rejected 21 of 361 rejected rows
+
+FILL RATE (readable rows only, n=602): filled 191 (31.7%), unfilled 411 (68.3%)
+  alerted readable: n 262, filled 73 (27.9%)
+  rejected readable: n 340, filled 118 (34.7%)
+  exact-touch-only fills (high == ORB high to the cent, single touching bar): 1 of 191 filled rows
+
+RUNNER COMPOSITION:
+  frame A, published (all 667): runners>=5 71 (10.6%)  >=8 26
+  frame A, on readable-B population (602): runners>=5 64 (10.6%)  >=8 23
+  frame B, on readable-B population (602 with a computed RUN_B of 602 readable — 0 filled but the forward-daily join was incomplete, listed below): runners>=5 21 (3.5%)  >=8 8
+
+FRAME-A RUNNERS AND LIVE FILLABILITY: 71 frame-A runners total. Of the 64 that are ORB-readable, 45 were NEVER fillable (no 09:45-10:00 bar reached the opening-range high) — they ran on the gap day / later without ever triggering the live stop-buy order. 7 frame-A runners are ORB-unreadable (fillability unknown): CRSR 2026-05-27, NRIX 2026-06-08, ELVN 2026-06-11, AKTS 2026-06-12, DFTX 2026-06-22, FCEL 2026-06-24, FET 2026-07-31
+  never-fillable frame-A runners: RIOT 2026-05-01 (run_xadr=6.2, alerted=True), BB 2026-05-04 (run_xadr=8.7, alerted=False), GFS 2026-05-05 (run_xadr=5.9, alerted=False), SHLS 2026-05-05 (run_xadr=9.0, alerted=False), VCX 2026-05-05 (run_xadr=10.9, alerted=True), VOYG 2026-05-05 (run_xadr=13.5, alerted=True), ARM 2026-05-06 (run_xadr=8.0, alerted=False), NVAX 2026-05-06 (run_xadr=6.0, alerted=False), SMCI 2026-05-06 (run_xadr=5.1, alerted=True), UMC 2026-05-06 (run_xadr=17.3, alerted=False), DDOG 2026-05-07 (run_xadr=6.2, alerted=False), FLNC 2026-05-07 (run_xadr=6.1, alerted=True), MTSI 2026-05-07 (run_xadr=5.3, alerted=True), PCT 2026-05-07 (run_xadr=7.5, alerted=True), CRSR 2026-05-08 (run_xadr=16.8, alerted=False), FROG 2026-05-08 (run_xadr=5.1, alerted=True), CEVA 2026-05-11 (run_xadr=5.8, alerted=False), HLIT 2026-05-12 (run_xadr=9.7, alerted=True), TE 2026-05-12 (run_xadr=13.3, alerted=True), VPG 2026-05-12 (run_xadr=11.6, alerted=True), PENG 2026-05-13 (run_xadr=7.4, alerted=False), PSNL 2026-05-13 (run_xadr=12.5, alerted=False), CSCO 2026-05-14 (run_xadr=5.2, alerted=True), YETI 2026-05-14 (run_xadr=5.1, alerted=False), RDW 2026-05-18 (run_xadr=8.9, alerted=False), RLAY 2026-05-19 (run_xadr=7.0, alerted=False), WDAY 2026-05-22 (run_xadr=5.2, alerted=False), BHVN 2026-05-29 (run_xadr=5.6, alerted=True), HPE 2026-05-29 (run_xadr=12.6, alerted=False), QURE 2026-05-29 (run_xadr=9.1, alerted=False), AVAH 2026-06-02 (run_xadr=6.8, alerted=False), CGEM 2026-06-08 (run_xadr=7.1, alerted=False), ABSI 2026-06-15 (run_xadr=6.6, alerted=False), MMYT 2026-06-15 (run_xadr=5.4, alerted=True), OMER 2026-07-27 (run_xadr=8.6, alerted=False), TER 2026-07-29 (run_xadr=5.3, alerted=True), AAOI 2026-07-31 (run_xadr=6.5, alerted=False), BLZE 2026-07-31 (run_xadr=8.8, alerted=True), COHR 2026-07-31 (run_xadr=6.4, alerted=False), CSTL 2026-07-31 (run_xadr=5.1, alerted=False), FTK 2026-08-03 (run_xadr=7.4, alerted=True), LIFE 2026-08-04 (run_xadr=5.5, alerted=True), LFST 2026-08-06 (run_xadr=6.1, alerted=True), KURA 2026-08-13 (run_xadr=8.0, alerted=True), NTSK 2026-09-03 (run_xadr=5.6, alerted=False)
+
+frame A' (readable-B pop) best week = 2026-W19, best two = ['UMC', 'CRSR']
+frame B best week = 2026-W33, best two (by run_xadr_B) = ['HQ', 'ALOY']
+
+PER-FEATURE (readable-B population; rates = share >= 5 ADR in each frame):
+feature | when | n | frame A' (readable-B) fav/rest | frame A' verdict | frame B fav/rest | frame B verdict | published frame-A verdict (all 667) | CHANGED vs A'?
+ep_score | PRE | 542 | 196/12.2% vs 346/10.4% | can't tell (discovery p >= 0.05) | 196/3.6% vs 346/3.5% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+PRE_gap_pct_scan | PRE | 542 | 181/10.5% vs 361/11.4% | fail (wrong way) | 181/5.5% vs 361/2.5% | can't tell (discovery p >= 0.05) | fail (wrong way) | CHANGED
+PRE_ext_5d_pct | PRE | 542 | 180/6.7% vs 362/13.3% | fail (wrong way), p=0.009 the other way | 180/2.2% vs 362/4.1% | fail (wrong way), p=0.046 the other way | fail (wrong way), p=0.007 the other way | 
+PRE_ext_sma10_xadr | PRE | 542 | 180/10.0% vs 362/11.6% | fail (wrong way) | 180/2.8% vs 362/3.9% | fail (wrong way) | fail (wrong way) | 
+PRE_ext_sma20_xadr | PRE | 542 | 180/8.9% vs 362/12.2% | fail (wrong way) | 180/2.2% vs 362/4.1% | fail (wrong way) | fail (wrong way) | 
+PRE_ext_sma50_xadr | PRE | 536 | 178/8.4% vs 358/12.3% | fail (wrong way) | 178/2.2% vs 358/4.2% | fail (wrong way) | fail (wrong way) | 
+PRE_ext_ma_mean_xadr | PRE | 536 | 178/7.9% vs 358/12.6% | fail (wrong way) | 178/1.7% vs 358/4.5% | fail (wrong way), p=0.019 the other way | fail (wrong way) | 
+PRE_ext_20d_low_pct | PRE | 542 | 180/7.2% vs 362/13.0% | fail (wrong way), p=0.011 the other way | 180/2.2% vs 362/4.1% | fail (wrong way) | fail (wrong way), p=0.014 the other way | 
+PRE_chg_1m_pct | PRE | 542 | 180/7.8% vs 362/12.7% | fail (wrong way) | 180/2.2% vs 362/4.1% | fail (wrong way) | fail (wrong way) | 
+PRE_chg_3m_pct | PRE | 529 | 176/12.5% vs 353/9.6% | can't tell (discovery p >= 0.05) | 176/2.8% vs 353/3.4% | fail (wrong way) | can't tell (discovery p >= 0.05) | CHANGED
+PRE_base_range40_pct | PRE | 537 | 179/7.3% vs 358/12.8% | fail (wrong way), p=0.008 the other way | 179/2.8% vs 358/3.9% | fail (wrong way) | fail (wrong way), p=0.017 the other way | 
+PRE_base_range20_pct | PRE | 542 | 180/6.1% vs 362/13.5% | fail (wrong way), p=0.001 the other way | 180/3.9% vs 362/3.3% | can't tell (discovery p >= 0.05) | fail (wrong way), p=0.001 the other way | CHANGED
+PRE_base_absdisp40_xadr | PRE | 537 | 179/12.3% vs 358/10.3% | can't tell (discovery p >= 0.05) | 179/6.1% vs 358/2.2% | can't tell (held-out too thin) | can't tell (discovery p >= 0.05) | 
+PRE_days_since_6m_high | PRE | 542 | 183/9.3% vs 359/12.0% | fail (wrong way) | 183/2.7% vs 359/3.9% | fail (wrong way) | fail (wrong way) | 
+PRE_base_depth_6m_pct | PRE | 542 | 181/11.0% vs 361/11.1% | fail (wrong way) | 181/2.2% vs 361/4.2% | fail (wrong way) | can't tell (discovery p >= 0.05) | 
+PRE_dist_52w_high_xadr | PRE | 542 | 180/11.1% vs 362/11.0% | can't tell (discovery p >= 0.05) | 180/3.3% vs 362/3.6% | fail (wrong way) | fail (wrong way) | CHANGED
+PRE_cleared_6m_scanprice | PRE | 542 | 184/11.4% vs 358/10.9% | can't tell (discovery p >= 0.05) | 184/5.4% vs 358/2.5% | can't tell (discovery p >= 0.05) | fail (wrong way) | 
+PRE_cleared_52w_scanprice | PRE | 542 | 146/12.3% vs 396/10.6% | can't tell (discovery p >= 0.05) | 146/4.8% vs 396/3.0% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+PRE_cleared_ath_scanprice | PRE | 498 | 76/11.8% vs 422/10.4% | can't tell (discovery p >= 0.05) | 76/3.9% vs 422/2.6% | can't tell (discovery p >= 0.05) | fail (wrong way) | 
+PRE_above_sma50 | PRE | 536 | 326/11.3% vs 210/10.5% | can't tell (discovery p >= 0.05) | 326/3.7% vs 210/3.3% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+PRE_above_sma200 | PRE | 505 | 309/10.7% vs 196/10.2% | can't tell (discovery p >= 0.05) | 309/2.6% vs 196/3.1% | fail (wrong way) | can't tell (discovery p >= 0.05) | CHANGED
+PRE_n_ma_above | PRE | 536 | 243/12.8% vs 293/9.6% | can't tell (discovery p >= 0.05) | 243/4.5% vs 293/2.7% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+PRE_stage2 | PRE | 499 | 165/10.9% vs 334/10.5% | can't tell (discovery p >= 0.05) | 165/2.4% vs 334/3.0% | fail (wrong way) | fail (wrong way) | CHANGED
+PRE_rs_composite | PRE | 511 | 171/13.5% vs 340/10.3% | can't tell (discovery p >= 0.05) | 171/2.9% vs 340/4.1% | fail (wrong way) | can't tell (discovery p >= 0.05) | CHANGED
+PRE_in_rs_pool | PRE | 542 | 511/11.4% vs 31/6.5% | can't tell (discovery p >= 0.05) | 511/3.7% vs 31/0.0% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+PRE_catalyst_ord | PRE | 542 | 271/12.5% vs 271/9.6% | can't tell (discovery p >= 0.05) | 271/3.7% vs 271/3.3% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+PRE_themed | PRE | 542 | 145/8.3% vs 397/12.1% | fail (wrong way) | 145/2.8% vs 397/3.8% | fail (wrong way) | fail (wrong way) | 
+PRE_themed_7d | PRE | 542 | 86/8.1% vs 456/11.6% | fail (wrong way) | 86/2.3% vs 456/3.7% | fail (wrong way) | fail (wrong way) | 
+PRE_theme_early | PRE | 542 | 44/9.1% vs 498/11.2% | fail (wrong way) | 44/2.3% vs 498/3.6% | fail (wrong way) | fail (wrong way) | 
+PRE_regime_bull | PRE | 542 | 375/12.5% vs 167/7.8% | can't tell (discovery p >= 0.05) | 375/4.0% vs 167/2.4% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+PRE_spy_vs_50ma | PRE | 542 | 182/15.4% vs 360/8.9% | can't tell (discovery p >= 0.05) | 182/4.4% vs 360/3.1% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+PRE_prev_close | PRE | 542 | 180/16.1% vs 362/8.6% | PASS ⚠ labelled-EP conflict | 180/5.0% vs 362/2.8% | can't tell (discovery p >= 0.05) | can't tell (does not survive dropping the best two names) | CHANGED
+PRE_adr20_pct | PRE | 542 | 181/14.4% vs 361/9.4% | can't tell (held-out sign against) | 181/2.2% vs 361/4.2% | fail (wrong way) | can't tell (held-out sign against) | CHANGED
+PRE_dollar_vol_20d | PRE | 542 | 180/14.4% vs 362/9.4% | PASS | 180/5.0% vs 362/2.8% | can't tell (discovery p >= 0.05) | PASS | CHANGED
+PRE_repeat_scored_90d | PRE | 542 | 459/12.2% vs 83/4.8% | can't tell (discovery p >= 0.05) | 459/3.5% vs 83/3.6% | fail (wrong way) | can't tell (discovery p >= 0.05) | CHANGED
+PRE_pm_rvol | PRE | 493 | 165/14.5% vs 328/9.8% | can't tell (discovery p >= 0.05) | 165/3.6% vs 328/3.7% | fail (wrong way) | can't tell (discovery p >= 0.05) | CHANGED
+PRE_projected_vol_multiple | PRE | 287 | 96/7.3% vs 191/10.5% | fail (wrong way) | 96/4.2% vs 191/3.1% | can't tell (discovery p >= 0.05) | fail (wrong way) | CHANGED
+PRE_first_tick_preopen | PRE | 542 | 377/11.1% vs 165/10.9% | can't tell (discovery p >= 0.05) | 377/3.7% vs 165/3.0% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+O930_gap_open_pct | 0930 | 542 | 181/9.4% vs 361/11.9% | fail (wrong way), p=0.044 the other way | 181/4.4% vs 361/3.0% | can't tell (discovery p >= 0.05) | fail (wrong way) | CHANGED
+O930_cleared_6m_open | 0930 | 542 | 154/11.0% vs 388/11.1% | fail (wrong way) | 154/6.5% vs 388/2.3% | can't tell (held-out too thin) | fail (wrong way) | CHANGED
+O930_cleared_52w_open | 0930 | 542 | 115/11.3% vs 427/11.0% | can't tell (discovery p >= 0.05) | 115/4.3% vs 427/3.3% | can't tell (discovery p >= 0.05) | fail (wrong way) | 
+O930_cleared_ath_open | 0930 | 498 | 61/13.1% vs 437/10.3% | can't tell (discovery p >= 0.05) | 61/3.3% vs 437/2.7% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+O930_ext_open_sma50_xadr | 0930 | 536 | 178/12.4% vs 358/10.3% | can't tell (discovery p >= 0.05) | 178/3.4% vs 358/3.6% | fail (wrong way) | can't tell (discovery p >= 0.05) | CHANGED
+O930_ext_open_sma20_xadr | 0930 | 542 | 180/12.2% vs 362/10.5% | can't tell (discovery p >= 0.05) | 180/3.3% vs 362/3.6% | fail (wrong way) | can't tell (discovery p >= 0.05) | CHANGED
+O930_stage2_open | 0930 | 499 | 208/10.1% vs 291/11.0% | fail (wrong way) | 208/2.4% vs 291/3.1% | fail (wrong way) | fail (wrong way) | 
+O945_orb_position | 0945 | 542 | 181/9.4% vs 361/11.9% | fail (wrong way) | 181/9.4% vs 361/0.6% | can't tell (held-out too thin) | fail (wrong way) | CHANGED
+O945_orb_range_xadr | 0945 | 542 | 180/11.1% vs 362/11.0% | can't tell (discovery p >= 0.05) | 180/1.7% vs 362/4.4% | fail (wrong way), p=0.027 the other way | can't tell (discovery p >= 0.05) | CHANGED
+O945_gap_0945_pct | 0945 | 542 | 181/7.2% vs 361/13.0% | fail (wrong way), p=0.004 the other way | 181/6.1% vs 361/2.2% | can't tell (held-out too thin) | fail (wrong way), p=0.003 the other way | CHANGED
+O945_close_vs_open_pct | 0945 | 542 | 181/9.9% vs 361/11.6% | fail (wrong way) | 181/6.6% vs 361/1.9% | can't tell (held-out too thin) | fail (wrong way) | CHANGED
+O945_orb_vol_vs_20d | 0945 | 542 | 181/11.0% vs 361/11.1% | fail (wrong way) | 181/5.0% vs 361/2.8% | can't tell (discovery p >= 0.05) | fail (wrong way) | CHANGED
+O945_orb_high_above_6m | 0945 | 542 | 193/9.8% vs 349/11.7% | fail (wrong way) | 193/5.7% vs 349/2.3% | can't tell (discovery p >= 0.05) | fail (wrong way) | CHANGED
+CLOSE_close_loc | CLOSE | 542 | 181/11.6% vs 361/10.8% | can't tell (discovery p >= 0.05) | 181/7.7% vs 361/1.4% | can't tell (held-out too thin) | can't tell (discovery p >= 0.05) | 
+CLOSE_range_xadr | CLOSE | 542 | 181/6.6% vs 361/13.3% | fail (wrong way), p=0.003 the other way | 181/5.5% vs 361/2.5% | can't tell (held-out too thin) | fail (wrong way), p=0.003 the other way | CHANGED
+CLOSE_vol_vs_max250 | CLOSE | 542 | 181/12.7% vs 361/10.2% | can't tell (discovery p >= 0.05) | 181/6.1% vs 361/2.2% | can't tell (held-out too thin) | can't tell (discovery p >= 0.05) | 
+CLOSE_vol_vs_avg50 | CLOSE | 542 | 181/9.9% vs 361/11.6% | fail (wrong way) | 181/6.1% vs 361/2.2% | can't tell (held-out too thin) | can't tell (discovery p >= 0.05) | CHANGED
+CLOSE_close_vs_open_pct | CLOSE | 542 | 181/8.8% vs 361/12.2% | fail (wrong way) | 181/7.2% vs 361/1.7% | can't tell (held-out too thin) | fail (wrong way), p=0.047 the other way | CHANGED
+CLOSE_gap_close_pct | CLOSE | 542 | 181/9.9% vs 361/11.6% | fail (wrong way) | 181/7.7% vs 361/1.4% | can't tell (held-out too thin) | fail (wrong way) | CHANGED
+CLOSE_ext_sma50_xadr | CLOSE | 536 | 178/10.1% vs 358/11.5% | fail (wrong way) | 178/1.7% vs 358/4.5% | fail (wrong way), p=0.015 the other way | fail (wrong way) | 
+CLOSE_ext_sma20_xadr | CLOSE | 542 | 180/10.6% vs 362/11.3% | fail (wrong way) | 180/0.0% vs 362/5.2% | fail (wrong way), p=0.000 the other way | fail (wrong way) | 
+CLOSE_cleared_6m | CLOSE | 542 | 171/9.9% vs 371/11.6% | fail (wrong way) | 171/7.0% vs 371/1.9% | can't tell (held-out too thin) | fail (wrong way) | CHANGED
+CLOSE_cleared_52w | CLOSE | 542 | 134/10.4% vs 408/11.3% | fail (wrong way) | 134/6.7% vs 408/2.5% | can't tell (held-out too thin) | fail (wrong way) | CHANGED
+CLOSE_cleared_ath | CLOSE | 498 | 74/13.5% vs 424/10.1% | can't tell (discovery p >= 0.05) | 74/5.4% vs 424/2.4% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+ALERT_expct_unscheduled | ALERT | 170 | 43/9.3% vs 127/7.9% | can't tell (discovery p >= 0.05) | 43/4.7% vs 127/3.9% | can't tell (discovery p >= 0.05) | can't tell (discovery p >= 0.05) | 
+
+verdicts changed between frame A' (readable-B) and frame B: 29 of 63
+  CHANGED: PRE_gap_pct_scan — frame A' [fail (wrong way)] -> frame B [can't tell (discovery p >= 0.05)]
+  CHANGED: PRE_chg_3m_pct — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way)]
+  CHANGED: PRE_base_range20_pct — frame A' [fail (wrong way), p=0.001 the other way] -> frame B [can't tell (discovery p >= 0.05)]
+  CHANGED: PRE_dist_52w_high_xadr — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way)]
+  CHANGED: PRE_above_sma200 — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way)]
+  CHANGED: PRE_stage2 — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way)]
+  CHANGED: PRE_rs_composite — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way)]
+  CHANGED: PRE_prev_close — frame A' [PASS ⚠ labelled-EP conflict] -> frame B [can't tell (discovery p >= 0.05)]
+  CHANGED: PRE_adr20_pct — frame A' [can't tell (held-out sign against)] -> frame B [fail (wrong way)]
+  CHANGED: PRE_dollar_vol_20d — frame A' [PASS] -> frame B [can't tell (discovery p >= 0.05)]
+  CHANGED: PRE_repeat_scored_90d — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way)]
+  CHANGED: PRE_pm_rvol — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way)]
+  CHANGED: PRE_projected_vol_multiple — frame A' [fail (wrong way)] -> frame B [can't tell (discovery p >= 0.05)]
+  CHANGED: O930_gap_open_pct — frame A' [fail (wrong way), p=0.044 the other way] -> frame B [can't tell (discovery p >= 0.05)]
+  CHANGED: O930_cleared_6m_open — frame A' [fail (wrong way)] -> frame B [can't tell (held-out too thin)]
+  CHANGED: O930_ext_open_sma50_xadr — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way)]
+  CHANGED: O930_ext_open_sma20_xadr — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way)]
+  CHANGED: O945_orb_position — frame A' [fail (wrong way)] -> frame B [can't tell (held-out too thin)]
+  CHANGED: O945_orb_range_xadr — frame A' [can't tell (discovery p >= 0.05)] -> frame B [fail (wrong way), p=0.027 the other way]
+  CHANGED: O945_gap_0945_pct — frame A' [fail (wrong way), p=0.004 the other way] -> frame B [can't tell (held-out too thin)]
+  CHANGED: O945_close_vs_open_pct — frame A' [fail (wrong way)] -> frame B [can't tell (held-out too thin)]
+  CHANGED: O945_orb_vol_vs_20d — frame A' [fail (wrong way)] -> frame B [can't tell (discovery p >= 0.05)]
+  CHANGED: O945_orb_high_above_6m — frame A' [fail (wrong way)] -> frame B [can't tell (discovery p >= 0.05)]
+  CHANGED: CLOSE_range_xadr — frame A' [fail (wrong way), p=0.003 the other way] -> frame B [can't tell (held-out too thin)]
+  CHANGED: CLOSE_vol_vs_avg50 — frame A' [fail (wrong way)] -> frame B [can't tell (held-out too thin)]
+  CHANGED: CLOSE_close_vs_open_pct — frame A' [fail (wrong way)] -> frame B [can't tell (held-out too thin)]
+  CHANGED: CLOSE_gap_close_pct — frame A' [fail (wrong way)] -> frame B [can't tell (held-out too thin)]
+  CHANGED: CLOSE_cleared_6m — frame A' [fail (wrong way)] -> frame B [can't tell (held-out too thin)]
+  CHANGED: CLOSE_cleared_52w — frame A' [fail (wrong way)] -> frame B [can't tell (held-out too thin)]
+
+TIMING COMPOSITION, frame B (alerted, readable-B rows with a computed RUN_B only):
+  first passed before the open: n 163, runnerB5 5 (3.1%), filled 45/163
+  first passed 09:30-09:44 (inside the order window): n 3, runnerB5 0 (0.0%), filled 1/3
+  first passed 09:45+ (after the order window closed): n 96, runnerB5 5 (5.2%), filled 27/96
+  rejected rows (readable-B, has RUN_B): n 340, runnerB5 11 (3.2%)
+
+LABELLED EPs — ORB readability / fill / frame-B outcome:
+  BFLY 2026-06-18: readable, NEVER FILLED (order would have been cancelled unfilled at 10:00)
+  PLTR 2026-08-04: filled at 09:53:00, run_xadr (frame A, from close) = 2.69, run_xadr_B (frame B, from ORB fill) = 4.10
+  TEAM 2026-08-07: readable, NEVER FILLED (order would have been cancelled unfilled at 10:00)
+  HTFL 2026-08-14: filled at 09:53:00, run_xadr (frame A, from close) = 4.44, run_xadr_B (frame B, from ORB fill) = 5.44
+  MRNA 2026-08-19: filled at 09:46:00, run_xadr (frame A, from close) = -1.30, run_xadr_B (frame B, from ORB fill) = 4.81
+
