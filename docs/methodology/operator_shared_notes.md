@@ -1637,3 +1637,16 @@ Our live trades, read from `mi_live_trades` the same day:
 - **Filed as H12 and H13** in `docs/analysis/327_hypotheses_2026-09-27.md` (#327); both are $0 replays on the
   277 real EPs. Adopting either in live trading is a stop/entry change — his call, CHANGE_PROCESS.
 
+
+## 2026-09-28 — OKTA: a 10-day-average touch that recovered (operator, verbatim)
+
+> *"okta stopped today is a example where waiting for close may be better, often i see 10sma touch then recover,
+> which is what happened to it today"*
+
+- **What the record shows:** live trade 382 (entered $167.88 on 08-27, high seen $212.50) had its trail stop at
+  **$193.25 = the 10-day average** (closes through 09-25 average $193.27). OKTA opened **$192.02** on 09-28, below
+  the stop, sold at **$191.50** at 09:30:01 (+$47), low **$190.50**, then **$197.64** by 09:58 ET.
+- **Standing evidence:** the 09-06 exit ruling tested close-only trailing on 65 MAGNA53 trades and it lost 5.3R vs
+  the intraday trail (`docs/setups/magna53_ep.md`, in-sample, no holdout). His hybrid (close-based unless it slices
+  through hard — H13 in `docs/analysis/327_hypotheses_2026-09-27.md`) was never tested on the live exit stack.
+- **Any change to the live trail is his call** (THE LINE, CHANGE_PROCESS).
