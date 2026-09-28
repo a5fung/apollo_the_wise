@@ -31,3 +31,15 @@ single-bar ORB, admission gates, 10:00 cancel post-2026-08-01, the real pipeline
 same population), `orb_live_outcomes.tsv` (per-row status/fill/outcome detail). Written up in
 `docs/analysis/684_ep_runner_selection_2026-09-28.md` §Addendum 2026-09-28 — measured from the
 actual live MAGNA53 entry.
+
+FOLLOW-UP (2026-09-28) — late alerts (first pass 09:45-09:59 ET), three options: `late_alerts.py`
+(pre-registered docstring) reuses `orb_live_outcomes.tsv` for the LATE/CONTROL population, `pop.tsv`
+for scan times, `daily.tsv.gz` for forward sessions/prior closes, and one new pull
+`live_entry_bars_full.sql` → `live_entry_bars_full.tsv` (236,265 rows, gitignored — the same
+09:30-16:00 population as `live_entry_bars.tsv`, extended with CLOSE, which the exit-ladder walk
+needs and the fill-only walk didn't). Fill mechanics reuse `study_orb_live.entry_walk`; P&L reuses
+`agents/market_intelligence/live_fill_counterfactuals.walk_arm` (harvest="live_ladder") under
+`rule_eras.exit_rules_as_of` (era D) — the same tool `sustain_reject_replay.py` already uses for an
+identically-shaped question. Outputs: `late_alerts_out.txt`, `late_alerts_detail.tsv` (per-row
+audit). Written up in `docs/analysis/684_ep_runner_selection_2026-09-28.md` §Late alerts (first pass
+09:45–09:59): three options, replayed.

@@ -609,6 +609,68 @@ close-based read — descriptive, not a rule.
 (frame B), `orb_live_results_A.tsv` (frame A′, same population), `orb_live_outcomes.tsv` (per-row
 status/fill/outcome detail, all 667 rows).
 
+## Late alerts (first pass 09:45–09:59): three options, replayed
+
+**MEASUREMENT ONLY, $0, read-only. No recommendation — the choice is his.** Probe:
+`scripts/probes/_684/late_alerts.py` (pre-registered docstring, written before any number below).
+Population = live-source ALERTED rows only. LATE = 99 rows whose first pass is 09:45–09:59 ET
+(today's WINDOW_OUT_OF_ORB — 15 at 09:45, 58 at 09:50, 26 at 09:55), holding 14 of the 35 alerted
+frame-A runners. CONTROL = the 164 in-window alerted rows, replayed exactly as frame B (unchanged).
+Entry mechanics reuse `entry_walk` (the same fill-walk from the addendum above); P&L reuses
+`agents.market_intelligence.live_fill_counterfactuals.walk_arm` (harvest="live_ladder") — the SAME
+tool `sustain_reject_replay.py` already uses for this exact shape of question — with
+`rule_eras.exit_rules_as_of(2026-09-28, signal_type="magna53")`, confirmed era D (1/3 partial at
++8R, stop to breakeven at +3R, trail max(SMA10,SMA20) via `trail_prior_closes`). The alternative
+named, `delayed_entry_shadow.compute_settlement`, was read and NOT used — it implements a
+structurally different two-arm M-trail lane whose parameters do not map onto era D's fields.
+Gap-throughs charge at the open in both the fill walk and the exit walk — already how both
+functions work, confirmed by reading them, not assumed. **Option 1** keeps today's order
+(09:30-bar ORB, same admission gates, same entry−2R stop, same +8R/+3R R-frame) and only moves the
+submit time to the first-pass tick and the cancel time later (10:30 ET primary; 10:00 and 11:00
+alongside). **Option 2** builds a fresh breakout at the first-pass minute (ORB = the running high/low
+since 09:30, same buffer; stop = that running low directly, R = entry − that low, one R for both the
+stop and the +8R/+3R frame; same admission gates applied to this option's own high/low — an
+assumption, stated, not hidden) with cancel at 11:00 ET primary (10:30 alongside). **The running
+high/low is taken strictly BEFORE the first-pass minute, not through it** — an earlier draft included
+that minute's own bar, which made 3 of 15 option-2 fills a look-ahead artifact (the trigger equalled
+that bar's own high, so it "crossed" itself); caught in review before this was reported, fixed, and
+re-run (`late_alerts.py::running_high_low`). Every settled
+trade reached a definitive outcome inside the stored forward data (0 rows stuck "pending" on missing
+future bars, across all three cells) — the abstains below are genuine walk ambiguity (a same-bar
+stop-and-target type case), not a data limit.
+
+| option | fills | runners caught | R per trade | loss rate | avg loss | worst loss | drop-best-two (R/trade) |
+|---|---|---|---|---|---|---|---|
+| CONTROL (today's rule, unchanged) | 115/164 (70%) | 14 stop-indep. (of 115 filled) | +0.08R (n=110 settled) | 55% | −0.93R | −1.27R | −0.05R (n=108) |
+| Option 3 — today, skip LATE | 0/99 (0%) | 0 | n/a — zero line | n/a | n/a | n/a | n/a |
+| Option 1 — move cutoff, cancel 10:30 | 41/99 (41%) | 6/14 labelled + 5 stop-indep. | −0.05R (n=39 settled) | 54% | −0.84R | −1.15R | −0.24R (n=37) |
+| Option 2 — fresh breakout, cancel 11:00 | 15/99 (15%) | 2/14 labelled + 2 stop-indep. | −0.52R (n=15 settled) | 73% | −0.91R | −1.95R | −0.77R (n=13) |
+
+**Alongside (other cancel times, same population):** Option 1 at 10:00 ET fills 26/99 (26%), catches
+4/14 labelled runners, R/trade +0.10R (n=26, drop-best-two −0.19R); at 11:00 ET fills 45/99 (45%),
+catches 8/14, R/trade −0.02R (n=43, drop-best-two −0.20R). Option 2 at 10:30 ET fills 14/99 (14%),
+catches 1/14, R/trade −0.49R (n=14, drop-best-two −0.75R). **Losses beyond −1.5R:** 0 in CONTROL, 0
+in Option 1 at every cancel time, 1 in Option 2 at both cancel times (its worst single loss, −1.95R).
+**Option 2's admission gate is the dominant fact about it:** 62 of 99 rows never clear
+`validate_orb_entry` (the same ATR-vs-ORB-range check today's system already runs) because a running
+high/low accumulated over up to 30 minutes is a far wider range than a single 1-minute bar, so most
+candidates are rejected before an order is even considered — not a fill-window problem, an admission
+one.
+
+**N limits, stated plainly: LATE is 99 rows holding 14 labelled runners; every settled cell above is
+13–43 trades.** A result built on 1–2 names is a hint, not proof — the drop-best-two column moves
+every option's R/trade down by 0.2–0.3R on this population, which is the size of the whole effect
+being measured. Read this as: **neither LATE option, nor CONTROL itself (the baseline, not a
+treatment), shows a clearly positive edge under today's actual exit ladder** — CONTROL is barely
+breakeven and turns negative once its two best names are set aside, so LATE's negative or near-zero
+reads are not obviously worse than what the in-window population already does under the same rules.
+Option 1 (move the cutoff) fills far more
+often and catches several times more of the labelled runners than Option 2 (fresh breakout), whose
+main effect is to get rejected by the system's own admission gate rather than to change what fills.
+Option 2 also carries the only loss beyond −1.5R and the highest loss rate of the four cells. Every
+number here is a replay under the CURRENT (2026-09-28) exit ladder, not a live order — the choice
+among these options, or none of them, is his.
+
 ## THE LINE
 
 Measurement only. No strategy, score, threshold, admission rule, stop, size, safeguard or live trade

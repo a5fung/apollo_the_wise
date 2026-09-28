@@ -2,4 +2,5 @@
 daily.tsv
 daily.tsv.gz
 live_entry_bars.tsv
+live_entry_bars_full.tsv
 __pycache__/

@@ -1,0 +1,37 @@
+#684 LATE-ALERTS FOLLOW-UP RESULTS — LATE n=99, CONTROL n=164
+TODAY (era resolution) = 2026-09-28, era D rules: {'stop_mode': 'entry_minus_2r', 'intraday_partial_r': 8.0, 'breakeven_at_r': 3.0, 'trail_prior_closes': True, 'breakeven_at_partial': True, 'ladder_partial': False, 'score_separation': True}
+
+LATE frame-A runners (close-based, of 35 alerted total): 14 — AKTS 2026-06-12, ALOY 2026-06-01, BHVN 2026-05-29, BLSH 2026-08-13, BLZE 2026-07-31, CAI 2026-08-06, EFOR 2026-07-22, FROG 2026-05-08, HQ 2026-06-15, KURA 2026-08-13, MMYT 2026-06-15, RIOT 2026-05-01, VCX 2026-05-05, VOYG 2026-05-05
+
+CONTROL status breakdown: {'orb_invalid': 15, 'filled': 115, 'no_entry': 21, 'gap_below_floor': 13}
+CONTROL (today's rule): n=164 filled=115 (70%) settled=110 R/trade=+0.08R loss_rate=55% avg_loss=-0.93R worst=-1.27R beyond-1.5R=0
+CONTROL, drop-best-two: n=162 filled=113 (70%) settled=108 R/trade=-0.05R loss_rate=56% avg_loss=-0.93R worst=-1.27R beyond-1.5R=0
+  CONTROL stop-independent runners (RUN>=5 ADR from fill): 14 of 115 filled
+
+OPTION 3 (today, skip LATE alerts): n=99 filled=0 (0%) — the zero line.
+
+OPTION 1, cancel 10:30 ET [PRIMARY]: status {'filled': 41, 'orb_invalid': 11, 'no_930_bar': 3, 'no_entry': 43, 'abstain': 1}
+OPTION 1 cancel=10:30: n=99 filled=41 (41%) settled=39 R/trade=-0.05R loss_rate=54% avg_loss=-0.84R worst=-1.15R beyond-1.5R=0
+OPTION 1 cancel=10:30, drop-best-two: n=97 filled=39 (40%) settled=37 R/trade=-0.24R loss_rate=57% avg_loss=-0.84R worst=-1.15R beyond-1.5R=0
+  OPTION 1 [10:30]: LATE frame-A runners caught (filled) = 6 of 14; stop-independent runners (RUN>=5 ADR from fill) = 5 of 41 filled
+
+OPTION 1, cancel 10:00 ET [alt]: status {'filled': 26, 'orb_invalid': 11, 'no_entry': 58, 'no_930_bar': 3, 'abstain': 1}
+OPTION 1 cancel=10:00: n=99 filled=26 (26%) settled=26 R/trade=+0.10R loss_rate=54% avg_loss=-0.81R worst=-1.00R beyond-1.5R=0
+OPTION 1 cancel=10:00, drop-best-two: n=97 filled=24 (25%) settled=24 R/trade=-0.19R loss_rate=58% avg_loss=-0.81R worst=-1.00R beyond-1.5R=0
+  OPTION 1 [10:00]: LATE frame-A runners caught (filled) = 4 of 14; stop-independent runners (RUN>=5 ADR from fill) = 3 of 26 filled
+
+OPTION 1, cancel 11:00 ET [alt]: status {'filled': 45, 'orb_invalid': 11, 'no_930_bar': 3, 'no_entry': 39, 'abstain': 1}
+OPTION 1 cancel=11:00: n=99 filled=45 (45%) settled=43 R/trade=-0.02R loss_rate=53% avg_loss=-0.86R worst=-1.15R beyond-1.5R=0
+OPTION 1 cancel=11:00, drop-best-two: n=97 filled=43 (44%) settled=41 R/trade=-0.20R loss_rate=56% avg_loss=-0.86R worst=-1.15R beyond-1.5R=0
+  OPTION 1 [11:00]: LATE frame-A runners caught (filled) = 8 of 14; stop-independent runners (RUN>=5 ADR from fill) = 7 of 45 filled
+
+OPTION 2, cancel 11:00 ET [PRIMARY]: status {'orb_invalid': 62, 'no_entry': 17, 'filled': 15, 'abstain': 5}
+OPTION 2 cancel=11:00: n=99 filled=15 (15%) settled=15 R/trade=-0.52R loss_rate=73% avg_loss=-0.91R worst=-1.95R beyond-1.5R=1
+OPTION 2 cancel=11:00, drop-best-two: n=97 filled=13 (13%) settled=13 R/trade=-0.77R loss_rate=85% avg_loss=-0.91R worst=-1.95R beyond-1.5R=1
+  OPTION 2 [11:00]: LATE frame-A runners caught (filled) = 2 of 14; stop-independent runners (RUN>=5 ADR from fill) = 2 of 15 filled
+
+OPTION 2, cancel 10:30 ET [alt]: status {'orb_invalid': 62, 'no_entry': 17, 'filled': 14, 'abstain': 6}
+OPTION 2 cancel=10:30: n=99 filled=14 (14%) settled=14 R/trade=-0.49R loss_rate=71% avg_loss=-0.90R worst=-1.95R beyond-1.5R=1
+OPTION 2 cancel=10:30, drop-best-two: n=97 filled=12 (12%) settled=12 R/trade=-0.75R loss_rate=83% avg_loss=-0.90R worst=-1.95R beyond-1.5R=1
+  OPTION 2 [10:30]: LATE frame-A runners caught (filled) = 1 of 14; stop-independent runners (RUN>=5 ADR from fill) = 1 of 14 filled
+
