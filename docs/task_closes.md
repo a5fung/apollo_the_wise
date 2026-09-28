@@ -1818,3 +1818,18 @@ probe `scripts/probes/_684/`.
 - ⚠ The critic could not prove WHEN the registration text was written (the probe was edited after the run; its
   outputs are byte-identical under the current code, so the edit changed text only).
 - **His rulings on the three forks, 2026-09-28 (*"ok"* to the recs):** (1) re-check on the September block once it has 15 sessions (~10-16) — YES, filed as a task once a close makes room; (2) measure runs from the opening-range high — YES, running the same day as an addendum; (3) a lane for the rejected runners — NOT YET.
+
+## #685 — his hybrid trail replayed on real EPs: no rule shown to beat today's stop, none shown to lose to it (2026-09-28)
+
+BAR: "DoD: a pre-registered paired read of the hybrid vs the live intraday trail, with n, tail and worst loss, and a
+one-paragraph proposal for his ruling"
+
+EVIDENCE: `docs/analysis/685_hybrid_trail_2026-09-28.md` (VERIFIED AND CORRECTED section and "Proposal for his
+ruling"); probe `scripts/probes/_685/` (pre-registration in `study.py`'s docstring, check files `check_*`).
+
+- **Anchor:** the 09-06 close-only result reproduced exactly with today's code (n=62, +3.91 vs −1.40); OKTA's 14 live
+  stop moves reproduce to the cent; the independent check's own walker matches 51 of 51 trades.
+- **Paired read, n=79, today's exit stack:** today −5.8R · close-only −9.9R · slice k=2 −9.8R · k=3 −11.1R · first-hour
+  grace −6.5R; trades ≥ 3 ORB-R 9 / 8 / 8; no loss beyond −1.5R in any arm (0 of 79).
+- **Check's correction:** the gap is FTK and INFQ; without them every hold arm is flat or better (+0.04R to +1.56R).
+- **Proposal written;** his options (a) keep and close, (b) keep and record the first-hour-grace exit in shadow — rec (b).

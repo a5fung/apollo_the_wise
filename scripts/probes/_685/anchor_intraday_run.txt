@@ -1,0 +1,10 @@
+  deduped 3 duplicate ticker/day alert row(s) — one ORB entry per name per day
+replay[era_c_rec_intraday_uc0]: 267 alert campaigns -> settled 99, no_entry 35, abstain 46 (17%), open_at_horizon 2, other 85
+  re-admission under era_c_rec_intraday_uc0: admit 142, reject 81, abstain 44
+  R [all alerts]: n=99  >=3R 6  >=5R 2  p90 +2.58   | median -0.36 mean +0.17 sum +16.5
+     ⚠ 2 row(s) STILL OPEN at the horizon and NOT in the above. A looser exit rule's benefit hides here — never compare rule-sets on settled rows alone.
+  R [re-admitted only]: n=65  >=3R 5  >=5R 1  p90 +2.74   | median -0.26 mean +0.19 sum +12.1
+     ⚠ 2 row(s) STILL OPEN at the horizon and NOT in the above. A looser exit rule's benefit hides here — never compare rule-sets on settled rows alone.
+  abstain reasons: {'day0_fill_bar_straddles_stop': 3, 'entry_window_gaps': 37, 'no_930_bar_for_orb': 5, 'fwd_stop_and_breakeven_same_day': 1}
+  written: /Users/alvinfung/apollo_the_wise/scripts/probes/_685/anchor_intraday.tsv
+  ✅ abstain 17% within the 30% ceiling (baseline 17%) — replay is quotable.

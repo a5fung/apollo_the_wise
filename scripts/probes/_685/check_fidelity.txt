@@ -1,0 +1,65 @@
+OKTA stop line, own SMA vs the live broker stop set at 16:45 (window without / with the entry-day close):
+   2026-08-28 close 166.23 low 166.10 line(no d0) 144.04 line(with d0) 145.59 -> my broker move None | live move None 
+   2026-08-31 close 173.04 low 164.50 line(no d0) 145.60 line(with d0) 147.17 -> my broker move None | live move None 
+   2026-09-01 close 166.43 low 162.01 line(no d0) 146.84 line(with d0) 148.51 -> my broker move None | live move None 
+   2026-09-02 close 163.15 low 157.73 line(no d0) 147.61 line(with d0) 150.71 -> my broker move None | live move None 
+   2026-09-03 close 170.42 low 163.50 line(no d0) 150.46 line(with d0) 154.33 -> my broker move None | live move None 
+   2026-09-04 close 170.60 low 167.47 line(no d0) 154.10 line(with d0) 157.88 -> my broker move 154.1 | live move 154.1 MATCH
+   2026-09-08 close 167.59 low 165.74 line(no d0) 157.35 line(with d0) 161.54 -> my broker move 157.35 | live move 157.35 MATCH
+   2026-09-09 close 172.74 low 168.01 line(no d0) 161.52 line(with d0) 165.75 -> my broker move 161.52 | live move 161.52 MATCH
+   2026-09-10 close 171.11 low 169.39 line(no d0) 165.57 line(with d0) 169.42 -> my broker move 165.57 | live move 165.57 MATCH
+   2026-09-11 close 166.50 low 166.17 line(no d0) 168.78 line(with d0) 168.78 -> my broker move 168.78 | live move None   <- close below the line: live 16:45 sale sent (rejected)
+   2026-09-14 close 186.45 low 170.22 line(no d0) 170.80 line(with d0) 170.80 -> my broker move 170.8 | live move 170.8 MATCH
+   2026-09-15 close 190.45 low 183.00 line(no d0) 172.54 line(with d0) 172.54 -> my broker move 172.54 | live move 172.54 MATCH
+   2026-09-16 close 188.12 low 185.57 line(no d0) 174.71 line(with d0) 174.71 -> my broker move 174.71 | live move 174.71 MATCH
+   2026-09-17 close 190.02 low 183.00 line(no d0) 177.40 line(with d0) 177.40 -> my broker move 177.4 | live move 177.4 MATCH
+   2026-09-18 close 182.37 low 181.36 line(no d0) 178.60 line(with d0) 178.60 -> my broker move 178.6 | live move 178.6 MATCH
+   2026-09-21 close 191.33 low 180.55 line(no d0) 180.67 line(with d0) 180.67 -> my broker move 180.67 | live move 180.67 MATCH
+   2026-09-22 close 196.62 low 188.22 line(no d0) 183.57 line(with d0) 183.57 -> my broker move 183.57 | live move 183.57 MATCH
+   2026-09-23 close 205.36 low 196.00 line(no d0) 186.83 line(with d0) 186.83 -> my broker move 186.83 | live move 186.83 MATCH
+   2026-09-24 close 206.64 low 200.95 line(no d0) 190.39 line(with d0) 190.39 -> my broker move 190.39 | live move 190.39 MATCH
+   2026-09-25 close 195.19 low 195.04 line(no d0) 193.25 line(with d0) 193.25 -> my broker move 193.25 | live move 193.25 MATCH
+   OKTA live stop moves matched by the own line: 14 of 14
+A0 (own walker) vs the live exit, every live fill since 08-01 that the replay walks:
+   BLZE  2026-08-04 replay A0: settled -1.0 stop 2026-08-05 09:33:00 @18.45 | live closed 2026-08-04T19:50 stop_hit @20.06 stop_price 20.1 hard 20.1 R_live(own risk basis) -1.02
+   BTDR  2026-08-04 replay: stopped day 0 -1.00 | live closed 2026-08-04T13:46 stop_hit @12.47 stop_price 12.48 hard 12.48 R_live(own risk basis) -1.03
+   PLTR  2026-08-04 replay A0: settled 2.04 stop 2026-08-19 10:03:00 @170.47 | live closed 2026-08-19T14:03 stop_hit @170.3875 stop_price 170.47 hard 143.28 R_live(own risk basis) +3.42
+   FIGS  2026-08-07 replay: stopped day 0 -1.00 | live closed 2026-08-07T13:51 stop_hit @15.16 stop_price 15.19 hard 15.19 R_live(own risk basis) -0.37
+   NET   2026-08-07 replay: stopped day 0 -1.00 | live closed 2026-08-07T14:32 stop_hit @311.0 stop_price 311 hard 311 R_live(own risk basis) -1.00
+   TEAM  2026-08-07 replay A0: settled 3.03 stop 2026-08-25 15:44:00 @165.11 | live closed 2026-08-07T13:43 stop_hit @143.14 stop_price 143.21 hard 143.21 R_live(own risk basis) -1.02
+   ABCL  2026-08-10 replay A0: settled 1.52 stop 2026-08-24 09:32:00 @10.66 | live closed 2026-08-24T13:32 stop_hit @10.6514 stop_price 10.66 hard 8.4 R_live(own risk basis) +2.68
+   BW    2026-08-11 replay: stopped day 0 -1.00 | live closed 2026-08-11T13:31 stop_hit @11.45 stop_price 11.5 hard 11.5 R_live(own risk basis) -1.09
+   FRMI  2026-08-11 replay: stopped day 0 -1.00 | live closed 2026-08-11T13:31 stop_hit @7.055 stop_price 7.05 hard 7.05 R_live(own risk basis) -0.98
+   ETON  2026-08-14 replay A0: settled 1.01 stop 2026-08-28 09:30:00 @60.36 | live closed 2026-08-14T19:58 partial_profit @59.58 stop_price 55.2012 hard 53.01 R_live(own risk basis) +0.40
+   AMLX  2026-08-18 replay A0: settled 1.47 stop 2026-08-31 09:32:00 @34.46 | live closed 2026-08-31T13:32 stop_hit @34.45 stop_price 34.46 hard 27.089999999999996 R_live(own risk basis) +1.26
+   MRNA  2026-08-19 replay A0: settled 2.95 stop 2026-09-03 09:32:00 @145.2 | live closed 2026-09-03T13:32 stop_hit @145.1102 stop_price 145.2 hard 109.85 R_live(own risk basis) +2.08
+   MRVL  2026-08-19 replay: stopped day 0 -1.00 | live closed 2026-08-19T14:03 stop_hit @230.68 stop_price 230.15 hard 230.15 R_live(own risk basis) -0.95
+   CRWD  2026-08-27 replay A0: settled 0.0 stop 2026-08-28 10:06:00 @210.99 | live closed 2026-08-28T14:00 stop_hit @213.3 stop_price 213.3058 hard 201.28 R_live(own risk basis) +0.40
+   OKTA  2026-08-27 replay A0: settled -0.08 close_below 2026-09-11 None @166.5 | live closed 2026-09-28T13:30 stop_hit @191.5 stop_price 193.25 hard 150.51999999999998 R_live(own risk basis) +1.36
+   SOLS  2026-08-28 replay A0: settled -1.0 stop 2026-08-31 12:03:00 @62.69 | live closed 2026-08-31T16:03 stop_hit @62.67 stop_price 62.69 hard 62.69 R_live(own risk basis) -1.00
+   HOOD  2026-09-03 replay: not walked (no_entry:triggered_above_limit_never_filled) | live closed 2026-09-15T13:30 stop_hit @111.52 stop_price 111.45 hard 110.18 R_live(own risk basis) -0.84
+   PHVS  2026-09-08 replay: stopped day 0 -1.00 | live closed 2026-09-08T15:41 stop_hit @38.42 stop_price 38.49999999999999 hard 38.49999999999999 R_live(own risk basis) -1.02
+   SEI   2026-09-08 replay A0: settled 0.0 stop 2026-09-14 09:30:00 @62.78 | live closed 2026-09-22T19:23 stop_hit @64.86 stop_price 64.95 hard 57.81999999999999 R_live(own risk basis) +0.41
+   DFTX  2026-09-14 replay: stopped day 0 -1.00 | live closed 2026-09-14T14:19 stop_hit @40.37 stop_price 40.41 hard 40.41 R_live(own risk basis) -1.01
+   VICR  2026-09-17 replay A0: open None None None None @None | live filled   @ stop_price 230.67 hard 201.13010000000003 R_live(own risk basis) +0.00
+   KOD   2026-09-28 replay: not walked (no alert:) | live filled 2026-09-28T14:10 partial_profit @85.125 stop_price 63.15 hard 58.0818 R_live(own risk basis) +4.34
+OKTA 09-28 A0: settled R=1.391 mark=None stop 09:30:00 @192.02 (live: 191.50 at 09:30:01 = +1.361R); first bar {'m': datetime.datetime(2026, 9, 28, 9, 30, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), 'o': 192.02, 'h': 193.35, 'l': 190.5, 'c': 192.245}
+OKTA 09-28 A2: open R=None mark=1.879 None None @None (live: 191.50 at 09:30:01 = +1.361R); first bar {'m': datetime.datetime(2026, 9, 28, 9, 30, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), 'o': 192.02, 'h': 193.35, 'l': 190.5, 'c': 192.245}
+HOOD 09-03: alert detected 09:35 (submit 09:35); harness entry = stop-limit at ORB high 115.90 capped at 116.48 -> 'triggered_above_limit_never_filled'; live FILLED 118.37 at 09:36:09 (above the harness cap) — a real live trade the replay cannot enter
+LIVE-PATH READ SEI (seeded with the LIVE fill 62.8078 and hard stop 57.82; +3R arm 70.33) — what the live position would have done under each arm, NOT a population result:
+   A0: settled R=0.43 mark=None stop 2026-09-22 15:23:00 @64.95; line tests (day, line, low, close, bars) [('2026-09-22', 64.95, 64.86, 65.67, 388)]
+   A1: settled R=0.57 mark=None close_below 2026-09-22 None @65.67; line tests (day, line, low, close, bars) [('2026-09-22', 64.95, 64.86, 65.67, 388)]
+   A2: settled R=0.57 mark=None close_below 2026-09-22 None @65.67; line tests (day, line, low, close, bars) [('2026-09-22', 64.95, 64.86, 65.67, 388)]
+LIVE-PATH READ HOOD (seeded with the LIVE fill 118.37 and hard stop 110.18; +3R arm 134.36) — what the live position would have done under each arm, NOT a population result:
+   A0: settled R=-0.84 mark=None stop 2026-09-15 09:30:00 @111.45; line tests (day, line, low, close, bars) [('2026-09-15', 111.45, 105.8593, 110.45, 390)]
+   A1: settled R=-1.0 mark=None stop 2026-09-15 09:31:00 @110.18; line tests (day, line, low, close, bars) [('2026-09-15', 111.45, 105.8593, 110.45, 390)]
+   A2: settled R=-1.0 mark=None stop 2026-09-15 09:31:00 @110.18; line tests (day, line, low, close, bars) [('2026-09-15', 111.45, 105.8593, 110.45, 390)]
+   live SEI: closed 2026-09-22 15:23 exits [{"pnl": 4.104399999999998, "time": "2026-09-22T19:23:21.118672+00:00", "price": 64.86, "reason": "stop_hit", "shares": 2, "source": "websocket", "attempt": 1}] stop_price 64.95 breakeven_active t
+   live HOOD: closed 2026-09-15 09:30 exits [{"pnl": -27.400000000000034, "time": "2026-09-15T13:30:00.274809+00:00", "price": 111.52, "reason": "stop_hit", "shares": 4, "source": "websocket", "attempt":  stop_price 111.45 breakeven_active f
+   SEI 2026-09-11 o/h/l/c 65.69/70.33/65.26/67.42  (replay +3R arm 70.22 from the ORB-high entry 62.78; live arm 70.33 from the 62.8078 fill)
+   SEI 2026-09-14 o/h/l/c 62.89/64.29/60.5901/61.11  (replay +3R arm 70.22 from the ORB-high entry 62.78; live arm 70.33 from the 62.8078 fill)
+   SEI 2026-09-18 o/h/l/c 69.0/70.34/68.205/69.66  (replay +3R arm 70.22 from the ORB-high entry 62.78; live arm 70.33 from the 62.8078 fill)
+   SEI 2026-09-22 o/h/l/c 67.94/68.165/64.86/65.67  (replay +3R arm 70.22 from the ORB-high entry 62.78; live arm 70.33 from the 62.8078 fill)
+   HOOD 2026-09-15 o/h/l/c 111.715/112.85/105.8593/110.45
+   HOOD 2026-09-16 o/h/l/c 110.27/111.05/101.7045/104.42
+   HOOD 2026-09-17 o/h/l/c 110.1/110.55/106.08/109.81

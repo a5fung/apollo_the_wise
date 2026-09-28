@@ -1,0 +1,58 @@
+campaigns walked from day 1: 51 (study: 51); day-0 settled 35 (study: 35)
+campaign-set agreement with the study: missing-from-mine [] extra-in-mine []
+A0: my walk agrees with study A0 within 0.005R on 51 of 51
+A1: my walk agrees with study A1 within 0.005R on 51 of 51
+A2: my walk agrees with study A2k2 within 0.005R on 51 of 51
+WIDENED ALL: paired n=79 A0 -5.77 A1 -9.85 (-4.08, p 0.065, better/worse 8/12) A2k2 -9.79 (-4.02, p 0.032, better/worse 5/14)
+     A0: >=3 ORB-R 9 [(1.52, 'ABCL'), (1.85, 'QUBT'), (2.04, 'PLTR'), (2.95, 'MRNA'), (3.0, 'CLF'), (3.03, 'TEAM'), (3.96, 'QBTS'), (3.98, 'INFQ'), (6.27, 'FTK')]; >=8 ORB-R 1; worst -1.27; drop-best-2 -16.02
+     A1: >=3 ORB-R 8 [(2.05, 'QUBT'), (2.25, 'PLTR'), (2.26, 'INFQ'), (2.73, 'CLF'), (2.98, 'MRNA'), (3.22, 'FTK'), (4.08, 'TEAM'), (4.41, 'QBTS')]; >=8 ORB-R 2; worst -1.27; drop-best-2 -18.34
+     A2k2: >=3 ORB-R 8 [(2.04, 'QUBT'), (2.32, 'PLTR'), (2.78, 'FTK'), (2.88, 'INFQ'), (2.92, 'MRNA'), (3.04, 'CLF'), (3.85, 'QBTS'), (4.23, 'TEAM')]; >=8 ORB-R 1; worst -1.27; drop-best-2 -17.87
+WIDENED DISC: paired n=73 A0 -0.77 A1 -4.85 (-4.08, p 0.060, better/worse 8/12) A2k2 -4.79 (-4.02, p 0.034, better/worse 5/14)
+     A0: >=3 ORB-R 9 [(1.52, 'ABCL'), (1.85, 'QUBT'), (2.04, 'PLTR'), (2.95, 'MRNA'), (3.0, 'CLF'), (3.03, 'TEAM'), (3.96, 'QBTS'), (3.98, 'INFQ'), (6.27, 'FTK')]; >=8 ORB-R 1; worst -1.27; drop-best-2 -11.02
+     A1: >=3 ORB-R 8 [(2.05, 'QUBT'), (2.25, 'PLTR'), (2.26, 'INFQ'), (2.73, 'CLF'), (2.98, 'MRNA'), (3.22, 'FTK'), (4.08, 'TEAM'), (4.41, 'QBTS')]; >=8 ORB-R 2; worst -1.27; drop-best-2 -13.34
+     A2k2: >=3 ORB-R 8 [(2.04, 'QUBT'), (2.32, 'PLTR'), (2.78, 'FTK'), (2.88, 'INFQ'), (2.92, 'MRNA'), (3.04, 'CLF'), (3.85, 'QBTS'), (4.23, 'TEAM')]; >=8 ORB-R 1; worst -1.27; drop-best-2 -12.87
+per-trade where A0 / A1 / A2k2 differ (mine):
+   VG     2026-05-12 A0 +1.02 (stop 2026-05-26 09:30:00 @13.30) A1 +0.34 (close_below 2026-05-26) A2k2 +0.89 (slice 2026-05-26 10:05:00)
+   CSCO   2026-05-14 A0 +0.91 (stop 2026-06-05 14:48:00 @122.15) A1 +0.81 (close_below 2026-06-05) A2k2 +0.81 (close_below 2026-06-05 None)
+   KLAR   2026-05-14 A0 +0.67 (stop 2026-06-03 09:35:00 @16.91) A1 +0.70 (close_below 2026-06-03) A2k2 +0.37 (slice 2026-06-03 09:50:00)
+   INFQ   2026-05-21 A0 +3.98 (stop 2026-06-05 09:30:00 @16.16) A1 +2.26 (close_below 2026-06-05) A2k2 +2.88 (slice 2026-06-05 10:30:00)
+   QBTS   2026-05-21 A0 +3.96 (stop 2026-06-04 09:33:00 @26.85) A1 +4.41 (close_below 2026-06-04) A2k2 +3.85 (slice 2026-06-04 09:55:00)
+   QUBT   2026-05-21 A0 +1.85 (stop 2026-06-01 09:41:00 @11.03) A1 +2.05 (close_below 2026-06-03) A2k2 +2.04 (slice 2026-06-03 12:45:00)
+   CAMT   2026-06-02 A0 -0.40 (stop 2026-06-04 09:30:00 @176.04) A1 -1.00 (stop 2026-06-05) A2k2 -0.59 (slice 2026-06-04 10:05:00)
+   CLF    2026-07-23 A0 +3.00 (stop 2026-08-13 15:19:00 @12.10) A1 +2.73 (close_below 2026-08-14) A2k2 +3.04 (slice 2026-08-14 09:55:00)
+   FTK    2026-08-03 A0 +6.27 (stop 2026-08-17 09:30:00 @34.35) A1 +3.22 (close_below 2026-08-17) A2k2 +2.78 (slice 2026-08-17 13:55:00)
+   PLTR   2026-08-04 A0 +2.04 (stop 2026-08-19 10:03:00 @170.47) A1 +2.25 (close_below 2026-08-25) A2k2 +2.32 (slice 2026-08-21 10:20:00)
+   ZBRA   2026-08-04 A0 +0.66 (stop 2026-08-18 09:30:00 @366.78) A1 +0.65 (close_below 2026-08-18) A2k2 +0.44 (slice 2026-08-18 09:51:00)
+   QNST   2026-08-07 A0 +0.38 (stop 2026-08-21 09:33:00 @20.25) A1 +0.69 (close_below 2026-08-21) A2k2 +0.69 (close_below 2026-08-21 None)
+   TEAM   2026-08-07 A0 +3.03 (stop 2026-08-25 15:44:00 @165.11) A1 +4.08 (close_below 2026-09-08) A2k2 +4.23 (slice 2026-09-08 12:15:00)
+   ABCL   2026-08-10 A0 +1.52 (stop 2026-08-24 09:32:00 @10.66) A1 +1.47 (close_below 2026-08-24) A2k2 +1.47 (close_below 2026-08-24 None)
+   TH     2026-08-10 A0 -0.03 (stop 2026-08-13 09:30:00 @16.06) A1 +0.61 (close_below 2026-08-26) A2k2 -0.03 (slice 2026-08-13 10:30:00)
+   ATRO   2026-08-12 A0 -0.26 (stop 2026-08-19 10:04:00 @82.21) A1 -0.31 (close_below 2026-08-19) A2k2 -0.30 (slice 2026-08-19 14:11:00)
+   EROC   2026-08-12 A0 +1.44 (stop 2026-08-20 12:10:00 @13.29) A1 +1.33 (stop 2026-08-20) A2k2 +1.33 (stop 2026-08-20 12:26:00)
+   ETON   2026-08-14 A0 +1.01 (stop 2026-08-28 09:30:00 @60.36) A1 +0.89 (close_below 2026-08-28) A2k2 +0.91 (slice 2026-08-28 10:56:00)
+   AMLX   2026-08-18 A0 +1.47 (stop 2026-08-31 09:32:00 @34.46) A1 +1.23 (close_below 2026-08-31) A2k2 +1.39 (slice 2026-08-31 09:50:00)
+   MRNA   2026-08-19 A0 +2.95 (stop 2026-09-03 09:32:00 @145.20) A1 +2.98 (close_below 2026-09-04) A2k2 +2.92 (slice 2026-09-03 11:15:00)
+A2-unreadable campaigns (a line-test day with no minute bars): ['ARGX', 'HTFL', 'ROIV', 'THC', 'U']
+PRE-REGISTERED ALL: paired n=69 A0 +0.95 A1 -3.79 (-4.74, p 0.016, better/worse 6/12) A2k2 -2.77 (-3.72, p 0.032, better/worse 5/13)
+     A0: >=3 ORB-R 9 [(1.52, 'ABCL'), (1.85, 'QUBT'), (2.04, 'PLTR'), (2.95, 'MRNA'), (3.0, 'CLF'), (3.03, 'TEAM'), (3.96, 'QBTS'), (3.98, 'INFQ'), (6.27, 'FTK')]; >=8 ORB-R 1; worst -1.27; drop-best-2 -9.30
+     A1: >=3 ORB-R 8 [(2.05, 'QUBT'), (2.25, 'PLTR'), (2.26, 'INFQ'), (2.73, 'CLF'), (2.98, 'MRNA'), (3.22, 'FTK'), (4.08, 'TEAM'), (4.41, 'QBTS')]; >=8 ORB-R 2; worst -1.27; drop-best-2 -12.28
+     A2k2: >=3 ORB-R 8 [(2.04, 'QUBT'), (2.32, 'PLTR'), (2.78, 'FTK'), (2.88, 'INFQ'), (2.92, 'MRNA'), (3.04, 'CLF'), (3.85, 'QBTS'), (4.23, 'TEAM')]; >=8 ORB-R 1; worst -1.27; drop-best-2 -10.86
+PRE-REGISTERED DISC: paired n=63 A0 +5.95 A1 +1.21 (-4.74, p 0.017, better/worse 6/12) A2k2 +2.23 (-3.72, p 0.034, better/worse 5/13)
+     A0: >=3 ORB-R 9 [(1.52, 'ABCL'), (1.85, 'QUBT'), (2.04, 'PLTR'), (2.95, 'MRNA'), (3.0, 'CLF'), (3.03, 'TEAM'), (3.96, 'QBTS'), (3.98, 'INFQ'), (6.27, 'FTK')]; >=8 ORB-R 1; worst -1.27; drop-best-2 -4.30
+     A1: >=3 ORB-R 8 [(2.05, 'QUBT'), (2.25, 'PLTR'), (2.26, 'INFQ'), (2.73, 'CLF'), (2.98, 'MRNA'), (3.22, 'FTK'), (4.08, 'TEAM'), (4.41, 'QBTS')]; >=8 ORB-R 2; worst -1.27; drop-best-2 -7.28
+     A2k2: >=3 ORB-R 8 [(2.04, 'QUBT'), (2.32, 'PLTR'), (2.78, 'FTK'), (2.88, 'INFQ'), (2.92, 'MRNA'), (3.04, 'CLF'), (3.85, 'QBTS'), (4.23, 'TEAM')]; >=8 ORB-R 1; worst -1.27; drop-best-2 -5.86
+LEAVE-TWO-OUT on the study's own per-trade file (paired n=79; FTK 08-03 and INFQ 05-21 removed from the PAIRING, not per-arm drop-best-two):
+   A1    vs A0: all -4.08 | FTK+INFQ alone -4.78 | the other 77 trades +0.70
+   A2k2  vs A0: all -4.02 | FTK+INFQ alone -4.59 | the other 77 trades +0.58
+   A2k3  vs A0: all -5.34 | FTK+INFQ alone -5.38 | the other 77 trades +0.04
+   A3    vs A0: all -0.69 | FTK+INFQ alone -2.26 | the other 77 trades +1.56
+FTK 08-17 first minutes (o/h/l/c): 09:30 35.6/35.99/31.2/31.95; 09:31 32.7016/32.7016/30.8/31.35; 09:32 31.11/31.9/30.55/30.6 | daily open 35.6
+   A0 FTK if the resting stop at 34.35 filled at 34.35: +6.27R (booked +6.27); close-only (28.66) +3.22 -> A1-A0 on FTK -3.06
+   A0 FTK if the resting stop at 34.35 filled at 33.50: +5.82R (booked +6.27); close-only (28.66) +3.22 -> A1-A0 on FTK -2.60
+   A0 FTK if the resting stop at 34.35 filled at 32.70: +5.39R (booked +6.27); close-only (28.66) +3.22 -> A1-A0 on FTK -2.17
+   A0 FTK if the resting stop at 34.35 filled at 32.11: +5.07R (booked +6.27); close-only (28.66) +3.22 -> A1-A0 on FTK -1.85  [= the A3 catastrophic stop level, same minute]
+   A0 FTK if the resting stop at 34.35 filled at 31.20: +4.58R (booked +6.27); close-only (28.66) +3.22 -> A1-A0 on FTK -1.37  [= the minute's low]
+   => headline if FTK's A0 fill were 32.70: A1 vs A0 -3.19 (was -4.08), A2k2 vs A0 -3.13 (was -4.02)
+   => headline if FTK's A0 fill were 31.20: A1 vs A0 -2.39 (was -4.08), A2k2 vs A0 -2.33 (was -4.02)
+   capture-gap trade THC 2026-07-24: A0 +1.21 close-only +1.98 (+0.77) — the 5-arm pairing excludes it; the signature arms land between A0's exit and the close-only exit only if they fire on the same day
+   capture-gap trade U 2026-08-06: A0 +2.58 close-only +2.31 (-0.26) — the 5-arm pairing excludes it; the signature arms land between A0's exit and the close-only exit only if they fire on the same day

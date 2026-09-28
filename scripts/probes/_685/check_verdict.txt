@@ -1,0 +1,25 @@
+#685 INDEPENDENT CHECK — verdict (own code: check_recompute.py; evidence: check_anchor / check_population / check_recompute / check_fidelity / check_broken .txt)
+
+SURVIVES
+- Anchor: study anchor_*.tsv are byte-identical to the 09-06 originals; own paired sum n=62 +3.91 vs -1.40 (-5.30), 18 differ, close-only worse on 13.
+- Population + recompute: 286 alerts -> 159 + 33 = 192 -> 86 walked (35 day-0, 51 day-1+); own walker agrees 51/51 on A0, A1, A2k2; paired n=79 A0 -5.77 / A1 -9.85 / A2k2 -9.79 to the cent; pre-registered n=69 -4.74 / -3.72 also reproduce; winners >=3 ORB-R 9/8/8.
+- The line is live's line: OKTA 14 of 14 live 16:45 stop moves matched to the cent (window omits the entry-day close); PLTR/ABCL/AMLX/MRNA replay A0 exits = the live stop_price on the same day; 09-11 OKTA close-sale failure is in the audit ("insufficient qty ... held_for_orders 2"); OKTA 09-28 A0 sells 09:30 at 192.02 vs live 191.50 (open-print optimism ~0.03R).
+- Not a broken replay: minute lows reach the line on 32/32 readable line-test days; 41 tests / 19 reclaim / 22 slice reproduce; 16 k=2 fires, 6 false sells reproduce; A3's catastrophic stop does fire (FTK 08-17); gap-throughs book at the bar open.
+- No look-ahead found: day d's line is fixed at d-1's 16:45 job; a signature fires at the next minute's open; the day's close enters only the 16:00 close sale and the reclaim/false-sell LABELS; 'unreadable' is decided from the daily low but is a coverage decision, not a trade.
+- No recommendation to change the live trail; THE LINE section is correct. era_d == anchor intraday re-checked with abs(): 0 of 267 differ (study.py's own check at line ~596 is one-sided — no abs() — but the claim holds).
+
+WRONG (file + number)
+- doc §Method/Data: "the 9 without are on 5 names that were never live positions (... prod stores bars only for names it tracked)" — prod HAS bars on 3 of the 9 days (THC 08-12 253 bars, THC 08-27 388, U 08-25 391; MINCOV in pull_main_out.txt). Capture gap, not prod gap.
+- doc §Method/Data: "Four of the five are trades the hold arms kept longer and did better on" — three (THC +0.77, HTFL +0.29, ARGX +0.53); U is worse (-0.26), ROIV ~0.
+- doc §Today vs close-only (paragraph under the table): "THC (+1.21 -> +1.98) is now readable" is not a cause of 5.3R -> 3.4R — THC is already inside the 62 anchor pairs; the whole move is TEAM +1.05, ARGX +0.53, HTFL +0.29 = +1.87.
+- doc §Held-out: "the block is empty of line tests" — the replay's block is; the live book was not. SEI (only era-D trail exit): replay A0 stops at breakeven 09-14 (0.00R) vs live trail stop 09-22 @64.86 (+0.41R) — 3-cent entry difference (62.78 vs 62.8078) moves the +3R arm 70.22 -> 70.33, 09-11 high 70.33. HOOD 09-03: really traded (118.37), replay no_entry (harness cap 116.48); its trail stop 111.45 gapped through 09-15. Live-path reads: SEI A0 +0.43 / A1 +0.57 / A2k2 +0.57; HOOD A0 -0.84 / A1 -1.00 / A2k2 -1.00 — net ~0, so the sign does not move.
+- doc §OKTA walked: "the 184.63 catastrophic stop is 4 dollars under the day's low" — 190.50 - 184.63 = 5.87.
+
+OVERSTATED
+- "Waiting for the close costs money": FTK + INFQ carry MORE than all of it. Removed from the pairing: A1 +0.70, A2k2 +0.58, A2k3 +0.04, A3 +1.56 on the other 77 trades. "Most of the cost" should be "all of it and more".
+- FTK 08-17 A0 booked at exactly 34.35 in a first minute that ran 35.60 -> 31.20: fill at 32.70 -> headline A1 -3.19 / A2k2 -3.13; at the minute low 31.20 -> -2.39 / -2.33 (from -4.08 / -4.02). A3's 32.11 stop sits in the same minute.
+- 11 of the 32 "readable" line-test days are partial sessions (<385 of 390 bars); 7 of 16 k=2 fires sit on them, incl. 2 of the 6 false sells (CAMT 06-04 176 bars, TH 08-13 299).
+- Two different lines: reclaim/false-sell labels test the close vs the RESTING line (prior-day SMA); the close-only rule sells vs TODAY's SMA incl. today's close. 3 of the 19 'reclaim' days are days A1 itself sold at the close (KLAR 06-03, QBTS 06-04, QNST 08-21) -> 16/41 (39%) by the close rule's own line, not 19/41 (46%); 2 of the 6 k=2 'false sells' (KLAR, QBTS) are those days -> 4/16 fires cost a hold, not 6/16 (line_tests.tsv x arms_per_trade.tsv).
+- DoD's "one-paragraph proposal for his ruling" is absent (fine for THE LINE, but the DoD is unmet).
+
+ONE LINE: numbers reproduce exactly and the replay is not broken, but the "costs money" headline is two trades — one booked at the best possible fill in a 12% opening minute — and the held-out block is not empty: the two held-out live trades the replay does not reproduce (SEI stops early, HOOD never enters) are held-out line tests, netting ~0.

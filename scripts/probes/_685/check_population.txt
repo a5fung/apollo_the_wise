@@ -1,0 +1,28 @@
+raw live-alert rows 290 -> ticker-days 287 -> <= 2026-09-25: 286 (2026-05-11 .. 2026-09-25); excluded after horizon: [('KOD', '2026-09-28')]
+re-admitted 159; + live HIGH straddling the bar 33 = 192
+statuses (widened): {'no_entry': 31, 'settled': 84, 'abstain': 35, 'no_trade': 40, 'open_at_horizon': 2}
+admit classes, all alerts: {'reject': 81, 'abstain_float_band_straddles_bar': 46, 'admit': 159}
+live MAGNA53 fills since 08-01 vs the replay population:
+   BLZE  2026-08-04 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   BTDR  2026-08-04 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   PLTR  2026-08-04 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   FIGS  2026-08-07 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   NET   2026-08-07 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   TEAM  2026-08-07 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   ABCL  2026-08-10 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   BW    2026-08-11 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   FRMI  2026-08-11 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   ETON  2026-08-14 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   AMLX  2026-08-18 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   MRNA  2026-08-19 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   MRVL  2026-08-19 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   CRWD  2026-08-27 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   OKTA  2026-08-27 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   SOLS  2026-08-28 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   HOOD  2026-09-03 in-widened=True admit=admit tier=HIGH replay=no_entry:triggered_above_limit_never_filled submit=09:35:00 score=[None,None]
+   PHVS  2026-09-08 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   SEI   2026-09-08 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   DFTX  2026-09-14 in-widened=True admit=admit tier=HIGH replay=settled:None submit=09:31:00 score=[None,None]
+   VICR  2026-09-17 in-widened=True admit=abstain_float_band_straddles_bar tier=HIGH replay=open_at_horizon:None submit=09:31:00 score=[None,None]
+   KOD   2026-09-28 NOT AN ALERT IN THE WINDOW (live closed )
+entered + walkable: day-0 settled 35, reached day 1 51, total 86

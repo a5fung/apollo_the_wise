@@ -1,0 +1,149 @@
+# #685 study run 2026-09-28T13:16:18-04:00 — alerts 286 (2026-05-11 .. 2026-09-25)
+## ANCHOR (merged capture, horizon 08-31): intraday vs close-only — {"admitted": 142, "settled_a": 65, "settled_b": 62, "paired_n": 62, "sum_a": 3.9059529858460738, "sum_b": -1.3984369075853882, "differ": 18, "b_worse": 13, "marked_a": [15.03646289905356, 67], "marked_b": [13.630369599000204, 67], "FTK": [6.2752688172042905, 3.2150537634408574], "INFQ": [3.978494623655926, 2.258064516129038]}
+## ANCHOR REPRODUCED
+## era_d vs era_c_rec_intraday_uc0 on the same population: 0 rows differ (expect 0)
+## POPULATION RULE: WIDENED (re-admitted + live-admitted HIGH straddling the bar)
+## POPULATION under era D, horizon 2026-09-25: alerts 286, re-admitted 159 + 33 live-admitted HIGH whose re-score straddles the bar on the unknown float bonus (TE 2026-05-12, VPG 2026-05-12, VSTS 2026-05-12, CRMD 2026-05-14, KLAR 2026-05-14, AGYS 2026-05-19, APPS 2026-08-05, TATT 2026-08-05, TH 2026-08-10, CRMD 2026-08-13, VICR 2026-09-17 entered) = 192, statuses {'settled': 84, 'abstain': 35, 'no_entry': 31, 'no_trade': 40, 'open_at_horizon': 2}, discovery 173 / held-out 19
+   harness A0 (era_d) settled 84 sum +2.89R; harness close-only settled 84 sum +0.13R
+   abstain reasons: {'day0_fill_bar_straddles_stop': 2, 'no_930_bar_for_orb': 3, 'entry_window_gaps': 30}
+## ARMS: campaigns walked 86 (settled on day 0 in every arm: 35); excluded before day 1: {'abstain:day0_fill_bar_straddles_stop': 2, 'no_entry:never_crossed_orb_high': 30, 'no_trade:window_out_of_orb': 38, 'abstain:no_930_bar_for_orb': 3, 'abstain:entry_window_gaps': 30, 'no_trade:setup': 2, 'no_entry:triggered_above_limit_never_filled': 1}
+## FIDELITY A0 vs harness A0 (era_d): settled-both 84, within 0.005R 83, differ 1
+     MRAM 2026-05-11: walker -0.077 (stop_hit 2026-05-12) vs harness +0.000 (stop_hit)
+    status pairs (walker, harness): {('settled', 'settled'): 84, ('open_at_horizon', 'open_at_horizon'): 2}
+## FIDELITY A1 vs harness close-only: settled-both 84, within 0.005R 83, differ 1
+     MRAM 2026-05-11: walker -0.077 (stop_hit 2026-05-12) vs harness +0.000 (stop_hit)
+    status pairs (walker, harness): {('settled', 'settled'): 84, ('open_at_horizon', 'open_at_horizon'): 2}
+## LINE TESTS (A1 hold-through path): 41 trail-test days on 25 trades; RECLAIM 19 / SLICE 22; with minute bars 32, without 9
+## BLOCK ALL: campaigns 86, paired (settled+readable in every arm) 79; unreadable per arm {'A0': 0, 'A1': 0, 'A2k2': 5, 'A2k3': 5, 'A3': 5}; open at horizon per arm {'A0': 2, 'A1': 2, 'A2k2': 2, 'A2k3': 2, 'A3': 2}; abstain per arm {'A0': 0, 'A1': 0, 'A2k2': 0, 'A2k3': 0, 'A3': 0}; common marked set (settled or open, readable in every arm) 81
+   names: unreadable ['ARGX', 'HTFL', 'ROIV', 'THC', 'U']; open at horizon ['INTC', 'VICR']
+   A0    n= 79 total   -5.77 money-R ( -10.82 ORB-R) drop-best-2  -16.02 | vs A0  +0.00 p=— better/worse 0/0 | >=3ORB-R 9 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 0 | marked +0.49 over 81 (dbt -11.43) | median -1.00
+   A1    n= 79 total   -9.85 money-R ( -18.98 ORB-R) drop-best-2  -18.34 | vs A0  -4.08 p=0.065 better/worse 8/12 | >=3ORB-R 8 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 7 | marked -3.60 over 81 (dbt -13.64) | median -1.00
+   A2k2  n= 79 total   -9.79 money-R ( -18.85 ORB-R) drop-best-2  -17.87 | vs A0  -4.02 p=0.027 better/worse 5/14 | >=3ORB-R 8 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 4 | marked -3.53 over 81 (dbt -13.40) | median -1.00
+   A2k3  n= 79 total  -11.11 money-R ( -21.50 ORB-R) drop-best-2  -19.60 | vs A0  -5.34 p=0.016 better/worse 6/13 | >=3ORB-R 8 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 6 | marked -4.85 over 81 (dbt -14.90) | median -1.00
+   A3    n= 79 total   -6.46 money-R ( -12.20 ORB-R) drop-best-2  -15.94 | vs A0  -0.69 p=0.644 better/worse 6/14 | >=3ORB-R 8 >=8ORB-R 3 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 6 | marked -0.21 over 81 (dbt -10.92) | median -1.00
+## BLOCK DISC: campaigns 77, paired (settled+readable in every arm) 73; unreadable per arm {'A0': 0, 'A1': 0, 'A2k2': 4, 'A2k3': 4, 'A3': 4}; open at horizon per arm {'A0': 0, 'A1': 0, 'A2k2': 0, 'A2k3': 0, 'A3': 0}; abstain per arm {'A0': 0, 'A1': 0, 'A2k2': 0, 'A2k3': 0, 'A3': 0}; common marked set (settled or open, readable in every arm) 73
+   names: unreadable ['ARGX', 'HTFL', 'THC', 'U']; open at horizon []
+   A0    n= 73 total   -0.77 money-R (  -1.30 ORB-R) drop-best-2  -11.02 | vs A0  +0.00 p=— better/worse 0/0 | >=3ORB-R 9 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 0 held-longer-than-A0 0 | marked -0.77 over 73 (dbt -11.02) | median -1.00
+   A1    n= 73 total   -4.85 money-R (  -9.47 ORB-R) drop-best-2  -13.34 | vs A0  -4.08 p=0.061 better/worse 8/12 | >=3ORB-R 8 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 0 held-longer-than-A0 7 | marked -4.85 over 73 (dbt -13.34) | median -1.00
+   A2k2  n= 73 total   -4.79 money-R (  -9.33 ORB-R) drop-best-2  -12.87 | vs A0  -4.02 p=0.033 better/worse 5/14 | >=3ORB-R 8 >=8ORB-R 1 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 0 held-longer-than-A0 4 | marked -4.79 over 73 (dbt -12.87) | median -1.00
+   A2k3  n= 73 total   -6.11 money-R ( -11.98 ORB-R) drop-best-2  -14.60 | vs A0  -5.34 p=0.016 better/worse 6/13 | >=3ORB-R 8 >=8ORB-R 2 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 0 held-longer-than-A0 6 | marked -6.11 over 73 (dbt -14.60) | median -1.00
+   A3    n= 73 total   -1.46 money-R (  -2.69 ORB-R) drop-best-2  -10.94 | vs A0  -0.69 p=0.633 better/worse 6/14 | >=3ORB-R 8 >=8ORB-R 3 | worst -1.27 (NOW) | losses<-1.5R 0 | open@horizon 0 held-longer-than-A0 6 | marked -1.46 over 73 (dbt -10.94) | median -1.00
+## BLOCK HELD: campaigns 9, paired (settled+readable in every arm) 6; unreadable per arm {'A0': 0, 'A1': 0, 'A2k2': 1, 'A2k3': 1, 'A3': 1}; open at horizon per arm {'A0': 2, 'A1': 2, 'A2k2': 2, 'A2k3': 2, 'A3': 2}; abstain per arm {'A0': 0, 'A1': 0, 'A2k2': 0, 'A2k3': 0, 'A3': 0}; common marked set (settled or open, readable in every arm) 8
+   names: unreadable ['ROIV']; open at horizon ['INTC', 'VICR']; held-out campaigns ['IONQ 2026-09-08', 'PHVS 2026-09-08', 'QCOM 2026-09-08', 'ROIV 2026-09-08', 'SEI 2026-09-08', 'DFTX 2026-09-14', 'VICR 2026-09-17', 'INTC 2026-09-21', 'MSTR 2026-09-21']
+   A0    n=  6 total   -5.00 money-R (  -9.51 ORB-R) drop-best-2   -4.00 | vs A0  +0.00 p=— better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (IONQ) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 0 | marked +1.26 over 8 (dbt -5.00) | median -1.00
+   A1    n=  6 total   -5.00 money-R (  -9.51 ORB-R) drop-best-2   -4.00 | vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (IONQ) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 0 | marked +1.26 over 8 (dbt -5.00) | median -1.00
+   A2k2  n=  6 total   -5.00 money-R (  -9.51 ORB-R) drop-best-2   -4.00 | vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (IONQ) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 0 | marked +1.26 over 8 (dbt -5.00) | median -1.00
+   A2k3  n=  6 total   -5.00 money-R (  -9.51 ORB-R) drop-best-2   -4.00 | vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (IONQ) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 0 | marked +1.26 over 8 (dbt -5.00) | median -1.00
+   A3    n=  6 total   -5.00 money-R (  -9.51 ORB-R) drop-best-2   -4.00 | vs A0  +0.00 p=1.000 better/worse 0/0 | >=3ORB-R 0 >=8ORB-R 0 | worst -1.00 (IONQ) | losses<-1.5R 0 | open@horizon 2 held-longer-than-A0 0 | marked +1.26 over 8 (dbt -5.00) | median -1.00
+## A0 vs A1 ONLY (ALL, the 09-06 question with the horizon at 2026-09-25): n=84 A0 +2.81 A1 +0.05 diff -2.77 p=0.295 better/worse 11/14
+    THC 2026-07-24: A0 +1.21 (2026-08-12) A1 +1.98 (close_below_line 2026-08-27)
+    U 2026-08-06: A0 +2.58 (2026-08-25) A1 +2.31 (close_below_line 2026-08-25)
+    TEAM 2026-08-07: A0 +3.03 (2026-08-25) A1 +4.08 (close_below_line 2026-09-08)
+    HTFL 2026-08-14: A0 +1.64 (2026-08-31) A1 +1.93 (close_below_line 2026-09-04)
+    ARGX 2026-08-17: A0 +3.52 (2026-08-31) A1 +4.05 (close_below_line 2026-09-01)
+    ROIV 2026-09-08: A0 -0.36 (2026-09-21) A1 -0.37 (close_below_line 2026-09-21)
+## A0 vs A1 ONLY (DISC, the 09-06 question with the horizon at 2026-09-25): n=77 A0 +8.18 A1 +5.42 diff -2.76 p=0.312 better/worse 11/13
+    THC 2026-07-24: A0 +1.21 (2026-08-12) A1 +1.98 (close_below_line 2026-08-27)
+    U 2026-08-06: A0 +2.58 (2026-08-25) A1 +2.31 (close_below_line 2026-08-25)
+    TEAM 2026-08-07: A0 +3.03 (2026-08-25) A1 +4.08 (close_below_line 2026-09-08)
+    HTFL 2026-08-14: A0 +1.64 (2026-08-31) A1 +1.93 (close_below_line 2026-09-04)
+    ARGX 2026-08-17: A0 +3.52 (2026-08-31) A1 +4.05 (close_below_line 2026-09-01)
+## A0 vs A1 ONLY (HELD, the 09-06 question with the horizon at 2026-09-25): n=7 A0 -5.36 A1 -5.37 diff -0.01 p=1.000 better/worse 0/1
+    ROIV 2026-09-08: A0 -0.36 (2026-09-21) A1 -0.37 (close_below_line 2026-09-21)
+## SIGNATURE A2k2: fires 16, on days that closed back above the line (false sells) 6; SLICE days while still held 18 (readable 13), exited by the signature on the day 10
+    fire VG 2026-05-12 on 2026-05-26 10:05:00 at 13.22 line 13.37 close 12.89 slice
+    fire KLAR 2026-05-14 on 2026-06-03 09:50:00 at 16.47 line 16.91 close 16.95 FALSE
+    fire INFQ 2026-05-21 on 2026-06-05 10:30:00 at 15.14 line 16.48 close 14.56 slice
+    fire QBTS 2026-05-21 on 2026-06-04 09:55:00 at 26.66 line 26.85 close 27.64 FALSE
+    fire QUBT 2026-05-21 on 2026-06-03 12:45:00 at 11.19 line 11.27 close 11.20 slice
+    fire CAMT 2026-06-02 on 2026-06-04 10:05:00 at 174.08 line 176.04 close 181.16 FALSE
+    fire CLF 2026-07-23 on 2026-08-14 09:55:00 at 12.13 line 12.15 close 11.90 slice
+    fire FTK 2026-08-03 on 2026-08-17 13:55:00 at 27.85 line 34.35 close 28.66 slice
+    fire PLTR 2026-08-04 on 2026-08-21 10:20:00 at 173.45 line 173.95 close 179.94 FALSE
+    fire ZBRA 2026-08-04 on 2026-08-18 09:51:00 at 359.58 line 366.78 close 366.42 slice
+    fire TEAM 2026-08-07 on 2026-09-08 12:15:00 at 178.03 line 183.42 close 176.42 slice
+    fire TH 2026-08-10 on 2026-08-13 10:30:00 at 16.06 line 16.08 close 16.27 FALSE
+    fire ATRO 2026-08-12 on 2026-08-19 14:11:00 at 81.81 line 82.21 close 81.67 slice
+    fire ETON 2026-08-14 on 2026-08-28 10:56:00 at 59.86 line 60.36 close 59.78 slice
+    fire AMLX 2026-08-18 on 2026-08-31 09:50:00 at 34.20 line 34.46 close 33.75 slice
+    fire MRNA 2026-08-19 on 2026-09-03 11:15:00 at 144.71 line 145.20 close 148.87 FALSE
+## SIGNATURE A2k3: fires 10, on days that closed back above the line (false sells) 3; SLICE days while still held 20 (readable 15), exited by the signature on the day 7
+    fire VG 2026-05-12 on 2026-05-26 14:40:00 at 12.98 line 13.37 close 12.89 slice
+    fire KLAR 2026-05-14 on 2026-06-03 09:55:00 at 16.38 line 16.91 close 16.95 FALSE
+    fire INFQ 2026-05-21 on 2026-06-05 14:15:00 at 14.54 line 16.48 close 14.56 slice
+    fire CLF 2026-07-23 on 2026-08-14 10:55:00 at 12.07 line 12.15 close 11.90 slice
+    fire FTK 2026-08-03 on 2026-08-17 14:00:00 at 27.57 line 34.35 close 28.66 slice
+    fire PLTR 2026-08-04 on 2026-08-24 10:25:00 at 173.00 line 174.74 close 175.89 FALSE
+    fire TH 2026-08-10 on 2026-08-13 10:30:00 at 16.06 line 16.08 close 16.27 FALSE
+    fire ATRO 2026-08-12 on 2026-08-19 14:11:00 at 81.81 line 82.21 close 81.67 slice
+    fire ETON 2026-08-14 on 2026-08-28 11:50:00 at 59.36 line 60.36 close 59.78 slice
+    fire AMLX 2026-08-18 on 2026-08-31 10:30:00 at 33.82 line 34.46 close 33.75 slice
+## SIGNATURE A3: fires 14, on days that closed back above the line (false sells) 2; SLICE days while still held 21 (readable 16), exited by the signature on the day 12
+    fire VG 2026-05-12 on 2026-05-26 11:20:00 at 13.07 line 13.37 close 12.89 slice
+    fire KLAR 2026-05-14 on 2026-06-03 12:20:00 at 16.75 line 16.91 close 16.95 FALSE
+    fire INFQ 2026-05-21 on 2026-06-05 10:50:00 at 15.18 line 16.48 close 14.56 slice
+    fire QUBT 2026-05-21 on 2026-06-03 12:45:00 at 11.19 line 11.27 close 11.20 slice
+    fire CAMT 2026-06-02 on 2026-06-05 11:32:00 at 171.25 line 176.04 close 164.21 slice
+    fire CLF 2026-07-23 on 2026-08-14 10:50:00 at 12.08 line 12.15 close 11.90 slice
+    fire PLTR 2026-08-04 on 2026-08-25 11:10:00 at 173.35 line 174.81 close 172.73 slice
+    fire ZBRA 2026-08-04 on 2026-08-18 12:31:00 at 365.26 line 366.78 close 366.42 slice
+    fire TEAM 2026-08-07 on 2026-09-08 12:15:00 at 178.03 line 183.42 close 176.42 slice
+    fire TH 2026-08-10 on 2026-08-26 11:20:00 at 17.21 line 17.31 close 16.78 slice
+    fire ATRO 2026-08-12 on 2026-08-19 14:11:00 at 81.81 line 82.21 close 81.67 slice
+    fire ETON 2026-08-14 on 2026-08-28 10:56:00 at 59.86 line 60.36 close 59.78 slice
+    fire AMLX 2026-08-18 on 2026-08-31 14:00:00 at 33.22 line 34.46 close 33.75 slice
+    fire MRNA 2026-08-19 on 2026-09-03 11:15:00 at 144.71 line 145.20 close 148.87 FALSE
+## PER-TRADE (paired ALL): where any arm differs from A0
+    VG     2026-05-12 A0:+1.02(stop_hit,2026-05-26) A1:+0.34(close_below_,2026-05-26) A2k2:+0.89(slice_k2,2026-05-26) A2k3:+0.50(slice_k3,2026-05-26) A3:+0.64(slice_k2,2026-05-26)
+    CSCO   2026-05-14 A0:+0.91(stop_hit,2026-06-05) A1:+0.81(close_below_,2026-06-05) A2k2:+0.81(close_below_,2026-06-05) A2k3:+0.81(close_below_,2026-06-05) A3:+0.81(close_below_,2026-06-05)
+    KLAR   2026-05-14 A0:+0.67(stop_hit,2026-06-03) A1:+0.70(close_below_,2026-06-03) A2k2:+0.37(slice_k2,2026-06-03) A2k3:+0.31(slice_k3,2026-06-03) A3:+0.56(slice_k2,2026-06-03)
+    INFQ   2026-05-21 A0:+3.98(stop_hit,2026-06-05) A1:+2.26(close_below_,2026-06-05) A2k2:+2.88(slice_k2,2026-06-05) A2k3:+2.24(slice_k3,2026-06-05) A3:+2.92(slice_k2,2026-06-05)
+    QBTS   2026-05-21 A0:+3.96(stop_hit,2026-06-04) A1:+4.41(close_below_,2026-06-04) A2k2:+3.85(slice_k2,2026-06-04) A2k3:+4.41(close_below_,2026-06-04) A3:+4.41(close_below_,2026-06-04)
+    QUBT   2026-05-21 A0:+1.85(stop_hit,2026-06-01) A1:+2.05(close_below_,2026-06-03) A2k2:+2.04(slice_k2,2026-06-03) A2k3:+2.05(close_below_,2026-06-03) A3:+2.04(slice_k2,2026-06-03)
+    CAMT   2026-06-02 A0:-0.40(stop_hit,2026-06-04) A1:-1.00(stop_hit,2026-06-05) A2k2:-0.59(slice_k2,2026-06-04) A2k3:-1.00(stop_hit,2026-06-05) A3:-0.86(slice_k2,2026-06-05)
+    CLF    2026-07-23 A0:+3.00(stop_hit,2026-08-13) A1:+2.73(close_below_,2026-08-14) A2k2:+3.04(slice_k2,2026-08-14) A2k3:+2.97(slice_k3,2026-08-14) A3:+2.97(slice_k2,2026-08-14)
+    FTK    2026-08-03 A0:+6.27(stop_hit,2026-08-17) A1:+3.22(close_below_,2026-08-17) A2k2:+2.78(slice_k2,2026-08-17) A2k3:+2.63(slice_k3,2026-08-17) A3:+5.07(stop_hit,2026-08-17)
+    PLTR   2026-08-04 A0:+2.04(stop_hit,2026-08-19) A1:+2.25(close_below_,2026-08-25) A2k2:+2.32(slice_k2,2026-08-21) A2k3:+2.28(slice_k3,2026-08-24) A3:+2.31(slice_k2,2026-08-25)
+    ZBRA   2026-08-04 A0:+0.66(stop_hit,2026-08-18) A1:+0.65(close_below_,2026-08-18) A2k2:+0.44(slice_k2,2026-08-18) A2k3:+0.65(close_below_,2026-08-18) A3:+0.61(slice_k2,2026-08-18)
+    QNST   2026-08-07 A0:+0.38(stop_hit,2026-08-21) A1:+0.69(close_below_,2026-08-21) A2k2:+0.69(close_below_,2026-08-21) A2k3:+0.69(close_below_,2026-08-21) A3:+0.69(close_below_,2026-08-21)
+    TEAM   2026-08-07 A0:+3.03(stop_hit,2026-08-25) A1:+4.08(close_below_,2026-09-08) A2k2:+4.23(slice_k2,2026-09-08) A2k3:+4.08(close_below_,2026-09-08) A3:+4.23(slice_k2,2026-09-08)
+    ABCL   2026-08-10 A0:+1.52(stop_hit,2026-08-24) A1:+1.47(close_below_,2026-08-24) A2k2:+1.47(close_below_,2026-08-24) A2k3:+1.47(close_below_,2026-08-24) A3:+1.47(close_below_,2026-08-24)
+    TH     2026-08-10 A0:-0.03(stop_hit,2026-08-13) A1:+0.61(close_below_,2026-08-26) A2k2:-0.03(slice_k2,2026-08-13) A2k3:-0.03(slice_k3,2026-08-13) A3:+0.98(slice_k2,2026-08-26)
+    ATRO   2026-08-12 A0:-0.26(stop_hit,2026-08-19) A1:-0.31(close_below_,2026-08-19) A2k2:-0.30(slice_k2,2026-08-19) A2k3:-0.30(slice_k3,2026-08-19) A3:-0.30(slice_k2,2026-08-19)
+    EROC   2026-08-12 A0:+1.44(stop_hit,2026-08-20) A1:+1.33(stop_hit,2026-08-20) A2k2:+1.33(stop_hit,2026-08-20) A2k3:+1.33(stop_hit,2026-08-20) A3:+1.33(stop_hit,2026-08-20)
+    ETON   2026-08-14 A0:+1.01(stop_hit,2026-08-28) A1:+0.89(close_below_,2026-08-28) A2k2:+0.91(slice_k2,2026-08-28) A2k3:+0.81(slice_k3,2026-08-28) A3:+0.91(slice_k2,2026-08-28)
+    AMLX   2026-08-18 A0:+1.47(stop_hit,2026-08-31) A1:+1.23(close_below_,2026-08-31) A2k2:+1.39(slice_k2,2026-08-31) A2k3:+1.26(slice_k3,2026-08-31) A3:+1.06(slice_k2,2026-08-31)
+    MRNA   2026-08-19 A0:+2.95(stop_hit,2026-09-03) A1:+2.98(close_below_,2026-09-04) A2k2:+2.92(slice_k2,2026-09-03) A2k3:+2.98(close_below_,2026-09-04) A3:+2.92(slice_k2,2026-09-03)
+## OKTA (trade 382) IN THE REPLAY (alert 08-27, entry 167.88, hard stop 150.52, +3 ORB-R arm 193.92): A0: -0.08R close_below_line 2026-09-11; A1: -0.08R close_below_line 2026-09-11; A2k2: -0.08R close_below_line 2026-09-11; A2k3: -0.08R close_below_line 2026-09-11; A3: -0.08R close_below_line 2026-09-11
+## OKTA 2026-09-28 WALK (partial day: 204 bars 09:30:00..12:53:00 ET; line 193.25 = the broker stop; floor = entry 167.88 (breakeven armed 09-22); ADR20% at entry 0.045 -> A3 catastrophic 184.63; open 192.02 low 190.5 high 201.99 last 200.5)
+    A0: SOLD intraday at 192.02 (stop_hit, 09:30 ET) = +1.39 money-R
+    A1: still holding through 12:53:00 ET (last 200.50 = +1.88 money-R); the close test is unknowable until 16:00
+    A2k2: still holding through 12:53:00 ET (last 200.50 = +1.88 money-R); the close test is unknowable until 16:00
+    A2k3: still holding through 12:53:00 ET (last 200.50 = +1.88 money-R); the close test is unknowable until 16:00
+    A3: still holding through 12:53:00 ET (last 200.50 = +1.88 money-R); the close test is unknowable until 16:00
+    5-min windows (start ET, o/h/l/c, lower-low vs prior, close in bottom third, close below 193.25):
+      09:30 192.02/196.00/190.50/195.23  lower-low=n bottom-third=n below-line=n
+      09:35 195.23/197.50/193.76/197.50  lower-low=n bottom-third=n below-line=n
+      09:40 197.00/198.74/196.17/197.79  lower-low=n bottom-third=n below-line=n
+      09:45 197.51/198.25/196.24/196.81  lower-low=n bottom-third=Y below-line=n
+      09:50 196.81/197.48/195.02/196.79  lower-low=Y bottom-third=n below-line=n
+      09:55 196.89/198.69/196.89/198.53  lower-low=n bottom-third=n below-line=n
+      10:00 198.73/199.21/198.06/198.58  lower-low=n bottom-third=n below-line=n
+      10:05 198.33/198.48/197.10/198.13  lower-low=Y bottom-third=n below-line=n
+      10:10 198.51/198.51/197.30/197.50  lower-low=n bottom-third=Y below-line=n
+      10:15 197.32/198.12/197.32/197.71  lower-low=n bottom-third=n below-line=n
+      10:20 197.91/198.22/197.27/197.45  lower-low=Y bottom-third=Y below-line=n
+      10:25 197.50/197.54/196.50/196.75  lower-low=Y bottom-third=Y below-line=n
+      10:30 196.65/197.13/196.60/197.07  lower-low=n bottom-third=n below-line=n
+      10:35 196.97/197.42/196.54/197.03  lower-low=Y bottom-third=n below-line=n
+      10:40 196.77/197.11/196.74/197.00  lower-low=n bottom-third=n below-line=n
+      10:45 197.06/197.07/196.66/196.93  lower-low=Y bottom-third=n below-line=n
+      10:50 197.00/197.30/196.81/197.08  lower-low=n bottom-third=n below-line=n
+      10:55 197.07/197.66/196.66/197.55  lower-low=Y bottom-third=n below-line=n
+## LIVE-ERA REAL MAGNA53 TRADES since 09-01 (mi_live_trades, composition only):
+    HOOD 2026-09-03 closed entry 118.37 stop 111.45 pnl -27.400000000000034 risk 22.88
+    PHVS 2026-09-08 closed entry 42 stop 38.49999999999999 pnl -10.739999999999995 risk 10.14
+    SEI 2026-09-08 closed entry 62.8078 stop 64.95 pnl 4.104399999999998 risk 9.92
+    DFTX 2026-09-14 closed entry 43.76 stop 40.41 pnl -23.730000000000004 risk 22.4
+    VICR 2026-09-17 filled entry 211.5 stop 230.67 pnl 0 risk 10.84
+    KOD 2026-09-28 filled entry 63.15 stop 63.15 pnl 21.975 risk 24.08

@@ -1,0 +1,85 @@
+line-test days on the A1 path (own walker): 41 on 25 campaigns; reclaim 19 / slice 22; with minute bars 32
+   VG     2026-05-26 line 13.37 daily low 12.86 minute low 12.86 (below) close 12.89 SLICE bars 390 [562bf] first 09:30 last 15:59
+   CSCO   2026-06-05 line 122.15 daily low 121.55 minute low 121.55 (below) close 121.64 SLICE bars 390 [562bf] first 09:30 last 15:59
+   KLAR   2026-06-03 line 16.91 daily low 16.38 minute low 16.38 (below) close 16.95 RECLAIM bars 390 [562bf] first 09:30 last 15:59
+   INFQ   2026-06-05 line 16.48 daily low 14.30 minute low 14.30 (below) close 14.56 SLICE bars 390 [562bf] first 09:30 last 15:59
+   QBTS   2026-06-04 line 26.85 daily low 26.45 minute low 26.45 (below) close 27.64 RECLAIM bars 390 [562bf] first 09:30 last 15:59
+   QUBT   2026-06-01 line 11.03 daily low 11.03 minute low 11.03 (below) close 12.39 RECLAIM bars 390 [562bf] first 09:30 last 15:59
+   QUBT   2026-06-03 line 11.27 daily low 11.17 minute low 11.17 (below) close 11.20 SLICE bars 390 [562bf] first 09:30 last 15:59
+   CAMT   2026-06-04 line 176.04 daily low 173.43 minute low 173.43 (below) close 181.16 RECLAIM bars 176 [562bf] first 09:30 last 15:59
+   CAMT   2026-06-05 line 176.04 daily low 163.04 minute low 163.04 (below) close 164.21 SLICE bars 218 [562bf] first 09:30 last 15:59
+   CLF    2026-08-13 line 12.10 daily low 12.09 minute low 12.09 (below) close 12.15 RECLAIM bars 390 [562bf] first 09:30 last 15:59
+   CLF    2026-08-14 line 12.15 daily low 11.83 minute low 11.83 (below) close 11.90 SLICE bars 389 [562bf] first 09:30 last 15:59
+   THC    2026-08-12 line 257.15 daily low 256.29 close 266.79 NO MINUTE BARS (prod MINCOV n=253)
+   THC    2026-08-27 line 271.63 daily low 264.22 close 267.75 NO MINUTE BARS (prod MINCOV n=388)
+   FTK    2026-08-17 line 34.35 daily low 27.30 minute low 27.30 (below) close 28.66 SLICE bars 369 [562bf] first 09:30 last 15:59
+   PLTR   2026-08-19 line 170.47 daily low 169.77 minute low 169.77 (below) close 175.19 RECLAIM bars 390 [562bf] first 09:30 last 15:59
+   PLTR   2026-08-20 line 172.15 daily low 172.03 minute low 172.03 (below) close 173.96 RECLAIM bars 390 [562bf] first 09:30 last 15:59
+   PLTR   2026-08-21 line 173.95 daily low 172.55 minute low 172.55 (below) close 179.94 RECLAIM bars 390 [562bf] first 09:30 last 15:59
+   PLTR   2026-08-24 line 174.74 daily low 171.31 minute low 171.31 (below) close 175.89 RECLAIM bars 390 [562bf] first 09:30 last 15:59
+   PLTR   2026-08-25 line 174.81 daily low 172.20 minute low 172.20 (below) close 172.73 SLICE bars 390 [562bf] first 09:30 last 15:59
+   ZBRA   2026-08-18 line 366.78 daily low 358.68 minute low 358.68 (below) close 366.42 SLICE bars 251 [562bf] first 09:30 last 15:59
+   U      2026-08-25 line 45.94 daily low 44.79 close 44.99 NO MINUTE BARS (prod MINCOV n=391)
+   QNST   2026-08-21 line 20.25 daily low 19.96 minute low 19.96 (below) close 20.62 RECLAIM bars 294 [562bf] first 09:30 last 15:59
+   TEAM   2026-08-25 line 165.11 daily low 165.10 minute low 165.10 (below) close 166.49 RECLAIM bars 390 [562bf] first 09:30 last 15:59
+   TEAM   2026-08-26 line 166.35 daily low 160.96 minute low 160.96 (below) close 168.47 RECLAIM bars 388 [562bf] first 09:30 last 15:59
+   TEAM   2026-09-08 line 183.42 daily low 175.53 minute low 175.53 (below) close 176.42 SLICE bars 390 [new] first 09:30 last 15:59
+   ABCL   2026-08-24 line 10.66 daily low 10.44 minute low 10.44 (below) close 10.61 SLICE bars 386 [562bf] first 09:30 last 15:59
+   TH     2026-08-13 line 16.08 daily low 16.00 minute low 16.00 (below) close 16.27 RECLAIM bars 299 [562bf] first 09:30 last 15:59
+   TH     2026-08-25 line 17.24 daily low 17.20 minute low 17.20 (below) close 17.39 RECLAIM bars 316 [562bf] first 09:30 last 15:59
+   TH     2026-08-26 line 17.31 daily low 16.70 minute low 16.70 (below) close 16.78 SLICE bars 364 [562bf] first 09:30 last 15:59
+   ATRO   2026-08-19 line 82.21 daily low 81.02 minute low 81.02 (below) close 81.67 SLICE bars 239 [562bf] first 09:30 last 15:59
+   EROC   2026-08-20 line 13.29 daily low 12.68 minute low 12.68 (below) close 13.01 SLICE bars 390 [562bf] first 09:30 last 15:59
+   ETON   2026-08-28 line 60.36 daily low 58.33 minute low 58.33 (below) close 59.78 SLICE bars 274 [562bf] first 09:30 last 15:59
+   HTFL   2026-08-31 line 47.42 daily low 47.13 close 50.39 NO MINUTE BARS (prod MINCOV n=None)
+   HTFL   2026-09-03 line 49.23 daily low 48.10 close 49.71 NO MINUTE BARS (prod MINCOV n=None)
+   HTFL   2026-09-04 line 49.52 daily low 48.87 close 48.91 NO MINUTE BARS (prod MINCOV n=None)
+   ARGX   2026-08-31 line 1011.49 daily low 1005.78 close 1031.66 NO MINUTE BARS (prod MINCOV n=None)
+   ARGX   2026-09-01 line 1029.52 daily low 1021.55 close 1028.51 NO MINUTE BARS (prod MINCOV n=None)
+   AMLX   2026-08-31 line 34.46 daily low 32.98 minute low 32.98 (below) close 33.75 SLICE bars 374 [562bf] first 09:30 last 15:59
+   MRNA   2026-09-03 line 145.20 daily low 142.78 minute low 142.78 (below) close 148.87 RECLAIM bars 390 [new] first 09:30 last 15:59
+   MRNA   2026-09-04 line 146.76 daily low 141.52 minute low 141.52 (below) close 145.55 SLICE bars 390 [new] first 09:30 last 15:59
+   ROIV   2026-09-21 line 39.27 daily low 38.72 close 38.99 NO MINUTE BARS (prod MINCOV n=None)
+minute bars reach the line on 32 of 32 readable line-test days; full sessions (>=385 bars) 21
+A2k2 fires (own walker): 16, false sells (closed at/above the line) 6
+   VG     2026-05-26 10:05:00 @13.22 line 13.37 close 12.89 slice
+   KLAR   2026-06-03 09:50:00 @16.47 line 16.91 close 16.95 FALSE
+   INFQ   2026-06-05 10:30:00 @15.14 line 16.48 close 14.56 slice
+   QBTS   2026-06-04 09:55:00 @26.66 line 26.85 close 27.64 FALSE
+   QUBT   2026-06-03 12:45:00 @11.19 line 11.27 close 11.20 slice
+   CAMT   2026-06-04 10:05:00 @174.08 line 176.04 close 181.16 FALSE
+   CLF    2026-08-14 09:55:00 @12.13 line 12.15 close 11.90 slice
+   FTK    2026-08-17 13:55:00 @27.85 line 34.35 close 28.66 slice
+   PLTR   2026-08-21 10:20:00 @173.45 line 173.95 close 179.94 FALSE
+   ZBRA   2026-08-18 09:51:00 @359.58 line 366.78 close 366.42 slice
+   TEAM   2026-09-08 12:15:00 @178.03 line 183.42 close 176.42 slice
+   TH     2026-08-13 10:30:00 @16.06 line 16.08 close 16.27 FALSE
+   ATRO   2026-08-19 14:11:00 @81.81 line 82.21 close 81.67 slice
+   ETON   2026-08-28 10:56:00 @59.86 line 60.36 close 59.78 slice
+   AMLX   2026-08-31 09:50:00 @34.20 line 34.46 close 33.75 slice
+   MRNA   2026-09-03 11:15:00 @144.71 line 145.20 close 148.87 FALSE
+A3 stop_hit exits after day 0 in the study: 21
+   MRAM|2026-05-11 A3 -0.08 on 2026-05-12 (A0 -0.08 2026-05-12); floor entry adr 0.09915929949843198
+   ZBRA|2026-05-12 A3 -1.00 on 2026-05-13 (A0 -1.00 2026-05-13); floor hard adr 0.0336852684827776
+   FIG|2026-05-15 A3 -0.11 on 2026-05-20 (A0 -0.11 2026-05-20); floor hard adr 0.0639007537145657
+   RDW|2026-05-26 A3 +1.21 on 2026-06-03 (A0 +1.21 2026-06-03); floor entry adr 0.1110294902164155
+   KTOS|2026-05-28 A3 -1.00 on 2026-06-03 (A0 -1.00 2026-06-03); floor hard adr 0.05270064802017952
+   NOW|2026-06-01 A3 -1.27 on 2026-06-02 (A0 -1.27 2026-06-02); floor hard adr 0.051336050716926526
+   LAC|2026-06-02 A3 -1.00 on 2026-06-03 (A0 -1.00 2026-06-03); floor hard adr 0.06575372755845113
+   MANE|2026-07-15 A3 +1.33 on 2026-07-16 (A0 +1.33 2026-07-16); floor entry adr 0.0725153789028251
+   SMCI|2026-07-22 A3 +0.00 on 2026-07-24 (A0 +0.00 2026-07-24); floor hard adr 0.05976792806155
+   QBTS|2026-07-27 A3 +0.00 on 2026-07-28 (A0 +0.00 2026-07-28); floor entry adr 0.06647022117619032
+   EME|2026-07-30 A3 -0.01 on 2026-08-03 (A0 -0.01 2026-08-03); floor hard adr 0.03620804207637652
+   FTK|2026-08-03 A3 +5.07 on 2026-08-17 (A0 +6.27 2026-08-17); floor hard adr 0.06518795375857564
+   BLZE|2026-08-04 A3 -1.00 on 2026-08-05 (A0 -1.00 2026-08-05); floor hard adr 0.09074458387698993
+   KTOS|2026-08-05 A3 -1.00 on 2026-08-06 (A0 -1.00 2026-08-06); floor hard adr 0.057512691869089694
+   INSM|2026-08-06 A3 -1.00 on 2026-08-14 (A0 -1.00 2026-08-14); floor hard adr 0.034722612983952086
+   EROC|2026-08-12 A3 +1.33 on 2026-08-20 (A0 +1.44 2026-08-20); floor hard adr 0.10543961478400417
+   NBIS|2026-08-12 A3 +0.00 on 2026-08-19 (A0 +0.00 2026-08-19); floor entry adr 0.11011638654980663
+   CRWD|2026-08-27 A3 +0.00 on 2026-08-28 (A0 +0.00 2026-08-28); floor entry adr 0.04360382197498185
+   SOLS|2026-08-28 A3 -1.00 on 2026-08-31 (A0 -1.00 2026-08-31); floor hard adr 0.03297962633363907
+   SEI|2026-09-08 A3 +0.00 on 2026-09-14 (A0 +0.00 2026-09-14); floor hard adr 0.05749066144008733
+   MSTR|2026-09-21 A3 -1.00 on 2026-09-23 (A0 -1.00 2026-09-23); floor hard adr 0.06330427675368183
+PARTIAL SESSIONS among the readable line-test days (< 385 of 390 one-minute bars): 11 — [('CAMT', datetime.date(2026, 6, 4), 176), ('CAMT', datetime.date(2026, 6, 5), 218), ('FTK', datetime.date(2026, 8, 17), 369), ('ZBRA', datetime.date(2026, 8, 18), 251), ('QNST', datetime.date(2026, 8, 21), 294), ('TH', datetime.date(2026, 8, 13), 299), ('TH', datetime.date(2026, 8, 25), 316), ('TH', datetime.date(2026, 8, 26), 364), ('ATRO', datetime.date(2026, 8, 19), 239), ('ETON', datetime.date(2026, 8, 28), 274), ('AMLX', datetime.date(2026, 8, 31), 374)]
+A2k2 fires on partial sessions: [('CAMT', datetime.date(2026, 6, 4), 'FALSE'), ('FTK', datetime.date(2026, 8, 17), 'slice'), ('ZBRA', datetime.date(2026, 8, 18), 'slice'), ('TH', datetime.date(2026, 8, 13), 'FALSE'), ('ATRO', datetime.date(2026, 8, 19), 'slice'), ('ETON', datetime.date(2026, 8, 28), 'slice'), ('AMLX', datetime.date(2026, 8, 31), 'slice')]
+UNREADABLE line-test days 9; prod (MINCOV, pulled 16:57Z) HAS bars on 3: [('THC', datetime.date(2026, 8, 12), 253), ('THC', datetime.date(2026, 8, 27), 388), ('U', datetime.date(2026, 8, 25), 391)]; truly absent in prod: [('HTFL', datetime.date(2026, 8, 31), None), ('HTFL', datetime.date(2026, 9, 3), None), ('HTFL', datetime.date(2026, 9, 4), None), ('ARGX', datetime.date(2026, 8, 31), None), ('ARGX', datetime.date(2026, 9, 1), None), ('ROIV', datetime.date(2026, 9, 21), None)]

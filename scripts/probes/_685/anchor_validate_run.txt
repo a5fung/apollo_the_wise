@@ -1,0 +1,34 @@
+validate: 44 first-attempt real trades replayed era-matched (excluded: {'reentry': 6, 'manual_exit': 2, 'bad_row': 0}); settled 30, abstained 14, other 0
+  stop formula match: 44/44
+  entered agreement:  33/44 (every real trade entered; replay must too)
+  entry px |delta|: mean 0.244% max 1.086% (n=33)
+  partial-fired agreement: 29/30
+  final-exit-class agreement: 29/30
+  realized R: |dR|<=0.25R on 25/30; mean dR +0.111R; worst +1.31R
+    DISAGREE FTRE 2026-05-05 (as_of_2026-05-05): recon +0.52R vs live +0.14R [stop_hit vs stop_hit]
+    DISAGREE BW 2026-05-11 (as_of_2026-05-11): recon +3.73R vs live +2.52R [sma_trail_stop vs sma_trail_stop]
+    DISAGREE SMCI 2026-07-22 (as_of_2026-07-22): recon -0.98R vs live -0.68R [stop_hit vs stop_hit]
+    DISAGREE PLTR 2026-08-04 (as_of_2026-08-04): recon +3.03R vs live +3.31R [stop_hit vs stop_hit]
+    DISAGREE ETON 2026-08-14 (as_of_2026-08-14): recon +1.70R vs live +0.40R [stop_hit vs partial_profit]
+    ABSTAIN CRSR 2026-05-27: entry_window_gaps:389_of_389
+    ABSTAIN DY 2026-05-27: entry_window_gaps:389_of_389
+    ABSTAIN RCAT 2026-05-28: entry_window_gaps:389_of_389
+    ABSTAIN DELL 2026-05-29: entry_window_gaps:389_of_389
+    ABSTAIN NVTS 2026-06-03: entry_window_gaps:389_of_389
+    ABSTAIN RUM 2026-06-04: entry_window_gaps:380_of_380
+    ABSTAIN NRIX 2026-06-08: entry_window_gaps:389_of_389
+    ABSTAIN NAVN 2026-06-11: entry_window_gaps:389_of_389
+    ABSTAIN JBL 2026-06-17: entry_window_gaps:385_of_385
+    ABSTAIN QURE 2026-06-17: entry_window_gaps:389_of_389
+    ABSTAIN SYRE 2026-06-22: entry_window_gaps:389_of_389
+    ABSTAIN MANE 2026-07-15: day0_fill_bar_straddles_stop
+    ABSTAIN HUT 2026-07-20: day0_fill_bar_straddles_stop
+    ABSTAIN FRMI 2026-08-11: day0_fill_bar_straddles_stop
+
+  VALIDATION vs 2026-09-01 baseline (44 replayable real live trades, era-matched):
+    stop_formula_rate      100% (floor 100%)
+    entry_decision_rate    100% (floor 95%)
+    exit_class_rate        97% (floor 90%)
+    realized_r_rate        83% (floor 75%)
+    entry-decidable rows   33/44 (11 had no minute data in the entry window)
+  ✅ VALIDATION PASS — output from this harness may be quoted.
