@@ -14,6 +14,8 @@ said below.
 chosen after the data was seen, and two of its reads cannot tell a broken board from a good one. What survives is
 a GROUPING test whose bars were written before its first run, today's baselines, and a named-case list for identity.
 
+**✅ SIGNED BY HIM 2026-09-27 (*"Signed"*) — the four grouping bars below, as proposed.** The step-2 latency target is still his pick.
+
 **What goes to him for signature (the grouping half, bars pre-registered in `scripts/probes/_655/grouping/grouping_test.py`
 before any number printed; scored forward nightly, today's values are the BASELINE, not a verdict):**
 
