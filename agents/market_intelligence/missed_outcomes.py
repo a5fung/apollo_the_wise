@@ -406,10 +406,11 @@ _EXT_WATCH_SAMPLE_TARGET = 40  # "more samples" — the 08-29 read had 15 scorea
 async def check_extension_cap_revisit() -> dict:
     """Surface the two operator-named triggers for revisiting MAX_EXTENSION_PCT.
 
-    Returns {"names": [...], "band_n": int, "sample_ready": bool}. Read-only; never raises —
+    Returns {"names": [...], "blocked_anyway": [...], "band_n": int, "sample_ready": bool}; `names` holds
+    only EPs the cap ALONE blocked (they pass the live quality filters), `blocked_anyway` the rest. Read-only; never raises —
     the caller runs it inside the nightly job and a telemetry failure must not break the chain.
     """
-    out: dict = {"names": [], "band_n": 0, "sample_ready": False, "error": None}
+    out: dict = {"names": [], "blocked_anyway": [], "band_n": 0, "sample_ready": False, "error": None}
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
@@ -423,7 +424,7 @@ async def check_extension_cap_revisit() -> dict:
                   AND alert_date >= CURRENT_DATE - 7  -- only NEW ones; this runs nightly
                 ORDER BY max_high_5d DESC
                 """, _EXT_WATCH_MFE)
-            out["names"] = [dict(r) for r in rows]
+            candidates = [dict(r) for r in rows]
             # (a) the sample counter — how much scoreable evidence the 50-75 band now holds
             out["band_n"] = int(await conn.fetchval(
                 """
@@ -432,6 +433,19 @@ async def check_extension_cap_revisit() -> dict:
                   AND ret_5d IS NOT NULL
                 """) or 0)
             out["sample_ready"] = out["band_n"] >= _EXT_WATCH_SAMPLE_TARGET
+        # 2026-09-28: his trigger is an EP missed BECAUSE OF the cap. The scan checks extension before
+        # the quality filters, so a name recorded as `extension_gate` may fail them too — SVRN 09-21
+        # (+133% in 5 sessions) had a 20-day median dollar volume of ~$367k against the live $1M floor
+        # and would not have been bought with no cap at all. Only names that pass the SAME live
+        # quality filters (ADV, ATR, market cap) on the alert date are sent; the rest are recorded.
+        from agents.market_intelligence.backtester.filters import check_filters
+        out["blocked_anyway"] = []
+        for n in candidates:
+            passed, why = await check_filters(n["ticker"], n["alert_date"])
+            if passed:
+                out["names"].append(n)
+            else:
+                out["blocked_anyway"].append({**n, "also_blocked_by": why})
     except Exception as e:                      # never break the nightly chain
         # COUNTED, not swallowed (#381): a watch that fails silently is a watch that is off, and
         # this one carries an operator-named trigger. The caller still gets its dict.

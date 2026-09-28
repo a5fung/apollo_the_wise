@@ -816,6 +816,14 @@ async def _nightly_data_pull():
                     "extension_cap_sample_ready",
                     f"the 50-75% band now holds {_ext['band_n']} scoreable names "
                     f"(was 15 at the 2026-08-29 revert) — enough to re-read")
+            if _ext.get("blocked_anyway"):
+                # recorded, not sent: the quality filters would have blocked these with no cap at all
+                await log_audit_event(
+                    "extension_cap_watch_blocked_anyway",
+                    f"{len(_ext['blocked_anyway'])} extended runner(s) the quality filters would also "
+                    f"have blocked — not sent",
+                    detail=str([(b["ticker"], str(b["alert_date"]), b["also_blocked_by"])
+                                for b in _ext["blocked_anyway"]])[:900])
         except Exception as _ee:
             logger.warning(f"extension-cap revisit watch failed (non-fatal): {_ee}")
 

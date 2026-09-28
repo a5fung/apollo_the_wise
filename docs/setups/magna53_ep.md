@@ -983,6 +983,7 @@ population at all.
 scoreable names, or (b) **any single real strong EP is blocked by this gate**. Both are watched
 nightly by `missed_outcomes.check_extension_cap_revisit`; (b) Telegrams per-name, because a
 review he has to remember to call is one that does not happen.
+⚠ **2026-09-28:** (b) now counts only EPs the cap ALONE blocked — a name must also pass the live quality filters (`backtester.filters.check_filters`: ADV, ATR, market cap) on its alert date; the rest are recorded as `extension_cap_watch_blocked_anyway`, not sent. The first firing, SVRN 09-21 (+133% in 5 sessions), had a 20-day median dollar volume of ~$367k against the $1M floor — the same floor that blocked its 09-17/09-18 gaps — so it was not missed because of the cap. No gate changed.
 
 **Status**: shipped, awaiting field validation. Verify-live = the next scan logs
 `already up X% in prior 5 days` for a name in the 50–75% range.
