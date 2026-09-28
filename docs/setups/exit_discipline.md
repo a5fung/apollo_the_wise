@@ -344,6 +344,17 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-09-28 — the +8 ORB-R partial FIRED LIVE for the first time (KOD, trade 404) — verified at the broker, no rule changed
+
+- **What fired:** KOD entered at the 09:31 ORB at $63.15 (5 shares, hard stop $58.08, so R = $2.53); the 1/3 partial
+  sold **1 share at $85.125 at 10:10 ET** (+$21.98; +8R = $83.42), high seen $87.83.
+- **Checked at the broker, read-only:** position 4 shares; the protective stop is a live SELL STOP for **4 shares at
+  $63.15** (breakeven, moved at +3R), status NEW — the row's `stop_price` and `stop_order_id` agree.
+- **Sizing note:** a third of 5 shares rounds DOWN to 1 (`exit_logic.py:359`, `remaining // 3`, unchanged behaviour),
+  so on small positions the partial is under a third.
+- First real firing of the 09-06 era-D rule ([[a-rule-is-not-live-until-it-has-fired-once]]); feeds the
+  `exit_rules_since_2026_09_06_first_readable_n` review (accruing).
+
 ### 2026-09-19 — #665: the setup-review section's REPORTED numbers now carry their exit era too (REPORTING ONLY — no exit rule, stop, target or size changed)
 
 **The gap #585 (2026-08-23, below) left.** #585 era-scoped every ASK the setup-review section
