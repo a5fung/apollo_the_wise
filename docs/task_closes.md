@@ -1852,3 +1852,42 @@ EVIDENCE:
   (last row 08-26) re-anchored because its old top (08-18) had aged past the 25-session lookback, as designed. No
   returning name took a wick top above an unresolved carried top.
 - **RECORD (advisor review 2026-09-28):** subagent spend on 09-28 ≈ 3.7M tokens (#684 study+critic 551k, the live-entry frame 290k + 465k, the late-alert check 266k, #685 656k, its depth follow-up 377k, simplify 405k, misc). ⚠ Two claims reached him before their check: "a third of EP alerts arrive after the 9:45 cutoff, 40% of alerted runners" (it counted MODERATE scan passes; on orderable HIGH alerts 55 of 181 were late) and "option 1 holds up" for late alerts (refuted by the independent check the same afternoon — live code gets ~16 fills at −0.21..−0.03R vs +0.20R in-window).
+
+## #353 — the consolidation play's entry is NOT graduated to paper; closed on his ruling (2026-09-29)
+
+BAR: "consolidation registered + `phase=paper` + accruing REAL paper fills with a promotion-check readout (not a
+shadow row)"
+
+EVIDENCE: NOT met by design — his ruling closes it. The task's own gate was "graduate ONLY if the edge read shows a
+real consolidation edge; no edge → stay observe-only shadow, do NOT graduate", and the read came back no:
+- **Confirm (buy the base-high breakout):** round 2 on the current wiring, 42 trades over 24 days: −0.20R a trade,
+  31% winners — fails his 8/9 bar (`data_gated_reviews.yaml` consolidation_unification_review, 2026-09-27).
+- **Anticipate (buy inside the tight coil, stop at the coil low — the entry this task would have wired):** parked
+  08-09 on a −0.84R median.
+- **Standing priority:** nothing graduates to paper or live while EP is unprofitable (his 07-29 ruling).
+- **His ruling 2026-09-29:** *"ok, aligned"* to closing it without graduating; next priority after EP is delayed
+  entries and HTF. The consolidation DETECTOR stays (it feeds HTF and the /flags board); only this graduation plan ends.
+
+## #197 — the cap+1 game-changer slot is retired; closed on his ruling (2026-09-29)
+
+BAR: "the cap+1 slot has N≥30 shadow observations and a promote-or-retire decision is put to the operator with the
+numbers"
+
+EVIDENCE: the decision was put to him with the numbers and he chose retire.
+- **Numbers:** `mi_cap_plus_one_shadow` holds 16 observations on 5 alert dates (05-07 → 08-07); the position cap has
+  not filled since 08-07, so N=30 was months away at the current flow and sizing.
+- **His ruling 2026-09-29:** *"ok, aligned"* to the recommendation to retire rather than re-date to December. No live
+  behaviour changes (the slot was shadow only); the ledger stays in the table.
+
+## #647 — machine-text alerts go out as HTML on the first send; no fallback since the fix (2026-09-29)
+
+BAR: "the alerts that carry machine text — SQL, JSON, identifiers — are sent WITHOUT a Markdown parse mode rather than
+sent-and-retried, so delivery does not depend on a fallback; and `telegram_markdown_fallback` drops to zero for those
+senders."
+
+EVIDENCE: prod `mi_audit_log`, read 2026-09-29 09:25 ET — **0 `telegram_markdown_fallback` rows and 0
+`telegram_send_failed` rows** since the 2026-09-25 21:16 ET deploy (4 days, 3 market sessions).
+- **Positive cases, not only an absence:** machine-text messages reached him on their first send and he pasted them
+  back — the 09-28 model-release notice (identifiers `_TIER_OVERRIDES`, `shared/llm_models.py`, underscores that break
+  legacy Markdown) and the 09-28 extension-cap trigger; `/spend` arrived through the HTML path on 09-25.
+- The default sender has been HTML since #652/#675; the last two raw senders (`/spend`, TradingView webhook) moved 09-25.
