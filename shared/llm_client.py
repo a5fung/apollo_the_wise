@@ -80,6 +80,11 @@ REWRITE_FORCED_TOOL = "forced_tool_to_structured_output"
 REWRITE_THINKING_DISABLED = "drop_thinking_disabled"
 
 _UNSUPPORTED_MARKER = "not supported for this model"
+# claude-sonnet-5-5 (2026-09-29) words the thinking-off rejection differently when the request
+# already carries output_config: 'To turn thinking off on this model, send "thinking":
+# {"type": "between_tools"} instead of {"type": "disabled"}'. Unrecognised, it reached callers as
+# a plain 400 — rename, synthesis and ecosystem proposals all failed on it.
+_THINKING_OFF_MARKER = "To turn thinking off on this model"
 
 # model id -> the rewrites that model has been observed to need. Module-level on purpose:
 # the first rejected call pays the 400 + retry, every later call in the process goes straight
@@ -126,6 +131,8 @@ def _rejection_rewrite(exc: BaseException, kw: dict) -> Optional[str]:
     if getattr(exc, "status_code", None) != 400:
         return None
     msg = str(getattr(exc, "message", "") or exc)
+    if _THINKING_OFF_MARKER in msg and _thinking_is_disabled(kw):
+        return REWRITE_THINKING_DISABLED
     if _UNSUPPORTED_MARKER not in msg:
         return None
     if "tool_choice" in msg and _forced_tool_target(kw) is not None:
@@ -180,6 +187,12 @@ def _sanitize_schema(node: Any) -> Any:
                 out[k] = {name: _sanitize_schema(sub) for name, sub in v.items()}
                 continue
             if k in _STRIPPED_KEYWORDS:
+                continue
+            if k == "oneOf":
+                # Structured outputs reject oneOf (sonnet-5-5, 2026-09-29: "Schema type 'oneOf'");
+                # anyOf is supported. The tool schemas here use oneOf only over disjoint branches
+                # (null vs object), where the two mean the same thing.
+                out["anyOf"] = _sanitize_schema(v)
                 continue
             out[k] = _sanitize_schema(v)
         # Only an object that DECLARES properties gets additionalProperties:false — pinning it

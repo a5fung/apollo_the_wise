@@ -53,7 +53,7 @@ _SYNTHESIS_TOOL = {
     "name": "propose_emerging_cohorts",
     "description": (
         "Propose 0-3 EMERGING cross-ticker narrative cohorts from the supplied "
-        "RS-acceleration candidates. Reason in the scratchpad FIRST."
+        "RS-acceleration candidates."
     ),
     "input_schema": {
         "type": "object",
@@ -61,7 +61,7 @@ _SYNTHESIS_TOOL = {
             "analysis_scratchpad": {
                 "type": "string",
                 "description": (
-                    "Think step by step BEFORE proposing: which candidates are "
+                    "Brief notes: which candidates are "
                     "moving for a SHARED narrative reason (not just same "
                     "sector)? What is the story? Is it already a known live "
                     "theme? Prefer proposing NOTHING over a forced grouping."

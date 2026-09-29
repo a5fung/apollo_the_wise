@@ -430,8 +430,8 @@ CANDIDATE CHILD: {child_name}
 CANDIDATE PARENT: {parent_name}
 {parent_members}  {parent_desc}
 
-Adjudicate with the tool. Fill analysis_scratchpad FIRST: state the CANDIDATE PARENT's broad
-thesis, then the CANDIDATE CHILD's thesis, then decide whether the child's thesis is a sub-driver
+Adjudicate with the tool. In analysis_scratchpad, note in brief the CANDIDATE PARENT's broad
+thesis and the CANDIDATE CHILD's thesis. The verdict says whether the child's thesis is a sub-driver
 riding inside the parent's (CHILD_OF), the reverse (INVERTED), a same-level relative (PEERS), or
 unconnected (UNRELATED)."""
 
@@ -443,9 +443,9 @@ CONTAINMENT_ADJUDICATION_TOOL = {
         "properties": {
             "analysis_scratchpad": {
                 "type": "string",
-                "description": "Reason FIRST: what is the CANDIDATE PARENT's broad thesis? What "
-                               "is the CANDIDATE CHILD's thesis — a sub-driver riding inside the "
-                               "parent's, the reverse, a same-level relative, or unconnected?",
+                "description": "Brief notes: the CANDIDATE PARENT's broad thesis, and the CANDIDATE "
+                               "CHILD's thesis — a sub-driver riding inside the parent's, the "
+                               "reverse, a same-level relative, or unconnected.",
             },
             "verdict": {"type": "string", "enum": ["CHILD_OF", "INVERTED", "PEERS", "UNRELATED"]},
             "reason": {"type": "string", "description": "One sentence, ≤25 words"},

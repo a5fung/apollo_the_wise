@@ -970,6 +970,24 @@ demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
 
+### 2026-09-29 — BUG FIX: Sonnet 5.5 refuses prompts that make it write its reasoning out; theme stack restored
+
+- **Defect:** the resolver moved the Sonnet tier to claude-sonnet-5-5 on 09-28. That model answers a prompt that tells it
+  to write its reasoning into the answer ("Reason FIRST:", "Fill analysis_scratchpad FIRST", per-item reasoning in
+  `analysis_scratchpad`) with stop_reason "refusal" and no output. 09-29: the assignment pass died at batch 1, 6 of 6
+  parent checks failed, synthesis failed, and all 40 EP theme-fit checks fell back to list membership.
+- **Measured on prod (claude-sonnet-5-5):** containment prompt refused 100% as written; reworded to "Brief notes:" it
+  answered 5 of 5 with the same verdict as Sonnet 5. Stock assignment still refused 4 of 5 with the notes instruction
+  reworded, and answered 5 of 5 with the `analysis_scratchpad` field removed; discovery 1 of 3 vs 4 of 4 the same way.
+  Two adapter defects surfaced alongside: the thinking-off rejection's `between_tools` wording was not recognised, and
+  structured output rejects `oneOf` (the split tool).
+- **Shipped:** containment, synthesis and ecosystem prompts reworded as brief notes (they track the tier again);
+  adapter recognises the new rejection wording and maps `oneOf` to `anyOf`; a refusal is logged as a refusal.
+  `THEME_MODEL` (assignment, discovery, split, rename, validation) stays pinned to claude-sonnet-5 with its prompts
+  unchanged — the assignment prompt is also the EP theme-fit check, so removing its reasoning field is his call.
+- **Rule, gated:** no prompt string may tell the model to reason first (`tests/test_no_reasoning_first_prompts.py`).
+  The model reasons in its own thinking; a field is worded as brief notes or dropped.
+
 ### 2026-09-28 — BUG FIX: the co-movement test could not price the assignment pool, so the sector label kept deciding cross-sector names
 
 - **Defect:** the run's price context (`_comove_universe_for`, was inline) held leaders, velocity/turner pools, live

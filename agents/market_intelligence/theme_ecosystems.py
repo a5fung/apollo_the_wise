@@ -352,11 +352,12 @@ _ECOSYSTEM_ASSIGN_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            # analysis_scratchpad FIRST — house discipline: reason before the JSON.
+            # analysis_scratchpad: brief notes. Never word it as "reason first" — see
+            # tests/test_no_reasoning_first_prompts.py (sonnet-5-5 refused that, 2026-09-29).
             "analysis_scratchpad": {
                 "type": "string",
                 "description": (
-                    "REQUIRED. Reason step-by-step BEFORE deciding: (1) the theme's "
+                    "REQUIRED. Brief notes: (1) the theme's "
                     "core thesis from its name/description/members, (2) the 1-2 "
                     "candidate ecosystems and why, (3) the decision. This is how "
                     "you avoid a forced bad fit — E-UNASSIGNED is a valid answer."
@@ -415,8 +416,8 @@ Rules:
 - When genuinely torn between two buckets or nothing fits, answer {E_UNASSIGNED} —
   that is a correct answer, not a failure.
 
-Call `assign_theme_ecosystem` with your reasoning in `analysis_scratchpad` first,
-then the single chosen `e_code`."""
+Call `assign_theme_ecosystem` with brief notes in `analysis_scratchpad` and
+the single chosen `e_code`."""
 
     client = _get_anthropic_client()
     resp = await client.messages.create(

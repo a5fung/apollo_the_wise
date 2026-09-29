@@ -589,3 +589,35 @@ def test_a_refusal_is_named_as_a_refusal_not_as_missing_text():
             model="claude-sonnet-5-5", max_tokens=500, tools=[GRADE_TOOL],
             tool_choice={"type": "tool", "name": "grade_ep"},
             messages=[{"role": "user", "content": "x"}]))
+
+
+THINKING_OFF_400 = ('Error code: 400 - {\'type\': \'error\', \'error\': {\'type\': '
+                    '\'invalid_request_error\', \'message\': \'To turn thinking off on this model, send '
+                    '"thinking": {"type": "between_tools"} instead of {"type": "disabled"}.\'}}')
+
+
+def test_the_between_tools_wording_of_the_thinking_rejection_is_adapted():
+    # sonnet-5-5 on 2026-09-29, once the forced-tool rewrite was already cached: rename,
+    # synthesis and ecosystem proposals reached their callers as a plain 400.
+    class Sonnet55(FakeOpus55):
+        async def create(self, **kw):
+            if (kw.get("thinking") or {}).get("type") == "disabled":
+                self.calls.append(kw)
+                raise FakeBadRequest(THINKING_OFF_400)
+            return await super().create(**kw)
+    from shared.llm_response import first_text
+    fake = Sonnet55()
+    resp = _run(_client(fake).messages.create(
+        model="claude-sonnet-5-5", max_tokens=500, thinking={"type": "disabled"},
+        messages=[{"role": "user", "content": "x"}]))
+    assert first_text(resp) == "pong"
+    assert "thinking" not in fake.calls[-1]
+
+
+def test_oneof_becomes_anyof_for_structured_output():
+    from shared.llm_client import _sanitize_schema
+    out = _sanitize_schema({"type": "object", "properties": {
+        "split": {"oneOf": [{"type": "null"}, {"type": "object", "properties": {"name": {"type": "string"}}}]}}})
+    split = out["properties"]["split"]
+    assert "oneOf" not in split and len(split["anyOf"]) == 2
+    assert split["anyOf"][1]["additionalProperties"] is False

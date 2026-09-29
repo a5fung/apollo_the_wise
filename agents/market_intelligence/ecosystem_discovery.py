@@ -179,7 +179,7 @@ _PROPOSE_TOOL = {
             "analysis_scratchpad": {
                 "type": "string",
                 "description": (
-                    "REQUIRED FIRST. Reason before deciding: (1) what single "
+                    "REQUIRED. Brief notes: (1) what single "
                     "narrative, if any, unites these themes' theses and members; "
                     "(2) whether an EXISTING ecosystem already covers it (then "
                     "abstain); (3) the decision."
@@ -233,7 +233,7 @@ Rules:
   ≥3 keyword_stems, exemplar tickers from the members, the member_themes (≥3,
   exact names from the cluster), and 1-2 lines of evidence.
 
-Call `propose_ecosystem` with your reasoning in `analysis_scratchpad` first."""
+Call `propose_ecosystem`, with brief notes in `analysis_scratchpad`."""
 
 
 def validate_proposal(data: dict, cluster: list[dict], taxonomy: list[dict]) -> dict | None:
