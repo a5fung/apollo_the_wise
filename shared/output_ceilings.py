@@ -244,7 +244,7 @@ CEILINGS: dict[str, OutputCeiling] = {
         "ZERO text, blocks=['thinking']) — thinking=DISABLED now (no scratchpad at "
         "all, plain JSON), this number is a text-only budget again."),
     "theme_assignment": OutputCeiling(
-        8000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        16000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise after 10 days dead at 4000 (#543 — every call censored). "
         "POST-RAISE SAMPLE NOW IN, measured 2026-08-18 over 8 days: 152 calls, ZERO "
         "truncations, max completed 2968 (37% of cap), mean 1374. The 08-10 input "
@@ -253,7 +253,7 @@ CEILINGS: dict[str, OutputCeiling] = {
         "at 83% of cap on its clean days and tripped on a heavy one. #575 2026-08-21: "
         "thinking=DISABLED (tool_choice=any forces assign_stocks_to_themes or "
         "consult_advisor every turn; analysis_scratchpad already IS the reasoning "
-        "surface) — this number is a text-only budget again."),
+        "surface) — this number is a text-only budget again. 2026-09-29: THINKING ON — the analysis_scratchpad left the tool (sonnet-5-5 refuses to write reasoning out), so 8000 -> 16000 = llm_client.thinking_headroom(8000), the same headroom the adapter already gave sonnet-5-5 when it dropped thinking=disabled."),
     "theme_discovery": OutputCeiling(
         8000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise from 4000: 8/8 sonnet-5 calls censored at 4000; "
@@ -273,13 +273,13 @@ CEILINGS: dict[str, OutputCeiling] = {
         "its siblings this caller still has no is_truncated() guard at the call "
         "site (out of #575 scope — flagged for a follow-up, not fixed here)."),
     "theme_split": OutputCeiling(
-        1750, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        3500, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "RAISED 2026-08-09 from 800: the only sonnet-5 call censored at exactly 800; "
         "2.5x the 4-6 max completed (691) ~ 1750. PROVISIONAL. #575 2026-08-21: "
         "thinking=DISABLED (forced tool_choice=any, analysis_scratchpad already IS "
-        "the reasoning surface) — this number is a text-only budget again."),
+        "the reasoning surface) — this number is a text-only budget again. 2026-09-29: THINKING ON — the analysis_scratchpad left the tool (sonnet-5-5 refuses to write reasoning out), so 1750 -> 3500 = llm_client.thinking_headroom(1750), the same headroom the adapter already gave sonnet-5-5 when it dropped thinking=disabled."),
     "theme_rename": OutputCeiling(
-        1750, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        3500, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "NEW caller 2026-08-26 (#214 rename-instead-of-strip). No sample of its own yet — "
         "sized by ANALOGY to theme_split, whose output shape is identical: ONE forced tool "
         "call emitting a terse analysis_scratchpad plus a single theme object (name + "
@@ -289,7 +289,7 @@ CEILINGS: dict[str, OutputCeiling] = {
         "here is the ticker echo (up to ~46 symbols, ~120 tokens, vs split's <=8), which "
         "fits inside that headroom. It REUSES the report_themes schema, so it is bounded "
         "by construction — one theme, not a pool. PROVISIONAL: re-derive from api_usage "
-        "after the first real firings (expect ~3 per 10 days at the observed rate)."),
+        "after the first real firings (expect ~3 per 10 days at the observed rate). 2026-09-29: THINKING ON — the analysis_scratchpad left the tool (sonnet-5-5 refuses to write reasoning out), so 1750 -> 3500 = llm_client.thinking_headroom(1750), the same headroom the adapter already gave sonnet-5-5 when it dropped thinking=disabled."),
     "theme_merge_adjudication": OutputCeiling(
         700, None, "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "107 haiku calls, max completed 457 (65% of cap). Model passed per-call "

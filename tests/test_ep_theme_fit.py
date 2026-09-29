@@ -41,9 +41,10 @@ def _resp(*blocks, stop_reason="tool_use"):
                            usage=SimpleNamespace(output_tokens=200))
 
 
-def _assign_resp(assignments, scratch="XYZ: makes widgets — no fit", stop_reason="tool_use"):
+def _assign_resp(assignments, no_fit=None, stop_reason="tool_use"):
+    # 2026-09-29: the tool has no analysis_scratchpad; a no-fit stock's reason is its `no_fit` entry.
     return _resp(_Block("tool_use", name="assign_stocks_to_themes",
-                        input={"analysis_scratchpad": scratch, "assignments": assignments}),
+                        input={"assignments": assignments, "no_fit": no_fit or []}),
                  stop_reason=stop_reason)
 
 
@@ -155,22 +156,25 @@ def test_nightly_call_still_carries_the_advisor_and_its_own_telemetry(monkeypatc
 
 # ── 3. the verdict mapping ─────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("assignments, scratch, expected", [
+@pytest.mark.parametrize("assignments, no_fit, expected", [
     # the model echoes the [Fading] label it was shown — a fit, name stripped
-    ([{"ticker": "LITE", "theme": "Old Optical [Fading]", "rationale": "optical parts"}], "",
+    ([{"ticker": "LITE", "theme": "Old Optical [Fading]", "rationale": "optical parts"}], [],
      (te.FIT_CONFIRMED, "Old Optical", "optical parts")),
-    # no fit: the model's own scratchpad line is the rationale
-    ([], "LITE: a utility — no fit", (te.FIT_REJECTED, None, "LITE: a utility — no fit")),
+    # no fit: the model's own no_fit reason for this ticker is the rationale
+    ([], [{"ticker": "lite", "reason": "a utility, not optical"}], (te.FIT_REJECTED, None, "a utility, not optical")),
+    # no fit and no reason given — still a rejection, never a silent fit
+    ([], [], (te.FIT_REJECTED, None, "no fit")),
     # a theme that was not offered is an echo, never a fit
-    ([{"ticker": "LITE", "theme": "Quantum Computing", "rationale": "x"}], "s",
+    ([{"ticker": "LITE", "theme": "Quantum Computing", "rationale": "x"}], [],
      (te.FIT_REJECTED, None, "named a theme not offered: Quantum Computing")),
-    # another ticker's assignment says nothing about this one
-    ([{"ticker": "COHR", "theme": "Old Optical", "rationale": "x"}], "LITE: no fit",
-     (te.FIT_REJECTED, None, "LITE: no fit")),
+    # another ticker's assignment (or reason) says nothing about this one
+    ([{"ticker": "COHR", "theme": "Old Optical", "rationale": "x"}],
+     [{"ticker": "COHR", "reason": "wrong"}, {"ticker": "LITE", "reason": "no optical exposure"}],
+     (te.FIT_REJECTED, None, "no optical exposure")),
 ])
-def test_verdict_mapping(monkeypatch, assignments, scratch, expected):
+def test_verdict_mapping(monkeypatch, assignments, no_fit, expected):
     _quiet(monkeypatch)
-    client, _ = _client([_assign_resp(assignments, scratch=scratch)])
+    client, _ = _client([_assign_resp(assignments, no_fit=no_fit)])
     got = asyncio.run(te.judge_theme_fit("LITE", description="optical components",
                                          sector="Technology", themes=THEMES, client=client))
     assert got == expected

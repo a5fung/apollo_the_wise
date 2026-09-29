@@ -183,14 +183,10 @@ _TIER_OVERRIDES: dict[str, str | None] = {
 # but not others: pin the broken roles and leave the rest (the money-path graders especially)
 # tracking. Same rules as _TIER_OVERRIDES: its own commit, with rationale; None to resume.
 _ROLE_OVERRIDES: dict[str, str | None] = {
-    # 2026-09-29: claude-sonnet-5-5 refuses (stop_reason "refusal") prompts that make it write
-    # its reasoning out in the answer — the analysis_scratchpad fields. The whole 09-29 assignment
-    # pass, 6 of 6 parent checks and every EP theme-fit check (40 of 40) failed on it. The parent
-    # check, synthesis and ecosystem prompts were reworded and answer 5 of 5 on 5.5, so they
-    # track again. THEME_MODEL stays here: stock assignment answers on 5.5 only with the
-    # scratchpad field removed (5 of 5 vs 1 of 5), and that prompt is also the EP theme-fit
-    # check — removing it is a money-path prompt change and his call. Clear once he rules.
-    "THEME_MODEL": "claude-sonnet-5",
+    # 2026-09-29 → 10-03: THEME_MODEL was pinned to claude-sonnet-5 while claude-sonnet-5-5 refused
+    # the theme prompts that made it write reasoning out. Cleared when those prompts dropped
+    # their analysis_scratchpad (operator-approved 2026-09-29; assignment 15/15, EP fit 15/15,
+    # discovery 8/8, split 6/6 on 5.5 — docs/architecture/theme_engine.md 2026-09-29).
 }
 
 # ── Auto-tracked role bindings: role constant name -> tier. Adding a role

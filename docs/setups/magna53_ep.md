@@ -199,7 +199,8 @@ picks the acting table — see the 2026-08-22 SEPARATION change-log entry). Comp
   clears 0.35 by coincidence) with the equal-weight basket of such a theme's members (≥3 members
   with history, ≥30 overlapping sessions, leave-one-out), which SHORTLISTS the top 3 such themes;
   (2) `theme_engine.judge_theme_fit` — the nightly assignment pass's own prompt, tool and rules —
-  CONFIRMS the stock clearly fits one of them. **Correlation alone never pays.** One Sonnet call
+  CONFIRMS the stock clearly fits one of them (since 2026-09-29 on claude-sonnet-5-5 with thinking on and no
+  pre-verdict reasoning field; a rejection records its `no_fit` reason — change log 2026-09-29). **Correlation alone never pays.** One Sonnet call
   per shortlisted name per day, ≤3 per tick / ≤40 per day, 15 s timeout, premarket only
   (post-open ticks use the day's cached verdicts); every non-verdict = list membership decides.
   The operator-signed **co-movement bar 0.35** for the assignment gate's sector-test replacement
@@ -427,6 +428,28 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 7. **The tape axis (#299) cannot help the judge as designed, and the paid re-grade is not worth funding** (2026-09-19 — `docs/analysis/299_tape_axis_funding_page_2026-09-19.md`, the priced yes/no page; the June rig and its "79% available" finding are `docs/analysis/tape_judge_eval_299_2026-06-17.md` + `scripts/eval_tape_judge.py`). ESTABLISHED from the free features alone, no LLM spend: (a) the opening range exists at grade time for only 24 of 85 HIGH alert-days since Aug 1 (28%) — the scan now grades most HIGHs pre-market, so June's 79% describes a detection timing that no longer exists; (b) the block's own cue (">0.30 = violent open") fires on 306 of 319 HIGH alert-days (96%) — the 5-minute opening range of a gapping stock is about one full ATR (median 1.05), so the threshold was written for ordinary days and separates nothing; (c) the operator-labelled EPs sit at the violent end — HTFL 94th, MRNA 88th, CHPT 99th percentile — so the cue would mark down exactly the class he calls real; (d) opening violence shows no 1-month tail separation across tertiles (n≈62 each, pre-08-22 outcomes only), and the "orderly" third has the worst median; (e) premarket pace is already on the judge's SETUP line as `Pre-mkt RVOL`, so for the 72% graded pre-market the tape adds nothing new; (f) the same idea already acts at entry as `setup:stop_too_wide` (1-min ORB range > 1.5×ATR), whose one known action on the ground truth was to refuse HTFL. Priced whole-path from `pricing_for`: full $86, scoped $34 (not June's $170: 322 unique alert-days, $0.038 measured per call). Recommendation on the page: do not fund; the decision (fund / scoped / close) is the operator's and sits in PLAN.md's standing table. Nothing flipped.
 
 ## Change log (newest first)
+
+### 2026-09-29 — the theme-fit check runs on Sonnet 5.5 without its pre-verdict reasoning field (REFINEMENT of 2026-09-13 late evening; operator-signed)
+
+**Trigger**: claude-sonnet-5-5 (auto-adopted 09-28) refuses prompts that make it write its reasoning out; all 40 fit
+checks on 09-29 failed and fell back to list membership (no EP alerted that day, so no alert was affected).
+
+**Evidence**: `docs/analysis/689_sonnet55_theme_package_2026-09-29.md`. 44 real fit cases from
+`mi_ep_theme_belonging_shadow` (09-15 → 09-29, safeguard-blocked EPs included), each through the real
+`judge_theme_fit`: the new setup is consistent with itself 44/44 (today's 42/44) and matches a theme on 5 vs 0–2 —
+MSTR → Bitcoin Treasury & Crypto Proxy, AKAM → Cloud Application Delivery (the live check's own 09-25 verdict),
+BFLY → AI Diagnostics & Imaging, ABTC, CBRL. The prompt change drives it (new format on Sonnet 5 matched 5.5 on
+43/44). Operator reviewed the five 2026-09-29: *"these 5 matches … is better than what we have in today's setup"*.
+None would have crossed the HIGH line (ABTC/BFLY/CBRL stay below 65 with +10; MSTR/AKAM already at or above).
+
+**Anticipated effect**: a few more theme matches at alert time (~+3 per 44 shortlisted names); EP fit checks end
+confirmed or rejected, not unjudged; the occasional extra +10 on a near-bar EP.
+
+**Reversion-flag**: REFINEMENT of 2026-09-13 (late evening) — same two-stage rule, same bars, same toggle
+(`ep_theme_belonging`); the fit judgement's prompt drops its reasoning field and its model moves to Sonnet 5.5.
+Revert = restore `_ROLE_OVERRIDES["THEME_MODEL"] = "claude-sonnet-5"` and the prior tool schema (git revert).
+
+**Status**: shipped, awaiting field validation (#689: three nights, zero refusals).
 
 ### 2026-09-22 — the two MAGNA53 near-miss replays price under MAGNA53's CURRENT bracket again (BUG FIX — no criteria, stop, target, size or admission change)
 

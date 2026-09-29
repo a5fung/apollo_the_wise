@@ -66,10 +66,13 @@ def test_expected_schema_bounded_callers():
     Sonnet tier): forced tool_choice, terse analysis_scratchpad + verdict + one-sentence
     reason — the same schema-bounded shape, now on a tier where an unset thinking budget
     silently shares max_tokens with the tool output (the #575 root cause this whole
-    registry exists for)."""
+    registry exists for).
+
+    theme_assignment, theme_split and theme_rename LEFT 2026-09-29: their analysis_scratchpad
+    was removed (claude-sonnet-5-5 refuses to write reasoning out), so thinking is now the only
+    place they reason — see test_scratchpad_less_callers_think below."""
     assert llm_thinking.THINKING_DISABLED == {
-        "theme_validation", "theme_assignment", "theme_split",
-        "narrative_theme_discovery", "theme_synthesis", "theme_rename",
+        "theme_validation", "narrative_theme_discovery", "theme_synthesis",
         "theme_parent_adjudication",
     }
 
@@ -77,13 +80,14 @@ def test_expected_schema_bounded_callers():
 # ── 2. call-site pins (source scan — catches a silent revert) ───────────────
 
 def test_always_disabled_call_sites_pinned_in_theme_engine():
+    # source-pin-ok: a census of unconditional DISABLED call sites — it catches a NEW caller
+    # silently joining the list, which no behaviour test of an existing caller can see.
     src = _TE.read_text(encoding="utf-8")
-    # theme_validation, theme_assignment, theme_split, narrative_theme_discovery x2,
-    # theme_rename (#214, 2026-08-26)
-    assert src.count("thinking=llm_thinking.DISABLED") == 6, (
-        "expected exactly 6 unconditional thinking=llm_thinking.DISABLED call sites "
-        "in theme_engine.py (theme_validation, theme_assignment, theme_split, "
-        "narrative_theme_discovery x2 lane1/lane2, theme_rename)")
+    # theme_validation, narrative_theme_discovery x2. theme_assignment, theme_split and
+    # theme_rename turned thinking ON 2026-09-29 (their scratchpad is gone).
+    assert src.count("thinking=llm_thinking.DISABLED") == 3, (
+        "expected exactly 3 unconditional thinking=llm_thinking.DISABLED call sites "
+        "in theme_engine.py (theme_validation, narrative_theme_discovery x2 lane1/lane2)")
 
 
 def test_theme_synthesis_call_site_pinned():
@@ -154,7 +158,7 @@ async def test_theme_validation_disables_thinking(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_theme_assignment_disables_thinking(monkeypatch):
+async def test_theme_assignment_thinks(monkeypatch):
     from agents.market_intelligence import theme_engine
 
     class _Block:
@@ -189,11 +193,12 @@ async def test_theme_assignment_disables_thinking(monkeypatch):
         batch_no=1, n_batches=1, pool_size=1,
     )
 
-    assert captured.get("thinking") == llm_thinking.DISABLED
+    assert "thinking" not in captured  # the model default: thinking on (2026-09-29)
+    assert "analysis_scratchpad" not in captured["tools"][0]["input_schema"]["properties"]
 
 
 @pytest.mark.asyncio
-async def test_theme_split_disables_thinking(monkeypatch):
+async def test_theme_split_thinks(monkeypatch):
     from agents.market_intelligence import theme_engine
 
     class _Block:
@@ -224,7 +229,7 @@ async def test_theme_split_disables_thinking(monkeypatch):
     theme = {"name": "Fat Theme", "tickers": ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG"]}
     await theme_engine._split_fat_theme(theme, {}, advisor_calls_used=0)
 
-    assert captured.get("thinking") == llm_thinking.DISABLED
+    assert "thinking" not in captured  # the model default: thinking on (2026-09-29)
 
 
 @pytest.mark.asyncio
@@ -555,3 +560,13 @@ async def test_call_advisor_returns_real_verdict_on_healthy_response(monkeypatch
     verdict = await te._call_advisor("is this a real cluster?", "AAA, BBB", caller="discovery")
 
     assert verdict == "Yes — this is a real cluster."
+
+
+def test_scratchpad_less_callers_think_with_headroom():
+    """The three callers that lost analysis_scratchpad on 2026-09-29 reason in thinking, which
+    shares max_tokens (#575) — each ceiling must carry the adapter's own thinking headroom."""
+    from shared.llm_client import thinking_headroom
+    from shared.output_ceilings import max_tokens_for
+    for caller, text_budget in (("theme_assignment", 8000), ("theme_split", 1750), ("theme_rename", 1750)):
+        assert caller not in llm_thinking.THINKING_DISABLED
+        assert max_tokens_for(caller) >= thinking_headroom(text_budget), caller
