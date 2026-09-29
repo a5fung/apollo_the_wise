@@ -288,13 +288,22 @@ reviews:
             AND account_mode = 'live' AND signal_type = 'magna53'
             AND created_at >= DATE '2026-09-06')
         + 40 * (SELECT count(*) FROM mi_safeguard_state
-                 WHERE account_mode = 'live'
+                 WHERE account_mode IN ('live', 'global')
+                   AND safeguard NOT IN ('drawdown_breaker', 'kill_scale_band', 'manual_trading_halt')
                    AND last_transition_at >= DATE '2026-09-06');
+    # ⚠ FALSE FIRE 2026-09-29, predicate fixed the same day: it read 43 = 3 era-D closes + 40 x the
+    # drawdown_breaker returning to OK on 2026-09-21. A breaker's STATE (and the kill/scale band's, and
+    # the manual halt) moves with P&L and is not a rule change — it cannot void an exit read. The
+    # safeguard arm now counts only RULE toggles, and includes 'global' rows, which DO act on live
+    # (partial_exit_leg_safe, the ep_rt_* admission switches) and were invisible to the old form.
+    # Reads 3 on 2026-09-29 (3 era-D live closes, no rule toggle moved since 09-06).
     threshold: 40
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode, mi_safeguard_state.account_mode]  # backfilled 2026-08-30 (#573); all three FILTERED since 2026-09-19 (#669)
     earliest_review_date: 2026-09-29
     can_fire:
-      predicate_runs: "2026-09-19 (#669 audit) - the re-scoped form runs against prod and returns
+      predicate_runs: "2026-09-29 - the rule-toggle form runs against prod and returns 3 (three era-D
+        live magna53 closes; the only live/global transition since 09-06 is the drawdown breaker's state).
+        2026-09-19 (#669 audit) - the re-scoped form returned
         2 (two era-D live magna53 closes, zero live-mode safeguard transitions since 09-06). The
         prior form returned 83 the same day: 3 trades + 40 x 2 toggles that touch no exit."
       nonzero_possible: "mi_live_trades gains a closed live magna53 row on every stop-out or exit
