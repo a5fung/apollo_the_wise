@@ -27,9 +27,6 @@ PENDING = {
         "the MERGE adjudicator only (the containment one is reworded): it runs on Haiku, which "
         "answers it, and its prompt is pinned by a corpus eval (test_theme_merge_corpus_gate) — "
         "reword it with a re-run of that eval before Haiku's tier advances"),
-    "agents/market_intelligence/theme_engine.py": (
-        "stock assignment + discovery: THEME_MODEL pinned to claude-sonnet-5; the assignment "
-        "prompt is also the EP theme-fit check, so removing its reasoning field is his call"),
 }
 
 

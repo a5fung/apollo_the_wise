@@ -350,9 +350,9 @@ async def test_naming_reuses_the_discovery_tool_not_a_second_mechanism(monkeypat
     assert out == ("Energy Infrastructure", "t")
     assert captured["tools"] == [te._THEME_DISCOVERY_TOOL]
     assert captured["tool_choice"] == {"type": "any"}
-    assert captured["max_tokens"] == 1750          # shared/output_ceilings.py::theme_rename
-    from shared import llm_thinking
-    assert captured["thinking"] == llm_thinking.DISABLED
+    # 2026-09-29: thinking ON (the scratchpad is gone), so the ceiling carries its headroom.
+    assert captured["max_tokens"] == 3500          # shared/output_ceilings.py::theme_rename
+    assert "thinking" not in captured
 
 
 # ── 4. IDENTITY — a rename must preserve lineage, not mint a new theme ───────────────────

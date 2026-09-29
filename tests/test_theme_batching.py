@@ -592,7 +592,7 @@ def test_split_forces_a_tool_call_and_terse_scratchpad(monkeypatch):
     is a tool) + the terse scratchpad contract in the schema."""
     _quiet_infra(monkeypatch)
     decline = _resp(_Block("tool_use", name="propose_split",
-                           input={"analysis_scratchpad": "x", "split": None}))
+                           input={"split": None, "reason": "already coherent"}))
     client, calls = _fake_client([decline])
     monkeypatch.setattr(te, "_get_anthropic_client", lambda: client)
 
@@ -600,8 +600,11 @@ def test_split_forces_a_tool_call_and_terse_scratchpad(monkeypatch):
 
     assert calls[0]["tool_choice"] == {"type": "any"}, \
         "split reverted to tool_choice=auto — pre-tool prose can burn the budget again"
-    desc = te._SPLIT_TOOL["input_schema"]["properties"]["analysis_scratchpad"]["description"]
-    assert "KEEP IT SHORT" in desc and "not per stock" in desc.lower(), \
-        "split scratchpad lost its terse contract — verbosity truncation returns"
+    # 2026-09-29: the scratchpad is gone (sonnet-5-5 refuses to write reasoning out); the
+    # bounded replacement is ONE line after the verdict.
+    props = te._SPLIT_TOOL["input_schema"]["properties"]
+    assert "analysis_scratchpad" not in props
+    assert "<=15 words" in props["reason"]["description"], \
+        "split's reason lost its one-line bound — verbosity truncation returns"
     prompt = _prompt_text(calls[0]["messages"][0]["content"])
-    assert "Do NOT write any free-text analysis before your tool call" in prompt
+    assert "Do NOT write any free text outside the tool call" in prompt

@@ -156,12 +156,12 @@ def test_scratchpad_is_terse_form_not_heavy_essay(monkeypatch):
     """The schema's scratchpad description must be the TERSE one-line form. The
     old heavy 'per group: (1)…(2)…(3)… Reject spurious clusters here' essay over
     five pools is what overflowed the budget inside the forced tool call."""
-    desc = te._THEME_DISCOVERY_TOOL["input_schema"]["properties"]["analysis_scratchpad"]["description"]
-    assert "one terse line per candidate cluster" in desc.lower() or "keep it short" in desc.lower(), \
-        "scratchpad must instruct a terse, bounded narration"
-    # the heavy structured-essay phrasing that blew the budget must be gone
-    assert "(1) what shared catalyst" not in desc
-    assert "(2) which stocks clearly belong" not in desc
+    # 2026-09-29: the scratchpad itself is gone (sonnet-5-5 refuses to write reasoning out).
+    # Its bounded replacement is `declined`, one short reason per group, AFTER the themes.
+    props = te._THEME_DISCOVERY_TOOL["input_schema"]["properties"]
+    assert "analysis_scratchpad" not in props
+    assert list(props) == ["themes", "declined"], "the reasons must come after the verdict"
+    assert "<=10 words" in props["declined"]["items"]["properties"]["reason"]["description"]
 
 
 def test_prompt_kills_inducer_and_adds_no_free_text_guard(monkeypatch):
@@ -178,7 +178,7 @@ def test_prompt_kills_inducer_and_adds_no_free_text_guard(monkeypatch):
     # inducer gone
     assert "Consult the advisor FIRST" not in prompt
     # no-free-text guard present (mirrors the assignment path that stayed fixed)
-    assert "Do NOT write any free-text analysis before your tool call" in prompt
+    assert "Do NOT write any free text outside the tool call" in prompt
     assert "truncate" in prompt.lower()
     # advisor path preserved but gated to genuine ambiguity (not forced off)
     assert "Consult the advisor ONLY if" in prompt

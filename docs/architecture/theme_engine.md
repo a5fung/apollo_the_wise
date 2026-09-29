@@ -970,6 +970,20 @@ demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
 
+### 2026-09-29 (evening) — theme jobs back on Sonnet 5.5: reasoning in thinking, reasons after the verdict (#689)
+
+- **Change:** assignment (and the EP theme-fit check), discovery (and rename), and split lose their pre-verdict
+  `analysis_scratchpad`. Short reasons now follow the verdict: `no_fit` [{ticker, reason ≤8 words}],
+  `declined` [{tickers, reason ≤10 words}], `reason` (≤15 words). Thinking is ON for assignment, split and rename
+  (off the #575 disabled list), with ceilings doubled to leave it room (8000 → 16000, 1750 → 3500 ×2). The
+  `THEME_MODEL` pin to claude-sonnet-5 is cleared.
+- **Why:** claude-sonnet-5-5 refuses prompts that make it write reasoning out (entry below). With the field gone,
+  every job answers on 5.5 (assignment 15/15, EP fit 15/15, discovery 8/8, split 6/6, rename 3/3).
+- **What changed in the answers** (`docs/analysis/689_sonnet55_theme_package_2026-09-29.md`): discovery found the same
+  themes (5.5 declined one two-stock pair); assignment agreed on 2 of 3 batches; the EP fit check matches more
+  (operator-reviewed, better).
+- **The #486 recorder** keeps its `scratchpads` key; since this change it holds the `declined` lines.
+
 ### 2026-09-29 — BUG FIX: Sonnet 5.5 refuses prompts that make it write its reasoning out; theme stack restored
 
 - **Defect:** the resolver moved the Sonnet tier to claude-sonnet-5-5 on 09-28. That model answers a prompt that tells it

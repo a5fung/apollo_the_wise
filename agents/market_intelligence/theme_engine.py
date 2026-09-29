@@ -3368,8 +3368,7 @@ RULES:
   the specific thing these companies have in common.
 - The thesis must describe what actually drives THIS group.
 
-Do NOT write any free text before the tool call — all reasoning goes in
-`analysis_scratchpad`, kept to one terse line."""
+Do NOT write any free text outside the tool call. Leave `declined` empty."""
 
     try:
         client = _get_anthropic_client()
@@ -3377,7 +3376,7 @@ Do NOT write any free text before the tool call — all reasoning goes in
             resp = await client.messages.create(
                 model=THEME_MODEL,
                 max_tokens=max_tokens_for("theme_rename"),
-                thinking=llm_thinking.DISABLED,
+                # thinking ON (2026-09-29): no written-reasoning field left to reason in.
                 tools=[_THEME_DISCOVERY_TOOL],
                 tool_choice={"type": "any"},
                 messages=[{"role": "user", "content": prompt}],
@@ -4105,15 +4104,11 @@ _THEME_ASSIGNMENT_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "analysis_scratchpad": {
-                "type": "string",
-                "description": (
-                    "REQUIRED. Write your step-by-step reasoning BEFORE producing assignments. "
-                    "For each uncovered stock: (1) state its core business, (2) name the candidate theme(s), "
-                    "(3) explain why it fits or doesn't fit, (4) state your decision. "
-                    "This reasoning is how you avoid hallucinated connections."
-                ),
-            },
+            # 2026-09-29: NO reasoning field before the verdict. claude-sonnet-5-5 refuses a
+            # prompt that makes it write its reasoning out (4 of 5 batches refused with it, 15 of
+            # 15 answered without); the model reasons in its own thinking instead, and the WHY
+            # survives as the per-fit `rationale` and the per-stock `no_fit` reason AFTER it.
+            # tests/test_no_reasoning_first_prompts.py keeps it out.
             "assignments": {
                 "type": "array",
                 "description": "List of stock-to-theme assignments. Empty array if nothing fits.",
@@ -4126,9 +4121,21 @@ _THEME_ASSIGNMENT_TOOL = {
                     },
                     "required": ["ticker", "theme", "rationale"],
                 },
-            }
+            },
+            "no_fit": {
+                "type": "array",
+                "description": "Every uncovered stock NOT assigned, each with a short reason.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "reason": {"type": "string", "description": "<=8 words: why no listed theme fits"},
+                    },
+                    "required": ["ticker", "reason"],
+                },
+            },
         },
-        "required": ["analysis_scratchpad", "assignments"],
+        "required": ["assignments", "no_fit"],
     },
 }
 
@@ -4226,9 +4233,7 @@ Rules:
 - Use the EXACT theme name from the list above
 
 OUTPUT FORMAT — IMPORTANT:
-Do NOT write any free-text analysis before your tool call. All per-ticker reasoning belongs INSIDE the `assign_stocks_to_themes` tool's `analysis_scratchpad` field. Free text before the tool call wastes the output budget and can cause the response to truncate before the tool is invoked.
-
-Call `assign_stocks_to_themes` directly with your reasoning in `analysis_scratchpad` (one short line per ticker: business + decision + theme name or "no fit"). The `assignments` array contains only the actual fits."""
+Do NOT write any free text outside the tool call. `assignments` holds only the actual fits, each with a one-sentence rationale. `no_fit` lists every other stock with a short reason (<=8 words)."""
 
 
 def _assignment_messages(shared_prefix: str, body: str) -> list[dict]:
@@ -4251,7 +4256,8 @@ def _assignment_messages(shared_prefix: str, body: str) -> list[dict]:
 @dataclass(frozen=True)
 class _AssignmentTurn:
     """What ONE assignment call came back as. `outcome` is one of:
-      proposed     — the model called assign_stocks_to_themes: `assignments`, `scratchpad`
+      proposed     — the model called assign_stocks_to_themes: `assignments`, `no_fit`
+                     (ticker -> its short reason for no theme)
       truncated    — cut at max_tokens; NOT an answer (the partial tool input is never read)
       silent_stop  — no tool_use at all; `stop_text` is what the model said instead
       consult      — tool_use(s) but no assign block (the nightly's advisor turn): `tool_uses`
@@ -4259,7 +4265,7 @@ class _AssignmentTurn:
     outcome: str
     response: Any
     assignments: list = field(default_factory=list)
-    scratchpad: str = ""
+    no_fit: dict = field(default_factory=dict)
     stop_text: str = ""
     tool_uses: list = field(default_factory=list)
 
@@ -4295,7 +4301,8 @@ def _parse_assignment_response(response) -> _AssignmentTurn:
     return _AssignmentTurn(
         "proposed", response,
         assignments=assign_block.input.get("assignments", []),
-        scratchpad=str(assign_block.input.get("analysis_scratchpad") or ""),
+        no_fit={str(x.get("ticker") or "").upper(): str(x.get("reason") or "")
+                for x in (assign_block.input.get("no_fit") or []) if isinstance(x, dict)},
         tool_uses=tool_uses,
     )
 
@@ -4340,11 +4347,10 @@ async def _assignment_turn(client, messages: list[dict], *, tools: list[dict],
         # TELEMETRY line, not an error — detection is #543's live
         # truncation alarm plus the is_truncated() gate in the parser.
         max_tokens=max_tokens_for("theme_assignment"),
-        # thinking disabled (#575): tool_choice=any forces assign_stocks_to_themes
-        # or consult_advisor every turn, and assign_stocks_to_themes already carries
-        # analysis_scratchpad — thinking would be a second hidden copy of that same
-        # reasoning, sharing (and able to exhaust) the same ceiling. See llm_thinking.py.
-        thinking=llm_thinking.DISABLED,
+        # thinking ON (2026-09-29, was DISABLED under #575): the analysis_scratchpad it
+        # duplicated is gone (sonnet-5-5 refuses to write reasoning out), so the model's own
+        # thinking is now the only place it reasons. The ceiling carries thinking headroom
+        # (output_ceilings.py) — thinking shares max_tokens, the #575 truncation lesson.
         tools=tools,
         tool_choice=tool_choice,
         messages=messages,
@@ -4594,17 +4600,17 @@ async def judge_theme_fit(
             "candidate_tickers": [tk],
         }),
     )
-    scratch = turn.scratchpad.strip()
+    no_fit_reason = (turn.no_fit.get(tk) or "").strip()
     offered = {(t.get("name") or ""): t for t in themes}
     for a in turn.assignments:
         if (a.get("ticker") or "").upper() != tk:
             continue
         name = _strip_stage_label(a.get("theme") or "")
         if name in offered:
-            return FIT_CONFIRMED, name, (a.get("rationale") or scratch)[:500]
+            return FIT_CONFIRMED, name, (a.get("rationale") or "")[:500]
         logger.info(f"ep theme fit: {tk} → '{name}' was not on the shortlist — not a fit")
         return FIT_REJECTED, None, f"named a theme not offered: {name}"[:500]
-    return FIT_REJECTED, None, (scratch or "no fit")[:500]
+    return FIT_REJECTED, None, (no_fit_reason or "no fit")[:500]
 
 
 async def _sector_identity_gate(ticker: str, theme_name: str, theme: dict,
@@ -5050,17 +5056,9 @@ _THEME_DISCOVERY_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "analysis_scratchpad": {
-                "type": "string",
-                "description": (
-                    "REQUIRED but KEEP IT SHORT — one terse line per candidate cluster: the "
-                    "shared catalyst + keep/drop call (e.g. 'memory makers MU/SNDK/WDC — HBM "
-                    "demand, keep'). Do NOT write paragraphs or restate the rules; a verbose "
-                    "scratchpad here truncates the response before the themes array is emitted "
-                    "(the 6/22-24 zero-theme bug). The Rules below are the criterion — narrate, "
-                    "don't re-derive."
-                ),
-            },
+            # 2026-09-29: the pre-verdict analysis_scratchpad is gone (sonnet-5-5 refuses to
+            # write reasoning out); `declined` AFTER the themes keeps the #486 "why did it
+            # decline?" record. Also rename's tool (_rename_theme_to_fit_cluster).
             "themes": {
                 "type": "array",
                 "description": "List of newly discovered themes. Empty array if none found.",
@@ -5088,9 +5086,21 @@ _THEME_DISCOVERY_TOOL = {
                     },
                     "required": ["name", "thesis", "tickers"],
                 },
-            }
+            },
+            "declined": {
+                "type": "array",
+                "description": "Candidate groups you did NOT report as themes, each with a short reason.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "tickers": {"type": "array", "items": {"type": "string"}},
+                        "reason": {"type": "string", "description": "<=10 words"},
+                    },
+                    "required": ["tickers", "reason"],
+                },
+            },
         },
-        "required": ["analysis_scratchpad", "themes"],
+        "required": ["themes", "declined"],
     },
 }
 
@@ -5186,25 +5196,8 @@ _SPLIT_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "analysis_scratchpad": {
-                "type": "string",
-                "description": (
-                    # 2026-08-10: TERSE contract, mirroring the proven 6/25
-                    # discovery fix — the old open-ended "reason through the
-                    # split" prompt let a more-verbose model burn the whole
-                    # output budget inside this field, and the truncated
-                    # response parsed with `split` missing → logged as
-                    # "declined split" (twice on 2026-08-10). Narrate
-                    # sub-GROUPS, never stock-by-stock.
-                    "REQUIRED but KEEP IT SHORT — one terse line per CANDIDATE "
-                    "SUB-GROUP (not per stock): members + shared catalyst + "
-                    "carve/decline call (e.g. 'FNV/OR/RGLD/WPM — royalty/streaming "
-                    "model, carve'). Then one line each for: sub-group size ok? "
-                    "parent still coherent? Do NOT write paragraphs or restate the "
-                    "rules — a verbose scratchpad truncates the response before "
-                    "`split` is emitted, and the truncation reads as a decline."
-                ),
-            },
+            # 2026-09-29: pre-verdict analysis_scratchpad removed (sonnet-5-5 refuses to write
+            # reasoning out); `reason` AFTER `split` keeps the why.
             "split": {
                 "description": "null if no split warranted; otherwise the sub-theme to carve out.",
                 "oneOf": [
@@ -5219,9 +5212,10 @@ _SPLIT_TOOL = {
                         "required": ["name", "tickers", "thesis"],
                     },
                 ],
-            }
+            },
+            "reason": {"type": "string", "description": "One line (<=15 words): why this carve, or why none."},
         },
-        "required": ["analysis_scratchpad", "split"],
+        "required": ["split", "reason"],
     },
 }
 
@@ -5288,7 +5282,7 @@ Self-check before calling propose_split WITHOUT advisor:
 If any answer is "no" or "unsure" → call consult_advisor first.
 
 OUTPUT FORMAT — IMPORTANT:
-Do NOT write any free-text analysis before your tool call. All reasoning belongs INSIDE the `propose_split` tool's `analysis_scratchpad` field (kept terse — one line per candidate sub-group, never per stock). Free text before the tool call wastes the output budget and can cause the response to truncate before `split` is emitted."""
+Do NOT write any free text outside the tool call. Put the carve (or null) in `split` and a one-line reason in `reason`. Free text outside the tool call wastes the output budget and can cause the response to truncate before `split` is emitted."""
 
     client = _get_anthropic_client()
     messages = [{"role": "user", "content": prompt}]
@@ -5299,9 +5293,8 @@ Do NOT write any free-text analysis before your tool call. All reasoning belongs
             response = await client.messages.create(
                 model=THEME_MODEL,
                 max_tokens=max_tokens_for("theme_split"),
-                # thinking disabled (#575): same shape as theme_assignment — forced
-                # tool_choice, analysis_scratchpad already IS the reasoning surface.
-                thinking=llm_thinking.DISABLED,
+                # thinking ON (2026-09-29): same as theme_assignment — the written-reasoning
+                # field is gone, so the model's own thinking is where it reasons.
                 tools=[_SPLIT_TOOL, _ADVISOR_TOOL],
                 # `any` (2026-08-10, was `auto`): the assignment path's proven
                 # recipe — the model MUST call propose_split or consult_advisor,
@@ -6545,13 +6538,13 @@ Rules:
 - Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives
 
 OUTPUT FORMAT — IMPORTANT:
-Do NOT write any free-text analysis before your tool call. All clustering reasoning belongs INSIDE the `report_themes` tool's `analysis_scratchpad` field (kept terse — one line per cluster). Free text before the tool call wastes the output budget and can cause the response to truncate before the themes array is emitted — that is exactly the bug that produced zero new themes 6/22-24.
+Do NOT write any free text outside the tool call. Report each theme in `themes`; list each candidate group you did not report in `declined` with a short reason (<=10 words). Free text outside the tool call wastes the output budget and can cause the response to truncate before the themes array is emitted — that is exactly the bug that produced zero new themes 6/22-24.
 
 Consult the advisor ONLY if one of these genuinely applies:
 - A stock fits multiple possible themes and you're not sure which is the better home
 - You have a borderline cluster and aren't confident it's a real theme vs. coincidence
 - Stocks share a sector label but their actual business drivers feel different to you
-In every other case, skip the advisor and call `report_themes` immediately, with your terse reasoning in `analysis_scratchpad`."""
+In every other case, skip the advisor and call `report_themes` immediately."""
 
     try:
         client = _get_anthropic_client()
@@ -6737,12 +6730,17 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 else:
                     logger.info(f"Theme discovery: Sonnet used advisor {advisor_state['calls']}x before reporting")
                 raw_themes = report_block.input.get("themes", [])
-                # #486: keep the model's terse per-cluster reasoning for the
-                # shown/declined recorder (run-level, one entry per batch).
-                # Additive telemetry only — never touches what is returned.
-                _pad = report_block.input.get("analysis_scratchpad") if isinstance(
+                # #486: keep the model's per-group decline reasons for the
+                # shown/declined recorder (run-level, one entry per batch). The key
+                # stays "scratchpads" for its readers; since 2026-09-29 it holds the
+                # `declined` list ("TICKERS: reason"), the pre-verdict scratchpad
+                # being gone. Additive telemetry only — never touches what is returned.
+                _dec = report_block.input.get("declined") if isinstance(
                     report_block.input, dict) else None
-                advisor_state.setdefault("scratchpads", []).append(str(_pad or "")[:2000])
+                _dec_lines = "; ".join(
+                    f"{'/'.join(str(t) for t in (d.get('tickers') or []))}: {d.get('reason') or ''}"
+                    for d in (_dec or []) if isinstance(d, dict))
+                advisor_state.setdefault("scratchpads", []).append(_dec_lines[:2000])
                 # The tool schema says themes is a list of objects, but the model
                 # occasionally emits a list of bare NAME STRINGS instead. That used
                 # to raise AttributeError: 'str' object has no attribute 'get' out

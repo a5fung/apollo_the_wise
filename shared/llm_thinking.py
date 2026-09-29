@@ -42,14 +42,16 @@ from __future__ import annotations
 # The `thinking=` kwarg value that turns extended thinking off entirely.
 DISABLED = {"type": "disabled"}
 
+# 2026-09-29: theme_assignment (and the EP theme-fit check that shares it), theme_split and
+# theme_rename LEFT this list. Their analysis_scratchpad was removed because claude-sonnet-5-5
+# refuses to write reasoning out, so thinking is now the only place they reason; their ceilings
+# carry thinking headroom (output_ceilings.py).
+#
 # Callers where thinking is explicitly DISABLED (pass `thinking=DISABLED` at the
 # call site). Every name here must also be a key in shared/output_ceilings.py —
 # pinned by tests/test_llm_thinking.py.
 THINKING_DISABLED = frozenset({
     "theme_validation",           # plain JSON {"remove": [...]}, no scratchpad at all
-    "theme_rename",                # forced report_themes for ONE cohort; terse scratchpad
-    "theme_assignment",           # forced tool (tool_choice=any) + analysis_scratchpad
-    "theme_split",                 # forced tool (tool_choice=any) + analysis_scratchpad
     "narrative_theme_discovery",   # forced tool from turn 1 (report_narrative_themes), no advisor branch
     "theme_synthesis",             # forced tool from turn 1 (propose_emerging_cohorts), single-shot, no advisor branch
     "theme_parent_adjudication",   # #505 containment adjudicator (Sonnet): forced tool, terse
