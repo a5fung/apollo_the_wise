@@ -970,6 +970,24 @@ demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
 
+### 2026-09-28 — BUG FIX: the co-movement test could not price the assignment pool, so the sector label kept deciding cross-sector names
+
+- **Defect:** the run's price context (`_comove_universe_for`, was inline) held leaders, velocity/turner pools, live
+  theme members and clusters — but not the ASSIGNMENT POOL (RS-floor names and the #491 M2 seeded converts). Any
+  candidate only there had no prices, was counted unjudgeable, and fell back to the sector test the operator signed
+  to replace on 2026-09-13.
+- **Measured on prod:** 8 `assignment_skipped_sector_outlier` rejections after the swap went live (09-15 → 09-28),
+  including IREN 09-17 → 'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting' and CIFR 09-21/09-28 → 'Bitcoin
+  Mining Stocks Rotation Reversal'; recomputed with the engine's own `_comove_verdict`, CIFR co-moves with that theme
+  at **0.875** (admit).
+- **Fix:** the assignment pool joins the price universe. No bar, toggle or gate changed; enforcing the signed swap.
+- **Exposure (as signed):** members of Accelerating/Mainstream themes get the +10 EP boost; tonight's affected themes
+  are Nascent.
+- **EXPECT:** from the next engine run, cross-sector candidates in the pool are judged on co-movement —
+  `assignment_skipped_sector_outlier` rows only for names whose verdict is genuinely unjudgeable (no history / thin
+  basket), and `assignment_comove_admitted_over_sector` rows for converts that co-move (CIFR-class). WOULD-FAIL-IF: a
+  sector-outlier skip for a name that is in the assignment pool and has 60 sessions of prices.
+
 ### 2026-09-27 — #655: the operator's four signed correctness bars now score the board every night
 
 **Trigger**: three probes measured whether the board's own stocks are grouped right and whether new

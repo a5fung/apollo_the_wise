@@ -6966,6 +6966,27 @@ def _build_theme_pools(
     return uncovered, assignment_pool
 
 
+
+def _comove_universe_for(leaders, velocity_all, turners_all, updated_themes, clusters,
+                         assignment_pool) -> set[str]:
+    """Every ticker the night's membership tests may judge, so the co-movement test can price it.
+
+    2026-09-28: the ASSIGNMENT POOL was missing. It holds names past the RS floor and the #491 M2
+    seeded names (the crypto-to-AI converts), which are in none of the other sets — so the signed
+    co-movement test had no prices for them, called them unjudgeable, and handed them back to the
+    sector label it was signed to replace. Measured on prod: 8 cross-sector rejections by the sector
+    test after the 09-14 swap went live, including IREN 09-17 into 'Bitcoin Miners Pivoting to AI/HPC
+    Data Center Hosting' and CIFR 09-21/09-28 into the miners theme (CIFR co-moves with it at 0.875).
+    """
+    universe: set[str] = {s["ticker"] for s in leaders}
+    for pool in (velocity_all, turners_all, assignment_pool or []):
+        universe.update(s["ticker"] for s in pool)
+    for t in updated_themes:
+        universe.update(t.get("tickers") or [])
+    for c in (clusters or []):
+        universe.update(c.get("tickers") or [])
+    return universe
+
 def _seeded_pool_admissions(
     seeded_triggers: dict[str, dict],
     covered_tickers: set[str],
@@ -8925,14 +8946,10 @@ async def run_theme_engine(
     # site (fail SAFE to the sector test; the loader already audited why).
     comove_ctx: ComoveContext | None = None
     if await _read_assign_comove_toggle():
-        _comove_universe: set[str] = {s["ticker"] for s in leaders}
-        for _pool in (velocity_all, turners_all):
-            _comove_universe.update(s["ticker"] for s in _pool)
-        for _t in updated_themes:
-            _comove_universe.update(_t.get("tickers") or [])
-        for _c in (clusters or []):
-            _comove_universe.update(_c.get("tickers") or [])
-        comove_ctx = await _load_comove_context(_comove_universe, today)
+        comove_ctx = await _load_comove_context(
+            _comove_universe_for(leaders, velocity_all, turners_all, updated_themes, clusters,
+                                 assignment_pool),
+            today)
     else:
         logger.info("Theme membership test: co-movement toggle OFF — sector test decides tonight")
 
