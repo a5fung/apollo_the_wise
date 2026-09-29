@@ -1265,3 +1265,25 @@ stagger cards, one at a time.
 **Done today:** closed #684, #685, #592; filed #686 (Sept re-read, 10-16) and #687 (depth trail, Sat 10-03); his rulings recorded (#592's 9 tops stand; #491 → 10-03; #594 → 10-05; late-alert window change refuted; safeguard-blocked EPs stay in every EP study); first live +8R partial (KOD) verified at the broker.
 
 **Open for him (not urgent):** #655 — both halves signed and the scorer is live; ask where the funnel-map strand should live before closing it.
+
+## 2026-09-28 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the mid-session save and the 09-27 close above.
+
+**Board 48 → 48** (closed #684, #685, #592; filed #686, #687). Growth gate held.
+
+**Shipped and verified today**
+- **#684 closed:** no gap-day feature marks the EPs that run big (670 scored candidates, one pass at chance rate); the score in force was neutral on runners. Follow-ups: live-entry frame measured (upper bounds); late-alert option REFUTED by the independent check (no entry-window change); his forks — September re-read yes (#686, 10-16), rejected-runner lane not yet.
+- **#685 closed:** his hybrid trail on 79 real EPs — no rule beats or loses to today's stop once FTK/INFQ move; depth variant (sell at once 1 × ADR below the line, else at the close) is the lead → **#687** (backfill decides Sat 10-03; forward tracker on every real EP).
+- **#592 closed** on tonight's scan (IRD, PBF kept carried tops); his ruling: the 9 stable-anchor tops stand.
+- **Rulings:** #491 → 10-03 (price the cross-day theme switch); #594 → 10-05; safeguard-blocked alerts always IN EP study populations (memory `real-eps-regardless-of-safeguards`).
+- **First live +8R partial** (KOD, 1 of 5 shares at $85.125; broker stop 4 shares at breakeven) — verified at the broker.
+- **Extension-cap watch:** sends only EPs the cap ALONE blocked (SVRN 09-21 failed the $1M dollar-volume floor anyway); sample counter now counts the 50–75% band only (23, was miscounted 104); each name sent once.
+- **Sonnet 5.5 bound** on all three services (10 roles; Opus 5.5 on 2 judges); canary passed; KOD catalyst re-graded game_changer through the live call; price $2/$10 added.
+- **#658 DEFECT FIXED + DEPLOYED ~21:50 ET:** the co-movement test could not price the assignment pool, so the sector label kept deciding cross-sector names (8 rejections since the swap, incl. IREN 09-17, CIFR 09-21/09-28 — CIFR co-moves 0.875).
+- Theme first nights: #505 parent pass 3 links (only on CHILD_OF), #506 row + brief line, #657 night 1 clean, #655 nightly row, #327 guard 0/0.
+
+**Tuesday 09-29 — in order**
+1. **09:31 ET:** first live catalyst grades on Sonnet 5.5 — sane grades, no adapter errors, no noise pages.
+2. **Evening:** #505 night 2 → close; #506 night 2 of 3 (tell him its check date moved to 09-30 — self-tagged `[ok:]`); #657 night 2 of 5; #658 — expect `assignment_comove_admitted_over_sector` rows for converts and sector skips only for genuinely unjudgeable names; #655 nightly row; #647 verify.
+3. #655: both halves signed, scorer live — ask where the funnel-map strand should live before closing.
+
+**Capacity:** ~3.7M subagent tokens today.
