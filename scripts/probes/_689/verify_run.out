@@ -1,0 +1,24 @@
+population: themes 122 | leaders 40
+[theme discover] Excluding 8 stocks with no description from discovery: ['TJGC', 'KOD', 'SECZ', 'P', 'PS', 'PUBM', 'VIA', 'NUTX']. Check _ensure_descriptions — yfinance may have returned no data for these tickers.
+llm_client: adopted request rewrite for claude-sonnet-5-5 — forced_tool_to_structured_output (API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011CfYXLtnjQEAbPtmHZi8W3'})
+containment            claude-sonnet-5-5          stop=tool_use  out=  251 tool=yes {"verdict": "PEERS", "reason": "Both are cloud infrastructure software themes, but"}
+containment            claude-sonnet-5            stop=tool_use  out=  430 tool=yes {"verdict": "PEERS", "reason": "Both are adjacent cloud-infrastructure sub-sectors"}
+merge                  claude-sonnet-5-5          stop=tool_use  out=  379 tool=yes {"verdict": "DISTINCT", "driver_a": "Data platform consumption and database adoption", "driver_b": "Edge delivery and observability spend growth", "re
+merge                  claude-sonnet-5            stop=tool_use  out=  440 tool=yes {"verdict": "DISTINCT", "driver_a": "Cloud data platform/analytics consumption growth", "driver_b": "AI-observability & app delivery infra spend", "re
+assignment_ORIGINAL    claude-sonnet-5-5          FAILED StructuredOutputError: structured output returned no text block (blocks=[])
+assignment_ORIGINAL    claude-sonnet-5            stop=tool_use  out=  787 tool=yes {"assignments": 2}
+assignment_PROPOSED    claude-sonnet-5-5          FAILED StructuredOutputError: structured output returned no text block (blocks=[])
+assignment_PROPOSED    claude-sonnet-5            stop=tool_use  out=  508 tool=yes {"assignments": 1}
+discovery              claude-sonnet-5-5          stop=tool_use  out=  184 tool=yes {"themes": 0}
+discovery              claude-sonnet-5            stop=max_tokens out= 8000 tool=yes {}
+split                  claude-sonnet-5-5          FAILED BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': "output_config.format.schema: Schema type 'oneOf' 
+split                  claude-sonnet-5            stop=tool_use  out=  540 tool=yes {"split": {"name": "Japanese Megabanks: BOJ Rate Normalization Play", "tickers": ["MFG", "MUFG", "SMFG"], "thesis": "Japan's three largest banking gro
+rename                 claude-sonnet-5-5          FAILED BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'To turn thinking off on this model, send "thinkin
+rename                 claude-sonnet-5            stop=tool_use  out=  549 tool=yes {"themes": 1}
+synthesis              claude-sonnet-5-5          FAILED BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'To turn thinking off on this model, send "thinkin
+synthesis              claude-sonnet-5            stop=tool_use  out= 1968 tool=yes {"cohorts": 0}
+ecosystem_assign       claude-sonnet-5-5          stop=tool_use  out=  188 tool=yes {"e_code": "E-BANKFIN"}
+ecosystem_assign       claude-sonnet-5            stop=tool_use  out=  194 tool=yes {"e_code": "E-BANKFIN"}
+ecosystem_assign       claude-haiku-4-5-20251001  stop=tool_use  out=  294 tool=yes {"e_code": "E-BANKFIN"}
+ecosystem_propose      claude-sonnet-5-5          FAILED BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'To turn thinking off on this model, send "thinkin
+ecosystem_propose      claude-sonnet-5            stop=tool_use  out=  651 tool=yes {}

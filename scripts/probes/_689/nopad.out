@@ -1,0 +1,3 @@
+discovery prompt mentions of analysis_scratchpad after strip: 0 | tool_choice: {'type': 'auto'}
+assignment_NO_PAD        {'answered:assign_stocks_to_themes': 5}
+discovery_NO_PAD         {'answered:report_themes': 4}

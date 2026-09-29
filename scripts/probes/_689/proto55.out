@@ -1,0 +1,14 @@
+population: themes 122 | leaders 200 | uncovered 62
+assign batch1 (12 stocks)                    claude-sonnet-5-5  {'answered': 5} out~1051 fit2/nofit10 fit2/nofit10 fit2/nofit10 fit2/nofit10 fit2/nofit10
+assign batch2 (12 stocks)                    claude-sonnet-5-5  {'answered': 5} out~969 fit1/nofit11 fit1/nofit11 fit1/nofit11 fit1/nofit11 fit1/nofit11
+assign batch3 (12 stocks)                    claude-sonnet-5-5  {'answered': 5} out~462 fit1/nofit11 fit1/nofit11 fit1/nofit11 fit1/nofit11 fit1/nofit11
+assign batch1 on SONNET 5, thinking on       claude-sonnet-5    {'answered': 2} out~377 fit0/nofit12 fit0/nofit12
+EP fit AESI (3 themes)                       claude-sonnet-5-5  {'answered': 5} out~62 fit0/nofit1 fit0/nofit1 fit0/nofit1 fit0/nofit1 fit0/nofit1
+EP fit AKAM (3 themes)                       claude-sonnet-5-5  {'answered': 5} out~103 fit1/nofit0 fit1/nofit0 fit1/nofit0 fit1/nofit0 fit1/nofit0
+EP fit AMPX (3 themes)                       claude-sonnet-5-5  {'answered': 5} out~52 fit0/nofit1 fit0/nofit1 fit0/nofit1 fit0/nofit1 fit0/nofit1
+discovery batch1 (pad refs left 0)           claude-sonnet-5-5  {'answered': 4} out~109 th0/dec1 th0/dec1 th0/dec1 th0/dec1
+discovery batch2 (pad refs left 0)           claude-sonnet-5-5  {'answered': 4} out~110 th0/dec1 th0/dec1 th0/dec1 th0/dec1
+split Bank Stocks: Rising-Rate NIM           claude-sonnet-5-5  {'BadRequestError': 3} out~0 
+split Precious Metals Complex Rebo           claude-sonnet-5-5  {'BadRequestError': 3} out~0 
+rename                                       claude-sonnet-5-5  {'answered': 3} out~268 th1/dec0 th1/dec0 th1/dec0
+validation (unchanged)                       claude-sonnet-5-5  {'BadRequestError': 3} out~0 

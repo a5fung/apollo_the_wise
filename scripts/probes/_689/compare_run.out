@@ -1,0 +1,22 @@
+POPULATION ep-fit cases 44 (stored: {'window': 23, 'rejected': 20, 'confirmed': 1}), dates 2026-09-15..2026-09-29, no description 6
+EP FIT AGREEMENT (n=44): old-vs-old 42/44 | new-vs-new 44/44 | old1-vs-new1 41/44 | old2-vs-new2 39/44
+  old1: {'rejected': 36, 'confirmed': 2, 'failed': 6} | seconds p50 2.9 max 5.7
+  old2: {'rejected': 38, 'failed': 6} | seconds p50 2.9 max 6.0
+  new1: {'rejected': 33, 'confirmed': 5, 'failed': 6} | seconds p50 2.0 max 5.0
+  new2: {'rejected': 33, 'confirmed': 5, 'failed': 6} | seconds p50 2.1 max 5.0
+  vs STORED verdict (n=21 judged): old1 18 | new1 19
+  DIFF ABTC 2026-09-18 stored=window | old1=('confirmed', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket') old2=('rejected', None) new1=('confirmed', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket') new2=('confirmed', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket')
+       old why: ABTC is a bitcoin mining company whose equity value is a direct crypto-correlated proxy, fitting the basket's crypto-ris | new why: ABTC is a Bitcoin mining and crypto infrastructure company that trades as a crypto-risk proxy equity, matching the theme
+  DIFF AKAM 2026-09-25 stored=confirmed | old1=('rejected', None) old2=('rejected', None) new1=('confirmed', 'Cloud Application Delivery & Observability Infrastructure') new2=('confirmed', 'Cloud Application Delivery & Observability Infrastructure')
+       old why: AKAM: Akamai - CDN, web security, edge/cloud delivery platform. Compare to "Cloud Application Delivery & Observability I | new why: Akamai's CDN and web security business directly parallels Fastly (FSLY) in edge content delivery and application securit
+  DIFF BFLY 2026-09-22 stored=window | old1=('rejected', None) old2=('rejected', None) new1=('confirmed', 'AI-Driven Diagnostics & Imaging Re-Rating') new2=('confirmed', 'AI-Driven Diagnostics & Imaging Re-Rating')
+       old why: BFLY (Butterfly Network): makes portable handheld ultrasound imaging devices, healthcare imaging hardware. Candidate the | new why: BFLY makes portable AI-enabled ultrasound imaging devices, which matches the healthcare diagnostics and imaging re-ratin
+  DIFF CBRL 2026-09-23 stored=rejected | old1=('confirmed', 'Restaurant Chain Recovery') old2=('rejected', None) new1=('confirmed', 'Restaurant Chain Recovery') new2=('confirmed', 'Restaurant Chain Recovery')
+       old why: CBRL is a casual dining restaurant chain, matching the core business of the other constituents (EAT, CAKE, DRI, BJRI) in | new why: Cracker Barrel is a casual-dining restaurant chain, the same industry as EAT, CAKE, DRI and BJRI, so it fits the restaur
+  DIFF MSTR 2026-09-21 stored=window | old1=('rejected', None) old2=('rejected', None) new1=('confirmed', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket') new2=('confirmed', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket')
+       old why: MSTR: Bitcoin treasury & holdings company - core business is holding large BTC treasury on balance sheet, similar to how | new why: MSTR is the archetypal Bitcoin treasury company whose equity trades as a leveraged proxy for Bitcoin, matching the theme
+ASSIGN batch1 (12 stocks): old1 [('PUBM', 'Digital Advertising & Ad-Tech Monetization Platforms')] | old2 [] | new1 [('PUBM', 'Digital Advertising & Ad-Tech Monetization Platforms')] | new2 [('PUBM', 'Digital Advertising & Ad-Tech Monetization Platforms')]
+ASSIGN batch2 (12 stocks): old1 [('ODD', 'Direct-to-Consumer Health & Wellness Subscription Brands')] | old2 [] | new1 [('USPH', 'Post-Acute & Home-Based Healthcare Services')] | new2 [('USPH', 'Post-Acute & Home-Based Healthcare Services')]
+ASSIGN batch3 (12 stocks): old1 [('PAYC', 'Enterprise HR & Workforce Management SaaS')] | old2 [('PAYC', 'Enterprise HR & Workforce Management SaaS')] | new1 [('PAYC', 'Enterprise HR & Workforce Management SaaS')] | new2 [('PAYC', 'Enterprise HR & Workforce Management SaaS')]
+DISCOVERY batch1: old [('CRISPR & Gene Editing Therapeutics', ['CRSP', 'NTLA']), ('Contract Research Organizations & Clinical Trial Services', ['CRL', 'FTRE', 'ICLR', 'IQV', 'MEDP']), ('Independent Oil Refiners & Crack Spread Leverage', ['CVI', 'DINO', 'DK', 'MPC', 'PBF', 'PSX', 'VLO']), ('Manufactured & Modular Housing Producers', ['CVCO', 'SKY'])] | new []
+DISCOVERY batch2: old [] | new []

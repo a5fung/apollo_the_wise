@@ -1,0 +1,9 @@
+A proposed, full board (control)                 FAILED structured output returned no text block (blocks=[])
+B proposed, 10 themes                            FAILED structured output returned no text block (blocks=[])
+C proposed, full board, no scratchpad field      FAILED structured output returned no text block (blocks=[])
+D proposed, first half of themes                 FAILED structured output returned no text block (blocks=[])
+E proposed, second half of themes                FAILED structured output returned no text block (blocks=[])
+F proposed, full board, 3 stocks                 FAILED structured output returned no text block (blocks=[])
+G ORIGINAL wording, 10 themes                    FAILED structured output returned no text block (blocks=[])
+H proposed, 10 themes, 3 stocks                  FAILED structured output returned no text block (blocks=[])
+stocks: ['TJGC', 'KOD', 'SECZ', 'P', 'PS', 'PUBM', 'VIA', 'NUTX']

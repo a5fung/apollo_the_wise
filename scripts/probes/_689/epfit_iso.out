@@ -1,0 +1,6 @@
+POPULATION ep-fit cases 44 (stored: {'window': 23, 'rejected': 20, 'confirmed': 1}), dates 2026-09-15..2026-09-29, no description 6
+NEW prompt on SONNET 5 (n=44): {'rejected': 34, 'confirmed': 4, 'failed': 6} | matches old1 40/44 | matches new1 (5.5) 43/44
+  ABTC 2026-09-18: newprompt+S5=('rejected', None) | old1=('confirmed', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket') | new1(5.5)=('confirmed', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket')
+  AKAM 2026-09-25: newprompt+S5=('confirmed', 'Cloud Application Delivery & Observability Infrastructure') | old1=('rejected', None) | new1(5.5)=('confirmed', 'Cloud Application Delivery & Observability Infrastructure')
+  BFLY 2026-09-22: newprompt+S5=('confirmed', 'AI-Driven Diagnostics & Imaging Re-Rating') | old1=('rejected', None) | new1(5.5)=('confirmed', 'AI-Driven Diagnostics & Imaging Re-Rating')
+  MSTR 2026-09-21: newprompt+S5=('confirmed', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket') | old1=('rejected', None) | new1(5.5)=('confirmed', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket')

@@ -1,0 +1,12 @@
+P1 no OUTPUT FORMAT (reworded field)                         stop=tool_use out=169
+P2 + sentence 1: Do NOT write any free text outside the t    FAILED structured output is not JSON: Unterminated string starting at: line 1
+P3 + sentence 2: All per-ticker notes belong INSIDE the `    FAILED structured output returned no text block (blocks=[])
+P4 + sentence 3: Free text outside the tool call wastes t    FAILED structured output returned no text block (blocks=[])
+P5 + sentence 4: Call `assign_stocks_to_themes` directly     FAILED structured output returned no text block (blocks=[])
+P6 + sentence 5: The `assignments` array contains only th    FAILED structured output returned no text block (blocks=[])
+Q1 ONLY sentence 1: Do NOT write any free text outside the t stop=tool_use out=112
+Q2 ONLY sentence 2: All per-ticker notes belong INSIDE the ` FAILED structured output returned no text block (blocks=[])
+Q3 ONLY sentence 3: Free text outside the tool call wastes t stop=tool_use out=140
+Q4 ONLY sentence 4: Call `assign_stocks_to_themes` directly  FAILED structured output returned no text block (blocks=[])
+Q5 ONLY sentence 5: The `assignments` array contains only th stop=tool_use out=132
+R new: 'Use analysis_scratchpad for one short line per ticker' FAILED structured output returned no text block (blocks=[])

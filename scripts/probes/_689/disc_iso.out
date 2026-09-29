@@ -1,0 +1,11 @@
+batch1: ['TJGC', 'KOD', 'SECZ', 'P', 'PS', 'PUBM', 'VIA', 'NUTX', 'VEON', 'FTK', 'PRLB', 'ZBRA']
+board has refiner/CRO/gene/housing themes: ['Small Modular Reactor & Advanced Nuclear Fission Technology', 'On-Site Power Generation & Distribution Equipment for Data Centers', 'Global Oil & Gas Producers and Refiners', 'Genetic Medicine: Gene Editing & Gene Therapy Innovators']
+OLD prompt + Sonnet 5 #1           themes=[('Optical Networking Components & Photonics for AI Data Centers', 3), ('Contract Research Organizations (CRO) & Clinical Trial Outsourcing', 5), ('AI Server Manufacturers & System Integrators', 3), ('CRISPR Gene Editing Therapeutics', 2)] | advisor calls=0 | notes=['No uncovered RS leaders given, so focusing on sub-theme splits from elite clusters.\n- COHR/LITE/GLW: optical transceiver/laser/fiber component makers, distinct from electrical signal-integrity chip cos (ALAB/CRDO/APH/BDC) in parent theme - keep as photonics sub-theme.\n- MEDP/ICLR/CRL/IQV/FTRE: pure ']
+Theme discovery: response TRUNCATED at max_tokens — discarding the partial and forcing a bounded report
+OLD prompt + Sonnet 5 #2           themes=[] | advisor calls=0 | notes=["No uncovered RS-leader tickers were provided (list empty). All names in prompt already belong to existing active themes. Without new/uncovered tickers I cannot form a legitimate 2+ stock cluster that isn't just re-slicing existing themes without clear new catalyst evidence. Reviewed elite stocks for"]
+Theme discovery: response TRUNCATED at max_tokens — discarding the partial and forcing a bounded report
+NEW prompt + Sonnet 5 #1           themes=[] | advisor calls=0 | notes=['ALL: No uncovered RS-leader stocks provided; all listed names already sit in existing themes']
+Theme discovery: response TRUNCATED at max_tokens — discarding the partial and forcing a bounded report
+NEW prompt + Sonnet 5 #2           themes=[] | advisor calls=0 | notes=[': No stocks provided outside existing themes; no new clusters to form']
+NEW prompt + Sonnet 5.5 #1         themes=[] | advisor calls=0 | notes=[': No uncovered RS leader stocks were provided; nothing to cluster']
+NEW prompt + Sonnet 5.5 #2         themes=[] | advisor calls=0 | notes=[': No uncovered RS leader stocks were provided; nothing to cluster']

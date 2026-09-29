@@ -1,0 +1,9 @@
+containment                        {'answered': 5}
+merge                              {'answered': 2}
+assignment_NO_NOTES_INSTRUCTION    {'REFUSED': 4, 'answered': 1}  e.g. model refused the request (stop_reason=refusal, model=claude-sonnet-5-5)
+discovery                          {'no-tool:refusal': 2, 'answered': 1}
+split                              {'answered': 3}
+rename                             {'answered': 3}
+synthesis                          {'answered': 5}
+ecosystem_assign                   {'answered': 2}
+ecosystem_propose                  {'answered': 5}

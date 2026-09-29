@@ -1,0 +1,10 @@
+STOCK PART: UNCOVERED STOCKS (not in any active theme; each line shows its RS): | - SVRN (RS 100, sector: Financial Services — ) | - TJGC (RS 100, sector: Communication Services — ) | - MRNA (RS 100, sector: Healthcare — mRNA vaccines & therapeutics) |  | 
+I prefix + stocks + rules (no OUTPUT FORMAT)         stop=tool_use out=11
+J prefix + stocks only                               stop=tool_use out=11
+K stocks only + 'assign if it fits'                  stop=tool_use out=11
+L prefix only + 'no stocks'                          stop=tool_use out=11
+M full H text, plain, NO tool                        stop=refusal out=0
+N stocks only, plain, NO tool                        stop=end_turn out=744
+O one stock line only, plain: SVRN                   stop=end_turn out=836
+O one stock line only, plain: TJGC                   stop=end_turn out=709
+O one stock line only, plain: MRNA                   stop=end_turn out=1171
