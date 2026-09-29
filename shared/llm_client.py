@@ -350,6 +350,11 @@ def _synthesize(resp: Any, plan: dict) -> Any:
     them); anything else that cannot be parsed raises StructuredOutputError."""
     if stop_reason(resp) == "max_tokens":
         return resp
+    if stop_reason(resp) == "refusal":
+        # Named apart from "no text": sonnet-5-5 refused every theme prompt on 2026-09-29 and the
+        # log read only "no text block (blocks=[])", which hid that the model declined outright.
+        raise StructuredOutputError(
+            f"model refused the request (stop_reason=refusal, model={getattr(resp, 'model', '?')})")
     text = first_text(resp)
     if not text:
         raise StructuredOutputError(

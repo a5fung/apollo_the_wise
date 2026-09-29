@@ -77,7 +77,10 @@ def test_no_role_falls_back_to_a_superseded_pin():
     resolver outage degrades to today's model, not to 2025's.
     """
     current = {llm_models.OPUS, llm_models.SONNET, llm_models.HAIKU}
-    stale = {n: v for n, v in _role_constants().items() if v not in current}
+    # An explicit _ROLE_OVERRIDES pin is the deliberate rollback lever, not a stale fallback;
+    # test_role_model_overrides.py owns it.
+    pinned = {r for r, v in llm_models._ROLE_OVERRIDES.items() if v}
+    stale = {n: v for n, v in _role_constants().items() if v not in current and n not in pinned}
     assert not stale, f"role(s) pinned to a superseded id: {stale}"
 
 

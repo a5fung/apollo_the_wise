@@ -573,3 +573,19 @@ def test_canary_model_reports_failures_from_run_canary(monkeypatch):
     ok, err = _run(mr._canary_model("claude-opus-9"))
     assert ok is False and "forced_tool" in err and "not supported for this model" in err
     fake_client.close.assert_awaited_once()
+
+
+def test_a_refusal_is_named_as_a_refusal_not_as_missing_text():
+    # sonnet-5-5 on 2026-09-29: stop_reason "refusal", zero content blocks. The old message
+    # ("no text block (blocks=[])") hid that the model declined.
+    class Refuser(FakeOpus55):
+        async def create(self, **kw):
+            if (kw.get("output_config") or {}).get("format"):
+                self.calls.append(kw)
+                return Resp([], stop_reason="refusal", model=kw["model"])
+            return await super().create(**kw)
+    with pytest.raises(StructuredOutputError, match="refused.*stop_reason=refusal"):
+        _run(_client(Refuser()).messages.create(
+            model="claude-sonnet-5-5", max_tokens=500, tools=[GRADE_TOOL],
+            tool_choice={"type": "tool", "name": "grade_ep"},
+            messages=[{"role": "user", "content": "x"}]))

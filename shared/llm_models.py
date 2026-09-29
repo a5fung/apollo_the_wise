@@ -178,6 +178,20 @@ _TIER_OVERRIDES: dict[str, str | None] = {
     "haiku": None,
 }
 
+# ── Per-role overrides — the same lever, narrowed to ONE role ─────────────────
+# Wins over the tier override and the resolver. For a release that breaks some roles of a tier
+# but not others: pin the broken roles and leave the rest (the money-path graders especially)
+# tracking. Same rules as _TIER_OVERRIDES: its own commit, with rationale; None to resume.
+_ROLE_OVERRIDES: dict[str, str | None] = {
+    # 2026-09-29: claude-sonnet-5-5 answers the theme prompts with stop_reason "refusal" and no
+    # output at all — the whole 09-29 assignment pass and 6 of 6 parent checks failed on it, and
+    # discovery returned nothing. The identical prompt on claude-sonnet-5 answers normally, and
+    # trivial prompts on 5.5 work. Catalyst grading on 5.5 graded normally, so only the theme
+    # roles go back; clear both once 5.5 answers the containment prompt.
+    "THEME_MODEL": "claude-sonnet-5",
+    "THEME_PARENT_ADJUDICATION_MODEL": "claude-sonnet-5",
+}
+
 # ── Auto-tracked role bindings: role constant name -> tier. Adding a role
 # here is a deliberate decision that its ACTUAL live calls (not just this
 # file's constant) will move when the nightly refresh adopts a new release.
@@ -284,7 +298,8 @@ RESOLVED_ROLES: dict[str, str] = {
 # re-read per invocation): the forensics view AND the value effective_model
 # returns for a RESOLVED_ROLES role. CANNOT raise (resolve_tier's contract).
 _ROLE_RESOLUTIONS: dict[str, _TierResolution] = {
-    role: _resolve_tier(tier, _TIER_PINS[tier], _TIER_OVERRIDES.get(tier))
+    role: _resolve_tier(tier, _TIER_PINS[tier],
+                        _ROLE_OVERRIDES.get(role) or _TIER_OVERRIDES.get(tier))
     for role, tier in RESOLVED_ROLES.items()
 }
 

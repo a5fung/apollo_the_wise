@@ -197,8 +197,11 @@ def test_theme_discovery_logs_row_with_nonzero_cost(monkeypatch, captured_insert
     assert model == te.THEME_MODEL          # Sonnet
     assert in_tok == 3000 and out_tok == 800
     assert cost > 0
-    # Sonnet = $3/M in, $15/M out → 3000/1e6*3 + 800/1e6*15 = 0.009 + 0.012 = 0.021
-    assert cost == pytest.approx(0.021, abs=1e-6)
+    # Priced at whatever THEME_MODEL is bound to (a role pin can move it off the tier floor —
+    # claude-sonnet-5 at $2/$10 since 2026-09-29): 3000 in + 800 out at that model's rates.
+    from shared.llm_models import pricing_for
+    rates = pricing_for(te.THEME_MODEL)
+    assert cost == pytest.approx(3000 / 1e6 * rates["input"] + 800 / 1e6 * rates["output"], abs=1e-6)
 
 
 # ── Rollout: usage-SHAPE duality (the silent-zero-row class, ENGINEERED AWAY) ─
