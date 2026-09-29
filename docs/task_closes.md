@@ -1851,3 +1851,4 @@ EVIDENCE:
   3 names returned after 6–40 days; IRD (last row 09-22) and PBF (09-18) KEPT their carried tops (09-09, 09-11); ARHS
   (last row 08-26) re-anchored because its old top (08-18) had aged past the 25-session lookback, as designed. No
   returning name took a wick top above an unresolved carried top.
+- **RECORD (advisor review 2026-09-28):** subagent spend on 09-28 ≈ 3.7M tokens (#684 study+critic 551k, the live-entry frame 290k + 465k, the late-alert check 266k, #685 656k, its depth follow-up 377k, simplify 405k, misc). ⚠ Two claims reached him before their check: "a third of EP alerts arrive after the 9:45 cutoff, 40% of alerted runners" (it counted MODERATE scan passes; on orderable HIGH alerts 55 of 181 were late) and "option 1 holds up" for late alerts (refuted by the independent check the same afternoon — live code gets ~16 fills at −0.21..−0.03R vs +0.20R in-window).
