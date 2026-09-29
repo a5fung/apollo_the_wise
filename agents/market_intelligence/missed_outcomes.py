@@ -422,20 +422,31 @@ async def check_extension_cap_revisit() -> dict:
                   AND setup_at_open IS TRUE          -- #595: a real setup at the bell, not a fade
                   AND max_high_5d >= $1
                   AND alert_date >= CURRENT_DATE - 7  -- only NEW ones; this runs nightly
+                  -- sent once only: a name stays >= +100% for the rest of its 7-day window, so
+                  -- without this it would page again every night (2026-09-28 advisor review)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM mi_audit_log a
+                      WHERE a.event_type = 'extension_cap_revisit_sent'
+                        AND a.summary = mi_ep_missed_outcomes.ticker || ' ' || mi_ep_missed_outcomes.alert_date)
                 ORDER BY max_high_5d DESC
                 """, _EXT_WATCH_MFE)
             candidates = [dict(r) for r in rows]
-            # (a) the sample counter — how much scoreable evidence the 50-75 band now holds
+            # (a) the sample counter — how much scoreable evidence the 50-75 band now holds. Until
+            # 2026-09-28 this counted EVERY extension-blocked name (104 that night) instead of the
+            # 50-75% band the 08-29 revert is about (23), so `extension_cap_sample_ready` had been
+            # logged nightly since 08-31 on a miscount. The band is read from the skip reason's own
+            # number ("already up N% in prior 5 days"), the value the gate compared.
             out["band_n"] = int(await conn.fetchval(
                 """
                 SELECT count(*) FROM mi_ep_missed_outcomes
                 WHERE skip_category = 'extension_gate' AND setup_at_open IS TRUE
                   AND ret_5d IS NOT NULL
+                  AND (regexp_match(skip_reason, 'already up ([0-9]+)%'))[1]::int BETWEEN 50 AND 75
                 """) or 0)
             out["sample_ready"] = out["band_n"] >= _EXT_WATCH_SAMPLE_TARGET
         # 2026-09-28: his trigger is an EP missed BECAUSE OF the cap. The scan checks extension before
         # the quality filters, so a name recorded as `extension_gate` may fail them too — SVRN 09-21
-        # (+133% in 5 sessions) had a 20-day median dollar volume of ~$367k against the live $1M floor
+        # (+133% in 5 sessions) failed the live $1M dollar-volume floor ($791k by check_filters on 09-21)
         # and would not have been bought with no cap at all. Only names that pass the SAME live
         # quality filters (ADV, ATR, market cap) on the alert date are sent; the rest are recorded.
         from agents.market_intelligence.backtester.filters import check_filters

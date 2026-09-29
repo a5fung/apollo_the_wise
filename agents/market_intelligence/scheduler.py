@@ -801,6 +801,9 @@ async def _nightly_data_pull():
                     "extension_cap_revisit_trigger",
                     f"{len(_ext['names'])} strong EP(s) blocked by the extension cap",
                     detail=str(_ext["names"])[:900])
+                for _n in _ext["names"]:   # one row per name: the watch never re-sends it
+                    await log_audit_event("extension_cap_revisit_sent",
+                                          f"{_n['ticker']} {_n['alert_date']}")
                 # NO function-local import: `send_telegram_message` is already bound at module
                 # level (line 45), and a local one would make the name LOCAL for this whole
                 # function — the 2026-05-20 UnboundLocalError outage class that killed EP scans
