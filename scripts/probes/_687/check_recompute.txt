@@ -1,0 +1,53 @@
+## FROM arms_per_trade.tsv (the study's per-trade R), all paired trades
+   ALL  A0      n=1505 total  +437.63 mean +0.291 drop-best-2  +393.23 | >=3R 241 >=8R 88 worst -3.62 <-1.5R 9
+   ALL  A1      n=1505 total  +484.95 mean +0.322 drop-best-2  +437.60 | vs A0  +47.31 p=0.132 better/worse 154/236 diff w/o its top 2  +18.02 | >=3R 232 >=8R 93 worst -3.62 <-1.5R 9
+   ALL  D10     n=1505 total  +467.10 mean +0.310 drop-best-2  +419.88 | vs A0  +29.47 p=0.325 better/worse 144/247 diff w/o its top 2   +0.12 | >=3R 231 >=8R 92 worst -3.62 <-1.5R 9
+   ALL  T20_hs  n=1505 total  +524.48 mean +0.348 drop-best-2  +475.08 | vs A0  +86.84 p=0.046 better/worse 102/110 diff w/o its top 2  +57.43 | >=3R 224 >=8R 96 worst -3.62 <-1.5R 9
+   ALL  S20_hs  n=1505 total  +527.47 mean +0.350 drop-best-2  +438.10 | vs A0  +89.83 p=0.223 better/worse 73/139 diff w/o its top 2   +6.46 | >=3R 235 >=8R 84 worst -3.62 <-1.5R 9
+   ALL  T20_be  n=1505 total  +513.78 mean +0.341 drop-best-2  +464.38 | vs A0  +76.15 p=0.056 better/worse 91/87 diff w/o its top 2  +46.74 | >=3R 209 >=8R 90 worst -3.62 <-1.5R 9
+   ALL  S20_be  n=1505 total  +483.98 mean +0.322 drop-best-2  +416.79 | vs A0  +46.35 p=0.442 better/worse 65/113 diff w/o its top 2  -10.67 | >=3R 227 >=8R 80 worst -3.62 <-1.5R 9
+   DISC A0      n= 614 total  +231.90 mean +0.378 drop-best-2  +187.50 | >=3R 104 >=8R 36 worst -2.00 <-1.5R 3
+   DISC A1      n= 614 total  +232.27 mean +0.378 drop-best-2  +188.34 | vs A0   +0.38 p=0.975 better/worse 63/93 diff w/o its top 2   -9.59 | >=3R 97 >=8R 38 worst -2.00 <-1.5R 3
+   DISC D10     n= 614 total  +228.29 mean +0.372 drop-best-2  +184.55 | vs A0   -3.60 p=0.756 better/worse 59/97 diff w/o its top 2  -13.31 | >=3R 96 >=8R 38 worst -2.00 <-1.5R 3
+   DISC T20_hs  n= 614 total  +254.15 mean +0.414 drop-best-2  +204.75 | vs A0  +22.25 p=0.366 better/worse 40/46 diff w/o its top 2   -0.51 | >=3R 95 >=8R 40 worst -2.00 <-1.5R 3
+   DISC S20_hs  n= 614 total  +233.38 mean +0.380 drop-best-2  +185.79 | vs A0   +1.48 p=0.969 better/worse 32/54 diff w/o its top 2  -32.73 | >=3R 103 >=8R 34 worst -2.00 <-1.5R 3
+   DISC T20_be  n= 614 total  +262.88 mean +0.428 drop-best-2  +213.49 | vs A0  +30.99 p=0.190 better/worse 37/34 diff w/o its top 2   +8.23 | >=3R 91 >=8R 39 worst -2.00 <-1.5R 3
+   DISC S20_be  n= 614 total  +241.29 mean +0.393 drop-best-2  +193.71 | vs A0   +9.40 p=0.792 better/worse 29/42 diff w/o its top 2  -24.81 | >=3R 100 >=8R 33 worst -2.00 <-1.5R 3
+   HELD A0      n= 891 total  +205.74 mean +0.231 drop-best-2  +182.83 | >=3R 137 >=8R 52 worst -3.62 <-1.5R 6
+   HELD A1      n= 891 total  +252.67 mean +0.284 drop-best-2  +212.12 | vs A0  +46.94 p=0.104 better/worse 91/143 diff w/o its top 2  +17.65 | >=3R 135 >=8R 55 worst -3.62 <-1.5R 6
+   HELD D10     n= 891 total  +238.80 mean +0.268 drop-best-2  +201.63 | vs A0  +33.07 p=0.239 better/worse 85/150 diff w/o its top 2   +3.72 | >=3R 135 >=8R 54 worst -3.62 <-1.5R 6
+   HELD T20_hs  n= 891 total  +270.33 mean +0.303 drop-best-2  +238.57 | vs A0  +64.59 p=0.084 better/worse 62/64 diff w/o its top 2  +42.75 | >=3R 129 >=8R 56 worst -3.62 <-1.5R 6
+   HELD S20_hs  n= 891 total  +294.09 mean +0.330 drop-best-2  +204.72 | vs A0  +88.35 p=0.193 better/worse 41/85 diff w/o its top 2   +4.98 | >=3R 132 >=8R 50 worst -3.62 <-1.5R 6
+   HELD T20_be  n= 891 total  +250.90 mean +0.282 drop-best-2  +219.14 | vs A0  +45.16 p=0.183 better/worse 54/53 diff w/o its top 2  +23.32 | >=3R 118 >=8R 51 worst -3.62 <-1.5R 6
+   HELD S20_be  n= 891 total  +242.69 mean +0.272 drop-best-2  +179.81 | vs A0  +36.96 p=0.506 better/worse 36/71 diff w/o its top 2  -18.09 | >=3R 127 >=8R 47 worst -3.62 <-1.5R 6
+## FROM MY WALKER's per-trade R (independent code), all paired trades
+   ALL  A0      n=1505 total  +437.63 mean +0.291 drop-best-2  +393.23 | >=3R 241 >=8R 88 worst -3.62 <-1.5R 9
+   ALL  A1      n=1505 total  +484.95 mean +0.322 drop-best-2  +437.60 | vs A0  +47.31 p=0.128 better/worse 154/235 diff w/o its top 2  +18.02 | >=3R 232 >=8R 93 worst -3.62 <-1.5R 9
+   ALL  D10     n=1505 total  +467.10 mean +0.310 drop-best-2  +419.88 | vs A0  +29.46 p=0.326 better/worse 144/246 diff w/o its top 2   +0.12 | >=3R 231 >=8R 92 worst -3.62 <-1.5R 9
+   ALL  T20_hs  n=1505 total  +521.85 mean +0.347 drop-best-2  +472.46 | vs A0  +84.22 p=0.051 better/worse 101/110 diff w/o its top 2  +54.81 | >=3R 223 >=8R 96 worst -3.62 <-1.5R 9
+   ALL  S20_hs  n=1505 total  +524.84 mean +0.349 drop-best-2  +435.48 | vs A0  +87.21 p=0.237 better/worse 72/139 diff w/o its top 2   +3.84 | >=3R 234 >=8R 84 worst -3.62 <-1.5R 9
+   ALL  T20_be  n=1505 total  +511.17 mean +0.340 drop-best-2  +461.77 | vs A0  +73.53 p=0.066 better/worse 90/87 diff w/o its top 2  +44.12 | >=3R 208 >=8R 90 worst -3.62 <-1.5R 9
+   ALL  S20_be  n=1505 total  +481.37 mean +0.320 drop-best-2  +414.17 | vs A0  +43.73 p=0.470 better/worse 64/113 diff w/o its top 2  -13.29 | >=3R 226 >=8R 80 worst -3.62 <-1.5R 9
+   DISC A0      n= 614 total  +231.90 mean +0.378 drop-best-2  +187.50 | >=3R 104 >=8R 36 worst -2.00 <-1.5R 3
+   DISC A1      n= 614 total  +232.27 mean +0.378 drop-best-2  +188.34 | vs A0   +0.38 p=0.975 better/worse 63/92 diff w/o its top 2   -9.59 | >=3R 97 >=8R 38 worst -2.00 <-1.5R 3
+   DISC D10     n= 614 total  +228.29 mean +0.372 drop-best-2  +184.55 | vs A0   -3.60 p=0.755 better/worse 59/96 diff w/o its top 2  -13.31 | >=3R 96 >=8R 38 worst -2.00 <-1.5R 3
+   DISC T20_hs  n= 614 total  +251.53 mean +0.410 drop-best-2  +202.13 | vs A0  +19.63 p=0.434 better/worse 39/46 diff w/o its top 2   -3.13 | >=3R 94 >=8R 40 worst -2.00 <-1.5R 3
+   DISC S20_hs  n= 614 total  +230.76 mean +0.376 drop-best-2  +183.17 | vs A0   -1.14 p=0.976 better/worse 31/54 diff w/o its top 2  -35.35 | >=3R 102 >=8R 34 worst -2.00 <-1.5R 3
+   DISC T20_be  n= 614 total  +260.26 mean +0.424 drop-best-2  +210.86 | vs A0  +28.37 p=0.237 better/worse 36/34 diff w/o its top 2   +5.61 | >=3R 90 >=8R 39 worst -2.00 <-1.5R 3
+   DISC S20_be  n= 614 total  +238.67 mean +0.389 drop-best-2  +191.09 | vs A0   +6.78 p=0.850 better/worse 28/42 diff w/o its top 2  -27.43 | >=3R 99 >=8R 33 worst -2.00 <-1.5R 3
+   HELD A0      n= 891 total  +205.74 mean +0.231 drop-best-2  +182.83 | >=3R 137 >=8R 52 worst -3.62 <-1.5R 6
+   HELD A1      n= 891 total  +252.67 mean +0.284 drop-best-2  +212.12 | vs A0  +46.94 p=0.104 better/worse 91/143 diff w/o its top 2  +17.65 | >=3R 135 >=8R 55 worst -3.62 <-1.5R 6
+   HELD D10     n= 891 total  +238.81 mean +0.268 drop-best-2  +201.63 | vs A0  +33.07 p=0.232 better/worse 85/150 diff w/o its top 2   +3.72 | >=3R 135 >=8R 54 worst -3.62 <-1.5R 6
+   HELD T20_hs  n= 891 total  +270.33 mean +0.303 drop-best-2  +238.57 | vs A0  +64.59 p=0.085 better/worse 62/64 diff w/o its top 2  +42.75 | >=3R 129 >=8R 56 worst -3.62 <-1.5R 6
+   HELD S20_hs  n= 891 total  +294.09 mean +0.330 drop-best-2  +204.72 | vs A0  +88.35 p=0.187 better/worse 41/85 diff w/o its top 2   +4.98 | >=3R 132 >=8R 50 worst -3.62 <-1.5R 6
+   HELD T20_be  n= 891 total  +250.90 mean +0.282 drop-best-2  +219.14 | vs A0  +45.16 p=0.177 better/worse 54/53 diff w/o its top 2  +23.32 | >=3R 118 >=8R 51 worst -3.62 <-1.5R 6
+   HELD S20_be  n= 891 total  +242.69 mean +0.272 drop-best-2  +179.81 | vs A0  +36.96 p=0.505 better/worse 36/71 diff w/o its top 2  -18.09 | >=3R 127 >=8R 47 worst -3.62 <-1.5R 6
+   depth - close-only ALL: -17.85 (better 31 / worse 38 of 69 that differ)
+   depth - close-only DISC: -3.98 (better 13 / worse 17 of 30 that differ)
+   depth - close-only HELD: -13.87 (better 18 / worse 21 of 39 that differ)
+   without BE 2025-07-24 and HL 2025-08-07 (n 1503): A1-A0 +18.02  D10-A0 +0.12
+   held-out without BE, HL, FCEL (n 888): D10-A0 -5.30
+   runner engaged 217; T20_be-A0 on engaged +76.15
+   DWAC 2024-03-25 (bars end on the entry day): A0 +1.3333 vs every runner arm +3.9544 -> +2.62R of each runner's 'vs today' is a MARK convention (walk_hybrid_arm marks at the entry price when no later bar exists; walk_runner marks at day P's close), not a rule effect
+   T20_be top-5 contributors: [('WVE', '2024-09-24', 17.41), ('HL', '2025-08-07', 12.0), ('HYMC', '2025-12-22', 9.84), ('BE', '2025-07-24', 7.47), ('IDR', '2025-07-10', 6.93)]
+   T20_be-A0 without top 2 +46.74, without top 3 +36.90; median diff among engaged +0.000

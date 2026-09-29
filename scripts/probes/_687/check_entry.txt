@@ -1,0 +1,32 @@
+# #687 CHECK (3) ENTRY — my own live-order-path walker on all 2607 gap-days (captured Polygon minute bars; my own ATR14 from the check pull)
+   funnel: {'abstain:entry_window_gaps': 68, 'abstain:minute_open_vs_daily_open>2%': 1, 'abstain:no_930_bar': 96, 'chase_cap_skip:': 27, 'filled:chase_open': 116, 'filled:cross': 1389, 'filled:limit_pullback': 6, 'filled:open_in_band': 106, 'no_entry:never_crossed': 390, 'no_trade:orb>1.5xATR': 349, 'no_trade:zero_range': 59} | filled 1617
+   doc funnel: no readable open 165 (96 no 09:30 bar + 68 window gaps + 1 join) | ORB > 1.5xATR 349 | zero range 59 | chase-cap skip 27 | never crossed 390 | filled 1,617 (1,470 cross, 116 chase at 09:31, 22 open in band, 9 pullback)
+   verdict flips if 'latest trade at 09:31' = the 09:30 bar's CLOSE instead of the 09:31 bar's OPEN: {'px_differs': 23, 'chase_cap_skip->filled': 25, 'chase_cap_skip->no_entry': 2, 'filled->no_entry': 5} (doc: 55)
+   per-campaign vs arms_per_trade.tsv (1533 campaigns): {'match': 1451, 'differs': 82}; first diffs [(('MOR', datetime.date(2024, 1, 16)), 9.71, '9.7100', 'open_in_band', 'cross'), (('VZIO', datetime.date(2024, 2, 20)), 11.005, '11.0050', 'open_in_band', 'cross'), (('BLCO', datetime.date(2024, 2, 21)), 16.0, '16.0000', 'open_in_band', 'cross'), (('AGTI', datetime.date(2024, 2, 26)), 9.88, '9.8800', 'open_in_band', 'cross'), (('LGND', datetime.date(2024, 2, 27)), 86.5, '86.5000', 'open_in_band', 'cross'), (('PSTG', datetime.date(2024, 2, 29)), 48.39, '48.3900', 'open_in_band', 'cross'), (('ANNX', datetime.date(2024, 3, 1)), 6.2, '6.2000', 'open_in_band', 'cross'), (('EHAB', datetime.date(2024, 3, 7)), 9.62, '9.6200', 'open_in_band', 'limit_pullback'), (('GDS', datetime.date(2024, 3, 11)), 7.74, '7.7400', 'open_in_band', 'cross'), (('ITCI', datetime.date(2024, 4, 16)), 77.0, '77.0000', 'open_in_band', 'cross')]
+   chase fills in the TSV 109: stop = 2L - H (the live order's stop, not re-anchored to the fill) on 109 of 109
+   25 trades, my walk of the live order vs the TSV (ticker day | ORB H/L | kind px | TSV kind px | stop):
+     AGTI   2024-02-26 | H 9.8800 L 9.8700 | mine open_in_band   9.8800 | tsv cross          9.8800 | stop 9.8600 vs 9.8600
+     AMGN   2024-05-03 | H 317.4299 L 313.1000 | mine cross          317.4299 | tsv cross          317.4299 | stop 308.7701 vs 308.7701
+     AVAV   2024-08-28 | H 200.8500 L 197.4200 | mine cross          200.8500 | tsv cross          200.8500 | stop 193.9900 vs 193.9900
+     BAH    2026-01-23 | H 108.7100 L 105.5000 | mine chase_open     109.0000 | tsv chase_open     109.0000 | stop 102.2900 vs 102.2900
+     BAND   2024-02-28 | H 17.7500 L 16.8000 | mine cross          17.7500 | tsv cross          17.7500 | stop 15.8500 vs 15.8500
+     BE     2025-07-24 | H 30.5000 L 29.9000 | mine cross          30.5000 | tsv cross          30.5000 | stop 29.3000 vs 29.3000
+     BLKB   2025-07-30 | H 71.7600 L 70.9500 | mine cross          71.7600 | tsv cross          71.7600 | stop 70.1400 vs 70.1400
+     EPSM   2025-04-24 | H 6.5585 L 6.3800 | mine cross          6.5585 | tsv cross          6.5585 | stop 6.2015 vs 6.2015
+     ETON   2024-11-13 | H 10.2000 L 9.9572 | mine chase_open     10.2900 | tsv chase_open     10.2900 | stop 9.7144 vs 9.7144
+     FCEL   2025-12-18 | H 9.9000 L 9.2500 | mine cross          9.9000 | tsv cross          9.9000 | stop 8.6000 vs 8.6000
+     HAYW   2024-02-29 | H 14.9000 L 14.6600 | mine limit_pullback 14.9700 | tsv limit_pullback 14.9700 | stop 14.4200 vs 14.4200
+     HL     2025-08-07 | H 7.0600 L 6.9600 | mine cross          7.0600 | tsv cross          7.0600 | stop 6.8600 vs 6.8600
+     KALV   2024-02-15 | H 16.2000 L 15.7500 | mine cross          16.2000 | tsv cross          16.2000 | stop 15.3000 vs 15.3000
+     KC     2025-02-03 | H 14.9350 L 14.6100 | mine cross          14.9350 | tsv cross          14.9350 | stop 14.2850 vs 14.2850
+     KEYS   2026-02-24 | H 284.8000 L 277.7200 | mine cross          284.8000 | tsv cross          284.8000 | stop 270.6400 vs 270.6400
+     LZM    2026-04-20 | H 5.9501 L 5.6600 | mine chase_open     5.9872 | tsv chase_open     5.9872 | stop 5.3699 vs 5.3699
+     MLYS   2025-03-10 | H 14.2800 L 14.0500 | mine cross          14.2800 | tsv cross          14.2800 | stop 13.8200 vs 13.8200
+     NMAX   2026-03-27 | H 6.9000 L 6.8000 | mine cross          6.9000 | tsv cross          6.9000 | stop 6.7000 vs 6.7000
+     PEN    2026-01-15 | H 351.0500 L 346.2100 | mine cross          351.0500 | tsv cross          351.0500 | stop 341.3700 vs 341.3700
+     PLSE   2024-07-08 | H 13.3200 L 13.0500 | mine chase_open     13.4690 | tsv chase_open     13.4690 | stop 12.7800 vs 12.7800
+     RDFN   2025-03-10 | H 10.2300 L 9.9550 | mine cross          10.2300 | tsv cross          10.2300 | stop 9.6800 vs 9.6800
+     SEZL   2025-05-08 | H 69.0100 L 65.6200 | mine cross          69.0100 | tsv cross          69.0100 | stop 62.2300 vs 62.2300
+     SITM   2025-11-06 | H 347.0000 L 327.0000 | mine cross          347.0000 | tsv cross          347.0000 | stop 307.0000 vs 307.0000
+     SMAR   2024-06-06 | H 44.3000 L 43.6500 | mine cross          44.3000 | tsv cross          44.3000 | stop 43.0000 vs 43.0000
+     TEVA   2025-11-05 | H 23.1800 L 23.0100 | mine cross          23.1800 | tsv cross          23.1800 | stop 22.8400 vs 22.8400

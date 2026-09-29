@@ -1,0 +1,7 @@
+   ALL: days 656 trades 402 reclaim 358 slice 298 | >=1ADR 82 reclaimed 10 | A0 sold a reclaim day 215 | D10 sold a reclaim day 22 | median depth reclaim 0.15 ADR (0.74%) slice 0.60 (2.88%)
+   DISC: days 249 trades 160 reclaim 136 slice 113 | >=1ADR 35 reclaimed 5 | A0 sold a reclaim day 80 | D10 sold a reclaim day 9 | median depth reclaim 0.15 ADR (0.64%) slice 0.62 (2.87%)
+   HELD: days 407 trades 242 reclaim 222 slice 185 | >=1ADR 47 reclaimed 5 | A0 sold a reclaim day 135 | D10 sold a reclaim day 13 | median depth reclaim 0.15 ADR (0.82%) slice 0.59 (2.88%)
+   depth buckets (days, reclaimed): {'<1/4': (286, 240), '1/4-1/2': (150, 70), '1/2-1': (138, 38), '>=1': (82, 10)}
+   D10 reclaim-day sales 22; of them >= 1 ADR deep 9: [('SMCI', '2024-02-20', 'HELD'), ('APPF', '2024-02-13', 'HELD'), ('ARIS', '2024-04-10', 'HELD'), ('PSTG', '2024-03-12', 'close_below_line'), ('OCFC', '2024-11-19', 'stop_hit'), ('EPSM', '2025-05-13', 'HELD'), ('SEZL', '2025-06-10', 'HELD'), ('ATEC', '2025-08-28', 'HELD'), ('CLPT', '2025-10-14', 'close_below_line')]
+   of those, A1 HELD: ['SMCI', 'APPF', 'ARIS', 'EPSM', 'SEZL', 'ATEC']
+13 Counter({'stop_hit': 13})

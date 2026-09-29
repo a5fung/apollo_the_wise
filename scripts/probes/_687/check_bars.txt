@@ -1,0 +1,5 @@
+# #687 CHECK (6a) BAR INTEGRITY — Polygon RTH minute bars vs mi_daily_closes on the SAME day
+   656 HELD line-test days: {'days': 656, 'low_equal_(1c)': 654, 'low_within_1%': 656, 'daily_low_BELOW_rth_low_>1c': 2, 'high_within_1%': 656, 'close_within_1%': 652, 'open_within_0.5%': 655}; days with RTH high/low > 2% off the daily bar 0: []
+   line-test days whose daily low reached the line but the RTH minute low did NOT (a touch that exists only outside RTH or in the daily feed): 0: []
+   of those, days where A0 is recorded as stopped on that day: 0
+   entry days (all fetched): {'days': 2727, 'low_equal_(1c)': 2725, 'low_within_1%': 2726, 'daily_low_BELOW_rth_low_>1c': 1, 'high_within_1%': 2726, 'close_within_1%': 2716, 'open_within_0.5%': 2630, 'no_daily_or_bars': 16}; days with RTH high/low > 2% off the daily bar 1: [('PSTV', '2025-09-25', 0.485, 12.125, 0.6221, 15.5525, 96.0)]

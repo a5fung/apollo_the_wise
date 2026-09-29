@@ -1,0 +1,73 @@
+# #687 INDEPENDENT CHECK — verdict (2026-09-29). $0: one read-only prod SELECT round-trip (check_pull.sql -> check_pull_out.txt,
+# READ ONLY transaction, rolled back), no Polygon pulls, no subagents, no edits to the doc, backfill.py or its outputs.
+# Code: check_make_sql.py, check_pop.py, check_walk.py (own entry + exit walker; imports none of backfill/study/ep_replay/exit_logic),
+# check_exit.py, check_handwalk.py, check_bars.py, check_recompute.py, check_linetests.py, check_broken.py.
+
+VERDICT: the replay does what the doc says, to the cent. My own walker reproduces A0 / close-only / depth on all 1,505 paired
+trades (0 mismatches) and every entry-funnel count. The depth-rule conclusion SURVIVES. A handful of small numbers are WRONG; none
+changes a conclusion or the proposal.
+
+(1) POPULATION — own SQL, raw floors applied in SQL: 2,606 vs 2,607 gap-days, 2,602 identical; by year 1,090 / 1,156 / 360 vs
+    1,090 / 1,157 / 360. Differences: 4 rows admitted only because pull_pop.sql rounds vol_mult to 2 dp (TECH 2024-05-01, BOOM
+    2025-02-10, MAN 2025-07-17, MDXG 2025-07-31, true 2.995-2.999x); 3 rows lost because the SQL tests the ADJUSTED $5 / 50k floors
+    before Python re-tests the raw ones (WIT 2024-01-12 forward split; CDLX 2024-01-29, MTEN 2025-07-22 reverse splits); 2 cooldown
+    cascades. Only 1 prior close is not from the previous session (ZVRA 2024-08-05). 0 unadjusted splits on population tickers.
+    Look-ahead: only the gap day's OPEN (09:30-knowable) and FULL-DAY VOLUME (stated) are read. Not stated: the 60-day cooldown
+    inherits the volume look-ahead, because a day that fails full-day volume never starts a cooldown.
+(2) SURVIVORSHIP — mi_daily_closes is not survivor-only: 82-151 tickers stop reporting every month of 2024. 356 of 2,607 gap-days
+    (246 tickers) are in names whose bars stop before 2026-08-17. They ARE in the list and lose money (today's stop -0.13R a trade
+    vs +0.36R on survivors). The 'UNKNOWN type' exclusion drops 0 qualifying rows. The entry abstain rate is 3.7% in both groups.
+    Direction: the missing 3 distressed rows push the LEVEL up by a trivial amount. Survivorship cannot move the arm DIFFERENCES,
+    because the pairing is same-trade and delisted names show the same per-trade differences (close-only +0.030 vs +0.032;
+    depth +0.026 vs +0.019). A survivor-only list would inflate hold-20 (+0.001 vs +0.058 a trade), but these names are in.
+    The positive level (+0.29R a trade) is NOT a survivorship artefact. The stated look-ahead volume rule is the level bias.
+(3) ENTRY — own walker of the live order path on all 2,607 gap-days: 96 / 68 / 1 / 349 / 59 / 27 / 390 / 1,617 filled, identical to
+    the doc; the same price, stop and ORB on all 1,533 campaigns; 55 flips under the 09:30-close proxy (doc 55). Stop = 2L-H on
+    109 of 109 chase fills (order_manager.py:618 and place_limit_buy_with_stop(stop_loss_price=trade["stop_price"])). The 09:31-open
+    proxy is the defensible reading of get_latest_trade at submit. Only fill LABELS differ: 81 bars opened exactly at the ORB high
+    and 3 at the limit, so by fill mechanics it is 1,389 cross / 106 open / 6 pullback, not 1,470 / 22 / 9. Prices are identical
+    and no outcome moves. 25 trades are listed in check_entry.txt.
+(4) EXIT — own walker: A0 / A1 / D10 match on 1,505 of 1,505 trades within 0.005R, the day-0 funnel matches exactly
+    (651 / 882 / 53+22+6+3) and 28 abstains are identical. Hand logs cover 10 trades x 3 arms and 5 x T20_hs, all MATCH, and two
+    decision days (EPSM 2025-05-13, BE 2025-08-08) were recomputed from raw closes by hand. Held-day minute bars, never checked by
+    the study: RTH low = daily low within 1c on 654 of 656 days, 0 days >2% off, 0 line tests that exist only in the daily feed.
+    Runner arms match on 1,504 of 1,505. DWAC 2024-03-25 is +2.62R in every runner arm because of a mark convention: its bars end
+    on the entry day; A0/A1/D10 mark the remainder at the ENTRY price, the runner walk marks it at the day-0 close.
+    Both _hs arms are also misdefined on 17 day-0 trades (partial, then breakeven hit the same day): they are kept identical to A0
+    although the _hs floor is the hard stop. That is worth T20_hs +2.79R and S20_hs +2.08R (check_exit.txt 4c).
+(5) RECOMPUTE (own permutation, 20,000 draws, a different seed) — every total, mean, drop-best-2, better/worse, >=3R / >=8R, worst
+    loss and p reproduces within permutation noise (<=0.01), from both the TSV and my walker's per-trade R. The line-test table
+    and depth buckets reproduce exactly.
+(6) BROKEN REPLAY — the depth headline is a NULL and does not tell a broken replay apart. Every breakage I injected still reads
+    'ahead, not significant': entry-day close in the trail D10-A0 +1.92; no line-test minute bars +27.34; a 0.1-ADR stop +12.00;
+    a 10-ADR stop +47.31 (= close-only). So it survives on the positive checks: exact reproduction by independent code, the #685
+    anchors, and bar integrity. The runner result is positive but not manufactured by any breakage: +71.5 to +81.7R across the
+    mutations, less the +2.62R DWAC artefact.
+
+SURVIVE: depth +29.46R p 0.33, +0.12R without BE/HL, 144/246 · disc -3.60 (p 0.75) / close-only +0.38 (p 0.97) · held-out +33.07
+  (p 0.24) / +46.94 (p 0.11), -5.30R without BE/HL/FCEL · depth trails close-only -17.85R (31/38 of 69), EPSM -10.79 / SEZL -5.60
+  · line tests 358/656, 215/358, 240/286, 10/82, D10 22 reclaim sales (9 deep; A1 held 6: SMCI APPF ARIS EPSM SEZL ATEC)
+  · worst loss and 9 losses beyond -1.5R identical in every arm (8 later, 1 entry day) · T20_be ahead in both blocks, >=3R kept
+  142 vs 174, median diff 0.00 · the 14x partial rate is not a tight-ORB artefact (partial rate 13-19% across ORB widths,
+  6% under 0.5%).
+WRONG (file docs/analysis/687_depth_trail_backfill_2026-09-29.md):
+  - Runner T20_be "+76.15R (p 0.054)", "+46.74R without top 2": with DWAC marked like A0 it is +73.53R, p ~0.066, +44.12R;
+    discovery +30.99 -> +28.37. Conclusion unchanged.
+  - "+8 ORB-R partial fires on 217 of 1,533 (14%)", "14x": it fires on 234 (15%, ~15x); 17 fired and hit breakeven the same day.
+    217 is the count that reached day 1.
+  - "5 paired trades whose stock stopped trading are closed at their last close in every arm": ALPN 2024-04-11 A0 stopped out
+    first. DWAC's main arms are marked at the ENTRY price, not its last close.
+  - "184 since delisted": 246 tickers (356 gap-days) stop reporting before the horizon. 184 is only those absent from
+    mi_security_types.
+  - Population "raw prior close >= $5 / raw volume >= 50k", "volume >= 3x": floors run on adjusted values first (-3 rows), and 3x
+    is tested after rounding to 2 dp (+4 rows). Net 2,602 of 2,607 identical.
+  - Entry funnel labels "1,470 at the ORB high / 22 open inside the band / 9 pullback": by fill mechanics 1,389 / 106 / 6. Prices
+    and outcomes are identical.
+  - T20_hs / S20_hs rows: 17 day-0 partial-then-breakeven trades are treated as A0 though the _hs floor is the hard stop
+    (T20_hs +2.79R, S20_hs +2.08R). Neither arm is orderable.
+ALSO CHECKED: backfill_out_repro.txt is line-identical to backfill_out_final.txt after the timestamp. Anchor (a) totals
+  (79 trades, A0 -5.77 / A1 -9.85) match scripts/probes/_685/depth_per_trade.tsv.
+LIMIT OF THIS CHECK: my walker and the study encode the same conventions, read from the same live code (apply_daily_exit_step,
+  the order path). So an exact match proves the replay does what the doc says. It is NOT independent evidence about live
+  behaviour the doc lists as unmodelled: 5-minute polling, the 16:45 after-hours sale, safeguards, slippage, and the
+  ask-aware entry branch.

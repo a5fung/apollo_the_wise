@@ -1,0 +1,346 @@
+## BE 2025-07-24 A0: MINE +4.6667 stop_hit 2025-08-08 | STUDY +4.6667 stop_hit 2025-08-08 -> MATCH
+     D0 2025-07-24 fill cross @30.5000 09:31:00 | hard 29.3000 be@32.3000 tgt@35.3000
+     D0 09:37:00 breakeven armed (high 32.47)
+     2025-07-29 (daily) partial 1/3 @ 35.3000
+     2025-08-01 held: o 32.74 l 32.52 c 36.72 | rest 30.64 line 30.64 -> next line 31.88
+     2025-08-04 held: o 37.72 l 35.0 c 36.1 | rest 31.88 line 31.88 -> next line 32.99
+     2025-08-05 held: o 36.51 l 36.38 c 37.61 | rest 32.99 line 32.99 -> next line 34.21
+     2025-08-06 held: o 38.01 l 37.8 c 38.86 | rest 34.21 line 34.21 -> next line 35.51
+     2025-08-07 held: o 39.35 l 35.85 c 36.8 | rest 35.51 line 35.51 -> next line 36.5
+     2025-08-08 15:44:00 low touched resting stop 36.50 (line 36.5, floor 30.5000) -> out @ 36.5000
+## BE 2025-07-24 A1: MINE +22.8222 close_below_line 2025-09-24 | STUDY +22.8222 close_below_line 2025-09-24 -> MATCH
+     2025-09-05 held: o 56.44 l 54.37 c 57.07 | rest 30.50 line 51.0 -> next line 52.22
+     2025-09-08 held: o 57.48 l 53.32 c 53.44 | rest 30.50 line 52.22 -> next line 52.71
+     2025-09-09 held: o 54.0 l 52.0 c 55.0 | rest 30.50 line 52.71 -> next line 53.27
+     2025-09-10 held: o 60.13 l 60.0 c 62.96 | rest 30.50 line 53.27 -> next line 54.58
+     2025-09-11 held: o 64.11 l 63.85 c 67.29 | rest 30.50 line 54.58 -> next line 56.22
+     2025-09-12 held: o 66.015 l 62.6201 c 67.26 | rest 30.50 line 56.22 -> next line 57.47
+     2025-09-15 held: o 68.0 l 63.94 c 67.02 | rest 30.50 line 57.47 -> next line 58.88
+     2025-09-16 held: o 71.85 l 69.9366 c 73.29 | rest 30.50 line 58.88 -> next line 61.07
+     2025-09-17 held: o 73.75 l 72.35 c 79.67 | rest 30.50 line 61.07 -> next line 63.79
+     2025-09-18 held: o 80.5 l 77.61 c 80.97 | rest 30.50 line 63.79 -> next line 66.4
+     2025-09-19 held: o 84.0 l 81.605 c 84.93 | rest 30.50 line 66.4 -> next line 69.18
+     2025-09-22 held: o 83.73 l 81.0 c 86.27 | rest 30.50 line 69.18 -> next line 72.47
+     2025-09-23 held: o 82.0 l 75.6 c 77.38 | rest 30.50 line 72.47 -> next line 74.7
+     2025-09-24 16:45 close 69.18 < effective 75.3260 (sma 75.3260, rest 30.50) -> sell the close
+## BE 2025-07-24 D10: MINE +22.8778 stop_hit 2025-09-24 | STUDY +22.8778 stop_hit 2025-09-24 -> MATCH
+     2025-09-05 held: o 56.44 l 54.37 c 57.07 | rest 48.12 line 51.0 -> next line 52.22
+     2025-09-08 held: o 57.48 l 53.32 c 53.44 | rest 49.27 line 52.22 -> next line 52.71
+     2025-09-09 held: o 54.0 l 52.0 c 55.0 | rest 49.73 line 52.71 -> next line 53.27
+     2025-09-10 held: o 60.13 l 60.0 c 62.96 | rest 50.26 line 53.27 -> next line 54.58
+     2025-09-11 held: o 64.11 l 63.85 c 67.29 | rest 51.50 line 54.58 -> next line 56.22
+     2025-09-12 held: o 66.015 l 62.6201 c 67.26 | rest 53.05 line 56.22 -> next line 57.47
+     2025-09-15 held: o 68.0 l 63.94 c 67.02 | rest 54.22 line 57.47 -> next line 58.88
+     2025-09-16 held: o 71.85 l 69.9366 c 73.29 | rest 55.55 line 58.88 -> next line 61.07
+     2025-09-17 held: o 73.75 l 72.35 c 79.67 | rest 57.62 line 61.07 -> next line 63.79
+     2025-09-18 held: o 80.5 l 77.61 c 80.97 | rest 60.19 line 63.79 -> next line 66.4
+     2025-09-19 held: o 84.0 l 81.605 c 84.93 | rest 62.65 line 66.4 -> next line 69.18
+     2025-09-22 held: o 83.73 l 81.0 c 86.27 | rest 65.27 line 69.18 -> next line 72.47
+     2025-09-23 held: o 82.0 l 75.6 c 77.38 | rest 68.38 line 72.47 -> next line 74.7
+     2025-09-24 09:30:00 low touched resting stop 70.48 (line 74.7, floor 30.5000) -> out @ 69.2800
+## HL 2025-08-07 A0: MINE +3.1667 stop_hit 2025-08-22 | STUDY +3.1667 stop_hit 2025-08-22 -> MATCH
+     D0 2025-08-07 fill cross @7.0600 09:31:00 | hard 6.8600 be@7.3600 tgt@7.8600
+     D0 14:00:00 breakeven armed (high 7.36)
+     2025-08-14 (daily) partial 1/3 @ 7.8600
+     2025-08-19 held: o 7.74 l 7.4 c 7.44 | rest 7.19 line 7.19 -> next line 7.34
+     2025-08-20 held: o 7.5 l 7.445 c 7.6 | rest 7.34 line 7.34 -> next line 7.48
+     2025-08-21 held: o 7.55 l 7.515 c 7.69 | rest 7.48 line 7.48 -> next line 7.64
+     2025-08-22 09:30:00 low touched resting stop 7.64 (line 7.64, floor 7.0600) -> out @ 7.6100
+## HL 2025-08-07 A1: MINE +14.3000 close_below_line 2025-09-24 | STUDY +14.3000 close_below_line 2025-09-24 -> MATCH
+     2025-09-05 held: o 9.1 l 8.83 c 9.02 | rest 7.06 line 8.28 -> next line 8.41
+     2025-09-08 held: o 9.445 l 9.41 c 10.12 | rest 7.06 line 8.41 -> next line 8.64
+     2025-09-09 held: o 10.015 l 9.72 c 10.18 | rest 7.06 line 8.64 -> next line 8.87
+     2025-09-10 held: o 10.26 l 10.26 c 10.97 | rest 7.06 line 8.87 -> next line 9.17
+     2025-09-11 held: o 10.835 l 10.78 c 11.15 | rest 7.06 line 9.17 -> next line 9.48
+     2025-09-12 held: o 11.3574 l 11.16 c 11.21 | rest 7.06 line 9.48 -> next line 9.79
+     2025-09-15 held: o 11.17 l 11.16 c 11.76 | rest 7.06 line 9.79 -> next line 10.12
+     2025-09-16 held: o 11.6 l 11.34 c 11.35 | rest 7.06 line 10.12 -> next line 10.36
+     2025-09-17 held: o 10.88 l 10.876 c 11.03 | rest 7.06 line 10.36 -> next line 10.56
+     2025-09-18 held: o 10.92 l 10.38 c 10.77 | rest 7.06 line 10.56 -> next line 10.76
+     2025-09-19 held: o 10.84 l 10.66 c 10.96 | rest 7.06 line 10.76 -> next line 10.95
+     2025-09-22 held: o 11.42 l 10.995 c 11.23 | rest 7.06 line 10.95 -> next line 11.06
+     2025-09-23 held: o 11.295 l 11.09 c 11.17 | rest 7.06 line 11.06 -> next line 11.16
+     2025-09-24 16:45 close 10.95 < effective 11.1580 (sma 11.1580, rest 7.06) -> sell the close
+## HL 2025-08-07 D10: MINE +14.3000 close_below_line 2025-09-24 | STUDY +14.3000 close_below_line 2025-09-24 -> MATCH
+     2025-09-05 held: o 9.1 l 8.83 c 9.02 | rest 7.96 line 8.28 -> next line 8.41
+     2025-09-08 held: o 9.445 l 9.41 c 10.12 | rest 8.09 line 8.41 -> next line 8.64
+     2025-09-09 held: o 10.015 l 9.72 c 10.18 | rest 8.31 line 8.64 -> next line 8.87
+     2025-09-10 held: o 10.26 l 10.26 c 10.97 | rest 8.53 line 8.87 -> next line 9.17
+     2025-09-11 held: o 10.835 l 10.78 c 11.15 | rest 8.82 line 9.17 -> next line 9.48
+     2025-09-12 held: o 11.3574 l 11.16 c 11.21 | rest 9.12 line 9.48 -> next line 9.79
+     2025-09-15 held: o 11.17 l 11.16 c 11.76 | rest 9.42 line 9.79 -> next line 10.12
+     2025-09-16 held: o 11.6 l 11.34 c 11.35 | rest 9.73 line 10.12 -> next line 10.36
+     2025-09-17 held: o 10.88 l 10.876 c 11.03 | rest 9.97 line 10.36 -> next line 10.56
+     2025-09-18 held: o 10.92 l 10.38 c 10.77 | rest 10.16 line 10.56 -> next line 10.76
+     2025-09-19 held: o 10.84 l 10.66 c 10.96 | rest 10.35 line 10.76 -> next line 10.95
+     2025-09-22 held: o 11.42 l 10.995 c 11.23 | rest 10.53 line 10.95 -> next line 11.06
+     2025-09-23 held: o 11.295 l 11.09 c 11.17 | rest 10.64 line 11.06 -> next line 11.16
+     2025-09-24 16:45 close 10.95 < effective 11.1580 (sma 11.1580, rest 10.73) -> sell the close
+## FCEL 2026-04-29 A0: MINE +0.7000 stop_hit 2026-05-07 | STUDY +0.7000 stop_hit 2026-05-07 -> MATCH
+     D0 2026-04-29 fill cross @11.5900 09:36:00 | hard 10.7900 be@12.7900 tgt@14.7900
+     D0 12:38:00 breakeven armed (high 12.82)
+     2026-05-06 held: o 13.6 l 12.24 c 12.81 | rest 11.81 line 11.81 -> next line 12.15
+     2026-05-07 09:44:00 low touched resting stop 12.15 (line 12.15, floor 11.5900) -> out @ 12.1500
+## FCEL 2026-04-29 A1: MINE +9.7250 close_below_line 2026-05-29 | STUDY +9.7250 close_below_line 2026-05-29 -> MATCH
+     2026-05-11 held: o 13.63 l 13.1 c 15.94 | rest 11.59 line 12.35 -> next line 12.82
+     2026-05-12 held: o 16.41 l 14.54 c 17.09 | rest 11.59 line 12.82 -> next line 13.46
+     2026-05-13 held: o 17.665 l 16.3 c 19.92 | rest 11.59 line 13.46 -> next line 14.46
+     2026-05-14 held: o 18.9 l 18.25 c 21.6 | rest 11.59 line 14.46 -> next line 15.32
+     2026-05-15 held: o 19.95 l 19.312 c 21.36 | rest 11.59 line 15.32 -> next line 16.13
+     2026-05-18 held: o 20.71 l 16.51 c 17.74 | rest 11.59 line 16.13 -> next line 16.6
+     2026-05-19 held: o 17.4 l 16.13 c 17.36 | rest 11.59 line 16.6 -> next line 16.98
+     2026-05-20 held: o 17.36 l 16.22 c 20.22 | rest 11.59 line 16.98 -> next line 17.72
+     2026-05-21 held: o 19.91 l 19.74 c 26.38 | rest 11.59 line 17.72 -> next line 19.13
+     2026-05-22 held: o 25.48 l 24.97 c 25.01 | rest 11.59 line 19.13 -> next line 20.26
+     2026-05-26 held: o 25.45 l 23.73 c 24.4 | rest 11.59 line 20.26 -> next line 21.11
+     2026-05-27 held: o 23.24 l 22.01 c 23.69 | rest 11.59 line 21.11 -> next line 21.77
+     2026-05-28 held: o 23.41 l 22.1 c 24.39 | rest 11.59 line 21.77 -> next line 22.21
+     2026-05-29 16:45 close 21.66 < effective 22.2210 (sma 22.2210, rest 11.59) -> sell the close
+## FCEL 2026-04-29 D10: MINE +9.7250 close_below_line 2026-05-29 | STUDY +9.7250 close_below_line 2026-05-29 -> MATCH
+     2026-05-11 held: o 13.63 l 13.1 c 15.94 | rest 11.59 line 12.35 -> next line 12.82
+     2026-05-12 held: o 16.41 l 14.54 c 17.09 | rest 11.65 line 12.82 -> next line 13.46
+     2026-05-13 held: o 17.665 l 16.3 c 19.92 | rest 12.24 line 13.46 -> next line 14.46
+     2026-05-14 held: o 18.9 l 18.25 c 21.6 | rest 13.14 line 14.46 -> next line 15.32
+     2026-05-15 held: o 19.95 l 19.312 c 21.36 | rest 13.93 line 15.32 -> next line 16.13
+     2026-05-18 held: o 20.71 l 16.51 c 17.74 | rest 14.66 line 16.13 -> next line 16.6
+     2026-05-19 held: o 17.4 l 16.13 c 17.36 | rest 15.09 line 16.6 -> next line 16.98
+     2026-05-20 held: o 17.36 l 16.22 c 20.22 | rest 15.44 line 16.98 -> next line 17.72
+     2026-05-21 held: o 19.91 l 19.74 c 26.38 | rest 16.11 line 17.72 -> next line 19.13
+     2026-05-22 held: o 25.48 l 24.97 c 25.01 | rest 17.39 line 19.13 -> next line 20.26
+     2026-05-26 held: o 25.45 l 23.73 c 24.4 | rest 18.42 line 20.26 -> next line 21.11
+     2026-05-27 held: o 23.24 l 22.01 c 23.69 | rest 19.19 line 21.11 -> next line 21.77
+     2026-05-28 held: o 23.41 l 22.1 c 24.39 | rest 19.79 line 21.77 -> next line 22.21
+     2026-05-29 16:45 close 21.66 < effective 22.2210 (sma 22.2210, rest 20.19) -> sell the close
+## EPSM 2025-04-24 A0: MINE +10.0570 stop_hit 2025-05-13 | STUDY +10.0570 stop_hit 2025-05-13 -> MATCH
+     D0 2025-04-24 fill cross @6.5585 09:31:00 | hard 6.2015 be@7.0940 tgt@7.9865
+     D0 14:40:00 breakeven armed (high 7.2)
+     2025-04-28 (daily) partial 1/3 @ 7.9865
+     2025-05-02 held: o 8.62 l 7.6 c 8.5 | rest 6.59 line 6.59 -> next line 6.94
+     2025-05-05 held: o 8.64 l 8.35 c 11.27 | rest 6.94 line 6.94 -> next line 7.57
+     2025-05-06 held: o 11.1 l 10.495 c 14.69 | rest 7.57 line 7.57 -> next line 8.51
+     2025-05-07 held: o 14.69 l 14.0 c 14.0 | rest 8.51 line 8.51 -> next line 9.37
+     2025-05-08 held: o 13.77 l 13.27 c 13.56 | rest 9.37 line 9.37 -> next line 10.19
+     2025-05-09 held: o 13.99 l 12.3 c 13.59 | rest 10.19 line 10.19 -> next line 10.79
+     2025-05-12 held: o 13.32 l 11.8 c 12.2 | rest 10.79 line 10.79 -> next line 11.23
+     2025-05-13 14:22:00 low touched resting stop 11.23 (line 11.23, floor 6.5585) -> out @ 11.2300
+## EPSM 2025-04-24 A1: MINE +17.7320 close_below_line 2025-06-27 | STUDY +17.7320 close_below_line 2025-06-27 -> MATCH
+     2025-06-09 held: o 16.86 l 14.53 c 17.34 | rest 6.56 line 15.82 -> next line 16.14
+     2025-06-10 held: o 17.35 l 17.0106 c 18.25 | rest 6.56 line 16.14 -> next line 16.54
+     2025-06-11 held: o 18.68 l 17.59 c 19.28 | rest 6.56 line 16.54 -> next line 17.01
+     2025-06-12 held: o 19.5 l 18.56 c 20.19 | rest 6.56 line 17.01 -> next line 17.55
+     2025-06-13 held: o 19.95 l 19.2 c 20.09 | rest 6.56 line 17.55 -> next line 17.99
+     2025-06-16 held: o 19.73 l 19.685 c 19.83 | rest 6.56 line 17.99 -> next line 18.3
+     2025-06-17 held: o 20.01 l 18.08 c 20.09 | rest 6.56 line 18.3 -> next line 18.62
+     2025-06-18 held: o 19.71 l 19.7001 c 20.2 | rest 6.56 line 18.62 -> next line 18.98
+     2025-06-20 held: o 21.46 l 20.96 c 22.84 | rest 6.56 line 18.98 -> next line 19.54
+     2025-06-23 held: o 21.51 l 21.51 c 24.91 | rest 6.56 line 19.54 -> next line 20.3
+     2025-06-24 held: o 24.99 l 21.24 c 23.5 | rest 6.56 line 20.3 -> next line 20.92
+     2025-06-25 held: o 24.68 l 22.55 c 23.56 | rest 6.56 line 20.92 -> next line 21.45
+     2025-06-26 held: o 23.29 l 21.02 c 21.86 | rest 6.56 line 21.45 -> next line 21.71
+     2025-06-27 16:45 close 15.34 < effective 21.2220 (sma 21.2220, rest 6.56) -> sell the close
+## EPSM 2025-04-24 D10: MINE +6.9384 stop_hit 2025-05-13 | STUDY +6.9384 stop_hit 2025-05-13 -> MATCH
+     D0 2025-04-24 fill cross @6.5585 09:31:00 | hard 6.2015 be@7.0940 tgt@7.9865
+     D0 14:40:00 breakeven armed (high 7.2)
+     2025-04-28 (daily) partial 1/3 @ 7.9865
+     2025-05-02 held: o 8.62 l 7.6 c 8.5 | rest 6.56 line 6.59 -> next line 6.94
+     2025-05-05 held: o 8.64 l 8.35 c 11.27 | rest 6.56 line 6.94 -> next line 7.57
+     2025-05-06 held: o 11.1 l 10.495 c 14.69 | rest 6.56 line 7.57 -> next line 8.51
+     2025-05-07 held: o 14.69 l 14.0 c 14.0 | rest 7.24 line 8.51 -> next line 9.37
+     2025-05-08 held: o 13.77 l 13.27 c 13.56 | rest 7.98 line 9.37 -> next line 10.19
+     2025-05-09 held: o 13.99 l 12.3 c 13.59 | rest 8.67 line 10.19 -> next line 10.79
+     2025-05-12 held: o 13.32 l 11.8 c 12.2 | rest 9.19 line 10.79 -> next line 11.23
+     2025-05-13 14:32:00 low touched resting stop 9.56 (line 11.23, floor 6.5585) -> out @ 9.5600
+## SEZL 2025-05-08 A0: MINE +6.0708 stop_hit 2025-06-10 | STUDY +6.0708 stop_hit 2025-06-10 -> MATCH
+     2025-05-21 held: o 98.0 l 97.775 c 99.11 | rest 84.49 line 84.49 -> next line 88.88
+     2025-05-22 held: o 99.05 l 98.95 c 101.66 | rest 88.88 line 88.88 -> next line 93.77
+     2025-05-23 held: o 97.825 l 96.69 c 105.31 | rest 93.77 line 93.77 -> next line 95.59
+     2025-05-27 held: o 108.22 l 106.48 c 110.36 | rest 95.59 line 95.59 -> next line 97.98
+     2025-05-28 held: o 109.59 l 108.1 c 111.37 | rest 97.98 line 97.98 -> next line 100.06
+     2025-05-29 held: o 114.24 l 107.6001 c 109.15 | rest 100.06 line 100.06 -> next line 101.87
+     2025-05-30 held: o 107.05 l 102.63 c 106.71 | rest 101.87 line 101.87 -> next line 103.53
+     2025-06-02 held: o 107.5 l 105.775 c 112.52 | rest 103.53 line 103.53 -> next line 105.41
+     2025-06-03 held: o 113.27 l 112.01 c 114.06 | rest 105.41 line 105.41 -> next line 106.94
+     2025-06-04 held: o 114.81 l 114.3 c 119.79 | rest 106.94 line 106.94 -> next line 109.0
+     2025-06-05 held: o 121.35 l 120.89 c 123.73 | rest 109.00 line 109.0 -> next line 111.47
+     2025-06-06 held: o 124.03 l 123.3825 c 132.09 | rest 111.47 line 111.47 -> next line 114.51
+     2025-06-09 held: o 134.79 l 126.32 c 132.16 | rest 114.51 line 114.51 -> next line 117.19
+     2025-06-10 09:30:00 low touched resting stop 117.19 (line 117.19, floor 69.0100) -> out @ 117.1900
+## SEZL 2025-05-08 A1: MINE +10.6863 close_below_line 2025-07-08 | STUDY +10.6863 close_below_line 2025-07-08 -> MATCH
+     2025-06-17 held: o 146.0 l 143.15 c 143.87 | rest 69.01 line 129.59 -> next line 132.57
+     2025-06-18 held: o 146.0 l 139.7249 c 143.03 | rest 69.01 line 132.57 -> next line 134.9
+     2025-06-20 held: o 146.57 l 140.5 c 147.04 | rest 69.01 line 134.9 -> next line 137.23
+     2025-06-23 held: o 141.47 l 137.0 c 144.98 | rest 69.01 line 137.23 -> next line 138.52
+     2025-06-24 held: o 148.62 l 146.94 c 160.12 | rest 69.01 line 138.52 -> next line 141.31
+     2025-06-25 held: o 163.8 l 153.01 c 154.79 | rest 69.01 line 141.31 -> next line 144.51
+     2025-06-26 held: o 156.36 l 151.5 c 164.16 | rest 69.01 line 144.51 -> next line 147.81
+     2025-06-27 held: o 165.0 l 159.3979 c 165.4 | rest 69.01 line 147.81 -> next line 150.34
+     2025-06-30 held: o 168.81 l 168.81 c 179.25 | rest 69.01 line 150.34 -> next line 154.91
+     2025-07-01 held: o 176.08 l 161.44 c 167.58 | rest 69.01 line 154.91 -> next line 157.02
+     2025-07-02 held: o 167.0 l 166.18 c 172.3 | rest 69.01 line 157.02 -> next line 159.87
+     2025-07-03 held: o 175.5 l 173.6 c 182.16 | rest 69.01 line 159.87 -> next line 163.78
+     2025-07-07 held: o 180.5 l 165.82 c 181.5 | rest 69.01 line 163.78 -> next line 167.22
+     2025-07-08 16:45 close 164.13 < effective 169.1390 (sma 169.1390, rest 69.01) -> sell the close
+## SEZL 2025-05-08 D10: MINE +5.0846 stop_hit 2025-06-10 | STUDY +5.0846 stop_hit 2025-06-10 -> MATCH
+     2025-05-21 held: o 98.0 l 97.775 c 99.11 | rest 77.26 line 84.49 -> next line 88.88
+     2025-05-22 held: o 99.05 l 98.95 c 101.66 | rest 81.27 line 88.88 -> next line 93.77
+     2025-05-23 held: o 97.825 l 96.69 c 105.31 | rest 85.74 line 93.77 -> next line 95.59
+     2025-05-27 held: o 108.22 l 106.48 c 110.36 | rest 87.41 line 95.59 -> next line 97.98
+     2025-05-28 held: o 109.59 l 108.1 c 111.37 | rest 89.59 line 97.98 -> next line 100.06
+     2025-05-29 held: o 114.24 l 107.6001 c 109.15 | rest 91.49 line 100.06 -> next line 101.87
+     2025-05-30 held: o 107.05 l 102.63 c 106.71 | rest 93.15 line 101.87 -> next line 103.53
+     2025-06-02 held: o 107.5 l 105.775 c 112.52 | rest 94.67 line 103.53 -> next line 105.41
+     2025-06-03 held: o 113.27 l 112.01 c 114.06 | rest 96.39 line 105.41 -> next line 106.94
+     2025-06-04 held: o 114.81 l 114.3 c 119.79 | rest 97.79 line 106.94 -> next line 109.0
+     2025-06-05 held: o 121.35 l 120.89 c 123.73 | rest 99.67 line 109.0 -> next line 111.47
+     2025-06-06 held: o 124.03 l 123.3825 c 132.09 | rest 101.93 line 111.47 -> next line 114.51
+     2025-06-09 held: o 134.79 l 126.32 c 132.16 | rest 104.71 line 114.51 -> next line 117.19
+     2025-06-10 09:34:00 low touched resting stop 107.16 (line 117.19, floor 69.0100) -> out @ 107.1600
+## AXGN 2024-01-05 A0: MINE +13.8567 stop_hit 2024-02-05 | STUDY +13.8567 stop_hit 2024-02-05 -> MATCH
+     2024-01-17 held: o 7.8 l 7.67 c 7.815 | rest 7.62 line 7.62 -> next line 7.72
+     2024-01-18 held: o 7.88 l 7.88 c 8.14 | rest 7.72 line 7.72 -> next line 7.85
+     2024-01-19 held: o 8.22 l 7.98 c 8.78 | rest 7.85 line 7.85 -> next line 8.06
+     2024-01-22 held: o 8.86 l 8.825 c 9.04 | rest 8.06 line 8.06 -> next line 8.29
+     2024-01-23 held: o 9.2 l 8.68 c 8.86 | rest 8.29 line 8.29 -> next line 8.32
+     2024-01-24 held: o 9.05 l 8.9743 c 9.2 | rest 8.32 line 8.32 -> next line 8.39
+     2024-01-25 held: o 9.36 l 9.24 c 9.51 | rest 8.39 line 8.39 -> next line 8.52
+     2024-01-26 held: o 9.52 l 9.43 c 9.53 | rest 8.52 line 8.52 -> next line 8.67
+     2024-01-29 held: o 9.59 l 9.47 c 9.68 | rest 8.67 line 8.67 -> next line 8.85
+     2024-01-30 held: o 9.61 l 9.47 c 9.52 | rest 8.85 line 8.85 -> next line 9.01
+     2024-01-31 held: o 9.42 l 9.4001 c 9.67 | rest 9.01 line 9.01 -> next line 9.19
+     2024-02-01 held: o 9.75 l 9.525 c 9.75 | rest 9.19 line 9.19 -> next line 9.35
+     2024-02-02 held: o 9.6 l 9.54 c 9.6 | rest 9.35 line 9.35 -> next line 9.44
+     2024-02-05 11:59:00 low touched resting stop 9.44 (line 9.44, floor 7.4300) -> out @ 9.4400
+## AXGN 2024-01-05 A1: MINE +19.4019 close_below_line 2024-02-28 | STUDY +19.4019 close_below_line 2024-02-28 -> MATCH
+     2024-02-08 held: o 9.63 l 9.59 c 9.87 | rest 7.43 line 9.62 -> next line 9.66
+     2024-02-09 held: o 10.0 l 9.725 c 9.88 | rest 7.43 line 9.66 -> next line 9.7
+     2024-02-12 held: o 9.82 l 9.82 c 10.04 | rest 7.43 line 9.7 -> next line 9.73
+     2024-02-13 held: o 9.6 l 9.45 c 9.76 | rest 7.43 line 9.73 -> next line 9.76
+     2024-02-14 held: o 9.92 l 9.824 c 9.9 | rest 7.43 line 9.76 -> next line 9.78
+     2024-02-15 held: o 10.01 l 9.98 c 10.49 | rest 7.43 line 9.78 -> next line 9.85
+     2024-02-16 held: o 10.39 l 10.33 c 10.6 | rest 7.43 line 9.85 -> next line 9.95
+     2024-02-20 held: o 10.45 l 10.18 c 10.42 | rest 7.43 line 9.95 -> next line 10.04
+     2024-02-21 held: o 10.35 l 10.25 c 10.4 | rest 7.43 line 10.04 -> next line 10.11
+     2024-02-22 held: o 10.51 l 10.15 c 10.23 | rest 7.43 line 10.11 -> next line 10.16
+     2024-02-23 held: o 10.18 l 10.01 c 10.37 | rest 7.43 line 10.16 -> next line 10.21
+     2024-02-26 held: o 10.36 l 10.26 c 10.45 | rest 7.43 line 10.21 -> next line 10.27
+     2024-02-27 held: o 10.54 l 10.5144 c 10.67 | rest 7.43 line 10.27 -> next line 10.33
+     2024-02-28 16:45 close 10.33 < effective 10.3860 (sma 10.3860, rest 7.43) -> sell the close
+## AXGN 2024-01-05 D10: MINE +19.4019 close_below_line 2024-02-28 | STUDY +19.4019 close_below_line 2024-02-28 -> MATCH
+     2024-02-08 held: o 9.63 l 9.59 c 9.87 | rest 9.08 line 9.62 -> next line 9.66
+     2024-02-09 held: o 10.0 l 9.725 c 9.88 | rest 9.12 line 9.66 -> next line 9.7
+     2024-02-12 held: o 9.82 l 9.82 c 10.04 | rest 9.16 line 9.7 -> next line 9.73
+     2024-02-13 held: o 9.6 l 9.45 c 9.76 | rest 9.19 line 9.73 -> next line 9.76
+     2024-02-14 held: o 9.92 l 9.824 c 9.9 | rest 9.21 line 9.76 -> next line 9.78
+     2024-02-15 held: o 10.01 l 9.98 c 10.49 | rest 9.23 line 9.78 -> next line 9.85
+     2024-02-16 held: o 10.39 l 10.33 c 10.6 | rest 9.30 line 9.85 -> next line 9.95
+     2024-02-20 held: o 10.45 l 10.18 c 10.42 | rest 9.39 line 9.95 -> next line 10.04
+     2024-02-21 held: o 10.35 l 10.25 c 10.4 | rest 9.48 line 10.04 -> next line 10.11
+     2024-02-22 held: o 10.51 l 10.15 c 10.23 | rest 9.55 line 10.11 -> next line 10.16
+     2024-02-23 held: o 10.18 l 10.01 c 10.37 | rest 9.59 line 10.16 -> next line 10.21
+     2024-02-26 held: o 10.36 l 10.26 c 10.45 | rest 9.64 line 10.21 -> next line 10.27
+     2024-02-27 held: o 10.54 l 10.5144 c 10.67 | rest 9.70 line 10.27 -> next line 10.33
+     2024-02-28 16:45 close 10.33 < effective 10.3860 (sma 10.3860, rest 9.75) -> sell the close
+## ALEX 2025-12-09 A0: MINE -3.6250 stop_hit 2025-12-19 | STUDY -3.6250 stop_hit 2025-12-19 -> MATCH
+     D0 2025-12-09 fill cross @20.9200 09:31:00 | hard 20.8400 be@21.0400 tgt@21.2400
+     2025-12-19 daily low touched resting stop 20.84 (line 20.84, floor 20.8400) -> out @ 20.6300
+## ALEX 2025-12-09 A1: MINE -3.6250 stop_hit 2025-12-19 | STUDY -3.6250 stop_hit 2025-12-19 -> MATCH
+     D0 2025-12-09 fill cross @20.9200 09:31:00 | hard 20.8400 be@21.0400 tgt@21.2400
+     2025-12-19 daily low touched resting stop 20.84 (line 20.84, floor 20.8400) -> out @ 20.6300
+## ALEX 2025-12-09 D10: MINE -3.6250 stop_hit 2025-12-19 | STUDY -3.6250 stop_hit 2025-12-19 -> MATCH
+     D0 2025-12-09 fill cross @20.9200 09:31:00 | hard 20.8400 be@21.0400 tgt@21.2400
+     2025-12-19 daily low touched resting stop 20.84 (line 20.84, floor 20.8400) -> out @ 20.6300
+## VYGR 2024-01-02 A0: MINE +0.0000 stop_hit 2024-01-02 | STUDY +0.0000 stop_hit 2024-01-02 -> MATCH
+     D0 2024-01-02 fill cross @10.7120 09:44:00 | hard 10.1880 be@11.4980 tgt@12.8080
+     D0 09:48:00 breakeven armed (high 11.72)
+     D0 10:06:00 low 10.66 <= stop 10.7120 -> out @ 10.7120
+## VYGR 2024-01-02 A1: MINE +0.0000 stop_hit 2024-01-02 | STUDY +0.0000 stop_hit 2024-01-02 -> MATCH
+     D0 2024-01-02 fill cross @10.7120 09:44:00 | hard 10.1880 be@11.4980 tgt@12.8080
+     D0 09:48:00 breakeven armed (high 11.72)
+     D0 10:06:00 low 10.66 <= stop 10.7120 -> out @ 10.7120
+## VYGR 2024-01-02 D10: MINE +0.0000 stop_hit 2024-01-02 | STUDY +0.0000 stop_hit 2024-01-02 -> MATCH
+     D0 2024-01-02 fill cross @10.7120 09:44:00 | hard 10.1880 be@11.4980 tgt@12.8080
+     D0 09:48:00 breakeven armed (high 11.72)
+     D0 10:06:00 low 10.66 <= stop 10.7120 -> out @ 10.7120
+## KROS 2024-01-04 A0: MINE +0.3705 stop_hit 2024-01-18 | STUDY +0.3705 stop_hit 2024-01-18 -> MATCH
+     D0 2024-01-04 fill cross @47.5500 09:35:00 | hard 42.2600 be@55.4850 tgt@68.7100
+     2024-01-10 held: o 51.52 l 49.57 c 50.24 | rest 43.50 line 43.5 -> next line 44.7
+     2024-01-11 held: o 49.36 l 48.82 c 51.4 | rest 44.70 line 44.7 -> next line 45.82
+     2024-01-12 held: o 51.79 l 51.33 c 52.16 | rest 45.82 line 45.82 -> next line 46.99
+     2024-01-16 held: o 51.51 l 50.84 c 53.17 | rest 46.99 line 46.99 -> next line 48.2
+     2024-01-17 held: o 52.05 l 48.8101 c 52.87 | rest 48.20 line 48.2 -> next line 49.51
+     2024-01-18 09:30:00 low touched resting stop 49.51 (line 49.51, floor 42.2600) -> out @ 49.5100
+## KROS 2024-01-04 A1: MINE +1.4764 close_below_line 2024-01-31 | STUDY +1.4764 close_below_line 2024-01-31 -> MATCH
+     2024-01-11 held: o 49.36 l 48.82 c 51.4 | rest 42.26 line 44.7 -> next line 45.82
+     2024-01-12 held: o 51.79 l 51.33 c 52.16 | rest 42.26 line 45.82 -> next line 46.99
+     2024-01-16 held: o 51.51 l 50.84 c 53.17 | rest 42.26 line 46.99 -> next line 48.2
+     2024-01-17 held: o 52.05 l 48.8101 c 52.87 | rest 42.26 line 48.2 -> next line 49.51
+     2024-01-18 held: o 53.0 l 48.46 c 51.86 | rest 42.26 line 49.51 -> next line 50.39
+     2024-01-19 held: o 52.32 l 51.195 c 52.95 | rest 42.26 line 50.39 -> next line 51.56
+     2024-01-22 held: o 53.07 l 52.135 c 54.78 | rest 42.26 line 51.56 -> next line 52.21
+     2024-01-23 held: o 55.04 l 53.54 c 55.71 | rest 47.55 line 52.21 -> next line 52.66
+     2024-01-24 held: o 56.28 l 55.53 c 56.46 | rest 47.55 line 52.66 -> next line 53.16
+     2024-01-25 held: o 58.38 l 55.1 c 56.29 | rest 47.55 line 53.16 -> next line 53.77
+     2024-01-26 held: o 56.81 l 55.84 c 57.26 | rest 47.55 line 53.77 -> next line 54.35
+     2024-01-29 held: o 57.38 l 56.4 c 58.35 | rest 47.55 line 54.35 -> next line 54.97
+     2024-01-30 held: o 57.94 l 54.95 c 56.34 | rest 47.55 line 54.97 -> next line 55.29
+     2024-01-31 16:45 close 55.36 < effective 55.5360 (sma 55.5360, rest 47.55) -> sell the close
+## KROS 2024-01-04 D10: MINE +1.4764 close_below_line 2024-01-31 | STUDY +1.4764 close_below_line 2024-01-31 -> MATCH
+     2024-01-11 held: o 49.36 l 48.82 c 51.4 | rest 42.26 line 44.7 -> next line 45.82
+     2024-01-12 held: o 51.79 l 51.33 c 52.16 | rest 42.42 line 45.82 -> next line 46.99
+     2024-01-16 held: o 51.51 l 50.84 c 53.17 | rest 43.51 line 46.99 -> next line 48.2
+     2024-01-17 held: o 52.05 l 48.8101 c 52.87 | rest 44.63 line 48.2 -> next line 49.51
+     2024-01-18 held: o 53.0 l 48.46 c 51.86 | rest 45.84 line 49.51 -> next line 50.39
+     2024-01-19 held: o 52.32 l 51.195 c 52.95 | rest 46.65 line 50.39 -> next line 51.56
+     2024-01-22 held: o 53.07 l 52.135 c 54.78 | rest 47.74 line 51.56 -> next line 52.21
+     2024-01-23 held: o 55.04 l 53.54 c 55.71 | rest 48.34 line 52.21 -> next line 52.66
+     2024-01-24 held: o 56.28 l 55.53 c 56.46 | rest 48.75 line 52.66 -> next line 53.16
+     2024-01-25 held: o 58.38 l 55.1 c 56.29 | rest 49.22 line 53.16 -> next line 53.77
+     2024-01-26 held: o 56.81 l 55.84 c 57.26 | rest 49.78 line 53.77 -> next line 54.35
+     2024-01-29 held: o 57.38 l 56.4 c 58.35 | rest 50.32 line 54.35 -> next line 54.97
+     2024-01-30 held: o 57.94 l 54.95 c 56.34 | rest 50.89 line 54.97 -> next line 55.29
+     2024-01-31 16:45 close 55.36 < effective 55.5360 (sma 55.5360, rest 51.19) -> sell the close
+## MHK 2024-07-26 A0: MINE +1.3333 stop_hit 2024-08-02 | STUDY +1.3333 stop_hit 2024-08-02 -> MATCH
+     D0 2024-07-26 fill cross @150.8100 09:34:00 | hard 148.3700 be@154.4700 tgt@160.5700
+     D0 09:36:00 breakeven armed (high 155.31)
+     D0 13:10:00 partial 1/3 @ 160.5700
+     2024-08-02 daily low touched resting stop 150.81 (line 150.81, floor 150.8100) -> out @ 150.8100
+## MHK 2024-07-26 A1: MINE +1.3333 stop_hit 2024-08-02 | STUDY +1.3333 stop_hit 2024-08-02 -> MATCH
+     D0 2024-07-26 fill cross @150.8100 09:34:00 | hard 148.3700 be@154.4700 tgt@160.5700
+     D0 09:36:00 breakeven armed (high 155.31)
+     D0 13:10:00 partial 1/3 @ 160.5700
+     2024-08-02 daily low touched resting stop 150.81 (line 150.81, floor 150.8100) -> out @ 150.8100
+## MHK 2024-07-26 D10: MINE +1.3333 stop_hit 2024-08-02 | STUDY +1.3333 stop_hit 2024-08-02 -> MATCH
+     D0 2024-07-26 fill cross @150.8100 09:34:00 | hard 148.3700 be@154.4700 tgt@160.5700
+     D0 09:36:00 breakeven armed (high 155.31)
+     D0 13:10:00 partial 1/3 @ 160.5700
+     2024-08-02 daily low touched resting stop 150.81 (line 150.81, floor 150.8100) -> out @ 150.8100
+
+## DELL 2026-02-27 T20_hs: MINE +6.0353 time_close 2026-03-30 | STUDY +6.0353 time_close 2026-03-30 -> MATCH
+     D0 2026-02-27 fill cross @138.0000 09:31:00 | hard 134.2200 be@143.6700 tgt@153.1200
+     D0 09:32:00 breakeven armed (high 143.8)
+     2026-03-02 (daily) partial 1/3 @ 153.1200
+     2026-03-30 20th session after the partial -> sell the close 164.66
+## BE 2025-07-24 T20_hs: MINE +12.1333 time_close 2025-08-26 | STUDY +12.1333 time_close 2025-08-26 -> MATCH
+     D0 2025-07-24 fill cross @30.5000 09:31:00 | hard 29.3000 be@32.3000 tgt@35.3000
+     D0 09:37:00 breakeven armed (high 32.47)
+     2025-07-29 (daily) partial 1/3 @ 35.3000
+     2025-08-26 20th session after the partial -> sell the close 49.94
+## MHK 2024-07-26 T20_hs: MINE -0.8306 stop_hit 2024-08-05 | STUDY -0.8306 stop_hit 2024-08-05 -> MATCH
+     D0 2024-07-26 fill cross @150.8100 09:34:00 | hard 148.3700 be@154.4700 tgt@160.5700
+     D0 09:36:00 breakeven armed (high 155.31)
+     D0 13:10:00 partial 1/3 @ 160.5700
+     2024-08-05 runner floor 148.3700 touched (low 141.82) -> out @ 142.8900
+## AXGN 2024-01-05 T20_hs: MINE +14.6044 time_close 2024-02-05 | STUDY +14.6044 time_close 2024-02-05 -> MATCH
+     D0 2024-01-05 fill cross @7.4300 09:31:00 | hard 7.3230 be@7.5905 tgt@7.8580
+     D0 09:33:00 breakeven armed (high 7.83)
+     D0 09:42:00 partial 1/3 @ 7.8580
+     2024-02-05 20th session after the partial -> sell the close 9.56
+## HL 2025-08-07 T20_hs: MINE +15.1667 time_close 2025-09-12 | STUDY +15.1667 time_close 2025-09-12 -> MATCH
+     D0 2025-08-07 fill cross @7.0600 09:31:00 | hard 6.8600 be@7.3600 tgt@7.8600
+     D0 14:00:00 breakeven armed (high 7.36)
+     2025-08-14 (daily) partial 1/3 @ 7.8600
+     2025-09-12 20th session after the partial -> sell the close 11.21
+
+## BY HAND from pull_daily_out.txt (no walker): the resting stops on two decision days
+   EPSM entry 2025-04-24, A0 sold here (touch), D10 sold here, A1 held: line resting on 2025-05-13 = max(SMA10 11.2320, SMA20 8.4337) = 11.2320 (entry-day close omitted; the ratchet can only hold it higher); ADR20 0.1487 -> depth stop line x (1 - ADR) = 9.5618; day bar o 12.19 l 9.25 c 12.89; low <= line: True; low <= depth stop: True; close >= line (reclaim): True
+   BE entry 2025-07-24, A0 sold here on the touch; A1/D10 held: line resting on 2025-08-08 = max(SMA10 36.4970, SMA20 30.9830) = 36.4970 (entry-day close omitted; the ratchet can only hold it higher); ADR20 0.0565 -> depth stop line x (1 - ADR) = 34.4359; day bar o 37.16 l 36.47 c 36.8; low <= line: True; low <= depth stop: False; close >= line (reclaim): True

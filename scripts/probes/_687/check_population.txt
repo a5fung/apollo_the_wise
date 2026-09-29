@@ -1,0 +1,26 @@
+# #687 CHECK (1) POPULATION — own SQL (raw floors applied in SQL from splits executed <= 2026-09-29), n candidate rows 8876
+   exclusions: {'cooldown60': 149, 'fail:adv': 683, 'fail:atr': 319, 'fail:ext': 524, 'fail:vol3x': 1615, 'skip_list': 466, 'type:ETF': 1787, 'type:ETN': 54, 'type:ETS': 96, 'type:ETV': 32, 'type:FUND': 31, 'type:PFD': 1, 'type:RIGHT': 1, 'type:SP': 2, 'type:UNIT': 5, 'type:UNKNOWN': 426, 'type:WARRANT': 79}
+   MINE 2606 gap-days on 1571 tickers | THEIRS 2607 on 1571 | common 2602
+   by year mine: {2024: 1090, 2025: 1156, 2026: 360}
+   by year theirs: {2024: 1090, 2025: 1157, 2026: 360}
+   ONLY MINE 4: [('WIT', '2024-01-12', 2.0, 5.37), ('CDLX', '2024-01-29', 0.1, 5.77), ('BOOM', '2025-02-25', 1.0, 8.31), ('MTEN', '2025-07-22', 0.005, 21.3)]
+   ONLY THEIRS 5: [('CDLX', '2024-03-15', '0.1'), ('TECH', '2024-05-01', '1.0'), ('BOOM', '2025-02-10', '1.0'), ('MAN', '2025-07-17', '1.0'), ('MDXG', '2025-07-31', '1.0')]
+   of ONLY MINE: adjusted prior close < $5 but raw >= $5 (a later FORWARD split; pull_pop.sql's adjusted floor dropped it) 1; other (adjusted prior-day volume < 50k, raw >= 50k: a later REVERSE split) 3
+   population rows whose raw-floor factor included a split executing AFTER the 2026-09-29 pull (not yet in any adjusted series): 0 []
+   SPLIT INTEGRITY (splits executed <= 2026-09-29, prior close vs ex-date open in mi_daily_closes): {'adjusted': 1991, 'no_bars': 2172, 'tiny_ratio_split': 129}; unadjusted splits on population tickers 0: []
+   population rows whose prior close is NOT from the previous market session (lag(close) is the prior ROW): 1 [('ZVRA', '2024-08-05', '2024-08-01', '2024-08-02')]
+   calendar-day spread of those stale prior rows: {4: 1}
+   LOOK-AHEAD: admission reads the gap day's OPEN (09:30-knowable) and the gap day's FULL-DAY VOLUME (vol >= 3x; stated look-ahead); never its high/low/close (population.py reads o via gap_pct and v via vol_mult only). The 60-day cooldown is keyed on rows that PASSED the full-day volume rule, so it inherits the look-ahead: a day that failed on full-day volume never starts a cooldown.
+
+# #687 CHECK (2) SURVIVORSHIP
+   mi_daily_closes tickers whose LAST row falls in each year (a survivor-only table would show ~0 before the build date): {'2021': 317, '2022': 1181, '2023': 1553, '2024': 1294, '2025': 1173, '2026': 1063}; monthly 2024: [82, 130, 123, 91, 89, 77, 103, 105, 118, 124, 101, 151]
+   rows admitted only because pull_pop.sql ROUNDS vol_mult to 2 dp (true v/avgv20 in [2.995, 3.0)): 4 [('TECH', '2024-05-01'), ('BOOM', '2025-02-10'), ('MAN', '2025-07-17'), ('MDXG', '2025-07-31')]; the rest of the set difference is the adjusted-floor leak (WIT fwd split; CDLX, MTEN reverse splits) and two 60-day cooldown cascades (CDLX 03-15, BOOM 02-25)
+   UNKNOWN-type rows that pass every OTHER rule (dropped as 'non_stock:UNKNOWN', not looked up): 0 rows on 0 tickers: []
+   of those, plausibly common stock (not a test ticker, warrant 'W', OTC ADR 'Y' or ETN/ETF by name): 0 tickers, 0 rows: []
+   population gap-days in names whose daily bars STOP before 2026-08-17 (delisted / acquired / stopped reporting): 356 of 2607 on 246 tickers; by entry year {2024: 183, 2025: 142, 2026: 31}
+   delisted-later  paired n= 200: A0 total   -25.33 mean -0.127 | A1-A0   +6.03 D10-A0   +5.27 T20_be-A0   +0.26 T20_hs-A0   -3.05
+   still trading   paired n=1305: A0 total  +462.96 mean +0.355 | A1-A0  +41.28 D10-A0  +24.19 T20_be-A0  +75.89 T20_hs-A0  +89.89
+   force-closed at the last close (main arms): 5 trades; per-arm final reasons [('DWAC', '2024-03-25', ['delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close']), ('ALPN', '2024-04-11', ['stop_hit', 'delisted_forced_close', 'delisted_forced_close']), ('DCPH', '2024-04-29', ['delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close']), ('NARI', '2025-01-07', ['delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close']), ('CDXC', '2025-03-05', ['delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close'])]
+   force-closed (runner arms): [('DWAC', '2024-03-25', ['delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close']), ('DCPH', '2024-04-29', ['delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close']), ('NARI', '2025-01-07', ['delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close']), ('CDXC', '2025-03-05', ['delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close', 'delisted_forced_close'])]
+   entry-day minute coverage, delisted-later: 356 gap-days, no 09:30 bar 13 (3.7%)
+   entry-day minute coverage, still trading: 2251 gap-days, no 09:30 bar 83 (3.7%)

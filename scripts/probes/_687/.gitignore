@@ -1,0 +1,9 @@
+pull_daily_out.txt
+pull_pop_out.txt
+minutes_*.tsv.gz
+*.json
+fetch_log_*.txt
+__pycache__/
+pull_sectypes_out.txt
+arms_per_trade.tsv
+check_pull_out.txt

@@ -1,0 +1,12 @@
+# #687 population build — SQL candidates (gap>=9%, adj prior close>=$5, adj prior vol>=50k, ADV$>=1M, ext<50%): 7348
+## exclusions (in order applied): {'1.non_stock:ETF': 1379, '1.non_stock:ETN': 35, '1.non_stock:ETS': 75, '1.non_stock:ETV': 28, '1.non_stock:FUND': 22, '1.non_stock:UNIT': 1, '1.non_stock:UNKNOWN': 165, '1.non_stock:WARRANT': 38, '1.skip_tickers_list': 420, '2.raw_prior_close_below_5': 533, '2.raw_prior_vol_below_50k': 6, '5.atr_pct_above_15': 167, '6.volume_proxy_below_3x': 1723, '7.cooldown_60d': 149}
+## FINAL population: 2607 gap-days on 1571 tickers; delisted-since (Polygon-typed) tickers kept: 184; rows with a later split (raw floors re-applied): 47
+## COMPOSITION FINAL n=2607
+   by year: {2024: 1090, 2025: 1157, 2026: 360}
+   by month: {'2024-01': 44, '2024-02': 154, '2024-03': 85, '2024-04': 45, '2024-05': 147, '2024-06': 54, '2024-07': 54, '2024-08': 108, '2024-09': 55, '2024-10': 96, '2024-11': 176, '2024-12': 72, '2025-01': 63, '2025-02': 127, '2025-03': 55, '2025-04': 39, '2025-05': 120, '2025-06': 72, '2025-07': 115, '2025-08': 172, '2025-09': 75, '2025-10': 129, '2025-11': 126, '2025-12': 64, '2026-01': 68, '2026-02': 127, '2026-03': 69, '2026-04': 96}
+   raw prior-close band: {'<10': 561, '10-20': 667, '20-50': 695, '50-100': 340, '100+': 344}
+   gap band: {'20-30': 451, '30-50': 180, '9-12': 812, '50+': 83, '15-20': 564, '12-15': 517}
+   top tickers: [('ANGO', 6), ('SOC', 6), ('QS', 5), ('LRN', 5), ('NXT', 5), ('CFLT', 5), ('APP', 5), ('FROG', 5)] distinct 1571
+   medians: gap 14.8% raw prior close $21.74 vol proxy 5.0x ADV$ 18.9M
+   DISCOVERY (2024): 1090  HELD-OUT (2025-01..2026-04): 1517
+## HALT CHECK: no surprising trait (no ticker > 2%, under-$10 share < 50%, no month > 15%)

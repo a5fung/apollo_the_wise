@@ -1,0 +1,13 @@
+# #687 backfill --anchor run 2026-09-29T10:22:18-04:00 — a REBUILT EP-like population, not live alerts
+## ANCHOR (a) forward walk on #685's 79 paired trades: A0 -5.77 (expect −5.77) A1 -9.85 (expect −9.85); per-trade mismatches 0 -> REPRODUCED
+## ANCHOR (b) day-0 state builder vs study.day0_state on 86 #685 campaigns: mismatches 0 -> REPRODUCED
+## ANCHOR (c) the live order path vs #685's entry_walk on the 149 alerts the harness ordered (stored bars, harness submit time): {'both_fill:same_px': 85, 'live_chase_cap_skip_harness_filled': 3, 'live_fills_harness_no_entry:chase_open': 1, 'neither:abstain': 30, 'neither:no_entry': 30}
+   FEED: Polygon 09:30 bar vs the stored (SIP-stream) bar on 149 days with both: H or L differ by > $0.005 on 7; entry verdict/price flips 30, of which 29 are stored-coverage gaps (stored abstain, Polygon readable) and 1 are price/verdict disagreements; the live path on Polygon bars gives {'abstain': 1, 'chase_cap_skip': 4, 'filled:chase_open': 5, 'filled:cross': 101, 'no_entry': 38}
+    REAL flip TSEM 2026-07-14: stored filled 273.25 vs polygon filled 271.5
+    AGX 2026-06-05: dH +2.170 dL +0.000 (stored H 697.68)
+    TSEM 2026-07-14: dH -1.750 dL +0.000 (stored H 273.25)
+    ACMR 2026-08-07: dH -0.870 dL +0.000 (stored H 93.42)
+    ARGX 2026-08-17: dH +0.000 dL +0.110 (stored H 936.78)
+    GLBE 2026-08-12: dH +0.000 dL +0.050 (stored H 42.34)
+    MSTR 2026-09-21: dH +0.000 dL +0.020 (stored H 166.4)
+    CLSK 2026-07-14: dH +0.000 dL +0.009 (stored H 15.1)
