@@ -1,0 +1,155 @@
+ADVERSARIAL CHECK — docs/analysis/687_depth_trail_mechanics_2026-09-29.md + scripts/probes/_687/mechanics.py
+Run 2026-09-29. $0 beyond reading. Doc and probe NOT edited. One read-only prod capture (check_mech_pull.sql ->
+check_mech_pull_out.txt, BEGIN TRANSACTION READ ONLY ... ROLLBACK). Nothing live, in PLAN.md or prod touched; nothing committed.
+Evidence files: check_mech_pull_out.txt, check_mech_close_position_qty.txt, check_mech_recompute79.{py,txt},
+check_mech_recompute1505.{py,txt}. Code at HEAD eb5cb7a4.
+
+Evidence grades: [R] confirmed by the prod record / an executed test; [C] confirmed by code reading, never fired live;
+[P] plausible, timing-dependent.
+
+======================================================================================================================
+1. SURVIVES
+======================================================================================================================
+[R] Timing-gap numbers, 79 real EPs — an independent walker (no mechanics.walk, no apply_daily_exit_step; own SMA line
+    and close test) reproduces the stored A0/D10 per-trade R with 0 mismatches and every doc number:
+    A0 close -5.77 / open -5.68; D10 close -7.59, open -8.19, 15:45 MOC -8.79, 15:45 mkt -8.11;
+    D10-open vs A0-open -2.51; D10-1545 vs A0-open -3.11; D10-close vs A0-close -1.82; 21 next-open sales -0.60R
+    (7 better / 12 worse), A0 5; 15:45 vs close verdict {agree_hold 230, agree_sell 20, MISS 1, FALSE_SELL 2}.
+[R] Rebuilt 1,505 (same walker): 0 fidelity mismatches; +51.60 (D10-open vs A0-open, w/o top-2 +21.59),
+    +2.92 (D10-1545 vs A0-open, w/o top-2 -13.11), +2.59 (1545mkt), +26.92, +29.46, 385 vs 94 next-open sales,
+    overnight +24.69R (210/155); BE +22.88 -> +4.83, FCEL +9.72 -> +0.86 under 15:45.
+[R] Alpaca quotes re-read (Orders at Alpaca, Replace Order, Close a Position, Get Open Position, the errors article,
+    Paper Trading): cls "submitted after 3:50pm but before 7:00pm ET will be rejected", opg "after 9:28am but before
+    7:00pm ET will be rejected", both queue after 7pm; day "If submitted after the close, it is queued and submitted the
+    following trading day"; extended hours = limit + day/gtc only; stop "becomes a market order", sell stops not
+    converted to stop-limit; replace refused in accepted/pending_new/pending_cancel/pending_replace; OCO exit-only,
+    type limit, replace supported; OTO replace "not supported yet"; qty_available "minus open orders"; "wait for
+    confirmation that the open orders are actually canceled"; close-position page silent on cancelling orders; paper
+    does not simulate slippage/queue/price improvement, partial fills 10% of the time; GTC aged 90 days, 16:15.
+    Unverified (not refuted): OCO TIF day/gtc; the "(e.g., a Limit Sell or Stop Loss)" wording.
+[R] Today's flow, checked against code AND record: 16:45 job -> sma_stopped -> execute_full_exit (live_tracker.py:899-900);
+    dedup skip (order_manager.py:4786-4799); cancel (4818) -> _await_shares_released (4821, 10 x 0.5 s) -> close_position
+    (4824) -> #646 restore + full_exit_rejected + page (4830-4856). BW/IBM paper sales: submitted 16:45:00.14 / 16:45:00.21,
+    Alpaca status ACCEPTED at submit. 21:00 sync: stop_remediation_skipped_pending_exit (both). 09:00 watchdog: IBM
+    stop_ack_broker_covered "no_stop_only_market" (BW 05-27 was the pre-#128 false CRITICAL). 09:35 refresh:
+    stop_update_aborted "pending exits (776) cover full remaining". OKTA 09-11 live rejection "held_for_orders 2"
+    (_685/pull_audit_0911_out.txt row 42362). Evening stop moves are cancel->new with the first place rejected
+    held_for_orders and the 3-s retry succeeding (OKTA 09-10, 09-14 audit rows) — matches "~1-3 s (+3 s retry)".
+[R] Order chain: VICR 2449d492 16:20 GTC at 201.13 -> price-only replace to 211.50 (breakeven) -> 16:45 trail 220.28 ->
+    230.67 -> 239.38 (new) = DB stop_price; KOD OTO leg replaced to 63.15 at 09:40 (breakeven), then cancel->new 4 sh at
+    10:10 (partial Step 1), partial limit 1 @ 85.125 filled 10:10:03, OCO stop leg cancelled -> "filled at once" true.
+    magna53 phase live, profit_trigger_r 8.0, breakeven_arm_r 3.0; profit_take_oco / profit_take_resting_limit ON (live),
+    partial_exit_leg_safe ON. No live magna53 trade has ever exited on sma_trail_stop (live: stop_hit 32, partial 8).
+[C] Must-fix items the doc lists are real: the resting-OCO skip (4794, INFO log, caller ignores False); the 16:45
+    stop-cancel page "Position unprotected ... NO scheduled repair until tomorrow 9:31" (trade_stream.py:2102-2106 via
+    _next_repair_sentence; BW 05-26 16:45 cancel_or_reject_null row shows the handler ran); raise-only floor makes VICR
+    un-lowerable (2267).
+[C] "#687 unchanged" survives a symmetric slippage stress (below): D10-open stays ahead of A0-open on the rebuilt list
+    (+54 to +60R) and behind on the 79 (about -2.5R).
+[R] Item 5: nothing live changed — pull_mech.sql is READ ONLY + ROLLBACK; mechanics.py writes local files only.
+
+======================================================================================================================
+2. WRONG
+======================================================================================================================
+W1 [R] Doc s.2 / s.9: "The capture has no submit/release timestamps ... not recoverable"; "filled 3-7 minutes after the
+   open ... cause unknown". pull_mech.sql read to_jsonb(o)->>'created_at' (no such column) and raw_response->>
+   'submitted_at' (not in _order_to_dict). The real columns (mi_live_orders.submitted_at/filled_at, db.py:1073-1092)
+   plus mi_audit_log show: submitted 16:45:00, ACCEPTED; reconciled accepted->new at 09:00:00 (released on time);
+   FIRST fills 09:30:30 (IBM 11/18 @ 272.75) and 09:31:41 (BW 462/776 @ 19.43); completion 09:33:41 / 09:37:08 through
+   paper's simulated partial fills. Average fill vs official open: BW 19.32 vs 19.60 (-1.41%), IBM 272.61 vs 273.82
+   (-0.44%). n=2, paper, no auction modelled. The same nonexistent created_at filter is why the doc's
+   PARTIAL_EXIT_ORDERS section returned 0 rows although KOD's live partial exists.
+W2 [C] Doc s.2 table "coverage detector (live only, every 15 min 09:00-15:45)" and s.6 "pages at 09:00 / 09:15":
+   _position_coverage_check_job guards 09:31-15:55 (scheduler.py:1519-1524) -> first effective tick 09:45; the 09:00 and
+   09:15 ticks no-op. The pages that DO fire after a successful 16:45 sale are the #649 coverage_watch slots
+   (scheduler.py:7367, _COVERAGE_SLOTS 2442): check_position_coverage counts only live sell-stops + OCO stop legs vs
+   remaining_shares (order_manager.py:6776-6800, live-only filter 6736), so a queued market sell is a GAP; the 17:00 and
+   19:00 repair arms call _ensure_stop_coverage, which subtracts pending exits (5945) and no-ops (no double-sell), the
+   re-check still shows the gap -> "UNPROTECTED AFTER THE CLOSE" (17:00), "STILL UNPROTECTED THIS EVENING" (19:00),
+   "STILL UNPROTECTED AFTER THE 9 PM REPAIR ... watchdog re-arms at the ORIGINAL stop" (21:10). Per sale: 3 alarm pages
+   + the 16:45 stop-cancel page = 4, not "1 + 09:00/09:15". Fix #4 (subtract pending exits in the detector) is the right
+   function; the stated symptom, timing and count are wrong.
+W3 [C] Doc s.8 Day B "Assert the coverage detector is silent at 09:00 / 09:15" (PAPER): non-discriminating twice — the
+   09:00/09:15 ticks no-op by the time guard, and check_position_coverage never examines paper rows (6736). A broken
+   system reads the same (CLAUDE.md: a verify condition may not rest on an absence). Paper cannot exercise fix #4 at
+   all; the 17:00/19:00/21:10 checks are not in the rehearsal. The "paper rehearsal confirms" wording on the false-page
+   findings holds only for the stop-cancel page, not the coverage pages.
+W4 [R] Doc s.1 "What the next-open sale costs: nothing measurable" / s.5 "optimistic by an unmeasured few minutes":
+   the record measures -0.44% and -1.41% vs the official open (W1). Sensitivity (check_mech_recompute1505.txt):
+   - one-sided (next-open sales only): D10-open vs A0-open +51.6 -> +20.1 (0.44%) -> 0 at ~0.72% -> -49.3 (1.41%);
+   - symmetric (every market-type fill incl. stop fills, both arms): D10-open vs A0-open +54.3 / +56.1 / +60.4 — robust;
+   - but D10 15:45-MOC minus D10 next-open: -48.7 (0%) -> -7.8 (0.44%) -> +18.2 (0.72%) -> +82.3 (1.41%) — the doc's
+     "next open (rec) over 15:45 MOC" flips at ~0.5% of price per market fill, because the MOC prints at the official
+     close and the queued market sell has an unknown fill vs the open.
+   - 79 real: D10-open -8.19 vs D10-1545 -8.79 at 0%; at 0.44% one-sided -9.42 vs -8.85, symmetric -11.18 vs -10.62.
+   The s.8 EXPECT "within 1% of the official open" fails on one of the two recorded fills.
+W5 [C] Doc s.4 step 4 / s.7 #2 "close_position(qty = remaining - OCO qty)" and "every broker path reused":
+   alpaca_client.close_position(qty=...) passes close_options={"qty": str(qty)} (alpaca_client.py:800) to alpaca-py
+   0.43.2 (pinned, requirements/base.txt:43) whose close_position expects ClosePositionRequest and calls
+   .to_request_fields() -> AttributeError before any HTTP call [R: check_mech_close_position_qty.txt]. No caller passes
+   qty today, so it has never run. Under #646 the exception would restore the stop and page "Full exit FAILED" on every
+   OCO-case sale.
+W6 [C] Doc s.4 step 5 "The fill event runs finalize_full_exit" with the OCO third left resting: finalize_full_exit sets
+   status='closed', remaining_shares=0, stop_order_id=NULL regardless of filled_qty (order_manager.py:4940-4949) ->
+   the DB calls the trade closed while the broker still holds the third under its OCO. Not in the must-fix list.
+W7 [C] Restore sizing in the OCO case: _restore_stop_after_failed_exit restores cancelled_stop_shares =
+   trade["remaining_shares"] (4816) and the stream's full-exit expiry restore uses int(remaining_shares)
+   (trade_stream.py:2276). With an OCO third resting, remaining_shares still includes it (deferred commit), so both
+   ask for more than the freed shares -> rejected -> "STOP NOT RESTORED — UNPROTECTED" while the 2/3 IS naked. Fix #5's
+   "size from the broker position" also over-asks (the position includes the OCO-held third); size = the cancelled
+   stop's own qty (or position - pending exits).
+W8 [C] s.6 safeguards row "next-open losses land at 09:30, before the 09:31 entries": the recorded fills complete at
+   09:33-09:37 (finalize at completion), i.e. AFTER the 09:31 submissions; the loss re-arms a 24-h cooldown expiring
+   inside the NEXT day's 09:31-09:45 window (the 07-31 shape) — that half holds.
+W9 [minor] s.2 "5-minute poll 09:30-15:55": cron is hour 9-15 */5 (09:00 first tick, no-op without bars) — harmless.
+   Real-79 "no ambiguous days" is true, but 2 no-bar stop days (order vs 15:45 unknown) exist on the 79 and 354 on the
+   rebuilt set; the doc's [-7.88 ... +5.23] bracket covers only the 290 ambiguous days.
+
+======================================================================================================================
+3. MISSED (order flow / failure paths)
+======================================================================================================================
+M1 [P] MOC variant race: the stop-ack watchdog (scheduler.py:1982-2230; cron second 0,30 through 15:59:30) takes NO
+   advisory lock. Between the WS cancel handler nulling stop_order_id (trade_stream.py:1640) and the MOC being accepted,
+   a tick sees stop_order_id NULL and no covering sell -> places a GTC stop at the ORIGINAL orb_low -> reserves the
+   shares -> MOC rejected -> the doc's "restore, market-sell at once" fallback also rejected. The doc's "take the lock"
+   does not stop it. Window = the <=5 s release wait + submit, per position processed sequentially; not the 16:45 flow.
+M2 [C] Queued sale rejected at the 09:30 release after a gap below the depth stop: the stream restore
+   (trade_stream.py:2247-2290) places at the DB stop price, which is then above market -> restore fails ->
+   "CLOSE ... STOP RESTORE FAILED", naked in market hours until manual action. Rare; unlisted.
+M3 Execution vehicles not weighed (his decision, not a recommendation):
+   (i) OPG market-on-open sell submitted >= 19:00 ET (place_market_on_open_sell exists, /timestop uses it): executes only
+       in the opening auction = the official open the replay assumes; removes W4's unknown. Costs: an evening job,
+       stop stays until 19:00 then cancel -> wait -> OPG; "Any unfilled orders after the open will be cancelled" needs
+       the expiry-restore fallback.
+   (ii) After-hours LIMIT sell at 16:45 near the close (extended_hours limit, day/gtc, 16:00-20:00): decides on the true
+       close and sells that evening; liquidity/partial-fill risk, needs the next-open fallback. Partially refutes s.1
+       "the sale ... cannot be at the close" — it cannot be in the closing auction, but it can be near the close.
+M4 [minor] mi_live_orders.stop_price for the OTO leg records trade.orb_low (order_manager.py:975), not the placed
+   price (trade.stop_price, 872): KOD row 60.49 vs the real leg at 58.08; a parity/rehearsal check reading that column
+   will see a false mismatch.
+
+======================================================================================================================
+4. ITEM 5 — sign-off surface
+======================================================================================================================
+- No live change was made by the doc or the probe (verified).
+- Code changes #3 (stop-cancel handler) and #4 (coverage detector counts pending exits) rewrite the semantics of alarms
+  he ruled on (#527 detector, #649 slots). They sit in the "must fix" table, not in the s.10 sign-off list — they belong
+  in the sign-off list.
+- "Leave the OCO third alone" and VICR lowering are correctly surfaced as his decisions.
+
+======================================================================================================================
+5. MUST-FIX ADDITIONS to the doc's s.7 list
+======================================================================================================================
+a. alpaca_client.py:800 — ClosePositionRequest(qty=...) instead of a dict (W5).
+b. finalize_full_exit (order_manager.py:4940-4949) — decrement, not close, when an OCO third remains (W6).
+c. Restore sizing = the cancelled stop's own qty: order_manager.py:4816 and trade_stream.py:2276; fix #5 as written
+   over-asks (W7).
+d. Rehearsal: replace the Day-B 09:00/09:15 assertion with a LIVE-only positive check of the 17:00/19:00/21:10 slots
+   (or a unit test of check_position_coverage with a pending full_exit), since paper cannot reach it (W2/W3).
+e. Record the fill vs the official open per sale (first-fill time, avg price) — or use OPG — before trusting W4's
+   crossover.
+
+VERDICT: the decision logic and the "15:45 kills the edge" result survive (numbers reproduce exactly); the recommended
+next-open vehicle rests on an unmeasured fill price whose break-even vs MOC is ~0.5% (two paper records: -0.44%, -1.41%),
+the OCO-case change list is incomplete (close_position(qty) crashes, the row closes early, restores over-ask), and the
+false-page picture is wrong in time and count (17:00/19:00/21:10, live-only, untestable on paper).

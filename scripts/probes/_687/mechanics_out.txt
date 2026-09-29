@@ -1,0 +1,176 @@
+# #687 part 3 — order-timing cost of the depth rule — run 2026-09-29T12:03:13-04:00
+## 1,505 REBUILD: states reaching day 1 882, settled day 0 651; stored paired 1505
+
+# ======== SAMPLE rebuilt ========
+## FIDELITY (rebuilt): timing=close reproduces stored A0/D10 per-trade R on 1505 trades x 2 arms: mismatches 0 -> REPRODUCED
+## T* identity (apply_daily_exit_step verdict == p < T*) mismatches so far: 0
+## paired in every arm x timing x ambiguity: 1505 of 1505 (dropped: [])
+   exits A0-close: {'stop_hit': 756, 'day0': 651, 'close_below_line': 94, 'delisted_forced_close': 4}
+   exits A0-open: {'stop_hit': 756, 'day0': 651, 'next_open': 94, 'delisted_forced_close': 4}
+   exits A0-1545: {'stop_hit': 751, 'day0': 651, 'moc_1545': 99, 'delisted_forced_close': 4}
+   exits A0-1545mkt: {'stop_hit': 751, 'day0': 651, 'mkt_1545': 99, 'delisted_forced_close': 4}
+   exits A0-1549: {'stop_hit': 753, 'day0': 651, 'moc_1545': 97, 'delisted_forced_close': 4}
+   exits D10-close: {'day0': 651, 'stop_hit': 464, 'close_below_line': 385, 'delisted_forced_close': 5}
+   exits D10-open: {'day0': 651, 'stop_hit': 464, 'next_open': 385, 'delisted_forced_close': 5}
+   exits D10-1545: {'day0': 651, 'stop_hit': 455, 'moc_1545': 374, 'miss_next_open': 21, 'delisted_forced_close': 4}
+   exits D10-1545mkt: {'day0': 651, 'stop_hit': 455, 'mkt_1545': 374, 'miss_next_open': 21, 'delisted_forced_close': 4}
+   exits D10-1549: {'day0': 651, 'stop_hit': 457, 'moc_1545': 374, 'miss_next_open': 19, 'delisted_forced_close': 4}
+
+## rebuilt — ambiguous no-bar days resolved 'asclose': paired n = 1505
+   arm/timing      total   drop-best-2  >=3ORB-R >=8ORB-R |  vs A0-close (better/worse) |  vs A0-open = TODAY LIVE (better/worse)
+   A0  close      +437.63    +393.23    241      88   |    +0.00 (0/0)        |    -2.55 (42/45)
+   A0  open       +440.18    +395.78    241      89   |    +2.55 (45/42)        |    +0.00 (0/0)
+   A0  1545       +437.46    +393.06    241      88   |    -0.17 (1/3)        |    -2.72 (43/48)
+   A0  1545mkt    +438.14    +393.74    241      89   |    +0.51 (5/0)        |    -2.04 (47/45)
+   A0  1549       +437.62    +393.22    241      88   |    -0.01 (1/1)        |    -2.56 (43/46)
+   D10 close      +467.10    +419.88    231      92   |   +29.46 (144/246)        |   +26.92 (186/291)
+   D10 open       +491.79    +444.57    237      97   |   +54.15 (203/278)        |   +51.60 (158/236)
+   D10 1545       +443.11    +402.91    229      93   |    +5.47 (160/231)        |    +2.92 (202/276)
+   D10 1545mkt    +442.78    +402.93    231      94   |    +5.14 (158/230)        |    +2.59 (200/275)
+   D10 1549       +442.86    +402.67    230      91   |    +5.23 (157/234)        |    +2.68 (199/279)
+   D10-1545 vs A0-open: +2.92R  p=0.889  without its top-2 contributors -13.11R
+   D10-open vs A0-open: +51.60R  p=0.087  without its top-2 contributors +21.59R
+   D10-close vs A0-close: +29.46R  p=0.332  without its top-2 contributors +0.12R
+   A0-1545 vs A0-open: -2.72R  p=0.559  without its top-2 contributors -4.18R
+   named trades (money-R): BE 2025-07-24: A0-close +4.67 A0-open +4.67 A0-1545 +4.67 A0-1545mkt +4.67 A0-1549 +4.67 D10-close +22.88 D10-open +22.88 D10-1545 +4.83 D10-1545mkt +4.66 D10-1549 +4.83; HL 2025-08-07: A0-close +3.17 A0-open +3.17 A0-1545 +3.17 A0-1545mkt +3.17 A0-1549 +3.17 D10-close +14.30 D10-open +14.97 D10-1545 +13.70 D10-1545mkt +13.53 D10-1549 +13.70; FCEL 2026-04-29: A0-close +0.70 A0-open +0.70 A0-1545 +0.70 A0-1545mkt +0.70 A0-1549 +0.70 D10-close +9.72 D10-open +9.37 D10-1545 +0.86 D10-1545mkt +0.72 D10-1549 +0.86; AXGN 2024-01-05: A0-close +13.86 A0-open +13.86 A0-1545 +13.86 A0-1545mkt +13.86 A0-1549 +13.86 D10-close +19.40 D10-open +20.71 D10-1545 +15.85 D10-1545mkt +15.48 D10-1549 +15.85; EPSM 2025-04-24: A0-close +10.06 A0-open +10.06 A0-1545 +10.06 A0-1545mkt +10.06 A0-1549 +10.06 D10-close +6.94 D10-open +6.94 D10-1545 +6.94 D10-1545mkt +6.94 D10-1549 +6.94; SEZL 2024-08-08: A0-close +3.98 A0-open +3.98 A0-1545 +3.98 A0-1545mkt +3.98 A0-1549 +3.98 D10-close +3.60 D10-open +3.60 D10-1545 +3.60 D10-1545mkt +3.50 D10-1549 +3.60; SEZL 2024-11-08: A0-close -0.00 A0-open -0.00 A0-1545 -0.00 A0-1545mkt -0.00 A0-1549 -0.00 D10-close -0.00 D10-open -0.00 D10-1545 -0.00 D10-1545mkt -0.00 D10-1549 -0.00; SEZL 2025-05-08: A0-close +6.07 A0-open +6.07 A0-1545 +6.07 A0-1545mkt +6.07 A0-1549 +6.07 D10-close +5.08 D10-open +5.08 D10-1545 +5.08 D10-1545mkt +5.08 D10-1549 +5.08; SEZL 2026-02-26: A0-close -1.00 A0-open -1.00 A0-1545 -1.00 A0-1545mkt -1.00 A0-1549 -1.00 D10-close -1.00 D10-open -1.00 D10-1545 -1.00 D10-1545mkt -1.00 D10-1549 -1.00
+
+## rebuilt — ambiguous no-bar days resolved 'sell': paired n = 1505
+   arm/timing      total   drop-best-2  >=3ORB-R >=8ORB-R |  vs A0-close (better/worse) |  vs A0-open = TODAY LIVE (better/worse)
+   A0  close      +437.63    +393.23    241      88   |    +0.00 (0/0)        |    -2.55 (42/45)
+   A0  open       +440.18    +395.78    241      89   |    +2.55 (45/42)        |    +0.00 (0/0)
+   A0  1545       +438.36    +393.96    241      85   |    +0.72 (105/39)        |    -1.83 (139/79)
+   A0  1545mkt    +439.04    +394.64    241      86   |    +1.40 (109/36)        |    -1.15 (143/76)
+   A0  1549       +438.52    +394.12    241      85   |    +0.88 (105/37)        |    -1.66 (139/77)
+   D10 close      +467.10    +419.88    231      92   |   +29.46 (144/246)        |   +26.92 (186/291)
+   D10 open       +491.79    +444.57    237      97   |   +54.15 (203/278)        |   +51.60 (158/236)
+   D10 1545       +432.30    +392.46    235      84   |    -5.33 (220/186)        |    -7.88 (254/226)
+   D10 1545mkt    +431.35    +391.51    236      86   |    -6.28 (214/187)        |    -8.83 (248/227)
+   D10 1549       +431.87    +392.03    236      82   |    -5.76 (218/188)        |    -8.31 (252/228)
+   D10-1545 vs A0-open: -7.88R  p=0.689  without its top-2 contributors -18.32R
+   D10-open vs A0-open: +51.60R  p=0.087  without its top-2 contributors +21.59R
+   D10-close vs A0-close: +29.46R  p=0.332  without its top-2 contributors +0.12R
+   A0-1545 vs A0-open: -1.83R  p=0.907  without its top-2 contributors -5.49R
+   named trades (money-R): BE 2025-07-24: A0-close +4.67 A0-open +4.67 A0-1545 +4.83 A0-1545mkt +4.83 A0-1549 +4.83 D10-close +22.88 D10-open +22.88 D10-1545 +4.83 D10-1545mkt +4.83 D10-1549 +4.83; HL 2025-08-07: A0-close +3.17 A0-open +3.17 A0-1545 +3.13 A0-1545mkt +3.13 A0-1549 +3.13 D10-close +14.30 D10-open +14.97 D10-1545 +3.13 D10-1545mkt +3.13 D10-1549 +3.13; FCEL 2026-04-29: A0-close +0.70 A0-open +0.70 A0-1545 +0.70 A0-1545mkt +0.70 A0-1549 +0.70 D10-close +9.72 D10-open +9.37 D10-1545 +0.86 D10-1545mkt +0.72 D10-1549 +0.86; AXGN 2024-01-05: A0-close +13.86 A0-open +13.86 A0-1545 +3.73 A0-1545mkt +3.73 A0-1549 +3.73 D10-close +19.40 D10-open +20.71 D10-1545 +3.73 D10-1545mkt +3.73 D10-1549 +3.73; EPSM 2025-04-24: A0-close +10.06 A0-open +10.06 A0-1545 +10.06 A0-1545mkt +10.06 A0-1549 +10.06 D10-close +6.94 D10-open +6.94 D10-1545 +6.94 D10-1545mkt +6.94 D10-1549 +6.94; SEZL 2024-08-08: A0-close +3.98 A0-open +3.98 A0-1545 +3.98 A0-1545mkt +3.98 A0-1549 +3.98 D10-close +3.60 D10-open +3.60 D10-1545 +3.60 D10-1545mkt +3.50 D10-1549 +3.60; SEZL 2024-11-08: A0-close -0.00 A0-open -0.00 A0-1545 -0.00 A0-1545mkt -0.00 A0-1549 -0.00 D10-close -0.00 D10-open -0.00 D10-1545 -0.00 D10-1545mkt -0.00 D10-1549 -0.00; SEZL 2025-05-08: A0-close +6.07 A0-open +6.07 A0-1545 +5.04 A0-1545mkt +5.04 A0-1549 +5.04 D10-close +5.08 D10-open +5.08 D10-1545 +5.04 D10-1545mkt +5.04 D10-1549 +5.04; SEZL 2026-02-26: A0-close -1.00 A0-open -1.00 A0-1545 -1.00 A0-1545mkt -1.00 A0-1549 -1.00 D10-close -1.00 D10-open -1.00 D10-1545 -1.00 D10-1545mkt -1.00 D10-1549 -1.00
+
+## rebuilt — ambiguous no-bar days resolved 'hold': paired n = 1505
+   arm/timing      total   drop-best-2  >=3ORB-R >=8ORB-R |  vs A0-close (better/worse) |  vs A0-open = TODAY LIVE (better/worse)
+   A0  close      +437.63    +393.23    241      88   |    +0.00 (0/0)        |    -2.55 (42/45)
+   A0  open       +440.18    +395.78    241      89   |    +2.55 (45/42)        |    +0.00 (0/0)
+   A0  1545       +440.69    +396.29    241      89   |    +3.06 (42/41)        |    +0.51 (5/7)
+   A0  1545mkt    +441.37    +396.97    241      90   |    +3.74 (46/38)        |    +1.19 (9/4)
+   A0  1549       +440.86    +396.46    241      89   |    +3.22 (42/39)        |    +0.67 (5/5)
+   D10 close      +467.10    +419.88    231      92   |   +29.46 (144/246)        |   +26.92 (186/291)
+   D10 open       +491.79    +444.57    237      97   |   +54.15 (203/278)        |   +51.60 (158/236)
+   D10 1545       +445.41    +405.22    229      94   |    +7.78 (200/270)        |    +5.23 (163/236)
+   D10 1545mkt    +445.08    +405.24    231      95   |    +7.45 (198/269)        |    +4.90 (161/235)
+   D10 1549       +445.16    +404.97    230      92   |    +7.53 (197/273)        |    +4.98 (160/239)
+   D10-1545 vs A0-open: +5.23R  p=0.801  without its top-2 contributors -10.80R
+   D10-open vs A0-open: +51.60R  p=0.087  without its top-2 contributors +21.59R
+   D10-close vs A0-close: +29.46R  p=0.332  without its top-2 contributors +0.12R
+   A0-1545 vs A0-open: +0.51R  p=0.951  without its top-2 contributors -0.61R
+   named trades (money-R): BE 2025-07-24: A0-close +4.67 A0-open +4.67 A0-1545 +4.67 A0-1545mkt +4.67 A0-1549 +4.67 D10-close +22.88 D10-open +22.88 D10-1545 +4.83 D10-1545mkt +4.66 D10-1549 +4.83; HL 2025-08-07: A0-close +3.17 A0-open +3.17 A0-1545 +3.17 A0-1545mkt +3.17 A0-1549 +3.17 D10-close +14.30 D10-open +14.97 D10-1545 +13.70 D10-1545mkt +13.53 D10-1549 +13.70; FCEL 2026-04-29: A0-close +0.70 A0-open +0.70 A0-1545 +0.70 A0-1545mkt +0.70 A0-1549 +0.70 D10-close +9.72 D10-open +9.37 D10-1545 +0.86 D10-1545mkt +0.72 D10-1549 +0.86; AXGN 2024-01-05: A0-close +13.86 A0-open +13.86 A0-1545 +13.86 A0-1545mkt +13.86 A0-1549 +13.86 D10-close +19.40 D10-open +20.71 D10-1545 +15.85 D10-1545mkt +15.48 D10-1549 +15.85; EPSM 2025-04-24: A0-close +10.06 A0-open +10.06 A0-1545 +10.06 A0-1545mkt +10.06 A0-1549 +10.06 D10-close +6.94 D10-open +6.94 D10-1545 +6.94 D10-1545mkt +6.94 D10-1549 +6.94; SEZL 2024-08-08: A0-close +3.98 A0-open +3.98 A0-1545 +3.98 A0-1545mkt +3.98 A0-1549 +3.98 D10-close +3.60 D10-open +3.60 D10-1545 +3.60 D10-1545mkt +3.50 D10-1549 +3.60; SEZL 2024-11-08: A0-close -0.00 A0-open -0.00 A0-1545 -0.00 A0-1545mkt -0.00 A0-1549 -0.00 D10-close -0.00 D10-open -0.00 D10-1545 -0.00 D10-1545mkt -0.00 D10-1549 -0.00; SEZL 2025-05-08: A0-close +6.07 A0-open +6.07 A0-1545 +6.07 A0-1545mkt +6.07 A0-1549 +6.07 D10-close +5.08 D10-open +5.08 D10-1545 +5.08 D10-1545mkt +5.08 D10-1549 +5.08; SEZL 2026-02-26: A0-close -1.00 A0-open -1.00 A0-1545 -1.00 A0-1545mkt -1.00 A0-1549 -1.00 D10-close -1.00 D10-open -1.00 D10-1545 -1.00 D10-1545mkt -1.00 D10-1549 -1.00
+## POST-HOC rebuilt ('asclose'): totals by block and without ['BE', 'FCEL', 'HL']
+   DISC (n 614): A0-close +231.90 | A0-open +236.29 | A0-1545 +231.74 | A0-1545mkt +232.04 | A0-1549 +231.90 | D10-close +228.29 | D10-open +237.09 | D10-1545 +222.30 | D10-1545mkt +219.52 | D10-1549 +221.97 || D10-1545 − A0-open -14.00 | D10-open − A0-open +0.80 | D10-1549 − A0-open -14.32 | D10-close − A0-close -3.60
+   HELD (n 891): A0-close +205.74 | A0-open +203.89 | A0-1545 +205.72 | A0-1545mkt +206.10 | A0-1549 +205.72 | D10-close +238.81 | D10-open +254.70 | D10-1545 +220.81 | D10-1545mkt +223.26 | D10-1549 +220.89 || D10-1545 − A0-open +16.92 | D10-open − A0-open +50.81 | D10-1549 − A0-open +17.00 | D10-close − A0-close +33.07
+   ALL w/o named (n 1502): A0-close +429.10 | A0-open +431.65 | A0-1545 +428.93 | A0-1545mkt +429.61 | A0-1549 +429.09 | D10-close +420.20 | D10-open +444.57 | D10-1545 +423.71 | D10-1545mkt +423.86 | D10-1549 +423.46 || D10-1545 − A0-open -7.94 | D10-open − A0-open +12.92 | D10-1549 − A0-open -8.19 | D10-close − A0-close -8.90
+   largest movers D10-1545 vs D10-close: BE 2025-07-24 +22.88->+4.83 (moc_1545,2025-08-08); FCEL 2026-04-29 +9.72->+0.86 (moc_1545,2026-05-07); OLO 2025-07-03 +0.17->+5.67 (miss_next_open,2025-07-29); AXGN 2024-01-05 +19.40->+15.85 (moc_1545,2024-02-13); ALPN 2024-04-11 +4.42->+2.31 (moc_1545,2024-05-06); CSTL 2025-08-05 +1.93->-0.15 (moc_1545,2025-08-20); INOD 2024-05-08 +6.26->+4.34 (moc_1545,2024-05-31); TEM 2025-01-21 +5.94->+7.17 (moc_1545,2025-02-20)
+   largest movers D10-open vs D10-close: OLO 2025-07-03 +0.17->+5.67 (next_open,2025-07-29); LEU 2025-05-08 +2.03->+5.75 (next_open,2025-05-23); OGN 2026-04-10 +0.50->+3.85 (next_open,2026-04-24); INDV 2024-02-22 +8.11->+11.11 (next_open,2024-03-07); ANAB 2025-09-30 +5.72->+7.87 (next_open,2025-11-05); AXGN 2024-01-05 +19.40->+20.71 (next_open,2024-02-29); CCCX 2026-02-10 +3.53->+2.50 (next_open,2026-02-12); GCMG 2026-02-10 +1.58->+0.58 (next_open,2026-03-02)
+   largest movers A0-open vs A0-close: INDV 2024-02-22 +8.11->+11.11 (next_open,2024-03-07); CCCX 2026-02-10 +3.53->+2.50 (next_open,2026-02-12); FERG 2025-06-03 +1.93->+2.54 (next_open,2025-06-18); LPX 2024-05-08 +5.84->+6.36 (next_open,2024-05-23); PINS 2025-05-09 +0.67->+0.25 (next_open,2025-05-23); TGTX 2024-08-06 +0.65->+1.06 (next_open,2024-08-08); MS 2024-11-06 +0.43->+0.81 (next_open,2024-11-21); AMAM 2024-01-08 +3.60->+3.97 (next_open,2024-01-24)
+   D10 close-below exits 385: next open minus close, money-R — total +24.69, median +0.023, better at the open 210, worse 155
+   diag A0-1545: ambiguous no-bar days 258; misses sold next open 0; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 354; bars ending before 15:45 0
+   diag A0-1545mkt: ambiguous no-bar days 258; misses sold next open 0; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 354; bars ending before 15:45 0
+   diag A0-1549: ambiguous no-bar days 258; misses sold next open 0; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 354; bars ending before 15:45 0
+   diag A0-open: ambiguous no-bar days 0; misses sold next open 0; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 5; no next open 0; no-bar stop days (order vs 15:45 unknown) 0; bars ending before 15:45 0
+   diag D10-1545: ambiguous no-bar days 282; misses sold next open 21; 15:45 sales on days that closed back above the line 32; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 354; bars ending before 15:45 1
+   diag D10-1545mkt: ambiguous no-bar days 282; misses sold next open 21; 15:45 sales on days that closed back above the line 32; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 354; bars ending before 15:45 1
+   diag D10-1549: ambiguous no-bar days 282; misses sold next open 19; 15:45 sales on days that closed back above the line 29; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 354; bars ending before 15:45 1
+   diag D10-open: ambiguous no-bar days 0; misses sold next open 0; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 1; no next open 0; no-bar stop days (order vs 15:45 unknown) 0; bars ending before 15:45 2
+## 15:45 VERDICT vs CLOSE VERDICT on the depth rule's own (close-timing) path, rebuilt: {'FALSE_SELL': 34, 'MISS': 24, 'agree_hold': 211, 'agree_sell': 263, 'nobar:ambiguous:close_above': 201, 'nobar:ambiguous:close_below': 89, 'nobar:sell_certain:close_below': 8, 'stop_after_1545_on_a_sell_verdict': 1}
+
+# ======== SAMPLE real79 ========
+## FIDELITY (real79): timing=close reproduces stored A0/D10 per-trade R on 79 trades x 2 arms: mismatches 0 -> REPRODUCED
+## T* identity (apply_daily_exit_step verdict == p < T*) mismatches so far: 0
+## paired in every arm x timing x ambiguity: 79 of 79 (dropped: [])
+   exits A0-close: {'stop_hit': 39, 'day0': 35, 'close_below_line': 5}
+   exits A0-open: {'stop_hit': 39, 'day0': 35, 'next_open': 5}
+   exits A0-1545: {'stop_hit': 39, 'day0': 35, 'moc_1545': 5}
+   exits A0-1545mkt: {'stop_hit': 39, 'day0': 35, 'mkt_1545': 5}
+   exits A0-1549: {'stop_hit': 39, 'day0': 35, 'moc_1545': 4, 'miss_next_open': 1}
+   exits D10-close: {'day0': 35, 'stop_hit': 23, 'close_below_line': 21}
+   exits D10-open: {'day0': 35, 'stop_hit': 23, 'next_open': 21}
+   exits D10-1545: {'day0': 35, 'stop_hit': 23, 'moc_1545': 20, 'miss_next_open': 1}
+   exits D10-1545mkt: {'day0': 35, 'stop_hit': 23, 'mkt_1545': 20, 'miss_next_open': 1}
+   exits D10-1549: {'day0': 35, 'stop_hit': 23, 'moc_1545': 20, 'miss_next_open': 1}
+
+## real79 — ambiguous no-bar days resolved 'asclose': paired n = 79
+   arm/timing      total   drop-best-2  >=3ORB-R >=8ORB-R |  vs A0-close (better/worse) |  vs A0-open = TODAY LIVE (better/worse)
+   A0  close        -5.77     -16.02      9       1   |    +0.00 (0/0)        |    -0.09 (2/2)
+   A0  open         -5.68     -15.93      9       1   |    +0.09 (2/2)        |    +0.00 (0/0)
+   A0  1545         -5.77     -16.02      9       1   |    +0.00 (0/0)        |    -0.09 (2/2)
+   A0  1545mkt      -5.58     -15.83      9       1   |    +0.19 (5/0)        |    +0.10 (4/1)
+   A0  1549         -5.77     -16.02      9       1   |    +0.00 (0/0)        |    -0.09 (2/2)
+   D10 close        -7.59     -17.06      8       3   |    -1.82 (8/12)        |    -1.91 (10/14)
+   D10 open         -8.19     -17.33      9       2   |    -2.42 (11/13)        |    -2.51 (9/11)
+   D10 1545         -8.79     -17.65      8       1   |    -3.02 (8/12)        |    -3.11 (10/14)
+   D10 1545mkt      -8.11     -16.98      9       1   |    -2.34 (15/10)        |    -2.43 (14/11)
+   D10 1549         -8.17     -17.65      8       2   |    -2.40 (9/11)        |    -2.49 (11/13)
+   D10-1545 vs A0-open: -3.11R  p=0.073  without its top-2 contributors -4.05R
+   D10-open vs A0-open: -2.51R  p=0.252  without its top-2 contributors -4.64R
+   D10-close vs A0-close: -1.82R  p=0.203  without its top-2 contributors -3.50R
+   A0-1545 vs A0-open: -0.09R  p=0.879  without its top-2 contributors -0.37R
+   named trades (money-R): FTK 2026-08-03: A0-close +6.27 A0-open +6.27 A0-1545 +6.27 A0-1545mkt +6.27 A0-1549 +6.27 D10-close +5.07 D10-open +5.07 D10-1545 +5.07 D10-1545mkt +5.07 D10-1549 +5.07; INFQ 2026-05-21: A0-close +3.98 A0-open +3.98 A0-1545 +3.98 A0-1545mkt +3.98 A0-1549 +3.98 D10-close +2.67 D10-open +2.67 D10-1545 +2.67 D10-1545mkt +2.67 D10-1549 +2.67
+
+## real79 — ambiguous no-bar days resolved 'sell': paired n = 79
+   arm/timing      total   drop-best-2  >=3ORB-R >=8ORB-R |  vs A0-close (better/worse) |  vs A0-open = TODAY LIVE (better/worse)
+   A0  close        -5.77     -16.02      9       1   |    +0.00 (0/0)        |    -0.09 (2/2)
+   A0  open         -5.68     -15.93      9       1   |    +0.09 (2/2)        |    +0.00 (0/0)
+   A0  1545         -5.77     -16.02      9       1   |    +0.00 (0/0)        |    -0.09 (2/2)
+   A0  1545mkt      -5.58     -15.83      9       1   |    +0.19 (5/0)        |    +0.10 (4/1)
+   A0  1549         -5.77     -16.02      9       1   |    +0.00 (0/0)        |    -0.09 (2/2)
+   D10 close        -7.59     -17.06      8       3   |    -1.82 (8/12)        |    -1.91 (10/14)
+   D10 open         -8.19     -17.33      9       2   |    -2.42 (11/13)        |    -2.51 (9/11)
+   D10 1545         -8.79     -17.65      8       1   |    -3.02 (8/12)        |    -3.11 (10/14)
+   D10 1545mkt      -8.11     -16.98      9       1   |    -2.34 (15/10)        |    -2.43 (14/11)
+   D10 1549         -8.17     -17.65      8       2   |    -2.40 (9/11)        |    -2.49 (11/13)
+   D10-1545 vs A0-open: -3.11R  p=0.073  without its top-2 contributors -4.05R
+   D10-open vs A0-open: -2.51R  p=0.252  without its top-2 contributors -4.64R
+   D10-close vs A0-close: -1.82R  p=0.203  without its top-2 contributors -3.50R
+   A0-1545 vs A0-open: -0.09R  p=0.879  without its top-2 contributors -0.37R
+   named trades (money-R): FTK 2026-08-03: A0-close +6.27 A0-open +6.27 A0-1545 +6.27 A0-1545mkt +6.27 A0-1549 +6.27 D10-close +5.07 D10-open +5.07 D10-1545 +5.07 D10-1545mkt +5.07 D10-1549 +5.07; INFQ 2026-05-21: A0-close +3.98 A0-open +3.98 A0-1545 +3.98 A0-1545mkt +3.98 A0-1549 +3.98 D10-close +2.67 D10-open +2.67 D10-1545 +2.67 D10-1545mkt +2.67 D10-1549 +2.67
+
+## real79 — ambiguous no-bar days resolved 'hold': paired n = 79
+   arm/timing      total   drop-best-2  >=3ORB-R >=8ORB-R |  vs A0-close (better/worse) |  vs A0-open = TODAY LIVE (better/worse)
+   A0  close        -5.77     -16.02      9       1   |    +0.00 (0/0)        |    -0.09 (2/2)
+   A0  open         -5.68     -15.93      9       1   |    +0.09 (2/2)        |    +0.00 (0/0)
+   A0  1545         -5.77     -16.02      9       1   |    +0.00 (0/0)        |    -0.09 (2/2)
+   A0  1545mkt      -5.58     -15.83      9       1   |    +0.19 (5/0)        |    +0.10 (4/1)
+   A0  1549         -5.77     -16.02      9       1   |    +0.00 (0/0)        |    -0.09 (2/2)
+   D10 close        -7.59     -17.06      8       3   |    -1.82 (8/12)        |    -1.91 (10/14)
+   D10 open         -8.19     -17.33      9       2   |    -2.42 (11/13)        |    -2.51 (9/11)
+   D10 1545         -8.79     -17.65      8       1   |    -3.02 (8/12)        |    -3.11 (10/14)
+   D10 1545mkt      -8.11     -16.98      9       1   |    -2.34 (15/10)        |    -2.43 (14/11)
+   D10 1549         -8.17     -17.65      8       2   |    -2.40 (9/11)        |    -2.49 (11/13)
+   D10-1545 vs A0-open: -3.11R  p=0.073  without its top-2 contributors -4.05R
+   D10-open vs A0-open: -2.51R  p=0.252  without its top-2 contributors -4.64R
+   D10-close vs A0-close: -1.82R  p=0.203  without its top-2 contributors -3.50R
+   A0-1545 vs A0-open: -0.09R  p=0.879  without its top-2 contributors -0.37R
+   named trades (money-R): FTK 2026-08-03: A0-close +6.27 A0-open +6.27 A0-1545 +6.27 A0-1545mkt +6.27 A0-1549 +6.27 D10-close +5.07 D10-open +5.07 D10-1545 +5.07 D10-1545mkt +5.07 D10-1549 +5.07; INFQ 2026-05-21: A0-close +3.98 A0-open +3.98 A0-1545 +3.98 A0-1545mkt +3.98 A0-1549 +3.98 D10-close +2.67 D10-open +2.67 D10-1545 +2.67 D10-1545mkt +2.67 D10-1549 +2.67
+## POST-HOC real79 ('asclose'): totals by block and without ['FTK', 'INFQ']
+   DISC (n 73): A0-close -0.77 | A0-open -0.68 | A0-1545 -0.77 | A0-1545mkt -0.58 | A0-1549 -0.77 | D10-close -2.59 | D10-open -3.19 | D10-1545 -3.79 | D10-1545mkt -3.11 | D10-1549 -3.17 || D10-1545 − A0-open -3.11 | D10-open − A0-open -2.51 | D10-1549 − A0-open -2.49 | D10-close − A0-close -1.82
+   HELD (n 6): A0-close -5.00 | A0-open -5.00 | A0-1545 -5.00 | A0-1545mkt -5.00 | A0-1549 -5.00 | D10-close -5.00 | D10-open -5.00 | D10-1545 -5.00 | D10-1545mkt -5.00 | D10-1549 -5.00 || D10-1545 − A0-open +0.00 | D10-open − A0-open +0.00 | D10-1549 − A0-open +0.00 | D10-close − A0-close +0.00
+   ALL w/o named (n 77): A0-close -16.02 | A0-open -15.93 | A0-1545 -16.02 | A0-1545mkt -15.83 | A0-1549 -16.02 | D10-close -15.32 | D10-open -15.92 | D10-1545 -16.52 | D10-1545mkt -15.85 | D10-1549 -15.91 || D10-1545 − A0-open -0.59 | D10-open − A0-open +0.01 | D10-1549 − A0-open +0.02 | D10-close − A0-close +0.70
+   largest movers D10-1545 vs D10-close: TEAM 2026-08-07 +4.08->+3.16 (moc_1545,2026-08-25); QBTS 2026-05-21 +4.41->+3.80 (miss_next_open,2026-06-05); CLF 2026-07-23 +2.73->+3.07 (moc_1545,2026-08-13)
+   largest movers D10-open vs D10-close: QBTS 2026-05-21 +4.41->+3.80 (next_open,2026-06-05); VG 2026-05-12 +0.34->-0.25 (next_open,2026-05-27); TH 2026-08-10 +0.61->+1.06 (next_open,2026-08-27); CSCO 2026-05-14 +0.81->+1.19 (next_open,2026-06-08); OKTA 2026-08-27 -0.08->+0.28 (next_open,2026-09-14); ABCL 2026-08-10 +1.47->+1.82 (next_open,2026-08-25); QUBT 2026-05-21 +2.05->+1.81 (next_open,2026-06-04); PLTR 2026-08-04 +2.25->+2.05 (next_open,2026-08-26)
+   largest movers A0-open vs A0-close: OKTA 2026-08-27 -0.08->+0.28 (next_open,2026-09-14); VERA 2026-08-14 +0.17->+0.01 (next_open,2026-08-18); APPS 2026-08-05 -0.36->-0.48 (next_open,2026-08-18); CORT 2026-07-30 -0.10->-0.10 (next_open,2026-08-14)
+   D10 close-below exits 21: next open minus close, money-R — total -0.60, median -0.014, better at the open 7, worse 12
+   diag A0-1545: ambiguous no-bar days 0; misses sold next open 0; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 2; bars ending before 15:45 0
+   diag A0-1545mkt: ambiguous no-bar days 0; misses sold next open 0; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 2; bars ending before 15:45 0
+   diag A0-1549: ambiguous no-bar days 0; misses sold next open 1; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 2; bars ending before 15:45 0
+   diag A0-open: ambiguous no-bar days 0; misses sold next open 0; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 0; bars ending before 15:45 0
+   diag D10-1545: ambiguous no-bar days 0; misses sold next open 1; 15:45 sales on days that closed back above the line 2; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 2; bars ending before 15:45 0
+   diag D10-1545mkt: ambiguous no-bar days 0; misses sold next open 1; 15:45 sales on days that closed back above the line 2; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 2; bars ending before 15:45 0
+   diag D10-1549: ambiguous no-bar days 0; misses sold next open 1; 15:45 sales on days that closed back above the line 2; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 2; bars ending before 15:45 0
+   diag D10-open: ambiguous no-bar days 0; misses sold next open 0; 15:45 sales on days that closed back above the line 0; stop hit AFTER 15:45 on a SELL verdict (baseline sold at the stop) 0; no next open 0; no-bar stop days (order vs 15:45 unknown) 0; bars ending before 15:45 0
+## 15:45 VERDICT vs CLOSE VERDICT on the depth rule's own (close-timing) path, real79: {'FALSE_SELL': 2, 'MISS': 1, 'agree_hold': 230, 'agree_sell': 20}
+
+## T* identity mismatches total: 0

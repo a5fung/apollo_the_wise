@@ -1,0 +1,23 @@
+BEGIN
+=== FULL_EXIT_ORDERS ===
+trade_id|ticker|account_mode|order_type|status|exit_reason|qty|created_at|tif|submitted_at|filled_at_raw|fill_px_raw
+119|BW|paper|market|filled|sma_trail_stop|776|||||
+167|IBM|paper|market|filled|sma_trail_stop|18|||||
+(2 rows)
+=== SMA_TRAIL_EXITS ===
+id|ticker|account_mode|signal_type|alert_date|status|exit_time|exit_px|reason|shares
+119|BW|paper|magna53|2026-05-11|closed|2026-05-27T13:37:08.289141|19.32299|sma_trail_stop|776
+167|IBM|paper|9m_day2|2026-05-22|closed|2026-06-10T13:33:41.050709+00:00|272.611111|sma_trail_stop|18
+(2 rows)
+=== PARTIAL_EXIT_ORDERS ===
+trade_id|ticker|account_mode|order_type|status|limit_price|qty|order_class|submitted_at|filled_at_raw|created_at
+(0 rows)
+=== OPEN_POSITIONS ===
+id|ticker|account_mode|signal_type|alert_date|entry_price|hard_stop|stop_price|remaining_shares|partial_taken|breakeven_active|has_stop_ptr
+400|VICR|live|magna53|2026-09-17|211.5|201.13010000000003|239.38|1|f|t|t
+404|KOD|live|magna53|2026-09-28|63.15|58.0818|63.15|4|t|t|t
+(2 rows)
+=== FULL_EXIT_AUDIT ===
+et|event_type|summary
+(0 rows)
+ROLLBACK

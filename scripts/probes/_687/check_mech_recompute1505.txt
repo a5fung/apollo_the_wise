@@ -1,0 +1,38 @@
+# independent recompute, rebuilt: states 882, day0 651, stored-paired 1505
+## FIDELITY close timing vs stored arms_per_trade.tsv: mismatches 0; paired in all variants 1505
+   A0-close    total  +437.63  exits {'day0': 651, 'stop_hit': 402, 'close_below': 94, 'stop_hit_daily': 354, 'delisted_forced_close': 4}
+   A0-open     total  +440.18  exits {'day0': 651, 'stop_hit': 402, 'next_open': 94, 'stop_hit_daily': 354, 'delisted_forced_close': 4}
+   A0-1545     total  +437.46  exits {'day0': 651, 'stop_hit': 397, 'sold_1545_nobar': 94, 'stop_hit_daily': 354, 'delisted_forced_close': 4, 'sold_1545': 5}
+   A0-1545mkt  total  +438.14  exits {'day0': 651, 'stop_hit': 397, 'sold_1545_nobar': 94, 'stop_hit_daily': 354, 'delisted_forced_close': 4, 'sold_1545': 5}
+   D10-close    total  +467.10  exits {'day0': 651, 'close_below': 385, 'stop_hit': 110, 'stop_hit_daily': 354, 'delisted_forced_close': 5}
+   D10-open     total  +491.79  exits {'day0': 651, 'next_open': 385, 'stop_hit': 110, 'stop_hit_daily': 354, 'delisted_forced_close': 5}
+   D10-1545     total  +443.11  exits {'day0': 651, 'sold_1545': 245, 'stop_hit': 101, 'sold_1545_closed_above': 32, 'sold_1545_nobar': 97, 'stop_hit_daily': 354, 'delisted_forced_close': 4, 'miss_next_open': 21}
+   D10-1545mkt  total  +442.78  exits {'day0': 651, 'sold_1545': 245, 'stop_hit': 101, 'sold_1545_closed_above': 32, 'sold_1545_nobar': 97, 'stop_hit_daily': 354, 'delisted_forced_close': 4, 'miss_next_open': 21}
+   D10-close vs A0-open (today live): +26.92R  without its top-2 -2.43R
+   D10-open vs A0-open (today live): +51.60R  without its top-2 +21.59R
+   D10-1545 vs A0-open (today live): +2.92R  without its top-2 -13.11R
+   D10-1545mkt vs A0-open (today live): +2.59R  without its top-2 -13.27R
+   A0-close vs A0-open (today live): -2.55R  without its top-2 -4.01R
+   D10-close vs A0-close: +29.46R
+   haircut 0.00%: totals A0-open +440.18 | A0-1545 +437.46 | D10-open +491.79 | D10-1545 +443.11 || D10-1545 minus D10-open -48.68R
+   haircut 0.44%: totals A0-open +428.10 | A0-1545 +437.46 | D10-open +448.22 | D10-1545 +439.80 || D10-1545 minus D10-open -8.42R
+   haircut 0.72%: totals A0-open +420.42 | A0-1545 +437.46 | D10-open +420.49 | D10-1545 +437.70 || D10-1545 minus D10-open +17.21R
+   haircut 1.00%: totals A0-open +412.73 | A0-1545 +437.46 | D10-open +392.76 | D10-1545 +435.59 || D10-1545 minus D10-open +42.83R
+   haircut 1.41%: totals A0-open +401.48 | A0-1545 +437.46 | D10-open +352.17 | D10-1545 +432.51 || D10-1545 minus D10-open +80.34R
+   market-type fills A0-open: next-open sales 94 (notional 2745.2 R-units), stop fills 756 (notional 19075.1 R-units)
+   market-type fills D10-open: next-open sales 385 (notional 9902.2 R-units), stop fills 464 (notional 11297.5 R-units)
+   market-type fills D10-1545: next-open sales 21 (notional 751.5 R-units), stop fills 455 (notional 11162.7 R-units)
+   SYMMETRIC haircut 0.00% (next-open sales AND stop fills, both arms): D10-open − A0-open +51.60R | D10-1545 − A0-open +2.92R | D10-1545 − D10-open -48.68R
+   SYMMETRIC haircut 0.44% (next-open sales AND stop fills, both arms): D10-open − A0-open +54.33R | D10-1545 − A0-open +46.51R | D10-1545 − D10-open -7.82R
+   SYMMETRIC haircut 0.72% (next-open sales AND stop fills, both arms): D10-open − A0-open +56.07R | D10-1545 − A0-open +74.25R | D10-1545 − D10-open +18.18R
+   SYMMETRIC haircut 1.00% (next-open sales AND stop fills, both arms): D10-open − A0-open +57.81R | D10-1545 − A0-open +101.98R | D10-1545 − D10-open +44.18R
+   SYMMETRIC haircut 1.41% (next-open sales AND stop fills, both arms): D10-open − A0-open +60.35R | D10-1545 − A0-open +142.60R | D10-1545 − D10-open +82.25R
+   open-fill haircut 0.44% of price on every next-open sale: D10-open vs A0-open +20.11R (D10 pays 43.57R over 385 sales, A0 pays 12.08R over 94)
+   open-fill haircut 0.50% of price on every next-open sale: D10-open vs A0-open +15.82R (D10 pays 49.51R over 385 sales, A0 pays 13.73R over 94)
+   open-fill haircut 1.00% of price on every next-open sale: D10-open vs A0-open -19.97R (D10 pays 99.02R over 385 sales, A0 pays 27.45R over 94)
+   open-fill haircut 1.41% of price on every next-open sale: D10-open vs A0-open -49.31R (D10 pays 139.62R over 385 sales, A0 pays 38.71R over 94)
+   D10 next-open sales 385: next open minus close +24.69R; better 210 worse 155; A0 next-open sales 94
+   no-bar ambiguous days D10-1545 (resolved as the close): 282
+   BE 2025-07-24: A0-close +4.67 A0-open +4.67 A0-1545 +4.67 A0-1545mkt +4.67 D10-close +22.88 D10-open +22.88 D10-1545 +4.83 D10-1545mkt +4.66
+   HL 2025-08-07: A0-close +3.17 A0-open +3.17 A0-1545 +3.17 A0-1545mkt +3.17 D10-close +14.30 D10-open +14.97 D10-1545 +13.70 D10-1545mkt +13.53
+   FCEL 2026-04-29: A0-close +0.70 A0-open +0.70 A0-1545 +0.70 A0-1545mkt +0.70 D10-close +9.72 D10-open +9.37 D10-1545 +0.86 D10-1545mkt +0.72

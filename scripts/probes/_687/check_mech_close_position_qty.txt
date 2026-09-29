@@ -1,0 +1,29 @@
+alpaca-py 0.43.2 | requirements/base.txt pins 0.43.2
+TradingClient.close_position signature: (self, symbol_or_asset_id: uuid.UUID | str, close_options: alpaca.trading.requests.ClosePositionRequest | None = None) -> alpaca.trading.models.Order | Dict[str, Any]
+dict close_options (alpaca_client.py:800 shape): RAISES AttributeError - 'dict' object has no attribute 'to_request_fields' | HTTP reached: False
+ClosePositionRequest: RAISES ValidationError 8 validation errors for Order
+id
+  Field required [type=missing, input_value={'order_class': <OrderClass.SIMPLE: 'simple'>}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+client_order_id
+  Field required [type=missing, input_value={'order_class': <OrderClass.SIMPLE: 'simple'>}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+created_at
+  Field required [type=missing, input_value={'order_class': <OrderClass.SIMPLE: 'simple'>}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+updated_at
+  Field required [type=missing, input_value={'order_class': <OrderClass.SIMPLE: 'simple'>}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+submitted_at
+  Field required [type=missing, input_value={'order_class': <OrderClass.SIMPLE: 'simple'>}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+time_in_force
+  Field required [type=missing, input_value={'order_class': <OrderClass.SIMPLE: 'simple'>}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+status
+  Field required [type=missing, input_value={'order_class': <OrderClass.SIMPLE: 'simple'>}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+extended_hours
+  Field required [type=missing, input_value={'order_class': <OrderClass.SIMPLE: 'simple'>}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+800:            order = await _sdk(client.close_position, ticker, close_options={"qty": str(qty)}, timeout=_SDK_TIMEOUT_WRITE)

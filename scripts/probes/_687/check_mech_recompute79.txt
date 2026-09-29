@@ -1,0 +1,26 @@
+# independent recompute, 79 real EPs: keys 79, day0-settled 35, walked 44
+## FIDELITY: my close-timing walker vs stored depth_per_trade.tsv A0_R/D10_R: mismatches 0
+   A0-close    total    -5.77  exits {'day0': 35, 'stop_hit': 37, 'stop_hit_daily': 2, 'close_below': 5}
+   A0-open     total    -5.68  exits {'day0': 35, 'stop_hit': 37, 'stop_hit_daily': 2, 'next_open': 5}
+   A0-1545     total    -5.77  exits {'day0': 35, 'stop_hit': 37, 'stop_hit_daily': 2, 'sold_1545': 5}
+   A0-1545mkt  total    -5.58  exits {'day0': 35, 'stop_hit': 37, 'stop_hit_daily': 2, 'sold_1545': 5}
+   D10-close    total    -7.59  exits {'day0': 35, 'stop_hit': 21, 'close_below': 21, 'stop_hit_daily': 2}
+   D10-open     total    -8.19  exits {'day0': 35, 'stop_hit': 21, 'next_open': 21, 'stop_hit_daily': 2}
+   D10-1545     total    -8.79  exits {'day0': 35, 'stop_hit': 21, 'sold_1545': 18, 'miss_next_open': 1, 'stop_hit_daily': 2, 'sold_1545_closed_above': 2}
+   D10-1545mkt  total    -8.11  exits {'day0': 35, 'stop_hit': 21, 'sold_1545': 18, 'miss_next_open': 1, 'stop_hit_daily': 2, 'sold_1545_closed_above': 2}
+   D10-close vs A0-open (today live): -1.91R  without its top-2 -3.59R  better/worse 10/14
+   D10-open vs A0-open (today live): -2.51R  without its top-2 -4.64R  better/worse 9/11
+   D10-1545 vs A0-open (today live): -3.11R  without its top-2 -4.05R  better/worse 10/14
+   D10-1545mkt vs A0-open (today live): -2.43R  without its top-2 -3.57R  better/worse 14/11
+   D10-close vs A0-close (the replay-vs-replay number): -1.82R
+   D10 next-open sales 21: next open minus close -0.60R, better 7, worse 12; A0 next-open sales 5
+   79 with a 0.44% open-fill haircut on every next-open sale: A0-open -5.91 | D10-open -9.42 | D10-1545 -8.85
+   79 with a 1.00% open-fill haircut on every next-open sale: A0-open -6.21 | D10-open -10.98 | D10-1545 -8.94
+   79 with a 1.41% open-fill haircut on every next-open sale: A0-open -6.43 | D10-open -12.13 | D10-1545 -9.00
+   79 SYMMETRIC 0.44% haircut on every next-open sale AND every stop fill: A0-open -8.69 | D10-open -11.18 | D10-1545 -10.62
+   79 SYMMETRIC 1.00% haircut on every next-open sale AND every stop fill: A0-open -12.51 | D10-open -15.00 | D10-1545 -12.95
+   79 SYMMETRIC 1.41% haircut on every next-open sale AND every stop fill: A0-open -15.32 | D10-open -17.79 | D10-1545 -14.66
+   15:45 vs close verdict on D10's close-timing path (bar days): {'agree_hold': 230, 'agree_sell': 20, 'MISS': 1, 'FALSE_SELL': 2}
+   no-bar ambiguous days D10-1545: 0
+   FTK 2026-08-03: A0-close +6.27 A0-open +6.27 A0-1545 +6.27 A0-1545mkt +6.27 D10-close +5.07 D10-open +5.07 D10-1545 +5.07 D10-1545mkt +5.07
+   INFQ 2026-05-21: A0-close +3.98 A0-open +3.98 A0-1545 +3.98 A0-1545mkt +3.98 D10-close +2.67 D10-open +2.67 D10-1545 +2.67 D10-1545mkt +2.67

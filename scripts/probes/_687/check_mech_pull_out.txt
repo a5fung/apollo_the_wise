@@ -1,0 +1,120 @@
+BEGIN
+=== FULL_EXIT_ORDERS_REAL_COLUMNS ===
+trade_id|ticker|account_mode|status|qty|filled_qty|filled_avg_price|submitted_et|filled_et|cancelled_et|raw_type|raw
+119|BW|paper|filled|776|776|19.32299|2026-05-26 16:45:00.136146|2026-05-27 09:37:08.286699||object|{"id": "db11453b-4196-4150-898d-4945e16e6257", "qty": 776.0, "legs": [], "side": "OrderSide.SELL", "type": "OrderType.MARKET", "status": "OrderStatus.ACCEPTED", "symbol": "BW", "filled_at": null, "created_at": "2026-05-26T20:45:00.128031+00:00", "filled_qty": 0.0, "stop_price": null, "limit_price": null, "client_order_id": "f2557f22-6e98-4156-b8b2-b36652081129", "filled_avg_price": null}
+167|IBM|paper|filled|18|18|272.611111|2026-06-09 16:45:00.205882|2026-06-10 09:33:41.048655||object|{"id": "d945b09d-62d1-44b6-96b6-f0bc9cdd8ff2", "qty": 18.0, "legs": [], "side": "OrderSide.SELL", "type": "OrderType.MARKET", "status": "OrderStatus.ACCEPTED", "symbol": "IBM", "filled_at": null, "created_at": "2026-06-09T20:45:00.192343+00:00", "filled_qty": 0.0, "stop_price": null, "limit_price": null, "client_order_id": "2a5ab3fb-1c90-4660-9404-8452fcf140c0", "filled_avg_price": null}
+(2 rows)
+=== TRADES_119_167_382_400_404 ===
+id|ticker|account_mode|signal_type|alert_date|status|entry_price|hard_stop|stop_price|stop_order_id|remaining_shares|partial_taken|breakeven_active|closed_et|exits
+119|BW|paper|magna53|2026-05-11|closed|17.05|16.49|17.05||0|t|t|2026-05-27 09:37:08.289257|[{"pnl": 728.6401170000004, "time": "2026-05-15T13:33:38.030906", "price": 18.932791, "reason": "partial_profit", "shares": 387, "order_id": "9bfeff93-eb57-4109-8fed-256c9451c891"}, {"pnl": 1763.84024, "time": "2026-05-27T13:37:08.289141", "price": 19.32299, "reason": "sma_trail_stop", "shares": 776, "order_id": "db11453b-4196-4150-898d-4945e16e6257"}]
+167|IBM|paper|9m_day2|2026-05-22|closed|263.168462|230.94|263.17||0|t|t|2026-06-10 09:33:41.050825|[{"pnl": 226.37230399999999, "time": "2026-05-29T15:59:33.473017", "price": 291.465, "reason": "partial_profit", "shares": 8, "order_id": "ca4f0c9c-94f7-4897-9f78-653ccdb0f1dc"}, {"pnl": 169.9676820000003, "time": "2026-06-10T13:33:41.050709+00:00", "price": 272.611111, "reason": "sma_trail_stop", "shares": 18, "order_id": "d945b09d-62d1-44b6-96b6-f0bc9cdd8ff2"}]
+382|OKTA|live|magna53|2026-08-27|closed|167.879|150.51999999999998|193.25||0|f|t|2026-09-28 09:30:01.326841|[{"pnl": 47.24200000000002, "time": "2026-09-28T13:30:01.326663+00:00", "price": 191.5, "reason": "stop_hit", "shares": 2, "source": "websocket", "attempt": 1}]
+400|VICR|live|magna53|2026-09-17|filled|211.5|201.13010000000003|239.38|721a6320-a8e1-49bc-9472-427592fb0b76|1|f|t||[]
+404|KOD|live|magna53|2026-09-28|filled|63.15|58.0818|63.15|fada5284-a6d0-44d0-920f-ab96b6645195|4|t|t||[{"pnl": 21.975, "time": "2026-09-28T14:10:03.696520+00:00", "price": 85.125, "reason": "partial_profit", "shares": 1, "order_id": "26f62c6e-48ce-4b63-96db-06d92538ba2c"}]
+(5 rows)
+=== ORDERS_382_400_404 ===
+trade_id|ticker|purpose|order_type|status|qty|stop_price|limit_price|filled_qty|filled_avg_price|submitted_et|filled_et|oid
+382|OKTA||stop_limit|filled|2|167.88|168.72|2|167.879|2026-08-27 09:31:10.924109|2026-08-27 10:00:00.089749|8005216b
+382|OKTA|stop_loss|stop|expired|2|159.2||0||2026-08-27 09:31:10.92713||e73acaad
+382|OKTA|stop_loss|stop|canceled|2|154.1||0||2026-09-04 16:45:03.87348||c261b3b3
+382|OKTA|stop_loss|stop|canceled|2|157.35||0||2026-09-08 16:45:03.827763||bd32837f
+382|OKTA|stop_loss|stop|canceled|2|161.52||0||2026-09-09 16:45:04.366256||7a18185e
+382|OKTA|stop_loss|stop|canceled|2|165.57||0||2026-09-10 16:45:03.831504||2f5ac5cb
+382|OKTA|stop_loss|stop|canceled|2|170.8||0||2026-09-14 16:45:03.959678||567e8e86
+382|OKTA|stop_loss|stop|canceled|2|172.54||0||2026-09-15 16:45:03.861113||3c1a1181
+382|OKTA|stop_loss|stop|canceled|2|174.71||0||2026-09-16 16:45:03.851242||d0bd6909
+382|OKTA|stop_loss|stop|canceled|2|177.4||0||2026-09-17 16:45:03.843244||147fa71b
+382|OKTA|stop_loss|stop|canceled|2|178.6||0||2026-09-18 16:45:03.859137||4d9e1360
+382|OKTA|stop_loss|stop|canceled|2|180.67||0||2026-09-21 16:45:03.965602||89e0430d
+382|OKTA|stop_loss|stop|canceled|2|183.57||0||2026-09-22 16:45:03.884096||2292402e
+382|OKTA|stop_loss|stop|canceled|2|186.83||0||2026-09-23 16:45:03.893399||5738de12
+382|OKTA|stop_loss|stop|canceled|2|190.39||0||2026-09-24 16:45:03.874596||680f0a5b
+382|OKTA|stop_loss|stop|filled|2|193.25||2|191.5|2026-09-25 16:45:03.890787|2026-09-28 09:45:00.071311|2a57c270
+400|VICR||limit|filled|1||212.42|1|211.5|2026-09-17 09:31:00.98179|2026-09-17 09:32:00.029289|810f5f8b
+400|VICR|stop_loss|stop|expired|1|206.55||0||2026-09-17 09:31:00.983538||67262086
+400|VICR|stop_loss|stop|replaced|1|201.13010000000003||0||2026-09-17 16:20:00.059124||2449d492
+400|VICR|stop_loss|stop|canceled|1|211.5||0||2026-09-21 09:35:00.203017||fca82c47
+400|VICR|stop_loss|stop|canceled|1|220.28||0||2026-09-24 16:45:07.65782||31164a3d
+400|VICR|stop_loss|stop|canceled|1|230.67||0||2026-09-25 16:45:07.678991||b517959f
+400|VICR|stop_loss|stop|new|1|239.38||0||2026-09-28 16:45:03.883605||721a6320
+404|KOD||stop_limit|filled|5|62.8982|63.21|5|63.15|2026-09-28 09:31:00.841773|2026-09-28 09:32:00.024432|bfbd110d
+404|KOD|stop_loss|stop|replaced|5|60.49||0||2026-09-28 09:31:00.844984||a1b21d12
+404|KOD|stop_loss|stop|canceled|5|63.15||0||2026-09-28 09:40:00.147764||b105e02e
+404|KOD|stop_loss|stop|new|4|63.15||0||2026-09-28 10:10:00.361448||fada5284
+404|KOD|partial_exit|limit|filled|1||84.43|1|85.125|2026-09-28 10:10:00.654284|2026-09-28 10:10:03.693832|26f62c6e
+404|KOD|stop_loss|stop|cancelled|1|63.15||||2026-09-28 10:10:00.656572||7a7c604b
+(29 rows)
+=== AUDIT_BW_OVERNIGHT_0526_0527 ===
+et|event_type|summary
+2026-05-26 16:45:00.149791|stop_order_id_changed|trade #119 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+2026-05-26 21:00:00.137614|stop_remediation_skipped_pending_exit|BW: 776 pending exit covers full 776 remaining
+2026-05-27 07:20:41.156646|catalyst_earnings_boost|BBWI: routine → strong (earnings_day, source=earnings_dates)
+2026-05-27 07:20:49.645763|catalyst_earnings_revenue_weak_downgrade|BBWI: strong → routine (earnings catalyst, q_rev_yoy_missing_no_prior_year_comparable)
+2026-05-27 09:00:00.16543|stop_ack_remediation_failed|BW #119: stop-ACK timeout AND fallback stop submit failed
+2026-05-27 09:00:00.204588|order_status_reconciled|BW order=db11453b: accepted -> new (paper)
+2026-05-27 09:00:00.405382|order_status_reconciled|BW order=53a2f89b: accepted -> canceled (paper)
+2026-05-27 09:00:00.510574|order_status_reconciled|BW order=49447ea1: new -> expired (paper)
+2026-05-27 09:31:41.917924|entry_partial_fill|[paper] BW partial_fill 462/776 (cum 462) @ $19.43 side=sell
+2026-05-27 09:33:40.596762|entry_partial_fill|[paper] BW partial_fill 61/776 (cum 523) @ $19.41 side=sell
+2026-05-27 09:35:00.13069|stop_update_aborted|BW: pending exits (776) cover full remaining (776.0) — no stop sizing left
+2026-05-27 09:37:08.29055|full_exit_committed|BW: DB committed on WS fill — closed 776 @$19.32, reason=sma_trail_stop, total_pnl $+2,492.48
+2026-05-27 09:50:15.798719|earnings_override_applied|BBWI MODERATE→HIGH via earnings_dates
+2026-05-27 09:51:12.844998|ep_alert|HIGH EP: BBWI gap=15.0% score=55
+2026-05-27 09:51:12.848462|orb_out_of_window|BBWI — window:out_of_orb: detected 09:51 ET
+2026-05-27 10:10:08.468469|9m_ep_detected|BBWI vol=3.1M price=$20.36 gap=10.0%
+(16 rows)
+=== AUDIT_IBM_OVERNIGHT_0609_0610 ===
+et|event_type|summary
+2026-06-09 16:45:00.220668|stop_order_id_changed|trade #167 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+2026-06-09 21:00:00.12566|stop_remediation_skipped_pending_exit|IBM: 18 pending exit covers full 18 remaining
+2026-06-10 09:00:00.170358|stop_ack_broker_covered|IBM #167: broker has 18.0 sh covering 18.0 remaining (stop_order_id=no_stop_only_market)
+2026-06-10 09:00:00.171713|order_status_reconciled|IBM order=d945b09d: accepted -> new (paper)
+2026-06-10 09:00:00.231376|order_status_reconciled|IBM order=19f6304c: new -> canceled (paper)
+2026-06-10 09:30:30.826895|entry_partial_fill|[paper] IBM partial_fill 11/18 (cum 11) @ $272.75 side=sell
+2026-06-10 09:31:00.033631|order_status_reconciled|IBM order=d945b09d: new -> partially_filled (paper)
+2026-06-10 09:32:14.958645|entry_partial_fill|[paper] IBM partial_fill 6/18 (cum 17) @ $272.55 side=sell
+2026-06-10 09:33:41.051992|full_exit_committed|IBM: DB committed on WS fill — closed 18 @$272.61, reason=sma_trail_stop, total_pnl $+396.34
+(9 rows)
+=== AUDIT_OKTA_0911_1644_TO_0914_1000 ===
+et|event_type|summary
+2026-09-11 16:02:10.978245|telegram_markdown_fallback|Markdown parse failed — delivered as plain text
+2026-09-11 16:20:00.051519|stop_refresh_ran|post-close: examined 3, placed 0, already-covered 3, skipped 0 (none)
+2026-09-11 16:45:00.863894|telegram_markdown_fallback|Markdown parse failed — delivered as plain text
+2026-09-14 09:00:00.18353|order_status_reconciled|OKTA order=2f5ac5cb: new -> canceled (live)
+2026-09-14 09:35:00.556165|stop_refresh_ran|Morning: examined 3, placed 0, already-covered 3, skipped 0 (none), same-day excluded 1 (DFTX)
+(5 rows)
+=== COVERAGE_WATCH_RECENT ===
+et|event_type|summary
+2026-09-28 21:10:00.038471|coverage_verified_evening|coverage check [evening]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-28 19:00:00.129693|coverage_checked_late|coverage check [late]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-28 17:00:00.037257|coverage_checked_post_close|coverage check [post_close]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-25 21:10:00.041931|coverage_verified_evening|coverage check [evening]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-25 19:00:00.111581|coverage_checked_late|coverage check [late]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-25 17:00:00.041062|coverage_checked_post_close|coverage check [post_close]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-24 21:10:00.040662|coverage_verified_evening|coverage check [evening]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-24 19:00:00.136823|coverage_checked_late|coverage check [late]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-24 17:00:00.040354|coverage_checked_post_close|coverage check [post_close]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-23 21:10:00.034952|coverage_verified_evening|coverage check [evening]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-23 19:00:00.112656|coverage_checked_late|coverage check [late]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+2026-09-23 17:00:00.082817|coverage_checked_post_close|coverage check [post_close]: examined 2, covered 2, gaps 0, unreadable 0, deferred 0
+(12 rows)
+=== MAGNA53_STRATEGY_AND_TOGGLES ===
+strategy_id|phase|profit_trigger_r|breakeven_arm_r
+magna53|live|8.0|3.0
+(1 row)
+safeguard|account_mode|state|updated_et
+partial_exit_leg_safe|global|on|2026-08-04 18:52:16.225706
+profit_take_oco|live|on|2026-08-17 11:03:32.692265
+profit_take_resting_limit|live|on|2026-08-10 17:15:16.430312
+(3 rows)
+=== LIVE_EXIT_REASONS_ALL_TIME ===
+account_mode|reason|n
+live|stop_hit|32
+live|partial_profit|8
+paper|stop_hit|28
+paper|partial_profit|7
+paper|manual_exit_bracket_bug|1
+paper|sma_trail_stop|1
+paper|manual_emergency_close|1
+(7 rows)
+ROLLBACK
