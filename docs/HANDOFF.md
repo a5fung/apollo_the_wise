@@ -1309,3 +1309,13 @@ stagger cards, one at a time.
 4. Sat 10-03: #687 build (depth rule behind a toggle + the 16:45 exit bugs), #688, #491, #519 · Sun 10-04: #690.
 
 **Standing:** Fable capacity ~4% (09-29 07:30 PDT) — no Fable spawns until it resets; every Sonnet role on claude-sonnet-5-5 (`_ROLE_OVERRIDES` empty). New rule, gated: no prompt may ask a model to reason first (`tests/test_no_reasoning_first_prompts.py`).
+
+## 2026-09-30 (Wed) mid-session save — 🔴 RESUME HERE (after the advisor review; CLOSE not yet run)
+
+**Board 47** (closed #506). **Tonight 21:16 ET deploy** (both + execution): #690 real-prompt replay before adopting a model; #635 commit A (scheduler-side silent failures); alert-noise changes (delay-miss page retired; morning real-time-miss digest silent on zero genuine misses and now pages on a failed read; catalyst-tier monitor pages only when a revert could matter); secret redaction no longer masks "Basic Materials". Post-deploy import/commit check at 21:35 ET.
+
+**Thursday 10-01:** (1) `logs/llm_samples/` has a theme_engine key (market) AND an ep_detector key (execution) — #690's positive check; (2) 17:00 ET #689 night 2 of 3, #505 next 6 pairs (~25 left → 10-07), #655 row, #657 night 4; (3) build slot free → #121 forward, or #663 (money-path, better Saturday).
+
+**Saturday 10-03:** #687, #688, #635 commit B (branch `635-silent-failures` @ def8a298, rebase), #580 0%-breadth fix + newborn breadth fill (replay first), #663, #491, #519.
+
+**Rulings today:** #580 one-sided theme trim STAYS (leaders light a theme up); #690 hold only on refusal/error/unreadable, changed answers → digest; alert noise: page only when there is something to act on.
