@@ -974,18 +974,22 @@ async def refresh_model_resolution() -> int:
         if not entries:
             retests[role] = ("held", f"still HELD on {pretty_model(held)} — no recent request to re-test")
             continue
-        runs = [r for kr in await _replay_entries(entries, target, deadline) for r in kr.runs]
+        key_results = await _replay_entries(entries, target, deadline)
+        runs = [r for kr in key_results for r in kr.runs]
         if any(r.verdict == BUDGET for r in runs):
             retests[role] = ("held", f"still HELD on {pretty_model(held)} — re-check ran out of time")
         elif role_is_held(runs):
             holds[role] = {**info, "error": _first_failure(runs)[:300], "candidate": target}
             retests[role] = ("held", f"still HELD on {pretty_model(held)} — {_first_failure(runs)[:160]}")
-        elif any(r.verdict == PASS for r in runs):
+        elif key_results and all(any(r.verdict == PASS for r in kr.runs) for kr in key_results):
+            # Released only when EVERY replayed request passed at least once — one passing key
+            # and another that never got a clean run (overloaded every time) is not evidence the
+            # role works on the new model (#690 re-review, 2026-09-30).
             holds.pop(role, None)
             released.append((role, held, target))
             retests[role] = ("released", f"hold released — its requests pass on {pretty_model(target)}")
         else:
-            retests[role] = ("held", f"still HELD on {pretty_model(held)} — nothing could be checked")
+            retests[role] = ("held", f"still HELD on {pretty_model(held)} — not every request could be checked")
 
     changed_at = dict(prev_changed)
     for tier, _old, _new in changes:

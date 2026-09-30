@@ -753,6 +753,34 @@ def test_a_held_role_that_still_fails_stays_held_quietly(monkeypatch, tmp_path):
     assert "model_role_hold_released" not in _events(audit)
 
 
+def test_a_hold_is_not_released_while_one_request_never_gets_a_clean_run(monkeypatch, tmp_path):
+    """Two THEME_MODEL requests: one passes, the other is overloaded on every run. The role stays
+    held — a single passing key is not evidence the whole role works on the new model."""
+    from shared.model_resolver import read_cache
+    _write_sample(tmp_path, THEME_KEY, "THEME_MODEL",
+                  request={"model": OLD, "max_tokens": 400,
+                           "messages": [{"role": "user", "content": "rename this theme"}]},
+                  answer={"stop_reason": "end_turn", "text": "AI Networking"})
+    _write_sample(tmp_path, "agents.market_intelligence.theme_engine:_split_fat_theme", "THEME_MODEL",
+                  request={"model": OLD, "max_tokens": 400,
+                           "messages": [{"role": "user", "content": "split this fat theme"}]},
+                  answer={"stop_reason": "end_turn", "text": "no split"})
+    held = {"THEME_MODEL": {"model": OLD, "since": "2026-09-29T22:08:00+00:00",
+                            "error": "refused", "candidate": NEW}}
+
+    def respond(kw):
+        if "split" in json.dumps(kw["messages"]):
+            raise _Http(529, "overloaded_error")
+        return _Resp([_Block("text", text="AI Networking")])
+    audit, tg, _fake, cache = _replay_refresh(
+        monkeypatch, tmp_path, respond,
+        resolved={"opus": "claude-opus-5-5", "sonnet": NEW, "haiku": "claude-haiku-4-5-20251001"},
+        holds=held)
+    _run(mr.refresh_model_resolution())
+    assert read_cache(cache)["role_holds"]["THEME_MODEL"]["model"] == OLD
+    assert "model_role_hold_released" not in _events(audit)
+
+
 def test_rate_limits_are_unjudged_never_a_hold(monkeypatch, tmp_path):
     from shared.model_resolver import read_cache
     _theme_and_grade_samples(tmp_path)
