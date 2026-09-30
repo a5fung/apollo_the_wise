@@ -243,7 +243,11 @@ EVENING_BRIEF_SEND_FAILED = "evening_brief_send_failed"
 # ── #501 Tier-1 (2026-09-10): the silent-failure taxonomy's money-path safety nets ──
 # All three names contain "error" ON PURPOSE: `_check_nightly_silent_errors`'s `%error%`
 # sweep and `show errors` pick them up with no extra wiring (the RED-3b / F5 lesson —
-# an audit-only `*_failed` event is swept WEEKLY, i.e. surfaces a week late).
+# an audit-only `*_failed` event was swept only WEEKLY, i.e. surfaced a week late).
+# ⚠ #635 F5 (2026-09-30): the nightly sweep now ALSO counts every `*_failed` event that has
+# no page of its own (`scheduler.NIGHTLY_SWEEP_FAILED_ALLOWLIST` lists the ones that do), so
+# a `_failed` name is no longer a silent one. `_error` is still the preferred spelling for a
+# NEW audit-only event: its summary is shown in the digest, a `_failed` one is only counted.
 #
 # F1 — ANY audit_wrap'd job whose exception reaches `core.job_audit.audit_run` (it has no
 # handler of its own — the stuck-fill / stop-ack naked-position watchdogs were the worst
