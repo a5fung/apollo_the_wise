@@ -1,0 +1,8 @@
+scored themes: 79  with stored rs_avg: 79  without (NULL rs_avg): 0
+|comp - rs_avg|: max 13.45  median 0.040  >1.0: 22  >0.5: 23
+worst 5: [(13.45, 'Precious Metals Complex Rebound'), (12.69, 'Space Economy: Satellite Communications '), (10.06, 'Bitcoin Mining Stocks Rotation Reversal'), (7.72, 'Emerging AI Compute & Cloud Infrastructu'), (5.78, 'AI Data Center High-Speed Interconnect &')]
+rank(comp) vs rank(rs_avg) exact-equal: 30 of 79  max |rank diff|: 15
+rank(comp) vs rank(stored score) exact-equal: 29  max |rank diff|: 13
+themes where len(tickers) != n_scored (member lacks RS row): 5 [('Identity & Access Management Security Software', 3, 2), ('Enterprise HR & Workforce Management SaaS', 4, 3), ('Marketing & Digital Presence SaaS Platforms', 4, 3), ('Energy Supply Disruption: Middle East Geopolitical Risk', 14, 13), ('Precious Metals Complex Rebound', 28, 27)]
+non-Retired non-Fading rows with NULL pct_above_20sma: 7 of 79
+Fading rows: rs_avg NULL count: 21 of 43 ; breadth NULL: 0

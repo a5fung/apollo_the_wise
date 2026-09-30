@@ -1,0 +1,275 @@
+====================================================================================================
+0. DATA-DATE CHECK (get_rs_for_tickers -> _resolve_score_date keeps the requested date only if the run is complete)
+   score-run row counts on the 20 theme dates: min=2363 median=2394.0 max=2413; dates below half the median (would fall back): none
+   theme dates with no mi_stock_scores run: none
+====================================================================================================
+1. POPULATION (stated before any result)
+   dates: 20  (2026-09-01 .. 2026-09-29);  non-Retired rows: 2285;  Retired rows excluded: 212
+   themes per date: min=103 median=116.0 max=122
+   S1 row kinds (does the trim feed the stored score?):
+      engine_fed                  1675   (73.3%)
+      fixed_fading_branch          468   (20.5%)
+      fixed_shadow_plainmean       125   (5.5%)
+      fixed_zero_momentum           17   (0.7%)
+   stages: Fading=874, Mainstream=756, Nascent=544, Accelerating=111
+   sources: live=2160, shadow_promoted=125
+   engine_fed rows: 1675; member set reproduces the stored rs_avg exactly (|diff|<=0.051): 1641 (98.0%); UNVERIFIED: 34
+   match label: iii_stored_strong=1425, v_prev_inter_strong=161, vi_prev_strong=53, UNVERIFIED=34, iv_stored_any=2
+   sanity, implied news = stored_score - rs_avg/2 on verified live rows: min=-0.05 max=30.05; rounded histogram {0: 5, 30: 1636}
+   member-count distribution (number of themes), three bases:
+      basis                                               1      2      3      4      5   6-10  11-20    21+   total
+      S2  stored members WITH same-date RS data (non-Fading)      0    113    394    259    187    310    126     22    1411
+      S1  engine scoring set size (engine_fed)            2    160    517    274    165    341    188     28    1675
+      ALL stored members (all non-Retired rows)           0    335    558    402    247    449    238     56    2285
+   themes with <3 members: S2 basis (with data) 113/1411; S1 scoring set 162/1675; stored roster (all rows) 335/2285
+      -> at <3 members the trim is a no-op (plain mean), so arms A=B=C for those themes.
+   S2 excluded because Fading: 874; non-Fading with zero members-with-data: 0
+   trim-relevant sizes (n=3,4,5 = where the drop is 33%/25%/20%): S2 share of themes with n_data in 3..5 = 840/1411; S1 = 956/1675
+====================================================================================================
+2. WHAT THE ONE-SIDED TRIM DOES TO THE NUMBER (RS points; A-B = inflation vs plain mean; C-B = what a symmetric trim does)
+   dropped by the live rule: n=3:1(33%) n=4:1(25%) n=5:1(20%) n=6:2(33%) n=8:2(25%) n=10:2(20%) n=11-14:2 n=15-19:3 n=20+:4+
+   S2 (/theme comp, all members with data)
+           n  themes  mean A-B  max A-B  mean C-B  mean |A-C|
+           2     113      0.00     0.00      0.00        0.00
+           3     394      6.03    22.85      1.75        4.28
+           4     259      5.16    16.83      1.64        3.52
+           5     187      4.31    12.43      0.98        3.33
+        6-10     310      6.01    18.64      1.96        4.05
+       11-20     126      4.41     9.93      1.49        2.93
+         21+      22      6.25    10.21      2.03        4.22
+         ALL    1411      5.01    22.85      1.52        3.50
+   S1 (engine momentum, strong members)
+           n  themes  mean A-B  max A-B  mean C-B  mean |A-C|
+           1       2      0.00     0.00      0.00        0.00
+           2     160      0.00     0.00      0.00        0.00
+           3     517      5.02    15.57      0.91        4.11
+           4     274      3.83    10.62      0.24        3.59
+           5     165      3.33     7.50      0.44        2.90
+        6-10     341      4.66    10.62      0.87        3.79
+       11-20     188      3.38     6.15      0.32        3.07
+         21+      28      3.86     6.33      1.07        2.80
+         ALL    1675      3.90    15.57      0.59        3.30
+   Definition gap: /theme comp (all members, arm A) minus the SAME night's stored rs_avg (strong members, arm A), verified rows: n=1241 mean=-1.29 median=-0.00 min=-31.35 max=+7.00
+      (/theme's delta = comp(tonight) - prior night's stored rs_avg, briefing.py:_compute_scored_themes; this is the built-in offset in that delta.)
+====================================================================================================
+3. S1-ALL  (PRIMARY): stored mi_themes.score, all non-Retired rows; trim component swapped, news + fixed rows held. Dashboard-style ranking.
+   date          n |          Spearman |   top10 overlap |  movers>=3 places | tied-A
+                   |      A-B      A-C |     A-B     A-C |      A-B      A-C |  names
+   2026-09-01  110 |   0.9911   0.9922 |       7       9 |       38       33 |     32
+   2026-09-02  116 |   0.9886   0.9940 |       8       9 |       43       34 |     32
+   2026-09-03  118 |   0.9793   0.9920 |       6      10 |       45       35 |     21
+   2026-09-04  117 |   0.9873   0.9907 |       8      10 |       44       49 |     36
+   2026-09-08  106 |   0.9774   0.9870 |       6       8 |       53       50 |     35
+   2026-09-09  103 |   0.9839   0.9876 |       8      10 |       48       47 |     29
+   2026-09-10  116 |   0.9871   0.9918 |       8      10 |       44       41 |     39
+   2026-09-11  118 |   0.9830   0.9913 |       8      10 |       48       46 |     33
+   2026-09-14  119 |   0.9882   0.9910 |       9       9 |       45       55 |     28
+   2026-09-15  114 |   0.9872   0.9916 |       8       9 |       52       35 |     26
+   2026-09-16  117 |   0.9851   0.9926 |       7       8 |       54       37 |     34
+   2026-09-17  118 |   0.9833   0.9952 |       7       9 |       52       39 |     36
+   2026-09-18  110 |   0.9789   0.9928 |       6       8 |       50       46 |     33
+   2026-09-21  113 |   0.9744   0.9896 |       5       9 |       56       56 |     29
+   2026-09-22  109 |   0.9853   0.9887 |       5       9 |       54       45 |     33
+   2026-09-23  115 |   0.9850   0.9868 |       6      10 |       61       52 |     39
+   2026-09-24  109 |   0.9810   0.9818 |       6       9 |       56       47 |     33
+   2026-09-25  117 |   0.9843   0.9865 |       7      10 |       58       50 |     25
+   2026-09-28  118 |   0.9853   0.9879 |       8       9 |       58       56 |     42
+   2026-09-29  122 |   0.9819   0.9895 |       7       9 |       57       55 |     34
+   MEAN        114 |   0.9839   0.9900 |     7.0     9.2 |     50.8     45.4 |   32.5
+   MIN             |   0.9744   0.9818 |       5       8 |       38       33 |
+   TOTAL      2285 |                   |                 |     1016      908 | share of theme-days moving >=3: A-B 44.5%  A-C 39.7%
+----------------------------------------------------------------------------------------------------
+   10 biggest movers S1-ALL, A -> B (plain mean)
+   d rank date        rankA->rankX       A       X  stored usedS1 dataS2  stage       src      name
+       36 2026-09-03      6->42      78.80   71.02       3      3      3  Mainstream  live     Cloud Data Storage & Analytics Infrastructure
+       33 2026-09-08      5->38      78.60   70.92       5      3      5  Mainstream  live     Marketing & Digital Presence SaaS Platforms
+       32 2026-09-03      2->34      79.70   72.39       3      3      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       32 2026-09-21     15->47      78.10   71.22       3      3      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       28 2026-09-09      4->32      79.00   72.03       3      3      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       26 2026-09-04     14->40      77.00   71.06       4      3      4  Mainstream  live     Cloud Application Software Rotation (Oversold Turning Up)
+       26 2026-09-11      6->32      79.50   71.82       3      3      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       26 2026-09-15     16->42      77.40   70.38       3      3      3  Acceleratinglive     Cloud Application Software Rotation (Oversold Turning Up)
+       25 2026-09-18      3->28      79.30   74.07       3      3      3  Mainstream  live     Consumer PC & Gaming Hardware Refresh Cycle
+       24 2026-09-02     10->34      79.00   73.78       3      3      3  Mainstream  live     Altcoin & Diversified Digital-Asset Infrastructure Second Wave
+----------------------------------------------------------------------------------------------------
+   10 biggest movers S1-ALL, A -> C (symmetric trim)
+   d rank date        rankA->rankX       A       X  stored usedS1 dataS2  stage       src      name
+       32 2026-09-24     46->78      71.90   64.03       3      3      3  Fading      live     Enterprise Unstructured Data Storage Infrastructure
+       30 2026-09-25     53->83      71.60   63.37       3      3      3  Fading      live     Enterprise Unstructured Data Storage Infrastructure
+       27 2026-09-28     62->89      70.70   61.58       3      3      3  Fading      live     Enterprise Unstructured Data Storage Infrastructure
+       27 2026-09-29     37->64      74.60   69.38       3      3      3  Fading      live     Enterprise Unstructured Data Storage Infrastructure
+       25 2026-09-11     52->77      70.60   62.22       4      3      4  Fading      live     Molecular & Genomic Diagnostic Testing
+       23 2026-09-04     49->72      71.80   64.05       3      3      3  Nascent     live     Molecular & Genomic Diagnostic Testing
+       21 2026-09-23     51->72      71.40   65.58       3      3      3  Fading      live     Peptide & Hormone Therapies for Metabolic & Endocrine Disorders
+       20 2026-09-03     38->58      73.50   68.28       3      3      3  Nascent     live     Renewable & Specialty Fuels Chemical Producers
+       20 2026-09-23     67->87      68.50   61.10       8      6      8  Mainstream  live     Defense Electronics & Aerospace Subsystem Suppliers
+       18 2026-09-03     52->70      70.90   63.33       3      3      3  Nascent     live     Molecular & Genomic Diagnostic Testing
+====================================================================================================
+4. S1-FED  (sensitivity): only rows whose stored score the trim feeds (fixed rows removed from the ranking)
+   date          n |          Spearman |   top10 overlap |  movers>=3 places | tied-A
+                   |      A-B      A-C |     A-B     A-C |      A-B      A-C |  names
+   2026-09-01   76 |   0.9766   0.9793 |       8       9 |       32       31 |     27
+   2026-09-02   74 |   0.9637   0.9818 |       8      10 |       36       29 |     25
+   2026-09-03   81 |   0.9422   0.9788 |       6       9 |       41       31 |     16
+   2026-09-04   82 |   0.9715   0.9751 |       7       8 |       39       44 |     32
+   2026-09-08   81 |   0.9570   0.9757 |       6       8 |       45       43 |     33
+   2026-09-09   80 |   0.9667   0.9767 |       8      10 |       46       44 |     29
+   2026-09-10   79 |   0.9644   0.9784 |       8      10 |       38       36 |     31
+   2026-09-11   79 |   0.9490   0.9737 |       8      10 |       46       43 |     29
+   2026-09-14   83 |   0.9651   0.9735 |       8       8 |       45       55 |     24
+   2026-09-15   80 |   0.9656   0.9770 |       8       9 |       50       34 |     22
+   2026-09-16   81 |   0.9552   0.9789 |       7      10 |       53       37 |     29
+   2026-09-17   85 |   0.9558   0.9889 |       6      10 |       50       37 |     32
+   2026-09-18   86 |   0.9560   0.9853 |       6       8 |       49       45 |     31
+   2026-09-21   86 |   0.9487   0.9814 |       5       9 |       52       51 |     27
+   2026-09-22   87 |   0.9739   0.9782 |       6       9 |       51       43 |     31
+   2026-09-23   89 |   0.9715   0.9764 |       6      10 |       58       50 |     35
+   2026-09-24   87 |   0.9645   0.9667 |       5       9 |       53       44 |     31
+   2026-09-25   88 |   0.9713   0.9764 |       8       9 |       47       46 |     23
+   2026-09-28   93 |   0.9700   0.9757 |       8       9 |       58       54 |     37
+   2026-09-29   98 |   0.9652   0.9798 |       7       9 |       57       55 |     30
+   MEAN         84 |   0.9627   0.9779 |     7.0     9.2 |     47.3     42.6 |   28.7
+   MIN             |   0.9422   0.9667 |       5       8 |       32       29 |
+   TOTAL      1675 |                   |                 |      946      852 | share of theme-days moving >=3: A-B 56.5%  A-C 50.9%
+----------------------------------------------------------------------------------------------------
+   10 biggest movers S1-FED, A -> B
+   d rank date        rankA->rankX       A       X  stored usedS1 dataS2  stage       src      name
+       35 2026-09-03      5->40      78.80   71.02       3      3      3  Mainstream  live     Cloud Data Storage & Analytics Infrastructure
+       32 2026-09-08      5->37      78.60   70.92       5      3      5  Mainstream  live     Marketing & Digital Presence SaaS Platforms
+       31 2026-09-03      1->32      79.70   72.39       3      3      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       31 2026-09-21     15->46      78.10   71.22       3      3      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       28 2026-09-09      4->32      79.00   72.03       3      3      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       25 2026-09-15     16->41      77.40   70.38       3      3      3  Acceleratinglive     Cloud Application Software Rotation (Oversold Turning Up)
+       25 2026-09-18      3->28      79.30   74.07       3      3      3  Mainstream  live     Consumer PC & Gaming Hardware Refresh Cycle
+       24 2026-09-11      3->27      79.50   71.82       3      3      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       23 2026-09-03     12->35      77.10   72.15       4      4      4  Mainstream  live     Metallurgical & Thermal Coal Mining Rebound
+       23 2026-09-04      9->32      77.00   71.06       4      3      4  Mainstream  live     Cloud Application Software Rotation (Oversold Turning Up)
+----------------------------------------------------------------------------------------------------
+   10 biggest movers S1-FED, A -> C
+   d rank date        rankA->rankX       A       X  stored usedS1 dataS2  stage       src      name
+       31 2026-09-24     44->75      71.90   64.03       3      3      3  Fading      live     Enterprise Unstructured Data Storage Infrastructure
+       27 2026-09-25     50->77      71.60   63.37       3      3      3  Fading      live     Enterprise Unstructured Data Storage Infrastructure
+       27 2026-09-28     60->87      70.70   61.58       3      3      3  Fading      live     Enterprise Unstructured Data Storage Infrastructure
+       27 2026-09-29     37->64      74.60   69.38       3      3      3  Fading      live     Enterprise Unstructured Data Storage Infrastructure
+       24 2026-09-11     47->71      70.60   62.22       4      3      4  Fading      live     Molecular & Genomic Diagnostic Testing
+       23 2026-09-04     41->64      71.80   64.05       3      3      3  Nascent     live     Molecular & Genomic Diagnostic Testing
+       19 2026-09-23     51->70      71.40   65.58       3      3      3  Fading      live     Peptide & Hormone Therapies for Metabolic & Endocrine Disorders
+       18 2026-09-03     36->54      73.50   68.28       3      3      3  Nascent     live     Renewable & Specialty Fuels Chemical Producers
+       18 2026-09-16     39->57      73.10   66.97       3      3      3  Mainstream  live     Molecular & Genomic Diagnostic Testing
+       18 2026-09-23     66->84      68.50   61.10       8      6      8  Mainstream  live     Defense Electronics & Aerospace Subsystem Suppliers
+====================================================================================================
+4b. S1-FED-VERIFIED (sensitivity): as 4 but only rows whose reconstructed member set reproduces the stored rs_avg
+   date          n |          Spearman |   top10 overlap |  movers>=3 places | tied-A
+                   |      A-B      A-C |     A-B     A-C |      A-B      A-C |  names
+   2026-09-01   74 |   0.9762   0.9816 |       8       9 |       32       30 |     27
+   2026-09-02   74 |   0.9637   0.9818 |       8      10 |       36       29 |     25
+   2026-09-03   81 |   0.9422   0.9788 |       6       9 |       41       31 |     16
+   2026-09-04   80 |   0.9700   0.9741 |       7       8 |       36       43 |     28
+   2026-09-08   80 |   0.9554   0.9748 |       6       8 |       45       43 |     33
+   2026-09-09   77 |   0.9660   0.9766 |       7       9 |       43       42 |     26
+   2026-09-10   79 |   0.9644   0.9784 |       8      10 |       38       36 |     31
+   2026-09-11   77 |   0.9495   0.9722 |       8      10 |       46       43 |     29
+   2026-09-14   80 |   0.9633   0.9713 |       8       8 |       42       52 |     22
+   2026-09-15   78 |   0.9642   0.9755 |       8       9 |       49       33 |     20
+   2026-09-16   75 |   0.9503   0.9780 |       7      10 |       46       34 |     27
+   2026-09-17   81 |   0.9497   0.9876 |       6       8 |       49       34 |     30
+   2026-09-18   82 |   0.9518   0.9848 |       5       8 |       45       40 |     25
+   2026-09-21   85 |   0.9469   0.9809 |       5       9 |       52       50 |     27
+   2026-09-22   87 |   0.9739   0.9782 |       6       9 |       51       43 |     31
+   2026-09-23   89 |   0.9715   0.9764 |       6      10 |       58       50 |     35
+   2026-09-24   86 |   0.9633   0.9656 |       5       9 |       53       44 |     31
+   2026-09-25   88 |   0.9713   0.9764 |       8       9 |       47       46 |     23
+   2026-09-28   92 |   0.9707   0.9756 |       8       9 |       57       53 |     35
+   2026-09-29   96 |   0.9629   0.9786 |       7       9 |       57       55 |     30
+   MEAN         82 |   0.9614   0.9773 |     6.8     9.0 |     46.1     41.5 |   27.6
+   MIN             |   0.9422   0.9656 |       5       8 |       32       29 |
+   TOTAL      1641 |                   |                 |      923      831 | share of theme-days moving >=3: A-B 56.2%  A-C 50.6%
+====================================================================================================
+5. S2  (SECONDARY): the /theme ranking -- comp over ALL stored members with data, non-Fading, non-Retired
+   date          n |          Spearman |   top10 overlap |  movers>=3 places | tied-A
+                   |      A-B      A-C |     A-B     A-C |      A-B      A-C |  names
+   2026-09-01   78 |   0.9548   0.9897 |       9       8 |       42       28 |      0
+   2026-09-02   83 |   0.9628   0.9788 |       9      10 |       47       42 |      2
+   2026-09-03   85 |   0.9463   0.9838 |       7      10 |       45       34 |      2
+   2026-09-04   84 |   0.9324   0.9718 |       6       7 |       57       47 |      2
+   2026-09-08   70 |   0.9336   0.9764 |       5       6 |       39       34 |      0
+   2026-09-09   61 |   0.9169   0.9806 |       7       9 |       30       23 |      2
+   2026-09-10   64 |   0.9506   0.9862 |       8      10 |       27       24 |      3
+   2026-09-11   55 |   0.9281   0.9738 |       6       8 |       31       20 |      2
+   2026-09-14   54 |   0.9672   0.9828 |       8       9 |       25       22 |      2
+   2026-09-15   62 |   0.9620   0.9842 |       9      10 |       30       20 |      0
+   2026-09-16   66 |   0.9377   0.9885 |       7      10 |       40       21 |      6
+   2026-09-17   71 |   0.9299   0.9826 |       7       9 |       45       26 |      2
+   2026-09-18   59 |   0.9094   0.9786 |       7      10 |       28       26 |      2
+   2026-09-21   70 |   0.9279   0.9789 |       6       9 |       41       33 |      4
+   2026-09-22   70 |   0.9426   0.9784 |       7      10 |       46       29 |      6
+   2026-09-23   74 |   0.9564   0.9859 |       5       9 |       42       25 |      4
+   2026-09-24   70 |   0.9289   0.9878 |       5       9 |       44       23 |      2
+   2026-09-25   76 |   0.9131   0.9739 |       7       9 |       47       33 |      2
+   2026-09-28   80 |   0.9371   0.9887 |       6       9 |       54       35 |      4
+   2026-09-29   79 |   0.9537   0.9925 |       7      10 |       47       25 |      2
+   MEAN         71 |   0.9396   0.9822 |     6.9     9.1 |     40.4     28.5 |    2.5
+   MIN             |   0.9094   0.9718 |       5       6 |       25       20 |
+   TOTAL      1411 |                   |                 |      807      570 | share of theme-days moving >=3: A-B 57.2%  A-C 40.4%
+----------------------------------------------------------------------------------------------------
+   10 biggest movers S2, A -> B
+   d rank date        rankA->rankX       A       X  stored usedS1 dataS2  stage       src      name
+       38 2026-09-04      1->39      99.45   79.97       3      2      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       38 2026-09-29     22->60      93.15   70.43       3      2      3  Mainstream  live     Bitcoin Holding & Trading Proxy Equities
+       37 2026-09-04      5->42      95.70   78.27       3      2      3  Mainstream  live     Cloud Data Storage & Analytics Infrastructure
+       37 2026-09-25     19->56      93.50   74.40       3      2      3  Mainstream  live     Bitcoin Holding & Trading Proxy Equities
+       36 2026-09-28     24->60      92.20   70.17       3      2      3  Mainstream  live     Bitcoin Holding & Trading Proxy Equities
+       32 2026-09-08      1->33      98.80   80.00       3      2      3  Mainstream  live     Software Development & DevOps Collaboration Platforms
+       31 2026-09-03      5->36      97.70   82.13       3      3      3  Mainstream  live     Cloud Data Storage & Analytics Infrastructure
+       30 2026-09-17     15->45      94.30   75.63       3      2      3  Nascent     live     Identity & Access Management Security Software
+       29 2026-09-09      9->38      94.40   75.53       3      2      3  Mainstream  live     Cloud Data Storage & Analytics Infrastructure
+       29 2026-09-28      9->38      96.13   79.30       4      3      4  Mainstream  live     Bitcoin Treasury & Crypto Proxy Equities Correlation Basket
+----------------------------------------------------------------------------------------------------
+   10 biggest movers S2, A -> C
+   d rank date        rankA->rankX       A       X  stored usedS1 dataS2  stage       src      name
+       20 2026-09-04     34->54      86.45   74.80       3      3      3  Nascent     live     Renewable & Specialty Fuels Chemical Producers
+       18 2026-09-04     46->64      83.60   68.10       3      3      3  Nascent     live     Molecular & Genomic Diagnostic Testing
+       16 2026-09-03     44->60      81.85   66.70       3      3      3  Nascent     live     Molecular & Genomic Diagnostic Testing
+       15 2026-09-02     61->76      76.40   56.80       3      0      3  Nascent     shadow_  Molecular & Genomic Diagnostic Testing
+       15 2026-09-03     35->50      87.05   76.60       3      3      3  Nascent     live     Renewable & Specialty Fuels Chemical Producers
+       15 2026-09-08     31->46      85.95   73.00       3      3      3  Nascent     live     Molecular & Genomic Diagnostic Testing
+       15 2026-09-23     54->69      76.10   54.60       3      0      3  Nascent     shadow_  Gas-Fired Backup Generator & On-Site Power Equipment Makers
+       15 2026-09-25     38->53      85.50   75.60       3      3      3  Nascent     live     Autonomous Vehicle & ADAS Technology Enablers
+       14 2026-09-02     22->36      91.40   83.90       3      3      3  Mainstream  live     Life Sciences & Healthcare Data/CRM Platforms
+       14 2026-09-04     41->55      84.25   74.10       3      3      3  Mainstream  live     Video & Streaming Content Distribution Rebound
+====================================================================================================
+6. DIRECTION OF THE MOVES (S2, A -> B): do small baskets gain rank from the one-sided trim?  (rank_A - rank_B > 0 means A ranks the theme HIGHER than plain mean does)
+       n_data theme-days   mean places A ranks higher than B  share ranked higher by A  share lower
+            2        113                               -6.95                      0.0%        86.7%
+            3        394                                2.20                     45.7%        43.9%
+            4        259                                0.40                     30.1%        51.0%
+            5        187                               -1.79                     24.1%        61.5%
+         6-10        310                                1.04                     48.4%        36.5%
+        11-20        126                               -1.40                     29.4%        57.1%
+          21+         22                                0.18                     45.5%        45.5%
+====================================================================================================
+7. EXTRA (post-hoc, not the pre-registered metric): is the mover count an artefact of tie-breaking?
+   The live score is rounded to 0.1, so many themes tie in A; arms B/C computed unrounded break those ties by value, A breaks them by name.
+   (i) X rounded to 0.1 like the live engine would;  (ii) movers measured on AVERAGE ranks (ties share a rank).  mean movers>=3 per date:
+      population     as reported (A-B / A-C)   (i) rounded (A-B / A-C)   (ii) avg-rank (A-B / A-C)
+      S1-ALL               50.8 /    45.4          51.3 /    45.6           48.7 /    43.7
+      S1-FED               47.3 /    42.6          47.9 /    42.9           45.2 /    40.9
+====================================================================================================
+8. EXTRA (post-hoc proxy for stage-transition exposure; NOT a replay of the stage logic)
+   Stage flips key on smooth_delta = score - avg(recent scores) with thresholds +8 / -8 (recovery +5), theme_engine.py:3878-3887.
+   A constant inflation cancels in a delta; only the NIGHT-TO-NIGHT CHANGE of the bias 0.5*(A-B) leaks into it. Score points, same theme on consecutive population dates, verified member sets:
+      consecutive-night pairs: 1410
+      |night-to-night change of trim bias|  p50=0.47 p90=1.78 p99=5.88 max=7.78;  share >=3 pts: 3.7%  >=5: 1.5%  >=8: 0.0%
+      |night-to-night change of the stored score| p50=1.10 p90=3.90 p99=9.80 max=32.60
+====================================================================================================
+9. EXTRA (post-hoc): S1 restricted to the dashboard's DEFAULT stage filter (Accelerating + Mainstream), dashboard/theme_rank_evolution.py:96,104
+   dates=20  themes/date mean=43.4 (min 17, max 56);  of these, fixed (not trim-fed) rows: 0
+   Spearman   A-B mean 0.9329 (min 0.8171)   A-C mean 0.9742 (min 0.9191)
+   top10 overlap  A-B mean 7.5 (min 5)   A-C mean 8.9 (min 7)
+   movers>=3 per date  A-B mean 18.6   A-C mean 12.7   (share of theme-days: A-B 42.8%  A-C 29.3%)
+====================================================================================================
+10. EXTRA (post-hoc): what occupies the top-10 of the STORED score (the dashboard's default metric) -- shadow_promoted rows are a plain mean 0-100 with no news; live rows are rs/2 + news(0..30) so cap at 80
+   max stored score among trim-fed live rows: 80.0;  shadow_promoted rows: n=125, score min/median/max = 5.4/66.0/97.7; share above 80: 21.6%
+   per date, of the 10 highest stored scores: shadow_promoted rows mean 1.70 (max 7, dates with >=1: 12/20); Fading-branch rows mean 0.00 (max 0)
+====================================================================================================
+END

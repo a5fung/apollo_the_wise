@@ -1,0 +1,190 @@
+generated_at: 2026-09-29T23:30:02.089013+00:00 | score_date: 2026-09-29 | window_weeks: 24
+theme rows: 8270 | stock_scores rows: 1381
+theme_date range: 2026-04-14 -> 2026-09-29 | distinct dates: 118
+columns: ['theme_date', 'name', 'stage', 'rs_avg', 'pct_above_20sma', 'tickers', 'days_active', 'consecutive_accelerating', 'score', 'description', 'e_code', 'n_members']
+
+== latest theme_date 2026-09-29: 125 rows; by stage: {'Nascent': 28, 'Mainstream': 49, 'Fading': 43, 'Accelerating': 2, 'Retired': 3}
+   NULL pct_above_20sma: total=10  | non-Retired=7 of 122
+   NULL rs_avg: total=24  | non-Retired=21 of 122
+   NULL score: total=0  | non-Retired=0 of 122
+   NULL e_code: total=0  | non-Retired=0 of 122
+   NULL pct_above_20sma by stage: {'Nascent': np.int64(7), 'Retired': np.int64(3)}
+   pct_above_20sma value range (stored 0-1): 0.0 1.0
+
+== NULL pct_above_20sma over all snapshot rows, non-Retired, by date (last 12 dates):
+            rows  null_pct
+theme_date                
+2026-09-14   119        12
+2026-09-15   114         8
+2026-09-16   117        11
+2026-09-17   118        13
+2026-09-18   110         5
+2026-09-21   113        10
+2026-09-22   109         4
+2026-09-23   115         9
+2026-09-24   109         7
+2026-09-25   117        11
+2026-09-28   118         8
+2026-09-29   122         7
+
+== Grid latest ISO week 2026-09-28: 133 rows; theme_date of those rows: {datetime.date(2026, 9, 29): 125, datetime.date(2026, 9, 28): 8}
+   stages in that week: {'Nascent': 28, 'Mainstream': 49, 'Fading': 43, 'Accelerating': 2, 'Retired': 11}
+   default stage filter keeps 122 (Retired dropped: 11). NOTE Grid ranks span the UNFILTERED universe (adapter rank) unless dedup on.
+
+== Ecosystems rule: 92 scored themes (latest row per name in 7d, non-Retired, non-Fading, with >=1 scored member)
+   row date mix of those latest rows: {datetime.date(2026, 9, 29): 79, datetime.date(2026, 9, 23): 6, datetime.date(2026, 9, 22): 1, datetime.date(2026, 9, 25): 4, datetime.date(2026, 9, 24): 1, datetime.date(2026, 9, 28): 1}
+   themes whose n_scored < n_members (snapshot stock_scores slice/coverage gap): 5
+
+== TOP 15 by the dashboard's DEFAULT (Ecosystems) rule, with the same themes' rank under stored rs_avg / stored score
+ eco_rank                                                        name      stage      comp  rs_avg  score   pct  n_members  n_scored  rank_rs_avg  rank_score
+        1             Digital Dollar & Crypto Payments Infrastructure    Nascent 99.950000   100.0   80.0 1.000          3         3          1.0         1.0
+        2        Liquid Biopsy & Molecular Cancer Diagnostics Testing    Nascent 99.500000    99.5   79.8 1.000          3         3          2.0         2.0
+        3               Life Sciences & Healthcare Data/CRM Platforms Mainstream 98.100000    98.1   79.0 1.000          3         3          4.0         4.0
+        4                     Data Backup & Cyber Resiliency Software    Nascent 97.650000    97.7   78.8 1.000          3         3          5.0         5.0
+        5            Cardiac & Bioelectric Ablation Device Innovators Mainstream 97.600000    97.6   78.8 0.500          2         2          6.0         5.0
+        6        Cloud Contact Center & CCaaS Communication Platforms    Nascent 97.566667    97.6   78.8 0.750          4         4          6.0         5.0
+        7                   Corporate Digital Asset Treasury Vehicles    Nascent 97.500000    99.0   79.5 1.000          4         4          3.0         3.0
+        8              Identity & Access Management Security Software Mainstream 97.500000    97.5   78.8 1.000          3         2          8.0         5.0
+        9          Precision Timing & Motion Control Component Makers Mainstream 97.450000    97.4   78.7 1.000          3         3         10.0        10.0
+       10 Bitcoin Treasury & Crypto Proxy Equities Correlation Basket Mainstream 97.250000    97.2   78.6 0.667          3         3         11.0        11.0
+       11                          Network Security & Zero-Trust Edge Mainstream 96.741667    96.7   78.4 0.867         15        15         12.0        12.0
+       12                 Emerging Medical Device Innovators Breakout Mainstream 96.700000    96.7   78.3 1.000          3         3         12.0        13.0
+       13   Cloud Application Delivery & Observability Infrastructure    Nascent 96.133333    97.5   78.8 1.000          4         4          8.0         5.0
+       14                             Crude & Product Tanker Shipping Mainstream 95.980000    96.0   78.0 0.857          7         7         14.0        14.0
+       15                   AI-Driven Diagnostics & Imaging Re-Rating Mainstream 95.800000    95.8   77.9 0.556          9         9         15.0        15.0
+
+top10 comp vs rs_avg overlap: 9 | identical order: False
+top10 comp vs stored score overlap: 9 | identical order: False
+spearman comp~rs_avg: 0.975 | comp~score: 0.981
+
+== Grid (rs_avg, latest ISO week, N/A/M) vs Ecosystems (comp): membership: {'both': 79, 'right_only': 13}
+   spearman(week_rank, eco_rank) over shared: 0.992
+   Grid top10: ['Digital Dollar & Crypto Payments Infrastructure', 'Liquid Biopsy & Molecular Cancer Diagnostics Testing', 'Life Sciences & Healthcare Data/CRM Platforms', 'Data Backup & Cyber Resiliency Software', 'Cloud Contact Center & CCaaS Communication Platforms', 'Cardiac & Bioelectric Ablation Device Innovators', 'Identity & Access Management Security Software', 'Cloud Application Delivery & Observability Infrastructure', 'Precision Timing & Motion Control Component Makers', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket']
+   Eco  top10: ['Digital Dollar & Crypto Payments Infrastructure', 'Liquid Biopsy & Molecular Cancer Diagnostics Testing', 'Life Sciences & Healthcare Data/CRM Platforms', 'Data Backup & Cyber Resiliency Software', 'Cardiac & Bioelectric Ablation Device Innovators', 'Cloud Contact Center & CCaaS Communication Platforms', 'Corporate Digital Asset Treasury Vehicles', 'Identity & Access Management Security Software', 'Precision Timing & Motion Control Component Makers', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket']
+
+== breadth on the top-15 (Ecosystems rule): [('Digital Dollar & Crypto Paym', 1.0), ('Liquid Biopsy & Molecular Ca', 1.0), ('Life Sciences & Healthcare D', 1.0), ('Data Backup & Cyber Resilien', 1.0), ('Cardiac & Bioelectric Ablati', 0.5), ('Cloud Contact Center & CCaaS', 0.75), ('Corporate Digital Asset Trea', 1.0), ('Identity & Access Management', 1.0), ('Precision Timing & Motion Co', 1.0), ('Bitcoin Treasury & Crypto Pr', 0.67), ('Network Security & Zero-Trus', 0.87), ('Emerging Medical Device Inno', 1.0), ('Cloud Application Delivery &', 1.0), ('Crude & Product Tanker Shipp', 0.86), ('AI-Driven Diagnostics & Imag', 0.56)]
+
+== names whose NEWEST row (7d) is Retired yet still listed by the dashboard's filter-then-latest logic: 28
+    Appalachian Natural Gas Producers | shown row: 2026-09-28 Nascent
+    Commodity Chemicals & Polymer Producers Rebound | shown row: 2026-09-23 Fading
+    Corporate Digital Asset Treasury Vehicles | shown row: 2026-09-23 Nascent
+    Defensive Consumer Staples Rotation | shown row: 2026-09-25 Fading
+    Diversified Power Generation Capacity Expansion for AI Elect | shown row: 2026-09-25 Fading
+    Emerging Small-Cap Silver, Gold & Critical Mineral Miners | shown row: 2026-09-23 Nascent
+    Gas-Fired Backup Generator & On-Site Power Equipment Makers | shown row: 2026-09-23 Nascent
+    Global Reinsurance Underwriters | shown row: 2026-09-23 Nascent
+    Insurance Brokerage & Distribution Services | shown row: 2026-09-28 Fading
+    Investment Research & Financial Data Platforms | shown row: 2026-09-24 Fading
+    Molecular & Genomic Diagnostic Testing | shown row: 2026-09-22 Mainstream
+    Net Lease Commercial & Retail REITs | shown row: 2026-09-23 Fading
+    Newly Public Digital Trading & Brokerage Platforms | shown row: 2026-09-22 Fading
+    Onshore Oil & Gas E&P Recovery | shown row: 2026-09-24 Nascent
+    Optical Networking & Photonics Components for AI Data Center | shown row: 2026-09-23 Nascent
+    Petroleum Refiners & Marketers | shown row: 2026-09-24 Fading
+    Private Equity & Alternative Asset Management Platforms | shown row: 2026-09-22 Fading
+    RF & Analog Wireless Connectivity Semiconductor Makers | shown row: 2026-09-25 Mainstream
+    Rare Earth Elements Mining & Processing | shown row: 2026-09-25 Fading
+    Regulated Electric Utility Defensive Rotation | shown row: 2026-09-25 Fading
+    Regulated Natural Gas Distribution Utilities | shown row: 2026-09-25 Nascent
+    Renewable Power Generation Operators | shown row: 2026-09-24 Fading
+    Residential Rental REITs (Rate-Cut Cap-Rate Play) | shown row: 2026-09-23 Fading
+    Small Launch Vehicle & Space Platform Manufacturers | shown row: 2026-09-23 Nascent
+    Small Satellite & Space Services Rotation | shown row: 2026-09-25 Nascent
+    Trucking & Freight Carrier Rebound | shown row: 2026-09-28 Fading
+    Value Retail & Grocery Wholesale Trade-Down Basket | shown row: 2026-09-25 Nascent
+    Video & Streaming Content Distribution Rebound | shown row: 2026-09-23 Fading
+   of which would be in the Ecosystems scored list: 13
+== themes shown from a row OLDER than the latest theme_date (7d recency window): 28 | by stage: {'Fading': 15, 'Mainstream': 2, 'Nascent': 11}
+
+
+######## PART 2 ########
+dashboard Ecosystems list: 92 themes | corrected (Retired-after-latest) list: 79 themes | removed: 13
+ghost (Retired-newest) themes the dashboard ranks today, with their dashboard global rank:
+ eco_rank                                                          name      stage theme_date      comp  n_members
+        7                     Corporate Digital Asset Treasury Vehicles    Nascent 2026-09-23 97.500000          4
+       17                        Molecular & Genomic Diagnostic Testing Mainstream 2026-09-22 95.350000          3
+       28        RF & Analog Wireless Connectivity Semiconductor Makers Mainstream 2026-09-25 92.700000          3
+       38            Value Retail & Grocery Wholesale Trade-Down Basket    Nascent 2026-09-25 88.750000          3
+       48   Gas-Fired Backup Generator & On-Site Power Equipment Makers    Nascent 2026-09-23 83.600000          3
+       70                               Global Reinsurance Underwriters    Nascent 2026-09-23 73.100000          3
+       72 Optical Networking & Photonics Components for AI Data Centers    Nascent 2026-09-23 71.850000          3
+       78           Small Launch Vehicle & Space Platform Manufacturers    Nascent 2026-09-23 62.900000          3
+       81                                Onshore Oil & Gas E&P Recovery    Nascent 2026-09-24 58.066667          4
+       83                     Small Satellite & Space Services Rotation    Nascent 2026-09-25 55.225000          5
+       86     Emerging Small-Cap Silver, Gold & Critical Mineral Miners    Nascent 2026-09-23 39.700000          4
+       89                             Appalachian Natural Gas Producers    Nascent 2026-09-28 26.520000          7
+       91                  Regulated Natural Gas Distribution Utilities    Nascent 2026-09-25 23.975000          5
+
+Top-15 dashboard rank vs corrected rank:
+ eco_rank  fixed_rank                                                        name
+        1         1.0             Digital Dollar & Crypto Payments Infrastructure
+        2         2.0        Liquid Biopsy & Molecular Cancer Diagnostics Testing
+        3         3.0               Life Sciences & Healthcare Data/CRM Platforms
+        4         4.0                     Data Backup & Cyber Resiliency Software
+        5         5.0            Cardiac & Bioelectric Ablation Device Innovators
+        6         6.0        Cloud Contact Center & CCaaS Communication Platforms
+        7         NaN                   Corporate Digital Asset Treasury Vehicles
+        8         7.0              Identity & Access Management Security Software
+        9         8.0          Precision Timing & Motion Control Component Makers
+       10         9.0 Bitcoin Treasury & Crypto Proxy Equities Correlation Basket
+       11        10.0                          Network Security & Zero-Trust Edge
+       12        11.0                 Emerging Medical Device Innovators Breakout
+       13        12.0   Cloud Application Delivery & Observability Infrastructure
+       14        13.0                             Crude & Product Tanker Shipping
+       15        14.0                   AI-Driven Diagnostics & Imaging Re-Rating
+top10 same SET after correction: False | top10 same ORDER: False
+ghosts inside dashboard top-10: 1 | top-30: 3
+
+DEFAULT Grid 'Now' list (dedup=3, N/A/M/F, min_age 2, hide unranked): 92 themes; Fading inside it: 22
+Grid top-12 (Now rank, name, stage, rs_avg, members, breadth):
+  #  1 Liquid Biopsy & Molecular Cancer Diagnostics Testing       Nascent      rs_avg=99.5 n=3 pct=1.0
+  #  2 Life Sciences & Healthcare Data/CRM Platforms              Mainstream   rs_avg=98.1 n=3 pct=1.0
+  #  3 Data Backup & Cyber Resiliency Software                    Nascent      rs_avg=97.7 n=3 pct=1.0
+  #  4 Cloud Contact Center & CCaaS Communication Platforms       Nascent      rs_avg=97.6 n=4 pct=0.75
+  #  4 Cardiac & Bioelectric Ablation Device Innovators           Mainstream   rs_avg=97.6 n=2 pct=0.5
+  #  6 Identity & Access Management Security Software             Mainstream   rs_avg=97.5 n=3 pct=1.0
+  #  6 Cloud Application Delivery & Observability Infrastructure  Nascent      rs_avg=97.5 n=4 pct=1.0
+  #  8 Precision Timing & Motion Control Component Makers         Mainstream   rs_avg=97.4 n=3 pct=1.0
+  #  9 Bitcoin Treasury & Crypto Proxy Equities Correlation Baske Mainstream   rs_avg=97.2 n=3 pct=0.667
+  # 10 Network Security & Zero-Trust Edge                         Mainstream   rs_avg=96.7 n=15 pct=0.867
+  # 10 Emerging Medical Device Innovators Breakout                Mainstream   rs_avg=96.7 n=3 pct=1.0
+  # 12 Crude & Product Tanker Shipping                            Mainstream   rs_avg=96.0 n=7 pct=0.857
+Grid top10 vs corrected-/theme-rule top10: same set: False | overlap: 9 | same order: False
+Fading themes ranked <=30 on default Grid: [(29, 'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)'), (30, 'Consumer PC & Gaming Hardware Refresh Cycle')]
+
+
+######## PART 3 ########
+Retired rows on latest date: 3 | with non-empty tickers: 0
+/themes rule (latest theme_date only): 79 scored themes | dashboard Ecosystems: 92 | corrected latest-per-name: 79
+dashboard-only themes (not in /themes list): 13 | /themes-only themes: 0
+Top-12 side by side (dashboard global rank | /themes rank | name):
+    1 |   1 | Digital Dollar & Crypto Payments Infrastructure
+    2 |   2 | Liquid Biopsy & Molecular Cancer Diagnostics Testing
+    3 |   3 | Life Sciences & Healthcare Data/CRM Platforms
+    4 |   4 | Data Backup & Cyber Resiliency Software
+    5 |   5 | Cardiac & Bioelectric Ablation Device Innovators
+    6 |   6 | Cloud Contact Center & CCaaS Communication Platforms
+    7 |  -- | Corporate Digital Asset Treasury Vehicles
+    8 |   7 | Identity & Access Management Security Software
+    9 |   8 | Precision Timing & Motion Control Component Makers
+   10 |   9 | Bitcoin Treasury & Crypto Proxy Equities Correlation Basket
+   11 |  10 | Network Security & Zero-Trust Edge
+   12 |  11 | Emerging Medical Device Innovators Breakout
+top10 identical set: False | identical order: False
+relative order of shared themes identical: False
+shared themes whose rank NUMBER differs: 73 of 79 | max shift: 13
+rows of the dashboard list not dated on latest date: 13
+
+first differing positions among shared themes: [(57, 'Low-Cost & Regional Passenger Airl', 'AI Server Power & Signal-Integrity'), (58, 'AI Server Power & Signal-Integrity', 'Low-Cost & Regional Passenger Airl')] | count: 2
+all differing pairs are exact comp ties: True
+
+
+######## PART 4 ########
+NULL-breadth non-Retired rows, last 12 dates: 105 of 1381
+ by stage: {'Nascent': 103, 'Fading': 2}
+ by days_active (top): {1: 80, 2: 1, 3: 11, 5: 3, 6: 1, 7: 2, 9: 1, 11: 2, 15: 1, 28: 1, 30: 1, 31: 1}
+ score==rs_avg rows among NULL (different write path?): 55 of 105
+ score==rs_avg among NON-NULL breadth rows: 1 of 1276
+ top-20 (Ecosystems rule) with NULL breadth: 0
+ NULL rows with a later row: 98 | of those, next row has breadth: 57
+ render of NULL: Grid _format_value -> '' (theme_grid.py:77-78); Detail metric -> '—' (theme_detail.py:139-140)

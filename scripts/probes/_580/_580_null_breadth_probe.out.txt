@@ -1,0 +1,71 @@
+=== LATEST theme_date on prod: 2026-09-29 ===
+
+stage | rows | NULL breadth
+Accelerating|    2 |   0
+Fading      |   43 |   0
+Mainstream  |   49 |   0
+Nascent     |   28 |   7
+Retired     |    3 |   3
+
+NON-RETIRED: 122 rows, 7 with NULL pct_above_20sma
+
+=== NULL-breadth themes: breadth computed EXACTLY as the engine would, on score_date=2026-09-29 ===
+name | stage | source | members | first_seen | scored/members | breadth | < 0.40 ?
+Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery | Nascent | live | 3 | 2026-09-29 | 3/3 | 1.0 | ok
+Bitcoin Miners Pivoting to AI/HPC Data Center Hosting | Nascent | shadow_promoted | 5 | 2026-08-27 | 5/5 | 0.0 | BELOW
+Cruise & Expedition Travel Operators | Nascent | live | 2 | 2026-09-29 | 2/2 | 1.0 | ok
+Insurance Brokerage & Risk Advisory Firms | Nascent | live | 5 | 2026-09-29 | 5/5 | 0.2 | BELOW
+Offshore Drilling Rig Contractors | Nascent | shadow_promoted | 4 | 2026-08-21 | 4/4 | 0.0 | BELOW
+Oil & Gas Exploration & Production Crude Price Leverage (Shale & Canadian Upstream) | Nascent | shadow_promoted | 11 | 2026-09-29 | 11/11 | 0.0 | BELOW
+U.S. Trucking & Freight Transportation Carriers | Nascent | live | 7 | 2026-09-29 | 7/7 | 0.0 | BELOW
+
+BELOW-threshold NULL themes (latest date): 5 -> [('Bitcoin Miners Pivoting to AI/HPC Data Center Hosting', 'Nascent', 0.0, 5), ('Insurance Brokerage & Risk Advisory Firms', 'Nascent', 0.2, 5), ('Offshore Drilling Rig Contractors', 'Nascent', 0.0, 4), ('Oil & Gas Exploration & Production Crude Price Leverage (Shale & Canadian Upstream)', 'Nascent', 0.0, 11), ('U.S. Trucking & Freight Transportation Carriers', 'Nascent', 0.0, 7)]
+
+=== REPLICA VALIDATION: recompute breadth for every NON-NULL non-Retired row on 2026-09-29 from its stored tickers, compare to stored pct_above_20sma ===
+stored non-NULL rows: 115 | exact match: 114 | within 0.06: 0 | further off / None: 1 (a mismatch = members changed by merge/prune AFTER breadth was read)
+   mismatch: ('Bitcoin Balance Sheet Proxies', 0.667, 0.5)
+
+=== ROOT-CAUSE CENSUS of every non-Retired NULL-breadth row since 2026-08-01: 420 rows ===
+ 259  source=shadow_promoted  BIRTH/REBIRTH (dict from _score_new_theme or promote/seed INSERT — never calls the breadth fn)
+ 151  source=live             BIRTH/REBIRTH (dict from _score_new_theme or promote/seed INSERT — never calls the breadth fn)
+   7  source=live             SAME-NIGHT retire (theme_retired) + rediscovery (theme_discovered) under the same name -> _score_new_theme path, no breadth
+   2  source=live             CONTINUING, breadth fn returns None (no member has close+sma_20 in mi_stock_scores that date)
+   1  source=live             CONTINUING, breadth fn WOULD return a value; audit=['theme_discovered'] (unexplained -> inspect)
+
+=== COUNTERFACTUAL: had breadth been filled at birth, would the 2-day rule have fired the NEXT night? ===
+rule needs: today's breadth < 0.40 AND yesterday's STORED value < 0.40 with `(x or 1.0)` (so a stored 0.0 counts as 1.0 — theme_engine.py:3926) AND stage != Fading
+NULL rows with a following-night row: 413
+  of those, computed birth-night breadth < 0.40: 117 (of which exactly 0.0: 90)
+  rule WOULD have forced a non-Fading, non-Retired next-night stage to Fading: 3
+   FLIP: ('2026-09-01', 'Management & Business Advisory Consulting Firms', 'Nascent', 0.333, '2026-09-02', 'Nascent', 0.333)
+   FLIP: ('2026-09-15', 'mRNA Vaccine & Personalized Cancer Therapy Platforms', 'Nascent', 0.333, '2026-09-16', 'Nascent', 0)
+   FLIP: ('2026-09-28', 'Class I Railroad Freight Carriers', 'Nascent', 0.25, '2026-09-29', 'Nascent', 0)
+
+=== `(theme.get('pct_above_20sma') or 1.0) < 0.40` (theme_engine.py:3926): a stored 0.0 is FALSY -> read as 1.0 ===
+{
+ "rule_should_fire_but_not_fading": 0,
+ "rule_condition_met_and_fading": 419,
+ "prev_zero_cur_below_not_fading": 166,
+ "prev_zero_cur_below_in_ep_bonus_stage": 136
+}
+Accelerating/Mainstream (EP +10 bonus stages) on 2026-09-29 with latest breadth <0.40 AND prior-night stored 0.0 (rule suppressed by the falsy zero): 11
+    {'name': 'Annuity-Focused Insurers', 'stage': 'Mainstream', 'members': 3, 'prev_night_breadth': 0, 'latest_breadth': 0}
+    {'name': 'Canadian Big Banks', 'stage': 'Mainstream', 'members': 5, 'prev_night_breadth': 0, 'latest_breadth': 0}
+    {'name': 'Cloud Data Storage & Analytics Infrastructure', 'stage': 'Mainstream', 'members': 3, 'prev_night_breadth': 0, 'latest_breadth': 0.333}
+    {'name': 'Digital Advertising & Ad-Tech Monetization Platforms', 'stage': 'Mainstream', 'members': 3, 'prev_night_breadth': 0, 'latest_breadth': 0.333}
+    {'name': 'Energy Supply Disruption: Middle East Geopolitical Risk', 'stage': 'Mainstream', 'members': 14, 'prev_night_breadth': 0, 'latest_breadth': 0}
+    {'name': 'Enterprise HR & Workforce Management SaaS', 'stage': 'Mainstream', 'members': 4, 'prev_night_breadth': 0, 'latest_breadth': 0}
+    {'name': 'IT Consulting & Business Process Outsourcing Services', 'stage': 'Mainstream', 'members': 7, 'prev_night_breadth': 0, 'latest_breadth': 0}
+    {'name': 'Marketing & Digital Presence SaaS Platforms', 'stage': 'Mainstream', 'members': 4, 'prev_night_breadth': 0, 'latest_breadth': 0}
+    {'name': 'Precious Metals Complex Rebound', 'stage': 'Mainstream', 'members': 28, 'prev_night_breadth': 0, 'latest_breadth': 0}
+    {'name': 'Precious Metals Miners Velocity Breakout', 'stage': 'Mainstream', 'members': 3, 'prev_night_breadth': 0, 'latest_breadth': 0}
+    {'name': 'Software Development & DevOps Collaboration Platforms', 'stage': 'Mainstream', 'members': 3, 'prev_night_breadth': 0, 'latest_breadth': 0}
+
+=== NULL rows on latest date by cause ===
+Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery | Nascent | live | BIRTH/REBIRTH (dict from _score_new_them
+Cruise & Expedition Travel Operators | Nascent | live | BIRTH/REBIRTH (dict from _score_new_them
+Insurance Brokerage & Risk Advisory Firms | Nascent | live | BIRTH/REBIRTH (dict from _score_new_them
+U.S. Trucking & Freight Transportation Carriers | Nascent | live | BIRTH/REBIRTH (dict from _score_new_them
+Bitcoin Miners Pivoting to AI/HPC Data Center Hosting | Nascent | shadow_promoted | BIRTH/REBIRTH (dict from _score_new_them
+Offshore Drilling Rig Contractors | Nascent | shadow_promoted | BIRTH/REBIRTH (dict from _score_new_them
+Oil & Gas Exploration & Production Crude Price Leverage (Shale & Canadian Upstream) | Nascent | shadow_promoted | BIRTH/REBIRTH (dict from _score_new_them

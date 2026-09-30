@@ -1,0 +1,29 @@
+replay rows parsed: 20
+ rank  fixed_rank                                                        name  comp_themes  comp_dash  n_sc  n_scored  n_tk  n_members
+    1           1             Digital Dollar & Crypto Payments Infrastructure        100.0  99.950000     3         3     3          3
+    2           2        Liquid Biopsy & Molecular Cancer Diagnostics Testing         99.5  99.500000     3         3     3          3
+    3           3               Life Sciences & Healthcare Data/CRM Platforms         98.1  98.100000     3         3     3          3
+    4           4                     Data Backup & Cyber Resiliency Software         97.7  97.650000     3         3     3          3
+    5           5            Cardiac & Bioelectric Ablation Device Innovators         97.6  97.600000     2         2     2          2
+    6           6        Cloud Contact Center & CCaaS Communication Platforms         97.6  97.566667     4         4     4          4
+    7           7              Identity & Access Management Security Software         97.5  97.500000     2         2     3          3
+    8           8          Precision Timing & Motion Control Component Makers         97.4  97.450000     3         3     3          3
+    9           9 Bitcoin Treasury & Crypto Proxy Equities Correlation Basket         97.2  97.250000     3         3     3          3
+   10          10                          Network Security & Zero-Trust Edge         96.7  96.741667    15        15    15         15
+   11          11                 Emerging Medical Device Innovators Breakout         96.7  96.700000     3         3     3          3
+   12          12   Cloud Application Delivery & Observability Infrastructure         96.1  96.133333     4         4     4          4
+   13          13                             Crude & Product Tanker Shipping         96.0  95.980000     7         7     7          7
+   14          14                   AI-Driven Diagnostics & Imaging Re-Rating         95.8  95.800000     9         9     9          9
+   15          15                 Life Science Tools & Analytical Instruments         95.6  95.638462    16        16    16         16
+   16          16                             Genomics & DNA Sequencing Tools         94.8  94.750000    12        12    12         12
+   17          17                  AI-Driven Memory & Storage Supply Shortage         94.5  94.540000     7         7     7          7
+   18          18   Enterprise Server, Storage & Data Infrastructure Hardware         94.5  94.483333     8         8     8          8
+   19          19        Digital Advertising & Ad-Tech Monetization Platforms         94.3  94.300000     3         3     3          3
+   20          20                                     Product Tanker Shipping         93.4  93.400000     4         4     4          4
+
+top20 rank identical (dashboard-with-#214-fix vs real /themes replay): True
+max |comp diff| (replay is rounded to 0.1): 0.05
+n_scored / n_members agree on all 20: True
+top20 rank identical on the dashboard AS DEPLOYED today: False | positions that differ: 14 of 20
+cutoff 2026-09-22: ghost themes (Retired-newest shown anyway) = 28; of which in scored Ecosystems list ~13
+cutoff 2026-09-23: ghost themes (Retired-newest shown anyway) = 25; of which in scored Ecosystems list ~12

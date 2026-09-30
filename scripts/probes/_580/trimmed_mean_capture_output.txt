@@ -1,0 +1,4 @@
+themes: 2618 rows
+scores: 28043 rows
+score_counts: 45 rows
+non_equity: 71 rows

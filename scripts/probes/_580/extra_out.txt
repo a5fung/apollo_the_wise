@@ -1,0 +1,35 @@
+## created_at (ET hour) of mi_themes rows by theme_date, last 6 dates
+2026-09-29|2026-09-29 17:03:18.318421|2026-09-29 17:04:26.340274|125
+2026-09-28|2026-09-28 17:12:15.18667|2026-09-28 18:21:23.812829|127
+2026-09-25|2026-09-25 17:12:20.49589|2026-09-25 17:16:57.477643|121
+2026-09-24|2026-09-24 17:09:09.103582|2026-09-24 17:13:48.06221|121
+2026-09-23|2026-09-23 17:12:03.032044|2026-09-23 17:18:52.004271|118
+## Retired rows that still carry tickers (all history)
+43|717
+## NULL pct_above_20sma on latest date, non-Retired
+Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery|Nascent|3|1|live|85.1|72.5
+Cruise & Expedition Travel Operators|Nascent|2|1|live|79.0|69.5
+Insurance Brokerage & Risk Advisory Firms|Nascent|5|1|live|40.2|50.1
+U.S. Trucking & Freight Transportation Carriers|Nascent|7|1|live|28.0|44.0
+Oil & Gas Exploration & Production Crude Price Leverage (Shale & Canadian Upstream)|Nascent|11|1|shadow_promoted|42.9|42.9
+Offshore Drilling Rig Contractors|Nascent|4|5|shadow_promoted|37.5|37.5
+Bitcoin Miners Pivoting to AI/HPC Data Center Hosting|Nascent|5|5|shadow_promoted|12.7|12.7
+## NULL breadth rate non-Retired, last 8 theme_dates
+2026-09-29|122|7
+2026-09-28|118|8
+2026-09-25|117|11
+2026-09-24|109|7
+2026-09-23|115|9
+2026-09-22|109|4
+2026-09-21|113|10
+2026-09-18|110|5
+2026-09-17|118|13
+## source values on latest date
+live|Accelerating|2|0
+live|Fading|43|0
+live|Mainstream|49|0
+live|Nascent|25|4
+live|Retired|3|3
+shadow_promoted|Nascent|3|3
+## n_tk distribution latest non-Retired non-Fading
+2|4|28|3|79

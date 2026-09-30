@@ -1,0 +1,14 @@
+id integer
+theme_date date
+name text
+stage text
+score double precision
+description text
+tickers ARRAY
+created_at timestamp with time zone
+rs_avg double precision
+parent_theme text
+days_active integer
+consecutive_accelerating integer
+pct_above_20sma real
+source text
