@@ -1891,3 +1891,22 @@ EVIDENCE: prod `mi_audit_log`, read 2026-09-29 09:25 ET — **0 `telegram_markdo
   back — the 09-28 model-release notice (identifiers `_TIER_OVERRIDES`, `shared/llm_models.py`, underscores that break
   legacy Markdown) and the 09-28 extension-cap trigger; `/spend` arrived through the HTML path on 09-25.
 - The default sender has been HTML since #652/#675; the last two raw senders (`/spend`, TradingView webhook) moved 09-25.
+
+
+## #506 — the theme-hierarchy health check runs nightly and its line reaches the evening brief (2026-09-30)
+
+BAR: "nightly computation + a surfaced line + thresholds each justified by the observed distribution, per the repo's
+derive-don't-pick discipline."
+
+EVIDENCE: prod `mi_audit_log`, read 2026-09-30 ~18:45 ET.
+- **Nightly computation — 3 weeknights, a row each night at 17:30 ET:** 09-28 "13 of 117 themes sit under a parent
+  theme, 101 under their sector group, 3 unassigned"; 09-29 "13 of 122 … 106 … 3 unassigned" (the night the parent
+  pass itself failed on Sonnet 5.5 refusals — the check still ran); 09-30 "15 of 129 … 112 … 2 unassigned".
+- **Surfaced line:** 09-28 confirmed in the brief at the time (recorded on the task line); 09-30 rendered live tonight
+  by `get_theme_hierarchy_evening_line()` — "🌳 Theme hierarchy: 15 of 129 themes sit under a parent theme, …" — and
+  the 18:00 ET brief logged no "Theme-hierarchy evening line unavailable" warning. 09-29 is INFERRED, not observed:
+  its row exists and the brief was sent (1,862 chars), but the container restart wiped that night's logs.
+- **No false page:** no hierarchy alert row on any of the three nights.
+- **Thresholds derived, not picked:** built into the check at ship (see the task's own line, 2026-09-27).
+- **Not claimed:** the "2 unassigned" / catch-all gap belongs to #505's DoD ("every theme has a parent even if a
+  CATCH-ALL"), which stays open.
