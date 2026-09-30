@@ -60,6 +60,39 @@ async def _prev_trading_grouped(run_date: str):
     return {}
 
 
+async def _page_delay_misses(run_date: str, n_missed: int, n_residual: int) -> bool:
+    """The #489 nightly page. Returns True when it sent. Silent under the authoritative real-time
+    overlay (2026-09-30 — see the comment below); unchanged before it."""
+    # #489: LOUD nightly summary of the delay's cost (only on days with a miss — quiet days stay silent).
+    # 2026-09-30 (operator: "is this alert necessary anymore?"): once the real-time overlay is
+    # AUTHORITATIVE (since 2026-08-25) a delay-missed crosser is expected — the overlay catches it
+    # (3 of 3 that day), so this page no longer tells him anything. What the real-time scan truly
+    # missed already reaches him in the morning "Real-time EP misses" digest
+    # (ep_detector.send_rt_miss_digest), which also separates names the overlay DECLINED on a guard
+    # from real misses — the proof-join's MISSING list does not (SRZN 09-25 was a sustain-reject).
+    # The rows, the audit row and the proof-join are unchanged. This page stays for the pre-cutover posture.
+    try:
+        authoritative = await db.get_runtime_toggle(
+            "ep_rt_universe_authoritative", "EP_RT_UNIVERSE_AUTHORITATIVE", default=False)
+    except Exception:  # loud-ok: unreadable toggle -> keep the old page (never lose a miss)
+        authoritative = False
+    if n_missed > 0 and not authoritative:
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            from shared.telegram_format import md_to_html
+            # #647: HTML layer. `ep_delayed_residual_scan` carries three `_`, so legacy Markdown
+            # 400'd this on EVERY firing day (11 of the last 14) and the operator only ever saw
+            # the plain-text retry. Delivery only — the words are unchanged.
+            await send_telegram_message(md_to_html(
+                f"🔴 Delayed-feed residual {run_date}: {n_missed} delay-missed EP crosser(s) today, "
+                f"{n_residual} BEYOND the 5% hybrid (the class the fix can't catch). Outcomes settle ~5d. "
+                f"(/audit ep_delayed_residual_scan)"), parse_mode="HTML")
+            return True
+        except Exception:  # loud-ok: Telegram is best-effort; the mi_ep_delayed_residual rows are durable
+            pass
+    return False
+
+
 async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
     """run_date = 'YYYY-MM-DD' ET trading day. Returns (n_missed_total, n_residual_beyond_hybrid)."""
     gd = await collector.get_grouped_daily(run_date)
@@ -167,20 +200,7 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
         f"{n_residual} beyond the 5% hybrid (residual — flat-premkt-then-explode)",
         json.dumps({"run_date": run_date, "missed_total": n_missed, "residual_beyond_hybrid": n_residual}),
     )
-    # #489: LOUD nightly summary of the delay's cost (only on days with a miss — quiet days stay silent).
-    if n_missed > 0:
-        try:
-            from agents.market_intelligence.briefing import send_telegram_message
-            from shared.telegram_format import md_to_html
-            # #647: HTML layer. `ep_delayed_residual_scan` carries three `_`, so legacy Markdown
-            # 400'd this on EVERY firing day (11 of the last 14) and the operator only ever saw
-            # the plain-text retry. Delivery only — the words are unchanged.
-            await send_telegram_message(md_to_html(
-                f"🔴 Delayed-feed residual {run_date}: {n_missed} delay-missed EP crosser(s) today, "
-                f"{n_residual} BEYOND the 5% hybrid (the class the fix can't catch). Outcomes settle ~5d. "
-                f"(/audit ep_delayed_residual_scan)"), parse_mode="HTML")
-        except Exception:  # loud-ok: Telegram is best-effort; the mi_ep_delayed_residual rows are durable
-            pass
+    await _page_delay_misses(run_date, n_missed, n_residual)
     logger.info(f"delayed_residual {run_date}: {n_missed} missed, {n_residual} residual beyond hybrid")
     return (n_missed, n_residual)
 

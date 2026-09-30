@@ -397,7 +397,7 @@ def _src(obj) -> str:
 
 
 @pytest.mark.parametrize("target,required", [
-    ("ep_delayed_residual.run_delayed_residual_scan",
+    ("ep_delayed_residual._page_delay_misses",
      ['f"(/audit ep_delayed_residual_scan)"), parse_mode="HTML")']),
     ("mgmt_judge.run_position_mgmt_judge",
      ['send_telegram_message(md_to_html(text), parse_mode="HTML")']),
@@ -445,7 +445,7 @@ def test_the_single_send_senders_have_no_bare_legacy_send_left():
     from agents.market_intelligence.broker import order_ingest
     # `send_rt_miss_digest` joined this list 2026-09-17 as the FOURTEENTH sender — see the
     # parametrized source check above for why it was missed by the original migration.
-    for fn in (ep_delayed_residual.run_delayed_residual_scan, mgmt_judge.run_position_mgmt_judge,
+    for fn in (ep_delayed_residual._page_delay_misses, mgmt_judge.run_position_mgmt_judge,
                quarterly_review.quarterly_backward_check_sweep_job, order_ingest._emit,
                ep_detector.send_rt_miss_digest,
                system_audit._emit_l1, system_audit._emit_l2, hc.run_job_liveness_sweep):
@@ -529,3 +529,32 @@ def test_spend_summary_is_short_totals_first_with_the_tail_summed(monkeypatch):
     assert "3 others $12.00" in text                    # month: top 5 of 8 (5+4+3)
     assert "$47.97 of $150 budget (32%), $102.03 left" in text
     assert len(lines) <= 14
+
+
+# ── 2026-09-30: the delay-miss page is silent under the authoritative real-time overlay ────────
+
+@pytest.mark.parametrize("authoritative, n_missed, sent", [
+    (True, 3, False),    # the overlay catches delay-missed names; its own digest reports real misses
+    (False, 3, True),    # pre-cutover posture: unchanged
+    (False, 0, False),   # quiet days stay quiet
+])
+def test_the_delay_miss_page_only_fires_before_the_real_time_cutover(monkeypatch, authoritative, n_missed, sent):
+    import asyncio
+    from unittest.mock import AsyncMock
+    from agents.market_intelligence import briefing, db, ep_delayed_residual
+    monkeypatch.setattr(db, "get_runtime_toggle", AsyncMock(return_value=authoritative))
+    send = AsyncMock()
+    monkeypatch.setattr(briefing, "send_telegram_message", send)
+    out = asyncio.run(ep_delayed_residual._page_delay_misses("2026-09-30", n_missed, n_missed))
+    assert out is sent and send.await_count == (1 if sent else 0)
+
+
+def test_an_unreadable_toggle_keeps_the_page(monkeypatch):
+    """Fail toward telling him: a toggle read that raises keeps the pre-cutover page."""
+    import asyncio
+    from unittest.mock import AsyncMock
+    from agents.market_intelligence import briefing, db, ep_delayed_residual
+    monkeypatch.setattr(db, "get_runtime_toggle", AsyncMock(side_effect=RuntimeError("db down")))
+    send = AsyncMock()
+    monkeypatch.setattr(briefing, "send_telegram_message", send)
+    assert asyncio.run(ep_delayed_residual._page_delay_misses("2026-09-30", 2, 2)) is True
