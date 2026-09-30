@@ -5462,7 +5462,7 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
             if t["kind"] == "p1_member_routine":
                 lines.append(
                     f"• P1 MISS: `{t['ticker']}` {t['date']} — a labelled real EP was graded "
-                    f"routine by the acting tier (LLM grade {t['llm_grade']}, lattice "
+                    f"routine by the acting tier (LLM grade {t['llm_grade']}, tier-change grade "
                     f"{t['lattice_tier']}, acting side {t['live_side']}). A real EP must "
                     f"never be missed — this is the trigger that matters most.")
             elif t["kind"] == "high_conversion_drop":
@@ -5586,8 +5586,8 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
             else "correlation_unexplained" if _withhold_correlation_only else None)
         if reason == "lattice_inert":
             lines.append(
-                "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The lattice "
-                "lowered no scored candidate's grade in this window — any change it made raised a "
+                "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The #533 "
+                "catalyst-tier change lowered no scored candidate's grade in this window — any change it made raised a "
                 "grade or touched a name filtered before scoring — so turning it off could not "
                 "bring back a single alert. Look at the tape, the "
                 "score bar and the scan log instead. To revert anyway, the flag is in "
@@ -5597,7 +5597,7 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                 "⚖ *A revert is NOT indicated and the SQL is deliberately withheld.* The only "
                 "evidence here is a conversion-rate comparison, and the fact-check's own named "
                 "preventions (above) do not account for the shortfall it is reporting — a "
-                "correlation is not proof the lattice caused it. To revert anyway, the flag is "
+                "correlation is not proof the #533 tier change caused it. To revert anyway, the flag is "
                 "in `docs/setups/magna53_ep.md` 2026-08-22.")
         else:
             if out.get("lattice_inert") is None:
@@ -5649,7 +5649,14 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
             # (`_hard_evidence_present or reason is None`) — a hard trigger (P1 miss,
             # zero-alert-days) or an ACTUALLY-indicated revert still pages; a withheld,
             # correlation-only finding goes to the audit log only.
-            if _hard_evidence_present or reason is None:
+            # 2026-09-30 (operator: "Yes, reduce noise"): the zero-alert-days trigger no longer
+            # pages on its own when the check has shown the flip could not have caused it
+            # (`reason` set = revert NOT indicated) — two quiet days on a quiet tape paged with a
+            # message that cancelled itself. It pages when a revert COULD matter (`reason is None`:
+            # the change acted, or it could not be verified) or on a P1 miss (a labelled real EP
+            # graded routine — always worth his eyes). The audit row above stays unconditional.
+            _p1_miss = any(t["kind"] == "p1_member_routine" for t in out["triggers"])
+            if _p1_miss or reason is None:
                 from agents.market_intelligence.briefing import send_telegram_message
                 from shared.telegram_format import md_to_html
                 # #647: HTML layer — the fenced revert SQL rides <pre> byte-for-byte, and the

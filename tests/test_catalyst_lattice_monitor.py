@@ -1057,3 +1057,34 @@ async def test_rows_that_never_recorded_the_read_are_counted_APART_from_unknown(
 async def test_an_empty_window_reads_as_no_decisions_not_as_a_failure():
     got = await hc._lattice_unknown_share(object(), [])
     assert got == {"n": 0, "unknown": 0, "share": None, "unwritten": 0, "by_value": {}}
+
+
+@pytest.mark.asyncio
+async def test_zero_alert_days_do_not_page_when_the_tier_change_could_not_have_caused_them(monkeypatch):
+    """2026-09-30 (operator: "Yes, reduce noise"): two quiet days on a quiet tape paged a message
+    that cancelled itself ("A revert is NOT indicated"). When the check shows the #533 change
+    lowered no scored grade in the window, the zero-alert-days trigger goes to the audit row only.
+    MUTATION: restoring the old `_hard_evidence_present or reason is None` send gate makes
+    `tg.called is False` fail."""
+    audit, tg = _patch_common(monkeypatch)
+    monkeypatch.setattr(hc, "_lattice_retier_rows", AsyncMock(return_value=[{"row": 1}]))
+    monkeypatch.setattr(hc, "lattice_lowered_nothing", lambda rows: True)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=4, prior_high=4, zero_last_n=2))
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert [t["kind"] for t in out["triggers"]] == ["zero_alert_days"]
+    assert out["revert_withheld_reason"] == "lattice_inert"
+    assert tg.called is False
+    assert any(c.args[0] == "catalyst_lattice_monitor_alert" for c in audit.call_args_list)
+
+
+@pytest.mark.asyncio
+async def test_zero_alert_days_still_page_when_the_tier_change_acted(monkeypatch):
+    """The other side: the change DID lower a scored grade in the window, so a revert could
+    matter — the page goes out with the revert command."""
+    audit, tg = _patch_common(monkeypatch)
+    monkeypatch.setattr(hc, "_lattice_retier_rows", AsyncMock(return_value=[{"row": 1}]))
+    monkeypatch.setattr(hc, "lattice_lowered_nothing", lambda rows: False)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=4, prior_high=4, zero_last_n=2))
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert out["revert_withheld_reason"] is None
+    assert tg.called is True and hc._LATTICE_REVERT_SQL in tg.call_args[0][0]
