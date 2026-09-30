@@ -529,3 +529,19 @@ def test_digest_is_silent_on_a_zero_miss_day_under_the_authoritative_overlay(mon
     assert (len(sent) == 1) is expect_send
     if expect_send:
         assert "0 genuine misses" in sent[0]
+
+
+def test_a_failed_digest_read_is_surfaced_not_silent(monkeypatch):
+    """2026-09-30: silence now means "zero genuine misses", so a failed read must page instead of
+    returning 0 quietly. MUTATION: deleting the record_job_failure call makes this fail."""
+    from unittest.mock import AsyncMock
+    import core.job_audit as ja
+
+    async def _boom():
+        raise RuntimeError("db down")
+    monkeypatch.setattr(ep_detector, "get_pool", _boom)
+    rec = AsyncMock(return_value=True)
+    monkeypatch.setattr(ja, "record_job_failure", rec)
+    assert asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 9, 30))) == 0
+    rec.assert_awaited_once()
+    assert rec.await_args.args[0] == "rt_miss_digest"

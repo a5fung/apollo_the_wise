@@ -3191,8 +3191,19 @@ async def send_rt_miss_digest(run_date=None) -> int:
                   AND (created_at AT TIME ZONE 'America/New_York')::date = $1
                 ORDER BY created_at
             """, d)
-    except Exception as e:  # loud-ok: digest is best-effort observability; audit rows remain durable
+    except Exception as e:  # loud-ok: surfaced below; the digest never raises into its job
         logger.warning(f"send_rt_miss_digest query failed (non-fatal): {e}")
+        # 2026-09-30: under the authoritative overlay a zero-miss day now sends NOTHING, so a
+        # failed read and a quiet day looked identical. Surface the failure (#635 pattern: audit
+        # row always, deduped Telegram) — the digest's silence must mean "nothing to report".
+        try:
+            from core.job_audit import record_job_failure
+            await record_job_failure(
+                "rt_miss_digest", e,
+                consequence="the morning real-time-miss digest could not read its events, so "
+                            "a genuine missed EP would not reach you today")
+        except Exception:  # loud-ok: record_job_failure never raises; belt and braces
+            pass
         return 0
 
     def _parse(rs):
