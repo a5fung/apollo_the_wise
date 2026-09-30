@@ -12673,6 +12673,19 @@ reviews:
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_09_30: >-
+      RAN 2026-09-30, same SQL (scripts/probes/_verify_rank_shadow_2026-09-21.sql), same measure
+      (5-day best high from the EP-day open, in multiples of ADR20; rank 0 = best, top quartile =
+      rank <= 0.25): n = 17 sessions, 37 rows, 12 filled, 35 with a matured 5-day outcome. THIN (17
+      of 25, 68%), directional only, NOT a verdict. The one new session is KOD 2026-09-28 (bought;
+      the first live +8R partial): open 61.705 -> high 95.77 in two sessions = 10.0x ADR, already
+      past the 8x bar on an UNMATURED window (a floor) — the second out-of-sample big winner after
+      MRNA 08-19. It was the only alert that day (pool of 1, rank 0.5), so it sits outside the
+      rule's reach: a lone alert is taken regardless of rank. CONCLUSION UNCHANGED AND STILL
+      AGAINST THE RULE: top quartile 5 matured rows (EOD) / 4 (09:45), 0 reached 8x, 4 / 3 broke
+      their EP-day low inside five sessions; the rest hold the only matured big winner (MRNA,
+      ranked last of 4) and 20 of 30 / 21 of 31 broke their low. 8 of 17 sessions had a single
+      alert, which is why the top-quartile cell stays this small.
     resolution_2026_09_26: >-
       RAN 2026-09-26, same SQL (scripts/probes/_verify_rank_shadow_2026-09-21.sql): n = 16 sessions,
       36 rows. The only new session since the 09-22 read is 2026-09-25, a single alert (AKAM, HIGH,
