@@ -58,6 +58,7 @@ from agents.market_intelligence.audit_events import (
     STOP_UPDATE_FAILED,
     ORDER_STATUS_RECONCILE_MODE_ERROR,
     PARTIAL_FILL_CLOSE_ERROR,
+    STUCK_PENDING_NEW_ALERT_ERROR,
 )
 from shared.env_flags import env_is_true
 
@@ -984,6 +985,38 @@ async def submit_entry(trade_id: int) -> dict | None:
 # ── Fill Checking ────────────────────────────────────────────────────────────
 
 
+def _safe_err(exc: BaseException) -> str:
+    """`Type: one-line message`, capped. NEVER raises - an exception whose own `__str__` raises
+    must not take an alarm down with it (#635 review)."""
+    try:
+        return f"{type(exc).__name__}: {' '.join(str(exc).split())[:200]}"
+    except Exception:  # loud-ok: the alarm is reporting ANOTHER failure; a hostile __str__ degrades to the type name
+        return f"{type(exc).__name__}: <unprintable>"
+
+
+# Strong refs to the fire-and-forget F10 alarms (asyncio keeps only weak refs to running tasks).
+_PARTIAL_FILL_ALERT_TASKS: set = set()
+
+
+def schedule_partial_fill_close_alert(trade: dict, account_mode: str, filled_qty,
+                                      exc: Exception, where: str) -> None:
+    """#635 F10 (review fix) - fire-and-forget `note_partial_fill_close_failed`.
+
+    SYNCHRONOUS, never awaits, never raises. The alarm's Telegram can take 15-30s; awaited inline
+    it held the `status='closed'` write behind it, leaving the row non-closed so `check_fills`
+    could re-process the trade. Scheduling it returns at once, so the closed write happens at
+    exactly the point it did before any alarm existed, and the next pending trade is not delayed
+    either. The alarm is still scheduled BEFORE that write (not after) so a failing write cannot
+    swallow it."""
+    try:
+        task = asyncio.create_task(
+            note_partial_fill_close_failed(trade, account_mode, filled_qty, exc, where))
+        _PARTIAL_FILL_ALERT_TASKS.add(task)
+        task.add_done_callback(_PARTIAL_FILL_ALERT_TASKS.discard)
+    except Exception as e:
+        logger.warning(f"schedule_partial_fill_close_alert dispatch failed: {e}")
+
+
 async def note_partial_fill_close_failed(trade: dict, account_mode: str, filled_qty,
                                          exc: Exception, where: str) -> bool:
     """#635 F10 — closing a too-small (<$500) partial ENTRY fill raised. Both fill paths
@@ -995,10 +1028,11 @@ async def note_partial_fill_close_failed(trade: dict, account_mode: str, filled_
     distinct position - no dedupe).
 
     OBSERVABILITY ONLY: the caller's control flow is untouched - it still marks the row closed
-    exactly as before. NEVER raises. Returns True iff a Telegram was attempted (tests assert
-    on it)."""
+    exactly as before, and callers reach this through `schedule_partial_fill_close_alert`
+    (fire-and-forget) so a slow Telegram cannot delay that write. NEVER raises. Returns True
+    iff a Telegram was attempted (tests assert on it)."""
     ticker = trade.get("ticker") or "?"
-    err = f"{type(exc).__name__}: {' '.join(str(exc).split())[:200]}"
+    err = _safe_err(exc)
     try:
         await log_audit_event(
             PARTIAL_FILL_CLOSE_ERROR,
@@ -1058,7 +1092,7 @@ async def check_fills() -> list[dict]:
                     await alpaca.close_position(ticker, account_mode=account_mode)
                 except Exception as e:
                     logger.error(f"Failed to close partial fill for {ticker}: {e}")
-                    await note_partial_fill_close_failed(       # #635 F10: was log-only
+                    schedule_partial_fill_close_alert(          # #635 F10: was log-only; NOT awaited
                         trade, account_mode, filled_qty, e, "check_fills")
                 await _update_trade_status(trade["id"], "closed", skip_reason="partial_fill_too_small")
                 results.append({"ticker": ticker, "action": "partial_cancelled"})
@@ -6187,6 +6221,68 @@ _STOP_DEAD_STATUSES = frozenset({
 _STUCK_PENDING_NEW_THRESHOLD_MINUTES = 15
 
 
+# ── #635 F12 (2026-09-30): the stuck-order watchdog failing must not be silent ──────────────
+# Tier-1 (F4) pages when a WHOLE mode drops out of the reconcile, but it cannot see this swallow:
+# `_maybe_alert_stuck_pending_new` catches its own DB/Telegram failure and returns normally, so
+# the reconcile reports success. Same shape and dedupe as F9: an audit row on EVERY failure
+# (name ends `_error` -> nightly sweep), a Telegram at most once per hour per account mode
+# (process-local monotonic clock - NOT an audit-log lookback, which would fail the same way the
+# DB just did). Dispatched as a background task; the caller is never awaited on it.
+_STUCK_ALERT_ERROR_PAGE_WINDOW_S = 60 * 60
+_last_stuck_alert_error_ts: dict[str, float] = {}
+_STUCK_ALERT_BG_TASKS: set = set()   # strong refs - asyncio keeps only weak ones to running tasks
+
+
+async def _note_stuck_alert_failure(account_mode: str, ticker: str, exc: Exception,
+                                    page: bool) -> bool:
+    """Audit row (always) + Telegram (when `page`). NEVER raises. Returns True iff a Telegram
+    was attempted (tests assert on it)."""
+    err = _safe_err(exc)
+    try:
+        await log_audit_event(
+            STUCK_PENDING_NEW_ALERT_ERROR,
+            f"{ticker} account_mode={account_mode} the stuck-pending_new watchdog failed while "
+            f"checking/alerting {err} tg={1 if page else 0}",
+            json.dumps({"account_mode": account_mode, "ticker": ticker, "error": err}),
+        )
+    except Exception as e:
+        logger.warning(f"_note_stuck_alert_failure audit write failed [{account_mode}]: {e}")
+    if not page:
+        return False
+    try:
+        from shared.telegram_format import b, esc
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}⚠️ {b('STUCK-ORDER WATCHDOG FAILED')} - the "
+            f"pending_new check for {esc(ticker)} ({esc(account_mode)}) raised, so an order "
+            f"stuck at the broker may NOT be paged. Check open orders in Alpaca.\n"
+            f"Latest: {esc(err)}",
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.warning(f"_note_stuck_alert_failure Telegram failed [{account_mode}]: {e}")
+    return True
+
+
+def _schedule_stuck_alert_failure(account_mode: str, row, exc: Exception) -> None:
+    """Fire-and-forget the F12 surface. Synchronous, NEVER awaits, NEVER raises - so the
+    reconcile loop cannot be slowed or broken by it."""
+    try:
+        try:
+            ticker = str(row["ticker"])
+        except Exception:  # loud-ok: a row we cannot read a ticker from is reported as "?" in the very alarm this builds
+            ticker = "?"
+        now = time.monotonic()
+        last = _last_stuck_alert_error_ts.get(account_mode)
+        page = last is None or (now - last) >= _STUCK_ALERT_ERROR_PAGE_WINDOW_S
+        if page:
+            _last_stuck_alert_error_ts[account_mode] = now
+        task = asyncio.create_task(_note_stuck_alert_failure(account_mode, ticker, exc, page))
+        _STUCK_ALERT_BG_TASKS.add(task)
+        task.add_done_callback(_STUCK_ALERT_BG_TASKS.discard)
+    except Exception as e:
+        logger.warning(f"stuck-pending_new alarm dispatch failed for {account_mode}: {e}")
+
+
 async def _maybe_alert_stuck_pending_new(
     conn, row, account_mode: str, *, submitted_at
 ) -> None:
@@ -6251,6 +6347,11 @@ async def _maybe_alert_stuck_pending_new(
         )
     except Exception as e:
         logger.error(f"_maybe_alert_stuck_pending_new failed: {e}", exc_info=True)
+        # #635 F12: the log line above was the ONLY trace - the watchdog that pages on a stuck
+        # order could itself be dead (DB down, Telegram down) with nobody told. Surface it,
+        # fire-and-forget, so neither the alarm's DB write nor its Telegram can delay the
+        # reconcile loop that called us. Nothing is re-raised: the swallow is unchanged.
+        _schedule_stuck_alert_failure(account_mode, row, e)
 
 
 async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> dict:

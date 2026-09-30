@@ -281,15 +281,20 @@ ORDER_STATUS_RECONCILE_MODE_ERROR = "order_status_reconcile_mode_error"
 #   `ep_candidate_parse_error` - the per-ticker candidate build raised for MANY tickers in one
 #     tick (a Polygon schema change hitting a subset). A single bad row is a bulkhead working as
 #     designed; a tick past the threshold is a coverage erosion nobody could see. Audit only.
-# F9 — drawdown_breaker.read_breaker_state hit a DB error at entry-check time and returned
-# 'OK' (fail-open — operator-ruled design, RED-3: unchanged). Audit row per failure; Telegram
-# once per hour per account mode. Dispatched as a background task, never awaited on the
-# entry path.
+# F9 — drawdown_breaker.read_breaker_state hit a DB error and returned 'OK' (fail-open —
+# operator-ruled design, RED-3: unchanged). Callers: the entry-safeguard check and the
+# intraday_drawdown monitor. Audit row per failure; Telegram once per hour per account mode.
+# Dispatched as a background task, never awaited on the caller's path.
 DRAWDOWN_BREAKER_READ_ERROR = "drawdown_breaker_read_error"
 # F10 — closing a too-small (<$500) partial entry fill raised, and the trade row is marked
 # 'closed' anyway: the DB says flat while the broker may still hold the shares. Audit row +
 # a Telegram per occurrence (each is a distinct position).
 PARTIAL_FILL_CLOSE_ERROR = "partial_fill_close_error"
+# F12 — `_maybe_alert_stuck_pending_new`'s own DB/Telegram step raised and its except only
+# logged it: the watchdog that exists to page on a stuck order was itself dead, silently.
+# Audit row per failure; Telegram once per hour per account mode. Dispatched as a background
+# task - the reconcile loop that calls the watchdog is never awaited on the alarm.
+STUCK_PENDING_NEW_ALERT_ERROR = "stuck_pending_new_alert_error"
 # F11 — alpaca-py changed TradingStream._run_forever, so the WS fill stream was NOT started
 # for this account mode (polling is the only fill observer). Audit row every trip; Telegram
 # once per process per mode.

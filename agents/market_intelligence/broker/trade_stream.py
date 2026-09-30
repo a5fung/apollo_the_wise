@@ -866,9 +866,15 @@ async def _process_entry_fill(
             logger.error(f"Failed to close partial fill for {ticker}: {e}")
             # #635 F10: was log-only. The row is marked 'closed' just below regardless (unchanged);
             # this only makes the divergence - DB flat, broker maybe still long - visible at once.
-            from agents.market_intelligence.broker.order_manager import note_partial_fill_close_failed
-            await note_partial_fill_close_failed(
-                trade, account_mode, filled_qty, e, "trade_stream._process_entry_fill")
+            # Scheduled, NOT awaited (review fix): its Telegram can take 15-30s and must not hold
+            # the closed write below.
+            try:
+                from agents.market_intelligence.broker.order_manager import schedule_partial_fill_close_alert
+                schedule_partial_fill_close_alert(
+                    trade, account_mode, filled_qty, e, "trade_stream._process_entry_fill")
+            except Exception as _ae:
+                # nothing in the alarm path may skip the closed write below
+                logger.warning(f"partial-fill close alarm dispatch failed for {ticker}: {_ae}")
         async with pool.acquire() as conn:
             await conn.execute(
                 "UPDATE mi_live_trades SET status = 'closed', skip_reason = 'Partial fill too small' WHERE id = $1",

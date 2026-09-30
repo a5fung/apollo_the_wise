@@ -478,8 +478,9 @@ async def recompute_drawdown_state(mode: str) -> tuple[str, str, dict]:
 
 # ── #635 F9 (2026-09-30): the per-call fail-open read was log-only ─────────────────────────
 # `read_breaker_state` fails OPEN on a DB error (operator-ruled design, RED-3: "fail-open
-# semantics stay as designed") - a transient error exactly at entry-check time reads a
-# possibly-REDUCE/BLOCK breaker as 'OK' and the entry proceeds unlimited. That DIRECTION is
+# semantics stay as designed") - a transient error at read time (the entry-safeguard check in
+# live_tracker AND the intraday_drawdown monitor both call it) reads a possibly-REDUCE/BLOCK
+# breaker as 'OK'. The page text is deliberately CALLER-NEUTRAL for that reason. That DIRECTION is
 # unchanged and is not this task's to change (a safeguard behaviour change = THE LINE).
 # What was missing is any trace that it happened: one `logger.warning`.
 #
@@ -495,7 +496,10 @@ _ALERT_BG_TASKS: set = set()   # strong refs - asyncio keeps only weak ones to r
 async def _note_breaker_read_failure(mode: str, exc: Exception, page: bool) -> bool:
     """Audit row (always) + Telegram (when `page`). NEVER raises. Returns True iff a Telegram
     was attempted (tests assert on it)."""
-    err = f"{type(exc).__name__}: {' '.join(str(exc).split())[:200]}"
+    try:
+        err = f"{type(exc).__name__}: {' '.join(str(exc).split())[:200]}"
+    except Exception:  # loud-ok: the alarm is reporting ANOTHER failure; a hostile __str__ degrades to the type name
+        err = f"{type(exc).__name__}: <unprintable>"
     try:
         await log_audit_event(
             DRAWDOWN_BREAKER_READ_ERROR,
@@ -511,9 +515,9 @@ async def _note_breaker_read_failure(mode: str, exc: Exception, page: bool) -> b
         from agents.market_intelligence.briefing import send_telegram_message
         from shared.telegram_format import b, esc
         await send_telegram_message(
-            f"⚠️ {b('DRAWDOWN BREAKER READ FAILED')} ({esc(mode)}) - an entry check could not "
-            f"read the breaker state and went ahead as if it were OK (fail-open, by design). "
-            f"If the breaker was really in REDUCE or BLOCK, that entry was NOT limited.\n"
+            f"⚠️ {b('DRAWDOWN BREAKER READ FAILED')} ({esc(mode)}) - the drawdown breaker's "
+            f"state could not be read; it defaulted to OK (the ruled fail-open). "
+            f"If it was really in REDUCE or BLOCK, this read did not see it.\n"
             f"Latest: {esc(err)}",
             parse_mode="HTML",
         )
