@@ -360,7 +360,10 @@ ADMIT_TICKER = "BIG00"
 
 
 async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
-                         catalyst_type_raises: bool = False):
+                         catalyst_type_raises: bool = False,
+                         audit_sink: list | None = None,
+                         extra_snapshots: dict | None = None,
+                         cached_quality: str = "game_changer"):
     """One full run_ep_scan on a fixture board. 20 big-ADV fillers (top-20 by pre-score),
     all killed at the RVOL@T gate; 3 sub-shortlist names, two of which meet the lane rule.
     Returns (results, scan_log_rows, alert_inserts, lane_rows).
@@ -379,12 +382,17 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
     `get_fmp_profile`, `is_earnings_day`, `classify_catalyst_type` and the judge's
     `grade_holistic` are stubbed the way the rest of the suite stubs that LLM path, and the
     `catalyst_tier_lattice` toggle is held off so the seeded grade acts unmutated. Every
-    other filler still dies at the RVOL@T gate exactly as in the base fixture."""
+    other filler still dies at the RVOL@T gate exactly as in the base fixture.
+
+    #635 (2026-09-30) - two optional, default-off hooks so the silent-failure surfaces that sit
+    INSIDE run_ep_scan can be driven through the real scan: `audit_sink` (a list that receives
+    every `(event, summary, detail)` the scan audits) and `extra_snapshots` (extra tickers merged
+    into the Polygon snapshot - e.g. malformed rows). Neither changes the fixture when omitted."""
     from agents.market_intelligence import minute_volume as mv
     fillers = {f"BIG{i:02d}": _snap(50.0, 60.0, 5_000_000) for i in range(20)}
     smalls = {"CHPT": _snap(5.19, 6.90, 969_501), "WETO": _snap(6.00, 7.20, 2_000_000),
               "ZQRT": _snap(8.00, 9.60, 100_000)}
-    snapshots = {**fillers, **smalls}
+    snapshots = {**fillers, **smalls, **(extra_snapshots or {})}
     adv_map = {t: 10_000_000.0 for t in fillers}          # $500M+ ADV$ -> composite 55, above the cut
     vol_hist = {"CHPT": [400_000.0] * 9 + [1_500_000.0], "WETO": [500_000.0] * 10,
                 "ZQRT": [500_000.0] * 10}
@@ -410,6 +418,8 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
 
     async def _audit(ev, summary, detail=""):
         audits.append(ev)
+        if audit_sink is not None:
+            audit_sink.append((ev, summary, detail))
 
     async def _noop(*a, **k):
         return None
@@ -481,7 +491,7 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
         ep_detector._catalyst_cache_date = SESSION_DATE
         ep_detector._catalyst_cache = {
             ADMIT_TICKER: ep_detector.CachedGrade(
-                "game_changer", 1.0,
+                cached_quality, 1.0,
                 "Big Cap Co wins landmark FDA approval for its flagship therapy.",
                 "Big Cap Co announced FDA approval for its flagship therapy — a major, "
                 "label-expanding regulatory win with immediate commercial impact.",

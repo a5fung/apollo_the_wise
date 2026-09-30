@@ -177,10 +177,12 @@ change). The one adjacent decision that would be money-path is flagged under F9.
 
 **F6 · EP cached-ticker re-poll dies at `logger.debug` and self-disables for the day** — class T2
 
-> **STATUS 2026-09-30 (#635) — STILL OPEN, fix in commit B** (`ep_detector.py` is money-path; ships Sat 2026-10-03). Re-read against
-> today's code: the swallow is at `ep_detector.py` ~4617 (`except Exception as _e: logger.debug("... repoll shadow skipped")`).
-> Decision recorded: a DISTINCT event (`ep_repoll_upgrade_error`), NOT the doc's `live_enriched_grade_failed` — #543's grading-health
-> check counts that exact name as a grade-decision failure (`health_checks._GRADING_FAILURE_EVENTS`), and a failed re-poll is not one.
+> **STATUS 2026-09-30 (#635) — FIXED, commit B** (`ep_detector.py` is money-path; ships Sat 2026-10-03). Re-read against today's code
+> the swallow was at `ep_detector.py` ~4617 (`except Exception as _e: logger.debug("... repoll shadow skipped")`); it is now
+> `logger.error` + an `ep_repoll_upgrade_error` audit row (rides the nightly `%error%` sweep). Decision recorded: a DISTINCT event,
+> NOT the doc's `live_enriched_grade_failed` — #543's grading-health check counts that exact name as a grade-decision failure
+> (`health_checks._GRADING_FAILURE_EVENTS`), and a failed re-poll is not one. The latch (`logged=True` before the call) is unchanged.
+> Test (real `run_ep_scan`): `tests/test_501_tier1_silent_failure_surfaces.py::test_f6_*`.
 - Site: `ep_detector.py:2401` — the late-primary-source re-poll/upgrade block (`routine` →
   strong/game_changer when a PR lands after first grading). `_st["logged"] = True` is set
   *before* the risky call, and the block only runs `while not _st["logged"]` — one failure
@@ -206,10 +208,13 @@ change). The one adjacent decision that would be money-path is flagged under F9.
 **F8 · Per-ticker parse-drop in EP candidate build has no counter** — class T1-adjacent (bulkhead
 without telemetry)
 
-> **STATUS 2026-09-30 (#635) — PARSE-DROP HALF: STILL OPEN, fix in commit B** (`ep_detector.py` is money-path; ships Sat 2026-10-03).
-> Site is now `ep_detector.py` ~3609 (`except Exception: continue` in the per-ticker loop). **`prevDay` default-0 HALF: ALREADY FIXED** —
-> a missing `prevDay` reads `prev_close=0`, which `if not prev_close` routes to `_universe_floor_skip` (#570), i.e. a visible
-> `mi_ep_scan_log` row with its reason; only the raised-exception drop was invisible.
+> **STATUS 2026-09-30 (#635) — PARSE-DROP HALF: FIXED, commit B** (`ep_detector.py` is money-path; ships Sat 2026-10-03). Site was
+> `ep_detector.py` ~3609 (`except Exception: continue` in the per-ticker loop). The `continue` is unchanged; it now counts, and a tick
+> that drops at least `max(50, 1% of the snapshot)` rows writes one `ep_candidate_parse_error` audit row (count, size, first error,
+> 5 sample tickers) via a background task. **The threshold is UN-BASELINED** (no prod data when this shipped — tune it from the first
+> real rows). **`prevDay` default-0 HALF: ALREADY FIXED** — a missing `prevDay` reads `prev_close=0`, which `if not prev_close` routes to
+> `_universe_floor_skip` (#570), i.e. a visible `mi_ep_scan_log` row with its reason; only the raised-exception drop was invisible.
+> Test (real `run_ep_scan`, 60 malformed rows, byte-identical results): `tests/test_501_tier1_silent_failure_surfaces.py::test_f8_*`.
 - Site: `ep_detector.py:1879` — `except Exception: continue` per ticker (the ONLY real gap among
   the 15 grade/data baseline swallows; the bulkhead itself is correct — the crash path is loud —
   but a systemic Polygon schema change hitting a ticker subset would silently erode candidate
@@ -221,9 +226,11 @@ without telemetry)
 
 **F9 · `read_breaker_state` per-call fail-open is log-only** — class T3 · `drawdown_breaker.py:492-494`
 
-> **STATUS 2026-09-30 (#635) — STILL OPEN, ALERT-ONLY fix in commit B** (`drawdown_breaker.py` is money-path; ships Sat 2026-10-03).
-> Site is now `drawdown_breaker.py:488-490`. The fail-open DIRECTION is operator-ruled and does not change: the function still returns
-> `OK` on a read error, at the same speed (the audit row + page are dispatched as a background task, never awaited on the entry path).
+> **STATUS 2026-09-30 (#635) — FIXED, ALERT-ONLY, commit B** (`drawdown_breaker.py` is money-path; ships Sat 2026-10-03).
+> Site was `drawdown_breaker.py:488-490`. The fail-open DIRECTION is operator-ruled and does not change: the function still returns
+> `OK` on a read error, at the same speed (the `drawdown_breaker_read_error` audit row + a Telegram, one per mode per hour, are
+> dispatched as a background task and never awaited on the entry path — a test blocks the audit write and proves the read still returns).
+> Test: `tests/test_501_tier1_silent_failure_surfaces.py::test_f9_*`.
 - A transient DB error during `_check_safeguards` (live_tracker.py:256) reads a possibly-BLOCK
   breaker as `'OK'` with only `logger.warning`. Bounded: RED-3's deployed fix monitors the
   *systemic* path (16:12 job in `_EXPECTED_JOBS` + the `drawdown_check_unavailable` nightly
@@ -235,9 +242,11 @@ without telemetry)
 
 **F10 · Partial-fill-too-small close failure → DB says closed, broker holds shares** — class T2
 
-> **STATUS 2026-09-30 (#635) — STILL OPEN, fix in commit B** (both sites are broker/ money-path; ships Sat 2026-10-03). Sites today:
-> `trade_stream.py` ~785 (`_process_entry_fill`) and `order_manager.py` ~1017 (`check_fills`). The row is still marked closed
-> afterwards — unchanged; only an audit row + a Telegram are added inside the existing `except`.
+> **STATUS 2026-09-30 (#635) — FIXED, commit B** (both sites are broker/ money-path; ships Sat 2026-10-03). Sites were
+> `trade_stream.py` ~785 (`_process_entry_fill`) and `order_manager.py` ~1017 (`check_fills`). Both now call
+> `order_manager.note_partial_fill_close_failed` inside the existing `except`: a `partial_fill_close_error` audit row + a Telegram per
+> occurrence. The row is still marked closed afterwards — unchanged (each test asserts it).
+> Tests: `tests/test_501_tier1_silent_failure_surfaces.py::test_f10_*`.
 - Sites: `trade_stream.py:684-693`, `order_manager.py:470-473` — `close_position` raising is
   `logger.error`-only and the row is marked `closed` anyway. Bounded: the 15-min coverage-drift
   detector (#184) + 16:05 `sync_positions` surface the resulting DB↔broker divergence within
@@ -246,9 +255,10 @@ without telemetry)
 
 **F11 · TradingStream SDK-shape guard degrades to log-only at boot** — class T8 · `trade_stream.py:102-110`
 
-> **STATUS 2026-09-30 (#635) — STILL OPEN, fix in commit B** (`trade_stream.py` is money-path; ships Sat 2026-10-03). Site is now
-> `trade_stream.py` ~131-140. Still returns without registering a stream (polling backstop unchanged); adds an audit row and a
-> once-per-process-per-mode Telegram.
+> **STATUS 2026-09-30 (#635) — FIXED, commit B** (`trade_stream.py` is money-path; ships Sat 2026-10-03). Site was
+> `trade_stream.py` ~131-140. It still returns without registering a stream (polling backstop unchanged); it now also writes a
+> `trade_stream_sdk_shape_error` audit row on every trip and sends one Telegram per process per mode.
+> Tests: `tests/test_501_tier1_silent_failure_surfaces.py::test_f11_*`.
 - An alpaca-py upgrade changing `_run_forever` silently removes the entire WS fill surface for
   the mode (`logger.error` only, "falling back to polling"). Rare (pinned SDK), high consequence,
   boot-time. Surface needed: Telegram once at boot + audit row (config-error treatment).

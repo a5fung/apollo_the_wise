@@ -469,6 +469,12 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-09-30 — `read_breaker_state` read errors are now AUDITED + PAGED (#635 F9, observability only — NO safeguard behaviour change)
+
+**What changed**: when the per-call breaker read (`drawdown_breaker.read_breaker_state`, called from `_check_safeguards` at entry time) hits a DB error it still returns `'OK'` — **the fail-open direction is operator-ruled (RED-3: "fail-open semantics stay as designed") and is unchanged** — but it now also writes a `drawdown_breaker_read_error` audit row and sends one Telegram per account mode per hour ("an entry check went ahead as if the breaker were OK; if it was really REDUCE/BLOCK that entry was NOT limited"). Before, the only trace was one `logger.warning`.
+**Why it cannot affect an entry**: the audit row and the page are dispatched as a background task (`asyncio.create_task`, strong-ref set) and never awaited on the entry path; the return value and its timing are identical. A test blocks the audit write and proves `read_breaker_state` still returns at once.
+**Not proposed**: making this fail-closed. That is a safeguard change = THE LINE, his decision + CHANGE_PROCESS. **Tests**: `tests/test_501_tier1_silent_failure_surfaces.py::test_f9_*` (mutation-checked).
+
 ### 2026-09-07 — Per-strategy sizing knob (`position_size_multiplier`) wired for the FIRST time (#628, BUG FIX — no size change)
 
 **Trigger**: `entry_pipeline.py` read the #65 knob as
