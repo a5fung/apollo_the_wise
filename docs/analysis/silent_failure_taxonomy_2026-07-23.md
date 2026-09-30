@@ -207,9 +207,10 @@ change). The one adjacent decision that would be money-path is flagged under F9.
 without telemetry)
 
 > **STATUS 2026-09-30 (#635) — PARSE-DROP HALF: STILL OPEN, fix in commit B** (`ep_detector.py` is money-path; ships Sat 2026-10-03).
-> Site is now `ep_detector.py` ~3609 (`except Exception: continue` in the per-ticker loop). **`prevDay` default-0 HALF: ALREADY FIXED** —
-> a missing `prevDay` reads `prev_close=0`, which `if not prev_close` routes to `_universe_floor_skip` (#570), i.e. a visible
-> `mi_ep_scan_log` row with its reason; only the raised-exception drop was invisible.
+> Site is now `ep_detector.py` ~3609 (`except Exception: continue` in the per-ticker loop). **`prevDay` default-0 HALF: ALSO STILL
+> OPEN** (corrected by the 2026-09-30 review): a missing `prevDay` reads `prev_close=0`, and `_universe_floor_skip` returns None
+> when `prev_close` is 0, so the ticker is dropped with NO scan-log row. Both halves are counted in the same tick aggregate in
+> commit B (Saturday 2026-10-03).
 - Site: `ep_detector.py:1879` — `except Exception: continue` per ticker (the ONLY real gap among
   the 15 grade/data baseline swallows; the bulkhead itself is correct — the crash path is loud —
   but a systemic Polygon schema change hitting a ticker subset would silently erode candidate
@@ -255,7 +256,7 @@ without telemetry)
 
 **F12 · `_maybe_alert_stuck_pending_new` crash is log-only** — class T6 · `order_manager.py:2689-2690`
 
-> **STATUS 2026-09-30 (#635) — covered by Tier-1 fix row 4 (F4's whole-mode reconcile surface); not re-opened here.**
+> **STATUS 2026-09-30 (#635) — STILL OPEN, fix in commit B** (corrected by the 2026-09-30 review; money-path, Saturday 2026-10-03). F4's `_note_mode_reconcile_failure` only sees exceptions that ESCAPE `reconcile_order_states`; the inner `except` around `_maybe_alert_stuck_pending_new` (order_manager.py ~5535) swallows them first with a log line only.
 - The stuck-PENDING_NEW alerter dying quietly inside the reconcile loop. Folds into F4's
   consecutive-failure surface (same job).
 

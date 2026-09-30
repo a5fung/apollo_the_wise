@@ -940,8 +940,9 @@ NIGHTLY_SWEEP_FAILED_LIKE = "%\\_failed%"
 # got. It is NOT "events we consider unimportant": shadow / telemetry `*_failed` events are
 # deliberately swept (they are silent, and a dead observation layer is the #173 shape).
 # `tests/test_v1_honesty_monitoring.py` DERIVES the emit sites from the source and fails if an
-# entry here stops Telegramming next to its audit row, or names an event nothing emits - so
-# this list cannot rot into a list of things that used to be loud.
+# entry's emitting FUNCTION no longer calls a Telegram sender, or names an event nothing emits.
+# It checks at function level, not branch level (2026-09-30 review: removing one branch's page
+# inside a function that pages elsewhere stays green) - each entry was also hand-checked that day.
 # Deliberately ABSENT although they look loud: `stop_ack_remediation_failed` (silent from
 # order_manager.py), `breakeven_arm_failed` (one branch hands off to a later re-protect),
 # `order_status_reconcile_failed` (per-order, advisor-ruled audit-only - the headline F5 case),
