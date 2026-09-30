@@ -28,6 +28,8 @@ build/
 
 # Logs
 logs/*.log
+# #690 replay samples — real production prompts, never committed
+logs/llm_samples/
 audit.log
 
 # Session scratch — one-off analysis artifacts that don't belong in history.

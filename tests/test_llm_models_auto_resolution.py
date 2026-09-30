@@ -218,3 +218,62 @@ def test_uncached_input_is_billed_alongside_cache_tokens_in_both_writers():
     for f in (mkt, orch):
         assert abs(f("claude-opus-5-5", 2_500, 300, 0, 86_500) - want) < 1e-9
 
+
+# ─── #690 per-role replay holds: the precedence chain ───────────────────────
+# code _ROLE_OVERRIDES > code _TIER_OVERRIDES > cache role_holds > tier resolution. Exercised
+# through llm_models._resolve_for (the function _ROLE_RESOLUTIONS is built from) against a real
+# cache file, so a reordering of the chain fails here, not in prod.
+
+def _hold_cache(tmp_path, *, sonnet="claude-sonnet-5-5", hold="claude-sonnet-5"):
+    from shared.model_resolver import write_cache
+    path = tmp_path / "cache.json"
+    write_cache({"sonnet": sonnet}, {"sonnet": "2026-09-28T22:08:00+00:00"}, cache_path=path,
+                role_holds={"THEME_MODEL": {"model": hold, "since": "2026-09-30T22:08:00+00:00",
+                                            "error": "refused", "candidate": sonnet}})
+    return path
+
+
+def test_a_cache_hold_keeps_the_role_on_its_held_id_and_only_that_role(tmp_path):
+    path = _hold_cache(tmp_path)
+    held = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
+    assert (held.model, held.source) == ("claude-sonnet-5", "hold")
+    assert held.changed_at == "2026-09-30T22:08:00+00:00" and "refused" in held.note
+    other = llm_models._resolve_for("SYNTHESIS_MODEL", "sonnet", path)
+    assert (other.model, other.source) == ("claude-sonnet-5-5", "cache")
+
+
+def test_a_tier_override_beats_a_hold(tmp_path, monkeypatch):
+    path = _hold_cache(tmp_path)
+    monkeypatch.setitem(llm_models._TIER_OVERRIDES, "sonnet", "claude-sonnet-4-6")
+    res = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
+    assert (res.model, res.source) == ("claude-sonnet-4-6", "override")
+
+
+def test_a_role_override_beats_a_tier_override_and_a_hold(tmp_path, monkeypatch):
+    path = _hold_cache(tmp_path)
+    monkeypatch.setitem(llm_models._TIER_OVERRIDES, "sonnet", "claude-sonnet-4-6")
+    monkeypatch.setitem(llm_models._ROLE_OVERRIDES, "THEME_MODEL", "claude-sonnet-5-5")
+    res = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
+    assert (res.model, res.source) == ("claude-sonnet-5-5", "override")
+
+
+def test_a_hold_can_never_move_a_role_forward(tmp_path):
+    # a hold NEWER than the tier's own resolution is ignored — holds only ever keep a role back
+    path = _hold_cache(tmp_path, sonnet="claude-sonnet-5", hold="claude-sonnet-5-5")
+    res = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
+    assert (res.model, res.source) == ("claude-sonnet-5", "cache")
+
+
+def test_a_hold_below_the_committed_pin_is_ignored(tmp_path):
+    path = _hold_cache(tmp_path, sonnet="claude-sonnet-5-5", hold="claude-sonnet-4-5")
+    res = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
+    assert (res.model, res.source) == ("claude-sonnet-5-5", "cache")
+
+
+def test_the_cache_carries_role_holds_through_a_write(tmp_path):
+    from shared.model_resolver import cached_role_hold, read_cache
+    path = _hold_cache(tmp_path)
+    assert read_cache(path)["role_holds"]["THEME_MODEL"]["model"] == "claude-sonnet-5"
+    assert cached_role_hold("THEME_MODEL", path)["error"] == "refused"
+    assert cached_role_hold("SYNTHESIS_MODEL", path) is None
+

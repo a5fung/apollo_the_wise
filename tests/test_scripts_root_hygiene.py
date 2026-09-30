@@ -145,6 +145,7 @@ KEPT_AT_ROOT = {
     "evaluate_kill_scale_bands.py": "code-ref:test+imported-or-code-ref+yaml-cited",
     "fetch_ep_fundamentals.py": "code-ref:test+imported-or-code-ref+yaml-cited",
     "gate_provenance_registry.py": "code-ref:test+imported-or-code-ref",
+    "gen_llm_call_sites.py": "code-ref:test+imported-or-code-ref",   # #690 call-site map generator, imported by tests/test_llm_call_sites.py
     "gdrive_backup.py": "code-ref:deploy",
     "integration_test_partial_exit.py": "imported-or-code-ref",
     "integration_test_stop_adopt.py": "imported-or-code-ref",

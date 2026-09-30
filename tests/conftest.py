@@ -28,6 +28,12 @@ import types
 for _git_var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
                  "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_PREFIX"):
     os.environ.pop(_git_var, None)
+
+# ── #690: a test's LLM call must never write a replay sample into the repo's logs/llm_samples. ──
+# shared/llm_samples records every production call that goes through the transport; point it at a
+# throwaway directory for the whole session (tests that exercise capture set their own per test).
+import tempfile as _tempfile
+os.environ["APOLLO_LLM_SAMPLE_DIR"] = _tempfile.mkdtemp(prefix="apollo_llm_samples_test_")
 from unittest.mock import AsyncMock, MagicMock
 
 

@@ -496,6 +496,7 @@ def _refresh_deps(monkeypatch, tmp_path, canary):
     from agents.market_intelligence import model_resolution as mr
     from shared.model_resolver import write_cache
     monkeypatch.setenv("APOLLO_MODEL_RESOLUTION_CACHE", str(tmp_path / "cache.json"))
+    monkeypatch.setenv("APOLLO_LLM_SAMPLE_DIR", str(tmp_path / "samples"))   # no replay samples
     write_cache({"opus": "claude-opus-5", "sonnet": "claude-sonnet-5",
                  "haiku": "claude-haiku-4-5-20251001"}, {}, cache_path=tmp_path / "cache.json")
 

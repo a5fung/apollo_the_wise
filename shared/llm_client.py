@@ -40,6 +40,10 @@ WHAT IT DOES. `make_async_anthropic(...)` / `make_anthropic(...)` return a REAL 
      fail-open handles it exactly as it handled the 400.
   4. Each (model, rewrite) adoption is logged ONCE to mi_audit_log (best-effort, lazy import,
      never raises, no Telegram).
+  5. (#690, 2026-09-30) Each successful call's CALLER-WRITTEN request + the answer summary is
+     kept as a replay sample (shared/llm_samples.py — last 3 per call site, one an hour, never
+     operator chat, never while the canary or the replay runs). The nightly refresh replays them
+     on a new release before adopting it. Never raises into the call.
 
 WHAT IT DOES NOT DO (THE LINE). No prompt, schema, threshold, grade logic or trading behaviour
 changes here. It does not set `output_config.effort` when dropping a disabled-thinking param —
@@ -57,6 +61,7 @@ import copy
 import inspect
 import json
 import logging
+import sys
 import uuid
 from typing import Any, Callable, Optional
 
@@ -442,7 +447,9 @@ async def _create_async(inner_create: Callable, kw: dict):
             send, new_plan = _rewrite(send, rewrite)
             plan = new_plan or plan
             applied.add(rewrite)
-    return _synthesize(resp, plan) if plan else resp
+    out = _synthesize(resp, plan) if plan else resp
+    _capture(kw, out)
+    return out
 
 
 def _create_sync(inner_create: Callable, kw: dict):
@@ -459,7 +466,21 @@ def _create_sync(inner_create: Callable, kw: dict):
             send, new_plan = _rewrite(send, rewrite)
             plan = new_plan or plan
             applied.add(rewrite)
-    return _synthesize(resp, plan) if plan else resp
+    out = _synthesize(resp, plan) if plan else resp
+    _capture(kw, out)
+    return out
+
+
+def _capture(kw: dict, out: Any) -> None:
+    """Keep this real request for the pre-adoption replay (#690, shared/llm_samples.py). `kw` is
+    the CALLER-WRITTEN request (pre-adaptation), so a replay re-adapts for the candidate model;
+    `out` is what the caller receives. Never raises — capture is best-effort and must not touch
+    the call it observes."""
+    try:
+        from shared import llm_samples
+        llm_samples.record(kw, out, frame=sys._getframe(1))
+    except Exception as e:  # loud-ok: capture must never break the LLM call it observes
+        logger.debug("llm_client: sample capture skipped: %s: %s", type(e).__name__, e)
 
 
 class _AsyncMessagesAdapter:
@@ -593,10 +614,12 @@ async def run_canary(client, model: str, *, max_tokens: int = CANARY_MAX_TOKENS)
               tool_choice={"type": "any"}, messages=prompt_two),
          lambda r: _has_tool_use(r, {CANARY_TOOL["name"], CANARY_TOOL_B["name"]})),
     ]
+    from shared.llm_samples import capture_disabled
     out: list[CanaryResult] = []
     for name, kw, verify in checks:
         try:
-            resp = await client.messages.create(**kw)
+            with capture_disabled():   # a synthetic prompt must never become a replay sample
+                resp = await client.messages.create(**kw)
         except Exception as e:  # loud-ok: the canary REPORTS failures, it never raises
             out.append(CanaryResult(name, False, f"{type(e).__name__}: {str(e)[:300]}"))
             continue

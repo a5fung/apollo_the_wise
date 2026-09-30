@@ -62,13 +62,23 @@ touches the literals above:
      (every production request shape, sent through shared/llm_client's
      transport adapter) or the tier keeps its last working id and he is told
      the exact error — opus-5-5 had been adopted while rejecting every
-     forced-tool call the judges make.
+     forced-tool call the judges make. Since 2026-09-30 (#690) it must ALSO
+     answer our own recent requests: shared/llm_samples.py keeps the last 3
+     real requests per call site, and each call site's latest is replayed 3×
+     on the release. A role whose requests FAIL there (refused, rejected, cut
+     off, missing tool fields, empty) is HELD on its current id — written to
+     the cache as `role_holds`, re-tested nightly, released once they pass —
+     while the rest of the tier moves; changed answers only go to the digest
+     Telegram. (sonnet-5-5 passed the canary on 09-28 and then refused the
+     real theme prompts.)
   3. RESOLVED_ROLES below — the opt-in list of ROLE bindings whose ACTUAL live
      calls track the resolver (today: JUDGE_MODEL only — the one role the
      ADR-0030 robustness eval polices; every other role stays hand-pinned,
      unaffected). `effective_model(role)` returns a role's live value:
-     override > cache (never below the pin) > pin — CANNOT raise (see
-     shared/model_resolver.resolve_tier). Resolved ONCE, from the cache FILE
+     _ROLE_OVERRIDES > _TIER_OVERRIDES > cache role_holds > cache tier id
+     (never below the pin) > pin — CANNOT raise (see
+     shared/model_resolver.resolve_role / resolve_tier). A hold can only keep
+     a role on an OLDER id, never move it forward. Resolved ONCE, from the cache FILE
      only (zero network, zero re-read per LLM invocation) — at whichever
      point this module or a role's call site first reads it, which in
      practice means process/container boot ("the running process keeps its
@@ -94,6 +104,12 @@ touches the literals above:
     concrete id (e.g. "opus": "claude-opus-4-8") and redeploy —
     `effective_model` honors an override ahead of the cache unconditionally.
     Clear it back to None to resume auto-tracking.
+    ONE ROLE only: `_ROLE_OVERRIDES` below, same rules.
+    A replay HOLD (#690) needs no edit: it keeps just that role on its last
+    working id and releases itself the night its requests pass. To end one
+    early, set that role in `_ROLE_OVERRIDES` (an override beats a hold), or
+    delete its entry from `role_holds` in logs/model_resolution.json and
+    restart.
     (To change the COMMITTED pin itself — the value the deploy gate checks —
     edit `OPUS_PIN`/`SONNET_PIN`/`HAIKU_PIN` directly; that is its own
     model-selection commit per the Rules above, evaluated by ADR-0030 first
@@ -102,7 +118,7 @@ touches the literals above:
 
 from shared.model_resolver import TierResolution as _TierResolution
 from shared.model_resolver import parse_model_id as _parse_model_id
-from shared.model_resolver import resolve_tier as _resolve_tier
+from shared.model_resolver import resolve_role as _resolve_role
 from datetime import date as _date
 from shared.dates import et_today as _et_today
 
@@ -294,11 +310,16 @@ RESOLVED_ROLES: dict[str, str] = {
 
 # Resolved ONCE at import (cache-FILE read only — never a network call, never
 # re-read per invocation): the forensics view AND the value effective_model
-# returns for a RESOLVED_ROLES role. CANNOT raise (resolve_tier's contract).
+# returns for a RESOLVED_ROLES role. CANNOT raise (resolve_role's contract).
+def _resolve_for(role: str, tier: str, cache_path=None) -> _TierResolution:
+    # PRECEDENCE: code _ROLE_OVERRIDES > code _TIER_OVERRIDES > cache role_holds > tier resolution.
+    # (A role_hold is written by the nightly replay (#690) and can only keep a role on an OLDER id.)
+    return _resolve_role(role, tier, _TIER_PINS[tier],
+                         _ROLE_OVERRIDES.get(role) or _TIER_OVERRIDES.get(tier), cache_path)
+
+
 _ROLE_RESOLUTIONS: dict[str, _TierResolution] = {
-    role: _resolve_tier(tier, _TIER_PINS[tier],
-                        _ROLE_OVERRIDES.get(role) or _TIER_OVERRIDES.get(tier))
-    for role, tier in RESOLVED_ROLES.items()
+    role: _resolve_for(role, tier) for role, tier in RESOLVED_ROLES.items()
 }
 
 

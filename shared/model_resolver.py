@@ -44,6 +44,9 @@ DESIGN CONTRACT — read before touching:
     (protects against a stale/corrupt cache downgrading a tier).
   * An OVERRIDE (shared/llm_models.py `_TIER_OVERRIDES`) beats everything —
     that is the one-edit rollback path.
+  * A per-ROLE hold in the cache (`role_holds`, written by the #690 replay) sits
+    between the overrides and the tier id (`resolve_role`); it can only keep a
+    role on an OLDER id, never move one forward, and never below the pin.
 
 Version ordering ("how do we know opus-5 is newer than opus-4-8"):
   ids parse as  claude-{family}-{version…}[-YYYYMMDD]  or the legacy
@@ -182,8 +185,13 @@ def read_cache(cache_path: Path | None = None) -> dict | None:
 
 def write_cache(resolved: dict[str, str], changed_at: dict[str, str],
                 candidates: dict[str, list[str]] | None = None,
-                cache_path: Path | None = None) -> Path:
-    """Atomically write the resolution cache (tmp file + os.replace)."""
+                cache_path: Path | None = None,
+                role_holds: dict[str, dict] | None = None) -> Path:
+    """Atomically write the resolution cache (tmp file + os.replace).
+
+    `role_holds` (#690): {role: {"model", "since", "error", ...}} — roles the pre-adoption replay
+    kept on their current id while their tier moved on. The nightly refresh passes the full set
+    every night; None writes none."""
     path = cache_path or default_cache_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -193,6 +201,7 @@ def write_cache(resolved: dict[str, str], changed_at: dict[str, str],
         "resolved": dict(resolved),
         "changed_at": dict(changed_at),
         "candidates": dict(candidates or {}),
+        "role_holds": dict(role_holds or {}),
     }
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name, suffix=".tmp")
     try:
@@ -214,8 +223,9 @@ def write_cache(resolved: dict[str, str], changed_at: dict[str, str],
 class TierResolution:
     tier: str
     model: str
-    source: str            # "override" | "cache" | "pin"
-    changed_at: str | None  # ISO ts when the cache last CHANGED this tier (cache source only)
+    source: str            # "override" | "cache" | "pin" | "hold" (a per-role replay hold, #690)
+    changed_at: str | None  # ISO ts when the cache last CHANGED this tier (cache source only;
+                            # for a hold: when the hold began)
     note: str = ""          # why a fallback happened, for forensics
 
 
@@ -269,3 +279,49 @@ def _resolve_tier_inner(tier: str, pin: str, override: str | None,
     if not isinstance(changed_at, str):
         changed_at = None
     return TierResolution(tier, cached, "cache", changed_at)
+
+
+# ── Per-role replay holds (#690) ─────────────────────────────────────────────
+
+def cached_role_hold(role: str, cache_path: Path | None = None) -> dict | None:
+    """The cache's hold for `role` ({"model", "since", "error", ...}), or None. Malformed → None."""
+    cache = read_cache(cache_path)
+    holds = (cache or {}).get("role_holds")
+    hold = holds.get(role) if isinstance(holds, dict) else None
+    if not isinstance(hold, dict) or not isinstance(hold.get("model"), str):
+        return None
+    return hold
+
+
+def resolve_role(role: str, tier: str, pin: str, override: str | None = None,
+                 cache_path: Path | None = None) -> TierResolution:
+    """One ROLE's live model. Precedence: override (the caller folds role over tier) > cache
+    role hold > tier resolution (resolve_tier). A hold can only keep a role BACK: it is ignored
+    when it is not older than the tier's own resolution (it would move the role forward), when it
+    is below the committed pin, or when it is not a parseable id of this tier. CANNOT RAISE."""
+    try:
+        base = resolve_tier(tier, pin, override, cache_path)
+        if base.source == "override":
+            return base
+        hold = cached_role_hold(role, cache_path)
+        if hold is None:
+            return base
+        held = hold["model"]
+        parsed = parse_model_id(held)
+        if parsed is None or parsed.family != tier or held == base.model:
+            return base
+        if not is_newer(base.model, held):
+            logger.warning("model_resolver: hold for %s on %s ignored — not older than the tier's "
+                           "%s (a hold never moves a role forward)", role, held, base.model)
+            return base
+        if held != pin and not is_newer(held, pin):
+            logger.warning("model_resolver: hold for %s on %s ignored — below the pin %s",
+                           role, held, pin)
+            return base
+        since = hold.get("since") if isinstance(hold.get("since"), str) else None
+        return TierResolution(tier, held, "hold", since,
+                              f"held by the pre-adoption replay: {str(hold.get('error') or '')[:200]}")
+    except Exception as e:  # belt-and-braces: a resolver bug must not stop boot
+        logger.warning("model_resolver: resolve_role(%s) failed (%s) — using the tier resolution",
+                       role, e)
+        return resolve_tier(tier, pin, override, cache_path)
