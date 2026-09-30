@@ -671,3 +671,76 @@ def test_635_the_loud_set_is_exactly_the_two_approved_families():
                                 "evening_verify_heartbeat"):
         assert repair_or_heartbeat not in loud
     assert {"stop_ack_timeout_watchdog", "stuck_fill_watchdog"} <= loud
+
+
+# ── #635 Tier 2/3 (2026-09-30) — F13: the nightly state-alert step ────────────────────────
+# SoT: docs/analysis/silent_failure_taxonomy_2026-07-23.md §2 F13. The regime / theme
+# deterioration Telegrams come out of nightly step 8; a failure there was `logger.error` only,
+# so they could stop arriving with no trace that survives a restart. Surfaced through
+# `record_job_failure` (audit row + deduped Telegram) — NOT by appending to the pull's
+# `failures` list, which would skip `log_job_run(JOB_NIGHTLY_DATA_PULL)` and make
+# `check_missed_jobs` re-run the whole pull on the next evening restart.
+#
+# MUTATION CHECK (run by hand 2026-09-30): delete the `await record_job_failure(...)` in
+# scheduler._state_alerts_step -> the two failure tests below FAIL (no row, no page).
+
+@pytest.mark.asyncio
+async def test_f13_a_failed_state_alert_step_is_surfaced_and_still_swallowed(monkeypatch, sinks):
+    from datetime import date
+    from agents.market_intelligence import scheduler as sched
+    monkeypatch.setattr(sched, "detect_state_changes", AsyncMock(
+        side_effect=RuntimeError('relation "mi_theme_snapshots" does not exist')))
+    parts: list = []
+
+    await sched._state_alerts_step(date(2026, 9, 30), [], parts)   # swallowed — no raise
+
+    assert parts == []                                   # summary untouched, as before
+    rows = sinks.rows(JOB_FAILED_ERROR)
+    assert len(rows) == 1 and "job=nightly_state_alerts " in rows[0][1]
+    assert len(sinks.telegrams) == 1
+    page = sinks.telegrams[0]
+    assert "state-change alerts did NOT go out" in page
+    assert "mi_theme_snapshots" in page
+
+
+@pytest.mark.asyncio
+async def test_f13_a_failing_send_is_surfaced_too(monkeypatch, sinks):
+    from datetime import date
+    from agents.market_intelligence import scheduler as sched
+    monkeypatch.setattr(sched, "detect_state_changes", AsyncMock(return_value=([{"x": 1}], {}, {})))
+    monkeypatch.setattr(sched, "send_state_alerts", AsyncMock(side_effect=RuntimeError("telegram 502")))
+    parts: list = []
+
+    await sched._state_alerts_step(date(2026, 9, 30), [], parts)
+
+    assert parts == []                                   # nothing was sent, so nothing is claimed
+    assert len(sinks.rows(JOB_FAILED_ERROR)) == 1
+    assert "telegram 502" in sinks.telegrams[0]
+
+
+@pytest.mark.asyncio
+async def test_f13_the_success_path_is_byte_identical_and_silent(monkeypatch, sinks):
+    from datetime import date
+    from agents.market_intelligence import scheduler as sched
+    send = AsyncMock()
+    monkeypatch.setattr(sched, "detect_state_changes",
+                        AsyncMock(return_value=([{"a": 1}, {"b": 2}], {"t": 1}, {"t": 0})))
+    monkeypatch.setattr(sched, "send_state_alerts", send)
+    parts: list = []
+
+    await sched._state_alerts_step(date(2026, 9, 30), ["cl1"], parts)
+
+    send.assert_awaited_once_with([{"a": 1}, {"b": 2}], ["cl1"], {"t": 1}, {"t": 0})
+    assert parts == ["3 state alerts"]                   # 2 alerts + 1 changelog line
+    assert sinks.audit_rows == [] and sinks.telegrams == []
+
+
+def test_f13_the_nightly_pull_routes_step_8_through_the_helper():
+    """Wiring check. Driving the whole ~600-line pull needs two dozen collaborators mocked; the
+    step's behaviour is exercised directly above, this only proves the pull still calls it (an
+    inline copy of the old block would quietly bring the silent swallow back). Structural - the
+    call set of the function, read off its AST - not a text match."""
+    from tests._audit_emitters import names_called_in
+    called = names_called_in("agents/market_intelligence/scheduler.py", "_nightly_data_pull")
+    assert "_state_alerts_step" in called
+    assert "detect_state_changes" not in called       # no inlined copy of the old block

@@ -11,6 +11,8 @@ to enumerate the tracked debt; (2) hand-classification of every baseline swallow
 except-less nulls, generic framing) across the money + detection paths; (4) reconciliation against
 the prior audits (#382 scoping 7/05, money-path adversarial audit 7/12, v1-readiness RED-3/3b).
 **Status**: READ-ONLY. No code, config, or DB changed. Every fix below is a card, not a patch.
+**2026-09-30 (#635, Tier 2/3):** each of F5-F13 now carries a dated `STATUS` line under its heading (fixed here / already fixed /
+dead / still open). Line numbers in §2 are the 07-23 ones and have drifted; the STATUS line gives today's.
 
 **Headline**: the money path's *broad-except* hygiene is genuinely good (0 broad+silent swallows
 in `broker/` after #382; CRMD-class framing remediated; EP-scan crash handling is the model).
@@ -151,6 +153,15 @@ change). The one adjacent decision that would be money-path is flagged under F9.
 ### Tier 2 — detection quality / structural
 
 **F5 · `*_failed` audit events match no automatic sweep (RED-3b, generalized)** — class T7
+
+> **STATUS 2026-09-30 (#635) — FIXED, commit A.** Both halves of the doc's option, smaller than either alone: the nightly sweep
+> (`scheduler._check_nightly_silent_errors`) now also queries `NIGHTLY_SWEEP_FAILED_LIKE` (`%\_failed%`) and renders each
+> unpaged `*_failed` event as a backtick-fenced NAME + COUNT (never the summary — the Markdown-400 hazard), minus
+> `NIGHTLY_SWEEP_FAILED_ALLOWLIST` (9 events whose every emit site Telegrams in the same function). `show errors` lists them
+> too (it never did, yet the digest told him to type it). **Drift found:** `unfilled_cancel_failed` is NOT audit-only any more —
+> `cancel_unfilled_orders` sends a "cancel FAILED ... investigate broker side" digest — so it is allowlisted, not swept.
+> Tests (population DERIVED by AST, not listed): `tests/test_v1_honesty_monitoring.py::{test_a_failed_event_with_no_page_of_its_own_reaches_the_digest,
+> test_every_unpaged_failed_emitter_reaches_the_digest, test_allowlisted_events_really_page_at_every_emit_site, test_show_errors_lists_failed_events_too}`.
 - Mechanism: the nightly surfacer (`_check_nightly_silent_errors`, scheduler.py:745-766) matches
   `%error%` / `%rate_limited%` / `%api_failure%` + ONE hand-carve-out (`drawdown_check_unavailable`,
   added 7/12 after RED-3b found exactly this shape). The L1 window invariant matches `%_error`.
@@ -165,6 +176,11 @@ change). The one adjacent decision that would be money-path is flagged under F9.
   closes the RED-3b *class*, not another instance.
 
 **F6 · EP cached-ticker re-poll dies at `logger.debug` and self-disables for the day** — class T2
+
+> **STATUS 2026-09-30 (#635) — STILL OPEN, fix in commit B** (`ep_detector.py` is money-path; ships Sat 2026-10-03). Re-read against
+> today's code: the swallow is at `ep_detector.py` ~4617 (`except Exception as _e: logger.debug("... repoll shadow skipped")`).
+> Decision recorded: a DISTINCT event (`ep_repoll_upgrade_error`), NOT the doc's `live_enriched_grade_failed` — #543's grading-health
+> check counts that exact name as a grade-decision failure (`health_checks._GRADING_FAILURE_EVENTS`), and a failed re-poll is not one.
 - Site: `ep_detector.py:2401` — the late-primary-source re-poll/upgrade block (`routine` →
   strong/game_changer when a PR lands after first grading). `_st["logged"] = True` is set
   *before* the risky call, and the block only runs `while not _st["logged"]` — one failure
@@ -175,6 +191,10 @@ change). The one adjacent decision that would be money-path is flagged under F9.
 - Surface needed: mirror the 2482 treatment (logger.error + the same audit event).
 
 **F7 · 9M volume default-0 drop has no downstream safety net** — class T3
+
+> **STATUS 2026-09-30 (#635) — DEAD, dropped.** Site is now `ninem_detector.py:253`; its caller `scheduler._9m_scan_job` returns before
+> scanning unless `should_run("9m_day2")` (gated off 2026-09-08, `mi_strategies.9m_day2` deprecated/disabled). 9M is GONE (operator):
+> not instrumented, not revived.
 - Site: `ninem_detector.py:253` — `snap.get("day",{}).get("v",0) or snap.get("min",{}).get("av",0)
   or 0`: a data glitch (both fields missing) reads as zero volume → both 9M gates fail →
   `continue`, no log of any kind. The EP twin (ep_detector.py:1848) is BENIGN because the
@@ -185,6 +205,11 @@ change). The one adjacent decision that would be money-path is flagged under F9.
 
 **F8 · Per-ticker parse-drop in EP candidate build has no counter** — class T1-adjacent (bulkhead
 without telemetry)
+
+> **STATUS 2026-09-30 (#635) — PARSE-DROP HALF: STILL OPEN, fix in commit B** (`ep_detector.py` is money-path; ships Sat 2026-10-03).
+> Site is now `ep_detector.py` ~3609 (`except Exception: continue` in the per-ticker loop). **`prevDay` default-0 HALF: ALREADY FIXED** —
+> a missing `prevDay` reads `prev_close=0`, which `if not prev_close` routes to `_universe_floor_skip` (#570), i.e. a visible
+> `mi_ep_scan_log` row with its reason; only the raised-exception drop was invisible.
 - Site: `ep_detector.py:1879` — `except Exception: continue` per ticker (the ONLY real gap among
   the 15 grade/data baseline swallows; the bulkhead itself is correct — the crash path is loud —
   but a systemic Polygon schema change hitting a ticker subset would silently erode candidate
@@ -195,6 +220,10 @@ without telemetry)
 ### Tier 3 — low / bounded
 
 **F9 · `read_breaker_state` per-call fail-open is log-only** — class T3 · `drawdown_breaker.py:492-494`
+
+> **STATUS 2026-09-30 (#635) — STILL OPEN, ALERT-ONLY fix in commit B** (`drawdown_breaker.py` is money-path; ships Sat 2026-10-03).
+> Site is now `drawdown_breaker.py:488-490`. The fail-open DIRECTION is operator-ruled and does not change: the function still returns
+> `OK` on a read error, at the same speed (the audit row + page are dispatched as a background task, never awaited on the entry path).
 - A transient DB error during `_check_safeguards` (live_tracker.py:256) reads a possibly-BLOCK
   breaker as `'OK'` with only `logger.warning`. Bounded: RED-3's deployed fix monitors the
   *systemic* path (16:12 job in `_EXPECTED_JOBS` + the `drawdown_check_unavailable` nightly
@@ -205,6 +234,10 @@ without telemetry)
   CHANGE_PROCESS, and is NOT proposed here.**
 
 **F10 · Partial-fill-too-small close failure → DB says closed, broker holds shares** — class T2
+
+> **STATUS 2026-09-30 (#635) — STILL OPEN, fix in commit B** (both sites are broker/ money-path; ships Sat 2026-10-03). Sites today:
+> `trade_stream.py` ~785 (`_process_entry_fill`) and `order_manager.py` ~1017 (`check_fills`). The row is still marked closed
+> afterwards — unchanged; only an audit row + a Telegram are added inside the existing `except`.
 - Sites: `trade_stream.py:684-693`, `order_manager.py:470-473` — `close_position` raising is
   `logger.error`-only and the row is marked `closed` anyway. Bounded: the 15-min coverage-drift
   detector (#184) + 16:05 `sync_positions` surface the resulting DB↔broker divergence within
@@ -212,16 +245,28 @@ without telemetry)
   15-min window still exists and depends on F4's net being alive).
 
 **F11 · TradingStream SDK-shape guard degrades to log-only at boot** — class T8 · `trade_stream.py:102-110`
+
+> **STATUS 2026-09-30 (#635) — STILL OPEN, fix in commit B** (`trade_stream.py` is money-path; ships Sat 2026-10-03). Site is now
+> `trade_stream.py` ~131-140. Still returns without registering a stream (polling backstop unchanged); adds an audit row and a
+> once-per-process-per-mode Telegram.
 - An alpaca-py upgrade changing `_run_forever` silently removes the entire WS fill surface for
   the mode (`logger.error` only, "falling back to polling"). Rare (pinned SDK), high consequence,
   boot-time. Surface needed: Telegram once at boot + audit row (config-error treatment).
 
 **F12 · `_maybe_alert_stuck_pending_new` crash is log-only** — class T6 · `order_manager.py:2689-2690`
+
+> **STATUS 2026-09-30 (#635) — covered by Tier-1 fix row 4 (F4's whole-mode reconcile surface); not re-opened here.**
 - The stuck-PENDING_NEW alerter dying quietly inside the reconcile loop. Folds into F4's
   consecutive-failure surface (same job).
 
 **F13 · State-change alert step failure isn't added to the nightly `failures` list** — class T2 ·
 `scheduler.py:705-706`
+
+> **STATUS 2026-09-30 (#635) — FIXED, commit A — but NOT as the doc's "append to `failures`" one-liner.** That line is a control-flow
+> change today: a non-empty `failures` skips `log_job_run(JOB_NIGHTLY_DATA_PULL)`, and `check_missed_jobs` reads that marker at boot
+> to decide the pull never ran, so a failed alert step would re-run the WHOLE pull on the next evening restart. Step 8 is now
+> `scheduler._state_alerts_step`; its `except` still swallows and additionally calls `record_job_failure("nightly_state_alerts", ...)`
+> (audit row + deduped Telegram, consequence first). Tests: `tests/test_501_tier1_silent_failure_surfaces.py::test_f13_*`.
 - Regime/theme deterioration Telegrams could silently stop firing (`logger.error` only; every
   other nightly stage routes into the `failures` → `notify_job_failure` aggregation). Advisory
   tier (notification, not order path) — one-line fix: append to `failures`.

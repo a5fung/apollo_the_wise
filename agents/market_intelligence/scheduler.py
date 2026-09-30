@@ -313,6 +313,39 @@ _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
 
 
+async def _state_alerts_step(today, theme_changelog, summary_parts: list) -> None:
+    """Nightly step 8 — the regime / theme state-change Telegrams. Extracted from
+    _nightly_data_pull (#635 F13, 2026-09-30) so the failure surface is testable.
+
+    Behaviour is IDENTICAL to the inline block it replaced: a failure is swallowed
+    (the pull carries on) and `summary_parts` only grows on a send. What is NEW is
+    that the swallow is no longer container-log-only: before, the deterioration /
+    regime Telegrams could silently stop arriving and the only trace was a
+    `logger.error` that rotates out on the next restart.
+
+    Deliberately NOT `failures.append(...)` (the taxonomy's original one-liner):
+    a non-empty `failures` skips `log_job_run(JOB_NIGHTLY_DATA_PULL)`, and
+    `check_missed_jobs` reads that marker at boot to decide the pull "never ran" —
+    so a failed alert step would re-run the WHOLE pull on the next evening restart.
+    `record_job_failure` surfaces it (audit row + deduped Telegram) with no change
+    to that control flow."""
+    try:
+        alerts, today_themes, prior_themes = await detect_state_changes(today)
+        if alerts or theme_changelog:
+            await send_state_alerts(alerts, theme_changelog, today_themes, prior_themes)
+            total_alerts = len(alerts) + len(theme_changelog)
+            logger.info(f"State alerts: {total_alerts} alerts sent")
+            summary_parts.append(f"{total_alerts} state alerts")
+    except Exception as e:
+        logger.error(f"State alerts failed: {e}")
+        await record_job_failure(
+            "nightly_state_alerts", e,
+            consequence="tonight's regime / theme state-change alerts did NOT go out "
+                        "(deterioration, MA breaks, stage changes) — the nightly pull "
+                        "itself carried on;",
+        )
+
+
 async def _theme_shadow_pass_step(today, correlation_clusters) -> str:
     """Nightly step 5b — the ADR-0007 shadow_v2 discovery pass, or its audited
     retirement. Returns the summary part for the nightly digest. Extracted from
@@ -852,15 +885,7 @@ async def _nightly_data_pull():
         logger.error(f"Missed-outcomes refresh failed: {e}")
 
     # 8. State-change alerts (sent immediately via Telegram)
-    try:
-        alerts, today_themes, prior_themes = await detect_state_changes(_today)
-        if alerts or theme_changelog:
-            await send_state_alerts(alerts, theme_changelog, today_themes, prior_themes)
-            total_alerts = len(alerts) + len(theme_changelog)
-            logger.info(f"State alerts: {total_alerts} alerts sent")
-            summary_parts.append(f"{total_alerts} state alerts")
-    except Exception as e:
-        logger.error(f"State alerts failed: {e}")
+    await _state_alerts_step(_today, theme_changelog, summary_parts)
 
     # 9. ORB-extension shadow settlement — re-evaluate every still-open
     # counterfactual position via apply_daily_exit_step. Runs after
@@ -897,6 +922,41 @@ async def _nightly_data_pull():
 
     logger.info("Nightly data pull complete")
     return int(scored or 0)
+
+
+# ── #635 F5 (2026-09-30): the sweep's `*_failed` bucket — RED-3b, generalized ─────────────
+# The sweep below used to match `%error%` / `%rate_limited%` / `%api_failure%` plus ONE
+# hand-carved event (`drawdown_check_unavailable`). An audit-only event named `*_failed`
+# matched none of them and surfaced only in the WEEKLY review (system_review `%_failed%`)
+# - a week late. `order_status_reconcile_failed` (advisor-ruled audit-only) and
+# `coverage_drift_check_failed` (a crashed drift check) were exactly that shape. The rule now
+# is ONE PATTERN, not a growing list of carve-outs: every `*_failed` event is swept, except
+# those on the allowlist below.
+#
+# LIKE `_` is a single-character wildcard - escaped so the pattern means a literal "_failed".
+NIGHTLY_SWEEP_FAILED_LIKE = "%\\_failed%"
+# The allowlist = events whose EVERY emit site ALSO sends a Telegram about that same failure
+# from inside the same function, so a nightly line would only repeat a page the operator already
+# got. It is NOT "events we consider unimportant": shadow / telemetry `*_failed` events are
+# deliberately swept (they are silent, and a dead observation layer is the #173 shape).
+# `tests/test_v1_honesty_monitoring.py` DERIVES the emit sites from the source and fails if an
+# entry here stops Telegramming next to its audit row, or names an event nothing emits - so
+# this list cannot rot into a list of things that used to be loud.
+# Deliberately ABSENT although they look loud: `stop_ack_remediation_failed` (silent from
+# order_manager.py), `breakeven_arm_failed` (one branch hands off to a later re-protect),
+# `order_status_reconcile_failed` (per-order, advisor-ruled audit-only - the headline F5 case),
+# `telegram_send_failed` (the Telegram IS the thing that failed).
+NIGHTLY_SWEEP_FAILED_ALLOWLIST = frozenset({
+    "ep_scan_failed",                     # "EP SCAN DOWN - TRADING IMPACTED" (deduped per exception type)
+    "evening_brief_send_failed",          # "Evening brief FAILED to send"
+    "naked_position_remediation_failed",  # all three branches: "CRITICAL: POSITION NAKED ..."
+    "orb_order_failed",                   # "auto-enter failed"
+    "orb_subscribe_failed",               # "bar stream subscribe failed - 9:31 cron fallback will run"
+    "partial_exit_reprotect_failed",      # "Partial exit ABORTED" / "breakeven move FAILED" (both sites)
+    "stop_update_failed",                 # "STOP FAILED - position NAKED"
+    "stop_refresh_failed",                # "No stop on <tickers>"
+    "unfilled_cancel_failed",             # "cancel FAILED for N order(s) - investigate broker side"
+})
 
 
 async def _check_nightly_silent_errors() -> None:
@@ -938,6 +998,10 @@ async def _check_nightly_silent_errors() -> None:
     error_rows = await get_audit_log(limit=40, event_type_like="%error%", since_hours=_since)
     rate_rows = await get_audit_log(limit=40, event_type_like="%rate_limited%", since_hours=_since)
     api_rows = await get_audit_log(limit=40, event_type_like="%api_failure%", since_hours=_since)
+    # #635 F5: a bigger page than the others - this bucket is rendered as COUNTS per event
+    # name, so a noisy night (one row per ticker) must not be cut off at 40 and under-count.
+    failed_rows = await get_audit_log(
+        limit=300, event_type_like=NIGHTLY_SWEEP_FAILED_LIKE, since_hours=_since)
     safeguard_rows = await get_audit_log(
         limit=40, event_type=DRAWDOWN_CHECK_UNAVAILABLE, since_hours=max(6.0, _since),
     )
@@ -948,9 +1012,9 @@ async def _check_nightly_silent_errors() -> None:
     parse_error_types  = {"validation_error"}
     buckets: dict[str, list] = {"rate_limited": [], "api_failure": [],
                                  "validation_error": [], "safeguard_unavailable": [],
-                                 "other": []}
+                                 "other": [], "failed": []}
     seen_ids: set = set()
-    for r in (error_rows + rate_rows + api_rows + safeguard_rows):
+    for r in (error_rows + rate_rows + api_rows + safeguard_rows + failed_rows):
         row_id = r.get("id") or id(r)
         if row_id in seen_ids:
             continue
@@ -966,6 +1030,8 @@ async def _check_nightly_silent_errors() -> None:
             buckets["safeguard_unavailable"].append(r)
         elif "error" in evt:
             buckets["other"].append(r)
+        elif "_failed" in evt and evt not in NIGHTLY_SWEEP_FAILED_ALLOWLIST:
+            buckets["failed"].append(r)
     # TRUNCATED AUDIT PAYLOADS (2026-09-10). Truncation is not an event_type — it is a marker
     # INSIDE an otherwise-normal row's detail — so none of the `%error%` patterns above can see it.
     # It was silent until a JSON parse failed by accident while verifying #486. `_fit_audit_detail`
@@ -1011,6 +1077,19 @@ async def _check_nightly_silent_errors() -> None:
             lines.append(f"  🔴 {r['summary']}")
         if len(buckets["other"]) > 5:
             lines.append(f"  …{len(buckets['other']) - 5} more")
+        if buckets["failed"]:
+            # #635 F5: event NAMES + counts only, backtick-fenced. Never the row's summary -
+            # these carry tickers / order ids / exception text, and an unpaired `_` in
+            # legacy-Markdown 400s the whole digest (2026-07-05 lesson, above). A noisy night
+            # (one row per ticker) collapses to one line per event name.
+            _by_name: dict[str, int] = {}
+            for r in buckets["failed"]:
+                _by_name[r["event_type"]] = _by_name.get(r["event_type"], 0) + 1
+            _ranked = sorted(_by_name.items(), key=lambda kv: (-kv[1], kv[0]))
+            for _name, _n in _ranked[:6]:
+                lines.append(f"  🟠 `{_name}` ×{_n} — failed with no page of its own")
+            if len(_ranked) > 6:
+                lines.append(f"  …{len(_ranked) - 6} more failed event type(s)")
         lines.append("Type 'show errors' for details.")
         await send_telegram_message("\n".join(lines))
         logger.warning(f"Nightly run had {total} silent events — alerted via Telegram")

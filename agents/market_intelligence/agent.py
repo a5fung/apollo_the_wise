@@ -75,7 +75,9 @@ from agents.market_intelligence.regime import run_regime_engine, get_current_reg
 from agents.market_intelligence.theme_engine import (
     run_theme_engine, get_today_themes, PerplexityUnavailableError,
 )
-from agents.market_intelligence.scheduler import start_scheduler, stop_scheduler, check_missed_jobs
+from agents.market_intelligence.scheduler import (
+    start_scheduler, stop_scheduler, check_missed_jobs, NIGHTLY_SWEEP_FAILED_LIKE,
+)
 from shared.models import AgentName, AgentRequest, AgentResponse
 
 logger = logging.getLogger(__name__)
@@ -1967,8 +1969,13 @@ class MarketIntelligenceAgent(BaseAgent):
             # for them — merge them in so the downgrade never hides a failure.
             api_rows = await get_audit_log(
                 limit=25, event_type_like="api_failure_%", since_hours=since_hours)
-            if dd_rows or api_rows:
-                merged = {r["id"]: r for r in rows + dd_rows + api_rows}
+            # #635 F5 (2026-09-30): the nightly digest now names `*_failed` events that have no
+            # page of their own and tells the operator to type `show errors` — which never
+            # listed them (no "error" in the name). Merge them here so that line is followable.
+            failed_rows = await get_audit_log(
+                limit=25, event_type_like=NIGHTLY_SWEEP_FAILED_LIKE, since_hours=since_hours)
+            if dd_rows or api_rows or failed_rows:
+                merged = {r["id"]: r for r in rows + dd_rows + api_rows + failed_rows}
                 rows = sorted(merged.values(), key=lambda r: r["created_at"], reverse=True)[:25]
 
         if not rows:
