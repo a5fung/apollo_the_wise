@@ -1297,3 +1297,15 @@ stagger cards, one at a time.
 4. Sat 10-03 #687/#688/#491/#519 · Sun 10-04 #690 (test new models on our real prompts before adopting).
 
 **09-29 evening:** Sonnet 5.5 refused every theme prompt that made it write its reasoning out (assignment, 6/6 parent checks, synthesis, 40/40 EP fit checks; no EP alerted that day). Fixed and shipped on his sign-off (c291cb62, deployed 21:16 ET both + execution; live: MSTR → Bitcoin Treasury, parent check answered). Evidence: `docs/analysis/689_sonnet55_theme_package_2026-09-29.md`. Guard: `tests/test_no_reasoning_first_prompts.py`. ~$5–7 of probe spend bypassed the cost meter (not in `api_usage`).
+
+## 2026-09-29 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the mid-session save above.
+
+**Board 48 → 48.** Closed #353 (consolidation entry not graduated, his ruling), #197 (cap+1 slot retired, his ruling), #647 (machine-text alerts verified). Filed #688 (base risk 1%→2%, Sat), #689 (theme jobs on Sonnet 5.5 — deployed, verify 09-30 → 10-02), #690 (test a new model on our real prompts before adopting it — his ask, Sun build).
+
+**Wednesday 09-30, in order** (same as the mid-session save):
+1. **09:31 ET** — first live EP theme-fit on the new prompt: `mi_ep_theme_belonging_shadow` 09-30 rows end confirmed/rejected with a `fit_rationale`; zero `fit_unjudged` on described, shortlisted names (#689).
+2. **17:00 ET** — first full theme night on 5.5: #689 night 1/3 (0 `assignment_error`), #505 night 2, #658's fix first run, #655 row, #506/#657 night 3.
+3. **18:00 ET** — crypto ingest on `COINGECKO_API_KEY` (free Demo plan: ~4.6k of 10k calls/month).
+4. Sat 10-03: #687 build (depth rule behind a toggle + the 16:45 exit bugs), #688, #491, #519 · Sun 10-04: #690.
+
+**Standing:** Fable capacity ~4% (09-29 07:30 PDT) — no Fable spawns until it resets; every Sonnet role on claude-sonnet-5-5 (`_ROLE_OVERRIDES` empty). New rule, gated: no prompt may ask a model to reason first (`tests/test_no_reasoning_first_prompts.py`).
