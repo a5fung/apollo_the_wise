@@ -212,6 +212,34 @@ def _conviction_suffix(theme: dict) -> str:
     return ("  " + " ".join(parts)) if parts else ""
 
 
+def _breadth_phrase(theme: dict) -> str:
+    """#580 — plain-words member count + breadth for a theme line, e.g.
+    '6 stocks · 67% above 20-day avg' ('' when there is nothing to say).
+
+    `pct_above_20sma` is the theme engine's stored nightly fraction (0-1) of
+    members trading above their own 20-day average. MISSING or out-of-range ->
+    no breadth clause at all (never a fake number); the member count is a real
+    roster length so it shows on its own. Used by EVERY theme surface (the
+    /themes board, the evening scorecard and its legacy view) so the wording
+    cannot drift between them. `_conviction_suffix` stays for the raw-theme
+    callers (legacy theme section, journal) — its 'brd42%' shorthand is not
+    what the operator reads."""
+    parts = []
+    n = theme.get("n_stocks")
+    if n is None:
+        n = len(theme.get("tickers") or [])
+    if n:
+        parts.append(f"{n} stock{'s' if n != 1 else ''}")
+    breadth = theme.get("pct_above_20sma")
+    try:
+        b = float(breadth) if breadth is not None else None
+    except (TypeError, ValueError):
+        b = None
+    if b is not None and 0.0 <= b <= 1.0:   # NaN fails the comparison too
+        parts.append(f"{int(b * 100 + 0.5)}% above 20-day avg")
+    return " · ".join(parts)
+
+
 # Sentence-split regex: split on "./?/! " followed by uppercase.
 # Requires 2+ lowercase/digit chars before the punctuation, which naturally
 # avoids splitting after abbreviations like U.S., a.m., Dr., St., etc.
@@ -644,14 +672,22 @@ def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
 def _compute_scored_themes(
     themes: list[dict],
     theme_rs_data: dict[str, dict],
-    prior_scores: dict[str, float],
+    prior_scores: dict[str, float] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """
     Compute per-theme RS averages from constituent stock data.
-    Returns (scored_themes sorted by composite RS desc, fading themes).
+    Returns (scored_themes sorted by composite RS desc then name, fading themes).
     Uses trimmed mean — drops bottom 20% to resist outlier drag.
+
+    #580: Retired rows are excluded explicitly (they used to drop out only
+    because their ticker list was empty — 43 historical Retired rows still
+    carry tickers). `pct_above_20sma` rides into the scored dict so the render
+    can show breadth. The old day-over-day `delta` is GONE: the rows shown are
+    the same rows `prior_scores` reads, and it subtracted the strong-only stored
+    rs_avg from the all-member comp, so it read ~0 all day. `prior_scores` is
+    still accepted so existing callers keep their signature; it is unused.
     """
-    active = [t for t in themes if t.get("stage") != "Fading"]
+    active = [t for t in themes if t.get("stage") not in ("Fading", "Retired")]
     fading = [t for t in themes if t.get("stage") == "Fading"]
 
     scored_themes = []
@@ -683,9 +719,6 @@ def _compute_scored_themes(
         avg_3m = _trimmed_mean(rs3m) if rs3m else 0
         avg_6m = _trimmed_mean(rs6m) if rs6m else 0
 
-        prior = prior_scores.get(name)
-        delta = avg_comp - prior if prior is not None else None
-
         scored_themes.append({
             "name": name,
             "stage": t.get("stage", ""),
@@ -693,16 +726,19 @@ def _compute_scored_themes(
             "rs_1m": avg_1m,
             "rs_3m": avg_3m,
             "rs_6m": avg_6m,
-            "delta": delta,
             "tickers": tickers,
             "n_stocks": len(tickers),
             "n_scored": len(comps),
+            # #580: the engine's stored nightly breadth (fraction 0-1; None = never
+            # computed). Without it the render had nothing to show.
+            "pct_above_20sma": t.get("pct_above_20sma"),
             # #505: the containment link rides into the render — without it the
             # /themes board had nothing to nest (four internal files, zero surfaces).
             "parent_theme": t.get("parent_theme"),
         })
 
-    scored_themes.sort(key=lambda x: -x["comp"])
+    # Ties break by name: stable run to run, and the same order the dashboard uses.
+    scored_themes.sort(key=lambda x: (-x["comp"], x["name"]))
     return scored_themes, fading
 
 
@@ -759,7 +795,6 @@ def _format_theme_scorecard(
 
         for st in group:
             name = st["name"]
-            delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
 
             # Top tickers by RS (only RS 50+) for display
             ticker_rs_pairs = []
@@ -770,10 +805,11 @@ def _format_theme_scorecard(
             ticker_rs_pairs.sort(key=lambda x: -x[1])
             top_tickers = " · ".join(f"{tk} {int(rs)}" for tk, rs in ticker_rs_pairs[:5])
 
-            conviction = _conviction_suffix(st)
+            breadth = _breadth_phrase(st)   # #580 — same wording as every theme surface
             lines.append("")
-            lines.append(f"*{name}*{conviction}")
-            lines.append(f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}")
+            lines.append(f"*{name}*")
+            lines.append(f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])})"
+                         + (f" · {breadth}" if breadth else ""))
             if top_tickers:
                 lines.append(f"  {top_tickers}")
 

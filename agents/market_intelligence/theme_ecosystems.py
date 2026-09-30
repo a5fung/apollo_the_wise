@@ -53,7 +53,7 @@ from agents.market_intelligence.audit_events import THEME_ECOSYSTEM_ASSIGNED
 # briefing is imported first; the reverse order completes briefing fully).
 # Do NOT add a module-level `import theme_ecosystems` to briefing.py — that
 # would close the cycle. (#473 hoisted this out of _theme_line's per-call body.)
-from agents.market_intelligence.briefing import STAGE_EMOJI, _conviction_suffix
+from agents.market_intelligence.briefing import STAGE_EMOJI, _breadth_phrase
 
 logger = logging.getLogger(__name__)
 
@@ -663,15 +663,18 @@ CHILD_MARKER = "↳ "   # #505: a nested child line starts with this (after its 
 def _theme_line(st: dict, rank: int | None, theme_rs_data: dict[str, dict],
                 indent: str = "  ", marker: str = "") -> list[str]:
     """One rendered sub-theme (or flat-list) entry: rank + name + stage tag +
-    RS + delta, then a member preview line. `marker` (#505) prefixes the
-    first line only — the preview keeps its column under the name."""
+    RS + member count and breadth in plain words (#580: '6 stocks · 67% above
+    20-day avg'; the old day-over-day Δ was removed — it read ~0 all day), then a
+    member preview line. `marker` (#505) prefixes the first line only — the
+    preview keeps its column under the name."""
     stage = st.get("stage", "?")
     emoji = STAGE_EMOJI.get(stage, "")
-    delta_str = f"  Δ{st['delta']:+.1f}" if st.get("delta") is not None else ""
+    breadth = _breadth_phrase(st)
+    breadth_str = f" · {breadth}" if breadth else ""
     rank_str = f"#{rank} " if rank is not None else ""
     lines = [
-        f"{indent}{marker}{rank_str}{emoji}*{st['name']}*{_conviction_suffix(st)}"
-        f"  _[{stage}]_  RS {int(st['comp'])}{delta_str}"
+        f"{indent}{marker}{rank_str}{emoji}*{st['name']}*"
+        f"  _[{stage}]_  RS {int(st['comp'])}{breadth_str}"
     ]
     preview = _member_preview(st.get("tickers") or [], theme_rs_data)
     if preview:
@@ -891,11 +894,12 @@ def format_ecosystem_scorecard_compact(
                      f"· {s.get('strong', 0)} RS80+")
         for st in group_active[:max_subthemes]:   # already comp-desc in group
             emoji = STAGE_EMOJI.get(st.get("stage", ""), "")
-            delta_str = f" Δ{st['delta']:+.1f}" if st.get("delta") is not None else ""
+            breadth = _breadth_phrase(st)   # #580 — plain words, same as the board
+            breadth_str = f" · {breadth}" if breadth else ""
             preview = _member_preview(st.get("tickers") or [], theme_rs_data, top_n=3)
             preview_str = f" — {preview}" if preview else ""
             lines.append(f"  {emoji}*{st['name']}* RS {int(st['comp'])}"
-                         f"{delta_str}{preview_str}")
+                         f"{breadth_str}{preview_str}")
         extra = len(group_active) - max_subthemes
         if extra > 0:
             lines.append(f"  _+{extra} more sub-theme(s)_")

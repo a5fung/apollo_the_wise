@@ -56,6 +56,13 @@ _FRI = _dt.date(2026, 7, 24)
 _MON = _dt.date(2026, 7, 27)
 
 
+@pytest.fixture(autouse=True)
+def _birth_breadth_hermetic(monkeypatch):
+    """#580: promotion now looks up breadth at birth (get_ticker_breadth_above_sma20) —
+    pin it so no test in this file reaches a real DB pool."""
+    monkeypatch.setattr(te, "get_ticker_breadth_above_sma20", AsyncMock(return_value=None))
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # 1. Pure decision logic — every derived threshold at its boundary
 # ════════════════════════════════════════════════════════════════════════════

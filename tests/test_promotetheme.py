@@ -21,6 +21,19 @@ def _birth_gate_off(monkeypatch):
     a real DB read (fail-closed OFF is the production default)."""
     monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value="off"))
 
+
+_BREADTH = 0.6   # what the pinned birth-breadth lookup returns (3 of 5 members above their 20-day average)
+
+
+@pytest.fixture(autouse=True)
+def _birth_breadth(monkeypatch):
+    """#580: promotion looks up breadth at birth via get_ticker_breadth_above_sma20 (the same
+    function the rescore path uses). Pinned so no test here reaches a real DB pool, and so the
+    wiring tests can assert the value lands in the row."""
+    m = AsyncMock(return_value=_BREADTH)
+    monkeypatch.setattr(te, "get_ticker_breadth_above_sma20", m)
+    return m
+
 _TODAY = _dt.date(2026, 6, 29)
 
 
@@ -116,7 +129,7 @@ async def test_upsert_promoted_theme_merge_and_sql():
 
     wrote = await te._upsert_promoted_theme(
         conn, "Rare & Orphan Biotech Re-Rating", ["RARE", "MIRM"], None,
-        "fallback desc", _TODAY, rs_avg=42.5, prior_days_active=3)
+        "fallback desc", _TODAY, rs_avg=42.5, prior_days_active=3, pct_above_20sma=0.5)
 
     assert wrote is True
     args = conn.execute.call_args[0]
@@ -124,9 +137,12 @@ async def test_upsert_promoted_theme_merge_and_sql():
     assert "INSERT INTO mi_themes" in sql
     assert "ON CONFLICT (theme_date, name) DO UPDATE SET" in sql
     assert "WHERE mi_themes.source = 'shadow_promoted'" in sql
-    # positional params: today, name, score, desc, tickers, days_active
+    # #580: breadth is inserted AND follows a same-day re-write
+    assert "pct_above_20sma" in sql.split("VALUES")[0]
+    assert "pct_above_20sma = EXCLUDED.pct_above_20sma" in sql
+    # positional params: today, name, score, desc, tickers, days_active, pct_above_20sma
     assert args[1:] == (_TODAY, "Rare & Orphan Biotech Re-Rating", 42.5, "fallback desc",
-                         ["RARE", "MIRM"], 4)   # days_active = prior(3) + 1
+                         ["RARE", "MIRM"], 4, 0.5)   # days_active = prior(3) + 1
 
 
 @pytest.mark.asyncio
@@ -137,10 +153,11 @@ async def test_upsert_promoted_theme_no_prior_and_thesis_used():
 
     await te._upsert_promoted_theme(
         conn, "New Theme", ["A"], "operator thesis", "fallback", _TODAY,
-        rs_avg=None, prior_days_active=None)
+        rs_avg=None, prior_days_active=None, pct_above_20sma=None)
 
     args = conn.execute.call_args[0]
-    assert args[1:] == (_TODAY, "New Theme", None, "operator thesis", ["A"], 1)
+    # unknown breadth is stored as NULL — never a made-up number
+    assert args[1:] == (_TODAY, "New Theme", None, "operator thesis", ["A"], 1, None)
 
 
 @pytest.mark.asyncio
@@ -150,8 +167,9 @@ async def test_operator_and_nightly_paths_both_delegate_to_shared_helper(monkeyp
     from tests.conftest import make_mock_pool
     calls = []
 
-    async def _spy(conn, name, tickers, thesis, desc_fallback, today, *, rs_avg, prior_days_active):
-        calls.append((name, tuple(tickers), rs_avg, prior_days_active))
+    async def _spy(conn, name, tickers, thesis, desc_fallback, today, *, rs_avg, prior_days_active,
+                   pct_above_20sma):
+        calls.append((name, tuple(tickers), rs_avg, prior_days_active, pct_above_20sma))
         return True
 
     monkeypatch.setattr(te, "_upsert_promoted_theme", _spy)
@@ -185,6 +203,62 @@ async def test_operator_and_nightly_paths_both_delegate_to_shared_helper(monkeyp
     assert op_call[0] == nightly_call[0] == "Rare & Orphan Biotech Re-Rating"
     assert op_call[2] == nightly_call[2] == 70.0   # rs_avg over RARE(80)+MIRM(60)
     assert op_call[3] == nightly_call[3] == 2      # prior_days_active
+    assert op_call[4] == nightly_call[4] == _BREADTH   # #580: both paths hand the helper the looked-up breadth
+
+
+@pytest.mark.asyncio
+async def test_580_birth_breadth_uses_rescore_function_and_lands_in_written_row(
+        monkeypatch, _birth_breadth):
+    """#580 end to end through the operator path: the breadth comes from the SAME function the
+    rescore path calls (get_ticker_breadth_above_sma20, on the member list + theme date) and is
+    the last bind parameter of the INSERT — a promoted theme is no longer born with NULL breadth."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[])
+    conn.fetchrow = AsyncMock(return_value=None)
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+    members = ["RARE", "MIRM", "RGNX", "AGIO"]
+    monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[
+        _cand("Rare & Orphan Biotech Re-Rating", members)]))
+    monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(te, "_canonicalize_theme_names", AsyncMock(return_value=0))
+    monkeypatch.setattr(te, "log_audit_event", AsyncMock())
+
+    await te.promote_candidate_by_name("rare orphan", _TODAY)
+
+    _birth_breadth.assert_awaited_once_with(members, _TODAY)
+    assert conn.execute.call_args[0][-1] == _BREADTH
+
+
+@pytest.mark.asyncio
+async def test_580_nightly_promote_writes_breadth_per_theme(monkeypatch, _birth_breadth):
+    conn = _run_530_promote(monkeypatch, [], [])      # one shadow_v2 cohort, no prior rows
+    await te.promote_shadow_themes(_TODAY)
+    _birth_breadth.assert_awaited_once_with(_CRYPTO_COHORT, _TODAY)
+    assert conn.execute.call_args[0][-1] == _BREADTH   # the nightly INSERT carries it too
+
+
+@pytest.mark.asyncio
+async def test_580_breadth_lookup_failure_stores_null_and_never_blocks_promotion(monkeypatch):
+    """Breadth is display data — a DB hiccup in the lookup must leave the column NULL (rendered as
+    nothing), not abort the promotion or write a made-up number."""
+    monkeypatch.setattr(te, "get_ticker_breadth_above_sma20",
+                        AsyncMock(side_effect=RuntimeError("pool exhausted")))
+    assert await te._breadth_at_birth("Any Theme", ["A", "B"], _TODAY) is None
+
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[])
+    conn.fetchrow = AsyncMock(return_value=None)
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+    monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[
+        _cand("Rare & Orphan Biotech Re-Rating", ["RARE", "MIRM", "RGNX", "AGIO"])]))
+    monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(te, "_canonicalize_theme_names", AsyncMock(return_value=0))
+    monkeypatch.setattr(te, "log_audit_event", AsyncMock())
+    res = await te.promote_candidate_by_name("rare orphan", _TODAY)
+    assert res["status"] == "promoted"
+    assert conn.execute.call_args[0][-1] is None
 
 
 # ─── Option A (operator 2026-07-07) — graduation ping only on a genuine NEW crossing ───

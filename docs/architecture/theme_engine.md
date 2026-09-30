@@ -970,6 +970,35 @@ demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
 
+### 2026-09-30 — #580: every theme line shows its member count and breadth in plain words; newborn themes get breadth; the broken Δ is gone
+
+- **Shown now** (`/themes`, HUD Themes button, theme-engine rerun, evening brief — one renderer,
+  `briefing._breadth_phrase`): `RS 84 · 6 stocks · 67% above 20-day avg`. Breadth is the stored nightly
+  `pct_above_20sma` (fraction of members above their own 20-day average, engine-written); missing breadth
+  prints the member count only, never a number. Percent, not "3 of 5": the stored fraction's denominator is the
+  members with a 20-day average on the engine's last run, which need not equal today's roster, so a "k of n"
+  would be a made-up count.
+- **Why it was always blank:** the scored dict built by `_compute_scored_themes` never carried `pct_above_20sma`
+  (nor `days_active` / `consecutive_accelerating`), so `_conviction_suffix` always returned ''. The dict now
+  carries breadth; the `d14 🔥×3 brd42%` shorthand is not used on theme lines (it stays for the raw-theme legacy
+  section and the journal).
+- **Δ removed** from the board line, flat list, compact scorecard and legacy scorecard. Rows are written ~17:03 ET,
+  so all day `get_prior_theme_scores(today)` returned the rows being shown, and it subtracted the strong-only stored
+  `rs_avg` from the all-member trimmed mean (unlike numbers): every Δ read ~0. No replacement built.
+  `_compute_scored_themes` no longer emits `delta`; its `prior_scores` argument is kept (unused) so callers do not change.
+- **Also:** Retired is excluded explicitly (43 historical Retired rows still carry tickers); ties sort by
+  `(-comp, name)` so the order is stable and matches the dashboard.
+- **Breadth at birth:** `_score_new_theme` (discovery and fat-theme-split births) and `_upsert_promoted_theme`
+  (nightly shadow promote + operator `/promotetheme`) now write `pct_above_20sma`, from the SAME
+  `get_ticker_breadth_above_sma20(tickers, today)` the rescore path calls (`_breadth_at_birth`; a lookup failure
+  stores NULL and never aborts the birth). `_upsert_promoted_theme` takes `pct_above_20sma` as a REQUIRED keyword.
+- **⚠ Side effect, not a rule change:** the breadth-decay override (`_rescore_existing_theme`) reads the PRIOR row's
+  `pct_above_20sma`; a newborn used to hand it NULL (treated as healthy), so it could not be forced Fading on its
+  first rescore. It now hands a real number: a newborn born below `_BREADTH_DECAY_THRESHOLD` (0.40) that is still
+  below it the next night is forced Fading one night earlier than before. Decay rule, threshold and
+  `constants.trimmed_mean` are untouched (the trim question stays #580 piece 3).
+- **Not done here:** the dashboard surface, and reconciling `/theme` with `theme_rank_evolution.py` (#580 remainder).
+
 ### 2026-09-29 (evening) — theme jobs back on Sonnet 5.5: reasoning in thinking, reasons after the verdict (#689)
 
 - **Change:** assignment (and the EP theme-fit check), discovery (and rename), and split lose their pre-verdict

@@ -28,6 +28,13 @@ def _birth_gate_off(monkeypatch):
     a real DB read (fail-closed OFF is the production default)."""
     monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value="off"))
 
+
+@pytest.fixture(autouse=True)
+def _birth_breadth_hermetic(monkeypatch):
+    """#580: promotion now looks up breadth at birth (get_ticker_breadth_above_sma20) —
+    pin it so these tests never reach a real DB pool."""
+    monkeypatch.setattr(te, "get_ticker_breadth_above_sma20", AsyncMock(return_value=None))
+
 _TODAY = _dt.date(2026, 7, 16)
 
 

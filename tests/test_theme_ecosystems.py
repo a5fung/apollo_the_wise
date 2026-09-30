@@ -893,3 +893,213 @@ class TestHandleThemesDetailHudBoard:
         assert resp.success, resp.error
         assert "E-CYBR" not in resp.result       # flat fallback
         assert "#1 " in resp.result              # still comp-ranked
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 7. #580 — breadth + member count on every theme line; broken Δ gone
+# ═════════════════════════════════════════════════════════════════════════
+
+def _rs_row(v):
+    return {"rs_composite": v, "rs_1m": v, "rs_3m": v, "rs_6m": v}
+
+
+class TestBreadthPhrase:
+    def test_count_and_breadth_in_plain_words(self):
+        from agents.market_intelligence.briefing import _breadth_phrase
+        st = {"tickers": list("ABCDEF"), "n_stocks": 6, "pct_above_20sma": 0.667}
+        assert _breadth_phrase(st) == "6 stocks · 67% above 20-day avg"
+
+    def test_missing_breadth_shows_no_breadth_never_a_fake_number(self):
+        from agents.market_intelligence.briefing import _breadth_phrase
+        assert _breadth_phrase({"tickers": ["A", "B", "C"], "n_stocks": 3,
+                                "pct_above_20sma": None}) == "3 stocks"
+        assert _breadth_phrase({"tickers": ["A", "B", "C"], "n_stocks": 3}) == "3 stocks"
+        assert "%" not in _breadth_phrase({"tickers": ["A"], "n_stocks": 1})
+
+    def test_zero_breadth_is_a_real_number_not_missing(self):
+        """0% (nobody above the 20-day) is information — it must not be swallowed
+        by a falsy check the way `x or default` would."""
+        from agents.market_intelligence.briefing import _breadth_phrase
+        assert _breadth_phrase({"n_stocks": 4, "pct_above_20sma": 0.0}) \
+            == "4 stocks · 0% above 20-day avg"
+        assert _breadth_phrase({"n_stocks": 4, "pct_above_20sma": 1.0}) \
+            == "4 stocks · 100% above 20-day avg"
+
+    def test_garbage_breadth_is_dropped(self):
+        from agents.market_intelligence.briefing import _breadth_phrase
+        for bad in (float("nan"), -0.1, 1.5, "n/a"):
+            assert "%" not in _breadth_phrase({"n_stocks": 2, "pct_above_20sma": bad}), bad
+
+    def test_singular_and_count_fallback_to_ticker_list(self):
+        from agents.market_intelligence.briefing import _breadth_phrase
+        assert _breadth_phrase({"tickers": ["A"], "pct_above_20sma": 0.5}) \
+            == "1 stock · 50% above 20-day avg"
+
+
+def _breadth_scored(name, comp, stage, tickers, breadth=None):
+    st = _scored(name, comp, stage, tickers)
+    st["pct_above_20sma"] = breadth
+    return st
+
+
+class TestBreadthOnEverySurface:
+    def _fixture(self):
+        cyber = ["TENB", "QLYS", "RPD"]
+        reit = ["PLD", "DHI", "LEN", "AMT"]
+        rs = {tk: _rs_row(99.0) for tk in cyber}
+        rs.update({tk: _rs_row(60.0) for tk in reit})
+        scored = [
+            _breadth_scored("Cyber Vulnerability & Exposure Mgmt", 99.0, "Nascent",
+                            cyber, breadth=0.667),
+            _breadth_scored("Data Center REITs", 60.0, "Nascent", reit, breadth=None),
+        ]
+        eco_map = {"Cyber Vulnerability & Exposure Mgmt": "E-CYBR",
+                   "Data Center REITs": "E-REIT"}
+        return scored, rs, eco_map
+
+    def test_board_line_carries_rs_count_and_breadth(self):
+        scored, rs, eco_map = self._fixture()
+        text = "\n".join(format_ecosystem_board(scored, [], rs, eco_map))
+        line = [l for l in text.splitlines()
+                if "Cyber Vulnerability & Exposure Mgmt" in l][0]
+        assert "RS 99 · 3 stocks · 67% above 20-day avg" in line
+        # Missing breadth: the count still shows, no invented percentage.
+        reit_line = [l for l in text.splitlines() if "Data Center REITs" in l][0]
+        assert reit_line.rstrip().endswith("RS 60 · 4 stocks")
+        assert "%" not in reit_line
+
+    def test_flat_fallback_has_it_too(self):
+        scored, rs, _ = self._fixture()
+        text = "\n".join(format_ecosystem_board(scored, [], rs, {}))
+        assert "RS 99 · 3 stocks · 67% above 20-day avg" in text
+
+    def test_compact_scorecard_has_it_too(self):
+        scored, rs, eco_map = self._fixture()
+        text = "\n".join(te.format_ecosystem_scorecard_compact([*scored], [], rs, eco_map))
+        assert "RS 99 · 3 stocks · 67% above 20-day avg — TENB 99" in text
+
+    def test_no_delta_anywhere_even_if_the_dict_still_carries_one(self):
+        """The old Δ compared the shown rows to themselves (~0 all day) and mixed
+        an all-member average with a strong-only stored one. It is gone from the
+        board, the flat list, and the compact scorecard."""
+        scored, rs, eco_map = self._fixture()
+        for st in scored:
+            st["delta"] = 4.2          # a stale caller/fixture must not resurrect it
+        boards = [
+            "\n".join(format_ecosystem_board(scored, [], rs, eco_map)),
+            "\n".join(format_ecosystem_board(scored, [], rs, {})),
+            "\n".join(te.format_ecosystem_scorecard_compact(scored, [], rs, eco_map)),
+        ]
+        for text in boards:
+            theme_lines = [l for l in text.splitlines() if " RS " in l and "boosted" not in l]
+            assert theme_lines
+            assert not any("Δ" in l for l in theme_lines), theme_lines
+
+    def test_old_shorthand_suffix_is_not_on_the_line(self):
+        scored, rs, eco_map = self._fixture()
+        scored[0]["days_active"] = 14           # would have printed 'd14 ... brd66%'
+        scored[0]["consecutive_accelerating"] = 3
+        text = "\n".join(format_ecosystem_board(scored, [], rs, eco_map))
+        assert "brd" not in text and "🔥" not in text and " d14" not in text
+
+    def test_legacy_stage_scorecard_has_it_too(self):
+        from agents.market_intelligence.briefing import _format_theme_scorecard
+        themes, rs, _ = _briefing_fixture()
+        for t in themes:
+            t["pct_above_20sma"] = 0.5
+        text = _format_theme_scorecard(themes, rs, {"Data Center REITs": 40.0}, eco_map={})
+        assert "3 stocks · 50% above 20-day avg" in text
+        assert "Δ" not in text
+
+    @pytest.mark.asyncio
+    async def test_themes_command_shows_stored_breadth(self):
+        """End to end through _handle_theme_query: the breadth stored on the theme
+        ROW reaches the rendered /themes line (it used to be dropped by the scored
+        dict, so the suffix was always empty)."""
+        from unittest.mock import patch
+        from agents.market_intelligence.agent import MarketIntelligenceAgent
+        from shared.models import AgentName, AgentRequest
+        with patch("agents.base.get_secrets"), patch("shared.audit.log_action"):
+            agent = MarketIntelligenceAgent.__new__(MarketIntelligenceAgent)
+            agent.agent_name = AgentName.MARKET_INTELLIGENCE
+        themes = [{"name": "Network Security & Zero-Trust Edge", "stage": "Mainstream",
+                   "tickers": ["CRWD", "PANW", "FTNT", "TENB", "QLYS"],
+                   "pct_above_20sma": 0.6, "theme_date": "2026-09-30"}]
+        rs = {tk: _rs_row(96.0) for tk in ["CRWD", "PANW", "FTNT", "TENB", "QLYS"]}
+        with patch("agents.market_intelligence.agent.get_today_themes",
+                   new=AsyncMock(return_value=themes)), \
+                patch("agents.market_intelligence.agent.get_rs_for_tickers",
+                      new=AsyncMock(return_value=rs)), \
+                patch("agents.market_intelligence.agent.get_prior_theme_scores",
+                      new=AsyncMock(return_value={"Network Security & Zero-Trust Edge": 90.0})), \
+                patch("agents.market_intelligence.agent.get_current_regime",
+                      new=AsyncMock(return_value=None)), \
+                patch("agents.market_intelligence.theme_ecosystems."
+                      "load_ecosystem_assignments",
+                      new=AsyncMock(return_value={"Network Security & Zero-Trust Edge": "E-CYBR"})), \
+                patch("agents.market_intelligence.theme_engine."
+                      "evaluate_narrative_themes",
+                      new=AsyncMock(return_value=[])):
+            resp = await agent._handle_theme_query(
+                AgentRequest(task="/themes", user_id=1, conversation_id="t"))
+        assert resp.success, resp.error
+        assert "RS 96 · 5 stocks · 60% above 20-day avg" in resp.result
+        # prior 90.0 no longer becomes a Δ on the theme line (the ecosystem header's own
+        # raw→boosted "(Δ+11)" is a different number and stays)
+        theme_line = [l for l in resp.result.splitlines() if "_[Mainstream]_" in l][0]
+        assert "Δ" not in theme_line
+
+
+class TestComputeScoredThemes580:
+    def _themes(self):
+        return [
+            {"name": "Live Theme", "stage": "Nascent", "tickers": ["AAA", "BBB"],
+             "pct_above_20sma": 0.5},
+            {"name": "Never Scored Breadth", "stage": "Accelerating", "tickers": ["CCC"]},
+            {"name": "Ghost Retired", "stage": "Retired", "tickers": ["AAA", "BBB"],
+             "pct_above_20sma": 0.9},
+            {"name": "Fading One", "stage": "Fading", "tickers": ["AAA"]},
+        ]
+
+    def _rs(self):
+        return {"AAA": _rs_row(80.0), "BBB": _rs_row(80.0), "CCC": _rs_row(70.0)}
+
+    def test_breadth_rides_into_the_scored_dict(self):
+        from agents.market_intelligence.briefing import _compute_scored_themes
+        scored, _ = _compute_scored_themes(self._themes(), self._rs(), {})
+        by = {s["name"]: s for s in scored}
+        assert by["Live Theme"]["pct_above_20sma"] == 0.5
+        assert by["Never Scored Breadth"]["pct_above_20sma"] is None
+        assert by["Live Theme"]["n_stocks"] == 2
+
+    def test_retired_is_excluded_even_when_it_still_carries_tickers(self):
+        from agents.market_intelligence.briefing import _compute_scored_themes
+        scored, fading = _compute_scored_themes(self._themes(), self._rs(), {})
+        assert "Ghost Retired" not in {s["name"] for s in scored}
+        assert "Ghost Retired" not in {f["name"] for f in fading}   # nor smuggled in as Fading
+        assert [f["name"] for f in fading] == ["Fading One"]
+
+    def test_ties_break_by_name_regardless_of_input_order(self):
+        from agents.market_intelligence.briefing import _compute_scored_themes
+        rs = {"AAA": _rs_row(80.0), "BBB": _rs_row(80.0), "CCC": _rs_row(80.0)}
+        base = [{"name": n, "stage": "Nascent", "tickers": [tk]}
+                for n, tk in (("Zeta", "AAA"), ("Alpha", "BBB"), ("Mid", "CCC"))]
+        forward, _ = _compute_scored_themes(base, rs, {})
+        backward, _ = _compute_scored_themes(list(reversed(base)), rs, {})
+        assert [s["name"] for s in forward] == ["Alpha", "Mid", "Zeta"]
+        assert [s["name"] for s in backward] == ["Alpha", "Mid", "Zeta"]
+
+    def test_higher_comp_still_beats_name_order(self):
+        from agents.market_intelligence.briefing import _compute_scored_themes
+        scored, _ = _compute_scored_themes(
+            [{"name": "Zed High", "stage": "Nascent", "tickers": ["AAA"]},
+             {"name": "Alpha Low", "stage": "Nascent", "tickers": ["CCC"]}],
+            self._rs(), {})
+        assert [s["name"] for s in scored] == ["Zed High", "Alpha Low"]
+
+    def test_no_delta_key_and_prior_scores_are_ignored(self):
+        from agents.market_intelligence.briefing import _compute_scored_themes
+        with_prior, _ = _compute_scored_themes(self._themes(), self._rs(), {"Live Theme": 10.0})
+        without, _ = _compute_scored_themes(self._themes(), self._rs())   # prior optional now
+        assert with_prior == without
+        assert all("delta" not in s for s in with_prior)
