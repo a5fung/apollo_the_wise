@@ -9,6 +9,7 @@ a guard-passing rt crosser emits `ep_rt_universe_catch` audit-only (digest surfa
 7/21 noise ruling) and is NOT admitted (no LLM spend).
 """
 import asyncio
+import pytest
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -413,9 +414,12 @@ def test_digest_catches_only_still_sends(monkeypatch):
 def test_digest_catch_line_says_admitted_when_toggle_on(monkeypatch):
     """The exact defect this fixes: the operator flipped `ep_rt_universe_authoritative` ON and
     still saw a "shadow catches" line, because the word was hand-written rather than derived.
-    With the toggle reading True, the line must say ADMITTED and must NOT say shadow."""
+    With the toggle reading True, the line must say ADMITTED and must NOT say shadow.
+    (Since 2026-09-30 the authoritative digest only sends on a day with a genuine miss, so one is
+    present here — see test_digest_is_silent_on_a_zero_miss_day_under_the_authoritative_overlay.)"""
     from agents.market_intelligence import briefing
-    _digest_pool(monkeypatch, [], [{"ticker": "PLAB", "rt_gap": 10.61, "tick_et": "07:05"}])
+    _digest_pool(monkeypatch, [{"ticker": "ABCD", "rt_gap": 11.0, "tick_et": "09:40"}],
+                 [{"ticker": "PLAB", "rt_gap": 10.61, "tick_et": "07:05"}])
     _digest_toggle(monkeypatch, authoritative=True)
     sent = []
 
@@ -424,7 +428,7 @@ def test_digest_catch_line_says_admitted_when_toggle_on(monkeypatch):
         return True
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
     n = asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 7, 24)))
-    assert n == 1 and len(sent) == 1
+    assert n == 2 and len(sent) == 1
     assert "ADMITTED as candidates" in sent[0]
     assert "shadow" not in sent[0].lower()
 
@@ -502,3 +506,26 @@ def test_retreat_is_distinguishable_from_a_data_gap():
     src = open("agents/market_intelligence/ep_detector.py").read()
     assert '"ep_rt_retreated_below_floor"' in src and '"ep_rt_no_price"' in src
     assert src.index('"ep_rt_no_price"') < src.index('"ep_rt_retreated_below_floor"')
+
+
+@pytest.mark.parametrize("authoritative, expect_send", [(True, False), (False, True), (None, True)])
+def test_digest_is_silent_on_a_zero_miss_day_under_the_authoritative_overlay(monkeypatch, authoritative, expect_send):
+    """2026-09-30 (operator): with the overlay authoritative, catches are already admitted and
+    declines were refused on purpose, so a day with ZERO genuine misses sends nothing. Shadow posture
+    and an unreadable toggle (None = raises) keep the send — fail toward telling him."""
+    from agents.market_intelligence import briefing
+    _digest_pool(monkeypatch, [], [{"ticker": "PLAB", "rt_gap": 10.61, "tick_et": "07:05"}],
+                 declined_rows=[{"ticker": "CELC", "rt_gap": 12.19, "tick_et": "09:31",
+                                 "declined_reason": "ep_rt_sustain_reject"}])
+    _digest_toggle(monkeypatch, authoritative=authoritative)
+    sent = []
+
+    async def _tg(msg, **kw):
+        sent.append(msg)
+        return True
+    monkeypatch.setattr(briefing, "send_telegram_message", _tg)
+    n = asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 9, 30)))
+    assert n == 2
+    assert (len(sent) == 1) is expect_send
+    if expect_send:
+        assert "0 genuine misses" in sent[0]

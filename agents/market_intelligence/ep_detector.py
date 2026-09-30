@@ -3220,6 +3220,25 @@ async def send_rt_miss_digest(run_date=None) -> int:
     ]
     if not items and not catch_items and not declined_items:
         return 0
+    # 2026-09-30 (operator, after the delay-miss page was retired: "there's a similar alert in the
+    # morning"): under the AUTHORITATIVE overlay the catch line lists names already ADMITTED as
+    # candidates (they reach him through the normal EP path) and the declined line lists names the
+    # overlay refused on purpose — neither asks anything of him. Only a GENUINE miss is actionable,
+    # so on a zero-miss day nothing is sent (the rows stay in the audit log; the job's own run is
+    # tracked by audit_wrap and the job-liveness sweep, so silence is not an unwatched job). A miss
+    # day still carries all three lines. Before the cutover (shadow posture) nothing changes; a
+    # toggle that cannot be read keeps the send.
+    if not items:
+        try:
+            _auth_now = await get_runtime_toggle(
+                "ep_rt_universe_authoritative", "EP_RT_UNIVERSE_AUTHORITATIVE", default=False)
+        except Exception as _te:  # loud-ok: unreadable -> keep sending (fail toward telling him)
+            logger.warning(f"send_rt_miss_digest toggle read failed (non-fatal): {_te}")
+            _auth_now = False
+        if _auth_now:
+            logger.info(f"rt miss digest {d}: 0 genuine misses — not sent "
+                        f"({len(declined_items)} declined, {len(catch_items)} admitted catches; see /audit)")
+            return len(catch_items) + len(declined_items)
 
     # #578-class fix (2026-08-26, display-text only — no admission/behaviour change): derive
     # ADMITTED-vs-shadow wording from the SAME toggle the admission path reads, so the label
