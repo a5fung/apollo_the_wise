@@ -13,6 +13,12 @@
 - **Breadth data is correct** (checked: stored 20-day averages match a recompute from daily closes — the bitcoin miners
   really were all below their 20-day average on 09-29; market-wide only 27% of stocks were).
 
+## Ruling (2026-09-30)
+
+- **The trim stays** (his ruling): the strongest members are the leaders that light a theme up; dropping them would hide
+  the early signal the theme work exists to catch. Breadth now shows beside the score on both surfaces.
+- **The 0% bug gets fixed** (his yes) — Saturday 10-03, after a replay of which themes fade and which EP alerts lose the +10.
+
 ## 2. Method and population
 
 Read-only against prod, captured once in `scripts/probes/_580/` (`trimmed_mean_compare.py` + `_output.txt`; the
