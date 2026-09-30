@@ -57,6 +57,7 @@ from agents.market_intelligence.audit_events import (
     STOP_UPDATE_RETRY_TRIGGERED,
     STOP_UPDATE_FAILED,
     ORDER_STATUS_RECONCILE_MODE_ERROR,
+    PARTIAL_FILL_CLOSE_ERROR,
 )
 from shared.env_flags import env_is_true
 
@@ -983,6 +984,48 @@ async def submit_entry(trade_id: int) -> dict | None:
 # ── Fill Checking ────────────────────────────────────────────────────────────
 
 
+async def note_partial_fill_close_failed(trade: dict, account_mode: str, filled_qty,
+                                         exc: Exception, where: str) -> bool:
+    """#635 F10 — closing a too-small (<$500) partial ENTRY fill raised. Both fill paths
+    (`check_fills` here, `trade_stream._process_entry_fill`) then mark the trade row 'closed'
+    regardless, so the database says flat while the broker may still hold the shares. It was
+    `logger.error` alone; the coverage-drift detector (#184) and the 16:05 sync only notice the
+    divergence later, and only if their own nets are alive. Surface it AT THE FAILURE SITE: an
+    audit row (name ends `_error` -> nightly sweep) and a Telegram PER OCCURRENCE (each is a
+    distinct position - no dedupe).
+
+    OBSERVABILITY ONLY: the caller's control flow is untouched - it still marks the row closed
+    exactly as before. NEVER raises. Returns True iff a Telegram was attempted (tests assert
+    on it)."""
+    ticker = trade.get("ticker") or "?"
+    err = f"{type(exc).__name__}: {' '.join(str(exc).split())[:200]}"
+    try:
+        await log_audit_event(
+            PARTIAL_FILL_CLOSE_ERROR,
+            f"{ticker} account_mode={account_mode} closing a tiny partial fill FAILED at "
+            f"{where}; trade row is marked closed anyway, broker may still hold the shares "
+            f"{err}",
+            json.dumps({"trade_id": trade.get("id"), "ticker": ticker,
+                        "account_mode": account_mode, "filled_qty": float(filled_qty or 0),
+                        "where": where, "error": err}),
+        )
+    except Exception as e:
+        logger.warning(f"note_partial_fill_close_failed audit write failed [{ticker}]: {e}")
+    try:
+        from shared.telegram_format import b, esc
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}⚠️ {b(f'{ticker}: tiny partial fill NOT closed')} - "
+            f"the close order failed ({esc(err)}) and the trade is being marked closed "
+            f"anyway. {esc(f'{float(filled_qty or 0):g}')} sh may still be held at the broker "
+            f"with no row tracking them - check Alpaca. The 15-minute coverage check and the "
+            f"16:05 sync should also flag the mismatch.",
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.warning(f"note_partial_fill_close_failed Telegram failed [{ticker}]: {e}")
+    return True
+
+
 async def check_fills() -> list[dict]:
     """Poll Alpaca for fills on pending entry orders + Day 1 stop-outs for re-entry."""
     pool = await get_pool()
@@ -1015,6 +1058,8 @@ async def check_fills() -> list[dict]:
                     await alpaca.close_position(ticker, account_mode=account_mode)
                 except Exception as e:
                     logger.error(f"Failed to close partial fill for {ticker}: {e}")
+                    await note_partial_fill_close_failed(       # #635 F10: was log-only
+                        trade, account_mode, filled_qty, e, "check_fills")
                 await _update_trade_status(trade["id"], "closed", skip_reason="partial_fill_too_small")
                 results.append({"ticker": ticker, "action": "partial_cancelled"})
                 continue

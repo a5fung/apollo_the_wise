@@ -34,12 +34,15 @@ shadow telemetry, then env flip + replace count-based block in
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
+from agents.market_intelligence.audit_events import DRAWDOWN_BREAKER_READ_ERROR
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.constants import (
     DRAWDOWN_PEAK_WINDOW_DAYS,
@@ -473,6 +476,68 @@ async def recompute_drawdown_state(mode: str) -> tuple[str, str, dict]:
 # ── State read (called from _check_safeguards in active phase) ──────────────
 
 
+# ── #635 F9 (2026-09-30): the per-call fail-open read was log-only ─────────────────────────
+# `read_breaker_state` fails OPEN on a DB error (operator-ruled design, RED-3: "fail-open
+# semantics stay as designed") - a transient error exactly at entry-check time reads a
+# possibly-REDUCE/BLOCK breaker as 'OK' and the entry proceeds unlimited. That DIRECTION is
+# unchanged and is not this task's to change (a safeguard behaviour change = THE LINE).
+# What was missing is any trace that it happened: one `logger.warning`.
+#
+# ALERT-ONLY, and off the entry path: the surface is dispatched as a background task and
+# `read_breaker_state` returns 'OK' at the same speed it always did. The DB that just failed
+# is likely the DB the audit row writes to, so the Telegram (process-local dedup, one per mode
+# per hour, NOT gated on an audit-log lookback that would fail the same way) is the real surface.
+_BREAKER_READ_ALERT_WINDOW_S = 60 * 60
+_last_breaker_read_alert_ts: dict[str, float] = {}
+_ALERT_BG_TASKS: set = set()   # strong refs - asyncio keeps only weak ones to running tasks
+
+
+async def _note_breaker_read_failure(mode: str, exc: Exception, page: bool) -> bool:
+    """Audit row (always) + Telegram (when `page`). NEVER raises. Returns True iff a Telegram
+    was attempted (tests assert on it)."""
+    err = f"{type(exc).__name__}: {' '.join(str(exc).split())[:200]}"
+    try:
+        await log_audit_event(
+            DRAWDOWN_BREAKER_READ_ERROR,
+            f"account_mode={mode} read_breaker_state failed - read as OK (fail-open, "
+            f"operator-ruled) {err} tg={1 if page else 0}",
+            json.dumps({"account_mode": mode, "error": err}),
+        )
+    except Exception as e:
+        logger.warning(f"_note_breaker_read_failure audit write failed [{mode}]: {e}")
+    if not page:
+        return False
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        from shared.telegram_format import b, esc
+        await send_telegram_message(
+            f"⚠️ {b('DRAWDOWN BREAKER READ FAILED')} ({esc(mode)}) - an entry check could not "
+            f"read the breaker state and went ahead as if it were OK (fail-open, by design). "
+            f"If the breaker was really in REDUCE or BLOCK, that entry was NOT limited.\n"
+            f"Latest: {esc(err)}",
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.warning(f"_note_breaker_read_failure Telegram failed [{mode}]: {e}")
+    return True
+
+
+def _schedule_breaker_read_alert(mode: str, exc: Exception) -> None:
+    """Fire-and-forget the F9 surface. Synchronous, NEVER awaits, NEVER raises - so the entry
+    path cannot be slowed or broken by it."""
+    try:
+        now = time.monotonic()
+        last = _last_breaker_read_alert_ts.get(mode)
+        page = last is None or (now - last) >= _BREAKER_READ_ALERT_WINDOW_S
+        if page:
+            _last_breaker_read_alert_ts[mode] = now
+        task = asyncio.create_task(_note_breaker_read_failure(mode, exc, page))
+        _ALERT_BG_TASKS.add(task)
+        task.add_done_callback(_ALERT_BG_TASKS.discard)
+    except Exception as e:
+        logger.warning(f"read_breaker_state alert dispatch failed for {mode}: {e}")
+
+
 async def read_breaker_state(mode: str) -> str:
     """Cheap PK lookup. Returns 'OK' if no row exists (fail-open default).
 
@@ -481,12 +546,16 @@ async def read_breaker_state(mode: str) -> str:
 
     #348: now via db.get_safeguard_state (shared read); fail-direction UNCHANGED,
     still applied here, not inside the shared helper.
+
+    #635 F9: a read error is now also audited + paged (deduped) - ALERT-ONLY, dispatched in the
+    background; the return value and its timing are exactly as before.
     """
     try:
         row = await get_safeguard_state(_SAFEGUARD_NAME, mode)
         return row["state"] if row else _STATE_OK
     except Exception as e:
         logger.warning(f"read_breaker_state failed for {mode}: {e}")
+        _schedule_breaker_read_alert(mode, e)
         return _STATE_OK
 
 

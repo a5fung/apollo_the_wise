@@ -32,6 +32,7 @@ from alpaca.trading.stream import TradingStream
 from agents.market_intelligence.audit_events import (
     ENTRY_ORDER_REJECTED,
     ENTRY_REJECTION_WATCH_ARMED,
+    TRADE_STREAM_SDK_SHAPE_ERROR,
 )
 from agents.market_intelligence.broker.stream_models import (
     ReasonPreservingTradingStream,
@@ -52,6 +53,10 @@ _stream_healthy: dict[str, bool] = {}
 _last_event_time: dict[str, datetime | None] = {}
 _reconnect_count: dict[str, int] = {}
 _MAX_OUTER_RETRIES = 3
+# #635 F11: account modes already paged about a tripped SDK-shape guard IN THIS PROCESS.
+# The watchdog re-enters `_start_one_stream` every few minutes while no stream exists, so the
+# audit row lands every time (durable) but the Telegram goes once per process per mode.
+_sdk_shape_paged: set[str] = set()
 
 # ── #591 review (2026-08-2x) — CONSIDERED, NOT APPLIED here ─────────────────
 # The three claim-before-update WHERE clauses below (`_handle_partial_fill`,
@@ -98,6 +103,42 @@ async def start_trade_stream() -> None:
         await _start_one_stream(mode)
 
 
+async def _note_sdk_shape_guard_tripped(account_mode: str) -> bool:
+    """#635 F11 — the boot-time SDK-shape guard tripped: alpaca-py no longer exposes the
+    coroutine `_run_forever`, so NO WebSocket fill stream exists for this mode and fills are
+    observed only by the polling fallback. Was `logger.error` alone — a silent removal of the
+    whole WS fill surface. Audit row EVERY trip (durable; name ends `_error` so the nightly
+    sweep sees it), Telegram once per process per mode. NEVER raises. Returns True iff a
+    Telegram was attempted (tests assert on it). The caller still returns without registering
+    a stream — the fallback behaviour is unchanged."""
+    first = account_mode not in _sdk_shape_paged
+    _sdk_shape_paged.add(account_mode)
+    try:
+        await log_audit_event(
+            TRADE_STREAM_SDK_SHAPE_ERROR,
+            f"account_mode={account_mode} TradingStream._run_forever missing or not a "
+            f"coroutine - WS fill stream NOT started, polling fallback only "
+            f"tg={1 if first else 0}",
+            json.dumps({"account_mode": account_mode, "first_in_process": first}),
+        )
+    except Exception as e:
+        logger.warning(f"_note_sdk_shape_guard_tripped audit write failed [{account_mode}]: {e}")
+    if not first:
+        return False
+    try:
+        from shared.telegram_format import b, esc
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}🔴 {b('TRADE STREAM NOT STARTED - alpaca-py changed')} "
+            f"({esc(account_mode)}). The WebSocket fill stream does not exist for this account; "
+            f"fills and stop-fills are seen only by the polling fallback until the SDK pin or "
+            f"this code is fixed. Check the alpaca-py version (pinned 0.43.2).",
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.warning(f"_note_sdk_shape_guard_tripped Telegram failed [{account_mode}]: {e}")
+    return True
+
+
 async def _start_one_stream(account_mode: str) -> None:
     """Spawn one TradingStream subscribed for a specific account_mode."""
     env_prefix = f"ALPACA_{account_mode.upper()}_"
@@ -136,6 +177,7 @@ async def _start_one_stream(account_mode: str) -> None:
             "Pin alpaca-py==0.43.2. Falling back to polling for "
             f"mode={account_mode}."
         )
+        await _note_sdk_shape_guard_tripped(account_mode)   # #635 F11: was log-only
         return
 
     _trading_streams[account_mode] = stream
@@ -822,6 +864,11 @@ async def _process_entry_fill(
             await alpaca.close_position(ticker, account_mode=account_mode)
         except Exception as e:
             logger.error(f"Failed to close partial fill for {ticker}: {e}")
+            # #635 F10: was log-only. The row is marked 'closed' just below regardless (unchanged);
+            # this only makes the divergence - DB flat, broker maybe still long - visible at once.
+            from agents.market_intelligence.broker.order_manager import note_partial_fill_close_failed
+            await note_partial_fill_close_failed(
+                trade, account_mode, filled_qty, e, "trade_stream._process_entry_fill")
         async with pool.acquire() as conn:
             await conn.execute(
                 "UPDATE mi_live_trades SET status = 'closed', skip_reason = 'Partial fill too small' WHERE id = $1",

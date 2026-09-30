@@ -264,6 +264,37 @@ POLYGON_SNAPSHOT_EMPTY_ERROR = "polygon_snapshot_empty_error"
 # off for that whole account. Row per failure; Telegram after N consecutive (order_manager).
 ORDER_STATUS_RECONCILE_MODE_ERROR = "order_status_reconcile_mode_error"
 
+# ── #635 Tier 2/3 (2026-09-30): the remaining money-path silent swallows (F6, F8-F11) ──
+# Observability only — each is an audit row (and, where noted, a Telegram) added INSIDE an
+# existing except/guard; none changes a return value, an order, a stop, a size or a safeguard.
+# All contain "error" on purpose: the nightly `%error%` sweep and `show errors` show the
+# summary line with no extra wiring (a `_failed` name would only be counted).
+#
+# F6 and F8 have NO constant here on purpose: they are emitted from inside `run_ep_scan`, which
+# names its events as string literals (a function-local import inside that function is the
+# 2026-05-20 UnboundLocalError outage class). Their names, for grep:
+#   `ep_repoll_upgrade_error` - the cached-ticker late-source RE-POLL (the BFLY mechanism) raised.
+#     It used to be `logger.debug`, and the block marks itself done BEFORE the risky call, so one
+#     failure also disabled the upgrade for that ticker for the rest of the day. DISTINCT from
+#     `live_enriched_grade_failed` on purpose: #543's grading-health ratio counts that exact name
+#     as a grade-decision failure (health_checks._GRADING_FAILURE_EVENTS) and this is not one.
+#   `ep_candidate_parse_error` - the per-ticker candidate build raised for MANY tickers in one
+#     tick (a Polygon schema change hitting a subset). A single bad row is a bulkhead working as
+#     designed; a tick past the threshold is a coverage erosion nobody could see. Audit only.
+# F9 — drawdown_breaker.read_breaker_state hit a DB error at entry-check time and returned
+# 'OK' (fail-open — operator-ruled design, RED-3: unchanged). Audit row per failure; Telegram
+# once per hour per account mode. Dispatched as a background task, never awaited on the
+# entry path.
+DRAWDOWN_BREAKER_READ_ERROR = "drawdown_breaker_read_error"
+# F10 — closing a too-small (<$500) partial entry fill raised, and the trade row is marked
+# 'closed' anyway: the DB says flat while the broker may still hold the shares. Audit row +
+# a Telegram per occurrence (each is a distinct position).
+PARTIAL_FILL_CLOSE_ERROR = "partial_fill_close_error"
+# F11 — alpaca-py changed TradingStream._run_forever, so the WS fill stream was NOT started
+# for this account mode (polling is the only fill observer). Audit row every trip; Telegram
+# once per process per mode.
+TRADE_STREAM_SDK_SHAPE_ERROR = "trade_stream_sdk_shape_error"
+
 # ── #603 DoD (3): endpoint-SHAPE anomaly canary ─────────────────────────────
 # Fires on a response that did NOT raise a classifiable provider-health
 # exception (so llm_health.alert_api_failure's classifier never sees it) but

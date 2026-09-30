@@ -1134,6 +1134,12 @@ def should_repoll_shadow(cached_quality: str, grade_source_count: int,
 _repoll_shadow_state: dict = {}
 _repoll_shadow_date = None
 
+# #635 F8 - the per-ticker candidate-build bulkhead audits in AGGREGATE once a tick drops at
+# least this many snapshot rows AND at least this share of the snapshot. UN-BASELINED (see the
+# comment at the call site): telemetry only, never read by anything that admits or rejects.
+_PARSE_DROP_AUDIT_MIN = 50
+_PARSE_DROP_AUDIT_FRAC = 0.01
+
 
 def _is_premarket(now_et: datetime) -> bool:
     """True strictly before 9:30 ET. Shared guard for BOTH #344 shadows (enrichment +
@@ -3519,6 +3525,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Find gap candidates
     candidates = []
     _unclassified_skipped = 0  # P2.0b counter
+    # #635 F8: tickers whose candidate build RAISED this tick (see the loop's except). Locals,
+    # not module state - one scan's counter must never leak into the next.
+    _n_parse_dropped = 0
+    _parse_drop_first_err: str | None = None
+    _parse_drop_sample: list[str] = []
     _rt_universe = []   # #489 miss watchdog: every ticker that clears all NON-gap filters
     _universe_floor_skips: list[dict] = []  # #570: visibility rows for the two silent D-1 floors
     _below_floor_rows: list[dict] = []  # #605: [EP_CAPTURE_GAP_FLOOR, acting floor) capture rows
@@ -3646,8 +3657,46 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _record_floor_shadow(ticker, prev_close, prev_volume, gap_pct,
                                  today_volume=_today_vol,
                                  current_price=current_price)
-        except Exception:
+        except Exception as _pe:  # loud-ok: counted per tick and audited in aggregate right after the loop (#635 F8); a per-ticker line would flood
+            # #635 F8: the bulkhead is correct (one malformed row must not kill the scan) and
+            # stays exactly as it was - `continue`. What it lacked was any count: a Polygon schema
+            # change hitting a SUBSET of tickers would erode candidate coverage forever with no
+            # trace. Count + remember the first error and a sample; audited after the loop.
+            _n_parse_dropped += 1
+            if _parse_drop_first_err is None:
+                _parse_drop_first_err = f"{type(_pe).__name__}: {str(_pe)[:160]}"
+            if len(_parse_drop_sample) < 5:
+                _parse_drop_sample.append(ticker)
             continue
+
+    # #635 F8: aggregate audit of the parse-drops above. THRESHOLD IS UN-BASELINED (no prod data
+    # in hand when this shipped): chosen so a systemic schema change (hundreds of the ~10k
+    # tickers) trips it and a stray malformed row or two never does - max(50 tickers, 1% of the
+    # snapshot). The audit detail carries the exact count, size, first error and a sample so the
+    # number can be tuned from the first real rows. Audit ONLY (no Telegram - the nightly
+    # `%error%` sweep shows it); fire-and-forget with a strong ref (the _WATCHDOG_BG_TASKS idiom)
+    # so a slow audit write can never delay the scan on the ORB path.
+    if (_n_parse_dropped >= _PARSE_DROP_AUDIT_MIN
+            and _n_parse_dropped >= len(snapshots) * _PARSE_DROP_AUDIT_FRAC):
+        logger.error(
+            f"EP scan: {_n_parse_dropped}/{len(snapshots)} snapshot rows RAISED while building "
+            f"candidates (first: {_parse_drop_first_err}) - candidate coverage is eroded this tick")
+        try:
+            _pdt = asyncio.create_task(log_audit_event(
+                "ep_candidate_parse_error",
+                f"{_n_parse_dropped} of {len(snapshots)} snapshot rows raised in the EP "
+                f"candidate build (first: {_parse_drop_first_err}); sample {_parse_drop_sample}",
+                json.dumps({"n_dropped": _n_parse_dropped, "n_snapshots": len(snapshots),
+                            "first_error": _parse_drop_first_err,
+                            "sample_tickers": _parse_drop_sample,
+                            "threshold_min": _PARSE_DROP_AUDIT_MIN,
+                            "threshold_frac": _PARSE_DROP_AUDIT_FRAC,
+                            "scan_date": today.isoformat()}),
+            ))
+            _WATCHDOG_BG_TASKS.add(_pdt)
+            _pdt.add_done_callback(_WATCHDOG_BG_TASKS.discard)
+        except Exception as _pde:
+            logger.warning(f"#635 F8 parse-drop audit dispatch failed: {_pde}")
 
     # #570: flush the D-1-floor visibility rows NOW, unconditionally — `if not candidates:
     # return []` a few lines below would otherwise silently drop them on a tick with zero
@@ -4660,7 +4709,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             }),
                         )
                 except Exception as _e:
-                    logger.debug(f"{ticker}: repoll shadow skipped — {_e}")
+                    # #635 F6 (2026-09-30): this was `logger.debug`, and `_st["logged"] = True` is
+                    # set BEFORE the risky call - so ONE failure here also disabled the late-source
+                    # upgrade (the BFLY mechanism: routine pre-PR, PR at 8:12) for this ticker for
+                    # the rest of the day, recorded nowhere durable. Mirrors the fresh-ticker
+                    # path's logger.error + audit row below, under a DISTINCT event name:
+                    # `live_enriched_grade_failed` is counted by #543's grading-health ratio as a
+                    # grade-decision failure (health_checks._GRADING_FAILURE_EVENTS) and a failed
+                    # re-poll is not one. Audit + log ONLY - the grade, the cache and the control
+                    # flow are exactly as before.
+                    logger.error(
+                        f"{ticker}: re-poll upgrade check FAILED - a late primary source cannot "
+                        f"upgrade today's routine grade: {_e}")
+                    try:
+                        await log_audit_event(
+                            "ep_repoll_upgrade_error",
+                            f"{ticker}: {type(_e).__name__}: {str(_e)[:200]}",
+                            json.dumps({"ticker": ticker, "alert_date": today.isoformat(),
+                                        "path": "cached_repoll"}),
+                        )
+                    except Exception:  # loud-ok: the logger.error above already carries it; log_audit_event self-catches
+                        pass
         else:
             # Fetch all external data concurrently
             # #332 (2026-07-18, operator-signed): get_fmp_analyst_ratings dropped from this

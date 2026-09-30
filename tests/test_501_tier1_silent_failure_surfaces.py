@@ -752,3 +752,396 @@ def test_f13_the_nightly_pull_routes_step_8_through_the_helper():
     called = names_called_in("agents/market_intelligence/scheduler.py", "_nightly_data_pull")
     assert "_state_alerts_step" in called
     assert "detect_state_changes" not in called       # no inlined copy of the old block
+
+
+# ── #635 Tier 2/3 (2026-09-30) — commit B: the money-path surfaces (F6, F8-F11) ─────────────
+# Observability only. Every test drives the REAL failing path - the real `run_ep_scan` (via the
+# test_624 harness), `_process_entry_fill`, `check_fills`, `read_breaker_state`,
+# `_start_one_stream` - with only the leaf sinks captured, and asserts BOTH that the new
+# audit row / Telegram appears AND that the original control flow is unchanged.
+#
+# MUTATION CHECKS (run by hand 2026-09-30, recorded here, not re-run by CI): each of these turns
+# the named tests RED.
+#   F6   delete the `await log_audit_event("ep_repoll_upgrade_error", ...)` in ep_detector.py
+#   F8   delete the `_n_parse_dropped += 1` counter / the post-loop audit dispatch
+#   F9   delete `_schedule_breaker_read_alert(mode, e)` in drawdown_breaker.read_breaker_state
+#   F10  delete either `await note_partial_fill_close_failed(...)` call
+#   F11  delete `await _note_sdk_shape_guard_tripped(account_mode)` in trade_stream
+
+import asyncio  # noqa: E402
+from datetime import datetime  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
+from zoneinfo import ZoneInfo  # noqa: E402
+
+from agents.market_intelligence.audit_events import (  # noqa: E402
+    DRAWDOWN_BREAKER_READ_ERROR,
+    PARTIAL_FILL_CLOSE_ERROR,
+    TRADE_STREAM_SDK_SHAPE_ERROR,
+)
+from tests._byte_identity import assert_byte_identical  # noqa: E402
+
+
+async def _drain(*task_sets):
+    """Await every fire-and-forget task the code under test parked in `task_sets`."""
+    for _ in range(5):
+        pending = [t for s in task_sets for t in list(s) if not t.done()]
+        if not pending:
+            return
+        await asyncio.gather(*pending, return_exceptions=True)
+
+
+def _pending_only(rows):
+    """`conn.fetch` double for `check_fills`: the pending-entry query gets `rows`, every other
+    query the function goes on to run (Day-1 re-entry polling) gets none."""
+    async def _fetch(sql, *a, **k):
+        return list(rows) if "order_placed" in sql else []
+    return _fetch
+
+
+def _capture_sinks(monkeypatch, *modules):
+    """Replace `log_audit_event` / `send_telegram_message` on each module that has them."""
+    audit, tg = [], []
+
+    async def _log(event_type, summary, detail=""):
+        audit.append((event_type, summary, detail))
+
+    async def _send(text, **kw):
+        tg.append(text)
+        return True
+
+    for m in modules:
+        if hasattr(m, "log_audit_event"):
+            monkeypatch.setattr(m, "log_audit_event", _log)
+        if hasattr(m, "send_telegram_message"):
+            monkeypatch.setattr(m, "send_telegram_message", _send)
+    return audit, tg
+
+
+# ── F11 — TradingStream SDK-shape guard ───────────────────────────────────────────────────
+
+class _StreamWithoutRunForever:
+    """alpaca-py after a (hypothetical) SDK change: no `_run_forever` coroutine."""
+
+    def __init__(self, *a, **k):
+        pass
+
+    def subscribe_trade_updates(self, handler):
+        pass
+
+
+class _HealthyStream(_StreamWithoutRunForever):
+    async def _run_forever(self):
+        return None
+
+
+@pytest.fixture
+def stream_env(monkeypatch):
+    from agents.market_intelligence.broker import trade_stream as ts
+    ts._sdk_shape_paged.clear()
+    for m in ("paper", "live"):
+        ts._trading_streams.pop(m, None)
+        ts._stream_tasks.pop(m, None)
+        monkeypatch.setenv(f"ALPACA_{m.upper()}_API_KEY", "k")
+        monkeypatch.setenv(f"ALPACA_{m.upper()}_SECRET_KEY", "s")
+    audit, tg = _capture_sinks(monkeypatch, ts)
+    return ts, audit, tg
+
+
+@pytest.mark.asyncio
+async def test_f11_a_tripped_sdk_guard_is_audited_and_paged_once_per_mode(monkeypatch, stream_env):
+    ts, audit, tg = stream_env
+    monkeypatch.setattr(ts, "ReasonPreservingTradingStream", _StreamWithoutRunForever)
+
+    await ts._start_one_stream("paper")
+    await ts._start_one_stream("paper")          # the watchdog re-enters every few minutes
+    await ts._start_one_stream("live")           # a different mode is its own page
+
+    # behaviour unchanged: NO stream registered, polling stays the only fill observer
+    assert ts._trading_streams == {} and ts._stream_tasks == {}
+    rows = [r for r in audit if r[0] == TRADE_STREAM_SDK_SHAPE_ERROR]
+    assert len(rows) == 3 and TRADE_STREAM_SDK_SHAPE_ERROR.endswith("_error")
+    assert ["tg=1" in r[1] for r in rows] == [True, False, True]
+    assert len(tg) == 2                                   # paper once + live once
+    assert "WebSocket fill stream" in tg[0] and "polling fallback" in tg[0]
+    assert "PAPER" in tg[0].upper() or "paper" in tg[0]
+
+
+@pytest.mark.asyncio
+async def test_f11_a_healthy_sdk_shape_raises_nothing(monkeypatch, stream_env):
+    ts, audit, tg = stream_env
+    monkeypatch.setattr(ts, "ReasonPreservingTradingStream", _HealthyStream)
+
+    async def _no_loop(account_mode):        # do not start a real reconnect loop
+        return None
+
+    monkeypatch.setattr(ts, "_run_stream_with_monitoring", _no_loop)
+    await ts._start_one_stream("paper")
+    await _drain(ts._stream_tasks.values())
+    assert "paper" in ts._trading_streams               # registered exactly as before
+    assert audit == [] and tg == []
+    ts._trading_streams.pop("paper", None)
+    ts._stream_tasks.pop("paper", None)
+
+
+# ── F10 — partial-fill-too-small close failure ────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_f10_ws_path_close_failure_is_surfaced_and_the_row_is_still_closed(monkeypatch):
+    from agents.market_intelligence.broker import trade_stream as ts, order_manager as om
+    audit, tg = _capture_sinks(monkeypatch, ts, om)
+    monkeypatch.setattr(ts.alpaca, "close_position",
+                        AsyncMock(side_effect=RuntimeError("position does not exist")))
+    pool, conn = make_mock_pool()
+    conn.execute = AsyncMock(return_value="UPDATE 1")
+    trade = {"id": 11, "ticker": "TINY", "entry_shares": 100}
+
+    await ts._process_entry_fill(trade, SimpleNamespace(id="o1"), 50.0, 2.0, pool, "live")
+
+    rows = [r for r in audit if r[0] == PARTIAL_FILL_CLOSE_ERROR]
+    assert len(rows) == 1 and PARTIAL_FILL_CLOSE_ERROR.endswith("_error")
+    assert "TINY" in rows[0][1] and "account_mode=live" in rows[0][1]
+    d = json.loads(rows[0][2])
+    assert d["trade_id"] == 11 and d["where"] == "trade_stream._process_entry_fill"
+    assert len(tg) == 1 and "TINY" in tg[0] and "NOT closed" in tg[0]
+    assert "position does not exist" in tg[0]
+    # ORIGINAL CONTROL FLOW: the row is still marked closed, the function still returns
+    sql, *args = conn.execute.await_args.args
+    assert "status = 'closed'" in sql and "Partial fill too small" in sql and args == [11]
+
+
+@pytest.mark.asyncio
+async def test_f10_polling_path_close_failure_is_surfaced_and_the_row_is_still_closed(monkeypatch):
+    from agents.market_intelligence.broker import order_manager as om
+    audit, tg = _capture_sinks(monkeypatch, om)
+    pool, conn = make_mock_pool()
+    conn.fetch = _pending_only([{
+        "id": 12, "ticker": "TINY", "entry_order_id": "e1", "entry_shares": 100,
+        "orb_low": 9.0, "orb_high": 10.0, "stop_price": 9.0, "entry_attempt": 1,
+        "account_mode": "paper",
+    }])
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(om.alpaca, "get_order", AsyncMock(return_value={
+        "status": "filled", "filled_avg_price": 50.0, "filled_qty": 2.0}))
+    monkeypatch.setattr(om.alpaca, "close_position",
+                        AsyncMock(side_effect=RuntimeError("403 forbidden")))
+    upd = AsyncMock()
+    monkeypatch.setattr(om, "_update_trade_status", upd)
+
+    results = await om.check_fills()
+
+    assert results == [{"ticker": "TINY", "action": "partial_cancelled"}]   # unchanged
+    upd.assert_awaited_once_with(12, "closed", skip_reason="partial_fill_too_small")
+    rows = [r for r in audit if r[0] == PARTIAL_FILL_CLOSE_ERROR]
+    assert len(rows) == 1 and json.loads(rows[0][2])["where"] == "check_fills"
+    assert len(tg) == 1 and "403 forbidden" in tg[0]
+
+
+@pytest.mark.asyncio
+async def test_f10_a_successful_close_raises_no_alarm(monkeypatch):
+    from agents.market_intelligence.broker import order_manager as om
+    audit, tg = _capture_sinks(monkeypatch, om)
+    pool, conn = make_mock_pool()
+    conn.fetch = _pending_only([{
+        "id": 13, "ticker": "TINY", "entry_order_id": "e1", "entry_shares": 100,
+        "orb_low": 9.0, "orb_high": 10.0, "stop_price": 9.0, "entry_attempt": 1,
+        "account_mode": "paper"}])
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(om.alpaca, "get_order", AsyncMock(return_value={
+        "status": "filled", "filled_avg_price": 50.0, "filled_qty": 2.0}))
+    monkeypatch.setattr(om.alpaca, "close_position", AsyncMock(return_value={"id": "x"}))
+    monkeypatch.setattr(om, "_update_trade_status", AsyncMock())
+    await om.check_fills()
+    assert audit == [] and tg == []
+
+
+# ── F9 — read_breaker_state: ALERT-ONLY, fail-open direction unchanged ───────────────────
+
+@pytest.fixture
+def breaker_env(monkeypatch):
+    from agents.market_intelligence.broker import drawdown_breaker as dd
+    from agents.market_intelligence import briefing
+    dd._last_breaker_read_alert_ts.clear()
+    audit, tg = _capture_sinks(monkeypatch, dd, briefing)
+    monkeypatch.setattr(dd, "get_safeguard_state",
+                        AsyncMock(side_effect=ConnectionError("pool closed")))
+    return dd, audit, tg
+
+
+@pytest.mark.asyncio
+async def test_f9_a_failed_read_still_fails_open_and_is_audited_and_paged(breaker_env):
+    dd, audit, tg = breaker_env
+
+    state = await dd.read_breaker_state("live")
+
+    assert state == "OK"                                  # THE LINE: direction unchanged
+    await _drain(dd._ALERT_BG_TASKS)
+    rows = [r for r in audit if r[0] == DRAWDOWN_BREAKER_READ_ERROR]
+    assert len(rows) == 1 and DRAWDOWN_BREAKER_READ_ERROR.endswith("_error")
+    assert "account_mode=live" in rows[0][1] and "pool closed" in rows[0][1]
+    assert "tg=1" in rows[0][1]
+    assert len(tg) == 1
+    assert "DRAWDOWN BREAKER READ FAILED" in tg[0] and "NOT limited" in tg[0]
+
+
+@pytest.mark.asyncio
+async def test_f9_the_page_is_deduped_per_mode_but_every_failure_leaves_a_row(breaker_env):
+    dd, audit, tg = breaker_env
+    for _ in range(3):
+        assert await dd.read_breaker_state("live") == "OK"
+    assert await dd.read_breaker_state("paper") == "OK"
+    await _drain(dd._ALERT_BG_TASKS)
+
+    rows = [r for r in audit if r[0] == DRAWDOWN_BREAKER_READ_ERROR]
+    assert len(rows) == 4
+    assert len(tg) == 2                                   # live once, paper once
+    assert sum("tg=1" in r[1] for r in rows) == 2
+
+
+@pytest.mark.asyncio
+async def test_f9_the_alert_never_delays_the_entry_path(monkeypatch, breaker_env):
+    """The audit write is deliberately BLOCKED: `read_breaker_state` must still return at once.
+    (The DB that just failed is probably the DB the audit row writes to.)"""
+    dd, audit, tg = breaker_env
+    gate = asyncio.Event()
+
+    async def _slow_audit(event_type, summary, detail=""):
+        await gate.wait()
+        audit.append((event_type, summary, detail))
+
+    monkeypatch.setattr(dd, "log_audit_event", _slow_audit)
+    state = await asyncio.wait_for(dd.read_breaker_state("live"), timeout=1.0)
+    assert state == "OK" and audit == []                  # returned while the audit is still pending
+    gate.set()
+    await _drain(dd._ALERT_BG_TASKS)
+    assert len([r for r in audit if r[0] == DRAWDOWN_BREAKER_READ_ERROR]) == 1
+
+
+@pytest.mark.asyncio
+async def test_f9_a_dead_audit_and_dead_telegram_cannot_break_the_read(monkeypatch, breaker_env):
+    dd, audit, tg = breaker_env
+    from agents.market_intelligence import briefing
+    monkeypatch.setattr(dd, "log_audit_event", AsyncMock(side_effect=RuntimeError("db down")))
+    monkeypatch.setattr(briefing, "send_telegram_message",
+                        AsyncMock(side_effect=RuntimeError("tg down")))
+    assert await dd.read_breaker_state("live") == "OK"
+    await _drain(dd._ALERT_BG_TASKS)                      # no unhandled task exception
+
+
+@pytest.mark.asyncio
+async def test_f9_healthy_reads_are_silent_and_a_real_state_still_wins(monkeypatch, breaker_env):
+    dd, audit, tg = breaker_env
+    monkeypatch.setattr(dd, "get_safeguard_state", AsyncMock(return_value={"state": "BLOCK"}))
+    assert await dd.read_breaker_state("live") == "BLOCK"
+    monkeypatch.setattr(dd, "get_safeguard_state", AsyncMock(return_value=None))
+    assert await dd.read_breaker_state("live") == "OK"
+    await _drain(dd._ALERT_BG_TASKS)
+    assert audit == [] and tg == []
+
+
+# ── F6 / F8 — inside the real run_ep_scan (test_624's end-to-end harness) ────────────────
+
+_ET_NY = ZoneInfo("America/New_York")
+
+
+@pytest.mark.asyncio
+async def test_f8_parse_drops_are_audited_past_the_threshold_and_change_nothing(monkeypatch):
+    from tests.test_624_lowcap_lane import _run_scan_once
+    base_sink: list = []
+    base = await _run_scan_once(monkeypatch, lane_mode="off", audit_sink=base_sink)
+
+    # `prevDay: None` makes `snap.get("prevDay", {}).get("c")` raise AttributeError - the exact
+    # "exception in the per-ticker candidate build" shape the bulkhead swallows.
+    bad = {f"B{i:04d}": {"prevDay": None, "min": {"c": 5.0}} for i in range(60)}
+    sink: list = []
+    hit = await _run_scan_once(monkeypatch, lane_mode="off", audit_sink=sink, extra_snapshots=bad)
+
+    rows = [r for r in sink if r[0] == "ep_candidate_parse_error"]
+    assert len(rows) == 1
+    d = json.loads(rows[0][2])
+    assert d["n_dropped"] == 60 and d["n_snapshots"] == 83        # 20 fillers + 3 smalls + 60 bad
+    assert "AttributeError" in d["first_error"] and len(d["sample_tickers"]) == 5
+    assert "60 of" in rows[0][1]
+    assert [r for r in base_sink if r[0] == "ep_candidate_parse_error"] == []   # clean scan: silent
+    # THE BULKHEAD IS UNCHANGED: the dropped rows alter nothing the scan returns or records
+    assert_byte_identical(base[0], hit[0], "results")
+    assert_byte_identical(base[1], hit[1], "scan_log rows")
+    assert_byte_identical(base[2], hit[2], "alert inserts")
+
+
+@pytest.mark.asyncio
+async def test_f8_a_few_bad_rows_stay_silent(monkeypatch):
+    from tests.test_624_lowcap_lane import _run_scan_once
+    bad = {f"B{i:04d}": {"prevDay": None, "min": {"c": 5.0}} for i in range(10)}
+    sink: list = []
+    await _run_scan_once(monkeypatch, lane_mode="off", audit_sink=sink, extra_snapshots=bad)
+    assert [r for r in sink if r[0] == "ep_candidate_parse_error"] == []
+
+
+@pytest.fixture
+def premarket_repoll(monkeypatch):
+    """The admit-path harness with the cached-grade RE-POLL window open: a clock before 9:30 ET
+    and a primary-subject source that 'arrived after the routine grade'. Returns `arm()`, which
+    arms the ticker's re-poll state (the harness resets the grade cache but not this)."""
+    import tests.test_624_lowcap_lane as t624
+    from agents.market_intelligence import ep_detector
+    monkeypatch.setattr(t624, "TICK", datetime(2026, 9, 3, 9, 10, 0, tzinfo=_ET_NY))
+    monkeypatch.setattr(ep_detector, "_repoll_shadow_date", t624.SESSION_DATE)
+    monkeypatch.setattr(ep_detector, "get_alpaca_news",
+                        AsyncMock(return_value=[{"headline": "Big Cap Co wins FDA approval"}]))
+    monkeypatch.setattr(ep_detector, "is_primary_subject_news", lambda *a, **k: True)
+
+    def arm(armed=True):
+        state = ({t624.ADMIT_TICKER: {"count": 0, "quality": "routine", "logged": False}}
+                 if armed else {})
+        monkeypatch.setattr(ep_detector, "_repoll_shadow_state", state)
+        return state
+
+    return arm
+
+
+@pytest.mark.asyncio
+async def test_f6_a_failed_cached_repoll_is_audited_and_the_scan_carries_on(monkeypatch, premarket_repoll):
+    from agents.market_intelligence import ep_detector as ed
+    from tests.test_624_lowcap_lane import _run_scan_once, ADMIT_TICKER
+    monkeypatch.setattr(ed, "_build_enriched_corpus",
+                        AsyncMock(side_effect=RuntimeError("edgar 503 on the content build")))
+    # control: the very same premarket scan with NO re-poll armed
+    premarket_repoll(armed=False)
+    control = await _run_scan_once(monkeypatch, lane_mode="off", admit=True, cached_quality="routine")
+
+    state = premarket_repoll(armed=True)
+    sink: list = []
+    hit = await _run_scan_once(monkeypatch, lane_mode="off", admit=True, cached_quality="routine",
+                               audit_sink=sink)
+
+    rows = [r for r in sink if r[0] == "ep_repoll_upgrade_error"]
+    assert len(rows) == 1 and "ep_repoll_upgrade_error".endswith("_error")
+    assert rows[0][1].startswith(f"{ADMIT_TICKER}: RuntimeError") and "edgar 503" in rows[0][1]
+    d = json.loads(rows[0][2])
+    assert d["ticker"] == ADMIT_TICKER and d["path"] == "cached_repoll"
+    # the latch was set BEFORE the failing call (unchanged) - which is exactly why the failure
+    # must not be silent: the upgrade stays off for the rest of the day
+    assert state[ADMIT_TICKER]["logged"] is True
+    # distinct from the grading-health event (#543 counts `live_enriched_grade_failed`)
+    assert not [r for r in sink if r[0] == "live_enriched_grade_failed"]
+    # THE SWALLOW IS UNCHANGED: results, scan log and alert inserts are identical to the control
+    assert_byte_identical(control[0], hit[0], "results")
+    assert_byte_identical(control[1], hit[1], "scan_log rows")
+    assert_byte_identical(control[2], hit[2], "alert inserts")
+
+
+@pytest.mark.asyncio
+async def test_f6_a_healthy_repoll_raises_no_error_row(monkeypatch, premarket_repoll):
+    from agents.market_intelligence import ep_detector as ed
+    from tests.test_624_lowcap_lane import _run_scan_once
+    monkeypatch.setattr(ed, "_build_enriched_corpus", AsyncMock(
+        return_value=("routine", "no change", None, None, None, None)))
+    premarket_repoll(armed=True)
+    sink: list = []
+    await _run_scan_once(monkeypatch, lane_mode="off", admit=True, cached_quality="routine",
+                         audit_sink=sink)
+    assert not [r for r in sink if r[0] == "ep_repoll_upgrade_error"]
+    # the trigger really fired (so the negative above is not vacuous): a healthy re-poll logs
+    assert [r for r in sink if r[0] == "ep_repoll_shadow"]
+
+

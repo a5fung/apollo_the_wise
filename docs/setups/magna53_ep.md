@@ -486,6 +486,12 @@ sale moves to the opening auction). Revert = toggle row 'off' (stops stamping ne
 (a dated line here, the `rule_eras` exit-era boundary, the live watch's EXPECT / DONE-WHEN / WOULD-FAIL-IF) are in
 `exit_discipline.md` 2026-10-01.
 
+### 2026-09-30 — two EP-scan swallows now leave an audit row (#635 F6 + F8, OBSERVABILITY ONLY — no criteria, grade, stop, target, size or admission change)
+
+- **F6 — cached-ticker late-source re-poll.** The `except` around the premarket re-poll (BFLY's mechanism: routine pre-PR, PR at 8:12) was `logger.debug`; because the block marks itself done before the risky call, one failure also switched the upgrade off for that ticker for the day. It is now `logger.error` + an `ep_repoll_upgrade_error` audit row. The latch, the grade, the cache and the control flow are untouched. A DISTINCT event name on purpose: `live_enriched_grade_failed` is counted by #543's grading-health ratio as a grade-decision failure.
+- **F8 — per-ticker candidate-build bulkhead.** `except Exception: continue` is unchanged; it now counts, and a tick that drops ≥ `max(50, 1% of the snapshot)` rows writes one `ep_candidate_parse_error` audit row (count, snapshot size, first error, 5 sample tickers) through a background task. **The threshold is un-baselined** — no prod data when it shipped; tune it from the first rows. Not read by anything that admits or rejects.
+- Tests run the real `run_ep_scan` (test_624 harness) and assert the results, scan log and alert inserts are byte-identical to a control run: `tests/test_501_tier1_silent_failure_surfaces.py::test_f6_*` / `test_f8_*`. Owner doc for the surfaces: `docs/architecture/market_agent_reference.md` §Error Alerting.
+
 ### 2026-09-29 — the theme-fit check runs on Sonnet 5.5 without its pre-verdict reasoning field (REFINEMENT of 2026-09-13 late evening; operator-signed)
 
 **Trigger**: claude-sonnet-5-5 (auto-adopted 09-28) refuses prompts that make it write its reasoning out; all 40 fit
