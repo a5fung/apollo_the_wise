@@ -28,8 +28,14 @@ _QS_SECRET = re.compile(
     r"\s*=\s*)([^&\s\"\'<>]+)",
     re.IGNORECASE,
 )
-# Bearer / Basic auth headers echoed into an error string.
-_BEARER = re.compile(r"((?:bearer|basic)\s+)([A-Za-z0-9._\-+/=]{8,})", re.IGNORECASE)
+# Bearer / Basic auth headers echoed into an error string. The token must LOOK like a credential —
+# it carries a digit or a base64 symbol (+ / =), or runs 20+ characters — so ordinary prose such as
+# the sector "Basic Materials" is left alone (2026-09-30: it was masking that sector name in audit
+# rows, e.g. "BCC (Basic ***REDACTED***)").
+_BEARER = re.compile(
+    r"((?:bearer|basic)\s+)"
+    r"((?=[A-Za-z0-9._\-+/=]*[0-9+/=])[A-Za-z0-9._\-+/=]{8,}|[A-Za-z0-9._\-+/=]{20,})",
+    re.IGNORECASE)
 
 _MASK = "***REDACTED***"
 

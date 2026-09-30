@@ -84,3 +84,13 @@ def test_log_audit_event_actually_calls_it():
     assert "redact_secrets" in src
     assert "redact_secrets(summary)" in src and "redact_secrets(detail)" in src, (
         "BOTH fields are written to the row; redacting one is a false sense of safety")
+
+
+def test_the_sector_basic_materials_is_not_masked():
+    """2026-09-30: audit rows read "BCC (Basic ***REDACTED***)" — the auth-header pattern took the
+    sector name for a Basic credential. A real token carries a digit / base64 symbol or runs 20+."""
+    from shared.secret_redaction import redact_secrets
+    assert redact_secrets("BCC (Basic Materials) → 'Building Products'") == "BCC (Basic Materials) → 'Building Products'"
+    assert redact_secrets("Sector: Basic Industries") == "Sector: Basic Industries"
+    assert "dXNlcjpwYXNzd29yZDEyMw" not in redact_secrets("Authorization: Basic dXNlcjpwYXNzd29yZDEyMw==")
+    assert "tokenlettersonlyverylongvalue" not in redact_secrets("Bearer tokenlettersonlyverylongvalue")
