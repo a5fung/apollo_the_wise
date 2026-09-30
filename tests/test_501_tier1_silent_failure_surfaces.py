@@ -759,6 +759,15 @@ def test_f13_the_nightly_pull_routes_step_8_through_the_helper():
 #   F9   delete `_schedule_breaker_read_alert(mode, e)` in drawdown_breaker.read_breaker_state
 #   F10  delete either `await note_partial_fill_close_failed(...)` call
 #   F11  delete `await _note_sdk_shape_guard_tripped(account_mode)` in trade_stream
+# REVIEW-FIX MUTATION CHECKS (2026-09-30, same hand-run discipline):
+#   F8   delete `_parse_drops.note_no_prev_close(ticker)` -> test_f8_review_rows_with_no_prev_close_* (x4)
+#        and test_f8_review_raised_and_missing_* FAIL; put the bare `str(_pe)` back in the scan's
+#        `except` -> test_f8_review_the_alarm_path_cannot_raise_into_the_scan_loop FAILS (the scan dies)
+#   F12  delete `_schedule_stuck_alert_failure(...)` -> test_f12_a_failing_watchdog_* / _deduped_* FAIL;
+#        `await` the note inline instead -> test_f12_a_hanging_alarm_* FAILS (reconcile stalls)
+#   F10  `await note_partial_fill_close_failed(...)` inline at either site -> the matching
+#        test_f10_review_a_hanging_telegram_* FAILS (the closed write is held behind the Telegram)
+#   F9   restore the "an entry check ..." page text -> test_f9_a_failed_read_* FAILS
 
 import asyncio  # noqa: E402
 from datetime import datetime  # noqa: E402
@@ -889,6 +898,11 @@ async def test_f10_ws_path_close_failure_is_surfaced_and_the_row_is_still_closed
 
     await ts._process_entry_fill(trade, SimpleNamespace(id="o1"), 50.0, 2.0, pool, "live")
 
+    # ORIGINAL CONTROL FLOW: the row is marked closed and the function has already returned -
+    # BEFORE the fire-and-forget alarm has run (review fix: it is not awaited on this path)
+    sql, *args = conn.execute.await_args.args
+    assert "status = 'closed'" in sql and "Partial fill too small" in sql and args == [11]
+    await _drain(om._PARTIAL_FILL_ALERT_TASKS)
     rows = [r for r in audit if r[0] == PARTIAL_FILL_CLOSE_ERROR]
     assert len(rows) == 1 and PARTIAL_FILL_CLOSE_ERROR.endswith("_error")
     assert "TINY" in rows[0][1] and "account_mode=live" in rows[0][1]
@@ -896,9 +910,6 @@ async def test_f10_ws_path_close_failure_is_surfaced_and_the_row_is_still_closed
     assert d["trade_id"] == 11 and d["where"] == "trade_stream._process_entry_fill"
     assert len(tg) == 1 and "TINY" in tg[0] and "NOT closed" in tg[0]
     assert "position does not exist" in tg[0]
-    # ORIGINAL CONTROL FLOW: the row is still marked closed, the function still returns
-    sql, *args = conn.execute.await_args.args
-    assert "status = 'closed'" in sql and "Partial fill too small" in sql and args == [11]
 
 
 @pytest.mark.asyncio
@@ -923,6 +934,7 @@ async def test_f10_polling_path_close_failure_is_surfaced_and_the_row_is_still_c
 
     assert results == [{"ticker": "TINY", "action": "partial_cancelled"}]   # unchanged
     upd.assert_awaited_once_with(12, "closed", skip_reason="partial_fill_too_small")
+    await _drain(om._PARTIAL_FILL_ALERT_TASKS)
     rows = [r for r in audit if r[0] == PARTIAL_FILL_CLOSE_ERROR]
     assert len(rows) == 1 and json.loads(rows[0][2])["where"] == "check_fills"
     assert len(tg) == 1 and "403 forbidden" in tg[0]
@@ -943,7 +955,86 @@ async def test_f10_a_successful_close_raises_no_alarm(monkeypatch):
     monkeypatch.setattr(om.alpaca, "close_position", AsyncMock(return_value={"id": "x"}))
     monkeypatch.setattr(om, "_update_trade_status", AsyncMock())
     await om.check_fills()
+    await _drain(om._PARTIAL_FILL_ALERT_TASKS)
     assert audit == [] and tg == []
+
+
+def _never_completing_telegram(monkeypatch, *modules):
+    """A Telegram that hangs forever (the real one can take 15-30s) + an instant audit sink."""
+    started = asyncio.Event()
+    audit = []
+
+    async def _log(event_type, summary, detail=""):
+        audit.append((event_type, summary, detail))
+
+    async def _hang(text, **kw):
+        started.set()
+        await asyncio.Event().wait()
+
+    for m in modules:
+        if hasattr(m, "log_audit_event"):
+            monkeypatch.setattr(m, "log_audit_event", _log)
+        if hasattr(m, "send_telegram_message"):
+            monkeypatch.setattr(m, "send_telegram_message", _hang)
+    return started, audit
+
+
+async def _cancel_tasks(task_set):
+    tasks = list(task_set)
+    for t in tasks:
+        t.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_f10_review_a_hanging_telegram_does_not_delay_the_closed_write_ws_path(monkeypatch):
+    """Review fix 3: the alarm used to be AWAITED before `status='closed'`; a 15-30s Telegram
+    left the row non-closed so `check_fills` could re-process the trade. Here the Telegram NEVER
+    completes - the closed write must still land, and `_process_entry_fill` must still return."""
+    from agents.market_intelligence.broker import trade_stream as ts, order_manager as om
+    started, audit = _never_completing_telegram(monkeypatch, ts, om)
+    monkeypatch.setattr(ts.alpaca, "close_position",
+                        AsyncMock(side_effect=RuntimeError("position does not exist")))
+    pool, conn = make_mock_pool()
+    conn.execute = AsyncMock(return_value="UPDATE 1")
+    trade = {"id": 21, "ticker": "TINY", "entry_shares": 100}
+    try:
+        await asyncio.wait_for(
+            ts._process_entry_fill(trade, SimpleNamespace(id="o1"), 50.0, 2.0, pool, "live"),
+            timeout=1.0)
+        sql, *args = conn.execute.await_args.args
+        assert "status = 'closed'" in sql and args == [21]     # written while the alarm hangs
+        # the alarm IS in flight (the fix did not just drop it): it reaches the hanging Telegram
+        await asyncio.wait_for(started.wait(), timeout=1.0)
+        assert [r for r in audit if r[0] == PARTIAL_FILL_CLOSE_ERROR]
+    finally:
+        await _cancel_tasks(om._PARTIAL_FILL_ALERT_TASKS)
+
+
+@pytest.mark.asyncio
+async def test_f10_review_a_hanging_telegram_does_not_delay_the_closed_write_polling_path(monkeypatch):
+    from agents.market_intelligence.broker import order_manager as om
+    started, audit = _never_completing_telegram(monkeypatch, om)
+    pool, conn = make_mock_pool()
+    conn.fetch = _pending_only([{
+        "id": 22, "ticker": "TINY", "entry_order_id": "e1", "entry_shares": 100,
+        "orb_low": 9.0, "orb_high": 10.0, "stop_price": 9.0, "entry_attempt": 1,
+        "account_mode": "paper"}])
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(om.alpaca, "get_order", AsyncMock(return_value={
+        "status": "filled", "filled_avg_price": 50.0, "filled_qty": 2.0}))
+    monkeypatch.setattr(om.alpaca, "close_position",
+                        AsyncMock(side_effect=RuntimeError("403 forbidden")))
+    upd = AsyncMock()
+    monkeypatch.setattr(om, "_update_trade_status", upd)
+    try:
+        results = await asyncio.wait_for(om.check_fills(), timeout=1.0)
+        assert results == [{"ticker": "TINY", "action": "partial_cancelled"}]
+        upd.assert_awaited_once_with(22, "closed", skip_reason="partial_fill_too_small")
+        await asyncio.wait_for(started.wait(), timeout=1.0)
+        assert [r for r in audit if r[0] == PARTIAL_FILL_CLOSE_ERROR]
+    finally:
+        await _cancel_tasks(om._PARTIAL_FILL_ALERT_TASKS)
 
 
 # ── F9 — read_breaker_state: ALERT-ONLY, fail-open direction unchanged ───────────────────
@@ -972,7 +1063,11 @@ async def test_f9_a_failed_read_still_fails_open_and_is_audited_and_paged(breake
     assert "account_mode=live" in rows[0][1] and "pool closed" in rows[0][1]
     assert "tg=1" in rows[0][1]
     assert len(tg) == 1
-    assert "DRAWDOWN BREAKER READ FAILED" in tg[0] and "NOT limited" in tg[0]
+    assert "DRAWDOWN BREAKER READ FAILED" in tg[0]
+    # review fix 4: the page is CALLER-NEUTRAL - `read_breaker_state` is also called by the
+    # intraday_drawdown monitor, so it may not claim "an entry check went ahead"
+    assert "could not be read" in tg[0] and "defaulted to OK" in tg[0]
+    assert "entry" not in tg[0].lower()
 
 
 @pytest.mark.asyncio
@@ -1069,6 +1164,115 @@ async def test_f8_a_few_bad_rows_stay_silent(monkeypatch):
     assert [r for r in sink if r[0] == "ep_candidate_parse_error"] == []
 
 
+# ── F8 review fixes (2026-09-30): a missing prevDay is a DROP too; the alarm path is fail-safe ──
+
+def _scan_rows(sink):
+    return [r for r in sink if r[0] == "ep_candidate_parse_error"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("shape", [
+    pytest.param({"min": {"c": 5.0}}, id="prevDay-key-ABSENT"),
+    pytest.param({"prevDay": {}, "min": {"c": 5.0}}, id="prevDay-empty"),
+    pytest.param({"prevDay": {"v": 900_000}, "min": {"c": 5.0}}, id="prevDay-has-no-close"),
+    pytest.param({"prevDay": {"c": 0, "v": 0}, "min": {"c": 5.0}}, id="prevDay-all-zeros"),
+])
+async def test_f8_review_rows_with_no_prev_close_are_counted_and_audited(monkeypatch, shape):
+    """Review fix 1. A snapshot row with NO `prevDay` reads prev_close=0; `_universe_floor_skip`
+    returns None (it cannot compute a gap) so the ticker was dropped with no exception, no log
+    and no scan_log row. A Polygon rename of `prevDay` would drop EVERY ticker this way. The
+    realistic shape is the key ABSENT (not `None`, which raises and is the other arm)."""
+    from tests.test_624_lowcap_lane import _run_scan_once
+    base_sink: list = []
+    base = await _run_scan_once(monkeypatch, lane_mode="off", audit_sink=base_sink)
+
+    bad = {f"N{i:04d}": dict(shape) for i in range(60)}
+    sink: list = []
+    hit = await _run_scan_once(monkeypatch, lane_mode="off", audit_sink=sink, extra_snapshots=bad)
+
+    rows = _scan_rows(sink)
+    assert len(rows) == 1
+    d = json.loads(rows[0][2])
+    assert d["n_dropped"] == 60 and d["n_no_prev_close"] == 60 and d["n_raised"] == 0
+    assert d["n_snapshots"] == 83 and len(d["sample_no_prev_close"]) == 5
+    assert "60 with prev_close 0/missing" in rows[0][1]
+    assert _scan_rows(base_sink) == []                         # the clean scan stays silent
+    # audit only: what the scan returns / records is identical with and without the rows
+    assert_byte_identical(base[0], hit[0], "results")
+    assert_byte_identical(base[1], hit[1], "scan_log rows")
+    assert_byte_identical(base[2], hit[2], "alert inserts")
+
+
+@pytest.mark.asyncio
+async def test_f8_review_raised_and_missing_rows_share_one_tick_aggregate(monkeypatch):
+    """30 raise-drops + 30 no-prevDay drops: EACH is below the 50-row floor, together they trip
+    it - ONE row, one threshold, the split kept in the detail."""
+    from tests.test_624_lowcap_lane import _run_scan_once
+    bad = {**{f"R{i:04d}": {"prevDay": None, "min": {"c": 5.0}} for i in range(30)},
+           **{f"N{i:04d}": {"min": {"c": 5.0}} for i in range(30)}}
+    sink: list = []
+    await _run_scan_once(monkeypatch, lane_mode="off", audit_sink=sink, extra_snapshots=bad)
+
+    rows = _scan_rows(sink)
+    assert len(rows) == 1
+    d = json.loads(rows[0][2])
+    assert (d["n_dropped"], d["n_raised"], d["n_no_prev_close"]) == (60, 30, 30)
+    assert "AttributeError" in d["first_error"]
+
+
+@pytest.mark.asyncio
+async def test_f8_review_a_few_missing_rows_and_real_sub5_names_stay_silent(monkeypatch):
+    """Negative controls: 10 no-prevDay rows is under the floor; and 60 ordinary sub-$5 names
+    (a REAL floor rejection, prevDay present) are NOT drops at all."""
+    from tests.test_624_lowcap_lane import _run_scan_once
+    few = {f"N{i:04d}": {"min": {"c": 5.0}} for i in range(10)}
+    sink: list = []
+    await _run_scan_once(monkeypatch, lane_mode="off", audit_sink=sink, extra_snapshots=few)
+    assert _scan_rows(sink) == []
+
+    sub5 = {f"S{i:04d}": {"prevDay": {"c": 3.0, "v": 900_000}, "min": {"c": 3.1}} for i in range(60)}
+    sink2: list = []
+    await _run_scan_once(monkeypatch, lane_mode="off", audit_sink=sink2, extra_snapshots=sub5)
+    assert _scan_rows(sink2) == []
+
+
+class _Unprintable(Exception):
+    def __str__(self):
+        raise RuntimeError("this exception cannot be rendered")
+
+
+class _HostileSnap(dict):
+    """A snapshot row whose very first read raises an exception with a hostile `__str__`."""
+
+    def get(self, *a, **k):
+        raise _Unprintable()
+
+
+@pytest.mark.asyncio
+async def test_f8_review_the_alarm_path_cannot_raise_into_the_scan_loop(monkeypatch):
+    """Review fix 5. The handler used to evaluate `str(_pe)` bare: an exception whose `__str__`
+    raises would have escaped the per-ticker `except` and killed the WHOLE scan - the alarm
+    breaking the thing it watches. Below AND above the audit threshold the scan must complete
+    with results identical to a clean run."""
+    from tests.test_624_lowcap_lane import _run_scan_once
+    base = await _run_scan_once(monkeypatch, lane_mode="off")
+
+    one = await _run_scan_once(monkeypatch, lane_mode="off",
+                               extra_snapshots={"HOST0": _HostileSnap(min={"c": 5.0})})
+    assert_byte_identical(base[0], one[0], "results")
+    assert_byte_identical(base[1], one[1], "scan_log rows")
+
+    many = {f"H{i:04d}": _HostileSnap(min={"c": 5.0}) for i in range(60)}
+    sink: list = []
+    hit = await _run_scan_once(monkeypatch, lane_mode="off", audit_sink=sink, extra_snapshots=many)
+    assert_byte_identical(base[0], hit[0], "results")
+    assert_byte_identical(base[1], hit[1], "scan_log rows")
+    rows = _scan_rows(sink)
+    assert len(rows) == 1
+    d = json.loads(rows[0][2])
+    assert d["n_raised"] == 60 and "_Unprintable" in d["first_error"]   # type name survives
+
+
 @pytest.fixture
 def premarket_repoll(monkeypatch):
     """The admit-path harness with the cached-grade RE-POLL window open: a clock before 9:30 ET
@@ -1136,4 +1340,110 @@ async def test_f6_a_healthy_repoll_raises_no_error_row(monkeypatch, premarket_re
     # the trigger really fired (so the negative above is not vacuous): a healthy re-poll logs
     assert [r for r in sink if r[0] == "ep_repoll_shadow"]
 
+
+# ── F12 — the stuck-pending_new watchdog failing must not be silent (review fix 2) ──────────
+
+from datetime import timedelta  # noqa: E402
+
+from agents.market_intelligence.audit_events import STUCK_PENDING_NEW_ALERT_ERROR  # noqa: E402
+
+
+def _stuck_row(ticker="RDW", minutes=30):
+    return {
+        "alpaca_order_id": "3e234281-1283-4ed8-8083-00c74f05c815", "ticker": ticker,
+        "status": "pending_new", "trade_id": 169, "purpose": "orb_entry",
+        "submitted_at": datetime.now(ZoneInfo("America/New_York")) - timedelta(minutes=minutes),
+    }
+
+
+@pytest.fixture
+def stuck_env(monkeypatch):
+    """Market hours forced open; the watchdog's own DB step raises (the swallowed failure)."""
+    from agents.market_intelligence.broker import order_manager as om
+    from agents.market_intelligence import trading_calendar
+    om._last_stuck_alert_error_ts.clear()
+    monkeypatch.setattr(trading_calendar, "is_market_hours_now_et", lambda *a, **k: True)
+    audit, tg = _capture_sinks(monkeypatch, om)
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(side_effect=ConnectionError("pool closed"))
+    return om, conn, audit, tg
+
+
+@pytest.mark.asyncio
+async def test_f12_a_failing_watchdog_is_audited_and_paged_and_still_swallowed(stuck_env):
+    om, conn, audit, tg = stuck_env
+    row = _stuck_row()
+
+    # ORIGINAL CONTROL FLOW: the watchdog still swallows and returns None (reconcile keeps going)
+    assert await om._maybe_alert_stuck_pending_new(
+        conn, row, "paper", submitted_at=row["submitted_at"]) is None
+
+    await _drain(om._STUCK_ALERT_BG_TASKS)
+    rows = [r for r in audit if r[0] == STUCK_PENDING_NEW_ALERT_ERROR]
+    assert len(rows) == 1 and STUCK_PENDING_NEW_ALERT_ERROR.endswith("_error")
+    assert "RDW" in rows[0][1] and "account_mode=paper" in rows[0][1] and "pool closed" in rows[0][1]
+    assert "tg=1" in rows[0][1]
+    assert json.loads(rows[0][2])["ticker"] == "RDW"
+    assert len(tg) == 1 and "STUCK-ORDER WATCHDOG FAILED" in tg[0] and "RDW" in tg[0]
+    # the detection audit row was never written (the failure was BEFORE it) - no false "detected"
+    assert not [r for r in audit if r[0] == "stuck_pending_new_detected"]
+
+
+@pytest.mark.asyncio
+async def test_f12_the_page_is_deduped_per_mode_but_every_failure_leaves_a_row(stuck_env):
+    om, conn, audit, tg = stuck_env
+    for _ in range(3):
+        row = _stuck_row()
+        await om._maybe_alert_stuck_pending_new(conn, row, "paper", submitted_at=row["submitted_at"])
+    row = _stuck_row("LIVE1")
+    await om._maybe_alert_stuck_pending_new(conn, row, "live", submitted_at=row["submitted_at"])
+    await _drain(om._STUCK_ALERT_BG_TASKS)
+
+    rows = [r for r in audit if r[0] == STUCK_PENDING_NEW_ALERT_ERROR]
+    assert len(rows) == 4
+    assert len(tg) == 2                                   # paper once + live once
+    assert sum("tg=1" in r[1] for r in rows) == 2
+
+
+@pytest.mark.asyncio
+async def test_f12_a_hanging_alarm_cannot_delay_the_reconcile_loop(monkeypatch, stuck_env):
+    """Fire-and-forget: the audit write AND the Telegram both hang forever, yet the watchdog
+    returns at once - and `reconcile_order_states` goes on to process the NEXT order."""
+    om, conn, _audit, _tg = stuck_env
+    started, hung_audit = _never_completing_telegram(monkeypatch, om)
+
+    async def _hang_audit(event_type, summary, detail=""):
+        if event_type == STUCK_PENDING_NEW_ALERT_ERROR:
+            await asyncio.Event().wait()
+        hung_audit.append((event_type, summary, detail))
+
+    monkeypatch.setattr(om, "log_audit_event", _hang_audit)
+    pool, rconn = make_mock_pool()
+    rconn.fetchval = AsyncMock(side_effect=ConnectionError("pool closed"))
+    stuck, filled = _stuck_row("RDW"), _stuck_row("AAPL", minutes=1)
+    filled["alpaca_order_id"] = "filled-order-id-0001"
+    rconn.fetch = AsyncMock(return_value=[stuck, filled])
+    rconn.execute = AsyncMock(return_value="UPDATE 1")
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(om.alpaca, "get_order", AsyncMock(side_effect=[
+        {"status": "pending_new"},                                   # RDW: stuck -> watchdog raises
+        {"status": "filled", "filled_qty": 5, "filled_avg_price": 10.0},   # AAPL: a real fill
+    ]))
+    try:
+        result = await asyncio.wait_for(om.reconcile_order_states("paper"), timeout=1.0)
+        assert result == {"examined": 2, "updated": 1, "errors": 0}   # the loop reached order #2
+        assert "UPDATE mi_live_orders" in rconn.execute.await_args.args[0]
+    finally:
+        await _cancel_tasks(om._STUCK_ALERT_BG_TASKS)
+
+
+@pytest.mark.asyncio
+async def test_f12_a_healthy_watchdog_raises_no_error_row(monkeypatch, stuck_env):
+    om, conn, audit, tg = stuck_env
+    conn.fetchval = AsyncMock(return_value=None)          # dedup lookup succeeds: not yet alerted
+    row = _stuck_row()
+    await om._maybe_alert_stuck_pending_new(conn, row, "paper", submitted_at=row["submitted_at"])
+    await _drain(om._STUCK_ALERT_BG_TASKS)
+    assert [r[0] for r in audit] == ["stuck_pending_new_detected"]      # the normal page, nothing else
+    assert len(tg) == 1 and "pending_new" in tg[0].lower()
 

@@ -1131,6 +1131,63 @@ _PARSE_DROP_AUDIT_MIN = 50
 _PARSE_DROP_AUDIT_FRAC = 0.01
 
 
+class _ParseDropTally:
+    """#635 F8 - per-scan tally of snapshot rows the candidate build silently DROPPED.
+
+    Two shapes, one aggregate (same threshold, same audit row):
+      * `n_raised`         - the per-ticker build raised (the bulkhead's `continue`).
+      * `n_no_prev_close`  - the row read `prev_close` = 0 / had no `prevDay` at all. That is NOT an
+                             exception: `_universe_floor_skip` returns None when the gap cannot be
+                             computed, so the row left no trace anywhere. A Polygon rename of
+                             `prevDay` would drop EVERY ticker this way with zero exceptions.
+    The split is kept in the audit detail so the un-baselined threshold can be tuned from the first
+    real rows (a thin/just-listed ticker legitimately has prevDay.c == 0).
+
+    Every method is fail-safe: the tally sits inside the scan's per-ticker `except`, so nothing it
+    does may raise into the scan loop (a hostile `__str__` on the swallowed exception included).
+    Local to one scan - never module state, so one tick's counts cannot leak into the next.
+    """
+    __slots__ = ("n_raised", "n_no_prev_close", "first_error",
+                 "sample_raised", "sample_no_prev_close")
+
+    def __init__(self) -> None:
+        self.n_raised = 0
+        self.n_no_prev_close = 0
+        self.first_error: str | None = None
+        self.sample_raised: list[str] = []
+        self.sample_no_prev_close: list[str] = []
+
+    @property
+    def total(self) -> int:
+        return self.n_raised + self.n_no_prev_close
+
+    def note_raised(self, ticker, exc) -> None:
+        try:
+            self.n_raised += 1
+            if self.first_error is None:
+                try:
+                    msg = str(exc)[:160]
+                except Exception:  # loud-ok: a swallowed exception whose own __str__ raises must not escape the tally
+                    msg = "<unprintable exception>"
+                self.first_error = f"{type(exc).__name__}: {msg}"
+            if len(self.sample_raised) < 5:
+                self.sample_raised.append(str(ticker))
+        except Exception as _te:
+            logger.warning(f"#635 F8 parse-drop tally (raised) failed: {_te}")
+
+    def note_no_prev_close(self, ticker) -> None:
+        try:
+            self.n_no_prev_close += 1
+            if len(self.sample_no_prev_close) < 5:
+                self.sample_no_prev_close.append(str(ticker))
+        except Exception as _te:
+            logger.warning(f"#635 F8 parse-drop tally (no prev close) failed: {_te}")
+
+    def should_audit(self, n_snapshots: int) -> bool:
+        return (self.total >= _PARSE_DROP_AUDIT_MIN
+                and self.total >= n_snapshots * _PARSE_DROP_AUDIT_FRAC)
+
+
 def _is_premarket(now_et: datetime) -> bool:
     """True strictly before 9:30 ET. Shared guard for BOTH #344 shadows (enrichment +
     re-poll) — advisor 6/19: the shadows do extra SEC GETs + a Sonnet call SYNCHRONOUSLY
@@ -3485,11 +3542,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Find gap candidates
     candidates = []
     _unclassified_skipped = 0  # P2.0b counter
-    # #635 F8: tickers whose candidate build RAISED this tick (see the loop's except). Locals,
-    # not module state - one scan's counter must never leak into the next.
-    _n_parse_dropped = 0
-    _parse_drop_first_err: str | None = None
-    _parse_drop_sample: list[str] = []
+    # #635 F8: snapshot rows the candidate build dropped this tick - raised OR prev_close 0/missing
+    # (see `_ParseDropTally`). Local, not module state - one scan's counts must never leak into
+    # the next.
+    _parse_drops = _ParseDropTally()
     _rt_universe = []   # #489 miss watchdog: every ticker that clears all NON-gap filters
     _universe_floor_skips: list[dict] = []  # #570: visibility rows for the two silent D-1 floors
     _below_floor_rows: list[dict] = []  # #605: [EP_CAPTURE_GAP_FLOOR, acting floor) capture rows
@@ -3566,6 +3622,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _record_floor_shadow(ticker, prev_close, prev_volume, _fs["gap_pct"],
                                          today_volume=_today_vol,
                                          current_price=current_price)
+                elif not prev_close:
+                    # #635 F8 (review fix): prev_close 0 / no `prevDay` key is NOT a sub-$5 name -
+                    # `_universe_floor_skip` cannot compute a gap off it and returns None, so the
+                    # row used to vanish with no log, no scan_log row and no exception. Counted
+                    # into the SAME tick aggregate as the raise-drops below. Tally only: the
+                    # `continue` (and so what the scan admits) is exactly as before.
+                    _parse_drops.note_no_prev_close(ticker)
                 continue
 
             # Skip illiquid stocks — stale/erroneous quotes create phantom gaps
@@ -3621,42 +3684,50 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # #635 F8: the bulkhead is correct (one malformed row must not kill the scan) and
             # stays exactly as it was - `continue`. What it lacked was any count: a Polygon schema
             # change hitting a SUBSET of tickers would erode candidate coverage forever with no
-            # trace. Count + remember the first error and a sample; audited after the loop.
-            _n_parse_dropped += 1
-            if _parse_drop_first_err is None:
-                _parse_drop_first_err = f"{type(_pe).__name__}: {str(_pe)[:160]}"
-            if len(_parse_drop_sample) < 5:
-                _parse_drop_sample.append(ticker)
+            # trace. The tally is fail-safe (`str(_pe)` on a hostile exception included), so
+            # nothing in this handler can raise into the scan loop.
+            _parse_drops.note_raised(ticker, _pe)
             continue
 
     # #635 F8: aggregate audit of the parse-drops above. THRESHOLD IS UN-BASELINED (no prod data
     # in hand when this shipped): chosen so a systemic schema change (hundreds of the ~10k
     # tickers) trips it and a stray malformed row or two never does - max(50 tickers, 1% of the
-    # snapshot). The audit detail carries the exact count, size, first error and a sample so the
-    # number can be tuned from the first real rows. Audit ONLY (no Telegram - the nightly
-    # `%error%` sweep shows it); fire-and-forget with a strong ref (the _WATCHDOG_BG_TASKS idiom)
-    # so a slow audit write can never delay the scan on the ORB path.
-    if (_n_parse_dropped >= _PARSE_DROP_AUDIT_MIN
-            and _n_parse_dropped >= len(snapshots) * _PARSE_DROP_AUDIT_FRAC):
-        logger.error(
-            f"EP scan: {_n_parse_dropped}/{len(snapshots)} snapshot rows RAISED while building "
-            f"candidates (first: {_parse_drop_first_err}) - candidate coverage is eroded this tick")
-        try:
+    # snapshot), raised + no-prev-close COMBINED. The audit detail carries the exact counts (split
+    # by shape), size, first error and samples so the number can be tuned from the first real
+    # rows. Audit ONLY (no Telegram - the nightly `%error%` sweep shows it); fire-and-forget with
+    # a strong ref (the _WATCHDOG_BG_TASKS idiom) so a slow audit write can never delay the scan
+    # on the ORB path. The WHOLE block is guarded: no part of the alarm may raise into the scan.
+    try:
+        if _parse_drops.should_audit(len(snapshots)):
+            logger.error(
+                f"EP scan: {_parse_drops.total}/{len(snapshots)} snapshot rows DROPPED in the "
+                f"candidate build ({_parse_drops.n_raised} raised, {_parse_drops.n_no_prev_close} "
+                f"with prev_close 0/missing; first error: {_parse_drops.first_error}) - "
+                f"candidate coverage is eroded this tick")
             _pdt = asyncio.create_task(log_audit_event(
                 "ep_candidate_parse_error",
-                f"{_n_parse_dropped} of {len(snapshots)} snapshot rows raised in the EP "
-                f"candidate build (first: {_parse_drop_first_err}); sample {_parse_drop_sample}",
-                json.dumps({"n_dropped": _n_parse_dropped, "n_snapshots": len(snapshots),
-                            "first_error": _parse_drop_first_err,
-                            "sample_tickers": _parse_drop_sample,
+                f"{_parse_drops.total} of {len(snapshots)} snapshot rows dropped in the EP "
+                f"candidate build ({_parse_drops.n_raised} raised, "
+                f"{_parse_drops.n_no_prev_close} with prev_close 0/missing; "
+                f"first error: {_parse_drops.first_error}); "
+                f"sample {_parse_drops.sample_raised + _parse_drops.sample_no_prev_close}",
+                json.dumps({"n_dropped": _parse_drops.total,
+                            "n_raised": _parse_drops.n_raised,
+                            "n_no_prev_close": _parse_drops.n_no_prev_close,
+                            "n_snapshots": len(snapshots),
+                            "first_error": _parse_drops.first_error,
+                            "sample_tickers": (_parse_drops.sample_raised
+                                               + _parse_drops.sample_no_prev_close),
+                            "sample_raised": _parse_drops.sample_raised,
+                            "sample_no_prev_close": _parse_drops.sample_no_prev_close,
                             "threshold_min": _PARSE_DROP_AUDIT_MIN,
                             "threshold_frac": _PARSE_DROP_AUDIT_FRAC,
                             "scan_date": today.isoformat()}),
             ))
             _WATCHDOG_BG_TASKS.add(_pdt)
             _pdt.add_done_callback(_WATCHDOG_BG_TASKS.discard)
-        except Exception as _pde:
-            logger.warning(f"#635 F8 parse-drop audit dispatch failed: {_pde}")
+    except Exception as _pde:
+        logger.warning(f"#635 F8 parse-drop audit dispatch failed: {_pde}")
 
     # #570: flush the D-1-floor visibility rows NOW, unconditionally — `if not candidates:
     # return []` a few lines below would otherwise silently drop them on a tick with zero
