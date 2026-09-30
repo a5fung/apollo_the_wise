@@ -90,7 +90,9 @@ Guardrails in the refresh (fail-safe by construction):
     current id (`role_is_held`, cache `role_holds`) while the rest of the tier moves; a
     changed answer only goes to the per-tier digest Telegram; an unfinished replay (10-minute
     budget) adopts nothing on that tier tonight. Holds are re-tested nightly and released
-    once the role's requests pass.
+    once the role's requests pass — never for lack of a request to test (the digest says "no
+    recent request to re-test"), and a held model that is no longer served is released with an
+    audit row and a Telegram line, never reported as still HELD.
 """
 from __future__ import annotations
 
@@ -411,9 +413,12 @@ async def _report_rejected_release(tier: str, keep: str, new: str, error: str) -
 #   * a CHANGED answer never holds; it goes to the per-tier digest Telegram (decision fields only);
 #   * an unfinished replay (the 10-minute budget) adopts nothing on that tier tonight;
 #   * holds live in the cache (`role_holds`), are re-tested every night and released once the
-#     role's samples pass on the tier's model.
+#     role's samples pass on the tier's model. NEVER released on an absence: no sample to replay
+#     keeps the hold ("no recent request to re-test"). The one release that needs no test is a
+#     held model that models.list no longer serves — nothing is left to hold the role on.
 # Cost: per release event, at most (tracked call-site keys on that tier) x 3 calls on the new
-# model; nothing on an ordinary night (no tier change and no hold → no replay).
+# model. While ANY hold exists, each night ALSO re-tests it at (that role's keys) x 3 calls; with
+# no tier change and no hold, an ordinary night replays nothing.
 
 REPLAY_RUNS = 3
 REPLAY_CONCURRENCY = 3
@@ -423,6 +428,7 @@ _AUDIT_DETAIL_CAP = 7000
 
 PASS, FAIL, UNJUDGED, BUDGET = "pass", "fail", "unjudged", "budget"
 _TRANSIENT = "transient"   # internal only: retried once, then UNJUDGED — never a failure
+_TRANSIENT_STATUSES = frozenset({408, 409, 429})   # the SDK retries these itself: not the model's fault
 
 
 @dataclass
@@ -442,7 +448,8 @@ class KeyReplay:
 
 
 def role_is_held(runs: Iterable[RunResult]) -> bool:
-    """THE HOLD RULE — proposed to the operator 2026-09-30, pending his confirm; change it HERE.
+    """THE HOLD RULE — operator-ruled 2026-09-30: hold only on refusal, error or unreadable
+    answer; changed answers go to the digest. Change it HERE, only on his word.
 
     A ROLE IS HELD if ANY run of ANY of its samples FAILS (refused, rejected, cut off, no tool
     call, a tool answer missing required fields, an empty answer). Changed answers NEVER hold —
@@ -493,9 +500,11 @@ def judge_replay_response(request: dict, resp: Any) -> RunResult:
 
 
 def _classify_replay_error(e: BaseException) -> RunResult:
-    """An exception from a replayed call → FAIL (HTTP 4xx other than 429 after the adapter,
-    unreadable/refused structured output) or TRANSIENT (429/5xx/529/timeout/connection). Anything
-    else is UNJUDGED with its text — the hold rule is only the enumerated failure classes."""
+    """An exception from a replayed call → FAIL (HTTP 4xx other than 408/409/429 after the
+    adapter, unreadable/refused structured output) or TRANSIENT (408/409/429/5xx/529/timeout/
+    connection — 408 and 409 are statuses the SDK itself retries, so they say nothing about the
+    model). Anything else is UNJUDGED with its text — the hold rule is only the enumerated
+    failure classes."""
     from shared.llm_client import StructuredOutputError
 
     text = str(getattr(e, "message", "") or e)
@@ -503,7 +512,7 @@ def _classify_replay_error(e: BaseException) -> RunResult:
         return RunResult(FAIL, "refused" if "refus" in text else f"unreadable answer: {text[:160]}")
     status = getattr(e, "status_code", None)
     if isinstance(status, int) and not isinstance(status, bool):
-        if status == 429 or status >= 500:
+        if status in _TRANSIENT_STATUSES or status >= 500:
             return RunResult(_TRANSIENT, f"HTTP {status}")
         if 400 <= status < 500:
             return RunResult(FAIL, f"rejected (HTTP {status}): {text[:160]}")
@@ -653,7 +662,9 @@ def decision_diff(old: dict, new: dict) -> tuple[str, list[str]]:
     """("text" | "same" | "changed", [diff lines]) comparing two answer summaries on decision
     fields only: the tool name, then each top-level tool-input field that is a bool/number/short
     string (<= 40 chars) or a list of those. Free-text fields (reason, rationale, analysis, …) and
-    long strings are skipped. Plain-text answers are not compared."""
+    long strings are skipped — EXCEPT a field whose value flips between a short string and long
+    free text, which is reported ("<field> became free text"). Plain-text answers are not
+    compared."""
     old_tool, new_tool = old.get("tool"), new.get("tool")
     if old_tool is None and new_tool is None:
         return "text", []
@@ -670,6 +681,15 @@ def decision_diff(old: dict, new: dict) -> tuple[str, list[str]]:
         ov = _decision_value(oi[field_name]) if field_name in oi else None
         nv = _decision_value(ni[field_name]) if field_name in ni else None
         if ov is _MISSING or nv is _MISSING:
+            # A field that flips between a short enum-like string and long free text changed
+            # SHAPE — the decision moved from a label to prose (or back), which a silent skip
+            # would hide. Two long texts (or any nested value) are still free text: skipped.
+            if ov is not _MISSING and nv is _MISSING and isinstance(ni.get(field_name), str) \
+                    and isinstance(ov, str):
+                diffs.append(f"{field_name} became free text")
+            elif ov is _MISSING and nv is not _MISSING and isinstance(oi.get(field_name), str) \
+                    and isinstance(nv, str):
+                diffs.append(f"{field_name} was free text, now {_fmt(nv)}")
             continue
         if ov != nv or type(ov) is not type(nv):
             diffs.append(f"{field_name} {_fmt(ov)} → {_fmt(nv)}")
@@ -714,10 +734,14 @@ def _role_counts_line(label: str, replays: list[KeyReplay]) -> str:
 
 def _render_tier_digest(tier: str, old: Optional[str], new: str, current: str,
                         replays: list[KeyReplay], skips: dict[str, int],
-                        new_holds: dict[str, dict], retests: dict[str, tuple[str, str]]) -> str:
+                        new_holds: dict[str, dict], retests: dict[str, tuple[str, str]],
+                        unholdable: Optional[dict[str, dict]] = None) -> str:
     """ONE operator Telegram for a tier adoption: the move, then what each role's own recent
     requests did on the new model. `retests` = {role: ("released"|"held", text)} for roles that
-    were already held on this tier."""
+    were already held on this tier. `unholdable` = roles whose replay failed but whose current id
+    is no longer served: they cannot be held, so the line says they fail AND move — never "HELD"
+    on an id that is gone."""
+    unholdable = unholdable or {}
     from shared.llm_models import label_for, pretty_model
     from shared.llm_samples import EXCLUDED_ROLES
     from shared.telegram_format import esc
@@ -730,7 +754,13 @@ def _render_tier_digest(tier: str, old: Optional[str], new: str, current: str,
     held_lines, role_lines, no_sample, not_sampled = [], [], [], []
     for role in roles:
         label = label_for(role)
-        if role in new_holds:
+        if role in unholdable:
+            u = unholdable[role]
+            held_lines.append(f"• {esc(label)}: <b>FAILED</b> on {esc(pretty_model(new))} — "
+                              f"{esc(str(u.get('error') or '')[:160])}; "
+                              f"{esc(pretty_model(u['model']))} is no longer served, so it cannot be "
+                              f"held and moves with the tier")
+        elif role in new_holds:
             held_lines.append(f"• {esc(label)}: <b>HELD</b> on {esc(pretty_model(new_holds[role]['model']))} "
                               f"— {esc(str(new_holds[role].get('error') or '')[:160])}")
         elif role in retests:
@@ -891,6 +921,9 @@ async def refresh_model_resolution() -> int:
     holds: dict[str, dict] = {r: dict(h) for r, h in prev_holds.items()}
     tier_replays: dict[str, tuple[str, list[KeyReplay], dict[str, int]]] = {}
     new_holds: dict[str, dict] = {}
+    # roles whose replay FAILED on the new model but whose current id is no longer served —
+    # nothing to hold them on, so they move with the tier and the operator is told why.
+    unholdable: dict[str, dict] = {}
     for tier, old_id, new_id in list(changes):
         current = old_id or llm_models._TIER_PINS[tier]
         # A role already held is re-tested below — its samples carry its held id, not `current`.
@@ -906,18 +939,32 @@ async def refresh_model_resolution() -> int:
         for role in sorted({kr.role for kr in replays}):
             runs = [r for kr in replays if kr.role == role for r in kr.runs]
             if role_is_held(runs):
+                error = _first_failure(runs)[:300]
+                if current not in ids:
+                    unholdable[role] = {"model": current, "error": error, "candidate": new_id}
+                    continue
                 holds[role] = new_holds[role] = {
-                    "model": current, "since": now_iso, "error": _first_failure(runs)[:300],
-                    "candidate": new_id}
+                    "model": current, "since": now_iso, "error": error, "candidate": new_id}
 
-    # HOLD RE-TEST — every existing hold, every night: released once its role's own requests
-    # pass on the tier's model (or the hold is moot); kept while any run fails or none was judged.
+    # HOLD RE-TEST — every existing hold, every night. A hold is released ONLY on evidence:
+    #   * its role's own requests PASS on the tier's model, or
+    #   * the hold is moot (its tier is back on the held model), or
+    #   * the held model is no longer served (nothing left to hold it on).
+    # NEVER on an absence: a role with no recent request to replay stays held and the digest says
+    # so — "nothing was asked of it" is not "it now works".
     retests: dict[str, tuple[str, str]] = {}      # role -> ("released"|"held", operator text)
     released: list[tuple[str, str, str]] = []     # (role, held id, target id)
+    retired: set[str] = set()                     # released because the held model was retired
     for role, info in sorted(prev_holds.items()):
         tier = llm_models.RESOLVED_ROLES.get(role)
         target = resolved.get(tier) if tier else None
         held = info["model"]
+        if tier and target and held not in ids and is_newer(target, held):
+            holds.pop(role, None)
+            released.append((role, held, target))
+            retired.add(role)
+            retests[role] = ("released", f"held model {held} is no longer served — moving to {target}")
+            continue
         if not tier or not target or not is_newer(target, held):
             holds.pop(role, None)
             released.append((role, held, target or held))
@@ -925,9 +972,7 @@ async def refresh_model_resolution() -> int:
             continue
         entries, _skips = _replay_inventory({role}, held)
         if not entries:
-            holds.pop(role, None)
-            released.append((role, held, target))
-            retests[role] = ("released", "hold released — no recent request to replay")
+            retests[role] = ("held", f"still HELD on {pretty_model(held)} — no recent request to re-test")
             continue
         runs = [r for kr in await _replay_entries(entries, target, deadline) for r in kr.runs]
         if any(r.verdict == BUDGET for r in runs):
@@ -962,10 +1007,20 @@ async def refresh_model_resolution() -> int:
             f"{role}: held on {info['model']} — {info['candidate']} failed the replay of our own requests",
             str(info.get("error") or ""),
         )
+    for role, info in sorted(unholdable.items()):
+        await log_audit_event(
+            "model_role_hold_impossible",
+            f"{role}: failed the replay on {info['candidate']} but {info['model']} is no longer "
+            f"served — cannot hold, moves to {info['candidate']}",
+            str(info.get("error") or ""),
+        )
     for role, held, target in released:
-        await log_audit_event("model_role_hold_released",
-                              f"{role}: released from {held}; moves to {target} at the next boot",
-                              retests.get(role, ("", ""))[1])
+        if role in retired:
+            summary = (f"{role}: held model {held} is no longer served — hold released; "
+                       f"moves to {target} at the next boot")
+        else:
+            summary = f"{role}: released from {held}; moves to {target} at the next boot"
+        await log_audit_event("model_role_hold_released", summary, retests.get(role, ("", ""))[1])
 
     # ONE Telegram per tier adoption: the move + what each role's own requests did on it.
     digested: set[str] = set()
@@ -982,14 +1037,18 @@ async def refresh_model_resolution() -> int:
         if old is None and not tier_new_holds:
             continue  # first-ever record: nothing to compare against, no Telegram on cold start
         digested.update(tier_retests)
+        tier_unholdable = {r: h for r, h in unholdable.items() if llm_models.RESOLVED_ROLES.get(r) == tier}
         await _send_telegram(_render_tier_digest(tier, old, new, current, replays, skips,
-                                                 tier_new_holds, tier_retests))
+                                                 tier_new_holds, tier_retests, tier_unholdable))
     late = [(r, h, t) for r, h, t in released if r not in digested]
     if late:
         lines = ["✅ <b>Model hold released</b>"]
         for role, held, target in late:
-            lines.append(f"• {esc(label_for(role))}: moves from {esc(pretty_model(held))} to "
-                         f"{esc(pretty_model(target))} at the next restart.")
+            if role in retired:
+                lines.append(f"• {esc(label_for(role))}: {esc(retests[role][1])} at the next restart.")
+            else:
+                lines.append(f"• {esc(label_for(role))}: moves from {esc(pretty_model(held))} to "
+                             f"{esc(pretty_model(target))} at the next restart.")
         await _send_telegram("\n".join(lines))
 
     # the fallback pins get an upgrade path too — see stale_tier_pins()

@@ -810,3 +810,238 @@ def test_decision_diff_compares_decisions_not_prose():
     assert mr.decision_diff(old, old) == ("same", [])
     assert mr.decision_diff({"text": "a"}, {"text": "b"}) == ("text", [])
     assert mr.decision_diff(old, {"tool": "other", "tool_input": {}})[1] == ["tool t → other"]
+
+
+# ─── #690 review fixes: holds survive an absence, retired ids, transient classes, digest ─────────
+
+ADOPTED = {"opus": "claude-opus-5-5", "sonnet": NEW, "haiku": "claude-haiku-4-5-20251001"}
+NO_OLD = ["claude-opus-5-5", NEW, "claude-haiku-4-5-20251001"]          # models.list without OLD
+HELD_THEME = {"THEME_MODEL": {"model": OLD, "since": "2026-09-29T22:08:00+00:00",
+                              "error": "refused", "candidate": NEW}}
+
+
+def _ok_text(kw):
+    return _Resp([_Block("text", text="AI Networking")])
+
+
+def _grade_sample_only(tmp_path):
+    _write_sample(tmp_path, GRADE_KEY, "GROUNDED_GRADE_MODEL", subject="ABCD",
+                  request={"model": OLD, "max_tokens": 900, "tools": [GRADE_TOOL],
+                           "tool_choice": {"type": "tool", "name": "grade_catalyst"},
+                           "messages": [{"role": "user", "content": "Ticker: ABCD grade it"}]},
+                  answer={"stop_reason": "tool_use", "tool": "grade_catalyst",
+                          "tool_input": {"quality": "high", "analysis": "old reasoning"}})
+
+
+def test_a_hold_is_never_released_on_an_absence(monkeypatch, tmp_path):
+    """A held role with NO recent request to replay keeps its hold — nobody asked it anything, so
+    nothing shows it now works. Nothing is replayed, released, or sent."""
+    from shared.model_resolver import read_cache
+    audit, tg, fake, cache = _replay_refresh(monkeypatch, tmp_path, _ok_text,
+                                             resolved=ADOPTED, holds=HELD_THEME)
+    _run(mr.refresh_model_resolution())
+    assert read_cache(cache)["role_holds"] == HELD_THEME            # untouched, `since` and all
+    assert fake.calls == []
+    assert "model_role_hold_released" not in _events(audit)
+    tg.assert_not_awaited()
+
+
+def test_the_digest_says_a_held_role_has_no_request_to_retest(monkeypatch, tmp_path):
+    """Same hold on a night the tier moves: the digest line says why it is still held."""
+    from shared.model_resolver import read_cache
+    _grade_sample_only(tmp_path)                        # the grader has a sample; THEME_MODEL has none
+    audit, tg, _fake, cache = _replay_refresh(monkeypatch, tmp_path, lambda kw: _grade_answer("high"),
+                                              holds=HELD_THEME)
+    _run(mr.refresh_model_resolution())
+    data = read_cache(cache)
+    assert data["resolved"]["sonnet"] == NEW and data["role_holds"] == HELD_THEME
+    assert "model_role_hold_released" not in _events(audit)
+    text = tg.await_args.args[0]
+    assert "theme discovery: still HELD on Sonnet 5 — no recent request to re-test" in text
+
+
+def test_a_hold_on_a_retired_model_is_released_and_the_operator_told(monkeypatch, tmp_path):
+    """The held id left models.list: nothing to hold the role on. Released WITHOUT a replay (the
+    model cannot be called), an audit row, and the Telegram names it — never 'still HELD'."""
+    from shared.model_resolver import read_cache
+    _write_sample(tmp_path, THEME_KEY, "THEME_MODEL",
+                  request={"model": OLD, "max_tokens": 400,
+                           "messages": [{"role": "user", "content": "rename this theme"}]},
+                  answer={"stop_reason": "end_turn", "text": "AI Networking"})
+    audit, tg, fake, cache = _replay_refresh(monkeypatch, tmp_path, _ok_text, resolved=ADOPTED,
+                                             holds=HELD_THEME, ids=NO_OLD)
+    _run(mr.refresh_model_resolution())
+    assert read_cache(cache)["role_holds"] == {}
+    assert fake.calls == []                                          # the retired id is not replayed
+    row = next(c for c in audit.await_args_list if c.args[0] == "model_role_hold_released")
+    assert f"held model {OLD} is no longer served" in row.args[1]
+    tg.assert_awaited_once()
+    text = tg.await_args.args[0]
+    assert f"held model {OLD} is no longer served — moving to {NEW}" in text
+    assert "theme discovery" in text and "HELD" not in text
+
+
+def test_the_digest_never_says_held_on_a_retired_id(monkeypatch, tmp_path):
+    """Same retirement on a night the tier moves: the digest carries the release line."""
+    from shared.model_resolver import read_cache
+    _grade_sample_only(tmp_path)
+    audit, tg, _fake, cache = _replay_refresh(monkeypatch, tmp_path, lambda kw: _grade_answer("high"),
+                                              holds=HELD_THEME, ids=NO_OLD)
+    _run(mr.refresh_model_resolution())
+    data = read_cache(cache)
+    assert data["resolved"]["sonnet"] == NEW and data["role_holds"] == {}
+    assert "model_role_hold_released" in _events(audit)
+    assert tg.await_count == 1
+    text = tg.await_args.args[0]
+    assert f"theme discovery: held model {OLD} is no longer served — moving to {NEW}" in text
+    assert "HELD" not in text
+
+
+def test_a_failing_role_whose_current_model_is_retired_is_not_held(monkeypatch, tmp_path):
+    """The tier's old id is gone AND the new model refuses the theme prompts: there is no id to
+    hold the role on, so it moves with the tier, says so, and is never reported as HELD."""
+    from shared.model_resolver import read_cache
+    _theme_and_grade_samples(tmp_path, grade_quality="high")
+    audit, tg, _fake, cache = _replay_refresh(
+        monkeypatch, tmp_path,
+        lambda kw: _Resp([], "refusal") if _is_theme(kw) else _grade_answer("high"), ids=NO_OLD)
+    _run(mr.refresh_model_resolution())
+    data = read_cache(cache)
+    assert data["resolved"]["sonnet"] == NEW and data["role_holds"] == {}
+    assert "model_role_hold_impossible" in _events(audit) and "model_role_held" not in _events(audit)
+    text = tg.await_args.args[0]
+    assert "theme discovery: <b>FAILED</b> on Sonnet 5.5 — refused" in text
+    assert "Sonnet 5 is no longer served" in text and "HELD" not in text
+
+
+# ── classification of a replayed call, through the real replay path ──────────
+
+def _replay_one(monkeypatch, behaviour, request=None):
+    import time as _time
+    monkeypatch.setattr(mr, "_log_replay_spend", AsyncMock())
+    fake = _ReplayFake(behaviour)
+    req = request or {"model": NEW, "max_tokens": 100,
+                      "messages": [{"role": "user", "content": "hi"}]}
+
+    async def go():
+        return await mr._replay_run(SimpleNamespace(messages=fake), req, _time.monotonic() + 60,
+                                    asyncio.Semaphore(1))
+    return _run(go()), fake
+
+
+_FORCED = {"model": NEW, "max_tokens": 100, "tools": [GRADE_TOOL],
+           "tool_choice": {"type": "tool", "name": "grade_catalyst"},
+           "messages": [{"role": "user", "content": "grade it"}]}
+
+
+def test_a_structured_output_error_is_a_failure(monkeypatch):
+    from shared.llm_client import StructuredOutputError
+
+    def refused(kw):
+        raise StructuredOutputError("the model refused to answer")
+
+    def garbled(kw):
+        raise StructuredOutputError("not the JSON the schema promised")
+    r, fake = _replay_one(monkeypatch, refused)
+    assert (r.verdict, r.error) == (mr.FAIL, "refused") and len(fake.calls) == 1   # no retry
+    r, _ = _replay_one(monkeypatch, garbled)
+    assert r.verdict == mr.FAIL and r.error.startswith("unreadable answer")
+
+
+def test_an_answer_cut_off_at_its_own_max_tokens_is_a_failure(monkeypatch):
+    r, _ = _replay_one(monkeypatch, lambda kw: _Resp([_Block("text", text="partial")], "max_tokens"))
+    assert r.verdict == mr.FAIL and "cut off at its own max_tokens (100)" in r.error
+
+
+def test_a_tool_answer_missing_a_required_key_is_a_failure(monkeypatch):
+    r, _ = _replay_one(
+        monkeypatch,
+        lambda kw: _Resp([_Block("tool_use", id="t", name="grade_catalyst",
+                                 input={"analysis": "no quality given"})], "tool_use"),
+        request=_FORCED)
+    assert r.verdict == mr.FAIL and r.error == "tool answer missing quality"
+
+
+def test_a_forced_tool_request_answered_in_text_is_a_failure(monkeypatch):
+    r, _ = _replay_one(monkeypatch, lambda kw: _Resp([_Block("text", text="I think high")]),
+                       request=_FORCED)
+    assert r.verdict == mr.FAIL and r.error == "answered without the required tool call"
+
+
+def test_empty_text_on_a_plain_request_is_a_failure(monkeypatch):
+    r, _ = _replay_one(monkeypatch, lambda kw: _Resp([_Block("text", text="   ")]))
+    assert r.verdict == mr.FAIL and r.error == "empty answer"
+    r, _ = _replay_one(monkeypatch, lambda kw: _Resp([]))
+    assert r.verdict == mr.FAIL and r.error == "empty answer"
+
+
+class APITimeoutError(Exception):
+    """Named like the SDK's class — the classifier goes by name (the SDK is stubbed in tests)."""
+
+
+def _raises(exc):
+    def behaviour(kw):
+        raise exc
+    return behaviour
+
+
+@pytest.mark.parametrize("exc", [
+    _Http(500, "internal"), _Http(503, "unavailable"), _Http(529, "overloaded"),
+    _Http(408, "request timeout"), _Http(409, "conflict"), _Http(429, "rate limited"),
+    APITimeoutError("timed out"),
+], ids=["500", "503", "529", "408", "409", "429", "APITimeoutError"])
+def test_transient_errors_are_retried_once_then_unjudged_never_a_failure(monkeypatch, exc):
+    r, fake = _replay_one(monkeypatch, _raises(exc))
+    assert r.verdict == mr.UNJUDGED and r.error.endswith("(twice)")
+    assert len(fake.calls) == 2                                      # one retry, no more
+    assert not mr.role_is_held([r])
+
+
+@pytest.mark.parametrize("status", [408, 409])
+def test_a_transient_error_that_clears_on_the_retry_is_judged_normally(monkeypatch, status):
+    state = {"n": 0}
+
+    def flaky(kw):
+        state["n"] += 1
+        if state["n"] == 1:
+            raise _Http(status, "try again")
+        return _Resp([_Block("text", text="AI Networking")])
+    r, fake = _replay_one(monkeypatch, flaky)
+    assert r.verdict == mr.PASS and len(fake.calls) == 2
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 413, 422])
+def test_other_4xx_after_the_adapter_are_failures_without_a_retry(monkeypatch, status):
+    r, fake = _replay_one(monkeypatch, _raises(_Http(status, "nope")))
+    assert r.verdict == mr.FAIL and f"HTTP {status}" in r.error and len(fake.calls) == 1
+
+
+def test_an_unknown_exception_is_unjudged_not_a_failure_and_not_retried(monkeypatch):
+    r, fake = _replay_one(monkeypatch, _raises(RuntimeError("something odd")))
+    assert r.verdict == mr.UNJUDGED and "RuntimeError" in r.error and len(fake.calls) == 1
+    assert not mr.role_is_held([r])
+
+
+# ── digest: a label that becomes prose is a change, not a skip ───────────────
+
+def test_a_decision_field_that_becomes_free_text_is_reported_not_skipped():
+    prose = "The catalyst is a multi-year contract that changes the revenue base materially."
+    short = {"tool": "t", "tool_input": {"verdict": "HIGH", "headline": "x"}}
+    long_ = {"tool": "t", "tool_input": {"verdict": prose, "headline": "x"}}
+    assert mr.decision_diff(short, long_) == ("changed", ["verdict became free text"])
+    assert mr.decision_diff(long_, short) == ("changed", ["verdict was free text, now HIGH"])
+    # two long texts are still free text, and a field NAMED as free text is never compared
+    other = {"tool": "t", "tool_input": {"verdict": prose + " More.", "headline": "x"}}
+    assert mr.decision_diff(long_, other) == ("same", [])
+    named = {"tool": "t", "tool_input": {"rationale": "yes"}}
+    named_long = {"tool": "t", "tool_input": {"rationale": prose}}
+    assert mr.decision_diff(named, named_long) == ("same", [])
+
+
+def test_the_digest_line_names_the_field_that_became_prose():
+    kr = mr.KeyReplay(
+        "k", "GROUNDED_GRADE_MODEL", "ABCD",
+        {"tool": "grade", "tool_input": {"quality": "high"}},
+        [mr.RunResult(mr.PASS, "", {"tool": "grade", "tool_input": {"quality": "x" * 90}})])
+    line = mr._role_counts_line("catalyst grading", [kr])
+    assert "1 changed (quality became free text on ABCD)" in line

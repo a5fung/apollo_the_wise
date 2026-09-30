@@ -23,16 +23,23 @@ outside the pass-through wrappers below, which collapse several callers (and rol
 tests/test_llm_call_sites.py) maps each key to the ROLE its model argument names.
 
 WHAT IS NOT STORED.
-  * operator chat, conversation compression, the health ping (EXCLUDED_ROLES);
-  * any request `shared.secret_redaction.redact_secrets` would change — dropped whole, and COUNTED
-    in the key's file (`skipped.credential_like`) so a starved call site is visible in the digest;
+  * operator chat (ORCHESTRATOR; the market agent's general handler, which carries the operator's
+    typed questions), conversation compression, the health ping (EXCLUDED_ROLES);
+  * any request carrying a REAL-LOOKING credential — a `key=`/`token=`/`Bearer`/`Basic` match of
+    `shared.secret_redaction`'s patterns whose VALUE is >= 16 characters with a digit AND a letter
+    (`credential_like`). Dropped whole, and COUNTED in the key's file (`skipped.credential_like`)
+    so a starved call site is visible in the digest. This is deliberately NARROWER than
+    `redact_secrets` (which guards the audit log and stays conservative): that one also masks
+    "Sector: Basic Materials" and "sort key=value", which starved the theme and judge prompts;
   * refusals and truncations (not answers);
   * anything while capture is disabled (the canary and the replay itself — `capture_disabled()`).
 
-CONTRACT. `record()` never raises into an LLM call; at most one new sample per key per 60
-minutes; an unwritable directory (the orchestrator mounts logs read-only) is skipped with a debug
-line. Plain synchronous file IO — the sync client has no loop, and the write happens at most once
-an hour per key.
+CONTRACT. `record()` never raises into an LLM call; a key makes at most ONE capture attempt
+(read, serialize, redact, write) per 60 minutes WHATEVER the outcome — stored, credential-like,
+unserializable or unwritable all spend the hour, so a call site that can never be stored does not
+repeat the work on every call; an unwritable directory (the orchestrator mounts logs read-only) is
+skipped with a debug line. Plain synchronous file IO — the sync client has no loop, and it happens
+at most once an hour per key.
 """
 from __future__ import annotations
 
@@ -48,6 +55,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Optional
 
+# The private patterns are imported rather than copied so the two can never drift apart; only the
+# decision about WHEN a match is a credential differs (see credential_like).
+from shared.secret_redaction import _BEARER, _QS_SECRET
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -55,6 +66,7 @@ __all__ = [
     "PASSTHROUGH_FUNCTIONS",
     "EXCLUDED_ROLES",
     "UNTRACKED",
+    "credential_like",
     "call_site_key",
     "capture_disabled",
     "capture_is_disabled",
@@ -90,17 +102,22 @@ PASSTHROUGH_FUNCTIONS: frozenset[tuple[str, str]] = frozenset({
 _INFRA_PREFIXES = ("asyncio", "contextlib", "functools", "concurrent.")
 _SELF_MODULES = frozenset({"shared.llm_client", __name__})
 
-# Operator chat / compressed chat / a 5-token ping — never written to disk.
+# Operator chat / compressed chat / a 5-token ping — never written to disk. MARKET_AGENT_MODEL's
+# only call site (agent.py `_handle_general`) answers the operator's own typed questions: the same
+# privacy class as ORCHESTRATOR/COMPRESSION, so the same rule.
 EXCLUDED_ROLES: frozenset[str] = frozenset({
-    "ORCHESTRATOR_MODEL", "COMPRESSION_MODEL", "HEALTHCHECK_MODEL",
+    "ORCHESTRATOR_MODEL", "COMPRESSION_MODEL", "HEALTHCHECK_MODEL", "MARKET_AGENT_MODEL",
 })
 
 _CAPTURE_OFF: ContextVar[bool] = ContextVar("apollo_llm_capture_off", default=False)
-# key -> wall time of the last stored sample, this process (the file is the cross-restart truth).
-_last_stored: dict[str, float] = {}
-# key -> credential-like drops not yet written to the key's file.
-_pending_skips: dict[str, int] = {}
-_last_skip_write: dict[str, float] = {}
+# key -> wall time of the last capture ATTEMPT, this process (the file is the cross-restart
+# truth). Set before any IO-heavy work, so every outcome — stored, credential-like, unserializable,
+# unwritable — counts as the hour's one attempt.
+_last_attempt: dict[str, float] = {}
+
+# A `key=` / `Bearer` match is a real credential only when its VALUE looks like one: long enough,
+# and mixing letters with digits. Below this, "Basic Materials" / "sort key=value" are prose.
+_CRED_MIN_LEN = 16
 
 
 @contextlib.contextmanager
@@ -297,21 +314,47 @@ def _empty(key: str, role: str) -> dict:
     return {"schema": SCHEMA, "key": key, "role": role, "samples": [], "skipped": {}}
 
 
+def _strings(node: Any) -> Iterator[str]:
+    """Every string in a JSON-able request: dict keys and leaf values."""
+    if isinstance(node, str):
+        yield node
+    elif isinstance(node, dict):
+        for k, v in node.items():
+            yield str(k)
+            yield from _strings(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from _strings(v)
+
+
+def _value_looks_like_credential(value: str) -> bool:
+    return (len(value) >= _CRED_MIN_LEN and any(c.isdigit() for c in value)
+            and any(c.isalpha() for c in value))
+
+
+def credential_like(request: Any) -> bool:
+    """True when the request carries a REAL-LOOKING credential: a match of secret_redaction's
+    `key=`-style or `Bearer`/`Basic` pattern whose value is >= 16 characters with at least one
+    digit AND one letter. Stricter than `redact_secrets` on purpose — that one guards the audit log
+    and masks "Sector: Basic Materials" and "sort key=value", which would starve the theme and
+    judge call sites of samples."""
+    for text in _strings(request):
+        for pattern in (_QS_SECRET, _BEARER):
+            for m in pattern.finditer(text):
+                if _value_looks_like_credential(m.group(2)):
+                    return True
+    return False
+
+
 def _note_credential_skip(key: str, role: str, path: Path, now: float) -> None:
-    """Count a credential-like drop; persist the count at most once an hour per key."""
-    _pending_skips[key] = _pending_skips.get(key, 0) + 1
-    last = _last_skip_write.get(key)
-    if last is not None and now - last < THROTTLE_SECONDS:
-        return
+    """Count one credential-like drop in the key's file. Called at most once an hour per key (the
+    attempt throttle in `_record`), so the count is hourly attempts dropped, not raw calls."""
     data = _read(path) or _empty(key, role)
     skipped = data.setdefault("skipped", {})
     entry = skipped.get("credential_like") if isinstance(skipped.get("credential_like"), dict) else {}
-    entry = {"count": int(entry.get("count") or 0) + _pending_skips[key],
-             "last_at": datetime.fromtimestamp(now, timezone.utc).isoformat()}
-    skipped["credential_like"] = entry
+    skipped["credential_like"] = {"count": int(entry.get("count") or 0) + 1,
+                                  "last_at": datetime.fromtimestamp(now, timezone.utc).isoformat()}
     _write_atomic(path, data)
-    _pending_skips[key] = 0
-    _last_skip_write[key] = now
 
 
 def record(kw: dict, resp: Any, *, frame) -> str:
@@ -343,7 +386,7 @@ def _record(kw: dict, resp: Any, frame) -> str:
         return "not_an_answer"
 
     now = time.time()
-    last = _last_stored.get(key)
+    last = _last_attempt.get(key)
     if last is not None and now - last < THROTTLE_SECONDS:
         return "throttled"
     directory = sample_dir()
@@ -353,8 +396,11 @@ def _record(kw: dict, resp: Any, frame) -> str:
         existing = _read(path)
         on_disk = _latest_ts(existing)
         if on_disk is not None and now - on_disk < THROTTLE_SECONDS:
-            _last_stored[key] = on_disk
+            _last_attempt[key] = on_disk
             return "throttled"
+    # From here the key has spent its hour: whatever happens next (unserializable, credential-like,
+    # an unwritable directory, a stored sample) is not retried until THROTTLE_SECONDS have passed.
+    _last_attempt[key] = now
 
     try:
         request = _jsonable(dict(kw))
@@ -362,9 +408,7 @@ def _record(kw: dict, resp: Any, frame) -> str:
         logger.debug("llm_samples: %s request not serializable (%s), skipped", key, e)
         return "unserializable"
     request, had_image = _scrub_images(request)
-    serialized = json.dumps(request, sort_keys=True, ensure_ascii=False)
-    from shared.secret_redaction import redact_secrets
-    if redact_secrets(serialized) != serialized:
+    if credential_like(request):
         _note_credential_skip(key, role, path, now)
         return "credential_like"
 
@@ -385,7 +429,6 @@ def _record(kw: dict, resp: Any, frame) -> str:
     data["role"] = role
     data["samples"] = (list(data.get("samples") or []) + [sample])[-KEEP:]
     _write_atomic(path, data)
-    _last_stored[key] = now
     return "stored"
 
 
@@ -406,6 +449,4 @@ def load_all(directory: Optional[Path] = None) -> list[dict]:
 
 def reset_throttle() -> None:
     """Tests only: forget the in-process throttle state."""
-    _last_stored.clear()
-    _pending_skips.clear()
-    _last_skip_write.clear()
+    _last_attempt.clear()

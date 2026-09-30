@@ -201,13 +201,47 @@ def test_the_replay_never_becomes_a_sample(monkeypatch):
 
 # ── 3. credential-like → dropped and counted ─────────────────────────────────
 
-def test_a_request_redaction_would_change_is_dropped_and_counted():
+def test_a_request_carrying_a_real_looking_credential_is_dropped_and_counted():
     client = _client()
-    _run(_tracked_caller(client, messages=[{"role": "user", "content": "url?apikey=SECRET123"}]))
+    _run(_tracked_caller(client, messages=[{"role": "user",
+                                            "content": "url?apikey=abc123def456ghi789jk"}]))
     data = _only_file()
     assert data["samples"] == []
     assert data["skipped"]["credential_like"]["count"] == 1
-    assert "SECRET123" not in json.dumps(data)
+    assert "abc123def456ghi789jk" not in json.dumps(data)
+
+
+@pytest.mark.parametrize("text,dropped", [
+    # prose that redact_secrets masks but that is NOT a credential — these starved the theme and
+    # judge call sites before the stricter sample rule
+    ("Sector: Basic Materials", False),
+    ("sort key=value", False),
+    ("Basic understanding of the stock", False),
+    ("monkey = banana_split_no_digits", False),          # long, letters only: not credential-shaped
+    ("token=1234567890123456789", False),                 # long, digits only: not credential-shaped
+    # values that look like a real credential: >= 16 chars with a digit AND a letter
+    ("Basic dXNlcjpwYXNzd29yZDEyMw==", True),
+    ("apikey=abc123def456ghi789jk", True),
+    ("Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.e30.abc123", True),
+    ("token=short1", False),
+])
+def test_only_a_credential_shaped_value_drops_a_sample(text, dropped):
+    _run(_tracked_caller(_client(), messages=[{"role": "user", "content": f"Ticker: ABCD {text}"}]))
+    data = _only_file()
+    if dropped:
+        assert data["samples"] == [] and data["skipped"]["credential_like"]["count"] == 1
+    else:
+        assert len(data["samples"]) == 1 and not data.get("skipped")
+
+
+def test_the_credential_check_reads_every_string_in_the_request():
+    """A credential in a system prompt, a tool description or a later turn is still caught."""
+    nested = {"model": "m", "system": [{"type": "text", "text": "x"}],
+              "messages": [{"role": "user", "content": [{"type": "text", "text": "ok"}]},
+                           {"role": "user", "content": [{"type": "text",
+                                                         "text": "password=Hunter2Hunter2Hunter2"}]}]}
+    assert llm_samples.credential_like(nested) is True
+    assert llm_samples.credential_like({"messages": [{"role": "user", "content": "all clear"}]}) is False
 
 
 # ── 4. images and signed thinking ────────────────────────────────────────────
@@ -245,10 +279,19 @@ def test_refusals_and_truncations_are_not_answers(stop):
     assert _files() == []
 
 
-def test_operator_chat_is_never_captured(monkeypatch):
-    monkeypatch.setitem(llm_call_sites.CALL_SITES, KEY, "ORCHESTRATOR_MODEL")
+@pytest.mark.parametrize("role", ["ORCHESTRATOR_MODEL", "COMPRESSION_MODEL", "HEALTHCHECK_MODEL",
+                                  "MARKET_AGENT_MODEL"])
+def test_operator_chat_is_never_captured(monkeypatch, role):
+    monkeypatch.setitem(llm_call_sites.CALL_SITES, KEY, role)
     _run(_tracked_caller(_client()))
     assert _files() == []
+
+
+def test_the_market_agent_general_handler_is_excluded_by_role():
+    """`_handle_general` answers the operator's own typed questions: its REAL call-site key maps to
+    MARKET_AGENT_MODEL, and that role is in the never-captured set."""
+    assert llm_call_sites.CALL_SITES["agents.market_intelligence.agent:_handle_general"] == "MARKET_AGENT_MODEL"
+    assert "MARKET_AGENT_MODEL" in llm_samples.EXCLUDED_ROLES
 
 
 def test_an_unmapped_call_site_is_not_captured():
@@ -271,6 +314,72 @@ def test_an_unserializable_request_never_breaks_the_call():
     resp = _run(_tracked_caller(_client(), metadata={"obj": object()}))
     assert resp.content[0].text == "pong"
     assert _files() == []
+
+
+# ── 5b. the IO throttle covers every outcome, not only a stored sample ───────
+
+def _count_calls(monkeypatch, name):
+    calls = {"n": 0}
+    real = getattr(llm_samples, name)
+
+    def counting(*a, **k):
+        calls["n"] += 1
+        return real(*a, **k)
+    monkeypatch.setattr(llm_samples, name, counting)
+    return calls
+
+
+def _two_hours(monkeypatch):
+    clock = {"t": 1_800_000_000.0}
+    monkeypatch.setattr(llm_samples.time, "time", lambda: clock["t"])
+    return clock
+
+
+def test_an_unserializable_request_is_attempted_once_an_hour(monkeypatch):
+    clock = _two_hours(monkeypatch)
+    serialized = _count_calls(monkeypatch, "_jsonable")
+    client = _client()
+    for _ in range(4):                                   # four calls inside the hour
+        _run(_tracked_caller(client, metadata={"obj": object()}))
+    first = serialized["n"]
+    assert first > 0
+    _run(_tracked_caller(client, metadata={"obj": object()}))
+    assert serialized["n"] == first                      # still throttled: no second attempt
+    clock["t"] += 61 * 60
+    _run(_tracked_caller(client, metadata={"obj": object()}))
+    assert serialized["n"] > first                       # the next hour tries again
+
+
+def test_a_credential_like_request_is_attempted_once_an_hour(monkeypatch):
+    clock = _two_hours(monkeypatch)
+    checks = _count_calls(monkeypatch, "credential_like")
+    client = _client()
+    secret = [{"role": "user", "content": "apikey=abc123def456ghi789jk"}]
+    for _ in range(4):
+        _run(_tracked_caller(client, messages=secret))
+    assert checks["n"] == 1
+    assert _only_file()["skipped"]["credential_like"]["count"] == 1
+    clock["t"] += 61 * 60
+    _run(_tracked_caller(client, messages=secret))
+    assert checks["n"] == 2
+    assert _only_file()["skipped"]["credential_like"]["count"] == 2
+
+
+def test_an_unwritable_directory_is_attempted_once_an_hour(monkeypatch, tmp_path):
+    clock = _two_hours(monkeypatch)
+    blocker = tmp_path / "a_file"
+    blocker.write_text("not a directory")
+    monkeypatch.setenv("APOLLO_LLM_SAMPLE_DIR", str(blocker / "samples"))
+    serialized = _count_calls(monkeypatch, "_jsonable")
+    writes = _count_calls(monkeypatch, "_write_atomic")
+    client = _client()
+    for _ in range(4):
+        assert _run(_tracked_caller(client)).content[0].text == "pong"
+    assert writes["n"] == 1 and serialized["n"] > 0
+    attempted = serialized["n"]
+    clock["t"] += 61 * 60
+    _run(_tracked_caller(client))
+    assert writes["n"] == 2 and serialized["n"] > attempted
 
 
 # ── 6. key derivation through the pass-through wrappers ──────────────────────
