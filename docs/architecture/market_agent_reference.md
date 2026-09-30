@@ -104,6 +104,8 @@ Pre-commit gates are vanilla shell + fast (<1s); the pre-push test gate is ~30s 
 ```
 TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS
 ANTHROPIC_API_KEY, POLYGON_API_KEY, FMP_API_KEY, PERPLEXITY_API_KEY
+COINGECKO_API_KEY           # free Demo key (100/min, 10k/month; we use ~4.6k). Required since
+                            # 2026-09-29: CoinGecko refuses keyless data calls (403) — crypto ingest died on it.
 
 # Dual-account Alpaca (#66, 2026-05-10) — required when ENABLE_LIVE_MODE=true
 ENABLE_LIVE_MODE=true       # false = dev/single-account opt-out (paper only)

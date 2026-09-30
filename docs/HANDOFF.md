@@ -1287,3 +1287,13 @@ stagger cards, one at a time.
 3. #655: both halves signed, scorer live — ask where the funnel-map strand should live before closing.
 
 **Capacity:** ~3.7M subagent tokens today.
+
+## 2026-09-29 (Tue) mid-session save — 🔴 RESUME HERE (after the advisor review; CLOSE not yet run)
+
+**Wednesday 09-30, in order:**
+1. **09:31 ET** — first live EP theme-fit on the new prompt (Sonnet 5.5, no reasoning field). Read `mi_ep_theme_belonging_shadow` for 09-30: fits end confirmed/rejected with a non-empty `fit_rationale`; zero `fit_unjudged` on shortlisted names with a description (#689).
+2. **17:00 ET theme run** — first real night on the 5.5 package: #689 night 1 of 3 (0 `assignment_error`), #505 night 2, #658's fix first run, #655 scorer row, #506/#657 night 3.
+3. **18:00 ET crypto ingest** on the new `COINGECKO_API_KEY` (CoinGecko began refusing keyless calls 09-29; 09-29 re-run filled: 214 universe / 337 scored).
+4. Sat 10-03 #687/#688/#491/#519 · Sun 10-04 #690 (test new models on our real prompts before adopting).
+
+**09-29 evening:** Sonnet 5.5 refused every theme prompt that made it write its reasoning out (assignment, 6/6 parent checks, synthesis, 40/40 EP fit checks; no EP alerted that day). Fixed and shipped on his sign-off (c291cb62, deployed 21:16 ET both + execution; live: MSTR → Bitcoin Treasury, parent check answered). Evidence: `docs/analysis/689_sonnet55_theme_package_2026-09-29.md`. Guard: `tests/test_no_reasoning_first_prompts.py`. ~$5–7 of probe spend bypassed the cost meter (not in `api_usage`).

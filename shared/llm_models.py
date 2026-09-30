@@ -183,10 +183,11 @@ _TIER_OVERRIDES: dict[str, str | None] = {
 # but not others: pin the broken roles and leave the rest (the money-path graders especially)
 # tracking. Same rules as _TIER_OVERRIDES: its own commit, with rationale; None to resume.
 _ROLE_OVERRIDES: dict[str, str | None] = {
-    # 2026-09-29 → 10-03: THEME_MODEL was pinned to claude-sonnet-5 while claude-sonnet-5-5 refused
-    # the theme prompts that made it write reasoning out. Cleared when those prompts dropped
-    # their analysis_scratchpad (operator-approved 2026-09-29; assignment 15/15, EP fit 15/15,
-    # discovery 8/8, split 6/6 on 5.5 — docs/architecture/theme_engine.md 2026-09-29).
+    # Empty by design. 2026-09-29: a THEME_MODEL pin to claude-sonnet-5 was committed (80d959cc) when
+    # claude-sonnet-5-5 refused the theme prompts that made it write reasoning out, and cleared the
+    # same evening, before any deploy, when those prompts dropped their analysis_scratchpad (#689,
+    # operator-signed; assignment 15/15, EP fit 15/15, discovery 8/8, split 6/6 on 5.5). The pin
+    # never ran in prod. docs/architecture/theme_engine.md 2026-09-29.
 }
 
 # ── Auto-tracked role bindings: role constant name -> tier. Adding a role
