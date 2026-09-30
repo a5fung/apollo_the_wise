@@ -248,8 +248,6 @@ async def test_promote_folds_graduation_into_changelog(monkeypatch):
     from tests.conftest import make_mock_pool
 
     monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value="off"))
-    # #580: promotion looks up breadth at birth — keep the test off a real DB pool.
-    monkeypatch.setattr(te, "get_ticker_breadth_above_sma20", AsyncMock(return_value=None))
     pool, conn = make_mock_pool()
     conn.fetch = AsyncMock(side_effect=[[], [], []])
     conn.execute = AsyncMock(return_value="INSERT 0 1")

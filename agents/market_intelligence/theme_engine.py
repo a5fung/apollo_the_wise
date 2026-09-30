@@ -2387,22 +2387,6 @@ def _resolve_promoted_theme_description(
     return prior_description
 
 
-async def _breadth_at_birth(name: str, tickers: list[str], today) -> float | None:
-    """#580 — breadth for a theme's FIRST row, from the SAME function the rescore
-    path uses (`get_ticker_breadth_above_sma20`: fraction of members with
-    close > sma_20 on `today`). A newborn used to carry NULL until its first
-    rescore, so /themes had nothing to show for it. Display data: a lookup
-    failure returns None (rendered as nothing) and never aborts the birth /
-    promotion that called it. Shared by `_score_new_theme` and both
-    `_upsert_promoted_theme` callers so the three birth paths cannot diverge."""
-    try:
-        return await get_ticker_breadth_above_sma20(tickers, today)
-    except Exception as e:
-        logger.warning(
-            f"Theme '{name}': birth breadth lookup failed ({type(e).__name__}: {e}) — stored NULL")
-        return None
-
-
 async def _upsert_promoted_theme(
     conn,
     name: str,
@@ -2413,7 +2397,6 @@ async def _upsert_promoted_theme(
     *,
     rs_avg: float | None,
     prior_days_active: int | None,
-    pct_above_20sma: float | None,
 ) -> bool:
     """F7 (2026-07-02 review) — the ONE shared write path for graduating a shadow cohort into
     live `mi_themes`, used by BOTH `promote_shadow_themes` (nightly auto-promote, batched lookup
@@ -2430,11 +2413,6 @@ async def _upsert_promoted_theme(
     that happens to share a canonicalized name. Byte-identical SQL/semantics to the pre-extraction
     copies; no behavior change.
 
-    #580: `pct_above_20sma` (the caller resolves it via `_breadth_at_birth`) is written so a
-    promoted theme is born with breadth like a rescored one; a required keyword so a new
-    caller must decide (None = unknown, stored NULL) rather than silently omit it. On a
-    same-day re-write it follows the row's (possibly changed) ticker set.
-
     Returns `wrote`: True on "INSERT 0 1" (row written), False on "INSERT 0 0" (guard skipped an
     existing native live theme — the caller's `noop` case)."""
     desc = thesis or desc_fallback
@@ -2443,15 +2421,14 @@ async def _upsert_promoted_theme(
     res = await conn.execute("""
         INSERT INTO mi_themes
             (theme_date, name, stage, score, rs_avg, description, tickers,
-             days_active, consecutive_accelerating, source, pct_above_20sma)
-        VALUES ($1, $2, 'Nascent', $3, $3, $4, $5, $6, 0, 'shadow_promoted', $7)
+             days_active, consecutive_accelerating, source)
+        VALUES ($1, $2, 'Nascent', $3, $3, $4, $5, $6, 0, 'shadow_promoted')
         ON CONFLICT (theme_date, name) DO UPDATE SET
             score = EXCLUDED.score, rs_avg = EXCLUDED.rs_avg,
             description = EXCLUDED.description, tickers = EXCLUDED.tickers,
-            days_active = EXCLUDED.days_active,
-            pct_above_20sma = EXCLUDED.pct_above_20sma
+            days_active = EXCLUDED.days_active
         WHERE mi_themes.source = 'shadow_promoted'
-    """, today, name, score, desc, tickers, days_active, pct_above_20sma)
+    """, today, name, score, desc, tickers, days_active)
     return str(res).endswith(" 1")   # "INSERT 0 1" on write; "INSERT 0 0" when the guard skipped a live theme
 
 
@@ -2644,8 +2621,7 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
             t["description"] = desc   # keep the ecosystem mapper's input (below) consistent
             wrote = await _upsert_promoted_theme(
                 conn, t["name"], members, desc, desc, today,
-                rs_avg=rs_avg, prior_days_active=prior_days_active,
-                pct_above_20sma=await _breadth_at_birth(t["name"], members, today))
+                rs_avg=rs_avg, prior_days_active=prior_days_active)
             if wrote:
                 n += 1
                 written.append(t)
@@ -2784,8 +2760,7 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
         t["description"] = desc   # keep the ecosystem mapper's input (below) consistent
         wrote = await _upsert_promoted_theme(
             conn, t["name"], t["tickers"], desc, desc, today,
-            rs_avg=rs_avg, prior_days_active=prior_days_active,
-            pct_above_20sma=await _breadth_at_birth(t["name"], t["tickers"], today))
+            rs_avg=rs_avg, prior_days_active=prior_days_active)
         await log_audit_event(
             "theme_operator_promoted",
             summary=(f"Operator promoted '{t['name']}' ({len(t['tickers'])} members)"
@@ -6909,8 +6884,6 @@ async def _score_new_theme(
     if _api_err:
         news_score = 15
 
-    pct_breadth = await _breadth_at_birth(theme["name"], tickers, today)
-
     return {
         "theme_date": today,
         "name": theme["name"],
@@ -6919,7 +6892,6 @@ async def _score_new_theme(
         "rs_avg": round(momentum, 1),
         "description": fresh_desc or theme.get("thesis", ""),
         "tickers": tickers,
-        "pct_above_20sma": pct_breadth,
     }
 
 

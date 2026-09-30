@@ -970,7 +970,7 @@ demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
 
-### 2026-09-30 — #580: every theme line shows its member count and breadth in plain words; newborn themes get breadth; the broken Δ is gone
+### 2026-09-30 — #580: every theme line shows its member count and breadth in plain words; the broken Δ is gone
 
 - **Shown now** (`/themes`, HUD Themes button, theme-engine rerun, evening brief — one renderer,
   `briefing._breadth_phrase`): `RS 84 · 6 stocks · 67% above 20-day avg`. Breadth is the stored nightly
@@ -988,16 +988,14 @@ demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
   `_compute_scored_themes` no longer emits `delta`; its `prior_scores` argument is kept (unused) so callers do not change.
 - **Also:** Retired is excluded explicitly (43 historical Retired rows still carry tickers); ties sort by
   `(-comp, name)` so the order is stable and matches the dashboard.
-- **Breadth at birth:** `_score_new_theme` (discovery and fat-theme-split births) and `_upsert_promoted_theme`
-  (nightly shadow promote + operator `/promotetheme`) now write `pct_above_20sma`, from the SAME
-  `get_ticker_breadth_above_sma20(tickers, today)` the rescore path calls (`_breadth_at_birth`; a lookup failure
-  stores NULL and never aborts the birth). `_upsert_promoted_theme` takes `pct_above_20sma` as a REQUIRED keyword.
-- **⚠ Side effect, not a rule change:** the breadth-decay override (`_rescore_existing_theme`) reads the PRIOR row's
-  `pct_above_20sma`; a newborn used to hand it NULL (treated as healthy), so it could not be forced Fading on its
-  first rescore. It now hands a real number: a newborn born below `_BREADTH_DECAY_THRESHOLD` (0.40) that is still
-  below it the next night is forced Fading one night earlier than before. Decay rule, threshold and
-  `constants.trimmed_mean` are untouched (the trim question stays #580 piece 3).
-- **Not done here:** the dashboard surface, and reconciling `/theme` with `theme_rank_evolution.py` (#580 remainder).
+- **The operator's dashboard** (portfolio-app2, Ecosystems view) ranks by the same rule and now shows the same
+  wording; its one divergence (Retired dropped BEFORE latest-row-per-name, #214) is fixed there the same day.
+- **Held, not shipped:** filling breadth at birth for newborn themes (7 of 122 were NULL on 09-29). It feeds the
+  breadth-decay stage rule, so it goes with the 0%-counted-as-healthy fix on Saturday 10-03 after a replay (money
+  path: stage → EP +10). The review of the first attempt also found it read an unchecked score date on an intraday
+  `/promotetheme` and nested a second pool connection — both to fix then.
+- **Ruled 2026-09-30:** the one-sided trim in `constants.trimmed_mean` stays (leaders light a theme up) —
+  `docs/analysis/580_theme_trim_and_breadth_2026-09-30.md`.
 
 ### 2026-09-29 (evening) — theme jobs back on Sonnet 5.5: reasoning in thinking, reasons after the verdict (#689)
 
