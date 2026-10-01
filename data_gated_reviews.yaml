@@ -12528,9 +12528,12 @@ reviews:
       (2026-08-28 on) 15 HIGH reads produced 0 (0 of 15 at the old ~10% rate happens by chance
       ~21% of the time — not proof of a zero rate), and judge-HIGHs fell from ~37/week to ~2.
       Preview of the split (NOT a verdict): 8 disagreed vs 74 agreed settled HIGHs, mean 5-day
-      MFE 11.75% vs 8.70%, medians 8.07% vs 7.56%, Mann-Whitney p=0.30. Decision (fork (i) of
-      three, the least change): keep the 15 bar and wait; re-rule 2026-12-31 if it still reads
-      8. Evidence: scripts/probes/_judge_div_zero/.
+      MFE 11.75% vs 8.70%, medians 8.07% vs 7.56%, Mann-Whitney p=0.30. DECISION (operator
+      "yes", 2026-10-01 — he judged a 12-31 wait unreasonable when 15 may never accrue): READ
+      NOW on the 8. No meaningful difference between disagreed-on and agreed-on HIGHs, so the
+      second opinion does NOT act on grades. The review stays only as a PASSIVE trigger — it
+      fires if 15 settled disagreements ever accrue under one generation — with no calendar
+      re-rule date. Evidence: scripts/probes/_judge_div_zero/.
     threshold: 15
     # 9 disagreements existed at registration, none settled. 15 SETTLED disagreements is
     # still thin for a verdict but enough to see a direction; a smaller bar would invite
