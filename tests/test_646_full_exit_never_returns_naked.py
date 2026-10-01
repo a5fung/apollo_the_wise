@@ -488,6 +488,7 @@ def _finalize_harness(monkeypatch, *, remaining, position=None, position_raises=
              "exits": [], "account_mode": "live", "stop_order_id": None}
     _pos = AsyncMock(return_value=position, side_effect=position_raises)
     monkeypatch.setattr(om.alpaca, "get_position", _pos)
+    monkeypatch.setattr(om, "_EXIT_RELEASE_SLEEP_S", 0)
     executed: list = []
 
     class _Conn:
@@ -813,6 +814,19 @@ async def test_books_at_zero_but_the_broker_still_holds_shares_keeps_the_trade_o
     assert "status = 'closed'" not in sql, "closed while the broker still holds shares"
     assert params[2] == 2, f"the row must keep what the broker holds, got {params[2]}"
     assert any("still holds 2" in m and "OPEN" in m for m in sent), sent
+
+
+@pytest.mark.asyncio
+async def test_a_position_read_that_lags_the_fill_still_closes(monkeypatch):
+    """The fill event can land a moment before the positions endpoint reflects it: first read
+    still shows the 4, the next shows none → closed, no false "kept open" page."""
+    executed, sent = _finalize_harness(monkeypatch, remaining=4)
+    om.alpaca.get_position.side_effect = [{"qty": 4.0, "qty_available": 0.0}, None]
+    await om.finalize_full_exit(404, 4, 70.00, "sell-1", "sma_trail_stop")
+
+    sql = next(a[0] for a in executed if "UPDATE mi_live_trades" in a[0])
+    assert "status = 'closed'" in sql
+    assert not any("OPEN" in m for m in sent), sent
 
 
 @pytest.mark.asyncio

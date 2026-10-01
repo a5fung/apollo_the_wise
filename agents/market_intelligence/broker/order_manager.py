@@ -5777,6 +5777,9 @@ async def run_depth_open_sales() -> list[dict]:
     return results
 
 
+_CLOSE_FLAT_READS = 3   # #687 review fix 8: reads of the position before a full exit closes a row
+
+
 async def finalize_full_exit(
     trade_id: int,
     filled_qty: int,
@@ -5868,14 +5871,22 @@ async def _finalize_full_exit_locked(
     # (the clamp above is exactly that disagreement). FLAT → close, as before. Still HOLDING →
     # keep the row open at what the broker holds. UNREADABLE → keep it open (status unchanged)
     # and page; the next position sync settles it. Never close on an unread broker.
+    # A position that still shows shares is re-read a few times first (the fill event can land a
+    # moment before the positions endpoint reflects it), and the row is kept at no more than the
+    # books held before this fill — bounded by both sides, never inflated by another reading.
     close_refused: str | None = None
     broker_qty_at_close: float | None = None
     if new_remaining <= 0:
-        _pos = await _read_broker_position(ticker, account_mode)
+        for _attempt in range(_CLOSE_FLAT_READS):
+            _pos = await _read_broker_position(ticker, account_mode)
+            if _pos.state != POSITION_HELD:
+                break
+            if _attempt + 1 < _CLOSE_FLAT_READS:
+                await asyncio.sleep(_EXIT_RELEASE_SLEEP_S)
         if _pos.state == POSITION_HELD:
             close_refused = "broker_still_holds"
             broker_qty_at_close = _pos.qty
-            new_remaining = _whole_shares(_pos.qty)
+            new_remaining = _whole_shares(min(_pos.qty, float(prior_remaining)))
         elif _pos.state == POSITION_UNREADABLE:
             close_refused = "broker_unreadable"
 

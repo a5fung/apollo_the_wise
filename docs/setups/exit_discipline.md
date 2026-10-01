@@ -427,9 +427,11 @@ behaviour test confirmed red with the fix removed (mutation runs in the commits)
 - **Fix 8 — a full exit closes the row only on a FLAT broker.** Part A (b) clamped the books at
   zero and closed without looking. A paper soft reservation (the evening sync writes a qty already
   reduced by a queued sell) could then record a closed trade while the broker still held the
-  profit-take third. At zero the finalizer now reads the position: flat → closed as before; still
-  holding → the row stays OPEN at the broker's count (`full_exit_close_refused` + page);
-  unreadable → stays open, paged, the next position sync settles it.
+  profit-take third. At zero the finalizer now reads the position (up to 3 reads, so a positions
+  endpoint lagging the fill event does not count): flat → closed as before; still holding → the
+  row stays OPEN at `min(broker count, the books' count before this fill)`
+  (`full_exit_close_refused` + page); unreadable → stays open, paged, the next position sync
+  settles it.
 
 **Open for the operator — NOT changed here (his call):**
 - The 2% daily-loss limit counts only `status='closed'` trades: a loss on the two thirds sold
