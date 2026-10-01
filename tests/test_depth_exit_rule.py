@@ -669,6 +669,214 @@ async def test_an_unfilled_auction_order_on_a_flat_account_places_no_stop(monkey
     assert any("NO position" in m for m in h["sent"]), h["sent"]
 
 
+@pytest.mark.asyncio
+async def test_a_restore_rejected_because_price_is_through_the_stop_sells_at_market(monkeypatch):
+    """#687 review fix 3 (b): the opg died unfilled and the stop restore is REJECTED — the price
+    is already below the depth stop. The exit rule had already decided to sell (that is what the
+    opg was); do what a triggered stop does: sell the free shares at market at once, as a
+    `full_exit` row (its fill commits through `finalize_full_exit`), and page."""
+    from agents.market_intelligence.broker import trade_stream as ts
+    from tests.test_oco_cancel_handler_566 import PLAIN_RAW, _cancel_data, _pending
+    from tests.test_oco_cancel_handler_566 import _wire as _ws_wire
+
+    pending = dict(_pending(purpose="full_exit", raw=PLAIN_RAW, trade_id=501),
+                   exit_reason="sma_trail_stop")
+    h = _ws_wire(monkeypatch, pending_exit_row=pending,
+                 trade_row={"id": 501, "ticker": "KOD", "remaining_shares": 4,
+                            "stop_price": DEPTH_STOP, "stop_order_id": None},
+                 position_qty=4.0)
+    h["place_stop"].side_effect = Exception(
+        'stop price must be less than current price (stop_price: "67.58", last: "66.10")')
+    monkeypatch.setattr(om, "get_pending_exit_qty", AsyncMock(return_value=0))
+    monkeypatch.setattr(om, "_read_preserved_dead_stop", AsyncMock(return_value=None))
+    close = AsyncMock(return_value={"id": "mkt-1", "status": "accepted"})
+    monkeypatch.setattr(om.alpaca, "close_position", close)
+    sale_rows: list = []
+
+    class _C:
+        async def execute(self, *a, **k):
+            sale_rows.append(a)
+
+    class _A:
+        async def __aenter__(self):
+            return _C()
+
+        async def __aexit__(self, *e):
+            return False
+
+    class _P:
+        def acquire(self, *a, **k):
+            return _A()
+
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=_P()))
+    monkeypatch.setattr(om, "log_audit_event", AsyncMock())
+
+    await ts._handle_cancel_or_reject(_cancel_data(order_id="opg-1"), "canceled", "live")
+
+    close.assert_awaited_once()
+    assert close.await_args.kwargs.get("qty") == 4
+    row = next(a for a in sale_rows if "INSERT INTO mi_live_orders" in a[0])
+    assert "'full_exit'" in row[0] and row[2] == "mkt-1" and row[6] == "sma_trail_stop"
+    assert any("selling 4 sh at market" in m for m in h["sent"]), h["sent"]
+
+
+# ── #687 review fix 3 (a): the 09:00 watchdog must not dedup a queued sale past the open ─────
+
+def _watchdog_world(monkeypatch, *, orders_per_tick, place_raises=None, position_qty=4.0):
+    """One depth trade whose stop was cancelled for the 19:01 opening-auction sale (pointer
+    NULL), driven through `_stop_ack_timeout_watchdog_job` tick by tick. The fake DB honours
+    the watchdog's once-a-day dedup (the three event types) against the audit rows it writes,
+    and lists one `full_exit` mirror row (the opg). `orders_per_tick[i]` is what the broker
+    lists on tick i."""
+    from datetime import datetime
+
+    from agents.market_intelligence import briefing, db
+
+    audit: list = []
+    placed: list = []
+    sent: list = []
+    stuck = {"id": 501, "ticker": "KOD", "account_mode": "live", "orb_low": 50.0,
+             "entry_shares": 6, "remaining_shares": 4, "stop_price": DEPTH_STOP,
+             "filled_at": datetime(2026, 9, 28, 13, 31), "entry_order_id": "entry-1"}
+    _DEDUP = ("stop_ack_timeout_remediated", "stop_ack_remediation_failed",
+              "stop_ack_broker_covered")
+
+    class _WConn:
+        async def fetch(self, *a, **k):
+            return [stuck]
+
+        async def fetchrow(self, *a, **k):
+            return {"status": "filled", "stop_order_id": None}
+
+        async def fetchval(self, q, *a, **k):
+            if "stop_ack_timeout_remediated" in q:          # the once-a-day dedup
+                return 1 if any(e in _DEDUP for e, *_ in audit) else None
+            if "FROM mi_live_orders" in q:                   # the opg mirror row
+                return "sma_trail_stop"
+            return None
+
+    class _WAcq:
+        async def __aenter__(self):
+            return _WConn()
+
+        async def __aexit__(self, *e):
+            return False
+
+    class _WPool:
+        def acquire(self, *a, **k):
+            return _WAcq()
+
+    @asynccontextmanager
+    async def _try_lock(_tid):
+        yield True
+
+    async def _audit(event, summary="", detail=None, **k):
+        audit.append((event, summary, detail))
+
+    async def _tg(msg, *a, **k):
+        sent.append(msg)
+
+    tick = {"n": 0}
+
+    async def _orders(*a, **k):
+        return [dict(o) for o in orders_per_tick[min(tick["n"], len(orders_per_tick) - 1)]]
+
+    async def _place(ticker, qty, price, account_mode=None, **k):
+        placed.append((qty, price))
+        if place_raises:
+            raise place_raises
+        return {"id": "fallback-1"}
+
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=_WPool()))
+    monkeypatch.setattr(db, "log_audit_event", _audit)
+    monkeypatch.setattr(om, "log_audit_event", _audit)
+    monkeypatch.setattr(briefing, "send_telegram_message", _tg)
+    monkeypatch.setattr(om, "_trade_advisory_try_lock", _try_lock)
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock(return_value=True))
+    monkeypatch.setattr(om, "_read_preserved_dead_stop", AsyncMock(return_value=None))
+    monkeypatch.setattr(om.alpaca, "get_open_orders", _orders)
+    monkeypatch.setattr(om.alpaca, "get_position", AsyncMock(
+        return_value=None if position_qty is None else {"qty": position_qty,
+                                                         "qty_available": position_qty}))
+    monkeypatch.setattr(om.alpaca, "place_stop_order", _place)
+
+    async def _run_tick():
+        from agents.market_intelligence import scheduler
+        await scheduler._stop_ack_timeout_watchdog_job()
+        tick["n"] += 1
+
+    return {"audit": audit, "placed": placed, "sent": sent, "tick": _run_tick}
+
+
+_OPG = {"id": "opg-1", "side": "sell", "type": "market", "time_in_force": "opg", "qty": 4,
+        "filled_qty": 0, "status": "accepted", "order_class": "simple", "stop_price": None}
+
+
+@pytest.mark.asyncio
+async def test_a_queued_auction_sale_is_not_deduped_past_the_open(monkeypatch):
+    """THE NAKED WINDOW: 09:00 the opg covers the 4 shares → the old watchdog wrote
+    `stop_ack_broker_covered` (in its 24h dedup) and never looked again. 09:30 the opg is
+    cancelled unfilled and the stream's restore is missed → nothing re-protected all session.
+    Now the 09:00 coverage is noted WITHOUT burning the day, and the first tick after the opg
+    is gone re-places the stop — at the trade's own depth stop, never the entry-day orb_low."""
+    w = _watchdog_world(monkeypatch, orders_per_tick=[[_OPG], []])
+
+    await w["tick"]()                                   # 09:00 — the opg is queued
+    assert w["placed"] == []
+    assert not [e for e, *_ in w["audit"] if e == "stop_ack_broker_covered"], (
+        "a queued sale was recorded as the day's coverage — the dedup would blind the watchdog")
+    assert [e for e, *_ in w["audit"] if e == "stop_ack_covered_by_exit_order"]
+
+    await w["tick"]()                                   # 09:31 — the opg died unfilled
+    assert w["placed"] == [(4, DEPTH_STOP)], w["placed"]
+    assert any("closing order no longer live" in m for m in w["sent"]), w["sent"]
+
+
+@pytest.mark.asyncio
+async def test_after_the_open_a_stop_through_the_market_sells_at_market(monkeypatch):
+    """Fix 3 (b) on the watchdog path: the re-protect is rejected because the price is already
+    below the depth stop — sell the free shares at market now and page."""
+    w = _watchdog_world(monkeypatch, orders_per_tick=[[]], place_raises=Exception(
+        "stop price must be less than current price"))
+    close = AsyncMock(return_value={"id": "mkt-2", "status": "accepted"})
+    monkeypatch.setattr(om.alpaca, "close_position", close)
+    rows: list = []
+
+    class _C:
+        async def execute(self, *a, **k):
+            rows.append(a)
+
+    class _A:
+        async def __aenter__(self):
+            return _C()
+
+        async def __aexit__(self, *e):
+            return False
+
+    class _P:
+        def acquire(self, *a, **k):
+            return _A()
+
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=_P()))
+
+    await w["tick"]()
+
+    close.assert_awaited_once()
+    assert close.await_args.kwargs.get("qty") == 4
+    assert any("selling 4 sh at market" in m for m in w["sent"]), w["sent"]
+    assert not any("CRITICAL" in m for m in w["sent"]), w["sent"]
+
+
+@pytest.mark.asyncio
+async def test_the_watchdog_never_places_a_stop_on_a_flat_position(monkeypatch):
+    """The opg FILLED a moment before its fill was committed: the row still says 4 sh, the
+    broker is flat. A sell stop there would be a short sale — place nothing."""
+    w = _watchdog_world(monkeypatch, orders_per_tick=[[]], position_qty=None)
+    await w["tick"]()
+    assert w["placed"] == []
+    assert [e for e, *_ in w["audit"] if e == "stop_ack_broker_flat"]
+
+
 # ══════════════════════════════════════════════════════════════════════════════════════════
 # 6. The 19:01 job is registered where the broker lives
 # ══════════════════════════════════════════════════════════════════════════════════════════

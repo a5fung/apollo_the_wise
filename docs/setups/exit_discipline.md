@@ -376,6 +376,25 @@ behaviour test confirmed red with the fix removed (mutation runs in the commits)
   "uncertain" branch withholds the breakeven price). It is now floored like the stream's restore
   (`_apply_reprotect_floor`, the cancelled stop's id, `consult_dead_stop=True`), and the page
   states the price actually placed.
+- **Fix 3 — a queued sale no longer blinds the stop-ACK watchdog past the open; a stop the price
+  is through becomes the sale.** At 09:00 the watchdog counted the queued `opg` sell as coverage
+  and wrote `stop_ack_broker_covered` — in its own 24-hour dedup — so if the opg was cancelled
+  unfilled at 09:30 and the stream's restore failed or was missed, nothing re-protected during
+  market hours. Coverage is now split: stops and OCO parents (own stop leg) are PROTECTIVE; when
+  the shares are covered only with help from a closing order, the watchdog writes
+  `stop_ack_covered_by_exit_order` (hourly-throttled, NOT in the dedup) and looks again every 30
+  seconds. Once a trade with a `full_exit` order sent in the last day is uncovered, it re-places
+  the stop through its own remediation path — at the row's `stop_price` floored to the last
+  broker level (`_apply_reprotect_floor`, `consult_dead_stop=True`), NOT the entry-day `orb_low`
+  (on a trailed position that would lower the stop — the reason widening this watchdog was
+  barred, #649) — sized `min(books, broker − live resting sells)`; flat or unreadable → nothing
+  placed (`stop_ack_broker_flat` / `stop_ack_broker_unreadable`, hourly). If that re-protect, or
+  the stream's restore after a cancelled/expired closing order, is rejected because the price is
+  already below the stop (`_is_stop_above_market`), the free shares are SOLD AT MARKET at once
+  (`_sell_free_shares_after_stop_breach`: a `full_exit` row + `stop_breach_market_sale` audit +
+  page) — what the stop would have done; the exit rule had already decided to sell. Scoped to
+  those two paths only: the fresh-entry watchdog path and `_ensure_stop_coverage` keep their
+  converge-and-page behaviour (no decision to sell exists there).
 - **Fix 8 — a full exit closes the row only on a FLAT broker.** Part A (b) clamped the books at
   zero and closed without looking. A paper soft reservation (the evening sync writes a qty already
   reduced by a queued sell) could then record a closed trade while the broker still held the
