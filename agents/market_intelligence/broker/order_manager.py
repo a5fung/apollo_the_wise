@@ -5053,25 +5053,47 @@ def _restore_outcome_line(result: RestoreResult) -> str:
     return "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required."
 
 
-async def _full_exit_skip_already_paged(trade_id: int, skip_code: str) -> bool:
-    """Has this exact full-exit skip already been paged for this trade?
+# #687 review fix 4: the ONE skip kind deduped for the trade's whole life — the same resting
+# profit-take third holds every share every evening until it resolves (GTC, possibly weeks), and
+# re-telling him that daily is noise. Every other skip is a fresh fact each ET day.
+_FULL_EXIT_SKIP_LIFETIME_CODES = frozenset({"resting_orders_hold_all_shares"})
 
-    A trade held open under a resting profit-take third can reach the close-below-line exit every
-    evening until that third resolves (GTC, possibly weeks). The audit row lands every time; the
-    page goes out once per trade per skip code. Checked BEFORE this run's own row is written
-    (hence `> 0`). Fails OPEN — a duplicate page is a nuisance, a missed one on a money path is
-    not."""
+
+async def _full_exit_skip_already_paged(trade_id: int, skip_code: str, today=None) -> bool:
+    """Has this exact full-exit skip already been paged for this trade — TODAY (ET)?
+
+    The audit row lands every time; the page goes out once per trade per skip code per ET
+    session (`_coverage_gap_already_alerted_today`'s scope: a skip that happened yesterday and
+    again today is a fresh fact). #687 review fix 4: it was once per trade for LIFE, so a broker
+    outage that blocked Tuesday's sale was never paged again on Wednesday. Only
+    `resting_orders_hold_all_shares` keeps the lifetime dedupe (the same third, every evening).
+    Checked BEFORE this run's own row is written (hence `> 0`). Fails OPEN — a duplicate page
+    is a nuisance, a missed one on a money path is not."""
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            n = await conn.fetchval(
-                "SELECT COUNT(*) FROM mi_audit_log "
-                "WHERE event_type = 'full_exit_skipped' "
-                "AND detail IS NOT NULL AND detail <> '' "
-                "AND detail::jsonb ->> 'trade_id' = $1::text "
-                "AND detail::jsonb ->> 'skip_code' = $2",
-                str(trade_id), skip_code,
-            )
+            if skip_code in _FULL_EXIT_SKIP_LIFETIME_CODES:
+                n = await conn.fetchval(
+                    "SELECT COUNT(*) FROM mi_audit_log "
+                    "WHERE event_type = 'full_exit_skipped' "
+                    "AND detail IS NOT NULL AND detail <> '' "
+                    "AND detail::jsonb ->> 'trade_id' = $1::text "
+                    "AND detail::jsonb ->> 'skip_code' = $2",
+                    str(trade_id), skip_code,
+                )
+            else:
+                if today is None:
+                    from agents.market_intelligence.collector import et_today
+                    today = et_today()
+                n = await conn.fetchval(
+                    "SELECT COUNT(*) FROM mi_audit_log "
+                    "WHERE event_type = 'full_exit_skipped' "
+                    "AND detail IS NOT NULL AND detail <> '' "
+                    "AND detail::jsonb ->> 'trade_id' = $1::text "
+                    "AND detail::jsonb ->> 'skip_code' = $2 "
+                    "AND (created_at AT TIME ZONE 'America/New_York')::date = $3",
+                    str(trade_id), skip_code, today,
+                )
         return bool(n and int(n) > 0)
     except Exception as e:   # loud-ok: logged; failing open only risks a duplicate page
         logger.warning(f"full-exit skip dedupe check failed (will page): {e}")
@@ -5082,8 +5104,9 @@ async def _record_full_exit_skip(
     trade_id: int, trade: dict, reason: str, skip_code: str, sentence: str, detail: dict,
 ) -> None:
     """#687 (a): a full exit that does NOT sell is never silent — audit row every time, page once
-    per trade per skip code. (Before, the resting-profit-take skip was an INFO log line and the
-    16:45 caller ignored the False.)"""
+    per trade per skip code per ET day (lifetime only for `resting_orders_hold_all_shares`,
+    #687 review fix 4). (Before, the resting-profit-take skip was an INFO log line and the 16:45
+    caller ignored the False.)"""
     ticker = trade["ticker"]
     account_mode = trade.get("account_mode") or current_account_mode()
     already = await _full_exit_skip_already_paged(trade_id, skip_code)

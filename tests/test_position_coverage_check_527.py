@@ -289,6 +289,27 @@ async def test_a_plain_resting_limit_is_still_not_protection():
 
 
 @pytest.mark.asyncio
+async def test_a_queued_sale_the_broker_lists_as_pending_cancel_is_not_protection():
+    """#687 review fix 6: OUR queued closing order, but the broker is already cancelling it
+    (`pending_cancel`) — it will not sell those shares, so it covers nothing. Still a gap,
+    paged. (Positive control: the same order `accepted` covers — the test above.)"""
+    from agents.market_intelligence.broker import order_manager as om
+
+    trades = [_trade(1, "OKTA", 2.0)]
+    orders = {"OKTA": [_queued_sell("sell-1", 2.0, status="pending_cancel")]}
+    ctx, _audited, telegram_mock, _ = _wire(trades, orders, pending_full_exit_ids=["sell-1"])
+
+    result = await _run_coverage_check(ctx)
+
+    assert len(result["gaps"]) == 1, result
+    telegram_mock.assert_called_once()
+    with patch.object(om, "_pending_full_exit_order_ids", AsyncMock(return_value={"sell-1"})):
+        assert await om._queued_full_exit_qty(1, orders["OKTA"]) == 0.0
+        assert await om._queued_full_exit_qty(
+            1, [_queued_sell("sell-1", 2.0, status="accepted")]) == 2.0
+
+
+@pytest.mark.asyncio
 async def test_a_mirror_full_exit_the_broker_no_longer_lists_is_still_a_gap():
     """Both halves are required: the mirror says a sale is pending, but the broker has no such
     live order (rejected/cancelled at release) — the shares are bare, so it pages."""

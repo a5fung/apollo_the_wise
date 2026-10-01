@@ -554,6 +554,32 @@ async def test_the_sale_is_an_opening_auction_order_sent_under_the_lock(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_the_auction_sale_waits_for_the_broker_to_release_the_shares(monkeypatch):
+    """#687 review fix 5 — the #646 race on the depth path. Alpaca acks the stop's cancel before
+    it settles: the shares stay `held_for_orders` for a moment, and an opg sell sent into that
+    moment is rejected for insufficient quantity. The free count here rises across polls
+    (0, 0, then 6); the auction sell must go out only AFTER the poll that shows them free."""
+    h = _sale_wire(monkeypatch)
+    polls = {"after_cancel": 0}
+
+    async def _pos(*a, **k):
+        if any(e[0] == "cancel" for e in h["events"]):
+            polls["after_cancel"] += 1
+            free = 6 if polls["after_cancel"] >= 3 else 0
+            h["events"].append(("poll", free))
+            return {"qty": 6, "qty_available": free}
+        return {"qty": 6, "qty_available": 0}       # sizing read: the stop still holds them
+
+    h["pos"].side_effect = _pos
+    assert await om.execute_depth_open_sale(501) is True
+
+    names = [e[0] for e in h["events"]]
+    released_at = h["events"].index(("poll", 6))
+    assert names.count("poll") >= 3, h["events"]
+    assert names.index("cancel") < released_at < names.index("opg"), h["events"]
+
+
+@pytest.mark.asyncio
 async def test_a_resting_profit_take_third_keeps_its_shares(monkeypatch):
     """Ruled: the OCO third keeps its own target and breakeven stop. Sell the position minus
     the third — 6 held, 2 under the OCO → 4."""

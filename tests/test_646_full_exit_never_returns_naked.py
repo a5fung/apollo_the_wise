@@ -545,6 +545,80 @@ async def test_a_full_exit_fill_of_everything_still_closes_the_trade(monkeypatch
     assert any("Closed" in m for m in sent), sent
 
 
+# ── #687 review fix 4: a skip page is deduped per ET day, not for the trade's whole life ─────
+
+def _skip_world(monkeypatch):
+    """A fake mi_audit_log that HONOURS the dedupe query: rows carry the ET date they were
+    written on, and the date clause filters them only when the SQL asks for it."""
+    import json as _json
+    from datetime import date
+
+    from agents.market_intelligence import collector
+
+    rows: list = []          # (event, trade_id, skip_code, et_date)
+    day = {"today": date(2026, 10, 6)}
+
+    class _C:
+        async def fetchval(self, q, *a, **k):
+            hits = [r for r in rows if r[0] == "full_exit_skipped"
+                    and str(r[1]) == a[0] and r[2] == a[1]]
+            if "AT TIME ZONE 'America/New_York'" in q:
+                hits = [r for r in hits if r[3] == a[2]]
+            return len(hits)
+
+    class _A:
+        async def __aenter__(self): return _C()
+        async def __aexit__(self, *e): return False
+
+    class _P:
+        def acquire(self, *a, **k): return _A()
+
+    async def _audit(event, summary="", detail=None, **k):
+        d = _json.loads(detail)
+        rows.append((event, d["trade_id"], d["skip_code"], day["today"]))
+
+    sent: list = []
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=_P()))
+    monkeypatch.setattr(om, "log_audit_event", _audit)
+    monkeypatch.setattr(om, "mode_prefix", lambda m: "")
+    monkeypatch.setattr(om, "send_telegram_message",
+                        AsyncMock(side_effect=lambda m, *a, **k: sent.append(m)))
+    monkeypatch.setattr(collector, "et_today", lambda: day["today"])
+    return day, sent
+
+
+@pytest.mark.asyncio
+async def test_the_same_skip_on_two_days_pages_twice(monkeypatch):
+    """THE BUG: a broker outage blocks Tuesday's sale (paged) and Wednesday's too — the lifetime
+    dedupe stayed silent on Wednesday. Twice on the same day still pages once."""
+    from datetime import timedelta
+
+    day, sent = _skip_world(monkeypatch)
+    trade = {"id": 382, "ticker": "OKTA", "account_mode": "live"}
+    await om._record_full_exit_skip(382, trade, "sma_trail_stop", "broker_unreadable", "x", {})
+    await om._record_full_exit_skip(382, trade, "sma_trail_stop", "broker_unreadable", "x", {})
+    assert len(sent) == 1, "the same day must page once"
+    day["today"] += timedelta(days=1)
+    await om._record_full_exit_skip(382, trade, "sma_trail_stop", "broker_unreadable", "x", {})
+    assert len(sent) == 2, "a skip on a new day is a fresh fact and must page again"
+
+
+@pytest.mark.asyncio
+async def test_the_resting_third_skip_keeps_its_lifetime_dedupe(monkeypatch):
+    """The one exception: the same profit-take third holds every share every evening until it
+    resolves — told once for the trade's life."""
+    from datetime import timedelta
+
+    day, sent = _skip_world(monkeypatch)
+    trade = {"id": 382, "ticker": "OKTA", "account_mode": "live"}
+    await om._record_full_exit_skip(382, trade, "sma_trail_stop",
+                                    "resting_orders_hold_all_shares", "x", {})
+    day["today"] += timedelta(days=1)
+    await om._record_full_exit_skip(382, trade, "sma_trail_stop",
+                                    "resting_orders_hold_all_shares", "x", {})
+    assert len(sent) == 1, sent
+
+
 # ── #687 review fix 9: only a profit-take that carries its OWN stop is left alone ─────────────
 #
 # The ruling (leave the third alone) assumed an OCO with its own breakeven stop. With

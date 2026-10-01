@@ -395,6 +395,14 @@ behaviour test confirmed red with the fix removed (mutation runs in the commits)
   page) — what the stop would have done; the exit rule had already decided to sell. Scoped to
   those two paths only: the fresh-entry watchdog path and `_ensure_stop_coverage` keep their
   converge-and-page behaviour (no decision to sell exists there).
+- **Fix 4 — a full-exit skip pages once per trade per skip kind per ET DAY.** Part A deduped it
+  for the trade's whole life, so a broker outage that blocked Tuesday's sale was silent on
+  Wednesday. Bounded like `_coverage_gap_already_alerted_today`; only
+  `resting_orders_hold_all_shares` (the same third, every evening) keeps the lifetime dedupe.
+- **Fixes 5, 6 — tests only (behaviour was right, unpinned):** the depth sale's
+  wait-for-release (`_await_shares_released`) and part A (f)'s broker-status filter (a queued
+  sale the broker lists `pending_cancel` is NOT protection) now each have a test that fails
+  when the line is removed.
 - **Fix 7 — a depth trade held only by its OCO third is not marked every evening.** When the
   only remaining shares are the profit-take third resting under an OCO (its own target and
   breakeven stop — the mirror's pending `partial_exit` rows recorded as OCO cover the whole
@@ -422,6 +430,20 @@ behaviour test confirmed red with the fix removed (mutation runs in the commits)
   profit-take third. At zero the finalizer now reads the position: flat → closed as before; still
   holding → the row stays OPEN at the broker's count (`full_exit_close_refused` + page);
   unreadable → stays open, paged, the next position sync settles it.
+
+**Open for the operator — NOT changed here (his call):**
+- The 2% daily-loss limit counts only `status='closed'` trades: a loss on the two thirds sold
+  beside a resting OCO third stays invisible to the check until that third exits.
+- The stream's "Stop order CANCELLED — Position unprotected" page on every intentional sale, and
+  the 16:20 / 09:35 refresh's "No stop on X" for a trade held open only by its OCO third — both
+  still fire.
+- A depth "sell at the next open" mark dated before today's ET session is never sold on: it is
+  cleared, nothing is cancelled or sold, and he is paged (`depth_sale_mark_stale`) — part B's
+  default, kept.
+- A stop placed or restored on these paths is now SKIPPED (paged) when the broker cannot be
+  read, instead of being sized from the books (fix 1); and a closing order that died with the
+  price already through the stop now SELLS at market (fix 3) — both per the review's
+  instruction, his to confirm.
 
 **Status**: built + unit-tested, not deployed (same deploy as A/B: `broker/` + `scheduler.py` →
 `deploy.sh execution` AND `market-agent`).
