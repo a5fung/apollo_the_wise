@@ -527,7 +527,7 @@ own lines (418 cases, 0 mismatches — `scripts/probes/_687/depth_stop_golden.py
   audit, `_restore_stop_after_failed_exit` at the stop's price (sized from the broker, #687 A c), page.
 - **Expiry.** An unfilled opg is cancelled by the broker after the open → `trade_stream._handle_cancel_or_reject`
   §3 (full-exit cancel/expiry) restores the stop at its price, sized from the broker, and pages "Close order
-  CANCELLED … Stop re-placed @ $X for N sh". No new stream code: the path #687 A fixed is the one it takes.
+  CANCELLED … Stop re-placed @ $X for N sh". No new stream code: the path #687 A fixed is the one it takes (since the #687 round-2 review it runs under the per-trade lock, bounded wait).
 - **Fill.** The auction fill runs `finalize_full_exit` (#687 A b: the row stays open at the third's size if a
   profit-take third rests; closes at zero otherwise).
 
