@@ -2129,6 +2129,48 @@ async def _apply_reprotect_floor(
     return price
 
 
+# ── #687 review (2026-10-01): a SELL stop is never sized beyond what the broker holds ──────────
+#
+# `mi_live_trades.remaining_shares` can overstate the position (an opening-auction sale that
+# partly filled before the rest was cancelled, a paper soft reservation, a missed fill event).
+# A stop sized from the books alone is then too big; on a FLAT position it is worse than too
+# big — a sell stop on no shares is a SHORT-SALE order. Every stop placement on the exit paths
+# reads the position first: flat → place nothing, unreadable → place nothing (the size would
+# be a guess) — both audited + paged by the caller, never silent.
+POSITION_HELD = "held"
+POSITION_FLAT = "flat"
+POSITION_UNREADABLE = "unreadable"
+
+
+class _BrokerPosition(NamedTuple):
+    state: str               # POSITION_HELD | POSITION_FLAT | POSITION_UNREADABLE
+    qty: float               # the long position's share count when HELD, else 0
+    error: "str | None"
+
+
+async def _read_broker_position(ticker: str, account_mode: str) -> _BrokerPosition:
+    """The broker's position for `ticker`, with FLAT and UNREADABLE told apart.
+
+    `alpaca.get_position` returns None for both by default; `raise_on_error=True` keeps the
+    404 → None (flat) and re-raises a real read failure. A zero or negative quantity is FLAT
+    for a sell stop's purposes (there is nothing long to protect)."""
+    try:
+        pos = await alpaca.get_position(ticker, account_mode=account_mode, raise_on_error=True)
+    except Exception as e:   # loud-ok: returned as UNREADABLE — every caller skips + pages
+        logger.warning(f"_read_broker_position: {ticker} position read failed — {e}")
+        return _BrokerPosition(POSITION_UNREADABLE, 0.0, str(e)[:300])
+    if pos is None:
+        return _BrokerPosition(POSITION_FLAT, 0.0, None)
+    try:
+        qty = float(pos.get("qty") or 0)
+    except (TypeError, ValueError, AttributeError) as e:
+        logger.warning(f"_read_broker_position: {ticker} position qty unparseable — {e}")
+        return _BrokerPosition(POSITION_UNREADABLE, 0.0, f"unparseable qty: {e}")
+    if qty <= 0:
+        return _BrokerPosition(POSITION_FLAT, 0.0, None)
+    return _BrokerPosition(POSITION_HELD, qty, None)
+
+
 async def update_stop(
     trade_id: int, new_stop_price: float, stop_source: str | None = None,
 ) -> bool:
@@ -2196,6 +2238,60 @@ async def update_stop(
             }),
         )
         return False
+
+    # ── #687 review (2026-10-01): size against the BROKER position, before anything is cancelled ──
+    # min(books, broker) − pending exits. The books can overstate (an auction sale that partly
+    # filled before its remainder was cancelled); on a FLAT position a sell stop is a short-sale
+    # order. Flat or unreadable → nothing is cancelled, nothing placed: the existing stop stays
+    # exactly as it is, and he is told.
+    _pos = await _read_broker_position(ticker, account_mode)
+    if _pos.state != POSITION_HELD:
+        _why = ("the broker shows NO position" if _pos.state == POSITION_FLAT
+                else "the broker position could not be read")
+        logger.warning(f"update_stop: {ticker} — {_why}; books show "
+                       f"{trade['remaining_shares']} sh; no stop change made")
+        await log_audit_event(
+            "stop_update_aborted",
+            f"{ticker}: {_why} (books {trade['remaining_shares']} sh) — no stop change made",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "reason": f"broker_position_{_pos.state}",
+                "remaining_shares": float(trade["remaining_shares"]),
+                "pending_exit_qty": held, "new_stop_price": new_stop_price,
+                "old_stop_id": old_stop_id, "error": _pos.error,
+            }),
+        )
+        await send_telegram_message(md_to_html(
+            f"{mode_prefix(account_mode)}⚠️ {ticker}: stop NOT moved — {_why}, while the "
+            f"books show {float(trade['remaining_shares']):.0f} sh. Nothing was cancelled or "
+            f"placed (a sell stop on a flat position would be a short sale). Check the position."
+        ), parse_mode="HTML")
+        return False
+    _broker_cap = _whole_shares(min(float(trade["remaining_shares"]), _pos.qty)) - held
+    if _broker_cap < effective_qty:
+        logger.warning(f"update_stop: {ticker} — the broker holds {_pos.qty:g} sh against "
+                       f"{trade['remaining_shares']} on the books; stop sized to {_broker_cap}")
+        await log_audit_event(
+            "stop_sized_to_broker_position",
+            f"{ticker}: books {trade['remaining_shares']} sh, broker {_pos.qty:g} — stop sized "
+            f"{max(_broker_cap, 0)} (was {effective_qty})",
+            json.dumps({"trade_id": trade_id, "ticker": ticker,
+                        "remaining_shares": float(trade["remaining_shares"]),
+                        "broker_qty": _pos.qty, "pending_exit_qty": held,
+                        "db_effective_qty": effective_qty, "sized_qty": _broker_cap}),
+        )
+        effective_qty = _broker_cap
+        if effective_qty <= 0:
+            await log_audit_event(
+                "stop_update_aborted",
+                f"{ticker}: nothing free at the broker to stop (broker {_pos.qty:g} sh, "
+                f"{held} held by pending exits) — no stop change made",
+                json.dumps({"trade_id": trade_id, "ticker": ticker,
+                            "reason": "broker_position_fully_held",
+                            "broker_qty": _pos.qty, "pending_exit_qty": held,
+                            "new_stop_price": new_stop_price}),
+            )
+            return False
 
     # ── Raise-only floor against the CURRENT BROKER stop (bug fix 2026-08-10) ──
     # A protective long stop is raise-only — signed intent; see the breakeven
@@ -4766,20 +4862,27 @@ def _live_sell_orders_held_qty(open_orders: list, *, exclude_ids=()) -> float:
     )
 
 
+QTY_SOURCE_BROKER = "broker"
+QTY_SOURCE_FLAT = "flat"                  # the broker shows NO position
+QTY_SOURCE_UNREADABLE = "unreadable"      # the position or its open orders could not be read
+
+
 async def _broker_free_qty_for_restore(
-    ticker: str, account_mode: str, fallback_qty: float, *, exclude_ids=(),
+    ticker: str, account_mode: str, db_qty: float, *, exclude_ids=(),
 ) -> tuple[int, str]:
     """#687 (c) — how many shares a re-placed protective stop can actually hold:
-    the BROKER position minus the shares LIVE resting sell orders hold.
+    min(the books' count, the BROKER position minus the shares LIVE resting sell orders hold).
 
-    Before this the restore asked for `remaining_shares`, which still includes a resting
+    Before (c) the restore asked for `remaining_shares`, which still includes a resting
     profit-take third (its shares are only committed out on its fill) — the broker rejected the
     over-ask and the page said UNPROTECTED while the other two thirds were the ones really naked.
 
-    `get_position` returns None for BOTH "flat" and "unreadable", so None is treated as UNKNOWN
-    and falls back to the caller's database-derived count (`remaining − pending exits`) — never
-    to zero, which would leave the position bare on a read hiccup. Returns `(qty, source)` with
-    source 'broker' or 'fallback:<why>'.
+    #687 review (2026-10-01) — REVERSES (c)'s "unreadable → the database count" fallback. A
+    flat position read as None used to be treated as unknown and sized from the books, so a
+    position that was actually flat got a sell stop: a SHORT-SALE order. The read is now strict
+    (`_read_broker_position`): FLAT → (0, 'flat'), UNREADABLE → (0, 'unreadable'); the caller
+    places nothing and pages. Never a guess. `db_qty` (`remaining − pending exits`, or the
+    shares the sale was selling) caps the broker count — the stop is never sized beyond either.
 
     `exclude_ids` — the stop the caller has just CANCELLED. Alpaca acknowledges a cancel before
     it settles, so for a moment the dying stop can still be listed `new`; counting it as "held"
@@ -4787,32 +4890,39 @@ async def _broker_free_qty_for_restore(
     other way (an over-ask the broker rejects loudly if the cancel truly did not take) — the
     direction this module always chooses.
     """
-    try:
-        pos = await alpaca.get_position(ticker, account_mode=account_mode)
-    except Exception as e:   # loud-ok: the database count stands in; logged
-        logger.warning(f"_broker_free_qty_for_restore: position read failed for {ticker} — {e}")
-        pos = None
-    if pos is None:
-        return _whole_shares(fallback_qty), "fallback:position_unreadable"
+    pos = await _read_broker_position(ticker, account_mode)
+    if pos.state == POSITION_FLAT:
+        return 0, QTY_SOURCE_FLAT
+    if pos.state != POSITION_HELD:
+        return 0, QTY_SOURCE_UNREADABLE
     try:
         orders = await alpaca.get_open_orders(
             ticker, account_mode=account_mode, raise_on_error=True)
-    except Exception as e:   # loud-ok: the database count stands in; logged
+    except Exception as e:   # loud-ok: returned as UNREADABLE — the caller places nothing + pages
         logger.warning(f"_broker_free_qty_for_restore: open-orders read failed for {ticker} — {e}")
-        return _whole_shares(fallback_qty), "fallback:orders_unreadable"
+        return 0, QTY_SOURCE_UNREADABLE
     held = _live_sell_orders_held_qty(orders, exclude_ids=exclude_ids)
-    return _whole_shares(float(pos.get("qty") or 0) - held), "broker"
+    return _whole_shares(min(pos.qty - held, float(db_qty))), QTY_SOURCE_BROKER
 
 
 RESTORE_PLACED = "restored"
 RESTORE_COVERED = "covered"     # the broker shows every share held by live resting orders
+RESTORE_FLAT = "flat"           # the broker shows NO position — nothing to protect, none placed
+RESTORE_UNREADABLE = "unreadable"   # the broker could not be read — nothing placed (no guess)
 RESTORE_FAILED = "failed"
+
+
+class RestoreResult(NamedTuple):
+    """What a failed-exit restore did, and the price it placed at (floored — it can be above
+    the caller's price, never below)."""
+    outcome: str
+    price: "float | None"
 
 
 async def _restore_stop_after_failed_exit(
     trade_id: int, ticker: str, shares: float, stop_price: "float | None", account_mode: str,
     *, cancelled_stop_id: "str | None" = None,
-) -> str:
+) -> RestoreResult:
     """Put back the protective stop a failed full exit already cancelled.
 
     THE RULE THIS ENFORCES: a failed exit may leave the position OPEN, but it may never leave it
@@ -4822,51 +4932,124 @@ async def _restore_stop_after_failed_exit(
     at the price it was already at.
 
     #687 (c): the SIZE comes from the broker (position minus shares held by live resting orders,
-    `_broker_free_qty_for_restore`); `shares` is only the fallback when the broker cannot be
-    read; `cancelled_stop_id` (the stop the exit just cancelled) is never counted as holding
-    shares. Returns RESTORE_PLACED, RESTORE_COVERED (the broker shows nothing free to protect —
-    every share is held by OTHER orders still resting) or RESTORE_FAILED.
+    capped by `shares`, `_broker_free_qty_for_restore`); `cancelled_stop_id` (the stop the exit
+    just cancelled) is never counted as holding shares. #687 review: a FLAT or UNREADABLE broker
+    places nothing (a sell stop on a flat position is a short sale; an unread one is a guess).
+
+    #687 review (2026-10-01) — the PRICE is floored like the stream's restore
+    (`_apply_reprotect_floor`, `consult_dead_stop=True`): never below the stop the exit just
+    cancelled. The row's `stop_price` can sit BELOW what the broker held (the #548 "uncertain"
+    branch withholds the breakeven price); re-placing at the row's price would have LOWERED it.
+
+    Returns a RestoreResult whose outcome is RESTORE_PLACED, RESTORE_COVERED (every share is
+    held by OTHER orders still resting), RESTORE_FLAT, RESTORE_UNREADABLE or RESTORE_FAILED.
     """
     if not stop_price:
         logger.error(f"_restore_stop_after_failed_exit: {ticker} has no stop price to restore")
-        return RESTORE_FAILED
+        return RestoreResult(RESTORE_FAILED, None)
     qty, source = await _broker_free_qty_for_restore(
         ticker, account_mode, shares, exclude_ids=(cancelled_stop_id,))
     if qty <= 0:
-        if source == "broker":
+        if source == QTY_SOURCE_BROKER:
             logger.warning(f"_restore_stop_after_failed_exit: {ticker} — the broker shows no "
                            f"free shares (live resting orders hold them); no stop re-placed")
-            return RESTORE_COVERED
-        logger.error(f"_restore_stop_after_failed_exit: {ticker} has no share count to restore "
-                     f"({source})")
-        return RESTORE_FAILED
+            return RestoreResult(RESTORE_COVERED, None)
+        if source == QTY_SOURCE_FLAT:
+            logger.error(f"_restore_stop_after_failed_exit: {ticker} — the broker shows NO "
+                         f"position; no stop placed (it would be a short-sale order)")
+            return RestoreResult(RESTORE_FLAT, None)
+        logger.error(f"_restore_stop_after_failed_exit: {ticker} — broker unreadable; no stop "
+                     f"placed (the share count would be a guess)")
+        return RestoreResult(RESTORE_UNREADABLE, None)
+    price = await _apply_reprotect_floor(
+        trade_id, ticker, float(stop_price), cancelled_stop_id, account_mode,
+        site="order_manager.restore_after_failed_exit",
+        consult_dead_stop=True,
+    )
     try:
         placed = await alpaca.place_stop_order(
-            ticker, qty, float(stop_price), account_mode=account_mode)
+            ticker, qty, float(price), account_mode=account_mode)
     except Exception as e:   # loud-ok: the caller pages either way; this says WHICH failure
         logger.error(f"_restore_stop_after_failed_exit: re-placing {ticker} stop FAILED — {e}")
-        return RESTORE_FAILED
+        return RestoreResult(RESTORE_FAILED, price)
     new_id = (placed or {}).get("id")
     if not new_id:
-        return RESTORE_FAILED
+        return RestoreResult(RESTORE_FAILED, price)
     try:
         await set_stop_order_id(trade_id, new_id, reason="restored_after_failed_full_exit",
                                 account_mode=account_mode)
     except Exception as e:   # loud-ok: the ORDER is live, which is what protects the money
         logger.error(f"_restore_stop_after_failed_exit: {ticker} stop {new_id} placed but the "
                      f"pointer write failed — {e}")
-    logger.warning(f"_restore_stop_after_failed_exit: {ticker} stop RESTORED at ${stop_price} "
+    logger.warning(f"_restore_stop_after_failed_exit: {ticker} stop RESTORED at ${price} "
                    f"for {qty} sh ({new_id}, sized from {source}) after a failed full exit")
-    return RESTORE_PLACED
+    return RestoreResult(RESTORE_PLACED, price)
 
 
-def _restore_outcome_line(outcome: str, stop_price: "float | None") -> str:
+async def _sell_free_shares_after_stop_breach(
+    trade_id: int, ticker: str, qty: int, reason: str, account_mode: str, *,
+    stop_price: float, site: str, error: str,
+) -> "dict | None":
+    """#687 review (2026-10-01) — the restore of a stop a QUEUED CLOSING ORDER replaced was
+    rejected because the price is already through it (`_is_stop_above_market`). Do what that
+    stop would have done had it been resting: sell the free shares at market, now.
+
+    Only reached from paths where a `full_exit` order was already queued and died unfilled — the
+    exit rule had ALREADY decided to sell; this carries out that decision rather than leaving the
+    position bare under a stop the broker will not accept. (`_ensure_stop_coverage` and the
+    fresh-entry watchdog keep their converge-and-page behaviour — no decision to sell exists
+    there.) The sale is a `full_exit` row, so its fill commits through `finalize_full_exit`.
+    Returns the broker order, or None when the sale itself failed (caller pages UNPROTECTED).
+    """
+    try:
+        order = await alpaca.close_position(ticker, qty=int(qty), account_mode=account_mode)
+    except Exception as e:   # loud-ok: returned None — the caller pages UNPROTECTED
+        logger.error(f"{site}: {ticker} stop-breach market sale FAILED — {e}")
+        await log_audit_event(
+            "stop_breach_sale_failed",
+            f"{ticker}: price already through the stop ${stop_price:.2f}; market sale of {qty} "
+            f"sh FAILED — {e}",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "qty": int(qty), "stop_price": stop_price, "site": site,
+                        "stop_error": error[:300], "sale_error": str(e)[:300]}),
+        )
+        return None
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_live_orders
+                (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
+                 purpose, exit_reason, raw_response)
+            VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
+                    'full_exit', $6, $7::jsonb)
+            ON CONFLICT (alpaca_order_id) DO NOTHING
+        """, trade_id, order["id"], ticker, float(qty),
+            order.get("status", "new"), reason,
+            _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
+    await log_audit_event(
+        "stop_breach_market_sale",
+        f"{ticker}: price already through the stop ${stop_price:.2f} — sold {qty} sh at market "
+        f"(order {str(order['id'])[:8]})",
+        json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                    "qty": int(qty), "stop_price": stop_price, "site": site,
+                    "order_id": order["id"], "reason": reason, "stop_error": error[:300]}),
+    )
+    return order
+
+
+def _restore_outcome_line(result: RestoreResult) -> str:
     """The sentence the failed-exit page carries about protection — he acts on it."""
-    if outcome == RESTORE_PLACED:
-        return f"\nStop RESTORED at ${float(stop_price):.2f} — position is protected."
-    if outcome == RESTORE_COVERED:
+    if result.outcome == RESTORE_PLACED:
+        return f"\nStop RESTORED at ${float(result.price):.2f} — position is protected."
+    if result.outcome == RESTORE_COVERED:
         return ("\nNo stop re-placed: orders still resting at the broker hold every remaining "
                 "share. Check that one of them is a stop.")
+    if result.outcome == RESTORE_FLAT:
+        return ("\nNo stop re-placed: the broker shows NO position (a sell stop there would be a "
+                "short sale). The books still show shares — check the position.")
+    if result.outcome == RESTORE_UNREADABLE:
+        return ("\n🚨 STOP NOT RESTORED — the broker could not be read, so the share count is "
+                "unknown. Position may be UNPROTECTED. Manual action required.")
     return "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required."
 
 
@@ -5116,7 +5299,7 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
             # stripped the JSON's underscores. The page must land first time, intact.
             await send_telegram_message(md_to_html(
                 f"{mode_prefix(account_mode)}⚠️ Full exit FAILED for {ticker}: {e}"
-                + _restore_outcome_line(restored, cancelled_stop_price)
+                + _restore_outcome_line(restored)
             ), parse_mode="HTML")
             return False
 
@@ -5319,7 +5502,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
             await _clear_depth_sell_mark(trade_id)
             await send_telegram_message(md_to_html(
                 f"{mode_prefix(account_mode)}⚠️ Opening-auction sale FAILED for {ticker}: {e}"
-                + _restore_outcome_line(restored, stop_price)
+                + _restore_outcome_line(restored)
                 + "\nThe position stays open; the next close below the line decides again."
             ), parse_mode="HTML")
             return False
@@ -5485,12 +5668,30 @@ async def _finalize_full_exit_locked(
             }),
         )
 
+    # #687 review (2026-10-01) — the books reaching zero is not proof the position is gone. Read
+    # the BROKER before closing: a paper soft reservation (sync overwrote `remaining_shares` with
+    # a qty already reduced by a queued sell) or a profit-take third the books lost track of
+    # would otherwise record a closed trade the broker still holds — unmanaged, with no stop
+    # (the clamp above is exactly that disagreement). FLAT → close, as before. Still HOLDING →
+    # keep the row open at what the broker holds. UNREADABLE → keep it open (status unchanged)
+    # and page; the next position sync settles it. Never close on an unread broker.
+    close_refused: str | None = None
+    broker_qty_at_close: float | None = None
+    if new_remaining <= 0:
+        _pos = await _read_broker_position(ticker, account_mode)
+        if _pos.state == POSITION_HELD:
+            close_refused = "broker_still_holds"
+            broker_qty_at_close = _pos.qty
+            new_remaining = _whole_shares(_pos.qty)
+        elif _pos.state == POSITION_UNREADABLE:
+            close_refused = "broker_unreadable"
+
     async with pool.acquire() as conn:
-        if new_remaining > 0:
-            # Shares remain at the broker (the resting profit-take third). NEVER mark closed
-            # while they do. The stop pointer is left as it is: the cancelled stop's own WS
-            # event nulls it, and a full-exit fill is never the stop, so there is nothing here
-            # that could prove a pointer dead.
+        if new_remaining > 0 or close_refused:
+            # Shares remain at the broker (the resting profit-take third, or a remainder the
+            # broker still holds). NEVER mark closed while they do. The stop pointer is left
+            # as it is: the cancelled stop's own WS event nulls it, and a full-exit fill is
+            # never the stop, so there is nothing here that could prove a pointer dead.
             await conn.execute("""
                 UPDATE mi_live_trades SET
                     exits = $2::jsonb,
@@ -5514,23 +5715,48 @@ async def _finalize_full_exit_locked(
         "full_exit_committed",
         f"{ticker}: DB committed on WS fill — sold {filled_qty} @${filled_price:.2f}, "
         f"reason={reason}, total_pnl ${total_pnl:+,.2f}"
-        + (f" — {new_remaining} sh remain under a resting exit, trade stays OPEN"
-           if new_remaining > 0 else " — closed"),
+        + (f" — {new_remaining} sh remain at the broker, trade stays OPEN"
+           if (new_remaining > 0 or close_refused) else " — closed"),
         json.dumps({
             "trade_id": trade_id, "ticker": ticker,
             "shares": int(filled_qty), "fill_price": float(filled_price),
             "pnl": float(pnl), "total_pnl": float(total_pnl),
             "reason": reason, "order_id": order_id,
             "new_remaining": new_remaining,
+            "close_refused": close_refused,
+            "broker_qty_at_close": broker_qty_at_close,
         }),
     )
+
+    if close_refused:
+        await log_audit_event(
+            "full_exit_close_refused",
+            f"{ticker}: the books reached zero but "
+            + (f"the broker still holds {broker_qty_at_close:g} sh — kept OPEN at {new_remaining}"
+               if close_refused == "broker_still_holds"
+               else "the broker could not be read — kept OPEN"),
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "reason": close_refused, "filled_qty": int(filled_qty),
+                        "prior_remaining": prior_remaining,
+                        "broker_qty": broker_qty_at_close, "kept_remaining": new_remaining,
+                        "order_id": order_id}),
+        )
+        _state = (f"the broker still holds {broker_qty_at_close:g} sh, so the trade stays OPEN "
+                  f"at {new_remaining} sh — check those shares have a stop."
+                  if close_refused == "broker_still_holds"
+                  else "the broker could not be read to confirm the position is flat, so the "
+                       "trade stays OPEN until the next position sync confirms it.")
+        await send_telegram_message(md_to_html(
+            f"{mode_prefix(account_mode)}⚠️ Sold {ticker} — {reason}: {int(filled_qty)} sh "
+            f"@${filled_price:.2f}. The books now show none left, but {_state}"
+        ), parse_mode="HTML")
+        return
 
     if new_remaining > 0:
         await send_telegram_message(
             f"{mode_prefix(account_mode)}📤 *Sold:* {ticker} — {reason}\n"
             f"Exit @${filled_price:.2f} × {filled_qty:.0f} shares\n"
-            f"{new_remaining} sh remain under the resting profit-take (its own target and "
-            f"breakeven stop) — the trade stays open until they exit.\n"
+            f"{new_remaining} sh remain at the broker — the trade stays open until they exit.\n"
             f"P&L so far: ${total_pnl:+,.2f}"
         )
         return

@@ -2127,7 +2127,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             UPDATE mi_live_orders SET
                 status = $2, cancelled_at = NOW()
             WHERE alpaca_order_id = $1 AND status NOT IN ('filled', 'cancelled')
-            RETURNING trade_id, purpose, raw_response
+            RETURNING trade_id, purpose, raw_response, exit_reason
         """, order_id, event_norm)
 
     if pending_exit and pending_exit["purpose"] == "partial_exit":
@@ -2193,13 +2193,47 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 site="trade_stream.partial_exit_cancel_restore",
                 consult_dead_stop=True,
             )
+            # #687 review (2026-10-01): never size the restore beyond what the broker HOLDS.
+            # Read the position BEFORE cancelling the smaller stop: flat → a sell stop there is
+            # a short-sale order; unreadable → the size is a guess. Either way the smaller stop
+            # stays exactly as it is and he is told.
+            from agents.market_intelligence.broker.order_manager import (
+                POSITION_FLAT,
+                POSITION_HELD,
+                _read_broker_position,
+                _whole_shares,
+            )
+            _pos = await _read_broker_position(trade_row["ticker"], account_mode)
+            if _pos.state != POSITION_HELD:
+                _flat = _pos.state == POSITION_FLAT
+                await log_audit_event(
+                    "partial_exit_cancel_restore_skipped",
+                    f"{symbol}: partial exit {event_norm}; full-size stop NOT re-placed — "
+                    + ("the broker shows NO position" if _flat
+                       else "the broker could not be read"),
+                    json.dumps({"trade_id": trade_row["id"], "ticker": symbol,
+                                "account_mode": account_mode, "order_id": order_id,
+                                "reason": _pos.state, "error": _pos.error,
+                                "remaining_shares": float(trade_row["remaining_shares"])}),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
+                    + ("The broker shows NO position while the books show "
+                       f"{float(trade_row['remaining_shares']):.0f} sh — no stop re-placed (a "
+                       f"sell stop there would be a short sale). Check the position."
+                       if _flat else
+                       "The broker could not be read, so the stop was NOT resized to the full "
+                       "position — the existing smaller stop is unchanged. Check the position.")
+                )
+                return
+            _restore_qty = min(int(trade_row["remaining_shares"]), _whole_shares(_pos.qty))
             # Cancel the smaller stop and place one sized for the full remaining.
             if trade_row["stop_order_id"]:
                 await alpaca.cancel_order(trade_row["stop_order_id"], account_mode=account_mode)
             try:
                 restored = await alpaca.place_stop_order(
                     trade_row["ticker"],
-                    int(trade_row["remaining_shares"]),
+                    _restore_qty,
                     restore_price,
                     account_mode=account_mode,
                 )
@@ -2219,18 +2253,18 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                                 $6, $7::jsonb, 'stop_loss', 'stop_hit')
                         ON CONFLICT (alpaca_order_id) DO NOTHING
                     """, trade_row["id"], restored["id"], trade_row["ticker"],
-                        float(trade_row["remaining_shares"]),
+                        float(_restore_qty),
                         restore_price,
                         restored.get("status", "new"),
                         _jsonb_param(restored))  # #216: codec single-encodes; do NOT pre-dumps
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
-                    f"Sell did not fill. Stop restored to full {int(trade_row['remaining_shares'])} sh "
+                    f"Sell did not fill. Stop restored to full {_restore_qty} sh "
                     f"@${restore_price:.2f}."
                 )
                 logger.warning(
                     f"WS [{account_mode}]: partial exit {event_norm} for {symbol}, "
-                    f"stop restored to {trade_row['remaining_shares']} sh"
+                    f"stop restored to {_restore_qty} sh"
                 )
             except Exception as e:
                 await send_telegram_message(
@@ -2245,6 +2279,26 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         return
 
     if pending_exit and pending_exit["purpose"] == "full_exit":
+        # ── #687 review (2026-10-01): commit the PART that sold, FIRST. An opening-auction sale
+        # (TIF opg) can fill part of its quantity in the auction and have the rest cancelled;
+        # a queued market sale can be cut short the same way. Those shares SOLD. Without this
+        # commit `remaining_shares` kept the full pre-sale size, so a later stop or refresh was
+        # sized for shares the account no longer held — on a position the sale had otherwise
+        # emptied, a sell stop there is a SHORT-SALE order. Same shape as the partial-exit
+        # branch's #566 commit above; `finalize_full_exit` is idempotent per order id, so a
+        # racing fill event cannot double-commit, and it closes the row only when the broker
+        # is flat. The share count the restore then sizes from is what the broker still holds.
+        _exit_reason = (pending_exit.get("exit_reason") if hasattr(pending_exit, "get")
+                        else None) or "exit"
+        _cancel_filled = float(getattr(order, "filled_qty", 0) or 0)
+        _cancel_avg = float(getattr(order, "filled_avg_price", 0) or 0)
+        if _cancel_filled > 0 and _cancel_avg > 0:
+            from agents.market_intelligence.broker.order_manager import finalize_full_exit
+            await finalize_full_exit(
+                pending_exit["trade_id"], int(_cancel_filled), _cancel_avg, order_id,
+                _exit_reason,
+            )
+
         # Original stop was already cancelled in execute_full_exit. Restoring
         # the stop here requires the original stop_price; mi_live_trades still
         # has it (we didn't null it out — DB commit was deferred). Surface and
@@ -2275,23 +2329,27 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             # asked for `remaining_shares`, which still includes that third, so the broker
             # rejected it and this page said "STOP RESTORE FAILED" while the two thirds this
             # sale was selling were the ones naked. The claim above has already marked this
-            # exit order cancelled, so the database fallback (`remaining − pending exits`)
-            # no longer counts it.
+            # exit order cancelled, so the database cap (`remaining − pending exits`) no longer
+            # counts it. #687 review: FLAT or UNREADABLE → nothing placed (no short, no guess).
             from agents.market_intelligence.broker.order_manager import (
+                QTY_SOURCE_BROKER,
+                QTY_SOURCE_FLAT,
                 _broker_free_qty_for_restore,
+                _is_stop_above_market,
+                _sell_free_shares_after_stop_breach,
                 get_pending_exit_qty,
             )
             try:
-                _fallback_qty = (float(trade_row["remaining_shares"])
-                                 - float(await get_pending_exit_qty(trade_row["id"])))
-            except Exception as _pe:  # loud-ok: the broker count is the primary; logged
+                _db_qty = (float(trade_row["remaining_shares"])
+                           - float(await get_pending_exit_qty(trade_row["id"])))
+            except Exception as _pe:  # loud-ok: the broker count still caps it; logged
                 logger.warning(f"WS [{account_mode}]: pending-exit read failed for "
-                               f"{symbol} ({_pe}) — fallback is the full remaining count")
-                _fallback_qty = float(trade_row["remaining_shares"])
+                               f"{symbol} ({_pe}) — capping at the full remaining count")
+                _db_qty = float(trade_row["remaining_shares"])
             restore_qty, _qty_source = await _broker_free_qty_for_restore(
-                trade_row["ticker"], account_mode, _fallback_qty,
+                trade_row["ticker"], account_mode, _db_qty,
                 exclude_ids=(trade_row["stop_order_id"],))
-            if restore_qty <= 0 and _qty_source == "broker":
+            if restore_qty <= 0 and _qty_source == QTY_SOURCE_BROKER:
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
                     f"Position still open. No stop re-placed: orders still resting at the "
@@ -2300,10 +2358,33 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, "
                                f"no free shares to re-protect (live resting orders hold them)")
                 return
+            if restore_qty <= 0:
+                _flat = _qty_source == QTY_SOURCE_FLAT
+                await log_audit_event(
+                    "full_exit_cancel_restore_skipped",
+                    f"{symbol}: close order {event_norm}; no stop re-placed — "
+                    + ("the broker shows NO position" if _flat
+                       else "the broker could not be read"),
+                    json.dumps({"trade_id": trade_row["id"], "ticker": symbol,
+                                "account_mode": account_mode, "order_id": order_id,
+                                "reason": _qty_source,
+                                "remaining_shares": float(trade_row["remaining_shares"])}),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}"
+                    + (f"⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+                       f"No stop re-placed: the broker shows NO position while the books show "
+                       f"{float(trade_row['remaining_shares']):.0f} sh (a sell stop there would "
+                       f"be a short sale). Check the position."
+                       if _flat else
+                       f"🚨 *CLOSE {event_norm.upper()} + STOP NOT RESTORED* for {symbol}!\n"
+                       f"The broker could not be read, so the share count is unknown.\n"
+                       f"*Position may be unprotected — manual intervention required.*")
+                )
+                logger.error(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, no "
+                             f"stop re-placed ({_qty_source})")
+                return
             try:
-                if restore_qty <= 0:
-                    raise RuntimeError(
-                        f"no share count to restore ({_qty_source})")
                 restored = await alpaca.place_stop_order(
                     trade_row["ticker"],
                     restore_qty,
@@ -2322,6 +2403,25 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 )
                 logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, stop re-placed")
             except Exception as e:
+                if _is_stop_above_market(e):
+                    # #687 review: the price is already through the stop. The exit rule had
+                    # already decided to sell (that is what the cancelled order was); do what the
+                    # stop would have done — sell the free shares at market, now.
+                    sold = await _sell_free_shares_after_stop_breach(
+                        trade_row["id"], trade_row["ticker"], restore_qty, _exit_reason,
+                        account_mode, stop_price=restore_price,
+                        site="trade_stream.full_exit_cancel_restore", error=str(e))
+                    if sold:
+                        await send_telegram_message(
+                            f"{mode_prefix(account_mode)}🚨 *Close order {event_norm.upper()}:* "
+                            f"{symbol}\nThe price is already below the stop "
+                            f"${restore_price:.2f}, so no stop could be re-placed — selling "
+                            f"{restore_qty} sh at market now (Order {str(sold['id'])[:8]}). "
+                            f"_Confirms with real P&L on fill._"
+                        )
+                        logger.warning(f"WS [{account_mode}]: full exit {event_norm} for "
+                                       f"{symbol}, stop breached — market sale placed")
+                        return
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}🚨 *CLOSE {event_norm.upper()} + "
                     f"STOP RESTORE FAILED* for {symbol}!\n{e}\n"

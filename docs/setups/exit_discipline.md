@@ -349,6 +349,43 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-01 — BUG FIX (#687 review): two Opus reviews of parts A and B — every fix moves toward "protected, never sell more than the broker holds, never lower a stop" (TRADE STATE — no exit rule, stop level, target or size changed)
+
+**Classification: bug fixes enforcing already-signed intent** (raise-only stops 2026-08-10, the
+never-naked rule #646, the #566 accounting rule). No CHANGE_PROCESS N≥10 gate. Each fix has a
+behaviour test confirmed red with the fix removed (mutation runs in the commits).
+
+**Trigger**: a spec review and an adversarial safety review of commits ab45678b (A) + 12b07d8a (B).
+
+- **Fix 1 — an auction sale that partly filled is recorded; no stop is sized beyond the broker.**
+  The stream's full-exit cancel/expire branch never committed `order.filled_qty` (the partial-exit
+  branch does). An opg sale that sold part of its quantity in the auction and had the rest
+  cancelled left the books at the full size, and a later stop/refresh could place a sell stop for
+  shares the account no longer held — on a position that is actually flat, a SHORT-SALE order. It
+  now commits the sold part through `finalize_full_exit` (idempotent per order id) before sizing
+  the restore. Defence in depth, every exit-path stop placement reads the position first with a
+  STRICT read (`alpaca.get_position(raise_on_error=True)` → `_read_broker_position`: a 404 is
+  FLAT, a failed read is UNREADABLE — the default returned None for both): `update_stop` (before
+  it cancels anything) sizes to `min(books, broker) − pending exits`; the failed-exit restore and
+  the stream's full-exit restore size to `min(books, broker − live resting sells)`; the stream's
+  partial-exit restore to `min(books, broker)`. FLAT or UNREADABLE → nothing cancelled, nothing
+  placed, audited + paged. ⚠ REVERSES part A (c)'s "None → the database count, never zero": that
+  fallback is exactly how a flat position got a sell stop.
+- **Fix 2 — the failed-exit restore never lowers the stop.** `_restore_stop_after_failed_exit`
+  re-placed at the row's `stop_price`; the row can sit below the stop the broker held (#548's
+  "uncertain" branch withholds the breakeven price). It is now floored like the stream's restore
+  (`_apply_reprotect_floor`, the cancelled stop's id, `consult_dead_stop=True`), and the page
+  states the price actually placed.
+- **Fix 8 — a full exit closes the row only on a FLAT broker.** Part A (b) clamped the books at
+  zero and closed without looking. A paper soft reservation (the evening sync writes a qty already
+  reduced by a queued sell) could then record a closed trade while the broker still held the
+  profit-take third. At zero the finalizer now reads the position: flat → closed as before; still
+  holding → the row stays OPEN at the broker's count (`full_exit_close_refused` + page);
+  unreadable → stays open, paged, the next position sync settles it.
+
+**Status**: built + unit-tested, not deployed (same deploy as A/B: `broker/` + `scheduler.py` →
+`deploy.sh execution` AND `market-agent`).
+
 ### 2026-10-01 — #687 part B: the DEPTH exit rule for NEW MAGNA53 trades — BUILT behind `magna53_depth_exit`, toggle OFF (no live behaviour changes until he flips it)
 
 **Trigger**: his ruling 2026-09-29 (PLAN.md #687, *"Aligned"*, then *"Ok, let's keep this and monitor how it

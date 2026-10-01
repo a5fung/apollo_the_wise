@@ -277,6 +277,9 @@ async def test_update_stop_retry_recovered_telegram_names_the_trail_no_raw_id():
             patch.object(om, "set_stop_order_id", AsyncMock()),
             patch.object(om.asyncio, "sleep", AsyncMock()),
             patch.object(om.alpaca, "get_order", _get_order_fake),
+            patch.object(om.alpaca, "get_position",  # #687 review: broker holds the books' count
+                         AsyncMock(return_value={"qty": float(trade["remaining_shares"]),
+                                                 "qty_available": 0.0})),
             patch.object(om.alpaca, "cancel_order", AsyncMock(return_value=True)),
             patch.object(om.alpaca, "place_stop_order", _place_fake),
             patch.object(om.alpaca, "make_client_order_id",

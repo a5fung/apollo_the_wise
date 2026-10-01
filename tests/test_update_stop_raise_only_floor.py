@@ -62,7 +62,12 @@ def _make_pool(trade):
     return pool, conn
 
 
-def _harness(om, trade, get_order_fake):
+_BOOKS = object()   # sentinel: the broker holds exactly what the books say
+
+
+def _harness(om, trade, get_order_fake, *, position=_BOOKS):
+    """`position` (#687 review): what `get_position` returns — default the books' count;
+    None = the broker shows no position (404); an Exception instance = the read FAILS."""
     pool, conn = _make_pool(trade)
     audited: list = []
 
@@ -72,14 +77,22 @@ def _harness(om, trade, get_order_fake):
     cancel_mock = AsyncMock(return_value=True)
     place_mock = AsyncMock(return_value={"id": "new_stop_xyz", "status": "accepted"})
     get_order_mock = AsyncMock(side_effect=get_order_fake)
+    telegram_mock = AsyncMock(return_value=True)
+    if position is _BOOKS:
+        position = {"qty": float(trade["remaining_shares"]), "qty_available": 0.0}
+    position_mock = (AsyncMock(side_effect=position) if isinstance(position, Exception)
+                     else AsyncMock(return_value=position))
 
     patches = [
         patch.object(om, "get_pool", AsyncMock(return_value=pool)),
         patch.object(om, "log_audit_event", _audit),
-        patch.object(om, "send_telegram_message", AsyncMock(return_value=True)),
+        patch.object(om, "send_telegram_message", telegram_mock),
         patch.object(om, "set_stop_order_id", AsyncMock()),
         patch.object(om.asyncio, "sleep", AsyncMock()),
         patch.object(om.alpaca, "get_order", get_order_mock),
+        # #687 review: update_stop reads the broker POSITION before anything else and never
+        # sizes a stop beyond it — the broker here holds what the books say.
+        patch.object(om.alpaca, "get_position", position_mock),
         patch.object(om.alpaca, "cancel_order", cancel_mock),
         patch.object(om.alpaca, "place_stop_order", place_mock),
         patch.object(om.alpaca, "make_client_order_id",
@@ -88,6 +101,7 @@ def _harness(om, trade, get_order_fake):
     return {
         "patches": patches, "audited": audited, "conn": conn,
         "cancel": cancel_mock, "place": place_mock, "get_order": get_order_mock,
+        "telegram": telegram_mock, "position": position_mock,
     }
 
 

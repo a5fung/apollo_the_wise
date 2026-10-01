@@ -96,9 +96,15 @@ def _wire(monkeypatch, *, close_raises, available=SHARES, place_ok=True,
     monkeypatch.setattr(om.alpaca, "place_stop_order", place)
     monkeypatch.setattr(om.alpaca, "get_position", position)
     monkeypatch.setattr(om.alpaca, "get_open_orders", orders)
+    # #687 review: the failed-exit restore floors its price against the stop it cancelled
+    # (`_apply_reprotect_floor`). By default that stop is unreadable and nothing was preserved,
+    # so the floor is the row's own price — the tests that exercise the floor set these.
+    get_order = AsyncMock(return_value=None)
+    monkeypatch.setattr(om.alpaca, "get_order", get_order)
+    monkeypatch.setattr(om, "_read_preserved_dead_stop", AsyncMock(return_value=None))
     monkeypatch.setattr(om, "_EXIT_RELEASE_SLEEP_S", 0)
     return {"cancel": cancel, "close": close, "place": place, "pos": position, "sent": sent,
-            "orders": orders, "executed": executed, "events": events}
+            "orders": orders, "executed": executed, "events": events, "get_order": get_order}
 
 
 @pytest.mark.asyncio
@@ -322,7 +328,7 @@ async def test_the_restore_is_sized_from_the_broker_not_remaining_shares(monkeyp
     h = _wire(monkeypatch, close_raises=False, position_qty=6, open_orders=[_oco_parent()])
     out = await om._restore_stop_after_failed_exit(382, "OKTA", 6, STOP_PRICE, "live")
 
-    assert out == om.RESTORE_PLACED
+    assert out.outcome == om.RESTORE_PLACED
     assert h["place"].await_args.args[1] == 4
     assert h["place"].await_args.args[2] == STOP_PRICE
 
@@ -336,7 +342,7 @@ async def test_the_just_cancelled_stop_is_never_counted_as_held(monkeypatch):
               open_orders=[_stop(qty=4), _oco_parent()])
     out = await om._restore_stop_after_failed_exit(382, "OKTA", 6, STOP_PRICE, "live",
                                                    cancelled_stop_id="stop-1")
-    assert out == om.RESTORE_PLACED
+    assert out.outcome == om.RESTORE_PLACED
     assert h["place"].await_args.args[1] == 4
 
 
@@ -348,7 +354,7 @@ async def test_another_live_stop_holding_every_share_is_reported_covered(monkeyp
               open_orders=[_stop(order_id="stop-9", qty=4), _oco_parent()])
     out = await om._restore_stop_after_failed_exit(382, "OKTA", 6, STOP_PRICE, "live",
                                                    cancelled_stop_id="stop-1")
-    assert out == om.RESTORE_COVERED
+    assert out.outcome == om.RESTORE_COVERED
     h["place"].assert_not_awaited()
 
 
@@ -376,15 +382,76 @@ async def test_a_pending_cancel_stop_does_not_count_as_held(monkeypatch):
     assert h["place"].await_args.args[1] == 4
 
 
+# ── #687 review (2026-10-01): REVERSES (c)'s "None → the database count". A flat position read
+# as None used to be sized from the books — a sell stop on no shares is a SHORT-SALE order.
+# The read is strict now: 404 → flat → nothing placed; a read failure → nothing placed (the
+# size would be a guess). Both are paged by the caller with their own sentence.
+
 @pytest.mark.asyncio
-async def test_an_unreadable_broker_restores_from_the_fallback_never_zero(monkeypatch):
-    """(c) `get_position` → None means flat OR unreadable — treat it as unknown and use the
-    caller's count, never zero (a read hiccup must not leave the position bare)."""
+async def test_a_flat_broker_gets_no_restore_stop(monkeypatch):
+    """THE SHORT-SALE CASE: the broker shows no position (404 → None) while the caller still
+    passes a count from the books. Before: a 3-share sell stop on a flat account. After: none."""
     h = _wire(monkeypatch, close_raises=False)
     h["pos"].return_value = None
     out = await om._restore_stop_after_failed_exit(382, "OKTA", 3, STOP_PRICE, "live")
-    assert out == om.RESTORE_PLACED
-    assert h["place"].await_args.args[1] == 3
+    assert out.outcome == om.RESTORE_FLAT
+    h["place"].assert_not_awaited()
+    assert "NO position" in om._restore_outcome_line(out)
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_broker_places_nothing_and_says_so(monkeypatch):
+    """A position read that FAILS is not "flat" and not "the books' count" — place nothing and
+    say plainly the count is unknown, so he checks it."""
+    h = _wire(monkeypatch, close_raises=False)
+    h["pos"].side_effect = Exception("broker 503")
+    out = await om._restore_stop_after_failed_exit(382, "OKTA", 3, STOP_PRICE, "live")
+    assert out.outcome == om.RESTORE_UNREADABLE
+    h["place"].assert_not_awaited()
+    assert "could not be read" in om._restore_outcome_line(out)
+    assert h["pos"].await_args.kwargs.get("raise_on_error") is True, (
+        "the read must be strict — the default swallows the failure into a None (= flat)")
+
+
+@pytest.mark.asyncio
+async def test_the_restore_never_sizes_beyond_the_books(monkeypatch):
+    """min(books, broker): the broker reports 6 free but the sale was only selling 4."""
+    h = _wire(monkeypatch, close_raises=False, position_qty=6)
+    out = await om._restore_stop_after_failed_exit(382, "OKTA", 4, STOP_PRICE, "live")
+    assert out.outcome == om.RESTORE_PLACED
+    assert h["place"].await_args.args[1] == 4
+
+
+# ── #687 review fix 2: the failed-exit restore never places BELOW the stop it cancelled ──────
+
+@pytest.mark.asyncio
+async def test_the_failed_exit_restore_is_floored_at_the_cancelled_stops_price(monkeypatch):
+    """THE BUG: the broker stop the exit cancelled sat at 170.10 (breakeven moved it there; the
+    #548 "uncertain" branch withheld that price from the row, which still says 165.57). The
+    restore re-placed at the row's 165.57 — LOWER than the stop the position had a second
+    before. It must re-place at 170.10, like the stream's restore already does."""
+    _audit_rows(monkeypatch)
+    h = _wire(monkeypatch, close_raises=True)
+    h["get_order"].return_value = {"id": "stop-1", "status": "canceled", "stop_price": 170.10}
+    ok = await om.execute_full_exit(382, "sma_trail_stop")
+
+    assert ok is False
+    h["place"].assert_awaited_once()
+    assert h["place"].await_args.args[2] == 170.10, "the restore LOWERED the stop"
+    assert any("Stop RESTORED at $170.10" in m for m in h["sent"]), h["sent"]
+
+
+@pytest.mark.asyncio
+async def test_the_failed_exit_restore_uses_the_preserved_dead_stop_when_the_pointer_is_gone(
+        monkeypatch):
+    """The cancelled stop can no longer be read by id (the stream already nulled the pointer):
+    the price preserved at that moment is the floor — `consult_dead_stop=True`."""
+    _audit_rows(monkeypatch)
+    h = _wire(monkeypatch, close_raises=True)
+    monkeypatch.setattr(om, "_read_preserved_dead_stop", AsyncMock(return_value={
+        "id": "stop-1", "status": "canceled", "stop_price": 168.00}))
+    await om.execute_full_exit(382, "sma_trail_stop")
+    assert h["place"].await_args.args[2] == 168.00
 
 
 @pytest.mark.asyncio
@@ -414,9 +481,13 @@ async def test_the_stream_restore_after_a_cancelled_close_is_sized_from_the_brok
 
 # ── (b) a full exit that leaves the profit-take third at the broker keeps the row open ──────
 
-def _finalize_harness(monkeypatch, *, remaining):
+def _finalize_harness(monkeypatch, *, remaining, position=None, position_raises=None):
+    """`position` — what the broker reports when the books reach zero (None = flat, the 404);
+    `position_raises` — the read FAILS instead (#687 review fix 8)."""
     trade = {"id": 404, "ticker": "KOD", "remaining_shares": remaining, "entry_price": 63.15,
              "exits": [], "account_mode": "live", "stop_order_id": None}
+    _pos = AsyncMock(return_value=position, side_effect=position_raises)
+    monkeypatch.setattr(om.alpaca, "get_position", _pos)
     executed: list = []
 
     class _Conn:
@@ -472,6 +543,124 @@ async def test_a_full_exit_fill_of_everything_still_closes_the_trade(monkeypatch
     sql = next(a[0] for a in executed if "UPDATE mi_live_trades" in a[0])
     assert "status = 'closed'" in sql and "remaining_shares = 0" in sql
     assert any("Closed" in m for m in sent), sent
+
+
+# ── #687 review fix 1 (defence in depth): `update_stop` never sizes a stop beyond the broker ──
+#
+# The books can overstate the position (an auction sale that partly filled before its rest was
+# cancelled). On a FLAT position a sell stop is a short-sale order. update_stop now reads the
+# position FIRST: flat or unreadable → nothing cancelled, nothing placed, paged.
+
+def _us():
+    from tests.test_update_stop_raise_only_floor import (
+        _broker_stop_live, _harness, _run, _trade)
+    return _broker_stop_live, _harness, _run, _trade
+
+
+@pytest.mark.asyncio
+async def test_update_stop_on_a_flat_position_places_nothing_and_pages():
+    live, harness, run, trade = _us()
+    h = harness(om, trade(), live, position=None)          # the broker: 404, no position
+    ok = await run(om, h, 15.50)
+
+    assert ok is False
+    h["cancel"].assert_not_awaited()                       # the old stop stays as it is
+    h["place"].assert_not_awaited()                        # no sell stop on a flat account
+    assert any(e == "stop_update_aborted" and '"broker_position_flat"' in d
+               for e, _s, d in h["audited"]), h["audited"]
+    assert any("NO position" in c.args[0] for c in h["telegram"].await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_update_stop_on_an_unreadable_position_places_nothing_and_pages():
+    live, harness, run, trade = _us()
+    h = harness(om, trade(), live, position=Exception("broker 503"))
+    ok = await run(om, h, 15.50)
+
+    assert ok is False
+    h["cancel"].assert_not_awaited()
+    h["place"].assert_not_awaited()
+    assert h["position"].await_args.kwargs.get("raise_on_error") is True
+    assert any("could not be read" in c.args[0] for c in h["telegram"].await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_update_stop_is_sized_to_the_broker_when_the_books_overstate():
+    """Books 60, broker 45, 5 held by a pending exit → min(60, 45) − 5 = 40, never 55."""
+    live, harness, run, trade = _us()
+    h = harness(om, trade(), live, position={"qty": 45.0, "qty_available": 0.0})
+    h["conn"].fetchval.return_value = 5                    # get_pending_exit_qty
+    ok = await run(om, h, 15.50)
+
+    assert ok is True
+    assert h["place"].await_args.kwargs["qty"] == 40
+
+
+@pytest.mark.asyncio
+async def test_a_cancelled_plain_partial_on_a_flat_account_leaves_the_stop_alone(monkeypatch):
+    """The stream's partial-exit restore cancelled the smaller stop and placed one for
+    `remaining_shares` blind. On a flat broker that is a short-sale stop; on an unreadable one,
+    a guess. Read first: flat → cancel nothing, place nothing, page."""
+    from agents.market_intelligence.broker import trade_stream as ts
+    from tests.test_oco_cancel_handler_566 import PLAIN_RAW, _cancel_data, _pending
+    from tests.test_oco_cancel_handler_566 import _wire as _ws_wire
+
+    h = _ws_wire(monkeypatch, pending_exit_row=_pending(raw=PLAIN_RAW),
+                 trade_row={"id": 731, "ticker": "ETON", "remaining_shares": 17,
+                            "stop_price": 55.20, "stop_order_id": "stop23"})
+    monkeypatch.setattr(ts.alpaca, "get_position", AsyncMock(return_value=None))
+    await ts._handle_cancel_or_reject(_cancel_data(order_id="plain-limit-1"), "canceled", "live")
+
+    h["cancel"].assert_not_awaited()
+    h["place_stop"].assert_not_awaited()
+    assert any("NO position" in m for m in h["sent"]), h["sent"]
+
+
+@pytest.mark.asyncio
+async def test_a_cancelled_plain_partial_restore_is_capped_at_the_broker_position(monkeypatch):
+    """Books 17, broker 12 → the restored stop covers 12, never 17."""
+    from tests.test_oco_cancel_handler_566 import PLAIN_RAW, _cancel_data, _pending
+    from tests.test_oco_cancel_handler_566 import _wire as _ws_wire
+    from agents.market_intelligence.broker import trade_stream as ts
+
+    h = _ws_wire(monkeypatch, pending_exit_row=_pending(raw=PLAIN_RAW),
+                 trade_row={"id": 731, "ticker": "ETON", "remaining_shares": 17,
+                            "stop_price": 55.20, "stop_order_id": "stop23"},
+                 position_qty=12.0)
+    await ts._handle_cancel_or_reject(_cancel_data(order_id="plain-limit-1"), "canceled", "live")
+    assert h["place_stop"].await_args.args[1] == 12
+
+
+# ── #687 review fix 8: the books reaching zero is not proof — close only on a FLAT broker ────
+
+@pytest.mark.asyncio
+async def test_books_at_zero_but_the_broker_still_holds_shares_keeps_the_trade_open(monkeypatch):
+    """THE FAKE CLOSE: a paper soft reservation let the evening sync write a reduced count (2)
+    onto the row; the morning fill of 4 then took the books to zero (clamped) and (b) closed the
+    trade — while the broker still held the 2-share profit-take third. Read the broker: it holds
+    2 → the row stays OPEN at 2, and he is told."""
+    executed, sent = _finalize_harness(monkeypatch, remaining=2,
+                                       position={"qty": 2.0, "qty_available": 0.0})
+    await om.finalize_full_exit(404, 4, 70.00, "sell-1", "sma_trail_stop")
+
+    updates = [a for a in executed if "UPDATE mi_live_trades" in a[0]]
+    assert len(updates) == 1
+    sql, *params = updates[0]
+    assert "status = 'closed'" not in sql, "closed while the broker still holds shares"
+    assert params[2] == 2, f"the row must keep what the broker holds, got {params[2]}"
+    assert any("still holds 2" in m and "OPEN" in m for m in sent), sent
+
+
+@pytest.mark.asyncio
+async def test_books_at_zero_and_an_unreadable_broker_never_closes(monkeypatch):
+    """A failed read is not a flat broker: keep the row open, page, let the sync settle it."""
+    executed, sent = _finalize_harness(monkeypatch, remaining=4,
+                                       position_raises=Exception("broker 503"))
+    await om.finalize_full_exit(404, 4, 70.00, "sell-1", "sma_trail_stop")
+
+    sql = next(a[0] for a in executed if "UPDATE mi_live_trades" in a[0])
+    assert "status = 'closed'" not in sql
+    assert any("could not be read" in m for m in sent), sent
 
 
 # ── (e) the stop-ACK watchdog cannot re-place a stop between the exit's cancel and its sell ─

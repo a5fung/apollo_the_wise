@@ -609,6 +609,66 @@ async def test_an_unfilled_auction_order_restores_the_depth_stop_and_pages(monke
     assert any("Stop re-placed" in m and "for 4 sh" in m for m in h["sent"]), h["sent"]
 
 
+@pytest.mark.asyncio
+async def test_an_auction_sale_that_partly_filled_commits_the_sold_shares_first(monkeypatch):
+    """#687 review fix 1 — THE SHORT-SALE RISK. The opg sale of 4 sold 3 in the auction and the
+    broker cancelled the last 1. The cancel branch never recorded the 3, so the books kept all
+    4 and a later stop/refresh could size a sell stop for shares the account no longer held. It
+    must commit the 3 through `finalize_full_exit` (idempotent per order id) BEFORE it sizes the
+    restore — which then covers only the 1 share the broker still holds."""
+    from agents.market_intelligence.broker import trade_stream as ts
+    from tests.test_oco_cancel_handler_566 import PLAIN_RAW, _cancel_data, _pending
+    from tests.test_oco_cancel_handler_566 import _wire as _ws_wire
+
+    order: list = []
+    pending = dict(_pending(purpose="full_exit", raw=PLAIN_RAW, trade_id=501),
+                   exit_reason="sma_trail_stop")
+    h = _ws_wire(
+        monkeypatch,
+        pending_exit_row=pending,
+        # the row as read AFTER the commit: 4 − 3 = 1 left
+        trade_row={"id": 501, "ticker": "KOD", "remaining_shares": 1,
+                   "stop_price": DEPTH_STOP, "stop_order_id": None},
+        position_qty=1.0,
+    )
+    finalize = AsyncMock(side_effect=lambda *a, **k: order.append("commit"))
+    monkeypatch.setattr(om, "finalize_full_exit", finalize)
+    h["place_stop"].side_effect = lambda *a, **k: order.append("restore") or {"id": "r-1"}
+    monkeypatch.setattr(om, "get_pending_exit_qty", AsyncMock(return_value=0))
+    monkeypatch.setattr(om, "_read_preserved_dead_stop", AsyncMock(return_value=None))
+
+    await ts._handle_cancel_or_reject(
+        _cancel_data(order_id="opg-1", filled_qty=3.0, avg=69.50), "canceled", "live")
+
+    finalize.assert_awaited_once_with(501, 3, 69.50, "opg-1", "sma_trail_stop")
+    assert order == ["commit", "restore"], order
+    assert h["place_stop"].await_args.args[1:3] == (1, DEPTH_STOP)
+
+
+@pytest.mark.asyncio
+async def test_an_unfilled_auction_order_on_a_flat_account_places_no_stop(monkeypatch):
+    """#687 review fix 1 — the books still show 4 but the broker shows NO position: a sell stop
+    there would be a short sale. Place nothing; say so plainly."""
+    from agents.market_intelligence.broker import trade_stream as ts
+    from tests.test_oco_cancel_handler_566 import PLAIN_RAW, _cancel_data, _pending
+    from tests.test_oco_cancel_handler_566 import _wire as _ws_wire
+
+    h = _ws_wire(
+        monkeypatch,
+        pending_exit_row=_pending(purpose="full_exit", raw=PLAIN_RAW, trade_id=501),
+        trade_row={"id": 501, "ticker": "KOD", "remaining_shares": 4,
+                   "stop_price": DEPTH_STOP, "stop_order_id": None},
+    )
+    monkeypatch.setattr(ts.alpaca, "get_position", AsyncMock(return_value=None))
+    monkeypatch.setattr(om, "get_pending_exit_qty", AsyncMock(return_value=0))
+    monkeypatch.setattr(om, "_read_preserved_dead_stop", AsyncMock(return_value=None))
+
+    await ts._handle_cancel_or_reject(_cancel_data(order_id="opg-1"), "canceled", "live")
+
+    h["place_stop"].assert_not_awaited()
+    assert any("NO position" in m for m in h["sent"]), h["sent"]
+
+
 # ══════════════════════════════════════════════════════════════════════════════════════════
 # 6. The 19:01 job is registered where the broker lives
 # ══════════════════════════════════════════════════════════════════════════════════════════

@@ -457,6 +457,9 @@ async def test_partial_exit_restore_stop_raw_response_param_is_dict(monkeypatch)
         ts.alpaca, "place_stop_order",
         AsyncMock(return_value={"id": "restored-stop-1", "status": "new"}),
     )
+    # #687 review: the restore reads the broker position first (never sized beyond it).
+    monkeypatch.setattr(ts.alpaca, "get_position",
+                        AsyncMock(return_value={"qty": 60.0, "qty_available": 0.0}))
     monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
     monkeypatch.setattr(ts, "send_telegram_message", AsyncMock(return_value=True))
 
@@ -506,6 +509,9 @@ async def test_pending_exit_raw_response_read_tolerates_legacy_string(monkeypatc
         ts.alpaca, "place_stop_order",
         AsyncMock(return_value={"id": "restored-stop-1", "status": "new"}),
     )
+    # #687 review: the restore reads the broker position first (never sized beyond it).
+    monkeypatch.setattr(ts.alpaca, "get_position",
+                        AsyncMock(return_value={"qty": 60.0, "qty_available": 0.0}))
     monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
     sent: list[str] = []
 

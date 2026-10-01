@@ -745,8 +745,17 @@ async def get_open_orders(
 # ── Positions ────────────────────────────────────────────────────────────────
 
 
-async def get_position(ticker: str, account_mode: str | None = None) -> dict | None:
-    """Get position for a specific ticker."""
+async def get_position(
+    ticker: str, account_mode: str | None = None, raise_on_error: bool = False,
+) -> dict | None:
+    """Get position for a specific ticker.
+
+    Returns None when the broker says there is NO position (404). With the default
+    `raise_on_error=False` a read FAILURE also returns None — so "flat" and "unreadable" look
+    the same. #687 review (2026-10-01): a caller about to place a SELL order sized from the
+    books MUST pass True — on a flat position a sell stop is a short-sale order, and on an
+    unreadable one the size is a guess. Mirrors `get_all_positions(raise_on_error=...)`.
+    """
     try:
         client = get_trading_client(account_mode)
         pos = await _sdk(client.get_open_position, ticker)
@@ -756,6 +765,8 @@ async def get_position(ticker: str, account_mode: str | None = None) -> dict | N
         if "404" in str(e) or "position does not exist" in str(e).lower():
             return None
         logger.error(f"Failed to get position for {ticker}: {e}")
+        if raise_on_error:
+            raise
         return None
 
 

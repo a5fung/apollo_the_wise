@@ -94,6 +94,9 @@ def _wire(monkeypatch, *, pending_exit_row, trade_row=None, leg_order=None,
     monkeypatch.setattr(ts.alpaca, "cancel_order", cancel_mock)
     monkeypatch.setattr(ts.alpaca, "place_stop_order", place_stop_mock)
     monkeypatch.setattr(ts.alpaca, "get_position", get_pos_mock)
+    # #687 review: the full-exit restore reads the broker's open orders (strict — an
+    # unreadable read places nothing); none resting by default.
+    monkeypatch.setattr(ts.alpaca, "get_open_orders", AsyncMock(return_value=[]))
 
     ensure_cov_mock = AsyncMock(return_value="repaired to broker truth")
     monkeypatch.setattr(om, "_ensure_stop_coverage", ensure_cov_mock)
