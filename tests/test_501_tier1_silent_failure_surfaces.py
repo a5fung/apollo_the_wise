@@ -229,7 +229,9 @@ async def test_notify_owner_resends_plain_text_on_400(monkeypatch):
     await notifications.notify_owner(
         "🚨 *Scheduled job failed*: `stuck_fill_watchdog`\n_bad \\_ text_")
     assert len(posts) == 2
-    assert posts[0]["parse_mode"] == "Markdown"
+    # #121 (2026-10-01): the page rides the HTML layer; the plain retry is the tag-stripped
+    # backstop and still reads as words with the identifier's underscores intact.
+    assert posts[0]["parse_mode"] == "HTML"
     assert "parse_mode" not in posts[1]
     assert posts[1]["text"] == "🚨 Scheduled job failed: stuck_fill_watchdog\nbad _ text"
 
@@ -518,7 +520,7 @@ async def test_635_a_no_handler_watchdog_death_buzzes(monkeypatch, wire, job_id)
         await audit_wrap(_boom, job_id)()
     assert len(wire) == 1
     assert wire[0]["disable_notification"] is False
-    assert wire[0]["text"].startswith(f"🚨 *Scheduled job failed*: `{job_id}`\n")
+    assert wire[0]["text"].startswith(f"🚨 <b>Scheduled job failed</b>: <code>{job_id}</code>\n")
     assert "watchdog exploded" in wire[0]["text"]
 
 
@@ -545,7 +547,7 @@ async def test_635_a_dead_coverage_slot_buzzes(monkeypatch, wire, slot):
     await sch._coverage_watch_job(slot)
     assert len(wire) == 1
     assert wire[0]["disable_notification"] is False
-    assert wire[0]["text"].startswith(f"🚨 *Scheduled job failed*: `coverage_watch_{slot}`\n")
+    assert wire[0]["text"].startswith(f"🚨 <b>Scheduled job failed</b>: <code>coverage_watch_{slot}</code>\n")
 
 
 @pytest.mark.asyncio
@@ -569,7 +571,7 @@ async def test_635_the_dead_15min_coverage_detector_buzzes(monkeypatch, wire):
     await sch._position_coverage_check_job()
     assert len(wire) == 1
     assert wire[0]["disable_notification"] is False
-    assert wire[0]["text"].startswith("🚨 *Scheduled job failed*: `position_coverage_check`\n")
+    assert wire[0]["text"].startswith("🚨 <b>Scheduled job failed</b>: <code>position_coverage_check</code>\n")
 
 
 @pytest.mark.asyncio
@@ -585,7 +587,7 @@ async def test_635_a_dead_l1_naked_position_check_buzzes(monkeypatch, wire, hand
     await getattr(sch, handler)()
     assert len(wire) == 1
     assert wire[0]["disable_notification"] is False
-    assert wire[0]["text"].startswith(f"🚨 *Scheduled job failed*: `{job_id}`\n")
+    assert wire[0]["text"].startswith(f"🚨 <b>Scheduled job failed</b>: <code>{job_id}</code>\n")
 
 
 @pytest.mark.asyncio
@@ -602,7 +604,7 @@ async def test_635_a_dead_repair_job_stays_silent(monkeypatch, wire):
     await sch._evening_position_backstop_job()
     assert len(wire) == 1
     assert wire[0]["disable_notification"] is True
-    assert wire[0]["text"].startswith("🚨 *Scheduled job failed*: `evening_position_backstop`\n")
+    assert wire[0]["text"].startswith("🚨 <b>Scheduled job failed</b>: <code>evening_position_backstop</code>\n")
 
 
 @pytest.mark.asyncio

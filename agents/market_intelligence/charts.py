@@ -13,6 +13,8 @@ import os
 
 import httpx
 
+from shared.telegram_format import link
+
 logger = logging.getLogger(__name__)
 
 # Finviz chart URL pattern — daily chart with technicals
@@ -271,14 +273,15 @@ async def send_chart_mosaic(
     if not mosaic_bytes:
         mosaic_bytes, screener_url = await build_chart_mosaic(tickers)
     if not mosaic_bytes:
-        # Fallback: just send the link
+        # Fallback: just send the link. HTML layer (#121): the href is quoted and escaped by
+        # `link()`, where the old `[text](url)` Markdown form broke on a `)` or `_` in the URL.
         async with httpx.AsyncClient(timeout=15) as client:
             await client.post(
                 f"https://api.telegram.org/bot{bot_token}/sendMessage",
                 json={
                     "chat_id": chat_id,
-                    "text": f"📊 [RS Leaders Charts]({screener_url})",
-                    "parse_mode": "Markdown",
+                    "text": f"📊 {link('RS Leaders Charts', screener_url)}",
+                    "parse_mode": "HTML",
                     "disable_web_page_preview": False,
                 },
             )

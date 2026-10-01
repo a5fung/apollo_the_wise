@@ -408,7 +408,10 @@ async def test_promote_callback_posts_task_and_replies_with_result(monkeypatch, 
     assert fake_client.last_post["kwargs"]["json"]["task"] == "/promotetheme_id abc123"
     query.message.reply_text.assert_awaited_once()
     sent_text = query.message.reply_text.await_args.args[0]
-    assert "Coal Mining & Exploration" in sent_text
+    # #121 (2026-10-01): the reply rides the HTML layer, so the `&` in the theme name is the
+    # entity Telegram renders back as `&` — the reader sees the same words.
+    assert query.message.reply_text.await_args.kwargs["parse_mode"] == "HTML"
+    assert "<b>Coal Mining &amp; Exploration</b>" in sent_text
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════

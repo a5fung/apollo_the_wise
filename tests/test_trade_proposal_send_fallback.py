@@ -52,18 +52,23 @@ class _Resp:
 
 
 @pytest.mark.asyncio
-async def test_markdown_400_falls_back_to_plain_text(monkeypatch):
-    posted = []  # parse_mode of each attempt
+async def test_html_400_falls_back_to_plain_text(monkeypatch):
+    """#121 (2026-10-01): the proposal rides the HTML layer; a 400 still degrades to plain
+    words (tags stripped), so the operator is never left without it."""
+    posted = []   # parse_mode of each attempt
+    texts = []    # body of each attempt
 
     def _post(payload):
         pm = payload.get("parse_mode")
         posted.append(pm)
-        return _Resp(fail=(pm == "Markdown"))  # Markdown 400s; plain text (None) succeeds
+        texts.append(payload["text"])
+        return _Resp(fail=(pm == "HTML"))  # HTML 400s; plain text (None) succeeds
 
     _install_mocks(monkeypatch, _post)
     ok = await telegram_confirm.send_trade_proposal(_ALERT, _SPEC, trade_id=234, live_real_enabled=False)
-    assert ok is True                    # the proposal still reached the operator
-    assert posted == ["Markdown", None]  # tried Markdown, fell back to plain text
+    assert ok is True                  # the proposal still reached the operator
+    assert posted == ["HTML", None]    # tried HTML, fell back to plain text
+    assert "<b>" in texts[0] and "<b>" not in texts[1] and "<" not in texts[1]   # the retry is words only
 
 
 @pytest.mark.asyncio
@@ -151,7 +156,7 @@ async def test_proposal_is_fyi_only_no_keyboard(monkeypatch):
 
     def _post(payload):
         payloads.append(payload)
-        return _Resp(fail=(payload.get("parse_mode") == "Markdown"))  # Markdown 400s -> fallback fires
+        return _Resp(fail=(payload.get("parse_mode") == "HTML"))  # HTML 400s -> fallback fires
 
     _install_mocks(monkeypatch, _post)
     await telegram_confirm.send_trade_proposal(_ALERT, _SPEC, trade_id=234, live_real_enabled=False)

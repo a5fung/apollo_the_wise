@@ -28,13 +28,23 @@ already HTML (built with the helpers above, or converted by the caller); it is t
 passed through untouched. `parse_mode="Markdown"` is ALSO converted (#675, 2026-09-20 —
 folded into the same path as the default; it no longer has a raw legacy-Markdown route of
 its own). `chunk_html()` is the tag-aware splitter the HTML send path uses.
+
+A sender with its OWN client (python-telegram-bot in `channels/`, a raw Bot-API POST in
+`core/` or `broker/`) does not go through `send_telegram_message`, so it follows the same
+three steps itself (#121, 2026-10-01): `html = md_to_html(text)` once; send it with
+`parse_mode="HTML"`, split with `chunk_html(html)` if it can pass 4000 chars (the HTML is
+longer than the Markdown it came from, so convert FIRST and split SECOND); and on a
+rejection retry with `to_plain(html)` — never a regex that strips `_`/`*`, which deletes the
+underscores out of the identifiers the message exists to carry. `parse_mode` "Markdown" /
+`ParseMode.MARKDOWN` is gated out of the tree: `tests/test_telegram_no_legacy_markdown_sends.py`.
 """
 from __future__ import annotations
 
 import html as _html
 import re
 
-__all__ = ["esc", "b", "i", "code", "pre", "link", "bullet", "render", "md_to_html", "chunk_html"]
+__all__ = ["esc", "b", "i", "code", "pre", "link", "bullet", "render", "md_to_html", "to_plain",
+           "chunk_html"]
 
 
 def esc(s) -> str:
@@ -93,6 +103,13 @@ def render(lines) -> str:
 _PRE_RE = re.compile(r"```(?:[^\s`]+(?=\s))?(?:\r\n|\n\r|\n|\r)?(.*?)```", re.DOTALL)
 _CODE_RE = re.compile(r"`([^`]+)`")
 _BOLD_RE = re.compile(r"(?<!\w)\*(?!\s)(.+?)(?<!\s)\*(?!\w)")
+# CommonMark `**bold**` (#121, 2026-10-01). Legacy Markdown has no such form — a `**` pair is two
+# EMPTY entities, so the reader saw clean unbolded words — but it is how an LLM writes bold, and
+# the orchestrator's own prompt tells Claude to write "**Action required:**" (core/context.py).
+# Without this rule the single-star pass above reads `**Action required:**` as `*` + bold
+# `*Action required:` + `*` and prints stray asterisks around every one. Runs BEFORE the
+# single-star rule; `***REDACTED***` and `x**2` are left alone by the `[\w*]` guards.
+_BOLD2_RE = re.compile(r"(?<![\w*])\*\*(?![\s*])(.+?)(?<![\s*])\*\*(?![\w*])")
 _ITALIC_RE = re.compile(r"(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 # Legacy-Markdown backslash escapes — the four characters Telegram's v1 parser reads as
@@ -129,12 +146,24 @@ def md_to_html(text: str) -> str:
     # 3) Escape everything else.
     text = esc(text)
     # 4) Inline emphasis on the escaped text.
+    text = _BOLD2_RE.sub(r"<b>\1</b>", text)
     text = _BOLD_RE.sub(r"<b>\1</b>", text)
     text = _ITALIC_RE.sub(r"<i>\1</i>", text)
     # 5) Restore the stashed spans.
     def _unstash(m):
         return placeholders[int(m.group(1))]
     return re.sub(r"\x00(\d+)\x00", _unstash, text)
+
+
+def to_plain(html_text: str) -> str:
+    """The plain-text BACKSTOP for an HTML-mode body: strip the tags, unescape every entity.
+
+    Used when Telegram 400s an HTML send and the message is re-sent with no parse_mode (#121,
+    2026-10-01 — lifted out of `briefing.send_telegram_message._to_plain` so the direct-bot
+    senders in `channels/` and `core/` retry the SAME way). Unlike the legacy Markdown stripper
+    (`re.sub(r"[*_`\\[\\]]", "", text)`), this cannot touch an identifier: `stuck_fill_watchdog`
+    and `existing_qty` come through byte-for-byte, because underscores are not markup in HTML."""
+    return _html.unescape(re.sub(r"<[^>]+>", "", html_text))
 
 
 # ── Tag-aware chunking for HTML-mode sends (#652, 2026-09-19) ────────────────

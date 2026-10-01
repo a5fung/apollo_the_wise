@@ -6,7 +6,9 @@ Friday's missed jobs behind a banner reading *"nothing will be sent"*, having pa
 its own httpx client, and the operator's Friday watchlist arrived on his phone TWICE, two days
 late. SEVEN production modules POST to `api.telegram.org` directly (`charts.py`,
 `friday_watchlist.py`, `agent.py`, `briefing.py`, `broker/telegram_confirm.py`,
-`core/notifications.py`, and counting) — a per-name or per-job rule is wrong by construction.
+`core/notifications.py`, and counting; `friday_watchlist` stopped being one on 2026-10-01 — #121
+made `_send_with_keyboard` delegate to `send_telegram_message`, so SIX remain — and the gate
+`scripts/telegram_send_census.py` now derives the list) — a per-name or per-job rule is wrong by construction.
 Every one of them reaches Telegram through `httpx` (`tests/test_probe_muzzle_covers_every_sender.py`
 fails the build if one ever does not), so this guard patches `httpx.AsyncClient.post` ONCE and
 decides per request. [[derive-the-population-never-hand-list-it]]

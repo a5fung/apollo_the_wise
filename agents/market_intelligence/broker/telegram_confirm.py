@@ -19,6 +19,8 @@ import os
 
 import httpx
 
+from shared.telegram_format import md_to_html, to_plain
+
 logger = logging.getLogger(__name__)
 
 
@@ -100,10 +102,17 @@ async def send_trade_proposal(
     allowed = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
     chat_id = int(allowed.split(",")[0].strip())
 
+    # HTML layer (#121, 2026-10-01): the proposal text is legacy Markdown (`*bold*` header,
+    # the theme line), converted ONCE here and sent as HTML — DELIVERY ONLY, the words,
+    # numbers and the STAGED-PAPER / mode banner above are untouched. The plain-text retry
+    # strips tags with `to_plain` (words only); the old Markdown retry re-sent the raw text
+    # with its `*` and backtick markers still showing.
+    html_text = md_to_html(text)
+
     async def _post(parse_mode: "str | None") -> None:
         payload = {
             "chat_id": chat_id,
-            "text": text,
+            "text": html_text if parse_mode else to_plain(html_text),
             "disable_web_page_preview": True,
         }
         if parse_mode:
@@ -115,18 +124,19 @@ async def send_trade_proposal(
             resp.raise_for_status()
 
     try:
-        await _post("Markdown")
+        await _post("HTML")
         logger.info(f"Trade proposal sent: {ticker} (trade_id={trade_id})")
         return True
     except Exception as e:
-        # Markdown can 400 on an unescaped char in a dynamic field (SNX 6/25 trade #234 —
-        # "game_changer" underscore → "can't find end of entity"). A live-trade proposal MUST
-        # reach the operator, so retry PLAIN TEXT before giving up.
-        logger.warning(f"Trade proposal Markdown send failed for {ticker} ({e}) — retrying plain text")
+        # A parse failure on a dynamic field must not cost the operator the proposal
+        # (SNX 6/25 trade #234 — "game_changer" underscore → "can't find end of entity", on
+        # the Markdown layer). A live-trade proposal MUST reach the operator, so retry PLAIN
+        # TEXT before giving up.
+        logger.warning(f"Trade proposal HTML send failed for {ticker} ({e}) — retrying plain text")
         try:
             await _post(None)
             logger.info(f"Trade proposal sent (plain-text fallback): {ticker} (trade_id={trade_id})")
             return True
         except Exception as e2:
-            logger.error(f"Failed to send trade proposal for {ticker} (markdown + plain): {e2}")
+            logger.error(f"Failed to send trade proposal for {ticker} (html + plain): {e2}")
             return False

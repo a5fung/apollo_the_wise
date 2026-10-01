@@ -9,10 +9,7 @@ unchanged.
 """
 
 import logging
-import os
 from datetime import date, timedelta
-
-import httpx
 
 from agents.market_intelligence.collector import et_today, last_trading_day
 from agents.market_intelligence.briefing import send_telegram_message
@@ -563,39 +560,17 @@ def _build_digest(
 
 
 async def _send_with_keyboard(text: str, keyboard: list[list[dict]]) -> bool:
-    """Direct Bot API POST so reply_markup attaches in one shot."""
-    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    allowed = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
-    ids = [x.strip() for x in allowed.split(",") if x.strip()]
-    if not bot_token or not ids:
-        logger.error("friday_watchlist: TELEGRAM env vars missing")
-        return False
-    chat_id = int(ids[0])
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "Markdown",
-        "disable_web_page_preview": True,
-        "reply_markup": {"inline_keyboard": keyboard},
-    }
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.post(
-                f"https://api.telegram.org/bot{bot_token}/sendMessage", json=payload
-            )
-            if r.status_code == 400:
-                logger.warning(f"friday_watchlist Markdown 400: {r.text[:300]}")
-                payload.pop("parse_mode", None)
-                r2 = await client.post(
-                    f"https://api.telegram.org/bot{bot_token}/sendMessage", json=payload
-                )
-                r2.raise_for_status()
-            else:
-                r.raise_for_status()
-        return True
-    except Exception as e:
-        logger.error(f"friday_watchlist send failed: {e}")
-        return False
+    """Send `text` with an inline keyboard attached — through the canonical sender.
+
+    #121 (2026-10-01): this used to be a SECOND, hand-rolled Bot API sender on legacy
+    `parse_mode: "Markdown"` (one POST, no chunking, a bare 400 -> plain retry). The digest
+    body is built with `*bold*` and a backtick TradingView import line, so it is converted
+    ONCE (`md_to_html`) and sent as HTML like every other alert — and by delegating it also
+    inherits what the raw POST lacked: the 4096 ceiling is applied AFTER conversion (the
+    HTML is longer than the Markdown it came from), tag-aware, with the keyboard on the LAST
+    chunk only, plus the `telegram_markdown_fallback` audit row on a 400. Same return
+    contract: True when delivered, False when not (never raises)."""
+    return await send_telegram_message(text, reply_markup={"inline_keyboard": keyboard})
 
 
 # ── main entrypoint ─────────────────────────────────────────────────────

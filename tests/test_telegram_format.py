@@ -99,6 +99,31 @@ def test_md_does_not_bold_midword_underscores():
     assert md_to_html("news_corpus_sparse") == "news_corpus_sparse"
 
 
+def test_md_double_asterisk_bold_is_bold_not_stray_asterisks():
+    """#121 (2026-10-01): `**bold**` is how an LLM writes bold — core/context.py tells the
+    orchestrator model to write "**Action required:**" — and the single-star rule alone printed
+    it as `*` + bold `*Action required:` + `*`. MUTATION: dropping the `_BOLD2_RE` step."""
+    assert md_to_html("**Action required:** Close ep_scan.") == "<b>Action required:</b> Close ep_scan."
+    assert md_to_html("⚠️ **Lane is watching** again") == "⚠️ <b>Lane is watching</b> again"
+    assert md_to_html("**bold _it_ end**, **a**.") == "<b>bold <i>it</i> end</b>, <b>a</b>."
+
+
+def test_md_double_asterisk_rule_leaves_arithmetic_redaction_and_code_alone():
+    """The `[\\w*]` guards: `x**2`, `2 ** 3`, `***REDACTED***` and anything fenced are untouched
+    by the new rule (they render exactly as before it existed)."""
+    assert md_to_html("```\nx = a ** b ** c\n```") == "<pre>x = a ** b ** c\n</pre>"
+    assert md_to_html("`a**b**c`") == "<code>a**b**c</code>"
+    assert md_to_html("x**2") == "x**2"
+    assert md_to_html("2 ** 3") == "2 ** 3"
+    assert md_to_html("**") == "**"
+
+
+def test_to_plain_strips_tags_and_unescapes_without_touching_identifiers():
+    from shared.telegram_format import to_plain
+    assert to_plain("<b>Exit FAILED</b>: <code>existing_qty</code> &lt; 2 &amp; held_for_orders") == \
+        "Exit FAILED: existing_qty < 2 & held_for_orders"
+
+
 # ── chunk_html — the tag-aware splitter the HTML send path uses (#652) ──────────────
 
 

@@ -55,7 +55,7 @@ from agents.market_intelligence.ep_rubric import (
 )
 from agents.market_intelligence.theme_engine import get_today_themes
 from agents.market_intelligence.audit_events import EVENING_BRIEF_SENT, EVENING_BRIEF_SEND_FAILED
-from shared.telegram_format import md_to_html, chunk_html
+from shared.telegram_format import md_to_html, chunk_html, to_plain
 
 logger = logging.getLogger(__name__)
 
@@ -2785,11 +2785,10 @@ async def send_telegram_message(
         # literal <b> tags all over the message. Caught 2026-05-25: 400 ("Can't
         # find end of entity") fell back to plain text without stripping the markers.
         if mode == "HTML":
-            import re as _re
-            import html as _html
             # Strip tags, then unescape ALL entities (html.unescape covers &quot;,
-            # numeric refs, etc — the manual 3-entity replace missed those).
-            return _html.unescape(_re.sub(r"<[^>]+>", "", chunk))
+            # numeric refs, etc — the manual 3-entity replace missed those). The shared
+            # `to_plain` is the ONE backstop every direct-bot sender retries with (#121).
+            return to_plain(chunk)
         return chunk
 
     async def _post(client: httpx.AsyncClient, chunk: str, formatted: bool,
@@ -2906,24 +2905,40 @@ async def send_telegram_photo(
 
 
 async def edit_telegram_message(
-    chat_id: int, message_id: int, text: str, parse_mode: str = "Markdown"
+    chat_id: int, message_id: int, text: str, parse_mode: "str | None" = _CONVERT
 ) -> bool:
-    """Edit an existing Telegram message in-place. Returns False if the message was deleted."""
+    """Edit an existing Telegram message in-place. Returns False if the message was deleted.
+
+    SAME MODE CONTRACT AS `send_telegram_message` (#121, 2026-10-01): the default converts the
+    caller's legacy Markdown ONCE (`md_to_html`) and edits as HTML; an explicit `"HTML"` is
+    passed through as already-HTML; `None` is plain text. This is the hourly refresh of the
+    pinned /hud message, whose first send (`channels/telegram._reply_with_fallback`) is HTML
+    too — the two halves of one message must not flip between layers every hour. The 4096
+    ceiling is applied AFTER conversion and tag-aware (`chunk_html`), so the cut can never
+    land inside a `<b>`/`<code>` and 400 the edit — which this function reports as "the
+    message was deleted" (`_hud_refresh_job` then forgets the pin)."""
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not bot_token:
         logger.error("TELEGRAM_BOT_TOKEN not set")
         return False
+    if parse_mode is _CONVERT:
+        text, mode = md_to_html(text), "HTML"
+    else:
+        mode = parse_mode
+    body_text = chunk_html(text, 4096)[0] if mode == "HTML" else text[:4096]
+    payload: dict[str, Any] = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": body_text,
+        "disable_web_page_preview": True,
+    }
+    if mode:
+        payload["parse_mode"] = mode
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             r = await client.post(
                 f"https://api.telegram.org/bot{bot_token}/editMessageText",
-                json={
-                    "chat_id": chat_id,
-                    "message_id": message_id,
-                    "text": text[:4096],
-                    "parse_mode": parse_mode,
-                    "disable_web_page_preview": True,
-                },
+                json=payload,
             )
             # "Message is not modified" means content identical — not an error
             if r.status_code == 400 and "not modified" in r.text.lower():

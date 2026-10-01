@@ -27,6 +27,8 @@ from shared.output_ceilings import max_tokens_for
 from shared.models import MemoryEntry
 from shared.secrets import get_secrets
 from shared.dates import et_hhmm
+from shared import telegram_format as tf
+from shared.telegram_format import chunk_html, md_to_html, to_plain
 
 # ── Onboarding states ─────────────────────────────────────────────────────────
 # Stored in Redis as apollo:onboarding:{user_id}
@@ -180,34 +182,29 @@ class TelegramChannel:
         return user_id in self._secrets.telegram_allowed_user_ids
 
     async def send_message(self, user_id: int, text: str) -> None:
-        """Send a message to a user. Called by the orchestrator for confirmations."""
+        """Send a message to a user. Called by the orchestrator for confirmations.
+
+        HTML layer (#121, 2026-10-01): the caller writes legacy Markdown; it is converted ONCE
+        (`md_to_html`) and sent as HTML, split tag-aware (`chunk_html`). On a failed send the
+        chunk is re-sent as plain words (`to_plain`) — never the old `[*_`[]]` strip, which
+        deleted every underscore from an identifier."""
         if self._app is None:
             logger.error("Telegram app not initialized — cannot send message")
             return
-        # Use HTML for messages with code blocks (Markdown v1 doesn't support ```)
-        if "```" in text:
+        for chunk in chunk_html(md_to_html(text)):
             try:
-                html = self._md_to_html(text)
                 await self._app.bot.send_message(
-                    chat_id=user_id, text=html, parse_mode=ParseMode.HTML,
+                    chat_id=user_id,
+                    text=chunk,
+                    parse_mode=ParseMode.HTML,
                 )
-                return
-            except Exception:
-                pass  # fall through
-        try:
-            await self._app.bot.send_message(
-                chat_id=user_id,
-                text=text,
-                parse_mode=ParseMode.MARKDOWN,
-            )
-        except Exception as e:
-            logger.error(f"Failed to send Telegram message to {user_id}: {e}")
-            # Fallback: try without markdown
-            try:
-                plain = re.sub(r"[*_`\[\]]", "", text)
-                await self._app.bot.send_message(chat_id=user_id, text=plain)
-            except Exception as e2:
-                logger.error(f"Fallback send also failed: {e2}")
+            except Exception as e:
+                logger.error(f"Failed to send Telegram message to {user_id}: {e}")
+                # Fallback: try without markup
+                try:
+                    await self._app.bot.send_message(chat_id=user_id, text=to_plain(chunk))
+                except Exception as e2:
+                    logger.error(f"Fallback send also failed: {e2}")
 
     async def send_plain_message(self, user_id: int, text: str) -> None:
         """Send a plain-text message (no Markdown parsing)."""
@@ -335,7 +332,8 @@ class TelegramChannel:
 
         args = " ".join(context.args) if context.args else ""
         if not args.strip():
-            await update.message.reply_text("Usage: `/setup TICKER [days]`", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text(
+                md_to_html("Usage: `/setup TICKER [days]`"), parse_mode=ParseMode.HTML)
             return
 
         ack = await self._post_market_task_or_reply(
@@ -355,10 +353,11 @@ class TelegramChannel:
         """Begin the name+persona setup flow."""
         await self._set_onboarding_state(user_id, _ONBOARD_AWAITING_NAME)
         await update.message.reply_text(
-            "👋 Let's get set up.\n\n"
-            "What would you like to call your assistant?\n\n"
-            "_(Default: Apollo — just send a period to keep it)_",
-            parse_mode=ParseMode.MARKDOWN,
+            md_to_html(
+                "👋 Let's get set up.\n\n"
+                "What would you like to call your assistant?\n\n"
+                "_(Default: Apollo — just send a period to keep it)_"),
+            parse_mode=ParseMode.HTML,
         )
 
     async def _handle_onboarding_reply(
@@ -381,16 +380,19 @@ class TelegramChannel:
             ))
 
             await self._set_onboarding_state(user_id, _ONBOARD_AWAITING_PERSONA)
+            # HTML layer (#121): `name` is typed by the operator, so it goes through the
+            # helper (escaped) — a name with a `_` or `*` in it can no longer 400 this reply.
             await update.message.reply_text(
-                f"Got it — I'm *{name}*. ✅\n\n"
-                "Now, how should I behave? Describe my personality and tone.\n\n"
-                "_Examples:_\n"
-                "• `Concise and direct. No filler words.`\n"
-                "• `Detailed and thorough. Explain your reasoning.`\n"
-                "• `Casual and friendly, like talking to a smart friend.`\n"
-                "• `Professional and formal at all times.`\n\n"
-                "_(Send a period to use the default: concise and proactive)_",
-                parse_mode=ParseMode.MARKDOWN,
+                f"Got it — I'm {tf.b(name)}. ✅\n\n"
+                + md_to_html(
+                    "Now, how should I behave? Describe my personality and tone.\n\n"
+                    "_Examples:_\n"
+                    "• `Concise and direct. No filler words.`\n"
+                    "• `Detailed and thorough. Explain your reasoning.`\n"
+                    "• `Casual and friendly, like talking to a smart friend.`\n"
+                    "• `Professional and formal at all times.`\n\n"
+                    "_(Send a period to use the default: concise and proactive)_"),
+                parse_mode=ParseMode.HTML,
             )
             return True
 
@@ -414,10 +416,10 @@ class TelegramChannel:
 
             await update.message.reply_text(
                 f"✅ All set.\n\n"
-                f"*Name:* {assistant_name}\n"
-                f"*Personality:* {persona}\n\n"
+                f"{tf.b('Name:')} {tf.esc(assistant_name)}\n"
+                f"{tf.b('Personality:')} {tf.esc(persona)}\n\n"
                 f"I'm ready. What do you need?",
-                parse_mode=ParseMode.MARKDOWN,
+                parse_mode=ParseMode.HTML,
             )
             return True
 
@@ -479,8 +481,10 @@ class TelegramChannel:
 
         assistant_name, _ = await self._load_persona(update.effective_user.id)
 
+        # HTML layer (#121): `assistant_name` is operator-typed, so the title goes through the
+        # helper (escaped); the static reference below is converted from its Markdown source.
+        title = tf.b(f"{assistant_name} — Quick Reference")
         text = (
-            f"*{assistant_name} — Quick Reference*\n"
             "\n"
             "*Daily commands*\n"
             "/hud — pinned snapshot; buttons for Regime/Themes/9M/Clusters/Watchlist\n"
@@ -535,7 +539,7 @@ class TelegramChannel:
             "\n"
             "_Still-working but off-menu: /9m /themes /clusters /spend /rules /eps_"
         )
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(title + "\n" + md_to_html(text), parse_mode=ParseMode.HTML)
 
     async def _handle_rules(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -576,7 +580,7 @@ class TelegramChannel:
             "\n"
             "Full doc: EP_TRADING_RULES.md"
         )
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(md_to_html(text), parse_mode=ParseMode.HTML)
 
     async def _handle_trades(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -893,20 +897,34 @@ class TelegramChannel:
         *,
         reply_markup: Optional[InlineKeyboardMarkup] = None,
     ):
-        """Send a market-agent result with Markdown, retrying as PLAIN TEXT on a
-        Telegram 400 (an unmatched `_`/`*` in dynamic content — e.g. an
-        underscore-heavy ticker or theme name — makes Telegram reject the whole
-        Markdown-parsed message). Mirrors /ideas' pre-existing degrade-gracefully
-        pattern so every market-slash site gets it, not just the ones that
-        happened to add it by hand. Returns the sent Message (callers like /hud
-        need the message_id to pin/store)."""
-        try:
-            return await update.message.reply_text(
-                text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup
-            )
-        except Exception as e:
-            logger.warning(f"Markdown send failed, retrying plain text: {e}")
-            return await update.message.reply_text(text, reply_markup=reply_markup)
+        """Send a market-agent result on the HTML layer, retrying as PLAIN TEXT on a
+        Telegram 400. The market agent writes legacy Markdown; it is converted ONCE
+        (`md_to_html`, #121 2026-10-01) so an underscore-heavy ticker or theme name no
+        longer makes Telegram reject the message in the first place — the retry is now
+        the backstop, not the common path, and it strips tags (`to_plain`) rather than
+        re-sending raw text with its markers showing. Mirrors /ideas' pre-existing
+        degrade-gracefully pattern so every market-slash site gets it, not just the
+        ones that happened to add it by hand. Returns the sent Message (callers like
+        /hud need the message_id to pin/store).
+
+        The body is split tag-aware AFTER conversion (`_html_chunks`): the market agent holds
+        a body under ~3900 chars as Markdown, but the HTML is longer (a `*x*` gains 5), and an
+        over-4096 send would be rejected and retried as unformatted words — bold lost, a size-
+        dependent regression. The keyboard rides the LAST chunk only (never duplicated) and the
+        LAST Message is returned, mirroring `briefing.send_telegram_message`. A body that fits
+        is one chunk, so the common path is byte-for-byte the single send it always was."""
+        chunks = self._html_chunks(text)
+        sent = None
+        for idx, html in enumerate(chunks):
+            markup = reply_markup if idx == len(chunks) - 1 else None
+            try:
+                sent = await update.message.reply_text(
+                    html, parse_mode=ParseMode.HTML, reply_markup=markup
+                )
+            except Exception as e:
+                logger.warning(f"HTML send failed, retrying plain text: {e}")
+                sent = await update.message.reply_text(to_plain(html), reply_markup=markup)
+        return sent
 
     async def _dispatch_market_slash(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -1231,7 +1249,9 @@ class TelegramChannel:
         except Exception as e:
             logger.warning(f"Spend section in /status failed (non-fatal): {e}")
 
-        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+        # HTML layer (#121): the spend section carries caller and model ids (ep_grade_judge,
+        # claude-opus-5-5) whose underscores 400'd this send with no retry behind it.
+        await self._reply_with_fallback(update, "\n".join(lines))
 
     async def _check_db(self) -> tuple[bool, str]:
         try:
@@ -1498,16 +1518,24 @@ class TelegramChannel:
         else:
             markup = None
 
+        await self._edit_or_resend(query, result, markup)
+
+    async def _edit_or_resend(self, query, result: str, markup) -> None:
+        """Edit the callback's message in place with `result` on the HTML layer (#121,
+        2026-10-01; `result` is the market agent's legacy Markdown, converted ONCE). If the
+        edit fails, send it as a NEW HTML message; if that fails too, as plain words —
+        covers both edit-failed (message deleted/old) and parse-error cases. Plain text is
+        better than silence. Shared by the eps:/trades: and ideas: drill-downs, which had
+        two byte-identical copies of this ladder."""
+        html = md_to_html(result)
         try:
-            await query.edit_message_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
+            await query.edit_message_text(html, parse_mode=ParseMode.HTML, reply_markup=markup)
         except Exception as e:
             logger.warning(f"edit_message_text failed, sending new: {e}")
-            # Fallback without Markdown — covers both edit-failed (message deleted/old)
-            # and parse-error cases. Plain text is better than silence.
             try:
-                await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
+                await query.message.reply_text(html, parse_mode=ParseMode.HTML, reply_markup=markup)
             except Exception:
-                await query.message.reply_text(result, reply_markup=markup)
+                await query.message.reply_text(to_plain(html), reply_markup=markup)
 
     async def _handle_hud_drill_down(self, query, callback_data: str) -> None:
         """Handle hud: drill-down button presses — sends a new message per section
@@ -1551,12 +1579,14 @@ class TelegramChannel:
 
         # Split long sections (the Themes ecosystem board exceeds Telegram's
         # 4096-char limit, #473) — short results stay a single message.
-        for chunk in self._split_message(result):
+        # Converted FIRST, then split tag-aware (#121): the HTML is longer than the Markdown it
+        # came from, and a seam inside a <pre>/<b> would 400 both halves.
+        for chunk in self._html_chunks(result):
             try:
-                await query.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
-            except Exception as markdown_err:
-                logger.warning(f"HUD drill-down markdown send failed, retrying plain: {markdown_err}")
-                await query.message.reply_text(chunk)
+                await query.message.reply_text(chunk, parse_mode=ParseMode.HTML)
+            except Exception as html_err:
+                logger.warning(f"HUD drill-down HTML send failed, retrying plain: {html_err}")
+                await query.message.reply_text(to_plain(chunk))
 
     async def _handle_ideas_drill_down(self, query, callback_data: str) -> None:
         """ideas: drill-down — edit the SAME message in place into a strategy's board
@@ -1601,14 +1631,7 @@ class TelegramChannel:
             markup = InlineKeyboardMarkup(
                 [[InlineKeyboardButton("← Ideas", callback_data="ideas:summary")]]
             )
-        try:
-            await query.edit_message_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
-        except Exception as e:
-            logger.warning(f"ideas edit_message_text failed, sending new: {e}")
-            try:
-                await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
-            except Exception:
-                await query.message.reply_text(result, reply_markup=markup)
+        await self._edit_or_resend(query, result, markup)
 
     async def _handle_theme_promote_callback(self, query, callback_data: str) -> None:
         """tpromo: one-tap promote — the 🔭 Emerging-theme synthesis alert's button (operator
@@ -1634,11 +1657,12 @@ class TelegramChannel:
             result = f"Error: {e}"
         if result is None:
             result = "Market agent not available."
+        html = md_to_html(result)
         try:
-            await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN)
+            await query.message.reply_text(html, parse_mode=ParseMode.HTML)
         except Exception as e:
-            logger.warning(f"Theme-promote reply markdown failed, retrying plain: {e}")
-            await query.message.reply_text(result)
+            logger.warning(f"Theme-promote reply HTML send failed, retrying plain: {e}")
+            await query.message.reply_text(to_plain(html))
 
     # ── Confirmation resolution ────────────────────────────────────────────────
 
@@ -1673,79 +1697,43 @@ class TelegramChannel:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     async def _reply(self, update: Update, text: str) -> None:
-        """Send a reply, splitting into chunks if over Telegram's 4096-char limit."""
-        chunks = self._split_message(text)
-        for chunk in chunks:
+        """Send a reply on the HTML layer, split into ≤4000-char chunks (Telegram's ceiling is
+        4096)."""
+        for chunk in self._html_chunks(text, strip_headings=True):
             await self._send_chunk(update, chunk)
 
-    def _split_message(self, text: str, limit: int = 4000) -> list[str]:
-        """Split text into chunks at section boundaries (double newline)."""
-        if len(text) <= limit:
-            return [text]
-        chunks: list[str] = []
-        remaining = text
-        while len(remaining) > limit:
-            split_at = remaining.rfind("\n\n", 0, limit)
-            if split_at == -1:
-                split_at = remaining.rfind("\n", 0, limit)
-            if split_at == -1:
-                split_at = limit
-            chunks.append(remaining[:split_at].strip())
-            remaining = remaining[split_at:].strip()
-        if remaining:
-            chunks.append(remaining)
-        return chunks
+    @staticmethod
+    def _html_chunks(text: str, *, strip_headings: bool = False) -> list[str]:
+        """Convert legacy-Markdown `text` to Telegram HTML ONCE, then split TAG-AWARE.
 
-    async def _send_chunk(self, update: Update, text: str) -> None:
-        """Send a single chunk, falling back to plain text if Markdown fails."""
-        # Strip Markdown headings — Telegram doesn't render them
-        text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
-        if "```" in text:
-            html = self._md_to_html(text)
-            try:
-                await update.message.reply_text(html, parse_mode=ParseMode.HTML)
-                return
-            except Exception:
-                pass  # fall through to markdown/plain attempts
+        Order matters (#121, 2026-10-01, the #652 lesson): the HTML is longer than the
+        Markdown it came from (every `*x*` gains 5 chars, every `&` four), so splitting the
+        Markdown at 4000 and converting each half could put a chunk over Telegram's 4096; and
+        a blind split inside a `<pre>`/`<b>` leaves BOTH halves malformed. `chunk_html` closes
+        what is open at the seam and reopens it in the next chunk.
+
+        `strip_headings` drops `# ` markers — Telegram doesn't render them (`_reply` always
+        did this per chunk; the HUD drill-down never did, so it stays opt-in)."""
+        if strip_headings:
+            text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
+        return chunk_html(md_to_html(text))
+
+    async def _send_chunk(self, update: Update, html: str) -> None:
+        """Send one HTML chunk, falling back to plain words if Telegram rejects the markup."""
         try:
-            await update.message.reply_text(
-                text,
-                parse_mode=ParseMode.MARKDOWN,
-            )
+            await update.message.reply_text(html, parse_mode=ParseMode.HTML)
         except Exception:
-            # Markdown parse error — strip v1 formatting chars and retry
+            # Parse error — strip the TAGS (not the underscores) and retry
             try:
-                plain = re.sub(r"[*_`\[\]]", "", text)
-                await update.message.reply_text(plain)
+                await update.message.reply_text(to_plain(html))
             except Exception as e:
                 logger.error(f"Failed to send reply: {e}")
 
-    @staticmethod
-    def _md_to_html(text: str) -> str:
-        """Convert Markdown-ish text with ``` blocks to Telegram HTML."""
-        import html as html_mod
-        parts = text.split("```")
-        result = []
-        for i, part in enumerate(parts):
-            if i % 2 == 1:
-                # Inside code block — wrap in <pre>
-                result.append(f"<pre>{html_mod.escape(part)}</pre>")
-            else:
-                # Outside code block — escape HTML, then restore inline markup.
-                escaped = html_mod.escape(part)
-                # Bold: *text* → <b>text</b>
-                escaped = re.sub(r"\*([^*]+)\*", r"<b>\1</b>", escaped)
-                # Italic: _text_ → <i>text</i>.
-                # ⚠ MISSING until 2026-08-02 — the operator saw raw underscores in Telegram.
-                # ANY message containing ``` takes this HTML path (Markdown v1 cannot do code
-                # blocks), so every `_italic_` in every digest rendered as literal underscores.
-                # Not a crypto bug: it hit every fenced surface.
-                # The lookarounds are load-bearing — they stop intra-word underscores
-                # (`rs_overall`, `mcap_bucket`, `total_pnl`) from being eaten as italic markers,
-                # which would swallow the text between two unrelated identifiers.
-                escaped = re.sub(r"(?<![\w\\])_([^_\n]+)_(?!\w)", r"<i>\1</i>", escaped)
-                result.append(escaped)
-        return "".join(result)
+    # The ONE converter — shared/telegram_format.md_to_html. This class used to carry its own
+    # near-copy (no code-span stash, no link or backslash-escape handling); #121 is the
+    # consolidation. The name stays so callers/tests that reach for `TelegramChannel._md_to_html`
+    # keep working.
+    _md_to_html = staticmethod(md_to_html)
 
     async def _send_typing_indicator(
         self,

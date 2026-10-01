@@ -17,6 +17,8 @@ import os
 
 import httpx
 
+from shared.telegram_format import md_to_html, to_plain
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,35 +33,14 @@ def md_escape(s: str) -> str:
     floor (health_checks.py's recorder-failure guard documents the same trap and
     works around it by hand). A job-failure page that cannot render the errors
     it is most likely to carry is not an alarm, so the escape lives here, once.
+
+    #121 (2026-10-01): the text is now consumed by `shared.telegram_format.md_to_html`
+    (see `notify_owner`), which reads a backslash as an escape ONLY when it precedes one of
+    `_ * ` [` and leaves every other backslash literal. So a literal backslash in the dynamic
+    value is NOT doubled any more — doubling it printed two (`C:\\\\dir`) where the value had one.
     """
-    return (str(s).replace("\\", "\\\\").replace("_", "\\_").replace("*", "\\*")
+    return (str(s).replace("_", "\\_").replace("*", "\\*")
             .replace("`", "\\`").replace("[", "\\["))
-
-
-def _strip_md(text: str) -> str:
-    """Plain-text fallback: drop the Markdown markers this module's own templates
-    use (`*bold*`, `` `code` ``, one `_italic_` line) and undo `md_escape`, so the
-    operator reads words — never `\\_` litter, never a word with its underscores
-    eaten (`stuck_fill_watchdog` must survive; a naive `_..._` regex eats it)."""
-    out: list[str] = []
-    i, n = 0, len(text)
-    while i < n:
-        c = text[i]
-        if c == "\\" and i + 1 < n and text[i + 1] in "_*`[\\":
-            out.append(text[i + 1])      # escaped → literal
-            i += 2
-            continue
-        if c in "*`":
-            i += 1                        # unescaped marker → drop
-            continue
-        out.append(c)
-        i += 1
-    lines = []
-    for ln in "".join(out).split("\n"):
-        if len(ln) >= 2 and ln.startswith("_") and ln.endswith("_"):
-            ln = ln[1:-1]                 # the italics-wrapped error line
-        lines.append(ln)
-    return "\n".join(lines)
 
 
 # ── #635 (operator-approved 2026-09-13): which job-DEATH pages buzz the phone ──
@@ -101,10 +82,15 @@ async def notify_owner(text: str, *, silent: bool = True) -> None:
     sound lever (there is no priority or sound choice beyond on/off). Default
     True keeps every existing caller byte-identical; `notify_job_failure` passes
     False for the jobs in `LOUD_FAILURE_JOBS` (#635). The plain-text retry
-    carries the same flag, so a loud page that 400s on Markdown still buzzes.
+    carries the same flag, so a loud page that 400s on its first send still buzzes.
 
-    On a 400 (almost always a Markdown parse failure) the same text is re-sent
-    as plain text so the alert still LANDS — mirrors `briefing.send_telegram_message`.
+    The caller's text is legacy Markdown (`*bold*`, `` `code` ``, `_italic_`, `md_escape`d
+    fields) and is converted ONCE here (`md_to_html`) and sent as HTML (#121, 2026-10-01), so
+    a job id or an exception message carrying a bare `_` can no longer 400 the page.
+
+    On a 400 (a parse failure) the same text is re-sent as plain text so the alert
+    still LANDS — mirrors `briefing.send_telegram_message`, with the same `to_plain`
+    backstop (tags removed, entities unescaped; it cannot touch an identifier).
     Before #501 F1 the response was never inspected: a 400 was indistinguishable
     from success and the page silently vanished."""
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -117,28 +103,29 @@ async def notify_owner(text: str, *, silent: bool = True) -> None:
 
     chat_id = int(ids[0])
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    html_text = md_to_html(text)
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.post(
                 url,
                 json={
                     "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": "Markdown",
+                    "text": html_text,
+                    "parse_mode": "HTML",
                     "disable_notification": silent,  # default True — don't buzz the phone
                 },
             )
             status = getattr(r, "status_code", 200)
             if status == 400:
                 logger.warning(
-                    f"notify_owner: Telegram 400 on Markdown send — re-sending as plain text "
+                    f"notify_owner: Telegram 400 on HTML send — re-sending as plain text "
                     f"({getattr(r, 'text', '')[:200]})"
                 )
                 r = await client.post(
                     url,
                     json={
                         "chat_id": chat_id,
-                        "text": _strip_md(text),
+                        "text": to_plain(html_text),
                         "disable_notification": silent,
                     },
                 )

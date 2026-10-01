@@ -74,8 +74,8 @@ async def test_themes_arg_markdown_400_falls_back_to_plain_text(monkeypatch):
     channel = _make_channel()
     update, context, message = _make_update(["Chip_Stocks"])
 
-    # First reply_text (Markdown) 400s like Telegram does on an unmatched `_`
-    # in dynamic content; the plain-text retry (no parse_mode) must succeed.
+    # First reply_text (HTML layer, #121) 400s like Telegram does on a rejected body;
+    # the plain-text retry (no parse_mode) must succeed.
     message.reply_text = AsyncMock(
         side_effect=[Exception("400 Bad Request: can't parse entities"), MagicMock()]
     )
@@ -93,7 +93,7 @@ async def test_themes_arg_markdown_400_falls_back_to_plain_text(monkeypatch):
     # Graceful degrade, NOT the old "Error: ..." hard-fail behavior.
     assert message.reply_text.call_count == 2
     first_call, second_call = message.reply_text.call_args_list
-    assert first_call.kwargs.get("parse_mode") == ParseMode.MARKDOWN
+    assert first_call.kwargs.get("parse_mode") == ParseMode.HTML
     assert "parse_mode" not in second_call.kwargs
 
     sent_text = second_call.args[0]

@@ -189,6 +189,7 @@ KEPT_AT_ROOT = {
     "sip_replay_r_cohort.py": "imported-or-code-ref",
     "stop_2r_counterfactual.py": "code-ref:test+imported-or-code-ref+yaml-cited",
     "stop_width_replay.py": "imported-or-code-ref",
+    "telegram_send_census.py": "code-ref:test",   # #121 send-population derivation, imported by tests/test_telegram_no_legacy_markdown_sends.py
     "unjustified_demotion_sweep.py": "imported-or-code-ref",
     "v1_closeout_status.py": "code-ref:deploy+code-ref:test",
     "verify_crypto_sources.py": "imported-or-code-ref",
