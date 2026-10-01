@@ -318,10 +318,28 @@ def test_the_shell_census_and_an_independent_text_scan_agree():
         """),
 ])
 def test_the_gate_fails_on_a_shell_sender_with_the_legacy_parse_mode(label, src):
-    """The ops_lib.sh defect, reproduced. MUTATION: `shell_markers_in` removed from
-    `legacy_markdown_markers` (the census blind to *.sh again) leaves the REAL tree green with
-    `parse_mode=Markdown` restored in infra/ops_lib.sh - checked by hand 2026-10-01."""
+    """The ops_lib.sh defect, reproduced at the scanner level. The WIRING (that the gate's real
+    population includes *.sh files at all) is pinned separately by
+    test_the_real_gate_sees_a_new_shell_sender_end_to_end below."""
     assert tsc.unallowed(_sh_markers(src)), f"the gate let through: {label}"
+
+
+def test_the_real_gate_sees_a_new_shell_sender_end_to_end(tmp_path, monkeypatch):
+    """2026-10-01 re-review: deleting the `_sh_files()` loop from `legacy_markdown_markers` left
+    the suite green, because the scanner tests call `shell_markers_in` directly. This drives the
+    gate's REAL entry point over a tree holding a NEW shell sender with the legacy parse mode.
+    MUTATION: removing that loop makes this fail."""
+    (tmp_path / "infra").mkdir()
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "zz_new_alert.sh").write_text(
+        'zz_alert() {\n'
+        '  curl -s "https://api.telegram.org/bot$T/sendMessage" -d "parse_mode=Markdown" '
+        '--data-urlencode "text=$1"\n'
+        '}\n')
+    monkeypatch.setattr(tsc, "REPO", tmp_path)
+    monkeypatch.setattr(tsc, "_py_files", lambda: iter(()))
+    failing = tsc.unallowed(tsc.legacy_markdown_markers())
+    assert any(m[0].endswith("zz_new_alert.sh") for m in failing), failing
 
 
 def test_the_shell_scanner_does_not_cry_wolf():
