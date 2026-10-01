@@ -12,7 +12,11 @@ through their OWN clients. Nothing derived the population, so nothing noticed.
 
 HOW THIS GATE WORKS. `scripts/telegram_send_census.py` walks the AST of agents/ core/ channels/
 shared/ and finds the sends by STRUCTURE (the canonical sender, python-telegram-bot calls, raw
-Bot-API POSTs) — never by function name, and independent of any list. This file then asserts:
+Bot-API POSTs) — never by function name, and independent of any list — and scans every `*.sh`
+under infra/ and scripts/ for `api.telegram.org` sends: the host-cron pages (backup failed,
+service DOWN, disk HIGH, restore-check FAILED) go out through ONE curl in `infra/ops_lib.sh`
+that the Python-only census could not see, and it kept `parse_mode=Markdown` after the Python
+senders were declared done. This file then asserts:
 
   1. the derivation is not vacuous — a set of NAMED senders must be found, and the AST census must
      agree with an independent text scan for `api.telegram.org` (a count floor proves nothing,
@@ -71,6 +75,9 @@ NAMED_SENDERS = [
     ("agents/market_intelligence/briefing.py::send_telegram_message._post", "raw:sendMessage", {"dynamic"}),
     ("agents/market_intelligence/broker/telegram_confirm.py::send_trade_proposal._post", "raw:sendMessage", {"dynamic"}),
     ("agents/market_intelligence/friday_watchlist.py::_send_with_keyboard", "send_telegram_message", {"converted-default"}),
+    # the host-cron pages: ONE curl in a shell function (the census's 4th class). Both its sends
+    # (HTML, then the plain-text retry) sit in the same function, whose parse_mode text is HTML.
+    ("infra/ops_lib.sh::telegram_alert", "shell:sendMessage", {"html"}),
     # plain by design — deliberately NOT markup (their docstrings say why)
     ("agents/market_intelligence/agent.py::_send_plain_with_keyboard", "raw:sendMessage", {"plain"}),
     ("channels/telegram.py::TelegramChannel.send_plain_message", "ptb:send_message", {"plain"}),
@@ -114,8 +121,7 @@ def test_no_send_uses_the_legacy_markdown_parse_mode():
     `notify_owner`'s payload, fails this and names the file:line."""
     offenders = [
         f"{path}:{line}  {func}  {what}"
-        for path, func, line, what in tsc.legacy_markdown_markers()
-        if f"{path}::{func}" not in ALLOWED_MARKDOWN_SPELLINGS
+        for path, func, line, what in tsc.unallowed(tsc.legacy_markdown_markers())
     ]
     assert not offenders, (
         "legacy-Markdown parse mode on the operator's Telegram — a bare `_` in any dynamic value "
@@ -228,3 +234,117 @@ def test_a_raw_sender_with_a_markdown_payload_is_classified_legacy():
         ''')
     by_func = {s.func: s.mode for s in tsc.sites_in("synthetic.py", src)}
     assert by_func == {"notify": "legacy-markdown", "fine": "html"}
+
+
+# ── 4. the case hole: Telegram matches parse_mode case-insensitively, so must the gate ───────
+
+@pytest.mark.parametrize("label,src", [
+    ("lowercase kwarg", """
+        async def h(update):
+            await update.message.reply_text("hi", parse_mode="markdown")
+        """),
+    ("lowercase raw payload dict literal", """
+        async def h(client):
+            await client.post("https://x", json={"chat_id": 1, "text": "t", "parse_mode": "markdown"})
+        """),
+    ("mixed case MarkdownV2", """
+        async def h(update):
+            await update.message.reply_text("hi", parse_mode="markdownV2")
+        """),
+    ("upper case", """
+        async def h(update):
+            await update.message.reply_text("hi", parse_mode="MARKDOWN")
+        """),
+])
+def test_the_gate_fails_on_any_case_of_the_legacy_parse_mode(label, src):
+    """Review defect 3 (2026-10-01): `markers_in` matched only "Markdown" / "MarkdownV2", so a
+    lowercase `parse_mode="markdown"` - which Telegram accepts - passed the gate. This feeds the
+    scanner's output through the GATE'S OWN failure set (`tsc.unallowed`), so it proves the build
+    would go red, not merely that a marker was seen. MUTATION: `.lower()` removed from
+    `markers_in` (or `_MARKDOWN_CONSTANTS` back to mixed case) leaves `unallowed` empty."""
+    assert tsc.unallowed(_markers(src)), f"the gate let through: {label}"
+
+
+def test_a_lowercase_raw_payload_is_classified_legacy_by_the_census_too():
+    """The census table must agree with the gate. MUTATION: `.lower()` removed from
+    `_classify_mode_expr` makes the raw sender read `other:markdown`, not `legacy-markdown`."""
+    src = textwrap.dedent('''
+        async def notify(client, bot_token, text):
+            await client.post(f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                              json={"text": text, "parse_mode": "markdown"})
+        async def ptb(update):
+            await update.message.reply_text("hi", parse_mode="markdown")
+        ''')
+    by_func = {s.func: s.mode for s in tsc.sites_in("synthetic.py", src)}
+    assert by_func == {"notify": "legacy-markdown", "ptb": "legacy-markdown"}
+
+
+# ── 5. the shell senders (infra/ + scripts/ *.sh) ────────────────────────────────────────────
+
+def _sh_markers(src: str):
+    return tsc.shell_markers_in("synthetic.sh", textwrap.dedent(src))
+
+
+def test_the_shell_census_and_an_independent_text_scan_agree():
+    """The shell class is found by regex; cross-check it against a blunt scan of every *.sh for the
+    host name (comments skipped by a DIFFERENT expression than the census uses). A shell sender
+    the census cannot see - the failure this section exists for - is named here."""
+    text_scan = set()
+    for root in ("infra", "scripts"):
+        for p in (tsc.REPO / root).rglob("*.sh"):
+            if any("api.telegram.org" in ln for ln in p.read_text().splitlines()
+                   if not ln.strip().startswith("#")):
+                text_scan.add(str(p.relative_to(tsc.REPO)))
+    shell_scan = {s.path for s in tsc.census() if s.kind.startswith("shell:")}
+    assert "infra/ops_lib.sh" in text_scan, "the text scan went blind to the known host-cron sender"
+    assert text_scan == shell_scan, (sorted(text_scan - shell_scan), sorted(shell_scan - text_scan))
+
+
+@pytest.mark.parametrize("label,src", [
+    ("curl --data-urlencode", """
+        send() {
+            curl -fsS "https://api.telegram.org/bot${TOKEN}/sendMessage" --data-urlencode "parse_mode=Markdown"
+        }
+        """),
+    ("lowercase", """
+        send() { curl "https://api.telegram.org/bot$T/sendMessage" -d parse_mode=markdown; }
+        """),
+    ("JSON body", """
+        curl -d '{"chat_id": 1, "parse_mode": "MarkdownV2"}' "https://api.telegram.org/bot$T/sendMessage"
+        """),
+    ("a variable URL (no api.telegram.org on the line)", """
+        TG=$TELEGRAM_API_BASE
+        curl "$TG/sendMessage" --data-urlencode "parse_mode=Markdown"
+        """),
+])
+def test_the_gate_fails_on_a_shell_sender_with_the_legacy_parse_mode(label, src):
+    """The ops_lib.sh defect, reproduced. MUTATION: `shell_markers_in` removed from
+    `legacy_markdown_markers` (the census blind to *.sh again) leaves the REAL tree green with
+    `parse_mode=Markdown` restored in infra/ops_lib.sh - checked by hand 2026-10-01."""
+    assert tsc.unallowed(_sh_markers(src)), f"the gate let through: {label}"
+
+
+def test_the_shell_scanner_does_not_cry_wolf():
+    assert _sh_markers("""
+        # parse_mode=Markdown used to be here
+        curl "https://api.telegram.org/bot$T/sendMessage" --data-urlencode "parse_mode=HTML"
+        """) == []
+
+
+def test_a_shell_sender_is_classified_by_the_parse_mode_in_its_own_function():
+    src = textwrap.dedent('''
+        bad() {
+            curl "https://api.telegram.org/bot$T/sendMessage" --data-urlencode "parse_mode=Markdown"
+        }
+        good() {
+            curl "https://api.telegram.org/bot$T/sendMessage" --data-urlencode "parse_mode=HTML"
+        }
+        bare() {
+            curl "https://api.telegram.org/bot$T/sendMessage" --data-urlencode "text=hi"
+        }
+        photo() {
+            curl "https://api.telegram.org/bot$T/sendPhoto" -F photo=@x.png
+        }
+        ''')
+    by_func = {s.func: s.mode for s in tsc.shell_sites_in("synthetic.sh", src)}
+    assert by_func == {"bad": "legacy-markdown", "good": "html", "bare": "plain", "photo": "n/a (media)"}

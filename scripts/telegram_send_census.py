@@ -7,7 +7,7 @@ declared finished twice ("Remaining legacy surfaces after #652/#675: none") whil
 list is whatever the author remembered. This module walks the AST instead, so the question the
 gate asks — "is there a send we did not look at" — has a decidable answer.
 
-THE POPULATION (three classes, each found by structure, never by function name):
+THE POPULATION (four classes, each found by structure, never by function name):
 
   1. `send_telegram_message(...)`  — the canonical sender. Converts legacy Markdown to HTML
      itself, so BOTH its default and an explicit "Markdown" are on the HTML layer.
@@ -17,10 +17,19 @@ THE POPULATION (three classes, each found by structure, never by function name):
   3. raw Bot-API HTTP              — any function that names `api.telegram.org/bot…/sendMessage`
      (or editMessageText / sendPhoto / …). Its parse mode is the `"parse_mode"` key of the
      payload it builds.
+  4. SHELL senders                 — any non-comment line in a `*.sh` under infra/ or scripts/ that
+     names `api.telegram.org/bot…/<method>` (`infra/ops_lib.sh::telegram_alert`, the curl behind
+     every host-cron page: backup failed, service DOWN, disk HIGH, restore-check FAILED). It was
+     INVISIBLE to the first three classes - the census read only Python - and kept
+     `parse_mode=Markdown` after the Python senders were declared migrated. Its parse mode is the
+     `parse_mode=<mode>` / `"parse_mode":"<mode>"` text in the same shell function.
 
 WHAT COUNTS AS LEGACY MARKDOWN (the gate's failure condition, `markers_in`):
-  * the string constant "Markdown" / "MarkdownV2" ANYWHERE (a keyword value, a dict literal,
-    a signature default, a positional `_post("Markdown")` — name-based scans miss the last two);
+  * the string constant "Markdown" / "MarkdownV2" ANYWHERE, IN ANY CASE (a keyword value, a dict
+    literal, a signature default, a positional `_post("Markdown")` — name-based scans miss the last
+    two; Telegram matches parse_mode case-insensitively, and a case-sensitive scan waved
+    `parse_mode="markdown"` through);
+  * `parse_mode=Markdown` / `"parse_mode": "markdown"` in a shell script (`shell_markers_in`);
   * the attribute `ParseMode.MARKDOWN` / `MARKDOWN_V2`;
   * a `.reply_markdown(...)`-style call;
   * a PLAIN send (no parse_mode) whose literal text is built with Markdown syntax — it would
@@ -46,9 +55,16 @@ PTB_SEND_ATTRS = frozenset({
     "reply_photo", "reply_document", "send_photo", "send_document",
 })
 PTB_MARKDOWN_METHODS = frozenset({"reply_markdown", "reply_markdown_v2"})
-_MARKDOWN_CONSTANTS = frozenset({"Markdown", "MarkdownV2"})
+# Telegram matches parse_mode case-insensitively, so the scan does too: ALWAYS compare `.lower()`.
+_MARKDOWN_CONSTANTS = frozenset({"markdown", "markdownv2"})
 _MARKDOWN_ATTRS = frozenset({"MARKDOWN", "MARKDOWN_V2"})
 _RAW_URL = re.compile(r"api\.telegram\.org/bot\{\}/(\w+)")
+SHELL_ROOTS = ("infra", "scripts")
+_SH_FUNC = re.compile(r"^\s*(?:function\s+)?([A-Za-z_]\w*)\s*\(\)\s*\{")
+_SH_URL = re.compile(r"api\.telegram\.org/bot[^/\s\"']*/(\w+)")
+# `parse_mode=Markdown` (curl --data-urlencode "parse_mode=Markdown", -d parse_mode=...) and the
+# JSON spelling `"parse_mode":"Markdown"`; a `$VAR` / `${VAR}` value is captured whole (-> dynamic).
+_SH_MODE = re.compile(r"parse_mode[\"']?\s*[=:]\s*[\"']?(\$?\{?\w+)", re.IGNORECASE)
 # Markdown syntax in a STATIC string (placeholders from f-strings are replaced by "X" first so a
 # `{name}` can neither create nor hide a marker).
 _MD_SYNTAX = re.compile(
@@ -140,7 +156,7 @@ def _classify_mode_expr(node: ast.AST | None) -> str:
         return "default"
     s = _const_str(node)
     if s is not None:
-        if s in _MARKDOWN_CONSTANTS:
+        if s.lower() in _MARKDOWN_CONSTANTS:
             return "legacy-markdown"
         return "html" if s.upper() == "HTML" else f"other:{s}"
     if isinstance(node, ast.Constant) and node.value is None:
@@ -238,7 +254,7 @@ def markers_in(rel: str, text: str) -> list[tuple[str, str, int, str]]:
         return out
     qn = _qualname_map(tree)
     for n in ast.walk(tree):
-        if isinstance(n, ast.Constant) and isinstance(n.value, str) and n.value in _MARKDOWN_CONSTANTS:
+        if isinstance(n, ast.Constant) and isinstance(n.value, str) and n.value.lower() in _MARKDOWN_CONSTANTS:
             out.append((rel, _func_of(n, qn), n.lineno, f'"{n.value}"'))
         elif isinstance(n, ast.Attribute) and n.attr in _MARKDOWN_ATTRS:
             out.append((rel, _func_of(n, qn), n.lineno, f".{n.attr}"))
@@ -247,10 +263,76 @@ def markers_in(rel: str, text: str) -> list[tuple[str, str, int, str]]:
     return out
 
 
+def _sh_files():
+    for root in SHELL_ROOTS:
+        yield from sorted((REPO / root).rglob("*.sh"))
+
+
+def _sh_lines(text: str):
+    """(lineno, enclosing shell function, line) for every NON-COMMENT line. A function ends at a
+    column-0 `}`; outside one the name is `<script>`."""
+    func = "<script>"
+    for no, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith("#"):
+            continue
+        m = _SH_FUNC.match(line)
+        if m:
+            func = m.group(1)
+        yield no, func, line
+        if line.startswith("}"):
+            func = "<script>"
+
+
+def shell_sites_in(rel: str, text: str) -> list[Site]:
+    """Every shell send site in ONE `.sh` file: a non-comment line naming
+    `api.telegram.org/bot<token>/<method>`. Its mode is read off the `parse_mode=` text of the SAME
+    shell function (an absent parse_mode = plain, a `$VAR` = dynamic) - the curl behind
+    `infra/ops_lib.sh::telegram_alert` is what this exists to see."""
+    lines = list(_sh_lines(text))
+    evidence: dict[str, list[str]] = {}
+    for _no, func, line in lines:
+        for m in _SH_MODE.finditer(line):
+            v = m.group(1)
+            label = ("dynamic" if v.startswith("$") else
+                     "legacy-markdown" if v.lower() in _MARKDOWN_CONSTANTS else
+                     "html" if v.upper() == "HTML" else f"other:{v}")
+            evidence.setdefault(func, []).append(label)
+    sites: list[Site] = []
+    for no, func, line in lines:
+        for m in _SH_URL.finditer(line):
+            method, ev = m.group(1), evidence.get(func, [])
+            if method not in ("sendMessage", "editMessageText"):
+                mode = "n/a (media)"
+            elif not ev:
+                mode = "plain"
+            elif "legacy-markdown" in ev:
+                mode = "legacy-markdown"
+            elif all(e == "html" for e in ev):
+                mode = "html"
+            else:
+                mode = "dynamic"
+            sites.append(Site(rel, func, no, f"shell:{method}", mode))
+    return sites
+
+
+def shell_markers_in(rel: str, text: str) -> list[tuple[str, str, int, str]]:
+    """Every place a shell script spells the legacy Markdown parse mode - (path, func, line, what),
+    case-insensitive, comment lines skipped. Independent of `shell_sites_in`: a sender whose URL is
+    assembled from a variable still shows up here."""
+    out: list[tuple[str, str, int, str]] = []
+    for no, func, line in _sh_lines(text):
+        for m in _SH_MODE.finditer(line):
+            if m.group(1).lower() in _MARKDOWN_CONSTANTS:
+                out.append((rel, func, no, f"parse_mode={m.group(1)}"))
+    return out
+
+
 def census() -> list[Site]:
     out: list[Site] = []
     for p in _py_files():
         out.extend(sites_in(str(p.relative_to(REPO)), p.read_text(encoding="utf-8", errors="replace")))
+    for p in _sh_files():
+        out.extend(shell_sites_in(str(p.relative_to(REPO)), p.read_text(encoding="utf-8", errors="replace")))
     return out
 
 
@@ -258,7 +340,16 @@ def legacy_markdown_markers() -> list[tuple[str, str, int, str]]:
     out: list[tuple[str, str, int, str]] = []
     for p in _py_files():
         out.extend(markers_in(str(p.relative_to(REPO)), p.read_text(encoding="utf-8", errors="replace")))
+    for p in _sh_files():
+        out.extend(shell_markers_in(str(p.relative_to(REPO)), p.read_text(encoding="utf-8", errors="replace")))
     return out
+
+
+def unallowed(markers: list[tuple[str, str, int, str]]) -> list[tuple[str, str, int, str]]:
+    """The gate's failure set: markers NOT excused by ALLOWED_MARKDOWN_SPELLINGS. ONE function, read
+    by the CLI (`--legacy`) and by the gate test (which also feeds it synthetic markers to show it
+    can fail)."""
+    return [m for m in markers if f"{m[0]}::{m[1]}" not in ALLOWED_MARKDOWN_SPELLINGS]
 
 
 def plain_sends_with_markdown_syntax() -> list[Site]:
@@ -268,8 +359,7 @@ def plain_sends_with_markdown_syntax() -> list[Site]:
 def _main(argv: list[str]) -> int:
     if "--legacy" in argv:
         # the gate's failure set: everything NOT on an allowlist (exit 1 iff non-empty)
-        bad = [m for m in legacy_markdown_markers()
-               if f"{m[0]}::{m[1]}" not in ALLOWED_MARKDOWN_SPELLINGS]
+        bad = unallowed(legacy_markdown_markers())
         plain = [s for s in plain_sends_with_markdown_syntax() if s.key not in ALLOWED_PLAIN_WITH_MARKDOWN]
         for path, func, line, what in bad:
             print(f"{path}:{line}  {func}  {what}")
@@ -281,7 +371,7 @@ def _main(argv: list[str]) -> int:
     for s in rows:
         k = (s.kind.split(":")[0], s.mode)
         by_mode[k] = by_mode.get(k, 0) + 1
-    print(f"{len(rows)} sends in {', '.join(ROOTS)}")
+    print(f"{len(rows)} sends in {', '.join(ROOTS)} + shell {', '.join(SHELL_ROOTS)}/**/*.sh")
     for (kind, mode), n in sorted(by_mode.items(), key=lambda kv: (-kv[1], kv[0])):
         print(f"  {n:4d}  {kind:22s} {mode}")
     if "--all" in argv:

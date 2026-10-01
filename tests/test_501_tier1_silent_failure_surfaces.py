@@ -23,8 +23,9 @@ MUTATION CHECKS (run by hand on 2026-09-10, recorded here, not re-run by CI):
       → test_f3_* FAIL.
   F4  delete `await _note_mode_reconcile_failure(...)` in order_manager.reconcile_all_modes
       → test_f4_* FAIL.
-  esc delete `md_escape(...)` in core/notifications.py::notify_job_failure
-      → test_notify_job_failure_escapes_underscores FAIL.
+  esc `error_html(...)` -> the raw `str(error)` in core/notifications.py::notify_job_failure
+      → test_notify_job_failure_survives_underscores FAIL (an unescaped `<` / `&` reaches the
+      HTML parser; #121 review 2026-10-01 replaced the Markdown `md_escape` with `esc()`).
 """
 from __future__ import annotations
 
@@ -181,23 +182,28 @@ async def test_f1_cancelled_branch_untouched(monkeypatch, sinks):
 # ── the page must be able to RENDER — legacy-Markdown 400 hazard ──────────────
 
 @pytest.mark.asyncio
-async def test_notify_job_failure_escapes_underscores(monkeypatch):
-    """Three underscores (odd) inside `_..._` italics 400'd the send and dropped
-    the alert (health_checks.py's recorder guard documents the same trap)."""
+async def test_notify_job_failure_survives_underscores(monkeypatch):
+    """Three underscores (odd) inside `_..._` italics 400'd the send and dropped the alert
+    (health_checks.py's recorder guard documents the same trap). The page is built as HTML now
+    (#121 review 2026-10-01), so the underscores need no escaping at all: they go out as written,
+    with no backslash anywhere, and the `<` / `&` that WOULD break HTML are entity-escaped."""
     sent = []
 
     async def _owner(text, **kw):
-        sent.append(text)
+        sent.append((text, kw))
 
     monkeypatch.setattr(notifications, "notify_owner", _owner)
     await notifications.notify_job_failure(
-        "stuck_fill_watchdog", 'column "stop_order_id" does_not exist\nsecond line')
-    body = sent[0].split("\n", 1)[1]
-    assert body.startswith("_") and body.endswith("_")
-    inner = body[1:-1]
-    assert "\\_" in inner and "stop\\_order\\_id" in inner
-    assert inner.replace("\\_", "").count("_") == 0      # no unescaped `_` remains
-    assert "\n" not in inner                              # italics cannot span lines
+        "stuck_fill_watchdog", 'column "stop_order_id" does_not exist <x> & y\nsecond line')
+    text, kw = sent[0]
+    assert kw["html"] is True                              # already HTML: never converted twice
+    body = text.split("\n", 1)[1]
+    assert body.startswith("<i>") and body.endswith("</i>")
+    inner = body[3:-4]
+    assert "stop_order_id" in inner and "does_not exist" in inner
+    assert "\\" not in inner                               # no escape backslashes
+    assert "&lt;x&gt; &amp; y" in inner                    # the bytes that 400 HTML are escaped
+    assert "\n" not in inner                               # italics cannot span lines
 
 
 @pytest.mark.asyncio

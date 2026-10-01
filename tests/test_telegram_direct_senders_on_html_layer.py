@@ -400,7 +400,8 @@ def _wire(responses):
 
 @pytest.mark.asyncio
 async def test_job_failure_pages_go_out_as_html_with_identifiers_and_one_backslash(monkeypatch):
-    """EVERY scheduled-job-failure page. The error text is `md_escape`d inside `_…_` italics.
+    """EVERY scheduled-job-failure page. The error text is `esc()`d inside `<i>…</i>` (built as
+    HTML since the #121 review, 2026-10-01 - it no longer takes a Markdown round trip).
     MUTATION: `"parse_mode": "Markdown"` back in `notify_owner`. A second defect fixed with it:
     `md_escape` doubled backslashes, so `C:\\dir` printed two once converted."""
     from core import notifications
@@ -420,6 +421,80 @@ async def test_job_failure_pages_go_out_as_html_with_identifiers_and_one_backsla
     for needle in ("stop_order_id", "does_not exist", "existing_qty", "<x> & ", "*2*"):
         assert needle in plain, (needle, plain)
     assert "C:\\dir" in plain and "C:\\\\dir" not in plain          # ONE backslash
+
+
+async def _one_job_failure_post(monkeypatch, job, error):
+    """Run the REAL notify_job_failure -> notify_owner against the fake wire; return the one POST."""
+    from core import notifications
+    fake = _wire([(200, {"ok": True})])
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "123")
+    monkeypatch.setattr(httpx, "AsyncClient", fake)
+    await notifications.notify_job_failure(job, error)
+    (post,) = fake.posts
+    return post
+
+
+@pytest.mark.asyncio
+async def test_a_job_failure_quoting_identifiers_in_backticks_renders_code_not_backslashes(monkeypatch):
+    """Review defect 2 (2026-10-01), the EXACT input from the review. The old path backslash-
+    escaped the exception text (`rs\\_rank`, ``\\` ``) and `md_to_html` stashes code spans BEFORE it
+    honours escapes, so the reader got `\\<code>rs\\_rank\\</code>`. Decision recorded: the fix is
+    in `notify_job_failure` (dynamic text must not take a Markdown round trip), NOT in
+    `md_to_html`'s ordering - reordering would honour `\\`` and print LITERAL backticks, losing
+    the code formatting the exception text was asking for, and would change a converter ~200
+    callers share. MUTATION: `error_html(...)` back to a backslash-escaped string through
+    `md_to_html` (the pre-fix code) puts backslashes in `text` and fails every assertion here."""
+    post = await _one_job_failure_post(
+        monkeypatch, "nightly_data_pull",
+        "UndefinedColumnError: column `rs_rank` does not exist in `mi_stock_scores`")
+    text = post["text"]
+    _well_formed(text)
+    assert post["parse_mode"] == "HTML"
+    assert "\\" not in text                                         # no stray backslashes
+    assert "<code>rs_rank</code>" in text and "<code>mi_stock_scores</code>" in text
+    assert "column <code>rs_rank</code> does not exist in <code>mi_stock_scores</code>" in text
+    # what the reader sees (and what the plain-text retry would send)
+    assert "column rs_rank does not exist in mi_stock_scores" in _html_backstop(text)
+
+
+@pytest.mark.asyncio
+async def test_a_job_failure_text_ending_in_a_backslash_keeps_its_italics_closed(monkeypatch):
+    """Review defect 4 (2026-10-01): `md_escape` no longer doubled a backslash, so a text ENDING in
+    one escaped the closing `_` of the `_…_` wrapper and the reader saw literal underscores
+    around the message (`_path C:\\data\\_`). MUTATION: the Markdown wrapper back
+    (`f"_{md_escape(flat)}_"` through `md_to_html`) leaves `<i>` absent and literal `_` in the
+    plain words."""
+    post = await _one_job_failure_post(monkeypatch, "nightly_data_pull", "path C:\\data\\")
+    text = post["text"]
+    _well_formed(text)
+    assert text.endswith("<i>path C:\\data\\</i>")                   # ONE backslash each, italics closed
+    assert _html_backstop(text).endswith("\npath C:\\data\\")
+    assert "_" not in _html_backstop(text).replace("nightly_data_pull", "")   # no literal underscores
+
+
+def test_error_html_escapes_free_text_and_only_pairs_backticks():
+    from core.notifications import error_html
+    assert error_html("a_b *c* <d> & [e]") == "a_b *c* &lt;d&gt; &amp; [e]"
+    assert error_html("`x_y` and `z`") == "<code>x_y</code> and <code>z</code>"
+    assert error_html("one ` lone backtick") == "one ` lone backtick"      # unpaired stays literal
+    assert error_html("`a<b>&c`") == "<code>a&lt;b&gt;&amp;c</code>"      # code content escaped too
+    assert error_html("") == ""
+
+
+@pytest.mark.asyncio
+async def test_notify_owner_html_flag_sends_the_text_as_is_and_default_still_converts(monkeypatch):
+    """`html=True` = the caller built HTML, so it must NOT be converted a second time (a `<b>`
+    would be escaped to `&lt;b&gt;`); the default path still converts legacy Markdown."""
+    from core import notifications
+    fake = _wire([(200, {"ok": True}), (200, {"ok": True})])
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "123")
+    monkeypatch.setattr(httpx, "AsyncClient", fake)
+    await notifications.notify_owner("<b>already</b> html_ok", html=True)
+    await notifications.notify_owner("*converted* html_ok")
+    assert fake.posts[0]["text"] == "<b>already</b> html_ok"
+    assert fake.posts[1]["text"] == "<b>converted</b> html_ok"
 
 
 @pytest.mark.asyncio

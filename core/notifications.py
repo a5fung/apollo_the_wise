@@ -14,33 +14,39 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 import httpx
 
-from shared.telegram_format import md_to_html, to_plain
+from shared.telegram_format import code, esc, md_to_html, to_plain
 
 logger = logging.getLogger(__name__)
 
 
-def md_escape(s: str) -> str:
-    """Backslash-escape the four legacy-Markdown control characters so a dynamic
-    value (an exception message, a job id) cannot break the parse of the message
-    it is embedded in.
+_BACKTICK_SPAN = re.compile(r"`([^`]+)`")
 
-    #501 F1 (2026-09-10): `notify_job_failure` wraps its error text in `_..._`
-    italics. An ODD number of `_` inside that text — e.g. asyncpg quoting
-    `stop_order_id` — makes Telegram answer 400 and the alert is dropped on the
-    floor (health_checks.py's recorder-failure guard documents the same trap and
-    works around it by hand). A job-failure page that cannot render the errors
-    it is most likely to carry is not an alarm, so the escape lives here, once.
 
-    #121 (2026-10-01): the text is now consumed by `shared.telegram_format.md_to_html`
-    (see `notify_owner`), which reads a backslash as an escape ONLY when it precedes one of
-    `_ * ` [` and leaves every other backslash literal. So a literal backslash in the dynamic
-    value is NOT doubled any more — doubling it printed two (`C:\\\\dir`) where the value had one.
-    """
-    return (str(s).replace("_", "\\_").replace("*", "\\*")
-            .replace("`", "\\`").replace("[", "\\["))
+def error_html(s: str) -> str:
+    """An exception / error text as Telegram HTML: free text `esc()`d, and a backtick pair the
+    error ITSELF used to quote an identifier (asyncpg: ``column `rs_rank` does not exist``)
+    rendered as a `<code>` span. An unpaired backtick stays a literal character.
+
+    Why this builds HTML instead of escaping legacy Markdown (#121 review, 2026-10-01): the old
+    `md_escape` backslash-escaped `_ * ` [` and the result then went through `md_to_html`, which
+    stashes code spans BEFORE it honours backslash escapes - so a quoted identifier came out as
+    `\\<code>rs\\_rank\\</code>` with literal backslashes. And `md_escape` no longer doubled
+    a literal backslash, so a text ENDING in one (`C:\\data\\`) escaped the closing `_` of its
+    own italics wrapper and printed literal underscores. `md_to_html` is a faithful v1 mirror
+    (v1 has no `\\\\` escape either), so neither is its bug: dynamic text must not take a Markdown
+    round trip at all. `esc()` is total and has no failure mode to guard."""
+    out: list[str] = []
+    pos = 0
+    for m in _BACKTICK_SPAN.finditer(s):
+        out.append(esc(s[pos:m.start()]))
+        out.append(code(m.group(1)))
+        pos = m.end()
+    out.append(esc(s[pos:]))
+    return "".join(out)
 
 
 # ── #635 (operator-approved 2026-09-13): which job-DEATH pages buzz the phone ──
@@ -75,7 +81,7 @@ LOUD_FAILURE_JOBS: frozenset[str] = frozenset({
 })
 
 
-async def notify_owner(text: str, *, silent: bool = True) -> None:
+async def notify_owner(text: str, *, silent: bool = True, html: bool = False) -> None:
     """Send a message directly to the owner via Telegram Bot API.
 
     `silent` maps to Telegram's `disable_notification` — the Bot API's ONLY
@@ -84,9 +90,12 @@ async def notify_owner(text: str, *, silent: bool = True) -> None:
     False for the jobs in `LOUD_FAILURE_JOBS` (#635). The plain-text retry
     carries the same flag, so a loud page that 400s on its first send still buzzes.
 
-    The caller's text is legacy Markdown (`*bold*`, `` `code` ``, `_italic_`, `md_escape`d
-    fields) and is converted ONCE here (`md_to_html`) and sent as HTML (#121, 2026-10-01), so
-    a job id or an exception message carrying a bare `_` can no longer 400 the page.
+    The caller's text is legacy Markdown (`*bold*`, `` `code` ``, `_italic_`) and is converted
+    ONCE here (`md_to_html`) and sent as HTML (#121, 2026-10-01), so a job id or an exception
+    message carrying a bare `_` can no longer 400 the page. A caller that already holds
+    Telegram HTML - one that builds it with `shared.telegram_format` / `error_html` because it
+    carries dynamic text - passes `html=True` and the text is sent as-is (never converted twice,
+    the same contract as `send_telegram_message(parse_mode="HTML")`).
 
     On a 400 (a parse failure) the same text is re-sent as plain text so the alert
     still LANDS — mirrors `briefing.send_telegram_message`, with the same `to_plain`
@@ -103,7 +112,7 @@ async def notify_owner(text: str, *, silent: bool = True) -> None:
 
     chat_id = int(ids[0])
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    html_text = md_to_html(text)
+    html_text = text if html else md_to_html(text)
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.post(
@@ -171,15 +180,16 @@ async def notify_startup(agent_statuses: dict[str, tuple[bool, str]]) -> None:
 async def notify_job_failure(job_name: str, error: str) -> None:
     """Alert owner when a scheduled job fails.
 
-    The error text is Markdown-escaped (#501 F1) — see `md_escape`. The job name
-    is backtick-fenced, so an underscore in it was never the problem; the free
-    text between the italics markers was.
+    Built as HTML (`error_html`, #121 review 2026-10-01): the error text is `esc()`d inside
+    `<i>…</i>` - no Markdown escaping, so an underscore, an asterisk, a backslash anywhere in
+    it (including as its LAST character) or a backtick-quoted identifier all render as written.
+    The words are the same as before: bold title, the job id as code, the error in italics.
 
     Silent unless `job_name` is in `LOUD_FAILURE_JOBS` (#635) — the wording, the
     dedup and the trigger are untouched; only whether the phone buzzes changes."""
     flat = " ".join(str(error).split())   # italics cannot span a newline
-    text = f"🚨 *Scheduled job failed*: `{job_name}`\n_{md_escape(flat[:200])}_"
-    await notify_owner(text, silent=job_name not in LOUD_FAILURE_JOBS)
+    text = f"🚨 <b>Scheduled job failed</b>: {code(job_name)}\n<i>{error_html(flat[:200])}</i>"
+    await notify_owner(text, silent=job_name not in LOUD_FAILURE_JOBS, html=True)
 
 
 async def notify_job_success(job_name: str, summary: str) -> None:
