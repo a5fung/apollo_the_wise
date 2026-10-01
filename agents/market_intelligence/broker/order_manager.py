@@ -5105,23 +5105,46 @@ class _SaleSize(NamedTuple):
     sell_qty: int
     held_by_resting: float
     broker_qty: float
+    # #687 review fix 9: this trade's PLAIN resting sell limits (a profit-take third placed
+    # without its OCO stop) — the sale cancels them and sells their shares too.
+    plain_limits: tuple = ()
+
+
+def _is_protective_resting_sell(order: dict) -> bool:
+    """#687 review fix 9 — does this resting SELL order protect its shares on a decline?
+
+    A stop does. An OCO parent does (its hidden sibling is a stop — the profit-take third's
+    target AND breakeven stop, operator ruling 2026-09-29: it keeps them on a close-below sale).
+    A PLAIN limit does not: it rests above the market and protects nothing (#566 defect 1)."""
+    otype = str(order.get("type") or "").lower()
+    oclass = str(order.get("order_class") or "").lower()
+    return "stop" in otype or order.get("stop_price") is not None or oclass.endswith("oco")
 
 
 async def _size_sale_beside_resting_orders(
-    trade_id: int, trade: dict, reason: str, pending_partial_qty: float, account_mode: str,
+    trade_id: int, trade: dict, reason: str, pending_partial_rows: list, account_mode: str,
 ) -> "_SaleSize | None":
     """#687 — how many shares a closing sale may sell when other exit orders can be resting.
 
     BROKER TRUTH for what is free once the trade's stop is cancelled: the position minus every
-    LIVE resting sell order except that stop (the +8R profit-take OCO third keeps its own target
-    and breakeven stop — operator ruling 2026-09-29), capped by the books' own count
-    (`remaining − pending partial-exit qty`). Never more than the broker holds free.
+    LIVE resting sell order the sale leaves alone, capped by the books' own count (`remaining −`
+    the pending partial-exit qty that stays resting). Never more than the broker holds free.
+
+    #687 review fix 9 — only an order that carries its OWN stop is left alone: the OCO
+    profit-take third (target + breakeven stop, ruled 2026-09-29), or another stop. When
+    `profit_take_oco` is off or fell back (`partial_exit_oco_fallback`), the third rests as a
+    PLAIN limit with no stop; leaving it would leave those shares unsold below the line AND
+    unprotected. Such a limit — one of THIS trade's pending partial exits — is returned in
+    `plain_limits`: the caller cancels it (`_cancel_plain_resting_limits`) and the sale includes
+    its shares. An unknown resting order (not this trade's) is still left alone and counted held.
 
     Returns None — after auditing + paging the skip — when nothing may be sold: the broker could
     not be read (nothing is cancelled; the stop stays) or resting orders hold every share. Shared
     by `execute_full_exit` (16:45, today's rule) and `execute_depth_open_sale` (19:01, depth).
+    PURE of broker mutations: it cancels nothing.
     """
     ticker = trade["ticker"]
+    pending_partial_qty = sum(float(r["qty"] or 0) for r in pending_partial_rows)
     try:
         pos = await alpaca.get_position(ticker, account_mode=account_mode)
         open_orders = await alpaca.get_open_orders(
@@ -5138,9 +5161,22 @@ async def _size_sale_beside_resting_orders(
             {"pending_partial_qty": pending_partial_qty})
         return None
     broker_qty = float(pos.get("qty") or 0)
+    ours = {str(r["alpaca_order_id"]) for r in pending_partial_rows if r["alpaca_order_id"]}
+    stop_id = str(trade.get("stop_order_id") or "")
+    plain_limits = tuple(
+        o for o in open_orders
+        if "sell" in str(o.get("side") or "").lower()
+        and str(o.get("id")) in ours and str(o.get("id")) != stop_id
+        and _canonical_order_status(o.get("status")) in _STOP_CONFIRMED_LIVE_STATUSES
+        and "limit" in str(o.get("type") or "").lower()
+        and not _is_protective_resting_sell(o)
+    )
+    plain_ids = {str(o.get("id")) for o in plain_limits}
     held_by_resting = _live_sell_orders_held_qty(
-        open_orders, exclude_ids=(trade.get("stop_order_id"),))
-    db_free = float(trade["remaining_shares"]) - pending_partial_qty
+        open_orders, exclude_ids=(trade.get("stop_order_id"), *plain_ids))
+    resting_partial_qty = sum(float(r["qty"] or 0) for r in pending_partial_rows
+                              if str(r["alpaca_order_id"]) not in plain_ids)
+    db_free = float(trade["remaining_shares"]) - resting_partial_qty
     sell_qty = _whole_shares(min(broker_qty - held_by_resting, db_free))
     if sell_qty <= 0:
         await _record_full_exit_skip(
@@ -5156,14 +5192,62 @@ async def _size_sale_beside_resting_orders(
         await log_audit_event(
             "full_exit_sized_around_resting_exit",
             f"{ticker}: selling {sell_qty} sh ({reason}); {held_by_resting:.0f} sh stay under "
-            f"the resting profit-take",
+            f"the resting profit-take"
+            + (f"; {len(plain_limits)} plain resting limit(s) without a stop are cancelled and "
+               f"their shares sold" if plain_limits else ""),
             json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
                         "account_mode": account_mode, "sell_qty": sell_qty,
                         "broker_qty": broker_qty, "held_by_resting": held_by_resting,
                         "pending_partial_qty": pending_partial_qty,
+                        "plain_limit_ids": sorted(plain_ids),
                         "remaining_shares": float(trade["remaining_shares"])}),
         )
-    return _SaleSize(sell_qty, held_by_resting, broker_qty)
+    return _SaleSize(sell_qty, held_by_resting, broker_qty, plain_limits)
+
+
+async def _cancel_plain_resting_limits(
+    trade_id: int, trade: dict, reason: str, plain_limits: tuple, account_mode: str,
+) -> bool:
+    """#687 review fix 9 — cancel this trade's PLAIN resting profit-take limits so the closing
+    sale can include their shares. Runs under the caller's per-trade lock, BEFORE the stop is
+    touched.
+
+    The mirror row is marked FIRST (`raw_response.cancelled_for_sale`): the stream's partial-exit
+    cancel handler would otherwise read the cancel as a failed partial and run its blind
+    cancel-the-stop-and-restore-full-size — racing this sale (and, once the sale fills, placing a
+    sell stop on a flat position). It still commits any partial fill the limit carried; it skips
+    the restore when it sees the mark. A cancel the broker refuses → the mark is removed, the
+    skip is audited + paged, and False tells the caller to abort BEFORE cancelling the stop — the
+    position keeps exactly the protection it had.
+    """
+    ticker = trade["ticker"]
+    pool = await get_pool()
+    for o in plain_limits:
+        oid = str(o.get("id"))
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE mi_live_orders SET
+                    raw_response = COALESCE(raw_response, '{}'::jsonb)
+                        || jsonb_build_object('cancelled_for_sale', $2::text)
+                WHERE alpaca_order_id = $1
+            """, oid, reason)
+        ok = await alpaca.cancel_order(oid, account_mode=account_mode)
+        if ok:
+            logger.info(f"closing sale: cancelled plain resting limit {oid} for {ticker}")
+            continue
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE mi_live_orders SET raw_response = raw_response - 'cancelled_for_sale'
+                WHERE alpaca_order_id = $1
+            """, oid)
+        await _record_full_exit_skip(
+            trade_id, trade, reason, "plain_limit_cancel_failed",
+            f"the resting profit-take limit {oid[:8]} (no stop of its own) could not be "
+            f"cancelled, so its shares cannot be sold with the rest. Nothing else was cancelled "
+            f"— the stop is still in place.",
+            {"plain_limit_id": oid})
+        return False
+    return True
 
 
 async def execute_full_exit(trade_id: int, reason: str) -> bool:
@@ -5210,6 +5294,7 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         # ride a rule that had already said sell.
         sell_qty: int | None = None          # None = today's path: close the whole position
         held_by_resting = 0.0
+        plain_limits: tuple = ()
         if pending and pending["purpose"] == "full_exit":
             await _record_full_exit_skip(
                 trade_id, trade, reason, "full_exit_already_pending",
@@ -5233,13 +5318,13 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
                     f"queued for this position.",
                     {"pending_order_id": pending_full[0]["alpaca_order_id"]})
                 return False
-            pending_partial_qty = sum(float(r["qty"] or 0) for r in pending_rows
-                                      if r["purpose"] == "partial_exit")
             size = await _size_sale_beside_resting_orders(
-                trade_id, trade, reason, pending_partial_qty, account_mode)
+                trade_id, trade, reason,
+                [r for r in pending_rows if r["purpose"] == "partial_exit"], account_mode)
             if size is None:
                 return False
             sell_qty, held_by_resting = size.sell_qty, size.held_by_resting
+            plain_limits = size.plain_limits
 
         logger.info(f"Full exit: {ticker} reason={reason} shares="
                     f"{(sell_qty if sell_qty is not None else trade['remaining_shares']):.0f} "
@@ -5260,11 +5345,17 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         # covered, i.e. the shares this sale was going to sell.
         cancelled_stop_shares = (float(sell_qty) if sell_qty is not None
                                  else trade["remaining_shares"])
+        # #687 review fix 9: a plain resting profit-take limit (no stop of its own) is cancelled
+        # FIRST and its shares sold with the rest; a refused cancel aborts before the stop.
+        if plain_limits and not await _cancel_plain_resting_limits(
+                trade_id, trade, reason, plain_limits, account_mode):
+            return False
+        cancelled = False
         if trade.get("stop_order_id"):
             cancelled = await alpaca.cancel_order(trade["stop_order_id"], account_mode=account_mode)
             logger.info(f"Full exit: cancelled stop {trade['stop_order_id']} for {ticker} (success={cancelled})")
-            if cancelled:
-                await _await_shares_released(ticker, cancelled_stop_shares, account_mode)
+        if cancelled or plain_limits:
+            await _await_shares_released(ticker, cancelled_stop_shares, account_mode)
 
         try:
             if sell_qty is None:
@@ -5386,6 +5477,79 @@ async def _clear_depth_sell_mark(trade_id: int) -> None:
             "UPDATE mi_live_trades SET depth_sell_pending_on = NULL WHERE id = $1", trade_id)
 
 
+async def depth_remaining_held_by_profit_take(trade_id: int, remaining: float) -> bool:
+    """#687 review fix 7 — are ALL of this trade's remaining shares the resting +8R profit-take
+    third, under an OCO that carries its own target and breakeven stop?
+
+    Then a close below the line has nothing to sell: the 19:01 sale would size zero (the third
+    keeps its own exits — ruled 2026-09-29) and only page a skip, while the 16:45 job marked the
+    trade and sent "Selling at the next open…" EVERY evening until the third resolved (GTC,
+    possibly weeks). Read from the `mi_live_orders` mirror (pending `partial_exit` rows whose
+    recorded order class is OCO); a PLAIN limit does not count (fix 9 sells it with the rest).
+    Fails to False — the trade is then marked as before and the 19:01 job decides from the
+    broker, which is the conservative direction."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT qty, raw_response FROM mi_live_orders
+                WHERE trade_id = $1 AND purpose = 'partial_exit'
+                  AND status != ALL($2::text[])
+            """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
+    except Exception as e:   # loud-ok: False = mark as before; the 19:01 job reads the broker
+        logger.warning(f"depth_remaining_held_by_profit_take: read failed for #{trade_id} "
+                       f"— {e}; marking as usual")
+        return False
+    oco_qty = 0.0
+    for r in rows:
+        raw = r["raw_response"]
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except Exception:   # loud-ok: an unparseable row is not counted as an OCO (fails to "mark")
+                raw = {}
+        if str((raw or {}).get("order_class") or "").lower().endswith("oco"):
+            oco_qty += float(r["qty"] or 0)
+    return float(remaining) > 0 and oco_qty >= float(remaining)
+
+
+async def announce_depth_third_rests_alone(trade: dict, close: float, line: float) -> None:
+    """#687 review fix 7 — say ONCE per trade, in plain words, that a depth trade closing below
+    its line has nothing to sell because its only shares are the profit-take third resting on
+    its own target and stop. Audit row every evening (the durable record); the page only the
+    first time (the audit row IS the state, fails open — `_profit_trigger_already_announced`
+    idiom)."""
+    trade_id, ticker = trade["id"], trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
+    already = False
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            n = await conn.fetchval(
+                "SELECT COUNT(*) FROM mi_audit_log "
+                "WHERE event_type = 'depth_close_below_third_only' "
+                "AND detail IS NOT NULL AND detail <> '' "
+                "AND detail::jsonb ->> 'trade_id' = $1::text", str(trade_id))
+        already = bool(n and int(n) > 0)
+    except Exception as e:   # loud-ok: fails OPEN — a duplicate page is a nuisance
+        logger.warning(f"depth third-only dedupe check failed (will page): {e}")
+    await log_audit_event(
+        "depth_close_below_third_only",
+        f"{ticker}: closed ${close:.2f} below the line ${line:.2f}; the only remaining shares "
+        f"are the profit-take third (own target + stop) — nothing to sell, not marked",
+        json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                    "close": close, "line": line,
+                    "remaining_shares": float(trade.get("remaining_shares") or 0)}),
+    )
+    if not already:
+        await send_telegram_message(md_to_html(
+            f"{mode_prefix(account_mode)}{ticker} closed below its trailing line "
+            f"(${close:.2f} < ${line:.2f}), but its only remaining "
+            f"{float(trade.get('remaining_shares') or 0):.0f} sh are the profit-take third. "
+            f"That third rests on its own target and stop, so nothing is sold at the open."
+        ), parse_mode="HTML")
+
+
 async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop") -> bool:
     """Send the depth rule's next-open sale for ONE marked trade (19:01 ET).
 
@@ -5458,25 +5622,31 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
                 {"pending_order_id": pending_full[0]["alpaca_order_id"]})
             await _clear_depth_sell_mark(trade_id)
             return False
-        pending_partial_qty = sum(float(r["qty"] or 0) for r in pending_rows
-                                  if r["purpose"] == "partial_exit")
         size = await _size_sale_beside_resting_orders(
-            trade_id, trade, reason, pending_partial_qty, account_mode)
+            trade_id, trade, reason,
+            [r for r in pending_rows if r["purpose"] == "partial_exit"], account_mode)
         if size is None:
             await _clear_depth_sell_mark(trade_id)
             return False
         sell_qty, held_by_resting = size.sell_qty, size.held_by_resting
+        # #687 review fix 9: a plain resting profit-take limit (no stop) is cancelled and sold
+        # with the rest; a refused cancel aborts here, before the depth stop is touched.
+        if size.plain_limits and not await _cancel_plain_resting_limits(
+                trade_id, trade, reason, size.plain_limits, account_mode):
+            await _clear_depth_sell_mark(trade_id)
+            return False
 
         stop_id = trade.get("stop_order_id")
         stop_price = trade.get("stop_price")
         logger.info(f"Depth sale: {ticker} reason={reason} shares={sell_qty} "
                     f"(trade_id={trade_id}, opening auction)")
+        cancelled = False
         if stop_id:
             cancelled = await alpaca.cancel_order(stop_id, account_mode=account_mode)
             logger.info(f"Depth sale: cancelled stop {stop_id} for {ticker} "
                         f"(success={cancelled})")
-            if cancelled:
-                await _await_shares_released(ticker, float(sell_qty), account_mode)
+        if cancelled or size.plain_limits:
+            await _await_shares_released(ticker, float(sell_qty), account_mode)
 
         try:
             coid = alpaca.make_client_order_id(

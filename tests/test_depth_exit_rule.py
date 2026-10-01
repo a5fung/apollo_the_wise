@@ -282,7 +282,10 @@ def _install_1645(monkeypatch, row, step):
     monkeypatch.setattr(lt, "apply_daily_exit_step", lambda *a, **k: step)
     calls = {"update_stop": AsyncMock(return_value=True),
              "execute_full_exit": AsyncMock(return_value=True),
-             "send_telegram_message": AsyncMock(), "log_audit_event": AsyncMock()}
+             "send_telegram_message": AsyncMock(), "log_audit_event": AsyncMock(),
+             # #687 review fix 7 — by default the remaining shares are NOT only the OCO third
+             "depth_remaining_held_by_profit_take": AsyncMock(return_value=False),
+             "announce_depth_third_rests_alone": AsyncMock()}
     for name, mock in calls.items():
         monkeypatch.setattr(lt, name, mock)
 
@@ -308,6 +311,93 @@ async def test_a_depth_trade_closing_below_the_line_is_marked_not_sold(monkeypat
     assert len(marks) == 1 and marks[0][4] == TODAY, marks
     assert out == [{"ticker": "KOD", "action": "depth_sell_pending", "hold_days": 8}]
     assert any("7:01 PM ET" in c.args[0] for c in calls["send_telegram_message"].await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_a_depth_trade_held_only_by_its_oco_third_is_not_marked(monkeypatch):
+    """#687 review fix 7: the only remaining shares are the profit-take third, resting on its own
+    target and stop. Nothing will be sold at the open — so no mark, no "Selling at the next
+    open…" (which went out EVERY evening until the third resolved); the plain sentence instead."""
+    conn, calls = _install_1645(monkeypatch, _row("depth", remaining_shares=2),
+                                _step("sma_stopped", 70.40, 69.10))
+    calls["depth_remaining_held_by_profit_take"].return_value = True
+
+    out = await lt.update_open_positions_live()
+
+    assert not [a for a in conn.executed if "depth_sell_pending_on" in a[0]], "marked anyway"
+    assert not any("Selling at the next open" in c.args[0]
+                   for c in calls["send_telegram_message"].await_args_list)
+    calls["announce_depth_third_rests_alone"].assert_awaited_once()
+    calls["execute_full_exit"].assert_not_awaited()
+    assert out == [{"ticker": "KOD", "action": "depth_third_rests", "hold_days": 8}]
+
+
+def _announce_pool(monkeypatch, audit_rows):
+    class _C:
+        async def fetchval(self, q, *a, **k):
+            return sum(1 for e, d in audit_rows
+                       if e == "depth_close_below_third_only"
+                       and json.loads(d)["trade_id"] == int(a[0]))
+
+    class _A:
+        async def __aenter__(self):
+            return _C()
+
+        async def __aexit__(self, *e):
+            return False
+
+    class _P:
+        def acquire(self, *a, **k):
+            return _A()
+
+    async def _audit(event, summary="", detail=None, **k):
+        audit_rows.append((event, detail))
+
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=_P()))
+    monkeypatch.setattr(om, "log_audit_event", _audit)
+    monkeypatch.setattr(om, "mode_prefix", lambda _m: "")
+    sent: list = []
+    monkeypatch.setattr(om, "send_telegram_message",
+                        AsyncMock(side_effect=lambda m, *a, **k: sent.append(m)))
+    return sent
+
+
+@pytest.mark.asyncio
+async def test_the_third_only_sentence_is_sent_once_not_every_evening(monkeypatch):
+    rows: list = []
+    sent = _announce_pool(monkeypatch, rows)
+    trade = _row("depth", remaining_shares=2)
+    await om.announce_depth_third_rests_alone(trade, 69.10, 70.40)
+    await om.announce_depth_third_rests_alone(trade, 68.90, 70.10)    # the next evening
+    assert len(sent) == 1, sent
+    assert "rests on its own target and stop" in sent[0]
+    assert len(rows) == 2, "the audit row still lands every evening"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("order_class, expect", [("oco", True), ("simple", False)])
+async def test_only_an_oco_third_counts_as_holding_the_remaining_shares(
+        monkeypatch, order_class, expect):
+    """A PLAIN resting limit has no stop of its own — fix 9 sells it with the rest, so the
+    trade must still be marked."""
+    class _C:
+        async def fetch(self, *a, **k):
+            return [{"qty": 2, "raw_response": json.dumps({"order_class": order_class})}]
+
+    class _A:
+        async def __aenter__(self):
+            return _C()
+
+        async def __aexit__(self, *e):
+            return False
+
+    class _P:
+        def acquire(self, *a, **k):
+            return _A()
+
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=_P()))
+    assert await om.depth_remaining_held_by_profit_take(501, 2) is expect
+    assert await om.depth_remaining_held_by_profit_take(501, 3) is False   # 1 sh outside it
 
 
 @pytest.mark.asyncio
@@ -477,6 +567,23 @@ async def test_a_resting_profit_take_third_keeps_its_shares(monkeypatch):
     await om.execute_depth_open_sale(501)
     assert next(e for e in h["events"] if e[0] == "opg")[1] == 4
     assert [e for e in h["events"] if e[0] == "cancel"] == [("cancel", "stop-1")]
+
+
+@pytest.mark.asyncio
+async def test_a_plain_resting_third_without_a_stop_is_sold_in_the_auction(monkeypatch):
+    """#687 review fix 9 on the depth sale: the third rests as a PLAIN limit (OCO off / fell
+    back) — no stop of its own. It is cancelled first and its shares join the auction sale."""
+    plain = {"id": "lim-1", "side": "sell", "type": "limit", "qty": 2, "filled_qty": 0,
+             "status": "new", "order_class": "simple", "stop_price": None}
+    stop = {"id": "stop-1", "side": "sell", "type": "stop", "qty": 4, "filled_qty": 0,
+            "status": "new", "order_class": "simple"}
+    h = _sale_wire(monkeypatch, open_orders=[stop, plain],
+                   pending_rows=[{"alpaca_order_id": "lim-1", "purpose": "partial_exit",
+                                  "qty": 2}])
+    assert await om.execute_depth_open_sale(501) is True
+    assert [e for e in h["events"] if e[0] == "cancel"] == [("cancel", "lim-1"),
+                                                             ("cancel", "stop-1")]
+    assert next(e for e in h["events"] if e[0] == "opg")[1] == 6
 
 
 @pytest.mark.asyncio

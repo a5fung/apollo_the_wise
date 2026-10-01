@@ -2164,6 +2164,24 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     f"exit order {order_id[:8]} ({_je}) — treating as plain partial"
                 )
                 _raw = {}
+        # #687 review fix 9: OUR closing sale cancelled this plain profit-take limit on purpose,
+        # to sell its shares with the rest (`order_manager._cancel_plain_resting_limits` marks
+        # the row before it cancels). The partial fill, if any, is committed above; the blind
+        # cancel-the-stop-and-restore-full-size below must NOT run — it would race the sale for
+        # the same shares and, once the sale fills, put a sell stop on a flat position.
+        _sale_mark = (_raw or {}).get("cancelled_for_sale") if isinstance(_raw, dict) else None
+        if _sale_mark:
+            await log_audit_event(
+                "partial_exit_cancelled_for_sale",
+                f"{symbol}: plain profit-take limit {order_id[:8]} {event_norm} by the closing "
+                f"sale ({_sale_mark}) — its shares are sold with the rest; no stop restore",
+                json.dumps({"trade_id": pending_exit["trade_id"], "ticker": symbol,
+                            "order_id": order_id, "account_mode": account_mode,
+                            "reason": str(_sale_mark)}),
+            )
+            logger.info(f"WS [{account_mode}]: {symbol} plain limit {order_id[:8]} cancelled "
+                        f"for the closing sale — no restore")
+            return
         _is_oco_parent = str((_raw or {}).get("order_class") or "").lower() == "oco"
         if _is_oco_parent:
             await _handle_oco_parent_cancel(

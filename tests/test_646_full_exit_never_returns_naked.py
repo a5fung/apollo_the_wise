@@ -545,6 +545,96 @@ async def test_a_full_exit_fill_of_everything_still_closes_the_trade(monkeypatch
     assert any("Closed" in m for m in sent), sent
 
 
+# ── #687 review fix 9: only a profit-take that carries its OWN stop is left alone ─────────────
+#
+# The ruling (leave the third alone) assumed an OCO with its own breakeven stop. With
+# `profit_take_oco` off or fallen back, the third rests as a PLAIN limit with NO stop — left
+# alone it is neither sold below the line nor protected. It is cancelled (mirror row marked
+# first, so the stream's partial-cancel restore stands down) and its shares are sold too.
+
+PLAIN_ROW = {"alpaca_order_id": "lim-1", "purpose": "partial_exit", "qty": 2}
+
+
+def _plain_limit(order_id="lim-1", qty=2, status="new"):
+    return {"id": order_id, "side": "sell", "type": "limit", "qty": qty, "filled_qty": 0,
+            "status": status, "order_class": "simple", "stop_price": None}
+
+
+@pytest.mark.asyncio
+async def test_a_plain_resting_limit_is_cancelled_and_its_shares_sold(monkeypatch):
+    """6 held: 4 behind the stop, 2 under a PLAIN profit-take limit (no stop). Before: the sale
+    sold 4 and left the 2 resting with no stop. After: the limit is cancelled (its row marked
+    first), then the stop, and all 6 are sold."""
+    _audit_rows(monkeypatch)
+    h = _wire(monkeypatch, close_raises=False, remaining=6, position_qty=6, available=6,
+              pending_orders=[PLAIN_ROW], open_orders=[_stop(), _plain_limit()])
+    marks_at_cancel: list = []
+    h["cancel"].side_effect = lambda oid, **k: marks_at_cancel.append(
+        (oid, sum("cancelled_for_sale" in a[0] for a in h["executed"]))) or True
+    ok = await om.execute_full_exit(382, "sma_trail_stop")
+
+    assert ok is True
+    assert [c[0] for c in marks_at_cancel] == ["lim-1", "stop-1"], marks_at_cancel
+    assert marks_at_cancel[0][1] == 1, "the limit's row must be marked BEFORE its cancel"
+    assert h["close"].await_args.kwargs.get("qty") == 6
+    assert not any("stay under the resting profit-take" in m for m in h["sent"]), h["sent"]
+
+
+@pytest.mark.asyncio
+async def test_an_oco_third_is_still_left_alone_beside_the_rule(monkeypatch):
+    """The other half of the reading: an OCO parent (its own target + breakeven stop) is never
+    cancelled — 6 held, 2 under the OCO → 4 sold, one cancel (the stop)."""
+    _audit_rows(monkeypatch)
+    h = _wire(monkeypatch, close_raises=False, remaining=6, position_qty=6, available=4,
+              pending_orders=[OCO_ROW], open_orders=[_stop(), _oco_parent()])
+    await om.execute_full_exit(382, "sma_trail_stop")
+    assert [c.args[0] for c in h["cancel"].await_args_list] == ["stop-1"]
+    assert h["close"].await_args.kwargs.get("qty") == 4
+
+
+@pytest.mark.asyncio
+async def test_a_refused_plain_limit_cancel_aborts_before_the_stop(monkeypatch):
+    """The broker will not cancel the plain limit → its shares cannot join the sale. Abort
+    BEFORE the stop is touched (the position keeps what it had), remove the mark, page."""
+    rows = _audit_rows(monkeypatch)
+    h = _wire(monkeypatch, close_raises=False, remaining=6, position_qty=6, available=6,
+              pending_orders=[PLAIN_ROW], open_orders=[_stop(), _plain_limit()])
+    h["cancel"].side_effect = lambda oid, **k: False
+    ok = await om.execute_full_exit(382, "sma_trail_stop")
+
+    assert ok is False
+    assert [c.args[0] for c in h["cancel"].await_args_list] == ["lim-1"]
+    h["close"].assert_not_awaited()
+    assert any("- 'cancelled_for_sale'" in a[0] for a in h["executed"]), "mark not removed"
+    assert any(e == "full_exit_skipped" and "plain_limit_cancel_failed" in (d or "")
+               for e, _s, d in rows)
+
+
+@pytest.mark.asyncio
+async def test_the_stream_stands_down_on_a_limit_the_sale_cancelled(monkeypatch):
+    """The cancel event for the limit the sale cancelled must not run the blind
+    cancel-the-stop-and-restore-full-size (it would race the sale; after the fill, a sell stop
+    on a flat position). Any partial fill it carried is still committed."""
+    import json as _json
+
+    from agents.market_intelligence.broker import trade_stream as ts
+    from tests.test_oco_cancel_handler_566 import _cancel_data, _pending
+    from tests.test_oco_cancel_handler_566 import _wire as _ws_wire
+
+    raw = _json.dumps({"id": "lim-1", "order_class": "simple", "type": "limit",
+                       "cancelled_for_sale": "sma_trail_stop"})
+    h = _ws_wire(monkeypatch, pending_exit_row=_pending(raw=raw),
+                 trade_row={"id": 731, "ticker": "ETON", "remaining_shares": 6,
+                            "stop_price": 55.20, "stop_order_id": "stop23"})
+    await ts._handle_cancel_or_reject(
+        _cancel_data(order_id="lim-1", filled_qty=1.0, avg=60.0), "canceled", "live")
+
+    h["finalize"].assert_awaited_once_with(731, 1, 60.0, "lim-1")
+    h["cancel"].assert_not_called()
+    h["place_stop"].assert_not_called()
+    assert any(e == "partial_exit_cancelled_for_sale" for e, *_ in h["audited"])
+
+
 # ── #687 review fix 1 (defence in depth): `update_stop` never sizes a stop beyond the broker ──
 #
 # The books can overstate the position (an auction sale that partly filled before its rest was

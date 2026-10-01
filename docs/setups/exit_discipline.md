@@ -395,6 +395,27 @@ behaviour test confirmed red with the fix removed (mutation runs in the commits)
   page) — what the stop would have done; the exit rule had already decided to sell. Scoped to
   those two paths only: the fresh-entry watchdog path and `_ensure_stop_coverage` keep their
   converge-and-page behaviour (no decision to sell exists there).
+- **Fix 7 — a depth trade held only by its OCO third is not marked every evening.** When the
+  only remaining shares are the profit-take third resting under an OCO (its own target and
+  breakeven stop — the mirror's pending `partial_exit` rows recorded as OCO cover the whole
+  remaining count, `depth_remaining_held_by_profit_take`), a close below the line has nothing to
+  sell: the 16:45 job no longer sets `depth_sell_pending_on` and no longer sends "Selling at the
+  next open…" each evening. It writes `depth_close_below_third_only` (every evening) and pages
+  ONCE per trade: the remaining third rests on its own target and stop. A plain resting limit
+  does not count (fix 9 sells it). An unreadable mirror marks as before (the 19:01 job then
+  decides from the broker).
+- **Fix 9 — only a profit-take that carries its OWN stop is left alone by a closing sale.** The
+  2026-09-29 ruling (leave the third alone) assumed the OCO with its own breakeven stop. With
+  `profit_take_oco` off or fallen back (`partial_exit_oco_fallback`) the third rests as a PLAIN
+  limit with NO stop; part A left it unsold below the line and unprotected. Now a plain resting
+  sell limit that is one of THIS trade's pending partial exits is cancelled by the sale and its
+  shares sold with the rest (`_size_sale_beside_resting_orders` returns it; both the 16:45 sale
+  and the 19:01 auction sale cancel it under the per-trade lock BEFORE the stop). Its mirror row
+  is marked first (`raw_response.cancelled_for_sale`) so the stream's partial-cancel handler
+  commits any partial fill but skips its blind cancel-the-stop-and-restore-full-size
+  (`partial_exit_cancelled_for_sale`). A refused cancel removes the mark, records
+  `full_exit_skipped` (`plain_limit_cancel_failed`) and aborts before the stop is touched. Stops
+  and OCO parents stay "held"; a resting order that is not this trade's is still left alone.
 - **Fix 8 — a full exit closes the row only on a FLAT broker.** Part A (b) clamped the books at
   zero and closed without looking. A paper soft reservation (the evening sync writes a qty already
   reduced by a queued sell) could then record a closed trade while the broker still held the
