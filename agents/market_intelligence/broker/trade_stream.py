@@ -2270,10 +2270,43 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 site="trade_stream.full_exit_cancel_restore",
                 consult_dead_stop=True,
             )
+            # #687 (c), 2026-10-01: size the restore from the BROKER — the position minus the
+            # shares live resting orders hold (a +8R profit-take third keeps its own OCO). It
+            # asked for `remaining_shares`, which still includes that third, so the broker
+            # rejected it and this page said "STOP RESTORE FAILED" while the two thirds this
+            # sale was selling were the ones naked. The claim above has already marked this
+            # exit order cancelled, so the database fallback (`remaining − pending exits`)
+            # no longer counts it.
+            from agents.market_intelligence.broker.order_manager import (
+                _broker_free_qty_for_restore,
+                get_pending_exit_qty,
+            )
             try:
+                _fallback_qty = (float(trade_row["remaining_shares"])
+                                 - float(await get_pending_exit_qty(trade_row["id"])))
+            except Exception as _pe:  # loud-ok: the broker count is the primary; logged
+                logger.warning(f"WS [{account_mode}]: pending-exit read failed for "
+                               f"{symbol} ({_pe}) — fallback is the full remaining count")
+                _fallback_qty = float(trade_row["remaining_shares"])
+            restore_qty, _qty_source = await _broker_free_qty_for_restore(
+                trade_row["ticker"], account_mode, _fallback_qty,
+                exclude_ids=(trade_row["stop_order_id"],))
+            if restore_qty <= 0 and _qty_source == "broker":
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+                    f"Position still open. No stop re-placed: orders still resting at the "
+                    f"broker hold every remaining share — check that one of them is a stop."
+                )
+                logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, "
+                               f"no free shares to re-protect (live resting orders hold them)")
+                return
+            try:
+                if restore_qty <= 0:
+                    raise RuntimeError(
+                        f"no share count to restore ({_qty_source})")
                 restored = await alpaca.place_stop_order(
                     trade_row["ticker"],
-                    int(trade_row["remaining_shares"]),
+                    restore_qty,
                     restore_price,
                     account_mode=account_mode,
                 )
@@ -2284,8 +2317,8 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 )
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
-                    f"Position still open ({int(trade_row['remaining_shares'])} sh). "
-                    f"Stop re-placed @${restore_price:.2f}."
+                    f"Position still open. Stop re-placed @${restore_price:.2f} "
+                    f"for {restore_qty} sh."
                 )
                 logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, stop re-placed")
             except Exception as e:

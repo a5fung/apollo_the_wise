@@ -132,6 +132,16 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         """,
     ),
     (
+        "order_manager._finalize_full_exit_locked: partial-qty branch (#687 b)",
+        """
+                UPDATE mi_live_trades SET
+                    exits = $2::jsonb,
+                    remaining_shares = $3,
+                    total_pnl = $4
+                WHERE id = $1
+        """,
+    ),
+    (
         "trade_stream._process_stop_fill: partial-qty branch (#566)",
         """
         UPDATE mi_live_trades SET

@@ -167,6 +167,15 @@ async def _execute_full_exit_dedup_statuses(monkeypatch) -> list[str]:
         {"alpaca_order_id": "x", "purpose": "full_exit"},      # dedup hit -> abort
     ])
     monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
+    # #687: execute_full_exit holds the per-trade lock, and a skip is audited + paged.
+    monkeypatch.setattr(om, "log_audit_event", AsyncMock())
+    monkeypatch.setattr(om, "send_telegram_message", AsyncMock())
+
+    @asynccontextmanager
+    async def _noop_lock(_trade_id):
+        yield
+
+    monkeypatch.setattr(om, "_trade_advisory_lock", _noop_lock)
 
     result = await om.execute_full_exit(1, "test")
     assert result is False

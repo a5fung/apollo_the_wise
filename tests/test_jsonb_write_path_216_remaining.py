@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+from contextlib import asynccontextmanager
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -266,6 +267,12 @@ async def test_execute_full_exit_raw_response_param_is_dict(monkeypatch):
     conn.fetchrow = AsyncMock(side_effect=[trade_row, None])  # trade, then no pending exit
     conn.execute = AsyncMock()
     monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
+
+    @asynccontextmanager
+    async def _noop_lock(_trade_id):   # #687: execute_full_exit holds the per-trade lock
+        yield
+
+    monkeypatch.setattr(om, "_trade_advisory_lock", _noop_lock)
     monkeypatch.setattr(om.alpaca, "cancel_order", AsyncMock(return_value=True))
     monkeypatch.setattr(
         om.alpaca, "close_position",

@@ -27,6 +27,7 @@ from decimal import Decimal, ROUND_DOWN
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import (
+    ClosePositionRequest,
     GetOrdersRequest,
     LimitOrderRequest,
     MarketOrderRequest,
@@ -788,16 +789,32 @@ async def get_all_positions(
         return []
 
 
+def _close_qty_str(qty: float) -> str:
+    """The `qty` string Alpaca's DELETE /v2/positions/{symbol} takes: whole shares as "2", not
+    "2.0" (fractional quantities keep their decimals)."""
+    q = float(qty)
+    return str(int(q)) if q.is_integer() else str(q)
+
+
 async def close_position(
     ticker: str,
     qty: float | None = None,
     account_mode: str | None = None,
 ) -> dict | None:
-    """Close a position (full or partial)."""
+    """Close a position (full or partial).
+
+    #687 (d), 2026-10-01: a partial close must hand alpaca-py a `ClosePositionRequest`. The old
+    call passed a plain dict, and alpaca-py 0.43.2's `TradingClient.close_position` calls
+    `close_options.to_request_fields()` on it — AttributeError before any HTTP call, so every
+    `qty=` close raised (no caller passed one until the #687 OCO-case sale). Closing the whole
+    position (qty=None) is unchanged.
+    """
     try:
         client = get_trading_client(account_mode)
         if qty:
-            order = await _sdk(client.close_position, ticker, close_options={"qty": str(qty)}, timeout=_SDK_TIMEOUT_WRITE)
+            order = await _sdk(client.close_position, ticker,
+                               close_options=ClosePositionRequest(qty=_close_qty_str(qty)),
+                               timeout=_SDK_TIMEOUT_WRITE)
         else:
             order = await _sdk(client.close_position, ticker, timeout=_SDK_TIMEOUT_WRITE)
         logger.info(f"Position closed: {ticker} qty={qty or 'all'}")

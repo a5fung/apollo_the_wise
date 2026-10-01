@@ -4736,9 +4736,81 @@ async def _await_shares_released(ticker: str, need: float, account_mode: str) ->
     return False
 
 
+def _whole_shares(x: float) -> int:
+    """Whole shares, never negative (the share counts on this path are integers)."""
+    return max(int(math.floor(float(x) + 1e-9)), 0)
+
+
+def _unfilled_qty(order: dict) -> float:
+    """An order's quantity still working at the broker: qty minus what has already filled."""
+    return max(float(order.get("qty") or 0) - float(order.get("filled_qty") or 0), 0.0)
+
+
+def _live_sell_orders_held_qty(open_orders: list, *, exclude_ids=()) -> float:
+    """#687 — shares the broker is HOLDING for live resting SELL orders (unfilled remainder).
+
+    The +8R profit-take third rests as an OCO whose stop leg is hidden from `get_open_orders`;
+    its visible parent holds the third's shares, so it counts here. Only LIVE statuses count: a
+    stop we just cancelled can still be listed as `pending_cancel`, and counting it would make a
+    restore or a sale think the shares are taken. `exclude_ids` drops orders the caller is
+    about to cancel itself. PURE.
+    """
+    excluded = {str(i) for i in exclude_ids if i}
+    return sum(
+        _unfilled_qty(o) for o in open_orders
+        if "sell" in str(o.get("side") or "").lower()
+        and str(o.get("id")) not in excluded
+        and _canonical_order_status(o.get("status")) in _STOP_CONFIRMED_LIVE_STATUSES
+    )
+
+
+async def _broker_free_qty_for_restore(
+    ticker: str, account_mode: str, fallback_qty: float, *, exclude_ids=(),
+) -> tuple[int, str]:
+    """#687 (c) — how many shares a re-placed protective stop can actually hold:
+    the BROKER position minus the shares LIVE resting sell orders hold.
+
+    Before this the restore asked for `remaining_shares`, which still includes a resting
+    profit-take third (its shares are only committed out on its fill) — the broker rejected the
+    over-ask and the page said UNPROTECTED while the other two thirds were the ones really naked.
+
+    `get_position` returns None for BOTH "flat" and "unreadable", so None is treated as UNKNOWN
+    and falls back to the caller's database-derived count (`remaining − pending exits`) — never
+    to zero, which would leave the position bare on a read hiccup. Returns `(qty, source)` with
+    source 'broker' or 'fallback:<why>'.
+
+    `exclude_ids` — the stop the caller has just CANCELLED. Alpaca acknowledges a cancel before
+    it settles, so for a moment the dying stop can still be listed `new`; counting it as "held"
+    would report the position covered a second before that stop is gone. Excluding it fails the
+    other way (an over-ask the broker rejects loudly if the cancel truly did not take) — the
+    direction this module always chooses.
+    """
+    try:
+        pos = await alpaca.get_position(ticker, account_mode=account_mode)
+    except Exception as e:   # loud-ok: the database count stands in; logged
+        logger.warning(f"_broker_free_qty_for_restore: position read failed for {ticker} — {e}")
+        pos = None
+    if pos is None:
+        return _whole_shares(fallback_qty), "fallback:position_unreadable"
+    try:
+        orders = await alpaca.get_open_orders(
+            ticker, account_mode=account_mode, raise_on_error=True)
+    except Exception as e:   # loud-ok: the database count stands in; logged
+        logger.warning(f"_broker_free_qty_for_restore: open-orders read failed for {ticker} — {e}")
+        return _whole_shares(fallback_qty), "fallback:orders_unreadable"
+    held = _live_sell_orders_held_qty(orders, exclude_ids=exclude_ids)
+    return _whole_shares(float(pos.get("qty") or 0) - held), "broker"
+
+
+RESTORE_PLACED = "restored"
+RESTORE_COVERED = "covered"     # the broker shows every share held by live resting orders
+RESTORE_FAILED = "failed"
+
+
 async def _restore_stop_after_failed_exit(
     trade_id: int, ticker: str, shares: float, stop_price: "float | None", account_mode: str,
-) -> bool:
+    *, cancelled_stop_id: "str | None" = None,
+) -> str:
     """Put back the protective stop a failed full exit already cancelled.
 
     THE RULE THIS ENFORCES: a failed exit may leave the position OPEN, but it may never leave it
@@ -4746,19 +4818,35 @@ async def _restore_stop_after_failed_exit(
     the stop cancelled — OKTA sat naked from 16:45 Friday with no scheduled repair until Monday
     09:31, about 64 hours. Restoring is not a new decision: it is the stop that was already there,
     at the price it was already at.
+
+    #687 (c): the SIZE comes from the broker (position minus shares held by live resting orders,
+    `_broker_free_qty_for_restore`); `shares` is only the fallback when the broker cannot be
+    read; `cancelled_stop_id` (the stop the exit just cancelled) is never counted as holding
+    shares. Returns RESTORE_PLACED, RESTORE_COVERED (the broker shows nothing free to protect —
+    every share is held by OTHER orders still resting) or RESTORE_FAILED.
     """
-    if not stop_price or shares <= 0:
+    if not stop_price:
         logger.error(f"_restore_stop_after_failed_exit: {ticker} has no stop price to restore")
-        return False
+        return RESTORE_FAILED
+    qty, source = await _broker_free_qty_for_restore(
+        ticker, account_mode, shares, exclude_ids=(cancelled_stop_id,))
+    if qty <= 0:
+        if source == "broker":
+            logger.warning(f"_restore_stop_after_failed_exit: {ticker} — the broker shows no "
+                           f"free shares (live resting orders hold them); no stop re-placed")
+            return RESTORE_COVERED
+        logger.error(f"_restore_stop_after_failed_exit: {ticker} has no share count to restore "
+                     f"({source})")
+        return RESTORE_FAILED
     try:
         placed = await alpaca.place_stop_order(
-            ticker, shares, float(stop_price), account_mode=account_mode)
+            ticker, qty, float(stop_price), account_mode=account_mode)
     except Exception as e:   # loud-ok: the caller pages either way; this says WHICH failure
         logger.error(f"_restore_stop_after_failed_exit: re-placing {ticker} stop FAILED — {e}")
-        return False
+        return RESTORE_FAILED
     new_id = (placed or {}).get("id")
     if not new_id:
-        return False
+        return RESTORE_FAILED
     try:
         await set_stop_order_id(trade_id, new_id, reason="restored_after_failed_full_exit",
                                 account_mode=account_mode)
@@ -4766,118 +4854,273 @@ async def _restore_stop_after_failed_exit(
         logger.error(f"_restore_stop_after_failed_exit: {ticker} stop {new_id} placed but the "
                      f"pointer write failed — {e}")
     logger.warning(f"_restore_stop_after_failed_exit: {ticker} stop RESTORED at ${stop_price} "
-                   f"({new_id}) after a failed full exit")
-    return True
+                   f"for {qty} sh ({new_id}, sized from {source}) after a failed full exit")
+    return RESTORE_PLACED
+
+
+def _restore_outcome_line(outcome: str, stop_price: "float | None") -> str:
+    """The sentence the failed-exit page carries about protection — he acts on it."""
+    if outcome == RESTORE_PLACED:
+        return f"\nStop RESTORED at ${float(stop_price):.2f} — position is protected."
+    if outcome == RESTORE_COVERED:
+        return ("\nNo stop re-placed: orders still resting at the broker hold every remaining "
+                "share. Check that one of them is a stop.")
+    return "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required."
+
+
+async def _full_exit_skip_already_paged(trade_id: int, skip_code: str) -> bool:
+    """Has this exact full-exit skip already been paged for this trade?
+
+    A trade held open under a resting profit-take third can reach the close-below-line exit every
+    evening until that third resolves (GTC, possibly weeks). The audit row lands every time; the
+    page goes out once per trade per skip code. Checked BEFORE this run's own row is written
+    (hence `> 0`). Fails OPEN — a duplicate page is a nuisance, a missed one on a money path is
+    not."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            n = await conn.fetchval(
+                "SELECT COUNT(*) FROM mi_audit_log "
+                "WHERE event_type = 'full_exit_skipped' "
+                "AND detail IS NOT NULL AND detail <> '' "
+                "AND detail::jsonb ->> 'trade_id' = $1::text "
+                "AND detail::jsonb ->> 'skip_code' = $2",
+                str(trade_id), skip_code,
+            )
+        return bool(n and int(n) > 0)
+    except Exception as e:   # loud-ok: logged; failing open only risks a duplicate page
+        logger.warning(f"full-exit skip dedupe check failed (will page): {e}")
+        return False
+
+
+async def _record_full_exit_skip(
+    trade_id: int, trade: dict, reason: str, skip_code: str, sentence: str, detail: dict,
+) -> None:
+    """#687 (a): a full exit that does NOT sell is never silent — audit row every time, page once
+    per trade per skip code. (Before, the resting-profit-take skip was an INFO log line and the
+    16:45 caller ignored the False.)"""
+    ticker = trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
+    already = await _full_exit_skip_already_paged(trade_id, skip_code)
+    await log_audit_event(
+        "full_exit_skipped",
+        f"{ticker} full exit NOT placed ({reason}) — {sentence}",
+        json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
+                    "skip_code": skip_code, "account_mode": account_mode, **detail},
+                   default=str),
+    )
+    if not already:
+        await send_telegram_message(md_to_html(
+            f"{mode_prefix(account_mode)}⚠️ Full exit NOT placed for {ticker} ({reason}): "
+            f"{sentence}"
+        ), parse_mode="HTML")
 
 
 async def execute_full_exit(trade_id: int, reason: str) -> bool:
-    """Close entire remaining position."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        trade = await conn.fetchrow(
-            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
-        )
-    if not trade or trade["remaining_shares"] <= 0:
-        logger.warning(f"execute_full_exit: trade {trade_id} not found or no remaining shares")
-        return False
+    """Close the remaining position.
 
-    # Dedup against pending exit orders — see execute_partial_exit comment.
-    # Terminal-status set: PENDING_EXIT_TERMINAL_STATUSES (SSoT, #591 review).
-    async with pool.acquire() as conn:
-        pending = await conn.fetchrow("""
-            SELECT alpaca_order_id, purpose FROM mi_live_orders
-            WHERE trade_id = $1
-              AND purpose IN ('partial_exit', 'full_exit')
-              AND status != ALL($2::text[])
-            LIMIT 1
-        """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
-    if pending:
-        logger.info(
-            f"execute_full_exit: trade {trade_id} {trade['ticker']} already has "
-            f"pending {pending['purpose']} order {pending['alpaca_order_id']} — skip"
-        )
-        return False
+    #687 (a)/(e), 2026-10-01: the whole cancel → wait → sell → row sequence runs under the
+    per-trade #151 advisory lock, so a re-protect path (the stop-ACK watchdog, the coverage
+    repair, the OCO-cancel handler) cannot re-place a stop between the cancel and the sell. Those
+    paths take the NON-blocking try-lock and defer while this holds it.
 
-    ticker = trade["ticker"]
-    account_mode = trade.get("account_mode") or current_account_mode()
-    logger.info(f"Full exit: {ticker} reason={reason} shares={trade['remaining_shares']:.0f} (trade_id={trade_id})")
-
-    # Cancel stop order first — then WAIT for the broker to actually release the shares.
-    #
-    # 🔴 #646 (2026-09-11, OKTA, live money). This used to cancel and sell in the same breath, and
-    # the log shows why that fails — all three lines inside ONE second:
-    #     16:45:00 Full exit: cancelled stop 2f5ac5cb... (success=True)
-    #     16:45:00 Failed to close position: available 0, held_for_orders 2
-    #     16:45:00 WS event: canceled | OKTA          <- the confirmation arrives AFTER
-    # Alpaca ACKNOWLEDGES the cancel immediately but does not release `held_for_orders` until the
-    # cancel actually settles, so the very next call is rejected for insufficient quantity. The
-    # cancel did not fail; the sell raced it. `qty_available` (#151) is the field that says so.
-    cancelled_stop_price = trade.get("stop_price")
-    cancelled_stop_shares = trade["remaining_shares"]
-    if trade.get("stop_order_id"):
-        cancelled = await alpaca.cancel_order(trade["stop_order_id"], account_mode=account_mode)
-        logger.info(f"Full exit: cancelled stop {trade['stop_order_id']} for {ticker} (success={cancelled})")
-        if cancelled:
-            await _await_shares_released(ticker, cancelled_stop_shares, account_mode)
-
-    try:
-        order = await alpaca.close_position(ticker, account_mode=account_mode)
-    except Exception as e:
-        # 🔴 #646: NEVER return with the stop cancelled and nothing in its place. The old code
-        # sent one Telegram and returned False, leaving a live position naked until the next
-        # session's 09:31 repair window — on a Friday that is ~64 hours. The exit still fails and
-        # still pages; what changes is that the position keeps its protection while it does.
-        logger.error(f"Full exit failed for {ticker}: {e}")
-        # #646 (d): WRITE IT DOWN. On 2026-09-11 a rejected live exit left NO audit row — the only
-        # record was the Telegram, so reconstructing what happened meant reading container logs the
-        # next hour and inferring the rest. A money-path failure that exists only in a chat message
-        # is the same recording gap as #184's four unexplained June cancels.
-        try:
-            await log_audit_event(
-                "full_exit_rejected",
-                f"{ticker} full exit REJECTED ({reason}) — {cancelled_stop_shares:.0f} sh still open",
-                json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
-                            "shares": cancelled_stop_shares, "account_mode": account_mode,
-                            "stop_price": cancelled_stop_price, "error": str(e)[:400]}),
+    The body never calls a `finalize_*` (they take the same BLOCKING lock on another
+    connection — a deadlock).
+    """
+    async with _trade_advisory_lock(trade_id):
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            trade = await conn.fetchrow(
+                "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
             )
-        except Exception as _ae:   # loud-ok: the page and the restore matter more than the row
-            logger.warning(f"full_exit_rejected audit write failed for {ticker}: {_ae}")
-        restored = await _restore_stop_after_failed_exit(
-            trade_id, ticker, cancelled_stop_shares, cancelled_stop_price, account_mode)
-        # #647: HTML layer — `{e}` is Alpaca's JSON (`existing_qty`, `held_for_orders`), which
-        # 400'd the legacy-Markdown send of the 2026-09-11 OKTA page; the plain retry then
-        # stripped the JSON's underscores. The page must land first time, intact.
-        await send_telegram_message(md_to_html(
-            f"{mode_prefix(account_mode)}⚠️ Full exit FAILED for {ticker}: {e}"
-            + (f"\nStop RESTORED at ${cancelled_stop_price:.2f} — position is protected."
-               if restored else
-               "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required.")
-        ), parse_mode="HTML")
-        return False
+        if not trade or trade["remaining_shares"] <= 0:
+            logger.warning(f"execute_full_exit: trade {trade_id} not found or no remaining shares")
+            return False
+        trade = dict(trade)
 
-    remaining = trade["remaining_shares"]
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO mi_live_orders
-                (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
-                 purpose, exit_reason, raw_response)
-            VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
-                    'full_exit', $6, $7::jsonb)
-            ON CONFLICT (alpaca_order_id) DO NOTHING
-        """, trade_id, order["id"], ticker, float(remaining),
-            order.get("status", "new"), reason,
-            _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
+        # Dedup against pending exit orders — see execute_partial_exit comment.
+        # Terminal-status set: PENDING_EXIT_TERMINAL_STATUSES (SSoT, #591 review).
+        async with pool.acquire() as conn:
+            pending = await conn.fetchrow("""
+                SELECT alpaca_order_id, purpose FROM mi_live_orders
+                WHERE trade_id = $1
+                  AND purpose IN ('partial_exit', 'full_exit')
+                  AND status != ALL($2::text[])
+                LIMIT 1
+            """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
 
-    # Pending fill — finalize_full_exit() runs from the WS fill handler with
-    # the real fill price. Submitting close_position after-hours queues a
-    # market order for next open; fill_price was None at submit time, which
-    # made P&L print as 0 on a close that hadn't happened yet.
-    await send_telegram_message(
-        f"{mode_prefix(account_mode)}📋 *Closing order placed:* {ticker} — {reason}\n"
-        f"Market sell {remaining:.0f} sh — pending fill (Order {order['id'][:8]})\n"
-        f"_Confirms with real P&L on fill._"
-    )
-    return True
+        ticker = trade["ticker"]
+        account_mode = trade.get("account_mode") or current_account_mode()
+
+        # ── #687 (a): a resting profit-take is no longer a reason to skip the whole sale. ──────────
+        # The +8R third rests as an OCO (its own target + breakeven stop — operator ruling 2026-09-29:
+        # it KEEPS them on a close-below sale). The other two thirds are behind the trailing stop and
+        # are exactly what a close below the line must sell. Before this fix the dedup above skipped
+        # the WHOLE exit (an INFO log line; the 16:45 caller ignores the False), leaving the 2/3 to
+        # ride a rule that had already said sell.
+        sell_qty: int | None = None          # None = today's path: close the whole position
+        held_by_resting = 0.0
+        if pending and pending["purpose"] == "full_exit":
+            await _record_full_exit_skip(
+                trade_id, trade, reason, "full_exit_already_pending",
+                f"a closing order ({str(pending['alpaca_order_id'])[:8]}) is already queued for "
+                f"this position.",
+                {"pending_order_id": pending["alpaca_order_id"]})
+            return False
+        if pending:
+            async with pool.acquire() as conn:
+                pending_rows = await conn.fetch("""
+                    SELECT alpaca_order_id, purpose, qty FROM mi_live_orders
+                    WHERE trade_id = $1
+                      AND purpose IN ('partial_exit', 'full_exit')
+                      AND status != ALL($2::text[])
+                """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
+            pending_full = [r for r in pending_rows if r["purpose"] == "full_exit"]
+            if pending_full:
+                await _record_full_exit_skip(
+                    trade_id, trade, reason, "full_exit_already_pending",
+                    f"a closing order ({str(pending_full[0]['alpaca_order_id'])[:8]}) is already "
+                    f"queued for this position.",
+                    {"pending_order_id": pending_full[0]["alpaca_order_id"]})
+                return False
+            pending_partial_qty = sum(float(r["qty"] or 0) for r in pending_rows
+                                      if r["purpose"] == "partial_exit")
+            # BROKER TRUTH for what is free once the stop is cancelled: the position minus every
+            # LIVE resting sell order except the stop we are about to cancel. Unreadable → do not
+            # cancel anything (the stop stays, the position stays protected) and say so.
+            try:
+                pos = await alpaca.get_position(ticker, account_mode=account_mode)
+                open_orders = await alpaca.get_open_orders(
+                    ticker, account_mode=account_mode, raise_on_error=True)
+            except Exception as e:   # loud-ok: recorded + paged below; the stop is left untouched
+                pos, open_orders = None, None
+                logger.warning(f"execute_full_exit: broker read failed for {ticker} — {e}")
+            if pos is None or open_orders is None:
+                await _record_full_exit_skip(
+                    trade_id, trade, reason, "broker_unreadable",
+                    "the broker position or open orders could not be read, so the shares free to "
+                    "sell beside the resting profit-take are unknown. Nothing was cancelled — the "
+                    "stop is still in place.",
+                    {"pending_partial_qty": pending_partial_qty})
+                return False
+            held_by_resting = _live_sell_orders_held_qty(
+                open_orders, exclude_ids=(trade.get("stop_order_id"),))
+            broker_free = float(pos.get("qty") or 0) - held_by_resting
+            db_free = float(trade["remaining_shares"]) - pending_partial_qty
+            sell_qty = _whole_shares(min(broker_free, db_free))
+            if sell_qty <= 0:
+                await _record_full_exit_skip(
+                    trade_id, trade, reason, "resting_orders_hold_all_shares",
+                    f"orders still resting at the broker hold every remaining share "
+                    f"({held_by_resting:.0f} sh — the profit-take keeps its own target and breakeven "
+                    f"stop). Nothing to sell; nothing was cancelled.",
+                    {"pending_partial_qty": pending_partial_qty,
+                     "broker_qty": float(pos.get("qty") or 0),
+                     "held_by_resting": held_by_resting,
+                     "remaining_shares": float(trade["remaining_shares"])})
+                return False
+            await log_audit_event(
+                "full_exit_sized_around_resting_exit",
+                f"{ticker}: selling {sell_qty} sh ({reason}); {held_by_resting:.0f} sh stay under the "
+                f"resting profit-take",
+                json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
+                            "account_mode": account_mode, "sell_qty": sell_qty,
+                            "broker_qty": float(pos.get("qty") or 0),
+                            "held_by_resting": held_by_resting,
+                            "pending_partial_qty": pending_partial_qty,
+                            "remaining_shares": float(trade["remaining_shares"])}),
+            )
+
+        logger.info(f"Full exit: {ticker} reason={reason} shares="
+                    f"{(sell_qty if sell_qty is not None else trade['remaining_shares']):.0f} "
+                    f"(trade_id={trade_id})")
+
+        # Cancel stop order first — then WAIT for the broker to actually release the shares.
+        #
+        # 🔴 #646 (2026-09-11, OKTA, live money). This used to cancel and sell in the same breath, and
+        # the log shows why that fails — all three lines inside ONE second:
+        #     16:45:00 Full exit: cancelled stop 2f5ac5cb... (success=True)
+        #     16:45:00 Failed to close position: available 0, held_for_orders 2
+        #     16:45:00 WS event: canceled | OKTA          <- the confirmation arrives AFTER
+        # Alpaca ACKNOWLEDGES the cancel immediately but does not release `held_for_orders` until the
+        # cancel actually settles, so the very next call is rejected for insufficient quantity. The
+        # cancel did not fail; the sell raced it. `qty_available` (#151) is the field that says so.
+        cancelled_stop_price = trade.get("stop_price")
+        # The restore's FALLBACK count (#687 c — the broker count is preferred): the shares the stop
+        # covered, i.e. the shares this sale was going to sell.
+        cancelled_stop_shares = (float(sell_qty) if sell_qty is not None
+                                 else trade["remaining_shares"])
+        if trade.get("stop_order_id"):
+            cancelled = await alpaca.cancel_order(trade["stop_order_id"], account_mode=account_mode)
+            logger.info(f"Full exit: cancelled stop {trade['stop_order_id']} for {ticker} (success={cancelled})")
+            if cancelled:
+                await _await_shares_released(ticker, cancelled_stop_shares, account_mode)
+
+        try:
+            if sell_qty is None:
+                order = await alpaca.close_position(ticker, account_mode=account_mode)
+            else:
+                order = await alpaca.close_position(ticker, qty=sell_qty, account_mode=account_mode)
+        except Exception as e:
+            # 🔴 #646: NEVER return with the stop cancelled and nothing in its place. The old code
+            # sent one Telegram and returned False, leaving a live position naked until the next
+            # session's 09:31 repair window — on a Friday that is ~64 hours. The exit still fails and
+            # still pages; what changes is that the position keeps its protection while it does.
+            logger.error(f"Full exit failed for {ticker}: {e}")
+            # #646 (d): WRITE IT DOWN. On 2026-09-11 a rejected live exit left NO audit row — the only
+            # record was the Telegram, so reconstructing what happened meant reading container logs the
+            # next hour and inferring the rest. A money-path failure that exists only in a chat message
+            # is the same recording gap as #184's four unexplained June cancels.
+            try:
+                await log_audit_event(
+                    "full_exit_rejected",
+                    f"{ticker} full exit REJECTED ({reason}) — {cancelled_stop_shares:.0f} sh still open",
+                    json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
+                                "shares": cancelled_stop_shares, "account_mode": account_mode,
+                                "stop_price": cancelled_stop_price, "error": str(e)[:400]}),
+                )
+            except Exception as _ae:   # loud-ok: the page and the restore matter more than the row
+                logger.warning(f"full_exit_rejected audit write failed for {ticker}: {_ae}")
+            restored = await _restore_stop_after_failed_exit(
+                trade_id, ticker, cancelled_stop_shares, cancelled_stop_price, account_mode,
+                cancelled_stop_id=trade.get("stop_order_id"))
+            # #647: HTML layer — `{e}` is Alpaca's JSON (`existing_qty`, `held_for_orders`), which
+            # 400'd the legacy-Markdown send of the 2026-09-11 OKTA page; the plain retry then
+            # stripped the JSON's underscores. The page must land first time, intact.
+            await send_telegram_message(md_to_html(
+                f"{mode_prefix(account_mode)}⚠️ Full exit FAILED for {ticker}: {e}"
+                + _restore_outcome_line(restored, cancelled_stop_price)
+            ), parse_mode="HTML")
+            return False
+
+        remaining = trade["remaining_shares"] if sell_qty is None else float(sell_qty)
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO mi_live_orders
+                    (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
+                     purpose, exit_reason, raw_response)
+                VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
+                        'full_exit', $6, $7::jsonb)
+                ON CONFLICT (alpaca_order_id) DO NOTHING
+            """, trade_id, order["id"], ticker, float(remaining),
+                order.get("status", "new"), reason,
+                _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
+
+        # Pending fill — finalize_full_exit() runs from the WS fill handler with
+        # the real fill price. Submitting close_position after-hours queues a
+        # market order for next open; fill_price was None at submit time, which
+        # made P&L print as 0 on a close that hadn't happened yet.
+        _third_line = (
+            f"\n{held_by_resting:.0f} sh stay under the resting profit-take (its own target and "
+            f"breakeven stop)."
+            if sell_qty is not None and held_by_resting > 0 else ""
+        )
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}📋 *Closing order placed:* {ticker} — {reason}\n"
+            f"Market sell {remaining:.0f} sh — pending fill (Order {order['id'][:8]})\n"
+            f"_Confirms with real P&L on fill._{_third_line}"
+        )
+        return True
 
 
 async def finalize_full_exit(
@@ -4936,29 +5179,83 @@ async def _finalize_full_exit_locked(
     })
     total_pnl = sum(e.get("pnl", 0) for e in exits)
 
+    # #687 (b), 2026-10-01 — the same accounting rule #566 put on the stop-fill writer: DECREMENT
+    # by what actually sold, close only when nothing is left. This used to write status='closed',
+    # remaining_shares=0 unconditionally, so a full exit that sold the two thirds beside a resting
+    # +8R profit-take (#687 a) would record a closed trade while the broker still held that third
+    # under its own OCO target and breakeven stop. Whatever exits those shares (the OCO limit →
+    # `_finalize_partial_exit_locked`, its stop leg → `_finalize_stop_fill_locked`) closes the row
+    # at zero. With nothing resting — every full exit before #687 — the fill equals the remaining
+    # count and the close below is byte-identical to before.
+    prior_remaining = int(trade.get("remaining_shares") or 0)
+    raw_remaining = prior_remaining - int(filled_qty)
+    new_remaining = max(raw_remaining, 0)
+    if raw_remaining < 0:
+        logger.error(
+            f"finalize_full_exit: {ticker} fill {int(filled_qty)} exceeds recorded remaining "
+            f"{prior_remaining} — clamping remaining_shares at 0"
+        )
+        await log_audit_event(
+            "remaining_shares_clamped",
+            f"{ticker}: full-exit fill {int(filled_qty)} > recorded remaining "
+            f"{prior_remaining} — remaining_shares clamped at 0 (was heading to "
+            f"{raw_remaining}); books already disagreed with the broker",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                "filled_qty": int(filled_qty), "prior_remaining": prior_remaining,
+                "raw_remaining": raw_remaining, "order_id": order_id,
+            }),
+        )
+
     async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE mi_live_trades SET
-                status = 'closed',
-                exits = $2::jsonb,
-                remaining_shares = 0,
-                total_pnl = $3,
-                stop_order_id = NULL,
-                closed_at = NOW()
-            WHERE id = $1
-        """, trade_id, exits, total_pnl)
+        if new_remaining > 0:
+            # Shares remain at the broker (the resting profit-take third). NEVER mark closed
+            # while they do. The stop pointer is left as it is: the cancelled stop's own WS
+            # event nulls it, and a full-exit fill is never the stop, so there is nothing here
+            # that could prove a pointer dead.
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    exits = $2::jsonb,
+                    remaining_shares = $3,
+                    total_pnl = $4
+                WHERE id = $1
+            """, trade_id, exits, new_remaining, total_pnl)
+        else:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    status = 'closed',
+                    exits = $2::jsonb,
+                    remaining_shares = 0,
+                    total_pnl = $3,
+                    stop_order_id = NULL,
+                    closed_at = NOW()
+                WHERE id = $1
+            """, trade_id, exits, total_pnl)
 
     await log_audit_event(
         "full_exit_committed",
-        f"{ticker}: DB committed on WS fill — closed {filled_qty} @${filled_price:.2f}, "
-        f"reason={reason}, total_pnl ${total_pnl:+,.2f}",
+        f"{ticker}: DB committed on WS fill — sold {filled_qty} @${filled_price:.2f}, "
+        f"reason={reason}, total_pnl ${total_pnl:+,.2f}"
+        + (f" — {new_remaining} sh remain under a resting exit, trade stays OPEN"
+           if new_remaining > 0 else " — closed"),
         json.dumps({
             "trade_id": trade_id, "ticker": ticker,
             "shares": int(filled_qty), "fill_price": float(filled_price),
             "pnl": float(pnl), "total_pnl": float(total_pnl),
             "reason": reason, "order_id": order_id,
+            "new_remaining": new_remaining,
         }),
     )
+
+    if new_remaining > 0:
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}📤 *Sold:* {ticker} — {reason}\n"
+            f"Exit @${filled_price:.2f} × {filled_qty:.0f} shares\n"
+            f"{new_remaining} sh remain under the resting profit-take (its own target and "
+            f"breakeven stop) — the trade stays open until they exit.\n"
+            f"P&L so far: ${total_pnl:+,.2f}"
+        )
+        return
 
     emoji = "✅" if total_pnl > 0 else "❌"
     await send_telegram_message(
@@ -6624,6 +6921,47 @@ async def retry_failed_coverage_repairs() -> dict:
             "deferred": deferred}
 
 
+# A closing order queued outside market hours sits in `accepted` (Alpaca: "received ... but
+# hasn't yet been routed ... often seen outside of trading session hours"); `pending_new` is the
+# moment before that. Both are a real order holding the shares.
+_QUEUED_EXIT_LIVE_STATUSES = _STOP_CONFIRMED_LIVE_STATUSES | {"pending_new"}
+
+
+async def _pending_full_exit_order_ids(trade_id: int) -> set[str]:
+    """Broker ids of this trade's full-exit orders the `mi_live_orders` mirror still holds as
+    pending (terminal set = PENDING_EXIT_TERMINAL_STATUSES)."""
+    pool = await get_pool()
+    async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
+        rows = await conn.fetch("""
+            SELECT alpaca_order_id FROM mi_live_orders
+            WHERE trade_id = $1
+              AND purpose = 'full_exit'
+              AND status != ALL($2::text[])
+        """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES), timeout=_REPROTECT_DB_TIMEOUT)
+    return {str(r["alpaca_order_id"]) for r in rows if r["alpaca_order_id"]}
+
+
+async def _queued_full_exit_qty(trade_id: int, open_orders: list) -> float:
+    """#687 (f) — shares covered by OUR queued closing order: the unfilled quantity of every
+    live SELL order the broker lists whose id is one of this trade's pending full exits.
+
+    Both halves are required — the mirror says it is ours, the broker says it is live. A mirror
+    read failure counts NOTHING (the gap is then reported, the fail-safe direction)."""
+    try:
+        exit_ids = await _pending_full_exit_order_ids(trade_id)
+    except Exception as e:   # loud-ok: counts nothing, so the gap is still reported + paged
+        logger.warning(f"_queued_full_exit_qty: mirror read failed for trade {trade_id} — {e}")
+        return 0.0
+    if not exit_ids:
+        return 0.0
+    return sum(
+        _unfilled_qty(o) for o in open_orders
+        if str(o.get("id")) in exit_ids
+        and "sell" in str(o.get("side") or "").lower()
+        and _canonical_order_status(o.get("status")) in _QUEUED_EXIT_LIVE_STATUSES
+    )
+
+
 async def _coverage_gap_already_alerted_today(trade_id: int, today) -> bool:
     """Has the `position_unprotected` Telegram already gone out for this trade
     TODAY (ET)?
@@ -6801,6 +7139,23 @@ async def check_position_coverage(*, notify: bool = True) -> dict:
                 covered += 1
                 continue
 
+            # #687 (f), 2026-10-01: a CLOSING ORDER already queued for these shares covers them.
+            # After every successful close-below-line sale the stop is cancelled and a market
+            # sell waits for the next open (16:45 → 09:30). Counting stops only, this read that
+            # as a gap and paged "UNPROTECTED" at 17:00, 19:00 and 21:10 on a position whose
+            # exit was simply queued. Counted ONLY when it is OUR full exit (the
+            # `mi_live_orders` mirror, purpose='full_exit') AND the broker lists that order as
+            # live — a plain resting LIMIT still counts for nothing (#566: a limit above the
+            # market protects nothing; that reading IS the defect this detector exists for),
+            # and OCO parents are already counted above from broker truth.
+            queued_exit_qty = await _queued_full_exit_qty(trade_id, open_orders)
+            if live_qty + oco_stop_qty + queued_exit_qty >= target - 0.5:
+                covered += 1
+                logger.info(
+                    f"check_position_coverage: {ticker} covered by a queued closing order "
+                    f"({queued_exit_qty:.0f} sh) + stops ({live_qty + oco_stop_qty:.0f} sh)")
+                continue
+
             # Gap. Audit row lands every cycle; Telegram is deduped per trade per session.
             # The gap dict is the REPAIRER'S ARGUMENT LIST, not just a report line
             # (#649, 2026-09-12). `_ensure_stop_coverage`'s no-live-stop branch — the
@@ -6829,6 +7184,7 @@ async def check_position_coverage(*, notify: bool = True) -> dict:
                     "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
                     "expected_qty": target, "found_qty": live_qty + oco_stop_qty,
                     "plain_stop_qty": live_qty, "oco_reserved_qty": oco_stop_qty,
+                    "queued_exit_qty": queued_exit_qty,
                 }),
             )
             if notify and not already_paged:

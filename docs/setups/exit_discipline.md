@@ -344,6 +344,86 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-01 — BUG FIX (#687 part A): six defects in today's close-below-the-line exit (TRADE STATE — no exit rule, stop level, target or size changed)
+
+**Classification: bug fixes enforcing already-signed intent** — the 16:45 close-below-the-line exit
+(`live_tracker.update_open_positions_live` → `order_manager.execute_full_exit`) is today's signed
+rule; these make it do what it already says. No CHANGE_PROCESS N≥10 gate. Found by the #687
+mechanics study and its independent check (`docs/analysis/687_depth_trail_mechanics_2026-09-29.md`,
+CHECKED section; `scripts/probes/_687/check_mech_verdict.txt` W2/W5/W6/W7/M1). The path has never
+fired live on a MAGNA53 trail (open positions KOD, VICR).
+
+**Trigger**: the #687 mechanics study (2026-09-29), read against the code at 2026-10-01.
+**Evidence**: code reading + one behaviour test per defect, each confirmed red against the pre-fix
+code (mutation runs recorded in the commit): (a)–(f) below. Single-path fixes, not threshold tunes.
+
+- **(a) A resting +8R profit-take no longer skips the sale.** `execute_full_exit` skipped the WHOLE
+  exit (an INFO log line; the 16:45 caller ignores the `False`) whenever any partial-exit order was
+  pending — so with the OCO third resting, the two thirds behind the trailing stop rode on after
+  the rule said sell. Now it sells `min(broker position − shares held by live resting orders other
+  than the stop it cancels, remaining − pending partial qty)` via `close_position(qty=…)`; the OCO
+  third keeps its own target and breakeven stop (operator ruling 2026-09-29). With nothing resting
+  the call is byte-identical (`close_position(ticker)`, no qty). Every skip that remains (a closing
+  order already queued · resting orders hold every share · broker unreadable beside a resting
+  profit-take — nothing is cancelled in that case) writes `full_exit_skipped` and pages once per
+  trade per skip kind (`_full_exit_skip_already_paged`, fails open).
+- **(b) `finalize_full_exit` decrements, closes only at zero** — the #566 rule the stop-fill writer
+  already follows. It wrote `status='closed', remaining_shares=0` regardless of the fill, which
+  after (a) would record a closed trade the broker still held. The OCO third's own fill (limit →
+  `_finalize_partial_exit_locked`, stop leg → `_finalize_stop_fill_locked`) closes the row.
+- **(c) The stop restore after a failed exit is sized from the broker** — position minus shares
+  held by LIVE resting sell orders (`_broker_free_qty_for_restore`; the stop the exit just
+  cancelled is never counted, even while Alpaca still lists it `new` before the cancel settles —
+  counting it would read "covered" a second before that stop is gone). It asked for `remaining_shares`, which still counts a resting
+  third → rejected → "UNPROTECTED" while the other two thirds were the naked ones. Both sites:
+  `_restore_stop_after_failed_exit` and the stream's full-exit cancel/reject/expiry restore
+  (`trade_stream._handle_cancel_or_reject` §3). `get_position` → None (flat OR unreadable) falls back
+  to `remaining − pending exits`, never zero. Every share held by OTHER live orders → no stop placed and
+  the page says so ("check that one of them is a stop") instead of a false UNPROTECTED.
+- **(d) `close_position(qty=…)` sends a `ClosePositionRequest`** (qty as `"2"`, not `"2.0"`). It
+  passed a dict, and alpaca-py 0.43.2 calls `.to_request_fields()` on it — AttributeError before
+  any HTTP call. No caller passed a qty before (a).
+- **(e) The cancel → sell sequence runs under the per-trade #151 lock, and the stop-ACK watchdog
+  takes the non-blocking try-lock** (defers, does not burn its once-a-day attempt —
+  `stop_ack_deferred_trade_locked`, 1-hour dedup) and re-reads the row under it. Without the lock a
+  30-second tick landing between the cancel and the sell placed a fallback stop at the ORIGINAL
+  orb_low, reserving the shares the sale needed. ⚠ In prod the watchdog runs 09:00–15:59 and the
+  only caller of `execute_full_exit` runs at 16:45, so today this closes an intraday-only window
+  (any future intraday full exit) — not a live 16:45 race.
+- **(f) A queued closing order counts as coverage** in `check_position_coverage` — only OUR full
+  exit (`mi_live_orders` purpose `full_exit`, pending) AND only when the broker lists it as live
+  (`accepted`/`new`/`pending_new`…). Counting stops only, every successful sale paged "UNPROTECTED"
+  at 17:00, 19:00 and 21:10 (the #649 slots; the 17:00/19:00 repair arm then no-oped). ⚠ Narrower
+  than "count `get_pending_exit_qty`": that helper includes plain partial-exit LIMITS, and #566
+  requires a limit above the market to count for nothing (that reading IS defect 1 here); OCO
+  parents were already counted from broker truth. A plain resting limit is still a gap (pinned).
+
+**Anticipated effect**: on a close below the line with a profit-take third resting, the two thirds
+sell at the next open and the row stays open at the third's size until it exits; on a successful
+sale, no 17:00/19:00/21:10 "UNPROTECTED" pages for that position. With nothing resting, the order
+sent and the row written are unchanged.
+
+**Expected residue — NOT changed here, stated so it is not read as a new defect:**
+- The WS stop-cancel handler (`_handle_cancel_or_reject` §2) still pages "Stop order CANCELLED —
+  Position unprotected" the moment the exit cancels the stop (16:45). (f) covers the coverage
+  detector only; the handler is out of this fix's scope.
+- A row held open under a resting OCO third (after (b)) has `remaining_shares` fully covered by
+  pending exits, so `update_stop` aborts (`stop_update_aborted`, "pending exits cover full
+  remaining") and the 16:20 / 09:35 stop refresh pages "No stop on X" for it, and the 09:00
+  watchdog writes `stop_ack_broker_covered` ("no_stop_only_market") — the third IS protected by its
+  OCO's held stop leg. Same state #591 already produces for a day-1 stop with a resting carve-out.
+
+**Reversion-flag**: REFINEMENT of the 2026-09-11 #646 full-exit fix (same function, same
+never-naked rule) and of the #566 accounting rule (applied to the last writer that lacked it).
+
+**Status**: built + unit-tested, not deployed. Deploy: `broker/` + `scheduler.py` → `deploy.sh
+execution` AND `market-agent`. Verify-live needs a real close-below-the-line exit (none yet on
+MAGNA53); the #687 paper rehearsal exercises (a)/(c)/(d).
+
+**Tests**: `tests/test_646_full_exit_never_returns_naked.py` (#687 section: a, b, c, e),
+`tests/test_replace_order_kwargs_numeric.py` (d — the real alpaca-py `TradingClient` with its HTTP
+layer faked), `tests/test_position_coverage_check_527.py` (f, with the #566 negative pin).
+
 ### 2026-09-28 — the +8 ORB-R partial FIRED LIVE for the first time (KOD, trade 404) — verified at the broker, no rule changed
 
 - **What fired:** KOD entered at the 09:31 ORB at $63.15 (5 shares, hard stop $58.08, so R = $2.53); the 1/3 partial
