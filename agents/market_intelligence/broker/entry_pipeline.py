@@ -708,6 +708,14 @@ async def submit_trade_entry(
     # both inputs already in scope.
     auto_enter = _should_auto_enter(account_mode, live_real_enabled)
 
+    # #687 B (2026-10-01): the EXIT RULE this trade is entered under, stamped on the row inside
+    # the same transaction as the insert and kept for life. 'depth' only for a MAGNA53 entry
+    # while `mi_safeguard_state('magna53_depth_exit', <mode>)` is on (fails CLOSED → today's
+    # rule). Read here, OUTSIDE the cap lock (no I/O inside it beyond the row writes); a toggle
+    # flip after this moment never touches this trade.
+    from agents.market_intelligence.broker.order_manager import resolve_exit_rule_stamp
+    exit_rule_stamp = await resolve_exit_rule_stamp(signal_type, account_mode)
+
     cap_reason: str | None = None
     trade_id = None
     async with pool.acquire() as conn:
@@ -794,6 +802,14 @@ async def submit_trade_entry(
                     # this key postdates some historical spec_builder shapes.
                     order_spec.get("risk_dollars_actual"),
                 )
+                if trade_id and exit_rule_stamp:
+                    # #687 B: the exit-rule stamp, atomic with the row's creation. The INSERT
+                    # above is untouched (its positional parameters are pinned); NULL — every
+                    # row the toggle did not stamp — is today's rule.
+                    await conn.execute(
+                        "UPDATE mi_live_trades SET exit_rule = $2 WHERE id = $1",
+                        trade_id, exit_rule_stamp,
+                    )
                 if trade_id and auto_enter:
                     # Auto-enter confirm flip INSIDE the same transaction: the
                     # row becomes countable (OPEN_POSITION_STATUSES includes

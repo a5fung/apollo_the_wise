@@ -429,6 +429,34 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
+### 2026-10-01 — #687: the DEPTH exit rule for NEW MAGNA53 trades — BUILT, toggle `magna53_depth_exit` OFF (no live change until he flips it)
+
+**Trigger**: his ruling 2026-09-29 (PLAN.md #687 — *"Aligned"*; *"Ok, let's keep this and monitor how it goes"*),
+conditional on the orders executing mechanically. `exit_discipline.md` 2026-10-01 (#687 part B) owns the
+mechanism; this entry owns the rule for MAGNA53.
+
+**The rule (new trades only; stamped on the row at entry, kept for life):** the stop rests at max(hard stop
+`entry − 2R`, entry once breakeven is armed, round(line × (1 − ADR20%), 2)), line = max(the stock's SMA10, SMA20);
+a TRUE close below the line sells in the next morning's opening auction (market-on-open, sent 19:01 ET); a resting
++8R profit-take third keeps its own target and breakeven stop. Entry, the +8R partial, the +3R breakeven arm and
+sizing are unchanged. KOD and VICR (and every trade entered before a flip) keep today's stop.
+
+**Evidence**: 1,505 rebuilt EPs +29R vs today's stop (p 0.33), 79 real EPs −1.8R (noise) —
+`docs/analysis/687_depth_trail_backfill_2026-09-29.md`; under live timing +51.6R (p 0.087) / −2.5R (p 0.25) —
+`docs/analysis/687_depth_trail_mechanics_2026-09-29.md` (CHECKED section). ⚠ In-sample 1-ADR distance (picked after
+FTK, INFQ, OKTA); not a clear win on the EPs we trade.
+
+**Anticipated effect (after a flip)**: ~4–5 close-below sales a month instead of ~1; sales at the official open
+instead of a queued 16:45 market order; next-morning losses count toward the 2% daily loss limit and the circuit
+breaker as normal (ruled — watch it).
+
+**Reversion-flag**: REFINEMENT of the 2026-09-06 era-D exit (same line and close test; the stop rests lower and the
+sale moves to the opening auction). Revert = toggle row 'off' (stops stamping new trades).
+
+**Status**: BUILT behind `magna53_depth_exit` (OFF, no row), paper rehearsal pending, not deployed. Flip-day duties
+(a dated line here, the `rule_eras` exit-era boundary, the live watch's EXPECT / DONE-WHEN / WOULD-FAIL-IF) are in
+`exit_discipline.md` 2026-10-01.
+
 ### 2026-09-29 — the theme-fit check runs on Sonnet 5.5 without its pre-verdict reasoning field (REFINEMENT of 2026-09-13 late evening; operator-signed)
 
 **Trigger**: claude-sonnet-5-5 (auto-adopted 09-28) refuses prompts that make it write its reasoning out; all 40 fit

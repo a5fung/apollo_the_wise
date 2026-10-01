@@ -39,8 +39,13 @@ from agents.market_intelligence.broker.entry_pipeline import (
     ACTION_SKIPPED,
     submit_trade_entry,
 )
-from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+from agents.market_intelligence.broker.exit_logic import (
+    adr20_pct_from_bars,
+    apply_daily_exit_step,
+    depth_stop_price,
+)
 from agents.market_intelligence.broker.order_manager import (
+    DEPTH_EXIT_RULE,
     prepare_orb_order,
     execute_partial_exit,
     execute_full_exit,
@@ -735,13 +740,15 @@ async def _load_exit_state(
     # to the pre-#548 behavior. A history hiccup must never abort a position-management
     # pass — that pass also carries the hard stop.
     prior_closes: list[float] = []
+    prior_bars: list[dict] = []
     try:
         _hist = await get_index_history(
             trade["ticker"],
             (alert_date - timedelta(days=40)).strftime("%Y-%m-%d"),
             (alert_date - timedelta(days=1)).strftime("%Y-%m-%d"),
         )
-        prior_closes = [float(b["c"]) for b in (_hist or []) if b.get("c") is not None]
+        prior_bars = list(_hist or [])
+        prior_closes = [float(b["c"]) for b in prior_bars if b.get("c") is not None]
     except Exception as e:  # loud-ok: display/indicator input, never the stop itself
         logger.warning(
             f"{trade['ticker']}: prior-close fetch for the MA trail failed ({e}) — trail "
@@ -759,6 +766,11 @@ async def _load_exit_state(
         # Not part of the persisted trade state — recomputed each pass from price history,
         # so there is nothing to migrate and nothing to go stale.
         "prior_closes": prior_closes,
+        # #687 B: the depth rule's ADR20 (the 20 sessions BEFORE entry, from the SAME bars as
+        # prior_closes). None below 10 usable sessions — including when the fetch failed this
+        # pass — and the depth stop then rests at the hard/breakeven floor, as the analysis
+        # walker rests a trade it cannot host. Read by the depth branch only.
+        "adr20_pct": adr20_pct_from_bars(prior_bars),
     }
     return state, daily_bars, None
 
@@ -895,7 +907,45 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         # #361). With skip_partial_decision=True above, step.partial_fired is
         # always False here, so this job runs ONLY the SMA-trail + stop ladder.
 
+        # #687 B: the rule this trade was ENTERED under, stamped on its row at entry and kept
+        # for life. NULL = today's rule. The toggle is never read here — flipping it cannot
+        # change an open trade's rule.
+        is_depth = trade.get("exit_rule") == DEPTH_EXIT_RULE
+
         # 3. SMA trail close
+        if step.action == "sma_stopped" and is_depth:
+            # The depth rule decides on this TRUE close exactly as today's rule does, but sells
+            # in the NEXT MORNING'S OPENING AUCTION (ruled 2026-09-29): mark it, leave the depth
+            # stop on, and let the 19:01 ET job send the market-on-open order (Alpaca rejects
+            # OPG orders before 19:00). Nothing is cancelled or sold here.
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET
+                        hold_days = $2, running_closes = $3::jsonb,
+                        depth_sell_pending_on = $4
+                    WHERE id = $1
+                """, trade["id"], step.hold_days,
+                    step.new_running_closes, today)
+            await log_audit_event(
+                "depth_close_below_line",
+                f"{ticker}: closed ${step.bar_close:.2f} below the trailing line "
+                f"${step.effective_stop:.2f} — selling in the next opening auction",
+                json.dumps({"trade_id": trade["id"], "ticker": ticker,
+                            "account_mode": trade.get("account_mode"),
+                            "close": step.bar_close, "line": step.effective_stop,
+                            "resting_stop": trade.get("stop_price"),
+                            "decided_on": today.isoformat()}),
+            )
+            await send_telegram_message(
+                f"{mode_prefix(trade.get('account_mode'))}📉 *{ticker} closed below "
+                f"its trailing line* (${step.bar_close:.2f} < ${step.effective_stop:.2f}).\n"
+                f"Selling at the next open: the opening-auction order goes in at 7:01 PM ET. "
+                f"The stop stays on until then."
+            )
+            results.append({"ticker": ticker, "action": "depth_sell_pending",
+                            "hold_days": step.hold_days})
+            continue
+
         if step.action == "sma_stopped":
             await execute_full_exit(trade["id"], "sma_trail_stop")
             async with pool.acquire() as conn:
@@ -910,7 +960,22 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
 
         # 4. Still open — update Alpaca stop if effective_stop rose
         current_stop = trade["stop_price"] or 0
-        if step.effective_stop > current_stop + 0.01 and step.new_remaining > 0:
+        if is_depth:
+            # #687 B: the depth rule's RESTING stop — one ADR20 under today's line
+            # (`step.effective_stop` = max(hard, SMA10/20 incl. today's close, entry once
+            # breakeven is armed), the line today's rule rests ON). Same raise-only path:
+            # `update_stop` refuses anything not above the live broker stop, which is the
+            # ratchet the replay applies. No ADR20 → the hard/breakeven floor (never a move).
+            depth_stop = depth_stop_price(
+                line=step.effective_stop,
+                hard_stop=float(state["hard_stop"]),
+                entry_price=trade.get("entry_price"),
+                breakeven_active=bool(step.new_breakeven_active),
+                adr20_pct=state.get("adr20_pct"),
+            )
+            if depth_stop > current_stop + 0.01 and step.new_remaining > 0:
+                await update_stop(trade["id"], depth_stop, stop_source="depth_trail")
+        elif step.effective_stop > current_stop + 0.01 and step.new_remaining > 0:
             # #560: tell update_stop WHICH ladder input raised the stop (trail /
             # breakeven / hard_stop / giveback_floor) so the operator-facing
             # "Stop confirmed" Telegram (retry-recovered path) can say why —

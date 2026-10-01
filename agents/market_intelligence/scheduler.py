@@ -120,6 +120,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "stop_coverage_repair_retry",  # #596 — re-drives a FAILED coverage repair (touches the broker)
     "live_position_update",
     "partial_exit_scan",  # #361 — 3:45 PM market-hours partial-profit (split from 4:45)
+    "depth_open_auction_sale",  # #687 B — 7:01 PM ET opening-auction sale (broker writes)
     "evening_position_backstop",
     # #646 (a1) — MUST be execution-owned: it reads broker truth, and an intelligence
     # container holds no Alpaca credentials, where an empty read is indistinguishable
@@ -2480,6 +2481,30 @@ async def _forward_alert_path_persist_job():
     except Exception as e:
         logger.error(f"forward_alert_path_persist failed: {e}")
         await notify_job_failure("forward_alert_path_persist", str(e))
+
+
+async def _depth_open_auction_sale_job():
+    """Run at 7:01 PM ET (#687 B). Sends the depth rule's next-open sale — a market-on-open
+    AUCTION sell (TIF opg) — for every depth-rule trade the 16:45 job marked as closed below its
+    trailing line. Alpaca rejects OPG orders submitted after 9:28 AM and before 7:00 PM ET and
+    queues those sent after 7:00 PM for the next session's opening auction, hence 19:01 — after
+    the 19:00 coverage slot, which therefore still sees the depth stop resting.
+
+    Inert unless a trade row carries `exit_rule = 'depth'`, which only the
+    `magna53_depth_exit` toggle stamps (default OFF)."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            run_depth_open_sales,
+        )
+        results = await run_depth_open_sales()
+        if results:
+            logger.info(f"Depth open-auction sales: {results}")
+    except Exception as e:
+        logger.error(f"Depth open-auction sale job failed: {e}")
+        await notify_job_failure("depth_open_auction_sale", str(e))
 
 
 async def _evening_position_backstop_job():
@@ -7487,6 +7512,17 @@ def start_scheduler() -> AsyncIOScheduler:
     # window. 17:00 is after the 16:20 post-close refresh restores the overnight GTC stop,
     # so a gap there is real; 19:00 is mid-window with extended hours still trading; 21:10
     # is ten minutes after the 21:00 backstop and reports on a repair that already failed.
+    # #687 B: the depth rule's next-open sale — 7:01 PM ET, the first minute Alpaca accepts an
+    # OPG (market-on-open) order for the next session, and after the 19:00 coverage slot.
+    # Inert while no row carries exit_rule='depth' (toggle `magna53_depth_exit`, default OFF).
+    _scheduler.add_job(
+        audit_wrap(_depth_open_auction_sale_job, "depth_open_auction_sale"),
+        CronTrigger(hour=19, minute=1, day_of_week="mon-fri", timezone="America/New_York"),
+        id="depth_open_auction_sale",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+
     for _slot, _hh, _mm in (("post_close", 17, 0), ("late", 19, 0), ("evening", 21, 10)):
         _scheduler.add_job(
             audit_wrap(functools.partial(_coverage_watch_job, _slot),

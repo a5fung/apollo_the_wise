@@ -116,6 +116,16 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # four columns move together in a single strictly-higher-only ratcheting UPDATE, and
     # splitting them would lose that atomicity exactly as the stop_order_id note below says.
     # These are telemetry FOR the raise-only rule, never themselves a stop level.
+    # #687 B (2026-10-01) — the exit rule a trade was ENTERED under. ONE writer: the stamp
+    # `UPDATE … SET exit_rule` inside the same transaction as the row's INSERT (attributed to
+    # `entry_pipeline._skip` exactly like the INSERT itself). Set once, never rewritten — the
+    # rule is kept for the trade's life.
+    "exit_rule":             {"entry_pipeline._skip"},
+    # #687 B — the depth rule's "sell at the next open" mark: SET by the 16:45 job on a close
+    # below the line (with hold_days/running_closes, its own domain), CLEARED by the 19:01 sale
+    # once it has run to an outcome.
+    "depth_sell_pending_on": {"live_tracker.update_open_positions_live",
+                              "order_manager._clear_depth_sell_mark"},
     "dead_stop_price":       {"order_manager._preserve_dead_stop_price"},
     "dead_stop_order_id":    {"order_manager._preserve_dead_stop_price"},
     "dead_stop_status":      {"order_manager._preserve_dead_stop_price"},

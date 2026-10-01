@@ -142,6 +142,23 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         """,
     ),
     (
+        "live_tracker.update_open_positions_live: depth close-below mark (#687 B)",
+        """
+                    UPDATE mi_live_trades SET
+                        hold_days = $2, running_closes = $3::jsonb,
+                        depth_sell_pending_on = $4
+                    WHERE id = $1
+        """,
+    ),
+    (
+        "entry_pipeline.submit_trade_entry: exit-rule stamp (#687 B)",
+        "UPDATE mi_live_trades SET exit_rule = $2 WHERE id = $1",
+    ),
+    (
+        "order_manager._clear_depth_sell_mark (#687 B)",
+        "UPDATE mi_live_trades SET depth_sell_pending_on = NULL WHERE id = $1",
+    ),
+    (
         "trade_stream._process_stop_fill: partial-qty branch (#566)",
         """
         UPDATE mi_live_trades SET

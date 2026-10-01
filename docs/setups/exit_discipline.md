@@ -31,6 +31,11 @@ the exit path sees intraday price", which stopped being true on 2026-08-01):**
 - **The TRAIL is DAILY**: `exit_logic.py` is *"pure daily-exit-step decision logic"*;
   `apply_daily_exit_step(state, daily_bar, …)` consumes **one daily bar** — the SMA-trail /
   stop-update decisions are evaluated once, against the close, not on the touch.
+- **A DEPTH variant of the trail exists for NEW MAGNA53 trades but is OFF** (#687 B, operator-ruled
+  2026-09-29): toggle `magna53_depth_exit` (per mode, no row = OFF) stamps `mi_live_trades.exit_rule
+  = 'depth'` at entry; a stamped trade's stop rests one ADR20 under the line and a close below the
+  line sells in the next opening auction (order sent 19:01 ET). No row is stamped today, so every
+  trade runs the trail described here. Change log 2026-10-01.
 
 **Jobs:** `track_position_extremes` every 5 min (bars + the #508 profit trigger);
 `run_partial_exits` 3:45 PM ET (the time-gated partial — standing down while the intraday
@@ -343,6 +348,98 @@ what any live position does.
 ---
 
 ## Change log (newest first)
+
+### 2026-10-01 — #687 part B: the DEPTH exit rule for NEW MAGNA53 trades — BUILT behind `magna53_depth_exit`, toggle OFF (no live behaviour changes until he flips it)
+
+**Trigger**: his ruling 2026-09-29 (PLAN.md #687, *"Aligned"*, then *"Ok, let's keep this and monitor how it
+goes"*) — switch MAGNA53's trail to the depth rule, conditional on it executing mechanically: *"We need to make
+sure it can work mechanically, meaning we can actually execute these orders properly given there will be stops,
+cancelling, etc."* His four decisions, built exactly: (1) decide on the true close, sell in the next morning's
+opening auction (opg); (2) NEW trades only — KOD, VICR keep today's stop; (3) a resting +8R profit-take third keeps
+its own target and breakeven stop on a close-below sale; (4) next-morning losses count toward the 2% daily loss
+limit and the circuit breaker as normal (no special-casing anywhere).
+
+**Evidence**: `docs/analysis/687_depth_trail_backfill_2026-09-29.md` (1,505 rebuilt EPs: +29R vs today's stop,
+p 0.33; 79 real EPs: −1.8R, noise) and `docs/analysis/687_depth_trail_mechanics_2026-09-29.md` (CHECKED section:
+under live timing — true-close decision, next-open sale — +51.6R on the rebuilt list, p 0.087; −2.5R on the 79
+real EPs, p 0.25). ⚠ The 1-ADR depth was picked after seeing FTK, INFQ and OKTA (in-sample); not a clear win on
+the EPs we trade. The live resting stop is pinned to the analysis walker by a golden file built from the walker's
+own lines (418 cases, 0 mismatches — `scripts/probes/_687/depth_stop_golden.py`).
+
+**What it does (mechanism):**
+- **Stamp at entry.** `entry_pipeline.submit_trade_entry` reads `mi_safeguard_state('magna53_depth_exit',
+  <mode>)` before the cap-lock transaction (`order_manager.resolve_exit_rule_stamp`, MAGNA53 only, fails CLOSED)
+  and, inside the insert's own transaction, writes `mi_live_trades.exit_rule = 'depth'`. NULL = today's rule. The
+  16:45 job and the 19:01 sale read the ROW, never the toggle — flipping it cannot change an open trade's rule.
+- **Resting stop, day 1 on.** 16:45 job: `exit_logic.depth_stop_price` = max(hard stop, entry once breakeven is
+  armed, round(line × (1 − ADR20%), 2)); line = today's trailing line (max of the stock's SMA10 / SMA20, as
+  today); ADR20% = mean (high − low)/close over the 20 sessions before entry (`exit_logic.adr20_pct_from_bars`, the
+  replays' `ep_replay.adr20_pct`, from the bars `_load_exit_state` already fetches). Raised through `update_stop`
+  (raise-only against the broker). Today's rule still rests ON the line (unchanged branch).
+- **Decision, 16:45, on the true close.** `apply_daily_exit_step` unchanged. A close below the line on a depth row
+  only sets `depth_sell_pending_on = today` (+ a `depth_close_below_line` audit row + a Telegram); nothing is
+  cancelled or sold; the depth stop stays on until 19:01.
+- **Sale, 19:01 ET** (`scheduler` job `depth_open_auction_sale`, execution-owned; Alpaca rejects OPG orders before
+  19:00 and queues them after): `order_manager.run_depth_open_sales` → `execute_depth_open_sale` per marked row,
+  under the per-trade #151 lock: re-read the row → size from the broker (position minus shares held by live
+  resting sell orders other than the depth stop, capped by `remaining − pending partial qty` — the shared
+  `_size_sale_beside_resting_orders`, same as #687 A) → cancel the depth stop → `_await_shares_released` (#646) →
+  `place_market_on_open_sell` (TIF opg, mode-bound client order id) → `full_exit` row (`exit_reason
+  'sma_trail_stop'`: the decision IS the trail's close test) → clear the mark. Rejected → `full_exit_rejected`
+  audit, `_restore_stop_after_failed_exit` at the stop's price (sized from the broker, #687 A c), page.
+- **Expiry.** An unfilled opg is cancelled by the broker after the open → `trade_stream._handle_cancel_or_reject`
+  §3 (full-exit cancel/expiry) restores the stop at its price, sized from the broker, and pages "Close order
+  CANCELLED … Stop re-placed @ $X for N sh". No new stream code: the path #687 A fixed is the one it takes.
+- **Fill.** The auction fill runs `finalize_full_exit` (#687 A b: the row stays open at the third's size if a
+  profit-take third rests; closes at zero otherwise).
+
+**Design defaults NOT covered by the ruling — stated so they read as choices, and listed for him:**
+- **No ADR20** (fewer than 10 sessions before entry, or the history fetch failed that pass): the stop rests at the
+  hard / breakeven floor, as the analysis walker rests a trade it cannot host — never on the line. Chosen because
+  the broker raise-only floor makes any one-evening move to the line irreversible, so a transient fetch failure
+  must not be able to convert a trade to today's stop for life.
+- **Failure retry:** the 19:01 attempt clears the mark whatever its outcome (queued, rejected-and-restored, skipped,
+  raised). Nothing retries a sale on its own; a trade still held is re-decided on the next true close. An expired
+  opg likewise leaves the trade open under its restored stop until the next close below the line.
+- **A stale mark is never sold on:** a mark dated before today's ET session (the 19:01 run was missed, or re-driven
+  after midnight) is cleared with a `depth_sale_mark_stale` audit row and a page, nothing cancelled — the rule
+  decides on the TRUE close, and today's may be back above the line.
+- **Skips page once per trade per kind** (`full_exit_skipped`, shared with #687 A): nothing free to sell beside a
+  resting profit-take, or the broker unreadable (nothing is cancelled in either case).
+
+**Anticipated effect (after a flip only — nothing changes while OFF):** baseline today ~1 close-below sale a month
+on MAGNA53; under the depth rule ~4–5 a month (21 in 4.5 months on the 79 real EPs). Each: one opg sell queued at
+19:01, filled in the 09:30 auction; the evening stop sits one ADR20 under the line, never falls. Unintended, to
+watch: next-open losses land at ~09:30 and count toward the 2% daily loss limit and re-arm the loss-count circuit
+breaker more often (ruled: accepted, watch it); the WS stop-cancel page ("Stop order CANCELLED — Position
+unprotected") still fires when the 19:01 job cancels the depth stop (the coverage slots no longer do — #687 A f).
+
+**Reversion-flag**: REFINEMENT of the 2026-08-08 SMA-trail fix and the 2026-09-06 era-D trail for MAGNA53 — same
+line, same close test; the stop rests lower and the close-below sale moves from the 16:45 queued market order to the
+opening auction. Revert = the toggle row 'off' (new trades stop being stamped); trades already stamped keep the
+depth rule for life by design — re-stamping them is a deliberate one-off SQL, his call.
+
+**Status**: BUILT, toggle `magna53_depth_exit` OFF in both modes (no `mi_safeguard_state` row), paper rehearsal
+pending, NOT deployed. Before any live flip: Mon–Tue PAPER rehearsal of the exact sequence in market hours (flip the
+`paper` row only), then his final yes; the live watch registers EXPECT / DONE-WHEN / WOULD-FAIL-IF before the flip
+(mechanics doc §8, corrected by its CHECKED section). Deploy: `execution` (broker + scheduler) AND `market-agent`
+(the `ADD COLUMN IF NOT EXISTS exit_rule / depth_sell_pending_on` migration lands on boot).
+
+**Flip (OPERATOR-ONLY, THE LINE — per mode; acts on the NEXT MAGNA53 entry, never an open trade):**
+```sql
+INSERT INTO mi_safeguard_state (safeguard, account_mode, state, updated_at)
+VALUES ('magna53_depth_exit', 'paper', 'on', now())          -- 'live' only after the rehearsal + his yes
+ON CONFLICT (safeguard, account_mode) DO UPDATE SET state='on', updated_at=now();
+```
+**Flip-day duties (NOT done here — the toggle is OFF):** a dated line here and in `magna53_ep.md` the same day;
+add the exit-era boundary to `rule_eras.py` for depth-stamped trades so the #482 recorder and era-scoped reviews
+stamp the new rule (`test_exit_counterfactual_consolidation_631` pins the era literal — move it with the flip);
+`scripts/live_rules.py` already prints the toggle's per-mode state.
+
+**Tests**: `tests/test_depth_exit_rule.py` (29: walker parity on the golden file, ADR parity with
+`ep_replay.adr20_pct`, the toggle and the in-transaction stamp, the 16:45 mark / stop raise / unstamped rows
+unchanged, the 19:01 sale sequence under the lock with the OCO third, rejection → restore, skips, a stale mark,
+expiry → restore, job registration). Eleven mutations each redden their tests (recorded in the commit).
 
 ### 2026-10-01 — BUG FIX (#687 part A): six defects in today's close-below-the-line exit (TRADE STATE — no exit rule, stop level, target or size changed)
 

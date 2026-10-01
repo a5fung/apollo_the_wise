@@ -1153,6 +1153,13 @@ def build_exit_section(res: Resolver) -> list[str]:
     L.append("")
     L.append("trail: max(stock's 10-day, 20-day SMA) once enough closes exist; close below it exits "
              "(seeded from the stock's own closes since the 2026-08-08 fix)")
+    # #687 B (2026-10-01): the depth rule. The toggle decides only what NEW MAGNA53 trades are
+    # stamped with (mi_live_trades.exit_rule) — every open trade keeps the rule it entered under.
+    L.append(f"  depth rule for NEW MAGNA53 trades (stop rests one ADR20 under the line; a close below "
+             f"the line sells in the next opening auction, order sent 7:01 PM ET) — "
+             f"`magna53_depth_exit`: {_toggle_line(res, 'magna53_depth_exit')}")
+    L.append("    trades stamped exit_rule='depth' keep it for life; NULL rows keep today's stop "
+             "(resting ON the line, close-below sale queued at 4:45 PM for the next open)")
     L.append("stop moves are RAISE-ONLY, enforced against the live broker stop in update_stop (2026-08-10)")
     L.append("giveback floor: RULED OUT by the operator 2026-08-11 — winners run; no peak-lock floor")
     return L

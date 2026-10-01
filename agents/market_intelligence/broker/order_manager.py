@@ -1725,6 +1725,8 @@ _SOURCE_LABEL = {
     "giveback_floor": "The profit-lock floor",
     "refresh": "The overnight stop",
     "hard_stop": "The original stop",
+    # #687 B: the depth rule's resting stop — one ADR20 under the 10/20-day trail.
+    "depth_trail": "The depth stop (one normal day's range under the 10/20-day trail)",
     "unknown": "The stop",
 }
 
@@ -4916,6 +4918,71 @@ async def _record_full_exit_skip(
         ), parse_mode="HTML")
 
 
+class _SaleSize(NamedTuple):
+    sell_qty: int
+    held_by_resting: float
+    broker_qty: float
+
+
+async def _size_sale_beside_resting_orders(
+    trade_id: int, trade: dict, reason: str, pending_partial_qty: float, account_mode: str,
+) -> "_SaleSize | None":
+    """#687 — how many shares a closing sale may sell when other exit orders can be resting.
+
+    BROKER TRUTH for what is free once the trade's stop is cancelled: the position minus every
+    LIVE resting sell order except that stop (the +8R profit-take OCO third keeps its own target
+    and breakeven stop — operator ruling 2026-09-29), capped by the books' own count
+    (`remaining − pending partial-exit qty`). Never more than the broker holds free.
+
+    Returns None — after auditing + paging the skip — when nothing may be sold: the broker could
+    not be read (nothing is cancelled; the stop stays) or resting orders hold every share. Shared
+    by `execute_full_exit` (16:45, today's rule) and `execute_depth_open_sale` (19:01, depth).
+    """
+    ticker = trade["ticker"]
+    try:
+        pos = await alpaca.get_position(ticker, account_mode=account_mode)
+        open_orders = await alpaca.get_open_orders(
+            ticker, account_mode=account_mode, raise_on_error=True)
+    except Exception as e:   # loud-ok: recorded + paged below; the stop is left untouched
+        pos, open_orders = None, None
+        logger.warning(f"closing sale sizing: broker read failed for {ticker} — {e}")
+    if pos is None or open_orders is None:
+        await _record_full_exit_skip(
+            trade_id, trade, reason, "broker_unreadable",
+            "the broker position or open orders could not be read, so the shares free to sell "
+            "are unknown (a None position can also mean the position is already flat). Nothing "
+            "was cancelled — the stop is still in place.",
+            {"pending_partial_qty": pending_partial_qty})
+        return None
+    broker_qty = float(pos.get("qty") or 0)
+    held_by_resting = _live_sell_orders_held_qty(
+        open_orders, exclude_ids=(trade.get("stop_order_id"),))
+    db_free = float(trade["remaining_shares"]) - pending_partial_qty
+    sell_qty = _whole_shares(min(broker_qty - held_by_resting, db_free))
+    if sell_qty <= 0:
+        await _record_full_exit_skip(
+            trade_id, trade, reason, "resting_orders_hold_all_shares",
+            f"orders still resting at the broker hold every remaining share "
+            f"({held_by_resting:.0f} sh — the profit-take keeps its own target and breakeven "
+            f"stop). Nothing to sell; nothing was cancelled.",
+            {"pending_partial_qty": pending_partial_qty, "broker_qty": broker_qty,
+             "held_by_resting": held_by_resting,
+             "remaining_shares": float(trade["remaining_shares"])})
+        return None
+    if held_by_resting > 0 or pending_partial_qty > 0:
+        await log_audit_event(
+            "full_exit_sized_around_resting_exit",
+            f"{ticker}: selling {sell_qty} sh ({reason}); {held_by_resting:.0f} sh stay under "
+            f"the resting profit-take",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
+                        "account_mode": account_mode, "sell_qty": sell_qty,
+                        "broker_qty": broker_qty, "held_by_resting": held_by_resting,
+                        "pending_partial_qty": pending_partial_qty,
+                        "remaining_shares": float(trade["remaining_shares"])}),
+        )
+    return _SaleSize(sell_qty, held_by_resting, broker_qty)
+
+
 async def execute_full_exit(trade_id: int, reason: str) -> bool:
     """Close the remaining position.
 
@@ -4985,51 +5052,11 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
                 return False
             pending_partial_qty = sum(float(r["qty"] or 0) for r in pending_rows
                                       if r["purpose"] == "partial_exit")
-            # BROKER TRUTH for what is free once the stop is cancelled: the position minus every
-            # LIVE resting sell order except the stop we are about to cancel. Unreadable → do not
-            # cancel anything (the stop stays, the position stays protected) and say so.
-            try:
-                pos = await alpaca.get_position(ticker, account_mode=account_mode)
-                open_orders = await alpaca.get_open_orders(
-                    ticker, account_mode=account_mode, raise_on_error=True)
-            except Exception as e:   # loud-ok: recorded + paged below; the stop is left untouched
-                pos, open_orders = None, None
-                logger.warning(f"execute_full_exit: broker read failed for {ticker} — {e}")
-            if pos is None or open_orders is None:
-                await _record_full_exit_skip(
-                    trade_id, trade, reason, "broker_unreadable",
-                    "the broker position or open orders could not be read, so the shares free to "
-                    "sell beside the resting profit-take are unknown. Nothing was cancelled — the "
-                    "stop is still in place.",
-                    {"pending_partial_qty": pending_partial_qty})
+            size = await _size_sale_beside_resting_orders(
+                trade_id, trade, reason, pending_partial_qty, account_mode)
+            if size is None:
                 return False
-            held_by_resting = _live_sell_orders_held_qty(
-                open_orders, exclude_ids=(trade.get("stop_order_id"),))
-            broker_free = float(pos.get("qty") or 0) - held_by_resting
-            db_free = float(trade["remaining_shares"]) - pending_partial_qty
-            sell_qty = _whole_shares(min(broker_free, db_free))
-            if sell_qty <= 0:
-                await _record_full_exit_skip(
-                    trade_id, trade, reason, "resting_orders_hold_all_shares",
-                    f"orders still resting at the broker hold every remaining share "
-                    f"({held_by_resting:.0f} sh — the profit-take keeps its own target and breakeven "
-                    f"stop). Nothing to sell; nothing was cancelled.",
-                    {"pending_partial_qty": pending_partial_qty,
-                     "broker_qty": float(pos.get("qty") or 0),
-                     "held_by_resting": held_by_resting,
-                     "remaining_shares": float(trade["remaining_shares"])})
-                return False
-            await log_audit_event(
-                "full_exit_sized_around_resting_exit",
-                f"{ticker}: selling {sell_qty} sh ({reason}); {held_by_resting:.0f} sh stay under the "
-                f"resting profit-take",
-                json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
-                            "account_mode": account_mode, "sell_qty": sell_qty,
-                            "broker_qty": float(pos.get("qty") or 0),
-                            "held_by_resting": held_by_resting,
-                            "pending_partial_qty": pending_partial_qty,
-                            "remaining_shares": float(trade["remaining_shares"])}),
-            )
+            sell_qty, held_by_resting = size.sell_qty, size.held_by_resting
 
         logger.info(f"Full exit: {ticker} reason={reason} shares="
                     f"{(sell_qty if sell_qty is not None else trade['remaining_shares']):.0f} "
@@ -5121,6 +5148,257 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
             f"_Confirms with real P&L on fill._{_third_line}"
         )
         return True
+
+
+# ── #687 B: the DEPTH exit rule (operator-ruled 2026-09-29) — built behind a toggle, OFF ──────
+#
+# The rule (docs/setups/exit_discipline.md 2026-10-01 #687 part B): the protective stop rests
+# one ADR20 under the trailing line (`exit_logic.depth_stop_price`, raised each evening by the
+# 16:45 job through `update_stop`, raise-only), the close test is today's
+# (`apply_daily_exit_step`, unchanged), and a close below the line sells in the NEXT MORNING'S
+# OPENING AUCTION: the 16:45 job only MARKS the trade (`depth_sell_pending_on`), the depth stop
+# stays on, and at 19:01 ET `run_depth_open_sales` cancels the stop and sends a market-on-open
+# (TIF opg) sell. Applies to NEW MAGNA53 trades only: the choice is stamped on the row at entry
+# (`mi_live_trades.exit_rule = 'depth'`) and kept for life; trades entered before the toggle was
+# on (KOD, VICR) keep today's stop forever.
+
+DEPTH_EXIT_RULE = "depth"
+_DEPTH_EXIT_STRATEGY = "magna53"
+
+
+async def _magna53_depth_exit_enabled(account_mode: str) -> bool:
+    """Runtime toggle for the #687 depth exit rule, per account mode. DEFAULT OFF.
+
+    One `mi_safeguard_state('magna53_depth_exit', <mode>)` row, the same money-path idiom as
+    `profit_take_oco` / `breakeven_at_broker` — no redeploy to flip, reversible the same way.
+    It is read ONLY when a new MAGNA53 trade row is created (the stamp); it never changes the
+    rule of a trade already open.
+
+    Fails CLOSED. An unreadable flag must leave a new trade on today's rule.
+    """
+    try:
+        from agents.market_intelligence import db
+        row = await db.get_safeguard_state("magna53_depth_exit", account_mode)
+        return bool(row) and str(row.get("state", "")).lower() == "on"
+    except Exception as e:   # loud-ok: fails CLOSED (today's rule), logged
+        logger.warning(f"magna53_depth_exit flag unreadable, staying OFF: {e}")
+        return False
+
+
+async def resolve_exit_rule_stamp(signal_type: str, account_mode: str) -> str | None:
+    """The exit rule a NEW trade row is stamped with: 'depth' for a MAGNA53 entry while the
+    toggle is on for its account mode, else None (today's rule). Read once, at row creation."""
+    if signal_type != _DEPTH_EXIT_STRATEGY:
+        return None
+    return DEPTH_EXIT_RULE if await _magna53_depth_exit_enabled(account_mode) else None
+
+
+async def _clear_depth_sell_mark(trade_id: int) -> None:
+    """Clear the 16:45 'sell at the next open' mark — the 19:01 attempt has run to an outcome
+    (sale queued, rejected-and-restored, or skipped). A trade still held is re-decided on the
+    next true close; nothing retries a sale on its own."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE mi_live_trades SET depth_sell_pending_on = NULL WHERE id = $1", trade_id)
+
+
+async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop") -> bool:
+    """Send the depth rule's next-open sale for ONE marked trade (19:01 ET).
+
+    Under the per-trade #151 lock (the same lock `execute_full_exit` holds; the re-protect paths
+    try-lock and defer): re-read the row → size the sale from the broker (position minus shares
+    held by a resting profit-take OCO third, which keeps its own target and breakeven stop —
+    ruled) → cancel the depth stop → wait for the shares to be released (#646) → market-on-open
+    AUCTION sell (TIF opg, mode-bound client order id) → `full_exit` row → clear the mark. On a
+    rejection: restore the stop at its price, sized from the broker (#646 + #687 c), and page.
+    An unfilled opg order is cancelled by the broker after the open; the stream's full-exit
+    cancel path restores the stop and pages (`trade_stream._handle_cancel_or_reject` §3).
+
+    `reason` stays 'sma_trail_stop' — the decision IS the trail's close test; the row's
+    `exit_rule` says which rule placed the stop. Returns True when the auction sell was accepted.
+    """
+    async with _trade_advisory_lock(trade_id):
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            trade = await conn.fetchrow("SELECT * FROM mi_live_trades WHERE id = $1", trade_id)
+        if not trade:
+            logger.warning(f"execute_depth_open_sale: trade {trade_id} not found")
+            return False
+        trade = dict(trade)
+        ticker = trade["ticker"]
+        account_mode = trade.get("account_mode") or current_account_mode()
+        if (trade.get("status") != "filled" or float(trade.get("remaining_shares") or 0) <= 0
+                or trade.get("exit_rule") != DEPTH_EXIT_RULE
+                or trade.get("depth_sell_pending_on") is None):
+            logger.info(f"execute_depth_open_sale: {ticker} #{trade_id} no longer a pending "
+                        f"depth sale (status={trade.get('status')}) — mark cleared")
+            await _clear_depth_sell_mark(trade_id)
+            return False
+
+        # A mark from an EARLIER session is never acted on. The rule decides on the TRUE close;
+        # if the 19:01 job was missed (container down past its grace, a recovery re-run after
+        # midnight) the decision it carried is stale — today's close may be back above the line.
+        # Cancel nothing, clear it, say so; today's 16:45 close test decides again.
+        from agents.market_intelligence.collector import et_today
+        decided_on = trade.get("depth_sell_pending_on")
+        if decided_on != et_today():
+            await log_audit_event(
+                "depth_sale_mark_stale",
+                f"{ticker} #{trade_id}: close-below decision from {decided_on} was never sent — "
+                f"not acted on; the next close decides",
+                json.dumps({"trade_id": trade_id, "ticker": ticker,
+                            "account_mode": account_mode, "decided_on": str(decided_on),
+                            "today": str(et_today())}),
+            )
+            await _clear_depth_sell_mark(trade_id)
+            await send_telegram_message(md_to_html(
+                f"{mode_prefix(account_mode)}⚠️ {ticker}: the close-below-the-line decision from "
+                f"{decided_on} was never sent to the opening auction. Nothing was cancelled or "
+                f"sold — the depth stop stays on and the next close decides."
+            ), parse_mode="HTML")
+            return False
+
+        async with pool.acquire() as conn:
+            pending_rows = await conn.fetch("""
+                SELECT alpaca_order_id, purpose, qty FROM mi_live_orders
+                WHERE trade_id = $1
+                  AND purpose IN ('partial_exit', 'full_exit')
+                  AND status != ALL($2::text[])
+            """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
+        pending_full = [r for r in pending_rows if r["purpose"] == "full_exit"]
+        if pending_full:
+            await _record_full_exit_skip(
+                trade_id, trade, reason, "full_exit_already_pending",
+                f"a closing order ({str(pending_full[0]['alpaca_order_id'])[:8]}) is already "
+                f"queued for this position.",
+                {"pending_order_id": pending_full[0]["alpaca_order_id"]})
+            await _clear_depth_sell_mark(trade_id)
+            return False
+        pending_partial_qty = sum(float(r["qty"] or 0) for r in pending_rows
+                                  if r["purpose"] == "partial_exit")
+        size = await _size_sale_beside_resting_orders(
+            trade_id, trade, reason, pending_partial_qty, account_mode)
+        if size is None:
+            await _clear_depth_sell_mark(trade_id)
+            return False
+        sell_qty, held_by_resting = size.sell_qty, size.held_by_resting
+
+        stop_id = trade.get("stop_order_id")
+        stop_price = trade.get("stop_price")
+        logger.info(f"Depth sale: {ticker} reason={reason} shares={sell_qty} "
+                    f"(trade_id={trade_id}, opening auction)")
+        if stop_id:
+            cancelled = await alpaca.cancel_order(stop_id, account_mode=account_mode)
+            logger.info(f"Depth sale: cancelled stop {stop_id} for {ticker} "
+                        f"(success={cancelled})")
+            if cancelled:
+                await _await_shares_released(ticker, float(sell_qty), account_mode)
+
+        try:
+            coid = alpaca.make_client_order_id(
+                account_mode, trade.get("signal_type") or _DEPTH_EXIT_STRATEGY, ticker)
+            order = await alpaca.place_market_on_open_sell(
+                ticker, sell_qty, account_mode=account_mode, client_order_id=coid)
+        except Exception as e:
+            logger.error(f"Depth sale (opening auction) failed for {ticker}: {e}")
+            try:
+                await log_audit_event(
+                    "full_exit_rejected",
+                    f"{ticker} opening-auction sale REJECTED ({reason}) — {sell_qty} sh still open",
+                    json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
+                                "shares": sell_qty, "account_mode": account_mode,
+                                "vehicle": "opg", "exit_rule": DEPTH_EXIT_RULE,
+                                "stop_price": stop_price, "error": str(e)[:400]}),
+                )
+            except Exception as _ae:   # loud-ok: the page and the restore matter more than the row
+                logger.warning(f"full_exit_rejected audit write failed for {ticker}: {_ae}")
+            restored = await _restore_stop_after_failed_exit(
+                trade_id, ticker, float(sell_qty), stop_price, account_mode,
+                cancelled_stop_id=stop_id)
+            await _clear_depth_sell_mark(trade_id)
+            await send_telegram_message(md_to_html(
+                f"{mode_prefix(account_mode)}⚠️ Opening-auction sale FAILED for {ticker}: {e}"
+                + _restore_outcome_line(restored, stop_price)
+                + "\nThe position stays open; the next close below the line decides again."
+            ), parse_mode="HTML")
+            return False
+
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO mi_live_orders
+                    (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
+                     purpose, exit_reason, raw_response)
+                VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
+                        'full_exit', $6, $7::jsonb)
+                ON CONFLICT (alpaca_order_id) DO NOTHING
+            """, trade_id, order["id"], ticker, float(sell_qty),
+                order.get("status", "new"), reason,
+                _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
+        await _clear_depth_sell_mark(trade_id)
+        await log_audit_event(
+            "depth_open_sale_placed",
+            f"{ticker}: opening-auction sell {sell_qty} sh queued ({reason}); depth stop "
+            f"{stop_id or 'none'} cancelled",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "order_id": order["id"], "qty": sell_qty, "reason": reason,
+                        "cancelled_stop_id": stop_id, "stop_price": stop_price,
+                        "held_by_resting": held_by_resting,
+                        "decided_on": str(trade.get("depth_sell_pending_on"))}),
+        )
+        _third_line = (
+            f"\n{held_by_resting:.0f} sh stay under the resting profit-take (its own target and "
+            f"breakeven stop)." if held_by_resting > 0 else "")
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}📋 *Closing order placed (opening auction):* {ticker} — "
+            f"{reason}\n"
+            f"Sells {sell_qty} sh in the next opening auction (Order {order['id'][:8]}). "
+            f"The depth stop was cancelled; the queued sale is the exit.\n"
+            f"_Confirms with real P&L on fill._{_third_line}"
+        )
+        return True
+
+
+async def run_depth_open_sales() -> list[dict]:
+    """19:01 ET: send the opening-auction sale for every depth-rule trade the 16:45 job marked.
+
+    Alpaca rejects OPG orders submitted after 09:28 and before 19:00 ET, and queues those sent
+    after 19:00 for the next session's opening auction — hence 19:01. Each trade is independent:
+    one failure is audited + paged inside `execute_depth_open_sale` and never stops the next.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0
+              AND exit_rule = $1 AND depth_sell_pending_on IS NOT NULL
+            ORDER BY id
+        """, DEPTH_EXIT_RULE)
+    results: list[dict] = []
+    for r in rows:
+        try:
+            ok = await execute_depth_open_sale(r["id"])
+            results.append({"trade_id": r["id"], "ticker": r["ticker"], "placed": ok})
+        except Exception as e:   # loud-ok: audited + paged; the next trade still runs
+            logger.error(f"run_depth_open_sales: {r['ticker']} #{r['id']} raised — {e}")
+            await log_audit_event(
+                "depth_open_sale_error",
+                f"{r['ticker']} #{r['id']}: opening-auction sale raised — {e}",
+                json.dumps({"trade_id": r["id"], "ticker": r["ticker"],
+                            "error": str(e)[:400]}),
+            )
+            await send_telegram_message(md_to_html(
+                f"🚨 Opening-auction sale for {r['ticker']} raised before it finished: {e}\n"
+                f"Check the broker: the stop may have been cancelled."
+            ), parse_mode="HTML")
+            try:
+                await _clear_depth_sell_mark(r["id"])   # no automatic retry — next close decides
+            except Exception as _ce:   # loud-ok: already paged; logged
+                logger.error(f"run_depth_open_sales: could not clear the mark on "
+                             f"#{r['id']} — {_ce}")
+            results.append({"trade_id": r["id"], "ticker": r["ticker"], "placed": False,
+                            "error": str(e)})
+    return results
 
 
 async def finalize_full_exit(
