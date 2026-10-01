@@ -1319,3 +1319,18 @@ stagger cards, one at a time.
 **Saturday 10-03:** #687, #688, #635 commit B (branch `635-silent-failures` @ def8a298, rebase), #580 0%-breadth fix + newborn breadth fill (replay first), #663, #491, #519.
 
 **Rulings today:** #580 one-sided theme trim STAYS (leaders light a theme up); #690 hold only on refusal/error/unreadable, changed answers → digest; alert noise: page only when there is something to act on.
+
+## 2026-09-30 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the mid-session save above.
+
+**Board 48 → 47** (closed #506 theme-hierarchy health check). **Shipped + verified today:** #580 display half (breadth + member count on /themes and the dashboard, same ranking, 0 of 79 positions differ — midday window); #690 real-prompt replay before adopting a model, #635 commit A, the three alert-noise changes and the "Basic Materials" redaction fix (21:16 ET window — server on 8a1562d2, all three services restarted, every changed module loads, market + execution can write `logs/llm_samples`).
+
+**Thursday 10-01, in order:**
+1. **#690 positive check:** `logs/llm_samples/` holds a `theme_engine:*` key (market-agent) AND an `ep_detector` key (execution, after an EP grade). No execution key after a graded day = the WOULD-FAIL-IF.
+2. **17:00 ET:** #689 night 2 of 3 (0 `assignment_error`, no refusals); #505 next 6 pairs (~25 left → 10-07, 2 themes still unassigned); #655 nightly row (G4 small themes 11.6% vs 10% bar on 09-30); #657 night 4 of 5; #658 watch.
+3. **Free build slot:** #121 (Telegram formatting) forward from Friday.
+
+**Saturday 10-03:** #687 depth-rule exits + 16:45 exit bugs; #688 risk 1%→2%; #635 commit B (branch `635-silent-failures` @ def8a298, review PASS — rebase onto main, deploy both + execution); #580 0%-breadth decay fix + newborn breadth fill (replay which themes fade / which EP alerts lose the +10 first — money path); #663; #491; #519.
+
+**Rulings today:** #580 one-sided theme trim STAYS ("strongest are the leaders that may be what lights up a theme"); #690 hold a job on its current model only on refusal / error / unreadable, changed answers go to the digest; alert noise — page only when there is something to act on (delay-miss page retired, morning digest silent on zero genuine misses, catalyst-tier monitor only when a revert could matter).
+
+**Standing:** Fable ~4% (09-29) → Opus/Sonnet cards only; every Sonnet role on claude-sonnet-5-5, `_ROLE_OVERRIDES` empty, no role holds.
