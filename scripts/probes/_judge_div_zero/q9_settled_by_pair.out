@@ -1,0 +1,11 @@
+-- SQL: SELECT d.primary_model, d.secondary_model, d.agree, COUNT(*) n_rows, COUNT(o.fwd_5d_pct) n_settled_5d, COUNT(o.fwd_10d_pct) n_settled_10d, ROUND(AVG(o.fwd_5d_pct)::numeric,2) avg_5d, ROUND((percentile_cont(0.5) WITHIN GROUP (ORDER BY o.fwd_5d_pct))::numeric,2) med_5d FROM mi_judge_divergence d LEFT JOIN mi_ep_scan_outcomes o ON o.ticker=d.ticker AND o.scan_date=d.alert_date WHERE d.primary_tier='HIGH' GROUP BY 1,2,3 ORDER BY 1,2,3
+  primary_model  |  secondary_model  | agree | n_rows | n_settled_5d | n_settled_10d | avg_5d | med_5d 
+-----------------+-------------------+-------+--------+--------------+---------------+--------+--------
+ claude-opus-4-8 | claude-sonnet-4-6 | f     |      9 |            9 |             9 |  12.45 |   8.71
+ claude-opus-4-8 | claude-sonnet-4-6 | t     |      9 |            9 |             9 |  16.41 |  11.57
+ claude-opus-5   | claude-sonnet-4-6 | t     |      2 |            2 |             2 |  24.52 |  24.52
+ claude-opus-5   | claude-sonnet-5   | f     |      8 |            8 |             8 |  11.75 |   8.07
+ claude-opus-5   | claude-sonnet-5   | t     |     74 |           74 |            74 |   8.70 |   7.56
+ claude-opus-5-5 | claude-sonnet-5   | t     |      1 |            1 |             1 |   1.02 |   1.02
+(6 rows)
+

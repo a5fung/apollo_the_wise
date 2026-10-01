@@ -1,0 +1,27 @@
+scan_date|date
+ticker|text
+first_seen_et|timestamp with time zone
+last_seen_et|timestamp with time zone
+gap_pct_first|double precision
+minutes_since_open_first|integer
+gap_pct_at_open|double precision
+minutes_since_open_at_open|integer
+gap_pct_last|double precision
+minutes_since_open_last|integer
+prev_close|double precision
+prev_day_volume|double precision
+prev_day_dollar_volume|double precision
+failed_price_floor|boolean
+failed_volume_floor|boolean
+acting_price_floor|double precision
+acting_volume_floor|double precision
+created_at|timestamp with time zone
+today_volume_first|double precision
+today_price_first|double precision
+today_dollar_volume_first|double precision
+today_volume_at_open|double precision
+today_price_at_open|double precision
+today_dollar_volume_at_open|double precision
+today_volume_last|double precision
+today_price_last|double precision
+today_dollar_volume_last|double precision

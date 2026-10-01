@@ -1,0 +1,13 @@
+in-window REJ rows with D0<=09-23: 1344
+bar 0M: rows 1344 usable 1291 | no c5/short window 27 | guard_up 5 | adr NaN 21
+bar 10M: rows 127 usable 121 | no c5/short window 2 | guard_up 2 | adr NaN 2
+bar 25M: rows 76 usable 73 | no c5/short window 1 | guard_up 2 | adr NaN 0
+bar 50M: rows 46 usable 44 | no c5/short window 1 | guard_up 1 | adr NaN 0
+bar 100M: rows 17 usable 17 | no c5/short window 0 | guard_up 0 | adr NaN 0
+gap>=10:
+bar 0M: rows 252 usable 240
+bar 10M: rows 114 usable 108
+bar 25M: rows 74 usable 71
+bar 50M: rows 45 usable 43
+bar 100M: rows 17 usable 17
+ADM in-window D0<=09-23: 506 gap10: 82

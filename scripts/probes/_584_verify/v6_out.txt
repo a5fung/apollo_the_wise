@@ -1,0 +1,22 @@
+=== P90 excursion, numpy linear ===
+>=$10M n=108 med +16.6% P90 +117.5%
+>=$25M n=71 med +16.1% P90 +105.1%
+>=$50M n=43 med +16.2% P90 +156.2%
+>=$100M n=17 med +47.8% P90 +152.3%
+admitted g10 P90 +57.2%
+
+=== recall/precision vs D0 full-day $vol (bar volume x close) >= $50M, rejected in-window ===
+in-window rejected with a D0 bar: 1794 of 1799
+finish >= $50M rows: 148 per day (20 sessions): 7.4
+>=$10M recall 111/148=0.75 precision 111/180=0.62
+>=$25M recall 92/148=0.62 precision 92/107=0.86
+>=$50M recall 63/148=0.43 precision 63/64=0.98
+>=$100M recall 26/148=0.18 precision 26/26=1.00
+alt (h+l+c)/3 basis: finish>=$50M per day 7.85
+
+=== premarket share of the 09:31 read ($50M clearers, in-window) ===
+first read pre-mkt at/after 09:00: 0 of 64
+ first_et HH:MM distribution: ['07:00', '07:25', '07:40', '07:50', '08:05', '08:10', '08:20', '08:25', '08:45', '08:50']
+
+=== BGM unapplied split ===
+[('2026-09-08', 5), ('2026-09-09', 1), ('2026-09-16', None), ('2026-09-18', None)]

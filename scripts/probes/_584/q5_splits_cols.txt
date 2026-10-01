@@ -1,0 +1,9 @@
+=== mi_splits columns
+ticker
+execution_date
+split_from
+split_to
+polygon_id
+fetched_at
+applied_at
+adjustment_applied

@@ -1,0 +1,7 @@
+mi_daily_closes|trade_date|date
+mi_daily_closes|ticker|text
+mi_daily_closes|close|double precision
+mi_daily_closes|volume|bigint
+mi_daily_closes|open_price|double precision
+mi_daily_closes|high_price|double precision
+mi_daily_closes|low_price|double precision

@@ -1,0 +1,1 @@
+\copy (SELECT ticker, execution_date, split_from, split_to, adjustment_applied FROM mi_splits WHERE execution_date >= DATE '2026-08-25' AND ticker IN (SELECT DISTINCT ticker FROM mi_universe_floor_shadow) ORDER BY execution_date, ticker) TO STDOUT WITH CSV HEADER

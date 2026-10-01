@@ -1,0 +1,18 @@
+15 rows with a split executing inside D0..D0+5 sessions (analysis sample)
+ scan_date ticker side  ao_M  gap       exec ratio adj    s5  exc5  reach8  guard_dn
+2026-09-02   CTSO  REJ   0.0  7.5 2026-09-08  20:1   t -11.8  30.7   False     False
+2026-09-02   SFWL  REJ   0.0 14.3 2026-09-08  15:1   t -29.2   9.8   False     False
+2026-09-02   UCAR  REJ   0.0  7.6 2026-09-09  20:1   t -38.9   2.4   False     False
+2026-09-10   IPDN  REJ  38.9 40.5 2026-09-14  30:1   t -36.5  21.9   False     False
+2026-09-11   GOSS  ADM   0.0  6.3 2026-09-11  80:1   t -14.0   0.3   False     False
+2026-09-14    NCT  REJ  59.1 76.9 2026-09-17  25:1   t -55.0  14.3   False     False
+2026-09-14    UZX  REJ  11.0 17.8 2026-09-18  23:1   t -31.8  14.8   False     False
+2026-09-14    UZX  REJ  11.0 17.8 2026-09-21  23:1   t -31.8  14.8   False     False
+2026-09-15    IZM  REJ   0.0  7.5 2026-09-15   5:1   t  10.9  32.7   False     False
+2026-09-16    MGN  REJ  25.0 30.5 2026-09-17  30:1   t -18.0   3.2   False     False
+2026-09-16   VWAV  REJ   2.0  6.9 2026-09-22  20:1   t -51.9   1.0   False     False
+2026-09-17    NCT  ADM   0.0  7.4 2026-09-17  25:1   t -47.2   5.9   False     False
+2026-09-21   BTLN  REJ   0.0  9.0 2026-09-28   8:1   t  -4.3  19.6   False     False
+2026-09-21   MTNB  REJ   0.0  6.0 2026-09-28  15:1   t   5.4  12.3   False     False
+2026-09-22   FBGL  REJ  31.7 56.4 2026-09-28  10:1   t -37.0   0.0   False     False
+adjustment_applied counts: {'t': 15}

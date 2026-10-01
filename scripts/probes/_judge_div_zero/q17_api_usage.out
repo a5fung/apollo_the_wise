@@ -1,0 +1,9 @@
+-- SQL: SELECT caller, model, COUNT(*) n, MIN(created_at)::date mn, MAX(created_at)::timestamp(0) mx FROM api_usage WHERE caller IN ('judge_divergence','ep_grade_judge') AND created_at >= '2026-09-20' GROUP BY 1,2 ORDER BY 1,2
+      caller      |       model       | n |     mn     |         mx          
+------------------+-------------------+---+------------+---------------------
+ ep_grade_judge   | claude-opus-5     | 3 | 2026-09-21 | 2026-09-22 13:45:16
+ ep_grade_judge   | claude-opus-5-5   | 3 | 2026-09-25 | 2026-10-01 13:45:37
+ judge_divergence | claude-sonnet-5   | 5 | 2026-09-21 | 2026-09-28 11:00:33
+ judge_divergence | claude-sonnet-5-5 | 1 | 2026-10-01 | 2026-10-01 13:45:41
+(4 rows)
+

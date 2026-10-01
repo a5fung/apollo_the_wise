@@ -1,0 +1,21 @@
+-- SQL: SELECT column_name, data_type FROM information_schema.columns WHERE table_name='mi_judge_divergence' ORDER BY ordinal_position
+     column_name      |        data_type         
+----------------------+--------------------------
+ id                   | integer
+ ticker               | text
+ alert_date           | date
+ primary_model        | text
+ primary_tier         | text
+ primary_grade        | text
+ primary_direction    | text
+ primary_confidence   | double precision
+ secondary_model      | text
+ secondary_tier       | text
+ secondary_grade      | text
+ secondary_direction  | text
+ secondary_confidence | double precision
+ secondary_rationale  | text
+ agree                | boolean
+ created_at           | timestamp with time zone
+(16 rows)
+

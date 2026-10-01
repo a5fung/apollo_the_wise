@@ -1,0 +1,8 @@
+mi_splits|ticker|text
+mi_splits|execution_date|date
+mi_splits|split_from|integer
+mi_splits|split_to|integer
+mi_splits|polygon_id|text
+mi_splits|fetched_at|timestamp with time zone
+mi_splits|applied_at|timestamp with time zone
+mi_splits|adjustment_applied|boolean

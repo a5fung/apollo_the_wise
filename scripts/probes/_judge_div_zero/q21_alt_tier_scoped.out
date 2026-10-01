@@ -1,0 +1,6 @@
+-- SQL: SELECT COUNT(*) AS settled_disagreed_high_tier_scoped FROM mi_judge_divergence d JOIN mi_ep_scan_outcomes o ON o.ticker = d.ticker AND o.scan_date = d.alert_date WHERE NOT d.agree AND d.primary_tier = 'HIGH' AND o.fwd_5d_pct IS NOT NULL AND d.primary_model LIKE 'claude-opus-%' AND d.secondary_model LIKE 'claude-sonnet-%'
+ settled_disagreed_high_tier_scoped 
+------------------------------------
+                                 17
+(1 row)
+

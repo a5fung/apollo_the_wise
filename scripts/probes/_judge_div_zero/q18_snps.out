@@ -1,0 +1,7 @@
+-- SQL: SELECT ticker, alert_date, primary_model, primary_tier, secondary_model, secondary_tier, agree, created_at::timestamp(0) FROM mi_judge_divergence WHERE alert_date >= '2026-09-25' ORDER BY created_at
+ ticker | alert_date |  primary_model  | primary_tier |  secondary_model  | secondary_tier | agree |     created_at      
+--------+------------+-----------------+--------------+-------------------+----------------+-------+---------------------
+ AKAM   | 2026-09-25 | claude-opus-5-5 | HIGH         | claude-sonnet-5   | HIGH           | t     | 2026-09-25 11:01:08
+ SNPS   | 2026-10-01 | claude-opus-5-5 | HIGH         | claude-sonnet-5-5 | HIGH           | t     | 2026-10-01 13:45:41
+(2 rows)
+

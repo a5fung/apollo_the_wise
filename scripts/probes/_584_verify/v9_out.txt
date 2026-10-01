@@ -1,0 +1,4 @@
+>=$10M gap>=10 ADR-defined: 15th name D0+20 = (datetime.date(2026, 10, 5), 128)
+>=$25M gap>=10 ADR-defined: 15th name D0+20 = (datetime.date(2026, 10, 6), 87)
+>=$50M gap>=10 ADR-defined: 15th name D0+20 = (datetime.date(2026, 10, 13), 57)
+>=$100M gap>=10 ADR-defined: 15th name D0+20 = (datetime.date(2026, 10, 21), 26)

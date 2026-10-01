@@ -1,0 +1,7 @@
+-- SQL: SELECT created_at::timestamp(0) ts, event_type, left(summary,200) s FROM mi_audit_log WHERE event_type IN ('judge_divergence_check_failed','judge_divergence_detected') AND created_at >= '2026-09-01' ORDER BY created_at
+         ts          |          event_type           |                                          s                                          
+---------------------+-------------------------------+-------------------------------------------------------------------------------------
+ 2026-09-21 13:35:31 | judge_divergence_detected     | MSTR 2026-09-21: primary(claude-opus-5)=none vs secondary(claude-sonnet-5)=MODERATE
+ 2026-09-28 11:00:33 | judge_divergence_check_failed | KOD 2026-09-28: 2nd-model call failed/timed out (model=claude-sonnet-5)
+(2 rows)
+

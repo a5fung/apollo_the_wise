@@ -1,0 +1,15 @@
+-- SQL: SELECT date_trunc('week', a.alert_date)::date wk, COUNT(*) FILTER (WHERE a.judge_tier='HIGH') judge_high_alerts, COUNT(*) FILTER (WHERE a.judge_tier='HIGH' AND EXISTS (SELECT 1 FROM mi_judge_divergence d WHERE d.ticker=a.ticker AND d.alert_date=a.alert_date)) high_with_div_row, COUNT(*) FILTER (WHERE a.judge_tier IS NOT NULL) judged_alerts FROM mi_ep_alerts a WHERE a.alert_date >= '2026-07-27' GROUP BY 1 ORDER BY 1
+     wk     | judge_high_alerts | high_with_div_row | judged_alerts 
+------------+-------------------+-------------------+---------------
+ 2026-07-27 |                18 |                18 |            18
+ 2026-08-03 |                37 |                37 |            49
+ 2026-08-10 |                23 |                23 |            33
+ 2026-08-17 |                 8 |                 8 |            11
+ 2026-08-24 |                 6 |                 6 |             6
+ 2026-08-31 |                 2 |                 2 |             3
+ 2026-09-07 |                 5 |                 5 |             6
+ 2026-09-14 |                 4 |                 4 |             5
+ 2026-09-21 |                 2 |                 2 |             4
+ 2026-09-28 |                 1 |                 0 |             1
+(10 rows)
+

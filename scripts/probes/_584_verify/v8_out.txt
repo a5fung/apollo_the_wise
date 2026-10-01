@@ -1,0 +1,16 @@
+in-window all gaps       >=$10M n=180 med gap 29.5 med prev_close 1.06 P-only 0.89
+in-window all gaps       >=$25M n=107 med gap 45.3 med prev_close 1.13 P-only 0.91
+in-window all gaps       >=$50M n=64 med gap 68.9 med prev_close 1.59 P-only 0.91
+in-window all gaps       >=$100M n=26 med gap 98.9 med prev_close 1.94 P-only 0.96
+in-window gap>=10        >=$10M n=160 med gap 32.5 med prev_close 1.00 P-only 0.91
+in-window gap>=10        >=$25M n=104 med gap 47.5 med prev_close 1.16 P-only 0.90
+in-window gap>=10        >=$50M n=63 med gap 69.0 med prev_close 1.56 P-only 0.90
+in-window gap>=10        >=$100M n=26 med gap 98.9 med prev_close 1.94 P-only 0.96
+settled-clean all gaps   >=$10M n=121 med gap 29.8 med prev_close 1.07 P-only 0.89
+settled-clean all gaps   >=$25M n=73 med gap 50.0 med prev_close 1.07 P-only 0.89
+settled-clean all gaps   >=$50M n=44 med gap 73.1 med prev_close 1.31 P-only 0.86
+settled-clean all gaps   >=$100M n=17 med gap 148.3 med prev_close 1.87 P-only 0.94
+settled-clean gap>=10    >=$10M n=108 med gap 33.8 med prev_close 0.86 P-only 0.92
+settled-clean gap>=10    >=$25M n=71 med gap 50.6 med prev_close 0.93 P-only 0.89
+settled-clean gap>=10    >=$50M n=43 med gap 74.7 med prev_close 1.20 P-only 0.86
+settled-clean gap>=10    >=$100M n=17 med gap 148.3 med prev_close 1.87 P-only 0.94

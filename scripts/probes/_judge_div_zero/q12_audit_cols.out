@@ -1,0 +1,10 @@
+-- SQL: SELECT column_name FROM information_schema.columns WHERE table_name='mi_audit_log' ORDER BY ordinal_position
+ column_name 
+-------------
+ id
+ created_at
+ event_type
+ summary
+ detail
+(5 rows)
+

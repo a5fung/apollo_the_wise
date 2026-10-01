@@ -1,0 +1,7 @@
+-- SQL: SELECT event_type, COUNT(*), MIN(created_at)::date mn, MAX(created_at)::date mx FROM mi_audit_log WHERE event_type LIKE 'judge_divergence%' GROUP BY 1
+          event_type           | count |     mn     |     mx     
+-------------------------------+-------+------------+------------
+ judge_divergence_check_failed |     1 | 2026-09-28 | 2026-09-28
+ judge_divergence_detected     |    18 | 2026-07-27 | 2026-09-21
+(2 rows)
+

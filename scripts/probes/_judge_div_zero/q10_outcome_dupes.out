@@ -1,0 +1,6 @@
+-- SQL: SELECT COUNT(*) total_rows, COUNT(DISTINCT (ticker,scan_date)) distinct_keys FROM mi_ep_scan_outcomes
+ total_rows | distinct_keys 
+------------+---------------
+       8338 |          8338
+(1 row)
+

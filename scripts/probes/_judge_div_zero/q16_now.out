@@ -1,0 +1,6 @@
+-- SQL: SELECT now() at time zone 'America/New_York' AS now_et, now() AS now_utc
+           now_et           |            now_utc            
+----------------------------+-------------------------------
+ 2026-10-01 09:45:53.248141 | 2026-10-01 13:45:53.248141+00
+(1 row)
+

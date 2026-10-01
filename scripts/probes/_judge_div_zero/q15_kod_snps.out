@@ -1,0 +1,7 @@
+-- SQL: SELECT ticker, alert_date, judge_tier, score_tier FROM mi_ep_alerts WHERE ticker IN ('KOD','SNPS') AND alert_date >= '2026-09-28'
+ ticker | alert_date | judge_tier | score_tier 
+--------+------------+------------+------------
+ KOD    | 2026-09-28 | HIGH       | HIGH
+ SNPS   | 2026-10-01 | HIGH       | HIGH
+(2 rows)
+

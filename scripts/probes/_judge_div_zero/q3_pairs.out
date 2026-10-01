@@ -1,0 +1,13 @@
+-- SQL: SELECT primary_model, secondary_model, primary_tier, agree, COUNT(*) n, MIN(alert_date) mn, MAX(alert_date) mx FROM mi_judge_divergence GROUP BY 1,2,3,4 ORDER BY mn, 1,2,3,4
+  primary_model  |  secondary_model  | primary_tier | agree | n  |     mn     |     mx     
+-----------------+-------------------+--------------+-------+----+------------+------------
+ claude-opus-4-8 | claude-sonnet-4-6 | HIGH         | f     |  9 | 2026-07-27 | 2026-07-31
+ claude-opus-4-8 | claude-sonnet-4-6 | HIGH         | t     |  9 | 2026-07-28 | 2026-07-31
+ claude-opus-5   | claude-sonnet-4-6 | HIGH         | t     |  2 | 2026-08-03 | 2026-08-03
+ claude-opus-5   | claude-sonnet-5   | HIGH         | f     |  8 | 2026-08-04 | 2026-08-27
+ claude-opus-5   | claude-sonnet-5   | HIGH         | t     | 74 | 2026-08-04 | 2026-09-22
+ claude-opus-5   | claude-sonnet-5   | MODERATE     | t     |  2 | 2026-09-16 | 2026-09-21
+ claude-opus-5   | claude-sonnet-5   | none         | f     |  1 | 2026-09-21 | 2026-09-21
+ claude-opus-5-5 | claude-sonnet-5   | HIGH         | t     |  1 | 2026-09-25 | 2026-09-25
+(8 rows)
+

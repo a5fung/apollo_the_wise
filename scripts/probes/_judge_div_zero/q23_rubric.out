@@ -1,0 +1,8 @@
+-- SQL: SELECT a.rubric_version, d.agree, COUNT(*) n, MIN(d.alert_date) mn, MAX(d.alert_date) mx FROM mi_judge_divergence d LEFT JOIN mi_ep_alerts a ON a.ticker=d.ticker AND a.alert_date=d.alert_date WHERE d.primary_tier='HIGH' GROUP BY 1,2 ORDER BY 1,2
+             rubric_version              | agree | n  |     mn     |     mx     
+-----------------------------------------+-------+----+------------+------------
+ v3-2026-06-12-catalyst-freshness        | f     | 17 | 2026-07-27 | 2026-08-27
+ v3-2026-06-12-catalyst-freshness        | t     | 74 | 2026-07-28 | 2026-08-27
+ v4-2026-08-27-axis-split-second-opinion | t     | 15 | 2026-08-28 | 2026-10-01
+(3 rows)
+

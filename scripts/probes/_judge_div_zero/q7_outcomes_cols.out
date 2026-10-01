@@ -1,0 +1,14 @@
+-- SQL: SELECT column_name FROM information_schema.columns WHERE table_name='mi_ep_scan_outcomes' ORDER BY ordinal_position
+  column_name   
+----------------
+ id
+ ticker
+ scan_date
+ baseline_close
+ fwd_5d_pct
+ fwd_10d_pct
+ n_sessions_5d
+ n_sessions_10d
+ computed_at
+(9 rows)
+

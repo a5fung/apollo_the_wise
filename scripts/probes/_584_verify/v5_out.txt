@@ -1,0 +1,160 @@
+=== 1. POPULATION ===
+calendar sessions in captured bars: 2026-07-20 -> 2026-09-30 n= 52
+scan dates: 2026-09-02 -> 2026-09-30 n= 20
+total rows: 5268
+rejected rows/names: 3899 1352
+  class P rows 2818
+  class PV rows 869
+  class V rows 212
+admitted rows/names: 1369 844
+min gap_pct_first all rows: 5.0
+rejected with today_dollar_volume_at_open: 2761 names 1211
+rejected without at_open: 1138
+  of those, minutes_since_open_last NOT NULL: 0
+  of those, minutes_since_open_at_open NOT NULL: 0
+  fallback-eligible (no at_open, last<=15): 0
+rejected at_open dollar volume == 0: 0
+rejected at_open minute mix: {1: 1386, 5: 97, 10: 108, 15: 208, 20: 618, 25: 344}
+rejected in-window (at_open min <=15): 1799 names 970
+rejected out-of-window (min 20/25): 962
+rows where dv_at_open != vol*price (>$1): 0
+
+5-session settleable D0 dates: 2026-09-02 -> 2026-09-23 n= 15
+in-window rejected, D0 settleable: 1344 names 811
+  clean (guard up only): 1293 names 788 dropped: {'adr_short': 21, 'missing_fwd_bar': 25, 'jump_up': 5}
+  clean (guard both dirs): 1292 names 787 dropped: {'adr_short': 21, 'missing_fwd_bar': 25, 'jump_any': 6}
+
+=== 20-session settled ===
+in-window rejected rows with a D0+20 close in captured bars: 0
+D0=2026-09-02 -> D0+20 = 2026-10-01
+  >=$10M  15th distinct name settles(20s) all gaps: (datetime.date(2026, 10, 5), 136)   gap>=10: (datetime.date(2026, 10, 5), 129)
+  >=$25M  15th distinct name settles(20s) all gaps: (datetime.date(2026, 10, 6), 90)   gap>=10: (datetime.date(2026, 10, 6), 87)
+  >=$50M  15th distinct name settles(20s) all gaps: (datetime.date(2026, 10, 13), 58)   gap>=10: (datetime.date(2026, 10, 13), 57)
+  >=$100M  15th distinct name settles(20s) all gaps: (datetime.date(2026, 10, 21), 26)   gap>=10: (datetime.date(2026, 10, 21), 26)
+
+=== 2. PER-BAR TABLE (rejected, in-window, gap_pct_at_open>=10, 5-session, guard=up) ===
+>=$10M names/day (gap>=10) all-20=8.00 settled-15=7.60 | any-gap all-20=9.00 | share gap>=10 among clearers=0.89
+    n=108 names=93 reach=13/108 12.0% [7.2-19.5] reach_exD0=6/108 5.6% | settled>=+20%: 6 5.6% | <=-20%: 63 58.3% [48.9-67.2] | <=-50%: 15 | med settled -24.5% | exc med +16.6% P90(nearest-rank) +121.9% P90(interp) +123.3%
+    attrition: {'missing_fwd_bar': 2, 'adr_short': 2, 'jump_up': 2}  guard-both n= 107
+    top days by clearers: [('2026-09-28', 13), ('2026-09-16', 10), ('2026-09-17', 10)] of 160
+>=$25M names/day (gap>=10) all-20=5.20 settled-15=4.93 | any-gap all-20=5.35 | share gap>=10 among clearers=0.97
+    n=71 names=63 reach=9/71 12.7% [6.8-22.4] reach_exD0=4/71 5.6% | settled>=+20%: 2 2.8% | <=-20%: 45 63.4% [51.8-73.6] | <=-50%: 14 | med settled -27.5% | exc med +16.1% P90(nearest-rank) +105.1% P90(interp) +118.5%
+    attrition: {'jump_up': 2, 'missing_fwd_bar': 1}  guard-both n= 70
+    top days by clearers: [('2026-09-16', 8), ('2026-09-23', 8), ('2026-09-24', 8)] of 104
+>=$50M names/day (gap>=10) all-20=3.15 settled-15=3.00 | any-gap all-20=3.20 | share gap>=10 among clearers=0.98
+    n=43 names=40 reach=8/43 18.6% [9.7-32.6] reach_exD0=4/43 9.3% | settled>=+20%: 2 4.7% | <=-20%: 28 65.1% [50.2-77.6] | <=-50%: 13 | med settled -27.7% | exc med +16.2% P90(nearest-rank) +158.1% P90(interp) +163.4%
+    attrition: {'jump_up': 1, 'missing_fwd_bar': 1}  guard-both n= 42
+    top days by clearers: [('2026-09-16', 6), ('2026-09-23', 6), ('2026-09-17', 5)] of 63
+>=$100M names/day (gap>=10) all-20=1.30 settled-15=1.13 | any-gap all-20=1.30 | share gap>=10 among clearers=1.00
+    n=17 names=17 reach=5/17 29.4% [13.3-53.1] reach_exD0=4/17 23.5% | settled>=+20%: 2 11.8% | <=-20%: 9 52.9% [31.0-73.8] | <=-50%: 5 | med settled -20.2% | exc med +47.8% P90(nearest-rank) +158.1% P90(interp) +167.5%
+    attrition: {}  guard-both n= 17
+    top days by clearers: [('2026-09-22', 3), ('2026-09-23', 3), ('2026-09-30', 3)] of 26
+
+  winners/day check (names/day x settled proportion, DERIVED not counted):
+   >=$10M derived: reach 0.96/day settle+20 0.44/day crash 4.67/day | COUNTED over 15 settled days: reach 0.87 settle+20 0.40 crash 4.20
+   >=$25M derived: reach 0.66/day settle+20 0.15/day crash 3.30/day | COUNTED over 15 settled days: reach 0.60 settle+20 0.13 crash 3.00
+   >=$50M derived: reach 0.59/day settle+20 0.15/day crash 2.05/day | COUNTED over 15 settled days: reach 0.53 settle+20 0.13 crash 1.87
+   >=$100M derived: reach 0.38/day settle+20 0.15/day crash 0.69/day | COUNTED over 15 settled days: reach 0.33 settle+20 0.13 crash 0.60
+
+=== 3. ADMITTED COMPARATOR (in-window, 5-session, guard=up) ===
+admitted in-window rows/names: 619 463
+admitted settled clean: 503 names 391 dropped: {'adr_short': 1, 'missing_fwd_bar': 2}
+ADMITTED all gaps: n=503 names=391 reach=12/503 2.4% [1.4-4.1] reach_exD0=11/503 2.2% | settled>=+20%: 21 4.2% | <=-20%: 41 8.2% [6.1-10.9] | <=-50%: 9 | med settled -3.0% | exc med +5.7% P90(nearest-rank) +22.8% P90(interp) +23.1%
+ADMITTED gap_at_open>=10: n=82 names=69 reach=8/82 9.8% [5.0-18.1] reach_exD0=7/82 8.5% | settled>=+20%: 8 9.8% | <=-20%: 17 20.7% [13.4-30.7] | <=-50%: 6 | med settled -5.2% | exc med +8.6% P90(nearest-rank) +57.6% P90(interp) +65.5%
+ADMITTED daily-bar open gap>=10% (#570 def): n=74 names=62 reach=7/74 9.5% [4.7-18.3] reach_exD0=6/74 8.1% | settled>=+20%: 7 9.5% | <=-20%: 18 24.3% [16.0-35.2] | <=-50%: 6 | med settled -6.1% | exc med +9.5% P90(nearest-rank) +57.6% P90(interp) +63.2%
+ADMITTED gap_at_open>=9 (live MIN_GAP_PCT): n=102 names=86 reach=8/102 7.8% [4.0-14.7] reach_exD0=7/102 6.9% | settled>=+20%: 8 7.8% | <=-20%: 17 16.7% [10.7-25.1] | <=-50%: 6 | med settled -5.2% | exc med +8.0% P90(nearest-rank) +51.2% P90(interp) +53.3%
+admitted gap>=10 names/day all-20: 5.50 settled-15: 5.47
+share of admitted settled-clean with gap_at_open<10: 0.84
+  ADMITTED gap>=10 & >=$10M: 1/39
+  ADMITTED gap>=10 & >=$25M: 1/27
+  ADMITTED gap>=10 & >=$50M: 1/16
+  ADMITTED gap>=10 & >=$100M: 0/8
+
+=== review-literal (rejected, all gaps) ===
+>=$10M n=121 names=97 reach=17/121 14.0% [9.0-21.4] reach_exD0=10/121 8.3% | settled>=+20%: 10 8.3% | <=-20%: 67 55.4% [46.5-63.9] | <=-50%: 15 | med settled -23.0% | exc med +16.2% P90(nearest-rank) +126.1% P90(interp) +134.1%
+>=$25M n=73 names=65 reach=9/73 12.3% [6.6-21.8] reach_exD0=4/73 5.5% | settled>=+20%: 2 2.7% | <=-20%: 46 63.0% [51.5-73.2] | <=-50%: 14 | med settled -27.5% | exc med +14.6% P90(nearest-rank) +105.1% P90(interp) +115.2%
+>=$50M n=44 names=41 reach=8/44 18.2% [9.5-32.0] reach_exD0=4/44 9.1% | settled>=+20%: 2 4.5% | <=-20%: 28 63.6% [48.9-76.2] | <=-50%: 13 | med settled -27.5% | exc med +16.1% P90(nearest-rank) +158.1% P90(interp) +162.5%
+>=$100M n=17 names=17 reach=5/17 29.4% [13.3-53.1] reach_exD0=4/17 23.5% | settled>=+20%: 2 11.8% | <=-20%: 9 52.9% [31.0-73.8] | <=-50%: 5 | med settled -20.2% | exc med +47.8% P90(nearest-rank) +158.1% P90(interp) +167.5%
+
+=== rejected gap filter via daily-bar open gap>=10% instead of shadow gap ===
+>=$10M n=108 names=93 reach=14/108 13.0% [7.9-20.6] reach_exD0=7/108 6.5% | settled>=+20%: 6 5.6% | <=-20%: 64 59.3% [49.8-68.1] | <=-50%: 15 | med settled -25.1% | exc med +16.1% P90(nearest-rank) +136.1% P90(interp) +136.2%
+>=$25M n=72 names=64 reach=9/72 12.5% [6.7-22.1] reach_exD0=4/72 5.6% | settled>=+20%: 2 2.8% | <=-20%: 46 63.9% [52.4-74.0] | <=-50%: 14 | med settled -27.6% | exc med +15.3% P90(nearest-rank) +105.1% P90(interp) +116.8%
+>=$50M n=43 names=40 reach=8/43 18.6% [9.7-32.6] reach_exD0=4/43 9.3% | settled>=+20%: 2 4.7% | <=-20%: 28 65.1% [50.2-77.6] | <=-50%: 13 | med settled -27.7% | exc med +16.2% P90(nearest-rank) +158.1% P90(interp) +163.4%
+>=$100M n=17 names=17 reach=5/17 29.4% [13.3-53.1] reach_exD0=4/17 23.5% | settled>=+20%: 2 11.8% | <=-20%: 9 52.9% [31.0-73.8] | <=-50%: 5 | med settled -20.2% | exc med +47.8% P90(nearest-rank) +158.1% P90(interp) +167.5%
+
+=== composition (rejected in-window) ===
+median gap_at_open all in-window: 6.78 share>=10: 0.199
+>=$10M n=180 share gap>=10 0.89 med gap 29.5 med prev_close 1.06 P-class share 0.89 P|PV 0.98 minute1 share 0.97
+>=$25M n=107 share gap>=10 0.97 med gap 45.3 med prev_close 1.13 P-class share 0.91 P|PV 0.99 minute1 share 0.99
+>=$50M n=64 share gap>=10 0.98 med gap 68.9 med prev_close 1.59 P-class share 0.91 P|PV 1.00 minute1 share 0.98
+>=$100M n=26 share gap>=10 1.00 med gap 98.9 med prev_close 1.94 P-class share 0.96 P|PV 1.00 minute1 share 1.00
+reads at minute 5-15 clearing $10M: 5 of 413
+
+=== caveats ===
+split BTLN 2026-09-28 applied=t hits in-window rows D0..D0+5: ['2026-09-21']
+split CTSO 2026-09-08 applied=t hits in-window rows D0..D0+5: ['2026-09-02']
+split FBGL 2026-09-28 applied=t hits in-window rows D0..D0+5: ['2026-09-22']
+split IPDN 2026-09-14 applied=t hits in-window rows D0..D0+5: ['2026-09-10']
+split IZM 2026-09-15 applied=t hits in-window rows D0..D0+5: ['2026-09-15']
+split MGN 2026-09-17 applied=t hits in-window rows D0..D0+5: ['2026-09-16']
+split MTNB 2026-09-28 applied=t hits in-window rows D0..D0+5: ['2026-09-21']
+split NCT 2026-09-17 applied=t hits in-window rows D0..D0+5: ['2026-09-14']
+split SFWL 2026-09-08 applied=t hits in-window rows D0..D0+5: ['2026-09-02']
+split UCAR 2026-09-09 applied=t hits in-window rows D0..D0+5: ['2026-09-02']
+split UZX 2026-09-18 applied=t hits in-window rows D0..D0+5: ['2026-09-14']
+split UZX 2026-09-21 applied=t hits in-window rows D0..D0+5: ['2026-09-14']
+split VWAV 2026-09-22 applied=t hits in-window rows D0..D0+5: ['2026-09-16']
+premarket-first & minute-1 rows: 1334 median first/at_open volume: 0.695 P25: 0.311
+ same for $50M clearers n= 63 median: 0.18
+ $50M clearers: at_open volume / D0 full-day bar volume median: 0.453
+shadow prev_close / bar D-1 close: median 1.0 outside [0.98,1.02]: 40 of 1298
+
+=== spot rows (units) ===
+REJ $50M clearer (median dv): 2026-09-14 BMGL cls=PV min=1 vol=11071582 px=7.73 dv=$85.6M gap_at_open=68.78 (pct units) prev_close=4.58 bar_gap=+76.0% D0open=8.06 ADR20=10.45% 8xADR=83.6% exc=+14.4% settled=-43.1% reach=False
+REJ $50M reach winner: 2026-09-21 GRML cls=P min=1 vol=52098602 px=7.2266 dv=$376.5M gap_at_open=153.56 (pct units) prev_close=2.85 bar_gap=+157.2% D0open=7.33 ADR20=13.97% 8xADR=111.7% exc=+148.4% settled=+61.7% reach=True
+ADMITTED gap>=10: 2026-09-15 VERA cls=ADM min=1 vol=1244468 px=38.8 dv=$48.3M gap_at_open=13.95 (pct units) prev_close=34.05 bar_gap=+9.1% D0open=37.14 ADR20=4.93% 8xADR=39.4% exc=+0.0% settled=-2.4% reach=False
+
+REJ $50M gap>=10 settled rows (ticker date dv exc settled reach):
+  2026-09-02 PPBT   dv=$  84.2M min=1 gap=  45.3 ADR=  9.7% exc=   +8.4% exD0=  -12.1% settled=  -27.2% reach=.
+  2026-09-02 LHAI   dv=$  63.6M min=1 gap=  57.1 ADR=  7.4% exc=  +18.4% exD0=  +18.4% settled=   -9.4% reach=.
+  2026-09-03 MIMI   dv=$  57.8M min=1 gap=  56.0 ADR= 21.4% exc=   +3.0% exD0=   -7.4% settled=  -16.1% reach=.
+  2026-09-04 IMRN   dv=$  91.5M min=1 gap=  60.4 ADR=  5.2% exc=   +9.9% exD0=   +6.1% settled=  -22.7% reach=.
+  2026-09-04 AKAN   dv=$  67.2M min=1 gap=  19.9 ADR= 11.2% exc=   +1.8% exD0=  -20.2% settled=  -36.0% reach=.
+  2026-09-08 BNC    dv=$ 183.6M min=1 gap=  62.8 ADR=  7.4% exc=   +3.9% exD0=   +2.9% settled=   -8.6% reach=.
+  2026-09-08 WYHG   dv=$  59.3M min=1 gap=  30.5 ADR= 19.1% exc=  +12.1% exD0=   -5.3% settled=  -23.0% reach=.
+  2026-09-08 PDSB   dv=$  56.9M min=1 gap= 138.2 ADR= 18.4% exc=  +54.8% exD0=  +54.8% settled=  +19.9% reach=.
+  2026-09-08 ARBE   dv=$  56.2M min=1 gap=  33.4 ADR=  5.6% exc=  +10.2% exD0=  +10.2% settled=  -16.2% reach=.
+  2026-09-09 OLB    dv=$  71.5M min=1 gap=  35.9 ADR= 12.0% exc=   +6.5% exD0=  -23.4% settled=  -48.7% reach=.
+  2026-09-10 TNON   dv=$ 109.2M min=1 gap=  77.0 ADR= 17.8% exc= +158.1% exD0= +158.1% settled=   +0.0% reach=Y
+  2026-09-14 BMGL   dv=$  85.6M min=1 gap=  68.8 ADR= 10.5% exc=  +14.4% exD0=  -18.2% settled=  -43.1% reach=.
+  2026-09-14 NCT    dv=$  59.1M min=1 gap=  76.9 ADR= 55.6% exc=  +14.3% exD0=  +14.3% settled=  -55.0% reach=.
+  2026-09-15 VEEA   dv=$ 175.2M min=1 gap=  88.6 ADR= 12.3% exc= +105.1% exD0= +105.1% settled=  -17.1% reach=Y
+  2026-09-15 SUGP   dv=$  68.9M min=1 gap=  49.0 ADR= 21.0% exc=  +16.2% exD0=  -42.0% settled=  -53.6% reach=.
+  2026-09-16 MEDS   dv=$ 239.6M min=1 gap= 164.2 ADR= 19.3% exc= +205.1% exD0=  +67.3% settled=   -5.1% reach=Y
+  2026-09-16 ZTG    dv=$ 135.8M min=1 gap= 247.7 ADR= 27.5% exc=   +3.9% exD0=   +3.9% settled=  -25.1% reach=.
+  2026-09-16 DLXY   dv=$  95.0M min=1 gap= 134.2 ADR=  8.7% exc= +336.3% exD0=  +23.5% settled=  -50.7% reach=Y
+  2026-09-16 RETO   dv=$  81.8M min=1 gap=  36.4 ADR= 30.4% exc= +361.3% exD0=  -86.5% settled=  -96.5% reach=Y
+  2026-09-17 AEMD   dv=$ 364.0M min=1 gap= 490.2 ADR= 10.6% exc=  +12.0% exD0=  -14.9% settled=  -20.2% reach=.
+  2026-09-17 DAIC   dv=$ 103.8M min=1 gap= 102.7 ADR= 27.9% exc=  +73.5% exD0=  +10.4% settled=  -17.2% reach=.
+  2026-09-17 SDST   dv=$  79.3M min=1 gap=  62.7 ADR= 16.4% exc=  +36.7% exD0=  -35.0% settled=  -55.8% reach=.
+  2026-09-17 CTNT   dv=$  66.4M min=1 gap=  94.7 ADR= 41.1% exc=   +4.6% exD0=  -24.2% settled=  -60.8% reach=.
+  2026-09-17 TURB   dv=$  56.4M min=1 gap=  65.6 ADR=  8.4% exc=  +32.9% exD0=  -12.9% settled=  -27.7% reach=.
+  2026-09-18 GIPR   dv=$ 162.7M min=1 gap= 173.0 ADR= 20.6% exc=  +16.1% exD0=  -48.1% settled=  -71.1% reach=.
+  2026-09-18 TNMG   dv=$ 105.2M min=1 gap=  74.7 ADR= 14.0% exc=  +63.6% exD0=  +63.6% settled=   +1.2% reach=.
+  2026-09-18 IMCC   dv=$  67.8M min=1 gap=  74.7 ADR= 12.9% exc= +167.0% exD0=  +75.9% settled=  -12.3% reach=Y
+  2026-09-18 MEDS   dv=$  53.3M min=1 gap=  29.7 ADR= 27.9% exc=   +5.4% exD0=   -9.9% settled=  -47.9% reach=.
+  2026-09-21 GRML   dv=$ 376.5M min=1 gap= 153.6 ADR= 14.0% exc= +148.4% exD0= +148.4% settled=  +61.7% reach=Y
+  2026-09-21 GLND   dv=$ 164.0M min=1 gap= 148.3 ADR=  6.6% exc= +121.9% exD0= +121.9% settled=  +48.9% reach=Y
+  2026-09-21 BTTC   dv=$  88.8M min=1 gap=  76.5 ADR=  8.0% exc=  +52.2% exD0=   -1.6% settled=  -32.6% reach=.
+  2026-09-21 NCPL   dv=$  55.3M min=1 gap=  59.2 ADR= 31.3% exc=  +39.3% exD0=  +39.3% settled=   -7.7% reach=.
+  2026-09-22 DCOY   dv=$ 178.3M min=1 gap=  95.0 ADR=  7.7% exc=  +47.8% exD0=   -8.5% settled=  -58.6% reach=.
+  2026-09-22 LHSW   dv=$ 130.1M min=1 gap= 181.8 ADR= 40.1% exc=   +5.5% exD0=  -33.9% settled=  -58.4% reach=.
+  2026-09-22 QNME   dv=$ 103.8M min=1 gap= 115.5 ADR= 19.8% exc=   +6.1% exD0=  -32.6% settled=  -55.6% reach=.
+  2026-09-22 TOPS   dv=$  64.9M min=1 gap=  86.8 ADR=  5.8% exc=   +0.0% exD0=  -41.9% settled=  -51.7% reach=.
+  2026-09-22 IMCC   dv=$  54.0M min=1 gap=  44.8 ADR= 19.6% exc=  +26.7% exD0=  -23.6% settled=  -45.6% reach=.
+  2026-09-23 BENF   dv=$ 296.3M min=1 gap= 290.1 ADR= 28.4% exc=   +7.9% exD0=  -25.0% settled=  -53.4% reach=.
+  2026-09-23 WHLR   dv=$ 132.4M min=1 gap= 157.2 ADR= 22.3% exc=  +67.3% exD0=   +4.5% settled=  -37.6% reach=.
+  2026-09-23 IPDN   dv=$ 116.6M min=1 gap=  71.5 ADR= 18.5% exc=  +11.4% exD0=   -9.0% settled=  -48.8% reach=.
+  2026-09-23 VTGN   dv=$  89.6M min=1 gap=  57.1 ADR=  5.8% exc=  +41.8% exD0=   -6.8% settled=  -20.3% reach=.
+  2026-09-23 DCOY   dv=$  72.5M min=1 gap=  50.0 ADR= 14.9% exc=   +7.0% exD0=  -15.7% settled=  -55.2% reach=.
+  2026-09-23 MSS    dv=$  55.7M min=1 gap=  50.6 ADR= 10.7% exc=  +43.2% exD0=   -7.8% settled=  -19.4% reach=.

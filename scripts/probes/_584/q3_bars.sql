@@ -1,0 +1,1 @@
+\copy (SELECT trade_date, ticker, open_price, high_price, low_price, close, volume FROM mi_daily_closes WHERE trade_date >= DATE '2026-07-20' AND ticker IN (SELECT DISTINCT ticker FROM mi_universe_floor_shadow) ORDER BY ticker, trade_date) TO STDOUT WITH CSV HEADER

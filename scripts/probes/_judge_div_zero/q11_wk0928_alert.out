@@ -1,0 +1,9 @@
+-- SQL: SELECT ticker, alert_date, judge_tier, score_tier, grade_engine_authority, rubric_version, created_at::timestamp(0) FROM mi_ep_alerts WHERE alert_date >= '2026-09-22' ORDER BY alert_date, ticker
+ ticker | alert_date | judge_tier | score_tier | grade_engine_authority |             rubric_version              |     created_at      
+--------+------------+------------+------------+------------------------+-----------------------------------------+---------------------
+ ONON   | 2026-09-22 | HIGH       | HIGH       | judge                  | v4-2026-08-27-axis-split-second-opinion | 2026-09-22 13:45:08
+ AKAM   | 2026-09-25 | HIGH       | HIGH       | judge                  | v4-2026-08-27-axis-split-second-opinion | 2026-09-25 11:00:41
+ KOD    | 2026-09-28 | HIGH       | HIGH       | judge                  | v4-2026-08-27-axis-split-second-opinion | 2026-09-28 11:00:21
+ SNPS   | 2026-10-01 | HIGH       | HIGH       | judge                  | v4-2026-08-27-axis-split-second-opinion | 2026-10-01 13:45:28
+(4 rows)
+

@@ -1,0 +1,11 @@
+-- SQL: SELECT role, model, resolved_at FROM mi_model_resolution WHERE role IN ('JUDGE_MODEL','JUDGE_DIVERGENCE_MODEL') ORDER BY role, resolved_at DESC LIMIT 20
+          role          |       model       |          resolved_at          
+------------------------+-------------------+-------------------------------
+ JUDGE_DIVERGENCE_MODEL | claude-sonnet-5-5 | 2026-09-29 01:19:10.119269+00
+ JUDGE_DIVERGENCE_MODEL | claude-sonnet-5   | 2026-07-31 22:42:40.379331+00
+ JUDGE_DIVERGENCE_MODEL | claude-sonnet-4-6 | 2026-07-31 14:19:34.136265+00
+ JUDGE_MODEL            | claude-opus-5-5   | 2026-09-23 01:18:37.035553+00
+ JUDGE_MODEL            | claude-opus-5     | 2026-07-31 22:42:40.381027+00
+ JUDGE_MODEL            | claude-opus-4-8   | 2026-07-31 14:19:34.138314+00
+(6 rows)
+

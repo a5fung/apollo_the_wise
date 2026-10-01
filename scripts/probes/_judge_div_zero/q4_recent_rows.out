@@ -1,0 +1,14 @@
+-- SQL: SELECT d.alert_date, d.ticker, d.primary_tier, d.agree, d.primary_model, d.secondary_model, d.created_at::timestamp(0) FROM mi_judge_divergence d WHERE d.alert_date >= '2026-09-14' ORDER BY d.alert_date, d.ticker
+ alert_date | ticker | primary_tier | agree |  primary_model  | secondary_model |     created_at      
+------------+--------+--------------+-------+-----------------+-----------------+---------------------
+ 2026-09-14 | DFTX   | HIGH         | t     | claude-opus-5   | claude-sonnet-5 | 2026-09-14 11:30:30
+ 2026-09-14 | SRRK   | HIGH         | t     | claude-opus-5   | claude-sonnet-5 | 2026-09-14 11:00:48
+ 2026-09-16 | CIFR   | MODERATE     | t     | claude-opus-5   | claude-sonnet-5 | 2026-09-16 13:45:43
+ 2026-09-17 | GNRC   | HIGH         | t     | claude-opus-5   | claude-sonnet-5 | 2026-09-17 13:40:37
+ 2026-09-17 | VICR   | HIGH         | t     | claude-opus-5   | claude-sonnet-5 | 2026-09-17 11:00:50
+ 2026-09-21 | INTC   | MODERATE     | t     | claude-opus-5   | claude-sonnet-5 | 2026-09-21 13:31:32
+ 2026-09-21 | MSTR   | none         | f     | claude-opus-5   | claude-sonnet-5 | 2026-09-21 13:35:31
+ 2026-09-22 | ONON   | HIGH         | t     | claude-opus-5   | claude-sonnet-5 | 2026-09-22 13:45:21
+ 2026-09-25 | AKAM   | HIGH         | t     | claude-opus-5-5 | claude-sonnet-5 | 2026-09-25 11:01:08
+(9 rows)
+

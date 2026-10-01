@@ -1,0 +1,18 @@
+raw rows 106
+dup keys 2 [(('2026-08-05', 'KMT', 'claude-opus-5', 'claude-sonnet-5'), ['72', '72']), (('2026-08-07', 'ACMR', 'claude-opus-5', 'claude-sonnet-5'), ['100.8', '100.8'])]
+deduped 104
+POOLED all pairs                   agree=False n5= 17 mean5= 12.12 med5=  8.71 win5(>0)=1.00 | n10= 17 mean10= 15.75 med10= 13.71
+POOLED all pairs                   agree=True  n5= 86 mean5=  9.78 med5=  7.56 win5(>0)=0.94 | n10= 86 mean10= 11.25 med10=  7.79
+opus-4-8/sonnet-4-6                agree=False n5=  9 mean5= 12.45 med5=  8.71 win5(>0)=1.00 | n10=  9 mean10= 17.36 med10= 14.53
+opus-4-8/sonnet-4-6                agree=True  n5=  9 mean5= 16.41 med5= 11.57 win5(>0)=0.89 | n10=  9 mean10= 18.32 med10= 11.57
+opus-5/sonnet-5                    agree=False n5=  8 mean5= 11.75 med5=  8.07 win5(>0)=1.00 | n10=  8 mean10= 13.94 med10=  8.07
+opus-5/sonnet-5                    agree=True  n5= 74 mean5=  8.70 med5=  7.56 win5(>0)=0.95 | n10= 74 mean10= 10.11 med10=  7.71
+opus-5-class + sonnet-5-class (any) agree=False n5=  8 mean5= 11.75 med5=  8.07 win5(>0)=1.00 | n10=  8 mean10= 13.94 med10=  8.07
+opus-5-class + sonnet-5-class (any) agree=True  n5= 75 mean5=  8.59 med5=  7.48 win5(>0)=0.95 | n10= 75 mean10=  9.98 med10=  7.64
+POOLED f5: disagreed n=17 vs agreed n=86  mean diff=+2.34  boot95=[-2.04,+7.01]  MWU p=0.177
+POOLED f10: disagreed n=17 vs agreed n=86  mean diff=+4.50  boot95=[-0.59,+10.24]  MWU p=0.034
+opus-5/sonnet-5 f5: disagreed n=8 vs agreed n=74  mean diff=+3.06  boot95=[-2.10,+9.00]  MWU p=0.302
+opus-5/sonnet-5 f10: disagreed n=8 vs agreed n=74  mean diff=+3.83  boot95=[-3.28,+12.26]  MWU p=0.365
+disagreed HIGH dates: ['2026-07-27', '2026-07-27', '2026-07-29', '2026-07-29', '2026-07-30', '2026-07-30', '2026-07-31', '2026-07-31', '2026-07-31', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-12', '2026-08-13', '2026-08-21', '2026-08-27']
+ep_score agree= False n 17 mean 65.5
+ep_score agree= True n 87 mean 79.2

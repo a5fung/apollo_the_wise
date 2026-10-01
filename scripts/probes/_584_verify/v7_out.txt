@@ -1,0 +1,10 @@
+rejected in-window minute 1: shadow price outside D0 [low,high] +-0.5%: 564/1382
+rejected in-window minute 5: shadow price outside D0 [low,high] +-0.5%: 29/97
+rejected in-window minute 10: shadow price outside D0 [low,high] +-0.5%: 47/108
+rejected in-window minute 15: shadow price outside D0 [low,high] +-0.5%: 47/207
+admitted in-window minute 1: shadow price outside D0 [low,high] +-0.5%: 153/494
+admitted in-window minute 5: shadow price outside D0 [low,high] +-0.5%: 5/23
+admitted in-window minute 10: shadow price outside D0 [low,high] +-0.5%: 11/32
+admitted in-window minute 15: shadow price outside D0 [low,high] +-0.5%: 11/70
+VERA (37.14, 37.14, 32.73, 33.67, 10488922.0)
+in-window rows with a split in D0..D0+5 (no settle restriction): 16 [('BTLN', '2026-09-21', 't'), ('CTNT', '2026-09-25', 't'), ('CTSO', '2026-09-02', 't'), ('DLXY', '2026-09-28', 't'), ('FBGL', '2026-09-22', 't'), ('IPDN', '2026-09-10', 't'), ('IZM', '2026-09-15', 't'), ('KITT', '2026-09-25', 't'), ('MGN', '2026-09-16', 't'), ('MTNB', '2026-09-21', 't'), ('NCT', '2026-09-14', 't'), ('SFWL', '2026-09-02', 't'), ('UCAR', '2026-09-02', 't'), ('UZX', '2026-09-14', 't'), ('VRME', '2026-09-24', 't'), ('VWAV', '2026-09-16', 't')]

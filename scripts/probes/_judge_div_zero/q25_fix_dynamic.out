@@ -1,0 +1,6 @@
+-- SQL: SELECT COUNT(*) AS settled_disagreed_high_same_generation FROM mi_judge_divergence d JOIN mi_ep_scan_outcomes o ON o.ticker = d.ticker AND o.scan_date = d.alert_date WHERE NOT d.agree AND d.primary_tier = 'HIGH' AND o.fwd_5d_pct IS NOT NULL AND substring(d.primary_model from '^claude-opus-[0-9]+') = (SELECT substring(model from '^claude-opus-[0-9]+') FROM mi_model_resolution WHERE role = 'JUDGE_MODEL' ORDER BY resolved_at DESC LIMIT 1) AND substring(d.secondary_model from '^claude-sonnet-[0-9]+') = (SELECT substring(model from '^claude-sonnet-[0-9]+') FROM mi_model_resolution WHERE role = 'JUDGE_DIVERGENCE_MODEL' ORDER BY resolved_at DESC LIMIT 1)
+ settled_disagreed_high_same_generation 
+----------------------------------------
+                                      8
+(1 row)
+

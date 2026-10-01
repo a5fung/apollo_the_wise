@@ -1,0 +1,14 @@
+-- SQL: SELECT date_trunc('week', alert_date)::date wk, COUNT(*) n_all, COUNT(*) FILTER (WHERE primary_tier='HIGH') n_high, COUNT(*) FILTER (WHERE primary_tier='HIGH' AND NOT agree) n_high_disagree FROM mi_judge_divergence GROUP BY 1 ORDER BY 1
+     wk     | n_all | n_high | n_high_disagree 
+------------+-------+--------+-----------------
+ 2026-07-27 |    18 |     18 |               9
+ 2026-08-03 |    35 |     35 |               4
+ 2026-08-10 |    23 |     23 |               2
+ 2026-08-17 |     8 |      8 |               1
+ 2026-08-24 |     6 |      6 |               1
+ 2026-08-31 |     2 |      2 |               0
+ 2026-09-07 |     5 |      5 |               0
+ 2026-09-14 |     5 |      4 |               0
+ 2026-09-21 |     4 |      2 |               0
+(9 rows)
+

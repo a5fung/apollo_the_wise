@@ -12477,12 +12477,17 @@ reviews:
       WHERE NOT d.agree
         AND d.primary_tier = 'HIGH'
         AND o.fwd_5d_pct IS NOT NULL
-        AND d.primary_model   = (SELECT model FROM mi_model_resolution
-                                  WHERE role = 'JUDGE_MODEL'
-                                  ORDER BY resolved_at DESC LIMIT 1)
-        AND d.secondary_model = (SELECT model FROM mi_model_resolution
-                                  WHERE role = 'JUDGE_DIVERGENCE_MODEL'
-                                  ORDER BY resolved_at DESC LIMIT 1);
+        -- (2') 2026-10-01: GENERATION, not exact id. The exact-id match re-zeroed this count
+        --     every time track-latest moved a tier (opus-5 -> opus-5-5 on 09-23 took it from 8
+        --     to 0); independence is the TIER, not the vintage (judge_divergence.py). Scope
+        --     to the same model GENERATION (claude-opus-5*, claude-sonnet-5*), so only a new
+        --     generation (opus-6) re-scopes it — the no-pooling rationale above, kept.
+        AND substring(d.primary_model from '^claude-opus-[0-9]+') =
+            (SELECT substring(model from '^claude-opus-[0-9]+') FROM mi_model_resolution
+              WHERE role = 'JUDGE_MODEL' ORDER BY resolved_at DESC LIMIT 1)
+        AND substring(d.secondary_model from '^claude-sonnet-[0-9]+') =
+            (SELECT substring(model from '^claude-sonnet-[0-9]+') FROM mi_model_resolution
+              WHERE role = 'JUDGE_DIVERGENCE_MODEL' ORDER BY resolved_at DESC LIMIT 1);
     can_fire:
       predicate_runs: "Not re-executed today (this build has no prod DB access); the
         identical query minus the new primary_tier filter was run 2026-09-12 for the #485
@@ -12500,10 +12505,12 @@ reviews:
         model pair only (opus-5/sonnet-5), per #485's read of the SAME table this
         predicate counts. Volume is roughly 4 judge-HIGHs/week at ~10% disagreement. 15 is
         a few months out at that pace, not beyond the observed range."
-      era_scoped: "The predicate's own model-pair join already re-resolves JUDGE_MODEL and
-        JUDGE_DIVERGENCE_MODEL from mi_model_resolution at query time, so a future model
-        swap re-scopes it automatically; the new primary_tier filter is orthogonal to that
-        and does not change era-scoping."
+      era_scoped: "(revised 2026-10-01) The model-pair join re-resolves JUDGE_MODEL and
+        JUDGE_DIVERGENCE_MODEL at query time but matches the GENERATION prefix (claude-opus-5,
+        claude-sonnet-5), not the exact id: the exact-id form re-zeroed the count on every
+        track-latest point release (8 -> 0 on 2026-09-23). Only a new generation re-scopes it.
+        Run 2026-10-01 against prod with the generation match: reads 8 (scripts/probes/
+        _judge_div_zero/q25_fix_dynamic.out)."
       population_actionable: "(#669 2026-09-19) The predicate counts SETTLED disagreements on
         HIGH-tier primaries under the CURRENT model pair; the action splits the divergence
         cohort on `agree` and compares forward return - the agreed side is drawn from the same
@@ -12513,6 +12520,17 @@ reviews:
         HIGH-WATERMARK (max favourable move), not a close-to-close return - theme_as_ep_signal's
         08-06 note. Comparing two cohorts on the same watermark is valid; calling it 'forward
         return' against any close-to-close benchmark is not. Say MFE."
+    resolution_2026_10_01: >-
+      The 2026-08-07 → 2026-09-30 "zero past its eligible date" was a PREDICATE DEFECT, not a
+      quiet world: it read 8 of 15 until 2026-09-22, then 0 from 09-23 when JUDGE_MODEL
+      re-resolved to claude-opus-5-5 (exact-id match). Fixed to a generation match — reads 8.
+      Why it is still 8: all 17 disagreements ever recorded were under rubric v3; under v4
+      (2026-08-28 on) 15 HIGH reads produced 0 (0 of 15 at the old ~10% rate happens by chance
+      ~21% of the time — not proof of a zero rate), and judge-HIGHs fell from ~37/week to ~2.
+      Preview of the split (NOT a verdict): 8 disagreed vs 74 agreed settled HIGHs, mean 5-day
+      MFE 11.75% vs 8.70%, medians 8.07% vs 7.56%, Mann-Whitney p=0.30. Decision (fork (i) of
+      three, the least change): keep the 15 bar and wait; re-rule 2026-12-31 if it still reads
+      8. Evidence: scripts/probes/_judge_div_zero/.
     threshold: 15
     # 9 disagreements existed at registration, none settled. 15 SETTLED disagreements is
     # still thin for a verdict but enough to see a direction; a smaller bar would invite
@@ -13972,7 +13990,38 @@ reviews:
     # variant selector — the rejected-side filter this question needs lives in
     # the predicate itself. No discriminating column exists to declare.
     discriminates_on: []
-    earliest_review_date: 2026-09-28
+    earliest_review_date: 2026-10-13
+    resolution_2026_10_01: >-
+      RAN 2026-10-01 ($0, read-only; scripts/probes/_584 + an independent re-derivation in
+      scripts/probes/_584_verify — every number reproduced). VERDICT: NOT YET. The review's bar
+      needs >=15 settled rejected-side names on the 20-session horizon, and NONE exist yet
+      (mi_daily_closes ended 09-30; the earliest cohort, 09-02, reaches its 20th session 10-01).
+      Population: mi_universe_floor_shadow 09-02..09-30, 3,899 rejected-side rows / 1,351 names;
+      2,761 with an at-open read (1,799 in-window <=09:45); fallback to _last used on 0 rows. The
+      5-session interim LEANS NO: against the gap-matched admitted pool (gap >=10%, 82 rows, 9.8%
+      reach >=8xADR, 20.7% settle <=-20%), the bar-clearers' reach intervals overlap at every bar
+      ($10M 12.0% / $25M 12.7% / $50M 18.6% / $100M 29.4% on 108/71/43/17 rows) while crash share
+      is 53-65% — and the verifier found most of the "tail" is the gap day's own high (without it
+      5.6/5.6/9.3/23.5%), and 41% of 09:31 reads carry a pre-market price. Re-run when the $50M
+      sample reaches 15 names with a 20-session close (~2026-10-13) — earliest_review_date moved
+      there so the review stops firing on data that cannot answer it.
+    can_fire:
+      predicate_runs: "Run 2026-10-01 via scripts/operator_asks.py: reads 21 against threshold 20
+        (distinct scan dates with a rejected-side at-open read)."
+      nonzero_possible: "db.py:16439 inserts into mi_universe_floor_shadow from the EP scan's
+        universe-floor path on every scan tick; 5,268 rows 09-02..09-30."
+      lane_live: "n/a — a shadow recorder; it reads the live D-1 floors' rejections, which are
+        acting (universe_floor stage in mi_ep_scan_log)."
+      threshold_vs_observed: "21 distinct dates as of 2026-10-01 (bar 20) — but the ACTION's own bar
+        (>=15 settled 20-session names per dollar-volume level) is not met until ~10-13 at $50M;
+        that is why earliest_review_date moved, not the threshold."
+      era_scoped: "Single era: acting floors $5 / 50k throughout 09-02..09-30 (no floor change in
+        the window); outcomes from mi_daily_closes (back-adjusted)."
+      population_actionable: "The predicate counts rejected-side rows (failed_price_floor OR
+        failed_volume_floor) with an at-open read — exactly the rows the action sweeps."
+      instrument_trusted: "today_dollar_volume_at_open is day.v falling back to min.av (accumulated,
+        incl. pre-market): at a 09:31 read it is largely pre-market volume x price (verifier: 41% of
+        first-minute reads sit outside the session's low-high). Ratios use mi_daily_closes only."
     status: pending
     kind: accrual
     added_on: 2026-08-31
