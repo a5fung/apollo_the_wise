@@ -2086,10 +2086,11 @@ async def _stop_ack_timeout_watchdog_job():
 
     #687 review (2026-10-01): a position held only by a QUEUED CLOSING ORDER (the depth rule's
     opening-auction sale, a market sell queued after the close) is re-checked every cycle, never
-    written off for the day; once that order is no longer live the trade is re-protected at its
-    OWN stop floored to the last broker level (not orb_low), and a stop the price is already
-    through becomes a market sale (the rule had already decided to sell). Every placement here
-    is capped by the broker position; flat or unreadable → nothing placed.
+    written off for the day; once that order is no longer live (however long ago it was sent) a
+    stop the price is already through becomes a market sale (the rule had already decided to
+    sell). EVERY placement here is at max(row stop_price, orb_low) floored to the last broker
+    level — never below a trailed stop — and capped by the broker position; flat or unreadable
+    → nothing placed; nothing free to place → audited + paged once per ET day.
     """
     import os
     if not env_is_true("STOP_ACK_TIMEOUT_GATE_ENABLED", default=True):
@@ -2331,22 +2332,26 @@ async def _stop_ack_timeout_watchdog_job():
                     continue
 
                 # #687 review (2026-10-01): was this trade's position being SOLD? A closing order
-                # (`full_exit`) sent in the last day that is no longer live at the broker means
-                # the exit rule had already decided to sell and the order died (an `opg` sale
-                # cancelled unfilled at the open, a queued sale cancelled). Re-protect it the
-                # way the stream's restore does — at the trade's OWN stop, floored to the last
-                # level the broker held (#600), never at the entry-day `orb_low` (that would
-                # LOWER a trailed stop — the reason widening this watchdog was barred, see the
-                # #649 note on `_COVERAGE_SLOTS`) — and if the price is already through that
-                # stop, sell the free shares at market (the stop's own outcome).
+                # (`full_exit`) that is no longer live at the broker means the exit rule had
+                # already decided to sell and the order died (an `opg` sale cancelled unfilled at
+                # the open, a queued sale cancelled) — if the price is already through the stop,
+                # sell the free shares at market (the stop's own outcome).
+                # #687 round-2 review: NO time bound. The 1-day window missed a Friday 16:45 /
+                # 19:01 sale that dies Monday 09:30 (or after a holiday). The most recent
+                # `full_exit` row for the trade that did not fill counts as dead only when the
+                # broker no longer lists it (`existing`, read above — no extra broker call).
                 # The value is that order's exit reason (truthy) — the breach sale keeps it.
-                exit_order_died = await conn.fetchval(
-                    "SELECT COALESCE(exit_reason, 'exit') FROM mi_live_orders "
-                    "WHERE trade_id = $1 AND purpose = 'full_exit' "
-                    "AND submitted_at > NOW() - INTERVAL '1 day' "
+                exit_order_died = None
+                _last_exit = await conn.fetchrow(
+                    "SELECT alpaca_order_id, COALESCE(exit_reason, 'exit') AS exit_reason "
+                    "FROM mi_live_orders "
+                    "WHERE trade_id = $1 AND purpose = 'full_exit' AND status <> 'filled' "
                     "ORDER BY submitted_at DESC LIMIT 1",
                     trade_id,
                 )
+                _live_ids = {str(o.get("id")) for o in existing}
+                if _last_exit and str(_last_exit["alpaca_order_id"]) not in _live_ids:
+                    exit_order_died = _last_exit["exit_reason"]
                 from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
                     POSITION_FLAT,
                     POSITION_HELD,
@@ -2356,15 +2361,20 @@ async def _stop_ack_timeout_watchdog_job():
                     _sell_free_shares_after_stop_breach,
                     _whole_shares,
                 )
-                if exit_order_died:
-                    _row_stop = row.get("stop_price") if hasattr(row, "get") else None
-                    _base = float(_row_stop) if _row_stop is not None else stop_target
-                    if _base is not None:
-                        stop_target = await _apply_reprotect_floor(
-                            trade_id, ticker, float(_base), None, account_mode,
-                            site="stop_ack_watchdog.closing_order_died",
-                            consult_dead_stop=True,
-                        )
+                # #687 round-2 review: EVERY placement here is floored — never below
+                # max(the row's own stop_price, the last level the broker held (#600 — the dead
+                # stop's preserved price), the entry-day orb_low). Placing at orb_low alone would
+                # LOWER a trailed stop (the reason widening this watchdog was barred, #649 note on
+                # `_COVERAGE_SLOTS`); a fresh entry whose row stop is below orb_low keeps orb_low.
+                _row_stop = row.get("stop_price") if hasattr(row, "get") else None
+                _bases = [float(x) for x in (_row_stop, row["orb_low"]) if x is not None]
+                if _bases:
+                    stop_target = await _apply_reprotect_floor(
+                        trade_id, ticker, max(_bases), None, account_mode,
+                        site=("stop_ack_watchdog.closing_order_died" if exit_order_died
+                              else "stop_ack_watchdog"),
+                        consult_dead_stop=True,
+                    )
 
                 if qty <= 0 or stop_target is None:
                     await log_audit_event(
@@ -2423,6 +2433,43 @@ async def _stop_ack_timeout_watchdog_job():
                     continue
                 place_qty = _whole_shares(min(qty, _pos.qty - covered))
                 if place_qty <= 0:
+                    # #687 round-2 review: never silent. The broker holds fewer shares than the
+                    # books and resting sell orders hold every one of them — but not by a stop
+                    # (the protective case was handled above). Audit + page once per ET day.
+                    from agents.market_intelligence.collector import et_today
+                    already_paged = await conn.fetchval(
+                        "SELECT 1 FROM mi_audit_log "
+                        "WHERE event_type = 'stop_ack_no_free_shares' "
+                        "AND summary LIKE $1 "
+                        "AND (created_at AT TIME ZONE 'America/New_York')::date = $2 LIMIT 1",
+                        f"{ticker} #{trade_id}%", et_today(),
+                    )
+                    if not already_paged:
+                        await log_audit_event(
+                            "stop_ack_no_free_shares",
+                            f"{ticker} #{trade_id}: no stop placed — books {qty:g} sh, broker "
+                            f"{_pos.qty:g} sh, all held by resting sell orders ({protective:g} "
+                            f"by a stop)",
+                            detail=_json.dumps({
+                                "trade_id": trade_id, "ticker": ticker,
+                                "account_mode": account_mode, "remaining_shares": qty,
+                                "broker_qty": _pos.qty, "broker_covered": covered,
+                                "protective_covered": protective,
+                                "open_sell_orders": [
+                                    {"id": o["id"], "type": str(o.get("type")),
+                                     "time_in_force": str(o.get("time_in_force")),
+                                     "qty": o.get("qty"), "status": o.get("status")}
+                                    for o in sell_orders
+                                ],
+                            }),
+                        )
+                        await send_telegram_message(
+                            f"{mode_prefix(account_mode)}⚠️ *{ticker}: no stop at the broker "
+                            f"and none placed* — the books show {qty:g} sh, the broker "
+                            f"{_pos.qty:g} sh, and resting sell orders hold all of them "
+                            f"({protective:g} sh by a stop). Check that those orders are what "
+                            f"you expect (trade #{trade_id})."
+                        )
                     continue
 
                 try:

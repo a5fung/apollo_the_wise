@@ -383,18 +383,22 @@ behaviour test confirmed red with the fix removed (mutation runs in the commits)
   market hours. Coverage is now split: stops and OCO parents (own stop leg) are PROTECTIVE; when
   the shares are covered only with help from a closing order, the watchdog writes
   `stop_ack_covered_by_exit_order` (hourly-throttled, NOT in the dedup) and looks again every 30
-  seconds. Once a trade with a `full_exit` order sent in the last day is uncovered, it re-places
-  the stop through its own remediation path — at the row's `stop_price` floored to the last
-  broker level (`_apply_reprotect_floor`, `consult_dead_stop=True`), NOT the entry-day `orb_low`
-  (on a trailed position that would lower the stop — the reason widening this watchdog was
-  barred, #649) — sized `min(books, broker − live resting sells)`; flat or unreadable → nothing
-  placed (`stop_ack_broker_flat` / `stop_ack_broker_unreadable`, hourly). If that re-protect, or
+  seconds. Once the trade is uncovered and its most recent unfilled `full_exit` order is no longer
+  listed at the broker (no time bound — round 2 fix 2), it re-places the stop through its own
+  remediation path; EVERY watchdog placement (round 2 fix 2) is at
+  `max(row stop_price, orb_low)` floored to the last broker level (`_apply_reprotect_floor`,
+  `consult_dead_stop=True`) — never the entry-day `orb_low` alone (on a trailed position that
+  would lower the stop — the reason widening this watchdog was barred, #649) — sized
+  `min(books, broker − live resting sells)`; flat or unreadable → nothing placed
+  (`stop_ack_broker_flat` / `stop_ack_broker_unreadable`, hourly); nothing free to place →
+  `stop_ack_no_free_shares` + one page per ET day (round 2 fix 6). If that re-protect, or
   the stream's restore after a cancelled/expired closing order, is rejected because the price is
   already below the stop (`_is_stop_above_market`), the free shares are SOLD AT MARKET at once
   (`_sell_free_shares_after_stop_breach`: a `full_exit` row + `stop_breach_market_sale` audit +
   page) — what the stop would have done; the exit rule had already decided to sell. Scoped to
   those two paths only: the fresh-entry watchdog path and `_ensure_stop_coverage` keep their
-  converge-and-page behaviour (no decision to sell exists there).
+  converge-and-page behaviour (no decision to sell exists there) — on the fresh path a floored
+  stop the price is already through is NOT sold: it pages CRITICAL (see the operator list).
 - **Fix 4 — a full-exit skip pages once per trade per skip kind per ET DAY.** Part A deduped it
   for the trade's whole life, so a broker outage that blocked Tuesday's sale was silent on
   Wednesday. Bounded like `_coverage_gap_already_alerted_today`; only
@@ -424,14 +428,43 @@ behaviour test confirmed red with the fix removed (mutation runs in the commits)
   (`partial_exit_cancelled_for_sale`). A refused cancel removes the mark, records
   `full_exit_skipped` (`plain_limit_cancel_failed`) and aborts before the stop is touched. Stops
   and OCO parents stay "held"; a resting order that is not this trade's is still left alone.
-- **Fix 8 — a full exit closes the row only on a FLAT broker.** Part A (b) clamped the books at
-  zero and closed without looking. A paper soft reservation (the evening sync writes a qty already
-  reduced by a queued sell) could then record a closed trade while the broker still held the
-  profit-take third. At zero the finalizer now reads the position (up to 3 reads, so a positions
-  endpoint lagging the fill event does not count): flat → closed as before; still holding → the
-  row stays OPEN at `min(broker count, the books' count before this fill)`
-  (`full_exit_close_refused` + page); unreadable → stays open, paged, the next position sync
-  settles it.
+- **Fix 8 — REPLACED in round 2 (fix 1 below).** Round 1 gated the full-exit close on a broker
+  position read; that read is gone. The close is plain arithmetic again (part A (b)); the
+  soft-reservation case it guarded is fixed at its root in the position sync.
+
+**Round 2 (2026-10-01, a second spec + safety review of the fixes above):**
+- **R2 fix 1 — a full exit's fill closes on plain arithmetic; no broker read.** Round 1's read
+  left a phantom OPEN trade at 0 shares on one unreadable read at fill time (no sync ever touched
+  it — it held a max-positions slot and hid the loss from the 2% check), and a positions endpoint
+  lagging the fill kept closed trades open, paging "manual reconcile" every sweep through
+  `_resolve_position_gone`. `_finalize_full_exit_locked`: `remaining = prior − this sale's fill`;
+  zero → closed, otherwise OPEN at exactly that count (the OCO third). ROOT of the paper
+  soft-reservation artifact fixed in `_sync_positions_for_mode`: when the broker reports FEWER
+  shares than the books and a `full_exit` is pending, the books are lowered only to
+  `broker qty + shares our own pending exit orders reserve` (`_pending_exit_reservation`,
+  `_sync_lowered_qty`), never raised (not below the books → nothing written,
+  `sync_qty_held_for_pending_exit`); the reservation unreadable → not lowered that sweep
+  (`sync_qty_lower_deferred`). No full exit pending → the broker count, as before.
+- **R2 fix 2 — the watchdog finds a Friday sale that dies Monday, and never lowers a stop.** The
+  dying closing order was looked up only within the last day, so a Friday 16:45 / 19:01 sale
+  cancelled unfilled Monday 09:30 fell back to the entry-day `orb_low`. Now: the most recent
+  unfilled `full_exit` row, no time bound, counted dead only when the broker no longer lists it;
+  and every placement is floored as in fix 3 above.
+- **R2 fix 3 — the stream's restore always runs.** A failure committing the part an auction
+  sale sold (`finalize_full_exit`) used to escape before the stop restore; it is now audited
+  (`full_exit_fill_commit_failed`) + paged and the restore runs, sized from the broker.
+- **R2 fix 4 — the stream's restore holds the per-trade lock.** `_trade_advisory_lock_wait`
+  (bounded: 5 s, polling the try-lock — the handler is inline). The watchdog's try-lock defers
+  while it is held; if another path re-protected while the stream waited (the stop pointer now
+  names a different order), the stream stands down (`full_exit_restore_stood_down`); lock not
+  obtained in time → the restore runs anyway (`full_exit_restore_lock_timeout`) — a missed
+  restore is naked, a duplicate is only a rejected order.
+- **R2 fix 5 — the sync's orphan stop is capped at the broker count the same sweep read** (it
+  used the sweep's pre-sync snapshot of `remaining_shares`).
+- **R2 fix 6 — "nothing free to protect" pages** (`stop_ack_no_free_shares`, once per ET day)
+  instead of a silent skip every 30 seconds.
+- **R2 fix 7 (tests)** — the kept-open size (`prior − sold`) and the sync's lowering bound (never
+  above the books) each have a test that fails when the bound is removed.
 
 **Open for the operator — NOT changed here (his call):**
 - The 2% daily-loss limit counts only `status='closed'` trades: a loss on the two thirds sold
@@ -446,6 +479,10 @@ behaviour test confirmed red with the fix removed (mutation runs in the commits)
   read, instead of being sized from the books (fix 1); and a closing order that died with the
   price already through the stop now SELLS at market (fix 3) — both per the review's
   instruction, his to confirm.
+- NEW in round 2: the watchdog's fresh path (no closing order) never places below the trade's
+  own stop now (R2 fix 2); if the price is already through that stop, the placement is rejected
+  and he gets the CRITICAL "position naked" page — it is NOT sold at market (before, a lower
+  stop at `orb_low` was placed). Sell at market there too, or keep paging?
 
 **Status**: built + unit-tested, not deployed (same deploy as A/B: `broker/` + `scheduler.py` →
 `deploy.sh execution` AND `market-agent`).

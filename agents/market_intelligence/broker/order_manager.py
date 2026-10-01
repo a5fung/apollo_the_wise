@@ -3112,6 +3112,47 @@ async def _trade_advisory_try_lock(trade_id: int):
             await pool.release(conn)
 
 
+_TRADE_LOCK_WAIT_S = 5.0        # #687 round-2: the stream restore's bounded wait for the lock
+_TRADE_LOCK_POLL_S = 0.25
+
+
+@asynccontextmanager
+async def _trade_advisory_lock_wait(trade_id: int, wait_s: float = _TRADE_LOCK_WAIT_S):
+    """BOUNDED-WAIT session-level advisory lock on (namespace, trade_id).
+
+    Polls the non-blocking try-lock every `_TRADE_LOCK_POLL_S` until it is held or `wait_s`
+    elapses; yields True (held — released in `finally`) or False (another holder kept it). The
+    caller decides what False means. #687 round-2 review: the stream's full-exit restore runs
+    INLINE in the trade-event handler, so an unbounded wait would stall every later event on the
+    stream; the stop-ACK watchdog's try-lock defers to it while it is held."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + max(float(wait_s), 0.0)
+    pool = await get_pool()
+    conn = await pool.acquire(timeout=_REPROTECT_DB_TIMEOUT)
+    acquired = False
+    try:
+        while True:
+            acquired = bool(await conn.fetchval(
+                "SELECT pg_try_advisory_lock($1, $2)",
+                _TRADE_LOCK_NAMESPACE, int(trade_id),
+                timeout=_REPROTECT_DB_TIMEOUT,
+            ))
+            if acquired or loop.time() >= deadline:
+                break
+            await asyncio.sleep(_TRADE_LOCK_POLL_S)
+        yield acquired
+    finally:
+        try:
+            if acquired:
+                await conn.fetchval(
+                    "SELECT pg_advisory_unlock($1, $2)",
+                    _TRADE_LOCK_NAMESPACE, int(trade_id),
+                    timeout=_REPROTECT_DB_TIMEOUT,
+                )
+        finally:
+            await pool.release(conn)
+
+
 async def _breaker_already_alerted(trade_id: int) -> bool:
     """Has the breaker-open Telegram already gone out for this trade?
 
@@ -5777,9 +5818,6 @@ async def run_depth_open_sales() -> list[dict]:
     return results
 
 
-_CLOSE_FLAT_READS = 3   # #687 review fix 8: reads of the position before a full exit closes a row
-
-
 async def finalize_full_exit(
     trade_id: int,
     filled_qty: int,
@@ -5864,38 +5902,22 @@ async def _finalize_full_exit_locked(
             }),
         )
 
-    # #687 review (2026-10-01) — the books reaching zero is not proof the position is gone. Read
-    # the BROKER before closing: a paper soft reservation (sync overwrote `remaining_shares` with
-    # a qty already reduced by a queued sell) or a profit-take third the books lost track of
-    # would otherwise record a closed trade the broker still holds — unmanaged, with no stop
-    # (the clamp above is exactly that disagreement). FLAT → close, as before. Still HOLDING →
-    # keep the row open at what the broker holds. UNREADABLE → keep it open (status unchanged)
-    # and page; the next position sync settles it. Never close on an unread broker.
-    # A position that still shows shares is re-read a few times first (the fill event can land a
-    # moment before the positions endpoint reflects it), and the row is kept at no more than the
-    # books held before this fill — bounded by both sides, never inflated by another reading.
-    close_refused: str | None = None
-    broker_qty_at_close: float | None = None
-    if new_remaining <= 0:
-        for _attempt in range(_CLOSE_FLAT_READS):
-            _pos = await _read_broker_position(ticker, account_mode)
-            if _pos.state != POSITION_HELD:
-                break
-            if _attempt + 1 < _CLOSE_FLAT_READS:
-                await asyncio.sleep(_EXIT_RELEASE_SLEEP_S)
-        if _pos.state == POSITION_HELD:
-            close_refused = "broker_still_holds"
-            broker_qty_at_close = _pos.qty
-            new_remaining = _whole_shares(min(_pos.qty, float(prior_remaining)))
-        elif _pos.state == POSITION_UNREADABLE:
-            close_refused = "broker_unreadable"
+    # #687 round-2 review (2026-10-01) — PLAIN ARITHMETIC, no broker read at close. What this
+    # sale sold leaves `prior_remaining − filled_qty`; the row closes at zero and otherwise stays
+    # OPEN at that count (the OCO profit-take third). A broker read here was tried (round-1 fix 8)
+    # and REMOVED: one unreadable read at fill time left a phantom open trade at zero shares that
+    # no sync ever settled (it held a max-positions slot and hid the loss from the 2% check), and
+    # a positions endpoint lagging the fill kept genuinely closed trades open and paging. The
+    # disagreement it guarded — a paper soft reservation letting the evening sync LOWER
+    # `remaining_shares` below what the broker holds while a closing order is queued — is fixed at
+    # its root instead: `_sync_positions_for_mode` no longer lowers the books below
+    # (broker qty + shares our own pending exit orders reserve) while a full exit is pending.
 
     async with pool.acquire() as conn:
-        if new_remaining > 0 or close_refused:
-            # Shares remain at the broker (the resting profit-take third, or a remainder the
-            # broker still holds). NEVER mark closed while they do. The stop pointer is left
-            # as it is: the cancelled stop's own WS event nulls it, and a full-exit fill is
-            # never the stop, so there is nothing here that could prove a pointer dead.
+        if new_remaining > 0:
+            # Shares remain (the resting profit-take third). NEVER mark closed while they do.
+            # The stop pointer is left as it is: the cancelled stop's own WS event nulls it, and
+            # a full-exit fill is never the stop, so nothing here could prove a pointer dead.
             await conn.execute("""
                 UPDATE mi_live_trades SET
                     exits = $2::jsonb,
@@ -5920,41 +5942,15 @@ async def _finalize_full_exit_locked(
         f"{ticker}: DB committed on WS fill — sold {filled_qty} @${filled_price:.2f}, "
         f"reason={reason}, total_pnl ${total_pnl:+,.2f}"
         + (f" — {new_remaining} sh remain at the broker, trade stays OPEN"
-           if (new_remaining > 0 or close_refused) else " — closed"),
+           if new_remaining > 0 else " — closed"),
         json.dumps({
             "trade_id": trade_id, "ticker": ticker,
             "shares": int(filled_qty), "fill_price": float(filled_price),
             "pnl": float(pnl), "total_pnl": float(total_pnl),
             "reason": reason, "order_id": order_id,
             "new_remaining": new_remaining,
-            "close_refused": close_refused,
-            "broker_qty_at_close": broker_qty_at_close,
         }),
     )
-
-    if close_refused:
-        await log_audit_event(
-            "full_exit_close_refused",
-            f"{ticker}: the books reached zero but "
-            + (f"the broker still holds {broker_qty_at_close:g} sh — kept OPEN at {new_remaining}"
-               if close_refused == "broker_still_holds"
-               else "the broker could not be read — kept OPEN"),
-            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
-                        "reason": close_refused, "filled_qty": int(filled_qty),
-                        "prior_remaining": prior_remaining,
-                        "broker_qty": broker_qty_at_close, "kept_remaining": new_remaining,
-                        "order_id": order_id}),
-        )
-        _state = (f"the broker still holds {broker_qty_at_close:g} sh, so the trade stays OPEN "
-                  f"at {new_remaining} sh — check those shares have a stop."
-                  if close_refused == "broker_still_holds"
-                  else "the broker could not be read to confirm the position is flat, so the "
-                       "trade stays OPEN until the next position sync confirms it.")
-        await send_telegram_message(md_to_html(
-            f"{mode_prefix(account_mode)}⚠️ Sold {ticker} — {reason}: {int(filled_qty)} sh "
-            f"@${filled_price:.2f}. The books now show none left, but {_state}"
-        ), parse_mode="HTML")
-        return
 
     if new_remaining > 0:
         await send_telegram_message(
@@ -7910,6 +7906,78 @@ async def check_position_coverage(*, notify: bool = True) -> dict:
             "check_failed": check_failed, "deferred": deferred}
 
 
+# ── #687 round-2 review: the position sync never lowers the books under a queued sale ────────
+#
+# Paper Alpaca soft-reserves the shares of an after-hours QUEUED sell: until it fills at the next
+# open, `get_all_positions` reports the position already reduced by it. The sync used to copy
+# that number onto `remaining_shares`, so the books lost the shares the sale had not yet sold —
+# and when the sale filled, `finalize_full_exit`'s plain arithmetic (prior − sold) counted them a
+# second time: 10 held, 7 queued beside a 3-share OCO third → sync writes 3 → the 7 fill → 3 − 7
+# clamps at 0 → the trade CLOSES while the broker still holds the third. While a full exit is
+# pending, the sync may lower the books only to (broker qty + the shares our own pending exit
+# orders reserve), and never above what the books already said.
+
+async def _pending_exit_reservation(trade_id: int) -> tuple[int, bool]:
+    """(shares our non-terminal partial/full exit orders hold, is a FULL exit among them?).
+
+    Same mirror + terminal-status set as `get_pending_exit_qty`; raises on a DB error (the
+    caller then does not lower — never on an unread)."""
+    pool = await get_pool()
+    async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
+        row = await conn.fetchrow("""
+            SELECT COALESCE(SUM(qty)::int, 0) AS reserved,
+                   COALESCE(BOOL_OR(purpose = 'full_exit'), FALSE) AS full_pending
+            FROM mi_live_orders
+            WHERE trade_id = $1
+              AND purpose IN ('partial_exit', 'full_exit')
+              AND status != ALL($2::text[])
+        """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES), timeout=_REPROTECT_DB_TIMEOUT)
+    if row is None:
+        return 0, False
+    return int(row["reserved"] or 0), bool(row["full_pending"])
+
+
+async def _sync_lowered_qty(trade: dict, alpaca_qty: float, db_qty: float,
+                            account_mode: str) -> "float | None":
+    """What the sync may write when the broker reports FEWER shares than the books.
+
+    No full exit pending → the broker count, as always. A full exit pending → `broker +
+    reserved`, and None (no write) when that is not below the books — this path only ever
+    LOWERS, never raises. The reservation unreadable → None: the books are not lowered this
+    sweep (the next one retries)."""
+    trade_id = int(trade["id"])
+    ticker = trade["ticker"]
+    try:
+        reserved, full_pending = await _pending_exit_reservation(trade_id)
+    except Exception as e:   # loud-ok: audited below; not lowering is the safe direction
+        logger.warning(f"sync_positions: {ticker} pending-exit read failed ({e}) — "
+                       f"books not lowered this sweep")
+        await log_audit_event(
+            "sync_qty_lower_deferred",
+            f"{ticker}: broker {alpaca_qty:.0f} < books {db_qty:.0f}, pending exits unreadable "
+            f"— books not lowered this sweep (trade_id={trade_id}, mode={account_mode})",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "db_qty": float(db_qty), "alpaca_qty": float(alpaca_qty),
+                        "error": str(e)[:300]}),
+        )
+        return None
+    if not full_pending:
+        return float(alpaca_qty)
+    target = float(alpaca_qty) + float(reserved)
+    if target >= float(db_qty) - 0.5:
+        await log_audit_event(
+            "sync_qty_held_for_pending_exit",
+            f"{ticker}: broker reports {alpaca_qty:.0f} vs books {db_qty:.0f} while a closing "
+            f"order is queued ({reserved} sh reserved by our pending exits) — books kept "
+            f"(trade_id={trade_id}, mode={account_mode})",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "db_qty": float(db_qty), "alpaca_qty": float(alpaca_qty),
+                        "reserved": reserved}),
+        )
+        return None
+    return target
+
+
 # ── #597: "position gone from Alpaca" resolution ─────────────────────────────
 # Seconds a broker-confirmed exit fill is left to the websocket finaliser
 # before sync_positions books it itself. WS commits land in seconds; the gap
@@ -8180,8 +8248,21 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
         if ticker in alpaca_map:
             alpaca_qty = alpaca_map[ticker]["qty"]
             db_qty = trade["remaining_shares"] or 0
-            if abs(alpaca_qty - db_qty) > 0.5:
+            # #687 round-2 review: lowering the books while a closing order is queued is
+            # bounded by the shares our own pending exits reserve (`_sync_lowered_qty`).
+            write_qty = alpaca_qty
+            if abs(alpaca_qty - db_qty) > 0.5 and alpaca_qty < db_qty:
+                write_qty = await _sync_lowered_qty(dict(trade), alpaca_qty, db_qty,
+                                                    account_mode)
+                if write_qty is None:
+                    discrepancies.append(
+                        f"Qty mismatch {ticker}: DB={db_qty:.0f} Alpaca={alpaca_qty:.0f} — "
+                        f"books kept (a closing order is queued, or its reservation is "
+                        f"unreadable)")
+            if write_qty is not None and abs(write_qty - db_qty) > 0.5:
                 msg = f"Qty mismatch {ticker}: DB={db_qty:.0f} Alpaca={alpaca_qty:.0f}"
+                if abs(write_qty - alpaca_qty) > 0.5:
+                    msg += f" — books lowered to {write_qty:.0f} (a closing order is queued)"
                 discrepancies.append(msg)
                 # Audit the overwrite (SMCI 5/11 #77 forensics: previously
                 # this just wrote silently with logger.info, leaving no
@@ -8192,20 +8273,21 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
                 # finalizes at next open.
                 await log_audit_event(
                     "sync_qty_overwrite",
-                    f"{ticker}: DB {db_qty:.0f} → Alpaca {alpaca_qty:.0f} "
+                    f"{ticker}: DB {db_qty:.0f} → {write_qty:.0f} (Alpaca {alpaca_qty:.0f}) "
                     f"(trade_id={trade['id']}, mode={account_mode})",
                     detail=json.dumps({
                         "trade_id": trade["id"],
                         "ticker": ticker,
                         "account_mode": account_mode,
                         "db_qty_before": float(db_qty),
-                        "alpaca_qty_after": float(alpaca_qty),
+                        "alpaca_qty_after": float(write_qty),
+                        "broker_qty": float(alpaca_qty),
                     }),
                 )
                 async with pool.acquire() as conn:
                     await conn.execute(
                         "UPDATE mi_live_trades SET remaining_shares = $2 WHERE id = $1",
-                        trade["id"], alpaca_qty,
+                        trade["id"], write_qty,
                     )
             del alpaca_map[ticker]
         else:
@@ -8390,7 +8472,12 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
         # is in flight, remediate to the post-partial qty; the WS handler
         # will resize the stop again when the partial fills/cancels.
         held = await get_pending_exit_qty(trade["id"])
-        qty = float(int(trade["remaining_shares"]) - held)
+        # #687 round-2 review: `trade` is this sweep's snapshot, read BEFORE the qty sync above
+        # may have lowered the books — cap it at the broker count this same sweep read (the
+        # `alpaca_positions` list; `alpaca_map` was consumed above), never the books alone.
+        _broker_qty = next((float(p["qty"]) for p in alpaca_positions
+                            if p["symbol"] == ticker), float(trade["remaining_shares"]))
+        qty = float(min(int(trade["remaining_shares"]), int(_broker_qty)) - held)
         if qty <= 0:
             logger.warning(
                 f"sync_positions: {ticker} fully covered by pending exits "
