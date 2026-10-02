@@ -429,6 +429,33 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
+### 2026-10-02 — #687 cut-back round: review rounds reverted to parts A + B, his four rulings of 2026-10-01 built (depth flow still OFF)
+
+**Trigger**: three review rounds on the #687 build did not converge (each added defence-in-depth to shared broker
+code that today's — toggle-OFF — trades use); his four rulings of 2026-10-01 (*"Yes"* to all). `exit_discipline.md`
+2026-10-02 owns the mechanism; this entry owns what it means for MAGNA53.
+
+**What changed for MAGNA53 trades (toggle OFF — every trade today, KOD and VICR included):**
+- the review-round hunks are reverted; what remains is parts A (six fixes to today's close-below exit) and B (the
+  depth flow, inert while no row is stamped), plus one cited sync hunk;
+- **ruling (1)**: a loss on a partial sale counts toward the 2% daily loss limit at once (`safeguards.md` item 5);
+- **ruling (2)**: no "Position unprotected" page when our own planned sale cancels the stop, and no "No stop on X"
+  page for a position held only by its +8R OCO third — a genuinely uncovered position still pages;
+- **ruling (3)**: when a planned sale's cancelled stop cannot be put back because the price is already through it,
+  the shares are sold at market, as the triggered stop would have;
+- **ruling (4)** (depth path): a stale "sell at the next open" mark is cleared, paged, and the next close decides;
+- a plain resting profit-take limit (no stop) beside a close-below sale keeps main's skip (un-ruled).
+
+**Evidence**: `tests/test_687_toggle_off_convergence.py` — the toggle-OFF path matches the pre-#687 code (pinned
+90d02459) on 28 scenarios except a named allow-list (fixes (a)–(f), the sync hunk, rulings (1)–(3)).
+
+**Before any flip** (follow-ups from the cut-back, depth path): a partly-filled opening-auction sale's sold part is
+not recorded by the stream's cancel path; a depth trade held only by its OCO third is marked "sell at the next open"
+every evening. Open for him: the four items in `exit_discipline.md` 2026-10-02.
+
+**Reversion-flag**: REFINEMENT of the 2026-10-01 entry below. **Status**: built on branch `687-depth-rule`, NOT
+merged or deployed; `magna53_depth_exit` OFF in both modes; paper rehearsal pending.
+
 ### 2026-10-01 — #687: the DEPTH exit rule for NEW MAGNA53 trades — BUILT, toggle `magna53_depth_exit` OFF (no live change until he flips it)
 
 **Trigger**: his ruling 2026-09-29 (PLAN.md #687 — *"Aligned"*; *"Ok, let's keep this and monitor how it goes"*),

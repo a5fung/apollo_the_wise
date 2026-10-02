@@ -356,6 +356,28 @@ his answer to all four: *"Yes"*. Then ONE cut-back round (scope audit; every rev
 depth pieces and fixes (a)–(f) reverted; the rulings built; a convergence test that the toggle-OFF path matches
 main except the named fixes). Each ruling is its own commit with its tests.
 
+**The cut-back (commits 66c1dcfa, 61a6c479, f8d5069e).** Every code and test file the three review rounds touched
+was reset to part B byte-for-byte; what stays: fixes (a)–(f), the five depth pieces, two test-only pins, and ONE
+review hunk re-added with its citation — the position sync never lowers the books below (broker + the shares our
+own pending exits reserve) while a closing order is queued (61a6c479: a loss CREATED by (a)+(b) on paper, whose
+after-hours queued sell soft-reserves the shares — the sync wrote 3, the 7 filled, 3 − 7 closed a row the broker
+still held). Reverted, each with where it goes now:
+- strict broker reads / "flat or unreadable → place nothing" in the restore → **his call** (open item (i) below);
+- the failed-exit restore's price floor (`_restore_stop_after_failed_exit` is not floored like the stream's
+  restore) → follow-up (touches the signed raise-only rule);
+- the watchdog re-checking a position whose queued sale died at the open → follow-up (main's 24-hour
+  `stop_ack_broker_covered` dedup is unchanged; a sale that dies at the open AND whose stream restore fails is not
+  re-protected by the watchdog that day);
+- a partly-filled opening-auction sale's sold part is not recorded by the stream's cancel path → follow-up,
+  **before any flip** (depth path; the sync heals the count later);
+- a depth trade held only by its OCO third is marked "sell at the next open" every evening and skipped at 19:01
+  → follow-up, **before any flip** (depth path messaging);
+- a repeat full-exit skip on a later day is audit-only (pages once per trade per kind for life) → follow-up;
+- a plain resting profit-take limit cancelled and sold with the rest (review fix 9) → **his call** (open item (ii));
+  until then it keeps main's skip (f8d5069e);
+- sync orphan-repair cap, the stream restore under the trade lock, the watchdog coverage split → dropped (they
+  guarded races the reverted hunks created).
+
 **Ruling (2) — the two false "unprotected" pages are silenced (messaging only; nothing placed, cancelled or
 sold differently):**
 - **(i) On every planned sale.** `execute_full_exit` (16:45) and `execute_depth_open_sale` (19:01) write a
@@ -402,6 +424,30 @@ the line and never acts on it on a close back above it. Tests: `tests/test_687_r
 
 **Ruling (1)** (a loss on a partial sale counts toward the 2% daily loss limit at once) is a safeguard change —
 owned by `docs/setups/safeguards.md` item 5 + its 2026-10-02 entry.
+
+**Evidence — the convergence test** (`tests/test_687_toggle_off_convergence.py`, harness
+`tests/_convergence_687_harness.py`): 28 fixed toggle-OFF scenarios run through the pinned pre-#687 code
+(90d02459, a temporary git worktree — `scripts/probes/_687/capture_toggle_off_baseline.sh`) and through this
+branch, recording every broker call, every Telegram page, the return value and the book's end state. 10 of 26
+two-tree scenarios are identical (incl. the 16:45 job on an unstamped trade, a stop raise, the sync without a
+queued sale, a fill of the whole sale, a hand-cancelled stop, the watchdog on a fresh entry, a genuine 17:00 gap).
+Every other difference is allow-listed with its reason and its exact expected value: (a) ×3, (b), (c) ×4, (d),
+(e), (f), the sync hunk, ruling (1), (2)(i), (2)(ii) ×2, (3) ×2; the two depth scenarios are inert. A stray broker
+call in `execute_full_exit` reddens 6 scenarios.
+
+**Open for him (NOT decided here — main's behaviour kept):**
+- (i) the failed-exit stop restore when the broker reads flat or unreadable: today it restores from the books
+  (`remaining − pending exits`, #687 c) — restore from the books vs place nothing;
+- (ii) a plain resting profit-take LIMIT (no stop) beside a close-below sale: main's skip kept — skip vs cancel it
+  and sell everything;
+- (iii) ruling (3) at the other stop-placing sites (listed under ruling (3)) — extend vs keep "page, no auto-exit";
+- (iv) ruling (1): a partial loss counted on its own day is counted again inside `total_pnl` on the trade's close
+  day — keep vs net it out.
+
+**Anticipated effect**: toggle-OFF trades behave as main except the listed exceptions; the depth flow stays OFF
+(no row stamped). **Reversion-flag**: REFINEMENT of the two 2026-10-01 entries below (parts A and B) plus his
+four rulings. **Status**: built + unit-tested on branch `687-depth-rule`, NOT merged or deployed; toggle
+`magna53_depth_exit` OFF in both modes.
 
 ### 2026-10-01 — #687 part B: the DEPTH exit rule for NEW MAGNA53 trades — BUILT behind `magna53_depth_exit`, toggle OFF (no live behaviour changes until he flips it)
 
