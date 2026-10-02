@@ -15,7 +15,7 @@ This is **not** a per-setup quality gate (those live in setup-specific SSoTs lik
 2. **`manual_trading_halt`** (`BLOCK_TRADING_PAUSED`) — operator's one-command runtime kill switch (#345, 2026-06-19). `/pause` sets `mi_safeguard_state(safeguard='manual_trading_halt', account_mode='live')='on'`; read **per-entry** in `_check_safeguards` (LIVE path only) so it takes effect on the NEXT entry with **NO redeploy**; `/resume` lifts. FAIL-SAFE: an unreadable flag blocks the live path under a DISTINCT `INFRA_HALT_STATE_UNREADABLE` reason (never mislabels as operator-paused). On pause it also **cancels resting unfilled real-money entry brackets** (`cancel_unfilled_entries(account_mode='live')` via the execution facade — the proven 10:00/EOD cancel path; the 10:00 ET cleanup backstops a failed cancel) so a mid-morning `/pause` stops fills-in-flight, not just new orders. Open POSITIONS are untouched — they keep their resting broker stops (not a flatten). Paper/shadow unaffected. HARD gate: required live + verified before `live_real_enabled=TRUE`.
 3. **`max_concurrent_positions`** (`BLOCK_MAX_POSITIONS`) — count of open `mi_live_trades` rows in `db.OPEN_POSITION_STATUSES` = `('filled','order_placed','confirmed')` ≥ `MAX_CONCURRENT_LIVE_POSITIONS` (5). Bounds total simultaneous exposure. **`pending_confirmation` is EXCLUDED (#436 fork B, 2026-07-11):** a staged-paper proposal is inert (no broker order, no confirm path since #364) so it is not a position and must not consume a slot; a real auto-entry flips `pending_confirmation → confirmed` in-process so it is counted the instant it is real. The vocabulary is the single constant `db.OPEN_POSITION_STATUSES`, reused by `get_open_position_count`, `live_tracker.count_open_positions` (the shared cap-count SQL: `_check_safeguards` per-mode + per-strategy AND the #461 insert-time recheck), and `coverage_drift` so "open" can never drift between the cap and the drift detector. **Enforced transactionally (#461, 2026-07-18):** the `_check_safeguards` read is the cheap early gate; the AUTHORITATIVE check is an atomic recount + INSERT (+ auto-enter confirm flip) in one transaction under a per-`account_mode` `pg_advisory_xact_lock` at the entry pipeline's insert step, so concurrent candidates can never both pass on a stale count (see change log 2026-07-18 — cap VALUE unchanged).
 4. **PDT guards** — ⚠️ **RETIRED 2026-06-04 (#181).** FINRA Rule 4210 + Alpaca's new intraday-margin framework eliminated the PDT designation and the $25K floor; the `BLOCK_PDT_LOCKOUT_ACTIVE` / `BLOCK_PDT_LOCKOUT_IMMINENT` guards were removed from `_check_safeguards`. Overextension is now Alpaca's broker-side intraday-margin pre-trade check (margin-deficit orders rejected) — no Apollo-side day-trade gate replaces it. See change log 2026-06-04. *(Was: at equity < $25K, block if `pattern_day_trader=True` or `daytrade_count ≥ 3`.)*
-5. **`daily_loss_limit`** (`BLOCK_DAILY_LOSS`) — sum of `total_pnl` of trades **CLOSED today** (ET, by `closed_at` — **NOT** `alert_date`; FL-2 coverage fix 2026-07-24) that realized a loss, ≤ `-equity * DAILY_LOSS_LIMIT_PCT` (-2%). Catastrophic intraday backstop on today's **realized** losses, including **multi-day positions that stop out today** (Day 2-5 SMA-trail / partial / time-stop closes). Magnitude-based, not count-based.
+5. **`daily_loss_limit`** (`BLOCK_DAILY_LOSS`) — sum of `total_pnl` of trades **CLOSED today** (ET, by `closed_at` — **NOT** `alert_date`; FL-2 coverage fix 2026-07-24) that realized a loss, ≤ `-equity * DAILY_LOSS_LIMIT_PCT` (-2%). Catastrophic intraday backstop on today's **realized** losses, including **multi-day positions that stop out today** (Day 2-5 SMA-trail / partial / time-stop closes). Magnitude-based, not count-based. **PLUS, since #687 ruling (1) (operator 2026-10-01): every losing PARTIAL-sale leg dated today (ET) on a trade still OPEN** (`exits[].pnl < 0`, `live_tracker._partial_losses_realized_on`) — a sale that sells part of a position at a loss counts AT ONCE, not when the remainder later exits. Profit legs never offset it. See change log 2026-10-02.
 6. **`circuit_breaker`** (`BLOCK_CIRCUIT_BREAKER`) — last `CIRCUIT_BREAKER_CONSEC_LOSSES` (=10) closed trades all losses, cooldown until `latest_loss_at + CIRCUIT_BREAKER_COOLDOWN_DAYS` (=1d). **KEPT — operator-ruled 2026-07-31 ("we should keep the circuit breaker"). NO LONGER DEPRECATED; the removal pre-committed below is CANCELLED.** Threshold bumped 5→10 on 2026-05-08. ⚠ Two structural properties are ACCEPTED, not fixed (constants.py:319): it is **self-perpetuating** — a loss closing DURING cooldown advances `latest_loss_at` and re-arms for another 24h — and **methodology-blind**, since a closed-trade streak over-weights losers when the methodology holds winners to a trailing stop. Both were observed live on 2026-07-31: FTNT closed −$6.63 at 09:37:50 on 07-30, which alone re-armed the cooldown to 09:37:50 on 07-31 and blocked FLNC/COHU/NWL/FET (all alerted 09:31:00) plus MPWR (09:35:42) — six live alerts, zero entries. See change log 2026-07-31.
 7. **`drawdown_breaker`** (`BLOCK_DRAWDOWN_BREAKER`) — ACTIVE as of 2026-06-03. **EFFECTIVENESS REVIEWED 2026-07-30 — VERDICT: UNPROVEN ON LIVE MONEY (review stays OPEN).** ⚠ My first pass concluded 'net-helped' off the PAPER account and the operator corrected it: *"why looking at paper? we've switched to real money a month ago."* The review's own predicate names paper because it was written PRE-CUTOVER. **On LIVE the breaker has NEVER acted**: state WATCH, peak $5,000 (07-03), drawdown −4.36%, 28 snapshots, evaluated 07-29 — and WATCH is multiplier 1.0×, a warning that sizes nothing down. REDUCE needs −7%, BLOCK −12%; neither has fired live, and zero entries carry `block:drawdown_breaker` lifetime. **So: tracking correctly, protecting nothing yet.** The first real test is a live drawdown reaching −7%. One REDUCE trip in the whole active phase (2026-06-05 → 07-06, 31 days); BLOCK has never fired and zero entries carry `block:drawdown_breaker` lifetime. PRE-CUTOVER PAPER CONTEXT ONLY (not the verdict): one REDUCE trip 06-05→07-06 (31d) where enforcement was real — REDUCE-window n=6 avg risk $297 / notional $7,311 vs $917 / $18,504 outside, ~1/3 of normal (the 0.5× compounding with regime sizing). ⚠ But that paper 'saving' rests on ONE trade: SYRE is −$1,483 of the −$2,493 total (60%), the other five average ~−$200, and the comparison group outside the window is a SINGLE trade. Directional at best. Persisted state machine; when `mi_safeguard_state.state='TRIPPED'`, blocks. See "Drawdown breaker — Mechanics" below.
 
@@ -468,6 +468,37 @@ overridden again. Pre-commitment is preserved by making overrides visible,
 not impossible.
 
 ## Change log (newest first)
+
+### 2026-10-02 — `daily_loss_limit`: a loss on a PARTIAL sale counts AT ONCE (#687 ruling (1), operator-signed 2026-10-01)
+
+**Trigger**: the #687 build (`docs/setups/exit_discipline.md` 2026-10-01, parts A and B). Part A's fix (a) sells
+the two thirds behind the trailing stop BESIDE a resting +8R profit-take third and fix (b) keeps the trade OPEN at
+the third's size — so a close-below sale at a loss on such a trade never reached this gate, which summed CLOSED
+trades only; the loss counted only when the third later exited, possibly days later. Put to him as one of four
+decisions; his answer to all four: *"Yes"* (PLAN.md #687, 2026-10-01).
+
+**Evidence**: rule ruled by the operator, not a threshold tune. Code reading: the gate's query is `status =
+'closed'` only (`live_tracker._check_safeguards`); the circuit breaker already reads realized partial legs on
+open trades from the same `exits` array (2026-08-05), so the data is the banked cash it uses. No backtest: no
+threshold moved (still 2%), and no live trade has yet had a losing partial leg on an open row (the +8R partial
+is a profit by construction; the losing case needs #687 a's sale at a loss or a partly-filled stop).
+
+**Change**: `_check_safeguards` adds, to the unchanged closed-trade sum, every `exits[]` leg with `pnl < 0`
+whose `time` falls on today (ET) on a trade whose status is not `closed`, same account mode. Per LEG (a profit
+leg never offsets it). The closed-trade query is byte-identical (pinned by `test_daily_loss_close_day.py`).
+
+**Anticipated effect**: the gate trips the same day a partial sale realizes the loss that crosses −2%, instead
+of on the day the remainder exits. Today: no change on any day without a losing partial leg on an open trade.
+
+**Open (his call, NOT decided here)**: a partial loss counted on its own day is counted AGAIN inside that
+trade's `total_pnl` on the day it finally closes (the closed-trade arm sums the whole trade). Left as the
+closed arm always worked; listed for him.
+
+**Reversion-flag**: REFINEMENT of the 2026-07-24 FL-2 coverage fix (same gate, same threshold; one more
+population of realized losses counted on the day it is realized).
+
+**Status**: built + unit-tested on branch `687-depth-rule`, not deployed. Tests:
+`tests/test_687_partial_loss_counts_today.py` (11; mutation — the arm zeroed — reddens 2).
 
 ### 2026-09-07 — Per-strategy sizing knob (`position_size_multiplier`) wired for the FIRST time (#628, BUG FIX — no size change)
 

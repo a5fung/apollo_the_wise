@@ -23,6 +23,7 @@ import asyncio
 import json
 import logging
 from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
 # #490: MAGNA53's OWN gap criterion, imported here so the opt-in at the call site names the
@@ -116,6 +117,51 @@ async def count_open_positions(
         SELECT COUNT(*) FROM mi_live_trades
         WHERE status = ANY($3) AND account_mode = $1 AND signal_type = $2
     """, account_mode, signal_type, list(OPEN_POSITION_STATUSES))
+
+
+_ET_ZONE = ZoneInfo("America/New_York")
+
+
+def _exit_leg_et_date(raw_time) -> "date | None":
+    """The ET calendar date of one `exits[]` leg's `time`. Aware stamps (every broker-fill
+    writer: `datetime.now(timezone.utc).isoformat()`) convert to ET; a NAIVE stamp is already
+    ET wall-clock (`exit_logic` writes `datetime.combine(today, 16:00)`). None when unreadable."""
+    try:
+        ts = datetime.fromisoformat(str(raw_time))
+    except (TypeError, ValueError):
+        return None
+    if ts.tzinfo is None:
+        return ts.date()
+    return ts.astimezone(_ET_ZONE).date()
+
+
+def _partial_losses_realized_on(exit_rows, today: date) -> float:
+    """⚖ #687 ruling (1), operator 2026-10-01: the realized LOSSES of partial sales on trades
+    still OPEN, dated `today` (ET). Returns a sum <= 0. PURE.
+
+    `exit_rows` are `mi_live_trades` rows carrying `exits` (a JSONB list, or its JSON text
+    when no codec decoded it). Each LEG counts on its own: a leg whose `pnl` is below zero
+    and whose `time` falls on `today` (ET). Profit legs never offset a loss leg here — the
+    ruling is that a loss on a partial sale counts at once. Legs without both `pnl` and
+    `time` are skipped (the circuit breaker's partial arm reads the same two keys)."""
+    total = 0.0
+    for row in exit_rows or []:
+        exits = row["exits"] if not isinstance(row, (list, tuple)) else row
+        if isinstance(exits, str):
+            try:
+                exits = json.loads(exits)
+            except ValueError:
+                continue
+        for leg in exits or []:
+            if not isinstance(leg, dict) or leg.get("pnl") is None or not leg.get("time"):
+                continue
+            try:
+                pnl = float(leg["pnl"])
+            except (TypeError, ValueError):
+                continue
+            if pnl < 0 and _exit_leg_et_date(leg["time"]) == today:
+                total += pnl
+    return total
 
 
 async def _check_safeguards(
@@ -245,6 +291,20 @@ async def _check_safeguards(
               AND status = 'closed' AND total_pnl < 0
               AND account_mode = $2
         """, today, account_mode)
+        # ⚖ #687 RULING (1), operator 2026-10-01 ("Yes"): a loss on a PARTIAL sale counts toward
+        # this limit AT ONCE — not only when the trade later closes. The query above sees CLOSED
+        # trades only, so a sale that sells part of a position at a loss and leaves the rest open
+        # (the close-below sale beside a resting +8R profit-take third; a stop that partly filled)
+        # was invisible here until the remainder exited, possibly days later. Each such losing
+        # leg dated today (ET) on a still-OPEN trade is added. Closed trades are unchanged above.
+        # SSoT: docs/setups/safeguards.md item 5 + change log 2026-10-02.
+        open_trade_exits = await conn.fetch("""
+            SELECT exits FROM mi_live_trades
+            WHERE status <> 'closed' AND account_mode = $1
+              AND exits IS NOT NULL
+        """, account_mode)
+        today_losses = float(today_losses or 0) + _partial_losses_realized_on(
+            open_trade_exits, today)
         daily_limit = equity * DAILY_LOSS_LIMIT_PCT
         if abs(today_losses) >= daily_limit:
             logger.info(
