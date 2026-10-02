@@ -1,7 +1,7 @@
 [
  {
   "id": 121,
-  "status": "in_progress"
+  "status": "deployed"
  },
  {
   "id": 210,
@@ -186,5 +186,17 @@
  {
   "id": 690,
   "status": "deployed"
+ },
+ {
+  "id": 691,
+  "status": "pending"
+ },
+ {
+  "id": 692,
+  "status": "pending"
+ },
+ {
+  "id": 693,
+  "status": "pending"
  }
 ]
