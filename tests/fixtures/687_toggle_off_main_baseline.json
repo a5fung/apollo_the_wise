@@ -1,0 +1,1638 @@
+{
+ "baseline_sha": "90d0245980dcd49a58a53237c154c61cf74ee76e",
+ "captured_by": "scripts/probes/_687/capture_toggle_off_baseline.sh",
+ "harness_sha256": "0d8880714be73a367dca7baf03c3ae0116c05971b1d4e1786cd472126ecb7629",
+ "scenarios": {
+  "s01_1645_exit_no_resting": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-1",
+      "purpose": "full_exit",
+      "qty": 10,
+      "status": "accepted"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "order_id": "stop-1"
+     },
+     "method": "cancel_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "ticker": "KOD"
+     },
+     "method": "get_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "qty": null,
+      "ticker": "KOD"
+     },
+     "method": "close_position"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ 📋 *Closing order placed:* KOD — sma_trail_stop\nMarket sell 10 sh — pending fill (Order sell-1)\n_Confirms with real P&L on fill._"
+   ],
+   "raised": null,
+   "result": true
+  },
+  "s02_1645_exit_sale_rejected_restored": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "order_id": "stop-1"
+     },
+     "method": "cancel_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "ticker": "KOD"
+     },
+     "method": "get_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "qty": null,
+      "ticker": "KOD"
+     },
+     "method": "close_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": null,
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 58,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ ⚠️ Full exit FAILED for KOD: insufficient qty available: available 0, held_for_orders 10\nStop RESTORED at $58.00 — position is protected."
+   ],
+   "raised": null,
+   "result": false
+  },
+  "s03_1645_exit_restore_through_the_price": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "order_id": "stop-1"
+     },
+     "method": "cancel_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "ticker": "KOD"
+     },
+     "method": "get_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "qty": null,
+      "ticker": "KOD"
+     },
+     "method": "close_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": null,
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 58,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ ⚠️ Full exit FAILED for KOD: insufficient qty available: available 0, held_for_orders 10\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required."
+   ],
+   "raised": null,
+   "result": false
+  },
+  "s04_1645_exit_beside_resting_oco_third": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": null,
+      "id": "oco-1",
+      "purpose": "partial_exit",
+      "qty": 2,
+      "status": "new"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": true,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 6,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": true,
+      "remaining_shares": 6,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 60,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [],
+   "pages": [],
+   "raised": null,
+   "result": false
+  },
+  "s05_1645_exit_closing_order_already_queued": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-q",
+      "purpose": "full_exit",
+      "qty": 10,
+      "status": "accepted"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [],
+   "pages": [],
+   "raised": null,
+   "result": false
+  },
+  "s06_update_stop_raise": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "stop_hit",
+      "id": "stop-1",
+      "purpose": "stop_loss",
+      "qty": 10,
+      "status": "new"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 61.5,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "order_id": "stop-1",
+      "timeout": null
+     },
+     "method": "get_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "order_id": "stop-1"
+     },
+     "method": "cancel_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": "apollo_live_magna53_KOD_1",
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 61.5,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    }
+   ],
+   "pages": [],
+   "raised": null,
+   "result": true
+  },
+  "s07_update_stop_row_held_only_by_oco_third": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": null,
+      "id": "oco-1",
+      "purpose": "partial_exit",
+      "qty": 2,
+      "status": "new"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": true,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 2,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": true,
+      "remaining_shares": 2,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 60,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [],
+   "pages": [],
+   "raised": null,
+   "result": false
+  },
+  "s08_sync_broker_lower_no_queued_sale": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "401": {
+      "account_mode": "paper",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 8,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "paper",
+      "raise_on_error": false
+     },
+     "method": "get_all_positions"
+    },
+    {
+     "args": {
+      "account_mode": "paper",
+      "order_id": "stop-1",
+      "timeout": null
+     },
+     "method": "get_order"
+    },
+    {
+     "args": {
+      "account_mode": "paper",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    }
+   ],
+   "pages": [
+    "📄 PAPER ⚠️ *Position Sync Discrepancies (paper):*\n  • Qty mismatch KOD: DB=10 Alpaca=8"
+   ],
+   "raised": null,
+   "result": [
+    "Qty mismatch KOD: DB=10 Alpaca=8"
+   ]
+  },
+  "s09_sync_under_a_queued_sale_paper_soft_reservation": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": null,
+      "id": "oco-1",
+      "purpose": "partial_exit",
+      "qty": 3,
+      "status": "new"
+     },
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-q",
+      "purpose": "full_exit",
+      "qty": 7,
+      "status": "accepted"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "paper",
+      "alert_date": "2026-09-28",
+      "breakeven_active": true,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": true,
+      "remaining_shares": 3,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "paper",
+      "raise_on_error": false
+     },
+     "method": "get_all_positions"
+    },
+    {
+     "args": {
+      "account_mode": "paper",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    }
+   ],
+   "pages": [
+    "📄 PAPER ⚠️ *Position Sync Discrepancies (paper):*\n  • Qty mismatch KOD: DB=10 Alpaca=3"
+   ],
+   "raised": null,
+   "result": [
+    "Qty mismatch KOD: DB=10 Alpaca=3"
+   ]
+  },
+  "s10_stream_fill_of_the_whole_sale": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-q",
+      "purpose": "full_exit",
+      "qty": 10,
+      "status": "filled"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": "NOW",
+      "closed_on": "2026-10-06",
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [
+       {
+        "order_id": "sell-q",
+        "pnl": -30,
+        "price": 57,
+        "reason": "sma_trail_stop",
+        "shares": 10
+       }
+      ],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": [
+       "expr",
+       "0"
+      ],
+      "signal_type": "magna53",
+      "status": "closed",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": -30
+     }
+    }
+   },
+   "broker_calls": [],
+   "pages": [
+    "💰 LIVE-$ ❌ *Closed:* KOD — sma_trail_stop\nExit @$57.00 × 10 shares\nTotal P&L: $-30.00"
+   ],
+   "raised": null,
+   "result": null
+  },
+  "s11_stream_fill_beside_resting_oco_third": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": null,
+      "id": "oco-1",
+      "purpose": "partial_exit",
+      "qty": 2,
+      "status": "new"
+     },
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-q",
+      "purpose": "full_exit",
+      "qty": 4,
+      "status": "filled"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": true,
+      "closed_at": "NOW",
+      "closed_on": "2026-10-06",
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 6,
+      "exit_rule": null,
+      "exits": [
+       {
+        "order_id": "p-1",
+        "pnl": 60,
+        "price": 80,
+        "reason": "partial_profit",
+        "shares": 3
+       },
+       {
+        "order_id": "sell-q",
+        "pnl": 24,
+        "price": 66,
+        "reason": "sma_trail_stop",
+        "shares": 4
+       }
+      ],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": true,
+      "remaining_shares": [
+       "expr",
+       "0"
+      ],
+      "signal_type": "magna53",
+      "status": "closed",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": 84
+     }
+    }
+   },
+   "broker_calls": [],
+   "pages": [
+    "💰 LIVE-$ ✅ *Closed:* KOD — sma_trail_stop\nExit @$66.00 × 4 shares\nTotal P&L: $+84.00"
+   ],
+   "raised": null,
+   "result": null
+  },
+  "s12_stream_stop_cancelled_by_the_planned_sale": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-1",
+      "purpose": "full_exit",
+      "qty": 10,
+      "status": "accepted"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "order_id": "stop-1"
+     },
+     "method": "cancel_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "ticker": "KOD"
+     },
+     "method": "get_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "qty": null,
+      "ticker": "KOD"
+     },
+     "method": "close_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": null
+     },
+     "method": "get_open_orders"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": null
+     },
+     "method": "get_open_orders"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ 📋 *Closing order placed:* KOD — sma_trail_stop\nMarket sell 10 sh — pending fill (Order sell-1)\n_Confirms with real P&L on fill._",
+    "💰 LIVE-$ ⚠️ *Stop order CANCELLED:* KOD\nPosition unprotected (10 sh). 🚨 NO scheduled repair until tomorrow 9:31 AM ET — this will NOT fix itself tonight."
+   ],
+   "raised": null,
+   "result": true
+  },
+  "s13_stream_stop_cancelled_by_hand": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": null
+     },
+     "method": "get_open_orders"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": null
+     },
+     "method": "get_open_orders"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ ⚠️ *Stop order CANCELLED:* KOD\nPosition unprotected (10 sh). 🚨 NO scheduled repair until tomorrow 9:31 AM ET — this will NOT fix itself tonight."
+   ],
+   "raised": null,
+   "result": null
+  },
+  "s14_stream_queued_sale_cancelled_stop_restored": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-q",
+      "purpose": "full_exit",
+      "qty": 10,
+      "status": "cancelled"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": null,
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 58,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\nPosition still open (10 sh). Stop re-placed @$58.00."
+   ],
+   "raised": null,
+   "result": null
+  },
+  "s15_stream_queued_sale_expired_restore_through_the_price": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-q",
+      "purpose": "full_exit",
+      "qty": 10,
+      "status": "expired"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": null,
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 58,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ 🚨 *CLOSE EXPIRED + STOP RESTORE FAILED* for KOD!\n{\"code\":42210000,\"message\":\"stop price must be less than current price\"}\n*Position may be unprotected — manual intervention required.*"
+   ],
+   "raised": null,
+   "result": null
+  },
+  "s16_watchdog_fresh_entry_without_a_stop": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": null,
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 57.5,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ 🛡 *STOP-ACK TIMEOUT — REMEDIATED:* KOD\nTrade #401 filled at 13:31:05 ET, stop_order_id never populated.\nFallback stop placed at $57.50. Original OTO child stop-leg likely failed silently on Alpaca side."
+   ],
+   "raised": null,
+   "result": null
+  },
+  "s17_watchdog_while_an_exit_holds_the_trade_lock": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": null,
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 57.5,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ 🛡 *STOP-ACK TIMEOUT — REMEDIATED:* KOD\nTrade #401 filled at 13:31:05 ET, stop_order_id never populated.\nFallback stop placed at $57.50. Original OTO child stop-leg likely failed silently on Alpaca side."
+   ],
+   "raised": null,
+   "result": null
+  },
+  "s18_coverage_1700_slot_after_a_queued_sale": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-q",
+      "purpose": "full_exit",
+      "qty": 10,
+      "status": "accepted"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    }
+   ],
+   "pages": [
+    "🚨 *UNPROTECTED AFTER THE CLOSE*\n• KOD: holds 10 sh, live stop covers 0 sh\n\nExtended hours are still trading, and the automatic repair above did not hold.\n`/syncnow live` re-runs the same repair now."
+   ],
+   "raised": null,
+   "result": null
+  },
+  "s19_coverage_1700_slot_genuine_gap_repair_fails": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": "apollo_live_magna53_KOD_1",
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 58,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    }
+   ],
+   "pages": [
+    "🚨 *UNPROTECTED AFTER THE CLOSE*\n• KOD: holds 10 sh, live stop covers 0 sh\n\nExtended hours are still trading, and the automatic repair above did not hold.\n`/syncnow live` re-runs the same repair now."
+   ],
+   "raised": null,
+   "result": null
+  },
+  "s20_refresh_row_held_only_by_oco_third": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": null,
+      "id": "oco-1",
+      "purpose": "partial_exit",
+      "qty": 2,
+      "status": "new"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": true,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 2,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": true,
+      "remaining_shares": 2,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 60,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [],
+   "pages": [
+    "🚨 *No stop on KOD* — the Post-close stop refresh could not place one. The position is unprotected for the next session."
+   ],
+   "raised": null,
+   "result": 0
+  },
+  "s21_refresh_genuinely_uncovered": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": null,
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": "apollo_live_magna53_KOD_1",
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 58,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": "apollo_live_magna53_KOD_2",
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 58,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ 🚨 *STOP FAILED — position NAKED:* KOD\nBoth attempts to place @ $58.00 failed (Exception).\n10 sh unprotected — remediation runs at 4:05 PM ET.",
+    "🚨 *No stop on KOD* — the Post-close stop refresh could not place one. The position is unprotected for the next session."
+   ],
+   "raised": null,
+   "result": 0
+  },
+  "s22_safeguards_partial_sale_loss_today": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "402": {
+      "account_mode": "paper",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-402",
+      "entry_price": 60,
+      "entry_shares": 2,
+      "exit_rule": null,
+      "exits": [
+       {
+        "order_id": "s-9",
+        "pnl": -60,
+        "price": 55,
+        "reason": "sma_trail_stop",
+        "shares": 4
+       }
+      ],
+      "hard_stop": 55,
+      "id": 402,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 2,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "VICR",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "paper"
+     },
+     "method": "get_account"
+    }
+   ],
+   "pages": [],
+   "raised": null,
+   "result": [
+    true,
+    null,
+    1
+   ]
+  },
+  "s23_sdk_close_position_with_qty": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {}
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "close_options": {
+       "qty": "2"
+      },
+      "symbol_or_asset_id": "KOD"
+     },
+     "method": "TradingClient.close_position"
+    }
+   ],
+   "pages": [],
+   "raised": "AttributeError: 'dict' object has no attribute 'to_request_fields'",
+   "result": null
+  },
+  "s24_depth_1901_runner_with_no_marked_rows": {
+   "absent": "module 'agents.market_intelligence.broker.order_manager' has no attribute 'run_depth_open_sales'"
+  },
+  "s25_depth_stamp_with_the_toggle_off": {
+   "absent": "module 'agents.market_intelligence.broker.order_manager' has no attribute 'resolve_exit_rule_stamp'"
+  },
+  "s26_1645_job_unstamped_trade_closes_below_the_line": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "sma_trail_stop",
+      "id": "sell-1",
+      "purpose": "full_exit",
+      "qty": 10,
+      "status": "accepted"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-24",
+      "breakeven_active": true,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "hold_days": 12,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": true,
+      "remaining_shares": 10,
+      "running_closes": [
+       70,
+       70,
+       70,
+       70,
+       70,
+       70,
+       70,
+       70,
+       65
+      ],
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "order_id": "stop-1"
+     },
+     "method": "cancel_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "ticker": "KOD"
+     },
+     "method": "get_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "qty": null,
+      "ticker": "KOD"
+     },
+     "method": "close_position"
+    }
+   ],
+   "pages": [
+    "💰 LIVE-$ 📋 *Closing order placed:* KOD — sma_trail_stop\nMarket sell 10 sh — pending fill (Order sell-1)\n_Confirms with real P&L on fill._"
+   ],
+   "raised": null,
+   "result": [
+    {
+     "action": "sma_stopped",
+     "hold_days": 12,
+     "ticker": "KOD"
+    }
+   ]
+  },
+  "s27_1645_job_unstamped_trade_trail_raise": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": "stop_hit",
+      "id": "stop-1",
+      "purpose": "stop_loss",
+      "qty": 10,
+      "status": "new"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-24",
+      "breakeven_active": [
+       "expr",
+       "(breakeven_active OR $3)"
+      ],
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "hold_days": 12,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": true,
+      "remaining_shares": 10,
+      "running_closes": [
+       70,
+       70,
+       70,
+       70,
+       70,
+       70,
+       70,
+       70,
+       75
+      ],
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 70.5,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "order_id": "stop-1",
+      "timeout": null
+     },
+     "method": "get_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "order_id": "stop-1"
+     },
+     "method": "cancel_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": "apollo_live_magna53_KOD_1",
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 70.5,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    }
+   ],
+   "pages": [],
+   "raised": null,
+   "result": [
+    {
+     "action": "updated",
+     "effective_stop": 70.5,
+     "hold_days": 12,
+     "ticker": "KOD"
+    }
+   ]
+  }
+ }
+}
