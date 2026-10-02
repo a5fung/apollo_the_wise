@@ -580,3 +580,110 @@ async def test_the_watchdog_still_remediates_a_genuinely_naked_unlocked_trade(mo
 
     h["place"].assert_awaited_once()
     assert h["place"].await_args.args[2] == 150.0
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════
+# #687 cut-back — the ONE review-round item kept: the position sync never lowers the books under
+# a queued sale (commit d2bc8c93). A loss CREATED by (a)+(b) on paper: the soft-reserved queued
+# sale lowered the books to the OCO third's count, and the morning fill then closed the row
+# (prior − sold → 0) while the third was still held.
+# ══════════════════════════════════════════════════════════════════════════════════════════
+
+def _sync_world(monkeypatch, *, db_trades, positions, reservation=(0, False),
+                reservation_raises=None):
+    """`_sync_positions_for_mode` with a fake pool that records every UPDATE, no broker stop to
+    adopt, the coverage invariant stubbed (its own tests cover it), and `_pending_exit_reservation`
+    set per test."""
+    import json as _json
+
+    from tests.conftest import make_mock_pool
+
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[dict(t) for t in db_trades])
+    conn.execute = AsyncMock(return_value="UPDATE 1")
+    audit: list = []
+
+    async def _audit(event, summary="", detail=None, **k):
+        audit.append((event, summary, _json.loads(detail) if detail else None))
+
+    place = AsyncMock(return_value={"id": "remediated-1"})
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(om, "log_audit_event", _audit)
+    monkeypatch.setattr(om, "send_telegram_message", AsyncMock(return_value=True))
+    monkeypatch.setattr(om, "_try_adopt_existing_stop", AsyncMock(return_value=None))
+    monkeypatch.setattr(om, "get_pending_exit_qty", AsyncMock(return_value=0))
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock(return_value=True))
+    monkeypatch.setattr(om, "_ensure_stop_coverage", AsyncMock(return_value=None))
+    monkeypatch.setattr(om, "_read_preserved_dead_stop", AsyncMock(return_value=None))
+    monkeypatch.setattr(om.alpaca, "get_all_positions", AsyncMock(return_value=positions))
+    monkeypatch.setattr(om.alpaca, "place_stop_order", place)
+    monkeypatch.setattr(om.alpaca, "get_order", AsyncMock(return_value=None))
+    monkeypatch.setattr(om, "_pending_exit_reservation",
+                        AsyncMock(return_value=reservation, side_effect=reservation_raises))
+
+    def _qty_writes():
+        return [c.args[2] for c in conn.execute.await_args_list
+                if "SET remaining_shares = $2" in c.args[0]]
+
+    return {"conn": conn, "audit": audit, "place": place, "qty_writes": _qty_writes}
+
+
+def _open_trade(remaining, **over):
+    t = {"id": 404, "ticker": "KOD", "remaining_shares": remaining, "entry_price": 63.15,
+         "status": "filled", "stop_order_id": "stop-live", "stop_price": 60.0, "orb_low": 58.0,
+         "signal_type": "magna53"}
+    t.update(over)
+    return t
+
+
+@pytest.mark.asyncio
+async def test_the_sync_does_not_lower_the_books_under_a_queued_sale(monkeypatch):
+    """THE ROOT OF THE FAKE CLOSE: 10 held; a 7-share sale is queued after hours beside the
+    3-share OCO third. Paper soft-reserves the 7 and reports 3. The sync used to write 3 onto
+    the row, so the morning fill took the books 3 − 7 → 0 and CLOSED the trade with the third
+    still held. Now the books stay at 10 (3 reported + 10 reserved by our own pending exits)."""
+    w = _sync_world(monkeypatch, db_trades=[_open_trade(10)],
+                    positions=[{"symbol": "KOD", "qty": 3.0}], reservation=(10, True))
+    await om._sync_positions_for_mode("paper")
+
+    assert w["qty_writes"]() == [], "the sync lowered the books under a queued sale"
+    assert [e for e, *_ in w["audit"] if e == "sync_qty_held_for_pending_exit"]
+
+
+@pytest.mark.asyncio
+async def test_the_sync_never_raises_the_books_while_a_sale_is_queued(monkeypatch):
+    """The bound on what the lowering branch writes: broker + reserved (13) is ABOVE the books
+    (10). The branch only ever lowers: nothing written, never 13."""
+    w = _sync_world(monkeypatch, db_trades=[_open_trade(10)],
+                    positions=[{"symbol": "KOD", "qty": 3.0}], reservation=(10, True))
+    await om._sync_positions_for_mode("paper")
+    assert 13 not in w["qty_writes"]() and w["qty_writes"]() == []
+
+
+@pytest.mark.asyncio
+async def test_the_sync_lowers_to_broker_plus_reserved_when_the_books_overstate(monkeypatch):
+    """The books (12) overstate even counting the queued sale: broker 3 + reserved 7 = 10 →
+    the row is lowered to 10, not to the soft-reserved 3."""
+    w = _sync_world(monkeypatch, db_trades=[_open_trade(12)],
+                    positions=[{"symbol": "KOD", "qty": 3.0}], reservation=(7, True))
+    await om._sync_positions_for_mode("paper")
+    assert w["qty_writes"]() == [10.0]
+
+
+@pytest.mark.asyncio
+async def test_the_sync_still_lowers_to_the_broker_with_no_sale_queued(monkeypatch):
+    """No closing order pending → today's behaviour: the broker count is written."""
+    w = _sync_world(monkeypatch, db_trades=[_open_trade(10)],
+                    positions=[{"symbol": "KOD", "qty": 6.0}], reservation=(3, False))
+    await om._sync_positions_for_mode("paper")
+    assert w["qty_writes"]() == [6.0]
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_reservation_never_lowers_the_books(monkeypatch):
+    w = _sync_world(monkeypatch, db_trades=[_open_trade(10)],
+                    positions=[{"symbol": "KOD", "qty": 3.0}],
+                    reservation_raises=Exception("db timeout"))
+    await om._sync_positions_for_mode("paper")
+    assert w["qty_writes"]() == []
+    assert [e for e, *_ in w["audit"] if e == "sync_qty_lower_deferred"]

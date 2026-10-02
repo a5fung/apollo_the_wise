@@ -7480,6 +7480,80 @@ async def check_position_coverage(*, notify: bool = True) -> dict:
             "check_failed": check_failed, "deferred": deferred}
 
 
+# ── #687 cut-back (2026-10-02): the position sync never lowers the books under a queued sale ──
+#
+# KEPT from the review rounds (commit d2bc8c93 "ROOT of the paper soft-reservation artifact") —
+# a loss CREATED by the named fixes (a)+(b): paper Alpaca soft-reserves the shares of an
+# after-hours QUEUED sell (the comment at the sync's `sync_qty_overwrite` has said so since the
+# SMCI 5/11 forensics), so until it fills at the open `get_all_positions` reports the position
+# already reduced by it. The sync copied that number onto `remaining_shares`; with (a) selling
+# the two thirds beside a resting OCO third and (b) closing on `prior − sold`: 10 held, 7 queued
+# beside a 3-share third → the sync writes 3 → the 7 fill → 3 − 7 clamps at 0 → the trade CLOSES
+# while the broker still holds the third. While a full exit is pending, the sync may lower the
+# books only to (broker qty + the shares our own pending exit orders reserve), never above what
+# the books already said. No full exit pending → the broker count, exactly as before.
+
+async def _pending_exit_reservation(trade_id: int) -> tuple[int, bool]:
+    """(shares our non-terminal partial/full exit orders hold, is a FULL exit among them?).
+
+    Same mirror + terminal-status set as `get_pending_exit_qty`; raises on a DB error (the
+    caller then does not lower — never on an unread)."""
+    pool = await get_pool()
+    async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
+        row = await conn.fetchrow("""
+            SELECT COALESCE(SUM(qty)::int, 0) AS reserved,
+                   COALESCE(BOOL_OR(purpose = 'full_exit'), FALSE) AS full_pending
+            FROM mi_live_orders
+            WHERE trade_id = $1
+              AND purpose IN ('partial_exit', 'full_exit')
+              AND status != ALL($2::text[])
+        """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES), timeout=_REPROTECT_DB_TIMEOUT)
+    if row is None:
+        return 0, False
+    return int(row["reserved"] or 0), bool(row["full_pending"])
+
+
+async def _sync_lowered_qty(trade: dict, alpaca_qty: float, db_qty: float,
+                            account_mode: str) -> "float | None":
+    """What the sync may write when the broker reports FEWER shares than the books.
+
+    No full exit pending → the broker count, as always. A full exit pending → `broker +
+    reserved`, and None (no write) when that is not below the books — this path only ever
+    LOWERS, never raises. The reservation unreadable → None: the books are not lowered this
+    sweep (the next one retries)."""
+    trade_id = int(trade["id"])
+    ticker = trade["ticker"]
+    try:
+        reserved, full_pending = await _pending_exit_reservation(trade_id)
+    except Exception as e:   # loud-ok: audited below; not lowering is the safe direction
+        logger.warning(f"sync_positions: {ticker} pending-exit read failed ({e}) — "
+                       f"books not lowered this sweep")
+        await log_audit_event(
+            "sync_qty_lower_deferred",
+            f"{ticker}: broker {alpaca_qty:.0f} < books {db_qty:.0f}, pending exits unreadable "
+            f"— books not lowered this sweep (trade_id={trade_id}, mode={account_mode})",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "db_qty": float(db_qty), "alpaca_qty": float(alpaca_qty),
+                        "error": str(e)[:300]}),
+        )
+        return None
+    if not full_pending:
+        return float(alpaca_qty)
+    target = float(alpaca_qty) + float(reserved)
+    if target >= float(db_qty) - 0.5:
+        await log_audit_event(
+            "sync_qty_held_for_pending_exit",
+            f"{ticker}: broker reports {alpaca_qty:.0f} vs books {db_qty:.0f} while a closing "
+            f"order is queued ({reserved} sh reserved by our pending exits) — books kept "
+            f"(trade_id={trade_id}, mode={account_mode})",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "db_qty": float(db_qty), "alpaca_qty": float(alpaca_qty),
+                        "reserved": reserved}),
+        )
+        return None
+    return target
+
+
 # ── #597: "position gone from Alpaca" resolution ─────────────────────────────
 # Seconds a broker-confirmed exit fill is left to the websocket finaliser
 # before sync_positions books it itself. WS commits land in seconds; the gap
@@ -7750,8 +7824,21 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
         if ticker in alpaca_map:
             alpaca_qty = alpaca_map[ticker]["qty"]
             db_qty = trade["remaining_shares"] or 0
-            if abs(alpaca_qty - db_qty) > 0.5:
+            # #687 cut-back (kept from d2bc8c93): lowering the books while a closing order is
+            # queued is bounded by the shares our own pending exits reserve (`_sync_lowered_qty`).
+            write_qty = alpaca_qty
+            if abs(alpaca_qty - db_qty) > 0.5 and alpaca_qty < db_qty:
+                write_qty = await _sync_lowered_qty(dict(trade), alpaca_qty, db_qty,
+                                                    account_mode)
+                if write_qty is None:
+                    discrepancies.append(
+                        f"Qty mismatch {ticker}: DB={db_qty:.0f} Alpaca={alpaca_qty:.0f} — "
+                        f"books kept (a closing order is queued, or its reservation is "
+                        f"unreadable)")
+            if write_qty is not None and abs(write_qty - db_qty) > 0.5:
                 msg = f"Qty mismatch {ticker}: DB={db_qty:.0f} Alpaca={alpaca_qty:.0f}"
+                if abs(write_qty - alpaca_qty) > 0.5:
+                    msg += f" — books lowered to {write_qty:.0f} (a closing order is queued)"
                 discrepancies.append(msg)
                 # Audit the overwrite (SMCI 5/11 #77 forensics: previously
                 # this just wrote silently with logger.info, leaving no
@@ -7762,20 +7849,21 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
                 # finalizes at next open.
                 await log_audit_event(
                     "sync_qty_overwrite",
-                    f"{ticker}: DB {db_qty:.0f} → Alpaca {alpaca_qty:.0f} "
+                    f"{ticker}: DB {db_qty:.0f} → {write_qty:.0f} (Alpaca {alpaca_qty:.0f}) "
                     f"(trade_id={trade['id']}, mode={account_mode})",
                     detail=json.dumps({
                         "trade_id": trade["id"],
                         "ticker": ticker,
                         "account_mode": account_mode,
                         "db_qty_before": float(db_qty),
-                        "alpaca_qty_after": float(alpaca_qty),
+                        "alpaca_qty_after": float(write_qty),
+                        "broker_qty": float(alpaca_qty),
                     }),
                 )
                 async with pool.acquire() as conn:
                     await conn.execute(
                         "UPDATE mi_live_trades SET remaining_shares = $2 WHERE id = $1",
-                        trade["id"], alpaca_qty,
+                        trade["id"], write_qty,
                     )
             del alpaca_map[ticker]
         else:
