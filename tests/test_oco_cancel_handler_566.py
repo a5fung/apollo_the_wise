@@ -29,7 +29,6 @@ Mutation checks recorded per test.
 from __future__ import annotations
 
 import json
-from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -95,9 +94,6 @@ def _wire(monkeypatch, *, pending_exit_row, trade_row=None, leg_order=None,
     monkeypatch.setattr(ts.alpaca, "cancel_order", cancel_mock)
     monkeypatch.setattr(ts.alpaca, "place_stop_order", place_stop_mock)
     monkeypatch.setattr(ts.alpaca, "get_position", get_pos_mock)
-    # #687 review: the full-exit restore reads the broker's open orders (strict — an
-    # unreadable read places nothing); none resting by default.
-    monkeypatch.setattr(ts.alpaca, "get_open_orders", AsyncMock(return_value=[]))
 
     ensure_cov_mock = AsyncMock(return_value="repaired to broker truth")
     monkeypatch.setattr(om, "_ensure_stop_coverage", ensure_cov_mock)
@@ -105,29 +101,12 @@ def _wire(monkeypatch, *, pending_exit_row, trade_row=None, leg_order=None,
     monkeypatch.setattr(om, "set_stop_order_id", set_stop_mock)
     finalize_mock = AsyncMock()
     monkeypatch.setattr(om, "finalize_partial_exit", finalize_mock)
-    # #687 round-2 review: the full-exit restore holds the per-trade lock (bounded wait) and
-    # re-reads the stop pointer under it — no pool in these tests: the lock is granted and the
-    # pointer is unchanged unless a test says otherwise.
-    lock_events: list = []
-
-    @asynccontextmanager
-    async def _lock_wait(trade_id, *a, **k):
-        lock_events.append(("acquire", trade_id))
-        try:
-            yield True
-        finally:
-            lock_events.append(("release", trade_id))
-
-    monkeypatch.setattr(om, "_trade_advisory_lock_wait", _lock_wait)
-    pointer_mock = AsyncMock(return_value=(trade_row or {}).get("stop_order_id"))
-    monkeypatch.setattr(om, "_current_stop_pointer", pointer_mock)
 
     return {
         "conn": conn, "audited": audited, "sent": sent,
         "get_order": get_order_mock, "cancel": cancel_mock,
         "place_stop": place_stop_mock, "ensure_cov": ensure_cov_mock,
         "set_stop": set_stop_mock, "finalize": finalize_mock,
-        "lock_events": lock_events, "pointer": pointer_mock,
     }
 
 

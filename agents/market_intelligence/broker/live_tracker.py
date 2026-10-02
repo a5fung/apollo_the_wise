@@ -46,8 +46,6 @@ from agents.market_intelligence.broker.exit_logic import (
 )
 from agents.market_intelligence.broker.order_manager import (
     DEPTH_EXIT_RULE,
-    announce_depth_third_rests_alone,
-    depth_remaining_held_by_profit_take,
     prepare_orb_order,
     execute_partial_exit,
     execute_full_exit,
@@ -915,24 +913,6 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         is_depth = trade.get("exit_rule") == DEPTH_EXIT_RULE
 
         # 3. SMA trail close
-        if (step.action == "sma_stopped" and is_depth
-                and await depth_remaining_held_by_profit_take(
-                    trade["id"], float(trade.get("remaining_shares") or 0))):
-            # #687 review fix 7: the only shares left are the profit-take third, resting on its
-            # own target and breakeven stop (ruled: it keeps them). Nothing to sell at the open —
-            # do NOT mark the trade and do NOT send "Selling at the next open…" every evening;
-            # say it plainly, once per trade.
-            async with pool.acquire() as conn:
-                await conn.execute("""
-                    UPDATE mi_live_trades SET
-                        hold_days = $2, running_closes = $3::jsonb
-                    WHERE id = $1
-                """, trade["id"], step.hold_days, step.new_running_closes)
-            await announce_depth_third_rests_alone(trade, step.bar_close, step.effective_stop)
-            results.append({"ticker": ticker, "action": "depth_third_rests",
-                            "hold_days": step.hold_days})
-            continue
-
         if step.action == "sma_stopped" and is_depth:
             # The depth rule decides on this TRUE close exactly as today's rule does, but sells
             # in the NEXT MORNING'S OPENING AUCTION (ruled 2026-09-29): mark it, leave the depth
