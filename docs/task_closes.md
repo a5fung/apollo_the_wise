@@ -1923,3 +1923,27 @@ EVIDENCE: `scripts/probes/_690/sim_release_2026-10-02.out` (script `scripts/prob
 - **Samples from both call paths:** verified 10-01 on prod — 17 call-site keys incl. ep_detector (catalyst grading, the EP judge) and every theme_engine job.
 - **Not claimed:** four sonnet roles (materiality, metrics extraction, trade postmortems, weekly review) had no captured request yet — they run rarely — so they got no verdict; the digest names them as "no recent request to replay", as designed. Only the sonnet tier was simulated.
 - **Fixed from what the run showed (ships Sat 10-03):** a hold now names the failing JOB, not only the role ("theme discovery: HELD" was the split job).
+
+## #689 — the theme jobs run on Sonnet 5.5 again, three nights clean (2026-10-02)
+
+BAR: "the branch is on main and deployed, THEME_MODEL resolves to claude-sonnet-5-5 in prod, and three consecutive nightly runs complete their assignment pass on it with zero refusals."
+
+EVIDENCE: prod `mi_audit_log` + the model resolver, read 2026-10-02 ~18:20 ET.
+- **On main and deployed:** c291cb62 (the reasons-after-the-answer package), deployed 2026-09-29.
+- **THEME_MODEL resolves to claude-sonnet-5-5 in prod:** `effective_model("THEME_MODEL")` in apollo-market returned claude-sonnet-5-5 (10-02 inventory, `scripts/probes/_690/`), and every captured theme_engine request in `logs/llm_samples/` is recorded on claude-sonnet-5-5.
+- **Three consecutive nights, assignment pass complete:** `assignment_llm_proposed` rows 09-30 = 15, 10-01 = 15, 10-02 = 14; `assignment_error` rows = 0 on all three; no audit row with a refusal since 09-30 (the only `refus` match is an unrelated analyst-estimates plan row).
+- **EP theme-fit (WOULD-FAIL-IF arm):** 10-01 ran 2 fit checks on shortlisted, described names (EFXT, GLUE) — both ended REJECTED with a reason, 0 unjudged; 10-02 had none to run.
+- **Not claimed:** the EXPECT's "EP fit confirmations rise modestly (~+3 per 44)" — two checks cannot show a rate.
+
+## #657 — the tape now decides removals for one-of-a-kind-sector members, five nights clean (2026-10-02)
+
+BAR: "a measured answer on whether co-movement should decide REMOVALS — the eviction list with what happened to each name afterwards, theme tightness before/after on the changed themes with the matched random control, and a recommendation on evict vs down-weight vs leave — signed by him before any flip."
+
+EVIDENCE:
+- **The measured answer:** `docs/analysis/657_comove_removals_2026-09-25.md` — the Shape B eviction list with each name's path afterwards, tightness before/after vs a same-size random removal control, and the corrected recommendation (the evidence does not separate evict / down-weight / leave; options laid out).
+- **Signed before the flip:** his *"Yes to both"* 2026-09-25 ~21:00 PDT — Shape A (only singleton-sector members; the tape decides where it can) + the re-homing fix; deployed 2026-09-26 01:50 ET (e2009945).
+- **Five nights (09-28 → 10-02), the DONE-WHEN:**
+  - zero strips of an at-or-above-bar singleton member: the three `sector_outlier` carry-forward strips (COIN 09-29, GNRC + NTR 09-30) go through the branch that strips ONLY when the tape gives no verdict (`theme_engine` carry-forward: admit → kept, below bar → `comove_below_bar`, no verdict → `sector_outlier`), so none had a reading at or above 0.35;
+  - at least one above-bar cross-sector member kept three nights running: AME, HAFN, IRDM, MLAB, NBIS and VICR sat in their themes all five nights (`mi_themes`), and the 10-02 run's log names them among the members kept by the tape at ≥ 0.35;
+  - no re-homed member below the bar: the one absorption (10-01, 1 of 3 admitted into Space Economy) admits on the verdict; `theme_sector_cap_not_absorbed` rows each night show the rest refused.
+- **Not claimed:** the earlier nights' "kept by the tape" log lines are gone with the container restarts (09-30, 10-01 deploys); for those nights the evidence is membership, not the log line.
