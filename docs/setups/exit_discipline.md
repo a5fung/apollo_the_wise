@@ -374,6 +374,24 @@ sold differently):**
 - Tests: `tests/test_687_ruling2_false_unprotected_pages.py` (19). Mutations: §2 suppression off (1 red);
   refresh pages regardless (3 red); any resting sell counted (2 red).
 
+**Ruling (3) — a stop that cannot be placed because the price is already through it → SELL AT MARKET, as the
+triggered stop would have.** Built where a PLANNED SALE's cancelled stop is being put back — the exit rule has
+already decided to sell there:
+- `_restore_stop_after_failed_exit` (the 16:45 sale or the 19:01 opening-auction sale was rejected) and the
+  stream's full-exit cancel/expiry restore (§3: the queued closing order died unfilled). When the broker rejects
+  the restore as above the market (`_is_stop_above_market`), `_sell_free_shares_after_stop_breach` sells the
+  restore's own count — the broker's free shares; a resting +8R profit-take third keeps its own OCO — via
+  `close_position(qty)` as a `full_exit` row (`exit_reason` = the planned sale's reason), audits
+  `stop_breach_market_sale`, and the page says the shares are being sold at market. The sale failing too →
+  `stop_breach_sale_failed` + the UNPROTECTED page, as before. Any other restore failure → main's page, nothing sold.
+- **Not extended (his call — not covered by the ruling as built, main's behaviour kept):** the coverage
+  reconciler `_ensure_stop_coverage` (still "operator decision needed — no auto-exit"), the sync orphan
+  remediation (3 attempts, then "failed to remediate"), `update_stop` (both attempts fail → "STOP FAILED — position
+  NAKED"), the stop-ACK watchdog's fresh-entry fallback, the stream's partial-exit restore and the OCO-cancel
+  handler. Listed for him.
+- Tests: `tests/test_687_ruling3_stop_through_price_sells.py` (9, incl. the reconciler still selling nothing).
+  Mutations: restore breach branch off + stream breach branch off → 4 red.
+
 ### 2026-10-01 — #687 part B: the DEPTH exit rule for NEW MAGNA53 trades — BUILT behind `magna53_depth_exit`, toggle OFF (no live behaviour changes until he flips it)
 
 **Trigger**: his ruling 2026-09-29 (PLAN.md #687, *"Aligned"*, then *"Ok, let's keep this and monitor how it

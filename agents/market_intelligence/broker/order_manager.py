@@ -4807,11 +4807,67 @@ async def _broker_free_qty_for_restore(
 RESTORE_PLACED = "restored"
 RESTORE_COVERED = "covered"     # the broker shows every share held by live resting orders
 RESTORE_FAILED = "failed"
+RESTORE_SOLD = "sold_at_market"  # #687 ruling (3): price already through the stop → market sale
+
+
+async def _sell_free_shares_after_stop_breach(
+    trade_id: int, ticker: str, qty: int, reason: str, account_mode: str, *,
+    stop_price: float, site: str, error: str,
+) -> "dict | None":
+    """⚖ #687 RULING (3), operator 2026-10-01: a stop that cannot be placed because the price is
+    already through it → SELL AT MARKET, as the triggered stop would have.
+
+    Reached ONLY where a PLANNED SALE's cancelled stop is being put back — the sale failed
+    (`_restore_stop_after_failed_exit`: the 16:45 close-below sale, the 19:01 opening-auction
+    sale) or its queued order died unfilled (`trade_stream` §3) — and the broker rejected the
+    restore as above the market (`_is_stop_above_market`). The exit rule had already decided to
+    sell. Sells `qty` = the restore's own count (the broker's free shares — a resting +8R
+    profit-take third keeps its own OCO). A `full_exit` row, so the fill commits through
+    `finalize_full_exit`. Every other stop-placing site keeps main's behaviour (his call: not
+    covered by the ruling as built). Returns the broker order, or None when the sale itself
+    failed (the caller then pages UNPROTECTED, as before)."""
+    try:
+        order = await alpaca.close_position(ticker, qty=int(qty), account_mode=account_mode)
+    except Exception as e:   # loud-ok: returned None — the caller pages UNPROTECTED
+        logger.error(f"{site}: {ticker} stop-breach market sale FAILED — {e}")
+        await log_audit_event(
+            "stop_breach_sale_failed",
+            f"{ticker}: price already through the stop ${stop_price:.2f}; market sale of {qty} "
+            f"sh FAILED — {e}",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "qty": int(qty), "stop_price": stop_price, "site": site,
+                        "stop_error": error[:300], "sale_error": str(e)[:300]}),
+        )
+        return None
+    if not (order or {}).get("id"):
+        logger.error(f"{site}: {ticker} stop-breach market sale returned no order id")
+        return None
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_live_orders
+                (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
+                 purpose, exit_reason, raw_response)
+            VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
+                    'full_exit', $6, $7::jsonb)
+            ON CONFLICT (alpaca_order_id) DO NOTHING
+        """, trade_id, order["id"], ticker, float(qty),
+            order.get("status", "new"), reason,
+            _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
+    await log_audit_event(
+        "stop_breach_market_sale",
+        f"{ticker}: price already through the stop ${stop_price:.2f} — selling {qty} sh at "
+        f"market (order {str(order['id'])[:8]})",
+        json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                    "qty": int(qty), "stop_price": stop_price, "site": site,
+                    "order_id": order["id"], "reason": reason, "stop_error": error[:300]}),
+    )
+    return order
 
 
 async def _restore_stop_after_failed_exit(
     trade_id: int, ticker: str, shares: float, stop_price: "float | None", account_mode: str,
-    *, cancelled_stop_id: "str | None" = None,
+    *, cancelled_stop_id: "str | None" = None, reason: str = "stop_hit",
 ) -> str:
     """Put back the protective stop a failed full exit already cancelled.
 
@@ -4826,6 +4882,10 @@ async def _restore_stop_after_failed_exit(
     read; `cancelled_stop_id` (the stop the exit just cancelled) is never counted as holding
     shares. Returns RESTORE_PLACED, RESTORE_COVERED (the broker shows nothing free to protect —
     every share is held by OTHER orders still resting) or RESTORE_FAILED.
+
+    ⚖ #687 ruling (3): the broker rejects the restore because the price is already through the
+    stop → those shares are sold at market (`_sell_free_shares_after_stop_breach`, `reason` on
+    its `full_exit` row) → RESTORE_SOLD; the sale failing too → RESTORE_FAILED.
     """
     if not stop_price:
         logger.error(f"_restore_stop_after_failed_exit: {ticker} has no stop price to restore")
@@ -4845,6 +4905,12 @@ async def _restore_stop_after_failed_exit(
             ticker, qty, float(stop_price), account_mode=account_mode)
     except Exception as e:   # loud-ok: the caller pages either way; this says WHICH failure
         logger.error(f"_restore_stop_after_failed_exit: re-placing {ticker} stop FAILED — {e}")
+        if _is_stop_above_market(e):
+            sold = await _sell_free_shares_after_stop_breach(
+                trade_id, ticker, qty, reason, account_mode, stop_price=float(stop_price),
+                site="order_manager.restore_after_failed_exit", error=str(e))
+            if sold:
+                return RESTORE_SOLD
         return RESTORE_FAILED
     new_id = (placed or {}).get("id")
     if not new_id:
@@ -4867,6 +4933,10 @@ def _restore_outcome_line(outcome: str, stop_price: "float | None") -> str:
     if outcome == RESTORE_COVERED:
         return ("\nNo stop re-placed: orders still resting at the broker hold every remaining "
                 "share. Check that one of them is a stop.")
+    if outcome == RESTORE_SOLD:
+        return (f"\nThe price is already through the stop (${float(stop_price):.2f}), so it could "
+                f"not be re-placed — the shares it covered are being SOLD AT MARKET, as the "
+                f"triggered stop would have. Confirms with real P&L on fill.")
     return "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required."
 
 
@@ -5139,7 +5209,7 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
                 logger.warning(f"full_exit_rejected audit write failed for {ticker}: {_ae}")
             restored = await _restore_stop_after_failed_exit(
                 trade_id, ticker, cancelled_stop_shares, cancelled_stop_price, account_mode,
-                cancelled_stop_id=trade.get("stop_order_id"))
+                cancelled_stop_id=trade.get("stop_order_id"), reason=reason)
             # #647: HTML layer — `{e}` is Alpaca's JSON (`existing_qty`, `held_for_orders`), which
             # 400'd the legacy-Markdown send of the 2026-09-11 OKTA page; the plain retry then
             # stripped the JSON's underscores. The page must land first time, intact.
@@ -5347,12 +5417,13 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
                 logger.warning(f"full_exit_rejected audit write failed for {ticker}: {_ae}")
             restored = await _restore_stop_after_failed_exit(
                 trade_id, ticker, float(sell_qty), stop_price, account_mode,
-                cancelled_stop_id=stop_id)
+                cancelled_stop_id=stop_id, reason=reason)
             await _clear_depth_sell_mark(trade_id)
             await send_telegram_message(md_to_html(
                 f"{mode_prefix(account_mode)}⚠️ Opening-auction sale FAILED for {ticker}: {e}"
                 + _restore_outcome_line(restored, stop_price)
-                + "\nThe position stays open; the next close below the line decides again."
+                + ("" if restored == RESTORE_SOLD else
+                   "\nThe position stays open; the next close below the line decides again.")
             ), parse_mode="HTML")
             return False
 

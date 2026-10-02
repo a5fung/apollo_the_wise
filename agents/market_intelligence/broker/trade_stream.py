@@ -2384,6 +2384,39 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 )
                 logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, stop re-placed")
             except Exception as e:
+                # ⚖ #687 RULING (3), operator 2026-10-01: the broker refused the restore because
+                # the price is already through the stop → sell the shares it would have covered
+                # at market now, as the triggered stop would have. The exit rule had already
+                # decided to sell (that is what the dead order was).
+                from agents.market_intelligence.broker.order_manager import (
+                    _is_stop_above_market,
+                    _sell_free_shares_after_stop_breach,
+                )
+                if restore_qty > 0 and _is_stop_above_market(e):
+                    try:
+                        async with pool.acquire() as conn:
+                            _exit_reason = await conn.fetchval(
+                                "SELECT exit_reason FROM mi_live_orders WHERE alpaca_order_id = $1",
+                                order_id)
+                    except Exception as _re:  # loud-ok: the label only — the sale goes ahead
+                        logger.warning(f"WS [{account_mode}]: exit_reason read failed for "
+                                       f"{symbol} ({_re}) — the market sale is labelled stop_hit")
+                        _exit_reason = None
+                    sold = await _sell_free_shares_after_stop_breach(
+                        trade_row["id"], trade_row["ticker"], restore_qty,
+                        _exit_reason or "stop_hit", account_mode, stop_price=restore_price,
+                        site="trade_stream.full_exit_cancel_restore", error=str(e))
+                    if sold:
+                        await send_telegram_message(
+                            f"{mode_prefix(account_mode)}🚨 *Close order {event_norm.upper()}:* "
+                            f"{symbol}\nThe price is already below the stop "
+                            f"${restore_price:.2f}, so no stop could be re-placed — selling "
+                            f"{restore_qty} sh at market now (Order {str(sold['id'])[:8]}), as "
+                            f"the triggered stop would have. _Confirms with real P&L on fill._"
+                        )
+                        logger.warning(f"WS [{account_mode}]: full exit {event_norm} for "
+                                       f"{symbol}, stop breached — market sale placed")
+                        return
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}🚨 *CLOSE {event_norm.upper()} + "
                     f"STOP RESTORE FAILED* for {symbol}!\n{e}\n"
