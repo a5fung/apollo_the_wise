@@ -519,7 +519,9 @@ code (mutation runs recorded in the commit): (a)–(f) below. Single-path fixes,
   the call is byte-identical (`close_position(ticker)`, no qty). Every skip that remains (a closing
   order already queued · resting orders hold every share · broker unreadable beside a resting
   profit-take — nothing is cancelled in that case) writes `full_exit_skipped` and pages once per
-  trade per skip kind (`_full_exit_skip_already_paged`, fails open).
+  trade per skip kind (`_full_exit_skip_already_paged`, fails open). **Cut-back 2026-10-02:** the
+  ruling covers the OCO third only — a PLAIN resting sell limit (no stop of its own) keeps main's
+  skip: nothing sold, nothing cancelled, skip code `plain_resting_limit`, paged; his call (listed).
 - **(b) `finalize_full_exit` decrements, closes only at zero** — the #566 rule the stop-fill writer
   already follows. It wrote `status='closed', remaining_shares=0` regardless of the fill, which
   after (a) would record a closed trade the broker still held. The OCO third's own fill (limit →

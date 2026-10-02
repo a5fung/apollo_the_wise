@@ -5050,6 +5050,30 @@ async def _size_sale_beside_resting_orders(
             "was cancelled — the stop is still in place.",
             {"pending_partial_qty": pending_partial_qty})
         return None
+    # #687 cut-back (2026-10-02): the 2026-09-29 ruling that lets the sale go ahead BESIDE a
+    # resting profit-take covers the +8R OCO third (it keeps its own target AND breakeven stop).
+    # A PLAIN resting sell limit has no stop of its own; selling around it is a policy nobody
+    # ruled (review fix 9, cancel-and-sell it, was reverted with the rounds) — so it keeps main's
+    # behaviour: no sale, nothing cancelled, the stop stays. Recorded + paged; listed for him.
+    plain_limits = [
+        o for o in open_orders
+        if "sell" in str(o.get("side") or "").lower()
+        and "limit" in str(o.get("type") or "").lower()
+        and "stop" not in str(o.get("type") or "").lower()
+        and str(o.get("order_class") or "").lower() != "oco"
+        and str(o.get("id")) != str(trade.get("stop_order_id"))
+        and _canonical_order_status(o.get("status")) in _STOP_CONFIRMED_LIVE_STATUSES
+    ]
+    if plain_limits:
+        await _record_full_exit_skip(
+            trade_id, trade, reason, "plain_resting_limit",
+            f"a plain resting sell limit ({str(plain_limits[0].get('id'))[:8]}, "
+            f"{sum(_unfilled_qty(o) for o in plain_limits):.0f} sh) rests with no stop of its own. "
+            f"Selling beside a resting profit-take is ruled for the OCO third only, so nothing was "
+            f"sold and nothing was cancelled — the stop is still in place. Your call.",
+            {"pending_partial_qty": pending_partial_qty,
+             "plain_limit_ids": [str(o.get("id")) for o in plain_limits]})
+        return None
     broker_qty = float(pos.get("qty") or 0)
     held_by_resting = _live_sell_orders_held_qty(
         open_orders, exclude_ids=(trade.get("stop_order_id"),))

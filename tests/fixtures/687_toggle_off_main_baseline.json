@@ -1,7 +1,7 @@
 {
  "baseline_sha": "90d0245980dcd49a58a53237c154c61cf74ee76e",
  "captured_by": "scripts/probes/_687/capture_toggle_off_baseline.sh",
- "harness_sha256": "0d8880714be73a367dca7baf03c3ae0116c05971b1d4e1786cd472126ecb7629",
+ "harness_sha256": "fb31264441df42ace9642d8e0bc6f37ee7b61b47f01b46aacf20f9fc8c51f88b",
  "scenarios": {
   "s01_1645_exit_no_resting": {
    "_unknown_sql": [],
@@ -1633,6 +1633,53 @@
      "ticker": "KOD"
     }
    ]
+  },
+  "s28_1645_exit_beside_a_plain_resting_limit": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [
+     {
+      "exit_reason": null,
+      "id": "lim-1",
+      "purpose": "partial_exit",
+      "qty": 2,
+      "status": "new"
+     }
+    ],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": true,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 6,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": true,
+      "remaining_shares": 6,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 60,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [],
+   "pages": [],
+   "raised": null,
+   "result": false
   }
  }
 }

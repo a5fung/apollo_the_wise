@@ -688,6 +688,19 @@ def s04_1645_exit_beside_resting_oco_third(om, **_):
     return w, lambda: om.execute_full_exit(401, "sma_trail_stop")
 
 
+def s28_1645_exit_beside_a_plain_resting_limit(om, **_):
+    """Un-ruled case — a PLAIN resting profit-take limit (no stop of its own): main's skip."""
+    w = World()
+    _trade(w, remaining=6, partial_taken=True, breakeven_active=True, stop_price=60.0)
+    _position(w, "KOD", 6, 0)
+    _bstop(w, "stop-1", "KOD", 4, 60.0)
+    w.broker_orders.append({"id": "lim-1", "symbol": "KOD", "side": "sell", "type": "limit",
+                            "qty": 2.0, "filled_qty": 0.0, "status": "new",
+                            "order_class": "simple", "limit_price": 90.0})
+    _mirror(w, "lim-1", 401, "KOD", "partial_exit", 2, raw={"order_class": "simple"})
+    return w, lambda: om.execute_full_exit(401, "sma_trail_stop")
+
+
 def s05_1645_exit_closing_order_already_queued(om, **_):
     w = World()
     _trade(w, stop_id=None)

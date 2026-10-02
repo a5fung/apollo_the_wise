@@ -5,8 +5,8 @@ did not converge. A feature behind an OFF toggle (`magna53_depth_exit`) must cha
 toggle-OFF trades except the six named fixes to today's close-below exit — #687 (a)-(f) — the cited
 sync hunk (61a6c479), and the operator's rulings of 2026-10-01 (1)-(3). This test is that criterion.
 
-HOW. `tests/_convergence_687_harness.py` drives 27 fixed scenarios (the 16:45 trail exit with and
-without a resting +8R OCO third, the 16:45 job itself, a stop raise via `update_stop`, the position
+HOW. `tests/_convergence_687_harness.py` drives 28 fixed scenarios (the 16:45 trail exit with and
+without a resting +8R OCO third or a plain resting limit, the 16:45 job itself, a stop raise via `update_stop`, the position
 sync with and without a queued sale, stream fill / cancel / expiry events, the stop-ACK watchdog,
 the 17:00 coverage slot, the stop refresh, a stop that cannot be placed because the price is through
 it, the daily-loss gate, and `close_position(qty)` at the alpaca-py boundary) and records every
@@ -99,6 +99,20 @@ ALLOWED = {
         'why': '#687 (a): a skip that remains is paged (main skipped silently)',
         'pages': [
             '💰 LIVE-$ ⚠️ Full exit NOT placed for KOD (sma_trail_stop): a closing order (sell-q) is already queued for this position.',
+        ],
+    },
+    's28_1645_exit_beside_a_plain_resting_limit': {
+        'why': "#687 (a) skip paging + the cut-back's un-ruled plain-limit case: main's skip kept "
+               "(nothing sold or cancelled); the sizing reads and the skip page are (a)'s",
+        'broker_calls': [
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+        ],
+        'pages': [
+            '💰 LIVE-$ ⚠️ Full exit NOT placed for KOD (sma_trail_stop): a plain resting sell limit '
+            '(lim-1, 2 sh) rests with no stop of its own. Selling beside a resting profit-take is '
+            'ruled for the OCO third only, so nothing was sold and nothing was cancelled — the stop '
+            'is still in place. Your call.',
         ],
     },
     's09_sync_under_a_queued_sale_paper_soft_reservation': {
@@ -234,7 +248,7 @@ def test_the_baseline_is_the_pinned_commit_recorded_by_this_harness():
 
 def test_every_scenario_ran_on_both_trees(branch_log):
     assert set(branch_log) == set(_BASE["scenarios"])
-    assert len(SCENARIOS) >= 27
+    assert len(SCENARIOS) >= 28
 
 
 def test_the_allow_list_names_only_real_scenarios_and_says_why():
