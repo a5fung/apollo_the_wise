@@ -349,6 +349,31 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-02 — #687: his four rulings of 2026-10-01 built; the three review rounds cut back to parts A + B
+
+**Trigger**: PLAN.md #687, 2026-10-01 — four decisions put to him after three review rounds that did not converge;
+his answer to all four: *"Yes"*. Then ONE cut-back round (scope audit; every review-round hunk outside the five
+depth pieces and fixes (a)–(f) reverted; the rulings built; a convergence test that the toggle-OFF path matches
+main except the named fixes). Each ruling is its own commit with its tests.
+
+**Ruling (2) — the two false "unprotected" pages are silenced (messaging only; nothing placed, cancelled or
+sold differently):**
+- **(i) On every planned sale.** `execute_full_exit` (16:45) and `execute_depth_open_sale` (19:01) write a
+  `planned_sale_stop_cancel` audit row naming the exact stop immediately BEFORE they cancel it (never raises —
+  a failed write only means the page goes out as before). The stream's stop-cancel handler (§2) still makes the
+  same broker look and re-check; on finding that row for THIS trade and THIS stop order it writes
+  `stop_cancel_by_planned_sale_silent` instead of paging "Stop order CANCELED — Position unprotected". The sale
+  pages its own outcome ("Closing order placed", or FAILED + the restore result). No row, another order, another
+  trade, or an unreadable log → the page goes out exactly as before.
+- **(ii) On a position held only by its OCO third.** When the 16:20 / 09:35 stop refresh cannot place a stop,
+  it now asks the broker the #527 detector's own coverage question (`_resting_exits_cover_position`: live sell
+  stops + the unfilled qty of live OCO parents + OUR queued closing order, mirror AND broker). Covered → recorded
+  as `covered_by_resting_exit` in `stop_refresh_ran`, no page, no `stop_refresh_failed`. A plain resting LIMIT
+  counts for nothing (#566); an unreadable broker counts for nothing. A genuinely uncovered position still pages
+  "No stop on X".
+- Tests: `tests/test_687_ruling2_false_unprotected_pages.py` (19). Mutations: §2 suppression off (1 red);
+  refresh pages regardless (3 red); any resting sell counted (2 red).
+
 ### 2026-10-01 — #687 part B: the DEPTH exit rule for NEW MAGNA53 trades — BUILT behind `magna53_depth_exit`, toggle OFF (no live behaviour changes until he flips it)
 
 **Trigger**: his ruling 2026-09-29 (PLAN.md #687, *"Aligned"*, then *"Ok, let's keep this and monitor how it
@@ -412,7 +437,8 @@ on MAGNA53; under the depth rule ~4–5 a month (21 in 4.5 months on the 79 real
 19:01, filled in the 09:30 auction; the evening stop sits one ADR20 under the line, never falls. Unintended, to
 watch: next-open losses land at ~09:30 and count toward the 2% daily loss limit and re-arm the loss-count circuit
 breaker more often (ruled: accepted, watch it); the WS stop-cancel page ("Stop order CANCELLED — Position
-unprotected") still fires when the 19:01 job cancels the depth stop (the coverage slots no longer do — #687 A f).
+unprotected") no longer fires when the 19:01 job cancels the depth stop (ruling (2)(i), 2026-10-02 entry), nor do
+the coverage slots (#687 A f).
 
 **Reversion-flag**: REFINEMENT of the 2026-08-08 SMA-trail fix and the 2026-09-06 era-D trail for MAGNA53 — same
 line, same close test; the stop rests lower and the close-below sale moves from the 16:45 queued market order to the
@@ -500,15 +526,18 @@ sell at the next open and the row stays open at the third's size until it exits;
 sale, no 17:00/19:00/21:10 "UNPROTECTED" pages for that position. With nothing resting, the order
 sent and the row written are unchanged.
 
-**Expected residue — NOT changed here, stated so it is not read as a new defect:**
+**Expected residue — NOT changed here, stated so it is not read as a new defect** (⚖ both pages
+below were then SILENCED by his ruling (2) of 2026-10-01 — see the 2026-10-02 entry):
 - The WS stop-cancel handler (`_handle_cancel_or_reject` §2) still pages "Stop order CANCELLED —
   Position unprotected" the moment the exit cancels the stop (16:45). (f) covers the coverage
-  detector only; the handler is out of this fix's scope.
+  detector only; the handler is out of this fix's scope. → silenced 2026-10-02, ruling (2)(i).
 - A row held open under a resting OCO third (after (b)) has `remaining_shares` fully covered by
   pending exits, so `update_stop` aborts (`stop_update_aborted`, "pending exits cover full
   remaining") and the 16:20 / 09:35 stop refresh pages "No stop on X" for it, and the 09:00
   watchdog writes `stop_ack_broker_covered` ("no_stop_only_market") — the third IS protected by its
   OCO's held stop leg. Same state #591 already produces for a day-1 stop with a resting carve-out.
+  → the refresh page silenced 2026-10-02, ruling (2)(ii); the abort and the watchdog row are
+  unchanged (neither pages).
 
 **Reversion-flag**: REFINEMENT of the 2026-09-11 #646 full-exit fix (same function, same
 never-naked rule) and of the #566 accounting rule (applied to the last writer that lacked it).

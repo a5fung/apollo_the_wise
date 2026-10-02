@@ -368,6 +368,45 @@ def _find_replacement_stop(open_orders, symbol: str, canceled_order_id: str, rem
 _STOP_CANCEL_RECHECK_DELAY_S = 3
 
 
+async def _planned_sale_cancelled_this_stop(
+    pool, trade_id, cancelled_order_id: str, account_mode: str, symbol: str,
+) -> bool:
+    """#687 ruling (2)(i): did OUR OWN planned sale cancel this exact stop on purpose?
+
+    True only on a `planned_sale_stop_cancel` audit row (written by `execute_full_exit` /
+    `execute_depth_open_sale` immediately before their cancel) naming this trade AND this
+    stop order id. Matched in Python (the `detail` column is TEXT; same reason as the #561
+    evidence read above). Any read failure → False, so the page still goes out."""
+    from agents.market_intelligence.broker.order_manager import PLANNED_SALE_STOP_CANCEL
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT event_type, detail FROM mi_audit_log
+                WHERE event_type = $1
+                  AND created_at > NOW() - INTERVAL '1 day'
+                ORDER BY created_at DESC
+                """,
+                PLANNED_SALE_STOP_CANCEL,
+            )
+        for row in rows or []:
+            if row["event_type"] != PLANNED_SALE_STOP_CANCEL:
+                continue
+            try:
+                detail = json.loads(row["detail"])
+            except Exception:  # loud-ok: one malformed row is skipped, never the check — a real marker is always json.dumps() detail; any doubt still pages
+                continue
+            if (str(detail.get("trade_id")) == str(trade_id)
+                    and str(detail.get("stop_order_id")) == str(cancelled_order_id)):
+                return True
+    except Exception as e:
+        logger.warning(
+            f"WS [{account_mode}]: planned-sale marker read failed for {symbol} ({e}) — "
+            f"treating as NOT planned (fail-safe: still page)"
+        )
+    return False
+
+
 async def _broker_confirm_replacement_stop(
     symbol: str, canceled_order_id: str, remaining_shares, account_mode: str,
 ):
@@ -2074,7 +2113,30 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     )
                     _naked_agrees = False
 
-                if _naked_agrees:
+                # ⚖ #687 RULING (2)(i), operator 2026-10-01: a stop OUR OWN planned sale cancelled
+                # on purpose (the 16:45 close-below sale, the 19:01 opening-auction sale) is not
+                # an "unprotected" event — the sale pages its own outcome. POSITIVE EVIDENCE ONLY,
+                # same idiom as above: the sale's own `planned_sale_stop_cancel` row naming THIS
+                # trade and THIS exact stop order. No row, another order, or a failed read → page.
+                _planned_sale = (not _naked_agrees) and await _planned_sale_cancelled_this_stop(
+                    pool, stop_trade["id"], order_id, account_mode, symbol)
+
+                if _planned_sale:
+                    await log_audit_event(
+                        "stop_cancel_by_planned_sale_silent",
+                        f"{symbol}: stop {order_id[:8]} {event_norm} by our own planned sale — "
+                        f"not paged as unprotected (the sale reports its own outcome)",
+                        json.dumps({
+                            "trade_id": stop_trade["id"], "ticker": symbol,
+                            "account_mode": account_mode, "cancelled_order_id": order_id,
+                            "event_norm": event_norm,
+                        }),
+                    )
+                    logger.info(
+                        f"WS [{account_mode}]: stop-loss {event_norm}: {symbol} "
+                        f"trade_id={stop_trade['id']} — cancelled by a planned sale, no page"
+                    )
+                elif _naked_agrees:
                     await log_audit_event(
                         "naked_alarm_suppressed_silent",
                         f"{symbol}: WS naked-position check agrees with order_manager's "

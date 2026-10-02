@@ -4870,6 +4870,32 @@ def _restore_outcome_line(outcome: str, stop_price: "float | None") -> str:
     return "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required."
 
 
+# ⚖ #687 RULING (2)(i), operator 2026-10-01: the stop a PLANNED SALE cancels on purpose is not an
+# "unprotected" event. The sale writes this audit row (naming the exact stop order) immediately
+# BEFORE it cancels; the stream's stop-cancel handler (`trade_stream._handle_cancel_or_reject` §2)
+# finds it and records the cancel instead of paging "Position unprotected". The sale pages its
+# own outcome either way ("Closing order placed", or FAILED + the restore result).
+PLANNED_SALE_STOP_CANCEL = "planned_sale_stop_cancel"
+
+
+async def _record_planned_sale_stop_cancel(
+    trade_id: int, ticker: str, stop_order_id: str, reason: str, account_mode: str, site: str,
+) -> None:
+    """Never raises: a missing marker only means the cancel is paged as before — it must never
+    cost the sale (the cancel → sell → restore sequence that follows)."""
+    try:
+        await log_audit_event(
+            PLANNED_SALE_STOP_CANCEL,
+            f"{ticker}: cancelling stop {str(stop_order_id)[:8]} on purpose — a planned sale "
+            f"({reason}) replaces it",
+            json.dumps({"trade_id": trade_id, "ticker": ticker,
+                        "stop_order_id": str(stop_order_id), "reason": reason,
+                        "account_mode": account_mode, "site": site}),
+        )
+    except Exception as e:   # loud-ok: logged; the stop-cancel page then fires as before
+        logger.warning(f"planned-sale marker write failed for {ticker} — {e}")
+
+
 async def _full_exit_skip_already_paged(trade_id: int, skip_code: str) -> bool:
     """Has this exact full-exit skip already been paged for this trade?
 
@@ -5078,6 +5104,9 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         cancelled_stop_shares = (float(sell_qty) if sell_qty is not None
                                  else trade["remaining_shares"])
         if trade.get("stop_order_id"):
+            await _record_planned_sale_stop_cancel(
+                trade_id, ticker, trade["stop_order_id"], reason, account_mode,
+                site="execute_full_exit")
             cancelled = await alpaca.cancel_order(trade["stop_order_id"], account_mode=account_mode)
             logger.info(f"Full exit: cancelled stop {trade['stop_order_id']} for {ticker} (success={cancelled})")
             if cancelled:
@@ -5289,6 +5318,9 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
         logger.info(f"Depth sale: {ticker} reason={reason} shares={sell_qty} "
                     f"(trade_id={trade_id}, opening auction)")
         if stop_id:
+            await _record_planned_sale_stop_cancel(
+                trade_id, ticker, stop_id, reason, account_mode,
+                site="execute_depth_open_sale")
             cancelled = await alpaca.cancel_order(stop_id, account_mode=account_mode)
             logger.info(f"Depth sale: cancelled stop {stop_id} for {ticker} "
                         f"(success={cancelled})")
@@ -7238,6 +7270,35 @@ async def _queued_full_exit_qty(trade_id: int, open_orders: list) -> float:
         and "sell" in str(o.get("side") or "").lower()
         and _canonical_order_status(o.get("status")) in _QUEUED_EXIT_LIVE_STATUSES
     )
+
+
+async def _resting_exits_cover_position(
+    trade_id: int, ticker: str, remaining: float, account_mode: str,
+) -> bool:
+    """⚖ #687 ruling (2), operator 2026-10-01 — for the stop refresh's "No stop on X" page: does
+    the BROKER show the position covered even though no new stop could be placed?
+
+    The same coverage the #527 detector counts after #687 (f): live sell stops + the unfilled qty
+    of live OCO parents (a resting +8R profit-take third — its stop leg is HELD and hidden from
+    `get_open_orders`; the open parent is broker proof it still protects those shares) + OUR
+    queued closing order (`_queued_full_exit_qty`: the mirror says it is ours, the broker says it
+    is live). A plain resting LIMIT counts for nothing (#566). An unreadable broker → False, so the
+    page still goes out. Read-only."""
+    try:
+        open_orders = await alpaca.get_open_orders(
+            ticker, account_mode=account_mode, raise_on_error=True)
+    except Exception as e:   # loud-ok: unknown coverage is never "covered" — the caller pages
+        logger.warning(f"_resting_exits_cover_position: broker read failed for {ticker} — {e}")
+        return False
+    stop_qty = sum(float(o.get("qty") or 0) for o in _live_sell_stops(open_orders))
+    oco_qty = sum(
+        _unfilled_qty(o) for o in open_orders
+        if str(o.get("order_class") or "").lower() == "oco"
+        and "sell" in str(o.get("side") or "").lower()
+        and _canonical_order_status(o.get("status")) in _STOP_CONFIRMED_LIVE_STATUSES
+    )
+    queued_qty = await _queued_full_exit_qty(trade_id, open_orders)
+    return float(remaining) > 0 and stop_qty + oco_qty + queued_qty >= float(remaining) - 0.5
 
 
 async def _coverage_gap_already_alerted_today(trade_id: int, today) -> bool:

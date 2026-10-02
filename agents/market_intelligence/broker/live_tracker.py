@@ -1343,6 +1343,7 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     that follows. The post-close pass has nothing to exclude by construction
     (`include_same_day=True`), so it never touches this — no misleading zero.
     """
+    from agents.market_intelligence.broker import order_manager as _om
     today = et_today()
     pool = await get_pool()
     same_day_excluded: list[str] | None = None
@@ -1373,6 +1374,7 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     refreshed_tickers: list[str] = []
     unprotected: list[str] = []
     already_covered: list[str] = []
+    covered_by_resting_exit: list[str] = []  # #687 ruling (2): no new stop, broker-covered
     skipped: list[dict] = []  # [{"ticker": ..., "reason": "no_stop_price" | "no_remaining_shares"}]
     for trade in trades:
         ticker = trade["ticker"]
@@ -1413,6 +1415,12 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
             refreshed += 1
             refreshed_tickers.append(ticker)
             logger.info(f"{label} stop refreshed: {ticker} @${stop_price:.2f}")
+        elif await _om._resting_exits_cover_position(
+                trade["id"], ticker, float(trade["remaining_shares"]), trade["account_mode"]):
+            # ⚖ #687 ruling (2), operator 2026-10-01: no new stop was placed, but the BROKER
+            # shows the shares covered — a resting +8R profit-take OCO third (its own stop
+            # leg), or our own queued closing order. Not a gap: recorded, not paged.
+            covered_by_resting_exit.append(ticker)
         else:
             # A position we could not re-protect must never be a log line only —
             # that is the exact shape of the gap this job exists to close.
@@ -1458,6 +1466,8 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
         "skipped": skipped,
         "unprotected": unprotected,
     }
+    if covered_by_resting_exit:
+        detail["covered_by_resting_exit"] = covered_by_resting_exit
     # #414 — only the morning pass excludes anything, and only when the read above
     # succeeded. `same_day_excluded is None` covers BOTH the post-close pass
     # (nothing to exclude by construction) and a failed read on the morning pass
