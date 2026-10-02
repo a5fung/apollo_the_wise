@@ -6815,6 +6815,13 @@ async def check_position_coverage(*, notify: bool = True) -> dict:
                          "stop_price": trade.get("stop_price") or trade.get("orb_low"),
                          "signal_type": trade.get("signal_type") or "unknown",
                          "account_mode": account_mode})
+            # Read "already paged today?" BEFORE this cycle's row lands: the dedupe counts
+            # `position_unprotected` rows with `> 0` (its docstring's ordering). Checked after the
+            # write, it counted its own row and the intraday page NEVER sent (found 2026-10-02 by
+            # the #687 toggle-OFF harness; prod: ETON 2026-08-14 09:45 was the one intraday gap in 60
+            # days, unpaged). The 17:00/19:00/21:10 slots were unaffected.
+            already_paged = (await _coverage_gap_already_alerted_today(trade_id, today)
+                             if notify else True)
             await log_audit_event(
                 "position_unprotected",
                 f"{ticker}: live stop qty {live_qty + oco_stop_qty:.0f} < {target:.0f} shares held — GAP",
@@ -6824,7 +6831,7 @@ async def check_position_coverage(*, notify: bool = True) -> dict:
                     "plain_stop_qty": live_qty, "oco_reserved_qty": oco_stop_qty,
                 }),
             )
-            if notify and not await _coverage_gap_already_alerted_today(trade_id, today):
+            if notify and not already_paged:
                 try:
                     await send_telegram_message(
                         f"{mode_prefix(account_mode)}🚨 *Position unprotected: {ticker}*\n"

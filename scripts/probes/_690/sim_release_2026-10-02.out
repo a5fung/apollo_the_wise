@@ -1,0 +1,41 @@
+=== start Fri Oct  2 12:05:10 EDT 2026
+current claude-sonnet-5-5 | served candidates ['claude-sonnet-5', 'claude-opus-5-5'] | forced new id claude-sonnet-5
+canary True 
+entries 10
+replayed in 80s
+VERDICT GROUNDED_GRADE_MODEL               pass  runs=['pass', 'pass', 'pass']
+VERDICT JUDGE_DIVERGENCE_MODEL             pass  runs=['pass', 'pass', 'pass']
+VERDICT SYNTHESIS_MODEL                    HOLD  runs=['fail', 'pass', 'pass']
+VERDICT THEME_MODEL                        HOLD  runs=['pass', 'pass', 'pass', 'pass', 'pass', 'pass', 'pass', 'pass', 'pass', 'fail', 'pass', 'pass', 'pass', 'pass', 'pass', 'pass', 'pass', 'pass']
+VERDICT THEME_PARENT_ADJUDICATION_MODEL    pass  runs=['pass', 'pass', 'pass']
+  KEY ts.market_intelligence.ep_detector:_classify_catalyst_claude [('pass', ''), ('pass', ''), ('pass', '')]
+  KEY agents.market_intelligence.judge_divergence:_run             [('pass', ''), ('pass', ''), ('pass', '')]
+  KEY ts.market_intelligence.theme_engine:_discover_lane2_registry [('pass', ''), ('pass', ''), ('pass', '')]
+  KEY market_intelligence.theme_engine:_discover_new_themes_single [('pass', ''), ('pass', ''), ('pass', '')]
+  KEY s.market_intelligence.theme_engine:_propose_assignment_batch [('pass', ''), ('pass', ''), ('pass', '')]
+  KEY agents.market_intelligence.theme_engine:_split_fat_theme     [('fail', 'tool answer missing reason'), ('pass', ''), ('pass', '')]
+  KEY .market_intelligence.theme_engine:_validate_theme_membership [('pass', ''), ('pass', ''), ('pass', '')]
+  KEY agents.market_intelligence.theme_engine:judge_theme_fit      [('pass', ''), ('pass', ''), ('pass', '')]
+  KEY ket_intelligence.theme_merge_arm:adjudicate_containment_pair [('pass', ''), ('pass', ''), ('pass', '')]
+  KEY ents.market_intelligence.theme_synthesis:run_theme_synthesis [('fail', 'tool answer missing cohorts'), ('pass', ''), ('pass', '')]
+DETAIL {"holds": {"SYNTHESIS_MODEL": {"candidate": "claude-sonnet-5", "error": "tool answer missing cohorts", "model": "claude-sonnet-5-5"}, "THEME_MODEL": {"candidate": "claude-sonnet-5", "error": "tool answer missing reason", "model": "claude-sonnet-5-5"}}, "keys": [{"compare": "same", "diffs": [], "key": "agents.market_intelligence.ep_detector:_classify_catalyst_claude", "role": "GROUNDED_GRADE_MODEL", "runs": [{"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": ""}, {"compare": "changed", "diffs": ["confidence 0.8 \u2192 (none)", "materiality_tier material \u2192 (none)"], "key": "agents.market_intelligence.judge_divergence:_run", "role": "JUDGE_DIVERGENCE_MODEL", "runs": [{"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": "SNPS"}, {"compare": "same", "diffs": [], "key": "agents.market_intelligence.theme_engine:_discover_lane2_registry", "role": "THEME_MODEL", "runs": [{"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": ""}, {"compare": "same", "diffs": [], "key": "agents.market_intelligence.theme_engine:_discover_new_themes_single", "role": "THEME_MODEL", "runs": [{"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": ""}, {"compare": "same", "diffs": [], "key": "agents.market_intelligence.theme_engine:_propose_assignment_batch", "role": "THEME_MODEL", "runs": [{"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": ""}, {"compare": "same", "diffs": [], "key": "agents.market_intelligence.theme_engine:_split_fat_theme", "role": "THEME_MODEL", "runs": [{"error": "tool answer missing reason", "verdict": "fail"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": ""}, {"compare": "text", "diffs": [], "key": "agents.market_intelligence.theme_engine:_validate_theme_membership", "role": "THEME_MODEL", "runs": [{"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": ""}, {"compare": "same", "diffs": [], "key": "agents.market_intelligence.theme_engine:judge_theme_fit", "role": "THEME_MODEL", "runs": [{"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": ""}, {"compare": "same", "diffs": [], "key": "agents.market_intelligence.theme_merge_arm:adjudicate_containment_pair", "role": "THEME_PARENT_ADJUDICATION_MODEL", "runs": [{"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": ""}, {"compare": "same", "diffs": [], "key": "agents.market_intelligence.theme_synthesis:run_theme_synthesis", "role": "SYNTHESIS_MODEL", "runs": [{"error": "tool answer missing cohorts", "verdict": "fail"}, {"error": "", "verdict": "pass"}, {"error": "", "verdict": "pass"}], "subject": ""}], "new": "claude-sonnet-5", "old": "claude-sonnet-5-5", "tier": "sonnet"}
+TELEGRAM
+🧪 <b>PRACTICE RUN (#690) — nothing was adopted or held; your models are unchanged.</b>
+A real release would send you this before switching:
+
+🆕 <b>New Claude model available</b>
+<b>Sonnet 5.5 → Sonnet 5</b> (sonnet tier)
+
+Our own recent requests, replayed 3× on it:
+• synthesis: <b>HELD</b> on Sonnet 5.5 — tool answer missing cohorts
+• theme discovery: <b>HELD</b> on Sonnet 5.5 — tool answer missing reason
+• catalyst grading: 1 same
+• second-opinion check: 1 changed (confidence 0.8 → (none); materiality_tier material → (none) on SNPS)
+• theme parent check: 1 same
+• no recent request to replay: materiality · metrics extraction · trade postmortems · weekly review
+• never sampled (your chat / pings): orchestrator
+
+
+This was a test of the new-model check, run on our own recent requests. No action needed.
+TELEGRAM_SENT True
+=== exit 0 Fri Oct  2 12:06:39 EDT 2026

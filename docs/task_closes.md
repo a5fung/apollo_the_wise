@@ -1910,3 +1910,16 @@ EVIDENCE: prod `mi_audit_log`, read 2026-09-30 ~18:45 ET.
 - **Thresholds derived, not picked:** built into the check at ship (see the task's own line, 2026-09-27).
 - **Not claimed:** the "2 unassigned" / catch-all gap belongs to #505's DoD ("every theme has a parent even if a
   CATCH-ALL"), which stays open.
+
+## #690 — a new Claude model is replayed on our own recent requests before it is adopted, and the practice release proved it end to end (2026-10-02)
+
+BAR: "a simulated new release (a model id forced through the pre-adoption path) produces, for every tracked role, a pass/hold verdict from ≥3 real-prompt runs and one Telegram listing each role's changed answers old-vs-new; a role that refuses is held on its prior model while the others adopt."
+
+EVIDENCE: `scripts/probes/_690/sim_release_2026-10-02.out` (script `scripts/probes/_690/sim_690.py`), run on prod 2026-10-02 12:05–12:06 ET.
+- **Forced release:** the sonnet tier's 10 captured requests (recorded on claude-sonnet-5-5) replayed 3× each on claude-sonnet-5 after its canary passed — the real `_replay_inventory` → `_replay_entries` → `role_is_held` → `_render_tier_digest` path; only `write_cache` and the adoption audit rows were skipped (practice).
+- **A verdict per role from ≥3 runs:** GROUNDED_GRADE_MODEL pass (3), JUDGE_DIVERGENCE_MODEL pass (3), THEME_PARENT_ADJUDICATION_MODEL pass (3), SYNTHESIS_MODEL HOLD (1 of 3 runs: "tool answer missing cohorts"), THEME_MODEL HOLD (18 runs over 6 jobs; 1 failed: split job "tool answer missing reason").
+- **Held while the others adopt:** the two failing roles would stay on Sonnet 5.5, the other three move — the ruled hold rule (any FAIL holds; changed answers never hold).
+- **One Telegram listing changed answers:** `TELEGRAM_SENT True`; it named the two holds, "catalyst grading: 1 same", "second-opinion check: 1 changed (confidence 0.8 → (none); materiality_tier material → (none) on SNPS)", "theme parent check: 1 same".
+- **Samples from both call paths:** verified 10-01 on prod — 17 call-site keys incl. ep_detector (catalyst grading, the EP judge) and every theme_engine job.
+- **Not claimed:** four sonnet roles (materiality, metrics extraction, trade postmortems, weekly review) had no captured request yet — they run rarely — so they got no verdict; the digest names them as "no recent request to replay", as designed. Only the sonnet tier was simulated.
+- **Fixed from what the run showed (ships Sat 10-03):** a hold now names the failing JOB, not only the role ("theme discovery: HELD" was the split job).

@@ -648,14 +648,14 @@ def test_a_refusing_role_is_held_while_the_tier_moves_for_the_others(monkeypatch
     data = read_cache(cache)
     assert data["resolved"]["sonnet"] == NEW                           # adopted for the others
     hold = data["role_holds"]["THEME_MODEL"]
-    assert hold["model"] == OLD and hold["candidate"] == NEW and hold["error"] == "refused"
+    assert hold["model"] == OLD and hold["candidate"] == NEW and hold["error"] == "rename theme to fit cluster: refused"   # the failing JOB is named (2026-10-02)
     assert set(data["role_holds"]) == {"THEME_MODEL"}                  # the grader is NOT held
     assert len(fake.calls) == 2 * mr.REPLAY_RUNS and {c["model"] for c in fake.calls} == {NEW}
     assert "model_role_held" in _events(audit) and "model_replay_digest" in _events(audit)
 
     text = tg.await_args.args[0]
     assert "New Claude model available" in text and "Sonnet 5 → Sonnet 5.5" in text
-    assert "theme discovery: <b>HELD</b> on Sonnet 5 — refused" in text
+    assert "theme discovery: <b>HELD</b> on Sonnet 5 — rename theme to fit cluster: refused" in text
     assert "catalyst grading: 1 same" in text
     assert "next deploy or restart" in text
 
@@ -806,7 +806,7 @@ def test_a_4xx_after_the_adapter_holds_the_role(monkeypatch, tmp_path):
     _audit, _tg, _fake, cache = _replay_refresh(monkeypatch, tmp_path, grade_rejected)
     _run(mr.refresh_model_resolution())
     hold = read_cache(cache)["role_holds"]["GROUNDED_GRADE_MODEL"]
-    assert hold["error"].startswith("rejected (HTTP 400)")
+    assert hold["error"].startswith("classify catalyst claude: rejected (HTTP 400)")
 
 
 def test_only_samples_recorded_on_the_tiers_current_model_are_replayed(monkeypatch, tmp_path):
@@ -938,7 +938,7 @@ def test_a_failing_role_whose_current_model_is_retired_is_not_held(monkeypatch, 
     assert data["resolved"]["sonnet"] == NEW and data["role_holds"] == {}
     assert "model_role_hold_impossible" in _events(audit) and "model_role_held" not in _events(audit)
     text = tg.await_args.args[0]
-    assert "theme discovery: <b>FAILED</b> on Sonnet 5.5 — refused" in text
+    assert "theme discovery: <b>FAILED</b> on Sonnet 5.5 — rename theme to fit cluster: refused" in text
     assert "Sonnet 5 is no longer served" in text and "HELD" not in text
 
 
@@ -1073,3 +1073,20 @@ def test_the_digest_line_names_the_field_that_became_prose():
         [mr.RunResult(mr.PASS, "", {"tool": "grade", "tool_input": {"quality": "x" * 90}})])
     line = mr._role_counts_line("catalyst grading", [kr])
     assert "1 changed (quality became free text on ABCD)" in line
+
+
+
+def test_a_hold_names_the_job_that_failed_not_just_the_role():
+    """2026-10-02 practice release: THEME_MODEL spans discovery, assignment, splits and checks, and
+    the digest said 'theme discovery: HELD — tool answer missing reason' when the SPLIT job had
+    failed. The hold error now leads with the failing call site's function in plain words."""
+    ok = mr.RunResult(mr.PASS)
+    bad = mr.RunResult(mr.FAIL, "tool answer missing reason")
+    replays = [
+        mr.KeyReplay("agents.market_intelligence.theme_engine:_propose_assignment_batch",
+                     "THEME_MODEL", "", {}, [ok, ok, ok]),
+        mr.KeyReplay("agents.market_intelligence.theme_engine:_split_fat_theme",
+                     "THEME_MODEL", "", {}, [bad, ok, ok]),
+    ]
+    assert mr._first_failure_by_job(replays) == "split fat theme: tool answer missing reason"
+    assert mr._first_failure_by_job(replays[:1]) == ""

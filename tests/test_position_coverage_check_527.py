@@ -34,6 +34,7 @@ Mocking pattern mirrors `tests/test_never_naked_invariant.py`'s `_patches` /
 """
 from __future__ import annotations
 
+import json
 from contextlib import ExitStack, asynccontextmanager
 from datetime import date
 from unittest.mock import AsyncMock, patch
@@ -435,3 +436,32 @@ def test_job_enforces_the_dod_window_not_just_the_cron_slot():
     assert "31" in src and "55" in src, (
         "the 09:31 / 15:55 boundaries must appear in the guard"
     )
+
+
+@pytest.mark.asyncio
+async def test_the_first_gap_of_the_day_pages_and_the_second_cycle_does_not():
+    """2026-10-02 — the dedupe must read BEFORE this cycle's row lands.
+
+    `_coverage_gap_already_alerted_today` counts `position_unprotected` rows with `> 0`. The
+    detector wrote its row first and asked second, so it always counted its OWN row and the
+    intraday page never sent (prod: ETON 2026-08-14 09:45, unpaged). Every other test here pins
+    the COUNT to a constant, which is why none saw it. This fake answers the COUNT from the rows
+    the detector has actually written.
+
+    WOULD-FAIL-IF: the check moves back after the write (cycle 1 sends nothing) or the dedupe
+    stops working (cycle 2 sends again)."""
+    trades = [_trade(11, "NAKD", 5.0)]
+    ctx, audited, telegram_mock, conn = _wire(trades, {"NAKD": []})
+
+    async def _count_rows_written(_sql, trade_id, _today):
+        return sum(1 for evt, _s, detail in audited
+                   if evt == "position_unprotected" and json.loads(detail)["trade_id"] == int(trade_id))
+    conn.fetchval = AsyncMock(side_effect=_count_rows_written)
+
+    await _run_coverage_check(ctx)
+    assert telegram_mock.call_count == 1, "the first gap of the day must page"
+
+    await _run_coverage_check(ctx)
+    assert telegram_mock.call_count == 1, "the same gap on the next cycle must not page again"
+    assert sum(1 for evt, _s, _d in audited if evt == "position_unprotected") == 2, \
+        "the audit row still lands every cycle"

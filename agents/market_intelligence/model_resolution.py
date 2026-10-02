@@ -462,6 +462,23 @@ def _first_failure(runs: Iterable[RunResult]) -> str:
     return next((r.error for r in runs if r.verdict == FAIL), "")
 
 
+def _job_label(key: str) -> str:
+    """The call site's function in plain words: '...theme_engine:_split_fat_theme' -> 'split fat theme'."""
+    return key.rsplit(":", 1)[-1].strip("_").replace("_", " ") or key
+
+
+def _first_failure_by_job(replays: Iterable["KeyReplay"]) -> str:
+    """The first failure, NAMED by the job that failed. A role spans several call sites (THEME_MODEL
+    = discovery, assignment, splits, checks…), so a bare error under the role's label told him the
+    wrong job on the 2026-10-02 practice release ('theme discovery: HELD — tool answer missing
+    reason' when the SPLIT job had failed)."""
+    for kr in replays:
+        err = _first_failure(kr.runs)
+        if err:
+            return f"{_job_label(kr.key)}: {err}"
+    return ""
+
+
 def _block_type(b: Any) -> str:
     return str(b.get("type") if isinstance(b, dict) else getattr(b, "type", "") or "")
 
@@ -939,7 +956,7 @@ async def refresh_model_resolution() -> int:
         for role in sorted({kr.role for kr in replays}):
             runs = [r for kr in replays if kr.role == role for r in kr.runs]
             if role_is_held(runs):
-                error = _first_failure(runs)[:300]
+                error = _first_failure_by_job(kr for kr in replays if kr.role == role)[:300]
                 if current not in ids:
                     unholdable[role] = {"model": current, "error": error, "candidate": new_id}
                     continue
@@ -979,8 +996,9 @@ async def refresh_model_resolution() -> int:
         if any(r.verdict == BUDGET for r in runs):
             retests[role] = ("held", f"still HELD on {pretty_model(held)} — re-check ran out of time")
         elif role_is_held(runs):
-            holds[role] = {**info, "error": _first_failure(runs)[:300], "candidate": target}
-            retests[role] = ("held", f"still HELD on {pretty_model(held)} — {_first_failure(runs)[:160]}")
+            failure = _first_failure_by_job(key_results)
+            holds[role] = {**info, "error": failure[:300], "candidate": target}
+            retests[role] = ("held", f"still HELD on {pretty_model(held)} — {failure[:160]}")
         elif key_results and all(any(r.verdict == PASS for r in kr.runs) for kr in key_results):
             # Released only when EVERY replayed request passed at least once — one passing key
             # and another that never got a clean run (overloaded every time) is not evidence the
