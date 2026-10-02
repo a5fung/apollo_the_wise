@@ -1947,3 +1947,14 @@ EVIDENCE:
   - at least one above-bar cross-sector member kept three nights running: AME, HAFN, IRDM, MLAB, NBIS and VICR sat in their themes all five nights (`mi_themes`), and the 10-02 run's log names them among the members kept by the tape at ≥ 0.35;
   - no re-homed member below the bar: the one absorption (10-01, 1 of 3 admitted into Space Economy) admits on the verdict; `theme_sector_cap_not_absorbed` rows each night show the rest refused.
 - **Not claimed:** the earlier nights' "kept by the tape" log lines are gone with the container restarts (09-30, 10-01 deploys); for those nights the evidence is membership, not the log line.
+
+## #121 — every operator-facing Telegram is on the HTML layer, live a full day with no fallback (2026-10-02)
+
+BAR: "all operator-facing Telegram on the HTML layer."
+
+EVIDENCE:
+- **Built and gated:** 3f23a470, e9fd104c, a7d2c7aa on main — every sender with its own client moved to HTML, the host-cron shell sender included; `scripts/telegram_send_census.py` derives the senders (Python + `*.sh`) and `tests/test_telegram_no_legacy_markdown_sends.py` / `tests/test_telegram_direct_senders_on_html_layer.py` fail on a new legacy-Markdown sender.
+- **Deployed:** 2026-10-01 21:16 ET (both + execution, server 56ecfc46); modules imported in all three containers; the shell formatter escaped `<` `>` `&` on the Linux host.
+- **Live a full day, VERIFY-LIVE:** `telegram_markdown_fallback` / `telegram_send_failed` rows since the deploy = 0 (prod, read 10-02 ~18:30 ET), while the migrated surfaces sent — `mi_job_runs` 10-02: `hud_refresh` 7× (09:00–15:00, each an edit), `morning_briefing` 09:00, `close_digest` 16:55, `evening_briefing` 18:00, all success; plus the #690 practice digest at 12:06 ET (sent True).
+- **Seen by him:** *"what i saw looked fine"* (2026-10-02).
+- **Not claimed:** no /themes or /ep command reply was observed today; command replies ride the same layer and the same gate.
