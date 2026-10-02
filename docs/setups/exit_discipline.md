@@ -392,6 +392,17 @@ already decided to sell there:
 - Tests: `tests/test_687_ruling3_stop_through_price_sells.py` (9, incl. the reconciler still selling nothing).
   Mutations: restore breach branch off + stream breach branch off → 4 red.
 
+**Ruling (4) — a stale "sell at the next open" mark is cleared, paged, and the next close decides (depth path).**
+Already built in part B as a design default (`execute_depth_open_sale`: a mark dated before today's ET session →
+nothing cancelled or sold, mark cleared, `depth_sale_mark_stale` audit, page "the next close decides"); the
+ruling makes it his, no code change. Pinned further: the 16:45 job re-marks a stale row for TODAY on a close below
+the line and never acts on it on a close back above it. Tests: `tests/test_687_ruling4_stale_mark.py` (3) +
+`test_depth_exit_rule.py::test_a_mark_from_an_earlier_session_is_never_sold_on`. Mutation: the stale check off →
+1 red.
+
+**Ruling (1)** (a loss on a partial sale counts toward the 2% daily loss limit at once) is a safeguard change —
+owned by `docs/setups/safeguards.md` item 5 + its 2026-10-02 entry.
+
 ### 2026-10-01 — #687 part B: the DEPTH exit rule for NEW MAGNA53 trades — BUILT behind `magna53_depth_exit`, toggle OFF (no live behaviour changes until he flips it)
 
 **Trigger**: his ruling 2026-09-29 (PLAN.md #687, *"Aligned"*, then *"Ok, let's keep this and monitor how it
@@ -444,9 +455,10 @@ own lines (418 cases, 0 mismatches — `scripts/probes/_687/depth_stop_golden.py
 - **Failure retry:** the 19:01 attempt clears the mark whatever its outcome (queued, rejected-and-restored, skipped,
   raised). Nothing retries a sale on its own; a trade still held is re-decided on the next true close. An expired
   opg likewise leaves the trade open under its restored stop until the next close below the line.
-- **A stale mark is never sold on:** a mark dated before today's ET session (the 19:01 run was missed, or re-driven
-  after midnight) is cleared with a `depth_sale_mark_stale` audit row and a page, nothing cancelled — the rule
-  decides on the TRUE close, and today's may be back above the line.
+- **A stale mark is never sold on** — ⚖ no longer a default: RULED by him 2026-10-01 (ruling (4), 2026-10-02
+  entry). A mark dated before today's ET session (the 19:01 run was missed, or re-driven after midnight) is
+  cleared with a `depth_sale_mark_stale` audit row and a page, nothing cancelled — the rule decides on the TRUE
+  close, and today's may be back above the line.
 - **Skips page once per trade per kind** (`full_exit_skipped`, shared with #687 A): nothing free to sell beside a
   resting profit-take, or the broker unreadable (nothing is cancelled in either case).
 
