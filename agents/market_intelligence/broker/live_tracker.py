@@ -123,9 +123,11 @@ _ET_ZONE = ZoneInfo("America/New_York")
 
 
 def _exit_leg_et_date(raw_time) -> "date | None":
-    """The ET calendar date of one `exits[]` leg's `time`. Aware stamps (every broker-fill
-    writer: `datetime.now(timezone.utc).isoformat()`) convert to ET; a NAIVE stamp is already
-    ET wall-clock (`exit_logic` writes `datetime.combine(today, 16:00)`). None when unreadable."""
+    """The ET calendar date of one `exits[]` leg's `time`. Aware stamps (every current broker-fill
+    writer: `datetime.now(timezone.utc).isoformat()`) convert to ET. A NAIVE stamp keeps the date
+    as written: older rows stored naive UTC (e.g. "2026-05-15T13:33:38") and `exit_logic` writes
+    naive ET 16:00 — every fill lands in market hours, when both name the same ET date. None when
+    unreadable."""
     try:
         ts = datetime.fromisoformat(str(raw_time))
     except (TypeError, ValueError):
