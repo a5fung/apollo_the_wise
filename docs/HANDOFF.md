@@ -1334,3 +1334,18 @@ stagger cards, one at a time.
 **Rulings today:** #580 one-sided theme trim STAYS ("strongest are the leaders that may be what lights up a theme"); #690 hold a job on its current model only on refusal / error / unreadable, changed answers go to the digest; alert noise — page only when there is something to act on (delay-miss page retired, morning digest silent on zero genuine misses, catalyst-tier monitor only when a revert could matter).
 
 **Standing:** Fable ~4% (09-29) → Opus/Sonnet cards only; every Sonnet role on claude-sonnet-5-5, `_ROLE_OVERRIDES` empty, no role holds.
+
+## 2026-10-01 (Thu) CLOSE — 🔴 RESUME HERE. Supersedes the 09-30 close above.
+
+**Board 47 → 50** under his carryover ("approved"): three tasks filed on his word — #691 (monthly sweep: 7 of 12 checks unclassified, every `/audit <topic>` link dead, stale judge footer), #692 (M&A filter wrongly blocked 10 of 11 in September — his labels, only ACVA a real buyout; ground truth `docs/analysis/mna_filter_operator_labels_2026-10-01.md`), #693 (Sonnet 5.5's thinking-off switch is `between_tools`; our adapter drops the param so four theme jobs think in full; plus two scratchpad-first Sonnet prompts). **Deployed:** #121 (Telegram HTML) 21:16 ET, both + execution, server 56ecfc46, imports ok in all three, shell formatter escapes on the host.
+
+**Tonight's readings:** #689 night 2 of 3 PASSED (15 batches on 5.5, no refusals); #505 6 pairs (1 linked, 0 errors); #655 G3 89.3% and G4 12.2% both fail their bars; #657 night 4 of 5; #690 capture confirmed (17 call-site keys); crypto ran (213).
+
+**⚠ CAPACITY CONSERVE until Fri 10-02 08:00 PT** (his word) — no subagent cards before then.
+
+**Friday 10-02, in order:**
+1. #121 verify: 0 `telegram_markdown_fallback` / `send_failed` rows since 21:16 ET 10-01, migrated surfaces observed as HTML.
+2. After 08:00 PT: #690 simulated release (a real model id through the pre-adoption replay → a verdict per job + one digest Telegram); #687 ONE cut-back round (scope audit, revert generalized hunks, his 4 rulings, OFF-path byte-identical test).
+3. 17:00 ET: #689 night 3 → close per DoD; #657 night 5 → close per DoD; #505 next pairs; #655 row.
+
+**Saturday 10-03:** #687 (or commit A alone); #688 risk 1%→2%; #635 commit B; #580 0%-breadth fix; #691; #692 (replay + his sign-off before deploy — THE LINE); #693 (after #689 closes); #663; #491; #519.
