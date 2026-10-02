@@ -1,7 +1,7 @@
 {
  "baseline_sha": "90d0245980dcd49a58a53237c154c61cf74ee76e",
  "captured_by": "scripts/probes/_687/capture_toggle_off_baseline.sh",
- "harness_sha256": "fb31264441df42ace9642d8e0bc6f37ee7b61b47f01b46aacf20f9fc8c51f88b",
+ "harness_sha256": "f703a058c8a48ca10d8a61ba06547b4bc0a2ad499f60f8992a75ca7afc21538f",
  "scenarios": {
   "s01_1645_exit_no_resting": {
    "_unknown_sql": [],

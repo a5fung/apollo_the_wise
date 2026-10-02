@@ -991,8 +991,10 @@ async def _run_one(fn, mods) -> dict:
 
 async def run_all() -> dict:
     import os
-    os.environ.setdefault("DRAWDOWN_BREAKER_PHASE", "shadow")
-    os.environ.setdefault("STOP_ACK_TIMEOUT_GATE_ENABLED", "true")
+    # Hard-set (this runs in its own subprocess): a shell that exports either must not make the
+    # branch run under a different environment from the captured baseline.
+    os.environ["DRAWDOWN_BREAKER_PHASE"] = "shadow"
+    os.environ["STOP_ACK_TIMEOUT_GATE_ENABLED"] = "true"
     from agents.market_intelligence.broker import alpaca_client as ac
     from agents.market_intelligence.broker import live_tracker as lt
     from agents.market_intelligence.broker import order_manager as om
