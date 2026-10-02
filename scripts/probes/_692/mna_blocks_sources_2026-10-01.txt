@@ -1,0 +1,22 @@
+ACVA  2026-09-11 07:00 path=claude_classifier src=claude_classifier
+   '[SEC 8-K filed 2026-09-10, items 1.01,7.01,9.01] ACVA gapped up because Copart announced an agreement to acquire ACV Auctions in an all-cash deal valued at approximately $1.9 billion.\n\nCopart is offer'
+CHYM  2026-09-09 07:00 path=claude_classifier src=claude_classifier
+   '[SEC 8-K filed 2026-09-08, items 1.01,7.01,9.01] CHYM gapped up on the announcement that Chime Financial agreed to acquire its longtime banking partner, Stride Bank, for $590 million in cash.\n\nThe dea'
+CSR   2026-09-09 09:05 path=claude_classifier src=claude_classifier
+   '[SEC 8-K filed 2026-09-09, items 1.01,7.01,9.01] CSR is gapping up because Centerspace announced an $8.1 billion all-stock merger with Independence Realty Trust (NYSE: IRT).\n\nUnder the agreement, CSR '
+FWDI  2026-09-18 09:35 path=claude_classifier src=claude_classifier
+   '[SEC 8-K filed 2026-09-15, items 7.01,9.01] FWDI’s latest identifiable catalyst is its renewed, sweetened proposal to acquire SkyAI, a Solana-treasury company.\n\nForward Industries offered SkyAI shareh'
+GPRK  2026-09-03 09:30 path=claude_classifier src=claude_classifier
+   'GPRK gapped up primarily on GeoPark’s announcement of a major strategic entry into Venezuela through the Bare Block, a producing heavy-oil asset in the Orinoco Heavy Oil Belt.\n\nKey details driving the'
+IOVA  2026-09-29 08:05 path=title src=polygon_news
+   '[SEC 8-K filed 2026-09-29, items 8.01,9.01] IOVA’s latest reported gap-up catalyst is Iovance’s raised 2026 revenue outlook, announced September 29: the company now expects revenue of $410 million–$42'
+JBS   2026-09-18 07:00 path=claude_classifier src=claude_classifier
+   '[SEC 8-K filed 2026-09-15, items 8.01,9.01] JBS N.V. (NYSE: JBS) appears to be gapping up primarily on renewed attention to its proposed acquisition of the remaining publicly traded shares of Pilgrim’'
+RGTI  2026-09-08 09:31 path=title src=polygon_news
+   '[SEC 8-K filed 2026-09-08, items 1.01,3.02,7.01,8.01,9.01] RGTI gapped up primarily because Rigetti announced a binding $100 million funding agreement with the U.S. Department of Commerce under the CH'
+SWKS  2026-09-15 09:50 path=claude_classifier src=claude_classifier
+   'SWKS gapped up primarily on renewed optimism around its proposed $22 billion merger with Qorvo.\n\nThe immediate catalyst was CEO Phil Brace’s comments at the Goldman Sachs Communacopia conference that '
+VKTX  2026-09-22 07:10 path=title src=polygon_news
+   '[SEC 8-K filed 2026-09-22, items 8.01,9.01] VKTX’s latest move higher was driven primarily by renewed obesity-drug M&A speculation after Novo Nordisk said it could pursue larger acquisitions and is ta'
+WAY   2026-09-15 07:00 path=claude_classifier src=claude_classifier
+   'WAY is gapping up on Reuters reporting that Waystar is exploring strategic alternatives, including a potential sale that could take the company private.\n\nThe company has reportedly hired Evercore to a'

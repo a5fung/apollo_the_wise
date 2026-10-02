@@ -1,0 +1,24 @@
+M&A FILTER ACCURACY REVIEW  (lookback 35d)
+Surfaces filter decisions + forward returns for OPERATOR judgment.
+The agent does NOT classify FP/TP (HARD-gate rules #3/#4).
+
+=== SUPPRESSED by the M&A filter (verify none were missed movers) (n=11) ===
+  ticker  fire_day    vs_open   vs_low  note
+  FWDI    2026-09-18   +31.1%   +32.3%  <-- MATERIAL-MISS CANDIDATE (verify FP)
+  IOVA    2026-09-29   +19.6%   +19.7%
+  VKTX    2026-09-22   +16.5%   +18.6%
+  SWKS    2026-09-15   +14.3%   +15.9%
+  RGTI    2026-09-08    +4.1%   +10.9%
+  GPRK    2026-09-03    +3.4%   +11.3%
+  CSR     2026-09-09    +2.5%    +4.6%
+  JBS     2026-09-18    +1.8%    +1.9%
+  WAY     2026-09-15    +0.9%    +6.7%
+  CHYM    2026-09-09    +0.6%    +6.1%
+  ACVA    2026-09-11    +0.4%    +0.9%
+
+  1 suppression(s) ran >= +20% post-fire -> operator: confirm each was a genuine M&A target, not a missed mover.
+
+=== PASSED as ACQUIRER-side by #284 (verify none were genuine targets) (n=0) ===
+  (none)
+
+SSoT: docs/setups/magna53_ep.md (M&A filter change log). Deferred bleed class: data_gated_reviews `mna_filter_direction_blindness_path_a`.
