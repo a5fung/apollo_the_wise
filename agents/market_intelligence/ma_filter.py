@@ -41,11 +41,14 @@ OPERATOR RULINGS (#692, 2026-10-02 22:20 PDT — "ok" to all seven; each is a na
      headline blocked on its own; that changed on his word.
   5. Grade 'mna' with the grader's deal fields blank / out of vocabulary / missing → BLOCK, as
      before #692 (source `claude_classifier_unanswered`).
-  6. The 'mna' GRADE — re-tied 2026-10-03 (his ruling 2, "Go with rec", supersedes the letter of
-     this ruling): graded ONLY for a signed reverse-merger SHELL (ep_detector RULE 3, the judge's
-     rule 6); a buyout TARGET, signed or proposed, is graded on its own merit and this filter alone
-     decides it on price. Before: 'mna' for any signed price-fixing deal, which left a price-
-     released target (PD, DSGN) with a 0-point grade that could not reach HIGH.
+  6. The 'mna' GRADE means only a signed price-fixing deal (ep_detector RULE 3): a signed target
+     paid cash / mixed / unknown, or a signed shell. (Ruling 2 of 2026-10-03 re-tied it to shells
+     only; REVERTED the same night — #692b, operator: "the label doesn't kill it only if the M&A
+     is false" — because the ADR 0030 judge-eval corpus case S19 requires a definitive all-cash
+     buyout target to grade 'mna'.) The grader now ALSO answers `quality_if_no_deal` — the merit
+     grade as if the deal were not real — and when this filter RELEASES a news-blocked name at
+     09:35 (`pin_free`), the EP scan re-scores it with that grade instead of 'mna', so a PD-class
+     name can reach HIGH; a pinned (confirmed) name keeps 'mna' and stays blocked.
   7. A headline overrides the grader ONLY when the grader found no deal (role 'none') or did not
      answer. When the grader answered a deal that does not pin (buyer, proposed, speculation,
      all-stock...), a pinning headline cannot re-block — it is logged as a conflict and passes.
@@ -989,15 +992,15 @@ async def is_likely_ma(
                 "ticker": ticker,
                 "catalyst_quality": catalyst_quality,
             }
-        # 'mna' graded while the grader's OWN answered fields are not a signed SHELL. Since his
-        # 2026-10-03 ruling 2 the grade is reserved for a signed reverse-merger shell — a buyout
-        # TARGET is graded on merit and the filter decides it on price — so a target graded 'mna'
-        # is the prompt rule NOT holding. The fields decide the verdict; this row counts the
+        # 'mna' graded while the grader's OWN answered fields do not pin BY THE NEWS RULE
+        # (ruling 2 of 2026-10-03 was REVERTED the same night — #692b: 'mna' is again the grade
+        # for a signed price-fixing target or a signed shell; a price-released name is re-scored
+        # with `quality_if_no_deal` instead). The fields decide the verdict; this row counts the
         # mismatch (EXPECT ~0/week; > 3/week = the prompt rule is not holding).
-        if not (deal_answer.role == "shell" and deal_answer.status == "signed"):
+        if not deal_pins_price(deal_answer):
             await _audit_once(
                 "mna_grade_without_pin", ticker,
-                f"graded 'mna' but its deal fields are not a signed shell — {_answer_str(deal_answer)}",
+                f"graded 'mna' but its deal fields do not pin — {_answer_str(deal_answer)}",
                 {"grader": deal_fields(deal_answer)})
 
     # Ruling 7: did the grader find a deal (any role but 'none')? Then a headline cannot re-block.
@@ -1100,4 +1103,10 @@ async def is_likely_ma(
              "overruled_headline": scan.hit if grader_found_deal else None,
              "unanswered_n": len(scan.unanswered),
              **({"pin_release": pin_release} if pin_release else {})})
+    if pin_release:
+        # #692b: tell the caller the PRICE released a news-blocked name, so the EP scan can
+        # re-score it with the grader's `quality_if_no_deal` (the deal is not what the market
+        # is trading). Every other pass stays (False, None); callers only read meta on a block
+        # or via `.get`, so a dict here changes no verdict.
+        return False, {"released_on_price": True, **pin_release}
     return False, None

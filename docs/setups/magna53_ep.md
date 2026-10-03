@@ -458,6 +458,107 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
+### 2026-10-03 (night) — #692b: ruling 2 REVERTED — `mna` is again the grade for a price-fixing buyout (S19 of the judge-eval corpus passes as authored); the grader adds `quality_if_no_deal`, and a name the 09:35 open window RELEASES is scored with that merit grade instead of `mna` (BUILT on `692b-mna-merit-grade`, NOT DEPLOYED)
+
+**Trigger:** #692 deployed to main (`63484fbb`, the branch merged) and `deploy.sh both` exited 17
+at gate `[5m/7]` (ADR 0030): the grade surface changed — ruling 2 had re-tied RULE 3 and the
+judge's rule 6 so a buyout target was graded on merit, and corpus case **S19** (`mna_as_catalyst`,
+HARD — a definitive all-cash buyout of the TARGET at $14.50, "stock pinned to the deal price")
+requires the judge to grade it `mna`. Ruling 2 breaks S19 by design.
+
+**His clarification (2026-10-03), verbatim:** *"the label doesn't kill it only if the M&a is
+false"* — and *"Ok"* to this shape:
+- REVERT ruling 2 in the grader RULE 3 and judge rule 6: `mna` is again the grade for a SIGNED
+  target with cash / mixed / unknown consideration (a price-fixing buyout) and for a signed
+  shell — S19 must pass as authored. The eval corpus is NOT edited.
+- ADD a grader verdict field `quality_if_no_deal` (same enum as `quality`, placed with the
+  verdict fields before any reason text): the catalyst's grade on its own merit as if the deal
+  were not real.
+- When the 09:35 open-window read RELEASES a news-blocked name (`pin_free` — the price says the
+  deal is false), the name is scored with `quality_if_no_deal` instead of `mna`, for both the
+  grader's grade and the judge's `mna` verdict on that name, so a PD-class stock can reach HIGH
+  through the existing post-open path. A pinned (confirmed) name keeps `mna` and stays blocked.
+  Pre-market nothing changes from the shipped timing rule (news blocks; no hold; ORB entry
+  untouched).
+
+**What changed (plain words).**
+- *The grade means a price-fixing buyout again.* `ep_detector` RULE 3 and the `classify_catalyst`
+  `quality` description carry the 10-02 wording (signed target paid cash / mixed / unknown, or a
+  signed shell → `mna`); the judge's rule 6 is byte-identical to its 2026-08-27 text, so
+  `RUBRIC_HASH` is back to `d65ac7f3` = the passing record. S19's payload carries no release
+  flag, so the judge prompt it sees is unchanged.
+- *A second verdict field.* `quality_if_no_deal` (enum `game_changer / strong / routine / mna`,
+  required, after the deal fields and before `analysis`): "the grade this catalyst earns on its
+  own merit under rules 1, 2, 4 and 5 AS IF the deal were not real; with no deal, repeat
+  quality". Parsed into the grade sink and the grade cache (`CachedGrade.quality_if_no_deal`).
+  `CATALYST_GRADE_PROMPT_VERSION` → `v4-2026-10-03-deal-fields-merit-if-no-deal` (the 10-02
+  deal fields never bumped it; a grader-prompt change is a gate key by the 2026-06-11 directive).
+- *The release re-scores.* `ma_filter.is_likely_ma` now returns `(False, {released_on_price:
+  True, pin, answer, source})` on a `pin_free` release (every other pass stays `(False, None)`);
+  `_post_grade_filters` hands it to the caller through `release_sink`; both call sites (the
+  cached-grade re-filter at 09:35 and a fresh grade after 09:35) run
+  `_apply_release_merit_grade`: `merit_grade_after_release('mna', quality_if_no_deal)` →
+  the merit grade becomes the RAW grade, the lattice re-resolves the acting grade (one grade
+  everywhere), the cache stores the merit grade + `mna_released_on_price` so every later tick
+  and the judge see the same fact, and an `mna_release_merit_grade` row records from → to with
+  the reading. **FAIL SAFE (stated, his wording "stays 'mna' / blocked"):** a missing /
+  out-of-vocabulary / `mna` `quality_if_no_deal` on a `mna`-graded release keeps the name
+  BLOCKED — `_post_grade_filters` returns its skip reason and writes
+  `mna_release_without_merit_grade`. (Keeping `mna` alone would not keep it out: a 0-catalyst
+  name still scores 45 raw with a theme match against the 40 bar.)
+- *The judge on a released name.* The payload carries `mna_price_released` (rendered as its own
+  block OUTSIDE `_RUBRIC` — the hash is untouched — telling the judge the first five minutes
+  traded freely and the deal is not what the market is trading); if the judge still answers
+  `mna`, `_judge_grade_after_release` re-labels its grade with `quality_if_no_deal` (fail safe:
+  no merit grade → the judge's `mna` stands). The judge's TIER is its own call and is not
+  touched. A confirmed pin never reaches either path: the filter blocks it.
+- *Unchanged:* the shipped timing rule (news blocks pre-market, no hold, 09:31 ORB entry
+  untouched; the 09:35 read releases or confirms); the price-only arm; the flag / anticipation
+  day window; rulings 4 and 5; the `/why` line.
+
+**Evidence:** S19's shape through the production functions (`tests/test_mna_merit_grade_692b.py`)
+— the grader prompt grades a signed all-cash target `mna` and asks the merit grade; the judge on
+S19's own payload keeps `mna` (predicate `grade_is mna` passes) and renders no release block; a
+released name's merit grade clears the raw HIGH bar where `mna` could not (`_score_ep`); a
+confirmed pin keeps `mna`; the fail-safe keeps `mna` and writes its row. The 18 nominated replay
+rows' `quality` / `quality_if_no_deal` under the new grader are HIS paid check
+(`scripts/probes/_692/merit_grade_check.py`, read-only, abort above $1.50, ≈ $0.40 — not run here).
+
+**Deploy sequence (the 2026-08-27 runbook, `docs/ops/runbook_2026-08-27_deploy_and_verify.md`):**
+`deploy.sh market-agent` stops at `[5m/7]` exit 17 with the container already on the new image
+(the grader prompt version is a gate key) → run the judge eval in the container, captured to a
+file → regenerate the pass record FROM its RESULTS_JSON with
+`scripts/evals/write_judge_pass_record.py <captured>` (new: copies every key, refuses a failing
+run, carries `envelope` forward) → commit → `deploy.sh market-agent` + `deploy.sh execution`.
+
+**PRE-REGISTERED (before any live data):**
+- **EXPECT:** every grade row carries `quality_if_no_deal` (the grade sink; `mna_release_without_merit_grade`
+  ≈ 0 a week — > 2 a week = the grader is not answering the field); every `pin_free` release of a
+  `mna`-graded name has an `mna_release_merit_grade` row (from `mna`, to a merit grade) the same
+  minute; the first such name whose merit grade and score clear alerts HIGH at 09:35–09:36 and
+  enters post-open — the positive observable this change exists for (baseline: a released
+  `mna` name never alerted); `ep_grade_decision` rows on released names show `judge_grade` ≠
+  `mna` (the payload block or the re-label); S19-class names (signed cash targets, pinned)
+  still grade `mna` and stay blocked (`mna_pin_confirmed`). Unintended, watched: a released
+  name whose judge TIER is `none` (the judge disagrees with the merit grade) — counted; the
+  `mna` share of grades unchanged from baseline on non-released names.
+- **DONE-WHEN:** 20 trading days with every released name carrying a merit grade (or its
+  fail-safe row), no S19-class name alerting, and his monthly review labelling each released
+  name's merit grade reasonable.
+- **WOULD-FAIL-IF:** a `pin_free` release of a `mna` name with neither `mna_release_merit_grade`
+  nor `mna_release_without_merit_grade`; a released name alerting with acting grade `mna`; a
+  pinned (confirmed) name whose grade is not `mna`; a grade row missing `quality_if_no_deal`.
+
+**Reversion-flag:** REVERSAL of this day's ruling 2 (the shell-only grade), by his word — it
+broke S19, the operator-signed corpus: a grade that cannot name a definitive all-cash buyout
+`mna` fails the one hard misdirection class the judge exists to catch. The purpose ruling 2
+served (a released target must not carry a 0-point grade) is kept by `quality_if_no_deal`.
+
+**Tests:** `tests/test_mna_merit_grade_692b.py`; the RULE 3 drift test restored
+(`test_rule_3_grades_a_price_fixing_buyout_mna_and_asks_the_merit_grade_too`); the tool-order
+test includes the new field; the regrade script's NEW arm hash-pinned to what ran (it is a
+record now); `tests/test_write_judge_pass_record.py`. Mutations: in the commit.
+
 ### 2026-10-03 — #692: the news NOMINATES, the PRICE DECIDES — pre-market the news blocks a nominated target, at 09:35 the open window can only RELEASE it; his four rulings ("Go with rec": RULE 3 re-tied, the price-only arm, NUVL / IRDM) and his timing ruling (no hold, the 09:31 ORB entry untouched) the same day (BUILT on the branch, NOT DEPLOYED)
 
 **Status (as of 2026-10-03, night):** BUILT on `692-mna-target-question` (same branch as the

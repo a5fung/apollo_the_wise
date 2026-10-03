@@ -47,9 +47,9 @@ CATALYST_GRADE = {
     "game_changer": 100.0,
     "strong": 70.0,
     "routine": 30.0,
-    # Since 2026-10-03 `mna` is graded ONLY for a signed reverse-merger shell (blocked by the
-    # M&A filter on the news alone); a buyout target carries its merit grade and the filter
-    # decides it on price — so 0.0 here is a shell's weight, never a released target's.
+    # A price-fixing buyout (signed target paid in cash / mixed / unknown, or a signed shell) is
+    # blocked by the M&A filter; a name the filter RELEASES on price (#692b, 2026-10-03) carries
+    # the grader's `quality_if_no_deal` instead of 'mna', so 0.0 here never weights a released name.
     "mna": 0.0,
 }
 

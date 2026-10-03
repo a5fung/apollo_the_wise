@@ -473,15 +473,18 @@ async def _async(v):
     return v
 
 
-def test_a_target_graded_mna_is_the_prompt_rule_not_holding_and_is_counted():
-    """His ruling 2 (2026-10-03): 'mna' is for a signed SHELL only, so PD's recorded 10-02 shape
-    (grade 'mna' + target/signed/unknown) is now the prompt rule NOT holding — the price still
-    releases it (`pin_free`) and the `mna_grade_without_pin` counter fires once. A signed shell
-    graded 'mna' is the rule holding: no row."""
+def test_a_price_released_signed_target_graded_mna_is_not_counted_as_a_grade_without_pin():
+    """#692b (ruling 2 reverted): PD's shape (grade 'mna' + target/signed/unknown) is the prompt
+    rule HOLDING — the fields pin by news; the price releases it (`pin_free`) and the EP scan
+    re-scores it with `quality_if_no_deal`. No `mna_grade_without_pin` row. The counter still
+    fires on its real case ('mna' on fields that fail the news rule); a signed shell writes none."""
     out = _run(H.run_new(H.CASES_BY_TICKER["PD"]))
     assert out.blocked is False and _released_on_price(out)
-    rows = [a for a in out.audits if a[0] == "mna_grade_without_pin"]
-    assert len(rows) == 1 and "not a signed shell" in rows[0][1]
+    assert not [a for a in out.audits if a[0] == "mna_grade_without_pin"]
+    assert out.meta == {"released_on_price": True, **[a for a in out.audits if a[0] == "mna_filter_released"][0][2]["pin_release"]}
+    buyer = H.CASES_BY_TICKER["PD"]._replace(grader=H.Ans("buyer", "signed", "cash"), pin=None)
+    out = _run(H.run_new(buyer))
+    assert out.blocked is False and out.meta is None and [a for a in out.audits if a[0] == "mna_grade_without_pin"]
     shell = H.CASES_BY_TICKER["SUNE"]._replace(catalyst_quality="mna",
                                                grader=H.Ans("shell", "signed", "unknown", "Suniva"))
     out = _run(H.run_new(shell))

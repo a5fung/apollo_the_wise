@@ -705,9 +705,12 @@ from agents.market_intelligence import ep_detector  # noqa: E402
 
 def test_catalyst_tool_order_is_grade_then_deal_fields_then_analysis_last():
     props = list(ep_detector._CATALYST_TOOL["input_schema"]["properties"])
+    # #692b: `quality_if_no_deal` is a VERDICT field — placed with the others, before the free text
     assert props == ["quality", "deal_role", "deal_status", "deal_consideration",
-                     "deal_counterparty", "analysis"]
+                     "deal_counterparty", "quality_if_no_deal", "analysis"]
     assert ep_detector._CATALYST_TOOL["input_schema"]["required"] == props
+    assert ep_detector._CATALYST_TOOL["input_schema"]["properties"]["quality_if_no_deal"]["enum"] == [
+        "game_changer", "strong", "routine", "mna"]
     assert ep_detector._CATALYST_TOOL["input_schema"]["properties"]["quality"]["enum"] == [
         "game_changer", "strong", "routine", "mna"]
 
@@ -758,32 +761,26 @@ def test_the_two_tuple_return_is_kept_without_a_sink():
     assert out == ("mna", "x")
 
 
-def test_rule_3_reserves_mna_for_a_signed_shell_and_grades_targets_on_merit():
-    """His ruling 2 (2026-10-03, 'Go with rec' — supersedes the letter of ruling 6): the 'mna'
-    grade is for a signed reverse-merger SHELL only; a buyout TARGET, signed or proposed, is
-    graded on its own merit and the filter decides it on price. The drift test: the prompt, the
-    tool's quality description and the judge's rule 6 all say exactly that."""
+def test_rule_3_grades_a_price_fixing_buyout_mna_and_asks_the_merit_grade_too():
+    """#692b (operator 2026-10-03: "the label doesn't kill it only if the M&A is false"): ruling 2
+    of the same day (shell-only 'mna') is REVERTED — the ADR 0030 corpus case S19 requires a
+    definitive all-cash buyout target to grade 'mna'. The rule names the pinning considerations
+    again, and now also asks `quality_if_no_deal` (the merit grade used when the opening price
+    releases the name). The drift test for the grader's prompt + tool."""
     _, _, calls = _grade({"quality": "routine", "analysis": "x"})
     prompt = calls[0]["messages"][0]["content"]
     assert "DEAL FIELDS" in prompt and "deal_role" in prompt and "'shell'" in prompt
     # the old keyword list is gone — RGTI's FUNDING 'definitive agreement' is why
     assert 'Keywords: "definitive agreement"' not in prompt
     rule = " ".join(prompt.split('Grade "mna" ONLY when', 1)[1].split("\n4. ", 1)[0].split())
-    assert rule.startswith("deal_role is 'shell' AND deal_status is 'signed'")
-    assert "A TARGET of a deal — signed or proposed, whatever the consideration — is graded on its own merit" in rule
-    assert "a separate M&A filter reads its price and decides, not the grade" in rule
-    # a target's consideration is no longer a GRADING condition anywhere in the rule
-    assert "deal_role is 'target' and deal_consideration" not in rule
+    assert rule.startswith("deal_status is 'signed' AND either deal_role is 'shell', or deal_role is 'target' and deal_consideration is")
+    for cons in mf._PINNING_CONSIDERATIONS:
+        assert f"'{cons}'" in rule
+    assert "'stock'" not in rule.split("quality_if_no_deal", 1)[0]
+    assert "quality_if_no_deal: the grade this catalyst earns on its own merit under rules 1, 2, 4 and 5 AS IF the deal were not real" in rule
     q = ep_detector._CATALYST_TOOL["input_schema"]["properties"]["quality"]["description"]
-    assert "mna: ONLY when deal_role is shell AND deal_status is signed" in q
-    assert "A buyout TARGET, signed or proposed, is graded on its own merit" in q
-    from agents.market_intelligence import ep_grade_judge
-    import inspect
-    judge_src = inspect.getsource(ep_grade_judge)
-    # source-pin-ok: the judge's rule 6 is prompt TEXT (a module-level string, not behaviour a
-    # unit can exercise without a model); it must carry the same shell-only rule as the grader.
-    assert 'grade "mna" ONLY for the listed vehicle of a SIGNED reverse merger' in judge_src
-    assert "is graded on the merit of its" in judge_src
+    assert "mna: ONLY when deal_status is signed AND either deal_role is shell, or deal_role is target" in q
+    assert ep_detector.CATALYST_GRADE_PROMPT_VERSION == "v4-2026-10-03-deal-fields-merit-if-no-deal"
 
 
 def test_post_grade_filters_decides_on_the_graders_answer():

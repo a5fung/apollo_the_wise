@@ -168,19 +168,29 @@ CATALYST_TOOL = {
                     "game_changer: massive earnings beat + guidance raise, FDA approval, "
                     "transformative contract. strong: solid beat + guidance raise, analyst "
                     "upgrade cluster, major partnership. routine: in-line results, no "
-                    "company-specific catalyst. mna: ONLY when deal_role is shell AND deal_status "
-                    "is signed — this listed company is the vehicle of a signed reverse merger. A "
-                    "buyout TARGET, signed or proposed, is graded on its own merit; a separate M&A "
-                    "filter decides it on price, not the grade."
+                    "company-specific catalyst. mna: ONLY when deal_status is signed AND either "
+                    "deal_role is shell, or deal_role is target and deal_consideration is cash, "
+                    "mixed or unknown — this company's price is fixed by a signed deal, no "
+                    "momentum trade. Any other deal is graded on its own merit."
                 ),
             },
             **DEAL_FIELD_PROPERTIES,
+            "quality_if_no_deal": {
+                "type": "string",
+                "enum": ["game_changer", "strong", "routine", "mna"],
+                "description": (
+                    "The catalyst's grade on its own merit AS IF the deal were not real — the "
+                    "same scale as quality, graded under rules 1, 2, 4 and 5 with the deal set "
+                    "aside. The system uses it when the opening price shows the deal does not fix "
+                    "the price. When no deal is involved, repeat quality."
+                ),
+            },
             "analysis": {
                 "type": "string",
                 "description": "2-3 sentences on the specific catalyst and classification rationale.",
             },
         },
-        "required": ["quality", *DEAL_FIELD_PROPERTIES, "analysis"],
+        "required": ["quality", *DEAL_FIELD_PROPERTIES, "quality_if_no_deal", "analysis"],
     },
 }
 
@@ -236,11 +246,14 @@ NEW_RULE_3 = """3. DEAL FIELDS — answer about THIS company only.
    'stock' (acquirer shares only / fixed exchange ratio / all-stock merger), 'mixed', 'unknown' (deal
    described, terms not in the text), or 'none'.
    deal_counterparty: the other company, or empty.
-   Grade "mna" ONLY when deal_role is 'shell' AND deal_status is 'signed' — the listed vehicle of a
-   signed reverse merger, the one case where the grade itself carries the verdict. A TARGET of a deal
-   — signed or proposed, whatever the consideration — is graded on its own merit under rules 1, 2, 4
-   and 5: a separate M&A filter reads its price and decides, not the grade. The same goes for a
-   buyer, an all-stock merger, or a deal that involves another company."""
+   Grade "mna" ONLY when deal_status is 'signed' AND either deal_role is 'shell', or deal_role is
+   'target' and deal_consideration is 'cash', 'mixed' or 'unknown' — that is the one case where the
+   price is fixed by the deal and there is no momentum trade. In every other case (this company is the
+   buyer, the deal is proposed or rumoured, the merger is all-stock, the deal involves another company)
+   grade the catalyst on its own merit under rules 1, 2, 4 and 5.
+   quality_if_no_deal: the grade this catalyst earns on its own merit under rules 1, 2, 4 and 5 AS IF
+   the deal were not real — the system uses it when the opening price shows the deal does not fix the
+   price. When no deal is involved, repeat quality."""
 
 
 def _grader_prompt(ticker: str, profile: dict, grounded_text: str | None, rule_3: str,
