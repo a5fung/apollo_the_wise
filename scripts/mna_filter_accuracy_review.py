@@ -64,19 +64,21 @@ def _print_section(title: str, rows, flag_material: bool):
         print("  (none)")
         return
     print(f"  {'ticker':7} {'fire_day':10} {'vs_open':>8} {'vs_low':>8}  note")
-    n_material = 0
+    material: list[str] = []
     for r in rows:
         pk_open = r["pk_vs_open"]
         flag = ""
         if flag_material and pk_open is not None and pk_open >= _MATERIAL_PEAK_PCT:
             flag = "  <-- MATERIAL-MISS CANDIDATE (verify FP)"
-            n_material += 1
+            material.append(f"{r['ticker']} {r['fire_day']} ({pk_open:+.1f}%)")
         po = f"{pk_open:+.1f}%" if pk_open is not None else "   n/a"
         pl = f"{r['pk_vs_low']:+.1f}%" if r["pk_vs_low"] is not None else "   n/a"
         print(f"  {r['ticker']:7} {str(r['fire_day']):10} {po:>8} {pl:>8}{flag}")
-    if flag_material and n_material:
-        print(f"\n  {n_material} suppression(s) ran >= +{_MATERIAL_PEAK_PCT:.0f}% post-fire -> "
-              "operator: confirm each was a genuine M&A target, not a missed mover.")
+    if flag_material and material:
+        # Name them (operator 2026-10-03: "It says one ran >20% but doesn't show it").
+        print(f"\n  {len(material)} suppression(s) ran >= +{_MATERIAL_PEAK_PCT:.0f}% post-fire: "
+              f"{', '.join(material)} -> operator: confirm each was a genuine M&A target, "
+              "not a missed mover.")
 
 
 async def main(lookback_days: int) -> int:
