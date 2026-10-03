@@ -583,6 +583,28 @@ def test_tier_shadow_recorder_appends_the_answer_after_30():
     assert args[26] == "llm"   # $27 live_side unchanged
 
 
+def test_why_shows_the_deal_answer_in_plain_words_with_the_filters_own_verdict():
+    """/why (operator surface) renders the recorded answer through the SAME deal_pins_price the
+    filter runs, so the line cannot disagree with what the filter did."""
+    from agents.market_intelligence.agent import _deal_answer_line, _format_catalyst_grade_block
+    acva = _deal_answer_line({"deal_role": "target", "deal_status": "signed",
+                              "deal_consideration": "cash", "deal_counterparty": "Copart"})
+    assert acva == ("   deal: this company is being bought — signed deal with Copart, paid in cash"
+                    " → price pinned, the M&A filter blocks it")
+    fwdi = _deal_answer_line({"deal_role": "buyer", "deal_status": "proposed",
+                              "deal_consideration": "unknown", "deal_counterparty": "SkyAI"})
+    assert fwdi.endswith("lets it through") and "the buyer" in fwdi and "paid in" not in fwdi
+    csr = _deal_answer_line({"deal_role": "target", "deal_status": "signed",
+                             "deal_consideration": "stock", "deal_counterparty": "IRT"})
+    assert csr.endswith("lets it through") and "paid in stock" in csr
+    assert _deal_answer_line({"deal_role": "none", "deal_status": "none"}) is None
+    assert _deal_answer_line({}) is None   # unanswered / pre-#692 row
+    block = "\n".join(_format_catalyst_grade_block({
+        "live_quality_last": "mna", "deal_role": "target", "deal_status": "signed",
+        "deal_consideration": "cash", "deal_counterparty": "Copart"}))
+    assert "price pinned, the M&A filter blocks it" in block
+
+
 def test_enriched_corpus_forwards_the_sink():
     seen = {}
 

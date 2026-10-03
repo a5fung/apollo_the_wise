@@ -381,6 +381,29 @@ def _grade_agreement(rubric_label: str, grader_label: str) -> str:
             f"{_dir}")
 
 
+def _deal_answer_line(grade: dict) -> str | None:
+    """#692 — one plain-words line for the grader's M&A answer (deal_role / deal_status /
+    deal_consideration / deal_counterparty on the tier-shadow row). None when unanswered or
+    when no deal involves this company. The pin verdict comes from ma_filter.deal_pins_price —
+    the same function the filter runs — so the line can never disagree with the filter."""
+    role, status = grade.get("deal_role"), grade.get("deal_status")
+    if not role or (role == "none" and status in (None, "none")):
+        return None
+    from agents.market_intelligence.ma_filter import DealAnswer, deal_pins_price
+    cons = grade.get("deal_consideration") or "unknown"
+    who = (grade.get("deal_counterparty") or "").strip()
+    part = {"target": "being bought", "buyer": "the buyer", "shell": "a reverse-merger shell",
+            "none": "not a party"}.get(role, role)
+    stage = {"signed": "signed deal", "proposed": "proposal / talks", "speculation": "speculation",
+             "completed": "closed deal", "none": "no deal"}.get(status or "none", status)
+    pinned = deal_pins_price(DealAnswer(role, status or "none", cons))
+    return (f"   deal: this company is {part} — {stage}"
+            + (f" with {who}" if who else "")
+            + (f", paid in {cons}" if role in ("target", "shell") and cons not in ("none",) else "")
+            + (" → price pinned, the M&A filter blocks it" if pinned
+               else " → not a price pin, the M&A filter lets it through"))
+
+
 def _format_catalyst_grade_block(grade: dict, analysis_cap: int = 400) -> list[str]:
     """#593 — the '/why' CATALYST GRADE section: what the system graded this name, which
     grader ACTED, why (the grader's own rationale), and what news it read.
@@ -456,6 +479,12 @@ def _format_catalyst_grade_block(grade: dict, analysis_cap: int = 400) -> list[s
     _ns = (grade.get("news_summary") or "").strip()
     if _ns:
         lines.append(f"   news: {_cap_summary(_ns, 240)}")
+
+    # #692 — the grader's answer to the M&A question, in plain words, only when a deal was
+    # involved. Says whether the M&A filter treats the price as pinned by it.
+    _deal = _deal_answer_line(grade)
+    if _deal:
+        lines.append(_deal)
 
     # The expectedness read the grade was judged against (plain words, not axis names).
     _sched = grade.get("expct_sched") or "unknown"

@@ -6262,7 +6262,8 @@ async def get_catalyst_grade_record(ticker: str, scan_date: "date") -> "dict | N
                    expct_beat, demotion_marker, concrete_event,
                    sector, sector_n, board_n, sector_confirm,
                    gap_pct_last, claude_analysis, news_summary,
-                   grounded_head, grounded_len
+                   grounded_head, grounded_len,
+                   deal_role, deal_status, deal_consideration, deal_counterparty
             FROM mi_catalyst_tier_shadow
             WHERE ticker = $1 AND scan_date = $2
         """, ticker, scan_date)
