@@ -24,11 +24,17 @@ hash of find_coil_setup's source) so the reader can tell which build ran:
                   today_pct = |c/c_prev − 1| (inline in evaluate_coil_consolidation; mirrored below)
   ATR14         ← flag_detector._atr_14 on anticipation.bars_to_rmv_rows (same as atr14_pct on the board)
 The only NEW computation is the method's orderliness metric (§3c), which has no live implementation.
+(find_coil_setup's `adr` field is commented ORDERLINESS but is the mean intraday range the operator
+rejected for this purpose — PLAN #394: "overnight-gap / max-daily-move, NOT the intraday-ADR" — so it
+is not used here.)
 
 INTERPRETATIONS (the method leaves these open; each is a named constant below):
   * cohort = origin 'family_a', settled (outcome AND realized_r non-NULL), entry_date ≥ CORRECTED_BASE_FROM
     (commit c26b3add made the coil-finder the live base on Sat 2026-06-27; first mon-fri scan 06-29).
-    The method's "settled R" = realized_r (the column /anticipation's edge header reports).
+    The method's "settled R" = realized_r (the column /anticipation's edge header reports) — the legacy
+    5-day harvest horizon (settle_entry_shadow); realized_r_h12 (12-bar) is NOT what the verdicts rest on.
+  * (ii) "RMV-tightness-led" sorts on rmv_15d (the #327 gate's canonical baseline since 2026-06-27), not
+    the rmv_5d the /anticipation board row displays.
   * 3a decisive N = the rows in the MARGINAL band between the incumbent cap and the proposed cap (the
     rows whose admission actually changes), not the proposed cell's size.
   * 3b/3c keys are read AS OF the bar BEFORE the entry bar (ORDERING_ASOF_OFFSET) — the last board the
@@ -371,10 +377,35 @@ def rows_to_bars(raw):
     return bars
 
 
+def bars_by_ticker(bar_rows):
+    """{ticker: bars} + {ticker: error} — one unreadable row (NULL high/low) drops ITS ticker, counted,
+    instead of aborting the only capture."""
+    raw_by = defaultdict(list)
+    for r in bar_rows:
+        raw_by[r["ticker"]].append(r)
+    good, bad = {}, {}
+    for t, rs in raw_by.items():
+        try:
+            good[t] = rows_to_bars(rs)
+        except (TypeError, ValueError, KeyError) as e:
+            bad[t] = e.__class__.__name__
+    return good, bad
+
+
 def measure_row(row, bars):
-    """Everything the three tables need for one shadow row. Never raises on short/missing data —
-    returns a dict with `skip` set instead."""
+    """Everything the three tables need for one shadow row. Never raises — a short/missing series
+    or a degenerate bar (the live scan's per-key `except` tolerates these too) sets `skip`."""
     out = {"skip": None}
+    if not bars:
+        out["skip"] = "no bars for ticker"
+        return out
+    try:
+        return _measure_row(row, bars, out)
+    except Exception as e:                    # degenerate data (e.g. a zero close) — counted, not fatal
+        return {"skip": f"error:{e.__class__.__name__}"}
+
+
+def _measure_row(row, bars, out):
     dates = {b["date"]: k for k, b in enumerate(bars)}
     e = dates.get(str(row["entry_date"]))
     if e is None:
@@ -514,7 +545,8 @@ def print_composition(rows, today_max):
     print(f"  excluded from the tune: origin '9m' ({sum(1 for r in settled if r['origin'] == '9m')} settled — "
           f"composition only); entries before {CORRECTED_BASE_FROM} (pre-coil-finder base) "
           f"({sum(1 for r in settled if r['entry_date'] < CORRECTED_BASE_FROM)} settled)")
-    print(f"  R = {R_COL} (the settled R /anticipation reports); realized_r_h12 is not used.")
+    print(f"  R = {R_COL} (the settled R /anticipation reports; legacy 5-day harvest horizon); "
+          f"realized_r_h12 (12-bar) is not used.")
 
 
 def print_fidelity(label, pop):
@@ -546,7 +578,10 @@ def live_board_delta(board, open_tickers, bars_by, q3_cutoff):
         dates = {x["date"]: k for k, x in enumerate(bars)}
         a = dates.get(str(b["anchor_date"]))
         end = dates.get(str(b["last_eval"])) if b["last_eval"] is not None else None
-        score = orderliness_score(bars, a, end)[0] if bars else None
+        try:
+            score = orderliness_score(bars, a, end)[0] if bars else None
+        except Exception:                     # degenerate bar on a display-only re-sort: unscored, not fatal
+            score = None
         ms.append({"ticker": b["ticker"], "streak": b["tight_close_streak"],
                    "today_pct": _f(b["today_pct"]), "rmv_15d": _f(b["rmv_15d"]),
                    "orderliness": score, "last_eval": b["last_eval"]})
@@ -587,13 +622,13 @@ async def main() -> int:
             if tickers and starts and ends:
                 bar_rows = [dict(r) for r in await conn.fetch(
                     _BARS_SQL, tickers, min(starts) - timedelta(days=BAR_LOOKBACK_DAYS), max(ends))]
-    raw_by = defaultdict(list)
-    for r in bar_rows:
-        raw_by[r["ticker"]].append(r)
-    bars_by = {t: rows_to_bars(rs) for t, rs in raw_by.items()}
+    bars_by, bad_bars = bars_by_ticker(bar_rows)
     today_max = max((r["trade_date"] for r in bar_rows), default=None)
 
     print_composition(rows, today_max)
+    if bad_bars:
+        print(f"  ALARM: {len(bad_bars)} tickers have unreadable bars and are skipped: "
+              + ", ".join(f"{t} ({e})" for t, e in sorted(bad_bars.items())[:12]))
     print(f"\n  TUNE COHORT: {len(cohort)} settled family_a rows from {CORRECTED_BASE_FROM} "
           f"(primary gate N >= {MIN_PRIMARY_N}: {'MET' if len(cohort) >= MIN_PRIMARY_N else 'NOT MET'})")
 

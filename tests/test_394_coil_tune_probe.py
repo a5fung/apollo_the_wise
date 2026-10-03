@@ -306,6 +306,19 @@ async def test_main_end_to_end_on_a_fake_db(monkeypatch, capsys):
     shadow.append(_shadow(i, "C01", mode="confirm", stop="base_low", r=None, outcome=None)); i += 1
     shadow.append(_shadow(i, "C02", mode="confirm", stop="base_low", r=0.5,
                           anchor=_D0 + timedelta(days=30))); i += 1   # wrong stored anchor -> fidelity alarm
+    # the skip paths — each must be counted, none may abort the only prod capture:
+    shadow.append(_shadow(i, "NOBARS", mode="confirm", stop="base_low", r=0.1)); i += 1  # no bars at all
+    bad = _ticker_bars("BADBAR", 120.0, 2)
+    bad[10]["high_price"] = None                                      # one unreadable row drops the ticker
+    bars += bad
+    shadow.append(_shadow(i, "BADBAR", mode="confirm", stop="base_low", r=0.2)); i += 1
+    bars += [{"ticker": "FLAT", "trade_date": _D0 + timedelta(days=d), "open_price": 50.0,
+              "high_price": 50.5, "low_price": 49.5, "close": 50.0, "volume": 1e6} for d in range(60)]
+    shadow.append(_shadow(i, "FLAT", mode="confirm", stop="base_low", r=0.3)); i += 1    # no coil on recompute
+    zero = _ticker_bars("ZERO", 120.0, 3)
+    zero[45].update(open_price=0.0, high_price=0.0, low_price=0.0, close=0.0)          # degenerate bar
+    bars += zero
+    shadow.append(_shadow(i, "ZERO", mode="confirm", stop="base_low", r=0.4)); i += 1
     for k, tk in enumerate(("B0", "B1", "B2", "C01")):
         board.append({"ticker": tk, "anchor_date": _D0 + timedelta(days=39), "state": "coiled",
                       "tight_close_streak": 3 - k, "today_pct": 0.001 * k, "rmv_15d": 10.0 * k,
@@ -331,8 +344,11 @@ async def test_main_end_to_end_on_a_fake_db(monkeypatch, capsys):
         for knob in ("3a", "3b", "3c"):
             assert f"VERDICT {knob} [{label}]:" in out, (knob, label)
     assert "VERDICT 3a [anticipate/structural_low]: INSUFFICIENT" in out
-    assert "TUNE COHORT: 40 settled family_a rows" in out             # 36 + 3 + the wrong-anchor row
-    assert "fidelity [confirm/base_low]: 25 rows" in out and "anchor mismatch 1 (4%)" in out
+    assert "TUNE COHORT: 44 settled family_a rows" in out             # 36 + 3 + wrong anchor + 4 skip paths
+    fid = next(ln for ln in out.splitlines() if ln.startswith("  fidelity [confirm/base_low]"))
+    assert "29 rows" in fid and "anchor mismatch 1 (4%)" in fid and "no coil on recompute 1" in fid
+    assert "'no bars for ticker': 2" in fid and "'error:ZeroDivisionError': 1" in fid
+    assert "ALARM: 1 tickers have unreadable bars and are skipped: BADBAR (TypeError)" in out
     assert "fidelity [anticipate/coiled_low]: 12 rows" in out and "anchor mismatch 0 (0%)" in out
     for knob in ("3a HOLD CAP", "3b RANK ORDERING", "3c ORDERLINESS demotion"):
         assert f"KNOB {knob}:" in out
