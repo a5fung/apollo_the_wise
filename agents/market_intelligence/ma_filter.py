@@ -939,11 +939,14 @@ async def is_likely_ma(
                 "catalyst_quality": catalyst_quality,
             }
         # NOT RULED (kept as built): 'mna' graded while the grader's OWN answered fields do not
-        # pin. The fields decide; this row makes the mismatch countable (EXPECT ~0/week).
-        await _audit_once(
-            "mna_grade_without_pin", ticker,
-            f"graded 'mna' but its deal fields do not pin — {_answer_str(deal_answer)}",
-            {"grader": deal_fields(deal_answer)})
+        # pin BY THE NEWS RULE. The fields decide; this row makes the mismatch countable
+        # (EXPECT ~0/week). 2026-10-03: a signed target the PRICE freed (PD shape) is NOT this
+        # case — its fields do pin by news; that release is the `pin_free` row above.
+        if not deal_pins_price(deal_answer):
+            await _audit_once(
+                "mna_grade_without_pin", ticker,
+                f"graded 'mna' but its deal fields do not pin — {_answer_str(deal_answer)}",
+                {"grader": deal_fields(deal_answer)})
 
     # Ruling 7: did the grader find a deal (any role but 'none')? Then a headline cannot re-block.
     grader_found_deal = deal_answer is not None and deal_answer.role != "none"
@@ -975,7 +978,10 @@ async def is_likely_ma(
                             f"{'held' if res[1].get('pending') else 'blocked'}",
                             {"grader": deal_fields(deal_answer), "headline": scan.hit, "blocked": True})
                     return res
-        elif scan.unanswered and not grader_found_deal:
+        # Ruling 4 — the unanswered candidates. A separate `if` (not `elif`) since 2026-10-03:
+        # a nominating hit the PRICE released must not swallow the unanswered row for the other
+        # candidates in the same scan.
+        if scan.unanswered and not grader_found_deal:
             blocks = await _unanswered_blocks()
             await _audit_once(
                 "mna_headline_unanswered", ticker,

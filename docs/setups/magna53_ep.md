@@ -548,10 +548,17 @@ approved AS DECIDED (an approval of a list is a weaker fact than a label on a ro
   RNW; at 1.25% the free side 0.01 pp from MGM — 1.0% is the midpoint of the approved corridor
   and 2× the mature pin's 0.5% daily ceiling. Nothing was tuned to a single name; the sample is
   small (9 labelled nominated rows with minute bars) and this entry says so.
-- *The cost of the four minutes:* a nominated-free name alerts and enters at the 09:35 tick
-  through the existing post-open path (`new_highs_post_open` → `trigger_orb_entry`) instead of
-  the pre-market bar-stream path. On the seven EP nominated-free rows, one (DSGN) was already
-  above its 09:30 high by 09:35; PD, IMAX, WAY, PZZA, MGM and PYPL were not.
+- *The cost of the four minutes:* a nominated-free name that clears its grade and score
+  alerts and enters at the 09:35 tick through the existing post-open path
+  (`new_highs_post_open` → `trigger_orb_entry`) instead of the pre-market bar-stream path. On
+  the seven EP nominated-free rows, one (DSGN) was already above its 09:30 high by 09:35; PD,
+  IMAX, WAY, PZZA, MGM and PYPL were not. (Whether a SIGNED one can clear the score at all is
+  decision 3 below.)
+- *Ruling 4's row and a free hit:* when the newest candidate nominates and the price releases
+  it, the other candidates left unanswered in the same scan still get their
+  `mna_headline_unanswered` row (a separate `if`, not an `elif`), and a signed target the
+  price freed does NOT write `mna_grade_without_pin` — its fields do pin by news; the release
+  is the `pin_free` row.
 
 **Offline replay under the new rule (`scripts/probes/_692/replay_pin.py`, $0 — the recorded
 10-02 answers + the exported bars through the real `is_likely_ma`; output
@@ -563,19 +570,41 @@ the 10-02 list he signed:** DSGN 05-18, THR 05-22, PD 05-29 BLOCK → PASS (his 
 +39% gap — the HZO class) and **IRDM 06-29 BLOCK → PASS** (3.28% window on a +19% gap — the
 PD class). MGM 06-01 stays released (1.24% — 0.24 pp over the line; listed for him).
 
-**OPERATOR DECISIONS (open — THE LINE; the build implements the recommendation, nothing hidden):**
+**OPERATOR DECISIONS (open — THE LINE; the build implements the recommendation on 1 and 2,
+nothing hidden; 3 is NOT built):**
 1. **What a news-nominated name does before 09:35.** Today (the 10-02 build): a signed target
    is blocked pre-market and never alerts; a proposed target PASSES pre-market, alerts and is
    bought on the first bar with no price check (HZO / RNW would have been). **Built /
    recommended:** HOLD it out of the alert until the open window is readable (the 09:35 tick),
-   then alert + enter on that tick if free, block if pinned — no entry-pipeline change, the
-   existing cached-grade re-filter and post-open entry path do it. Alternative not built: alert
-   pre-market and gate only the entry inside the bar stream at the first bar close (no delay;
-   touches broker/ on apollo-execution; the HZO-class would alert and then "no order").
+   then re-score it on that tick like any fresh survivor — it alerts + enters through the
+   post-open path only if its grade and score clear (see 3) — and block it if pinned. No
+   entry-pipeline change: the existing cached-grade re-filter and post-open entry path do it.
+   Alternative not built: alert pre-market and gate only the entry inside the bar stream at
+   the first bar close (no delay; touches broker/ on apollo-execution; the HZO-class would
+   alert and then "no order").
 2. **Ruling 5 — a grade of `mna` with blank / out-of-vocabulary deal fields.** Kept as built:
    it BLOCKS on the grade alone (≈ 0 a week). Fork: should it also require the pin? Rec: keep —
    a blank answer is a model failure with no nomination to price; a price-only arm is a
    separate decision (known limitation 9).
+3. **What GRADE a price-released SIGNED target carries — NOT built, his call.** RULE 3 (his
+   ruling 6, 10-02) grades `mna` whenever the deal fields pin by the NEWS rule, so PD and DSGN
+   carry `mna` (both do in the 10-02 replay). A `mna` grade scores 0 catalyst points
+   (`ep_rubric.SCORE_WEIGHTS["catalyst"]`: game_changer 25 / strong 15 / default 0); the raw
+   HIGH bar is 40 and a 0-catalyst name tops out at 35 without a theme match (gap 10 +
+   liquidity 15 + float 5 + volume 5), 45 with one. **So as built, a price-released signed
+   target clears the M&A filter and then fails the score bar — it does not alert.** The
+   price layer therefore acts fully on PROPOSED targets (graded on merit; HZO / RNW / NUVL
+   blocked, MGM-class released and scored) and on the flag path (THR has no grade), but for
+   the PD / DSGN class it only removes the filter kill, not the grade kill. Fork: (a) keep —
+   the filter is right but PD-class still never alerts, which is the name he called most
+   concerning; (b) re-tie RULE 3 so `mna` is graded ONLY for a signed reverse-merger shell and
+   every TARGET is graded on its merit, the filter alone deciding on price — reverses the
+   LETTER of ruling 6 ("`mna` means only a signed price-fixing deal") while keeping its
+   purpose (a name that is not pinned must not carry a 0-point grade); costs one prompt
+   change + the 30-row grade-stability check re-run (≈ $1 by the 10-02 pricing) before deploy;
+   (c) re-grade on release at 09:35 — a second model call inside the ORB window, rejected on
+   latency (the reason the headline question is skipped there). **Rec: (b).** Not built —
+   it changes what the grader says about every target, which is his ruling to reverse.
 
 **Anticipated effect:** on the replayed population, 4 of the 27 non-price-signature blocks
 release on price (DSGN, THR, PD, IRDM) and 3 proposals block on price (HZO, RNW, NUVL); the
@@ -584,22 +613,29 @@ carries its reading, nominated-free names appear as `pin_free` releases, and eve
 leaves an `mna_pin_pending` row.
 
 **PRE-REGISTERED (written before any live data; supersedes the 10-02 EXPECT where they overlap):**
-- **EXPECT:** every `mna_filter_fired` row on a TARGET carries `pin.readable = true` and
-  `pin.pinned = true` with `range_pct ≤ threshold_pct` (a fired target row with no `pin`, or
-  one marked free, is a defect); every signed-shell fired row carries `why = shell_signed`;
-  `mna_filter_released` rows with `pin_free` for nominated-free names, each with
-  `range_pct > threshold_pct`; `mna_pin_pending` rows pre-market for every nominated EP name
-  (the positive observable of the hold), and the SAME name decided (fired or released) by the
-  09:40 tick on a trading day — a name still pending after 09:40 with `why = bars:<n>` or
-  `fetch_error` is the thing to look at. Unintended, watched together: a nominated-free name's
-  HIGH alert now lands at 09:35–09:36 (not pre-market) and enters through the post-open path —
-  count them and their `WINDOW_OUT_OF_ORB` / rejected entries; `mna_pin_pending` with
-  `fetch_error` > 1 a week = the bar fetch is the problem, not the rule.
+- **EXPECT:** every `mna_filter_fired` row tagged `(ep)` or `(flag)` on a TARGET carries
+  `pin.readable = true` and `pin.pinned = true` with `range_pct ≤ threshold_pct` (a fired
+  target row on those detectors with no `pin`, or one marked free, is a defect — the two
+  retired 9M sites pass no reader, so a 9M-tagged row would carry none); every signed-shell
+  fired row carries `why = shell_signed`; `mna_filter_released` rows with `pin_free` for
+  nominated-free names, each with `range_pct > threshold_pct`; `mna_pin_pending` rows
+  pre-market for every nominated EP name (the positive observable of the hold), and the SAME
+  name — if it is still a candidate at the 09:35 tick — decided (fired or released) by the
+  09:40 tick on a trading day; a name still pending after 09:40 with `why = bars:<n>` or
+  `fetch_error` is the thing to look at. Unintended, watched together: a nominated-free name
+  whose grade and score clear now alerts at 09:35–09:36 (not pre-market) and enters through
+  the post-open path — count them and their `WINDOW_OUT_OF_ORB` / rejected entries; a
+  `pin_free` release graded `mna` that then fails the score bar (decision 3 — expected as
+  built, counted so the cost of (a) is visible); `mna_pin_pending` with `fetch_error` > 1 a
+  week = the bar fetch is the problem, not the rule.
 - **DONE-WHEN:** 20 trading days in which his monthly review labels every pinned block correct,
-  no `pin_free` release as a real pinned target, and no nominated name held past 09:40.
-- **WOULD-FAIL-IF:** a fired target row whose `pin` is missing or reads free; a `pin_free`
-  release he labels a real buyout; a nominated EP name with a `mna_pin_pending` row and
-  neither a fired nor a released row by 09:40 on a trading day; a `pin_free` release that
+  no `pin_free` release as a real pinned target, and no nominated name that was still a
+  candidate at 09:35 held past 09:40.
+- **WOULD-FAIL-IF:** a fired `(ep)` / `(flag)` target row whose `pin` is missing or reads free;
+  a `pin_free` release he labels a real buyout; a nominated EP name with a `mna_pin_pending`
+  row, still a candidate at the 09:35 tick (a held name whose gap falls under the floor
+  before the open drops out of the candidate set and is never re-filtered — benign, excluded),
+  and neither a fired nor a released row by 09:40 on a trading day; a `pin_free` release that
   never alerts because it landed after 09:44.
 
 **Reversion-flag:** REFINEMENT of the 2026-10-02 #692 rule (same question; the verdict moves
@@ -616,10 +652,16 @@ recorded answers AND the recorded readings (carried on the harness cases,
 NUVL / MGM / IRDM), the shells, the mutation guard (`pin_verdict` replaced by the news-only
 rule → PD / DSGN / THR block and HZO / RNW pass — the five he corrected), no-reader = the 10-02
 verdict, hold + audit on an unreadable window, the EP caller's hold reason / no fired row /
-classifier mapping, the headline path acting on a nomination, ruling 7 intact, and the
-`get_recent_daily_history` column contract the flag reader relies on. The AST population test
-names which of the six `is_likely_ma` sites pass `pin_reader`. Mutation checks on the live
-source (each restored after): recorded in the commit.
+classifier mapping, the headline path acting on a nomination, ruling 7 intact, the flag
+reader's composition through the real `db.get_recent_daily_history`, a price-released signed
+target writing no `mna_grade_without_pin` row (the counter still fires on its real case), and
+a free hit not swallowing its scan's unanswered row. The AST population test names which of
+the six `is_likely_ma` sites pass `pin_reader`. Mutation checks on the live source (each
+restored byte-identical; recorded in commit `be483afa`): the price condition removed → 11 red
+(PD / DSGN / THR block, HZO / RNW pass); proposed no longer nominating → 14; the ceiling
+exclusive → 1; the headline acting only on a signed pin → 10; an unreadable window releasing →
+3; the four-bar floor dropped → 2; the EP caller writing a fired row for a hold → 1; the shell
+arm needing the price → 6.
 
 ### 2026-10-02 — #692: the M&A filter asks ONE question — is THIS ticker the TARGET of a SIGNED deal that fixes its price (BUILT, NOT DEPLOYED — rulings recorded; awaiting the replay + operator sign-off)
 

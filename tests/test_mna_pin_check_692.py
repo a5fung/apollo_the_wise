@@ -353,6 +353,31 @@ async def _async(v):
     return v
 
 
+def test_a_price_released_signed_target_graded_mna_does_not_count_as_a_grade_without_pin():
+    """PD shape: grade 'mna' + target/signed/unknown (the fields DO pin by news) + a free open.
+    The release is the `pin_free` row; the `mna_grade_without_pin` counter (the 10-02 EXPECT's
+    'prompt rule not holding' signal) must stay silent, or every such release trips it."""
+    out = _run(H.run_new(H.CASES_BY_TICKER["PD"]))
+    assert out.blocked is False and _released_on_price(out)
+    assert not [a for a in out.audits if a[0] == "mna_grade_without_pin"]
+    # the counter still fires on its real case: 'mna' graded on fields that fail the news rule
+    buyer = H.CASES_BY_TICKER["PD"]._replace(grader=H.Ans("buyer", "signed", "cash"), pin=None)
+    out = _run(H.run_new(buyer))
+    assert out.blocked is False and [a for a in out.audits if a[0] == "mna_grade_without_pin"]
+
+
+def test_a_free_nominating_hit_does_not_swallow_the_unanswered_row_of_its_scan():
+    """Ruling 4's row is written for the other candidates even when the newest one nominated
+    and the price released it (an `elif` would have skipped it)."""
+    case = H.CASES_BY_TICKER["MGM"]
+    extra = H._item("MGM buyout chatter grows", published="2026-05-31T10:00:00Z")   # no fixture → unanswered
+    case = case._replace(articles=case.articles + (extra,))
+    out = _run(H.run_new(case))
+    assert out.blocked is False and _released_on_price(out)
+    un = [a for a in out.audits if a[0] == "mna_headline_unanswered"]
+    assert un and un[0][2]["unanswered"][0]["title"] == "MGM buyout chatter grows"
+
+
 def test_ruling7_still_governs_a_grader_answered_deal_against_a_nominating_headline():
     case = H.CASES_BY_TICKER["MGM"]._replace(grader=H.Ans("buyer", "signed", "cash", "X"))
     out = _run(H.run_new(case, pin_reader=lambda: _async(_r("open5m", 0.1))))

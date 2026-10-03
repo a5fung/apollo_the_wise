@@ -2067,7 +2067,10 @@ async def _post_grade_filters(
     # bars + feed the ORB entry reads. Pre-market it is not readable: a nominated name is HELD
     # (blocked this tick, `pending`), and because a filter-failing grade is cached with
     # `filters_cleared=False`, the 09:35 tick re-runs this filter, reads the window and either
-    # releases the name (HIGH alert + ORB entry on that tick via the post-open path) or blocks it.
+    # releases the name — it is then scored on that tick like any fresh survivor and alerts /
+    # enters via the post-open path ONLY if its grade and score clear (a signed target still
+    # carries the 0-point `mna` grade under RULE 3 — SSoT 2026-10-03, operator decision 3) — or
+    # blocks it.
     from agents.market_intelligence.ma_filter import read_open_window_pin
     is_mna, mna_meta = await is_likely_ma(
         ticker,
