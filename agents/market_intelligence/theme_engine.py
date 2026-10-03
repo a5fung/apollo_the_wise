@@ -67,7 +67,7 @@ from agents.market_intelligence.db import (
     get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
     get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
     add_validation_cooldown, get_cooldown_set, get_globally_banned_tickers,
-    get_operator_protected_set, get_ticker_breadth_above_sma20,
+    get_operator_protected_set, get_ticker_breadth_above_sma20, breadth_above_sma20,
     add_merge_distinct_cooldown, get_merge_distinct_pairs,
     get_theme_subtheme_arm_enabled, get_theme_birth_gate_mode,
     get_theme_parent_pass_enabled,
@@ -2397,6 +2397,7 @@ async def _upsert_promoted_theme(
     *,
     rs_avg: float | None,
     prior_days_active: int | None,
+    pct_above_20sma: float | None,
 ) -> bool:
     """F7 (2026-07-02 review) — the ONE shared write path for graduating a shadow cohort into
     live `mi_themes`, used by BOTH `promote_shadow_themes` (nightly auto-promote, batched lookup
@@ -2413,6 +2414,13 @@ async def _upsert_promoted_theme(
     that happens to share a canonicalized name. Byte-identical SQL/semantics to the pre-extraction
     copies; no behavior change.
 
+    #580 (2026-10-03): `pct_above_20sma` is written so a promoted theme is BORN with breadth (it
+    was NULL until its first rescore — 259 of the 420 NULL non-Retired rows since 08-01). A
+    REQUIRED keyword, so a new caller must decide (None = unknown, stored NULL) instead of
+    silently omitting it. Callers compute it with `db.breadth_above_sma20` over the rows of their
+    OWN completeness-checked RS query (same date as `rs_avg`, same held connection). On a
+    same-day re-write a NULL never overwrites a stored value (COALESCE).
+
     Returns `wrote`: True on "INSERT 0 1" (row written), False on "INSERT 0 0" (guard skipped an
     existing native live theme — the caller's `noop` case)."""
     desc = thesis or desc_fallback
@@ -2421,14 +2429,15 @@ async def _upsert_promoted_theme(
     res = await conn.execute("""
         INSERT INTO mi_themes
             (theme_date, name, stage, score, rs_avg, description, tickers,
-             days_active, consecutive_accelerating, source)
-        VALUES ($1, $2, 'Nascent', $3, $3, $4, $5, $6, 0, 'shadow_promoted')
+             days_active, consecutive_accelerating, source, pct_above_20sma)
+        VALUES ($1, $2, 'Nascent', $3, $3, $4, $5, $6, 0, 'shadow_promoted', $7)
         ON CONFLICT (theme_date, name) DO UPDATE SET
             score = EXCLUDED.score, rs_avg = EXCLUDED.rs_avg,
             description = EXCLUDED.description, tickers = EXCLUDED.tickers,
-            days_active = EXCLUDED.days_active
+            days_active = EXCLUDED.days_active,
+            pct_above_20sma = COALESCE(EXCLUDED.pct_above_20sma, mi_themes.pct_above_20sma)
         WHERE mi_themes.source = 'shadow_promoted'
-    """, today, name, score, desc, tickers, days_active)
+    """, today, name, score, desc, tickers, days_active, pct_above_20sma)
     return str(res).endswith(" 1")   # "INSERT 0 1" on write; "INSERT 0 0" when the guard skipped a live theme
 
 
@@ -2528,13 +2537,17 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
         # out rs_avg for every promoting cohort. Same single round trip, just a
         # completeness-checked subquery — keeps this call's position/count in the
         # THREE-conn.fetch sequence test_theme_birth_gate.py pins.
+        # #580: close + sma_20 ride on the SAME row so each cohort's birth breadth is read on
+        # the date its rs_avg is read on (the completeness-checked one, never a raw `today` an
+        # intraday call would find partial) — no second query, no second pool connection.
         _all_members = list({tk for t in themes for tk in t["tickers"]})
         _rs_rows = await conn.fetch(f"""
-            SELECT ticker, rs_composite FROM mi_stock_scores
+            SELECT ticker, rs_composite, close, sma_20 FROM mi_stock_scores
             WHERE ticker = ANY($1)
               AND score_date = {latest_complete_score_date_sql()}
         """, _all_members)
         _rs_by_tk = {r["ticker"]: r["rs_composite"] for r in _rs_rows if r["rs_composite"] is not None}
+        _score_row_by_tk = {r["ticker"]: r for r in _rs_rows}
         # ── Phase-1 BIRTH GATE on the promote path (mode observe|dedup_only|on). This is
         # THE previously-ungated bypass (theme_engine.py:1999 in the 2026-07-27
         # design — no RS floor, no adjudication): a FIRST-EVER crossing into
@@ -2621,7 +2634,9 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
             t["description"] = desc   # keep the ecosystem mapper's input (below) consistent
             wrote = await _upsert_promoted_theme(
                 conn, t["name"], members, desc, desc, today,
-                rs_avg=rs_avg, prior_days_active=prior_days_active)
+                rs_avg=rs_avg, prior_days_active=prior_days_active,
+                pct_above_20sma=breadth_above_sma20(
+                    [_score_row_by_tk[tk] for tk in set(members) if tk in _score_row_by_tk]))
             if wrote:
                 n += 1
                 written.append(t)
@@ -2728,8 +2743,13 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
         t = themes[0]
         # #554: same stray-day fix as promote_shadow_themes above — single round
         # trip preserved (this is conn.fetch call #1 of the operator-promote path).
+        # #580: close + sma_20 on the same completeness-checked rows — the birth breadth below.
+        # An intraday /promotetheme must NOT read `today` (no complete run yet; at most a stray
+        # on-demand row or two): it reads the latest complete run, the date rs_avg uses. The
+        # engine's run tonight then reads this row as the PRIOR night and computes today's —
+        # two genuine consecutive readings for the breadth-decay rule.
         _rs_rows = await conn.fetch(f"""
-            SELECT ticker, rs_composite FROM mi_stock_scores
+            SELECT ticker, rs_composite, close, sma_20 FROM mi_stock_scores
             WHERE ticker = ANY($1) AND score_date = {latest_complete_score_date_sql()}
         """, t["tickers"])
         # #407: the dict-then-filter was redundant — the query above is already
@@ -2760,7 +2780,8 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
         t["description"] = desc   # keep the ecosystem mapper's input (below) consistent
         wrote = await _upsert_promoted_theme(
             conn, t["name"], t["tickers"], desc, desc, today,
-            rs_avg=rs_avg, prior_days_active=prior_days_active)
+            rs_avg=rs_avg, prior_days_active=prior_days_active,
+            pct_above_20sma=breadth_above_sma20(_rs_rows))
         await log_audit_event(
             "theme_operator_promoted",
             summary=(f"Operator promoted '{t['name']}' ({len(t['tickers'])} members)"
@@ -3919,15 +3940,23 @@ async def _rescore_existing_theme(
     # Breadth decay override — two days below threshold forces Fading regardless
     # of RS signal. Catches themes where members have rolled over even though
     # smoothed score still looks healthy.
+    # #580 (2026-10-03, his yes 09-30): the prior reading is read with an explicit
+    # None test. It was `(prev or 1.0) < threshold`, so a stored 0.0 — every member
+    # below its 20-day average, the WORST reading — was falsy, read as 1.0, and the
+    # theme could never fade (9 Mainstream themes sat at 0% on 09-29 still paying
+    # the EP +10). None still means "never measured" and does not count toward the
+    # two nights (unchanged); 0.0 now means 0%.
     pct_breadth = await get_ticker_breadth_above_sma20(tickers, today)
+    prev_breadth = theme.get("pct_above_20sma")
     if (
         pct_breadth is not None
         and pct_breadth < _BREADTH_DECAY_THRESHOLD
-        and (theme.get("pct_above_20sma") or 1.0) < _BREADTH_DECAY_THRESHOLD
+        and prev_breadth is not None
+        and prev_breadth < _BREADTH_DECAY_THRESHOLD
         and stage != "Fading"
     ):
         logger.info(
-            f"Theme '{name}': breadth decay {pct_breadth:.0%} (prev {theme.get('pct_above_20sma'):.0%}) — forcing Fading"
+            f"Theme '{name}': breadth decay {pct_breadth:.0%} (prev {prev_breadth:.0%}) — forcing Fading"
         )
         await log_audit_event(
             "theme_breadth_fade",
@@ -6884,6 +6913,19 @@ async def _score_new_theme(
     if _api_err:
         news_score = 15
 
+    # #580 (2026-10-03): born WITH breadth — the SAME call the nightly rescore makes
+    # (`get_ticker_breadth_above_sma20(tickers, today)`, this run's date), so tomorrow's
+    # breadth-decay check has a real prior reading instead of NULL ("unknown"). A lookup
+    # failure stores NULL — today's behaviour — and never aborts the birth: discovery scores
+    # every survivor inside one asyncio.gather, so a raise here would lose the night's births.
+    try:
+        pct_breadth = await get_ticker_breadth_above_sma20(tickers, today)
+    except Exception as e:
+        logger.warning(
+            f"Theme '{theme['name']}': birth breadth lookup failed "
+            f"({type(e).__name__}: {e}) — stored NULL")
+        pct_breadth = None
+
     return {
         "theme_date": today,
         "name": theme["name"],
@@ -6892,6 +6934,7 @@ async def _score_new_theme(
         "rs_avg": round(momentum, 1),
         "description": fresh_desc or theme.get("thesis", ""),
         "tickers": tickers,
+        "pct_above_20sma": pct_breadth,
     }
 
 
