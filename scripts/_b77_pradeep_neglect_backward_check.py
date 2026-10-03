@@ -37,6 +37,19 @@ RALLY_BANDS = [
 ]
 
 
+def verdict_line(n_settled: int) -> str:
+    """ONE verdict line for the digest classifier (#691). The question is closed and has no numeric
+    ship rule here: data_gated_reviews `rally_band_u_shape_observation` (closed 2026-05-23) concluded
+    "NOT a methodology change ... no separate action needed beyond #78", and #78 owns the N>=30
+    decision. So the verdict is that standing ruling, labelled INFORMATIONAL, with the cohort size
+    as the live fact; an empty cohort is ACCRUING, never a computed "all clear"."""
+    if n_settled == 0:
+        return "VERDICT: ACCRUING — no settled 5d outcomes in the cohort yet"
+    return ("VERDICT: INFORMATIONAL — table only, no decision attached: the rally-band U-shape was "
+            "recorded 2026-05-23 as not a methodology change; #78 (decliner bounce) owns the N>=30 "
+            f"gate. Reading: {n_settled} settled HIGH alerts across the bands above")
+
+
 def band_for(pct: float | None) -> str:
     if pct is None:
         return "  N/A                 (insufficient history)"
@@ -126,6 +139,8 @@ async def main():
             continue
         stats = band_stats([it["ret_5d"] for it in items])
         print(format_band_row(band_label, n, total, stats, label_width=60))
+    print()
+    print(verdict_line(sum(1 for r in rows if r["ret_5d"] is not None)))
     print()
 
     # Detail view of "rallied into catalyst" bands (Pradeep's filter target)

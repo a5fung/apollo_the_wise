@@ -201,8 +201,13 @@ def format_judge_review(agg, days):
     L.append("")
     da, dp = agg.get("direct_assessable", 0), agg.get("direct_present", 0)
     pct = (100 * dp / da) if da else 0.0
-    L.append("🔌 has_direct_source footprint (#329 — judge blind to it until #335):")
-    L.append(f"   {dp}/{da} assessable rows had a DIRECT source the judge was shown 'no' for ({pct:.0f}%)")
+    # #691 (2026-10-03): this line used to say the judge was "blind to it until #335" and had been
+    # "shown 'no'" for the rows it counts. Both claims were stale — the flag has been passed to the
+    # judge since #329 — and the number itself reads as a defect that is not there: it is how many
+    # graded rows HAD a direct source in their stored evidence. State what is counted, nothing about
+    # what the judge saw (that is ep_grade_judge's business, not this report's).
+    L.append("🔌 Direct source on file (an SEC filing or a Benzinga wire in the stored evidence):")
+    L.append(f"   {dp}/{da} graded rows with evidence on file ({pct:.0f}%) had one")
     L.append("")
     L.append(f"💵 Realized (alerts that became trades): traded {agg.get('traded_n',0)} · "
              f"total P&L ${agg.get('traded_pnl',0.0):+,.0f}")

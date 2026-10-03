@@ -18,6 +18,9 @@ For each candidate:
 Then crosstab: absolute-gate-decision × ATR-gate-decision.
 Identifies cases where the gates would DIFFER.
 
+RETIRED from the monthly backward-check sweep 2026-10-03 (#691): it measures the 9M setup, which the
+operator ruled GONE (docs/setups/ninem.md). The script is kept and still runs by hand:
+
 Run: docker exec apollo-market python -m scripts._b54_9m_day2_stop_atr_distribution
 """
 import asyncio

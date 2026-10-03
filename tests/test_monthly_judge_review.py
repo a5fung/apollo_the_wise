@@ -69,7 +69,13 @@ def test_direct_source_footprint_and_realized():
     # Only AAA carried traded=True / realized_pnl.
     assert a["traded_n"] == 1 and a["traded_pnl"] == 1200.0
     text = format_judge_review(a, 30)
-    assert "has_direct_source footprint" in text and "Realized" in text
+    # #691 — the footer says what it COUNTS (rows whose stored evidence had an SEC filing or a
+    # Benzinga wire). It once claimed the judge was "blind" to the flag / "shown 'no'" — both stale
+    # since #329 — so the negative asserts pin that those claims stay out.
+    assert "Direct source on file" in text and "Realized" in text
+    assert "1/2 graded rows with evidence on file (50%) had one" in text
+    low = text.lower()
+    assert "blind" not in low and "shown 'no'" not in low and "until #335" not in low
 
 
 def test_empty_rows_safe():

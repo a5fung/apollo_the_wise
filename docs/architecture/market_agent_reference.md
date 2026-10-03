@@ -171,9 +171,55 @@ held at the httpx layer (`shared/telegram_hold.py`). Exercise / verify: `scripts
 - **L2** anomaly (metric outside 30d trimmed median ± 3 MAD OR > 5× median) → immediate Telegram with Sonnet hypothesis.
 - **L3** drift (band transition) → audit row only, surfaces in Sunday weekly digest.
 - Jobs: `_post_eod_audit_job` 16:15 ET, `_post_nightly_audit_job` 17:30 ET, `_baseline_refresh_job` 02:00 ET.
-- On-demand: `/audit <topic>` (cooldowns/themes/skips/positions/feed/9m/all).
+- On-demand: `/audit <topic>` (cooldowns/themes/skips/positions/feed/9m/job_runs/all) — and, since #691, `/audit <check>` for any monthly-sweep check (see §Monthly backward-check sweep below).
 - Cold-start tiers: `sample_n < 7` → hardcoded `_COLD_START_CEILINGS` only. `7 ≤ n < 14` → L3 only. `≥ 14` → full L2.
 - Sonnet hypothesis call gets last 5 CLAUDE.md change headers + last 10 distinct audit event types as context.
+
+### Monthly backward-check sweep & `/audit <check>` (#691, 2026-10-03)
+
+`agents/market_intelligence/quarterly_review.py` (job `monthly_backward_check_sweep`, 1st of the
+month 18:00 ET, scheduler.py) runs every script in `QUARTERLY_BACKWARD_CHECK_SCRIPTS` as
+`python -m <module>` and sends ONE decision-first digest (#513): NEEDS YOUR CALL / FAILED TO RUN /
+✅ done / ⏳ waiting / 👀 review. **That list is the roster's SSoT — no second roster anywhere.**
+
+- **Classification is by the scripts' OWN verdict phrases** — `_NEEDS_YOU` / `_CONCLUDED` /
+  `_WAITING` in `quarterly_review.py`, case-sensitive substrings over the script's FULL stdout (not
+  the 25-line summary: #88's and #94's verdicts sit after 40+ lines). **Contract for a registered
+  script: in EVERY branch it can reach, print a verdict line containing a phrase in one of those
+  lists.** Unreadable output lands in 👀 "review" — never in a green bucket. A marker may not span a
+  line break (the script's wrap decides) and must not occur in always-printed boilerplate.
+- **`tests/test_691_monthly_sweep_cleanup.py` enforces it:** it runs each registered script's REAL
+  `main()` against a fake DB pool, once per verdict branch (`SCENARIOS`), and fails on any
+  "review", on a bucket different from the pinned one, and on a registered script with no scenario
+  (population derived from the roster, both directions). Adding a check = add the roster entry, the
+  verdict phrases, and its scenarios, or the build fails.
+- **Table-only monitors** (#50, #53, #77 had no verdict line): #50 prints its own docstring matrix
+  applied to the numbers it already computes (`$0-$5M` band positive-edge, N>=10 → NO-SHIP; band
+  stopped paying → NEEDS YOUR CALL; thin → ACCRUING). #53 and #77 have no numeric rule and the
+  operator already closed them, so they print `VERDICT: INFORMATIONAL` — the standing ruling plus
+  the current reading, never a computed all-clear (empty cohort = ACCRUING). Deciding to give them
+  a numeric regime-flip alarm is the operator's call, not a classifier change.
+- **The M&A accuracy review always asks** (its `HARD-gate` banner prints every run): the filter list
+  is the operator's to judge, and an empty month is indistinguishable from a broken audit feed.
+- **Retired from the roster (script kept, runnable by hand):** #223 SIP replay (2026-08-11) and
+  #54 9M Day-2 stop/ATR (2026-10-03, the 9M setup is gone).
+- **`/audit <check>` — stored, read-only.** `run_quarterly_sweep` writes ONE `mi_audit_log` row per
+  check per run (`event_type='backward_check_output'`, summary `"<check> | exit=<n> | <bucket>"`,
+  detail = the script's stdout, capped 24k chars; a failed run stores its stderr tail). The check name
+  is the module tail (`check_topic`), e.g. `mna_filter_accuracy_review`, `_b88_mna_filter_path_b_fp_rate`,
+  `news_source_quality`; the topics are DERIVED from the roster (`sweep_topics()`), and
+  `system_audit.run_topic_audit` answers them with the newest row — it NEVER re-runs a script. Until a
+  check has run once on code with the store, the reply says "No stored run … first run is <date>"
+  (never "Unknown audit topic"). A wrong topic lists every valid one. A hand-run
+  `python -m agents.market_intelligence.quarterly_review` runs + stores + prints the digest without
+  Telegram. The event name ends in `_output` on purpose: the nightly `%error%` / `%\_failed%` sweeps
+  and `show errors` must not count a stored table as an incident.
+- **Deploy scope:** `quarterly_review.py`, `judge_review.py`, `system_audit.py`, `scripts/`, `docs/` =
+  market-agent ONLY (none is in `scripts/exec_loaded_modules.txt`). `/audit` is already registered in
+  all three places (handler, dispatch dict, `BotCommand`), so `channels/telegram.py` and the
+  orchestrator are untouched.
+- **Judge footer (monthly judge review):** states what it counts — graded rows whose stored evidence
+  carried an SEC filing or Benzinga wire — and makes no claim about what the judge was shown.
 
 ### Error Alerting
 - Silent failures in theme engine write to `mi_audit_log`: `validation_error`, `assignment_error`, `discovery_error`, plus `validation_rate_limited` / `anthropic_rate_limited` for 429s.

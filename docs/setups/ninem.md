@@ -136,6 +136,16 @@ digest at all.
 
 ## Change log (newest first)
 
+### 2026-10-03 — the #54 monthly check (9M Day 2 stop/ATR distribution) leaves the sweep [#691]
+
+`scripts/_b54_9m_day2_stop_atr_distribution.py` measured the stop-distance / ATR ratio of
+`signal_type='9m_day2'` trades. Day 2 is deleted (above) and the character is ruled gone, so its
+cohort cannot grow: a monthly re-run re-read a frozen cohort and, because it printed no verdict
+the digest could read, asked the operator to "open /audit" every month. Retired from
+`QUARTERLY_BACKWARD_CHECK_SCRIPTS` the way #223 was; the script is kept and runs by hand
+(`python -m scripts._b54_9m_day2_stop_atr_distribution`). No detection, grade or trade path
+changed.
+
 ### 2026-09-23 — doc fix: intraday scan has been gated off since 2026-09-08, not LIVE
 
 `_9m_scan_job` (`9m_ep_scan`) gates on `should_run("9m_day2")`; that strategy row has been

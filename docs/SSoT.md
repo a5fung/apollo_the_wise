@@ -85,7 +85,7 @@ setup's criteria, change log and findings.
 | RS pool universe — which names ANY RS board (leaders · velocity · turners · recovery · accelerators · recovery-slope) may show, why the six read one universe, the gate that keeps them there | `docs/architecture/theme_engine.md` §"The six RS pools read ONE universe" |
 | Dual-account (paper/live routing) | `docs/architecture/dual_account.md` |
 | Trade-state ownership | `docs/architecture/trade-state-ownership.md` |
-| Market agent build & ops how-to (run locally · add a tool · add a Telegram command · `execute_task` routing · ticker extraction · env vars · pre-commit hooks) | `docs/architecture/market_agent_reference.md` |
+| Market agent build & ops how-to (run locally · add a tool · add a Telegram command · `execute_task` routing · ticker extraction · env vars · pre-commit hooks · the monthly backward-check sweep: verdict-phrase contract, roster, `/audit <check>`) | `docs/architecture/market_agent_reference.md` |
 | Model selection | `docs/model_selection_baseline.md` |
 
 ## Testing

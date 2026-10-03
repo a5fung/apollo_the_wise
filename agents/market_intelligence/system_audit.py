@@ -1998,14 +1998,28 @@ async def _run_job_runs_report(window_hours: int = 24) -> str:
 
 
 async def run_topic_audit(topic: str, *, baseline_as_of: date | None = None) -> dict:
-    """`/audit <topic>` ad-hoc entry. Same scan logic, scoped to topic."""
+    """`/audit <topic>` ad-hoc entry. Same scan logic, scoped to topic.
+
+    Topics: the metric slices in `_TOPIC_MAP`, `job_runs` (text report), and — #691 — every
+    check registered in the monthly backward-check sweep, addressed by its module tail (the name
+    the sweep digest prints under each call). A sweep topic returns the check's LAST STORED
+    output as a `report`; it never re-runs the script.
+    """
     topic_lower = topic.lower()
     if topic_lower == "job_runs":
         report = await _run_job_runs_report()
         return {"job": "topic:job_runs", "report": report, "l1": 0, "l2": 0, "l3": 0}
+    # Lazy import: quarterly_review is a leaf (stdlib only at import time) but the sweep roster is
+    # its to own — deriving the topics from it means a newly registered check is reachable here
+    # the moment it is registered.
+    from agents.market_intelligence.quarterly_review import render_sweep_topic, sweep_topics
+    sweep = sweep_topics()
+    if topic_lower in sweep:
+        report = await render_sweep_topic(topic_lower)
+        return {"job": f"topic:{topic_lower}", "report": report, "l1": 0, "l2": 0, "l3": 0}
     metrics = _TOPIC_MAP.get(topic_lower)
     if metrics is None:
-        valid = sorted(list(_TOPIC_MAP.keys()) + ["job_runs"])
+        valid = sorted(list(_TOPIC_MAP.keys()) + ["job_runs"] + list(sweep))
         return {"error": f"unknown topic '{topic}'", "valid": valid}
     today = et_today()
     since = today - timedelta(days=_BASELINE_LOOKBACK_DAYS)
