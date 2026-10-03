@@ -182,11 +182,37 @@ async def decide(row: dict, H, daily, minute, baseline: dict) -> dict:
     gap = gap_for(row, daily, minute)
     case = case_for(row, H)._replace(gap_pct=gap)
 
+    # His timing ruling (2026-10-03): TWO decision points. Pre-market the news alone decides (the
+    # reader is not readable); a name that PASSES then alerted, entered at 09:31 and is never
+    # re-filtered — the day's verdict is that PASS (the price-only arm cannot reach it: accepted
+    # limit). A name BLOCKED pre-market is re-decided at 09:35 with the recorded reading: the
+    # price may release it (free) or leave it blocked (pinned). Non-EP rows (flag / 9M) decide
+    # once, at their scan, with the day window.
+    from agents.market_intelligence import ma_filter as mf
+    unread = mf.PinReading(reading.window if reading else "open5m", None,
+                           reading.threshold_pct if reading else mf.OPEN_WINDOW_PIN_MAX_PCT,
+                           0, False, "pre_market", "export")
+
+    async def _unreadable():
+        return unread
+
     async def _reader():
         return reading
-    res = await H.run_new(case, pin_reader=_reader)
+    if row.get("ep_day"):
+        pre = await H.run_new(case, pin_reader=_unreadable)
+        decided_at = "pre-market"
+        if pre.blocked:
+            res = await H.run_new(case, pin_reader=_reader)
+            decided_at = "09:35" if not res.blocked else "pre-market (09:35 read confirms)"
+        else:
+            res = pre
+    else:
+        pre = None
+        res = await H.run_new(case, pin_reader=_reader)
+        decided_at = "scan (day window)"
+    # what the arm WOULD have done had the name been first evaluated after 09:35 (information)
+    arm_would, _ = mf.price_only_pin_verdict(gap, reading) if row.get("ep_day") else (False, "")
     meta = res.meta or {}
-    pending = bool(meta.get("pending"))
     decision = "BLOCK" if res.blocked else "PASS"
     why = meta.get("why") if res.blocked else "no_pin"
     released = [a for a in res.audits if a[0] == "mna_filter_released"]
@@ -197,10 +223,13 @@ async def decide(row: dict, H, daily, minute, baseline: dict) -> dict:
     asked_titles = sorted(h.get("title") or "" for h in row.get("headline_asked") or [])
     asked_mismatch = sorted(res.calls) != asked_titles
     out.update({
-        "decision_2026_10_03": decision + (" (held: window unreadable)" if pending else ""),
-        "why_2026_10_03": why, "source": source, "pending": pending, "gap_pct": gap,
+        "decision_2026_10_03": decision,
+        "decision_pre_market": ("BLOCK" if pre.blocked else "PASS") if pre is not None else None,
+        "decided_at": decided_at,
+        "why_2026_10_03": why, "source": source, "gap_pct": gap,
         "price_only": source == "open_window_price_pin",
-        "nominated": why in ("pinned", "pin_free", "pin_pending") and source != "open_window_price_pin",
+        "price_only_would_catch_if_post_open": bool(arm_would) and not res.blocked,
+        "nominated": why in ("pinned", "pin_free", "news_blocked_price_unread") and source != "open_window_price_pin",
         "answer": meta.get("role") and {"role": meta.get("role"), "status": meta.get("status"),
                                         "consideration": meta.get("consideration")}
         or (released[0][2]["pin_release"]["answer"] if why == "pin_free" else None),
@@ -235,16 +264,24 @@ async def main(baseline_path: Path, tag: str) -> int:
     c10_02 = Counter(r["decision_2026_10_02"] for r in results)
     c10_03 = Counter(r["decision_2026_10_03"].split(" ")[0] for r in results)
     lines.append(f"#692 offline replay under the 2026-10-03 rule (the news nominates, the price decides"
-                 + ("; + his four rulings: the price-only arm, NUVL / IRDM)" if tag else ")"))
+                 + ("; his four rulings + the timing ruling: news blocks pre-market, 09:35 can only release, "
+                    "the arm reads only post-open names)" if tag else ")"))
     lines.append(f"n = {n} stock-days; 10-02 rule: {dict(c10_02)}; this run: {dict(c10_03)}")
     nominated = [r for r in results if r.get("nominated")]
-    lines.append(f"nominated (the price decided): {len(nominated)} — pinned {sum(r['why_2026_10_03']=='pinned' for r in nominated)}, "
-                 f"free {sum(r['why_2026_10_03']=='pin_free' for r in nominated)}, "
-                 f"held {sum(r['why_2026_10_03']=='pin_pending' for r in nominated)}")
+    lines.append(f"nominated (blocked pre-market on the news; the 09:35 read decides): {len(nominated)} — "
+                 f"stayed blocked (pinned) {sum(r['why_2026_10_03']=='pinned' for r in nominated)}, "
+                 f"released at 09:35 (free) {sum(r['why_2026_10_03']=='pin_free' for r in nominated)}, "
+                 f"blocked, window unreadable in the export {sum(r['why_2026_10_03']=='news_blocked_price_unread' for r in nominated)}")
     arm = [r for r in results if r.get("price_only")]
-    if arm:
-        lines.append(f"price-only arm (gap >= 20%, open window <= 0.5%): {len(arm)} blocked — "
-                     + ", ".join(f"{r['ticker']} {r['date'][5:]} (+{r['gap_pct']:.0f}%, {(r['reading'] or {}).get('range_pct')}%)" for r in arm))
+    lines.append(f"price-only arm blocked (readable window, first evaluated post-open): {len(arm)}"
+                 + (" — " + ", ".join(f"{r['ticker']} {r['date'][5:]}" for r in arm) if arm else ""))
+    would = [r for r in results if r.get("price_only_would_catch_if_post_open")]
+    if would:
+        lines.append(f"the arm WOULD block these {len(would)} had they been first evaluated after 09:35 "
+                     f"(they passed pre-market on the news and alerted — the accepted limit): "
+                     + ", ".join(f"{r['ticker']} {r['date'][5:]} (+{r['gap_pct']:.0f}%, {(r['reading'] or {}).get('range_pct')}%)" for r in would))
+    by_when = Counter(r.get("decided_at") for r in results if r.get("decided_at"))
+    lines.append(f"decided at: {dict(by_when)}")
     changed = [r for r in results if r["changed"]]
     base_name = baseline_path.name
     lines.append(f"\nCHANGED vs {base_name}: {len(changed)} row(s)")
@@ -259,7 +296,7 @@ async def main(baseline_path: Path, tag: str) -> int:
                else f"{ans.get('role')}/{ans.get('status')}/{ans.get('consideration')} via {r.get('source')}")
         lines.append(f"  {r['ticker']:6} {r['date']:10} {','.join(r['detectors'])[:18]:18} "
                      f"{r['decision_prev']:6} -> {r['decision_2026_10_03']:6} {gap} {reading}; "
-                     f"{who}; {r['why_2026_10_03']}"
+                     f"{who}; {r['why_2026_10_03']}; decided {r.get('decided_at')}"
                      + (f"; HIS CALL {r['call_2026_10_03']}" if r.get("call_2026_10_03") else "")
                      + (f"; {r['label']}" if r.get("label") else ""))
     wrong = [r for r in results if r.get("call_2026_10_03") and
@@ -271,9 +308,10 @@ async def main(baseline_path: Path, tag: str) -> int:
                  ("BLOCK" if ("TP" in r["label"] or "REAL buyout" in r["label"]) else "PASS")]
     lines.append(f"the 25 earlier labels honoured: {len(lab) - len(lab_wrong)} of {len(lab)}" +
                  (f"  MISSED: {[(r['ticker'], r['date']) for r in lab_wrong]}" if lab_wrong else ""))
-    held = [r for r in results if r.get("pending")]
-    if held:
-        lines.append(f"\nheld (window unreadable in the export): {[(r['ticker'], r['date'], (r['reading'] or {}).get('why')) for r in held]}")
+    unread = [r for r in results if r.get("why_2026_10_03") == "news_blocked_price_unread"]
+    if unread:
+        lines.append(f"\nblocked on the news with the window unreadable in the export: "
+                     f"{[(r['ticker'], r['date'], (r['reading'] or {}).get('why')) for r in unread]}")
     notes = [r for r in results if r.get("note") and r["note"] != "out of #692 scope"]
     if notes:
         lines.append(f"\nnotes: {[(r['ticker'], r['date'], r['note']) for r in notes]}")

@@ -366,19 +366,32 @@ def parse_deal(fields) -> tuple[str, str, str] | None:
     return role, status, cons
 
 
+def deal_nominates(role: str | None, status: str | None, consideration: str | None) -> bool:
+    """ma_filter.deal_nominates on the branch (2026-10-03): a target, signed OR proposed, on
+    pinning terms — blocked on the news alone until a price reading can release it."""
+    return role == "target" and status in ("signed", "proposed") and consideration in PINNING_CONSIDERATIONS
+
+
+def headline_acts(role, status, consideration) -> bool:
+    """ma_filter._headline_acts: a nomination or a signed shell."""
+    return deal_nominates(role, status, consideration) or deal_pins_price(role, status, consideration)
+
+
 def live_verdict(grade: str | None, grader: tuple[str, str, str] | None,
                  headline: list[tuple[str, str, str] | None]) -> tuple[str, str]:
-    """ma_filter.is_likely_ma's decision, in its order (the operator's rulings of 2026-10-02).
+    """ma_filter.is_likely_ma's decision WITHOUT a price reading (the pre-market / no-reader
+    case), in its order — the operator's rulings of 2026-10-02 plus the 2026-10-03 timing ruling
+    (a proposed target now blocks on the news until the open window can release it).
     `grade` — the grader's quality (None when the grader was not asked or the call FAILED: live
     reads a failed grade as 'routine', so ruling 5 never fires on it); `grader` — its parsed deal
     answer (None = unanswered); `headline` — the asked articles' parsed answers, newest first
     (None = unanswered). Returns (BLOCK|PASS, why)."""
-    if grader is not None and deal_pins_price(*grader):
+    if grader is not None and headline_acts(*grader):
         return "BLOCK", "claude_deal_fields"
     if grade == "mna" and grader is None:
         return "BLOCK", "claude_classifier_unanswered"            # ruling 5
     grader_found_deal = grader is not None and grader[0] != "none"
-    headline_pins = any(a is not None and deal_pins_price(*a) for a in headline)
+    headline_pins = any(a is not None and headline_acts(*a) for a in headline)
     if headline_pins:
         if grader_found_deal:
             return "PASS", "headline_pin_overruled_by_grader_deal"  # ruling 7

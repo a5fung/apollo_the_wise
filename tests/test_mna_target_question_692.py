@@ -960,11 +960,6 @@ def test_monthly_review_shows_unanswered_passes_in_the_under_fire_section(capsys
                                                              "consideration": "unknown"}})],
             "mna_headline_unanswered": [_row("XYZ", {"blocked": False, "unanswered_n": 2,
                                                      "unanswered": [{"why": "orb_window"}]})],
-            # 2026-10-03: a HELD name (its price window unreadable) has its own section
-            "mna_pin_pending": [_row("HZO", {"answer": {"role": "target", "status": "proposed",
-                                                        "consideration": "unknown"},
-                                             "source": "claude_deal_fields",
-                                             "pin": {"readable": False, "why": "pre_market"}})],
         }[event_type]
     conn.fetch = _fetch
     with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)):
@@ -972,10 +967,52 @@ def test_monthly_review_shows_unanswered_passes_in_the_under_fire_section(capsys
     out = capsys.readouterr().out
     assert ("mna_headline_unanswered", "%passed") in seen
     assert ("mna_filter_released", "%") in seen and ("mna_filter_fired", "%") in seen
-    assert ("mna_pin_pending", "%") in seen
     assert "PASSED UNANSWERED" in out and "XYZ" in out and "unanswered (orb_window), 2 article(s)" in out
     assert "grader buyer/proposed/unknown" in out
-    assert "HELD" in out and "held target/proposed/unknown; price unreadable (pre_market)" in out
+
+
+def test_monthly_review_marks_a_pre_market_block_the_price_released_the_same_day(capsys):
+    """His 2026-10-03 timing ruling: a nominated name is blocked pre-market on the news (fired
+    row, `why = news_blocked_price_unread`) and the 09:35 read may release it (released row,
+    `pin_free`) — the review shows the fired row as RELEASED, not as a suppression."""
+    import json as _json
+    import importlib
+    from datetime import date as _date
+    from tests.conftest import make_mock_pool
+    review = importlib.import_module("scripts.mna_filter_accuracy_review")
+    pool, conn = make_mock_pool()
+
+    def _row(ticker, detail, pk=30.0):
+        return {"ticker": ticker, "fire_day": _date(2026, 10, 6), "detail": "", "detail_full":
+                _json.dumps(detail), "open_price": 10.0, "low_price": 9.5, "peak_high": 13.0,
+                "pk_vs_open": pk, "pk_vs_low": 36.8}
+
+    async def _fetch(sql, event_type, days, like):
+        return {
+            "mna_filter_fired": [_row("PD", {"role": "target", "status": "signed", "consideration": "unknown",
+                                             "why": "news_blocked_price_unread",
+                                             "pin": {"readable": False, "why": "pre_market"}}),
+                                 _row("HZO", {"role": "target", "status": "proposed", "consideration": "unknown",
+                                              "why": "pinned", "pin": {"window": "open5m", "range_pct": 0.15,
+                                                                      "threshold_pct": 1.0, "readable": True,
+                                                                      "pinned": True}}, pk=0.4)],
+            "mna_filter_released": [_row("PD", {"old_reasons": ["grade_mna", "pin_free"], "grader": {},
+                                                "pin_release": {"answer": {"role": "target", "status": "signed",
+                                                                           "consideration": "unknown"},
+                                                                "source": "claude_deal_fields",
+                                                                "pin": {"window": "open5m", "range_pct": 5.36,
+                                                                        "threshold_pct": 1.0, "readable": True,
+                                                                        "pinned": False}}})],
+            "mna_headline_unanswered": [],
+        }[event_type]
+    conn.fetch = _fetch
+    with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)):
+        assert _run(review.main(35)) == 0
+    out = capsys.readouterr().out
+    pd_line = next(ln for ln in out.splitlines() if ln.strip().startswith("PD ") and "blocked pre-market" in ln)
+    assert "RELEASED later that day (price free at 09:35)" in pd_line and "MATERIAL-MISS" not in pd_line
+    hzo_line = next(ln for ln in out.splitlines() if ln.strip().startswith("HZO "))
+    assert "open5m range 0.15% vs 1.0% -> PINNED" in hzo_line and "RELEASED" not in hzo_line
 
 
 def test_monthly_review_renders_the_price_reading_on_fired_and_released_rows():

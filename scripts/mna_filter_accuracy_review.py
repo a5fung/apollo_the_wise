@@ -93,14 +93,14 @@ def _answer(detail_full) -> str:
     if d.get("source") == "open_window_price_pin":
         # his ruling 3 (2026-10-03): the price-only arm — a >= 20% gap whose open window trades
         # within 0.5% blocks regardless of the news; its rows carry the gap and the reading.
-        head = f"price-only arm: gap {d.get('gap_pct')}%"
-        return (("held " if d.get("pending") or not (d.get("pin") or {}).get("readable") else "")
-                + head + _pin(d.get("pin")))
+        return f"price-only arm: gap {d.get('gap_pct')}%" + _pin(d.get("pin"))
     if d.get("role"):
-        return f"{d['role']}/{d.get('status')}/{d.get('consideration')}" + _pin(d.get("pin"))
-    a = d.get("answer") or {}
-    if a.get("role") and d.get("pin") is not None:   # a HELD row
-        return f"held {a['role']}/{a.get('status')}/{a.get('consideration')}" + _pin(d.get("pin"))
+        base = f"{d['role']}/{d.get('status')}/{d.get('consideration')}"
+        if d.get("why") == "news_blocked_price_unread":
+            # his timing ruling: blocked pre-market on the news alone; the 09:35 read can only
+            # release it — a same-day RELEASED row (pin_free) below is that release.
+            return base + "; blocked pre-market on the news (price unread)"
+        return base + _pin(d.get("pin"))
     pr = d.get("pin_release") or {}
     if pr.get("answer", {}).get("role"):
         pa = pr["answer"]
@@ -134,6 +134,9 @@ def _print_section(title: str, rows, flag_material: bool):
         po = f"{pk_open:+.1f}%" if pk_open is not None else "   n/a"
         pl = f"{r['pk_vs_low']:+.1f}%" if r["pk_vs_low"] is not None else "   n/a"
         ans = _answer(r["detail_full"])
+        if r.get("_released_same_day"):
+            ans = (ans + "; " if ans else "") + "RELEASED later that day (price free at 09:35)"
+            flag = ""   # the day's verdict was a release, not a suppression
         ans = f"  [{ans}]" if ans else ""
         print(f"  {r['ticker']:7} {str(r['fire_day']):10} {po:>8} {pl:>8}{ans}{flag}")
     if flag_material and n_material:
@@ -144,7 +147,7 @@ def _print_section(title: str, rows, flag_material: bool):
 async def main(lookback_days: int) -> int:
     from agents.market_intelligence.db import get_pool
     from agents.market_intelligence.audit_events import (
-        MNA_FILTER_FIRED, MNA_FILTER_RELEASED, MNA_HEADLINE_UNANSWERED, MNA_PIN_PENDING,
+        MNA_FILTER_FIRED, MNA_FILTER_RELEASED, MNA_HEADLINE_UNANSWERED,
     )
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -157,11 +160,14 @@ async def main(lookback_days: int) -> int:
         unanswered_passed = await _fwd_rows(
             conn, MNA_HEADLINE_UNANSWERED, "split_part(summary,':',1)", lookback_days,
             summary_like="%passed")
-        # 2026-10-03: nominated names HELD because the price window could not be read. A hold
-        # writes no fired row, so a name held all day (the window never became readable) is a
-        # suppression this section alone can show.
-        held = await _fwd_rows(
-            conn, MNA_PIN_PENDING, "split_part(summary,':',1)", lookback_days)
+    # 2026-10-03 timing ruling: a nominated name is blocked pre-market on the news and the 09:35
+    # read may RELEASE it the same day — mark those fired rows so a suppression that was undone is
+    # not read as a block (both rows exist; the release is the day's verdict).
+    released_days = {(r["ticker"], str(r["fire_day"])) for r in released}
+    for r in suppressed:
+        if (r["ticker"], str(r["fire_day"])) in released_days:
+            r["detail_full"] = (r.get("detail_full") or "")
+            r["_released_same_day"] = True
 
     print(f"M&A FILTER ACCURACY REVIEW  (lookback {lookback_days}d)")
     print("Surfaces filter decisions + forward returns for OPERATOR judgment.")
@@ -188,14 +194,6 @@ async def main(lookback_days: int) -> int:
     if unanswered_passed:
         print("\n  operator: these passed WITHOUT an answer (error / budget / the EP scan's "
               "9:30-9:45 window / the 3-article cap). Confirm none was the target of a signed deal.")
-    _print_section(
-        "HELD - deal-nominated, the price window could not be read (pre-market hold is normal; "
-        "a name that stayed held past 09:35 had no readable window and never alerted)",
-        held, flag_material=True)
-    if held:
-        print("\n  operator: a hold is not a verdict. A name here with a fired or released row later "
-              "the same day was decided at the open; one with neither was held all day — check "
-              "why its window stayed unreadable (bars / fetch).")
     print("\nSSoT: docs/setups/magna53_ep.md (M&A filter change log).")
     return 0
 

@@ -2062,15 +2062,17 @@ async def _post_grade_filters(
                 "news_summary_lead": (news_summary or "")[:200],
             }),
         )
-    # 2026-10-03 (operator): the news NOMINATES, the PRICE DECIDES. The reader is the open
-    # window — the first five regular-session minutes (09:30-09:34 ET) from the same Alpaca
-    # bars + feed the ORB entry reads. Pre-market it is not readable: a nominated name is HELD
-    # (blocked this tick, `pending`), and because a filter-failing grade is cached with
-    # `filters_cleared=False`, the 09:35 tick re-runs this filter, reads the window and either
-    # releases the name — it is then scored on that tick like any fresh survivor and alerts /
-    # enters via the post-open path ONLY if its grade and score clear (a signed target still
-    # carries the 0-point `mna` grade under RULE 3 — SSoT 2026-10-03, operator decision 3) — or
-    # blocks it.
+    # 2026-10-03 (operator): the news NOMINATES, the PRICE DECIDES — and his timing ruling the
+    # same day ("we buy 1 min orb break for EP, we shouldn't change how we enter stops for
+    # extraneous reasons"): pre-market the news alone BLOCKS a nominated name (a signed OR
+    # proposed target, a signed shell) exactly as a block does today — no hold, no delay, the
+    # 09:31 ORB entry untouched for every name. Because a filter-failing grade is cached with
+    # `filters_cleared=False`, the 09:35 tick re-runs this filter; the reader (the first five
+    # regular-session minutes from the same Alpaca bars + feed the ORB entry reads) can then
+    # only RELEASE a news-blocked name whose price moves freely — it is scored on that tick like
+    # any fresh survivor and alerts / enters via the post-open path — or leave a pinned one
+    # blocked. The price-only arm (`gap_pct`, his ruling 3) acts only when the window is
+    # readable, i.e. on names first evaluated after 09:35 — never a pre-market hold.
     from agents.market_intelligence.ma_filter import read_open_window_pin
     is_mna, mna_meta = await is_likely_ma(
         ticker,
@@ -2082,22 +2084,8 @@ async def _post_grade_filters(
         skip_in_orb=True,
         budget_pool="ep",
         pin_reader=lambda: read_open_window_pin(ticker, today),
-        # his ruling 3 (2026-10-03): the price-only arm — a >= 20% gapper whose open window
-        # trades within 0.5% blocks regardless of the news; the EP scan is its only caller.
         gap_pct=gap_pct,
     )
-    if is_mna and (mna_meta or {}).get("pending"):
-        # HELD, not decided: the price window cannot be read yet. Same prefix as the decided
-        # reason so theme_axis_shadow.classify_legacy_filter_reason still maps it to
-        # post_grade_filter; NO mna_filter_fired row (the hold wrote its own mna_pin_pending).
-        pin_why = ((mna_meta or {}).get("pin") or {}).get("why", "")
-        if (mna_meta or {}).get("source") == "open_window_price_pin":
-            reason = (f"M&A/buyout catalyst — gap {gap_pct:.1f}% >= 20% (price-only arm), price "
-                      f"window not readable yet ({pin_why}); held")
-        else:
-            reason = f"M&A/buyout catalyst — deal-nominated, price window not readable yet ({pin_why}); held"
-        logger.info(f"Hold {ticker}: {reason} ({(mna_meta or {}).get('source')})")
-        return reason
     if is_mna:
         reason = "M&A/buyout catalyst — no momentum trade"
         logger.info(f"Skip {ticker}: {reason} ({(mna_meta or {}).get('source')})")

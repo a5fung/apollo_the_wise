@@ -56,30 +56,34 @@ THE PRICE DECIDES (operator 2026-10-03, on the replay sign-off — "I'm more con
 pile, in those cases can't we reuse our pinned price check? It's clearly pinned to a buyout
 price"; he released DSGN 05-18 / THR 05-22 / PD 05-29 and kept HZO 08-10 / RNW 08-11 blocked):
   * The news answer NOMINATES (`deal_nominates`): this ticker is the TARGET of a deal, signed OR
-    proposed, on terms that could fix its price. The PRICE decides (`pin_verdict`): blocked only
-    when the stock's range over the decision window is at or under the window's pin ceiling —
-    the EP path reads the first five regular-session minutes (09:30-09:34 ET, <= 1.0% of the
-    open) at the first tick after 09:35; the evening / multi-day detectors read the scan date's
-    own daily bar (<= 2.0% of the close). A nominated name whose price is FREE passes, with an
+    proposed, on terms that could fix its price. The PRICE decides (`pin_verdict`): the EP path
+    reads the first five regular-session minutes (09:30-09:34 ET, <= 1.0% of the open) at the
+    first tick after 09:35; the evening / multi-day detectors read the scan date's own daily bar
+    (<= 2.0% of the close). A nominated name whose price is FREE is released, with an
     `mna_filter_released` row naming both readings (`pin_free`).
-  * Three reading states, by design: a caller that passes NO reader (9M) gets the 10-02 verdict
-    (`deal_pins_price` — a signed target blocks, a proposal passes); a reader whose window is not
-    readable yet (pre-market, the window still open, a failed fetch, too few bars) HOLDS the name
-    — blocked for this tick with an `mna_pin_pending` row and NO `mna_filter_fired` row, so the
-    next tick re-reads; a readable window decides.
+  * TIMING (his ruling, 2026-10-03 — "we buy 1 min orb break for EP, we shouldn't change how we
+    enter stops for extraneous reasons"): BEFORE THE OPEN the news alone decides — a nominated
+    name is BLOCKED pre-market (as a signed one was; a proposal now too); NO hold of any alert,
+    the 09:31 ORB entry is untouched for every name. AT 09:35 the price can only RELEASE a
+    news-blocked name whose price moves freely (> 1.0%); it never holds or delays one; a
+    released name enters through the existing post-open path; a pinned one stays blocked. A
+    caller with no reader (9M) is the pre-market case: the news alone.
   * A reverse-merger SHELL keeps blocking on the news alone (ruling 1 + his SUNE / CLRO rulings +
     the 10-03 approvals): a shell is re-rated, not pinned — SUNE ranged 124% and CLRO 100% on
     their days, so any price check would release both.
   Evidence + thresholds: docs/setups/magna53_ep.md change log 2026-10-03; backtest
   scripts/probes/_692/pin_backtest.py ($0, the exported bars).
 
-THE PRICE-ONLY ARM (operator 2026-10-03 ruling 3, "Go with rec"): on an EP gap day, a gap of
-  PRICE_ONLY_GAP_MIN_PCT (20%) or more whose open window trades within PRICE_ONLY_PIN_MAX_PCT
-  (0.5%) blocks REGARDLESS of the news — source `open_window_price_pin`. Why: seven real buyouts
-  (TMHC, APGE, SAFT, FBRX 07-27, VREX, ARX, WEAV: +22..48% gaps, 0.1-0.9% day ranges) were graded
-  'none' from a 200-char excerpt and released; the price alone catches 7 of 7 with 0 of the 47
-  proven-free gappers. Same decision-time hold as the news arm: a >= 20% gapper is HELD until its
-  open window is readable (09:35) — the EP caller passes `gap_pct`; no other caller does.
+THE PRICE-ONLY ARM (operator 2026-10-03 ruling 3, "Go with rec"; timing per the ruling above): on
+  an EP gap day, a gap of PRICE_ONLY_GAP_MIN_PCT (20%) or more whose open window trades within
+  PRICE_ONLY_PIN_MAX_PCT (0.5%), with no deal in the news, blocks — source `open_window_price_pin`.
+  Why: seven real buyouts (TMHC, APGE, SAFT, FBRX 07-27, VREX, ARX, WEAV: +22..48% gaps, 0.1-0.9%
+  day ranges) were graded 'none' from a 200-char excerpt and released; the price alone separates
+  7 of 7 with 0 of the 47 proven-free gappers. NO pre-market hold: the arm acts only on names
+  first evaluated AFTER 09:35 (a readable window), so it will not catch a name that alerted
+  pre-market and entered at 09:31 — including those seven. Accepted limit (his word): a pinned
+  stock rarely breaks its 1-min high, and the 10:00 unfilled-cancel clears the rest. The EP
+  caller alone passes `gap_pct`.
 """
 from __future__ import annotations
 
@@ -259,42 +263,39 @@ def deal_nominates(a: Optional[DealAnswer]) -> bool:
             and a.consideration in _PINNING_CONSIDERATIONS)
 
 
-def pin_verdict(a: Optional[DealAnswer], reading: Optional[PinReading]) -> tuple[Optional[bool], str]:
-    """THE decision (pure) for one answer and one price reading → (block, why), where block is
-    True / False / None (None = HOLD: nominated, but the window cannot be read yet).
-      shell + signed                      → (True,  'shell_signed')      news alone (ruling 1)
-      not nominated                       → (False, 'not_nominated')
-      nominated, no reading (no reader)   → (deal_pins_price, 'no_price_reading')  the 10-02 rule
-      nominated, reading not readable     → (None,  'pin_pending')
-      nominated, pinned                   → (True,  'pinned')
-      nominated, free                     → (False, 'pin_free')
+def pin_verdict(a: Optional[DealAnswer], reading: Optional[PinReading]) -> tuple[bool, str]:
+    """THE decision (pure) for one answer and one price reading → (block, why). His 2026-10-03
+    timing ruling: the NEWS alone decides until the price can be read — a nominated name (target,
+    signed OR proposed) is BLOCKED; the price can only RELEASE it, never hold or delay it.
+      shell + signed                              → (True,  'shell_signed')   news alone (ruling 1)
+      not nominated                               → (False, 'not_nominated')  a read never blocks it
+      nominated, no reading / not readable yet    → (True,  'news_blocked_price_unread')
+      nominated, readable and pinned              → (True,  'pinned')
+      nominated, readable and free                → (False, 'pin_free')       the 09:35 release
     """
     if a is not None and a.role == "shell":
         return (True, "shell_signed") if deal_pins_price(a) else (False, "not_nominated")
     if not deal_nominates(a):
         return False, "not_nominated"
-    if reading is None:
-        return deal_pins_price(a), "no_price_reading"
-    if not reading.readable:
-        return None, "pin_pending"
+    if reading is None or not reading.readable:
+        return True, "news_blocked_price_unread"
     return (True, "pinned") if reading.pinned else (False, "pin_free")
 
 
 def price_only_pin_verdict(gap_pct: Optional[float],
-                           reading: Optional[PinReading]) -> tuple[Optional[bool], str]:
-    """THE PRICE-ONLY ARM (pure; his ruling 3) → (block, why), block ∈ True / False / None (HOLD).
-      gap below the arm (or unknown)        → (False, 'gap_below_arm')
-      no reading (a caller with no reader)  → (False, 'no_price_reading')
-      window not readable                   → (None,  'pin_pending')
-      open window <= PRICE_ONLY_PIN_MAX_PCT → (True,  'price_only_pinned')
-      else                                  → (False, 'price_only_free')
+                           reading: Optional[PinReading]) -> tuple[bool, str]:
+    """THE PRICE-ONLY ARM (pure; his ruling 3, timing per his 2026-10-03 ruling: NO pre-market
+    hold — the arm acts only when the window is readable, i.e. on names first evaluated after
+    09:35) → (block, why).
+      gap below the arm (or unknown)           → (False, 'gap_below_arm')
+      no reading / window not readable yet     → (False, 'price_unread_no_hold')
+      open window <= PRICE_ONLY_PIN_MAX_PCT    → (True,  'price_only_pinned')
+      else                                     → (False, 'price_only_free')
     """
     if gap_pct is None or gap_pct < PRICE_ONLY_GAP_MIN_PCT:
         return False, "gap_below_arm"
-    if reading is None:
-        return False, "no_price_reading"
-    if not reading.readable:
-        return None, "pin_pending"
+    if reading is None or not reading.readable:
+        return False, "price_unread_no_hold"
     if reading.range_pct is not None and reading.range_pct <= PRICE_ONLY_PIN_MAX_PCT:
         return True, "price_only_pinned"
     return False, "price_only_free"
@@ -907,16 +908,17 @@ async def is_likely_ma(
     """Is THIS ticker's price fixed by a deal? Returns (block, telemetry).
 
     `gap_pct` (EP scan only) arms THE PRICE-ONLY ARM (his ruling 3, 2026-10-03): a gap >=
-    PRICE_ONLY_GAP_MIN_PCT whose open window reads <= PRICE_ONLY_PIN_MAX_PCT blocks regardless of
-    the news (source `open_window_price_pin`); unreadable → HOLD like the news arm. Runs after
-    the news paths, only when they did not block.
+    PRICE_ONLY_GAP_MIN_PCT whose open window is readable and <= PRICE_ONLY_PIN_MAX_PCT blocks
+    regardless of the news (source `open_window_price_pin`); an unreadable window PASSES (no
+    hold — his timing ruling). Runs after the news paths, only when they did not block.
 
     1. `deal_answer` (the EP grader's deal fields) NOMINATES (target, signed or proposed, on
-       pinning terms) → the PRICE decides via `pin_reader` (2026-10-03): pinned → block, source
-       `claude_deal_fields` + the reading under `pin`; free → pass + an `mna_filter_released` row
-       (`pin_free`); window not readable yet → HOLD (block for this tick, `pending: True`, an
-       `mna_pin_pending` row — callers write NO `mna_filter_fired` row for a hold). A signed
-       shell blocks on the news alone. No `pin_reader` → the 10-02 verdict (`deal_pins_price`).
+       pinning terms) → BLOCKED on the news alone until the price can be read (pre-market:
+       `why = news_blocked_price_unread`, source `claude_deal_fields`); at 09:35 `pin_reader`
+       reads the open window: pinned → still blocked (`pinned`, the reading under `pin`); free →
+       RELEASED (pass + an `mna_filter_released` row, `pin_free`). The price can only release,
+       never hold or delay (his 2026-10-03 timing ruling). A signed shell blocks on the news
+       alone. No `pin_reader` → the news alone (a nominated name blocks).
     2. Ruling 5: the grader graded 'mna' but its deal fields are missing / out of vocabulary
        (`deal_answer is None`) → block, as before #692, source `claude_classifier_unanswered`.
     3. The headline question (`check_polygon=True`, ≤3 newest keyword candidates), the same
@@ -946,18 +948,13 @@ async def is_likely_ma(
         return reading_box["r"]
 
     async def _decide(answer: DealAnswer, meta: dict) -> Optional[tuple[bool, dict]]:
-        """The verdict on an ACTING answer: (True, meta) to block / hold, None when the price
-        releases it (recorded for the comparator)."""
+        """The verdict on an ACTING answer: (True, meta) to block, None when the price releases
+        it (recorded for the comparator). Pre-market the news alone blocks a nominated name
+        (`why = news_blocked_price_unread`, the reading's state under `pin`); at 09:35 the same
+        call re-reads and either keeps the block (`pinned`) or releases (`pin_free`)."""
         reading = await _reading() if deal_nominates(answer) else None
         verdict, why = pin_verdict(answer, reading)
         pin = reading.as_dict() if reading is not None else {}
-        if verdict is None:
-            await _audit_once(
-                "mna_pin_pending", ticker,
-                f"deal-nominated ({_answer_str(answer)} via {meta.get('source')}) — the price "
-                f"cannot be read yet ({reading.why}); held this tick",
-                {"answer": deal_fields(answer), "source": meta.get("source"), "pin": pin})
-            return True, {**meta, "pending": True, "why": why, "pin": pin}
         if verdict:
             return True, {**meta, "why": why, **({"pin": pin} if pin else {})}
         reading_box["released"] = {"answer": deal_fields(answer), "why": why,
@@ -1019,8 +1016,7 @@ async def is_likely_ma(
                         await _audit_once(
                             "mna_deal_answers_conflict", ticker,
                             f"grader read {_answer_str(deal_answer)}, headline nominated "
-                            f"({scan.hit.get('role')}/{scan.hit.get('status')}) — "
-                            f"{'held' if res[1].get('pending') else 'blocked'}",
+                            f"({scan.hit.get('role')}/{scan.hit.get('status')}) — blocked",
                             {"grader": deal_fields(deal_answer), "headline": scan.hit, "blocked": True})
                     return res
         # Ruling 4 — the unanswered candidates. A separate `if` (not `elif`) since 2026-10-03:
@@ -1043,24 +1039,17 @@ async def is_likely_ma(
                               "unanswered_why": first.get("why")}
 
     # ── THE PRICE-ONLY ARM (his ruling 3, 2026-10-03): the news did not block; a >= 20% gapper
-    # whose open window is pinned blocks on the price alone. Reads the same window (memoized
-    # within this call); an unreadable window HOLDS, as the news arm does.
+    # whose open window is READABLE and pinned blocks on the price alone. Reads the same window
+    # (memoized within this call). NO pre-market hold (his timing ruling): an unreadable window
+    # passes, so the arm acts only on names first evaluated after 09:35 — a >= 20% gapper that
+    # alerted pre-market enters at 09:31 unchecked (accepted limit, SSoT 2026-10-03).
     if gap_pct is not None and gap_pct >= PRICE_ONLY_GAP_MIN_PCT and pin_reader is not None:
         reading = await _reading()
         verdict, why = price_only_pin_verdict(gap_pct, reading)
-        arm_pin = reading._replace(threshold_pct=PRICE_ONLY_PIN_MAX_PCT).as_dict() if reading else {}
-        arm_meta = {"source": "open_window_price_pin", "match_path": "open_window_price_pin",
-                    "ticker": ticker, "gap_pct": round(float(gap_pct), 2), "why": why, "pin": arm_pin}
-        if verdict is None:
-            await _audit_once(
-                "mna_pin_pending", ticker,
-                f"gap {gap_pct:.1f}% >= {PRICE_ONLY_GAP_MIN_PCT:.0f}% (price-only arm) — the "
-                f"price cannot be read yet ({reading.why}); held this tick",
-                {"answer": deal_fields(deal_answer), "source": "open_window_price_pin",
-                 "gap_pct": round(float(gap_pct), 2), "pin": arm_pin})
-            return True, {**arm_meta, "pending": True}
         if verdict:
-            return True, arm_meta
+            return True, {"source": "open_window_price_pin", "match_path": "open_window_price_pin",
+                          "ticker": ticker, "gap_pct": round(float(gap_pct), 2), "why": why,
+                          "pin": reading._replace(threshold_pct=PRICE_ONLY_PIN_MAX_PCT).as_dict()}
 
     # Shadow comparator — (a) the pre-#692 rule: the grader said 'mna', a keyword sat in the
     # catalyst text, or a keyword headline was answered; (b) the grader answered a deal that

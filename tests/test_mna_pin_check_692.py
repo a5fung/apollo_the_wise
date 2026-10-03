@@ -76,14 +76,36 @@ def test_nomination_set_is_exactly_target_x_signed_proposed_x_pinning_terms():
     assert got == {("target", s, c) for s in ("signed", "proposed") for c in mf._PINNING_CONSIDERATIONS}
 
 
-def test_verdict_three_reading_states():
+def test_verdict_states_the_news_blocks_until_the_price_can_release():
+    """His timing ruling (2026-10-03): pre-market (no reading / unreadable) the news alone blocks
+    a nominated name — signed OR proposed; at 09:35 the reading can only release (free) or keep
+    the block (pinned); a name the news passed is never blocked by a reading."""
     nominated = DealAnswer("target", "proposed", "unknown")
-    assert pin_verdict(nominated, None) == (False, "no_price_reading")          # no reader: 10-02 rule
-    assert pin_verdict(DealAnswer("target", "signed", "cash"), None) == (True, "no_price_reading")
-    assert pin_verdict(nominated, _r("open5m", None, readable=False, why="pre_market", n=0)) == (None, "pin_pending")
+    assert pin_verdict(nominated, None) == (True, "news_blocked_price_unread")
+    assert pin_verdict(DealAnswer("target", "signed", "cash"), None) == (True, "news_blocked_price_unread")
+    assert pin_verdict(nominated, _r("open5m", None, readable=False, why="pre_market", n=0)) == (True, "news_blocked_price_unread")
     assert pin_verdict(nominated, _r("open5m", 0.15)) == (True, "pinned")
     assert pin_verdict(nominated, _r("open5m", 5.36)) == (False, "pin_free")
     assert pin_verdict(DealAnswer("buyer", "signed", "cash"), _r("open5m", 0.01)) == (False, "not_nominated")
+    assert pin_verdict(DealAnswer("target", "speculation", "none"), _r("open5m", 0.01)) == (False, "not_nominated")
+    assert pin_verdict(DealAnswer("target", "signed", "stock"), _r("open5m", 0.01)) == (False, "not_nominated")
+
+
+def test_a_0935_read_never_blocks_a_name_the_news_passed():
+    """The release-only rule: for every NON-nominated answer, every reading — pinned to the
+    tick — leaves the verdict False. The price-only arm is the one price-blocks-a-news-pass path
+    and it is gap-gated and reads only a readable window."""
+    tight = _r("open5m", 0.0)
+    for r in mf.DEAL_ROLES:
+        for s in mf.DEAL_STATUSES:
+            for c in mf.DEAL_CONSIDERATIONS:
+                a = DealAnswer(r, s, c)
+                if mf.deal_nominates(a) or mf.deal_pins_price(a):
+                    continue
+                assert pin_verdict(a, tight) == (False, "not_nominated"), (r, s, c)
+    # through the production function: CHYM (buyer) with a 0.01% reading and a 9% gap stays PASS
+    out = _run(H.run_new(H.CASES_BY_TICKER["CHYM"]._replace(pin=("open5m", 0.01), gap_pct=9.35)))
+    assert out.blocked is False
 
 
 def test_a_signed_shell_blocks_on_the_news_alone_whatever_the_price():
@@ -309,30 +331,96 @@ def test_mutation_guard_without_the_price_condition_his_five_corrections_go_red(
                    "ACVA": "BLOCK", "SUNE": "BLOCK"}
 
 
-def test_without_a_reader_the_10_02_verdict_stands():
-    """A caller that carries no price (9M) keeps the ruled 10-02 behaviour: a signed target
-    blocks, a proposal passes — so the replay grid test and every pre-10-03 test hold."""
+def test_without_a_reader_the_news_alone_blocks_a_nominated_name():
+    """A caller that carries no price (the retired 9M sites) is the pre-market case: the news
+    alone decides — a signed target AND a proposal block (his timing ruling)."""
     hzo = _run(H.run_new(H.CASES_BY_TICKER["HZO"], use_case_pin=False))
     acva = _run(H.run_new(H.CASES_BY_TICKER["ACVA"], use_case_pin=False))
-    assert hzo.blocked is False and acva.blocked is True and acva.meta["why"] == "no_price_reading"
+    assert hzo.blocked is True and hzo.meta["why"] == "news_blocked_price_unread" and "pin" not in hzo.meta
+    assert acva.blocked is True and acva.meta["why"] == "news_blocked_price_unread"
 
 
-def test_a_nominated_name_whose_window_is_unreadable_is_held_and_audited():
+def test_pre_market_a_nominated_name_is_blocked_on_the_news_no_hold_no_pending_row():
+    """Pre-market (the window unreadable) a nominated name is BLOCKED — a plain block, the fired
+    row the caller writes as today; nothing is 'held', no mna_pin_pending row exists any more."""
     case = H.CASES_BY_TICKER["HZO"]._replace(pin=None, pin_pending=True)
     out = _run(H.run_new(case))
-    assert out.blocked is True and out.meta["pending"] is True and out.meta["why"] == "pin_pending"
-    assert out.meta["pin"]["why"] == "pre_market"
-    pend = [a for a in out.audits if a[0] == "mna_pin_pending"]
-    assert pend and pend[0][2]["answer"]["status"] == "proposed" and pend[0][2]["source"] == "claude_deal_fields"
-    assert not [a for a in out.audits if a[0] == "mna_filter_released"]
+    assert out.blocked is True and "pending" not in out.meta and out.meta["why"] == "news_blocked_price_unread"
+    assert out.meta["pin"]["readable"] is False and out.meta["pin"]["why"] == "pre_market"
+    assert not [a for a in out.audits if a[0] in ("mna_pin_pending", "mna_filter_released")]
+    pd = _run(H.run_new(H.CASES_BY_TICKER["PD"]._replace(pin=None, pin_pending=True)))
+    assert pd.blocked is True and pd.meta["why"] == "news_blocked_price_unread"
 
 
-def test_a_failing_reader_holds_rather_than_releases():
+def test_a_failing_reader_keeps_the_news_block_rather_than_releasing():
     async def boom():
         raise RuntimeError("alpaca down")
     out = _run(H.run_new(H.CASES_BY_TICKER["PD"], pin_reader=boom))
-    assert out.blocked is True and out.meta["pending"] is True
+    assert out.blocked is True and out.meta["why"] == "news_blocked_price_unread"
     assert out.meta["pin"]["why"] == "reader_error:RuntimeError"
+
+
+# ── the DECISION-TIMING TABLE for every labelled case (his 30 calls + rulings 3 / 4) ────────────
+# (pre-market verdict, the day's live verdict, where it is decided). Pre-market = the reader not
+# readable yet; 09:35 = the recorded open-window reading. A name the news PASSED pre-market
+# alerted then and is never re-filtered, so the arm cannot reach it (accepted limit).
+_PRE_MARKET_PASS = ("PASS", "PASS", "pre-market (news passes; never re-read)")
+_RELEASED_0935 = ("BLOCK", "PASS", "09:35 (blocked pre-market on the news; released, the price was free)")
+_BLOCKED_BOTH = ("BLOCK", "BLOCK", "pre-market (news); 09:35 read confirms pinned")
+_SHELL = ("BLOCK", "BLOCK", "pre-market (signed shell, news alone)")
+_ARM_LIMIT = ("PASS", "PASS", "pre-market PASS (no deal in the news; the arm reads only post-open names — accepted limit)")
+_FLAG_DAY = ("n/a", "PASS", "17:25 flag scan (day window)")
+TIMING = {
+    # his 25 earlier labels (23 cases) + the five 10-03 calls
+    "FWDI": _PRE_MARKET_PASS, "CHYM": _PRE_MARKET_PASS, "JBS": _PRE_MARKET_PASS, "GPRK": _PRE_MARKET_PASS,
+    "CSR": _PRE_MARKET_PASS, "SWKS": _PRE_MARKET_PASS, "IOVA": _PRE_MARKET_PASS, "VKTX": _PRE_MARKET_PASS,
+    "RGTI": _PRE_MARKET_PASS, "MMED": _PRE_MARKET_PASS, "FRMI": _PRE_MARKET_PASS, "ONDS": _PRE_MARKET_PASS,
+    "UMAC": _PRE_MARKET_PASS, "LCID": _PRE_MARKET_PASS, "SOUN": _PRE_MARKET_PASS, "LII": _PRE_MARKET_PASS,
+    "SCZM": _PRE_MARKET_PASS, "WEN": _PRE_MARKET_PASS,
+    "IMAX": _RELEASED_0935, "WAY": _RELEASED_0935, "PD": _RELEASED_0935, "DSGN": _RELEASED_0935,
+    "THR": _FLAG_DAY,
+    "ACVA": _BLOCKED_BOTH, "HZO": _BLOCKED_BOTH, "RNW": _BLOCKED_BOTH,
+    "SUNE": _SHELL, "CLRO": _SHELL,
+    # ruling 4
+    "NUVL": _BLOCKED_BOTH, "IRDM": _RELEASED_0935,
+    # ruling 3 — the seven (the arm blocks them only when first evaluated after 09:35)
+    "TMHC": _ARM_LIMIT, "APGE": _ARM_LIMIT, "SAFT": _ARM_LIMIT, "FBRX": _ARM_LIMIT, "VREX": _ARM_LIMIT,
+    "ARX": _ARM_LIMIT, "WEAV": _ARM_LIMIT,
+}
+
+
+def _verdict(out):
+    return "BLOCK" if out.blocked else "PASS"
+
+
+def test_decision_timing_table_for_every_labelled_case():
+    labelled = {c.ticker for c in H.CASES if c.ground_truth}
+    assert labelled == set(TIMING), labelled ^ set(TIMING)
+    for t, (pre, live, _where) in TIMING.items():
+        case = H.CASES_BY_TICKER[t]
+        if case.pin and case.pin[0] == "day":                   # the flag scan reads at 17:25
+            assert _verdict(_run(H.run_new(case))) == live, t
+            continue
+        got_pre = _verdict(_run(H.run_new(case._replace(pin=None, pin_pending=True))))
+        assert got_pre == pre, (t, "pre-market", got_pre)
+        if pre == "PASS":
+            # passed pre-market → alerted → never re-filtered: the day's live verdict is PASS
+            assert live == "PASS", t
+        else:
+            assert _verdict(_run(H.run_new(case))) == live, (t, "09:35")
+
+
+@pytest.mark.parametrize("ticker", ["PD", "DSGN", "IMAX", "WAY", "IRDM"])
+def test_a_news_blocked_free_name_is_released_at_0935_with_the_pin_free_row(ticker):
+    out = _run(H.run_new(H.CASES_BY_TICKER[ticker]))
+    assert out.blocked is False and _released_on_price(out)
+
+
+def test_the_seven_block_only_when_the_arm_reads_a_window_post_open():
+    for t in _SEVEN:
+        case = H.CASES_BY_TICKER[t]
+        assert _run(H.run_new(case._replace(pin=None, pin_pending=True))).blocked is False, t   # pre-market
+        assert _run(H.run_new(case)).blocked is True, t                                           # post-open
 
 
 def test_the_reader_is_awaited_once_and_only_for_a_nomination():
@@ -410,8 +498,8 @@ def test_price_only_verdict_states():
     free = _r("open5m", 0.99)
     assert mf.price_only_pin_verdict(None, free) == (False, "gap_below_arm")
     assert mf.price_only_pin_verdict(19.99, _r("open5m", 0.1)) == (False, "gap_below_arm")
-    assert mf.price_only_pin_verdict(20.0, None) == (False, "no_price_reading")
-    assert mf.price_only_pin_verdict(25.0, _r("open5m", None, readable=False, why="pre_market", n=0)) == (None, "pin_pending")
+    assert mf.price_only_pin_verdict(20.0, None) == (False, "price_unread_no_hold")
+    assert mf.price_only_pin_verdict(25.0, _r("open5m", None, readable=False, why="pre_market", n=0)) == (False, "price_unread_no_hold")
     assert mf.price_only_pin_verdict(22.35, _r("open5m", 0.2515)) == (True, "price_only_pinned")
     assert mf.price_only_pin_verdict(22.35, _r("open5m", mf.PRICE_ONLY_PIN_MAX_PCT)) == (True, "price_only_pinned")
     assert mf.price_only_pin_verdict(31.81, free) == (False, "price_only_free")
@@ -443,14 +531,12 @@ def test_price_only_arm_lets_free_big_gappers_through_and_never_reads_small_gaps
     assert out.blocked is True and out.meta["source"] == "open_window_price_pin" and calls == [1]
 
 
-def test_price_only_arm_holds_a_big_gapper_while_the_window_is_unreadable():
+def test_price_only_arm_never_holds_an_unreadable_window():
+    """His timing ruling: no pre-market hold — a >= 20% gapper whose window cannot be read yet
+    PASSES (it alerts and enters at 09:31 as today); the arm acts only on a readable window."""
     case = H.CASES_BY_TICKER["TMHC"]._replace(pin=None, pin_pending=True)
     out = _run(H.run_new(case))
-    assert out.blocked is True and out.meta["pending"] is True
-    assert out.meta["source"] == "open_window_price_pin" and out.meta["why"] == "pin_pending"
-    pend = [a for a in out.audits if a[0] == "mna_pin_pending"]
-    assert pend and pend[0][2]["source"] == "open_window_price_pin" and pend[0][2]["gap_pct"] == pytest.approx(22.35)
-    assert "price-only arm" in pend[0][1]
+    assert out.blocked is False and out.audits == []
 
 
 def test_price_only_arm_needs_a_reader_and_never_runs_without_the_gap():
@@ -475,51 +561,53 @@ def test_mutation_guard_the_arm_is_load_bearing_for_the_seven():
     assert got == {t: False for t in _SEVEN}
 
 
-def test_ep_filter_passes_the_gap_and_holds_under_the_arm_with_the_classified_prefix():
+def test_ep_filter_passes_the_gap_and_the_reader_and_blocks_a_price_only_hit_as_a_plain_block():
     from agents.market_intelligence import ep_detector
     from agents.market_intelligence.theme_axis_shadow import classify_legacy_filter_reason
     seen, audits = {}, []
 
     async def fake_is_likely_ma(ticker, **kw):
         seen.update(kw)
-        return True, {"source": "open_window_price_pin", "pending": True, "why": "pin_pending",
-                      "gap_pct": 22.35, "pin": {"why": "pre_market", "readable": False}}
+        return True, {"source": "open_window_price_pin", "why": "price_only_pinned",
+                      "gap_pct": 22.35, "pin": {"range_pct": 0.25, "pinned": True, "readable": True}}
 
     async def audit(event_type, summary, detail=""):
-        audits.append(event_type)
+        audits.append((event_type, summary))
     with patch.object(ep_detector, "is_likely_ma", new=fake_is_likely_ma), \
-         patch.object(ep_detector, "log_audit_event", new=audit):
+         patch.object(ep_detector, "log_audit_event", new=audit), \
+         patch("agents.market_intelligence.ma_filter.should_log_mna_filter_fired",
+               new=AsyncMock(return_value=True)):
         reason = _run(ep_detector._post_grade_filters(
             "TMHC", "routine", "a", "s", 22.35, 1_000_000, 3.0, date(2026, 6, 1),
             lattice_acting=False, deal_answer=DealAnswer("none", "none", "none")))
-    assert seen["gap_pct"] == 22.35
-    assert reason.startswith("M&A/buyout catalyst") and "price-only arm" in reason and "held" in reason
+    assert seen["gap_pct"] == 22.35 and callable(seen["pin_reader"])
+    assert reason == "M&A/buyout catalyst — no momentum trade"
     assert classify_legacy_filter_reason(reason) == "post_grade_filter"
-    assert "mna_filter_fired" not in audits
+    assert audits and audits[0][0] == "mna_filter_fired" and "TMHC via open_window_price_pin (ep)" in audits[0][1]
 
 
-def test_ep_filter_holds_a_pending_name_under_the_classified_prefix_and_writes_no_fired_row():
+def test_ep_filter_a_pre_market_news_block_writes_the_fired_row_as_today():
+    """No hold any more: a nominated name blocked pre-market is a block like any other — the
+    fired row is written (the 09:35 release, if any, writes its own released row)."""
     from agents.market_intelligence import ep_detector
-    from agents.market_intelligence.theme_axis_shadow import classify_legacy_filter_reason
-    seen, audits = {}, []
+    audits = []
 
     async def fake_is_likely_ma(ticker, **kw):
-        seen.update(kw)
-        return True, {"source": "claude_deal_fields", "pending": True, "why": "pin_pending",
+        return True, {"source": "claude_deal_fields", "why": "news_blocked_price_unread",
                       "pin": {"why": "pre_market", "readable": False}}
 
     async def audit(event_type, summary, detail=""):
-        audits.append(event_type)
+        audits.append((event_type, summary))
     with patch.object(ep_detector, "is_likely_ma", new=fake_is_likely_ma), \
-         patch.object(ep_detector, "log_audit_event", new=audit):
+         patch.object(ep_detector, "log_audit_event", new=audit), \
+         patch("agents.market_intelligence.ma_filter.should_log_mna_filter_fired",
+               new=AsyncMock(return_value=True)):
         reason = _run(ep_detector._post_grade_filters(
             "HZO", "routine", "analysis", "summary", 45.0, 1_000_000, 3.0,
             date(2026, 8, 10), lattice_acting=False,
             deal_answer=DealAnswer("target", "proposed", "unknown")))
-    assert reason.startswith("M&A/buyout catalyst") and "held" in reason and "pre_market" in reason
-    assert classify_legacy_filter_reason(reason) == "post_grade_filter"
-    assert "mna_filter_fired" not in audits
-    assert callable(seen["pin_reader"])
+    assert reason == "M&A/buyout catalyst — no momentum trade"
+    assert audits and audits[0][0] == "mna_filter_fired" and "HZO via claude_deal_fields (ep)" in audits[0][1]
 
 
 def test_ep_filter_still_writes_the_fired_row_for_a_decided_block():

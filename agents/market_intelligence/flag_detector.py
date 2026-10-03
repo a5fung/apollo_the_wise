@@ -1434,21 +1434,18 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     pin_reader=_day_reader,
                 )
                 if is_mna:
-                    pending = bool((meta or {}).get("pending"))
                     r["original_stage"] = r["stage"]
                     r["stage"] = "unqualified"
-                    r["reason"] = (f"mna_filter:{(meta or {}).get('source', 'unknown')}"
-                                   + (":pin_pending" if pending else ""))
+                    r["reason"] = f"mna_filter:{(meta or {}).get('source', 'unknown')}"
                     # _score already inserted the row as COILED/TRIGGERED.
                     # Re-upsert so the persisted row reflects the flip.
                     await db.insert_flag_candidate(r)
                     # Filter behavior is ALWAYS applied (re-upsert above);
                     # only audit log is deduped (#89, 2026-05-23). Flag scan
                     # runs once daily but bundle ships consistency across
-                    # all 5 mna_filter_fired sites. A HOLD (the day bar was
-                    # unreadable) wrote its own mna_pin_pending row — no fired row.
+                    # all 5 mna_filter_fired sites.
                     from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
-                    if not pending and await should_log_mna_filter_fired(r["ticker"], "flag"):
+                    if await should_log_mna_filter_fired(r["ticker"], "flag"):
                         await db.log_audit_event(
                             "mna_filter_fired",
                             f"{r['ticker']} via {(meta or {}).get('source', 'unknown')} (flag)",
