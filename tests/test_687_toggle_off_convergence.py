@@ -5,10 +5,10 @@ did not converge. A feature behind an OFF toggle (`magna53_depth_exit`) must cha
 toggle-OFF trades except the six named fixes to today's close-below exit — #687 (a)-(f) — the cited
 sync hunk (61a6c479), and the operator's rulings of 2026-10-01 (1)-(3). This test is that criterion.
 
-HOW. `tests/_convergence_687_harness.py` drives 28 fixed scenarios (the 16:45 trail exit with and
+HOW. `tests/_convergence_687_harness.py` drives 29 fixed scenarios (the 16:45 trail exit with and
 without a resting +8R OCO third or a plain resting limit, the 16:45 job itself, a stop raise via `update_stop`, the position
 sync with and without a queued sale, stream fill / cancel / expiry events, the stop-ACK watchdog,
-the 17:00 coverage slot, the stop refresh, a stop that cannot be placed because the price is through
+the 17:00 coverage slot, the intraday coverage page, the stop refresh, a stop that cannot be placed because the price is through
 it, the daily-loss gate, and `close_position(qty)` at the alpaca-py boundary) and records every
 broker-client call (method + bound arguments), every Telegram page, the return value and the fake
 book's end state. The BASELINE log was recorded by running the SAME harness inside a temporary git
@@ -21,7 +21,7 @@ worktree is removed after the capture). This test runs it on the current tree an
   * the two depth-only scenarios are absent from the baseline and inert here (no broker call, no page);
   * the fake book understood every SQL statement (`_unknown_sql` empty).
 
-⚠ The baseline is PINNED to 90d02459 (the origin/main #687 is rebased on), not "origin/main": once the
+⚠ The baseline is PINNED to 97b08d51 (the origin/main #687 is rebased on; 90d02459 before the 2026-10-02 rebase), not "origin/main": once the
 branch merges, origin/main contains it and the comparison would be self-against-self. A later change
 to these paths that is unrelated to #687 will show here as an unlisted difference — re-capture the
 baseline (and re-pin) deliberately; never widen the allow-list to absorb it.
@@ -40,7 +40,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / "tests" / "_convergence_687_harness.py"
 BASELINE = ROOT / "tests" / "fixtures" / "687_toggle_off_main_baseline.json"
-PINNED_BASELINE_SHA = "90d0245980dcd49a58a53237c154c61cf74ee76e"
+PINNED_BASELINE_SHA = "97b08d51380e60f33f8f4ef545afe35289b23a88"
 COMPONENTS = ("broker_calls", "pages", "result", "raised", "book_after")
 
 # Scenarios that exist only on the branch: the depth machinery, inert with the toggle OFF.

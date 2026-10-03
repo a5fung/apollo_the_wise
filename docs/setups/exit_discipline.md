@@ -426,11 +426,13 @@ the line and never acts on it on a close back above it. Tests: `tests/test_687_r
 owned by `docs/setups/safeguards.md` item 5 + its 2026-10-02 entry.
 
 **Evidence — the convergence test** (`tests/test_687_toggle_off_convergence.py`, harness
-`tests/_convergence_687_harness.py`): 28 fixed toggle-OFF scenarios run through the pinned pre-#687 code
-(90d02459, a temporary git worktree — `scripts/probes/_687/capture_toggle_off_baseline.sh`) and through this
-branch, recording every broker call, every Telegram page, the return value and the book's end state. 10 of 26
-two-tree scenarios are identical (incl. the 16:45 job on an unstamped trade, a stop raise, the sync without a
-queued sale, a fill of the whole sale, a hand-cancelled stop, the watchdog on a fresh entry, a genuine 17:00 gap).
+`tests/_convergence_687_harness.py`): 29 fixed toggle-OFF scenarios run through the pinned pre-#687 code
+(97b08d51 since the 2026-10-02 rebase — 90d02459 before it; a temporary git worktree —
+`scripts/probes/_687/capture_toggle_off_baseline.sh`) and through this branch, recording every broker call, every
+Telegram page, the return value and the book's end state. 11 of 27 two-tree scenarios are identical (incl. the 16:45
+job on an unstamped trade, a stop raise, the sync without a queued sale, a fill of the whole sale, a hand-cancelled
+stop, the watchdog on a fresh entry, a genuine 17:00 gap, and main's 62f45ade intraday gap page — s29, which the
+pre-rebase main never sent).
 Every other difference is allow-listed with its reason and its exact expected value: (a) ×3, (b), (c) ×4, (d),
 (e), (f), the sync hunk, ruling (1), (2)(i), (2)(ii) ×2, (3) ×2; the two depth scenarios are inert. A stray broker
 call in `execute_full_exit` reddens 6 scenarios.

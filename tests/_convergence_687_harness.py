@@ -850,6 +850,16 @@ def s19_coverage_1700_slot_genuine_gap_repair_fails(om, sched, **_):
     return w, lambda: sched._coverage_watch_job("post_close")
 
 
+def s29_coverage_intraday_genuine_gap_pages(om, **_):
+    """The intraday detector (notify=True) on a genuine gap. Main fixed its dedupe in 62f45ade (it
+    counted its own row and never paged); the rebased branch must page exactly as main does."""
+    w = World()
+    _trade(w, stop_id=None)
+    _position(w, "KOD", 10, 10)
+    w.place_errors = [Exception("insufficient qty available")]
+    return w, lambda: om.check_position_coverage()
+
+
 def s20_refresh_row_held_only_by_oco_third(om, lt, **_):
     w = World()
     _trade(w, remaining=2, stop_id=None, partial_taken=True, breakeven_active=True,
