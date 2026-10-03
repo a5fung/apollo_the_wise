@@ -469,6 +469,33 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-10-03 — base risk per trade 1% → 2% (`constants.RISK_PCT` 0.01 → 0.02; #688, operator-signed 2026-09-29, go 2026-10-03)
+
+**Trigger**: his ruling on 2026-09-29 (*"Aligned"*, PLAN.md #688) and his go on 2026-10-03 (*"go 2%"*) — the live
+account runs at about 1/10 of its intended size ($5,126 equity on 09-29 against a $50k target), so positions are
+tiny (6 of 34 live trades since July were under 3 shares and could never take a partial); he wants risk raised
+until the account is fully funded. Scheduled as a weekend switch with the #687 build.
+
+**Evidence**: a sizing ruling by the operator, not a threshold tune — no backtest applies (per-trade R outcomes do
+not depend on size; what changes is dollars per R). State at the ruling: 32 closed live trades −$85, average
+−0.23R, worst live drawdown 13R.
+
+**Change**: `RISK_PCT` only. Unchanged: the regime multipliers (Bull 1.0 / Choppy 0.75 / Correcting 0.5 /
+Crisis 0.25), the 20% notional cap, max positions (5), the 2% daily loss limit, the drawdown breaker tiers and the
+count-based circuit breaker. Applied through the one resolver (`order_manager._resolve_regime_risk_pct`,
+`base_pct=RISK_PCT`) at every live sizing site; the flag detector's risk display and the sizing reply read the same
+constant.
+
+**Anticipated effect**: risk per new trade ≈ $50 in a Correcting tape and ≈ $100 in a Bull tape at today's equity;
+shares roughly double; the 20% notional cap binds more often on tight stops (count `sizing_notional_cap_truncated`).
+**Unintended, watched**: the 2% daily loss limit and the drawdown breaker's −7% REDUCE tier are reached about twice
+as fast in R terms (the breaker tier table below was reasoned at 1% per trade). Open positions keep their size.
+
+**Reversion flag**: revert `RISK_PCT` to 0.01 on his word, or re-rule when the account is fully funded.
+
+**Status**: deployed 2026-10-03 (both + execution). DONE-WHEN: the first live entry after the switch is sized at
+2% × the regime multiplier. WOULD-FAIL-IF: a new entry sized at the old 1%, or above 2% × the multiplier.
+
 ### 2026-10-02 — `daily_loss_limit`: a loss on a PARTIAL sale counts AT ONCE, and only once (#687 ruling (1), operator-signed 2026-10-01; ruling (iv), operator-signed 2026-10-02)
 
 **Trigger**: the #687 build (`docs/setups/exit_discipline.md` 2026-10-01, parts A and B). Part A's fix (a) sells

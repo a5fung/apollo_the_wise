@@ -5,7 +5,9 @@ from shared.env_flags import env_is_true
 
 # ── Position sizing ──────────────────────────────────────────────────────────
 ACCOUNT_SIZE = 100_000       # Total account value ($)
-RISK_PCT = 0.01              # 1% account risk per trade
+RISK_PCT = 0.02              # 2% account risk per trade — #688, his ruling 2026-09-29 ("Aligned") and go 2026-10-03
+                             # ("go 2%"), while the account runs at ~1/10 of its intended size; revisit when fully
+                             # funded. x the regime multiplier (safeguards.md §Position sizing). Was 0.01.
 MAX_POSITION_PCT = 0.20      # Max 20% of account in one trade
 ENTRY_SLIPPAGE_PCT = 0.001   # 0.1% slippage on breakout entries
 

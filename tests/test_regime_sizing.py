@@ -392,7 +392,7 @@ def test_htf_shadow_is_flag_INVARIANT(monkeypatch):
     )
     # And that shared result is the OLD formula: VIX None -> fail-open full
     # base, regime_record None -> no EMA halve.
-    assert results[False][0] == pytest.approx(1000.0)
+    assert results[False][0] == pytest.approx(constants.ACCOUNT_SIZE * constants.RISK_PCT)  # base risk, no fold (#688 moved RISK_PCT 1% -> 2%)
 
 
 def test_htf_shadow_ignores_a_regime_label_even_when_one_is_passed(monkeypatch):
@@ -415,8 +415,8 @@ def test_htf_shadow_ignores_a_regime_label_even_when_one_is_passed(monkeypatch):
     )
     # Neither label may scale it — both ride the old VIX path (vix absent ->
     # full base), so both are identical and unfloored.
-    assert spec_corr["risk_dollars"] == pytest.approx(1000.0)
-    assert spec_bull["risk_dollars"] == pytest.approx(1000.0)
+    assert spec_corr["risk_dollars"] == pytest.approx(constants.ACCOUNT_SIZE * constants.RISK_PCT)
+    assert spec_bull["risk_dollars"] == pytest.approx(constants.ACCOUNT_SIZE * constants.RISK_PCT)
 
 
 # ── Operator-facing display line (briefing.py) stays in sync with the flag ─
