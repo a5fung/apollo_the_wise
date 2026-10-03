@@ -140,3 +140,18 @@ read from prod 2026-09-25.
   two points (27% vs 25%). The pole itself was measured correctly (+235% from 08-03).
 - One labelled example; no threshold is changed on it. HTF stays behind EP.
 
+
+---
+
+## Update 2026-10-04 — #598 built: the digest now opens with the transitions, with numbers
+
+- **Correction to "no operator-facing surface renders the stage board":** read from the code, the 17:25 ET
+  digest (`send_flag_digest`, unchanged since 2026-05-01) already carried a `NEW TIGHTENING` roll-call of bare
+  tickers, and listed every COILED name daily. So the gap was *numbers and re-entry*, not total silence:
+  nothing to chart from (no run-up, pivot or tightness), and a name coming back from `unqualified` or
+  INVALIDATED was missed by its `previous in (None, WATCH)` test. Whether the 08-18 digest actually reached him
+  was not checked against prod from here.
+- **Built** (branch `598-flag-stage-push`, not deployed): a `NEW TODAY` section at the top of that digest — one
+  line per ticker that moved up into TIGHTENING or COILED (ticker · stage · run-up · pivot · base tightness),
+  deduped per (ticker, stage, scan date), one `flag_stage_transition` audit row each. Owner:
+  `docs/setups/htf.md` § "Surfacing".
