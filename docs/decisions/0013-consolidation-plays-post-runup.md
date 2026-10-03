@@ -424,6 +424,69 @@ instruction pending his or the session's explicit apply. Once applied: verify-li
 `consolidation_readiness` digest shows zero `🎯 Anticipate entry fired today` lines while `✅ Confirm
 entry fired today` keeps appearing normally on nights Confirm fires.
 
+### 2026-10-03 — #394: the M&A screen reaches the coil BOARD (a screened name's rows come off; one check per ticker)
+
+**Trigger**: operator, 2026-10-03 — *"Add it now"* — on the #394 tune read
+(`scripts/probes/_394/coil_tune_out_2026-10-03.txt` §4): today's 🪙 Coiling top 5 is CRNX, DV, MKTX,
+NUVL, NUVL — mostly stocks pinned by buyouts. A cash-pinned stock reads as a perfect coil (tight
+range, dry volume) but cannot break out, so it crowds real coils off the top.
+
+**What was already there**: the scan (`scheduler._consolidation_readiness_scan`) already ran the
+SAME decision the flag scan runs — `ma_filter.is_likely_ma` with the DAY WINDOW reader (the #692 rule:
+the news nominates — the target of a deal, signed or proposed, or a signed shell — and the price
+decides, own-day range <= 2.0% = pinned) — before the write and before the Confirm entry (#387,
+upgraded by #692 on 2026-10-03). A block only `continue`d: today's write and entry were skipped, but
+the ticker's EARLIER board rows were never touched, and `get_consolidation_board` ranks every
+non-aged row whatever its `last_eval`.
+
+**What changed (the screen is extended to the board, not re-implemented)**:
+- a block now takes EVERY non-aged board row of the ticker off the board
+  (`db.mark_consolidation_mna_screened` → `mi_anticipation_consolidation.mna_screened_on`, a new
+  nullable DATE column); `get_consolidation_board` hides marked rows; the next write of a row (the
+  price released it, or the news stops nominating it) clears the mark — so a name the price releases
+  is back on the board the same night;
+- the audit row follows #692's convention: `mna_filter_fired`, summary `{ticker} via <source>
+  (anticipation) — role/status/consideration, <the day-window reading>; off the coil board (n
+  row(s))`, JSON detail (the deal answer + the `pin` reading), deduped per ticker per day — so the
+  monthly M&A review lists coil-board screens with their deal answers. `anticipation_mna_excluded`
+  is no longer written;
+- one check per ticker per run (NUVL carried two anchors; the news and the own-day bar are per
+  ticker), so a two-row ticker spends one of the 40 per-run checks, not two;
+- **unreadable own-day bar → the name stays ON the board** (orchestrator spec, 2026-10-03: *"keep
+  today's behaviour (on the board) and record it"*) with an `anticipation_mna_price_unread` row
+  naming the deal answer and why the bar was unreadable. ⚠ **This is the one place the board departs
+  from `is_likely_ma`'s verdict**, which blocks a nominated name on the news alone while its price is
+  unread (`news_blocked_price_unread`; the flag scan keeps that block). It fires when the scan date's
+  own bar is missing — a holiday run or a failed 17:00 pull.
+
+**Not changed**: the coil-finder (`find_coil_setup` / `evaluate_coil_consolidation`), its thresholds,
+the board's ORDER BY, the Confirm entry signal, the #410 price-shape guard, the 40-check cap.
+
+**Known limit — the board can still show stale rows of pinned names (the likely cause of TODAY'S top
+5)**: the screen runs only on a ticker whose coil passes the coil-finder TODAY. Four of today's
+five took their deals on NUVL 06-09, CRNX 07-07, FBRX 07-27, DV 08-07 (`mna_filter_fired` EP rows,
+`scripts/probes/_692/population_mna_events_2026-05-15_2026-10-02.jsonl`) — all older than the
+coil-finder's 45-bar runup window on 10-02, so their coil no longer evaluates, the screen never
+reaches them, and their summer rows keep ranking on frozen `tight_close_streak` values (the tune read
+shows `last_eval` back to 06-26 on the 77 coiled rows). The fix is board membership — rank only rows
+the latest scan re-wrote, or age rows it did not — and is NOT part of this change (it is the
+operator's call — raised in the #394 build report, not yet a PLAN line).
+
+**Reversion-flag**: EXTENSION of #387 (same decision, same call site; additive board exclusion).
+Shadow board, no money, no entry rule changed.
+
+**Tests**: `tests/test_consolidation_scan_timeout.py` Part C — run the REAL `is_likely_ma` (only the
+headline answer and DB edges faked): a CRNX-shaped pinned buyout (target/signed/cash, own-day range
+0.3%) is kept off with no entry and one fired row; the same answer at a 3.0% range stays on (with
+the filter's `mna_filter_released` row); a non-deal coil is untouched; an unreadable own-day bar
+stays on + recorded; a spy on `ma_filter.is_likely_ma` proves the scan calls that function object
+with the day-window reader; a two-anchor ticker is checked once.
+
+**Verify-live**: the first 17:35 ET scan after deploy with a nominated coil — an `mna_filter_fired`
+row tagged `(anticipation)` whose detail carries the deal answer AND a `pin` with `window: day`, and
+that ticker absent from `/anticipation` while its `mi_anticipation_consolidation` rows carry
+`mna_screened_on`. WOULD-FAIL-IF: a fired `(anticipation)` row whose ticker still shows on the board.
+
 ---
 
 ## 2026-08-16 — FINDINGS FROM THE EP WORK THAT LAND ON THIS FAMILY

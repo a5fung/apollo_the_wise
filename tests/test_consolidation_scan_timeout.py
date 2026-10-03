@@ -13,9 +13,16 @@ never gated · §2 structural_low headline stop + coiled_low continuity + sub-1%
 re-wired Confirm control arm, tagged entry_mode='confirm' · §4 regime_at_entry), and the
 settlement step threads §5's bound_conflict + realized_r_h12 into the write-back.
 
+Part C — #394 (operator 2026-10-03, "Add it now"): the M&A screen on the COIL BOARD. A stock
+pinned by a buyout reads as a perfect coil but cannot break out; the scan runs the SAME decision
+the flag scan uses (the REAL ma_filter.is_likely_ma with the day window — only its I/O edges are
+faked here) and a screened name's board rows are taken off; a name whose price moves stays on;
+an unreadable own-day bar keeps it on and records it.
+
 Everything here is SHADOW/telemetry — the pins assert recording, never any submit path.
 """
 import asyncio
+import json
 from datetime import date, timedelta
 
 import pytest
@@ -131,17 +138,23 @@ def _cons_for(bars, anchor_idx=55):
 
 
 def _patch_scan_harness(monkeypatch, *, n_keys=1, bars=None, sig=None, csig=None,
-                        rs=72.0, non_stock=None, mna_result=(False, None)):
-    """Patch every collaborator _consolidation_readiness_scan touches; returns the capture dict."""
+                        rs=72.0, non_stock=None, mna_result=(False, None), real_mna=False,
+                        keys=None):
+    """Patch every collaborator _consolidation_readiness_scan touches; returns the capture dict.
+    `real_mna=True` leaves ma_filter.is_likely_ma REAL (only its I/O edges are faked by the
+    caller) — the #394 tests run the live decision, not a stand-in. `keys` overrides the
+    evaluated (ticker, anchor) keys."""
     import agents.market_intelligence.db as db
     import agents.market_intelligence.ma_filter as ma_filter
 
     bars = bars or _mk_bars()
     cons = _cons_for(bars)
-    cap = {"audits": [], "inserts": [], "upserts": 0, "mna_calls": 0}
+    cap = {"audits": [], "inserts": [], "upserts": 0, "mna_calls": 0, "upsert_tickers": [],
+           "marks": [], "audit_details": []}
 
     async def fake_audit(event_type, summary, detail=None):
         cap["audits"].append((event_type, summary))
+        cap["audit_details"].append((event_type, detail))
 
     async def fake_universe(today):
         return []
@@ -166,6 +179,7 @@ def _patch_scan_harness(monkeypatch, *, n_keys=1, bars=None, sig=None, csig=None
 
     async def fake_upsert(*a, **kw):
         cap["upserts"] += 1
+        cap["upsert_tickers"].append(a[0] if a else kw.get("ticker"))
 
     async def fake_insert(ticker, anchor_date, **kw):
         cap["inserts"].append((ticker, anchor_date, kw))
@@ -174,6 +188,13 @@ def _patch_scan_harness(monkeypatch, *, n_keys=1, bars=None, sig=None, csig=None
     async def fake_mna(ticker, **kw):
         cap["mna_calls"] += 1
         return mna_result
+
+    async def fake_mark(ticker, scan_date):
+        cap["marks"].append((ticker, scan_date))
+        return 2                          # e.g. NUVL: two board rows taken off
+
+    async def fake_first_log(ticker, detector_tag):
+        return True
 
     monkeypatch.setattr(sched, "log_audit_event", fake_audit)
     monkeypatch.setattr(db, "get_anticipation_universe", fake_universe)
@@ -185,9 +206,12 @@ def _patch_scan_harness(monkeypatch, *, n_keys=1, bars=None, sig=None, csig=None
     monkeypatch.setattr(db, "get_rs_for_tickers", fake_rs)
     monkeypatch.setattr(db, "upsert_consolidation", fake_upsert)
     monkeypatch.setattr(db, "insert_consolidation_entry_shadow", fake_insert)
-    monkeypatch.setattr(ma_filter, "is_likely_ma", fake_mna)
+    monkeypatch.setattr(db, "mark_consolidation_mna_screened", fake_mark)
+    monkeypatch.setattr(ma_filter, "should_log_mna_filter_fired", fake_first_log)
+    if not real_mna:
+        monkeypatch.setattr(ma_filter, "is_likely_ma", fake_mna)
     monkeypatch.setattr(ant, "db_rows_to_bars", lambda rows: rows)
-    monkeypatch.setattr(ant, "select_consolidation_keys", lambda u, e: [
+    monkeypatch.setattr(ant, "select_consolidation_keys", lambda u, e: list(keys) if keys else [
         {"ticker": f"TST{i}" if n_keys > 1 else "TST",
          "anchor_date": date(2026, 5, 26), "dvol_med": 5e7} for i in range(n_keys)])
     monkeypatch.setattr(ant, "evaluate_coil_consolidation", lambda b, **kw: (dict(cons), None))
@@ -318,6 +342,7 @@ async def test_mna_excluded_candidate_fires_neither_arm(monkeypatch):
     await sched._consolidation_readiness_scan(_TODAY, stats, transitions, entries)
     assert cap["inserts"] == [] and entries == []
     assert stats["written"] == 0                          # excluded before the upsert, as before
+    assert cap["marks"] == [("TST", _TODAY)]              # #394: and its board rows taken off
 
 
 # ── Part B §5: the settlement step threads bound_conflict + realized_r_h12 through ────────────
@@ -367,3 +392,229 @@ async def test_settlement_threads_new_fields_to_writeback(monkeypatch):
     assert kw["realized_r"] == pytest.approx(-1.0)
     assert kw["realized_r_h12"] == pytest.approx(-1.0)
     assert settled and settled[0][0] == "TST"
+
+
+# ══ Part C — #394: the M&A screen on the coil board (operator 2026-10-03, "Add it now") ═══════
+# Today's board top 5 was mostly stocks pinned by buyouts (CRNX, NUVL, DV, FBRX, MKTX). The scan
+# runs the REAL ma_filter.is_likely_ma here — the headline answer and the DB edges are the only
+# fakes — so these pin the live decision (the news nominates, the own-day range decides), not a
+# stand-in.
+_CRNX_HIT = {"source": "polygon_headline_model", "match_path": "title",
+             "matched_keyword": "definitive agreement",
+             "title": "Crinetics to be acquired for $XX per share in cash",
+             "published_utc": "2026-07-07T12:00:00Z", "publisher": "wire",
+             "role": "target", "status": "signed", "consideration": "cash",
+             "counterparty": "Acquirer"}
+
+
+def _bars_with_own_day(range_pct, *, own_day=True):
+    """The harness bars with the LAST bar re-dated to the scan date (own_day=True) — or to the day
+    before (own_day=False: the scan date's own bar is missing) — and an own-day range of
+    `range_pct` % of the close."""
+    bars = _mk_bars()
+    c = 100.0
+    half = c * range_pct / 200.0
+    day = _TODAY if own_day else _TODAY - timedelta(days=1)
+    bars[-1] = {**bars[-1], "date": day.isoformat(), "o": c, "h": c + half, "l": c - half, "c": c}
+    return bars
+
+
+def _real_mna_edges(monkeypatch, hit):
+    """Fake ONLY is_likely_ma's I/O: the Polygon headline answer and the DB dedup / audit writes.
+    Returns (filter_rows, headline_calls)."""
+    import agents.market_intelligence.db as db
+    import agents.market_intelligence.ma_filter as mf
+
+    filter_rows, headline_calls = [], []
+
+    async def fake_scan(ticker, **kw):
+        headline_calls.append(ticker)
+        return mf.HeadlineScan(dict(hit, ticker=ticker) if hit else None, [], [], 1 if hit else 0)
+
+    async def fake_first_today(event_type, summary_like):
+        return True
+
+    async def fake_db_audit(event_type, summary, detail=None):
+        filter_rows.append((event_type, summary, detail))
+
+    monkeypatch.setattr(mf, "headline_deal_scan", fake_scan)
+    monkeypatch.setattr(mf, "_first_today", fake_first_today)
+    monkeypatch.setattr(db, "log_audit_event", fake_db_audit)
+    return filter_rows, headline_calls
+
+
+def _key(ticker, anchor=date(2026, 5, 26)):
+    return {"ticker": ticker, "anchor_date": anchor, "dvol_med": 5e7}
+
+
+async def _scan():
+    stats, transitions, entries = {"universe": 0, "written": 0}, [], []
+    await sched._consolidation_readiness_scan(_TODAY, stats, transitions, entries)
+    return stats, entries
+
+
+def _rows(cap, event_type):
+    return [(s, d) for (e, s), (_e, d) in zip(cap["audits"], cap["audit_details"]) if e == event_type]
+
+
+@pytest.mark.asyncio
+async def test_394_pinned_buyout_is_kept_off_the_coil_board(monkeypatch):
+    """CRNX-shaped: the target of a signed all-cash deal, own-day range 0.3% → pinned. Not
+    written, no entry fires from it, EVERY board row of the ticker taken off, one fired row in
+    #692's convention naming the deal answer and the price reading."""
+    from agents.market_intelligence.audit_events import MNA_FILTER_FIRED
+    bars = _bars_with_own_day(0.3)
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, csig=_csig(bars), real_mna=True,
+                                 keys=[_key("CRNX")])
+    _real_mna_edges(monkeypatch, _CRNX_HIT)
+
+    stats, entries = await _scan()
+
+    assert cap["upserts"] == 0 and stats["written"] == 0       # not written to the board
+    assert cap["inserts"] == [] and entries == []               # no entry signal fires from it
+    assert cap["marks"] == [("CRNX", _TODAY)]                   # its board rows taken off
+    fired = _rows(cap, MNA_FILTER_FIRED)
+    assert len(fired) == 1
+    summary, detail = fired[0]
+    assert summary.startswith("CRNX via polygon_headline_model (anticipation)")
+    assert "target/signed/cash" in summary and "day range 0.3% <= 2.0% pinned" in summary
+    d = json.loads(detail)
+    assert (d["role"], d["status"], d["consideration"]) == ("target", "signed", "cash")
+    assert d["why"] == "pinned" and d["detector"] == "anticipation"
+    assert d["pin"]["window"] == "day" and d["pin"]["range_pct"] == pytest.approx(0.3)
+    assert d["off_board_rows"] == 2
+
+
+@pytest.mark.asyncio
+async def test_394_news_nominated_name_whose_price_moves_stays_on(monkeypatch):
+    """The same deal answer, but the stock ranged 3.0% today (> the 2.0% ceiling) → the price
+    releases it: written to the board, its entry fires, nothing taken off, and is_likely_ma's
+    own `mna_filter_released` row names the free reading."""
+    from agents.market_intelligence.audit_events import MNA_FILTER_FIRED
+    bars = _bars_with_own_day(3.0)
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, csig=_csig(bars), real_mna=True,
+                                 keys=[_key("DEALX")])
+    filter_rows, _calls = _real_mna_edges(monkeypatch, _CRNX_HIT)
+
+    stats, entries = await _scan()
+
+    assert cap["upsert_tickers"] == ["DEALX"] and stats["written"] == 1
+    assert [t for t, _o, _m, _s in entries] == ["DEALX"]
+    assert cap["marks"] == [] and _rows(cap, MNA_FILTER_FIRED) == []
+    released = [s for e, s, _d in filter_rows if e == "mna_filter_released"]
+    assert len(released) == 1 and "price is FREE" in released[0] and "day range 3.0%" in released[0]
+
+
+@pytest.mark.asyncio
+async def test_394_non_deal_coil_is_untouched(monkeypatch):
+    """No deal in the news → exactly today's path: written, entry fires, no screen rows at all."""
+    from agents.market_intelligence.audit_events import (
+        ANTICIPATION_MNA_PRICE_UNREAD, MNA_FILTER_FIRED)
+    bars = _bars_with_own_day(0.3)            # tight, but no deal: tightness alone never screens
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, csig=_csig(bars), real_mna=True,
+                                 keys=[_key("COIL")])
+    filter_rows, calls = _real_mna_edges(monkeypatch, None)
+
+    stats, entries = await _scan()
+
+    assert calls == ["COIL"]                                    # it WAS screened
+    assert cap["upsert_tickers"] == ["COIL"] and len(cap["inserts"]) == 1
+    assert cap["marks"] == []
+    assert _rows(cap, MNA_FILTER_FIRED) == [] and _rows(cap, ANTICIPATION_MNA_PRICE_UNREAD) == []
+    assert filter_rows == []
+
+
+@pytest.mark.asyncio
+async def test_394_unreadable_own_day_bar_keeps_it_on_and_records_it(monkeypatch):
+    """A nominated name whose scan-date bar is missing: is_likely_ma blocks on the news alone
+    (`news_blocked_price_unread`); the coil-board spec keeps it ON the board and records it."""
+    from agents.market_intelligence.audit_events import (
+        ANTICIPATION_MNA_PRICE_UNREAD, MNA_FILTER_FIRED)
+    bars = _bars_with_own_day(0.3, own_day=False)
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, real_mna=True, keys=[_key("CRNX")])
+    _real_mna_edges(monkeypatch, _CRNX_HIT)
+
+    stats, _entries = await _scan()
+
+    assert cap["upsert_tickers"] == ["CRNX"] and stats["written"] == 1   # on the board
+    assert cap["marks"] == [] and _rows(cap, MNA_FILTER_FIRED) == []
+    unread = _rows(cap, ANTICIPATION_MNA_PRICE_UNREAD)
+    assert len(unread) == 1
+    assert "no_own_day_bar" in unread[0][0] and "kept ON the coil board" in unread[0][0]
+    d = json.loads(unread[0][1])
+    assert d["why"] == "news_blocked_price_unread" and d["role"] == "target"
+
+
+@pytest.mark.asyncio
+async def test_394_screen_is_the_live_is_likely_ma_with_the_day_window(monkeypatch):
+    """The screen REUSES ma_filter.is_likely_ma — the scan resolves the module's own function
+    object at call time (a spy installed there is what runs) — with the flag scan's options and
+    a reader that returns the DAY window at DAY_WINDOW_PIN_MAX_PCT."""
+    import agents.market_intelligence.ma_filter as mf
+    real = mf.is_likely_ma
+    assert real.__module__ == "agents.market_intelligence.ma_filter"
+    bars = _bars_with_own_day(0.3)
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, real_mna=True, keys=[_key("CRNX")])
+    _real_mna_edges(monkeypatch, _CRNX_HIT)
+    seen = []
+
+    async def spy(ticker, **kw):
+        seen.append((ticker, kw, await kw["pin_reader"]()))
+        return await real(ticker, **kw)
+
+    monkeypatch.setattr(mf, "is_likely_ma", spy)
+    await _scan()
+
+    assert len(seen) == 1
+    ticker, kw, reading = seen[0]
+    assert ticker == "CRNX"
+    assert kw["check_polygon"] is True and kw["on_or_before"] == _TODAY
+    assert kw["polygon_lookback_days"] == 21
+    assert reading.window == "day" and reading.threshold_pct == mf.DAY_WINDOW_PIN_MAX_PCT
+    assert reading.readable and reading.pinned
+    assert cap["marks"] == [("CRNX", _TODAY)]          # and the real verdict drove the board
+
+
+@pytest.mark.asyncio
+async def test_394_one_check_per_ticker_across_its_board_rows(monkeypatch):
+    """NUVL sat on the board twice (two anchors). One screen, one off-board mark, one fired row
+    — and neither anchor is written."""
+    from agents.market_intelligence.audit_events import MNA_FILTER_FIRED
+    bars = _bars_with_own_day(0.3)
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, real_mna=True,
+                                 keys=[_key("NUVL"), _key("NUVL", date(2026, 4, 20))])
+    _f, calls = _real_mna_edges(monkeypatch, _CRNX_HIT)
+
+    await _scan()
+
+    assert calls == ["NUVL"]
+    assert cap["marks"] == [("NUVL", _TODAY)] and cap["upserts"] == 0
+    assert len(_rows(cap, MNA_FILTER_FIRED)) == 1
+
+
+# ── #394 the board's DB edge: the mark, the read that hides it, the write that clears it ──────
+@pytest.mark.asyncio
+async def test_394_board_read_hides_screened_rows_and_a_write_clears_the_mark(monkeypatch):
+    from unittest.mock import AsyncMock
+    import agents.market_intelligence.db as db
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[])
+    conn.execute = AsyncMock(return_value="UPDATE 2")
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+
+    await db.get_consolidation_board()
+    board_sql = conn.fetch.await_args.args[0]
+    assert "mna_screened_on IS NULL" in board_sql and "state <> 'aged'" in board_sql
+
+    n = await db.mark_consolidation_mna_screened("NUVL", _TODAY)
+    sql, ticker, day = conn.execute.await_args.args
+    assert n == 2 and ticker == "NUVL" and day == _TODAY
+    assert "SET mna_screened_on = $2" in sql and "state <> 'aged'" in sql
+
+    await db.upsert_consolidation(
+        "NUVL", _TODAY, state="coiled", runup_ratio=1.3, runup_high=10.0, coil_days=5,
+        last_close=10.0, today_pct=0.01, rmv_5d=20.0, rmv_15d=25.0, pullback_shape=None,
+        pullback_shapes=None, fresh_tightening=True, fresh_2bar_tr_pct=1.0, atr14_pct=3.0,
+        tight_close_streak=3, dvol_med=5e7, last_eval=_TODAY)
+    assert "mna_screened_on=NULL" in conn.execute.await_args.args[0]
