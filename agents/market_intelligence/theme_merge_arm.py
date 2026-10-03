@@ -397,7 +397,10 @@ async def adjudicate_merge_pair(
 
 CONTAINMENT_VERDICTS = frozenset({"CHILD_OF", "INVERTED", "PEERS", "UNRELATED"})
 
-CONTAINMENT_ADJUDICATION_PROMPT_VERSION = "v1-2026-09-26-containment"
+# v2 (2026-10-02, #693): the verdict comes FIRST in the tool and the notes after it — a required
+# scratchpad that precedes the verdict is the shape claude-sonnet-5-5 can refuse as
+# "reasoning_extraction" (tests/test_no_reasoning_first_prompts.py).
+CONTAINMENT_ADJUDICATION_PROMPT_VERSION = "v2-2026-10-02-notes-after-verdict"
 
 # The two themes are labelled by ROLE (CANDIDATE CHILD / CANDIDATE PARENT), never A/B —
 # the 2026-09-26 preview found `adjudicate_merge_pair`'s reasoning sometimes named the
@@ -430,10 +433,10 @@ CANDIDATE CHILD: {child_name}
 CANDIDATE PARENT: {parent_name}
 {parent_members}  {parent_desc}
 
-Adjudicate with the tool. In analysis_scratchpad, note in brief the CANDIDATE PARENT's broad
-thesis and the CANDIDATE CHILD's thesis. The verdict says whether the child's thesis is a sub-driver
-riding inside the parent's (CHILD_OF), the reverse (INVERTED), a same-level relative (PEERS), or
-unconnected (UNRELATED)."""
+Adjudicate with the tool. Decide the verdict first: is the child's thesis a sub-driver riding
+inside the parent's (CHILD_OF), the reverse (INVERTED), a same-level relative (PEERS), or
+unconnected (UNRELATED)? Then give the one-sentence reason, and add brief notes in
+analysis_scratchpad on the CANDIDATE PARENT's broad thesis and the CANDIDATE CHILD's thesis."""
 
 CONTAINMENT_ADJUDICATION_TOOL = {
     "name": "adjudicate_theme_containment",
@@ -441,16 +444,18 @@ CONTAINMENT_ADJUDICATION_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "analysis_scratchpad": {
-                "type": "string",
-                "description": "Brief notes: the CANDIDATE PARENT's broad thesis, and the CANDIDATE "
-                               "CHILD's thesis — a sub-driver riding inside the parent's, the "
-                               "reverse, a same-level relative, or unconnected.",
-            },
+            # ORDER MATTERS (#693): the verdict fields come first and the notes LAST, in both the
+            # property order and `required`. The notes are a record AFTER the decision, never a
+            # step the answer waits on.
             "verdict": {"type": "string", "enum": ["CHILD_OF", "INVERTED", "PEERS", "UNRELATED"]},
             "reason": {"type": "string", "description": "One sentence, ≤25 words"},
+            "analysis_scratchpad": {
+                "type": "string",
+                "description": "Brief notes, written after the verdict: the CANDIDATE PARENT's "
+                               "broad thesis, and the CANDIDATE CHILD's thesis.",
+            },
         },
-        "required": ["analysis_scratchpad", "verdict", "reason"],
+        "required": ["verdict", "reason", "analysis_scratchpad"],
     },
 }
 
@@ -492,8 +497,9 @@ async def adjudicate_containment_pair(
     auto-tracked sonnet role. Hardened the same way as adjudicate_merge_pair: forced
     tool_choice, retry ONCE on a missing/invalid verdict, validation-style 429 backoff.
     thinking=DISABLED (llm_thinking.THINKING_DISABLED) — Sonnet's unset-thinking default
-    SHARES max_tokens with the tool output (#575), and analysis_scratchpad already IS the
-    reasoning surface. Never raises — returns {"verdict": "ERROR", "reason": ...} so the
+    SHARES max_tokens with the tool output (#575). The tool puts `verdict` and `reason` first
+    and `analysis_scratchpad` (brief notes) LAST (#693): the notes are written after the decision,
+    never before it. Never raises — returns {"verdict": "ERROR", "reason": ...} so the
     nightly pass fail-opens per pair.
     """
     prompt = build_containment_prompt(child, parent, sectors_by_ticker)

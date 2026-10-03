@@ -1,0 +1,11 @@
+samples dir: /app/logs/llm_samples  files: 17
+  narrative_theme_discovery [discover_narrative_themes]: NO captured thinking-disabled request - skipped
+
+job                                                model              captured        in~ A max_tok B max_tok  effort
+narrative_theme_discovery [_discover_lane2_registr claude-sonnet-5-5  2026-10-01     3769      3000      1500  -
+theme_parent_adjudication [adjudicate_containment_ claude-sonnet-5-5  2026-10-02      961      2024      1000  -
+theme_synthesis [run_theme_synthesis]              claude-sonnet-5-5  2026-10-02     4429     16000      8000  -
+theme_validation [_validate_theme_membership]      claude-sonnet-5-5  2026-10-02      556      2024      1000  -
+
+CALLS: 8   WORST-CASE COST: $0.384  (every call fills max_tokens; limit $2.00)
+dry run - nothing called

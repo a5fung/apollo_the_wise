@@ -970,6 +970,33 @@ demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
 
+### 2026-10-02 — #693: "thinking off" is now really off on Sonnet 5.5, a decline says why, and two tools write their notes AFTER the answer
+
+- **Defect:** on claude-sonnet-5-5 `thinking: {"type": "disabled"}` is a 400 whose text names the real off switch,
+  `thinking: {"type": "between_tools"}`. `shared/llm_client.py` answered that 400 by DROPPING `thinking` and raising
+  `max_tokens` (`thinking_headroom`) — so the four `THINKING_DISABLED` theme jobs (validation, narrative discovery,
+  synthesis, containment/parent check) ran full adaptive thinking on 5.5 since 09-29: more output tokens billed, slower,
+  no trade path touched.
+- **Shipped (adapter):** a rejection that names `between_tools` is answered with `thinking: {"type": "between_tools"}`
+  and `max_tokens` UNCHANGED (new rewrite `thinking_disabled_to_between_tools`, remembered per model, one
+  `llm_request_rewrite_adopted` audit row). A rejection that does not name it (claude-opus-5-5, 09-23) keeps the drop +
+  headroom. At `output_config.effort` xhigh/max the drop is used for that request (between_tools is a 400 there) — the
+  cache still remembers what the model offers, so one xhigh request does not turn the drop on for everyone.
+- **Shipped (refusals):** a refusal now says WHY — `stop_details.category` (`reasoning_extraction` = the prompt asks the
+  model to write its reasoning into the answer; "no category" when absent) — in the adapter's error, in the log line for
+  an un-rewritten request, and in the pre-adoption replay's `refused (<category>)`.
+- **Shipped (two prompts):** the containment adjudicator (`adjudicate_theme_containment`, Sonnet) and the synthesis tool
+  (`propose_emerging_cohorts`) required a scratchpad BEFORE the answer — the shape the 09-29 fix removed elsewhere. The
+  notes (`analysis_scratchpad`, kept, brief) now come AFTER the verdict / cohorts in both the property order and
+  `required`; the prompts say decide first, then add notes (`CONTAINMENT_ADJUDICATION_PROMPT_VERSION` v2). No reader
+  consumed the field (the parent pass reads `verdict` and `reason`, synthesis reads `cohorts`).
+- **Guard:** `tests/test_no_reasoning_first_prompts.py` now ALSO fails on a tool whose required scratchpad precedes its
+  answer fields (the wording check missed both of these). Still scratchpad-first and listed with a reason: the MERGE
+  adjudicator and ecosystem assignment (Haiku) and **`propose_ecosystem` (weekly ecosystem proposer, Sonnet tier) — found
+  here, not changed; same fix when he wants it.**
+- **Not measured yet:** the output-token saving. `scripts/probes/_693/measure_thinking_off.py` replays each job's latest
+  captured request both ways on 5.5 (run in the market container; it prints its own worst-case cost first).
+
 ### 2026-09-30 — #580: every theme line shows its member count and breadth in plain words; the broken Δ is gone
 
 - **Shown now** (`/themes`, HUD Themes button, theme-engine rerun, evening brief — one renderer,

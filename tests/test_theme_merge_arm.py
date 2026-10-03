@@ -262,16 +262,28 @@ def test_member_lines_included_when_present_and_omitted_for_corpus_pairs():
 # theme_engine._run_parent_pass — every test here proves it is a SEPARATE adjudicator
 # from adjudicate_merge_pair, never a variant of it.
 
-def test_containment_tool_schema_scratchpad_first_required_no_a_b_fields():
-    required = arm.CONTAINMENT_ADJUDICATION_TOOL["input_schema"]["required"]
-    assert required[0] == "analysis_scratchpad"
-    assert "verdict" in required
+def test_containment_tool_schema_verdict_first_notes_last_no_a_b_fields():
+    """#693: the verdict fields come first and `analysis_scratchpad` (brief notes) LAST, in both the
+    property order and `required` — a required scratchpad that precedes the verdict is the shape
+    claude-sonnet-5-5 can refuse as "reasoning_extraction"."""
+    schema = arm.CONTAINMENT_ADJUDICATION_TOOL["input_schema"]
+    required = schema["required"]
+    assert required == ["verdict", "reason", "analysis_scratchpad"]
+    assert list(schema["properties"]) == ["verdict", "reason", "analysis_scratchpad"]
+    assert "FIRST" not in schema["properties"]["analysis_scratchpad"]["description"]
     props = arm.CONTAINMENT_ADJUDICATION_TOOL["input_schema"]["properties"]
     assert props["verdict"]["enum"] == ["CHILD_OF", "INVERTED", "PEERS", "UNRELATED"]
     # The MERGE tool's A/B disambiguator ("child": enum ["A", "B"]) has no equivalent
     # here — the containment prompt never needs one, it labels by ROLE.
     assert "child" not in props
     assert "driver_a" not in props and "driver_b" not in props
+
+
+def test_containment_prompt_says_decide_first_then_notes():
+    p = arm.build_containment_prompt({"name": "C", "description": "c"}, {"name": "P", "description": "p"})
+    assert "Decide the verdict first" in p
+    assert p.index("Decide the verdict first") < p.index("analysis_scratchpad")
+    assert arm.CONTAINMENT_ADJUDICATION_PROMPT_VERSION.startswith("v2-")
 
 
 def test_containment_prompt_labels_child_and_parent_never_a_b():

@@ -11,7 +11,9 @@ Pins, against a fake client that raises the EXACT 400 messages claude-opus-5-5 r
   3. "any" over SEVERAL tools → the discriminated-union schema; the chosen variant becomes the
      synthesized tool_use, and an unknown tool name fails open.
   4. thinking {"type":"disabled"} rejected → thinking dropped, max_tokens raised by the headroom
-     rule (never lowered, capped).
+     rule (never lowered, capped) — UNLESS the rejection names between_tools (claude-sonnet-5-5),
+     when the model's own off switch is sent and max_tokens is left alone (#693); at xhigh/max
+     effort the drop is used instead (between_tools is a 400 there).
   5. unparseable structured output → StructuredOutputError (a ValueError) → judge_transport's
      fail-open returns None, exactly as it did on the 400.
   6. a truncated rewritten response passes through untouched (is_truncated still fires).
@@ -32,6 +34,7 @@ import pytest
 from shared import llm_client as lc
 from shared.llm_client import (
     REWRITE_FORCED_TOOL,
+    REWRITE_THINKING_BETWEEN_TOOLS,
     REWRITE_THINKING_DISABLED,
     StructuredOutputError,
     thinking_headroom,
@@ -592,27 +595,187 @@ def test_a_refusal_is_named_as_a_refusal_not_as_missing_text():
             messages=[{"role": "user", "content": "x"}]))
 
 
+class _Refuser(FakeOpus55):
+    """Refuses every structured-output request; `details` is the response's stop_details."""
+
+    def __init__(self, details=None):
+        super().__init__()
+        self.details = details
+
+    async def create(self, **kw):
+        if (kw.get("output_config") or {}).get("format"):
+            self.calls.append(kw)
+            r = Resp([], stop_reason="refusal", model=kw["model"])
+            if self.details is not None:
+                r.stop_details = self.details
+            return r
+        return await super().create(**kw)
+
+
+def _forced_grade(client):
+    return client.messages.create(
+        model="claude-sonnet-5-5", max_tokens=500, tools=[GRADE_TOOL],
+        tool_choice={"type": "tool", "name": "grade_ep"}, messages=[{"role": "user", "content": "x"}])
+
+
+@pytest.mark.parametrize("details", [
+    SimpleNamespace(type="refusal", category="reasoning_extraction", explanation=None),   # SDK object
+    {"type": "refusal", "category": "reasoning_extraction", "explanation": None},          # raw dict
+])
+def test_a_refusal_error_names_its_category(details):
+    with pytest.raises(StructuredOutputError,
+                       match="refused.*stop_reason=refusal.*category=reasoning_extraction") as ei:
+        _run(_forced_grade(_client(_Refuser(details))))
+    assert ei.value.refusal_category == "reasoning_extraction"
+
+
+@pytest.mark.parametrize("details", [None, SimpleNamespace(type="refusal", category=None, explanation=None)])
+def test_a_refusal_without_a_category_says_so(details):
+    with pytest.raises(StructuredOutputError, match="refused.*category=no category") as ei:
+        _run(_forced_grade(_client(_Refuser(details))))
+    assert ei.value.refusal_category == ""
+
+
+def test_a_refusal_on_an_unrewritten_request_is_logged_with_its_category(caplog):
+    class Plain:
+        def __init__(self): self.calls = []
+        async def create(self, **kw):
+            self.calls.append(kw)
+            r = Resp([], stop_reason="refusal", model=kw["model"])
+            r.stop_details = SimpleNamespace(type="refusal", category="reasoning_extraction")
+            return r
+    import logging
+    with caplog.at_level(logging.WARNING, logger="shared.llm_client"):
+        resp = _run(_client(Plain()).messages.create(
+            model="claude-sonnet-5-5", max_tokens=100, messages=[{"role": "user", "content": "x"}]))
+    assert resp.stop_reason == "refusal"                 # returned to the caller untouched
+    assert any("declined" in r.getMessage() and "reasoning_extraction" in r.getMessage()
+               for r in caplog.records)
+
+
 THINKING_OFF_400 = ('Error code: 400 - {\'type\': \'error\', \'error\': {\'type\': '
                     '\'invalid_request_error\', \'message\': \'To turn thinking off on this model, send '
                     '"thinking": {"type": "between_tools"} instead of {"type": "disabled"}.\'}}')
 
 
-def test_the_between_tools_wording_of_the_thinking_rejection_is_adapted():
-    # sonnet-5-5 on 2026-09-29, once the forced-tool rewrite was already cached: rename,
-    # synthesis and ecosystem proposals reached their callers as a plain 400.
-    class Sonnet55(FakeOpus55):
+BETWEEN_TOOLS_REFUSED_400 = ('Error code: 400 - {\'type\': \'error\', \'error\': {\'type\': '
+                             '\'invalid_request_error\', \'message\': \'thinking.type.between_tools '
+                             'cannot be combined with this request.\'}}')
+THINKING_OFF_NO_NAME_400 = ('Error code: 400 - {\'type\': \'error\', \'error\': {\'type\': '
+                            '\'invalid_request_error\', \'message\': \'To turn thinking off on this '
+                            'model, use a different setting.\'}}')
+
+
+class FakeSonnet55(FakeOpus55):
+    """claude-sonnet-5-5 as Anthropic's migration guide describes it: a forced tool_choice is a
+    400, `thinking: disabled` is a 400 that NAMES between_tools, and between_tools is itself a 400
+    at xhigh/max effort or with any field beside `type`. An unrecognised 400 propagates, so a test
+    fails loudly if the adapter ever sends between_tools where it must not."""
+
+    async def create(self, **kw):
+        th = kw.get("thinking") or {}
+        effort = (kw.get("output_config") or {}).get("effort")
+        reject = None
+        if (kw.get("tool_choice") or {}).get("type") in ("tool", "any"):
+            reject = TOOL_CHOICE_400
+        elif th.get("type") == "disabled":
+            reject = THINKING_OFF_400
+        elif th.get("type") == "between_tools" and (effort in ("xhigh", "max") or set(th) != {"type"}):
+            reject = BETWEEN_TOOLS_REFUSED_400
+        if reject:
+            self.calls.append(kw)
+            raise FakeBadRequest(reject)
+        return await super().create(**kw)
+
+
+def _off(**extra):
+    return dict(model="claude-sonnet-5-5", max_tokens=500, thinking={"type": "disabled"},
+                messages=[{"role": "user", "content": "x"}], **extra)
+
+
+def test_the_5_5_rejection_is_answered_with_between_tools_and_max_tokens_unchanged():
+    # sonnet-5-5: 'To turn thinking off on this model, send "thinking": {"type": "between_tools"}'.
+    # Until #693 the adapter DROPPED thinking and doubled max_tokens, so the four "thinking off"
+    # theme jobs ran full adaptive thinking on 5.5.
+    from shared.llm_response import first_text
+    fake = FakeSonnet55()
+    resp = _run(_client(fake).messages.create(**_off()))
+    assert first_text(resp) == "pong"
+    assert [c["thinking"] for c in fake.calls] == [{"type": "disabled"}, {"type": "between_tools"}]
+    assert fake.calls[-1]["max_tokens"] == 500          # nothing thinks up front: no headroom
+    assert lc.adopted_rewrites("claude-sonnet-5-5") == {REWRITE_THINKING_BETWEEN_TOOLS}
+
+
+def test_between_tools_is_remembered_and_announced_once(monkeypatch):
+    seen = []
+    monkeypatch.setattr(lc, "_audit_best_effort", lambda ev, s, d: seen.append((ev, s)))
+    fake = FakeSonnet55()
+    client = _client(fake)
+    _run(client.messages.create(**_off()))
+    n = len(fake.calls)
+    _run(client.messages.create(**_off()))
+    assert len(fake.calls) == n + 1                      # straight to the working form, no 400
+    assert fake.calls[-1]["thinking"] == {"type": "between_tools"} and fake.calls[-1]["max_tokens"] == 500
+    assert seen == [("llm_request_rewrite_adopted",
+                     f"claude-sonnet-5-5: {REWRITE_THINKING_BETWEEN_TOOLS}")]
+
+
+def test_the_opus_5_5_wording_still_gets_the_drop_and_headroom():
+    # claude-opus-5-5, 2026-09-23: '"thinking.type.disabled" is not supported for this model' —
+    # it names no off switch, thinking is always on, so the drop + headroom stay.
+    fake = FakeOpus55()
+    _run(_client(fake).messages.create(
+        model="claude-opus-5-5", max_tokens=1000, thinking={"type": "disabled"},
+        messages=[{"role": "user", "content": "x"}]))
+    assert "thinking" not in fake.calls[-1]
+    assert fake.calls[-1]["max_tokens"] == thinking_headroom(1000) == 2024
+    assert lc.adopted_rewrites("claude-opus-5-5") == {REWRITE_THINKING_DISABLED}
+
+
+def test_a_thinking_off_rejection_that_names_no_switch_gets_the_drop():
+    class NoName(FakeOpus55):
         async def create(self, **kw):
             if (kw.get("thinking") or {}).get("type") == "disabled":
                 self.calls.append(kw)
-                raise FakeBadRequest(THINKING_OFF_400)
+                raise FakeBadRequest(THINKING_OFF_NO_NAME_400)
             return await super().create(**kw)
-    from shared.llm_response import first_text
-    fake = Sonnet55()
-    resp = _run(_client(fake).messages.create(
-        model="claude-sonnet-5-5", max_tokens=500, thinking={"type": "disabled"},
-        messages=[{"role": "user", "content": "x"}]))
-    assert first_text(resp) == "pong"
-    assert "thinking" not in fake.calls[-1]
+    fake = NoName()
+    _run(_client(fake).messages.create(**_off()))
+    assert "thinking" not in fake.calls[-1] and fake.calls[-1]["max_tokens"] == thinking_headroom(500)
+    assert lc.adopted_rewrites("claude-sonnet-5-5") == {REWRITE_THINKING_DISABLED}
+
+
+@pytest.mark.parametrize("effort", ["xhigh", "max"])
+def test_between_tools_is_never_sent_at_xhigh_or_max_effort(effort):
+    # between_tools is a 400 at those efforts (FakeSonnet55 raises it): keep the drop + headroom.
+    fake = FakeSonnet55()
+    client = _client(fake)
+    _run(client.messages.create(**_off(output_config={"effort": effort})))
+    assert [c.get("thinking") for c in fake.calls] == [{"type": "disabled"}, None]
+    assert fake.calls[-1]["max_tokens"] == thinking_headroom(500)
+    assert fake.calls[-1]["output_config"] == {"effort": effort}
+    # what the MODEL offers is still remembered, so one xhigh request does not teach the cache to
+    # drop for everyone: a later normal-effort request goes straight to between_tools ...
+    _run(client.messages.create(**_off(output_config={"effort": "high"})))
+    assert fake.calls[-1]["thinking"] == {"type": "between_tools"} and fake.calls[-1]["max_tokens"] == 500
+    # ... and a later xhigh one goes straight to the drop (known path, no 400 round trip)
+    n = len(fake.calls)
+    _run(client.messages.create(**_off(output_config={"effort": effort})))
+    assert len(fake.calls) == n + 1 and "thinking" not in fake.calls[-1]
+    assert lc.adopted_rewrites("claude-sonnet-5-5") == {REWRITE_THINKING_BETWEEN_TOOLS}
+
+
+def test_forced_tool_on_5_5_gets_both_rewrites_and_the_budget_is_untouched():
+    # the real 5.5 theme-job shape: forced tool + thinking disabled. The forced tool becomes
+    # structured output, the thinking switch becomes between_tools, max_tokens stays the caller's.
+    fake = FakeSonnet55()
+    resp = _run(_client(fake).messages.create(**_off(
+        tools=[GRADE_TOOL], tool_choice={"type": "tool", "name": "grade_ep"})))
+    last = fake.calls[-1]
+    assert "tools" not in last and last["output_config"]["format"]["type"] == "json_schema"
+    assert last["thinking"] == {"type": "between_tools"} and last["max_tokens"] == 500
+    assert next(b for b in resp.content if b.type == "tool_use").name == "grade_ep"
+    assert lc.adopted_rewrites("claude-sonnet-5-5") == {REWRITE_FORCED_TOOL, REWRITE_THINKING_BETWEEN_TOOLS}
 
 
 def test_oneof_becomes_anyof_for_structured_output():

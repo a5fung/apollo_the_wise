@@ -31,13 +31,25 @@ WHAT IT DOES. `make_async_anthropic(...)` / `make_anthropic(...)` return a REAL 
        * "any" with SEVERAL tools → the same, against a discriminated-union schema
          (`{"call": {"anyOf": [{"tool": <const name>, "input": <schema>}, ...]}}`); the chosen
          variant becomes the synthesized tool_use. See `_union_schema`.
-       * `thinking: {"type": "disabled"}` rejected → the `thinking` param is dropped and
-         `max_tokens` gets headroom, because on such a model thinking is always on and shares
-         the output budget (see `thinking_headroom`).
+       * `thinking: {"type": "disabled"}` rejected → TWO forms, chosen by what the rejection says:
+           - it NAMES `between_tools` (claude-sonnet-5-5: 'To turn thinking off on this model,
+             send "thinking": {"type": "between_tools"} ...') → `thinking` becomes
+             `{"type": "between_tools"}` and `max_tokens` is left ALONE: nothing thinks up front,
+             so the caller's text budget is the whole budget. This is the model's own off switch.
+             It is a 400 at `output_config.effort` xhigh/max and takes no other field, so a
+             request at those efforts gets the drop below instead (#693).
+           - it does NOT (claude-opus-5-5: '"thinking.type.disabled" is not supported for this
+             model') → the `thinking` param is dropped and `max_tokens` gets headroom, because
+             on such a model thinking is always on and shares the output budget (see
+             `thinking_headroom`).
+         Before #693 the first form was also the drop, so on 5.5 the "thinking off" theme jobs
+         ran full adaptive thinking: more output tokens billed, slower, same answers.
   3. A truncated (`stop_reason == "max_tokens"`) rewritten response is returned UNTOUCHED, so
      every `is_truncated` fail-open path still fires. Unparseable structured output raises
      `StructuredOutputError` (a ValueError) — every caller's existing `except Exception`
-     fail-open handles it exactly as it handled the 400.
+     fail-open handles it exactly as it handled the 400. A refusal raises the same error and
+     NAMES its category (`stop_details.category`, e.g. "reasoning_extraction" = the prompt asks
+     the model to write its reasoning into the answer), or says "no category" (#693).
   4. Each (model, rewrite) adoption is logged ONCE to mi_audit_log (best-effort, lazy import,
      never raises, no Telegram).
   5. (#690, 2026-09-30) Each successful call's CALLER-WRITTEN request + the answer summary is
@@ -65,7 +77,7 @@ import sys
 import uuid
 from typing import Any, Callable, Optional
 
-from shared.llm_response import first_text, stop_reason
+from shared.llm_response import first_text, refusal_category, stop_reason
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +87,7 @@ __all__ = [
     "StructuredOutputError",
     "REWRITE_FORCED_TOOL",
     "REWRITE_THINKING_DISABLED",
+    "REWRITE_THINKING_BETWEEN_TOOLS",
     "thinking_headroom",
     "adopted_rewrites",
     "reset_adaptations",
@@ -83,6 +96,10 @@ __all__ = [
 # ── Rewrite names (the per-model cache keys) ─────────────────────────────────
 REWRITE_FORCED_TOOL = "forced_tool_to_structured_output"
 REWRITE_THINKING_DISABLED = "drop_thinking_disabled"
+# claude-sonnet-5-5's own off switch: `thinking: disabled` -> `thinking: {"type": "between_tools"}`,
+# max_tokens unchanged (#693). Remembered per model like the others, so it is logged once to
+# mi_audit_log as llm_request_rewrite_adopted and later calls go straight to it.
+REWRITE_THINKING_BETWEEN_TOOLS = "thinking_disabled_to_between_tools"
 
 _UNSUPPORTED_MARKER = "not supported for this model"
 # claude-sonnet-5-5 (2026-09-29) words the thinking-off rejection differently when the request
@@ -90,6 +107,13 @@ _UNSUPPORTED_MARKER = "not supported for this model"
 # {"type": "between_tools"} instead of {"type": "disabled"}'. Unrecognised, it reached callers as
 # a plain 400 — rename, synthesis and ecosystem proposals all failed on it.
 _THINKING_OFF_MARKER = "To turn thinking off on this model"
+# The rejection NAMES the replacement switch. Opus-5-5's wording ('"thinking.type.disabled" is not
+# supported for this model. Use "thinking.type.adaptive" and "output_config.effort"...') does not,
+# and keeps the drop + headroom.
+_BETWEEN_TOOLS = "between_tools"
+# `between_tools` is accepted at low/medium/high effort and is a 400 at these (Anthropic's
+# Sonnet 5.5 migration guide, #693) — a request carrying one of them gets the drop instead.
+_EFFORTS_WITHOUT_BETWEEN_TOOLS = frozenset({"xhigh", "max"})
 
 # model id -> the rewrites that model has been observed to need. Module-level on purpose:
 # the first rejected call pays the 400 + retry, every later call in the process goes straight
@@ -124,7 +148,12 @@ def thinking_headroom(max_tokens: int) -> int:
 class StructuredOutputError(ValueError):
     """The rewritten (structured-output) call returned text that is not the JSON the schema
     promised. A ValueError so every caller's existing `except Exception` fail-open catches it
-    exactly as it caught the original 400; `is_credit_error` ignores it (no status_code)."""
+    exactly as it caught the original 400; `is_credit_error` ignores it (no status_code).
+    `refusal_category` is set when the model DECLINED (stop_reason=refusal) and said why (#693)."""
+
+    def __init__(self, *args, refusal_category: str = ""):
+        super().__init__(*args)
+        self.refusal_category = refusal_category
 
 
 # ── Rejection recognition ────────────────────────────────────────────────────
@@ -137,14 +166,22 @@ def _rejection_rewrite(exc: BaseException, kw: dict) -> Optional[str]:
         return None
     msg = str(getattr(exc, "message", "") or exc)
     if _THINKING_OFF_MARKER in msg and _thinking_is_disabled(kw):
-        return REWRITE_THINKING_DISABLED
+        return _thinking_rewrite_named_by(msg)
     if _UNSUPPORTED_MARKER not in msg:
         return None
     if "tool_choice" in msg and _forced_tool_target(kw) is not None:
         return REWRITE_FORCED_TOOL
     if "thinking" in msg and _thinking_is_disabled(kw):
-        return REWRITE_THINKING_DISABLED
+        return _thinking_rewrite_named_by(msg)
     return None
+
+
+def _thinking_rewrite_named_by(msg: str) -> str:
+    """Which thinking rewrite a thinking-off rejection asks for: the model's own off switch when
+    the message names it, else the drop + headroom. WHAT THE MODEL OFFERS is remembered per model;
+    whether a given request can use it (effort) is decided per request in
+    `_apply_thinking_rewrite`, so one xhigh request cannot teach the cache to drop for the rest."""
+    return REWRITE_THINKING_BETWEEN_TOOLS if _BETWEEN_TOOLS in msg else REWRITE_THINKING_DISABLED
 
 
 def _thinking_is_disabled(kw: dict) -> bool:
@@ -262,10 +299,22 @@ def _apply_forced_tool_rewrite(kw: dict) -> tuple[dict, Optional[dict]]:
     return new, {"tools": targets, "union": union}
 
 
-def _apply_thinking_rewrite(kw: dict) -> dict:
+def _effort(kw: dict) -> str:
+    oc = kw.get("output_config")
+    effort = oc.get("effort") if isinstance(oc, dict) else None
+    return effort.strip().lower() if isinstance(effort, str) else ""
+
+
+def _apply_thinking_rewrite(kw: dict, rewrite: str = REWRITE_THINKING_DISABLED) -> dict:
+    """THE one place that decides how a `thinking: disabled` request is rewritten.
+    `between_tools` (max_tokens untouched — nothing thinks up front) when the model offers it and
+    the request's effort allows it; otherwise the drop + headroom."""
     if not _thinking_is_disabled(kw):
         return kw
     new = dict(kw)
+    if rewrite == REWRITE_THINKING_BETWEEN_TOOLS and _effort(kw) not in _EFFORTS_WITHOUT_BETWEEN_TOOLS:
+        new["thinking"] = {"type": _BETWEEN_TOOLS}
+        return new
     new.pop("thinking", None)
     if "max_tokens" in new:
         new["max_tokens"] = thinking_headroom(new["max_tokens"])
@@ -280,9 +329,14 @@ def _prepare(kw: dict) -> tuple[dict, Optional[dict], set[str]]:
     plan = None
     applied: set[str] = set()
     out = kw
-    if REWRITE_THINKING_DISABLED in known and _thinking_is_disabled(out):
-        out = _apply_thinking_rewrite(out)
-        applied.add(REWRITE_THINKING_DISABLED)
+    if _thinking_is_disabled(out):
+        # between_tools wins when both were ever observed: it is the model's own off switch.
+        thinking_rewrite = (REWRITE_THINKING_BETWEEN_TOOLS if REWRITE_THINKING_BETWEEN_TOOLS in known
+                            else REWRITE_THINKING_DISABLED if REWRITE_THINKING_DISABLED in known
+                            else None)
+        if thinking_rewrite:
+            out = _apply_thinking_rewrite(out, thinking_rewrite)
+            applied.add(thinking_rewrite)
     if REWRITE_FORCED_TOOL in known and _forced_tool_target(out) is not None:
         out, plan = _apply_forced_tool_rewrite(out)
         applied.add(REWRITE_FORCED_TOOL)
@@ -371,8 +425,13 @@ def _synthesize(resp: Any, plan: dict) -> Any:
     if stop_reason(resp) == "refusal":
         # Named apart from "no text": sonnet-5-5 refused every theme prompt on 2026-09-29 and the
         # log read only "no text block (blocks=[])", which hid that the model declined outright.
+        # #693: the CATEGORY says whether the prompt is fixable ("reasoning_extraction" = it asks
+        # the model to write its reasoning into the answer); a missing one is said, not omitted.
+        category = refusal_category(resp)
         raise StructuredOutputError(
-            f"model refused the request (stop_reason=refusal, model={getattr(resp, 'model', '?')})")
+            f"model refused the request (stop_reason=refusal, "
+            f"category={category or 'no category'}, model={getattr(resp, 'model', '?')})",
+            refusal_category=category)
     text = first_text(resp)
     if not text:
         raise StructuredOutputError(
@@ -430,7 +489,7 @@ def _next_rewrite(exc: BaseException, kw: dict, applied: set[str]) -> Optional[s
 def _rewrite(kw: dict, rewrite: str) -> tuple[dict, Optional[dict]]:
     if rewrite == REWRITE_FORCED_TOOL:
         return _apply_forced_tool_rewrite(kw)
-    return _apply_thinking_rewrite(kw), None
+    return _apply_thinking_rewrite(kw, rewrite), None
 
 
 async def _create_async(inner_create: Callable, kw: dict):
@@ -447,9 +506,23 @@ async def _create_async(inner_create: Callable, kw: dict):
             send, new_plan = _rewrite(send, rewrite)
             plan = new_plan or plan
             applied.add(rewrite)
-    out = _synthesize(resp, plan) if plan else resp
+    out = _synthesize(resp, plan) if plan else _note_refusal(kw, resp)
     _capture(kw, out)
     return out
+
+
+def _note_refusal(kw: dict, resp: Any) -> Any:
+    """A refusal on a request that was NOT rewritten (a plain call, or an auto tool_choice) returns
+    to the caller untouched — the caller reports its own 'no tool_use'. Log WHY once, here, so the
+    log names the category instead of leaving a blank (#693). Returns `resp` unchanged; never
+    raises."""
+    try:
+        if stop_reason(resp) == "refusal":
+            logger.warning("llm_client: %s declined the request (stop_reason=refusal, category=%s)",
+                           kw.get("model"), refusal_category(resp) or "no category")
+    except Exception:  # loud-ok: a log line must never touch the call it describes
+        pass
+    return resp
 
 
 def _create_sync(inner_create: Callable, kw: dict):
@@ -466,7 +539,7 @@ def _create_sync(inner_create: Callable, kw: dict):
             send, new_plan = _rewrite(send, rewrite)
             plan = new_plan or plan
             applied.add(rewrite)
-    out = _synthesize(resp, plan) if plan else resp
+    out = _synthesize(resp, plan) if plan else _note_refusal(kw, resp)
     _capture(kw, out)
     return out
 
