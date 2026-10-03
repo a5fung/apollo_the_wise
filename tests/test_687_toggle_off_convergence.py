@@ -3,13 +3,13 @@
 WHY (cut-back round, 2026-10-02). Three review rounds added defence-in-depth to SHARED broker code and
 did not converge. A feature behind an OFF toggle (`magna53_depth_exit`) must change NOTHING for
 toggle-OFF trades except the six named fixes to today's close-below exit — #687 (a)-(f) — the cited
-sync hunk (61a6c479), the operator's rulings of 2026-10-01 (1)-(3), and his 2026-10-02 ruling (ii). This test is that criterion.
+sync hunk (61a6c479), the operator's rulings of 2026-10-01 (1)-(3), and his 2026-10-02 rulings (ii) and (iv). This test is that criterion.
 
-HOW. `tests/_convergence_687_harness.py` drives 29 fixed scenarios (the 16:45 trail exit with and
+HOW. `tests/_convergence_687_harness.py` drives 31 fixed scenarios (the 16:45 trail exit with and
 without a resting +8R OCO third or a plain resting limit, the 16:45 job itself, a stop raise via `update_stop`, the position
 sync with and without a queued sale, stream fill / cancel / expiry events, the stop-ACK watchdog,
 the 17:00 coverage slot, the intraday coverage page, the stop refresh, a stop that cannot be placed because the price is through
-it, the daily-loss gate, and `close_position(qty)` at the alpaca-py boundary) and records every
+it, the daily-loss gate (incl. a partial loss on an earlier day / the same day as the close), and `close_position(qty)` at the alpaca-py boundary) and records every
 broker-client call (method + bound arguments), every Telegram page, the return value and the fake
 book's end state. The BASELINE log was recorded by running the SAME harness inside a temporary git
 worktree of the pinned pre-#687 commit (`scripts/probes/_687/capture_toggle_off_baseline.sh`; the
@@ -200,6 +200,11 @@ ALLOWED = {
     's22_safeguards_partial_sale_loss_today': {
         'why': 'RULING (1): a loss on a partial sale counts toward the 2% daily loss limit at once',
         'result': [False, 'block:daily_loss: $-110 >= $100 (mode=paper)', 0],
+    },
+    's30_safeguards_partial_loss_yesterday_trade_closed_today': {
+        'why': 'ruling (iv) 2026-10-02: a partial loss counted on its own day (ruling (1)) is not counted '
+               'again inside total_pnl on the close day — today counts only the -$50 realized today',
+        'result': [True, None, 1],
     },
     's23_sdk_close_position_with_qty': {
         'why': '#687 (d): close_position(qty) hands alpaca-py a ClosePositionRequest, not a dict',

@@ -376,6 +376,10 @@ tell the order type (listed).
 **Reversion-flag**: REVERSAL of f8d5069e (2026-10-02 cut-back). That skip was not judged right — it was main's
 behaviour held as a placeholder because the case was un-ruled; his ruling replaces it.
 
+**Ruling (iv) 2026-10-02** (the same day's other build — a partial loss is counted once, on its own day, and netted
+out of `total_pnl` on the close day) is a safeguard change: owned by `docs/setups/safeguards.md` item 5 + its
+2026-10-02 entry.
+
 **Status**: built + unit-tested on branch `687-depth-rule`, NOT merged or deployed. Tests:
 `tests/test_687_ruling_ii_plain_limit_left_resting.py` (4: 16:45 limit left resting + 4 free shares sold; nothing
 sold or cancelled when the limit holds every share; 19:01 the same; the OCO third unchanged). Convergence s28 now
@@ -458,16 +462,16 @@ the line and never acts on it on a close back above it. Tests: `tests/test_687_r
 owned by `docs/setups/safeguards.md` item 5 + its 2026-10-02 entry.
 
 **Evidence — the convergence test** (`tests/test_687_toggle_off_convergence.py`, harness
-`tests/_convergence_687_harness.py`): 29 fixed toggle-OFF scenarios run through the pinned pre-#687 code
+`tests/_convergence_687_harness.py`): 31 fixed toggle-OFF scenarios run through the pinned pre-#687 code
 (97b08d51 since the 2026-10-02 rebase — 90d02459 before it; a temporary git worktree —
 `scripts/probes/_687/capture_toggle_off_baseline.sh`) and through this branch, recording every broker call, every
-Telegram page, the return value and the book's end state. 11 of 27 two-tree scenarios are identical (incl. the 16:45
+Telegram page, the return value and the book's end state. 12 of 29 two-tree scenarios are identical (incl. the 16:45
 job on an unstamped trade, a stop raise, the sync without a queued sale, a fill of the whole sale, a hand-cancelled
-stop, the watchdog on a fresh entry, a genuine 17:00 gap, and main's 62f45ade intraday gap page — s29, which the
-pre-rebase main never sent).
+stop, the watchdog on a fresh entry, a genuine 17:00 gap, main's 62f45ade intraday gap page — s29, which the
+pre-rebase main never sent — and a partial loss + close on the same day, s31, counted once as main counts it).
 Every other difference is allow-listed with its reason and its exact expected value: (a) ×2, (b), (c) ×4, (d),
 (e), (f), the sync hunk, ruling (1), (2)(i), (2)(ii) ×2, (3) ×2, and (since his 2026-10-02 rulings) ruling (ii)
-(s28, was (a)); the two depth scenarios are inert. A stray broker
+(s28, was (a)) and ruling (iv) (s30); the two depth scenarios are inert. A stray broker
 call in `execute_full_exit` reddens 6 scenarios.
 
 **Open for him (NOT decided here — main's behaviour kept):**
@@ -477,7 +481,8 @@ call in `execute_full_exit` reddens 6 scenarios.
   and sell everything; **RULED 2026-10-02: neither — left resting, the other shares follow the exit** (entry above);
 - (iii) ruling (3) at the other stop-placing sites (listed under ruling (3)) — extend vs keep "page, no auto-exit";
 - (iv) ruling (1): a partial loss counted on its own day is counted again inside `total_pnl` on the trade's close
-  day — keep vs net it out.
+  day — keep vs net it out. **RULED 2026-10-02: net it out — each realized dollar counts once, on its own day**
+  (`docs/setups/safeguards.md` item 5 + its 2026-10-02 entry).
 
 **Anticipated effect**: toggle-OFF trades behave as main except the listed exceptions; the depth flow stays OFF
 (no row stamped). **Reversion-flag**: REFINEMENT of the two 2026-10-01 entries below (parts A and B) plus his

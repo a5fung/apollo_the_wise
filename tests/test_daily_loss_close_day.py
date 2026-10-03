@@ -10,6 +10,10 @@ under alert_date had real realized losses (6/24 -$1483, 5/26 -$862, 5/12 -$639).
 
 Source-pin so a refactor can't silently revert to the buggy alert_date filter.
 See docs/setups/safeguards.md change log 2026-07-24.
+
+#687 ruling (iv), 2026-10-02: the query now reads each closed trade's `total_pnl, exits` (same WHERE)
+and the sum is taken per trade in Python, netting out partial losses ruling (1) already counted on an
+earlier day (behaviour pinned in tests/test_687_ruling_iv_partial_loss_counted_once.py).
 """
 import re
 from pathlib import Path
@@ -19,9 +23,9 @@ _LT = (Path(__file__).resolve().parent.parent
 
 
 def _daily_loss_query() -> str:
-    """The SUM(total_pnl) daily-loss query block in _check_safeguards."""
-    m = re.search(r'today_losses\s*=\s*await conn\.fetchval\(\s*"""(.+?)"""', _LT, re.S)
-    assert m, "daily-loss query (today_losses fetchval) not found — refactor?"
+    """The closed-trade daily-loss query block in _check_safeguards."""
+    m = re.search(r'closed_today\s*=\s*await conn\.fetch\(\s*"""(.+?)"""', _LT, re.S)
+    assert m, "daily-loss query (closed_today fetch) not found — refactor?"
     return m.group(1)
 
 
@@ -39,6 +43,6 @@ def test_daily_loss_counts_by_close_day_not_alert_date():
 
 def test_daily_loss_still_sums_realized_losses_per_mode():
     q = _daily_loss_query()
-    assert "SUM(total_pnl)" in q and "total_pnl < 0" in q and "status = 'closed'" in q, \
-        "daily-loss gate must still sum realized (closed, losing) trade P&L"
+    assert "SELECT total_pnl, exits" in q and "total_pnl < 0" in q and "status = 'closed'" in q, \
+        "daily-loss gate must still read realized (closed, losing) trade P&L"
     assert "account_mode = $2" in q, "daily-loss gate must stay per-account_mode"

@@ -439,6 +439,7 @@ code that today's — toggle-OFF — trades use); his four rulings of 2026-10-01
 - the review-round hunks are reverted; what remains is parts A (six fixes to today's close-below exit) and B (the
   depth flow, inert while no row is stamped), plus one cited sync hunk;
 - **ruling (1)**: a loss on a partial sale counts toward the 2% daily loss limit at once (`safeguards.md` item 5);
+  **ruling (iv) 2026-10-02**: and only once — netted out of `total_pnl` on the trade's close day;
 - **ruling (2)**: no "Position unprotected" page when our own planned sale cancels the stop, and no "No stop on X"
   page for a position held only by its +8R OCO third — a genuinely uncovered position still pages;
 - **ruling (3)**: when a planned sale's cancelled stop cannot be put back because the price is already through it,
@@ -448,7 +449,7 @@ code that today's — toggle-OFF — trades use); his four rulings of 2026-10-01
   and the other shares are sold, as beside the OCO third (replaces the cut-back's skip; `exit_discipline.md`).
 
 **Evidence**: `tests/test_687_toggle_off_convergence.py` — the toggle-OFF path matches the pre-#687 code (pinned
-97b08d51 since the 2026-10-02 rebase) on 29 scenarios except a named allow-list (fixes (a)–(f), the sync hunk, rulings (1)–(3), ruling (ii) 2026-10-02).
+97b08d51 since the 2026-10-02 rebase) on 31 scenarios except a named allow-list (fixes (a)–(f), the sync hunk, rulings (1)–(3), rulings (ii) and (iv) 2026-10-02).
 
 **Before any flip** (follow-ups from the cut-back, depth path): a partly-filled opening-auction sale's sold part is
 not recorded by the stream's cancel path; a depth trade held only by its OCO third is marked "sell at the next open"

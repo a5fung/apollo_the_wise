@@ -103,7 +103,10 @@ class World:
         self.trades: dict[int, dict] = {}
         self.orders: list[dict] = []          # mi_live_orders
         self.audits: list[dict] = []          # mi_audit_log
-        self.closed_losses_today = 0.0
+        # Trades CLOSED today, as the daily-loss gate's closed arm sees them ({total_pnl, exits}).
+        # Kept OUT of `trades` on purpose: the circuit breaker's UNION query only parses because no
+        # row in the book is closed. Main sums them in SQL; the branch (ruling (iv)) reads the rows.
+        self.closed_today: list[dict] = []
         self.foreign_locks: set[int] = set()  # trade ids whose lock another process holds
         self.unknown: list[str] = []
         # broker
@@ -290,11 +293,13 @@ class FakeConn:
             if kind == "fetchval":
                 return next(iter(ret.values())) if ret else None
             return ret
+        if "SUM(total_pnl)" in s and "closed_at AT TIME ZONE" in s:          # main's closed arm
+            return sum(float(r["total_pnl"]) for r in w.closed_today if r["total_pnl"] < 0)
+        if s.startswith("SELECT total_pnl, exits FROM") and "closed_at AT TIME ZONE" in s:
+            return [dict(r) for r in w.closed_today if r["total_pnl"] < 0]   # ruling (iv)
         hit = _match(s, rows, args, w)
         if s.startswith("SELECT COUNT(*)"):
             return len(hit)
-        if "SUM(total_pnl)" in s:
-            return w.closed_losses_today
         if kind == "fetch":
             return [dict(r) for r in hit]
         if kind == "fetchrow":
@@ -882,10 +887,35 @@ def s21_refresh_genuinely_uncovered(om, lt, **_):
 
 def s22_safeguards_partial_sale_loss_today(om, lt, **_):
     w = World()
-    w.closed_losses_today = -50.0
+    w.closed_today = [{"total_pnl": -50.0, "exits": [
+        {"time": "2026-10-06T14:00:00+00:00", "price": 50.0, "reason": "stop_hit", "shares": 5,
+         "pnl": -50.0}]}]
     _trade(w, tid=402, ticker="VICR", account_mode="paper", remaining=2,
            exits=[{"time": "2026-10-06T13:30:05+00:00", "price": 55.0, "reason": "sma_trail_stop",
                    "shares": 4, "pnl": -60.0, "order_id": "s-9"}])
+    return w, lambda: lt._check_safeguards(account_mode="paper")
+
+
+def s30_safeguards_partial_loss_yesterday_trade_closed_today(om, lt, **_):
+    """Ruling (iv): a trade closed today at −$110, of which −$60 was a partial sale YESTERDAY
+    (ruling (1) counted it then). Main counts −$110 today (blocked); the branch counts −$50."""
+    w = World()
+    w.closed_today = [{"total_pnl": -110.0, "exits": [
+        {"time": "2026-10-05T19:30:00+00:00", "price": 55.0, "reason": "sma_trail_stop",
+         "shares": 4, "pnl": -60.0},
+        {"time": "2026-10-06T14:00:00+00:00", "price": 35.0, "reason": "stop_hit", "shares": 2,
+         "pnl": -50.0}]}]
+    return w, lambda: lt._check_safeguards(account_mode="paper")
+
+
+def s31_safeguards_partial_loss_and_close_same_day(om, lt, **_):
+    """Ruling (iv): the partial and the close on the SAME day count once — as main counts them."""
+    w = World()
+    w.closed_today = [{"total_pnl": -110.0, "exits": [
+        {"time": "2026-10-06T14:00:00+00:00", "price": 55.0, "reason": "sma_trail_stop",
+         "shares": 4, "pnl": -60.0},
+        {"time": "2026-10-06T19:00:00+00:00", "price": 35.0, "reason": "stop_hit", "shares": 2,
+         "pnl": -50.0}]}]
     return w, lambda: lt._check_safeguards(account_mode="paper")
 
 

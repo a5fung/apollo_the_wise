@@ -5,8 +5,10 @@ The daily-loss gate (`live_tracker._check_safeguards`) summed `total_pnl` of tra
 A sale that sells part of a position at a loss and leaves the rest open — the close-below sale
 beside a resting +8R profit-take third (#687 a+b keep that row open), or a stop that partly filled
 — was invisible to it until the remainder exited, possibly days later. Now each losing leg dated
-today (ET) on a still-open trade is added. The closed-trade query itself is unchanged (its shape
-is pinned by tests/test_daily_loss_close_day.py).
+today (ET) on a still-open trade is added. The closed-trade query keeps its WHERE (pinned by
+tests/test_daily_loss_close_day.py); since ruling (iv) 2026-10-02 it reads each closed trade's
+`total_pnl` + `exits` so a leg counted here on an earlier day is not counted again on the close day
+(tests/test_687_ruling_iv_partial_loss_counted_once.py).
 """
 import asyncio
 import json
@@ -66,16 +68,20 @@ def test_exits_as_json_text_and_legs_without_pnl_or_time():
 # ── the gate ─────────────────────────────────────────────────────────────────────────────────
 
 class _Conn:
+    """`closed_losses` = one trade closed today with that total_pnl and no earlier-day legs (None
+    or 0 = no losing trade closed today)."""
     def __init__(self, closed_losses, open_exit_rows):
-        self.closed_losses, self.open_exit_rows = closed_losses, open_exit_rows
+        self.closed_rows = ([{"total_pnl": closed_losses, "exits": []}]
+                            if closed_losses else [])
+        self.open_exit_rows = open_exit_rows
         self.open_query = None
 
     async def fetchval(self, q, *a, **k):
-        if "SUM(total_pnl)" in q:
-            return self.closed_losses
         return 0                                    # open-position counts
 
     async def fetch(self, q, *a, **k):
+        if "SELECT total_pnl, exits FROM mi_live_trades" in " ".join(q.split()):
+            return self.closed_rows
         if "SELECT exits FROM mi_live_trades" in q:
             self.open_query = (q, a)
             return self.open_exit_rows
@@ -141,7 +147,7 @@ def test_closed_losses_alone_still_trip_it(monkeypatch):
 
 @pytest.mark.parametrize("closed", [-50.0, None])
 def test_a_numeric_or_null_closed_sum_adds_cleanly(monkeypatch, closed):
-    """asyncpg returns NUMERIC as Decimal; the open-trade arm is float — they must add."""
+    """asyncpg returns NUMERIC total_pnl as Decimal; the open-trade arm is float — they must add."""
     from decimal import Decimal
     c = Decimal(str(closed)) if closed is not None else None
     (ok, reason, _), _ = _run(monkeypatch, c, [{"exits": [_leg(-60.0, "2026-10-06T13:30:05+00:00")]}])

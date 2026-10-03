@@ -137,6 +137,26 @@ def _exit_leg_et_date(raw_time) -> "date | None":
     return ts.astimezone(_ET_ZONE).date()
 
 
+def _losing_exit_legs(exits):
+    """(pnl, ET date) of every LOSING leg of one trade's `exits` (a JSONB list, or its JSON text
+    when no codec decoded it). Legs without both `pnl` and `time` are skipped (the circuit
+    breaker's partial arm reads the same two keys); the date is None when unreadable. PURE."""
+    if isinstance(exits, str):
+        try:
+            exits = json.loads(exits)
+        except ValueError:
+            return
+    for leg in exits or []:
+        if not isinstance(leg, dict) or leg.get("pnl") is None or not leg.get("time"):
+            continue
+        try:
+            pnl = float(leg["pnl"])
+        except (TypeError, ValueError):
+            continue
+        if pnl < 0:
+            yield pnl, _exit_leg_et_date(leg["time"])
+
+
 def _partial_losses_realized_on(exit_rows, today: date) -> float:
     """⚖ #687 ruling (1), operator 2026-10-01: the realized LOSSES of partial sales on trades
     still OPEN, dated `today` (ET). Returns a sum <= 0. PURE.
@@ -149,20 +169,40 @@ def _partial_losses_realized_on(exit_rows, today: date) -> float:
     total = 0.0
     for row in exit_rows or []:
         exits = row["exits"] if not isinstance(row, (list, tuple)) else row
-        if isinstance(exits, str):
-            try:
-                exits = json.loads(exits)
-            except ValueError:
-                continue
-        for leg in exits or []:
-            if not isinstance(leg, dict) or leg.get("pnl") is None or not leg.get("time"):
-                continue
-            try:
-                pnl = float(leg["pnl"])
-            except (TypeError, ValueError):
-                continue
-            if pnl < 0 and _exit_leg_et_date(leg["time"]) == today:
+        for pnl, leg_day in _losing_exit_legs(exits):
+            if leg_day == today:
                 total += pnl
+    return total
+
+
+def _closed_losses_realized_on(closed_rows, today: date) -> float:
+    """⚖ #687 ruling (iv), operator 2026-10-02: the realized loss of trades CLOSED `today` (ET),
+    each dollar counted ONCE, on the day it was realized. Returns a sum <= 0. PURE.
+
+    `closed_rows` carry `total_pnl` and `exits` (the trade's legs; `total_pnl = sum(exits[].pnl)`,
+    the invariant every closer writes — order_manager "Invariant: total_pnl = sum(exits[].pnl)").
+    Per trade, `total_pnl` minus every LOSING leg dated an EARLIER ET day than `today`: ruling (1)
+    already counted each of those on its own day, on the trade while it was still open (exactly
+    the legs `_partial_losses_realized_on` reads: `pnl < 0` with a readable `time`). The trade
+    counts when that remainder is a loss.
+    - A losing leg dated TODAY stays inside `total_pnl` and counts once, here (the open-trade arm
+      no longer sees a closed trade).
+    - A leg with no readable `time` is never netted — the open-trade arm never counted it either.
+    - PROFIT legs are never netted, whatever their day (unchanged from ruling (1)'s design: a
+      profit leg is never counted on its own day, so it stays inside `total_pnl` and still
+      offsets the trade's loss on the close day, as the closed arm always did)."""
+    total = 0.0
+    for row in closed_rows or []:
+        try:
+            pnl = float(row["total_pnl"] or 0)
+        except (TypeError, ValueError):
+            continue
+        counted_earlier = sum(
+            leg_pnl for leg_pnl, leg_day in _losing_exit_legs(row["exits"])
+            if leg_day is not None and leg_day < today)
+        remainder = pnl - counted_earlier
+        if remainder < 0:
+            total += remainder
     return total
 
 
@@ -286,27 +326,33 @@ async def _check_safeguards(
         # >= 2%). Backtest: old vs new disagreed on 12/28 loss-days ($0-under-old days had real
         # losses: 6/24 -$1483, 5/26 -$862). closed_at 100% populated on closed trades (0/40
         # NULL); ET conversion per the TIMESTAMPTZ->ET-date rule (CLAUDE.md time-handling).
-        today_losses = await conn.fetchval("""
-            SELECT COALESCE(SUM(total_pnl), 0)
+        # ⚖ #687 RULING (iv), operator 2026-10-02: count each realized dollar ONCE, on the day it
+        # was realized. Ruling (1) (below) counts a losing partial leg on its own day while the
+        # trade is open; on the day the trade later CLOSES, that leg is netted out of its
+        # total_pnl here (`_closed_losses_realized_on`), so only what was realized TODAY counts.
+        # Same rows as before (the WHERE is unchanged); the sum is taken per trade in Python.
+        closed_today = await conn.fetch("""
+            SELECT total_pnl, exits
             FROM mi_live_trades
             WHERE (closed_at AT TIME ZONE 'America/New_York')::date = $1
               AND status = 'closed' AND total_pnl < 0
               AND account_mode = $2
         """, today, account_mode)
+        today_losses = _closed_losses_realized_on(closed_today, today)
         # ⚖ #687 RULING (1), operator 2026-10-01 ("Yes"): a loss on a PARTIAL sale counts toward
         # this limit AT ONCE — not only when the trade later closes. The query above sees CLOSED
         # trades only, so a sale that sells part of a position at a loss and leaves the rest open
         # (the close-below sale beside a resting +8R profit-take third; a stop that partly filled)
         # was invisible here until the remainder exited, possibly days later. Each such losing
-        # leg dated today (ET) on a still-OPEN trade is added. Closed trades are unchanged above.
-        # SSoT: docs/setups/safeguards.md item 5 + change log 2026-10-02.
+        # leg dated today (ET) on a still-OPEN trade is added; on its close day it is netted out
+        # of the closed arm above (ruling (iv)). SSoT: docs/setups/safeguards.md item 5 + change
+        # log 2026-10-02.
         open_trade_exits = await conn.fetch("""
             SELECT exits FROM mi_live_trades
             WHERE status <> 'closed' AND account_mode = $1
               AND exits IS NOT NULL
         """, account_mode)
-        today_losses = float(today_losses or 0) + _partial_losses_realized_on(
-            open_trade_exits, today)
+        today_losses += _partial_losses_realized_on(open_trade_exits, today)
         daily_limit = equity * DAILY_LOSS_LIMIT_PCT
         if abs(today_losses) >= daily_limit:
             logger.info(

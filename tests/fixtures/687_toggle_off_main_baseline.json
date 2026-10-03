@@ -1,7 +1,7 @@
 {
  "baseline_sha": "97b08d51380e60f33f8f4ef545afe35289b23a88",
  "captured_by": "scripts/probes/_687/capture_toggle_off_baseline.sh",
- "harness_sha256": "7d80f68e44003b61fe061e122aba81576951db5ac8565a194afe6dc17c2fb46e",
+ "harness_sha256": "cc9b0563930c2dadfcfe5bd748edc3bc3cea671ee8150ac1f3ea473ceb956cd0",
  "scenarios": {
   "s01_1645_exit_no_resting": {
    "_unknown_sql": [],
@@ -1746,6 +1746,50 @@
      }
     ]
    }
+  },
+  "s30_safeguards_partial_loss_yesterday_trade_closed_today": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {}
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "paper"
+     },
+     "method": "get_account"
+    }
+   ],
+   "pages": [],
+   "raised": null,
+   "result": [
+    false,
+    "block:daily_loss: $-110 >= $100 (mode=paper)",
+    0
+   ]
+  },
+  "s31_safeguards_partial_loss_and_close_same_day": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {}
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "paper"
+     },
+     "method": "get_account"
+    }
+   ],
+   "pages": [],
+   "raised": null,
+   "result": [
+    false,
+    "block:daily_loss: $-110 >= $100 (mode=paper)",
+    0
+   ]
   }
  }
 }

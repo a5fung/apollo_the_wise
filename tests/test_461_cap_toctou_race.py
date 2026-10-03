@@ -158,6 +158,8 @@ class FakeConn:
             return []  # circuit-breaker window: no closed trades
         if "SELECT exits FROM mi_live_trades" in s:
             return []  # #687 ruling (1) daily-loss arm: no partial-sale losses on open trades
+        if "SELECT total_pnl, exits FROM mi_live_trades" in s:
+            return []  # daily-loss closed arm (#687 ruling (iv)): no losing trade closed today
         raise AssertionError(f"FakeConn.fetch: unhandled SQL: {s[:140]}")
 
     async def execute(self, sql, *args):
