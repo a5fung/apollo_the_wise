@@ -3919,15 +3919,23 @@ async def _rescore_existing_theme(
     # Breadth decay override — two days below threshold forces Fading regardless
     # of RS signal. Catches themes where members have rolled over even though
     # smoothed score still looks healthy.
+    # #580 (2026-10-03, his yes 09-30): the prior reading is read with an explicit
+    # None test. It was `(prev or 1.0) < threshold`, so a stored 0.0 — every member
+    # below its 20-day average, the WORST reading — was falsy, read as 1.0, and the
+    # theme could never fade (9 Mainstream themes sat at 0% on 09-29 still paying
+    # the EP +10). None still means "never measured" and does not count toward the
+    # two nights (unchanged); 0.0 now means 0%.
     pct_breadth = await get_ticker_breadth_above_sma20(tickers, today)
+    prev_breadth = theme.get("pct_above_20sma")
     if (
         pct_breadth is not None
         and pct_breadth < _BREADTH_DECAY_THRESHOLD
-        and (theme.get("pct_above_20sma") or 1.0) < _BREADTH_DECAY_THRESHOLD
+        and prev_breadth is not None
+        and prev_breadth < _BREADTH_DECAY_THRESHOLD
         and stage != "Fading"
     ):
         logger.info(
-            f"Theme '{name}': breadth decay {pct_breadth:.0%} (prev {theme.get('pct_above_20sma'):.0%}) — forcing Fading"
+            f"Theme '{name}': breadth decay {pct_breadth:.0%} (prev {prev_breadth:.0%}) — forcing Fading"
         )
         await log_audit_event(
             "theme_breadth_fade",

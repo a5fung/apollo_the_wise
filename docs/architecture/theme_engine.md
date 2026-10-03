@@ -970,6 +970,37 @@ demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
 
+### 2026-10-03 — #580: a stored 0% breadth now counts as 0% in the breadth-decay rule (BUG FIX, money path)
+
+**Trigger**: the #580 trim measurement (`docs/analysis/580_theme_trim_and_breadth_2026-09-30.md`) found the rule in
+`_rescore_existing_theme` read the prior night's breadth as `(prev or 1.0) < 0.40`. A stored `0.0` — every member
+below its 20-day average, the worst reading there is — is falsy in Python, became `1.0`, and the theme could never be
+forced Fading. His yes 2026-09-30 ("aligned"); scheduled for Saturday 10-03.
+
+**Evidence**: 2026-09-29 prod — 9 Mainstream themes at exactly 0% (Annuity-Focused Insurers, Canadian Big Banks,
+Precious Metals Complex Rebound, …); 11 Accelerating/Mainstream themes that night had tonight's breadth < 0.40 AND a
+prior stored 0.0, i.e. the rule's own condition met and suppressed. Their members kept the EP +10
+(`ep_theme_belonging.THEME_BONUS_STAGES`). The stored breadth itself is correct (recomputed from daily closes, 114 of
+115 rows exact). Replay of which themes fade and which EP alerts lose the +10: `scripts/probes/_580/replay_breadth_fix.py`
+(read-only, run in the market container) — PENDING its run.
+
+**Change**: the prior reading is tested explicitly — `prev is not None and prev < _BREADTH_DECAY_THRESHOLD`.
+`None` (never measured) still does not count toward the two nights — byte-identical to before for every None and every
+non-zero value; only an exact `0.0` changes meaning. Threshold (0.40), the two-night rule and everything else in the
+stage logic untouched. Every other read of `pct_above_20sma` in this repo was checked for the same falsy-zero shape
+(`briefing._conviction_suffix` / `_breadth_phrase`, the dashboard loader, the snapshot export, the regime's market-wide
+breadth): all already test `is not None` or pass the value through — none changed.
+
+**Anticipated effect**: a theme whose breadth sits below 40% for two nights with one of them at exactly 0% is forced
+Fading on the second night (it was not). On 09-29 that is up to 11 paying-stage themes; their members stop receiving
+the EP +10 the next morning unless they belong to another paying theme. A forced-Fading theme returns to Mainstream on
+the first night its breadth is back at/above 40% (age ≥ 5 and score ≥ 50) — the RS rule is unchanged.
+
+**Reversion-flag**: NEW (bug fix; the rule's intent — two nights below 40% → Fading — is unchanged since it shipped).
+
+**Status**: built, replay pending, not deployed. Tests: `tests/test_580_breadth_decay.py` (0.0 fades — red on the old
+code; None keeps today's behaviour; mutation-checked both ways).
+
 ### 2026-10-02 — #693: "thinking off" is now really off on Sonnet 5.5, a decline says why, and two tools write their notes AFTER the answer
 
 - **Defect:** on claude-sonnet-5-5 `thinking: {"type": "disabled"}` is a 400 whose text names the real off switch,
