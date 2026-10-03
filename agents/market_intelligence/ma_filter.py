@@ -48,6 +48,27 @@ OPERATOR RULINGS (#692, 2026-10-02 22:20 PDT — "ok" to all seven; each is a na
      all-stock...), a pinning headline cannot re-block — it is logged as a conflict and passes.
 NOT RULED (kept as built, listed for him): grade 'mna' while the grader's own answered fields do
 not pin → the fields decide (pass) + an `mna_grade_without_pin` row.
+
+THE PRICE DECIDES (operator 2026-10-03, on the replay sign-off — "I'm more concerned about the keep
+pile, in those cases can't we reuse our pinned price check? It's clearly pinned to a buyout
+price"; he released DSGN 05-18 / THR 05-22 / PD 05-29 and kept HZO 08-10 / RNW 08-11 blocked):
+  * The news answer NOMINATES (`deal_nominates`): this ticker is the TARGET of a deal, signed OR
+    proposed, on terms that could fix its price. The PRICE decides (`pin_verdict`): blocked only
+    when the stock's range over the decision window is at or under the window's pin ceiling —
+    the EP path reads the first five regular-session minutes (09:30-09:34 ET, <= 1.0% of the
+    open) at the first tick after 09:35; the evening / multi-day detectors read the scan date's
+    own daily bar (<= 2.0% of the close). A nominated name whose price is FREE passes, with an
+    `mna_filter_released` row naming both readings (`pin_free`).
+  * Three reading states, by design: a caller that passes NO reader (9M) gets the 10-02 verdict
+    (`deal_pins_price` — a signed target blocks, a proposal passes); a reader whose window is not
+    readable yet (pre-market, the window still open, a failed fetch, too few bars) HOLDS the name
+    — blocked for this tick with an `mna_pin_pending` row and NO `mna_filter_fired` row, so the
+    next tick re-reads; a readable window decides.
+  * A reverse-merger SHELL keeps blocking on the news alone (ruling 1 + his SUNE / CLRO rulings +
+    the 10-03 approvals): a shell is re-rated, not pinned — SUNE ranged 124% and CLRO 100% on
+    their days, so any price check would release both.
+  Evidence + thresholds: docs/setups/magna53_ep.md change log 2026-10-03; backtest
+  scripts/probes/_692/pin_backtest.py ($0, the exported bars).
 """
 from __future__ import annotations
 
@@ -55,8 +76,8 @@ import asyncio
 import hashlib
 import json
 import logging
-from datetime import date, datetime, timedelta
-from typing import Any, Iterable, NamedTuple, Optional
+from datetime import date, datetime, time, timedelta
+from typing import Any, Awaitable, Callable, Iterable, NamedTuple, Optional
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -152,7 +173,10 @@ class DealAnswer(NamedTuple):
 
 
 def deal_pins_price(a: Optional[DealAnswer]) -> bool:
-    """THE decision rule (pure). True → the filter blocks. None (unanswered) → False."""
+    """The NEWS-ONLY rule (pure; his 2026-10-02 rulings 1-3). True → blocks WITHOUT a price
+    reading: a signed target on pinning terms, or a signed reverse-merger shell. Since 2026-10-03
+    a TARGET's news verdict is only the fallback for a caller that carries no price (`pin_verdict`
+    with reading None); a shell still blocks on this alone. None (unanswered) → False."""
     if a is None or a.status != "signed":
         return False
     if a.role == "target":
@@ -160,6 +184,177 @@ def deal_pins_price(a: Optional[DealAnswer]) -> bool:
     if a.role == "shell":
         return _SHELL_ROLE_PINS
     return False
+
+
+# ── THE PRICE DECIDES (operator 2026-10-03) ──────────────────────────────────────────────────
+#: The EP path's reading — the OPEN WINDOW: the first `OPEN_WINDOW_MINUTES` regular-session
+#: minute bars (09:30-09:34 ET), range = (max high − min low) / the earliest bar's open, in %.
+#: Readable once the window has ELAPSED (>= 09:35 ET) with >= `OPEN_WINDOW_MIN_BARS` bars present
+#: (the 09:34 bar may not be published at the 09:35 tick; on the labelled rows a 4-bar reading
+#: never crosses the ceiling where the 5-bar one does not). Backtest (scripts/probes/_692/
+#: pin_backtest.py, 2026-10-03): every operator-labelled pinned name reads <= 0.74% (RNW), every
+#: labelled free one >= 2.65% (IMAX) — PD 5.36%, DSGN 6.60%; with his approved rows the corridor
+#: narrows to 0.74% ↔ 1.24% (MGM), and 0 of 47 proven-free gappers (own-day range >= 3%, gap
+#: >= 7%) read under 1.0%. The ORB bar alone (09:30 minute) was rejected: 6 of those 47 read
+#: under 1.0% and its labelled corridor is 0.59% ↔ 1.39% (PD).
+OPEN_WINDOW_MINUTES: int = 5
+OPEN_WINDOW_MIN_BARS: int = 4
+OPEN_WINDOW_PIN_MAX_PCT: float = 1.0
+#: The evening / multi-day detectors' reading — the DAY WINDOW: the scan date's own daily bar,
+#: range = (high − low) / close in % (flag_detector._evaluate_deal_pin's convention; the bar is
+#: in mi_daily_closes from 17:00 ET, the flag scan runs 17:25). Labelled corridor: pinned
+#: <= 1.84% (ROKU, his approved block) ↔ free >= 2.39% (THR, released on his word) — thin; said so.
+DAY_WINDOW_PIN_MAX_PCT: float = 2.0
+
+
+class PinReading(NamedTuple):
+    """One price reading over a decision window. `readable=False` carries `why` (pre_market /
+    window_open / bars:<n> / no_own_day_bar / fetch_error:<Exc> / reader_error:<Exc>)."""
+    window: str                      # "open5m" | "day"
+    range_pct: Optional[float]
+    threshold_pct: float
+    bars_n: int = 0
+    readable: bool = False
+    why: str = ""
+    as_of: str = ""
+
+    @property
+    def pinned(self) -> bool:
+        return bool(self.readable and self.range_pct is not None
+                    and self.range_pct <= self.threshold_pct)
+
+    def as_dict(self) -> dict:
+        return {"window": self.window, "range_pct": self.range_pct,
+                "threshold_pct": self.threshold_pct, "bars_n": self.bars_n,
+                "readable": self.readable, "why": self.why, "as_of": self.as_of,
+                "pinned": self.pinned}
+
+
+def deal_nominates(a: Optional[DealAnswer]) -> bool:
+    """The NEWS half of the 2026-10-03 rule (pure): this ticker is the TARGET of a deal, signed
+    OR proposed, on terms that could fix its price (cash / cash+stock / unstated). The price then
+    decides. Not a nomination: a buyer, a shell (news-only — see `deal_pins_price`), speculation,
+    a denial, a closed deal, an all-stock merger (CSR), 'none'."""
+    if a is None:
+        return False
+    return (a.role == "target" and a.status in ("signed", "proposed")
+            and a.consideration in _PINNING_CONSIDERATIONS)
+
+
+def pin_verdict(a: Optional[DealAnswer], reading: Optional[PinReading]) -> tuple[Optional[bool], str]:
+    """THE decision (pure) for one answer and one price reading → (block, why), where block is
+    True / False / None (None = HOLD: nominated, but the window cannot be read yet).
+      shell + signed                      → (True,  'shell_signed')      news alone (ruling 1)
+      not nominated                       → (False, 'not_nominated')
+      nominated, no reading (no reader)   → (deal_pins_price, 'no_price_reading')  the 10-02 rule
+      nominated, reading not readable     → (None,  'pin_pending')
+      nominated, pinned                   → (True,  'pinned')
+      nominated, free                     → (False, 'pin_free')
+    """
+    if a is not None and a.role == "shell":
+        return (True, "shell_signed") if deal_pins_price(a) else (False, "not_nominated")
+    if not deal_nominates(a):
+        return False, "not_nominated"
+    if reading is None:
+        return deal_pins_price(a), "no_price_reading"
+    if not reading.readable:
+        return None, "pin_pending"
+    return (True, "pinned") if reading.pinned else (False, "pin_free")
+
+
+def _headline_acts(a: Optional[DealAnswer]) -> bool:
+    """A headline answer the filter must ACT on: a nomination (the price decides) or a news-only
+    pin (a signed shell)."""
+    return deal_nominates(a) or deal_pins_price(a)
+
+
+def open_window_pin_from_bars(bars: Iterable[dict], day: date, *, as_of: str = "") -> PinReading:
+    """Pure: the open-window reading from minute bars (dicts with an aware `ts` datetime and
+    open/high/low). Keeps the bars whose ET minute falls in [09:30, 09:30 + OPEN_WINDOW_MINUTES)
+    on `day`; fewer than OPEN_WINDOW_MIN_BARS of them → not readable (`bars:<n>`)."""
+    start = datetime.combine(day, time(9, 30), tzinfo=_ET)
+    end = start + timedelta(minutes=OPEN_WINDOW_MINUTES)
+    inside = []
+    for b in bars or []:
+        ts = b.get("ts")
+        if ts is None or getattr(ts, "tzinfo", None) is None:
+            continue
+        et = ts.astimezone(_ET)
+        if start <= et < end:
+            inside.append((et, b))
+    n = len(inside)
+    thr = OPEN_WINDOW_PIN_MAX_PCT
+    if n < OPEN_WINDOW_MIN_BARS:
+        return PinReading("open5m", None, thr, n, False, f"bars:{n}", as_of)
+    inside.sort(key=lambda p: p[0])
+    try:
+        o = float(inside[0][1]["open"])
+        hi = max(float(b["high"]) for _t, b in inside)
+        lo = min(float(b["low"]) for _t, b in inside)
+    except (KeyError, TypeError, ValueError):
+        return PinReading("open5m", None, thr, n, False, "bad_bar", as_of)
+    if o <= 0 or hi < lo:
+        return PinReading("open5m", None, thr, n, False, "bad_bar", as_of)
+    return PinReading("open5m", round((hi - lo) / o * 100.0, 4), thr, n, True, "", as_of)
+
+
+def day_window_pin(rows: Iterable[dict], scan_date: date) -> PinReading:
+    """Pure: the day-window reading from daily rows — mi_daily_closes shape (trade_date /
+    high_price / low_price / close) or the anticipation bar shape (date / h / l / c). The scan
+    date's own bar missing → not readable (`no_own_day_bar`)."""
+    want = scan_date.isoformat()
+    thr = DAY_WINDOW_PIN_MAX_PCT
+    own = None
+    for r in rows or []:
+        d = r.get("trade_date", r.get("date"))
+        if d is not None and str(d)[:10] == want:
+            own = r
+            break
+    if own is None:
+        return PinReading("day", None, thr, 0, False, "no_own_day_bar", want)
+    try:
+        h = float(own["high_price"] if "high_price" in own else own["h"])
+        l = float(own["low_price"] if "low_price" in own else own["l"])
+        c = float(own["close"] if "close" in own else own["c"])
+    except (KeyError, TypeError, ValueError):
+        return PinReading("day", None, thr, 1, False, "bad_bar", want)
+    if c <= 0 or h < l:
+        return PinReading("day", None, thr, 1, False, "bad_bar", want)
+    return PinReading("day", round((h - l) / c * 100.0, 4), thr, 1, True, "", want)
+
+
+# (ticker, ET day) -> a READABLE open-window reading; a fixed window reads the same at every
+# later tick, so one successful read serves the day. Cleared with the headline memo.
+_PIN_MEMO: dict[tuple[str, str], PinReading] = {}
+
+
+async def read_open_window_pin(ticker: str, day: date, now_et: Optional[datetime] = None) -> PinReading:
+    """The EP path's reader (and the low-cap lane's): the open window of `day`, read from the
+    same Alpaca minute bars + feed (ALPACA_DATA_FEED) the ORB entry reads its 09:30 bar from.
+    Before 09:35 ET it is not readable (pre_market / window_open) — the name is HELD and the next
+    tick asks again. Never raises."""
+    now = now_et or datetime.now(_ET)
+    key = (ticker, day.isoformat())
+    if key in _PIN_MEMO:
+        return _PIN_MEMO[key]
+    start = datetime.combine(day, time(9, 30), tzinfo=_ET)
+    end = start + timedelta(minutes=OPEN_WINDOW_MINUTES)
+    thr = OPEN_WINDOW_PIN_MAX_PCT
+    stamp = now.isoformat(timespec="seconds")
+    if now < start:
+        return PinReading("open5m", None, thr, 0, False, "pre_market", stamp)
+    if now < end:
+        return PinReading("open5m", None, thr, 0, False, "window_open", stamp)
+    try:
+        from agents.market_intelligence.collector import get_alpaca_minute_bars_window
+        bars = (await get_alpaca_minute_bars_window([ticker], start, end)).get(ticker) or []
+    except Exception as e:  # loud-ok: an unreadable window HOLDS the name (audited), never passes it
+        logger.warning(f"{ticker}: open-window pin fetch failed — {type(e).__name__}: {e}")
+        return PinReading("open5m", None, thr, 0, False, f"fetch_error:{type(e).__name__}", stamp)
+    reading = open_window_pin_from_bars(bars, day, as_of=stamp)
+    if reading.readable:
+        _PIN_MEMO[key] = reading
+    return reading
 
 
 def deal_answer_from_fields(fields: Any, *, note_key: str = "") -> Optional[DealAnswer]:
@@ -317,9 +512,10 @@ def _get_headline_client():
 
 
 def reset_headline_day() -> None:
-    """Forget today's memo, attempts, call count and cap-hit flags (day rollover; tests)."""
+    """Forget today's memo, attempts, call count, cap-hit flags and pin readings (day rollover; tests)."""
     _HEADLINE_MEMO.clear()
     _HEADLINE_ATTEMPTS.clear()
+    _PIN_MEMO.clear()
     _HEADLINE_DAY["day"] = None
     _HEADLINE_DAY["calls"] = 0
     _HEADLINE_DAY["cap_logged"] = set()
@@ -515,8 +711,10 @@ async def headline_deal_scan(
 ) -> HeadlineScan:
     """Fetch recent Polygon news, pick keyword candidates ($0), and ask the deal question on the
     `_HEADLINE_MAX_ARTICLES` newest of them CONCURRENTLY under one overall deadline. The hit is
-    the newest candidate whose answer pins. Candidates past the cap, and asks still running at
-    the deadline, are recorded UNANSWERED (why='article_cap' / 'deadline') — never dropped."""
+    the newest candidate whose answer the filter must ACT on — a nomination (target, signed or
+    proposed, pinning terms: the price decides) or a signed shell (news alone). Candidates past
+    the cap, and asks still running at the deadline, are recorded UNANSWERED (why='article_cap'
+    / 'deadline') — never dropped."""
     from agents.market_intelligence.collector import get_polygon_news
 
     items = await get_polygon_news(
@@ -564,8 +762,8 @@ async def headline_deal_scan(
         answer, how = task.result()
         if answer is None:
             unanswered.append({**meta, "why": how})
-        elif deal_pins_price(answer):
-            if hit is None:   # newest pinning candidate (asked newest first)
+        elif _headline_acts(answer):
+            if hit is None:   # newest acting candidate (asked newest first)
                 hit = {"source": "polygon_headline_model", "ticker": ticker, **meta,
                        **deal_fields(answer)}
         else:
@@ -581,7 +779,8 @@ async def polygon_news_has_mna_headline(
     lookback_days: int = 14,
     on_or_before: Optional[date] = None,
 ) -> Optional[dict]:
-    """The first Polygon article whose deal answer pins this ticker's price, or None."""
+    """The first Polygon article whose deal answer the filter must act on (a nomination or a
+    signed shell), or None."""
     scan = await headline_deal_scan(ticker, lookback_days=lookback_days, on_or_before=on_or_before)
     return scan.hit
 
@@ -664,29 +863,72 @@ async def is_likely_ma(
     now_et: Optional[datetime] = None,
     skip_in_orb: bool = False,
     budget_pool: str = "shared",
+    pin_reader: Optional[Callable[[], Awaitable[Optional[PinReading]]]] = None,
 ) -> tuple[bool, Optional[dict]]:
-    """Is THIS ticker's price fixed by a signed deal? Returns (block, telemetry).
+    """Is THIS ticker's price fixed by a deal? Returns (block, telemetry).
 
-    1. `deal_answer` (the EP grader's deal fields) pins → block, source `claude_deal_fields`.
+    1. `deal_answer` (the EP grader's deal fields) NOMINATES (target, signed or proposed, on
+       pinning terms) → the PRICE decides via `pin_reader` (2026-10-03): pinned → block, source
+       `claude_deal_fields` + the reading under `pin`; free → pass + an `mna_filter_released` row
+       (`pin_free`); window not readable yet → HOLD (block for this tick, `pending: True`, an
+       `mna_pin_pending` row — callers write NO `mna_filter_fired` row for a hold). A signed
+       shell blocks on the news alone. No `pin_reader` → the 10-02 verdict (`deal_pins_price`).
     2. Ruling 5: the grader graded 'mna' but its deal fields are missing / out of vocabulary
        (`deal_answer is None`) → block, as before #692, source `claude_classifier_unanswered`.
-    3. The headline question (`check_polygon=True`, ≤3 newest keyword candidates). Ruling 7: a
-       pinning headline blocks ONLY when the grader found no deal (role 'none') or did not
-       answer (None — a failed grade, or a non-EP caller). When the grader answered a deal that
-       does not pin, a pinning headline is logged as a conflict and PASSES. Ruling 4: candidates
-       left UNANSWERED pass (+ an audit row) unless `mna_headline_unanswered_blocks` is ON.
+    3. The headline question (`check_polygon=True`, ≤3 newest keyword candidates), the same
+       verdict on its acting answer. Ruling 7: a headline acts ONLY when the grader found no deal
+       (role 'none') or did not answer (None — a failed grade, or a non-EP caller). When the
+       grader answered a deal that does not act, an acting headline is logged as a conflict and
+       PASSES. Ruling 4: candidates left UNANSWERED pass (+ an audit row) unless
+       `mna_headline_unanswered_blocks` is ON.
     `catalyst_texts` decide NOTHING: with `catalyst_quality` they feed the `mna_filter_released`
     comparator (the names the pre-#692 rule would have blocked, plus every grader-answered deal
     that does not pin — the under-fire surface of the monthly review).
     `skip_in_orb` / `budget_pool` — set ONLY by the EP scan (see `ask_deal_question`).
     """
-    if deal_answer is not None and deal_pins_price(deal_answer):
-        return True, {
+    reading_box: dict = {}
+
+    async def _reading() -> Optional[PinReading]:
+        """Read the price ONCE per call, only when an answer nominates."""
+        if "r" not in reading_box:
+            r: Optional[PinReading] = None
+            if pin_reader is not None:
+                try:
+                    r = await pin_reader()
+                except Exception as e:  # loud-ok: an unreadable price HOLDS, never releases
+                    logger.warning(f"{ticker}: pin reader failed — {type(e).__name__}: {e}")
+                    r = PinReading("?", None, 0.0, 0, False, f"reader_error:{type(e).__name__}")
+            reading_box["r"] = r
+        return reading_box["r"]
+
+    async def _decide(answer: DealAnswer, meta: dict) -> Optional[tuple[bool, dict]]:
+        """The verdict on an ACTING answer: (True, meta) to block / hold, None when the price
+        releases it (recorded for the comparator)."""
+        reading = await _reading() if deal_nominates(answer) else None
+        verdict, why = pin_verdict(answer, reading)
+        pin = reading.as_dict() if reading is not None else {}
+        if verdict is None:
+            await _audit_once(
+                "mna_pin_pending", ticker,
+                f"deal-nominated ({_answer_str(answer)} via {meta.get('source')}) — the price "
+                f"cannot be read yet ({reading.why}); held this tick",
+                {"answer": deal_fields(answer), "source": meta.get("source"), "pin": pin})
+            return True, {**meta, "pending": True, "why": why, "pin": pin}
+        if verdict:
+            return True, {**meta, "why": why, **({"pin": pin} if pin else {})}
+        reading_box["released"] = {"answer": deal_fields(answer), "why": why,
+                                   "source": meta.get("source"), "pin": pin}
+        return None
+
+    if deal_answer is not None and _headline_acts(deal_answer):
+        res = await _decide(deal_answer, {
             "source": "claude_deal_fields",
             "match_path": "claude_deal_fields",
             "ticker": ticker,
             **deal_fields(deal_answer),
-        }
+        })
+        if res is not None:
+            return res
     if catalyst_quality == "mna":
         if deal_answer is None:
             # Ruling 5: the grade said 'mna' and the deal fields are blank — block as before.
@@ -714,18 +956,25 @@ async def is_likely_ma(
             if grader_found_deal:
                 await _audit_once(
                     "mna_deal_answers_conflict", ticker,
-                    f"grader read {_answer_str(deal_answer)}, headline pinned "
+                    f"grader read {_answer_str(deal_answer)}, headline nominated "
                     f"({scan.hit.get('role')}/{scan.hit.get('status')}) — passed (ruling 7: "
                     "the grader's deal answer governs)",
                     {"grader": deal_fields(deal_answer), "headline": scan.hit, "blocked": False})
             else:
-                if deal_answer is not None:
-                    await _audit_once(
-                        "mna_deal_answers_conflict", ticker,
-                        f"grader read {_answer_str(deal_answer)}, headline pinned "
-                        f"({scan.hit.get('role')}/{scan.hit.get('status')}) — blocked",
-                        {"grader": deal_fields(deal_answer), "headline": scan.hit, "blocked": True})
-                return True, scan.hit
+                hit_answer = DealAnswer(
+                    str(scan.hit.get("role") or ""), str(scan.hit.get("status") or ""),
+                    str(scan.hit.get("consideration") or ""),
+                    str(scan.hit.get("counterparty") or ""), str(scan.hit.get("note") or ""))
+                res = await _decide(hit_answer, scan.hit)
+                if res is not None:
+                    if deal_answer is not None:
+                        await _audit_once(
+                            "mna_deal_answers_conflict", ticker,
+                            f"grader read {_answer_str(deal_answer)}, headline nominated "
+                            f"({scan.hit.get('role')}/{scan.hit.get('status')}) — "
+                            f"{'held' if res[1].get('pending') else 'blocked'}",
+                            {"grader": deal_fields(deal_answer), "headline": scan.hit, "blocked": True})
+                    return res
         elif scan.unanswered and not grader_found_deal:
             blocks = await _unanswered_blocks()
             await _audit_once(
@@ -757,15 +1006,28 @@ async def is_likely_ma(
     old_reasons = list(old_rule)
     if grader_found_deal:
         old_reasons.append("grader_deal_no_pin")
+    pin_release = reading_box.get("released")
+    if pin_release:
+        # 2026-10-03: a nominated name the PRICE released — the row names both readings.
+        old_reasons.append("pin_free")
     if old_reasons:
         lead = ("old rule would have blocked (" + ", ".join(old_rule) + ")" if old_rule
                 else "released for review (the grader answered a deal that does not pin)")
+        if pin_release:
+            pr = pin_release["pin"]
+            lead = (f"deal-nominated ({pin_release['answer'].get('role')}/"
+                    f"{pin_release['answer'].get('status')} via {pin_release['source']}) but the "
+                    f"price is FREE — {pr.get('window')} range {pr.get('range_pct')}% > "
+                    f"{pr.get('threshold_pct')}% ceiling; " + lead)
         await _audit_once(
             "mna_filter_released", ticker,
             f"{lead}; grader read {_answer_str(deal_answer)}"
             + (f"; {len(scan.released)} headline(s) answered no pin" if scan.released else "")
-            + ("; a pinning headline was overruled (ruling 7)" if scan.hit else ""),
+            + ("; a nominating headline was overruled (ruling 7)"
+               if scan.hit and grader_found_deal else ""),
             {"old_reasons": old_reasons, "old_rule_would_block": bool(old_rule),
              "grader": deal_fields(deal_answer), "headlines": scan.released,
-             "overruled_headline": scan.hit, "unanswered_n": len(scan.unanswered)})
+             "overruled_headline": scan.hit if grader_found_deal else None,
+             "unanswered_n": len(scan.unanswered),
+             **({"pin_release": pin_release} if pin_release else {})})
     return False, None

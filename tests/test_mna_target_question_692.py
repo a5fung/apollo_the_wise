@@ -201,16 +201,18 @@ def test_every_operator_labelled_case_is_named_here():
     harness run — keep the two in step."""
     named = {"FWDI", "CHYM", "JBS", "GPRK", "IOVA", "RGTI", "VKTX", "WAY", "CSR", "SWKS",
              "ACVA", "SUNE", "CLRO", "MMED", "FRMI", "ONDS", "IMAX", "WEN", "UMAC", "LCID",
-             "SOUN", "LII", "SCZM"}
+             "SOUN", "LII", "SCZM",
+             # his 2026-10-03 sign-off (tests/test_mna_pin_check_692.py names each)
+             "PD", "DSGN", "THR", "HZO", "RNW"}
     assert {c.ticker for c in H.CASES if c.ground_truth} == named
 
 
-@pytest.mark.parametrize("ticker", ["THR", "CECO", "ROKU", "QBTS", "DSGN", "KALV"])
+@pytest.mark.parametrize("ticker", ["CECO", "ROKU", "QBTS", "KALV", "NUVL", "MGM", "IRDM"])
 def test_agent_read_plumbing_cases_behave_as_designed(ticker):
-    """NOT ground truth — the design's expected behaviour on plumbing shapes: one title, two
-    opposite roles (THR/CECO); a target headline the old regex read as acquirer (ROKU); a
-    roundup bleed never asked (QBTS); recall moved from the retired keyword path to the grader
-    fields (DSGN); a litigation notice never asked (KALV)."""
+    """NOT ground truth — the design's expected behaviour on plumbing shapes: the buyer side of
+    the THR title (CECO); a target headline the old regex read as acquirer, kept blocked by the
+    day window (ROKU); a roundup bleed never asked (QBTS); a litigation notice never asked
+    (KALV); and the three approved 10-02 rows the price changes (NUVL / MGM / IRDM)."""
     case = H.CASES_BY_TICKER[ticker]
     out = _run(H.run_new(case))
     assert ("BLOCK" if out.blocked else "PASS") == case.expected and not out.unplanned
@@ -801,7 +803,7 @@ def test_only_the_EP_scan_opts_into_the_ORB_skip_and_the_EP_budget():
         def visit_Call(self, node):
             name = getattr(node.func, "id", getattr(node.func, "attr", None))
             if name == "is_likely_ma":
-                opts = {k.arg for k in node.keywords} & {"skip_in_orb", "budget_pool"}
+                opts = {k.arg for k in node.keywords} & {"skip_in_orb", "budget_pool", "pin_reader"}
                 self.found.append((self.fname, self.stack[-1] if self.stack else "<module>",
                                    tuple(sorted(opts))))
             self.generic_visit(node)
@@ -810,13 +812,16 @@ def test_only_the_EP_scan_opts_into_the_ORB_skip_and_the_EP_budget():
         v = _Calls(path.name)
         v.visit(ast.parse(path.read_text(encoding="utf-8")))
         found += v.found
+    # 2026-10-03: `pin_reader` (the price decides) is passed by the EP scan (the open window),
+    # the flag scan + the anticipation scan (the day window) and the low-cap lane (the open
+    # window); the two 9M sites pass none and keep the 10-02 verdict (9M is retired).
     assert sorted(found) == [
-        ("ep_detector.py", "_post_grade_filters", ("budget_pool", "skip_in_orb")),
-        ("flag_detector.py", "_mna_check", ()),
-        ("lowcap_lane.py", "enrich_and_record", ()),
+        ("ep_detector.py", "_post_grade_filters", ("budget_pool", "pin_reader", "skip_in_orb")),
+        ("flag_detector.py", "_mna_check", ("pin_reader",)),
+        ("lowcap_lane.py", "enrich_and_record", ("pin_reader",)),
         ("ninem_detector.py", "run_9m_eod_sweep", ()),
         ("ninem_detector.py", "run_9m_scan", ()),
-        ("scheduler.py", "_consolidation_readiness_scan", ()),
+        ("scheduler.py", "_consolidation_readiness_scan", ("pin_reader",)),
     ]
 
 
@@ -867,8 +872,15 @@ def test_why_shows_the_deal_answer_in_plain_words_with_the_filters_own_verdict()
     from agents.market_intelligence.agent import _deal_answer_line, _format_catalyst_grade_block
     acva = _deal_answer_line({"deal_role": "target", "deal_status": "signed",
                               "deal_consideration": "cash", "deal_counterparty": "Copart"})
+    # 2026-10-03: a nominated target is decided by the open price; the line says so.
     assert acva == ("   deal: this company is being bought — signed deal with Copart, paid in cash"
-                    " → price pinned, the M&A filter blocks it")
+                    " → deal-nominated: the M&A filter blocks it unless the open price shows it free")
+    hzo = _deal_answer_line({"deal_role": "target", "deal_status": "proposed",
+                             "deal_consideration": "unknown", "deal_counterparty": "Blackstone"})
+    assert hzo.endswith("unless the open price shows it free") and "proposal / talks" in hzo
+    sune = _deal_answer_line({"deal_role": "shell", "deal_status": "signed",
+                              "deal_consideration": "stock", "deal_counterparty": "Suniva"})
+    assert sune.endswith("price pinned, the M&A filter blocks it")
     fwdi = _deal_answer_line({"deal_role": "buyer", "deal_status": "proposed",
                               "deal_consideration": "unknown", "deal_counterparty": "SkyAI"})
     assert fwdi.endswith("lets it through") and "the buyer" in fwdi and "paid in" not in fwdi
@@ -880,7 +892,7 @@ def test_why_shows_the_deal_answer_in_plain_words_with_the_filters_own_verdict()
     block = "\n".join(_format_catalyst_grade_block({
         "live_quality_last": "mna", "deal_role": "target", "deal_status": "signed",
         "deal_consideration": "cash", "deal_counterparty": "Copart"}))
-    assert "price pinned, the M&A filter blocks it" in block
+    assert "deal-nominated: the M&A filter blocks it unless the open price shows it free" in block
 
 
 def test_enriched_corpus_forwards_the_sink():
@@ -926,6 +938,11 @@ def test_monthly_review_shows_unanswered_passes_in_the_under_fire_section(capsys
                                                              "consideration": "unknown"}})],
             "mna_headline_unanswered": [_row("XYZ", {"blocked": False, "unanswered_n": 2,
                                                      "unanswered": [{"why": "orb_window"}]})],
+            # 2026-10-03: a HELD name (its price window unreadable) has its own section
+            "mna_pin_pending": [_row("HZO", {"answer": {"role": "target", "status": "proposed",
+                                                        "consideration": "unknown"},
+                                             "source": "claude_deal_fields",
+                                             "pin": {"readable": False, "why": "pre_market"}})],
         }[event_type]
     conn.fetch = _fetch
     with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)):
@@ -933,5 +950,27 @@ def test_monthly_review_shows_unanswered_passes_in_the_under_fire_section(capsys
     out = capsys.readouterr().out
     assert ("mna_headline_unanswered", "%passed") in seen
     assert ("mna_filter_released", "%") in seen and ("mna_filter_fired", "%") in seen
+    assert ("mna_pin_pending", "%") in seen
     assert "PASSED UNANSWERED" in out and "XYZ" in out and "unanswered (orb_window), 2 article(s)" in out
     assert "grader buyer/proposed/unknown" in out
+    assert "HELD" in out and "held target/proposed/unknown; price unreadable (pre_market)" in out
+
+
+def test_monthly_review_renders_the_price_reading_on_fired_and_released_rows():
+    """2026-10-03: a fired row carries `pin` (the reading that blocked), a price-released row
+    carries `pin_release` — the review prints both so his monthly read sees the number."""
+    import importlib
+    import json as _json
+    review = importlib.import_module("scripts.mna_filter_accuracy_review")
+    fired = review._answer(_json.dumps({"role": "target", "status": "proposed", "consideration": "unknown",
+                                        "pin": {"window": "open5m", "range_pct": 0.1542,
+                                                "threshold_pct": 1.0, "readable": True, "pinned": True}}))
+    assert fired == "target/proposed/unknown; open5m range 0.1542% vs 1.0% -> PINNED"
+    released = review._answer(_json.dumps({"old_reasons": ["grade_mna", "pin_free"], "grader": {},
+                                           "pin_release": {"answer": {"role": "target", "status": "signed",
+                                                                      "consideration": "unknown"},
+                                                           "source": "claude_deal_fields",
+                                                           "pin": {"window": "open5m", "range_pct": 5.3591,
+                                                                   "threshold_pct": 1.0, "readable": True,
+                                                                   "pinned": False}}}))
+    assert released == "nominated target/signed/unknown via claude_deal_fields; open5m range 5.3591% vs 1.0% -> FREE"

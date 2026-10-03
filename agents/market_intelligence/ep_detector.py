@@ -2062,6 +2062,13 @@ async def _post_grade_filters(
                 "news_summary_lead": (news_summary or "")[:200],
             }),
         )
+    # 2026-10-03 (operator): the news NOMINATES, the PRICE DECIDES. The reader is the open
+    # window — the first five regular-session minutes (09:30-09:34 ET) from the same Alpaca
+    # bars + feed the ORB entry reads. Pre-market it is not readable: a nominated name is HELD
+    # (blocked this tick, `pending`), and because a filter-failing grade is cached with
+    # `filters_cleared=False`, the 09:35 tick re-runs this filter, reads the window and either
+    # releases the name (HIGH alert + ORB entry on that tick via the post-open path) or blocks it.
+    from agents.market_intelligence.ma_filter import read_open_window_pin
     is_mna, mna_meta = await is_likely_ma(
         ticker,
         deal_answer=deal_answer,
@@ -2071,7 +2078,16 @@ async def _post_grade_filters(
         catalyst_texts=catalyst_texts_for_filter,
         skip_in_orb=True,
         budget_pool="ep",
+        pin_reader=lambda: read_open_window_pin(ticker, today),
     )
+    if is_mna and (mna_meta or {}).get("pending"):
+        # HELD, not decided: the price window cannot be read yet. Same prefix as the decided
+        # reason so theme_axis_shadow.classify_legacy_filter_reason still maps it to
+        # post_grade_filter; NO mna_filter_fired row (the hold wrote its own mna_pin_pending).
+        pin_why = ((mna_meta or {}).get("pin") or {}).get("why", "")
+        reason = f"M&A/buyout catalyst — deal-nominated, price window not readable yet ({pin_why}); held"
+        logger.info(f"Hold {ticker}: {reason} ({(mna_meta or {}).get('source')})")
+        return reason
     if is_mna:
         reason = "M&A/buyout catalyst — no momentum trade"
         logger.info(f"Skip {ticker}: {reason} ({(mna_meta or {}).get('source')})")

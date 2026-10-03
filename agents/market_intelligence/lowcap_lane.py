@@ -356,7 +356,12 @@ async def enrich_and_record(survivors: list[LaneVerdict], snapshots_by_ticker: d
             # ⚠ skip_mcap=True ALWAYS — see the module docstring (_mcap_cache hazard).
             passed, quality_reason = await check_filters(v.ticker, today, skip_mcap=True, metrics=metrics)
             try:
-                ma_flag, ma_tel = await is_likely_ma(v.ticker, check_polygon=True)
+                # 2026-10-03: the news nominates, the price decides — the lane ticks after the
+                # open, so it reads the same open window the EP path reads (held = flagged).
+                from agents.market_intelligence.ma_filter import read_open_window_pin
+                ma_flag, ma_tel = await is_likely_ma(
+                    v.ticker, check_polygon=True,
+                    pin_reader=lambda t=v.ticker: read_open_window_pin(t, today, now_et))
             except Exception as e:  # loud-ok: catalyst flag NULL for this row, recorded as such
                 logger.warning(f"#624 lane M&A check failed for {v.ticker}: {e}")
                 ma_flag, ma_tel = None, None

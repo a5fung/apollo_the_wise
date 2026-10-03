@@ -389,19 +389,26 @@ def _deal_answer_line(grade: dict) -> str | None:
     role, status = grade.get("deal_role"), grade.get("deal_status")
     if not role or (role == "none" and status in (None, "none")):
         return None
-    from agents.market_intelligence.ma_filter import DealAnswer, deal_pins_price
+    from agents.market_intelligence.ma_filter import DealAnswer, deal_nominates, deal_pins_price
     cons = grade.get("deal_consideration") or "unknown"
     who = (grade.get("deal_counterparty") or "").strip()
     part = {"target": "being bought", "buyer": "the buyer", "shell": "a reverse-merger shell",
             "none": "not a party"}.get(role, role)
     stage = {"signed": "signed deal", "proposed": "proposal / talks", "speculation": "speculation",
              "completed": "closed deal", "none": "no deal"}.get(status or "none", status)
-    pinned = deal_pins_price(DealAnswer(role, status or "none", cons))
+    answer = DealAnswer(role, status or "none", cons)
+    # 2026-10-03: a nominated TARGET is decided by the open price (ma_filter.pin_verdict); only a
+    # signed shell blocks on the news alone. The row carries no price, so say which it is.
+    if deal_nominates(answer):
+        verdict = " → deal-nominated: the M&A filter blocks it unless the open price shows it free"
+    elif deal_pins_price(answer):
+        verdict = " → price pinned, the M&A filter blocks it"
+    else:
+        verdict = " → not a price pin, the M&A filter lets it through"
     return (f"   deal: this company is {part} — {stage}"
             + (f" with {who}" if who else "")
             + (f", paid in {cons}" if role in ("target", "shell") and cons not in ("none",) else "")
-            + (" → price pinned, the M&A filter blocks it" if pinned
-               else " → not a price pin, the M&A filter lets it through"))
+            + verdict)
 
 
 def _format_catalyst_grade_block(grade: dict, analysis_cap: int = 400) -> list[str]:

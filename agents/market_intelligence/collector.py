@@ -691,6 +691,63 @@ async def get_index_history(ticker: str, from_date: str, to_date: str) -> list[d
         return []
 
 
+async def get_alpaca_minute_bars_window(tickers: list[str], start_et: "datetime", end_et: "datetime",
+                                        timeout_s: float = 6.0) -> dict[str, list[dict]]:
+    """#692 pin reading — OHLCV minute bars in [start_et, end_et) for a small ticker set, from
+    the same Alpaca bars + feed (ALPACA_DATA_FEED) the ORB entry reads its 09:30 bar from
+    (broker.alpaca_client.get_first_bar), so the price the filter reads is the price the entry
+    would trade. Returns `{ticker: [{ts, open, high, low, close, volume}, ...]}` oldest→newest,
+    missing symbols omitted. Sibling of `get_alpaca_minute_closes` (which keeps only closes).
+    NEVER raises; `{}` on any failure — the caller treats the window as unreadable (held)."""
+    if not tickers:
+        return {}
+    try:
+        from alpaca.data.historical import StockHistoricalDataClient
+        from alpaca.data.requests import StockBarsRequest
+        from alpaca.data.timeframe import TimeFrame
+        from alpaca.data.enums import DataFeed
+    except ImportError as e:
+        logger.warning(f"alpaca-py bars import failed: {e}")
+        return {}
+    api_key = os.environ.get("ALPACA_PAPER_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
+    secret = os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
+    if not api_key or not secret:
+        logger.warning("Alpaca credentials not set; skipping minute-bar window")
+        return {}
+    feed = DataFeed.SIP if os.environ.get("ALPACA_DATA_FEED", "iex").lower() == "sip" else DataFeed.IEX
+    client = StockHistoricalDataClient(api_key=api_key, secret_key=secret)
+    loop = asyncio.get_event_loop()
+    try:
+        req = StockBarsRequest(symbol_or_symbols=list(tickers), timeframe=TimeFrame.Minute,
+                               start=start_et, end=end_et, feed=feed)
+        bars = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda r=req: client.get_stock_bars(r)),
+            timeout=timeout_s,
+        )
+    except Exception as e:  # loud-ok: the reading degrades to unreadable, never to a verdict
+        logger.warning(f"Alpaca minute-bar window failed ({len(tickers)} syms): {e}")
+        return {}
+    out: dict[str, list[dict]] = {}
+    data = getattr(bars, "data", None) or {}
+    for sym, blist in data.items():
+        series = []
+        for b in blist or []:
+            ts = getattr(b, "timestamp", None)
+            if ts is None:
+                continue
+            try:
+                series.append({
+                    "ts": ts, "open": float(b.open), "high": float(b.high),
+                    "low": float(b.low), "close": float(b.close),
+                    "volume": int(getattr(b, "volume", 0) or 0),
+                })
+            except (TypeError, ValueError, AttributeError):
+                continue
+        series.sort(key=lambda r: r["ts"])
+        out[sym] = series
+    return out
+
+
 async def get_minute_bars(ticker: str, from_date: str, to_date: str) -> list[dict]:
     """
     Fetch 1-minute aggregate bars for `ticker` over [from_date, to_date].

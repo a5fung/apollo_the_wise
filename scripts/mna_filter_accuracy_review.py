@@ -80,8 +80,26 @@ def _answer(detail_full) -> str:
         return ""
     if not isinstance(d, dict):
         return ""
+
+    def _pin(p) -> str:
+        # 2026-10-03: the price reading that decided a nominated name (fired: `pin` at the top
+        # level; released: `pin_release.pin`; held: `pin`).
+        if not isinstance(p, dict) or not p:
+            return ""
+        if not p.get("readable"):
+            return f"; price unreadable ({p.get('why')})"
+        return (f"; {p.get('window')} range {p.get('range_pct')}% vs {p.get('threshold_pct')}% -> "
+                f"{'PINNED' if p.get('pinned') else 'FREE'}")
     if d.get("role"):
-        return f"{d['role']}/{d.get('status')}/{d.get('consideration')}"
+        return f"{d['role']}/{d.get('status')}/{d.get('consideration')}" + _pin(d.get("pin"))
+    a = d.get("answer") or {}
+    if a.get("role") and d.get("pin") is not None:   # a HELD row
+        return f"held {a['role']}/{a.get('status')}/{a.get('consideration')}" + _pin(d.get("pin"))
+    pr = d.get("pin_release") or {}
+    if pr.get("answer", {}).get("role"):
+        pa = pr["answer"]
+        return (f"nominated {pa['role']}/{pa.get('status')}/{pa.get('consideration')} via {pr.get('source')}"
+                + _pin(pr.get("pin")))
     un = d.get("unanswered") or []
     if un and isinstance(un[0], dict):
         return f"unanswered ({un[0].get('why')}), {d.get('unanswered_n', len(un))} article(s)"
@@ -120,7 +138,7 @@ def _print_section(title: str, rows, flag_material: bool):
 async def main(lookback_days: int) -> int:
     from agents.market_intelligence.db import get_pool
     from agents.market_intelligence.audit_events import (
-        MNA_FILTER_FIRED, MNA_FILTER_RELEASED, MNA_HEADLINE_UNANSWERED,
+        MNA_FILTER_FIRED, MNA_FILTER_RELEASED, MNA_HEADLINE_UNANSWERED, MNA_PIN_PENDING,
     )
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -133,6 +151,11 @@ async def main(lookback_days: int) -> int:
         unanswered_passed = await _fwd_rows(
             conn, MNA_HEADLINE_UNANSWERED, "split_part(summary,':',1)", lookback_days,
             summary_like="%passed")
+        # 2026-10-03: nominated names HELD because the price window could not be read. A hold
+        # writes no fired row, so a name held all day (the window never became readable) is a
+        # suppression this section alone can show.
+        held = await _fwd_rows(
+            conn, MNA_PIN_PENDING, "split_part(summary,':',1)", lookback_days)
 
     print(f"M&A FILTER ACCURACY REVIEW  (lookback {lookback_days}d)")
     print("Surfaces filter decisions + forward returns for OPERATOR judgment.")
@@ -159,6 +182,14 @@ async def main(lookback_days: int) -> int:
     if unanswered_passed:
         print("\n  operator: these passed WITHOUT an answer (error / budget / the EP scan's "
               "9:30-9:45 window / the 3-article cap). Confirm none was the target of a signed deal.")
+    _print_section(
+        "HELD - deal-nominated, the price window could not be read (pre-market hold is normal; "
+        "a name that stayed held past 09:35 had no readable window and never alerted)",
+        held, flag_material=True)
+    if held:
+        print("\n  operator: a hold is not a verdict. A name here with a fired or released row later "
+              "the same day was decided at the open; one with neither was held all day — check "
+              "why its window stayed unreadable (bars / fetch).")
     print("\nSSoT: docs/setups/magna53_ep.md (M&A filter change log).")
     return 0
 

@@ -71,6 +71,12 @@ class Case(NamedTuple):
     articles: tuple = ()                     # Polygon items the headline path sees
     headline: tuple = ()                     # ((title, Ans), ...) expected headline answers
     company: Optional[str] = None
+    # 2026-10-03 — the RECORDED price reading at the detector's decision window (the exported
+    # bars, scripts/probes/_692/pin/): ("open5m", range % of the 09:30 open over 09:30-09:34) on
+    # EP days, ("day", own-day range % of close) for the evening detectors. None = this caller
+    # carries no price (the 10-02 verdict applies); pin_pending=True = the window was not readable.
+    pin: Optional[tuple] = None
+    pin_pending: bool = False
 
 
 def _item(title: str, *, description: str = "", ticker: str = "", reasoning: Optional[str] = None,
@@ -108,7 +114,37 @@ CASES: tuple[Case, ...] = (
          True, "classifier", "BLOCK", "mna",
          ("[SEC 8-K filed 2026-09-10, items 1.01,7.01,9.01] ACVA gapped up because Copart announced an "
           "agreement to acquire ACV Auctions in an all-cash deal valued at approximately $1.9 billion.",),
-         grader=Ans("target", "signed", "cash", "Copart")),
+         grader=Ans("target", "signed", "cash", "Copart"), pin=("open5m", 0.2869)),
+    # ── his 2026-10-03 sign-off on the replay: three releases, two keeps (the price decides) ──
+    Case("PD", "2026-05-29", "operator 2026-10-03: 'is not a buyout, release' - signed take-private read, no buyer named; "
+         "the open ranged 5.36% (13% on the day)",
+         True, "keyword", "PASS", "mna",
+         ("The news says a private equity buyer agreed to acquire PagerDuty and take it private at a premium.",),
+         grader=Ans("target", "signed", "unknown"), pin=("open5m", 5.3591)),
+    Case("DSGN", "2026-05-18", "operator 2026-10-03: 'is not a buyout, release' - 'agreed to acquire' with no buyer "
+         "named; the open ranged 6.60% (65% on the day)",
+         True, "keyword", "PASS", "routine",
+         ("DSGN gapped up on news that a larger biopharma company agreed to acquire Design Therapeutics at a "
+          "substantial premium; a takeover.",),
+         grader=Ans("target", "signed", "unknown"), pin=("open5m", 6.599)),
+    Case("THR", "2026-05-22", "operator 2026-10-03: 'is not a buyout, release' - CECO merger, holders elect "
+         "cash/stock/mix; the day ranged 2.39% (flag scan: day window)",
+         True, "headline", "PASS",
+         articles=(_item(_CECO_THR_TITLE, published="2026-05-21T12:00:00Z"),),
+         headline=((_CECO_THR_TITLE, Ans("target", "signed", "mixed", "CECO Environmental")),),
+         company="Thermon Group Holdings, Inc.", pin=("day", 2.3893)),
+    Case("HZO", "2026-08-10", "operator 2026-10-03: 'is a real buyout, keep blocked' - final-round bidding (Blackstone, "
+         "Donerail, Centerbridge), a PROPOSAL; the open ranged 0.15% (0.50% on the day)",
+         True, "classifier", "BLOCK", "routine",
+         ("HZO is gapping up on reports that Blackstone, Donerail and Centerbridge are in the final round of "
+          "bidding for MarineMax.",),
+         grader=Ans("target", "proposed", "unknown", "Blackstone, Donerail, Centerbridge"), pin=("open5m", 0.1542)),
+    Case("RNW", "2026-08-11", "operator 2026-10-03: 'is a real buyout, keep blocked' - the controlling holders' "
+         "take-private PROPOSAL reaffirmed; the open ranged 0.74% (1.5% on the day)",
+         True, "classifier", "BLOCK", "routine",
+         ("RNW gapped up on a 6-K disclosing a confirmatory letter from CPPIB and founder-CEO Sumant Sinha "
+          "reaffirming their take-private proposal.",),
+         grader=Ans("target", "proposed", "unknown", "CPPIB and Sumant Sinha"), pin=("open5m", 0.7396)),
     Case("FWDI", "2026-09-18", "operator 2026-10-01: wrongly blocked - FWDI is the BIDDER for SkyAI",
          True, "classifier", "PASS", "mna",
          ("[SEC 8-K filed 2026-09-15, items 7.01,9.01] FWDI's latest identifiable catalyst is its renewed, "
@@ -133,7 +169,7 @@ CASES: tuple[Case, ...] = (
          True, "classifier", "PASS", "mna",
          ("WAY is gapping up on Reuters reporting that Waystar is exploring strategic alternatives, "
           "including a potential sale that could take the company private.",),
-         grader=Ans("target", "proposed", "unknown")),
+         grader=Ans("target", "proposed", "unknown"), pin=("open5m", 5.7021)),
     Case("CSR", "2026-09-09", "operator 2026-10-01: wrongly blocked - $8.1B ALL-STOCK merger with Independence Realty",
          True, "classifier", "PASS", "mna",
          ("[SEC 8-K filed 2026-09-09, items 1.01,7.01,9.01] CSR is gapping up because Centerspace announced "
@@ -208,7 +244,7 @@ CASES: tuple[Case, ...] = (
          True, "keyword", "PASS", "routine",
          ("IMAX gapped up on news that the company may be exploring a sale, which triggered a strong "
           "takeout/speculation bid in the stock, a potential buyout.",),
-         grader=Ans("target", "proposed", "unknown")),
+         grader=Ans("target", "proposed", "unknown"), pin=("open5m", 2.648)),
     Case("WEN", "2026-06-26", "operator 2026-08-08: FP - takeover speculation",
          True, "headline", "PASS",
          articles=(_item(_WEN_TITLE, ticker="WEN",
@@ -217,7 +253,7 @@ CASES: tuple[Case, ...] = (
                                    "could support the shares.",
                          published="2026-06-26T11:12:00Z"),),
          headline=((_WEN_TITLE, Ans("target", "speculation", "none")),),
-         company="The Wendy's Company"),
+         company="The Wendy's Company", pin=("day", 13.2051)),
     Case("UMAC", "2026-06-30", "operator 2026-08-08: FP - Russell 2000 inclusion; keyword 'definitive agreement'",
          True, "keyword", "PASS", "routine",
          ("UMAC gapped up on a mix of a fresh index inclusion and a broader drone-sector tailwind; it also "
@@ -243,35 +279,59 @@ CASES: tuple[Case, ...] = (
           "merger elsewhere.",),
          grader=_NONE),
     # ── AGENT-READ plumbing cases (his to label; never findings) ──
-    Case("THR", "2026-05-22", "agent-read: Thermon is the TARGET of CECO's acquisition (same title as CECO)",
-         False, "headline", "BLOCK",
-         articles=(_item(_CECO_THR_TITLE, published="2026-05-21T12:00:00Z"),),
-         headline=((_CECO_THR_TITLE, Ans("target", "signed", "mixed", "CECO Environmental")),),
-         company="Thermon Group Holdings, Inc."),
-    Case("CECO", "2026-05-22", "agent-read: CECO is the BUYER on the same title",
+    Case("CECO", "2026-05-22", "agent-read: CECO is the BUYER on the same title as THR",
          False, "headline", "PASS",
          articles=(_item(_CECO_THR_TITLE, published="2026-05-21T12:00:00Z"),),
          headline=((_CECO_THR_TITLE, Ans("buyer", "signed", "mixed", "Thermon")),),
-         company="CECO Environmental Corp."),
-    Case("ROKU", "2026-06-24", "agent-read: 'Fox Corp. Buys Roku For $22 Billion' (the #284 regex read ROKU as acquirer)",
+         company="CECO Environmental Corp.", pin=("day", 2.4208)),
+    Case("ROKU", "2026-06-24", "agent-read: 'Fox Corp. Buys Roku For $22 Billion' (the #284 regex read ROKU as acquirer); "
+         "his 10-03 approval kept it blocked - the day ranged 1.84% (day window)",
          False, "headline", "BLOCK",
          articles=(_item(_ROKU_TITLE, ticker="ROKU",
                          description="This week's deals include a strategic transaction for Roku.",
                          reasoning="Being acquired by Fox at $160 per share in cash.",
                          published="2026-06-18T18:05:05Z"),),
          headline=((_ROKU_TITLE, Ans("target", "signed", "cash", "Fox Corp.")),),
-         company="Roku, Inc."),
+         company="Roku, Inc.", pin=("day", 1.8355)),
     Case("QBTS", "2026-05-21", "agent-read: IonQ/SkyWater roundup bleed - QBTS not in insights, never asked",
          False, "headline", "PASS",
          articles=(_item(_QBTS_TITLE, description="IonQ's merger vote with SkyWater advanced.",
                          others=(("IONQ", "IonQ's merger with SkyWater advanced."),),
                          published="2026-05-11T20:00:00Z"),),
-         company="D-Wave Quantum Inc."),
-    Case("DSGN", "2026-05-18", "agent-read: 'agreed to acquire Design Therapeutics at a premium' - recall via the grader fields",
-         False, "keyword", "BLOCK", "routine",
-         ("DSGN gapped up on news that a larger biopharma company agreed to acquire Design Therapeutics at a "
-          "substantial premium; a takeover.",),
-         grader=Ans("target", "signed", "unknown")),
+         company="D-Wave Quantum Inc.", pin=("open5m", 5.4688)),
+    # the three rows of his APPROVED 10-02 list the PRICE now changes (2026-10-03; his to label)
+    Case("NUVL", "2026-06-09", "agent-read: GSK takeover bid at a premium (PROPOSED - the 10-02 rule released it, he "
+         "approved the list); gap +39%, the open ranged 0.11%, 0.67% on the day - the price says pinned",
+         False, "classifier", "BLOCK", "routine",
+         ("NUVL gapped up on a reported takeover bid from GSK at a substantial premium.",),
+         grader=Ans("target", "proposed", "unknown", "GSK"), pin=("open5m", 0.114)),
+    Case("MGM", "2026-06-01", "agent-read: People Inc.'s non-binding $48.30 cash proposal (headline; the grader found no "
+         "deal); the open ranged 1.24% (6.5% on the day) - the price says free, by 0.24pp",
+         False, "headline", "PASS", "routine",
+         ("MGM gapped up on Nevada gaming data and analyst target hikes.",),
+         grader=_NONE,
+         articles=(_item("Barry Diller's People Makes Move To Take Casino Giant MGM Private", ticker="MGM",
+                         description="People Inc. proposed acquiring MGM's remaining shares for $48.30 per share "
+                                     "in cash, a non-binding take-private offer.",
+                         reasoning="Received a non-binding take-private offer at $48.30 per share.",
+                         published="2026-06-01T11:00:00Z"),),
+         headline=(("Barry Diller's People Makes Move To Take Casino Giant MGM Private",
+                    Ans("target", "proposed", "cash", "People Inc.")),),
+         company="MGM Resorts International", pin=("open5m", 1.2381)),
+    Case("IRDM", "2026-06-29", "agent-read: a Viasat article said 'Rocket Lab announced an $8 billion acquisition of "
+         "Iridium' (headline target/signed/unknown; the 10-02 rule blocked it, he approved the list); gap +19%, the "
+         "open ranged 3.28%, 7.1% on the day - the price says free",
+         False, "headline", "PASS", "routine",
+         ("The only news attributes the gap-up to SpaceX-related sector momentum.",),
+         grader=_NONE,
+         articles=(_item("Why Viasat Stock Went to the Moon Today", ticker="IRDM",
+                         description="Rocket Lab announced an $8 billion acquisition of Iridium Communications; "
+                                     "a merger wave in satellite names.",
+                         reasoning="Rocket Lab announced an $8 billion acquisition of Iridium Communications.",
+                         published="2026-06-29T12:00:00Z"),),
+         headline=(("Why Viasat Stock Went to the Moon Today",
+                    Ans("target", "signed", "unknown", "Rocket Lab")),),
+         company="Iridium Communications Inc.", pin=("open5m", 3.2847)),
     Case("KALV", "2026-05-25", "agent-read: shareholder-litigation notice - skipped by prefix, never asked",
          False, "headline", "PASS",
          articles=(_item("BRODSKY & SMITH SHAREHOLDER UPDATE: Notifying Investors of the Following "
@@ -322,9 +382,29 @@ class Outcome(NamedTuple):
     audits: list
 
 
+def pin_reader_for(case: Case):
+    """The case's RECORDED price reading as the `pin_reader` the detector would pass: None when
+    the case carries no price (the 10-02 verdict), an unreadable reading when `pin_pending`."""
+    from agents.market_intelligence import ma_filter as mf
+    if case.pin is None and not case.pin_pending:
+        return None
+    window = (case.pin or ("open5m", None))[0]
+    thr = mf.OPEN_WINDOW_PIN_MAX_PCT if window == "open5m" else mf.DAY_WINDOW_PIN_MAX_PCT
+
+    async def _reader():
+        if case.pin_pending:
+            return mf.PinReading(window, None, thr, 0, False, "pre_market", case.day)
+        return mf.PinReading(window, float(case.pin[1]), thr, 5 if window == "open5m" else 1,
+                             True, "", case.day)
+    return _reader
+
+
 async def run_new(case: Case, *, unanswered_blocks: bool = False, now_et: datetime = _OUTSIDE_ORB,
-                  skip_in_orb: bool = False, budget_pool: str = "shared") -> Outcome:
-    """The NEW `is_likely_ma` on this case, with Polygon + the model replaced by fixtures.
+                  skip_in_orb: bool = False, budget_pool: str = "shared",
+                  pin_reader=None, use_case_pin: bool = True) -> Outcome:
+    """The NEW `is_likely_ma` on this case, with Polygon + the model replaced by fixtures and the
+    price reading replaced by the case's RECORDED reading (`pin_reader_for`; pass `pin_reader`
+    to override, `use_case_pin=False` for no reader at all).
     `skip_in_orb` / `budget_pool` are what the EP scan passes (`ep_detector._post_grade_filters`)."""
     from agents.market_intelligence import ma_filter as mf
     model = FakeModel(case.ticker, dict(case.headline))
@@ -334,6 +414,8 @@ async def run_new(case: Case, *, unanswered_blocks: bool = False, now_et: dateti
         audits.append((event_type, summary, detail))
 
     grader = (mf.DealAnswer(*case.grader) if case.grader is not None else None)
+    if pin_reader is None and use_case_pin:
+        pin_reader = pin_reader_for(case)
     mf.reset_headline_day()
     mf._COMPANY_NAME_MEMO.clear()
     with ExitStack() as st:
@@ -356,7 +438,8 @@ async def run_new(case: Case, *, unanswered_blocks: bool = False, now_et: dateti
             on_or_before=date.fromisoformat(case.day),
             catalyst_quality=case.catalyst_quality,
             catalyst_texts=list(case.catalyst_texts) or None,
-            now_et=now_et, skip_in_orb=skip_in_orb, budget_pool=budget_pool)
+            now_et=now_et, skip_in_orb=skip_in_orb, budget_pool=budget_pool,
+            pin_reader=pin_reader)
     return Outcome(blocked, meta, model.calls, model.unplanned, audits)
 
 
@@ -416,6 +499,13 @@ async def _main(old_path: Optional[str]) -> int:
             line += f" {old:6} {'YES' if flip else '':4}"
         src = (out.meta or {}).get("source", "-")
         line += f"  {src} / {len(out.calls)} call(s)"
+        if c.pin is not None:
+            line += f" / {c.pin[0]} {c.pin[1]:.2f}%"
+        if (out.meta or {}).get("pin"):
+            line += f" -> {'PINNED' if out.meta['pin'].get('pinned') else 'free'}"
+        elif out.blocked is False and any(a[0] == "mna_filter_released" and "pin_free" in
+                                          (a[2] or {}).get("old_reasons", []) for a in out.audits):
+            line += " -> free (released on price)"
         if not ok:
             line += "   <-- " + ("UNPLANNED QUESTION" if out.unplanned else "MISS")
             if c.ground_truth:

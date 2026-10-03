@@ -64,6 +64,7 @@ MNA_HEADLINE_UNANSWERED = "mna_headline_unanswered"    # headline question got n
 MNA_GRADE_WITHOUT_PIN = "mna_grade_without_pin"        # grader said 'mna' but its own ANSWERED deal fields do not pin (blank fields block instead — ruling 5)
 MNA_DEAL_ANSWERS_CONFLICT = "mna_deal_answers_conflict"  # grader said no pin, a headline pinned — detail.blocked: True (grader found no deal) / False (ruling 7: grader's deal answer governs)
 MNA_HEADLINE_CAP_HIT = "mna_headline_cap_hit"          # the day's headline-question budget spent for a pool (ep / shared) — once per pool per ET day, no Telegram
+MNA_PIN_PENDING = "mna_pin_pending"                    # 2026-10-03: a deal-nominated name HELD because its price window could not be read yet (pre-market / window open / fetch failed / too few bars) — no mna_filter_fired row for a hold; the next tick re-reads
 
 # ── Anticipation coil-finder M&A / buyout-pin guards (#387/#410, 2026-06-30 NUVL FP) ────────
 ANTICIPATION_MNA_EXCLUDED = "anticipation_mna_excluded"  # #387 — ma_filter.is_likely_ma hit

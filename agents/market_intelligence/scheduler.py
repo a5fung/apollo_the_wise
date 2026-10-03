@@ -4741,8 +4741,15 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
             # the capped run so a systematic cap-hit is visible, not silent.
             if mna_checks < _CONS_MNA_CHECKS_CAP:
                 mna_checks += 1
+                # 2026-10-03: the news nominates, the price decides — the day window from the
+                # bars this scan already holds (the scan date's own bar, else held).
+                from agents.market_intelligence.ma_filter import day_window_pin
+
+                async def _day_reader(_bars=bars):
+                    return day_window_pin(_bars, today)
                 is_mna, mna_meta = await is_likely_ma(
                     ticker, check_polygon=True, on_or_before=today, polygon_lookback_days=21,
+                    pin_reader=_day_reader,
                 )
             else:
                 is_mna, mna_meta = False, None
