@@ -3407,7 +3407,7 @@ class MarketIntelligenceAgent(BaseAgent):
             request,
             result=(
                 f"❌ Partial exit returned False for `{ticker}`. "
-                f"Check `/audit partial_exit` for details."
+                f"Check `/audit positions` for the position's current state."
             ),
         )
 
