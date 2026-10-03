@@ -442,9 +442,12 @@ non-aged row whatever its `last_eval`.
 **What changed (the screen is extended to the board, not re-implemented)**:
 - a block now takes EVERY non-aged board row of the ticker off the board
   (`db.mark_consolidation_mna_screened` → `mi_anticipation_consolidation.mna_screened_on`, a new
-  nullable DATE column); `get_consolidation_board` hides marked rows; the next write of a row (the
-  price released it, or the news stops nominating it) clears the mark — so a name the price releases
-  is back on the board the same night;
+  nullable DATE column); `get_consolidation_board` hides marked rows; the next write of a row
+  clears the mark — the price released it (back on the board the same night), OR ⚠ its deal
+  headline has aged out of the 21-day Polygon lookback: the news no longer nominates it, so a
+  STILL-PINNED name returns then unless the #410 shape guard (median range < 0.5%) rejects its coil.
+  Same hole as the flag scan, which has the `deal_pin_signature` backstop the coil board lacks
+  (open, the operator's call: a sticky mark or a price-only arm on the board);
 - the audit row follows #692's convention: `mna_filter_fired`, summary `{ticker} via <source>
   (anticipation) — role/status/consideration, <the day-window reading>; off the coil board (n
   row(s))`, JSON detail (the deal answer + the `pin` reading), deduped per ticker per day — so the
