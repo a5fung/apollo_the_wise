@@ -424,7 +424,7 @@ instruction pending his or the session's explicit apply. Once applied: verify-li
 `consolidation_readiness` digest shows zero `🎯 Anticipate entry fired today` lines while `✅ Confirm
 entry fired today` keeps appearing normally on nights Confirm fires.
 
-### 2026-10-03 — #394: the M&A screen reaches the coil BOARD (a screened name's rows come off; one check per ticker)
+### 2026-10-03 — #394: the M&A screen reaches the coil BOARD (a screened name's rows come off; one check per ticker; the top of the board is screened first)
 
 **Trigger**: operator, 2026-10-03 — *"Add it now"* — on the #394 tune read
 (`scripts/probes/_394/coil_tune_out_2026-10-03.txt` §4): today's 🪙 Coiling top 5 is CRNX, DV, MKTX,
@@ -457,7 +457,18 @@ non-aged row whatever its `last_eval`.
   naming the deal answer and why the bar was unreadable. ⚠ **This is the one place the board departs
   from `is_likely_ma`'s verdict**, which blocks a nominated name on the news alone while its price is
   unread (`news_blocked_price_unread`; the flag scan keeps that block). It fires when the scan date's
-  own bar is missing — a holiday run or a failed 17:00 pull.
+  own bar is missing — a holiday run or a failed 17:00 pull;
+- **the screen walks the candidates in the board's own order** (coiled section first, then
+  post_runup; within each `tight_close_streak` desc, `today_pct` asc — `scheduler._coil_board_rank`).
+  The 40-check cap tripped on EVERY run in the 07-14..08-24 audit capture
+  (`anticipation_mna_check_capped`, `scripts/probes/_alertdrop_capture_out.psv`; only 12
+  `anticipation_mna_excluded` rows 07-06..07-28, none after) and keys arrive in DB order, so the
+  unchecked tail was arbitrary — a pinned buyout could sit at the top unchecked. The scan now runs in
+  two phases: evaluate every key (DB + the pure coil-finder, no Polygon), then screen → entry → write
+  per candidate in board order, so the unchecked tail is the bottom of the board. Writes still land
+  one candidate at a time, so a budget timeout in phase 2 keeps the top of the board fresh; a timeout
+  inside phase 1 (Postgres slow — the 7/13 hang was Polygon) would now write nothing that run. The
+  digest's row order follows board order.
 
 **Not changed**: the coil-finder (`find_coil_setup` / `evaluate_coil_consolidation`), its thresholds,
 the board's ORDER BY, the Confirm entry signal, the #410 price-shape guard, the 40-check cap.
@@ -480,7 +491,8 @@ headline answer and DB edges faked): a CRNX-shaped pinned buyout (target/signed/
 0.3%) is kept off with no entry and one fired row; the same answer at a 3.0% range stays on (with
 the filter's `mna_filter_released` row); a non-deal coil is untouched; an unreadable own-day bar
 stays on + recorded; a spy on `ma_filter.is_likely_ma` proves the scan calls that function object
-with the day-window reader; a two-anchor ticker is checked once.
+with the day-window reader; a two-anchor ticker is checked once; with one check left under the cap
+the screen spends it on the board's first row and every candidate is still written.
 
 **Verify-live**: the first 17:35 ET scan after deploy with a nominated coil — an `mna_filter_fired`
 row tagged `(anticipation)` whose detail carries the deal answer AND a `pin` with `window: day`, and

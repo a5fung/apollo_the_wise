@@ -74,7 +74,7 @@ ANTICIPATION_MNA_PRICE_UNREAD = "anticipation_mna_price_unread"  # #394 (2026-10
 ANTICIPATION_COIL_BUYOUT_PIN_REJECTED = "anticipation_coil_buyout_pin_rejected"  # #410 — shape guard
 # ── #327 readiness-job robustness (blocker fix, operator-signed 2026-07-14 — 7/13 >2h hang) ──
 CONSOLIDATION_READINESS_SCAN_TIMEOUT = "consolidation_readiness_scan_timeout"  # scan budget hit; failed open, settlement still ran
-ANTICIPATION_MNA_CHECK_CAPPED = "anticipation_mna_check_capped"  # per-run M&A-check cap hit; remaining candidates passed UNchecked (fail-open)
+ANTICIPATION_MNA_CHECK_CAPPED = "anticipation_mna_check_capped"  # per-run M&A-check cap hit; remaining candidates passed UNchecked (fail-open) — since #394 (2026-10-03) the screen walks candidates in the board's own order, so the unchecked tail is the BOTTOM of the board
 
 # ── Theme ecosystems (ADR 0032 Phase 1) ─────────────────────────────────────
 THEME_ECOSYSTEM_ASSIGNED = "theme_ecosystem_assigned"  # method=haiku|keyword|unassigned in summary

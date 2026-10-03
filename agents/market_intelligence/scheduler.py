@@ -4516,6 +4516,21 @@ _CONS_SCAN_BUDGET_S = 900        # per-run time budget for the SCAN section ONLY
 _CONS_MNA_CHECKS_CAP = 40        # max Polygon-backed M&A checks per run (defense in depth under
                                  # the budget; overflow candidates pass UNchecked + one audit row)
 
+# #394 — the /anticipation board's own order, so the scan screens the TOP of the board first and
+# the cap's unchecked tail is its bottom. The renderer shows the coiled section, then post_runup;
+# within each, db.get_consolidation_board's ORDER BY (tight_close_streak DESC NULLS LAST,
+# today_pct ASC NULLS LAST). An aged row is never shown → last. Python's sort is stable, so ties
+# keep the key order.
+_COIL_BOARD_SECTION = {"coiled": 0, "post_runup": 1}
+
+
+def _coil_board_rank(cons: dict) -> tuple:
+    streak = cons.get("tight_close_streak")
+    pct = cons.get("today_pct")
+    return (_COIL_BOARD_SECTION.get(cons.get("state"), 2),
+            streak is None, -(streak or 0),
+            pct is None, pct if pct is not None else 0.0)
+
 
 async def _consolidation_readiness_job():
     """FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2) SHADOW RECORDER +
@@ -4738,7 +4753,9 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
     2026-10-03: takes EVERY board row of the ticker off the coil board and writes
     `mna_filter_fired` `(anticipation)` with the deal answer + the day-window reading; an
     unreadable own-day bar keeps the name ON the board + an `anticipation_mna_price_unread`
-    row), now CAPPED at _CONS_MNA_CHECKS_CAP Polygon-backed checks per run
+    row; and the scan now runs in two phases — evaluate every key, then screen + write in the
+    board's own order, so the cap's unchecked tail is the bottom of the board), now CAPPED at
+    _CONS_MNA_CHECKS_CAP Polygon-backed checks per run
     (#327 blocker fix — the unbounded cumulative Polygon time was the prime hang suspect; overflow
     candidates pass UNchecked, fail-open + anticipation_mna_check_capped audit). Neither guard
     touches the #327 gates themselves (runup / hold / tightness) — additive exclusions only, per
@@ -4783,8 +4800,12 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
     screened: dict = {}
     off_board: set = set()
     unread_logged: set = set()
+    # PHASE 1 (#394) — evaluate every key first: DB reads + the pure coil-finder, no Polygon, so
+    # it is fast and holds no hang risk. The M&A screen + writes run in PHASE 2 below, in the
+    # BOARD's own order.
+    candidates: list = []
     for k in keys:
-        ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
+        ticker, anchor_date = k["ticker"], k["anchor_date"]
         try:
             bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
             if len(bars) < 60:
@@ -4809,7 +4830,20 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
                         detail=str({"ticker": ticker, "reason": pin_reason})[:500],
                     )
                 continue
+            candidates.append((k, bars, cons))
+        except Exception as e:
+            logger.error(f"consolidation readiness {ticker}/{anchor_date}: {e}", exc_info=True)
 
+    # PHASE 2 (#394) — screen + entry + write, walking the candidates in the order the board
+    # SHOWS them (_coil_board_rank). The per-run check cap (_CONS_MNA_CHECKS_CAP) tripped on every
+    # run in the 07-14..08-24 audit capture, and the keys come in DB order, so the unchecked tail
+    # was arbitrary — a pinned buyout could reach the TOP of the board unchecked. Walking in board
+    # order makes the unchecked tail the BOTTOM. Writes still land one candidate at a time, so a
+    # budget timeout mid-phase keeps the partial results (the top of the board, fresh).
+    candidates.sort(key=lambda c: _coil_board_rank(c[2]))
+    for k, bars, cons in candidates:
+        ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
+        try:
             # #387 M&A exclusion (operator-filed 6/30 post-NUVL FP): a coil-shaped candidate whose
             # "tight days at the apex" turn out to be the post-acquisition PIN. Re-applies the SAME
             # single-source filter (ma_filter.is_likely_ma) the EP/flag/9M paths use, gated on the

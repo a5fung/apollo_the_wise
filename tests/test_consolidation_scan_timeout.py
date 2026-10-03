@@ -592,6 +592,46 @@ async def test_394_one_check_per_ticker_across_its_board_rows(monkeypatch):
     assert len(_rows(cap, MNA_FILTER_FIRED)) == 1
 
 
+@pytest.mark.asyncio
+async def test_394_the_capped_screen_walks_the_board_top_first(monkeypatch):
+    """The check cap tripped on every run in the 07-14..08-24 capture, and the keys come in DB
+    order. With one check left, the screen must spend it on the name the board shows FIRST (the
+    tightest coil), not on whichever key came first — and the unchecked rest still writes."""
+    import agents.market_intelligence.ma_filter as mf
+    from agents.market_intelligence.audit_events import ANTICIPATION_MNA_CHECK_CAPPED
+    bars = _mk_bars()
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, keys=[
+        _key("LOOSE"), _key("MIDDLE"), _key("TOPCOIL"), _key("AGED")])
+    monkeypatch.setattr(sched, "_CONS_MNA_CHECKS_CAP", 1)
+    shape = {"LOOSE": ("post_runup", 1, 0.010), "MIDDLE": ("coiled", 2, 0.004),
+             "TOPCOIL": ("coiled", 6, 0.002), "AGED": ("aged", 9, 0.001)}
+
+    async def tagged_ohlcv(ticker, today):
+        return [dict(b, tk=ticker) for b in bars]
+
+    def per_ticker_cons(b, **kw):
+        state, streak, pct = shape[b[0]["tk"]]
+        return {**_cons_for(b), "state": state, "tight_close_streak": streak, "today_pct": pct}, None
+
+    screened = []
+
+    async def recorder(ticker, **kw):
+        screened.append(ticker)
+        return False, None
+
+    import agents.market_intelligence.db as db
+    monkeypatch.setattr(db, "get_anticipation_ohlcv", tagged_ohlcv)
+    monkeypatch.setattr(ant, "evaluate_coil_consolidation", per_ticker_cons)
+    monkeypatch.setattr(mf, "is_likely_ma", recorder)
+
+    stats, _entries = await _scan()
+
+    assert screened == ["TOPCOIL"]                         # the board's first row got the check
+    assert cap["upsert_tickers"] == ["TOPCOIL", "MIDDLE", "LOOSE", "AGED"]   # board order
+    assert stats["written"] == 4                           # fail-open: the cap drops nothing
+    assert len(_rows(cap, ANTICIPATION_MNA_CHECK_CAPPED)) == 1
+
+
 # ── #394 the board's DB edge: the mark, the read that hides it, the write that clears it ──────
 @pytest.mark.asyncio
 async def test_394_board_read_hides_screened_rows_and_a_write_clears_the_mark(monkeypatch):
