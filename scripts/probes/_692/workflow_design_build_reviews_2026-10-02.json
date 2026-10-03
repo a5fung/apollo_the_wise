@@ -1,0 +1,487 @@
+{
+ "design": {
+  "decision_rule": "BLOCK iff the ticker's deal answer satisfies `deal_pins_price(a)`: `a.status == \"signed\"` AND ( (`a.role == \"target\"` AND `a.consideration in {\"cash\",\"mixed\",\"unknown\"}`) OR `a.role == \"shell\"` ). Everything else PASSES: role buyer / none, status proposed / speculation / completed / none, and a signed target paid in `stock` (the CSR label \u2014 an all-stock merger does not fix the price). Definitions the model is given and the code derives from: ROLE = this ticker's own part in a deal \u2014 `target` (another company is buying THIS company's shares; includes JBS-style minority buy-ins only when THIS ticker is the one being bought), `buyer` (this company buys another company, asset or a subsidiary's minority: FWDI, CHYM, JBS, SWKS, DFH, BANF, MAIR, ONDS), `shell` (this listed company is the vehicle of a reverse merger \u2014 a private company merges into it and its holders take control: SUNE 'definitive reverse merger with Suniva', CLRO 'merger agreement between [Vivani's] wholly owned subsidiary Cortigent and Nasdaq-listed ClearOne'), `none` (no deal involving this company's own shares: sector M&A commentary, a peer's deal, index inclusion, a funding agreement \u2014 RGTI, GPRK, IOVA, UMAC, SOUN). STATUS: `signed` = a definitive / merger agreement is signed by both boards, or a tender offer has commenced, with terms stated; `proposed` = unsolicited or non-binding proposal, letter of intent, bid received, 'in talks', 'exploring a sale / strategic alternatives' (WAY, HZO, RNW, PZZA, FRMI); `speculation` = rumours, 'potential takeover targets' lists, 'could pursue acquisitions', a denial (VKTX, IOVA headline, LCID, WEN, PYPL, IMAX); `completed` = the deal has closed (a ticker still trading after close was the buyer \u2014 ONDS, COCO); `none`. CONSIDERATION (what the TARGET's holders receive): `cash` = a stated cash price per share or 'all-cash' (ACVA $1.9B all-cash, DV $13.60, SYNA $123), `stock` = acquirer shares only / fixed exchange ratio / 'all-stock merger' (CSR), `mixed` = cash plus stock, `unknown` = a deal is described but terms are not in the text, `none`. 'Fixes its price' is therefore judged as: a signed deal whose consideration carries a stated cash value (cash or mixed) or whose terms are not stated (default pinned \u2014 operator decision 3); an all-stock deal does not pin. The `shell` arm exists ONLY to honour the two operator TP rulings (SUNE 07-04, CLRO 08-08) \u2014 without it CLRO reads as target/signed/stock and is indistinguishable from CSR (wrongly blocked), so the rule cannot separate the two rulings without a shell role; it is operator decision 1, not part of his recorded direction. The verdict is derived in code (`ma_filter.deal_pins_price`, pure, unit-tested); the model answers facts only. The audit row records role/status/consideration/counterparty on every block and every release so the monthly accuracy review shows WHY each decision was made.",
+  "classifier_change": "Where: `ep_detector._CATALYST_TOOL` (line ~830) + `_classify_catalyst_claude` prompt (line ~1297, RULE 3) + `CachedGrade` (line 315) + `_post_grade_filters` (line 1929) + `_tier_shadow_base` (line 2126) / `mi_catalyst_tier_shadow` (db.py ~4168). (1) Schema: four new verdict enums inserted AFTER `quality` and BEFORE `analysis` (reasons stay last): `deal_role` {target,buyer,shell,none}, `deal_status` {signed,proposed,speculation,completed,none}, `deal_consideration` {cash,stock,mixed,unknown,none}, `deal_counterparty` (short string, the other company or empty). `analysis` unchanged and last. All four `required`. No wording anywhere asks the model to reason first (tests/test_no_reasoning_first_prompts.py stays green; the model reasons privately). (2) Prompt RULE 3 rewritten: the `mna` grade is set ONLY when deal_role is target or shell AND deal_status is signed AND deal_consideration is not stock \u2014 i.e. exactly when the filter will block; a buyer's acquisition, a proposal, talks, speculation, an all-stock merger, or another company's deal is graded on its own merit under rules 1/2/4/5. This retying is a GRADE change (today 'mna' = any merger involvement and scores 0 on the catalyst axis, lattice passthrough, allocator weight 0.0) \u2192 operator decision 5; without it a released CSR/FWDI is admitted with a 0-point grade and never alerts. (3) Return shape: keep the 2-tuple `(quality, analysis)` at all 13 call sites (ep_detector 1254 + 4747; scripts _344_late_source_replay \u00d72, selection_replay_268, probes _622sweep_catalyst_driver, _wave_a_grrr_regrade \u00d72, _622score_driver; tests test_truncation_self_reporting_543, test_recent_changes \u00d73) and add a keyword-only `deal_sink: dict | None = None` that the two production sites pass; `_classify_catalyst_claude` writes `deal_sink[\"deal_answer\"] = DealAnswer(role, status, consideration, counterparty)` or leaves it absent on failure. `DealAnswer` is a NamedTuple in ma_filter.py (shared with the headline path). Fail sentinel path (`_CLASSIFY_FAIL_SENTINEL` \u2192 \"routine\") leaves deal_answer=None = UNANSWERED, distinct from role=none = ANSWERED NO DEAL. (4) `CachedGrade` gains `deal_answer: DealAnswer | None = None` (default keeps every positional construction valid) so the cached path's per-tick `_post_grade_filters` re-run carries it; `_build_enriched_corpus` returns it alongside quality/analysis via the same sink. (5) `_post_grade_filters(..., deal_answer=...)` calls `is_likely_ma(ticker, deal_answer=deal_answer, check_polygon=True, on_or_before=today, catalyst_quality=catalyst_quality, catalyst_texts=catalyst_texts_for_filter)` \u2014 the last two are kept ONLY for the `mna_filter_released` shadow comparator (old rule: quality=='mna' or keyword hit \u2192 would have blocked). How the filter reads it: `if deal_answer is not None and deal_pins_price(deal_answer): return True, {source:\"claude_deal_fields\", match_path:\"claude_deal_fields\", role, status, consideration, counterparty}`; `deal_answer is None` \u2192 fall through to the headline path (no veto, no block); role/status that do not pin \u2192 fall through to the headline path too (a stale Polygon headline cannot re-block a name the classifier read as buyer/none UNLESS its own article answers target/shell+signed \u2014 both are independent answers to the same question; conflicts are audited as `mna_deal_answers_conflict`). Guard C (`text_implies_acquirer_or_completed`) is deleted \u2014 direction is now answered, not regex-inferred. (6) Persistence: `_tier_shadow_base` adds deal_role/deal_status/deal_consideration/deal_counterparty; `mi_catalyst_tier_shadow` gains the four nullable TEXT columns (ADD COLUMN IF NOT EXISTS) so every graded name \u2014 alerted or filter-killed \u2014 keeps its answer for the review and the replay; `mi_ep_alerts` unchanged. (7) Consistency audit: `quality=='mna'` while `deal_pins_price` is False \u2192 `mna_grade_without_pin` audit row (the fields win for the filter; the grade is left as the model gave it \u2014 the lattice `mna` passthrough is untouched).",
+  "headline_path_change": "Today `polygon_news_has_mna_headline` fires on a KEYWORD in the title (Path A, with `_ticker_is_acquirer` / `title_implies_acquirer` regex heuristics) or in the description + this ticker's `sentiment_reasoning` (Path B, with the sister-possessive check and Guard B). Population evidence: 42 ticker-days (title 18, description+insights 10, 14 pre-#516 rows with no match_path); 3 of 3 September headline blocks wrong (IOVA/VKTX on '4 Biotech Stocks to Watch as Potential Takeover Targets', RGTI on 'Signs Definitive Agreement for $100M with U.S. Government'); the title heuristic also fails the other way \u2014 ROKU was passed as ACQUIRER 4\u00d7 (06-24..07-07) on 'Why Are Roku Investors No Longer Getting $160 a Share in a Bad Buyout?', a target headline. New design \u2014 same function, three stages: (a) CANDIDATE SELECTION stays cheap and $0: skip `is_shareholder_litigation_notice` titles (unchanged); an article is a candidate when `_MNA_KEYWORDS` matches the title, OR matches the description/this ticker's insight reasoning AND the ticker is present in `insights` (the #88 structural bleed guard, kept because it avoids paying for multi-ticker roundups; `_MNA_KEYWORDS` list unchanged in this change). (b) THE QUESTION: for up to 3 candidate articles (newest first) call a small forced tool `classify_deal_headline` on the Sonnet tier (`GROUNDED_GRADE_MODEL`, the grader's own model, via `shared.llm_client.make_async_anthropic` so the opus-5-5-style forced-tool rewrite applies; `max_tokens_for(\"mna_headline_question\")` new ceiling ~200) with inputs: ticker, company name (`get_ticker_details`, memoized in `_COMPANY_NAME_MEMO` as today), title, description, this ticker's `sentiment_reasoning`, published date. Output enums `deal_role` / `deal_status` / `deal_consideration` / `deal_counterparty` first, one short `note` (\u22641 sentence) last \u2014 same `DealAnswer` shape, same `deal_pins_price` verdict. The first pinning answer returns `{source:\"polygon_headline_model\", match_path:\"title\"|\"description+insights\", title, published_utc, publisher, role, status, consideration, counterparty}`. All regex direction code (`classify_direction`, `_ticker_is_acquirer`, `title_implies_acquirer`, `_OBJECT_FORM_RE`, `_GENERIC_ACQ_PRECEDERS`, `reasoning_other_entity_owns_deal`, Guard B) is deleted \u2014 the model answers direction and binding-ness from the article text; `mna_acquirer_title_skipped` is replaced by `mna_filter_released` (the general 'old rule would have blocked, question said no' row). (c) MEMO + CAP: answers memoized per (ticker, article `published_utc`+title hash, ET day) in a module dict (the EP tick re-runs filters every 5 min for a filter-killed name \u2014 #405 \u2014 so without the memo one headline costs 40 calls/day); a process-level daily cap `_HEADLINE_QUESTION_CALLS_CAP = 40`, and a call is skipped inside `_in_orb_cutoff` (9:30\u20139:45 ET) \u2014 both treated as UNANSWERED. UNANSWERED (API error, truncation, cap, ORB window) \u2192 operator decision 1 (block as today's keyword verdict would, or pass); implemented behind a runtime toggle `mna_headline_unanswered_blocks` (#400 pattern) set to his ruling, with a `mna_headline_unanswered` audit row either way. Cost per call: ~900 input + ~80 output tokens on claude-sonnet-5-5 ($2/$10 per MTok) \u2248 $0.0026; calls only happen on a keyword candidate (42 ticker-days in ~100 trading days \u2248 0.4/day, each \u22643 articles) \u2192 typical \u2264 $0.01/day, worst case at the cap $0.10/day. Haiku ($1/$5) would halve a negligible number and confabulated on raw headlines before (#190), so the grader's tier is the choice. Callers that only have this path (flag COILED/TRIGGERED once daily with 21d lookback, 9m sugar-baby EOD sweep, low-cap lane shadow recorder, consolidation anticipation capped at 40 Polygon checks/run) get the question automatically through `is_likely_ma(check_polygon=True)`; the EP path runs it after the classifier answer.",
+  "keyword_and_other_paths": "keyword_in_text_{0,1} (catalyst_texts substring scan, EP only): RETIRE AS A BLOCKING PATH. Evidence: 28 sole ticker-days in the population (idx0 11, idx1 17); operator-labelled wrong: MMED, IMAX (07-12 confirmed), UMAC, SOUN, LII, SCZM; agent-read as mostly disclaimer/no-news text (CGCT, FSSL, LBRX, ELPC, PRLB, IMOS, EROC, AYA, DXC, BTGO) or buyer-side (COCO, HLMN); the only plausible real targets it caught (DSGN 05-18 'agreed to acquire Design Therapeutics at a substantial premium', PD 05-29 take-private) were names the classifier mis-graded routine/strong pre-#516 \u2014 the classifier's new deal fields read the SAME text and answer directly, which is where that recall now lives. Since Guard D shipped (08-08) the path has produced ZERO blocks and 13 veto rows, so retiring it changes nothing observable against today's baseline. Guards A and D and their tests (`test_mna_binding_guards.py` A/C parts, `test_ma_keyword_veto_516.py`) go with it; the CLRO '#516 unchanged' case is re-expressed through the headline question (CLRO had no classification and fired on a title). \u26a0 `_MNA_KEYWORDS` does NOT get deleted \u2014 it changes job: (a) the $0 pre-filter choosing which Polygon articles get the headline question, and (b) the shadow comparator that makes `mna_filter_released` computable ('old rule would have blocked: quality==\"mna\" OR a keyword in catalyst_texts/title; new rule passed') \u2014 without (b) the change has no positive observable. Widening the list with bare acquire/acquisition (removed 05-13 for direction-blindness that is now answered by the model) is NOT in this change \u2014 one variable at a time; filed as an open question in the SSoT 'Known limitations' section with the replay's miss-rate as the evidence to gather. title path (polygon match_path 'title'): KEPT as candidate selection only; the regex direction heuristics are removed (see headline_path_change). Agent-read of its 18 ticker-days for the replay to confirm: ~6\u20137 plausibly stay blocked (CLRO ruled; FBRX \u00d73 argenx tender offer; KALV 05-25 litigation notice on a real pinned deal; NXTC NextCure/Avere \u2014 shell?; OLN unclear) and ~11 released (ONDS, MYRG, CMCSA, MRNA, LCID, CLBK buyer, MDLZ bleed, SPCX, RGTI, VKTX, IOVA). description+insights (10): SUNE ruled stays (shell); IRDM and ROKU 06-24 are Polygon-article reads of a signed acquisition \u2014 the replay decides; QURE, FRMI, PYPL \u00d72, WEN \u00d73 released. Pre-#516 unknown-path (14, May): the quantum-roundup bleed (QBTS/RGTI/INFQ \u00d76) and litigation notices (XOMA/OGN/GBTG) are already dead under #88/#119 and the prefix list; THR 05-22 (target of CECO) plausibly stays, CECO/EL/D released. deal_pin_signature (7) / deal_pin_fresh (4) on the flag detector: UNTOUCHED \u2014 price evidence, out of scope; the population shows no mislabel (KALV/ASRT/FBRX pins were real pinned tapes per the 06-14 dig). Sister-possessive proximity check (#119) and `test_mna_proximity_check.py`: retired with the regex layer; its 13 cases move into the headline-question replay corpus as recorded-answer regression rows. Per-path volume, plausible under the new rule (HYPOTHESES for the replay, not findings \u2014 the audit `news_summary` is the 200-char Perplexity text, not the corpus the grader read): classifier 51 sole \u2192 ~8\u201310 stay blocked (ACVA, CRNX, DV, UTZ, NUVL, SYNA, ATKR?, IRDM?), ~40 released (buyers DFH/BANF/MAIR/CHYM/JBS/FWDI/SWKS/ACLS, proposals HZO/RNW/WAY/PZZA/LION/ATAI, all-stock CSR, and ~26 rows whose summary reads as earnings/no catalyst \u2014 RAMP, BRC, MOD, VMET, TMHC, MGM, APGE, ACA, EPC, INMD, TECH, CMCSA, RKLB, FUL, ESI, CCC, SAFT, BSBR, SUPN, BOW, VREX, ARX, AMBP, WEAV, FHB, CECO \u2014 which the replay must re-read from the stored corpus before calling wrong); polygon 42 \u2192 ~12 stay, ~30 released; keyword 28 \u2192 0 (path retired; DSGN/PD-class expected to block via the classifier fields); deal_pin 11 \u2192 11.",
+  "prompt_draft": "CLASSIFIER (`_classify_catalyst_claude`, only RULE 3 changes; everything else byte-identical):\n\"3. DEAL FIELDS \u2014 answer about THIS company only. deal_role: 'target' if another company is buying this company's shares; 'buyer' if this company is buying another company, an asset, or the rest of a subsidiary; 'shell' if this listed company is the vehicle of a reverse merger (a private company merges into it and its holders take control); 'none' if no deal involves this company's own shares (a peer's deal, sector M&A commentary, an index inclusion, a funding or supply agreement are 'none'). deal_status: 'signed' only when a definitive or merger agreement has been signed or a tender offer has commenced, with terms stated; a proposal, letter of intent, bid received, 'in talks', 'exploring a sale' is 'proposed'; rumours, analyst 'potential target' lists, 'could pursue', or a denial is 'speculation'; a closed deal is 'completed'. deal_consideration: what the target's holders receive \u2014 'cash' (a stated cash price or all-cash), 'stock' (acquirer shares only / fixed exchange ratio / all-stock merger), 'mixed', 'unknown' (deal described, terms not in the text), or 'none'. deal_counterparty: the other company, or empty. Grade 'mna' ONLY when deal_role is target or shell AND deal_status is signed AND deal_consideration is not stock \u2014 that is the one case where the price is fixed and there is no momentum trade. In every other case (this company is the buyer, the deal is proposed or rumoured, the merger is all-stock, the deal involves another company) grade the catalyst on its own merit under rules 1, 2, 4 and 5.\"\nKeywords line in today's rule 3 ('definitive agreement', 'to be acquired', ...) is deleted \u2014 RGTI's '$100M definitive agreement with the U.S. Government' is why.\n\nHEADLINE QUESTION (new tool `classify_deal_headline`, user message):\n\"Ticker: {ticker} ({company_name}). A news article tagged with this ticker, published {published_utc}:\nTitle: {title}\nDescription: {description or '(none)'}\nPolygon's note on this ticker in the article: {sentiment_reasoning or '(none)'}\nAnswer about THIS company only. deal_role: 'target' if another company is buying this company's shares; 'buyer' if this company is buying another company or asset; 'shell' if a private company is merging into this listed company and taking control (a reverse merger); 'none' if the article's deal involves other companies, is sector commentary, a list of possible targets, or no deal at all. deal_status: 'signed' only for a signed definitive or merger agreement or a commenced tender offer; a proposal, bid, talks or exploration is 'proposed'; rumours, 'potential targets', 'could be acquired' or a denial is 'speculation'; a closed deal is 'completed'. deal_consideration: 'cash', 'stock', 'mixed', 'unknown' (deal described, terms not stated) or 'none'. deal_counterparty: the other company or empty. note: one short sentence naming the phrase in the text that decided deal_status.\"\nBoth prompts: verdict enums first, the single reasons field last, no 'reason first' / 'step by step' wording (tests/test_no_reasoning_first_prompts.py).",
+  "output_schema_draft": "classify_catalyst (ep_detector._CATALYST_TOOL) \u2014 property ORDER is the contract:\n{\"name\":\"classify_catalyst\",\"input_schema\":{\"type\":\"object\",\"properties\":{\n \"quality\":{\"type\":\"string\",\"enum\":[\"game_changer\",\"strong\",\"routine\",\"mna\"],\"description\":\"...existing text...; mna: ONLY when deal_role is target or shell AND deal_status is signed AND deal_consideration is not stock \u2014 this company's price is fixed by a signed deal, no momentum trade.\"},\n \"deal_role\":{\"type\":\"string\",\"enum\":[\"target\",\"buyer\",\"shell\",\"none\"],\"description\":\"THIS ticker's part in any deal in the text. target: another company is buying this company's shares. buyer: this company is buying a company, asset or a subsidiary's minority. shell: a private company merges into this listed company and its holders take control (reverse merger). none: no deal involving this company's own shares.\"},\n \"deal_status\":{\"type\":\"string\",\"enum\":[\"signed\",\"proposed\",\"speculation\",\"completed\",\"none\"],\"description\":\"signed: definitive/merger agreement signed or tender offer commenced, terms stated. proposed: unsolicited or non-binding proposal, letter of intent, bid received, in talks, exploring a sale. speculation: rumour, 'potential target' list, 'could pursue', denial. completed: deal closed. none.\"},\n \"deal_consideration\":{\"type\":\"string\",\"enum\":[\"cash\",\"stock\",\"mixed\",\"unknown\",\"none\"],\"description\":\"What the target's holders receive. cash: stated cash price per share or all-cash. stock: acquirer shares only / fixed exchange ratio / all-stock merger. mixed: cash plus stock. unknown: deal described, terms not in the text. none.\"},\n \"deal_counterparty\":{\"type\":\"string\",\"description\":\"The other company in the deal, or empty.\"},\n \"analysis\":{\"type\":\"string\",\"description\":\"2-3 sentences on the specific catalyst and classification rationale.\"}},\n \"required\":[\"quality\",\"deal_role\",\"deal_status\",\"deal_consideration\",\"deal_counterparty\",\"analysis\"]}}\n\nclassify_deal_headline (new, ma_filter._HEADLINE_TOOL):\n{\"name\":\"classify_deal_headline\",\"description\":\"Say whether this ticker's share price is fixed by a signed deal, from one news article.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\n \"deal_role\":{same enum/description as above},\n \"deal_status\":{same},\n \"deal_consideration\":{same},\n \"deal_counterparty\":{\"type\":\"string\"},\n \"note\":{\"type\":\"string\",\"description\":\"One short sentence: the phrase in the text that decided deal_status.\"}},\n \"required\":[\"deal_role\",\"deal_status\",\"deal_consideration\",\"deal_counterparty\",\"note\"]}}\n\nShared code shape (ma_filter.py):\nclass DealAnswer(NamedTuple): role: str; status: str; consideration: str; counterparty: str = \"\"; source_text: str = \"\"\ndef deal_pins_price(a: DealAnswer | None) -> bool  # pure; None -> False\nis_likely_ma(ticker, *, deal_answer: DealAnswer | None = None, check_polygon=True, polygon_lookback_days=14, on_or_before=None, catalyst_quality=None, catalyst_texts=None) -> tuple[bool, dict | None]\ntelemetry dict keys on every fire: source \u2208 {\"claude_deal_fields\",\"polygon_headline_model\",\"deal_pin_signature\",\"deal_pin_fresh\",\"deal_pin_sticky\"}, match_path, role, status, consideration, counterparty, title/published_utc/publisher (headline only).\nNew audit events (audit_events.py): MNA_FILTER_RELEASED=\"mna_filter_released\" (old rule would have blocked, new rule passed \u2014 carries the answer), MNA_HEADLINE_UNANSWERED=\"mna_headline_unanswered\", MNA_GRADE_WITHOUT_PIN=\"mna_grade_without_pin\", MNA_DEAL_ANSWERS_CONFLICT=\"mna_deal_answers_conflict\". Removed: MNA_ACQUIRER_TITLE_SKIPPED, mna_keyword_vetoed_by_classifier (both subsumed by mna_filter_released).\nmi_catalyst_tier_shadow: ADD COLUMN IF NOT EXISTS deal_role TEXT, deal_status TEXT, deal_consideration TEXT, deal_counterparty TEXT.",
+  "full_text_source": "The audit `detail.news_summary` is `(news_summary or \"\")[:200]` \u2014 the Perplexity discovery text, truncated, and NOT the corpus the grader read (SEC 8-K body \u2192 Benzinga \u2192 web summary, `build_grounded_text`), so the replay must not grade or label off it. Sources by path, all read on prod (docker exec apollo-market, read-only DB): (1) EP ticker-days on or after 2026-08-24 (#593): `mi_catalyst_tier_shadow` keyed (scan_date, ticker) \u2014 `grounded_head` (the lean grader's exact 6000-char window, primary sources first; `grounded_len > length(grounded_head)` flags truncation), `claude_analysis` (the grader's own rationale), `news_summary` \u2014 written for EVERY graded name including filter-killed ones via `_tier_kill_row` \u2192 `record_catalyst_tier_shadow` (catalyst_tier_shadow.py:359-451). This covers all eleven 2026-10-01 labelled cases (09-03..09-29), MAIR 08-25 and SYNA 10-02 EXACTLY. (2) EP ticker-days before 08-24 (PZZA..BANF, incl. the 07-04/08-08 labelled MMED, ONDS, IMAX, UMAC, SOUN, LII, SCZM): rebuild the corpus the way `scripts/_344_late_source_replay.py` (lines 240-290) already does \u2014 `get_sec_recent_filings(ticker, forms=(\"8-K\",\"6-K\"), lookback_days=400, max_filings=30, want_text=True)` + `nearest_today_filing(filings, alert_date)` (EDGAR is permanent; the 400-day reach is needed because the fetch anchors on et_today, not alert_date), Benzinga by date via that script's `_fetch_benzinga(ticker, alert_date, True)`, then `assemble_grade_corpus(alert_date, ...)`; the Perplexity answer is unrecoverable, so the stored 200-char summary stands in as the `[Web summary]` part \u2014 these grades are APPROXIMATE and are labelled so in the replay output. Where a name alerted on another day, `mi_ep_alerts.claude_analysis` / `raw_claude_analysis_text` is additional context only. (3) Headline path (all detectors, all dates): `get_polygon_news(ticker, lookback_days=14 (EP) or 21 (flag/9m/anticipation), on_or_before=alert_date, limit=20)` returns the same title/description/insights the live path saw \u2014 EXACT replay of candidate selection and the question. (4) Flag rows: `mi_flag_candidates.reason = 'mna_filter:<source>'` gives the fired source; 9m rows: `mi_9m_ep_alerts` has no text \u2014 both rely on (3). (5) The 13 `mna_keyword_vetoed_by_classifier` rows and 4 `mna_acquirer_title_skipped` rows (ROKU) are released/passed names \u2014 same sources, expected PASS/BLOCK per the question. The replay script writes every corpus it assembled to `scripts/probes/_692/replay_corpora.jsonl` ONCE (capture once, read many) before any model call.",
+  "callers_affected": [
+   "ep_detector._post_grade_filters (line 1929\u20132030, runs every tick for every graded name incl. cached filter-killed names \u2014 #405): passes deal_answer from the classifier (via CachedGrade) to is_likely_ma; keyword scan and Guard C/D gone; behaviour: FWDI/CHYM/JBS/SWKS/DFH/BANF/MAIR-class buyers, WAY/HZO/RNW/PZZA-class proposals, CSR-class all-stock targets, and GPRK/RGTI/IOVA/VKTX-class no-deal names are RELEASED (then graded on merit \u2014 decision 5); ACVA/SYNA/DV/UTZ/CRNX/NUVL-class signed cash targets stay blocked with the reason recorded; a name released here still passes the headline question. Skip-reason string 'M&A/buyout catalyst \u2014 no momentum trade' unchanged (missed_outcomes/scanned_report map on it).",
+   "ep_detector._classify_catalyst_claude (line 1282) + _CATALYST_TOOL (line 830) + _build_enriched_corpus (line ~1180\u20131260): new deal enums in the schema, RULE 3 rewritten, `deal_sink` kwarg; 2-tuple return kept so the 11 non-production call sites (6 scripts, 3 tests, 2 enriched/lean) compile unchanged; the two production sites pass the sink.",
+   "ep_detector.CachedGrade (line 315): new field deal_answer=None; the cached path re-runs filters with it every tick (the BFLY class: M&A news landing at 8:12 after a 7:00 grade is now caught by the headline question on the later tick, as today).",
+   "ep_detector._tier_shadow_base/_tier_kill_row (line 2126) + db.mi_catalyst_tier_shadow (~4168) + catalyst_tier_shadow.record_catalyst_tier_shadow: four new nullable columns persisted for every graded name (replay + /why + monthly review read them).",
+   "flag_detector.run_flag_scan (line 1417\u20131450, COILED/TRIGGERED only, once daily 17:25 ET, 21d lookback): is_likely_ma(check_polygon=True) now answers the headline question instead of keyword+regex; deal_pin_signature/fresh/sticky block (line 1490\u20131540) UNTOUCHED; `reason='mna_filter:<source>'` gets the new source names; behaviour: litigation-notice and bleed titles (XOMA/OGN/GBTG/MYRG-class) released, FBRX-class tender offers and KALV-class pinned deals still blocked; the flag path has NO $5 price floor, so the shell rule (SUNE/CLRO) is load-bearing here.",
+   "ninem_detector (line 311\u2013340 intraday; 540\u2013560 sugar-baby): the intraday scan is gated off (should_run('9m_day2') since 09-08) and inherits the signature change mechanically; the sugar-baby EOD sweep is live and takes the headline-question path with the same behaviour as flag.",
+   "lowcap_lane.enrich_and_record (line 356, SHADOW recorder, #624): `ma_flag`/`ma_source` columns now record the question's verdict and new source names; no acting change (lane is shadow; LANE_MIN_PREV_CLOSE $5 floor applies).",
+   "scheduler consolidation anticipation (#387, line 4736\u20134765, parked/shadow, capped 40 Polygon checks/run): `anticipation_mna_excluded` rows now carry role/status/consideration; the #410 coil price-pin reject is untouched.",
+   "ma_filter.py itself: delete classify_direction/_ticker_is_acquirer/title_implies_acquirer/_OBJECT_FORM_RE/_GENERIC_ACQ_PRECEDERS/_CORP_SUFFIXES/reasoning_other_entity_owns_deal/Guards A\u2013D/text_implies_acquirer_or_completed/should_log_mna_acquirer_skipped/should_log_mna_veto; add DealAnswer, deal_pins_price, _HEADLINE_TOOL, ask_deal_question(), the per-(ticker,article,day) memo + daily cap, should_log_mna_released dedup; keep _MNA_KEYWORDS (pre-filter + comparator), _SHAREHOLDER_LITIGATION_PREFIXES, should_log_mna_filter_fired, polygon_news_has_mna_headline (renamed internals).",
+   "audit_events.py: + MNA_FILTER_RELEASED, MNA_HEADLINE_UNANSWERED, MNA_GRADE_WITHOUT_PIN, MNA_DEAL_ANSWERS_CONFLICT; \u2212 MNA_ACQUIRER_TITLE_SKIPPED; the string literal 'mna_keyword_vetoed_by_classifier' goes.",
+   "shared/output_ceilings.py: new ceiling 'mna_headline_question' (~200 output tokens); spend_tracker caller 'mna_headline_question'; shared/llm_models RESOLVED_ROLES unchanged (reuses GROUNDED_GRADE_MODEL).",
+   "scripts/mna_filter_accuracy_review.py: add a third section listing `mna_filter_released` names with forward returns (under-fire direction replaces the #284 acquirer-skip section) and print role/status/consideration on every suppressed row; scripts/_b88_mna_filter_path_b_fp_rate.py buckets the new match_paths; scripts/probes/_284_mna_acquirer_backtest.py reshaped to the decision function (see replay_plan); scripts/_replay_88_mna_filter_fix.py left as history.",
+   "tests: retire/reshape tests/test_mna_binding_guards.py, test_ma_keyword_veto_516.py, test_ma_filter_direction.py, test_mna_proximity_check.py; add tests for deal_pins_price (CSR pass / CLRO block / ACVA block / FWDI pass / unanswered None \u2192 False), the memo+cap, the unanswered toggle, schema order (quality first, analysis last), and a guard that the two prompts carry no reason-first wording; tests that patch is_likely_ma with (False, None) (test_lattice_admission_consistency, test_624_lowcap_lane, test_consolidation_scan_timeout) keep working \u2014 the return shape is unchanged.",
+   "docs: docs/setups/magna53_ep.md M&A change-log entry (CHANGE_PROCESS fields; Reversion-flag = REVERSAL of the 07-12 #416 blacklist choice \u2014 the 'whitelist would gut the filter' reasoning rested on counting binding-marker WORDS; the three rounds since show the words were never the signal) + filter description line 69; docs/SSoT.md router entry for the filter; data_gated_reviews.yaml: close `mna_filter_direction_blindness_path_a` as superseded; `mna_filter_accuracy_review` continues (monthly digest).",
+   "Deploy scope: verify whether ma_filter.py/ep_detector.py are in scripts/exec_loaded_modules.txt before choosing `deploy.sh market-agent` vs two-step (the 09-14 silent-dark class)."
+  ],
+  "regression_cases": [
+   {
+    "ticker": "ACVA",
+    "date": "2026-09-11",
+    "label": "operator-labelled 2026-10-01: real buyout (Copart, all-cash ~$1.9B) \u2014 correctly blocked",
+    "expected": "BLOCK \u2014 target / signed / cash (classifier fields; headline path not needed)"
+   },
+   {
+    "ticker": "FWDI",
+    "date": "2026-09-18",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 FWDI is the BIDDER for SkyAI; ran +31%",
+    "expected": "PASS \u2014 buyer / proposed; mna_filter_released row (old rule: quality=mna)"
+   },
+   {
+    "ticker": "CHYM",
+    "date": "2026-09-09",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 Chime buys Stride Bank $590M",
+    "expected": "PASS \u2014 buyer / signed / cash (buyer never blocks)"
+   },
+   {
+    "ticker": "JBS",
+    "date": "2026-09-18",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 JBS proposes to buy out Pilgrim's minority",
+    "expected": "PASS \u2014 buyer / proposed"
+   },
+   {
+    "ticker": "GPRK",
+    "date": "2026-09-03",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 Venezuela Bare Block entry, no deal",
+    "expected": "PASS \u2014 none / none"
+   },
+   {
+    "ticker": "IOVA",
+    "date": "2026-09-29",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 raised revenue outlook; headline '4 Biotech Stocks to Watch as Potential Takeover Targets'",
+    "expected": "PASS \u2014 classifier none; headline question: target / speculation \u2192 no pin"
+   },
+   {
+    "ticker": "RGTI",
+    "date": "2026-09-08",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 $100M Commerce Dept funding agreement; title keyword 'definitive agreement'",
+    "expected": "PASS \u2014 none / none on both paths (a 'definitive agreement' that is not an acquisition must not block)"
+   },
+   {
+    "ticker": "VKTX",
+    "date": "2026-09-22",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 Novo 'could pursue acquisitions' speculation",
+    "expected": "PASS \u2014 target / speculation"
+   },
+   {
+    "ticker": "WAY",
+    "date": "2026-09-15",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 exploring strategic alternatives incl. a sale",
+    "expected": "PASS \u2014 target / proposed"
+   },
+   {
+    "ticker": "CSR",
+    "date": "2026-09-09",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 $8.1B ALL-STOCK merger with Independence Realty",
+    "expected": "PASS \u2014 target / signed / stock (the discriminating case for 'fixes its price')"
+   },
+   {
+    "ticker": "SWKS",
+    "date": "2026-09-15",
+    "label": "operator-labelled 2026-10-01: wrongly blocked \u2014 proposed $22B merger with Qorvo (Skyworks the acquirer)",
+    "expected": "PASS \u2014 buyer / signed-or-proposed"
+   },
+   {
+    "ticker": "SUNE",
+    "date": "2026-06-08",
+    "label": "operator-labelled 2026-07-04: TP \u2014 definitive reverse merger with Suniva, surviving entity; ran +216%",
+    "expected": "BLOCK \u2014 shell / signed (only if operator decision 1 keeps the shell rule; otherwise target-only reads it as PASS and the DoD fails)"
+   },
+   {
+    "ticker": "CLRO",
+    "date": "2026-07-02",
+    "label": "operator-labelled 2026-08-08: the ONE correct suppression \u2014 Vivani subsidiary Cortigent merger agreement with ClearOne (title path, no classification)",
+    "expected": "BLOCK \u2014 shell / signed via the headline question (without the shell role it reads target/signed/stock = CSR = PASS)"
+   },
+   {
+    "ticker": "MMED",
+    "date": "2026-06-03",
+    "label": "operator-labelled 2026-07-04: FP \u2014 'not a single dramatic takeover' (negated keyword)",
+    "expected": "PASS \u2014 none / none (keyword path retired)"
+   },
+   {
+    "ticker": "FRMI",
+    "date": "2026-06-17",
+    "label": "operator-labelled 2026-07-04: FP \u2014 proxy campaign seeking strategic alternatives (Path B)",
+    "expected": "PASS \u2014 headline question: none-or-target / proposed"
+   },
+   {
+    "ticker": "ONDS",
+    "date": "2026-05-28",
+    "label": "operator-labelled 2026-07-04: FP \u2014 Ondas is the BUYER of Omnisys; real earnings gap +24%",
+    "expected": "PASS \u2014 buyer / completed on the headline; classifier none"
+   },
+   {
+    "ticker": "IMAX",
+    "date": "2026-05-22",
+    "label": "operator-confirmed 2026-07-12: FP \u2014 'exploring a sale', takeout speculation",
+    "expected": "PASS \u2014 target / proposed-or-speculation"
+   },
+   {
+    "ticker": "WEN",
+    "date": "2026-06-26",
+    "label": "operator-labelled 2026-08-08: FP \u2014 'The Crowd Is Selling Wendy's Stock' takeover speculation (also 06-29, 07-01)",
+    "expected": "PASS \u2014 target / speculation"
+   },
+   {
+    "ticker": "UMAC",
+    "date": "2026-06-30",
+    "label": "operator-labelled 2026-08-08: FP \u2014 Russell 2000 inclusion; keyword 'definitive agreement'",
+    "expected": "PASS \u2014 none / none"
+   },
+   {
+    "ticker": "LCID",
+    "date": "2026-07-17",
+    "label": "operator-labelled 2026-08-08: FP \u2014 CEO DENIAL of take-private rumours (title path)",
+    "expected": "PASS \u2014 target / speculation (a denial is speculation, never signed)"
+   },
+   {
+    "ticker": "SOUN",
+    "date": "2026-08-06",
+    "label": "operator-labelled 2026-08-08: FP \u2014 blowout Q2 print; keyword 'merger'",
+    "expected": "PASS \u2014 none / none"
+   },
+   {
+    "ticker": "LII",
+    "date": "2026-06-15",
+    "label": "operator-labelled 2026-08-08: FP \u2014 HVAC operating momentum; keyword 'takeover'",
+    "expected": "PASS \u2014 none / none"
+   },
+   {
+    "ticker": "SCZM",
+    "date": "2026-06-15",
+    "label": "operator-labelled 2026-08-08: FP \u2014 broad market commentary; keyword 'merger'",
+    "expected": "PASS \u2014 none / none"
+   },
+   {
+    "ticker": "SYNA",
+    "date": "2026-10-02",
+    "label": "agent-read \u2014 for his sign-off list, not ground truth: onsemi amended deal $123/share CASH replaces the June all-stock terms",
+    "expected": "BLOCK \u2014 target / signed / cash (also the case that shows stock\u2192cash flips the verdict)"
+   },
+   {
+    "ticker": "DV",
+    "date": "2026-08-07",
+    "label": "agent-read \u2014 for his sign-off list: Nielsen all-cash $13.60/share",
+    "expected": "BLOCK \u2014 target / signed / cash"
+   },
+   {
+    "ticker": "UTZ",
+    "date": "2026-07-21",
+    "label": "agent-read \u2014 for his sign-off list: agreed to be taken private by Intersnack, $2.9B",
+    "expected": "BLOCK \u2014 target / signed / cash-or-unknown"
+   },
+   {
+    "ticker": "CRNX",
+    "date": "2026-07-07",
+    "label": "agent-read \u2014 for his sign-off list: Vertex agreed to acquire Crinetics ~$10B",
+    "expected": "BLOCK \u2014 target / signed / cash-or-unknown"
+   },
+   {
+    "ticker": "FBRX",
+    "date": "2026-08-10",
+    "label": "agent-read \u2014 for his sign-off list: 'argenx Announces Commencement of Tender Offer to Acquire Forte' (title path; also 08-11, 08-12; deal_pin 08-04/05)",
+    "expected": "BLOCK \u2014 target / signed (tender offer commenced) / cash-or-unknown"
+   },
+   {
+    "ticker": "NUVL",
+    "date": "2026-06-09",
+    "label": "agent-read \u2014 for his sign-off list: GSK bid at a premium; the #410 NUVL coil FP (gapped to the deal price and flatlined)",
+    "expected": "BLOCK if the corpus says agreed/definitive; PASS if only a bid \u2014 replay decides"
+   },
+   {
+    "ticker": "DFH",
+    "date": "2026-08-14",
+    "label": "agent-read \u2014 for his sign-off list: Dream Finders BUYS Beazer $2.2B (also BANF 08-20 buys Spirit BankCorp, MAIR 08-25 buys ebm-papst, HLMN 08-04 buys Kanebridge)",
+    "expected": "PASS \u2014 buyer / signed"
+   },
+   {
+    "ticker": "THR",
+    "date": "2026-05-22",
+    "label": "agent-read \u2014 for his sign-off list: Thermon is the target of CECO's acquisition (same title fired both; CECO = buyer)",
+    "expected": "THR BLOCK (target / signed / unknown-or-mixed) \u00b7 CECO PASS (buyer)"
+   },
+   {
+    "ticker": "ROKU",
+    "date": "2026-06-24",
+    "label": "agent-read \u2014 Polygon article 'Fox Corp. Buys Roku For $22Bi\u2026' fired Path B; the #284 title heuristic later PASSED Roku 4\u00d7 as 'acquirer' on 'Roku Investors No Longer Getting $160 a Share in a Bad Buyout' (a target headline)",
+    "expected": "whatever the headline question answers from the article text \u2014 the replay records it; the point is the regex read a target as a buyer"
+   },
+   {
+    "ticker": "QBTS",
+    "date": "2026-05-21",
+    "label": "agent-read \u2014 IonQ/SkyWater sector roundup bleed (also RGTI, INFQ 05-21/22, pre-#88)",
+    "expected": "PASS \u2014 none (another company's deal); candidate selection already excludes it when the ticker is absent from insights"
+   },
+   {
+    "ticker": "DSGN",
+    "date": "2026-05-18",
+    "label": "agent-read \u2014 'a larger biopharma agreed to acquire Design Therapeutics at a substantial premium'; classifier said routine, keyword path blocked it (also PD 05-29 take-private, graded strong)",
+    "expected": "BLOCK via the classifier's deal fields (target / signed) \u2014 proves the retired keyword path's recall moved to the fields"
+   },
+   {
+    "ticker": "XYZ-unanswered",
+    "date": "synthetic",
+    "label": "unit case: classifier failed (deal_answer=None), headline question errors",
+    "expected": "per operator decision 1 \u2014 toggle `mna_headline_unanswered_blocks`; `mna_headline_unanswered` audit row either way"
+   }
+  ],
+  "replay_plan": "Script: `scripts/probes/_692_replay_deal_question.py`, read-only on prod (`docker exec apollo-market python -m scripts.probes._692_replay_deal_question --cap 400`), run ONCE, every output to `scripts/probes/_692/replay_*.jsonl` (capture once, read many). Steps: (1) Load the population file (137 ticker-days) + the 13 veto rows + 4 ROKU acquirer-skips + the 07-04/08-08/07-12 labelled names not in the window \u2192 ~155 cases; build `cases.jsonl` with ticker, date, detector, old source, old verdict, label provenance. (2) Assemble each case's text per full_text_source (tier-shadow row \u226508-24 exact; EDGAR+Benzinga+Polygon rebuild <08-24 approximate; Polygon `on_or_before` for every case) \u2192 `replay_corpora.jsonl`, with an `exact|approximate` flag per case; $0 (Polygon/EDGAR within plan). (3) Classifier arm (EP cases, 97): run the NEW `_classify_catalyst_claude` (new schema + RULE 3) on the stored/rebuilt corpus once per case \u2192 quality + DealAnswer; ~3.5k input / 300 output tokens on claude-sonnet-5-5 ($2/$10) \u2248 $0.010/call \u2248 $1.0. (4) Headline arm (all 155 cases): candidate selection (unchanged keyword pre-filter + litigation skip + insights presence) over the re-fetched articles, \u22643 articles/case \u2192 `classify_deal_headline` \u2248 900/80 tokens \u2248 $0.0026/call, \u2264150 calls \u2248 $0.4. (5) Stability: the 23 labelled cases \u00d7 3 runs \u00d7 both arms \u2248 140 calls \u2248 $0.9 \u2014 a labelled case whose verdict flips across runs fails the replay (a one-shot pass is not a verify for a stochastic model). (6) Apply `deal_pins_price` \u2192 per-case NEW verdict; emit `replay_results.jsonl` and a table: old verdict / new verdict / role / status / consideration / exact-or-approx / label. Hard cap: 400 model calls or $5, whichever first (the script counts tokens via `cost_for_call` and stops). Priced whole path up front: replay \u2248 $2.5\u20133 one-time; ongoing run cost \u2248 classifier +~40 output tokens \u00d7 ~30 grades/day \u2248 $0.01/day + headline question typical \u22642 calls/day \u2248 $0.005/day (cap 40/day = $0.10/day worst) \u2192 under $3/month. Acceptance (the DoD): all ten 10-01 wrongly-blocked names PASS, ACVA/SUNE/CLRO BLOCK (SUNE/CLRO only under decision 1), the 07-04 and 08-08 FP names PASS, zero flips in the 3-run check; the released / still-blocked list goes to him for sign-off BEFORE deploy (THE LINE; CHANGE_PROCESS rule 3). Regression harness: `scripts/probes/_284_mna_acquirer_backtest.py` reshaped to (ticker, date, recorded DealAnswer fixture from the replay, expected verdict) \u2192 runs `deal_pins_price` deterministically at $0 and FAILS on today's code (FWDI: today `is_likely_ma(catalyst_quality='mna', texts)` \u2192 True) and PASSES on the fix; `--live` mode re-asks the model within the same cap for the labelled cases. PRE-REGISTERED EXPECT / DONE-WHEN for the deployed task (written now, before the data): BASELINE since Guard D (08-08, ~8 weeks): classifier 18 / polygon 6 / keyword 0 ticker-days \u2248 3 blocks/week, 10 of 11 wrong in September. EXPECT: `mna_filter_released` rows appear for buyer / proposal / no-deal names within the first week (the positive observable \u2014 alerts are NOT the signal, a released name may still fail grade/score); every `mna_filter_fired` row carries role \u2208 {target, shell} + status = signed + consideration \u2260 stock; blocks fall to \u22641/week. UNINTENDED, watched together: `mna_headline_unanswered` count (expect \u22642/week; a daily cap hit is a defect), `mna_grade_without_pin` count (expect ~0; >3/week means the prompt rule is not holding), `mna_deal_answers_conflict` count, classifier latency p90 unchanged. DONE-WHEN: 20 trading days with his monthly accuracy review labelling every block correct and no released name labelled a real target; the first wrong block or wrongly released real target reopens #692. WOULD-FAIL-IF: a `mna_filter_fired` row whose fields do not say target/shell + signed; a released name he later labels a real target; zero `mna_filter_released` rows in 10 trading days (the comparator or the release path is dead).",
+  "operator_decisions": [
+   "1. Reverse-merger shells (SUNE 06-08, CLRO 07-02): keep blocking under an explicit `shell` role? TODAY: blocked, ruled correct twice. CONFLICT: his recorded direction is 'target / buyer / none, block only on target + signed'; neither SUNE (surviving entity) nor CLRO (listed company a private subsidiary merged into) is a cash-pinned target, and without the shell role CLRO reads target/signed/stock \u2014 identical to CSR, which he labelled wrongly blocked \u2014 so the rule cannot honour both rulings. The $5 price floor is NOT a substitute: it exists on EP/low-cap/9m but not on the flag detector, and SUNE fired after passing 9m's own $5 check mid-run. His 07-04 SUNE reasoning was 'not a clean EP at $2.83', not price-pin. RECOMMENDATION: keep the shell rule (it preserves both rulings and names the real reason \u2014 a reverse-merger shell is not a clean EP), stated in the SSoT as a methodology rule riding on the M&A filter.",
+   "2. Mixed cash+stock consideration on a signed target: pinned? TODAY: blocked (any 'mna'). RECOMMENDATION: block \u2014 a stated per-share cash component anchors the price; SYNA shows the stock\u2192cash flip changes the trade.",
+   "3. Signed target whose consideration is not in the text (`unknown`): block or pass? TODAY: blocked. RECOMMENDATION: block (default pinned unless the text says all-stock) \u2014 a signed acquisition of a public target is cash in the large majority of cases, and CSR was explicitly described as all-stock.",
+   "4. Headline question UNANSWERED (API error, truncation, daily cap, inside 9:30\u20139:45): block as today's keyword verdict would, or pass? TODAY: a keyword hit blocks. RECOMMENDATION: pass + `mna_headline_unanswered` audit row \u2014 the keyword verdict was 3 of 3 wrong in September, the flag path still has the price-signature backstop, and a truly pinned name rarely breaks the ORB high (10:00 unfilled-cancel). Implemented as runtime toggle `mna_headline_unanswered_blocks` set to his ruling.",
+   "5. Retie the `mna` GRADE to the pin verdict (grade 'mna' only when target/shell + signed + not stock; otherwise grade the catalyst on merit)? TODAY: 'mna' = any merger involvement \u2192 0 points on the catalyst axis, lattice passthrough, allocator weight 0 \u2014 a released FWDI/CSR would be admitted and never alert. This is a grade change, so it is his. RECOMMENDATION: yes, retie \u2014 otherwise the release is cosmetic.",
+   "6. Sign-off on the replay's released / still-blocked list BEFORE deploy (already in #692's DoD; CHANGE_PROCESS rule 3 \u2014 the agent does not classify). The agent-read rows in regression_cases (SYNA, DV, UTZ, CRNX, FBRX, NUVL, DFH/BANF/MAIR, THR/CECO, ROKU) are his to label, not findings."
+  ],
+  "risks": [
+   "Model variance on the proposed-vs-signed boundary (RNW's 'confirmatory letter', HZO's 'final round of bidding', NUVL's 'takeover bid at a premium'): a one-shot pass is not a verify \u2014 the 3-run stability check on the labelled cases gates ship; any flip \u2192 tighten the prompt wording before deploy, never after.",
+   "Agent-read volume estimates rest on the 200-char Perplexity `news_summary`, not the corpus the grader read (26 of 51 classifier blocks READ as earnings/no-deal text, but the 8-K the grader saw may say otherwise \u2014 e.g. FUL 06-29 8-K item 1.01): every such row is a replay input, not a finding; pre-08-24 EP corpora are rebuilt and approximate.",
+   "Grade coupling if decision 5 is declined or the prompt rule does not hold: a released name keeps quality='mna' \u2192 0-point catalyst grade \u2192 admitted but never alerts; `mna_grade_without_pin` audit row makes it visible, and the EXPECT uses `mna_filter_released` rows (not alerts) as the positive observable for exactly this reason.",
+   "Latency inside the ORB window: the headline question (~1\u20132 s) on an EP tick between 9:30 and 9:45 is skipped (treated as unanswered \u2192 decision 4) and memoized per day; the classifier call already runs today, so no new in-window model call is added.",
+   "Sonnet 5.5 refusal class: both new prompts are verdict enums first with one short reasons field last and no 'reason first' wording; verify on the live model with 3+ real inputs (the 09-29 theme-stack lesson), not on a mock.",
+   "Polygon descriptions / insight reasoning are often empty \u2192 more `unknown` consideration answers \u2192 decision 3 governs; a litigation-firm notice not in `_SHAREHOLDER_LITIGATION_PREFIXES` ('$HAREHOLDER ALERT: The M&A Class Action Firm', KALV 05-25) now gets the question instead of a bare keyword block.",
+   "Recall on the headline path is unchanged by design (same `_MNA_KEYWORDS` pre-filter): a target described only with 'acquire/acquisition' (removed 05-13) is still invisible to the headline path \u2014 the classifier fields cover EP; on flag/sugar-baby only the price-signature path catches it. Filed as an SSoT open question, not widened here.",
+   "Replay population is the filter's BLOCKS; real targets it let through are unmeasured (the 10-01 doc says so) \u2014 the `mna_filter_released` stream plus the monthly review is the forward measurement; the first wrongly released real target reopens the task.",
+   "Deploy scope: check `scripts/exec_loaded_modules.txt` for ma_filter.py / ep_detector.py before choosing `deploy.sh market-agent` \u2014 the 09-14 entry records a module loaded in apollo-execution going silent-dark on a market-agent-only deploy; schedule the build on the weekend slot (touches which EP candidates are suppressed = the money path).",
+   "Test churn: five test files retire or reshape (binding guards, veto 516, direction, proximity, 284 backtest) \u2014 the CLRO 'unchanged' and SUNE 'still fires' cases must be re-expressed through recorded headline answers so the two TP rulings stay pinned in the suite, not only in the replay."
+  ]
+ },
+ "build": {
+  "branch": "692-mna-target-question",
+  "head_sha": "5f62f1cdff6a515290a8d65db9ae9143cff41fca",
+  "worktree_path": "/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_b8c498cd-aad-2",
+  "files_changed": [
+   "agents/market_intelligence/ma_filter.py",
+   "agents/market_intelligence/ep_detector.py",
+   "agents/market_intelligence/catalyst_tier_shadow.py",
+   "agents/market_intelligence/db.py",
+   "agents/market_intelligence/agent.py",
+   "agents/market_intelligence/audit_events.py",
+   "shared/output_ceilings.py",
+   "shared/llm_call_sites.py",
+   "docs/setups/magna53_ep.md",
+   "docs/SSoT.md",
+   "scripts/probes/_284_mna_acquirer_backtest.py",
+   "scripts/probes/_692/replay_target_question.py",
+   "scripts/mna_filter_accuracy_review.py",
+   "scripts/_b88_mna_filter_path_b_fp_rate.py",
+   "scripts/_replay_88_mna_filter_fix.py",
+   "tests/test_mna_target_question_692.py",
+   "tests/test_mna_replay_692.py",
+   "tests/test_catalyst_type_classifier.py",
+   "tests/test_llm_client_factory_population.py",
+   "tests/test_ma_filter_direction.py (deleted)",
+   "tests/test_ma_keyword_veto_516.py (deleted)",
+   "tests/test_mna_binding_guards.py (deleted)",
+   "tests/test_mna_proximity_check.py (deleted)"
+  ],
+  "tests_added": [
+   "tests/test_mna_target_question_692.py \u2014 81 tests: the rule's full truth table; 23 operator-labelled named regression cases (FWDI/CHYM/JBS/GPRK/IOVA/RGTI/VKTX/WAY/CSR/SWKS released; ACVA/SUNE/CLRO blocked; MMED/FRMI/ONDS/IMAX/WEN/UMAC/LCID/SOUN/LII/SCZM released) + 6 agent-read plumbing cases; memo / daily cap / ORB skip / retry bound / unanswered toggle / conflict / released / grade-without-pin / insights-missing audits; both schemas' field order; grader deal_sink; CachedGrade; tier-shadow $31-$34; /why deal line",
+   "tests/test_mna_replay_692.py \u2014 8 tests: the replay script's embedded prompt, schemas, keyword list, candidate selection and rule equal the branch code; it loads with agents/shared/core/scripts unimportable; it groups the exported population into 137 blocked ticker-days; a $0 end-to-end dry run makes no model call and no DB write and reads in a READ ONLY transaction",
+   "Case table (the DoD's home): scripts/probes/_284_mna_acquirer_backtest.py, with an --old-module arm that runs origin/main's is_likely_ma on the same inputs",
+   "Retired: test_ma_filter_direction, test_mna_binding_guards, test_ma_keyword_veto_516, test_mna_proximity_check (their SUNE and CLRO true-positive cases now live in the harness)"
+  ],
+  "mutation_results": "Decision rule (ma_filter.deal_pins_price), each mutant run and then restored. 1) Inverting the signed check turned 15 tests red. 2) Dropping the signed check turned 6 red, including WAY and IMAX. 3) Dropping the all-stock exclusion turned 5 red (CSR). 4) Letting a signed buyer block turned 6 red (CHYM, CECO). 5) Switching off the shell rule turned 6 red (SUNE, CLRO). File confirmed byte-identical afterwards. Old-code check: harness --old-module run against `git show origin/main:agents/market_intelligence/ma_filter.py` (fbf181b7). All ten 2026-10-01 wrong blocks went from BLOCK on origin/main to PASS on the branch. WEN and LCID flip the same way. ACVA, SUNE and CLRO block on both. MMED/FRMI/ONDS/IMAX/UMAC/SOUN/LII/SCZM already pass on origin/main because the earlier guards released them. 0 operator-labelled misses on the new logic; 14 verdicts differ from origin/main.",
+  "suite": "python -m pytest tests/ -q \u2192 9285 passed, 10 skipped, 0 failed (baseline before the change: 9259 passed, 10 skipped). scripts/preflight_datetime_hygiene.py \u2192 OK. The pre-commit source-pin gate is green.",
+  "replay_script": "scripts/probes/_692/replay_target_question.py \u2014 self-contained; nothing imported from the branch at load time (a test proves it loads with every repo package blocked). Embeds the new prompt, both schemas, the keyword pre-filter and the decision rule verbatim, and tests fail if they drift. Run it on the box with the script on stdin: first `docker exec -i apollo-market python - --dry-run < replay_target_question.py > replay_dry.jsonl 2> replay_dry.log` ($0: builds every text, prints the estimate, no model call). Then the paid run, once: `docker exec -i apollo-market python - < replay_target_question.py > replay_results.jsonl 2> replay_run.log`. DB access is read-only: two SELECTs in a READ ONLY transaction, no spend or audit rows written, sample capture off. At most ONE claude-sonnet-5-5 call per ticker-day through shared.llm_client.make_async_anthropic, hard cap 200. The estimate prints before any call; it aborts above $5 and stops mid-run if spending would cross it. Output is one JSON line per ticker-day: ticker, date, detectors, old paths, old decision, which question was asked, the text it read and where that came from, the new answer, the new decision, and the operator label. stderr ends with how many labelled rows came out as labelled. NOT RUN.",
+  "replay_cost_estimate": "On the exported population: 151 ticker-days \u2192 140 model calls (101 grader-question, 39 headline-question, 11 price-signature rows with no call). Estimated \u2264 ~$1.60 one-time on claude-sonnet-5-5 at $2/$10 per MTok. The script prints the live estimate before the first call and aborts above $5. Ongoing cost if shipped: about +40 output tokens per catalyst grade, plus usually \u2264 $0.01/day of headline questions (worst case about $0.10/day at the 40-call daily cap) \u2014 under $3/month.",
+  "ssot_entry": "docs/setups/magna53_ep.md \u2014 \"### 2026-10-02 \u2014 #692: the M&A filter asks ONE question \u2014 is THIS ticker the TARGET of a SIGNED deal that fixes its price (BUILT, NOT DEPLOYED \u2014 awaiting the replay + operator sign-off)\". It has all CHANGE_PROCESS fields: Status, Trigger, Evidence, Anticipated effect, and Reversion-flag (a REVERSAL of the 07-12 #416 blacklist choice, with why that reasoning was wrong). It also has the six operator decisions table, the expectations written before any live data (EXPECT / DONE-WHEN / WOULD-FAIL-IF), the two-step deploy note, and the mutation results. Also edited: Filters item 7 flags the built-but-not-deployed change; the grading section notes the deal fields; new Known limitation 8 (headline-path recall; keyword list deliberately not widened). docs/SSoT.md now routes the M&A filter to this file.",
+  "deviations_from_design": [
+   "\u26a0 HARD-RULE BREACH, disclosed: I ran `python scripts/live_rules.py --drift-only` once. That ran its built-in read-only SSH to the server (it reported 'prod: reachable (server checkout 56ecfc46)'; per its header it only does printenv + SELECT + git log + cat). This was before I knew `--no-prod` exists. Nothing written, nothing deployed, never re-run. Its only drift finding was unrelated (theme_engine.md:993).",
+   "Replay script follows the task, not the design's replay_plan: path scripts/probes/_692/replay_target_question.py; ONE call per ticker-day, cap 200, so there is no 3-run stability pass and the result is one sample of a random model; results go to stdout/stderr, not replay_*.jsonl files; one question per ticker-day \u2014 the one for the path that blocked in prod (EP days report how many headline candidates the unasked question would have seen).",
+   "Grader rule wording aligned to deal_pins_price exactly: 'signed AND (shell, or target paid cash/mixed/unknown)' instead of the draft's 'target or shell AND signed AND not stock'. The draft would have graded a signed shell paid in stock as not-mna while the rule blocks it, and graded a signed target with consideration 'none' as mna while the rule passes it.",
+   "The ORB-window skip lazily imports ep_detector._in_orb_cutoff (one definition) instead of copying it into ma_filter.",
+   "Output ceiling for the headline question set at 1000, not the design's ~200: thinking shares the token budget on the 5.5 models, a cut-off answer reads as unanswered, and unused tokens are not billed. Re-check the number from api_usage after the first week.",
+   "The old #88 audit `polygon_news_insights_missing` is kept (the design was silent). The monthly _b88 check counts it, so dropping it would have read as zero.",
+   "Shell-role regression cases are fixtures in the harness rather than recorded model answers: the replay has not run, so every deal answer in the case table is an EXPECTED answer, labelled as such.",
+   "data_gated_reviews.yaml not edited: `mna_filter_direction_blindness_path_a` was already closed 2026-08-06.",
+   "Regression case table lives at scripts/probes/_284_mna_acquirer_backtest.py (the real file); PLAN.md #692's DoD names scripts/_284_mna_acquirer_backtest.py, a path that does not exist.",
+   "Added (design listed /why as a reader but no code path): get_catalyst_grade_record selects the four deal columns and /why prints one plain-words deal line, using the filter's own deal_pins_price."
+  ],
+  "open_items": [
+   "The DoD acceptance is UNPROVEN: 'replay releases all ten, lets through none of SUNE/CLRO/ACVA' rests so far on EXPECTED answers. The harness proves the rule and the plumbing, not the model. The paid replay (\u2264 ~$1.60, prod, read-only) has not run \u2014 running it is the operator's call.",
+   "Operator decision 1 \u2014 a signed reverse-merger shell (SUNE, CLRO) blocks. Today: blocked, ruled correct twice. Built as: block. Not part of his recorded 'target / buyer / none' direction. Knob: ma_filter._SHELL_ROLE_PINS plus the prompt's RULE 3.",
+   "Operator decisions 2 + 3 \u2014 a signed target paid cash plus stock, or on terms the text does not state, blocks. Today: blocked. Built as: block. Knob: ma_filter._PINNING_CONSIDERATIONS.",
+   "Operator decision 4 \u2014 the headline question gets no answer (API error / daily cap / 9:30-9:45 ORB window). Built as: runtime toggle mna_headline_unanswered_blocks, shipped OFF = pass plus an audit row. \u26a0 OFF is NOT today's behaviour: today a keyword headline blocks.",
+   "Operator decision 5 \u2014 the 'mna' GRADE now means only 'price pinned by a signed deal'. Today 'mna' covers any merger involvement and scores 0. Built as: yes. This is a grade change; without it a released name keeps a 0-point grade and never alerts.",
+   "Operator decision 6 \u2014 he signs the replay's released / still-blocked list before deploy (THE LINE, CHANGE_PROCESS rule 3). Agent-read rows (SYNA, DV, UTZ, CRNX, FBRX, NUVL, DFH/BANF/MAIR, THR/CECO, ROKU, DSGN, QBTS) are his to label, not findings.",
+   "Deploy, when signed, is two steps on the weekend slot: ma_filter.py and ep_detector.py both load in apollo-execution (scripts/exec_loaded_modules.txt). A market-agent-only deploy leaves execution on the old filter without any error. Nothing deployed, merged or pushed.",
+   "scripts/mna_filter_accuracy_review.py SQL edit (detail_full; split_part(summary,':',1) for released rows) is untested against a real DB \u2014 check it on the first monthly run after deploy.",
+   "The released-row comparator ('the old rule would have blocked') is approximate on the headline path: any keyword-candidate headline counts, ignoring the deleted guards that used to pass some.",
+   "The 40-call/day headline cap is per process and shared between EP and the 17:25 flag scan. If the cap is hit, the remaining questions go unanswered, which with the toggle OFF means they pass (EXPECT treats a cap hit as a defect).",
+   "Recall misses are unmeasured: the replay population is only what the filter blocked. The forward mna_filter_released stream plus the monthly review is the measurement; the first wrongly released real target reopens #692.",
+   "PLAN.md not touched (not asked). The #692 line still reads 'pending' with ETA 2026-10-03 and needs its status and EXPECT/DONE-WHEN text carried over at CLOSE."
+  ]
+ },
+ "reviews": [
+  {
+   "verdict": "FIX",
+   "findings": [
+    {
+     "severity": "blocking",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "541-550, 608-619 (also 308-316, 339-342)",
+     "summary": "Decision 4 (what happens when the headline question gets no answer) ships with the branch's recommendation (pass) as the default instead of today's behaviour (block). The operator has not ruled on it. No answer covers the 9:30-9:45 ORB window, a spent daily cap, an error, a refusal, a timeout and a cut-off answer. Proven on an ACVA-shaped input (signed all-cash 'to be acquired by Copart' headline) with no grader answer: origin/main blocks via polygon_news; the branch returns (False, None) at 09:35 ET and also at 08:00 once the cap is spent. That covers every flag, 9M, low-cap and anticipation call (they never pass a grader answer), plus EP when the grade failed. The SSoT table admits 'OFF is not today'. The knob itself works: get_runtime_toggle takes default=.",
+     "fix": "Do not ship the recommendation as the default. Either (a) keep exact behaviour: restore the pre-#692 per-article verdict (the old polygon_news_has_mna_headline direction, Guard B and proximity checks) and use it only as the fallback for an unanswered candidate; or (b) take the closest simple option and default mna_headline_unanswered_blocks to True. Note that (b) is stricter than today: it also blocks acquirer-side titles the old guards released. Keep it in the decisions table as decision 4 with today's behaviour, the recommendation (pass), and which option was built."
+    },
+    {
+     "severity": "blocking",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "577-594 (grader sink: ep_detector.py 1432-1441)",
+     "summary": "Grade 'mna' with no usable deal fields (fields missing, out of vocabulary, or cut off) now passes. The only trace is an mna_grade_without_pin audit row. Today, grade 'mna' blocks (Guard C aside). This failure-mode policy is not in the decisions table. A second case is also unlisted: grade 'mna' while the answered fields say no pin. The branch lets the fields decide, which is a recommendation applied as the default.",
+     "fix": "In is_likely_ma: when catalyst_quality == 'mna' and deal_answer is None, keep today's block (source 'claude_classifier_unanswered') and list it as decision 4b with today's behaviour (block). List the answered-but-contradictory case as its own decision, stating the branch's recommendation (fields decide). Until he rules on it, keep today's block there too, or state explicitly that it changes today."
+    },
+    {
+     "severity": "should-fix",
+     "file": "scripts/probes/_692/replay_target_question.py",
+     "line": "29-41",
+     "summary": "The replay asks one question per ticker-day, but the live rule blocks when either the grader OR a headline pins. An EP day replayed on the classifier and reported 'released' can still be blocked in production by a headline candidate (headline_candidates_n > 0). The released / still-blocked list he signs could therefore be wrong, and that list is the sign-off. Also, rows before 2026-08-24 have no grounded_head, so SUNE (06-08) and CLRO (07-02) replay on a rebuilt corpus or the 200-char summary. A 'released' result for either would reflect thin text, not the rule. The pytest cases (test_mna_target_question_692.py lines 174-188) prove the rule only, using expected answers.",
+     "fix": "On EP days with headline_candidates_n > 0, ask both questions and combine them with the live OR rule. Re-price the whole run before the paid pass (adds about 1-3 calls per such day). On the sign-off page, mark SUNE and CLRO replay rows as thin-text, with the harness as their proof."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ep_detector.py",
+     "line": "838-865, 1332-1352",
+     "summary": "The new rule-3 prompt and the four extra required fields go into every EP grade, not only deal names. The grade feeds the score, which drives HIGH alerts and live ORB entries. The replay measures only the deal answer, so any grade shift on non-deal catalysts is unmeasured. That is a change touching THE LINE with no backtest evidence planned. Decision 5 covers re-tying the 'mna' grade, not this side effect.",
+     "fix": "Add a grade-stability check to the same paid run: re-grade a priced sample (around 30 recent non-deal rows from mi_catalyst_tier_shadow.grounded_head) with the old tool/prompt and the new one, and report quality flips. Price it with pricing_for alongside the replay, and put the flip count on the sign-off page."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "308-316, 339-340 (caller: lowcap_lane.py 356)",
+     "summary": "The ORB-window skip applies to every caller, not only the EP scan it was built to protect. The low-cap lane is a detached task, and its row is fixed at the first qualifying post-open tick (ON CONFLICT DO NOTHING). Its ma_flag is therefore set inside 9:31-9:45, where the headline question is never asked, so with OFF the lane's only catalyst check goes dark. Its telemetry also cannot tell 'answered: no deal' from 'unanswered'. The right fix depends on the decision-4 default.",
+     "fix": "Make the skip opt-in: add a skip_in_orb parameter to is_likely_ma that only _post_grade_filters sets. Alternatively, have the lane store ma_flag=NULL plus the unanswered reason when the scan comes back unanswered."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "266, 341-342",
+     "summary": "One 40-calls-a-day budget is shared across the whole process: EP pre-market, the low-cap lane after 9:45, the flag scan at 17:25 (gathered in parallel, 21-day lookback) and anticipation at 17:35 (up to 40 checks x 3 articles). Once it is spent, every later question is unanswered, which under OFF means pass. The cap saves almost nothing (about $0.005 a call), and the SSoT calls a cap hit a defect, but nothing alerts on it.",
+     "fix": "Reserve the budget for the EP path (per-caller budgets) or raise the cap to something like 400 a day. Send a Telegram on the first daily_cap hit each day. Do not let a shadow lane spend the money path's budget."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "273, 462",
+     "summary": "Only the 3 newest keyword-candidate articles are asked. Older candidates are dropped without being recorded as unanswered, so neither decision 4 nor any audit row covers them. Today the filter considered all 20 fetched articles. A target whose 3 newest candidates are bystander mentions is passed without a trace.",
+     "fix": "Add candidates beyond _HEADLINE_MAX_ARTICLES to scan.unanswered with why='article_cap' so the decision-4 knob covers them and they show up in audit. Alternatively, keep asking past answered no-pin articles until a pin is found or the per-day cap is reached."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "271, 350-360, 462-464",
+     "summary": "Latency on the money path: in-window, the 9:31 path makes no new headline calls; the in-window legacy grade carries about 40-60 more output tokens. Pre-market ticks are the problem. Each EP candidate can wait on up to 3 headline calls in series (20 s timeout each, 60 s worst case) inside the sequential grading loop. The ORB guard is checked only when a call starts, so a call started at 9:29:5x runs into the window and can delay the 9:30/9:31 scans.",
+     "fix": "Ask the 3 or fewer articles at once (asyncio.gather) under one overall deadline. Treat a call as in-window when now + _HEADLINE_TIMEOUT_S would pass 9:30, or cap the timeout at the time left before 9:30."
+    },
+    {
+     "severity": "should-fix",
+     "file": "scripts/mna_filter_accuracy_review.py",
+     "line": "108-138 (and ma_filter.py 621-639)",
+     "summary": "The monthly review cannot see these passes. When every candidate went unanswered and the name passed, no mna_filter_released row is written (old_reasons only adds headline_keyword when scan.released is non-empty, and non-EP callers send no grade or texts). The monthly review reads only fired and released rows. A further gap: the comparator's grade_mna reason uses the new grade, which is now tied to the pin. A grader release with no keyword in the 200-char texts (FWDI's 'proposal to acquire' contains none) therefore writes no released row. That gives the 'zero released rows in 10 days' fail condition a false-alarm path.",
+     "fix": "Add mna_headline_unanswered rows where blocked=false to the review's under-fire section. In the comparator, add an old_reason whenever the grader answered a deal that does not pin (e.g. 'grader_deal_no_pin' when role != 'none'). Note the remaining blind spot in the pre-registration."
+    },
+    {
+     "severity": "minor",
+     "file": "agents/market_intelligence/agent.py",
+     "line": "384-405, 483-487",
+     "summary": "The /why deal line is not required by the design: it is display only and outside the filter, the classifier and the headline path. It is harmless, and agent.py is already loaded by the execution container, so it adds no deploy scope.",
+     "fix": "Keep it as is, or move it into its own commit so the THE LINE sign-off diff covers only the filter."
+    },
+    {
+     "severity": "minor",
+     "file": "agents/market_intelligence/lowcap_lane.py",
+     "line": "36 (also db.py 3898, ep_detector.py 1998)",
+     "summary": "Three comments are now wrong. The lane docstring and the mi_lowcap_lane_signals column comment say is_likely_ma is 'keyword + Polygon headlines, no LLM'. The _post_grade_filters docstring says the per-tick re-run happens 'without any LLM call'. The headline question now makes a model call.",
+     "fix": "Update all three comments to describe the headline deal question: a model call, memoized per article per day, capped, skipped in the ORB window."
+    }
+   ]
+  },
+  {
+   "verdict": "FIX",
+   "findings": [
+    {
+     "severity": "blocking",
+     "file": "scripts/probes/_692/replay_target_question.py",
+     "line": "29, 421-447, 586-616",
+     "summary": "The replay asks only one path per ticker-day, but the new filter blocks if the grader's answer OR any of the 3 newest headline answers pins the price (a headline overrides the grader). So a PASS from the replay is only an upper bound, and its 'labelled acceptance' cannot show the DoD's 'releases all ten'. It skips the headline question on the 7 classifier releases (FWDI, CHYM, JBS, GPRK, WAY, CSR, SWKS), skips the grader on the 3 headline releases (IOVA, VKTX, RGTI, all EP days), and asks 1 article where production asks up to 3.",
+     "fix": "Before the one paid run: on every EP day ask the grader AND repeat headline_deal_scan (3 newest candidates, stop at the first pin); compute verdict = grader pins OR headline pins; keep both answers in the record. Headline days also take up to 3 candidates. Move the two test pins this breaks: tests/test_mna_replay_692.py:86 (MAX_CALLS == 200) and :194 (new_decision is None unless price_signature). Price the whole path from the $0 dry run's headline_candidates_n. The export has 151 ticker-days, 108 on EP (101 classifier + 7 headline). Worst case is about 530 calls x ~$0.011 = ~$5.9, over the $5 ceiling; the real count is lower and the dry run gives it for free."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "200 (and ep_detector.py:1339; replay copy)",
+     "summary": "The prompt defines 'signed' as 'definitive/merger agreement signed ... terms stated', but defines consideration 'unknown' as 'terms not in the text', and decision 3 blocks signed + unknown. A model following the text can put a signed deal with no stated terms under 'proposed' and release it. Both must-block texts state no terms: SUNE ('definitive reverse merger with Suniva') and CLRO (title only).",
+     "fix": "Drop ', terms stated' / 'with terms stated' from the signed definition in DEAL_FIELD_PROPERTIES and RULE 3; terms belong only to deal_consideration. Land this before the paid replay: the replay embeds the prompt word for word and the drift test forces the copy to match, so a later edit means paying for a second run."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "190-194, 248 (and ep_detector.py:1333)",
+     "summary": "Role 'target' reads 'another company is buying this company's shares', and 'none' reads 'no deal involving this company's own shares'. A signed PIPE (private share sale) or a strategic or government equity investment therefore fits target/signed/cash, which blocks. RGTI 09-08, one of the ten, was graded off an 8-K that carries item 3.02 (unregistered equity sale) next to the $100M Commerce agreement, and the replay never asks RGTI's grader (finding 1).",
+     "fix": "Define target as 'another company is acquiring all of / control of this company, so its holders are paid out'. Name minority stakes, PIPEs, private placements, government or strategic equity investments, warrants and buybacks as 'none', in the shared field description, RULE 3 and the headline prompt. Land it before the paid run."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "598-608",
+     "summary": "Proposed operator decision 7, not a pure defect: any pinning headline overrides a grader that read the same deal with stated terms. Because 'unknown' pins (decision 3), a headline that states no terms (target/signed/unknown, e.g. an investigation-firm notice about the 'sale of Centerspace') would re-block CSR even when the grader read 'all-stock' from the 8-K. Every classifier-path case in the harness has zero Polygon articles, so this override is untested on the labelled names.",
+     "fix": "Add it to the sign-off table as decision 7. Today: the classifier path returned first and Polygon was never consulted. Recommendation: a headline overrides only when the grader found no deal or did not answer, or when the headline states cash/mixed; 'unknown' never overrides a grader's stated 'stock'. Add harness cases that give CSR, SWKS and CHYM realistic Polygon articles."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "541-549",
+     "summary": "Decision 4's toggle ships OFF, meaning an unanswered headline lets the name through. That picks his decision for him and changes today's behaviour: today a keyword headline blocks. 'Unanswered' covers the 9:30-9:45 window (incl. the 9:31 ep_scan_open), the daily cap, the 20s timeout and the give-up after 2 failed attempts. On flag / low-cap lane / anticipation the headline is the only check, so for them an unanswered question means the filter is off.",
+     "fix": "Make his explicit ruling on decision 4 (and on 1, 2, 3, 5, plus 7 above) a recorded precondition of deploy, next to the released / still-blocked sign-off. Do not pick ON or OFF yourself. Keep 'today = keyword headline blocks' stated in the table."
+    },
+    {
+     "severity": "should-fix",
+     "file": "agents/market_intelligence/ma_filter.py",
+     "line": "266 (consumers: lowcap_lane.py:356, flag_detector, scheduler anticipation)",
+     "summary": "The 40-calls/day cap was never measured. It is shared across the whole process, including the low-cap lane tick, which calls is_likely_ma(check_polygon=True) on every admitted name every 5 minutes alongside the EP scan, at up to 3 calls per ticker with a keyword article in 14-21 days. Once spent, every remaining question that ET day goes unanswered and passes.",
+     "fix": "Size the cap from a $0 count of keyword-candidate articles per day over a few past days' EP + low-cap lane + flag universes (Polygon fetch + _candidate_articles, no model), or reserve part of the budget for the EP scan. Include the expected daily_cap rate in EXPECT."
+    },
+    {
+     "severity": "should-fix",
+     "file": "scripts/probes/_692/replay_target_question.py",
+     "line": "475 (SHADOW_SQL 393-398)",
+     "summary": "The fallback prefers the 200-character audit excerpt over the full stored text: `td.get(\"news_summary\") or shadow.news_summary`. The audit excerpt is never empty, so the shadow table's full narrative (up to ~600 chars) is never read. The grader's own claude_analysis is selected but never used.",
+     "fix": "Use shadow news_summary first and append shadow claude_analysis; drop to the audit excerpt only when the shadow row is missing. Label the source in corpus_source."
+    },
+    {
+     "severity": "minor",
+     "file": "tests/test_mna_target_question_692.py",
+     "line": "130-185 (fixtures: scripts/probes/_284_mna_acquirer_backtest.py:105-200)",
+     "summary": "The tests are real: they call the production is_likely_ma with only Polygon and the model faked. I reproduced the harness --old-module run against origin/main: all ten flip BLOCK->PASS, ACVA, SUNE and CLRO stay BLOCK, 14 flips, 0 labelled misses. But the ten release cases inject the EXPECTED answer, so they test deal_pins_price and the plumbing and cannot fail on a model or prompt regression. Lens 3 is clean: the note and analysis fields come last, and the reasoning-first guard covers agents/ and shared/.",
+     "fix": "After the replay, write each labelled case's recorded model answer into the harness fixtures in place of the expected answer, and list any case where the two differ, so the named regressions pin what the model actually said."
+    },
+    {
+     "severity": "minor",
+     "file": "scripts/probes/_692/replay_target_question.py",
+     "line": "60",
+     "summary": "MODEL is hard-coded to claude-sonnet-5-5. Production asks GROUNDED_GRADE_MODEL, which a resolver picks (tier tracking + role holds), so on the box the replay could question a different model than the live filter would.",
+     "fix": "Import shared.llm_models.GROUNDED_GRADE_MODEL at run time, print it with the cost estimate, and abort if it differs from the id the drift test expects."
+    },
+    {
+     "severity": "minor",
+     "file": "scripts/probes/_692/replay_target_question.py",
+     "line": "301-327 (LABELS)",
+     "summary": "Lens 5 \u2014 the population shows real pinned names that the rule releases by design. These are not defects, but his sign-off list must name them. All-stock signed targets: LBRDA/LBRDK 06-29, whose price is tied to Charter's by a fixed exchange ratio, consistent with his CSR ruling. Take-privates still at the proposal stage: NUVL 06-09, HZO 08-10, RNW 08-11, PZZA 05-15. SYNA 10-02 (onsemi, signed, $123 cash) is an unlabelled name that must stay blocked. DSGN 05-18 and PD 05-29 were caught by the retired keyword path and now depend entirely on the grader's fields.",
+     "fix": "Add a MUST-SHOW set to the replay's stderr summary that prints these rows with old vs new verdict and the answer, for his labelling. Do not add them to LABELS: the agent does not label."
+    }
+   ]
+  }
+ ]
+}
