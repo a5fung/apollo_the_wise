@@ -291,7 +291,11 @@ async def main() -> int:
     # against the LIVE resolution — a mislabeled record would corrupt that check.
     actual_model = model_override or _JUDGE_MODEL_DEFAULT
 
-    client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    # The SAME transport production uses (2026-10-03): claude-opus-5-5 rejects a forced tool_choice
+    # (400), and the live judge reaches the model through the shared adapter, which rewrites it.
+    # A raw client here failed every case on that 400 — testing the harness, not the judge.
+    from shared.llm_client import make_async_anthropic
+    client = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     print(f"Eval: {len(cases)} cases | model={actual_model} | rubric={RUBRIC_VERSION} ({RUBRIC_HASH}) "
           f"| corpus={corpus['_meta']['corpus_version']}", flush=True)
 
