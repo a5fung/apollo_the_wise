@@ -1,0 +1,150 @@
+=== MODULE IDENTITY (the live code this run measured) ===
+  anticipation: /app/agents/market_intelligence/anticipation.py
+  COIL_HOLD_LIMIT=0.5  find_coil_setup sha1=3de4323e444c
+
+=== 0. POPULATION COMPOSITION (read this first — a surprising trait is an alarm) ===
+  rows 334 · settled (outcome + realized_r) 315 · entry_date 2026-06-18 .. 2026-10-01 · latest bar seen 2026-10-02
+  origin     mode        stop            rows  settled  pre-06-29  entry span               median R
+  9m         anticipate  coiled_low        11       11          9  2026-06-18..2026-07-02      -1.00
+  9m         anticipate  structural_low     3        3          0  2026-07-17..2026-08-07      +0.62
+  9m         confirm     base_low          10        8          4  2026-06-26..2026-09-18      -0.35
+  family_a   anticipate  coiled_low       110      108         88  2026-06-18..2026-07-10      -1.00
+  family_a   anticipate  structural_low    46       46          0  2026-07-14..2026-08-07      -1.00
+  family_a   confirm     base_low         154      139         98  2026-06-22..2026-10-01      +0.07
+  outcome: {'capture': 65, 'stop': 164, 'open': 86, 'unsettled': 19}
+  regime_at_entry (settled): {'NULL': 222, 'Choppy': 25, 'Correcting': 35, 'Crisis': 3, 'Bull': 30}
+  would_pass_quality (settled): {'None': 222, 'True': 77, 'False': 16}
+  ALARM: 1 rows have stop >= entry (no risk): APGE 2026-06-29
+  excluded from the tune: origin '9m' (22 settled — composition only); entries before 2026-06-29 (pre-coil-finder base) (198 settled)
+  R = realized_r (the settled R /anticipation reports; legacy 5-day harvest horizon); realized_r_h12 (12-bar) is not used.
+
+  TUNE COHORT: 108 settled family_a rows from 2026-06-29 (primary gate N >= 20: MET)
+
+=== 1-3. TABLES PER POPULATION (entry modes are never blended; POOLED is the pooling check) ===
+
+--- confirm/base_low ---
+  fidelity [confirm/base_low]: 41 rows · skipped 0 · no coil on recompute 0 · anchor mismatch 0 (0%) · recomputed retrace > 50%: 0 · NULL-open gap days dropped 0
+
+  3a HOLD CAP — confirm/base_low  (retrace = give-back of the runup leg, live find_coil_setup)
+     cap    admitted  median R  win rate
+     40%          26     -0.73       23%
+     50%          41     -0.38       32%  <- live
+     60%          41     -0.38       32%
+     note: 0 rows sit above the live 50% cap. Names that gave back more than 50% were never admitted, so never fired: the widen side (60%) cannot be measured from fired rows.
+  VERDICT 3a [confirm/base_low]: KEEP — keep 50% (no eligible cell beats its median -0.38R)
+
+  3b RANK ORDERING — confirm/base_low  (keys as of the bar before entry; Spearman vs settled R)
+     ordering                     rho
+     (i) incumbent               +0.098
+     (ii) rmv-led                -0.233
+     (iii) streak-led            +0.196
+     (iv) orderliness-demoted    -0.054
+  VERDICT 3b [confirm/base_low]: KEEP — keep incumbent (best challenger (iii) streak-led rho +0.196 vs +0.098, gap +0.098 < 0.15)
+
+  3c ORDERLINESS — confirm/base_low  (P95 overnight gap over the base ÷ ATR14%; Q4 = gappiest)
+     scored 41 of 41 (unscored: too few usable gap days or no ATR)
+     quartile  N    score range      median R  win rate
+     Q1        11  0.19–0.37           +0.03       55%
+     Q2        10  0.39–0.50           -0.41       20%
+     Q3        10  0.52–0.65           -0.77       10%
+     Q4        10  0.66–2.39           -0.08       40%
+  VERDICT 3c [confirm/base_low]: NO-DEMOTE — gappiest quartile median -0.08R vs rest -0.40R (gap -0.31R < 0.5) -> display only (Phase 1)
+
+--- anticipate/coiled_low ---
+  fidelity [anticipate/coiled_low]: 21 rows · skipped 0 · no coil on recompute 0 · anchor mismatch 0 (0%) · recomputed retrace > 50%: 0 · NULL-open gap days dropped 0
+
+  3a HOLD CAP — anticipate/coiled_low  (retrace = give-back of the runup leg, live find_coil_setup)
+     cap    admitted  median R  win rate
+     40%          21     -1.00       24%
+     50%          21     -1.00       24%  <- live
+     60%          21     -1.00       24%
+     note: 0 rows sit above the live 50% cap. Names that gave back more than 50% were never admitted, so never fired: the widen side (60%) cannot be measured from fired rows.
+  VERDICT 3a [anticipate/coiled_low]: KEEP — keep 50% (no eligible cell beats its median -1.00R)
+
+  3b RANK ORDERING — anticipate/coiled_low  (keys as of the bar before entry; Spearman vs settled R)
+     ordering                     rho
+     (i) incumbent               -0.070
+     (ii) rmv-led                -0.180
+     (iii) streak-led            +0.020
+     (iv) orderliness-demoted    -0.052
+  VERDICT 3b [anticipate/coiled_low]: KEEP — keep incumbent (best challenger (iii) streak-led rho +0.020 vs -0.070, gap +0.090 < 0.15)
+
+  3c ORDERLINESS — anticipate/coiled_low  (P95 overnight gap over the base ÷ ATR14%; Q4 = gappiest)
+     scored 21 of 21 (unscored: too few usable gap days or no ATR)
+     quartile  N    score range      median R  win rate
+     Q1         6  0.01–0.14           -1.00       33%
+     Q2         5  0.15–0.29           +0.00       20%
+     Q3         5  0.31–0.41           -1.00       20%
+     Q4         5  0.42–0.86           -0.08       20%
+  VERDICT 3c [anticipate/coiled_low]: INSUFFICIENT — top N=5, rest N=16 (need 10 each) -> unchanged
+
+--- anticipate/structural_low ---
+  fidelity [anticipate/structural_low]: 46 rows · skipped 0 · no coil on recompute 0 · anchor mismatch 0 (0%) · recomputed retrace > 50%: 0 · NULL-open gap days dropped 0
+
+  3a HOLD CAP — anticipate/structural_low  (retrace = give-back of the runup leg, live find_coil_setup)
+     cap    admitted  median R  win rate
+     40%          37     -1.00       38%
+     50%          46     -1.00       37%  <- live
+     60%          46     -1.00       37%
+     note: 0 rows sit above the live 50% cap. Names that gave back more than 50% were never admitted, so never fired: the widen side (60%) cannot be measured from fired rows.
+  VERDICT 3a [anticipate/structural_low]: KEEP — keep 50% (no eligible cell beats its median -1.00R)
+
+  3b RANK ORDERING — anticipate/structural_low  (keys as of the bar before entry; Spearman vs settled R)
+     ordering                     rho
+     (i) incumbent               -0.184
+     (ii) rmv-led                +0.012
+     (iii) streak-led            -0.072
+     (iv) orderliness-demoted    -0.266
+  VERDICT 3b [anticipate/structural_low]: ADOPT (ii) — adopt (ii) rmv-led (rho +0.012 vs incumbent -0.184, gap +0.196)
+
+  3c ORDERLINESS — anticipate/structural_low  (P95 overnight gap over the base ÷ ATR14%; Q4 = gappiest)
+     scored 46 of 46 (unscored: too few usable gap days or no ATR)
+     quartile  N    score range      median R  win rate
+     Q1        12  0.02–0.25           -1.00       33%
+     Q2        11  0.27–0.37           -0.16       36%
+     Q3        12  0.38–0.47           -1.00       25%
+     Q4        11  0.47–0.90           +0.98       55%
+  VERDICT 3c [anticipate/structural_low]: NO-DEMOTE — gappiest quartile median +0.98R vs rest -1.00R (gap -1.98R < 0.5) -> display only (Phase 1)
+
+--- POOLED family_a (all modes) ---
+  fidelity [POOLED family_a (all modes)]: 108 rows · skipped 0 · no coil on recompute 0 · anchor mismatch 0 (0%) · recomputed retrace > 50%: 0 · NULL-open gap days dropped 0
+
+  3a HOLD CAP — POOLED family_a (all modes)  (retrace = give-back of the runup leg, live find_coil_setup)
+     cap    admitted  median R  win rate
+     40%          84     -1.00       30%
+     50%         108     -0.48       32%  <- live
+     60%         108     -0.48       32%
+     note: 0 rows sit above the live 50% cap. Names that gave back more than 50% were never admitted, so never fired: the widen side (60%) cannot be measured from fired rows.
+  VERDICT 3a [POOLED family_a (all modes)]: KEEP — keep 50% (no eligible cell beats its median -0.48R)
+
+  3b RANK ORDERING — POOLED family_a (all modes)  (keys as of the bar before entry; Spearman vs settled R)
+     ordering                     rho
+     (i) incumbent               -0.061
+     (ii) rmv-led                -0.066
+     (iii) streak-led            +0.030
+     (iv) orderliness-demoted    -0.080
+  VERDICT 3b [POOLED family_a (all modes)]: KEEP — keep incumbent (best challenger (iii) streak-led rho +0.030 vs -0.061, gap +0.091 < 0.15)
+
+  3c ORDERLINESS — POOLED family_a (all modes)  (P95 overnight gap over the base ÷ ATR14%; Q4 = gappiest)
+     scored 108 of 108 (unscored: too few usable gap days or no ATR)
+     quartile  N    score range      median R  win rate
+     Q1        27  0.01–0.27           -1.00       37%
+     Q2        27  0.27–0.40           -1.00       30%
+     Q3        27  0.40–0.54           -0.45       30%
+     Q4        27  0.55–2.39           -0.17       33%
+  VERDICT 3c [POOLED family_a (all modes)]: NO-DEMOTE — gappiest quartile median -0.17R vs rest -0.68R (gap -0.51R < 0.5) -> display only (Phase 1)
+
+=== 4. TOP-5 BOARD COMPOSITION DELTA (today's 🪙 Coiling section, re-sorted) ===
+  77 coiled candidates (last_eval 2026-06-26..2026-10-02); gappy cut = the lowest score in the POOLED settled Q4 (0.55). The live query also applies LIMIT 25 across both states before splitting; this re-sort uses the full coiled set.
+  (i) incumbent              CRNX DV MKTX NUVL NUVL
+  (ii) rmv-led               CRNX NUVL BWIN ITGR FBRX   (+BWIN,ITGR,FBRX / −DV,MKTX)
+  (iii) streak-led           CRNX DV MKTX NUVL NUVL   (+– / −–)
+  (iv) orderliness-demoted   CRNX DV MKTX NUVL NUVL   (+– / −–)
+
+=== 5. KNOB VERDICTS (per-knob honesty: a decisive cell N < 10 -> unchanged) ===
+  KNOB 3a HOLD CAP: NO CHANGE — voting: anticipate/coiled_low, anticipate/structural_low, confirm/base_low
+      POOLED verdict: KEEP · POOLING CHANGES VERDICT: no
+  KNOB 3b RANK ORDERING: SPLIT — populations disagree -> operator ruling: anticipate/coiled_low=KEEP; anticipate/structural_low=ADOPT (ii); confirm/base_low=KEEP
+      POOLED verdict: KEEP · POOLING CHANGES VERDICT: yes
+  KNOB 3c ORDERLINESS demotion: NO CHANGE — voting: anticipate/structural_low, confirm/base_low · not voting (N below the gate): anticipate/coiled_low
+      POOLED verdict: NO-DEMOTE · POOLING CHANGES VERDICT: no
