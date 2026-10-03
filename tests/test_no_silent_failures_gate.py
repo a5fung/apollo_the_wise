@@ -1,17 +1,18 @@
-"""Regression lock for the swallow-a-failure gate (#381).
+"""Regression lock for the swallow-a-failure gate (#381, zero-tolerance since #466).
 
 The deploy/pre-commit gate (`preflight_no_silent_failures`) must CATCH a broad+silent
 except — the FMP-403 (#380) / theme-shadow-0-rows (#173) class — honor the `# loud-ok`
 escape, and leave genuine control-flow (narrow excepts, loud handlers, re-raises)
-alone, so a green gate means clean, not blind. The last test locks the committed
-baseline in sync with the live scan (the ratchet must not silently drift up).
+alone, so a green gate means clean, not blind. Since #466 there is NO baseline: the
+live tree must scan to zero, and the gate (`main`) must exit 1 on a single new
+unmarked swallow in ANY in-scope file — proven below against a throwaway tree.
 """
 import ast
-import json
 from pathlib import Path
 
+from scripts import preflight_no_silent_failures as gate
 from scripts.preflight_no_silent_failures import (
-    SilentFailureVisitor, _is_broad, _scan, _counts, BASELINE_PATH,
+    SilentFailureVisitor, _is_broad, _scan, main,
 )
 
 
@@ -83,18 +84,75 @@ def test_is_broad_classifies():
     assert _is_broad(_handler("try:\n x\nexcept (ValueError, TypeError):\n pass")) is False
 
 
-# ── the committed baseline stays in sync (the ratchet cannot drift up) ───────
+# ── zero-tolerance (#466): the live tree is clean and nothing can be allowance-listed ──
 
-def test_committed_baseline_not_exceeded():
-    """Live scan must not EXCEED the committed baseline anywhere — the gate's exact
-    deploy contract. A new swallow added without remediation (or a baseline never
-    regenerated after one) fails here, in CI, before it ever reaches prod."""
-    repo_root = Path(__file__).resolve().parent.parent
-    violations, _ = _scan(repo_root)
-    live = _counts(violations)
-    baseline = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))["per_file"]
-    offenders = {rel: n for rel, n in live.items() if n > baseline.get(rel, 0)}
-    assert not offenders, (
-        f"NEW broad+silent swallow(s) beyond baseline: {offenders}. Fix the swallow "
-        f"(raise / log+alert / failure_policy decorator), or — if genuinely remediated "
-        f"down — run `python scripts/preflight_no_silent_failures.py --update-baseline`.")
+_REPO = Path(__file__).resolve().parent.parent
+_SWALLOW = "def f():\n    try:\n        g()\n    except Exception:\n        pass\n"
+
+
+def _tree(tmp_path: Path, rel: str, body: str) -> Path:
+    """A throwaway repo root holding ONE in-scope file."""
+    p = tmp_path / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(body, encoding="utf-8")
+    return tmp_path
+
+
+def test_live_tree_has_zero_unmarked_swallows():
+    """THE #466 DoD: every broad+silent except in agents/ core/ channels/ shared/ is either
+    loud (logs / audits / raises) or carries a reviewed `# loud-ok: <reason>`."""
+    violations, n_files = _scan(_REPO)
+    assert n_files > 100, "the scan found almost nothing - the scope broke, 'zero' would be vacuous"
+    assert violations == [], (
+        "unmarked broad+silent except(s): "
+        + ", ".join(f"{v['rel']}:{v['line']}" for v in violations)
+        + ". LOG the failure (logger.warning with the exception + context) or, for genuine "
+          "control-flow, tag the except line `# loud-ok: <reason>`.")
+
+
+def test_the_baseline_cannot_come_back():
+    """The ratchet's allowance file is gone and its machinery is gone with it: a re-added
+    baseline would silently re-permit swallows, which is exactly what #466 closed."""
+    assert not (_REPO / "scripts" / "no_silent_failures_baseline.json").exists()
+    assert not hasattr(gate, "BASELINE_PATH")
+
+
+def test_main_fails_on_one_new_unmarked_swallow_in_any_scoped_dir(tmp_path, capsys):
+    """THE MUTATION: one fresh `except Exception: pass` must turn the gate red in every scoped
+    dir, including files the OLD ratchet had a non-zero allowance for (telegram, ep_detector)."""
+    for rel in ("agents/market_intelligence/ep_detector.py", "channels/telegram.py",
+                "core/router.py", "shared/anything.py", "agents/market_intelligence/brand_new.py"):
+        root = _tree(tmp_path / rel.replace("/", "_"), rel, _SWALLOW)
+        assert main([], repo_root=root) == 1, f"{rel}: a new unmarked swallow did not fail the gate"
+        out = capsys.readouterr().out
+        assert rel in out and "DEPLOY FAILED" in out
+
+
+def test_main_passes_when_the_same_swallow_is_logged_or_tagged(tmp_path):
+    logged = _SWALLOW.replace("        pass\n", "        logger.warning('g failed')\n")
+    tagged = _SWALLOW.replace(
+        "except Exception:", "except Exception:  # loud-ok: optional-parse fallback")
+    for name, body in (("logged", logged), ("tagged", tagged)):
+        root = _tree(tmp_path / name, "agents/market_intelligence/x.py", body)
+        assert main([], repo_root=root) == 0, name
+
+
+def test_loud_ok_must_sit_on_the_except_line(tmp_path):
+    """The escape is read off the `except` line only - a tag on the body line does not count."""
+    body = _SWALLOW.replace("        pass\n", "        pass  # loud-ok: wrong line\n")
+    root = _tree(tmp_path, "agents/market_intelligence/x.py", body)
+    assert main([], repo_root=root) == 1
+
+
+def test_update_baseline_is_retired_and_writes_nothing(tmp_path, capsys):
+    root = _tree(tmp_path, "agents/market_intelligence/x.py", _SWALLOW)
+    assert main(["--update-baseline"], repo_root=root) == 1
+    assert "retired" in capsys.readouterr().out
+    assert list((_REPO / "scripts").glob("no_silent_failures_baseline*")) == []
+
+
+def test_strict_flag_is_still_accepted_as_a_noop(tmp_path):
+    clean = _tree(tmp_path / "clean", "core/x.py", "x = 1\n")
+    dirty = _tree(tmp_path / "dirty", "core/x.py", _SWALLOW)
+    assert main(["--strict"], repo_root=clean) == 0
+    assert main(["--strict"], repo_root=dirty) == 1
