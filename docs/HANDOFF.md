@@ -1349,3 +1349,17 @@ stagger cards, one at a time.
 3. 17:00 ET: #689 night 3 → close per DoD; #657 night 5 → close per DoD; #505 next pairs; #655 row.
 
 **Saturday 10-03:** #687 (or commit A alone); #688 risk 1%→2%; #635 commit B; #580 0%-breadth fix; #691; #692 (replay + his sign-off before deploy — THE LINE); #693 (after #689 closes); #663; #491; #519.
+
+## 2026-10-02 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 10-01 close above.
+
+**Board 50 → 46** — closed #690 (new-model replay: practice release gave a verdict per job, held two, one digest sent), #689 (theme jobs on Sonnet 5.5, three clean nights), #657 (the tape decides removals, five clean nights), #121 (Telegram on HTML; his "what i saw looked fine"). Pulled into Sun 10-04 on his word: #598, #466, #394.
+
+**Built, not deployed (Saturday):**
+- **#687** branch `687-depth-rule` @ 42961e94 (rebased on main 97b08d51): cut-back round + his 10-01 rulings + his 10-02 rulings (ii) profit take left resting, (iv) a partial loss counted once; toggle-OFF convergence test (31 scenarios) green; suite 9410. Deploy both + execution with the depth toggle OFF → Mon–Tue paper rehearsal → his final yes. Follow-ups after the ship (his rulings): (i) flat vs unreadable broker read; (iii) sell-at-market at the six other stop sites.
+- **main** already carries 62f45ade: the intraday "position unprotected" page sends again (it never did — ETON 08-14 missed) + #690 holds name the failing job. Ships with Saturday's deploy.
+- **#692** branch `692-mna-target-question` @ 926f1a68: his seven rulings; paid replay (234 calls, $1.69) — 102 of 137 blocked days released, 35 still blocked, 3 newly blocked (ROKU), his 25 labels all held. **HIS SIGN-OFF FIRST** (THE LINE): page https://claude.ai/artifact/3AUhVyGCBa554w3NztgfZs — he reviews Saturday morning; then deploy market + execution.
+- **#693** branch `693-thinking-between-tools` @ 761b11d3: thinking-off = between_tools on 5.5; refusal names its category; containment + synthesis notes after the verdict; measured −34% output tokens (~1¢/night). Deploy market + execution.
+
+**Saturday 10-03:** his #692 sign-off → deploy batch (#687 OFF, #692, #693, main's 62f45ade) both + execution; #688 risk 1%→2% (his ruling 09-29); #635 commit B; #580 0%-breadth fix; #691; #663; #491; #519. **Sunday 10-04:** #598, #466, #394.
+
+**Standing:** capacity full again after 20:00 PT 10-02; every Sonnet role on claude-sonnet-5-5.
