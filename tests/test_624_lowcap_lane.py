@@ -358,6 +358,13 @@ class _FrozenDatetime(datetime):
 
 ADMIT_TICKER = "BIG00"
 
+#: #663 — every yfinance Ticker the harness sees constructed inside a scan. Must stay empty:
+#: the byte-identity guards may not depend on Yahoo being fast (2026-09-14 CI).
+_YF_TICKER_CALLS: list = []
+#: #663 — every host name any library resolved inside a scan (requests/httpx/aiohttp/asyncpg
+#: all resolve before they connect; yfinance does not go through here — see _YF_TICKER_CALLS).
+_DNS_LOOKUPS: list = []
+
 
 async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
                          catalyst_type_raises: bool = False):
@@ -445,6 +452,35 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
     monkeypatch.setattr(universe_floor_shadow, "record_universe_floor_shadow", AsyncMock(return_value=0))
     monkeypatch.setattr(ep_shortlist_shadow, "record_ep_shortlist_shadow", AsyncMock(return_value=0))
     monkeypatch.setattr(catalyst_tier_shadow, "fetch_board_sectors", AsyncMock(return_value={}))
+
+    # ── #663 (2026-10-03): THE HARNESS MUST NOT LEAVE THE PROCESS. ──────────────────────────
+    # Until today every admitted scan here made a LIVE Yahoo Finance call — `compute_setup_class_
+    # fields` → `collector.get_recent_upgrade_events` → `yf.Ticker("BIG00").upgrades_downgrades`
+    # in a worker thread (a 404 per scan in the captured log, ~0.3s each on a warm laptop). On
+    # 2026-09-14 in CI the FIRST call paid Yahoo's cookie/crumb bootstrap on a fresh runner and
+    # blew the 25s post-scan ceiling; wait_for cancelled the gather and `setup_class` was never
+    # assigned in scan 1 — the byte-identity guard failed on a network stall, not on the lane.
+    # Stub it where ep_detector's import resolves it (the classifier imports the NAME, so
+    # patching `collector` would miss), and record any yfinance Ticker construction so a new
+    # live call cannot creep back in silently (asserted by tests/test_663_ep_scan_result_shape.py).
+    from agents.market_intelligence import setup_class_classifier as _scc
+    monkeypatch.setattr(_scc, "get_recent_upgrade_events", AsyncMock(return_value=[]))
+    import yfinance as _yf
+
+    def _record_ticker(symbol, *a, **k):
+        _YF_TICKER_CALLS.append(symbol)
+        raise RuntimeError(f"#663 hermetic harness: yfinance.Ticker({symbol!r}) constructed inside a scan")
+    monkeypatch.setattr(_yf, "Ticker", _record_ticker)
+    # yfinance speaks through curl_cffi, which never touches Python's socket module — hence the
+    # Ticker hook above. Everything else (requests/httpx/aiohttp/asyncpg) resolves a host first,
+    # so record every name lookup too; pass it through so this only OBSERVES today's behaviour.
+    import socket as _socket
+    _real_getaddrinfo = _socket.getaddrinfo
+
+    def _record_lookup(host, *a, **k):
+        _DNS_LOOKUPS.append(str(host))
+        return _real_getaddrinfo(host, *a, **k)
+    monkeypatch.setattr(_socket, "getaddrinfo", _record_lookup)
 
     # Per-run isolation for the module-level catalyst cache — mirrors the lane resets
     # just below. Cleared even when admit=False so a stray admit-run entry from an

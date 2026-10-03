@@ -106,6 +106,25 @@ for _attr in ("run_paper_trade_tracker", "format_tracker_telegram"):
 sys.modules["agents.market_intelligence.backtester.tracker"] = _tracker_stub
 
 
+# ─── #663: no test inherits the EP scan's per-run module state from the test before it ────────
+# ep_detector / ep_theme_belonging hold module-level dedupe and "seen" structures that are
+# first-call-does-X by design (tests/_module_state.py has the derived list and the reasons).
+# Any test that leaves one populated can change what the NEXT test's scan does, and whether it
+# does depends on collection order — the shape of a flake that passes in isolation. Reset
+# before every test, for the modules already imported only (never import one for a test that
+# does not use it). ⚠ This is the ISOLATION half of #663 and not the 2026-09-14 event: that
+# one was a live Yahoo call blowing the post-scan ceiling (see the stall probe in
+# scripts/probes/_663_stall_the_first_upgrade_fetch.py and tests/test_663_ep_scan_result_shape.py).
+import pytest as _pytest
+
+
+@_pytest.fixture(autouse=True)
+def _663_reset_ep_scan_module_state():
+    from tests._module_state import reset_loaded
+    reset_loaded()
+    yield
+
+
 # ─── Shared asyncpg pool mock builder ──────────────────────────────────────
 # Origin: 3 test files rolling their own near-identical version
 # (test_ep_scan_watchdog, test_downgrade_digest, test_sync_positions_safety_guard).

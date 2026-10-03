@@ -87,13 +87,24 @@ def _state_holders_parsed(module: Any) -> "dict[str, str]":
     return {k: v for k, v in out.items() if k not in _NOT_PER_RUN_STATE}
 
 
-def reset_all() -> "list[str]":
-    """Clear every per-run state holder in WATCHED. Returns the names it cleared, so a caller
-    (and the gate) can see the list GROW when a new cache is added rather than discover it in CI."""
+def reset_loaded() -> "list[str]":
+    """`reset_all` for the modules ALREADY IMPORTED — never imports one. This is what the
+    autouse fixture in tests/conftest.py runs before every test (#663, 2026-10-03): a test that
+    never touches the EP scan must not pay for, or be changed by, importing ep_detector, and a
+    test that does already has it in sys.modules."""
+    import sys
+
+    return reset_all(only=[m for m in WATCHED if m in sys.modules])
+
+
+def reset_all(only: "list[str] | None" = None) -> "list[str]":
+    """Clear every per-run state holder in WATCHED (or in `only`). Returns the names it cleared,
+    so a caller (and the gate) can see the list GROW when a new cache is added rather than
+    discover it in CI."""
     import importlib
 
     cleared: list[str] = []
-    for mod_name in WATCHED:
+    for mod_name in (WATCHED if only is None else only):
         mod = importlib.import_module(mod_name)
         own = _OWN_RESET.get(mod_name)
         if own and callable(getattr(mod, own, None)):
