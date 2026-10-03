@@ -389,11 +389,15 @@ class HeadlineScan(NamedTuple):
     candidates_n: int
 
 
-def _candidate_articles(ticker: str, items: list[dict]) -> list[tuple[dict, str, str, Optional[str]]]:
+def _candidate_articles(
+    ticker: str, items: list[dict], insights_missing: Optional[list] = None,
+) -> list[tuple[dict, str, str, Optional[str]]]:
     """$0 candidate selection: (item, match_path, keyword, this ticker's insight reasoning).
     A title keyword → 'title'; a description / insight-reasoning keyword → 'description+insights'
     ONLY when this ticker is in the article's `insights` (the #88 multi-ticker bleed guard — a
-    roundup that only insights another company is never asked about). Litigation notices skip."""
+    roundup that only insights another company is never asked about). Litigation notices skip.
+    `insights_missing`, when given, collects the titles skipped because Polygon had not graded
+    the article at all (the #88 false-negative telemetry `_b88_mna_filter_path_b_fp_rate` counts)."""
     out = []
     for item in items:
         title = item.get("title") or ""
@@ -409,6 +413,8 @@ def _candidate_articles(ticker: str, items: list[dict]) -> list[tuple[dict, str,
         body_kw = matches_mna_keywords(item.get("description")) or matches_mna_keywords(reasoning)
         if body_kw and ticker_insight is not None:
             out.append((item, "description+insights", body_kw, reasoning))
+        elif body_kw and not insights and insights_missing is not None:
+            insights_missing.append(title)
     out.sort(key=lambda c: c[0].get("published_utc") or "", reverse=True)
     return out
 
@@ -438,7 +444,16 @@ async def headline_deal_scan(
 
     items = await get_polygon_news(
         ticker, lookback_days=lookback_days, on_or_before=on_or_before, limit=20)
-    candidates = _candidate_articles(ticker, items or [])
+    missing: list = []
+    candidates = _candidate_articles(ticker, items or [], insights_missing=missing)
+    for title in missing:   # unchanged #88 telemetry (one row per skipped article, as before)
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "polygon_news_insights_missing",
+                f"{ticker} skipped Path B — no insights field on '{title[:120]}'")
+        except Exception as e:  # loud-ok: telemetry must never change the verdict
+            logger.debug(f"{ticker}: insights-missing audit failed: {e}")
     released: list = []
     unanswered: list = []
     if not candidates:

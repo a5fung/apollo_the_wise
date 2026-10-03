@@ -345,6 +345,16 @@ def test_candidates_need_this_ticker_in_insights_unless_the_title_matches():
     assert [(c[1], c[2]) for c in got] == [("description+insights", "merger")]
 
 
+def test_an_ungraded_article_is_skipped_and_still_counted():
+    """Polygon had not AI-graded the article (no insights): never asked, and the #88
+    `polygon_news_insights_missing` row the monthly _b88 check counts is still written."""
+    items = [{"title": "Sector wrap", "description": "a merger was announced", "insights": [],
+              "published_utc": "2026-10-01T10:00:00Z"}]
+    out = _items_case(items)
+    assert out.blocked is False and out.calls == []
+    assert [a[0] for a in out.audits] == ["polygon_news_insights_missing"]
+
+
 def test_candidates_are_asked_newest_first_and_at_most_three():
     items = [{"title": f"Takeover chatter {i}", "description": "", "insights": [],
               "published_utc": f"2026-10-0{i}T10:00:00Z"} for i in range(1, 6)]

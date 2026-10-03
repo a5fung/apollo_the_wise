@@ -347,6 +347,10 @@ async def run_new(case: Case, *, unanswered_blocks: bool = False) -> Outcome:
                                       new=AsyncMock(return_value=unanswered_blocks)))
         st.enter_context(patch("agents.market_intelligence.spend_tracker.log_anthropic_call_safe",
                                new=AsyncMock(return_value=None)))
+
+        async def _raw_audit(event_type, summary, detail=None):
+            audits.append((event_type, summary, detail))
+        st.enter_context(patch("agents.market_intelligence.db.log_audit_event", new=_raw_audit))
         blocked, meta = await mf.is_likely_ma(
             case.ticker, deal_answer=grader, check_polygon=True,
             on_or_before=date.fromisoformat(case.day),
