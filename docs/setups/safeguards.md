@@ -539,7 +539,7 @@ the deploy (none expected: see Evidence above).
 **Reversion-flag**: REFINEMENT of the 2026-07-24 FL-2 coverage fix (same gate, same threshold; one more
 population of realized losses counted on the day it is realized).
 
-**Status**: built + unit-tested on branch `687-depth-rule`, not deployed. Tests:
+**Status**: DEPLOYED 2026-10-03 (both + execution, server bf8ebdb7; built on branch `687-depth-rule`). Tests:
 `tests/test_687_partial_loss_counts_today.py` (11; mutation — the arm zeroed — reddens 2);
 `tests/test_687_ruling_iv_partial_loss_counted_once.py` (ruling (iv)); `test_daily_loss_close_day.py` re-pinned on
 the new read (FL-2 close-day WHERE unchanged); convergence scenarios s22, s30 (allow-listed "ruling (iv)

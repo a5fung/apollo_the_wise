@@ -662,7 +662,7 @@ below were then SILENCED by his ruling (2) of 2026-10-01 — see the 2026-10-02 
 **Reversion-flag**: REFINEMENT of the 2026-09-11 #646 full-exit fix (same function, same
 never-naked rule) and of the #566 accounting rule (applied to the last writer that lacked it).
 
-**Status**: built + unit-tested, not deployed. Deploy: `broker/` + `scheduler.py` → `deploy.sh
+**Status**: DEPLOYED 2026-10-03 (both + execution, server bf8ebdb7) with `magna53_depth_exit` OFF — paper rehearsal Mon–Tue, then his yes. Deploy: `broker/` + `scheduler.py` → `deploy.sh
 execution` AND `market-agent`. Verify-live needs a real close-below-the-line exit (none yet on
 MAGNA53); the #687 paper rehearsal exercises (a)/(c)/(d).
 

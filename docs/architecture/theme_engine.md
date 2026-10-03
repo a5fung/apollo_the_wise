@@ -998,7 +998,7 @@ the first night its breadth is back at/above 40% (age ≥ 5 and score ≥ 50) �
 
 **Reversion-flag**: NEW (bug fix; the rule's intent — two nights below 40% → Fading — is unchanged since it shipped).
 
-**Status**: built, replay pending, not deployed. Tests: `tests/test_580_breadth_decay.py` (0.0 fades — red on the old
+**Status**: DEPLOYED 2026-10-03 (both + execution, server 2c0dc512) after the prod replay (`scripts/probes/_580/replay_breadth_fix_2026-10-03*`: since 07-24 the fix fades 50 themes on 181 paying theme-days; one EP alert, ACN 10-01, loses the +10). Tests: `tests/test_580_breadth_decay.py` (0.0 fades — red on the old
 code; None keeps today's behaviour; mutation-checked both ways).
 
 ### 2026-10-03 — #580: a theme is born WITH breadth on every birth path (money path: it is the decay rule's first prior reading)
@@ -1042,7 +1042,7 @@ themes that would otherwise have reached Accelerating soon after birth; the repl
 
 **Reversion-flag**: NEW (the reverted first attempt never shipped).
 
-**Status**: built, replay pending, not deployed. Tests: `tests/test_580_breadth_at_birth.py` (+ updated pins in
+**Status**: DEPLOYED 2026-10-03 (both + execution, server 2c0dc512); the replay would have filled 487 of 489 NULL birth rows. Tests: `tests/test_580_breadth_at_birth.py` (+ updated pins in
 `tests/test_promotetheme.py`); 9 mutations (newborn key dropped, unchecked-`today` read, RS query without
 `close/sma_20`, nested acquire, all-rows-per-cohort, COALESCE removed, `>=` vs `>`, 0.0-for-nothing, `/teach` on
 `today`) each turn a named test red.
@@ -1094,7 +1094,7 @@ themes that would otherwise have reached Accelerating soon after birth; the repl
   `(-comp, name)` so the order is stable and matches the dashboard.
 - **The operator's dashboard** (portfolio-app2, Ecosystems view) ranks by the same rule and now shows the same
   wording; its one divergence (Retired dropped BEFORE latest-row-per-name, #214) is fixed there the same day.
-- **Held, not shipped:** filling breadth at birth for newborn themes (7 of 122 were NULL on 09-29). It feeds the
+- **Held on 09-29, SHIPPED 2026-10-03 (#580):** filling breadth at birth for newborn themes (7 of 122 were NULL on 09-29). It feeds the
   breadth-decay stage rule, so it goes with the 0%-counted-as-healthy fix on Saturday 10-03 after a replay (money
   path: stage → EP +10). The review of the first attempt also found it read an unchecked score date on an intraday
   `/promotetheme` and nested a second pool connection — both to fix then.

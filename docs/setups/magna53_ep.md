@@ -66,9 +66,9 @@ classification so they can condition on the catalyst grade; moved here #405,
 the same one the score reads (one grade everywhere; `catalyst_tier_lattice` toggle OFF =
 raw LLM grade everywhere, byte-identical pre-flip). Plain words: **a filter and the score
 never disagree about what the same news is worth.**
-7. **M&A filter** (`ma_filter.is_likely_ma`): catalyst='mna' OR keyword scan OR Polygon news headlines — skip. (Grade-invariant under the lattice: `mna` is passthrough-only, so acting == raw here by construction.)
-   ⚠ **#692 BUILT on branch `692-mna-target-question`, NOT deployed (2026-10-02; the price layer
-   2026-10-03)** — replaces the line above with ONE question and ONE reading: the news answer
+7. **M&A filter** (`ma_filter.is_likely_ma`) — **#692, DEPLOYED 2026-10-03 (server eba92ff4)**: pre-market the news blocks a stock named as the TARGET of a deal (signed or proposed) or a signed shell; at 09:35 the open-window price can only RELEASE a news-blocked stock that moves (> 1.0%), which is then scored on `quality_if_no_deal`; a real signed buyout keeps the `mna` grade. (Grade-invariant under the lattice: `mna` is passthrough-only, so acting == raw here by construction.)
+   History — #692 was built on branch `692-mna-target-question` (2026-10-02; the price layer
+   2026-10-03) and replaced the old rule (catalyst='mna' OR keyword scan OR Polygon headlines → skip) with ONE question and ONE reading: the news answer
    NOMINATES (*is THIS ticker the TARGET of a deal, signed OR proposed, on terms that could fix
    its price?* — the grader's deal fields, or, when the grader found no deal or did not answer,
    a Polygon headline's answer) and the PRICE DECIDES — with his timing: **pre-market the news
@@ -126,7 +126,7 @@ after all this work").
 ### Catalyst grading (Claude + Perplexity + SEC EDGAR)
 
 LLM classifier returns one of: `game_changer`, `strong`, `routine`, `mna`, or None.
-(#692 branch, not deployed as of 2026-10-03: the same call also answers the M&A question —
+(#692, deployed 2026-10-03: the same call also answers the M&A question —
 `deal_role` / `deal_status` / `deal_consideration` / `deal_counterparty`. Since his 2026-10-03
 ruling 2, `mna` is graded ONLY for a SIGNED reverse-merger SHELL; a buyout TARGET, signed or
 proposed, is graded on its own merit and the M&A filter alone decides it on price. The EP grade
@@ -561,10 +561,9 @@ record now); `tests/test_write_judge_pass_record.py`. Mutations: in the commit.
 
 ### 2026-10-03 — #692: the news NOMINATES, the PRICE DECIDES — pre-market the news blocks a nominated target, at 09:35 the open window can only RELEASE it; his four rulings ("Go with rec": RULE 3 re-tied, the price-only arm, NUVL / IRDM) and his timing ruling (no hold, the 09:31 ORB entry untouched) the same day (BUILT on the branch, NOT DEPLOYED)
 
-**Status (as of 2026-10-03, night):** BUILT on `692-mna-target-question` (same branch as the
-10-02 entry), NOT deployed — in prod no `pin` key on any `mna_filter_fired` row, no
-`why = news_blocked_price_unread`, no `pin_free` release and no `open_window_price_pin` source
-exists until it ships. THE LINE: it changes which EP / flag candidates are suppressed and what
+**Status:** DEPLOYED 2026-10-03 (server eba92ff4; built on `692-mna-target-question`) — before
+that ship prod had no `pin` key on any `mna_filter_fired` row, no
+`why = news_blocked_price_unread`, no `pin_free` release and no `open_window_price_pin` source. THE LINE: it changes which EP / flag candidates are suppressed and what
 grade a buyout target carries — it does NOT change when any alert fires or how the 09:31 ORB
 entry works (his timing ruling below). The paid RULE 3 regrade has run ($0.89, on main); it
 ships when he signs the deploy.
@@ -936,7 +935,7 @@ called above the ceiling, the paid path asks OLD + NEW on the same text and repo
 ### 2026-10-02 — #692: the M&A filter asks ONE question — is THIS ticker the TARGET of a SIGNED deal that fixes its price (BUILT, NOT DEPLOYED — rulings recorded; awaiting the replay + operator sign-off)
 
 **Status:** BUILT — his seven rulings recorded 2026-10-02 22:20 PDT and built in the fix round;
-awaiting the paid replay + his sign-off on its released / still-blocked list; not deployed.
+the paid replay ran and he signed the list (2026-10-03); superseded by the 10-03 entries and DEPLOYED 2026-10-03.
 Branch `692-mna-target-question`. THE LINE: it changes which EP / flag / sugar-baby candidates
 are suppressed, so nothing ships before he signs that list (CHANGE_PROCESS rule 3). The filter
 line in §Filters item 7 above describes what RUNS today.
