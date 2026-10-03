@@ -1,0 +1,32 @@
+samples dir: /app/logs/llm_samples  files: 17
+  narrative_theme_discovery [discover_narrative_themes]: NO captured thinking-disabled request - skipped
+
+job                                                model              captured        in~ A max_tok B max_tok  effort
+narrative_theme_discovery [_discover_lane2_registr claude-sonnet-5-5  2026-10-01     3769      3000      1500  -
+theme_parent_adjudication [adjudicate_containment_ claude-sonnet-5-5  2026-10-02      961      2024      1000  -
+theme_synthesis [run_theme_synthesis]              claude-sonnet-5-5  2026-10-02     4429     16000      8000  -
+theme_validation [_validate_theme_membership]      claude-sonnet-5-5  2026-10-02      556      2024      1000  -
+
+CALLS: 8   WORST-CASE COST: $0.384  (every call fills max_tokens; limit $2.00)
+
+job                            var  out_tok       stop parsed think   secs     usd  note
+narrative_theme_discovery      A        294   end_turn    yes     1    5.6  0.0136  
+narrative_theme_discovery      B         47   end_turn    yes     0    3.3  0.0111  
+theme_parent_adjudication      A        261   end_turn    yes     0    4.3  0.0056  
+theme_parent_adjudication      B        261   end_turn    yes     0    4.1  0.0056  
+theme_synthesis                A        387   end_turn    yes     0    5.2  0.0173  
+theme_synthesis                B        313   end_turn    yes     0    4.9  0.0165  
+theme_validation               A         15   end_turn    yes     0    1.0  0.0016  
+theme_validation               B         15   end_turn    yes     0    1.1  0.0016  
+
+PER JOB (mean over repeats)   A = today (drop + headroom)   B = between_tools, max_tokens unchanged
+  narrative_theme_discovery    out_tokens A=294  B=47  B-A=-247 tokens (-84%)   parsed A=1/1 B=1/1
+  theme_parent_adjudication    out_tokens A=261  B=261  B-A=+0 tokens (+0%)   parsed A=1/1 B=1/1
+  theme_synthesis              out_tokens A=387  B=313  B-A=-74 tokens (-19%)   parsed A=1/1 B=1/1
+  theme_validation             out_tokens A=15  B=15  B-A=+0 tokens (+0%)   parsed A=1/1 B=1/1
+
+TOTALS
+  A: calls=4 output_tokens=957 parsed=4/4 errors=0 mean_latency=4.0s usd=$0.0380
+  B: calls=4 output_tokens=636 parsed=4/4 errors=0 mean_latency=3.4s usd=$0.0348
+  B vs A output tokens: -321 (-34%)
+RESULT_JSON {"totals": {"A": {"calls": 4, "out_tokens": 957, "parsed": 4, "errors": 0, "mean_secs": 4.006868804804981, "usd": 0.038003999999999996}, "B": {"calls": 4, "out_tokens": 636, "parsed": 4, "errors": 0, "mean_secs": 3.3705196818336844, "usd": 0.034786}}, "results": [{"error": "", "secs": 5.598317386582494, "parsed": true, "why": "", "out_tokens": 294, "in_tokens": 5325, "stop": "end_turn", "usd": 0.01359, "think_blocks": 1, "job": "narrative_theme_discovery", "var": "A", "rep": 0}, {"error": "", "secs": 3.3334892448037863, "parsed": true, "why": "", "out_tokens": 47, "in_tokens": 5324, "stop": "end_turn", "usd": 0.011118, "think_blocks": 0, "job": "narrative_theme_discovery", "var": "B", "rep": 0}, {"error": "", "secs": 4.265815639868379, "parsed": true, "why": "", "out_tokens": 261, "in_tokens": 1482, "stop": "end_turn", "usd": 0.005574, "think_blocks": 0, "job": "theme_parent_adjudication", "var": "A", "rep": 0}, {"error": "", "secs": 4.070408634841442, "parsed": true, "why": "", "out_tokens": 261, "in_tokens": 1481, "stop": "end_turn", "usd": 0.005572, "think_blocks": 0, "job": "theme_parent_adjudication", "var": "B", "rep": 0}, {"error": "", "secs": 5.180485229939222, "parsed": true, "why": "", "out_tokens": 387, "in_tokens": 6708, "stop": "end_turn", "usd": 0.017286, "think_blocks": 0, "job": "theme_synthesis", "var": "A", "rep": 0}, {"error": "", "secs": 4.934832111001015, "parsed": true, "why": "", "out_tokens": 313, "in_tokens": 6707, "stop": "end_turn", "usd": 0.016544, "think_blocks": 0, "job": "theme_synthesis", "var": "B", "rep": 0}, {"error": "", "secs": 0.9828569628298283, "parsed": true, "why": "", "out_tokens": 15, "in_tokens": 702, "stop": "end_turn", "usd": 0.001554, "think_blocks": 0, "job": "theme_validation", "var": "A", "rep": 0}, {"error": "", "secs": 1.1433487366884947, "parsed": true, "why": "", "out_tokens": 15, "in_tokens": 701, "stop": "end_turn", "usd": 0.001552, "think_blocks": 0, "job": "theme_validation", "var": "B", "rep": 0}]}
