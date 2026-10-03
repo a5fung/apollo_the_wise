@@ -1,0 +1,17 @@
+constants cross-checked against the running ep_rubric/theme_engine: OK
+
+=== #580 breadth-fix replay — mi_themes 2026-07-24..2026-10-02, EP alerts since 2026-08-01 ===
+theme rows replayed by kind: {'birth': 538, 'retired': 484, 'fading_branch': 1198, 'rescore': 3494}
+FIDELITY — old-rule recompute == stored stage on rescore rows: 3479 of 3494 (99.6%)
+   stored Accelerating: 283 of 287 agree
+   stored Fading      : 545 of 546 agree
+   stored Mainstream  : 1907 of 1914 agree
+   stored Nascent     : 744 of 747 agree
+FIDELITY — the old rule's own condition (0 < prior < 0.40, tonight < 0.40) -> stored Fading: 398 of 398
+birth fill: 489 NULL birth rows -> filled 487 (of which 0.0: 112; below 0.40: 152)
+CHANGED theme-days: 239 total, 231 since 2026-08-01 | by cause {'zero_prior': 88, 'cascade': 144, 'birth_fill': 7} | stored->fixed {('Mainstream', 'Fading'): 161, ('Nascent', 'Fading'): 58, ('Accelerating', 'Fading'): 20}
+   paying stage (Accelerating/Mainstream) -> not paying: 181 theme-days, 50 themes
+FIDELITY — computed 'listed at scan time' == mi_ep_alerts.in_active_theme: 123 of 123
+EP alerts since 2026-08-01: 123 | {'had_bonus=False': 108, 'had_bonus=True': 15, 'LOSES': 1, 'LOSES_crosses_65': 1, 'LOSES_crosses_acting_bar': 1}
+CHECK — shadow listed-vs-belonging score gaps (the bonus's presented value): {'other (floor bound / legacy)': 1}
+stdout: one JSON line per changed theme-day and per changed alert.
