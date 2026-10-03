@@ -72,8 +72,9 @@ max-loss 5–8%. Sizing risk 0.5–1% of equity. Target = the flagpole height ad
 ## M&A suppression on the actionable stages (`flag_scan`, not `compute_flag_metrics`)
 
 Backfilled into this SSoT 2026-07-24 (#502) — these layers had lived only in `flag_detector.py`. They
-run AFTER scoring, on `COILED`/`TRIGGERED` rows only (WATCH/TIGHTENING are digest-suppressed already, so
-gating them would multiply the API cost for no visible benefit). A hit rewrites the persisted row to
+run AFTER scoring, on `COILED`/`TRIGGERED` rows only (WATCH is digest-silent; TIGHTENING is NOT screened —
+since #598 a NEW TIGHTENING entry is pushed with numbers, so see "Surfacing" below for what that leaves
+open). A hit rewrites the persisted row to
 `stage='unqualified'` with `reason='mna_filter:<source>'` — kept, not deleted, so the filter's hit rate
 stays auditable.
 
@@ -96,6 +97,50 @@ measured hole where a still-pinned deal reads as a plain coil and leaks onto the
 this is exactly what happened to ATAI on 2026-07-30/07-31 (see change log below). Layer 3b closes
 that hole by carrying layer 3's own last-verified verdict forward, released the moment today's own
 band stops looking pinned. All layers fail OPEN — a missing signature never suppresses.
+
+## Surfacing — the 17:25 ET digest and its stage-transition push (#598)
+
+**One message a day, built by `flag_detector.send_flag_digest` / `build_flag_digest`, sent as Telegram HTML.**
+Suppressed entirely on a day with no TRIGGERED, no COILED and no new transition. Sections, in order:
+
+1. **`NEW TODAY`** — every ticker that moved **up into TIGHTENING or COILED on this scan** (#598), one line
+   each: `ticker — STAGE · run-up +N% · pivot $P · range R×, volume V× · base Nd`. `pivot` is
+   `pivot_high_price` (the pole top); `range` / `volume` are `range_contraction_ratio` /
+   `vol_contraction_ratio` (the base's last 5 days against its first 5 — 1.00 is no tightening; the stage bars
+   are `_RANGE_CONTRACTION_MAX=0.75` / `_VOL_CONTRACTION_MAX=0.70`, quoted live in the message footer). A
+   fresh-tightening entry adds `last 2 bars tight`. The footer says in so many words that it is **a watch
+   list, not a trade signal — no buy point or stop is set** (a stage is a state, not a setup; CLAUDE.md).
+2. `TRIGGERED`, 3. `COILED — still coiled` (names already coiled, not the ones listed in `NEW TODAY`),
+   4. a one-line `N dropped out` count (#479).
+
+**The transition rule** (`stage_transitions`, pure): *push when rank(previous stored stage) < rank(today's)*
+and today is TIGHTENING or COILED; rank 0 = no row in the last 5 days / `unqualified` / WATCH / INVALIDATED,
+TIGHTENING = 1, COILED = 2, TRIGGERED = 3. So: WATCH / unqualified / INVALIDATED / absent → TIGHTENING pushes;
+TIGHTENING → COILED pushes; **staying** in a stage is silent; a relapse (COILED → TIGHTENING) is silent;
+leaving and re-entering pushes again. `previous` is `db.get_yesterday_flag_stages` (the same map the scan's
+hysteresis reads), `today` is the scan's post-M&A `by_stage`. Nothing here changes a stage, a threshold, an
+entry or a trade path — it reads what the scan already decided.
+
+**Dedupe + record.** One `flag_stage_transition` audit row per transition pushed, summary
+`<TICKER> entered <STAGE> <scan_date>` (detail JSON: previous stage, run-up, pivot, range, volume, base age,
+`telegram`). The key carries the SCAN date — not the date the row was written — so a #672 recovery re-run of
+the same scan on a later calendar day still dedupes. Only a **delivered** row dedupes; a push whose Telegram
+failed is written as `… (not delivered)` and goes out again on the next run of that scan. The lookup fails
+open (a repeat beats a silent drop). A broken transition step writes `flag_stage_transition_error` (named by the
+nightly `%error%` sweep) and the rest of the digest still goes out.
+
+**Why folded into the digest, not a message of its own (decided 2026-10-04).** The digest already reaches the
+operator from the same run, and the old `NEW TIGHTENING` roll-call it replaces WAS the transition surface —
+bare tickers, no numbers, so nothing to chart from (CDNA, TIGHTENING on 2026-08-18, a day before the trader
+bought it). A second message a minute apart would be noise. What changed: that block now carries the fields,
+also catches re-entry from `unqualified` / INVALIDATED (the old test was `previous in (None, WATCH)`), and the
+COILED roster no longer re-lists a name on the day it is announced. The old `COILED — actionable setup` header
+is now `COILED — still coiled` (it called a state a setup). `agent.py`'s `/flags` still carries the old header.
+
+**Deploy scope: `flag_detector.py` is NOT on `scripts/exec_loaded_modules.txt` → `deploy.sh market-agent`
+only.** The dedupe query is inline for that reason (`db.py` is execution-loaded); the event names are local
+constants, not `audit_events.py` (also execution-loaded). `channels/telegram.py` is untouched — no new
+command. Tests: `tests/test_598_flag_stage_transition_push.py`.
 
 ## Known limitations / open questions (CHANGE_PROCESS rule 7 — the canonical surface)
 
@@ -183,7 +228,33 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    all admission criteria = the operator's sole authority. **Both knobs #610 asked for measure
    NULL and are NOT recommended.** What remains is his ruling on the fork below.
 
+**#598 additions (2026-10-04) — surfaced, not decided:**
+- **A deal-pinned name at TIGHTENING can still push once.** The M&A / deal-pin layers run on COILED and
+  TRIGGERED only, so a pinned name is unscreened until it reaches COILED (where it is rewritten to
+  `unqualified` and never messages). Screening the new-TIGHTENING entries would cost ~11 Polygon lookups a month (the 30-day
+  count of TIGHTENING entries), but it is a population decision on a surface that has never screened TIGHTENING — the operator's call.
+- **INVALIDATED ↔ TIGHTENING flapping re-pushes each time.** Item 5 above (the base-low creep) means a name can
+  bounce out and back; the rule pushes every genuine re-entry, as asked. If live data shows the same ticker
+  pushing on consecutive days, the lever is a re-entry cool-off (a policy, not a bug fix) — measure first.
+
 ## Change log
+- **2026-10-04 — #598: the 17:25 ET digest now opens with `NEW TODAY` — every ticker that moved up into
+  TIGHTENING or COILED, with run-up, pivot and base tightness. A surfacing change: no stage, threshold,
+  entry or trade path moved. Built on branch `598-flag-stage-push`; NOT yet deployed.**
+  **Trigger**: operator 2026-08-25 — CDNA was TIGHTENING from 2026-08-18, the day before an experienced trader
+  bought it, and nothing usable reached him (`docs/analysis/htf_surfacing_gap_2026-08-25.md`). The digest's
+  `NEW TIGHTENING` block listed bare tickers; COILED names were re-listed every day.
+  **Evidence**: single-case trigger (CDNA) plus the 30-day volume the PLAN line quotes — 36 names reached WATCH,
+  11 TIGHTENING, 6 COILED, 1 TRIGGERED. No threshold depends on it, so no backtest applies; the rule is pinned
+  by `tests/test_598_flag_stage_transition_push.py` (41 tests, 12 mutants all caught — see the commit).
+  **Anticipated effect**: a `NEW TODAY` block on roughly one scan day in two or three (entries into TIGHTENING /
+  COILED); the digest's own send/suppress days are unchanged except that a day whose only news is a name
+  re-entering from `unqualified` / INVALIDATED now sends (the old test missed those). One
+  `flag_stage_transition` audit row per name announced.
+  **Reversion-flag**: REFINEMENT of the 2026-05-01 digest (the `NEW TIGHTENING` roll-call); the
+  `previous in (None, WATCH)` test is widened to rank-based entry, and the `actionable setup` COILED header
+  is dropped (CLAUDE.md SETUP vs FAMILY).
+  **Status**: shipped to a branch, awaiting deploy and field validation.
 - **2026-09-27 — #592 follow-through: a name that leaves the scan for over 5 days keeps its pole top.
   Enforces the signed 09-04 rule (a wick over an unresolved flag never becomes the top); no threshold moved.**
   **What**: `db.get_yesterday_flag_pivots` carries the last anchored top for `flag_detector._PIVOT_CARRY_DAYS` =

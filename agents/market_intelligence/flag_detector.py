@@ -24,6 +24,7 @@ mi_flag_candidates (db.py) for the NULL semantics of each.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import math
 import os
@@ -32,6 +33,7 @@ from statistics import median as _median_stat
 from typing import Any, Optional
 
 from agents.market_intelligence.parabolic_detector import _sma
+from shared import telegram_format as tf
 from shared.env_flags import env_is_true
 
 logger = logging.getLogger(__name__)
@@ -1557,7 +1559,9 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     )
 
     # TRIGGERED rows surface in the digest's TRIGGERED section (same minute,
-    # same details). Per-ticker alerts deleted as duplicate noise.
+    # same details). Per-ticker alerts deleted as duplicate noise. #598: the digest's NEW TODAY
+    # section is built from THIS scan's post-M&A `by_stage` and the `yesterday_map` read above —
+    # the same stored state the stages themselves were decided from.
     await send_flag_digest(by_stage, scan_date, yesterday_map=yesterday_map)
 
     # Post-EOD reconciliation for intraday flag-breaks (#94, ADR 0005,
@@ -1778,14 +1782,18 @@ def _fmt_ratio(v: Optional[float]) -> str:
     return f"{v:.2f}" if v is not None else "—"
 
 
+# The digest is built as HTML with the shared helpers (#121 / #598) and sent with
+# parse_mode="HTML" — every dynamic value goes through tf.esc()/tf.code()/tf.b(), so a ticker
+# or a number can never 400 the message. Only the markup is hand-written.
+
 def _fmt_coiled(r: dict) -> str:
     rr = r.get("range_contraction_ratio")
     vr = r.get("vol_contraction_ratio")
     runup = r.get("runup_pct")
     age = r.get("base_age")
     return (
-        f"  • `{r['ticker']}` — base {age}d · runup {_fmt_pct(runup, 0, sign=True)} · "
-        f"range {_fmt_ratio(rr)} · vol {_fmt_ratio(vr)}"
+        f"  • {tf.code(r['ticker'])} — base {tf.esc(age)}d · run-up {tf.esc(_fmt_pct(runup, 0, sign=True))} · "
+        f"range {tf.esc(_fmt_ratio(rr))} · volume {tf.esc(_fmt_ratio(vr))}"
     )
 
 
@@ -1795,12 +1803,224 @@ def _fmt_triggered(r: dict) -> str:
     bvr = r.get("breakout_volume_ratio")
     close = r.get("breakout_close")
     bh = r.get("base_high")
-    return (
-        f"  • `{r['ticker']}` — base {age}d · runup {_fmt_pct(runup, 0, sign=True)} · "
-        f"vol {_fmt_ratio(bvr)}× · close ${close:.2f} > ${bh:.2f}"
-        if close is not None and bh is not None else
-        f"  • `{r['ticker']}` — base {age}d · runup {_fmt_pct(runup, 0, sign=True)} · vol {_fmt_ratio(bvr)}×"
+    head = (
+        f"  • {tf.code(r['ticker'])} — base {tf.esc(age)}d · run-up {tf.esc(_fmt_pct(runup, 0, sign=True))} · "
+        f"volume {tf.esc(_fmt_ratio(bvr))}×"
     )
+    if close is not None and bh is not None:
+        return f"{head} · close ${close:.2f} above ${bh:.2f}"
+    return head
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Stage-transition push (#598, 2026-10-04)
+# ────────────────────────────────────────────────────────────────────────
+#
+# CDNA reached TIGHTENING on 2026-08-18 — the day before an experienced trader bought it — and the
+# only thing that ever carried that to the operator was a one-line "NEW TIGHTENING" roll-call of
+# bare tickers: no run-up, no pivot, no tightness, nothing to chart from. This block turns that
+# roll-call into the digest's first section: every ticker that moved UP into TIGHTENING or COILED on
+# this scan, one line each (ticker · stage · run-up · pivot · base tightness).
+#
+# READ-ONLY by construction. It reads the stages the scan has ALREADY decided (`by_stage`, the
+# post-M&A-filter result) and the previous stored stage (`yesterday_map`); it changes no stage,
+# threshold, entry or trade path. It is a WATCH surface — a stage is a STATE, not a setup (no buy
+# point, no stop; CLAUDE.md SETUP vs FAMILY) — and the message says so.
+#
+# Dedupe + record: one `flag_stage_transition` audit row per transition actually pushed, keyed
+# `<TICKER> entered <STAGE> <scan_date>`. The key carries the SCAN date, not the wall-clock date
+# the row was written, so a #672 recovery re-run of the same scan on a later calendar day still
+# finds it. Only a DELIVERED row dedupes: a transition whose Telegram failed is recorded as
+# `(not delivered)` and goes out again on the next run of that scan.
+
+_TRANSITION_EVENT = "flag_stage_transition"
+# Ends `_error` ON PURPOSE: the nightly `%error%` sweep and `show errors` list it, so a broken
+# transition step cannot be silent.
+_TRANSITION_ERROR_EVENT = "flag_stage_transition_error"
+
+# Strongest first — the display order.
+_PUSH_STAGES = ("COILED", "TIGHTENING")
+# "Moved UP into a pushable stage" = rank(previous) < rank(today). Everything not listed
+# (no row in the last 5 days, unqualified, WATCH, INVALIDATED) is rank 0, so re-entry from any of
+# them counts; a relapse (COILED/TRIGGERED -> TIGHTENING, TRIGGERED -> COILED) never does.
+# Not `_STAGE_ORDER`: that ranks WATCH above unqualified and omits INVALIDATED entirely.
+_PUSH_RANK = {"TIGHTENING": 1, "COILED": 2, "TRIGGERED": 3}
+
+
+def stage_transitions(
+    by_stage: dict[str, list[dict]],
+    yesterday_map: dict[str, str],
+) -> list[dict]:
+    """PURE. The tickers that moved UP into TIGHTENING or COILED on this scan.
+
+    `by_stage` is the scan's own result AFTER the M&A / deal-pin layers ran (they rewrite a hit to
+    `stage="unqualified"`, `reason="mna_filter:*"`, so it is not in the TIGHTENING / COILED bucket
+    at all); `yesterday_map` is `db.get_yesterday_flag_stages` — each ticker's most recent stored
+    stage over the prior 5 days. A ticker that STAYS in a stage returns nothing the next day; one
+    that leaves and comes back returns again.
+
+    Returns [{ticker, stage, prev, row}], COILED before TIGHTENING, each by run-up descending.
+    """
+    out: list[dict] = []
+    for stage in _PUSH_STAGES:
+        rows: list[dict] = []
+        for r in by_stage.get(stage, []):
+            # Belt and braces: a deal-pinned / M&A-suppressed row can never message, even if a
+            # caller ever hands one over still filed under its pre-filter stage.
+            if r.get("original_stage") or str(r.get("reason") or "").startswith("mna_filter:"):
+                continue
+            prev = yesterday_map.get(r["ticker"])
+            if _PUSH_RANK.get(prev, 0) >= _PUSH_RANK[stage]:
+                continue
+            rows.append({"ticker": r["ticker"], "stage": stage, "prev": prev, "row": r})
+        rows.sort(key=lambda t: (-(t["row"].get("runup_pct") or 0), t["ticker"]))
+        out.extend(rows)
+    return out
+
+
+def _transition_key(ticker: str, stage: str, scan_date) -> str:
+    d = scan_date.isoformat() if hasattr(scan_date, "isoformat") else str(scan_date)
+    return f"{ticker} entered {stage} {d}"
+
+
+def _fmt_tightness(r: dict) -> str:
+    """Base tightness in plain numbers: the base's last 5 days against its first 5 (1.00 = no
+    tightening yet; the stage bars are `_RANGE_CONTRACTION_MAX` / `_VOL_CONTRACTION_MAX`)."""
+    parts = []
+    rr, vr = r.get("range_contraction_ratio"), r.get("vol_contraction_ratio")
+    if rr is not None:
+        parts.append(f"range {rr:.2f}×")
+    if vr is not None:
+        parts.append(f"volume {vr:.2f}×")
+    if r.get("fresh_tight_fires"):
+        parts.append("last 2 bars tight")
+    return ", ".join(parts) if parts else "—"
+
+
+def _fmt_transition(t: dict) -> str:
+    r = t["row"]
+    pivot = r.get("pivot_high_price")
+    pivot_s = f"${pivot:.2f}" if pivot is not None else "—"
+    age = r.get("base_age")
+    age_s = f" · base {tf.esc(age)}d" if age is not None else ""
+    return (
+        f"  • {tf.code(t['ticker'])} — {tf.b(t['stage'])} · "
+        f"run-up {tf.esc(_fmt_pct(r.get('runup_pct'), 0, sign=True))} · pivot {tf.esc(pivot_s)} · "
+        f"{tf.esc(_fmt_tightness(r))}{age_s}"
+    )
+
+
+def build_flag_digest(
+    by_stage: dict[str, list[dict]],
+    scan_date,
+    transitions: list[dict],
+) -> Optional[str]:
+    """PURE. The daily HTF digest as Telegram HTML, or None on a quiet day (no TRIGGERED, no
+    COILED, no new transition). Section order: NEW TODAY (the transitions) · TRIGGERED · COILED
+    that were already coiled · dropped-out count."""
+    triggered   = by_stage.get("TRIGGERED", [])
+    coiled      = by_stage.get("COILED", [])
+    tightening  = by_stage.get("TIGHTENING", [])
+    watch       = by_stage.get("WATCH", [])
+    invalidated = by_stage.get("INVALIDATED", [])
+
+    # A name listed under NEW TODAY is not listed a second time in the COILED roster.
+    new_coiled = {t["ticker"] for t in transitions if t["stage"] == "COILED"}
+    standing = [r for r in coiled if r["ticker"] not in new_coiled]
+
+    if not (triggered or standing or transitions):
+        return None
+
+    universe_total = sum(len(v) for v in by_stage.values())
+    date_str = f"{scan_date.strftime('%b')} {scan_date.day}" if hasattr(scan_date, "strftime") else str(scan_date)
+    lines = [
+        f"🚩 {tf.b(f'HTF Scanner — {date_str}')}",
+        tf.i(
+            f"{universe_total} tickers scanned · {len(watch)} watch · {len(tightening)} tightening · "
+            f"{len(coiled)} coiled · {len(triggered)} triggered"
+        ),
+    ]
+
+    if transitions:
+        lines.append("")
+        lines.append(f"🆕 {tf.b(f'NEW TODAY — entered TIGHTENING or COILED ({len(transitions)})')}")
+        lines.extend(_fmt_transition(t) for t in transitions)
+        lines.append(tf.i(
+            "A watch list, not a trade signal — no buy point or stop is set. Range and volume are "
+            "the base's last 5 days against its first 5 "
+            f"(tight = range under {_RANGE_CONTRACTION_MAX:.2f}, volume under {_VOL_CONTRACTION_MAX:.2f})."
+        ))
+
+    if triggered:
+        lines.append("")
+        lines.append(f"🎯 {tf.b(f'TRIGGERED ({len(triggered)})')}")
+        for r in sorted(triggered, key=lambda x: x.get("runup_pct") or 0, reverse=True):
+            lines.append(_fmt_triggered(r))
+
+    if standing:
+        lines.append("")
+        lines.append(f"🌀 {tf.b(f'COILED — still coiled ({len(standing)})')}")
+        for r in sorted(standing, key=lambda x: x.get("range_contraction_ratio") or 1)[:8]:
+            lines.append(_fmt_coiled(r))
+        if len(standing) > 8:
+            lines.append(f"  …{len(standing) - 8} more")
+
+    # #479 (2026-07-17): the DROPPED-OUT roster (18 names on 7/17) was pure
+    # scan-churn noise — a ticker leaving the watchlist isn't actionable. Keep
+    # a one-line count so the churn is still visible; the roster is on `/htf`.
+    # (The whole message is already suppressed when nothing actionable fired.)
+    if invalidated:
+        lines.append(f"📉 {len(invalidated)} dropped out ({tf.code('/htf')})")
+
+    return tf.render(lines)
+
+
+async def _delivered_transition_keys(keys: list[str]) -> set[str]:
+    """Which of these `_transition_key`s already reached Telegram (a `sent` audit row exists).
+
+    Inline query, not in db.py: db.py is on `scripts/exec_loaded_modules.txt`, so a query there
+    would turn a market-agent-only change into a two-step deploy (same precedent as
+    `ma_filter.should_log_mna_filter_fired`). FAILS OPEN — on any error nothing counts as
+    delivered, so the worst case is a repeat on a quiet surface, never a silently dropped push.
+    """
+    if not keys:
+        return set()
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT summary FROM mi_audit_log "
+                "WHERE event_type = $1 AND summary = ANY($2::text[])",
+                _TRANSITION_EVENT, keys,
+            )
+        return {r["summary"] for r in rows}
+    except Exception as e:
+        logger.warning(f"flag transition dedupe lookup failed (fail-open): {e}")
+        return set()
+
+
+async def _record_transitions(transitions: list[dict], scan_date, outcome: str) -> None:
+    """One `flag_stage_transition` audit row per transition. `outcome` is "sent" (the row's summary
+    is the bare dedupe key) or "not delivered" (the key plus a suffix, so it does NOT dedupe)."""
+    from agents.market_intelligence import db
+    for t in transitions:
+        r = t["row"]
+        key = _transition_key(t["ticker"], t["stage"], scan_date)
+        summary = key if outcome == "sent" else f"{key} ({outcome})"
+        detail = json.dumps({
+            "ticker": t["ticker"],
+            "stage": t["stage"],
+            "prev_stage": t["prev"],
+            "scan_date": str(scan_date),
+            "run_up_pct": r.get("runup_pct"),
+            "pivot_high_price": r.get("pivot_high_price"),
+            "range_contraction_ratio": r.get("range_contraction_ratio"),
+            "vol_contraction_ratio": r.get("vol_contraction_ratio"),
+            "base_age": r.get("base_age"),
+            "telegram": outcome,
+        }, default=str)
+        await db.log_audit_event(_TRANSITION_EVENT, summary, detail)
 
 
 async def send_flag_digest(
@@ -1808,69 +2028,54 @@ async def send_flag_digest(
     scan_date: date,
     yesterday_map: Optional[dict[str, str]] = None,
 ) -> None:
-    """Compact daily digest — TRIGGERED + COILED + new-TIGHTENING +
-    DROPPED-OUT (INVALIDATED). Suppressed entirely on quiet days
-    (no triggered, no coiled, no fresh tightening).
+    """The daily HTF digest — NEW TODAY (stage transitions, #598) + TRIGGERED + COILED + a
+    dropped-out count. Suppressed entirely on quiet days (no triggered, no coiled, no new
+    transition).
+
+    The transitions live at the TOP of this digest rather than in a message of their own because
+    this digest already reaches the operator at 17:25 ET from the same run: a second message a
+    minute apart would be noise, and the old "NEW TIGHTENING" roll-call it replaces was already
+    the transition surface — it just carried no numbers.
 
     WATCH-only stocks are silenced — too noisy at 40-50/day. They live in
     `mi_flag_candidates` and surface via `/flags watch` on demand.
     """
     from agents.market_intelligence.briefing import send_telegram_message
 
-    triggered    = by_stage.get("TRIGGERED", [])
-    coiled       = by_stage.get("COILED", [])
-    tightening   = by_stage.get("TIGHTENING", [])
-    watch        = by_stage.get("WATCH", [])
-    invalidated  = by_stage.get("INVALIDATED", [])
-
     if yesterday_map is None:
         from agents.market_intelligence import db
         yesterday_map = await db.get_yesterday_flag_stages(scan_date)
-    new_tightening = [r for r in tightening if yesterday_map.get(r["ticker"]) in (None, "WATCH")]
 
-    if not (triggered or coiled or new_tightening):
-        logger.info("flag_scan: zero triggered/coiled/new-tightening — digest suppressed")
+    transitions: list[dict] = []
+    try:
+        transitions = stage_transitions(by_stage, yesterday_map)
+        if transitions:
+            delivered = await _delivered_transition_keys(
+                [_transition_key(t["ticker"], t["stage"], scan_date) for t in transitions]
+            )
+            transitions = [
+                t for t in transitions
+                if _transition_key(t["ticker"], t["stage"], scan_date) not in delivered
+            ]
+    except Exception as e:
+        # The roster still goes out; the lost transitions are named in the nightly error sweep.
+        logger.exception(f"flag transition detection failed: {e}")
+        transitions = []
+        from agents.market_intelligence import db
+        await db.log_audit_event(
+            _TRANSITION_ERROR_EVENT,
+            f"flag stage-transition detection failed for {scan_date}: {type(e).__name__}",
+            detail=str(e)[:500],
+        )
+
+    msg = build_flag_digest(by_stage, scan_date, transitions)
+    if msg is None:
+        logger.info("flag_scan: zero triggered/coiled/new-transition — digest suppressed")
         return
 
-    universe_total = sum(len(v) for v in by_stage.values())
-    date_str = f"{scan_date.strftime('%b')} {scan_date.day}" if hasattr(scan_date, "strftime") else str(scan_date)
-    lines = [
-        f"🚩 *HTF Scanner — {date_str}*",
-        f"_{universe_total} tickers scanned · "
-        f"{len(watch)} watch · {len(tightening)} tightening · "
-        f"{len(coiled)} coiled · {len(triggered)} triggered_",
-    ]
-
-    if triggered:
-        lines.append("")
-        lines.append(f"🎯 *TRIGGERED ({len(triggered)})*")
-        for r in sorted(triggered, key=lambda x: x.get("runup_pct") or 0, reverse=True):
-            lines.append(_fmt_triggered(r))
-
-    if coiled:
-        lines.append("")
-        lines.append(f"🌀 *COILED — actionable setup ({len(coiled)})*")
-        for r in sorted(coiled, key=lambda x: x.get("range_contraction_ratio") or 1)[:8]:
-            lines.append(_fmt_coiled(r))
-        if len(coiled) > 8:
-            lines.append(f"  …{len(coiled) - 8} more")
-
-    if new_tightening:
-        names = ", ".join(r["ticker"] for r in new_tightening[:12])
-        more = f" …+{len(new_tightening) - 12}" if len(new_tightening) > 12 else ""
-        lines.append("")
-        lines.append(f"🔧 *NEW TIGHTENING ({len(new_tightening)})*")
-        lines.append(f"  {names}{more}")
-
-    # #479 (2026-07-17): the DROPPED-OUT roster (18 names on 7/17) was pure
-    # scan-churn noise — a ticker leaving the watchlist isn't actionable. Keep
-    # a one-line count so the churn is still visible; the roster is on `/htf`.
-    # (The whole message is already suppressed when nothing actionable fired —
-    # the early return at the top of this block.)
-    if invalidated:
-        lines.append(f"📉 {len(invalidated)} dropped out (`/htf`)")
-
-    await send_telegram_message("\n".join(lines))
+    ok = await send_telegram_message(msg, parse_mode="HTML")
+    if transitions:
+        await _record_transitions(transitions, scan_date, "sent" if ok else "not delivered")
 
 
 # ────────────────────────────────────────────────────────────────────────
