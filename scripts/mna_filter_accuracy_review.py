@@ -90,6 +90,12 @@ def _answer(detail_full) -> str:
             return f"; price unreadable ({p.get('why')})"
         return (f"; {p.get('window')} range {p.get('range_pct')}% vs {p.get('threshold_pct')}% -> "
                 f"{'PINNED' if p.get('pinned') else 'FREE'}")
+    if d.get("source") == "open_window_price_pin":
+        # his ruling 3 (2026-10-03): the price-only arm — a >= 20% gap whose open window trades
+        # within 0.5% blocks regardless of the news; its rows carry the gap and the reading.
+        head = f"price-only arm: gap {d.get('gap_pct')}%"
+        return (("held " if d.get("pending") or not (d.get("pin") or {}).get("readable") else "")
+                + head + _pin(d.get("pin")))
     if d.get("role"):
         return f"{d['role']}/{d.get('status')}/{d.get('consideration')}" + _pin(d.get("pin"))
     a = d.get("answer") or {}

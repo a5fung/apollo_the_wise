@@ -260,17 +260,29 @@ def test_the_earlier_proposed_targets_are_now_released_on_price_not_on_wording(t
     assert out.blocked is False and _released_on_price(out)
 
 
-def test_the_three_approved_rows_the_price_changes_are_named_agent_read_not_findings():
-    """NUVL 06-09 (released 10-02, the open ranged 0.11%) now blocks; MGM 06-01 and IRDM 06-29
-    (MGM released, IRDM blocked on 10-02) now follow the price. His to label."""
-    for t, expected in (("NUVL", True), ("MGM", False), ("IRDM", False)):
-        case, out = _case(t)
-        assert not case.ground_truth and out.blocked is expected, t
-    assert _case("NUVL")[1].meta["pin"]["range_pct"] == pytest.approx(0.114)
+def test_NUVL_2026_06_09_ruling4_a_GSK_bid_at_a_pinned_price_is_blocked():
+    """His ruling 4 (2026-10-03, 'Go with rec'): the 10-02 list released NUVL as a proposal; the
+    open ranged 0.11% on a +39% gap. Ground truth now."""
+    case, out = _case("NUVL")
+    assert case.ground_truth and out.blocked is True and out.meta["why"] == "pinned"
+    assert out.meta["pin"]["range_pct"] == pytest.approx(0.114)
+
+
+def test_IRDM_2026_06_29_ruling4_a_signed_headline_at_a_free_price_is_released():
+    """His ruling 4: the 10-02 list blocked IRDM on a Viasat article's 'Rocket Lab announced an
+    $8B acquisition'; the open ranged 3.28% on a +19% gap. Ground truth now."""
+    case, out = _case("IRDM")
+    assert case.ground_truth and out.blocked is False and _released_on_price(out)
+
+
+def test_MGM_stays_agent_read_and_released_by_0_24pp():
+    case, out = _case("MGM")
+    assert not case.ground_truth and out.blocked is False and _released_on_price(out)
 
 
 def test_every_2026_10_03_call_is_a_named_ground_truth_case():
-    calls = {"PD": "PASS", "DSGN": "PASS", "THR": "PASS", "HZO": "BLOCK", "RNW": "BLOCK"}
+    calls = {"PD": "PASS", "DSGN": "PASS", "THR": "PASS", "HZO": "BLOCK", "RNW": "BLOCK",
+             "NUVL": "BLOCK", "IRDM": "PASS"}
     for t, exp in calls.items():
         c = H.CASES_BY_TICKER[t]
         assert c.ground_truth and c.expected == exp and c.pin is not None, t
@@ -288,7 +300,9 @@ def test_mutation_guard_without_the_price_condition_his_five_corrections_go_red(
     DSGN / THR block again while HZO / RNW pass — exactly the five he corrected."""
     def news_only(a, reading):
         return mf.deal_pins_price(a), "no_price_reading"
-    with patch.object(mf, "pin_verdict", new=news_only):
+    # the price-only arm (ruling 3) is switched off here so the guard isolates the NEWS arm's
+    # price condition — with the arm on, HZO (+45%, 0.15%) would still block on price alone.
+    with patch.object(mf, "pin_verdict", new=news_only), patch.object(mf, "PRICE_ONLY_GAP_MIN_PCT", 1e9):
         got = {t: ("BLOCK" if _run(H.run_new(H.CASES_BY_TICKER[t])).blocked else "PASS")
                for t in ("PD", "DSGN", "THR", "HZO", "RNW", "ACVA", "SUNE")}
     assert got == {"PD": "BLOCK", "DSGN": "BLOCK", "THR": "BLOCK", "HZO": "PASS", "RNW": "PASS",
@@ -353,17 +367,19 @@ async def _async(v):
     return v
 
 
-def test_a_price_released_signed_target_graded_mna_does_not_count_as_a_grade_without_pin():
-    """PD shape: grade 'mna' + target/signed/unknown (the fields DO pin by news) + a free open.
-    The release is the `pin_free` row; the `mna_grade_without_pin` counter (the 10-02 EXPECT's
-    'prompt rule not holding' signal) must stay silent, or every such release trips it."""
+def test_a_target_graded_mna_is_the_prompt_rule_not_holding_and_is_counted():
+    """His ruling 2 (2026-10-03): 'mna' is for a signed SHELL only, so PD's recorded 10-02 shape
+    (grade 'mna' + target/signed/unknown) is now the prompt rule NOT holding — the price still
+    releases it (`pin_free`) and the `mna_grade_without_pin` counter fires once. A signed shell
+    graded 'mna' is the rule holding: no row."""
     out = _run(H.run_new(H.CASES_BY_TICKER["PD"]))
     assert out.blocked is False and _released_on_price(out)
-    assert not [a for a in out.audits if a[0] == "mna_grade_without_pin"]
-    # the counter still fires on its real case: 'mna' graded on fields that fail the news rule
-    buyer = H.CASES_BY_TICKER["PD"]._replace(grader=H.Ans("buyer", "signed", "cash"), pin=None)
-    out = _run(H.run_new(buyer))
-    assert out.blocked is False and [a for a in out.audits if a[0] == "mna_grade_without_pin"]
+    rows = [a for a in out.audits if a[0] == "mna_grade_without_pin"]
+    assert len(rows) == 1 and "not a signed shell" in rows[0][1]
+    shell = H.CASES_BY_TICKER["SUNE"]._replace(catalyst_quality="mna",
+                                               grader=H.Ans("shell", "signed", "unknown", "Suniva"))
+    out = _run(H.run_new(shell))
+    assert out.blocked is True and not [a for a in out.audits if a[0] == "mna_grade_without_pin"]
 
 
 def test_a_free_nominating_hit_does_not_swallow_the_unanswered_row_of_its_scan():
@@ -383,6 +399,103 @@ def test_ruling7_still_governs_a_grader_answered_deal_against_a_nominating_headl
     out = _run(H.run_new(case, pin_reader=lambda: _async(_r("open5m", 0.1))))
     assert out.blocked is False
     assert any(a[0] == "mna_deal_answers_conflict" and a[2]["blocked"] is False for a in out.audits)
+
+
+# ── 5. THE PRICE-ONLY ARM (his ruling 3, 2026-10-03: "Go with rec") ─────────────────────────
+
+_SEVEN = ["TMHC", "APGE", "SAFT", "FBRX", "VREX", "ARX", "WEAV"]
+
+
+def test_price_only_verdict_states():
+    free = _r("open5m", 0.99)
+    assert mf.price_only_pin_verdict(None, free) == (False, "gap_below_arm")
+    assert mf.price_only_pin_verdict(19.99, _r("open5m", 0.1)) == (False, "gap_below_arm")
+    assert mf.price_only_pin_verdict(20.0, None) == (False, "no_price_reading")
+    assert mf.price_only_pin_verdict(25.0, _r("open5m", None, readable=False, why="pre_market", n=0)) == (None, "pin_pending")
+    assert mf.price_only_pin_verdict(22.35, _r("open5m", 0.2515)) == (True, "price_only_pinned")
+    assert mf.price_only_pin_verdict(22.35, _r("open5m", mf.PRICE_ONLY_PIN_MAX_PCT)) == (True, "price_only_pinned")
+    assert mf.price_only_pin_verdict(31.81, free) == (False, "price_only_free")
+    assert (mf.PRICE_ONLY_GAP_MIN_PCT, mf.PRICE_ONLY_PIN_MAX_PCT) == (20.0, 0.5)
+
+
+@pytest.mark.parametrize("ticker", _SEVEN)
+def test_the_seven_news_missed_buyouts_block_on_the_price_alone(ticker):
+    case, out = _case(ticker)
+    assert case.ground_truth and case.grader == H._NONE and case.gap_pct >= 20
+    assert out.blocked is True and out.meta["source"] == "open_window_price_pin"
+    assert out.meta["why"] == "price_only_pinned" and out.meta["pin"]["pinned"] is True
+    assert out.meta["pin"]["threshold_pct"] == 0.5 and out.meta["gap_pct"] == pytest.approx(case.gap_pct)
+    assert out.calls == []
+
+
+def test_price_only_arm_lets_free_big_gappers_through_and_never_reads_small_gaps():
+    for t in ("VKTX", "ATAI"):          # +23% / 3.38%, +32% / 0.99%
+        case, out = _case(t)
+        assert case.gap_pct >= 20 and out.blocked is False, t
+    calls = []
+
+    async def counting():
+        calls.append(1)
+        return _r("open5m", 0.05)
+    out = _run(H.run_new(H.CASES_BY_TICKER["CHYM"]._replace(gap_pct=9.35), pin_reader=counting))
+    assert out.blocked is False and calls == [], "below 20% the window is never read"
+    out = _run(H.run_new(H.CASES_BY_TICKER["CHYM"]._replace(gap_pct=25.0), pin_reader=counting))
+    assert out.blocked is True and out.meta["source"] == "open_window_price_pin" and calls == [1]
+
+
+def test_price_only_arm_holds_a_big_gapper_while_the_window_is_unreadable():
+    case = H.CASES_BY_TICKER["TMHC"]._replace(pin=None, pin_pending=True)
+    out = _run(H.run_new(case))
+    assert out.blocked is True and out.meta["pending"] is True
+    assert out.meta["source"] == "open_window_price_pin" and out.meta["why"] == "pin_pending"
+    pend = [a for a in out.audits if a[0] == "mna_pin_pending"]
+    assert pend and pend[0][2]["source"] == "open_window_price_pin" and pend[0][2]["gap_pct"] == pytest.approx(22.35)
+    assert "price-only arm" in pend[0][1]
+
+
+def test_price_only_arm_needs_a_reader_and_never_runs_without_the_gap():
+    assert _run(H.run_new(H.CASES_BY_TICKER["TMHC"], use_case_pin=False)).blocked is False
+    assert _run(H.run_new(H.CASES_BY_TICKER["TMHC"]._replace(gap_pct=None))).blocked is False
+
+
+def test_price_only_arm_runs_after_the_news_arm_and_reads_the_window_once():
+    """A nominated AND >= 20% name: the news arm reads the window; the arm reuses the reading."""
+    calls = []
+
+    async def counting():
+        calls.append(1)
+        return _r("open5m", 5.36)
+    out = _run(H.run_new(H.CASES_BY_TICKER["PD"], pin_reader=counting))   # PD: nominated, +25%, free
+    assert out.blocked is False and calls == [1]
+
+
+def test_mutation_guard_the_arm_is_load_bearing_for_the_seven():
+    with patch.object(mf, "PRICE_ONLY_GAP_MIN_PCT", 1e9):
+        got = {t: _run(H.run_new(H.CASES_BY_TICKER[t])).blocked for t in _SEVEN}
+    assert got == {t: False for t in _SEVEN}
+
+
+def test_ep_filter_passes_the_gap_and_holds_under_the_arm_with_the_classified_prefix():
+    from agents.market_intelligence import ep_detector
+    from agents.market_intelligence.theme_axis_shadow import classify_legacy_filter_reason
+    seen, audits = {}, []
+
+    async def fake_is_likely_ma(ticker, **kw):
+        seen.update(kw)
+        return True, {"source": "open_window_price_pin", "pending": True, "why": "pin_pending",
+                      "gap_pct": 22.35, "pin": {"why": "pre_market", "readable": False}}
+
+    async def audit(event_type, summary, detail=""):
+        audits.append(event_type)
+    with patch.object(ep_detector, "is_likely_ma", new=fake_is_likely_ma), \
+         patch.object(ep_detector, "log_audit_event", new=audit):
+        reason = _run(ep_detector._post_grade_filters(
+            "TMHC", "routine", "a", "s", 22.35, 1_000_000, 3.0, date(2026, 6, 1),
+            lattice_acting=False, deal_answer=DealAnswer("none", "none", "none")))
+    assert seen["gap_pct"] == 22.35
+    assert reason.startswith("M&A/buyout catalyst") and "price-only arm" in reason and "held" in reason
+    assert classify_legacy_filter_reason(reason) == "post_grade_filter"
+    assert "mna_filter_fired" not in audits
 
 
 def test_ep_filter_holds_a_pending_name_under_the_classified_prefix_and_writes_no_fired_row():

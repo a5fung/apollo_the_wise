@@ -61,7 +61,7 @@ MNA_FILTER_FIRED = "mna_filter_fired"
 # subsumed by MNA_FILTER_RELEASED (the general "old rule would have blocked, the answer said no").
 MNA_FILTER_RELEASED = "mna_filter_released"            # old rule would block (or the grader answered a non-pinning deal), new rule passed — carries the answer
 MNA_HEADLINE_UNANSWERED = "mna_headline_unanswered"    # headline question got no answer (error / budget / EP ORB window / article cap) — passed (ruling 4) unless the toggle is ON
-MNA_GRADE_WITHOUT_PIN = "mna_grade_without_pin"        # grader said 'mna' but its own ANSWERED deal fields do not pin (blank fields block instead — ruling 5)
+MNA_GRADE_WITHOUT_PIN = "mna_grade_without_pin"        # grader said 'mna' but its own ANSWERED deal fields are not a signed shell (since 2026-10-03 the grade is shell-only; a target graded 'mna' = the prompt rule not holding; blank fields block instead — ruling 5)
 MNA_DEAL_ANSWERS_CONFLICT = "mna_deal_answers_conflict"  # grader said no pin, a headline pinned — detail.blocked: True (grader found no deal) / False (ruling 7: grader's deal answer governs)
 MNA_HEADLINE_CAP_HIT = "mna_headline_cap_hit"          # the day's headline-question budget spent for a pool (ep / shared) — once per pool per ET day, no Telegram
 MNA_PIN_PENDING = "mna_pin_pending"                    # 2026-10-03: a deal-nominated name HELD because its price window could not be read yet (pre-market / window open / fetch failed / too few bars) — no mna_filter_fired row for a hold; the next tick re-reads

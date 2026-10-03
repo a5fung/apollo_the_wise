@@ -82,7 +82,9 @@ moves one — with the single deliberate asymmetry that the TOP tier is a positi
 and unverifiable content-surprise keeps a scheduled/unscheduled name at `strong`, which
 still alerts and keeps its conviction floors; it is a 10-point haircut, not a skip):
 
-  mna           -> mna   (hard filter untouched, out of scope: QURE question is #533-flagged)
+  mna           -> mna   (since 2026-10-03 `mna` is graded ONLY for a signed reverse-merger shell —
+                          a buyout target is graded on merit and the M&A filter decides it on price;
+                          the passthrough stays: a shell's grade carries its own verdict)
   game_changer  -> kept only with content-surprise evidence:
                      scheduled:   beat AND forward   (the PEG signature)
                      unscheduled: forward            (a concrete forward event)

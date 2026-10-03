@@ -77,6 +77,9 @@ class Case(NamedTuple):
     # carries no price (the 10-02 verdict applies); pin_pending=True = the window was not readable.
     pin: Optional[tuple] = None
     pin_pending: bool = False
+    # his ruling 3 (2026-10-03): the EP scan's gap at decision time arms the price-only arm
+    # (gap >= 20% AND open window <= 0.5% blocks regardless of the news). None = not the EP path.
+    gap_pct: Optional[float] = None
 
 
 def _item(title: str, *, description: str = "", ticker: str = "", reasoning: Optional[str] = None,
@@ -114,19 +117,19 @@ CASES: tuple[Case, ...] = (
          True, "classifier", "BLOCK", "mna",
          ("[SEC 8-K filed 2026-09-10, items 1.01,7.01,9.01] ACVA gapped up because Copart announced an "
           "agreement to acquire ACV Auctions in an all-cash deal valued at approximately $1.9 billion.",),
-         grader=Ans("target", "signed", "cash", "Copart"), pin=("open5m", 0.2869)),
+         grader=Ans("target", "signed", "cash", "Copart"), pin=("open5m", 0.2869), gap_pct=44.81),
     # ── his 2026-10-03 sign-off on the replay: three releases, two keeps (the price decides) ──
     Case("PD", "2026-05-29", "operator 2026-10-03: 'is not a buyout, release' - signed take-private read, no buyer named; "
          "the open ranged 5.36% (13% on the day)",
          True, "keyword", "PASS", "mna",
          ("The news says a private equity buyer agreed to acquire PagerDuty and take it private at a premium.",),
-         grader=Ans("target", "signed", "unknown"), pin=("open5m", 5.3591)),
+         grader=Ans("target", "signed", "unknown"), pin=("open5m", 5.3591), gap_pct=25.40),
     Case("DSGN", "2026-05-18", "operator 2026-10-03: 'is not a buyout, release' - 'agreed to acquire' with no buyer "
          "named; the open ranged 6.60% (65% on the day)",
          True, "keyword", "PASS", "routine",
          ("DSGN gapped up on news that a larger biopharma company agreed to acquire Design Therapeutics at a "
           "substantial premium; a takeover.",),
-         grader=Ans("target", "signed", "unknown"), pin=("open5m", 6.599)),
+         grader=Ans("target", "signed", "unknown"), pin=("open5m", 6.599), gap_pct=9.67),
     Case("THR", "2026-05-22", "operator 2026-10-03: 'is not a buyout, release' - CECO merger, holders elect "
          "cash/stock/mix; the day ranged 2.39% (flag scan: day window)",
          True, "headline", "PASS",
@@ -138,13 +141,79 @@ CASES: tuple[Case, ...] = (
          True, "classifier", "BLOCK", "routine",
          ("HZO is gapping up on reports that Blackstone, Donerail and Centerbridge are in the final round of "
           "bidding for MarineMax.",),
-         grader=Ans("target", "proposed", "unknown", "Blackstone, Donerail, Centerbridge"), pin=("open5m", 0.1542)),
+         grader=Ans("target", "proposed", "unknown", "Blackstone, Donerail, Centerbridge"), pin=("open5m", 0.1542),
+         gap_pct=45.42),
     Case("RNW", "2026-08-11", "operator 2026-10-03: 'is a real buyout, keep blocked' - the controlling holders' "
          "take-private PROPOSAL reaffirmed; the open ranged 0.74% (1.5% on the day)",
          True, "classifier", "BLOCK", "routine",
          ("RNW gapped up on a 6-K disclosing a confirmatory letter from CPPIB and founder-CEO Sumant Sinha "
           "reaffirming their take-private proposal.",),
-         grader=Ans("target", "proposed", "unknown", "CPPIB and Sumant Sinha"), pin=("open5m", 0.7396)),
+         grader=Ans("target", "proposed", "unknown", "CPPIB and Sumant Sinha"), pin=("open5m", 0.7396),
+         gap_pct=10.28),
+    # ── his ruling 4 (2026-10-03, "Go with rec"): the two approved 10-02 rows the price reverses ──
+    Case("NUVL", "2026-06-09", "operator 2026-10-03 ruling 4: NUVL 06-09 now BLOCKED - GSK takeover bid at a premium "
+         "(PROPOSED; the 10-02 rule released it); gap +39%, the open ranged 0.11%, 0.67% on the day",
+         True, "classifier", "BLOCK", "routine",
+         ("NUVL gapped up on a reported takeover bid from GSK at a substantial premium.",),
+         grader=Ans("target", "proposed", "unknown", "GSK"), pin=("open5m", 0.114), gap_pct=38.80),
+    Case("IRDM", "2026-06-29", "operator 2026-10-03 ruling 4: IRDM 06-29 now RELEASED - a Viasat article said 'Rocket "
+         "Lab announced an $8 billion acquisition of Iridium' (headline target/signed/unknown; the 10-02 rule blocked "
+         "it); gap +19%, the open ranged 3.28%, 7.1% on the day - the price says free",
+         True, "headline", "PASS", "routine",
+         ("The only news attributes the gap-up to SpaceX-related sector momentum.",),
+         grader=_NONE,
+         articles=(_item("Why Viasat Stock Went to the Moon Today", ticker="IRDM",
+                         description="Rocket Lab announced an $8 billion acquisition of Iridium Communications; "
+                                     "a merger wave in satellite names.",
+                         reasoning="Rocket Lab announced an $8 billion acquisition of Iridium Communications.",
+                         published="2026-06-29T12:00:00Z"),),
+         headline=(("Why Viasat Stock Went to the Moon Today",
+                    Ans("target", "signed", "unknown", "Rocket Lab")),),
+         company="Iridium Communications Inc.", pin=("open5m", 3.2847), gap_pct=18.92),
+    # ── his ruling 3 (2026-10-03, "Go with rec"): THE PRICE-ONLY ARM — seven real buyouts the news
+    # called 'none' (the replayed grader read a 200-char excerpt): gap >= 20% AND open window <= 0.5%
+    # blocks regardless of the news. Recorded readings: scripts/probes/_692/pin_backtest_measures.json ──
+    Case("TMHC", "2026-06-01", "operator 2026-10-03 ruling 3 (price-only arm): real buyout, news read 'Berkshire stake'; "
+         "gap +22%, open window 0.25%, 0.43% on the day",
+         True, "classifier", "BLOCK", "routine",
+         ("TMHC gapped up on news that Berkshire Hathaway disclosed a large new stake in homebuilders.",),
+         grader=_NONE, pin=("open5m", 0.2515), gap_pct=22.35),
+    Case("APGE", "2026-06-22", "operator 2026-10-03 ruling 3 (price-only arm): real buyout, news read 'no discrete "
+         "headline'; gap +47%, open window 0.41%, 0.41% on the day",
+         True, "classifier", "BLOCK", "routine",
+         ("APGE's latest gap up does not appear tied to a single discrete news headline.",),
+         grader=_NONE, pin=("open5m", 0.4148), gap_pct=46.71),
+    Case("SAFT", "2026-07-24", "operator 2026-10-03 ruling 3 (price-only arm): real buyout, news read 'sector move'; "
+         "gap +41%, open window 0.37%, 0.53% on the day",
+         True, "classifier", "BLOCK", "routine",
+         ("[SEC 8-K filed 2026-07-23, items 7.01,9.01] SAFT appears to have gapped up mainly on a sector/name-specific move.",),
+         grader=_NONE, pin=("open5m", 0.3689), gap_pct=41.23),
+    Case("FBRX", "2026-07-27", "operator 2026-10-03 ruling 3 (price-only arm): real buyout (the flag scan caught it by "
+         "headline on 08-10..12), news read 'bullish Street initiation'; gap +39%, open window 0.08%, 0.29% on the day",
+         True, "classifier", "BLOCK", "routine",
+         ("[SEC 8-K filed 2026-07-27, items 1.01,7.01,9.01] The recent gap up in FBRX is being driven primarily by "
+          "bullish Street initiation and strong clinical data.",),
+         grader=_NONE, pin=("open5m", 0.0785), gap_pct=39.49),
+    Case("VREX", "2026-08-10", "operator 2026-10-03 ruling 3 (price-only arm): real buyout, news read 'pre-earnings "
+         "positioning'; gap +48%, open window 0.11%, 0.68% on the day",
+         True, "classifier", "BLOCK", "routine",
+         ("VREX looks like it gapped up mainly because traders are positioning ahead of its third-quarter earnings release.",),
+         grader=_NONE, pin=("open5m", 0.1088), gap_pct=48.19),
+    Case("ARX", "2026-08-13", "operator 2026-10-03 ruling 3 (price-only arm): real buyout, news read 'pre-earnings "
+         "positioning'; gap +44%, open window 0.46%, 0.87% on the day",
+         True, "classifier", "BLOCK", "routine",
+         ("ARX appears to be Accelerant Holdings; the most likely reason for the gap up is pre-earnings positioning.",),
+         grader=_NONE, pin=("open5m", 0.4592), gap_pct=44.09),
+    Case("WEAV", "2026-08-18", "operator 2026-10-03 ruling 3 (price-only arm): real buyout, news read 'earnings beat'; "
+         "gap +32%, open window 0.48%, 0.48% on the day",
+         True, "classifier", "BLOCK", "routine",
+         ("[SEC 8-K filed 2026-08-18, items 8.01,9.01] WEAV appears to be moving on a company-specific earnings beat.",),
+         grader=_NONE, pin=("open5m", 0.4795), gap_pct=31.83),
+    Case("ATAI", "2026-07-16", "agent-read: the closest FREE >= 20% gapper to the price-only line - gap +32%, open "
+         "window 0.99% (2.8% on the day); the arm must let it through (ATAI was pinned by a deal only from 07-24)",
+         False, "classifier", "PASS", "routine",
+         ("ATAI's recent gap up has been driven by a cluster of bullish catalysts around its psychedelic pipeline.",),
+         grader=Ans("none", "speculation", "none"), pin=("open5m", 0.9901), gap_pct=31.81),
     Case("FWDI", "2026-09-18", "operator 2026-10-01: wrongly blocked - FWDI is the BIDDER for SkyAI",
          True, "classifier", "PASS", "mna",
          ("[SEC 8-K filed 2026-09-15, items 7.01,9.01] FWDI's latest identifiable catalyst is its renewed, "
@@ -187,14 +256,15 @@ CASES: tuple[Case, ...] = (
          articles=(_item(_IOVA_VKTX_TITLE, published="2026-09-28T14:00:00Z"),),
          headline=((_IOVA_VKTX_TITLE, Ans("target", "speculation", "none")),),
          company="Iovance Biotherapeutics, Inc."),
-    Case("VKTX", "2026-09-22", "operator 2026-10-01: wrongly blocked - Novo 'could pursue acquisitions' speculation",
+    Case("VKTX", "2026-09-22", "operator 2026-10-01: wrongly blocked - Novo 'could pursue acquisitions' speculation "
+         "(a free +23% gapper: the price-only arm reads 3.38% and lets it through)",
          True, "headline", "PASS", "strong",
          ("[SEC 8-K filed 2026-09-22, items 8.01,9.01] VKTX's latest move higher was driven primarily by "
           "renewed obesity-drug M&A speculation after Novo Nordisk said it could pursue larger acquisitions.",),
          grader=Ans("target", "speculation", "none"),
          articles=(_item(_IOVA_VKTX_TITLE, published="2026-09-21T14:00:00Z"),),
          headline=((_IOVA_VKTX_TITLE, Ans("target", "speculation", "none")),),
-         company="Viking Therapeutics, Inc."),
+         company="Viking Therapeutics, Inc.", pin=("open5m", 3.3784), gap_pct=22.88),
     Case("RGTI", "2026-09-08", "operator 2026-10-01: wrongly blocked - $100M Commerce Dept FUNDING agreement",
          True, "headline", "PASS", "strong",
          ("[SEC 8-K filed 2026-09-08, items 1.01,3.02,7.01,8.01,9.01] RGTI gapped up primarily because Rigetti "
@@ -299,12 +369,7 @@ CASES: tuple[Case, ...] = (
                          others=(("IONQ", "IonQ's merger with SkyWater advanced."),),
                          published="2026-05-11T20:00:00Z"),),
          company="D-Wave Quantum Inc.", pin=("open5m", 5.4688)),
-    # the three rows of his APPROVED 10-02 list the PRICE now changes (2026-10-03; his to label)
-    Case("NUVL", "2026-06-09", "agent-read: GSK takeover bid at a premium (PROPOSED - the 10-02 rule released it, he "
-         "approved the list); gap +39%, the open ranged 0.11%, 0.67% on the day - the price says pinned",
-         False, "classifier", "BLOCK", "routine",
-         ("NUVL gapped up on a reported takeover bid from GSK at a substantial premium.",),
-         grader=Ans("target", "proposed", "unknown", "GSK"), pin=("open5m", 0.114)),
+    # MGM stays agent-read (his 10-03 approval of the released list stands; the price agrees, by 0.24pp)
     Case("MGM", "2026-06-01", "agent-read: People Inc.'s non-binding $48.30 cash proposal (headline; the grader found no "
          "deal); the open ranged 1.24% (6.5% on the day) - the price says free, by 0.24pp",
          False, "headline", "PASS", "routine",
@@ -317,21 +382,7 @@ CASES: tuple[Case, ...] = (
                          published="2026-06-01T11:00:00Z"),),
          headline=(("Barry Diller's People Makes Move To Take Casino Giant MGM Private",
                     Ans("target", "proposed", "cash", "People Inc.")),),
-         company="MGM Resorts International", pin=("open5m", 1.2381)),
-    Case("IRDM", "2026-06-29", "agent-read: a Viasat article said 'Rocket Lab announced an $8 billion acquisition of "
-         "Iridium' (headline target/signed/unknown; the 10-02 rule blocked it, he approved the list); gap +19%, the "
-         "open ranged 3.28%, 7.1% on the day - the price says free",
-         False, "headline", "PASS", "routine",
-         ("The only news attributes the gap-up to SpaceX-related sector momentum.",),
-         grader=_NONE,
-         articles=(_item("Why Viasat Stock Went to the Moon Today", ticker="IRDM",
-                         description="Rocket Lab announced an $8 billion acquisition of Iridium Communications; "
-                                     "a merger wave in satellite names.",
-                         reasoning="Rocket Lab announced an $8 billion acquisition of Iridium Communications.",
-                         published="2026-06-29T12:00:00Z"),),
-         headline=(("Why Viasat Stock Went to the Moon Today",
-                    Ans("target", "signed", "unknown", "Rocket Lab")),),
-         company="Iridium Communications Inc.", pin=("open5m", 3.2847)),
+         company="MGM Resorts International", pin=("open5m", 1.2381), gap_pct=10.97),
     Case("KALV", "2026-05-25", "agent-read: shareholder-litigation notice - skipped by prefix, never asked",
          False, "headline", "PASS",
          articles=(_item("BRODSKY & SMITH SHAREHOLDER UPDATE: Notifying Investors of the Following "
@@ -439,7 +490,7 @@ async def run_new(case: Case, *, unanswered_blocks: bool = False, now_et: dateti
             catalyst_quality=case.catalyst_quality,
             catalyst_texts=list(case.catalyst_texts) or None,
             now_et=now_et, skip_in_orb=skip_in_orb, budget_pool=budget_pool,
-            pin_reader=pin_reader)
+            pin_reader=pin_reader, gap_pct=case.gap_pct)
     return Outcome(blocked, meta, model.calls, model.unplanned, audits)
 
 
@@ -501,6 +552,8 @@ async def _main(old_path: Optional[str]) -> int:
         line += f"  {src} / {len(out.calls)} call(s)"
         if c.pin is not None:
             line += f" / {c.pin[0]} {c.pin[1]:.2f}%"
+        if c.gap_pct is not None:
+            line += f" / gap {c.gap_pct:.1f}%"
         if (out.meta or {}).get("pin"):
             line += f" -> {'PINNED' if out.meta['pin'].get('pinned') else 'free'}"
         elif out.blocked is False and any(a[0] == "mna_filter_released" and "pin_free" in

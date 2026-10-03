@@ -46,6 +46,9 @@ OUT_JSONL = HERE / "replay_pin_2026-10-03.jsonl"
 OUT_SUMMARY = HERE / "replay_pin_2026-10-03_summary.txt"
 DAILY = HERE / "pin" / "daily_bars.csv"
 MINUTE = HERE / "pin" / "minute_bars_to_1030.csv"
+# `--tag r2` writes replay_pin_2026-10-03_r2.jsonl / _r2_summary.txt and `--baseline` picks the
+# run to diff against (default: the 10-02 replay). The r2 run (his four rulings) diffs against
+# the first 10-03 run.
 
 CALLS_2026_10_03 = {("DSGN", "2026-05-18"): "PASS", ("THR", "2026-05-22"): "PASS",
                     ("PD", "2026-05-29"): "PASS", ("HZO", "2026-08-10"): "BLOCK",
@@ -91,6 +94,38 @@ def reading_for(row: dict, daily, minute):
     return mf.day_window_pin(daily.get(key) or [], day), ""
 
 
+def gap_for(row: dict, daily, minute):
+    """The EP scan's gap at decision time, from the exports: the 09:30 open vs the prior close
+    (the live gap at the 09:35 tick is the running price vs the prior close — the open is the
+    closest exported stand-in); without minute bars the daily open vs the prior close. None for
+    non-EP rows — only the EP scan arms the price-only arm."""
+    if not row.get("ep_day"):
+        return None
+    key = (row["ticker"], row["date"])
+    prior = [r for r in daily.get(key) or [] if r["trade_date"] < row["date"]]
+    if not prior:
+        return None
+    try:
+        pc = float(prior[-1]["close"])
+    except (TypeError, ValueError):
+        return None
+    bars = minute.get(key) or []
+    o = None
+    if bars:
+        first = min(bars, key=lambda b: b["ts"])
+        if first["ts"].hour == 9 and first["ts"].minute == 30:
+            o = first["open"]
+    if o is None:
+        own = [r for r in daily.get(key) or [] if r["trade_date"] == row["date"]]
+        try:
+            o = float(own[0]["open_price"]) if own else None
+        except (TypeError, ValueError):
+            o = None
+    if not o or pc <= 0:
+        return None
+    return round((o - pc) / pc * 100.0, 2)
+
+
 def case_for(row: dict, H):
     """Rebuild the 10-02 replay row as a harness Case: the recorded grader answer + grade, and
     the asked articles with their recorded answers (an unanswered article has no fixture, so the
@@ -123,18 +158,29 @@ def case_for(row: dict, H):
                   None)
 
 
-async def decide(row: dict, H, daily, minute) -> dict:
+def _prev_decision(b: dict) -> str:
+    """The baseline run's decision, as BLOCK / PASS (the 10-02 replay's `new_decision` or a
+    10-03 run's `decision_2026_10_03`, which may carry a '(held...)' suffix)."""
+    d = str(b.get("decision_2026_10_03") or b.get("new_decision") or "")
+    return "BLOCK" if d.startswith("BLOCK") else ("PASS" if d.startswith("PASS") else d)
+
+
+async def decide(row: dict, H, daily, minute, baseline: dict) -> dict:
+    key = (row["ticker"], row["date"])
+    prev = _prev_decision(baseline.get(key) or row)
     out = {"ticker": row["ticker"], "date": row["date"], "detectors": row.get("detectors") or [],
            "ep_day": bool(row.get("ep_day")), "label": row.get("label"),
-           "call_2026_10_03": CALLS_2026_10_03.get((row["ticker"], row["date"])),
+           "call_2026_10_03": CALLS_2026_10_03.get(key),
            "old_decision": row.get("old_decision"), "decision_2026_10_02": row.get("new_decision"),
-           "why_2026_10_02": row.get("new_why")}
+           "why_2026_10_02": row.get("new_why"), "decision_prev": prev}
     if row.get("arm") == "price_signature":
         out.update({"decision_2026_10_03": row.get("new_decision"), "why_2026_10_03": "price_signature_unchanged",
-                    "nominated": False, "reading": None, "changed": False, "note": "out of #692 scope"})
+                    "nominated": False, "reading": None, "gap_pct": None,
+                    "changed": False, "note": "out of #692 scope"})
         return out
     reading, note = reading_for(row, daily, minute)
-    case = case_for(row, H)
+    gap = gap_for(row, daily, minute)
+    case = case_for(row, H)._replace(gap_pct=gap)
 
     async def _reader():
         return reading
@@ -152,26 +198,35 @@ async def decide(row: dict, H, daily, minute) -> dict:
     asked_mismatch = sorted(res.calls) != asked_titles
     out.update({
         "decision_2026_10_03": decision + (" (held: window unreadable)" if pending else ""),
-        "why_2026_10_03": why, "source": source, "pending": pending,
-        "nominated": why in ("pinned", "pin_free", "pin_pending"),
+        "why_2026_10_03": why, "source": source, "pending": pending, "gap_pct": gap,
+        "price_only": source == "open_window_price_pin",
+        "nominated": why in ("pinned", "pin_free", "pin_pending") and source != "open_window_price_pin",
         "answer": meta.get("role") and {"role": meta.get("role"), "status": meta.get("status"),
                                         "consideration": meta.get("consideration")}
         or (released[0][2]["pin_release"]["answer"] if why == "pin_free" else None),
         "reading": reading.as_dict() if reading is not None else None,
-        "changed": (decision != (row.get("new_decision") or "")),
+        "changed": (decision != prev),
         "note": note + ("; asked-article set differs from the 10-02 run" if asked_mismatch else ""),
         "unplanned": res.unplanned,
     })
     return out
 
 
-async def main() -> int:
+async def main(baseline_path: Path, tag: str) -> int:
     H = _harness()
     daily, minute = load_bars()
     rows = [json.loads(ln) for ln in REPLAY_IN.read_text(encoding="utf-8").splitlines() if ln.strip()]
     rows = [r for r in rows if r.get("kind") == "ticker_day"]
-    results = [await decide(r, H, daily, minute) for r in rows]
-    with OUT_JSONL.open("w", encoding="utf-8") as fh:
+    baseline = {}
+    if baseline_path != REPLAY_IN:
+        for ln in baseline_path.read_text(encoding="utf-8").splitlines():
+            if ln.strip():
+                b = json.loads(ln)
+                baseline[(b["ticker"], b["date"])] = b
+    out_jsonl = HERE / (OUT_JSONL.stem + (f"_{tag}" if tag else "") + ".jsonl")
+    out_summary = HERE / (OUT_JSONL.stem + (f"_{tag}" if tag else "") + "_summary.txt")
+    results = [await decide(r, H, daily, minute, baseline) for r in rows]
+    with out_jsonl.open("w", encoding="utf-8") as fh:
         for r in results:
             fh.write(json.dumps(r, default=str) + "\n")
 
@@ -179,24 +234,32 @@ async def main() -> int:
     n = len(results)
     c10_02 = Counter(r["decision_2026_10_02"] for r in results)
     c10_03 = Counter(r["decision_2026_10_03"].split(" ")[0] for r in results)
-    lines.append(f"#692 offline replay under the 2026-10-03 rule (the news nominates, the price decides)")
-    lines.append(f"n = {n} stock-days; 10-02 rule: {dict(c10_02)}; 10-03 rule: {dict(c10_03)}")
+    lines.append(f"#692 offline replay under the 2026-10-03 rule (the news nominates, the price decides"
+                 + ("; + his four rulings: the price-only arm, NUVL / IRDM)" if tag else ")"))
+    lines.append(f"n = {n} stock-days; 10-02 rule: {dict(c10_02)}; this run: {dict(c10_03)}")
     nominated = [r for r in results if r.get("nominated")]
     lines.append(f"nominated (the price decided): {len(nominated)} — pinned {sum(r['why_2026_10_03']=='pinned' for r in nominated)}, "
                  f"free {sum(r['why_2026_10_03']=='pin_free' for r in nominated)}, "
                  f"held {sum(r['why_2026_10_03']=='pin_pending' for r in nominated)}")
+    arm = [r for r in results if r.get("price_only")]
+    if arm:
+        lines.append(f"price-only arm (gap >= 20%, open window <= 0.5%): {len(arm)} blocked — "
+                     + ", ".join(f"{r['ticker']} {r['date'][5:]} (+{r['gap_pct']:.0f}%, {(r['reading'] or {}).get('range_pct')}%)" for r in arm))
     changed = [r for r in results if r["changed"]]
-    lines.append(f"\nCHANGED vs the 10-02 replay: {len(changed)} row(s)")
-    lines.append(f"  {'ticker':6} {'day':10} {'detectors':18} {'10-02':6} -> {'10-03':6}  reading / why / his call")
+    base_name = baseline_path.name
+    lines.append(f"\nCHANGED vs {base_name}: {len(changed)} row(s)")
+    lines.append(f"  {'ticker':6} {'day':10} {'detectors':18} {'prev':6} -> {'now':6}  reading / why / his call")
     for r in changed:
         rd = r["reading"] or {}
         reading = (f"{rd.get('window')} {rd.get('range_pct')}% vs {rd.get('threshold_pct')}%"
                    if rd.get("readable") else f"{rd.get('window')} unreadable ({rd.get('why')})")
         ans = r.get("answer") or {}
+        gap = f" gap +{r['gap_pct']:.1f}%;" if r.get("gap_pct") is not None else ""
+        who = ("price-only arm (no deal answer needed)" if r.get("price_only")
+               else f"{ans.get('role')}/{ans.get('status')}/{ans.get('consideration')} via {r.get('source')}")
         lines.append(f"  {r['ticker']:6} {r['date']:10} {','.join(r['detectors'])[:18]:18} "
-                     f"{r['decision_2026_10_02']:6} -> {r['decision_2026_10_03']:6}  {reading}; "
-                     f"{ans.get('role')}/{ans.get('status')}/{ans.get('consideration')} via {r.get('source')}; "
-                     f"{r['why_2026_10_03']}"
+                     f"{r['decision_prev']:6} -> {r['decision_2026_10_03']:6} {gap} {reading}; "
+                     f"{who}; {r['why_2026_10_03']}"
                      + (f"; HIS CALL {r['call_2026_10_03']}" if r.get("call_2026_10_03") else "")
                      + (f"; {r['label']}" if r.get("label") else ""))
     wrong = [r for r in results if r.get("call_2026_10_03") and
@@ -218,11 +281,16 @@ async def main() -> int:
     if unplanned:
         lines.append(f"\nUNPLANNED questions (an asked article had no recorded answer): {[(r['ticker'], r['date'], r['unplanned']) for r in unplanned]}")
     text = "\n".join(lines)
-    OUT_SUMMARY.write_text(text + "\n", encoding="utf-8")
+    out_summary.write_text(text + "\n", encoding="utf-8")
     print(text)
-    print(f"\nwrote {OUT_JSONL.name} and {OUT_SUMMARY.name}")
+    print(f"\nwrote {out_jsonl.name} and {out_summary.name}")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--baseline", default=str(REPLAY_IN), help="the run to diff against (jsonl)")
+    ap.add_argument("--tag", default="", help="suffix for the output files (e.g. r2)")
+    args = ap.parse_args()
+    sys.exit(asyncio.run(main(Path(args.baseline), args.tag)))

@@ -203,16 +203,19 @@ def test_every_operator_labelled_case_is_named_here():
              "ACVA", "SUNE", "CLRO", "MMED", "FRMI", "ONDS", "IMAX", "WEN", "UMAC", "LCID",
              "SOUN", "LII", "SCZM",
              # his 2026-10-03 sign-off (tests/test_mna_pin_check_692.py names each)
-             "PD", "DSGN", "THR", "HZO", "RNW"}
+             "PD", "DSGN", "THR", "HZO", "RNW",
+             # his 2026-10-03 ruling 4 ("Go with rec") + ruling 3's seven price-only catches
+             "NUVL", "IRDM", "TMHC", "APGE", "SAFT", "FBRX", "VREX", "ARX", "WEAV"}
     assert {c.ticker for c in H.CASES if c.ground_truth} == named
 
 
-@pytest.mark.parametrize("ticker", ["CECO", "ROKU", "QBTS", "KALV", "NUVL", "MGM", "IRDM"])
+@pytest.mark.parametrize("ticker", ["CECO", "ROKU", "QBTS", "KALV", "MGM", "ATAI"])
 def test_agent_read_plumbing_cases_behave_as_designed(ticker):
     """NOT ground truth — the design's expected behaviour on plumbing shapes: the buyer side of
     the THR title (CECO); a target headline the old regex read as acquirer, kept blocked by the
     day window (ROKU); a roundup bleed never asked (QBTS); a litigation notice never asked
-    (KALV); and the three approved 10-02 rows the price changes (NUVL / MGM / IRDM)."""
+    (KALV); the approved 10-02 release the price agrees with by 0.24pp (MGM); the closest free
+    >= 20% gapper to the price-only line (ATAI)."""
     case = H.CASES_BY_TICKER[ticker]
     out = _run(H.run_new(case))
     assert ("BLOCK" if out.blocked else "PASS") == case.expected and not out.unplanned
@@ -523,11 +526,14 @@ def test_a_pinning_headline_overrides_a_non_pinning_grader_and_logs_the_conflict
 
 
 def test_grade_mna_without_a_pin_is_audited():
-    """NOT RULED (kept as built, listed for him): 'mna' graded while the grader's own ANSWERED
-    fields do not pin → the fields decide (pass) + one mna_grade_without_pin row."""
+    """'mna' graded while the grader's own ANSWERED fields are not a signed shell (his ruling 2,
+    2026-10-03: the grade is shell-only) → the fields decide (pass) + one mna_grade_without_pin
+    row; a signed shell graded 'mna' writes none (that is the rule holding)."""
     out = _items_case([], grader=H.Ans("buyer", "signed", "cash"), quality="mna")
     assert out.blocked is False
     assert [a[0] for a in out.audits].count("mna_grade_without_pin") == 1
+    out = _items_case([], grader=H.Ans("shell", "signed", "stock"), quality="mna")
+    assert out.blocked is True and not [a for a in out.audits if a[0] == "mna_grade_without_pin"]
 
 
 # ── RULING 5 (2026-10-02): grade 'mna' with blank deal fields → BLOCK, as before #692 ─────────
@@ -750,17 +756,32 @@ def test_the_two_tuple_return_is_kept_without_a_sink():
     assert out == ("mna", "x")
 
 
-def test_rule_3_asks_the_question_and_ties_the_grade_to_the_pin():
+def test_rule_3_reserves_mna_for_a_signed_shell_and_grades_targets_on_merit():
+    """His ruling 2 (2026-10-03, 'Go with rec' — supersedes the letter of ruling 6): the 'mna'
+    grade is for a signed reverse-merger SHELL only; a buyout TARGET, signed or proposed, is
+    graded on its own merit and the filter decides it on price. The drift test: the prompt, the
+    tool's quality description and the judge's rule 6 all say exactly that."""
     _, _, calls = _grade({"quality": "routine", "analysis": "x"})
     prompt = calls[0]["messages"][0]["content"]
     assert "DEAL FIELDS" in prompt and "deal_role" in prompt and "'shell'" in prompt
     # the old keyword list is gone — RGTI's FUNDING 'definitive agreement' is why
     assert 'Keywords: "definitive agreement"' not in prompt
-    # the grade rule names exactly the pinning considerations the code uses
-    rule = prompt.split('Grade "mna" ONLY when', 1)[1].split("— that is", 1)[0]
-    for cons in mf._PINNING_CONSIDERATIONS:
-        assert f"'{cons}'" in rule
-    assert "'shell'" in rule and "'signed'" in rule and "'stock'" not in rule
+    rule = " ".join(prompt.split('Grade "mna" ONLY when', 1)[1].split("\n4. ", 1)[0].split())
+    assert rule.startswith("deal_role is 'shell' AND deal_status is 'signed'")
+    assert "A TARGET of a deal — signed or proposed, whatever the consideration — is graded on its own merit" in rule
+    assert "a separate M&A filter reads its price and decides, not the grade" in rule
+    # a target's consideration is no longer a GRADING condition anywhere in the rule
+    assert "deal_role is 'target' and deal_consideration" not in rule
+    q = ep_detector._CATALYST_TOOL["input_schema"]["properties"]["quality"]["description"]
+    assert "mna: ONLY when deal_role is shell AND deal_status is signed" in q
+    assert "A buyout TARGET, signed or proposed, is graded on its own merit" in q
+    from agents.market_intelligence import ep_grade_judge
+    import inspect
+    judge_src = inspect.getsource(ep_grade_judge)
+    # source-pin-ok: the judge's rule 6 is prompt TEXT (a module-level string, not behaviour a
+    # unit can exercise without a model); it must carry the same shell-only rule as the grader.
+    assert 'grade "mna" ONLY for the listed vehicle of a SIGNED reverse merger' in judge_src
+    assert "is graded on the merit of its" in judge_src
 
 
 def test_post_grade_filters_decides_on_the_graders_answer():
@@ -803,7 +824,7 @@ def test_only_the_EP_scan_opts_into_the_ORB_skip_and_the_EP_budget():
         def visit_Call(self, node):
             name = getattr(node.func, "id", getattr(node.func, "attr", None))
             if name == "is_likely_ma":
-                opts = {k.arg for k in node.keywords} & {"skip_in_orb", "budget_pool", "pin_reader"}
+                opts = {k.arg for k in node.keywords} & {"skip_in_orb", "budget_pool", "pin_reader", "gap_pct"}
                 self.found.append((self.fname, self.stack[-1] if self.stack else "<module>",
                                    tuple(sorted(opts))))
             self.generic_visit(node)
@@ -814,9 +835,10 @@ def test_only_the_EP_scan_opts_into_the_ORB_skip_and_the_EP_budget():
         found += v.found
     # 2026-10-03: `pin_reader` (the price decides) is passed by the EP scan (the open window),
     # the flag scan + the anticipation scan (the day window) and the low-cap lane (the open
-    # window); the two 9M sites pass none and keep the 10-02 verdict (9M is retired).
+    # window); the two 9M sites pass none and keep the 10-02 verdict (9M is retired). `gap_pct`
+    # (his ruling 3, the price-only arm) is passed by the EP scan ONLY.
     assert sorted(found) == [
-        ("ep_detector.py", "_post_grade_filters", ("budget_pool", "pin_reader", "skip_in_orb")),
+        ("ep_detector.py", "_post_grade_filters", ("budget_pool", "gap_pct", "pin_reader", "skip_in_orb")),
         ("flag_detector.py", "_mna_check", ("pin_reader",)),
         ("lowcap_lane.py", "enrich_and_record", ("pin_reader",)),
         ("ninem_detector.py", "run_9m_eod_sweep", ()),

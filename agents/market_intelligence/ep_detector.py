@@ -849,10 +849,10 @@ _CATALYST_TOOL = {
                     "game_changer: massive earnings beat + guidance raise, FDA approval, "
                     "transformative contract. strong: solid beat + guidance raise, analyst "
                     "upgrade cluster, major partnership. routine: in-line results, no "
-                    "company-specific catalyst. mna: ONLY when deal_status is signed AND either "
-                    "deal_role is shell, or deal_role is target and deal_consideration is cash, "
-                    "mixed or unknown — this company's price is fixed by a signed deal, no "
-                    "momentum trade. Any other deal is graded on its own merit."
+                    "company-specific catalyst. mna: ONLY when deal_role is shell AND deal_status "
+                    "is signed — this listed company is the vehicle of a signed reverse merger. A "
+                    "buyout TARGET, signed or proposed, is graded on its own merit; a separate M&A "
+                    "filter decides it on price, not the grade."
                 ),
             },
             **DEAL_FIELD_PROPERTIES,
@@ -1345,11 +1345,11 @@ IMPORTANT RULES:
    'stock' (acquirer shares only / fixed exchange ratio / all-stock merger), 'mixed', 'unknown' (deal
    described, terms not in the text), or 'none'.
    deal_counterparty: the other company, or empty.
-   Grade "mna" ONLY when deal_status is 'signed' AND either deal_role is 'shell', or deal_role is
-   'target' and deal_consideration is 'cash', 'mixed' or 'unknown' — that is the one case where the
-   price is fixed by the deal and there is no momentum trade. In every other case (this company is the
-   buyer, the deal is proposed or rumoured, the merger is all-stock, the deal involves another company)
-   grade the catalyst on its own merit under rules 1, 2, 4 and 5.
+   Grade "mna" ONLY when deal_role is 'shell' AND deal_status is 'signed' — the listed vehicle of a
+   signed reverse merger, the one case where the grade itself carries the verdict. A TARGET of a deal
+   — signed or proposed, whatever the consideration — is graded on its own merit under rules 1, 2, 4
+   and 5: a separate M&A filter reads its price and decides, not the grade. The same goes for a
+   buyer, an all-stock merger, or a deal that involves another company.
 4. Broad SECTOR-MOMENTUM, SHORT-SQUEEZE, or non-company-specific technical moves with no concrete
    company event = "routine" (a gap-up alone is not a catalyst).
 5. MATERIALITY — weigh the catalyst's magnitude RELATIVE to the company (market cap above). A contract,
@@ -2082,13 +2082,20 @@ async def _post_grade_filters(
         skip_in_orb=True,
         budget_pool="ep",
         pin_reader=lambda: read_open_window_pin(ticker, today),
+        # his ruling 3 (2026-10-03): the price-only arm — a >= 20% gapper whose open window
+        # trades within 0.5% blocks regardless of the news; the EP scan is its only caller.
+        gap_pct=gap_pct,
     )
     if is_mna and (mna_meta or {}).get("pending"):
         # HELD, not decided: the price window cannot be read yet. Same prefix as the decided
         # reason so theme_axis_shadow.classify_legacy_filter_reason still maps it to
         # post_grade_filter; NO mna_filter_fired row (the hold wrote its own mna_pin_pending).
         pin_why = ((mna_meta or {}).get("pin") or {}).get("why", "")
-        reason = f"M&A/buyout catalyst — deal-nominated, price window not readable yet ({pin_why}); held"
+        if (mna_meta or {}).get("source") == "open_window_price_pin":
+            reason = (f"M&A/buyout catalyst — gap {gap_pct:.1f}% >= 20% (price-only arm), price "
+                      f"window not readable yet ({pin_why}); held")
+        else:
+            reason = f"M&A/buyout catalyst — deal-nominated, price window not readable yet ({pin_why}); held"
         logger.info(f"Hold {ticker}: {reason} ({(mna_meta or {}).get('source')})")
         return reason
     if is_mna:

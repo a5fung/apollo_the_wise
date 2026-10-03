@@ -78,8 +78,13 @@ never disagree about what the same news is worth.**
    scan date's own daily bar (≤ 2.0% of close). A nominated name whose price is free passes
    (audited `pin_free`). A signed reverse-merger `shell` skips on the news alone (SUNE, CLRO).
    A grade of `mna` with blank deal fields skips as today (ruling 5). The keyword-in-text path
-   does not block. His seven 10-02 rulings and his 10-03 sign-off are recorded in the change
-   log (2026-10-02 and 2026-10-03 entries); two operator decisions on the 10-03 entry are open.
+   does not block. **The price-only arm (his ruling 3, 2026-10-03):** on the EP scan a gap of
+   ≥ 20% whose open window trades within 0.5% skips regardless of the news (source
+   `open_window_price_pin`), with the same hold to 09:35 — so every ≥ 20% EP gapper now alerts
+   no earlier than 09:35. **The grade (his ruling 2):** `mna` is graded only for a signed
+   shell; a target carries its merit grade, so a price-released target can reach HIGH. His
+   seven 10-02 rulings, his 10-03 sign-off and his four later 10-03 rulings ("Go with rec") are
+   recorded in the change log; the paid RULE 3 regrade is written for him to run before deploy.
    Until it ships, the line above is what runs.
 8. **Routine + low gap** — plain words: *a routine-news name gapping under 12% is skipped, where "routine" is the CORRECTED grade.* Code: acting `catalyst_quality == "routine" AND gap_pct < 12%` → skip. A real EP the LLM mis-grades routine (4 of the 7 graded labelled real EPs — ARM class) is no longer binned before the correction can act; the lattice never demotes a non-routine grade to routine, so this filter can only admit MORE than the raw read, never less.
 9. **Pre-market shares absolute floor** (with carve-out) — plain words: *under 25,000 pre-market shares is skipped, unless volume is exploding (5× pm RVOL) or the gap is 10%+ with a strong-or-better catalyst.* Code: `today_volume ≥ MIN_PREMARKET_SHARES` (25,000) UNLESS `pm_rvol ≥ 5×` OR (R6 carve-out) `gap_pct ≥ 10% AND` acting grade in {`strong`, `game_changer`}. The `game_changer` arm exists on the acting side only (2026-08-22): a lattice PROMOTION must never strip a name of the bypass its old grade earned; with the toggle OFF the historical strong-only carve-out applies exactly.
@@ -120,9 +125,11 @@ after all this work").
 ### Catalyst grading (Claude + Perplexity + SEC EDGAR)
 
 LLM classifier returns one of: `game_changer`, `strong`, `routine`, `mna`, or None.
-(#692 branch, not deployed: the same call also answers the M&A question — `deal_role` /
-`deal_status` / `deal_consideration` / `deal_counterparty` — and `mna` is graded ONLY when those
-fields pin the price; any other deal is graded on its own merit.)
+(#692 branch, not deployed as of 2026-10-03: the same call also answers the M&A question —
+`deal_role` / `deal_status` / `deal_consideration` / `deal_counterparty`. Since his 2026-10-03
+ruling 2, `mna` is graded ONLY for a SIGNED reverse-merger SHELL; a buyout TARGET, signed or
+proposed, is graded on its own merit and the M&A filter alone decides it on price. The EP grade
+judge's rule 6 carries the same rule.)
 
 **⚖ Catalyst-tier LATTICE — LIVE since 2026-08-22 (operator-signed; see change log).** The raw
 LLM grade is no longer the acting tier: after every raw-grade mutation (earnings boost, #72
@@ -446,17 +453,83 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 8. **M&A filter recall on the headline path is unmeasured, and the candidate keyword list is deliberately NOT widened by #692** (2026-10-02). Under #692 `_MNA_KEYWORDS` only picks which Polygon articles get the deal question; a target described only with "acquire" / "acquisition" (removed 05-13 for direction-blindness — now answered by the model, not the word) is still invisible to the headline path. On EP the grader's deal fields read the full corpus and cover it; on flag / sugar-baby / the low-cap lane only the price-signature path (`deal_pin_*`) catches it. One variable at a time: widen only after the #692 replay's released / still-blocked list is signed, with the forward `mna_filter_released` stream and the monthly review as the evidence. The population every review reads is the filter's BLOCKS — a real target it never blocked leaves no row (the 10-01 labels doc says the same).
 
-9. **Seven of the 10-02 replay's released rows are real buyouts by price that the replayed grader called "none" — a corpus artifact the pin backtest surfaced, NOT fixed by the 10-03 change** (2026-10-03, `scripts/probes/_692/pin_backtest.py`). TMHC 06-01, APGE 06-22, SAFT 07-24, FBRX 07-27, VREX 08-10, ARX 08-13, WEAV 08-18 gapped +22% to +48% and sat in a 0.1–0.9% band all day; every one was an old `claude_classifier` / `mna` block whose replayed text was the 200-char audit excerpt (`corpus_source=audit_excerpt_200_chars_only`, a vague summary — "Berkshire stake", "pre-earnings positioning"), so the replay's grader answered `none` and the 10-02 rule released them; they were not in MUST-SHOW and his 10-03 approval of the list did not see them. Live, the grader reads the full corpus (the OLD grader graded all seven `mna` from it), so live recall is probably intact — but it is UNMEASURED, and the price layer cannot act on a name the news never nominates. The price alone separates them (gap ≥ 20% with an open window ≤ 0.5%: 7 of 7, and 0 of the 47 proven-free gappers) — a price-only EP pin arm is a separate decision for him, not built here (one variable at a time; the 10-03 rule changes the KEEP pile he asked about).
+9. **Seven of the 10-02 replay's released rows are real buyouts by price that the replayed grader called "none" — a corpus artifact the pin backtest surfaced; CLOSED the same evening by his ruling 3 (the price-only arm, built — see the 2026-10-03 entry); kept here as the record of the finding** (2026-10-03, `scripts/probes/_692/pin_backtest.py`). TMHC 06-01, APGE 06-22, SAFT 07-24, FBRX 07-27, VREX 08-10, ARX 08-13, WEAV 08-18 gapped +22% to +48% and sat in a 0.1–0.9% band all day; every one was an old `claude_classifier` / `mna` block whose replayed text was the 200-char audit excerpt (`corpus_source=audit_excerpt_200_chars_only`, a vague summary — "Berkshire stake", "pre-earnings positioning"), so the replay's grader answered `none` and the 10-02 rule released them; they were not in MUST-SHOW and his 10-03 approval of the list did not see them. Live, the grader reads the full corpus (the OLD grader graded all seven `mna` from it), so live recall is probably intact — but it is UNMEASURED, and the price layer cannot act on a name the news never nominates. The price alone separates them (gap ≥ 20% with an open window ≤ 0.5%: 7 of 7, and 0 of the 47 proven-free gappers) — a price-only EP pin arm is a separate decision for him, not built here (one variable at a time; the 10-03 rule changes the KEEP pile he asked about).
 
 ## Change log (newest first)
 
-### 2026-10-03 — #692: the news NOMINATES, the PRICE DECIDES — a nominated target is blocked only when its open is pinned (BUILT on the branch, NOT DEPLOYED; two operator decisions open)
+### 2026-10-03 — #692: the news NOMINATES, the PRICE DECIDES — a nominated target is blocked only when its open is pinned; his four rulings the same day ("Go with rec"): hold kept, RULE 3 re-tied, the price-only arm, NUVL / IRDM (BUILT on the branch, NOT DEPLOYED)
 
-**Status (as of 2026-10-03):** BUILT on `692-mna-target-question` (same branch as the 10-02
-entry), NOT deployed — in prod no `mna_pin_pending` row and no `pin` key on any
-`mna_filter_fired` row exists until it ships. THE LINE: it changes which EP / flag candidates
-are suppressed and WHEN a nominated name can alert, so nothing ships before his two decisions
-below and the deploy sign-off.
+**Status (as of 2026-10-03, evening):** BUILT on `692-mna-target-question` (same branch as the
+10-02 entry), NOT deployed — in prod no `mna_pin_pending` row, no `pin` key on any
+`mna_filter_fired` row and no `open_window_price_pin` source exists until it ships. THE LINE: it
+changes which EP / flag candidates are suppressed, WHEN a ≥ 20% gapper or a nominated name can
+alert, and what grade a buyout target carries, so nothing ships before the paid RULE 3 regrade
+below has run and he signs the deploy.
+
+**HIS RULINGS (2026-10-03, later the same day) — relayed verbatim: *"Go with rec" — all four*:**
+1. *"KEEP as built: a news-nominated EP name is held out of the alert until the 09:35 open-window
+   read, then released or blocked."* → unchanged from the build below (decision 1 RULED).
+2. *"RE-TIE RULE 3 (his ruling — supersedes the letter of ruling 6): a buyout TARGET is graded on
+   its own merits; the 'mna' grade is reserved for a signed reverse-merger SHELL only; the
+   filter (news nominates, price decides) alone blocks targets."* → BUILT: `ep_detector` RULE 3
+   + the `classify_catalyst` tool's `quality` description; the EP grade judge's rule 6
+   (`ep_grade_judge.py` — it can demote a HIGH, so it had to carry the same rule); the lattice's
+   `mna` passthrough and the allocator's `mna: 0.0` weight re-documented as a SHELL's (both
+   values unchanged — a shell is blocked by the filter on news alone); the briefing label; the
+   replay copy's RULE 3 (`replay_target_question.py`, test-pinned to the code); the drift test
+   `test_rule_3_reserves_mna_for_a_signed_shell_and_grades_targets_on_merit`; `is_likely_ma`'s
+   `mna_grade_without_pin` row now means "graded `mna` on fields that are not a signed shell"
+   (a target graded `mna` = the prompt rule not holding). The paid grade-stability / regrade
+   check is WRITTEN, not run (prod is his): `scripts/probes/_692/regrade_rule3.py` — see below.
+3. *"ADD the price-only EP arm: on an EP gap day, a gap of 20% or more whose 09:30–09:34 open
+   window trades within 0.5% blocks REGARDLESS of the news (catches TMHC, APGE, SAFT, FBRX 07-27,
+   VREX, ARX, WEAV with 0 of the 47 proven-free gappers). Same decision-time hold as (1) (read at
+   09:35). Its own audit source name. Named regression cases for the 7."* → BUILT:
+   `ma_filter.price_only_pin_verdict` + `PRICE_ONLY_GAP_MIN_PCT = 20.0` /
+   `PRICE_ONLY_PIN_MAX_PCT = 0.5`, source `open_window_price_pin`, EP scan only (it alone passes
+   `gap_pct`); runs after the news arm when it did not block, reads the same open window once;
+   unreadable → HOLD with an `mna_pin_pending` row (`source = open_window_price_pin`, the gap
+   recorded). The seven are operator-labelled harness cases; ATAI 07-16 (+32%, 0.99% — the
+   closest free ≥ 20% gapper) and VKTX 09-22 (+23%, 3.38%) are the pass-side cases.
+   ⚠ **Consequence, stated for him (pre-registered below):** EVERY EP candidate gapping ≥ 20% is
+   now held out of the alert until 09:35, not only the nominated ones — the arm cannot act on a
+   name that alerted pre-market and entered on the first bar (a pre-market HIGH is never
+   re-filtered: `filters_cleared=True`). In the replayed population 7 free ≥ 20% gappers would
+   have been held and released at 09:35 (0 of 7 past their ORB high by then); the export cannot
+   measure the general EP population — the live count is the EXPECT's job.
+4. *"ACCEPTED: NUVL 06-09 now blocked, IRDM 06-29 now released — make both named regression
+   cases with his ruling."* → BUILT: both are ground-truth harness cases
+   (`test_NUVL_2026_06_09_ruling4_…`, `test_IRDM_2026_06_29_ruling4_…`); MGM 06-01 stays
+   agent-read (released by 0.24 pp).
+
+**Offline replay under all four rulings (`replay_pin.py --baseline replay_pin_2026-10-03.jsonl
+--tag r2` → `replay_pin_2026-10-03_r2.jsonl` + `_r2_summary.txt`, $0):** 151 rows; vs the first
+10-03 run **7 rows change, all PASS → BLOCK by the price-only arm**: TMHC 06-01 (+22%, 0.25%),
+APGE 06-22 (+47%, 0.41%), SAFT 07-24 (+41%, 0.37%), FBRX 07-27 (+39%, 0.08%), VREX 08-10 (+48%,
+0.11%), ARX 08-13 (+44%, 0.46%), WEAV 08-18 (+32%, 0.48%). Nothing else moves: his 5 calls 5/5,
+the 25 labels 25/25, NUVL blocked / IRDM released as ruled; totals now 107 PASS / 44 BLOCK (the
+10-02 rule: 113 / 38).
+
+**The paid RULE 3 regrade (`scripts/probes/_692/regrade_rule3.py` — WRITTEN, NOT RUN; he pipes it
+into apollo-market):** self-contained (embeds the 10-02 prompt as OLD, hash-pinned
+`a21ffeb6…`, and the re-tied prompt as NEW, test-pinned to the code), read-only (one READ ONLY
+transaction, no spend / audit / sample rows), re-grades the SAME text under both prompts for the
+30 non-deal stability rows of the 10-02 replay + the 18 nominated EP rows, and lists every flip.
+Expected: ~0 flips on the 30; the signed targets (PD, DSGN, ACVA, UTZ, DV, SYNA, CRNX, ATKR,
+RAMP) move `mna` → a merit grade; nothing becomes `mna` without a signed-shell answer (the
+script flags any such row). Priced before the first call from `pricing_for(GROUNDED_GRADE_MODEL)`:
+*cost per call = ((prompt_chars / 3.5 + 700 tool tokens) × $in + 600 est. output tokens × $out)
+/ 1e6*; 96 calls planned (2 × 48 rows); aborts above **$3.00** (≈ $1 expected — the 10-02 run
+measured $0.021 per old+new pair). Commands:
+```
+docker exec -i apollo-market python - --dry-run < scripts/probes/_692/regrade_rule3.py > regrade_rule3_dry.jsonl 2> regrade_rule3_dry.log
+docker exec -i apollo-market python - < scripts/probes/_692/regrade_rule3.py > regrade_rule3.jsonl 2> regrade_rule3.log
+```
+(The script arrives on stdin, so no checkout is needed on the box; stdout = one JSON line per
+row, stderr = the estimate, progress and the flip tables.)
+
+**Deploy sequence (when he signs):** weekend; TWO-STEP (market-agent + execution — `ma_filter`,
+`ep_detector` and `ep_grade_judge` all load in apollo-execution).
 
 **Trigger (his words, 2026-10-03, on the 10-02 replay's sign-off page):** *"#692 sign-off:
 approve except — DSGN 2026-05-18 is not a buyout, release; THR 2026-05-22 is not a buyout,
@@ -570,8 +643,9 @@ the 10-02 list he signed:** DSGN 05-18, THR 05-22, PD 05-29 BLOCK → PASS (his 
 +39% gap — the HZO class) and **IRDM 06-29 BLOCK → PASS** (3.28% window on a +19% gap — the
 PD class). MGM 06-01 stays released (1.24% — 0.24 pp over the line; listed for him).
 
-**OPERATOR DECISIONS (open — THE LINE; the build implements the recommendation on 1 and 2,
-nothing hidden; 3 is NOT built):**
+**OPERATOR DECISIONS — ALL THREE RULED 2026-10-03 ("Go with rec"; see HIS RULINGS above: 1 →
+ruling 1, 2 → kept as built, 3 → ruling 2, built). Kept as written for the record of the fork he
+was shown:**
 1. **What a news-nominated name does before 09:35.** Today (the 10-02 build): a signed target
    is blocked pre-market and never alerts; a proposed target PASSES pre-market, alerts and is
    bought on the first bar with no price check (HZO / RNW would have been). **Built /
@@ -619,30 +693,48 @@ leaves an `mna_pin_pending` row.
   retired 9M sites pass no reader, so a 9M-tagged row would carry none); every signed-shell
   fired row carries `why = shell_signed`; `mna_filter_released` rows with `pin_free` for
   nominated-free names, each with `range_pct > threshold_pct`; `mna_pin_pending` rows
-  pre-market for every nominated EP name (the positive observable of the hold), and the SAME
-  name — if it is still a candidate at the 09:35 tick — decided (fired or released) by the
-  09:40 tick on a trading day; a name still pending after 09:40 with `why = bars:<n>` or
-  `fetch_error` is the thing to look at. Unintended, watched together: a nominated-free name
-  whose grade and score clear now alerts at 09:35–09:36 (not pre-market) and enters through
-  the post-open path — count them and their `WINDOW_OUT_OF_ORB` / rejected entries; a
-  `pin_free` release graded `mna` that then fails the score bar (decision 3 — expected as
-  built, counted so the cost of (a) is visible); `mna_pin_pending` with `fetch_error` > 1 a
-  week = the bar fetch is the problem, not the rule.
-- **DONE-WHEN:** 20 trading days in which his monthly review labels every pinned block correct,
-  no `pin_free` release as a real pinned target, and no nominated name that was still a
-  candidate at 09:35 held past 09:40.
+  pre-market for every nominated EP name AND (ruling 3) for every EP candidate gapping ≥ 20%
+  (the positive observable of both holds; `source` says which arm), and the SAME name — if it
+  is still a candidate at the 09:35 tick — decided (fired or released) by the 09:40 tick on a
+  trading day; a name still pending after 09:40 with `why = bars:<n>` or `fetch_error` is the
+  thing to look at. Price-only arm: every `open_window_price_pin` fired row carries
+  `gap_pct ≥ 20` and `pin.range_pct ≤ 0.5`; baseline 0 such rows (the source does not exist
+  in prod); expected ≈ 7 per 4.5 months (the replayed rate) — a week with 3+ is the arm
+  catching something the backtest did not see: read each. RULE 3: `mna_grade_without_pin`
+  ≈ 0 a week (a target graded `mna` = the prompt rule not holding; > 3 a week = defect);
+  `mna_filter_fired` rows via `claude_classifier_unanswered` (grade `mna`, blank fields) ≈ 0.
+  Unintended, watched together: (a) EVERY ≥ 20% EP gapper's HIGH alert now lands at
+  09:35–09:36 (not pre-market) and enters through the post-open path — count them, their
+  `WINDOW_OUT_OF_ORB` / rejected entries, and how many were above their 09:30 high at 09:35
+  (the replayed sample: 0 of 7) — this is the arm's cost and it is HIS number to accept or
+  reverse; (b) nominated-free names likewise (a signed target now carries a merit grade, so a
+  `pin_free` release CAN reach HIGH — count alerts that follow a `pin_free` row); (c)
+  `mna_pin_pending` with `fetch_error` > 1 a week = the bar fetch is the problem, not the rule.
+- **DONE-WHEN:** 20 trading days in which his monthly review labels every pinned block
+  (news-arm and price-only) correct, no `pin_free` release as a real pinned target, no
+  nominated or ≥ 20% name that was still a candidate at 09:35 held past 09:40, and the paid
+  RULE 3 regrade has run with ~0 flips on the 30 non-deal rows and no `mna` without a
+  signed-shell answer.
 - **WOULD-FAIL-IF:** a fired `(ep)` / `(flag)` target row whose `pin` is missing or reads free;
-  a `pin_free` release he labels a real buyout; a nominated EP name with a `mna_pin_pending`
-  row, still a candidate at the 09:35 tick (a held name whose gap falls under the floor
-  before the open drops out of the candidate set and is never re-filtered — benign, excluded),
-  and neither a fired nor a released row by 09:40 on a trading day; a `pin_free` release that
-  never alerts because it landed after 09:44.
+  an `open_window_price_pin` row with `gap_pct < 20` or `range_pct > 0.5`; a `pin_free`
+  release he labels a real buyout; a ≥ 20% EP name that alerted PRE-MARKET (the hold did not
+  engage); a nominated or ≥ 20% EP name with a `mna_pin_pending` row, still a candidate at the
+  09:35 tick (a held name whose gap falls under the floor before the open drops out of the
+  candidate set and is never re-filtered — benign, excluded), and neither a fired nor a
+  released row by 09:40 on a trading day; a `pin_free` release that never alerts because it
+  landed after 09:44; a `mna`-graded target in `mi_catalyst_tier_shadow` after the deploy.
 
 **Reversion-flag:** REFINEMENT of the 2026-10-02 #692 rule (same question; the verdict moves
 from the deal's wording to the price for targets). Why the 10-02 reasoning was incomplete, not
 wrong: "signed" was a proxy for "the price is fixed" — true for ACVA / UTZ / DV / SYNA, false
 for DSGN / PD / THR (signed, free) and HZO / RNW / NUVL (proposed, pinned). The proxy is now
-the nomination; the thing itself is read.
+the nomination; the thing itself is read. **Ruling 2 is a REVERSAL of the letter of 10-02
+ruling 6** ("the `mna` grade means only a signed price-fixing deal" → "a signed shell only").
+Why the 10-02 reasoning was wrong, not incomplete: it tied the GRADE to the news proxy for a
+fixed price, so the grade carried a second verdict the filter had already given up — a
+price-released target kept 0 catalyst points and could not alert, which defeated the release.
+The grade now says what the catalyst is worth; the filter alone says whether the price is free.
+**Ruling 3 is NEW** (a price-only arm never existed); its hold is the same mechanism as ruling 1.
 
 **Tests:** `tests/test_mna_pin_check_692.py` — the rule and its three states, the readings
 (window membership, the 4-bar floor, UTC → ET, bad bars, both daily row shapes), the Alpaca
@@ -661,7 +753,16 @@ restored byte-identical; recorded in commit `be483afa`): the price condition rem
 (PD / DSGN / THR block, HZO / RNW pass); proposed no longer nominating → 14; the ceiling
 exclusive → 1; the headline acting only on a signed pin → 10; an unreadable window releasing →
 3; the four-bar floor dropped → 2; the EP caller writing a fired row for a hold → 1; the shell
-arm needing the price → 6.
+arm needing the price → 6. **Rulings 2–4 (same day, each restored byte-identical):** the
+price-only ceiling 0.5 → 0.05 → 10 red (the seven stop being caught); the arm's gap gate
+removed → 2; the arm releasing on an unreadable window → 3; the EP caller not passing `gap_pct`
+→ 3 (the arm would go dark live); RULE 3 drifting back to grading a target `mna` → 4; the
+judge's rule 6 drifting back → 2; the `mna_grade_without_pin` guard loosened to the news rule →
+2. Harness: 43 cases (37 operator-labelled incl. the seven, NUVL, IRDM; 6 agent-read), 0
+misses. The paid regrade script has its own suite (`tests/test_mna_regrade_rule3_692.py`:
+loads with every repo package unimportable, NEW == the branch grader byte-for-byte, OLD hash-
+pinned, the row lists == the replays', a $0 dry run prices 96 calls and makes none, nothing is
+called above the ceiling, the paid path asks OLD + NEW on the same text and reports flips).
 
 ### 2026-10-02 — #692: the M&A filter asks ONE question — is THIS ticker the TARGET of a SIGNED deal that fixes its price (BUILT, NOT DEPLOYED — rulings recorded; awaiting the replay + operator sign-off)
 
