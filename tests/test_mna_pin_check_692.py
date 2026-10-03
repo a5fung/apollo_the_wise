@@ -448,7 +448,9 @@ def test_headline_nomination_blocks_pinned_releases_free_and_passes_without_a_re
     free = _run(H.run_new(case))
     assert free.blocked is False and _released_on_price(free)
     no_reader = _run(H.run_new(case, use_case_pin=False))
-    assert no_reader.blocked is False, "a proposal with no price reading passes (the 10-02 rule)"
+    # his timing ruling: with no reading the NEWS decides — a nominating headline (proposed) blocks
+    assert no_reader.blocked is True and no_reader.meta["source"] == "polygon_headline_model"
+    assert no_reader.meta["why"] == "news_blocked_price_unread"
 
 
 async def _async(v):

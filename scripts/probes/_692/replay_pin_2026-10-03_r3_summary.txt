@@ -7,13 +7,13 @@ decided at: {'09:35': 8, 'scan (day window)': 32, 'pre-market': 89, 'pre-market 
 
 CHANGED vs replay_pin_2026-10-03_r2.jsonl: 7 row(s)
   ticker day        detectors          prev   -> now     reading / why / his call
-  TMHC   2026-06-01 ep                 BLOCK  -> PASS    gap +22.4%; open5m 0.2515% vs 1.0%; None/None/None via None; no_pin; decided pre-market
-  APGE   2026-06-22 ep                 BLOCK  -> PASS    gap +46.7%; open5m 0.4148% vs 1.0%; None/None/None via None; no_pin; decided pre-market
-  SAFT   2026-07-24 ep                 BLOCK  -> PASS    gap +41.2%; open5m 0.3689% vs 1.0%; None/None/None via None; no_pin; decided pre-market
-  FBRX   2026-07-27 ep                 BLOCK  -> PASS    gap +39.5%; open5m 0.0785% vs 1.0%; None/None/None via None; no_pin; decided pre-market
-  VREX   2026-08-10 ep                 BLOCK  -> PASS    gap +48.2%; open5m 0.1088% vs 1.0%; None/None/None via None; no_pin; decided pre-market
-  ARX    2026-08-13 ep                 BLOCK  -> PASS    gap +44.0%; open5m 0.4592% vs 1.0%; None/None/None via None; no_pin; decided pre-market
-  WEAV   2026-08-18 ep                 BLOCK  -> PASS    gap +32.0%; open5m 0.4795% vs 1.0%; None/None/None via None; no_pin; decided pre-market
+  TMHC   2026-06-01 ep                 BLOCK  -> PASS    gap +22.4%; open5m 0.2515% vs 1.0%; no deal in the news; passed pre-market and alerted — the arm would catch it only post-open; no_pin; decided pre-market
+  APGE   2026-06-22 ep                 BLOCK  -> PASS    gap +46.7%; open5m 0.4148% vs 1.0%; no deal in the news; passed pre-market and alerted — the arm would catch it only post-open; no_pin; decided pre-market
+  SAFT   2026-07-24 ep                 BLOCK  -> PASS    gap +41.2%; open5m 0.3689% vs 1.0%; no deal in the news; passed pre-market and alerted — the arm would catch it only post-open; no_pin; decided pre-market
+  FBRX   2026-07-27 ep                 BLOCK  -> PASS    gap +39.5%; open5m 0.0785% vs 1.0%; no deal in the news; passed pre-market and alerted — the arm would catch it only post-open; no_pin; decided pre-market
+  VREX   2026-08-10 ep                 BLOCK  -> PASS    gap +48.2%; open5m 0.1088% vs 1.0%; no deal in the news; passed pre-market and alerted — the arm would catch it only post-open; no_pin; decided pre-market
+  ARX    2026-08-13 ep                 BLOCK  -> PASS    gap +44.0%; open5m 0.4592% vs 1.0%; no deal in the news; passed pre-market and alerted — the arm would catch it only post-open; no_pin; decided pre-market
+  WEAV   2026-08-18 ep                 BLOCK  -> PASS    gap +32.0%; open5m 0.4795% vs 1.0%; no deal in the news; passed pre-market and alerted — the arm would catch it only post-open; no_pin; decided pre-market
 
 his five 2026-10-03 calls honoured: 5 of 5
 the 25 earlier labels honoured: 25 of 25

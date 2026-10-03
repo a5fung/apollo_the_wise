@@ -566,12 +566,14 @@ _PIN_ANS = {_PIN_TITLE: H.Ans("target", "signed", "cash", "BigCo")}
 
 @pytest.mark.parametrize("grader", [
     H.Ans("buyer", "signed", "cash", "Stride Bank"),      # CHYM shape
-    H.Ans("target", "proposed", "unknown"),               # WAY shape
     H.Ans("target", "speculation", "none"),               # VKTX shape
     H.Ans("target", "signed", "stock", "IRT"),            # CSR shape — all-stock
     H.Ans("buyer", "proposed", "unknown", "SkyAI"),       # FWDI shape
 ])
 def test_ruling7_a_headline_cannot_reblock_a_grader_answered_deal(grader):
+    """(The WAY shape — target/proposed — left this list on 2026-10-03: since his timing ruling a
+    proposed target is NOMINATED, so the grader's own answer blocks it on the news pre-market and
+    the 09:35 read decides; it is no longer a ruling-7 case.)"""
     out = _items_case(_PIN_ITEMS, grader=grader, answers=_PIN_ANS)
     assert out.blocked is False
     conflict = [a for a in out.audits if a[0] == "mna_deal_answers_conflict"]

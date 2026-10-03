@@ -292,8 +292,14 @@ async def main(baseline_path: Path, tag: str) -> int:
                    if rd.get("readable") else f"{rd.get('window')} unreadable ({rd.get('why')})")
         ans = r.get("answer") or {}
         gap = f" gap +{r['gap_pct']:.1f}%;" if r.get("gap_pct") is not None else ""
-        who = ("price-only arm (no deal answer needed)" if r.get("price_only")
-               else f"{ans.get('role')}/{ans.get('status')}/{ans.get('consideration')} via {r.get('source')}")
+        if r.get("price_only"):
+            who = "price-only arm (no deal answer needed)"
+        elif r.get("price_only_would_catch_if_post_open"):
+            who = "no deal in the news; passed pre-market and alerted — the arm would catch it only post-open"
+        elif ans.get("role"):
+            who = f"{ans.get('role')}/{ans.get('status')}/{ans.get('consideration')} via {r.get('source')}"
+        else:
+            who = "no deal in the news"
         lines.append(f"  {r['ticker']:6} {r['date']:10} {','.join(r['detectors'])[:18]:18} "
                      f"{r['decision_prev']:6} -> {r['decision_2026_10_03']:6} {gap} {reading}; "
                      f"{who}; {r['why_2026_10_03']}; decided {r.get('decided_at')}"
