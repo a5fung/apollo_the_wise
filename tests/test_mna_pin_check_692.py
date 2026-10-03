@@ -352,6 +352,22 @@ def test_pre_market_a_nominated_name_is_blocked_on_the_news_no_hold_no_pending_r
     assert pd.blocked is True and pd.meta["why"] == "news_blocked_price_unread"
 
 
+def test_the_0935_pinned_confirm_leaves_a_trace_and_the_pre_market_block_does_not():
+    """The fired row is written pre-market and deduped, so a 09:35 read that CONFIRMS the block
+    writes `mna_pin_confirmed` — otherwise a dead reader and a pinned confirm look the same."""
+    confirmed = _run(H.run_new(H.CASES_BY_TICKER["HZO"]))            # readable, 0.15%: pinned
+    rows = [a for a in confirmed.audits if a[0] == "mna_pin_confirmed"]
+    assert confirmed.blocked is True and len(rows) == 1
+    assert rows[0][2]["pin"]["pinned"] is True and rows[0][2]["source"] == "claude_deal_fields"
+    assert "0.1542% <= 1.0%" in rows[0][1]
+    pre = _run(H.run_new(H.CASES_BY_TICKER["HZO"]._replace(pin=None, pin_pending=True)))
+    assert pre.blocked is True and not [a for a in pre.audits if a[0] == "mna_pin_confirmed"]
+    shell = _run(H.run_new(H.CASES_BY_TICKER["SUNE"]))
+    assert shell.blocked is True and not [a for a in shell.audits if a[0] == "mna_pin_confirmed"]
+    released = _run(H.run_new(H.CASES_BY_TICKER["PD"]))
+    assert released.blocked is False and not [a for a in released.audits if a[0] == "mna_pin_confirmed"]
+
+
 def test_a_failing_reader_keeps_the_news_block_rather_than_releasing():
     async def boom():
         raise RuntimeError("alpaca down")

@@ -458,7 +458,7 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
-### 2026-10-03 — #692: the news NOMINATES, the PRICE DECIDES — a nominated target is blocked only when its open is pinned; his four rulings the same day ("Go with rec"): hold kept, RULE 3 re-tied, the price-only arm, NUVL / IRDM (BUILT on the branch, NOT DEPLOYED)
+### 2026-10-03 — #692: the news NOMINATES, the PRICE DECIDES — pre-market the news blocks a nominated target, at 09:35 the open window can only RELEASE it; his four rulings ("Go with rec": RULE 3 re-tied, the price-only arm, NUVL / IRDM) and his timing ruling (no hold, the 09:31 ORB entry untouched) the same day (BUILT on the branch, NOT DEPLOYED)
 
 **Status (as of 2026-10-03, night):** BUILT on `692-mna-target-question` (same branch as the
 10-02 entry), NOT deployed — in prod no `pin` key on any `mna_filter_fired` row, no
@@ -547,9 +547,10 @@ rows carry no timing).
    `ma_filter.price_only_pin_verdict` + `PRICE_ONLY_GAP_MIN_PCT = 20.0` /
    `PRICE_ONLY_PIN_MAX_PCT = 0.5`, source `open_window_price_pin`, EP scan only (it alone passes
    `gap_pct`); runs after the news arm when it did not block, reads the same open window once;
-   unreadable → HOLD with an `mna_pin_pending` row (`source = open_window_price_pin`, the gap
-   recorded). The seven are operator-labelled harness cases; ATAI 07-16 (+32%, 0.99% — the
-   closest free ≥ 20% gapper) and VKTX 09-22 (+23%, 3.38%) are the pass-side cases.
+   an unreadable window PASSES — no hold (reshaped by his timing ruling, above: the arm acts
+   only on names first evaluated after 09:35). The seven are operator-labelled harness cases
+   (the arm blocks each when it reads a window); ATAI 07-16 (+32%, 0.99% — the closest free
+   ≥ 20% gapper) and VKTX 09-22 (+23%, 3.38%) are the pass-side cases.
    ⚠ *Consequence surfaced to him the same evening and RULED (see HIS TIMING RULING above): a
    pre-market hold would have delayed every ≥ 20% EP alert (7 of his 33 labelled real EPs: MRNA,
    TDIC, CHPT, TEAM, BFLY, HTFL, INTC). He ruled NO hold — the arm acts only on names first
@@ -639,7 +640,8 @@ blocked PD and DSGN on a "signed" read with no buyer named and released HZO and 
 - *Operator surface:* `/why`'s deal line now says "deal-nominated: the M&A filter blocks it
   unless the open price shows it free" for a target (it cannot know the reading — the row
   carries none) and keeps "price pinned, blocks it" for a signed shell. The monthly review
-  prints the reading on fired / released rows and has a HELD section.
+  prints the reading on fired / released rows and marks a pre-market block the price released
+  the same day as RELEASED (the HELD section of the hold design is gone — timing ruling).
 
 **Evidence — the backtest (`scripts/probes/_692/pin_backtest.py`, $0, the exported bars
 `scripts/probes/_692/pin/`, 151 stock-days; tables in `pin_backtest_measures.json`).**
@@ -677,12 +679,12 @@ approved AS DECIDED (an approval of a list is a weaker fact than a label on a ro
   RNW; at 1.25% the free side 0.01 pp from MGM — 1.0% is the midpoint of the approved corridor
   and 2× the mature pin's 0.5% daily ceiling. Nothing was tuned to a single name; the sample is
   small (9 labelled nominated rows with minute bars) and this entry says so.
-- *The cost of the four minutes:* a nominated-free name that clears its grade and score
-  alerts and enters at the 09:35 tick through the existing post-open path
-  (`new_highs_post_open` → `trigger_orb_entry`) instead of the pre-market bar-stream path. On
-  the seven EP nominated-free rows, one (DSGN) was already above its 09:30 high by 09:35; PD,
-  IMAX, WAY, PZZA, MGM and PYPL were not. (Whether a SIGNED one can clear the score at all is
-  decision 3 below.)
+- *The 09:35 release path (reframed by his timing ruling):* a nominated-free name was blocked
+  all day under the 10-02 rule (or, if proposed, bought unchecked); now it is blocked
+  pre-market and, if the window reads free and its grade and score clear, alerts and enters at
+  the 09:35 tick through the existing post-open path (`new_highs_post_open` →
+  `trigger_orb_entry`) — a gain, not a delay. On the seven EP nominated-free rows, one (DSGN)
+  was already above its 09:30 high by 09:35; PD, IMAX, WAY, PZZA, MGM and PYPL were not.
 - *Ruling 4's row and a free hit:* when the newest candidate nominates and the price releases
   it, the other candidates left unanswered in the same scan still get their
   `mna_headline_unanswered` row (a separate `if`, not an `elif`), and a signed target the
@@ -692,8 +694,8 @@ approved AS DECIDED (an approval of a list is a weaker fact than a label on a ro
 **Offline replay under the new rule (`scripts/probes/_692/replay_pin.py`, $0 — the recorded
 10-02 answers + the exported bars through the real `is_likely_ma`; output
 `replay_pin_2026-10-03.jsonl` + `_summary.txt`):** 151 rows; 34 nominated — 20 pinned, 12 free,
-2 held (KALV 05-25 and ROKU 07-03, both market holidays with no own-day bar, blocked either
-way). His five calls honoured 5 of 5; the 25 earlier labels 25 of 25. **Seven rows change vs
+2 blocked with no own-day bar in the export (KALV 05-25 and ROKU 07-03, both market holidays —
+blocked either way). His five calls honoured 5 of 5; the 25 earlier labels 25 of 25. **Seven rows change vs
 the 10-02 list he signed:** DSGN 05-18, THR 05-22, PD 05-29 BLOCK → PASS (his releases); HZO
 08-10, RNW 08-11 PASS → BLOCK (his keeps); **NUVL 06-09 PASS → BLOCK** (0.11% open window on a
 +39% gap — the HZO class) and **IRDM 06-29 BLOCK → PASS** (3.28% window on a +19% gap — the
@@ -738,9 +740,10 @@ was shown:**
 
 **Anticipated effect:** on the replayed population, 4 of the 27 non-price-signature blocks
 release on price (DSGN, THR, PD, IRDM) and 3 proposals block on price (HZO, RNW, NUVL); the
-weekly rate of blocks stays ≤ 1 (the 10-02 EXPECT), each now a pinned reading; forward, each `mna_filter_fired` row on a target
-carries its reading, nominated-free names appear as `pin_free` releases, and every held name
-leaves an `mna_pin_pending` row.
+weekly rate of blocks stays ≤ 1 (the 10-02 EXPECT); forward, a nominated target's pre-market
+`mna_filter_fired` row carries `why = news_blocked_price_unread`, its 09:35 read leaves either a
+`pin_free` release or an `mna_pin_confirmed` row (timing ruling — no held names, no
+`mna_pin_pending`).
 
 **PRE-REGISTERED (written before any live data; supersedes the 10-02 EXPECT where they overlap):**
 - **EXPECT (rewritten for the timing ruling):** pre-market, every nominated EP name (a signed
@@ -750,11 +753,13 @@ leaves an `mna_pin_pending` row.
   (HZO / RNW class), so the first proposed-target fired row is the positive observable of the
   change. At the 09:35 tick every such target that is still a candidate gets its read: a
   `mna_filter_released` row with `pin_free` (`range_pct > 1.0`) — followed, when its grade and
-  score clear, by a HIGH alert at 09:35–09:36 and a post-open entry — or stays blocked
-  (`pinned`, visible as the SAME fired row with no release; a second fired row is not written —
-  the dedup). A target blocked pre-market with neither a release nor a `pinned` reading by
-  09:40 while still a candidate = the reader did not run (`bars:<n>` / `fetch_error` in the
-  row's `pin`) — the thing to look at. Price-only arm: `open_window_price_pin` fired rows only
+  score clear, by a HIGH alert at 09:35–09:36 and a post-open entry — or stays blocked, which
+  writes an `mna_pin_confirmed` row with the reading (the fired row is deduped, so this row is
+  the positive trace of a working reader). A target blocked pre-market with neither a `pin_free`
+  release nor an `mna_pin_confirmed` row by 09:40 while still a candidate = the reader did not
+  run — the thing to look at (in r3, 8 of the 19 EP nominated rows released and 11 confirmed, so
+  a week with 2+ pre-market-blocked targets and no trace of either is a dead reader). Price-only
+  arm: `open_window_price_pin` fired rows only
   for names FIRST evaluated after 09:35, each with `gap_pct ≥ 20` and `pin.range_pct ≤ 0.5`;
   baseline 0 (source does not exist); expected rare (the seven would not have been caught);
   any such row is read individually. RULE 3: `mna_grade_without_pin` ≈ 0 a week (a target
@@ -774,7 +779,8 @@ leaves an `mna_pin_pending` row.
   free yet no `pin_free` release that day; an `open_window_price_pin` row with `gap_pct < 20`
   or `range_pct > 0.5`, or one on a name that alerted pre-market (the arm reached a name it must
   not); a `pin_free` release he labels a real buyout; a pre-market-blocked target still a
-  candidate at 09:35 with neither a release nor a readable `pin` by 09:40; a `pin_free`
+  candidate at 09:35 with neither a `pin_free` release nor an `mna_pin_confirmed` row by 09:40;
+  a `pin_free`
   release that never alerts because it landed after 09:44; a `mna`-graded target in
   `mi_catalyst_tier_shadow` after the deploy; any ≥ 20% gapper's pre-market alert missing
   because of this filter.
@@ -789,7 +795,8 @@ Why the 10-02 reasoning was wrong, not incomplete: it tied the GRADE to the news
 fixed price, so the grade carried a second verdict the filter had already given up — a
 price-released target kept 0 catalyst points and could not alert, which defeated the release.
 The grade now says what the catalyst is worth; the filter alone says whether the price is free.
-**Ruling 3 is NEW** (a price-only arm never existed); its hold is the same mechanism as ruling 1.
+**Ruling 3 is NEW** (a price-only arm never existed); it reads the same open window as the news
+arm and, per his timing ruling, never holds.
 
 **Tests:** `tests/test_mna_pin_check_692.py` — the rule and its three states, the readings
 (window membership, the 4-bar floor, UTC → ET, bad bars, both daily row shapes), the Alpaca
@@ -798,8 +805,11 @@ recorded answers AND the recorded readings (carried on the harness cases,
 `scripts/probes/_284_mna_acquirer_backtest.py` — now 28 operator-labelled + 7 agent-read incl.
 NUVL / MGM / IRDM), the shells, the mutation guard (`pin_verdict` replaced by the news-only
 rule → PD / DSGN / THR block and HZO / RNW pass — the five he corrected), no-reader = the 10-02
-verdict, hold + audit on an unreadable window, the EP caller's hold reason / no fired row /
-classifier mapping, the headline path acting on a nomination, ruling 7 intact, the flag
+verdict, the pre-market news block on an unreadable window (no hold, no pending row — the
+timing ruling), the `mna_pin_confirmed` trace of a 09:35 confirm, the DECISION-TIMING table for
+every labelled case (`TIMING`), the release-only rule across the whole answer vocabulary, the
+EP caller's fired row / classifier mapping, the headline path acting on a nomination, ruling 7
+intact, the flag
 reader's composition through the real `db.get_recent_daily_history`, a price-released signed
 target writing no `mna_grade_without_pin` row (the counter still fires on its real case), and
 a free hit not swallowing its scan's unanswered row. The AST population test names which of
@@ -807,8 +817,11 @@ the six `is_likely_ma` sites pass `pin_reader`. Mutation checks on the live sour
 restored byte-identical; recorded in commit `be483afa`): the price condition removed → 11 red
 (PD / DSGN / THR block, HZO / RNW pass); proposed no longer nominating → 14; the ceiling
 exclusive → 1; the headline acting only on a signed pin → 10; an unreadable window releasing →
-3; the four-bar floor dropped → 2; the EP caller writing a fired row for a hold → 1; the shell
-arm needing the price → 6. **Rulings 2–4 (same day, each restored byte-identical):** the
+3; the four-bar floor dropped → 2; the EP caller writing a fired row for a hold → 1 (hold design,
+since replaced); the shell arm needing the price → 6. **Timing ruling (same evening):** a 09:35
+read blocking ANY pinned name, nominated or not → 2 red; a nominated name passing pre-market
+with the window unread → 6 red; the arm holding on an unreadable window → 4 red.
+**Rulings 2–4 (same day, each restored byte-identical):** the
 price-only ceiling 0.5 → 0.05 → 10 red (the seven stop being caught); the arm's gap gate
 removed → 2; the arm releasing on an unreadable window → 3; the EP caller not passing `gap_pct`
 → 3 (the arm would go dark live); RULE 3 drifting back to grading a target `mna` → 4; the

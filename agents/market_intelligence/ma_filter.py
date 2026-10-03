@@ -956,6 +956,16 @@ async def is_likely_ma(
         verdict, why = pin_verdict(answer, reading)
         pin = reading.as_dict() if reading is not None else {}
         if verdict:
+            if why == "pinned":
+                # The 09:35 read CONFIRMED the pre-market news block. The fired row was written
+                # pre-market and is deduped, so without this row a dead reader and a pinned
+                # confirm would leave the same trace (the verify gate's absence trap).
+                await _audit_once(
+                    "mna_pin_confirmed", ticker,
+                    f"the open window confirmed the block ({_answer_str(answer)} via "
+                    f"{meta.get('source')}): {pin.get('window')} range {pin.get('range_pct')}% "
+                    f"<= {pin.get('threshold_pct')}%",
+                    {"answer": deal_fields(answer), "source": meta.get("source"), "pin": pin})
             return True, {**meta, "why": why, **({"pin": pin} if pin else {})}
         reading_box["released"] = {"answer": deal_fields(answer), "why": why,
                                    "source": meta.get("source"), "pin": pin}
