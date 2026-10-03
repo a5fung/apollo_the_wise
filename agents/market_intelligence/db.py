@@ -2748,6 +2748,7 @@ async def initialize_schema() -> None:
                 tight_close_streak INT,                  -- Pradeep "series of tight days" (ranking input)
                 dvol_med        FLOAT,                   -- 20-session median $-volume (liquidity floor sanity)
                 last_eval       DATE,
+                mna_screened_on DATE,                    -- #394: M&A screen took it off the board (NULL = on)
                 created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 PRIMARY KEY (ticker, anchor_date),
