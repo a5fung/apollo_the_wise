@@ -159,7 +159,7 @@ async def regression_digest_section(account_mode: str = "live") -> list[str]:
     try:
         fp, split = await assess_regression(account_mode)
         return render_section(account_mode, fp, split)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001  # loud-ok: in-band — the failure text IS the returned digest line ("_replay-regression unavailable: ..._")
         return ["", f"_replay-regression unavailable: {e}_"]
 
 

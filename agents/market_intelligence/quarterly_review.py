@@ -474,6 +474,7 @@ async def run_quarterly_sweep() -> dict:
                 "stderr_tail": proc.stderr[-500:] if proc.stderr else "",
             })
         except Exception as e:
+            logger.warning("Quarterly sweep: %s (%s) failed to run: %s: %s", label, module, type(e).__name__, str(e)[:300])
             results.append({
                 "label": label,
                 "module": module,

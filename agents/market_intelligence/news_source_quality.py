@@ -118,7 +118,7 @@ async def collect_source_stats(
                 import json as _json
                 try:
                     raw = _json.loads(raw)
-                except Exception:
+                except Exception:  # loud-ok: optional-parse fallback — a corrupt stored raw_json row is skipped below as "no source data"; a per-row log would flood this loop
                     raw = None
             if not isinstance(raw, dict):
                 continue
@@ -321,7 +321,8 @@ async def _drift_telegram_already_sent_recently() -> bool:
                 LIMIT 1
             """)
             return row is not None
-    except Exception:
+    except Exception as _dedup_err:
+        logger.warning("news_source_quality: drift-dedup lookup failed — sending the Telegram anyway (fail-open): %s", _dedup_err)
         return False  # fail-open: send Telegram on DB error
 
 

@@ -690,7 +690,8 @@ async def run_parabolic_scan(trade_date: date) -> dict[str, list[dict]]:
                 # climax. Aligns with the same direction at EP boost + cooldown.
                 try:
                     earnings_today, _src = await is_earnings_day(ticker, trade_date)
-                except Exception:
+                except Exception as _earn_err:
+                    logger.warning(f"parabolic: is_earnings_day failed for {ticker} — treating as earnings day (climax suppressed, fail-soft): {_earn_err}")
                     earnings_today = True
                 metrics = compute_parabolic_metrics(
                     history, market_cap=cap, is_earnings_today=earnings_today,

@@ -434,6 +434,7 @@ class Apollo:
         try:
             data = await self._call_market_endpoint("/teach", payload)
         except Exception as e:
+            logger.warning("orchestrator /teach call to the market agent failed: %s", e, exc_info=True)
             return f"Failed to reach market agent: {e}"
 
         observation = tool_input.get("observation", "")
@@ -518,6 +519,7 @@ class Apollo:
         try:
             data = await self._call_market_endpoint("/screener", payload, timeout=90)
         except Exception as e:
+            logger.warning("orchestrator /screener call to the market agent failed: %s", e, exc_info=True)
             return f"Screener failed: {e}"
 
         return data.get("result", "No screener results returned.")
@@ -533,6 +535,7 @@ class Apollo:
         try:
             data = await self._call_market_endpoint("/stocks/update_info", payload)
         except Exception as e:
+            logger.warning("orchestrator /stocks/update_info call to the market agent failed: %s", e, exc_info=True)
             return f"Failed to update stock info: {e}"
 
         ticker = data.get("ticker", tool_input.get("ticker", "?"))
@@ -552,6 +555,7 @@ class Apollo:
         try:
             data = await self._call_market_endpoint("/tweet", {"text": text})
         except Exception as e:
+            logger.warning("orchestrator /tweet call to the market agent failed: %s", e, exc_info=True)
             return f"Tweet failed: {e}"
 
         if data.get("success"):

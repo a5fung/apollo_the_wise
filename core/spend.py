@@ -131,8 +131,8 @@ async def log_api_usage(
     # Check budget alert (fire-and-forget)
     try:
         await _check_budget_alert(cost)
-    except Exception:
-        pass
+    except Exception as _budget_err:
+        logger.warning("log_api_usage: budget-alert check failed: %s", _budget_err)
 
     return cost
 

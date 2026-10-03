@@ -63,7 +63,7 @@ async def _write_poll_heartbeat() -> None:
         from core.confirmations import get_redis
         r = await get_redis()
         await r.set(POLL_HEARTBEAT_KEY, int(time.time()))
-    except Exception:
+    except Exception:  # loud-ok: heartbeat write — a failed write leaves the key stale, which scheduler._telegram_poll_watchdog_job (#153) alarms on
         pass
 
 
@@ -77,7 +77,7 @@ class HeartbeatExtBot(ExtBot):
         updates = await super().get_updates(*args, **kwargs)
         try:
             asyncio.create_task(_write_poll_heartbeat())
-        except Exception:
+        except Exception:  # loud-ok: fire-and-forget heartbeat scheduling — a missed beat goes stale and trips the same #153 watchdog
             pass
         return updates
 
@@ -292,8 +292,8 @@ class TelegramChannel:
                     secret = get_secrets().internal_api_secret
                     async with httpx.AsyncClient(timeout=5) as client:
                         await client.post(f"{url}/briefing/evening", headers={"X-Apollo-Secret": secret})
-                except Exception:
-                    pass
+                except Exception as _brief_err:
+                    logger.warning("telegram 'send brief' shortcut: POST /briefing/evening failed: %s", _brief_err)
             return "Check Telegram. 🐢"
 
         return None
@@ -431,7 +431,8 @@ class TelegramChannel:
             from core.memory import search_memories
             name_memories = await search_memories(user_id, category="persona:name", limit=1)
             return len(name_memories) > 0
-        except Exception:
+        except Exception as _persona_err:
+            logger.warning("telegram _is_persona_configured: memory lookup failed for user %s — reporting not configured: %s", user_id, _persona_err)
             return False
 
     async def _load_persona(self, user_id: int) -> tuple[str, str | None]:
@@ -443,7 +444,8 @@ class TelegramChannel:
             name = name_mems[0].content if name_mems else "Apollo"
             persona = persona_mems[0].content if persona_mems else None
             return name, persona
-        except Exception:
+        except Exception as _persona_err:
+            logger.warning("telegram _load_persona: memory lookup failed for user %s — using the default persona: %s", user_id, _persona_err)
             return "Apollo", None
 
     # ── Onboarding state (Redis) ──────────────────────────────────────────────
@@ -453,7 +455,8 @@ class TelegramChannel:
             from core.confirmations import get_redis
             r = await get_redis()
             return await r.get(f"apollo:onboarding:{user_id}")
-        except Exception:
+        except Exception as _onb_err:
+            logger.warning("telegram _get_onboarding_state: Redis read failed for user %s — treating as no state: %s", user_id, _onb_err)
             return None
 
     async def _set_onboarding_state(self, user_id: int, state: str) -> None:
@@ -461,16 +464,16 @@ class TelegramChannel:
             from core.confirmations import get_redis
             r = await get_redis()
             await r.setex(f"apollo:onboarding:{user_id}", 3600, state)
-        except Exception:
-            pass
+        except Exception as _onb_err:
+            logger.warning("telegram _set_onboarding_state: Redis write failed for user %s: %s", user_id, _onb_err)
 
     async def _clear_onboarding_state(self, user_id: int) -> None:
         try:
             from core.confirmations import get_redis
             r = await get_redis()
             await r.delete(f"apollo:onboarding:{user_id}")
-        except Exception:
-            pass
+        except Exception as _onb_err:
+            logger.warning("telegram _clear_onboarding_state: Redis delete failed for user %s: %s", user_id, _onb_err)
 
     async def _handle_help(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -729,7 +732,7 @@ class TelegramChannel:
                             import json
                             try:
                                 return json.loads(raw) if isinstance(raw, str) else (raw or [])
-                            except Exception:
+                            except Exception:  # loud-ok: optional-parse fallback — a malformed stored attempts blob renders as "no attempts"
                                 return []
                         def _attempt_count(entries_raw) -> int:
                             entries = _parse_json_list(entries_raw)
@@ -1260,7 +1263,7 @@ class TelegramChannel:
             async with pool.acquire() as conn:
                 await conn.fetchval("SELECT 1")
             return True, ""
-        except Exception as e:
+        except Exception as e:  # loud-ok: health probe — the failure IS the return value ((False, reason)), rendered by /status
             return False, str(e)[:120]
 
     async def _check_redis(self) -> tuple[bool, str]:
@@ -1269,7 +1272,7 @@ class TelegramChannel:
             r = await get_redis()
             await r.ping()
             return True, ""
-        except Exception as e:
+        except Exception as e:  # loud-ok: health probe — the failure IS the return value ((False, reason)), rendered by /status
             return False, str(e)[:120]
 
     async def _check_claude(self) -> tuple[bool, str]:
@@ -1291,8 +1294,8 @@ class TelegramChannel:
                 await log_api_usage(
                     model=HEALTHCHECK_MODEL, caller="healthcheck", response=resp,
                 )
-            except Exception:
-                pass
+            except Exception as _meter_err:
+                logger.warning("telegram _check_claude: cost-meter write failed: %s", _meter_err)
             return True, ""
         except anthropic.APIStatusError as e:
             if e.status_code == 529:
@@ -1302,7 +1305,7 @@ class TelegramChannel:
             if e.status_code == 400 and "credit" in str(e).lower():
                 return False, "Out of credits — add credits at console.anthropic.com"
             return False, f"API error {e.status_code}: {str(e)[:100]}"
-        except Exception as e:
+        except Exception as e:  # loud-ok: health probe — the failure IS the return value ((False, reason)), rendered by /status
             return False, str(e)[:120]
 
     async def _check_account_mode(self) -> list[str]:
@@ -1331,7 +1334,7 @@ class TelegramChannel:
                 )
                 resp.raise_for_status()
                 data = resp.json()
-        except Exception as e:
+        except Exception as e:  # loud-ok: in-band — the failure is the returned "⚠️ Account fetch failed" line, rendered by /status
             return [f"⚠️ Account fetch failed: {str(e)[:120]}"]
 
         if not data.get("live_trading_enabled", False):
@@ -1407,7 +1410,7 @@ class TelegramChannel:
             # (ep_grade_judge, claude-opus-5-5) whose underscores 400 a Markdown send.
             from shared.telegram_format import md_to_html
             await update.message.reply_text(md_to_html(summary), parse_mode="HTML")
-        except Exception as e:
+        except Exception as e:  # loud-ok: in-band — the failure is sent straight back to the operator as "Error fetching spend data"
             await update.message.reply_text(f"Error fetching spend data: {e}")
 
     # ── Trade callback handler ────────────────────────────────────────────────
@@ -1534,7 +1537,8 @@ class TelegramChannel:
             logger.warning(f"edit_message_text failed, sending new: {e}")
             try:
                 await query.message.reply_text(html, parse_mode=ParseMode.HTML, reply_markup=markup)
-            except Exception:
+            except Exception as _html_err:
+                logger.warning("telegram callback reply: HTML send failed, falling back to plain text: %s", _html_err)
                 await query.message.reply_text(to_plain(html), reply_markup=markup)
 
     async def _handle_hud_drill_down(self, query, callback_data: str) -> None:
@@ -1747,7 +1751,7 @@ class TelegramChannel:
                 await context.bot.send_chat_action(chat_id=chat_id, action="typing")
             except asyncio.CancelledError:
                 return
-            except Exception:
+            except Exception:  # loud-ok: typing-indicator tick — cosmetic, retried at the next interval
                 pass  # Non-fatal — skip this tick, try again next interval
             try:
                 await asyncio.sleep(TYPING_INTERVAL)
