@@ -58,24 +58,15 @@ def test_loads_with_every_repo_package_unimportable():
     assert p.stdout.strip() == "loaded 3.0 120 18 30"
 
 
-def test_new_tool_and_prompt_equal_the_branch_grader():
-    assert G.NEW_CATALYST_TOOL == ep_detector._CATALYST_TOOL
+def test_new_arm_is_the_re_tied_prompt_that_ran_on_2026_10_03():
+    """This script RAN on main on 2026-10-03 ($0.89) with the re-tied RULE 3 (ruling 2). Ruling 2
+    was reverted the same night (#692b: S19 of the ADR 0030 corpus requires a definitive all-cash
+    buyout target to grade 'mna'), so the NEW arm is pinned here by hash to what ran — it is a
+    record, no longer the live grader (tests/test_mna_merit_grade_692b.py pins the live one)."""
+    digest = hashlib.sha256((json.dumps(G.NEW_CATALYST_TOOL, sort_keys=True) + G.NEW_RULE_3).encode()).hexdigest()
+    assert digest == "f7d4301b20b77b4614aed49f3a81defd657b094dbb01b7659bd5e88e543d293d"
     assert G.DEAL_FIELD_PROPERTIES == mf.DEAL_FIELD_PROPERTIES
-    profile = {"companyName": "PagerDuty", "sector": "Tech", "marketCap": 1.2e9, "description": "d" * 400}
-    corpus = "[SEC 8-K] " + "x" * 7000
-    captured = []
-
-    async def create(**kw):
-        captured.append(kw["messages"][0]["content"])
-        block = SimpleNamespace(type="tool_use", input={"quality": "routine", "analysis": "a"})
-        return SimpleNamespace(content=[block], stop_reason="tool_use")
-    with patch.object(ep_detector._get_claude(), "messages") as m, \
-         patch("agents.market_intelligence.spend_tracker.log_anthropic_call_safe",
-               new=AsyncMock(return_value=None)):
-        m.create = create
-        _run(ep_detector._classify_catalyst_claude("PD", [], profile, grounded_text=corpus))
-    assert captured[0] == G.new_prompt("PD", profile, corpus)
-    assert G.NEW_RULE_3 in captured[0] and G.OLD_RULE_3 not in captured[0]
+    assert "quality_if_no_deal" not in G.NEW_CATALYST_TOOL["input_schema"]["properties"]
 
 
 def test_old_copy_is_the_10_02_branch_verbatim():

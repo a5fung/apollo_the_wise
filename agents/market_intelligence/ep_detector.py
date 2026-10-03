@@ -108,8 +108,11 @@ _tinycap_seen: set = set()
 # Catalyst-grade prompt era (operator directive 2026-06-11 — see
 # ep_grade_judge.RUBRIC_VERSION for the scheme). Bump on every signed change
 # to the _classify_catalyst_claude prompt; stamped on ep_grade_decision rows.
-# v1 = pre-#269. v2 = #269 revenue-over-EPS + sustainable-turnaround.
-CATALYST_GRADE_PROMPT_VERSION = "v3-2026-06-12-catalyst-freshness"
+# v1 = pre-#269. v2 = #269 revenue-over-EPS + sustainable-turnaround. v3 = #269 freshness.
+# v4 = #692 (2026-10-02 deal fields + RULE 3 asks the M&A question; 2026-10-03 #692b
+# `quality_if_no_deal`, the merit grade used when the opening price releases a news-blocked
+# name — operator: "the label doesn't kill it only if the M&A is false").
+CATALYST_GRADE_PROMPT_VERSION = "v4-2026-10-03-deal-fields-merit-if-no-deal"
 
 # Hard filters
 # MIN_GAP_PCT: 2026-05-17 R2 ship — lifted 8.0 → 10.0 on a 0/8 WIN-RATE read of the 8-10% bucket
@@ -343,6 +346,13 @@ class CachedGrade(NamedTuple):
     # re-run decides on the SAME answer the grade gave. None = UNANSWERED (grade failed, or a
     # cache entry from before #692) — distinct from DealAnswer(role="none") = answered, no deal.
     deal_answer: "DealAnswer | None" = None
+    # #692b (2026-10-03): the grader's merit grade "as if the deal were not real", used when the
+    # 09:35 open-window read RELEASES a news-blocked name. None = not given → a release keeps
+    # 'mna' (fail safe: 0 catalyst points, cannot reach HIGH).
+    quality_if_no_deal: "str | None" = None
+    # #692b: set once the 09:35 read released this name and the raw grade above was re-scored
+    # with `quality_if_no_deal` — every later tick (and the judge) reads the same fact.
+    mna_released_on_price: bool = False
 
 
 _catalyst_cache: dict[str, CachedGrade] = {}
@@ -859,21 +869,112 @@ _CATALYST_TOOL = {
                     "game_changer: massive earnings beat + guidance raise, FDA approval, "
                     "transformative contract. strong: solid beat + guidance raise, analyst "
                     "upgrade cluster, major partnership. routine: in-line results, no "
-                    "company-specific catalyst. mna: ONLY when deal_role is shell AND deal_status "
-                    "is signed — this listed company is the vehicle of a signed reverse merger. A "
-                    "buyout TARGET, signed or proposed, is graded on its own merit; a separate M&A "
-                    "filter decides it on price, not the grade."
+                    "company-specific catalyst. mna: ONLY when deal_status is signed AND either "
+                    "deal_role is shell, or deal_role is target and deal_consideration is cash, "
+                    "mixed or unknown — this company's price is fixed by a signed deal, no "
+                    "momentum trade. Any other deal is graded on its own merit."
                 ),
             },
             **DEAL_FIELD_PROPERTIES,
+            # #692b (operator 2026-10-03: "the label doesn't kill it only if the M&A is false"):
+            # the merit grade the system uses when the 09:35 open-window read shows the deal does
+            # NOT fix the price (the name is released) — a verdict field, before the free text.
+            "quality_if_no_deal": {
+                "type": "string",
+                "enum": ["game_changer", "strong", "routine", "mna"],
+                "description": (
+                    "The catalyst's grade on its own merit AS IF the deal were not real — the "
+                    "same scale as quality, graded under rules 1, 2, 4 and 5 with the deal set "
+                    "aside. The system uses it when the opening price shows the deal does not fix "
+                    "the price. When no deal is involved, repeat quality."
+                ),
+            },
             "analysis": {
                 "type": "string",
                 "description": "2-3 sentences on the specific catalyst and classification rationale.",
             },
         },
-        "required": ["quality", *DEAL_FIELD_PROPERTIES, "analysis"],
+        "required": ["quality", *DEAL_FIELD_PROPERTIES, "quality_if_no_deal", "analysis"],
     },
 }
+
+# The grades a released name may be re-scored with (#692b). 'mna' is deliberately NOT one of
+# them: a `quality_if_no_deal` of 'mna' (or a missing / out-of-vocabulary value) FAILS SAFE —
+# the name keeps 'mna', scores 0 catalyst points and cannot reach HIGH.
+_MERIT_GRADES: frozenset = frozenset({"game_changer", "strong", "routine"})
+
+
+def merit_grade_after_release(raw_quality: "str | None",
+                              quality_if_no_deal: "str | None") -> "tuple[str | None, str]":
+    """#692b (pure). The acting RAW grade for a name the M&A filter RELEASED on price (the
+    09:35 open window traded freely — the deal does not fix the price). Returns (grade, why):
+      raw grade not 'mna'                      → unchanged,            'grade_not_mna'
+      'mna' + a merit quality_if_no_deal       → quality_if_no_deal,   'merit_grade'
+      'mna' + missing / 'mna' / out of vocab   → 'mna' (FAIL SAFE),    'no_merit_grade_fail_safe'
+    A pinned (confirmed) name never reaches this: the filter still blocks it."""
+    if raw_quality != "mna":
+        return raw_quality, "grade_not_mna"
+    if quality_if_no_deal in _MERIT_GRADES:
+        return quality_if_no_deal, "merit_grade"
+    return "mna", "no_merit_grade_fail_safe"
+
+
+def _judge_grade_after_release(verdict: "dict | None", r: dict) -> "dict | None":
+    """#692b (pure) — on a name the M&A filter RELEASED on price (`r["mna_released_on_price"]`),
+    a judge verdict whose grade is 'mna' is re-labelled with the grader's `quality_if_no_deal`
+    (the deal is not what the market is trading); the judge's TIER is its own call and is never
+    touched here (the payload told it the price was free). FAIL SAFE: no usable merit grade →
+    the judge's 'mna' stands. Any other verdict is returned unchanged."""
+    if not verdict or not r.get("mna_released_on_price") or verdict.get("grade") != "mna":
+        return verdict
+    merit = r.get("quality_if_no_deal")
+    if merit not in _MERIT_GRADES:
+        return verdict
+    out = dict(verdict)
+    out["grade"] = merit
+    out["grade_reason"] = (f"[mna -> {merit}: the open window released this name] "
+                           + (verdict.get("grade_reason") or ""))[:200]
+    return out
+
+
+async def _apply_release_merit_grade(
+    ticker: str, c: dict, llm_quality: "str | None", quality_if_no_deal: "str | None",
+    release_meta: dict, claude_analysis, grounded_text, news_summary, board_sectors: dict,
+    lattice_live: bool, today,
+) -> "tuple[str, str, dict | None, str] | None":
+    """#692b — the M&A filter RELEASED this name on price this tick (`release_meta` from
+    `_post_grade_filters`). Re-score it with the grader's `quality_if_no_deal` instead of 'mna'
+    and re-resolve the acting grade through the lattice (ONE GRADE EVERYWHERE). Returns the new
+    (raw, acting, lattice_verdict, live_side) or None when nothing changes — the filter did not
+    release, the grade was not 'mna', or no usable merit grade exists (FAIL SAFE: the name keeps
+    'mna', scores 0 catalyst points and cannot reach HIGH; an audit row says so). Marks the
+    candidate (`mna_released_on_price`, `quality_if_no_deal`) for the judge and the scan log."""
+    if not release_meta.get("released_on_price"):
+        return None
+    c["mna_released_on_price"] = True
+    c["quality_if_no_deal"] = quality_if_no_deal
+    new_raw, why = merit_grade_after_release(llm_quality, quality_if_no_deal)
+    pin = release_meta.get("pin") or {}
+    if why == "merit_grade":
+        acting, lattice_verdict, live_side = _resolve_acting_catalyst_quality(
+            ticker, new_raw, claude_analysis, grounded_text, news_summary, board_sectors, lattice_live)
+        c["llm_catalyst_quality"] = new_raw
+        c["acting_catalyst_quality"] = acting
+        await log_audit_event(
+            "mna_release_merit_grade",
+            f"{ticker} re-scored {llm_quality} -> {new_raw} (acting {acting}): the open window "
+            f"released it ({pin.get('window')} range {pin.get('range_pct')}% > {pin.get('threshold_pct')}%)",
+            json.dumps({"ticker": ticker, "alert_date": str(today), "from": llm_quality, "to": new_raw,
+                        "acting": acting, "pin": pin, "answer": release_meta.get("answer")}, default=str))
+        return new_raw, acting, lattice_verdict, live_side
+    if why == "no_merit_grade_fail_safe":
+        await log_audit_event(
+            "mna_release_without_merit_grade",
+            f"{ticker} released on price but the grader gave no usable quality_if_no_deal "
+            f"({quality_if_no_deal!r}) — keeps 'mna' (fail safe: cannot reach HIGH)",
+            json.dumps({"ticker": ticker, "alert_date": str(today), "quality_if_no_deal": quality_if_no_deal,
+                        "pin": pin}, default=str))
+    return None
 
 
 def build_grounded_text(
@@ -1418,11 +1519,14 @@ IMPORTANT RULES:
    'stock' (acquirer shares only / fixed exchange ratio / all-stock merger), 'mixed', 'unknown' (deal
    described, terms not in the text), or 'none'.
    deal_counterparty: the other company, or empty.
-   Grade "mna" ONLY when deal_role is 'shell' AND deal_status is 'signed' — the listed vehicle of a
-   signed reverse merger, the one case where the grade itself carries the verdict. A TARGET of a deal
-   — signed or proposed, whatever the consideration — is graded on its own merit under rules 1, 2, 4
-   and 5: a separate M&A filter reads its price and decides, not the grade. The same goes for a
-   buyer, an all-stock merger, or a deal that involves another company.
+   Grade "mna" ONLY when deal_status is 'signed' AND either deal_role is 'shell', or deal_role is
+   'target' and deal_consideration is 'cash', 'mixed' or 'unknown' — that is the one case where the
+   price is fixed by the deal and there is no momentum trade. In every other case (this company is the
+   buyer, the deal is proposed or rumoured, the merger is all-stock, the deal involves another company)
+   grade the catalyst on its own merit under rules 1, 2, 4 and 5.
+   quality_if_no_deal: the grade this catalyst earns on its own merit under rules 1, 2, 4 and 5 AS IF
+   the deal were not real — the system uses it when the opening price shows the deal does not fix the
+   price. When no deal is involved, repeat quality.
 4. Broad SECTOR-MOMENTUM, SHORT-SQUEEZE, or non-company-specific technical moves with no concrete
    company event = "routine" (a gap-up alone is not a catalyst).
 5. MATERIALITY — weigh the catalyst's magnitude RELATIVE to the company (market cap above). A contract,
@@ -1514,6 +1618,11 @@ catalyst, say so explicitly."""
             else:
                 logger.warning(f"{ticker}: catalyst grade carried no valid deal fields — "
                                f"M&A question unanswered by the grader (keys: {sorted(result)})")
+            # #692b: the merit grade for a price-released name. Out of vocabulary / missing →
+            # ABSENT in the sink = no merit grade → a release keeps 'mna' (fail safe).
+            _merit = str(result.get("quality_if_no_deal") or "").strip().lower()
+            if _merit in ("game_changer", "strong", "routine", "mna"):
+                deal_sink["quality_if_no_deal"] = _merit
         return quality, analysis or ""
     except Exception as e:
         # #273: a credit-exhaustion failure here silently turns every catalyst
@@ -2066,6 +2175,9 @@ async def _post_grade_filters(
     # lattice_acting, because None is a real state (a failed grade) with defined behaviour —
     # the headline question decides (ruling 5 aside: a grade of 'mna' with no fields blocks).
     deal_answer: "DealAnswer | None" = None,
+    # #692b: when the M&A filter RELEASES a news-blocked name on price (the 09:35 read), the
+    # release meta lands here so the caller can re-score the name with `quality_if_no_deal`.
+    release_sink: "dict | None" = None,
 ) -> str | None:
     """The three post-grade hard filters — M&A/buyout, routine-catalyst-low-gap,
     pm-shares floor (R6 carve-out) — extracted (S6/#405, 2026-07-03) so BOTH the
@@ -2159,6 +2271,8 @@ async def _post_grade_filters(
         pin_reader=lambda: read_open_window_pin(ticker, today),
         gap_pct=gap_pct,
     )
+    if not is_mna and (mna_meta or {}).get("released_on_price") and release_sink is not None:
+        release_sink.update(mna_meta)
     if is_mna:
         reason = "M&A/buyout catalyst — no momentum trade"
         logger.info(f"Skip {ticker}: {reason} ({(mna_meta or {}).get('source')})")
@@ -4709,6 +4823,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # #692: the grader's answer to the M&A question for THIS candidate (None = unanswered).
         # Bound per candidate so no path can read a previous ticker's answer.
         deal_answer: "DealAnswer | None" = None
+        # #692b: the grader's merit grade "as if the deal were not real" (None = not given).
+        quality_if_no_deal: "str | None" = None
         # DISPLAY-ONLY (2026-08-27, OKTA alert-coherence fix). Which keep-event — if any —
         # preserved the FLOOR catalyst grade against the floor's OWN revenue safety net, so
         # the alert can NAME the mechanism that acted instead of a hardcoded word. Three
@@ -4735,6 +4851,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             grounded_text = cached.grounded_text  # 7/4: cached-path alerts carry the grade-time corpus (was NULL)
             _has_direct_source = cached.has_direct_source  # #405 Part-1: preserve the display flag on the cached path
             deal_answer = cached.deal_answer  # #692: the grade's own M&A answer re-decides every tick
+            quality_if_no_deal = cached.quality_if_no_deal  # #692b
+            # #692b: a release already applied on an earlier tick rides the cache (the raw grade
+            # there is already the merit grade), so the judge and the scan log see the same fact.
+            c["mna_released_on_price"] = cached.mna_released_on_price
+            c["quality_if_no_deal"] = cached.quality_if_no_deal
 
             # ── ONE GRADE EVERYWHERE (2026-08-22 consistency fix, operator-directed) ──
             # Resolve the acting grade the moment the raw grade is in hand. The cache
@@ -4755,11 +4876,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             c["acting_catalyst_quality"] = catalyst_quality
 
             if not filters_cleared:
+                _mna_release: dict = {}
                 skip_reason = await _post_grade_filters(
                     ticker, catalyst_quality, claude_analysis, news_summary,
                     c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
                     lattice_acting=(_live_side == "lattice"),
                     deal_answer=deal_answer,
+                    release_sink=_mna_release,
                 )
                 if skip_reason:
                     logger.debug(
@@ -4779,6 +4902,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # (pm-volume grew, M&A stopped matching, gap moved) — flip the
                 # flag and fall through EXACTLY as a fresh survivor would.
                 filters_cleared = True
+                # #692b: the 09:35 read RELEASED a news-blocked name — re-score it with the
+                # grader's merit grade (the deal is not what the market is trading) and persist
+                # the merit grade as the cache's raw grade so every later tick agrees.
+                _rel = await _apply_release_merit_grade(
+                    ticker, c, llm_catalyst_quality, quality_if_no_deal, _mna_release,
+                    claude_analysis, grounded_text, news_summary, _board_sectors, _lattice_live, today)
+                if _rel is not None:
+                    llm_catalyst_quality, catalyst_quality, _lattice_verdict, _live_side = _rel
+                    cached = cached._replace(catalyst_quality=llm_catalyst_quality,
+                                             mna_released_on_price=True)
                 _catalyst_cache[ticker] = cached._replace(filters_cleared=True)
                 logger.info(f"{ticker}: cached grade ({catalyst_quality}) now clears filters — proceeding")
 
@@ -4987,6 +5120,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         raise RuntimeError("enriched classify returned the fail-routine sentinel")
                     catalyst_quality, claude_analysis = _eq, _ea
                     deal_answer = _enr_deal.get("deal_answer")
+                    quality_if_no_deal = _enr_deal.get("quality_if_no_deal")   # #692b
                 except Exception as _ee:  # loud-ok: audited + legacy fallback below — never a silent degrade
                     logger.error(
                         f"{ticker}: live enriched grade failed — legacy-corpus fallback: {_ee}")
@@ -5005,6 +5139,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                               deal_sink=_leg_deal))
                 catalyst_quality, claude_analysis = await claude_task
                 deal_answer = _leg_deal.get("deal_answer")
+                quality_if_no_deal = _leg_deal.get("quality_if_no_deal")   # #692b
 
             # #210 Wave B — record source-class provenance of the grounded corpus that
             # produced this grade (telemetry-only; once per ticker/day on the uncached
@@ -5160,11 +5295,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # cleared grade with no LLM call. Order + reason strings unchanged;
             # they read the ACTING (lattice-resolved) grade since 2026-08-22 —
             # toggle OFF passes the raw settled grade, byte-identical pre-flip.
+            _mna_release: dict = {}
             skip_reason = await _post_grade_filters(
                 ticker, catalyst_quality, claude_analysis, news_summary,
                 c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
                 lattice_acting=(_live_side == "lattice"),
                 deal_answer=deal_answer,
+                release_sink=_mna_release,
             )
 
             # Store in cache AT GRADE COMPLETION regardless of filter outcome
@@ -5179,6 +5316,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 grounded_text=grounded_text,
                 has_direct_source=_has_direct_source,  # #405 Part-1: cache the display flag
                 deal_answer=deal_answer,  # #692: later ticks re-decide on this same answer
+                quality_if_no_deal=quality_if_no_deal,  # #692b: the merit grade rides the cache
             )
 
             if skip_reason:
@@ -5192,6 +5330,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 if _kill_row:
                     _tier_shadow_inputs.append(_kill_row)
                 continue
+            # #692b: a name first graded after 09:35 whose open window read free on this very
+            # tick — re-score it with the merit grade and persist it in the cache.
+            _rel = await _apply_release_merit_grade(
+                ticker, c, llm_catalyst_quality, quality_if_no_deal, _mna_release,
+                claude_analysis, grounded_text, news_summary, _board_sectors, _lattice_live, today)
+            if _rel is not None:
+                llm_catalyst_quality, catalyst_quality, _lattice_verdict, _live_side = _rel
+                _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
+                    catalyst_quality=llm_catalyst_quality, mna_released_on_price=True)
 
         # Earnings-day pre-score catalyst boost (DDOG/AAON 5/07 incident class).
         # Existing earnings-day override (below) only fires for MODERATE→HIGH
@@ -6766,6 +6913,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # into the ORB path exactly as a floor-HIGH. baseline_floor_tier is preserved
                 # as the counterfactual. A None verdict FAILS OPEN to the floor (authority
                 # 'fallback', floor tier kept). Toggle OFF → none of this runs (byte-identical).
+                # #692b (operator 2026-10-03): on a name the M&A filter RELEASED on price, the
+                # judge's own 'mna' read is replaced by the grader's merit grade.
+                verdict = _judge_grade_after_release(verdict, r)
                 new_tier, authority, do_override = _resolve_grade_authority(
                     _judge_authority, verdict, floor_tier)
                 # ── M1-d composite authority (ADR 0024 §6) — DARK: default OFF, byte-

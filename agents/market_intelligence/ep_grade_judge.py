@@ -187,10 +187,8 @@ RUBRIC (in priority order):
    (asset sale, litigation settlement, tax benefit) — the CBRL class.
 5. Theme heat + technical structure + gap alignment modulate the grade up or down (a strong
    name can be lifted to game_changer by a hot theme + clean structure).
-6. M&A: grade "mna" ONLY for the listed vehicle of a SIGNED reverse merger (a shell). A company
-   that is being acquired — signed or proposed, cash or stock — is graded on the merit of its
-   catalyst like any other name; a separate M&A filter reads its price and decides, and that
-   filter is authoritative (operator 2026-10-03).
+6. M&A: if the company is being acquired (buyout/merger/tender/going-private), grade "mna" —
+   but this is advisory; a separate M&A filter is authoritative.
 7. SECOND OPINION: when a block below reports that another model graded this catalyst
    differently, treat it as a PROMPT TO RE-READ THE EVIDENCE on the axis they differ on —
    never as a vote. That model's web summary is already part of your evidence, so counting
@@ -277,6 +275,12 @@ def assemble_judge_inputs(
         # the odds this judge also disagrees (33% vs an 18% base) and the two point the same
         # way 25 times in 29. None/equal → prompt byte-identical to the pre-change form.
         "second_opinion": second_opinion,
+        # #692b (operator 2026-10-03: "the label doesn't kill it only if the M&A is false") —
+        # True when the M&A filter blocked this name pre-market on deal news and the 09:35
+        # open-window read RELEASED it (the price is not fixed by the deal). Rendered as its
+        # own block OUTSIDE `_RUBRIC` (the ADR 0030 hash is untouched); absent/False keeps the
+        # prompt byte-identical. The scan sets r["mna_released_on_price"] only on that release.
+        "mna_price_released": bool(r.get("mna_released_on_price")),
         "in_active_theme": bool(r.get("in_active_theme")),
         "in_narrative_cohort": bool(r.get("in_narrative_cohort")),
         # Theme HEAT (#329 Path A) — stage/score from get_theme_membership. Today the judge gets
@@ -400,6 +404,17 @@ grade_reason what you found. If the evidence does not move you, keep your own re
 Opening-range ÷ ATR: {t.get('opening_range_atr')} (>~0.25-0.30 = a violent open — bracket geometry is structurally poor; weigh entry quality, not just the catalyst)
 Premarket volume-curve vs baseline: {t.get('pm_vol_curve')}
 Liquidity / spread: {t.get('liquidity')}"""
+    # #692b — rendered ONLY when the M&A filter released this name on price; absent keeps the
+    # prompt byte-identical (the corpus cases never set it, so S19 still grades "mna").
+    mna_block = ""
+    if p.get("mna_price_released"):
+        mna_block = """
+
+--- M&A FILTER READ (the opening price) ---
+The M&A filter blocked this name pre-market on deal news and RELEASED it at 09:35: the first five
+minutes traded freely (range above 1% of the open), so the price is NOT fixed by the deal. Grade
+the catalyst on its own merit as if the deal were not real — "mna" is for a price pinned to a deal
+price, which this one is not."""
     return f"""{_RUBRIC}
 
 --- SETUP ---
@@ -414,7 +429,7 @@ Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {
 {p.get('grounded_text') or 'No grounded corpus.'}
 
 --- ANALYST NOTE ---
-{p.get('analysis') or '(none)'}{second_op}{tape_block}"""
+{p.get('analysis') or '(none)'}{second_op}{tape_block}{mna_block}"""
 
 
 def format_tier_transition(base_tier, judge_tier) -> str:
