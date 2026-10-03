@@ -3,8 +3,10 @@
 WHY: the M&A pin filter drops candidates entirely (HARD gate, no fallback), so
 both error directions cost us:
   - over-fire  -> a real mover suppressed (ONDS +24%, SUNE +216% — the 6/14 dig)
-  - under-fire -> a genuine target let through as "acquirer-side" (the #284
-    acquirer-direction change could mis-pass a target)
+  - under-fire -> a genuine target let through. Since #692 (2026-10-02) the filter asks
+    whether the ticker is the TARGET of a SIGNED deal that fixes its price; every name the OLD
+    rule would have blocked but the answer released writes `mna_filter_released` (it replaced
+    the #284 `mna_acquirer_title_skipped` stream) — that list is the under-fire surface now.
 
 This script SURFACES both, with forward returns, for OPERATOR judgment. It does
 NOT classify FP/TP itself (CHANGE_PROCESS rules #3/#4 — the agent never
@@ -19,6 +21,7 @@ surfaced by the Sunday weekly review when its floor ripens (monthly during the
 Read-only. ASCII output (cp1252 console safety).
 """
 import asyncio
+import json
 import sys
 
 # peak-gain that flags a suppression as a MATERIAL-MISS CANDIDATE for operator review
@@ -37,13 +40,14 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int)
             SELECT DISTINCT ON ({ticker_expr}, (created_at AT TIME ZONE 'America/New_York')::date)
                 {ticker_expr} AS ticker,
                 (created_at AT TIME ZONE 'America/New_York')::date AS d,
-                left(regexp_replace(detail::text, '\\s+', ' ', 'g'), 130) AS detail
+                left(regexp_replace(detail::text, '\\s+', ' ', 'g'), 130) AS detail,
+                detail::text AS detail_full
             FROM mi_audit_log
             WHERE event_type = $1
               AND created_at >= now() - ($2 || ' days')::interval
             ORDER BY {ticker_expr}, (created_at AT TIME ZONE 'America/New_York')::date, created_at DESC
         )
-        SELECT f.ticker, f.d AS fire_day, f.detail,
+        SELECT f.ticker, f.d AS fire_day, f.detail, f.detail_full,
                c0.open_price, c0.low_price, w.peak_high,
                round((((w.peak_high / NULLIF(c0.open_price,0)) - 1) * 100)::numeric, 1) AS pk_vs_open,
                round((((w.peak_high / NULLIF(c0.low_price,0))  - 1) * 100)::numeric, 1) AS pk_vs_low
@@ -56,6 +60,26 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int)
         ) w ON true
         ORDER BY pk_vs_open DESC NULLS LAST
     """, event_type, str(lookback_days))
+
+
+def _answer(detail_full) -> str:
+    """#692: the deal answer the row carries (role/status/consideration), '' for older rows.
+    Released rows carry it under 'grader' and/or 'headlines'; fired rows at the top level."""
+    try:
+        d = json.loads(detail_full or "")
+    except (TypeError, ValueError):
+        return ""
+    if not isinstance(d, dict):
+        return ""
+    if d.get("role"):
+        return f"{d['role']}/{d.get('status')}/{d.get('consideration')}"
+    g = d.get("grader") or {}
+    if g.get("role"):
+        return f"grader {g['role']}/{g.get('status')}/{g.get('consideration')}"
+    hs = d.get("headlines") or []
+    if hs and hs[0].get("role"):
+        return f"headline {hs[0]['role']}/{hs[0].get('status')}/{hs[0].get('consideration')}"
+    return ""
 
 
 def _print_section(title: str, rows, flag_material: bool):
@@ -73,7 +97,9 @@ def _print_section(title: str, rows, flag_material: bool):
             n_material += 1
         po = f"{pk_open:+.1f}%" if pk_open is not None else "   n/a"
         pl = f"{r['pk_vs_low']:+.1f}%" if r["pk_vs_low"] is not None else "   n/a"
-        print(f"  {r['ticker']:7} {str(r['fire_day']):10} {po:>8} {pl:>8}{flag}")
+        ans = _answer(r["detail_full"])
+        ans = f"  [{ans}]" if ans else ""
+        print(f"  {r['ticker']:7} {str(r['fire_day']):10} {po:>8} {pl:>8}{ans}{flag}")
     if flag_material and n_material:
         print(f"\n  {n_material} suppression(s) ran >= +{_MATERIAL_PEAK_PCT:.0f}% post-fire -> "
               "operator: confirm each was a genuine M&A target, not a missed mover.")
@@ -82,14 +108,14 @@ def _print_section(title: str, rows, flag_material: bool):
 async def main(lookback_days: int) -> int:
     from agents.market_intelligence.db import get_pool
     from agents.market_intelligence.audit_events import (
-        MNA_FILTER_FIRED, MNA_ACQUIRER_TITLE_SKIPPED,
+        MNA_FILTER_FIRED, MNA_FILTER_RELEASED,
     )
     pool = await get_pool()
     async with pool.acquire() as conn:
         suppressed = await _fwd_rows(
             conn, MNA_FILTER_FIRED, "split_part(summary,' via',1)", lookback_days)
-        passed = await _fwd_rows(
-            conn, MNA_ACQUIRER_TITLE_SKIPPED, "split_part(summary,' ',1)", lookback_days)
+        released = await _fwd_rows(
+            conn, MNA_FILTER_RELEASED, "split_part(summary,':',1)", lookback_days)
 
     print(f"M&A FILTER ACCURACY REVIEW  (lookback {lookback_days}d)")
     print("Surfaces filter decisions + forward returns for OPERATOR judgment.")
@@ -99,16 +125,16 @@ async def main(lookback_days: int) -> int:
     _print_section(
         "SUPPRESSED by the M&A filter (verify none were missed movers)",
         suppressed, flag_material=True)
-    # Direction 2 — under-fire: acquirer-passes (#284) — verify none were targets.
+    # Direction 2 — under-fire: names the OLD rule would have blocked that the deal question
+    # RELEASED (#692) — verify none was a genuine target of a signed deal.
     _print_section(
-        "PASSED as ACQUIRER-side by #284 (verify none were genuine targets)",
-        passed, flag_material=False)
-    if passed:
-        print("\n  operator: each PASSED name is a title the #284 check read as the "
-              "filing ticker BUYING. Confirm none was actually the target being bought "
+        "RELEASED by the deal question - the old rule would have blocked (verify none were real targets)",
+        released, flag_material=False)
+    if released:
+        print("\n  operator: each RELEASED name was answered as buyer / proposal / speculation / "
+              "no deal / all-stock. Confirm none was actually the target of a signed deal "
               "(would mean a price-capped name slipped through).")
-    print("\nSSoT: docs/setups/magna53_ep.md (M&A filter change log). "
-          "Deferred bleed class: data_gated_reviews `mna_filter_direction_blindness_path_a`.")
+    print("\nSSoT: docs/setups/magna53_ep.md (M&A filter change log).")
     return 0
 
 

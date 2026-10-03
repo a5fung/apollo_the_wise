@@ -55,7 +55,14 @@ PERPLEXITY_CREDITS_EXHAUSTED = "perplexity_credits_exhausted"
 
 # ── M&A filter ──────────────────────────────────────────────────────────────
 MNA_FILTER_FIRED = "mna_filter_fired"
-MNA_ACQUIRER_TITLE_SKIPPED = "mna_acquirer_title_skipped"  # #284 acquirer-side title not fired
+# #692 (2026-10-02) — the filter answers ONE question (is THIS ticker the target of a signed deal
+# that fixes its price) instead of matching words. These four rows are its evidence trail; the
+# #284 `mna_acquirer_title_skipped` and #516 `mna_keyword_vetoed_by_classifier` streams are
+# subsumed by MNA_FILTER_RELEASED (the general "old rule would have blocked, the answer said no").
+MNA_FILTER_RELEASED = "mna_filter_released"            # old rule would block, new rule passed — carries the answer
+MNA_HEADLINE_UNANSWERED = "mna_headline_unanswered"    # headline question got no answer (error / cap / ORB window)
+MNA_GRADE_WITHOUT_PIN = "mna_grade_without_pin"        # grader said 'mna' but its own deal fields do not pin
+MNA_DEAL_ANSWERS_CONFLICT = "mna_deal_answers_conflict"  # classifier said no pin, a headline answer pinned
 
 # ── Anticipation coil-finder M&A / buyout-pin guards (#387/#410, 2026-06-30 NUVL FP) ────────
 ANTICIPATION_MNA_EXCLUDED = "anticipation_mna_excluded"  # #387 — ma_filter.is_likely_ma hit

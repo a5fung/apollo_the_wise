@@ -21,6 +21,11 @@ mna_filter_fired audit events to detect:
 Per `feedback_methodology_insights_need_periodic_revalidation.md`:
 this script is the auto-refresh for #88's Path A + Path B design.
 
+#692 (2026-10-02): the headline path now ASKS the deal question on keyword-candidate articles
+instead of accepting the keyword — rows after the #692 deploy carry source
+`polygon_headline_model` (match_path title / description+insights) or `claude_deal_fields`, plus
+role / status / consideration. Pre-#692 rows keep their old shape.
+
 Run: docker exec apollo-market python -m scripts._b88_mna_filter_path_b_fp_rate
 """
 import asyncio
@@ -85,6 +90,10 @@ async def main():
                 match_path = "description+insights"
             elif "claude_classifier" in d:
                 match_path = "claude_classifier"  # EP path, not polygon_news
+            elif "claude_deal_fields" in d:
+                match_path = "claude_deal_fields"  # #692: the grader's deal fields pinned
+            elif "polygon_headline_unanswered" in d:
+                match_path = "polygon_headline_unanswered"  # #692: unanswered + toggle ON
         path_counts[match_path] += 1
         by_ticker[ticker].append((r["audit_date"], match_path))
         if title_preview != "—":

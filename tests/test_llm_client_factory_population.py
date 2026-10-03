@@ -30,6 +30,7 @@ KNOWN_FACTORY_CALLERS = {
     "agents/market_intelligence/ep_detector.py",
     "agents/market_intelligence/judge_divergence.py",
     "agents/market_intelligence/judge_named_themes.py",
+    "agents/market_intelligence/ma_filter.py",  # #692 the deal headline question
     "agents/market_intelligence/model_resolution.py",
     "agents/market_intelligence/postmortem.py",
     "agents/market_intelligence/scheduler.py",
@@ -98,4 +99,4 @@ def test_every_known_caller_routes_through_the_factory():
 
 def test_walk_did_not_go_blind():
     _, factory = _walk()
-    assert len(factory) >= len(KNOWN_FACTORY_CALLERS) == 13
+    assert len(factory) >= len(KNOWN_FACTORY_CALLERS) == 14

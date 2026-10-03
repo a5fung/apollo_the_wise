@@ -1,41 +1,66 @@
-"""Single-source M&A / buyout / take-private filter.
+"""Single-source M&A / buyout filter — ONE question, answered, not inferred (#692, 2026-10-02).
 
-Used by every detector that emits actionable trade ideas (EP, flag, 9M, etc.)
-to reject names whose momentum is structurally capped by an announced deal —
-price is pinned at the deal value, no further gain available.
+Used by every detector that emits actionable trade ideas (EP, flag, 9M sugar-baby, the low-cap
+shadow lane, the consolidation anticipation shadow) to reject names whose price is structurally
+capped by an announced deal.
 
-Two layers:
+THE QUESTION. Is THIS ticker the TARGET of a SIGNED deal that fixes its price? Three facts answer
+it — the ticker's ROLE in any deal (target / buyer / shell / none), the deal's STATUS (signed /
+proposed / speculation / completed / none) and what the target's holders receive (CONSIDERATION:
+cash / stock / mixed / unknown / none). A model answers the facts; the verdict is derived HERE in
+code (`deal_pins_price`, pure), so the rule that blocks is one readable function, not a prompt.
 
-1. **Catalyst keyword scan** — `matches_mna_keywords(text)` walks `_MNA_KEYWORDS`
-   over any text source. Drives Claude/Perplexity catalyst summaries on EP, and
-   raw Polygon news titles on flag/9M (which don't run an LLM catalyst pass).
+WHY (the three rounds this replaces). 2026-07-04: 3 of 4 blocks wrong → #416 guards A/B/C.
+2026-08-08: 7 of 8 wrong → #516 guard D. 2026-10-01: 10 of 11 wrong (only ACVA a real buyout) —
+FWDI was the BIDDER, CHYM / JBS / SWKS buyers, GPRK / RGTI / IOVA no deal at all, VKTX / WAY
+speculation and exploration, CSR an all-stock merger. Each round added a phrase-matching guard
+and the error rate did not fall, because the words were never the signal: "definitive agreement"
+blocked RGTI's $100M government FUNDING agreement; "takeover" blocked IOVA on a "potential
+takeover targets" list; the #284 title regex read ROKU (a target headline) as the acquirer.
+Ground truth: docs/analysis/mna_filter_operator_labels_2026-10-01.md.
 
-2. **Polygon news backstop** — when Perplexity hedges ("no specific news") and
-   Claude grades `routine`, the keyword scan has no text to match. AVNS 5/4
-   surfaced this gap: Polygon had the 4/14 "Avanos To Go Private" headline the
-   whole time. Fetching Polygon titles directly closes the coverage gap.
+TWO ANSWERING PATHS, same question, same `DealAnswer`, same verdict:
+  1. The EP catalyst grader's own deal fields (ep_detector `_CATALYST_TOOL` — passed in by the
+     caller as `deal_answer`). The grader reads the full grounded corpus (SEC 8-K body, Benzinga
+     wires, web synthesis), so on the EP path this is the primary answer.
+  2. The Polygon headline question (`ask_deal_question`): a cheap $0 keyword pre-filter picks
+     candidate articles (`_MNA_KEYWORDS` — its job now is ONLY to choose what gets asked), and
+     a small forced-tool call answers the same three facts from that article. Every detector
+     gets it through `is_likely_ma(check_polygon=True)`.
+The deal-pin PRICE-signature paths (flag_detector: deal_pin_signature / deal_pin_fresh / sticky)
+are price evidence of a pinned tape, live outside this module and are untouched.
 
-Future Layer 3 (filed as data-gated review `flag_ma_pin_filter`): deal-pin
-price signature — median daily (H-L)/close < ~0.3% across 7+ of 10 sessions.
+OPERATOR DECISIONS this module carries as named knobs (#692 — listed for his ruling, the code
+implements the recommendation; a ruling is a one-line change here plus the prompt line):
+  1. `_SHELL_ROLE_PINS` — a signed reverse-merger SHELL blocks (keeps his SUNE 07-04 and CLRO
+     08-08 rulings; without it CLRO reads target/signed/stock = CSR, which he ruled wrong).
+  2./3. `_PINNING_CONSIDERATIONS` — a signed target paid in cash, cash+stock, or on terms the
+     text does not state blocks; an all-stock merger does not fix the price (CSR).
+  4. `mna_headline_unanswered_blocks` runtime toggle — what happens when the headline question
+     gets no answer (API error, truncation, daily cap, the 9:30-9:45 ORB window). Ships OFF =
+     pass + an audit row. ⚠ OFF is NOT today's behaviour (today a keyword hit blocks).
 """
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
 import logging
-import re
-from datetime import date
-from typing import Iterable, Optional
+from datetime import date, datetime
+from typing import Any, Iterable, NamedTuple, Optional
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
-# Keep this list as the single canonical source — every detector reads from here.
-#
-# Target-direction only: every keyword below should imply the ticker is the
-# TARGET of a deal, not the acquirer. Bare "acquire" / "acquisition" were
-# removed 2026-05-13 after NBIS (acquired Eigen AI for $643M; NBIS = buyer)
-# was wrongly filtered. 90d backtest: 13 acquirer-side FPs vs 2 real targets
-# already covered by Claude `catalyst_quality='mna'` (EBAY) or `"take-private"`
-# (WEN). See ma_filter.py change log + magna53_ep.md 2026-05-13.
+_ET = ZoneInfo("America/New_York")
+
+# ── Candidate pre-filter + shadow comparator (NOT a blocking rule since #692) ─────────────────
+# This list no longer decides anything. It (a) picks which Polygon articles get the headline
+# question ($0, so a quiet name costs nothing) and (b) powers the `mna_filter_released`
+# comparator ("the OLD rule would have blocked here; the answer said no") — without (b) the
+# change has no positive observable. Bare "acquire"/"acquisition" stay OUT (removed 2026-05-13
+# for direction-blindness); widening the list is a separate, one-variable-at-a-time question
+# filed in docs/setups/magna53_ep.md "Known limitations".
 _MNA_KEYWORDS: tuple[str, ...] = (
     "buyout", "takeover", "merger", "bought by",
     "being acquired", "definitive agreement", "tender offer", "going private",
@@ -44,13 +69,12 @@ _MNA_KEYWORDS: tuple[str, ...] = (
     "take-private", "private deal for",
 )
 
-# Shareholder-investigation firms — their press releases list multiple tickers
-# (often class-action notices on already-announced deals, NOT new M&A events).
-# Title-prefix match → reject regardless of M&A keyword. Caught 2026-05-25
-# Task #90 audit (KALV via BRODSKY & SMITH SHAREHOLDER UPDATE).
+# Shareholder-investigation firms — their press releases list multiple tickers (class-action
+# notices on already-announced deals, NOT new M&A events). Title-prefix match → never a
+# candidate, never asked (Task #90, KALV via BRODSKY & SMITH SHAREHOLDER UPDATE).
 _SHAREHOLDER_LITIGATION_PREFIXES: tuple[str, ...] = (
     "brodsky & smith",
-    "halper sadeh",       # already in _MNA_KEYWORDS but also gets prefix reject
+    "halper sadeh",
     "pomerantz",
     "johnson fistel",
     "monteverde",
@@ -72,297 +96,8 @@ def matches_mna_keywords(text: Optional[str]) -> Optional[str]:
     return None
 
 
-# ── #416 binding-context guards (operator-signed 7/12, rulings-pack R6) ────────────────────────
-# The filter SUPPRESSES a candidate only when an M&A signal is a BINDING deal that pins THIS ticker
-# as the TARGET. The three ratified false-positives were three ways that failed, one per fire-path:
-#   Guard A (keyword_in_text): a NEGATED/SPECULATIVE keyword ("not a takeover", "takeout speculation")
-#   Guard B (polygon Path B): EXPLORATION/agitation ("proxy campaign seeking strategic alternatives")
-#   Guard C (claude_classifier): ACQUIRER-side / completed-deal ("Mistral acquisition closing")
-# Each is a per-path veto that falls through to the other independent paths — a real deal still fires.
-# The shared escape is a BINDING-deal marker (SUNE's "definitive reverse merger" keeps firing).
-# Full evidence + N-gate sim: docs/analysis/416_mna_fp_amendment_2026-07-12.md.
-_MNA_NEGATOR = re.compile(
-    r"\b(not|no|never|without|rather than|unlike|denies|denied|isn't|wasn't|aren't|weren't)\b", re.I)
-_MNA_SPECULATION = re.compile(
-    r"\b(speculation|speculative|rumou?r|reportedly|potential(?:ly)?|exploring|explore|"
-    r"talks|considering|could|takeout)\b", re.I)
-_MNA_EXPLORATION = re.compile(
-    r"\b(strategic alternatives?|proxy campaign|activist|exploring options|seeking strategic|"
-    r"strategic review)\b", re.I)
-_MNA_BINDING = re.compile(
-    r"\b(definitive|agreed to|agreement to acquire|to be acquired|tender offer|going private|"
-    r"completed (?:the )?acquisition|merger agreement|will acquire|has acquired|acquired by)\b", re.I)
-_MNA_ACQUIRER_SIDE = re.compile(
-    r"\b(acquisition clos\w*|completed (?:the |its )?acquisition|acquired \w+ for|prime.contract)\b", re.I)
-_MNA_TARGET_SIDE = re.compile(
-    r"\b(to be acquired|acquired by|takeover target|being acquired|going private)\b", re.I)
-
-
-def mna_context_is_binding(text: Optional[str]) -> bool:
-    """The shared escape: a binding-deal marker present → a real price-pin, not exploration/speculation.
-    (SUNE's 'definitive reverse merger' → True → keeps firing; FRMI's 'strategic alternatives' → False.)"""
-    return bool(text and _MNA_BINDING.search(text))
-
-
-def keyword_context_is_nonbinding(text: Optional[str], kw: Optional[str]) -> bool:
-    """Guard A: the matched keyword sits in a NEGATED (within ~25 chars before) or SPECULATIVE
-    (±60-char window) context, with NO binding-deal escape anywhere in the text. MMED: 'not a single
-    dramatic takeover' → True (veto). IMAX/WEN/IMVT: 'takeout speculation' → True (veto)."""
-    if not text or not kw:
-        return False
-    if mna_context_is_binding(text):
-        return False
-    low = text.lower()
-    i = low.find(kw.lower())
-    if i < 0:
-        return False
-    pre = low[max(0, i - 25):i]
-    win = low[max(0, i - 60):i + 60]
-    return bool(_MNA_NEGATOR.search(pre) or _MNA_SPECULATION.search(win))
-
-
-def reasoning_is_exploration_only(reasoning: Optional[str]) -> bool:
-    """Guard B: polygon Path B reasoning is exploration/agitation with no binding-deal escape.
-    FRMI: 'proxy campaign seeking strategic alternatives' → True (veto)."""
-    return bool(reasoning and _MNA_EXPLORATION.search(reasoning)
-                and not mna_context_is_binding(reasoning))
-
-
-def text_implies_acquirer_or_completed(texts: Iterable[Optional[str]]) -> bool:
-    """Guard C: the classifier's catalyst text frames THIS ticker as the ACQUIRER or a COMPLETED deal
-    (ONDS: 'Mistral acquisition closing' — bullish growth, not a target price-pin). Suppressed when
-    the text also reads target-side ('to be acquired', 'acquired by') — then it IS a pinned target."""
-    blob = " ".join(t for t in texts if t) if texts else ""
-    if not blob or not _MNA_ACQUIRER_SIDE.search(blob):
-        return False
-    return not _MNA_TARGET_SIDE.search(blob)
-
-
-def is_shareholder_litigation_notice(title: Optional[str]) -> bool:
-    """Title starts with a known shareholder-litigation firm name → True.
-
-    These firms publish multi-ticker investigation notices on
-    *already-announced* deals; their press releases are informational, not
-    indicative of an active fade-risk M&A event for any tagged ticker.
-    """
-    if not title:
-        return False
-    low = title.strip().lower()
-    return any(low.startswith(prefix) for prefix in _SHAREHOLDER_LITIGATION_PREFIXES)
-
-
-# Direction-detection patterns for ticker's per-article role.
-# Operate on Polygon's per-ticker `sentiment_reasoning` (richer than title
-# alone — it's the AI's contextualized take on this specific ticker's role
-# in the article). All matches case-insensitive substring.
-_TARGET_DIRECTION_PATTERNS: tuple[str, ...] = (
-    "to be acquired",
-    "being acquired",
-    "acquired by",
-    "stockholders to receive",
-    "shareholders to receive",
-    "merger consideration",
-    "go-private",
-    "going private",
-    "taken private",
-    "premium to ",
-    "tender offer for ",
-    "agreed to sell",
-    "to be sold to",
-    "sold to ",
-    "buyout offer",
-    "all-cash offer",
-)
-
-_ACQUIRER_DIRECTION_PATTERNS: tuple[str, ...] = (
-    " to acquire ",
-    " acquires ",
-    " acquiring ",
-    "announces acquisition",
-    "announced acquisition",
-    "announces the acquisition",
-    "completes acquisition",
-    "completed acquisition",
-    "agreed to acquire",
-    "agreement to acquire",
-    " to purchase ",
-    "announces purchase",
-    "to buy ",
-    " buys ",
-    "announces the purchase",
-)
-
-
-def classify_direction(reasoning: Optional[str]) -> str:
-    """Classify ticker's deal direction from per-ticker reasoning text.
-
-    Returns one of: "target" / "acquirer" / "ambiguous".
-
-    Target patterns checked BEFORE acquirer because " to acquire " can appear
-    in target-side reasoning (e.g. "X agreed to be acquired by Y" — ticker X
-    is target despite "acquire" in the sentence).
-    """
-    if not reasoning:
-        return "ambiguous"
-    low = reasoning.lower()
-    for p in _TARGET_DIRECTION_PATTERNS:
-        if p in low:
-            return "target"
-    for p in _ACQUIRER_DIRECTION_PATTERNS:
-        if p in low:
-            return "acquirer"
-    return "ambiguous"
-
-
-def _ticker_is_acquirer(item: dict, ticker: str, reasoning: Optional[str] = None) -> bool:
-    """Return True if Polygon insights identify this ticker as the deal buyer.
-
-    Used by both title-match (Path A) and description-match (Path B) acceptance
-    to suppress acquirer-side fires (CECO-class). Missing insights → return
-    False (conservative: preserve title-match acceptance when no signal).
-
-    `reasoning` may be passed by callers that already extracted it; else
-    looked up here from the per-ticker insight entry.
-    """
-    if reasoning is None:
-        insights = item.get("insights") or []
-        ticker_insight = next(
-            (i for i in insights if i.get("ticker") == ticker),
-            None,
-        )
-        if ticker_insight is None:
-            return False
-        reasoning = ticker_insight.get("sentiment_reasoning") or ""
-    return classify_direction(reasoning) == "acquirer"
-
-
-# Acquirer-direction on the TITLE (Path A) — #284, 2026-06-14.
-# The 2026-05-13 fix removed bare "acquire"/"acquisition" keywords but left
-# buyout/merger/definitive-agreement direction-blind on TITLES, and
-# `_ticker_is_acquirer` only inspects per-ticker REASONING. So acquirer-side
-# title matches with absent/ambiguous reasoning leak through (ONDS 5/28
-# "...With Omnisys Buyout" = Ondas is the BUYER, graded strong on a real
-# earnings gap, suppressed; MYRG "...to Acquire Valley Electric").
-_ACQUIRER_OBJECT_NOUNS: tuple[str, ...] = ("buyout", "acquisition", "takeover")
-# Tokens that can immediately precede an acquirer-noun but are NOT a company
-# entity, so "<word> Buyout" must NOT be read as "<entity> Buyout" (acquirer
-# object form). Two kinds: deal adjectives ("Cash/Management Buyout") and
-# Title-Case headline verbs/preps ("Acme Receives Buyout Offer" — 'Receives'
-# is capitalized in Title Case but is a verb, not the bought entity).
-_GENERIC_ACQ_PRECEDERS: frozenset[str] = frozenset({
-    # deal adjectives / generic nouns
-    "cash", "stock", "management", "leveraged", "pending", "proposed",
-    "potential", "all", "the", "a", "an", "its", "their", "company",
-    "majority", "minority", "strategic", "private", "secondary", "partial",
-    # Title-Case headline verbs / prepositions that precede the noun
-    "receives", "received", "announces", "announced", "completes", "completed",
-    "enters", "entered", "agrees", "agreed", "rejects", "rejected", "accepts",
-    "accepted", "confirms", "confirmed", "explores", "explored", "considers",
-    "considered", "eyes", "weighs", "plans", "planned", "approves", "approved",
-    "finalizes", "finalized", "seeks", "secures", "secured", "launches",
-    "launched", "nears", "faces", "after", "amid", "following", "in", "for",
-    "of", "on", "via", "through", "with", "and", "to", "from",
-})
-
-
-# Corporate suffixes stripped from the filing company name before anchoring, so
-# "MYR Group Inc." anchors on "myr" not the generic "group/inc". (Drift sibling:
-# collector._GENERIC_NAME_TOKENS does the same strip for is_primary_subject_news;
-# keep roughly in sync — consolidation deferred to avoid a circular import.)
-_CORP_SUFFIXES: frozenset[str] = frozenset({
-    "group", "inc", "incorporated", "corp", "corporation", "co", "company",
-    "holdings", "holding", "ltd", "limited", "plc", "llc", "lp", "sa", "nv",
-    "ag", "se", "the", "and", "of",
-})
-
-# Object-form acquirer pattern, precompiled once. Scoped (?i:) on the NOUN only —
-# the entity must be Capitalized (a global re.IGNORECASE would make [A-Z] match
-# lowercase and defeat the entity signal); the noun matches any case.
-_OBJECT_FORM_RE = re.compile(
-    r"\b([A-Z][A-Za-z][A-Za-z.&-]*)\s+(?i:buyout|acquisition|takeover)\b"
-)
-
-# Cross-call memo of filing-ticker company names (immutable; #284). Avoids a
-# get_ticker_details Polygon round-trip on every scan tick for a persistent
-# acquirer-side headline. None is a cached "no name" (won't retry).
-_COMPANY_NAME_MEMO: dict[str, Optional[str]] = {}
-
-
-def title_implies_acquirer(
-    title: Optional[str],
-    filing_company_name: Optional[str] = None,
-) -> bool:
-    """True when the article TITLE indicates the FILING ticker is the deal
-    ACQUIRER (buyer), not the target — so the M&A pin filter should NOT fire
-    (an acquirer's momentum is not price-capped). #284.
-
-    A headline is NOT per-ticker, so direction is anchored on the filing
-    company's POSITION relative to the deal verb/noun — otherwise 'BigCo to
-    Acquire Acme' (filed under target Acme) would read as acquirer. Without the
-    company name we cannot anchor, so we return False (conservative — fire).
-
-    Safety is NOT uniform across the two signals (corrected 6/14 after /simplify):
-      - VERB form IS asymmetric-safe: the target-guard runs first and the
-        acquirer verb must FOLLOW the filing co, so a target never converts to
-        a pass.
-      - OBJECT form is a BENIGN-FAILURE heuristic, NOT bulletproof: a Title-Case
-        headline verb/adjective before the noun ('Acme Mulls Buyout', 'Acme
-        Spurns Sweetened Buyout') can be misread as a bought entity and mis-pass
-        a noun-form target. `_GENERIC_ACQ_PRECEDERS` narrows but cannot close
-        this (no NER/name-map available). Failure is benign — a mis-passed
-        target is price-capped (small/quick loss, paper) — and every pass emits
-        `mna_acquirer_title_skipped`, surfaced for operator FP review by
-        `scripts/mna_filter_accuracy_review.py` (the monitored backstop).
-
-    Both signals require the filing co to appear BEFORE them:
-      1. Verb form — an acquirer verb after the filing co ('MYR Group ... to
-         Acquire Valley').
-      2. Object form — an acquirer-noun preceded by a Capitalized non-filing
-         entity, after the filing co ('Ondas ... Omnisys Buyout' -> buys Omnisys).
-    """
-    if not title or not filing_company_name:
-        return False
-    filing_tokens = {
-        t.lower() for t in re.split(r"[^A-Za-z]+", filing_company_name)
-        if len(t) > 1 and t.lower() not in _CORP_SUFFIXES
-    }
-    if not filing_tokens:
-        return False
-    low = title.lower()
-    positions = [p for t in filing_tokens if (p := low.find(t)) >= 0]
-    if not positions:
-        return False  # filing company not named in the title -> can't anchor
-    co_pos = min(positions)
-
-    # TARGET guard FIRST — any target-side phrase means the filing side is (or
-    # may be) the one being acquired; stay conservative and let it fire.
-    if classify_direction(low) == "target":
-        return False
-
-    # 1. Acquirer VERB after the filing company (filing co is the subject).
-    for ap in _ACQUIRER_DIRECTION_PATTERNS:
-        if low.find(ap) > co_pos:
-            return True
-
-    # 2. Acquirer OBJECT form: "<OtherEntity> <noun>" after the filing company.
-    #    _OBJECT_FORM_RE enforces the Capitalized entity (scoped flags, not a
-    #    global IGNORECASE), so no separate isupper() guard is needed.
-    for m in _OBJECT_FORM_RE.finditer(title):
-        if m.start() <= co_pos:
-            continue  # entity-noun must follow the filing company
-        entity_low = m.group(1).lower()
-        if entity_low in filing_tokens or entity_low in _GENERIC_ACQ_PRECEDERS:
-            continue
-        return True
-    return False
-
-
 def matches_mna_in_any(texts: Iterable[Optional[str]]) -> Optional[tuple[str, int]]:
-    """Scan multiple text blobs; return (keyword, index_of_first_hit) or None.
-
-    `index_of_first_hit` lets the caller report which source matched (Claude
-    analysis vs Perplexity summary vs Polygon title #3, etc.) for telemetry.
-    """
+    """Scan multiple text blobs; return (keyword, index_of_first_hit) or None."""
     for i, t in enumerate(texts):
         kw = matches_mna_keywords(t)
         if kw:
@@ -370,163 +105,364 @@ def matches_mna_in_any(texts: Iterable[Optional[str]]) -> Optional[tuple[str, in
     return None
 
 
-async def should_log_mna_filter_fired(ticker: str, detector_tag: str) -> bool:
-    """Return True if `mna_filter_fired` audit should fire for (ticker,
-    detector_tag) today. False if an audit row for this combination already
-    exists in mi_audit_log for the current trading day (ET).
-
-    Per #89 ship 2026-05-23: without this dedup, M&A filter audit events
-    inflate 5-20x per converging ticker because detectors call is_likely_ma
-    every scan tick (every 5 min over 3-hour scan window). 2026-05-22 L2
-    anomaly fired with mna_filter_fired at 210 events vs 10 median (21x
-    normal) — investigation showed 4 tickers (INFQ/RGTI/QBTS/EL) accounted
-    for 201 of 210 fires. Same shape as the catalyst-downgrade dedup (1h)
-    and the sugar_baby_convergence_alert dedup (#85, also trading-day).
-
-    Summary contract: every mna_filter_fired call site MUST write a summary
-    matching `{ticker} via%({detector_tag})%` so this LIKE-based dedup
-    works. Standardized 2026-05-23 across all 5 detector sites
-    (9m_intraday, 9m_sugar_baby, ep, flag, flag deal_pin).
-
-    Fail-open: any DB error returns True (caller proceeds to log). Better
-    to over-log than silently drop a filter decision audit.
-    """
-    try:
-        from agents.market_intelligence.db import get_pool
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            prior = await conn.fetchrow("""
-                SELECT 1 FROM mi_audit_log
-                WHERE event_type = 'mna_filter_fired'
-                  AND summary LIKE $1
-                  AND (created_at AT TIME ZONE 'America/New_York')::date
-                      = (NOW() AT TIME ZONE 'America/New_York')::date
-                LIMIT 1
-            """, f"{ticker} via%({detector_tag})%")
-        return prior is None
-    except Exception as e:
-        logger.debug(f"mna_filter audit dedup check failed (non-critical): {e}")
-        return True  # fail-open: log if dedup check fails
-
-
-async def should_log_mna_acquirer_skipped(ticker: str) -> bool:
-    """Trading-day dedup for `mna_acquirer_title_skipped` (#284) — sibling of
-    `should_log_mna_filter_fired`. polygon_news_has_mna_headline runs per scan
-    tick, so without this a persistent acquirer-side headline re-logs 5-20x/day
-    (the same inflation #89 fixed for mna_filter_fired). The skip summary starts
-    with `{ticker} ` so a LIKE-prefix match dedups per ticker per ET day.
-    Fail-open: any DB error returns True (better to over-log than drop)."""
-    try:
-        from agents.market_intelligence.db import get_pool
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            prior = await conn.fetchrow("""
-                SELECT 1 FROM mi_audit_log
-                WHERE event_type = 'mna_acquirer_title_skipped'
-                  AND summary LIKE $1
-                  AND (created_at AT TIME ZONE 'America/New_York')::date
-                      = (NOW() AT TIME ZONE 'America/New_York')::date
-                LIMIT 1
-            """, f"{ticker} %")
-        return prior is None
-    except Exception as e:
-        logger.debug(f"mna_acquirer_skip audit dedup check failed (non-critical): {e}")
-        return True  # fail-open
-
-
-async def should_log_mna_veto(ticker: str) -> bool:
-    """Trading-day dedup for `mna_keyword_vetoed_by_classifier` (#516 telemetry hygiene,
-    2026-08-30). Same shape as `should_log_mna_acquirer_skipped` — this event has no
-    `detector_tag` (is_likely_ma doesn't know its caller), so keying is just (ticker, ET
-    day). Found empirically: TEM 2026-08-19 logged twice, 9 minutes apart (two scan ticks
-    before the underlying candidate resolved) — this telemetry stream never had the dedup
-    the #89/#284 siblings got. Audit-noise-only bug; does not touch the filter verdict
-    (is_likely_ma's return value is computed identically either way).
-    Fail-open: any DB error returns True (better to over-log than drop)."""
-    try:
-        from agents.market_intelligence.db import get_pool
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            prior = await conn.fetchrow("""
-                SELECT 1 FROM mi_audit_log
-                WHERE event_type = 'mna_keyword_vetoed_by_classifier'
-                  AND summary LIKE $1
-                  AND (created_at AT TIME ZONE 'America/New_York')::date
-                      = (NOW() AT TIME ZONE 'America/New_York')::date
-                LIMIT 1
-            """, f"{ticker}: %")
-        return prior is None
-    except Exception as e:
-        logger.debug(f"mna_veto audit dedup check failed (non-critical): {e}")
-        return True  # fail-open
-
-
-_POSSESSIVE_RE = re.compile(r"\b([A-Z][a-zA-Z]+)['’]s\b")
-# Abbreviation-safe split: requires 2+ lowercase/digit chars before the
-# terminator and a capital letter following, so "U.S. acquisition" / "a.m."
-# / "Dr. Smith" don't split mid-abbreviation. Mirrors briefing.py's pattern.
-_SENTENCE_SPLIT_RE = re.compile(r"(?<=[a-z0-9][a-z0-9][.!?])\s+(?=[A-Z])")
-
-
-def reasoning_other_entity_owns_deal(
-    reasoning: str,
-    mna_keyword: str,
-    filing_ticker: str,
-    insight_tickers: Iterable[str],
-) -> bool:
-    """Sister-ticker possessive proximity check (#119 Part B, 2026-05-27).
-
-    Return True when the M&A keyword appears in a sentence preceded by a
-    `[Sister]'s ` possessive — where `Sister` (case-insensitive prose
-    form) matches a different ticker symbol in the article's
-    `insight_tickers` list.
-
-    Narrow by design: catches the QBTS/RGTI 5/11 class where Polygon's
-    sentiment_reasoning attributes the M&A activity to a tagged sibling
-    (`"...driven by IonQ's acquisition..."` for QBTS, IONQ in insights).
-    Does NOT attempt to recognize possessive prose forms of arbitrary
-    company names (we have no name→ticker map; "Hewlett-Packard's deal"
-    for an HPQ-tagged article won't fire). For those, upstream
-    layers (direction check, catalyst_quality classifier) remain
-    responsible.
-
-    Implementation notes:
-    - Sentence-bounded look-back (split on `. ` etc.), not arbitrary
-      char window — keeps semantics interpretable.
-    - Sister-ticker set strips the `.WS` warrant suffix
-      (`IONQ.WS` → also matches the bare `IONQ` prose form).
-    - Only `[A-Z][a-zA-Z]+'s` shapes — single capitalized prose token.
-      Multi-word company names (Estée Lauder) aren't handled, but those
-      would only fire if the company's first word matched a sister
-      ticker, which is the bug class we ALREADY catch.
-    """
-    if not reasoning or not mna_keyword:
+def is_shareholder_litigation_notice(title: Optional[str]) -> bool:
+    """Title starts with a known shareholder-litigation firm name → True."""
+    if not title:
         return False
-    filing_upper = filing_ticker.upper()
-    sisters: set[str] = set()
-    for t in insight_tickers:
-        if not t:
-            continue
-        u = t.upper()
-        if u == filing_upper:
-            continue
-        sisters.add(u)
-        if "." in u:
-            sisters.add(u.split(".", 1)[0])
-    if not sisters:
-        return False
+    low = title.strip().lower()
+    return any(low.startswith(prefix) for prefix in _SHAREHOLDER_LITIGATION_PREFIXES)
 
-    kw_low = mna_keyword.lower()
-    for sentence in _SENTENCE_SPLIT_RE.split(reasoning):
-        slow = sentence.lower()
-        idx = slow.find(kw_low)
-        if idx < 0:
-            continue
-        before = sentence[:idx]
-        for m in _POSSESSIVE_RE.finditer(before):
-            if m.group(1).upper() in sisters:
-                return True
+
+# ── The answer shape + the decision rule ───────────────────────────────────────────────────────
+DEAL_ROLES: tuple[str, ...] = ("target", "buyer", "shell", "none")
+DEAL_STATUSES: tuple[str, ...] = ("signed", "proposed", "speculation", "completed", "none")
+DEAL_CONSIDERATIONS: tuple[str, ...] = ("cash", "stock", "mixed", "unknown", "none")
+
+#: Operator decisions 2 + 3 (#692): a SIGNED TARGET is pinned when its holders receive a stated
+#: cash value (cash / mixed) or the terms are not in the text (unknown — a signed acquisition of
+#: a public target is cash in the large majority of cases). An all-stock merger floats with the
+#: acquirer's shares and does not fix the price — CSR 2026-09-09, ruled wrongly blocked.
+_PINNING_CONSIDERATIONS: frozenset[str] = frozenset({"cash", "mixed", "unknown"})
+
+#: Operator decision 1 (#692): a signed reverse-merger SHELL blocks. Exists ONLY to honour his two
+#: true-positive rulings — SUNE 2026-06-08 ("definitive reverse merger with Suniva") and CLRO
+#: 2026-07-02 (Vivani's subsidiary Cortigent merging into Nasdaq-listed ClearOne). Without it CLRO
+#: reads target / signed / stock — indistinguishable from CSR — so no target-only rule can honour
+#: both rulings. Not part of his recorded direction ("target / buyer / none"): his call.
+_SHELL_ROLE_PINS: bool = True
+
+
+class DealAnswer(NamedTuple):
+    """One answer to the question, from either path. `source_text` carries the model's one-line
+    note (headline path) — what in the text decided the status — for the audit trail."""
+    role: str
+    status: str
+    consideration: str
+    counterparty: str = ""
+    source_text: str = ""
+
+
+def deal_pins_price(a: Optional[DealAnswer]) -> bool:
+    """THE decision rule (pure). True → the filter blocks. None (unanswered) → False."""
+    if a is None or a.status != "signed":
+        return False
+    if a.role == "target":
+        return a.consideration in _PINNING_CONSIDERATIONS
+    if a.role == "shell":
+        return _SHELL_ROLE_PINS
     return False
+
+
+def deal_answer_from_fields(fields: Any, *, note_key: str = "") -> Optional[DealAnswer]:
+    """Parse a tool's `input` dict into a DealAnswer. None when any of the three enums is missing
+    or outside its vocabulary — an out-of-vocabulary answer is UNANSWERED, never a guess."""
+    if not isinstance(fields, dict):
+        return None
+    role = str(fields.get("deal_role") or "").strip().lower()
+    status = str(fields.get("deal_status") or "").strip().lower()
+    consideration = str(fields.get("deal_consideration") or "").strip().lower()
+    if role not in DEAL_ROLES or status not in DEAL_STATUSES or consideration not in DEAL_CONSIDERATIONS:
+        return None
+    note = str(fields.get(note_key) or "")[:300] if note_key else ""
+    return DealAnswer(role, status, consideration,
+                      str(fields.get("deal_counterparty") or "")[:120], note)
+
+
+def deal_fields(a: Optional[DealAnswer]) -> dict:
+    """The answer as audit-telemetry keys (empty dict for an unanswered None)."""
+    if a is None:
+        return {}
+    out = {"role": a.role, "status": a.status, "consideration": a.consideration,
+           "counterparty": a.counterparty}
+    if a.source_text:
+        out["note"] = a.source_text
+    return out
+
+
+# ── The shared field definitions (ONE wording for both tools) ─────────────────────────────────
+# ep_detector._CATALYST_TOOL spreads these between `quality` and `analysis`; the headline tool
+# below uses them with a short `note` last. Verdict fields come before any free-text field.
+DEAL_FIELD_PROPERTIES: dict[str, dict] = {
+    "deal_role": {
+        "type": "string",
+        "enum": list(DEAL_ROLES),
+        "description": (
+            "THIS ticker's part in any deal in the text. target: another company is buying this "
+            "company's shares. buyer: this company is buying a company, an asset or a "
+            "subsidiary's minority. shell: a private company merges into this listed company and "
+            "its holders take control (reverse merger). none: no deal involving this company's "
+            "own shares."),
+    },
+    "deal_status": {
+        "type": "string",
+        "enum": list(DEAL_STATUSES),
+        "description": (
+            "signed: definitive/merger agreement signed or tender offer commenced, terms stated. "
+            "proposed: unsolicited or non-binding proposal, letter of intent, bid received, in "
+            "talks, exploring a sale. speculation: rumour, 'potential target' list, 'could "
+            "pursue', denial. completed: deal closed. none: no deal."),
+    },
+    "deal_consideration": {
+        "type": "string",
+        "enum": list(DEAL_CONSIDERATIONS),
+        "description": (
+            "What the target's holders receive. cash: stated cash price per share or all-cash. "
+            "stock: acquirer shares only / fixed exchange ratio / all-stock merger. mixed: cash "
+            "plus stock. unknown: deal described, terms not in the text. none: no deal."),
+    },
+    "deal_counterparty": {
+        "type": "string",
+        "description": "The other company in the deal, or empty.",
+    },
+}
+DEAL_FIELD_NAMES: tuple[str, ...] = tuple(DEAL_FIELD_PROPERTIES)
+
+_HEADLINE_TOOL_NAME = "classify_deal_headline"
+_HEADLINE_TOOL: dict = {
+    "name": _HEADLINE_TOOL_NAME,
+    "description": "Say whether this ticker's share price is fixed by a signed deal, from one news article.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            **DEAL_FIELD_PROPERTIES,
+            "note": {
+                "type": "string",
+                "description": "One short sentence: the phrase in the text that decided deal_status.",
+            },
+        },
+        "required": [*DEAL_FIELD_NAMES, "note"],
+    },
+}
+
+
+def build_headline_prompt(ticker: str, company_name: Optional[str], item: dict,
+                          reasoning: Optional[str]) -> str:
+    """The headline question's user message (one article, this ticker only)."""
+    co = f" ({company_name})" if company_name else ""
+    return (
+        f"Ticker: {ticker}{co}. A news article tagged with this ticker, published "
+        f"{item.get('published_utc') or 'unknown'}:\n"
+        f"Title: {item.get('title') or ''}\n"
+        f"Description: {item.get('description') or '(none)'}\n"
+        f"Polygon's note on this ticker in the article: {reasoning or '(none)'}\n"
+        "Answer about THIS company only. deal_role: 'target' if another company is buying this "
+        "company's shares; 'buyer' if this company is buying another company or asset; 'shell' "
+        "if a private company is merging into this listed company and taking control (a reverse "
+        "merger); 'none' if the article's deal involves other companies, is sector commentary, a "
+        "list of possible targets, or no deal at all. deal_status: 'signed' only for a signed "
+        "definitive or merger agreement or a commenced tender offer; a proposal, bid, talks or "
+        "exploration is 'proposed'; rumours, 'potential targets', 'could be acquired' or a denial "
+        "is 'speculation'; a closed deal is 'completed'. deal_consideration: 'cash', 'stock', "
+        "'mixed', 'unknown' (deal described, terms not stated) or 'none'. deal_counterparty: the "
+        "other company or empty. note: one short sentence naming the phrase in the text that "
+        "decided deal_status."
+    )
+
+
+# ── The headline question: memo + daily cap + ORB-window skip ─────────────────────────────────
+#: Process-level daily cap on headline-question model calls. The EP tick re-runs the filters
+#: every 5 min for a filter-killed name (#405), so the per-article memo below is what keeps one
+#: headline to one call per day; the cap bounds the worst case (~$0.10/day on sonnet-5-5).
+_HEADLINE_QUESTION_CALLS_CAP = 40
+#: A failing article is retried at most this many times per ET day, then left unanswered —
+#: otherwise one persistently failing article could spend the whole daily cap.
+_HEADLINE_MAX_ATTEMPTS_PER_ARTICLE = 2
+#: Wall-clock bound on one question — the call sits on the EP scan path.
+_HEADLINE_TIMEOUT_S = 20.0
+#: Candidate articles asked per ticker per check (newest first).
+_HEADLINE_MAX_ARTICLES = 3
+
+# (ticker, article key, ET day) -> answer; attempts per key; the day's call counter.
+_HEADLINE_MEMO: dict[tuple[str, str, str], DealAnswer] = {}
+_HEADLINE_ATTEMPTS: dict[tuple[str, str, str], int] = {}
+_HEADLINE_DAY: dict[str, Any] = {"day": None, "calls": 0}
+
+# Cross-call memo of filing-ticker company names (immutable). None is a cached "no name".
+_COMPANY_NAME_MEMO: dict[str, Optional[str]] = {}
+
+_headline_client = None
+
+
+def _get_headline_client():
+    global _headline_client
+    if _headline_client is None:
+        import os
+        from shared.llm_client import make_async_anthropic
+        _headline_client = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    return _headline_client
+
+
+def _roll_headline_day(day: date) -> None:
+    if _HEADLINE_DAY["day"] != day:
+        _HEADLINE_MEMO.clear()
+        _HEADLINE_ATTEMPTS.clear()
+        _HEADLINE_DAY["day"] = day
+        _HEADLINE_DAY["calls"] = 0
+
+
+def _article_key(item: dict) -> str:
+    title = (item.get("title") or "").encode("utf-8", "ignore")
+    return f"{item.get('published_utc') or ''}|{hashlib.sha1(title).hexdigest()[:12]}"
+
+
+def _in_orb_window(now_et: datetime) -> bool:
+    """The 9:30-9:45 ET ORB-submission window — ONE definition, ep_detector._in_orb_cutoff.
+    Imported lazily: ep_detector imports this module at its top."""
+    try:
+        from agents.market_intelligence.ep_detector import _in_orb_cutoff
+        return bool(_in_orb_cutoff(now_et))
+    except Exception:  # loud-ok: a missing helper must not block the filter; logged
+        logger.warning("ma_filter: ORB-window helper unavailable — treating as outside the window")
+        return False
+
+
+async def ask_deal_question(
+    ticker: str,
+    item: dict,
+    *,
+    company_name: Optional[str] = None,
+    reasoning: Optional[str] = None,
+    now_et: Optional[datetime] = None,
+) -> tuple[Optional[DealAnswer], str]:
+    """Ask the deal question about ONE article. Returns (answer, how):
+    how ∈ {"answered", "memo"} with an answer, or an UNANSWERED reason with None —
+    "orb_window", "daily_cap", "gave_up", "error:<Exc>", "truncated", "no_tool_use", "invalid".
+    Never raises."""
+    now = now_et or datetime.now(_ET)
+    day = now.date()
+    _roll_headline_day(day)
+    key = (ticker, _article_key(item), day.isoformat())
+    if key in _HEADLINE_MEMO:
+        return _HEADLINE_MEMO[key], "memo"
+    if _HEADLINE_ATTEMPTS.get(key, 0) >= _HEADLINE_MAX_ATTEMPTS_PER_ARTICLE:
+        return None, "gave_up"
+    if _in_orb_window(now):
+        return None, "orb_window"
+    if _HEADLINE_DAY["calls"] >= _HEADLINE_QUESTION_CALLS_CAP:
+        return None, "daily_cap"
+    _HEADLINE_DAY["calls"] += 1
+    _HEADLINE_ATTEMPTS[key] = _HEADLINE_ATTEMPTS.get(key, 0) + 1
+
+    from shared.llm_models import GROUNDED_GRADE_MODEL
+    from shared.llm_response import is_truncated
+    from shared.output_ceilings import max_tokens_for
+    try:
+        response = await asyncio.wait_for(
+            _get_headline_client().messages.create(
+                model=GROUNDED_GRADE_MODEL,  # the grader's own tier (Haiku confabulated on raw headlines, #190)
+                max_tokens=max_tokens_for("mna_headline_question"),
+                tools=[_HEADLINE_TOOL],
+                tool_choice={"type": "tool", "name": _HEADLINE_TOOL_NAME},
+                messages=[{"role": "user", "content": build_headline_prompt(
+                    ticker, company_name, item, reasoning)}],
+            ),
+            timeout=_HEADLINE_TIMEOUT_S,
+        )
+    except Exception as e:  # loud-ok: UNANSWERED is a first-class outcome, audited by the caller
+        logger.warning(f"{ticker}: M&A headline question failed — {type(e).__name__}: {e}")
+        return None, f"error:{type(e).__name__}"
+    try:
+        from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+        await log_anthropic_call_safe(model=GROUNDED_GRADE_MODEL, caller="mna_headline_question",
+                                      response=response)
+    except Exception as e:  # loud-ok: spend logging must never change the answer
+        logger.warning(f"{ticker}: headline-question spend log failed: {e}")
+    if is_truncated(response):
+        return None, "truncated"
+    block = next((b for b in (getattr(response, "content", None) or [])
+                  if getattr(b, "type", None) == "tool_use"), None)
+    if block is None:
+        return None, "no_tool_use"
+    answer = deal_answer_from_fields(getattr(block, "input", None), note_key="note")
+    if answer is None:
+        return None, "invalid"
+    _HEADLINE_MEMO[key] = answer
+    return answer, "answered"
+
+
+class HeadlineScan(NamedTuple):
+    """What the headline path found for one ticker: the first pinning hit (or None), every
+    candidate that was answered without a pin, and every candidate left unanswered."""
+    hit: Optional[dict]
+    released: list
+    unanswered: list
+    candidates_n: int
+
+
+def _candidate_articles(ticker: str, items: list[dict]) -> list[tuple[dict, str, str, Optional[str]]]:
+    """$0 candidate selection: (item, match_path, keyword, this ticker's insight reasoning).
+    A title keyword → 'title'; a description / insight-reasoning keyword → 'description+insights'
+    ONLY when this ticker is in the article's `insights` (the #88 multi-ticker bleed guard — a
+    roundup that only insights another company is never asked about). Litigation notices skip."""
+    out = []
+    for item in items:
+        title = item.get("title") or ""
+        if is_shareholder_litigation_notice(title):
+            continue
+        insights = item.get("insights") or []
+        ticker_insight = next((i for i in insights if i.get("ticker") == ticker), None)
+        reasoning = (ticker_insight or {}).get("sentiment_reasoning") or None
+        title_kw = matches_mna_keywords(title)
+        if title_kw:
+            out.append((item, "title", title_kw, reasoning))
+            continue
+        body_kw = matches_mna_keywords(item.get("description")) or matches_mna_keywords(reasoning)
+        if body_kw and ticker_insight is not None:
+            out.append((item, "description+insights", body_kw, reasoning))
+    out.sort(key=lambda c: c[0].get("published_utc") or "", reverse=True)
+    return out
+
+
+async def _company_name(ticker: str) -> Optional[str]:
+    if ticker not in _COMPANY_NAME_MEMO:
+        try:
+            from agents.market_intelligence.collector import get_ticker_details
+            details = await get_ticker_details(ticker)
+            _COMPANY_NAME_MEMO[ticker] = (details or {}).get("name") or None
+        except Exception as e:  # loud-ok: the question still runs on the ticker alone
+            logger.debug(f"{ticker}: company-name lookup failed: {e}")
+            return None
+    return _COMPANY_NAME_MEMO[ticker]
+
+
+async def headline_deal_scan(
+    ticker: str,
+    *,
+    lookback_days: int = 14,
+    on_or_before: Optional[date] = None,
+    now_et: Optional[datetime] = None,
+) -> HeadlineScan:
+    """Fetch recent Polygon news, pick keyword candidates ($0), ask the deal question on up to
+    `_HEADLINE_MAX_ARTICLES` of them (newest first) and stop at the first answer that pins."""
+    from agents.market_intelligence.collector import get_polygon_news
+
+    items = await get_polygon_news(
+        ticker, lookback_days=lookback_days, on_or_before=on_or_before, limit=20)
+    candidates = _candidate_articles(ticker, items or [])
+    released: list = []
+    unanswered: list = []
+    if not candidates:
+        return HeadlineScan(None, released, unanswered, 0)
+    company = await _company_name(ticker)
+    for item, match_path, kw, reasoning in candidates[:_HEADLINE_MAX_ARTICLES]:
+        answer, how = await ask_deal_question(
+            ticker, item, company_name=company, reasoning=reasoning, now_et=now_et)
+        meta = {
+            "match_path": match_path,
+            "matched_keyword": kw,
+            "title": (item.get("title") or "")[:200],
+            "published_utc": item.get("published_utc", ""),
+            "publisher": item.get("publisher", ""),
+        }
+        if answer is None:
+            unanswered.append({**meta, "why": how})
+            continue
+        if deal_pins_price(answer):
+            return HeadlineScan(
+                {"source": "polygon_headline_model", "ticker": ticker, **meta, **deal_fields(answer)},
+                released, unanswered, len(candidates))
+        released.append({**meta, **deal_fields(answer)})
+    return HeadlineScan(None, released, unanswered, len(candidates))
 
 
 async def polygon_news_has_mna_headline(
@@ -535,278 +471,155 @@ async def polygon_news_has_mna_headline(
     lookback_days: int = 14,
     on_or_before: Optional[date] = None,
 ) -> Optional[dict]:
-    """Fetch recent Polygon news and scan for M&A keywords with the
-    multi-ticker-tag-bleed discriminator (#88 fix, 2026-05-23).
+    """The first Polygon article whose deal answer pins this ticker's price, or None."""
+    scan = await headline_deal_scan(ticker, lookback_days=lookback_days, on_or_before=on_or_before)
+    return scan.hit
 
-    Two-path acceptance:
 
-      Path A (title match) — M&A keyword in article TITLE. High specificity:
-      title is the article's primary topic; if M&A keyword appears there
-      it's almost certainly about *one* of the tagged tickers' M&A activity.
-      We accept and let the broader filter graph + downstream
-      direction-blindness fixes (#90) handle acquirer-side leaks.
+# ── Audit dedup (one row per ticker per ET day per event) ──────────────────────────────────────
 
-      Path B (description-only match) — M&A keyword in description but NOT
-      in title. The article may be tagged with multiple tickers; require:
-        (i)  filtering ticker present in article's `insights` array
-             (Polygon's per-ticker AI tagging — proxy for "article is
-             relevant to this ticker, not just multi-tagged"), AND
-        (ii) that ticker's `sentiment_reasoning` text itself contains an
-             M&A keyword (proxy for "Polygon's AI thinks this ticker's
-             move is M&A-related").
+async def _first_today(event_type: str, summary_like: str) -> bool:
+    """True if no `event_type` row whose summary matches `summary_like` exists today (ET).
+    Fail-open: a DB error returns True (over-log rather than drop)."""
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            prior = await conn.fetchrow("""
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type = $1
+                  AND summary LIKE $2
+                  AND (created_at AT TIME ZONE 'America/New_York')::date
+                      = (NOW() AT TIME ZONE 'America/New_York')::date
+                LIMIT 1
+            """, event_type, summary_like)
+        return prior is None
+    except Exception as e:
+        logger.debug(f"{event_type} audit dedup check failed (non-critical): {e}")
+        return True
 
-    If `insights` field is missing entirely (Polygon hasn't AI-graded the
-    article — rare for recent ≤21d window where Polygon Insights has
-    near-100% coverage), Path B SKIPS the article entirely (conservative;
-    avoids resurrecting the QBTS-class bug for un-graded articles). Emits
-    `polygon_news_insights_missing` audit event for future false-negative
-    quantification.
 
-    Loop semantics: when Path B rejects an article (description-only match
-    but ticker not in insights or reasoning lacks M&A kw), continue to next
-    article. Don't terminate on first rejection.
+async def should_log_mna_filter_fired(ticker: str, detector_tag: str) -> bool:
+    """Trading-day dedup for `mna_filter_fired` per (ticker, detector) — #89 (2026-05-23): the
+    detectors call is_likely_ma every scan tick, so without it the audit inflates 5-20x.
+    Summary contract: every call site writes `{ticker} via <source> ({detector_tag})`."""
+    return await _first_today("mna_filter_fired", f"{ticker} via%({detector_tag})%")
 
-    Returns the first qualifying headline dict or None.
 
-    Pre-ship backward verification (#88, 2026-05-23): 9 of 9 classified
-    historical cases (2 TP + 7 FP from 90d audit) behave as expected
-    under this logic. Replay script: scripts/_replay_88_mna_filter_fix.py
-    """
-    from agents.market_intelligence.collector import get_polygon_news, get_ticker_details
+async def should_log_mna_released(ticker: str) -> bool:
+    """Trading-day dedup for `mna_filter_released` (summary starts with `{ticker}: `)."""
+    return await _first_today("mna_filter_released", f"{ticker}: %")
 
-    items = await get_polygon_news(
-        ticker, lookback_days=lookback_days, on_or_before=on_or_before, limit=20
-    )
 
-    # #284: resolve the filing ticker's company name only when a TITLE M&A
-    # keyword hits (rare), memoized cross-call in _COMPANY_NAME_MEMO so a
-    # persistent acquirer-side headline doesn't re-fetch the immutable name on
-    # every scan tick.
-    async def _filing_company_name() -> Optional[str]:
-        if ticker not in _COMPANY_NAME_MEMO:
-            details = await get_ticker_details(ticker)
-            _COMPANY_NAME_MEMO[ticker] = (details or {}).get("name") or None
-        return _COMPANY_NAME_MEMO[ticker]
+async def _audit_once(event_type: str, ticker: str, summary: str, detail: dict) -> None:
+    """Write one dedup'd audit row (`{ticker}: ...` summaries). Never raises."""
+    try:
+        if not await _first_today(event_type, f"{ticker}: %"):
+            return
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event(event_type, f"{ticker}: {summary}"[:300],
+                              json.dumps({"ticker": ticker, **detail}, default=str)[:4000])
+    except Exception as e:  # loud-ok: telemetry must never change the filter verdict
+        logger.warning(f"{ticker}: {event_type} audit failed: {e}")
 
-    for item in items:
-        title = item.get("title", "")
-        description = item.get("description", "")
 
-        # Shareholder-investigation notices reference prior deals, not new
-        # fade-risk events.
-        if is_shareholder_litigation_notice(title):
-            continue
+async def _unanswered_blocks() -> bool:
+    """Operator decision 4 — block or pass when the headline question gets no answer.
+    Literal name + env so scripts/live_rules.py discovers it. Default OFF (pass)."""
+    try:
+        from agents.market_intelligence.db import get_runtime_toggle
+        return bool(await get_runtime_toggle("mna_headline_unanswered_blocks",
+                                             "MNA_HEADLINE_UNANSWERED_BLOCKS", default=False))
+    except Exception as e:  # loud-ok: fail direction = the shipped default (pass), logged
+        logger.warning(f"mna_headline_unanswered_blocks read failed → default OFF: {e}")
+        return False
 
-        title_kw = matches_mna_keywords(title)
-        if title_kw:
-            if _ticker_is_acquirer(item, ticker):
-                continue
-            # #284: acquirer-direction on the TITLE itself. `_ticker_is_acquirer`
-            # only inspects per-ticker REASONING, so acquirer-side titles with
-            # absent/ambiguous reasoning leaked (ONDS "...Omnisys Buyout",
-            # MYRG "...to Acquire Valley"). Anchoring needs the company name.
-            if title_implies_acquirer(title, await _filing_company_name()):
-                if await should_log_mna_acquirer_skipped(ticker):
-                    try:
-                        from agents.market_intelligence.db import log_audit_event
-                        from agents.market_intelligence.audit_events import (
-                            MNA_ACQUIRER_TITLE_SKIPPED,
-                        )
-                        await log_audit_event(
-                            MNA_ACQUIRER_TITLE_SKIPPED,
-                            f"{ticker} title '{title_kw}' read ACQUIRER-side, not fired: "
-                            f"'{title[:120]}'",
-                        )
-                    except Exception:
-                        pass
-                continue
-            return {
-                "ticker": ticker,
-                "matched_keyword": title_kw,
-                "match_path": "title",
-                "title": title[:200],
-                "published_utc": item.get("published_utc", ""),
-                "publisher": item.get("publisher", ""),
-            }
 
-        desc_kw = matches_mna_keywords(description)
-        if not desc_kw:
-            continue  # neither title nor description matched — try next article
-
-        # Path B: description match — verify ticker is article subject
-        insights = item.get("insights") or []
-        if not insights:
-            # Polygon hasn't AI-graded this article. Skip Path B (conservative
-            # missing-insights handling per advisor 2026-05-23). Emit audit so
-            # we can quantify the false-negative risk over time. Use lazy import
-            # to avoid circularity (ma_filter is imported by detectors that
-            # also import db).
-            try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event(
-                    "polygon_news_insights_missing",
-                    f"{ticker} skipped Path B — no insights field on '{title[:120]}'",
-                )
-            except Exception:
-                pass
-            continue
-
-        # Ticker must be in article's insights list (filtering ticker is a
-        # subject of Polygon's AI tagging, not just a multi-tag bleed).
-        ticker_insight = next(
-            (i for i in insights if i.get("ticker") == ticker),
-            None,
-        )
-        if ticker_insight is None:
-            continue  # ticker tagged on article but not insighted — QBTS class
-
-        # Ticker's per-ticker sentiment_reasoning must contain an M&A keyword
-        # (Polygon's AI thinks THIS ticker's move is M&A-related).
-        reasoning = ticker_insight.get("sentiment_reasoning") or ""
-        reasoning_kw = matches_mna_keywords(reasoning)
-        if not reasoning_kw:
-            continue  # ticker insighted but not for M&A reason — MNST/ONDS/INFQ class
-
-        # Part B proximity check (#119): if the M&A keyword is sentence-
-        # preceded by a sister-ticker possessive (e.g. "IonQ's acquisition"
-        # in QBTS reasoning), the M&A activity is attributed to another
-        # tagged entity, not this ticker. Reject.
-        insight_ticker_list = [i.get("ticker") for i in insights if i.get("ticker")]
-        if reasoning_other_entity_owns_deal(
-            reasoning, reasoning_kw, ticker, insight_ticker_list,
-        ):
-            continue
-
-        if _ticker_is_acquirer(item, ticker, reasoning=reasoning):
-            continue
-
-        # Guard B (#416 R6): exploration/agitation reasoning ("proxy campaign seeking strategic
-        # alternatives" — FRMI) is a pre-deal bullish catalyst, not a binding price-pin. Veto unless
-        # a binding-deal marker escapes it. Next article still gets a chance (loop continues).
-        if reasoning_is_exploration_only(reasoning):
-            continue
-
-        return {
-            "ticker": ticker,
-            "matched_keyword": desc_kw,
-            "match_path": "description+insights",
-            "title": title[:200],
-            "published_utc": item.get("published_utc", ""),
-            "publisher": item.get("publisher", ""),
-            "insight_reasoning": reasoning[:200],
-            "insight_reasoning_kw": reasoning_kw,
-        }
-    return None
-
+# ── The single entry point every detector calls ───────────────────────────────────────────────
 
 async def is_likely_ma(
     ticker: str,
     *,
-    catalyst_quality: Optional[str] = None,
-    catalyst_texts: Optional[list[Optional[str]]] = None,
+    deal_answer: Optional[DealAnswer] = None,
     check_polygon: bool = True,
     polygon_lookback_days: int = 14,
     on_or_before: Optional[date] = None,
+    catalyst_quality: Optional[str] = None,
+    catalyst_texts: Optional[list[Optional[str]]] = None,
+    now_et: Optional[datetime] = None,
 ) -> tuple[bool, Optional[dict]]:
-    """Single-call M&A check used by all detectors.
+    """Is THIS ticker's price fixed by a signed deal? Returns (block, telemetry).
 
-    Sources, in order of cost (cheap → expensive):
-      1. `catalyst_quality == 'mna'` (Claude classifier verdict; EP only)
-      2. Keyword scan over `catalyst_texts` (Claude analysis, news_summary, …)
-      3. Polygon news headlines (`check_polygon=True`)
-
-    Returns (is_mna, telemetry_dict). The telemetry dict identifies which
-    source fired so audit events can distinguish "Claude flagged it" from
-    "we caught it via Polygon despite Perplexity hedging".
+    1. `deal_answer` (the EP grader's deal fields): pins → block, source `claude_deal_fields`.
+       None = the grader did not answer (failed / not an EP caller) → the headline path decides.
+    2. The headline question (`check_polygon=True`): the first candidate article whose answer
+       pins → block, source `polygon_headline_model`. A pinning headline overrides a grader
+       answer that did not pin (both answer the same question; logged as a conflict).
+       Candidates left UNANSWERED → operator decision 4 (`mna_headline_unanswered_blocks`).
+    `catalyst_quality` / `catalyst_texts` decide NOTHING: they feed only the shadow comparator
+    that writes `mna_filter_released` when the pre-#692 rule would have blocked.
     """
+    if deal_answer is not None and deal_pins_price(deal_answer):
+        return True, {
+            "source": "claude_deal_fields",
+            "match_path": "claude_deal_fields",
+            "ticker": ticker,
+            **deal_fields(deal_answer),
+        }
     if catalyst_quality == "mna":
-        # Guard C (#416 R6): the classifier called it M&A, but if the catalyst text frames THIS
-        # ticker as the acquirer / a completed deal (ONDS 'Mistral acquisition closing'), that's a
-        # bullish growth catalyst, not a target price-pin — veto this path, fall through to the
-        # independent keyword/polygon paths (a real target-side deal still fires there).
-        if not text_implies_acquirer_or_completed(catalyst_texts or []):
-            return True, {
-                "source": "claude_classifier",
-                "ticker": ticker,
-                "catalyst_quality": catalyst_quality,
-                # #516 DoD-3: match_path uniform across all sources (previously only the
-                # polygon_news sub-paths set it) — scripts/_b88_mna_filter_path_b_fp_rate.py
-                # buckets anything without this key as "unknown"; that script has no
-                # fallback substring rule for keyword_in_text_N, so those rows were
-                # permanently unattributable even though `source` always identified them.
-                "match_path": "claude_classifier",
-            }
+        # The grade and the fields come from ONE answer and the prompt ties them (grade 'mna'
+        # only when the fields pin). A mismatch means the rule is not holding — the FIELDS
+        # decide the filter; the grade is left as given (it scores 0 downstream), and this row
+        # makes the mismatch countable (EXPECT ~0/week).
+        await _audit_once(
+            "mna_grade_without_pin", ticker,
+            "graded 'mna' but its deal fields do not pin — "
+            + (f"{deal_answer.role}/{deal_answer.status}/{deal_answer.consideration}"
+               if deal_answer is not None else "no deal fields"),
+            {"grader": deal_fields(deal_answer)})
 
-    # ── #516 GUARD D — a keyword match may NOT overrule a CONTRARY classification ──────────
-    # OPERATOR-SIGNED 2026-08-08 after ruling 8 suppressions: 7 were false positives.
-    #
-    # All four of the keyword-path misfires he ruled — LII, SCZM, SOUN, UMAC — had ALREADY been
-    # classified by our own grader as something OTHER than M&A (`routine`), and were suppressed
-    # anyway because a word like "merger" or "takeover" appeared somewhere in the text. SOUN is
-    # the clearest: its own stored summary says the move was "driven primarily by a blowout Q2
-    # earnings print", and the filter killed it on the word "merger".
-    #
-    # So: when we have ALREADY FORMED A VIEW and that view is not M&A, a bare keyword match is
-    # not allowed to override it. This is strictly narrower than "require the classifier to
-    # concur", and that distinction is load-bearing:
-    #
-    #   ⚠ CLRO — the ONE correct suppression in the ruled set — has NO classification at all
-    #     (killed at the 9m_intraday detector before grading ran). Requiring concurrence would
-    #     have RELEASED it. This guard cannot touch it: no verdict → no veto → unchanged.
-    #
-    # Measured over 73 fires in 60 days: 28 where the classifier agrees stay suppressed, 27 with
-    # no classification are unaffected, 18 are released. Of the released, the 4 he ruled are all
-    # confirmed false positives.
-    #
-    # ⚠ It deliberately does NOT gate the polygon_news path below. That path fires on headlines
-    # for tickers that were never graded (WEN ×5, LCID ×2, FRMI all have no classification), so
-    # gating it here would do nothing — and it is a SEPARATE problem the operator has parked.
-    _classifier_disagrees = bool(catalyst_quality) and catalyst_quality != "mna"
-
-    if catalyst_texts and not _classifier_disagrees:
-        hit = matches_mna_in_any(catalyst_texts)
-        if hit:
-            kw, idx = hit
-            # Guard A (#416 R6): a negated/speculative keyword with no binding escape is not a real
-            # deal (MMED 'not a takeover'; IMAX 'takeout speculation') — veto, fall through to polygon.
-            if not keyword_context_is_nonbinding(catalyst_texts[idx], kw):
-                return True, {
-                    "source": f"keyword_in_text_{idx}",
-                    "ticker": ticker,
-                    "matched_keyword": kw,
-                    "match_path": f"keyword_in_text_{idx}",  # #516 DoD-3, see claude_classifier branch above
-                }
-
-    # Telemetry for the guard above: record ONLY when it actually changed the outcome — i.e. a
-    # keyword WOULD have matched and the contrary classification vetoed it. Silent otherwise,
-    # so the row count is a direct measure of the rule's effect and not background noise.
-    if _classifier_disagrees and catalyst_texts:
-        _would_have = matches_mna_in_any(catalyst_texts)
-        if _would_have and not keyword_context_is_nonbinding(
-                catalyst_texts[_would_have[1]], _would_have[0]):
-            try:
-                if await should_log_mna_veto(ticker):
-                    from agents.market_intelligence.db import log_audit_event
-                    await log_audit_event(
-                        "mna_keyword_vetoed_by_classifier",
-                        f"{ticker}: kept — classifier said '{catalyst_quality}', "
-                        f"keyword '{_would_have[0]}' did not override it (#516)",
-                        json.dumps({"ticker": ticker, "catalyst_quality": catalyst_quality,
-                                    "matched_keyword": _would_have[0]}),
-                    )
-            except Exception as e:  # loud-ok: telemetry must never change the filter verdict
-                logger.warning(f"{ticker}: #516 veto telemetry failed: {e}")
-
+    scan = HeadlineScan(None, [], [], 0)
     if check_polygon:
-        polygon_hit = await polygon_news_has_mna_headline(
-            ticker,
-            lookback_days=polygon_lookback_days,
-            on_or_before=on_or_before,
-        )
-        if polygon_hit:
-            return True, {
-                "source": "polygon_news",
-                **polygon_hit,
-            }
+        scan = await headline_deal_scan(
+            ticker, lookback_days=polygon_lookback_days, on_or_before=on_or_before, now_et=now_et)
+        if scan.hit:
+            if deal_answer is not None:
+                await _audit_once(
+                    "mna_deal_answers_conflict", ticker,
+                    f"grader read {deal_answer.role}/{deal_answer.status}/{deal_answer.consideration}, "
+                    f"headline pinned ({scan.hit.get('role')}/{scan.hit.get('status')}) — blocked",
+                    {"grader": deal_fields(deal_answer), "headline": scan.hit})
+            return True, scan.hit
+        if scan.unanswered:
+            blocks = await _unanswered_blocks()
+            await _audit_once(
+                "mna_headline_unanswered", ticker,
+                f"{len(scan.unanswered)} candidate article(s) unanswered "
+                f"({scan.unanswered[0].get('why')}) — {'BLOCKED' if blocks else 'passed'}",
+                {"unanswered": scan.unanswered, "blocked": blocks})
+            if blocks:
+                first = scan.unanswered[0]
+                return True, {"source": "polygon_headline_unanswered", "ticker": ticker,
+                              **{k: v for k, v in first.items() if k != "why"},
+                              "unanswered_why": first.get("why")}
 
+    # Shadow comparator — the pre-#692 rule: the grader said 'mna', a keyword sat in the
+    # catalyst text, or a keyword headline was a candidate. New rule passed → record why.
+    old_reasons = []
+    if catalyst_quality == "mna":
+        old_reasons.append("grade_mna")
+    kw_hit = matches_mna_in_any(catalyst_texts or [])
+    if kw_hit:
+        old_reasons.append(f"keyword_in_text_{kw_hit[1]}:{kw_hit[0]}")
+    if scan.released:
+        old_reasons.append("headline_keyword")
+    if old_reasons:
+        await _audit_once(
+            "mna_filter_released", ticker,
+            "old rule would have blocked (" + ", ".join(old_reasons) + "); "
+            + (f"grader read {deal_answer.role}/{deal_answer.status}/{deal_answer.consideration}"
+               if deal_answer is not None else "no grader answer")
+            + (f"; {len(scan.released)} headline(s) answered no pin" if scan.released else ""),
+            {"old_reasons": old_reasons, "grader": deal_fields(deal_answer),
+             "headlines": scan.released, "unanswered_n": len(scan.unanswered)})
     return False, None
