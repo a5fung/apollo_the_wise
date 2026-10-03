@@ -44,3 +44,24 @@ The #692 replay must release all ten and keep ACVA blocked, plus the earlier rea
 - Whether the ten wrongly-blocked names would have been TRADED or made money: the "rise after" column is the price from the open after the block, not an entry under our rules, and some would have failed other gates (position cap, breaker, grade).
 - Whether the filter misses real buyouts: this lists only what it BLOCKED. A real target it let through is not here (nothing passed as acquirer-side in the window, n = 0, but the keyword and classifier paths leave no row when they stay silent).
 - How the fix should decide: the labels say which names are wrong, not which rule replaces the guards — that is #692's replay and his sign-off.
+
+## 2026-10-03 — his sign-off on the #692 replay (151 stock-days since 05-15)
+
+His words: *"#692 sign-off: approve except — DSGN 2026-05-18 is not a buyout, release; THR 2026-05-22 is not a buyout, release; PD 2026-05-29 is not a buyout, release; HZO 2026-08-10 is a real buyout, keep blocked; RNW 2026-08-11 is a real buyout, keep blocked"*, then on how to fix them: *"I'm more concerned about the keep pile, in those cases can't we reuse our pinned price check? It's clearly pinned to a buyout price"*.
+
+n = 151 replayed stock-days (`scripts/probes/_692/replay_2026-10-02.jsonl`); every row not named above is APPROVED as the replay decided it (released or kept blocked).
+
+| Ticker | Day | Replay said | His call | Day's own high-low range |
+|---|---|---|---|---|
+| DSGN | 2026-05-18 | blocked (signed, no buyer named) | release | 65% |
+| THR | 2026-05-22 | blocked (CECO merger, holders could take shares) | release | 2.4% |
+| PD | 2026-05-29 | blocked (signed take-private, no buyer named) | release | 13% |
+| HZO | 2026-08-10 | released (final-round bidding) | keep blocked | 0.50% |
+| RNW | 2026-08-11 | released (controlling holders' take-private proposal) | keep blocked | 1.5% |
+
+The kept-blocked names he approved sit at 0.48% (ACVA), 0.64% (UTZ), 1.2% (DV), 1.7% (SYNA), 1.8% (ROKU) on their own day — the price, not the news wording, is what separates his calls (prices: `scripts/probes/_692/pin/`).
+
+## What this does not answer (2026-10-03 section)
+
+- The day's FULL range is not known when the EP scan decides at 9:31 ET; which early-session measure carries the same separation is the #692 pin-check backtest's question, not this table's.
+- Five corrections are not a threshold: the backtest must use all labelled rows and say how thin the separation is.
