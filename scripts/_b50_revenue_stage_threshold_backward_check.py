@@ -41,6 +41,27 @@ REVENUE_BANDS = [
 ]
 
 
+# The docstring's own gate: "Threshold ships only if the chosen band has N>=10 outcomes".
+VERDICT_MIN_N = 10
+
+
+def verdict_line(low_band_stats: dict) -> str:
+    """ONE verdict line from this script's own decision matrix, applied to the $0-$5M band stats it
+    already computes (#691 — the digest classifier needs a line it can read; nothing here changes
+    what is measured). It states a READING of the matrix, never a decision: moving
+    REVENUE_STAGE_MIN_USD is the operator's HARD gate."""
+    n, avg = low_band_stats["n_with_return"], low_band_stats["avg"]
+    if n < VERDICT_MIN_N:
+        return (f"VERDICT: ACCRUING — the $0-$5M band has {n} settled 5d outcomes (under "
+                f"{VERDICT_MIN_N}); too few to judge a $5M threshold, nothing indicated")
+    if avg > 0:
+        return (f"VERDICT: NO-SHIP — the $0-$5M band is positive-edge (avg 5d {avg:+.2f}%, N={n}); "
+                "a $5M threshold would block real winners, so no change is indicated")
+    return (f"VERDICT: NEEDS YOUR CALL — the $0-$5M band is no longer positive-edge "
+            f"(avg 5d {avg:+.2f}%, N={n}); the matrix above now allows raising the threshold to "
+            "$5M — your decision (HARD gate)")
+
+
 def band_for(rev_avg: float | None) -> str:
     if rev_avg is None:
         return "  N/A         (no yfinance data)"
@@ -168,6 +189,8 @@ async def main():
             continue
         stats = band_stats([it["ret_5d"] for it in items])
         print(format_band_row(band_label, n, total, stats))
+    print()
+    print(verdict_line(band_stats([it["ret_5d"] for it in by_band.get(REVENUE_BANDS[1][1], [])])))
     print()
 
     # Show the tickers in low bands (decision-critical)

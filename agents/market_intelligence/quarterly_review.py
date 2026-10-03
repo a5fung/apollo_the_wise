@@ -21,7 +21,17 @@ Add scripts there as new backward checks / methodology findings ship —
 EVERY load-bearing finding gets an entry or it silently goes stale
 unmeasured (feedback_methodology_insights_need_periodic_revalidation).
 Each registered script MUST be re-runnable via `python -m <module>` with
-no required args, output to stdout, and return a clean exit code.
+no required args, output to stdout, and return a clean exit code — AND print a
+VERDICT line the digest classifier recognises (a phrase listed in `_NEEDS_YOU` /
+`_CONCLUDED` / `_WAITING` below), in every branch it can reach. A script that prints
+only a table lands in "review" and asks the operator to open a report with nothing to
+act on (#691). `tests/test_691_monthly_sweep_cleanup.py` runs each script's real
+formatting on synthetic input, branch by branch, and fails on any "review" or on a
+registered script it has no scenario for.
+
+Each check's last output is stored (one `backward_check_output` audit row per check per
+run) so `/audit <check>` can show it later — see `store_sweep_outputs` /
+`render_sweep_topic`. The `<check>` name is the module tail (`check_topic`).
 """
 from __future__ import annotations
 
@@ -29,6 +39,7 @@ import asyncio
 import logging
 import subprocess
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +53,13 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
      "scripts._b50_revenue_stage_threshold_backward_check", []),
     ("ATR-normalized gap scoring (#53)",
      "scripts._b53_atr_normalized_gap_backward_check", []),
-    ("9M Day 2 stop/ATR distribution (#54)",
-     "scripts._b54_9m_day2_stop_atr_distribution", []),
+    # 9M Day 2 stop/ATR distribution (#54) — RETIRED from this sweep 2026-10-03 (#691), the
+    # same way #223 was below. It measures the 9M setup, which the operator ruled GONE
+    # (docs/setups/ninem.md owns it): its cohort is `signal_type = '9m_day2'` trades, a setup
+    # we no longer take, so a monthly re-run re-reads a cohort that cannot grow — a periodic
+    # re-measurement of a dead cohort, the staleness this sweep exists to prevent. The SCRIPT
+    # is kept and stays runnable by hand:
+    #     python -m scripts._b54_9m_day2_stop_atr_distribution
     # Pradeep "rallying-into-catalyst" bands (#77, added 2026-05-22).
     # Regime-shift monitor: which pre-20d-return bands have highest WR?
     # Pradeep claims sideways-into-catalyst (RKLB-class) is highest WR;
@@ -168,22 +184,65 @@ def _extract_summary_section(stdout: str, max_lines: int = 25) -> str:
 # announce their verdicts, so re-deriving them here would be a second source of truth that drifts.
 # Unrecognised output degrades to "review" rather than being silently called green — a digest that
 # reports "all clear" because it failed to parse is the failure mode this rewrite exists to remove.
+#
+# #691 (2026-10-03): the markers below are each registered script's OWN verdict phrases — one
+# group per script, in the roster's order. They were written for the 5 scripts that already
+# announced a verdict; seven others (#50 #53 #54 #77 #78 #88 #94) printed a verdict nobody taught
+# this list to read — or none at all — and landed in "review" every month: *"Any action from
+# this?"* (operator 2026-10-01). Every phrase is a literal that its script prints, in the branch
+# named beside it. `tests/test_691_monthly_sweep_cleanup.py` runs each script's real formatting,
+# branch by branch, and fails if any branch lands in "review" — so a reworded verdict goes RED
+# here instead of silently asking him to open a report again.
+#
+# ⚠ MATCHING IS CASE-SENSITIVE SUBSTRING over the script's WHOLE stdout (not the 25-line summary —
+# #88's and #94's verdicts sit after 40+ lines of tables and never reached the classifier). A marker
+# must therefore not occur in a script's always-printed boilerplate (Caveats / Cross-references).
 _NEEDS_YOU = [
+    # M&A accuracy review (#284/#285). The "HARD-gate" banner is printed on EVERY run, so this
+    # check always lands here — deliberately: the HARD-gate filter list is his to judge, and an
+    # empty month ("(none)") is indistinguishable from a broken audit feed (the absence trap).
     ("MATERIAL-MISS CANDIDATE", "suppressed names that then ran — verify false positive"),
     ("For OPERATOR labeling",   "label the judge's calls right/wrong"),
     ("HARD-gate",               "filter list needs your judgement (agent may not classify)"),
+    # #50 revenue bands — its own decision matrix (N>=10 and the $0-$5M band stopped paying).
+    ("no longer positive-edge", "the $0-$5M revenue band stopped paying — re-open the $5M threshold question"),
+    # #88 M&A Path B — enough polygon_news fires to need a manual true/false-positive scoring.
+    ("OPERATOR ACTION REQUIRED", "score the sampled M&A fires true/false positive"),
+    # #78 decliner bounce — cleared N>=30, WR>=55%, avg>=+5%.
+    ("PROMOTE to methodology review", "decliner-bounce signal cleared its bar — your call"),
+    # #94 flag-break — N>=10 with a clear verdict either way.
+    ("PROMOTE to Phase 2",      "flag-break signal cleared its bar — your call"),
+    ("SIGNAL WEAK at N>=10",    "flag-break signal is weak — revise the detector or drop it"),
+    # #122 ORB wick outlier — N>=10 entries: enough to design the filter.
+    ("Cohort sufficient to design", "enough wick-outlier entries to design a filter — your call"),
+    # #197 cap+1 shadow — settled sample reached.
+    ("READY for sign-off review", "cap+1 shadow reached its sample — sign-off review"),
+    # News source quality — a source's coverage/attribution moved >= 40pp.
+    ("DRIFT detected",          "a news source's quality shifted — check the source vs the cohort"),
 ]
 _WAITING = [
-    ("INSUFFICIENT for ship", "accruing"),
-    ("ACCRUING",              "accruing"),
+    ("INSUFFICIENT for ship", "accruing"),                       # #122 N<10
+    ("ACCRUING",              "accruing"),                       # #197, #50, #53, #77
     ("< 10.",                 "accruing"),
     ("data-gated",            "accruing"),
+    ("KEEP OBSERVING",        "accruing — under 30 settled"),    # #78 N<30
+    ("MARGINAL",              "marginal — keep observing"),      # #78 / #94 between the bars
+    ("CONTINUE OBSERVING",    "accruing — under 10 settled"),    # #94 N<10
+    ("No settled outcomes yet",  "accruing — nothing settled yet"),        # #78
+    ("No settled 10d window data yet", "accruing — nothing settled yet"),  # #94
+    ("Check again next month", "nothing to evaluate yet"),       # #88 no events / no polygon fires
+    # (the script wraps this sentence mid-phrase: "N too small for drift\n  detection" — a marker
+    # may not span the break, so it stops at the end of the first line)
+    ("N too small for drift", "accruing — too few fires"),                  # #88 <5 fires
 ]
 _CONCLUDED = [
-    ("STRUCTURAL NO-GO", "no-go — structural, not tuning"),
-    ("NO-SHIP",          "no-ship, its own rule decided"),
-    ("No drift events",  "clean"),
+    ("STRUCTURAL NO-GO", "no-go — structural, not tuning"),     # #92
+    ("NO-SHIP",          "no-ship, its own rule decided"),      # #50 positive-edge arm
+    ("No drift events",  "clean"),                              # news source quality
     ("VERDICT: GO",      "go-supportive"),
+    ("CLOSE the investigation", "signal was noise — investigation closed"),   # #78 WR<50%
+    # #53 / #77: table-only monitors the operator already ruled on — see their verdict lines.
+    ("VERDICT: INFORMATIONAL", "table only — the standing ruling is unchanged"),
 ]
 
 
@@ -203,6 +262,122 @@ def _classify(stdout: str) -> "tuple[str, str]":
     return "review", "output not auto-classified — open /audit"
 
 
+# ── #691 — `/audit <check>`: every check's last output is stored, and reachable from Telegram ───
+# Until #691 the digest said "Full tables: /audit <topic>" and printed `/audit <module tail>` under
+# each call — but nothing stored a check's output (the sweep kept a 25-line summary in memory,
+# Telegrammed a digest, and discarded it) and `system_audit.run_topic_audit` only knew its own
+# metric topics, so EVERY pointer answered "Unknown audit topic" (operator 2026-10-01).
+#
+# The store is one `mi_audit_log` row per check per run (`backward_check_output`): summary =
+# "<topic> | exit=<code> | <bucket>", detail = the script's stdout (plain text, so a long table
+# survives the 32k detail budget as a clean head-cut, never as unparseable JSON). It is written by
+# `run_quarterly_sweep`, so a hand-run `python -m agents.market_intelligence.quarterly_review` (which
+# does not Telegram) stores too. `/audit <check>` only READS it — it never re-runs a script.
+#
+# Named `*_output`, NOT `*_failed` / `*_error`: the nightly silent-error sweep and `show errors`
+# match on those suffixes, and a stored table is not an incident.
+SWEEP_OUTPUT_EVENT = "backward_check_output"
+_STORE_STDOUT_CAP = 24_000          # chars; mi_audit_log's detail budget is 32,000
+_SEP = " | "                          # summary field separator (the reader splits on it)
+
+
+def check_topic(module: str) -> str:
+    """The `/audit` topic for a registered check = its module tail, lower-cased."""
+    return module.rsplit(".", 1)[-1].lower()
+
+
+def sweep_topics() -> "dict[str, tuple[str, str]]":
+    """{topic: (label, module)} DERIVED from the roster, so a new registered script is reachable
+    from `/audit` the moment it is registered — there is no second list to forget."""
+    return {check_topic(e[1]): (e[0], e[1]) for e in QUARTERLY_BACKWARD_CHECK_SCRIPTS}
+
+
+def _classify_input(r: dict) -> str:
+    """What the classifier reads for one result: the script's FULL stdout when the sweep kept it
+    (#88's and #94's verdicts sit after 40+ lines and never reached the 25-line summary), else the
+    summary (results built by hand in tests carry only that)."""
+    return r.get("stdout_full") or r.get("stdout_summary") or ""
+
+
+async def store_sweep_outputs(results: list) -> int:
+    """Write one `backward_check_output` audit row per check. Never raises (a failed audit write
+    must not cost the operator the digest). Returns the number of rows attempted."""
+    n = 0
+    try:
+        from agents.market_intelligence.db import log_audit_event
+        for r in results:
+            text = _classify_input(r) or "(no output)"
+            if len(text) > _STORE_STDOUT_CAP:
+                text = (text[:_STORE_STDOUT_CAP]
+                        + f"\n… [truncated: {len(text) - _STORE_STDOUT_CAP} more characters]")
+            code = r.get("exit_code")
+            if code != 0:
+                # A broken run is stored too: `/audit x` after a failure must show THIS month's
+                # failure, not last month's table.
+                bucket = "failed"
+                text += f"\n--- stderr (tail) ---\n{r.get('stderr_tail') or '(none)'}"
+            else:
+                bucket = _classify(_classify_input(r))[0]
+            await log_audit_event(
+                SWEEP_OUTPUT_EVENT,
+                _SEP.join((check_topic(r["module"]), f"exit={code}", bucket)),
+                text,
+            )
+            n += 1
+    except Exception as e:  # noqa: BLE001 — storage is best-effort; the digest still goes out
+        logger.warning(f"Sweep output storage failed after {n} row(s): {e}")
+    return n
+
+
+async def fetch_stored_check(topic: str) -> "dict | None":
+    """The newest stored row for one check, or None. One read on the event_type index; never
+    runs a script. SQL is inline on purpose: a db.py helper would put db.py (loaded by
+    apollo-execution) in the change and force a second, execution-service deploy for a read that
+    only the market agent makes."""
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire(timeout=5.0) as conn:
+        row = await conn.fetchrow(
+            "SELECT created_at, summary, detail FROM mi_audit_log "
+            "WHERE event_type = $1 AND split_part(summary, $2, 1) = $3 "
+            "ORDER BY created_at DESC LIMIT 1",
+            SWEEP_OUTPUT_EVENT, _SEP, topic, timeout=5.0)
+    return dict(row) if row else None
+
+
+def next_sweep_date(now_et: datetime) -> str:
+    """ISO date of the next monthly sweep: the 1st of a month at 18:00 ET
+    (scheduler.py `monthly_backward_check_sweep`)."""
+    if now_et.day == 1 and now_et.hour < 18:
+        return now_et.date().isoformat()
+    year, month = (now_et.year + 1, 1) if now_et.month == 12 else (now_et.year, now_et.month + 1)
+    return f"{year:04d}-{month:02d}-01"
+
+
+def render_stored_check(topic: str, row: "dict | None", *, now_et: "datetime | None" = None) -> str:
+    """Telegram text for `/audit <check>`: the stored table in a code block (monospace, so columns
+    line up and the underscores in `ret_5d` survive), or an honest 'not stored yet'."""
+    label, module = sweep_topics()[topic]
+    if row is None:
+        now = now_et or datetime.now(ZoneInfo("America/New_York"))
+        return (f"No stored run of {label} yet. The monthly sweep (1st of the month, 18:00 ET) "
+                f"stores every check's output; the first run after this shipped is "
+                f"{next_sweep_date(now)}. To see it sooner, run `python -m {module}` on the box.")
+    fields = (row.get("summary") or "").split(_SEP)
+    code = fields[1].removeprefix("exit=") if len(fields) > 1 else "?"
+    bucket = fields[2] if len(fields) > 2 else "?"
+    when = row["created_at"].astimezone(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d %H:%M PT")
+    state = "FAILED TO RUN" if bucket == "failed" else f"filed as {bucket}"
+    # A fence inside the table (the news check prints its own) would close ours early.
+    body = (row.get("detail") or "(empty)").replace("```", "'''")
+    return f"📋 {label} — last sweep {when} (exit {code}, {state})\n```\n{body}\n```"
+
+
+async def render_sweep_topic(topic: str) -> str:
+    """`/audit <check>` body for a registered check."""
+    return render_stored_check(topic, await fetch_stored_check(topic))
+
+
 def _money_line(results: list) -> "str | None":
     """The one number worth surfacing, lifted from whichever script printed it."""
     for r in results:
@@ -219,7 +394,7 @@ def _render_digest(results: list, started_at, elapsed: float) -> str:
         if r["exit_code"] != 0:
             failed.append(r)
             continue
-        bucket, note = _classify(r.get("stdout_summary") or "")
+        bucket, note = _classify(_classify_input(r))
         {"you": you, "waiting": waiting, "done": done, "review": review}[bucket].append((r, note))
 
     L = ["📊 *Monthly backward-check sweep*",
@@ -229,7 +404,7 @@ def _render_digest(results: list, started_at, elapsed: float) -> str:
         L.append("*⚖️ NEEDS YOUR CALL*")
         for r, note in you:
             L.append(f"• {r['label']} — {note}")
-            L.append(f"    `/audit {r['module'].rsplit('.', 1)[-1]}`")
+            L.append(f"    `/audit {check_topic(r['module'])}`")
         L.append("")
     else:
         L.append("*⚖️ NEEDS YOUR CALL* — none")
@@ -241,7 +416,9 @@ def _render_digest(results: list, started_at, elapsed: float) -> str:
 
     if failed:
         L.append("*🔴 FAILED TO RUN*")
-        L += [f"• {r['label']} — {(r['stderr_tail'] or '')[:80]}" for r in failed]
+        for r in failed:
+            L.append(f"• {r['label']} — {(r['stderr_tail'] or '')[:80]}")
+            L.append(f"    `/audit {check_topic(r['module'])}`")
         L.append("")
 
     L.append("*Everything else*")
@@ -250,8 +427,12 @@ def _render_digest(results: list, started_at, elapsed: float) -> str:
     for r, note in waiting:
         L.append(f"⏳ {r['label']} — {note}")
     for r, note in review:
-        L.append(f"👀 {r['label']} — {note}")
-    L += ["", "_Full tables: `/audit <topic>`. Every check still ran and still wrote its audit row._"]
+        # "open /audit" is only an instruction if the pointer is on the line (#691).
+        L.append(f"👀 {r['label']} — {note}  `/audit {check_topic(r['module'])}`")
+    # No `/audit <placeholder>` here: every `/audit X` this digest prints is a real, working topic
+    # (tests/test_691_monthly_sweep_cleanup.py sends each through the real handler).
+    L += ["", "_Full table of any check: `/audit` plus its name, printed under each call above — a "
+              "wrong name lists every valid one. Each check's last output is kept for it._"]
     return "\n".join(L)
 
 
@@ -287,6 +468,9 @@ async def run_quarterly_sweep() -> dict:
                 "module": module,
                 "exit_code": proc.returncode,
                 "stdout_summary": _extract_summary_section(proc.stdout),
+                # The WHOLE stdout: classification reads it (a verdict can sit past the 25-line
+                # summary) and `store_sweep_outputs` keeps it for `/audit <check>` (#691).
+                "stdout_full": proc.stdout or "",
                 "stderr_tail": proc.stderr[-500:] if proc.stderr else "",
             })
         except Exception as e:
@@ -295,8 +479,12 @@ async def run_quarterly_sweep() -> dict:
                 "module": module,
                 "exit_code": -1,
                 "stdout_summary": "",
+                "stdout_full": "",
                 "stderr_tail": f"FAILED: {type(e).__name__}: {str(e)[:300]}",
             })
+
+    # Keep every check's output for `/audit <check>` (#691). Best-effort: never costs the digest.
+    await store_sweep_outputs(results)
 
     # Aggregate into ONE decision-first digest (#513) — see _render_digest.
     elapsed = (datetime.now(timezone.utc) - started_at).total_seconds()

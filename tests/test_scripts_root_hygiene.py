@@ -86,7 +86,9 @@ KEPT_AT_ROOT = {
     "_368_ingest_labels.py": "imported-or-code-ref+yaml-cited",
     "_b50_revenue_stage_threshold_backward_check.py": "imported-or-code-ref",
     "_b53_atr_normalized_gap_backward_check.py": "imported-or-code-ref+yaml-cited",
-    "_b54_9m_day2_stop_atr_distribution.py": "imported-or-code-ref",
+    # Retired from the monthly sweep roster 2026-10-03 (#691); kept runnable by hand. No longer imported by
+    # quarterly_review — the only live reference is the test that pins it importable.
+    "_b54_9m_day2_stop_atr_distribution.py": "code-ref:test",
     "_b6_forward_backtest.py": "imported-or-code-ref+yaml-cited",
     "_b77_pradeep_neglect_backward_check.py": "imported-or-code-ref",
     "_b78_decliner_band_bounce_signal.py": "imported-or-code-ref+yaml-cited",

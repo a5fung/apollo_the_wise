@@ -57,7 +57,7 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 | `/watchlist` | Friday curated watchlist (Friday 6 PM ET) — best ideas across all sources + TradingView import block |
 | `/wick` | Wick-fill candidates (telemetry) — today's candidates + 30d fill-rate footer |
 | `/why TICKER [date]` | EP lifecycle timeline — every gate hit/miss for one alert |
-| `/audit <topic>` | On-demand L1/L2/L3 anomaly check — cooldowns, themes, skips, positions, feed, 9m, all |
+| `/audit <topic>` | On-demand L1/L2/L3 anomaly check — cooldowns, themes, skips, positions, feed, 9m, all — or, by name, the last stored output of any monthly-sweep check (e.g. `/audit mna_filter_accuracy_review`; a wrong name lists them all) |
 | `/strategies` / `/strategy <id>` | Strategy maturity registry — phase + KPI promotion thresholds, manual `enable / disable / promote / demote` |
 | `/dryrun` | Pre-flight sizing math against current Alpaca equity (no orders placed) |
 | `/pregame` | Compact trade shortlist for tomorrow — Accelerating themes + HIGH EPs + watchlist + sugar babies |
@@ -409,7 +409,7 @@ Three-tier anomaly + invariant scanner runs at 4:15 PM (post-EOD) and 5:30 PM (p
 
 Cold-start tiers: `sample_n < 7` → hardcoded ceilings only. `7 ≤ n < 14` → L3 only. `≥ 14` → full L2.
 
-**On-demand:** `/audit <topic>` — cooldowns, themes, skips, positions, feed, 9m, all.
+**On-demand:** `/audit <topic>` — cooldowns, themes, skips, positions, feed, 9m, all. Also `/audit <check>` for the last stored output of any monthly backward-check sweep check (read-only, never re-runs the script; SSoT `docs/architecture/market_agent_reference.md` §Monthly backward-check sweep).
 
 Sonnet hypothesis call gets last 5 CLAUDE.md change headers + last 10 distinct audit event types as context.
 

@@ -44,6 +44,23 @@ GAP_ATR_BANDS = [
 ]
 
 
+def verdict_line(n_settled: int, low_band_stats: dict) -> str:
+    """ONE verdict line for the digest classifier (#691). This script has no numeric ship rule —
+    its matrix says only "materially WORSE" — and the question is closed: data_gated_reviews
+    `gap_atr_3_5x_band_negative_ev` closed 2026-07-19 ("gap/ATR is NOT a live EP criterion (entry
+    gates on absolute gap%); operator OK to close, not adopting"). So the honest verdict is the
+    standing ruling, labelled INFORMATIONAL — never a computed "all clear" — plus the current
+    reading of the band the hypothesis is about. An empty cohort is ACCRUING, not informational."""
+    if n_settled == 0:
+        return "VERDICT: ACCRUING — no settled 5d outcomes in the cohort yet"
+    n, avg = low_band_stats["n_with_return"], low_band_stats["avg"]
+    reading = (f"gap/ATR <1.5x band avg 5d {avg:+.2f}% over {n} settled" if n
+               else "gap/ATR <1.5x band has no settled outcomes")
+    return ("VERDICT: INFORMATIONAL — table only, no decision attached: gap/ATR is not a live EP "
+            "criterion (entry gates on absolute gap%); the gap/ATR review closed 2026-07-19 with the "
+            f"operator's OK, not adopting. Reading: {reading}")
+
+
 def band_for(ratio: float | None) -> str:
     if ratio is None:
         return "  N/A             (insufficient history)"
@@ -162,6 +179,10 @@ async def main():
             continue
         stats = band_stats([it["ret_5d"] for it in items])
         print(format_band_row(band_label, n, total, stats))
+    print()
+    print(verdict_line(
+        sum(1 for r in rows if r["ret_5d"] is not None),
+        band_stats([it["ret_5d"] for it in by_band.get(GAP_ATR_BANDS[0][1], [])])))
     print()
 
     # Detailed view of low-ratio band (the ones a normalization would block/downscore)
