@@ -1,0 +1,393 @@
+population: 717 audit rows -> 151 ticker-days (137 blocked)
+SEC filings fetch failed for PZZA: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+Ticker details failed for XOMA: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/XOMA?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+SEC filings fetch failed for BRC: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for D: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for DSGN: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for RAMP: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for IMVT: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+Ticker details failed for GBTG: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/GBTG?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+SEC filings fetch failed for QBTS: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for RGTI: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for RL: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for EL: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ELVR: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for IMAX: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+Ticker details failed for KALV: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/KALV?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+SEC filings fetch failed for RGTI: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+Ticker details failed for THR: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/THR?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+SEC filings fetch failed for BTGO: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for MOD: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for VMET: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ONDS: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: CGCT"}}}
+SEC filings fetch failed for CGCT: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+Ticker details failed for CGCT: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/CGCT?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+SEC filings fetch failed for PD: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for QURE: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for FSSL: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for LILA: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for LILAK: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for MGM: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: TMHC"}}}
+SEC filings fetch failed for TMHC: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for MMED: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ELPC: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for LBRX: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for CECO: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for NUVL: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for CBRL: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for DXC: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for AYA: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for HYMC: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for LII: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for PRLB: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for SBSW: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for SCZM: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for TRIP: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for IMOS: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ACA: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for APGE: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for EPC: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for INMD: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for TECH: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ZSQR: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for CMCSA: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for FUL: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for IRDM: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for LBRDA: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for LBRDK: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for RKLB: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for UMAC: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for EROC: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ESI: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for CRNX: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ENVX: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for CCC: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for LION: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for PYPL: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ATAI: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for UTZ: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for COCO: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for SAFT: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for FBRX: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for FHB: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for BSBR: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ATKR: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for BOW: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for SUPN: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ACLS: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for AHCO: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for HLMN: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for COMP: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for SOUN: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for DV: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for SOUN: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+Ticker details failed for FBRX: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/FBRX?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+SEC filings fetch failed for HZO: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for VREX: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for RNW: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for AMBP: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ARX: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for WWW: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for DFH: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for WEAV: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for TEM: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for BANF: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+model: claude-sonnet-5-5 (shared.llm_models.GROUNDED_GRADE_MODEL, resolved at run time) at $2.00 in / $10.00 out per MTok (pricing_for)
+cost per call = ((prompt_chars / 3.5 + tool_tokens) x $2.00 + est_output_tokens x $10.00) / 1e6;  tool_tokens grader 700 / headline 500; est_output (incl. thinking) grader 600 / headline 350
+planned model calls (UPPER BOUND — the headline scan stops at the first pin): 246 = 105 grader + 81 headline + 60 stability (30 rows x old/new)  (cap 700)
+ESTIMATED whole path $2.25 = grader $1.12 + headline $0.46 + stability $0.67  (abort above $6.00)
+llm_client: adopted request rewrite for claude-sonnet-5-5 — forced_tool_to_structured_output (API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011Cfeoz5zbRmq1yew3tAYeq'})
+  PZZA   2026-05-15 BLOCK -> PASS         no_pin                                   
+  XOMA   2026-05-15 BLOCK -> BLOCK        polygon_headline_model                   
+  BRC    2026-05-18 BLOCK -> PASS         no_pin                                   
+  D      2026-05-18 BLOCK -> PASS         no_pin                                   
+  DSGN   2026-05-18 BLOCK -> BLOCK        claude_deal_fields                       
+  RAMP   2026-05-18 BLOCK -> BLOCK        polygon_headline_model                   
+  IMVT   2026-05-20 BLOCK -> PASS         no_pin                                   
+  OGN    2026-05-20 BLOCK -> BLOCK        polygon_headline_model                   
+  ASRT   2026-05-21 BLOCK -> BLOCK (price                                          
+  GBTG   2026-05-21 BLOCK -> BLOCK        polygon_headline_model                   
+  INFQ   2026-05-21 BLOCK -> PASS         no_pin                                   
+  QBTS   2026-05-21 BLOCK -> PASS         no_pin                                   
+  RGTI   2026-05-21 BLOCK -> PASS         no_pin                                   
+  RL     2026-05-21 BLOCK -> PASS         no_pin                                   
+  ASRT   2026-05-22 BLOCK -> BLOCK (price                                          
+  CECO   2026-05-22 BLOCK -> PASS         no_pin                                   
+  EL     2026-05-22 BLOCK -> PASS         no_pin                                   
+  ELVR   2026-05-22 BLOCK -> PASS         no_pin                                   
+  IMAX   2026-05-22 BLOCK -> PASS         no_pin                                   operator-confirmed 2026-07-12: FP
+  INFQ   2026-05-22 BLOCK -> PASS         no_pin                                   
+  KALV   2026-05-22 BLOCK -> BLOCK        polygon_headline_model                   
+  QBTS   2026-05-22 BLOCK -> PASS         no_pin                                   
+  RGTI   2026-05-22 BLOCK -> PASS         no_pin                                   
+  THR    2026-05-22 BLOCK -> BLOCK        polygon_headline_model                   
+  KALV   2026-05-25 BLOCK -> BLOCK        polygon_headline_model                   
+  BTGO   2026-05-26 BLOCK -> PASS         no_pin                                   
+  MOD    2026-05-26 BLOCK -> PASS         no_pin                                   
+  VMET   2026-05-26 BLOCK -> PASS         no_pin                                   
+  MYRG   2026-05-27 BLOCK -> PASS         no_pin                                   
+  ONDS   2026-05-28 BLOCK -> PASS         no_pin                                   operator 2026-07-04: FP
+  CGCT   2026-05-29 BLOCK -> BLOCK        polygon_headline_model                   
+  PD     2026-05-29 BLOCK -> BLOCK        claude_deal_fields                       
+  QURE   2026-05-29 BLOCK -> PASS         no_pin                                   
+  FSSL   2026-06-01 BLOCK -> PASS         no_pin                                   
+  LILA   2026-06-01 BLOCK -> PASS         no_pin                                   
+  LILAK  2026-06-01 BLOCK -> PASS         no_pin                                   
+  MGM    2026-06-01 BLOCK -> PASS         no_pin                                   
+  TMHC   2026-06-01 BLOCK -> PASS         no_pin                                   
+  MMED   2026-06-03 BLOCK -> PASS         no_pin                                   operator 2026-07-04: FP
+  ELPC   2026-06-04 BLOCK -> PASS         no_pin                                   
+  KALV   2026-06-04 BLOCK -> BLOCK (price                                          
+  LBRX   2026-06-04 BLOCK -> PASS         no_pin                                   
+  KALV   2026-06-05 BLOCK -> BLOCK (price                                          
+  KALV   2026-06-08 BLOCK -> BLOCK (price                                          
+  SUNE   2026-06-08 BLOCK -> BLOCK        polygon_headline_model                   operator 2026-07-04: TP - correctly blocked
+  CECO   2026-06-09 BLOCK -> PASS         no_pin                                   
+  NUVL   2026-06-09 BLOCK -> PASS         no_pin                                   
+  CBRL   2026-06-10 BLOCK -> PASS         no_pin                                   
+  DXC    2026-06-11 BLOCK -> PASS         no_pin                                   
+  AYA    2026-06-15 BLOCK -> PASS         no_pin                                   
+  HYMC   2026-06-15 BLOCK -> PASS         no_pin                                   
+  LII    2026-06-15 BLOCK -> PASS         no_pin                                   operator 2026-08-08: FP
+  PRLB   2026-06-15 BLOCK -> PASS         no_pin                                   
+  SBSW   2026-06-15 BLOCK -> PASS         no_pin                                   
+  SCZM   2026-06-15 BLOCK -> PASS         no_pin                                   operator 2026-08-08: FP
+  TRIP   2026-06-15 BLOCK -> PASS         no_pin                                   
+  OLN    2026-06-16 BLOCK -> PASS         no_pin                                   
+  FRMI   2026-06-17 BLOCK -> PASS         no_pin                                   operator 2026-07-04: FP
+  IMOS   2026-06-18 BLOCK -> PASS         no_pin                                   
+  ACA    2026-06-22 BLOCK -> PASS         no_pin                                   
+  APGE   2026-06-22 BLOCK -> PASS         no_pin                                   
+  EPC    2026-06-23 BLOCK -> PASS         no_pin                                   
+  INMD   2026-06-24 BLOCK -> PASS         no_pin                                   
+  ROKU   2026-06-24 BLOCK -> BLOCK        polygon_headline_model                   
+  TECH   2026-06-25 BLOCK -> PASS         no_pin                                   
+  WEN    2026-06-26 BLOCK -> PASS         no_pin                                   operator 2026-08-08: FP
+  ZSQR   2026-06-26 BLOCK -> PASS         no_pin                                   
+  CMCSA  2026-06-29 BLOCK -> PASS         no_pin                                   
+  FUL    2026-06-29 BLOCK -> PASS         no_pin                                   
+  IRDM   2026-06-29 BLOCK -> BLOCK        polygon_headline_model                   
+  LBRDA  2026-06-29 BLOCK -> PASS         no_pin                                   
+  LBRDK  2026-06-29 BLOCK -> PASS         no_pin                                   
+  RKLB   2026-06-29 BLOCK -> PASS         no_pin                                   
+  WEN    2026-06-29 BLOCK -> PASS         no_pin                                   operator 2026-08-08: FP
+  UMAC   2026-06-30 BLOCK -> PASS         no_pin                                   operator 2026-08-08: FP
+  EROC   2026-07-01 BLOCK -> PASS         no_pin                                   
+  WEN    2026-07-01 BLOCK -> PASS         no_pin                                   operator 2026-08-08: FP
+  CLRO   2026-07-02 BLOCK -> BLOCK        polygon_headline_model                   operator 2026-08-08: the one correct suppression (TP)
+  MRNA   2026-07-02 BLOCK -> PASS         no_pin                                   
+  ROKU   2026-07-03 PASS  -> BLOCK        polygon_headline_model                   
+  ESI    2026-07-06 BLOCK -> PASS         no_pin                                   
+  ROKU   2026-07-06 PASS  -> BLOCK        polygon_headline_model                   
+  CRNX   2026-07-07 BLOCK -> BLOCK        claude_deal_fields                       
+  ROKU   2026-07-07 PASS  -> BLOCK        polygon_headline_model                   
+  ENVX   2026-07-09 BLOCK -> PASS         no_pin                                   
+  CCC    2026-07-10 BLOCK -> PASS         no_pin                                   
+  NXTC   2026-07-14 BLOCK -> BLOCK        polygon_headline_model                   
+  LION   2026-07-15 BLOCK -> PASS         no_pin                                   
+  PYPL   2026-07-15 BLOCK -> PASS         no_pin                                   
+  ATAI   2026-07-16 BLOCK -> PASS         no_pin                                   
+  LCID   2026-07-17 BLOCK -> PASS         no_pin                                   operator 2026-08-08: FP
+  CLBK   2026-07-20 BLOCK -> PASS         no_pin                                   
+  UTZ    2026-07-21 BLOCK -> BLOCK        claude_deal_fields                       
+  COCO   2026-07-23 BLOCK -> PASS         no_pin                                   
+  ATAI   2026-07-24 BLOCK -> BLOCK (price                                          
+  SAFT   2026-07-24 BLOCK -> PASS         no_pin                                   
+  ATAI   2026-07-27 BLOCK -> BLOCK (price                                          
+  FBRX   2026-07-27 BLOCK -> PASS         no_pin                                   
+  FHB    2026-07-27 BLOCK -> PASS         no_pin                                   
+  ATAI   2026-07-28 BLOCK -> BLOCK (price                                          
+  PYPL   2026-07-28 BLOCK -> PASS         no_pin                                   
+  ATAI   2026-07-29 BLOCK -> BLOCK (price                                          
+  MDLZ   2026-07-29 BLOCK -> PASS         no_pin                                   
+  BSBR   2026-07-31 BLOCK -> PASS         no_pin                                   
+  ATKR   2026-08-03 BLOCK -> BLOCK        claude_deal_fields                       
+  BOW    2026-08-03 BLOCK -> PASS         no_pin                                   
+  SUPN   2026-08-03 BLOCK -> PASS         no_pin                                   
+  ACLS   2026-08-04 BLOCK -> PASS         no_pin                                   
+  AHCO   2026-08-04 BLOCK -> PASS         no_pin                                   
+  FBRX   2026-08-04 BLOCK -> BLOCK (price                                          
+  HLMN   2026-08-04 BLOCK -> PASS         no_pin                                   
+  COMP   2026-08-05 BLOCK -> PASS         no_pin                                   
+  FBRX   2026-08-05 BLOCK -> BLOCK (price                                          
+  SOUN   2026-08-06 BLOCK -> PASS         no_pin                                   operator 2026-08-08: FP
+  DV     2026-08-07 BLOCK -> BLOCK        claude_deal_fields                       
+  SPCX   2026-08-07 BLOCK -> PASS         no_pin                                   
+  SOUN   2026-08-08 PASS  -> PASS         no_pin                                   
+  FBRX   2026-08-10 BLOCK -> BLOCK        polygon_headline_model                   
+  HZO    2026-08-10 BLOCK -> PASS         no_pin                                   
+  VREX   2026-08-10 BLOCK -> PASS         no_pin                                   
+  FBRX   2026-08-11 BLOCK -> BLOCK        polygon_headline_model                   
+  RNW    2026-08-11 BLOCK -> PASS         no_pin                                   
+  FBRX   2026-08-12 BLOCK -> BLOCK        polygon_headline_model                   
+  AMBP   2026-08-13 BLOCK -> PASS         no_pin                                   
+  ARX    2026-08-13 BLOCK -> PASS         no_pin                                   
+  WWW    2026-08-13 PASS  -> PASS         no_pin                                   
+  DFH    2026-08-14 BLOCK -> PASS         no_pin                                   
+  WEAV   2026-08-18 BLOCK -> PASS         no_pin                                   
+  TEM    2026-08-19 PASS  -> PASS         no_pin                                   
+  BANF   2026-08-20 BLOCK -> PASS         no_pin                                   
+  MAIR   2026-08-25 BLOCK -> PASS         no_pin                                   
+  SOLS   2026-08-28 PASS  -> PASS         no_pin                                   
+  CRK    2026-09-01 PASS  -> PASS         no_pin                                   
+  GPRK   2026-09-03 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  IE     2026-09-08 PASS  -> PASS         no_pin                                   
+  OBX    2026-09-08 PASS  -> PASS         no_pin                                   
+  RGTI   2026-09-08 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  CHYM   2026-09-09 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  CSR    2026-09-09 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  ACVA   2026-09-11 BLOCK -> BLOCK        claude_deal_fields                       operator 2026-10-01: REAL buyout - correctly blocked
+  SWKS   2026-09-15 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  WAY    2026-09-15 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  FWDI   2026-09-18 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  JBS    2026-09-18 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  BRSL   2026-09-21 PASS  -> PASS         no_pin                                   
+  FWDI   2026-09-21 PASS  -> PASS         no_pin                                   
+  VKTX   2026-09-22 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  NHP    2026-09-28 PASS  -> PASS         no_pin                                   
+  IOVA   2026-09-29 BLOCK -> PASS         no_pin                                   operator 2026-10-01: wrongly blocked
+  NVTS   2026-09-29 PASS  -> PASS         no_pin                                   
+  SYNA   2026-10-02 BLOCK -> BLOCK        claude_deal_fields                       
+
+model calls: 234; actual spend $1.69; call errors 0; calls skipped at a cap 0
+old -> new verdicts: BLOCK->BLOCK: 35, BLOCK->PASS: 102, PASS->BLOCK: 3, PASS->PASS: 11
+labelled acceptance: 25 of 25 as labelled
+
+MUST-SHOW — for HIS labelling (agent-read, NOT labels): old -> new, the answers, the text
+  BANF   2026-08-20 BLOCK -> PASS (no_pin) | grader: buyer/signed/unknown grade routine | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  CECO   2026-05-22 BLOCK -> PASS (no_pin) | grader: unanswered grade None | headline: buyer/signed/mixed 'CECO Environmental and Thermon Group Holdings Announce Elect' | text: -
+  CECO   2026-06-09 BLOCK -> PASS (no_pin) | grader: none/none/none grade strong | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  CRNX   2026-07-07 BLOCK -> BLOCK (claude_deal_fields) | grader: target/signed/unknown grade mna | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  D      2026-05-18 BLOCK -> PASS (no_pin) | grader: none/none/none grade routine | headline: target/signed/stock 'Nvidia Earnings Could Decide Whether the AI Trade Still Hold'; target/proposed/stock 'NextEra Energy, Dominion In Talks To Create $400 Billion Uti' | text: audit_excerpt_200_chars_only
+  DFH    2026-08-14 BLOCK -> PASS (no_pin) | grader: buyer/signed/cash grade strong | headline: buyer/signed/cash 'Donerail Applauds Beazer Homes Board for Delivering a Value-' | text: audit_excerpt_200_chars_only
+  DSGN   2026-05-18 BLOCK -> BLOCK (claude_deal_fields) | grader: target/signed/unknown grade mna | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  DV     2026-08-07 BLOCK -> BLOCK (claude_deal_fields) | grader: target/signed/cash grade mna | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  FBRX   2026-07-27 BLOCK -> PASS (no_pin) | grader: none/none/none grade routine | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  FBRX   2026-08-04 BLOCK -> BLOCK (price-signature path, out of #692 scope - unchanged) () | grader: unanswered grade None | headline: no candidate asked | text: -
+  FBRX   2026-08-05 BLOCK -> BLOCK (price-signature path, out of #692 scope - unchanged) () | grader: unanswered grade None | headline: no candidate asked | text: -
+  FBRX   2026-08-10 BLOCK -> BLOCK (polygon_headline_model) | grader: unanswered grade None | headline: target/signed/cash 'argenx Announces Commencement of Tender Offer to Acquire For' | text: -
+  FBRX   2026-08-11 BLOCK -> BLOCK (polygon_headline_model) | grader: unanswered grade None | headline: target/signed/cash 'argenx Announces Commencement of Tender Offer to Acquire For' | text: -
+  FBRX   2026-08-12 BLOCK -> BLOCK (polygon_headline_model) | grader: unanswered grade None | headline: target/signed/cash 'argenx Announces Commencement of Tender Offer to Acquire For' | text: -
+  HZO    2026-08-10 BLOCK -> PASS (no_pin) | grader: target/proposed/unknown grade routine | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  IMAX   2026-05-22 BLOCK -> PASS (no_pin) | grader: target/proposed/unknown grade routine | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  LBRDA  2026-06-29 BLOCK -> PASS (no_pin) | grader: none/none/none grade routine | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  LBRDK  2026-06-29 BLOCK -> PASS (no_pin) | grader: none/none/none grade routine | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  MAIR   2026-08-25 BLOCK -> PASS (no_pin) | grader: buyer/signed/none grade routine | headline: no candidate asked | text: stored_grade_corpus
+  MGM    2026-06-01 BLOCK -> PASS (no_pin) | grader: none/none/none grade routine | headline: target/proposed/cash 'MGM Resorts Stock Jumps 16%: Here's Why'; target/proposed/cash 'S&P 500 Halts Gains As Oil Jumps 8% On Iran Ceasefire Stando'; target/proposed/cash 'Barry Diller's People Makes Move To Take Casino Giant MGM Pr' | text: audit_excerpt_200_chars_only
+  NUVL   2026-06-09 BLOCK -> PASS (no_pin) | grader: target/proposed/unknown grade routine | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  PD     2026-05-29 BLOCK -> BLOCK (claude_deal_fields) | grader: target/signed/unknown grade mna | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  PYPL   2026-07-15 BLOCK -> PASS (no_pin) | grader: none/none/none grade routine | headline: target/proposed/cash 'Why Fiserv Stock Just Popped'; target/speculation/unknown 'PayPal Might Be Getting Acquired. Here's What I'm Doing With'; target/proposed/cash 'Why PayPal Stock Just Went to the Moon' | text: audit_excerpt_200_chars_only
+  PYPL   2026-07-28 BLOCK -> PASS (no_pin) | grader: unanswered grade None | headline: target/proposed/cash 'Why Fiserv Stock Just Popped'; target/speculation/unknown 'PayPal Might Be Getting Acquired. Here's What I'm Doing With'; target/proposed/cash 'Why PayPal Stock Just Went to the Moon' | text: -
+  PZZA   2026-05-15 BLOCK -> PASS (no_pin) | grader: target/proposed/unknown grade routine | headline: target/proposed/unknown 'Deal Dispatch: GoPro Retains Houlihan Lokey In Strategic Rev' | text: audit_excerpt_200_chars_only
+  QBTS   2026-05-21 BLOCK -> PASS (no_pin) | grader: none/none/none grade routine | headline: none/none/none 'Stock Market Today, May 11: IonQ Rises as SkyWater Vote Adva' | text: audit_excerpt_200_chars_only
+  QBTS   2026-05-22 BLOCK -> PASS (no_pin) | grader: unanswered grade None | headline: none/none/none 'Stock Market Today, May 11: IonQ Rises as SkyWater Vote Adva' | text: -
+  RNW    2026-08-11 BLOCK -> PASS (no_pin) | grader: target/proposed/unknown grade routine | headline: no candidate asked | text: audit_excerpt_200_chars_only
+  ROKU   2026-06-24 BLOCK -> BLOCK (polygon_headline_model) | grader: unanswered grade None | headline: target/signed/mixed 'Why Fox Corp Stock Sank 24.9% This Week' | text: -
+  ROKU   2026-07-03 PASS -> BLOCK (polygon_headline_model) | grader: unanswered grade None | headline: target/signed/mixed 'Why Fox Corp Stock Sank 24.9% This Week' | text: -
+  ROKU   2026-07-06 PASS -> BLOCK (polygon_headline_model) | grader: unanswered grade None | headline: target/signed/mixed 'Why Fox Corp Stock Sank 24.9% This Week' | text: -
+  ROKU   2026-07-07 PASS -> BLOCK (polygon_headline_model) | grader: unanswered grade None | headline: target/signed/mixed 'Why Fox Corp Stock Sank 24.9% This Week' | text: -
+  SYNA   2026-10-02 BLOCK -> BLOCK (claude_deal_fields) | grader: target/signed/cash grade mna | headline: target/signed/unknown 'Stock Market Midday, Oct. 2: Stocks Rally as Weak Jobs Data ' | text: stored_grade_corpus_first_6000
+  THR    2026-05-22 BLOCK -> BLOCK (polygon_headline_model) | grader: unanswered grade None | headline: target/signed/mixed 'CECO Environmental and Thermon Group Holdings Announce Elect' | text: -
+  UTZ    2026-07-21 BLOCK -> BLOCK (claude_deal_fields) | grader: target/signed/unknown grade mna | headline: target/signed/cash 'Stock Market Today, July 21: Utz Brands Surges on $2.9 Billi' | text: audit_excerpt_200_chars_only
+  WAY    2026-09-15 BLOCK -> PASS (no_pin) | grader: target/proposed/unknown grade routine | headline: no candidate asked | text: stored_grade_corpus
+  WEN    2026-06-26 BLOCK -> PASS (no_pin) | grader: unanswered grade None | headline: target/proposed/cash 'The Crowd Is Selling Wendy's Stock. Here's Why It's a Buy In' | text: -
+  WEN    2026-06-29 BLOCK -> PASS (no_pin) | grader: unanswered grade None | headline: target/proposed/cash 'The Crowd Is Selling Wendy's Stock. Here's Why It's a Buy In' | text: -
+
+GRADE STABILITY (ruling 6): 30 non-deal rows re-graded old vs new prompt; 2 quality flip(s). One sample per arm — a flip may be model noise as well as the prompt.
+  ACN    2026-10-01 routine -> strong (stored routine; new deal answer none/none/none)
+  SYRE   2026-09-30 strong -> routine (stored routine; new deal answer none/none/none)

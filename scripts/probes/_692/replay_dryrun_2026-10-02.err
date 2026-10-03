@@ -1,0 +1,173 @@
+population: 717 audit rows -> 151 ticker-days (137 blocked)
+Ticker details failed for XOMA: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/XOMA?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for GBTG: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/GBTG?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for KALV: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/KALV?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for THR: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/THR?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: CGCT"}}}
+Ticker details failed for CGCT: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/CGCT?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: TMHC"}}}
+Ticker details failed for FBRX: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/FBRX?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+model: claude-sonnet-5-5 (shared.llm_models.GROUNDED_GRADE_MODEL, resolved at run time) at $2.00 in / $10.00 out per MTok (pricing_for)
+cost per call = ((prompt_chars / 3.5 + tool_tokens) x $2.00 + est_output_tokens x $10.00) / 1e6;  tool_tokens grader 700 / headline 500; est_output (incl. thinking) grader 600 / headline 350
+planned model calls (UPPER BOUND — the headline scan stops at the first pin): 248 = 107 grader + 81 headline + 60 stability (30 rows x old/new)  (cap 700)
+ESTIMATED whole path $2.41 = grader $1.29 + headline $0.46 + stability $0.67  (abort above $6.00)
+  PZZA   2026-05-15 BLOCK -> None                                                  
+  XOMA   2026-05-15 BLOCK -> None                                                  
+  BRC    2026-05-18 BLOCK -> None                                                  
+  D      2026-05-18 BLOCK -> None                                                  
+  DSGN   2026-05-18 BLOCK -> None                                                  
+  RAMP   2026-05-18 BLOCK -> None                                                  
+  IMVT   2026-05-20 BLOCK -> None                                                  
+  OGN    2026-05-20 BLOCK -> None                                                  
+  ASRT   2026-05-21 BLOCK -> BLOCK (price                                          
+  GBTG   2026-05-21 BLOCK -> None                                                  
+  INFQ   2026-05-21 BLOCK -> None                                                  
+  QBTS   2026-05-21 BLOCK -> None                                                  
+  RGTI   2026-05-21 BLOCK -> None                                                  
+  RL     2026-05-21 BLOCK -> None                                                  
+  ASRT   2026-05-22 BLOCK -> BLOCK (price                                          
+  CECO   2026-05-22 BLOCK -> None                                                  
+  EL     2026-05-22 BLOCK -> None                                                  
+  ELVR   2026-05-22 BLOCK -> None                                                  
+  IMAX   2026-05-22 BLOCK -> None                                                  operator-confirmed 2026-07-12: FP
+  INFQ   2026-05-22 BLOCK -> None                                                  
+  KALV   2026-05-22 BLOCK -> None                                                  
+  QBTS   2026-05-22 BLOCK -> None                                                  
+  RGTI   2026-05-22 BLOCK -> None                                                  
+  THR    2026-05-22 BLOCK -> None                                                  
+  KALV   2026-05-25 BLOCK -> None                                                  
+  BTGO   2026-05-26 BLOCK -> None                                                  
+  MOD    2026-05-26 BLOCK -> None                                                  
+  VMET   2026-05-26 BLOCK -> None                                                  
+  MYRG   2026-05-27 BLOCK -> None                                                  
+  ONDS   2026-05-28 BLOCK -> None                                                  operator 2026-07-04: FP
+  CGCT   2026-05-29 BLOCK -> None                                                  
+  PD     2026-05-29 BLOCK -> None                                                  
+  QURE   2026-05-29 BLOCK -> None                                                  
+  FSSL   2026-06-01 BLOCK -> None                                                  
+  LILA   2026-06-01 BLOCK -> None                                                  
+  LILAK  2026-06-01 BLOCK -> None                                                  
+  MGM    2026-06-01 BLOCK -> None                                                  
+  TMHC   2026-06-01 BLOCK -> None                                                  
+  MMED   2026-06-03 BLOCK -> None                                                  operator 2026-07-04: FP
+  ELPC   2026-06-04 BLOCK -> None                                                  
+  KALV   2026-06-04 BLOCK -> BLOCK (price                                          
+  LBRX   2026-06-04 BLOCK -> None                                                  
+  KALV   2026-06-05 BLOCK -> BLOCK (price                                          
+  KALV   2026-06-08 BLOCK -> BLOCK (price                                          
+  SUNE   2026-06-08 BLOCK -> None                                                  operator 2026-07-04: TP - correctly blocked
+  CECO   2026-06-09 BLOCK -> None                                                  
+  NUVL   2026-06-09 BLOCK -> None                                                  
+  CBRL   2026-06-10 BLOCK -> None                                                  
+  DXC    2026-06-11 BLOCK -> None                                                  
+  AYA    2026-06-15 BLOCK -> None                                                  
+  HYMC   2026-06-15 BLOCK -> None                                                  
+  LII    2026-06-15 BLOCK -> None                                                  operator 2026-08-08: FP
+  PRLB   2026-06-15 BLOCK -> None                                                  
+  SBSW   2026-06-15 BLOCK -> None                                                  
+  SCZM   2026-06-15 BLOCK -> None                                                  operator 2026-08-08: FP
+  TRIP   2026-06-15 BLOCK -> None                                                  
+  OLN    2026-06-16 BLOCK -> None                                                  
+  FRMI   2026-06-17 BLOCK -> None                                                  operator 2026-07-04: FP
+  IMOS   2026-06-18 BLOCK -> None                                                  
+  ACA    2026-06-22 BLOCK -> None                                                  
+  APGE   2026-06-22 BLOCK -> None                                                  
+  EPC    2026-06-23 BLOCK -> None                                                  
+  INMD   2026-06-24 BLOCK -> None                                                  
+  ROKU   2026-06-24 BLOCK -> None                                                  
+  TECH   2026-06-25 BLOCK -> None                                                  
+  WEN    2026-06-26 BLOCK -> None                                                  operator 2026-08-08: FP
+  ZSQR   2026-06-26 BLOCK -> None                                                  
+  CMCSA  2026-06-29 BLOCK -> None                                                  
+  FUL    2026-06-29 BLOCK -> None                                                  
+  IRDM   2026-06-29 BLOCK -> None                                                  
+  LBRDA  2026-06-29 BLOCK -> None                                                  
+  LBRDK  2026-06-29 BLOCK -> None                                                  
+  RKLB   2026-06-29 BLOCK -> None                                                  
+  WEN    2026-06-29 BLOCK -> None                                                  operator 2026-08-08: FP
+  UMAC   2026-06-30 BLOCK -> None                                                  operator 2026-08-08: FP
+  EROC   2026-07-01 BLOCK -> None                                                  
+  WEN    2026-07-01 BLOCK -> None                                                  operator 2026-08-08: FP
+  CLRO   2026-07-02 BLOCK -> None                                                  operator 2026-08-08: the one correct suppression (TP)
+  MRNA   2026-07-02 BLOCK -> None                                                  
+  ROKU   2026-07-03 PASS  -> None                                                  
+  ESI    2026-07-06 BLOCK -> None                                                  
+  ROKU   2026-07-06 PASS  -> None                                                  
+  CRNX   2026-07-07 BLOCK -> None                                                  
+  ROKU   2026-07-07 PASS  -> None                                                  
+  ENVX   2026-07-09 BLOCK -> None                                                  
+  CCC    2026-07-10 BLOCK -> None                                                  
+  NXTC   2026-07-14 BLOCK -> None                                                  
+  LION   2026-07-15 BLOCK -> None                                                  
+  PYPL   2026-07-15 BLOCK -> None                                                  
+  ATAI   2026-07-16 BLOCK -> None                                                  
+  LCID   2026-07-17 BLOCK -> None                                                  operator 2026-08-08: FP
+  CLBK   2026-07-20 BLOCK -> None                                                  
+  UTZ    2026-07-21 BLOCK -> None                                                  
+  COCO   2026-07-23 BLOCK -> None                                                  
+  ATAI   2026-07-24 BLOCK -> BLOCK (price                                          
+  SAFT   2026-07-24 BLOCK -> None                                                  
+  ATAI   2026-07-27 BLOCK -> BLOCK (price                                          
+  FBRX   2026-07-27 BLOCK -> None                                                  
+  FHB    2026-07-27 BLOCK -> None                                                  
+  ATAI   2026-07-28 BLOCK -> BLOCK (price                                          
+  PYPL   2026-07-28 BLOCK -> None                                                  
+  ATAI   2026-07-29 BLOCK -> BLOCK (price                                          
+  MDLZ   2026-07-29 BLOCK -> None                                                  
+  BSBR   2026-07-31 BLOCK -> None                                                  
+  ATKR   2026-08-03 BLOCK -> None                                                  
+  BOW    2026-08-03 BLOCK -> None                                                  
+  SUPN   2026-08-03 BLOCK -> None                                                  
+  ACLS   2026-08-04 BLOCK -> None                                                  
+  AHCO   2026-08-04 BLOCK -> None                                                  
+  FBRX   2026-08-04 BLOCK -> BLOCK (price                                          
+  HLMN   2026-08-04 BLOCK -> None                                                  
+  COMP   2026-08-05 BLOCK -> None                                                  
+  FBRX   2026-08-05 BLOCK -> BLOCK (price                                          
+  SOUN   2026-08-06 BLOCK -> None                                                  operator 2026-08-08: FP
+  DV     2026-08-07 BLOCK -> None                                                  
+  SPCX   2026-08-07 BLOCK -> None                                                  
+  SOUN   2026-08-08 PASS  -> None                                                  
+  FBRX   2026-08-10 BLOCK -> None                                                  
+  HZO    2026-08-10 BLOCK -> None                                                  
+  VREX   2026-08-10 BLOCK -> None                                                  
+  FBRX   2026-08-11 BLOCK -> None                                                  
+  RNW    2026-08-11 BLOCK -> None                                                  
+  FBRX   2026-08-12 BLOCK -> None                                                  
+  AMBP   2026-08-13 BLOCK -> None                                                  
+  ARX    2026-08-13 BLOCK -> None                                                  
+  WWW    2026-08-13 PASS  -> None                                                  
+  DFH    2026-08-14 BLOCK -> None                                                  
+  WEAV   2026-08-18 BLOCK -> None                                                  
+  TEM    2026-08-19 PASS  -> None                                                  
+  BANF   2026-08-20 BLOCK -> None                                                  
+  MAIR   2026-08-25 BLOCK -> None                                                  
+  SOLS   2026-08-28 PASS  -> None                                                  
+  CRK    2026-09-01 PASS  -> None                                                  
+  GPRK   2026-09-03 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  IE     2026-09-08 PASS  -> None                                                  
+  OBX    2026-09-08 PASS  -> None                                                  
+  RGTI   2026-09-08 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  CHYM   2026-09-09 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  CSR    2026-09-09 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  ACVA   2026-09-11 BLOCK -> None                                                  operator 2026-10-01: REAL buyout - correctly blocked
+  SWKS   2026-09-15 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  WAY    2026-09-15 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  FWDI   2026-09-18 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  JBS    2026-09-18 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  BRSL   2026-09-21 PASS  -> None                                                  
+  FWDI   2026-09-21 PASS  -> None                                                  
+  VKTX   2026-09-22 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  NHP    2026-09-28 PASS  -> None                                                  
+  IOVA   2026-09-29 BLOCK -> None                                                  operator 2026-10-01: wrongly blocked
+  NVTS   2026-09-29 PASS  -> None                                                  
+  SYNA   2026-10-02 BLOCK -> None                                                  
+
+model calls: 0; actual spend $0.00; call errors 0; calls skipped at a cap 0
+dry run: no model call made.
