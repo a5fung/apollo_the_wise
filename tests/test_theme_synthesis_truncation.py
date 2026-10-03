@@ -113,8 +113,10 @@ async def test_truncated_tool_use_cut_mid_json_is_detected_as_failure(monkeypatc
     # THE SHAPE THAT BURNED US (2026-08-10, theme_split): the response DOES carry a
     # tool_use block for the forced tool, but stop_reason='max_tokens' because the
     # JSON was cut before `cohorts` was ever emitted — tool_input.get('cohorts') would
-    # silently read as [] (a fabricated "0 cohorts") without the explicit guard.
-    partial_block = _Block("tool_use", {"analysis_scratchpad": "OKTA + CRWD + DDOG accelerati"})
+    # silently read as [] (a fabricated "0 cohorts") without the explicit guard. (#693: the
+    # tool now puts `cohorts` FIRST, so the cut-before-cohorts shape is an empty input; it used
+    # to be a lone half-written analysis_scratchpad.)
+    partial_block = _Block("tool_use", {})
     captured = _setup(monkeypatch, _Resp("max_tokens", [partial_block]))
     result = await theme_synthesis.run_theme_synthesis()
     assert result["n_proposed"] == 0
@@ -133,3 +135,32 @@ async def test_normal_response_parses_cohorts_and_records_stop_reason(monkeypatc
     assert result["n_proposed"] == 1  # the cohort was parsed from the completed tool call
     runs = [d for et, d in captured if et == "theme_synthesis_run"]
     assert runs and '"stop_reason": "tool_use"' in runs[-1]
+
+
+@pytest.mark.asyncio
+async def test_the_tool_puts_cohorts_first_and_the_notes_after_and_a_reply_with_notes_is_read(monkeypatch):
+    """#693: a required scratchpad that precedes the answer is the shape claude-sonnet-5-5 can refuse
+    ("reasoning_extraction"). Order is pinned in BOTH the property order and `required`, the prompt
+    says to decide first, and a reply carrying the trailing notes still yields its cohorts."""
+    cohorts = [{"name": "Test Cohort", "tickers": ["T1", "T2", "T3"],
+                "confidence": "high", "thesis": "a coherent cross-ticker thesis"}]
+    reply = _Resp("tool_use", [_Block("tool_use", {"cohorts": cohorts, "analysis_scratchpad": "notes"})])
+    _setup(monkeypatch, reply)
+    sent: dict = {}
+
+    class _Recording:
+        async def create(self, **kw):
+            sent.update(kw)
+            return reply
+
+    monkeypatch.setattr(theme_engine_mod, "_get_anthropic_client",
+                        lambda: type("C", (), {"messages": _Recording()})())
+    result = await theme_synthesis.run_theme_synthesis()
+    assert result["n_proposed"] == 1
+    schema = sent["tools"][0]["input_schema"]
+    assert list(schema["properties"]) == ["cohorts", "analysis_scratchpad"]
+    assert schema["required"] == ["cohorts", "analysis_scratchpad"]
+    prompt = sent["messages"][0]["content"]
+    assert "Decide the cohorts first" in prompt
+    assert "FIRST" not in schema["properties"]["analysis_scratchpad"]["description"]
+

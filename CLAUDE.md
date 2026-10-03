@@ -266,7 +266,7 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ### 2026-09-23 — a model release can no longer break the judges: transport adapts, canary gates adoption
 
-- 🔴 **opus-5-5 rejected forced `tool_choice` and `thinking: disabled` (HTTP 400); both judges failed open.** Fix: ONE factory `shared/llm_client.py` (`make_async_anthropic`/`make_anthropic`) — every production client goes through it (AST-gated, `tests/test_llm_client_factory_population.py`); a rejected feature is rewritten (forced tool → structured output + synthesized `tool_use`; thinking dropped + headroom) and remembered per model. The nightly refresh now CANARIES a release through the adapter before adopting it; a failure keeps the last working id and Telegrams the exact error.
+- 🔴 **opus-5-5 rejected forced `tool_choice` and `thinking: disabled` (HTTP 400); both judges failed open.** Fix: ONE factory `shared/llm_client.py` (`make_async_anthropic`/`make_anthropic`) — every production client goes through it (AST-gated, `tests/test_llm_client_factory_population.py`); a rejected feature is rewritten (forced tool → structured output + synthesized `tool_use`; thinking-off → `between_tools` on 5.5, else dropped + headroom, #693) and remembered per model. The nightly refresh now CANARIES a release through the adapter before adopting it; a failure keeps the last working id and Telegrams the exact error.
 
 ### 2026-09-14 — a measure that never asks what the system already did counts its wins as losses
 

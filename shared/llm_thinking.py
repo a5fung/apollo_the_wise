@@ -13,7 +13,14 @@ invisible, uncapped-by-us consumer, which is why three separate threshold raises
 
 `budget_tokens` is REJECTED by the API on sonnet-5 (verified in-container, #575) —
 there is no partial setting. `{"type": "disabled"}` vs leaving `thinking` unset
-(adaptive) is the only lever; there is no third option to build here.
+(adaptive) is the only lever the CALL SITES choose between.
+
+claude-sonnet-5-5 (#693, 2026-10-02) rejects `{"type": "disabled"}` and offers its own off
+switch, `{"type": "between_tools"}` (no other field; a 400 at effort xhigh/max). Call sites keep
+writing `DISABLED`; `shared/llm_client.py` translates it for the model: `between_tools` with
+`max_tokens` untouched where the model offers it, else (claude-opus-5-5) the param is dropped and
+`max_tokens` gets `thinking_headroom`. Before #693 5.5 got the drop too, so every job listed
+below thought in full there — the registry said "off", the wire said "adaptive".
 
 WHO IS IN `THINKING_DISABLED`: callers whose entire output is a small, fixed
 JSON/tool shape, where the model already has an explicit `analysis_scratchpad`
@@ -55,7 +62,7 @@ THINKING_DISABLED = frozenset({
     "narrative_theme_discovery",   # forced tool from turn 1 (report_narrative_themes), no advisor branch
     "theme_synthesis",             # forced tool from turn 1 (propose_emerging_cohorts), single-shot, no advisor branch
     "theme_parent_adjudication",   # #505 containment adjudicator (Sonnet): forced tool, terse
-                                    # analysis_scratchpad + verdict + one-sentence reason — same
-                                    # schema-bounded shape as theme_merge_adjudication (Haiku,
+                                    # verdict + one-sentence reason + brief notes AFTER them (#693) —
+                                    # same schema-bounded shape as theme_merge_adjudication (Haiku,
                                     # untouched, has no thinking lever to begin with).
 })

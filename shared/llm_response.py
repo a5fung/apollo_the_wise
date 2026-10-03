@@ -30,6 +30,7 @@ __all__ = [
     "content_block_types",
     "is_truncated",
     "stop_reason",
+    "refusal_category",
     "usage_tokens",
     "perplexity_finish_reason",
     "perplexity_usage_tokens",
@@ -87,6 +88,26 @@ def stop_reason(response: Any) -> Optional[str]:
     raw = response.get("stop_reason") if isinstance(response, dict) \
         else getattr(response, "stop_reason", None)
     return str(raw) if raw is not None else None
+
+
+def refusal_category(response: Any) -> str:
+    """WHY the model declined: `stop_details.category` ("reasoning_extraction", "cyber", "bio",
+    "frontier_llm", "general_harms"), or "" when the response carries none (#693).
+
+    Meaningful only when `stop_reason(response) == "refusal"`. The category is what tells a
+    prompt we can fix (reasoning_extraction = the request asks the model to write its reasoning
+    into the answer) from one we cannot. Dict-or-object at both levels, same duality as the
+    readers above; a non-string value (a stubbed client's auto-attribute) reads as absent, so
+    the caller's message says "no category" instead of printing an object repr.
+    """
+    if response is None:
+        return ""
+    details = response.get("stop_details") if isinstance(response, dict) \
+        else getattr(response, "stop_details", None)
+    if details is None:
+        return ""
+    cat = details.get("category") if isinstance(details, dict) else getattr(details, "category", None)
+    return cat if isinstance(cat, str) else ""
 
 
 def usage_tokens(response: Any) -> Optional[dict]:

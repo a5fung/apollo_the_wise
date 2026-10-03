@@ -483,9 +483,15 @@ def _block_type(b: Any) -> str:
     return str(b.get("type") if isinstance(b, dict) else getattr(b, "type", "") or "")
 
 
+def _refused_detail(category: str) -> str:
+    """'refused' — plus WHY when the API said (#693: 'refused (reasoning_extraction)' tells him the
+    prompt asks the model to write its reasoning out; a bare 'refused' left him guessing)."""
+    return f"refused ({category})" if category else "refused"
+
+
 def judge_replay_response(request: dict, resp: Any) -> RunResult:
     """PASS/FAIL for one replayed answer against what its caller needs from it."""
-    from shared.llm_response import first_text, stop_reason
+    from shared.llm_response import first_text, refusal_category, stop_reason
     from shared.llm_samples import answer_summary
 
     try:
@@ -495,7 +501,7 @@ def judge_replay_response(request: dict, resp: Any) -> RunResult:
         answer = None
     sr = stop_reason(resp)
     if sr == "refusal":
-        return RunResult(FAIL, "refused", answer)
+        return RunResult(FAIL, _refused_detail(refusal_category(resp)), answer)
     if sr == "max_tokens":
         return RunResult(FAIL, f"cut off at its own max_tokens ({request.get('max_tokens')})", answer)
     tools = {t.get("name"): t for t in request.get("tools") or [] if isinstance(t, dict)}
@@ -526,7 +532,8 @@ def _classify_replay_error(e: BaseException) -> RunResult:
 
     text = str(getattr(e, "message", "") or e)
     if isinstance(e, StructuredOutputError):
-        return RunResult(FAIL, "refused" if "refus" in text else f"unreadable answer: {text[:160]}")
+        return RunResult(FAIL, _refused_detail(getattr(e, "refusal_category", "")) if "refus" in text
+                         else f"unreadable answer: {text[:160]}")
     status = getattr(e, "status_code", None)
     if isinstance(status, int) and not isinstance(status, bool):
         if status in _TRANSIENT_STATUSES or status >= 500:

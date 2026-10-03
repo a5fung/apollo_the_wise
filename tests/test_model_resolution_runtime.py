@@ -976,6 +976,30 @@ def test_a_structured_output_error_is_a_failure(monkeypatch):
     assert r.verdict == mr.FAIL and r.error.startswith("unreadable answer")
 
 
+def test_a_refusal_names_its_category_when_the_api_gave_one(monkeypatch):
+    """#693: 'refused' alone left him guessing; the category (stop_details.category) says whether
+    the prompt asks the model to write its reasoning out. Both refusal paths carry it."""
+    from shared.llm_client import StructuredOutputError
+
+    def structured_refusal(kw):
+        raise StructuredOutputError("model refused the request (stop_reason=refusal, "
+                                    "category=reasoning_extraction)",
+                                    refusal_category="reasoning_extraction")
+    r, _ = _replay_one(monkeypatch, structured_refusal)
+    assert (r.verdict, r.error) == (mr.FAIL, "refused (reasoning_extraction)")
+
+    def plain_refusal(kw):
+        resp = _Resp([], "refusal")
+        resp.stop_details = SimpleNamespace(type="refusal", category="cyber", explanation=None)
+        return resp
+    r, _ = _replay_one(monkeypatch, plain_refusal)
+    assert (r.verdict, r.error) == (mr.FAIL, "refused (cyber)")
+
+    # no stop_details at all (the older fakes above): still the bare word, never an AttributeError
+    r, _ = _replay_one(monkeypatch, lambda kw: _Resp([], "refusal"))
+    assert (r.verdict, r.error) == (mr.FAIL, "refused")
+
+
 def test_an_answer_cut_off_at_its_own_max_tokens_is_a_failure(monkeypatch):
     r, _ = _replay_one(monkeypatch, lambda kw: _Resp([_Block("text", text="partial")], "max_tokens"))
     assert r.verdict == mr.FAIL and "cut off at its own max_tokens (100)" in r.error

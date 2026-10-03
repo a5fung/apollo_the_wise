@@ -58,15 +58,10 @@ _SYNTHESIS_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "analysis_scratchpad": {
-                "type": "string",
-                "description": (
-                    "Brief notes: which candidates are "
-                    "moving for a SHARED narrative reason (not just same "
-                    "sector)? What is the story? Is it already a known live "
-                    "theme? Prefer proposing NOTHING over a forced grouping."
-                ),
-            },
+            # ORDER MATTERS (#693): `cohorts` (the answer) first, the notes LAST — in both the
+            # property order and `required`. A required scratchpad that precedes the answer is the
+            # shape claude-sonnet-5-5 can refuse as "reasoning_extraction"; the notes are a record
+            # written after the decision, never a step the answer waits on.
             "cohorts": {
                 "type": "array",
                 "items": {
@@ -83,8 +78,16 @@ _SYNTHESIS_TOOL = {
                     "required": ["name", "thesis", "tickers", "confidence"],
                 },
             },
+            "analysis_scratchpad": {
+                "type": "string",
+                "description": (
+                    "Brief notes, written after the cohorts: which candidates moved for a SHARED "
+                    "narrative reason (not just same sector), what the story is, whether it is "
+                    "already a known live theme. Empty cohorts are fine — say why in a line."
+                ),
+            },
         },
-        "required": ["analysis_scratchpad", "cohorts"],
+        "required": ["cohorts", "analysis_scratchpad"],
     },
 }
 
@@ -103,6 +106,8 @@ Rules:
 - 3-12 members per cohort, at most {max_cohorts} cohorts.
 - Do NOT restate the EXISTING live themes listed at the bottom — only EMERGING stories.
 - Proposing ZERO cohorts is a correct, common output. Never force a grouping.
+
+Decide the cohorts first, then add brief notes in `analysis_scratchpad` on what you grouped and why.
 
 CANDIDATES (signal | ticker | sector | RS now | 4w RS path | description):
 {candidates}
@@ -300,8 +305,9 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
             # thinking disabled (#575). #575's task text guessed this caller was
             # freeform like theme_discovery — it is NOT: tool_choice is forced to
             # propose_emerging_cohorts from turn 1, single-shot, no advisor branch,
-            # and analysis_scratchpad already carries the reasoning. Same shape as
-            # narrative_theme_discovery. See shared/llm_thinking.py.
+            # and the tool's analysis_scratchpad (brief notes, AFTER the cohorts, #693) is
+            # a record, not a step. Same shape as narrative_theme_discovery. See
+            # shared/llm_thinking.py.
             thinking=llm_thinking.DISABLED,
             tools=[_SYNTHESIS_TOOL],
             tool_choice={"type": "tool", "name": "propose_emerging_cohorts"},
