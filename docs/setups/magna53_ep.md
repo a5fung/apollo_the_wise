@@ -501,9 +501,11 @@ false"* — and *"Ok"* to this shape:
   the merit grade becomes the RAW grade, the lattice re-resolves the acting grade (one grade
   everywhere), the cache stores the merit grade + `mna_released_on_price` so every later tick
   and the judge see the same fact, and an `mna_release_merit_grade` row records from → to with
-  the reading. **FAIL SAFE (stated):** a missing / out-of-vocabulary / `mna`
-  `quality_if_no_deal` keeps `mna` → 0 catalyst points → the name cannot reach HIGH (it is
-  released by the filter but never alerts) and writes `mna_release_without_merit_grade`.
+  the reading. **FAIL SAFE (stated, his wording "stays 'mna' / blocked"):** a missing /
+  out-of-vocabulary / `mna` `quality_if_no_deal` on a `mna`-graded release keeps the name
+  BLOCKED — `_post_grade_filters` returns its skip reason and writes
+  `mna_release_without_merit_grade`. (Keeping `mna` alone would not keep it out: a 0-catalyst
+  name still scores 45 raw with a theme match against the 40 bar.)
 - *The judge on a released name.* The payload carries `mna_price_released` (rendered as its own
   block OUTSIDE `_RUBRIC` — the hash is untouched — telling the judge the first five minutes
   traded freely and the deal is not what the market is trading); if the judge still answers

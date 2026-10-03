@@ -186,13 +186,56 @@ def test_a_released_mna_name_is_rescored_with_its_merit_grade_and_audited():
     assert audits[0][2]["from"] == "mna" and audits[0][2]["to"] == "strong" and audits[0][2]["pin"]["range_pct"] == 5.3591
 
 
-def test_fail_safe_a_released_name_without_a_merit_grade_keeps_mna_and_says_so():
+def test_fail_safe_helper_keeps_mna_and_says_so_when_no_merit_grade_exists():
+    """The helper's belt: a release with no usable merit grade changes nothing and writes its
+    row. The FILTER is the braces — it keeps such a name BLOCKED (next test)."""
     for merit in (None, "mna", "excellent"):
         out, c, audits = _apply("mna", merit, _RELEASE)
         assert out is None, merit                                   # the caller keeps 'mna'
         assert c["mna_released_on_price"] is True and "llm_catalyst_quality" not in c
         assert [a[0] for a in audits] == ["mna_release_without_merit_grade"], merit
         assert "keeps 'mna'" in audits[0][1]
+
+
+def test_fail_safe_a_released_mna_name_without_a_merit_grade_stays_BLOCKED_in_the_filter():
+    """His wording: "stays 'mna' / blocked". Keeping 'mna' alone would not keep the name out — a
+    0-catalyst name scores 45 raw with a theme match against the 40 bar — so the filter returns
+    its skip reason and writes mna_release_without_merit_grade; with a merit grade it releases."""
+    audits = []
+
+    async def audit(event_type, summary, detail=""):
+        audits.append((event_type, summary))
+
+    async def released(ticker, **kw):
+        return False, _RELEASE
+    for merit in (None, "mna", "excellent"):
+        sink, audits[:] = {}, []
+        with patch.object(ep_detector, "is_likely_ma", new=released), \
+             patch.object(ep_detector, "log_audit_event", new=audit):
+            reason = _run(ep_detector._post_grade_filters(
+                "PD", "mna", "a", "s", 25.4, 1_000_000, 3.0, date(2026, 5, 29), lattice_acting=False,
+                deal_answer=DealAnswer("target", "signed", "unknown"), release_sink=sink,
+                quality_if_no_deal=merit))
+        assert reason == "M&A/buyout catalyst — no momentum trade", merit
+        assert sink == {} and [a[0] for a in audits] == ["mna_release_without_merit_grade"], merit
+        assert "stays blocked" in audits[0][1]
+    sink, audits[:] = {}, []
+    with patch.object(ep_detector, "is_likely_ma", new=released), \
+         patch.object(ep_detector, "log_audit_event", new=audit):
+        reason = _run(ep_detector._post_grade_filters(
+            "PD", "mna", "a", "s", 25.4, 1_000_000, 3.0, date(2026, 5, 29), lattice_acting=False,
+            deal_answer=DealAnswer("target", "signed", "unknown"), release_sink=sink,
+            quality_if_no_deal="strong"))
+    assert reason is None and sink["released_on_price"] is True and audits == []
+    # a released name whose acting grade is NOT 'mna' needs no merit grade to pass
+    sink, audits[:] = {}, []
+    with patch.object(ep_detector, "is_likely_ma", new=released), \
+         patch.object(ep_detector, "log_audit_event", new=audit):
+        reason = _run(ep_detector._post_grade_filters(
+            "WAY", "routine", "a", "s", 12.0, 1_000_000, 3.0, date(2026, 9, 15), lattice_acting=False,
+            deal_answer=DealAnswer("target", "proposed", "unknown"), release_sink=sink,
+            quality_if_no_deal=None))
+    assert reason is None and sink["released_on_price"] is True and audits == []
 
 
 def test_no_release_or_a_non_mna_grade_changes_nothing():

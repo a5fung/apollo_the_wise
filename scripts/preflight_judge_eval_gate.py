@@ -47,6 +47,9 @@ keys. ⚠ Whoever regenerates the top-level record from a fresh eval run (today 
 step — no code in this repo writes this file) MUST carry the existing `"envelope"` section
 forward rather than dropping it; an accidentally-omitted section degrades safely (this gate
 reads it as UNVERIFIED, never as a false "unchanged"), but loses detection until re-seeded.
+(2026-10-03: `scripts/evals/write_judge_pass_record.py` now writes the record FROM a captured
+eval run — every key copied, a failing run refused, `envelope` carried forward — so the
+regeneration is no longer a hand step.)
 """
 import ast
 import hashlib

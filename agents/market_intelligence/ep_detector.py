@@ -2178,6 +2178,9 @@ async def _post_grade_filters(
     # #692b: when the M&A filter RELEASES a news-blocked name on price (the 09:35 read), the
     # release meta lands here so the caller can re-score the name with `quality_if_no_deal`.
     release_sink: "dict | None" = None,
+    # #692b: the grader's merit grade for THIS name (None = not given). A release of a 'mna'
+    # name WITHOUT a usable merit grade stays BLOCKED here (his wording: "stays 'mna' / blocked").
+    quality_if_no_deal: "str | None" = None,
 ) -> str | None:
     """The three post-grade hard filters — M&A/buyout, routine-catalyst-low-gap,
     pm-shares floor (R6 carve-out) — extracted (S6/#405, 2026-07-03) so BOTH the
@@ -2271,8 +2274,24 @@ async def _post_grade_filters(
         pin_reader=lambda: read_open_window_pin(ticker, today),
         gap_pct=gap_pct,
     )
-    if not is_mna and (mna_meta or {}).get("released_on_price") and release_sink is not None:
-        release_sink.update(mna_meta)
+    if not is_mna and (mna_meta or {}).get("released_on_price"):
+        if catalyst_quality == "mna" and quality_if_no_deal not in _MERIT_GRADES:
+            # #692b FAIL SAFE — the price released a 'mna' name but the grader gave no usable
+            # merit grade. "Keeps mna" alone would NOT keep it out: a 0-catalyst name still
+            # scores 45 raw with a theme match against the 40 bar. So it stays BLOCKED, with its
+            # own row (the operator's wording: "stays 'mna' / blocked").
+            pin = (mna_meta or {}).get("pin") or {}
+            await log_audit_event(
+                "mna_release_without_merit_grade",
+                f"{ticker} released on price but the grader gave no usable quality_if_no_deal "
+                f"({quality_if_no_deal!r}) — stays blocked (fail safe)",
+                json.dumps({"ticker": ticker, "alert_date": today.isoformat(),
+                            "quality_if_no_deal": quality_if_no_deal, "pin": pin}, default=str))
+            reason = "M&A/buyout catalyst — no momentum trade"
+            logger.info(f"Skip {ticker}: {reason} (released on price, no merit grade — fail safe)")
+            return reason
+        if release_sink is not None:
+            release_sink.update(mna_meta)
     if is_mna:
         reason = "M&A/buyout catalyst — no momentum trade"
         logger.info(f"Skip {ticker}: {reason} ({(mna_meta or {}).get('source')})")
@@ -4883,6 +4902,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     lattice_acting=(_live_side == "lattice"),
                     deal_answer=deal_answer,
                     release_sink=_mna_release,
+                    quality_if_no_deal=quality_if_no_deal,
                 )
                 if skip_reason:
                     logger.debug(
@@ -5302,6 +5322,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 lattice_acting=(_live_side == "lattice"),
                 deal_answer=deal_answer,
                 release_sink=_mna_release,
+                quality_if_no_deal=quality_if_no_deal,
             )
 
             # Store in cache AT GRADE COMPLETION regardless of filter outcome
