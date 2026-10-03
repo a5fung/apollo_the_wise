@@ -4,9 +4,16 @@ WHY: the M&A pin filter drops candidates entirely (HARD gate, no fallback), so
 both error directions cost us:
   - over-fire  -> a real mover suppressed (ONDS +24%, SUNE +216% — the 6/14 dig)
   - under-fire -> a genuine target let through. Since #692 (2026-10-02) the filter asks
-    whether the ticker is the TARGET of a SIGNED deal that fixes its price; every name the OLD
-    rule would have blocked but the answer released writes `mna_filter_released` (it replaced
-    the #284 `mna_acquirer_title_skipped` stream) — that list is the under-fire surface now.
+    whether the ticker is the TARGET of a SIGNED deal that fixes its price. Two streams make up
+    the under-fire surface now:
+      * `mna_filter_released` — every name the OLD rule would have blocked but the answer
+        released, plus every name whose grader answered a deal that does not pin (buyer,
+        proposal, all-stock...) — it replaced the #284 `mna_acquirer_title_skipped` stream;
+      * `mna_headline_unanswered` rows that PASSED (ruling 4: the headline question got no
+        answer — error, budget, the EP scan's 9:30-9:45 window, the 3-article cap — and the
+        name went through unasked).
+    Remaining blind spot: a target with no keyword-candidate headline and no grader answer
+    (non-EP callers) leaves no row at all.
 
 This script SURFACES both, with forward returns, for OPERATOR judgment. It does
 NOT classify FP/TP itself (CHANGE_PROCESS rules #3/#4 — the agent never
@@ -28,9 +35,10 @@ import sys
 _MATERIAL_PEAK_PCT = 20.0
 
 
-async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int):
-    """Distinct (ticker, fire_day) for an event type, with forward peak high
-    over [fire_day .. +7 cal days] vs fire-day open and low."""
+async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int,
+                    summary_like: str = "%"):
+    """Distinct (ticker, fire_day) for an event type (optionally narrowed by a summary LIKE),
+    with forward peak high over [fire_day .. +7 cal days] vs fire-day open and low."""
     # DISTINCT ON (ticker, fire-day) — one row per ticker per ET day (#59 dedup
     # hygiene). A container restart re-fires the same audit event, and the prior
     # `DISTINCT ... , detail` kept each as a separate row (RGTI ×5 in the 6/20
@@ -45,6 +53,7 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int)
             FROM mi_audit_log
             WHERE event_type = $1
               AND created_at >= now() - ($2 || ' days')::interval
+              AND summary LIKE $3
             ORDER BY {ticker_expr}, (created_at AT TIME ZONE 'America/New_York')::date, created_at DESC
         )
         SELECT f.ticker, f.d AS fire_day, f.detail, f.detail_full,
@@ -59,7 +68,7 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int)
             WHERE c1.ticker = f.ticker AND c1.trade_date >= f.d AND c1.trade_date <= f.d + 7
         ) w ON true
         ORDER BY pk_vs_open DESC NULLS LAST
-    """, event_type, str(lookback_days))
+    """, event_type, str(lookback_days), summary_like)
 
 
 def _answer(detail_full) -> str:
@@ -73,6 +82,9 @@ def _answer(detail_full) -> str:
         return ""
     if d.get("role"):
         return f"{d['role']}/{d.get('status')}/{d.get('consideration')}"
+    un = d.get("unanswered") or []
+    if un and isinstance(un[0], dict):
+        return f"unanswered ({un[0].get('why')}), {d.get('unanswered_n', len(un))} article(s)"
     g = d.get("grader") or {}
     if g.get("role"):
         return f"grader {g['role']}/{g.get('status')}/{g.get('consideration')}"
@@ -108,7 +120,7 @@ def _print_section(title: str, rows, flag_material: bool):
 async def main(lookback_days: int) -> int:
     from agents.market_intelligence.db import get_pool
     from agents.market_intelligence.audit_events import (
-        MNA_FILTER_FIRED, MNA_FILTER_RELEASED,
+        MNA_FILTER_FIRED, MNA_FILTER_RELEASED, MNA_HEADLINE_UNANSWERED,
     )
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -116,6 +128,11 @@ async def main(lookback_days: int) -> int:
             conn, MNA_FILTER_FIRED, "split_part(summary,' via',1)", lookback_days)
         released = await _fwd_rows(
             conn, MNA_FILTER_RELEASED, "split_part(summary,':',1)", lookback_days)
+        # ruling 4: the unanswered rows that PASSED (summary ends "— passed"; a BLOCKED one
+        # only exists if the toggle was ON, and it already shows as a suppression).
+        unanswered_passed = await _fwd_rows(
+            conn, MNA_HEADLINE_UNANSWERED, "split_part(summary,':',1)", lookback_days,
+            summary_like="%passed")
 
     print(f"M&A FILTER ACCURACY REVIEW  (lookback {lookback_days}d)")
     print("Surfaces filter decisions + forward returns for OPERATOR judgment.")
@@ -128,12 +145,20 @@ async def main(lookback_days: int) -> int:
     # Direction 2 — under-fire: names the OLD rule would have blocked that the deal question
     # RELEASED (#692) — verify none was a genuine target of a signed deal.
     _print_section(
-        "RELEASED by the deal question - the old rule would have blocked (verify none were real targets)",
+        "RELEASED by the deal question - the old rule would have blocked, or the grader answered "
+        "a deal that does not pin (verify none were real targets)",
         released, flag_material=False)
     if released:
         print("\n  operator: each RELEASED name was answered as buyer / proposal / speculation / "
               "no deal / all-stock. Confirm none was actually the target of a signed deal "
               "(would mean a price-capped name slipped through).")
+    _print_section(
+        "PASSED UNANSWERED - the headline question got no answer and the name went through "
+        "(ruling 4; verify none were real targets)",
+        unanswered_passed, flag_material=False)
+    if unanswered_passed:
+        print("\n  operator: these passed WITHOUT an answer (error / budget / the EP scan's "
+              "9:30-9:45 window / the 3-article cap). Confirm none was the target of a signed deal.")
     print("\nSSoT: docs/setups/magna53_ep.md (M&A filter change log).")
     return 0
 

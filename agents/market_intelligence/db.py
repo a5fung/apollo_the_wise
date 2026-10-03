@@ -3895,7 +3895,7 @@ async def initialize_schema() -> None:
                 ask_size                 DOUBLE PRECISION,
                 quoted_spread_bps        DOUBLE PRECISION,
                 quote_ts                 TIMESTAMPTZ,
-                ma_flag                  BOOLEAN,                -- ma_filter.is_likely_ma (keyword + Polygon headlines, no LLM) — the lane is score-free so this is its only catalyst check
+                ma_flag                  BOOLEAN,                -- ma_filter.is_likely_ma (#692 headline deal question: keyword-picked Polygon articles asked by a small model call, memoized per article per day, budgeted; unanswered = pass, audited) — the lane is score-free so this is its only catalyst check
                 ma_source                TEXT,
                 admission_era            TEXT NOT NULL,          -- rule_eras.admission_era_as_of(scan_date) — MAGNA53's stack in force; the lane has NO switch row of its own at shadow
                 regime                   TEXT,

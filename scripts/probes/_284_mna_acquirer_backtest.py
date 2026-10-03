@@ -322,8 +322,10 @@ class Outcome(NamedTuple):
     audits: list
 
 
-async def run_new(case: Case, *, unanswered_blocks: bool = False) -> Outcome:
-    """The NEW `is_likely_ma` on this case, with Polygon + the model replaced by fixtures."""
+async def run_new(case: Case, *, unanswered_blocks: bool = False, now_et: datetime = _OUTSIDE_ORB,
+                  skip_in_orb: bool = False, budget_pool: str = "shared") -> Outcome:
+    """The NEW `is_likely_ma` on this case, with Polygon + the model replaced by fixtures.
+    `skip_in_orb` / `budget_pool` are what the EP scan passes (`ep_detector._post_grade_filters`)."""
     from agents.market_intelligence import ma_filter as mf
     model = FakeModel(case.ticker, dict(case.headline))
     audits: list = []
@@ -332,9 +334,7 @@ async def run_new(case: Case, *, unanswered_blocks: bool = False) -> Outcome:
         audits.append((event_type, summary, detail))
 
     grader = (mf.DealAnswer(*case.grader) if case.grader is not None else None)
-    mf._HEADLINE_MEMO.clear()
-    mf._HEADLINE_ATTEMPTS.clear()
-    mf._HEADLINE_DAY.update({"day": None, "calls": 0})
+    mf.reset_headline_day()
     mf._COMPANY_NAME_MEMO.clear()
     with ExitStack() as st:
         st.enter_context(patch("agents.market_intelligence.collector.get_polygon_news",
@@ -356,7 +356,7 @@ async def run_new(case: Case, *, unanswered_blocks: bool = False) -> Outcome:
             on_or_before=date.fromisoformat(case.day),
             catalyst_quality=case.catalyst_quality,
             catalyst_texts=list(case.catalyst_texts) or None,
-            now_et=_OUTSIDE_ORB)
+            now_et=now_et, skip_in_orb=skip_in_orb, budget_pool=budget_pool)
     return Outcome(blocked, meta, model.calls, model.unplanned, audits)
 
 

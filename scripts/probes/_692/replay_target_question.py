@@ -94,17 +94,19 @@ DEAL_FIELD_PROPERTIES = {
         "type": "string",
         "enum": list(DEAL_ROLES),
         "description": (
-            "THIS ticker's part in any deal in the text. target: another company is buying this "
-            "company's shares. buyer: this company is buying a company, an asset or a "
-            "subsidiary's minority. shell: a private company merges into this listed company and "
-            "its holders take control (reverse merger). none: no deal involving this company's "
-            "own shares."),
+            "THIS ticker's part in any deal in the text. target: another company is acquiring "
+            "all of, or control of, this company, so its holders are paid out. buyer: this "
+            "company is buying a company, an asset or a subsidiary's minority. shell: a private "
+            "company merges into this listed company and its holders take control (reverse "
+            "merger). none: no one is acquiring all of or control of this company — a minority "
+            "stake, a PIPE or private placement, a government or strategic equity investment, "
+            "warrants, a buyback, another company's deal, or no deal at all."),
     },
     "deal_status": {
         "type": "string",
         "enum": list(DEAL_STATUSES),
         "description": (
-            "signed: definitive/merger agreement signed or tender offer commenced, terms stated. "
+            "signed: definitive/merger agreement signed or tender offer commenced. "
             "proposed: unsolicited or non-binding proposal, letter of intent, bid received, in "
             "talks, exploring a sale. speculation: rumour, 'potential target' list, 'could "
             "pursue', denial. completed: deal closed. none: no deal."),
@@ -200,15 +202,17 @@ IMPORTANT RULES:
    turnaround must be SUSTAINABLE/structural — a single-quarter EPS anomaly from one-time items
    (asset sale, litigation settlement, tax benefit) is "routine".
 3. DEAL FIELDS — answer about THIS company only.
-   deal_role: 'target' if another company is buying this company's shares; 'buyer' if this company is
-   buying another company, an asset, or the rest of a subsidiary; 'shell' if this listed company is the
-   vehicle of a reverse merger (a private company merges into it and its holders take control); 'none'
-   if no deal involves this company's own shares (a peer's deal, sector M&A commentary, an index
-   inclusion, a funding or supply agreement are 'none').
+   deal_role: 'target' if another company is acquiring all of, or control of, this company, so its
+   holders are paid out; 'buyer' if this company is buying another company, an asset, or the rest of a
+   subsidiary; 'shell' if this listed company is the vehicle of a reverse merger (a private company
+   merges into it and its holders take control); 'none' if no one is acquiring all of or control of
+   this company (a minority stake, a PIPE or private placement, a government or strategic equity
+   investment, warrants, a buyback, a peer's deal, sector M&A commentary, an index inclusion, a funding
+   or supply agreement are all 'none').
    deal_status: 'signed' only when a definitive or merger agreement has been signed or a tender offer
-   has commenced, with terms stated; a proposal, letter of intent, bid received, 'in talks', 'exploring
-   a sale' is 'proposed'; rumours, analyst 'potential target' lists, 'could pursue', or a denial is
-   'speculation'; a closed deal is 'completed'.
+   has commenced; a proposal, letter of intent, bid received, 'in talks', 'exploring a sale' is
+   'proposed'; rumours, analyst 'potential target' lists, 'could pursue', or a denial is 'speculation';
+   a closed deal is 'completed'.
    deal_consideration: what the target's holders receive — 'cash' (a stated cash price or all-cash),
    'stock' (acquirer shares only / fixed exchange ratio / all-stock merger), 'mixed', 'unknown' (deal
    described, terms not in the text), or 'none'.
@@ -255,11 +259,13 @@ def headline_prompt(ticker: str, company_name: str | None, item: dict, reasoning
         f"Title: {item.get('title') or ''}\n"
         f"Description: {item.get('description') or '(none)'}\n"
         f"Polygon's note on this ticker in the article: {reasoning or '(none)'}\n"
-        "Answer about THIS company only. deal_role: 'target' if another company is buying this "
-        "company's shares; 'buyer' if this company is buying another company or asset; 'shell' "
-        "if a private company is merging into this listed company and taking control (a reverse "
-        "merger); 'none' if the article's deal involves other companies, is sector commentary, a "
-        "list of possible targets, or no deal at all. deal_status: 'signed' only for a signed "
+        "Answer about THIS company only. deal_role: 'target' if another company is acquiring "
+        "all of, or control of, this company, so its holders are paid out; 'buyer' if this "
+        "company is buying another company or asset; 'shell' if a private company is merging "
+        "into this listed company and taking control (a reverse merger); 'none' if the article's "
+        "deal involves other companies, is sector commentary, a list of possible targets, a "
+        "minority stake, a PIPE or private placement, a government or strategic equity "
+        "investment, warrants, a buyback, or no deal at all. deal_status: 'signed' only for a signed "
         "definitive or merger agreement or a commenced tender offer; a proposal, bid, talks or "
         "exploration is 'proposed'; rumours, 'potential targets', 'could be acquired' or a denial "
         "is 'speculation'; a closed deal is 'completed'. deal_consideration: 'cash', 'stock', "

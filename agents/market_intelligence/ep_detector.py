@@ -1330,15 +1330,17 @@ IMPORTANT RULES:
    turnaround must be SUSTAINABLE/structural — a single-quarter EPS anomaly from one-time items
    (asset sale, litigation settlement, tax benefit) is "routine".
 3. DEAL FIELDS — answer about THIS company only.
-   deal_role: 'target' if another company is buying this company's shares; 'buyer' if this company is
-   buying another company, an asset, or the rest of a subsidiary; 'shell' if this listed company is the
-   vehicle of a reverse merger (a private company merges into it and its holders take control); 'none'
-   if no deal involves this company's own shares (a peer's deal, sector M&A commentary, an index
-   inclusion, a funding or supply agreement are 'none').
+   deal_role: 'target' if another company is acquiring all of, or control of, this company, so its
+   holders are paid out; 'buyer' if this company is buying another company, an asset, or the rest of a
+   subsidiary; 'shell' if this listed company is the vehicle of a reverse merger (a private company
+   merges into it and its holders take control); 'none' if no one is acquiring all of or control of
+   this company (a minority stake, a PIPE or private placement, a government or strategic equity
+   investment, warrants, a buyback, a peer's deal, sector M&A commentary, an index inclusion, a funding
+   or supply agreement are all 'none').
    deal_status: 'signed' only when a definitive or merger agreement has been signed or a tender offer
-   has commenced, with terms stated; a proposal, letter of intent, bid received, 'in talks', 'exploring
-   a sale' is 'proposed'; rumours, analyst 'potential target' lists, 'could pursue', or a denial is
-   'speculation'; a closed deal is 'completed'.
+   has commenced; a proposal, letter of intent, bid received, 'in talks', 'exploring a sale' is
+   'proposed'; rumours, analyst 'potential target' lists, 'could pursue', or a denial is 'speculation';
+   a closed deal is 'completed'.
    deal_consideration: what the target's holders receive — 'cash' (a stated cash price or all-cash),
    'stock' (acquirer shares only / fixed exchange ratio / all-stock merger), 'mixed', 'unknown' (deal
    described, terms not in the text), or 'none'.
@@ -1989,14 +1991,17 @@ async def _post_grade_filters(
     lattice_acting: bool,
     # #692: the grader's own answer to the M&A question (None = unanswered). Defaulted, unlike
     # lattice_acting, because None is a real state (a failed grade) with defined behaviour —
-    # the headline question decides alone.
+    # the headline question decides (ruling 5 aside: a grade of 'mna' with no fields blocks).
     deal_answer: "DealAnswer | None" = None,
 ) -> str | None:
     """The three post-grade hard filters — M&A/buyout, routine-catalyst-low-gap,
     pm-shares floor (R6 carve-out) — extracted (S6/#405, 2026-07-03) so BOTH the
     fresh-grade tick AND a later tick re-checking a cached-but-not-yet-cleared
-    grade can run them without any LLM call. ORDER + reason strings + thresholds
-    were frozen byte-identical to the pre-#405 inline checks until 2026-08-22.
+    grade can run them without re-grading. ⚠ Not model-free since #692: the M&A check asks
+    the Polygon headline deal question — a small model call per keyword-candidate article,
+    memoized per article per ET day, inside a daily budget with an EP reserve, never started
+    inside 9:30-9:45 ET (`skip_in_orb=True` here and nowhere else). ORDER + reason strings +
+    thresholds were frozen byte-identical to the pre-#405 inline checks until 2026-08-22.
 
     ⚖ ONE GRADE EVERYWHERE (operator 2026-08-22: "if we change something we change it
     everywhere, consistency at all times, no forks" — CHANGE_PROCESS entry in
@@ -2034,11 +2039,14 @@ async def _post_grade_filters(
     # first (`deal_answer`), then the Polygon headline question (closes the Perplexity coverage
     # gap: AVNS 5/4 — Polygon had the going-private headline the whole time).
     #
-    # `catalyst_quality` + the keyword texts below no longer decide anything: they feed only
-    # the `mna_filter_released` comparator ("the pre-#692 rule would have blocked here").
+    # `catalyst_quality` decides one case only (ruling 5: graded 'mna' with no usable deal
+    # fields → block, as before #692); otherwise it and the keyword texts below feed only the
+    # `mna_filter_released` comparator ("the pre-#692 rule would have blocked here").
     # The Perplexity disclaimer is still stripped from those texts (2026-05-14
     # perplexity_hallucination_keyword_leak) so the comparator does not count another
     # company's deal from a "Nearest match is X" disclaimer.
+    # `skip_in_orb` / `budget_pool="ep"`: the EP scan alone skips new headline questions in the
+    # 9:30-9:45 window and spends the reserved EP share of the daily question budget.
     from agents.market_intelligence.collector import strip_perplexity_disclaimer
     _, news_is_disclaimer = strip_perplexity_disclaimer(news_summary)
     catalyst_texts_for_filter = [claude_analysis]
@@ -2061,6 +2069,8 @@ async def _post_grade_filters(
         on_or_before=today,
         catalyst_quality=catalyst_quality,
         catalyst_texts=catalyst_texts_for_filter,
+        skip_in_orb=True,
+        budget_pool="ep",
     )
     if is_mna:
         reason = "M&A/buyout catalyst — no momentum trade"

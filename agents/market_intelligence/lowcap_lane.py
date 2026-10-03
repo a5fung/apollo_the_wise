@@ -33,8 +33,11 @@ candidate list BEFORE the shortlist cut:
      shortlist-cap facts off the scan's own maps, one batched Alpaca minute-bar read for the
      real-time volume, one batched Alpaca NBBO read for quoted spread + bid/ask SIZE (the
      operator's fillability requirement — the one thing four studies never measured), and
-     `ma_filter.is_likely_ma` (keyword + Polygon headlines, no LLM) as the score-free lane's
-     only catalyst check. Then ONE batched insert into mi_lowcap_lane_signals.
+     `ma_filter.is_likely_ma` (the #692 headline deal question: keyword-picked Polygon articles,
+     each asked by a small model call — memoized per article per ET day, inside the shared daily
+     question budget; NOT skipped in the ORB window, only the EP scan skips there; an unanswered
+     question passes and is audited) as the score-free lane's only catalyst check. Then ONE
+     batched insert into mi_lowcap_lane_signals.
 
 ⚠ THE ACTING VOLUME READING IS THE DELAYED SNAPSHOT (`acting_volume_source='delayed'`): it is
 what nearly all 46 evidence rows used, `mi_ep_scan_log.today_volume` is populated on only 24

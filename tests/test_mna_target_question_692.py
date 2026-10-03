@@ -227,9 +227,7 @@ _T0 = datetime(2026, 10, 2, 8, 0, tzinfo=_ET)
 
 
 def _fresh():
-    mf._HEADLINE_MEMO.clear()
-    mf._HEADLINE_ATTEMPTS.clear()
-    mf._HEADLINE_DAY.update({"day": None, "calls": 0})
+    mf.reset_headline_day()
 
 
 def _fake(answer=("none", "none", "none"), *, fail=False):
@@ -250,11 +248,11 @@ _ITEM = {"title": "Acme to be acquired by BigCo in all-cash buyout", "descriptio
          "insights": [], "published_utc": "2026-10-01T12:00:00Z", "publisher": "p"}
 
 
-def _ask(client, item=_ITEM, now=_T0):
+def _ask(client, item=_ITEM, now=_T0, **kw):
     with patch.object(mf, "_get_headline_client", return_value=client), \
          patch("agents.market_intelligence.spend_tracker.log_anthropic_call_safe",
                new=AsyncMock(return_value=None)):
-        return _run(mf.ask_deal_question("ACME", item, company_name="Acme", now_et=now))
+        return _run(mf.ask_deal_question("ACME", item, company_name="Acme", now_et=now, **kw))
 
 
 def test_question_is_memoized_per_article_per_day():
@@ -273,19 +271,90 @@ def test_memo_resets_on_a_new_ET_day():
     assert len(calls) == 2
 
 
-def test_daily_cap_leaves_the_question_unanswered():
-    _fresh()
-    mf._HEADLINE_DAY.update({"day": _T0.date(), "calls": mf._HEADLINE_QUESTION_CALLS_CAP})
-    client, calls = _fake()
-    ans, how = _ask(client)
-    assert ans is None and how == "daily_cap" and calls == []
+def _cap_audits():
+    """Capture the raw `mna_headline_cap_hit` writes (DB dedup forced to 'first today')."""
+    rows = []
+
+    async def _log(event_type, summary, detail=""):
+        rows.append((event_type, summary))
+    return rows, patch.object(mf, "_first_today", new=AsyncMock(return_value=True)), \
+        patch("agents.market_intelligence.db.log_audit_event", new=_log)
 
 
-def test_orb_window_skips_the_call():
+def test_the_daily_budget_is_400_with_an_EP_reserve_of_100():
+    """Fix round: 40 was never measured; the EP scan (money path) keeps a reserve no shadow lane
+    can spend."""
+    assert mf._HEADLINE_QUESTION_CALLS_CAP == 400 and mf._HEADLINE_EP_RESERVE == 100
+    assert mf._budget_cap("ep") == 400 and mf._budget_cap("shared") == 300
+
+
+def test_a_shared_caller_stops_at_the_EP_reserve_and_the_EP_scan_does_not():
+    _fresh()
+    rows, p1, p2 = _cap_audits()
+    with p1, p2:
+        mf._HEADLINE_DAY.update({"day": _T0.date(), "calls": mf._budget_cap("shared")})
+        client, calls = _fake()
+        ans, how = _ask(client)                      # default pool = shared
+        assert ans is None and how == "daily_cap" and calls == []
+        ans, how = _ask(client, budget_pool="ep")    # the reserve is still there for EP
+        assert how == "answered" and len(calls) == 1
+    assert [r[0] for r in rows] == ["mna_headline_cap_hit"] and rows[0][1].startswith("shared: ")
+
+
+def test_the_EP_pool_stops_at_the_full_budget_and_logs_once_per_day():
+    _fresh()
+    rows, p1, p2 = _cap_audits()
+    with p1, p2:
+        mf._HEADLINE_DAY.update({"day": _T0.date(), "calls": mf._HEADLINE_QUESTION_CALLS_CAP})
+        client, calls = _fake()
+        for _ in range(3):
+            assert _ask(client, item={**_ITEM, "title": f"t{_}"}, budget_pool="ep") == (None, "daily_cap")
+    assert calls == [] and [r[0] for r in rows] == ["mna_headline_cap_hit"]
+    assert rows[0][1].startswith("ep: ")
+
+
+def test_a_cap_hit_question_is_unanswered_and_passes_audited():
+    """Ruling 4 covers the budget: the name passes and the row says why."""
+    items = [{"title": "Acme buyout talk", "description": "", "insights": [],
+              "published_utc": "2026-10-01T10:00:00Z"}]
+    case = H.Case("ACME", "2026-10-01", "synthetic", False, "headline", "PASS", articles=tuple(items),
+                  headline=((items[0]["title"], H.Ans("target", "signed", "cash")),))
+    rows, p1, p2 = _cap_audits()
+    real_reset = mf.reset_headline_day
+
+    def _reset_then_spend():
+        real_reset()
+        mf._HEADLINE_DAY.update({"day": H._OUTSIDE_ORB.date(), "calls": mf._budget_cap("shared")})
+    with p1, patch.object(mf, "reset_headline_day", new=_reset_then_spend):
+        out = _run(H.run_new(case))
+    assert out.blocked is False and out.calls == []
+    ev = [a for a in out.audits if a[0] == "mna_headline_unanswered"]
+    assert ev and ev[0][2]["unanswered"][0]["why"] == "daily_cap" and ev[0][2]["blocked"] is False
+
+
+def test_orb_window_skips_the_call_only_when_the_caller_opts_in():
+    """The EP scan opts in (`skip_in_orb=True`); the low-cap lane, flag and anticipation are
+    asked inside 9:30-9:45 like any other minute (reviewer: the lane's only catalyst check went
+    dark there)."""
     _fresh()
     client, calls = _fake()
-    ans, how = _ask(client, now=datetime(2026, 10, 2, 9, 35, tzinfo=_ET))
+    ans, how = _ask(client, now=datetime(2026, 10, 2, 9, 35, tzinfo=_ET), skip_in_orb=True)
     assert ans is None and how == "orb_window" and calls == []
+    _fresh()
+    ans, how = _ask(client, now=datetime(2026, 10, 2, 9, 35, tzinfo=_ET))
+    assert how == "answered" and len(calls) == 1
+
+
+def test_a_call_whose_timeout_would_cross_930_counts_as_in_window():
+    _fresh()
+    client, calls = _fake()
+    at = datetime(2026, 10, 2, 9, 29, 50, tzinfo=_ET)
+    assert _ask(client, now=at, skip_in_orb=True) == (None, "orb_window") and calls == []
+    _fresh()
+    early = datetime(2026, 10, 2, 9, 29, 0, tzinfo=_ET)    # 9:29:00 + 20 s < 9:30
+    assert _ask(client, now=early, skip_in_orb=True)[1] == "answered"
+    _fresh()
+    assert _ask(client, now=at)[1] == "answered"          # not opted in → asked
 
 
 def test_a_failing_article_is_retried_at_most_twice_a_day():
@@ -362,6 +431,60 @@ def test_candidates_are_asked_newest_first_and_at_most_three():
     out = _items_case(items, answers=answers)
     assert out.calls == ["Takeover chatter 5", "Takeover chatter 4", "Takeover chatter 3"]
     assert out.blocked is False
+    # the two older candidates are recorded UNANSWERED (article_cap), never dropped silently
+    ev = [a for a in out.audits if a[0] == "mna_headline_unanswered"]
+    assert ev and ev[0][2]["blocked"] is False and ev[0][2]["unanswered_n"] == 2
+    assert [u["why"] for u in ev[0][2]["unanswered"]] == ["article_cap", "article_cap"]
+    assert [u["title"] for u in ev[0][2]["unanswered"]] == ["Takeover chatter 2", "Takeover chatter 1"]
+
+
+def test_a_pin_in_an_older_asked_article_still_blocks_with_the_newest_pin_as_the_hit():
+    """The ≤3 articles are asked at once; the verdict is the same as asking in order."""
+    items = [{"title": f"Takeover news {i}", "description": "", "insights": [],
+              "published_utc": f"2026-10-0{i}T10:00:00Z"} for i in range(1, 4)]
+    answers = {"Takeover news 3": H.Ans("target", "speculation", "none"),
+               "Takeover news 2": H.Ans("target", "signed", "cash", "BigCo"),
+               "Takeover news 1": H.Ans("target", "signed", "cash", "BigCo")}
+    out = _items_case(items, answers=answers)
+    assert out.blocked is True and out.meta["title"] == "Takeover news 2"
+    assert sorted(out.calls) == sorted(answers)
+
+
+def test_the_articles_are_asked_concurrently_under_one_deadline():
+    """A hung ask is cut at the scan's deadline and recorded UNANSWERED ('deadline'); the
+    answers that landed are kept."""
+    items = [{"title": f"Takeover item {i}", "description": "", "insights": [],
+              "published_utc": f"2026-10-0{i}T10:00:00Z"} for i in range(1, 3)]
+
+    class _Slow(H.FakeModel):
+        async def _create(self, **kw):
+            title = next(ln[7:] for ln in kw["messages"][0]["content"].splitlines()
+                         if ln.startswith("Title: "))
+            if title == "Takeover item 2":
+                await asyncio.sleep(5)
+            return await super()._create(**kw)
+    model = _Slow("ACME", {f"Takeover item {i}": H.Ans("none", "none", "none") for i in (1, 2)})
+    model.messages = SimpleNamespace(create=model._create)
+    audits = []
+
+    async def _cap(event_type, ticker, summary, detail):
+        audits.append((event_type, detail))
+    with patch.object(mf, "_HEADLINE_TIMEOUT_S", 0.2), \
+         patch("agents.market_intelligence.collector.get_polygon_news", new=AsyncMock(return_value=items)), \
+         patch("agents.market_intelligence.collector.get_ticker_details", new=AsyncMock(return_value={})), \
+         patch.object(mf, "_get_headline_client", return_value=model), \
+         patch.object(mf, "_audit_once", new=_cap), \
+         patch.object(mf, "_unanswered_blocks", new=AsyncMock(return_value=False)), \
+         patch("agents.market_intelligence.spend_tracker.log_anthropic_call_safe",
+               new=AsyncMock(return_value=None)):
+        mf.reset_headline_day()
+        import time
+        start = time.monotonic()
+        scan = _run(mf.headline_deal_scan("ACME", now_et=_T0))
+        took = time.monotonic() - start
+    assert took < 2.0, f"the scan waited {took:.1f}s — the deadline did not hold"
+    assert [r["title"] for r in scan.released] == ["Takeover item 1"]
+    assert [(u["title"], u["why"]) for u in scan.unanswered] == [("Takeover item 2", "deadline")]
 
 
 def test_unanswered_passes_with_the_toggle_off_and_is_audited():
@@ -381,8 +504,8 @@ def test_unanswered_blocks_with_the_toggle_on():
 
 
 def test_the_unanswered_toggle_ships_off():
-    """No toggle flip in the build (THE LINE): the default is OFF = pass. OFF is NOT today's
-    behaviour (today a keyword headline blocks) — operator decision 4."""
+    """Ruling 4 (operator 2026-10-02, RULED): an unanswered headline question PASSES — the
+    toggle's default OFF is his ruling. Before #692 a keyword headline blocked on its own."""
     with patch("agents.market_intelligence.db.get_runtime_toggle",
                new=AsyncMock(side_effect=lambda name, env, default=True: default)):
         assert _run(mf._unanswered_blocks()) is False
@@ -398,9 +521,93 @@ def test_a_pinning_headline_overrides_a_non_pinning_grader_and_logs_the_conflict
 
 
 def test_grade_mna_without_a_pin_is_audited():
+    """NOT RULED (kept as built, listed for him): 'mna' graded while the grader's own ANSWERED
+    fields do not pin → the fields decide (pass) + one mna_grade_without_pin row."""
     out = _items_case([], grader=H.Ans("buyer", "signed", "cash"), quality="mna")
     assert out.blocked is False
     assert [a[0] for a in out.audits].count("mna_grade_without_pin") == 1
+
+
+# ── RULING 5 (2026-10-02): grade 'mna' with blank deal fields → BLOCK, as before #692 ─────────
+
+def test_ruling5_grade_mna_with_blank_deal_fields_blocks():
+    """The grader graded 'mna' and its deal fields were missing / out of vocabulary / cut off
+    (deal_answer None). Before #692 grade 'mna' blocked; he ruled to keep that."""
+    out = _items_case([], grader=None, quality="mna")
+    assert out.blocked is True
+    assert out.meta["source"] == "claude_classifier_unanswered"
+    assert out.meta["catalyst_quality"] == "mna"
+    assert out.calls == [], "the block needs no headline question"
+    assert not [a for a in out.audits if a[0] == "mna_grade_without_pin"], \
+        "a blank-field block must not also count as 'the prompt rule is not holding'"
+
+
+def test_ruling5_does_not_fire_when_the_grade_is_not_mna():
+    """A failed grade reads 'routine' with no fields — the headline decides, ruling 5 is silent."""
+    out = _items_case([], grader=None, quality="routine")
+    assert out.blocked is False
+
+
+# ── RULING 7 (2026-10-02): a headline overrides the grader ONLY when the grader found no deal ─
+
+_PIN_TITLE = "Acme to be acquired by BigCo for $20 a share in cash"
+_PIN_ITEMS = [{"title": _PIN_TITLE, "description": "", "insights": [],
+               "published_utc": "2026-10-01T10:00:00Z"}]
+_PIN_ANS = {_PIN_TITLE: H.Ans("target", "signed", "cash", "BigCo")}
+
+
+@pytest.mark.parametrize("grader", [
+    H.Ans("buyer", "signed", "cash", "Stride Bank"),      # CHYM shape
+    H.Ans("target", "proposed", "unknown"),               # WAY shape
+    H.Ans("target", "speculation", "none"),               # VKTX shape
+    H.Ans("target", "signed", "stock", "IRT"),            # CSR shape — all-stock
+    H.Ans("buyer", "proposed", "unknown", "SkyAI"),       # FWDI shape
+])
+def test_ruling7_a_headline_cannot_reblock_a_grader_answered_deal(grader):
+    out = _items_case(_PIN_ITEMS, grader=grader, answers=_PIN_ANS)
+    assert out.blocked is False
+    conflict = [a for a in out.audits if a[0] == "mna_deal_answers_conflict"]
+    assert conflict and conflict[0][2]["blocked"] is False and "ruling 7" in conflict[0][1]
+    released = [a for a in out.audits if a[0] == "mna_filter_released"]
+    assert released and "grader_deal_no_pin" in released[0][2]["old_reasons"]
+    assert released[0][2]["overruled_headline"]["title"] == _PIN_TITLE
+
+
+def test_ruling7_a_headline_still_overrides_a_grader_that_found_no_deal():
+    out = _items_case(_PIN_ITEMS, grader=H.Ans("none", "none", "none"), answers=_PIN_ANS)
+    assert out.blocked is True and out.meta["source"] == "polygon_headline_model"
+    conflict = [a for a in out.audits if a[0] == "mna_deal_answers_conflict"]
+    assert conflict and conflict[0][2]["blocked"] is True
+
+
+def test_ruling7_a_headline_still_decides_when_the_grader_did_not_answer():
+    out = _items_case(_PIN_ITEMS, grader=None, quality="routine", answers=_PIN_ANS)
+    assert out.blocked is True and out.meta["source"] == "polygon_headline_model"
+    assert not [a for a in out.audits if a[0] == "mna_deal_answers_conflict"]
+
+
+def test_ruling7_also_gates_the_unanswered_toggle():
+    """With the toggle ON (not his ruling — proving the gate covers the whole headline path),
+    an unanswered headline still cannot re-block a grader-answered deal."""
+    items = [{"title": "Acme buyout talk", "description": "", "insights": [],
+              "published_utc": "2026-10-01T10:00:00Z"}]
+    out = _items_case(items, grader=H.Ans("buyer", "signed", "cash"), answers={},
+                      unanswered_blocks=True)
+    assert out.blocked is False
+    out = _items_case(items, grader=H.Ans("none", "none", "none"), answers={},
+                      unanswered_blocks=True)
+    assert out.blocked is True and out.meta["source"] == "polygon_headline_unanswered"
+
+
+def test_a_grader_answered_deal_with_no_old_rule_signal_is_released_for_review():
+    """Reviewer: FWDI's 'proposal to acquire' carries no keyword — without this reason a grader
+    release writes no row and the monthly review cannot see it."""
+    out = _items_case([], grader=H.Ans("buyer", "proposed", "unknown", "SkyAI"), quality="strong",
+                      texts=["FWDI renewed its proposal to acquire SkyAI"])
+    rel = [a for a in out.audits if a[0] == "mna_filter_released"]
+    assert rel and rel[0][2]["old_reasons"] == ["grader_deal_no_pin"]
+    assert rel[0][2]["old_rule_would_block"] is False
+    assert "released for review" in rel[0][1] and "old rule would have blocked" not in rel[0][1]
 
 
 def test_no_old_rule_signal_means_no_released_row():
@@ -443,6 +650,34 @@ def test_headline_tool_puts_the_note_last():
     props = list(mf._HEADLINE_TOOL["input_schema"]["properties"])
     assert props == ["deal_role", "deal_status", "deal_consideration", "deal_counterparty", "note"]
     assert mf._HEADLINE_TOOL["input_schema"]["required"] == props
+
+
+_NONE_KINDS = ("minority stake", "PIPE", "private placement",
+               "government or strategic equity investment", "warrants", "buyback")
+
+
+def test_definitions_signed_needs_no_terms_and_target_means_control():
+    """Fix round (reviewers): 'signed' carried 'terms stated' while 'unknown' consideration means
+    'terms not in the text' — a model following the text could call a signed, terms-less deal
+    'proposed' and release SUNE / CLRO. Terms belong to consideration only. 'target' read
+    'another company is buying this company's shares', which a PIPE or a government equity
+    investment fits (RGTI's 8-K carries item 3.02) — target now means control, and those are
+    named 'none'. One wording in the shared field, the grader's RULE 3 and the headline prompt."""
+    role = mf.DEAL_FIELD_PROPERTIES["deal_role"]["description"]
+    status = mf.DEAL_FIELD_PROPERTIES["deal_status"]["description"]
+    assert "terms stated" not in status and "signed: definitive/merger agreement signed or " \
+        "tender offer commenced. " in status
+    target = "acquiring all of, or control of, this company, so its holders are paid out"
+    assert f"target: another company is {target}" in role
+    headline = mf.build_headline_prompt("X", None, {}, None)
+    assert f"'target' if another company is {target}" in headline
+    _, _, calls = _grade({"quality": "routine", "analysis": "x"})
+    rule3 = calls[0]["messages"][0]["content"].split("3. DEAL FIELDS", 1)[1].split("\n4. ", 1)[0]
+    assert "terms stated" not in rule3
+    assert " ".join(f"'target' if another company is {target}".split()) in " ".join(rule3.split())
+    for text in (role, headline, " ".join(rule3.split())):
+        for kind in _NONE_KINDS:
+            assert kind in text, (kind, text[:80])
 
 
 def test_the_shared_enums_match_the_rule_vocabulary():
@@ -539,7 +774,50 @@ def test_post_grade_filters_decides_on_the_graders_answer():
             "CHYM", "strong", "analysis", "summary", 15.0, 1_000_000, 3.0,
             datetime(2026, 9, 9).date(), lattice_acting=False, deal_answer=ans))
     assert seen["deal_answer"] is ans and seen["check_polygon"] is True
-    assert seen["catalyst_quality"] == "strong"   # comparator input only
+    assert seen["catalyst_quality"] == "strong"   # ruling 5 + comparator input
+    # the EP scan alone skips the ORB window and spends the reserved EP budget
+    assert seen["skip_in_orb"] is True and seen["budget_pool"] == "ep"
+
+
+def test_only_the_EP_scan_opts_into_the_ORB_skip_and_the_EP_budget():
+    """Population gate (derived, not hand-listed): every `is_likely_ma(...)` call in agents/ is
+    found by AST, the population is NAMED (a new caller fails here until it is classified), and
+    only ep_detector._post_grade_filters passes skip_in_orb / budget_pool."""
+    # source-pin-ok: a call-site POPULATION check — which of the six detectors pass the EP-only
+    # options cannot be exercised without running each detector's full scan (DB + Polygon + the
+    # scheduler); the behaviour of the options themselves is tested above. AST, not regex.
+    import ast
+
+    class _Calls(ast.NodeVisitor):
+        def __init__(self, fname):
+            self.fname, self.stack, self.found = fname, [], []
+
+        def _fn(self, node):
+            self.stack.append(node.name)
+            self.generic_visit(node)
+            self.stack.pop()
+        visit_FunctionDef = visit_AsyncFunctionDef = _fn
+
+        def visit_Call(self, node):
+            name = getattr(node.func, "id", getattr(node.func, "attr", None))
+            if name == "is_likely_ma":
+                opts = {k.arg for k in node.keywords} & {"skip_in_orb", "budget_pool"}
+                self.found.append((self.fname, self.stack[-1] if self.stack else "<module>",
+                                   tuple(sorted(opts))))
+            self.generic_visit(node)
+    found = []
+    for path in sorted((_REPO / "agents").rglob("*.py")):
+        v = _Calls(path.name)
+        v.visit(ast.parse(path.read_text(encoding="utf-8")))
+        found += v.found
+    assert sorted(found) == [
+        ("ep_detector.py", "_post_grade_filters", ("budget_pool", "skip_in_orb")),
+        ("flag_detector.py", "_mna_check", ()),
+        ("lowcap_lane.py", "enrich_and_record", ()),
+        ("ninem_detector.py", "run_9m_eod_sweep", ()),
+        ("ninem_detector.py", "run_9m_scan", ()),
+        ("scheduler.py", "_consolidation_readiness_scan", ()),
+    ]
 
 
 def test_cached_grade_carries_the_answer_and_old_positional_shape_still_builds():
@@ -618,3 +896,42 @@ def test_enriched_corpus_forwards_the_sink():
             ext_filings=[], dilution=None, dilution_computed=True, benzinga_items=[],
             perplexity_answer="", deal_sink=sink))
     assert seen["deal_sink"] is sink
+
+
+# ── 6. THE MONTHLY REVIEW (scripts/mna_filter_accuracy_review.py) ────────────────────────────
+
+def test_monthly_review_shows_unanswered_passes_in_the_under_fire_section(capsys):
+    """Reviewer: a name that passed because the headline question got NO answer wrote no
+    released row, so the monthly review could not see it. It now has its own section, read
+    from `mna_headline_unanswered` rows whose summary ends 'passed'."""
+    import json as _json
+    import importlib
+    from datetime import date as _date
+    from tests.conftest import make_mock_pool
+    review = importlib.import_module("scripts.mna_filter_accuracy_review")
+    pool, conn = make_mock_pool()
+    seen = []
+
+    def _row(ticker, detail):
+        return {"ticker": ticker, "fire_day": _date(2026, 10, 5), "detail": "", "detail_full":
+                _json.dumps(detail), "open_price": 10.0, "low_price": 9.5, "peak_high": 12.0,
+                "pk_vs_open": 20.0, "pk_vs_low": 26.3}
+
+    async def _fetch(sql, event_type, days, like):
+        seen.append((event_type, like))
+        return {
+            "mna_filter_fired": [_row("ACVA", {"role": "target", "status": "signed",
+                                               "consideration": "cash"})],
+            "mna_filter_released": [_row("FWDI", {"grader": {"role": "buyer", "status": "proposed",
+                                                             "consideration": "unknown"}})],
+            "mna_headline_unanswered": [_row("XYZ", {"blocked": False, "unanswered_n": 2,
+                                                     "unanswered": [{"why": "orb_window"}]})],
+        }[event_type]
+    conn.fetch = _fetch
+    with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)):
+        assert _run(review.main(35)) == 0
+    out = capsys.readouterr().out
+    assert ("mna_headline_unanswered", "%passed") in seen
+    assert ("mna_filter_released", "%") in seen and ("mna_filter_fired", "%") in seen
+    assert "PASSED UNANSWERED" in out and "XYZ" in out and "unanswered (orb_window), 2 article(s)" in out
+    assert "grader buyer/proposed/unknown" in out

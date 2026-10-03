@@ -30,15 +30,24 @@ TWO ANSWERING PATHS, same question, same `DealAnswer`, same verdict:
 The deal-pin PRICE-signature paths (flag_detector: deal_pin_signature / deal_pin_fresh / sticky)
 are price evidence of a pinned tape, live outside this module and are untouched.
 
-OPERATOR DECISIONS this module carries as named knobs (#692 — listed for his ruling, the code
-implements the recommendation; a ruling is a one-line change here plus the prompt line):
+OPERATOR RULINGS (#692, 2026-10-02 22:20 PDT — "ok" to all seven; each is a named knob here):
   1. `_SHELL_ROLE_PINS` — a signed reverse-merger SHELL blocks (keeps his SUNE 07-04 and CLRO
      08-08 rulings; without it CLRO reads target/signed/stock = CSR, which he ruled wrong).
   2./3. `_PINNING_CONSIDERATIONS` — a signed target paid in cash, cash+stock, or on terms the
      text does not state blocks; an all-stock merger does not fix the price (CSR).
-  4. `mna_headline_unanswered_blocks` runtime toggle — what happens when the headline question
-     gets no answer (API error, truncation, daily cap, the 9:30-9:45 ORB window). Ships OFF =
-     pass + an audit row. ⚠ OFF is NOT today's behaviour (today a keyword hit blocks).
+  4. The headline question UNANSWERED (API error, truncation, daily cap, the 9:30-9:45 ORB window
+     on the EP scan, the 3-article cap) → PASS + an `mna_headline_unanswered` audit row. Runtime
+     toggle `mna_headline_unanswered_blocks`, default OFF = his ruling. Before #692 a keyword
+     headline blocked on its own; that changed on his word.
+  5. Grade 'mna' with the grader's deal fields blank / out of vocabulary / missing → BLOCK, as
+     before #692 (source `claude_classifier_unanswered`).
+  6. The 'mna' GRADE means only a signed price-fixing deal (ep_detector RULE 3); every other deal
+     is graded on its merit.
+  7. A headline overrides the grader ONLY when the grader found no deal (role 'none') or did not
+     answer. When the grader answered a deal that does not pin (buyer, proposed, speculation,
+     all-stock...), a pinning headline cannot re-block — it is logged as a conflict and passes.
+NOT RULED (kept as built, listed for him): grade 'mna' while the grader's own answered fields do
+not pin → the fields decide (pass) + an `mna_grade_without_pin` row.
 """
 from __future__ import annotations
 
@@ -46,7 +55,7 @@ import asyncio
 import hashlib
 import json
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Iterable, NamedTuple, Optional
 from zoneinfo import ZoneInfo
 
@@ -187,17 +196,19 @@ DEAL_FIELD_PROPERTIES: dict[str, dict] = {
         "type": "string",
         "enum": list(DEAL_ROLES),
         "description": (
-            "THIS ticker's part in any deal in the text. target: another company is buying this "
-            "company's shares. buyer: this company is buying a company, an asset or a "
-            "subsidiary's minority. shell: a private company merges into this listed company and "
-            "its holders take control (reverse merger). none: no deal involving this company's "
-            "own shares."),
+            "THIS ticker's part in any deal in the text. target: another company is acquiring "
+            "all of, or control of, this company, so its holders are paid out. buyer: this "
+            "company is buying a company, an asset or a subsidiary's minority. shell: a private "
+            "company merges into this listed company and its holders take control (reverse "
+            "merger). none: no one is acquiring all of or control of this company — a minority "
+            "stake, a PIPE or private placement, a government or strategic equity investment, "
+            "warrants, a buyback, another company's deal, or no deal at all."),
     },
     "deal_status": {
         "type": "string",
         "enum": list(DEAL_STATUSES),
         "description": (
-            "signed: definitive/merger agreement signed or tender offer commenced, terms stated. "
+            "signed: definitive/merger agreement signed or tender offer commenced. "
             "proposed: unsolicited or non-binding proposal, letter of intent, bid received, in "
             "talks, exploring a sale. speculation: rumour, 'potential target' list, 'could "
             "pursue', denial. completed: deal closed. none: no deal."),
@@ -245,11 +256,13 @@ def build_headline_prompt(ticker: str, company_name: Optional[str], item: dict,
         f"Title: {item.get('title') or ''}\n"
         f"Description: {item.get('description') or '(none)'}\n"
         f"Polygon's note on this ticker in the article: {reasoning or '(none)'}\n"
-        "Answer about THIS company only. deal_role: 'target' if another company is buying this "
-        "company's shares; 'buyer' if this company is buying another company or asset; 'shell' "
-        "if a private company is merging into this listed company and taking control (a reverse "
-        "merger); 'none' if the article's deal involves other companies, is sector commentary, a "
-        "list of possible targets, or no deal at all. deal_status: 'signed' only for a signed "
+        "Answer about THIS company only. deal_role: 'target' if another company is acquiring "
+        "all of, or control of, this company, so its holders are paid out; 'buyer' if this "
+        "company is buying another company or asset; 'shell' if a private company is merging "
+        "into this listed company and taking control (a reverse merger); 'none' if the article's "
+        "deal involves other companies, is sector commentary, a list of possible targets, a "
+        "minority stake, a PIPE or private placement, a government or strategic equity "
+        "investment, warrants, a buyback, or no deal at all. deal_status: 'signed' only for a signed "
         "definitive or merger agreement or a commenced tender offer; a proposal, bid, talks or "
         "exploration is 'proposed'; rumours, 'potential targets', 'could be acquired' or a denial "
         "is 'speculation'; a closed deal is 'completed'. deal_consideration: 'cash', 'stock', "
@@ -259,23 +272,34 @@ def build_headline_prompt(ticker: str, company_name: Optional[str], item: dict,
     )
 
 
-# ── The headline question: memo + daily cap + ORB-window skip ─────────────────────────────────
-#: Process-level daily cap on headline-question model calls. The EP tick re-runs the filters
-#: every 5 min for a filter-killed name (#405), so the per-article memo below is what keeps one
-#: headline to one call per day; the cap bounds the worst case (~$0.10/day on sonnet-5-5).
-_HEADLINE_QUESTION_CALLS_CAP = 40
+# ── The headline question: memo + daily budget + EP-only ORB-window skip ──────────────────────
+#: Process-level daily budget on headline-question model calls, ALL callers together. The EP tick
+#: re-runs the filters every 5 min for a filter-killed name (#405), so the per-article memo below
+#: is what keeps one headline to one call per day; the budget bounds the worst case (~$4/day at
+#: ~$0.01 a call on sonnet-5-5 — typical days spend a few cents). Raised 40 → 400 by the #692
+#: fix round: 40 was never measured, and a spent budget means every later question that day
+#: goes unanswered (= pass, ruling 4).
+_HEADLINE_QUESTION_CALLS_CAP = 400
+#: Of that budget, this many calls are RESERVED for the EP scan (the money path): every other
+#: caller (flag scan, low-cap lane, anticipation, 9M) stops at CAP - RESERVE, so a shadow lane
+#: can never spend the EP path's questions.
+_HEADLINE_EP_RESERVE = 100
+_HEADLINE_BUDGET_POOLS: tuple[str, ...] = ("ep", "shared")
 #: A failing article is retried at most this many times per ET day, then left unanswered —
-#: otherwise one persistently failing article could spend the whole daily cap.
+#: otherwise one persistently failing article could spend the whole daily budget.
 _HEADLINE_MAX_ATTEMPTS_PER_ARTICLE = 2
-#: Wall-clock bound on one question — the call sits on the EP scan path.
+#: Wall-clock bound on one question AND on one ticker's whole scan (the ≤3 articles are asked
+#: concurrently under one deadline) — the call sits on the EP scan path.
 _HEADLINE_TIMEOUT_S = 20.0
-#: Candidate articles asked per ticker per check (newest first).
+#: Candidate articles asked per ticker per check (newest first). Older candidates are recorded
+#: as UNANSWERED (why='article_cap') — never dropped without a trace.
 _HEADLINE_MAX_ARTICLES = 3
 
-# (ticker, article key, ET day) -> answer; attempts per key; the day's call counter.
+# (ticker, article key, ET day) -> answer; attempts per key; the day's call counter + which
+# budget pools already wrote their cap-hit audit row today.
 _HEADLINE_MEMO: dict[tuple[str, str, str], DealAnswer] = {}
 _HEADLINE_ATTEMPTS: dict[tuple[str, str, str], int] = {}
-_HEADLINE_DAY: dict[str, Any] = {"day": None, "calls": 0}
+_HEADLINE_DAY: dict[str, Any] = {"day": None, "calls": 0, "cap_logged": set()}
 
 # Cross-call memo of filing-ticker company names (immutable). None is a cached "no name".
 _COMPANY_NAME_MEMO: dict[str, Optional[str]] = {}
@@ -292,12 +316,47 @@ def _get_headline_client():
     return _headline_client
 
 
+def reset_headline_day() -> None:
+    """Forget today's memo, attempts, call count and cap-hit flags (day rollover; tests)."""
+    _HEADLINE_MEMO.clear()
+    _HEADLINE_ATTEMPTS.clear()
+    _HEADLINE_DAY["day"] = None
+    _HEADLINE_DAY["calls"] = 0
+    _HEADLINE_DAY["cap_logged"] = set()
+
+
 def _roll_headline_day(day: date) -> None:
     if _HEADLINE_DAY["day"] != day:
-        _HEADLINE_MEMO.clear()
-        _HEADLINE_ATTEMPTS.clear()
+        reset_headline_day()
         _HEADLINE_DAY["day"] = day
-        _HEADLINE_DAY["calls"] = 0
+
+
+def _budget_cap(pool: str) -> int:
+    """The day's call ceiling for a budget pool: the EP scan may spend the whole budget; every
+    other caller stops short of the EP reserve."""
+    if pool == "ep":
+        return _HEADLINE_QUESTION_CALLS_CAP
+    return _HEADLINE_QUESTION_CALLS_CAP - _HEADLINE_EP_RESERVE
+
+
+async def _log_cap_hit(pool: str, day: date) -> None:
+    """One `mna_headline_cap_hit` audit row per budget pool per ET day — no Telegram (the
+    questions it leaves unanswered pass under ruling 4 and are audited row by row). Never raises."""
+    if pool in _HEADLINE_DAY["cap_logged"]:
+        return
+    _HEADLINE_DAY["cap_logged"].add(pool)   # set BEFORE the await: concurrent asks log once
+    try:
+        if not await _first_today("mna_headline_cap_hit", f"{pool}: %"):
+            return
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event(
+            "mna_headline_cap_hit",
+            f"{pool}: M&A headline-question budget spent ({_HEADLINE_DAY['calls']} calls, "
+            f"{pool} ceiling {_budget_cap(pool)}) — later questions today go unanswered and pass",
+            json.dumps({"pool": pool, "calls": _HEADLINE_DAY["calls"], "ceiling": _budget_cap(pool),
+                        "et_day": day.isoformat()}))
+    except Exception as e:  # loud-ok: telemetry must never change the filter verdict
+        logger.warning(f"mna_headline_cap_hit audit failed: {e}")
 
 
 def _article_key(item: dict) -> str:
@@ -316,6 +375,12 @@ def _in_orb_window(now_et: datetime) -> bool:
         return False
 
 
+def _call_would_touch_orb(now_et: datetime) -> bool:
+    """A call started now is IN the window when it starts inside it OR its timeout would carry it
+    past 9:30 ET (a call started at 9:29:50 must not delay the 9:30/9:31 scans)."""
+    return _in_orb_window(now_et) or _in_orb_window(now_et + timedelta(seconds=_HEADLINE_TIMEOUT_S))
+
+
 async def ask_deal_question(
     ticker: str,
     item: dict,
@@ -323,11 +388,17 @@ async def ask_deal_question(
     company_name: Optional[str] = None,
     reasoning: Optional[str] = None,
     now_et: Optional[datetime] = None,
+    skip_in_orb: bool = False,
+    budget_pool: str = "shared",
 ) -> tuple[Optional[DealAnswer], str]:
     """Ask the deal question about ONE article. Returns (answer, how):
     how ∈ {"answered", "memo"} with an answer, or an UNANSWERED reason with None —
-    "orb_window", "daily_cap", "gave_up", "error:<Exc>", "truncated", "no_tool_use", "invalid".
-    Never raises."""
+    "orb_window" (only when `skip_in_orb`), "daily_cap", "gave_up", "error:<Exc>", "truncated",
+    "no_tool_use", "invalid". Never raises.
+    `skip_in_orb` — set ONLY by the EP scan (`ep_detector._post_grade_filters`): no new call
+    inside 9:30-9:45 ET or one whose timeout would cross 9:30. Every other caller is asked.
+    `budget_pool` — "ep" (the EP scan; may spend the whole daily budget) or "shared" (everyone
+    else; stops short of the EP reserve)."""
     now = now_et or datetime.now(_ET)
     day = now.date()
     _roll_headline_day(day)
@@ -336,9 +407,11 @@ async def ask_deal_question(
         return _HEADLINE_MEMO[key], "memo"
     if _HEADLINE_ATTEMPTS.get(key, 0) >= _HEADLINE_MAX_ATTEMPTS_PER_ARTICLE:
         return None, "gave_up"
-    if _in_orb_window(now):
+    if skip_in_orb and _call_would_touch_orb(now):
         return None, "orb_window"
-    if _HEADLINE_DAY["calls"] >= _HEADLINE_QUESTION_CALLS_CAP:
+    pool = budget_pool if budget_pool in _HEADLINE_BUDGET_POOLS else "shared"
+    if _HEADLINE_DAY["calls"] >= _budget_cap(pool):
+        await _log_cap_hit(pool, day)
         return None, "daily_cap"
     _HEADLINE_DAY["calls"] += 1
     _HEADLINE_ATTEMPTS[key] = _HEADLINE_ATTEMPTS.get(key, 0) + 1
@@ -437,9 +510,13 @@ async def headline_deal_scan(
     lookback_days: int = 14,
     on_or_before: Optional[date] = None,
     now_et: Optional[datetime] = None,
+    skip_in_orb: bool = False,
+    budget_pool: str = "shared",
 ) -> HeadlineScan:
-    """Fetch recent Polygon news, pick keyword candidates ($0), ask the deal question on up to
-    `_HEADLINE_MAX_ARTICLES` of them (newest first) and stop at the first answer that pins."""
+    """Fetch recent Polygon news, pick keyword candidates ($0), and ask the deal question on the
+    `_HEADLINE_MAX_ARTICLES` newest of them CONCURRENTLY under one overall deadline. The hit is
+    the newest candidate whose answer pins. Candidates past the cap, and asks still running at
+    the deadline, are recorded UNANSWERED (why='article_cap' / 'deadline') — never dropped."""
     from agents.market_intelligence.collector import get_polygon_news
 
     items = await get_polygon_news(
@@ -459,25 +536,43 @@ async def headline_deal_scan(
     if not candidates:
         return HeadlineScan(None, released, unanswered, 0)
     company = await _company_name(ticker)
-    for item, match_path, kw, reasoning in candidates[:_HEADLINE_MAX_ARTICLES]:
-        answer, how = await ask_deal_question(
-            ticker, item, company_name=company, reasoning=reasoning, now_et=now_et)
-        meta = {
+
+    def _meta(item: dict, match_path: str, kw: str) -> dict:
+        return {
             "match_path": match_path,
             "matched_keyword": kw,
             "title": (item.get("title") or "")[:200],
             "published_utc": item.get("published_utc", ""),
             "publisher": item.get("publisher", ""),
         }
+
+    asked = candidates[:_HEADLINE_MAX_ARTICLES]
+    tasks = [asyncio.ensure_future(ask_deal_question(
+        ticker, item, company_name=company, reasoning=reasoning, now_et=now_et,
+        skip_in_orb=skip_in_orb, budget_pool=budget_pool)) for item, _mp, _kw, reasoning in asked]
+    done, pending = await asyncio.wait(tasks, timeout=_HEADLINE_TIMEOUT_S)
+    for t in pending:
+        t.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+    hit = None
+    for task, (item, match_path, kw, _reasoning) in zip(tasks, asked):
+        meta = _meta(item, match_path, kw)
+        if task not in done or task.cancelled() or task.exception() is not None:
+            unanswered.append({**meta, "why": "deadline"})
+            continue
+        answer, how = task.result()
         if answer is None:
             unanswered.append({**meta, "why": how})
-            continue
-        if deal_pins_price(answer):
-            return HeadlineScan(
-                {"source": "polygon_headline_model", "ticker": ticker, **meta, **deal_fields(answer)},
-                released, unanswered, len(candidates))
-        released.append({**meta, **deal_fields(answer)})
-    return HeadlineScan(None, released, unanswered, len(candidates))
+        elif deal_pins_price(answer):
+            if hit is None:   # newest pinning candidate (asked newest first)
+                hit = {"source": "polygon_headline_model", "ticker": ticker, **meta,
+                       **deal_fields(answer)}
+        else:
+            released.append({**meta, **deal_fields(answer)})
+    for item, match_path, kw, _reasoning in candidates[_HEADLINE_MAX_ARTICLES:]:
+        unanswered.append({**_meta(item, match_path, kw), "why": "article_cap"})
+    return HeadlineScan(hit, released, unanswered, len(candidates))
 
 
 async def polygon_news_has_mna_headline(
@@ -539,15 +634,20 @@ async def _audit_once(event_type: str, ticker: str, summary: str, detail: dict) 
 
 
 async def _unanswered_blocks() -> bool:
-    """Operator decision 4 — block or pass when the headline question gets no answer.
-    Literal name + env so scripts/live_rules.py discovers it. Default OFF (pass)."""
+    """Operator ruling 4 (2026-10-02, RULED) — an unanswered headline question PASSES (+ an
+    `mna_headline_unanswered` row). The toggle stays so the ruling is one flip to reverse;
+    its default OFF IS the ruling. Literal name + env so scripts/live_rules.py discovers it."""
     try:
         from agents.market_intelligence.db import get_runtime_toggle
         return bool(await get_runtime_toggle("mna_headline_unanswered_blocks",
                                              "MNA_HEADLINE_UNANSWERED_BLOCKS", default=False))
-    except Exception as e:  # loud-ok: fail direction = the shipped default (pass), logged
+    except Exception as e:  # loud-ok: fail direction = the ruled default (pass), logged
         logger.warning(f"mna_headline_unanswered_blocks read failed → default OFF: {e}")
         return False
+
+
+def _answer_str(a: Optional[DealAnswer]) -> str:
+    return f"{a.role}/{a.status}/{a.consideration}" if a is not None else "no grader answer"
 
 
 # ── The single entry point every detector calls ───────────────────────────────────────────────
@@ -562,17 +662,23 @@ async def is_likely_ma(
     catalyst_quality: Optional[str] = None,
     catalyst_texts: Optional[list[Optional[str]]] = None,
     now_et: Optional[datetime] = None,
+    skip_in_orb: bool = False,
+    budget_pool: str = "shared",
 ) -> tuple[bool, Optional[dict]]:
     """Is THIS ticker's price fixed by a signed deal? Returns (block, telemetry).
 
-    1. `deal_answer` (the EP grader's deal fields): pins → block, source `claude_deal_fields`.
-       None = the grader did not answer (failed / not an EP caller) → the headline path decides.
-    2. The headline question (`check_polygon=True`): the first candidate article whose answer
-       pins → block, source `polygon_headline_model`. A pinning headline overrides a grader
-       answer that did not pin (both answer the same question; logged as a conflict).
-       Candidates left UNANSWERED → operator decision 4 (`mna_headline_unanswered_blocks`).
-    `catalyst_quality` / `catalyst_texts` decide NOTHING: they feed only the shadow comparator
-    that writes `mna_filter_released` when the pre-#692 rule would have blocked.
+    1. `deal_answer` (the EP grader's deal fields) pins → block, source `claude_deal_fields`.
+    2. Ruling 5: the grader graded 'mna' but its deal fields are missing / out of vocabulary
+       (`deal_answer is None`) → block, as before #692, source `claude_classifier_unanswered`.
+    3. The headline question (`check_polygon=True`, ≤3 newest keyword candidates). Ruling 7: a
+       pinning headline blocks ONLY when the grader found no deal (role 'none') or did not
+       answer (None — a failed grade, or a non-EP caller). When the grader answered a deal that
+       does not pin, a pinning headline is logged as a conflict and PASSES. Ruling 4: candidates
+       left UNANSWERED pass (+ an audit row) unless `mna_headline_unanswered_blocks` is ON.
+    `catalyst_texts` decide NOTHING: with `catalyst_quality` they feed the `mna_filter_released`
+    comparator (the names the pre-#692 rule would have blocked, plus every grader-answered deal
+    that does not pin — the under-fire surface of the monthly review).
+    `skip_in_orb` / `budget_pool` — set ONLY by the EP scan (see `ask_deal_question`).
     """
     if deal_answer is not None and deal_pins_price(deal_answer):
         return True, {
@@ -582,59 +688,84 @@ async def is_likely_ma(
             **deal_fields(deal_answer),
         }
     if catalyst_quality == "mna":
-        # The grade and the fields come from ONE answer and the prompt ties them (grade 'mna'
-        # only when the fields pin). A mismatch means the rule is not holding — the FIELDS
-        # decide the filter; the grade is left as given (it scores 0 downstream), and this row
-        # makes the mismatch countable (EXPECT ~0/week).
+        if deal_answer is None:
+            # Ruling 5: the grade said 'mna' and the deal fields are blank — block as before.
+            return True, {
+                "source": "claude_classifier_unanswered",
+                "match_path": "claude_classifier_unanswered",
+                "ticker": ticker,
+                "catalyst_quality": catalyst_quality,
+            }
+        # NOT RULED (kept as built): 'mna' graded while the grader's OWN answered fields do not
+        # pin. The fields decide; this row makes the mismatch countable (EXPECT ~0/week).
         await _audit_once(
             "mna_grade_without_pin", ticker,
-            "graded 'mna' but its deal fields do not pin — "
-            + (f"{deal_answer.role}/{deal_answer.status}/{deal_answer.consideration}"
-               if deal_answer is not None else "no deal fields"),
+            f"graded 'mna' but its deal fields do not pin — {_answer_str(deal_answer)}",
             {"grader": deal_fields(deal_answer)})
 
+    # Ruling 7: did the grader find a deal (any role but 'none')? Then a headline cannot re-block.
+    grader_found_deal = deal_answer is not None and deal_answer.role != "none"
     scan = HeadlineScan(None, [], [], 0)
     if check_polygon:
         scan = await headline_deal_scan(
-            ticker, lookback_days=polygon_lookback_days, on_or_before=on_or_before, now_et=now_et)
+            ticker, lookback_days=polygon_lookback_days, on_or_before=on_or_before, now_et=now_et,
+            skip_in_orb=skip_in_orb, budget_pool=budget_pool)
         if scan.hit:
-            if deal_answer is not None:
+            if grader_found_deal:
                 await _audit_once(
                     "mna_deal_answers_conflict", ticker,
-                    f"grader read {deal_answer.role}/{deal_answer.status}/{deal_answer.consideration}, "
-                    f"headline pinned ({scan.hit.get('role')}/{scan.hit.get('status')}) — blocked",
-                    {"grader": deal_fields(deal_answer), "headline": scan.hit})
-            return True, scan.hit
-        if scan.unanswered:
+                    f"grader read {_answer_str(deal_answer)}, headline pinned "
+                    f"({scan.hit.get('role')}/{scan.hit.get('status')}) — passed (ruling 7: "
+                    "the grader's deal answer governs)",
+                    {"grader": deal_fields(deal_answer), "headline": scan.hit, "blocked": False})
+            else:
+                if deal_answer is not None:
+                    await _audit_once(
+                        "mna_deal_answers_conflict", ticker,
+                        f"grader read {_answer_str(deal_answer)}, headline pinned "
+                        f"({scan.hit.get('role')}/{scan.hit.get('status')}) — blocked",
+                        {"grader": deal_fields(deal_answer), "headline": scan.hit, "blocked": True})
+                return True, scan.hit
+        elif scan.unanswered and not grader_found_deal:
             blocks = await _unanswered_blocks()
             await _audit_once(
                 "mna_headline_unanswered", ticker,
                 f"{len(scan.unanswered)} candidate article(s) unanswered "
                 f"({scan.unanswered[0].get('why')}) — {'BLOCKED' if blocks else 'passed'}",
-                {"unanswered": scan.unanswered, "blocked": blocks})
+                # `blocked` first and the list bounded: the row is cut at 4000 chars, and the
+                # monthly review reads this row's verdict.
+                {"blocked": blocks, "unanswered_n": len(scan.unanswered),
+                 "unanswered": scan.unanswered[:5]})
             if blocks:
                 first = scan.unanswered[0]
                 return True, {"source": "polygon_headline_unanswered", "ticker": ticker,
                               **{k: v for k, v in first.items() if k != "why"},
                               "unanswered_why": first.get("why")}
 
-    # Shadow comparator — the pre-#692 rule: the grader said 'mna', a keyword sat in the
-    # catalyst text, or a keyword headline was a candidate. New rule passed → record why.
-    old_reasons = []
+    # Shadow comparator — (a) the pre-#692 rule: the grader said 'mna', a keyword sat in the
+    # catalyst text, or a keyword headline was answered; (b) the grader answered a deal that
+    # does not pin (role != 'none') — NOT an old-rule block, but every such release is a name
+    # the monthly review must be able to see. New rule passed → record why.
+    old_rule = []
     if catalyst_quality == "mna":
-        old_reasons.append("grade_mna")
+        old_rule.append("grade_mna")
     kw_hit = matches_mna_in_any(catalyst_texts or [])
     if kw_hit:
-        old_reasons.append(f"keyword_in_text_{kw_hit[1]}:{kw_hit[0]}")
-    if scan.released:
-        old_reasons.append("headline_keyword")
+        old_rule.append(f"keyword_in_text_{kw_hit[1]}:{kw_hit[0]}")
+    if scan.released or scan.hit:
+        old_rule.append("headline_keyword")
+    old_reasons = list(old_rule)
+    if grader_found_deal:
+        old_reasons.append("grader_deal_no_pin")
     if old_reasons:
+        lead = ("old rule would have blocked (" + ", ".join(old_rule) + ")" if old_rule
+                else "released for review (the grader answered a deal that does not pin)")
         await _audit_once(
             "mna_filter_released", ticker,
-            "old rule would have blocked (" + ", ".join(old_reasons) + "); "
-            + (f"grader read {deal_answer.role}/{deal_answer.status}/{deal_answer.consideration}"
-               if deal_answer is not None else "no grader answer")
-            + (f"; {len(scan.released)} headline(s) answered no pin" if scan.released else ""),
-            {"old_reasons": old_reasons, "grader": deal_fields(deal_answer),
-             "headlines": scan.released, "unanswered_n": len(scan.unanswered)})
+            f"{lead}; grader read {_answer_str(deal_answer)}"
+            + (f"; {len(scan.released)} headline(s) answered no pin" if scan.released else "")
+            + ("; a pinning headline was overruled (ruling 7)" if scan.hit else ""),
+            {"old_reasons": old_reasons, "old_rule_would_block": bool(old_rule),
+             "grader": deal_fields(deal_answer), "headlines": scan.released,
+             "overruled_headline": scan.hit, "unanswered_n": len(scan.unanswered)})
     return False, None
