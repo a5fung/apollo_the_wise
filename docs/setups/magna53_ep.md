@@ -468,8 +468,19 @@ the same old-path inputs (`--old-module`): all ten 10-01 wrong blocks flip BLOCK
 CHYM, JBS, GPRK, WAY, CSR, SWKS, IOVA, VKTX, RGTI), WEN and LCID flip too; ACVA, SUNE, CLRO stay
 BLOCK on both. ⚠ The harness proves the RULE and the plumbing, not the model: whether the model
 answers as expected is the replay's question — `scripts/probes/_692/replay_target_question.py`
-(read-only, one call per ticker-day on claude-sonnet-5-5, cap 200 calls, aborts above $5; whole
-population 151 ticker-days / 140 calls, estimated ≤ $1.60 one-time). NOT YET RUN.
+(read-only; the model is `GROUNDED_GRADE_MODEL` resolved at run time). On every EP ticker-day it
+asks BOTH the grader question and the headline scan (3 newest candidates, stop at the first pin)
+and decides with the LIVE rule incl. rulings 4 / 5 / 7, keeping both answers; other days ask the
+headline scan as live; price-signature days make no call. Grader text: the stored grade corpus,
+else a rebuild with the shadow row's summary + analysis, else that text, else the 200-char audit
+excerpt (only when no shadow row exists) — `corpus_source` says which. It also re-grades 30
+recent NON-deal rows with origin/main's OLD grader and the NEW one and lists every quality flip
+(ruling 6), and prints a MUST-SHOW block (SYNA, DV, UTZ, CRNX, FBRX, NUVL, DFH, BANF, MAIR, THR,
+CECO, ROKU, DSGN, QBTS, LBRDA/LBRDK, HZO, RNW, PZZA, PD + any target/proposed answer) for HIS
+labelling. Priced whole-path from `pricing_for` before the first call; aborts above $6. Upper
+bound on the 151 exported ticker-days: 588 calls = 108 grader + 420 headline + 60 stability,
+≈ $4.57 at $2/$10 per MTok if every EP day had a full 6000-char corpus and every day 3+ candidate
+headlines; the real count is lower (the dry run prints it, $0). NOT YET RUN.
 
 **The change (plain words first).**
 - *The question replaces the words.* Block only when this ticker is the **target** of a
@@ -571,8 +582,14 @@ execution) or the execution container runs the old filter silently (the 09-14 cl
 **Tests:** `tests/test_mna_target_question_692.py` (the rule's full truth table, the 23 named
 cases, memo / cap / ORB / retry / toggle / conflict / released / grade audits, both schemas'
 order, the grader's sink and the tier-shadow columns) and `tests/test_mna_replay_692.py` (the
-replay's embedded prompt, schemas, keyword list and rule equal the code; a $0 end-to-end dry run
-on the exported population makes no model call and no DB write). Retired:
+replay's embedded prompt, schemas, keyword list and rule equal the code; its `live_verdict`
+equals the real `is_likely_ma` on all 147 cells of a grade × grader-answer × headline-answers
+grid; the OLD grader copy is hash-pinned (byte-checked once against origin/main fbf181b7); the
+grader text order; a $0 dry run on the exported population makes no model call and no DB write;
+a $0 paid-path run with a fake model asks both questions on EP days, decides live, and reports
+labelled acceptance / MUST-SHOW / stability flips; above the ceiling nothing is called). Replay
+mutations: its ruling 5 or ruling 7 removed → 2 red each; one path only on EP days → 1 red; the
+audit excerpt preferred over the shadow text → 1 red. Retired:
 `test_ma_filter_direction`, `test_mna_binding_guards`, `test_ma_keyword_veto_516`,
 `test_mna_proximity_check` — their SUNE / CLRO true-positive cases live on in the harness.
 Mutation-checked on `deal_pins_price` (each restored after): inverting the signed test → 15 red;
