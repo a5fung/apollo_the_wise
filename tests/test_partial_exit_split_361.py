@@ -350,6 +350,9 @@ def test_load_exit_state_success_builds_expected_state_and_bars(monkeypatch):
         # #548: the MA trail is the STOCK's 10/20-day average, so the state now also carries
         # the stock's closes from BEFORE entry. The stub returns the same bar for both fetches.
         "prior_closes": [110.0],
+        # #687 B: the depth rule's ADR20 from the same prior bars — one bar is fewer than the
+        # 10 usable sessions it needs, so None.
+        "adr20_pct": None,
     }
 
 

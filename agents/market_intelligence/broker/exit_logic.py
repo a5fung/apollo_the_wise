@@ -144,6 +144,63 @@ def giveback_floor(
     return entry_price + floor_frac * (peak_close - entry_price)
 
 
+# ── #687 B: the depth rule's RESTING stop (operator-ruled 2026-09-29) ─────────────────────────
+#
+# The rule: decide on the TRUE close (a close below the trailing line sells at the next open —
+# `apply_daily_exit_step` is unchanged), and let the protective stop rest one normal day's range
+# UNDER the line instead of on it. These two functions are the resting-stop half, kept PURE so
+# the live 16:45 job and the analysis walker (`scripts/probes/_687/mechanics.py`) can be pinned
+# to the same numbers (`tests/test_depth_exit_rule.py`, golden file built from the walker's own
+# lines).
+
+def adr20_pct_from_bars(prior_bars: list[dict] | None) -> float | None:
+    """ADR20% as a FRACTION: the mean daily (high − low) / close over the ≤20 sessions BEFORE
+    entry. `prior_bars` are oldest-first daily bars (`h`/`l`/`c`) ending the day before the
+    alert. Same arithmetic as `scripts/ep_replay.adr20_pct` (the #687 replays' ADR): the last 20
+    bars are taken FIRST, then unusable ones dropped, and fewer than 10 usable → None (abstain,
+    never a default)."""
+    vals = [(b["h"] - b["l"]) / b["c"] for b in (prior_bars or [])[-20:]
+            if b.get("h") is not None and b.get("l") is not None and b.get("c")]
+    if len(vals) < 10:
+        return None
+    return sum(vals) / len(vals)
+
+
+def depth_stop_price(
+    *,
+    line: float | None,
+    hard_stop: float,
+    entry_price: float | None,
+    breakeven_active: bool,
+    adr20_pct: float | None,
+) -> float:
+    """The depth rule's resting stop: max(hard stop, entry once breakeven is armed,
+    round(line × (1 − ADR20%), 2)), computed EXPRESSION-FOR-EXPRESSION as the #687 walker does
+    (`scripts/probes/_687/mechanics.py`, `walk()`, the floor / line / line_r / trail_governed /
+    rest lines of the D10 arm):
+
+        floor = max(hard, entry) if be_active else hard
+        line = max(line, floor); line_r = round(line, 2)
+        trail_governed = line_r > round(floor, 2) + 1e-9
+        rest = max(round(floor, 2), round(line_r - 1.0 * adr_pct * line_r, 2))  if governed and adr
+               round(floor, 2)                                                    otherwise
+
+    `line` is today's trailing line (max of the stock's SMA10 / SMA20 incl. today's close, as the
+    16:45 job computes it; None = no line yet). Keep `line_r - 1.0 * adr * line_r` — not
+    `line_r * (1 - adr)`: the two round differently at half-cent boundaries, and parity with the
+    walker is the point. No ADR20 (fewer than 10 prior sessions) → the floor, exactly as the
+    walker rests a trade it cannot host ("D10 unhostable"). Raise-only is NOT applied here — the
+    broker floor in `order_manager.update_stop` is the ratchet."""
+    hard = float(hard_stop)
+    floor = max(hard, float(entry_price)) if (breakeven_active and entry_price) else hard
+    ln = max(float(line), floor) if line is not None else floor
+    line_r = round(ln, 2)
+    trail_governed = line_r > round(floor, 2) + 1e-9
+    if trail_governed and adr20_pct:
+        return max(round(floor, 2), round(line_r - 1.0 * adr20_pct * line_r, 2))
+    return round(floor, 2)
+
+
 def apply_daily_exit_step(
     state: dict[str, Any],
     daily_bar: dict[str, Any] | None,

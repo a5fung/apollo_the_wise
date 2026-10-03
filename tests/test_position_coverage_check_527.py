@@ -74,7 +74,8 @@ def _fake_try_lock(acquired: bool):
     return _cm
 
 
-def _wire(trades, open_orders_by_ticker, *, already_alerted=0, lock_acquired=True):
+def _wire(trades, open_orders_by_ticker, *, already_alerted=0, lock_acquired=True,
+          pending_full_exit_ids=()):
     """Patch order_manager's broker + DB surface for check_position_coverage.
 
     open_orders_by_ticker: dict[ticker] -> list[order] OR an Exception instance
@@ -83,6 +84,8 @@ def _wire(trades, open_orders_by_ticker, *, already_alerted=0, lock_acquired=Tru
         returns — 0 means "not yet alerted today" (dedup lets the Telegram fire).
     lock_acquired: `_trade_advisory_try_lock` outcome — False simulates an
         in-flight partial exit holding the trade's advisory lock.
+    pending_full_exit_ids: #687 (f) — the broker ids the `mi_live_orders` mirror holds as this
+        trade's pending full exits (a queued closing order).
     Returns (ctx list, audited list, telegram mock, conn) for the caller to enter
     and assert against.
     """
@@ -109,6 +112,8 @@ def _wire(trades, open_orders_by_ticker, *, already_alerted=0, lock_acquired=Tru
         patch.object(om, "get_pool", AsyncMock(return_value=pool)),
         patch.object(om, "log_audit_event", _audit),
         patch.object(om, "_trade_advisory_try_lock", _fake_try_lock(lock_acquired)),
+        patch.object(om, "_pending_full_exit_order_ids",
+                     AsyncMock(return_value={str(i) for i in pending_full_exit_ids})),
         patch.object(om.alpaca, "get_open_orders", AsyncMock(side_effect=_get_open_orders)),
         patch.object(om, "send_telegram_message", telegram_mock),
         patch(
@@ -225,6 +230,76 @@ async def test_within_half_share_tolerance_is_silent():
     assert result["covered"] == 1
     assert audited == []
     telegram_mock.assert_not_called()
+
+
+# ── #687 (f), 2026-10-01: a QUEUED CLOSING ORDER covers the shares it is selling ────────────
+#
+# After every successful close-below-line sale the stop is cancelled and a market sell waits
+# for the next open. Counting stops only, the detector read that as a gap and the 17:00 / 19:00
+# / 21:10 slots paged "UNPROTECTED" on a position whose exit was simply queued.
+
+def _queued_sell(order_id, qty, status="accepted"):
+    """An after-hours market sell Alpaca has queued for the next session."""
+    return {"id": order_id, "side": "sell", "type": "market", "qty": qty,
+            "filled_qty": 0, "status": status, "order_class": "simple"}
+
+
+@pytest.mark.asyncio
+async def test_a_queued_full_exit_covers_the_position():
+    """THE BUG: stop cancelled, closing order queued for the open → was a GAP + page."""
+    trades = [_trade(1, "OKTA", 2.0)]
+    orders = {"OKTA": [_queued_sell("sell-1", 2.0)]}
+    ctx, audited, telegram_mock, _ = _wire(trades, orders, pending_full_exit_ids=["sell-1"])
+
+    result = await _run_coverage_check(ctx)
+
+    assert result["gaps"] == [] and result["covered"] == 1, result
+    assert audited == []
+    telegram_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_queued_full_exit_beside_a_resting_profit_take_covers_the_whole_position():
+    """The #687 (a) shape: 4 sh queued to sell + 2 sh under the OCO profit-take = 6 held."""
+    trades = [_trade(1, "KOD", 6.0)]
+    oco = {"id": "oco-1", "side": "sell", "type": "limit", "qty": 2.0, "filled_qty": 0,
+           "status": "new", "order_class": "oco"}
+    orders = {"KOD": [_queued_sell("sell-1", 4.0), oco]}
+    ctx, _audited, telegram_mock, _ = _wire(trades, orders, pending_full_exit_ids=["sell-1"])
+
+    result = await _run_coverage_check(ctx)
+
+    assert result["gaps"] == [] and result["covered"] == 1, result
+    telegram_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_plain_resting_limit_is_still_not_protection():
+    """NEGATIVE PIN (#566 defect 1): a plain sell LIMIT that is not our queued full exit counts
+    for NOTHING — a limit above the market protects nothing on a decline. Still a gap."""
+    trades = [_trade(1, "ETON", 5.0)]
+    plain_limit = {"id": "lim-1", "side": "sell", "type": "limit", "qty": 5.0,
+                   "filled_qty": 0, "status": "new", "order_class": "simple"}
+    ctx, _audited, telegram_mock, _ = _wire(trades, {"ETON": [plain_limit]})
+
+    result = await _run_coverage_check(ctx)
+
+    assert len(result["gaps"]) == 1
+    telegram_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_a_mirror_full_exit_the_broker_no_longer_lists_is_still_a_gap():
+    """Both halves are required: the mirror says a sale is pending, but the broker has no such
+    live order (rejected/cancelled at release) — the shares are bare, so it pages."""
+    trades = [_trade(1, "OKTA", 2.0)]
+    ctx, _audited, telegram_mock, _ = _wire(trades, {"OKTA": []},
+                                            pending_full_exit_ids=["sell-1"])
+
+    result = await _run_coverage_check(ctx)
+
+    assert len(result["gaps"]) == 1
+    telegram_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -417,6 +492,27 @@ async def test_stop_refresh_ran_reports_already_covered_and_skip_reasons():
     parsed = _json.loads(detail)
     assert parsed["already_covered"] == ["COVR"]
     assert parsed["skipped"] == [{"ticker": "NOPR", "reason": "no_stop_price"}]
+
+
+@pytest.mark.asyncio
+async def test_a_queued_sale_the_broker_lists_as_pending_cancel_is_not_protection():
+    """#687 review (test-only pin): OUR queued closing order, but the broker is already cancelling
+    it (`pending_cancel`) — it will not sell those shares, so it covers nothing. Still a gap,
+    paged. (Positive control: the same order `accepted` covers — the test above.)"""
+    from agents.market_intelligence.broker import order_manager as om
+
+    trades = [_trade(1, "OKTA", 2.0)]
+    orders = {"OKTA": [_queued_sell("sell-1", 2.0, status="pending_cancel")]}
+    ctx, _audited, telegram_mock, _ = _wire(trades, orders, pending_full_exit_ids=["sell-1"])
+
+    result = await _run_coverage_check(ctx)
+
+    assert len(result["gaps"]) == 1, result
+    telegram_mock.assert_called_once()
+    with patch.object(om, "_pending_full_exit_order_ids", AsyncMock(return_value={"sell-1"})):
+        assert await om._queued_full_exit_qty(1, orders["OKTA"]) == 0.0
+        assert await om._queued_full_exit_qty(
+            1, [_queued_sell("sell-1", 2.0, status="accepted")]) == 2.0
 
 
 # ─────────────── Part 2 scheduling: the 09:31-15:55 ET window is enforced ─────

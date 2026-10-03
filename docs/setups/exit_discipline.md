@@ -31,6 +31,11 @@ the exit path sees intraday price", which stopped being true on 2026-08-01):**
 - **The TRAIL is DAILY**: `exit_logic.py` is *"pure daily-exit-step decision logic"*;
   `apply_daily_exit_step(state, daily_bar, …)` consumes **one daily bar** — the SMA-trail /
   stop-update decisions are evaluated once, against the close, not on the touch.
+- **A DEPTH variant of the trail exists for NEW MAGNA53 trades but is OFF** (#687 B, operator-ruled
+  2026-09-29): toggle `magna53_depth_exit` (per mode, no row = OFF) stamps `mi_live_trades.exit_rule
+  = 'depth'` at entry; a stamped trade's stop rests one ADR20 under the line and a close below the
+  line sells in the next opening auction (order sent 19:01 ET). No row is stamped today, so every
+  trade runs the trail described here. Change log 2026-10-01.
 
 **Jobs:** `track_position_extremes` every 5 min (bars + the #508 profit trigger);
 `run_partial_exits` 3:45 PM ET (the time-gated partial — standing down while the intraday
@@ -343,6 +348,327 @@ what any live position does.
 ---
 
 ## Change log (newest first)
+
+### 2026-10-02 (later) — #687 ruling (ii): a PLAIN resting profit-take limit is left resting; the other shares follow the close-below sale
+
+**Trigger**: his rulings of 2026-10-02 on the four calls the cut-back listed (PLAN.md #687). Item (ii): a plain resting
+profit-take LIMIT (no stop of its own — the #566 fallback when the profit-take OCO cannot be priced, or the
+`profit_take_oco` toggle off) beside a close-below sale. His words: *"treat it as a wash/no-op as if it didn't get hit…
+keep original stop and wait for next profit take"* — the same treatment as the +8R OCO third (09-29 ruling 3).
+
+**Evidence**: operator ruling, not a threshold. Code reading: `_live_sell_orders_held_qty` already counts any live
+resting sell order as held, so removing f8d5069e's skip gives exactly the ruled behaviour at both sale sites.
+
+**Change**: `_size_sale_beside_resting_orders` (shared by the 16:45 `execute_full_exit` and the 19:01
+`execute_depth_open_sale`) no longer skips on a plain resting limit: it sells the broker position minus the shares
+live resting sell orders hold (other than the trade's own stop, which is cancelled — nothing else ever is), capped by
+the books. The limit stays resting. Resting orders holding every share → the existing
+`resting_orders_hold_all_shares` skip (nothing cancelled). The sale page and that skip say what the shares carry:
+the OCO wording is unchanged; a plain limit reads *"a plain limit with no stop of its own — left resting, as ruled
+2026-10-02"* (`_plain_resting_limit_qty`, read for wording only). Skip code `plain_resting_limit` is gone.
+
+**Anticipated effect**: on the rare trade whose +8R third rests as a plain limit, a close below the line sells the two
+thirds behind the stop instead of skipping the whole exit; the third is left to its limit. The third had no stop
+before the sale (Alpaca holds its shares for the limit) and has none after it — unchanged. Not changed: the fill page
+(`finalize_full_exit`) still says the remaining shares sit under "its own target and breakeven stop" — it cannot
+tell the order type (listed).
+
+**Reversion-flag**: REVERSAL of f8d5069e (2026-10-02 cut-back). That skip was not judged right — it was main's
+behaviour held as a placeholder because the case was un-ruled; his ruling replaces it.
+
+**Ruling (iv) 2026-10-02** (the same day's other build — a partial loss is counted once, on its own day, and netted
+out of `total_pnl` on the close day) is a safeguard change: owned by `docs/setups/safeguards.md` item 5 + its
+2026-10-02 entry.
+
+**Status**: built + unit-tested on branch `687-depth-rule`, NOT merged or deployed. Tests:
+`tests/test_687_ruling_ii_plain_limit_left_resting.py` (4: 16:45 limit left resting + 4 free shares sold; nothing
+sold or cancelled when the limit holds every share; 19:01 the same; the OCO third unchanged). Convergence s28 now
+differs from main under "ruling (ii) 2026-10-02".
+
+### 2026-10-02 — #687: his four rulings of 2026-10-01 built; the three review rounds cut back to parts A + B
+
+**Trigger**: PLAN.md #687, 2026-10-01 — four decisions put to him after three review rounds that did not converge;
+his answer to all four: *"Yes"*. Then ONE cut-back round (scope audit; every review-round hunk outside the five
+depth pieces and fixes (a)–(f) reverted; the rulings built; a convergence test that the toggle-OFF path matches
+main except the named fixes). Each ruling is its own commit with its tests.
+
+**The cut-back (commits 66c1dcfa, 61a6c479, f8d5069e).** Every code and test file the three review rounds touched
+was reset to part B byte-for-byte; what stays: fixes (a)–(f), the five depth pieces, two test-only pins, and ONE
+review hunk re-added with its citation — the position sync never lowers the books below (broker + the shares our
+own pending exits reserve) while a closing order is queued (61a6c479: a loss CREATED by (a)+(b) on paper, whose
+after-hours queued sell soft-reserves the shares — the sync wrote 3, the 7 filled, 3 − 7 closed a row the broker
+still held). Reverted, each with where it goes now:
+- strict broker reads / "flat or unreadable → place nothing" in the restore → **his call** (open item (i) below);
+- the failed-exit restore's price floor (`_restore_stop_after_failed_exit` is not floored like the stream's
+  restore) → follow-up (touches the signed raise-only rule);
+- the watchdog re-checking a position whose queued sale died at the open → follow-up (main's 24-hour
+  `stop_ack_broker_covered` dedup is unchanged; a sale that dies at the open AND whose stream restore fails is not
+  re-protected by the watchdog that day);
+- a partly-filled opening-auction sale's sold part is not recorded by the stream's cancel path → follow-up,
+  **before any flip** (depth path; the sync heals the count later);
+- a depth trade held only by its OCO third is marked "sell at the next open" every evening and skipped at 19:01
+  → follow-up, **before any flip** (depth path messaging);
+- a repeat full-exit skip on a later day is audit-only (pages once per trade per kind for life) → follow-up;
+- a plain resting profit-take limit cancelled and sold with the rest (review fix 9) → **his call** (open item (ii));
+  until then it kept main's skip (f8d5069e) — **RULED 2026-10-02: left resting, the other shares sold** (entry above);
+- sync orphan-repair cap, the stream restore under the trade lock, the watchdog coverage split → dropped (they
+  guarded races the reverted hunks created).
+
+**Ruling (2) — the two false "unprotected" pages are silenced (messaging only; nothing placed, cancelled or
+sold differently):**
+- **(i) On every planned sale.** `execute_full_exit` (16:45) and `execute_depth_open_sale` (19:01) write a
+  `planned_sale_stop_cancel` audit row naming the exact stop immediately BEFORE they cancel it (never raises —
+  a failed write only means the page goes out as before). The stream's stop-cancel handler (§2) still makes the
+  same broker look and re-check; on finding that row for THIS trade and THIS stop order it writes
+  `stop_cancel_by_planned_sale_silent` instead of paging "Stop order CANCELED — Position unprotected". The sale
+  pages its own outcome ("Closing order placed", or FAILED + the restore result). No row, another order, another
+  trade, or an unreadable log → the page goes out exactly as before.
+- **(ii) On a position held only by its OCO third.** When the 16:20 / 09:35 stop refresh cannot place a stop,
+  it now asks the broker the #527 detector's own coverage question (`_resting_exits_cover_position`: live sell
+  stops + the unfilled qty of live OCO parents + OUR queued closing order, mirror AND broker). Covered → recorded
+  as `covered_by_resting_exit` in `stop_refresh_ran`, no page, no `stop_refresh_failed`. A plain resting LIMIT
+  counts for nothing (#566); an unreadable broker counts for nothing. A genuinely uncovered position still pages
+  "No stop on X".
+- Tests: `tests/test_687_ruling2_false_unprotected_pages.py` (19). Mutations: §2 suppression off (1 red);
+  refresh pages regardless (3 red); any resting sell counted (2 red).
+
+**Ruling (3) — a stop that cannot be placed because the price is already through it → SELL AT MARKET, as the
+triggered stop would have.** Built where a PLANNED SALE's cancelled stop is being put back — the exit rule has
+already decided to sell there:
+- `_restore_stop_after_failed_exit` (the 16:45 sale or the 19:01 opening-auction sale was rejected) and the
+  stream's full-exit cancel/expiry restore (§3: the queued closing order died unfilled). When the broker rejects
+  the restore as above the market (`_is_stop_above_market`), `_sell_free_shares_after_stop_breach` sells the
+  restore's own count — the broker's free shares; a resting +8R profit-take third keeps its own OCO — via
+  `close_position(qty)` as a `full_exit` row (`exit_reason` = the planned sale's reason), audits
+  `stop_breach_market_sale`, and the page says the shares are being sold at market. The sale failing too →
+  `stop_breach_sale_failed` + the UNPROTECTED page, as before. Any other restore failure → main's page, nothing sold.
+- **Not extended (his call — not covered by the ruling as built, main's behaviour kept):** the coverage
+  reconciler `_ensure_stop_coverage` (still "operator decision needed — no auto-exit"), the sync orphan
+  remediation (3 attempts, then "failed to remediate"), `update_stop` (both attempts fail → "STOP FAILED — position
+  NAKED"), the stop-ACK watchdog's fresh-entry fallback, the stream's partial-exit restore and the OCO-cancel
+  handler. Listed for him.
+- Tests: `tests/test_687_ruling3_stop_through_price_sells.py` (9, incl. the reconciler still selling nothing).
+  Mutations: restore breach branch off + stream breach branch off → 4 red.
+
+**Ruling (4) — a stale "sell at the next open" mark is cleared, paged, and the next close decides (depth path).**
+Already built in part B as a design default (`execute_depth_open_sale`: a mark dated before today's ET session →
+nothing cancelled or sold, mark cleared, `depth_sale_mark_stale` audit, page "the next close decides"); the
+ruling makes it his, no code change. Pinned further: the 16:45 job re-marks a stale row for TODAY on a close below
+the line and never acts on it on a close back above it. Tests: `tests/test_687_ruling4_stale_mark.py` (3) +
+`test_depth_exit_rule.py::test_a_mark_from_an_earlier_session_is_never_sold_on`. Mutation: the stale check off →
+1 red.
+
+**Ruling (1)** (a loss on a partial sale counts toward the 2% daily loss limit at once) is a safeguard change —
+owned by `docs/setups/safeguards.md` item 5 + its 2026-10-02 entry.
+
+**Evidence — the convergence test** (`tests/test_687_toggle_off_convergence.py`, harness
+`tests/_convergence_687_harness.py`): 31 fixed toggle-OFF scenarios run through the pinned pre-#687 code
+(97b08d51 since the 2026-10-02 rebase — 90d02459 before it; a temporary git worktree —
+`scripts/probes/_687/capture_toggle_off_baseline.sh`) and through this branch, recording every broker call, every
+Telegram page, the return value and the book's end state. 12 of 29 two-tree scenarios are identical (incl. the 16:45
+job on an unstamped trade, a stop raise, the sync without a queued sale, a fill of the whole sale, a hand-cancelled
+stop, the watchdog on a fresh entry, a genuine 17:00 gap, main's 62f45ade intraday gap page — s29, which the
+pre-rebase main never sent — and a partial loss + close on the same day, s31, counted once as main counts it).
+Every other difference is allow-listed with its reason and its exact expected value: (a) ×2, (b), (c) ×4, (d),
+(e), (f), the sync hunk, ruling (1), (2)(i), (2)(ii) ×2, (3) ×2, and (since his 2026-10-02 rulings) ruling (ii)
+(s28, was (a)) and ruling (iv) (s30); the two depth scenarios are inert. A stray broker
+call in `execute_full_exit` reddens 6 scenarios.
+
+**Open for him (NOT decided here — main's behaviour kept):**
+- (i) the failed-exit stop restore when the broker reads flat or unreadable: today it restores from the books
+  (`remaining − pending exits`, #687 c) — restore from the books vs place nothing;
+- (ii) a plain resting profit-take LIMIT (no stop) beside a close-below sale: main's skip kept — skip vs cancel it
+  and sell everything; **RULED 2026-10-02: neither — left resting, the other shares follow the exit** (entry above);
+- (iii) ruling (3) at the other stop-placing sites (listed under ruling (3)) — extend vs keep "page, no auto-exit";
+- (iv) ruling (1): a partial loss counted on its own day is counted again inside `total_pnl` on the trade's close
+  day — keep vs net it out. **RULED 2026-10-02: net it out — each realized dollar counts once, on its own day**
+  (`docs/setups/safeguards.md` item 5 + its 2026-10-02 entry).
+
+**Anticipated effect**: toggle-OFF trades behave as main except the listed exceptions; the depth flow stays OFF
+(no row stamped). **Reversion-flag**: REFINEMENT of the two 2026-10-01 entries below (parts A and B) plus his
+four rulings. **Status**: built + unit-tested on branch `687-depth-rule`, NOT merged or deployed; toggle
+`magna53_depth_exit` OFF in both modes.
+
+### 2026-10-01 — #687 part B: the DEPTH exit rule for NEW MAGNA53 trades — BUILT behind `magna53_depth_exit`, toggle OFF (no live behaviour changes until he flips it)
+
+**Trigger**: his ruling 2026-09-29 (PLAN.md #687, *"Aligned"*, then *"Ok, let's keep this and monitor how it
+goes"*) — switch MAGNA53's trail to the depth rule, conditional on it executing mechanically: *"We need to make
+sure it can work mechanically, meaning we can actually execute these orders properly given there will be stops,
+cancelling, etc."* His four decisions, built exactly: (1) decide on the true close, sell in the next morning's
+opening auction (opg); (2) NEW trades only — KOD, VICR keep today's stop; (3) a resting +8R profit-take third keeps
+its own target and breakeven stop on a close-below sale; (4) next-morning losses count toward the 2% daily loss
+limit and the circuit breaker as normal (no special-casing anywhere).
+
+**Evidence**: `docs/analysis/687_depth_trail_backfill_2026-09-29.md` (1,505 rebuilt EPs: +29R vs today's stop,
+p 0.33; 79 real EPs: −1.8R, noise) and `docs/analysis/687_depth_trail_mechanics_2026-09-29.md` (CHECKED section:
+under live timing — true-close decision, next-open sale — +51.6R on the rebuilt list, p 0.087; −2.5R on the 79
+real EPs, p 0.25). ⚠ The 1-ADR depth was picked after seeing FTK, INFQ and OKTA (in-sample); not a clear win on
+the EPs we trade. The live resting stop is pinned to the analysis walker by a golden file built from the walker's
+own lines (418 cases, 0 mismatches — `scripts/probes/_687/depth_stop_golden.py`).
+
+**What it does (mechanism):**
+- **Stamp at entry.** `entry_pipeline.submit_trade_entry` reads `mi_safeguard_state('magna53_depth_exit',
+  <mode>)` before the cap-lock transaction (`order_manager.resolve_exit_rule_stamp`, MAGNA53 only, fails CLOSED)
+  and, inside the insert's own transaction, writes `mi_live_trades.exit_rule = 'depth'`. NULL = today's rule. The
+  16:45 job and the 19:01 sale read the ROW, never the toggle — flipping it cannot change an open trade's rule.
+- **Resting stop, day 1 on.** 16:45 job: `exit_logic.depth_stop_price` = max(hard stop, entry once breakeven is
+  armed, round(line × (1 − ADR20%), 2)); line = today's trailing line (max of the stock's SMA10 / SMA20, as
+  today); ADR20% = mean (high − low)/close over the 20 sessions before entry (`exit_logic.adr20_pct_from_bars`, the
+  replays' `ep_replay.adr20_pct`, from the bars `_load_exit_state` already fetches). Raised through `update_stop`
+  (raise-only against the broker). Today's rule still rests ON the line (unchanged branch).
+- **Decision, 16:45, on the true close.** `apply_daily_exit_step` unchanged. A close below the line on a depth row
+  only sets `depth_sell_pending_on = today` (+ a `depth_close_below_line` audit row + a Telegram); nothing is
+  cancelled or sold; the depth stop stays on until 19:01.
+- **Sale, 19:01 ET** (`scheduler` job `depth_open_auction_sale`, execution-owned; Alpaca rejects OPG orders before
+  19:00 and queues them after): `order_manager.run_depth_open_sales` → `execute_depth_open_sale` per marked row,
+  under the per-trade #151 lock: re-read the row → size from the broker (position minus shares held by live
+  resting sell orders other than the depth stop, capped by `remaining − pending partial qty` — the shared
+  `_size_sale_beside_resting_orders`, same as #687 A) → cancel the depth stop → `_await_shares_released` (#646) →
+  `place_market_on_open_sell` (TIF opg, mode-bound client order id) → `full_exit` row (`exit_reason
+  'sma_trail_stop'`: the decision IS the trail's close test) → clear the mark. Rejected → `full_exit_rejected`
+  audit, `_restore_stop_after_failed_exit` at the stop's price (sized from the broker, #687 A c), page.
+- **Expiry.** An unfilled opg is cancelled by the broker after the open → `trade_stream._handle_cancel_or_reject`
+  §3 (full-exit cancel/expiry) restores the stop at its price, sized from the broker, and pages "Close order
+  CANCELLED … Stop re-placed @ $X for N sh". No new stream code: the path #687 A fixed is the one it takes.
+- **Fill.** The auction fill runs `finalize_full_exit` (#687 A b: the row stays open at the third's size if a
+  profit-take third rests; closes at zero otherwise).
+
+**Design defaults NOT covered by the ruling — stated so they read as choices, and listed for him:**
+- **No ADR20** (fewer than 10 sessions before entry, or the history fetch failed that pass): the stop rests at the
+  hard / breakeven floor, as the analysis walker rests a trade it cannot host — never on the line. Chosen because
+  the broker raise-only floor makes any one-evening move to the line irreversible, so a transient fetch failure
+  must not be able to convert a trade to today's stop for life.
+- **Failure retry:** the 19:01 attempt clears the mark whatever its outcome (queued, rejected-and-restored, skipped,
+  raised). Nothing retries a sale on its own; a trade still held is re-decided on the next true close. An expired
+  opg likewise leaves the trade open under its restored stop until the next close below the line.
+- **A stale mark is never sold on** — ⚖ no longer a default: RULED by him 2026-10-01 (ruling (4), 2026-10-02
+  entry). A mark dated before today's ET session (the 19:01 run was missed, or re-driven after midnight) is
+  cleared with a `depth_sale_mark_stale` audit row and a page, nothing cancelled — the rule decides on the TRUE
+  close, and today's may be back above the line.
+- **Skips page once per trade per kind** (`full_exit_skipped`, shared with #687 A): nothing free to sell beside a
+  resting profit-take, or the broker unreadable (nothing is cancelled in either case).
+
+**Anticipated effect (after a flip only — nothing changes while OFF):** baseline today ~1 close-below sale a month
+on MAGNA53; under the depth rule ~4–5 a month (21 in 4.5 months on the 79 real EPs). Each: one opg sell queued at
+19:01, filled in the 09:30 auction; the evening stop sits one ADR20 under the line, never falls. Unintended, to
+watch: next-open losses land at ~09:30 and count toward the 2% daily loss limit and re-arm the loss-count circuit
+breaker more often (ruled: accepted, watch it); the WS stop-cancel page ("Stop order CANCELLED — Position
+unprotected") no longer fires when the 19:01 job cancels the depth stop (ruling (2)(i), 2026-10-02 entry), nor do
+the coverage slots (#687 A f).
+
+**Reversion-flag**: REFINEMENT of the 2026-08-08 SMA-trail fix and the 2026-09-06 era-D trail for MAGNA53 — same
+line, same close test; the stop rests lower and the close-below sale moves from the 16:45 queued market order to the
+opening auction. Revert = the toggle row 'off' (new trades stop being stamped); trades already stamped keep the
+depth rule for life by design — re-stamping them is a deliberate one-off SQL, his call.
+
+**Status**: BUILT, toggle `magna53_depth_exit` OFF in both modes (no `mi_safeguard_state` row), paper rehearsal
+pending, NOT deployed. Before any live flip: Mon–Tue PAPER rehearsal of the exact sequence in market hours (flip the
+`paper` row only), then his final yes; the live watch registers EXPECT / DONE-WHEN / WOULD-FAIL-IF before the flip
+(mechanics doc §8, corrected by its CHECKED section). Deploy: `execution` (broker + scheduler) AND `market-agent`
+(the `ADD COLUMN IF NOT EXISTS exit_rule / depth_sell_pending_on` migration lands on boot).
+
+**Flip (OPERATOR-ONLY, THE LINE — per mode; acts on the NEXT MAGNA53 entry, never an open trade):**
+```sql
+INSERT INTO mi_safeguard_state (safeguard, account_mode, state, updated_at)
+VALUES ('magna53_depth_exit', 'paper', 'on', now())          -- 'live' only after the rehearsal + his yes
+ON CONFLICT (safeguard, account_mode) DO UPDATE SET state='on', updated_at=now();
+```
+**Flip-day duties (NOT done here — the toggle is OFF):** a dated line here and in `magna53_ep.md` the same day;
+add the exit-era boundary to `rule_eras.py` for depth-stamped trades so the #482 recorder and era-scoped reviews
+stamp the new rule (`test_exit_counterfactual_consolidation_631` pins the era literal — move it with the flip);
+`scripts/live_rules.py` already prints the toggle's per-mode state.
+
+**Tests**: `tests/test_depth_exit_rule.py` (29: walker parity on the golden file, ADR parity with
+`ep_replay.adr20_pct`, the toggle and the in-transaction stamp, the 16:45 mark / stop raise / unstamped rows
+unchanged, the 19:01 sale sequence under the lock with the OCO third, rejection → restore, skips, a stale mark,
+expiry → restore, job registration). Eleven mutations each redden their tests (recorded in the commit).
+
+### 2026-10-01 — BUG FIX (#687 part A): six defects in today's close-below-the-line exit (TRADE STATE — no exit rule, stop level, target or size changed)
+
+**Classification: bug fixes enforcing already-signed intent** — the 16:45 close-below-the-line exit
+(`live_tracker.update_open_positions_live` → `order_manager.execute_full_exit`) is today's signed
+rule; these make it do what it already says. No CHANGE_PROCESS N≥10 gate. Found by the #687
+mechanics study and its independent check (`docs/analysis/687_depth_trail_mechanics_2026-09-29.md`,
+CHECKED section; `scripts/probes/_687/check_mech_verdict.txt` W2/W5/W6/W7/M1). The path has never
+fired live on a MAGNA53 trail (open positions KOD, VICR).
+
+**Trigger**: the #687 mechanics study (2026-09-29), read against the code at 2026-10-01.
+**Evidence**: code reading + one behaviour test per defect, each confirmed red against the pre-fix
+code (mutation runs recorded in the commit): (a)–(f) below. Single-path fixes, not threshold tunes.
+
+- **(a) A resting +8R profit-take no longer skips the sale.** `execute_full_exit` skipped the WHOLE
+  exit (an INFO log line; the 16:45 caller ignores the `False`) whenever any partial-exit order was
+  pending — so with the OCO third resting, the two thirds behind the trailing stop rode on after
+  the rule said sell. Now it sells `min(broker position − shares held by live resting orders other
+  than the stop it cancels, remaining − pending partial qty)` via `close_position(qty=…)`; the OCO
+  third keeps its own target and breakeven stop (operator ruling 2026-09-29). With nothing resting
+  the call is byte-identical (`close_position(ticker)`, no qty). Every skip that remains (a closing
+  order already queued · resting orders hold every share · broker unreadable beside a resting
+  profit-take — nothing is cancelled in that case) writes `full_exit_skipped` and pages once per
+  trade per skip kind (`_full_exit_skip_already_paged`, fails open). **Cut-back 2026-10-02:** the
+  ruling covers the OCO third only — a PLAIN resting sell limit (no stop of its own) keeps main's
+  skip: nothing sold, nothing cancelled, skip code `plain_resting_limit`, paged; his call (listed).
+  **Superseded by his ruling (ii) 2026-10-02:** the plain limit is left resting and the free shares
+  are sold, exactly as beside the OCO third (change log 2026-10-02 (later)).
+- **(b) `finalize_full_exit` decrements, closes only at zero** — the #566 rule the stop-fill writer
+  already follows. It wrote `status='closed', remaining_shares=0` regardless of the fill, which
+  after (a) would record a closed trade the broker still held. The OCO third's own fill (limit →
+  `_finalize_partial_exit_locked`, stop leg → `_finalize_stop_fill_locked`) closes the row.
+- **(c) The stop restore after a failed exit is sized from the broker** — position minus shares
+  held by LIVE resting sell orders (`_broker_free_qty_for_restore`; the stop the exit just
+  cancelled is never counted, even while Alpaca still lists it `new` before the cancel settles —
+  counting it would read "covered" a second before that stop is gone). It asked for `remaining_shares`, which still counts a resting
+  third → rejected → "UNPROTECTED" while the other two thirds were the naked ones. Both sites:
+  `_restore_stop_after_failed_exit` and the stream's full-exit cancel/reject/expiry restore
+  (`trade_stream._handle_cancel_or_reject` §3). `get_position` → None (flat OR unreadable) falls back
+  to `remaining − pending exits`, never zero. Every share held by OTHER live orders → no stop placed and
+  the page says so ("check that one of them is a stop") instead of a false UNPROTECTED.
+- **(d) `close_position(qty=…)` sends a `ClosePositionRequest`** (qty as `"2"`, not `"2.0"`). It
+  passed a dict, and alpaca-py 0.43.2 calls `.to_request_fields()` on it — AttributeError before
+  any HTTP call. No caller passed a qty before (a).
+- **(e) The cancel → sell sequence runs under the per-trade #151 lock, and the stop-ACK watchdog
+  takes the non-blocking try-lock** (defers, does not burn its once-a-day attempt —
+  `stop_ack_deferred_trade_locked`, 1-hour dedup) and re-reads the row under it. Without the lock a
+  30-second tick landing between the cancel and the sell placed a fallback stop at the ORIGINAL
+  orb_low, reserving the shares the sale needed. ⚠ In prod the watchdog runs 09:00–15:59 and the
+  only caller of `execute_full_exit` runs at 16:45, so today this closes an intraday-only window
+  (any future intraday full exit) — not a live 16:45 race.
+- **(f) A queued closing order counts as coverage** in `check_position_coverage` — only OUR full
+  exit (`mi_live_orders` purpose `full_exit`, pending) AND only when the broker lists it as live
+  (`accepted`/`new`/`pending_new`…). Counting stops only, every successful sale paged "UNPROTECTED"
+  at 17:00, 19:00 and 21:10 (the #649 slots; the 17:00/19:00 repair arm then no-oped). ⚠ Narrower
+  than "count `get_pending_exit_qty`": that helper includes plain partial-exit LIMITS, and #566
+  requires a limit above the market to count for nothing (that reading IS defect 1 here); OCO
+  parents were already counted from broker truth. A plain resting limit is still a gap (pinned).
+
+**Anticipated effect**: on a close below the line with a profit-take third resting, the two thirds
+sell at the next open and the row stays open at the third's size until it exits; on a successful
+sale, no 17:00/19:00/21:10 "UNPROTECTED" pages for that position. With nothing resting, the order
+sent and the row written are unchanged.
+
+**Expected residue — NOT changed here, stated so it is not read as a new defect** (⚖ both pages
+below were then SILENCED by his ruling (2) of 2026-10-01 — see the 2026-10-02 entry):
+- The WS stop-cancel handler (`_handle_cancel_or_reject` §2) still pages "Stop order CANCELLED —
+  Position unprotected" the moment the exit cancels the stop (16:45). (f) covers the coverage
+  detector only; the handler is out of this fix's scope. → silenced 2026-10-02, ruling (2)(i).
+- A row held open under a resting OCO third (after (b)) has `remaining_shares` fully covered by
+  pending exits, so `update_stop` aborts (`stop_update_aborted`, "pending exits cover full
+  remaining") and the 16:20 / 09:35 stop refresh pages "No stop on X" for it, and the 09:00
+  watchdog writes `stop_ack_broker_covered` ("no_stop_only_market") — the third IS protected by its
+  OCO's held stop leg. Same state #591 already produces for a day-1 stop with a resting carve-out.
+  → the refresh page silenced 2026-10-02, ruling (2)(ii); the abort and the watchdog row are
+  unchanged (neither pages).
+
+**Reversion-flag**: REFINEMENT of the 2026-09-11 #646 full-exit fix (same function, same
+never-naked rule) and of the #566 accounting rule (applied to the last writer that lacked it).
+
+**Status**: built + unit-tested, not deployed. Deploy: `broker/` + `scheduler.py` → `deploy.sh
+execution` AND `market-agent`. Verify-live needs a real close-below-the-line exit (none yet on
+MAGNA53); the #687 paper rehearsal exercises (a)/(c)/(d).
+
+**Tests**: `tests/test_646_full_exit_never_returns_naked.py` (#687 section: a, b, c, e),
+`tests/test_replace_order_kwargs_numeric.py` (d — the real alpaca-py `TradingClient` with its HTTP
+layer faked), `tests/test_position_coverage_check_527.py` (f, with the #566 negative pin).
 
 ### 2026-09-28 — the +8 ORB-R partial FIRED LIVE for the first time (KOD, trade 404) — verified at the broker, no rule changed
 

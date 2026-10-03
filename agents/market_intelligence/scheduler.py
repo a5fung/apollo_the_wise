@@ -120,6 +120,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "stop_coverage_repair_retry",  # #596 — re-drives a FAILED coverage repair (touches the broker)
     "live_position_update",
     "partial_exit_scan",  # #361 — 3:45 PM market-hours partial-profit (split from 4:45)
+    "depth_open_auction_sale",  # #687 B — 7:01 PM ET opening-auction sale (broker writes)
     "evening_position_backstop",
     # #646 (a1) — MUST be execution-owned: it reads broker truth, and an intelligence
     # container holds no Alpaca credentials, where an empty read is indistinguishable
@@ -2091,6 +2092,9 @@ async def _stop_ack_timeout_watchdog_job():
     from agents.market_intelligence.briefing import send_telegram_message
     from agents.market_intelligence.constants import mode_prefix
     from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: moves-with-job (W2)
+    from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+        _trade_advisory_try_lock,
+    )
     pool = await get_pool()
     async with pool.acquire() as conn:
         stuck = await conn.fetch(
@@ -2108,204 +2112,244 @@ async def _stop_ack_timeout_watchdog_job():
             ticker = row["ticker"]
             account_mode = row["account_mode"]
             trade_id = row["id"]
-            # Dedup — one remediation attempt per (trade_id, day). If a
-            # prior attempt already fired we don't re-fire (the prior
-            # action either succeeded or escalated to CRITICAL).
-            already = await conn.fetchval(
-                "SELECT 1 FROM mi_audit_log "
-                "WHERE event_type IN ('stop_ack_timeout_remediated', "
-                "                     'stop_ack_remediation_failed', "
-                "                     'stop_ack_broker_covered') "
-                "AND summary LIKE $1 "
-                "AND created_at > NOW() - INTERVAL '1 day' LIMIT 1",
-                f"{ticker} #{trade_id}%",
-            )
-            if already:
-                continue
-
-            qty = float(row["remaining_shares"] or row["entry_shares"] or 0)
-            stop_target = float(row["orb_low"]) if row["orb_low"] is not None else None
-
-            # Broker-side coverage check (#128, 2026-05-27): DB stop_order_id
-            # being NULL is a flawed proxy for "naked". After partial-exit
-            # cycles or stop-replacement timing gaps, DB can show NULL while
-            # broker has a working sell order covering the position. Before
-            # placing a redundant stop (which Alpaca rejects with
-            # `insufficient qty available`, surfacing as the BW #119 false
-            # CRITICAL on 2026-05-27), confirm with the broker.
-            try:
-                existing = await alpaca.get_open_orders(
-                    ticker, account_mode=account_mode, raise_on_error=True,
+            # #687 (e), 2026-10-01: TAKE THE PER-TRADE LOCK before acting. This watchdog used
+            # to take none, so a tick landing between a full exit's stop-cancel and its sell
+            # (the WS cancel handler nulls `stop_order_id` within the second) saw a filled row
+            # with no stop and no covering sell yet, and placed a fallback stop at the ORIGINAL
+            # orb_low — reserving the shares, so the sale was then rejected. `execute_full_exit`
+            # holds the BLOCKING lock from the cancel to the queued-sell row; the NON-blocking
+            # try-lock here defers to it, exactly as `_ensure_stop_coverage` and
+            # `check_position_coverage` already defer to an in-flight partial. Deferring does
+            # NOT burn the once-per-day remediation attempt (its event type is not in the
+            # dedup set below) — the next 30-second tick re-checks.
+            async with _trade_advisory_try_lock(trade_id) as _have_lock:
+                if not _have_lock:
+                    logger.info(
+                        f"stop_ack_watchdog: {ticker} #{trade_id} — trade lock held by an "
+                        f"in-flight exit/partial; deferring to the next cycle")
+                    recently_deferred = await conn.fetchval(
+                        "SELECT 1 FROM mi_audit_log "
+                        "WHERE event_type = 'stop_ack_deferred_trade_locked' "
+                        "AND summary LIKE $1 "
+                        "AND created_at > NOW() - INTERVAL '1 hour' LIMIT 1",
+                        f"{ticker} #{trade_id}%",
+                    )
+                    if not recently_deferred:
+                        await log_audit_event(
+                            "stop_ack_deferred_trade_locked",
+                            f"{ticker} #{trade_id}: trade lock held (an exit or partial is "
+                            f"mid-flight) — deferred, retrying next cycle",
+                            detail=_json.dumps({"trade_id": trade_id, "ticker": ticker,
+                                                "account_mode": account_mode}),
+                        )
+                    continue
+                # Re-read under the lock: whatever held it may have just re-protected or
+                # closed this trade since the `stuck` read above.
+                fresh = await conn.fetchrow(
+                    "SELECT status, stop_order_id FROM mi_live_trades WHERE id = $1",
+                    trade_id,
                 )
-            except Exception as get_err:
-                # DEFER on an unreadable broker (#456, operator-ruled 2026-07-26).
-                # This branch became reachable in the same card's F16 sweep
-                # (raise_on_error=True above; get_open_orders' own [] fallback
-                # used to swallow the failure internally). It previously fell
-                # through with existing=[] and placed a stop BLIND — which
-                # defeats the very check it sits inside: the broker query exists
-                # because a REDUNDANT stop is rejected with `insufficient qty
-                # available`, i.e. the BW #119 false CRITICAL of 2026-05-27
-                # (see the #128 comment above). Acting on an unreadable broker
-                # re-creates exactly that bug.
-                # Now matches the sibling policy (_try_adopt_existing_stop's
-                # _BROKER_UNREADABLE sentinel, _ensure_stop_coverage's early
-                # return None): skip this trade, retry next cycle. Cheap — this
-                # job runs every 30s during market hours — and a genuinely naked
-                # position is independently covered by _ensure_stop_coverage and
-                # the 15-min order-status reconcile.
-                # The audit event_type is deliberately NOT one of the three the
-                # dedup above matches, so deferring does NOT burn the
-                # once-per-day remediation attempt; its own 1-hour dedup keeps a
-                # sustained outage from flooding the log at 2 rows/minute.
-                logger.warning(
-                    f"stop_ack_watchdog: get_open_orders({ticker}) failed: "
-                    f"{get_err} — DEFERRING to next cycle (fail-safe)"
-                )
-                recently_logged = await conn.fetchval(
+                if (fresh is None or fresh["status"] != "filled"
+                        or fresh["stop_order_id"] is not None):
+                    continue
+                # Dedup — one remediation attempt per (trade_id, day). If a
+                # prior attempt already fired we don't re-fire (the prior
+                # action either succeeded or escalated to CRITICAL).
+                already = await conn.fetchval(
                     "SELECT 1 FROM mi_audit_log "
-                    "WHERE event_type = 'stop_ack_broker_unreadable' "
+                    "WHERE event_type IN ('stop_ack_timeout_remediated', "
+                    "                     'stop_ack_remediation_failed', "
+                    "                     'stop_ack_broker_covered') "
                     "AND summary LIKE $1 "
-                    "AND created_at > NOW() - INTERVAL '1 hour' LIMIT 1",
+                    "AND created_at > NOW() - INTERVAL '1 day' LIMIT 1",
                     f"{ticker} #{trade_id}%",
                 )
-                if not recently_logged:
+                if already:
+                    continue
+
+                qty = float(row["remaining_shares"] or row["entry_shares"] or 0)
+                stop_target = float(row["orb_low"]) if row["orb_low"] is not None else None
+
+                # Broker-side coverage check (#128, 2026-05-27): DB stop_order_id
+                # being NULL is a flawed proxy for "naked". After partial-exit
+                # cycles or stop-replacement timing gaps, DB can show NULL while
+                # broker has a working sell order covering the position. Before
+                # placing a redundant stop (which Alpaca rejects with
+                # `insufficient qty available`, surfacing as the BW #119 false
+                # CRITICAL on 2026-05-27), confirm with the broker.
+                try:
+                    existing = await alpaca.get_open_orders(
+                        ticker, account_mode=account_mode, raise_on_error=True,
+                    )
+                except Exception as get_err:
+                    # DEFER on an unreadable broker (#456, operator-ruled 2026-07-26).
+                    # This branch became reachable in the same card's F16 sweep
+                    # (raise_on_error=True above; get_open_orders' own [] fallback
+                    # used to swallow the failure internally). It previously fell
+                    # through with existing=[] and placed a stop BLIND — which
+                    # defeats the very check it sits inside: the broker query exists
+                    # because a REDUNDANT stop is rejected with `insufficient qty
+                    # available`, i.e. the BW #119 false CRITICAL of 2026-05-27
+                    # (see the #128 comment above). Acting on an unreadable broker
+                    # re-creates exactly that bug.
+                    # Now matches the sibling policy (_try_adopt_existing_stop's
+                    # _BROKER_UNREADABLE sentinel, _ensure_stop_coverage's early
+                    # return None): skip this trade, retry next cycle. Cheap — this
+                    # job runs every 30s during market hours — and a genuinely naked
+                    # position is independently covered by _ensure_stop_coverage and
+                    # the 15-min order-status reconcile.
+                    # The audit event_type is deliberately NOT one of the three the
+                    # dedup above matches, so deferring does NOT burn the
+                    # once-per-day remediation attempt; its own 1-hour dedup keeps a
+                    # sustained outage from flooding the log at 2 rows/minute.
+                    logger.warning(
+                        f"stop_ack_watchdog: get_open_orders({ticker}) failed: "
+                        f"{get_err} — DEFERRING to next cycle (fail-safe)"
+                    )
+                    recently_logged = await conn.fetchval(
+                        "SELECT 1 FROM mi_audit_log "
+                        "WHERE event_type = 'stop_ack_broker_unreadable' "
+                        "AND summary LIKE $1 "
+                        "AND created_at > NOW() - INTERVAL '1 hour' LIMIT 1",
+                        f"{ticker} #{trade_id}%",
+                    )
+                    if not recently_logged:
+                        await log_audit_event(
+                            "stop_ack_broker_unreadable",
+                            f"{ticker} #{trade_id}: broker unreadable "
+                            f"({get_err}) — deferred, retrying next cycle",
+                            detail=_json.dumps({
+                                "trade_id": trade_id,
+                                "ticker": ticker,
+                                "account_mode": account_mode,
+                                "error": str(get_err),
+                            }),
+                        )
+                    continue
+                sell_orders = [
+                    o for o in existing
+                    if str(o.get("side", "")).lower().endswith("sell")
+                ]
+                # Use REMAINING unfilled qty, not original order qty. A
+                # partially-filled stop (388 of 776 already sold) has already
+                # reduced the position to 388 shares; only 388 are still
+                # broker-protected. Summing original qty would falsely classify
+                # a half-naked position as fully covered.
+                covered = sum(
+                    max(
+                        float(o.get("qty") or 0) - float(o.get("filled_qty") or 0),
+                        0.0,
+                    )
+                    for o in sell_orders
+                )
+                if qty > 0 and covered >= qty:
+                    stop_o = next(
+                        (o for o in sell_orders
+                         if "stop" in str(o.get("type", "")).lower()
+                         or o.get("stop_price") is not None),
+                        None,
+                    )
+                    if stop_o:
+                        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+                            set_stop_order_id,
+                        )
+                        await set_stop_order_id(
+                            trade_id, stop_o["id"],
+                            reason="watchdog_synced_from_broker",
+                            account_mode=account_mode,
+                        )
                     await log_audit_event(
-                        "stop_ack_broker_unreadable",
-                        f"{ticker} #{trade_id}: broker unreadable "
-                        f"({get_err}) — deferred, retrying next cycle",
+                        "stop_ack_broker_covered",
+                        f"{ticker} #{trade_id}: broker has {covered} sh covering "
+                        f"{qty} remaining "
+                        f"(stop_order_id={'synced' if stop_o else 'no_stop_only_market'})",
                         detail=_json.dumps({
                             "trade_id": trade_id,
                             "ticker": ticker,
                             "account_mode": account_mode,
-                            "error": str(get_err),
+                            "remaining_shares": qty,
+                            "broker_covered": covered,
+                            "synced_stop_order_id": stop_o["id"] if stop_o else None,
+                            "open_sell_orders": [
+                                {"id": o["id"], "type": str(o.get("type")),
+                                 "qty": o.get("qty"), "stop_price": o.get("stop_price")}
+                                for o in sell_orders
+                            ],
                         }),
                     )
-                continue
-            sell_orders = [
-                o for o in existing
-                if str(o.get("side", "")).lower().endswith("sell")
-            ]
-            # Use REMAINING unfilled qty, not original order qty. A
-            # partially-filled stop (388 of 776 already sold) has already
-            # reduced the position to 388 shares; only 388 are still
-            # broker-protected. Summing original qty would falsely classify
-            # a half-naked position as fully covered.
-            covered = sum(
-                max(
-                    float(o.get("qty") or 0) - float(o.get("filled_qty") or 0),
-                    0.0,
-                )
-                for o in sell_orders
-            )
-            if qty > 0 and covered >= qty:
-                stop_o = next(
-                    (o for o in sell_orders
-                     if "stop" in str(o.get("type", "")).lower()
-                     or o.get("stop_price") is not None),
-                    None,
-                )
-                if stop_o:
-                    from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
-                        set_stop_order_id,
+                    continue
+
+                if qty <= 0 or stop_target is None:
+                    await log_audit_event(
+                        "stop_ack_remediation_failed",
+                        f"{ticker} #{trade_id}: cannot remediate — qty={qty}, orb_low={stop_target}",
+                        detail=_json.dumps({
+                            "trade_id": trade_id,
+                            "ticker": ticker,
+                            "account_mode": account_mode,
+                            "filled_at": str(row["filled_at"]),
+                            "reason": "missing_qty_or_orb_low",
+                        }),
                     )
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: STOP-ACK TIMEOUT + NO FALLBACK* {ticker}\n"
+                        f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
+                        f"no stop_order_id, can't remediate (qty={qty}, orb_low={stop_target}).\n"
+                        f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard."
+                    )
+                    continue
+
+                try:
+                    fallback = await alpaca.place_stop_order(
+                        ticker, qty, stop_target, account_mode=account_mode,
+                    )
+                    # Update the row so subsequent watchdog runs don't re-fire
+                    from agents.market_intelligence.broker.order_manager import set_stop_order_id  # exec-boundary-ok: moves-with-job (W2)
                     await set_stop_order_id(
-                        trade_id, stop_o["id"],
-                        reason="watchdog_synced_from_broker",
+                        trade_id, fallback["id"],
+                        reason="stop_ack_timeout",
                         account_mode=account_mode,
                     )
-                await log_audit_event(
-                    "stop_ack_broker_covered",
-                    f"{ticker} #{trade_id}: broker has {covered} sh covering "
-                    f"{qty} remaining "
-                    f"(stop_order_id={'synced' if stop_o else 'no_stop_only_market'})",
-                    detail=_json.dumps({
-                        "trade_id": trade_id,
-                        "ticker": ticker,
-                        "account_mode": account_mode,
-                        "remaining_shares": qty,
-                        "broker_covered": covered,
-                        "synced_stop_order_id": stop_o["id"] if stop_o else None,
-                        "open_sell_orders": [
-                            {"id": o["id"], "type": str(o.get("type")),
-                             "qty": o.get("qty"), "stop_price": o.get("stop_price")}
-                            for o in sell_orders
-                        ],
-                    }),
-                )
-                continue
-
-            if qty <= 0 or stop_target is None:
-                await log_audit_event(
-                    "stop_ack_remediation_failed",
-                    f"{ticker} #{trade_id}: cannot remediate — qty={qty}, orb_low={stop_target}",
-                    detail=_json.dumps({
-                        "trade_id": trade_id,
-                        "ticker": ticker,
-                        "account_mode": account_mode,
-                        "filled_at": str(row["filled_at"]),
-                        "reason": "missing_qty_or_orb_low",
-                    }),
-                )
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: STOP-ACK TIMEOUT + NO FALLBACK* {ticker}\n"
-                    f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
-                    f"no stop_order_id, can't remediate (qty={qty}, orb_low={stop_target}).\n"
-                    f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard."
-                )
-                continue
-
-            try:
-                fallback = await alpaca.place_stop_order(
-                    ticker, qty, stop_target, account_mode=account_mode,
-                )
-                # Update the row so subsequent watchdog runs don't re-fire
-                from agents.market_intelligence.broker.order_manager import set_stop_order_id  # exec-boundary-ok: moves-with-job (W2)
-                await set_stop_order_id(
-                    trade_id, fallback["id"],
-                    reason="stop_ack_timeout",
-                    account_mode=account_mode,
-                )
-                await log_audit_event(
-                    "stop_ack_timeout_remediated",
-                    f"{ticker} #{trade_id}: stop-ACK timeout (filled_at "
-                    f"{row['filled_at']:%H:%M:%S} ET, stop_order_id NULL >30s); "
-                    f"fallback stop placed at ${stop_target:.2f} order={fallback['id']}",
-                    detail=_json.dumps({
-                        "trade_id": trade_id,
-                        "ticker": ticker,
-                        "account_mode": account_mode,
-                        "filled_at": str(row["filled_at"]),
-                        "qty": qty,
-                        "stop_target": stop_target,
-                        "fallback_order_id": fallback["id"],
-                    }),
-                )
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}🛡 *STOP-ACK TIMEOUT — REMEDIATED:* {ticker}\n"
-                    f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
-                    f"stop_order_id never populated.\n"
-                    f"Fallback stop placed at ${stop_target:.2f}. Original OTO child "
-                    f"stop-leg likely failed silently on Alpaca side."
-                )
-            except Exception as stop_err:
-                await log_audit_event(
-                    "stop_ack_remediation_failed",
-                    f"{ticker} #{trade_id}: stop-ACK timeout AND fallback stop submit failed",
-                    detail=_json.dumps({
-                        "trade_id": trade_id,
-                        "ticker": ticker,
-                        "account_mode": account_mode,
-                        "stop_target": stop_target,
-                        "stop_error": f"{type(stop_err).__name__}: {str(stop_err)[:200]}",
-                    }),
-                )
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: POSITION NAKED, REMEDIATION FAILED* {ticker}\n"
-                    f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
-                    f"no stop, fallback also failed: {stop_err}\n"
-                    f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard NOW."
-                )
+                    await log_audit_event(
+                        "stop_ack_timeout_remediated",
+                        f"{ticker} #{trade_id}: stop-ACK timeout (filled_at "
+                        f"{row['filled_at']:%H:%M:%S} ET, stop_order_id NULL >30s); "
+                        f"fallback stop placed at ${stop_target:.2f} order={fallback['id']}",
+                        detail=_json.dumps({
+                            "trade_id": trade_id,
+                            "ticker": ticker,
+                            "account_mode": account_mode,
+                            "filled_at": str(row["filled_at"]),
+                            "qty": qty,
+                            "stop_target": stop_target,
+                            "fallback_order_id": fallback["id"],
+                        }),
+                    )
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}🛡 *STOP-ACK TIMEOUT — REMEDIATED:* {ticker}\n"
+                        f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
+                        f"stop_order_id never populated.\n"
+                        f"Fallback stop placed at ${stop_target:.2f}. Original OTO child "
+                        f"stop-leg likely failed silently on Alpaca side."
+                    )
+                except Exception as stop_err:
+                    await log_audit_event(
+                        "stop_ack_remediation_failed",
+                        f"{ticker} #{trade_id}: stop-ACK timeout AND fallback stop submit failed",
+                        detail=_json.dumps({
+                            "trade_id": trade_id,
+                            "ticker": ticker,
+                            "account_mode": account_mode,
+                            "stop_target": stop_target,
+                            "stop_error": f"{type(stop_err).__name__}: {str(stop_err)[:200]}",
+                        }),
+                    )
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: POSITION NAKED, REMEDIATION FAILED* {ticker}\n"
+                        f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
+                        f"no stop, fallback also failed: {stop_err}\n"
+                        f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard NOW."
+                    )
 
 
 async def _track_open_position_extremes_job():
@@ -2437,6 +2481,30 @@ async def _forward_alert_path_persist_job():
     except Exception as e:
         logger.error(f"forward_alert_path_persist failed: {e}")
         await notify_job_failure("forward_alert_path_persist", str(e))
+
+
+async def _depth_open_auction_sale_job():
+    """Run at 7:01 PM ET (#687 B). Sends the depth rule's next-open sale — a market-on-open
+    AUCTION sell (TIF opg) — for every depth-rule trade the 16:45 job marked as closed below its
+    trailing line. Alpaca rejects OPG orders submitted after 9:28 AM and before 7:00 PM ET and
+    queues those sent after 7:00 PM for the next session's opening auction, hence 19:01 — after
+    the 19:00 coverage slot, which therefore still sees the depth stop resting.
+
+    Inert unless a trade row carries `exit_rule = 'depth'`, which only the
+    `magna53_depth_exit` toggle stamps (default OFF)."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            run_depth_open_sales,
+        )
+        results = await run_depth_open_sales()
+        if results:
+            logger.info(f"Depth open-auction sales: {results}")
+    except Exception as e:
+        logger.error(f"Depth open-auction sale job failed: {e}")
+        await notify_job_failure("depth_open_auction_sale", str(e))
 
 
 async def _evening_position_backstop_job():
@@ -7444,6 +7512,17 @@ def start_scheduler() -> AsyncIOScheduler:
     # window. 17:00 is after the 16:20 post-close refresh restores the overnight GTC stop,
     # so a gap there is real; 19:00 is mid-window with extended hours still trading; 21:10
     # is ten minutes after the 21:00 backstop and reports on a repair that already failed.
+    # #687 B: the depth rule's next-open sale — 7:01 PM ET, the first minute Alpaca accepts an
+    # OPG (market-on-open) order for the next session, and after the 19:00 coverage slot.
+    # Inert while no row carries exit_rule='depth' (toggle `magna53_depth_exit`, default OFF).
+    _scheduler.add_job(
+        audit_wrap(_depth_open_auction_sale_job, "depth_open_auction_sale"),
+        CronTrigger(hour=19, minute=1, day_of_week="mon-fri", timezone="America/New_York"),
+        id="depth_open_auction_sale",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+
     for _slot, _hh, _mm in (("post_close", 17, 0), ("late", 19, 0), ("evening", 21, 10)):
         _scheduler.add_job(
             audit_wrap(functools.partial(_coverage_watch_job, _slot),

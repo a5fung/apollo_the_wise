@@ -23,6 +23,7 @@ import asyncio
 import json
 import logging
 from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
 # #490: MAGNA53's OWN gap criterion, imported here so the opt-in at the call site names the
@@ -39,8 +40,13 @@ from agents.market_intelligence.broker.entry_pipeline import (
     ACTION_SKIPPED,
     submit_trade_entry,
 )
-from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+from agents.market_intelligence.broker.exit_logic import (
+    adr20_pct_from_bars,
+    apply_daily_exit_step,
+    depth_stop_price,
+)
 from agents.market_intelligence.broker.order_manager import (
+    DEPTH_EXIT_RULE,
     prepare_orb_order,
     execute_partial_exit,
     execute_full_exit,
@@ -111,6 +117,93 @@ async def count_open_positions(
         SELECT COUNT(*) FROM mi_live_trades
         WHERE status = ANY($3) AND account_mode = $1 AND signal_type = $2
     """, account_mode, signal_type, list(OPEN_POSITION_STATUSES))
+
+
+_ET_ZONE = ZoneInfo("America/New_York")
+
+
+def _exit_leg_et_date(raw_time) -> "date | None":
+    """The ET calendar date of one `exits[]` leg's `time`. Aware stamps (every current broker-fill
+    writer: `datetime.now(timezone.utc).isoformat()`) convert to ET. A NAIVE stamp keeps the date
+    as written: older rows stored naive UTC (e.g. "2026-05-15T13:33:38") and `exit_logic` writes
+    naive ET 16:00 — every fill lands in market hours, when both name the same ET date. None when
+    unreadable."""
+    try:
+        ts = datetime.fromisoformat(str(raw_time))
+    except (TypeError, ValueError):
+        return None
+    if ts.tzinfo is None:
+        return ts.date()
+    return ts.astimezone(_ET_ZONE).date()
+
+
+def _losing_exit_legs(exits):
+    """(pnl, ET date) of every LOSING leg of one trade's `exits` (a JSONB list, or its JSON text
+    when no codec decoded it). Legs without both `pnl` and `time` are skipped (the circuit
+    breaker's partial arm reads the same two keys); the date is None when unreadable. PURE."""
+    if isinstance(exits, str):
+        try:
+            exits = json.loads(exits)
+        except ValueError:
+            return
+    for leg in exits or []:
+        if not isinstance(leg, dict) or leg.get("pnl") is None or not leg.get("time"):
+            continue
+        try:
+            pnl = float(leg["pnl"])
+        except (TypeError, ValueError):
+            continue
+        if pnl < 0:
+            yield pnl, _exit_leg_et_date(leg["time"])
+
+
+def _partial_losses_realized_on(exit_rows, today: date) -> float:
+    """⚖ #687 ruling (1), operator 2026-10-01: the realized LOSSES of partial sales on trades
+    still OPEN, dated `today` (ET). Returns a sum <= 0. PURE.
+
+    `exit_rows` are `mi_live_trades` rows carrying `exits` (a JSONB list, or its JSON text
+    when no codec decoded it). Each LEG counts on its own: a leg whose `pnl` is below zero
+    and whose `time` falls on `today` (ET). Profit legs never offset a loss leg here — the
+    ruling is that a loss on a partial sale counts at once. Legs without both `pnl` and
+    `time` are skipped (the circuit breaker's partial arm reads the same two keys)."""
+    total = 0.0
+    for row in exit_rows or []:
+        exits = row["exits"] if not isinstance(row, (list, tuple)) else row
+        for pnl, leg_day in _losing_exit_legs(exits):
+            if leg_day == today:
+                total += pnl
+    return total
+
+
+def _closed_losses_realized_on(closed_rows, today: date) -> float:
+    """⚖ #687 ruling (iv), operator 2026-10-02: the realized loss of trades CLOSED `today` (ET),
+    each dollar counted ONCE, on the day it was realized. Returns a sum <= 0. PURE.
+
+    `closed_rows` carry `total_pnl` and `exits` (the trade's legs; `total_pnl = sum(exits[].pnl)`,
+    the invariant every closer writes — order_manager "Invariant: total_pnl = sum(exits[].pnl)").
+    Per trade, `total_pnl` minus every LOSING leg dated an EARLIER ET day than `today`: ruling (1)
+    already counted each of those on its own day, on the trade while it was still open (exactly
+    the legs `_partial_losses_realized_on` reads: `pnl < 0` with a readable `time`). The trade
+    counts when that remainder is a loss.
+    - A losing leg dated TODAY stays inside `total_pnl` and counts once, here (the open-trade arm
+      no longer sees a closed trade).
+    - A leg with no readable `time` is never netted — the open-trade arm never counted it either.
+    - PROFIT legs are never netted, whatever their day (unchanged from ruling (1)'s design: a
+      profit leg is never counted on its own day, so it stays inside `total_pnl` and still
+      offsets the trade's loss on the close day, as the closed arm always did)."""
+    total = 0.0
+    for row in closed_rows or []:
+        try:
+            pnl = float(row["total_pnl"] or 0)
+        except (TypeError, ValueError):
+            continue
+        counted_earlier = sum(
+            leg_pnl for leg_pnl, leg_day in _losing_exit_legs(row["exits"])
+            if leg_day is not None and leg_day < today)
+        remainder = pnl - counted_earlier
+        if remainder < 0:
+            total += remainder
+    return total
 
 
 async def _check_safeguards(
@@ -233,13 +326,33 @@ async def _check_safeguards(
         # >= 2%). Backtest: old vs new disagreed on 12/28 loss-days ($0-under-old days had real
         # losses: 6/24 -$1483, 5/26 -$862). closed_at 100% populated on closed trades (0/40
         # NULL); ET conversion per the TIMESTAMPTZ->ET-date rule (CLAUDE.md time-handling).
-        today_losses = await conn.fetchval("""
-            SELECT COALESCE(SUM(total_pnl), 0)
+        # ⚖ #687 RULING (iv), operator 2026-10-02: count each realized dollar ONCE, on the day it
+        # was realized. Ruling (1) (below) counts a losing partial leg on its own day while the
+        # trade is open; on the day the trade later CLOSES, that leg is netted out of its
+        # total_pnl here (`_closed_losses_realized_on`), so only what was realized TODAY counts.
+        # Same rows as before (the WHERE is unchanged); the sum is taken per trade in Python.
+        closed_today = await conn.fetch("""
+            SELECT total_pnl, exits
             FROM mi_live_trades
             WHERE (closed_at AT TIME ZONE 'America/New_York')::date = $1
               AND status = 'closed' AND total_pnl < 0
               AND account_mode = $2
         """, today, account_mode)
+        today_losses = _closed_losses_realized_on(closed_today, today)
+        # ⚖ #687 RULING (1), operator 2026-10-01 ("Yes"): a loss on a PARTIAL sale counts toward
+        # this limit AT ONCE — not only when the trade later closes. The query above sees CLOSED
+        # trades only, so a sale that sells part of a position at a loss and leaves the rest open
+        # (the close-below sale beside a resting +8R profit-take third; a stop that partly filled)
+        # was invisible here until the remainder exited, possibly days later. Each such losing
+        # leg dated today (ET) on a still-OPEN trade is added; on its close day it is netted out
+        # of the closed arm above (ruling (iv)). SSoT: docs/setups/safeguards.md item 5 + change
+        # log 2026-10-02.
+        open_trade_exits = await conn.fetch("""
+            SELECT exits FROM mi_live_trades
+            WHERE status <> 'closed' AND account_mode = $1
+              AND exits IS NOT NULL
+        """, account_mode)
+        today_losses += _partial_losses_realized_on(open_trade_exits, today)
         daily_limit = equity * DAILY_LOSS_LIMIT_PCT
         if abs(today_losses) >= daily_limit:
             logger.info(
@@ -735,13 +848,15 @@ async def _load_exit_state(
     # to the pre-#548 behavior. A history hiccup must never abort a position-management
     # pass — that pass also carries the hard stop.
     prior_closes: list[float] = []
+    prior_bars: list[dict] = []
     try:
         _hist = await get_index_history(
             trade["ticker"],
             (alert_date - timedelta(days=40)).strftime("%Y-%m-%d"),
             (alert_date - timedelta(days=1)).strftime("%Y-%m-%d"),
         )
-        prior_closes = [float(b["c"]) for b in (_hist or []) if b.get("c") is not None]
+        prior_bars = list(_hist or [])
+        prior_closes = [float(b["c"]) for b in prior_bars if b.get("c") is not None]
     except Exception as e:  # loud-ok: display/indicator input, never the stop itself
         logger.warning(
             f"{trade['ticker']}: prior-close fetch for the MA trail failed ({e}) — trail "
@@ -759,6 +874,11 @@ async def _load_exit_state(
         # Not part of the persisted trade state — recomputed each pass from price history,
         # so there is nothing to migrate and nothing to go stale.
         "prior_closes": prior_closes,
+        # #687 B: the depth rule's ADR20 (the 20 sessions BEFORE entry, from the SAME bars as
+        # prior_closes). None below 10 usable sessions — including when the fetch failed this
+        # pass — and the depth stop then rests at the hard/breakeven floor, as the analysis
+        # walker rests a trade it cannot host. Read by the depth branch only.
+        "adr20_pct": adr20_pct_from_bars(prior_bars),
     }
     return state, daily_bars, None
 
@@ -895,7 +1015,45 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         # #361). With skip_partial_decision=True above, step.partial_fired is
         # always False here, so this job runs ONLY the SMA-trail + stop ladder.
 
+        # #687 B: the rule this trade was ENTERED under, stamped on its row at entry and kept
+        # for life. NULL = today's rule. The toggle is never read here — flipping it cannot
+        # change an open trade's rule.
+        is_depth = trade.get("exit_rule") == DEPTH_EXIT_RULE
+
         # 3. SMA trail close
+        if step.action == "sma_stopped" and is_depth:
+            # The depth rule decides on this TRUE close exactly as today's rule does, but sells
+            # in the NEXT MORNING'S OPENING AUCTION (ruled 2026-09-29): mark it, leave the depth
+            # stop on, and let the 19:01 ET job send the market-on-open order (Alpaca rejects
+            # OPG orders before 19:00). Nothing is cancelled or sold here.
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET
+                        hold_days = $2, running_closes = $3::jsonb,
+                        depth_sell_pending_on = $4
+                    WHERE id = $1
+                """, trade["id"], step.hold_days,
+                    step.new_running_closes, today)
+            await log_audit_event(
+                "depth_close_below_line",
+                f"{ticker}: closed ${step.bar_close:.2f} below the trailing line "
+                f"${step.effective_stop:.2f} — selling in the next opening auction",
+                json.dumps({"trade_id": trade["id"], "ticker": ticker,
+                            "account_mode": trade.get("account_mode"),
+                            "close": step.bar_close, "line": step.effective_stop,
+                            "resting_stop": trade.get("stop_price"),
+                            "decided_on": today.isoformat()}),
+            )
+            await send_telegram_message(
+                f"{mode_prefix(trade.get('account_mode'))}📉 *{ticker} closed below "
+                f"its trailing line* (${step.bar_close:.2f} < ${step.effective_stop:.2f}).\n"
+                f"Selling at the next open: the opening-auction order goes in at 7:01 PM ET. "
+                f"The stop stays on until then."
+            )
+            results.append({"ticker": ticker, "action": "depth_sell_pending",
+                            "hold_days": step.hold_days})
+            continue
+
         if step.action == "sma_stopped":
             await execute_full_exit(trade["id"], "sma_trail_stop")
             async with pool.acquire() as conn:
@@ -910,7 +1068,22 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
 
         # 4. Still open — update Alpaca stop if effective_stop rose
         current_stop = trade["stop_price"] or 0
-        if step.effective_stop > current_stop + 0.01 and step.new_remaining > 0:
+        if is_depth:
+            # #687 B: the depth rule's RESTING stop — one ADR20 under today's line
+            # (`step.effective_stop` = max(hard, SMA10/20 incl. today's close, entry once
+            # breakeven is armed), the line today's rule rests ON). Same raise-only path:
+            # `update_stop` refuses anything not above the live broker stop, which is the
+            # ratchet the replay applies. No ADR20 → the hard/breakeven floor (never a move).
+            depth_stop = depth_stop_price(
+                line=step.effective_stop,
+                hard_stop=float(state["hard_stop"]),
+                entry_price=trade.get("entry_price"),
+                breakeven_active=bool(step.new_breakeven_active),
+                adr20_pct=state.get("adr20_pct"),
+            )
+            if depth_stop > current_stop + 0.01 and step.new_remaining > 0:
+                await update_stop(trade["id"], depth_stop, stop_source="depth_trail")
+        elif step.effective_stop > current_stop + 0.01 and step.new_remaining > 0:
             # #560: tell update_stop WHICH ladder input raised the stop (trail /
             # breakeven / hard_stop / giveback_floor) so the operator-facing
             # "Stop confirmed" Telegram (retry-recovered path) can say why —
@@ -1218,6 +1391,7 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     that follows. The post-close pass has nothing to exclude by construction
     (`include_same_day=True`), so it never touches this — no misleading zero.
     """
+    from agents.market_intelligence.broker import order_manager as _om
     today = et_today()
     pool = await get_pool()
     same_day_excluded: list[str] | None = None
@@ -1248,6 +1422,7 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     refreshed_tickers: list[str] = []
     unprotected: list[str] = []
     already_covered: list[str] = []
+    covered_by_resting_exit: list[str] = []  # #687 ruling (2): no new stop, broker-covered
     skipped: list[dict] = []  # [{"ticker": ..., "reason": "no_stop_price" | "no_remaining_shares"}]
     for trade in trades:
         ticker = trade["ticker"]
@@ -1288,6 +1463,12 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
             refreshed += 1
             refreshed_tickers.append(ticker)
             logger.info(f"{label} stop refreshed: {ticker} @${stop_price:.2f}")
+        elif await _om._resting_exits_cover_position(
+                trade["id"], ticker, float(trade["remaining_shares"]), trade["account_mode"]):
+            # ⚖ #687 ruling (2), operator 2026-10-01: no new stop was placed, but the BROKER
+            # shows the shares covered — a resting +8R profit-take OCO third (its own stop
+            # leg), or our own queued closing order. Not a gap: recorded, not paged.
+            covered_by_resting_exit.append(ticker)
         else:
             # A position we could not re-protect must never be a log line only —
             # that is the exact shape of the gap this job exists to close.
@@ -1333,6 +1514,8 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
         "skipped": skipped,
         "unprotected": unprotected,
     }
+    if covered_by_resting_exit:
+        detail["covered_by_resting_exit"] = covered_by_resting_exit
     # #414 — only the morning pass excludes anything, and only when the read above
     # succeeded. `same_day_excluded is None` covers BOTH the post-close pass
     # (nothing to exclude by construction) and a failed read on the morning pass

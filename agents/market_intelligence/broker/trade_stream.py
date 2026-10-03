@@ -368,6 +368,45 @@ def _find_replacement_stop(open_orders, symbol: str, canceled_order_id: str, rem
 _STOP_CANCEL_RECHECK_DELAY_S = 3
 
 
+async def _planned_sale_cancelled_this_stop(
+    pool, trade_id, cancelled_order_id: str, account_mode: str, symbol: str,
+) -> bool:
+    """#687 ruling (2)(i): did OUR OWN planned sale cancel this exact stop on purpose?
+
+    True only on a `planned_sale_stop_cancel` audit row (written by `execute_full_exit` /
+    `execute_depth_open_sale` immediately before their cancel) naming this trade AND this
+    stop order id. Matched in Python (the `detail` column is TEXT; same reason as the #561
+    evidence read above). Any read failure → False, so the page still goes out."""
+    from agents.market_intelligence.broker.order_manager import PLANNED_SALE_STOP_CANCEL
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT event_type, detail FROM mi_audit_log
+                WHERE event_type = $1
+                  AND created_at > NOW() - INTERVAL '1 day'
+                ORDER BY created_at DESC
+                """,
+                PLANNED_SALE_STOP_CANCEL,
+            )
+        for row in rows or []:
+            if row["event_type"] != PLANNED_SALE_STOP_CANCEL:
+                continue
+            try:
+                detail = json.loads(row["detail"])
+            except Exception:  # loud-ok: one malformed row is skipped, never the check — a real marker is always json.dumps() detail; any doubt still pages
+                continue
+            if (str(detail.get("trade_id")) == str(trade_id)
+                    and str(detail.get("stop_order_id")) == str(cancelled_order_id)):
+                return True
+    except Exception as e:
+        logger.warning(
+            f"WS [{account_mode}]: planned-sale marker read failed for {symbol} ({e}) — "
+            f"treating as NOT planned (fail-safe: still page)"
+        )
+    return False
+
+
 async def _broker_confirm_replacement_stop(
     symbol: str, canceled_order_id: str, remaining_shares, account_mode: str,
 ):
@@ -2074,7 +2113,30 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     )
                     _naked_agrees = False
 
-                if _naked_agrees:
+                # ⚖ #687 RULING (2)(i), operator 2026-10-01: a stop OUR OWN planned sale cancelled
+                # on purpose (the 16:45 close-below sale, the 19:01 opening-auction sale) is not
+                # an "unprotected" event — the sale pages its own outcome. POSITIVE EVIDENCE ONLY,
+                # same idiom as above: the sale's own `planned_sale_stop_cancel` row naming THIS
+                # trade and THIS exact stop order. No row, another order, or a failed read → page.
+                _planned_sale = (not _naked_agrees) and await _planned_sale_cancelled_this_stop(
+                    pool, stop_trade["id"], order_id, account_mode, symbol)
+
+                if _planned_sale:
+                    await log_audit_event(
+                        "stop_cancel_by_planned_sale_silent",
+                        f"{symbol}: stop {order_id[:8]} {event_norm} by our own planned sale — "
+                        f"not paged as unprotected (the sale reports its own outcome)",
+                        json.dumps({
+                            "trade_id": stop_trade["id"], "ticker": symbol,
+                            "account_mode": account_mode, "cancelled_order_id": order_id,
+                            "event_norm": event_norm,
+                        }),
+                    )
+                    logger.info(
+                        f"WS [{account_mode}]: stop-loss {event_norm}: {symbol} "
+                        f"trade_id={stop_trade['id']} — cancelled by a planned sale, no page"
+                    )
+                elif _naked_agrees:
                     await log_audit_event(
                         "naked_alarm_suppressed_silent",
                         f"{symbol}: WS naked-position check agrees with order_manager's "
@@ -2270,10 +2332,43 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 site="trade_stream.full_exit_cancel_restore",
                 consult_dead_stop=True,
             )
+            # #687 (c), 2026-10-01: size the restore from the BROKER — the position minus the
+            # shares live resting orders hold (a +8R profit-take third keeps its own OCO). It
+            # asked for `remaining_shares`, which still includes that third, so the broker
+            # rejected it and this page said "STOP RESTORE FAILED" while the two thirds this
+            # sale was selling were the ones naked. The claim above has already marked this
+            # exit order cancelled, so the database fallback (`remaining − pending exits`)
+            # no longer counts it.
+            from agents.market_intelligence.broker.order_manager import (
+                _broker_free_qty_for_restore,
+                get_pending_exit_qty,
+            )
             try:
+                _fallback_qty = (float(trade_row["remaining_shares"])
+                                 - float(await get_pending_exit_qty(trade_row["id"])))
+            except Exception as _pe:  # loud-ok: the broker count is the primary; logged
+                logger.warning(f"WS [{account_mode}]: pending-exit read failed for "
+                               f"{symbol} ({_pe}) — fallback is the full remaining count")
+                _fallback_qty = float(trade_row["remaining_shares"])
+            restore_qty, _qty_source = await _broker_free_qty_for_restore(
+                trade_row["ticker"], account_mode, _fallback_qty,
+                exclude_ids=(trade_row["stop_order_id"],))
+            if restore_qty <= 0 and _qty_source == "broker":
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+                    f"Position still open. No stop re-placed: orders still resting at the "
+                    f"broker hold every remaining share — check that one of them is a stop."
+                )
+                logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, "
+                               f"no free shares to re-protect (live resting orders hold them)")
+                return
+            try:
+                if restore_qty <= 0:
+                    raise RuntimeError(
+                        f"no share count to restore ({_qty_source})")
                 restored = await alpaca.place_stop_order(
                     trade_row["ticker"],
-                    int(trade_row["remaining_shares"]),
+                    restore_qty,
                     restore_price,
                     account_mode=account_mode,
                 )
@@ -2284,11 +2379,44 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 )
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
-                    f"Position still open ({int(trade_row['remaining_shares'])} sh). "
-                    f"Stop re-placed @${restore_price:.2f}."
+                    f"Position still open. Stop re-placed @${restore_price:.2f} "
+                    f"for {restore_qty} sh."
                 )
                 logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, stop re-placed")
             except Exception as e:
+                # ⚖ #687 RULING (3), operator 2026-10-01: the broker refused the restore because
+                # the price is already through the stop → sell the shares it would have covered
+                # at market now, as the triggered stop would have. The exit rule had already
+                # decided to sell (that is what the dead order was).
+                from agents.market_intelligence.broker.order_manager import (
+                    _is_stop_above_market,
+                    _sell_free_shares_after_stop_breach,
+                )
+                if restore_qty > 0 and _is_stop_above_market(e):
+                    try:
+                        async with pool.acquire() as conn:
+                            _exit_reason = await conn.fetchval(
+                                "SELECT exit_reason FROM mi_live_orders WHERE alpaca_order_id = $1",
+                                order_id)
+                    except Exception as _re:  # loud-ok: the label only — the sale goes ahead
+                        logger.warning(f"WS [{account_mode}]: exit_reason read failed for "
+                                       f"{symbol} ({_re}) — the market sale is labelled stop_hit")
+                        _exit_reason = None
+                    sold = await _sell_free_shares_after_stop_breach(
+                        trade_row["id"], trade_row["ticker"], restore_qty,
+                        _exit_reason or "stop_hit", account_mode, stop_price=restore_price,
+                        site="trade_stream.full_exit_cancel_restore", error=str(e))
+                    if sold:
+                        await send_telegram_message(
+                            f"{mode_prefix(account_mode)}🚨 *Close order {event_norm.upper()}:* "
+                            f"{symbol}\nThe price is already below the stop "
+                            f"${restore_price:.2f}, so no stop could be re-placed — selling "
+                            f"{restore_qty} sh at market now (Order {str(sold['id'])[:8]}), as "
+                            f"the triggered stop would have. _Confirms with real P&L on fill._"
+                        )
+                        logger.warning(f"WS [{account_mode}]: full exit {event_norm} for "
+                                       f"{symbol}, stop breached — market sale placed")
+                        return
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}🚨 *CLOSE {event_norm.upper()} + "
                     f"STOP RESTORE FAILED* for {symbol}!\n{e}\n"
