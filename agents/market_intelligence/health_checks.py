@@ -442,7 +442,8 @@ def _is_trading_day(d) -> bool:
     try:
         from agents.market_intelligence.trading_calendar import get_market_status
         return bool(get_market_status(d).is_trading_day)
-    except Exception:  # calendar lookup failed — don't let it silence the sweep
+    except Exception as _cal_err:  # calendar lookup failed — don't let it silence the sweep
+        logger.warning("health_checks: trading-calendar lookup failed for %s — treating it as a trading day (fail-open): %s", d, _cal_err)
         return True
 
 

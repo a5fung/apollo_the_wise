@@ -217,7 +217,7 @@ def _augment_with_yfinance_historical(ticker: str, deltas: dict[str, Any]) -> di
                         break
                 if num_val is not None and den_val and den_val > 0:
                     return float(num_val) / float(den_val)
-            except Exception:
+            except Exception:  # loud-ok: optional-parse fallback — a missing/misshaped yfinance row yields no ratio (None), which every caller already treats as "unknown"
                 return None
             return None
 

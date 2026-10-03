@@ -23,6 +23,7 @@ whether to Telegram (via system_audit) or print to stdout (readiness_check).
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -30,6 +31,8 @@ from zoneinfo import ZoneInfo
 from shared.operator_labelled_eps import ACKNOWLEDGED_DOWNGRADES, OPERATOR_LABELLED_EPS
 
 _ET = ZoneInfo("America/New_York")
+
+logger = logging.getLogger(__name__)
 
 # ── Invariant key constants (stable across system_audit + readiness_check) ─
 
@@ -131,7 +134,10 @@ async def classify_naked_positions(body: dict) -> dict:
                 )
                 for o in open_orders
             )
-        except Exception:
+        except Exception as _oo_err:
+            logger.warning(
+                "naked-position classifier: open-orders read failed for %s - "
+                "treating as REAL NAKED (fail-open): %s", ticker, _oo_err)
             has_stop = False  # fail-open to REAL NAKED
 
         if has_stop:

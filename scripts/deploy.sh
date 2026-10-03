@@ -502,18 +502,18 @@ fi
 
 echo ""
 echo "=== [5k/7] Preflight no-silent-failures check (#381 swallow-a-failure class) ==="
-# Run on host (stdlib ast, no container). RATCHET: blocks any NEW broad+silent
-# except (bare/Exception with a body that neither raises nor alerts) beyond the
-# tracked baseline — the FMP-403 (#380) / theme-shadow-0-rows (#173) class where a
-# real failure is swallowed behind a plausible default. The ~174 legacy sites are a
-# tracked, SHRINKING baseline (#381 remediation); the gate only fails on NEW ones.
-# Escape genuine control-flow with '# loud-ok: <reason>'. THE RULE: fallback != silent.
+# Run on host (stdlib ast, no container). ZERO-TOLERANCE since #466: fails on ANY
+# broad+silent except (bare/Exception with a body that neither raises nor alerts)
+# — the FMP-403 (#380) / theme-shadow-0-rows (#173) class where a real failure is
+# swallowed behind a plausible default. There is no baseline file to hide one in.
+# Log it, or escape genuine control-flow with '# loud-ok: <reason>'.
+# THE RULE: fallback != silent.
 if ! python3 scripts/preflight_no_silent_failures.py; then
   echo ""
-  echo "DEPLOY FAILED — a NEW broad+silent except (swallowed failure) was introduced."
-  echo "Surface it (raise, or failure_policy.py's @advisory_fail_open/@trade_state_fail_loud),"
-  echo "or annotate genuine control-flow with '# loud-ok: <reason>'. Do NOT bury a real"
-  echo "swallow via --update-baseline."
+  echo "DEPLOY FAILED — a broad+silent except (swallowed failure) is in the tree."
+  echo "Log it (logger.warning with the exception + context), or use failure_policy.py's"
+  echo "@advisory_fail_open/@trade_state_fail_loud, or annotate genuine control-flow with"
+  echo "'# loud-ok: <reason>' on the except line. There is no baseline to bury it in."
   exit 15
 fi
 

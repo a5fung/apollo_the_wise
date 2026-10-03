@@ -1247,8 +1247,8 @@ async def _ep_scan_job():
                         summary=f"HIGH EP: {ep['ticker']} gap={ep.get('gap_pct', 0):.1f}% score={ep['ep_score']:.0f}",
                         detail=f"Catalyst: {ep.get('catalyst', '')[:300]}\nAnalysis: {ep.get('claude_analysis', '')[:200]}",
                     )
-                except Exception:
-                    pass
+                except Exception as _audit_err:
+                    logger.warning("ep_alert audit row NOT written for %s (the alert itself was sent): %s", ep['ticker'], _audit_err)
 
                 if within_orb_window:
                     # First bar already closed — trigger ORB inline, no bar stream needed
@@ -1292,8 +1292,8 @@ async def _ep_scan_job():
                                 f"{ep['ticker']} out-of-ORB skip row NOT persisted — "
                                 f"{type(ins_e).__name__}: {ins_e}",
                             )
-                        except Exception:
-                            pass
+                        except Exception as _audit_err:
+                            logger.warning("skip_row_write_error audit row NOT written for %s: %s", ep['ticker'], _audit_err)
                         await send_telegram_message(
                             f"{mode_prefix(ep_mode)}🚨 *{ep['ticker']}* skip-row write FAILED "
                             f"({type(ins_e).__name__}) — HIGH alert has no terminal "
@@ -1305,8 +1305,8 @@ async def _ep_scan_job():
                         # this function, so a local import would shadow and
                         # cause UnboundLocalError (2026-05-20 ep_detector bug).
                         await log_audit_event("orb_out_of_window", f"{ep['ticker']} — {skip_msg}")
-                    except Exception:
-                        pass
+                    except Exception as _audit_err:
+                        logger.warning("orb_out_of_window audit row NOT written for %s: %s", ep['ticker'], _audit_err)
                     await send_telegram_message(
                         f"{mode_prefix(ep_mode)}⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "  # recovery-clock-ok: a wall-clock TIME-OF-DAY label — when the tick actually happened, which is about NOW by definition. Leave it unpinned. What keeps a stale re-run off the ORB path is the FRESHNESS rule, not this: classify_slot calls sessions_opened_between and marks a slot unrecoverable once any session has opened since it, so a 09:00 slot dies at 09:30 and the only live recovery window is roughly [09:00, 09:30) — where the slot and the real clock both satisfy `hour==9 and minute<45` anyway (ORB_QUIET 09:25-10:05 is belt-and-braces). Pinning would make the text claim a time the scan never ran at, and would drop the safe default if that freshness rule ever loosened. (#672, corrected 2026-09-20.)
                         f"ORB window closed, no order"
@@ -1370,7 +1370,8 @@ async def _ep_scan_job():
                     LIMIT 1
                 """, f"{exc_type}:%")
                 _suppress_tg = prior is not None
-        except Exception:
+        except Exception as _dedup_err:
+            logger.warning("ep_scan_failed Telegram dedup lookup failed - sending the page (fail-open): %s", _dedup_err)
             _suppress_tg = False  # fail-open
 
         if not _suppress_tg:

@@ -467,8 +467,8 @@ async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
                 "theme_axis_shadow_failed",
                 f"{r.get('ticker')} {r.get('alert_date')}: {type(_e).__name__}: {_e}",
             )
-        except Exception:
-            pass
+        except Exception as _audit_err:
+            logger.warning("theme-axis shadow: audit row for the failure above NOT written: %s", _audit_err)
 
 
 # ─── STEP-1 (b) EOD refresh (#329 STEP-0 completion, 2026-07-26) ──────────────────────────

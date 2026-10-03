@@ -124,8 +124,8 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
             caller="context_compression",
             response=response,
         )
-    except Exception:
-        pass
+    except Exception as _meter_err:
+        logger.warning("context_compression: cost-meter write failed: %s", _meter_err)
 
     return first_text(response)  # #544: never content[0]
 

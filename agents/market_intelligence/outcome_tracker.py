@@ -84,8 +84,8 @@ async def run_outcome_tracker(trade_date: date | None = None) -> dict:
                 summary=f"EP scan outcomes failed: {type(e).__name__}",
                 detail=str(e)[:500],
             )
-        except Exception:
-            pass
+        except Exception as _audit_err:
+            logger.warning("ep_scan_outcomes_error audit row NOT written: %s", _audit_err)
 
     return {"total": total, "trade_date": today.isoformat()}
 

@@ -991,8 +991,8 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
         logger.warning(f"discover_narrative_themes failed: {e}", exc_info=True)
         try:
             await log_audit_event("narrative_theme_discovery_failed", f"{out.get('date')}: {str(e)[:200]}")
-        except Exception:
-            pass
+        except Exception as _audit_err:
+            logger.warning("narrative_theme_discovery_failed audit row NOT written: %s", _audit_err)
         out["error"] = str(e)[:200]
         return out
 
@@ -1402,8 +1402,8 @@ async def run_theme_discovery_shadow(today=None, clusters=None) -> dict:
             summary=f"Theme discovery shadow: {n} candidate themes written",
             detail=str(summary),
         )
-    except Exception:
-        pass
+    except Exception as _audit_err:
+        logger.warning("theme_discovery_shadow_ran audit row NOT written: %s", _audit_err)
     return summary
 
 
@@ -6683,8 +6683,9 @@ In every other case, skip the advisor and call `report_themes` immediately."""
                         "iteration": loop_guard,
                     }),
                 )
-            except Exception:
-                pass  # telemetry must never break the run
+            except Exception as _audit_err:
+                # telemetry must never break the run
+                logger.warning("theme_discovery_llm_call audit row NOT written: %s", _audit_err)
 
             # COST METER (#377). Log this turn's token cost to api_usage. Each
             # iteration of this multi-turn loop is a separate billed call, so we
@@ -8613,8 +8614,8 @@ async def run_theme_engine(
                 f"{error_msg}\n\n"
                 f"No theme data was updated. Add API credits then send *rerun theme engine* to retry."
             )
-        except Exception:
-            pass
+        except Exception as _tg_err:
+            logger.warning("Theme Engine ABORTED Telegram NOT sent: %s", _tg_err)
         await log_audit_event(
             "theme_engine_aborted",
             summary=f"Theme engine aborted — Perplexity unavailable",
@@ -9182,8 +9183,9 @@ async def run_theme_engine(
                 "survived_names": [nt.get("name") for nt in new_themes],
             }),
         )
-    except Exception:
-        pass  # telemetry must never break the run
+    except Exception as _audit_err:
+        # telemetry must never break the run
+        logger.warning("theme_engine_funnel audit row NOT written: %s", _audit_err)
 
     # Log new themes + write to audit log
     for nt in new_themes:

@@ -1,4 +1,4 @@
-"""Preflight gate: ban the swallow-a-failure anti-pattern (#381).
+"""Preflight gate: ban the swallow-a-failure anti-pattern (#381, zero-tolerance since #466).
 
 THE recurring bug class (operator 6/25, ABSOLUTE - "never ever eat a failure"):
 a BROAD/bare `except` that swallows a REAL failure and falls back SILENTLY. The
@@ -21,9 +21,23 @@ plausible-looking default. THE RULE: **fallback != silent.**
   Escape hatch: append `# loud-ok: <reason>` on the `except` line to whitelist a
   reviewed exception - legitimate ONLY for:
     • genuine control-flow (e.g. optional-parse fallbacks), or
-    • a fallback-of-the-fallback where even the alert can fail and nothing above
-      can handle it (e.g. failure_policy.py's audit/Telegram inner guards).
-  It is NOT legitimate to silence a real swallow just to make the gate green.
+    • in-band reporting (the failure IS the returned value: a health probe's
+      `(False, reason)`, an error list the endpoint returns), or
+    • a counted loop whose one aggregate warning follows it.
+  The reason must name WHICH of those it is, in terms a reviewer can check.
+  It is NOT legitimate to silence a real swallow just to make the gate green:
+  where a log line is possible, LOG (a fallback-of-the-fallback - the audit write
+  that failed inside a handler - gets a `logger.warning`, not a tag).
+
+ZERO-TOLERANCE (#466, 2026-10-03): the gate used to be a RATCHET against
+`no_silent_failures_baseline.json` (~174 legacy sites, then 81, then - by the time it
+was closed - 75, the baseline having drifted stale because a fix never regenerated
+it). #466 classified EVERY remaining site (A = a real failure swallowed -> now
+logged with the exception and context, behaviour unchanged; B = control-flow ->
+tagged `# loud-ok: <reason>`), deleted the baseline file, and flipped this to
+fail on ANY unmarked broad+silent except. There is no baseline to regenerate:
+`--update-baseline` is retired and exits 1. `--strict` is still accepted (a no-op,
+kept so old invocations do not break).
 
 IMPORTANT - what this gate does NOT enforce (don't read green as "done"):
   • The ping-vs-log POLICY (operator 6/25: Telegram-PING for terminal money/grade
@@ -41,7 +55,6 @@ Run: python -m scripts.preflight_no_silent_failures  (or via deploy.sh / pre-com
 from __future__ import annotations
 
 import ast
-import json
 import sys
 from pathlib import Path
 
@@ -53,14 +66,8 @@ EXCLUDE_SUBPATHS = ("backtester/", "backtester\\")
 
 ESCAPE = "# loud-ok"
 
-# RATCHET baseline: the codebase carries ~174 legacy broad+silent swallows (#381).
-# Remediating all of them is a phased multi-session effort, and bulk-escaping them
-# would be faking green (advisor 6/27). So the gate runs as a RATCHET - it blocks
-# any NEW swallow (a file exceeding its baselined count) while the tracked debt is
-# remediated DOWN over time. `--update-baseline` regenerates it (only legitimate
-# after a real reduction, never to bury a fresh swallow); `--strict` ignores the
-# baseline (fails on ANY - the eventual "completely gone" check + the self-test).
-BASELINE_PATH = Path(__file__).resolve().parent / "no_silent_failures_baseline.json"
+# (The #381 RATCHET baseline - `no_silent_failures_baseline.json` - was deleted by
+# #466; see the module docstring. The gate has no allowance for any file.)
 
 # Calls that make a handler "not silent". The gate only asks "is the failure
 # surfaced at all" - NOT "to the right sink" (that is the manual ping-vs-log pass).
@@ -177,49 +184,40 @@ def _counts(violations: list[dict]) -> dict:
     return out
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, repo_root: Path | None = None) -> int:
+    """Exit 0 iff there is no unmarked broad+silent except anywhere in scope.
+
+    `repo_root` is injectable so the gate's own test can point it at a throwaway tree."""
     argv = sys.argv[1:] if argv is None else argv
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parent.parent if repo_root is None else repo_root
+
+    if "--update-baseline" in argv:
+        print("--update-baseline is retired: #466 drove the baseline to zero and deleted it. "
+              "The gate is zero-tolerance - fix the swallow (log it) or tag genuine "
+              "control-flow `# loud-ok: <reason>`. There is nothing to regenerate.")
+        return 1
+
     violations, n_files = _scan(repo_root)
     counts = _counts(violations)
 
-    if "--update-baseline" in argv:
-        BASELINE_PATH.write_text(
-            json.dumps({"total": len(violations), "per_file": counts},
-                       indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print(f"Baseline written: {len(violations)} known broad+silent swallow(s) "
-              f"across {len(counts)} file(s) -> {BASELINE_PATH.name}.")
-        return 0
-
-    strict = "--strict" in argv
-    baseline: dict = {}
-    if BASELINE_PATH.exists() and not strict:
-        baseline = json.loads(BASELINE_PATH.read_text(encoding="utf-8")).get("per_file", {})
-
-    regressions = [(rel, n, baseline.get(rel, 0))
-                   for rel, n in sorted(counts.items()) if n > baseline.get(rel, 0)]
-
-    if not regressions:
-        baselined = sum(baseline.values())
-        tail = ("no broad+silent swallows" if not baselined else
-                f"{baselined} known baseline swallow(s) (#381 backlog - trend must go DOWN)")
+    if not violations:
         print(f"Preflight no-silent-failures - OK "
-              f"({n_files} files in {'/'.join(SCOPED_DIRS)} scanned; {tail}).")
+              f"({n_files} files in {'/'.join(SCOPED_DIRS)} scanned; no broad+silent swallows - zero-tolerance, #466).")
         return 0
 
-    print("DEPLOY FAILED - NEW swallow-a-failure anti-pattern(s) beyond baseline (#381):")
+    print("DEPLOY FAILED - swallow-a-failure anti-pattern(s) (#381, zero-tolerance since #466):")
     print()
     order = {"money": 0, "grade": 1, "data": 2, "advisory": 3}
-    for rel, n, allowed in sorted(regressions, key=lambda r: (order[_classify(r[0])], r[0])):
+    for rel, n in sorted(counts.items(), key=lambda r: (order[_classify(r[0])], r[0])):
         lines = sorted(v["line"] for v in violations if v["rel"] == rel)
-        print(f"  [{_classify(rel):8}] {rel}: {n} broad+silent except(s), "
-              f"baseline allows {allowed} (lines: {lines})")
+        print(f"  [{_classify(rel):8}] {rel}: {n} broad+silent except(s) (lines: {lines})")
     print()
-    print("A NEW broad except swallows a failure silently. Fix: surface it (raise, or")
-    print("log+audit+Telegram via failure_policy.py's @advisory_fail_open /")
-    print("@trade_state_fail_loud), OR - only for genuine control-flow - annotate")
-    print("`# loud-ok: <reason>` on the except line. Do NOT run --update-baseline to")
-    print("bury a real swallow. THE RULE: fallback != silent. (operator 6/25, #381)")
+    print("A broad except swallows a failure silently. Fix: LOG it with the exception and")
+    print("context (logger.warning/error), or - money/job-level - audit via")
+    print("failure_policy.py's @advisory_fail_open / @trade_state_fail_loud; OR, only for")
+    print("genuine control-flow / in-band reporting, annotate `# loud-ok: <reason>` ON THE")
+    print("except line (the reason must be checkable). There is no baseline to bury it in.")
+    print("THE RULE: fallback != silent. (operator 6/25, #381; zero-tolerance #466)")
     return 1
 
 

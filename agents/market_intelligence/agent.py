@@ -2935,6 +2935,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 ticker, qty=shares, account_mode=account_mode,
             )
         except Exception as e:
+            logger.error("/timestop: market-on-open sell submit failed for %s: %s", ticker, e, exc_info=True)
             return self._ok(
                 request,
                 result=(
@@ -3417,6 +3418,7 @@ class MarketIntelligenceAgent(BaseAgent):
             # circuit breaker (which exists to pause UNATTENDED cron retries).
             ok = await execute_partial_exit(int(row["id"]), sell_qty, force=True)
         except Exception as e:
+            logger.error("/partialnow %s raised: %s: %s", ticker, type(e).__name__, e, exc_info=True)
             return self._ok(
                 request,
                 result=f"❌ `/partialnow {ticker}` raised: {type(e).__name__}: {e}",
@@ -3485,6 +3487,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     messages.extend([f"[{m}] {x}" for x in (msgs or [])])
                 mode_label = ", ".join(modes)
         except Exception as e:
+            logger.error("/syncnow raised: %s: %s", type(e).__name__, e, exc_info=True)
             return self._ok(
                 request,
                 result=f"❌ `/syncnow` raised: {type(e).__name__}: {e}",

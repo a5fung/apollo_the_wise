@@ -101,7 +101,7 @@ async def health_check_all_agents() -> dict[str, tuple[bool, str]]:
             results[agent_name] = (False, f"Not running (expected at {url})")
         except httpx.TimeoutException:
             results[agent_name] = (False, "Timed out")
-        except Exception as e:
+        except Exception as e:  # loud-ok: health probe — the failure IS the return value ((False, str(e))), rendered by /status
             results[agent_name] = (False, str(e))
     return results
 
@@ -116,8 +116,8 @@ async def get_market_pipeline_status() -> dict | None:
             r = await client.get(f"{url}/market/status", headers=auth_headers())
             if r.status_code == 200:
                 return r.json()
-    except Exception:
-        pass
+    except Exception as _status_err:
+        logger.warning("get_market_pipeline_status: market agent /market/status unreachable: %s", _status_err)
     return None
 
 

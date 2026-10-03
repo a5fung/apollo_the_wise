@@ -92,7 +92,7 @@ async def tradingview_test(token: str = "") -> JSONResponse:
                 text="🔔 TradingView webhook test — pipeline OK",
             )
             sent.append(uid)
-        except Exception as e:
+        except Exception as e:  # loud-ok: in-band — the failure is appended to `errors`, which this endpoint returns to the caller
             errors.append({"uid": uid, "error": str(e)})
 
     return JSONResponse({"ok": True, "sent": sent, "errors": errors})
