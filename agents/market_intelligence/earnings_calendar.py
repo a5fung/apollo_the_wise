@@ -133,7 +133,8 @@ def _check_revenue_stage_sync(ticker: str) -> bool:
         if rev_avg is None:
             return True
         return float(rev_avg) >= _REVENUE_STAGE_MIN_USD
-    except Exception:
+    except Exception as _rev_err:
+        logger.warning("earnings_calendar: revenue-stage lookup failed for %s - treating as revenue-stage (fail-soft): %s", ticker, _rev_err)
         return True
 
 
@@ -148,7 +149,8 @@ async def is_revenue_stage(ticker: str) -> bool:
         return _REV_STAGE_CACHE[ticker]
     try:
         result = await asyncio.to_thread(_check_revenue_stage_sync, ticker)
-    except Exception:
+    except Exception as _rev_err:
+        logger.warning("earnings_calendar: revenue-stage check failed for %s - treating as revenue-stage (fail-soft): %s", ticker, _rev_err)
         result = True  # fail-soft
     _REV_STAGE_CACHE[ticker] = result
     return result

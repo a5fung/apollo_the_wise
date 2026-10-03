@@ -60,7 +60,7 @@ def advisory_fail_open(default=None, *, audit_event: str | None = None,
                             audit_event, f"{name}: {type(e).__name__}: {e}")
                     except Exception as _audit_err:
                         # audit layer may share the original outage - the log is the only sink left
-                        logger.warning(f"{name}: audit row for the failure above NOT written: {_audit_err}")
+                        logger.warning("%s: audit row for the failure above NOT written: %s", name, _audit_err)
                 return default() if callable(default) else default
         return wrapper
     return deco
@@ -91,7 +91,7 @@ def trade_state_fail_loud(*, audit_event: str = "trade_state_failure",
                     await log_audit_event(
                         audit_event, f"{name}: {type(e).__name__}: {e}")
                 except Exception as _audit_err:
-                    logger.warning(f"{name}: audit row for the failure above NOT written: {_audit_err}")
+                    logger.warning("%s: audit row for the failure above NOT written: %s", name, _audit_err)
                 try:
                     from agents.market_intelligence.briefing import send_telegram_message
                     from shared.telegram_format import b, esc
@@ -100,7 +100,7 @@ def trade_state_fail_loud(*, audit_event: str = "trade_state_failure",
                         parse_mode="HTML")
                 except Exception as _tg_err:
                     # Telegram down must not mask the original error - the log is the only sink left
-                    logger.warning(f"{name}: Telegram page for the failure above NOT sent: {_tg_err}")
+                    logger.warning("%s: Telegram page for the failure above NOT sent: %s", name, _tg_err)
                 if reraise:
                     raise
                 return None

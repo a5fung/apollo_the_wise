@@ -377,7 +377,7 @@ async def run_9m_scan() -> list[dict]:
                         f"{ticker}: {type(_ce).__name__}: {str(_ce)[:200]}",
                     )
                 except Exception as _audit_err:
-                    logger.warning(f"9M sugar-baby convergence: audit row for the failure above NOT written for {ticker}: {_audit_err}")
+                    logger.warning("9M sugar-baby convergence: audit row for the failure above NOT written for %s: %s", ticker, _audit_err)
             if conv:
                 converging_tickers.append((ticker, conv))
                 # Same-trading-day audit dedup (ET). 9M scans tick every

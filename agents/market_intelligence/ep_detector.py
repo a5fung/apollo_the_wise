@@ -1632,8 +1632,8 @@ catalyst, say so explicitly."""
                 alert_credit_exhausted, is_credit_error)
             if is_credit_error(e):
                 await alert_credit_exhausted("catalyst grader", e)
-        except Exception:
-            pass
+        except Exception as _alert_err:
+            logger.warning("catalyst grader: credit-exhaustion alert path failed for %s: %s", ticker, _alert_err)
         logger.error(f"Claude catalyst classification failed for {ticker}: {e}")
         return "routine", f"{_CLASSIFY_FAIL_SENTINEL} — treating as routine."
 
@@ -1837,8 +1837,8 @@ Respond with ONLY the classification word."""
                     await log_perplexity_call(
                         caller="perplexity_catalyst_validate", response=_data,
                     )
-                except Exception:
-                    pass
+                except Exception as _meter_err:
+                    logger.warning("Perplexity validation for %s: cost-meter write failed: %s", ticker, _meter_err)
                 text = collector._pplx_answer_text(_data).strip().upper()
             # ⚠ SAFETY (operator 2026-08-27): "make sure any issue with perplexity doesn't affect
             # live trades, just render as no-op or unavailable input."
@@ -4651,7 +4651,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # real fresh-earnings EP.
                 try:
                     earnings_match_cd, _ = await is_earnings_day(ticker, today)
-                except Exception:
+                except Exception as _earn_err:
+                    logger.warning("cooldown: is_earnings_day failed for %s - treating as earnings day (cooldown bypassed, fail-soft): %s", ticker, _earn_err)
                     earnings_match_cd = True
                 if earnings_match_cd:
                     cooldown_bypass = True
@@ -5376,7 +5377,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # rather over-boost on data outage than miss a real earnings EP.
         try:
             earnings_today_match, earnings_src = await is_earnings_day(ticker, today)
-        except Exception:
+        except Exception as _earn_err:
+            logger.warning("catalyst boost: is_earnings_day failed for %s - treating as earnings day (boost fires, fail-soft): %s", ticker, _earn_err)
             earnings_today_match, earnings_src = True, "unavailable"
 
         # Revenue-stage check (2026-05-20): pre-revenue companies (clinical-
@@ -5405,6 +5407,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # to the judge as a confident "yes", which is the identical
                 # assert-what-we-did-not-check defect as the non-earnings branch below — one
                 # branch over, and it survived yesterday's fix. The judge now gets None.
+                logger.warning("catalyst boost: is_revenue_stage failed for %s - assuming revenue-stage for the gate, judge gets None (fail-soft)", ticker, exc_info=True)
                 revenue_stage = True
                 revenue_stage_for_judge = None
         else:
@@ -5566,8 +5569,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             f"{ticker}: catalyst extraction failed — {str(e)[:200]} "
                             f"(rubric gate skipped; Q-rev safety-net engaged)",
                         )
-                    except Exception:
-                        pass
+                    except Exception as _audit_err:
+                        logger.warning("extraction_error audit row NOT written for %s: %s", ticker, _audit_err)
                     # Only Telegram on HIGH-tier catalysts — extraction failures
                     # on MODERATE are noise (rubric doesn't gate MODERATE anyway).
                     if catalyst_quality in ("strong", "game_changer"):
@@ -5578,8 +5581,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 f"rubric gate not exercised, Q-rev safety-net engaged. "
                                 f"_See `/why {ticker}` for context; `mi_audit_log` for full error._"
                             )
-                        except Exception:
-                            pass
+                        except Exception as _tg_err:
+                            logger.warning("catalyst-extraction-failed Telegram NOT sent for %s: %s", ticker, _tg_err)
 
             _q_rev_yoy = get_q_revenue_yoy_pct(_extracted)
             _quality = _extracted.get("extraction_quality", "low")
@@ -5920,8 +5923,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 "guidance_confidence": gc.get("confidence"),
                             }),
                         )
-                    except Exception:
-                        pass
+                    except Exception as _audit_err:
+                        logger.warning("catalyst_downgrade_carveout_applied audit row NOT written for %s: %s", ticker, _audit_err)
 
             # Extraction died and we deliberately kept the grade (operator 2026-08-07).
             # Emitted BEFORE the downgrade block so it is recorded even though nothing
@@ -6360,7 +6363,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # Defensive: rather over-promote than miss a real earnings EP.
             try:
                 earnings_match, earnings_source = await is_earnings_day(ticker, today)
-            except Exception:
+            except Exception as _earn_err:
+                logger.warning("MODERATE->HIGH override: is_earnings_day failed for %s - treating as earnings day (fail-soft): %s", ticker, _earn_err)
                 earnings_match, earnings_source = True, "unavailable"
 
             if earnings_match and await _revenue_weak_downgrade_logged_today(ticker):

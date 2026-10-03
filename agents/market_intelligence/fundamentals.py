@@ -79,7 +79,7 @@ def _quarter_label(dt: Any, fye_month: int = 12) -> str:
         q = 4 - offset // 3
         yr = dt.year + (1 if dt.month > fye_month else 0)  # FY labeled by its ENDING calendar year
         return f"Q{q}'{str(yr)[2:]}"
-    except Exception:
+    except Exception:  # loud-ok: explicit fallback by design (see the docstring) - the plain-date label never matches _parse_fiscal_quarter, so the fill stays unfilled rather than guessed
         return str(dt)[:7]
 
 
@@ -128,7 +128,8 @@ def _gross_margin_trend(q_income: Any) -> str:
         if delta < -1.0:
             return "contracting"
         return "stable"
-    except Exception:
+    except Exception as _gm_err:
+        logger.warning("fundamentals: gross-margin trend computation failed - reporting 'unknown': %s", _gm_err)
         return "unknown"
 
 
@@ -168,25 +169,29 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
     def _fetch_info():
         try:
             return t.info or {}
-        except Exception:
+        except Exception as _yf_err:
+            logger.warning("get_fundamentals %s: yfinance .info fetch failed - using {}: %s", ticker, _yf_err)
             return {}
 
     def _fetch_calendar():
         try:
             return t.calendar
-        except Exception:
+        except Exception as _yf_err:
+            logger.warning("get_fundamentals %s: yfinance .calendar fetch failed - using None: %s", ticker, _yf_err)
             return None
 
     def _fetch_earnings_estimate():
         try:
             return t.earnings_estimate
-        except Exception:
+        except Exception as _yf_err:
+            logger.warning("get_fundamentals %s: yfinance .earnings_estimate fetch failed - using None: %s", ticker, _yf_err)
             return None
 
     def _fetch_revenue_estimate():
         try:
             return t.revenue_estimate
-        except Exception:
+        except Exception as _yf_err:
+            logger.warning("get_fundamentals %s: yfinance .revenue_estimate fetch failed - using None: %s", ticker, _yf_err)
             return None
 
     _YF_TIMEOUT = 30.0
@@ -419,16 +424,16 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
             if "Earnings Date" in calendar.index:
                 val = calendar.loc["Earnings Date"].iloc[0]
                 next_earnings = str(val.date() if hasattr(val, "date") else val)
-    except Exception:
-        pass
+    except Exception as _cal_err:
+        logger.warning("get_fundamentals %s: next-earnings calendar parse failed - falling back to info fields: %s", ticker, _cal_err)
 
     if next_earnings is None and isinstance(info, dict):
         ts = info.get("nextEarningsDate") or info.get("earningsTimestamp")
         if ts:
             try:
                 next_earnings = datetime.fromtimestamp(int(ts)).strftime("%Y-%m-%d")
-            except Exception:
-                pass
+            except Exception as _ts_err:
+                logger.warning("get_fundamentals %s: nextEarningsDate/earningsTimestamp %r unparseable - leaving next_earnings unset: %s", ticker, ts, _ts_err)
 
     result["next_earnings_date"] = next_earnings
 
@@ -627,7 +632,7 @@ def format_fundamentals(data: dict) -> str:
         try:
             d = date.fromisoformat(next_eps)
             lines.append(f"Next EPS {d.strftime('%b %d, %Y')}")
-        except Exception:
+        except Exception:  # loud-ok: display fallback - an unparseable date renders as its raw string, nothing is lost
             lines.append(f"Next EPS {next_eps}")
 
     # Quarterly table — last 6 quarters

@@ -131,7 +131,7 @@ async def invoke_forced_tool(
                 alert_credit_exhausted, is_credit_error)
             if is_credit_error(e):
                 await alert_credit_exhausted(label, e)
-        except Exception:
-            pass
+        except Exception as _alert_err:
+            logger.warning("%s: credit-exhaustion alert path failed for %s: %s", label, subject, _alert_err)
         logger.warning(f"{label} failed/timeout for {subject}: {e}")
         return None

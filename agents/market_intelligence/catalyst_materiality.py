@@ -23,8 +23,11 @@ and any future consumer never diverge on the prompt (feedback_single_source_of_t
 from __future__ import annotations
 
 import json
+import logging
 import re
 from shared.llm_response import first_text
+
+logger = logging.getLogger(__name__)
 
 # Materiality tiers (ordinal). Higher = more material to the company.
 MATERIALITY_TIERS = ("immaterial", "minor", "material", "transformative")
@@ -267,6 +270,9 @@ async def assess_materiality(client, *, company, sector, market_cap,
         )
         return tier, ("llm" if tier is not None else "abstain")
     except Exception as e:
+        logger.warning(
+            "catalyst materiality: LLM judge failed for %s - abstaining (fails open as material): %s: %s",
+            company, type(e).__name__, e)
         # #376: credit exhaustion silently abstains (→ fails OPEN as material) —
         # alert it (deduped) before returning.
         from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted

@@ -107,6 +107,8 @@ async def _refresh_one_ticker(
     # A single ET clock-minute may receive multiple bars only across days;
     # within a day, Polygon emits one bar per minute when there's trade flow.
     per_day_minute_vol: dict[date, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    _n_bad_bars = 0
+    _first_bad_bar = None
     for b in bars:
         try:
             t_ms = b.get("t")
@@ -117,9 +119,15 @@ async def _refresh_one_ticker(
             if m < PM_START_MIN or m >= SESSION_END_MIN:
                 continue
             per_day_minute_vol[d][m] += int(v)
-        except Exception:
+        except Exception as _bar_err:  # loud-ok: counted - one aggregate warning follows the loop (a per-bar log would flood)
+            _n_bad_bars += 1
+            if _first_bad_bar is None:
+                _first_bad_bar = f"{type(_bar_err).__name__}: {str(_bar_err)[:120]}"
             continue
 
+    if _n_bad_bars:
+        logger.warning("minute_volume %s: %d of %d bars malformed and skipped (first: %s)",
+                       ticker, _n_bad_bars, len(bars), _first_bad_bar)
     if len(per_day_minute_vol) < MIN_SAMPLE_N:
         return []
 
