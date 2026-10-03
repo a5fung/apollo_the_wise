@@ -11438,10 +11438,19 @@ async def seed_theme(name: str, thesis: str, tickers: list[str], today: "date") 
             )
             return
 
+        # #580 (2026-10-03): a seeded theme is born WITH breadth like every other birth path.
+        # /teach runs intraday, so the read is on the latest COMPLETE score run (#554 check),
+        # never `today` (no complete run yet — at most a stray on-demand row); same held
+        # connection, same arithmetic as the nightly rescore (`breadth_above_sma20`).
+        _score_rows = await conn.fetch(f"""
+            SELECT ticker, close, sma_20 FROM mi_stock_scores
+            WHERE ticker = ANY($1) AND score_date = {latest_complete_score_date_sql()}
+        """, tickers_upper)
         await conn.execute("""
-            INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers)
-            VALUES ($1, $2, 'Nascent', 0, $3, $4)
-        """, today, name, thesis, tickers_upper)
+            INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers,
+                                   pct_above_20sma)
+            VALUES ($1, $2, 'Nascent', 0, $3, $4, $5)
+        """, today, name, thesis, tickers_upper, breadth_above_sma20(_score_rows))
 
 
 async def get_undercut_rallies(d: "str | date") -> list[dict[str, Any]]:
@@ -17147,6 +17156,30 @@ async def persist_reactivation_seed(
             tickers, thesis, "ecosystem_reactivation")
 
 
+def breadth_above_sma20(rows) -> float | None:
+    """#580 — THE breadth arithmetic, the ONE definition every theme path shares: the
+    fraction of member rows (`mi_stock_scores` rows carrying `close` and `sma_20`) with
+    close > sma_20, rounded to 3 places; None when no row carries both (nothing measured
+    — never 0.0, which means "every member below its 20-day average").
+
+    Byte-for-byte the aggregate this replaced (`COUNT(*) FILTER (WHERE close > sma_20)` over
+    `COUNT(*) FILTER (WHERE sma_20 IS NOT NULL AND close IS NOT NULL)`), moved to Python so the
+    promote paths can apply it to rows they ALREADY read on their completeness-checked score
+    date and held connection (no second query, no nested pool acquire, no unchecked date).
+    `rows`: mappings with `.get` (asyncpg Record or dict); one row per member."""
+    above = total = 0
+    for r in rows:
+        close, sma = r.get("close"), r.get("sma_20")
+        if close is None or sma is None:
+            continue
+        total += 1
+        if close > sma:
+            above += 1
+    if not total:
+        return None
+    return round(above / total, 3)
+
+
 async def get_ticker_breadth_above_sma20(
     tickers: list[str], trade_date: "str | date"
 ) -> float | None:
@@ -17154,22 +17187,19 @@ async def get_ticker_breadth_above_sma20(
 
     Leading decay indicator for theme health — a theme can score well on RS
     while most members have rolled over below their 20-day trend. Reads from
-    mi_stock_scores (populated nightly for all RS-universe tickers)."""
+    mi_stock_scores (populated nightly for all RS-universe tickers). The arithmetic
+    is `breadth_above_sma20` (#580 — shared with the theme birth paths)."""
     if not tickers:
         return None
     pool = await get_pool()
     d = _to_date(trade_date)
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("""
-            SELECT
-                COUNT(*) FILTER (WHERE close > sma_20) AS above,
-                COUNT(*) FILTER (WHERE sma_20 IS NOT NULL AND close IS NOT NULL) AS total
+        rows = await conn.fetch("""
+            SELECT ticker, close, sma_20
             FROM mi_stock_scores
             WHERE ticker = ANY($1) AND score_date = $2
         """, tickers, d)
-    if not row or not row["total"]:
-        return None
-    return round(row["above"] / row["total"], 3)
+    return breadth_above_sma20(rows)
 
 
 # ── #333 ANALYST-ESTIMATES RECORDER queries (2026-08-31; v4 2026-09-03 Finnhub) ───────

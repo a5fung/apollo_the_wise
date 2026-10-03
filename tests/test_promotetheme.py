@@ -116,7 +116,7 @@ async def test_upsert_promoted_theme_merge_and_sql():
 
     wrote = await te._upsert_promoted_theme(
         conn, "Rare & Orphan Biotech Re-Rating", ["RARE", "MIRM"], None,
-        "fallback desc", _TODAY, rs_avg=42.5, prior_days_active=3)
+        "fallback desc", _TODAY, rs_avg=42.5, prior_days_active=3, pct_above_20sma=0.5)
 
     assert wrote is True
     args = conn.execute.call_args[0]
@@ -124,9 +124,12 @@ async def test_upsert_promoted_theme_merge_and_sql():
     assert "INSERT INTO mi_themes" in sql
     assert "ON CONFLICT (theme_date, name) DO UPDATE SET" in sql
     assert "WHERE mi_themes.source = 'shadow_promoted'" in sql
-    # positional params: today, name, score, desc, tickers, days_active
+    # #580: breadth is inserted; a same-day re-write keeps a stored value when the new one is NULL
+    assert "pct_above_20sma" in sql.split("VALUES")[0]
+    assert "COALESCE(EXCLUDED.pct_above_20sma, mi_themes.pct_above_20sma)" in sql
+    # positional params: today, name, score, desc, tickers, days_active, pct_above_20sma
     assert args[1:] == (_TODAY, "Rare & Orphan Biotech Re-Rating", 42.5, "fallback desc",
-                         ["RARE", "MIRM"], 4)   # days_active = prior(3) + 1
+                         ["RARE", "MIRM"], 4, 0.5)   # days_active = prior(3) + 1
 
 
 @pytest.mark.asyncio
@@ -137,10 +140,11 @@ async def test_upsert_promoted_theme_no_prior_and_thesis_used():
 
     await te._upsert_promoted_theme(
         conn, "New Theme", ["A"], "operator thesis", "fallback", _TODAY,
-        rs_avg=None, prior_days_active=None)
+        rs_avg=None, prior_days_active=None, pct_above_20sma=None)
 
     args = conn.execute.call_args[0]
-    assert args[1:] == (_TODAY, "New Theme", None, "operator thesis", ["A"], 1)
+    # unknown breadth is stored as NULL — never a made-up number
+    assert args[1:] == (_TODAY, "New Theme", None, "operator thesis", ["A"], 1, None)
 
 
 @pytest.mark.asyncio
@@ -150,8 +154,9 @@ async def test_operator_and_nightly_paths_both_delegate_to_shared_helper(monkeyp
     from tests.conftest import make_mock_pool
     calls = []
 
-    async def _spy(conn, name, tickers, thesis, desc_fallback, today, *, rs_avg, prior_days_active):
-        calls.append((name, tuple(tickers), rs_avg, prior_days_active))
+    async def _spy(conn, name, tickers, thesis, desc_fallback, today, *, rs_avg, prior_days_active,
+                   pct_above_20sma):
+        calls.append((name, tuple(tickers), rs_avg, prior_days_active, pct_above_20sma))
         return True
 
     monkeypatch.setattr(te, "_upsert_promoted_theme", _spy)
@@ -162,8 +167,9 @@ async def test_operator_and_nightly_paths_both_delegate_to_shared_helper(monkeyp
 
     # Operator path (/promotetheme)
     pool1, conn1 = make_mock_pool()
-    conn1.fetch = AsyncMock(return_value=[
-        {"ticker": "RARE", "rs_composite": 80.0}, {"ticker": "MIRM", "rs_composite": 60.0}])
+    _rows = [{"ticker": "RARE", "rs_composite": 80.0, "close": 11.0, "sma_20": 10.0},
+             {"ticker": "MIRM", "rs_composite": 60.0, "close": 9.0, "sma_20": 10.0}]
+    conn1.fetch = AsyncMock(return_value=_rows)
     conn1.fetchrow = AsyncMock(return_value={"days_active": 2})
     monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool1))
     monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[cand]))
@@ -174,7 +180,7 @@ async def test_operator_and_nightly_paths_both_delegate_to_shared_helper(monkeyp
     conn2.fetch = AsyncMock(side_effect=[
         [{"name": "Rare & Orphan Biotech Re-Rating", "days_active": 2}],   # prior_rows batched query
         [],   # #530 prior_desc_rows (tombstone-skipping) — empty, no preservation exercised here
-        [{"ticker": "RARE", "rs_composite": 80.0}, {"ticker": "MIRM", "rs_composite": 60.0}],  # RS batched
+        _rows,  # RS batched (+ close / sma_20 since #580)
     ])
     monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool2))
     monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[cand]))
@@ -185,6 +191,7 @@ async def test_operator_and_nightly_paths_both_delegate_to_shared_helper(monkeyp
     assert op_call[0] == nightly_call[0] == "Rare & Orphan Biotech Re-Rating"
     assert op_call[2] == nightly_call[2] == 70.0   # rs_avg over RARE(80)+MIRM(60)
     assert op_call[3] == nightly_call[3] == 2      # prior_days_active
+    assert op_call[4] == nightly_call[4] == 0.5    # #580 breadth: RARE above its 20-day avg, MIRM below
 
 
 # ─── Option A (operator 2026-07-07) — graduation ping only on a genuine NEW crossing ───

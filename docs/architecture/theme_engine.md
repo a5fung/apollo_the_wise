@@ -1001,6 +1001,52 @@ the first night its breadth is back at/above 40% (age ≥ 5 and score ≥ 50) �
 **Status**: built, replay pending, not deployed. Tests: `tests/test_580_breadth_decay.py` (0.0 fades — red on the old
 code; None keeps today's behaviour; mutation-checked both ways).
 
+### 2026-10-03 — #580: a theme is born WITH breadth on every birth path (money path: it is the decay rule's first prior reading)
+
+**Trigger**: newborn themes carried NULL `pct_above_20sma` until their first rescore — 7 of 122 non-Retired rows on
+2026-09-29, 420 since 08-01 (259 promote INSERTs, 151 engine births, 7 same-night retire + rediscovery — all births;
+2 genuine no-data). Exactly the newest, hottest themes showed no breadth, and the decay rule had no prior reading the
+next night. The first attempt (0c9660f2) was reverted (b51ea5b9) on review: an intraday `/promotetheme` read breadth
+on an UNCHECKED `today`, and it acquired a second pool connection while holding one.
+
+**Evidence**: the 09-30 null-breadth census (`scripts/probes/_580/_580_null_breadth_probe.py` + `.out.txt`): every
+non-Retired NULL is a birth row except 2. Replay of the stage/EP effect: `scripts/probes/_580/replay_breadth_fix.py`
+— PENDING its run.
+
+**Change**:
+- **ONE arithmetic** — `db.breadth_above_sma20(rows)`: share of member rows with `close > sma_20` among rows carrying
+  both, rounded to 3; None when no row carries both. Byte-for-byte the SQL aggregate it replaced;
+  `get_ticker_breadth_above_sma20` (the nightly rescore's call) now fetches the rows and applies it.
+- **Engine births** (`_score_new_theme` — discovery and fat-theme split): the SAME call the rescore makes,
+  `get_ticker_breadth_above_sma20(tickers, today)` on the engine's own date. A lookup failure stores NULL and never
+  aborts the birth (all births share one `asyncio.gather`).
+- **Promote births** (`promote_shadow_themes` nightly, `promote_candidate_by_name` = `/promotetheme`): `close, sma_20`
+  ride on the RS query each path ALREADY runs, so breadth is read on the date `rs_avg` is read on — the #554
+  completeness-checked `latest_complete_score_date_sql()` — on the held connection: no second query, no nested pool
+  acquire, no unchecked `today`. Nightly: each cohort counts only its own members' rows. `_upsert_promoted_theme`
+  takes `pct_above_20sma` as a REQUIRED keyword; a same-day re-write keeps a stored value when the new one is NULL
+  (`COALESCE`).
+- **`/teach` seed** (`db.seed_theme`): same — the completeness-checked date, the held connection.
+- Retired rows (`_synthetic_retired_row`, the engine-drop `retire_rows`) stay NULL: they carry no members.
+
+**⚠ Looks wrong, is right — an intraday `/promotetheme` on day D stores breadth from D−1** (the latest complete run)
+on a row dated D. Tonight's engine run reads that row as the prior night (`get_active_themes` = latest row per name)
+and computes tonight's from D, so the two-night decay rule sees D−1 and D: two genuine consecutive readings. Reading
+`today` instead would have handed it either nothing or a one-stock stray (`score_single_ticker` writes on-demand rows
+stamped with the calendar date).
+
+**Anticipated effect**: no NULL breadth on any non-Retired theme except when no member has a 20-day average on the
+date. A newborn born below 40% that is still below 40% on its first rescore is forced Fading that night (it was
+spared: its prior was NULL = unknown). Newborns start Nascent, which pays no EP bonus, so the direct EP effect is on
+themes that would otherwise have reached Accelerating soon after birth; the replay counts it.
+
+**Reversion-flag**: NEW (the reverted first attempt never shipped).
+
+**Status**: built, replay pending, not deployed. Tests: `tests/test_580_breadth_at_birth.py` (+ updated pins in
+`tests/test_promotetheme.py`); 9 mutations (newborn key dropped, unchecked-`today` read, RS query without
+`close/sma_20`, nested acquire, all-rows-per-cohort, COALESCE removed, `>=` vs `>`, 0.0-for-nothing, `/teach` on
+`today`) each turn a named test red.
+
 ### 2026-10-02 — #693: "thinking off" is now really off on Sonnet 5.5, a decline says why, and two tools write their notes AFTER the answer
 
 - **Defect:** on claude-sonnet-5-5 `thinking: {"type": "disabled"}` is a 400 whose text names the real off switch,
