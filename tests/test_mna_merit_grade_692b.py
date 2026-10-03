@@ -289,8 +289,10 @@ def test_post_grade_filters_hands_the_release_to_the_caller_and_a_confirmed_pin_
          patch.object(ep_detector, "log_audit_event", new=AsyncMock(return_value=None)):
         reason = _run(ep_detector._post_grade_filters(
             "PD", "mna", "a", "s", 25.4, 1_000_000, 3.0, date(2026, 5, 29), lattice_acting=False,
-            deal_answer=DealAnswer("target", "signed", "unknown"), release_sink=sink))
+            deal_answer=DealAnswer("target", "signed", "unknown"), release_sink=sink,
+            quality_if_no_deal="strong"))        # a usable merit grade → the release is handed on
     assert reason is None and sink["released_on_price"] is True and sink["pin"]["range_pct"] == 5.3591
+    assert seen["gap_pct"] == 25.4 and callable(seen["pin_reader"])
     sink = {}
     with patch.object(ep_detector, "is_likely_ma", new=fake((False, None))), \
          patch.object(ep_detector, "log_audit_event", new=AsyncMock(return_value=None)):
