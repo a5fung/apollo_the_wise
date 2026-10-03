@@ -488,6 +488,16 @@ _yoy_bg_semaphore: "asyncio.Semaphore | None" = None
 _YOY_BG_CONCURRENCY = 2                    # the default executor is shared with the scan's own yfinance calls
 _YOY_BG_TIMEOUT_S = 20                     # nothing on the scan path waits on this
 
+# The post-scan advisory block (catalyst_type + judge shadow, run_ep_scan's tail) runs under ONE
+# wait_for ceiling. Values UNCHANGED from the literals they replace (W2c, #243): 25s keeps the
+# advisory-only path from delaying a HIGH alert against the 9:45 ORB cutoff; 110s gives a
+# LOAD-BEARING judge (toggle ON) room for ≈4 _JUDGE_SEMAPHORE(3) waves × its own 25s timeout.
+# Hoisted 2026-10-03 (#663) ONLY so a test can shrink the ceiling and drive the REAL
+# wait_for → cancel → TimeoutError path, which is what dropped `setup_class` in CI on
+# 2026-09-14 — a 26-second sleep in the suite is not a test anyone runs.
+_POST_SCAN_CEILING_SHADOW_S = 25
+_POST_SCAN_CEILING_AUTHORITY_S = 110
+
 
 def _spawn_yoy_recovery_background(ticker: str, alert_date: "date", fiscal_period: "str | None",
                                    value: "float | None") -> bool:
@@ -6357,6 +6367,28 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # day-of inputs (catalyst summary + claude_analysis) the historical backfill
     # used → backfill↔live input parity (feedback_backfill_llm_label_lookahead).
     # FAIL-OPEN: any error leaves catalyst_type NULL; NEVER blocks/breaks alerts.
+    #
+    # ── #663 (2026-10-03): the result SHAPE must not depend on anything in the block below. ──
+    # d747f414 moved `r["setup_class"] = ...` outside the classifier's try so an EXCEPTION
+    # could not drop the key. It still vanished in CI on 2026-09-14, and the log shows why:
+    # the FIRST scan's post-scan block died with an empty-message error — `str(TimeoutError())`
+    # is '' — i.e. the wait_for ceiling fired (a live yfinance call inside
+    # compute_setup_class_fields stalled on a fresh runner). wait_for CANCELS the gather;
+    # CancelledError is a BaseException, so every `except Exception` in _judge_shadow /
+    # _classify_type is bypassed and the assignments after them never run. Seeding the three
+    # advisory keys HERE — synchronous, BEFORE the try, before any await or import that could
+    # fail — makes a timed-out scan, a failed scan and a completed scan the same shape (key
+    # present; None until a classifier completes). VALUES are untouched: a completed
+    # classifier overwrites with exactly what it did before, and every reader is `.get`
+    # (ep_detector :798 render, live_fill_counterfactuals :832), so None and absent were
+    # already indistinguishable downstream — no grade, tier, entry or row changes. The timeout
+    # path is RED-proved in tests/test_663_ep_scan_result_shape.py, and the same file's AST gate
+    # fails if a result key is ever again written only inside a try or a cancellable coroutine
+    # without a seed out here.
+    for _r in high + moderate:
+        _r.setdefault("setup_class", None)
+        _r.setdefault("catalyst_type", None)
+        _r.setdefault("catalyst_type_rationale", None)
     try:
         from agents.market_intelligence.catalyst_type_classifier import classify_catalyst_type
         from agents.market_intelligence.db import (
@@ -6759,6 +6791,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
         _alerted = high + moderate
         if _alerted:
+            # (#663: the three advisory keys were seeded BEFORE this try — see the block's head.
+            # Nothing below may be the only writer of a result key.)
             # Bounded: this advisory signal must NEVER delay the latency-sensitive
             # HIGH alert (9:45 ORB cutoff). wait_for cancels stragglers on timeout;
             # classifications that already completed keep their values (fail-open
@@ -6771,7 +6805,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # Opus flip) when ON; keep the tight latency guard for the
             # advisory-only catalyst_type when OFF. Still well inside the
             # 5-min ORB scan cadence.
-            _post_loop_timeout = 110 if _judge_authority else 25
+            _post_loop_timeout = (_POST_SCAN_CEILING_AUTHORITY_S if _judge_authority
+                                  else _POST_SCAN_CEILING_SHADOW_S)
             await asyncio.wait_for(
                 asyncio.gather(
                     *[_classify_type(r) for r in _alerted],
