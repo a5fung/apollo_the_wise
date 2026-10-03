@@ -1,15 +1,17 @@
 {
-  "run_at": "2026-08-27T18:27:49-07:00",
+  "run_at": "2026-10-03T14:08:41-07:00",
   "rubric_version": "v4-2026-08-27-axis-split-second-opinion",
   "rubric_hash": "d65ac7f3",
-  "catalyst_grade_prompt_version": "v3-2026-06-12-catalyst-freshness",
-  "judge_model": "claude-opus-5",
+  "catalyst_grade_prompt_version": "v4-2026-10-03-deal-fields-merit-if-no-deal",
+  "judge_model": "claude-opus-5-5",
   "corpus_version": "v1-2026-07-11",
   "corpus_sha1": "04150fdd3a5e",
-  "n_cases": 36,
-  "overall": 1.0,
-  "positive_control_rate": 1.0,
   "hard_failures": [],
+  "positive_control_rate": 1.0,
+  "soft_classes_below_bar": [],
+  "overall": 1.0,
+  "pass": true,
+  "n_cases": 36,
   "per_class": {
     "clean_print_control": {
       "n": 2,
@@ -138,7 +140,6 @@
       "failed_ids": []
     }
   },
-  "pass": true,
   "envelope": {
     "max_tokens": 1500,
     "timeout": 25,
