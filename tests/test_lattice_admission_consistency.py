@@ -223,6 +223,16 @@ _ALLOWED_RAW_USE = (
     # second grade path. The row-read form is the _scan_row dict literal.
     re.compile(r"^\s*c\[\"llm_catalyst_quality\"\] = llm_catalyst_quality\s*(#.*)?$"),
     re.compile(r"^\s*\"llm_catalyst_quality\": c\.get\(\"llm_catalyst_quality\"\),\s*(#.*)?$"),
+    # #692b (2026-10-03): the 09:35 open-window RELEASE re-scores a 'mna' name with the grader's
+    # `quality_if_no_deal`. `_apply_release_merit_grade` takes the raw grade as an ARG and
+    # returns (raw, acting, lattice_verdict, live_side) from `_resolve_acting_catalyst_quality`
+    # — the acting grade is set in the SAME statement as the raw one (no second read path),
+    # and the cache then stores the new RAW grade exactly as the two "cache stores RAW" entries
+    # above allow.
+    re.compile(r"^\s*ticker, c, llm_catalyst_quality, quality_if_no_deal, _mna_release,"),
+    re.compile(r"^\s*llm_catalyst_quality, catalyst_quality, _lattice_verdict, _live_side = _rel\s*(#.*)?$"),
+    re.compile(r"^\s*cached = cached\._replace\(catalyst_quality=llm_catalyst_quality,\s*(#.*)?$"),
+    re.compile(r"^\s*catalyst_quality=llm_catalyst_quality, mna_released_on_price=True\)\s*(#.*)?$"),
     re.compile(r"^\s*#"),                                            # comments
 )
 
