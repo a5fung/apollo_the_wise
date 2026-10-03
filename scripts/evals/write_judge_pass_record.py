@@ -59,6 +59,16 @@ def build_record(results_json: dict, existing: dict | None, run_at: str | None =
         "per_class": summary.get("by_class", {}),
         "pass": True,
     }
+    # What the deploy gate reads from SOURCE for the judge model (the tier's fallback pin) — kept
+    # beside the eval's real model so the gate compares like with like (2026-10-03).
+    try:
+        import sys as _sys
+        from pathlib import Path as _P
+        _sys.path.insert(0, str(_P(__file__).resolve().parent.parent))
+        from preflight_judge_eval_gate import extract_live_keys
+        record["judge_model_source_pin"] = extract_live_keys()["judge_model"]
+    except Exception as e:  # loud-ok: the gate then falls back to judge_model and says FAIL on a mismatch
+        print(f"warning: could not read the gate's source pin ({e}); judge_model_source_pin not written")
     if existing and "envelope" in existing:
         record["envelope"] = existing["envelope"]      # carried forward VERBATIM (#547)
     return record

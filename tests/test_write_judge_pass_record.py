@@ -90,3 +90,24 @@ def test_the_gate_accepts_a_record_this_tool_writes(tmp_path):
     live.pop("corpus_version")
     ok, msgs = g.check(rec, live)
     assert ok, msgs
+
+
+def test_the_gate_compares_its_source_pin_to_the_recorded_source_pin_not_the_eval_model():
+    """2026-10-03: the eval runs on the RESOLVED judge model while the gate reads the tier's fallback
+    pin from source. The record keeps both; the gate compares like with like, and a real pin change
+    still fails it."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from preflight_judge_eval_gate import check
+    live = {"rubric_version": "v", "rubric_hash": "h", "catalyst_grade_prompt_version": "g",
+            "judge_model": "claude-opus-5", "corpus_sha1": "c"}
+    rec = {**live, "judge_model": "claude-opus-5-5", "judge_model_source_pin": "claude-opus-5",
+           "pass": True, "run_at": "2026-10-03"}
+    ok, _ = check(rec, live)
+    assert ok
+    ok2, msgs = check(rec, {**live, "judge_model": "claude-opus-6"})
+    assert not ok2 and any("judge_model" in m for m in msgs)
+    legacy = {k: v for k, v in rec.items() if k != "judge_model_source_pin"}
+    ok3, _ = check(legacy, live)       # an old record without the key falls back to judge_model
+    assert not ok3

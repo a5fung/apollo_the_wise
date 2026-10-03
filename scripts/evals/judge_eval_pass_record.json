@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-10-03T14:08:41-07:00",
+  "run_at": "2026-10-03T14:20:09-07:00",
   "rubric_version": "v4-2026-08-27-axis-split-second-opinion",
   "rubric_hash": "d65ac7f3",
   "catalyst_grade_prompt_version": "v4-2026-10-03-deal-fields-merit-if-no-deal",
@@ -140,6 +140,7 @@
       "failed_ids": []
     }
   },
+  "judge_model_source_pin": "claude-opus-5",
   "envelope": {
     "max_tokens": 1500,
     "timeout": 25,

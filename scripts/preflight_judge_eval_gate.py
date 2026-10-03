@@ -397,8 +397,17 @@ def check(record: "dict | None", live: dict) -> tuple[bool, list[str]]:
         return False, ["no pass record (scripts/evals/judge_eval_pass_record.json missing) — "
                        "run the judge robustness eval first"]
     waiver = record.get("waiver")
-    mismatches = [f"  {k}: record={record.get(k)!r} live={live[k]!r}"
-                  for k in live if record.get(k) != live[k]]
+    def _recorded(k):
+        # 2026-10-03: the eval runs on the RESOLVED judge model (claude-opus-5-5 since 09-23), and
+        # `judge_model` in the record says so — model_resolution.check_judge_eval_divergence needs
+        # that truth. This gate reads source and sees only the tier's FALLBACK PIN, so the record
+        # also carries what this gate saw at the passing run (`judge_model_source_pin`), and the
+        # gate compares like with like. Records written before that key fall back to judge_model.
+        if k == "judge_model" and "judge_model_source_pin" in record:
+            return record["judge_model_source_pin"]
+        return record.get(k)
+    mismatches = [f"  {k}: record={_recorded(k)!r} live={live[k]!r}"
+                  for k in live if _recorded(k) != live[k]]
     if not record.get("pass"):
         mismatches.insert(0, "  record.pass is not true — the last eval run FAILED")
     if mismatches:

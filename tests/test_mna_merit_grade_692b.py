@@ -57,7 +57,10 @@ def test_judge_rule_6_is_the_0827_text_and_the_rubric_hash_is_the_passing_record
     assert ep_grade_judge.RUBRIC_VERSION == _RECORD["rubric_version"]
     # the grader prompt DID change (deal fields + the merit field) → its version key moved; the
     # gate therefore asks for one eval re-run, by design
-    assert ep_detector.CATALYST_GRADE_PROMPT_VERSION != _RECORD["catalyst_grade_prompt_version"]
+    # The 2026-10-03 eval PASSED on this grader prompt (36/36) and the record was regenerated from its
+    # RESULTS_JSON: the record now names the live prompt version, so the gate passes. (Before that run
+    # this asserted the opposite — "a rerun is required" — which the run then satisfied.)
+    assert ep_detector.CATALYST_GRADE_PROMPT_VERSION == _RECORD["catalyst_grade_prompt_version"]
 
 
 # ── 2. S19's shape through the GRADER ────────────────────────────────────────────────────────
