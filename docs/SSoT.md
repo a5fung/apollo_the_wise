@@ -59,6 +59,7 @@ setup's criteria, change log and findings.
 | topic | owner |
 |---|---|
 | MAGNA53 EP — the live setup | `docs/setups/magna53_ep.md` |
+| **M&A / buyout filter** — every detector's one deal question (target / buyer / shell / none, signed or not, paid how) + its change log, operator labels and open decisions (#692) | `docs/setups/magna53_ep.md` §"Filters" item 7 + the M&A change-log entries |
 | **Delayed-EP re-entry** — incl. the **CONTEXT LEDGER** | `docs/setups/delayed_ep_reentry.md` |
 | Exit discipline | `docs/setups/exit_discipline.md` |
 | **Exit counterfactuals — the ONE recorder (every exit arm on every MAGNA53 fill) + the ONE read + which reviews it absorbed (#631)** | `docs/setups/exit_discipline.md` §"Exit counterfactuals — ONE recorder, ONE read" |

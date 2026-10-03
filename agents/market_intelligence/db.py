@@ -4168,6 +4168,10 @@ async def initialize_schema() -> None:
                 claude_analysis     TEXT,              -- #593: the grader's OWN rationale (classify_catalyst's `analysis`) — the "why" for names that never alert
                 news_summary        TEXT,              -- #593: the discovery narrative the scan held (perplexity/headline summary, already <=600 chars at source)
                 grounded_head       TEXT,              -- #593: bounded prefix of the grounded corpus at the lean grader's own 6000-char window (primary sources first)
+                deal_role           TEXT,              -- #692: the grader's M&A answer — target|buyer|shell|none (NULL = unanswered)
+                deal_status         TEXT,              -- #692: signed|proposed|speculation|completed|none
+                deal_consideration  TEXT,              -- #692: cash|stock|mixed|unknown|none
+                deal_counterparty   TEXT,              -- #692: the other company, or empty
                 created_at          TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (scan_date, ticker)
             );
@@ -4204,6 +4208,15 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS claude_analysis TEXT;
             ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS news_summary TEXT;
             ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS grounded_head TEXT;
+            -- #692 (2026-10-02): the grader's answer to the M&A question for every graded
+            -- name — alerted or filter-killed — so the monthly accuracy review and the replay
+            -- can see WHY the filter blocked or released it. NULL = unanswered (failed grade or
+            -- a row from before #692). Read by NO grading / entry / sizing path; the filter
+            -- itself decides from the in-process answer, never from this table.
+            ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS deal_role TEXT;
+            ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS deal_status TEXT;
+            ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS deal_consideration TEXT;
+            ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS deal_counterparty TEXT;
 
             -- #533 separation change (2026-08-22, operator-signed): BOTH rubric sides
             -- per scored candidate per day — the operator's "keep tracking existing"

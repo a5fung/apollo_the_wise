@@ -441,3 +441,148 @@ def test_the_shared_enums_match_the_rule_vocabulary():
     assert tuple(p["deal_status"]["enum"]) == mf.DEAL_STATUSES
     assert tuple(p["deal_consideration"]["enum"]) == mf.DEAL_CONSIDERATIONS
     assert mf._PINNING_CONSIDERATIONS <= set(mf.DEAL_CONSIDERATIONS)
+
+
+# ── 5. THE EP GRADER'S DEAL FIELDS (ep_detector plumbing) ─────────────────────────────────────
+
+from agents.market_intelligence import ep_detector  # noqa: E402
+
+
+def test_catalyst_tool_order_is_grade_then_deal_fields_then_analysis_last():
+    props = list(ep_detector._CATALYST_TOOL["input_schema"]["properties"])
+    assert props == ["quality", "deal_role", "deal_status", "deal_consideration",
+                     "deal_counterparty", "analysis"]
+    assert ep_detector._CATALYST_TOOL["input_schema"]["required"] == props
+    assert ep_detector._CATALYST_TOOL["input_schema"]["properties"]["quality"]["enum"] == [
+        "game_changer", "strong", "routine", "mna"]
+
+
+def _grade(tool_input=None, *, raise_exc=None, sink=True):
+    calls = []
+
+    async def create(**kw):
+        calls.append(kw)
+        if raise_exc:
+            raise raise_exc
+        block = SimpleNamespace(type="tool_use", input=tool_input)
+        return SimpleNamespace(content=[block], stop_reason="tool_use")
+    deal_sink = {} if sink else None
+    with patch.object(ep_detector._get_claude(), "messages") as m, \
+         patch("agents.market_intelligence.spend_tracker.log_anthropic_call_safe",
+               new=AsyncMock(return_value=None)):
+        m.create = create
+        out = _run(ep_detector._classify_catalyst_claude(
+            "FWDI", [], {"companyName": "Forward Industries"}, grounded_text="8-K text",
+            deal_sink=deal_sink))
+    return out, deal_sink, calls
+
+
+def test_grader_writes_its_deal_answer_into_the_sink():
+    out, sink, _ = _grade({"quality": "strong", "deal_role": "buyer", "deal_status": "proposed",
+                           "deal_consideration": "unknown", "deal_counterparty": "SkyAI",
+                           "analysis": "FWDI sweetened its bid for SkyAI."})
+    assert out == ("strong", "FWDI sweetened its bid for SkyAI.")
+    assert sink["deal_answer"] == DealAnswer("buyer", "proposed", "unknown", "SkyAI")
+
+
+def test_grader_without_valid_deal_fields_leaves_the_question_unanswered():
+    out, sink, _ = _grade({"quality": "routine", "analysis": "no catalyst"})
+    assert out == ("routine", "no catalyst") and "deal_answer" not in sink
+
+
+def test_failed_grade_leaves_the_question_unanswered_not_none():
+    out, sink, _ = _grade(raise_exc=RuntimeError("api down"))
+    assert out[0] == "routine" and ep_detector._CLASSIFY_FAIL_SENTINEL in out[1]
+    assert "deal_answer" not in sink
+
+
+def test_the_two_tuple_return_is_kept_without_a_sink():
+    out, _, _ = _grade({"quality": "mna", "deal_role": "target", "deal_status": "signed",
+                        "deal_consideration": "cash", "deal_counterparty": "Copart",
+                        "analysis": "x"}, sink=False)
+    assert out == ("mna", "x")
+
+
+def test_rule_3_asks_the_question_and_ties_the_grade_to_the_pin():
+    _, _, calls = _grade({"quality": "routine", "analysis": "x"})
+    prompt = calls[0]["messages"][0]["content"]
+    assert "DEAL FIELDS" in prompt and "deal_role" in prompt and "'shell'" in prompt
+    # the old keyword list is gone — RGTI's FUNDING 'definitive agreement' is why
+    assert 'Keywords: "definitive agreement"' not in prompt
+    # the grade rule names exactly the pinning considerations the code uses
+    rule = prompt.split('Grade "mna" ONLY when', 1)[1].split("— that is", 1)[0]
+    for cons in mf._PINNING_CONSIDERATIONS:
+        assert f"'{cons}'" in rule
+    assert "'shell'" in rule and "'signed'" in rule and "'stock'" not in rule
+
+
+def test_post_grade_filters_decides_on_the_graders_answer():
+    seen = {}
+
+    async def fake_is_likely_ma(ticker, **kw):
+        seen.update(kw)
+        return False, None
+    ans = DealAnswer("buyer", "signed", "cash", "Stride Bank")
+    with patch.object(ep_detector, "is_likely_ma", new=fake_is_likely_ma), \
+         patch.object(ep_detector, "log_audit_event", new=AsyncMock(return_value=None)):
+        _run(ep_detector._post_grade_filters(
+            "CHYM", "strong", "analysis", "summary", 15.0, 1_000_000, 3.0,
+            datetime(2026, 9, 9).date(), lattice_acting=False, deal_answer=ans))
+    assert seen["deal_answer"] is ans and seen["check_polygon"] is True
+    assert seen["catalyst_quality"] == "strong"   # comparator input only
+
+
+def test_cached_grade_carries_the_answer_and_old_positional_shape_still_builds():
+    g = ep_detector.CachedGrade("routine", 1.0, "n", "a", None, True)
+    assert g.deal_answer is None
+    g2 = g._replace(deal_answer=DealAnswer("target", "signed", "cash"))
+    assert g2.deal_answer.role == "target"
+
+
+def test_tier_shadow_rows_record_the_answer():
+    ans = DealAnswer("target", "signed", "stock", "IRT")
+    row = ep_detector._tier_kill_row("CSR", "routine", None, "llm", "a", "g", "n",
+                                     {"gap_pct": 9.5}, 2.0, deal_answer=ans)
+    assert (row["deal_role"], row["deal_status"], row["deal_consideration"],
+            row["deal_counterparty"]) == ("target", "signed", "stock", "IRT")
+    blank = ep_detector._tier_kill_row("X", "routine", None, "llm", "a", "g", "n", {}, 1.0)
+    assert blank["deal_role"] is None
+
+
+def test_tier_shadow_recorder_appends_the_answer_after_30():
+    from tests.conftest import make_mock_pool
+    from agents.market_intelligence import catalyst_tier_shadow as cts
+    pool, conn = make_mock_pool()
+    captured = []
+
+    async def _execute(sql, *args):
+        captured.append((sql, args))
+        return "INSERT 0 1"
+    conn.execute = _execute
+    with patch.object(cts, "get_pool", new=AsyncMock(return_value=pool)), \
+         patch.object(cts, "get_sectors_batch", new=AsyncMock(return_value={})):
+        n = _run(cts.record_catalyst_tier_shadow(
+            [{"ticker": "ACVA", "live_quality": "mna", "deal_role": "target",
+              "deal_status": "signed", "deal_consideration": "cash",
+              "deal_counterparty": "Copart"}],
+            ["ACVA"], datetime(2026, 9, 11).date(), datetime(2026, 9, 11, 7, 5)))
+    assert n == 1
+    sql, args = captured[0]
+    assert "$34" in sql and "deal_counterparty" in sql
+    assert args[30:34] == ("target", "signed", "cash", "Copart")
+    assert args[26] == "llm"   # $27 live_side unchanged
+
+
+def test_enriched_corpus_forwards_the_sink():
+    seen = {}
+
+    async def fake_classify(*a, **kw):
+        seen.update(kw)
+        return "routine", "x"
+    with patch.object(ep_detector, "_classify_catalyst_claude", new=fake_classify):
+        sink = {}
+        _run(ep_detector._build_enriched_corpus(
+            "T", datetime(2026, 9, 9).date(), {"companyName": "T"},
+            ext_filings=[], dilution=None, dilution_computed=True, benzinga_items=[],
+            perplexity_answer="", deal_sink=sink))
+    assert seen["deal_sink"] is sink

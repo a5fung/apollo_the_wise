@@ -168,6 +168,7 @@ SECTOR_CONFIRM_MIN_SHARE = 0.30
 _ANALYSIS_MAX_CHARS = 4000   # defensive ceiling; the tool's own output is 2-3 sentences
 _NEWS_MAX_CHARS = 2000       # defensive ceiling; source caps it at 500-600
 _GROUNDED_HEAD_MAX_CHARS = 6000  # = the lean grader's own corpus window
+_DEAL_COUNTERPARTY_MAX_CHARS = 120  # #692 — ma_filter.deal_answer_from_fields caps it the same
 
 
 def _clip(text: Optional[str], limit: int) -> Optional[str]:
@@ -380,6 +381,11 @@ async def record_catalyst_tier_shadow(
                         _clip(item.get("claude_analysis"), _ANALYSIS_MAX_CHARS),
                         _clip(item.get("news_summary"), _NEWS_MAX_CHARS),
                         _clip(item.get("grounded_text"), _GROUNDED_HEAD_MAX_CHARS),
+                        # #692 — the grader's M&A answer, appended AFTER $30 ($31-$34) so every
+                        # existing positional read stays valid.
+                        item.get("deal_role"), item.get("deal_status"),
+                        item.get("deal_consideration"),
+                        _clip(item.get("deal_counterparty"), _DEAL_COUNTERPARTY_MAX_CHARS),
                     )
                     written += 1
                 except Exception as e:
@@ -392,8 +398,9 @@ async def record_catalyst_tier_shadow(
 
 # first_* columns are written once (INSERT); last_* refresh every tick; regrade_count
 # increments only when the shadow tier actually changes — the grade-pinning failure
-# (MRNA 07:05) made countable. live_side ($27) and then the #593 reasoning/corpus trio
-# ($28-$30) are appended last so pre-existing positional reads stay valid.
+# (MRNA 07:05) made countable. live_side ($27), then the #593 reasoning/corpus trio
+# ($28-$30), then the #692 deal answer ($31-$34) are appended last so pre-existing
+# positional reads stay valid.
 _UPSERT_SQL = """
     INSERT INTO mi_catalyst_tier_shadow (
         scan_date, ticker, first_seen_et, last_seen_et,
@@ -404,13 +411,15 @@ _UPSERT_SQL = """
         sector, sector_n, board_n, sector_share, sector_confirm,
         gap_pct_first, gap_pct_last, adv_dollar, rel_volume,
         projected_vol_multiple, live_ep_score, live_tier, grounded_len, live_side,
-        claude_analysis, news_summary, grounded_head
+        claude_analysis, news_summary, grounded_head,
+        deal_role, deal_status, deal_consideration, deal_counterparty
     ) VALUES (
         $1,$2,$3,$3, $4,$4, $5,$5,$6,$6, 0,
         $7,$8,$9,$10, $11,$12,$13,$14,
         $15,$16,$17,$18,$19,
         $20,$20,$21,$22,$23,$24,$25,$26,$27,
-        $28,$29,$30
+        $28,$29,$30,
+        $31,$32,$33,$34
     )
     ON CONFLICT (scan_date, ticker) DO UPDATE SET
         last_seen_et       = EXCLUDED.last_seen_et,
@@ -448,5 +457,10 @@ _UPSERT_SQL = """
         -- re-poll would rebuild the exact hole this column closes.
         claude_analysis    = COALESCE(EXCLUDED.claude_analysis, mi_catalyst_tier_shadow.claude_analysis),
         news_summary       = COALESCE(EXCLUDED.news_summary, mi_catalyst_tier_shadow.news_summary),
-        grounded_head      = COALESCE(EXCLUDED.grounded_head, mi_catalyst_tier_shadow.grounded_head)
+        grounded_head      = COALESCE(EXCLUDED.grounded_head, mi_catalyst_tier_shadow.grounded_head),
+        -- #692: same COALESCE rule — a later tick with no answer never erases one recorded.
+        deal_role          = COALESCE(EXCLUDED.deal_role, mi_catalyst_tier_shadow.deal_role),
+        deal_status        = COALESCE(EXCLUDED.deal_status, mi_catalyst_tier_shadow.deal_status),
+        deal_consideration = COALESCE(EXCLUDED.deal_consideration, mi_catalyst_tier_shadow.deal_consideration),
+        deal_counterparty  = COALESCE(EXCLUDED.deal_counterparty, mi_catalyst_tier_shadow.deal_counterparty)
 """
