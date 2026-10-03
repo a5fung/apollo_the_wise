@@ -1958,3 +1958,14 @@ EVIDENCE:
 - **Live a full day, VERIFY-LIVE:** `telegram_markdown_fallback` / `telegram_send_failed` rows since the deploy = 0 (prod, read 10-02 ~18:30 ET), while the migrated surfaces sent — `mi_job_runs` 10-02: `hud_refresh` 7× (09:00–15:00, each an edit), `morning_briefing` 09:00, `close_digest` 16:55, `evening_briefing` 18:00, all success; plus the #690 practice digest at 12:06 ET (sent True).
 - **Seen by him:** *"what i saw looked fine"* (2026-10-02).
 - **Not claimed:** no /themes or /ep command reply was observed today; command replies ride the same layer and the same gate.
+
+## #691 — the monthly sweep puts every check in a named group, and /audit opens each check's last stored run (2026-10-03)
+
+BAR: "`_render_digest` run on the 2026-10-01 sweep outputs puts ZERO checks in "not auto-classified" (each registered script pinned to a named bucket by a test that fails when a new script prints no recognised verdict); #54 is off the roster with its script still runnable by hand; the judge footer no longer says the judge is blind or was shown 'no'; `/audit mna_filter_accuracy_review` in Telegram returns that check's last table (a test sends every topic the digest prints through the real handler and fails on "Unknown audit topic")."
+
+EVIDENCE: merge 4cca3d1f (Sonnet card, branch 691-monthly-sweep-cleanup @ 8b790cbd), deployed market-agent + execution 2026-10-03 (server aaf6890a).
+- **Zero checks unclassified:** the 2026-10-01 outputs were never stored (the sweep kept no per-check output — the reason `/audit` had nothing), so the bar was met on the next real outputs instead: a hand-run seed on prod 2026-10-03 07:54 PT stored 11 `backward_check_output` rows; the digest's own `_classify` over each stored output on prod: 0 in "review" (waiting 4, done 5, needs-you 2 — the M&A review and the #94 flag-break check). `tests/test_691_monthly_sweep_cleanup.py` (54 tests) runs every registered script's real `main()` through all 33 verdict branches and fails on any "review" or a new script with no verdict.
+- **#54 off the roster:** roster 11; `scripts/_b54_9m_day2_stop_atr_distribution.py` kept and importable.
+- **Judge footer:** now reads what it counts (direct source on file); `tests/test_monthly_judge_review.py` asserts "blind", "shown 'no'" and "until #335" are absent.
+- **/audit in Telegram:** his paste 2026-10-03 — *"📋 M&A filter accuracy review (#284/#285) — last sweep 2026-10-03 07:54 PT (exit 0…)"* with the full table; an unknown topic lists the 11 valid names (prod, `run_topic_audit`); the test sends every digest pointer through `execute_task → _handle_audit_topic`.
+- **Not claimed:** the literal "2026-10-01 outputs" (never stored); the 11-01 scheduled sweep is the first unattended run of the store.
