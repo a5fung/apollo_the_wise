@@ -1,0 +1,7 @@
+model: claude-sonnet-5-5 (shared.llm_models.GROUNDED_GRADE_MODEL, resolved at run time) at $2.00 in / $10.00 out per MTok (pricing_for)
+cost per call = ((prompt_chars / 3.5 + 700 tool tokens) x $2.00 + 600 est. output tokens incl. thinking x $10.00) / 1e6
+planned model calls: 96 = 2 (OLD + NEW prompt) x 48 rows with text (18 nominated + 30 stability; 0 row(s) with no text, skipped)  (cap 120)
+ESTIMATED whole path $1.13  (abort above $3.00)
+
+model calls: 0; actual spend $0.00; call errors 0; calls skipped at a cap 0
+dry run: no model call made.

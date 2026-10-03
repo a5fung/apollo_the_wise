@@ -1,0 +1,91 @@
+SEC filings fetch failed for PZZA: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for DSGN: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for RAMP: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for IMAX: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for PD: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for MGM: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for NUVL: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for IRDM: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for CRNX: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for PYPL: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for UTZ: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for ATKR: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for DV: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for HZO: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+SEC filings fetch failed for RNW: Client error '429 Too Many Requests' for url 'https://www.sec.gov/files/company_tickers.json'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+model: claude-sonnet-5-5 (shared.llm_models.GROUNDED_GRADE_MODEL, resolved at run time) at $2.00 in / $10.00 out per MTok (pricing_for)
+cost per call = ((prompt_chars / 3.5 + 700 tool tokens) x $2.00 + 600 est. output tokens incl. thinking x $10.00) / 1e6
+planned model calls: 96 = 2 (OLD + NEW prompt) x 48 rows with text (18 nominated + 30 stability; 0 row(s) with no text, skipped)  (cap 120)
+ESTIMATED whole path $1.08  (abort above $3.00)
+llm_client: adopted request rewrite for claude-sonnet-5-5 — forced_tool_to_structured_output (API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011CffqfFv7HWXQA2zZnnfNL'})
+
+model calls: 96; actual spend $0.89; call errors 0; calls skipped at a cap 0
+
+NOMINATED: 18 rows re-graded OLD (10-02 RULE 3) vs NEW (shell-only 'mna'); 8 flip(s). One sample per arm — a flip may be model noise as well as the prompt.
+  PZZA   2026-05-15 routine      -> routine      old deal target/proposed/unknown  new deal target/proposed/unknown  (audit_excerpt_200_chars_only)
+  DSGN   2026-05-18 mna          -> strong       old deal target/signed/unknown    new deal target/signed/unknown    (audit_excerpt_200_chars_only)  <-- FLIP
+  RAMP   2026-05-18 routine      -> routine      old deal none/none/none           new deal none/none/none           (audit_excerpt_200_chars_only)
+  IMAX   2026-05-22 routine      -> routine      old deal target/proposed/unknown  new deal target/proposed/unknown  (audit_excerpt_200_chars_only)
+  PD     2026-05-29 mna          -> routine      old deal target/signed/unknown    new deal target/signed/unknown    (audit_excerpt_200_chars_only)  <-- FLIP
+  MGM    2026-06-01 routine      -> routine      old deal none/none/none           new deal none/none/none           (audit_excerpt_200_chars_only)
+  NUVL   2026-06-09 routine      -> strong       old deal target/proposed/unknown  new deal target/proposed/unknown  (audit_excerpt_200_chars_only)  <-- FLIP
+  IRDM   2026-06-29 routine      -> routine      old deal none/none/none           new deal none/none/none           (audit_excerpt_200_chars_only)
+  CRNX   2026-07-07 mna          -> strong       old deal target/signed/unknown    new deal target/signed/unknown    (audit_excerpt_200_chars_only)  <-- FLIP
+  PYPL   2026-07-15 routine      -> routine      old deal none/none/none           new deal none/none/none           (audit_excerpt_200_chars_only)
+  UTZ    2026-07-21 mna          -> routine      old deal target/signed/unknown    new deal target/signed/unknown    (audit_excerpt_200_chars_only)  <-- FLIP
+  ATKR   2026-08-03 routine      -> routine      old deal target/signed/unknown    new deal target/signed/unknown    (audit_excerpt_200_chars_only)
+  DV     2026-08-07 mna          -> routine      old deal target/signed/cash       new deal target/signed/cash       (audit_excerpt_200_chars_only)  <-- FLIP
+  HZO    2026-08-10 routine      -> routine      old deal target/proposed/unknown  new deal target/proposed/unknown  (audit_excerpt_200_chars_only)
+  RNW    2026-08-11 routine      -> routine      old deal target/proposed/unknown  new deal target/proposed/cash     (audit_excerpt_200_chars_only)
+  ACVA   2026-09-11 mna          -> routine      old deal target/signed/cash       new deal target/signed/cash       (stored_grade_corpus_first_6000)  <-- FLIP
+  WAY    2026-09-15 routine      -> routine      old deal target/proposed/unknown  new deal target/proposed/unknown  (stored_grade_corpus)
+  SYNA   2026-10-02 mna          -> routine      old deal target/signed/cash       new deal target/signed/cash       (stored_grade_corpus_first_6000)  <-- FLIP
+
+STABILITY: 30 rows re-graded OLD (10-02 RULE 3) vs NEW (shell-only 'mna'); 2 flip(s). One sample per arm — a flip may be model noise as well as the prompt.
+  VECO   2026-10-02 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  IMOS   2026-10-02 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  MXL    2026-10-02 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  IBRX   2026-10-02 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  ABTC   2026-10-02 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  FWDI   2026-10-02 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus_first_6000)
+  CTSH   2026-10-01 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  CNXC   2026-10-01 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus_first_6000)
+  EFOR   2026-10-01 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  EFXT   2026-10-01 routine      -> routine      old deal buyer/completed/unknown  new deal buyer/completed/unknown  (stored_grade_corpus)
+  ACN    2026-10-01 strong       -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus_first_6000)  <-- FLIP
+  GLOB   2026-10-01 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  SNPS   2026-10-01 strong       -> game_changer old deal none/none/none           new deal none/none/none           (stored_grade_corpus)  <-- FLIP
+  EPAM   2026-10-01 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  INFY   2026-10-01 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  GLUE   2026-10-01 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  OLMA   2026-10-01 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  SYRE   2026-09-30 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  FVR    2026-09-30 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  CELC   2026-09-30 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus_first_6000)
+  SGMT   2026-09-30 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus_first_6000)
+  SPXC   2026-09-30 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  FEIM   2026-09-30 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  AXTI   2026-09-29 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  CCL    2026-09-29 strong       -> strong       old deal none/none/none           new deal none/none/none           (stored_grade_corpus_first_6000)
+  ITG    2026-09-29 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  KMX    2026-09-29 strong       -> strong       old deal none/none/none           new deal none/none/none           (stored_grade_corpus_first_6000)
+  CBOE   2026-09-29 strong       -> strong       old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  FCEL   2026-09-29 routine      -> routine      old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+  PKOH   2026-09-28 strong       -> strong       old deal none/none/none           new deal none/none/none           (stored_grade_corpus)
+
+NEW prompt graded 'mna' only with a signed-shell answer (or never): the rule holds on this sample.
