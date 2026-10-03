@@ -3,7 +3,7 @@
 WHY (cut-back round, 2026-10-02). Three review rounds added defence-in-depth to SHARED broker code and
 did not converge. A feature behind an OFF toggle (`magna53_depth_exit`) must change NOTHING for
 toggle-OFF trades except the six named fixes to today's close-below exit — #687 (a)-(f) — the cited
-sync hunk (61a6c479), and the operator's rulings of 2026-10-01 (1)-(3). This test is that criterion.
+sync hunk (61a6c479), the operator's rulings of 2026-10-01 (1)-(3), and his 2026-10-02 ruling (ii). This test is that criterion.
 
 HOW. `tests/_convergence_687_harness.py` drives 29 fixed scenarios (the 16:45 trail exit with and
 without a resting +8R OCO third or a plain resting limit, the 16:45 job itself, a stop raise via `update_stop`, the position
@@ -102,18 +102,23 @@ ALLOWED = {
         ],
     },
     's28_1645_exit_beside_a_plain_resting_limit': {
-        'why': "#687 (a) skip paging + the cut-back's un-ruled plain-limit case: main's skip kept "
-               "(nothing sold or cancelled); the sizing reads and the skip page are (a)'s",
+        'why': 'ruling (ii) 2026-10-02: a plain resting profit-take limit (no stop of its own) is left '
+               'resting and the free shares are sold, as beside the OCO third (main skipped the whole '
+               'sale); only the trade\'s stop is cancelled, the limit is never touched',
         'broker_calls': [
             "get_position(account_mode='live', ticker='KOD')",
             "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "cancel_order(account_mode='live', order_id='stop-1')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "close_position(account_mode='live', qty=4, ticker='KOD')",
         ],
         'pages': [
-            '💰 LIVE-$ ⚠️ Full exit NOT placed for KOD (sma_trail_stop): a plain resting sell limit '
-            '(lim-1, 2 sh) rests with no stop of its own. Selling beside a resting profit-take is '
-            'ruled for the OCO third only, so nothing was sold and nothing was cancelled — the stop '
-            'is still in place. Your call.',
+            '💰 LIVE-$ 📋 *Closing order placed:* KOD — sma_trail_stop\nMarket sell 4 sh — pending fill '
+            '(Order sell-1)\n_Confirms with real P&L on fill._\n2 sh stay under the resting profit-take '
+            '(a plain limit with no stop of its own — left resting, as ruled 2026-10-02).',
         ],
+        'result': True,
+        'book_after': {'orders': [{'exit_reason': None, 'id': 'lim-1', 'purpose': 'partial_exit', 'qty': 2, 'status': 'new'}, {'exit_reason': 'sma_trail_stop', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 4, 'status': 'accepted'}]},
     },
     's09_sync_under_a_queued_sale_paper_soft_reservation': {
         'why': '61a6c479 sync hunk: the books are not lowered under a queued sale (paper soft-reservation)',

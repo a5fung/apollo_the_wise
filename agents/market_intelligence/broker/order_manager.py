@@ -5018,6 +5018,30 @@ class _SaleSize(NamedTuple):
     sell_qty: int
     held_by_resting: float
     broker_qty: float
+    plain_limit_qty: float = 0.0   # of held_by_resting: plain resting limits (no stop of their own)
+
+
+def _plain_resting_limit_qty(open_orders: list, stop_order_id) -> float:
+    """Shares held by live PLAIN resting sell limits — a profit-take limit at the target with NO
+    stop of its own (the #566 fallback when the OCO cannot be priced, or `profit_take_oco` off);
+    the trade's stop is excluded. Read only to word the page truthfully; the sale treats them like
+    the OCO third (ruling (ii) 2026-10-02). PURE."""
+    return sum(
+        _unfilled_qty(o) for o in open_orders
+        if "sell" in str(o.get("side") or "").lower()
+        and "limit" in str(o.get("type") or "").lower()
+        and "stop" not in str(o.get("type") or "").lower()
+        and str(o.get("order_class") or "").lower() != "oco"
+        and str(o.get("id")) != str(stop_order_id)
+        and _canonical_order_status(o.get("status")) in _STOP_CONFIRMED_LIVE_STATUSES
+    )
+
+
+def _resting_cover_words(plain_limit_qty: float) -> str:
+    """What the shares left under the resting profit-take carry, in the page's words."""
+    if plain_limit_qty > 0:
+        return ("a plain limit with no stop of its own — left resting, as ruled 2026-10-02")
+    return "its own target and breakeven stop"
 
 
 async def _size_sale_beside_resting_orders(
@@ -5027,8 +5051,10 @@ async def _size_sale_beside_resting_orders(
 
     BROKER TRUTH for what is free once the trade's stop is cancelled: the position minus every
     LIVE resting sell order except that stop (the +8R profit-take OCO third keeps its own target
-    and breakeven stop — operator ruling 2026-09-29), capped by the books' own count
-    (`remaining − pending partial-exit qty`). Never more than the broker holds free.
+    and breakeven stop — operator ruling 2026-09-29; a PLAIN resting profit-take limit, the #566
+    fallback, is left resting the same way — operator ruling (ii) 2026-10-02), capped by the
+    books' own count (`remaining − pending partial-exit qty`). Never more than the broker holds
+    free. Nothing but the trade's stop is ever cancelled.
 
     Returns None — after auditing + paging the skip — when nothing may be sold: the broker could
     not be read (nothing is cancelled; the stop stays) or resting orders hold every share. Shared
@@ -5050,43 +5076,29 @@ async def _size_sale_beside_resting_orders(
             "was cancelled — the stop is still in place.",
             {"pending_partial_qty": pending_partial_qty})
         return None
-    # #687 cut-back (2026-10-02): the 2026-09-29 ruling that lets the sale go ahead BESIDE a
-    # resting profit-take covers the +8R OCO third (it keeps its own target AND breakeven stop).
-    # A PLAIN resting sell limit has no stop of its own; selling around it is a policy nobody
-    # ruled (review fix 9, cancel-and-sell it, was reverted with the rounds) — so it keeps main's
-    # behaviour: no sale, nothing cancelled, the stop stays. Recorded + paged; listed for him.
-    plain_limits = [
-        o for o in open_orders
-        if "sell" in str(o.get("side") or "").lower()
-        and "limit" in str(o.get("type") or "").lower()
-        and "stop" not in str(o.get("type") or "").lower()
-        and str(o.get("order_class") or "").lower() != "oco"
-        and str(o.get("id")) != str(trade.get("stop_order_id"))
-        and _canonical_order_status(o.get("status")) in _STOP_CONFIRMED_LIVE_STATUSES
-    ]
-    if plain_limits:
-        await _record_full_exit_skip(
-            trade_id, trade, reason, "plain_resting_limit",
-            f"a plain resting sell limit ({str(plain_limits[0].get('id'))[:8]}, "
-            f"{sum(_unfilled_qty(o) for o in plain_limits):.0f} sh) rests with no stop of its own. "
-            f"Selling beside a resting profit-take is ruled for the OCO third only, so nothing was "
-            f"sold and nothing was cancelled — the stop is still in place. Your call.",
-            {"pending_partial_qty": pending_partial_qty,
-             "plain_limit_ids": [str(o.get("id")) for o in plain_limits]})
-        return None
+    # ⚖ #687 RULING (ii), operator 2026-10-02 (replaces f8d5069e's skip): a PLAIN resting
+    # profit-take limit (no stop of its own — the #566 fallback when the OCO cannot be priced) is
+    # treated as the OCO third is (09-29 ruling 3): *"treat it as a wash/no-op as if it didn't get
+    # hit… keep original stop and wait for next profit take"* — LEFT RESTING, never cancelled, and
+    # the free shares follow the exit. `_live_sell_orders_held_qty` below already counts it as
+    # held; its size is read only so the page says what those shares carry.
     broker_qty = float(pos.get("qty") or 0)
     held_by_resting = _live_sell_orders_held_qty(
         open_orders, exclude_ids=(trade.get("stop_order_id"),))
     db_free = float(trade["remaining_shares"]) - pending_partial_qty
+    plain_limit_qty = _plain_resting_limit_qty(open_orders, trade.get("stop_order_id"))
     sell_qty = _whole_shares(min(broker_qty - held_by_resting, db_free))
     if sell_qty <= 0:
+        _held_words = ("the profit-take keeps its own target and breakeven stop"
+                       if plain_limit_qty <= 0 else
+                       "the profit-take is a plain limit with no stop of its own — left resting, "
+                       "as ruled 2026-10-02")
         await _record_full_exit_skip(
             trade_id, trade, reason, "resting_orders_hold_all_shares",
             f"orders still resting at the broker hold every remaining share "
-            f"({held_by_resting:.0f} sh — the profit-take keeps its own target and breakeven "
-            f"stop). Nothing to sell; nothing was cancelled.",
+            f"({held_by_resting:.0f} sh — {_held_words}). Nothing to sell; nothing was cancelled.",
             {"pending_partial_qty": pending_partial_qty, "broker_qty": broker_qty,
-             "held_by_resting": held_by_resting,
+             "held_by_resting": held_by_resting, "plain_limit_qty": plain_limit_qty,
              "remaining_shares": float(trade["remaining_shares"])})
         return None
     if held_by_resting > 0 or pending_partial_qty > 0:
@@ -5097,10 +5109,11 @@ async def _size_sale_beside_resting_orders(
             json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
                         "account_mode": account_mode, "sell_qty": sell_qty,
                         "broker_qty": broker_qty, "held_by_resting": held_by_resting,
+                        "plain_limit_qty": plain_limit_qty,
                         "pending_partial_qty": pending_partial_qty,
                         "remaining_shares": float(trade["remaining_shares"])}),
         )
-    return _SaleSize(sell_qty, held_by_resting, broker_qty)
+    return _SaleSize(sell_qty, held_by_resting, broker_qty, plain_limit_qty)
 
 
 async def execute_full_exit(trade_id: int, reason: str) -> bool:
@@ -5147,6 +5160,7 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         # ride a rule that had already said sell.
         sell_qty: int | None = None          # None = today's path: close the whole position
         held_by_resting = 0.0
+        plain_limit_qty = 0.0
         if pending and pending["purpose"] == "full_exit":
             await _record_full_exit_skip(
                 trade_id, trade, reason, "full_exit_already_pending",
@@ -5177,6 +5191,7 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
             if size is None:
                 return False
             sell_qty, held_by_resting = size.sell_qty, size.held_by_resting
+            plain_limit_qty = size.plain_limit_qty
 
         logger.info(f"Full exit: {ticker} reason={reason} shares="
                     f"{(sell_qty if sell_qty is not None else trade['remaining_shares']):.0f} "
@@ -5261,8 +5276,8 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         # market order for next open; fill_price was None at submit time, which
         # made P&L print as 0 on a close that hadn't happened yet.
         _third_line = (
-            f"\n{held_by_resting:.0f} sh stay under the resting profit-take (its own target and "
-            f"breakeven stop)."
+            f"\n{held_by_resting:.0f} sh stay under the resting profit-take "
+            f"({_resting_cover_words(plain_limit_qty)})."
             if sell_qty is not None and held_by_resting > 0 else ""
         )
         await send_telegram_message(
@@ -5474,8 +5489,8 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
                         "decided_on": str(trade.get("depth_sell_pending_on"))}),
         )
         _third_line = (
-            f"\n{held_by_resting:.0f} sh stay under the resting profit-take (its own target and "
-            f"breakeven stop)." if held_by_resting > 0 else "")
+            f"\n{held_by_resting:.0f} sh stay under the resting profit-take "
+            f"({_resting_cover_words(size.plain_limit_qty)})." if held_by_resting > 0 else "")
         await send_telegram_message(
             f"{mode_prefix(account_mode)}📋 *Closing order placed (opening auction):* {ticker} — "
             f"{reason}\n"

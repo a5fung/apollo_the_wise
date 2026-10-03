@@ -444,10 +444,11 @@ code that today's — toggle-OFF — trades use); his four rulings of 2026-10-01
 - **ruling (3)**: when a planned sale's cancelled stop cannot be put back because the price is already through it,
   the shares are sold at market, as the triggered stop would have;
 - **ruling (4)** (depth path): a stale "sell at the next open" mark is cleared, paged, and the next close decides;
-- a plain resting profit-take limit (no stop) beside a close-below sale keeps main's skip (un-ruled).
+- **ruling (ii) 2026-10-02**: a plain resting profit-take limit (no stop) beside a close-below sale is left resting
+  and the other shares are sold, as beside the OCO third (replaces the cut-back's skip; `exit_discipline.md`).
 
 **Evidence**: `tests/test_687_toggle_off_convergence.py` — the toggle-OFF path matches the pre-#687 code (pinned
-97b08d51 since the 2026-10-02 rebase) on 29 scenarios except a named allow-list (fixes (a)–(f), the sync hunk, rulings (1)–(3)).
+97b08d51 since the 2026-10-02 rebase) on 29 scenarios except a named allow-list (fixes (a)–(f), the sync hunk, rulings (1)–(3), ruling (ii) 2026-10-02).
 
 **Before any flip** (follow-ups from the cut-back, depth path): a partly-filled opening-auction sale's sold part is
 not recorded by the stream's cancel path; a depth trade held only by its OCO third is marked "sell at the next open"

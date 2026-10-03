@@ -689,7 +689,8 @@ def s04_1645_exit_beside_resting_oco_third(om, **_):
 
 
 def s28_1645_exit_beside_a_plain_resting_limit(om, **_):
-    """Un-ruled case — a PLAIN resting profit-take limit (no stop of its own): main's skip."""
+    """A PLAIN resting profit-take limit (no stop of its own): main skips the whole sale; ruling (ii)
+    2026-10-02 leaves the limit resting and sells the free shares."""
     w = World()
     _trade(w, remaining=6, partial_taken=True, breakeven_active=True, stop_price=60.0)
     _position(w, "KOD", 6, 0)

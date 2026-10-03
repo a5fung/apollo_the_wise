@@ -349,6 +349,38 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-02 (later) — #687 ruling (ii): a PLAIN resting profit-take limit is left resting; the other shares follow the close-below sale
+
+**Trigger**: his rulings of 2026-10-02 on the four calls the cut-back listed (PLAN.md #687). Item (ii): a plain resting
+profit-take LIMIT (no stop of its own — the #566 fallback when the profit-take OCO cannot be priced, or the
+`profit_take_oco` toggle off) beside a close-below sale. His words: *"treat it as a wash/no-op as if it didn't get hit…
+keep original stop and wait for next profit take"* — the same treatment as the +8R OCO third (09-29 ruling 3).
+
+**Evidence**: operator ruling, not a threshold. Code reading: `_live_sell_orders_held_qty` already counts any live
+resting sell order as held, so removing f8d5069e's skip gives exactly the ruled behaviour at both sale sites.
+
+**Change**: `_size_sale_beside_resting_orders` (shared by the 16:45 `execute_full_exit` and the 19:01
+`execute_depth_open_sale`) no longer skips on a plain resting limit: it sells the broker position minus the shares
+live resting sell orders hold (other than the trade's own stop, which is cancelled — nothing else ever is), capped by
+the books. The limit stays resting. Resting orders holding every share → the existing
+`resting_orders_hold_all_shares` skip (nothing cancelled). The sale page and that skip say what the shares carry:
+the OCO wording is unchanged; a plain limit reads *"a plain limit with no stop of its own — left resting, as ruled
+2026-10-02"* (`_plain_resting_limit_qty`, read for wording only). Skip code `plain_resting_limit` is gone.
+
+**Anticipated effect**: on the rare trade whose +8R third rests as a plain limit, a close below the line sells the two
+thirds behind the stop instead of skipping the whole exit; the third is left to its limit. The third had no stop
+before the sale (Alpaca holds its shares for the limit) and has none after it — unchanged. Not changed: the fill page
+(`finalize_full_exit`) still says the remaining shares sit under "its own target and breakeven stop" — it cannot
+tell the order type (listed).
+
+**Reversion-flag**: REVERSAL of f8d5069e (2026-10-02 cut-back). That skip was not judged right — it was main's
+behaviour held as a placeholder because the case was un-ruled; his ruling replaces it.
+
+**Status**: built + unit-tested on branch `687-depth-rule`, NOT merged or deployed. Tests:
+`tests/test_687_ruling_ii_plain_limit_left_resting.py` (4: 16:45 limit left resting + 4 free shares sold; nothing
+sold or cancelled when the limit holds every share; 19:01 the same; the OCO third unchanged). Convergence s28 now
+differs from main under "ruling (ii) 2026-10-02".
+
 ### 2026-10-02 — #687: his four rulings of 2026-10-01 built; the three review rounds cut back to parts A + B
 
 **Trigger**: PLAN.md #687, 2026-10-01 — four decisions put to him after three review rounds that did not converge;
@@ -374,7 +406,7 @@ still held). Reverted, each with where it goes now:
   → follow-up, **before any flip** (depth path messaging);
 - a repeat full-exit skip on a later day is audit-only (pages once per trade per kind for life) → follow-up;
 - a plain resting profit-take limit cancelled and sold with the rest (review fix 9) → **his call** (open item (ii));
-  until then it keeps main's skip (f8d5069e);
+  until then it kept main's skip (f8d5069e) — **RULED 2026-10-02: left resting, the other shares sold** (entry above);
 - sync orphan-repair cap, the stream restore under the trade lock, the watchdog coverage split → dropped (they
   guarded races the reverted hunks created).
 
@@ -433,15 +465,16 @@ Telegram page, the return value and the book's end state. 11 of 27 two-tree scen
 job on an unstamped trade, a stop raise, the sync without a queued sale, a fill of the whole sale, a hand-cancelled
 stop, the watchdog on a fresh entry, a genuine 17:00 gap, and main's 62f45ade intraday gap page — s29, which the
 pre-rebase main never sent).
-Every other difference is allow-listed with its reason and its exact expected value: (a) ×3, (b), (c) ×4, (d),
-(e), (f), the sync hunk, ruling (1), (2)(i), (2)(ii) ×2, (3) ×2; the two depth scenarios are inert. A stray broker
+Every other difference is allow-listed with its reason and its exact expected value: (a) ×2, (b), (c) ×4, (d),
+(e), (f), the sync hunk, ruling (1), (2)(i), (2)(ii) ×2, (3) ×2, and (since his 2026-10-02 rulings) ruling (ii)
+(s28, was (a)); the two depth scenarios are inert. A stray broker
 call in `execute_full_exit` reddens 6 scenarios.
 
 **Open for him (NOT decided here — main's behaviour kept):**
 - (i) the failed-exit stop restore when the broker reads flat or unreadable: today it restores from the books
   (`remaining − pending exits`, #687 c) — restore from the books vs place nothing;
 - (ii) a plain resting profit-take LIMIT (no stop) beside a close-below sale: main's skip kept — skip vs cancel it
-  and sell everything;
+  and sell everything; **RULED 2026-10-02: neither — left resting, the other shares follow the exit** (entry above);
 - (iii) ruling (3) at the other stop-placing sites (listed under ruling (3)) — extend vs keep "page, no auto-exit";
 - (iv) ruling (1): a partial loss counted on its own day is counted again inside `total_pnl` on the trade's close
   day — keep vs net it out.
@@ -570,6 +603,8 @@ code (mutation runs recorded in the commit): (a)–(f) below. Single-path fixes,
   trade per skip kind (`_full_exit_skip_already_paged`, fails open). **Cut-back 2026-10-02:** the
   ruling covers the OCO third only — a PLAIN resting sell limit (no stop of its own) keeps main's
   skip: nothing sold, nothing cancelled, skip code `plain_resting_limit`, paged; his call (listed).
+  **Superseded by his ruling (ii) 2026-10-02:** the plain limit is left resting and the free shares
+  are sold, exactly as beside the OCO third (change log 2026-10-02 (later)).
 - **(b) `finalize_full_exit` decrements, closes only at zero** — the #566 rule the stop-fill writer
   already follows. It wrote `status='closed', remaining_shares=0` regardless of the fill, which
   after (a) would record a closed trade the broker still held. The OCO third's own fill (limit →
