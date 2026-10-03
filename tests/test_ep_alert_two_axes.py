@@ -197,7 +197,7 @@ def test_carried_and_overruled_demotes_are_distinguishable():
 
 # ── the two scales may never be printed as one ladder ────────────────────────────────────
 _GRADES = ("game_changer", "game changer", "game-changing", "strong", "routine", "mna",
-           "merger/acquisition")
+           "reverse-merger shell")
 _TIERS = ("HIGH", "MODERATE", "none")
 
 
@@ -424,7 +424,7 @@ def test_catalyst_grade_renders_in_plain_words_everywhere():
     assert format_catalyst_grade("strong") == "strong"
     assert format_catalyst_grade("routine") == "routine"
     # NOT "M&A": llm_health sends parse_mode="HTML", where a bare & is invalid markup.
-    assert format_catalyst_grade("mna") == "merger/acquisition"
+    assert format_catalyst_grade("mna") == "reverse-merger shell"
     assert format_catalyst_grade(None, default="?") == "?"
     # An unknown value still never leaks an underscore.
     assert "_" not in format_catalyst_grade("some_new_grade")

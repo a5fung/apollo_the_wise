@@ -166,6 +166,12 @@ CEILINGS: dict[str, OutputCeiling] = {
         1500, "GROUNDED_GRADE_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise from 300 (#543): 38/78 sonnet-5 calls censored at 300."),
     "ep_grade_judge": _JUDGE,
+    "mna_headline_question": OutputCeiling(
+        1000, "GROUNDED_GRADE_MODEL", "claude-sonnet-5-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        "NEW 2026-10-02 (#692), sized, not yet measured: a 5-field forced-tool answer is ~80 "
+        "tokens, but thinking shares the budget on the 5.5 models (opus-5-5 measured ~176 on a "
+        "~100-token answer, shared/llm_client) and a cut answer reads as UNANSWERED. Billed only "
+        "on use; re-evidence from api_usage after the first week."),
     "judge_divergence": _JUDGE._replace(
         role="JUDGE_DIVERGENCE_MODEL",
         evidence="Rides ep_grade_judge.grade_holistic (model-swapped twin); max completed "

@@ -1,5 +1,10 @@
 """Replay #88 M&A filter fix against 13 historical polygon_news cases.
 
+⚠ HISTORY ONLY since #692 (2026-10-02): the regex layer it exercises
+(`reasoning_other_entity_owns_deal`, the #88 Path A/B keyword acceptance) was deleted when the
+filter moved to asking the deal question. It no longer runs against the current module; the
+live regression harness is scripts/probes/_284_mna_acquirer_backtest.py.
+
 For each (ticker, expected_label) pair, fetch the matching article via
 Polygon, apply new polygon_news_has_mna_headline logic, print decision +
 expected vs actual.

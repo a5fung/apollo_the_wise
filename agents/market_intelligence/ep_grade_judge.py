@@ -187,8 +187,10 @@ RUBRIC (in priority order):
    (asset sale, litigation settlement, tax benefit) — the CBRL class.
 5. Theme heat + technical structure + gap alignment modulate the grade up or down (a strong
    name can be lifted to game_changer by a hot theme + clean structure).
-6. M&A: if the company is being acquired (buyout/merger/tender/going-private), grade "mna" —
-   but this is advisory; a separate M&A filter is authoritative.
+6. M&A: grade "mna" ONLY for the listed vehicle of a SIGNED reverse merger (a shell). A company
+   that is being acquired — signed or proposed, cash or stock — is graded on the merit of its
+   catalyst like any other name; a separate M&A filter reads its price and decides, and that
+   filter is authoritative (operator 2026-10-03).
 7. SECOND OPINION: when a block below reports that another model graded this catalyst
    differently, treat it as a PROMPT TO RE-READ THE EVIDENCE on the axis they differ on —
    never as a vote. That model's web summary is already part of your evidence, so counting

@@ -33,8 +33,11 @@ candidate list BEFORE the shortlist cut:
      shortlist-cap facts off the scan's own maps, one batched Alpaca minute-bar read for the
      real-time volume, one batched Alpaca NBBO read for quoted spread + bid/ask SIZE (the
      operator's fillability requirement — the one thing four studies never measured), and
-     `ma_filter.is_likely_ma` (keyword + Polygon headlines, no LLM) as the score-free lane's
-     only catalyst check. Then ONE batched insert into mi_lowcap_lane_signals.
+     `ma_filter.is_likely_ma` (the #692 headline deal question: keyword-picked Polygon articles,
+     each asked by a small model call — memoized per article per ET day, inside the shared daily
+     question budget; NOT skipped in the ORB window, only the EP scan skips there; an unanswered
+     question passes and is audited) as the score-free lane's only catalyst check. Then ONE
+     batched insert into mi_lowcap_lane_signals.
 
 ⚠ THE ACTING VOLUME READING IS THE DELAYED SNAPSHOT (`acting_volume_source='delayed'`): it is
 what nearly all 46 evidence rows used, `mi_ep_scan_log.today_volume` is populated on only 24
@@ -353,7 +356,12 @@ async def enrich_and_record(survivors: list[LaneVerdict], snapshots_by_ticker: d
             # ⚠ skip_mcap=True ALWAYS — see the module docstring (_mcap_cache hazard).
             passed, quality_reason = await check_filters(v.ticker, today, skip_mcap=True, metrics=metrics)
             try:
-                ma_flag, ma_tel = await is_likely_ma(v.ticker, check_polygon=True)
+                # 2026-10-03: the news nominates, the price decides — the lane ticks after the
+                # open, so it reads the same open window the EP path reads (held = flagged).
+                from agents.market_intelligence.ma_filter import read_open_window_pin
+                ma_flag, ma_tel = await is_likely_ma(
+                    v.ticker, check_polygon=True,
+                    pin_reader=lambda t=v.ticker: read_open_window_pin(t, today, now_et))
             except Exception as e:  # loud-ok: catalyst flag NULL for this row, recorded as such
                 logger.warning(f"#624 lane M&A check failed for {v.ticker}: {e}")
                 ma_flag, ma_tel = None, None

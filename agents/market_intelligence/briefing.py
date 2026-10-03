@@ -173,7 +173,7 @@ _CATALYST_GRADE_WORDS = {
     "game_changer": "game-changing",
     "strong": "strong",
     "routine": "routine",
-    "mna": "merger/acquisition",
+    "mna": "reverse-merger shell",   # since 2026-10-03 the grade is reserved for a signed shell
 }
 
 

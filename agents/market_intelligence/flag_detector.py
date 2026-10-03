@@ -1414,16 +1414,24 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     # user-visible benefit. Filtered candidates downgrade to `unqualified`
     # with reason="mna_filter:<source>" — preserved in mi_flag_candidates so
     # offline review can audit the filter's hit rate.
-    from agents.market_intelligence.ma_filter import is_likely_ma
+    from agents.market_intelligence.ma_filter import is_likely_ma, day_window_pin
     actionable = [r for r in results if r is not None and r.get("stage") in ("COILED", "TRIGGERED")]
     if actionable:
         async def _mna_check(r: dict) -> None:
             try:
+                # 2026-10-03 (operator): the news nominates, the price decides. This scan runs
+                # 17:25 ET; the scan date's own bar is in mi_daily_closes from the 17:00 pull, so
+                # the DAY WINDOW (own-day range vs DAY_WINDOW_PIN_MAX_PCT) is readable here. The
+                # reader is only awaited when an answer nominates (a few names a day at most).
+                async def _day_reader():
+                    rows = await db.get_recent_daily_history(r["ticker"], 5, end_date=scan_date)
+                    return day_window_pin(rows or [], scan_date)
                 is_mna, meta = await is_likely_ma(
                     r["ticker"],
                     check_polygon=True,
                     on_or_before=scan_date,
                     polygon_lookback_days=21,  # base typically forms 6-25d after pivot
+                    pin_reader=_day_reader,
                 )
                 if is_mna:
                     r["original_stage"] = r["stage"]

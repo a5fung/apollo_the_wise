@@ -76,7 +76,9 @@ from agents.market_intelligence.broker.skip_reasons import (
     FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW,
     FILTER_UNIVERSE_PREV_DAY_ILLIQUID,
 )
-from agents.market_intelligence.ma_filter import is_likely_ma
+from agents.market_intelligence.ma_filter import (
+    DEAL_FIELD_PROPERTIES, DealAnswer, deal_answer_from_fields, is_likely_ma,
+)
 from agents.market_intelligence.earnings_calendar import is_earnings_day, is_revenue_stage
 from shared.llm_models import GROUNDED_GRADE_MODEL
 from shared.output_ceilings import max_tokens_for
@@ -336,6 +338,11 @@ class CachedGrade(NamedTuple):
     # direct source; #317/#405-P2 suppress-on-direct-source). Same corpus across a quality
     # re-grade, so `_replace` on other fields preserves it. Default None = flag absent (safe).
     has_direct_source: "bool | None" = None
+    # #692 (2026-10-02): the grader's own answer to the M&A question (role / status /
+    # consideration / counterparty) rides the cache so every later tick's `_post_grade_filters`
+    # re-run decides on the SAME answer the grade gave. None = UNANSWERED (grade failed, or a
+    # cache entry from before #692) — distinct from DealAnswer(role="none") = answered, no deal.
+    deal_answer: "DealAnswer | None" = None
 
 
 _catalyst_cache: dict[str, CachedGrade] = {}
@@ -835,6 +842,10 @@ async def _compute_adv_from_polygon(ticker: str, trade_date: date, days: int = 2
     return float((recent[mid - 1] + recent[mid]) / 2)
 
 
+# #692 (2026-10-02): property ORDER is the contract — the grade, then the four deal fields (the
+# M&A question, shared word-for-word with the headline question in ma_filter), then the one
+# free-text field LAST (sonnet-5-5 refuses prompts that ask for reasons before the verdict;
+# the model reasons privately). `quality` stays first so a truncated tool call still carries it.
 _CATALYST_TOOL = {
     "name": "classify_catalyst",
     "description": "Classify the quality of a stock EP catalyst and provide analysis.",
@@ -848,17 +859,19 @@ _CATALYST_TOOL = {
                     "game_changer: massive earnings beat + guidance raise, FDA approval, "
                     "transformative contract. strong: solid beat + guidance raise, analyst "
                     "upgrade cluster, major partnership. routine: in-line results, no "
-                    "company-specific catalyst. mna: merger, acquisition, buyout, takeover, "
-                    "going-private, tender offer, or any deal where the company is being acquired — "
-                    "price is capped at deal value, no momentum trade possible."
+                    "company-specific catalyst. mna: ONLY when deal_role is shell AND deal_status "
+                    "is signed — this listed company is the vehicle of a signed reverse merger. A "
+                    "buyout TARGET, signed or proposed, is graded on its own merit; a separate M&A "
+                    "filter decides it on price, not the grade."
                 ),
             },
+            **DEAL_FIELD_PROPERTIES,
             "analysis": {
                 "type": "string",
                 "description": "2-3 sentences on the specific catalyst and classification rationale.",
             },
         },
-        "required": ["quality", "analysis"],
+        "required": ["quality", *DEAL_FIELD_PROPERTIES, "analysis"],
     },
 }
 
@@ -1217,6 +1230,7 @@ async def _build_enriched_corpus(
     perplexity_answer: Optional[str] = None,
     news_for_classify: Optional[list] = None,
     state_sink: Optional[dict] = None,
+    deal_sink: Optional[dict] = None,
 ):
     """#344 shared corpus pipeline — used by BOTH the enrichment shadow (uncached grade
     tick) and the re-poll shadow (cached grade tick): SEC 400d filings fetch/reuse ->
@@ -1237,7 +1251,9 @@ async def _build_enriched_corpus(
     exception (e.g. in the Benzinga fetch or the classify call) doesn't lose them.
 
     Returns (quality, analysis, ext_filings, dilution, prior_agreement_8k,
-    recent_earnings_8k).
+    recent_earnings_8k). `deal_sink` (#692) is handed to `_classify_catalyst_claude`, which
+    writes `deal_sink["deal_answer"]` on a successful grade — the same sink idiom as
+    `state_sink`, so the 6-tuple return shape every caller unpacks stays unchanged.
 
     The 4 SEC/Benzinga/Perplexity fetches below are mutually independent (none
     consumes another's output) and premarket-only, so they run concurrently via
@@ -1326,17 +1342,25 @@ async def _build_enriched_corpus(
 
     quality, analysis = await _classify_catalyst_claude(
         ticker, news_for_classify or [], profile, grounded_text=corpus,
-        max_chars=_GRADE_ENRICH_MAX_CHARS)
+        max_chars=_GRADE_ENRICH_MAX_CHARS, deal_sink=deal_sink)
 
     return quality, analysis, ext_filings, dilution, prior_agr, recent_earn
 
 
 async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict, grounded_text=None,
-                                    max_chars: int = 6000) -> tuple[str, str]:
+                                    max_chars: int = 6000, *,
+                                    deal_sink: Optional[dict] = None) -> tuple[str, str]:
     """
     Use Claude to classify catalyst quality via structured tool use.
     Returns: (quality, analysis_text)
     quality: "game_changer" | "strong" | "routine" | "mna"
+
+    #692 (2026-10-02): the same call answers the M&A question — `deal_role` / `deal_status` /
+    `deal_consideration` / `deal_counterparty`. When `deal_sink` is given, a valid answer lands
+    in `deal_sink["deal_answer"]` (a `ma_filter.DealAnswer`); a failed grade (the routine
+    sentinel) or an out-of-vocabulary answer leaves it ABSENT = unanswered, which the M&A filter
+    treats differently from an answered role="none". The 2-tuple return is kept so the offline
+    scripts and tests that call this keep working unchanged.
 
     Uses tool_choice to guarantee schema-valid output — no string parsing,
     no silent fallback to "routine" on format deviations.
@@ -1378,10 +1402,27 @@ IMPORTANT RULES:
    REVENUE is "routine". EPS matters only in TURNAROUNDS (loss→profit inflection), and the
    turnaround must be SUSTAINABLE/structural — a single-quarter EPS anomaly from one-time items
    (asset sale, litigation settlement, tax benefit) is "routine".
-3. If the catalyst is a MERGER, ACQUISITION, BUYOUT, TAKEOVER, TENDER OFFER, GOING-PRIVATE, or any
-   deal where the company is being acquired — classify as "mna". This is a hard skip: price is capped
-   at deal value, there is no momentum trade. Keywords: "definitive agreement", "to be acquired",
-   "tender offer", "going private", "taken private", "strategic transaction", "buyout", "merger agreement".
+3. DEAL FIELDS — answer about THIS company only.
+   deal_role: 'target' if another company is acquiring all of, or control of, this company, so its
+   holders are paid out; 'buyer' if this company is buying another company, an asset, or the rest of a
+   subsidiary; 'shell' if this listed company is the vehicle of a reverse merger (a private company
+   merges into it and its holders take control); 'none' if no one is acquiring all of or control of
+   this company (a minority stake, a PIPE or private placement, a government or strategic equity
+   investment, warrants, a buyback, a peer's deal, sector M&A commentary, an index inclusion, a funding
+   or supply agreement are all 'none').
+   deal_status: 'signed' only when a definitive or merger agreement has been signed or a tender offer
+   has commenced; a proposal, letter of intent, bid received, 'in talks', 'exploring a sale' is
+   'proposed'; rumours, analyst 'potential target' lists, 'could pursue', or a denial is 'speculation';
+   a closed deal is 'completed'.
+   deal_consideration: what the target's holders receive — 'cash' (a stated cash price or all-cash),
+   'stock' (acquirer shares only / fixed exchange ratio / all-stock merger), 'mixed', 'unknown' (deal
+   described, terms not in the text), or 'none'.
+   deal_counterparty: the other company, or empty.
+   Grade "mna" ONLY when deal_role is 'shell' AND deal_status is 'signed' — the listed vehicle of a
+   signed reverse merger, the one case where the grade itself carries the verdict. A TARGET of a deal
+   — signed or proposed, whatever the consideration — is graded on its own merit under rules 1, 2, 4
+   and 5: a separate M&A filter reads its price and decides, not the grade. The same goes for a
+   buyer, an all-stock merger, or a deal that involves another company.
 4. Broad SECTOR-MOMENTUM, SHORT-SQUEEZE, or non-company-specific technical moves with no concrete
    company event = "routine" (a gap-up alone is not a catalyst).
 5. MATERIALITY — weigh the catalyst's magnitude RELATIVE to the company (market cap above). A contract,
@@ -1466,6 +1507,13 @@ catalyst, say so explicitly."""
             raise ValueError(
                 f"catalyst grade returned no quality for {ticker} "
                 f"(keys: {sorted(result)}, stop_reason={_stop})")
+        if deal_sink is not None:
+            _deal = deal_answer_from_fields(result)
+            if _deal is not None:
+                deal_sink["deal_answer"] = _deal
+            else:
+                logger.warning(f"{ticker}: catalyst grade carried no valid deal fields — "
+                               f"M&A question unanswered by the grader (keys: {sorted(result)})")
         return quality, analysis or ""
     except Exception as e:
         # #273: a credit-exhaustion failure here silently turns every catalyst
@@ -2014,12 +2062,19 @@ async def _post_grade_filters(
     # the corrected grade. Keyword-only + no default makes an omitted call fail loudly
     # instead of quietly forking.
     lattice_acting: bool,
+    # #692: the grader's own answer to the M&A question (None = unanswered). Defaulted, unlike
+    # lattice_acting, because None is a real state (a failed grade) with defined behaviour —
+    # the headline question decides (ruling 5 aside: a grade of 'mna' with no fields blocks).
+    deal_answer: "DealAnswer | None" = None,
 ) -> str | None:
     """The three post-grade hard filters — M&A/buyout, routine-catalyst-low-gap,
     pm-shares floor (R6 carve-out) — extracted (S6/#405, 2026-07-03) so BOTH the
     fresh-grade tick AND a later tick re-checking a cached-but-not-yet-cleared
-    grade can run them without any LLM call. ORDER + reason strings + thresholds
-    were frozen byte-identical to the pre-#405 inline checks until 2026-08-22.
+    grade can run them without re-grading. ⚠ Not model-free since #692: the M&A check asks
+    the Polygon headline deal question — a small model call per keyword-candidate article,
+    memoized per article per ET day, inside a daily budget with an EP reserve, never started
+    inside 9:30-9:45 ET (`skip_in_orb=True` here and nowhere else). ORDER + reason strings +
+    thresholds were frozen byte-identical to the pre-#405 inline checks until 2026-08-22.
 
     ⚖ ONE GRADE EVERYWHERE (operator 2026-08-22: "if we change something we change it
     everywhere, consistency at all times, no forks" — CHANGE_PROCESS entry in
@@ -2050,16 +2105,21 @@ async def _post_grade_filters(
     Returns the skip-reason string (same string previously passed to
     `_log_filtered`), or None if the ticker clears all three.
     """
-    # 1) M&A / buyout — price capped at deal value, no momentum trade.
-    # Single-source filter (ma_filter.is_likely_ma) — same logic used by
-    # flag/9M/parabolic detectors. Polygon backstop closes the Perplexity
-    # coverage-gap (AVNS 5/4: Perplexity returned "no specific news" for
-    # 4/14 going-private; Polygon had the headline the whole time).
+    # 1) M&A / buyout — a signed deal that fixes this ticker's price: no momentum trade.
+    # Single-source filter (ma_filter.is_likely_ma) — same logic used by the flag / 9M /
+    # low-cap / anticipation paths. #692 (2026-10-02): it decides on the ANSWER to one question
+    # (target / buyer / shell / none, signed or not, paid how) — the grader's own deal fields
+    # first (`deal_answer`), then the Polygon headline question (closes the Perplexity coverage
+    # gap: AVNS 5/4 — Polygon had the going-private headline the whole time).
     #
-    # Sanitize Perplexity disclaimer text before feeding to keyword
-    # scanner (2026-05-14 perplexity_hallucination_keyword_leak fix).
-    # When Perplexity returns "No recent catalysts... Nearest match is X"
-    # the unrelated content trips M&A keywords on the wrong company.
+    # `catalyst_quality` decides one case only (ruling 5: graded 'mna' with no usable deal
+    # fields → block, as before #692); otherwise it and the keyword texts below feed only the
+    # `mna_filter_released` comparator ("the pre-#692 rule would have blocked here").
+    # The Perplexity disclaimer is still stripped from those texts (2026-05-14
+    # perplexity_hallucination_keyword_leak) so the comparator does not count another
+    # company's deal from a "Nearest match is X" disclaimer.
+    # `skip_in_orb` / `budget_pool="ep"`: the EP scan alone skips new headline questions in the
+    # 9:30-9:45 window and spends the reserved EP share of the daily question budget.
     from agents.market_intelligence.collector import strip_perplexity_disclaimer
     _, news_is_disclaimer = strip_perplexity_disclaimer(news_summary)
     catalyst_texts_for_filter = [claude_analysis]
@@ -2075,12 +2135,29 @@ async def _post_grade_filters(
                 "news_summary_lead": (news_summary or "")[:200],
             }),
         )
+    # 2026-10-03 (operator): the news NOMINATES, the PRICE DECIDES — and his timing ruling the
+    # same day ("we buy 1 min orb break for EP, we shouldn't change how we enter stops for
+    # extraneous reasons"): pre-market the news alone BLOCKS a nominated name (a signed OR
+    # proposed target, a signed shell) exactly as a block does today — no hold, no delay, the
+    # 09:31 ORB entry untouched for every name. Because a filter-failing grade is cached with
+    # `filters_cleared=False`, the 09:35 tick re-runs this filter; the reader (the first five
+    # regular-session minutes from the same Alpaca bars + feed the ORB entry reads) can then
+    # only RELEASE a news-blocked name whose price moves freely — it is scored on that tick like
+    # any fresh survivor and alerts / enters via the post-open path — or leave a pinned one
+    # blocked. The price-only arm (`gap_pct`, his ruling 3) acts only when the window is
+    # readable, i.e. on names first evaluated after 09:35 — never a pre-market hold.
+    from agents.market_intelligence.ma_filter import read_open_window_pin
     is_mna, mna_meta = await is_likely_ma(
         ticker,
-        catalyst_quality=catalyst_quality,
-        catalyst_texts=catalyst_texts_for_filter,
+        deal_answer=deal_answer,
         check_polygon=True,
         on_or_before=today,
+        catalyst_quality=catalyst_quality,
+        catalyst_texts=catalyst_texts_for_filter,
+        skip_in_orb=True,
+        budget_pool="ep",
+        pin_reader=lambda: read_open_window_pin(ticker, today),
+        gap_pct=gap_pct,
     )
     if is_mna:
         reason = "M&A/buyout catalyst — no momentum trade"
@@ -2206,6 +2283,8 @@ def _tier_shadow_base(
     news_summary: "str | None",
     c: dict,
     rel_volume: float,
+    *,
+    deal_answer: "DealAnswer | None" = None,
 ) -> dict:
     """The 11 fields every `mi_catalyst_tier_shadow` row shares — a filter-killed
     graded candidate (`_tier_kill_row`) and a scored survivor (the post-score capture
@@ -2214,7 +2293,12 @@ def _tier_shadow_base(
     cleanup): the two call sites used to hand-write the same 13-key dict literal —
     the exact two-places-to-sync fork the 2026-08-22 grade-consistency commit was
     itself fixing for the grade. Key NAMES must not change —
-    `catalyst_tier_shadow.record_catalyst_tier_shadow` reads every key by name."""
+    `catalyst_tier_shadow.record_catalyst_tier_shadow` reads every key by name.
+
+    #692: + the grader's answer to the M&A question (deal_role / deal_status /
+    deal_consideration / deal_counterparty; all None when unanswered) so every graded name —
+    alerted or filter-killed — keeps the answer the filter decided on, for the monthly review
+    and the replay."""
     return {
         "ticker": ticker,
         "live_quality": llm_quality,
@@ -2227,6 +2311,10 @@ def _tier_shadow_base(
         "adv_dollar": ((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
         "rel_volume": rel_volume,
         "projected_vol_multiple": c.get("projected_vol_multiple"),
+        "deal_role": deal_answer.role if deal_answer else None,
+        "deal_status": deal_answer.status if deal_answer else None,
+        "deal_consideration": deal_answer.consideration if deal_answer else None,
+        "deal_counterparty": deal_answer.counterparty if deal_answer else None,
     }
 
 
@@ -2240,6 +2328,8 @@ def _tier_kill_row(
     news_summary: "str | None",
     c: dict,
     rel_volume: float,
+    *,
+    deal_answer: "DealAnswer | None" = None,
 ) -> "dict | None":
     """Catalyst-tier record row for a GRADED candidate killed by a post-grade filter
     (no score, no tier — ep_score/live_tier stay None). Closes the ARM-class evidence
@@ -2251,7 +2341,7 @@ def _tier_kill_row(
         return {
             **_tier_shadow_base(
                 ticker, llm_quality, verdict, live_side, claude_analysis,
-                grounded_text, news_summary, c, rel_volume),
+                grounded_text, news_summary, c, rel_volume, deal_answer=deal_answer),
             "ep_score": None,
             "live_tier": None,
         }
@@ -4616,6 +4706,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
         _has_direct_source = None  # Wave C shadow (#233): set on the uncached grade tick
         grounded_text = None       # #240 judge shadow: the cached path skips the grounded build
+        # #692: the grader's answer to the M&A question for THIS candidate (None = unanswered).
+        # Bound per candidate so no path can read a previous ticker's answer.
+        deal_answer: "DealAnswer | None" = None
         # DISPLAY-ONLY (2026-08-27, OKTA alert-coherence fix). Which keep-event — if any —
         # preserved the FLOOR catalyst grade against the floor's OWN revenue safety net, so
         # the alert can NAME the mechanism that acted instead of a hardcoded word. Three
@@ -4641,6 +4734,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             filters_cleared = cached.filters_cleared
             grounded_text = cached.grounded_text  # 7/4: cached-path alerts carry the grade-time corpus (was NULL)
             _has_direct_source = cached.has_direct_source  # #405 Part-1: preserve the display flag on the cached path
+            deal_answer = cached.deal_answer  # #692: the grade's own M&A answer re-decides every tick
 
             # ── ONE GRADE EVERYWHERE (2026-08-22 consistency fix, operator-directed) ──
             # Resolve the acting grade the moment the raw grade is in hand. The cache
@@ -4665,6 +4759,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     ticker, catalyst_quality, claude_analysis, news_summary,
                     c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
                     lattice_acting=(_live_side == "lattice"),
+                    deal_answer=deal_answer,
                 )
                 if skip_reason:
                     logger.debug(
@@ -4675,7 +4770,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     # ARM-class evidence hole — see _tier_kill_row).
                     _kill_row = _tier_kill_row(
                         ticker, llm_catalyst_quality, _lattice_verdict, _live_side,
-                        claude_analysis, grounded_text, news_summary, c, rel_volume)
+                        claude_analysis, grounded_text, news_summary, c, rel_volume,
+                        deal_answer=deal_answer)
                     if _kill_row:
                         _tier_shadow_inputs.append(_kill_row)
                     continue
@@ -4721,11 +4817,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         # Trigger fired (once/ticker/day) — pay for the content-bearing
                         # corpus build here; reuse the grade-time 400d filings / dilution
                         # fetch when available (no second EDGAR hit).
+                        _rq_deal: dict = {}  # #692: the re-grade's own M&A answer
                         _rq, _ran, _ext, _dilution, _prior_agr, _recent_earn = await _build_enriched_corpus(
                             ticker, today, profile,
                             ext_filings=_st.get("ext_filings"),
                             dilution=_st.get("dilution"),
                             dilution_computed="dilution" in _st,
+                            deal_sink=_rq_deal,
                         )
                         # #347 (operator-approved 2026-07-04): the re-poll acts LIVE —
                         # the BFLY mechanism. A VALID upgrade (no fail-routine sentinel,
@@ -4760,6 +4858,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 confidence_multiplier=1.0,
                                 pplx_quality=None,
                                 filters_cleared=False,
+                                # #692: the new grade's own M&A answer replaces the old one —
+                                # never let the 7:00 grade's answer ride a re-grade.
+                                deal_answer=_rq_deal.get("deal_answer"),
                             )
                         await log_audit_event(
                             "catalyst_repoll_regraded_live" if (_repoll_live and _valid_change)
@@ -4871,16 +4972,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             catalyst_quality = None
             if _use_enriched:
                 try:
+                    # #692: one sink PER grade attempt — a failed enriched grade's answer can
+                    # never leak into the legacy fallback below.
+                    _enr_deal: dict = {}
                     _eq, _ea, _enr_ext, _enr_dil, _enr_prior, _enr_earn = await _build_enriched_corpus(
                         ticker, today, profile,
                         sec_filing_fallback=sec_filing,
                         perplexity_answer=perplexity_answer,
                         news_for_classify=all_news,
                         state_sink=_enr_sink,
+                        deal_sink=_enr_deal,
                     )
                     if _CLASSIFY_FAIL_SENTINEL in (_ea or ""):
                         raise RuntimeError("enriched classify returned the fail-routine sentinel")
                     catalyst_quality, claude_analysis = _eq, _ea
+                    deal_answer = _enr_deal.get("deal_answer")
                 except Exception as _ee:  # loud-ok: audited + legacy fallback below — never a silent degrade
                     logger.error(
                         f"{ticker}: live enriched grade failed — legacy-corpus fallback: {_ee}")
@@ -4893,9 +4999,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     except Exception:  # loud-ok: the logger.error above already carries it
                         pass
             if catalyst_quality is None:
+                _leg_deal: dict = {}
                 claude_task = asyncio.create_task(
-                    _classify_catalyst_claude(ticker, all_news, profile, grounded_text=grounded_text))
+                    _classify_catalyst_claude(ticker, all_news, profile, grounded_text=grounded_text,
+                                              deal_sink=_leg_deal))
                 catalyst_quality, claude_analysis = await claude_task
+                deal_answer = _leg_deal.get("deal_answer")
 
             # #210 Wave B — record source-class provenance of the grounded corpus that
             # produced this grade (telemetry-only; once per ticker/day on the uncached
@@ -5055,6 +5164,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 ticker, catalyst_quality, claude_analysis, news_summary,
                 c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
                 lattice_acting=(_live_side == "lattice"),
+                deal_answer=deal_answer,
             )
 
             # Store in cache AT GRADE COMPLETION regardless of filter outcome
@@ -5068,6 +5178,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 pplx_quality, skip_reason is None,
                 grounded_text=grounded_text,
                 has_direct_source=_has_direct_source,  # #405 Part-1: cache the display flag
+                deal_answer=deal_answer,  # #692: later ticks re-decide on this same answer
             )
 
             if skip_reason:
@@ -5076,7 +5187,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # ARM-class evidence hole — see _tier_kill_row).
                 _kill_row = _tier_kill_row(
                     ticker, llm_catalyst_quality, _lattice_verdict, _live_side,
-                    claude_analysis, grounded_text, news_summary, c, rel_volume)
+                    claude_analysis, grounded_text, news_summary, c, rel_volume,
+                    deal_answer=deal_answer)
                 if _kill_row:
                     _tier_shadow_inputs.append(_kill_row)
                 continue
@@ -6032,7 +6144,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _tier_shadow_inputs.append({
                 **_tier_shadow_base(
                     ticker, llm_catalyst_quality, _lattice_verdict, _live_side,
-                    claude_analysis, grounded_text, news_summary, c, rel_volume),
+                    claude_analysis, grounded_text, news_summary, c, rel_volume,
+                    deal_answer=deal_answer),
                 "ep_score": ep_score,
                 "live_tier": ("HIGH" if ep_score >= ep_threshold
                               else "MODERATE" if _mod_cut is not None

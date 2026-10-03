@@ -136,9 +136,10 @@ def test_catalyst_type_renders_in_ep_block():
 
 def test_gating_call_untouched():
     # The catalyst_type classifier must NOT have reached into the gating call's
-    # tool schema. Assert the gating tool still has exactly its original fields
-    # (quality + analysis) and no catalyst_type leaked in.
+    # tool schema. Assert the gating tool has exactly its own fields — quality + analysis,
+    # plus (since #692, 2026-10-02) the four M&A deal fields — and no catalyst_type leaked in.
     from agents.market_intelligence.ep_detector import _CATALYST_TOOL
     props = _CATALYST_TOOL["input_schema"]["properties"]
-    assert set(props.keys()) == {"quality", "analysis"}
+    assert set(props.keys()) == {"quality", "deal_role", "deal_status", "deal_consideration",
+                                 "deal_counterparty", "analysis"}
     assert "catalyst_type" not in props

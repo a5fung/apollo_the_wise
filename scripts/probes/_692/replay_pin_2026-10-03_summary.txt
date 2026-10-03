@@ -1,0 +1,20 @@
+#692 offline replay under the 2026-10-03 rule (the news nominates, the price decides)
+n = 151 stock-days; 10-02 rule: {'PASS': 113, 'BLOCK': 27, 'BLOCK (price-signature path, out of #692 scope - unchanged)': 11}; 10-03 rule: {'PASS': 114, 'BLOCK': 37}
+nominated (the price decided): 34 — pinned 20, free 12, held 2
+
+CHANGED vs the 10-02 replay: 7 row(s)
+  ticker day        detectors          10-02  -> 10-03   reading / why / his call
+  DSGN   2026-05-18 ep                 BLOCK  -> PASS    open5m 6.599% vs 1.0%; target/signed/unknown via claude_deal_fields; pin_free; HIS CALL PASS
+  THR    2026-05-22 flag               BLOCK  -> PASS    day 2.3893% vs 2.0%; target/signed/mixed via polygon_headline_model; pin_free; HIS CALL PASS
+  PD     2026-05-29 ep                 BLOCK  -> PASS    open5m 5.3591% vs 1.0%; target/signed/unknown via claude_deal_fields; pin_free; HIS CALL PASS
+  NUVL   2026-06-09 ep                 PASS   -> BLOCK   open5m 0.114% vs 1.0%; target/proposed/unknown via claude_deal_fields; pinned
+  IRDM   2026-06-29 9m_sugar_baby,ep   BLOCK  -> PASS    open5m 3.2847% vs 1.0%; target/signed/unknown via polygon_headline_model; pin_free
+  HZO    2026-08-10 ep                 PASS   -> BLOCK   open5m 0.1542% vs 1.0%; target/proposed/unknown via claude_deal_fields; pinned; HIS CALL BLOCK
+  RNW    2026-08-11 ep                 PASS   -> BLOCK   open5m 0.7396% vs 1.0%; target/proposed/unknown via claude_deal_fields; pinned; HIS CALL BLOCK
+
+his five 2026-10-03 calls honoured: 5 of 5
+the 25 earlier labels honoured: 25 of 25
+
+held (window unreadable in the export): [('KALV', '2026-05-25', 'no_own_day_bar'), ('ROKU', '2026-07-03', 'no_own_day_bar')]
+
+notes: [('UTZ', '2026-07-21', '; asked-article set differs from the 10-02 run'), ('SOUN', '2026-08-08', 'EP day without exported minute bars: day window used'), ('SYNA', '2026-10-02', '; asked-article set differs from the 10-02 run')]

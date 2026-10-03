@@ -21,6 +21,7 @@ CALL_SITES: dict[str, str] = {
     'agents.market_intelligence.ep_detector:_judge_shadow': 'JUDGE_MODEL',
     'agents.market_intelligence.judge_divergence:_run': 'JUDGE_DIVERGENCE_MODEL',
     'agents.market_intelligence.judge_named_themes:extract_named_themes': 'JUDGE_NAMED_THEMES_MODEL',
+    'agents.market_intelligence.ma_filter:ask_deal_question': 'GROUNDED_GRADE_MODEL',
     'agents.market_intelligence.mgmt_judge:manage_holistic': 'JUDGE_MODEL',
     'agents.market_intelligence.postmortem:generate_postmortem_narrative': 'POSTMORTEM_MODEL',
     'agents.market_intelligence.scheduler:_nightly_data_pull': 'DESCRIPTION_MODEL',

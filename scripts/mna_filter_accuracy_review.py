@@ -3,8 +3,17 @@
 WHY: the M&A pin filter drops candidates entirely (HARD gate, no fallback), so
 both error directions cost us:
   - over-fire  -> a real mover suppressed (ONDS +24%, SUNE +216% — the 6/14 dig)
-  - under-fire -> a genuine target let through as "acquirer-side" (the #284
-    acquirer-direction change could mis-pass a target)
+  - under-fire -> a genuine target let through. Since #692 (2026-10-02) the filter asks
+    whether the ticker is the TARGET of a SIGNED deal that fixes its price. Two streams make up
+    the under-fire surface now:
+      * `mna_filter_released` — every name the OLD rule would have blocked but the answer
+        released, plus every name whose grader answered a deal that does not pin (buyer,
+        proposal, all-stock...) — it replaced the #284 `mna_acquirer_title_skipped` stream;
+      * `mna_headline_unanswered` rows that PASSED (ruling 4: the headline question got no
+        answer — error, budget, the EP scan's 9:30-9:45 window, the 3-article cap — and the
+        name went through unasked).
+    Remaining blind spot: a target with no keyword-candidate headline and no grader answer
+    (non-EP callers) leaves no row at all.
 
 This script SURFACES both, with forward returns, for OPERATOR judgment. It does
 NOT classify FP/TP itself (CHANGE_PROCESS rules #3/#4 — the agent never
@@ -19,15 +28,17 @@ surfaced by the Sunday weekly review when its floor ripens (monthly during the
 Read-only. ASCII output (cp1252 console safety).
 """
 import asyncio
+import json
 import sys
 
 # peak-gain that flags a suppression as a MATERIAL-MISS CANDIDATE for operator review
 _MATERIAL_PEAK_PCT = 20.0
 
 
-async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int):
-    """Distinct (ticker, fire_day) for an event type, with forward peak high
-    over [fire_day .. +7 cal days] vs fire-day open and low."""
+async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int,
+                    summary_like: str = "%"):
+    """Distinct (ticker, fire_day) for an event type (optionally narrowed by a summary LIKE),
+    with forward peak high over [fire_day .. +7 cal days] vs fire-day open and low."""
     # DISTINCT ON (ticker, fire-day) — one row per ticker per ET day (#59 dedup
     # hygiene). A container restart re-fires the same audit event, and the prior
     # `DISTINCT ... , detail` kept each as a separate row (RGTI ×5 in the 6/20
@@ -37,13 +48,15 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int)
             SELECT DISTINCT ON ({ticker_expr}, (created_at AT TIME ZONE 'America/New_York')::date)
                 {ticker_expr} AS ticker,
                 (created_at AT TIME ZONE 'America/New_York')::date AS d,
-                left(regexp_replace(detail::text, '\\s+', ' ', 'g'), 130) AS detail
+                left(regexp_replace(detail::text, '\\s+', ' ', 'g'), 130) AS detail,
+                detail::text AS detail_full
             FROM mi_audit_log
             WHERE event_type = $1
               AND created_at >= now() - ($2 || ' days')::interval
+              AND summary LIKE $3
             ORDER BY {ticker_expr}, (created_at AT TIME ZONE 'America/New_York')::date, created_at DESC
         )
-        SELECT f.ticker, f.d AS fire_day, f.detail,
+        SELECT f.ticker, f.d AS fire_day, f.detail, f.detail_full,
                c0.open_price, c0.low_price, w.peak_high,
                round((((w.peak_high / NULLIF(c0.open_price,0)) - 1) * 100)::numeric, 1) AS pk_vs_open,
                round((((w.peak_high / NULLIF(c0.low_price,0))  - 1) * 100)::numeric, 1) AS pk_vs_low
@@ -55,7 +68,54 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int)
             WHERE c1.ticker = f.ticker AND c1.trade_date >= f.d AND c1.trade_date <= f.d + 7
         ) w ON true
         ORDER BY pk_vs_open DESC NULLS LAST
-    """, event_type, str(lookback_days))
+    """, event_type, str(lookback_days), summary_like)
+
+
+def _answer(detail_full) -> str:
+    """#692: the deal answer the row carries (role/status/consideration), '' for older rows.
+    Released rows carry it under 'grader' and/or 'headlines'; fired rows at the top level."""
+    try:
+        d = json.loads(detail_full or "")
+    except (TypeError, ValueError):
+        return ""
+    if not isinstance(d, dict):
+        return ""
+
+    def _pin(p) -> str:
+        # 2026-10-03: the price reading that decided a nominated name (fired: `pin` at the top
+        # level; released: `pin_release.pin`; held: `pin`).
+        if not isinstance(p, dict) or not p:
+            return ""
+        if not p.get("readable"):
+            return f"; price unreadable ({p.get('why')})"
+        return (f"; {p.get('window')} range {p.get('range_pct')}% vs {p.get('threshold_pct')}% -> "
+                f"{'PINNED' if p.get('pinned') else 'FREE'}")
+    if d.get("source") == "open_window_price_pin":
+        # his ruling 3 (2026-10-03): the price-only arm — a >= 20% gap whose open window trades
+        # within 0.5% blocks regardless of the news; its rows carry the gap and the reading.
+        return f"price-only arm: gap {d.get('gap_pct')}%" + _pin(d.get("pin"))
+    if d.get("role"):
+        base = f"{d['role']}/{d.get('status')}/{d.get('consideration')}"
+        if d.get("why") == "news_blocked_price_unread":
+            # his timing ruling: blocked pre-market on the news alone; the 09:35 read can only
+            # release it — a same-day RELEASED row (pin_free) below is that release.
+            return base + "; blocked pre-market on the news (price unread)"
+        return base + _pin(d.get("pin"))
+    pr = d.get("pin_release") or {}
+    if pr.get("answer", {}).get("role"):
+        pa = pr["answer"]
+        return (f"nominated {pa['role']}/{pa.get('status')}/{pa.get('consideration')} via {pr.get('source')}"
+                + _pin(pr.get("pin")))
+    un = d.get("unanswered") or []
+    if un and isinstance(un[0], dict):
+        return f"unanswered ({un[0].get('why')}), {d.get('unanswered_n', len(un))} article(s)"
+    g = d.get("grader") or {}
+    if g.get("role"):
+        return f"grader {g['role']}/{g.get('status')}/{g.get('consideration')}"
+    hs = d.get("headlines") or []
+    if hs and hs[0].get("role"):
+        return f"headline {hs[0]['role']}/{hs[0].get('status')}/{hs[0].get('consideration')}"
+    return ""
 
 
 def _print_section(title: str, rows, flag_material: bool):
@@ -73,7 +133,14 @@ def _print_section(title: str, rows, flag_material: bool):
             material.append(f"{r['ticker']} {r['fire_day']} ({pk_open:+.1f}%)")
         po = f"{pk_open:+.1f}%" if pk_open is not None else "   n/a"
         pl = f"{r['pk_vs_low']:+.1f}%" if r["pk_vs_low"] is not None else "   n/a"
-        print(f"  {r['ticker']:7} {str(r['fire_day']):10} {po:>8} {pl:>8}{flag}")
+        ans = _answer(r["detail_full"])
+        if r.get("_released_same_day"):
+            ans = (ans + "; " if ans else "") + "RELEASED later that day (price free at 09:35)"
+            if flag:
+                material.pop()   # the day's verdict was a release, not a suppression
+            flag = ""
+        ans = f"  [{ans}]" if ans else ""
+        print(f"  {r['ticker']:7} {str(r['fire_day']):10} {po:>8} {pl:>8}{ans}{flag}")
     if flag_material and material:
         # Name them (operator 2026-10-03: "It says one ran >20% but doesn't show it").
         print(f"\n  {len(material)} suppression(s) ran >= +{_MATERIAL_PEAK_PCT:.0f}% post-fire: "
@@ -84,14 +151,27 @@ def _print_section(title: str, rows, flag_material: bool):
 async def main(lookback_days: int) -> int:
     from agents.market_intelligence.db import get_pool
     from agents.market_intelligence.audit_events import (
-        MNA_FILTER_FIRED, MNA_ACQUIRER_TITLE_SKIPPED,
+        MNA_FILTER_FIRED, MNA_FILTER_RELEASED, MNA_HEADLINE_UNANSWERED,
     )
     pool = await get_pool()
     async with pool.acquire() as conn:
         suppressed = await _fwd_rows(
             conn, MNA_FILTER_FIRED, "split_part(summary,' via',1)", lookback_days)
-        passed = await _fwd_rows(
-            conn, MNA_ACQUIRER_TITLE_SKIPPED, "split_part(summary,' ',1)", lookback_days)
+        released = await _fwd_rows(
+            conn, MNA_FILTER_RELEASED, "split_part(summary,':',1)", lookback_days)
+        # ruling 4: the unanswered rows that PASSED (summary ends "— passed"; a BLOCKED one
+        # only exists if the toggle was ON, and it already shows as a suppression).
+        unanswered_passed = await _fwd_rows(
+            conn, MNA_HEADLINE_UNANSWERED, "split_part(summary,':',1)", lookback_days,
+            summary_like="%passed")
+    # 2026-10-03 timing ruling: a nominated name is blocked pre-market on the news and the 09:35
+    # read may RELEASE it the same day — mark those fired rows so a suppression that was undone is
+    # not read as a block (both rows exist; the release is the day's verdict).
+    released_days = {(r["ticker"], str(r["fire_day"])) for r in released}
+    for r in suppressed:
+        if (r["ticker"], str(r["fire_day"])) in released_days:
+            r["detail_full"] = (r.get("detail_full") or "")
+            r["_released_same_day"] = True
 
     print(f"M&A FILTER ACCURACY REVIEW  (lookback {lookback_days}d)")
     print("Surfaces filter decisions + forward returns for OPERATOR judgment.")
@@ -101,16 +181,24 @@ async def main(lookback_days: int) -> int:
     _print_section(
         "SUPPRESSED by the M&A filter (verify none were missed movers)",
         suppressed, flag_material=True)
-    # Direction 2 — under-fire: acquirer-passes (#284) — verify none were targets.
+    # Direction 2 — under-fire: names the OLD rule would have blocked that the deal question
+    # RELEASED (#692) — verify none was a genuine target of a signed deal.
     _print_section(
-        "PASSED as ACQUIRER-side by #284 (verify none were genuine targets)",
-        passed, flag_material=False)
-    if passed:
-        print("\n  operator: each PASSED name is a title the #284 check read as the "
-              "filing ticker BUYING. Confirm none was actually the target being bought "
+        "RELEASED by the deal question - the old rule would have blocked, or the grader answered "
+        "a deal that does not pin (verify none were real targets)",
+        released, flag_material=False)
+    if released:
+        print("\n  operator: each RELEASED name was answered as buyer / proposal / speculation / "
+              "no deal / all-stock. Confirm none was actually the target of a signed deal "
               "(would mean a price-capped name slipped through).")
-    print("\nSSoT: docs/setups/magna53_ep.md (M&A filter change log). "
-          "Deferred bleed class: data_gated_reviews `mna_filter_direction_blindness_path_a`.")
+    _print_section(
+        "PASSED UNANSWERED - the headline question got no answer and the name went through "
+        "(ruling 4; verify none were real targets)",
+        unanswered_passed, flag_material=False)
+    if unanswered_passed:
+        print("\n  operator: these passed WITHOUT an answer (error / budget / the EP scan's "
+              "9:30-9:45 window / the 3-article cap). Confirm none was the target of a signed deal.")
+    print("\nSSoT: docs/setups/magna53_ep.md (M&A filter change log).")
     return 0
 
 

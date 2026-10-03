@@ -1,0 +1,21 @@
+#692 offline replay under the 2026-10-03 rule (the news nominates, the price decides; + his four rulings: the price-only arm, NUVL / IRDM)
+n = 151 stock-days; 10-02 rule: {'PASS': 113, 'BLOCK': 27, 'BLOCK (price-signature path, out of #692 scope - unchanged)': 11}; this run: {'PASS': 107, 'BLOCK': 44}
+nominated (the price decided): 34 — pinned 20, free 12, held 2
+price-only arm (gap >= 20%, open window <= 0.5%): 7 blocked — TMHC 06-01 (+22%, 0.2515%), APGE 06-22 (+47%, 0.4148%), SAFT 07-24 (+41%, 0.3689%), FBRX 07-27 (+39%, 0.0785%), VREX 08-10 (+48%, 0.1088%), ARX 08-13 (+44%, 0.4592%), WEAV 08-18 (+32%, 0.4795%)
+
+CHANGED vs replay_pin_2026-10-03.jsonl: 7 row(s)
+  ticker day        detectors          prev   -> now     reading / why / his call
+  TMHC   2026-06-01 ep                 PASS   -> BLOCK   gap +22.4%; open5m 0.2515% vs 1.0%; price-only arm (no deal answer needed); price_only_pinned
+  APGE   2026-06-22 ep                 PASS   -> BLOCK   gap +46.7%; open5m 0.4148% vs 1.0%; price-only arm (no deal answer needed); price_only_pinned
+  SAFT   2026-07-24 ep                 PASS   -> BLOCK   gap +41.2%; open5m 0.3689% vs 1.0%; price-only arm (no deal answer needed); price_only_pinned
+  FBRX   2026-07-27 ep                 PASS   -> BLOCK   gap +39.5%; open5m 0.0785% vs 1.0%; price-only arm (no deal answer needed); price_only_pinned
+  VREX   2026-08-10 ep                 PASS   -> BLOCK   gap +48.2%; open5m 0.1088% vs 1.0%; price-only arm (no deal answer needed); price_only_pinned
+  ARX    2026-08-13 ep                 PASS   -> BLOCK   gap +44.0%; open5m 0.4592% vs 1.0%; price-only arm (no deal answer needed); price_only_pinned
+  WEAV   2026-08-18 ep                 PASS   -> BLOCK   gap +32.0%; open5m 0.4795% vs 1.0%; price-only arm (no deal answer needed); price_only_pinned
+
+his five 2026-10-03 calls honoured: 5 of 5
+the 25 earlier labels honoured: 25 of 25
+
+held (window unreadable in the export): [('KALV', '2026-05-25', 'no_own_day_bar'), ('ROKU', '2026-07-03', 'no_own_day_bar')]
+
+notes: [('UTZ', '2026-07-21', '; asked-article set differs from the 10-02 run'), ('SOUN', '2026-08-08', 'EP day without exported minute bars: day window used'), ('SYNA', '2026-10-02', '; asked-article set differs from the 10-02 run')]
