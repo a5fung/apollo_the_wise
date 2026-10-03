@@ -1276,6 +1276,10 @@ class TelegramChannel:
             return False, str(e)[:120]
 
     async def _check_claude(self) -> tuple[bool, str]:
+        # `anthropic` was never imported here, so any exception reaching the APIStatusError clause
+        # raised NameError and /status's Claude probe crashed instead of returning (False, reason)
+        # (found 2026-10-03 by the #466 sweep).
+        import anthropic
         try:
             from shared.llm_client import make_anthropic
             from shared.secrets import get_secrets

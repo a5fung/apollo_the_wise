@@ -4767,7 +4767,9 @@ class MarketIntelligenceAgent(BaseAgent):
         if not scan_entry:
             lines.append("_(No scan log entry found — reconstructing from current data)_\n")
 
-        pool = await _pool()
+        # `_pool` was never defined in this module — the reconstruct path raised NameError whenever no
+        # scan-log row existed (found 2026-10-03 by the #466 sweep). `get_pool` is imported at module top.
+        pool = await get_pool()
 
         async def _get_recent_closes():
             async with pool.acquire() as conn:
