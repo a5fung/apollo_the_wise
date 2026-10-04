@@ -756,7 +756,7 @@ async def test_394_board_shows_only_coils_the_latest_scan_rewrote(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_394_mark_takes_every_row_off_and_a_write_or_clear_brings_it_back(monkeypatch):
+async def test_394_mark_takes_every_row_off_and_the_price_release_clear_brings_it_back(monkeypatch):
     pool = _real_board_db(monkeypatch)
     today = date(2026, 10, 2)
     pool.seed("NUVL", date(2026, 9, 10), last_eval=today, streak=5)
@@ -771,6 +771,14 @@ async def test_394_mark_takes_every_row_off_and_a_write_or_clear_brings_it_back(
     assert pool.row("NUVL", date(2026, 9, 10))[1] == today.isoformat()
     state = await _db.get_consolidation_state_map()
     assert state[("NUVL", date(2026, 9, 10))]["mna_screened_on"] == today
+
+    # a normal write never clears the mark (only the price release does)
+    await _db.upsert_consolidation(
+        "NUVL", date(2026, 9, 10), state="coiled", runup_ratio=1.3, runup_high=10.0, coil_days=5,
+        last_close=10.0, today_pct=0.003, rmv_5d=20.0, rmv_15d=25.0, pullback_shape=None,
+        pullback_shapes=None, fresh_tightening=True, fresh_2bar_tr_pct=1.0, atr14_pct=3.0,
+        tight_close_streak=5, dvol_med=5e7, last_eval=today)
+    assert await _board_tickers() == []
 
     assert await _db.clear_consolidation_mna_screened("NUVL") == 2
     assert await _board_tickers() == ["NUVL", "NUVL"]

@@ -4874,8 +4874,9 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
             # the write + the Confirm entry (#387); #394 extends it to the BOARD: a screened name's
             # EVERY board row is taken off (mark_consolidation_mna_screened) — before, `continue`
             # only skipped today's write and its earlier rows kept ranking — and the fired row
-            # follows #692's convention. A name the price releases passes and is written (the
-            # write clears the mark). Unreadable own-day bar → ON the board + recorded (below).
+            # follows #692's convention. A marked name is then held by its own-day price (the
+            # hold check below); the price releasing it is the ONLY thing that clears the mark.
+            # Unreadable own-day bar, not yet held → ON the board + recorded (below).
             if ticker in screened:
                 is_mna, mna_meta = screened[ticker]
             elif mna_checks < _CONS_MNA_CHECKS_CAP:

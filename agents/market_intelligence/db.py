@@ -2759,8 +2759,9 @@ async def initialize_schema() -> None:
             -- #394 M&A screen on the coil board (operator 2026-10-03, "Add it now"): the scan date
             -- on which the SAME #692 deal decision the other evening scans use (ma_filter.
             -- is_likely_ma, day window) screened this ticker. NOT NULL = OFF the board
-            -- (get_consolidation_board); the next write of the row (the price released it, or
-            -- the news no longer nominates it) clears it. NULL default = never screened.
+            -- (get_consolidation_board); kept while the own-day price stays pinned, cleared on
+            -- every row when the price releases it (clear_consolidation_mna_screened). NULL
+            -- default = never screened.
             ALTER TABLE mi_anticipation_consolidation
                 ADD COLUMN IF NOT EXISTS mna_screened_on DATE;
 
@@ -12498,8 +12499,8 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
         pullback_shapes, fresh_tightening, fresh_2bar_tr_pct, atr14_pct,
         tight_close_streak, dvol_med, last_eval) -> None:
     """UPSERT one Family-A consolidation row, keyed on the absolute (ticker, anchor_date).
-    A write means the M&A screen passed this run, so it also clears `mna_screened_on` — a name
-    the price released (or the news no longer nominates) goes back on the board (#394)."""
+    It never touches `mna_screened_on` (#394): the off-board mark is cleared in ONE place, when
+    the own-day price releases a held name (`clear_consolidation_mna_screened`)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -12509,7 +12510,6 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
                  fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, last_eval, updated_at)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,NOW())
             ON CONFLICT (ticker, anchor_date) DO UPDATE SET
-                mna_screened_on=NULL,
                 state=EXCLUDED.state, runup_ratio=EXCLUDED.runup_ratio,
                 runup_high=EXCLUDED.runup_high, coil_days=EXCLUDED.coil_days,
                 last_close=EXCLUDED.last_close, today_pct=EXCLUDED.today_pct,

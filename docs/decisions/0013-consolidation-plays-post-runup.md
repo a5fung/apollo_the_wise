@@ -443,7 +443,7 @@ non-aged row whatever its `last_eval`.
 - a block now takes EVERY non-aged board row of the ticker off the board
   (`db.mark_consolidation_mna_screened` → `mi_anticipation_consolidation.mna_screened_on`, a new
   nullable DATE column; a re-screen keeps the FIRST screen date); `get_consolidation_board`
-  hides marked rows;
+  hides marked rows; a normal write never clears the mark — only the price release below does;
 - **the PRICE holds a screened name** (his word 2026-10-03, second ruling the same day). The news
   only nominates inside the 21-day headline lookback, so a still-pinned buyout passed the news
   check once its deal headline aged out and came straight back. Now any ticker a past screen
