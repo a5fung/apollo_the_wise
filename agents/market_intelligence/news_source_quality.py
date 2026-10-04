@@ -111,6 +111,7 @@ async def collect_source_stats(
 
         # Attribution: count extractions where q_revenue_usd.sources cites this source
         attribution_count = 0
+        corrupt_rows = 0
         keys = ATTRIBUTION_KEYS.get(display, [])
         for r in rows:
             raw = r["raw_json"]
@@ -118,7 +119,8 @@ async def collect_source_stats(
                 import json as _json
                 try:
                     raw = _json.loads(raw)
-                except Exception:  # loud-ok: optional-parse fallback — a corrupt stored raw_json row is skipped below as "no source data"; a per-row log would flood this loop
+                except Exception:  # loud-ok: counted, ONE warning after the loop (a per-row log would flood it)
+                    corrupt_rows += 1
                     raw = None
             if not isinstance(raw, dict):
                 continue
@@ -126,6 +128,9 @@ async def collect_source_stats(
             sources = qrv.get("sources") or []
             if any(k in (s or "").lower() for s in sources for k in keys):
                 attribution_count += 1
+        if corrupt_rows:
+            logger.warning(f"news source quality ({display}): {corrupt_rows} of {n} stored raw_json "
+                           f"rows would not parse — counted as no source data")
 
         coverage_pct = (coverage_count / n) * 100
         attribution_pct = (attribution_count / n) * 100
