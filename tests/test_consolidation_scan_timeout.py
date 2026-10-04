@@ -650,6 +650,7 @@ _DDL = """CREATE TABLE mi_anticipation_consolidation (
     runup_high REAL, coil_days INT, last_close REAL, today_pct REAL, rmv_5d REAL, rmv_15d REAL,
     pullback_shape TEXT, pullback_shapes TEXT, fresh_tightening INT, fresh_2bar_tr_pct REAL,
     atr14_pct REAL, tight_close_streak INT, dvol_med REAL, last_eval TEXT, mna_screened_on TEXT,
+    orderliness REAL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (ticker, anchor_date),
     CHECK (state IN ('coiled','post_runup','aged')))"""
@@ -694,13 +695,13 @@ class _SqlitePool:
         return _CM()
 
     def seed(self, ticker, anchor, *, last_eval, state="coiled", streak=3, today_pct=0.004,
-             screened_on=None):
+             screened_on=None, orderliness=None):
         self.cx.execute(
             "INSERT INTO mi_anticipation_consolidation (ticker, anchor_date, state, runup_ratio, "
             "runup_high, coil_days, tight_close_streak, today_pct, dvol_med, last_eval, "
-            "mna_screened_on) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            "mna_screened_on, orderliness) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             (ticker, str(anchor), state, 1.3, 100.0, 6, streak, today_pct, 5e7, str(last_eval),
-             str(screened_on) if screened_on else None))
+             str(screened_on) if screened_on else None, orderliness))
 
     def row(self, ticker, anchor):
         r = self.cx.execute("SELECT last_eval, mna_screened_on FROM mi_anticipation_consolidation "
@@ -854,3 +855,185 @@ async def test_394_unreadable_price_does_not_release_a_held_name(monkeypatch):
     assert await _board_tickers() == ["FREE"]
     held = _rows(cap, ANTICIPATION_MNA_PIN_HELD)
     assert len(held) == 1 and "unreadable (no_own_day_bar)" in held[0][0]
+
+
+# ══ Part D — #394 C2 Phase 1: the ORDERLINESS score rides the scan onto the board, DISPLAY ONLY ═
+# Operator ruling 2026-10-03 on the C1 tables: "Sign" — keep the 50% cap, keep the board order, no
+# orderliness demotion. So the score is written on every coil row and shown on the /anticipation
+# line, and these tests pin that it can change NOTHING else: not which rows show, not their order,
+# not what the scan admits, writes or fires. The pure definition / admission tests are in
+# tests/test_anticipation_coil_finder.py (the #394 C2 section) and the probe-identity pin in
+# tests/test_394_coil_tune_probe.py; this half runs the real scan, the real upsert + board SQL
+# (in-memory SQLite) and the real /anticipation handler.
+_REAL_ANT = {n: getattr(ant, n) for n in ("db_rows_to_bars", "evaluate_coil_consolidation")}
+
+
+def _raw_coil_rows(*, gappy_days=(), null_open_dip=False, dip_open_as_close=False):
+    """60 raw mi_daily_closes rows: 35 flat bars at 100, a +30% leg (103..130, peak idx 44), then 15
+    flat coil bars at 125. Every open = the prior close except `gappy_days` (open +1.0% over the flat
+    125). `null_open_dip` puts a -5% close dip on idx 50 with a NULL open (the live loader's close
+    substitute would read it as a 5% overnight gap); `dip_open_as_close` gives that day a real open
+    equal to the dipped close instead (a genuine 5% gap — the contrast case)."""
+    closes = [100.0] * 35 + [100.0 + 3.0 * (k + 1) for k in range(10)] + [125.0] * 15
+    if null_open_dip or dip_open_as_close:
+        closes[50] = 118.75
+    opens = [closes[0]] + closes[:-1]
+    for d in gappy_days:
+        opens[d] = 125.0 * 1.01
+    if dip_open_as_close:
+        opens[50] = closes[50]
+    d0 = date(2026, 4, 1)
+    rows = [{"trade_date": d0 + timedelta(days=i), "open_price": opens[i], "high_price": c * 1.01,
+             "low_price": c * 0.99, "close": c, "volume": 1_000_000}
+            for i, c in enumerate(closes)]
+    if null_open_dip:
+        rows[50]["open_price"] = None
+    return rows
+
+
+async def _scan_real_coil(monkeypatch, raw, ticker="COIL"):
+    """The REAL scan: real evaluate_coil_consolidation + real db_rows_to_bars over raw rows, real
+    upsert + board over SQLite (only the I/O edges the harness always fakes stay faked)."""
+    import agents.market_intelligence.db as db
+    cap, _ = _patch_scan_harness(monkeypatch, keys=[_key(ticker)])
+    monkeypatch.setattr(ant, "db_rows_to_bars", _REAL_ANT["db_rows_to_bars"])
+    monkeypatch.setattr(ant, "evaluate_coil_consolidation", _REAL_ANT["evaluate_coil_consolidation"])
+
+    async def raw_ohlcv(tk, today):
+        return raw
+
+    monkeypatch.setattr(db, "get_anticipation_ohlcv", raw_ohlcv)
+    pool = _real_board_db(monkeypatch)
+    stats, entries = await _scan()
+    return cap, pool, stats, entries
+
+
+@pytest.mark.asyncio
+async def test_394_the_scan_stores_the_score_and_the_board_line_shows_it_in_plain_words(monkeypatch):
+    """Raw rows -> real coil-finder -> real upsert -> real board SELECT -> real /anticipation
+    handler. Three of the 15 coil days open +1.0% over a flat 125 close; ATR14% is 2.0%, so the
+    P95 overnight gap (1.0%) is half a normal day's range: 0.5."""
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from shared.models import AgentRequest
+    import agents.market_intelligence.db as db
+
+    raw = _raw_coil_rows(gappy_days=(50, 55, 58))
+    cap, pool, stats, _entries = await _scan_real_coil(monkeypatch, raw)
+
+    assert stats["written"] == 1
+    stored = pool.cx.execute("SELECT orderliness FROM mi_anticipation_consolidation "
+                             "WHERE ticker='COIL'").fetchone()[0]
+    assert stored == pytest.approx(0.5)
+    board = await _db.get_consolidation_board()
+    assert [r["ticker"] for r in board] == ["COIL"] and board[0]["orderliness"] == pytest.approx(0.5)
+
+    # the operator surface: the real handler over that board
+    async def no_rows(*a, **kw):
+        return []
+
+    async def no_summary():
+        return {"settled_n": 0, "open_n": 0}
+
+    async def no_open():
+        return set()
+
+    monkeypatch.setattr(db, "get_consolidation_entry_shadows", no_rows)
+    monkeypatch.setattr(db, "get_consolidation_entry_shadow_summary", no_summary)
+    monkeypatch.setattr(db, "get_open_shadow_tickers", no_open)
+    res = await MarketIntelligenceAgent()._handle_anticipation_query(
+        AgentRequest(task="/anticipation", user_id=1, conversation_id="t"))
+    body = res.result if hasattr(res, "result") else res["result"]
+    line = next(ln for ln in body.splitlines() if "`COIL " in ln)
+    assert line.startswith("  `COIL ` +30% · coiling 15d")
+    assert line.endswith("overnight gaps 0.5× daily range")
+
+
+@pytest.mark.asyncio
+async def test_394_a_null_open_day_is_dropped_by_the_live_scan_not_read_as_a_gap(monkeypatch):
+    """The live loader substitutes the close for a NULL open; unflagged, a -5% close dip would read
+    as a 5% overnight gap. Same dip, NULL open -> dropped -> a calm coil (0.0); same dip with a REAL
+    open at the dipped close -> a genuine 5% gap, scored."""
+    _cap, pool_a, _s, _e = await _scan_real_coil(monkeypatch, _raw_coil_rows(null_open_dip=True))
+    nulled = pool_a.cx.execute("SELECT orderliness FROM mi_anticipation_consolidation").fetchone()[0]
+    assert nulled == pytest.approx(0.0)
+
+    _cap, pool_b, _s, _e = await _scan_real_coil(monkeypatch, _raw_coil_rows(dip_open_as_close=True))
+    real_gap = pool_b.cx.execute("SELECT orderliness FROM mi_anticipation_consolidation").fetchone()[0]
+    assert real_gap is not None and real_gap > 0.1
+
+
+# ranking / admission: the score is wildly ANTI-correlated with the board here (the tightest coil is
+# the gappiest) — if anything ever sorted or gated on it, the board below would change.
+_D_SHAPES = {"LOOSE": ("post_runup", 1, 0.010), "MIDDLE": ("coiled", 2, 0.004),
+             "TIE": ("coiled", 2, 0.005), "TOPCOIL": ("coiled", 6, 0.002),
+             "AGED": ("aged", 9, 0.001)}
+_D_SCORES = {"TOPCOIL": 2.4, "MIDDLE": 1.1, "TIE": 0.05, "LOOSE": 0.7, "AGED": 0.0}
+
+
+async def _scan_shapes(monkeypatch, *, with_score):
+    import agents.market_intelligence.db as db
+    bars = _mk_bars()
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, csig=_csig(bars), keys=[
+        _key(t) for t in ("LOOSE", "MIDDLE", "TIE", "TOPCOIL", "AGED")])
+
+    async def tagged_ohlcv(ticker, today):
+        return [dict(b, tk=ticker) for b in bars]
+
+    def per_ticker_cons(b, **kw):
+        tk = b[0]["tk"]
+        state, streak, pct = _D_SHAPES[tk]
+        cons = {**_cons_for(b), "state": state, "tight_close_streak": streak, "today_pct": pct}
+        if with_score:
+            cons["orderliness"] = _D_SCORES[tk]
+        return cons, None
+
+    monkeypatch.setattr(db, "get_anticipation_ohlcv", tagged_ohlcv)
+    monkeypatch.setattr(ant, "evaluate_coil_consolidation", per_ticker_cons)
+    pool = _real_board_db(monkeypatch)
+    stats, entries = await _scan()
+    written = [r[0] for r in pool.cx.execute("SELECT ticker FROM mi_anticipation_consolidation "
+                                             "ORDER BY rowid")]
+    scores = dict(pool.cx.execute("SELECT ticker, orderliness FROM mi_anticipation_consolidation"))
+    return {"stats": stats, "entries": [(t, o, m) for t, o, m, _s in entries], "written": written,
+            "board": await _board_tickers(), "scores": scores, "mna_calls": cap["mna_calls"],
+            "inserts": [(t, kw["entry_mode"]) for t, _a, kw in cap["inserts"]]}
+
+
+@pytest.mark.asyncio
+async def test_394_the_score_changes_no_ranking_admission_or_entry(monkeypatch):
+    with_score = await _scan_shapes(monkeypatch, with_score=True)
+    without = await _scan_shapes(monkeypatch, with_score=False)
+
+    # identical in every way the operator can see or the money path can feel ...
+    for key in ("stats", "entries", "written", "board", "mna_calls", "inserts"):
+        assert with_score[key] == without[key], key
+    assert with_score["written"] == ["TOPCOIL", "MIDDLE", "TIE", "LOOSE", "AGED"]   # scan = board order
+    assert with_score["board"] == ["TOPCOIL", "MIDDLE", "TIE", "LOOSE"]              # streak desc, today_pct asc; aged hidden
+    assert with_score["stats"]["written"] == 5                                      # every candidate admitted
+    assert with_score["inserts"], "the harness's Confirm fires must have run on both sides"
+    # ... except the stored column itself
+    assert with_score["scores"] == _D_SCORES
+    assert set(without["scores"].values()) == {None}
+
+
+@pytest.mark.asyncio
+async def test_394_board_read_order_and_set_are_identical_with_and_without_scores(monkeypatch):
+    """The board SELECT alone, on seeded rows: the same rows with wildly different scores (and with
+    none) come back in the same order — the score is selected, never ordered or filtered on."""
+    latest = date(2026, 10, 2)
+    rows = [("A", 6, 0.002, "coiled", 0.1), ("B", 6, 0.004, "coiled", 2.3), ("C", 3, 0.001, "coiled", 0.9),
+            ("D", 3, 0.009, "post_runup", 5.0), ("E", 0, 0.003, "post_runup", None),
+            ("F", 9, 0.001, "aged", 0.0)]
+    boards = {}
+    for label, use_scores in (("with", True), ("rev", True), ("none", False)):
+        pool = _real_board_db(monkeypatch)
+        for i, (tk, streak, pct, state, score) in enumerate(rows):
+            if label == "rev":
+                score = None if score is None else 10.0 - score          # the opposite ranking
+            pool.seed(tk, date(2026, 9, 1) + timedelta(days=i), last_eval=latest, state=state,
+                      streak=streak, today_pct=pct, orderliness=score if use_scores else None)
+        boards[label] = await _db.get_consolidation_board()
+    order = {k: [r["ticker"] for r in v] for k, v in boards.items()}
+    assert order["with"] == order["rev"] == order["none"] == ["A", "B", "C", "D", "E"]
+    assert [r["orderliness"] for r in boards["with"]] == [0.1, 2.3, 0.9, 5.0, None]   # carried, NULL kept
+    assert all(r["orderliness"] is None for r in boards["none"])

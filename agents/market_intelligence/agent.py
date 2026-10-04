@@ -3300,7 +3300,8 @@ class MarketIntelligenceAgent(BaseAgent):
             out.append(f"{labels[st]} ({len(grp)})")
             out += [format_consolidation_row(r["ticker"], r.get("runup_ratio"),
                     r.get("coil_days", 0), rmv_5d=r.get("rmv_5d"),
-                    fresh_tightening=r.get("fresh_tightening"), coiled=(st == "coiled"))
+                    fresh_tightening=r.get("fresh_tightening"), coiled=(st == "coiled"),
+                    orderliness=r.get("orderliness"))        # #394 Phase 1: display only
                     for r in grp[:12]]
             out.append("")
 

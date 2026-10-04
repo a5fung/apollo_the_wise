@@ -524,6 +524,105 @@ a held name logs `anticipation_mna_pin_held` nightly with its own-day range. WOU
 `(anticipation)` row whose ticker still shows on the board, a board row older than the latest scan,
 or a held name back on the board while its `pin_held` row reads <= 2.0%.
 
+### 2026-10-03 — #394 C2: the coil board SHOWS how gappy each base is (display only) — the tune read changed no knob
+
+**Trigger**: the #394 tune read (card C1, `scripts/probes/_394_coil_tune.py`, one read-only prod capture →
+`scripts/probes/_394/coil_tune_out_2026-10-03.txt`) put the three knobs of the signed methodology
+(`docs/analysis/394_coil_tuning_methodology_2026-07-11.md`, signed 2026-07-12) to the operator with the
+recommendation *keep all three*. His ruling, 2026-10-03: ***"Sign"*** — **KEEP the 50% hold cap; KEEP the current
+board order (the pooled verdict; one population's split is not adopted); NO orderliness demotion → Phase 1
+only (display).**
+
+**Evidence** (the signed tables; tune cohort = 108 settled Family A rows, entries from 2026-06-29 — the primary
+gate N >= 20 met; every line below is verbatim from the C1 output, entry modes never blended, the POOLED
+family_a check last):
+
+```
+VERDICT 3a [confirm/base_low]: KEEP — keep 50% (no eligible cell beats its median -0.38R)
+VERDICT 3b [confirm/base_low]: KEEP — keep incumbent (best challenger (iii) streak-led rho +0.196 vs +0.098, gap +0.098 < 0.15)
+VERDICT 3c [confirm/base_low]: NO-DEMOTE — gappiest quartile median -0.08R vs rest -0.40R (gap -0.31R < 0.5) -> display only (Phase 1)
+VERDICT 3a [anticipate/coiled_low]: KEEP — keep 50% (no eligible cell beats its median -1.00R)
+VERDICT 3b [anticipate/coiled_low]: KEEP — keep incumbent (best challenger (iii) streak-led rho +0.020 vs -0.070, gap +0.090 < 0.15)
+VERDICT 3c [anticipate/coiled_low]: INSUFFICIENT — top N=5, rest N=16 (need 10 each) -> unchanged
+VERDICT 3a [anticipate/structural_low]: KEEP — keep 50% (no eligible cell beats its median -1.00R)
+VERDICT 3b [anticipate/structural_low]: ADOPT (ii) — adopt (ii) rmv-led (rho +0.012 vs incumbent -0.184, gap +0.196)
+VERDICT 3c [anticipate/structural_low]: NO-DEMOTE — gappiest quartile median +0.98R vs rest -1.00R (gap -1.98R < 0.5) -> display only (Phase 1)
+VERDICT 3a [POOLED family_a (all modes)]: KEEP — keep 50% (no eligible cell beats its median -0.48R)
+VERDICT 3b [POOLED family_a (all modes)]: KEEP — keep incumbent (best challenger (iii) streak-led rho +0.030 vs -0.061, gap +0.091 < 0.15)
+VERDICT 3c [POOLED family_a (all modes)]: NO-DEMOTE — gappiest quartile median -0.17R vs rest -0.68R (gap -0.51R < 0.5) -> display only (Phase 1)
+
+KNOB 3a HOLD CAP: NO CHANGE — voting: anticipate/coiled_low, anticipate/structural_low, confirm/base_low
+    POOLED verdict: KEEP · POOLING CHANGES VERDICT: no
+KNOB 3b RANK ORDERING: SPLIT — populations disagree -> operator ruling: anticipate/coiled_low=KEEP; anticipate/structural_low=ADOPT (ii); confirm/base_low=KEEP
+    POOLED verdict: KEEP · POOLING CHANGES VERDICT: yes
+KNOB 3c ORDERLINESS demotion: NO CHANGE — voting: anticipate/structural_low, confirm/base_low · not voting (N below the gate): anticipate/coiled_low
+    POOLED verdict: NO-DEMOTE · POOLING CHANGES VERDICT: no
+```
+
+Read with two limits the probe itself prints: (1) the widen side of 3a (60%) cannot be measured from fired rows
+— a name that gave back more than 50% was never admitted, so never fired (0 rows sit above the cap); (2)
+`realized_r` is the legacy 5-day harvest horizon. One population (`anticipate/structural_low`) would adopt the
+rmv-led order; the Anticipate arm has been parked since 2026-08-09 (its rows end 2026-08-07), so only Confirm still
+accrues. That is context, not his stated reason: the ruling is the pooled verdict.
+
+**What changed (DISPLAY ONLY — method §3c Phase 1, "record + display the score on the board")**:
+- the orderliness score — **P95 of the overnight gaps over the base window ÷ ATR14%** — is computed for every coil
+  the nightly scan writes and stored on its board row (`mi_anticipation_consolidation.orderliness`, a new nullable
+  FLOAT; NULL = unscored: fewer than 3 usable gap days, or no ATR). **Definition: the C1 probe's, MOVED VERBATIM
+  into the live module** (`anticipation.orderliness_score` + `percentile` / `overnight_gap_pcts` / `atr14_pct`);
+  the probe now IMPORTS them, so the signed quartile tables and the stored score are one definition that cannot
+  drift. The window is the bars after the coil's runup peak up to the bar being written; a day whose raw open is
+  NULL is dropped, never read as a close-to-close move — so `db_rows_to_bars` now carries an `o_missing` flag (the
+  float `o` it always returned is unchanged);
+- `/anticipation` shows it in plain words on the coiling AND post-runup lines: **`overnight gaps 0.8× daily
+  range`** (the biggest overnight jumps in the base ran at that multiple of a normal day's range; higher = gappier;
+  no "gappy"/"orderly" verdict word — the tune found the gappy quartile did NOT do worse, so a label would
+  invent one).
+
+**What did NOT change** (each pinned by a test): the 50% hold cap (`COIL_HOLD_LIMIT`) · the board order
+(`ORDER BY tight_close_streak DESC NULLS LAST, today_pct ASC NULLS LAST` — the score is selected, never ordered or
+filtered on) · which coils are admitted (the score is computed AFTER every gate; a failure to score is logged and
+leaves the coil admitted, unscored) · the Confirm entry signal and every entry/stop/settlement path · the #410
+price-shape guard, the M&A screen and its 40-check cap · the runup gate. No orderliness demotion — Phase 2 is
+**not** adopted and not scheduled; a demotion or hard gate would need its own evidence, its own review and a named
+false-kill check.
+
+**Anticipated effect**: every coil row the 17:35 ET scan writes carries a non-NULL `orderliness` (C1 scored 108
+of 108; on that cohort the range was 0.01–2.39 and the middle half read 0.27–0.54, quartile cuts 0.27 / 0.40 / 0.55,
+so expect mostly 0.3× to 0.5× with an occasional line above 1×); `/anticipation` coiling and post-runup lines gain the phrase; **zero change** to
+board membership, board order, admitted coils, Confirm entry fires or settlements — the Mon–Fri entry counts, the
+board's top-5 tickers and the digest are what they would have been without this commit.
+
+**Reversion-flag**: NEW (no prior change to this display). Not a reversal of anything; consistent with the
+methodology's own "never a day-one gate" rule, and the C1 NO-DEMOTE verdict closes Phase 2 for this cohort.
+
+**Re-arm (C3)**: data-gated review `coil_tune_rerun_394` re-runs the SAME probe once the settled Family A count
+since 2026-06-29 reaches 128 (108 today + one primary-gate increment of 20), not before 2026-11-14 (~6 weeks) —
+thresholds are re-checked once per regime change. If any verdict moves it is surfaced to the operator with the
+tables; nothing is applied on the review's own authority.
+
+**Tests**: `tests/test_394_coil_tune_probe.py` — the probe's score functions ARE the live ones (identity: the
+same objects, so the signed tables and the stored score are one definition). `tests/test_anticipation_coil_finder.py`
+(the #394 C2 section) — the score on two hand-computed cases (window edges, the NULL-open drop, the unscored
+cases); the held-coil row carries the hand-computed 0.5; with the scorer working, returning None or RAISING the
+row is identical but for its own key (a raise is logged, never rejects a held coil); a deep give-back is still
+rejected and never reaches the scorer; the plain-words line on both board sections.
+`tests/test_consolidation_scan_timeout.py` Part D — raw rows → the real coil-finder → the real upsert → the real
+board SELECT → the real `/anticipation` handler shows `overnight gaps 0.5× daily range`; a NULL-open dip is
+dropped by the live scan (0.0) while the same dip with a real open scores; the scan with and without scores that
+are anti-correlated with the board writes, admits, orders and fires identically; the board read returns the same
+order and set for rows with scores, reversed scores and none.
+
+**Status**: built 2026-10-03, awaiting deploy (market-agent, then a second `execution` step — `db.py`,
+`scheduler.py` and `agent.py` are in `scripts/exec_loaded_modules.txt`; `anticipation.py` is not). **Verify-live**
+(positive, the first 17:35 ET scan after deploy): every `mi_anticipation_consolidation` row that scan wrote
+(`last_eval` = that date, not aged) has a non-NULL `orderliness` (C1 scored 108 of 108 settled entries; a coil
+has >= 4 post-peak days, so a NULL needs >= 2 NULL-open days), AND `/anticipation` shows the phrase on those same
+rows with the number equal to the stored value to one decimal, AND the board order that night is
+`tight_close_streak` desc then `today_pct` asc as before. WOULD-FAIL-IF: a freshly written row with NULL
+`orderliness` and a normal bar history (the wiring is dark), a line whose phrase disagrees with its stored value,
+or a board order that follows the score.
+
 ---
 
 ## 2026-08-16 — FINDINGS FROM THE EP WORK THAT LAND ON THIS FAMILY

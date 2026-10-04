@@ -15094,3 +15094,53 @@ reviews:
          full run (scripts/eval_chart_judge.py — switch its raw client to make_async_anthropic first)
          to him; otherwise keep chart reading parked.
     added_on: 2026-10-03
+
+  - review_id: coil_tune_rerun_394
+    kind: accrual
+    title: "#394 C3 — re-run the coil-finder tune probe (hold cap / board order / orderliness) on the settled Family A population"
+    question: |
+      The 2026-10-03 tune read (scripts/probes/_394/coil_tune_out_2026-10-03.txt, the signed tables)
+      rests on 108 settled Family A rows since 2026-06-29. His ruling that day: "Sign" — keep the 50%
+      hold cap, keep the board order (pooled verdict; one population's split is not adopted), no
+      orderliness demotion — display only. Thresholds are re-checked once per regime change
+      (methodology docs/analysis/394_coil_tuning_methodology_2026-07-11.md §4 card C3, the
+      quarterly-rule-review discipline): re-run the SAME probe once the settled population has grown
+      by one primary-gate increment, and see whether any of the three verdicts moved.
+    # The C1 probe's own tune-cohort filter, verbatim: Family A, settled (outcome AND realized_r),
+    # entries from the coil-finder's first scan day. 108 on 2026-10-03.
+    predicate_sql: >-
+      SELECT count(*) FROM mi_consolidation_entry_shadow
+      WHERE origin = 'family_a' AND outcome IS NOT NULL AND realized_r IS NOT NULL
+        AND entry_date >= DATE '2026-06-29';
+    # origin separates Family A from the 9M origin (excluded from the tune; 22 settled, composition
+    # only). entry_mode / stop_kind also separate different questions, but the probe splits those
+    # itself (three populations + a pooled check) — the predicate counts the pooled tune cohort.
+    discriminates_on: [mi_consolidation_entry_shadow.origin]
+    can_fire:
+      predicate_runs: "2026-10-03 - the C1 probe's TUNE COHORT line, same WHERE clause, run against prod by the probe itself: 108 settled family_a rows from 2026-06-29. This predicate is that filter as a count."
+      nonzero_possible: "Already nonzero (108). Rows are written by the Confirm scan in scheduler._consolidation_readiness_scan (job consolidation_readiness, registered at scheduler.py:6957, 17:35 ET Mon-Fri) and settled by _run_entry_shadow_settlement about 12 bars later; the Anticipate arm was parked 2026-08-09, so only Confirm accrues now."
+      lane_live: "Family A Confirm is a SHADOW lane (no money) and is recording: the probe's composition table shows Confirm entries through 2026-10-01 (154 rows, 139 settled). No paper or live rung exists for it, by design."
+      threshold_vs_observed: "128 against 108 today = the 108 the signed tables rest on plus the method's own primary-gate increment of 20. Only Confirm accrues: 41 settled since 06-29 across about 11.5 weeks, roughly 3.5 a week, so +20 lands in about 6 weeks - which is the date floor (2026-11-14). Whichever of the two binds later governs; if Confirm slows the count binds and this simply waits."
+      era_scoped: "YES - entry_date >= 2026-06-29 is IN the predicate: the coil-finder became the live base on 2026-06-27 (first Mon-Fri scan 06-29), older rows measured a different base. Other boundaries inside the window, all stated for the re-run to split on rather than blend: 2026-07-14 Confirm re-wire + shadow-fix pack (stop geometry); 2026-08-09 Anticipate parked (anticipate rows stop at 08-07); 2026-10-03 the pinned-buyout screen now keeps a stock off the board AND off entries while its price stays pinned (rows before that may include a few pinned buyouts)."
+      population_actionable: "The action re-runs the probe, whose cohort filter is exactly this WHERE (family_a, settled with realized_r, since 06-29) and which splits it into the three entry populations plus a pooled check itself. A pooled count of 128 can still leave a decisive cell under the method's N>=10 floor (the Anticipate arms no longer grow) - that knob then stays UNCHANGED by the method's own per-knob rule, which is the correct outcome, not a failure of the trigger."
+      instrument_trusted: "mi_consolidation_entry_shadow (origin, entry_mode, stop_kind, outcome, realized_r, entry_date) read READ-ONLY by scripts/probes/_394_coil_tune.py, plus mi_daily_closes bars. Trusted as of 2026-10-03: the probe printed composition first, 0 skipped rows in every population, 0 anchor mismatches and 0 retrace breaches in the fidelity line, 0 NULL-open gap days dropped. Known limits it printed: 1 row with stop >= entry (APGE 2026-06-29, ALARM line); realized_r is the legacy 5-day harvest horizon, not the 12-bar one."
+    threshold: 128
+    earliest_review_date: 2026-11-14
+    status: pending
+    action_when_ready: |
+      1. ONE capture, never re-run to re-read (COST rule): pipe scripts/probes/_394_coil_tune.py into
+         the market container, full output to scripts/probes/_394/coil_tune_out_<date>.txt:
+         ssh apollo@87.99.134.162 "docker exec -i apollo-market python -" < scripts/probes/_394_coil_tune.py
+         Read the composition table first (a surprising trait is an alarm), then the per-knob verdicts.
+         The probe imports the live orderliness score (anticipation.orderliness_score), so it must run
+         AFTER the C2 deploy that put that function in the image.
+      2. Compare each verdict to the signed 2026-10-03 reading: hold cap KEEP 50%, board order KEEP
+         (pooled; anticipate/structural_low alone would adopt the rmv-led order), orderliness NO-DEMOTE.
+      3. If nothing moved: log the new reading in ADR 0013's change log, set this review's
+         earliest_review_date +6 weeks and its threshold to the new settled count +20 (NOT a close).
+      4. If ANY knob's verdict moved (a cap move, an order adoption, a demotion): that is a detection
+         / ranking change on a signed rule - surface the tables and a one-line recommendation to him
+         and STOP. Nothing is applied on this review's authority (THE LINE; CHANGE_PROCESS needs his
+         sign-off on the tables, as on 2026-10-03). The display of the score stays regardless.
+    added_on: 2026-10-03
+    cross_refs: ["task #394", "docs/analysis/394_coil_tuning_methodology_2026-07-11.md"]

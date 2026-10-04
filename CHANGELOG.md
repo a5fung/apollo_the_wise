@@ -1,3 +1,11 @@
+### 2026-10-03 — #394 C2: the coil board shows how gappy each base is (display only); the tune changed no knob
+
+- **Operator "Sign" on the C1 tune tables:** keep the 50% hold cap, keep the board order (pooled verdict), no orderliness demotion → Phase 1 only. ADR 0013 change log 2026-10-03 "#394 C2" carries the signed verdict lines verbatim; the methodology doc's status line is flipped.
+- **Shipped:** `mi_anticipation_consolidation.orderliness` (nullable FLOAT, CREATE TABLE + idempotent ALTER) = P95 overnight gap over the base ÷ ATR14%, written by the nightly scan; `/anticipation` coiling AND post-runup lines end `overnight gaps 0.8× daily range`. The definition MOVED VERBATIM from the C1 probe into `anticipation.orderliness_score`; the probe imports it (one definition). `db_rows_to_bars` now flags a NULL open (`o_missing`) so a NULL open is dropped, never read as a close-to-close gap.
+- **Not changed (pinned by tests):** cap, board ORDER BY, admission (score computed after every gate; a scoring failure is logged and leaves the coil admitted, unscored), Confirm entries, M&A screen.
+- **C3 re-arm:** data-gated review `coil_tune_rerun_394` (>= 128 settled Family A rows since 06-29, not before 2026-11-14) re-runs the probe; a moved verdict goes to him, nothing applies on its own.
+- **Deploy scope (NOT deployed here): `market-agent` THEN `execution`** — `db.py`, `scheduler.py`, `agent.py` are in `scripts/exec_loaded_modules.txt` (no new module, list unchanged); `anticipation.py`, the probe, yaml and docs are market-agent only. The ALTER runs at market-agent boot.
+
 ### 2026-10-03 — #691: the monthly sweep stops asking him to open reports with nothing to act on, and its `/audit` pointers work
 
 - 🔴 **Seven of the twelve sweep checks (#50 #53 #54 #77 #78 #88 #94) landed in "output not auto-classified — open /audit" every month, and `/audit <check>` answered "Unknown audit topic" for every check.** Operator 2026-10-01: *"Any action from this?"* Two causes beyond the missing markers: the classifier read a 25-line summary (the #88 and #94 verdicts sit after 40+ lines and never reached it), and no check's output was stored anywhere (the sweep kept a summary in memory, Telegrammed a digest, discarded it) — the task text assumed "an audit row per script" that did not exist.
