@@ -28,9 +28,10 @@ B tombstone claimed the theme was "absorbed/superseded" by the re-homing TARGET 
 because the engine-drop block reads "'<home>' -> '<target>'" as a successor pointer and a B candidate
 is, by design, still on the board when re-homing runs. The first build's e2e test hid it by returning
 [] from the audit read. `test_runs_after_rehoming…` now feeds the real row and is RED on 0d487cb0 on
-behaviour (parent_theme == the AI theme) and green after; `test_a_home_rehoming_emptied…` is a
-preservation test (green on 0d487cb0 — the pointer is #491's designed case) reddened by the mutation
-"blanket-skip the successor for every B name".
+behaviour (parent_theme == the AI theme) and green after; `test_a_home_rehoming_emptied…` is HALF
+preservation: on 0d487cb0 its `parent_theme == target` assertion already holds (the pointer is #491's
+designed case) and its rule-B NOTE assertion is new (fails there on the old "absorbed/superseded"
+text); the mutation "blanket-skip the successor for every B name" reddens it on parent_theme (None).
 """
 from __future__ import annotations
 
@@ -269,8 +270,9 @@ def test_a_home_rehoming_emptied_to_zero_keeps_the_rehoming_target_as_successor(
     """The ONE case the re-homing pointer is true for a B-retired theme: re-homing moved EVERY
     member out (#491's "a home emptied by its members leaving points at where they went"). B then
     retires the 0-member shell tonight and the tombstone keeps parent_theme = the target — the
-    same pointer the Step 4 cap drop writes for it with the toggle OFF. Preservation test (green
-    on the first build); reddened by blanket-skipping the successor for every B name."""
+    same pointer the Step 4 cap drop writes for it with the toggle OFF. On 0d487cb0 the pointer
+    assertion holds and the note assertion is new (red there on the generic "absorbed" text);
+    blanket-skipping the successor for every B name reddens it on parent_theme (None)."""
     moves = ["CIFR", "HUT", "WULF"]
     audit_rows = [_rehome_audit_row(PIVOT, AI, tk) for tk in moves]
     saved, audits, order = _drive_with_rehome(monkeypatch, small_fading_on=True,
