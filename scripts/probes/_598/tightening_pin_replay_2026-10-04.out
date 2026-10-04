@@ -1,0 +1,4 @@
+TIGHTENING ticker-days since 2026-07-06: 134 over 57 scan dates; distinct tickers 40
+backstop would downgrade 2 ticker-days, 1 distinct: ['FBRX']
+   ('2026-08-06', 'FBRX', 'mature', {'median_range_pct': 0.0028758169934640374, 'band_pct': 0.004175256386837416, 'vol_spike_x': 23.27401098938517, 'sticky_from_session': 0})
+   ('2026-08-07', 'FBRX', 'mature', {'median_range_pct': 0.002610966057441105, 'band_pct': 0.004434011476264857, 'vol_spike_x': 22.94916504865884, 'sticky_from_session': 0})
