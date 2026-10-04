@@ -2348,36 +2348,23 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     f"stop restored to {trade_row['remaining_shares']} sh"
                 )
             except Exception as e:
-                # ⚖ #687 RULING (iii), operator 2026-10-02: the restore refused because the price
-                # is already through the stop → sell the free shares at market, as the triggered
-                # stop would have (ruling (3)'s recognition, sizing and sale; it pages itself). The
-                # reduced stop this path just cancelled is excluded from the broker's held count.
-                # No lock here, as ruling (3)'s full-exit sibling below. Nothing free / the sale
-                # fails / any other refusal → today's page.
+                # #687 ruling (iii): price through the stop → sell at market (see
+                # `_sell_at_market_for_refused_stop`), excluding the reduced stop this path just
+                # cancelled. Nothing sold → today's page.
                 from agents.market_intelligence.broker.order_manager import (
-                    _is_stop_above_market,
                     _sell_at_market_for_refused_stop,
                 )
-                if _is_stop_above_market(e):
-                    sold = await _sell_at_market_for_refused_stop(
+                if await _sell_at_market_for_refused_stop(
                         trade_row["id"], trade_row["ticker"], account_mode,
                         stop_price=restore_price,
-                        site="trade_stream.partial_exit_cancel_restore", error=str(e),
-                        exclude_ids=(trade_row["stop_order_id"],),
+                        site="trade_stream.partial_exit_cancel_restore", refusal=e,
+                        exclude_ids=(trade_row["stop_order_id"],), clear_stop_pointer=True,
                         context=f"The partial sale did not fill ({event_norm}), and the stop "
-                                f"for the remaining shares could not be put back.")
-                    if sold:
-                        # The cancelled reduced stop must not stay as the pointer, or the
-                        # 16:05/21:00 sync reads it as a dead stop and pages NAKED (#401).
-                        await set_stop_order_id(
-                            trade_row["id"], None,
-                            reason="stop_breach_sold_at_market",
-                            account_mode=account_mode,
-                        )
-                        logger.warning(
-                            f"WS [{account_mode}]: partial exit {event_norm} for {symbol}, "
-                            f"stop breached — market sale placed")
-                        return
+                                f"for the remaining shares could not be put back."):
+                    logger.warning(
+                        f"WS [{account_mode}]: partial exit {event_norm} for {symbol}, "
+                        f"stop breached — market sale placed")
+                    return
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}🚨 *PARTIAL EXIT {event_norm.upper()} + "
                     f"STOP RESTORE FAILED* for {symbol}!\n{e}\n"

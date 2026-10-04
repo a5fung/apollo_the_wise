@@ -1461,10 +1461,9 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
         # Re-place stop
         success = await update_stop(trade["id"], stop_price)
         if success is _om.STOP_SOLD_AT_MARKET:
-            # ⚖ #687 ruling (iii), operator 2026-10-02: the price was already through the stop,
-            # so `update_stop` sold the free shares at market and paged that sale itself. Not a
-            # gap to page "No stop on X" for — at 09:35 the sale fills in milliseconds and the
-            # broker re-check below would find neither a stop nor a covering order.
+            # #687 ruling (iii): price through the stop → `update_stop` sold at market and paged
+            # it. Not a "No stop on X" gap: the sale fills in milliseconds, so the broker re-check
+            # below would find neither a stop nor a covering order.
             sold_at_market.append(ticker)
         elif success:
             refreshed += 1

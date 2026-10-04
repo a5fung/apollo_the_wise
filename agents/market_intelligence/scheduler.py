@@ -2094,6 +2094,7 @@ async def _stop_ack_timeout_watchdog_job():
     from agents.market_intelligence.constants import mode_prefix
     from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: moves-with-job (W2)
     from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+        _sell_at_market_for_refused_stop,
         _trade_advisory_try_lock,
     )
     pool = await get_pool()
@@ -2335,35 +2336,28 @@ async def _stop_ack_timeout_watchdog_job():
                         f"stop-leg likely failed silently on Alpaca side."
                     )
                 except Exception as stop_err:
-                    # ⚖ #687 RULING (iii), operator 2026-10-02: the fallback stop refused because
-                    # the price is already through it → sell the free shares at market, as the
-                    # triggered stop would have (ruling (3)'s recognition + sizing + sale; pages
-                    # itself). Under this watchdog's per-trade try-lock (#687 e). Nothing free / the
-                    # sale fails → today's CRITICAL page below, unchanged.
-                    from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
-                        _is_stop_above_market,
-                        _sell_at_market_for_refused_stop,
-                    )
-                    sold = (await _sell_at_market_for_refused_stop(
+                    # #687 ruling (iii): price through the fallback stop → sell at market (see
+                    # `_sell_at_market_for_refused_stop`), under this watchdog's per-trade
+                    # try-lock. Nothing sold → today's CRITICAL page below.
+                    sold = await _sell_at_market_for_refused_stop(
                         trade_id, ticker, account_mode, stop_price=stop_target,
-                        site="scheduler.stop_ack_watchdog", error=str(stop_err))
-                        if _is_stop_above_market(stop_err) else None)
+                        site="scheduler.stop_ack_watchdog", refusal=stop_err)
                     if sold:
-                        _sold_order, _sold_qty = sold
+                        sold_order, sold_qty = sold
                         # In the dedup set above: one remediation per (trade, day) — the next
                         # 30-second tick does not act again.
                         await log_audit_event(
                             "stop_ack_breach_sold_at_market",
                             f"{ticker} #{trade_id}: stop-ACK timeout; fallback stop "
                             f"${stop_target:.2f} refused — the price is already through it; "
-                            f"{_sold_qty} sh sold at market order={_sold_order['id']}",
+                            f"{sold_qty} sh sold at market order={sold_order['id']}",
                             detail=_json.dumps({
                                 "trade_id": trade_id,
                                 "ticker": ticker,
                                 "account_mode": account_mode,
                                 "stop_target": stop_target,
-                                "sold_qty": _sold_qty,
-                                "sale_order_id": _sold_order["id"],
+                                "sold_qty": sold_qty,
+                                "sale_order_id": sold_order["id"],
                                 "stop_error": f"{type(stop_err).__name__}: {str(stop_err)[:200]}",
                             }),
                         )

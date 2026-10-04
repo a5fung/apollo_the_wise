@@ -619,7 +619,8 @@ async def test_dedupe_the_shared_path_itself_sizes_zero_in_each_state():
 
     def _call():
         return om._sell_at_market_for_refused_stop(
-            401, "KOD", "live", stop_price=58.0, site="test.dedupe", error=BREACH)
+            401, "KOD", "live", stop_price=58.0, site="test.dedupe",
+            refusal=Exception(BREACH))
 
     # (a) the queued sale holds the shares at the broker
     w = _ruling3_sold_world()

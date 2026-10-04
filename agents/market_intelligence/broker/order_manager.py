@@ -2209,13 +2209,9 @@ async def _apply_reprotect_floor(
 
 
 class _StopSoldAtMarket:
-    """`update_stop`'s return when the stop could not be placed because the price is already
-    through it and the free shares were SOLD AT MARKET instead (#687 ruling (iii)).
-
-    FALSY on purpose — no stop was placed, so every caller reading the result as "placed?" stays
-    correct — and told apart by identity (`is STOP_SOLD_AT_MARKET`) where it matters: the stop
-    refresh must not page "No stop on X" for a position whose sale already went out (at 09:35 the
-    sale fills in milliseconds, so the broker re-check finds neither a stop nor a covering order)."""
+    """`update_stop`'s return when the price was through the stop and the free shares were SOLD AT
+    MARKET instead (#687 ruling (iii)). FALSY — no stop was placed, so "placed?" readers stay
+    correct; the stop refresh tells it apart by identity so it does not page "No stop on X"."""
     __slots__ = ()
 
     def __bool__(self) -> bool:
@@ -2253,11 +2249,9 @@ async def update_stop(
     None (the morning stop-refresh call site) makes describe_stop_move infer a
     label from the prices themselves.
 
-    ⚖ #687 ruling (iii), operator 2026-10-02: when BOTH placement attempts fail and the
-    second is the broker's "price already through the stop" refusal, the free shares are
-    sold at market (`_sell_at_market_for_refused_stop`) and this returns the falsy
-    `STOP_SOLD_AT_MARKET` instead of False. A raise refused this way means the trail
-    WOULD have triggered at the new level.
+    ⚖ #687 ruling (iii): when the second attempt is refused because the price is already
+    through the stop, the free shares are sold at market and this returns the falsy
+    `STOP_SOLD_AT_MARKET` instead of False.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -2502,44 +2496,30 @@ async def update_stop(
             )
         except Exception as e2:
             logger.error(f"Stop re-placement also failed for {ticker}: {e2}")
-            # ⚖ #687 RULING (iii), operator 2026-10-02: the TERMINAL refusal is "the price is
-            # already through the stop" → sell the free shares at market, as the triggered stop
-            # would have. On a trail raise it means the trail WOULD have triggered at the new level;
-            # on a re-place (the refresh) it is ruling (3)'s case exactly. The old stop is gone (we
-            # cancelled it), so it is excluded from the broker's held count only when our cancel
-            # went through. No lock here (none is held today; the sale replaces the placement in
-            # the same context). Nothing free / the sale fails / any other refusal → the NAKED
-            # path below, unchanged.
-            if _is_stop_above_market(e2):
-                try:
-                    sold = await _sell_at_market_for_refused_stop(
-                        trade_id, ticker, account_mode, stop_price=float(new_stop_price),
-                        site="order_manager.update_stop", error=str(e2),
-                        exclude_ids=(old_stop_id,) if (old_stop_id and cancel_ok) else (),
-                        context=(f"It was a stop raise (from ${old_stop_price:.2f}) — the trail would "
-                                 f"have triggered at the new level."
-                                 if old_stop_price is not None
-                                 and new_stop_price > old_stop_price + 0.01 else None),
-                    )
-                except Exception as sale_err:
-                    # The sale path itself raised (e.g. its order-row insert failed AFTER the broker
-                    # accepted the sale). It must never escape into the 16:45 trail loop, which has
-                    # no per-trade try and would skip every later trade: log it loudly and fall
-                    # through to the NAKED path below, which pages him to check the broker.
-                    logger.error(
-                        "update_stop %s: the market sale after a refused stop raised (%s) — the "
-                        "broker may hold a sale our books lack; paging through the naked path",
-                        ticker, sale_err, exc_info=True)
-                    sold = False
-                if sold:
-                    # Same pointer state as the naked path: the cancelled stop's id must not stay
-                    # behind, or the 16:05/21:00 sync reads it as a dead stop and pages NAKED (#401).
-                    await set_stop_order_id(
-                        trade_id, None,
-                        reason="stop_breach_sold_at_market",
-                        account_mode=account_mode,
-                    )
-                    return STOP_SOLD_AT_MARKET
+            # #687 ruling (iii): price through the stop → sell at market (see
+            # `_sell_at_market_for_refused_stop`). The cancelled stop is excluded from the broker's
+            # held count only when our cancel went through.
+            try:
+                sold = await _sell_at_market_for_refused_stop(
+                    trade_id, ticker, account_mode, stop_price=float(new_stop_price),
+                    site="order_manager.update_stop", refusal=e2,
+                    exclude_ids=(old_stop_id,) if (old_stop_id and cancel_ok) else (),
+                    clear_stop_pointer=True,
+                    context=(f"It was a stop raise (from ${old_stop_price:.2f}) — the trail would "
+                             f"have triggered at the new level."
+                             if old_stop_price is not None
+                             and new_stop_price > old_stop_price + 0.01 else None),
+                )
+            except Exception as sale_err:
+                # Never escape into the 16:45 trail loop (no per-trade try there): log loudly and
+                # take the NAKED path below, which pages him to check the broker.
+                logger.error(
+                    "update_stop %s: the market sale after a refused stop raised (%s) — the "
+                    "broker may hold a sale our books lack; paging through the naked path",
+                    ticker, sale_err, exc_info=True)
+                sold = None
+            if sold:
+                return STOP_SOLD_AT_MARKET
             # Null stop_order_id so sync_positions Path C (4:05 PM + 9:00 PM)
             # can detect the orphan and remediate. Leaving the stale ID in place
             # silently masks the naked state and blocks Path C's orphan check.
@@ -4966,8 +4946,7 @@ async def _sell_free_shares_after_stop_breach(
     restore as above the market (`_is_stop_above_market`). The exit rule had already decided to
     sell. Sells `qty` = the restore's own count (the broker's free shares — a resting +8R
     profit-take third keeps its own OCO). A `full_exit` row, so the fill commits through
-    `finalize_full_exit`. ⚖ Ruling (iii), operator 2026-10-02: the six OTHER stop-placing sites
-    reach this through `_sell_at_market_for_refused_stop` (below), which sizes and pages for them.
+    `finalize_full_exit`. Ruling (iii)'s sites reach this through `_sell_at_market_for_refused_stop`.
     Returns the broker order, or None when the sale itself failed (the caller then pages
     UNPROTECTED, as before)."""
     try:
@@ -5011,37 +4990,34 @@ async def _sell_free_shares_after_stop_breach(
 
 async def _sell_at_market_for_refused_stop(
     trade_id: int, ticker: str, account_mode: str, *,
-    stop_price: float, site: str, error: str, exclude_ids=(), context: str | None = None,
+    stop_price: float, site: str, refusal: "BaseException | None", exclude_ids=(),
+    clear_stop_pointer: bool = False, context: str | None = None,
 ) -> "tuple[dict, int] | None":
-    """⚖ #687 RULING (iii), operator 2026-10-02 ("the rest is ok" to extending ruling (3)): at the
-    six OTHER stop-placing sites, a stop the broker refuses BECAUSE the price is already through it
-    → the free shares are SOLD AT MARKET, as the triggered stop would have.
+    """⚖ #687 RULING (iii), operator 2026-10-02 ("the rest is ok" to extending ruling (3)): a stop
+    the broker refuses BECAUSE the price is already through it → the free shares are SOLD AT
+    MARKET, as the triggered stop would have. Ruling (3)'s own two sites call
+    `_sell_free_shares_after_stop_breach` directly; the sites that hand their refusal here, and the
+    placements deliberately left out, are listed in docs/setups/exit_discipline.md (2026-10-03).
 
-    Callers reach this ONLY after `_is_stop_above_market(e)` on their own placement refusal — the
-    exact recognition ruling (3) uses; any other refusal never gets here. Sites: the coverage
-    reconciler's place branch (`_ensure_stop_coverage_outcome` — and through it the OCO-cancel
-    handler, the sync's coverage pass, the coverage retry and the 17:00/19:00 coverage slots), the
-    sync orphan repair, `update_stop`, the stop-ACK watchdog's fallback, the stream's partial-exit
-    restore. Ruling (3)'s own two sites (`_restore_stop_after_failed_exit`, the stream's full-exit
-    restore) are unchanged and call `_sell_free_shares_after_stop_breach` directly.
+    `refusal` is the placement's exception. Anything `_is_stop_above_market` does not recognise
+    (or None) returns None at once, so callers need no guard of their own.
 
-    SIZING — ruling (3)'s: `_broker_free_qty_for_restore` (the broker position minus the shares
-    live resting sell orders hold; a resting +8R profit-take third keeps its OCO). Its database
-    fallback is re-read HERE, at sale time (`remaining − pending exits` on a still-open row, else
-    0), never the count the caller computed before the refusal. That is the de-dupe: a sale already
-    placed by any site is (a) a live sell order holding the shares at the broker, (b) a pending
-    `full_exit` row in the books, and (c) once filled, a closed row — each reads as 0 free here, so
-    a second site in the same tick sells nothing.
+    SIZING — ruling (3)'s `_broker_free_qty_for_restore`, its database fallback re-read HERE at
+    sale time (`remaining − pending exits` on a still-open row, else 0). That is the de-dupe: a
+    sale already placed by any site holds the shares at the broker, is a pending `full_exit` row,
+    or has closed the row — each reads as 0 free, so a second site in the same tick sells nothing.
 
-    The SALE — ruling (3)'s helper unchanged: `close_position(qty)` on the trade's own account
-    client, a `full_exit` row labelled `stop_hit` (the sale stands in for the triggered stop), the
-    `stop_breach_market_sale` audit. Outside market hours the order queues for the next open and
-    sells at the opening price — the same property ruling (3) has.
+    The SALE is ruling (3)'s helper unchanged (`full_exit` row labelled `stop_hit`; outside market
+    hours it queues for the next open). It PAGES itself: some callers discard the message they get
+    back, and a real-money sale is never silent. `clear_stop_pointer` nulls `stop_order_id` after
+    the sale, for callers that cancelled the stop it named (else the 16:05/21:00 sync reads the
+    dead id and pages NAKED, #401).
 
-    PAGES the sale itself: some callers discard the message they get back (the 17:00/19:00
-    coverage slots re-check the broker, which counts our queued sale as coverage), and a real-money
-    sale is never silent. Returns `(order, qty)` when a sale was placed; None when nothing is free
-    or the sale failed — the caller then does exactly what it did before ruling (iii)."""
+    Returns `(order, qty)` when a sale was placed; None otherwise — the caller then does exactly
+    what it did before ruling (iii)."""
+    if refusal is None or not _is_stop_above_market(refusal):
+        return None
+    error = str(refusal)
     fallback = 0.0
     try:
         pool = await get_pool()
@@ -5080,6 +5056,9 @@ async def _sell_at_market_for_refused_stop(
         + (f"\n{context}" if context else "")
         + "\n_Confirms with real P&L on fill._"
     ), parse_mode="HTML")
+    if clear_stop_pointer:
+        await set_stop_order_id(
+            trade_id, None, reason="stop_breach_sold_at_market", account_mode=account_mode)
     return order, qty
 
 
@@ -7234,37 +7213,34 @@ async def _ensure_stop_coverage_outcome(
             )
         except Exception as e:
             if _is_stop_above_market(e):
-                # ⚖ #687 RULING (iii), operator 2026-10-02: the price is already through the
-                # stop → sell the free shares at market, as the triggered stop would have. Under
-                # this function's per-trade try-lock (held since the top). Reached by every caller
-                # of the reconciler — the OCO-cancel handler, the sync's coverage pass, the
-                # coverage retry, the 17:00/19:00 coverage slots, the partial-exit re-protects.
-                # Nothing free / the sale fails → main's converge-and-page below, unchanged.
+                breach = {
+                    "trade_id": trade_id, "ticker": ticker,
+                    "account_mode": account_mode,
+                    "intended_stop_price": place_price,
+                    "db_stop_price": _db_stop_price_f,
+                    "target_qty": target, "error": str(e),
+                }
+                # #687 ruling (iii): sell at market first (see `_sell_at_market_for_refused_stop`),
+                # under this function's per-trade try-lock. Nothing sold → the converge below.
                 sold = await _sell_at_market_for_refused_stop(
                     trade_id, ticker, account_mode, stop_price=place_price,
-                    site="order_manager.ensure_stop_coverage", error=str(e))
+                    site="order_manager.ensure_stop_coverage", refusal=e)
                 if sold:
-                    _sold_order, _sold_qty = sold
+                    sold_order, sold_qty = sold
                     # Still the breach row: `retry_failed_coverage_repairs` reads it to stop
                     # re-driving a stop that cannot be placed.
                     await log_audit_event(
                         "stop_coverage_breach",
                         f"{ticker}: stop ${place_price:.2f} would sit above market — position "
-                        f"through the stop; {_sold_qty} sh sold at market (#687 ruling (iii)).",
-                        json.dumps({
-                            "trade_id": trade_id, "ticker": ticker,
-                            "account_mode": account_mode,
-                            "intended_stop_price": place_price,
-                            "db_stop_price": _db_stop_price_f,
-                            "target_qty": target, "error": str(e),
-                            "sold_qty": _sold_qty, "sale_order_id": _sold_order["id"],
-                        }),
+                        f"through the stop; {sold_qty} sh sold at market (#687 ruling (iii)).",
+                        json.dumps({**breach, "sold_qty": sold_qty,
+                                    "sale_order_id": sold_order["id"]}),
                     )
                     return CoverageOutcome(
                         COVERAGE_REPAIRED,
                         f"🚨 {ticker}: stop ${place_price:.2f} is ABOVE market — the price is "
-                        f"already through it, so {_sold_qty} sh are being SOLD AT MARKET "
-                        f"(order {str(_sold_order['id'])[:8]}), as the triggered stop would have.",
+                        f"already through it, so {sold_qty} sh are being SOLD AT MARKET "
+                        f"(order {str(sold_order['id'])[:8]}), as the triggered stop would have.",
                         "stop_breach_sold_at_market",
                     )
                 # BREACH: the protective trigger is at/above current price. NOT
@@ -7274,13 +7250,7 @@ async def _ensure_stop_coverage_outcome(
                     "stop_coverage_breach",
                     f"{ticker}: stop ${place_price:.2f} would sit above market — "
                     f"position through the stop. Operator action required (no auto-exit).",
-                    json.dumps({
-                        "trade_id": trade_id, "ticker": ticker,
-                        "account_mode": account_mode,
-                        "intended_stop_price": place_price,
-                        "db_stop_price": _db_stop_price_f,
-                        "target_qty": target, "error": str(e),
-                    }),
+                    json.dumps(breach),
                 )
                 logger.error(
                     f"_ensure_stop_coverage: BREACH for {ticker} — stop "
@@ -8583,23 +8553,17 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
                 logger.warning(f"sync_positions: stop remediation attempt {attempt}/3 failed for {ticker}: {e}")
                 if attempt < 3:
                     await asyncio.sleep(2 ** attempt)  # 2s, 4s
-        # ⚖ #687 RULING (iii), operator 2026-10-02: the LAST attempt refused because the price is
-        # already through the stop → sell the free shares at market, as the triggered stop would
-        # have (ruling (3)'s recognition, sizing and sale; it pages itself). The dead stop was
-        # cleared above, so nothing is excluded. No lock here (none is held today; the sale
-        # replaces the placement in the same context). Nothing free / the sale fails / any other
-        # refusal → today's "failed to remediate" below. This sync's own coverage pass then sees
-        # the sale as a pending exit and places nothing.
-        sold = None
-        if not new_order and last_err is not None and _is_stop_above_market(last_err):
-            sold = await _sell_at_market_for_refused_stop(
-                trade["id"], ticker, account_mode, stop_price=float(stop),
-                site="order_manager.sync_orphan_remediation", error=str(last_err))
+        # #687 ruling (iii): the LAST attempt refused because the price is through the stop → sell
+        # at market (see `_sell_at_market_for_refused_stop`). The dead stop was cleared above, so
+        # nothing is excluded; this sync's own coverage pass then sees the sale as a pending exit.
+        sold = None if new_order else await _sell_at_market_for_refused_stop(
+            trade["id"], ticker, account_mode, stop_price=float(stop),
+            site="order_manager.sync_orphan_remediation", refusal=last_err)
         if sold:
-            _sold_order, _sold_qty = sold
+            sold_order, sold_qty = sold
             msg = (f"🚨 Orphaned position {ticker}: the stop ${stop:.2f} is above the market (the "
-                   f"price is already through it) — {_sold_qty} sh being SOLD AT MARKET (order "
-                   f"{str(_sold_order['id'])[:8]}), as the triggered stop would have")
+                   f"price is already through it) — {sold_qty} sh being SOLD AT MARKET (order "
+                   f"{str(sold_order['id'])[:8]}), as the triggered stop would have")
             discrepancies.append(msg)
             logger.warning(f"sync_positions: {ticker} orphan stop breached — market sale placed "
                            f"trade_id={trade['id']}")
