@@ -4,7 +4,7 @@ WHY (cut-back round, 2026-10-02). Three review rounds added defence-in-depth to 
 did not converge. The criterion that ended it: a change to these paths may differ from main ONLY where
 a fix or an operator ruling says so, each difference named and pinned to its exact value.
 
-HISTORY. Until 2026-10-04 the baseline was the pre-#687 code (97b08d51) and the allow-list named the
+HISTORY. Until 2026-10-03 the baseline was the pre-#687 code (97b08d51) and the allow-list named the
 #687 fixes (a)-(f), the 61a6c479 sync hunk and the rulings (1)-(3), (ii), (iv) — 17 entries; that
 version is in git (`git log -p -- tests/test_687_toggle_off_convergence.py`). #687 merged and deployed
 2026-10-03 (a88a8043), so main IS that behaviour now: the baseline was RE-PINNED to origin/main
@@ -62,6 +62,59 @@ INERT_WITH_THE_TOGGLE_OFF = {
 # broker_calls / pages / result / raised = the exact branch value; book_after = the fields that
 # differ from the baseline book (trades) or the whole exit-order list (orders).
 ALLOWED = {
+    's32_coverage_reconciler_place_through_the_price': {
+        'why': "ruling (iii) 2026-10-02 — sell at market at the coverage reconciler (_ensure_stop_coverage's place branch)",
+        'broker_calls': [
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "close_position(account_mode='live', qty=10, ticker='KOD')",
+        ],
+        'pages': [
+            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $58.00 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
+        ],
+        'result': '🚨 KOD: stop $58.00 is ABOVE market — the price is already through it, so 10 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have.',
+        'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
+    },
+    's33_sync_orphan_remediation_through_the_price': {
+        'why': "ruling (iii) 2026-10-02 — sell at market at the coverage reconciler (the sync's coverage pass, after its orphan repair failed)",
+        'broker_calls': [
+            "get_all_positions(account_mode='live', raise_on_error=False)",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_2', qty=10, side='sell', stop_price=58, ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_3', qty=10, side='sell', stop_price=58, ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_4', qty=10, side='sell', stop_price=58, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "close_position(account_mode='live', qty=10, ticker='KOD')",
+        ],
+        'pages': [
+            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $58.00 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
+            '💰 LIVE-$ ⚠️ *Position Sync Discrepancies (live):*\n  • ⚠️ Failed to remediate orphaned stop for KOD after 3 attempts: {"code":42210000,"message":"stop price must be less than current price"}\n  • 🚨 KOD: stop $58.00 is ABOVE market — the price is already through it, so 10 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have.',
+        ],
+        'result': ['⚠️ Failed to remediate orphaned stop for KOD after 3 attempts: {"code":42210000,"message":"stop price must be less than current price"}', '🚨 KOD: stop $58.00 is ABOVE market — the price is already through it, so 10 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have.'],
+        'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
+    },
+    's38_oco_cancel_unfilled_restore_through_the_price': {
+        'why': 'ruling (iii) 2026-10-02 — sell at market at the OCO-cancel handler (its re-protect runs through the coverage reconciler)',
+        'broker_calls': [
+            "get_order(account_mode='live', order_id='leg-1', timeout=None)",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=2, side='sell', stop_price=60, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "close_position(account_mode='live', qty=2, ticker='KOD')",
+        ],
+        'pages': [
+            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $60.00 could not be placed — the broker refused it because the price is already below it. Selling 2 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
+            "💰 LIVE-$ ⚠️ *OCO CANCELLED:* KOD\nThe carve-out third's OCO died unfilled (both legs terminal) — re-protecting from broker truth.\n🚨 KOD: stop $60.00 is ABOVE market — the price is already through it, so 2 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have.",
+        ],
+        'book_after': {'orders': [{'exit_reason': None, 'id': 'oco-1', 'purpose': 'partial_exit', 'qty': 2, 'status': 'cancelled'}, {'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 2, 'status': 'accepted'}]},
+    },
 }
 
 
@@ -114,6 +167,13 @@ def test_the_allow_list_names_only_real_scenarios_and_says_why():
         assert name in _BASE["scenarios"], name
         assert entry.get("why") and set(entry) - {"why"} <= set(COMPONENTS), name
         assert set(entry) - {"why"}, f"{name}: an allow-list entry must name a component"
+
+
+def test_every_exception_from_main_is_ruling_iii():
+    """The change built on this baseline is ONE ruling: #687 (iii), operator 2026-10-02 — ruling
+    (3)'s sell-at-market extended to the other stop-placing sites. Nothing else may differ."""
+    for name, entry in ALLOWED.items():
+        assert entry["why"].startswith("ruling (iii) 2026-10-02 — sell at market at "), name
 
 
 @pytest.mark.parametrize("scenario", SCENARIOS)

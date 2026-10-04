@@ -349,6 +349,60 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-03 — #687 ruling (iii): a stop the broker refuses because the price is already through it → SELL AT MARKET at the other stop-placing sites too
+
+**Trigger**: his ruling (iii) of 2026-10-02 (PLAN.md #687): ruling (3) — *"a stop that cannot be placed because
+price is already through it → SELL AT MARKET, as a triggered stop would"* — was built 2026-10-01 only where a
+planned sale's cancelled stop is put back (`_restore_stop_after_failed_exit`, the stream's full-exit restore). The
+cut-back listed the other stop-placing sites as "not extended — his call"; his answer to extending it: YES, as a
+separate change after Saturday's ship ("the rest is ok" to the rec).
+
+**Evidence**: operator ruling, not a threshold. No price, size, target or trigger moved: the trigger is the
+broker's own refusal, recognised exactly as ruling (3) recognises it (`_is_stop_above_market` — "stop price must be
+less than current price"); any other refusal never reaches the sale.
+
+**Change** — one shared path, `order_manager._sell_at_market_for_refused_stop`, reached only after
+`_is_stop_above_market` on the site's own refusal:
+- SIZING is ruling (3)'s: `_broker_free_qty_for_restore` (the broker position minus the shares live resting sell
+  orders hold — a resting +8R profit-take third keeps its OCO), with its book fallback re-read at sale time
+  (`remaining − pending exits` on a still-open row, else 0). Nothing free → nothing sold, the site's own
+  behaviour stands (`stop_breach_sale_skipped` audit).
+- The SALE is ruling (3)'s helper unchanged (`_sell_free_shares_after_stop_breach`): `close_position(qty)` on the
+  trade's own account client, a `full_exit` row labelled `stop_hit` (the sale stands in for the triggered stop,
+  so its fill commits through `finalize_full_exit`), the `stop_breach_market_sale` audit. The sale failing →
+  `stop_breach_sale_failed` and the site's page exactly as before.
+- It PAGES the sale itself ("Price already below the stop: … selling N sh at market now"): the 17:00/19:00
+  coverage slots discard the reconciler's message and re-check the broker, which counts our queued sale as
+  coverage — so without its own page the sale would be silent there. Where a site also pages or digests, the sale
+  is mentioned twice; that is accepted.
+- **After hours** (the 16:05/21:00 sync, the 17:00/19:00 coverage slots, the 16:20 refresh, the 16:45 trail) the
+  market order queues and sells at the next open, at the opening price even on a gap back above the stop — the
+  same property ruling (3) has and his 09-29 auction ruling accepted. Not a new decision.
+- **De-dupe**: a sale already placed by any site — ruling (3)'s included — is (a) a live sell order holding the
+  shares at the broker, (b) a pending `full_exit` row in the books, (c) once filled, a closed row. Each reads as
+  0 free at the next site, and the sites' own guards stop earlier (the reconciler's `target ≤ 0.5`).
+
+The sites:
+1. **The coverage reconciler** (`_ensure_stop_coverage_outcome`, its place branch — no live stop, under-covered),
+   under its per-trade try-lock. Sold → `COVERAGE_REPAIRED`, reason `stop_breach_sold_at_market`, and still the
+   `stop_coverage_breach` row (the coverage retry stops on it). Nothing free / the sale fails → main's
+   `COVERAGE_FLAGGED` "Operator decision needed (no auto-exit)", unchanged. Every caller inherits it: the sync's
+   coverage pass, the coverage retry, the 17:00/19:00 coverage slots, the partial-exit re-protects, and site 6.
+6. **The OCO-cancel handler** (`trade_stream._handle_oco_parent_cancel`): its re-protect IS the reconciler, so it
+   sells through site 1; its page carries the reconciler's line. (Known wording: the partial-exit abort page
+   reads "No shares sold." above the reconciler's "SOLD AT MARKET" line — the partial sold nothing; the line
+   below is the breach sale. Left as is.)
+
+**Anticipated effect**: rare — it needs the price already below the stop a site is placing. When it happens, the
+free shares are sold instead of left with no stop and a page asking for a manual decision. No change on any day
+a stop is accepted, or refused for any other reason.
+
+**Reversion-flag**: REFINEMENT of the 2026-10-02 entry's ruling (3) (same rule, more sites, as he ruled).
+
+**Status**: built on branch `687-stop-breach-everywhere`, NOT merged or deployed. Tests:
+`tests/test_687_ruling_iii_stop_breach_everywhere.py`; convergence scenarios s32-s38 (baseline re-pinned to main
+8e1329f0; every difference from main allow-listed "ruling (iii) 2026-10-02 — sell at market at <site>").
+
 ### 2026-10-02 (later) — #687 ruling (ii): a PLAIN resting profit-take limit is left resting; the other shares follow the close-below sale
 
 **Trigger**: his rulings of 2026-10-02 on the four calls the cut-back listed (PLAN.md #687). Item (ii): a plain resting
@@ -446,7 +500,7 @@ already decided to sell there:
   reconciler `_ensure_stop_coverage` (still "operator decision needed — no auto-exit"), the sync orphan
   remediation (3 attempts, then "failed to remediate"), `update_stop` (both attempts fail → "STOP FAILED — position
   NAKED"), the stop-ACK watchdog's fresh-entry fallback, the stream's partial-exit restore and the OCO-cancel
-  handler. Listed for him.
+  handler. Listed for him. **→ RULED 2026-10-02 (iii): extended — change log 2026-10-03.**
 - Tests: `tests/test_687_ruling3_stop_through_price_sells.py` (9, incl. the reconciler still selling nothing).
   Mutations: restore breach branch off + stream breach branch off → 4 red.
 
@@ -480,6 +534,7 @@ call in `execute_full_exit` reddens 6 scenarios.
 - (ii) a plain resting profit-take LIMIT (no stop) beside a close-below sale: main's skip kept — skip vs cancel it
   and sell everything; **RULED 2026-10-02: neither — left resting, the other shares follow the exit** (entry above);
 - (iii) ruling (3) at the other stop-placing sites (listed under ruling (3)) — extend vs keep "page, no auto-exit";
+  **RULED 2026-10-02: extend** (built — change log 2026-10-03);
 - (iv) ruling (1): a partial loss counted on its own day is counted again inside `total_pnl` on the trade's close
   day — keep vs net it out. **RULED 2026-10-02: net it out — each realized dollar counts once, on its own day**
   (`docs/setups/safeguards.md` item 5 + its 2026-10-02 entry).

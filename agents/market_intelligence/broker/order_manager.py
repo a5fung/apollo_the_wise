@@ -4902,9 +4902,10 @@ async def _sell_free_shares_after_stop_breach(
     restore as above the market (`_is_stop_above_market`). The exit rule had already decided to
     sell. Sells `qty` = the restore's own count (the broker's free shares — a resting +8R
     profit-take third keeps its own OCO). A `full_exit` row, so the fill commits through
-    `finalize_full_exit`. Every other stop-placing site keeps main's behaviour (his call: not
-    covered by the ruling as built). Returns the broker order, or None when the sale itself
-    failed (the caller then pages UNPROTECTED, as before)."""
+    `finalize_full_exit`. ⚖ Ruling (iii), operator 2026-10-02: the six OTHER stop-placing sites
+    reach this through `_sell_at_market_for_refused_stop` (below), which sizes and pages for them.
+    Returns the broker order, or None when the sale itself failed (the caller then pages
+    UNPROTECTED, as before)."""
     try:
         order = await alpaca.close_position(ticker, qty=int(qty), account_mode=account_mode)
     except Exception as e:   # loud-ok: returned None — the caller pages UNPROTECTED
@@ -4942,6 +4943,80 @@ async def _sell_free_shares_after_stop_breach(
                     "order_id": order["id"], "reason": reason, "stop_error": error[:300]}),
     )
     return order
+
+
+async def _sell_at_market_for_refused_stop(
+    trade_id: int, ticker: str, account_mode: str, *,
+    stop_price: float, site: str, error: str, exclude_ids=(), context: str | None = None,
+) -> "tuple[dict, int] | None":
+    """⚖ #687 RULING (iii), operator 2026-10-02 ("the rest is ok" to extending ruling (3)): at the
+    six OTHER stop-placing sites, a stop the broker refuses BECAUSE the price is already through it
+    → the free shares are SOLD AT MARKET, as the triggered stop would have.
+
+    Callers reach this ONLY after `_is_stop_above_market(e)` on their own placement refusal — the
+    exact recognition ruling (3) uses; any other refusal never gets here. Sites: the coverage
+    reconciler's place branch (`_ensure_stop_coverage_outcome` — and through it the OCO-cancel
+    handler, the sync's coverage pass, the coverage retry and the 17:00/19:00 coverage slots), the
+    sync orphan repair, `update_stop`, the stop-ACK watchdog's fallback, the stream's partial-exit
+    restore. Ruling (3)'s own two sites (`_restore_stop_after_failed_exit`, the stream's full-exit
+    restore) are unchanged and call `_sell_free_shares_after_stop_breach` directly.
+
+    SIZING — ruling (3)'s: `_broker_free_qty_for_restore` (the broker position minus the shares
+    live resting sell orders hold; a resting +8R profit-take third keeps its OCO). Its database
+    fallback is re-read HERE, at sale time (`remaining − pending exits` on a still-open row, else
+    0), never the count the caller computed before the refusal. That is the de-dupe: a sale already
+    placed by any site is (a) a live sell order holding the shares at the broker, (b) a pending
+    `full_exit` row in the books, and (c) once filled, a closed row — each reads as 0 free here, so
+    a second site in the same tick sells nothing.
+
+    The SALE — ruling (3)'s helper unchanged: `close_position(qty)` on the trade's own account
+    client, a `full_exit` row labelled `stop_hit` (the sale stands in for the triggered stop), the
+    `stop_breach_market_sale` audit. Outside market hours the order queues for the next open and
+    sells at the opening price — the same property ruling (3) has.
+
+    PAGES the sale itself: some callers discard the message they get back (the 17:00/19:00
+    coverage slots re-check the broker, which counts our queued sale as coverage), and a real-money
+    sale is never silent. Returns `(order, qty)` when a sale was placed; None when nothing is free
+    or the sale failed — the caller then does exactly what it did before ruling (iii)."""
+    fallback = 0.0
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT status, remaining_shares FROM mi_live_trades WHERE id = $1", trade_id)
+        if row and row["status"] == "filled" and float(row["remaining_shares"] or 0) > 0:
+            fallback = float(row["remaining_shares"]) - float(await get_pending_exit_qty(trade_id))
+    except Exception as e:   # loud-ok: the broker count is the primary; an unreadable book sells 0
+        logger.warning(f"{site}: {ticker} book read failed before the stop-breach sale — {e}")
+        fallback = 0.0
+    qty, source = await _broker_free_qty_for_restore(
+        ticker, account_mode, fallback, exclude_ids=exclude_ids)
+    if qty <= 0:
+        logger.warning(f"{site}: {ticker} stop ${stop_price:.2f} refused (price through it) but "
+                       f"no free shares to sell ({source}) — today's handling stands")
+        await log_audit_event(
+            "stop_breach_sale_skipped",
+            f"{ticker}: price already through the stop ${stop_price:.2f}; no free shares to sell "
+            f"({source}) — nothing sold",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "stop_price": stop_price, "site": site, "qty_source": source,
+                        "stop_error": error[:300]}),
+        )
+        return None
+    order = await _sell_free_shares_after_stop_breach(
+        trade_id, ticker, qty, "stop_hit", account_mode,
+        stop_price=float(stop_price), site=site, error=error)
+    if not order:
+        return None
+    await send_telegram_message(md_to_html(   # #647: money-path pages go out on the HTML layer
+        f"{mode_prefix(account_mode)}🚨 *Price already below the stop:* {ticker}\n"
+        f"The stop at ${float(stop_price):.2f} could not be placed — the broker refused it because "
+        f"the price is already below it. Selling {qty} sh at market now "
+        f"(Order {str(order['id'])[:8]}), as the triggered stop would have."
+        + (f"\n{context}" if context else "")
+        + "\n_Confirms with real P&L on fill._"
+    ), parse_mode="HTML")
+    return order, qty
 
 
 async def _restore_stop_after_failed_exit(
@@ -7095,6 +7170,39 @@ async def _ensure_stop_coverage_outcome(
             )
         except Exception as e:
             if _is_stop_above_market(e):
+                # ⚖ #687 RULING (iii), operator 2026-10-02: the price is already through the
+                # stop → sell the free shares at market, as the triggered stop would have. Under
+                # this function's per-trade try-lock (held since the top). Reached by every caller
+                # of the reconciler — the OCO-cancel handler, the sync's coverage pass, the
+                # coverage retry, the 17:00/19:00 coverage slots, the partial-exit re-protects.
+                # Nothing free / the sale fails → main's converge-and-page below, unchanged.
+                sold = await _sell_at_market_for_refused_stop(
+                    trade_id, ticker, account_mode, stop_price=place_price,
+                    site="order_manager.ensure_stop_coverage", error=str(e))
+                if sold:
+                    _sold_order, _sold_qty = sold
+                    # Still the breach row: `retry_failed_coverage_repairs` reads it to stop
+                    # re-driving a stop that cannot be placed.
+                    await log_audit_event(
+                        "stop_coverage_breach",
+                        f"{ticker}: stop ${place_price:.2f} would sit above market — position "
+                        f"through the stop; {_sold_qty} sh sold at market (#687 ruling (iii)).",
+                        json.dumps({
+                            "trade_id": trade_id, "ticker": ticker,
+                            "account_mode": account_mode,
+                            "intended_stop_price": place_price,
+                            "db_stop_price": _db_stop_price_f,
+                            "target_qty": target, "error": str(e),
+                            "sold_qty": _sold_qty, "sale_order_id": _sold_order["id"],
+                        }),
+                    )
+                    return CoverageOutcome(
+                        COVERAGE_REPAIRED,
+                        f"🚨 {ticker}: stop ${place_price:.2f} is ABOVE market — the price is "
+                        f"already through it, so {_sold_qty} sh are being SOLD AT MARKET "
+                        f"(order {str(_sold_order['id'])[:8]}), as the triggered stop would have.",
+                        "stop_breach_sold_at_market",
+                    )
                 # BREACH: the protective trigger is at/above current price. NOT
                 # retryable. ONE alert, converge, leave for operator. Do NOT
                 # auto-market-exit and do NOT write stop_order_id.

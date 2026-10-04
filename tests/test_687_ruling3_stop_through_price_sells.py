@@ -11,9 +11,9 @@ RESTORED — UNPROTECTED" and left the shares bare. Now: the shares the restore 
 (the broker's free count — a resting +8R profit-take third keeps its own OCO) are sold at market as
 a `full_exit` row, and the page says so. A sale that fails too still pages UNPROTECTED.
 
-Every OTHER stop-placing site keeps main's behaviour (`_ensure_stop_coverage`'s "operator decision
-needed — no auto-exit", the sync orphan remediation, `update_stop`, the stop-ACK watchdog) — not
-covered by the ruling as built; listed for him.
+Ruling (iii), operator 2026-10-02, extended it to the OTHER stop-placing sites (the coverage
+reconciler, the sync orphan repair, `update_stop`, the stop-ACK watchdog, the stream's partial-exit
+restore, the OCO-cancel handler): tests/test_687_ruling_iii_stop_breach_everywhere.py.
 """
 from __future__ import annotations
 
@@ -180,25 +180,7 @@ async def test_a_breach_sale_that_fails_in_the_stream_still_pages_restore_failed
     assert any("STOP RESTORE FAILED" in m for m in h["sent"]), h["sent"]
 
 
-# ── scope: the reconciler keeps main's converge-and-page (not covered by the ruling as built) ──
-
-@pytest.mark.asyncio
-async def test_the_coverage_reconciler_breach_still_sells_nothing(monkeypatch):
-    from contextlib import asynccontextmanager
-
-    @asynccontextmanager
-    async def _lock(_tid):
-        yield True
-
-    monkeypatch.setattr(om, "_trade_advisory_try_lock", _lock)
-    monkeypatch.setattr(om, "get_pending_exit_qty", AsyncMock(return_value=0))
-    monkeypatch.setattr(om.alpaca, "get_open_orders", AsyncMock(return_value=[]))
-    monkeypatch.setattr(om, "_apply_reprotect_floor", AsyncMock(return_value=50.0))
-    monkeypatch.setattr(om, "_current_stop_pointer", AsyncMock(return_value=None))
-    monkeypatch.setattr(om.alpaca, "place_stop_order", AsyncMock(side_effect=BREACH))
-    close = AsyncMock()
-    monkeypatch.setattr(om.alpaca, "close_position", close)
-    monkeypatch.setattr(om, "log_audit_event", AsyncMock())
-    out = await om._ensure_stop_coverage_outcome(1, "AAA", 5, 50.0, "magna53", "live")
-    assert out.status == om.COVERAGE_FLAGGED and "no auto-exit" in out.message, out
-    close.assert_not_awaited()
+# ── scope: since ruling (iii), operator 2026-10-02, the OTHER stop-placing sites sell too ──────
+# (the coverage reconciler, the sync orphan repair, update_stop, the stop-ACK watchdog, the stream's
+# partial-exit restore, the OCO-cancel handler) — proved in
+# tests/test_687_ruling_iii_stop_breach_everywhere.py.
