@@ -969,6 +969,16 @@ async def is_likely_ma(
                     f"{meta.get('source')}): {pin.get('window')} range {pin.get('range_pct')}% "
                     f"<= {pin.get('threshold_pct')}%",
                     {"answer": deal_fields(answer), "source": meta.get("source"), "pin": pin})
+            elif (reading is not None and not reading.readable and reading.window != "day"
+                  and reading.why not in ("pre_market", "window_open")):
+                # After the window opened the price still could not be read (the fetch failed, a
+                # halt, too few bars): the news block stands, and this row says why no confirm or
+                # release came — a dead reader leaves a named trace, not an absence.
+                await _audit_once(
+                    "mna_pin_unreadable", ticker,
+                    f"the open window could not be read ({reading.why}) — the news block stands "
+                    f"({_answer_str(answer)} via {meta.get('source')})",
+                    {"answer": deal_fields(answer), "source": meta.get("source"), "pin": pin})
             return True, {**meta, "why": why, **({"pin": pin} if pin else {})}
         reading_box["released"] = {"answer": deal_fields(answer), "why": why,
                                    "source": meta.get("source"), "pin": pin}

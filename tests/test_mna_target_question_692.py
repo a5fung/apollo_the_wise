@@ -959,6 +959,7 @@ def test_monthly_review_shows_unanswered_passes_in_the_under_fire_section(capsys
                                                              "consideration": "unknown"}})],
             "mna_headline_unanswered": [_row("XYZ", {"blocked": False, "unanswered_n": 2,
                                                      "unanswered": [{"why": "orb_window"}]})],
+            "mna_release_without_merit_grade": [],
         }[event_type]
     conn.fetch = _fetch
     with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)):
@@ -1003,6 +1004,7 @@ def test_monthly_review_marks_a_pre_market_block_the_price_released_the_same_day
                                                                         "threshold_pct": 1.0, "readable": True,
                                                                         "pinned": False}}})],
             "mna_headline_unanswered": [],
+            "mna_release_without_merit_grade": [],
         }[event_type]
     conn.fetch = _fetch
     with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)):
@@ -1032,3 +1034,19 @@ def test_monthly_review_renders_the_price_reading_on_fired_and_released_rows():
                                                                    "threshold_pct": 1.0, "readable": True,
                                                                    "pinned": False}}}))
     assert released == "nominated target/signed/unknown via claude_deal_fields; open5m range 5.3591% vs 1.0% -> FREE"
+
+
+
+def test_review_only_a_price_release_not_kept_blocked_marks_a_fired_row_released():
+    """2026-10-03 review: any same-day `mna_filter_released` row used to mark the fired row
+    "released later that day" — a comparator row (old rule would have blocked) and the #692b
+    fail safe (released on price, KEPT blocked for want of a merit grade) included."""
+    import importlib
+    from datetime import date as _date
+    review = importlib.import_module("scripts.mna_filter_accuracy_review")
+    d = _date(2026, 10, 5)
+    released = [{"ticker": "PD", "fire_day": d, "detail_full": '{"old_reasons": ["pin_free"], "pin_release": {}}'},
+                {"ticker": "CMP", "fire_day": d, "detail_full": '{"old_reasons": ["headline_keyword"]}'},
+                {"ticker": "FS", "fire_day": d, "detail_full": '{"pin_release": {}}'}]
+    kept = [{"ticker": "FS", "fire_day": d}]
+    assert review._price_released_days(released, kept) == {("PD", str(d))}

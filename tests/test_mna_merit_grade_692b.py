@@ -346,3 +346,81 @@ def test_merit_check_script_copies_the_live_grader_and_loads_standalone():
         "print('loaded', mod.MAX_COST_USD, len(mod.ROWS_NOMINATED))\n")
     p = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, cwd="/", timeout=60)
     assert p.returncode == 0 and p.stdout.strip() == "loaded 1.5 18", p.stderr[-500:]
+
+
+# ── 7. 2026-10-03 review: the released name faces filters 2-3 on its MERIT grade ─────────────
+
+def test_review_a_released_mna_name_is_not_floor_filtered_on_mna():
+    """Before the fix filters 2-3 ran on 'mna' right after the release: no R6 carve-out for 'mna',
+    so a merit-STRONG name with thin pre-market shares was killed before its re-score (and never
+    reached `_apply_release_merit_grade`). Now the release is handed on with no floor verdict."""
+    async def released(ticker, **kw):
+        return False, _RELEASE
+    sink = {}
+    with patch.object(ep_detector, "is_likely_ma", new=released), \
+         patch.object(ep_detector, "log_audit_event", new=AsyncMock(return_value=None)):
+        reason = _run(ep_detector._post_grade_filters(
+            "PD", "mna", "a", "s", 25.4, 1_000, 1.0, date(2026, 5, 29), lattice_acting=False,
+            deal_answer=DealAnswer("target", "signed", "unknown"), release_sink=sink,
+            quality_if_no_deal="strong"))
+    assert reason is None and sink["released_on_price"] is True
+
+
+def test_review_filters_2_and_3_judge_the_merit_grade():
+    f = ep_detector._grade_floor_filters
+    # merit 'routine' at an 11% gap: the filter every fresh routine name faces
+    assert f("PD", "routine", 11.0, 1_000_000, 3.0, lattice_acting=False) == "routine catalyst, gap 11.0%"
+    # merit 'strong', thin pre-market shares, gap >= 10%: the R6 carve-out lets it through
+    assert f("PD", "strong", 25.4, 1_000, 1.0, lattice_acting=False) is None
+    # 'mna' never earned that carve-out — the reason the release must not be judged on it
+    assert f("PD", "mna", 25.4, 1_000, 1.0, lattice_acting=False).startswith("pre-mkt volume")
+
+
+def test_review_the_no_merit_grade_row_is_written_once_per_name_per_day():
+    """The fail-safe name stays uncleared, so every later tick lands in the same branch; the row is
+    the 'grader is not answering' count and must not multiply by the tick count."""
+    audits, first = [], iter([True, False, False])
+
+    async def audit(event_type, summary, detail=""):
+        audits.append(event_type)
+
+    async def first_today(event_type, summary_like):
+        return next(first)
+
+    async def released(ticker, **kw):
+        return False, _RELEASE
+    with patch.object(ep_detector, "is_likely_ma", new=released), \
+         patch.object(ep_detector, "log_audit_event", new=audit), \
+         patch.object(mf, "_first_today", new=first_today):
+        for _ in range(3):                                   # 09:35, 09:40, 09:45
+            reason = _run(ep_detector._post_grade_filters(
+                "PD", "mna", "a", "s", 25.4, 1_000_000, 3.0, date(2026, 5, 29),
+                lattice_acting=False, deal_answer=DealAnswer("target", "signed", "unknown"),
+                release_sink={}, quality_if_no_deal=None))
+            assert reason == "M&A/buyout catalyst — no momentum trade"
+    assert audits == ["mna_release_without_merit_grade"]
+
+
+@pytest.mark.parametrize("why, written", [("fetch_error:TimeoutError", True), ("bars:2", True),
+                                          ("pre_market", False), ("window_open", False)])
+def test_review_an_unreadable_open_window_after_the_open_leaves_a_named_row(why, written):
+    """A dead reader at 09:35 used to leave only the pre-market trace (the fired row is deduped) —
+    the same reading as a working reader that has not run. Now it writes `mna_pin_unreadable`."""
+    rows = []
+
+    async def db_audit(event_type, summary, detail=None):
+        rows.append(event_type)
+
+    async def first_today(event_type, summary_like):
+        return True
+
+    async def reader():
+        return mf.PinReading("open5m", None, 1.0, 0, False, why, "2026-10-05T09:35")
+    from agents.market_intelligence import db
+    with patch.object(db, "log_audit_event", new=db_audit), \
+         patch.object(mf, "_first_today", new=first_today):
+        blocked, meta = _run(mf.is_likely_ma(
+            "PD", deal_answer=DealAnswer("target", "signed", "cash"), check_polygon=False,
+            on_or_before=date(2026, 10, 5), catalyst_quality="strong", pin_reader=reader))
+    assert blocked is True and meta["why"] == "news_blocked_price_unread"
+    assert ("mna_pin_unreadable" in rows) is written

@@ -506,10 +506,16 @@ false"* — and *"Ok"* to this shape:
   the merit grade becomes the RAW grade, the lattice re-resolves the acting grade (one grade
   everywhere), the cache stores the merit grade + `mna_released_on_price` so every later tick
   and the judge see the same fact, and an `mna_release_merit_grade` row records from → to with
-  the reading. **FAIL SAFE (stated, his wording "stays 'mna' / blocked"):** a missing /
+  the reading. Filters 2-3 (routine catalyst at a gap < 12%; the pm-shares floor with its R6
+  carve-out) then run on THAT acting grade (`_grade_floor_filters`) — never on `mna`, which the
+  score no longer reads (2026-10-03 review fix: before it, a merit-`routine` name at a 10-12% gap
+  skipped the routine filter and a merit-`strong` name with thin pre-market shares was killed by
+  the floor `mna` has no carve-out for, before its re-score). A re-poll re-grade replaces the
+  cached `quality_if_no_deal` along with the deal answer. **FAIL SAFE (stated, his wording "stays 'mna' / blocked"):** a missing /
   out-of-vocabulary / `mna` `quality_if_no_deal` on a `mna`-graded release keeps the name
   BLOCKED — `_post_grade_filters` returns its skip reason and writes
-  `mna_release_without_merit_grade`. (Keeping `mna` alone would not keep it out: a 0-catalyst
+  `mna_release_without_merit_grade` (once per name per day — the name stays uncleared, so
+  later ticks land there again). (Keeping `mna` alone would not keep it out: a 0-catalyst
   name still scores 45 raw with a theme match against the 40 bar.)
 - *The judge on a released name.* The payload carries `mna_price_released` (rendered as its own
   block OUTSIDE `_RUBRIC` — the hash is untouched — telling the judge the first five minutes
@@ -860,7 +866,9 @@ weekly rate of blocks stays ≤ 1 (the 10-02 EXPECT); forward, a nominated targe
   `mna_filter_released` row with `pin_free` (`range_pct > 1.0`) — followed, when its grade and
   score clear, by a HIGH alert at 09:35–09:36 and a post-open entry — or stays blocked, which
   writes an `mna_pin_confirmed` row with the reading (the fired row is deduped, so this row is
-  the positive trace of a working reader). A target blocked pre-market with neither a `pin_free`
+  the positive trace of a working reader). A read that still fails after the window opened
+  (fetch error, a halt, too few bars) writes `mna_pin_unreadable` with the reason — the block
+  stands, and a dead reader now leaves a named row rather than an absence (2026-10-03 review). A target blocked pre-market with neither a `pin_free`
   release nor an `mna_pin_confirmed` row by 09:40 while still a candidate = the reader did not
   run — the thing to look at (in r3, 8 of the 19 EP nominated rows released and 11 confirmed, so
   a week with 2+ pre-market-blocked targets and no trace of either is a dead reader). Price-only

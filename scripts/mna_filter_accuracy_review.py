@@ -148,6 +148,15 @@ def _print_section(title: str, rows, flag_material: bool):
               "not a missed mover.")
 
 
+def _price_released_days(released, kept_blocked) -> set:
+    """(ticker, day) pairs the open-window PRICE released (a row carrying `pin_release`) and the EP
+    scan did not then keep blocked for want of a merit grade (#692b fail safe). A comparator
+    release row (the old rule would have blocked; no price reading) is not a release of a block."""
+    kept = {(r["ticker"], str(r["fire_day"])) for r in kept_blocked}
+    return {(r["ticker"], str(r["fire_day"])) for r in released
+            if '"pin_release"' in (r.get("detail_full") or "")} - kept
+
+
 async def main(lookback_days: int) -> int:
     from agents.market_intelligence.db import get_pool
     from agents.market_intelligence.audit_events import (
@@ -164,10 +173,14 @@ async def main(lookback_days: int) -> int:
         unanswered_passed = await _fwd_rows(
             conn, MNA_HEADLINE_UNANSWERED, "split_part(summary,':',1)", lookback_days,
             summary_like="%passed")
+        # #692b fail safe: the price released the name but the EP scan kept it blocked (no merit
+        # grade) — its same-day release row is NOT the day's verdict.
+        kept_blocked = await _fwd_rows(
+            conn, "mna_release_without_merit_grade", "split_part(summary,' ',1)", lookback_days)
     # 2026-10-03 timing ruling: a nominated name is blocked pre-market on the news and the 09:35
     # read may RELEASE it the same day — mark those fired rows so a suppression that was undone is
     # not read as a block (both rows exist; the release is the day's verdict).
-    released_days = {(r["ticker"], str(r["fire_day"])) for r in released}
+    released_days = _price_released_days(released, kept_blocked)
     for r in suppressed:
         if (r["ticker"], str(r["fire_day"])) in released_days:
             r["detail_full"] = (r.get("detail_full") or "")

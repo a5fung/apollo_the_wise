@@ -67,6 +67,7 @@ MNA_RELEASE_WITHOUT_MERIT_GRADE = "mna_release_without_merit_grade"  # #692b: re
 MNA_DEAL_ANSWERS_CONFLICT = "mna_deal_answers_conflict"  # grader said no pin, a headline pinned — detail.blocked: True (grader found no deal) / False (ruling 7: grader's deal answer governs)
 MNA_HEADLINE_CAP_HIT = "mna_headline_cap_hit"          # the day's headline-question budget spent for a pool (ep / shared) — once per pool per ET day, no Telegram
 MNA_PIN_CONFIRMED = "mna_pin_confirmed"                # 2026-10-03: the 09:35 open-window read CONFIRMED a pre-market news block (range <= the ceiling) — the positive trace of a working reader (the fired row is deduped); a `pin_free` release is the other outcome
+MNA_PIN_UNREADABLE = "mna_pin_unreadable"              # 2026-10-03 review: after the 09:30 window opened, the open-window price could not be read (fetch failed / halt / too few bars) — the news block stands; the named trace of a dead reader, beside mna_pin_confirmed and the pin_free release
 
 # ── Anticipation coil-finder M&A / buyout-pin guards (#387/#410, 2026-06-30 NUVL FP) ────────
 ANTICIPATION_MNA_EXCLUDED = "anticipation_mna_excluded"  # #387 — ma_filter.is_likely_ma hit; NO LONGER WRITTEN since #394 (2026-10-03): a coil-board screen writes MNA_FILTER_FIRED `{ticker} via <source> (anticipation)` like every other detector — kept for querying the rows written 2026-06-30..2026-10-03

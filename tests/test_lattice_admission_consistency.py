@@ -262,10 +262,12 @@ def test_cached_raw_grade_is_read_exactly_once_into_the_raw_var():
 
 
 def test_both_filter_call_sites_thread_the_acting_side_marker():
+    # source-pin-ok: wiring check — run_ep_scan needs the live snapshot / grader / broker stack to
+    # exercise; the filter functions' behaviour is tested directly (test_mna_merit_grade_692b.py).
     src = "\n".join(_scan_lines())
-    assert src.count('lattice_acting=(_live_side == "lattice")') == 2, (
-        "both _post_grade_filters call sites (cached re-check + fresh grade) must pass "
-        "the acting-side marker")
+    assert src.count('lattice_acting=(_live_side == "lattice")') == 4, (
+        "both _post_grade_filters call sites (cached re-check + fresh grade) AND both "
+        "_grade_floor_filters re-checks after a #692b release must pass the acting-side marker")
 
 
 def test_every_resolve_site_is_present():

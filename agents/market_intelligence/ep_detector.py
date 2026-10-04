@@ -2280,18 +2280,27 @@ async def _post_grade_filters(
             # merit grade. "Keeps mna" alone would NOT keep it out: a 0-catalyst name still
             # scores 45 raw with a theme match against the 40 bar. So it stays BLOCKED, with its
             # own row (the operator's wording: "stays 'mna' / blocked").
-            pin = (mna_meta or {}).get("pin") or {}
-            await log_audit_event(
-                "mna_release_without_merit_grade",
-                f"{ticker} released on price but the grader gave no usable quality_if_no_deal "
-                f"({quality_if_no_deal!r}) — stays blocked (fail safe)",
-                json.dumps({"ticker": ticker, "alert_date": today.isoformat(),
-                            "quality_if_no_deal": quality_if_no_deal, "pin": pin}, default=str))
+            # One row per name per day: the name stays uncleared, so every later tick lands here
+            # again, and the row's count is the "grader is not answering" reading.
+            from agents.market_intelligence.ma_filter import _first_today
+            if await _first_today("mna_release_without_merit_grade",
+                                  f"{ticker} released on price%"):
+                pin = (mna_meta or {}).get("pin") or {}
+                await log_audit_event(
+                    "mna_release_without_merit_grade",
+                    f"{ticker} released on price but the grader gave no usable quality_if_no_deal "
+                    f"({quality_if_no_deal!r}) — stays blocked (fail safe)",
+                    json.dumps({"ticker": ticker, "alert_date": today.isoformat(),
+                                "quality_if_no_deal": quality_if_no_deal, "pin": pin}, default=str))
             reason = "M&A/buyout catalyst — no momentum trade"
             logger.info(f"Skip {ticker}: {reason} (released on price, no merit grade — fail safe)")
             return reason
         if release_sink is not None:
             release_sink.update(mna_meta)
+            if catalyst_quality == "mna":
+                # The caller re-scores it on the merit grade and runs filters 2-3 on THAT grade
+                # (`_grade_floor_filters`) — never on 'mna', which the score no longer reads.
+                return None
     if is_mna:
         reason = "M&A/buyout catalyst — no momentum trade"
         logger.info(f"Skip {ticker}: {reason} ({(mna_meta or {}).get('source')})")
@@ -2315,6 +2324,17 @@ async def _post_grade_filters(
             )
         return reason
 
+    return _grade_floor_filters(ticker, catalyst_quality, gap_pct, today_volume, pm_rvol,
+                                lattice_acting=lattice_acting)
+
+
+def _grade_floor_filters(
+    ticker: str, catalyst_quality: str, gap_pct: float, today_volume: int,
+    pm_rvol: float | None, *, lattice_acting: bool,
+) -> str | None:
+    """Post-grade filters 2-3 (routine catalyst at a low gap; the pm-shares floor with its R6
+    carve-out) on the ACTING grade. Split from `_post_grade_filters` (2026-10-03 review) so a name
+    the 09:35 read releases faces them on its merit grade (#692b), as any fresh survivor does."""
     # 2) Skip routine catalysts outright
     if catalyst_quality == "routine" and gap_pct < 12:
         reason = f"routine catalyst, gap {gap_pct:.1f}%"
@@ -4905,6 +4925,23 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     release_sink=_mna_release,
                     quality_if_no_deal=quality_if_no_deal,
                 )
+                if not skip_reason:
+                    # #692b: the 09:35 read RELEASED a news-blocked name — re-score it with the
+                    # grader's merit grade (the deal is not what the market is trading), persist
+                    # the merit grade as the cache's raw grade so every later tick agrees, and run
+                    # filters 2-3 on THAT grade, as any fresh survivor faces them.
+                    _rel = await _apply_release_merit_grade(
+                        ticker, c, llm_catalyst_quality, quality_if_no_deal, _mna_release,
+                        claude_analysis, grounded_text, news_summary, _board_sectors,
+                        _lattice_live, today)
+                    if _rel is not None:
+                        llm_catalyst_quality, catalyst_quality, _lattice_verdict, _live_side = _rel
+                        cached = cached._replace(catalyst_quality=llm_catalyst_quality,
+                                                 mna_released_on_price=True)
+                        _catalyst_cache[ticker] = cached
+                        skip_reason = _grade_floor_filters(
+                            ticker, catalyst_quality, c["gap_pct"], c["today_volume"],
+                            c.get("pm_rvol"), lattice_acting=(_live_side == "lattice"))
                 if skip_reason:
                     logger.debug(
                         f"{ticker}: cached grade ({catalyst_quality}) still filtered — {skip_reason}"
@@ -4923,16 +4960,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # (pm-volume grew, M&A stopped matching, gap moved) — flip the
                 # flag and fall through EXACTLY as a fresh survivor would.
                 filters_cleared = True
-                # #692b: the 09:35 read RELEASED a news-blocked name — re-score it with the
-                # grader's merit grade (the deal is not what the market is trading) and persist
-                # the merit grade as the cache's raw grade so every later tick agrees.
-                _rel = await _apply_release_merit_grade(
-                    ticker, c, llm_catalyst_quality, quality_if_no_deal, _mna_release,
-                    claude_analysis, grounded_text, news_summary, _board_sectors, _lattice_live, today)
-                if _rel is not None:
-                    llm_catalyst_quality, catalyst_quality, _lattice_verdict, _live_side = _rel
-                    cached = cached._replace(catalyst_quality=llm_catalyst_quality,
-                                             mna_released_on_price=True)
                 _catalyst_cache[ticker] = cached._replace(filters_cleared=True)
                 logger.info(f"{ticker}: cached grade ({catalyst_quality}) now clears filters — proceeding")
 
@@ -5015,6 +5042,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 # #692: the new grade's own M&A answer replaces the old one —
                                 # never let the 7:00 grade's answer ride a re-grade.
                                 deal_answer=_rq_deal.get("deal_answer"),
+                                # #692b: and its own merit grade — a 09:35 release re-scores on
+                                # THIS grade's quality_if_no_deal, never the 07:00 grade's.
+                                quality_if_no_deal=_rq_deal.get("quality_if_no_deal"),
                             )
                         await log_audit_event(
                             "catalyst_repoll_regraded_live" if (_repoll_live and _valid_change)
@@ -5325,6 +5355,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 release_sink=_mna_release,
                 quality_if_no_deal=quality_if_no_deal,
             )
+            # #692b: a name first graded after 09:35 whose open window read free on this very
+            # tick — re-score it with the merit grade, cache THAT grade, and run filters 2-3 on it.
+            _rel = None if skip_reason else await _apply_release_merit_grade(
+                ticker, c, llm_catalyst_quality, quality_if_no_deal, _mna_release,
+                claude_analysis, grounded_text, news_summary, _board_sectors, _lattice_live, today)
+            if _rel is not None:
+                llm_catalyst_quality, catalyst_quality, _lattice_verdict, _live_side = _rel
+                skip_reason = _grade_floor_filters(
+                    ticker, catalyst_quality, c["gap_pct"], c["today_volume"],
+                    c.get("pm_rvol"), lattice_acting=(_live_side == "lattice"))
 
             # Store in cache AT GRADE COMPLETION regardless of filter outcome
             # (S6/#405) — filters_cleared True/False per today's check. This is
@@ -5339,6 +5379,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 has_direct_source=_has_direct_source,  # #405 Part-1: cache the display flag
                 deal_answer=deal_answer,  # #692: later ticks re-decide on this same answer
                 quality_if_no_deal=quality_if_no_deal,  # #692b: the merit grade rides the cache
+                mna_released_on_price=_rel is not None,
             )
 
             if skip_reason:
@@ -5352,15 +5393,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 if _kill_row:
                     _tier_shadow_inputs.append(_kill_row)
                 continue
-            # #692b: a name first graded after 09:35 whose open window read free on this very
-            # tick — re-score it with the merit grade and persist it in the cache.
-            _rel = await _apply_release_merit_grade(
-                ticker, c, llm_catalyst_quality, quality_if_no_deal, _mna_release,
-                claude_analysis, grounded_text, news_summary, _board_sectors, _lattice_live, today)
-            if _rel is not None:
-                llm_catalyst_quality, catalyst_quality, _lattice_verdict, _live_side = _rel
-                _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
-                    catalyst_quality=llm_catalyst_quality, mna_released_on_price=True)
 
         # Earnings-day pre-score catalyst boost (DDOG/AAON 5/07 incident class).
         # Existing earnings-day override (below) only fires for MODERATE→HIGH

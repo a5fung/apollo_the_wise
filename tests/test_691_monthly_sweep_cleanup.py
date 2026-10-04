@@ -160,15 +160,16 @@ def _b94(monkeypatch, rets):
 
 
 def _mna(monkeypatch, suppressed, passed):
-    # #692 (2026-10-03) — the review reads THREE result sets in order: suppressed, released by the
-    # deal question, and unanswered headline questions that passed; each row carries `detail_full`.
+    # #692 (2026-10-03) — the review reads FOUR result sets in order: suppressed, released by the
+    # deal question, unanswered headline questions that passed, and #692b fail-safe rows (released
+    # on price but kept blocked); each row carries `detail_full`.
     def _row(t, pk):
         return {"ticker": t, "fire_day": date(2026, 9, 10), "detail": "x", "detail_full": "x",
                 "pk_vs_open": pk, "pk_vs_low": pk}
     return _run(monkeypatch, "scripts.mna_filter_accuracy_review",
                 fetches=[[_row(f"S{i}", pk) for i, pk in enumerate(suppressed)],
                          [_row(f"P{i}", 1.0) for i in range(passed)],
-                         []],
+                         [], []],
                 entry=lambda mod: mod.main(35))
 
 
