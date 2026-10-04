@@ -267,3 +267,112 @@ async def test_site4_the_next_tick_after_the_sale_filled_does_not_act_again(monk
     assert _sales(w) == [10]
     assert [c["method"] for c in w.calls].count("place_stop_order") == 1, w.calls
     assert not any("CRITICAL" in p for p in w.pages), w.pages
+
+
+# ── Site 3 — `update_stop` (a trail raise / a re-place the broker refuses; keyed on the TERMINAL
+#    refusal, after the existing 3-second retry) ─────────────────────────────────────────────
+
+def _raise_world():
+    w = World()
+    _trade(w, stop_price=58.0)
+    _position(w, "KOD", 10, 0)
+    _bstop(w, "stop-1", "KOD", 10, 58.0)
+    return w
+
+
+def _raise():
+    return lambda: om.update_stop(401, 61.5, stop_source="trail")
+
+
+def _naked_pages(w):
+    return [p for p in w.pages if "STOP FAILED — position NAKED" in p]
+
+
+@pytest.mark.asyncio
+async def test_site3_a_trail_raise_refused_through_the_price_sells_once():
+    w = _raise_world()
+    _breach(w)
+    [out] = await _drive(w, _raise())
+    assert out is om.STOP_SOLD_AT_MARKET and not out          # falsy: no stop was placed
+    assert _sales(w) == [10], w.calls
+    pages = _sale_pages(w)
+    assert len(pages) == 1 and "trail would have triggered" in pages[0], w.pages
+    assert _naked_pages(w) == []
+    assert w.trades[401]["stop_order_id"] is None             # no dead pointer left for the sync
+    assert not _audits(w, "stop_update_failed") and not _audits(w, "naked_position_detected")
+    assert _full_exit_rows(w)[0]["exit_reason"] == "stop_hit"
+
+
+@pytest.mark.asyncio
+async def test_site3_keys_on_the_terminal_refusal_only():
+    """Attempt 1 through the price, attempt 2 something else → today's NAKED path, nothing sold;
+    attempt 1 something else, attempt 2 through the price → sold."""
+    w = _raise_world()
+    w.place_errors = [Exception(BREACH), Exception(OTHER)]
+    [out] = await _drive(w, _raise())
+    assert out is False and _sales(w) == [] and len(_naked_pages(w)) == 1
+
+    w = _raise_world()
+    w.place_errors = [Exception(OTHER), Exception(BREACH)]
+    [out] = await _drive(w, _raise())
+    assert out is om.STOP_SOLD_AT_MARKET and _sales(w) == [10]
+
+
+@pytest.mark.asyncio
+async def test_site3_a_failed_sale_keeps_the_naked_page():
+    w = _raise_world()
+    _breach(w)
+    w.close_errors = [Exception("broker down")]
+    [out] = await _drive(w, _raise())
+    assert out is False and _sale_pages(w) == [] and len(_naked_pages(w)) == 1
+    assert _audits(w, "stop_update_failed") and _audits(w, "stop_breach_sale_failed")
+
+
+@pytest.mark.asyncio
+async def test_site3_an_old_stop_whose_cancel_failed_still_holds_the_shares_nothing_sold():
+    """Our cancel did not go through and the old stop still rests: it holds every share at the
+    broker, so nothing is free to sell → today's path."""
+    from agents.market_intelligence.broker import alpaca_client as ac
+    w = _raise_world()
+    _breach(w)
+
+    async def _cancel_refused():
+        async def _no(order_id, account_mode=None):
+            w.calls.append({"method": "cancel_order", "args": {"order_id": order_id}})
+            return False
+        ac.cancel_order = _no                                  # restored by the harness on exit
+
+    [_, out] = await _drive(w, _cancel_refused, _raise())
+    assert out is False and _sales(w) == [] and len(_naked_pages(w)) == 1
+    assert _audits(w, "stop_breach_sale_skipped")
+
+
+@pytest.mark.asyncio
+async def test_site3_the_morning_refresh_does_not_page_no_stop_after_the_sale_filled():
+    """09:35: a DAY stop expired overnight, the re-place is refused through the price, the sale fills
+    in milliseconds. The refresh must not then page "No stop on KOD" for a position already sold."""
+    from agents.market_intelligence.broker import alpaca_client as ac
+    w = World()
+    _trade(w)
+    _position(w, "KOD", 10, 10)
+    _bstop(w, "stop-1", "KOD", 10, 58.0, status="expired")
+    _breach(w)
+
+    async def _sales_fill_at_once():
+        real = ac.close_position
+
+        async def _close_and_fill(*a, **k):
+            out = await real(*a, **k)
+            o = w.broker_order(out["id"])
+            o["status"], o["filled_qty"] = "filled", o["qty"]
+            w.positions.pop("KOD", None)
+            return out
+        ac.close_position = _close_and_fill                    # restored by the harness on exit
+
+    [_, placed] = await _drive(
+        w, _sales_fill_at_once, lambda: lt._stop_refresh(include_same_day=True, label="Morning"))
+    assert _sales(w) == [10] and placed == 0
+    assert not any("No stop on" in p for p in w.pages), w.pages
+    assert len(_sale_pages(w)) == 1
+    ran = _audits(w, "stop_refresh_ran")[0]
+    assert ran["sold_at_market"] == ["KOD"] and ran["unprotected"] == [] and ran["placed"] == 0

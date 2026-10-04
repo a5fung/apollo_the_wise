@@ -2208,9 +2208,29 @@ async def _apply_reprotect_floor(
     return price
 
 
+class _StopSoldAtMarket:
+    """`update_stop`'s return when the stop could not be placed because the price is already
+    through it and the free shares were SOLD AT MARKET instead (#687 ruling (iii)).
+
+    FALSY on purpose — no stop was placed, so every caller reading the result as "placed?" stays
+    correct — and told apart by identity (`is STOP_SOLD_AT_MARKET`) where it matters: the stop
+    refresh must not page "No stop on X" for a position whose sale already went out (at 09:35 the
+    sale fills in milliseconds, so the broker re-check finds neither a stop nor a covering order)."""
+    __slots__ = ()
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __repr__(self) -> str:
+        return "STOP_SOLD_AT_MARKET"
+
+
+STOP_SOLD_AT_MARKET = _StopSoldAtMarket()
+
+
 async def update_stop(
     trade_id: int, new_stop_price: float, stop_source: str | None = None,
-) -> bool:
+) -> bool | _StopSoldAtMarket:
     """Cancel old stop order and place new one at updated price.
 
     Sizes the stop against `remaining_shares` MINUS any pending partial/full
@@ -2232,6 +2252,12 @@ async def update_stop(
     retry-recovered path below; never affects sizing, price, or control flow.
     None (the morning stop-refresh call site) makes describe_stop_move infer a
     label from the prices themselves.
+
+    ⚖ #687 ruling (iii), operator 2026-10-02: when BOTH placement attempts fail and the
+    second is the broker's "price already through the stop" refusal, the free shares are
+    sold at market (`_sell_at_market_for_refused_stop`) and this returns the falsy
+    `STOP_SOLD_AT_MARKET` instead of False. A raise refused this way means the trail
+    WOULD have triggered at the new level.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -2476,6 +2502,33 @@ async def update_stop(
             )
         except Exception as e2:
             logger.error(f"Stop re-placement also failed for {ticker}: {e2}")
+            # ⚖ #687 RULING (iii), operator 2026-10-02: the TERMINAL refusal is "the price is
+            # already through the stop" → sell the free shares at market, as the triggered stop
+            # would have. On a trail raise it means the trail WOULD have triggered at the new level;
+            # on a re-place (the refresh) it is ruling (3)'s case exactly. The old stop is gone (we
+            # cancelled it), so it is excluded from the broker's held count only when our cancel
+            # went through. No lock here (none is held today; the sale replaces the placement in
+            # the same context). Nothing free / the sale fails / any other refusal → the NAKED
+            # path below, unchanged.
+            if _is_stop_above_market(e2):
+                sold = await _sell_at_market_for_refused_stop(
+                    trade_id, ticker, account_mode, stop_price=float(new_stop_price),
+                    site="order_manager.update_stop", error=str(e2),
+                    exclude_ids=(old_stop_id,) if (old_stop_id and cancel_ok) else (),
+                    context=(f"It was a stop raise (from ${old_stop_price:.2f}) — the trail would "
+                             f"have triggered at the new level."
+                             if old_stop_price is not None
+                             and new_stop_price > old_stop_price + 0.01 else None),
+                )
+                if sold:
+                    # Same pointer state as the naked path: the cancelled stop's id must not stay
+                    # behind, or the 16:05/21:00 sync reads it as a dead stop and pages NAKED (#401).
+                    await set_stop_order_id(
+                        trade_id, None,
+                        reason="stop_breach_sold_at_market",
+                        account_mode=account_mode,
+                    )
+                    return STOP_SOLD_AT_MARKET
             # Null stop_order_id so sync_positions Path C (4:05 PM + 9:00 PM)
             # can detect the orphan and remediate. Leaving the stale ID in place
             # silently masks the naked state and blocks Path C's orphan check.

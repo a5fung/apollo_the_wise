@@ -388,6 +388,17 @@ The sites:
    `stop_coverage_breach` row (the coverage retry stops on it). Nothing free / the sale fails → main's
    `COVERAGE_FLAGGED` "Operator decision needed (no auto-exit)", unchanged. Every caller inherits it: the sync's
    coverage pass, the coverage retry, the 17:00/19:00 coverage slots, the partial-exit re-protects, and site 6.
+3. **`update_stop`** (the 16:45 trail raise; the 16:20 / 09:35 stop refresh re-placing an expired stop; the depth
+   trail when on). Keyed on the TERMINAL refusal — the existing 3-second retry runs first; attempt 2 refused
+   through the price → sell (attempt 1 through the price but attempt 2 refused otherwise → today's NAKED path).
+   **A trail raise refused this way means the trail WOULD have triggered at the new level** — so it sells, as he
+   ruled; the page says so. The cancelled old stop is excluded from the broker's held count only when our cancel
+   went through (a cancel that failed leaves the old stop holding the shares → nothing free → today's path).
+   Sold → the stop pointer is nulled (as the NAKED path does — a dead id left behind would make the 16:05/21:00
+   sync page "NAKED LIVE POSITION"), no `stop_update_failed` / NAKED page, and it returns the falsy
+   `STOP_SOLD_AT_MARKET`: the stop refresh records it as `sold_at_market` and does not page "No stop on X" (at
+   09:35 the sale fills in milliseconds, so the broker re-check would find neither a stop nor a covering order).
+   No lock is held here today; the sale replaces the placement in the same context, as ruling (3)'s stream site.
 4. **The stop-ACK watchdog's fallback** (`scheduler._stop_ack_timeout_watchdog_job`, the stop at the entry's
    `orb_low` when a fresh fill has no stop), under its per-trade try-lock (#687 e). Sold → audit
    `stop_ack_breach_sold_at_market` (summary `"{ticker} #{trade_id}: …"`, added to the once-per-day dedup set, so
