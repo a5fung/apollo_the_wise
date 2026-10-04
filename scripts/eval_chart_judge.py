@@ -194,8 +194,10 @@ async def main(cohorts: list[str], limit: int | None, replicates: int, outdir: s
     client = None
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if api_key:
-        import anthropic
-        client = anthropic.AsyncAnthropic(api_key=api_key)
+        # Through the shared adapter, as the live chart judge is: a model release that rejects a
+        # forced tool_choice / thinking setting is rewritten there instead of 400-ing every case.
+        from shared.llm_client import make_async_anthropic
+        client = make_async_anthropic(api_key=api_key)
     sem = asyncio.Semaphore(3)
 
     pool = await get_pool()
