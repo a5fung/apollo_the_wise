@@ -350,3 +350,11 @@ THEME_PARENT_PASS_DISTINCT = "theme_parent_pass_distinct"       # DISTINCT → 3
 THEME_PARENT_PASS_MERGE_SIGNAL = "theme_parent_pass_merge_signal"  # MERGE → audited, NEVER executed
 THEME_PARENT_PASS_INVERTED = "theme_parent_pass_inverted"       # adjudicator named the larger theme the child
 THEME_PARENT_PASS_ERROR = "theme_parent_pass_error"             # adjudication raised / ERROR verdict / pass raised
+
+# ── #655 rule B: a weak-Fading theme under 3 members retires the night it is weak (2026-10-04,
+# operator "aligned"; behind `theme_small_fading_retire`, DEFAULT ON). One row PER retirement so
+# the live check can count them (the 5-night path's `theme_retired` + `theme_auto_retired` rows are
+# written for these too — the pass drops the theme into the same engine-drop path). The error row
+# is the pass raising: nothing retired that night, old behaviour.
+THEME_RETIRED_SMALL_FADING = "theme_retired_small_fading"
+THEME_SMALL_FADING_RETIRE_ERROR = "theme_small_fading_retire_error"
