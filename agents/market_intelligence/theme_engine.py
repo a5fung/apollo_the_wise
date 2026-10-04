@@ -88,6 +88,7 @@ from agents.market_intelligence.theme_merge_arm import (
 from agents.market_intelligence.audit_events import (
     THEME_PARENT_PASS_RAN, THEME_PARENT_PASS_LINKED, THEME_PARENT_PASS_DISTINCT,
     THEME_PARENT_PASS_INVERTED, THEME_PARENT_PASS_ERROR,
+    THEME_RETIRED_SMALL_FADING, THEME_SMALL_FADING_RETIRE_ERROR,
 )
 from shared.llm_response import content_block_types, first_text, is_truncated, stop_reason
 from shared.output_ceilings import max_tokens_for
@@ -2512,8 +2513,11 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
                    # read by no other consumer (upsert/canonicalize ignore it).
                    "source": c.get("source")} for c in cohorts]
         await _canonicalize_theme_names(conn, themes, today)
+        # #655 bug E (2026-10-04): `stage` rides on this row so the birth gate below can tell a
+        # LIVE prior from an auto-retire TOMBSTONE (stage 'Retired', tickers []). Same query,
+        # same single fetch — the THREE-fetch sequence test_theme_birth_gate.py pins is unchanged.
         prior_rows = await conn.fetch("""
-            SELECT DISTINCT ON (name) name, days_active
+            SELECT DISTINCT ON (name) name, days_active, stage
             FROM mi_themes WHERE name = ANY($1) AND theme_date < $2
             ORDER BY name, theme_date DESC
         """, [t["name"] for t in themes], today)
@@ -2591,7 +2595,19 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
                     _gate_ledger = await get_recent_birth_candidates(
                         days=BIRTH_GATE_LEDGER_DAYS)
                     _gate_board = await get_active_themes()
-                _first_crossing = prior is None
+                # #655 bug E (2026-10-04): the immediately-prior row by name is frequently an
+                # auto-retire TOMBSTONE (stage 'Retired', tickers [] — `_synthetic_retired_row` /
+                # the engine-drop retire_rows). A cohort retired one night and re-promoted the
+                # next read as "has a prior row => maintenance", so the gate was never consulted
+                # and the dedup_only join arm could not fire: 'Defense & Space Systems Satellite
+                # Solutions' was re-minted 10-02 over its live 'Aerospace Engine…' twin. A
+                # tombstone prior is a FIRST crossing for the gate (the theme is not live).
+                # `prior_days_active` continuity is NOT part of this defect and is untouched —
+                # `_resolve_promoted_theme_description`'s docstring deliberately leaves the
+                # conviction counter unwindowed for a theme returning after a gap; `new_grads`
+                # (the "N new" count) keeps `prior is None` too.
+                _prior_is_tombstone = prior is not None and prior.get("stage") == "Retired"
+                _first_crossing = prior is None or _prior_is_tombstone
                 _consult = _first_crossing
                 if not _consult and gate_promotes_held(_gate_mode):
                     # held-cohort carve-out (see block comment): keep evaluating a
@@ -2608,6 +2624,8 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
                     if res["outcome"] != "birth":
                         logger.info(
                             f"[promote/birth gate/{_gate_mode}] '{t['name']}' → {res['outcome']}"
+                            + (" (re-promotion over a Retired tombstone = first crossing, #655 E)"
+                               if _prior_is_tombstone else "")
                             + (f" (target: {res['join_target']})" if res.get("join_target") else "")
                             + f" rs={res['rs_avg']} traj5={res['traj5']} sightings={res['sightings']}")
                         # ACT only on a FIRST crossing. A carve-out re-evaluation
@@ -8623,6 +8641,130 @@ async def _retro_sweep_flagged_pairs(
     return updated_themes
 
 
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+# #655 RULE B — a WEAK-Fading theme under 3 members retires the night it is weak (2026-10-04,
+# operator ruling "aligned": rule 1 YES, rule 2 WAIT, bug E fix).
+#
+# THE RULE. A theme whose emitted row tonight is weak-Fading — stage 'Fading' AND rs_avg None,
+# the shape ONLY `_rescore_existing_theme`'s weak branch writes (fewer than THEME_COVERAGE_MIN
+# strong members and not an elite pair; the scored path always writes a numeric rs_avg, even
+# when it shows Fading for display) — with fewer than SMALL_FADING_RETIRE_MIN_MEMBERS (3)
+# members is RETIRED tonight instead of after FADING_RETIRE_AFTER (5) weak nights. Themes with
+# >= 3 members keep the 5-night grace unchanged. A Fading row WITH rs_avg (a healthy pair the
+# score-delta or hysteresis shows Fading — 'Cruise & Expedition Travel Operators', RS 81) is the
+# #368 guard's case and is NEVER touched.
+#
+# WHY. #655's signed G4 bar (theme_correctness: themes under 3 members <= 10% of the board)
+# failed 18 of 19 rebuilt nights 2026-09-08..10-02; replaying this rule over the same nights
+# passes 19/19 (study `655_study/verify_b.txt`, 2026-10-04). Cost, measured: 579 weak-small
+# rows in 60 days (~13.8 a night); 48 regrew into a theme (8.3% of shell-nights), 12 of them
+# after exactly ONE shell night — those 12 restart under a new name instead of resuming.
+#
+# SITING. The stage decision runs in Step 1 (`_rescore_existing_theme`, BEFORE the pools are
+# built), so this is a SEPARATE pass right AFTER Step 2a.5 (#491 re-homing) and before Step
+# 2b: re-homing moves members OUT of a weak home first and only what it could not place is
+# retired, so #491's pre-registered checks read its moves. Mechanics are the 5-night path's:
+# the theme is dropped from `updated_themes`, the engine-drop block synthesizes its Retired
+# tombstone (`theme_auto_retired`, tickers []) and the `theme_retired` changelog line it
+# appends here (`via: small_fading`, tickers = the members AT retirement) feeds the nightly
+# message, the funnel count and the `theme_retired` audit row exactly as a 5-night retirement
+# does. TOMBSTONE LINEAGE (review fix 2026-10-04): because this pass runs AFTER re-homing, a
+# `theme_member_rehomed` "'<home>' -> '<target>'" row for ONE member leaving must NOT become
+# the tombstone's successor — the members still in the theme were released, not absorbed. The
+# engine-drop block reads the `via: small_fading` lines and writes parent_theme NULL plus a
+# "#655 rule B" note with tonight's count; the re-homing target is kept as successor ONLY when
+# re-homing emptied the home to 0 members (#491's designed pointer, identical to what the Step 4
+# cap drop writes for that theme with this toggle OFF). TWO differences from the 5-night path,
+# stated: (1) `covered_tickers` and the pools were built at Step 2, so the members are released
+# to assignment/discovery NEXT run, not tonight (the Step 1.5 retro-sweep accepts the same lag);
+# (2) a released name is OUTSIDE the #491 leave feeder (it reaches covered names only) — it
+# returns through discovery, so #491's P2 can pass on a judged "stay" while the name sits in no
+# theme for one night, and a re-discovered crypto/AI name can meet P3 (name inheritance).
+#
+# TOGGLE `theme_small_fading_retire` (mi_safeguard_state / env THEME_SMALL_FADING_RETIRE_ENABLED),
+# DEFAULT ON (operator standing rule: themes / detectors = no money -> ship full). OFF = the
+# pass retires nothing: byte-identical engine. Read only on a night with a candidate. Revert,
+# no redeploy:
+#     INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+#     VALUES ('theme_small_fading_retire', 'global', 'off', NOW(), NOW())
+#     ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+SMALL_FADING_RETIRE_TOGGLE: tuple[str, str] = (
+    "theme_small_fading_retire", "THEME_SMALL_FADING_RETIRE_ENABLED")
+# = theme_correctness.G4's "under 3 members" (the operator-signed shape bar, 2026-09-27). A
+# literal, not an import, for the same reason the other #655 constants here are literals;
+# tests/test_theme_small_fading_retire.py pins it to THEME_COVERAGE_MIN and to G4's wording.
+SMALL_FADING_RETIRE_MIN_MEMBERS = 3
+
+
+async def _read_small_fading_retire_toggle() -> bool:
+    """The reversion toggle, DEFAULT ON (operator 2026-10-04, "aligned"). DB row > env >
+    default; a DB error -> env/default (a grade-quality toggle, not capital). Literal strings
+    on purpose: scripts/live_rules.py discovers runtime toggles by regex over
+    `get_runtime_toggle("<name>", "<ENV>")`."""
+    from agents.market_intelligence.db import get_runtime_toggle
+    return bool(await get_runtime_toggle("theme_small_fading_retire",
+                                         "THEME_SMALL_FADING_RETIRE_ENABLED", default=True))
+
+
+def _is_weak_fading_small(theme: dict) -> bool:
+    """PURE: tonight's emitted row is the weak branch's (stage 'Fading' AND rs_avg None — a
+    numeric rs_avg is the scored path, never retired here) with fewer than
+    SMALL_FADING_RETIRE_MIN_MEMBERS members."""
+    return (theme.get("stage") == "Fading"
+            and theme.get("rs_avg") is None
+            and len(theme.get("tickers") or []) < SMALL_FADING_RETIRE_MIN_MEMBERS)
+
+
+async def _retire_small_fading_themes(
+    updated_themes: list[dict],
+    changelog: list[dict],
+) -> list[dict]:
+    """#655 rule B (section header above). Returns `updated_themes` minus the weak-Fading
+    themes under 3 members; each retirement writes ONE `theme_retired_small_fading` audit row
+    and ONE `theme_retired` changelog line (the 5-night path's own line — the Step 1 loop that
+    writes it already ran). The dropped theme then takes the engine-drop path like any 5-night
+    retirement. A theme RENAMED this run (`renamed_from` set) is skipped for one night: its old
+    name is already tombstoned with the new name as successor, and retiring the new name the
+    same night would leave that lineage pointing at a theme that never got a row. Toggle OFF,
+    or no candidate -> the list is returned untouched (no toggle read without a candidate)."""
+    candidates = [t for t in updated_themes
+                  if _is_weak_fading_small(t) and not t.get("renamed_from")]
+    if not candidates:
+        return updated_themes
+    if not await _read_small_fading_retire_toggle():
+        logger.info(f"Small-Fading retire (#655 B): toggle OFF — {len(candidates)} weak-Fading "
+                    f"theme(s) under {SMALL_FADING_RETIRE_MIN_MEMBERS} members keep the "
+                    f"{FADING_RETIRE_AFTER}-night grace tonight")
+        return updated_themes
+    retired: set[str] = set()
+    for t in candidates:
+        tickers = list(t.get("tickers") or [])
+        n = len(tickers)
+        try:
+            await log_audit_event(
+                THEME_RETIRED_SMALL_FADING,
+                summary=(f"{t['name']}: retired — weak Fading at {n} members "
+                         f"(< {SMALL_FADING_RETIRE_MIN_MEMBERS}), #655"),
+                detail=json.dumps({
+                    "theme": t["name"], "members": n, "tickers": tickers,
+                    "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after "
+                            f"{FADING_RETIRE_AFTER} nights",
+                    "score": t.get("score"),
+                }, default=str),
+            )
+        except Exception as e:  # loud-ok: the audit row IS the live check's evidence — a theme whose row cannot be written is KEPT tonight (old behaviour for it), logged
+            logger.warning(f"Small-Fading retire (#655 B): audit row failed for '{t['name']}' — "
+                           f"kept tonight: {type(e).__name__}: {e}")
+            continue
+        changelog.append({"type": "theme_retired", "theme": t["name"], "tickers": tickers,
+                          "via": "small_fading"})
+        logger.info(f"Theme '{t['name']}' retired — weak Fading at {n} members "
+                    f"(< {SMALL_FADING_RETIRE_MIN_MEMBERS}), #655 rule B")
+        retired.add(t["name"])
+    return [t for t in updated_themes if t["name"] not in retired]
+
+
 def _synthetic_retired_row(name: str, today: date, successor: str | None, note: str) -> dict:
     """Retired-row shape for themes removed outside the lifecycle (mirrors the
     engine-drop retire_rows in run_theme_engine — keep the two in lockstep)."""
@@ -9590,6 +9732,28 @@ async def run_theme_engine(
         else:
             logger.info("Re-homing pass: toggle OFF — no moves tonight")
 
+    # --- Step 2a.6: SMALL-FADING RETIRE (#655 rule B, 2026-10-04, operator "aligned") ---
+    # A weak-Fading theme (stage 'Fading' AND rs_avg None — the weak branch's row, never the
+    # scored path's) under SMALL_FADING_RETIRE_MIN_MEMBERS (3) members retires TONIGHT instead
+    # of after FADING_RETIRE_AFTER (5) weak nights. Sited AFTER Step 2a.5 on purpose: the stage
+    # decision ran in Step 1 (`_rescore_existing_theme`), re-homing has now moved out what the
+    # tape could place, and only what it could not place is retired — #491's pre-registered
+    # checks need its moves readable. The dropped theme takes the engine-drop path like a
+    # 5-night retirement (tombstone + `theme_auto_retired`; `theme_retired` line appended by
+    # the pass). Toggle `theme_small_fading_retire` DEFAULT ON; OFF = nothing retired here.
+    # Section header above `_retire_small_fading_themes` carries the rule, the evidence and
+    # the one stated difference (members released next run); SSoT theme_engine.md 2026-10-04.
+    try:
+        updated_themes = await _retire_small_fading_themes(updated_themes, changelog)
+    except Exception as e:  # loud-ok: a failed pass must not take the nightly down; audited + logged, nothing retired
+        logger.error(f"Small-Fading retire pass FAILED — nothing retired by it tonight: "
+                     f"{type(e).__name__}: {e}", exc_info=True)
+        await log_audit_event(
+            THEME_SMALL_FADING_RETIRE_ERROR,
+            summary=f"Small-Fading retire pass raised — nothing retired by it tonight ({type(e).__name__})",
+            detail=f"{type(e).__name__}: {e}",
+        )
+
     # --- Step 2b: Assign uncovered stocks to existing themes ---
     # #476: assignment runs on the WIDER assignment_pool (RS-floor); discovery
     # below keeps the narrow top-40 `uncovered` MINUS whatever got assigned
@@ -10036,21 +10200,49 @@ async def run_theme_engine(
         for _lost_name, _succ_name in _succ.items():
             successor_by_lost.setdefault(_lost_name, _succ_name)
 
+        # #655 rule B (2026-10-04 review fix): a theme the small-Fading pass retired tonight IS on
+        # the board when #491 re-homing runs (the pass is sited right after it), so a
+        # `theme_member_rehomed` "'<home>' -> '<target>'" row for ONE member leaving would read
+        # as a successor pointer here and the tombstone would claim the whole theme was
+        # "absorbed/superseded" by the target — false: the members still in it were RELEASED.
+        # The pass's own `theme_retired` changelog line (`via: small_fading`, tickers = the
+        # members AT retirement) is the record; the pointer is kept only when re-homing emptied
+        # the home to 0 members (#491's designed case — the same pointer the Step 4 cap drop
+        # writes for it with the toggle OFF), otherwise parent_theme is NULL and the note names
+        # the rule and tonight's count (not `existing`'s, which is last night's).
+        small_fading_retired: dict[str, list[str]] = {
+            e["theme"]: list(e.get("tickers") or []) for e in changelog
+            if e.get("type") == "theme_retired" and e.get("via") == "small_fading"
+        }
+
         retire_rows = []
         for t in lost:
             successor = successor_by_lost.get(t["name"])
             cap_target = cap_rejected_by_lost.get(t["name"])
-            note = (
-                f"Auto-retired {today_str}: "
-                + (f"renamed to '{successor}' — name was narrower than the cluster (#214)"
-                   if t["name"] in renamed_map else
-                   f"absorbed/superseded by '{successor}'" if successor
-                   else f"dropped by the sector cap — no member passed the membership test for "
-                        f"'{cap_target}'" if cap_target
-                   else f"dropped during merge/absorption (no successor found)")
-                + f" (prior stage {t.get('stage', 'Unknown')}, "
-                + f"{len(t.get('tickers') or [])} tickers)."
-            )
+            if t["name"] in small_fading_retired:
+                _b_members = small_fading_retired[t["name"]]
+                _b_n = len(_b_members)
+                if _b_n > 0:
+                    successor = None
+                note = (
+                    f"Auto-retired {today_str}: retired — weak Fading at {_b_n} members "
+                    f"(< {SMALL_FADING_RETIRE_MIN_MEMBERS}), #655 rule B"
+                    + (f" — emptied by re-homing into '{successor}'" if successor
+                       else f" — members released: {', '.join(_b_members)}")
+                    + f" (prior stage {t.get('stage', 'Unknown')}, {_b_n} tickers at retirement)."
+                )
+            else:
+                note = (
+                    f"Auto-retired {today_str}: "
+                    + (f"renamed to '{successor}' — name was narrower than the cluster (#214)"
+                       if t["name"] in renamed_map else
+                       f"absorbed/superseded by '{successor}'" if successor
+                       else f"dropped by the sector cap — no member passed the membership test for "
+                            f"'{cap_target}'" if cap_target
+                       else f"dropped during merge/absorption (no successor found)")
+                    + f" (prior stage {t.get('stage', 'Unknown')}, "
+                    + f"{len(t.get('tickers') or [])} tickers)."
+                )
             retire_rows.append({
                 "theme_date": today,
                 "name": t["name"],

@@ -7,7 +7,8 @@
 > design: docs/analysis/theme_ecosystem_phase23_design_2026-07-14.md.
 
 - Bottom-up from price action — themes emerge from RS, not hypotheses
-- Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days)
+- Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days; **under 3 members, 1 weak-Fading night — #655 rule B below**)
+- **#655 RULE B — a WEAK-Fading theme under 3 members retires the night it is weak (2026-10-04, operator "aligned"; toggle `theme_small_fading_retire`, DEFAULT ON)**: a theme whose emitted row tonight is weak-Fading — stage `Fading` AND `rs_avg IS NULL`, the row ONLY `_rescore_existing_theme`'s weak branch writes (fewer than `THEME_COVERAGE_MIN` (3) strong members and not an elite pair) — with fewer than `SMALL_FADING_RETIRE_MIN_MEMBERS` (3) members is retired tonight instead of after `FADING_RETIRE_AFTER` (5) weak nights. **Themes with ≥ 3 members keep the 5-night grace unchanged.** **A Fading row WITH `rs_avg` is the scored path and is never touched** (the #368 guard: a healthy pair the score-delta or hysteresis shows Fading — 'Cruise & Expedition Travel Operators', RS 81 on the 10-02 board). **Siting**: the stage decision runs in Step 1 (`_rescore_existing_theme`, BEFORE the pools are built), so this is a SEPARATE pass — `_retire_small_fading_themes`, Step 2a.6 in `run_theme_engine` — right AFTER Step 2a.5 (#491 re-homing) and before Step 2b: re-homing moves members OUT of a weak home first and only what the tape could not place is retired, so #491's pre-registered checks read its moves. **Mechanics are the 5-night path's**: the theme is dropped from `updated_themes`, the engine-drop block synthesizes its Retired tombstone (`theme_auto_retired`, `tickers []`), and the pass appends the same `theme_retired` changelog line (`via: small_fading`, tickers = the members AT retirement → the nightly message, the funnel count, the `theme_retired` audit row). **Tombstone lineage (review fix 2026-10-04)**: because the pass runs AFTER re-homing, a `theme_member_rehomed` `'<home>' -> '<target>'` row for ONE member leaving must not become the tombstone's successor — the members still in the theme were released, not absorbed (the first build wrote `parent_theme = <target>` and an "absorbed/superseded" note in exactly that case; caught by both reviewers). The engine-drop block reads the `via: small_fading` lines: `parent_theme` NULL and a note `"retired — weak Fading at N members (< 3), #655 rule B — members released: …"` with TONIGHT's count; the re-homing target is kept as successor ONLY when re-homing emptied the home to 0 members (#491's designed pointer, identical to what the Step 4 cap drop writes for that theme with this toggle OFF). **Two stated differences from the 5-night path**: (1) `covered_tickers` and the pools were built at Step 2, so the members are released to assignment/discovery the NEXT run, not the same night (the Step 1.5 retro-sweep accepts the same lag); (2) a released name is OUTSIDE the #491 leave feeder (it reaches covered names only) and returns through discovery — so #491's P2 can pass on a judged "stay" while the name (e.g. HUT, whose 10-02 home was a 2-member weak-Fading theme) sits in no theme for a night, and a re-discovered crypto/AI name can meet P3 via name inheritance; #655's and #491's live reads must name this. A theme renamed this run (`renamed_from`) is skipped for one night (its old name is already tombstoned with the new name as successor). **Audit**: one `theme_retired_small_fading` row per retirement — summary `"<theme>: retired — weak Fading at N members (< 3), #655"`, detail JSON with the tickers — so the live check can count them; `theme_small_fading_retire_error` if the pass raises (nothing retired by it that night; the nightly never goes down). **Evidence** (study `655_study`, 2026-10-04, replayed over the 19 rebuilt nights 2026-09-08..10-02): G4 (under-3-member share ≤ 10%) failed 18/19 nights at baseline and passes 19/19 with this rule; cost — 579 weak-small rows in 60 days (~13.8 a night), 48 regrew into a theme (8.3% of shell-nights), 12 of them after exactly ONE shell night: those 12 restart under a new name instead of resuming. **Revert, no redeploy**: `INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at) VALUES ('theme_small_fading_retire', 'global', 'off', NOW(), NOW()) ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();` — OFF = today's behaviour exactly. Tests: `tests/test_theme_small_fading_retire.py`. Change log 2026-10-04.
 - **Engine-drop themes skip Fading**: Pass1 cap_drop / Pass1.5 absorption removals get a synthetic Retired row (`theme_auto_retired` audit; `parent_theme=successor` recovered from the pass audit events) — the 5-day Fading→Retired path can't complete under the 7d recency cap. Stub until canonicalization (R3).
 - **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429. **Thesis-aware since #368 (2026-08-04)**: the rescore, #266 birth-validation and Arm-B post-merge callers pass the theme's own description; the prompt shows it and instructs judging against the THESIS, not the name alone — a member whose CURRENT driver matches the thesis stays even when its legacy industry label differs (the 7/27 WULF/CORZ eviction class). ⚠ **The FOURTH caller — post-assignment validation inside `_assign_uncovered_to_themes` — was MISSED on 08-04 and judged every new member against the NAME alone until 2026-10-03**, when the #491 re-homing build found it on its critical path (a converted miner landing in 'Emerging AI Compute…' would be evicted the same run on "bitcoin miner"). It now passes `thesis=theme.get("description")` too — enforcing the signed rule, not a new criterion; it changes every nightly assignment's post-assignment validation, stated in the 2026-10-03 change log. `_is_garbage` theses are omitted.
 - **Member pruning (#368, 2026-08-04 — rising-recovery hold; rising test repaired 2026-08-26)**: hard prune (RS<25, 1 day) and soft prune (RS<35, 3 consecutive days) both SKIP a member whose RS is RISING over the last `PRUNE_HOLD_WINDOW_SESSIONS` (6) sessions. `_rs_rising` requires **at least `PRUNE_HOLD_MIN_POINTS` (4) DATA POINTS of history** — NOT a rise of 4 RS points (RS 1.8 → 3.1 qualifies; the constant's name is ambiguous and was misread once on 2026-08-04) — and now **TWO** conditions: (1) `hist[0] > hist[-1]` (newest above oldest, the original test) **AND** (2) `hist[0] >= min(hist[1:-1])` — today is not below EVERY intermediate reading. **Why (2) exists**: (1) alone compares two ENDPOINTS and is blind to everything between, so a collapse whose oldest reading happens to be a one-day trough scored as rising — BLDR on 2026-08-25 read `[10.0, 13.8, 25.7, 29.4, 29.2, 5.9]`, a 29 → 10 collapse, held/flagged as rising purely because `10.0 > 5.9`. The oldest point is the value being compared AGAINST, so it is excluded from the floor (`hist[1:-1]`, never `hist[1:]`, which would make the clause vacuous). Short history ⇒ no hold, prune as before. Mirrors the birth gate's derived level-OR-rising cell on the retention surface; changelog type `ticker_prune_held_rising`. Backtest: 77% of rising-held names recovered to RS≥50 in 10 sessions vs 31% of the falling control (N=13 scored / 25 held, `docs/analysis/368_crypto_ai_consolidation_2026-08-04.md`).
@@ -975,6 +976,65 @@ perplexity doesn't affect live trades, just render as no-op or unavailable input
 demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
+
+### 2026-10-04 — #655: a weak-Fading theme under 3 members retires the night it is weak (rule B, toggle DEFAULT ON) · a re-promotion over a Retired tombstone is a first crossing for the birth gate (bug E)
+
+**Trigger**: the #655 nightly scorer's G4 bar (themes under 3 members ≤ 10% of the board) failed 18 of 19 rebuilt
+nights 2026-09-08..10-02 while G1–G3 were in reach; the study (`655_study`, pass1 / rules_replay / verify_b, 2026-10-04)
+replayed three candidate rules over those nights. His ruling 2026-10-04 (*"aligned"*): rule 1 (this one) YES, rule 2
+(retire on repeated G3 failure) WAIT, and fix bug E found on the way.
+
+**Evidence**: rule B replayed with no look-ahead passes G4 on 19/19 nights (baseline 1/19); the 10-02 board goes from
+15 small themes of 133 (11.3%) to 5 of 123 (4.1%). Cost, measured on 60 days: 579 weak-small rows (~13.8 a night);
+48 of those shells regrew into a theme (8.3% of shell-nights), 12 after exactly one shell night — under this rule those
+12 restart under a new name instead of resuming (the lineage is tombstoned, the cohort is re-discovered). The 1-member
+remnant a #491 move out of a pair leaves had no guard at all before this (0 such rows in 60 days, so untested in prod).
+
+**Change (B)**: `_retire_small_fading_themes` (Step 2a.6 of `run_theme_engine`, right after the #491 re-homing pass):
+retires every emitted row with stage `Fading` AND `rs_avg IS NULL` AND fewer than `SMALL_FADING_RETIRE_MIN_MEMBERS` (3)
+members, through the engine-drop path the 5-night rule already uses — the theme is dropped from `updated_themes`, the
+tombstone (`theme_auto_retired`) and the `theme_retired` changelog line / audit row follow as today. The stage decision
+itself (`_rescore_existing_theme`, the `FADING_RETIRE_AFTER` = 5 count, `_count_consecutive_fading`) is untouched; a
+scored row (numeric `rs_avg`, even when shown Fading) and every theme with ≥ 3 members behave exactly as before. Members
+are released to the pools the NEXT run (the pools are built at Step 2, before this pass) — the one difference from a
+5-night retirement, stated. One `theme_retired_small_fading` audit row per retirement names the rule. **Review fix (same
+day, both reviewers)**: the tombstone of a B-retired theme must not inherit a `theme_member_rehomed` successor pointer
+from one member leaving (it would read "absorbed/superseded by '<target>'" for a theme whose remaining members were
+released) — the engine-drop block now reads the pass's `via: small_fading` changelog lines, writes `parent_theme` NULL
+and a "#655 rule B … members released" note carrying tonight's count, and keeps the re-homing target as successor only
+when re-homing emptied the home to 0 members (the same pointer the Step 4 cap drop writes for it with the toggle OFF).
+Interaction with #491's live checks: a released name is outside the leave feeder (covered names only) and returns
+through discovery, so P2 can pass on a judged "stay" while the name sits in no theme for a night, and a re-discovered
+name can hit P3 via name inheritance — both reads should name it. Toggle
+`theme_small_fading_retire` (`mi_safeguard_state` / env `THEME_SMALL_FADING_RETIRE_ENABLED`, `db.get_runtime_toggle`,
+DEFAULT ON, read only on a night with a candidate; discoverable by `scripts/live_rules.py`); OFF = today's behaviour
+exactly. A raised pass is audited (`theme_small_fading_retire_error`) and retires nothing that night.
+
+**Change (E)**: `promote_shadow_themes` built `prior_rows` from the latest `mi_themes` row by name INCLUDING an
+auto-retire tombstone (`tickers=[]`, stage `Retired`), so a cohort retired one night and re-promoted the next read as
+"has a prior row ⇒ maintenance of a live theme" and the birth gate was never consulted — the `dedup_only` join arm could
+not fire ('Defense & Space Systems Satellite Solutions' re-minted 10-02 over its live 'Aerospace Engine…' twin). The
+prior-row read now carries `stage` (same single fetch) and `_first_crossing = prior is None or prior.stage == 'Retired'`.
+`days_active` continuity through the tombstone is NOT part of the defect and is unchanged (the docstring of
+`_resolve_promoted_theme_description` deliberately leaves the conviction counter unwindowed for a returning theme); the
+"N new" count in the promote message keeps `prior is None`. A live prior is still maintenance, never gated.
+
+**Anticipated effect**: ~10–15 weak 1–2-member Fading themes leave the board on the first live night (the 10-02 board
+held 10 of them), then ~1–3 a night; G4 passes nightly; a small cohort that re-qualifies is re-discovered under a fresh
+name rather than resuming its lineage (the 8.3% cost above). No money path: Fading themes carry no EP +10
+(`ep_theme_belonging.THEME_BONUS_STAGES`), so no alert's score moves. On the promote lane, a re-minted duplicate over a
+tombstone is held (`join`) in `dedup_only` instead of being written over its live twin.
+
+**Reversion-flag**: NEW for B (a second, faster exit from Fading beside the 5-night rule; revert = toggle OFF, no
+redeploy). BUG FIX for E (the gate's own "first crossing" definition, no new criterion).
+
+**Status**: BUILT 2026-10-04 on branch `655-small-fading-retire`, awaiting deploy. Tests:
+`tests/test_theme_small_fading_retire.py` (14: retire at 2 and at 1 member; a scored/elite pair never touched; ≥ 3 keep the grace; toggle OFF = old
+behaviour, in the pass and through the real `run_theme_engine`; runs AFTER re-homing so a moved name is counted out; the
+toggle is discoverable and defaults ON; a tombstone prior consults the gate and a `join` is held; a tombstone prior the
+gate births keeps `days_active` continuity; a live prior is not consulted; + the review-fix pair: with the REAL
+re-homing audit row present the B tombstone has no successor and a rule-B note, and a home re-homing emptied to 0 keeps
+the re-homing target as successor). Verify-live and stopping rule: PLAN.md #655.
 
 ### 2026-10-03 — #491: the RE-HOMING PASS — a stock whose business changed can now LEAVE its legacy theme on the tape and JOIN the theme that matches its driver (detector change, +10 money-adjacent; toggle DEFAULT ON)
 
