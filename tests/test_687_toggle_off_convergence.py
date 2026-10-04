@@ -131,7 +131,7 @@ ALLOWED = {
     's11_stream_fill_beside_resting_oco_third': {
         'why': '#687 (b): the full-exit fill decrements and keeps the row open under the resting third',
         'pages': [
-            '💰 LIVE-$ 📤 *Sold:* KOD — sma_trail_stop\nExit @$66.00 × 4 shares\n2 sh remain under the resting profit-take (its own target and breakeven stop) — the trade stays open until they exit.\nP&L so far: $+84.00',
+            '💰 LIVE-$ 📤 *Sold:* KOD — sma_trail_stop\nExit @$66.00 × 4 shares\n2 sh remain under the resting profit-take — the trade stays open until they exit.\nP&L so far: $+84.00',
         ],
         'book_after': {'trades': {'401': {'closed_at': None, 'closed_on': None, 'remaining_shares': 2, 'status': 'filled', 'stop_order_id': 'stop-1'}}},
     },

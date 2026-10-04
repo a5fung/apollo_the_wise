@@ -4921,18 +4921,7 @@ async def _sell_free_shares_after_stop_breach(
     if not (order or {}).get("id"):
         logger.error(f"{site}: {ticker} stop-breach market sale returned no order id")
         return None
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO mi_live_orders
-                (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
-                 purpose, exit_reason, raw_response)
-            VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
-                    'full_exit', $6, $7::jsonb)
-            ON CONFLICT (alpaca_order_id) DO NOTHING
-        """, trade_id, order["id"], ticker, float(qty),
-            order.get("status", "new"), reason,
-            _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
+    await _record_full_exit_order(trade_id, ticker, order, qty, reason)
     await log_audit_event(
         "stop_breach_market_sale",
         f"{ticker}: price already through the stop ${stop_price:.2f} — selling {qty} sh at "
@@ -5096,7 +5085,6 @@ async def _record_full_exit_skip(
 class _SaleSize(NamedTuple):
     sell_qty: int
     held_by_resting: float
-    broker_qty: float
     plain_limit_qty: float = 0.0   # of held_by_resting: plain resting limits (no stop of their own)
 
 
@@ -5121,6 +5109,47 @@ def _resting_cover_words(plain_limit_qty: float) -> str:
     if plain_limit_qty > 0:
         return ("a plain limit with no stop of its own — left resting, as ruled 2026-10-02")
     return "its own target and breakeven stop"
+
+
+async def _pending_exits_or_skip(
+    trade_id: int, trade: dict, reason: str,
+) -> "tuple[list, float] | None":
+    """The trade's live exit orders before a closing sale (terminal-status set:
+    PENDING_EXIT_TERMINAL_STATUSES, the #591 SSoT). None = a closing order is already queued — the
+    skip is recorded and paged here. Else `(rows, shares held by pending partial exits)`."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT alpaca_order_id, purpose, qty FROM mi_live_orders
+            WHERE trade_id = $1
+              AND purpose IN ('partial_exit', 'full_exit')
+              AND status != ALL($2::text[])
+        """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
+    pending_full = [r for r in rows if r["purpose"] == "full_exit"]
+    if pending_full:
+        await _record_full_exit_skip(
+            trade_id, trade, reason, "full_exit_already_pending",
+            f"a closing order ({str(pending_full[0]['alpaca_order_id'])[:8]}) is already "
+            f"queued for this position.",
+            {"pending_order_id": pending_full[0]["alpaca_order_id"]})
+        return None
+    return rows, sum(float(r["qty"] or 0) for r in rows if r["purpose"] == "partial_exit")
+
+
+async def _record_full_exit_order(trade_id: int, ticker: str, order: dict, qty, reason: str) -> None:
+    """The closing sale's `full_exit` order row — its fill commits through `finalize_full_exit`."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_live_orders
+                (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
+                 purpose, exit_reason, raw_response)
+            VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
+                    'full_exit', $6, $7::jsonb)
+            ON CONFLICT (alpaca_order_id) DO NOTHING
+        """, trade_id, order["id"], ticker, float(qty),
+            order.get("status", "new"), reason,
+            _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
 
 
 async def _size_sale_beside_resting_orders(
@@ -5168,10 +5197,8 @@ async def _size_sale_beside_resting_orders(
     plain_limit_qty = _plain_resting_limit_qty(open_orders, trade.get("stop_order_id"))
     sell_qty = _whole_shares(min(broker_qty - held_by_resting, db_free))
     if sell_qty <= 0:
-        _held_words = ("the profit-take keeps its own target and breakeven stop"
-                       if plain_limit_qty <= 0 else
-                       "the profit-take is a plain limit with no stop of its own — left resting, "
-                       "as ruled 2026-10-02")
+        _held_words = (f"the profit-take {'is' if plain_limit_qty > 0 else 'keeps'} "
+                       f"{_resting_cover_words(plain_limit_qty)}")
         await _record_full_exit_skip(
             trade_id, trade, reason, "resting_orders_hold_all_shares",
             f"orders still resting at the broker hold every remaining share "
@@ -5192,7 +5219,7 @@ async def _size_sale_beside_resting_orders(
                         "pending_partial_qty": pending_partial_qty,
                         "remaining_shares": float(trade["remaining_shares"])}),
         )
-    return _SaleSize(sell_qty, held_by_resting, broker_qty, plain_limit_qty)
+    return _SaleSize(sell_qty, held_by_resting, plain_limit_qty)
 
 
 async def execute_full_exit(trade_id: int, reason: str) -> bool:
@@ -5217,17 +5244,6 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
             return False
         trade = dict(trade)
 
-        # Dedup against pending exit orders — see execute_partial_exit comment.
-        # Terminal-status set: PENDING_EXIT_TERMINAL_STATUSES (SSoT, #591 review).
-        async with pool.acquire() as conn:
-            pending = await conn.fetchrow("""
-                SELECT alpaca_order_id, purpose FROM mi_live_orders
-                WHERE trade_id = $1
-                  AND purpose IN ('partial_exit', 'full_exit')
-                  AND status != ALL($2::text[])
-                LIMIT 1
-            """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
-
         ticker = trade["ticker"]
         account_mode = trade.get("account_mode") or current_account_mode()
 
@@ -5240,31 +5256,12 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         sell_qty: int | None = None          # None = today's path: close the whole position
         held_by_resting = 0.0
         plain_limit_qty = 0.0
-        if pending and pending["purpose"] == "full_exit":
-            await _record_full_exit_skip(
-                trade_id, trade, reason, "full_exit_already_pending",
-                f"a closing order ({str(pending['alpaca_order_id'])[:8]}) is already queued for "
-                f"this position.",
-                {"pending_order_id": pending["alpaca_order_id"]})
+        # Dedup against pending exit orders — see execute_partial_exit comment.
+        pending = await _pending_exits_or_skip(trade_id, trade, reason)
+        if pending is None:
             return False
-        if pending:
-            async with pool.acquire() as conn:
-                pending_rows = await conn.fetch("""
-                    SELECT alpaca_order_id, purpose, qty FROM mi_live_orders
-                    WHERE trade_id = $1
-                      AND purpose IN ('partial_exit', 'full_exit')
-                      AND status != ALL($2::text[])
-                """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
-            pending_full = [r for r in pending_rows if r["purpose"] == "full_exit"]
-            if pending_full:
-                await _record_full_exit_skip(
-                    trade_id, trade, reason, "full_exit_already_pending",
-                    f"a closing order ({str(pending_full[0]['alpaca_order_id'])[:8]}) is already "
-                    f"queued for this position.",
-                    {"pending_order_id": pending_full[0]["alpaca_order_id"]})
-                return False
-            pending_partial_qty = sum(float(r["qty"] or 0) for r in pending_rows
-                                      if r["purpose"] == "partial_exit")
+        pending_rows, pending_partial_qty = pending
+        if pending_rows:
             size = await _size_sale_beside_resting_orders(
                 trade_id, trade, reason, pending_partial_qty, account_mode)
             if size is None:
@@ -5338,17 +5335,7 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
             return False
 
         remaining = trade["remaining_shares"] if sell_qty is None else float(sell_qty)
-        async with pool.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO mi_live_orders
-                    (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
-                     purpose, exit_reason, raw_response)
-                VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
-                        'full_exit', $6, $7::jsonb)
-                ON CONFLICT (alpaca_order_id) DO NOTHING
-            """, trade_id, order["id"], ticker, float(remaining),
-                order.get("status", "new"), reason,
-                _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
+        await _record_full_exit_order(trade_id, ticker, order, remaining, reason)
 
         # Pending fill — finalize_full_exit() runs from the WS fill handler with
         # the real fill price. Submitting close_position after-hours queues a
@@ -5476,24 +5463,11 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
             ), parse_mode="HTML")
             return False
 
-        async with pool.acquire() as conn:
-            pending_rows = await conn.fetch("""
-                SELECT alpaca_order_id, purpose, qty FROM mi_live_orders
-                WHERE trade_id = $1
-                  AND purpose IN ('partial_exit', 'full_exit')
-                  AND status != ALL($2::text[])
-            """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
-        pending_full = [r for r in pending_rows if r["purpose"] == "full_exit"]
-        if pending_full:
-            await _record_full_exit_skip(
-                trade_id, trade, reason, "full_exit_already_pending",
-                f"a closing order ({str(pending_full[0]['alpaca_order_id'])[:8]}) is already "
-                f"queued for this position.",
-                {"pending_order_id": pending_full[0]["alpaca_order_id"]})
+        pending = await _pending_exits_or_skip(trade_id, trade, reason)
+        if pending is None:
             await _clear_depth_sell_mark(trade_id)
             return False
-        pending_partial_qty = sum(float(r["qty"] or 0) for r in pending_rows
-                                  if r["purpose"] == "partial_exit")
+        pending_partial_qty = pending[1]
         size = await _size_sale_beside_resting_orders(
             trade_id, trade, reason, pending_partial_qty, account_mode)
         if size is None:
@@ -5545,17 +5519,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
             ), parse_mode="HTML")
             return False
 
-        async with pool.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO mi_live_orders
-                    (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
-                     purpose, exit_reason, raw_response)
-                VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
-                        'full_exit', $6, $7::jsonb)
-                ON CONFLICT (alpaca_order_id) DO NOTHING
-            """, trade_id, order["id"], ticker, float(sell_qty),
-                order.get("status", "new"), reason,
-                _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
+        await _record_full_exit_order(trade_id, ticker, order, sell_qty, reason)
         await _clear_depth_sell_mark(trade_id)
         await log_audit_event(
             "depth_open_sale_placed",
@@ -5750,8 +5714,8 @@ async def _finalize_full_exit_locked(
         await send_telegram_message(
             f"{mode_prefix(account_mode)}📤 *Sold:* {ticker} — {reason}\n"
             f"Exit @${filled_price:.2f} × {filled_qty:.0f} shares\n"
-            f"{new_remaining} sh remain under the resting profit-take (its own target and "
-            f"breakeven stop) — the trade stays open until they exit.\n"
+            f"{new_remaining} sh remain under the resting profit-take — the trade stays open "
+            f"until they exit.\n"
             f"P&L so far: ${total_pnl:+,.2f}"
         )
         return
