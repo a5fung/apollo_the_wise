@@ -1,0 +1,64 @@
+ticker	scan_date	alerted	orderable	orb_status	filled	fill_minute	entry_px	run_xadr	runner5	run_xadr_B	runnerB5
+ARGX	2026-08-17	1	1	filled:stop_limit_bracket	1	09:31	936.785	2.957	0	4.735	0
+CBRS	2026-08-17	1	0	not_high_never_ordered	0			-0.381	0		0
+OCUL	2026-08-17	0	0	not_high_never_ordered	0			2.356	0		0
+AMLX	2026-08-18	1	1	filled:stop_limit_bracket	1	09:32	30.07	2.619	0	4.808	0
+HAE	2026-08-18	0	0	not_high_never_ordered	0			1.430	0		0
+BNTX	2026-08-19	0	0	not_high_never_ordered	0			2.321	0		0
+DRD	2026-08-19	0	0	not_high_never_ordered	0			4.481	0		0
+EIKN	2026-08-19	0	0	not_high_never_ordered	0			1.027	0		0
+EL	2026-08-19	0	0	not_high_never_ordered	0			3.968	0		0
+KC	2026-08-19	0	0	not_high_never_ordered	0			-1.715	0		0
+MRK	2026-08-19	0	0	not_high_never_ordered	0			1.327	0		0
+MRNA	2026-08-19	1	1	filled:stop_limit_bracket	1	09:33	120.15	-1.304	0	5.663	1
+MRVI	2026-08-19	0	0	not_high_never_ordered	0			5.904	1		0
+MRVL	2026-08-19	1	1	filled:stop_limit_bracket	1	09:32	241.53	1.085	0	0.818	0
+TEM	2026-08-19	1	0	not_high_never_ordered	0			3.133	0		0
+TWST	2026-08-19	1	0	window_out_of_orb	0			1.270	0		0
+BULL	2026-08-20	1	0	orb_invalid:setup:stop_too_wide:0.54>1.5x_ATR_0.34	0			3.480	0		0
+FUTU	2026-08-20	0	0	not_high_never_ordered	0			4.468	0		0
+MRVI	2026-08-20	0	0	not_high_never_ordered	0			2.400	0		0
+RARE	2026-08-20	1	0	gap_below_floor	0			1.216	0		0
+SCSC	2026-08-20	1	0	not_high_never_ordered	0			1.453	0		0
+CRML	2026-08-21	0	0	not_high_never_ordered	0			2.678	0		0
+UUUU	2026-08-21	1	0	window_out_of_orb	0			1.444	0		0
+NSSC	2026-08-24	0	0	not_high_never_ordered	0			0.343	0		0
+SCTX	2026-08-24	0	0	not_high_never_ordered	0			0.268	0		0
+NBBK	2026-08-25	0	0	not_high_never_ordered	0			1.664	0		0
+ANF	2026-08-26	0	0	not_high_never_ordered	0			1.215	0		0
+BHVN	2026-08-26	0	0	not_high_never_ordered	0			0.119	0		0
+BZ	2026-08-26	0	0	not_high_never_ordered	0			-0.175	0		0
+PLAB	2026-08-26	0	0	not_high_never_ordered	0			0.731	0		0
+SMMT	2026-08-26	0	0	not_high_never_ordered	0			5.829	1		0
+CHRN	2026-08-27	1	0	window_out_of_orb	0			0.710	0		0
+CRM	2026-08-27	0	0	not_high_never_ordered	0			1.872	0		0
+CRWD	2026-08-27	1	1	filled:market_or_skip_limit	1	09:31	210.99	2.250	0	3.957	0
+DG	2026-08-27	1	0	gap_below_floor	0			2.568	0		0
+MBUU	2026-08-27	0	0	not_high_never_ordered	0			0.305	0		0
+OKTA	2026-08-27	1	1	filled:stop_limit_bracket	1	09:49	167.88	2.552	0	3.204	0
+OOMA	2026-08-27	0	0	not_high_never_ordered	0			0.741	0		0
+VEEV	2026-08-27	1	0	window_out_of_orb	0			0.900	0		0
+AFRM	2026-08-28	0	0	not_high_never_ordered	0			-0.241	0		0
+BEKE	2026-08-28	0	0	not_high_never_ordered	0			-0.260	0		0
+EROK	2026-08-28	0	0	not_high_never_ordered	0			1.487	0		0
+ESTC	2026-08-28	0	0	not_high_never_ordered	0			0.551	0		0
+GAP	2026-08-28	0	0	not_high_never_ordered	0			-0.357	0		0
+SOLS	2026-08-28	1	1	filled:stop_limit_bracket	1	09:34	66.75	1.026	0	0.358	0
+GPRK	2026-08-31	0	0	not_high_never_ordered	0			6.565	1		0
+SAIC	2026-08-31	0	0	not_high_never_ordered	0			2.157	0		0
+XE	2026-08-31	0	0	not_high_never_ordered	0			0.690	0		0
+CRK	2026-09-01	0	0	not_high_never_ordered	0			-0.269	0		0
+FRVO	2026-09-01	0	0	not_high_never_ordered	0			-0.248	0		0
+YEXT	2026-09-01	0	0	not_high_never_ordered	0			3.857	0		0
+DAKT	2026-09-02	0	0	not_high_never_ordered	0			1.555	0		0
+DELL	2026-09-02	0	0	not_high_never_ordered	0			3.830	0		0
+GTLB	2026-09-02	0	0	not_high_never_ordered	0			0.513	0		0
+TRAX	2026-09-02	0	0	not_high_never_ordered	0			0.097	0		0
+YEXT	2026-09-02	0	0	not_high_never_ordered	0			1.352	0		0
+AGX	2026-09-03	1	1	abstain:entry_window_gaps:1_of_29	None			1.507	0		None
+CLYM	2026-09-03	0	0	not_high_never_ordered	0			1.357	0		0
+HOOD	2026-09-03	1	1	filled:market_or_skip_limit	1	09:35	117.4672	0.331	0	1.517	0
+HSAI	2026-09-03	0	0	not_high_never_ordered	0			0.940	0		0
+NTSK	2026-09-03	0	0	not_high_never_ordered	0			5.636	1		0
+SMMT	2026-09-03	0	0	not_high_never_ordered	0			1.782	0		0
+SNOW	2026-09-03	1	1	no_entry:never_crossed_orb_high	0			0.027	0		0
