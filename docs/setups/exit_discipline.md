@@ -542,7 +542,8 @@ already decided to sell there:
   remediation (3 attempts, then "failed to remediate"), `update_stop` (both attempts fail → "STOP FAILED — position
   NAKED"), the stop-ACK watchdog's fresh-entry fallback, the stream's partial-exit restore and the OCO-cancel
   handler. Listed for him. **→ RULED 2026-10-02 (iii): extended — change log 2026-10-03.**
-- Tests: `tests/test_687_ruling3_stop_through_price_sells.py` (9, incl. the reconciler still selling nothing).
+- Tests: `tests/test_687_ruling3_stop_through_price_sells.py` (9 at the time, incl. the reconciler still selling
+  nothing — that one removed 2026-10-03, superseded by ruling (iii): 8 remain).
   Mutations: restore breach branch off + stream breach branch off → 4 red.
 
 **Ruling (4) — a stale "sell at the next open" mark is cleared, paged, and the next close decides (depth path).**
@@ -556,7 +557,8 @@ the line and never acts on it on a close back above it. Tests: `tests/test_687_r
 **Ruling (1)** (a loss on a partial sale counts toward the 2% daily loss limit at once) is a safeguard change —
 owned by `docs/setups/safeguards.md` item 5 + its 2026-10-02 entry.
 
-**Evidence — the convergence test** (`tests/test_687_toggle_off_convergence.py`, harness
+**Evidence — the convergence test** (as it stood for this entry; since 2026-10-03 the baseline is main 8e1329f0
+and the allow-list names only ruling (iii) — change log 2026-10-03) (`tests/test_687_toggle_off_convergence.py`, harness
 `tests/_convergence_687_harness.py`): 31 fixed toggle-OFF scenarios run through the pinned pre-#687 code
 (97b08d51 since the 2026-10-02 rebase — 90d02459 before it; a temporary git worktree —
 `scripts/probes/_687/capture_toggle_off_baseline.sh`) and through this branch, recording every broker call, every
