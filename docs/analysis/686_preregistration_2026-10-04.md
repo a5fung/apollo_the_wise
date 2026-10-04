@@ -5,9 +5,20 @@ threshold, stop, size, safeguard or live trade state — any such change is CHAN
 operator's call (THE LINE).** This document is a REGISTRATION: it fixes, before a single outcome of the
 block exists, what will be measured, on which rows, with which rule, and what each possible result
 will be called. The read itself is `scripts/probes/_686/preregistered_read.py`; it refuses to run before
-the block has matured and refuses to run if this document or itself has been edited (§Freeze record).
-Written 2026-10-04 PT. The block's 15th forward session is 2026-10-16, twelve days away; no outcome of
-any scan date in the block was looked at, queried or computed while writing this.
+the block has matured and refuses to run if this document, itself, `extract.sh`, or ANY of the #684
+modules and inputs it imports (`gate.py`, `features.py`, `study.py`, `study_orb.py`, `study_orb_live.py`,
+`features.tsv`, `results.tsv`, `daily.tsv.gz`) has been edited (§Freeze record); it also asserts that
+`study.DRAWS` is the frozen 63-draw tuple. Written 2026-10-04 PT; revised the same day after an
+independent review (four blocking findings, all applied — see §12) and re-frozen. The block's 15th forward
+session is 2026-10-16, twelve days away; no outcome of any scan date in the block was looked at, queried
+or computed while writing this.
+
+**Blindness, stated precisely:** the local `scripts/probes/_684/daily.tsv.gz` (gitignored, pulled
+2026-09-28) holds daily bars through 2026-09-25 for #684's tickers and SPY/QQQ/IWM. For a ticker that is
+in BOTH populations, that file therefore already contains the first few forward sessions of its
+September-block row. Nobody opened those rows; the frozen legs read only scan dates ≤ 09-03 and their
+forward windows end by 09-24. The new block's own data is pulled by `extract.sh`, which refuses before
+2026-10-17, into `_686/data/`, which does not exist today.
 
 **Population:** every gap-day candidate the EP scan SCORED (`mi_ep_scan_log.ep_score IS NOT NULL`) with
 `scan_date` from 2026-09-04 to 2026-09-25 inclusive, one row per (ticker, scan_date) — n = counted by
@@ -17,9 +28,14 @@ the read's STEP 0 and printed before any outcome (expected ≈ 75–120 rows, §
 
 - **Question (his, 2026-09-28, fork 1 of #684):** does any feature known on the gap day mark the EPs
   that run big — out of sample, on a block #684 never saw?
-- **Possible answers, named now:** for each of 65 draws (the 63 #684 features + the 2 reversed leads),
-  one of **CONFIRMED · HOLDS (report only) · AGAINST · can't tell · no data** (§6). "None hold" means
-  zero CONFIRMED. Only CONFIRMED features reach his ruling as "a feature holds".
+- **Possible answers, named now:** for each of the 63 #684 features, #684's OWN verdict with the
+  September block as the held-out leg — **PASS (this document calls it CONFIRMED) · fail (wrong way) ·
+  can't tell (one of five stated reasons) · no data** — plus two report-only tags from the block's own
+  permutation p, **HOLDS (report only)** and **AGAINST** (§6). For the 2 reversed leads: **CONFIRMED ·
+  HOLDS (report only) · AGAINST · can't tell · no data**. "None hold" means zero PASS and zero lead
+  CONFIRMED. Only a PASS / lead-CONFIRMED reaches his ruling as "a feature holds", and every PASS is
+  reported as either "with new-block p < 0.05" or "sign-only (p = x)" — #684's bar does not require the
+  held-out p, and that weakness is stated in §6 rather than quietly repaired.
 - **What a CONFIRMED feature leads to:** a one-paragraph proposal for his ruling (§10) — never a
   change made by this read.
 
@@ -54,6 +70,19 @@ the read's STEP 0 and printed before any outcome (expected ≈ 75–120 rows, §
   and a MODERATE tick promoted to a HIGH alert and ordered — in #684's own population (rows from
   05-11) 15 and 28 such rows. The order fires off the alert, so the alert row is the record of what the
   live path acted on. #684's `first_pass_time` (first pass of ANY tier) is not used for the live frame.
+- **⚠ A HIGH alert row is an UPPER BOUND on "an order was attempted", stated in advance** (review
+  finding 2026-10-04): `scheduler.py:1194` builds `already_alerted` from ANY-tier alert rows before the
+  scan, so a name whose first alert was MODERATE and which was promoted to HIGH inside the window never
+  reaches the HIGH dispatch at `:1236`; and `EP_ALERT_JUDGE_RESULT_UPDATE_SQL` (`db.py:5721`) rewrites
+  `score_tier` in place, so the alert row's `created_at` is not necessarily the minute it became HIGH.
+  Therefore `extract.sh` also pulls **`data/trades.tsv`** — the `mi_live_trades` ORDER RECORDS for the
+  population (ticker, alert_date, signal_type, account_mode, status collapsed to skipped / cancelled /
+  placed, skip_reason, created time; **no price, share or P&L column**, so the file holds no outcome).
+  STEP 0 prints the cross-tab: rows the model finds orderable × rows with a record (and their
+  skip_reasons), and lists any row the record shows PLACED that the model did not find orderable (a
+  model miss). **B2 stays model-defined** (so it is checkable against the cited code); the cross-tab is a
+  declared composition fact, not a rule input. Expected: nearly every model-orderable row has a record;
+  model misses ≤ 2 (the dry run on #684's held-out: 10 orderable, 10 with a record, 0 misses).
 - **Era:** every row is era B (the 08-22 rescaled score, bar 65). The `ep_score` draw is read with its
   frozen era-A cut (top third = score ≥ 60) and is flagged a scale artefact in advance (§5).
 - **Not in the population, by construction:** names never scored (the top-20 gap cap, `mcap_too_small`,
@@ -109,13 +138,19 @@ UNREADABLE: excluded and counted, never guessed.
   catalyst grade, gap %) reads mechanically favourable in B1, because "HIGH" is the only way to a
   non-zero outcome. B1 therefore cannot CONFIRM on its own (§6).
 - **B2** = the rows today's path PLACES an order for (HIGH, first HIGH tick < 09:45, both admission
-  gates passed; `orderable = 1`) — selection among what we would actually buy. Expected to be thin (§7).
+  gates passed; `orderable = 1`) and whose fill walk is readable (an `abstain` row is orderable but
+  excluded) — selection among what we would actually buy. Expected to be thin (§7).
+
+**Order of computation (the leakage control):** `frame_b_admission` decides orderability at STEP 0 from
+the 09:30 bar, the submit-minute open and PRIOR daily bars only — no forward bar, no fill. The fill walk
+and both outcomes (`add_outcomes`, `frame_b_fill`) run only after STEP 0 has printed and passed (§7).
 
 **Dry-run limitation, stated:** #684's `pop.tsv` carries only the FIRST live alert row's tier and
 creation minute (and no alert rows at all before 05-11, where the scan PASS tick's tier stands in), so
-the dry run on the old blocks approximates HIGH by that first row. Frame B on the old blocks is
-therefore today's mechanics replayed, with no published number to match; frame A on the old blocks must
-and does match `results.tsv` exactly (§11).
+the dry run on the old blocks approximates HIGH by that first row; its order records come from the
+critic's `_684/check_late_trades.txt`. Frame B on the old blocks is therefore today's mechanics replayed,
+with no published number to match; frame A on the old blocks must and does match `results.tsv` exactly
+(§11).
 
 ## 4. Runner definition
 
@@ -231,62 +266,82 @@ new-block leg, one generator shared sequentially in `DRAWS` order (frame A, then
 feature), and seed 687 for the leads. Both tails are taken from the same shuffles: p(declared) =
 share of shuffles with difference ≥ observed; p(reverse) = share ≤ observed.
 
-**The four-condition bar, exactly as #684 defined it, with the new block as the held-out leg:**
+**The four-condition bar, exactly as #684 defined it, with the new block as the held-out leg — and it is
+#684's OWN code that applies it:** the script calls `scripts/probes/_684/study_orb.py::run_pass` →
+`per_feature` on (frozen discovery rows + the September rows as `HELD-OUT`), and `per_feature`'s verdict
+string is the verdict. Nothing is re-implemented. The four conditions, as that code checks them:
 1. **discovery p < 0.05** in the declared direction — FROZEN from #684 (DISCOVERY = scan dates
    05-01..08-14, 604 bar-tested rows); the script recomputes it from the committed `features.tsv` +
-   `daily.tsv.gz` and ASSERTS equality with `results.tsv` (n_disc, n_fav, p_disc, drop-week p, drop-two
-   p); a mismatch aborts the read as INVALID;
-2. **same sign on the held-out block** — now the September block; a held-out read with **fewer than 3
-   runners in the block, or fewer than 8 rows on either side**, reads "can't tell (thin)" and cannot pass;
+   `daily.tsv.gz` BEFORE the new block is opened and ASSERTS equality with `results.tsv` (n_disc, n_fav,
+   p_disc, drop-week p, drop-two p, and that all 63 draws have a published row); a mismatch writes
+   `out/686_INVALID.txt` and exits 5 with the new block untouched;
+2. **same sign on the held-out block** — now the September block, SIGN ONLY, as #684 wrote it (`h_d > 0`);
+   a held-out read with **fewer than 3 runners among the rows carrying the feature, or fewer than 8 rows
+   on either side**, reads "can't tell (held-out too thin)" and cannot pass;
 3. survives dropping the discovery ISO week with the most runners (**W19**, frozen) — same sign and p < 0.05;
 4. survives dropping the two largest discovery runs (**UMC 05-06, CRSR 05-08**, frozen) — same sign and p < 0.05.
 
-**Added for this block, because it can carry a p where #684's 4-runner held-out could not:** the
-new-block leg has its own permutation p (seed 686). Condition 2 is reported as #684 wrote it (sign only,
-column "#684 bar") AND the stricter form below decides.
+**Verdict per draw, frame A — #684's `per_feature` cascade, verbatim, in its order of checking:**
+- **no data** — fewer than 30 discovery rows with the feature, or no discovery difference;
+- **fail (wrong way)** — the frozen discovery difference is < 0 (with ", p=x the other way" when the
+  reverse is itself p < 0.05);
+- **can't tell (discovery p >= 0.05)**;
+- **can't tell (held-out too thin)** — the September rows with the feature hold < 3 runners, or the
+  favourable group < 8 rows, or the rest < 8 rows;
+- **can't tell (held-out sign against)** — the September favourable−rest difference ≤ 0;
+- **can't tell (does not survive dropping the best week)**;
+- **can't tell (does not survive dropping the best two names)**;
+- **PASS** — all four conditions hold. **This document calls a PASS "CONFIRMED".**
 
-**Verdict per draw, frame A — one of these, in this order of checking:**
-- **no data** — fewer than 30 discovery rows with the feature, or every new-block row falls on one side
-  of the frozen cut;
-- **can't tell (thin)** — the block holds < 3 frame-A runners, OR the favourable group < 8 rows, OR the
-  rest < 8 rows;
-- **CONFIRMED** — conditions 1, 3 and 4 all hold (frozen) AND on the new block the favourable−rest
-  difference > 0 AND p(declared) < 0.05;
-- **HOLDS (report only)** — on the new block difference > 0 AND p(declared) < 0.05, but conditions 1,
-  3, 4 do not all hold. This is a NEW lead for a third block, never a finding;
-- **AGAINST** — on the new block difference < 0 AND p(reverse) < 0.05;
-- **can't tell** — anything else.
+**Reported beside the verdict, never deciding it (declared here so it cannot become a rule after the
+fact):** the September leg's own week-block permutation p, both tails from the same shuffles (seed 686,
+one generator shared sequentially in `DRAWS` order — frame A, then B1, then B2 for each feature):
+p(declared) = share of shuffles with difference ≥ observed; p(reverse) = share ≤ observed. From it, two
+tags: **HOLDS (report only)** when the September difference > 0 and p(declared) < 0.05 on a draw that did
+NOT pass (a new lead for a third block, never a finding); **AGAINST** when the difference < 0 and
+p(reverse) < 0.05. A PASS carries its p(declared) in the proposal paragraph as either **"with new-block
+p < 0.05"** or **"sign-only (p = x)"**. The script's `--dry-run-old-block` shows the difference this
+makes: on #684's own held-out, dollar volume reads PASS (sign-only, p 0.524) under #684's bar and would
+have read "can't tell" under a p-requiring bar — #684's bar decides, as the spec says.
 
-**For L1 and L2** the same vocabulary, with: conditions 1, 3, 4 = the ADR-CONTROLLED statistic on the
-frozen discovery rows (negative sign, p(less) < 0.05 on all rows, without W19, without UMC+CRSR), and the
-new-block leg = the controlled statistic on the block (negative sign and p(less) < 0.05 → CONFIRMED if
-1/3/4 hold, else HOLDS report-only; positive and p(more) < 0.05 → AGAINST).
+**For L1 and L2** (new hypotheses — there is no #684 code for them): conditions 1, 3, 4 = the
+ADR-CONTROLLED statistic on the frozen discovery rows (negative sign, p(less) < 0.05 on all rows, without
+W19, without UMC+CRSR), and the new-block leg = the controlled statistic on the block (negative sign and
+p(less) < 0.05 → CONFIRMED if 1/3/4 hold, else HOLDS report-only; positive and p(more) < 0.05 → AGAINST;
+the same thin rule → can't tell (thin); otherwise can't tell). Seed 687.
 
 **Frame B (B1 and B2):** the same thin rule and the same new-block statistic on `runnerB`; frame B carries
 NO discovery leg (#684's published frame B used the pre-#500 walk and any-tier passes — not comparable),
-so its verdicts are **HOLDS (report only) · AGAINST · can't tell · no data**, never CONFIRMED. A frame-A
-CONFIRMED feature is reported to him with its B1 and B2 readings beside it; a frame-B HOLDS alone is a
-lead for a third block.
+so its verdicts are **HOLDS (report only) · AGAINST · can't tell (thin) · can't tell · no data**, never
+CONFIRMED. A frame-A PASS is reported to him with its B1 and B2 readings beside it; a frame-B HOLDS alone
+is a lead for a third block.
 
-**What counts as "none hold":** zero CONFIRMED across the 65 frame-A draws. HOLDS-only draws do not
-change that answer; they are listed as leads.
+**What counts as "none hold":** zero PASS across the 63 draws AND zero CONFIRMED across the 2 leads.
+HOLDS / AGAINST tags do not change that answer; they are listed as leads.
 
-**Multiplicity, stated before the data:** 65 draws × 0.05 ≈ 3.3 HOLDS by chance; up to 3 HOLDS is noise.
-CONFIRMED is only reachable by draws whose frozen conditions 1, 3 and 4 already hold. **On the frozen
-data that is exactly two of the 63: ADR % (`PRE_adr20_pct`: p 0.020 / 0.029 / 0.010) and 20-day dollar
-volume (`PRE_dollar_vol_20d`: p 0.010 / 0.001 / 0.007).** Share price clears 1 and 3 but not 4 (drop-two
-p 0.053) and can reach HOLDS at most. **Neither lead can reach CONFIRMED:** L1's controlled discovery
-leg is −1.0 pp, p(less) 0.383 (the "quietness" reversal was ADR % — the #684 VERIFIED section's own
-warning, now a number); L2's controlled discovery leg clears (−4.9 pp, p 0.029) and survives dropping
-UMC+CRSR (p 0.018) but not dropping W19 (p 0.079). So the expected number of chance CONFIRMED verdicts
-is about 2 × 0.05 = 0.1, and the honest prior for this read is "none hold" unless ADR % or dollar volume
-repeats. The leads are read on the new block as report-only, as are any new HOLDS.
+**Multiplicity and the known weakness of the bar, stated before the data:** PASS is only reachable by
+draws whose frozen conditions 1, 3 and 4 already hold. **On the frozen data that is exactly two of the
+63: ADR % (`PRE_adr20_pct`: p 0.020 / 0.029 / 0.010) and 20-day dollar volume (`PRE_dollar_vol_20d`:
+p 0.010 / 0.001 / 0.007).** Share price clears 1 and 3 but not 4 (drop-two p 0.053) and can reach a
+HOLDS tag at most. Because condition 2 is sign-only, **each of those two passes by chance with
+probability ≈ ½ under the null** (given the thin rule is cleared), so the chance of at least one chance
+PASS is ≈ ¾ — this is why every PASS carries its p and the §10 paragraph must say "sign-only" when that
+is what it is. A PASS with p(declared) < 0.05 has chance probability ≈ 0.05 per eligible feature (≈ 0.1
+for the pair). Tags: 65 draws × 0.05 ≈ 3.3 HOLDS/AGAINST by chance; up to 3 is noise. **Neither lead can
+reach CONFIRMED:** L1's controlled discovery leg is −1.0 pp, p(less) 0.383 (the "quietness" reversal
+was ADR % — the #684 VERIFIED section's own warning, now a number); L2's controlled discovery leg clears
+(−4.9 pp, p 0.029) and survives dropping UMC+CRSR (p 0.018) but not dropping W19 (p 0.079). The honest
+prior for this read is "none hold" unless ADR % or dollar volume repeats, and a sign-only repeat is weak.
 
-**Co-primary check — his labelled EPs:** every name in `docs/methodology/operator_labelled_eps.md` with an
-EP date inside the block is reported per draw as "in the favourable group: yes/no" — where they sit,
-never whether they are runners. Today (2026-10-04) that list holds none in the block (latest: CHPT
+**Co-primary check — his labelled EPs (implemented, per draw):** every name in
+`docs/methodology/operator_labelled_eps.md` with an EP date inside the block that is in the population
+is reported per draw in the column "labelled EPs in favourable" as `TICKER:yes/no` — in the favourable
+group under the frozen cut, or not (`—` when the feature is missing on that row; "none" when the list is
+empty) — where they sit, never whether they are runners. Labelled names NOT in the population (never
+scored) are listed at STEP 0 as such. Today (2026-10-04) the list holds none in the block (latest: CHPT
 09-03). Names he labels BEFORE the run date enter the check; a label added after the run cannot change
-any verdict (it may be added to the report as a note, dated).
+any verdict (it may be added to the report as a note, dated). The dry run exercises the column on MRNA
+08-19 (§11).
 
 ## 7. Expectations written before the data (what the composition and the frames should look like)
 
@@ -298,12 +353,14 @@ any verdict (it may be added to the report as a note, dated).
 - **Frame B2** is expected thin by construction (≈ 10–25 orderable rows, 0–3 runners_B): most B2 verdicts
   will be "can't tell (thin)". That prediction is made here so a thin frame B is read as the registered
   expectation, not as evidence of anything.
-- **Alarms, checked by whoever runs the read on STEP 0's printout BEFORE reading on** (the script aborts
-  on the first by itself; the rest are figures it prints): a scan date outside 09-04..09-25 in the pull;
-  a row count outside 40–200; fewer than 5 HIGH rows in the whole block (would mean the HIGH columns
-  did not join); more than 3 rows without 20 prior sessions; 09:45 minute coverage below 80 %. Any of
-  these → investigate the pull (`extract.sh`), fix the PULL, re-pull, re-run; the registration and the
-  read's code do not change.
+- **Alarms — ALL HARD, checked by the script at STEP 0 BEFORE any outcome is computed (exit 6):** a scan
+  date outside 09-04..09-25 in the pull; a row count outside 40–200; fewer than 5 HIGH rows in the whole
+  block (would mean the HIGH columns did not join); more than 3 rows without 20 prior sessions; 09:45
+  minute coverage below 80 %. STEP 0's text is printed and written to `out/686_step0.txt` first, so the
+  human sees the composition before the script decides; on an alarm the script stops with no outcome in
+  memory. Any alarm → investigate the pull (`extract.sh`), fix the PULL, re-pull, re-run
+  `--step0-only`; the registration and the read's code do not change. `--step0-only` may be run any
+  number of times — it computes no outcome.
 
 ## 8. What the read may NOT do
 
@@ -313,11 +370,15 @@ any verdict (it may be added to the report as a note, dated).
 - Drop, re-label or re-date any row after an outcome is visible. Censored rows are counted, not filled.
 - Change the block (its dates or the dedupe rule), the HIGH definition, the submit-time rule or the
   price proxy. If a data defect is found, the PULL is fixed and STEP 0 re-run; the rule is not.
-- Run more than once on the block. The first complete run's `out/686_*` files are the record; a re-run is
-  allowed only to reproduce them byte for byte after a pull fix, and says so.
-- Read a frame-B HOLDS, a HOLDS-only frame-A draw, or a descriptive line as a finding. Only CONFIRMED is
-  a finding; everything else is a lead or a description.
-- Edit this document or the script after 2026-10-16. The script hashes both and refuses on any change.
+- Run the FULL read more than once on the block. `--step0-only` may run as often as the pull needs; the
+  full read runs once, after STEP 0 passes, and its `out/686_*` files are the record. A full re-run is
+  allowed only on identical inputs, to reproduce those files byte for byte. If a pull defect is found
+  AFTER outcomes were seen, the first run's files stay the record; a corrected run is labelled post-hoc
+  and reported beside it, never in place of it.
+- Read a frame-B HOLDS, a HOLDS/AGAINST tag, or a descriptive line as a finding. Only a PASS or a lead
+  CONFIRMED is a finding; everything else is a lead or a description.
+- Edit this document, the script, `extract.sh` or any hashed #684 file after 2026-10-16. The script
+  hashes all of them and refuses on any change.
 
 ## 9. What this does not answer
 
@@ -338,34 +399,64 @@ any verdict (it may be added to the report as a note, dated).
 ## 10. What the proposal for his ruling MAY say (the template — not a result)
 
 One paragraph, written after the run, in plain words, every number with its n:
-- If **none hold** (zero CONFIRMED): "No gap-day feature repeated out of sample; the leads from #684
-  (ADR %, dollar volume, the two reversed leads) read [sign, n, p] on the September block. No change to
-  the score or admission is supported. [HOLDS-only draws, if any, named as leads for a third block.]"
-- If **a feature is CONFIRMED**: "[Feature] held out of sample: discovery [rate vs rate, p], September
-  block [rate vs rate, n, p], frame B1 [..], B2 [..]. Three options are his: a third block, a cost read of
-  what the favourable third excludes, or nothing. Any change to score or admission is CHANGE_PROCESS
-  and his call." The paragraph never proposes a threshold.
+- If **none hold** (zero PASS, zero lead CONFIRMED): "No gap-day feature repeated out of sample; the
+  leads from #684 (ADR %, dollar volume, the two reversed leads) read [sign, n, p] on the September
+  block. No change to the score or admission is supported. [HOLDS-tagged draws, if any, named as leads
+  for a third block.]"
+- If **a feature PASSES (CONFIRMED)**: "[Feature] held out of sample under #684's bar: discovery [rate vs
+  rate, p], September block [rate vs rate, n] — **[with new-block p = x < 0.05 | sign-only, new-block
+  p = x]**, frame B1 [..], B2 [..]. Three options are his: a third block, a cost read of what the
+  favourable third excludes, or nothing. Any change to score or admission is CHANGE_PROCESS and his
+  call." The paragraph never proposes a threshold, and never omits the sign-only qualifier.
 
 ## 11. Dry-run record (2026-10-04, local, #684's captured files only, `--dry-run-old-block`)
 
-- **Frame A reproduces #684 exactly:** on all 63 bar-tested draws the recomputed n_disc, n_fav,
-  discovery p, drop-week p and drop-two p equal `results.tsv` to 4 decimals, and with #684's own
-  held-out (08-15..09-03, n = 63 rows, 4 runners) the held-out n/sign and every verdict match the
-  published ones — including the single PASS (`PRE_dollar_vol_20d`). The import of `features.py` with
-  a redirected data directory reproduced the committed `features.tsv` byte for byte.
-- **Frame B machinery runs** on the old held-out under today's mechanics: of n = 63 rows, 46 never
-  ordered (no HIGH alert row — 17 HIGH, of which 13 inside the window; 1 scan-tick HIGH was a judge
-  demotion), 4 window_out_of_orb, 2 gap_below_floor, 1 orb_invalid, 1 abstain; 9 orderable, 8 filled (6
-  stop-limit bracket, 2 market-or-skip limit), 1 no_entry, 1 runner_B. No published number exists for
-  this (see §3 dry-run limitation) — it proves the code path, not a reproduction.
+- **Frame A reproduces #684 exactly, in the REPRO step before any block is opened:** on all 63 bar-tested
+  draws the recomputed n_disc, n_fav, discovery p, drop-week p and drop-two p equal `results.tsv` to 4
+  decimals, and with #684's own held-out (08-15..09-03, n = 63 rows, 4 runners) the held-out n/sign and
+  every verdict match the published ones — **1 PASS (`PRE_dollar_vol_20d`) · 27 can't tell · 35 fail**,
+  #684's published tally. The import of `features.py` with a redirected data directory reproduced the
+  committed `features.tsv` byte for byte. The deciding pass (`run_pass` on discovery + held-out) is
+  asserted equal to the REPRO pass.
+- **The sign-only point, visible in the dry run:** dollar volume PASSES under #684's bar with new-block
+  p(declared) 0.524 — the summary line reports it as "sign-only". Share price (`PRE_prev_close`) carries
+  the one HOLDS tag (new-block 18.2 % vs 0.0 %, p 0.018) on a draw #684 scores "can't tell (does not
+  survive dropping the best two names)" — reported, not decided. No AGAINST tag.
+- **STEP 0 on the old held-out:** 63 rows / 14 dates, 20 alerted, 17 HIGH (13 inside the window, 1
+  judge demotion), 0 censored, 09:45 coverage 61 of 63, 0 short-history rows; frame-B admission 10
+  orderable (46 never ordered, 4 window_out_of_orb, 2 gap_below_floor, 1 orb_invalid); **order-record
+  cross-tab: 10 of 10 orderable rows have a `mi_live_trades` record (7 placed, 2 skipped, 1 cancelled), 0
+  model misses**; labelled EPs in the block: MRNA 08-19 in the population, CHPT 09-03 never scored. All
+  five alarms clear; `out/dryrun_step0.txt` written before any outcome.
+- **Frame B machinery runs** on the old held-out under today's mechanics: of the 10 orderable, 8 filled
+  (6 stop-limit bracket, 2 market-or-skip limit), 1 no_entry, 1 abstain (unreadable) → B2 n = 9, 1
+  runner_B; B1 n = 62. No published number exists for this (see §3 dry-run limitation) — it proves the
+  code path, not a reproduction. The labelled column reads `MRNA:yes/no` per draw.
 - **Leads on the frozen discovery rows** (the numbers §6 relies on): L1 raw n = 201 quietest at 6.5 % vs
   403 at 13.4 %, p(less) 0.006; controlled −1.0 pp, p 0.383. L2 raw n = 202 widest at 7.4 % vs 402 at
-  12.9 %, p(less) 0.007; controlled −4.9 pp, p 0.029; drop-W19 p 0.079; drop-UMC+CRSR p 0.018.
+  12.9 %, p(less) 0.007; controlled −4.9 pp, p 0.029; drop-W19 p 0.079; drop-UMC+CRSR p 0.018. On the
+  old held-out both read "can't tell".
 - **Refusals verified:** the read without flags exits 3 (calendar gate, today 2026-10-04 < 2026-10-17);
   `--no-freeze-check` without the dry-run flag exits 3 at the same gate and would exit 2 after it;
-  `extract.sh` exits 3 before the date.
-- Files: `scripts/probes/_686/out/dryrun_results_out.txt`, `dryrun_cuts.tsv` (the frozen cut table above),
-  `dryrun_outcomes.tsv`, `dryrun_summary.json`.
+  `extract.sh` exits 3 before the date; a one-byte edit to the doc body, to `extract.sh`, or to any
+  hashed #684 file makes the dry run (freeze check on) refuse with exit 2; `--step0-only
+  --dry-run-old-block` exits 0 after STEP 0 with no outcome file written.
+- Files: `scripts/probes/_686/out/dryrun_step0.txt`, `dryrun_results_out.txt`, `dryrun_cuts.tsv` (the
+  frozen cut table above), `dryrun_outcomes.tsv`, `dryrun_summary.json` — produced by the frozen script
+  with the freeze check ON and byte-identical to the freeze-check-off run.
+
+## 12. Review findings applied before the freeze (2026-10-04, independent reviewer; all four blocking)
+
+| # | finding | applied as |
+|---|---|---|
+| 1 | the freeze left the imported #684 code and inputs open (an edit to `features.py` / `entry_walk` after outcomes were visible would pass; a draw added to `study.DRAWS` had no published row and slipped through `continue`) | the footer now carries sha256s for `gate.py`, `features.py`, `study.py`, `study_orb.py`, `study_orb_live.py`, `features.tsv`, `results.tsv`, `daily.tsv.gz`; `freeze_check` verifies all of them; `study.DRAWS` is asserted to be 63 draws with the pinned (col, kind, fav) hash; a draw with no published row is a MISMATCH |
+| 2 | STEP 0 appeared only after every verdict was on screen; §8's "re-run byte for byte after a pull fix" contradicted itself; a reproduction mismatch kept going and exited 5 at the end | order is now FREEZE → REPRO (exit 5 immediately, new block untouched) → STEP 0 (printed, written, five HARD alarms exit 6, `--step0-only` returns) → outcomes; orderability is decided at STEP 0 from gap-day and prior bars only; §8 rewritten |
+| 3 | condition 2 was not #684's — a new-block p < 0.05 was required and decided; dollar volume read PASS under #684's bar and "can't tell" under the new one; `fail (wrong way)` had no equivalent | #684's `study_orb.per_feature` verdict decides, verbatim (PASS = CONFIRMED, fail (wrong way), the five can't-tell reasons); the new-block p is a reported column with declared HOLDS / AGAINST tags; the sign-only weakness is stated with its chance rate; every PASS is reported "with p < 0.05" or "sign-only" |
+| 4 | the per-draw labelled-EP check was promised and not implemented | implemented: column "labelled EPs in favourable" per draw (`TICKER:yes/no`); exercised on MRNA 08-19 in the dry run |
+| nb | a HIGH alert row may not be what was ordered (`already_alerted` is any-tier; the judge update rewrites `score_tier` in place) | confirmed in code; `extract.sh` pulls `mi_live_trades` order records (no price columns); STEP 0 cross-tabs model-orderable × record; B2 stays model-defined (§2) |
+| nb | blindness rested on the author's word; `daily.tsv.gz` runs to 09-25 | stated in the preamble |
+| nb | header printed seed 686 for the leads; the code uses 687 | header fixed; `SEED_LEADS = 687` named |
+| nb | the freeze commit is not real until merged | outside this document; the orchestrator merges before 10-16 |
 
 ## THE LINE
 
@@ -376,10 +467,22 @@ no PLAN.md edit was made in writing this. The read, when it runs, is read-only a
 <!-- FREEZE -->
 ## Freeze record
 
-The read verifies these before it runs and refuses on any mismatch. The "doc body" hash covers every
-byte of this file ABOVE the `<!-- FREEZE -->` marker.
+The read verifies every hash below before it runs and refuses on any mismatch. The "doc body" hash covers
+every byte of this file ABOVE the `<!-- FREEZE -->` marker (a file cannot hold its own hash). The #684 files
+are the code and inputs the frozen discovery legs rest on; `daily.tsv.gz` is gitignored (machine-local,
+pulled 2026-09-28) — its hash pins the exact bytes, and the `results.tsv` reproduction assertion is the
+independent check should the read ever run against a re-pulled copy.
 
-- script sha256: `c30d76a62ae6a30a600e57664ec3cc72a19f50c74db0896906a032ce72476b8e` — `scripts/probes/_686/preregistered_read.py`
-- extract.sh sha256: `a27b2f812db3779a253e550cf97498c13c4b17455e48f87512556eaa6803fe4e` — `scripts/probes/_686/extract.sh`
-- doc body sha256: `b69c8e54fcc5e59ae2511e674dd8536e1a782982bf90c10015389641aa779f03` — this file above the marker
-- freeze commit: the commit that added this file on branch `686-preregistration` (`git log --follow -- docs/analysis/686_preregistration_2026-10-04.md`)
+- script sha256: `ae1f09a6a66f8b21f997af9aee2c7f1b3b7d9861832d2ed66472883bc01695d8` — `scripts/probes/_686/preregistered_read.py`
+- extract.sh sha256: `9e95994b868065e9ae2aa8a866f084dd835233f265300d67f1f7dad793f006d3` — `scripts/probes/_686/extract.sh`
+- _684/gate.py sha256: `209cee01543775c959dc8f038ebdecf6a3e942bc72a9b03586b7b895bae8741a` — `scripts/probes/_684/gate.py`
+- _684/features.py sha256: `a69cd72e2b4b1280943de451d46e6afc796deff728c5cb31828f76ddf503540d` — `scripts/probes/_684/features.py`
+- _684/study.py sha256: `f9b74f7c208f87238622b6cdaf00e5a9aa15cd44c5819b06d86bf2068207a07c` — `scripts/probes/_684/study.py`
+- _684/study_orb.py sha256: `07f176607795dc10b998f4e47d7b63ca63f6a0b6c226d71bf8de44e8e68bc61e` — `scripts/probes/_684/study_orb.py`
+- _684/study_orb_live.py sha256: `7025b363872d340b32bcb67f1cdd450d2dabc81e1343ff57b4ef0816e6920d61` — `scripts/probes/_684/study_orb_live.py`
+- _684/features.tsv sha256: `b32c65f460879632817dda52fe94b3b30789e48b805ae31af65589335c13929d` — `scripts/probes/_684/features.tsv`
+- _684/results.tsv sha256: `c94940cc307a030bcc3bd51941d99fd166b3eeb46db035e0b771dd94bbb25587` — `scripts/probes/_684/results.tsv`
+- _684/daily.tsv.gz sha256: `ac1afb2405f3eccbc84c749d5a0e61ff4d827deceae2809cd0ba7955d6176d62` — `scripts/probes/_684/daily.tsv.gz`
+- doc body sha256: `821ebf01f5e94f0fcdb59d6f7527f5ade4d5d845ca97f030ad2a276e0566ff15` — this file above the marker
+- study.DRAWS pin: 63 draws, sha256 of the (column, kind, favourable) tuple `21502f2a2140aa829cdaf265c394530f6f8c0d4989d175db139736534f791ce6` (constant `DRAWS_SHA256` in the script)
+- freeze commit: the commit that last touched this file on branch `686-preregistration` (`git log -- docs/analysis/686_preregistration_2026-10-04.md`); the freeze is real once that branch is merged to `main` before 2026-10-16

@@ -1,7 +1,7 @@
 #!/bin/bash
 # #686 — the ONE data pull for the September block (read-only, $0). Written 2026-10-04, FROZEN
 # (sha256 recorded in docs/analysis/686_preregistration_2026-10-04.md §Freeze record). Derived from
-# scripts/probes/_684/extract.sh + live_entry_bars.sql with exactly three changes, each marked
+# scripts/probes/_684/extract.sh + live_entry_bars.sql with exactly four changes, each marked
 # "#686:" below: (1) the scan-date window is the registered block 2026-09-04..2026-09-25 (not
 # "last date with 15 later sessions"); (2) two HIGH-only tick/alert columns the live-entry frame
 # needs (first_high_time, any_high_alert) — #684's first_pass_time is the first pass of ANY tier;
@@ -124,6 +124,17 @@ JOIN mi_intraday_bars b ON b.ticker = p.ticker
   AND b.bar_time >= ((p.scan_date::text||' 09:30')::timestamp AT TIME ZONE 'America/New_York')
   AND b.bar_time <  ((p.scan_date::text||' 16:00')::timestamp AT TIME ZONE 'America/New_York')
 ORDER BY p.scan_date, p.ticker, b.bar_time;"
+
+# #686 (4th change, added at review 2026-10-04): mi_live_trades ORDER RECORDS for the population — what the live
+# path actually attempted. scheduler.py:1194 `already_alerted` is ANY-tier and the judge update rewrites
+# mi_ep_alerts.score_tier in place, so a HIGH alert row is only an upper bound on "ordered"; STEP 0 of the
+# read cross-tabs model-orderable vs this record. Status is collapsed to skipped / cancelled / placed and NO
+# price, share or P&L column is pulled — the file holds no outcome.
+run trades.tsv "SELECT t.ticker, t.alert_date, t.signal_type, t.account_mode,
+  CASE WHEN t.status='skipped' THEN 'skipped' WHEN t.status='cancelled' THEN 'cancelled' ELSE 'placed' END AS status,
+  t.skip_reason, to_char(t.created_at AT TIME ZONE 'America/New_York','YYYY-MM-DD HH24:MI:SS') AS created_et
+FROM mi_live_trades t WHERE t.signal_type='magna53' AND (t.ticker, t.alert_date) IN (SELECT ticker, scan_date FROM pop)
+ORDER BY t.alert_date, t.ticker, t.created_at;"
 
 echo "[regime.tsv]"   # #686: through the pull date (was ..09-25)
 ssh "$HOST" "$PSQL -c \"SELECT regime_date, regime, ep_threshold, spy_vs_50ma, spy_vs_200ma, qqq_vs_50ma, vix, breadth_pct_above_40ma, t2108, qqq_ema_bullish, to_char(created_at AT TIME ZONE 'America/New_York','MM-DD HH24:MI') AS created_et FROM mi_market_regime WHERE regime_date BETWEEN DATE '2026-04-01' AND CURRENT_DATE ORDER BY regime_date\"" > regime.tsv

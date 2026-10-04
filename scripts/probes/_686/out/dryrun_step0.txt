@@ -1,0 +1,18 @@
+#686 PRE-REGISTERED READ — mode: DRY RUN on #684 old blocks (05-01..09-03)
+registration: docs/analysis/686_preregistration_2026-10-04.md   script sha256 ae1f09a6a66f8b21f997af9aee2c7f1b3b7d9861832d2ed66472883bc01695d8   draws 63 (sha 21502f2a2140…)
+seeds: discovery legs 684 (frozen, #684); new-block leg 686 (frame A, B1, B2 — one generator, DRAWS order); leads 687; permutation draws 2000; alpha 0.05; runner >= 5 ADR
+
+FROZEN DISCOVERY LEGS vs #684 results.tsv (n_disc, n_fav, p_disc, drop-week p, drop-two p, held-out n/sign/verdict): IDENTICAL on all 63 bar-tested draws
+discovery best week 2026-W19, best two names ['UMC', 'CRSR'] (frozen, #684)
+
+STEP 0 — COMPOSITION of the block 2026-08-15..2026-09-03 (no outcome exists yet; written to out/dryrun_step0.txt)
+  rows 63 on 14 scan dates: {'2026-08-17': 3, '2026-08-18': 2, '2026-08-19': 11, '2026-08-20': 5, '2026-08-21': 2, '2026-08-24': 2, '2026-08-25': 1, '2026-08-26': 5, '2026-08-27': 8, '2026-08-28': 6, '2026-08-31': 3, '2026-09-01': 3, '2026-09-02': 5, '2026-09-03': 7}
+  alerted (scan pass, any tier) 20; scored-not-alerted 43; HIGH (alert row tier, post-judge) 17; HIGH with its first HIGH alert before 09:45 (orderable window) 13; scan-tick HIGH but no HIGH alert (judge demotion — never ordered) 1
+  era: {'A': 23, 'B': 40}   ISO weeks: {'2026-W34': 23, '2026-W35': 22, '2026-W36': 18}
+  median gap at the scan 12.5%; median ep_score 52; 09:45 minute coverage 61 of 63; rows without 20 prior sessions (no bar features) 0
+  rows without 15 stored forward sessions (censored — a count of rows, not a price): 0 
+  frame-B admission (today's path, no fill walked yet): {'orderable': 10, 'not_high_never_ordered': 46, 'window_out_of_orb': 4, 'orb_invalid': 1, 'gap_below_floor': 2}
+  order records (_684/check_late_trades.txt): orderable-by-model 10, of which with a record 10 ({'skipped': 2, 'placed': 7, 'cancelled': 1}), without any record 0 []; PLACED in the record but NOT orderable by the model (model misses) 0 []
+  operator-labelled EPs dated inside the block (operator_labelled_eps.md at run time): [('MRNA', '2026-08-19'), ('CHPT', '2026-09-03')]; in the population: ['MRNA 2026-08-19']; NOT scored (never in the population): ['CHPT 2026-09-03']
+  STEP 0 alarms: none
+
