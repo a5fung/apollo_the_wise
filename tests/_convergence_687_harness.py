@@ -9,8 +9,8 @@ end state of the fake book. Run it in two trees and diff the logs:
      scripts/probes/_687/capture_toggle_off_baseline.sh)
 
 `tests/test_687_toggle_off_convergence.py` runs it on this tree and asserts the log equals the
-recorded baseline except an explicit, named allow-list (fixes (a)-(f), the 61a6c479 sync hunk,
-rulings (1)-(3)).
+recorded baseline except an explicit, named allow-list (today: ruling (i) 2026-10-02 — s39-s42, a
+flat or unreadable broker at the failed-exit stop restore and at ruling (iii)'s shared sale path).
 
 THE FAKE WORLD is version-agnostic on purpose: one in-memory book (trades / exit orders / audit
 log) answered by a tiny SQL interpreter, and one fake broker. Both code trees see the same world
@@ -115,6 +115,11 @@ class World:
         self.close_errors: list = []          # raised by successive close_position calls (None = ok)
         self.place_errors: list = []          # raised by successive place_stop_order calls
         self.opg_errors: list = []
+        # ruling (i) 2026-10-02 worlds: `list_errors` are raised by successive get_all_positions
+        # calls (an UNREADABLE broker); `vanish_on_sell` drops the position the moment a sale is
+        # sent (the stop filled between the cancel and the sell — a FLAT broker at the restore).
+        self.list_errors: list = []
+        self.vanish_on_sell: bool = False
         self.calls: list = []
         self.pages: list = []
         self.index_today: dict | None = None
@@ -433,6 +438,9 @@ def _broker_impl(w: World):
         return dict(p) if p else None
 
     async def get_all_positions(account_mode=None, **k):
+        err = w.list_errors.pop(0) if w.list_errors else None
+        if err:
+            raise err
         return [{"symbol": t, "qty": p["qty"], "qty_available": p["qty_available"]}
                 for t, p in w.positions.items() if p["qty"] > 0]
 
@@ -464,6 +472,8 @@ def _broker_impl(w: World):
         return o
 
     async def close_position(ticker, qty=None, account_mode=None):
+        if w.vanish_on_sell:
+            w.positions.pop(ticker, None)
         err = w.close_errors.pop(0) if w.close_errors else None
         if err:
             raise err
@@ -480,6 +490,8 @@ def _broker_impl(w: World):
         return {"id": o["id"], "status": "new", "stop_price": float(stop_price)}
 
     async def place_market_on_open_sell(ticker, qty, account_mode=None, client_order_id=None):
+        if w.vanish_on_sell:
+            w.positions.pop(ticker, None)
         err = w.opg_errors.pop(0) if w.opg_errors else None
         if err:
             raise err
@@ -1079,7 +1091,53 @@ def s38_oco_cancel_unfilled_restore_through_the_price(om, ts, **_):
     return w, lambda: ts._handle_cancel_or_reject(_ws_order("oco-1", "KOD"), "canceled", "live")
 
 
-SCENARIOS = [v for k, v in sorted(globals().items()) if re.fullmatch(r"s\d\d_\w+", k)]
+# ── ruling (i) 2026-10-02: the failed-exit stop restore reads the broker FLAT (nothing to protect)
+# or UNREADABLE (the books stand in). Main cannot tell the two apart and restores from the books in
+# both; the branch places nothing on a flat broker and keeps the fallback on an unreadable one.
+
+NO_POSITION = '{"code":40410000,"message":"position does not exist"}'
+
+
+def s39_1645_exit_sale_rejected_broker_flat(om, **_):
+    """The 16:45 sale is refused because the position is already gone (the stop filled between the
+    cancel and the sell). The restore reads a flat broker: nothing to protect."""
+    w, run = s01_1645_exit_no_resting(om)
+    w.vanish_on_sell = True
+    w.close_errors = [Exception(NO_POSITION)]
+    return w, run
+
+
+def s40_stream_queued_sale_cancelled_broker_flat(om, ts, **_):
+    """The queued sale died unfilled and the broker shows no position for the restore to protect."""
+    w = _dead_sale_world("canceled")
+    w.positions.pop("KOD")
+    return w, lambda: ts._handle_cancel_or_reject(_ws_order("sell-q", "KOD"), "canceled", "live")
+
+
+def s41_1645_exit_sale_rejected_broker_unreadable(om, **_):
+    """The 16:45 sale is refused and the broker cannot be read at the restore (the single-position
+    read returns nothing and the list read fails): the books stand in, exactly as before."""
+    w, run = s01_1645_exit_no_resting(om)
+    w.vanish_on_sell = True
+    w.close_errors = [Exception("insufficient qty available: available 0, held_for_orders 10")]
+    w.list_errors = [Exception("HTTP 503 Service Unavailable")]
+    return w, run
+
+
+def s42_coverage_reconciler_refused_stop_broker_flat(om, **_):
+    """Ruling (iii)'s shared sale path (`_sell_at_market_for_refused_stop`) on a FLAT broker: the
+    17:00 coverage slot sizes its target from the BOOKS (10 sh), the broker refuses the stop as
+    through the price, and the sale's sizing reads no position. Main sold 10 shares it did not
+    hold at market; the branch sells nothing (`stop_breach_sale_skipped`, qty_source broker_flat).
+    The same helper serves the other five ruling (iii) sites, so this one scenario is the net over
+    all of them."""
+    w = World()
+    _trade(w, stop_id=None)
+    _always_breach(w)
+    return w, lambda: om._ensure_stop_coverage(401, "KOD", 10.0, 58.0, "magna53", "live")
+
+
+SCENARIOS =[v for k, v in sorted(globals().items()) if re.fullmatch(r"s\d\d_\w+", k)]
 _REAL: dict = {}
 
 

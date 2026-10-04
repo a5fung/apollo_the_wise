@@ -8,18 +8,22 @@ HISTORY. Until 2026-10-03 the baseline was the pre-#687 code (97b08d51) and the 
 #687 fixes (a)-(f), the 61a6c479 sync hunk and the rulings (1)-(3), (ii), (iv) — 17 entries; that
 version is in git (`git log -p -- tests/test_687_toggle_off_convergence.py`). #687 merged and deployed
 2026-10-03 (a88a8043), so main IS that behaviour now: the baseline was RE-PINNED to origin/main
-8e1329f0 and those entries left the list (each was now identical to the baseline). The list below
-names only what the current change does differently from main.
+8e1329f0 and those entries left the list (each was now identical to the baseline). Ruling (iii) then
+merged and deployed 2026-10-04, so on 2026-10-04 the baseline was RE-PINNED again to origin/main
+76e2ce4b and its seven s32-s38 entries left the list the same way. The list below names only what
+the current change — ruling (i), a flat vs an unreadable broker at the failed-exit stop restore —
+does differently from main.
 
-HOW. `tests/_convergence_687_harness.py` drives 38 fixed scenarios (the 16:45 trail exit with and
+HOW. `tests/_convergence_687_harness.py` drives 41 fixed scenarios (the 16:45 trail exit with and
 without a resting +8R OCO third or a plain resting limit, the 16:45 job itself, a stop raise via
 `update_stop`, the position sync with and without a queued sale, stream fill / cancel / expiry events,
 the stop-ACK watchdog, the 17:00 coverage slot, the intraday coverage page, the stop refresh, a stop
-that cannot be placed because the price is through it — at the failed-exit restore and, since ruling
-(iii), at each of the six other stop-placing sites (s32-s38) — the daily-loss gate, and
-`close_position(qty)` at the alpaca-py boundary) and records every broker-client call (method + bound
-arguments), every Telegram page, the return value and the fake book's end state. The BASELINE log
-was recorded by running the SAME harness on the pinned main commit
+that cannot be placed because the price is through it — at the failed-exit restore and at each of the
+six other stop-placing sites (s32-s38) — the daily-loss gate, `close_position(qty)` at the alpaca-py
+boundary, and — since ruling (i) — the failed-exit restore reading a FLAT broker at the 16:45 exit and
+at the stream's dead-sale path, and an UNREADABLE one (s39-s41)) and records every broker-client call
+(method + bound arguments), every Telegram page, the return value and the fake book's end state. The
+BASELINE log was recorded by running the SAME harness on the pinned main commit
 (`scripts/probes/_687/capture_toggle_off_baseline.sh`). This test runs it on the current tree and
 asserts:
 
@@ -29,7 +33,7 @@ asserts:
   * the two depth-only scenarios stay inert with the toggle OFF (no broker call, no page);
   * the fake book understood every SQL statement (`_unknown_sql` empty).
 
-⚠ The baseline is PINNED to 8e1329f0 (the origin/main this change is built on), not "origin/main":
+⚠ The baseline is PINNED to 76e2ce4b (the origin/main this change is built on), not "origin/main":
 once a change merges, origin/main contains it and the comparison would be self-against-self. A later
 change to these paths that is unrelated will show here as an unlisted difference — re-capture the
 baseline (and re-pin) deliberately; never widen the allow-list to absorb it.
@@ -48,7 +52,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / "tests" / "_convergence_687_harness.py"
 BASELINE = ROOT / "tests" / "fixtures" / "687_toggle_off_main_baseline.json"
-PINNED_BASELINE_SHA = "b193b15808e1933a72dd950a8cb5a2654b495418"
+PINNED_BASELINE_SHA = "76e2ce4bfb5d810ad6ded5f0f353eaa241626457"
 COMPONENTS = ("broker_calls", "pages", "result", "raised", "book_after")
 
 # The depth machinery (#687 B), merged with the toggle OFF: compared to the baseline like any other
@@ -62,119 +66,52 @@ INERT_WITH_THE_TOGGLE_OFF = {
 # broker_calls / pages / result / raised = the exact branch value; book_after = the fields that
 # differ from the baseline book (trades) or the whole exit-order list (orders).
 ALLOWED = {
-    's32_coverage_reconciler_place_through_the_price': {
-        'why': "ruling (iii) 2026-10-02 — sell at market at the coverage reconciler (_ensure_stop_coverage's place branch)",
+    's39_1645_exit_sale_rejected_broker_flat': {
+        'why': "ruling (i) 2026-10-02 — a flat broker read places nothing (the 16:45 sale refused because the position is already gone; main restored a 10-sh stop on shares it did not hold)",
         'broker_calls': [
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
-            "get_position(account_mode='live', ticker='KOD')",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "close_position(account_mode='live', qty=10, ticker='KOD')",
-        ],
-        'pages': [
-            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $58.00 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
-        ],
-        'result': '🚨 KOD: stop $58.00 is ABOVE market — the price is already through it, so 10 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have.',
-        'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
-    },
-    's33_sync_orphan_remediation_through_the_price': {
-        'why': "ruling (iii) 2026-10-02 — sell at market at the sync orphan repair (its last attempt refused; the same sync's coverage pass then sees the pending sale and places nothing)",
-        'broker_calls': [
-            "get_all_positions(account_mode='live', raise_on_error=False)",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_2', qty=10, side='sell', stop_price=58, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_3', qty=10, side='sell', stop_price=58, ticker='KOD')",
-            "get_position(account_mode='live', ticker='KOD')",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "close_position(account_mode='live', qty=10, ticker='KOD')",
-        ],
-        'pages': [
-            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $58.00 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
-            '💰 LIVE-$ ⚠️ *Position Sync Discrepancies (live):*\n  • 🚨 Orphaned position KOD: the stop $58.00 is above the market (the price is already through it) — 10 sh being SOLD AT MARKET (order sell-1), as the triggered stop would have',
-        ],
-        'result': ['🚨 Orphaned position KOD: the stop $58.00 is above the market (the price is already through it) — 10 sh being SOLD AT MARKET (order sell-1), as the triggered stop would have'],
-        'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
-    },
-    's34_update_stop_raise_through_the_price': {
-        'why': 'ruling (iii) 2026-10-02 — sell at market at update_stop (a trail raise refused: the trail would have triggered)',
-        'broker_calls': [
-            "get_order(account_mode='live', order_id='stop-1', timeout=None)",
             "cancel_order(account_mode='live', order_id='stop-1')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=61.5, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_2', qty=10, side='sell', stop_price=61.5, ticker='KOD')",
             "get_position(account_mode='live', ticker='KOD')",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "close_position(account_mode='live', qty=10, ticker='KOD')",
+            "close_position(account_mode='live', qty=None, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_all_positions(account_mode='live', raise_on_error=True)",
         ],
         'pages': [
-            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $61.50 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\nIt was a stop raise (from $58.00) — the trail would have triggered at the new level.\n<i>Confirms with real P&amp;L on fill.</i>',
+            '💰 LIVE-$ ⚠️ Full exit FAILED for KOD: {"code":40410000,"message":"position does not exist"}\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books.',
         ],
-        'result': 'STOP_SOLD_AT_MARKET',
-        'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
     },
-    's35_refresh_replace_through_the_price': {
-        'why': "ruling (iii) 2026-10-02 — sell at market at update_stop (via the stop refresh's re-place; no 'No stop' page after the sale)",
+    's40_stream_queued_sale_cancelled_broker_flat': {
+        'why': "ruling (i) 2026-10-02 — a flat broker read places nothing (the stream's dead-sale restore; main re-placed a 10-sh stop and pointed the row at it)",
         'broker_calls': [
-            "get_order(account_mode='live', order_id='stop-1', timeout=None)",
-            "get_order(account_mode='live', order_id='stop-1', timeout=None)",
-            "cancel_order(account_mode='live', order_id='stop-1')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_all_positions(account_mode='live', raise_on_error=True)",
+        ],
+        'pages': [
+            '💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books.',
+        ],
+        'book_after': {'trades': {'401': {'stop_order_id': None}}},
+    },
+    's42_coverage_reconciler_refused_stop_broker_flat': {
+        'why': "ruling (i) 2026-10-02 — a flat broker read places nothing (ruling (iii)'s shared sale path, reached from the coverage reconciler: the stop is refused as through the price and the sale's sizing reads a flat broker; main SOLD 10 sh it did not hold at market and paged the sale; the branch sells nothing — `stop_breach_sale_skipped`, qty_source broker_flat — and returns main's pre-ruling-(iii) 'operator decision needed' line)",
+        'broker_calls': [
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
             "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_2', qty=10, side='sell', stop_price=58, ticker='KOD')",
             "get_position(account_mode='live', ticker='KOD')",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "close_position(account_mode='live', qty=10, ticker='KOD')",
+            "get_all_positions(account_mode='live', raise_on_error=True)",
         ],
-        'pages': [
-            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $58.00 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
-        ],
-        'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
+        'pages': [],
+        'result': "🚨 KOD: stop $58.00 is ABOVE market — position breached the stop. Operator decision needed (no auto-exit).",
+        'book_after': {'orders': []},
     },
-    's36_watchdog_fallback_through_the_price': {
-        'why': "ruling (iii) 2026-10-02 — sell at market at the stop-ACK watchdog's fallback stop",
+    's41_1645_exit_sale_rejected_broker_unreadable': {
+        'why': "ruling (i) 2026-10-02 — an unreadable broker read still restores from the books; the only difference is the positions-list read that tells it apart from a flat one (same 10-sh stop, same page as main)",
         'broker_calls': [
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id=None, qty=10, side='sell', stop_price=57.5, ticker='KOD')",
+            "cancel_order(account_mode='live', order_id='stop-1')",
             "get_position(account_mode='live', ticker='KOD')",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "close_position(account_mode='live', qty=10, ticker='KOD')",
-        ],
-        'pages': [
-            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $57.50 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
-        ],
-        'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
-    },
-    's37_stream_partial_exit_cancelled_restore_through_the_price': {
-        'why': "ruling (iii) 2026-10-02 — sell at market at the stream's partial-exit restore",
-        'broker_calls': [
-            "get_order(account_mode='live', order_id='stop-r', timeout=5)",
-            "cancel_order(account_mode='live', order_id='stop-r')",
+            "close_position(account_mode='live', qty=None, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_all_positions(account_mode='live', raise_on_error=True)",
             "place_stop_order(account_mode='live', client_order_id=None, qty=10, side='sell', stop_price=58, ticker='KOD')",
-            "get_position(account_mode='live', ticker='KOD')",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "close_position(account_mode='live', qty=10, ticker='KOD')",
         ],
-        'pages': [
-            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $58.00 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\nThe partial sale did not fill (cancelled), and the stop for the remaining shares could not be put back.\n<i>Confirms with real P&amp;L on fill.</i>',
-        ],
-        'book_after': {'trades': {'401': {'stop_order_id': None}}, 'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}, {'exit_reason': 'partial_profit', 'id': 'sell-p', 'purpose': 'partial_exit', 'qty': 3, 'status': 'cancelled'}]},
-    },
-    's38_oco_cancel_unfilled_restore_through_the_price': {
-        'why': 'ruling (iii) 2026-10-02 — sell at market at the OCO-cancel handler (its re-protect runs through the coverage reconciler)',
-        'broker_calls': [
-            "get_order(account_mode='live', order_id='leg-1', timeout=None)",
-            "get_position(account_mode='live', ticker='KOD')",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=2, side='sell', stop_price=60, ticker='KOD')",
-            "get_position(account_mode='live', ticker='KOD')",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "close_position(account_mode='live', qty=2, ticker='KOD')",
-        ],
-        'pages': [
-            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $60.00 could not be placed — the broker refused it because the price is already below it. Selling 2 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
-            "💰 LIVE-$ ⚠️ *OCO CANCELLED:* KOD\nThe carve-out third's OCO died unfilled (both legs terminal) — re-protecting from broker truth.\n🚨 KOD: stop $60.00 is ABOVE market — the price is already through it, so 2 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have.",
-        ],
-        'book_after': {'orders': [{'exit_reason': None, 'id': 'oco-1', 'purpose': 'partial_exit', 'qty': 2, 'status': 'cancelled'}, {'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 2, 'status': 'accepted'}]},
     },
 }
 
@@ -230,11 +167,20 @@ def test_the_allow_list_names_only_real_scenarios_and_says_why():
         assert set(entry) - {"why"}, f"{name}: an allow-list entry must name a component"
 
 
-def test_every_exception_from_main_is_ruling_iii():
-    """The change built on this baseline is ONE ruling: #687 (iii), operator 2026-10-02 — ruling
-    (3)'s sell-at-market extended to the other stop-placing sites. Nothing else may differ."""
+def test_every_exception_from_main_is_ruling_i():
+    """The change built on this baseline is ONE ruling: #687 (i), operator 2026-10-02 — the failed-exit
+    stop restore tells a FLAT broker (place nothing) from an UNREADABLE one (the books stand in, as
+    before). Nothing else may differ. The flat scenarios carry the ruling's own words; the unreadable
+    scenario differs from main only by the confirming positions-list read and says so."""
     for name, entry in ALLOWED.items():
-        assert entry["why"].startswith("ruling (iii) 2026-10-02 — sell at market at "), name
+        assert entry["why"].startswith("ruling (i) 2026-10-02 — "), name
+    flat = [n for n, e in ALLOWED.items()
+            if e["why"].startswith("ruling (i) 2026-10-02 — a flat broker read places nothing")]
+    assert sorted(flat) == ["s39_1645_exit_sale_rejected_broker_flat",
+                            "s40_stream_queued_sale_cancelled_broker_flat",
+                            "s42_coverage_reconciler_refused_stop_broker_flat"], flat
+    for n in flat:   # a flat read places NOTHING: its last broker call is the read, never a stop or a sale
+        assert ALLOWED[n]["broker_calls"][-1].startswith("get_all_positions("), n
 
 
 @pytest.mark.parametrize("scenario", SCENARIOS)
