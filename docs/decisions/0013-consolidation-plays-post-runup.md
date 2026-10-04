@@ -587,6 +587,12 @@ price-shape guard, the M&A screen and its 40-check cap · the runup gate. No ord
 **not** adopted and not scheduled; a demotion or hard gate would need its own evidence, its own review and a named
 false-kill check.
 
+**Anticipated effect**: every coil row the 17:35 ET scan writes carries a non-NULL `orderliness` (C1 scored 108
+of 108; on that cohort the range was 0.01–2.39 and the middle half read 0.27–0.54, quartile cuts 0.27 / 0.40 / 0.55,
+so expect mostly 0.3× to 0.5× with an occasional line above 1×); `/anticipation` coiling and post-runup lines gain the phrase; **zero change** to
+board membership, board order, admitted coils, Confirm entry fires or settlements — the Mon–Fri entry counts, the
+board's top-5 tickers and the digest are what they would have been without this commit.
+
 **Reversion-flag**: NEW (no prior change to this display). Not a reversal of anything; consistent with the
 methodology's own "never a day-one gate" rule, and the C1 NO-DEMOTE verdict closes Phase 2 for this cohort.
 
