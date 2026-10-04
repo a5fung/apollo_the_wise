@@ -1363,3 +1363,18 @@ stagger cards, one at a time.
 **Saturday 10-03:** his #692 sign-off → deploy batch (#687 OFF, #692, #693, main's 62f45ade) both + execution; #688 risk 1%→2% (his ruling 09-29); #635 commit B; #580 0%-breadth fix; #691; #663; #491; #519. **Sunday 10-04:** #598, #466, #394.
 
 **Standing:** capacity full again after 20:00 PT 10-02; every Sonnet role on claude-sonnet-5-5.
+
+## 2026-10-03 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-02 close above.
+
+**Board 46 → 44** — closed #691 (every monthly-sweep check in a named group; /audit opens each stored run — verified from his Telegram paste) and #663 (the EP scan result keeps its shape when the post-scan ceiling cancels the advisory; 20/20 suite runs).
+
+**Shipped Saturday (both + execution each time; server now d6bd7199, deployed Sun 10-04 ~03:30 ET):**
+- #687 depth exit (toggle OFF) + his rulings; then ruling (iii): sell at market when a stop is refused because the price is already through it, at the six other stop sites.
+- #693 thinking-between-tools; #688 base risk 2% (his "go 2%"); #635 commit B; #580 0%-breadth fix + breadth at birth; #692 + #692b M&A filter (his sign-off; judge eval 36/36); #598 flag digest transitions; #466 zero-tolerance swallow gate (+2 NameError fixes); #394 coil board buyout screen + orderliness display; #491 re-homing pass.
+- Last thing: his "review and simplify of all today's work" — four review cards, 9 defects fixed (M&A release now filtered on its merit grade; re-poll merit carry; no-merit row once/day; `mna_pin_unreadable`; review-script join; first-seen pinned coil kept off the board; birth-gate log line; fill page no longer claims a breakeven stop a plain limit lacks; news-source parse count), 5 simplifications; suite 9,927.
+
+**Monday 10-05 = the first live trading day for all of it.** The check table (09:40 ET) is on the #687 / #692 / #394 / #491 PLAN lines as EXPECT / DONE-WHEN / WOULD-FAIL-IF.
+
+**Sunday 10-04 (his ok, one at a time, start on his word):** #655 failing G3/G4 checks; #598 flag-board M&A screen + /flags header; #687 flat-vs-unreadable broker read; #686 pre-registration; the chart-eval adapter fix.
+
+**Standing:** prod DB reads from the laptop are blocked by the permission classifier — ask him to run them (`! ssh ...`). #519 chart pilot parked to 60 closed trades (data-gated review `chart_pilot_rerun_60_closed_trades`).
