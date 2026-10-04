@@ -14,11 +14,23 @@ retired one night and re-promoted the next skipped the birth gate, so the dedup_
 never fire on it. A tombstone prior is now a first crossing for the gate; a live prior stays
 maintenance; days_active continuity is untouched.
 
-Red-without / mutation record (run on this commit, stated in the commit message): the two
-behaviour-introducing tests (2-member weak retires; tombstone prior consults the gate) are RED on
-origin/main's theme_engine.py. The preservation tests stay green on revert by construction and were
-each turned red by one mutation: drop `rs_avg is None` → the scored/elite test; `<` → `<=` → the
-3-member grace test; ignore the toggle → the OFF test; `_first_crossing = True` → the live-prior test.
+Red-without / mutation record (run on this commit, stated in the commit message). On origin/main's
+theme_engine.py: the pass-level tests fail on the missing symbol (`_retire_small_fading_themes`), the
+two engine tests fail on `AttributeError` at `te._retire_small_fading_themes` (NOT on behaviour — the
+behaviour coverage for them is the mutation record below), and the tombstone-prior join test fails on
+behaviour. The preservation tests stay green on revert by construction and were each turned red by one
+mutation: drop `rs_avg is None` → the scored/elite test; `<` → `<=` → the 3-member grace test; ignore
+the toggle → the OFF tests; `_first_crossing = True` → the live-prior test; no-op the pass → the
+runs-after-re-homing test.
+
+REVIEW FIX (2026-10-04, both reviewers): with the REAL `theme_member_rehomed` audit row present, the
+B tombstone claimed the theme was "absorbed/superseded" by the re-homing TARGET (parent_theme set),
+because the engine-drop block reads "'<home>' -> '<target>'" as a successor pointer and a B candidate
+is, by design, still on the board when re-homing runs. The first build's e2e test hid it by returning
+[] from the audit read. `test_runs_after_rehoming…` now feeds the real row and is RED on 0d487cb0 on
+behaviour (parent_theme == the AI theme) and green after; `test_a_home_rehoming_emptied…` is a
+preservation test (green on 0d487cb0 — the pointer is #491's designed case) reddened by the mutation
+"blanket-skip the successor for every B name".
 """
 from __future__ import annotations
 
@@ -162,9 +174,23 @@ def test_the_audit_events_are_registered():
 # ═══════════════════════════════ rule B — siting in run_theme_engine ═════════════════════════
 
 
-def _drive_with_rehome(monkeypatch, *, small_fading_on: bool):
+def _rehome_audit_row(home: str, target: str, ticker: str) -> dict:
+    """The REAL `theme_member_rehomed` summary `_run_rehome_pass` writes for a move (theme_engine
+    ~:6298) — the row the engine-drop block reads back as a successor pointer."""
+    return {"event_type": te.REHOME_MOVED_EVENT,
+            "summary": f"Rehome: '{home}' -> '{target}' {ticker} moved on the tape (0.61 vs own 0.12; leave)",
+            "detail": json.dumps({"ticker": ticker, "from": home, "to": target})}
+
+
+def _drive_with_rehome(monkeypatch, *, small_fading_on: bool, audit_rows=None, move=("CIFR",)):
     """Drive the REAL run_theme_engine with a 3-member weak-Fading pivot theme on the board and a
-    re-homing pass that moves CIFR out of it (3 → 2). Returns (saved rows, audits mock, order)."""
+    re-homing pass that moves `move` (default CIFR, 3 → 2) out of it into the AI theme.
+    `audit_rows` = what the engine-drop block's mi_audit_log read returns tonight; DEFAULT = the
+    real re-homing row for each move (the mocked pass writes none itself). Returns (saved rows,
+    audits mock, order)."""
+    move = list(move)
+    if audit_rows is None:
+        audit_rows = [_rehome_audit_row(PIVOT, AI, tk) for tk in move]
     saved, _discover, _accel, audits = _drive_engine(monkeypatch, mode="off", discovered=[])
     weak = {"name": PIVOT, "stage": "Fading", "score": 20.0, "rs_avg": None,
             "tickers": ["CIFR", "HUT", "WULF"], "description": "d"}
@@ -185,10 +211,11 @@ def _drive_with_rehome(monkeypatch, *, small_fading_on: bool):
     async def _rehome(themes, sbt, ctx, **kw):
         order.append("rehome")
         by = {t["name"]: t for t in themes}
-        by[PIVOT]["tickers"] = [tk for tk in by[PIVOT]["tickers"] if tk != "CIFR"]
-        by[AI]["tickers"] = by[AI]["tickers"] + ["CIFR"]
-        kw["changelog"].append({"type": "ticker_rehomed", "ticker": "CIFR", "from": [PIVOT], "theme": AI})
-        return {"moved": 1}
+        by[PIVOT]["tickers"] = [tk for tk in by[PIVOT]["tickers"] if tk not in move]
+        by[AI]["tickers"] = by[AI]["tickers"] + move
+        for tk in move:
+            kw["changelog"].append({"type": "ticker_rehomed", "ticker": tk, "from": [PIVOT], "theme": AI})
+        return {"moved": len(move)}
 
     monkeypatch.setattr(te, "_run_rehome_pass", _rehome)
     real = te._retire_small_fading_themes
@@ -202,7 +229,7 @@ def _drive_with_rehome(monkeypatch, *, small_fading_on: bool):
                         AsyncMock(return_value=small_fading_on), raising=False)
     # the engine-drop block reads today's successor pointers from mi_audit_log
     pool, conn = make_mock_pool()
-    conn.fetch = AsyncMock(return_value=[])
+    conn.fetch = AsyncMock(return_value=audit_rows)
     monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool))
     asyncio.run(te.run_theme_engine(trade_date=_MON))
     return saved, audits, order
@@ -218,7 +245,12 @@ def test_runs_after_rehoming_so_a_rehomed_member_is_not_double_handled(monkeypat
     # the pivot theme is on tonight's board ONLY as the engine-drop tombstone
     assert (PIVOT, "Fading") not in rows
     tomb = rows[(PIVOT, "Retired")]
+    # the REAL re-homing row ("'PIVOT' -> 'AI' CIFR moved") is in tonight's audit read, and it
+    # must NOT become the tombstone's successor: HUT and WULF were released, not absorbed
     assert tomb["tickers"] == [] and tomb["parent_theme"] is None
+    assert "absorbed" not in tomb["description"]
+    assert "weak Fading at 2 members (< 3), #655 rule B" in tomb["description"]
+    assert "members released: HUT, WULF" in tomb["description"]
     names = [c.args[0] for c in audits.await_args_list]
     # the named row counts 2 members (HUT, WULF) — the moved name is not double-handled
     small = next(c for c in audits.await_args_list if c.args[0] == ae.THEME_RETIRED_SMALL_FADING)
@@ -228,6 +260,32 @@ def test_runs_after_rehoming_so_a_rehomed_member_is_not_double_handled(monkeypat
     assert "theme_auto_retired" in names and "theme_retired" in names
     retired_row = next(c for c in audits.await_args_list if c.args[0] == "theme_retired")
     assert retired_row.kwargs["summary"] == f"Retired: {PIVOT}"
+    auto = next(c for c in audits.await_args_list if c.args[0] == "theme_auto_retired")
+    assert "(0 with successor pointer)" in auto.kwargs["summary"]
+    assert f"'{PIVOT}' -> parent='(unknown)'" in auto.kwargs["detail"]
+
+
+def test_a_home_rehoming_emptied_to_zero_keeps_the_rehoming_target_as_successor(monkeypatch):
+    """The ONE case the re-homing pointer is true for a B-retired theme: re-homing moved EVERY
+    member out (#491's "a home emptied by its members leaving points at where they went"). B then
+    retires the 0-member shell tonight and the tombstone keeps parent_theme = the target — the
+    same pointer the Step 4 cap drop writes for it with the toggle OFF. Preservation test (green
+    on the first build); reddened by blanket-skipping the successor for every B name."""
+    moves = ["CIFR", "HUT", "WULF"]
+    audit_rows = [_rehome_audit_row(PIVOT, AI, tk) for tk in moves]
+    saved, audits, order = _drive_with_rehome(monkeypatch, small_fading_on=True,
+                                              audit_rows=audit_rows, move=moves)
+    assert order == ["rehome", "small_fading"]
+    rows = {(r["name"], r["stage"]): r for r in saved}
+    assert set(moves) <= set(rows[(AI, "Mainstream")]["tickers"])
+    assert (PIVOT, "Fading") not in rows
+    tomb = rows[(PIVOT, "Retired")]
+    assert tomb["tickers"] == [] and tomb["parent_theme"] == AI
+    assert f"weak Fading at 0 members (< 3), #655 rule B — emptied by re-homing into '{AI}'" in tomb["description"]
+    small = next(c for c in audits.await_args_list if c.args[0] == ae.THEME_RETIRED_SMALL_FADING)
+    assert small.kwargs["summary"] == f"{PIVOT}: retired — weak Fading at 0 members (< 3), #655"
+    auto = next(c for c in audits.await_args_list if c.args[0] == "theme_auto_retired")
+    assert "(1 with successor pointer)" in auto.kwargs["summary"]
 
 
 def test_toggle_off_in_the_engine_keeps_the_two_member_theme_on_the_board(monkeypatch):

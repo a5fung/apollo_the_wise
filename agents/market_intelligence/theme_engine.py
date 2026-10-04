@@ -8665,11 +8665,21 @@ async def _retro_sweep_flagged_pairs(
 # 2b: re-homing moves members OUT of a weak home first and only what it could not place is
 # retired, so #491's pre-registered checks read its moves. Mechanics are the 5-night path's:
 # the theme is dropped from `updated_themes`, the engine-drop block synthesizes its Retired
-# tombstone (`theme_auto_retired`, parent_theme NULL, tickers []) and the `theme_retired`
-# changelog line it appends here feeds the nightly message, the funnel count and the
-# `theme_retired` audit row exactly as a 5-night retirement does. ONE difference, stated:
-# `covered_tickers` and the pools were built at Step 2, so the members are released to
-# assignment/discovery NEXT run, not tonight (the Step 1.5 retro-sweep accepts the same lag).
+# tombstone (`theme_auto_retired`, tickers []) and the `theme_retired` changelog line it
+# appends here (`via: small_fading`, tickers = the members AT retirement) feeds the nightly
+# message, the funnel count and the `theme_retired` audit row exactly as a 5-night retirement
+# does. TOMBSTONE LINEAGE (review fix 2026-10-04): because this pass runs AFTER re-homing, a
+# `theme_member_rehomed` "'<home>' -> '<target>'" row for ONE member leaving must NOT become
+# the tombstone's successor — the members still in the theme were released, not absorbed. The
+# engine-drop block reads the `via: small_fading` lines and writes parent_theme NULL plus a
+# "#655 rule B" note with tonight's count; the re-homing target is kept as successor ONLY when
+# re-homing emptied the home to 0 members (#491's designed pointer, identical to what the Step 4
+# cap drop writes for that theme with this toggle OFF). TWO differences from the 5-night path,
+# stated: (1) `covered_tickers` and the pools were built at Step 2, so the members are released
+# to assignment/discovery NEXT run, not tonight (the Step 1.5 retro-sweep accepts the same lag);
+# (2) a released name is OUTSIDE the #491 leave feeder (it reaches covered names only) — it
+# returns through discovery, so #491's P2 can pass on a judged "stay" while the name sits in no
+# theme for one night, and a re-discovered crypto/AI name can meet P3 (name inheritance).
 #
 # TOGGLE `theme_small_fading_retire` (mi_safeguard_state / env THEME_SMALL_FADING_RETIRE_ENABLED),
 # DEFAULT ON (operator standing rule: themes / detectors = no money -> ship full). OFF = the
@@ -10190,21 +10200,49 @@ async def run_theme_engine(
         for _lost_name, _succ_name in _succ.items():
             successor_by_lost.setdefault(_lost_name, _succ_name)
 
+        # #655 rule B (2026-10-04 review fix): a theme the small-Fading pass retired tonight IS on
+        # the board when #491 re-homing runs (the pass is sited right after it), so a
+        # `theme_member_rehomed` "'<home>' -> '<target>'" row for ONE member leaving would read
+        # as a successor pointer here and the tombstone would claim the whole theme was
+        # "absorbed/superseded" by the target — false: the members still in it were RELEASED.
+        # The pass's own `theme_retired` changelog line (`via: small_fading`, tickers = the
+        # members AT retirement) is the record; the pointer is kept only when re-homing emptied
+        # the home to 0 members (#491's designed case — the same pointer the Step 4 cap drop
+        # writes for it with the toggle OFF), otherwise parent_theme is NULL and the note names
+        # the rule and tonight's count (not `existing`'s, which is last night's).
+        small_fading_retired: dict[str, list[str]] = {
+            e["theme"]: list(e.get("tickers") or []) for e in changelog
+            if e.get("type") == "theme_retired" and e.get("via") == "small_fading"
+        }
+
         retire_rows = []
         for t in lost:
             successor = successor_by_lost.get(t["name"])
             cap_target = cap_rejected_by_lost.get(t["name"])
-            note = (
-                f"Auto-retired {today_str}: "
-                + (f"renamed to '{successor}' — name was narrower than the cluster (#214)"
-                   if t["name"] in renamed_map else
-                   f"absorbed/superseded by '{successor}'" if successor
-                   else f"dropped by the sector cap — no member passed the membership test for "
-                        f"'{cap_target}'" if cap_target
-                   else f"dropped during merge/absorption (no successor found)")
-                + f" (prior stage {t.get('stage', 'Unknown')}, "
-                + f"{len(t.get('tickers') or [])} tickers)."
-            )
+            if t["name"] in small_fading_retired:
+                _b_members = small_fading_retired[t["name"]]
+                _b_n = len(_b_members)
+                if _b_n > 0:
+                    successor = None
+                note = (
+                    f"Auto-retired {today_str}: retired — weak Fading at {_b_n} members "
+                    f"(< {SMALL_FADING_RETIRE_MIN_MEMBERS}), #655 rule B"
+                    + (f" — emptied by re-homing into '{successor}'" if successor
+                       else f" — members released: {', '.join(_b_members)}")
+                    + f" (prior stage {t.get('stage', 'Unknown')}, {_b_n} tickers at retirement)."
+                )
+            else:
+                note = (
+                    f"Auto-retired {today_str}: "
+                    + (f"renamed to '{successor}' — name was narrower than the cluster (#214)"
+                       if t["name"] in renamed_map else
+                       f"absorbed/superseded by '{successor}'" if successor
+                       else f"dropped by the sector cap — no member passed the membership test for "
+                            f"'{cap_target}'" if cap_target
+                       else f"dropped during merge/absorption (no successor found)")
+                    + f" (prior stage {t.get('stage', 'Unknown')}, "
+                    + f"{len(t.get('tickers') or [])} tickers)."
+                )
             retire_rows.append({
                 "theme_date": today,
                 "name": t["name"],
