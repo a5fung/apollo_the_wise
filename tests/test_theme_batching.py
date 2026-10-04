@@ -115,7 +115,7 @@ def _mk_themes(monkeypatch):
     sbt = {tk: {"ticker": tk, "sector": "Technology"}
            for tk in ["AAA", "BBB", "CCC", "DDD"]}
 
-    async def _validate_ok(name, tickers, changelog, protected=None):
+    async def _validate_ok(name, tickers, changelog, protected=None, thesis=None, **kw):
         return tickers
 
     monkeypatch.setattr(te, "_validate_theme_membership", _validate_ok)

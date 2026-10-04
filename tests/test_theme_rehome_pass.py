@@ -231,11 +231,15 @@ def test_stock_line_carries_the_evidence_note_only_when_present():
 
 # ═══════════════════════════════ the verb, through the real funnel ════════════════════════════
 
-def _wire(monkeypatch, proposals, *, validate=None):
+VALIDATOR_CALLS: list[dict] = []
+
+
+def _wire(monkeypatch, proposals, *, validate=None, client=None):
     """The REAL `_assign_uncovered_to_themes` with a scripted model, a permissive (or supplied)
-    validator, captured cooldown writes and audit rows."""
+    validator that records its kwargs, captured cooldown writes and audit rows."""
     events = _quiet_infra(monkeypatch)
     cooldowns: list[tuple] = []
+    VALIDATOR_CALLS.clear()
 
     async def _cool(ticker, theme_name, reason="", days=14):
         cooldowns.append((ticker, theme_name, reason, days))
@@ -244,11 +248,15 @@ def _wire(monkeypatch, proposals, *, validate=None):
     monkeypatch.setattr(te, "add_validation_cooldown", _cool)
     monkeypatch.setattr(te, "get_recent_rehome_judged_tickers", AsyncMock(return_value=set()))
 
-    async def _validate_ok(name, tickers, changelog, protected=None):
+    async def _validate_ok(name, tickers, changelog, protected=None, thesis=None, **kw):
+        VALIDATOR_CALLS.append({"name": name, "tickers": list(tickers), "thesis": thesis})
         return tickers
 
     monkeypatch.setattr(te, "_validate_theme_membership", validate or _validate_ok)
-    client, calls = _fake_client(lambda i: _assign_tool_resp(proposals))
+    if client is None:
+        client, calls = _fake_client(lambda i: _assign_tool_resp(proposals))
+    else:
+        calls = []
     monkeypatch.setattr(te, "_get_anthropic_client", lambda: client)
     return events, cooldowns, calls
 
@@ -308,11 +316,21 @@ def test_a_confirmed_fit_moves_cifr_and_a_rejection_leaves_hut_where_it_is(monke
     assert AI in prompt and SAAS in prompt and BTC in prompt
     assert PIVOT not in prompt.split("UNCOVERED STOCKS")[0] and POWER not in prompt.split("UNCOVERED STOCKS")[0]
     assert "re-homing candidate" in prompt
+    # post-assignment validation judged the landing against the TARGET'S THESIS (#368's rule, enforced
+    # at this fourth caller 2026-10-03) — not the name alone, which would evict a converted miner on
+    # "bitcoin miner" the same run
+    assert VALIDATOR_CALLS and VALIDATOR_CALLS[0]["name"] == AI
+    assert VALIDATOR_CALLS[0]["thesis"] == _by_name(themes)[AI]["description"]
+    assert "CIFR" in VALIDATOR_CALLS[0]["tickers"]
 
 
-def test_a_move_rejected_by_post_assignment_validation_is_a_stay(monkeypatch):
-    """F4 runs on the target as for every assignment; a member it removes never moved."""
-    async def _validate_strip_cifr(name, tickers, changelog, protected=None):
+def test_a_move_rejected_by_post_assignment_validation_is_a_stay_and_says_so(monkeypatch):
+    """F4 runs on the target as for every assignment; a member it removes never moved — and the
+    memory row names F4, not the judgement, as the reason (P1/P2 must not read an F4 eviction as a
+    judgement result)."""
+    async def _validate_strip_cifr(name, tickers, changelog, protected=None, thesis=None, **kw):
+        if "CIFR" in tickers:
+            changelog.append({"type": "ticker_revalidated_out", "theme": name, "ticker": "CIFR", "reason": "r"})
         return [t for t in tickers if t != "CIFR"]
 
     themes = _board()
@@ -321,6 +339,37 @@ def test_a_move_rejected_by_post_assignment_validation_is_a_stay(monkeypatch):
     by = _by_name(themes)
     assert "CIFR" in by[PIVOT]["tickers"] and "CIFR" not in by[AI]["tickers"]
     assert counts["moved"] == 0 and cooldowns == [] and not [c for c in changelog if c["type"] == "ticker_rehomed"]
+    row = next(e for e in events if e[0] == te.REHOME_JUDGED_EVENT and e[1].startswith("CIFR"))
+    assert "removed by post-assignment validation" in row[1]
+    assert json.loads(row[2])["removed_by_validation"] is True and json.loads(row[2])["verdict"] == "stay"
+    hut = next(e for e in events if e[0] == te.REHOME_JUDGED_EVENT and e[1].startswith("HUT"))
+    assert "the judgement did not place it" in hut[1]
+
+
+def test_a_failed_model_call_freezes_nobody(monkeypatch):
+    """The funnel swallows a transient model failure (proposals already collected are kept; the rest
+    stay uncovered). Every re-homing candidate on such a night reads UNJUDGED — no `theme_rehome_judged`
+    row, so nobody is frozen as "stays" for 14 days by an outage (mutation: delete the
+    `_rh_judged.update` bookkeeping → the move test's six judged rows vanish → red)."""
+    from types import SimpleNamespace
+
+    async def _boom(**kwargs):
+        raise RuntimeError("model down")
+
+    broken = SimpleNamespace(messages=SimpleNamespace(create=_boom))
+    ctx = _ctx(_tape())
+    sbt = _sbt(monkeypatch)
+    events, cooldowns, _calls = _wire(monkeypatch, [], client=broken)
+    themes = _board()
+    changelog: list[dict] = []
+    state: dict = {}
+    counts = asyncio.run(te._run_rehome_pass(
+        themes, sbt, ctx, theme_exclusions=None, globally_banned=set(), cooldown_set=set(),
+        protected=None, changelog=changelog, rehome_state=state))
+    assert counts["moved"] == 0 and counts["stayed"] == 0 and counts["unjudged"] == 6
+    assert te.REHOME_JUDGED_EVENT not in [e[0] for e in events]
+    assert "CIFR" in _by_name(themes)[PIVOT]["tickers"] and cooldowns == [] and changelog == []
+    assert "theme_rehome_pass_ran" in [e[0] for e in events]
 
 
 def test_never_into_a_fading_theme_even_when_the_model_names_one(monkeypatch):
@@ -414,10 +463,12 @@ def test_at_most_three_admissions_into_one_theme_per_night(monkeypatch):
     assert len(landed) == te.REHOME_PER_TARGET_CAP == 3
     assert state["per_theme"][AI] == 3 and state["skipped"]["cap"] == 1
     assert [e[0] for e in events].count("rehome_skipped_cap") == 1
-    assert counts["moved"] == 3 and counts["stayed"] == 1 and len(cooldowns) == 3
-    # the deferred one is still where it was and is recorded as judged (stay) — it is re-offerable later
-    stayed = [tk for tk in ["CIFR", "HUT", "MISF", "PWR1"] if tk not in landed]
-    assert len(stayed) == 1
+    assert counts["moved"] == 3 and counts["stayed"] == 0 and counts["unjudged"] == 1 and len(cooldowns) == 3
+    # the deferred one is still where it was and gets NO memory row — it waits a night, not 14 days
+    deferred = [tk for tk in ["CIFR", "HUT", "MISF", "PWR1"] if tk not in landed]
+    assert len(deferred) == 1 and deferred[0] in state["blocked"]
+    judged = [e[1].split()[0] for e in events if e[0] == te.REHOME_JUDGED_EVENT]
+    assert sorted(judged) == sorted(landed) and deferred[0] not in judged
 
 
 def test_an_operator_protected_home_is_never_stripped_even_if_the_model_moves_it(monkeypatch):

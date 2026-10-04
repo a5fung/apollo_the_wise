@@ -4787,6 +4787,12 @@ async def _assign_uncovered_to_themes(
     from collections import Counter as _Counter
     _rh_per_theme: dict = rehome_state.setdefault("per_theme", _Counter())
     _rh_skipped: dict = rehome_state.setdefault("skipped", _Counter())
+    # Which re-homing names the model ACTUALLY judged (their batch returned proposals) and which a
+    # wall refused before apply (Fading / cap / unreadable pair / cooldown / exclusion). The 14-day
+    # re-judge memory is written only for judged-minus-refused: a cap-deferred name waits a night, a
+    # name whose batch failed is not frozen as "stays" for two weeks.
+    _rh_judged: set = rehome_state.setdefault("judged", set())
+    _rh_blocked: set = rehome_state.setdefault("blocked", set())
 
     from agents.market_intelligence.universe import TICKER_DESC
 
@@ -4856,6 +4862,8 @@ async def _assign_uncovered_to_themes(
                 client, batch, shared_prefix, cooldown_note,
                 advisor_state, batch_no, n_batches, len(uncovered_stocks),
             )
+            if rehome:
+                _rh_judged.update(s["ticker"] for s in batch if s["ticker"] in rehome)
         except Exception as e:
             # #273: a credit-exhaustion BadRequestError is an APIError subclass, so
             # it would otherwise be MISLABELED transient and retry forever silently.
@@ -4954,6 +4962,7 @@ async def _assign_uncovered_to_themes(
             # Validate ticker is in uncovered pool
             if ticker not in {s["ticker"] for s in uncovered_stocks}:
                 continue
+            is_rehome = ticker in rehome   # #491 re-homing candidate (2026-10-03)
 
             # Honor persistent exclusions — uses fuzzy match so renames don't bypass it
             if theme_exclusions and ticker in _get_excluded_tickers_for_theme(theme_name, theme_exclusions):
@@ -4963,13 +4972,15 @@ async def _assign_uncovered_to_themes(
                     f"{ticker} → '{theme_name}' blocked: persistent exclusion",
                     json.dumps({"ticker": ticker, "theme": theme_name}),
                 )
+                if is_rehome:
+                    _rh_blocked.add(ticker)
                 continue
 
             # ── #491 re-homing candidates (2026-10-03): never INTO a Fading theme; at most
             # per_theme_cap admissions into one theme per run (counted on apply, below) ──
-            is_rehome = ticker in rehome
             if is_rehome:
                 if (theme.get("stage") or "") == "Fading":
+                    _rh_blocked.add(ticker)
                     _rh_skipped["fading_target"] += 1
                     await log_audit_event(
                         "rehome_skipped_fading_target",
@@ -4978,6 +4989,7 @@ async def _assign_uncovered_to_themes(
                     )
                     continue
                 if per_theme_cap is not None and _rh_per_theme[theme_name] >= per_theme_cap:
+                    _rh_blocked.add(ticker)
                     _rh_skipped["cap"] += 1
                     await log_audit_event(
                         "rehome_skipped_cap",
@@ -5037,6 +5049,7 @@ async def _assign_uncovered_to_themes(
                 if is_rehome:
                     # the tape is the ONLY trigger for a move — an unreadable pair is refused,
                     # never deferred to the sector label (#491 re-homing pass, 2026-10-03)
+                    _rh_blocked.add(ticker)
                     _rh_skipped["unjudgeable"] += 1
                     await log_audit_event(
                         "rehome_skipped_unjudgeable",
@@ -5068,6 +5081,8 @@ async def _assign_uncovered_to_themes(
                     summary=f"Cooldown prevented {ticker} → '{theme_name}'",
                     detail="Claude ignored cooldown constraint — hard filter applied",
                 )
+                if is_rehome:
+                    _rh_blocked.add(ticker)
                 continue
 
             # Apply assignment
@@ -5125,7 +5140,14 @@ async def _assign_uncovered_to_themes(
             if not newly_added:
                 continue
             # Run membership validation (THEME_MODEL) on just the new additions in context of this theme
-            validated = await _validate_theme_membership(theme["name"], theme.get("tickers") or [], changelog, protected=protected)
+            # #368's thesis-aware rule reached rescore, birth and Arm-B on 2026-08-04 and MISSED this
+            # fourth caller, which kept judging a new member's static description against the theme
+            # NAME alone — the 7/27 WULF/CORZ eviction class, sitting on the re-homing pass's critical
+            # path (a converted miner lands in 'Emerging AI Compute…' and is evicted the same run on
+            # "bitcoin miner"). Enforcing the signed rule here (2026-10-03), not a new criterion:
+            # SSoT docs/architecture/theme_engine.md "Thesis-aware since #368".
+            validated = await _validate_theme_membership(theme["name"], theme.get("tickers") or [], changelog,
+                                                         protected=protected, thesis=theme.get("description"))
             removed = set(theme.get("tickers") or []) - set(validated)
             if removed:
                 logger.info(f"Post-assignment validation removed {removed} from '{theme['name']}'")
@@ -6207,17 +6229,30 @@ async def _rehome_through_funnel(
     changelog.extend(e for e in funnel_log
                      if not (e.get("type") == "ticker_assigned" and e.get("ticker") in rehome_map))
     by_name = {t["name"]: t for t in all_themes}
+    # The re-judge memory covers only names the model actually saw AND no wall refused: a cap-deferred,
+    # Fading-refused, unreadable, cooled-down or excluded name — and every name on a night the model
+    # call failed or that was dropped before the call — is NOT frozen for 14 days.
+    judged_ok = set(rehome_state.get("judged") or ()) - set(rehome_state.get("blocked") or ())
+    f4_removed = {e.get("ticker") for e in funnel_log if e.get("type") == "ticker_revalidated_out"}
+    counts["unjudged"] = 0
     for c in cands:
         landed = [t for t in offered if c.ticker in (t.get("tickers") or []) and t["name"] not in c.homes]
         if not landed:
+            if c.ticker not in judged_ok:
+                counts["unjudged"] += 1
+                logger.info(f"Re-homing: {c.ticker} not judged tonight (model call failed, dropped before "
+                            f"the call, or a wall refused the pair) — re-offerable, no memory row")
+                continue
             counts["stayed"] += 1
+            why = (f"landed in a theme and was removed by post-assignment validation"
+                   if c.ticker in f4_removed else "the judgement did not place it")
             await log_audit_event(
                 REHOME_JUDGED_EVENT,
-                summary=f"{c.ticker} stays — the judgement did not place it (offered on tape "
+                summary=f"{c.ticker} stays — {why} (offered on tape "
                         f"{c.target_corr:.2f} to '{c.target}', {c.arm})",
                 detail=json.dumps({"ticker": c.ticker, "homes": list(c.homes), "target": c.target,
                                    "target_corr": c.target_corr, "own_corr": c.own_corr, "arm": c.arm,
-                                   "verdict": "stay"}),
+                                   "verdict": "stay", "removed_by_validation": c.ticker in f4_removed}),
             )
             continue
         target = landed[0]
