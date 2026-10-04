@@ -2694,19 +2694,25 @@ async def _coverage_watch_job(slot: str = "evening"):
         # ASK THE BROKER AGAIN rather than trusting the attempt. A repair that reports
         # success but leaves no live stop must still page — "I tried" is not coverage.
         repaired: list[str] = []
+        # #687 ruling (a): tickers the repairer found FLAT at the broker (it placed nothing). The
+        # re-check below reads our books, so their page line says what the broker showed instead.
+        broker_flat: set[str] = set()
         if repairs and gaps:
             from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+                COVERAGE_BROKER_FLAT_PHRASE,
                 _ensure_stop_coverage,
             )
             for gap in gaps:
                 try:
-                    await _ensure_stop_coverage(
+                    _msg = await _ensure_stop_coverage(
                         gap.get("trade_id"), gap.get("ticker"),
                         float(gap.get("target") or 0),
                         gap.get("stop_price"),
                         gap.get("signal_type") or "unknown",
                         gap.get("account_mode") or "live",
                     )
+                    if isinstance(_msg, str) and COVERAGE_BROKER_FLAT_PHRASE in _msg:
+                        broker_flat.add(str(gap.get("ticker")))
                     repaired.append(str(gap.get("ticker")))
                 except Exception as _re:  # loud-ok: the re-check below is the real verdict
                     logger.warning(
@@ -2732,6 +2738,13 @@ async def _coverage_watch_job(slot: str = "evening"):
 
         lines = []
         for gap in gaps:
+            if str(gap.get("ticker")) in broker_flat:
+                lines.append(
+                    f"• {gap.get('ticker')}: the broker shows NO position, so no stop was placed; "
+                    f"our records still show {float(gap.get('target') or 0):.0f} sh open — "
+                    f"`/syncnow` books the exit, or reconcile the row by hand"
+                )
+                continue
             lines.append(
                 f"• {gap.get('ticker')}: holds {float(gap.get('target') or 0):.0f} sh, "
                 f"live stop covers {float(gap.get('live_qty') or 0):.0f} sh"

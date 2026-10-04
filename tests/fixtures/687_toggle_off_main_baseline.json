@@ -1,7 +1,7 @@
 {
- "baseline_sha": "76e2ce4bfb5d810ad6ded5f0f353eaa241626457",
+ "baseline_sha": "4e4543957c1be082ebae59b46698ba8d9420c67b",
  "captured_by": "scripts/probes/_687/capture_toggle_off_baseline.sh",
- "harness_sha256": "51c3516317bc5962baffa83992780a0097dfcc842894decb75d75483b2bbcb9e",
+ "harness_sha256": "4b5c620c7fec557a71396835a9f44c0b9ff94a73fc26e99b655593c0c36d5636",
  "scenarios": {
   "s01_1645_exit_no_resting": {
    "_unknown_sql": [],
@@ -2844,17 +2844,13 @@
     {
      "args": {
       "account_mode": "live",
-      "client_order_id": null,
-      "qty": 10,
-      "side": "sell",
-      "stop_price": 58,
-      "ticker": "KOD"
+      "raise_on_error": true
      },
-     "method": "place_stop_order"
+     "method": "get_all_positions"
     }
    ],
    "pages": [
-    "💰 LIVE-$ ⚠️ Full exit FAILED for KOD: {\"code\":40410000,\"message\":\"position does not exist\"}\nStop RESTORED at $58.00 — position is protected."
+    "💰 LIVE-$ ⚠️ Full exit FAILED for KOD: {\"code\":40410000,\"message\":\"position does not exist\"}\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books."
    ],
    "raised": null,
    "result": false
@@ -2894,7 +2890,7 @@
       "remaining_shares": 10,
       "signal_type": "magna53",
       "status": "filled",
-      "stop_order_id": "stop-1",
+      "stop_order_id": null,
       "stop_price": 58,
       "ticker": "KOD",
       "total_pnl": null
@@ -2912,17 +2908,13 @@
     {
      "args": {
       "account_mode": "live",
-      "client_order_id": null,
-      "qty": 10,
-      "side": "sell",
-      "stop_price": 58,
-      "ticker": "KOD"
+      "raise_on_error": true
      },
-     "method": "place_stop_order"
+     "method": "get_all_positions"
     }
    ],
    "pages": [
-    "💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\nPosition still open. Stop re-placed @$58.00 for 10 sh."
+    "💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books."
    ],
    "raised": null,
    "result": null
@@ -2994,6 +2986,13 @@
     {
      "args": {
       "account_mode": "live",
+      "raise_on_error": true
+     },
+     "method": "get_all_positions"
+    },
+    {
+     "args": {
+      "account_mode": "live",
       "client_order_id": null,
       "qty": 10,
       "side": "sell",
@@ -3012,15 +3011,7 @@
   "s42_coverage_reconciler_refused_stop_broker_flat": {
    "_unknown_sql": [],
    "book_after": {
-    "orders": [
-     {
-      "exit_reason": "stop_hit",
-      "id": "sell-1",
-      "purpose": "full_exit",
-      "qty": 10,
-      "status": "accepted"
-     }
-    ],
+    "orders": [],
     "trades": {
      "401": {
       "account_mode": "live",
@@ -3081,17 +3072,89 @@
     {
      "args": {
       "account_mode": "live",
-      "qty": 10,
-      "ticker": "KOD"
+      "raise_on_error": true
      },
-     "method": "close_position"
+     "method": "get_all_positions"
     }
    ],
-   "pages": [
-    "💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $58.00 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>"
-   ],
+   "pages": [],
    "raised": null,
-   "result": "🚨 KOD: stop $58.00 is ABOVE market — the price is already through it, so 10 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have."
+   "result": "🚨 KOD: stop $58.00 is ABOVE market — position breached the stop. Operator decision needed (no auto-exit)."
+  },
+  "s43_coverage_1700_slot_broker_flat": {
+   "_unknown_sql": [],
+   "book_after": {
+    "orders": [],
+    "trades": {
+     "401": {
+      "account_mode": "live",
+      "alert_date": "2026-09-28",
+      "breakeven_active": false,
+      "closed_at": null,
+      "closed_on": null,
+      "dead_stop_order_id": null,
+      "dead_stop_price": null,
+      "dead_stop_status": null,
+      "depth_sell_pending_on": null,
+      "entry_order_id": "entry-401",
+      "entry_price": 60,
+      "entry_shares": 10,
+      "exit_rule": null,
+      "exits": [],
+      "hard_stop": 55,
+      "id": 401,
+      "orb_low": 57.5,
+      "partial_taken": false,
+      "remaining_shares": 10,
+      "signal_type": "magna53",
+      "status": "filled",
+      "stop_order_id": "stop-1",
+      "stop_price": 58,
+      "ticker": "KOD",
+      "total_pnl": null
+     }
+    }
+   },
+   "broker_calls": [
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "client_order_id": "apollo_live_magna53_KOD_1",
+      "qty": 10,
+      "side": "sell",
+      "stop_price": 58,
+      "ticker": "KOD"
+     },
+     "method": "place_stop_order"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true,
+      "ticker": "KOD"
+     },
+     "method": "get_open_orders"
+    }
+   ],
+   "pages": [],
+   "raised": null,
+   "result": null
   }
  }
 }

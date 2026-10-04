@@ -164,12 +164,15 @@ def test_the_flat_page_sentence_is_plain_and_is_not_the_unprotected_or_covered_p
     assert "resting" not in low and "restored" not in low, line
     # Review 2026-10-04: the first draft promised "the position sync reconciles the books". It does
     # not, in two real cases (the sync books the exit only off a broker-confirmed fill, and aborts
-    # entirely when this was the account's last position), and the 17:00/19:00 coverage repair
-    # sizes from the BOOKS, so it may re-place the very stop this ruling withheld. The sentence
-    # must say the row is still open, and must warn of that repair — not promise a reconcile.
+    # entirely when this was the account's last position). The sentence must say the row is still
+    # open — not promise a reconcile. Until ruling (a) (operator 2026-10-04) it also warned that the
+    # 17:00/19:00 coverage repair, sizing from the BOOKS, "may re-place a stop"; the repair now
+    # reads the broker before placing, so the sentence says that instead — never the old warning.
     assert "reconciles the books" not in low, line
     assert "books still show" in low and "by hand" in low, line
-    assert "coverage repair" in low and "may re-place a stop" in low, line
+    assert "coverage repair" in low and "reads the broker" in low, line
+    assert "will not re-place a stop while it shows no position" in low, line
+    assert "may re-place" not in low, line
     assert "only open position" in low, line
     # one sentence for both pages — the stream's dead-sale page must carry the same words
     assert line == "\n" + om.FLAT_RESTORE_PAGE_BODY
@@ -231,7 +234,7 @@ async def test_stream_dead_sale_on_a_flat_broker_pages_flat_and_places_nothing()
     assert "RESTORE FAILED" not in page and "unprotected" not in page.lower(), page
     assert "resting" not in page.lower(), page
     # the same words as the failed-exit page (review 2026-10-04: neither may promise the sync
-    # reconciles the row; both warn that the coverage repair may re-place a stop from the books)
+    # reconciles the row; since ruling (a) both say the coverage repair reads the broker too)
     assert page.endswith("\n" + om.FLAT_RESTORE_PAGE_BODY), page
     rows = _audits(w, "restore_skipped_broker_flat")
     assert len(rows) == 1 and rows[0]["site"] == "trade_stream.full_exit_cancel_restore", w.audits

@@ -9,8 +9,10 @@ end state of the fake book. Run it in two trees and diff the logs:
      scripts/probes/_687/capture_toggle_off_baseline.sh)
 
 `tests/test_687_toggle_off_convergence.py` runs it on this tree and asserts the log equals the
-recorded baseline except an explicit, named allow-list (today: ruling (i) 2026-10-02 — s39-s42, a
-flat or unreadable broker at the failed-exit stop restore and at ruling (iii)'s shared sale path).
+recorded baseline except an explicit, named allow-list (today: ruling (a) 2026-10-04 — the coverage
+repair reads the broker before placing: the scenarios that reach its place branch gain that read,
+s42 reads flat and places nothing, s43 is the 17:00 slot on a flat broker, and the two flat pages
+s39/s40 drop their "may re-place a stop" warning).
 
 THE FAKE WORLD is version-agnostic on purpose: one in-memory book (trades / exit orders / audit
 log) answered by a tiny SQL interpreter, and one fake broker. Both code trees see the same world
@@ -1135,6 +1137,19 @@ def s42_coverage_reconciler_refused_stop_broker_flat(om, **_):
     _trade(w, stop_id=None)
     _always_breach(w)
     return w, lambda: om._ensure_stop_coverage(401, "KOD", 10.0, 58.0, "magna53", "live")
+
+
+# ── ruling (a) 2026-10-04: the coverage repair reads the broker before placing. The 17:00 slot
+# sizes its target from the BOOKS (no position read of its own) and re-drives the repairer; on a
+# flat broker main places the 10-share stop ruling (i) withheld; the branch places nothing.
+
+def s43_coverage_1700_slot_broker_flat(om, sched, **_):
+    """The 17:00 coverage slot on a FLAT broker: the row still says 10 sh with no stop pointer, the
+    broker lists no position. The detector reads a gap from the books; the repairer's place branch
+    reads the broker (ruling (a)) and withholds the stop. The slot then re-runs the detector."""
+    w = World()
+    _trade(w, stop_id=None)
+    return w, lambda: sched._coverage_watch_job("post_close")
 
 
 SCENARIOS =[v for k, v in sorted(globals().items()) if re.fullmatch(r"s\d\d_\w+", k)]

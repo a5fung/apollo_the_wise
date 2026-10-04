@@ -4889,6 +4889,52 @@ def _live_sell_orders_held_qty(open_orders: list, *, exclude_ids=()) -> float:
     )
 
 
+# ⚖ #687 ruling (i) (2026-10-02) + ruling (a) (2026-10-04): the THREE answers a broker position
+# read can give. `get_position` returns None for BOTH "the broker says no position" (404) and
+# "the read failed"; `_read_broker_position` tells them apart. ONE helper, two consumers (the
+# failed-exit restore's sizing and the coverage reconciler's place branch) — the semantics must
+# never be copied, so a change to what "flat" means happens in exactly one place.
+BROKER_HELD = "held"             # the broker shows the position (readable; `pos` is the dict)
+BROKER_FLAT = "flat"             # the broker lists NO such position — a real zero
+BROKER_UNREADABLE = "unreadable"  # the broker could not be read — unknown, the books stand in
+
+
+async def _read_broker_position(ticker: str, account_mode: str) -> tuple[str, "dict | None"]:
+    """FLAT / UNREADABLE / HELD — the one broker position read whose None is disambiguated.
+
+    `get_position` (left untouched for its ~30 other callers — signature and None-for-everything
+    contract pinned by test) is read first; when it returns None the answer comes from
+    `get_all_positions(raise_on_error=True)`, which already has the exact semantics (#184 inc. 2):
+      • the list read FAILS → `BROKER_UNREADABLE` — a read hiccup, never a zero (the deduped
+        alpaca API alert fires inside that read);
+      • the list has NO such position → `BROKER_FLAT` — nothing to protect;
+      • the list still SHOWS it → `BROKER_HELD` with the listed dict — readable after all.
+    A non-None single read is `BROKER_HELD` at once — today's path for a readable broker never
+    touches the list. Cost: one extra GET /v2/positions, only when the single read returned
+    nothing. Returns `(state, pos)`; `pos` is None unless the state is `BROKER_HELD`.
+    """
+    try:
+        pos = await alpaca.get_position(ticker, account_mode=account_mode)
+    except Exception as e:   # loud-ok: the list read below decides; logged
+        logger.warning(f"_read_broker_position: position read failed for {ticker} — {e}")
+        pos = None
+    if pos is not None:
+        return BROKER_HELD, pos
+    # flat or unreadable? The list read raises on a failure and answers "no such position"
+    # definitively on success.
+    try:
+        listed = await alpaca.get_all_positions(account_mode=account_mode, raise_on_error=True)
+    except Exception as e:   # loud-ok: the caller falls back to the books; logged (alert fired inside)
+        logger.warning(f"_read_broker_position: positions list read failed for {ticker} — {e}")
+        return BROKER_UNREADABLE, None
+    pos = next((p for p in listed
+                if str(p.get("symbol") or "").upper() == str(ticker).upper()), None)
+    if pos is None:
+        logger.warning(f"_read_broker_position: the broker lists no {ticker} position — flat")
+        return BROKER_FLAT, None
+    return BROKER_HELD, pos
+
+
 async def _broker_free_qty_for_restore(
     ticker: str, account_mode: str, fallback_qty: float, *, exclude_ids=(),
 ) -> tuple[int, str]:
@@ -4900,27 +4946,23 @@ async def _broker_free_qty_for_restore(
     over-ask and the page said UNPROTECTED while the other two thirds were the ones really naked.
 
     ⚖ #687 RULING (i), operator 2026-10-02 (built 2026-10-04): *"separate 'no position' from
-    'can't read' so a real zero places nothing"*. `get_position` returns None for BOTH "the broker
-    says no position" (404) and "the read failed", and until this it was treated as UNKNOWN →
-    the books — so on a genuinely FLAT broker the restore placed a SELL STOP on shares we did not
-    hold and the page said UNPROTECTED for a position that no longer existed. Now a None is
-    disambiguated with `get_all_positions(raise_on_error=True)`, which already has the exact
-    semantics (and leaves `get_position` untouched for its ~30 other callers):
-      • the list read FAILS → 'fallback:position_unreadable' — the caller's database-derived count
+    'can't read' so a real zero places nothing"*. Until this a None from `get_position` was
+    treated as UNKNOWN → the books — so on a genuinely FLAT broker the restore placed a SELL STOP
+    on shares we did not hold and the page said UNPROTECTED for a position that no longer existed.
+    The read is `_read_broker_position` (shared with the coverage reconciler since ruling (a)):
+      • UNREADABLE → 'fallback:position_unreadable' — the caller's database-derived count
         (`remaining − pending exits`) stands in exactly as before, never zero (a read hiccup must
-        not leave a position bare); the deduped alpaca API alert fires inside that read;
-      • the list has NO such position → `(0, 'broker_flat')` — nothing to protect, the consumers
-        place NOTHING. ⚠ The ROW IS NOT RESOLVED here: the books still say the trade is open,
-        and nothing downstream is guaranteed to close it — the position sync's #597 "gone from
-        Alpaca" resolution books the exit only off a broker-confirmed fill (else it pages "row
-        left OPEN"), and it ABORTS without touching anything when the account's LAST position is
-        the one that vanished (`sync_positions_aborted_alpaca_empty`); meanwhile the after-close
-        coverage repair (17:00 / 19:00 ET, live only) sizes from the BOOKS and may re-place a stop
-        on the empty account. Whether that repair should also read the broker flat, or the row
-        should be resolved at the flat result, is HIS decision (both are safeguard changes) —
-        open in the SSoT (`docs/setups/exit_discipline.md`, 2026-10-04). The pages say so;
-      • the list still SHOWS the position → the broker is readable after all; sized from it, as a
-        readable broker always was ('broker').
+        not leave a position bare);
+      • FLAT → `(0, 'broker_flat')` — nothing to protect, the consumers place NOTHING. ⚠ The ROW
+        IS NOT RESOLVED here: the books still say the trade is open, and nothing downstream is
+        guaranteed to close it — the position sync's #597 "gone from Alpaca" resolution books the
+        exit only off a broker-confirmed fill (else it pages "row left OPEN"), and it ABORTS
+        without touching anything when the account's LAST position is the one that vanished
+        (`sync_positions_aborted_alpaca_empty`). Since ruling (a) (operator 2026-10-04) the
+        after-close coverage repair (17:00 / 19:00 ET) reads the broker the same way before it
+        places and withholds its stop on a flat one, so the row waits on /syncnow or his hand with
+        no order resting on the empty account. The pages say so;
+      • HELD → the broker is readable; sized from it, as a readable broker always was ('broker').
     Returns `(qty, source)` with source 'broker', 'broker_flat' or 'fallback:<why>'.
 
     `exclude_ids` — the stop the caller has just CANCELLED. Alpaca acknowledges a cancel before
@@ -4929,26 +4971,15 @@ async def _broker_free_qty_for_restore(
     other way (an over-ask the broker rejects loudly if the cancel truly did not take) — the
     direction this module always chooses.
     """
-    try:
-        pos = await alpaca.get_position(ticker, account_mode=account_mode)
-    except Exception as e:   # loud-ok: the list read below decides; logged
-        logger.warning(f"_broker_free_qty_for_restore: position read failed for {ticker} — {e}")
-        pos = None
-    if pos is None:
-        # ruling (i) 2026-10-02: flat or unreadable? The list read raises on a failure and
-        # answers "no such position" definitively on success.
-        try:
-            listed = await alpaca.get_all_positions(account_mode=account_mode, raise_on_error=True)
-        except Exception as e:   # loud-ok: the database count stands in; logged (alert fired inside)
-            logger.warning(f"_broker_free_qty_for_restore: positions list read failed for "
-                           f"{ticker} — {e}; the books stand in")
-            return _whole_shares(fallback_qty), "fallback:position_unreadable"
-        pos = next((p for p in listed
-                    if str(p.get("symbol") or "").upper() == str(ticker).upper()), None)
-        if pos is None:
-            logger.warning(f"_broker_free_qty_for_restore: the broker lists no {ticker} position "
-                           f"— nothing to protect (ruling (i): nothing is placed)")
-            return 0, "broker_flat"
+    state, pos = await _read_broker_position(ticker, account_mode)
+    if state == BROKER_UNREADABLE:
+        logger.warning(f"_broker_free_qty_for_restore: {ticker} position unreadable — the books "
+                       f"stand in")
+        return _whole_shares(fallback_qty), "fallback:position_unreadable"
+    if state == BROKER_FLAT:
+        logger.warning(f"_broker_free_qty_for_restore: the broker lists no {ticker} position "
+                       f"— nothing to protect (ruling (i): nothing is placed)")
+        return 0, "broker_flat"
     try:
         orders = await alpaca.get_open_orders(
             ticker, account_mode=account_mode, raise_on_error=True)
@@ -4967,17 +4998,20 @@ RESTORE_FLAT = "broker_flat"     # #687 ruling (i): the broker shows NO position
 
 # ⚖ #687 ruling (i) — the ONE sentence both flat pages carry (the failed-exit page via
 # `_restore_outcome_line`, the stream's dead-sale page in `trade_stream`), so they cannot drift
-# apart. Every clause is TRUE of the code as it stands (review 2026-10-04): the row is NOT resolved
-# by this path; the sync books the exit only off a broker-confirmed fill and does nothing at all
-# when this was the account's last position; the 17:00 / 19:00 ET coverage repair sizes from the
-# books (live only) and may re-place a stop until the row is resolved. It must NOT promise the sync
-# reconciles the row — that was the first draft, and it was false in both of those cases.
+# apart. Every clause is TRUE of the code as it stands: the row is NOT resolved by this path; the
+# sync books the exit only off a broker-confirmed fill and does nothing at all when this was the
+# account's last position. It must NOT promise the sync reconciles the row — that was the first
+# draft (review 2026-10-04), and it was false in both of those cases. Until ruling (a) (operator
+# 2026-10-04) the last sentence warned that the 17:00 / 19:00 ET coverage repair, sizing from the
+# books, MAY re-place a stop; the repair now reads the broker before it places
+# (`_ensure_stop_coverage_outcome`, via the same `_read_broker_position`) and withholds it on a
+# flat one, so the sentence says that instead.
 FLAT_RESTORE_PAGE_BODY = (
     "No stop placed: the broker shows no position, so there is nothing to protect. "
     "Our books still show the trade open — run /syncnow to book the exit from the broker, and "
     "reconcile the row by hand if it is still open (if this was the only open position, the sync "
-    "will not act). Until the row is resolved, the after-close coverage repair "
-    "(17:00 / 19:00 ET) may re-place a stop from the books."
+    "will not act). The after-close coverage repair (17:00 / 19:00 ET) also reads the broker "
+    "and will not re-place a stop while it shows no position."
 )
 
 
@@ -4994,7 +5028,8 @@ async def _audit_restore_skipped_broker_flat(
         f"{ticker}: the broker shows no position — no stop placed after the failed exit "
         f"(the books said {float(fallback_qty):.0f} sh); the row is NOT resolved here — the sync "
         f"books the exit only off a broker-confirmed fill and does nothing if this was the last "
-        f"position; the 17:00/19:00 coverage repair may re-place a stop from the books until then",
+        f"position; the 17:00/19:00 coverage repair reads the broker too and places nothing on "
+        f"a flat one (ruling (a))",
         json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
                     "stop_price": stop_price, "site": site,
                     "fallback_qty": float(fallback_qty)}),
@@ -5143,9 +5178,9 @@ async def _restore_stop_after_failed_exit(
 
     ⚖ #687 ruling (i), 2026-10-02: the broker shows NO position (a real zero, not a failed read)
     → nothing to protect, nothing placed → RESTORE_FLAT, one `restore_skipped_broker_flat` row.
-    The row is NOT resolved here (see `_broker_free_qty_for_restore` — the sync may not close it,
-    and the after-close coverage repair may re-place a stop from the books until it is); the page
-    says so. An UNREADABLE broker still restores from `shares`.
+    The row is NOT resolved here (see `_broker_free_qty_for_restore` — the sync may not close it;
+    since ruling (a) the after-close coverage repair reads the broker too and places nothing on a
+    flat one); the page says so. An UNREADABLE broker still restores from `shares`.
     """
     if not stop_price:
         logger.error(f"_restore_stop_after_failed_exit: {ticker} has no stop price to restore")
@@ -6871,6 +6906,17 @@ COVERAGE_FLAGGED = "flagged"        # CHECKED — could not (or must not) fix; o
 # The two statuses that mean "this pass verified the position's coverage".
 _COVERAGE_VERIFIED_OK = (COVERAGE_COVERED, COVERAGE_REPAIRED)
 
+# ⚖ #687 ruling (a) (operator 2026-10-04) — the ONE audit row for "the place branch read a FLAT
+# broker and placed nothing" (trade, ticker, mode, the books' target, the stop price, the site).
+# `retry_failed_coverage_repairs` reads it ONLY TO STOP retrying, exactly as it reads the breach
+# row: there is no position to cover, and the one thing left — resolving the open row — is his
+# (/syncnow, then by hand), not the reconciler's. A flat never STARTS a retry (it is not a
+# `stop_coverage_repair_failed` row), and a flat recorded after a failure ENDS it.
+COVERAGE_SKIPPED_BROKER_FLAT_EVENT = "coverage_skipped_broker_flat"
+# The flat outcome's phrase, ONE copy: the 17:00/19:00 coverage slot drives the signed
+# `_ensure_stop_coverage` (string contract, #649) and recognises a flat result by this phrase.
+COVERAGE_BROKER_FLAT_PHRASE = "the broker shows no position, so no stop was placed"
+
 
 class CoverageOutcome(NamedTuple):
     """One `_ensure_stop_coverage` pass, told apart at the SOURCE (#599).
@@ -7237,6 +7283,47 @@ async def _ensure_stop_coverage_outcome(
                 f"— manual intervention needed",
                 "no_stop_and_no_stop_price",
             )
+        # ⚖ #687 RULING (a), operator 2026-10-04 ("the coverage repair also reads the broker
+        # and places nothing when it shows no position"). Until this the place branch sized
+        # from `broker_qty` as the CALLER gave it — and the 17:00 / 19:00 ET coverage slot
+        # hands it `remaining_shares` from the BOOKS with no position read at all — so on a
+        # broker that held nothing (the stop filled, the sale went through, the row not yet
+        # resolved) it re-placed a SELL STOP on shares we do not own: the very stop ruling (i)
+        # had just withheld at the failed-exit restore. Read the broker FIRST, through the same
+        # helper the restore uses, so "flat" means one thing in both places:
+        #   FLAT       → place NOTHING; one audit row; a FLAGGED outcome whose message says so
+        #                in plain words. NOT a `stop_coverage_repair_failed` row, so no retry
+        #                starts; and the retry treats the flat row as terminal (like a breach).
+        #   UNREADABLE → exactly today's behaviour below (the books' target, the floored price).
+        #   HELD       → exactly today's behaviour below. `target` is NOT re-sized from the
+        #                position just read — that would be wider than (a).
+        # Only THIS branch reads: the resize/replace branches above are untouched, and so is the
+        # detector-only path (`check_position_coverage`, repairs OFF). The no-price return above
+        # places nothing either, so it does not read.
+        _state, _ = await _read_broker_position(ticker, account_mode)
+        if _state == BROKER_FLAT:
+            logger.warning(
+                f"_ensure_stop_coverage: {ticker} — the broker shows no position; no coverage "
+                f"stop placed (the books said {target:.0f} sh; ruling (a))"
+            )
+            await log_audit_event(
+                COVERAGE_SKIPPED_BROKER_FLAT_EVENT,
+                f"{ticker}: the broker shows no position — no coverage stop placed (the books "
+                f"said {target:.0f} sh; the row is still open: /syncnow, then by hand)",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "account_mode": account_mode, "target_qty": target,
+                    "db_stop_price": float(db_stop_price),
+                    "site": "ensure_stop_coverage.place",
+                }),
+            )
+            return CoverageOutcome(
+                COVERAGE_FLAGGED,
+                f"⚠️ {ticker}: {COVERAGE_BROKER_FLAT_PHRASE}. Our records "
+                f"still show the trade open ({target:.0f} sh) — run /syncnow to book the exit "
+                f"from the broker, and reconcile the row by hand if it is still open.",
+                "broker_flat",
+            )
         # #600: never re-arm BELOW the last level the broker held. `db_stop_price`
         # can be stale-low (the breakeven replace withholds it on an unconfirmed
         # outcome — see _floor_reprotect_price); the DB's own stop pointer, read
@@ -7468,7 +7555,7 @@ async def retry_failed_coverage_repairs() -> dict:
             """,
             [_COVERAGE_RETRY_FAIL_EVENT, _COVERAGE_RETRY_OK_EVENT,
              _COVERAGE_RETRY_ATTEMPT_EVENT, _COVERAGE_RETRY_BREACH_EVENT,
-             _COVERAGE_RETRY_DEFER_EVENT],
+             _COVERAGE_RETRY_DEFER_EVENT, COVERAGE_SKIPPED_BROKER_FLAT_EVENT],
             today,
         )
 
@@ -7493,7 +7580,7 @@ async def retry_failed_coverage_repairs() -> dict:
             continue
         s = state.setdefault(
             tid, {"failed_at": None, "repaired_at": None, "breached_at": None,
-                  "attempts": 0, "deferrals": 0, "ticker": None,
+                  "flat_at": None, "attempts": 0, "deferrals": 0, "ticker": None,
                   "account_mode": None},
         )
         s["ticker"] = d.get("ticker") or s["ticker"]
@@ -7514,6 +7601,10 @@ async def retry_failed_coverage_repairs() -> dict:
             # type this scan fetches now has its OWN branch and the final else
             # does nothing.
             s["deferrals"] += 1
+        elif r["event_type"] == COVERAGE_SKIPPED_BROKER_FLAT_EVENT:
+            # ruling (a): the repair read a flat broker. Terminal for this trade (below),
+            # never an attempt.
+            s["flat_at"] = r["created_at"]
 
     modes = set(active_account_modes())
     examined = 0
@@ -7531,6 +7622,12 @@ async def retry_failed_coverage_repairs() -> dict:
             # The position is THROUGH its stop. `_ensure_stop_coverage` already
             # converged and told the operator; re-driving would re-submit a
             # structurally invalid stop and re-decide a call that is his.
+            continue
+        if s["flat_at"] is not None and s["flat_at"] >= s["failed_at"]:
+            # ⚖ ruling (a) 2026-10-04: the repair read a FLAT broker after the failure and
+            # placed nothing. There is no position to cover; re-driving would only re-read the
+            # same flat broker (and the open row is his to resolve — /syncnow, then by hand).
+            # Terminal, exactly as the breach above.
             continue
         examined += 1
         if s["attempts"] >= _COVERAGE_RETRY_MAX_ATTEMPTS:
