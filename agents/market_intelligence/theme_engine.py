@@ -9733,16 +9733,8 @@ async def run_theme_engine(
             logger.info("Re-homing pass: toggle OFF — no moves tonight")
 
     # --- Step 2a.6: SMALL-FADING RETIRE (#655 rule B, 2026-10-04, operator "aligned") ---
-    # A weak-Fading theme (stage 'Fading' AND rs_avg None — the weak branch's row, never the
-    # scored path's) under SMALL_FADING_RETIRE_MIN_MEMBERS (3) members retires TONIGHT instead
-    # of after FADING_RETIRE_AFTER (5) weak nights. Sited AFTER Step 2a.5 on purpose: the stage
-    # decision ran in Step 1 (`_rescore_existing_theme`), re-homing has now moved out what the
-    # tape could place, and only what it could not place is retired — #491's pre-registered
-    # checks need its moves readable. The dropped theme takes the engine-drop path like a
-    # 5-night retirement (tombstone + `theme_auto_retired`; `theme_retired` line appended by
-    # the pass). Toggle `theme_small_fading_retire` DEFAULT ON; OFF = nothing retired here.
-    # Section header above `_retire_small_fading_themes` carries the rule, the evidence and
-    # the one stated difference (members released next run); SSoT theme_engine.md 2026-10-04.
+    # AFTER re-homing (2a.5) on purpose: only what re-homing could not place is retired. The rule,
+    # evidence and toggle are in the section header above `_retire_small_fading_themes`.
     try:
         updated_themes = await _retire_small_fading_themes(updated_themes, changelog)
     except Exception as e:  # loud-ok: a failed pass must not take the nightly down; audited + logged, nothing retired

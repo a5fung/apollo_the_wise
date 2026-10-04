@@ -344,14 +344,15 @@ def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares
     }
 
 
+# The stages the M&A screen + the deal-pin backstop run on: every stage the scan names to the
+# operator (#598, 2026-10-04: TIGHTENING added — a buyout-pinned name reads as a perfect
+# TIGHTENING base and reached the board and the NEW TODAY block). WATCH stays unscreened.
+_MNA_SCREENED_STAGES = ("TIGHTENING", "COILED", "TRIGGERED")
+
 # Deal-pin M&A signature (Layer 3): once price is pinned at an announced
 # deal value, daily ranges collapse to bid-ask noise (~0.2-0.5%). Real
 # VCPs run 1.5-3% even when tight, so a strict 0.5% threshold has
 # near-zero false-positive risk.
-# The stages the M&A screen + this deal-pin backstop run on: every stage the scan names to the
-# operator (#598, 2026-10-04: TIGHTENING added — a buyout-pinned name reads as a perfect
-# TIGHTENING base and reached the board and the NEW TODAY block). WATCH stays unscreened.
-_MNA_SCREENED_STAGES = ("TIGHTENING", "COILED", "TRIGGERED")
 _DEAL_PIN_LOOKBACK_DAYS          = 10
 _DEAL_PIN_RANGE_THRESHOLD        = 0.005
 _DEAL_PIN_MIN_SUB_THRESHOLD_DAYS = 5

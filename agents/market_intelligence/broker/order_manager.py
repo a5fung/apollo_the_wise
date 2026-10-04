@@ -4935,6 +4935,11 @@ async def _read_broker_position(ticker: str, account_mode: str) -> tuple[str, "d
     return BROKER_HELD, pos
 
 
+# `_broker_free_qty_for_restore`'s source when the broker lists NO position (#687 ruling (i)) — one
+# spelling for every consumer (the restore, the stream's full-exit restore, the ruling (iii) sale).
+BROKER_FLAT_SOURCE = "broker_flat"
+
+
 async def _broker_free_qty_for_restore(
     ticker: str, account_mode: str, fallback_qty: float, *, exclude_ids=(),
 ) -> tuple[int, str]:
@@ -4979,7 +4984,7 @@ async def _broker_free_qty_for_restore(
     if state == BROKER_FLAT:
         logger.warning(f"_broker_free_qty_for_restore: the broker lists no {ticker} position "
                        f"— nothing to protect (ruling (i): nothing is placed)")
-        return 0, "broker_flat"
+        return 0, BROKER_FLAT_SOURCE
     try:
         orders = await alpaca.get_open_orders(
             ticker, account_mode=account_mode, raise_on_error=True)
@@ -5187,7 +5192,7 @@ async def _restore_stop_after_failed_exit(
         return RESTORE_FAILED
     qty, source = await _broker_free_qty_for_restore(
         ticker, account_mode, shares, exclude_ids=(cancelled_stop_id,))
-    if source == "broker_flat":
+    if source == BROKER_FLAT_SOURCE:
         logger.warning(f"_restore_stop_after_failed_exit: {ticker} — the broker shows no position; "
                        f"no stop placed (the books said {float(shares):.0f} sh)")
         await _audit_restore_skipped_broker_flat(

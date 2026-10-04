@@ -2410,6 +2410,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             # exit order cancelled, so the database fallback (`remaining − pending exits`)
             # no longer counts it.
             from agents.market_intelligence.broker.order_manager import (
+                BROKER_FLAT_SOURCE,
                 FLAT_RESTORE_PAGE_BODY,
                 _audit_restore_skipped_broker_flat,
                 _broker_free_qty_for_restore,
@@ -2425,14 +2426,9 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             restore_qty, _qty_source = await _broker_free_qty_for_restore(
                 trade_row["ticker"], account_mode, _fallback_qty,
                 exclude_ids=(trade_row["stop_order_id"],))
-            if _qty_source == "broker_flat":
-                # ⚖ #687 RULING (i), operator 2026-10-02: the broker shows NO position (a real
-                # zero, not a failed read) → nothing to protect, nothing placed. Before this the
-                # books stood in and a stop was placed on shares we did not hold. An UNREADABLE
-                # broker still takes the books fallback below, exactly as before. The page body
-                # is the shared `FLAT_RESTORE_PAGE_BODY`: the row is NOT resolved here, and it
-                # says so (the sync may not close it; since ruling (a) 2026-10-04 the after-close
-                # coverage repair reads the broker too and places nothing on a flat one).
+            if _qty_source == BROKER_FLAT_SOURCE:
+                # ⚖ #687 ruling (i): the broker shows NO position → nothing placed (see
+                # `_broker_free_qty_for_restore`); an UNREADABLE broker takes the books below.
                 await _audit_restore_skipped_broker_flat(
                     trade_row["id"], trade_row["ticker"], account_mode,
                     stop_price=restore_price, site="trade_stream.full_exit_cancel_restore",
