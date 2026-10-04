@@ -158,10 +158,21 @@ async def test_restore_on_an_unreadable_broker_restores_from_the_books_unchanged
 def test_the_flat_page_sentence_is_plain_and_is_not_the_unprotected_or_covered_page():
     line = om._restore_outcome_line(om.RESTORE_FLAT, 58.0)
     low = line.lower()
-    assert "no position" in low and "sync" in low, line
+    assert "no position" in low and "/syncnow" in low, line
     assert "no stop" in low and "nothing to protect" in low, line
     assert "unprotected" not in low and "manual action" not in low, line
     assert "resting" not in low and "restored" not in low, line
+    # Review 2026-10-04: the first draft promised "the position sync reconciles the books". It does
+    # not, in two real cases (the sync books the exit only off a broker-confirmed fill, and aborts
+    # entirely when this was the account's last position), and the 17:00/19:00 coverage repair
+    # sizes from the BOOKS, so it may re-place the very stop this ruling withheld. The sentence
+    # must say the row is still open, and must warn of that repair — not promise a reconcile.
+    assert "reconciles the books" not in low, line
+    assert "books still show" in low and "by hand" in low, line
+    assert "coverage repair" in low and "may re-place a stop" in low, line
+    assert "only open position" in low, line
+    # one sentence for both pages — the stream's dead-sale page must carry the same words
+    assert line == "\n" + om.FLAT_RESTORE_PAGE_BODY
     # and the other outcomes keep their sentences
     assert "UNPROTECTED" in om._restore_outcome_line(om.RESTORE_FAILED, 58.0)
     assert "resting" in om._restore_outcome_line(om.RESTORE_COVERED, 58.0)
@@ -219,6 +230,9 @@ async def test_stream_dead_sale_on_a_flat_broker_pages_flat_and_places_nothing()
     assert "Close order CANCELLED" in page and "no position" in page.lower(), page
     assert "RESTORE FAILED" not in page and "unprotected" not in page.lower(), page
     assert "resting" not in page.lower(), page
+    # the same words as the failed-exit page (review 2026-10-04: neither may promise the sync
+    # reconciles the row; both warn that the coverage repair may re-place a stop from the books)
+    assert page.endswith("\n" + om.FLAT_RESTORE_PAGE_BODY), page
     rows = _audits(w, "restore_skipped_broker_flat")
     assert len(rows) == 1 and rows[0]["site"] == "trade_stream.full_exit_cancel_restore", w.audits
 

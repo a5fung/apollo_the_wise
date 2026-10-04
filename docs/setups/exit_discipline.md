@@ -385,18 +385,45 @@ stand in exactly as before.
 - **Every consumer places NOTHING on `broker_flat`:**
   - `_restore_stop_after_failed_exit` → new outcome `RESTORE_FLAT` (no stop, no sale), one audit row
     `restore_skipped_broker_flat` (trade, ticker, mode, stop price, site, the count the books would have placed);
-  - `_restore_outcome_line(RESTORE_FLAT)` — the failed-exit page says, in plain words: *"No stop placed: the broker
-    shows no position, so there is nothing to protect. The position sync reconciles the books (16:05 / 21:00 ET, or
-    /syncnow)."* — NOT the UNPROTECTED / manual-action page, NOT "covered by resting orders";
+  - `_restore_outcome_line(RESTORE_FLAT)` — the failed-exit page says, in plain words (`FLAT_RESTORE_PAGE_BODY`, the
+    ONE sentence both flat pages share): *"No stop placed: the broker shows no position, so there is nothing to
+    protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the
+    row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is
+    resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books."* — NOT the
+    UNPROTECTED / manual-action page, NOT "covered by resting orders", and (review 2026-10-04) NOT the first draft's
+    *"the position sync reconciles the books"*, which was false — see **THE ROW IS NOT RESOLVED** below;
   - the depth flow's failed-sale page (toggle OFF) no longer appends "The position stays open…" after it;
   - the stream's full-exit restore (`trade_stream._handle_cancel_or_reject` §3) → the same audit row, its own page with
     the same sentence, no stop, no "STOP RESTORE FAILED";
   - ruling (iii)'s `_sell_at_market_for_refused_stop` already sold nothing at 0; its `stop_breach_sale_skipped` row
     now names `qty_source='broker_flat'` (before: `fallback:position_unreadable` for the same zero).
-- The books are reconciled by the position sync's #597 "position gone from Alpaca" resolution, as today.
+- **THE ROW IS NOT RESOLVED by this path — stated after the 2026-10-04 review caught the first draft claiming it was.**
+  The books still say the trade is open with N shares, and nothing downstream is guaranteed to close it:
+  - the position sync's #597 "gone from Alpaca" resolution books the exit ONLY off a broker-confirmed fill of the
+    tracked stop (`_finalize_stop_fill_locked`); otherwise it pages *"Books vs broker … row left OPEN"*; and when the
+    vanished position was the account's LAST one, the sync reads 0 broker positions against active books and ABORTS
+    without touching anything (`sync_positions_aborted_alpaca_empty`, the 2026-05-27 mass-close guard) — an audit row,
+    no page;
+  - the 17:00 and 19:00 ET coverage slots (`_COVERAGE_SLOTS`, repairs ON, live only) size their target from the BOOKS
+    (`check_position_coverage`: `target = remaining_shares`, no position read) and `_ensure_stop_coverage` places from
+    `get_open_orders` alone — so on the s39 case (16:45 sale refused, broker flat) **the 17:00 repair re-places the
+    10-share sell stop this ruling withheld at 16:45**, and if that was the last position it rests on an empty account
+    overnight. Not a money regression against main (main placed it at 16:45; the branch's repair places it at 17:00),
+    and the intraday coverage detector pages UNPROTECTED once a day for the same row.
+  Hence the page's words: the row is open, /syncnow then by hand, and the coverage repair may re-place a stop until it
+  is resolved. ⚖ **OPERATOR DECISION (THE LINE — both are safeguard changes, NOT made here; main's repair kept):**
+  (a) the coverage repairer also reads the broker and skips its place branch when the broker is flat (consequence:
+  no stop on an empty account, but the row stays open until he or the sync resolves it, and its 17:00 digest line
+  still reads main's *"position breached the stop. Operator decision needed"* on a flat broker — s42); or
+  (b) the flat result resolves the row at once (consequence: an automatic close of a live-trade row from a positions
+  read, the exact class #597 removed from the sync because it booked wrong P&L). Rec: (a) — it withholds an order, (b)
+  books money. Until he rules, the page tells him exactly what happens next.
 
-**Anticipated effect**: rare — it needs a failed planned sale whose position is already gone. When it happens, no stop
-is placed on air and the page names the case; the books close through the sync. No change on any day the broker shows
+**Anticipated effect**: rare — it needs a failed planned sale whose position is already gone (or, through the shared
+sizing, a refused stop at any ruling (iii) site on a flat broker). When it happens, no stop is placed on air and no
+phantom shares are sold at market; the page names the case and says the row is still open. The row then closes
+through the sync ONLY if the broker confirms the stop's fill, else it waits on him (and the 17:00 / 19:00 coverage
+repair may re-place a stop from the books meanwhile — the open decision above). No change on any day the broker shows
 the position, and none when the broker cannot be read.
 
 **Reversion-flag**: REFINEMENT of #687 (c) (2026-10-01) — same sizing, one more source it can name. Not a reversal.
@@ -410,11 +437,13 @@ without the change, 7 pin unchanged behaviour),
 `tests/test_646_full_exit_never_returns_naked.py` (`_wire` lists the position; unreadable = the list read fails; a new
 flat test), `tests/test_687_ruling_iii_stop_breach_everywhere.py` (two de-dupe assertions now read `broker_flat` for a
 gone position; the unreadable fake fails the list read too). Convergence: baseline re-pinned to origin/main 76e2ce4b
-(ruling (iii) merged, its seven s32-s38 entries left the list as identical to main); 41 scenarios, the 38 existing ones
-byte-identical to main, three NEW allow-listed by name — s39 (16:45 sale refused, broker flat), s40 (stream dead sale,
-broker flat) "ruling (i) 2026-10-02 — a flat broker read places nothing", and s41 (unreadable: differs from main only
-by the confirming list read; same stop, same page). Main's own log in those scenarios shows the 10-sh stop it placed
-on a flat broker. Deploy: `broker/` → both + execution (two steps; the stream and the restore run in
+(ruling (iii) merged, its seven s32-s38 entries left the list as identical to main); 42 scenarios, the 38 existing ones
+byte-identical to main, four NEW allow-listed by name — s39 (16:45 sale refused, broker flat), s40 (stream dead sale,
+broker flat), s42 (the coverage reconciler's refused stop on a flat broker — ruling (iii)'s shared sale path, added
+after the 2026-10-04 review: main SOLD 10 sh it did not hold at market; the branch sells nothing) "ruling (i)
+2026-10-02 — a flat broker read places nothing", and s41 (unreadable: differs from main only by the confirming list
+read; same stop, same page). Main's own log in those scenarios shows the 10-sh stop it placed on a flat broker and
+the 10-sh phantom sale. Deploy: `broker/` → both + execution (two steps; the stream and the restore run in
 `apollo-execution`).
 
 ### 2026-10-03 — #687 ruling (iii): a stop the broker refuses because the price is already through it → SELL AT MARKET at the other stop-placing sites too
@@ -644,6 +673,10 @@ call in `execute_full_exit` reddens 6 scenarios.
 - (i) the failed-exit stop restore when the broker reads flat or unreadable: today it restores from the books
   (`remaining − pending exits`, #687 c) — restore from the books vs place nothing; **RULED 2026-10-02: keep the books
   for now, then separate "no position" from "can't read" so a real zero places nothing — built, change log 2026-10-04**;
+- (v) **NEW 2026-10-04, from ruling (i)'s review** — the after-close coverage repair (17:00 / 19:00 ET) sizes from the
+  BOOKS, so on a flat broker it re-places the stop ruling (i) withheld: (a) the repairer also skips when the broker
+  reads flat, vs (b) the flat result resolves the row — both safeguard changes; main's repair kept; rec (a). Detail in
+  the 2026-10-04 entry (**THE ROW IS NOT RESOLVED**);
 - (ii) a plain resting profit-take LIMIT (no stop) beside a close-below sale: main's skip kept — skip vs cancel it
   and sell everything; **RULED 2026-10-02: neither — left resting, the other shares follow the exit** (entry above);
 - (iii) ruling (3) at the other stop-placing sites (listed under ruling (3)) — extend vs keep "page, no auto-exit";

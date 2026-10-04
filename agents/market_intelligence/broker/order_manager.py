@@ -4910,7 +4910,15 @@ async def _broker_free_qty_for_restore(
         (`remaining − pending exits`) stands in exactly as before, never zero (a read hiccup must
         not leave a position bare); the deduped alpaca API alert fires inside that read;
       • the list has NO such position → `(0, 'broker_flat')` — nothing to protect, the consumers
-        place NOTHING (the position sync's #597 "gone from Alpaca" resolution reconciles the books);
+        place NOTHING. ⚠ The ROW IS NOT RESOLVED here: the books still say the trade is open,
+        and nothing downstream is guaranteed to close it — the position sync's #597 "gone from
+        Alpaca" resolution books the exit only off a broker-confirmed fill (else it pages "row
+        left OPEN"), and it ABORTS without touching anything when the account's LAST position is
+        the one that vanished (`sync_positions_aborted_alpaca_empty`); meanwhile the after-close
+        coverage repair (17:00 / 19:00 ET, live only) sizes from the BOOKS and may re-place a stop
+        on the empty account. Whether that repair should also read the broker flat, or the row
+        should be resolved at the flat result, is HIS decision (both are safeguard changes) —
+        open in the SSoT (`docs/setups/exit_discipline.md`, 2026-10-04). The pages say so;
       • the list still SHOWS the position → the broker is readable after all; sized from it, as a
         readable broker always was ('broker').
     Returns `(qty, source)` with source 'broker', 'broker_flat' or 'fallback:<why>'.
@@ -4957,6 +4965,21 @@ RESTORE_FAILED = "failed"
 RESTORE_SOLD = "sold_at_market"  # #687 ruling (3): price already through the stop → market sale
 RESTORE_FLAT = "broker_flat"     # #687 ruling (i): the broker shows NO position → nothing placed
 
+# ⚖ #687 ruling (i) — the ONE sentence both flat pages carry (the failed-exit page via
+# `_restore_outcome_line`, the stream's dead-sale page in `trade_stream`), so they cannot drift
+# apart. Every clause is TRUE of the code as it stands (review 2026-10-04): the row is NOT resolved
+# by this path; the sync books the exit only off a broker-confirmed fill and does nothing at all
+# when this was the account's last position; the 17:00 / 19:00 ET coverage repair sizes from the
+# books (live only) and may re-place a stop until the row is resolved. It must NOT promise the sync
+# reconciles the row — that was the first draft, and it was false in both of those cases.
+FLAT_RESTORE_PAGE_BODY = (
+    "No stop placed: the broker shows no position, so there is nothing to protect. "
+    "Our books still show the trade open — run /syncnow to book the exit from the broker, and "
+    "reconcile the row by hand if it is still open (if this was the only open position, the sync "
+    "will not act). Until the row is resolved, the after-close coverage repair "
+    "(17:00 / 19:00 ET) may re-place a stop from the books."
+)
+
 
 async def _audit_restore_skipped_broker_flat(
     trade_id: int, ticker: str, account_mode: str, *, stop_price: "float | None", site: str,
@@ -4969,7 +4992,9 @@ async def _audit_restore_skipped_broker_flat(
     await log_audit_event(
         "restore_skipped_broker_flat",
         f"{ticker}: the broker shows no position — no stop placed after the failed exit "
-        f"(the books said {float(fallback_qty):.0f} sh); the position sync reconciles the books",
+        f"(the books said {float(fallback_qty):.0f} sh); the row is NOT resolved here — the sync "
+        f"books the exit only off a broker-confirmed fill and does nothing if this was the last "
+        f"position; the 17:00/19:00 coverage repair may re-place a stop from the books until then",
         json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
                     "stop_price": stop_price, "site": site,
                     "fallback_qty": float(fallback_qty)}),
@@ -5117,8 +5142,10 @@ async def _restore_stop_after_failed_exit(
     its `full_exit` row) → RESTORE_SOLD; the sale failing too → RESTORE_FAILED.
 
     ⚖ #687 ruling (i), 2026-10-02: the broker shows NO position (a real zero, not a failed read)
-    → nothing to protect, nothing placed → RESTORE_FLAT, one `restore_skipped_broker_flat` row;
-    the position sync reconciles the books. An UNREADABLE broker still restores from `shares`.
+    → nothing to protect, nothing placed → RESTORE_FLAT, one `restore_skipped_broker_flat` row.
+    The row is NOT resolved here (see `_broker_free_qty_for_restore` — the sync may not close it,
+    and the after-close coverage repair may re-place a stop from the books until it is); the page
+    says so. An UNREADABLE broker still restores from `shares`.
     """
     if not stop_price:
         logger.error(f"_restore_stop_after_failed_exit: {ticker} has no stop price to restore")
@@ -5178,8 +5205,7 @@ def _restore_outcome_line(outcome: str, stop_price: "float | None") -> str:
                 f"not be re-placed — the shares it covered are being SOLD AT MARKET, as the "
                 f"triggered stop would have. Confirms with real P&L on fill.")
     if outcome == RESTORE_FLAT:
-        return ("\nNo stop placed: the broker shows no position, so there is nothing to protect. "
-                "The position sync reconciles the books (16:05 / 21:00 ET, or /syncnow).")
+        return "\n" + FLAT_RESTORE_PAGE_BODY
     return "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required."
 
 

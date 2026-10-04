@@ -9,8 +9,8 @@ end state of the fake book. Run it in two trees and diff the logs:
      scripts/probes/_687/capture_toggle_off_baseline.sh)
 
 `tests/test_687_toggle_off_convergence.py` runs it on this tree and asserts the log equals the
-recorded baseline except an explicit, named allow-list (today: ruling (i) 2026-10-02 — s39-s41, a
-flat or unreadable broker at the failed-exit stop restore).
+recorded baseline except an explicit, named allow-list (today: ruling (i) 2026-10-02 — s39-s42, a
+flat or unreadable broker at the failed-exit stop restore and at ruling (iii)'s shared sale path).
 
 THE FAKE WORLD is version-agnostic on purpose: one in-memory book (trades / exit orders / audit
 log) answered by a tiny SQL interpreter, and one fake broker. Both code trees see the same world
@@ -1124,7 +1124,20 @@ def s41_1645_exit_sale_rejected_broker_unreadable(om, **_):
     return w, run
 
 
-SCENARIOS = [v for k, v in sorted(globals().items()) if re.fullmatch(r"s\d\d_\w+", k)]
+def s42_coverage_reconciler_refused_stop_broker_flat(om, **_):
+    """Ruling (iii)'s shared sale path (`_sell_at_market_for_refused_stop`) on a FLAT broker: the
+    17:00 coverage slot sizes its target from the BOOKS (10 sh), the broker refuses the stop as
+    through the price, and the sale's sizing reads no position. Main sold 10 shares it did not
+    hold at market; the branch sells nothing (`stop_breach_sale_skipped`, qty_source broker_flat).
+    The same helper serves the other five ruling (iii) sites, so this one scenario is the net over
+    all of them."""
+    w = World()
+    _trade(w, stop_id=None)
+    _always_breach(w)
+    return w, lambda: om._ensure_stop_coverage(401, "KOD", 10.0, 58.0, "magna53", "live")
+
+
+SCENARIOS =[v for k, v in sorted(globals().items()) if re.fullmatch(r"s\d\d_\w+", k)]
 _REAL: dict = {}
 
 

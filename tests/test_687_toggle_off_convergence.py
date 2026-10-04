@@ -76,7 +76,7 @@ ALLOWED = {
             "get_all_positions(account_mode='live', raise_on_error=True)",
         ],
         'pages': [
-            '💰 LIVE-$ ⚠️ Full exit FAILED for KOD: {"code":40410000,"message":"position does not exist"}\nNo stop placed: the broker shows no position, so there is nothing to protect. The position sync reconciles the books (16:05 / 21:00 ET, or /syncnow).',
+            '💰 LIVE-$ ⚠️ Full exit FAILED for KOD: {"code":40410000,"message":"position does not exist"}\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books.',
         ],
     },
     's40_stream_queued_sale_cancelled_broker_flat': {
@@ -86,9 +86,21 @@ ALLOWED = {
             "get_all_positions(account_mode='live', raise_on_error=True)",
         ],
         'pages': [
-            '💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\nNo stop placed: the broker shows no position, so there is nothing to protect. The position sync reconciles the books (16:05 / 21:00 ET, or /syncnow).',
+            '💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books.',
         ],
         'book_after': {'trades': {'401': {'stop_order_id': None}}},
+    },
+    's42_coverage_reconciler_refused_stop_broker_flat': {
+        'why': "ruling (i) 2026-10-02 — a flat broker read places nothing (ruling (iii)'s shared sale path, reached from the coverage reconciler: the stop is refused as through the price and the sale's sizing reads a flat broker; main SOLD 10 sh it did not hold at market and paged the sale; the branch sells nothing — `stop_breach_sale_skipped`, qty_source broker_flat — and returns main's pre-ruling-(iii) 'operator decision needed' line)",
+        'broker_calls': [
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_all_positions(account_mode='live', raise_on_error=True)",
+        ],
+        'pages': [],
+        'result': "🚨 KOD: stop $58.00 is ABOVE market — position breached the stop. Operator decision needed (no auto-exit).",
+        'book_after': {'orders': []},
     },
     's41_1645_exit_sale_rejected_broker_unreadable': {
         'why': "ruling (i) 2026-10-02 — an unreadable broker read still restores from the books; the only difference is the positions-list read that tells it apart from a flat one (same 10-sh stop, same page as main)",
@@ -165,7 +177,8 @@ def test_every_exception_from_main_is_ruling_i():
     flat = [n for n, e in ALLOWED.items()
             if e["why"].startswith("ruling (i) 2026-10-02 — a flat broker read places nothing")]
     assert sorted(flat) == ["s39_1645_exit_sale_rejected_broker_flat",
-                            "s40_stream_queued_sale_cancelled_broker_flat"], flat
+                            "s40_stream_queued_sale_cancelled_broker_flat",
+                            "s42_coverage_reconciler_refused_stop_broker_flat"], flat
     for n in flat:   # a flat read places NOTHING: its last broker call is the read, never a stop or a sale
         assert ALLOWED[n]["broker_calls"][-1].startswith("get_all_positions("), n
 
