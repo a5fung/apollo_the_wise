@@ -349,6 +349,74 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-04 — #687 ruling (i): the failed-exit stop restore tells a FLAT broker from an UNREADABLE one — a real zero places nothing (TRADE STATE — no exit rule, stop level, target or size changed)
+
+**Trigger**: his ruling (i) of 2026-10-02 (PLAN.md #687), verbatim: *"failed-exit stop restore on a flat/unreadable
+broker read → keep restoring from the books for now; later separate 'no position' from 'can't read' so a real zero
+places nothing (follow-up after the ship)"*. The cut-back had listed it as open (the 2026-10-02 entry's item (i));
+Saturday's ship kept main's behaviour; this is the follow-up, approved for Sunday 10-04.
+
+**The defect**: `alpaca_client.get_position` returns None for BOTH "the broker says no position" (HTTP 404) and "the
+read failed", so the restore's sizing (`_broker_free_qty_for_restore`, #687 c) treated both as UNKNOWN and fell back
+to the books (`remaining − pending exits`). On a genuinely FLAT broker — the stop filled between the exit's cancel and
+its sell, say — the restore then placed a SELL STOP on shares we do not hold (a trigger would open a short or be
+rejected), the page said "Stop RESTORED — position is protected" for a position that no longer existed, and ruling
+(iii)'s shared sale path, sized by the same helper, would have SOLD those phantom shares at market (its flat test was
+red before this change: 10 sh sold on a flat broker).
+
+**Evidence**: operator ruling, not a threshold. No price, size, target or trigger moved; the restore's count on a
+readable broker is unchanged (position minus shares held by live resting sells), and on an unreadable one the books
+stand in exactly as before.
+
+**Change** (`broker/order_manager.py`, `broker/trade_stream.py`):
+- **`get_position` is UNTOUCHED** — signature `(ticker, account_mode)` and its None-for-everything contract pinned by
+  test, so its ~30 other callers (the agent, live_tracker, the sync, the stream, the probes) bind and behave exactly as
+  before. The task's example (an opt-in `raise_on_error` flag on `get_position`) was NOT taken: the convergence
+  harness records every bound argument with defaults applied, so a new parameter would have re-stamped every
+  `get_position` record in 10 existing scenarios and widened the ruling-(iii) entries — the opposite of "identical
+  except the new scenarios".
+- **The disambiguation lives in the restore sizing only.** When `get_position` returns None,
+  `_broker_free_qty_for_restore` reads `get_all_positions(raise_on_error=True)`, which already has the exact semantics
+  (#184 inc. 2): the list read FAILS → `fallback:position_unreadable`, the books stand in as before (never zero —
+  a read hiccup must not leave a position bare), and the deduped alpaca API alert fires inside that read (a restore-time
+  read failure now pages the API alert that `get_position`'s silent None never did); the list has NO such position →
+  `(0, 'broker_flat')`; the list still SHOWS it → the broker is readable after all, sized from it as a readable broker
+  always was (`broker`). Cost: one extra GET /v2/positions, only when the single read returned nothing.
+- **Every consumer places NOTHING on `broker_flat`:**
+  - `_restore_stop_after_failed_exit` → new outcome `RESTORE_FLAT` (no stop, no sale), one audit row
+    `restore_skipped_broker_flat` (trade, ticker, mode, stop price, site, the count the books would have placed);
+  - `_restore_outcome_line(RESTORE_FLAT)` — the failed-exit page says, in plain words: *"No stop placed: the broker
+    shows no position, so there is nothing to protect. The position sync reconciles the books (16:05 / 21:00 ET, or
+    /syncnow)."* — NOT the UNPROTECTED / manual-action page, NOT "covered by resting orders";
+  - the depth flow's failed-sale page (toggle OFF) no longer appends "The position stays open…" after it;
+  - the stream's full-exit restore (`trade_stream._handle_cancel_or_reject` §3) → the same audit row, its own page with
+    the same sentence, no stop, no "STOP RESTORE FAILED";
+  - ruling (iii)'s `_sell_at_market_for_refused_stop` already sold nothing at 0; its `stop_breach_sale_skipped` row
+    now names `qty_source='broker_flat'` (before: `fallback:position_unreadable` for the same zero).
+- The books are reconciled by the position sync's #597 "position gone from Alpaca" resolution, as today.
+
+**Anticipated effect**: rare — it needs a failed planned sale whose position is already gone. When it happens, no stop
+is placed on air and the page names the case; the books close through the sync. No change on any day the broker shows
+the position, and none when the broker cannot be read.
+
+**Reversion-flag**: REFINEMENT of #687 (c) (2026-10-01) — same sizing, one more source it can name. Not a reversal.
+
+**Status**: built on branch `687i-flat-vs-unreadable` (2026-10-04), NOT merged or deployed. Tests:
+`tests/test_687_ruling_i_flat_vs_unreadable.py` (16: the sizing's three answers; the restore flat → nothing placed +
+RESTORE_FLAT + the row; unreadable → the books, unchanged; the 16:45 exit, the stream path and the depth page end to
+end; ruling (iii)'s path sells nothing on a flat broker; `get_position` refuses an opt-in flag and keeps its
+404/other-error → None behaviour; the SALE-sizing path still treats a blank read as unreadable and lists nothing — 9 red
+without the change, 7 pin unchanged behaviour),
+`tests/test_646_full_exit_never_returns_naked.py` (`_wire` lists the position; unreadable = the list read fails; a new
+flat test), `tests/test_687_ruling_iii_stop_breach_everywhere.py` (two de-dupe assertions now read `broker_flat` for a
+gone position; the unreadable fake fails the list read too). Convergence: baseline re-pinned to origin/main 76e2ce4b
+(ruling (iii) merged, its seven s32-s38 entries left the list as identical to main); 41 scenarios, the 38 existing ones
+byte-identical to main, three NEW allow-listed by name — s39 (16:45 sale refused, broker flat), s40 (stream dead sale,
+broker flat) "ruling (i) 2026-10-02 — a flat broker read places nothing", and s41 (unreadable: differs from main only
+by the confirming list read; same stop, same page). Main's own log in those scenarios shows the 10-sh stop it placed
+on a flat broker. Deploy: `broker/` → both + execution (two steps; the stream and the restore run in
+`apollo-execution`).
+
 ### 2026-10-03 — #687 ruling (iii): a stop the broker refuses because the price is already through it → SELL AT MARKET at the other stop-placing sites too
 
 **Trigger**: his ruling (iii) of 2026-10-02 (PLAN.md #687): ruling (3) — *"a stop that cannot be placed because
@@ -558,7 +626,8 @@ the line and never acts on it on a close back above it. Tests: `tests/test_687_r
 owned by `docs/setups/safeguards.md` item 5 + its 2026-10-02 entry.
 
 **Evidence — the convergence test** (as it stood for this entry; since 2026-10-03 the baseline is main 8e1329f0
-and the allow-list names only ruling (iii) — change log 2026-10-03) (`tests/test_687_toggle_off_convergence.py`, harness
+and the allow-list names only ruling (iii) — change log 2026-10-03; since 2026-10-04 the baseline is main 76e2ce4b and
+the allow-list names only ruling (i) — change log 2026-10-04) (`tests/test_687_toggle_off_convergence.py`, harness
 `tests/_convergence_687_harness.py`): 31 fixed toggle-OFF scenarios run through the pinned pre-#687 code
 (97b08d51 since the 2026-10-02 rebase — 90d02459 before it; a temporary git worktree —
 `scripts/probes/_687/capture_toggle_off_baseline.sh`) and through this branch, recording every broker call, every
@@ -573,7 +642,8 @@ call in `execute_full_exit` reddens 6 scenarios.
 
 **Open for him (NOT decided here — main's behaviour kept):**
 - (i) the failed-exit stop restore when the broker reads flat or unreadable: today it restores from the books
-  (`remaining − pending exits`, #687 c) — restore from the books vs place nothing;
+  (`remaining − pending exits`, #687 c) — restore from the books vs place nothing; **RULED 2026-10-02: keep the books
+  for now, then separate "no position" from "can't read" so a real zero places nothing — built, change log 2026-10-04**;
 - (ii) a plain resting profit-take LIMIT (no stop) beside a close-below sale: main's skip kept — skip vs cancel it
   and sell everything; **RULED 2026-10-02: neither — left resting, the other shares follow the exit** (entry above);
 - (iii) ruling (3) at the other stop-placing sites (listed under ruling (3)) — extend vs keep "page, no auto-exit";

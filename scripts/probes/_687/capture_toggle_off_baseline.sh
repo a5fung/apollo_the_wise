@@ -2,16 +2,17 @@
 # #687 cut-back round — re-capture tests/fixtures/687_toggle_off_main_baseline.json.
 #
 # Runs tests/_convergence_687_harness.py inside a TEMPORARY `git worktree` of the pinned main
-# baseline (re-pinned 2026-10-03 to 8e1329f0, the origin/main ruling (iii) is built on — #687 merged;
-# 97b08d51, the pre-#687 main, before that), records the log, and removes the worktree.
-# (`git archive <sha> | tar -x` into a scratch dir is an equivalent source tree.)
+# baseline (re-pinned 2026-10-04 to 76e2ce4b, the origin/main ruling (i) is built on — ruling (iii)
+# merged; 8e1329f0 for ruling (iii) and 97b08d51, the pre-#687 main, before that), records the log,
+# and removes the worktree. (`git archive <sha> | tar -x` into a scratch dir is an equivalent source
+# tree — the 2026-10-04 capture was made that way from an isolated worktree.)
 # tests/test_687_toggle_off_convergence.py then runs the same harness on the current tree and asserts
 # it matches this log except the named allow-list.
 #
 # Re-run it whenever the harness changes (the fixture stores the harness's sha256 and the test
 # refuses a mismatch). Usage: bash scripts/probes/_687/capture_toggle_off_baseline.sh [<sha>]
 set -euo pipefail
-BASE="${1:-8e1329f0647872e148d3256090ef8aff60c70943}"
+BASE="${1:-76e2ce4bfb5d810ad6ded5f0f353eaa241626457}"
 REPO="$(git rev-parse --show-toplevel)"
 TMP="$(mktemp -d)"
 cleanup() {

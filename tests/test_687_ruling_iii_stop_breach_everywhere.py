@@ -608,8 +608,9 @@ async def test_dedupe_after_the_sale_filled_no_site_sells_again(monkeypatch):
     assert _sales(w) == [None, 10], [c for c in w.calls if c["method"] == "close_position"]
     assert len(_full_exit_rows(w)) == 1
     # site 1 (called with the stale quantity) reaches its placement, is refused, and the shared path
-    # re-reads the book at sale time: closed row + no position → 0 (layer c)
-    assert ("order_manager.ensure_stop_coverage", "fallback:position_unreadable") in _skips(w)
+    # re-reads the broker at sale time: no position → FLAT → 0 (layer c). Ruling (i) 2026-10-02
+    # (built 2026-10-04) names this 'broker_flat'; before it the same zero read 'fallback:position_unreadable'.
+    assert ("order_manager.ensure_stop_coverage", "broker_flat") in _skips(w)
 
 
 @pytest.mark.asyncio
@@ -628,19 +629,22 @@ async def test_dedupe_the_shared_path_itself_sizes_zero_in_each_state():
     assert out is None and _sales(w) == [None, 10]
     assert _audits(w, "stop_breach_sale_skipped")[0]["qty_source"] == "broker"
 
-    # (b) the broker cannot be read: the book fallback nets the pending sale → 0
+    # (b) the broker cannot be read: the book fallback nets the pending sale → 0. Since ruling (i)
+    # (2026-10-04) "unreadable" means the single-position read returned nothing AND the list read
+    # failed — a blank single read with a readable list is a readable broker.
     w = _ruling3_sold_world()
 
     async def _broker_unreadable():
         async def _none(ticker, account_mode=None):
             return None
         ac.get_position = _none                                # restored by the harness on exit
+        w.list_errors = [Exception("HTTP 503 Service Unavailable")]
 
     [_, _, out] = await _drive(w, _ruling3_sale(), _broker_unreadable, _call)
     assert out is None and _sales(w) == [None, 10]
-    assert _audits(w, "stop_breach_sale_skipped")[0]["qty_source"].startswith("fallback")
+    assert _audits(w, "stop_breach_sale_skipped")[0]["qty_source"] == "fallback:position_unreadable"
 
-    # (c) filled and closed: no position, no open row → 0
+    # (c) filled and closed: no position, no open row → 0 (ruling (i): the broker reads FLAT)
     w = _ruling3_sold_world()
 
     async def _filled():
@@ -649,6 +653,7 @@ async def test_dedupe_the_shared_path_itself_sizes_zero_in_each_state():
 
     [_, _, out] = await _drive(w, _ruling3_sale(), _filled, _call)
     assert out is None and _sales(w) == [None, 10]
+    assert _audits(w, "stop_breach_sale_skipped")[0]["qty_source"] == "broker_flat"
 
 
 

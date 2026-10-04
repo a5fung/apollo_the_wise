@@ -90,15 +90,22 @@ def _wire(monkeypatch, *, close_raises, available=SHARES, place_ok=True,
     place = AsyncMock(return_value={"id": "stop-2"} if place_ok else {})
     position = AsyncMock(return_value={
         "qty": SHARES if position_qty is None else position_qty, "qty_available": available})
+    # #687 ruling (i): a None single-position read is disambiguated by the positions LIST
+    # (`get_all_positions(raise_on_error=True)`): a failure RAISES (unreadable → the books), an
+    # empty list is FLAT. Default: the same position, listed.
+    all_positions = AsyncMock(return_value=[{
+        "symbol": "OKTA", "qty": SHARES if position_qty is None else position_qty,
+        "qty_available": available}])
     orders = AsyncMock(return_value=[dict(o) for o in open_orders])
     monkeypatch.setattr(om.alpaca, "cancel_order", cancel)
     monkeypatch.setattr(om.alpaca, "close_position", close)
     monkeypatch.setattr(om.alpaca, "place_stop_order", place)
     monkeypatch.setattr(om.alpaca, "get_position", position)
+    monkeypatch.setattr(om.alpaca, "get_all_positions", all_positions)
     monkeypatch.setattr(om.alpaca, "get_open_orders", orders)
     monkeypatch.setattr(om, "_EXIT_RELEASE_SLEEP_S", 0)
     return {"cancel": cancel, "close": close, "place": place, "pos": position, "sent": sent,
-            "orders": orders, "executed": executed, "events": events}
+            "all_pos": all_positions, "orders": orders, "executed": executed, "events": events}
 
 
 @pytest.mark.asyncio
@@ -378,13 +385,31 @@ async def test_a_pending_cancel_stop_does_not_count_as_held(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_an_unreadable_broker_restores_from_the_fallback_never_zero(monkeypatch):
-    """(c) `get_position` → None means flat OR unreadable — treat it as unknown and use the
-    caller's count, never zero (a read hiccup must not leave the position bare)."""
+    """(c) An UNREADABLE broker (the single-position read returned nothing and the positions list
+    read failed) → the caller's count, never zero (a read hiccup must not leave the position bare).
+    #687 ruling (i) 2026-10-02 split "unreadable" from "flat" — the flat case is the next test."""
     h = _wire(monkeypatch, close_raises=False)
     h["pos"].return_value = None
+    h["all_pos"].side_effect = Exception("HTTP 503 Service Unavailable")
     out = await om._restore_stop_after_failed_exit(382, "OKTA", 3, STOP_PRICE, "live")
     assert out == om.RESTORE_PLACED
     assert h["place"].await_args.args[1] == 3
+
+
+@pytest.mark.asyncio
+async def test_a_flat_broker_places_nothing(monkeypatch):
+    """⚖ #687 ruling (i), operator 2026-10-02: the broker shows NO position (a real zero — the
+    single read returned nothing and the list read succeeded without the ticker) → nothing to
+    protect, no stop placed, RESTORE_FLAT. Before this the books stood in and a sell stop was
+    placed on shares we did not hold."""
+    h = _wire(monkeypatch, close_raises=False)
+    h["pos"].return_value = None
+    h["all_pos"].return_value = []
+    out = await om._restore_stop_after_failed_exit(382, "OKTA", 3, STOP_PRICE, "live")
+    assert out == om.RESTORE_FLAT
+    h["place"].assert_not_awaited()
+    line = om._restore_outcome_line(out, STOP_PRICE)
+    assert "no position" in line.lower() and "UNPROTECTED" not in line
 
 
 @pytest.mark.asyncio

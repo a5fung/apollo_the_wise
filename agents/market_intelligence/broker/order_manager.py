@@ -4899,10 +4899,21 @@ async def _broker_free_qty_for_restore(
     profit-take third (its shares are only committed out on its fill) — the broker rejected the
     over-ask and the page said UNPROTECTED while the other two thirds were the ones really naked.
 
-    `get_position` returns None for BOTH "flat" and "unreadable", so None is treated as UNKNOWN
-    and falls back to the caller's database-derived count (`remaining − pending exits`) — never
-    to zero, which would leave the position bare on a read hiccup. Returns `(qty, source)` with
-    source 'broker' or 'fallback:<why>'.
+    ⚖ #687 RULING (i), operator 2026-10-02 (built 2026-10-04): *"separate 'no position' from
+    'can't read' so a real zero places nothing"*. `get_position` returns None for BOTH "the broker
+    says no position" (404) and "the read failed", and until this it was treated as UNKNOWN →
+    the books — so on a genuinely FLAT broker the restore placed a SELL STOP on shares we did not
+    hold and the page said UNPROTECTED for a position that no longer existed. Now a None is
+    disambiguated with `get_all_positions(raise_on_error=True)`, which already has the exact
+    semantics (and leaves `get_position` untouched for its ~30 other callers):
+      • the list read FAILS → 'fallback:position_unreadable' — the caller's database-derived count
+        (`remaining − pending exits`) stands in exactly as before, never zero (a read hiccup must
+        not leave a position bare); the deduped alpaca API alert fires inside that read;
+      • the list has NO such position → `(0, 'broker_flat')` — nothing to protect, the consumers
+        place NOTHING (the position sync's #597 "gone from Alpaca" resolution reconciles the books);
+      • the list still SHOWS the position → the broker is readable after all; sized from it, as a
+        readable broker always was ('broker').
+    Returns `(qty, source)` with source 'broker', 'broker_flat' or 'fallback:<why>'.
 
     `exclude_ids` — the stop the caller has just CANCELLED. Alpaca acknowledges a cancel before
     it settles, so for a moment the dying stop can still be listed `new`; counting it as "held"
@@ -4912,11 +4923,24 @@ async def _broker_free_qty_for_restore(
     """
     try:
         pos = await alpaca.get_position(ticker, account_mode=account_mode)
-    except Exception as e:   # loud-ok: the database count stands in; logged
+    except Exception as e:   # loud-ok: the list read below decides; logged
         logger.warning(f"_broker_free_qty_for_restore: position read failed for {ticker} — {e}")
         pos = None
     if pos is None:
-        return _whole_shares(fallback_qty), "fallback:position_unreadable"
+        # ruling (i) 2026-10-02: flat or unreadable? The list read raises on a failure and
+        # answers "no such position" definitively on success.
+        try:
+            listed = await alpaca.get_all_positions(account_mode=account_mode, raise_on_error=True)
+        except Exception as e:   # loud-ok: the database count stands in; logged (alert fired inside)
+            logger.warning(f"_broker_free_qty_for_restore: positions list read failed for "
+                           f"{ticker} — {e}; the books stand in")
+            return _whole_shares(fallback_qty), "fallback:position_unreadable"
+        pos = next((p for p in listed
+                    if str(p.get("symbol") or "").upper() == str(ticker).upper()), None)
+        if pos is None:
+            logger.warning(f"_broker_free_qty_for_restore: the broker lists no {ticker} position "
+                           f"— nothing to protect (ruling (i): nothing is placed)")
+            return 0, "broker_flat"
     try:
         orders = await alpaca.get_open_orders(
             ticker, account_mode=account_mode, raise_on_error=True)
@@ -4931,6 +4955,25 @@ RESTORE_PLACED = "restored"
 RESTORE_COVERED = "covered"     # the broker shows every share held by live resting orders
 RESTORE_FAILED = "failed"
 RESTORE_SOLD = "sold_at_market"  # #687 ruling (3): price already through the stop → market sale
+RESTORE_FLAT = "broker_flat"     # #687 ruling (i): the broker shows NO position → nothing placed
+
+
+async def _audit_restore_skipped_broker_flat(
+    trade_id: int, ticker: str, account_mode: str, *, stop_price: "float | None", site: str,
+    fallback_qty: float,
+) -> None:
+    """⚖ #687 ruling (i) 2026-10-02 — the ONE audit row for "the restore read a flat broker and
+    placed nothing" (`_restore_stop_after_failed_exit` and the stream's full-exit restore both
+    write it). `fallback_qty` is what the books would have had the restore place — the stop on
+    shares we do not hold that this ruling stops."""
+    await log_audit_event(
+        "restore_skipped_broker_flat",
+        f"{ticker}: the broker shows no position — no stop placed after the failed exit "
+        f"(the books said {float(fallback_qty):.0f} sh); the position sync reconciles the books",
+        json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                    "stop_price": stop_price, "site": site,
+                    "fallback_qty": float(fallback_qty)}),
+    )
 
 
 async def _sell_free_shares_after_stop_breach(
@@ -5072,12 +5115,23 @@ async def _restore_stop_after_failed_exit(
     ⚖ #687 ruling (3): the broker rejects the restore because the price is already through the
     stop → those shares are sold at market (`_sell_free_shares_after_stop_breach`, `reason` on
     its `full_exit` row) → RESTORE_SOLD; the sale failing too → RESTORE_FAILED.
+
+    ⚖ #687 ruling (i), 2026-10-02: the broker shows NO position (a real zero, not a failed read)
+    → nothing to protect, nothing placed → RESTORE_FLAT, one `restore_skipped_broker_flat` row;
+    the position sync reconciles the books. An UNREADABLE broker still restores from `shares`.
     """
     if not stop_price:
         logger.error(f"_restore_stop_after_failed_exit: {ticker} has no stop price to restore")
         return RESTORE_FAILED
     qty, source = await _broker_free_qty_for_restore(
         ticker, account_mode, shares, exclude_ids=(cancelled_stop_id,))
+    if source == "broker_flat":
+        logger.warning(f"_restore_stop_after_failed_exit: {ticker} — the broker shows no position; "
+                       f"no stop placed (the books said {float(shares):.0f} sh)")
+        await _audit_restore_skipped_broker_flat(
+            trade_id, ticker, account_mode, stop_price=float(stop_price),
+            site="order_manager.restore_after_failed_exit", fallback_qty=shares)
+        return RESTORE_FLAT
     if qty <= 0:
         if source == "broker":
             logger.warning(f"_restore_stop_after_failed_exit: {ticker} — the broker shows no "
@@ -5123,6 +5177,9 @@ def _restore_outcome_line(outcome: str, stop_price: "float | None") -> str:
         return (f"\nThe price is already through the stop (${float(stop_price):.2f}), so it could "
                 f"not be re-placed — the shares it covered are being SOLD AT MARKET, as the "
                 f"triggered stop would have. Confirms with real P&L on fill.")
+    if outcome == RESTORE_FLAT:
+        return ("\nNo stop placed: the broker shows no position, so there is nothing to protect. "
+                "The position sync reconciles the books (16:05 / 21:00 ET, or /syncnow).")
     return "\n🚨 STOP NOT RESTORED — position is UNPROTECTED. Manual action required."
 
 
@@ -5632,7 +5689,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
             await send_telegram_message(md_to_html(
                 f"{mode_prefix(account_mode)}⚠️ Opening-auction sale FAILED for {ticker}: {e}"
                 + _restore_outcome_line(restored, stop_price)
-                + ("" if restored == RESTORE_SOLD else
+                + ("" if restored in (RESTORE_SOLD, RESTORE_FLAT) else
                    "\nThe position stays open; the next close below the line decides again.")
             ), parse_mode="HTML")
             return False

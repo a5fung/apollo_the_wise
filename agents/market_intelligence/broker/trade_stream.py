@@ -2410,6 +2410,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             # exit order cancelled, so the database fallback (`remaining − pending exits`)
             # no longer counts it.
             from agents.market_intelligence.broker.order_manager import (
+                _audit_restore_skipped_broker_flat,
                 _broker_free_qty_for_restore,
                 get_pending_exit_qty,
             )
@@ -2423,6 +2424,25 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             restore_qty, _qty_source = await _broker_free_qty_for_restore(
                 trade_row["ticker"], account_mode, _fallback_qty,
                 exclude_ids=(trade_row["stop_order_id"],))
+            if _qty_source == "broker_flat":
+                # ⚖ #687 RULING (i), operator 2026-10-02: the broker shows NO position (a real
+                # zero, not a failed read) → nothing to protect, nothing placed. Before this the
+                # books stood in and a stop was placed on shares we did not hold. An UNREADABLE
+                # broker still takes the books fallback below, exactly as before.
+                await _audit_restore_skipped_broker_flat(
+                    trade_row["id"], trade_row["ticker"], account_mode,
+                    stop_price=restore_price, site="trade_stream.full_exit_cancel_restore",
+                    fallback_qty=_fallback_qty)
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+                    f"No stop placed: the broker shows no position, so there is nothing to "
+                    f"protect. The position sync reconciles the books (16:05 / 21:00 ET, or "
+                    f"/syncnow)."
+                )
+                logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, "
+                               f"broker flat — no stop placed (the books said "
+                               f"{float(_fallback_qty):.0f} sh)")
+                return
             if restore_qty <= 0 and _qty_source == "broker":
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
