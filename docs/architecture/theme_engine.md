@@ -1049,7 +1049,7 @@ its pre-cap count every night, and P1's moved row.
 **Reversion-flag**: NEW (the engine's first LEAVE verb; nothing it replaces). Revert = toggle `theme_rehome_pass`
 OFF (instant, no redeploy — SQL in the top-level bullet); the funnel kwargs default to the pre-change path.
 
-**Status**: BUILT 2026-10-03 on branch `491-rehome-pass`; ships as a TWO-STEP deploy — `theme_engine.py`, `db.py`,
+**Status**: DEPLOYED 2026-10-03 (both + execution; built on branch `491-rehome-pass`), toggle ON; first live check Mon 10-05 night. Deploy was TWO-STEP — `theme_engine.py`, `db.py`,
 `state_alerts.py` all load in `apollo-execution` (`scripts/exec_loaded_modules.txt`) → **`both` + `execution`**;
 verify-live = the first nightly `theme_rehome_pass_ran` row and P1 above (pending). Tests: `tests/test_theme_rehome_pass.py` (32) + one in
 `tests/test_state_alerts_479.py`; mutations (strip line, cap check, cooldown write, Fading refusal, in-run
