@@ -361,8 +361,8 @@ separate change after Saturday's ship ("the rest is ok" to the rec).
 broker's own refusal, recognised exactly as ruling (3) recognises it (`_is_stop_above_market` — "stop price must be
 less than current price"); any other refusal never reaches the sale.
 
-**Change** — one shared path, `order_manager._sell_at_market_for_refused_stop`, reached only after
-`_is_stop_above_market` on the site's own refusal:
+**Change** — one shared path, `order_manager._sell_at_market_for_refused_stop`, handed the site's own refusal
+and acting only when `_is_stop_above_market` recognises it (the check lives in the helper, not at each site):
 - SIZING is ruling (3)'s: `_broker_free_qty_for_restore` (the broker position minus the shares live resting sell
   orders hold — a resting +8R profit-take third keeps its OCO), with its book fallback re-read at sale time
   (`remaining − pending exits` on a still-open row, else 0). Nothing free → nothing sold, the site's own
