@@ -69,16 +69,15 @@ Scale 33–50% into strength 3–5 days post-breakout → move the remainder to 
 the 10/20-day **EMA** (exit only on a daily close below). Stop = the tightest-day low / 10–20 EMA, hard
 max-loss 5–8%. Sizing risk 0.5–1% of equity. Target = the flagpole height added to the breakout.
 
-## M&A suppression on the actionable stages (`flag_scan`, not `compute_flag_metrics`)
+## M&A suppression on the named stages (`flag_scan`, not `compute_flag_metrics`)
 
 Backfilled into this SSoT 2026-07-24 (#502) — these layers had lived only in `flag_detector.py`. They
-run AFTER scoring, on `COILED`/`TRIGGERED` rows only (WATCH is digest-silent; TIGHTENING is NOT screened —
-since #598 a NEW TIGHTENING entry is pushed with numbers, so see "Surfacing" below for what that leaves
-open). A hit rewrites the persisted row to
+run AFTER scoring, on `TIGHTENING`/`COILED`/`TRIGGERED` rows (`_MNA_SCREENED_STAGES`; TIGHTENING added
+2026-10-04, #598 — WATCH is digest-silent and is NOT screened). A hit rewrites the persisted row to
 `stage='unqualified'` with `reason='mna_filter:<source>'` — kept, not deleted, so the filter's hit rate
 stays auditable.
 
-**Why the setup needs this at all:** once price is pinned at an announced deal value it stops moving.
+**Why the board needs this at all:** once price is pinned at an announced deal value it stops moving.
 Range collapses to bid–ask noise and volume bleeds out — which is *mechanically identical to a coil*.
 The tightness that scores a deal-pinned name COILED **is** the pin. Geometry alone cannot tell them apart.
 
@@ -135,7 +134,7 @@ bare tickers, no numbers, so nothing to chart from (CDNA, TIGHTENING on 2026-08-
 bought it). A second message a minute apart would be noise. What changed: that block now carries the fields,
 also catches re-entry from `unqualified` / INVALIDATED (the old test was `previous in (None, WATCH)`), and the
 COILED roster no longer re-lists a name on the day it is announced. The old `COILED — actionable setup` header
-is now `COILED — still coiled` (it called a state a setup). `agent.py`'s `/flags` still carries the old header.
+is now `COILED — still coiled` (it called a state a setup). `agent.py`'s `/flags` header was the same wording and is now `COILED — tightest bases, watch only` (2026-10-04); the Friday watchlist section label `Flag Setups` became `Flag Bases … (watch only)`.
 
 **Deploy scope: `flag_detector.py` is NOT on `scripts/exec_loaded_modules.txt` → `deploy.sh market-agent`
 only.** The dedupe query is inline for that reason (`db.py` is execution-loaded); the event names are local
@@ -229,15 +228,50 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    NULL and are NOT recommended.** What remains is his ruling on the fork below.
 
 **#598 additions (2026-10-04) — surfaced, not decided:**
-- **A deal-pinned name at TIGHTENING can still push once.** The M&A / deal-pin layers run on COILED and
-  TRIGGERED only, so a pinned name is unscreened until it reaches COILED (where it is rewritten to
-  `unqualified` and never messages). Screening the new-TIGHTENING entries would cost ~11 Polygon lookups a month (the 30-day
-  count of TIGHTENING entries), but it is a population decision on a surface that has never screened TIGHTENING — the operator's call.
+- ~~**A deal-pinned name at TIGHTENING can still push once.**~~ **CLOSED 2026-10-04 (#598, operator ok 2026-10-03):**
+  the M&A screen (news nominates via `is_likely_ma`, the day-window own-day range <= 2.0% decides) and the Layer-2/3/3b
+  price backstop now run on TIGHTENING as well as COILED/TRIGGERED, so a screened TIGHTENING name is `unqualified`
+  with `mna_filter:<source>`, never on `/flags`, never in NEW TODAY.
 - **INVALIDATED ↔ TIGHTENING flapping re-pushes each time.** Item 5 above (the base-low creep) means a name can
   bounce out and back; the rule pushes every genuine re-entry, as asked. If live data shows the same ticker
   pushing on consecutive days, the lever is a re-entry cool-off (a policy, not a bug fix) — measure first.
 
 ## Change log
+- **2026-10-04 — #598 follow-up: the M&A / deal-pin screen now covers TIGHTENING, and the stage board stops calling
+  a state a setup. Closes the known limit above. No stage rule, threshold or trade path moved.**
+  **What**: `flag_scan` screened only COILED + TRIGGERED, so a buyout-pinned name (price welded to the offer) read as a
+  perfect TIGHTENING base and reached `/flags` and the 17:25 NEW TODAY block. The SAME screen — `is_likely_ma`
+  (`check_polygon`, 21-day lookback, day-window pin reader) and the Layer-2/3/3b price backstop, both unchanged — now runs
+  on `_MNA_SCREENED_STAGES = (TIGHTENING, COILED, TRIGGERED)`; a hit downgrades to `unqualified`,
+  `reason='mna_filter:<source>'`, plus the usual `mna_filter_fired` row (detector `flag`, original stage). Wording only:
+  `/flags` header `COILED — actionable setup` -> `COILED — tightest bases, watch only`; Friday watchlist label
+  `Flag Setups` -> `Flag Bases … (watch only)`; `/htf` menu entry `Higher-timeframe setups` -> `Higher-timeframe flag bases (watch only)`.
+  **Trigger**: operator ok 2026-10-03 (same news-nominates / own-day-range-decides rule the coil board got 10-03).
+  **Evidence**: extends the signed 502/692 screens (news nominates, own-day range decides) to one more stage; pinned by
+  `tests/test_598_flag_tightening_screen.py`. ⚠ **Not every layer was measured on TIGHTENING**: the news screen and the
+  0.5% median-range backstop are unchanged rules, but the fresh-pin check (5-session band <= 2.5% plus a >= 5x volume spike
+  within 10 sessions) and its 5-session carry-over now also reach TIGHTENING, and their "no overlap with real bases"
+  evidence (`docs/analysis/htf_deal_pin_fresh_2026-07-24.md:72`) covers only the 405 COILED/TRIGGERED rows. A young
+  TIGHTENING base right after an EP-gap pole is the shape that could meet the volume half; that case was never measured.
+  **Cost**: the model call fires only on keyword-hit headlines (<=3 articles a ticker, memoized per ET day) on the
+  existing `shared` budget pool (300 of the 400/day calls; the EP scan keeps its 100 reserve); the deal-pin layer is
+  price-only. The screen runs every night on every TIGHTENING name still held and the memo resets each ET day, so the
+  lookups grow with names held x days held x keyword-hit articles; the repo records no per-scan count of held TIGHTENING
+  names (the only figure is 11 names ENTERING TIGHTENING in 30 days, which counts entries, not holdings).
+  **Anticipated effect**: a pinned name that would have been announced at TIGHTENING no longer is; ordinary TIGHTENING
+  names (daily range well above 2%) are unchanged. **Reversion-flag**: REFINEMENT of #502/#692 (extends population).
+  **EXPECT** (against the baseline: pinned TIGHTENING names reached `/flags` and NEW TODAY): `mna_filter_fired` rows with
+  `detector='flag'` and original stage TIGHTENING appear for genuinely deal-pinned names (news shows a deal AND own-day
+  range <= 2.0%); the TIGHTENING count on `/flags` falls only by those. **UNINTENDED to watch**: `reason` =
+  `mna_filter:deal_pin_fresh` or `mna_filter:deal_pin_sticky` on a TIGHTENING name whose news shows NO deal (a real
+  young base wrongly dropped). **WOULD-FAIL-IF**: any such row whose headlines show no deal, or `/flags` TIGHTENING count
+  dropping with no matching `mna_filter_fired` rows. **DONE-WHEN**: every TIGHTENING `mna_filter_fired` row in the first
+  10 market days after deploy has been read against its headlines (or none fired and the count is unchanged). A $0 replay
+  of past TIGHTENING `mi_flag_candidates` rows through the fresh-pin check is the pre-deploy way to measure it.
+  **Status**: branch `598-flag-tightening-screen`, not yet deployed. **Two-step deploy**: `agent.py` is on
+  `scripts/exec_loaded_modules.txt`, so `deploy.sh market-agent` alone leaves the `/flags` header stale in the execution
+  container; `channels/telegram.py` (the `/htf` menu label) is orchestrator-owned. Run `deploy.sh both`, then
+  `deploy.sh execution`.
 - **2026-10-04 — #598: the 17:25 ET digest now opens with `NEW TODAY` — every ticker that moved up into
   TIGHTENING or COILED, with run-up, pivot and base tightness. A surfacing change: no stage, threshold,
   entry or trade path moved. Built on branch `598-flag-stage-push`; NOT yet deployed.**

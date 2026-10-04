@@ -62,7 +62,7 @@ _TG_SAFE_LIMIT = 3900  # margin under Telegram's 4096-char message ceiling
 
 _SECTION_HEADERS = {
     "EP_HIGH":      ("⚡", "EP HIGH"),
-    "FLAG":         ("🚩", "Flag Setups — COILED / TIGHTENING"),
+    "FLAG":         ("🚩", "Flag Bases — COILED / TIGHTENING (watch only)"),
     "9M_SUGAR":     ("🍬", "9M Sugar Babies"),
     "THEME":        ("🚀", "Themes — Accelerating"),
     "WICK_PENDING": ("🪝", "Wick Pending — break-of-prior-high"),
@@ -292,7 +292,7 @@ async def _fetch_wick(window_days: int) -> list[dict]:
 
 
 async def _fetch_flag(window_days: int) -> list[dict]:
-    """Continuation flag setups — COILED (actionable) + TIGHTENING (forming).
+    """Continuation flag bases — COILED (tightest) + TIGHTENING (forming): watch states, not setups.
 
     Pulls latest scan date with data (handles pre-EOD Friday before the
     5:25 PM scan completes — falls back to previous day) and surfaces up
