@@ -386,7 +386,10 @@ books stand in exactly as before.
     NO `stop_coverage_repair_failed` row and no `stop_coverage_breach` row (no stop was ever sent), so a flat never
     STARTS a retry; and `retry_failed_coverage_repairs` now fetches the flat row and treats a flat recorded at/after
     the failure as TERMINAL for that trade (`continue` before `examined`), exactly as it treats a breach — no attempt
-    spent, no broker read, no loop. The stop pointer is not written.
+    spent, no broker read, no loop. The stop pointer is not written. (One race, intended: the retry's OWN position
+    read shows the position, it drives the reconciler, and the position is gone by the reconciler's read — that pass
+    is a FLAGGED outcome and writes one `stop_coverage_retry_attempted` row with `healed=False` as any flagged pass
+    does; the flat row it also wrote ends the retry from the next cycle on.)
   - **UNREADABLE → exactly today's behaviour** (the books' target at the floored price; the row's pointer set; the
     `stop_coverage_repaired` row). The only visible difference from main is the confirming positions-list read.
   - **HELD → exactly today's behaviour**; one `get_position` call before the placement is the only difference.
@@ -473,7 +476,8 @@ stand in exactly as before.
     ONE sentence both flat pages share): *"No stop placed: the broker shows no position, so there is nothing to
     protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the
     row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is
-    resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books."* — NOT the
+    resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books."* (that last
+    sentence was replaced the same day — ruling (a), the entry above: the repair now reads the broker too) — NOT the
     UNPROTECTED / manual-action page, NOT "covered by resting orders", and (review 2026-10-04) NOT the first draft's
     *"the position sync reconciles the books"*, which was false — see **THE ROW IS NOT RESOLVED** below;
   - the depth flow's failed-sale page (toggle OFF) no longer appends "The position stays open…" after it;
@@ -502,7 +506,9 @@ stand in exactly as before.
   (b) the flat result resolves the row at once (consequence: an automatic close of a live-trade row from a positions
   read, the exact class #597 removed from the sync because it booked wrong P&L). Rec: (a) — it withholds an order, (b)
   books money. Until he rules, the page tells him exactly what happens next. **→ RULED 2026-10-04, his word "A": (a).
-  Built the same day — the entry above this one; the page's last sentence now says the repair reads the broker too.**
+  Built the same day — the entry above this one; the page's last sentence now says the repair reads the broker too.
+  The predicted s42 "breached the stop" digest line did NOT materialise: the build reads the broker BEFORE the
+  placement, so on a flat broker the stop is never sent and s42 returns the flat message instead.**
 
 **Anticipated effect**: rare — it needs a failed planned sale whose position is already gone (or, through the shared
 sizing, a refused stop at any ruling (iii) site on a flat broker). When it happens, no stop is placed on air and no
