@@ -1886,7 +1886,7 @@ class TelegramChannel:
             BotCommand("setup",        "/setup TICKER — every detector hit, dated timeline"),
             BotCommand("regime",       "Market regime + breadth"),
             BotCommand("themes",       "Active themes — what is leading"),
-            BotCommand("htf",          "Higher-timeframe setups"),
+            BotCommand("htf",          "Higher-timeframe flag bases (watch only)"),
             BotCommand("status",       "System health + API spend"),
             BotCommand("help",         "Capabilities, rules, command reference"),
         ]

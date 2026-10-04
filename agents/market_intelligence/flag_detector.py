@@ -1419,8 +1419,10 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     # deal-pinned name reads as a perfect base and would otherwise reach the board and the
     # 17:25 NEW TODAY block. WATCH stays unscreened: it is digest-silent and ~40-50 names a day.
     # COST: the model call fires only on keyword-hit headlines, <=3 articles a ticker, memoized
-    # per day, on the "shared" budget pool inside ma_filter (unchanged); the deal-pin layer
-    # below is price-only (no API). Filtered candidates downgrade to `unqualified`
+    # per ET day (the memo resets daily), on the "shared" budget pool inside ma_filter
+    # (unchanged). The screen runs every night on every TIGHTENING name still held, so lookups
+    # grow with names held x days held x keyword-hit articles; no per-scan held count is
+    # recorded. The deal-pin layer below is price-only (no API). Filtered candidates downgrade to `unqualified`
     # with reason="mna_filter:<source>" — preserved in mi_flag_candidates so
     # offline review can audit the filter's hit rate.
     from agents.market_intelligence.ma_filter import is_likely_ma, day_window_pin

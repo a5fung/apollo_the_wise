@@ -245,15 +245,33 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
   on `_MNA_SCREENED_STAGES = (TIGHTENING, COILED, TRIGGERED)`; a hit downgrades to `unqualified`,
   `reason='mna_filter:<source>'`, plus the usual `mna_filter_fired` row (detector `flag`, original stage). Wording only:
   `/flags` header `COILED — actionable setup` -> `COILED — tightest bases, watch only`; Friday watchlist label
-  `Flag Setups` -> `Flag Bases … (watch only)`.
+  `Flag Setups` -> `Flag Bases … (watch only)`; `/htf` menu entry `Higher-timeframe setups` -> `Higher-timeframe flag bases (watch only)`.
   **Trigger**: operator ok 2026-10-03 (same news-nominates / own-day-range-decides rule the coil board got 10-03).
-  **Evidence**: rule enforcement of the signed 502/692 screens on one more stage, not a new criterion; pinned by
-  `tests/test_598_flag_tightening_screen.py`. **Cost**: the model call fires only on keyword-hit headlines (<=3 articles a
-  ticker, memoized per ET day) on the existing `shared` budget pool (300 of the 400/day calls; the EP scan keeps its 100
-  reserve); the deal-pin layer is price-only. TIGHTENING volume is small (11 names entered it in 30 days).
+  **Evidence**: extends the signed 502/692 screens (news nominates, own-day range decides) to one more stage; pinned by
+  `tests/test_598_flag_tightening_screen.py`. ⚠ **Not every layer was measured on TIGHTENING**: the news screen and the
+  0.5% median-range backstop are unchanged rules, but the fresh-pin check (5-session band <= 2.5% plus a >= 5x volume spike
+  within 10 sessions) and its 5-session carry-over now also reach TIGHTENING, and their "no overlap with real bases"
+  evidence (`docs/analysis/htf_deal_pin_fresh_2026-07-24.md:72`) covers only the 405 COILED/TRIGGERED rows. A young
+  TIGHTENING base right after an EP-gap pole is the shape that could meet the volume half; that case was never measured.
+  **Cost**: the model call fires only on keyword-hit headlines (<=3 articles a ticker, memoized per ET day) on the
+  existing `shared` budget pool (300 of the 400/day calls; the EP scan keeps its 100 reserve); the deal-pin layer is
+  price-only. The screen runs every night on every TIGHTENING name still held and the memo resets each ET day, so the
+  lookups grow with names held x days held x keyword-hit articles; the repo records no per-scan count of held TIGHTENING
+  names (the only figure is 11 names ENTERING TIGHTENING in 30 days, which counts entries, not holdings).
   **Anticipated effect**: a pinned name that would have been announced at TIGHTENING no longer is; ordinary TIGHTENING
   names (daily range well above 2%) are unchanged. **Reversion-flag**: REFINEMENT of #502/#692 (extends population).
-  **Status**: branch `598-flag-tightening-screen`, not yet deployed (`deploy.sh market-agent`).
+  **EXPECT** (against the baseline: pinned TIGHTENING names reached `/flags` and NEW TODAY): `mna_filter_fired` rows with
+  `detector='flag'` and original stage TIGHTENING appear for genuinely deal-pinned names (news shows a deal AND own-day
+  range <= 2.0%); the TIGHTENING count on `/flags` falls only by those. **UNINTENDED to watch**: `reason` =
+  `mna_filter:deal_pin_fresh` or `mna_filter:deal_pin_sticky` on a TIGHTENING name whose news shows NO deal (a real
+  young base wrongly dropped). **WOULD-FAIL-IF**: any such row whose headlines show no deal, or `/flags` TIGHTENING count
+  dropping with no matching `mna_filter_fired` rows. **DONE-WHEN**: every TIGHTENING `mna_filter_fired` row in the first
+  10 market days after deploy has been read against its headlines (or none fired and the count is unchanged). A $0 replay
+  of past TIGHTENING `mi_flag_candidates` rows through the fresh-pin check is the pre-deploy way to measure it.
+  **Status**: branch `598-flag-tightening-screen`, not yet deployed. **Two-step deploy**: `agent.py` is on
+  `scripts/exec_loaded_modules.txt`, so `deploy.sh market-agent` alone leaves the `/flags` header stale in the execution
+  container; `channels/telegram.py` (the `/htf` menu label) is orchestrator-owned. Run `deploy.sh both`, then
+  `deploy.sh execution`.
 - **2026-10-04 — #598: the 17:25 ET digest now opens with `NEW TODAY` — every ticker that moved up into
   TIGHTENING or COILED, with run-up, pivot and base tightness. A surfacing change: no stage, threshold,
   entry or trade path moved. Built on branch `598-flag-stage-push`; NOT yet deployed.**
