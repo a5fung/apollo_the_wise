@@ -8572,7 +8572,27 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
                 logger.warning(f"sync_positions: stop remediation attempt {attempt}/3 failed for {ticker}: {e}")
                 if attempt < 3:
                     await asyncio.sleep(2 ** attempt)  # 2s, 4s
-        if new_order:
+        # ⚖ #687 RULING (iii), operator 2026-10-02: the LAST attempt refused because the price is
+        # already through the stop → sell the free shares at market, as the triggered stop would
+        # have (ruling (3)'s recognition, sizing and sale; it pages itself). The dead stop was
+        # cleared above, so nothing is excluded. No lock here (none is held today; the sale
+        # replaces the placement in the same context). Nothing free / the sale fails / any other
+        # refusal → today's "failed to remediate" below. This sync's own coverage pass then sees
+        # the sale as a pending exit and places nothing.
+        sold = None
+        if not new_order and last_err is not None and _is_stop_above_market(last_err):
+            sold = await _sell_at_market_for_refused_stop(
+                trade["id"], ticker, account_mode, stop_price=float(stop),
+                site="order_manager.sync_orphan_remediation", error=str(last_err))
+        if sold:
+            _sold_order, _sold_qty = sold
+            msg = (f"🚨 Orphaned position {ticker}: the stop ${stop:.2f} is above the market (the "
+                   f"price is already through it) — {_sold_qty} sh being SOLD AT MARKET (order "
+                   f"{str(_sold_order['id'])[:8]}), as the triggered stop would have")
+            discrepancies.append(msg)
+            logger.warning(f"sync_positions: {ticker} orphan stop breached — market sale placed "
+                           f"trade_id={trade['id']}")
+        elif new_order:
             await set_stop_order_id(
                 trade["id"], new_order["id"],
                 reason="sync_remediation",

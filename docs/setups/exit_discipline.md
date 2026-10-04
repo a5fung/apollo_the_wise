@@ -388,6 +388,11 @@ The sites:
    `stop_coverage_breach` row (the coverage retry stops on it). Nothing free / the sale fails → main's
    `COVERAGE_FLAGGED` "Operator decision needed (no auto-exit)", unchanged. Every caller inherits it: the sync's
    coverage pass, the coverage retry, the 17:00/19:00 coverage slots, the partial-exit re-protects, and site 6.
+2. **The position sync's orphan repair** (`_sync_positions_for_mode`, 16:05 + 21:00 ET and `/syncnow`; a filled
+   position whose stop is dead or missing). Keyed on the LAST of its 3 attempts. Sold → a digest line "Orphaned
+   position X: … SOLD AT MARKET", no "failed to remediate" line / `stop_ack_remediation_failed` row; the same sync's
+   coverage pass then sees the sale as a pending exit and places nothing (one sale per sync). No lock is held here
+   today; the sale replaces the placement in the same context. Nothing free / the sale fails → today's line.
 3. **`update_stop`** (the 16:45 trail raise; the 16:20 / 09:35 stop refresh re-placing an expired stop; the depth
    trail when on). Keyed on the TERMINAL refusal — the existing 3-second retry runs first; attempt 2 refused
    through the price → sell (attempt 1 through the price but attempt 2 refused otherwise → today's NAKED path).

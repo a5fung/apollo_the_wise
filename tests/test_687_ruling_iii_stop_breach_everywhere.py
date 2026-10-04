@@ -145,6 +145,70 @@ async def test_site1_a_naked_position_still_pages_when_the_sale_fails():
     assert digest and "ABOVE market" in digest[0] and "Operator decision needed" in digest[0], w.pages
 
 
+# ── Site 2 — the position sync's orphan repair (3 attempts), then its own coverage pass ───────
+
+def _orphan_world():
+    w = World()
+    _trade(w, stop_id=None)
+    _position(w, "KOD", 10, 10)
+    return w
+
+
+def _sync():
+    return lambda: om._sync_positions_for_mode("live")
+
+
+def _digest(w) -> str:
+    pages = [p for p in w.pages if "Position Sync Discrepancies" in p]
+    assert len(pages) == 1, w.pages
+    return pages[0]
+
+
+@pytest.mark.asyncio
+async def test_site2_the_orphan_repair_sells_once_and_the_same_syncs_coverage_pass_does_not():
+    w = _orphan_world()
+    _breach(w)
+    await _drive(w, _sync())
+    assert _sales(w) == [10], w.calls
+    assert [c["method"] for c in w.calls].count("place_stop_order") == 3   # the orphan's 3 only
+    assert len(_sale_pages(w)) == 1
+    assert "Orphaned position KOD" in _digest(w) and "SOLD AT MARKET" in _digest(w)
+    assert "Failed to remediate" not in _digest(w)
+    assert not [d for d in _audits(w, "stop_ack_remediation_failed")
+                if d.get("reason") == "place_stop_failed_3_attempts"]
+    assert _audits(w, "stop_breach_market_sale")[0]["site"] == "order_manager.sync_orphan_remediation"
+
+
+@pytest.mark.asyncio
+async def test_site2_any_other_refusal_keeps_todays_digest_and_sells_nothing():
+    w = _orphan_world()
+    w.place_errors = [Exception(OTHER) for _ in range(4)]
+    await _drive(w, _sync())
+    assert _sales(w) == []
+    assert "Failed to remediate orphaned stop for KOD" in _digest(w)
+
+
+@pytest.mark.asyncio
+async def test_site2_keys_on_the_last_attempt_only():
+    """Attempts 1-2 through the price, the last one refused otherwise → today's failure line."""
+    w = _orphan_world()
+    w.place_errors = [Exception(BREACH), Exception(BREACH), Exception(OTHER), Exception(OTHER)]
+    await _drive(w, _sync())
+    assert _sales(w) == []
+    assert "Failed to remediate orphaned stop for KOD" in _digest(w)
+
+
+@pytest.mark.asyncio
+async def test_site2_a_failed_sale_keeps_todays_failure_line():
+    w = _orphan_world()
+    _breach(w)
+    w.close_errors = [Exception("broker down") for _ in range(2)]
+    await _drive(w, _sync())
+    assert _sale_pages(w) == []
+    assert "Failed to remediate orphaned stop for KOD" in _digest(w)
+    assert "ABOVE market" in _digest(w)              # the coverage pass's breach flag, as today
+
+
 # ── Site 6 — the OCO-cancel handler (its re-protect runs through the reconciler) ──────────────
 
 def _oco_world():

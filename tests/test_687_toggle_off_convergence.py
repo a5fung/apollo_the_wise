@@ -78,24 +78,22 @@ ALLOWED = {
         'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
     },
     's33_sync_orphan_remediation_through_the_price': {
-        'why': "ruling (iii) 2026-10-02 — sell at market at the coverage reconciler (the sync's coverage pass, after its orphan repair failed)",
+        'why': "ruling (iii) 2026-10-02 — sell at market at the sync orphan repair (its last attempt refused; the same sync's coverage pass then sees the pending sale and places nothing)",
         'broker_calls': [
             "get_all_positions(account_mode='live', raise_on_error=False)",
             "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
             "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
             "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_2', qty=10, side='sell', stop_price=58, ticker='KOD')",
             "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_3', qty=10, side='sell', stop_price=58, ticker='KOD')",
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_4', qty=10, side='sell', stop_price=58, ticker='KOD')",
             "get_position(account_mode='live', ticker='KOD')",
             "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
             "close_position(account_mode='live', qty=10, ticker='KOD')",
         ],
         'pages': [
             '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $58.00 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
-            '💰 LIVE-$ ⚠️ *Position Sync Discrepancies (live):*\n  • ⚠️ Failed to remediate orphaned stop for KOD after 3 attempts: {"code":42210000,"message":"stop price must be less than current price"}\n  • 🚨 KOD: stop $58.00 is ABOVE market — the price is already through it, so 10 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have.',
+            '💰 LIVE-$ ⚠️ *Position Sync Discrepancies (live):*\n  • 🚨 Orphaned position KOD: the stop $58.00 is above the market (the price is already through it) — 10 sh being SOLD AT MARKET (order sell-1), as the triggered stop would have',
         ],
-        'result': ['⚠️ Failed to remediate orphaned stop for KOD after 3 attempts: {"code":42210000,"message":"stop price must be less than current price"}', '🚨 KOD: stop $58.00 is ABOVE market — the price is already through it, so 10 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have.'],
+        'result': ['🚨 Orphaned position KOD: the stop $58.00 is above the market (the price is already through it) — 10 sh being SOLD AT MARKET (order sell-1), as the triggered stop would have'],
         'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
     },
     's34_update_stop_raise_through_the_price': {
