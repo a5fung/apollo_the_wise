@@ -425,9 +425,24 @@ a stop is accepted, or refused for any other reason.
 
 **Reversion-flag**: REFINEMENT of the 2026-10-02 entry's ruling (3) (same rule, more sites, as he ruled).
 
+**Not extended — other stop placements found, listed for him (not in the six he ruled on):**
+- `trade_stream._process_entry_fill`'s two entry-fill stops (bracket leg missing; the fill's own DB write failed):
+  the row is not `filled` yet (or its write just failed), so a `full_exit` row cannot settle through
+  `finalize_full_exit` — the sale cannot be reached safely there. Today's "UNPROTECTED" pages stand.
+- `execute_partial_exit`'s #548 breakeven move and `_arm_breakeven_on_full_stop` (price-armed breakeven, OFF):
+  price-only `replace_order`s; a refused replace is atomic — the old stop stays LIVE at its old price, so the
+  position is still protected. The analogue of a refused trail raise, but not "a stop that cannot be placed";
+  his call whether a refused breakeven move should also sell.
+- The leg cancel-and-replace resize (`_replace_stop_leg_via_cancel_new`, partial-exit reduce + coverage widen) and
+  the +8R profit-take OCO placement: their failures route to the coverage reconciler, so they inherit site 1.
+
 **Status**: built on branch `687-stop-breach-everywhere`, NOT merged or deployed. Tests:
-`tests/test_687_ruling_iii_stop_breach_everywhere.py`; convergence scenarios s32-s38 (baseline re-pinned to main
-8e1329f0; every difference from main allow-listed "ruling (iii) 2026-10-02 — sell at market at <site>").
+`tests/test_687_ruling_iii_stop_breach_everywhere.py` (28: per site — sold once, any other refusal unchanged, a
+failed sale still pages; the 09:35 refresh after a filled sale; the watchdog tick after a fill; three de-dupe proofs
+against ruling (3)'s own sale); convergence scenarios s32-s38 (baseline re-pinned to main 8e1329f0; all 7
+differences from main allow-listed "ruling (iii) 2026-10-02 — sell at market at <site>", a guard test holding every
+reason to that prefix). Mutation-checked per site and per de-dupe layer (commit messages). Deploy: `broker/` +
+`scheduler.py` → both + execution.
 
 ### 2026-10-02 (later) — #687 ruling (ii): a PLAIN resting profit-take limit is left resting; the other shares follow the close-below sale
 
