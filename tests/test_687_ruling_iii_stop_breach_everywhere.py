@@ -196,3 +196,74 @@ async def test_site6_a_failed_sale_still_pages_the_breach():
     assert _sale_pages(w) == []
     oco_page = [p for p in w.pages if "OCO CANCELLED" in p]
     assert oco_page and "no auto-exit" in oco_page[0], w.pages
+
+
+# ── Site 4 — the stop-ACK watchdog's fallback stop (at the entry's orb_low) ───────────────────
+
+def _watchdog_world():
+    w = World()
+    _trade(w, stop_id=None)
+    _position(w, "KOD", 10, 10)
+    return w
+
+
+def _watchdog():
+    import agents.market_intelligence.scheduler as sched
+    return sched._stop_ack_timeout_watchdog_job
+
+
+@pytest.mark.asyncio
+async def test_site4_a_refused_fallback_sells_once_across_two_ticks(monkeypatch):
+    monkeypatch.setenv("STOP_ACK_TIMEOUT_GATE_ENABLED", "true")
+    w = _watchdog_world()
+    _breach(w)
+    await _drive(w, _watchdog(), _watchdog())
+    assert _sales(w) == [10], w.calls
+    assert len(_sale_pages(w)) == 1 and not any("CRITICAL" in p for p in w.pages), w.pages
+    sold = _audits(w, "stop_ack_breach_sold_at_market")
+    assert len(sold) == 1 and sold[0]["sold_qty"] == 10, w.audits
+    assert [a["summary"] for a in w.audits
+            if a["event_type"] == "stop_ack_breach_sold_at_market"][0].startswith("KOD #401")
+    assert _full_exit_rows(w)[0]["exit_reason"] == "stop_hit"
+
+
+@pytest.mark.asyncio
+async def test_site4_any_other_refusal_keeps_the_critical_page_and_sells_nothing(monkeypatch):
+    monkeypatch.setenv("STOP_ACK_TIMEOUT_GATE_ENABLED", "true")
+    w = _watchdog_world()
+    w.place_errors = [Exception(OTHER)]
+    await _drive(w, _watchdog())
+    assert _sales(w) == [] and _sale_pages(w) == []
+    assert any("CRITICAL: POSITION NAKED" in p for p in w.pages), w.pages
+
+
+@pytest.mark.asyncio
+async def test_site4_a_failed_sale_still_pages_critical(monkeypatch):
+    monkeypatch.setenv("STOP_ACK_TIMEOUT_GATE_ENABLED", "true")
+    w = _watchdog_world()
+    _breach(w)
+    w.close_errors = [Exception("broker down")]
+    await _drive(w, _watchdog())
+    assert _sale_pages(w) == []
+    assert any("CRITICAL: POSITION NAKED" in p for p in w.pages), w.pages
+    assert _audits(w, "stop_breach_sale_failed") and _audits(w, "stop_ack_remediation_failed")
+
+
+@pytest.mark.asyncio
+async def test_site4_the_next_tick_after_the_sale_filled_does_not_act_again(monkeypatch):
+    """The sale filled at the broker, the books not yet: without the dedup row the next tick would
+    find no stop and no covering order, re-place, and page CRITICAL on a position already sold."""
+    monkeypatch.setenv("STOP_ACK_TIMEOUT_GATE_ENABLED", "true")
+    w = _watchdog_world()
+    _breach(w)
+
+    async def _sale_fills_at_the_broker():
+        for o in w.broker_orders:
+            if o["type"] == "market":
+                o["status"], o["filled_qty"] = "filled", o["qty"]
+        w.positions.pop("KOD", None)
+
+    await _drive(w, _watchdog(), _sale_fills_at_the_broker, _watchdog())
+    assert _sales(w) == [10]
+    assert [c["method"] for c in w.calls].count("place_stop_order") == 1, w.calls
+    assert not any("CRITICAL" in p for p in w.pages), w.pages

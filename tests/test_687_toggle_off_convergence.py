@@ -98,6 +98,20 @@ ALLOWED = {
         'result': ['⚠️ Failed to remediate orphaned stop for KOD after 3 attempts: {"code":42210000,"message":"stop price must be less than current price"}', '🚨 KOD: stop $58.00 is ABOVE market — the price is already through it, so 10 sh are being SOLD AT MARKET (order sell-1), as the triggered stop would have.'],
         'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
     },
+    's36_watchdog_fallback_through_the_price': {
+        'why': "ruling (iii) 2026-10-02 — sell at market at the stop-ACK watchdog's fallback stop",
+        'broker_calls': [
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id=None, qty=10, side='sell', stop_price=57.5, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "close_position(account_mode='live', qty=10, ticker='KOD')",
+        ],
+        'pages': [
+            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $57.50 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\n<i>Confirms with real P&amp;L on fill.</i>',
+        ],
+        'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
+    },
     's38_oco_cancel_unfilled_restore_through_the_price': {
         'why': 'ruling (iii) 2026-10-02 — sell at market at the OCO-cancel handler (its re-protect runs through the coverage reconciler)',
         'broker_calls': [

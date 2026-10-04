@@ -388,6 +388,11 @@ The sites:
    `stop_coverage_breach` row (the coverage retry stops on it). Nothing free / the sale fails → main's
    `COVERAGE_FLAGGED` "Operator decision needed (no auto-exit)", unchanged. Every caller inherits it: the sync's
    coverage pass, the coverage retry, the 17:00/19:00 coverage slots, the partial-exit re-protects, and site 6.
+4. **The stop-ACK watchdog's fallback** (`scheduler._stop_ack_timeout_watchdog_job`, the stop at the entry's
+   `orb_low` when a fresh fill has no stop), under its per-trade try-lock (#687 e). Sold → audit
+   `stop_ack_breach_sold_at_market` (summary `"{ticker} #{trade_id}: …"`, added to the once-per-day dedup set, so
+   the next 30-second tick does not act again), no CRITICAL page. The sale fails → today's `stop_ack_remediation_failed`
+   + "CRITICAL: POSITION NAKED" page. A documented safeguard: `docs/setups/safeguards.md` change log 2026-10-03.
 6. **The OCO-cancel handler** (`trade_stream._handle_oco_parent_cancel`): its re-protect IS the reconciler, so it
    sells through site 1; its page carries the reconciler's line. (Known wording: the partial-exit abort page
    reads "No shares sold." above the reconciler's "SOLD AT MARKET" line — the partial sold nothing; the line
