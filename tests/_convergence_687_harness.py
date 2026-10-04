@@ -993,6 +993,92 @@ def s27_1645_job_unstamped_trade_trail_raise(om, lt, **_):
     return w, lambda: lt.update_open_positions_live(TODAY)
 
 
+# ── ruling (iii) 2026-10-02: the six other stop-placing sites, each refused because the price is
+# already through the stop. Main pages / flags (no sale); the branch sells the free shares at market.
+# Every placement in these worlds is refused the same way (the price stays through the stop).
+
+def _always_breach(w, n=6):
+    w.place_errors = [Exception(BREACH) for _ in range(n)]
+
+
+def s32_coverage_reconciler_place_through_the_price(om, **_):
+    """Site 1 — `_ensure_stop_coverage`'s place branch (no live stop, under-covered)."""
+    w = World()
+    _trade(w, stop_id=None)
+    _position(w, "KOD", 10, 10)
+    _always_breach(w)
+    return w, lambda: om._ensure_stop_coverage(401, "KOD", 10.0, 58.0, "magna53", "live")
+
+
+def s33_sync_orphan_remediation_through_the_price(om, **_):
+    """Site 2 — the position sync's orphan repair (3 attempts), then its coverage pass."""
+    w = World()
+    _trade(w, stop_id=None)
+    _position(w, "KOD", 10, 10)
+    _always_breach(w)
+    return w, lambda: om._sync_positions_for_mode("live")
+
+
+def s34_update_stop_raise_through_the_price(om, **_):
+    """Site 3 — `update_stop`: a trail raise the broker refuses (price already below it)."""
+    w = World()
+    _trade(w, stop_price=58.0)
+    _position(w, "KOD", 10, 0)
+    _bstop(w, "stop-1", "KOD", 10, 58.0)
+    _always_breach(w)
+    return w, lambda: om.update_stop(401, 61.5, stop_source="trail")
+
+
+def s35_refresh_replace_through_the_price(om, lt, **_):
+    """Site 3 via its caller — the stop refresh re-places an expired DAY stop; refused."""
+    w = World()
+    _trade(w)
+    _position(w, "KOD", 10, 10)
+    _bstop(w, "stop-1", "KOD", 10, 58.0, status="expired")
+    _always_breach(w)
+    return w, lambda: lt._stop_refresh(include_same_day=True, label="Post-close")
+
+
+def s36_watchdog_fallback_through_the_price(om, sched, **_):
+    """Site 4 — the stop-ACK watchdog's fallback stop at the entry's orb_low; refused."""
+    w = World()
+    _trade(w, stop_id=None)
+    _position(w, "KOD", 10, 10)
+    _always_breach(w)
+    return w, lambda: sched._stop_ack_timeout_watchdog_job()
+
+
+def s37_stream_partial_exit_cancelled_restore_through_the_price(om, ts, **_):
+    """Site 5 — the stream's partial-exit restore (a plain partial sell died unfilled)."""
+    w = World()
+    _trade(w, stop_id="stop-r")
+    _position(w, "KOD", 10, 0)
+    _bstop(w, "stop-r", "KOD", 7, 58.0)
+    _bsell(w, "sell-p", "KOD", 3, status="canceled")
+    _mirror(w, "sell-p", 401, "KOD", "partial_exit", 3, status="accepted",
+            exit_reason="partial_profit", raw={"order_class": "simple"})
+    _always_breach(w)
+    return w, lambda: ts._handle_cancel_or_reject(_ws_order("sell-p", "KOD"), "canceled", "live")
+
+
+def s38_oco_cancel_unfilled_restore_through_the_price(om, ts, **_):
+    """Site 6 — the OCO-cancel handler: the profit-take third's OCO died unfilled (both legs);
+    the third is the whole position and its re-protect is refused."""
+    w = World()
+    _trade(w, remaining=2, stop_id=None, partial_taken=True, breakeven_active=True,
+           stop_price=60.0)
+    _position(w, "KOD", 2, 2)
+    w.broker_orders.append({"id": "oco-1", "symbol": "KOD", "side": "sell", "type": "limit",
+                            "qty": 2.0, "filled_qty": 0.0, "status": "canceled",
+                            "order_class": "oco", "limit_price": 90.0})
+    _bstop(w, "leg-1", "KOD", 2, 60.0, status="canceled")
+    _mirror(w, "oco-1", 401, "KOD", "partial_exit", 2, status="new",
+            raw={"order_class": "oco",
+                 "legs": [{"id": "leg-1", "type": "stop", "stop_price": 60.0}]})
+    _always_breach(w)
+    return w, lambda: ts._handle_cancel_or_reject(_ws_order("oco-1", "KOD"), "canceled", "live")
+
+
 SCENARIOS = [v for k, v in sorted(globals().items()) if re.fullmatch(r"s\d\d_\w+", k)]
 _REAL: dict = {}
 
