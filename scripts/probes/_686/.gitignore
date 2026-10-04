@@ -1,0 +1,5 @@
+# the new block's raw pulls land in data/ via extract.sh; the two bulk files are gitignored as in _684
+data/daily.tsv.gz
+data/live_entry_bars.tsv
+data/features.tsv
+__pycache__/

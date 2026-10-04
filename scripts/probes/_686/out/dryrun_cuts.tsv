@@ -1,0 +1,64 @@
+feature	kind	favourable	when	name	cut_lo	cut_hi
+ep_score	cont	HIGHER	PRE	today's EP score	36	60
+PRE_gap_pct_scan	cont	HIGHER	PRE	gap % at the scan	12.16	16.29
+PRE_ext_5d_pct	cont	LOWER	PRE	prev close above its 5-day low close (live gate def)	2.2082	7.6933
+PRE_ext_sma10_xadr	cont	LOWER	PRE	prev close vs SMA10, in ADRs	-0.1793	0.788202
+PRE_ext_sma20_xadr	cont	LOWER	PRE	prev close vs SMA20, in ADRs	-0.398355	1.04034
+PRE_ext_sma50_xadr	cont	LOWER	PRE	prev close vs SMA50, in ADRs	-0.625161	2.17475
+PRE_ext_ma_mean_xadr	cont	LOWER	PRE	mean distance to SMA10/20/50, in ADRs	-0.417164	1.24688
+PRE_ext_20d_low_pct	cont	LOWER	PRE	prev close above its 20-day low	9.69038	22.9466
+PRE_chg_1m_pct	cont	LOWER	PRE	1-month change before the gap	-4.15325	12.51
+PRE_chg_3m_pct	cont	LOWER	PRE	3-month change before the gap	-4.56147	26.6071
+PRE_base_range40_pct	cont	LOWER	PRE	40-day close range / price (base tightness)	26.8164	44.0225
+PRE_base_range20_pct	cont	LOWER	PRE	20-day close range / price	16.3469	27.9941
+PRE_base_absdisp40_xadr	cont	LOWER	PRE	net 40-day drift, in ADRs (flat base)	2.24633	4.75821
+PRE_days_since_6m_high	cont	HIGHER	PRE	sessions since the 6-month high (neglect)	14	66
+PRE_base_depth_6m_pct	cont	HIGHER	PRE	prev close below the 6-month high, % (depth)	13.0831	30.0735
+PRE_dist_52w_high_xadr	cont	LOWER	PRE	overhead to the 52-week high, in ADRs	3.60444	11.0296
+PRE_cleared_6m_scanprice	bool	1	PRE	scan price above the 6-month high		
+PRE_cleared_52w_scanprice	bool	1	PRE	scan price above the 52-week high		
+PRE_cleared_ath_scanprice	bool	1	PRE	scan price above the all-time high		
+PRE_above_sma50	bool	1	PRE	prev close above SMA50		
+PRE_above_sma200	bool	1	PRE	prev close above SMA200		
+PRE_n_ma_above	cont	HIGHER	PRE	how many of SMA10/20/50 the prev close is above	1	3
+PRE_stage2	bool	1	PRE	Stage 2 (close > SMA50 > rising SMA200)		
+PRE_rs_composite	cont	HIGHER	PRE	RS composite the prior day	32.3	81.2
+PRE_in_rs_pool	bool	1	PRE	in the RS pool the prior day		
+PRE_catalyst_ord	ord	HIGHER	PRE	catalyst grade (game_changer/strong vs routine)		
+PRE_themed	bool	1	PRE	in an active theme the prior night (any age)		
+PRE_themed_7d	bool	1	PRE	in an active theme the prior night (7-day bounded)		
+PRE_theme_early	bool	1	PRE	theme stage Nascent/Accelerating		
+PRE_regime_bull	bool	1	PRE	market regime Bull		
+PRE_spy_vs_50ma	cont	HIGHER	PRE	SPY vs its 50-day	2.62	6.26
+PRE_prev_close	cont	LOWER	PRE	share price	18.06	66.6
+PRE_adr20_pct	cont	HIGHER	PRE	ADR %	4.49006	6.41673
+PRE_dollar_vol_20d	cont	LOWER	PRE	20-day dollar volume	3.24578e+07	1.6391e+08
+PRE_repeat_scored_90d	bool	0	PRE	a scored gap on this name in the prior 90 days		
+PRE_pm_rvol	cont	HIGHER	PRE	pre-market relative volume	3.867	9.226
+PRE_projected_vol_multiple	cont	HIGHER	PRE	projected volume multiple at the scan	3.3	6.2
+PRE_first_tick_preopen	bool	1	PRE	first scored tick before 09:30		
+O930_gap_open_pct	cont	HIGHER	0930	gap % at the open print	8.78553	14.6654
+O930_cleared_6m_open	bool	1	0930	open above the 6-month high		
+O930_cleared_52w_open	bool	1	0930	open above the 52-week high		
+O930_cleared_ath_open	bool	1	0930	open above the all-time high		
+O930_ext_open_sma50_xadr	cont	LOWER	0930	open vs SMA50, in ADRs	1.81082	4.67319
+O930_ext_open_sma20_xadr	cont	LOWER	0930	open vs SMA20, in ADRs	1.66595	3.63772
+O930_stage2_open	bool	1	0930	Stage 2 with the open		
+O945_orb_position	cont	HIGHER	0945	where 09:44 sits in the opening range	0.316667	0.757225
+O945_orb_range_xadr	cont	LOWER	0945	opening range / ADR	1.32326	2.00525
+O945_gap_0945_pct	cont	HIGHER	0945	gap % at 09:44	10.2919	16.4043
+O945_close_vs_open_pct	cont	HIGHER	0945	09:44 vs the open	-1.50227	3.63898
+O945_orb_vol_vs_20d	cont	HIGHER	0945	first-15-minute volume / 20-day avg daily volume	0.281011	0.482865
+O945_orb_high_above_6m	bool	1	0945	opening-range high above the 6-month high		
+CLOSE_close_loc	cont	HIGHER	CLOSE	close location in the day's range	0.30696	0.706667
+CLOSE_range_xadr	cont	HIGHER	CLOSE	day range / ADR	1.90466	2.98583
+CLOSE_vol_vs_max250	cont	HIGHER	CLOSE	volume vs the biggest day in a year	0.371357	0.697782
+CLOSE_vol_vs_avg50	cont	HIGHER	CLOSE	volume vs 50-day average	2.30538	3.76489
+CLOSE_close_vs_open_pct	cont	HIGHER	CLOSE	close vs open	-1.79764	4.14381
+CLOSE_gap_close_pct	cont	HIGHER	CLOSE	gap % at the close	8.87755	17.1742
+CLOSE_ext_sma50_xadr	cont	LOWER	CLOSE	close vs SMA50, in ADRs (the 09-27 EOD lead)	1.88981	5.05301
+CLOSE_ext_sma20_xadr	cont	LOWER	CLOSE	close vs SMA20, in ADRs	1.77217	4.26995
+CLOSE_cleared_6m	bool	1	CLOSE	close above the 6-month high		
+CLOSE_cleared_52w	bool	1	CLOSE	close above the 52-week high		
+CLOSE_cleared_ath	bool	1	CLOSE	close above the all-time high		
+ALERT_expct_unscheduled	bool	1	ALERT	unscheduled catalyst (alerted rows only)		
