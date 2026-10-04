@@ -2431,8 +2431,8 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 # books stood in and a stop was placed on shares we did not hold. An UNREADABLE
                 # broker still takes the books fallback below, exactly as before. The page body
                 # is the shared `FLAT_RESTORE_PAGE_BODY`: the row is NOT resolved here, and it
-                # says so (the sync may not close it; the after-close coverage repair may
-                # re-place a stop from the books until it is).
+                # says so (the sync may not close it; since ruling (a) 2026-10-04 the after-close
+                # coverage repair reads the broker too and places nothing on a flat one).
                 await _audit_restore_skipped_broker_flat(
                     trade_row["id"], trade_row["ticker"], account_mode,
                     stop_price=restore_price, site="trade_stream.full_exit_cancel_restore",

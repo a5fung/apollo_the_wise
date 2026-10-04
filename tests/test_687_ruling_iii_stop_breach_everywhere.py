@@ -607,10 +607,14 @@ async def test_dedupe_after_the_sale_filled_no_site_sells_again(monkeypatch):
     await _drive(w, _ruling3_sale(), _the_sale_filled_and_the_row_closed, *_then_every_site(w))
     assert _sales(w) == [None, 10], [c for c in w.calls if c["method"] == "close_position"]
     assert len(_full_exit_rows(w)) == 1
-    # site 1 (called with the stale quantity) reaches its placement, is refused, and the shared path
-    # re-reads the broker at sale time: no position → FLAT → 0 (layer c). Ruling (i) 2026-10-02
-    # (built 2026-10-04) names this 'broker_flat'; before it the same zero read 'fallback:position_unreadable'.
-    assert ("order_manager.ensure_stop_coverage", "broker_flat") in _skips(w)
+    # site 1 (called with the stale quantity): since ruling (a) 2026-10-04 its place branch reads the
+    # broker FIRST — no position → FLAT → the stop is never sent, so there is no refusal and nothing
+    # for the shared sale path to de-dupe; it records `coverage_skipped_broker_flat` instead. (Before
+    # ruling (a) it reached its placement, was refused, and the shared path's sale-time read returned
+    # 'broker_flat' → 0 — ruling (i)'s layer (c); before ruling (i) the same zero read
+    # 'fallback:position_unreadable'.)
+    assert ("order_manager.ensure_stop_coverage", "broker_flat") not in _skips(w)
+    assert [d["trade_id"] for d in _audits(w, "coverage_skipped_broker_flat")] == [401], w.audits
 
 
 @pytest.mark.asyncio

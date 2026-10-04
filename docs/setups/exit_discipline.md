@@ -349,6 +349,90 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-04 — #687 ruling (a): the stop-coverage repair reads the broker before it places — a FLAT broker gets no stop (TRADE STATE — no exit rule, stop level, target or size changed)
+
+**Trigger**: his ruling of 2026-10-04 (his word: *"A"*) on the fork ruling (i)'s review opened the same morning (the
+entry below, **THE ROW IS NOT RESOLVED**): *(a) the coverage repair also reads the broker and places nothing when it
+shows no position* — chosen; *(b) closing the trade row at once* — NOT chosen. Built exactly (a), nothing wider.
+
+**The gap**: ruling (i) taught the failed-exit stop restore to tell a flat broker from an unreadable one and place
+nothing on a real zero. The stop-coverage reconciler (`order_manager._ensure_stop_coverage_outcome`, its PLACE branch —
+no live stop, under-covered) sized its target from whatever the caller handed it and placed with no position read of
+its own. Seven callers reach that branch; six of them read the position themselves first (the sync's per-mode list,
+the partial-exit abort and breakeven re-protects, the breakeven arm, the stream's OCO-cancel handler, the coverage
+retry) so a flat broker there is a race; the seventh — the 17:00 / 19:00 ET coverage slot (`_coverage_watch_job`,
+repairs ON, live only) — hands it `remaining_shares` from the BOOKS (`check_position_coverage`, no position read), so
+on a broker that held nothing it re-placed the very 10-share sell stop ruling (i) had just withheld at 16:45 (the s39
+case), and if that was the last position it rested on an empty account overnight.
+
+**Evidence**: operator ruling, not a threshold. No price, size, target or trigger moved: on a readable broker the
+place branch places the SAME quantity at the SAME floored price as before (the target is deliberately NOT re-sized
+from the position it reads — that would be a sizing change, his, not this ruling's); on an unreadable broker the
+books stand in exactly as before.
+
+**Change** (`broker/order_manager.py`, `broker/trade_stream.py` comment only):
+- **ONE shared helper, `_read_broker_position(ticker, account_mode) → (state, pos)`**, factored out of ruling (i)'s
+  `_broker_free_qty_for_restore` (which now calls it; its broker call sequence and its three answers `broker` /
+  `broker_flat` / `fallback:position_unreadable` are unchanged — s39-s41 are byte-identical to main). States:
+  `BROKER_HELD` (the single read, or the list, shows the position), `BROKER_FLAT` (the list read succeeds and has no
+  such position), `BROKER_UNREADABLE` (the list read fails; the deduped alpaca API alert fires inside it). `get_position`
+  stays untouched for its ~30 other callers. A test pins that neither consumer carries a second copy of the read.
+- **The place branch reads it BEFORE placing** (after the no-price return, which places nothing either and so does not
+  read; before the #600 floor and the placement):
+  - **FLAT → nothing placed.** `CoverageOutcome(COVERAGE_FLAGGED, …, "broker_flat")` whose message says, in plain
+    words: *"⚠️ KOD: the broker shows no position, so no stop was placed. Our records still show the trade open
+    (10 sh) — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open."*
+    ONE audit row `coverage_skipped_broker_flat` (trade_id, ticker, account_mode, target_qty, db_stop_price, site).
+    NO `stop_coverage_repair_failed` row and no `stop_coverage_breach` row (no stop was ever sent), so a flat never
+    STARTS a retry; and `retry_failed_coverage_repairs` now fetches the flat row and treats a flat recorded at/after
+    the failure as TERMINAL for that trade (`continue` before `examined`), exactly as it treats a breach — no attempt
+    spent, no broker read, no loop. The stop pointer is not written.
+  - **UNREADABLE → exactly today's behaviour** (the books' target at the floored price; the row's pointer set; the
+    `stop_coverage_repaired` row). The only visible difference from main is the confirming positions-list read.
+  - **HELD → exactly today's behaviour**; one `get_position` call before the placement is the only difference.
+- **Only the place branch reads.** The resize/replace branch (a live under-covering stop → `replace_order` / the
+  leg-safe widen), the no-price return and the detector-only path (`check_position_coverage`, repairs OFF — the
+  09:31-15:55 job) are byte-identical to main, each pinned by test.
+- **`FLAT_RESTORE_PAGE_BODY`** (ruling (i)'s shared flat sentence) told the truth of the day — *"…the after-close
+  coverage repair (17:00 / 19:00 ET) may re-place a stop from the books."* That is no longer true; it now ends *"The
+  after-close coverage repair (17:00 / 19:00 ET) also reads the broker and will not re-place a stop while it shows no
+  position."* The `restore_skipped_broker_flat` audit summary says the same.
+- **Not changed, stated:** the 17:00 / 19:00 slot's OWN page after a withheld repair still reads the ROW — *"KOD: holds
+  10 sh, live stop covers 0 sh … UNPROTECTED AFTER THE CLOSE"* (s43) — because the slot's re-check is the books-sized
+  detector. The words are the slot's; the row IS still open and unprotected-by-the-books until he resolves it, so the
+  page is not false, but "holds" is the books' count, not the broker's. Changing that wording is wider than (a).
+  Likewise the row is still NOT resolved by any automatic path (ruling (i)'s **THE ROW IS NOT RESOLVED** stands; (b)
+  was not chosen).
+
+**Anticipated effect**: rare — it needs a live row still open after its position is gone (ruling (i)'s own case, or
+a stop that filled and a sync that did not book it). When it happens, the 17:00 / 19:00 repair, the sync's coverage
+pass and every other caller of the reconciler place NOTHING on the empty account; the audit row names the trade; the
+slot pages UNPROTECTED from the books once as today; the row waits on /syncnow or his hand. Cost: one extra
+GET /v2/positions/{ticker} per place-branch pass (and one GET /v2/positions when it returns nothing) — the place
+branch runs only when a position has no live stop, a handful of times a month. No change to any day every position
+has its stop, and none to the replace branch.
+
+**Reversion-flag**: REFINEMENT of ruling (i) (same day) — the same flat/unreadable/held read, one more consumer.
+Not a reversal.
+
+**Status**: built on branch `687a-coverage-flat` (2026-10-04), NOT merged or deployed. Tests:
+`tests/test_687_ruling_a_coverage_repair_reads_broker.py` (14: flat → nothing placed + the outcome + the one audit row +
+no failure row; the retry's terminal; unreadable and held → the same placement as main, with the read pinned in the
+call list; a held count that differs from the books does NOT re-size the target; the replace branch, the no-price
+return and the detector read no position; a stubbed helper steers both consumers (one shared read); the helper's three answers; the
+page sentence; the 17:00 slot end to end — 9 red against origin/main 4e454395, 5 pin unchanged behaviour),
+`tests/test_687_ruling_i_flat_vs_unreadable.py` (the page-sentence pin flipped to the new truth),
+`tests/test_687_ruling_iii_stop_breach_everywhere.py` (the de-dupe test's site 1 now records the flat row instead of
+reaching the refused placement). Convergence: baseline re-pinned to origin/main 4e454395 (ruling (i) merged; its
+s39-s42 entries left the list as identical to main — s41 entirely); 43 scenarios, 36 byte-identical to main, seven
+allow-listed by name under *"ruling (a) 2026-10-04 — the coverage repair reads the broker before placing"*: s19, s32,
+s38 (the place branch with the broker HELD — exactly one `get_position` inserted before the stop, the test proves the
+rest of the call list equals main's), s42 (the reconciler on a flat broker — the stop is never sent; main sent it, had
+it refused and returned "position breached the stop" on an empty account), s43 NEW (the 17:00 slot on a flat broker —
+main placed a 10-share stop on the empty account and stayed silent; the branch places nothing and the slot pages
+UNPROTECTED from the books), s39 and s40 (ruling (i)'s two flat pages — only the last sentence). Deploy: `broker/` →
+both + execution (two steps; the slot, the retry and the stream run in `apollo-execution`).
+
 ### 2026-10-04 — #687 ruling (i): the failed-exit stop restore tells a FLAT broker from an UNREADABLE one — a real zero places nothing (TRADE STATE — no exit rule, stop level, target or size changed)
 
 **Trigger**: his ruling (i) of 2026-10-02 (PLAN.md #687), verbatim: *"failed-exit stop restore on a flat/unreadable
@@ -417,14 +501,16 @@ stand in exactly as before.
   still reads main's *"position breached the stop. Operator decision needed"* on a flat broker — s42); or
   (b) the flat result resolves the row at once (consequence: an automatic close of a live-trade row from a positions
   read, the exact class #597 removed from the sync because it booked wrong P&L). Rec: (a) — it withholds an order, (b)
-  books money. Until he rules, the page tells him exactly what happens next.
+  books money. Until he rules, the page tells him exactly what happens next. **→ RULED 2026-10-04, his word "A": (a).
+  Built the same day — the entry above this one; the page's last sentence now says the repair reads the broker too.**
 
 **Anticipated effect**: rare — it needs a failed planned sale whose position is already gone (or, through the shared
 sizing, a refused stop at any ruling (iii) site on a flat broker). When it happens, no stop is placed on air and no
 phantom shares are sold at market; the page names the case and says the row is still open. The row then closes
 through the sync ONLY if the broker confirms the stop's fill, else it waits on him (and the 17:00 / 19:00 coverage
-repair may re-place a stop from the books meanwhile — the open decision above). No change on any day the broker shows
-the position, and none when the broker cannot be read.
+repair may re-place a stop from the books meanwhile — the open decision above, **closed by ruling (a) the same day: the
+repair now reads the broker too and places nothing on a flat one**). No change on any day the broker shows the
+position, and none when the broker cannot be read.
 
 **Reversion-flag**: REFINEMENT of #687 (c) (2026-10-01) — same sizing, one more source it can name. Not a reversal.
 
@@ -676,7 +762,8 @@ call in `execute_full_exit` reddens 6 scenarios.
 - (v) **NEW 2026-10-04, from ruling (i)'s review** — the after-close coverage repair (17:00 / 19:00 ET) sizes from the
   BOOKS, so on a flat broker it re-places the stop ruling (i) withheld: (a) the repairer also skips when the broker
   reads flat, vs (b) the flat result resolves the row — both safeguard changes; main's repair kept; rec (a). Detail in
-  the 2026-10-04 entry (**THE ROW IS NOT RESOLVED**);
+  the 2026-10-04 entry (**THE ROW IS NOT RESOLVED**); **RULED 2026-10-04: (a) — built, change log 2026-10-04 (ruling
+  (a))**;
 - (ii) a plain resting profit-take LIMIT (no stop) beside a close-below sale: main's skip kept — skip vs cancel it
   and sell everything; **RULED 2026-10-02: neither — left resting, the other shares follow the exit** (entry above);
 - (iii) ruling (3) at the other stop-placing sites (listed under ruling (3)) — extend vs keep "page, no auto-exit";

@@ -9,21 +9,24 @@ HISTORY. Until 2026-10-03 the baseline was the pre-#687 code (97b08d51) and the 
 version is in git (`git log -p -- tests/test_687_toggle_off_convergence.py`). #687 merged and deployed
 2026-10-03 (a88a8043), so main IS that behaviour now: the baseline was RE-PINNED to origin/main
 8e1329f0 and those entries left the list (each was now identical to the baseline). Ruling (iii) then
-merged and deployed 2026-10-04, so on 2026-10-04 the baseline was RE-PINNED again to origin/main
-76e2ce4b and its seven s32-s38 entries left the list the same way. The list below names only what
-the current change — ruling (i), a flat vs an unreadable broker at the failed-exit stop restore —
-does differently from main.
+merged 2026-10-04 → re-pinned to 76e2ce4b, its seven s32-s38 entries left the list the same way.
+Ruling (i) merged later on 2026-10-04 (fa5bb191) → re-pinned to 4e454395 (the ruling (i) deploy
+commit), and its s39-s42 entries left the list as identical to main — s41 entirely; s39, s40 and s42
+re-enter below ONLY for what ruling (a) changes in them. The list below names only what the current
+change — ruling (a), operator 2026-10-04: the coverage repair reads the broker before placing — does
+differently from main.
 
-HOW. `tests/_convergence_687_harness.py` drives 41 fixed scenarios (the 16:45 trail exit with and
+HOW. `tests/_convergence_687_harness.py` drives 43 fixed scenarios (the 16:45 trail exit with and
 without a resting +8R OCO third or a plain resting limit, the 16:45 job itself, a stop raise via
 `update_stop`, the position sync with and without a queued sale, stream fill / cancel / expiry events,
 the stop-ACK watchdog, the 17:00 coverage slot, the intraday coverage page, the stop refresh, a stop
 that cannot be placed because the price is through it — at the failed-exit restore and at each of the
 six other stop-placing sites (s32-s38) — the daily-loss gate, `close_position(qty)` at the alpaca-py
-boundary, and — since ruling (i) — the failed-exit restore reading a FLAT broker at the 16:45 exit and
-at the stream's dead-sale path, and an UNREADABLE one (s39-s41)) and records every broker-client call
-(method + bound arguments), every Telegram page, the return value and the fake book's end state. The
-BASELINE log was recorded by running the SAME harness on the pinned main commit
+boundary, the failed-exit restore reading a FLAT broker at the 16:45 exit and at the stream's
+dead-sale path, and an UNREADABLE one (s39-s41), the coverage reconciler on a flat broker (s42) and
+— since ruling (a) — the 17:00 coverage slot on a flat broker (s43)) and records every broker-client
+call (method + bound arguments), every Telegram page, the return value and the fake book's end state.
+The BASELINE log was recorded by running the SAME harness on the pinned main commit
 (`scripts/probes/_687/capture_toggle_off_baseline.sh`). This test runs it on the current tree and
 asserts:
 
@@ -33,7 +36,7 @@ asserts:
   * the two depth-only scenarios stay inert with the toggle OFF (no broker call, no page);
   * the fake book understood every SQL statement (`_unknown_sql` empty).
 
-⚠ The baseline is PINNED to 76e2ce4b (the origin/main this change is built on), not "origin/main":
+⚠ The baseline is PINNED to 4e454395 (the origin/main this change is built on), not "origin/main":
 once a change merges, origin/main contains it and the comparison would be self-against-self. A later
 change to these paths that is unrelated will show here as an unlisted difference — re-capture the
 baseline (and re-pin) deliberately; never widen the allow-list to absorb it.
@@ -52,7 +55,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / "tests" / "_convergence_687_harness.py"
 BASELINE = ROOT / "tests" / "fixtures" / "687_toggle_off_main_baseline.json"
-PINNED_BASELINE_SHA = "76e2ce4bfb5d810ad6ded5f0f353eaa241626457"
+PINNED_BASELINE_SHA = "4e4543957c1be082ebae59b46698ba8d9420c67b"
 COMPONENTS = ("broker_calls", "pages", "result", "raised", "book_after")
 
 # The depth machinery (#687 B), merged with the toggle OFF: compared to the baseline like any other
@@ -62,55 +65,92 @@ INERT_WITH_THE_TOGGLE_OFF = {
     "s25_depth_stamp_with_the_toggle_off": None,         # a new MAGNA53 row is not stamped 'depth'
 }
 
+RULING_A = "ruling (a) 2026-10-04 — the coverage repair reads the broker before placing"
+
+# The ONE sentence both flat pages (s39, s40) now end with — ruling (a) replaced the warning that
+# the coverage repair "may re-place a stop from the books".
+_FLAT_PAGE_TAIL = (
+    "No stop placed: the broker shows no position, so there is nothing to protect. Our books still "
+    "show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by "
+    "hand if it is still open (if this was the only open position, the sync will not act). The "
+    "after-close coverage repair (17:00 / 19:00 ET) also reads the broker and will not re-place a "
+    "stop while it shows no position."
+)
+
 # ── THE ALLOW-LIST. Every exception is tied to its scenario and names the ruling. ──────────────
 # broker_calls / pages / result / raised = the exact branch value; book_after = the fields that
 # differ from the baseline book (trades) or the whole exit-order list (orders).
 ALLOWED = {
-    's39_1645_exit_sale_rejected_broker_flat': {
-        'why': "ruling (i) 2026-10-02 — a flat broker read places nothing (the 16:45 sale refused because the position is already gone; main restored a 10-sh stop on shares it did not hold)",
+    # ── the place branch now reads the broker (HELD here): one `get_position` before the stop ──
+    's19_coverage_1700_slot_genuine_gap_repair_fails': {
+        'why': RULING_A + " (the 17:00 slot's repair, broker HELD: one position read before the place; same stop, same refusal, same page as main)",
         'broker_calls': [
-            "cancel_order(account_mode='live', order_id='stop-1')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
             "get_position(account_mode='live', ticker='KOD')",
-            "close_position(account_mode='live', qty=None, ticker='KOD')",
-            "get_position(account_mode='live', ticker='KOD')",
-            "get_all_positions(account_mode='live', raise_on_error=True)",
-        ],
-        'pages': [
-            '💰 LIVE-$ ⚠️ Full exit FAILED for KOD: {"code":40410000,"message":"position does not exist"}\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books.',
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
         ],
     },
-    's40_stream_queued_sale_cancelled_broker_flat': {
-        'why': "ruling (i) 2026-10-02 — a flat broker read places nothing (the stream's dead-sale restore; main re-placed a 10-sh stop and pointed the row at it)",
+    's32_coverage_reconciler_place_through_the_price': {
+        'why': RULING_A + " (the reconciler's place branch, broker HELD: one position read before the place; ruling (iii)'s refusal → sale is unchanged after it)",
         'broker_calls': [
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "close_position(account_mode='live', qty=10, ticker='KOD')",
+        ],
+    },
+    's38_oco_cancel_unfilled_restore_through_the_price': {
+        'why': RULING_A + " (the OCO-cancel handler reaches the reconciler's place branch, broker HELD: one position read before the place; the rest as main)",
+        'broker_calls': [
+            "get_order(account_mode='live', order_id='leg-1', timeout=None)",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=2, side='sell', stop_price=60, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "close_position(account_mode='live', qty=2, ticker='KOD')",
+        ],
+    },
+    # ── a FLAT broker at the place branch: nothing placed ──
+    's42_coverage_reconciler_refused_stop_broker_flat': {
+        'why': RULING_A + " (the reconciler on a FLAT broker: the read comes first, so the stop is never sent — main sent it, had it refused as through the price, and returned 'position breached the stop. Operator decision needed' on an empty account; the branch places nothing and says the broker shows no position, /syncnow then by hand)",
+        'broker_calls': [
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
             "get_position(account_mode='live', ticker='KOD')",
             "get_all_positions(account_mode='live', raise_on_error=True)",
         ],
+        'result': "⚠️ KOD: the broker shows no position, so no stop was placed. Our records still show the trade open (10 sh) — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open.",
+    },
+    's43_coverage_1700_slot_broker_flat': {
+        'why': RULING_A + " (the 17:00 slot on a FLAT broker: main placed a 10-sh sell stop on the empty account, re-read it as covered and stayed silent; the branch places nothing, the slot's own re-check still reads the books and pages UNPROTECTED — its 'holds 10 sh' is the row, not the broker — and the row keeps no stop pointer)",
+        'broker_calls': [
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_all_positions(account_mode='live', raise_on_error=True)",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+        ],
         'pages': [
-            '💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books.',
+            "🚨 *UNPROTECTED AFTER THE CLOSE*\n• KOD: holds 10 sh, live stop covers 0 sh\n\nExtended hours are still trading, and the automatic repair above did not hold.\n`/syncnow live` re-runs the same repair now.",
         ],
         'book_after': {'trades': {'401': {'stop_order_id': None}}},
     },
-    's42_coverage_reconciler_refused_stop_broker_flat': {
-        'why': "ruling (i) 2026-10-02 — a flat broker read places nothing (ruling (iii)'s shared sale path, reached from the coverage reconciler: the stop is refused as through the price and the sale's sizing reads a flat broker; main SOLD 10 sh it did not hold at market and paged the sale; the branch sells nothing — `stop_breach_sale_skipped`, qty_source broker_flat — and returns main's pre-ruling-(iii) 'operator decision needed' line)",
-        'broker_calls': [
-            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
-            "place_stop_order(account_mode='live', client_order_id='apollo_live_magna53_KOD_1', qty=10, side='sell', stop_price=58, ticker='KOD')",
-            "get_position(account_mode='live', ticker='KOD')",
-            "get_all_positions(account_mode='live', raise_on_error=True)",
+    # ── the two flat PAGES of ruling (i): only their last sentence changes ──
+    's39_1645_exit_sale_rejected_broker_flat': {
+        'why': RULING_A + " (ruling (i)'s failed-exit flat page: the last sentence no longer warns that the repair may re-place a stop from the books — it says the repair reads the broker too; same calls, same book)",
+        'pages': [
+            '💰 LIVE-$ ⚠️ Full exit FAILED for KOD: {"code":40410000,"message":"position does not exist"}\n' + _FLAT_PAGE_TAIL,
         ],
-        'pages': [],
-        'result': "🚨 KOD: stop $58.00 is ABOVE market — position breached the stop. Operator decision needed (no auto-exit).",
-        'book_after': {'orders': []},
     },
-    's41_1645_exit_sale_rejected_broker_unreadable': {
-        'why': "ruling (i) 2026-10-02 — an unreadable broker read still restores from the books; the only difference is the positions-list read that tells it apart from a flat one (same 10-sh stop, same page as main)",
-        'broker_calls': [
-            "cancel_order(account_mode='live', order_id='stop-1')",
-            "get_position(account_mode='live', ticker='KOD')",
-            "close_position(account_mode='live', qty=None, ticker='KOD')",
-            "get_position(account_mode='live', ticker='KOD')",
-            "get_all_positions(account_mode='live', raise_on_error=True)",
-            "place_stop_order(account_mode='live', client_order_id=None, qty=10, side='sell', stop_price=58, ticker='KOD')",
+    's40_stream_queued_sale_cancelled_broker_flat': {
+        'why': RULING_A + " (ruling (i)'s stream dead-sale flat page: the same last-sentence change; same calls, same book)",
+        'pages': [
+            '💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\n' + _FLAT_PAGE_TAIL,
         ],
     },
 }
@@ -167,20 +207,45 @@ def test_the_allow_list_names_only_real_scenarios_and_says_why():
         assert set(entry) - {"why"}, f"{name}: an allow-list entry must name a component"
 
 
-def test_every_exception_from_main_is_ruling_i():
-    """The change built on this baseline is ONE ruling: #687 (i), operator 2026-10-02 — the failed-exit
-    stop restore tells a FLAT broker (place nothing) from an UNREADABLE one (the books stand in, as
-    before). Nothing else may differ. The flat scenarios carry the ruling's own words; the unreadable
-    scenario differs from main only by the confirming positions-list read and says so."""
+def test_every_exception_from_main_is_ruling_a():
+    """The change built on this baseline is ONE ruling: #687 (a), operator 2026-10-04 — the coverage
+    repair reads the broker before placing (FLAT → nothing placed; HELD / UNREADABLE → exactly as
+    main). Nothing else may differ, and each entry's shape must be the ruling's own:
+      * a scenario that reaches the place branch with the broker HELD differs from main by EXACTLY
+        one `get_position` inserted immediately before its (first) `place_stop_order` — nothing else;
+      * a FLAT scenario sends NO stop and NO sale, and its read ends in the confirming list read;
+      * ruling (i)'s two flat pages differ only in the page, which ends with the new sentence and no
+        longer warns of a re-placed stop."""
     for name, entry in ALLOWED.items():
-        assert entry["why"].startswith("ruling (i) 2026-10-02 — "), name
-    flat = [n for n, e in ALLOWED.items()
-            if e["why"].startswith("ruling (i) 2026-10-02 — a flat broker read places nothing")]
-    assert sorted(flat) == ["s39_1645_exit_sale_rejected_broker_flat",
-                            "s40_stream_queued_sale_cancelled_broker_flat",
-                            "s42_coverage_reconciler_refused_stop_broker_flat"], flat
-    for n in flat:   # a flat read places NOTHING: its last broker call is the read, never a stop or a sale
-        assert ALLOWED[n]["broker_calls"][-1].startswith("get_all_positions("), n
+        assert entry["why"].startswith(RULING_A + " ("), name
+
+    held = ["s19_coverage_1700_slot_genuine_gap_repair_fails",
+            "s32_coverage_reconciler_place_through_the_price",
+            "s38_oco_cancel_unfilled_restore_through_the_price"]
+    for n in held:
+        assert set(ALLOWED[n]) == {"why", "broker_calls"}, n
+        here = list(ALLOWED[n]["broker_calls"])
+        base = _norm("broker_calls", _BASE["scenarios"][n]["broker_calls"])
+        i = next(k for k, c in enumerate(here) if c.startswith("place_stop_order("))
+        assert here[i - 1] == "get_position(account_mode='live', ticker='KOD')", (n, here)
+        assert here[:i - 1] + here[i:] == base, (n, "more than the one read differs from main")
+
+    flat = ["s42_coverage_reconciler_refused_stop_broker_flat", "s43_coverage_1700_slot_broker_flat"]
+    for n in flat:
+        calls = ALLOWED[n]["broker_calls"]
+        assert not any(c.startswith(("place_stop_order(", "close_position(")) for c in calls), n
+        assert "get_all_positions(account_mode='live', raise_on_error=True)" in calls, n
+        base = _norm("broker_calls", _BASE["scenarios"][n]["broker_calls"])
+        assert any(c.startswith("place_stop_order(") for c in base), (n, "main placed a stop here")
+
+    pages_only = ["s39_1645_exit_sale_rejected_broker_flat",
+                  "s40_stream_queued_sale_cancelled_broker_flat"]
+    for n in pages_only:
+        assert set(ALLOWED[n]) == {"why", "pages"}, n
+        [page] = ALLOWED[n]["pages"]
+        assert page.endswith(_FLAT_PAGE_TAIL) and "may re-place" not in page, n
+
+    assert sorted(ALLOWED) == sorted(held + flat + pages_only)
 
 
 @pytest.mark.parametrize("scenario", SCENARIOS)
