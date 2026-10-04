@@ -146,6 +146,21 @@ ALLOWED = {
         ],
         'book_after': {'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}]},
     },
+    's37_stream_partial_exit_cancelled_restore_through_the_price': {
+        'why': "ruling (iii) 2026-10-02 — sell at market at the stream's partial-exit restore",
+        'broker_calls': [
+            "get_order(account_mode='live', order_id='stop-r', timeout=5)",
+            "cancel_order(account_mode='live', order_id='stop-r')",
+            "place_stop_order(account_mode='live', client_order_id=None, qty=10, side='sell', stop_price=58, ticker='KOD')",
+            "get_position(account_mode='live', ticker='KOD')",
+            "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
+            "close_position(account_mode='live', qty=10, ticker='KOD')",
+        ],
+        'pages': [
+            '💰 LIVE-$ 🚨 <b>Price already below the stop:</b> KOD\nThe stop at $58.00 could not be placed — the broker refused it because the price is already below it. Selling 10 sh at market now (Order sell-1), as the triggered stop would have.\nThe partial sale did not fill (cancelled), and the stop for the remaining shares could not be put back.\n<i>Confirms with real P&amp;L on fill.</i>',
+        ],
+        'book_after': {'trades': {'401': {'stop_order_id': None}}, 'orders': [{'exit_reason': 'stop_hit', 'id': 'sell-1', 'purpose': 'full_exit', 'qty': 10, 'status': 'accepted'}, {'exit_reason': 'partial_profit', 'id': 'sell-p', 'purpose': 'partial_exit', 'qty': 3, 'status': 'cancelled'}]},
+    },
     's38_oco_cancel_unfilled_restore_through_the_price': {
         'why': 'ruling (iii) 2026-10-02 — sell at market at the OCO-cancel handler (its re-protect runs through the coverage reconciler)',
         'broker_calls': [

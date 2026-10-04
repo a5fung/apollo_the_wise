@@ -376,3 +376,72 @@ async def test_site3_the_morning_refresh_does_not_page_no_stop_after_the_sale_fi
     assert len(_sale_pages(w)) == 1
     ran = _audits(w, "stop_refresh_ran")[0]
     assert ran["sold_at_market"] == ["KOD"] and ran["unprotected"] == [] and ran["placed"] == 0
+
+
+# ── Site 5 — the stream's partial-exit restore (a plain partial sell died unfilled) ───────────
+
+def _partial_world():
+    """10 sh; the partial reduced the stop to 7 (stop-r) and put 3 up for sale (sell-p), which died."""
+    w = World()
+    _trade(w, stop_id="stop-r")
+    _position(w, "KOD", 10, 0)
+    _bstop(w, "stop-r", "KOD", 7, 58.0)
+    _bsell(w, "sell-p", "KOD", 3, status="canceled")
+    _mirror(w, "sell-p", 401, "KOD", "partial_exit", 3, status="accepted",
+            exit_reason="partial_profit", raw={"order_class": "simple"})
+    return w
+
+
+def _partial_died():
+    return lambda: ts._handle_cancel_or_reject(_ws_order("sell-p", "KOD"), "canceled", "live")
+
+
+def _restore_failed_pages(w):
+    return [p for p in w.pages if "STOP RESTORE FAILED" in p]
+
+
+@pytest.mark.asyncio
+async def test_site5_a_restore_refused_through_the_price_sells_the_whole_rest_once():
+    w = _partial_world()
+    _breach(w)
+    await _drive(w, _partial_died())
+    assert _sales(w) == [10], w.calls             # the cancelled reduced stop no longer holds 7
+    assert len(_sale_pages(w)) == 1 and _restore_failed_pages(w) == [], w.pages
+    assert w.trades[401]["stop_order_id"] is None  # no dead pointer left for the sync
+    assert _full_exit_rows(w)[0]["exit_reason"] == "stop_hit"
+
+
+@pytest.mark.asyncio
+async def test_site5_the_just_cancelled_stop_still_listed_live_is_not_counted_as_holding():
+    """Alpaca acknowledges a cancel before it settles: for a moment the reduced stop can still be
+    listed `new`. It is the stop this path cancelled, so its 7 shares are free to sell."""
+    from agents.market_intelligence.broker import alpaca_client as ac
+    w = _partial_world()
+    _breach(w)
+
+    async def _cancel_acked_not_settled():
+        async def _ack(order_id, account_mode=None):
+            w.calls.append({"method": "cancel_order", "args": {"order_id": order_id}})
+            return True                                        # the order stays listed `new`
+        ac.cancel_order = _ack                                 # restored by the harness on exit
+
+    await _drive(w, _cancel_acked_not_settled, _partial_died())
+    assert _sales(w) == [10], w.calls
+
+
+@pytest.mark.asyncio
+async def test_site5_any_other_refusal_keeps_todays_page_and_sells_nothing():
+    w = _partial_world()
+    w.place_errors = [Exception(OTHER)]
+    await _drive(w, _partial_died())
+    assert _sales(w) == [] and len(_restore_failed_pages(w)) == 1, w.pages
+    assert w.trades[401]["stop_order_id"] == "stop-r"   # main leaves it; the sync heals it
+
+
+@pytest.mark.asyncio
+async def test_site5_a_failed_sale_still_pages_restore_failed():
+    w = _partial_world()
+    _breach(w)
+    w.close_errors = [Exception("broker down")]
+    await _drive(w, _partial_died())
+    assert _sale_pages(w) == [] and len(_restore_failed_pages(w)) == 1, w.pages

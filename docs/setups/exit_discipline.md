@@ -404,6 +404,11 @@ The sites:
    `stop_ack_breach_sold_at_market` (summary `"{ticker} #{trade_id}: …"`, added to the once-per-day dedup set, so
    the next 30-second tick does not act again), no CRITICAL page. The sale fails → today's `stop_ack_remediation_failed`
    + "CRITICAL: POSITION NAKED" page. A documented safeguard: `docs/setups/safeguards.md` change log 2026-10-03.
+5. **The stream's partial-exit restore** (`trade_stream._handle_cancel_or_reject` §3, a plain partial sell died
+   unfilled and the full-size stop cannot be put back). The reduced stop this path just cancelled is excluded from
+   the broker's held count (Alpaca can still list it `new` for a moment). Sold → the pointer (that cancelled
+   stop) is nulled, so the 16:05/21:00 sync does not page NAKED on it; no "STOP RESTORE FAILED" page. No lock —
+   as ruling (3)'s full-exit sibling in the same handler. Nothing free / the sale fails → today's page.
 6. **The OCO-cancel handler** (`trade_stream._handle_oco_parent_cancel`): its re-protect IS the reconciler, so it
    sells through site 1; its page carries the reconciler's line. (Known wording: the partial-exit abort page
    reads "No shares sold." above the reconciler's "SOLD AT MARKET" line — the partial sold nothing; the line
