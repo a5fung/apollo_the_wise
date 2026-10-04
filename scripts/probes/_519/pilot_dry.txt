@@ -1,0 +1,25 @@
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (28.92) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (36.08) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (48.72) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (48.96) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (22.88) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (32.76) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (10.14) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (10.50) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (9.92) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (9.98) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (22.40) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (23.45) on a closed trade — using risk_dollars_actual; investigate the divergence.
+==============================================================================
+#519 CHART PILOT -- does the chart move the judge's call the right way?
+
+POPULATION -- closed LIVE trades (realized R = total_pnl / risk actually placed)
+  closed live trades, all setups: 32  [magna53:32]
+  MAGNA53: 32  -> left out: 0 with P&L distorted by a system bug (pnl_attribution set), 0 with no usable risk figure
+  SCORED POPULATION: 32 trades
+  alert dates: 2026-07-06 .. 2026-09-14
+  R: mean -0.33  median -1.00  worst -1.20  best +3.42
+  8 winners (R>0), 24 losers (R<0), 0 break-even; 3 big winners (R>=2), 18 big losers (R<=-1)
+  SKIPPED before any judge call: 0 of 32
+  GRADABLE: 32 trades
+  alert floor tier of the gradable: {'HIGH': 28, 'MODERATE': 4}
+
+COST ESTIMATE (before any judge call): 64 calls on claude-opus-5-5 ($4/$20 per Mtok in/out, from pricing_for)
+  expected ~$1.97  [~262,800 input tokens + ~715 output/call, the measured level]
+  worst case $2.97  [every call fills its 1500-token ceiling]  -- the abort limit $5.00 is checked against the EXPECTED figure; actual spend is also capped at it as the run goes
+DRY RUN -- no judge call made, nothing spent.
+==============================================================================

@@ -1,0 +1,50 @@
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (28.92) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (36.08) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (48.72) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (48.96) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (22.88) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (32.76) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (10.14) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (10.50) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (9.92) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (9.98) on a closed trade — using risk_dollars_actual; investigate the divergence.
+WARNING agents.market_intelligence.kill_scale_bands: kill_scale_bands: risk_dollars_actual (22.40) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (23.45) on a closed trade — using risk_dollars_actual; investigate the divergence.
+==============================================================================
+#519 CHART PILOT -- does the chart move the judge's call the right way?
+
+POPULATION -- closed LIVE trades (realized R = total_pnl / risk actually placed)
+  closed live trades, all setups: 32  [magna53:32]
+  MAGNA53: 32  -> left out: 0 with P&L distorted by a system bug (pnl_attribution set), 0 with no usable risk figure
+  SCORED POPULATION: 32 trades
+  alert dates: 2026-07-06 .. 2026-09-14
+  R: mean -0.33  median -1.00  worst -1.20  best +3.42
+  8 winners (R>0), 24 losers (R<0), 0 break-even; 3 big winners (R>=2), 18 big losers (R<=-1)
+  SKIPPED before any judge call: 0 of 32
+  GRADABLE: 32 trades
+  alert floor tier of the gradable: {'HIGH': 28, 'MODERATE': 4}
+
+COST ESTIMATE (before any judge call): 64 calls on claude-opus-5-5 ($4/$20 per Mtok in/out, from pricing_for)
+  expected ~$1.97  [~262,800 input tokens + ~715 output/call, the measured level]
+  worst case $2.97  [every call fills its 1500-token ceiling]  -- the abort limit $5.00 is checked against the EXPECTED figure; actual spend is also capped at it as the run goes
+WARNING shared.llm_client: llm_client: adopted request rewrite for claude-opus-5-5 — forced_tool_to_structured_output (API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011CfgJgLsRp4ZXbL6hxwmD4'})
+
+==============================================================================
+RESULT -- arm C (instruction + chart) vs arm B (instruction only), one run each
+  trades judged: 32   judge returned nothing on at least one arm: 0
+  tier mix  B: {'HIGH': 30, 'MODERATE': 2}   C: {'HIGH': 28, 'MODERATE': 4}
+
+TIER MOVES (primary) -- right side = a winner moved up or a loser moved down
+  all trades             n=32  graded=32  changed=2   (up 0, down 2)  right side=2  wrong side=0
+  big winners (R>=2)     n=3   graded=3   changed=0   (up 0, down 0)  right side=0  wrong side=0
+  big losers (R<=-1)     n=18  graded=18  changed=2   (up 0, down 2)  right side=2  wrong side=0
+
+GRADE MOVES (secondary -- routine < strong < game_changer; 'mna' unranked)
+  all trades             n=32  graded=32  changed=6   (up 0, down 6)  right side=5  wrong side=1
+  big winners (R>=2)     n=3   graded=3   changed=0   (up 0, down 0)  right side=0  wrong side=0
+  big losers (R<=-1)     n=18  graded=18  changed=3   (up 0, down 3)  right side=3  wrong side=0
+
+VERDICT (DIRECTIONAL ONLY, n=32 trades, one judge run per arm): chart NO SIGNAL -- it changed 2 of 32 calls; 2 moved toward the right side, 0 toward the wrong side; coin-flip noise alone gives a split at least this uneven 50% of the time.
+
+SPEND: estimated $1.97 (worst $2.97), ACTUAL $2.12 over 64 calls (362,458 in / 33,267 out tokens)  [use this to size the full run]
+
+CHANGED CALLS (tier) -- for the operator to look at
+  CRCL   2026-07-10  R=-1.01  B=HIGH -> C=MODERATE  [right]
+  QBTS   2026-07-27  R=-1.00  B=HIGH -> C=MODERATE  [right]
+  charts of the changed calls saved to /app/_519_pilot/ (inside the container)
+SUMMARY_JSON {"tier": {"all": {"trades": 32, "graded": 32, "changed": 2, "up": 0, "down": 2, "right": 2, "wrong": 0, "unscored": 0}, "big_winners": {"trades": 3, "graded": 3, "changed": 0, "up": 0, "down": 0, "right": 0, "wrong": 0, "unscored": 0}, "big_losers": {"trades": 18, "graded": 18, "changed": 2, "up": 0, "down": 2, "right": 2, "wrong": 0, "unscored": 0}, "p_value": 0.5, "verdict": "no signal"}, "grade": {"all": {"trades": 32, "graded": 32, "changed": 6, "up": 0, "down": 6, "right": 5, "wrong": 1, "unscored": 0}, "big_winners": {"trades": 3, "graded": 3, "changed": 0, "up": 0, "down": 0, "right": 0, "wrong": 0, "unscored": 0}, "big_losers": {"trades": 18, "graded": 18, "changed": 3, "up": 0, "down": 3, "right": 3, "wrong": 0, "unscored": 0}, "p_value": 0.21875, "verdict": "helps"}, "n_graded": 32, "failed": 0, "spend_usd": 2.1152, "calls": 64}
+==============================================================================
