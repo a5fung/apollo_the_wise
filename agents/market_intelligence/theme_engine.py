@@ -4794,6 +4794,13 @@ async def _assign_uncovered_to_themes(
     _rh_judged: set = rehome_state.setdefault("judged", set())
     _rh_blocked: set = rehome_state.setdefault("blocked", set())
 
+    async def _rh_refuse(kind: str, ticker: str, theme_name: str, why: str, **extra) -> None:
+        """A wall refused a re-homing move: remember it, count it, audit `rehome_skipped_<kind>`."""
+        _rh_blocked.add(ticker)
+        _rh_skipped[kind] += 1
+        await log_audit_event(f"rehome_skipped_{kind}", f"{ticker} → '{theme_name}' {why}",
+                              json.dumps({"ticker": ticker, "theme": theme_name, **extra}))
+
     from agents.market_intelligence.universe import TICKER_DESC
 
     client = _get_anthropic_client()
@@ -4980,23 +4987,13 @@ async def _assign_uncovered_to_themes(
             # per_theme_cap admissions into one theme per run (counted on apply, below) ──
             if is_rehome:
                 if (theme.get("stage") or "") == "Fading":
-                    _rh_blocked.add(ticker)
-                    _rh_skipped["fading_target"] += 1
-                    await log_audit_event(
-                        "rehome_skipped_fading_target",
-                        f"{ticker} → '{theme_name}' refused: a re-homing move never targets a Fading theme",
-                        json.dumps({"ticker": ticker, "theme": theme_name}),
-                    )
+                    await _rh_refuse("fading_target", ticker, theme_name,
+                                     "refused: a re-homing move never targets a Fading theme")
                     continue
                 if per_theme_cap is not None and _rh_per_theme[theme_name] >= per_theme_cap:
-                    _rh_blocked.add(ticker)
-                    _rh_skipped["cap"] += 1
-                    await log_audit_event(
-                        "rehome_skipped_cap",
-                        f"{ticker} → '{theme_name}' deferred: {per_theme_cap} re-homing admissions "
-                        f"already landed on this theme tonight",
-                        json.dumps({"ticker": ticker, "theme": theme_name, "cap": per_theme_cap}),
-                    )
+                    await _rh_refuse("cap", ticker, theme_name,
+                                     f"deferred: {per_theme_cap} re-homing admissions already "
+                                     f"landed on this theme tonight", cap=per_theme_cap)
                     continue
 
             # ── Membership test (2026-09-13, OPERATOR-SIGNED): the tape decides where it can ──
@@ -5049,15 +5046,11 @@ async def _assign_uncovered_to_themes(
                 if is_rehome:
                     # the tape is the ONLY trigger for a move — an unreadable pair is refused,
                     # never deferred to the sector label (#491 re-homing pass, 2026-10-03)
-                    _rh_blocked.add(ticker)
-                    _rh_skipped["unjudgeable"] += 1
-                    await log_audit_event(
-                        "rehome_skipped_unjudgeable",
-                        f"{ticker} → '{theme_name}' refused: the tape cannot judge the pair "
-                        f"({cv.reason if cv else 'no context'}) — no sector fallback for a re-homing move",
-                        json.dumps({"ticker": ticker, "theme": theme_name,
-                                    "reason": cv.reason if cv else "no_context"}),
-                    )
+                    await _rh_refuse("unjudgeable", ticker, theme_name,
+                                     f"refused: the tape cannot judge the pair "
+                                     f"({cv.reason if cv else 'no context'}) — no sector fallback "
+                                     f"for a re-homing move",
+                                     reason=cv.reason if cv else "no_context")
                     continue
                 if attempt == 1 and cv is not None and cv.reason == "thin_basket":
                     # Not enough MEMBERS yet — maybe because this run's other proposals to the
@@ -5906,11 +5899,19 @@ def _comove_verdict(ticker: str, member_tickers: "list[str] | tuple[str, ...]",
         return ComoveVerdict(admit=None, corr=None, overlap=0, basket_n=with_history, reason="thin_basket")
     corr, overlap, used = mac.correlate(vec, baskets[0], exclude=t)
     if corr is None:
-        reason = "thin_basket" if used < mac.BELONGING_MIN_BASKET_MEMBERS else "no_history"
-        return ComoveVerdict(admit=None, corr=None, overlap=overlap, basket_n=used, reason=reason)
-    admit = corr >= ASSIGN_COMOVE_BAR
-    return ComoveVerdict(admit=admit, corr=round(corr, 4), overlap=overlap, basket_n=used,
-                         reason="comoves" if admit else "below_bar")
+        return ComoveVerdict(admit=None, corr=None, overlap=overlap, basket_n=used,
+                             reason=_comove_reason(corr, used))
+    return ComoveVerdict(admit=corr >= ASSIGN_COMOVE_BAR, corr=round(corr, 4), overlap=overlap,
+                         basket_n=used, reason=_comove_reason(corr, used))
+
+
+def _comove_reason(corr: float | None, used: int) -> str:
+    """The one reading of a `mac.correlate` result, shared by the assignment pair test and the
+    re-homing pass: unjudgeable → thin_basket (too few members with history) / no_history;
+    judged → comoves at >= ASSIGN_COMOVE_BAR, else below_bar."""
+    if corr is None:
+        return "thin_basket" if used < mac.BELONGING_MIN_BASKET_MEMBERS else "no_history"
+    return "comoves" if corr >= ASSIGN_COMOVE_BAR else "below_bar"
 
 
 def _sector_identity_counterfactual(stock_sector: str | None, known_sectors: list[str]) -> str:
@@ -6099,9 +6100,7 @@ def _rehome_pair_tie(ticker: str, basket: "mac.ThemeBasket | None",
     if basket is None:
         return None, "thin_basket", 0
     corr, _overlap, used = mac.correlate(vec, basket, exclude=t)
-    if corr is None:
-        return None, ("thin_basket" if used < mac.BELONGING_MIN_BASKET_MEMBERS else "no_history"), used
-    return round(corr, 4), ("comoves" if corr >= ASSIGN_COMOVE_BAR else "below_bar"), used
+    return (None if corr is None else round(corr, 4)), _comove_reason(corr, used), used
 
 
 def _rehome_baskets(themes: list[dict], ctx: ComoveContext) -> dict[str, "mac.ThemeBasket"]:
