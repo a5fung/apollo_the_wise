@@ -15061,3 +15061,36 @@ reviews:
       2. If it behaved, CLOSE #597 with this row as the evidence in docs/task_closes.md.
       3. If it did NOT behave, that is a live-money defect and outranks whatever else is
          planned that day.
+
+  - review_id: chart_pilot_rerun_60_closed_trades
+    kind: accrual
+    title: "#519 — re-run the cheap chart pilot once ~60 live trades have closed"
+    question: |
+      The 2026-10-03 pilot (scripts/probes/_519/chart_pilot.py, $2.12) judged the 32 closed live
+      MAGNA53 trades with and without the chart: the chart changed the tier on 2 of 32 (both losers
+      moved down — right side), the grade on 6 (5 right, 1 wrong), never touched a big winner.
+      Directional only. His word: "Aligned, let's remember to check chart again" — re-run the SAME
+      pilot when the closed population roughly doubles, then decide on the $42 full run.
+    # Counts the pilot's own population: closed live MAGNA53 trades with no system-bug P&L flag.
+    predicate_sql: >-
+      SELECT count(*) FROM mi_live_trades
+      WHERE account_mode = 'live' AND status = 'closed' AND signal_type = 'magna53'
+        AND pnl_attribution IS NULL;
+    discriminates_on: [mi_live_trades.account_mode, mi_live_trades.status, mi_live_trades.signal_type, mi_live_trades.pnl_attribution]
+    can_fire:
+      predicate_runs: "2026-10-03 - run against prod, returns 32 (the pilot's own scored population, same filter)."
+      nonzero_possible: "Already nonzero (32); it grows with every closed live trade (32 closes 07-06..09-14, about 3 a week)."
+      lane_live: "MAGNA53 EP is the live setup; trades open and close every week the market runs (risk 2% per trade since 10-03, #688)."
+      threshold_vs_observed: "60 against 32 today — roughly double, so the change counts roughly double; at ~3 closes a week that is about 9-10 weeks out."
+      era_scoped: "All closed live MAGNA53 trades — the pilot scores each on its own realized R, so no era split is needed for a directional read."
+      population_actionable: "The action re-runs the pilot over exactly this population; the pilot reads every row it needs itself."
+      instrument_trusted: "mi_live_trades is the trade ledger; the pilot's dry run on 10-03 read all 32 rows with 0 skipped."
+    threshold: 60
+    earliest_review_date: 2026-11-15
+    status: pending
+    action_when_ready: |
+      1. Dry run, then the paid run, of scripts/probes/_519/chart_pilot.py on prod (≈ $4 at 60 trades).
+      2. If the chart's changed calls still lean the right way with enough moves to read, put the $42
+         full run (scripts/eval_chart_judge.py — switch its raw client to make_async_anthropic first)
+         to him; otherwise keep chart reading parked.
+    added_on: 2026-10-03
