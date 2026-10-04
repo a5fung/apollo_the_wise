@@ -2511,15 +2511,26 @@ async def update_stop(
             # the same context). Nothing free / the sale fails / any other refusal → the NAKED
             # path below, unchanged.
             if _is_stop_above_market(e2):
-                sold = await _sell_at_market_for_refused_stop(
-                    trade_id, ticker, account_mode, stop_price=float(new_stop_price),
-                    site="order_manager.update_stop", error=str(e2),
-                    exclude_ids=(old_stop_id,) if (old_stop_id and cancel_ok) else (),
-                    context=(f"It was a stop raise (from ${old_stop_price:.2f}) — the trail would "
-                             f"have triggered at the new level."
-                             if old_stop_price is not None
-                             and new_stop_price > old_stop_price + 0.01 else None),
-                )
+                try:
+                    sold = await _sell_at_market_for_refused_stop(
+                        trade_id, ticker, account_mode, stop_price=float(new_stop_price),
+                        site="order_manager.update_stop", error=str(e2),
+                        exclude_ids=(old_stop_id,) if (old_stop_id and cancel_ok) else (),
+                        context=(f"It was a stop raise (from ${old_stop_price:.2f}) — the trail would "
+                                 f"have triggered at the new level."
+                                 if old_stop_price is not None
+                                 and new_stop_price > old_stop_price + 0.01 else None),
+                    )
+                except Exception as sale_err:
+                    # The sale path itself raised (e.g. its order-row insert failed AFTER the broker
+                    # accepted the sale). It must never escape into the 16:45 trail loop, which has
+                    # no per-trade try and would skip every later trade: log it loudly and fall
+                    # through to the NAKED path below, which pages him to check the broker.
+                    logger.error(
+                        "update_stop %s: the market sale after a refused stop raised (%s) — the "
+                        "broker may hold a sale our books lack; paging through the naked path",
+                        ticker, sale_err, exc_info=True)
+                    sold = False
                 if sold:
                     # Same pointer state as the naked path: the cancelled stop's id must not stay
                     # behind, or the 16:05/21:00 sync reads it as a dead stop and pages NAKED (#401).

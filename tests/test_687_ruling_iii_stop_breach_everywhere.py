@@ -648,3 +648,20 @@ async def test_dedupe_the_shared_path_itself_sizes_zero_in_each_state():
 
     [_, _, out] = await _drive(w, _ruling3_sale(), _filled, _call)
     assert out is None and _sales(w) == [None, 10]
+
+
+
+@pytest.mark.asyncio
+async def test_site3_a_raising_sale_path_never_escapes_update_stop(monkeypatch):
+    """2026-10-03 review fix: if the shared sale path RAISES (its order-row insert failed after the
+    broker accepted), update_stop must not raise into the 16:45 loop (no per-trade try there): it
+    logs and takes today's NAKED path, which pages him."""
+    w = _raise_world()
+    _breach(w)
+
+    async def _boom(*a, **k):
+        raise RuntimeError("mi_live_orders insert failed")
+    monkeypatch.setattr(om, "_sell_at_market_for_refused_stop", _boom)
+    [out] = await _drive(w, _raise())
+    assert out is False
+    assert len(_naked_pages(w)) == 1
