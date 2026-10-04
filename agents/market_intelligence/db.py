@@ -16024,18 +16024,51 @@ async def get_globally_banned_tickers(
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # #491 re-homing pass (2026-10-03): a MOVE writes a (ticker, old home) cooldown so the
+        # name cannot bounce back for 14 days — a membership decision, not a wrong-membership
+        # verdict. Those rows carry the `rehome:` reason prefix and are EXCLUDED here, or a
+        # cohort that moved out of three churned homes would be globally banned from its
+        # destination by its own moves (theme_engine.REHOME_REASON_PREFIX; SSoT theme_engine.md).
         rows = await conn.fetch(
             """
             SELECT ticker, array_agg(DISTINCT theme_name) AS themes
             FROM mi_validation_cooldowns
             WHERE NOT bypassed
               AND removed_at >= NOW() - ($1 || ' days')::INTERVAL
+              AND (removal_reason IS NULL OR removal_reason NOT LIKE 'rehome:%')
             GROUP BY ticker
             HAVING COUNT(DISTINCT theme_name) >= $2
             """,
             str(lookback_days), min_distinct_themes,
         )
     return {r["ticker"]: list(r["themes"]) for r in rows}
+
+
+REHOME_JUDGED_EVENT = "theme_rehome_judged"
+
+
+async def get_recent_rehome_judged_tickers(days: int = 14) -> set[str]:
+    """#491 re-homing pass — the names the pass JUDGED (moved or stayed) in the last `days`,
+    read from its own `theme_rehome_judged` audit rows (summary starts with the ticker). One
+    judgement per name per window: without this a member of a thin 2-member home whose tape
+    reads >= the bar somewhere would be re-offered to the assignment judgement every night
+    until the verdict flipped. Read-only; the pass fails OPEN on an error (re-offers, never
+    skips the run) and says so."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT summary FROM mi_audit_log
+            WHERE event_type = $1 AND created_at >= NOW() - ($2 || ' days')::INTERVAL
+            """,
+            REHOME_JUDGED_EVENT, str(days),
+        )
+    out: set[str] = set()
+    for r in rows:
+        head = (r["summary"] or "").split()
+        if head:
+            out.add(head[0].upper())
+    return out
 
 
 async def bypass_cooldown(ticker: str, theme_name: str | None = None, reason: str = "") -> int:

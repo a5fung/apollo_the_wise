@@ -1,10 +1,19 @@
 # #491 — Pivot migration: how a stock whose business changed LEAVES its legacy theme and JOINS the theme that matches its current driver (proposal, 2026-10-03)
 
-**Owner**: `docs/architecture/theme_engine.md`. This is a finding and a PROPOSAL, not an owner and not a
-change. **Status: DESIGN + a read-only probe. Nothing was built into the engine, no toggle moved, no table
-was written, no theme behaviour changed.** The probe (§3) is written and tested but **PENDING its run on
-prod** — every number in this document that is dated tonight is the main session's read of the 2026-10-02
-board, not a measurement of mine; everything else is code at `origin/main` `6c6ca247` or a dated prior read.
+**Owner**: `docs/architecture/theme_engine.md`. This is a finding and a PROPOSAL, not an owner.
+
+> **RULED 2026-10-03 — "Rec on all" with ONE exception: D2 (the RS-free orphan reach) was ruled NO** (themes form
+> from strength; an orphan rejoins when its RS returns or a Lane-2 seed names it). **D1, D3, D4, D5, D6 as
+> recommended.** The probe (§3) ran on prod 2026-10-03: all 7 pivoted miners co-move with the AI-compute theme at
+> 0.57–0.75 (output in `scripts/probes/_491/`). **The pass is BUILT on branch `491-rehome-pass` — the live record
+> is `docs/architecture/theme_engine.md` (top-level bullet "#491 RE-HOMING PASS" + change log 2026-10-03, which
+> carries the pre-registration); where this document and that one differ, the SSoT wins.** Feeder (ii) below is
+> therefore design history, not a mechanism.
+
+**Status when written (2026-10-03, before the ruling): DESIGN + a read-only probe. Nothing was built into the
+engine, no toggle moved, no table was written, no theme behaviour changed.** The probe (§3) was written and tested
+but PENDING its run on prod at the time — every number in the body dated "tonight" is the main session's read of
+the 2026-10-02 board; everything else is code at `origin/main` `6c6ca247` or a dated prior read.
 
 **The decision it serves — his words, 2026-08-04:** *"really this is a theme change for the stocks, not a
 similar theme merge. The crypto miners have undergone strategy change, convert their focus on crypto mining

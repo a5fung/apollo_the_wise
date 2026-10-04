@@ -191,7 +191,7 @@ def _stock(tk, sector, monkeypatch, desc="a bitcoin miner"):
 def _run(stocks, themes, sbt, monkeypatch, proposals, comove_ctx):
     events = _quiet_infra(monkeypatch)
 
-    async def _validate_ok(name, tickers, changelog, protected=None):
+    async def _validate_ok(name, tickers, changelog, protected=None, thesis=None, **kw):
         return tickers
 
     monkeypatch.setattr(te, "_validate_theme_membership", _validate_ok)

@@ -73,6 +73,7 @@ from agents.market_intelligence.db import (
     get_theme_parent_pass_enabled,
     get_seeded_assignment_tickers, latest_complete_score_date_sql,
     record_theme_rename, THEME_RENAME_MECHANISM_MASS_FLAG,
+    get_recent_rehome_judged_tickers, REHOME_JUDGED_EVENT,
 )
 # ADR 0025 (#274) — theme fragmentation controls, behind THEME_MERGE_ARM (default OFF).
 # Arm A (dissolve-on-flagged-pair) + Arm B (thesis-coherence merge) both check
@@ -4181,7 +4182,11 @@ def _assignment_stock_line(s: dict) -> str:
     desc = s.get("description") or TICKER_DESC.get(ticker, "")
     rs = s.get("rs_composite")
     rs_part = f"RS {rs:.0f}, " if rs is not None else ""
-    return f"- {ticker} ({rs_part}sector: {s.get('sector', 'Unknown')} — {desc})"
+    # #491 re-homing pass (2026-10-03): a candidate's current home + tape evidence rides on ITS
+    # line only — set by `_rehome_through_funnel`, never by the nightly pool or the EP path, so
+    # every other line (and the prompt body, a scoring input) is byte-identical.
+    note = f" [{s['_rehome_note']}]" if s.get("_rehome_note") else ""
+    return f"- {ticker} ({rs_part}sector: {s.get('sector', 'Unknown')} — {desc}){note}"
 
 
 def _assignment_theme_line(t: dict) -> str:
@@ -4753,6 +4758,9 @@ async def _assign_uncovered_to_themes(
     cooldown_set: set[tuple[str, str]] | None = None,
     protected: set[tuple[str, str]] | None = None,
     comove_ctx: ComoveContext | None = None,
+    rehome: "dict[str, RehomeCandidate] | None" = None,
+    per_theme_cap: int | None = None,
+    rehome_state: dict | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """
     Ask Claude to assign uncovered stocks to existing themes where they clearly fit.
@@ -4763,9 +4771,28 @@ async def _assign_uncovered_to_themes(
     comove_ctx: the run's price context (2026-09-13). With it, each proposed pair is judged by
         market-adjusted co-movement at ASSIGN_COMOVE_BAR; a pair the tape cannot judge — and
         every pair when it is None — goes through today's sector test (`_sector_identity_gate`).
+    rehome / per_theme_cap / rehome_state (#491 re-homing pass, 2026-10-03): the names in
+        `rehome` are RE-HOMING candidates — a proposal for one is additionally refused when the
+        target is Fading, when `per_theme_cap` admissions have already landed on that theme this
+        run (counted on APPLY, so the two-pass deferral cannot double-count), or when the tape
+        cannot judge the pair (NO sector fallback: the tape is the only trigger for a move).
+        `rehome_state` collects the skip counters + per-theme counts across calls. All three
+        None = byte-identical to the pre-2026-10-03 funnel.
     """
     if not uncovered_stocks or not existing_themes:
         return uncovered_stocks, []
+    rehome = rehome or {}
+    if rehome_state is None:
+        rehome_state = {}
+    from collections import Counter as _Counter
+    _rh_per_theme: dict = rehome_state.setdefault("per_theme", _Counter())
+    _rh_skipped: dict = rehome_state.setdefault("skipped", _Counter())
+    # Which re-homing names the model ACTUALLY judged (their batch returned proposals) and which a
+    # wall refused before apply (Fading / cap / unreadable pair / cooldown / exclusion). The 14-day
+    # re-judge memory is written only for judged-minus-refused: a cap-deferred name waits a night, a
+    # name whose batch failed is not frozen as "stays" for two weeks.
+    _rh_judged: set = rehome_state.setdefault("judged", set())
+    _rh_blocked: set = rehome_state.setdefault("blocked", set())
 
     from agents.market_intelligence.universe import TICKER_DESC
 
@@ -4835,6 +4862,8 @@ async def _assign_uncovered_to_themes(
                 client, batch, shared_prefix, cooldown_note,
                 advisor_state, batch_no, n_batches, len(uncovered_stocks),
             )
+            if rehome:
+                _rh_judged.update(s["ticker"] for s in batch if s["ticker"] in rehome)
         except Exception as e:
             # #273: a credit-exhaustion BadRequestError is an APIError subclass, so
             # it would otherwise be MISLABELED transient and retry forever silently.
@@ -4933,6 +4962,7 @@ async def _assign_uncovered_to_themes(
             # Validate ticker is in uncovered pool
             if ticker not in {s["ticker"] for s in uncovered_stocks}:
                 continue
+            is_rehome = ticker in rehome   # #491 re-homing candidate (2026-10-03)
 
             # Honor persistent exclusions — uses fuzzy match so renames don't bypass it
             if theme_exclusions and ticker in _get_excluded_tickers_for_theme(theme_name, theme_exclusions):
@@ -4942,7 +4972,32 @@ async def _assign_uncovered_to_themes(
                     f"{ticker} → '{theme_name}' blocked: persistent exclusion",
                     json.dumps({"ticker": ticker, "theme": theme_name}),
                 )
+                if is_rehome:
+                    _rh_blocked.add(ticker)
                 continue
+
+            # ── #491 re-homing candidates (2026-10-03): never INTO a Fading theme; at most
+            # per_theme_cap admissions into one theme per run (counted on apply, below) ──
+            if is_rehome:
+                if (theme.get("stage") or "") == "Fading":
+                    _rh_blocked.add(ticker)
+                    _rh_skipped["fading_target"] += 1
+                    await log_audit_event(
+                        "rehome_skipped_fading_target",
+                        f"{ticker} → '{theme_name}' refused: a re-homing move never targets a Fading theme",
+                        json.dumps({"ticker": ticker, "theme": theme_name}),
+                    )
+                    continue
+                if per_theme_cap is not None and _rh_per_theme[theme_name] >= per_theme_cap:
+                    _rh_blocked.add(ticker)
+                    _rh_skipped["cap"] += 1
+                    await log_audit_event(
+                        "rehome_skipped_cap",
+                        f"{ticker} → '{theme_name}' deferred: {per_theme_cap} re-homing admissions "
+                        f"already landed on this theme tonight",
+                        json.dumps({"ticker": ticker, "theme": theme_name, "cap": per_theme_cap}),
+                    )
+                    continue
 
             # ── Membership test (2026-09-13, OPERATOR-SIGNED): the tape decides where it can ──
             # Market-adjusted co-movement of the candidate with the theme's members over the
@@ -4991,6 +5046,19 @@ async def _assign_uncovered_to_themes(
                         json.dumps(cv_detail),
                     )
             else:
+                if is_rehome:
+                    # the tape is the ONLY trigger for a move — an unreadable pair is refused,
+                    # never deferred to the sector label (#491 re-homing pass, 2026-10-03)
+                    _rh_blocked.add(ticker)
+                    _rh_skipped["unjudgeable"] += 1
+                    await log_audit_event(
+                        "rehome_skipped_unjudgeable",
+                        f"{ticker} → '{theme_name}' refused: the tape cannot judge the pair "
+                        f"({cv.reason if cv else 'no context'}) — no sector fallback for a re-homing move",
+                        json.dumps({"ticker": ticker, "theme": theme_name,
+                                    "reason": cv.reason if cv else "no_context"}),
+                    )
+                    continue
                 if attempt == 1 and cv is not None and cv.reason == "thin_basket":
                     # Not enough MEMBERS yet — maybe because this run's other proposals to the
                     # same theme are still in the queue. Judge it again after they have landed.
@@ -5013,6 +5081,8 @@ async def _assign_uncovered_to_themes(
                     summary=f"Cooldown prevented {ticker} → '{theme_name}'",
                     detail="Claude ignored cooldown constraint — hard filter applied",
                 )
+                if is_rehome:
+                    _rh_blocked.add(ticker)
                 continue
 
             # Apply assignment
@@ -5020,6 +5090,8 @@ async def _assign_uncovered_to_themes(
                 theme["tickers"] = []
             if ticker not in theme["tickers"]:
                 theme["tickers"].append(ticker)
+                if is_rehome:
+                    _rh_per_theme[theme_name] += 1   # the per-theme cap counts landed admissions only
             assigned_tickers.add(ticker)
             changelog.append({
                 "type": "ticker_assigned",
@@ -5068,7 +5140,14 @@ async def _assign_uncovered_to_themes(
             if not newly_added:
                 continue
             # Run membership validation (THEME_MODEL) on just the new additions in context of this theme
-            validated = await _validate_theme_membership(theme["name"], theme.get("tickers") or [], changelog, protected=protected)
+            # #368's thesis-aware rule reached rescore, birth and Arm-B on 2026-08-04 and MISSED this
+            # fourth caller, which kept judging a new member's static description against the theme
+            # NAME alone — the 7/27 WULF/CORZ eviction class, sitting on the re-homing pass's critical
+            # path (a converted miner lands in 'Emerging AI Compute…' and is evicted the same run on
+            # "bitcoin miner"). Enforcing the signed rule here (2026-10-03), not a new criterion:
+            # SSoT docs/architecture/theme_engine.md "Thesis-aware since #368".
+            validated = await _validate_theme_membership(theme["name"], theme.get("tickers") or [], changelog,
+                                                         protected=protected, thesis=theme.get("description"))
             removed = set(theme.get("tickers") or []) - set(validated)
             if removed:
                 logger.info(f"Post-assignment validation removed {removed} from '{theme['name']}'")
@@ -5895,6 +5974,471 @@ def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict],
         logger.info(f"Theme '{theme['name']}': dropped sector outliers {dropped}")
 
     return {**theme, "tickers": clean_tickers}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+# RE-HOMING PASS — custody by the tape (#491, 2026-10-03, OPERATOR-SIGNED "Rec on all";
+#  SSoT: docs/architecture/theme_engine.md change log 2026-10-03; design:
+#  docs/analysis/491_pivot_migration_proposal_2026-10-03.md §2)
+#
+# THE GAP. A stock whose business pivoted (the ex-bitcoin-miners now selling AI compute) had
+# no way to LEAVE its legacy theme: a covered member is never offered to another theme
+# (covered-exclusivity, run_theme_engine Step 2), and the only exits were an RS prune, a
+# validation removal, a strip, the 2-theme cap or the theme dying. Measured on prod
+# 2026-10-03: all 7 pivoted miners co-move with 'Emerging AI Compute & Cloud Infrastructure
+# Platforms' at 0.57-0.75 while 2 sat in a 2-stock Fading miners theme they could not leave.
+#
+# THE VERB. A nightly pass over the standing board, AFTER the carryforward strip and BEFORE
+# assignment, feeding the SAME assignment funnel (`_assign_uncovered_to_themes`) with members
+# the tape says are misfiled. Two-stage, the shape ep_theme_belonging adopted after one-stage
+# correlation admitted a utility into a fracking theme: the TAPE FILTERS (>= ASSIGN_COMOVE_BAR
+# to the proposed theme, never a sector fallback for these names), the assignment JUDGEMENT
+# DECIDES (same prompt, same tool, same rules as every other assignment). A confirmed fit
+# MOVES the member: appended to the target (the funnel's own append), stripped from every
+# current home the same run, a REHOME_COOLDOWN_DAYS (name, home) cooldown written so the
+# carryforward strip blocks a bounce-back mechanically, one `theme_member_rehomed` audit row
+# per (name, home) and one `ticker_rehomed` changelog line for the nightly themes message.
+#
+# FEEDERS (each price-action-anchored; the orphan reach D2 was ruled NO 2026-10-03 — a name in
+# no theme waits for its RS or a Lane-2 seed, exactly as before):
+#   (i)   a covered member misfiled on #655 G2's signed shape — own tie < bar AND another
+#         live non-Fading theme >= bar AND >= own + REHOME_G2_MARGIN — PLUS the unjudgeable-
+#         home arm (D3): a home the tape cannot read (2-member theme -> leave-one-out basket
+#         of 1) AND another theme >= bar. Without that arm the headline case (CIFR/HUT in a
+#         2-stock theme) can never move — the IREN/BTDR 2026-09-08 shape.
+#   (iii) the NOVEL uncovered members of a Lane-1 newborn the birth gate suppressed as `join`
+#         (run_theme_engine Step 3a.5) — offered to the join target instead of discarded (the
+#         08-05 design's M1). A JOIN, not a move: no home to leave, no cooldown.
+#
+# WALLS. Never INTO a Fading theme (the pass offers non-Fading themes only and the funnel
+# re-checks). Operator rulings outrank the tape: a /bypass-protected (name, home) pair is never
+# a candidate and never stripped; an exclusion on the target blocks the pair in the funnel.
+# One JUDGEMENT per name per REHOME_REJUDGE_DAYS (its own `theme_rehome_judged` rows), so a
+# rejected name is not re-asked nightly. At most REHOME_PER_TARGET_CAP admissions INTO one
+# theme per night (seven ex-miners into a 4-member theme in one night would make it a miners
+# theme by count and invite the #214 rename). At most REHOME_MAX_CANDIDATES candidates per
+# night (one assignment batch), ranked by target tape; the PRE-cap count is audited so the
+# pre-registration's volume tripwire stays falsifiable. The rehome cooldown carries the
+# REHOME_REASON_PREFIX and db.get_globally_banned_tickers EXCLUDES it — a cohort that left
+# three churned homes must not be banned from its destination by its own moves.
+#
+# ⚠ KNOWN, ACCEPTED (db.add_validation_cooldown's ON CONFLICT): writing a rehome cooldown onto
+# an EXISTING (name, home) validation row overwrites its reason (that row then leaves the global
+# ban count) and resets `bypassed` — which is why a protected pair is excluded at selection AND
+# re-checked before the write. A later validation removal on the same pair overwrites the
+# `rehome:` reason the other way. Neither is engineered around; both are stated in the SSoT.
+#
+# MONEY-ADJACENT, STATED. A member moved INTO an Accelerating/Mainstream theme becomes LISTED
+# and carries the +10 EP theme bonus on its next alert (ep_theme_belonging THEME_BONUS_STAGES).
+# The audit row and the message line say so in plain words the night it happens (U1).
+#
+# TOGGLE `theme_rehome_pass` (mi_safeguard_state / env THEME_REHOME_PASS_ENABLED), DEFAULT ON
+# (operator standing rule: themes / detectors = no money -> ship full). OFF = the pass never
+# runs: byte-identical engine. `comove_ctx=None` (tape toggle off / closes read failed) also
+# skips it — the tape is the only trigger, so no tape means no move. Revert, no redeploy:
+#     INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+#     VALUES ('theme_rehome_pass', 'global', 'off', NOW(), NOW())
+#     ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+REHOME_TOGGLE: tuple[str, str] = ("theme_rehome_pass", "THEME_REHOME_PASS_ENABLED")
+REHOME_DEFAULT_ON: bool = True
+# = theme_correctness.G2_MARGIN, the operator-signed "misfiled" margin (#655, 2026-09-27). Kept a
+# LITERAL for the same reason theme_correctness keeps G1_BAR a literal (no cross-import between
+# the nightly scorer and this 9k-line module); tests/test_theme_rehome_pass.py pins the two equal.
+REHOME_G2_MARGIN = 0.20
+REHOME_PER_TARGET_CAP = 3        # admissions INTO one theme per night (moves + join carries)
+REHOME_MAX_CANDIDATES = 18       # one assignment batch (_ASSIGN_LLM_BATCH_SIZE) a night; pre-cap count audited
+REHOME_REJUDGE_DAYS = 14         # a judged name (moved OR stayed) is not re-offered inside this window
+REHOME_COOLDOWN_DAYS = 14        # the (name, old home) cooldown a move writes — the bounce-back wall
+REHOME_REASON_PREFIX = "rehome:"  # db.get_globally_banned_tickers excludes rows with this prefix
+REHOME_MOVED_EVENT = "theme_member_rehomed"
+
+
+@dataclass(frozen=True)
+class RehomeCandidate:
+    """One name the pass offers to the assignment judgement, with the tape evidence that
+    nominated it. `homes` is () for a join-suppressed newborn's novel member (feeder iii)."""
+    ticker: str
+    homes: tuple[str, ...]
+    own_corr: float | None            # best judgeable tie to a current home; None = none readable
+    own_reason: str                   # comoves | below_bar | thin_basket | no_history | uncovered
+    target: str                       # the best-tape non-Fading theme (feeder i) or the join target
+    target_corr: float
+    arm: str                          # g2_misfiled | own_unjudgeable:<reason> | join_carry
+    shortlist: tuple[tuple[str, float], ...] = ()   # top non-Fading themes >= bar, best first
+
+
+def _rehome_trigger(own_corr: float | None, own_reason: str | None,
+                    best_other_corr: float | None) -> tuple[bool, str]:
+    """The LEAVE trigger for a covered member — #655 G2's signed shape plus the D3 arm.
+      judgeable:   own < ASSIGN_COMOVE_BAR AND other >= bar AND other >= own + REHOME_G2_MARGIN
+      unjudgeable: no home the tape can read (thin basket / no history) AND other >= bar
+    Pure. Returns (fires, arm)."""
+    if best_other_corr is None or best_other_corr < ASSIGN_COMOVE_BAR:
+        return False, "other_below_bar" if best_other_corr is not None else "other_unjudgeable"
+    if own_corr is None:
+        return True, f"own_unjudgeable:{own_reason or 'unknown'}"
+    if own_corr < ASSIGN_COMOVE_BAR and best_other_corr >= own_corr + REHOME_G2_MARGIN:
+        return True, "g2_misfiled"
+    if own_corr >= ASSIGN_COMOVE_BAR:
+        return False, "own_at_or_above_bar"
+    return False, "margin_not_met"
+
+
+def _rehome_pair_tie(ticker: str, basket: "mac.ThemeBasket | None",
+                     ctx: ComoveContext) -> tuple[float | None, str, int]:
+    """One (name, theme) tie through a PRE-BUILT basket — the same maths as `_comove_verdict`
+    (leave-one-out happens in `mac.correlate`'s `exclude`; fewer than
+    BELONGING_MIN_BASKET_MEMBERS others is its `thin_basket`), built once per theme so the pass
+    can read every member against every theme without rebuilding ~100 baskets per name.
+    Returns (corr | None, reason, basket members used)."""
+    t = (ticker or "").upper()
+    vec = ctx.excess.get(t)
+    if vec is None:
+        return None, "no_history", 0
+    if basket is None:
+        return None, "thin_basket", 0
+    corr, _overlap, used = mac.correlate(vec, basket, exclude=t)
+    if corr is None:
+        return None, ("thin_basket" if used < mac.BELONGING_MIN_BASKET_MEMBERS else "no_history"), used
+    return round(corr, 4), ("comoves" if corr >= ASSIGN_COMOVE_BAR else "below_bar"), used
+
+
+def _rehome_baskets(themes: list[dict], ctx: ComoveContext) -> dict[str, "mac.ThemeBasket"]:
+    """One basket per theme with >= BELONGING_MIN_BASKET_MEMBERS members that have history —
+    every stage on the board (the pass reads Fading HOMES; it only offers non-Fading TARGETS)."""
+    stages = tuple(sorted({(t.get("stage") or "").strip() for t in themes if t.get("stage")}))
+    return {b.name: b for b in mac.build_baskets(themes, ctx.excess, stages=stages)}
+
+
+def _rehome_candidates(
+    themes: list[dict],
+    ctx: ComoveContext,
+    *,
+    protected: "set[tuple[str, str]] | None" = None,
+    skip_tickers: "frozenset[str] | set[str]" = frozenset(),
+    max_candidates: int = REHOME_MAX_CANDIDATES,
+) -> tuple[list[RehomeCandidate], int]:
+    """Feeder (i), PURE: every covered member whose tape fires `_rehome_trigger` against the
+    best non-Fading theme it is not already in. Skips operator-protected (name, home) pairs
+    (a /bypass ruling is permanent) and `skip_tickers` (judged inside REHOME_REJUDGE_DAYS,
+    globally banned). Returns (candidates ranked by target tape, best first, capped at
+    `max_candidates`; the PRE-cap count) — the pre-cap count is the audited volume reading.
+    Names in NO theme are never reached here: this is the LEAVE feeder, not an admission."""
+    protected = protected or set()
+    baskets = _rehome_baskets(themes, ctx)
+    homes_of: dict[str, list[str]] = {}
+    for t in themes:
+        for tk in (t.get("tickers") or []):
+            homes_of.setdefault((tk or "").upper(), []).append(t["name"])
+    non_fading = [t for t in themes if (t.get("stage") or "") != "Fading"]
+    out: list[RehomeCandidate] = []
+    for tk, homes in homes_of.items():
+        if tk in skip_tickers or tk not in ctx.excess:
+            continue
+        if any((tk, h) in protected for h in homes):
+            continue
+        own_reads = [_rehome_pair_tie(tk, baskets.get(h), ctx) for h in homes]
+        judgeable = [c for c, _r, _n in own_reads if c is not None]
+        own_corr = max(judgeable) if judgeable else None
+        own_reason = ("comoves" if own_corr is not None and own_corr >= ASSIGN_COMOVE_BAR
+                      else "below_bar" if own_corr is not None
+                      else own_reads[0][1] if own_reads else "uncovered")
+        others: list[tuple[str, float]] = []
+        for t in non_fading:
+            if t["name"] in homes:
+                continue
+            corr, _r, _n = _rehome_pair_tie(tk, baskets.get(t["name"]), ctx)
+            if corr is not None and corr >= ASSIGN_COMOVE_BAR:
+                others.append((t["name"], corr))
+        others.sort(key=lambda x: -x[1])
+        best = others[0] if others else None
+        fires, arm = _rehome_trigger(own_corr, own_reason, best[1] if best else None)
+        if not fires or best is None:
+            continue
+        out.append(RehomeCandidate(
+            ticker=tk, homes=tuple(homes), own_corr=own_corr, own_reason=own_reason,
+            target=best[0], target_corr=best[1], arm=arm,
+            shortlist=tuple(others[:3])))
+    out.sort(key=lambda c: (-c.target_corr, c.ticker))
+    return out[:max_candidates], len(out)
+
+
+def _rehome_stock_note(c: RehomeCandidate) -> str:
+    """The plain-words evidence carried on the candidate's prompt line (the prompt BODY and the
+    theme list are untouched — they are a scoring input on the EP money path)."""
+    own = (f"with its current theme at {c.own_corr:.2f}" if c.own_corr is not None
+           else "its current theme is too small for the tape to read")
+    short = "; ".join(f"'{n}' at {corr:.2f}" for n, corr in c.shortlist[:3]) or f"'{c.target}' at {c.target_corr:.2f}"
+    if c.homes:
+        return (f"re-homing candidate: currently in {', '.join(repr(h) for h in c.homes)}; on the "
+                f"market-adjusted tape it moves with {short}, {own} — assign it ONLY if its CURRENT "
+                f"business clearly fits; otherwise leave it in no_fit (it stays where it is)")
+    return (f"carried from a suppressed newborn that joined '{c.target}' — on the market-adjusted "
+            f"tape it moves with {short}; assign it ONLY if its business clearly fits")
+
+
+async def _read_rehome_toggle() -> bool:
+    """The reversion toggle, DEFAULT ON (operator 2026-10-03, "Rec on all"). DB row > env >
+    default; a DB error -> env/default (a grade-quality toggle, not capital). Literal strings
+    on purpose: scripts/live_rules.py discovers runtime toggles by regex over
+    `get_runtime_toggle("<name>", "<ENV>")`."""
+    from agents.market_intelligence.db import get_runtime_toggle
+    return bool(await get_runtime_toggle("theme_rehome_pass", "THEME_REHOME_PASS_ENABLED",
+                                         default=True))
+
+
+async def _rehome_through_funnel(
+    cands: list[RehomeCandidate],
+    offered: list[dict],
+    all_themes: list[dict],
+    stocks_by_ticker: dict[str, dict],
+    *,
+    theme_exclusions: dict[str, set[str]] | None,
+    globally_banned: set[str] | None,
+    cooldown_set: set[tuple[str, str]],
+    protected: set[tuple[str, str]] | None,
+    comove_ctx: ComoveContext,
+    changelog: list[dict],
+    rehome_state: dict,
+) -> dict:
+    """Offer `cands` to the assignment judgement against `offered` (non-Fading themes only),
+    then apply the VERB for every candidate that landed in a theme it did not already hold:
+    strip from every home (feeder i), write the rehome cooldown per (name, home), add the pairs
+    to the run's in-memory cooldown_set, emit one audit row per (name, home) — or one join row
+    when there is no home — and one `ticker_rehomed` changelog line. The funnel's own
+    `ticker_assigned` entries for these names are replaced, never duplicated. Every judged
+    candidate gets a `theme_rehome_judged` row (the REHOME_REJUDGE_DAYS memory). Returns counts."""
+    counts = {"offered": len(cands), "moved": 0, "joined": 0, "stayed": 0}
+    if not cands or not offered:
+        return counts
+    rehome_map = {c.ticker: c for c in cands}
+    stocks: list[dict] = []
+    for c in cands:
+        base = stocks_by_ticker.get(c.ticker) or {"ticker": c.ticker, "rs_composite": None, "sector": "Unknown"}
+        stocks.append({**base, "ticker": c.ticker, "_rehome_note": _rehome_stock_note(c)})
+    _remaining, funnel_log = await _assign_uncovered_to_themes(
+        stocks, offered, stocks_by_ticker,
+        theme_exclusions=theme_exclusions, globally_banned=globally_banned,
+        cooldown_set=cooldown_set, protected=protected, comove_ctx=comove_ctx,
+        rehome=rehome_map, per_theme_cap=REHOME_PER_TARGET_CAP, rehome_state=rehome_state,
+    )
+    rationale_by_tk = {e["ticker"]: e.get("rationale", "") for e in funnel_log
+                       if e.get("type") == "ticker_assigned"}
+    # the funnel's assignment lines for these names are superseded by the move/join line below
+    changelog.extend(e for e in funnel_log
+                     if not (e.get("type") == "ticker_assigned" and e.get("ticker") in rehome_map))
+    by_name = {t["name"]: t for t in all_themes}
+    # The re-judge memory covers only names the model actually saw AND no wall refused: a cap-deferred,
+    # Fading-refused, unreadable, cooled-down or excluded name — and every name on a night the model
+    # call failed or that was dropped before the call — is NOT frozen for 14 days.
+    judged_ok = set(rehome_state.get("judged") or ()) - set(rehome_state.get("blocked") or ())
+    f4_removed = {e.get("ticker") for e in funnel_log if e.get("type") == "ticker_revalidated_out"}
+    counts["unjudged"] = 0
+    for c in cands:
+        landed = [t for t in offered if c.ticker in (t.get("tickers") or []) and t["name"] not in c.homes]
+        if not landed:
+            if c.ticker not in judged_ok:
+                counts["unjudged"] += 1
+                logger.info(f"Re-homing: {c.ticker} not judged tonight (model call failed, dropped before "
+                            f"the call, or a wall refused the pair) — re-offerable, no memory row")
+                continue
+            counts["stayed"] += 1
+            why = (f"landed in a theme and was removed by post-assignment validation"
+                   if c.ticker in f4_removed else "the judgement did not place it")
+            await log_audit_event(
+                REHOME_JUDGED_EVENT,
+                summary=f"{c.ticker} stays — {why} (offered on tape "
+                        f"{c.target_corr:.2f} to '{c.target}', {c.arm})",
+                detail=json.dumps({"ticker": c.ticker, "homes": list(c.homes), "target": c.target,
+                                   "target_corr": c.target_corr, "own_corr": c.own_corr, "arm": c.arm,
+                                   "verdict": "stay", "removed_by_validation": c.ticker in f4_removed}),
+            )
+            continue
+        target = landed[0]
+        paying = (target.get("stage") or "") in etb.THEME_BONUS_STAGES
+        pay_note = " — a paying theme: +10 on its next EP" if paying else ""
+        own_txt = f"{c.own_corr:.2f}" if c.own_corr is not None else "unreadable"
+        for home_name in c.homes:
+            home = by_name.get(home_name)
+            if (c.ticker, home_name) in (protected or set()):
+                # excluded at selection; re-checked here because add_validation_cooldown resets `bypassed`
+                logger.warning(f"Re-homing: {c.ticker} is operator-protected in '{home_name}' — not stripped")
+                continue
+            if home is not None:
+                home["tickers"] = [t for t in (home.get("tickers") or []) if t != c.ticker]
+            try:
+                await add_validation_cooldown(
+                    c.ticker, home_name,
+                    reason=f"{REHOME_REASON_PREFIX} moved to '{target['name']}' on the tape "
+                           f"({c.target_corr:.2f} vs own {own_txt})",
+                    days=REHOME_COOLDOWN_DAYS)
+            except Exception as e:  # loud-ok: the move already happened in memory; a missing cooldown is a MISSED wall, logged
+                logger.error(f"Re-homing: cooldown write failed for ({c.ticker}, '{home_name}') — "
+                             f"bounce-back wall missing for 14d: {type(e).__name__}: {e}", exc_info=True)
+            cooldown_set.add((c.ticker, home_name))
+            await log_audit_event(
+                REHOME_MOVED_EVENT,
+                summary=f"Rehome: '{home_name}' -> '{target['name']}' {c.ticker} moved on the tape "
+                        f"({c.target_corr:.2f} vs own {own_txt}; {c.arm}){pay_note}",
+                detail=json.dumps({"ticker": c.ticker, "from": home_name, "to": target["name"],
+                                   "target_stage": target.get("stage"), "paying": paying,
+                                   "target_corr": c.target_corr, "own_corr": c.own_corr, "arm": c.arm,
+                                   "rationale": rationale_by_tk.get(c.ticker, "")[:300]}),
+            )
+        if not c.homes:
+            await log_audit_event(
+                REHOME_MOVED_EVENT,
+                summary=f"Rehome: {c.ticker} joined '{target['name']}' from a suppressed newborn "
+                        f"(tape {c.target_corr:.2f}){pay_note}",
+                detail=json.dumps({"ticker": c.ticker, "from": None, "to": target["name"],
+                                   "target_stage": target.get("stage"), "paying": paying,
+                                   "target_corr": c.target_corr, "arm": c.arm,
+                                   "rationale": rationale_by_tk.get(c.ticker, "")[:300]}),
+            )
+        counts["moved" if c.homes else "joined"] += 1
+        changelog.append({
+            "type": "ticker_rehomed", "ticker": c.ticker, "from": list(c.homes),
+            "theme": target["name"], "stage": target.get("stage"), "paying": paying,
+            "corr": c.target_corr, "own_corr": c.own_corr, "arm": c.arm,
+            "rationale": rationale_by_tk.get(c.ticker, ""),
+        })
+        logger.info(f"Re-homing: {c.ticker} {', '.join(c.homes) or '(newborn)'} -> '{target['name']}' "
+                    f"(tape {c.target_corr:.2f}, own {own_txt}; {c.arm}){pay_note}")
+        await log_audit_event(
+            REHOME_JUDGED_EVENT,
+            summary=f"{c.ticker} moved -> '{target['name']}' (tape {c.target_corr:.2f}, {c.arm})",
+            detail=json.dumps({"ticker": c.ticker, "homes": list(c.homes), "target": target["name"],
+                               "target_corr": c.target_corr, "own_corr": c.own_corr, "arm": c.arm,
+                               "verdict": "move"}),
+        )
+    return counts
+
+
+async def _run_rehome_pass(
+    updated_themes: list[dict],
+    stocks_by_ticker: dict[str, dict],
+    comove_ctx: ComoveContext,
+    *,
+    theme_exclusions: dict[str, set[str]] | None,
+    globally_banned: set[str] | None,
+    cooldown_set: set[tuple[str, str]],
+    protected: set[tuple[str, str]] | None,
+    changelog: list[dict],
+    rehome_state: dict,
+) -> dict:
+    """Feeder (i) end to end: select on the tape, offer to the judgement, apply the verb, write
+    the `theme_rehome_pass_ran` heartbeat (the positive observable the verify reads, with the
+    PRE-cap candidate count so the volume tripwire can fail)."""
+    try:
+        judged_recent = await get_recent_rehome_judged_tickers(REHOME_REJUDGE_DAYS)
+    except Exception as e:  # loud-ok: fail OPEN to re-offering (a re-ask costs a prompt line, a skipped run costs the night)
+        logger.warning(f"Re-homing: judged-memory read failed — names may be re-offered tonight: {e}")
+        judged_recent = set()
+    skip = set(judged_recent) | set(globally_banned or ())
+    cands, pre_cap = _rehome_candidates(updated_themes, comove_ctx, protected=protected, skip_tickers=skip)
+    offered = [t for t in updated_themes if (t.get("stage") or "") != "Fading"]
+    counts = {"candidates_pre_cap": pre_cap, "offered": 0, "moved": 0, "joined": 0, "stayed": 0}
+    if cands:
+        logger.info(f"Re-homing pass: {pre_cap} candidate(s) on the tape, offering {len(cands)} "
+                    f"(cap {REHOME_MAX_CANDIDATES}): "
+                    + ", ".join(f"{c.ticker} {'/'.join(c.homes)}->{c.target} {c.target_corr:.2f} [{c.arm}]"
+                                for c in cands))
+        counts.update(await _rehome_through_funnel(
+            cands, offered, updated_themes, stocks_by_ticker,
+            theme_exclusions=theme_exclusions, globally_banned=globally_banned,
+            cooldown_set=cooldown_set, protected=protected, comove_ctx=comove_ctx,
+            changelog=changelog, rehome_state=rehome_state))
+    skipped = dict(rehome_state.get("skipped") or {})
+    await log_audit_event(
+        "theme_rehome_pass_ran",
+        summary=(f"Re-homing pass: {pre_cap} candidate(s) on the tape, {counts['offered']} offered, "
+                 f"{counts['moved']} moved, {counts['stayed']} stayed"
+                 + (f", skipped {skipped}" if skipped else "")
+                 + (f" ⚠ {pre_cap} candidates exceeds the {REHOME_MAX_CANDIDATES}-per-night offer cap"
+                    if pre_cap > REHOME_MAX_CANDIDATES else "")),
+        detail=json.dumps({**counts, "skipped": skipped, "judged_recent": len(judged_recent),
+                           "offer_cap": REHOME_MAX_CANDIDATES, "per_target_cap": REHOME_PER_TARGET_CAP,
+                           "candidates": [c.ticker for c in cands]}),
+    )
+    return counts
+
+
+def _join_carry_candidates(
+    join_carry: dict[str, list[str]],
+    themes: list[dict],
+    ctx: ComoveContext,
+    *,
+    skip_tickers: "frozenset[str] | set[str]" = frozenset(),
+) -> list[RehomeCandidate]:
+    """Feeder (iii), PURE: the novel members of a join-suppressed newborn, as candidates for the
+    join target — only where the tape reads them >= the bar against the target's members (the
+    filter), and only for a non-Fading target. A 2-member target is unreadable (leave-one-out
+    basket of 1 is not the issue here — the candidate is not a member — but a basket under
+    BELONGING_MIN_BASKET_MEMBERS is), so nothing is carried into it; stated, not hidden."""
+    by_name = {t["name"]: t for t in themes}
+    out: list[RehomeCandidate] = []
+    for target_name, members in join_carry.items():
+        target = by_name.get(target_name)
+        if target is None or (target.get("stage") or "") == "Fading":
+            continue
+        for tk in members:
+            tk = (tk or "").upper()
+            if tk in skip_tickers:
+                continue
+            cv = _comove_verdict(tk, list(target.get("tickers") or []), ctx)
+            if cv is None or cv.admit is not True or cv.corr is None:
+                continue
+            out.append(RehomeCandidate(
+                ticker=tk, homes=(), own_corr=None, own_reason="uncovered",
+                target=target_name, target_corr=cv.corr, arm="join_carry",
+                shortlist=((target_name, cv.corr),)))
+    out.sort(key=lambda c: (-c.target_corr, c.ticker))
+    return out
+
+
+async def _run_join_carry(
+    join_carry: dict[str, list[str]],
+    updated_themes: list[dict],
+    stocks_by_ticker: dict[str, dict],
+    comove_ctx: ComoveContext,
+    *,
+    theme_exclusions: dict[str, set[str]] | None,
+    globally_banned: set[str] | None,
+    cooldown_set: set[tuple[str, str]],
+    protected: set[tuple[str, str]] | None,
+    changelog: list[dict],
+    rehome_state: dict,
+) -> dict:
+    """Feeder (iii) end to end — one funnel call per join target, offering ONLY that target (the
+    birth gate already said the cohort IS that theme; the judgement decides each member). Shares
+    the per-theme cap counter with feeder (i) through `rehome_state`."""
+    try:
+        judged_recent = await get_recent_rehome_judged_tickers(REHOME_REJUDGE_DAYS)
+    except Exception as e:  # loud-ok: fail OPEN to re-offering, never to skipping the carry
+        logger.warning(f"Re-homing join-carry: judged-memory read failed — names may be re-offered: {e}")
+        judged_recent = set()
+    skip = set(judged_recent) | set(globally_banned or ())
+    cands = _join_carry_candidates(join_carry, updated_themes, comove_ctx, skip_tickers=skip)
+    totals = {"candidates": len(cands), "offered": 0, "joined": 0, "stayed": 0}
+    by_name = {t["name"]: t for t in updated_themes}
+    for target_name in sorted({c.target for c in cands}):
+        group = [c for c in cands if c.target == target_name]
+        counts = await _rehome_through_funnel(
+            group, [by_name[target_name]], updated_themes, stocks_by_ticker,
+            theme_exclusions=theme_exclusions, globally_banned=globally_banned,
+            cooldown_set=cooldown_set, protected=protected, comove_ctx=comove_ctx,
+            changelog=changelog, rehome_state=rehome_state)
+        for k in ("offered", "joined", "stayed"):
+            totals[k] += counts.get(k, 0)
+    await log_audit_event(
+        "theme_rehome_join_carry_ran",
+        summary=(f"Re-homing join-carry: {sum(len(v) for v in join_carry.values())} novel member(s) from "
+                 f"{len(join_carry)} suppressed newborn(s); {totals['candidates']} on the tape, "
+                 f"{totals['joined']} joined, {totals['stayed']} stayed"),
+        detail=json.dumps({"join_carry": join_carry, **totals}),
+    )
+    return totals
 
 
 def _partition_discovery_pools(
@@ -7546,6 +8090,13 @@ def _successor_pointers_from_audit_rows(rows) -> tuple[dict[str, str], dict[str,
             m = _CAP_REJECTED_RE.search(r["summary"] or "")
             if m:
                 cap_rejected_by_lost.setdefault(m.group(1), m.group(2))
+        elif et == REHOME_MOVED_EVENT:
+            # #491 re-homing (2026-10-03): "Rehome: '<home>' -> '<target>' TICKER moved ..." — a home
+            # emptied by its members leaving points at where they went. A join row ("TICKER joined
+            # '<target>' ...") carries no '->' and is skipped by the regex, never mis-parsed.
+            m = _SUCCESSOR_RE.search(r["summary"] or "")
+            if m:
+                successor_by_lost.setdefault(m.group(1), m.group(2))
         else:  # theme_pass1_protect_strip
             im = re.search(r"i='([^']+)'", r["detail"] or "")
             jm = re.search(r"j='([^']+)'", r["detail"] or "")
@@ -9010,6 +9561,36 @@ async def run_theme_engine(
         as_of=today,          # #671 arm 4: a bought-out name leaves the themes it is ALREADY in
     )
 
+    # --- Step 2a.5: RE-HOMING PASS (#491, 2026-10-03, operator-signed "Rec on all") ---
+    # Custody by the tape: a covered member the tape says is misfiled (G2's signed shape, or a
+    # home too thin to read + another theme >= the bar) is offered to the assignment judgement
+    # against the non-Fading board; a confirmed fit MOVES it (append + strip + 14d cooldown on
+    # the old home). Runs on the strip-cleaned board, BEFORE Step 2b so a moved name is covered
+    # by its new home when the pool is judged. The tape is the only trigger: no context ->
+    # no pass (checked FIRST, before the toggle read). Toggle `theme_rehome_pass` DEFAULT ON;
+    # OFF = this block is dead and the run is byte-identical. The section header above
+    # `_rehome_candidates` carries the design; SSoT docs/architecture/theme_engine.md 2026-10-03.
+    rehome_on = False
+    rehome_state: dict = {}
+    if comove_ctx is not None:
+        rehome_on = await _read_rehome_toggle()
+        if rehome_on:
+            try:
+                await _run_rehome_pass(
+                    updated_themes, stocks_by_ticker, comove_ctx,
+                    theme_exclusions=theme_exclusions, globally_banned=globally_banned,
+                    cooldown_set=cooldown_set, protected=protected_set, changelog=changelog,
+                    rehome_state=rehome_state)
+            except Exception as e:  # loud-ok: a failed pass must not take the nightly down; audited + logged, nothing moved
+                logger.error(f"Re-homing pass FAILED — no moves tonight: {type(e).__name__}: {e}", exc_info=True)
+                await log_audit_event(
+                    "theme_rehome_pass_error",
+                    summary=f"Re-homing pass raised — no moves tonight ({type(e).__name__})",
+                    detail=f"{type(e).__name__}: {e}",
+                )
+        else:
+            logger.info("Re-homing pass: toggle OFF — no moves tonight")
+
     # --- Step 2b: Assign uncovered stocks to existing themes ---
     # #476: assignment runs on the WIDER assignment_pool (RS-floor); discovery
     # below keeps the narrow top-40 `uncovered` MINUS whatever got assigned
@@ -9118,6 +9699,7 @@ async def run_theme_engine(
         _live_names = {t["name"] for t in updated_themes}
         _gate_passed: list[dict] = []
         _gate_outcomes: list[dict] = []
+        _join_carry: dict[str, list[str]] = {}   # #491 feeder (iii): join target -> novel uncovered members
         for nt in new_themes:
             if nt["name"] in _live_names:
                 _gate_passed.append(nt)  # re-emission of a live name, not a birth
@@ -9143,6 +9725,34 @@ async def run_theme_engine(
                     "join_target": res.get("join_target"),
                     "tickers": list(nt.get("tickers") or []),
                 })
+                if res["outcome"] == "join" and res.get("join_target"):
+                    # #491 feeder (iii) (2026-10-03): the suppressed newborn's NOVEL, UNCOVERED
+                    # members are carried to the join target through the assignment funnel
+                    # below instead of being discarded. Covered novel members are not offered —
+                    # feeder (i) owns a covered name's leaving.
+                    _tgt = res["join_target"]
+                    _tgt_members = set(next((t.get("tickers") or [] for t in updated_themes
+                                             if t["name"] == _tgt), []))
+                    _novel = [tk for tk in (nt.get("tickers") or [])
+                              if tk not in _tgt_members and tk not in covered_tickers]
+                    if _novel:
+                        _join_carry.setdefault(_tgt, [])
+                        _join_carry[_tgt].extend(tk for tk in _novel if tk not in _join_carry[_tgt])
+        if _join_carry and rehome_on and comove_ctx is not None:
+            try:
+                await _run_join_carry(
+                    _join_carry, updated_themes, stocks_by_ticker, comove_ctx,
+                    theme_exclusions=theme_exclusions, globally_banned=globally_banned,
+                    cooldown_set=cooldown_set, protected=protected_set, changelog=changelog,
+                    rehome_state=rehome_state)
+            except Exception as e:  # loud-ok: a failed carry must not take the nightly down; audited + logged, nothing joined
+                logger.error(f"Re-homing join-carry FAILED — novel members discarded as before: "
+                             f"{type(e).__name__}: {e}", exc_info=True)
+                await log_audit_event(
+                    "theme_rehome_pass_error",
+                    summary=f"Re-homing join-carry raised — newborn members discarded ({type(e).__name__})",
+                    detail=f"{type(e).__name__}: {e}",
+                )
             if res["outcome"] != "birth":
                 logger.info(
                     f"[birth gate/{birth_gate_mode}] '{nt['name']}' → {res['outcome']}"
@@ -9418,7 +10028,8 @@ async def run_theme_engine(
                 SELECT event_type, summary, detail
                 FROM mi_audit_log
                 WHERE event_type IN ('theme_pass1_5_absorption', 'theme_pass1_protect_strip',
-                                     'theme_sector_cap_absorbed', 'theme_sector_cap_not_absorbed')
+                                     'theme_sector_cap_absorbed', 'theme_sector_cap_not_absorbed',
+                                     'theme_member_rehomed')
                   AND (created_at AT TIME ZONE 'America/New_York')::date
                       = (NOW() AT TIME ZONE 'America/New_York')::date
             """)
