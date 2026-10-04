@@ -4516,6 +4516,21 @@ _CONS_SCAN_BUDGET_S = 900        # per-run time budget for the SCAN section ONLY
 _CONS_MNA_CHECKS_CAP = 40        # max Polygon-backed M&A checks per run (defense in depth under
                                  # the budget; overflow candidates pass UNchecked + one audit row)
 
+# #394 — the /anticipation board's own order, so the scan screens the TOP of the board first and
+# the cap's unchecked tail is its bottom. The renderer shows the coiled section, then post_runup;
+# within each, db.get_consolidation_board's ORDER BY (tight_close_streak DESC NULLS LAST,
+# today_pct ASC NULLS LAST). An aged row is never shown → last. Python's sort is stable, so ties
+# keep the key order.
+_COIL_BOARD_SECTION = {"coiled": 0, "post_runup": 1}
+
+
+def _coil_board_rank(cons: dict) -> tuple:
+    streak = cons.get("tight_close_streak")
+    pct = cons.get("today_pct")
+    return (_COIL_BOARD_SECTION.get(cons.get("state"), 2),
+            streak is None, -(streak or 0),
+            pct is None, pct if pct is not None else 0.0)
+
 
 async def _consolidation_readiness_job():
     """FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2) SHADOW RECORDER +
@@ -4734,23 +4749,34 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
     proven deal-pin primitive); a reject is re-derived + audited here
     (anticipation_coil_buyout_pin_rejected) since the pure function can't do I/O. #387 re-applies
     the SAME news-backed single-source filter (ma_filter.is_likely_ma) the EP/flag/9M paths use,
-    on the surviving coil candidates only (cost control) — a hit excludes + audits
-    (anticipation_mna_excluded), now CAPPED at _CONS_MNA_CHECKS_CAP Polygon-backed checks per run
+    on the surviving coil candidates only (cost control) — a hit excludes + audits (since #394,
+    2026-10-03: takes EVERY board row of the ticker off the coil board and writes
+    `mna_filter_fired` `(anticipation)` with the deal answer + the day-window reading; an
+    unreadable own-day bar keeps the name ON the board + an `anticipation_mna_price_unread`
+    row; and the scan now runs in two phases — evaluate every key, then screen + write in the
+    board's own order, so the cap's unchecked tail is the bottom of the board; a name a past
+    screen marked is then held off by its own-day price — day range <= 2.0% or unreadable stays
+    off, > 2.0% releases — even once its deal headline leaves the 21-day news lookback), now CAPPED at
+    _CONS_MNA_CHECKS_CAP Polygon-backed checks per run
     (#327 blocker fix — the unbounded cumulative Polygon time was the prime hang suspect; overflow
     candidates pass UNchecked, fail-open + anticipation_mna_check_capped audit). Neither guard
     touches the #327 gates themselves (runup / hold / tightness) — additive exclusions only, per
     THE LINE (SHADOW-only, zero execution authority)."""
     from datetime import date, timedelta
     from agents.market_intelligence import anticipation as de
-    from agents.market_intelligence.ma_filter import is_likely_ma
+    from agents.market_intelligence.ma_filter import (
+        is_likely_ma, day_window_pin, should_log_mna_filter_fired,
+    )
     from agents.market_intelligence.audit_events import (
-        ANTICIPATION_MNA_EXCLUDED, ANTICIPATION_COIL_BUYOUT_PIN_REJECTED,
-        ANTICIPATION_MNA_CHECK_CAPPED,
+        ANTICIPATION_COIL_BUYOUT_PIN_REJECTED, ANTICIPATION_MNA_CHECK_CAPPED,
+        ANTICIPATION_MNA_PRICE_UNREAD, ANTICIPATION_MNA_PIN_HELD, ANTICIPATION_MNA_PIN_RELEASED,
+        MNA_FILTER_FIRED,
     )
     from agents.market_intelligence.db import (
         get_anticipation_universe, get_anticipation_ohlcv, get_consolidation_state_map,
         upsert_consolidation, insert_consolidation_entry_shadow, get_recent_9m_tickers,
-        get_non_common_stock_tickers, get_latest_regime,
+        get_non_common_stock_tickers, get_latest_regime, mark_consolidation_mna_screened,
+        clear_consolidation_mna_screened,
     )
     universe = await get_anticipation_universe(today)
     stats["universe"] = len(universe)
@@ -4773,8 +4799,25 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
     keys = de.select_consolidation_keys(universe, existing)
 
     mna_checks, mna_cap_logged = 0, False
+    # #394 M&A screen state, per run: ONE check per ticker (a ticker can carry two board rows —
+    # NUVL did — and the news + own-day bar are per ticker), one off-board mark, one unread row.
+    screened: dict = {}
+    off_board: set = set()
+    unread_logged: set = set()
+    # #394 THE PRICE HOLDS A SCREENED NAME: tickers a past screen took off the board (any row still
+    # carrying the mark) → the date it was first marked. Their own-day price decides each night.
+    marked: dict = {}
+    for (tk, _anc), v in state_map.items():
+        on = v.get("mna_screened_on")
+        if on is not None and v["state"] != "aged":
+            marked[tk] = min(marked.get(tk, on), on)
+    held: dict = {}                 # ticker -> True (kept off) / False (released), once per run
+    # PHASE 1 (#394) — evaluate every key first: DB reads + the pure coil-finder, no Polygon, so
+    # it is fast and holds no hang risk. The M&A screen + writes run in PHASE 2 below, in the
+    # BOARD's own order.
+    candidates: list = []
     for k in keys:
-        ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
+        ticker, anchor_date = k["ticker"], k["anchor_date"]
         try:
             bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
             if len(bars) < 60:
@@ -4799,7 +4842,20 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
                         detail=str({"ticker": ticker, "reason": pin_reason})[:500],
                     )
                 continue
+            candidates.append((k, bars, cons))
+        except Exception as e:
+            logger.error(f"consolidation readiness {ticker}/{anchor_date}: {e}", exc_info=True)
 
+    # PHASE 2 (#394) — screen + entry + write, walking the candidates in the order the board
+    # SHOWS them (_coil_board_rank). The per-run check cap (_CONS_MNA_CHECKS_CAP) tripped on every
+    # run in the 07-14..08-24 audit capture, and the keys come in DB order, so the unchecked tail
+    # was arbitrary — a pinned buyout could reach the TOP of the board unchecked. Walking in board
+    # order makes the unchecked tail the BOTTOM. Writes still land one candidate at a time, so a
+    # budget timeout mid-phase keeps the partial results (the top of the board, fresh).
+    candidates.sort(key=lambda c: _coil_board_rank(c[2]))
+    for k, bars, cons in candidates:
+        ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
+        try:
             # #387 M&A exclusion (operator-filed 6/30 post-NUVL FP): a coil-shaped candidate whose
             # "tight days at the apex" turn out to be the post-acquisition PIN. Re-applies the SAME
             # single-source filter (ma_filter.is_likely_ma) the EP/flag/9M paths use, gated on the
@@ -4808,11 +4864,23 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
             # real candidates to an infra cap would bias the shadow; a rare deal-pin fire is
             # shadow-only noise and the #410 shape guard above still runs). One audit row marks
             # the capped run so a systematic cap-hit is visible, not silent.
-            if mna_checks < _CONS_MNA_CHECKS_CAP:
+            #
+            # #394 THE COIL-BOARD M&A SCREEN (operator 2026-10-03, "Add it now" — the board's top
+            # 5 was mostly stocks pinned by buyouts: CRNX, NUVL, DV, FBRX, MKTX; a cash-pinned
+            # stock reads as a perfect coil, tight range + dry volume, but cannot break out). The
+            # SAME decision the flag scan uses — is_likely_ma with the DAY WINDOW (the news
+            # nominates: this stock is the target of a deal, signed or proposed, or a signed
+            # shell; the price decides: own-day range <= 2.0% = pinned). This call already gated
+            # the write + the Confirm entry (#387); #394 extends it to the BOARD: a screened name's
+            # EVERY board row is taken off (mark_consolidation_mna_screened) — before, `continue`
+            # only skipped today's write and its earlier rows kept ranking — and the fired row
+            # follows #692's convention. A marked name is then held by its own-day price (the
+            # hold check below); the price releasing it is the ONLY thing that clears the mark.
+            # Unreadable own-day bar, not yet held → ON the board + recorded (below).
+            if ticker in screened:
+                is_mna, mna_meta = screened[ticker]
+            elif mna_checks < _CONS_MNA_CHECKS_CAP:
                 mna_checks += 1
-                # 2026-10-03: the news nominates, the price decides — the day window from the
-                # bars this scan already holds (the scan date's own bar, else held).
-                from agents.market_intelligence.ma_filter import day_window_pin
 
                 async def _day_reader(_bars=bars):
                     return day_window_pin(_bars, today)
@@ -4820,6 +4888,7 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
                     ticker, check_polygon=True, on_or_before=today, polygon_lookback_days=21,
                     pin_reader=_day_reader,
                 )
+                screened[ticker] = (is_mna, mna_meta)
             else:
                 is_mna, mna_meta = False, None
                 if not mna_cap_logged:                       # log the cap ONCE per run
@@ -4829,15 +4898,88 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
                         f"M&A checks capped at {_CONS_MNA_CHECKS_CAP} this run — remaining coil "
                         f"candidates pass unchecked (fail-open, shadow-only)",
                     )
-            if is_mna:
-                await log_audit_event(
-                    ANTICIPATION_MNA_EXCLUDED,
-                    f"{ticker} excluded from coil candidacy via "
-                    f"{(mna_meta or {}).get('source', 'unknown')} (anchor {cons['anchor_date']})",
-                    detail=str({"ticker": ticker, "anchor_date": cons["anchor_date"],
-                                **(mna_meta or {})})[:500],
-                )
+            meta = mna_meta or {}
+            # The news nominated it but the scan date's own bar could not be read (no own-day bar
+            # — a holiday run, a missing pull — or a bad bar). The coil-board spec (2026-10-03):
+            # keep today's behaviour and record it — for a name NOT already held off, that is ON
+            # the board. This is the one place the board departs from is_likely_ma's verdict,
+            # which blocks on the news alone when the price is unread (the flag scan keeps that).
+            unread_nominated = bool(is_mna and meta.get("why") == "news_blocked_price_unread")
+            if is_mna and not unread_nominated:
+                if ticker not in off_board:
+                    off_board.add(ticker)
+                    off_n = await mark_consolidation_mna_screened(ticker, today)
+                    if await should_log_mna_filter_fired(ticker, "anticipation"):
+                        pin = meta.get("pin") or {}
+                        answer = (f"{meta.get('role')}/{meta.get('status')}/"
+                                  f"{meta.get('consideration')}" if meta.get("role")
+                                  else "no deal answer")
+                        reading = (f"{pin.get('window')} range {pin.get('range_pct')}% <= "
+                                   f"{pin.get('threshold_pct')}% pinned" if pin.get("readable")
+                                   else f"news alone ({meta.get('why') or 'no price check'})")
+                        await log_audit_event(
+                            MNA_FILTER_FIRED,
+                            f"{ticker} via {meta.get('source', 'unknown')} (anticipation) — "
+                            f"{answer}, {reading}; off the coil board ({off_n} row(s))",
+                            detail=json.dumps({"ticker": ticker, "detector": "anticipation",
+                                               "scan_date": today.isoformat(),
+                                               "anchor_date": cons["anchor_date"],
+                                               "off_board_rows": off_n, **meta}, default=str),
+                        )
                 continue
+
+            # #394 THE PRICE HOLDS A SCREENED NAME (his word 2026-10-03). The news only nominates
+            # inside the 21-day headline lookback, so a buyout target screened off the board
+            # passes the news check once its deal headline ages out — and came straight back
+            # with its full tight-day streak. A ticker a past screen marked is now decided by its
+            # OWN-DAY price, the same day-window reading (day_window_pin, DAY_WINDOW_PIN_MAX_PCT
+            # — no new threshold): pinned → stays off; moves past the ceiling → released (every
+            # row's mark cleared, so one tight day later cannot re-hold it off an old row's mark);
+            # unreadable → stays off (an unreadable price changes nothing — a holiday run must
+            # not release every held buyout). No Polygon call, so the per-run cap never skips it.
+            if ticker in marked:
+                if ticker not in held:
+                    reading = day_window_pin(bars, today)
+                    keep_off = not (reading.readable and not reading.pinned)
+                    held[ticker] = keep_off
+                    shown = (f"day range {reading.range_pct}% "
+                             f"{'<=' if reading.pinned else '>'} {reading.threshold_pct}%"
+                             if reading.readable else f"own-day bar unreadable ({reading.why})")
+                    hold_detail = json.dumps(
+                        {"ticker": ticker, "detector": "anticipation",
+                         "scan_date": today.isoformat(), "screened_on": marked[ticker],
+                         "anchor_date": cons["anchor_date"], "pin": reading.as_dict(),
+                         "news": {k: meta.get(k) for k in ("source", "role", "status",
+                                                           "consideration", "why")}},
+                        default=str)
+                    if keep_off:
+                        await log_audit_event(
+                            ANTICIPATION_MNA_PIN_HELD,
+                            f"{ticker}: kept off the coil board — screened as a pinned buyout on "
+                            f"{marked[ticker]}; {shown}",
+                            detail=hold_detail)
+                    else:
+                        cleared = await clear_consolidation_mna_screened(ticker)
+                        await log_audit_event(
+                            ANTICIPATION_MNA_PIN_RELEASED,
+                            f"{ticker}: back on the coil board — screened on {marked[ticker]}, the "
+                            f"price moved: {shown} ({cleared} row mark(s) cleared)",
+                            detail=hold_detail)
+                if held[ticker]:
+                    continue
+            elif unread_nominated and ticker not in unread_logged:
+                unread_logged.add(ticker)
+                await log_audit_event(
+                    ANTICIPATION_MNA_PRICE_UNREAD,
+                    f"{ticker}: deal-nominated ({meta.get('role')}/{meta.get('status')}/"
+                    f"{meta.get('consideration')} via {meta.get('source', 'unknown')}) but "
+                    f"the own-day bar is unreadable ({(meta.get('pin') or {}).get('why')}) "
+                    f"— kept ON the coil board",
+                    detail=json.dumps({"ticker": ticker, "detector": "anticipation",
+                                       "scan_date": today.isoformat(),
+                                       "anchor_date": cons["anchor_date"], **meta},
+                                      default=str),
+                )
 
             anchor_date = date.fromisoformat(cons["anchor_date"])   # the coil peak = the anchor now
 

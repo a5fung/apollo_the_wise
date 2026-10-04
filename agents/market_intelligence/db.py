@@ -2748,6 +2748,7 @@ async def initialize_schema() -> None:
                 tight_close_streak INT,                  -- Pradeep "series of tight days" (ranking input)
                 dvol_med        FLOAT,                   -- 20-session median $-volume (liquidity floor sanity)
                 last_eval       DATE,
+                mna_screened_on DATE,                    -- #394: M&A screen took it off the board (NULL = on)
                 created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 PRIMARY KEY (ticker, anchor_date),
@@ -2755,6 +2756,14 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_consolidation_state
                 ON mi_anticipation_consolidation(state, anchor_date DESC);
+            -- #394 M&A screen on the coil board (operator 2026-10-03, "Add it now"): the scan date
+            -- on which the SAME #692 deal decision the other evening scans use (ma_filter.
+            -- is_likely_ma, day window) screened this ticker. NOT NULL = OFF the board
+            -- (get_consolidation_board); kept while the own-day price stays pinned, cleared on
+            -- every row when the price releases it (clear_consolidation_mna_screened). NULL
+            -- default = never screened.
+            ALTER TABLE mi_anticipation_consolidation
+                ADD COLUMN IF NOT EXISTS mna_screened_on DATE;
 
             -- ── #327 FORWARD SHADOW — the consolidation ENTRY-watch (operator "wire it", 6/18) ──
             -- Records the would-be ANTICIPATE entry the MOMENT the validated #327 signal fires
@@ -12469,24 +12478,29 @@ async def get_anticipation_universe(scan_date: date, *, price_min: float = 5.0,
 
 
 async def get_consolidation_state_map() -> dict[tuple, dict]:
-    """{(ticker, anchor_date): {state, runup_high, dvol_med}} for every Family-A row — the job's
-    prior-state lookup for transition dedup AND the carry-forward (anchor.select_consolidation_keys
-    needs runup_high for the same-leg/new-leg branch + dvol_med to preserve on carried rows). One query."""
+    """{(ticker, anchor_date): {state, runup_high, dvol_med, mna_screened_on}} for every Family-A
+    row — the job's prior-state lookup for transition dedup AND the carry-forward
+    (anchor.select_consolidation_keys needs runup_high for the same-leg/new-leg branch + dvol_med to
+    preserve on carried rows) AND (#394) which tickers the M&A screen holds off the board. One query."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT ticker, anchor_date, state, runup_high, dvol_med FROM mi_anticipation_consolidation")
+            "SELECT ticker, anchor_date, state, runup_high, dvol_med, mna_screened_on "
+            "FROM mi_anticipation_consolidation")
     return {(r["ticker"], r["anchor_date"]): {
         "state": r["state"],
         "runup_high": float(r["runup_high"]) if r["runup_high"] is not None else None,
-        "dvol_med": float(r["dvol_med"]) if r["dvol_med"] is not None else None} for r in rows}
+        "dvol_med": float(r["dvol_med"]) if r["dvol_med"] is not None else None,
+        "mna_screened_on": r["mna_screened_on"]} for r in rows}
 
 
 async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_ratio,
         runup_high, coil_days, last_close, today_pct, rmv_5d, rmv_15d, pullback_shape,
         pullback_shapes, fresh_tightening, fresh_2bar_tr_pct, atr14_pct,
         tight_close_streak, dvol_med, last_eval) -> None:
-    """UPSERT one Family-A consolidation row, keyed on the absolute (ticker, anchor_date)."""
+    """UPSERT one Family-A consolidation row, keyed on the absolute (ticker, anchor_date).
+    It never touches `mna_screened_on` (#394): the off-board mark is cleared in ONE place, when
+    the own-day price releases a held name (`clear_consolidation_mna_screened`)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -12508,6 +12522,38 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
         """, ticker, _coerce_date(anchor_date), state, runup_ratio, runup_high, coil_days, last_close,
              today_pct, rmv_5d, rmv_15d, pullback_shape, pullback_shapes, fresh_tightening,
              fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, _coerce_date(last_eval))
+
+
+async def mark_consolidation_mna_screened(ticker: str, scan_date: date) -> int:
+    """#394 — take EVERY non-aged board row of `ticker` off the coil board: the M&A screen
+    (ma_filter.is_likely_ma, the day window) blocked it on `scan_date`. Every row, not only the
+    anchor written today — a stale row from an earlier anchor would otherwise keep ranking a
+    pinned buyout (NUVL sat on the board twice). A row already marked keeps its FIRST screen date
+    (the day the hold began). Returns the number of rows marked."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        status = await conn.execute("""
+            UPDATE mi_anticipation_consolidation
+               SET mna_screened_on = COALESCE(mna_screened_on, $2), updated_at = NOW()
+             WHERE ticker = $1 AND state <> 'aged'
+        """, ticker, _coerce_date(scan_date))
+    parts = str(status or "").split()            # asyncpg status: "UPDATE <n>"
+    return int(parts[-1]) if parts and parts[-1].isdigit() else 0
+
+
+async def clear_consolidation_mna_screened(ticker: str) -> int:
+    """#394 — the PRICE released a held name (its own-day range opened past the day-window
+    ceiling): clear the off-board mark on EVERY row of `ticker`, so one tight day afterwards does
+    not re-hold it off an old anchor's leftover mark. Returns the number of rows cleared."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        status = await conn.execute("""
+            UPDATE mi_anticipation_consolidation
+               SET mna_screened_on = NULL, updated_at = NOW()
+             WHERE ticker = $1 AND mna_screened_on IS NOT NULL
+        """, ticker)
+    parts = str(status or "").split()            # asyncpg status: "UPDATE <n>"
+    return int(parts[-1]) if parts and parts[-1].isdigit() else 0
 
 
 async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, entry_date,
@@ -13406,14 +13452,25 @@ async def get_chart_axis_shadow_delta_count(since_date: date) -> int:
 
 async def get_consolidation_board(limit: int = 25) -> list[dict]:
     """The Family-A shortlist for operator judgment — coiled/post_runup names ordered tightest-
-    first (tight_close_streak desc, today_pct asc). Ordering-only (NOT an auto-selected top-N)."""
+    first (tight_close_streak desc, today_pct asc). Ordering-only (NOT an auto-selected top-N).
+
+    #394 (2026-10-03) — THIS READ IS THE ONE PLACE THAT DECIDES WHAT THE BOARD SHOWS:
+      * only rows the LATEST scan rewrote (`last_eval` = the newest `last_eval` in the table). The
+        nightly scan rewrites a row only when its coil still evaluates; a row it stopped
+        rewriting kept its last state and its frozen tight-day streak forever (the carry-forward
+        never ages it), so June rows of buyout-pinned names (NUVL, CRNX, FBRX, DV, MKTX) ranked
+        at the top months later. Old rows stay in the table as history; they are just not shown.
+      * not a row the M&A screen took off (`mna_screened_on` set — a stock pinned by a buyout
+        looks like a perfect coil but cannot break out).
+    The ordering is unchanged."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT ticker, anchor_date, state, runup_ratio, runup_high, coil_days, last_close,
                    today_pct, tight_close_streak, pullback_shape, fresh_tightening, rmv_5d, dvol_med
             FROM mi_anticipation_consolidation
-            WHERE state <> 'aged'
+            WHERE state <> 'aged' AND mna_screened_on IS NULL
+              AND last_eval = (SELECT max(last_eval) FROM mi_anticipation_consolidation)
             ORDER BY tight_close_streak DESC NULLS LAST, today_pct ASC NULLS LAST
             LIMIT $1
         """, limit)
