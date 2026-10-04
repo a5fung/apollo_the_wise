@@ -80,7 +80,9 @@ never disagree about what the same news is worth.**
    (≤ 2.0% of close) at their own scan. The anticipation scan's block also takes the stock OFF
    the 🪙 coil board (#394, 2026-10-03; ADR 0013 change log) — and there, by spec, an UNREADABLE
    own-day bar keeps a nominated name on the board + an `anticipation_mna_price_unread` row
-   instead of the news-alone block every other caller applies. A signed reverse-merger `shell` skips on the news alone
+   instead of the news-alone block every other caller applies; a name already screened off STAYS
+   off while its own-day range stays ≤ 2.0% (or unreadable), even after its deal headline leaves
+   the 21-day news lookback, and returns when the range opens past 2.0%. A signed reverse-merger `shell` skips on the news alone
    (SUNE, CLRO). A grade of `mna` with blank deal fields skips as today (ruling 5). The
    keyword-in-text path does not block. **The price-only arm (his ruling 3):** on the EP scan a
    gap of ≥ 20% whose open window trades within 0.5%, with no deal in the news, skips (source

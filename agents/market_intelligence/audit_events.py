@@ -70,6 +70,8 @@ MNA_PIN_CONFIRMED = "mna_pin_confirmed"                # 2026-10-03: the 09:35 o
 
 # ── Anticipation coil-finder M&A / buyout-pin guards (#387/#410, 2026-06-30 NUVL FP) ────────
 ANTICIPATION_MNA_EXCLUDED = "anticipation_mna_excluded"  # #387 — ma_filter.is_likely_ma hit; NO LONGER WRITTEN since #394 (2026-10-03): a coil-board screen writes MNA_FILTER_FIRED `{ticker} via <source> (anticipation)` like every other detector — kept for querying the rows written 2026-06-30..2026-10-03
+ANTICIPATION_MNA_PIN_HELD = "anticipation_mna_pin_held"  # #394 (2026-10-03): a coil a past M&A screen took off the board stays off — its own-day range is still <= the day-window ceiling (or unreadable), even though the news may no longer nominate it (deal headline past the 21-day lookback)
+ANTICIPATION_MNA_PIN_RELEASED = "anticipation_mna_pin_released"  # #394: a held coil's own-day range opened past the day-window ceiling — every row's off-board mark cleared, back on the board
 ANTICIPATION_MNA_PRICE_UNREAD = "anticipation_mna_price_unread"  # #394 (2026-10-03): the news nominated a coil (target of a deal) but its own-day bar was unreadable — KEPT ON the board (the coil-board spec; the #692 rule blocks it elsewhere), recorded with the deal answer + the reading's why
 ANTICIPATION_COIL_BUYOUT_PIN_REJECTED = "anticipation_coil_buyout_pin_rejected"  # #410 — shape guard
 # ── #327 readiness-job robustness (blocker fix, operator-signed 2026-07-14 — 7/13 >2h hang) ──

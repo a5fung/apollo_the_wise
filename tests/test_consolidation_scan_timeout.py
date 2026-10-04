@@ -632,29 +632,217 @@ async def test_394_the_capped_screen_walks_the_board_top_first(monkeypatch):
     assert len(_rows(cap, ANTICIPATION_MNA_CHECK_CAPPED)) == 1
 
 
-# ── #394 the board's DB edge: the mark, the read that hides it, the write that clears it ──────
-@pytest.mark.asyncio
-async def test_394_board_read_hides_screened_rows_and_a_write_clears_the_mark(monkeypatch):
+# ══ #394 the board's DB edge, on REAL SQL ═════════════════════════════════════════════════════
+# The production db.py functions run unchanged against an in-memory SQLite table with the same
+# columns ($N → ?N; NOW() registered), so these pin what the board actually SHOWS — not the text
+# of a query. Columns mirror db.py's CREATE TABLE mi_anticipation_consolidation.
+import re as _re
+import sqlite3 as _sqlite3
+
+import agents.market_intelligence.db as _db
+
+_REAL_DB = {n: getattr(_db, n) for n in (
+    "get_consolidation_board", "get_consolidation_state_map", "upsert_consolidation",
+    "mark_consolidation_mna_screened", "clear_consolidation_mna_screened")}
+_DATE_COLS = {"anchor_date", "last_eval", "mna_screened_on"}
+_DDL = """CREATE TABLE mi_anticipation_consolidation (
+    ticker TEXT NOT NULL, anchor_date TEXT NOT NULL, state TEXT NOT NULL, runup_ratio REAL,
+    runup_high REAL, coil_days INT, last_close REAL, today_pct REAL, rmv_5d REAL, rmv_15d REAL,
+    pullback_shape TEXT, pullback_shapes TEXT, fresh_tightening INT, fresh_2bar_tr_pct REAL,
+    atr14_pct REAL, tight_close_streak INT, dvol_med REAL, last_eval TEXT, mna_screened_on TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (ticker, anchor_date),
+    CHECK (state IN ('coiled','post_runup','aged')))"""
+
+
+class _SqliteConn:
+    def __init__(self, cx):
+        self.cx = cx
+
+    @staticmethod
+    def _q(sql, args):
+        return (_re.sub(r"\$(\d+)", r"?\1", sql),
+                [a.isoformat() if isinstance(a, date) else a for a in args])
+
+    async def execute(self, sql, *args):
+        cur = self.cx.execute(*self._q(sql, args))
+        return f"UPDATE {cur.rowcount}"
+
+    async def fetch(self, sql, *args):
+        cur = self.cx.execute(*self._q(sql, args))
+        cols = [c[0] for c in cur.description]
+        return [{c: (date.fromisoformat(v) if c in _DATE_COLS and v else v)
+                 for c, v in zip(cols, row)} for row in cur.fetchall()]
+
+
+class _SqlitePool:
+    def __init__(self):
+        self.cx = _sqlite3.connect(":memory:")
+        self.cx.create_function("NOW", 0, lambda: "2026-07-14T21:35:00")
+        self.cx.execute(_DDL)
+        self.conn = _SqliteConn(self.cx)
+
+    def acquire(self):
+        pool = self
+
+        class _CM:
+            async def __aenter__(self):
+                return pool.conn
+
+            async def __aexit__(self, *a):
+                return False
+        return _CM()
+
+    def seed(self, ticker, anchor, *, last_eval, state="coiled", streak=3, today_pct=0.004,
+             screened_on=None):
+        self.cx.execute(
+            "INSERT INTO mi_anticipation_consolidation (ticker, anchor_date, state, runup_ratio, "
+            "runup_high, coil_days, tight_close_streak, today_pct, dvol_med, last_eval, "
+            "mna_screened_on) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (ticker, str(anchor), state, 1.3, 100.0, 6, streak, today_pct, 5e7, str(last_eval),
+             str(screened_on) if screened_on else None))
+
+    def row(self, ticker, anchor):
+        r = self.cx.execute("SELECT last_eval, mna_screened_on FROM mi_anticipation_consolidation "
+                            "WHERE ticker=? AND anchor_date=?", (ticker, str(anchor))).fetchone()
+        return r
+
+
+def _real_board_db(monkeypatch):
+    """The real board functions over an in-memory SQLite table (restores any harness fakes)."""
     from unittest.mock import AsyncMock
-    import agents.market_intelligence.db as db
-    from tests.conftest import make_mock_pool
-    pool, conn = make_mock_pool()
-    conn.fetch = AsyncMock(return_value=[])
-    conn.execute = AsyncMock(return_value="UPDATE 2")
-    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    pool = _SqlitePool()
+    monkeypatch.setattr(_db, "get_pool", AsyncMock(return_value=pool))
+    for name, fn in _REAL_DB.items():
+        monkeypatch.setattr(_db, name, fn)
+    return pool
 
-    await db.get_consolidation_board()
-    board_sql = conn.fetch.await_args.args[0]
-    assert "mna_screened_on IS NULL" in board_sql and "state <> 'aged'" in board_sql
 
-    n = await db.mark_consolidation_mna_screened("NUVL", _TODAY)
-    sql, ticker, day = conn.execute.await_args.args
-    assert n == 2 and ticker == "NUVL" and day == _TODAY
-    assert "SET mna_screened_on = $2" in sql and "state <> 'aged'" in sql
+async def _board_tickers():
+    return [r["ticker"] for r in await _db.get_consolidation_board()]
 
-    await db.upsert_consolidation(
-        "NUVL", _TODAY, state="coiled", runup_ratio=1.3, runup_high=10.0, coil_days=5,
-        last_close=10.0, today_pct=0.01, rmv_5d=20.0, rmv_15d=25.0, pullback_shape=None,
+
+@pytest.mark.asyncio
+async def test_394_board_shows_only_coils_the_latest_scan_rewrote(monkeypatch):
+    """Today's five buyout-pinned names sat at the top on summer rows the scan stopped rewriting
+    (tight-day streaks frozen at 8-12). The board shows only rows the LATEST scan rewrote; the
+    old rows stay in the table as history."""
+    pool = _real_board_db(monkeypatch)
+    latest = date(2026, 10, 2)
+    for tk, anchor, last_eval, streak in (
+            ("NUVL", date(2026, 6, 9), date(2026, 6, 26), 12),
+            ("NUVL", date(2026, 6, 20), date(2026, 6, 30), 10),
+            ("CRNX", date(2026, 7, 7), date(2026, 7, 20), 11),
+            ("FBRX", date(2026, 7, 27), date(2026, 8, 10), 9),
+            ("DV", date(2026, 8, 7), date(2026, 8, 25), 9),
+            ("MKTX", date(2026, 9, 1), date(2026, 9, 15), 8)):
+        pool.seed(tk, anchor, last_eval=last_eval, streak=streak)
+    pool.seed("REAL", date(2026, 9, 22), last_eval=latest, streak=3)
+    pool.seed("RUNUP", date(2026, 9, 25), last_eval=latest, state="post_runup", streak=0)
+    pool.seed("OLD", date(2026, 7, 1), last_eval=latest, state="aged", streak=7)
+    pool.seed("SCRND", date(2026, 9, 20), last_eval=latest, streak=6, screened_on=latest)
+
+    assert await _board_tickers() == ["REAL", "RUNUP"]
+    n_rows = pool.cx.execute("SELECT count(*) FROM mi_anticipation_consolidation").fetchone()[0]
+    assert n_rows == 10                                          # history kept
+
+    # a row the latest scan REWRITES is shown again (CRNX re-evaluated as a coil on 10-02)
+    await _db.upsert_consolidation(
+        "CRNX", date(2026, 7, 7), state="coiled", runup_ratio=1.3, runup_high=10.0, coil_days=5,
+        last_close=10.0, today_pct=0.003, rmv_5d=20.0, rmv_15d=25.0, pullback_shape=None,
         pullback_shapes=None, fresh_tightening=True, fresh_2bar_tr_pct=1.0, atr14_pct=3.0,
-        tight_close_streak=3, dvol_med=5e7, last_eval=_TODAY)
-    assert "mna_screened_on=NULL" in conn.execute.await_args.args[0]
+        tight_close_streak=4, dvol_med=5e7, last_eval=latest)
+    assert await _board_tickers() == ["CRNX", "REAL", "RUNUP"]
+
+
+@pytest.mark.asyncio
+async def test_394_mark_takes_every_row_off_and_a_write_or_clear_brings_it_back(monkeypatch):
+    pool = _real_board_db(monkeypatch)
+    today = date(2026, 10, 2)
+    pool.seed("NUVL", date(2026, 9, 10), last_eval=today, streak=5)
+    pool.seed("NUVL", date(2026, 9, 1), last_eval=today, streak=4)
+    pool.seed("NUVL", date(2026, 6, 9), last_eval=today, state="aged")
+    assert await _board_tickers() == ["NUVL", "NUVL"]
+
+    assert await _db.mark_consolidation_mna_screened("NUVL", today) == 2   # aged row untouched
+    assert await _board_tickers() == []
+    # a second screen keeps the FIRST screen date (the day the hold began)
+    await _db.mark_consolidation_mna_screened("NUVL", today + timedelta(days=3))
+    assert pool.row("NUVL", date(2026, 9, 10))[1] == today.isoformat()
+    state = await _db.get_consolidation_state_map()
+    assert state[("NUVL", date(2026, 9, 10))]["mna_screened_on"] == today
+
+    assert await _db.clear_consolidation_mna_screened("NUVL") == 2
+    assert await _board_tickers() == ["NUVL", "NUVL"]
+
+
+# ── #394 fix 2: THE PRICE HOLDS A SCREENED NAME past the 21-day news lookback ────────────────
+_HELD_ANCHOR = date(2026, 5, 26)          # == the harness coil's anchor (bars[55])
+
+
+def _seed_held(pool):
+    """HELD: screened off 25 days before the scan (its deal headline is past the 21-day news
+    lookback, so the news no longer nominates it); two rows, both marked. FREE: an unscreened
+    coil carried from yesterday."""
+    yday = _TODAY - timedelta(days=1)
+    screened = _TODAY - timedelta(days=25)
+    pool.seed("HELD", _HELD_ANCHOR, last_eval=yday, streak=9, screened_on=screened)
+    pool.seed("HELD", date(2026, 5, 1), last_eval=yday, streak=7, screened_on=screened)
+    pool.seed("FREE", _HELD_ANCHOR, last_eval=yday, streak=3)
+    return screened
+
+
+async def _scan_held(monkeypatch, range_pct, *, own_day=True):
+    bars = _bars_with_own_day(range_pct, own_day=own_day)
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, csig=_csig(bars), real_mna=True,
+                                 keys=[_key("HELD"), _key("HELD", date(2026, 5, 1)), _key("FREE")])
+    pool = _real_board_db(monkeypatch)
+    screened = _seed_held(pool)
+    _f, calls = _real_mna_edges(monkeypatch, None)       # the news no longer nominates HELD
+    stats, entries = await _scan()
+    return cap, pool, screened, calls, entries
+
+
+@pytest.mark.asyncio
+async def test_394_screened_name_stays_off_at_day_25_while_its_price_is_pinned(monkeypatch):
+    from agents.market_intelligence.audit_events import ANTICIPATION_MNA_PIN_HELD
+    cap, pool, screened, calls, entries = await _scan_held(monkeypatch, 0.3)
+
+    assert "HELD" in calls                                # the news was asked — and passed it
+    assert pool.row("HELD", _HELD_ANCHOR) == ((_TODAY - timedelta(days=1)).isoformat(),
+                                               screened.isoformat())   # not written, still marked
+    assert [t for t, *_ in entries] == ["FREE"]           # no entry fires from HELD
+    assert await _board_tickers() == ["FREE"]             # FREE untouched, HELD off
+    held = _rows(cap, ANTICIPATION_MNA_PIN_HELD)
+    assert len(held) == 1                                 # one row for its two board rows
+    assert "day range 0.3% <= 2.0%" in held[0][0] and screened.isoformat() in held[0][0]
+
+
+@pytest.mark.asyncio
+async def test_394_screened_name_returns_when_its_price_moves(monkeypatch):
+    from agents.market_intelligence.audit_events import (
+        ANTICIPATION_MNA_PIN_HELD, ANTICIPATION_MNA_PIN_RELEASED)
+    cap, pool, _screened, _calls, entries = await _scan_held(monkeypatch, 3.0)
+
+    assert pool.row("HELD", _HELD_ANCHOR) == (_TODAY.isoformat(), None)   # written, unmarked
+    assert pool.row("HELD", date(2026, 5, 1))[1] is None   # the old anchor's mark cleared too
+    # (HELD's two keys fire twice through the harness's fake insert; the real open-dedup index
+    # keeps one row)
+    assert {t for t, *_ in entries} == {"FREE", "HELD"}
+    assert sorted(await _board_tickers()) == ["FREE", "HELD"]
+    released = _rows(cap, ANTICIPATION_MNA_PIN_RELEASED)
+    assert len(released) == 1 and "day range 3.0% > 2.0%" in released[0][0]
+    assert _rows(cap, ANTICIPATION_MNA_PIN_HELD) == []
+
+
+@pytest.mark.asyncio
+async def test_394_unreadable_price_does_not_release_a_held_name(monkeypatch):
+    """A holiday run (no own-day bar) must not release every held buyout: unreadable changes
+    nothing — HELD stays off, the unscreened FREE is written as always."""
+    from agents.market_intelligence.audit_events import ANTICIPATION_MNA_PIN_HELD
+    cap, pool, screened, _calls, _entries = await _scan_held(monkeypatch, 0.3, own_day=False)
+
+    assert pool.row("HELD", _HELD_ANCHOR)[1] == screened.isoformat()
+    assert await _board_tickers() == ["FREE"]
+    held = _rows(cap, ANTICIPATION_MNA_PIN_HELD)
+    assert len(held) == 1 and "unreadable (no_own_day_bar)" in held[0][0]
