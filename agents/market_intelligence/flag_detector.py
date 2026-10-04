@@ -348,6 +348,10 @@ def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares
 # deal value, daily ranges collapse to bid-ask noise (~0.2-0.5%). Real
 # VCPs run 1.5-3% even when tight, so a strict 0.5% threshold has
 # near-zero false-positive risk.
+# The stages the M&A screen + this deal-pin backstop run on: every stage the scan names to the
+# operator (#598, 2026-10-04: TIGHTENING added — a buyout-pinned name reads as a perfect
+# TIGHTENING base and reached the board and the NEW TODAY block). WATCH stays unscreened.
+_MNA_SCREENED_STAGES = ("TIGHTENING", "COILED", "TRIGGERED")
 _DEAL_PIN_LOOKBACK_DAYS          = 10
 _DEAL_PIN_RANGE_THRESHOLD        = 0.005
 _DEAL_PIN_MIN_SUB_THRESHOLD_DAYS = 5
@@ -1410,14 +1414,17 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
 
     results = await asyncio.gather(*(_score(t) for t in universe))
 
-    # M&A filter — only the actionable stages (COILED + TRIGGERED) get the
-    # Polygon news lookup. WATCH/TIGHTENING are noise-suppressed in the digest
-    # already; gating them at compute time would 5-10x the API cost for no
-    # user-visible benefit. Filtered candidates downgrade to `unqualified`
+    # M&A filter — every stage the operator is told about by name (TIGHTENING, COILED,
+    # TRIGGERED; #598 added TIGHTENING 2026-10-04) gets the Polygon news lookup, because a
+    # deal-pinned name reads as a perfect base and would otherwise reach the board and the
+    # 17:25 NEW TODAY block. WATCH stays unscreened: it is digest-silent and ~40-50 names a day.
+    # COST: the model call fires only on keyword-hit headlines, <=3 articles a ticker, memoized
+    # per day, on the "shared" budget pool inside ma_filter (unchanged); the deal-pin layer
+    # below is price-only (no API). Filtered candidates downgrade to `unqualified`
     # with reason="mna_filter:<source>" — preserved in mi_flag_candidates so
     # offline review can audit the filter's hit rate.
     from agents.market_intelligence.ma_filter import is_likely_ma, day_window_pin
-    actionable = [r for r in results if r is not None and r.get("stage") in ("COILED", "TRIGGERED")]
+    actionable = [r for r in results if r is not None and r.get("stage") in _MNA_SCREENED_STAGES]
     if actionable:
         async def _mna_check(r: dict) -> None:
             try:
@@ -1439,7 +1446,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     r["original_stage"] = r["stage"]
                     r["stage"] = "unqualified"
                     r["reason"] = f"mna_filter:{(meta or {}).get('source', 'unknown')}"
-                    # _score already inserted the row as COILED/TRIGGERED.
+                    # _score already inserted the row at its scored stage.
                     # Re-upsert so the persisted row reflects the flip.
                     await db.insert_flag_candidate(r)
                     # Filter behavior is ALWAYS applied (re-upsert above);
@@ -1471,7 +1478,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         # median 0.22%, 8 of 9 sessions sub-0.5%, vs SXT 3.2% / SEI 6.0%
         # also-COILED → KALV cleanly outlier.
         still_actionable = [
-            r for r in actionable if r.get("stage") in ("COILED", "TRIGGERED")
+            r for r in actionable if r.get("stage") in _MNA_SCREENED_STAGES
         ]
         if still_actionable:
             try:

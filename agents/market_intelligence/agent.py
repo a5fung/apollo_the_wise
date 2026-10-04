@@ -2313,7 +2313,7 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if coiled:
             lines.append("")
-            lines.append(f"🌀 *COILED — actionable setup ({len(coiled)})*")
+            lines.append(f"🌀 *COILED — tightest bases, watch only ({len(coiled)})*")
             for r in coiled[:15]:
                 age = r.get("base_age")
                 rr = r.get("range_contraction_ratio")
