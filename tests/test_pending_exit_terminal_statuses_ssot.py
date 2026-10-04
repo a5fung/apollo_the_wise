@@ -87,7 +87,9 @@ def test_no_hand_copied_status_not_in_literal_in_order_manager():
 
 # ── 1b. order_manager consumers name the shared constant ────────────────────
 
-_OM_PENDING_EXIT_CONSUMERS = ("get_pending_exit_qty", "execute_partial_exit", "execute_full_exit")
+# 2026-10-03 review: execute_full_exit's (and the depth sale's) dedup read moved into
+# `_pending_exits_or_skip` — the consumer that names the constant is now that helper.
+_OM_PENDING_EXIT_CONSUMERS = ("get_pending_exit_qty", "execute_partial_exit", "_pending_exits_or_skip")
 
 
 @pytest.mark.parametrize("fn_name", _OM_PENDING_EXIT_CONSUMERS)
@@ -164,8 +166,9 @@ async def _execute_full_exit_dedup_statuses(monkeypatch) -> list[str]:
     pool, conn = make_mock_pool()
     conn.fetchrow = AsyncMock(side_effect=[
         {"ticker": "TEST", "remaining_shares": 10},            # trade lookup
-        {"alpaca_order_id": "x", "purpose": "full_exit"},      # dedup hit -> abort
     ])
+    conn.fetch = AsyncMock(return_value=[                      # dedup hit -> abort
+        {"alpaca_order_id": "x", "purpose": "full_exit", "qty": 10}])
     monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
     # #687: execute_full_exit holds the per-trade lock, and a skip is audited + paged.
     monkeypatch.setattr(om, "log_audit_event", AsyncMock())
@@ -180,7 +183,7 @@ async def _execute_full_exit_dedup_statuses(monkeypatch) -> list[str]:
     result = await om.execute_full_exit(1, "test")
     assert result is False
 
-    dedup_call = conn.fetchrow.await_args_list[1]
+    dedup_call = conn.fetch.await_args_list[0]
     return dedup_call.args[-1]
 
 

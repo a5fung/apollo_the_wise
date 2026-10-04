@@ -264,7 +264,8 @@ async def test_execute_full_exit_raw_response_param_is_dict(monkeypatch):
         "id": 9, "ticker": "TEST", "remaining_shares": 50.0,
         "account_mode": "live", "stop_order_id": "stop-1",
     }
-    conn.fetchrow = AsyncMock(side_effect=[trade_row, None])  # trade, then no pending exit
+    conn.fetchrow = AsyncMock(side_effect=[trade_row])
+    conn.fetch = AsyncMock(return_value=[])                   # no pending exit orders
     conn.execute = AsyncMock()
     monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
 
