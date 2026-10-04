@@ -18,12 +18,15 @@ PURE + import-safe: no I/O, no submit, no module-level side effects. RMV is REUS
 from `flag_detector._compute_rmv` (telemetry only — #54 verdict + STEP 0: NOT a gate;
 the COILED gate stays range + base_run). Reuse, not a 4th copy (search-before-build).
 """
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from agents.market_intelligence.flag_detector import (
-    _compute_rmv, _compute_fresh_tightening, _evaluate_deal_pin,
+    _atr_14, _compute_rmv, _compute_fresh_tightening, _evaluate_deal_pin,
 )
+
+logger = logging.getLogger(__name__)
 
 # ── lifecycle thresholds — template-grounded (NOT self-certified). Calibration knobs
 #    #1 (EXPANSION floor) / #2 (trigger-volume floor) are probed (N=17 illustrative) and
@@ -198,8 +201,12 @@ def find_coiled_days(bars, ctx, min_base=1):
 # uncovered silent-corruption surface the golden funnel test does NOT cover).
 # ─────────────────────────────────────────────────────────────────────────────
 def db_rows_to_bars(rows: list[dict]) -> list[dict]:
-    """mi_daily_closes rows → the replay/coil bar shape {date,o,h,l,c,v}. Accepts the
-    DB column names (trade_date, open_price, high_price, low_price, close, volume)."""
+    """mi_daily_closes rows → the replay/coil bar shape {date,o,h,l,c,v,o_missing}. Accepts the
+    DB column names (trade_date, open_price, high_price, low_price, close, volume).
+
+    A NULL open is replaced by the close (so every consumer keeps a float `o`) and FLAGGED
+    `o_missing=True` — #394: the orderliness score reads overnight gaps (open vs the prior close),
+    and a close standing in for an unknown open would read as a close-to-close move."""
     out = []
     for r in rows:
         out.append({
@@ -209,6 +216,7 @@ def db_rows_to_bars(rows: list[dict]) -> list[dict]:
             "l": float(r["low_price"]),
             "c": float(r["close"]),
             "v": float(r["volume"]) if r.get("volume") is not None else 0.0,
+            "o_missing": r.get("open_price") is None,
         })
     return out
 
@@ -792,6 +800,80 @@ def coil_pin_reject_reason(bars: list[dict], coil: dict) -> Optional[str]:
     return "stop_floor"
 
 
+# ── ORDERLINESS — how gappy the base is (#394 Phase 1, DISPLAY ONLY) ────────────────────────
+# Method: docs/analysis/394_coil_tuning_methodology_2026-07-11.md §3c. Per the operator's correction
+# the metric is OVERNIGHT character, not the intraday ADR `find_coil_setup` returns (its `adr`
+# field is the mean intraday range he rejected for this purpose):
+#     overnight_gap_pct(d) = |open(d) − close(d−1)| / close(d−1)
+#     orderliness score    = P95(overnight_gap_pct over the base window) ÷ ATR14%
+# A coil whose overnight prints rival its daily range is held together by luck, not by supply
+# being absorbed. Higher = gappier. It is RECORDED and SHOWN on the board; it gates nothing and
+# sorts nothing — the 2026-10-03 C1 read (probe scripts/probes/_394_coil_tune.py, which IMPORTS
+# these functions rather than mirroring them) ruled NO demotion: the gappiest quartile did not
+# underperform (ADR 0013 change log 2026-10-03).
+MIN_GAP_DAYS = 3        # fewer usable overnight gaps than this -> orderliness unknown (None)
+
+
+def percentile(xs, p):
+    """Linear-interpolation percentile (numpy's default 'linear' method), p in [0, 100]."""
+    xs = sorted(xs)
+    if not xs:
+        return None
+    if len(xs) == 1:
+        return float(xs[0])
+    k = (len(xs) - 1) * p / 100.0
+    lo = int(k)
+    hi = min(lo + 1, len(xs) - 1)
+    return xs[lo] + (xs[hi] - xs[lo]) * (k - lo)
+
+
+def atr14_pct(bars, i):
+    """ATR14 as % of the close at bar i — the live _atr_14 (simple mean of Wilder TRs)."""
+    a = _atr_14(bars_to_rmv_rows(bars), i)
+    c = bars[i]["c"]
+    if a is None or not c or a <= 0:
+        return None
+    return a / c * 100.0
+
+
+def overnight_gap_pcts(bars, lo, hi):
+    """(gaps, dropped): |open(d) − close(d−1)| / close(d−1) × 100 for d in [lo, hi]; a day whose raw
+    open is missing (bar['o_missing']) or whose prior close is 0 is DROPPED and counted."""
+    gaps, dropped = [], 0
+    for d in range(max(lo, 1), hi + 1):
+        prev = bars[d - 1]["c"]
+        if bars[d].get("o_missing") or not prev:
+            dropped += 1
+            continue
+        gaps.append(abs(bars[d]["o"] - prev) / prev * 100.0)
+    return gaps, dropped
+
+
+def orderliness_score(bars, anchor_idx, end_idx, *, min_days=MIN_GAP_DAYS):
+    """§3c: P95(overnight gap % over the base window anchor_idx+1..end_idx) ÷ ATR14% at end_idx.
+    Higher = gappier (overnight prints rival the daily range). Returns (score, n_gaps, dropped);
+    score None when the window has < min_days usable gaps or ATR is unavailable."""
+    if anchor_idx is None or end_idx is None or end_idx <= anchor_idx:
+        return None, 0, 0
+    gaps, dropped = overnight_gap_pcts(bars, anchor_idx + 1, end_idx)
+    if len(gaps) < min_days:
+        return None, len(gaps), dropped
+    atr = atr14_pct(bars, end_idx)
+    if not atr:
+        return None, len(gaps), dropped
+    return percentile(gaps, 95) / atr, len(gaps), dropped
+
+
+def format_orderliness(score) -> Optional[str]:
+    """The score in plain words for the board line, or None when unscored:
+        0.8  ->  'overnight gaps 0.8× daily range'
+    i.e. the biggest overnight jumps in the base (P95) ran at that multiple of a normal day's range."""
+    s = _num(score)
+    if s is None:
+        return None
+    return f"overnight gaps {s:.1f}× daily range"
+
+
 def evaluate_coil_consolidation(bars, *, hold_limit=COIL_HOLD_LIMIT):
     """#327 LIVE Family-A base detection (operator-integrated 2026-06-27) — REPLACES the
     peak-anchored evaluate_consolidation, which anchored at the runup peak and called peak..now the
@@ -829,6 +911,14 @@ def evaluate_coil_consolidation(bars, *, hold_limit=COIL_HOLD_LIMIT):
         state = "coiled"
     else:
         state = "post_runup"
+    # #394 Phase 1 — orderliness is DISPLAY telemetry, computed only AFTER every gate above has
+    # passed: a failure to score it (logged, below) leaves the coil admitted and unscored — it can
+    # never turn a held coil into a reject, and nothing here reads it back.
+    try:
+        orderliness = orderliness_score(bars, anchor_idx, last_idx)[0]
+    except Exception as e:
+        logger.warning(f"coil orderliness unscored (anchor {anchor_date}): {e}", exc_info=True)
+        orderliness = None
     return {
         "anchor_date": anchor_date,
         "state": state,
@@ -840,6 +930,7 @@ def evaluate_coil_consolidation(bars, *, hold_limit=COIL_HOLD_LIMIT):
         "rmv_5d": compute_rmv(bars, last_idx, lookback=5),
         "rmv_15d": compute_rmv(bars, last_idx, lookback=15),
         "hold_retrace": round(coil["retrace"], 4),    # NEW: give-back of the runup leg (the hold gate)
+        "orderliness": orderliness,                   # #394 Phase 1: P95 overnight gap ÷ ATR14% (display only)
         **tel,
     }, None
 
@@ -1198,22 +1289,30 @@ def _tightness_word(rmv):
 
 
 def format_consolidation_row(ticker, runup_ratio, coil_days, rmv_5d=None,
-                             fresh_tightening=False, coiled=True) -> str:
+                             fresh_tightening=False, coiled=True, orderliness=None) -> str:
     """A Family-A candidate row.  coiled=True (the tight shortlist):
-        `LUNL ` +70% · coiling 14d · very tight · tightening↓
+        `LUNL ` +70% · coiling 14d · very tight · tightening↓ · overnight gaps 0.8× daily range
     coiled=False (post-runup, NOT coiled yet — the tightness word would read as a contradiction in
     that section, so omit it; show only runup + age):
-        `FUTU ` +17% · 15d since peak"""
+        `FUTU ` +17% · 15d since peak · overnight gaps 0.3× daily range
+    `orderliness` (#394 Phase 1, display only) is the stored P95-overnight-gap ÷ ATR14% score; the
+    phrase is left off when it is None (unscored). It never changes which rows show or their order."""
     ru, rmv = _num(runup_ratio), _num(rmv_5d)
     ru_s = f"+{(ru - 1) * 100:.0f}%" if ru is not None else "?%"
+    gaps = format_orderliness(orderliness)
     if not coiled:
-        return f"  `{ticker:<5}` {ru_s} · {coil_days or 0}d since peak"
+        parts = [ru_s, f"{coil_days or 0}d since peak"]
+        if gaps:
+            parts.append(gaps)
+        return f"  `{ticker:<5}` " + " · ".join(parts)
     parts = [ru_s, f"coiling {coil_days or 0}d"]
     word = _tightness_word(rmv)
     if word:
         parts.append(word)
     if fresh_tightening:
         parts.append("tightening↓")
+    if gaps:
+        parts.append(gaps)
     return f"  `{ticker:<5}` " + " · ".join(parts)
 
 

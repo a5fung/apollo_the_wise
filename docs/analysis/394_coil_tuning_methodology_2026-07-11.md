@@ -1,6 +1,12 @@
 # #394 — Coil-finder tuning methodology (Fable block 1 Tier-2, 2026-07-11)
 
-**Status: METHODOLOGY DESIGN — the tune itself waits for forward-shadow N (the market's clock).**
+**Status: SIGNED 2026-07-12 · TUNE RUN 2026-10-03 (C1) · APPLIED 2026-10-03 as DISPLAY ONLY (C2, operator
+"Sign" on the tables) · RE-ARMED (C3, data-gated review `coil_tune_rerun_394`: >= 128 settled, not before 2026-11-14).**
+Result: hold cap KEEP 50% · board order KEEP (pooled verdict) · orderliness NO-DEMOTE → §3c Phase 1 only (the
+score is recorded and shown on the board; Phase 2 demotion is NOT adopted). The signed tables and the ADR
+change-log entry: `docs/decisions/0013-consolidation-plays-post-runup.md` § 2026-10-03 "#394 C2"; the capture:
+`scripts/probes/_394/coil_tune_out_2026-10-03.txt`. (The paragraph below is the original design, kept as written.)
+
 This defines WHAT gets measured, the decision rules, and the N-gates so the tune is a mechanical
 Opus/Sonnet execution the day the data is sufficient — no design fork left. Amends ADR 0013's
 coil-finder (changelog entry on tune day, CHANGE_PROCESS; operator sign-off on the tables).
@@ -56,10 +62,15 @@ overnight prints rival its daily volatility is held together by luck, not supply
 
 - **C1 — the tune probe** `scripts/probes/_394_coil_tune.py` (read-only: the 3a sweep table +
   3b correlation table + 3c quartile table; verdict line per knob per the rules above).
+  **DONE 2026-10-03** (output `scripts/probes/_394/coil_tune_out_2026-10-03.txt`).
 - **C2 — apply the verdicts** (constants + board ordering + orderliness display; ADR 0013
   changelog + this doc's status flip, same commit; instant-revert env for the ordering).
+  **DONE 2026-10-03, display only** — the signed verdicts changed no constant and no ordering, so there was
+  nothing to give an instant-revert env to; the orderliness display is additive (nullable column + a phrase on the
+  board line). The probe's orderliness definition now lives in `anticipation.orderliness_score` and the probe
+  imports it.
 - **C3 — re-arm** (`coil_tuning_ready` recurs +6 weeks — thresholds re-checked once per regime
-  change, the quarterly-rule-review discipline).
+  change, the quarterly-rule-review discipline). **DONE 2026-10-03** as `coil_tune_rerun_394`.
 DoD (#394): C2 landed with operator-signed tables = "cap tuned + orderliness decided."
 
 ## 5. Optional (unchanged from the task): long-base peak-detection accuracy — stays LOW-pri,

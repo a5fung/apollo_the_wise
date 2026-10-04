@@ -8,7 +8,9 @@ This probe DECIDES NOTHING LIVE: C2 applies verdicts only with the operator's si
 
 Run (ONE capture, never re-run to re-read):
     ssh apollo@87.99.134.162 "docker exec -i apollo-market python -" \
-        < scripts/probes/_394_coil_tune.py > scripts/probes/_394_coil_tune_out.txt 2>&1
+        < scripts/probes/_394_coil_tune.py > scripts/probes/_394/coil_tune_out_<YYYY-MM-DD>.txt 2>&1
+(the 2026-10-03 capture is scripts/probes/_394/coil_tune_out_2026-10-03.txt; the C3 re-run — data-gated
+review `coil_tune_rerun_394` — must run AFTER the C2 deploy, since it imports anticipation.orderliness_score)
 Selftest (local, no DB):
     python scripts/probes/_394_coil_tune.py --selftest
 
@@ -23,7 +25,11 @@ hash of find_coil_setup's source) so the reader can tell which build ran:
   board keys    ← anticipation.tight_close_streak, anticipation.compute_rmv(lookback=15), and
                   today_pct = |c/c_prev − 1| (inline in evaluate_coil_consolidation; mirrored below)
   ATR14         ← flag_detector._atr_14 on anticipation.bars_to_rmv_rows (same as atr14_pct on the board)
-The only NEW computation is the method's orderliness metric (§3c), which has no live implementation.
+  orderliness   ← anticipation.orderliness_score (+ percentile / overnight_gap_pcts / atr14_pct /
+                  MIN_GAP_DAYS) — the method's §3c metric. It was DEFINED in this probe for C1 and, at
+                  C2 (2026-10-03, operator "Sign" — display only), MOVED VERBATIM into the live module so
+                  the board's stored score and this probe's tables are one definition, not two that can
+                  drift. The probe imports it; tests/test_394_coil_tune_probe.py pins the identity.
 (find_coil_setup's `adr` field is commented ORDERLINESS but is the mean intraday range the operator
 rejected for this purpose — PLAN #394: "overnight-gap / max-daily-move, NOT the intraday-ADR" — so it
 is not used here.)
@@ -42,7 +48,8 @@ INTERPRETATIONS (the method leaves these open; each is a named constant below):
     so keys read there carry no ordering information.
   * 3c base window = bars (anchor, entry) exclusive: the post-peak consolidation before the entry bar.
     Days with a NULL open are DROPPED from the P95 (db_rows_to_bars substitutes the close for a NULL
-    open, which would turn an overnight gap into a close-to-close move).
+    open and flags `o_missing`; reading the substitute would turn an overnight gap into a
+    close-to-close move).
   * (iv) = the incumbent board order with the top orderliness quartile (gappiest) demoted beneath all
     others; one rank-based quartile_index serves both 3b(iv) and the 3c table.
 """
@@ -63,10 +70,9 @@ if _FILE and os.path.exists(_FILE):          # local run: make `agents` importab
         sys.path.insert(0, _ROOT)
 
 from agents.market_intelligence.anticipation import (   # noqa: E402 — LIVE primitives, imported not mirrored
-    COIL_HOLD_LIMIT, bars_to_rmv_rows, compute_rmv, db_rows_to_bars, find_coil_setup,
+    COIL_HOLD_LIMIT, compute_rmv, db_rows_to_bars, find_coil_setup, orderliness_score, percentile,
     tight_close_streak,
 )
-from agents.market_intelligence.flag_detector import _atr_14   # noqa: E402
 
 # ── method constants (§2/§3) ─────────────────────────────────────────────────────────────────────
 HOLD_CAPS = (0.40, 0.50, 0.60)
@@ -80,7 +86,6 @@ MIN_PRIMARY_N = 20              # §2 primary gate (3b reads "at N>=20")
 # ── interpretation constants (see module docstring) ──────────────────────────────────────────────
 CORRECTED_BASE_FROM = date(2026, 6, 29)
 ORDERING_ASOF_OFFSET = 1
-MIN_GAP_DAYS = 3                # 3c: fewer usable overnight gaps than this -> orderliness unknown
 BAR_LOOKBACK_DAYS = 200         # calendar days of bars before the earliest entry (coil-finder reads <= 80 bars)
 R_COL = "realized_r"
 
@@ -107,19 +112,6 @@ def win_rate(xs):
     return (sum(1 for x in xs if x > 0) / len(xs)) if xs else None
 
 
-def percentile(xs, p):
-    """Linear-interpolation percentile (numpy's default 'linear' method), p in [0, 100]."""
-    xs = sorted(xs)
-    if not xs:
-        return None
-    if len(xs) == 1:
-        return float(xs[0])
-    k = (len(xs) - 1) * p / 100.0
-    lo = int(k)
-    hi = min(lo + 1, len(xs) - 1)
-    return xs[lo] + (xs[hi] - xs[lo]) * (k - lo)
-
-
 def today_pct(bars, i):
     """|close % change| at bar i — mirrors evaluate_coil_consolidation's inline `today_pct`."""
     if i < 1 or not bars[i - 1]["c"]:
@@ -134,43 +126,6 @@ def hold_retrace(bars, i):
     if s is None:
         return None, None
     return s["retrace"], s["peak_date"]
-
-
-def atr14_pct(bars, i):
-    """ATR14 as % of the close at bar i — the live _atr_14 (simple mean of Wilder TRs)."""
-    a = _atr_14(bars_to_rmv_rows(bars), i)
-    c = bars[i]["c"]
-    if a is None or not c or a <= 0:
-        return None
-    return a / c * 100.0
-
-
-def overnight_gap_pcts(bars, lo, hi):
-    """(gaps, dropped): |open(d) − close(d−1)| / close(d−1) × 100 for d in [lo, hi]; a day whose raw
-    open is missing (bar['o_missing']) or whose prior close is 0 is DROPPED and counted."""
-    gaps, dropped = [], 0
-    for d in range(max(lo, 1), hi + 1):
-        prev = bars[d - 1]["c"]
-        if bars[d].get("o_missing") or not prev:
-            dropped += 1
-            continue
-        gaps.append(abs(bars[d]["o"] - prev) / prev * 100.0)
-    return gaps, dropped
-
-
-def orderliness_score(bars, anchor_idx, end_idx, *, min_days=MIN_GAP_DAYS):
-    """§3c: P95(overnight gap % over the base window anchor_idx+1..end_idx) ÷ ATR14% at end_idx.
-    Higher = gappier (overnight prints rival the daily range). Returns (score, n_gaps, dropped);
-    score None when the window has < min_days usable gaps or ATR is unavailable."""
-    if anchor_idx is None or end_idx is None or end_idx <= anchor_idx:
-        return None, 0, 0
-    gaps, dropped = overnight_gap_pcts(bars, anchor_idx + 1, end_idx)
-    if len(gaps) < min_days:
-        return None, len(gaps), dropped
-    atr = atr14_pct(bars, end_idx)
-    if not atr:
-        return None, len(gaps), dropped
-    return percentile(gaps, 95) / atr, len(gaps), dropped
 
 
 def avg_ranks(xs):
@@ -369,12 +324,7 @@ def fmt(x, spec="+.2f", none="  –"):
 # ═════════════════════════════════════════════════════════════════════════════════════════════════
 # Per-row measurement (pure on bars)
 # ═════════════════════════════════════════════════════════════════════════════════════════════════
-def rows_to_bars(raw):
-    """Live db_rows_to_bars + an `o_missing` flag (the live converter silently uses the close)."""
-    bars = db_rows_to_bars(raw)
-    for b, r in zip(bars, raw):
-        b["o_missing"] = r.get("open_price") is None
-    return bars
+rows_to_bars = db_rows_to_bars   # the live converter now flags a NULL open itself (`o_missing`) — one converter
 
 
 def bars_by_ticker(bar_rows):

@@ -5026,7 +5026,10 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
                 fresh_tightening=cons["fresh_tightening"],
                 fresh_2bar_tr_pct=cons["fresh_2bar_tr_pct"], atr14_pct=cons["atr14_pct"],
                 tight_close_streak=cons["tight_close_streak"], dvol_med=dvol_med,
-                last_eval=today)
+                last_eval=today,
+                # #394 Phase 1: recorded for the board line only (.get — display telemetry; it
+                # gates nothing, sorts nothing, and never reaches the entry signals above).
+                orderliness=cons.get("orderliness"))
             stats["written"] += 1
             prior = state_map.get((ticker, anchor_date))
             prior_state = prior["state"] if prior else None

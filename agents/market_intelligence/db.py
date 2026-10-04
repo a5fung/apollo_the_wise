@@ -2749,6 +2749,7 @@ async def initialize_schema() -> None:
                 dvol_med        FLOAT,                   -- 20-session median $-volume (liquidity floor sanity)
                 last_eval       DATE,
                 mna_screened_on DATE,                    -- #394: M&A screen took it off the board (NULL = on)
+                orderliness     FLOAT,                   -- #394 Phase 1 (display only): P95 overnight gap / ATR14% over the base; NULL = unscored
                 created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 PRIMARY KEY (ticker, anchor_date),
@@ -2764,6 +2765,14 @@ async def initialize_schema() -> None:
             -- default = never screened.
             ALTER TABLE mi_anticipation_consolidation
                 ADD COLUMN IF NOT EXISTS mna_screened_on DATE;
+            -- #394 Phase 1 ORDERLINESS (operator "Sign" 2026-10-03 — display only): the coil-finder's
+            -- gappiness score, P95 of overnight gaps over the base window / ATR14% (method
+            -- docs/analysis/394_coil_tuning_methodology_2026-07-11.md §3c; anticipation.
+            -- orderliness_score). Written by the nightly scan on every coil row; NULL = unscored
+            -- (too few usable gap days / no ATR / a row written before this column). NEVER read by
+            -- the board's ORDER BY or any gate — it is shown on the /anticipation line only.
+            ALTER TABLE mi_anticipation_consolidation
+                ADD COLUMN IF NOT EXISTS orderliness FLOAT;
 
             -- ── #327 FORWARD SHADOW — the consolidation ENTRY-watch (operator "wire it", 6/18) ──
             -- Records the would-be ANTICIPATE entry the MOMENT the validated #327 signal fires
@@ -12497,18 +12506,21 @@ async def get_consolidation_state_map() -> dict[tuple, dict]:
 async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_ratio,
         runup_high, coil_days, last_close, today_pct, rmv_5d, rmv_15d, pullback_shape,
         pullback_shapes, fresh_tightening, fresh_2bar_tr_pct, atr14_pct,
-        tight_close_streak, dvol_med, last_eval) -> None:
+        tight_close_streak, dvol_med, last_eval, orderliness=None) -> None:
     """UPSERT one Family-A consolidation row, keyed on the absolute (ticker, anchor_date).
     It never touches `mna_screened_on` (#394): the off-board mark is cleared in ONE place, when
-    the own-day price releases a held name (`clear_consolidation_mna_screened`)."""
+    the own-day price releases a held name (`clear_consolidation_mna_screened`).
+    `orderliness` (#394 Phase 1, display only; NULL = unscored) is rewritten on every scan like the
+    other per-night telemetry; nothing orders or admits on it."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_anticipation_consolidation
                 (ticker, anchor_date, state, runup_ratio, runup_high, coil_days, last_close,
                  today_pct, rmv_5d, rmv_15d, pullback_shape, pullback_shapes, fresh_tightening,
-                 fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, last_eval, updated_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,NOW())
+                 fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, last_eval, orderliness,
+                 updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW())
             ON CONFLICT (ticker, anchor_date) DO UPDATE SET
                 state=EXCLUDED.state, runup_ratio=EXCLUDED.runup_ratio,
                 runup_high=EXCLUDED.runup_high, coil_days=EXCLUDED.coil_days,
@@ -12518,10 +12530,11 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
                 fresh_tightening=EXCLUDED.fresh_tightening,
                 fresh_2bar_tr_pct=EXCLUDED.fresh_2bar_tr_pct, atr14_pct=EXCLUDED.atr14_pct,
                 tight_close_streak=EXCLUDED.tight_close_streak, dvol_med=EXCLUDED.dvol_med,
-                last_eval=EXCLUDED.last_eval, updated_at=NOW()
+                last_eval=EXCLUDED.last_eval, orderliness=EXCLUDED.orderliness, updated_at=NOW()
         """, ticker, _coerce_date(anchor_date), state, runup_ratio, runup_high, coil_days, last_close,
              today_pct, rmv_5d, rmv_15d, pullback_shape, pullback_shapes, fresh_tightening,
-             fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, _coerce_date(last_eval))
+             fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, _coerce_date(last_eval),
+             orderliness)
 
 
 async def mark_consolidation_mna_screened(ticker: str, scan_date: date) -> int:
@@ -13462,12 +13475,17 @@ async def get_consolidation_board(limit: int = 25) -> list[dict]:
         at the top months later. Old rows stay in the table as history; they are just not shown.
       * not a row the M&A screen took off (`mna_screened_on` set — a stock pinned by a buyout
         looks like a perfect coil but cannot break out).
-    The ordering is unchanged."""
+    The ordering is unchanged.
+
+    #394 Phase 1 (2026-10-03): `orderliness` (P95 overnight gap / ATR14%; NULL = unscored) rides
+    along for DISPLAY on the board line only — it is selected here but appears in no WHERE and no
+    ORDER BY, so it can change neither which rows show nor their order."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT ticker, anchor_date, state, runup_ratio, runup_high, coil_days, last_close,
-                   today_pct, tight_close_streak, pullback_shape, fresh_tightening, rmv_5d, dvol_med
+                   today_pct, tight_close_streak, pullback_shape, fresh_tightening, rmv_5d, dvol_med,
+                   orderliness
             FROM mi_anticipation_consolidation
             WHERE state <> 'aged' AND mna_screened_on IS NULL
               AND last_eval = (SELECT max(last_eval) FROM mi_anticipation_consolidation)

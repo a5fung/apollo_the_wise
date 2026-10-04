@@ -48,6 +48,16 @@ def test_probe_imports_the_live_coil_finder_not_a_copy():
     assert cp.INCUMBENT_CAP == COIL_HOLD_LIMIT
 
 
+def test_probe_uses_the_live_orderliness_score_so_the_stored_score_and_the_tables_are_one_definition():
+    """#394 C2: the orderliness score the board stores IS the one the signed 2026-10-03 quartile
+    tables were computed with — the probe imports the live functions (same objects, not copies), so
+    the two cannot drift. (A probe that re-defined any of these after importing would not be `is`.)"""
+    import agents.market_intelligence.anticipation as ant
+    assert cp.orderliness_score is ant.orderliness_score
+    assert cp.percentile is ant.percentile
+    assert cp.rows_to_bars is ant.db_rows_to_bars        # the live loader flags a NULL open itself
+
+
 @pytest.mark.parametrize("coil", [125.0, 118.0, 112.0])
 def test_hold_retrace_equals_live_retrace_and_is_point_in_time(coil):
     bars = _bars(_RUNUP + [coil] * 15 + [140.0] * 5)          # a later breakout must not leak backwards
