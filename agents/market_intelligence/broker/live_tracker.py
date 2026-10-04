@@ -1423,6 +1423,7 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     unprotected: list[str] = []
     already_covered: list[str] = []
     covered_by_resting_exit: list[str] = []  # #687 ruling (2): no new stop, broker-covered
+    sold_at_market: list[str] = []  # #687 ruling (iii): price through the stop → sold, paged
     skipped: list[dict] = []  # [{"ticker": ..., "reason": "no_stop_price" | "no_remaining_shares"}]
     for trade in trades:
         ticker = trade["ticker"]
@@ -1459,7 +1460,12 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
 
         # Re-place stop
         success = await update_stop(trade["id"], stop_price)
-        if success:
+        if success is _om.STOP_SOLD_AT_MARKET:
+            # #687 ruling (iii): price through the stop → `update_stop` sold at market and paged
+            # it. Not a "No stop on X" gap: the sale fills in milliseconds, so the broker re-check
+            # below would find neither a stop nor a covering order.
+            sold_at_market.append(ticker)
+        elif success:
             refreshed += 1
             refreshed_tickers.append(ticker)
             logger.info(f"{label} stop refreshed: {ticker} @${stop_price:.2f}")
@@ -1516,6 +1522,8 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     }
     if covered_by_resting_exit:
         detail["covered_by_resting_exit"] = covered_by_resting_exit
+    if sold_at_market:
+        detail["sold_at_market"] = sold_at_market
     # #414 — only the morning pass excludes anything, and only when the read above
     # succeeded. `same_day_excluded is None` covers BOTH the post-close pass
     # (nothing to exclude by construction) and a failed read on the morning pass

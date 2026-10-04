@@ -349,6 +349,101 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-03 — #687 ruling (iii): a stop the broker refuses because the price is already through it → SELL AT MARKET at the other stop-placing sites too
+
+**Trigger**: his ruling (iii) of 2026-10-02 (PLAN.md #687): ruling (3) — *"a stop that cannot be placed because
+price is already through it → SELL AT MARKET, as a triggered stop would"* — was built 2026-10-01 only where a
+planned sale's cancelled stop is put back (`_restore_stop_after_failed_exit`, the stream's full-exit restore). The
+cut-back listed the other stop-placing sites as "not extended — his call"; his answer to extending it: YES, as a
+separate change after Saturday's ship ("the rest is ok" to the rec).
+
+**Evidence**: operator ruling, not a threshold. No price, size, target or trigger moved: the trigger is the
+broker's own refusal, recognised exactly as ruling (3) recognises it (`_is_stop_above_market` — "stop price must be
+less than current price"); any other refusal never reaches the sale.
+
+**Change** — one shared path, `order_manager._sell_at_market_for_refused_stop`, handed the site's own refusal
+and acting only when `_is_stop_above_market` recognises it (the check lives in the helper, not at each site):
+- SIZING is ruling (3)'s: `_broker_free_qty_for_restore` (the broker position minus the shares live resting sell
+  orders hold — a resting +8R profit-take third keeps its OCO), with its book fallback re-read at sale time
+  (`remaining − pending exits` on a still-open row, else 0). Nothing free → nothing sold, the site's own
+  behaviour stands (`stop_breach_sale_skipped` audit).
+- The SALE is ruling (3)'s helper unchanged (`_sell_free_shares_after_stop_breach`): `close_position(qty)` on the
+  trade's own account client, a `full_exit` row labelled `stop_hit` (the sale stands in for the triggered stop,
+  so its fill commits through `finalize_full_exit`), the `stop_breach_market_sale` audit. The sale failing →
+  `stop_breach_sale_failed` and the site's page exactly as before.
+- It PAGES the sale itself ("Price already below the stop: … selling N sh at market now"): the 17:00/19:00
+  coverage slots discard the reconciler's message and re-check the broker, which counts our queued sale as
+  coverage — so without its own page the sale would be silent there. Where a site also pages or digests, the sale
+  is mentioned twice; that is accepted.
+- **After hours** (the 16:05/21:00 sync, the 17:00/19:00 coverage slots, the 16:20 refresh, the 16:45 trail) the
+  market order queues and sells at the next open, at the opening price even on a gap back above the stop — the
+  same property ruling (3) has and his 09-29 auction ruling accepted. Not a new decision.
+- **De-dupe**: a sale already placed by any site — ruling (3)'s included — is (a) a live sell order holding the
+  shares at the broker, (b) a pending `full_exit` row in the books, (c) once filled, a closed row. Each reads as
+  0 free at the next site, and the sites' own guards stop earlier (the reconciler's `target ≤ 0.5`).
+
+The sites:
+1. **The coverage reconciler** (`_ensure_stop_coverage_outcome`, its place branch — no live stop, under-covered),
+   under its per-trade try-lock. Sold → `COVERAGE_REPAIRED`, reason `stop_breach_sold_at_market`, and still the
+   `stop_coverage_breach` row (the coverage retry stops on it). Nothing free / the sale fails → main's
+   `COVERAGE_FLAGGED` "Operator decision needed (no auto-exit)", unchanged. Every caller inherits it: the sync's
+   coverage pass, the coverage retry, the 17:00/19:00 coverage slots, the partial-exit re-protects, and site 6.
+2. **The position sync's orphan repair** (`_sync_positions_for_mode`, 16:05 + 21:00 ET and `/syncnow`; a filled
+   position whose stop is dead or missing). Keyed on the LAST of its 3 attempts. Sold → a digest line "Orphaned
+   position X: … SOLD AT MARKET", no "failed to remediate" line / `stop_ack_remediation_failed` row; the same sync's
+   coverage pass then sees the sale as a pending exit and places nothing (one sale per sync). No lock is held here
+   today; the sale replaces the placement in the same context. Nothing free / the sale fails → today's line.
+3. **`update_stop`** (the 16:45 trail raise; the 16:20 / 09:35 stop refresh re-placing an expired stop; the depth
+   trail when on). Keyed on the TERMINAL refusal — the existing 3-second retry runs first; attempt 2 refused
+   through the price → sell (attempt 1 through the price but attempt 2 refused otherwise → today's NAKED path).
+   **A trail raise refused this way means the trail WOULD have triggered at the new level** — so it sells, as he
+   ruled; the page says so. The cancelled old stop is excluded from the broker's held count only when our cancel
+   went through (a cancel that failed leaves the old stop holding the shares → nothing free → today's path).
+   Sold → the stop pointer is nulled (as the NAKED path does — a dead id left behind would make the 16:05/21:00
+   sync page "NAKED LIVE POSITION"), no `stop_update_failed` / NAKED page, and it returns the falsy
+   `STOP_SOLD_AT_MARKET`: the stop refresh records it as `sold_at_market` and does not page "No stop on X" (at
+   09:35 the sale fills in milliseconds, so the broker re-check would find neither a stop nor a covering order).
+   No lock is held here today; the sale replaces the placement in the same context, as ruling (3)'s stream site.
+4. **The stop-ACK watchdog's fallback** (`scheduler._stop_ack_timeout_watchdog_job`, the stop at the entry's
+   `orb_low` when a fresh fill has no stop), under its per-trade try-lock (#687 e). Sold → audit
+   `stop_ack_breach_sold_at_market` (summary `"{ticker} #{trade_id}: …"`, added to the once-per-day dedup set, so
+   the next 30-second tick does not act again), no CRITICAL page. The sale fails → today's `stop_ack_remediation_failed`
+   + "CRITICAL: POSITION NAKED" page. A documented safeguard: `docs/setups/safeguards.md` change log 2026-10-03.
+5. **The stream's partial-exit restore** (`trade_stream._handle_cancel_or_reject` §3, a plain partial sell died
+   unfilled and the full-size stop cannot be put back). The reduced stop this path just cancelled is excluded from
+   the broker's held count (Alpaca can still list it `new` for a moment). Sold → the pointer (that cancelled
+   stop) is nulled, so the 16:05/21:00 sync does not page NAKED on it; no "STOP RESTORE FAILED" page. No lock —
+   as ruling (3)'s full-exit sibling in the same handler. Nothing free / the sale fails → today's page.
+6. **The OCO-cancel handler** (`trade_stream._handle_oco_parent_cancel`): its re-protect IS the reconciler, so it
+   sells through site 1; its page carries the reconciler's line. (Known wording: the partial-exit abort page
+   reads "No shares sold." above the reconciler's "SOLD AT MARKET" line — the partial sold nothing; the line
+   below is the breach sale. Left as is.)
+
+**Anticipated effect**: rare — it needs the price already below the stop a site is placing. When it happens, the
+free shares are sold instead of left with no stop and a page asking for a manual decision. No change on any day
+a stop is accepted, or refused for any other reason.
+
+**Reversion-flag**: REFINEMENT of the 2026-10-02 entry's ruling (3) (same rule, more sites, as he ruled).
+
+**Not extended — other stop placements found, listed for him (not in the six he ruled on):**
+- `trade_stream._process_entry_fill`'s two entry-fill stops (bracket leg missing; the fill's own DB write failed):
+  the row is not `filled` yet (or its write just failed), so a `full_exit` row cannot settle through
+  `finalize_full_exit` — the sale cannot be reached safely there. Today's "UNPROTECTED" pages stand.
+- `execute_partial_exit`'s #548 breakeven move and `_arm_breakeven_on_full_stop` (price-armed breakeven, OFF):
+  price-only `replace_order`s; a refused replace is atomic — the old stop stays LIVE at its old price, so the
+  position is still protected. The analogue of a refused trail raise, but not "a stop that cannot be placed";
+  his call whether a refused breakeven move should also sell.
+- The leg cancel-and-replace resize (`_replace_stop_leg_via_cancel_new`, partial-exit reduce + coverage widen) and
+  the +8R profit-take OCO placement: their failures route to the coverage reconciler, so they inherit site 1.
+
+**Status**: built on branch `687-stop-breach-everywhere`, NOT merged or deployed. Tests:
+`tests/test_687_ruling_iii_stop_breach_everywhere.py` (28: per site — sold once, any other refusal unchanged, a
+failed sale still pages; the 09:35 refresh after a filled sale; the watchdog tick after a fill; three de-dupe proofs
+against ruling (3)'s own sale); convergence scenarios s32-s38 (baseline re-pinned to main 8e1329f0; all 7
+differences from main allow-listed "ruling (iii) 2026-10-02 — sell at market at <site>", a guard test holding every
+reason to that prefix). Mutation-checked per site and per de-dupe layer (commit messages). Deploy: `broker/` +
+`scheduler.py` → both + execution.
+
 ### 2026-10-02 (later) — #687 ruling (ii): a PLAIN resting profit-take limit is left resting; the other shares follow the close-below sale
 
 **Trigger**: his rulings of 2026-10-02 on the four calls the cut-back listed (PLAN.md #687). Item (ii): a plain resting
@@ -446,8 +541,9 @@ already decided to sell there:
   reconciler `_ensure_stop_coverage` (still "operator decision needed — no auto-exit"), the sync orphan
   remediation (3 attempts, then "failed to remediate"), `update_stop` (both attempts fail → "STOP FAILED — position
   NAKED"), the stop-ACK watchdog's fresh-entry fallback, the stream's partial-exit restore and the OCO-cancel
-  handler. Listed for him.
-- Tests: `tests/test_687_ruling3_stop_through_price_sells.py` (9, incl. the reconciler still selling nothing).
+  handler. Listed for him. **→ RULED 2026-10-02 (iii): extended — change log 2026-10-03.**
+- Tests: `tests/test_687_ruling3_stop_through_price_sells.py` (9 at the time, incl. the reconciler still selling
+  nothing — that one removed 2026-10-03, superseded by ruling (iii): 8 remain).
   Mutations: restore breach branch off + stream breach branch off → 4 red.
 
 **Ruling (4) — a stale "sell at the next open" mark is cleared, paged, and the next close decides (depth path).**
@@ -461,7 +557,8 @@ the line and never acts on it on a close back above it. Tests: `tests/test_687_r
 **Ruling (1)** (a loss on a partial sale counts toward the 2% daily loss limit at once) is a safeguard change —
 owned by `docs/setups/safeguards.md` item 5 + its 2026-10-02 entry.
 
-**Evidence — the convergence test** (`tests/test_687_toggle_off_convergence.py`, harness
+**Evidence — the convergence test** (as it stood for this entry; since 2026-10-03 the baseline is main 8e1329f0
+and the allow-list names only ruling (iii) — change log 2026-10-03) (`tests/test_687_toggle_off_convergence.py`, harness
 `tests/_convergence_687_harness.py`): 31 fixed toggle-OFF scenarios run through the pinned pre-#687 code
 (97b08d51 since the 2026-10-02 rebase — 90d02459 before it; a temporary git worktree —
 `scripts/probes/_687/capture_toggle_off_baseline.sh`) and through this branch, recording every broker call, every
@@ -480,6 +577,7 @@ call in `execute_full_exit` reddens 6 scenarios.
 - (ii) a plain resting profit-take LIMIT (no stop) beside a close-below sale: main's skip kept — skip vs cancel it
   and sell everything; **RULED 2026-10-02: neither — left resting, the other shares follow the exit** (entry above);
 - (iii) ruling (3) at the other stop-placing sites (listed under ruling (3)) — extend vs keep "page, no auto-exit";
+  **RULED 2026-10-02: extend** (built — change log 2026-10-03);
 - (iv) ruling (1): a partial loss counted on its own day is counted again inside `total_pnl` on the trade's close
   day — keep vs net it out. **RULED 2026-10-02: net it out — each realized dollar counts once, on its own day**
   (`docs/setups/safeguards.md` item 5 + its 2026-10-02 entry).

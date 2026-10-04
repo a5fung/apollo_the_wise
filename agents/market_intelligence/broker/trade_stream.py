@@ -2348,6 +2348,23 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     f"stop restored to {trade_row['remaining_shares']} sh"
                 )
             except Exception as e:
+                # #687 ruling (iii): price through the stop → sell at market (see
+                # `_sell_at_market_for_refused_stop`), excluding the reduced stop this path just
+                # cancelled. Nothing sold → today's page.
+                from agents.market_intelligence.broker.order_manager import (
+                    _sell_at_market_for_refused_stop,
+                )
+                if await _sell_at_market_for_refused_stop(
+                        trade_row["id"], trade_row["ticker"], account_mode,
+                        stop_price=restore_price,
+                        site="trade_stream.partial_exit_cancel_restore", refusal=e,
+                        exclude_ids=(trade_row["stop_order_id"],), clear_stop_pointer=True,
+                        context=f"The partial sale did not fill ({event_norm}), and the stop "
+                                f"for the remaining shares could not be put back."):
+                    logger.warning(
+                        f"WS [{account_mode}]: partial exit {event_norm} for {symbol}, "
+                        f"stop breached — market sale placed")
+                    return
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}🚨 *PARTIAL EXIT {event_norm.upper()} + "
                     f"STOP RESTORE FAILED* for {symbol}!\n{e}\n"

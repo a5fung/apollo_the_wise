@@ -302,12 +302,22 @@ async def test_place_branch_floored_price_that_breaches_converges_exactly_as_bef
     traded through the last broker level, the floored placement breaches. That
     must behave exactly like a breach at an accurate DB price always has —
     ONE attempt, `stop_coverage_breach` (with both prices), no stop_order_id
-    write, no retry loop (the retry state machine ends on a breach)."""
+    write, no retry loop (the retry state machine ends on a breach).
+
+    #687 ruling (iii) (2026-10-02): a breach now first tries to sell the free shares
+    at market (`_sell_at_market_for_refused_stop`, tested in
+    test_687_ruling_iii_stop_breach_everywhere.py); here that sale cannot happen
+    (None), so the convergence is exactly as before."""
+    from agents.market_intelligence.broker import order_manager as om
     place = AsyncMock(side_effect=Exception(
         '{"code":42210000,"message":"stop price must be less than current price"}'))
     h = _cov_patches([], pending_qty=0, stop_pointer=POINTER, place=place,
                      get_order=AsyncMock(return_value=_order()))
-    result = await _cov_run(h, broker_qty=60, stop_price=DB_PRICE)
+    sale = AsyncMock(return_value=None)
+    with patch.object(om, "_sell_at_market_for_refused_stop", sale):
+        result = await _cov_run(h, broker_qty=60, stop_price=DB_PRICE)
+    sale.assert_awaited_once()
+    assert sale.await_args.kwargs["stop_price"] == BROKER_PRICE
 
     assert place.call_count == 1
     assert place.call_args.args[2] == BROKER_PRICE

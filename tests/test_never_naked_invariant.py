@@ -265,12 +265,21 @@ async def test_breach_stop_above_market_alerts_no_loop_no_order():
     place_stop_order raises Alpaca's 'must be less than current price'. The
     invariant emits ONE alert (discrepancy + audit), does NOT retry, does NOT
     place an order, and does NOT write stop_order_id (breach-exit is the
-    operator's call, not the reconciler's)."""
+    operator's call, not the reconciler's).
+
+    #687 ruling (iii) (2026-10-02): a breach now first tries to sell the free shares
+    at market (`_sell_at_market_for_refused_stop`, tested in
+    test_687_ruling_iii_stop_breach_everywhere.py); here that sale cannot happen
+    (None), so the convergence is exactly as before."""
+    from agents.market_intelligence.broker import order_manager as om
     place_mock = AsyncMock(side_effect=Exception(
         '{"code":42210000,"message":"stop price must be less than current price"}'
     ))
     h = _patches([], pending_qty=0, place=place_mock)
-    result = await _run(h, broker_qty=200, stop_price=120.0)
+    sale = AsyncMock(return_value=None)
+    with patch.object(om, "_sell_at_market_for_refused_stop", sale):
+        result = await _run(h, broker_qty=200, stop_price=120.0)
+    sale.assert_awaited_once()
 
     # ONE clear alert surfaced (batched-Telegram discrepancy string)
     assert result is not None

@@ -469,6 +469,32 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-10-03 — Stop-ACK watchdog: a fallback stop refused because the price is already through it → the free shares are SOLD AT MARKET (#687 ruling (iii), operator-signed 2026-10-02)
+
+**Trigger**: his ruling (iii) of 2026-10-02 (PLAN.md #687) — extend ruling (3) (*"a stop that cannot be placed
+because price is already through it → SELL AT MARKET, as a triggered stop would"*) to the other stop-placing sites.
+The watchdog (2026-05-17 entry below) is one: on a fresh fill with no stop it places a fallback stop at the entry's
+`orb_low`; when the broker refused it, it paged "CRITICAL: POSITION NAKED, REMEDIATION FAILED" and left the
+position bare.
+
+**Evidence**: operator ruling, not a threshold. The trigger is the broker's own refusal, recognised exactly as
+ruling (3) does (`order_manager._is_stop_above_market`); no gate, cadence, level or dedup window moved.
+
+**Change**: on that refusal only, `_sell_at_market_for_refused_stop` (exit_discipline.md change log 2026-10-03)
+sells the free shares at market under the watchdog's per-trade try-lock — sized from the broker as ruling (3) sizes,
+a `full_exit` row labelled `stop_hit`, its own page. Audit `stop_ack_breach_sold_at_market` (summary starts
+`"{ticker} #{trade_id}"`) joins the once-per-(trade, day) dedup set. Nothing free / the sale fails → today's
+`stop_ack_remediation_failed` + CRITICAL page, unchanged. Any other refusal → unchanged.
+
+**Anticipated effect**: rare (a fresh fill already below its ORB-low stop within ~30 s). When it fires, the
+position is sold instead of left naked. No effect on any tick where the fallback is accepted or refused otherwise.
+
+**Reversion-flag**: REFINEMENT of the 2026-05-17 watchdog entry (one more outcome on its failure path).
+
+**Status**: built on branch `687-stop-breach-everywhere`, NOT merged or deployed. Tests:
+`tests/test_687_ruling_iii_stop_breach_everywhere.py` (site 4: once across two ticks, other refusal → CRITICAL
+page, failed sale → CRITICAL page); convergence s36.
+
 ### 2026-10-03 — base risk per trade 1% → 2% (`constants.RISK_PCT` 0.01 → 0.02; #688, operator-signed 2026-09-29, go 2026-10-03)
 
 **Trigger**: his ruling on 2026-09-29 (*"Aligned"*, PLAN.md #688) and his go on 2026-10-03 (*"go 2%"*) — the live
