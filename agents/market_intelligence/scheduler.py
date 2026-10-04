@@ -4853,6 +4853,22 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
     # order makes the unchecked tail the BOTTOM. Writes still land one candidate at a time, so a
     # budget timeout mid-phase keeps the partial results (the top of the board, fresh).
     candidates.sort(key=lambda c: _coil_board_rank(c[2]))
+
+    async def _write_board_row(ticker, anchor_date, cons, dvol_med):
+        await upsert_consolidation(
+            ticker, anchor_date, state=cons["state"], runup_ratio=cons["runup_ratio"],
+            runup_high=cons["runup_high"], coil_days=cons["coil_days"],
+            last_close=cons["last_close"], today_pct=cons["today_pct"],
+            rmv_5d=cons["rmv_5d"], rmv_15d=cons["rmv_15d"],
+            pullback_shape=cons["pullback_shape"], pullback_shapes=cons["pullback_shapes"],
+            fresh_tightening=cons["fresh_tightening"],
+            fresh_2bar_tr_pct=cons["fresh_2bar_tr_pct"], atr14_pct=cons["atr14_pct"],
+            tight_close_streak=cons["tight_close_streak"], dvol_med=dvol_med,
+            last_eval=today,
+            # #394 Phase 1: recorded for the board line only (.get — display telemetry; it
+            # gates nothing, sorts nothing, and never reaches the entry signals).
+            orderliness=cons.get("orderliness"))
+
     for k, bars, cons in candidates:
         ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
         try:
@@ -4909,6 +4925,14 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
                 if ticker not in off_board:
                     off_board.add(ticker)
                     off_n = await mark_consolidation_mna_screened(ticker, today)
+                    if off_n == 0:
+                        # A FIRST-SEEN pinned coil has no row for the mark to sit on, so once its
+                        # headline aged out of the 21-day news lookback it came back with its full
+                        # streak. Write the row, then mark it: the board hides it and the price
+                        # hold below decides it from the next run.
+                        await _write_board_row(ticker, date.fromisoformat(cons["anchor_date"]),
+                                               cons, dvol_med)
+                        off_n = await mark_consolidation_mna_screened(ticker, today)
                     if await should_log_mna_filter_fired(ticker, "anticipation"):
                         pin = meta.get("pin") or {}
                         answer = (f"{meta.get('role')}/{meta.get('status')}/"
@@ -5017,19 +5041,7 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
                                                                origin=origin, **kw):
                         entries_fired.append((ticker, origin, "confirm", csig))
 
-            await upsert_consolidation(
-                ticker, anchor_date, state=cons["state"], runup_ratio=cons["runup_ratio"],
-                runup_high=cons["runup_high"], coil_days=cons["coil_days"],
-                last_close=cons["last_close"], today_pct=cons["today_pct"],
-                rmv_5d=cons["rmv_5d"], rmv_15d=cons["rmv_15d"],
-                pullback_shape=cons["pullback_shape"], pullback_shapes=cons["pullback_shapes"],
-                fresh_tightening=cons["fresh_tightening"],
-                fresh_2bar_tr_pct=cons["fresh_2bar_tr_pct"], atr14_pct=cons["atr14_pct"],
-                tight_close_streak=cons["tight_close_streak"], dvol_med=dvol_med,
-                last_eval=today,
-                # #394 Phase 1: recorded for the board line only (.get — display telemetry; it
-                # gates nothing, sorts nothing, and never reaches the entry signals above).
-                orderliness=cons.get("orderliness"))
+            await _write_board_row(ticker, anchor_date, cons, dvol_med)
             stats["written"] += 1
             prior = state_map.get((ticker, anchor_date))
             prior_state = prior["state"] if prior else None

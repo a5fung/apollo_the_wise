@@ -1037,3 +1037,27 @@ async def test_394_board_read_order_and_set_are_identical_with_and_without_score
     assert order["with"] == order["rev"] == order["none"] == ["A", "B", "C", "D", "E"]
     assert [r["orderliness"] for r in boards["with"]] == [0.1, 2.3, 0.9, 5.0, None]   # carried, NULL kept
     assert all(r["orderliness"] is None for r in boards["none"])
+
+
+@pytest.mark.asyncio
+async def test_394_a_first_seen_pinned_coil_gets_a_marked_row_so_the_price_hold_keeps_it_off(
+        monkeypatch):
+    """2026-10-03 review: a pinned buyout screened the FIRST time it appears had no row for the
+    mark to sit on (the mark is an UPDATE), so once its headline aged out of the 21-day news
+    lookback it came back with its full streak. Night 1 now writes the row and marks it (hidden
+    from the board); a later night with no news is decided by the own-day price — still pinned,
+    still off."""
+    bars = _bars_with_own_day(0.3)
+    _patch_scan_harness(monkeypatch, bars=bars, csig=_csig(bars), real_mna=True,
+                        keys=[_key("NUVL")])
+    pool = _real_board_db(monkeypatch)
+    _real_mna_edges(monkeypatch, _CRNX_HIT)
+
+    await _scan()                                          # night 1: the news nominates NUVL
+    assert pool.row("NUVL", _HELD_ANCHOR) == (_TODAY.isoformat(), _TODAY.isoformat())
+    assert await _board_tickers() == []
+
+    _real_mna_edges(monkeypatch, None)                     # the headline has aged out
+    _, entries = await _scan()
+    assert await _board_tickers() == [] and entries == []  # held off by its pinned price
+    assert pool.row("NUVL", _HELD_ANCHOR)[1] == _TODAY.isoformat()

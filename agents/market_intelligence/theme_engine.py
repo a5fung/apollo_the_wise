@@ -9738,6 +9738,11 @@ async def run_theme_engine(
                     if _novel:
                         _join_carry.setdefault(_tgt, [])
                         _join_carry[_tgt].extend(tk for tk in _novel if tk not in _join_carry[_tgt])
+            if res["outcome"] != "birth":
+                logger.info(
+                    f"[birth gate/{birth_gate_mode}] '{nt['name']}' → {res['outcome']}"
+                    + (f" (target: {res['join_target']})" if res.get("join_target") else "")
+                    + f" rs={res['rs_avg']} traj5={res['traj5']} sightings={res['sightings']}")
         if _join_carry and rehome_on and comove_ctx is not None:
             try:
                 await _run_join_carry(
@@ -9753,11 +9758,6 @@ async def run_theme_engine(
                     summary=f"Re-homing join-carry raised — newborn members discarded ({type(e).__name__})",
                     detail=f"{type(e).__name__}: {e}",
                 )
-            if res["outcome"] != "birth":
-                logger.info(
-                    f"[birth gate/{birth_gate_mode}] '{nt['name']}' → {res['outcome']}"
-                    + (f" (target: {res['join_target']})" if res.get("join_target") else "")
-                    + f" rs={res['rs_avg']} traj5={res['traj5']} sightings={res['sightings']}")
         new_themes = _gate_passed
         if _gate_outcomes:
             await audit_gate_outcomes("lane1", _gate_outcomes, today, mode=birth_gate_mode)
