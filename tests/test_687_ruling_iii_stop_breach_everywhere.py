@@ -509,3 +509,142 @@ async def test_site5_a_failed_sale_still_pages_restore_failed():
     w.close_errors = [Exception("broker down")]
     await _drive(w, _partial_died())
     assert _sale_pages(w) == [] and len(_restore_failed_pages(w)) == 1, w.pages
+
+
+# ══ DE-DUPE — a sale goes out ONCE, not again from another site in the same tick ══════════════
+#
+# Ruling (3)'s own path sells first (the 16:45 sale is refused, its stop restore is refused through
+# the price → `_restore_stop_after_failed_exit` sells the 10 free shares). Every price stays through
+# every stop from then on, so ANY site that reached its own placement would be refused and try to
+# sell. Three layers stop it, each proved: (a) the queued sale is a live sell order holding the
+# shares at the broker; (b) it is a pending `full_exit` row in the books (the fallback when the
+# broker cannot be read); (c) once filled, the row is closed and the position gone.
+
+def _ruling3_sold_world():
+    w = World()
+    _trade(w)
+    _position(w, "KOD", 10, 0)
+    _bstop(w, "stop-1", "KOD", 10, 58.0)
+    w.close_errors = [Exception("insufficient qty available: available 0, held_for_orders 10")]
+    _breach(w, n=20)
+    return w
+
+
+def _ruling3_sale():
+    return lambda: om.execute_full_exit(401, "sma_trail_stop")
+
+
+def _then_every_site(w):
+    """Each of the six sites, in one tick, on the same trade (sites 5 and 6 are handed a plain
+    partial and an OCO third that just died, right before they run)."""
+    async def _a_dying_partial_and_oco():
+        _bsell(w, "sell-p", "KOD", 3, status="canceled")
+        _mirror(w, "sell-p", 401, "KOD", "partial_exit", 3, status="accepted",
+                exit_reason="partial_profit", raw={"order_class": "simple"})
+        w.broker_orders.append({"id": "oco-1", "symbol": "KOD", "side": "sell", "type": "limit",
+                                "qty": 2.0, "filled_qty": 0.0, "status": "canceled",
+                                "order_class": "oco", "limit_price": 90.0})
+        _bstop(w, "leg-1", "KOD", 2, 60.0, status="canceled")
+        _mirror(w, "oco-1", 401, "KOD", "partial_exit", 2, status="new",
+                raw={"order_class": "oco",
+                     "legs": [{"id": "leg-1", "type": "stop", "stop_price": 60.0}]})
+
+    return [
+        _reconcile(),                                                        # site 1
+        _sync(),                                                             # site 2
+        _raise(),                                                            # site 3
+        lambda: lt._stop_refresh(include_same_day=True, label="Post-close"),  # site 3 (refresh)
+        _watchdog(),                                                         # site 4
+        _a_dying_partial_and_oco,
+        lambda: ts._handle_cancel_or_reject(                                 # site 5
+            _ws_order("sell-p", "KOD"), "canceled", "live"),
+        _oco_cancel(),                                                       # site 6
+    ]
+
+
+def _skips(w) -> list[tuple[str, str]]:
+    return [(d["site"], d["qty_source"]) for d in _audits(w, "stop_breach_sale_skipped")]
+
+
+@pytest.mark.asyncio
+async def test_dedupe_no_site_sells_again_after_ruling_3s_sale_in_the_same_tick(monkeypatch):
+    monkeypatch.setenv("STOP_ACK_TIMEOUT_GATE_ENABLED", "true")
+    w = _ruling3_sold_world()
+
+    async def _setup_after_the_sale():
+        w.trades[401]["stop_order_id"] = None      # the watchdog's shape (a filled row, no stop)
+
+    await _drive(w, _ruling3_sale(), _setup_after_the_sale, *_then_every_site(w))
+    # the refused whole-position sale at 16:45, then ruling (3)'s 10 — and nothing else
+    assert _sales(w) == [None, 10], [c for c in w.calls if c["method"] == "close_position"]
+    assert len(_full_exit_rows(w)) == 1
+    assert _sale_pages(w) == []                    # ruling (3)'s page is its own wording
+    # sites 1-4 stop at their own pending-exit / broker-covered guards (layer b); site 5 reaches its
+    # placement, is refused, and the shared path finds the shares held by the queued sale (layer a)
+    assert _skips(w) == [("trade_stream.partial_exit_cancel_restore", "broker")], w.audits
+    assert _audits(w, "stop_remediation_skipped_pending_exit")         # the sync's orphan repair
+    assert _audits(w, "stop_ack_broker_covered")                       # the watchdog
+
+
+@pytest.mark.asyncio
+async def test_dedupe_after_the_sale_filled_no_site_sells_again(monkeypatch):
+    """Layer (c): the sale filled, the position is gone, the row is closed. A caller still holding
+    the old count (the sync passes its start-of-run broker quantity) reaches its placement, is
+    refused, and the shared path re-reads the book at sale time → 0 → nothing sent."""
+    monkeypatch.setenv("STOP_ACK_TIMEOUT_GATE_ENABLED", "true")
+    w = _ruling3_sold_world()
+
+    async def _the_sale_filled_and_the_row_closed():
+        for o in w.broker_orders:
+            if o["type"] == "market":
+                o["status"], o["filled_qty"] = "filled", o["qty"]
+        for o in w.orders:
+            if o["purpose"] == "full_exit":
+                o["status"] = "filled"
+        w.positions.pop("KOD", None)
+        w.trades[401].update(status="closed", remaining_shares=0, stop_order_id=None)
+
+    await _drive(w, _ruling3_sale(), _the_sale_filled_and_the_row_closed, *_then_every_site(w))
+    assert _sales(w) == [None, 10], [c for c in w.calls if c["method"] == "close_position"]
+    assert len(_full_exit_rows(w)) == 1
+    # site 1 (called with the stale quantity) reaches its placement, is refused, and the shared path
+    # re-reads the book at sale time: closed row + no position → 0 (layer c)
+    assert ("order_manager.ensure_stop_coverage", "fallback:position_unreadable") in _skips(w)
+
+
+@pytest.mark.asyncio
+async def test_dedupe_the_shared_path_itself_sizes_zero_in_each_state():
+    """The three layers, one at a time, straight through `_sell_at_market_for_refused_stop`."""
+    from agents.market_intelligence.broker import alpaca_client as ac
+
+    def _call():
+        return om._sell_at_market_for_refused_stop(
+            401, "KOD", "live", stop_price=58.0, site="test.dedupe", error=BREACH)
+
+    # (a) the queued sale holds the shares at the broker
+    w = _ruling3_sold_world()
+    [_, out] = await _drive(w, _ruling3_sale(), _call)
+    assert out is None and _sales(w) == [None, 10]
+    assert _audits(w, "stop_breach_sale_skipped")[0]["qty_source"] == "broker"
+
+    # (b) the broker cannot be read: the book fallback nets the pending sale → 0
+    w = _ruling3_sold_world()
+
+    async def _broker_unreadable():
+        async def _none(ticker, account_mode=None):
+            return None
+        ac.get_position = _none                                # restored by the harness on exit
+
+    [_, _, out] = await _drive(w, _ruling3_sale(), _broker_unreadable, _call)
+    assert out is None and _sales(w) == [None, 10]
+    assert _audits(w, "stop_breach_sale_skipped")[0]["qty_source"].startswith("fallback")
+
+    # (c) filled and closed: no position, no open row → 0
+    w = _ruling3_sold_world()
+
+    async def _filled():
+        w.positions.pop("KOD", None)
+        w.trades[401].update(status="closed", remaining_shares=0)
+
+    [_, _, out] = await _drive(w, _ruling3_sale(), _filled, _call)
+    assert out is None and _sales(w) == [None, 10]
