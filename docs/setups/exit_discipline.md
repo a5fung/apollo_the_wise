@@ -400,11 +400,12 @@ books stand in exactly as before.
   coverage repair (17:00 / 19:00 ET) may re-place a stop from the books."* That is no longer true; it now ends *"The
   after-close coverage repair (17:00 / 19:00 ET) also reads the broker and will not re-place a stop while it shows no
   position."* The `restore_skipped_broker_flat` audit summary says the same.
-- **Not changed, stated:** the 17:00 / 19:00 slot's OWN page after a withheld repair still reads the ROW — *"KOD: holds
-  10 sh, live stop covers 0 sh … UNPROTECTED AFTER THE CLOSE"* (s43) — because the slot's re-check is the books-sized
-  detector. The words are the slot's; the row IS still open and unprotected-by-the-books until he resolves it, so the
-  page is not false, but "holds" is the books' count, not the broker's. Changing that wording is wider than (a).
-  Likewise the row is still NOT resolved by any automatic path (ruling (i)'s **THE ROW IS NOT RESOLVED** stands; (b)
+- **The 17:00 / 19:00 slot's own page** (its re-check is the books-sized detector, so it still pages UNPROTECTED AFTER
+  THE CLOSE for the open row) names the flat broker on that ticker's line instead of the books' count — *"KOD: the
+  broker shows NO position, so no stop was placed; our records still show 10 sh open — `/syncnow` books the exit, or
+  reconcile the row by hand"* (s43). The slot recognises the flat result by `COVERAGE_BROKER_FLAT_PHRASE`, the one copy
+  of the reconciler's flat sentence, so it keeps driving the signed `_ensure_stop_coverage` (#649). Wording only (added
+  in review, 2026-10-04). Likewise the row is still NOT resolved by any automatic path (ruling (i)'s **THE ROW IS NOT RESOLVED** stands; (b)
   was not chosen).
 
 **Anticipated effect**: rare — it needs a live row still open after its position is gone (ruling (i)'s own case, or

@@ -127,7 +127,7 @@ ALLOWED = {
         'result': "⚠️ KOD: the broker shows no position, so no stop was placed. Our records still show the trade open (10 sh) — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open.",
     },
     's43_coverage_1700_slot_broker_flat': {
-        'why': RULING_A + " (the 17:00 slot on a FLAT broker: main placed a 10-sh sell stop on the empty account, re-read it as covered and stayed silent; the branch places nothing, the slot's own re-check still reads the books and pages UNPROTECTED — its 'holds 10 sh' is the row, not the broker — and the row keeps no stop pointer)",
+        'why': RULING_A + " (the 17:00 slot on a FLAT broker: main placed a 10-sh sell stop on the empty account, re-read it as covered and stayed silent; the branch places nothing, the slot's own re-check still reads the books and pages UNPROTECTED, its line naming the flat broker rather than 'holds 10 sh' — and the row keeps no stop pointer)",
         'broker_calls': [
             "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
             "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
@@ -136,7 +136,7 @@ ALLOWED = {
             "get_open_orders(account_mode='live', raise_on_error=True, ticker='KOD')",
         ],
         'pages': [
-            "🚨 *UNPROTECTED AFTER THE CLOSE*\n• KOD: holds 10 sh, live stop covers 0 sh\n\nExtended hours are still trading, and the automatic repair above did not hold.\n`/syncnow live` re-runs the same repair now.",
+            "🚨 *UNPROTECTED AFTER THE CLOSE*\n• KOD: the broker shows NO position, so no stop was placed; our records still show 10 sh open — `/syncnow` books the exit, or reconcile the row by hand\n\nExtended hours are still trading, and the automatic repair above did not hold.\n`/syncnow live` re-runs the same repair now.",
         ],
         'book_after': {'trades': {'401': {'stop_order_id': None}}},
     },

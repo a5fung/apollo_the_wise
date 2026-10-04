@@ -6913,6 +6913,9 @@ _COVERAGE_VERIFIED_OK = (COVERAGE_COVERED, COVERAGE_REPAIRED)
 # (/syncnow, then by hand), not the reconciler's. A flat never STARTS a retry (it is not a
 # `stop_coverage_repair_failed` row), and a flat recorded after a failure ENDS it.
 COVERAGE_SKIPPED_BROKER_FLAT_EVENT = "coverage_skipped_broker_flat"
+# The flat outcome's phrase, ONE copy: the 17:00/19:00 coverage slot drives the signed
+# `_ensure_stop_coverage` (string contract, #649) and recognises a flat result by this phrase.
+COVERAGE_BROKER_FLAT_PHRASE = "the broker shows no position, so no stop was placed"
 
 
 class CoverageOutcome(NamedTuple):
@@ -7316,7 +7319,7 @@ async def _ensure_stop_coverage_outcome(
             )
             return CoverageOutcome(
                 COVERAGE_FLAGGED,
-                f"⚠️ {ticker}: the broker shows no position, so no stop was placed. Our records "
+                f"⚠️ {ticker}: {COVERAGE_BROKER_FLAT_PHRASE}. Our records "
                 f"still show the trade open ({target:.0f} sh) — run /syncnow to book the exit "
                 f"from the broker, and reconcile the row by hand if it is still open.",
                 "broker_flat",
