@@ -1,0 +1,197 @@
+board sizes from history: 09-30 128 (nightly said 129) | 10-01 131 (nightly 131) | 10-02 capture 133 (nightly 133)
+  09-30 nightly-list names with no 09-30 row: []
+
+BASELINE 10-02 capture: G1 530/587=90.3% PASS | G2 23/587=3.9% PASS | G3 116/133=87.2% FAIL | G4 15/133=11.3% FAIL
+
+################ RULE A — tape retire, K=3 consecutive G3 fails
+per-night G3 fail counts: 09-30 12 10-01 14 10-02 nightly 16 10-02 capture 17
+  09-30 ∩ 10-01 = 9 | all three nightly = 9 | nightly 10-02 vs capture symmetric diff: ['Bitcoin Mining Stocks Rotation Reversal', 'Data Storage & Data Management Software/Hardware Leaders', 'Life Sciences & Healthcare Data/CRM Platforms']
+  K=3 retire set (fails 09-30, 10-01 AND the 10-02 capture read): 9
+     Cardiac & Bioelectric Ablation Device Innovators
+     Digital Dollar & Crypto Payments Infrastructure
+     Direct-to-Consumer Health & Wellness Subscription Brands
+     Emerging Medical Device Innovators Breakout
+     Enterprise Unstructured Data Storage Infrastructure
+     Industrial Construction Execution & On-Site Supply Chain
+     Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound
+     Liquid Biopsy & Molecular Cancer Diagnostics Testing
+     Media Streaming & Entertainment Content Turnaround
+  same set using the nightly 10-02 list instead of the capture? True
+    kept (streak 2 <3): Bitcoin Mining Stocks Rotation Reversal                 sz=3 Fa days=10 coh-p95=-0.047
+    kept (streak 1 <3): Defense & Space Systems Satellite Solutions             sz=3 Na days=3 coh-p95=-0.036
+    kept (streak 1 <3): Diabetes Management Devices (CGM, Insulin Pumps & Deliv sz=3 Ma days=17 coh-p95=-0.017
+    kept (streak 2 <3): Financial Data & Advisory/Capital Markets Platforms     sz=3 Na days=2 coh-p95=-0.322
+    kept (streak 1 <3): Fintech Payments, Prepaid & Consumer Digital Banking Ap sz=3 Na days=1 coh-p95=-0.313
+    kept (streak 2 <3): Life Sciences & Healthcare Data/CRM Platforms           sz=3 Ma days=33 coh-p95=-0.005
+    kept (streak 2 <3): Specialty Biopharma Clinical & Commercial Breakouts (Re sz=3 Na days=2 coh-p95=-0.124
+    kept (streak 2 <3): Specialty Retail Short-Squeeze Momentum Basket          sz=2 Ma days=17 coh-p95=-0.233
+
+== RULE A on 10-02: removes 9 -> G1 528/579=91.2% PASS | G2 17/579=2.9% PASS | G3 118/124=95.2% PASS | G4 12/124=9.7% PASS
+   RNG drift among untouched survivors: 4 [('Data Storage & Data Management Software/Hardware Leaders', True, False), ('Defense & Space Systems Satellite Solutions', False, True), ('Diabetes Management Devices (CGM, Insulin Pumps & Delivery)', False, True), ('Life Sciences & Healthcare Data/CRM Platforms', False, True)]
+   - Cardiac & Bioelectric Ablation Device Innovators           sz=2 Ma rs_avg=83.0 days=17 coh=0.10 homeless=['PLSE']
+   - Digital Dollar & Crypto Payments Infrastructure            sz=2 Fa rs_avg=82.3 days=3 coh=0.04 homeless=['USDE']
+   - Direct-to-Consumer Health & Wellness Subscription Brands   sz=2 Ma rs_avg=85.9 days=6 coh=0.27 homeless=['WRBY', 'HIMS']
+   - Emerging Medical Device Innovators Breakout                sz=3 Ma rs_avg=84.5 days=12 coh=0.14 homeless=['ITGR', 'ATEC']
+   - Enterprise Unstructured Data Storage Infrastructure        sz=3 Ma rs_avg=94.3 days=32 coh=0.11 homeless=['DBX', 'BOX']
+   - Industrial Construction Execution & On-Site Supply Chain   sz=8 Fa rs_avg=79.3 days=24 coh=0.07 homeless=['FLR', 'ACA', 'TPC', 'J', 'TTEK', 'AGX', 'KBR', 'DNOW']
+   - Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound  sz=3 Fa rs_avg=None days=10 coh=0.02 homeless=['NMAX', 'TDS', 'ECHO']
+   - Liquid Biopsy & Molecular Cancer Diagnostics Testing       sz=3 Ma rs_avg=99.6 days=7 coh=0.18 homeless=[]
+   - Media Streaming & Entertainment Content Turnaround         sz=3 Fa rs_avg=None days=11 coh=0.28 homeless=['PSKY', 'DIS', 'WBD']
+   Industrial Construction G1/G2 rows: 8 judgeable=8 g1-pass=2 misfiled=5
+
+   10-01 night, K=2 (the most the lists allow): would retire 9 — identical to the K=3 set? True
+   10-01 board replayed on the 10-02 window (caveat): G1 544/601=90.5% PASS | G2 21/601=3.5% PASS | G3 116/131=88.5% FAIL | G4 16/131=12.2% FAIL | nightly read was G3 117/131 G4 16/131
+   10-01 after A (nightly G4 list minus retired): small 13/122 = 10.7% | G3 (replay) G1 542/593=91.4% PASS | G2 15/593=2.5% PASS | G3 115/122=94.3% PASS | G4 13/122=10.7% FAIL
+
+################ RULE B — a Fading theme under 3 members retires at once (no 5-night grace)
+
+== RULE B on 10-02: removes 10 -> G1 530/587=90.3% PASS | G2 23/587=3.9% PASS | G3 108/123=87.8% FAIL | G4 5/123=4.1% PASS
+   RNG drift among untouched survivors: 1 [('Life Sciences & Healthcare Data/CRM Platforms', False, True)]
+   - Auto & Truck Dealership Retail Chains                      sz=2 Fa rs_avg=None days=1 coh=0.72 homeless=['LAD', 'ABG']
+   - Bitcoin Miners Pivoting to AI/HPC Data Center Hosting      sz=2 Fa rs_avg=None days=5 coh=0.93 homeless=['HUT', 'CIFR']
+   - Coal Mining Producers                                      sz=2 Fa rs_avg=None days=2 coh=0.72 homeless=['BTU', 'HCC']
+   - Consumer PC & Gaming Hardware Refresh Cycle                sz=2 Fa rs_avg=None days=15 coh=0.49 homeless=['HPQ', 'LOGI']
+   - Cruise & Expedition Travel Operators                       sz=2 Fa rs_avg=81.0 days=1 coh=0.55 homeless=['LIND', 'CCL']
+   - Digital Dollar & Crypto Payments Infrastructure            sz=2 Fa rs_avg=82.3 days=3 coh=0.04 homeless=['USDE']
+   - Global Steel & Metal Producers Recovery                    sz=2 Fa rs_avg=None days=28 coh=0.45 homeless=['NUE', 'TX']
+   - Legal, Tax & Professional Information Analytics            sz=2 Fa rs_avg=None days=1 coh=0.78 homeless=['TRI', 'RELX']
+   - Renewable & Specialty Fuels Chemical Producers             sz=2 Fa rs_avg=None days=16 coh=0.42 homeless=['MEOH', 'CLMT']
+   - Vertical Industry Infrastructure & Insurance Software      sz=2 Fa rs_avg=None days=1 coh=0.72 homeless=['BSY', 'GWRE']
+   2026-09-30: G4 small 15/129; Fading among them 10 -> after B 5/119 = 4.2% PASS
+      stages of the non-Fading smalls: Counter({'Nascent': 4, 'Mainstream': 1})
+   2026-10-01: G4 small 16/131; Fading among them 11 -> after B 5/120 = 4.2% PASS
+      stages of the non-Fading smalls: Counter({'Mainstream': 3, 'Nascent': 2})
+
+   COST (60-day history): 2-member Fading themes that later RECOVERED (non-Fading row after a <3-member Fading row)
+   themes that were ever a <3-member Fading shell: 158; of those later recovered to non-Fading: 32; recovered AND later reached >=3 members: 28
+      ('Cinema Exhibition & Premium Large-Format Recovery', datetime.date(2026, 8, 21), datetime.date(2026, 8, 24), 'Mainstream', 2, False)
+      ('B2B Digital Financial Infrastructure & Payment Rails Modernization', datetime.date(2026, 8, 7), datetime.date(2026, 8, 14), 'Accelerating', 4, True)
+      ('Cloud Observability & AIOps Monitoring Platforms', datetime.date(2026, 8, 6), datetime.date(2026, 8, 13), 'Accelerating', 3, True)
+      ('Private Equity & Alternative Asset Management Platforms', datetime.date(2026, 8, 7), datetime.date(2026, 8, 11), 'Mainstream', 11, True)
+      ('Global Steel & Metal Producers Recovery', datetime.date(2026, 8, 5), datetime.date(2026, 8, 6), 'Accelerating', 2, True)
+      ('Commercial Real Estate Brokerage & Advisory Services', datetime.date(2026, 8, 6), datetime.date(2026, 9, 8), 'Nascent', 4, True)
+      ('Specialty Insurance Underwriting & Brokerage', datetime.date(2026, 8, 5), datetime.date(2026, 8, 6), 'Accelerating', 2, False)
+      ('U.S. Apparel & Fashion Recovery', datetime.date(2026, 8, 5), datetime.date(2026, 8, 13), 'Accelerating', 6, True)
+      ('Government & Defense IT Services Providers', datetime.date(2026, 8, 7), datetime.date(2026, 8, 11), 'Mainstream', 2, False)
+      ('Consumer Fintech & Digital Credit Platforms', datetime.date(2026, 8, 5), datetime.date(2026, 8, 13), 'Accelerating', 8, True)
+      ('Defense ISR & Unmanned Systems Intelligence', datetime.date(2026, 8, 5), datetime.date(2026, 8, 7), 'Accelerating', 2, False)
+      ('AI GPU Compute Infrastructure & Cloud Services', datetime.date(2026, 8, 5), datetime.date(2026, 8, 13), 'Accelerating', 2, True)
+      ('Industrial Construction Execution & On-Site Supply Chain', datetime.date(2026, 8, 5), datetime.date(2026, 8, 6), 'Mainstream', 2, True)
+      ('Gold & Precious Metals Miners Rotation', datetime.date(2026, 8, 5), datetime.date(2026, 8, 7), 'Accelerating', 23, True)
+      ('Precious Metals Royalty & Streaming Companies', datetime.date(2026, 8, 5), datetime.date(2026, 8, 11), 'Nascent', 4, True)
+      ('Electronics Manufacturing & Semiconductor Packaging Supply Chain', datetime.date(2026, 8, 11), datetime.date(2026, 8, 18), 'Accelerating', 3, True)
+      ('Trucking & Freight Logistics', datetime.date(2026, 8, 11), datetime.date(2026, 8, 18), 'Nascent', 5, True)
+      ('Lodging & Hotel REITs', datetime.date(2026, 8, 12), datetime.date(2026, 8, 19), 'Nascent', 4, True)
+      ('Bitcoin Mining & HPC Compute Pivot Operators', datetime.date(2026, 8, 13), datetime.date(2026, 8, 24), 'Nascent', 8, True)
+      ('For-Profit Postsecondary & Vocational Education', datetime.date(2026, 8, 19), datetime.date(2026, 8, 25), 'Nascent', 4, True)
+      ('Bitcoin Miners Pivoting to AI/HPC Data Center Hosting', datetime.date(2026, 9, 14), datetime.date(2026, 9, 29), 'Nascent', 5, True)
+      ('Media Streaming & Entertainment Content Turnaround', datetime.date(2026, 9, 4), datetime.date(2026, 9, 14), 'Accelerating', 3, True)
+      ('Optical Networking & Photonics Components for AI Data Centers', datetime.date(2026, 9, 3), datetime.date(2026, 9, 9), 'Nascent', 3, True)
+      ('Customer Engagement & Marketing/CX SaaS Platforms', datetime.date(2026, 9, 21), datetime.date(2026, 9, 30), 'Accelerating', 3, True)
+      ('Apartment & Single-Family Rental REITs', datetime.date(2026, 9, 9), datetime.date(2026, 9, 11), 'Nascent', 6, True)
+      ('Semiconductor Test, Yield & Assembly Supply Chain', datetime.date(2026, 9, 14), datetime.date(2026, 9, 22), 'Accelerating', 7, True)
+      ('Space Economy: Satellite Communications & Launch Services', datetime.date(2026, 9, 14), datetime.date(2026, 9, 17), 'Accelerating', 7, True)
+      ('Bitcoin Mining Stocks Rotation Reversal', datetime.date(2026, 9, 15), datetime.date(2026, 9, 18), 'Mainstream', 8, True)
+      ('Small Modular Reactor & Advanced Nuclear Fission Technology', datetime.date(2026, 9, 17), datetime.date(2026, 9, 24), 'Nascent', 4, True)
+      ('Live Music & Concert Promotion', datetime.date(2026, 9, 17), datetime.date(2026, 9, 25), 'Accelerating', 4, True)
+      ('Trucking & Freight Carrier Rebound', datetime.date(2026, 9, 22), datetime.date(2026, 9, 30), 'Nascent', 6, True)
+      ('AI Server Power & Signal-Integrity Analog ICs', datetime.date(2026, 9, 23), datetime.date(2026, 9, 29), 'Accelerating', 4, True)
+   shell streak lengths (nights as a <3-member Fading row), distribution: [(1, 30), (2, 24), (3, 22), (4, 28), (5, 50), (6, 3), (7, 1)]
+   #491 interaction: no guard drops a 1-member theme; a rehome move out of a pair leaves a 1-member Fading remnant that today rides up to 5 nights as G4-small. Rule B closes that. Caps 18/night, 3/target -> ~3 nights to drain 41 candidates.
+
+################ RULE A + RULE B combined
+
+== A+B on 10-02: removes 18 -> G1 528/579=91.2% PASS | G2 17/579=2.9% PASS | G3 108/115=93.9% PASS | G4 3/115=2.6% PASS
+   RNG drift among untouched survivors: 1 [('Defense & Space Systems Satellite Solutions', False, True)]
+   - Auto & Truck Dealership Retail Chains                      sz=2 Fa rs_avg=None days=1 coh=0.72 homeless=['LAD', 'ABG']
+   - Bitcoin Miners Pivoting to AI/HPC Data Center Hosting      sz=2 Fa rs_avg=None days=5 coh=0.93 homeless=['HUT', 'CIFR']
+   - Cardiac & Bioelectric Ablation Device Innovators           sz=2 Ma rs_avg=83.0 days=17 coh=0.10 homeless=['PLSE']
+   - Coal Mining Producers                                      sz=2 Fa rs_avg=None days=2 coh=0.72 homeless=['BTU', 'HCC']
+   - Consumer PC & Gaming Hardware Refresh Cycle                sz=2 Fa rs_avg=None days=15 coh=0.49 homeless=['HPQ', 'LOGI']
+   - Cruise & Expedition Travel Operators                       sz=2 Fa rs_avg=81.0 days=1 coh=0.55 homeless=['LIND', 'CCL']
+   - Digital Dollar & Crypto Payments Infrastructure            sz=2 Fa rs_avg=82.3 days=3 coh=0.04 homeless=['USDE']
+   - Direct-to-Consumer Health & Wellness Subscription Brands   sz=2 Ma rs_avg=85.9 days=6 coh=0.27 homeless=['WRBY', 'HIMS']
+   - Emerging Medical Device Innovators Breakout                sz=3 Ma rs_avg=84.5 days=12 coh=0.14 homeless=['ITGR', 'ATEC']
+   - Enterprise Unstructured Data Storage Infrastructure        sz=3 Ma rs_avg=94.3 days=32 coh=0.11 homeless=['DBX', 'BOX']
+   - Global Steel & Metal Producers Recovery                    sz=2 Fa rs_avg=None days=28 coh=0.45 homeless=['NUE', 'TX']
+   - Industrial Construction Execution & On-Site Supply Chain   sz=8 Fa rs_avg=79.3 days=24 coh=0.07 homeless=['FLR', 'ACA', 'TPC', 'J', 'TTEK', 'AGX', 'KBR', 'DNOW']
+   - Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound  sz=3 Fa rs_avg=None days=10 coh=0.02 homeless=['NMAX', 'TDS', 'ECHO']
+   - Legal, Tax & Professional Information Analytics            sz=2 Fa rs_avg=None days=1 coh=0.78 homeless=['TRI', 'RELX']
+   - Liquid Biopsy & Molecular Cancer Diagnostics Testing       sz=3 Ma rs_avg=99.6 days=7 coh=0.18 homeless=[]
+   - Media Streaming & Entertainment Content Turnaround         sz=3 Fa rs_avg=None days=11 coh=0.28 homeless=['PSKY', 'DIS', 'WBD']
+   - Renewable & Specialty Fuels Chemical Producers             sz=2 Fa rs_avg=None days=16 coh=0.42 homeless=['MEOH', 'CLMT']
+   - Vertical Industry Infrastructure & Insurance Software      sz=2 Fa rs_avg=None days=1 coh=0.72 homeless=['BSY', 'GWRE']
+   10-01: A(K=2)+B removes 19 -> G4 small 3/112 = 2.7% ; G3 (replay on 10-02 window) G1 542/593=91.4% PASS | G2 15/593=2.5% PASS | G3 105/112=93.8% PASS | G4 3/112=2.7% PASS
+
+################ RULE C — tape birth floor (founders' cohesion must beat the one-theme random p95)
+   board themes with an observable birth: 111; founders fail the floor: 14; unjudgeable founders (<2 usable): 0; birth before history: 22
+   NOTE: one-theme compute_g3 draws its own p95 (fresh RNG) — exactly what the engine would do at birth; it differs from the board run's p95.
+   NOTE: founders are tested on the 10-02 window; for births older than ~10 sessions the window is mostly AFTER birth -> false-kill cost below is a LOWER BOUND.
+
+== RULE C on 10-02 (remove board themes whose founders fail): removes 14 -> G1 520/575=90.4% PASS | G2 18/575=3.1% PASS | G3 114/119=95.8% PASS | G4 12/119=10.1% FAIL
+   RNG drift among untouched survivors: 3 [('Data Storage & Data Management Software/Hardware Leaders', True, False), ('Defense & Space Systems Satellite Solutions', False, True), ('Diabetes Management Devices (CGM, Insulin Pumps & Delivery)', False, True)]
+   - Cardiac & Bioelectric Ablation Device Innovators           sz=2 Ma rs_avg=83.0 days=17 coh=0.10 homeless=['PLSE']
+   - Digital Advertising & Ad-Tech Monetization Platforms       sz=4 Ma rs_avg=94.2 days=16 coh=0.35 homeless=['ZD', 'PUBM', 'MGNI', 'DV']
+   - Digital Dollar & Crypto Payments Infrastructure            sz=2 Fa rs_avg=82.3 days=3 coh=0.04 homeless=['USDE']
+   - Direct-to-Consumer Health & Wellness Subscription Brands   sz=2 Ma rs_avg=85.9 days=6 coh=0.27 homeless=['WRBY', 'HIMS']
+   - Emerging Medical Device Innovators Breakout                sz=3 Ma rs_avg=84.5 days=12 coh=0.14 homeless=['ITGR', 'ATEC']
+   - Enterprise Unstructured Data Storage Infrastructure        sz=3 Ma rs_avg=94.3 days=32 coh=0.11 homeless=['DBX', 'BOX']
+   - Financial Data & Advisory/Capital Markets Platforms        sz=3 Na rs_avg=89.3 days=2 coh=0.02 homeless=['FDS', 'PWP', 'PS']
+   - Fintech Payments, Prepaid & Consumer Digital Banking Apps  sz=3 Na rs_avg=78.13333333333334 days=1 coh=0.04 homeless=['PAYS', 'DAVE', 'RELY']
+   - Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound  sz=3 Fa rs_avg=None days=10 coh=0.02 homeless=['NMAX', 'TDS', 'ECHO']
+   - Liquid Biopsy & Molecular Cancer Diagnostics Testing       sz=3 Ma rs_avg=99.6 days=7 coh=0.18 homeless=[]
+   - Media Streaming & Entertainment Content Turnaround         sz=3 Fa rs_avg=None days=11 coh=0.28 homeless=['PSKY', 'DIS', 'WBD']
+   - Post-Acute & Home-Based Healthcare Services                sz=8 Ma rs_avg=72.2 days=11 coh=0.36 homeless=['NHC', 'OPCH', 'ADUS', 'GRDN', 'PACS', 'PNTG', 'CHE', 'BTSG']
+   - Precision Timing & Motion Control Component Makers         sz=3 Ma rs_avg=93.2 days=10 coh=0.54 homeless=['ALNT', 'FEIM', 'SITM']
+   - Specialty Biopharma Clinical & Commercial Breakouts (Retin sz=3 Na rs_avg=96.2 days=2 coh=0.15 homeless=['KOD', 'MANE', 'UTHR']
+   false-kill read, board: removed themes that currently PASS G3: [('Digital Advertising & Ad-Tech Monetization Platforms', 4, 'Mainstream', 94.2), ('Post-Acute & Home-Based Healthcare Services', 8, 'Mainstream', 72.2), ('Precision Timing & Motion Control Component Makers', 3, 'Mainstream', 93.2)]
+
+   COST over ALL births 08-06..10-02 in history (lower bound — window bias):
+   births with judgeable founders: 363 of 366; founders fail: 36
+   [ALL ages] n=363 fail=36 of which became real (>=4 members or Mainstream>=10 nights)=19 ; pass=327 of which real=236
+      FALSE-KILL: Enterprise Unstructured Data Storage Infrastructure born 2026-08-11 k=2 coh=0.54 p95=0.55 maxsz=4 mainstream=True lived=38 on_board=True
+      FALSE-KILL: Programmatic Digital Advertising Platforms born 2026-08-11 k=2 coh=0.13 p95=0.55 maxsz=2 mainstream=True lived=18 on_board=False
+      FALSE-KILL: Rare disease/specialty pharma earnings beats born 2026-08-14 k=5 coh=0.23 p95=0.25 maxsz=7 mainstream=False lived=3 on_board=False
+      FALSE-KILL: Video & Streaming Content Distribution Rebound born 2026-08-18 k=3 coh=0.14 p95=0.21 maxsz=3 mainstream=True lived=26 on_board=False
+      FALSE-KILL: Rare Disease & Specialty Drug Delivery Pharmaceuticals born 2026-08-24 k=2 coh=0.04 p95=0.43 maxsz=7 mainstream=False lived=3 on_board=False
+      FALSE-KILL: Government AI & Public-Sector Digitization Breakout born 2026-08-24 k=4 coh=0.16 p95=0.21 maxsz=4 mainstream=True lived=7 on_board=False
+      FALSE-KILL: Power Generation Buildout for AI Data Center Electricity Dem born 2026-08-27 k=4 coh=-0.06 p95=0.21 maxsz=4 mainstream=False lived=8 on_board=False
+      FALSE-KILL: Media Streaming & Entertainment Content Turnaround born 2026-09-01 k=2 coh=0.08 p95=0.42 maxsz=4 mainstream=True lived=23 on_board=True
+      FALSE-KILL: Agricultural Commodity Farming & Food Processing born 2026-09-01 k=4 coh=0.09 p95=0.32 maxsz=4 mainstream=False lived=2 on_board=False
+      FALSE-KILL: Molecular & Genomic Diagnostic Testing born 2026-09-02 k=3 coh=0.08 p95=0.32 maxsz=4 mainstream=True lived=14 on_board=False
+      FALSE-KILL: Rare Disease & Specialty Biopharmaceutical Innovators born 2026-09-03 k=4 coh=0.08 p95=0.21 maxsz=6 mainstream=False lived=2 on_board=False
+      FALSE-KILL: AI data-center power buildout born 2026-09-04 k=3 coh=0.22 p95=0.24 maxsz=7 mainstream=False lived=6 on_board=False
+      FALSE-KILL: Diversified Power Generation Capacity Expansion for AI Elect born 2026-09-08 k=5 coh=0.14 p95=0.26 maxsz=6 mainstream=True lived=14 on_board=False
+      FALSE-KILL: Cardiac & Bioelectric Ablation Device Innovators born 2026-09-10 k=2 coh=0.10 p95=0.41 maxsz=2 mainstream=True lived=17 on_board=True
+      FALSE-KILL: Digital Advertising & Ad-Tech Monetization Platforms born 2026-09-11 k=3 coh=0.09 p95=0.26 maxsz=5 mainstream=True lived=16 on_board=True
+      FALSE-KILL: Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound born 2026-09-11 k=4 coh=0.07 p95=0.14 maxsz=4 mainstream=True lived=16 on_board=True
+      FALSE-KILL: Emerging Medical Device Innovators Breakout born 2026-09-14 k=3 coh=0.14 p95=0.23 maxsz=3 mainstream=True lived=15 on_board=True
+      FALSE-KILL: Post-Acute & Home-Based Healthcare Services born 2026-09-16 k=2 coh=0.14 p95=0.38 maxsz=8 mainstream=True lived=13 on_board=True
+      FALSE-KILL: Precision Timing & Motion Control Component Makers born 2026-09-21 k=2 coh=0.44 p95=0.54 maxsz=3 mainstream=True lived=10 on_board=True
+   [<=10 sessions old (clean window)] n=73 fail=9 of which became real (>=4 members or Mainstream>=10 nights)=1 ; pass=64 of which real=43
+      FALSE-KILL: Precision Timing & Motion Control Component Makers born 2026-09-21 k=2 coh=0.44 p95=0.54 maxsz=3 mainstream=True lived=10 on_board=True
+   births by founder size: [(2, 43), (3, 126), (4, 81), (5, 39), (6, 14), (7, 11), (8, 10), (9, 12), (10, 6), (11, 2), (12, 1), (13, 1), (15, 1), (16, 2), (17, 2), (18, 2), (19, 1), (21, 2), (25, 1), (26, 1), (28, 1), (36, 1), (38, 1), (41, 1), (45, 1), (47, 1), (59, 1), (66, 1)]
+   born-at-2 that ever reached >=4 members: 8 of 43
+
+################ DIAGNOSTIC — are the young G3 fails FORMING (recent co-movement) or incoherent?  (20-session cohesion vs 60)
+   Bitcoin Mining Stocks Rotation Reversal                 sz=3 Fa days=10 coh60=0.25 coh20=0.33 coh10=0.36
+   Cardiac & Bioelectric Ablation Device Innovators        sz=2 Ma days=17 coh60=0.10 coh20=-0.29 coh10=-0.09
+   Defense & Space Systems Satellite Solutions             sz=3 Na days= 3 coh60=0.37 coh20=0.26 coh10=0.12
+   Diabetes Management Devices (CGM, Insulin Pumps & Deliv sz=3 Ma days=17 coh60=0.23 coh20=0.38 coh10=0.19
+   Digital Dollar & Crypto Payments Infrastructure         sz=2 Fa days= 3 coh60=0.04 coh20=0.16 coh10=0.39
+   Direct-to-Consumer Health & Wellness Subscription Brand sz=2 Ma days= 6 coh60=0.27 coh20=0.29 coh10=0.23
+   Emerging Medical Device Innovators Breakout             sz=3 Ma days=12 coh60=0.14 coh20=0.08 coh10=0.09
+   Enterprise Unstructured Data Storage Infrastructure     sz=3 Ma days=32 coh60=0.11 coh20=0.02 coh10=0.04
+   Financial Data & Advisory/Capital Markets Platforms     sz=3 Na days= 2 coh60=0.02 coh20=0.01 coh10=-0.20
+   Fintech Payments, Prepaid & Consumer Digital Banking Ap sz=3 Na days= 1 coh60=0.04 coh20=0.11 coh10=0.37
+   Industrial Construction Execution & On-Site Supply Chai sz=8 Fa days=24 coh60=0.07 coh20=0.15 coh10=0.17
+   Legacy Telecom & Pay-TV/Broadcasting Distribution Rebou sz=3 Fa days=10 coh60=0.02 coh20=-0.06 coh10=-0.26
+   Life Sciences & Healthcare Data/CRM Platforms           sz=3 Ma days=33 coh60=0.25 coh20=0.25 coh10=0.21
+   Liquid Biopsy & Molecular Cancer Diagnostics Testing    sz=3 Ma days= 7 coh60=0.18 coh20=0.06 coh10=0.05
+   Media Streaming & Entertainment Content Turnaround      sz=3 Fa days=11 coh60=0.28 coh20=0.29 coh10=0.19
+   Specialty Biopharma Clinical & Commercial Breakouts (Re sz=3 Na days= 2 coh60=0.15 coh20=0.07 coh10=0.06
+   Specialty Retail Short-Squeeze Momentum Basket          sz=2 Ma days=17 coh60=0.20 coh20=0.29 coh10=-0.08
+
+################ BUG FIXES (outside the rule table)
+  E  promote lane: a Retired tombstone counts as `prior` (:2515-2520) so the join gate is skipped -> 'Defense & Space Systems Satellite Solutions' re-minted 10-02 over its 'Aerospace Engine…' twin. Board effect: 1 G3 fail.
+  F  _count_consecutive_fading (:1621) counts only rs_avg=None rows, so a Fading theme that keeps one strong member never retires -> 'Industrial Construction Execution' (8 members, 23 Fading rows, 5/8 misfiled). Board effect: 1 G3 fail + 5 G2 rows.

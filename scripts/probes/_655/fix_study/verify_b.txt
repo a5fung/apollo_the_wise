@@ -1,0 +1,51 @@
+board 2026-09-30: active-emulation 129  today-only 128  nightly 129
+board 2026-10-01: active-emulation 131  today-only 131  nightly 131
+board 2026-10-02: active-emulation 133  today-only 133  nightly 133
+nights: 19 2026-09-08 2026-10-02
+2026-09-08 board 106 small 15 (14.2%) Fading-small 7 -> after B 8/99 (8.1%) | G3 89/105=84.8 sessions<D 41
+2026-09-09 board 103 small 13 (12.6%) Fading-small 6 -> after B 7/97 (7.2%) | G3 89/101=88.1 sessions<D 42
+2026-09-10 board 116 small 17 (14.7%) Fading-small 6 -> after B 11/110 (10.0%) | G3 100/116=86.2 sessions<D 43
+2026-09-11 board 119 small 21 (17.6%) Fading-small 13 -> after B 8/106 (7.5%) | G3 100/119=84.0 sessions<D 44
+2026-09-14 board 121 small 21 (17.4%) Fading-small 12 -> after B 9/109 (8.3%) | G3 100/120=83.3 sessions<D 45
+2026-09-15 board 115 small 21 (18.3%) Fading-small 15 -> after B 6/100 (6.0%) | G3 97/114=85.1 sessions<D 46
+2026-09-16 board 118 small 20 (16.9%) Fading-small 14 -> after B 6/104 (5.8%) | G3 101/117=86.3 sessions<D 47
+2026-09-17 board 118 small 19 (16.1%) Fading-small 13 -> after B 6/105 (5.7%) | G3 99/116=85.3 sessions<D 48
+2026-09-18 board 110 small 15 (13.6%) Fading-small 11 -> after B 4/99 (4.0%) | G3 94/108=87.0 sessions<D 49
+2026-09-21 board 113 small 14 (12.4%) Fading-small 12 -> after B 2/101 (2.0%) | G3 97/111=87.4 sessions<D 50
+2026-09-22 board 109 small 14 (12.8%) Fading-small 10 -> after B 4/99 (4.0%) | G3 95/108=88.0 sessions<D 51
+2026-09-23 board 115 small 15 (13.0%) Fading-small 12 -> after B 3/103 (2.9%) | G3 104/114=91.2 sessions<D 52
+2026-09-24 board 109 small 12 (11.0%) Fading-small 10 -> after B 2/99 (2.0%) | G3 96/108=88.9 sessions<D 53
+2026-09-25 board 118 small 10 (8.5%) Fading-small 9 -> after B 1/109 (0.9%) | G3 102/118=86.4 sessions<D 54
+2026-09-28 board 118 small 12 (10.2%) Fading-small 10 -> after B 2/108 (1.9%) | G3 105/118=89.0 sessions<D 55
+2026-09-29 board 122 small 13 (10.7%) Fading-small 10 -> after B 3/112 (2.7%) | G3 108/122=88.5 sessions<D 56
+2026-09-30 board 129 small 15 (11.6%) Fading-small 10 -> after B 5/119 (4.2%) | G3 115/129=89.1 sessions<D 57
+2026-10-01 board 131 small 16 (12.2%) Fading-small 11 -> after B 5/120 (4.2%) | G3 116/131=88.5 sessions<D 58
+2026-10-02 board 133 small 15 (11.3%) Fading-small 10 -> after B 5/123 (4.1%) | G3 116/133=87.2 sessions<D 59
+G4 nights passing: baseline 1/19, after B 19/19
+A (K=3, no look-ahead) retire events: 26
+   2026-09-10 Enterprise Unstructured Data Storage Infrastructure     size@3 later_max 3 on10-02 True passes10-02 False
+   2026-09-10 Industrial Construction Execution & On-Site Supply Chai size@7 later_max 8 on10-02 True passes10-02 False
+   2026-09-10 Life Sciences & Healthcare Data/CRM Platforms           size@3 later_max 3 on10-02 True passes10-02 True
+   2026-09-10 Video & Streaming Content Distribution Rebound          size@3 later_max 2 on10-02 False passes10-02 False
+   2026-09-10 Media Streaming & Entertainment Content Turnaround      size@2 later_max 4 on10-02 True passes10-02 False
+   2026-09-10 Molecular & Genomic Diagnostic Testing                  size@4 later_max 4 on10-02 False passes10-02 False
+   2026-09-10 Cloud Supply Chain & Warehouse Management Software      size@2 later_max 3 on10-02 True passes10-02 True
+   2026-09-10 Newly Public Digital Trading & Brokerage Platforms      size@2 later_max 2 on10-02 False passes10-02 False
+   2026-09-10 Digital Insurance Distribution & InsurTech Platforms    size@4 later_max 4 on10-02 False passes10-02 False
+   2026-09-10 Diversified Power Generation Capacity Expansion for AI  size@5 later_max 6 on10-02 False passes10-02 False
+   2026-09-11 Consumer PC & Gaming Hardware Refresh Cycle             size@2 later_max 3 on10-02 True passes10-02 True
+   2026-09-14 Industrial Equipment & Flow Control – Capex Cycle Recov size@4 later_max 4 on10-02 False passes10-02 False
+   2026-09-14 Cardiac & Bioelectric Ablation Device Innovators        size@2 later_max 2 on10-02 True passes10-02 False
+   2026-09-14 Emerging Market Digital Payment Processors              size@2 later_max 2 on10-02 False passes10-02 False
+   2026-09-15 Legacy Telecom & Pay-TV/Broadcasting Distribution Rebou size@4 later_max 4 on10-02 True passes10-02 False
+   2026-09-15 Defense Electronics & Aerospace Subsystem Suppliers     size@4 later_max 9 on10-02 False passes10-02 False
+   2026-09-16 Emerging Medical Device Innovators Breakout             size@3 later_max 3 on10-02 True passes10-02 False
+   2026-09-18 Post-Acute & Home-Based Healthcare Services             size@2 later_max 8 on10-02 True passes10-02 True
+   2026-09-18 Wealth Management & Retail Brokerage Platforms          size@14 later_max 14 on10-02 True passes10-02 True
+   2026-09-21 Cloud Data Storage & Analytics Infrastructure           size@4 later_max 4 on10-02 True passes10-02 True
+   2026-09-21 Digital Advertising & Ad-Tech Monetization Platforms    size@5 later_max 5 on10-02 True passes10-02 True
+   2026-09-25 Electric & Unmanned Aircraft Innovators                 size@2 later_max 2 on10-02 False passes10-02 False
+   2026-09-28 Liquid Biopsy & Molecular Cancer Diagnostics Testing    size@3 later_max 3 on10-02 True passes10-02 False
+   2026-09-28 Diabetes Management Devices (CGM, Insulin Pumps & Deliv size@3 later_max 3 on10-02 True passes10-02 False
+   2026-09-29 Direct-to-Consumer Health & Wellness Subscription Brand size@3 later_max 2 on10-02 True passes10-02 False
+   2026-09-30 Digital Dollar & Crypto Payments Infrastructure         size@2 later_max 2 on10-02 True passes10-02 False

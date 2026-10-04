@@ -1,0 +1,138 @@
+################ RULE A simulated nightly 2026-09-08..2026-10-02 (19 boards)
+  2026-09-08: board 106 G3 95/106 = 89.6%  fails 11
+  2026-09-09: board 103 G3 93/103 = 90.3%  fails 10
+  2026-09-10: board 116 G3 105/116 = 90.5%  fails 11
+  2026-09-11: board 118 G3 105/118 = 89.0%  fails 13
+  2026-09-14: board 119 G3 102/118 = 86.4%  fails 16
+  2026-09-15: board 114 G3 98/113 = 86.7%  fails 15
+  2026-09-16: board 117 G3 102/116 = 87.9%  fails 14
+  2026-09-17: board 118 G3 103/116 = 88.8%  fails 13
+  2026-09-18: board 110 G3 97/108 = 89.8%  fails 11
+  2026-09-21: board 113 G3 98/111 = 88.3%  fails 13
+  2026-09-22: board 109 G3 95/108 = 88.0%  fails 13
+  2026-09-23: board 115 G3 103/114 = 90.4%  fails 11
+  2026-09-24: board 109 G3 96/108 = 88.9%  fails 12
+  2026-09-25: board 117 G3 104/117 = 88.9%  fails 13
+  2026-09-28: board 118 G3 106/118 = 89.8%  fails 12
+  2026-09-29: board 122 G3 108/122 = 88.5%  fails 14
+  2026-09-30: board 128 G3 114/128 = 89.1%  fails 14
+  2026-10-01: board 131 G3 116/131 = 88.5%  fails 15
+  2026-10-02: board 133 G3 115/133 = 86.5%  fails 18
+
+  Rule A (K=3) retire events over the window: 24
+    2026-09-10 retire Enterprise Unstructured Data Storage Infrastructure        sz=3 Ma | later max size=3 on board now=True passes G3 now=False rs_avg now=94.3
+    2026-09-10 retire Altcoin & Diversified Digital-Asset Infrastructure Second  sz=2 Ma | later max size=2 on board now=False passes G3 now=None rs_avg now=None
+    2026-09-10 retire Digital Insurance Distribution & InsurTech Platforms       sz=4 Fa | later max size=4 on board now=False passes G3 now=None rs_avg now=None
+    2026-09-10 retire Industrial Construction Execution & On-Site Supply Chain   sz=7 Fa | later max size=8 on board now=True passes G3 now=False rs_avg now=79.3
+    2026-09-10 retire Diversified Power Generation Capacity Expansion for AI Ele sz=5 Na | later max size=6 on board now=False passes G3 now=None rs_avg now=None
+    2026-09-10 retire Life Sciences & Healthcare Data/CRM Platforms              sz=3 Fa | later max size=3 on board now=True passes G3 now=False rs_avg now=97.5
+    2026-09-10 retire Molecular & Genomic Diagnostic Testing                     sz=4 Fa | later max size=4 on board now=False passes G3 now=None rs_avg now=None
+    2026-09-10 retire Media Streaming & Entertainment Content Turnaround         sz=2 Fa | later max size=4 on board now=True passes G3 now=False rs_avg now=None
+    2026-09-14 retire Cardiac & Bioelectric Ablation Device Innovators           sz=2 Na | later max size=2 on board now=True passes G3 now=False rs_avg now=83.0
+    2026-09-14 retire Emerging Market Digital Payment Processors                 sz=2 Fa | later max size=2 on board now=False passes G3 now=None rs_avg now=None
+    2026-09-15 retire Digital Advertising & Ad-Tech Monetization Platforms       sz=5 Na | later max size=5 on board now=True passes G3 now=True rs_avg now=94.2
+    2026-09-15 retire Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound  sz=4 Na | later max size=4 on board now=True passes G3 now=False rs_avg now=None
+    2026-09-15 retire Video & Streaming Content Distribution Rebound             sz=2 Ma | later max size=2 on board now=False passes G3 now=None rs_avg now=None
+    2026-09-15 retire Industrial Equipment & Flow Control – Capex Cycle Recovery sz=4 Fa | later max size=4 on board now=False passes G3 now=None rs_avg now=None
+    2026-09-16 retire Consumer PC & Gaming Hardware Refresh Cycle                sz=2 Ma | later max size=3 on board now=True passes G3 now=True rs_avg now=None
+    2026-09-16 retire Emerging Medical Device Innovators Breakout                sz=3 Fa | later max size=3 on board now=True passes G3 now=False rs_avg now=84.5
+    2026-09-17 retire Defense Electronics & Aerospace Subsystem Suppliers        sz=4 Fa | later max size=9 on board now=False passes G3 now=None rs_avg now=None
+    2026-09-18 retire Post-Acute & Home-Based Healthcare Services                sz=2 Na | later max size=8 on board now=True passes G3 now=True rs_avg now=72.2
+    2026-09-25 retire Cloud Data Storage & Analytics Infrastructure              sz=4 Ma | later max size=3 on board now=True passes G3 now=True rs_avg now=94.8
+    2026-09-25 retire Electric & Unmanned Aircraft Innovators                    sz=2 Fa | later max size=2 on board now=False passes G3 now=None rs_avg now=None
+    2026-09-28 retire Liquid Biopsy & Molecular Cancer Diagnostics Testing       sz=3 Na | later max size=3 on board now=True passes G3 now=False rs_avg now=99.6
+    2026-09-28 retire Diabetes Management Devices (CGM, Insulin Pumps & Delivery sz=3 Fa | later max size=3 on board now=True passes G3 now=False rs_avg now=91.2
+    2026-09-29 retire Direct-to-Consumer Health & Wellness Subscription Brands   sz=3 Na | later max size=2 on board now=True passes G3 now=False rs_avg now=85.9
+    2026-09-30 retire Digital Dollar & Crypto Payments Infrastructure            sz=2 Na | later max size=2 on board now=True passes G3 now=False rs_avg now=82.3
+  retired-by-A themes that are on the board today AND pass G3 today (false kills): 4 -> ['Digital Advertising & Ad-Tech Monetization Platforms', 'Consumer PC & Gaming Hardware Refresh Cycle', 'Post-Acute & Home-Based Healthcare Services', 'Cloud Data Storage & Analytics Infrastructure']
+  10-02 board had Rule A run since 09-08: removes 15 -> G1 91.4% G2 2.6% G3 113/118=95.8% PASS | G4 11/118=9.3% PASS
+    2026-09-30 with A: board 112 G3 97.3% PASS | G4 12/112=10.7% FAIL
+    2026-10-01 with A: board 116 G3 96.6% PASS | G4 13/116=11.2% FAIL
+    2026-10-02 with A: board 118 G3 94.9% PASS | G4 11/118=9.3% PASS
+
+################ RULE B cost refined — shells that recovered: how many shell nights first, and did the SAME cohort grow?
+  recovery episodes: 48; shell nights before recovery: [(1, 12), (2, 7), (3, 8), (4, 14), (5, 5), (6, 1), (7, 1)]
+  recovered rows that kept >=1 shell member (same cohort): 48; kept both: 48; later reached >=3 members: 42
+  episodes recovering after exactly 1 shell night (what an immediate retire kills before any 2nd look): 12
+     ('Global Steel & Metal Producers Recovery', datetime.date(2026, 8, 5), 1, 'Accelerating', 2, 2, True)
+     ('Specialty Insurance Underwriting & Brokerage', datetime.date(2026, 8, 5), 1, 'Accelerating', 2, 2, False)
+     ('U.S. Apparel & Fashion Recovery', datetime.date(2026, 8, 5), 4, 'Fading', 5, 2, True)
+     ('Consumer Fintech & Digital Credit Platforms', datetime.date(2026, 8, 5), 4, 'Fading', 6, 2, True)
+     ('Department Store Retail Recovery', datetime.date(2026, 8, 5), 4, 'Fading', 3, 2, True)
+     ('Defense ISR & Unmanned Systems Intelligence', datetime.date(2026, 8, 5), 2, 'Accelerating', 2, 2, False)
+     ('AI GPU Compute Infrastructure & Cloud Services', datetime.date(2026, 8, 5), 4, 'Fading', 3, 2, True)
+     ('Industrial Construction Execution & On-Site Supply Chain', datetime.date(2026, 8, 5), 1, 'Mainstream', 2, 2, True)
+     ('Gold & Precious Metals Miners Rotation', datetime.date(2026, 8, 5), 2, 'Accelerating', 23, 2, True)
+     ('Cloud Observability & AIOps Monitoring Platforms', datetime.date(2026, 8, 6), 3, 'Fading', 3, 2, True)
+     ('Digital Payments Processing & Merchant Acquiring Networks', datetime.date(2026, 8, 6), 3, 'Fading', 3, 2, True)
+     ('B2B Digital Financial Infrastructure & Payment Rails Modernization', datetime.date(2026, 8, 7), 4, 'Fading', 3, 2, True)
+     ('Private Equity & Alternative Asset Management Platforms', datetime.date(2026, 8, 7), 2, 'Mainstream', 11, 2, True)
+     ('Government & Defense IT Services Providers', datetime.date(2026, 8, 7), 2, 'Mainstream', 2, 2, False)
+     ('Electronics Manufacturing & Semiconductor Packaging Supply Chain', datetime.date(2026, 8, 11), 3, 'Fading', 3, 2, True)
+     ('Trucking & Freight Logistics', datetime.date(2026, 8, 11), 5, 'Nascent', 5, 2, True)
+     ('Lodging & Hotel REITs', datetime.date(2026, 8, 12), 5, 'Nascent', 4, 2, True)
+     ('Global Steel & Metal Producers Recovery', datetime.date(2026, 8, 13), 6, 'Accelerating', 2, 2, True)
+     ('Defense ISR & Unmanned Systems Intelligence', datetime.date(2026, 8, 13), 1, 'Mainstream', 2, 2, False)
+     ('Bitcoin Mining & HPC Compute Pivot Operators', datetime.date(2026, 8, 13), 1, 'Fading', 3, 2, True)
+     ('Industrial & Logistics Warehouse REITs', datetime.date(2026, 8, 14), 4, 'Fading', 3, 2, True)
+     ('Building Products & Home Improvement Suppliers', datetime.date(2026, 8, 17), 3, 'Fading', 3, 2, True)
+     ('Advanced Nuclear Fuel & Reactor Design Manufacturers', datetime.date(2026, 8, 18), 2, 'Fading', 3, 2, True)
+     ('For-Profit Postsecondary & Vocational Education', datetime.date(2026, 8, 19), 4, 'Nascent', 4, 2, True)
+     ('Power Semiconductor & Electrification Components', datetime.date(2026, 8, 19), 2, 'Fading', 3, 2, True)
+     ('Electrical Connectivity & Utility Network Hardware', datetime.date(2026, 8, 20), 4, 'Fading', 3, 2, True)
+     ('AI-Driven Power & Grid Infrastructure Boom', datetime.date(2026, 8, 20), 3, 'Fading', 3, 2, True)
+     ('Cinema Exhibition & Premium Large-Format Recovery', datetime.date(2026, 8, 21), 1, 'Mainstream', 2, 2, False)
+     ('Cloud Observability & AIOps Monitoring Platforms', datetime.date(2026, 8, 24), 3, 'Mainstream', 2, 2, False)
+     ('Global Steel & Metal Producers Recovery', datetime.date(2026, 8, 24), 4, 'Accelerating', 2, 2, True)
+     ('Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers', datetime.date(2026, 8, 24), 1, 'Fading', 3, 2, True)
+     ('AI Data Center Component & Connectivity Semiconductor Suppliers', datetime.date(2026, 8, 28), 1, 'Fading', 3, 2, True)
+     ('Electrical Grid & Power Infrastructure Construction (EPC)', datetime.date(2026, 8, 31), 4, 'Fading', 4, 2, True)
+     ('Power Generation Buildout for AI Data Center Electricity Demand', datetime.date(2026, 9, 1), 4, 'Fading', 3, 2, True)
+     ('Building Products & Construction Materials Manufacturing', datetime.date(2026, 9, 1), 3, 'Fading', 3, 2, True)
+     ('Emerging Bitcoin Miners Diversifying into AI/HPC Hosting', datetime.date(2026, 9, 1), 4, 'Fading', 3, 2, True)
+     ('Media Streaming & Entertainment Content Turnaround', datetime.date(2026, 9, 4), 5, 'Accelerating', 3, 2, True)
+     ('Advanced Nuclear Reactor Developers & Radiation Technology', datetime.date(2026, 9, 11), 1, 'Fading', 3, 2, True)
+     ('Emerging Quantum Computing Pure-Plays (RGTI/IONQ/QBTS)', datetime.date(2026, 9, 11), 4, 'Fading', 3, 2, True)
+     ('Semiconductor Test, Yield & Assembly Supply Chain', datetime.date(2026, 9, 14), 4, 'Fading', 5, 2, True)
+     ('Space Economy: Satellite Communications & Launch Services', datetime.date(2026, 9, 14), 1, 'Fading', 3, 2, True)
+     ('Bitcoin Mining Stocks Rotation Reversal', datetime.date(2026, 9, 15), 1, 'Fading', 6, 2, True)
+     ('Trucking & Freight Carrier Rate Recovery', datetime.date(2026, 9, 17), 1, 'Fading', 4, 2, True)
+     ('Small Modular Reactor & Advanced Nuclear Fission Technology', datetime.date(2026, 9, 17), 5, 'Nascent', 4, 2, True)
+     ('Live Music & Concert Promotion', datetime.date(2026, 9, 17), 3, 'Fading', 3, 2, True)
+     ('Customer Engagement & Marketing/CX SaaS Platforms', datetime.date(2026, 9, 21), 7, 'Accelerating', 3, 2, True)
+     ('AI Server Power & Signal-Integrity Analog ICs', datetime.date(2026, 9, 23), 2, 'Fading', 3, 2, True)
+     ('Small Modular Reactor & Advanced Nuclear Fission Technology', datetime.date(2026, 9, 25), 5, 'Nascent', 4, 2, True)
+  total <3-member Fading rows in 60 days: 579 (~13.8 per night on the board); recoveries 48 -> 8.3% of shell-nights precede a recovery
+
+  G4 per night, baseline vs Rule B (exact — G4 is a count):
+    2026-09-08: base 15/106=14.2% FAIL | B 8/99=8.1% pass
+    2026-09-09: base 13/103=12.6% FAIL | B 7/97=7.2% pass
+    2026-09-10: base 17/116=14.7% FAIL | B 11/110=10.0% pass
+    2026-09-11: base 20/118=16.9% FAIL | B 8/106=7.5% pass
+    2026-09-14: base 21/119=17.6% FAIL | B 9/107=8.4% pass
+    2026-09-15: base 20/114=17.5% FAIL | B 6/100=6.0% pass
+    2026-09-16: base 20/117=17.1% FAIL | B 6/103=5.8% pass
+    2026-09-17: base 19/118=16.1% FAIL | B 6/105=5.7% pass
+    2026-09-18: base 15/110=13.6% FAIL | B 4/99=4.0% pass
+    2026-09-21: base 14/113=12.4% FAIL | B 2/101=2.0% pass
+    2026-09-22: base 14/109=12.8% FAIL | B 4/99=4.0% pass
+    2026-09-23: base 15/115=13.0% FAIL | B 3/103=2.9% pass
+    2026-09-24: base 12/109=11.0% FAIL | B 2/99=2.0% pass
+    2026-09-25: base 10/117=8.5% pass | B 1/108=0.9% pass
+    2026-09-28: base 12/118=10.2% FAIL | B 2/108=1.9% pass
+    2026-09-29: base 13/122=10.7% FAIL | B 3/112=2.7% pass
+    2026-09-30: base 15/128=11.7% FAIL | B 5/118=4.2% pass
+    2026-10-01: base 16/131=12.2% FAIL | B 5/120=4.2% pass
+    2026-10-02: base 15/133=11.3% FAIL | B 5/123=4.1% pass
+  nights G4 fails: baseline 18/19 ; Rule B 0/19
+
+################ RULE C — growth paths of the currently-PASSING themes whose founders fail the floor
+  Post-Acute & Home-Based Healthcare Services: (date, size, stage, G3-verdict-that-night)
+     [('09-16', 2, 'Na', False), ('09-17', 2, 'Na', False), ('09-18', 2, 'Na', False), ('09-21', 3, 'Na', True), ('09-22', 3, 'Na', False), ('09-23', 3, 'Fa', True), ('09-24', 3, 'Fa', False), ('09-25', 5, 'Ma', True), ('09-28', 7, 'Ma', True), ('09-29', 7, 'Ma', True), ('09-30', 7, 'Ma', True), ('10-01', 7, 'Ma', True), ('10-02', 8, 'Ma', True)]
+    Rule A would have retired it on: 2026-09-18
+  Digital Advertising & Ad-Tech Monetization Platforms: (date, size, stage, G3-verdict-that-night)
+     [('09-11', 3, 'Na', False), ('09-14', 4, 'Na', False), ('09-15', 5, 'Na', False), ('09-16', 5, 'Na', False), ('09-17', 5, 'Na', False), ('09-18', 5, 'Ma', False), ('09-21', 5, 'Ma', False), ('09-22', 5, 'Ma', False), ('09-23', 4, 'Ma', False), ('09-24', 4, 'Ma', True), ('09-25', 3, 'Ma', True), ('09-28', 3, 'Ma', True), ('09-29', 3, 'Ma', True), ('09-30', 4, 'Ma', True), ('10-01', 4, 'Ma', True), ('10-02', 4, 'Ma', True)]
+    Rule A would have retired it on: 2026-09-15
+  Precision Timing & Motion Control Component Makers: (date, size, stage, G3-verdict-that-night)
+     [('09-21', 2, 'Na', False), ('09-22', 3, 'Na', True), ('09-23', 3, 'Na', True), ('09-24', 3, 'Na', True), ('09-25', 3, 'Na', True), ('09-28', 3, 'Ma', True), ('09-29', 3, 'Ma', True), ('09-30', 3, 'Ma', True), ('10-01', 3, 'Ma', True), ('10-02', 3, 'Ma', True)]
+    Rule A would have retired it on: None

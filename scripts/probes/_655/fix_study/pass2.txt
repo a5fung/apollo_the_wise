@@ -1,0 +1,55 @@
+G3 fails: cohesion - p95 margin
+  Digital Dollar & Crypto Payments Infrastructure         sz=2 coh=0.038 p95=0.479 margin=-0.441
+  Financial Data & Advisory/Capital Markets Platforms     sz=3 coh=0.021 p95=0.343 margin=-0.322
+  Fintech Payments, Prepaid & Consumer Digital Banking Ap sz=3 coh=0.041 p95=0.354 margin=-0.313
+  Cardiac & Bioelectric Ablation Device Innovators        sz=2 coh=0.097 p95=0.377 margin=-0.280
+  Specialty Retail Short-Squeeze Momentum Basket          sz=2 coh=0.202 p95=0.435 margin=-0.233
+  Direct-to-Consumer Health & Wellness Subscription Brand sz=2 coh=0.270 p95=0.500 margin=-0.230
+  Legacy Telecom & Pay-TV/Broadcasting Distribution Rebou sz=3 coh=0.018 p95=0.196 margin=-0.178
+  Liquid Biopsy & Molecular Cancer Diagnostics Testing    sz=3 coh=0.182 p95=0.354 margin=-0.172
+  Enterprise Unstructured Data Storage Infrastructure     sz=3 coh=0.111 p95=0.243 margin=-0.133
+  Specialty Biopharma Clinical & Commercial Breakouts (Re sz=3 coh=0.148 p95=0.272 margin=-0.124
+  Emerging Medical Device Innovators Breakout             sz=3 coh=0.142 p95=0.257 margin=-0.115
+  Media Streaming & Entertainment Content Turnaround      sz=3 coh=0.279 p95=0.368 margin=-0.090
+  Industrial Construction Execution & On-Site Supply Chai sz=8 coh=0.065 p95=0.148 margin=-0.083
+  Bitcoin Mining Stocks Rotation Reversal                 sz=3 coh=0.249 p95=0.296 margin=-0.047
+  Defense & Space Systems Satellite Solutions             sz=3 coh=0.370 p95=0.406 margin=-0.036
+  Diabetes Management Devices (CGM, Insulin Pumps & Deliv sz=3 coh=0.229 p95=0.247 margin=-0.017
+  Life Sciences & Healthcare Data/CRM Platforms           sz=3 coh=0.245 p95=0.251 margin=-0.005
+random-basket p95 by size (median over themes): {2: 0.371, 3: 0.3, 4: 0.219, 5: 0.185, 6: 0.134, 7: 0.154, 8: 0.102}
+
+Re-home D3 arm exposure (home unjudgeable, another non-Fading theme >=0.35):
+  Auto & Truck Dealership Retail Chains                   sz=2 D3-candidates=2 ['LAD', 'ABG']
+  Bitcoin Balance Sheet Proxies                           sz=2 D3-candidates=2 ['BLSH', 'MSTR']
+  Bitcoin Miners Pivoting to AI/HPC Data Center Hosting   sz=2 D3-candidates=0 []
+  Bitcoin Mining Stocks Rotation Reversal                 sz=3 D3-candidates=3 ['IOND', 'MARA', 'ABTC']
+  Cardiac & Bioelectric Ablation Device Innovators        sz=2 D3-candidates=1 ['ATRC']
+  Coal Mining Producers                                   sz=2 D3-candidates=1 ['HCC']
+  Consumer PC & Gaming Hardware Refresh Cycle             sz=2 D3-candidates=2 ['HPQ', 'LOGI']
+  Cruise & Expedition Travel Operators                    sz=2 D3-candidates=2 ['LIND', 'CCL']
+  Data Storage & Data Management Software/Hardware Leader sz=2 D3-candidates=2 ['QMCO', 'P']
+  Defense & Space Systems Satellite Solutions             sz=3 D3-candidates=3 ['YSS', 'AADX', 'MRCY']
+  Diabetes Management Devices (CGM, Insulin Pumps & Deliv sz=3 D3-candidates=2 ['BBNX', 'DXCM']
+  Digital Dollar & Crypto Payments Infrastructure         sz=2 D3-candidates=1 ['USDE']
+  Direct-to-Consumer Health & Wellness Subscription Brand sz=2 D3-candidates=1 ['HIMS']
+  Emerging Medical Device Innovators Breakout             sz=3 D3-candidates=1 ['ITGR']
+  Enterprise Unstructured Data Storage Infrastructure     sz=3 D3-candidates=3 ['DBX', 'QMCO', 'BOX']
+  Financial Data & Advisory/Capital Markets Platforms     sz=3 D3-candidates=0 []
+  Fintech Payments, Prepaid & Consumer Digital Banking Ap sz=3 D3-candidates=0 []
+  Global Steel & Metal Producers Recovery                 sz=2 D3-candidates=1 ['TX']
+  Legacy Telecom & Pay-TV/Broadcasting Distribution Rebou sz=3 D3-candidates=2 ['TDS', 'ECHO']
+  Legal, Tax & Professional Information Analytics         sz=2 D3-candidates=0 []
+  Life Sciences & Healthcare Data/CRM Platforms           sz=3 D3-candidates=3 ['DOCS', 'TEM', 'VEEV']
+  Liquid Biopsy & Molecular Cancer Diagnostics Testing    sz=3 D3-candidates=2 ['NTRA', 'GRAL']
+  Media Streaming & Entertainment Content Turnaround      sz=3 D3-candidates=2 ['PSKY', 'DIS']
+  Renewable & Specialty Fuels Chemical Producers          sz=2 D3-candidates=2 ['MEOH', 'CLMT']
+  Specialty Biopharma Clinical & Commercial Breakouts (Re sz=3 D3-candidates=0 []
+  Specialty Retail Short-Squeeze Momentum Basket          sz=2 D3-candidates=1 ['GME']
+  Vertical Industry Infrastructure & Insurance Software   sz=2 D3-candidates=2 ['BSY', 'GWRE']
+  total member-candidates 41
+BASELINE (as captured)                                                 board=133 G3 116/133 (87.2%) pass=False | G4 15/133 (11.3%) pass=False
+minus 10 Fading 2-member shells                                        board=123 G3 108/123 (87.8%) pass=False | G4 5/123 (4.1%) pass=True
+minus 17 failing themes that SHRANK to <=3 (any stage)                 board=116 G3 109/116 (94.0%) pass=True | G4 3/116 (2.6%) pass=True
+minus 7 small themes whose EVERY member ties >=0.5 to another live theme board=126 G3 110/126 (87.3%) pass=False | G4 9/126 (7.1%) pass=True
+   dup set: ['Auto & Truck Dealership Retail Chains', 'Bitcoin Balance Sheet Proxies', 'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting', 'Legal, Tax & Professional Information Analytics', 'Life Sciences & Healthcare Data/CRM Platforms', 'Renewable & Specialty Fuels Chemical Producers', 'Vertical Industry Infrastructure & Insurance Software']
+   fully-overlapping (all members also in another live theme): ['Defense & Space Systems Satellite Solutions', 'Liquid Biopsy & Molecular Cancer Diagnostics Testing']

@@ -1,0 +1,27 @@
+################ RULE A — sensitivity to K (pre-declared K=3; others are information for his ruling)
+  K=2: retire events 30 | false kills (on board + pass G3 now) 5 ['Digital Advertising & Ad-Tech Monetization Platforms', 'Consumer PC & Gaming Hardware Refresh Cycle', 'Post-Acute & Home-Based Healthcare Services', 'Cloud Data Storage & Analytics Infrastructure', 'Global Steel & Metal Producers Recovery'] | 10-02 board: G3 99.1% PASS G4 8.0% | G3 passes on last 3 nights: 3/3
+  K=3: retire events 24 | false kills (on board + pass G3 now) 4 ['Digital Advertising & Ad-Tech Monetization Platforms', 'Consumer PC & Gaming Hardware Refresh Cycle', 'Post-Acute & Home-Based Healthcare Services', 'Cloud Data Storage & Analytics Infrastructure'] | 10-02 board: G3 95.8% PASS G4 9.3% | G3 passes on last 3 nights: 3/3
+  K=4: retire events 20 | false kills (on board + pass G3 now) 1 ['Digital Advertising & Ad-Tech Monetization Platforms'] | 10-02 board: G3 95.1% PASS G4 9.8% | G3 passes on last 3 nights: 3/3
+  K=5: retire events 18 | false kills (on board + pass G3 now) 1 ['Digital Advertising & Ad-Tech Monetization Platforms'] | 10-02 board: G3 95.1% PASS G4 9.8% | G3 passes on last 3 nights: 3/3
+
+################ RULE B — of the shell regrowths, which became a theme that then lived >= 5 non-Fading nights?
+  regrowth episodes 48; afterwards >=5 non-Fading nights: 18; afterwards >=4 members: 23; non-Fading on today's board: 9
+     ('U.S. Apparel & Fashion Recovery', datetime.date(2026, 8, 5), 4, 30, 13, True)
+     ('Gold & Precious Metals Miners Rotation', datetime.date(2026, 8, 5), 2, 25, 23, False)
+     ('Global Steel & Metal Producers Recovery', datetime.date(2026, 8, 5), 1, 23, 5, False)
+     ('Lodging & Hotel REITs', datetime.date(2026, 8, 12), 5, 21, 9, True)
+     ('Consumer Fintech & Digital Credit Platforms', datetime.date(2026, 8, 5), 4, 20, 16, False)
+     ('Industrial Construction Execution & On-Site Supply Chain', datetime.date(2026, 8, 5), 1, 19, 8, False)
+     ('Global Steel & Metal Producers Recovery', datetime.date(2026, 8, 13), 6, 18, 5, False)
+     ('B2B Digital Financial Infrastructure & Payment Rails Modernization', datetime.date(2026, 8, 7), 4, 17, 12, False)
+     ('Global Steel & Metal Producers Recovery', datetime.date(2026, 8, 24), 4, 17, 5, False)
+     ('Private Equity & Alternative Asset Management Platforms', datetime.date(2026, 8, 7), 2, 16, 13, False)
+     ('For-Profit Postsecondary & Vocational Education', datetime.date(2026, 8, 19), 4, 14, 5, True)
+     ('Space Economy: Satellite Communications & Launch Services', datetime.date(2026, 9, 14), 1, 12, 9, True)
+     ('Cloud Observability & AIOps Monitoring Platforms', datetime.date(2026, 8, 6), 3, 9, 3, False)
+     ('Semiconductor Test, Yield & Assembly Supply Chain', datetime.date(2026, 9, 14), 4, 9, 7, True)
+     ('Media Streaming & Entertainment Content Turnaround', datetime.date(2026, 9, 4), 5, 8, 4, False)
+  shell-nights before regrowth for the >=5-non-Fading-night survivors: [(1, 4), (2, 4), (3, 1), (4, 6), (5, 2), (6, 1)]
+
+################ 1-member rows (the remnant a #491 move out of a pair leaves; no guard drops it)
+  1-member rows in 60 days: 0; stages Counter(); distinct themes 0

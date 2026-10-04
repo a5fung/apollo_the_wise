@@ -1,0 +1,42 @@
+V1 baseline: G1 530/587=90.3 G2 23/587=3.9 G3 116/133=87.2 FAIL G4 15/133=11.3 FAIL
+V2 k=2: pass 11/15 median p95 0.371
+V2 k=3: pass 32/44 median p95 0.300
+V2 k=>=4: pass 73/74 median p95 0.161
+   size 2: median p95 0.371 n=15
+   size 3: median p95 0.300 n=44
+   size 8: median p95 0.127 n=5
+V2 tape-blind size<=3: 59
+V2 within +-0.05 of p95: 9
+    -0.047 Bitcoin Mining Stocks Rotation Reversal False
+    -0.036 Defense & Space Systems Satellite Soluti False
+    -0.017 Diabetes Management Devices (CGM, Insuli False
+    -0.005 Life Sciences & Healthcare Data/CRM Plat False
+    +0.025 Wealth Management & Retail Brokerage Pla True
+    +0.027 Autonomous Vehicle & ADAS Technology Ena True
+    +0.029 Data Storage & Data Management Software/ True
+    +0.041 Global Steel & Metal Producers Recovery True
+    +0.043 Peptide & Hormone Therapies for Metaboli True
+V3 A set (3 nightly lists): 9 | with capture as night 3: 9 | same: True
+     Cardiac & Bioelectric Ablation Device Innovators 2 Mainstream 83.0
+     Digital Dollar & Crypto Payments Infrastructure 2 Fading 82.3
+     Direct-to-Consumer Health & Wellness Subscription Brand 2 Mainstream 85.9
+     Emerging Medical Device Innovators Breakout 3 Mainstream 84.5
+     Enterprise Unstructured Data Storage Infrastructure 3 Mainstream 94.3
+     Industrial Construction Execution & On-Site Supply Chai 8 Fading 79.3
+     Legacy Telecom & Pay-TV/Broadcasting Distribution Rebou 3 Fading None
+     Liquid Biopsy & Molecular Cancer Diagnostics Testing 3 Mainstream 99.6
+     Media Streaming & Entertainment Content Turnaround 3 Fading None
+V4 B set: 10 ['Auto & Truck Dealership Retail', 'Bitcoin Miners Pivoting to AI/', 'Coal Mining Producers', 'Consumer PC & Gaming Hardware ', 'Cruise & Expedition Travel Ope', 'Digital Dollar & Crypto Paymen', 'Global Steel & Metal Producers', 'Legal, Tax & Professional Info', 'Renewable & Specialty Fuels Ch', 'Vertical Industry Infrastructu']
+   B set with rs_avg (scored Fading): ['Digital Dollar & Crypto Paymen', 'Cruise & Expedition Travel Ope']
+V4 A: removes 9 -> G1 528/579=91.2 G2 17/579=2.9 G3 118/124=95.2 PASS G4 12/124=9.7 PASS
+     drift flips 4: [('Data Storage & Data Management Soft', True, False), ('Defense & Space Systems Satellite S', False, True), ('Diabetes Management Devices (CGM, I', False, True), ('Life Sciences & Healthcare Data/CRM', False, True)]
+     drift-free G3 (baseline verdicts on survivors): 116/124 = 93.5
+V4 B: removes 10 -> G1 530/587=90.3 G2 23/587=3.9 G3 108/123=87.8 FAIL G4 5/123=4.1 PASS
+     drift flips 1: [('Life Sciences & Healthcare Data/CRM', False, True)]
+     drift-free G3 (baseline verdicts on survivors): 107/123 = 87.0
+V4 A+B: removes 18 -> G1 528/579=91.2 G2 17/579=2.9 G3 108/115=93.9 PASS G4 3/115=2.6 PASS
+     drift flips 1: [('Defense & Space Systems Satellite S', False, True)]
+     drift-free G3 (baseline verdicts on survivors): 107/115 = 93.0
+V4 B weak-only: removes 8 -> G1 530/587=90.3 G2 23/587=3.9 G3 109/125=87.2 FAIL G4 7/125=5.6 PASS
+     drift flips 1: [('Defense & Space Systems Satellite S', False, True)]
+     drift-free G3 (baseline verdicts on survivors): 108/125 = 86.4

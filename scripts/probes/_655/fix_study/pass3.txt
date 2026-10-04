@@ -1,0 +1,19 @@
+RULE shrank-to-<=3 (max hist size > current, size<=3): removes 34 board-wide (17 failing, 17 currently-PASSING) -> G3 91/99 (91.9%) True | G4 3/99 (3.0%) True
+   passing removed: ['Genetic Medicine: Gene Editing & Gene Therapy Innovators', 'Software Development & DevOps Collaboration Platforms', 'Private Mortgage & Title Insurance Underwriters', 'Peptide & Hormone Therapies for Metabolic & Endocrine Disorders', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket', 'Customer Engagement & Marketing/CX SaaS Platforms', 'Bitcoin Holding & Trading Proxy Equities', 'Live Music & Concert Promotion', 'Diversified Property & Casualty Insurance Carriers', 'Global Agriculture Value Chain Recovery', 'Precious Metals Miners Velocity Breakout', 'Low-Cost & Regional Passenger Airline Rebound', 'Cloud Data Storage & Analytics Infrastructure', 'Primary Silver Miners', 'Orthopedic Surgical Devices & Instruments', 'Corporate Spend, Expense Management & Financial Operations Software', 'Cloud Application Software Rotation (Oversold Turning Up)']
+RULE small & every member ties >=0.5 to another live theme: removes 30 board-wide (7 failing, 23 currently-PASSING) -> G3 87/103 (84.5%) False | G4 9/103 (8.7%) True
+   passing removed: ['Autonomous Vehicle & ADAS Technology Enablers', 'HBM & AI-Driven Memory Chip Makers', 'Software Development & DevOps Collaboration Platforms', 'Private Mortgage & Title Insurance Underwriters', 'Silver Producers & Streaming Momentum (SVM, AGI, MUX)', 'Semiconductor Photomask & Ultra-Low-Power Chip Enablers', 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket', 'Optical Networking & Optical Component Manufacturing', 'Power Semiconductors (GaN, SiC & Discrete Power ICs)', 'Customer Engagement & Marketing/CX SaaS Platforms', 'Bitcoin Holding & Trading Proxy Equities', 'Diversified Property & Casualty Insurance Carriers', 'Marketing & Customer Data SaaS Rotation', 'Precision Timing & Motion Control Component Makers', 'Precious Metals Miners Velocity Breakout', 'Fabless Semiconductor IP Licensing', 'Primary Silver Miners', 'Laser & RF/Photonic Component Suppliers for AI and Optical Build-Out', 'Cloud Supply Chain & Warehouse Management Software', 'AI Data Services & GPU Cloud Platforms', 'Corporate Spend, Expense Management & Financial Operations Software', 'Identity & Access Management Security Software', 'Cloud Application Software Rotation (Oversold Turning Up)']
+RULE Fading 2-member: removes 10 board-wide (10 failing, 0 currently-PASSING) -> G3 108/123 (87.8%) False | G4 5/123 (4.1%) True
+   passing removed: []
+
+G3 judgeable themes within |coh-p95| <= 0.05:
+   Autonomous Vehicle & ADAS Technology Enablers           sz=3 margin=+0.027 pass=True in_fails=False
+   Bitcoin Mining Stocks Rotation Reversal                 sz=3 margin=-0.047 pass=False in_fails=True
+   Data Storage & Data Management Software/Hardware Leader sz=2 margin=+0.029 pass=True in_fails=True
+   Defense & Space Systems Satellite Solutions             sz=3 margin=-0.036 pass=False in_fails=True
+   Diabetes Management Devices (CGM, Insulin Pumps & Deliv sz=3 margin=-0.017 pass=False in_fails=True
+   Global Steel & Metal Producers Recovery                 sz=2 margin=+0.041 pass=True in_fails=True
+   Life Sciences & Healthcare Data/CRM Platforms           sz=3 margin=-0.005 pass=False in_fails=True
+   Peptide & Hormone Therapies for Metabolic & Endocrine D sz=3 margin=+0.043 pass=True in_fails=False
+   Wealth Management & Retail Brokerage Platforms          sz=12 margin=+0.025 pass=True in_fails=False
+
+first history date overall: 2026-08-05

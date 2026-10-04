@@ -1,0 +1,23 @@
+K=2: retire events 32 | false kills (on 10-02 board AND pass 10-02) 8 ['Life Sciences & Healthcare Data/CRM Plat', 'Cloud Supply Chain & Warehouse Managemen', 'Defense Intelligence & Cybersecurity IT ', 'Consumer PC & Gaming Hardware Refresh Cy', 'Digital Advertising & Ad-Tech Monetizati', 'Wealth Management & Retail Brokerage Pla', 'Post-Acute & Home-Based Healthcare Servi', 'Cloud Data Storage & Analytics Infrastru']
+      nights passing (drift-free): A alone G3 18/19 G4 5/19 | A+B G3 18/19 G4 19/19
+K=3: retire events 26 | false kills (on 10-02 board AND pass 10-02) 7 ['Life Sciences & Healthcare Data/CRM Plat', 'Cloud Supply Chain & Warehouse Managemen', 'Consumer PC & Gaming Hardware Refresh Cy', 'Wealth Management & Retail Brokerage Pla', 'Post-Acute & Home-Based Healthcare Servi', 'Cloud Data Storage & Analytics Infrastru', 'Digital Advertising & Ad-Tech Monetizati']
+      nights passing (drift-free): A alone G3 17/19 G4 5/19 | A+B G3 17/19 G4 19/19
+K=4: retire events 25 | false kills (on 10-02 board AND pass 10-02) 6 ['Life Sciences & Healthcare Data/CRM Plat', 'Cloud Supply Chain & Warehouse Managemen', 'Consumer PC & Gaming Hardware Refresh Cy', 'Post-Acute & Home-Based Healthcare Servi', 'Cloud Data Storage & Analytics Infrastru', 'Digital Advertising & Ad-Tech Monetizati']
+      nights passing (drift-free): A alone G3 16/19 G4 4/19 | A+B G3 16/19 G4 19/19
+K=5: retire events 23 | false kills (on 10-02 board AND pass 10-02) 4 ['Life Sciences & Healthcare Data/CRM Plat', 'Cloud Supply Chain & Warehouse Managemen', 'Consumer PC & Gaming Hardware Refresh Cy', 'Cloud Data Storage & Analytics Infrastru']
+      nights passing (drift-free): A alone G3 15/19 G4 4/19 | A+B G3 15/19 G4 19/19
+B: shell-nights (Fading, 1-2 members) in 60d: 579 | episodes that regrew to >=3 next: 38 | of which >=5 later non-Fading >=3-member nights: 12
+    ('U.S. Apparel & Fashion Recovery', datetime.date(2026, 8, 5), 4, 30, 13)
+    ('Gold & Precious Metals Miners Rotation', datetime.date(2026, 8, 5), 2, 25, 23)
+    ('Lodging & Hotel REITs', datetime.date(2026, 8, 12), 5, 21, 9)
+    ('Consumer Fintech & Digital Credit Platfo', datetime.date(2026, 8, 5), 4, 20, 16)
+    ('B2B Digital Financial Infrastructure & P', datetime.date(2026, 8, 7), 4, 17, 12)
+    ('Private Equity & Alternative Asset Manag', datetime.date(2026, 8, 7), 2, 16, 13)
+    ('For-Profit Postsecondary & Vocational Ed', datetime.date(2026, 8, 19), 4, 14, 5)
+    ('Space Economy: Satellite Communications ', datetime.date(2026, 9, 14), 1, 12, 9)
+    ('Semiconductor Test, Yield & Assembly Sup', datetime.date(2026, 9, 14), 4, 9, 7)
+    ('Media Streaming & Entertainment Content ', datetime.date(2026, 9, 4), 5, 8, 4)
+    ('Bitcoin Mining Stocks Rotation Reversal', datetime.date(2026, 9, 15), 1, 8, 10)
+    ('Cloud Observability & AIOps Monitoring P', datetime.date(2026, 8, 6), 3, 7, 3)
+    ('Live Music & Concert Promotion', datetime.date(2026, 9, 17), 3, 4, 4)
+    ('AI Server Power & Signal-Integrity Analo', datetime.date(2026, 9, 23), 2, 4, 4)

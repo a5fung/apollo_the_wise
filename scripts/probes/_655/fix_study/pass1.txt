@@ -1,0 +1,248 @@
+G3 fail 17 G4 small 15 union 28 both 4
+prior nights ['2026-09-30', '2026-10-01', '2026-10-02']
+history span 2026-08-05 2026-10-02 42 dates
+
+name                                                           sz st  src  dA  first      maxsz coh    p95    pers  stagesHist
+Auto & Truck Dealership Retail Chains                           2 Fa live   1 2026-09-28   4  0.718  0.314  3/3  {'Nascent': 1, 'Fading': 4}
+Bitcoin Balance Sheet Proxies                                   2 Ma live   7 2026-09-24   4  0.634  0.556  3/3  {'Nascent': 5, 'Mainstream': 2}
+Bitcoin Miners Pivoting to AI/HPC Data Center Hosting           2 Fa live   5 2026-08-27   8  0.925  0.371  2/3  {'Nascent': 3, 'Fading': 11, 'Retired': 2}
+Bitcoin Mining Stocks Rotation Reversal                         3 Fa live  10 2026-09-11  10  0.249  0.296  1/3  {'Nascent': 3, 'Fading': 6, 'Mainstream': 5, 'Accelerating': 2}
+Cardiac & Bioelectric Ablation Device Innovators                2 Ma live  17 2026-09-10   2  0.097  0.377  3/3  {'Nascent': 5, 'Mainstream': 12}
+Coal Mining Producers                                           2 Fa live   2 2026-09-22   4  0.719  0.353  2/3  {'Nascent': 2, 'Fading': 7}
+Consumer PC & Gaming Hardware Refresh Cycle                     2 Fa live  15 2026-09-09   3  0.491  0.320  1/3  {'Nascent': 5, 'Mainstream': 10, 'Fading': 3}
+Cruise & Expedition Travel Operators                            2 Fa live   1 2026-09-29   2  0.551  0.306  3/3  {'Nascent': 1, 'Fading': 3}
+Data Storage & Data Management Software/Hardware Leaders        2 Na live   3 2026-09-30   3  0.543  0.514  1/3  {'Nascent': 3}
+Defense & Space Systems Satellite Solutions                     3 Na shad   3 2026-09-30   3  0.370  0.406  2/3  {'Nascent': 2, 'Retired': 1}
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)     3 Ma live  17 2026-08-21   4  0.229  0.247  2/3  {'Nascent': 5, 'Mainstream': 10, 'Fading': 13, 'Accelerating': 2}
+Digital Dollar & Crypto Payments Infrastructure                 2 Fa live   3 2026-09-28   3  0.038  0.479  3/3  {'Nascent': 3, 'Fading': 2}
+Direct-to-Consumer Health & Wellness Subscription Brands        2 Ma live   6 2026-09-25   3  0.270  0.500  3/3  {'Nascent': 5, 'Mainstream': 1}
+Emerging Medical Device Innovators Breakout                     3 Ma live  12 2026-09-14   3  0.142  0.257  3/3  {'Nascent': 2, 'Fading': 3, 'Mainstream': 10}
+Enterprise Unstructured Data Storage Infrastructure             3 Ma live  32 2026-08-11   4  0.111  0.243  3/3  {'Nascent': 5, 'Mainstream': 27, 'Fading': 6}
+Financial Data & Advisory/Capital Markets Platforms             3 Na live   2 2026-10-01   3  0.021  0.343  2/3  {'Nascent': 2}
+Fintech Payments, Prepaid & Consumer Digital Banking Apps       3 Na shad   1 2026-10-02   3  0.041  0.354  1/3  {'Nascent': 1}
+Global Steel & Metal Producers Recovery                         2 Fa live  28 2026-08-05   5  0.455  0.414  2/3  {'Fading': 19, 'Accelerating': 9, 'Mainstream': 8, 'Nascent': 6}
+Industrial Construction Execution & On-Site Supply Chain        8 Fa live  24 2026-08-05   8  0.065  0.148  3/3  {'Fading': 23, 'Mainstream': 15, 'Accelerating': 4}
+Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound       3 Fa live  10 2026-09-11   4  0.018  0.196  3/3  {'Nascent': 5, 'Mainstream': 5, 'Fading': 6}
+Legal, Tax & Professional Information Analytics                 2 Fa live   1 2026-09-28   2  0.784  0.306  3/3  {'Nascent': 1, 'Fading': 4}
+Life Sciences & Healthcare Data/CRM Platforms                   3 Ma live  33 2026-08-13   3  0.245  0.251  1/3  {'Nascent': 8, 'Mainstream': 23, 'Fading': 3, 'Accelerating': 2}
+Liquid Biopsy & Molecular Cancer Diagnostics Testing            3 Ma live   7 2026-09-24   3  0.182  0.354  3/3  {'Nascent': 5, 'Mainstream': 2}
+Media Streaming & Entertainment Content Turnaround              3 Fa live  11 2026-09-01   4  0.279  0.368  3/3  {'Nascent': 3, 'Fading': 12, 'Accelerating': 7, 'Mainstream': 1}
+Renewable & Specialty Fuels Chemical Producers                  2 Fa live  16 2026-09-02   3  0.421  0.355  3/3  {'Nascent': 8, 'Mainstream': 8, 'Fading': 6}
+Specialty Biopharma Clinical & Commercial Breakouts (Retinal,   3 Na live   2 2026-10-01   3  0.148  0.272  2/3  {'Nascent': 2}
+Specialty Retail Short-Squeeze Momentum Basket                  2 Ma live  17 2026-09-10   3  0.202  0.435  2/3  {'Nascent': 5, 'Mainstream': 12}
+Vertical Industry Infrastructure & Insurance Software           2 Fa live   1 2026-10-01   3  0.716  0.327  1/3  {'Nascent': 1, 'Fading': 1}
+
+== Auto & Truck Dealership Retail Chains size=2 stage=Fading first=2026-09-28 rows=5 gaps=0 rs_avg=None parent=None
+   size path: [('09-28', 4, 'Na'), ('09-29', 2, 'Fa'), ('09-30', 2, 'Fa'), ('10-01', 2, 'Fa'), ('10-02', 2, 'Fa')]
+   left: {'AN': '2026-09-28', 'SAH': '2026-09-28'} | joined after birth: []
+   LAD    Consumer Cyclical      rs=16.7 usable=True own=None best_other=0.62 -> IT Consulting & Business Process Outsourcing Services misfiled=False also_in=[]
+   ABG    Consumer Cyclical      rs=8.7 usable=True own=None best_other=0.57 -> IT Consulting & Business Process Outsourcing Services misfiled=False also_in=[]
+   overlap: {}
+   desc: The clearest catalyst is a sector read-through: news about AI agents entering car-buying is highlighting large dealership groups such as LAD, ABG, AN and SAH as potential beneficiaries. I don’t see ev
+== Bitcoin Balance Sheet Proxies size=2 stage=Mainstream first=2026-09-24 rows=7 gaps=0 rs_avg=81.9 parent=None
+   size path: [('09-24', 4, 'Na'), ('09-25', 4, 'Na'), ('09-28', 4, 'Na'), ('09-29', 2, 'Na'), ('09-30', 2, 'Na'), ('10-01', 2, 'Ma'), ('10-02', 2, 'Ma')]
+   left: {'COIN': '2026-09-28', 'CRCL': '2026-09-28'} | joined after birth: []
+   BLSH   Technology             rs=72.9 usable=True own=None best_other=0.67 -> Bitcoin Holding & Trading Proxy Equities misfiled=False also_in=[]
+   MSTR   Technology             rs=90.9 usable=True own=None best_other=0.89 -> Bitcoin Treasury & Crypto Proxy Equities Correlation Basket misfiled=False also_in=[]
+   overlap: {}
+   desc: The main catalyst is Bitcoin’s rebound above $86,000, lifting crypto-linked stocks broadly; softer rate expectations and short-covering added fuel. MSTR also got a boost from Citi nearly doubling its 
+== Bitcoin Miners Pivoting to AI/HPC Data Center Hosting size=2 stage=Fading first=2026-08-27 rows=16 gaps=10 rs_avg=None parent=None
+   size path: [('08-27', 8, 'Na'), ('08-28', 4, 'Fa'), ('08-31', 4, 'Fa'), ('09-01', 4, 'Fa'), ('09-02', 3, 'Fa'), ('09-03', 4, 'Fa'), ('09-04', 0, 'Re'), ('09-11', 3, 'Na'), ('09-14', 2, 'Fa'), ('09-15', 2, 'Fa'), ('09-16', 2, 'Fa'), ('09-17', 0, 'Re'), ('09-29', 5, 'Na'), ('09-30', 3, 'Fa'), ('10-01', 2, 'Fa'), ('10-02', 2, 'Fa')]
+   left: {'APLD': '2026-09-30', 'CLSK': '2026-09-03', 'CORZ': '2026-09-29', 'MARA': '2026-09-03', 'RIOT': '2026-09-03', 'WULF': '2026-09-29'} | joined after birth: []
+   HUT    Financial Services     rs=8.3 usable=True own=None best_other=0.67 -> Bitcoin Mining Stocks Rotation Reversal misfiled=False also_in=[]
+   CIFR   Technology             rs=8.2 usable=True own=None best_other=0.68 -> Bitcoin Mining Stocks Rotation Reversal misfiled=False also_in=[]
+   overlap: {}
+   desc: Former bitcoin miners with power-secured sites are converting capacity into AI/HPC colocation and hosting. They trade as a highly correlated basket, currently weak in RS, which makes them a potential 
+== Bitcoin Mining Stocks Rotation Reversal size=3 stage=Fading first=2026-09-11 rows=16 gaps=0 rs_avg=None parent=None
+   size path: [('09-11', 3, 'Na'), ('09-14', 4, 'Na'), ('09-15', 2, 'Fa'), ('09-16', 6, 'Fa'), ('09-17', 5, 'Fa'), ('09-18', 8, 'Ma'), ('09-21', 8, 'Ac'), ('09-22', 10, 'Ac'), ('09-23', 10, 'Ma'), ('09-24', 10, 'Ma'), ('09-25', 9, 'Na'), ('09-28', 7, 'Ma'), ('09-29', 7, 'Ma'), ('09-30', 6, 'Fa'), ('10-01', 3, 'Fa'), ('10-02', 3, 'Fa')]
+   left: {'BTDR': '2026-09-25', 'CIFR': '2026-09-25', 'CLSK': '2026-09-30', 'CORZ': '2026-09-16', 'FIGR': '2026-09-14', 'HUT': '2026-09-29', 'IREN': '2026-09-30', 'RIOT': '2026-09-30', 'WULF': '2026-09-24'} | joined after birth: ['ABTC', 'MARA']
+   IOND   Financial Services     rs=79.3 usable=True own=None best_other=0.35 -> Crude & Product Tanker Shipping misfiled=False also_in=[]
+   MARA   Financial Services     rs=29.7 usable=True own=None best_other=0.74 -> Bitcoin Holding & Trading Proxy Equities misfiled=False also_in=[]
+   ABTC   Financial Services     rs=66.5 usable=True own=None best_other=0.69 -> Bitcoin Treasury & Crypto Proxy Equities Correlation Basket misfiled=False also_in=[]
+   overlap: {}
+   desc: There isn’t one shared headline: IOND is getting a boost from Texas Capital’s new Buy rating and $98 target, tied to its AI/data-center conversion opportunity. CLSK’s story is its AI-infrastructure pi
+== Cardiac & Bioelectric Ablation Device Innovators size=2 stage=Mainstream first=2026-09-10 rows=17 gaps=0 rs_avg=83.0 parent=None
+   size path: [('09-10', 2, 'Na'), ('09-11', 2, 'Na'), ('09-14', 2, 'Na'), ('09-15', 2, 'Na'), ('09-16', 2, 'Na'), ('09-17', 2, 'Ma'), ('09-18', 2, 'Ma'), ('09-21', 2, 'Ma'), ('09-22', 2, 'Ma'), ('09-23', 2, 'Ma'), ('09-24', 2, 'Ma'), ('09-25', 2, 'Ma'), ('09-28', 2, 'Ma'), ('09-29', 2, 'Ma'), ('09-30', 2, 'Ma'), ('10-01', 2, 'Ma'), ('10-02', 2, 'Ma')]
+   left: {} | joined after birth: []
+   ATRC   Healthcare             rs=93.6 usable=True own=None best_other=0.49 -> Non-Alcoholic Beverages & Energy Drinks misfiled=False also_in=['Medical Device Mean-Reversion & Rotation Recovery']
+   PLSE   Healthcare             rs=72.4 usable=True own=None best_other=0.32 -> Defense Intelligence & Cybersecurity IT Contractors misfiled=False also_in=[]
+   overlap: {'Medical Device Mean-Reversion & Rotation Recovery': 1}
+   desc: PLSE is getting a lift from bullish analyst coverage and clinical progress, including completion of enrollment in its 100-patient thyroid-nodule trial and encouraging early cardiac-ablation data. ATRC
+== Coal Mining Producers size=2 stage=Fading first=2026-09-22 rows=9 gaps=0 rs_avg=None parent=None
+   size path: [('09-22', 4, 'Na'), ('09-23', 4, 'Fa'), ('09-24', 4, 'Fa'), ('09-25', 4, 'Fa'), ('09-28', 4, 'Fa'), ('09-29', 4, 'Fa'), ('09-30', 3, 'Na'), ('10-01', 2, 'Fa'), ('10-02', 2, 'Fa')]
+   left: {'AMR': '2026-09-30', 'CNR': '2026-09-29'} | joined after birth: []
+   BTU    Energy                 rs=37.1 usable=True own=None best_other=0.36 -> Primary Silver Miners misfiled=False also_in=[]
+   HCC    Basic Materials        rs=44.5 usable=True own=None best_other=0.4 -> Precious Metals Royalty & Streaming Companies misfiled=False also_in=[]
+   overlap: {}
+   desc: There’s no single shared catalyst confirmed: BTU, HCC and AMR appear to be moving with coal-sector sentiment, while reported company-specific news is limited to a Zacks upgrade for BTU and a higher pr
+== Consumer PC & Gaming Hardware Refresh Cycle size=2 stage=Fading first=2026-09-09 rows=18 gaps=0 rs_avg=None parent=None
+   size path: [('09-09', 2, 'Na'), ('09-10', 2, 'Na'), ('09-11', 2, 'Na'), ('09-14', 2, 'Na'), ('09-15', 2, 'Na'), ('09-16', 2, 'Ma'), ('09-17', 3, 'Ma'), ('09-18', 3, 'Ma'), ('09-21', 3, 'Ma'), ('09-22', 3, 'Ma'), ('09-23', 3, 'Ma'), ('09-24', 3, 'Ma'), ('09-25', 3, 'Ma'), ('09-28', 3, 'Ma'), ('09-29', 3, 'Fa'), ('09-30', 3, 'Fa'), ('10-01', 3, 'Ma'), ('10-02', 2, 'Fa')]
+   left: {'CRSR': '2026-10-01'} | joined after birth: ['LOGI']
+   HPQ    Technology             rs=62.7 usable=True own=None best_other=0.42 -> For-Profit Postsecondary & Vocational Education misfiled=False also_in=[]
+   LOGI   Technology             rs=61.1 usable=True own=None best_other=0.42 -> Mobile SoC & Wireless Connectivity Semiconductors misfiled=False also_in=[]
+   overlap: {}
+   desc: HPQ’s move appears tied to its latest AI-ready OmniBook and ProBook laptop launches, though they’re a modest product catalyst. LOGI’s gains have no clear positive company-specific trigger in the avail
+== Cruise & Expedition Travel Operators size=2 stage=Fading first=2026-09-29 rows=4 gaps=0 rs_avg=81.0 parent=None
+   size path: [('09-29', 2, 'Na'), ('09-30', 2, 'Fa'), ('10-01', 2, 'Fa'), ('10-02', 2, 'Fa')]
+   left: {} | joined after birth: []
+   LIND   Consumer Cyclical      rs=97.7 usable=True own=None best_other=0.38 -> Low-Cost & Regional Passenger Airline Rebound misfiled=False also_in=[]
+   CCL    Consumer Cyclical      rs=64.3 usable=True own=None best_other=0.55 -> U.S. Domestic Passenger Airlines misfiled=False also_in=[]
+   overlap: {}
+   desc: CCL is rallying on record Q3 results, raised 2026 profit guidance, and record 2027 bookings and pricing. LIND has no clear new catalyst this week; its rise appears to extend momentum from strong Q2 re
+== Data Storage & Data Management Software/Hardware Leaders size=2 stage=Nascent first=2026-09-30 rows=3 gaps=0 rs_avg=99.7 parent=None
+   size path: [('09-30', 3, 'Na'), ('10-01', 3, 'Na'), ('10-02', 2, 'Na')]
+   left: {'INGM': '2026-10-01'} | joined after birth: []
+   QMCO   Technology             rs=99.8 usable=True own=None best_other=0.4 -> Cross-Industry Test, Measurement & Design-Verification Tools misfiled=False also_in=['Enterprise Unstructured Data Storage Infrastructure']
+   P      Technology             rs=99.5 usable=True own=None best_other=0.55 -> Enterprise Server, Storage & Data Infrastructure Hardware misfiled=False also_in=[]
+   overlap: {'Enterprise Unstructured Data Storage Infrastructure': 1}
+   desc: QMCO’s rise appears driven mainly by bullish momentum around stronger-than-expected results, record backlog, and robust storage demand, reinforced by its new COO appointment and index additions. There
+== Defense & Space Systems Satellite Solutions size=3 stage=Nascent first=2026-09-30 rows=3 gaps=0 rs_avg=45.96666666666667 parent=None
+   size path: [('09-30', 3, 'Na'), ('10-01', 0, 'Re'), ('10-02', 3, 'Na')]
+   left: {} | joined after birth: []
+   YSS    Industrials            rs=33.5 usable=True own=None best_other=0.45 -> Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery misfiled=False also_in=['Aerospace Engine, Airframe Components & Defense Subsystem Suppliers']
+   AADX   Industrials            rs=62.0 usable=True own=None best_other=0.46 -> Autonomous Vehicle & ADAS Technology Enablers misfiled=False also_in=['Aerospace Engine, Airframe Components & Defense Subsystem Suppliers']
+   MRCY   Industrials            rs=42.4 usable=True own=None best_other=0.59 -> Space Economy: Satellite Communications & Launch Services misfiled=False also_in=['Aerospace Engine, Airframe Components & Defense Subsystem Suppliers']
+   overlap: {'Aerospace Engine, Airframe Components & Defense Subsystem Suppliers': 3}
+   desc: Defense satellite and space launch subsystem suppliers are accelerating sharply in RS, which suggests a government space and defense funding catalyst. This is a small cluster that may split off from t
+== Diabetes Management Devices (CGM, Insulin Pumps & Delivery) size=3 stage=Mainstream first=2026-08-21 rows=30 gaps=0 rs_avg=91.2 parent=Medical Device Mean-Reversion & Rotation Recovery
+   size path: [('08-21', 3, 'Na'), ('08-24', 3, 'Na'), ('08-25', 4, 'Na'), ('08-26', 3, 'Na'), ('08-27', 3, 'Na'), ('08-28', 3, 'Ma'), ('08-31', 3, 'Ma'), ('09-01', 3, 'Ma'), ('09-02', 3, 'Ma'), ('09-03', 3, 'Ma'), ('09-04', 3, 'Fa'), ('09-08', 3, 'Fa'), ('09-09', 3, 'Fa'), ('09-10', 3, 'Fa'), ('09-11', 3, 'Fa'), ('09-14', 3, 'Fa'), ('09-15', 3, 'Fa'), ('09-16', 3, 'Fa'), ('09-17', 3, 'Fa'), ('09-18', 3, 'Ac'), ('09-21', 3, 'Ac'), ('09-22', 4, 'Ma'), ('09-23', 4, 'Ma'), ('09-24', 3, 'Fa'), ('09-25', 3, 'Fa'), ('09-28', 3, 'Fa'), ('09-29', 3, 'Fa'), ('09-30', 3, 'Ma'), ('10-01', 3, 'Ma'), ('10-02', 3, 'Ma')]
+   left: {'TNDM': '2026-09-23'} | joined after birth: ['MMED']
+   MMED   Healthcare             rs=60.5 usable=True own=None best_other=0.48 -> Medical Device Mean-Reversion & Rotation Recovery misfiled=False also_in=[]
+   BBNX   Healthcare             rs=98.2 usable=True own=None best_other=0.36 -> Life Sciences & Healthcare Data/CRM Platforms misfiled=False also_in=[]
+   DXCM   Healthcare             rs=84.3 usable=True own=None best_other=0.53 -> Cloud Supply Chain & Warehouse Management Software misfiled=False also_in=[]
+   overlap: {}
+   desc: MMED’s lift appears tied to Medtronic’s exchange offer to complete its separation, while DXCM has support from RBC raising its price target to $105 and upbeat comments on CGM growth. I can’t identify 
+== Digital Dollar & Crypto Payments Infrastructure size=2 stage=Fading first=2026-09-28 rows=5 gaps=0 rs_avg=82.3 parent=None
+   size path: [('09-28', 3, 'Na'), ('09-29', 3, 'Na'), ('09-30', 2, 'Na'), ('10-01', 2, 'Fa'), ('10-02', 2, 'Fa')]
+   left: {'SVRN': '2026-09-29'} | joined after birth: []
+   USDE   Financial Services     rs=99.9 usable=True own=None best_other=0.53 -> Bitcoin Holding & Trading Proxy Equities misfiled=False also_in=[]
+   PYPL   Financial Services     rs=64.7 usable=True own=None best_other=0.37 -> Corporate Spend, Expense Management & Financial Operations Software misfiled=False also_in=['Fintech & Digital Finance Sector Re-rating on Fed Easing']
+   overlap: {'Fintech & Digital Finance Sector Re-rating on Fed Easing': 1}
+   desc: If you mean Ethena’s USDe, its growth catalyst is the launch of equity-perpetual basis trading on Binance, which adds a potential new yield source and broadens its collateral base. PYPL is getting a l
+== Direct-to-Consumer Health & Wellness Subscription Brands size=2 stage=Mainstream first=2026-09-25 rows=6 gaps=0 rs_avg=85.9 parent=None
+   size path: [('09-25', 3, 'Na'), ('09-28', 3, 'Na'), ('09-29', 3, 'Na'), ('09-30', 2, 'Na'), ('10-01', 2, 'Na'), ('10-02', 2, 'Ma')]
+   left: {'MANE': '2026-09-29'} | joined after birth: []
+   WRBY   Healthcare             rs=86.0 usable=True own=None best_other=0.38 -> mRNA Vaccine & Personalized Cancer Therapy Platforms misfiled=False also_in=[]
+   HIMS   Healthcare             rs=85.8 usable=True own=None best_other=0.57 -> Bitcoin Holding & Trading Proxy Equities misfiled=False also_in=[]
+   overlap: {}
+   desc: WRBY’s rally is tied to renewed attention on its Google partnership for AI-powered smart glasses, with Samsung FCC filings suggesting launch preparations are advancing. HIMS appears to be rebounding o
+== Emerging Medical Device Innovators Breakout size=3 stage=Mainstream first=2026-09-14 rows=15 gaps=0 rs_avg=84.5 parent=None
+   size path: [('09-14', 3, 'Na'), ('09-15', 3, 'Na'), ('09-16', 3, 'Fa'), ('09-17', 3, 'Fa'), ('09-18', 3, 'Fa'), ('09-21', 3, 'Ma'), ('09-22', 3, 'Ma'), ('09-23', 3, 'Ma'), ('09-24', 3, 'Ma'), ('09-25', 3, 'Ma'), ('09-28', 3, 'Ma'), ('09-29', 3, 'Ma'), ('09-30', 3, 'Ma'), ('10-01', 3, 'Ma'), ('10-02', 3, 'Ma')]
+   left: {} | joined after birth: []
+   INSP   Healthcare             rs=83.3 usable=True own=None best_other=0.31 -> Commercial, Office & Home Furniture Retailers and Manufacturers misfiled=False also_in=['Medical Device Mean-Reversion & Rotation Recovery']
+   ITGR   Healthcare             rs=85.7 usable=True own=None best_other=0.37 -> Energy Infrastructure & Services Complex misfiled=False also_in=[]
+   ATEC   Healthcare             rs=71.3 usable=True own=None best_other=0.53 -> Medical Device Mean-Reversion & Rotation Recovery misfiled=False also_in=[]
+   overlap: {'Medical Device Mean-Reversion & Rotation Recovery': 1}
+   desc: The clearest catalyst is INSP’s AMA approval of dedicated CPT codes for its Inspire V system, expected to ease coding and support access, though the codes take effect in 2028. ITGR has a separate tail
+== Enterprise Unstructured Data Storage Infrastructure size=3 stage=Mainstream first=2026-08-11 rows=38 gaps=0 rs_avg=94.3 parent=None
+   size path: [('08-11', 2, 'Na'), ('08-12', 3, 'Na'), ('08-13', 4, 'Na'), ('08-14', 4, 'Na'), ('08-17', 4, 'Na'), ('08-18', 4, 'Ma'), ('08-19', 4, 'Ma'), ('08-20', 4, 'Ma'), ('08-21', 4, 'Ma'), ('08-24', 3, 'Ma'), ('08-25', 3, 'Ma'), ('08-26', 3, 'Ma'), ('08-27', 3, 'Ma'), ('08-28', 3, 'Ma'), ('08-31', 3, 'Ma'), ('09-01', 3, 'Ma'), ('09-02', 3, 'Ma'), ('09-03', 3, 'Ma'), ('09-04', 3, 'Ma'), ('09-08', 3, 'Ma'), ('09-09', 3, 'Ma'), ('09-10', 3, 'Ma'), ('09-11', 3, 'Ma'), ('09-14', 3, 'Ma'), ('09-15', 3, 'Ma'), ('09-16', 3, 'Ma'), ('09-17', 3, 'Ma'), ('09-18', 3, 'Ma'), ('09-21', 3, 'Ma'), ('09-22', 3, 'Ma'), ('09-23', 3, 'Fa'), ('09-24', 3, 'Fa'), ('09-25', 3, 'Fa'), ('09-28', 3, 'Fa'), ('09-29', 3, 'Fa'), ('09-30', 3, 'Fa'), ('10-01', 3, 'Ma'), ('10-02', 3, 'Ma')]
+   left: {'P': '2026-08-21'} | joined after birth: ['BOX', 'DBX']
+   DBX    Technology             rs=71.4 usable=True own=None best_other=0.74 -> AI-Powered Enterprise Analytics & Intelligent Workflow SaaS misfiled=False also_in=[]
+   QMCO   Technology             rs=99.8 usable=True own=None best_other=0.4 -> Cross-Industry Test, Measurement & Design-Verification Tools misfiled=False also_in=['Data Storage & Data Management Software/Hardware Leaders']
+   BOX    Technology             rs=88.9 usable=True own=None best_other=0.81 -> AI-Powered Enterprise Analytics & Intelligent Workflow SaaS misfiled=False also_in=[]
+   overlap: {'Data Storage & Data Management Software/Hardware Leaders': 1}
+   desc: There’s no clear shared breaking-news catalyst: QMCO’s move appears tied to AI-storage demand, strong revenue/backlog and recent debt elimination, while BOX and DBX gains look more like a broader soft
+== Financial Data & Advisory/Capital Markets Platforms size=3 stage=Nascent first=2026-10-01 rows=2 gaps=0 rs_avg=89.3 parent=None
+   size path: [('10-01', 3, 'Na'), ('10-02', 3, 'Na')]
+   left: {} | joined after birth: []
+   FDS    Financial Services     rs=80.0 usable=True own=None best_other=0.73 -> Insurance Brokerage & Risk Advisory Firms misfiled=False also_in=[]
+   PWP    Financial Services     rs=56.8 usable=True own=None best_other=0.23 -> Enterprise Unstructured Data Storage Infrastructure misfiled=False also_in=[]
+   PS     Financial Services     rs=98.7 usable=True own=None best_other=0.29 -> Bitcoin Holding & Trading Proxy Equities misfiled=False also_in=[]
+   overlap: {}
+   desc: The clearest catalyst is PWP’s reported pursuit by Piper Sandler, alongside a better-than-expected Q2 earnings report; stronger UK and cross-border M&A activity may also be boosting deal-pipeline expe
+== Fintech Payments, Prepaid & Consumer Digital Banking Apps size=3 stage=Nascent first=2026-10-02 rows=1 gaps=0 rs_avg=78.13333333333334 parent=None
+   size path: [('10-02', 3, 'Na')]
+   left: {} | joined after birth: []
+   PAYS   Technology             rs=98.1 usable=True own=None best_other=0.35 -> Defense Intelligence & Cybersecurity IT Contractors misfiled=False also_in=[]
+   DAVE   Technology             rs=68.9 usable=True own=None best_other=0.42 -> Fintech & Digital Finance Sector Re-rating on Fed Easing misfiled=False also_in=[]
+   RELY   None                   rs=67.4 usable=True own=None best_other=0.48 -> Fintech & Digital Finance Sector Re-rating on Fed Easing misfiled=False also_in=[]
+   overlap: {}
+   desc: Small-cap payment and consumer-finance platforms (prepaid/digital banking, paycheck-advance app, cross-border remittances) show strong relative strength, which suggests rotation into niche fintech nam
+== Global Steel & Metal Producers Recovery size=2 stage=Fading first=2026-08-05 rows=42 gaps=0 rs_avg=None parent=None
+   size path: [('08-05', 2, 'Fa'), ('08-06', 2, 'Ac'), ('08-07', 2, 'Ac'), ('08-10', 2, 'Ac'), ('08-11', 2, 'Ac'), ('08-12', 2, 'Ma'), ('08-13', 2, 'Fa'), ('08-14', 2, 'Fa'), ('08-17', 2, 'Fa'), ('08-18', 2, 'Fa'), ('08-19', 2, 'Fa'), ('08-20', 2, 'Fa'), ('08-21', 2, 'Ac'), ('08-24', 2, 'Fa'), ('08-25', 2, 'Fa'), ('08-26', 2, 'Fa'), ('08-27', 2, 'Fa'), ('08-28', 2, 'Ac'), ('08-31', 2, 'Ac'), ('09-01', 2, 'Ac'), ('09-02', 4, 'Ac'), ('09-03', 4, 'Ma'), ('09-04', 4, 'Na'), ('09-08', 4, 'Na'), ('09-09', 5, 'Na'), ('09-10', 5, 'Na'), ('09-11', 5, 'Na'), ('09-14', 5, 'Na'), ('09-15', 5, 'Ma'), ('09-16', 5, 'Ma'), ('09-17', 5, 'Ma'), ('09-18', 5, 'Ma'), ('09-21', 5, 'Ma'), ('09-22', 5, 'Ma'), ('09-23', 5, 'Fa'), ('09-24', 5, 'Fa'), ('09-25', 5, 'Fa'), ('09-28', 5, 'Fa'), ('09-29', 3, 'Fa'), ('09-30', 3, 'Fa'), ('10-01', 2, 'Fa'), ('10-02', 2, 'Fa')]
+   left: {'CLF': '2026-09-28', 'MT': '2026-09-30', 'STLD': '2026-09-28'} | joined after birth: ['NUE']
+   NUE    Basic Materials        rs=31.0 usable=True own=None best_other=0.38 -> Bank Stocks: Rising-Rate NIM Expansion misfiled=False also_in=[]
+   TX     Basic Materials        rs=80.3 usable=True own=None best_other=0.39 -> Precious Metals Rebound on Easier Fed Outlook misfiled=False also_in=[]
+   overlap: {}
+   desc: There’s no confirmed single catalyst; the move looks like a broader steel-sector rebound on stronger pricing and tight U.S. supply, with fall mill outages and reduced imports supporting the outlook. C
+== Industrial Construction Execution & On-Site Supply Chain size=8 stage=Fading first=2026-08-05 rows=42 gaps=0 rs_avg=79.3 parent=None
+   size path: [('08-05', 2, 'Fa'), ('08-06', 2, 'Ma'), ('08-07', 2, 'Ac'), ('08-10', 2, 'Ac'), ('08-11', 4, 'Ac'), ('08-12', 4, 'Ac'), ('08-13', 4, 'Ma'), ('08-14', 4, 'Ma'), ('08-17', 4, 'Ma'), ('08-18', 4, 'Ma'), ('08-19', 5, 'Ma'), ('08-20', 6, 'Ma'), ('08-21', 8, 'Ma'), ('08-24', 6, 'Ma'), ('08-25', 7, 'Ma'), ('08-26', 7, 'Ma'), ('08-27', 6, 'Ma'), ('08-28', 6, 'Ma'), ('08-31', 6, 'Ma'), ('09-01', 6, 'Ma'), ('09-02', 6, 'Fa'), ('09-03', 6, 'Fa'), ('09-04', 6, 'Fa'), ('09-08', 6, 'Fa'), ('09-09', 8, 'Fa'), ('09-10', 7, 'Fa'), ('09-11', 7, 'Fa'), ('09-14', 8, 'Fa'), ('09-15', 8, 'Fa'), ('09-16', 8, 'Fa'), ('09-17', 8, 'Fa'), ('09-18', 8, 'Fa'), ('09-21', 8, 'Fa'), ('09-22', 8, 'Fa'), ('09-23', 8, 'Fa'), ('09-24', 8, 'Fa'), ('09-25', 8, 'Fa'), ('09-28', 8, 'Fa'), ('09-29', 8, 'Fa'), ('09-30', 8, 'Fa'), ('10-01', 8, 'Fa'), ('10-02', 8, 'Fa')]
+   left: {'EME': '2026-08-26', 'ROAD': '2026-08-21'} | joined after birth: ['ACA', 'AGX', 'FLR', 'J', 'KBR', 'TTEK']
+   FLR    Industrials            rs=50.8 usable=True own=0.34 best_other=0.5 -> Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery misfiled=False also_in=[]
+   ACA    Industrials            rs=80.6 usable=True own=-0.18 best_other=0.64 -> Diversified Property & Casualty Insurance Carriers misfiled=True also_in=[]
+   TPC    Industrials            rs=76.2 usable=True own=0.5 best_other=0.73 -> Precision Timing & Motion Control Component Makers misfiled=False also_in=[]
+   J      Industrials            rs=73.6 usable=True own=-0.04 best_other=0.59 -> Insurance Brokerage & Risk Advisory Firms misfiled=True also_in=[]
+   TTEK   Industrials            rs=53.8 usable=True own=-0.12 best_other=0.67 -> IT Consulting & Business Process Outsourcing Services misfiled=True also_in=[]
+   AGX    Industrials            rs=6.7 usable=True own=0.14 best_other=0.69 -> On-Site Power Generation & Distribution Equipment for Data Centers misfiled=True also_in=[]
+   KBR    Industrials            rs=36.2 usable=True own=0.12 best_other=0.62 -> Defense Intelligence & Cybersecurity IT Contractors misfiled=True also_in=[]
+   DNOW   Industrials            rs=86.9 usable=True own=0.39 best_other=0.39 -> Precision Timing & Motion Control Component Makers misfiled=False also_in=[]
+   overlap: {}
+   desc: There isn’t one clear shared headline: FLR is reacting to its JV’s selection for LNG Canada Phase 2, while J got a boost from a three-year NVIDIA data-center digital-twin deal. ACA, DNOW, TTEK and TPC
+== Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound size=3 stage=Fading first=2026-09-11 rows=16 gaps=0 rs_avg=None parent=None
+   size path: [('09-11', 4, 'Na'), ('09-14', 4, 'Na'), ('09-15', 4, 'Na'), ('09-16', 4, 'Na'), ('09-17', 3, 'Na'), ('09-18', 3, 'Ma'), ('09-21', 3, 'Ma'), ('09-22', 3, 'Ma'), ('09-23', 3, 'Ma'), ('09-24', 3, 'Ma'), ('09-25', 3, 'Fa'), ('09-28', 3, 'Fa'), ('09-29', 3, 'Fa'), ('09-30', 3, 'Fa'), ('10-01', 3, 'Fa'), ('10-02', 3, 'Fa')]
+   left: {'CHTR': '2026-09-16'} | joined after birth: []
+   NMAX   None                   rs=None usable=True own=None best_other=0.49 -> Media Streaming & Entertainment Content Turnaround misfiled=False also_in=[]
+   TDS    Communication Services rs=45.5 usable=True own=None best_other=0.43 -> Fintech Payments, Prepaid & Consumer Digital Banking Apps misfiled=False also_in=[]
+   ECHO   Communication Services rs=84.4 usable=True own=None best_other=0.62 -> Space Economy: Satellite Communications & Launch Services misfiled=False also_in=[]
+   overlap: {}
+   desc: NMAX’s likely catalyst is Newsmax’s first-ever quarterly profit as a public company: Q2 net income was $2.9 million, with record revenue up 16.5% year over year. A separate headline about Newsmax urgi
+== Legal, Tax & Professional Information Analytics size=2 stage=Fading first=2026-09-28 rows=5 gaps=0 rs_avg=None parent=None
+   size path: [('09-28', 2, 'Na'), ('09-29', 2, 'Fa'), ('09-30', 2, 'Fa'), ('10-01', 2, 'Fa'), ('10-02', 2, 'Fa')]
+   left: {} | joined after birth: []
+   TRI    Industrials            rs=77.2 usable=True own=None best_other=0.78 -> Global IT Services Outsourcing & Digital Transformation Consulting misfiled=False also_in=[]
+   RELX   Industrials            rs=59.3 usable=True own=None best_other=0.76 -> Global IT Services Outsourcing & Digital Transformation Consulting misfiled=False also_in=[]
+   overlap: {}
+   desc: TRI’s move appears to reflect a broad rebound in Thomson Reuters shares rather than a clearly identified new company announcement; recent coverage points to investors reassessing AI-related concerns. 
+== Life Sciences & Healthcare Data/CRM Platforms size=3 stage=Mainstream first=2026-08-13 rows=36 gaps=0 rs_avg=97.5 parent=None
+   size path: [('08-13', 3, 'Na'), ('08-14', 3, 'Na'), ('08-17', 3, 'Na'), ('08-18', 3, 'Na'), ('08-19', 3, 'Na'), ('08-20', 3, 'Ma'), ('08-21', 3, 'Ma'), ('08-24', 3, 'Ma'), ('08-25', 3, 'Ma'), ('08-26', 3, 'Ma'), ('08-27', 3, 'Ma'), ('08-28', 3, 'Ma'), ('08-31', 3, 'Ma'), ('09-01', 3, 'Ma'), ('09-02', 3, 'Ma'), ('09-03', 3, 'Ma'), ('09-04', 3, 'Na'), ('09-08', 3, 'Na'), ('09-09', 3, 'Na'), ('09-10', 3, 'Fa'), ('09-11', 3, 'Fa'), ('09-14', 3, 'Fa'), ('09-15', 3, 'Ma'), ('09-16', 3, 'Ac'), ('09-17', 3, 'Ac'), ('09-18', 3, 'Ma'), ('09-21', 3, 'Ma'), ('09-22', 3, 'Ma'), ('09-23', 3, 'Ma'), ('09-24', 3, 'Ma'), ('09-25', 3, 'Ma'), ('09-28', 3, 'Ma'), ('09-29', 3, 'Ma'), ('09-30', 3, 'Ma'), ('10-01', 3, 'Ma'), ('10-02', 3, 'Ma')]
+   left: {} | joined after birth: []
+   DOCS   Healthcare             rs=95.8 usable=True own=None best_other=0.7 -> Software Development & DevOps Collaboration Platforms misfiled=False also_in=[]
+   TEM    Healthcare             rs=99.2 usable=True own=None best_other=0.75 -> Genomics & DNA Sequencing Tools misfiled=False also_in=['AI-Driven Diagnostics & Imaging Re-Rating']
+   VEEV   Healthcare             rs=95.2 usable=True own=None best_other=0.77 -> AI-Powered Enterprise Analytics & Intelligent Workflow SaaS misfiled=False also_in=[]
+   overlap: {'AI-Driven Diagnostics & Imaging Re-Rating': 1}
+   desc: There’s no single shared catalyst: VEEV got a boost from Servier adopting Veeva OpenData across 80+ countries, while TEM drew attention after Guggenheim raised its price target and Tempus announced 13
+== Liquid Biopsy & Molecular Cancer Diagnostics Testing size=3 stage=Mainstream first=2026-09-24 rows=7 gaps=0 rs_avg=99.6 parent=Genomics & DNA Sequencing Tools
+   size path: [('09-24', 3, 'Na'), ('09-25', 3, 'Na'), ('09-28', 3, 'Na'), ('09-29', 3, 'Na'), ('09-30', 3, 'Na'), ('10-01', 3, 'Ma'), ('10-02', 3, 'Ma')]
+   left: {} | joined after birth: []
+   NTRA   Healthcare             rs=99.3 usable=True own=None best_other=0.64 -> Life Sciences & Healthcare Data/CRM Platforms misfiled=False also_in=['Genomics & DNA Sequencing Tools']
+   GRAL   Healthcare             rs=99.7 usable=True own=None best_other=0.42 -> Cloud Application Delivery & Observability Infrastructure misfiled=False also_in=['Genomics & DNA Sequencing Tools']
+   CDNA   Healthcare             rs=99.4 usable=True own=None best_other=0.3 -> U.S. Trucking & Freight Transportation Carriers misfiled=False also_in=['AI-Driven Diagnostics & Imaging Re-Rating']
+   overlap: {'Genomics & DNA Sequencing Tools': 2, 'AI-Driven Diagnostics & Imaging Re-Rating': 1}
+   desc: GRAL is rallying after an FDA advisory panel backed Galleri’s safety and found its benefits outweigh its risks, boosting approval hopes. CDNA has momentum from Medicare coverage for its transplant tes
+== Media Streaming & Entertainment Content Turnaround size=3 stage=Fading first=2026-09-01 rows=23 gaps=0 rs_avg=None parent=None
+   size path: [('09-01', 2, 'Na'), ('09-02', 2, 'Na'), ('09-03', 2, 'Na'), ('09-04', 2, 'Fa'), ('09-08', 2, 'Fa'), ('09-09', 2, 'Fa'), ('09-10', 2, 'Fa'), ('09-11', 2, 'Fa'), ('09-14', 3, 'Ac'), ('09-15', 3, 'Ac'), ('09-16', 3, 'Ac'), ('09-17', 3, 'Ac'), ('09-18', 3, 'Ac'), ('09-21', 4, 'Fa'), ('09-22', 4, 'Ma'), ('09-23', 3, 'Fa'), ('09-24', 3, 'Fa'), ('09-25', 3, 'Ac'), ('09-28', 3, 'Ac'), ('09-29', 3, 'Fa'), ('09-30', 3, 'Fa'), ('10-01', 3, 'Fa'), ('10-02', 3, 'Fa')]
+   left: {'SPOT': '2026-09-22'} | joined after birth: ['DIS', 'WBD']
+   PSKY   Communication Services rs=39.0 usable=True own=None best_other=0.36 -> Life Science Tools & Analytical Instruments misfiled=False also_in=[]
+   DIS    Communication Services rs=60.1 usable=True own=None best_other=0.65 -> Non-Alcoholic Beverages & Energy Drinks misfiled=False also_in=[]
+   WBD    Communication Services rs=92.3 usable=True own=None best_other=0.25 -> Liquid Biopsy & Molecular Cancer Diagnostics Testing misfiled=False also_in=[]
+   overlap: {}
+   desc: The main catalyst is growing confidence that Paramount’s $31-per-share acquisition of WBD will close: state antitrust objections have been settled, and PSKY is arranging the large debt financing. That
+== Renewable & Specialty Fuels Chemical Producers size=2 stage=Fading first=2026-09-02 rows=22 gaps=0 rs_avg=None parent=None
+   size path: [('09-02', 3, 'Na'), ('09-03', 3, 'Na'), ('09-04', 3, 'Na'), ('09-08', 3, 'Na'), ('09-09', 3, 'Na'), ('09-10', 3, 'Na'), ('09-11', 3, 'Na'), ('09-14', 3, 'Na'), ('09-15', 3, 'Ma'), ('09-16', 3, 'Ma'), ('09-17', 3, 'Ma'), ('09-18', 3, 'Ma'), ('09-21', 3, 'Ma'), ('09-22', 3, 'Ma'), ('09-23', 3, 'Ma'), ('09-24', 3, 'Ma'), ('09-25', 3, 'Fa'), ('09-28', 3, 'Fa'), ('09-29', 3, 'Fa'), ('09-30', 2, 'Fa'), ('10-01', 2, 'Fa'), ('10-02', 2, 'Fa')]
+   left: {'SSL': '2026-09-29'} | joined after birth: []
+   MEOH   Basic Materials        rs=49.5 usable=True own=None best_other=0.79 -> Oil & Gas E&P Crude-Weighted Producers Momentum misfiled=False also_in=[]
+   CLMT   Basic Materials        rs=85.2 usable=True own=None best_other=0.69 -> Global Oil & Gas Producers and Refiners misfiled=False also_in=[]
+   overlap: {}
+   desc: There’s no clear single catalyst: CLMT’s gains appear tied to financing relief from its expanded credit facility and DOE funding for Montana Renewables, while MEOH announced a $300 million debt redemp
+== Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology) size=3 stage=Nascent first=2026-10-01 rows=2 gaps=0 rs_avg=96.2 parent=None
+   size path: [('10-01', 3, 'Na'), ('10-02', 3, 'Na')]
+   left: {} | joined after birth: []
+   KOD    Healthcare             rs=99.8 usable=True own=None best_other=0.28 -> Inflammatory Disease & Immunology Biologics misfiled=False also_in=[]
+   MANE   Healthcare             rs=92.7 usable=True own=None best_other=0.44 -> Inflammatory Disease & Immunology Biologics misfiled=False also_in=[]
+   UTHR   Healthcare             rs=79.8 usable=True own=None best_other=0.32 -> Inflammatory Disease & Immunology Biologics misfiled=False also_in=[]
+   overlap: {}
+   desc: KOD jumped on positive Phase 3 DAYBREAK results: both experimental therapies met primary endpoints in wet AMD, with Kodiak targeting a Q4 2026 regulatory filing. UTHR is rising after winning a key pat
+== Specialty Retail Short-Squeeze Momentum Basket size=2 stage=Mainstream first=2026-09-10 rows=17 gaps=0 rs_avg=88.4 parent=None
+   size path: [('09-10', 3, 'Na'), ('09-11', 3, 'Na'), ('09-14', 3, 'Na'), ('09-15', 3, 'Na'), ('09-16', 3, 'Na'), ('09-17', 3, 'Ma'), ('09-18', 3, 'Ma'), ('09-21', 3, 'Ma'), ('09-22', 3, 'Ma'), ('09-23', 3, 'Ma'), ('09-24', 3, 'Ma'), ('09-25', 3, 'Ma'), ('09-28', 3, 'Ma'), ('09-29', 3, 'Ma'), ('09-30', 3, 'Ma'), ('10-01', 2, 'Ma'), ('10-02', 2, 'Ma')]
+   left: {'ASO': '2026-09-30'} | joined after birth: []
+   GME    Consumer Cyclical      rs=93.4 usable=True own=None best_other=0.35 -> Skilled Nursing & Senior Housing Healthcare REITs misfiled=False also_in=[]
+   SIG    Consumer Cyclical      rs=83.4 usable=True own=None best_other=0.37 -> Homebuilders & Residential Construction Supply Chain misfiled=False also_in=[]
+   overlap: {}
+   desc: SIG is being lifted by fresh high-grade drill results at Sitka Gold’s RC Gold project, including broad, rich intercepts at Blackjack. GME’s gains are being fueled by CEO Ryan Cohen’s latest $10.6 mill
+== Vertical Industry Infrastructure & Insurance Software size=2 stage=Fading first=2026-10-01 rows=2 gaps=0 rs_avg=None parent=None
+   size path: [('10-01', 3, 'Na'), ('10-02', 2, 'Fa')]
+   left: {'NAVN': '2026-10-01'} | joined after birth: []
+   BSY    Technology             rs=62.1 usable=True own=None best_other=0.78 -> Cloud Supply Chain & Warehouse Management Software misfiled=False also_in=[]
+   GWRE   Technology             rs=78.0 usable=True own=None best_other=0.79 -> AI-Powered Enterprise Analytics & Intelligent Workflow SaaS misfiled=False also_in=[]
+   overlap: {}
+   desc: Vertical software vendors that serve engineering and insurance carriers are showing RS strength, with sticky mission-critical platforms attracting accumulation.
