@@ -575,6 +575,30 @@ def test_recent_rehome_judged_tickers_reads_the_pass_own_rows(monkeypatch):
     assert params == (dbmod.REHOME_JUDGED_EVENT, "14") and "mi_audit_log" in sql
 
 
+@pytest.mark.asyncio
+async def test_step_3a5_hands_the_join_suppressed_newborns_novel_uncovered_members_to_the_carry(monkeypatch):
+    """Through the real `run_theme_engine` in `dedup_only`: a newborn whose members overlap the live
+    theme 100% (intersection-over-smaller) with exactly half of them already covered — so the gate's
+    refinement carve-out does NOT skip the join check — is suppressed as `join`; its NOVEL uncovered
+    members (L00, L01) reach `_run_join_carry` keyed on the join target; the covered ones (EX1, EX2 —
+    already the target's) do not."""
+    from tests.test_theme_birth_gate import _drive_engine, _MON, _EX_THEME
+    ctx = _ctx(_tape())
+    _drive_engine(monkeypatch, mode="dedup_only",
+                  discovered=[{"name": "Newborn Hosts", "tickers": ["EX1", "EX2", "L00", "L01"], "thesis": "t"}])
+    monkeypatch.setattr(te, "_read_assign_comove_toggle", AsyncMock(return_value=True))
+    monkeypatch.setattr(te, "_load_comove_context", AsyncMock(return_value=ctx))
+    monkeypatch.setattr(te, "_read_rehome_toggle", AsyncMock(return_value=True))
+    monkeypatch.setattr(te, "_run_rehome_pass", AsyncMock(return_value={}))
+    carry = AsyncMock(return_value={})
+    monkeypatch.setattr(te, "_run_join_carry", carry)
+    themes, changelog = await te.run_theme_engine(trade_date=_MON)
+    assert [c for c in changelog if c["type"] == "theme_birth_gated"][0]["outcome"] == "join"
+    assert carry.await_count == 1
+    assert carry.await_args.args[0] == {_EX_THEME["name"]: ["L00", "L01"]}
+    assert "Newborn Hosts" not in {t["name"] for t in themes}
+
+
 def test_successor_pointer_reads_a_rehome_move_but_not_a_join():
     rows = [
         {"event_type": te.REHOME_MOVED_EVENT, "summary": f"Rehome: '{PIVOT}' -> '{AI}' CIFR moved on the tape (0.60 vs own unreadable)", "detail": ""},
