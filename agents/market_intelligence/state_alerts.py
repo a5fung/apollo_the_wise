@@ -523,6 +523,10 @@ def format_state_alerts(
     comp_alerts = [a for a in alerts if a["type"] == "theme_composition"]
     cluster_alerts = [a for a in alerts if a["type"] == "theme_rs_deterioration"]
     graduated = [c for c in theme_changelog if c["type"] == "theme_graduated"]
+    # #491 re-homing pass (2026-10-03): a member the tape moved to the theme that matches its current
+    # business. Surfaced regardless of stage — a move is signal, not churn — and a move INTO a paying
+    # theme says so in plain words (the operator's same-day +10 report, pre-registration U1).
+    moved = [c for c in theme_changelog if c["type"] == "ticker_rehomed"]
 
     # Group changelog by type — filter out rename noise
     all_renamed_names = set(renamed_themes.keys()) | set(renamed_themes.values())
@@ -616,6 +620,21 @@ def format_state_alerts(
         lines.append("🎓 *Graduated shadow→live*")
         for c in graduated[:10]:
             lines.append(f"• {_esc_md(c['theme'])}")
+
+    if moved:
+        lines.append("")
+        lines.append("🔁 *Moved on the tape — the stock's business changed, not the theme*")
+        for c in moved[:10]:
+            corr = c.get("corr")
+            tape = f" (moves with it at {corr:.2f})" if isinstance(corr, (int, float)) else ""
+            pay = " — a paying theme: +10 on its next EP" if c.get("paying") else ""
+            src = ", ".join(_esc_md(s) for s in (c.get("from") or []))
+            if src:
+                lines.append(f"• {c['ticker']}: {src} → {_esc_md(c['theme'])}{tape}{pay}")
+            else:
+                lines.append(f"• {c['ticker']} joined {_esc_md(c['theme'])} from a suppressed newborn{tape}{pay}")
+        if len(moved) > 10:
+            lines.append(f"  _+{len(moved) - 10} more_")
 
     if cluster_alerts:
         lines.append("")

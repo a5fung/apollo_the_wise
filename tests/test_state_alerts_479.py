@@ -175,6 +175,27 @@ def test_markdown_entities_stripped_from_theme_names():
     assert "Underscored Theme" in text
 
 
+def test_a_rehomed_member_gets_its_own_line_regardless_of_stage_and_names_the_paying_case():
+    """#491 re-homing pass (2026-10-03): `ticker_rehomed` renders as a move line even when the target
+    is Nascent (the stage gate is for churn, a move is signal); a move INTO a paying theme says so in
+    plain words — that line IS the operator's same-day +10 report (pre-registration U1)."""
+    changelog = [
+        {"type": "ticker_rehomed", "ticker": "CIFR", "from": ["Bitcoin Miners Pivoting"],
+         "theme": "Emerging AI Compute", "stage": "Mainstream", "paying": True, "corr": 0.604,
+         "arm": "own_unjudgeable:thin_basket"},
+        {"type": "ticker_rehomed", "ticker": "IREN", "from": [], "theme": "Nascent_Cloud *Hosts*",
+         "stage": "Nascent", "paying": False, "corr": 0.68, "arm": "join_carry"},
+    ]
+    today = [_theme("Emerging AI Compute", ["CRWV"]), _theme("Nascent_Cloud *Hosts*", ["NBIS"], stage="Nascent")]
+    text, _ = format_state_alerts([], changelog, {}, today)
+    assert "🔁" in text and "Moved on the tape" in text
+    assert "• CIFR: Bitcoin Miners Pivoting → Emerging AI Compute (moves with it at 0.60) — a paying theme: +10 on its next EP" in text
+    # the join line, into a Nascent theme: surfaced (not stage-gated), no paying note, entities stripped
+    assert "• IREN joined NascentCloud Hosts from a suppressed newborn (moves with it at 0.68)" in text
+    assert text.count("+10 on its next EP") == 1
+    assert "|" not in text
+
+
 # ── on-demand reachability (the 7/20 orphaning guard) ─────────────────────────
 
 def test_footer_citations_are_reachable_in_live_routing():
