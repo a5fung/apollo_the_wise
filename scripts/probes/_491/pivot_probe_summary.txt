@@ -1,0 +1,54 @@
+constants cross-checked against the running theme_engine / ep_theme_belonging: OK
+context: 725 tickers with returns over 60 sessions before 2026-10-03 (50761 close rows); window 2026-09-21..2026-10-03 for Lane-2 seeds
+toggles: lane2_grouping_v2[paper]=on, theme_birth_gate[paper]=dedup_only, theme_parent_pass[paper]=on, theme_subtheme_arm[paper]=on
+board: 133 live themes; AI target = 'Emerging AI Compute & Cloud Infrastructure Platforms' [Mainstream, 4]; pivot/crypto theme = 'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting' [Fading, 2]
+CIFR  homes=['Bitcoin Miners Pivoting to AI/HPC Data Center Hosting'] RS=8.2 rank=2195 sector=Technology pool=False seeded=True orphan=Noned | AI target 0.604 | pivot thin_basket | best other Emerging AI Compute & Cloud Infrastructure Platforms 0.604 | cohort-loo 0.8902 crypto-ref 0.7422 ai-ref 0.5553
+      today: stays in Bitcoin Miners Pivoting to AI/HPC Data Center Hosting — covered-exclusivity: never offered to another theme (theme_engine.py:8760-8768, 6995-7005, 7064-7069)
+      proposed: OFFER — tape 0.60 >= 0.35 to Emerging AI Compute & Cloud Infrastructure Platforms; the assignment judgement decides [ticket covered_g2[own_unjudgeable:thin_basket]]
+      audit 45d: api_failure_fmp=14, theme_discovery_shown_declined=12, seeded_pool_admission=5, theme_ecosystem_assigned=5, assignment_llm_proposed=4, theme_carryforward_filter_stripped=4, theme_discovered=3, assignment_skipped_sector_outlier=2
+HUT   homes=['Bitcoin Miners Pivoting to AI/HPC Data Center Hosting'] RS=8.3 rank=2193 sector=Financial Services pool=False seeded=False orphan=Noned | AI target 0.5717 | pivot thin_basket | best other Electronics Manufacturing Services (EMS) Providers 0.6138 | cohort-loo 0.8942 crypto-ref 0.7464 ai-ref 0.5186
+      today: stays in Bitcoin Miners Pivoting to AI/HPC Data Center Hosting — covered-exclusivity: never offered to another theme (theme_engine.py:8760-8768, 6995-7005, 7064-7069)
+      proposed: OFFER — tape 0.57 >= 0.35 to Emerging AI Compute & Cloud Infrastructure Platforms; the assignment judgement decides [ticket covered_g2[own_unjudgeable:thin_basket]]
+      audit 45d: theme_discovery_shown_declined=13, theme_ecosystem_assigned=5, judge_signal_trace=2, theme_pass1_protect_strip=2, theme_discovered=2, theme_low_quality_description=1, ep_rt_floor_flip_up=1, 9m_ep_detected=1
+CRWV  homes=['Emerging AI Compute & Cloud Infrastructure Platforms'] RS=67.0 rank=789 sector=Technology pool=False seeded=False orphan=Noned | AI target 0.8163 | pivot thin_basket | best other AI Data Services & GPU Cloud Platforms 0.7793 | cohort-loo 0.6955 crypto-ref 0.4321 ai-ref 0.7486
+      today: stays in Emerging AI Compute & Cloud Infrastructure Platforms — covered-exclusivity: never offered to another theme (theme_engine.py:8760-8768, 6995-7005, 7064-7069)
+      proposed: REJECT — covered by Emerging AI Compute & Cloud Infrastructure Platforms; leave trigger did not fire (own_at_or_above_bar)
+      audit 45d: api_failure_fmp=10, assignment_llm_proposed=3, theme_discovery_shown_declined=2, sustain_reject_replay_error=2, seeded_pool_admission=2, 9m_ep_detected=1, analyst_estimates_error=1, theme_retired=1
+IREN  homes=- RS=40.6 rank=1422 sector=Financial Services pool=False seeded=False orphan=3d | AI target 0.6821 | pivot thin_basket | best other AI Data Services & GPU Cloud Platforms 0.6916 | cohort-loo 0.8345 crypto-ref 0.6982 ai-ref 0.5832
+      today: unreachable tonight: under the RS-70 floor / outside the 600 fetch, no Lane-2 seed in the 10-trading-day window — waits for an EP alert or RS >= 70
+      proposed: OFFER — tape 0.68 >= 0.35 to Emerging AI Compute & Cloud Infrastructure Platforms; the assignment judgement decides [ticket orphan[3d]]
+      audit 45d: theme_discovery_shown_declined=6, assignment_llm_proposed=3, assignment_skipped_sector_outlier=2, theme_low_quality_description=1, theme_composition_churn=1, validation_cooldown_triggered=1, ticker_revalidated_out=1, theme_discovered=1
+WULF  homes=- RS=11.2 rank=2125 sector=Financial Services pool=False seeded=False orphan=4d | AI target 0.7254 | pivot thin_basket | best other Emerging AI Compute & Cloud Infrastructure Platforms 0.7254 | cohort-loo 0.9032 crypto-ref 0.7237 ai-ref 0.6322
+      today: unreachable tonight: under the RS-70 floor / outside the 600 fetch, no Lane-2 seed in the 10-trading-day window — waits for an EP alert or RS >= 70
+      proposed: OFFER — tape 0.73 >= 0.35 to Emerging AI Compute & Cloud Infrastructure Platforms; the assignment judgement decides [ticket orphan[4d]]
+      audit 45d: theme_discovery_shown_declined=13, theme_ecosystem_assigned=7, theme_discovered=4, judge_signal_trace=2, ep_catalyst_provenance=1, ep_rt_floor_flip_up=1, theme_carryforward_filter_stripped=1, theme_pass1_protect_strip=1
+CORZ  homes=- RS=6.9 rank=2227 sector=Technology pool=False seeded=False orphan=4d | AI target 0.7005 | pivot thin_basket | best other Emerging AI Compute & Cloud Infrastructure Platforms 0.7005 | cohort-loo 0.9215 crypto-ref 0.6809 ai-ref 0.5758
+      today: unreachable tonight: under the RS-70 floor / outside the 600 fetch, no Lane-2 seed in the 10-trading-day window — waits for an EP alert or RS >= 70
+      proposed: OFFER — tape 0.70 >= 0.35 to Emerging AI Compute & Cloud Infrastructure Platforms; the assignment judgement decides [ticket orphan[4d]]
+      audit 45d: theme_discovery_shown_declined=15, theme_ecosystem_assigned=7, theme_carryforward_filter_stripped=4, theme_discovered=3, theme_retired=1
+CLSK  homes=- RS=17.6 rank=1970 sector=Financial Services pool=False seeded=False orphan=3d | AI target 0.5991 | pivot thin_basket | best other Bitcoin Holding & Trading Proxy Equities 0.6574 | cohort-loo 0.8853 crypto-ref 0.8342 ai-ref 0.5002
+      today: unreachable tonight: under the RS-70 floor / outside the 600 fetch, no Lane-2 seed in the 10-trading-day window — waits for an EP alert or RS >= 70
+      proposed: OFFER — tape 0.60 >= 0.35 to Emerging AI Compute & Cloud Infrastructure Platforms; the assignment judgement decides [ticket orphan[3d]]
+      audit 45d: theme_discovery_shown_declined=10, theme_ecosystem_assigned=5, theme_pass1_protect_strip=2, theme_discovered=2, backward_check_output=1, theme_low_quality_description=1
+APLD  homes=- RS=23.5 rank=1829 sector=Technology pool=False seeded=False orphan=3d | AI target 0.7516 | pivot thin_basket | best other Emerging AI Compute & Cloud Infrastructure Platforms 0.7516 | cohort-loo 0.904 crypto-ref 0.7155 ai-ref 0.6611
+      today: unreachable tonight: under the RS-70 floor / outside the 600 fetch, no Lane-2 seed in the 10-trading-day window — waits for an EP alert or RS >= 70
+      proposed: OFFER — tape 0.75 >= 0.35 to Emerging AI Compute & Cloud Infrastructure Platforms; the assignment judgement decides [ticket orphan[3d]]
+      audit 45d: theme_discovery_shown_declined=12, theme_ecosystem_assigned=4, theme_discovered=3, theme_correctness_check=1, theme_retired=1
+churn: 22 distinct theme names held a cohort member in the last 120 days (5 live tonight)
+sweep: 'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting' [Fading] stems=['convert', 'pivot'] n=2 -> best live non-Fading target Electronics Manufacturing Services (EMS) Providers (['CIFR', 'HUT'] at/above 0.35)
+sweep: 'Bitcoin Mining Stocks Rotation Reversal' [Fading] stems=['conversion', 'pivot'] n=3 -> best live non-Fading target Bitcoin Holding & Trading Proxy Equities (['ABTC', 'MARA'] at/above 0.35)
+sweep: 'Diversified Property & Casualty Insurance Carriers' [Fading] stems=['diversif'] n=3 -> best live non-Fading target Specialty P&C Insurance Underwriters Rotation Reversal (['CINF', 'L', 'MKL'] at/above 0.35)
+sweep: 'Altcoin & Diversified Digital-Asset Infrastructure Second Wave' [Retired] stems=['diversif'] n=2 -> best live non-Fading target Crude & Product Tanker Shipping ([] at/above 0.35)
+sweep: 'Bitcoin Miners Diversifying into AI/HPC Data Center Hosting (Emerging Names)' [Retired] stems=['diversif', 'pivot'] n=3 -> best live non-Fading target Emerging AI Compute & Cloud Infrastructure Platforms (['CORZ', 'IREN', 'WULF'] at/above 0.35)
+sweep: 'Bitcoin Mining Equities Momentum Basket' [Retired] stems=['pivot'] n=3 -> best live non-Fading target Bitcoin Holding & Trading Proxy Equities (['CLSK', 'HUT', 'MARA'] at/above 0.35)
+sweep: 'Crypto Miners Pivoting to Data Center Colocation' [Retired] stems=['pivot'] n=3 -> best live non-Fading target Emerging AI Compute & Cloud Infrastructure Platforms (['CORZ', 'HUT', 'WULF'] at/above 0.35)
+sweep: 'Diversified Power Generation Capacity Expansion for AI Electricity Demand' [Retired] stems=['diversif'] n=3 -> best live non-Fading target Skilled Nursing & Senior Housing Healthcare REITs (['EVRG'] at/above 0.35)
+sweep: 'Electronic Components & Power Conversion Manufacturers' [Retired] stems=['conversion'] n=2 -> best live non-Fading target None ([] at/above 0.35)
+sweep: 'Emerging Bitcoin Miners Diversifying into AI/HPC Hosting' [Retired] stems=['diversif', 'repurpos'] n=3 -> best live non-Fading target Emerging AI Compute & Cloud Infrastructure Platforms (['CIFR', 'CORZ'] at/above 0.35)
+sweep: 'Microreactor & Small Modular Reactor Pure-Play Developers' [Retired] stems=['diversif'] n=4 -> best live non-Fading target Small Modular Reactor & Advanced Nuclear Fission Technology (['NNE', 'OKLO', 'SMR'] at/above 0.35)
+sweep: 'Offshore Drilling Rig Contractors' [Retired] stems=['diversif'] n=4 -> best live non-Fading target Energy Infrastructure & Services Complex (['SDRL', 'VAL'] at/above 0.35)
+sweep: 'Second-Tier Bitcoin Mining & Colocation Operators' [Retired] stems=['diversif'] n=3 -> best live non-Fading target Emerging AI Compute & Cloud Infrastructure Platforms (['CORZ', 'RIOT', 'WULF'] at/above 0.35)
+sweep: 'Trucking & Freight Carrier Rebound' [Retired] stems=['diversif'] n=6 -> best live non-Fading target Data Backup & Cyber Resiliency Software ([] at/above 0.35)
+sweep: 14 theme(s) carry a pivot stem (pivot, transition, repurpos, convert, conversion, diversif) in name or thesis (live board + themes retired <= 30d)
+pricing: THEME_MODEL resolves to claude-sonnet-5-5 ($2.0/10.0 per MTok) — 7 candidate(s) tonight -> 1 extra batch(es) ≈ $0.0417/night; one-off fit preview for the 8 names ≈ $0.0392
+stdout: one JSON line per toggle / board theme / name / tie / audit / verdict / churn / sweep / pricing.
