@@ -593,8 +593,7 @@ CHART_RULINGS: list[ChartRuling] = [
     # ── Session 4, 2026-10-05 — review sample #3 (docs/analysis/594_chart_review_sample_2026-10-05.txt,
     #    https://claude.ai/artifact/2u1rfqKEagBDtceyT1bKqC), point-in-time charts; every date a REAL EP day on
     #    the daily bars (open >= 9% above the prior close, volume >= 3x its 20-day average). Words verbatim.
-    #    KRO 2026-08-06 got two answers ("kro - good; kro - bad") and HURN 2026-07-29 none — both held until
-    #    he clarifies, never guessed. ──
+    #    His reply listed KRO twice ("kro - good; kro - bad"); asked, he confirmed the second was HURN. ──
     ChartRuling(
         ticker='AEVA', alert_date='2026-08-06', verdict=BAD_CHART,
         label_source="operator", ruling_date="2026-10-05",
@@ -655,6 +654,22 @@ CHART_RULINGS: list[ChartRuling] = [
         operator_words="bad",
         gap_open_pct=24.5, ret_5d=None,
         prior_runup_note="WE SKIPPED IT: best score 42, catalyst=routine. Volume 6.9x. 20 sessions later +22% — a chart he calls bad that still ran.",
+    ),
+    ChartRuling(
+        ticker='KRO', alert_date='2026-08-06', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="good",
+        gap_open_pct=14.3, ret_5d=None,
+        prior_runup_note="WE SKIPPED IT: best score 44.4, catalyst=routine. Volume 5.5x. 20 sessions later +19%. "
+                         "(His reply listed 'kro - good; kro - bad'; he confirmed the second was HURN.)",
+    ),
+    ChartRuling(
+        ticker='HURN', alert_date='2026-07-29', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="bad",
+        gap_open_pct=10.5, ret_5d=None,
+        prior_runup_note="WE SKIPPED IT: best score 37, catalyst=routine. Volume 5.2x. 20 sessions later +17% — a chart he calls bad that still ran. "
+                         "(Written 'kro - bad' in his reply; confirmed: 'last one was hurn bad'.)",
     ),
 ]
 

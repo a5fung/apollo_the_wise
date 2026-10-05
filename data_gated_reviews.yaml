@@ -153,7 +153,7 @@ reviews:
       and volume >= 3x its 20-day average, from the daily bars; HIGH alerts only; ruled dates dropped; window
       2026-06-01..09-05): https://claude.ai/artifact/2u1rfqKEagBDtceyT1bKqC. 8 of 10 ruled (session 4 in
       must_not_trade_charts.py): AEVA bad, RXT wrong day (May 7), BLZE good, RUM bad, HPE ok, CDNA good, MAN good,
-      IBTA bad; KRO answered both ways and HURN unanswered — asked. Predicate re-armed: counts alerts after
+      IBTA bad, KRO good, HURN bad (his 'kro - bad' was HURN, confirmed). Predicate re-armed: counts alerts after
       2026-10-05 (the next sample needs 20 new ones).
     kind: cadence
     title: "Chart reading — surface the next review sample for his ruling (#594)"

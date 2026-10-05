@@ -1692,4 +1692,4 @@ His words, verbatim, and what each adds to the structure read:
 - **RUM 06-04 — "bad, it gapped down not up as well".** ⚠ Our daily bars show the open +13.2% above the
   prior close and the close below it (a gap up that reversed to a red close); his read differs and is
   recorded as he said it.
-- BLZE 08-04 good · IBTA 08-04 bad · KRO 08-06 "good" and "bad" (both given — asked) · HURN 07-29 not ruled.
+- BLZE 08-04 good · IBTA 08-04 bad · KRO 08-06 good · HURN 07-29 bad (his reply read "kro - bad"; confirmed: "last one was hurn bad").
