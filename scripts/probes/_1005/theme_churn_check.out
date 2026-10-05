@@ -1,0 +1,35 @@
+===== Appalachian Natural Gas Producers
+  2026-09-28 Nascent      7 ['AR', 'CNX', 'CRK', 'EQT', 'EXE', 'GPOR', 'RRC']
+  2026-09-29 Retired      0 []  +[] -['AR', 'CNX', 'CRK', 'EQT', 'EXE', 'GPOR', 'RRC']
+  2026-09-30 Nascent      7 ['AR', 'CNX', 'CRK', 'EQT', 'EXE', 'GPOR', 'RRC']  +['AR', 'CNX', 'CRK', 'EQT', 'EXE', 'GPOR', 'RRC'] -[]
+  2026-10-01 Retired      0 []  +[] -['AR', 'CNX', 'CRK', 'EQT', 'EXE', 'GPOR', 'RRC']
+  2026-10-02 Nascent      7 ['AR', 'CNX', 'CRK', 'EQT', 'EXE', 'GPOR', 'RRC']  +['AR', 'CNX', 'CRK', 'EQT', 'EXE', 'GPOR', 'RRC'] -[]
+===== Appalachian & Natural Gas-Weighted E&P Laggards
+  2026-09-30 Nascent      7 ['AR', 'CNX', 'CRK', 'EQT', 'EXE', 'GPOR', 'RRC']
+  2026-10-01 Retired      0 []  +[] -['AR', 'CNX', 'CRK', 'EQT', 'EXE', 'GPOR', 'RRC']
+===== Offshore Drilling Rig Contractors
+  2026-09-25 Nascent      4 ['NE', 'RIG', 'SDRL', 'VAL']
+  2026-09-28 Retired      0 []  +[] -['NE', 'RIG', 'SDRL', 'VAL']
+  2026-09-29 Nascent      4 ['NE', 'RIG', 'SDRL', 'VAL']  +['NE', 'RIG', 'SDRL', 'VAL'] -[]
+  2026-09-30 Retired      0 []  +[] -['NE', 'RIG', 'SDRL', 'VAL']
+  2026-10-01 Nascent      4 ['NE', 'RIG', 'SDRL', 'VAL']  +['NE', 'RIG', 'SDRL', 'VAL'] -[]
+  2026-10-02 Retired      0 []  +[] -['NE', 'RIG', 'SDRL', 'VAL']
+===== Regulated Natural Gas Distribution Utilities
+  2026-09-23 Nascent      5 ['ATO', 'CNP', 'NI', 'OGS', 'SR']
+  2026-09-24 Retired      0 []  +[] -['ATO', 'CNP', 'NI', 'OGS', 'SR']
+  2026-09-25 Nascent      5 ['ATO', 'CNP', 'NI', 'OGS', 'SR']  +['ATO', 'CNP', 'NI', 'OGS', 'SR'] -[]
+  2026-09-28 Retired      0 []  +[] -['ATO', 'CNP', 'NI', 'OGS', 'SR']
+== audit rows naming them:
+  09-28 17:10 theme_discovered                 New theme: Appalachian Natural Gas E&P (7 stocks)
+  09-28 17:10 theme_pass1_5_absorption         Pass1.5: 'Offshore Drilling Rig Contractors' -> 'Energy Infrastructure & Services Complex'
+  09-28 17:10 theme_sector_cap_not_absorbed    Pass2: 'Appalachian Natural Gas E&P' dropped — 0 of 7 member(s) passed the membership test for 'Crude & Product Tanker Shipping' (sector group 'oil_gas')
+  09-28 17:15 theme_ecosystem_assigned         'Appalachian Natural Gas Producers' → E-ENER (haiku)
+  09-29 17:02 theme_sector_cap_not_absorbed    Pass2: 'Appalachian Natural Gas Producers' dropped — 0 of 5 member(s) passed the membership test for 'Crude & Product Tanker Shipping' (sector group 'oil_gas')
+  09-30 17:07 theme_discovered                 New theme: Appalachian & Natural Gas-Weighted E&P Producers (7 stocks)
+  09-30 17:07 theme_sector_cap_not_absorbed    Pass2: 'Appalachian & Natural Gas-Weighted E&P Producers' dropped — 0 of 7 member(s) passed the membership test for 'Crude & Product Tanker Shipping' (sector group 'oil_g
+  09-30 17:07 theme_sector_cap_not_absorbed    Pass2: 'Offshore Drilling Rig Contractors' dropped — 0 of 4 member(s) passed the membership test for 'Crude & Product Tanker Shipping' (sector group 'oil_gas')
+  09-30 17:09 theme_ecosystem_assigned         'Appalachian & Natural Gas-Weighted E&P Laggards' → E-ENER (haiku)
+  10-01 17:05 theme_pass1_5_absorption         Pass1.5: 'Appalachian & Natural Gas-Weighted E&P Laggards' -> 'Appalachian Natural Gas Producers'
+  10-01 17:05 theme_sector_cap_not_absorbed    Pass2: 'Appalachian Natural Gas Producers' dropped — 0 of 2 member(s) passed the membership test for 'Crude & Product Tanker Shipping' (sector group 'oil_gas')
+  10-02 17:07 theme_pass1_5_absorption         Pass1.5: 'Offshore Drilling Rig Contractors' -> 'Energy Infrastructure & Services Complex'
+  10-02 17:08 theme_constituent_churn          11 high-churn (theme,ticker) pair(s) in last 10d — sample: EQH↔Annuity-Focused Insu(2), NBIS↔Emerging AI Compute (2), CNXC↔IT Consulting & Busi(2), NE↔Offshore Drilling R

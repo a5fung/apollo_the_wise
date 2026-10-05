@@ -12466,6 +12466,15 @@ reviews:
     cross_refs: ["task #508", "task #503"]
 
   - review_id: judge_divergence_marginal_high_signal
+    grounding_check_2026_10_05: >-
+      The 10-04 weekly digest flagged 1 of 2 HIGH alerts disagreed (>25%) and asked for the #301 grounding check.
+      Run read-only (scripts/probes/_1005/judge_divergence_check.out): ACN 2026-10-01, primary claude-opus-5-5
+      HIGH/strong vs second opinion claude-sonnet-5-5 MODERATE/routine. The second opinion's case rests on "no visible
+      guidance raise" — but ACN's own IR release (found by the same digest's source-gap finder) reports stronger-
+      than-expected fiscal-2027 guidance. A CORPUS gap (the IR page is not a feed we read), not a judge-calibration
+      signal; n=2 HIGH alerts in the week, so the 25% bar trips on one row. ACN opened +17.8%, closed +15.8%, fell
+      6% the next day; never filled. No action. (Two Brazil MODERATE alerts, ITUB and NU 10-05, also disagreed —
+      macro election move, not counted: the bar is HIGH-tier only.)
     title: >-
       #301 2nd-opinion divergence — do the DISAGREED HIGHs underperform the AGREED ones?
     question: >-
