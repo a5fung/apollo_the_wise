@@ -2045,8 +2045,8 @@ def _review_era_note(r: dict) -> str:
 def _format_pending_reviews_section(pending: dict, *, today: date | None = None) -> str:
     """Deterministic Reviews-ready block (#412) — data-gated reviews whose threshold flipped.
     Rendered in code (not the LLM) so an actionable title can't be truncated (the 'ADV top-50
-    probe…' → 'ADV' nit). Since #662 this block IS the head of the weekly review — one line per
-    item, the stale ones marked 🔴 — so it must stay scannable. Empty when nothing is ready."""
+    probe…' → 'ADV' nit). Since 2026-10-05 it LEADS THE FOLD (the head counts it under Needs me: ripe reviews
+    are my work, not his) — one line per item, the stale ones marked 🔴 — so it must stay scannable. Empty when nothing is ready."""
     ready = (pending or {}).get("ready") or []
     if not ready:
         return ""
@@ -2102,7 +2102,7 @@ def _format_pending_reviews_section(pending: dict, *, today: date | None = None)
     n_stale = sum(1 for r in scored
                   if _counts_as_accrual(r) and (_age(r) or 0) >= _REVIEWS_STALE_DAYS)
 
-    head = f"📅 *Reviews ready* ({len(scored)}) — data-gated thresholds flipped; action needed:"
+    head = f"📅 *Reviews ready* ({len(scored)}) — data-gated thresholds flipped; I run each and bring you only its result:"
     if n_stale:
         head += f"\n⚠️ _{n_stale} have been ripe ≥{_REVIEWS_STALE_DAYS}d — surfacing is not triage._"
     lines = [head]

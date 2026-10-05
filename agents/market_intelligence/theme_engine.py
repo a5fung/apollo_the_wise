@@ -8741,13 +8741,15 @@ def _is_weak_fading_shape(theme: dict) -> bool:
             and len(theme.get("tickers") or []) < SMALL_FADING_RETIRE_MIN_MEMBERS)
 
 
+def _waited_a_night(prior_members: int | None) -> bool:
+    """PURE: the one-night wait (section header above) — under SMALL_FADING_RETIRE_MIN_MEMBERS on
+    the previous persisted night; None (no previous row) never qualifies."""
+    return prior_members is not None and prior_members < SMALL_FADING_RETIRE_MIN_MEMBERS
+
+
 def _is_weak_fading_small(theme: dict, prior_members: int | None) -> bool:
-    """PURE: retire-tonight test = `_is_weak_fading_shape` AND the one-night wait — the theme was
-    ALREADY under SMALL_FADING_RETIRE_MIN_MEMBERS members on its previous persisted night
-    (`prior_members`; None = no previous row = not retired tonight)."""
-    return (_is_weak_fading_shape(theme)
-            and prior_members is not None
-            and prior_members < SMALL_FADING_RETIRE_MIN_MEMBERS)
+    """PURE: retire-tonight test = `_is_weak_fading_shape` AND `_waited_a_night`."""
+    return _is_weak_fading_shape(theme) and _waited_a_night(prior_members)
 
 
 async def _retire_small_fading_themes(
@@ -8756,27 +8758,29 @@ async def _retire_small_fading_themes(
     prior_member_counts: dict[str, int],
 ) -> list[dict]:
     """#655 rule B (section header above). Returns `updated_themes` minus the weak-Fading
-    themes under 3 members that were ALREADY under 3 on their previous persisted night
-    (`prior_member_counts`, from `_prior_member_counts`; a name absent from it has no previous
-    row and is kept — the one-night wait); each retirement writes ONE `theme_retired_small_fading`
-    audit row and ONE `theme_retired` changelog line (the 5-night path's own line — the Step 1
-    loop that writes it already ran). The dropped theme then takes the engine-drop path like any
-    5-night retirement. A theme RENAMED this run (`renamed_from` set) is skipped for one night: its
-    old name is already tombstoned with the new name as successor, and retiring the new name the
-    same night would leave that lineage pointing at a theme that never got a row. Toggle OFF, or no
-    candidate -> the list is returned untouched (no toggle read without a candidate)."""
-    shaped = [t for t in updated_themes
-              if _is_weak_fading_shape(t) and not t.get("renamed_from")]
-    candidates = [t for t in shaped
-                  if _is_weak_fading_small(t, prior_member_counts.get(t["name"]))]
-    _cand_names = {t["name"] for t in candidates}
-    held = [t for t in shaped if t["name"] not in _cand_names]
+    themes under 3 members that passed the one-night wait (`prior_member_counts`, from
+    `_prior_member_counts`); each retirement writes ONE `theme_retired_small_fading` audit row and
+    ONE `theme_retired` changelog line (the 5-night path's own line — the Step 1 loop that writes it
+    already ran), then takes the engine-drop path like any 5-night retirement. A theme RENAMED this
+    run (`renamed_from` set) is skipped for one night: its old name is already tombstoned with the
+    new name as successor. Toggle OFF, or no candidate -> the list is returned untouched (no toggle
+    read without a candidate)."""
+    candidates: list[tuple[dict, int]] = []
+    held: list[str] = []
+    for t in updated_themes:
+        if not _is_weak_fading_shape(t) or t.get("renamed_from"):
+            continue
+        prior = prior_member_counts.get(t["name"])
+        if _waited_a_night(prior):
+            candidates.append((t, prior))
+        else:
+            held.append(f"'{t['name']}' {'no prior row' if prior is None else prior}"
+                        f" -> {len(t.get('tickers') or [])}")
     if held:
         logger.info(f"Small-Fading retire (#655 B): {len(held)} weak-Fading theme(s) under "
                     f"{SMALL_FADING_RETIRE_MIN_MEMBERS} members kept tonight — not under "
                     f"{SMALL_FADING_RETIRE_MIN_MEMBERS} the night before (one-night wait): "
-                    + ", ".join(f"'{t['name']}' {prior_member_counts.get(t['name'], 'no prior row')}"
-                                f" -> {len(t.get('tickers') or [])}" for t in held))
+                    + ", ".join(held))
     if not candidates:
         return updated_themes
     if not await _read_small_fading_retire_toggle():
@@ -8785,7 +8789,7 @@ async def _retire_small_fading_themes(
                     f"{FADING_RETIRE_AFTER}-night grace tonight")
         return updated_themes
     retired: set[str] = set()
-    for t in candidates:
+    for t, prior in candidates:
         tickers = list(t.get("tickers") or [])
         n = len(tickers)
         try:
@@ -8795,7 +8799,7 @@ async def _retire_small_fading_themes(
                          f"(< {SMALL_FADING_RETIRE_MIN_MEMBERS}), #655"),
                 detail=json.dumps({
                     "theme": t["name"], "members": n, "tickers": tickers,
-                    "prior_members": prior_member_counts.get(t["name"]),
+                    "prior_members": prior,
                     "rule": "weak-Fading (rs_avg None) under 3 members, and already under 3 the "
                             "night before (one-night wait), retires tonight, not after "
                             f"{FADING_RETIRE_AFTER} nights",

@@ -2005,7 +2005,7 @@ async def _stuck_fill_watchdog_job():
             await send_telegram_message(
                 f"{mode_prefix(row['account_mode'])}🚨 *STUCK FILL DETECTED:* {row['ticker']}\n"
                 f"Trade #{row['id']} stuck in status='filling' since "
-                f"{row['created_at']:%H:%M:%S ET}.\n"
+                f"{row['created_at'].astimezone(_ET):%H:%M:%S} ET.\n"
                 f"WS handler likely threw — check broker for naked position and Apollo logs."
             )
 
@@ -4280,7 +4280,7 @@ async def _post_nightly_audit_job():
             # anti-pattern, #295). Legacy-Markdown-safe: review_ids / blocked_by / titles are underscore-heavy and
             # desync Telegram's parser — escape the free-text fields via the canonical _md_escape
             # (#148; re-homed to briefing.py #121) and drop inline backticks. Ints (age/count/threshold) need no escape.
-            lines = ["⏰ *Overdue data-gated reviews* (ready/erroring past grace — run it or update the entry):"]
+            lines = ["⏰ *Overdue data-gated reviews* (ready/erroring past grace — mine to run or re-park; this lists what I am late on):"]
             for esc in escalations:
                 if esc["kind"] == "ready":
                     lines.append(

@@ -3873,30 +3873,22 @@ async def _dead_col_written_since(c, table: str, since) -> bool:
            AND column_name::text = ANY($2::text[])
            AND data_type IN ('timestamp with time zone', 'timestamp without time zone')
         """, table, list(_DEAD_COL_WRITE_TS))}
-    ts_cols = [x for x in _DEAD_COL_WRITE_TS if x in present]
-    if not ts_cols:
+    if not present:
         return since.astimezone(_ET).date() < et_today()
     # ANY of them: an `updated_at` with no insert default reads NULL on a fresh row, and its
     # `created_at` still shows the write.
-    where = " OR ".join(f'"{x}" > $1::timestamptz' for x in ts_cols)
+    where = " OR ".join(f'"{x}" > $1::timestamptz' for x in sorted(present))
     return bool(await c.fetchval(f'SELECT EXISTS (SELECT 1 FROM "{table}" WHERE {where})', since))
 
 
 async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
-    """Numeric columns that have NEVER been populated. Announced once per column, ever — but only
-    on the SECOND look, because the column's nightly writer can run after this sweep does.
+    """Numeric columns that have NEVER been populated. Announced once per column, ever, on the
+    SECOND look (the TWO-STEP RULE in the section header above):
 
-    The 17:30 ET sweep used to page on first sight of an all-NULL column. That was a race, not a
-    detector: a writer scheduled minutes later (17:35) fills the column the same evening, and 32
-    of the first 40 pages were exactly that. So:
-
-      1. First sighting of an all-NULL column → a QUIET `dead_column_suspect` audit row, no
-         Telegram. (Never `dead_column_detected` — `already` reads that type, and a suspect row
-         there would drop the real alert forever.)
-      2. A later sweep, column STILL all-NULL, and the table written since the suspect row
-         (`_dead_col_written_since`) → announce: `dead_column_detected` row + Telegram.
-      3. Column filled in between → never alerts. Nothing written since → quiet, and re-checked
-         every night after.
+      1. First sighting of an all-NULL column → a QUIET `dead_column_suspect` row, no Telegram.
+      2. A later sweep, column STILL all-NULL, table written since (`_dead_col_written_since`) →
+         `dead_column_detected` row + Telegram.
+      3. Column filled in between → never alerts. Nothing written since → re-checked tomorrow.
 
     Returns {"tables_scanned", "dead" [announced, ever], "suspect" [on probation], "errors" [list]}.
     """
@@ -3936,7 +3928,7 @@ async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
                         continue
                     key = f"{table}.{col}"
                     entry = {"table": table, "column": col, "rows": n}
-                    detail = f'{{"table": "{table}", "column": "{col}", "rows": {n}}}'
+                    detail = json.dumps(entry)
                     if key in already:   # announced on an earlier night — never again
                         out["dead"].append({**entry, "new": False})
                         continue
