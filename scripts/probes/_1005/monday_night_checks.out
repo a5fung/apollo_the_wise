@@ -1,0 +1,48 @@
+== #687 jobs + coverage slot
+  (none) ['depth_open_auction_sale', 'coverage_skipped_broker_flat', 'restore_skipped_broker_flat', 'stop_breach_market_sale', 'unprotected_position_check', 'coverage_repair']
+  coverage_checked_post_close: 1
+  ep_rt_universe_coverage: 38
+  path_coverage_gap: 79
+  depth-stamped trades: 0
+== #580 breadth: live themes by stage with 0% / NULL breadth (latest theme_date)
+  latest theme_date: 2026-10-05
+   {'stage': 'Accelerating', 'n': 2, 'zero': 0, 'nul': 0}
+   {'stage': 'Fading', 'n': 31, 'zero': 11, 'nul': 0}
+   {'stage': 'Mainstream', 'n': 53, 'zero': 0, 'nul': 0}
+   {'stage': 'Nascent', 'n': 29, 'zero': 5, 'nul': 0}
+   {'stage': 'Retired', 'n': 32, 'zero': 0, 'nul': 32}
+  17:02:29 theme_breadth_fade                 Canadian Big Banks: breadth 0%, members 5
+  17:02:31 theme_breadth_fade                 Cardiac & Bioelectric Ablation Device Innovators: breadth 0%, members 2
+  17:02:31 theme_breadth_fade                 Class I Railroad Freight Carriers: breadth 0%, members 4
+  17:02:51 theme_breadth_fade                 Diabetes Management Devices (CGM, Insulin Pumps & Delivery): breadth 33%, members 3
+  17:03:11 theme_breadth_fade                 Global Agriculture Value Chain Recovery: breadth 0%, members 3
+  17:03:16 theme_breadth_fade                 Hospital & Behavioral Health Facility Procedure Volume Recovery: breadth 25%, members 4
+  17:03:21 theme_breadth_fade                 Life Insurance & Annuity Providers: breadth 22%, members 9
+  17:03:31 theme_breadth_fade                 Non-Alcoholic Beverages & Energy Drinks: breadth 20%, members 5
+  17:03:37 theme_breadth_fade                 Peptide & Hormone Therapies for Metabolic & Endocrine Disorders: breadth 33%, members 3
+  17:03:40 theme_breadth_fade                 Precious Metals Miners Velocity Breakout: breadth 0%, members 3
+  17:03:41 theme_breadth_fade                 Precious Metals Royalty & Streaming Companies: breadth 0%, members 5
+  17:03:56 theme_breadth_fade                 Specialty P&C Insurance Underwriters Rotation Reversal: breadth 21%, members 14
+  17:04:07 theme_breadth_fade                 Business Development Companies & Private Credit Lenders: breadth 0%, members 6
+  17:04:14 theme_breadth_fade                 Enterprise HR & Workforce Management SaaS: breadth 33%, members 4
+  17:04:18 theme_breadth_fade                 Inflammatory Disease & Immunology Biologics: breadth 17%, members 6
+  17:04:21 theme_breadth_fade                 Homebuilders & Residential Construction Supply Chain: breadth 33%, members 9
+  17:04:40 theme_breadth_fade                 Energy Supply Disruption: Middle East Geopolitical Risk: breadth 33%, members 9
+  17:04:41 theme_breadth_fade                 Bank Stocks: Rising-Rate NIM Expansion: breadth 7%, members 45
+  17:04:45 theme_breadth_fade                 Precious Metals Rebound on Easier Fed Outlook: breadth 6%, members 19
+== #693 rewrite + jobs
+  07:00:13 llm_request_rewrite_adopted        claude-sonnet-5-5: forced_tool_to_structured_output
+  07:01:56 llm_request_rewrite_adopted        claude-opus-5-5: forced_tool_to_structured_output
+  16:02:00 llm_request_rewrite_adopted        claude-opus-5-5: forced_tool_to_structured_output
+  17:02:14 llm_request_rewrite_adopted        claude-sonnet-5-5: thinking_disabled_to_between_tools
+  17:05:15 llm_request_rewrite_adopted        claude-sonnet-5-5: forced_tool_to_structured_output
+  17:09:41 theme_parent_pass_ran              Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+  llm_request_rewrite_adopted: 5
+== #598 flag board
+  07:01:30 mna_filter_fired                   PTC via claude_deal_fields (ep)
+  17:25:04 flag_stage_transition              PURR entered TIGHTENING 2026-10-05
+== #635 / #466 error rows today
+  (none) ['ep_repoll_upgrade_error', 'ep_candidate_parse_error', 'drawdown_breaker_read_error']
+== #466 logs
+0
+0

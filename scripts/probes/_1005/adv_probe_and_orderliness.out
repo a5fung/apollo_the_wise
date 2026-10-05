@@ -1,0 +1,605 @@
+now ET: 2026-10-05 17:38:04.61485
+== A1. mi_stock_scores rows per score_date (last 14 days) — the adv_map source
+  2026-09-22 rows=2413 adv20=2375
+  2026-09-23 rows=2386 adv20=2360
+  2026-09-24 rows=2395 adv20=2367
+  2026-09-25 rows=2397 adv20=2371
+  2026-09-28 rows=2395 adv20=2365
+  2026-09-29 rows=2388 adv20=2360
+  2026-09-30 rows=2379 adv20=2351
+  2026-10-01 rows=2388 adv20=2362
+  2026-10-02 rows=2392 adv20=2365
+  2026-10-05 rows=2423 adv20=2379
+  latest score_date row created?  2026-10-05
+== A2. ep_adv_probe_synthesized — all rows on 09-17 and today, grouped by minute
+  2026-08-07: 237 rows, 43 distinct tickers, minutes={'07:00': 5, '07:10': 4, '07:15': 3, '07:20': 4, '07:25': 3, '07:30': 4, '07:35': 5, '07:40': 5, '07:45': 5, '07:50': 5, '07:55': 4, '08:00': 4, '08:05': 5, '08:10': 5, '08:15': 4, '08:20': 4, '08:25': 4, '08:30': 5, '08:35': 5, '08:40': 4, '08:45': 4, '08:50': 5, '08:55': 7, '09:00': 18, '09:05': 9, '09:10': 12, '09:15': 7, '09:20': 5, '09:25': 8, '09:30': 7, '09:31': 5, '09:35': 3, '09:40': 4, '09:45': 8, '09:50': 18, '09:55': 30}
+    07:00:08 CART   rg=21 rp=None gap=12.3 rv=0.01 adv=4199067 vol=24269
+    07:00:08 ONTO   rg=22 rp=None gap=12.02 rv=0.01 adv=1428941 vol=9350
+    07:00:08 GRPN   rg=23 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:00:08 PCLA   rg=24 rp=None gap=10.66 rv=0.33 adv=203378 vol=67641
+    07:00:08 ACMR   rg=25 rp=None gap=10.66 rv=0.02 adv=1322956 vol=32435
+    07:10:06 DV     rg=21 rp=None gap=13.15 rv=0.0 adv=2220744 vol=6434
+    07:10:06 ONTO   rg=22 rp=None gap=12.02 rv=0.01 adv=1428941 vol=9350
+    07:10:06 GRPN   rg=23 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:10:06 ACMR   rg=24 rp=None gap=10.66 rv=0.02 adv=1322956 vol=32934
+    07:15:07 ONTO   rg=21 rp=None gap=12.02 rv=0.01 adv=1428941 vol=9350
+    07:15:07 GRPN   rg=22 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:15:07 ACMR   rg=23 rp=None gap=10.66 rv=0.02 adv=1322956 vol=32934
+    07:20:07 AKAM   rg=21 rp=None gap=11.99 rv=0.01 adv=3710783 vol=32241
+    07:20:07 ONTO   rg=22 rp=None gap=11.65 rv=0.01 adv=1428941 vol=10796
+    07:20:07 GRPN   rg=23 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:20:07 TE     rg=24 rp=None gap=10.62 rv=0.01 adv=46216170 vol=520103
+    07:25:06 FNKO   rg=21 rp=None gap=11.93 rv=0.01 adv=987718 vol=5711
+    07:25:06 GRPN   rg=22 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:25:06 ONTO   rg=23 rp=None gap=10.57 rv=0.01 adv=1428941 vol=11252
+    07:30:06 DV     rg=21 rp=None gap=13.24 rv=0.2 adv=2220744 vol=434175
+    07:30:06 AKAM   rg=22 rp=None gap=11.98 rv=0.01 adv=3710783 vol=32724
+    07:30:06 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    07:30:06 GRPN   rg=24 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:35:07 DV     rg=21 rp=None gap=12.81 rv=0.2 adv=2220744 vol=443720
+    07:35:07 AKAM   rg=22 rp=None gap=11.51 rv=0.01 adv=3710783 vol=32967
+    07:35:07 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    07:35:07 GRPN   rg=24 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:35:07 TE     rg=25 rp=None gap=10.38 rv=0.01 adv=46216170 vol=596572
+    07:40:07 AAOI   rg=21 rp=None gap=12.86 rv=0.14 adv=10303291 vol=1453745
+    07:40:07 ULBI   rg=22 rp=None gap=11.91 rv=0.14 adv=33825 vol=4634
+    07:40:07 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    07:40:07 SEI    rg=24 rp=None gap=11.19 rv=0.0 adv=3891304 vol=1584
+    07:40:07 GRPN   rg=25 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:45:07 ULBI   rg=21 rp=None gap=12.22 rv=0.29 adv=33825 vol=9775
+    07:45:07 ONTO   rg=22 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    07:45:07 SEI    rg=23 rp=None gap=11.19 rv=0.0 adv=3891304 vol=1584
+    07:45:07 GRPN   rg=24 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:45:07 TE     rg=25 rp=None gap=10.27 rv=0.01 adv=46216170 vol=618281
+    07:50:07 ULBI   rg=21 rp=None gap=12.41 rv=0.36 adv=33825 vol=12284
+    07:50:07 ONTO   rg=22 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    07:50:07 ACMR   rg=23 rp=None gap=11.42 rv=0.04 adv=1322956 vol=47498
+    07:50:07 TE     rg=24 rp=None gap=11.17 rv=0.01 adv=46216170 vol=651251
+    07:50:07 GRPN   rg=25 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    07:55:06 ACMR   rg=21 rp=None gap=12.05 rv=0.04 adv=1322956 vol=49501
+    07:55:06 AAOI   rg=22 rp=None gap=11.87 rv=0.15 adv=10303291 vol=1514711
+    07:55:06 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    07:55:06 GRPN   rg=24 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    08:00:07 AAOI   rg=21 rp=None gap=12.3 rv=0.15 adv=10303291 vol=1534288
+    08:00:07 ACMR   rg=22 rp=None gap=11.93 rv=0.04 adv=1322956 vol=50121
+    08:00:07 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:00:07 GRPN   rg=24 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    08:05:07 CLRO   rg=21 rp=None gap=12.45 rv=5.51 adv=557167 vol=3071005
+    08:05:07 ULBI   rg=22 rp=None gap=12.41 rv=0.36 adv=33825 vol=12284
+    08:05:07 AAOI   rg=23 rp=None gap=12.1 rv=0.15 adv=10303291 vol=1542735
+    08:05:07 ONTO   rg=24 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:05:07 GRPN   rg=25 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    08:10:07 ACMR   rg=21 rp=None gap=12.69 rv=0.04 adv=1322956 vol=50919
+    08:10:07 ULBI   rg=22 rp=None gap=12.41 rv=0.36 adv=33825 vol=12284
+    08:10:07 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:10:07 GRPN   rg=24 rp=None gap=10.79 rv=0.0 adv=1774829 vol=2894
+    08:10:07 AAOI   rg=25 rp=None gap=10.51 rv=0.15 adv=10303291 vol=1577844
+    08:15:07 CLRO   rg=21 rp=None gap=12.76 rv=5.67 adv=557167 vol=3157658
+    08:15:07 ULBI   rg=22 rp=None gap=12.22 rv=0.4 adv=33825 vol=13377
+    08:15:07 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:15:07 AAOI   rg=24 rp=None gap=10.21 rv=0.16 adv=10303291 vol=1600269
+    08:20:06 ACMR   rg=21 rp=None gap=12.88 rv=0.04 adv=1322956 vol=52672
+    08:20:06 ULBI   rg=22 rp=None gap=12.22 rv=0.4 adv=33825 vol=13377
+    08:20:06 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:20:06 AAOI   rg=24 rp=None gap=11.09 rv=0.16 adv=10303291 vol=1635512
+    08:25:06 ULBI   rg=21 rp=None gap=12.22 rv=0.4 adv=33825 vol=13377
+    08:25:06 ONTO   rg=22 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:25:06 AAOI   rg=23 rp=None gap=10.94 rv=0.16 adv=10303291 vol=1656300
+    08:25:06 PHR    rg=24 rp=None gap=10.25 rv=0.02 adv=807033 vol=17860
+    08:30:07 CLRO   rg=21 rp=None gap=12.24 rv=5.83 adv=557167 vol=3246923
+    08:30:07 ULBI   rg=22 rp=None gap=12.22 rv=0.4 adv=33825 vol=13377
+    08:30:07 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:30:07 AAOI   rg=24 rp=None gap=11.43 rv=0.16 adv=10303291 vol=1677360
+    08:30:07 PHR    rg=25 rp=None gap=10.25 rv=0.02 adv=807033 vol=17860
+    08:35:07 CLRO   rg=21 rp=None gap=12.24 rv=5.87 adv=557167 vol=3268165
+    08:35:07 AAOI   rg=22 rp=None gap=12.01 rv=0.17 adv=10303291 vol=1705949
+    08:35:07 ULBI   rg=23 rp=None gap=11.95 rv=0.49 adv=33825 vol=16588
+    08:35:07 ONTO   rg=24 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:35:07 PHR    rg=25 rp=None gap=10.25 rv=0.02 adv=807033 vol=17860
+    08:40:07 ULBI   rg=21 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    08:40:07 AAOI   rg=22 rp=None gap=11.95 rv=0.17 adv=10303291 vol=1720340
+    08:40:07 ONTO   rg=23 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:40:07 PCLA   rg=24 rp=None gap=10.66 rv=0.42 adv=203378 vol=85231
+    08:45:06 ULBI   rg=21 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    08:45:06 AAOI   rg=22 rp=None gap=12.33 rv=0.17 adv=10303291 vol=1735901
+    08:45:06 CLRO   rg=23 rp=None gap=12.24 rv=5.99 adv=557167 vol=3337617
+    08:45:06 ONTO   rg=24 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:50:07 AAOI   rg=21 rp=None gap=13.18 rv=0.18 adv=10303291 vol=1814342
+    08:50:07 DV     rg=22 rp=None gap=13.07 rv=1.97 adv=2220744 vol=4376531
+    08:50:07 ULBI   rg=23 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    08:50:07 CLRO   rg=24 rp=None gap=12.24 rv=6.02 adv=557167 vol=3356132
+    08:50:07 ONTO   rg=25 rp=None gap=11.46 rv=0.01 adv=1428941 vol=11697
+    08:55:07 AAOI   rg=21 rp=None gap=13.11 rv=0.18 adv=10303291 vol=1836438
+    08:55:07 DV     rg=22 rp=None gap=13.07 rv=2.14 adv=2220744 vol=4761995
+    08:55:07 ONTO   rg=23 rp=None gap=12.62 rv=0.01 adv=1428941 vol=15268
+    08:55:07 ULBI   rg=24 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    08:55:07 CLRO   rg=25 rp=None gap=12.24 rv=6.05 adv=557167 vol=3370568
+    08:55:07 PCLA   rg=26 rp=None gap=10.8 rv=0.43 adv=203378 vol=86565
+    08:55:07 MCHP   rg=27 rp=None gap=10.27 rv=0.02 adv=12767939 vol=200370
+    09:00:10 CART   rg=21 rp=None gap=13.92 rv=0.02 adv=4199067 vol=86388
+    09:00:10 AAOI   rg=22 rp=None gap=13.9 rv=0.18 adv=10303291 vol=1868632
+    09:00:10 CLRO   rg=23 rp=None gap=13.67 rv=6.09 adv=557167 vol=3393269
+    09:00:10 DV     rg=24 rp=None gap=13.15 rv=2.35 adv=2220744 vol=5214636
+    09:00:10 ONTO   rg=25 rp=None gap=12.62 rv=0.01 adv=1428941 vol=15268
+    09:00:10 ULBI   rg=26 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    09:00:10 HMY    rg=27 rp=None gap=10.91 rv=0.12 adv=3181636 vol=374206
+    09:00:10 PCLA   rg=28 rp=None gap=10.8 rv=0.43 adv=203378 vol=86565
+    09:00:10 MCHP   rg=29 rp=None gap=10.75 rv=0.02 adv=12767939 vol=206792
+    09:00:17 AAOI   rg=21 rp=None gap=14.11 rv=0.18 adv=10303291 vol=1879441
+    09:00:17 CART   rg=22 rp=None gap=13.7 rv=0.02 adv=4199067 vol=87268
+    09:00:17 DV     rg=23 rp=None gap=13.15 rv=2.35 adv=2220744 vol=5214636
+    09:00:17 CLRO   rg=24 rp=None gap=12.65 rv=6.1 adv=557167 vol=3396777
+    09:00:17 ONTO   rg=25 rp=None gap=12.62 rv=0.01 adv=1428941 vol=15268
+    09:00:17 ULBI   rg=26 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    09:00:17 HMY    rg=27 rp=None gap=10.91 rv=0.12 adv=3181636 vol=374206
+    09:00:17 PCLA   rg=28 rp=None gap=10.8 rv=0.43 adv=203378 vol=86565
+    09:00:17 MCHP   rg=29 rp=None gap=10.75 rv=0.02 adv=12767939 vol=206792
+    09:05:08 CART   rg=21 rp=None gap=14.37 rv=0.02 adv=4199067 vol=90665
+    09:05:08 AAOI   rg=22 rp=None gap=14.31 rv=0.19 adv=10303291 vol=1915380
+    09:05:08 DV     rg=23 rp=None gap=12.89 rv=2.9 adv=2220744 vol=6432717
+    09:05:08 ONTO   rg=24 rp=None gap=12.84 rv=0.01 adv=1428941 vol=16306
+    09:05:08 ULBI   rg=25 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    09:05:08 HMY    rg=26 rp=None gap=11.36 rv=0.12 adv=3181636 vol=395494
+    09:05:08 PCLA   rg=27 rp=None gap=10.8 rv=0.43 adv=203378 vol=87632
+    09:05:08 MCHP   rg=28 rp=None gap=10.66 rv=0.02 adv=12767939 vol=215257
+    09:05:08 AU     rg=29 rp=None gap=10.63 rv=0.1 adv=2514878 vol=262104
+    09:10:09 CART   rg=21 rp=None gap=14.59 rv=0.02 adv=4199067 vol=90783
+    09:10:09 AAOI   rg=22 rp=None gap=13.81 rv=0.19 adv=10303291 vol=1952599
+    09:10:09 DV     rg=23 rp=None gap=12.98 rv=3.19 adv=2220744 vol=7075996
+    09:10:09 CLRO   rg=24 rp=None gap=12.96 rv=6.16 adv=557167 vol=3431095
+    09:10:09 ULBI   rg=25 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    09:10:09 ONTO   rg=26 rp=None gap=12.02 rv=0.01 adv=1428941 vol=16909
+    09:10:09 MCHP   rg=27 rp=None gap=11.62 rv=0.02 adv=12767939 vol=226191
+    09:10:09 HMY    rg=28 rp=None gap=11.25 rv=0.13 adv=3181636 vol=401540
+    09:10:09 AU     rg=29 rp=None gap=10.8 rv=0.11 adv=2514878 vol=279216
+    09:10:09 PCLA   rg=30 rp=None gap=10.8 rv=0.43 adv=203378 vol=87632
+    09:10:09 FLR    rg=31 rp=None gap=10.77 rv=0.01 adv=2230747 vol=24312
+    09:10:09 GFI    rg=32 rp=None gap=10.5 rv=0.08 adv=3900640 vol=298420
+    09:15:08 CART   rg=21 rp=None gap=14.59 rv=0.02 adv=4199067 vol=90783
+    09:15:08 AAOI   rg=22 rp=None gap=13.63 rv=0.19 adv=10303291 vol=1978714
+    09:15:08 DV     rg=23 rp=None gap=13.15 rv=3.57 adv=2220744 vol=7919190
+    09:15:08 ULBI   rg=24 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    09:15:08 MCHP   rg=25 rp=None gap=10.87 rv=0.02 adv=12767939 vol=236925
+    09:15:08 ONTO   rg=26 rp=None gap=10.73 rv=0.01 adv=1428941 vol=17915
+    09:15:08 HMY    rg=27 rp=None gap=10.42 rv=0.13 adv=3181636 vol=407788
+    09:20:07 CART   rg=21 rp=None gap=14.23 rv=0.03 adv=4199067 vol=106089
+    09:20:07 DV     rg=22 rp=None gap=13.15 rv=3.61 adv=2220744 vol=8027964
+    09:20:07 AAOI   rg=23 rp=None gap=12.7 rv=0.2 adv=10303291 vol=2034545
+    09:20:07 ULBI   rg=24 rp=None gap=12.39 rv=0.67 adv=33825 vol=22625
+    09:20:07 ONTO   rg=25 rp=None gap=10.73 rv=0.01 adv=1428941 vol=18979
+    09:25:08 CART   rg=21 rp=None gap=14.06 rv=0.03 adv=4199067 vol=106313
+    09:25:08 AAOI   rg=22 rp=None gap=13.5 rv=0.2 adv=10303291 vol=2072606
+    09:25:08 DV     rg=23 rp=None gap=12.89 rv=4.07 adv=2220744 vol=9028347
+    09:25:08 ONTO   rg=24 rp=None gap=12.02 rv=0.01 adv=1428941 vol=20313
+    09:25:08 FLR    rg=25 rp=None gap=11.79 rv=0.02 adv=2230747 vol=37545
+    09:25:08 ULBI   rg=26 rp=None gap=11.09 rv=0.7 adv=33825 vol=23824
+    09:25:08 HMY    rg=27 rp=None gap=10.86 rv=0.14 adv=3181636 vol=445351
+    09:25:08 MCHP   rg=28 rp=None gap=10.27 rv=0.02 adv=12767939 vol=251630
+    09:30:14 AAOI   rg=21 rp=None gap=13.17 rv=0.2 adv=10303291 vol=2110046
+    09:30:14 DV     rg=22 rp=None gap=12.98 rv=4.7 adv=2220744 vol=10448397
+    09:30:14 ONTO   rg=23 rp=None gap=12.02 rv=0.01 adv=1428941 vol=20313
+    09:30:14 ULBI   rg=24 rp=None gap=11.09 rv=0.7 adv=33825 vol=23824
+    09:30:14 FLR    rg=25 rp=None gap=10.77 rv=0.02 adv=2230747 vol=39378
+    09:30:14 MCHP   rg=26 rp=None gap=10.31 rv=0.02 adv=12767939 vol=254604
+    09:30:14 HMY    rg=27 rp=None gap=10.25 rv=0.15 adv=3181636 vol=466333
+    09:31:10 ONTO   rg=21 rp=None gap=12.02 rv=0.01 adv=1428941 vol=20313
+    09:31:10 ULBI   rg=22 rp=None gap=11.09 rv=0.7 adv=33825 vol=23824
+    09:31:10 FLR    rg=23 rp=None gap=10.77 rv=0.02 adv=2230747 vol=39378
+    09:31:10 MCHP   rg=24 rp=None gap=10.66 rv=0.02 adv=12767939 vol=255475
+    09:31:10 HMY    rg=25 rp=None gap=10.25 rv=0.15 adv=3181636 vol=467174
+    09:35:09 ULBI   rg=21 rp=None gap=11.09 rv=0.7 adv=33825 vol=23824
+    09:35:09 FLR    rg=22 rp=None gap=10.77 rv=0.02 adv=2230747 vol=39378
+    09:35:09 MCHP   rg=23 rp=None gap=10.26 rv=0.02 adv=12767939 vol=269049
+    09:40:12 ONTO   rg=21 rp=None gap=12.02 rv=0.02 adv=1428941 vol=23127
+    09:40:12 MCHP   rg=22 rp=None gap=11.38 rv=0.02 adv=12767939 vol=283594
+    09:40:12 ULBI   rg=23 rp=None gap=11.09 rv=0.7 adv=33825 vol=23824
+    09:40:12 HMY    rg=24 rp=None gap=10.14 rv=0.15 adv=3181636 vol=479507
+    09:45:17 ULBI   rg=21 rp=None gap=12.78 rv=0.72 adv=33825 vol=24225
+    09:45:17 ONTO   rg=22 rp=None gap=12.21 rv=0.02 adv=1428941 vol=26908
+    09:45:17 HYMC   rg=23 rp=None gap=11.93 rv=0.1 adv=1707827 vol=168112
+    09:45:17 SENS   rg=24 rp=None gap=11.65 rv=0.03 adv=558912 vol=18513
+    09:45:17 FOXF   rg=25 rp=None gap=10.71 rv=0.0 adv=575586 vol=1072
+    09:45:17 HMY    rg=26 rp=None gap=10.53 rv=0.15 adv=3181636 vol=485882
+    09:45:17 MCHP   rg=27 rp=None gap=10.21 rv=0.02 adv=12767939 vol=316452
+    09:45:17 AU     rg=28 rp=None gap=10.15 rv=0.14 adv=2514878 vol=343881
+    09:50:17 KRT    rg=21 rp=None gap=15.08 rv=0.17 adv=145846 vol=25378
+    09:50:17 FRD    rg=22 rp=None gap=14.0 rv=0.24 adv=88291 vol=20999
+    09:50:17 PCLA   rg=23 rp=None gap=13.87 rv=0.49 adv=203378 vol=99491
+    09:50:17 DV     rg=24 rp=None gap=12.85 rv=5.92 adv=2220744 vol=13136912
+    09:50:17 ABNB   rg=25 rp=None gap=12.64 rv=0.52 adv=3538649 vol=1855675
+    09:50:17 NET    rg=26 rp=None gap=12.21 rv=0.31 adv=3222370 vol=999013
+    09:50:17 ULBI   rg=27 rp=None gap=11.84 rv=1.26 adv=33825 vol=42515
+    09:50:17 FLR    rg=28 rp=None gap=11.7 rv=0.18 adv=2230747 vol=409011
+    09:50:17 MCHP   rg=29 rp=None gap=11.57 rv=0.08 adv=12767939 vol=1079294
+    09:50:17 CENX   rg=30 rp=None gap=11.51 rv=0.12 adv=2070200 vol=242090
+    09:50:17 AXTI   rg=31 rp=None gap=11.05 rv=0.19 adv=9764287 vol=1891992
+  2026-09-17: 4 rows, 3 distinct tickers, minutes={'09:45': 1, '09:50': 3}
+    09:45:11 XE     rg=16 rp=21 gap=11.12 rv=0.03 adv=6337571 vol=221617
+    09:50:14 VELO   rg=21 rp=21 gap=9.41 rv=0.08 adv=1121436 vol=91466
+    09:50:14 VICR   rg=6 rp=22 gap=15.0 rv=0.14 adv=754778 vol=103605
+    09:50:14 XE     rg=14 rp=23 gap=11.08 rv=0.1 adv=6337571 vol=636934
+  2026-10-05: 94 rows, 9 distinct tickers, minutes={'07:25': 1, '07:35': 2, '07:40': 1, '07:55': 2, '08:00': 3, '08:05': 4, '08:10': 2, '08:15': 2, '08:20': 4, '08:25': 4, '08:30': 4, '08:35': 5, '08:40': 3, '08:45': 3, '08:50': 3, '08:55': 4, '09:00': 14, '09:05': 1, '09:15': 3, '09:20': 4, '09:25': 5, '09:30': 2, '09:31': 2, '09:35': 1, '09:40': 4, '09:45': 5, '09:50': 3, '09:55': 3}
+    07:25:06 VIV    rg=14 rp=21 gap=11.55 rv=0.02 adv=1374880 vol=27517
+    07:35:06 TIMB   rg=21 rp=21 gap=9.25 rv=0.01 adv=483615 vol=5415
+    07:35:06 VIV    rg=14 rp=22 gap=11.55 rv=0.02 adv=1374880 vol=27517
+    07:40:06 VIV    rg=14 rp=21 gap=11.55 rv=0.02 adv=1374880 vol=27517
+    07:55:06 UGP    rg=16 rp=21 gap=10.74 rv=0.01 adv=4060275 vol=25032
+    07:55:06 VIV    rg=22 rp=22 gap=9.19 rv=0.02 adv=1374880 vol=27517
+    08:00:07 TIMB   rg=22 rp=21 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:00:07 UGP    rg=16 rp=22 gap=10.74 rv=0.01 adv=4060275 vol=25032
+    08:00:07 VIV    rg=23 rp=23 gap=9.19 rv=0.02 adv=1374880 vol=27517
+    08:05:07 SVRN   rg=14 rp=21 gap=12.47 rv=0.01 adv=291720 vol=3987
+    08:05:07 TIMB   rg=24 rp=22 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:05:07 UGP    rg=15 rp=23 gap=12.35 rv=0.01 adv=4060275 vol=25032
+    08:05:07 VIV    rg=18 rp=24 gap=10.92 rv=0.02 adv=1374880 vol=28031
+    08:10:06 TIMB   rg=22 rp=21 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:10:06 VIV    rg=19 rp=22 gap=10.49 rv=0.02 adv=1374880 vol=28031
+    08:15:06 TIMB   rg=22 rp=21 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:15:06 VIV    rg=19 rp=22 gap=10.57 rv=0.02 adv=1374880 vol=28405
+    08:20:07 SVRN   rg=16 rp=21 gap=12.47 rv=0.01 adv=291720 vol=3987
+    08:20:07 TIMB   rg=23 rp=22 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:20:07 UGP    rg=19 rp=23 gap=11.28 rv=0.01 adv=4060275 vol=28742
+    08:20:07 VIV    rg=20 rp=24 gap=10.49 rv=0.02 adv=1374880 vol=28405
+    08:25:07 SVRN   rg=15 rp=21 gap=12.47 rv=0.01 adv=291720 vol=3987
+    08:25:07 TIMB   rg=23 rp=22 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:25:07 UGP    rg=18 rp=23 gap=11.28 rv=0.01 adv=4060275 vol=31042
+    08:25:07 VIV    rg=20 rp=24 gap=10.49 rv=0.02 adv=1374880 vol=32144
+    08:30:07 SVRN   rg=15 rp=21 gap=12.47 rv=0.01 adv=291720 vol=3987
+    08:30:07 TIMB   rg=23 rp=22 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:30:07 UGP    rg=19 rp=23 gap=11.28 rv=0.01 adv=4060275 vol=31042
+    08:30:07 VIV    rg=21 rp=24 gap=10.49 rv=0.03 adv=1374880 vol=35844
+    08:35:07 TIMB   rg=24 rp=21 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:35:07 UGP    rg=18 rp=22 gap=11.28 rv=0.01 adv=4060275 vol=31042
+    08:35:07 VINP   rg=23 rp=23 gap=9.68 rv=0.03 adv=49892 vol=1598
+    08:35:07 VIV    rg=20 rp=24 gap=10.49 rv=0.03 adv=1374880 vol=36569
+    08:35:07 XRPN   rg=16 rp=25 gap=12.0 rv=1.13 adv=147840 vol=166797
+    08:40:06 UGP    rg=16 rp=21 gap=11.28 rv=0.01 adv=4060275 vol=31294
+    08:40:06 VINP   rg=21 rp=22 gap=9.68 rv=0.03 adv=49892 vol=1598
+    08:40:06 VIV    rg=18 rp=23 gap=10.49 rv=0.03 adv=1374880 vol=36569
+    08:45:06 TIMB   rg=22 rp=21 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:45:06 UGP    rg=18 rp=22 gap=11.28 rv=0.01 adv=4060275 vol=31294
+    08:45:06 VIV    rg=20 rp=23 gap=10.49 rv=0.03 adv=1374880 vol=36569
+    08:50:06 TIMB   rg=22 rp=21 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:50:06 UGP    rg=17 rp=22 gap=11.28 rv=0.01 adv=4060275 vol=31294
+    08:50:06 VIV    rg=20 rp=23 gap=10.49 rv=0.03 adv=1374880 vol=36569
+    08:55:06 TIMB   rg=24 rp=21 gap=9.25 rv=0.01 adv=483615 vol=5415
+    08:55:06 UGP    rg=17 rp=22 gap=11.28 rv=0.01 adv=4060275 vol=31294
+    08:55:06 VINP   rg=22 rp=23 gap=9.68 rv=0.04 adv=49892 vol=1783
+    08:55:06 VIV    rg=20 rp=24 gap=10.49 rv=0.03 adv=1374880 vol=36569
+    09:00:09 STNE   rg=11 rp=21 gap=14.97 rv=0.09 adv=5046305 vol=476488
+    09:00:09 SVRN   rg=14 rp=22 gap=13.3 rv=0.01 adv=291720 vol=4302
+    09:00:09 TIMB   rg=25 rp=23 gap=9.25 rv=0.01 adv=483615 vol=5415
+    09:00:09 UGP    rg=17 rp=24 gap=11.28 rv=0.01 adv=4060275 vol=31294
+    09:00:09 VINP   rg=23 rp=25 gap=9.68 rv=0.04 adv=49892 vol=1783
+    09:00:09 VIV    rg=20 rp=26 gap=10.49 rv=0.03 adv=1374880 vol=36569
+    09:00:09 XRPN   rg=27 rp=27 gap=9.08 rv=2.04 adv=147840 vol=302116
+    09:00:16 STNE   rg=9 rp=21 gap=15.18 rv=0.09 adv=5046305 vol=476488
+    09:00:16 SVRN   rg=14 rp=22 gap=13.3 rv=0.01 adv=291720 vol=4302
+    09:00:16 TIMB   rg=25 rp=23 gap=9.25 rv=0.01 adv=483615 vol=5415
+    09:00:16 UGP    rg=17 rp=24 gap=11.28 rv=0.01 adv=4060275 vol=31294
+    09:00:16 VINP   rg=23 rp=25 gap=9.68 rv=0.04 adv=49892 vol=1783
+    09:00:16 VIV    rg=20 rp=26 gap=10.49 rv=0.03 adv=1374880 vol=36569
+    09:00:16 XRPN   rg=27 rp=27 gap=9.08 rv=2.04 adv=147840 vol=302116
+    09:05:06 VINP   rg=18 rp=21 gap=9.68 rv=0.04 adv=49892 vol=1783
+    09:15:06 TIMB   rg=23 rp=21 gap=9.37 rv=0.01 adv=483615 vol=5415
+    09:15:06 VINP   rg=19 rp=22 gap=9.68 rv=0.04 adv=49892 vol=1783
+    09:15:06 VIV    rg=22 rp=23 gap=9.45 rv=0.03 adv=1374880 vol=36569
+    09:20:07 SDEV   rg=3 rp=21 gap=31.28 rv=21.22 adv=1329161 vol=28201858
+    09:20:07 STNE   rg=7 rp=22 gap=15.5 rv=0.1 adv=5046305 vol=512438
+    09:20:07 TIMB   rg=24 rp=23 gap=9.37 rv=0.01 adv=483615 vol=5415
+    09:20:07 VIV    rg=16 rp=24 gap=10.92 rv=0.03 adv=1374880 vol=36569
+    09:25:07 SBS    rg=7 rp=21 gap=15.06 rv=0.04 adv=7983121 vol=309579
+    09:25:07 SDEV   rg=3 rp=22 gap=27.28 rv=21.38 adv=1329161 vol=28411517
+    09:25:07 STNE   rg=9 rp=23 gap=14.97 rv=0.1 adv=5046305 vol=515531
+    09:25:07 TIMB   rg=25 rp=24 gap=9.37 rv=0.01 adv=483615 vol=5415
+    09:25:07 VIV    rg=16 rp=25 gap=11.44 rv=0.04 adv=1374880 vol=56925
+    09:30:14 VIV    rg=18 rp=21 gap=10.23 rv=0.05 adv=1374880 vol=70764
+    09:30:14 XRPN   rg=13 rp=22 gap=12.08 rv=2.32 adv=147840 vol=343552
+    09:31:12 VIV    rg=21 rp=21 gap=10.31 rv=0.05 adv=1374880 vol=70764
+    09:31:12 XRPN   rg=16 rp=22 gap=11.64 rv=2.32 adv=147840 vol=343552
+    09:35:13 VIV    rg=17 rp=21 gap=11.48 rv=0.07 adv=1374880 vol=99161
+    09:40:10 UGP    rg=21 rp=21 gap=10.87 rv=0.02 adv=4060275 vol=68289
+    09:40:10 VINP   rg=23 rp=22 gap=10.24 rv=0.45 adv=49892 vol=22218
+    09:40:10 VIV    rg=19 rp=23 gap=12.48 rv=0.08 adv=1374880 vol=104229
+    09:40:10 XRPN   rg=8 rp=24 gap=19.19 rv=2.35 adv=147840 vol=346884
+    09:45:14 SVRN   rg=12 rp=21 gap=19.3 rv=0.02 adv=291720 vol=5879
+    09:45:14 TIMB   rg=19 rp=22 gap=12.7 rv=0.02 adv=483615 vol=9899
+    09:45:14 UGP    rg=24 rp=23 gap=9.93 rv=0.02 adv=4060275 vol=74567
+    09:45:14 VIV    rg=21 rp=24 gap=11.7 rv=0.09 adv=1374880 vol=124344
+    09:45:14 XRPN   rg=17 rp=25 gap=15.88 rv=2.56 adv=147840 vol=378198
+    09:50:11 SVRN   rg=10 rp=21 gap=19.33 rv=0.04 adv=291720 vol=11387
+    09:50:11 TIMB   rg=18 rp=22 gap=11.72 rv=0.08 adv=483615 vol=37322
+    09:50:11 VIV    rg=21 rp=23 gap=10.4 rv=0.19 adv=1374880 vol=265100
+    09:55:10 SVRN   rg=7 rp=21 gap=20.31 rv=0.06 adv=291720 vol=17125
+    09:55:10 TIMB   rg=18 rp=22 gap=11.44 rv=0.23 adv=483615 vol=111274
+    09:55:10 VIV    rg=20 rp=23 gap=10.49 rv=0.25 adv=1374880 vol=337631
+== A3. mi_ep_shortlist_shadow per scan_date (last 15 days)
+   {'scan_date': datetime.date(2026, 9, 21), 'n': 511, 'ticks': 38, 'max_board': 17, 'acting': 'prescore', 'n_pending': 511, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 511, 'n_shortlisted_names': 34, 't0': '07:00:01.520176', 't1': '09:55:00.057398'}
+   {'scan_date': datetime.date(2026, 9, 22), 'n': 271, 'ticks': 38, 'max_board': 12, 'acting': 'prescore', 'n_pending': 271, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 271, 'n_shortlisted_names': 20, 't0': '07:00:01.800216', 't1': '09:55:00.054182'}
+   {'scan_date': datetime.date(2026, 9, 23), 'n': 132, 'ticks': 38, 'max_board': 5, 'acting': 'prescore', 'n_pending': 132, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 132, 'n_shortlisted_names': 9, 't0': '07:00:01.348199', 't1': '09:55:00.078559'}
+   {'scan_date': datetime.date(2026, 9, 24), 'n': 192, 'ticks': 38, 'max_board': 8, 'acting': 'prescore', 'n_pending': 192, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 192, 'n_shortlisted_names': 13, 't0': '07:00:01.617573', 't1': '09:55:00.061243'}
+   {'scan_date': datetime.date(2026, 9, 25), 'n': 267, 'ticks': 38, 'max_board': 10, 'acting': 'prescore', 'n_pending': 267, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 267, 'n_shortlisted_names': 13, 't0': '07:00:01.833284', 't1': '09:55:00.052095'}
+   {'scan_date': datetime.date(2026, 9, 28), 'n': 112, 'ticks': 38, 'max_board': 5, 'acting': 'prescore', 'n_pending': 112, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 112, 'n_shortlisted_names': 8, 't0': '07:00:00.222238', 't1': '09:55:00.036583'}
+   {'scan_date': datetime.date(2026, 9, 29), 'n': 213, 'ticks': 38, 'max_board': 9, 'acting': 'prescore', 'n_pending': 213, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 213, 'n_shortlisted_names': 20, 't0': '07:00:01.631425', 't1': '09:55:00.072435'}
+   {'scan_date': datetime.date(2026, 9, 30), 'n': 187, 'ticks': 38, 'max_board': 7, 'acting': 'prescore', 'n_pending': 187, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 187, 'n_shortlisted_names': 18, 't0': '07:00:01.642245', 't1': '09:55:00.059018'}
+   {'scan_date': datetime.date(2026, 10, 1), 'n': 215, 'ticks': 38, 'max_board': 11, 'acting': 'prescore', 'n_pending': 215, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 215, 'n_shortlisted_names': 21, 't0': '07:00:01.688627', 't1': '09:55:00.069681'}
+   {'scan_date': datetime.date(2026, 10, 2), 'n': 100, 'ticks': 38, 'max_board': 8, 'acting': 'prescore', 'n_pending': 100, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 0, 'n_pend_top20': 100, 'n_shortlisted_names': 12, 't0': '07:00:01.694504', 't1': '09:55:00.05774'}
+   {'scan_date': datetime.date(2026, 10, 5), 'n': 844, 'ticks': 38, 'max_board': 27, 'acting': 'prescore', 'n_pending': 844, 'n_rsu': 0, 'n_poly': 0, 'n_pend_21_50': 94, 'n_pend_top20': 750, 'n_shortlisted_names': 35, 't0': '07:00:01.634062', 't1': '09:55:00.053835'}
+== A3b. today's shortlist shadow per tick
+   {'t': '07:00:01.634062', 'm': None, 'n': 14, 'b': 14, 'ak': 'prescore', 'pend': 14, 'pend_21_50': 0, 'pend_top20': 14}
+   {'t': '07:05:00.035569', 'm': None, 'n': 20, 'b': 20, 'ak': 'prescore', 'pend': 20, 'pend_21_50': 0, 'pend_top20': 20}
+   {'t': '07:10:00.04048', 'm': None, 'n': 19, 'b': 19, 'ak': 'prescore', 'pend': 19, 'pend_21_50': 0, 'pend_top20': 19}
+   {'t': '07:15:00.032804', 'm': None, 'n': 20, 'b': 20, 'ak': 'prescore', 'pend': 20, 'pend_21_50': 0, 'pend_top20': 20}
+   {'t': '07:20:00.091133', 'm': None, 'n': 20, 'b': 20, 'ak': 'prescore', 'pend': 20, 'pend_21_50': 0, 'pend_top20': 20}
+   {'t': '07:25:00.046501', 'm': None, 'n': 21, 'b': 21, 'ak': 'prescore', 'pend': 21, 'pend_21_50': 1, 'pend_top20': 20}
+   {'t': '07:30:00.027665', 'm': None, 'n': 20, 'b': 20, 'ak': 'prescore', 'pend': 20, 'pend_21_50': 0, 'pend_top20': 20}
+   {'t': '07:35:00.032772', 'm': None, 'n': 22, 'b': 22, 'ak': 'prescore', 'pend': 22, 'pend_21_50': 2, 'pend_top20': 20}
+   {'t': '07:40:00.025445', 'm': None, 'n': 21, 'b': 21, 'ak': 'prescore', 'pend': 21, 'pend_21_50': 1, 'pend_top20': 20}
+   {'t': '07:45:00.179038', 'm': None, 'n': 19, 'b': 19, 'ak': 'prescore', 'pend': 19, 'pend_21_50': 0, 'pend_top20': 19}
+   {'t': '07:50:00.208963', 'm': None, 'n': 19, 'b': 19, 'ak': 'prescore', 'pend': 19, 'pend_21_50': 0, 'pend_top20': 19}
+   {'t': '07:55:00.038853', 'm': None, 'n': 22, 'b': 22, 'ak': 'prescore', 'pend': 22, 'pend_21_50': 2, 'pend_top20': 20}
+   {'t': '08:00:00.037613', 'm': None, 'n': 23, 'b': 23, 'ak': 'prescore', 'pend': 23, 'pend_21_50': 3, 'pend_top20': 20}
+   {'t': '08:05:00.031049', 'm': None, 'n': 24, 'b': 24, 'ak': 'prescore', 'pend': 24, 'pend_21_50': 4, 'pend_top20': 20}
+   {'t': '08:10:00.021669', 'm': None, 'n': 22, 'b': 22, 'ak': 'prescore', 'pend': 22, 'pend_21_50': 2, 'pend_top20': 20}
+   {'t': '08:15:00.031346', 'm': None, 'n': 22, 'b': 22, 'ak': 'prescore', 'pend': 22, 'pend_21_50': 2, 'pend_top20': 20}
+   {'t': '08:20:00.095603', 'm': None, 'n': 24, 'b': 24, 'ak': 'prescore', 'pend': 24, 'pend_21_50': 4, 'pend_top20': 20}
+   {'t': '08:25:00.03114', 'm': None, 'n': 24, 'b': 24, 'ak': 'prescore', 'pend': 24, 'pend_21_50': 4, 'pend_top20': 20}
+   {'t': '08:30:00.03637', 'm': None, 'n': 24, 'b': 24, 'ak': 'prescore', 'pend': 24, 'pend_21_50': 4, 'pend_top20': 20}
+   {'t': '08:35:00.034571', 'm': None, 'n': 25, 'b': 25, 'ak': 'prescore', 'pend': 25, 'pend_21_50': 5, 'pend_top20': 20}
+   {'t': '08:40:00.030698', 'm': None, 'n': 23, 'b': 23, 'ak': 'prescore', 'pend': 23, 'pend_21_50': 3, 'pend_top20': 20}
+   {'t': '08:45:00.033402', 'm': None, 'n': 23, 'b': 23, 'ak': 'prescore', 'pend': 23, 'pend_21_50': 3, 'pend_top20': 20}
+   {'t': '08:50:00.077249', 'm': None, 'n': 23, 'b': 23, 'ak': 'prescore', 'pend': 23, 'pend_21_50': 3, 'pend_top20': 20}
+   {'t': '08:55:00.028171', 'm': None, 'n': 24, 'b': 24, 'ak': 'prescore', 'pend': 24, 'pend_21_50': 4, 'pend_top20': 20}
+   {'t': '09:00:00.090071', 'm': None, 'n': 27, 'b': 27, 'ak': 'prescore', 'pend': 27, 'pend_21_50': 7, 'pend_top20': 20}
+   {'t': '09:00:00.090236', 'm': None, 'n': 27, 'b': 27, 'ak': 'prescore', 'pend': 27, 'pend_21_50': 7, 'pend_top20': 20}
+   {'t': '09:05:00.032227', 'm': None, 'n': 21, 'b': 21, 'ak': 'prescore', 'pend': 21, 'pend_21_50': 1, 'pend_top20': 20}
+   {'t': '09:10:00.051495', 'm': None, 'n': 19, 'b': 19, 'ak': 'prescore', 'pend': 19, 'pend_21_50': 0, 'pend_top20': 19}
+   {'t': '09:15:00.043437', 'm': None, 'n': 23, 'b': 23, 'ak': 'prescore', 'pend': 23, 'pend_21_50': 3, 'pend_top20': 20}
+   {'t': '09:20:00.087678', 'm': None, 'n': 24, 'b': 24, 'ak': 'prescore', 'pend': 24, 'pend_21_50': 4, 'pend_top20': 20}
+   {'t': '09:25:00.037288', 'm': None, 'n': 25, 'b': 25, 'ak': 'prescore', 'pend': 25, 'pend_21_50': 5, 'pend_top20': 20}
+   {'t': '09:30:00.047703', 'm': 1, 'n': 22, 'b': 22, 'ak': 'prescore', 'pend': 22, 'pend_21_50': 2, 'pend_top20': 20}
+   {'t': '09:31:00.031906', 'm': 1, 'n': 22, 'b': 22, 'ak': 'prescore', 'pend': 22, 'pend_21_50': 2, 'pend_top20': 20}
+   {'t': '09:35:00.058509', 'm': 5, 'n': 21, 'b': 21, 'ak': 'prescore', 'pend': 21, 'pend_21_50': 1, 'pend_top20': 20}
+   {'t': '09:40:00.087126', 'm': 10, 'n': 24, 'b': 24, 'ak': 'prescore', 'pend': 24, 'pend_21_50': 4, 'pend_top20': 20}
+   {'t': '09:45:00.051893', 'm': 15, 'n': 25, 'b': 25, 'ak': 'prescore', 'pend': 25, 'pend_21_50': 5, 'pend_top20': 20}
+   {'t': '09:50:00.062526', 'm': 20, 'n': 23, 'b': 23, 'ak': 'prescore', 'pend': 23, 'pend_21_50': 3, 'pend_top20': 20}
+   {'t': '09:55:00.053835', 'm': 25, 'n': 23, 'b': 23, 'ak': 'prescore', 'pend': 23, 'pend_21_50': 3, 'pend_top20': 20}
+== A3c. last 5 market days' shortlist shadow per tick (pending in 21-50)
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:00:00.222238', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:05:00.021024', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:10:00.033701', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:15:00.036413', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:20:00.108135', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:25:00.02919', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:30:00.027769', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:35:00.02488', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:40:00.047591', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:45:00.023825', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:50:00.108404', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '07:55:00.034552', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:00:00.027247', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:05:00.026789', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:10:00.024385', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:15:00.026206', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:20:00.075014', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:25:00.03681', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:30:00.028096', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:35:00.027056', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:40:00.028901', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:45:00.026909', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:50:00.073847', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '08:55:00.037218', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:00:00.080666', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:00:00.08192', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:05:00.031267', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:10:00.064608', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:15:00.041994', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:20:00.08807', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:25:00.03747', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:30:00.080985', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:31:00.02795', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:35:00.042809', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:40:00.05484', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:45:00.046899', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:50:00.046487', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 't': '09:55:00.036583', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:00:01.631425', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:05:00.02887', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:10:00.021687', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:15:00.024365', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:20:00.099199', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:25:00.036068', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:30:00.052652', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:35:00.028388', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:40:00.027243', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:45:00.025373', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:50:00.075682', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '07:55:00.02712', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:00:00.046842', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:05:00.027952', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:10:00.037403', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:15:00.030709', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:20:00.077279', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:25:00.023948', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:30:00.035764', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:35:00.025905', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:40:00.023225', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:45:00.030387', 'n': 9, 'b': 9, 'pend': 9, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:50:00.086587', 'n': 9, 'b': 9, 'pend': 9, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '08:55:00.033876', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:00:00.104281', 'n': 8, 'b': 8, 'pend': 8, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:00:00.104749', 'n': 8, 'b': 8, 'pend': 8, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:05:00.034851', 'n': 8, 'b': 8, 'pend': 8, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:10:00.040892', 'n': 8, 'b': 8, 'pend': 8, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:15:00.044133', 'n': 9, 'b': 9, 'pend': 9, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:20:00.09821', 'n': 9, 'b': 9, 'pend': 9, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:25:00.082844', 'n': 9, 'b': 9, 'pend': 9, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:30:00.048838', 'n': 8, 'b': 8, 'pend': 8, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:31:00.028991', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:35:00.080655', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:40:00.056423', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:45:00.065607', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:50:00.065591', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 't': '09:55:00.072435', 'n': 9, 'b': 9, 'pend': 9, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:00:01.642245', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:05:00.048061', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:10:00.044242', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:15:00.027026', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:20:00.072681', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:25:00.044581', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:30:00.032383', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:35:00.033766', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:40:00.021597', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:45:00.025056', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:50:00.180205', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '07:55:00.027608', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:00:00.039869', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:05:00.020698', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:10:00.033853', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:15:00.030009', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:20:00.07521', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:25:00.033548', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:30:00.02198', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:35:00.02776', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:40:00.029916', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:45:00.025658', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:50:00.078434', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '08:55:00.025102', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:00:00.128756', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:00:00.129178', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:05:00.031445', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:10:00.041237', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:15:00.035916', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:20:00.076851', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:25:00.043646', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:30:00.066225', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:31:00.027131', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:35:00.082202', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:40:00.066806', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:45:00.072197', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:50:00.062807', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 't': '09:55:00.059018', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:00:01.688627', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:05:00.035688', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:10:00.029831', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:15:00.030642', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:20:00.097908', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:25:00.042964', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:30:00.04371', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:35:00.031261', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:40:00.033731', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:45:00.153686', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:50:00.106119', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '07:55:00.036724', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:00:00.05487', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:05:00.047913', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:10:00.047158', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:15:00.024896', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:20:00.108477', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:25:00.028275', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:30:00.029563', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:35:00.052707', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:40:00.029247', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:45:00.031961', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:50:00.103904', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '08:55:00.028344', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:00:00.080483', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:00:00.08511', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:05:00.029729', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:10:00.040963', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:15:00.051226', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:20:00.08448', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:25:00.042629', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:30:00.047827', 'n': 5, 'b': 5, 'pend': 5, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:31:00.027907', 'n': 8, 'b': 8, 'pend': 8, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:35:00.097805', 'n': 11, 'b': 11, 'pend': 11, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:40:00.065788', 'n': 9, 'b': 9, 'pend': 9, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:45:00.088903', 'n': 11, 'b': 11, 'pend': 11, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:50:00.073255', 'n': 10, 'b': 10, 'pend': 10, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 't': '09:55:00.069681', 'n': 11, 'b': 11, 'pend': 11, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:00:01.694504', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:05:00.028619', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:10:00.022438', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:15:00.027048', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:20:00.091607', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:25:00.025085', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:30:00.023289', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:35:00.02602', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:40:00.033181', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:45:00.024871', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:50:00.087878', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '07:55:00.027693', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:00:00.024135', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:05:00.026373', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:10:00.033223', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:15:00.02594', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:20:00.103209', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:25:00.031361', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:30:00.042652', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:35:00.051251', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:40:00.037997', 'n': 1, 'b': 1, 'pend': 1, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:45:00.025634', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:50:00.099586', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '08:55:00.032505', 'n': 2, 'b': 2, 'pend': 2, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:00:00.114032', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:00:00.114166', 'n': 3, 'b': 3, 'pend': 3, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:05:00.041433', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:10:00.03894', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:15:00.033355', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:20:00.102161', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:25:00.051376', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:30:00.050495', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:31:00.022663', 'n': 4, 'b': 4, 'pend': 4, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:35:00.080038', 'n': 6, 'b': 6, 'pend': 6, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:40:00.060229', 'n': 8, 'b': 8, 'pend': 8, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:45:00.08649', 'n': 7, 'b': 7, 'pend': 7, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:50:00.064084', 'n': 8, 'b': 8, 'pend': 8, 'pend_21_50': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 't': '09:55:00.05774', 'n': 8, 'b': 8, 'pend': 8, 'pend_21_50': 0}
+== A4. mi_ep_scan_log per scan_date (last 15 days)
+   {'scan_date': datetime.date(2026, 9, 21), 'n': 5499, 'names': 370, 'ticks': 38, 'graded_names': 10, 'graded_rows': 122, 'high_names': 2, 'pend': 1412, 'poly': 511, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 9, 22), 'n': 3336, 'names': 263, 'ticks': 38, 'graded_names': 6, 'graded_rows': 42, 'high_names': 1, 'pend': 628, 'poly': 271, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 9, 23), 'n': 3099, 'names': 238, 'ticks': 38, 'graded_names': 3, 'graded_rows': 39, 'high_names': 0, 'pend': 389, 'poly': 132, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 9, 24), 'n': 2298, 'names': 173, 'ticks': 38, 'graded_names': 2, 'graded_rows': 23, 'high_names': 0, 'pend': 219, 'poly': 192, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 9, 25), 'n': 3209, 'names': 230, 'ticks': 38, 'graded_names': 3, 'graded_rows': 22, 'high_names': 1, 'pend': 515, 'poly': 267, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 9, 28), 'n': 2977, 'names': 230, 'ticks': 38, 'graded_names': 3, 'graded_rows': 37, 'high_names': 1, 'pend': 252, 'poly': 112, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 9, 29), 'n': 3034, 'names': 267, 'ticks': 38, 'graded_names': 6, 'graded_rows': 69, 'high_names': 0, 'pend': 532, 'poly': 213, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 9, 30), 'n': 3277, 'names': 286, 'ticks': 38, 'graded_names': 1, 'graded_rows': 21, 'high_names': 0, 'pend': 431, 'poly': 187, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 10, 1), 'n': 2810, 'names': 244, 'ticks': 38, 'graded_names': 5, 'graded_rows': 73, 'high_names': 2, 'pend': 487, 'poly': 215, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 10, 2), 'n': 2975, 'names': 316, 'ticks': 38, 'graded_names': 1, 'graded_rows': 1, 'high_names': 0, 'pend': 460, 'poly': 100, 'rsu': 0}
+   {'scan_date': datetime.date(2026, 10, 5), 'n': 4618, 'names': 309, 'ticks': 38, 'graded_names': 18, 'graded_rows': 339, 'high_names': 3, 'pend': 872, 'poly': 844, 'rsu': 0}
+== A5. today's graded names (ep_score not null) and their adv_source
+   {'ticker': 'PBR', 's': 77.5, 'tier': 'HIGH', 'src': 'polygon_20d', 'rg': 21, 't': '07:25:00.046501'}
+   {'ticker': 'ITUB', 's': 65.0, 'tier': 'HIGH', 'src': 'polygon_20d', 'rg': 9, 't': '07:00:01.634062'}
+   {'ticker': 'NU', 's': 65.0, 'tier': 'HIGH', 'src': 'polygon_20d', 'rg': 13, 't': '07:00:01.634062'}
+   {'ticker': 'XP', 's': 58.8, 'tier': None, 'src': 'polygon_20d', 'rg': 3, 't': '07:00:01.634062'}
+   {'ticker': 'CRML', 's': 55.0, 'tier': None, 'src': 'polygon_20d', 'rg': 14, 't': '08:45:00.033402'}
+   {'ticker': 'RXO', 's': 52.5, 'tier': None, 'src': 'polygon_20d', 'rg': 4, 't': '07:05:00.035569'}
+   {'ticker': 'ALVO', 's': 50.0, 'tier': None, 'src': 'polygon_20d', 'rg': 11, 't': '07:40:00.025445'}
+   {'ticker': 'VIV', 's': 46.2, 'tier': None, 'src': 'polygon_20d', 'rg': 13, 't': '07:00:01.634062'}
+   {'ticker': 'PCVX', 's': 42.5, 'tier': None, 'src': 'polygon_20d', 'rg': 1, 't': '07:00:01.634062'}
+   {'ticker': 'AFYA', 's': 40.0, 'tier': None, 'src': 'polygon_20d', 'rg': 13, 't': '09:25:00.037288'}
+   {'ticker': 'PICS', 's': 33.8, 'tier': None, 'src': 'polygon_20d', 'rg': 7, 't': '09:31:00.031906'}
+   {'ticker': 'INTR', 's': 33.8, 'tier': None, 'src': 'polygon_20d', 'rg': 4, 't': '07:00:01.634062'}
+   {'ticker': 'DNA', 's': 33.8, 'tier': None, 'src': 'polygon_20d', 'rg': 17, 't': '09:50:00.062526'}
+   {'ticker': 'PAGS', 's': 33.8, 'tier': None, 'src': 'polygon_20d', 'rg': 5, 't': '07:00:01.634062'}
+   {'ticker': 'ELPC', 's': 33.8, 'tier': None, 'src': 'polygon_20d', 'rg': 15, 't': '09:35:00.058509'}
+   {'ticker': 'STNE', 's': 31.2, 'tier': None, 'src': 'polygon_20d', 'rg': 5, 't': '07:00:01.634062'}
+   {'ticker': 'TIMB', 's': 27.5, 'tier': None, 'src': 'polygon_20d', 'rg': 16, 't': '09:35:00.058509'}
+   {'ticker': 'SBS', 's': 27.5, 'tier': None, 'src': 'polygon_20d', 'rg': 5, 't': '07:25:00.046501'}
+== A6. ep scan job audit rows today
+   {'event_type': 'ep_adv_probe_synthesized', 'n': 94, 't0': '07:25:06.296033', 't1': '09:55:10.219917'}
+   {'event_type': 'job_recovery_sweep', 'n': 1, 't0': '12:04:33.268475', 't1': '12:04:33.268475'}
+== B1. orderliness now
+   {'n': 2132, 'n_ord': 106, 'n_eval_today': 106, 'n_ord_today': 106, 'last_upd': '2026-10-05 17:35:24.211751', 'mn': 0.13003718500173808, 'mx': 1.3697159997049488, 'n_live': 1910}
+     {'state': 'post_runup', 'n': 1831, 'n_ord': 69, 'eval_today': 69}
+     {'state': 'aged', 'n': 222, 'n_ord': 37, 'eval_today': 37}
+     {'state': 'coiled', 'n': 79, 'n_ord': 0, 'eval_today': 0}
+== B2. consolidation_readiness + dead_column audit rows (last 4 days)
+   {'t': '2026-10-05 17:30:04.966909', 'event_type': 'dead_column_detected', 's': 'mi_anticipation_consolidation.orderliness'}
+== B3. the first upsert of the column — when did the ALTER land (market-agent boot)?
+   {'t': '2026-10-04 17:06:32.420064', 'event_type': 'dual_account_boot_verified', 's': "Alpaca clients verified for modes=['paper', 'live']"}
+   {'t': '2026-10-04 15:02:31.176434', 'event_type': 'dual_account_boot_verified', 's': "Alpaca clients verified for modes=['paper', 'live']"}
+   {'t': '2026-10-04 14:10:55.781373', 'event_type': 'dual_account_boot_verified', 's': "Alpaca clients verified for modes=['paper', 'live']"}
+   {'t': '2026-10-04 13:03:00.98119', 'event_type': 'dual_account_boot_verified', 's': "Alpaca clients verified for modes=['paper', 'live']"}
+   {'t': '2026-10-04 12:29:40.949067', 'event_type': 'dual_account_boot_verified', 's': "Alpaca clients verified for modes=['paper', 'live']"}
+   {'t': '2026-10-04 03:24:34.427097', 'event_type': 'dual_account_boot_verified', 's': "Alpaca clients verified for modes=['paper', 'live']"}

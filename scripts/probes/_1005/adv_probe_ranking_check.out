@@ -1,0 +1,94 @@
+now ET: 2026-10-05 17:39:57.279421
+== C1. mi_ep_scan_log adv_source by month (has 'rs_universe' EVER appeared?)
+   {'m': datetime.date(2026, 4, 1), 'n': 661, 'rsu': 0, 'poly': 0, 'pend': 0, 'nul': 661, 'last_rsu': None}
+   {'m': datetime.date(2026, 5, 1), 'n': 10304, 'rsu': 0, 'poly': 10009, 'pend': 295, 'nul': 0, 'last_rsu': None}
+   {'m': datetime.date(2026, 6, 1), 'n': 6138, 'rsu': 0, 'poly': 6094, 'pend': 44, 'nul': 0, 'last_rsu': None}
+   {'m': datetime.date(2026, 7, 1), 'n': 5438, 'rsu': 0, 'poly': 5373, 'pend': 65, 'nul': 0, 'last_rsu': None}
+   {'m': datetime.date(2026, 8, 1), 'n': 20983, 'rsu': 0, 'poly': 7536, 'pend': 329, 'nul': 13118, 'last_rsu': None}
+   {'m': datetime.date(2026, 9, 1), 'n': 63947, 'rsu': 0, 'poly': 4509, 'pend': 11336, 'nul': 48102, 'last_rsu': None}
+   {'m': datetime.date(2026, 10, 1), 'n': 10403, 'rsu': 0, 'poly': 1159, 'pend': 1819, 'nul': 7425, 'last_rsu': None}
+== C2. mi_ep_shortlist_shadow whole history: adv_source + days whose board exceeded 20
+   {'d0': datetime.date(2026, 8, 24), 'd1': datetime.date(2026, 10, 5), 'n': 6941, 'real_adv': 0, 'days': 30}
+   board>20: {'scan_date': datetime.date(2026, 9, 17), 'mb': 23, 'ticks_over_20': 2}
+   board>20: {'scan_date': datetime.date(2026, 10, 5), 'mb': 27, 'ticks_over_20': 29}
+== C3. mi_stock_scores: when are a score_date's rows written? (columns)
+   ['ticker', 'score_date', 'rs_1m', 'rs_3m', 'rs_6m', 'rs_composite', 'rs_rank', 'sector', 'adv_20', 'market_cap', 'sma_10', 'sma_20', 'sma_50', 'close', 'raw_1m', 'raw_3m', 'raw_6m', 'sma_40']
+  rs job audit rows last 3 days:
+     {'t': '2026-10-05 17:12:04.886772', 'event_type': 'rs_deterioration', 's': 'RS deterioration (per-name, on-demand): UMAC 83→31 (-52) · ORKA 76→39 (-37) · ANRO 45→27 (-18) · CRSR 97→0 (-97) · APPS '}
+     {'t': '2026-10-05 17:08:36.372681', 'event_type': 'theme_merge_pairs_proposed', 's': 'Arm B Stage A: 8 candidate pair(s) for adjudication'}
+     {'t': '2026-10-05 17:00:22.174957', 'event_type': 'rs_extreme_return', 's': '6 tickers cleared legacy heuristic ceilings — sample: MRNA, PSKY, SAIQ, SVRN, TJGC, USDE'}
+     {'t': '2026-10-05 12:06:10.232389', 'event_type': 'paper_rehearsal_687_end', 's': '#687 paper rehearsal cleanup: deleted 2 row(s); residue 0'}
+     {'t': '2026-10-05 10:34:55.097837', 'event_type': 'paper_rehearsal_687_state', 's': '#687 paper rehearsal state'}
+     {'t': '2026-10-05 10:34:55.095631', 'event_type': 'paper_rehearsal_687_state', 's': '#687 paper rehearsal state'}
+     {'t': '2026-10-05 10:34:22.44322', 'event_type': 'paper_rehearsal_687_state', 's': '#687 paper rehearsal state'}
+     {'t': '2026-10-05 10:34:21.395401', 'event_type': 'paper_rehearsal_687_state', 's': '#687 paper rehearsal state'}
+== C4. how many of today's gap names WERE in yesterday's (10-02) RS universe with an ADV?
+   {'n': 36, 'in_rsu_prevday': 19}
+== C5. the 09:20 tick's shortlist order (rank_by_prescore, theme flag, ticker) — what decided the cut
+   {'rp': 1, 'rg': 17, 'ticker': 'PBR', 'th': True, 'src': 'pending', 'gap': Decimal('10.8'), 'sl': True}
+   {'rp': 2, 'rg': 6, 'ticker': 'XP', 'th': True, 'src': 'pending', 'gap': Decimal('18.1'), 'sl': True}
+   {'rp': 3, 'rg': 19, 'ticker': 'AFYA', 'th': False, 'src': 'pending', 'gap': Decimal('10.1'), 'sl': True}
+   {'rp': 4, 'rg': 11, 'ticker': 'AGBK', 'th': False, 'src': 'pending', 'gap': Decimal('14.6'), 'sl': True}
+   {'rp': 5, 'rg': 8, 'ticker': 'CMC', 'th': False, 'src': 'pending', 'gap': Decimal('15.0'), 'sl': True}
+   {'rp': 6, 'rg': 20, 'ticker': 'CRML', 'th': False, 'src': 'pending', 'gap': Decimal('10.0'), 'sl': True}
+   {'rp': 7, 'rg': 15, 'ticker': 'ELPC', 'th': False, 'src': 'pending', 'gap': Decimal('11.0'), 'sl': True}
+   {'rp': 8, 'rg': 23, 'ticker': 'GRML', 'th': False, 'src': 'pending', 'gap': Decimal('9.6'), 'sl': True}
+   {'rp': 9, 'rg': 5, 'ticker': 'INTR', 'th': False, 'src': 'pending', 'gap': Decimal('18.8'), 'sl': True}
+   {'rp': 10, 'rg': 22, 'ticker': 'INTT', 'th': False, 'src': 'pending', 'gap': Decimal('9.8'), 'sl': True}
+   {'rp': 11, 'rg': 10, 'ticker': 'ITUB', 'th': False, 'src': 'pending', 'gap': Decimal('14.7'), 'sl': True}
+   {'rp': 12, 'rg': 14, 'ticker': 'NU', 'th': False, 'src': 'pending', 'gap': Decimal('12.5'), 'sl': True}
+   {'rp': 13, 'rg': 12, 'ticker': 'PAGS', 'th': False, 'src': 'pending', 'gap': Decimal('14.2'), 'sl': True}
+   {'rp': 14, 'rg': 18, 'ticker': 'PBM', 'th': False, 'src': 'pending', 'gap': Decimal('10.2'), 'sl': True}
+   {'rp': 15, 'rg': 1, 'ticker': 'PCVX', 'th': False, 'src': 'pending', 'gap': Decimal('57.9'), 'sl': True}
+   {'rp': 16, 'rg': 13, 'ticker': 'PICS', 'th': False, 'src': 'pending', 'gap': Decimal('12.7'), 'sl': True}
+   {'rp': 17, 'rg': 21, 'ticker': 'PLRZ', 'th': False, 'src': 'pending', 'gap': Decimal('9.9'), 'sl': True}
+   {'rp': 18, 'rg': 2, 'ticker': 'PTC', 'th': False, 'src': 'pending', 'gap': Decimal('36.0'), 'sl': True}
+   {'rp': 19, 'rg': 4, 'ticker': 'RXO', 'th': False, 'src': 'pending', 'gap': Decimal('23.0'), 'sl': True}
+   {'rp': 20, 'rg': 9, 'ticker': 'SBS', 'th': False, 'src': 'pending', 'gap': Decimal('14.7'), 'sl': True}
+   {'rp': 21, 'rg': 3, 'ticker': 'SDEV', 'th': False, 'src': 'pending', 'gap': Decimal('31.3'), 'sl': False}
+   {'rp': 22, 'rg': 7, 'ticker': 'STNE', 'th': False, 'src': 'pending', 'gap': Decimal('15.5'), 'sl': False}
+   {'rp': 23, 'rg': 24, 'ticker': 'TIMB', 'th': False, 'src': 'pending', 'gap': Decimal('9.4'), 'sl': False}
+   {'rp': 24, 'rg': 16, 'ticker': 'VIV', 'th': False, 'src': 'pending', 'gap': Decimal('10.9'), 'sl': False}
+== C6. names today that were cut at the rank-20 line on some tick and NEVER graded all day
+   {'ticker': 'SDEV', 'rows': 36, 'max_gap': 50.53, 'max_rv': 25.16, 'max_proj': 654.2, 'best_gap_rank': 2, 'reasons': 'already up 402% in prior 5 days (extended) | filter:universe_below_gap_floor: decided gap 0.0% < 9.0% aft | filter:universe_below_gap_floor: decided gap 1.3% < 9.0% aft | outside top-20 shortlist (prescore rank 21, gap 31.3%) | outside top-20 shortlist (prescore rank 22, gap 27.3%)'}
+   {'ticker': 'SVRN', 'rows': 38, 'max_gap': 20.31, 'max_rv': 0.06, 'max_proj': 0.9, 'best_gap_rank': 7, 'reasons': 'filter:pm_rvol_too_low: pm_rvol=0.40x (today 2,744 / baselin | filter:pm_rvol_too_low: pm_rvol=0.41x (today 2,744 / baselin | filter:pm_rvol_too_low: pm_rvol=0.42x (today 2,744 / baselin | filter:pm_rvol_too_low: pm_rvol=0.44x (today 2,744 / baselin | filter:pm_rvol_too_low: pm_rvol=0.45x (today 2,744 / baselin | filter:pm_rvol_too_low: pm_rvol=0.47x (today 2,744 / baselin | filter:pm_rvol_too_low: pm_rvol=0.48x (today 2,744 / baselin | filter:pm_rvol_too_low: pm_rvol=0.53x (today 2,011 / baselin | filter:pm_rvol_too_low: pm_rvol=0.57x (today 2,011 / baselin | filter:pm_rvol_too_low: pm_rvol=0.57x (today 2,744 / baselin | filter:pm_rvol_too_low: pm_rvol=0.59x (today 2,311 / baselin | filter:pm_rvol_too_low: pm_rvol=0.62x (today 2,311 / baselin | filter:pm_rvol_too_low: pm_rvol=0.63x (today 1,858 / baselin | filter:pm_rvol_too_low: pm_rvol=0.64x (today 2,744 / baselin | filter:pm_rvol_too_low: pm_rvol=0.67x (today 2,744 / baselin | filter:session_rvol_too_low: session_rvol=0.55x (today 11,10 | filter:universe_below_gap_floor: decided gap 7.3% < 9.0% aft | filter:universe_below_gap_floor: decided gap 8.2% < 9.0% aft | filter:universe_below_gap_floor: decided gap 8.4% < 9.0% aft | filter:universe_below_gap_floor: decided gap 8.9% < 9.0% aft | outside top-20 shortlist (prescore rank 21, gap 12.5%) | outside top-20 shortlist (prescore rank 21, gap 19.3%) | outside top-20 shortlist (prescore rank 21, gap 20.3%) | outside top-20 shortlist (prescore rank 22, gap 13.3%)'}
+   {'ticker': 'XRPN', 'rows': 18, 'max_gap': 19.19, 'max_rv': 2.56, 'max_proj': 66.6, 'best_gap_rank': 8, 'reasons': 'filter:universe_below_gap_floor: decided gap 5.5% < 9.0% aft | filter:universe_below_gap_floor: decided gap 6.0% < 9.0% aft | filter:universe_below_gap_floor: decided gap 6.4% < 9.0% aft | filter:universe_below_gap_floor: decided gap 6.8% < 9.0% aft | filter:universe_below_gap_floor: decided gap 7.6% < 9.0% aft | filter:universe_below_gap_floor: decided gap 7.8% < 9.0% aft | filter:universe_below_gap_floor: decided gap 7.9% < 9.0% aft | outside top-20 shortlist (prescore rank 22, gap 11.6%) | outside top-20 shortlist (prescore rank 22, gap 12.1%) | outside top-20 shortlist (prescore rank 24, gap 19.2%) | outside top-20 shortlist (prescore rank 25, gap 12.0%) | outside top-20 shortlist (prescore rank 25, gap 15.9%) | outside top-20 shortlist (prescore rank 27, gap 9.1%)'}
+   {'ticker': 'UGP', 'rows': 32, 'max_gap': 12.35, 'max_rv': 0.09, 'max_proj': 1.4, 'best_gap_rank': 15, 'reasons': 'filter:universe_below_gap_floor: decided gap 2.0% < 9.0% aft | filter:universe_below_gap_floor: decided gap 4.7% < 9.0% aft | filter:universe_below_gap_floor: decided gap 5.5% < 9.0% aft | filter:universe_below_gap_floor: decided gap 5.6% < 9.0% aft | filter:universe_below_gap_floor: decided gap 6.7% < 9.0% aft | filter:universe_below_gap_floor: decided gap 7.7% < 9.0% aft | filter:universe_below_gap_floor: decided gap 8.1% < 9.0% aft | filter:universe_below_gap_floor: decided gap 8.3% < 9.0% aft | filter:universe_below_gap_floor: decided gap 8.7% < 9.0% aft | outside top-20 shortlist (prescore rank 21, gap 10.7%) | outside top-20 shortlist (prescore rank 21, gap 10.9%) | outside top-20 shortlist (prescore rank 21, gap 11.3%) | outside top-20 shortlist (prescore rank 22, gap 10.7%) | outside top-20 shortlist (prescore rank 22, gap 11.3%) | outside top-20 shortlist (prescore rank 23, gap 11.3%) | outside top-20 shortlist (prescore rank 23, gap 12.3%) | outside top-20 shortlist (prescore rank 23, gap 9.9%) | outside top-20 shortlist (prescore rank 24, gap 11.3%) | routine catalyst, gap 9.3% | routine catalyst, gap 9.4% | routine catalyst, gap 9.9%'}
+   {'ticker': 'VINP', 'rows': 17, 'max_gap': 10.24, 'max_rv': 0.6, 'max_proj': 9.4, 'best_gap_rank': 18, 'reasons': 'filter:universe_below_gap_floor: decided gap 10.2% < 9.0% af | filter:universe_below_gap_floor: decided gap 5.9% < 9.0% aft | filter:universe_below_gap_floor: decided gap 6.3% < 9.0% aft | filter:universe_below_gap_floor: decided gap 6.5% < 9.0% aft | filter:universe_below_gap_floor: decided gap 7.0% < 9.0% aft | filter:universe_below_gap_floor: decided gap 7.2% < 9.0% aft | filter:universe_below_gap_floor: decided gap 8.2% < 9.0% aft | outside top-20 shortlist (prescore rank 21, gap 9.7%) | outside top-20 shortlist (prescore rank 22, gap 10.2%) | outside top-20 shortlist (prescore rank 22, gap 9.7%) | outside top-20 shortlist (prescore rank 23, gap 9.7%) | outside top-20 shortlist (prescore rank 25, gap 9.7%) | quality filter: filter:adv_too_low: $400,061'}
+== C7. SDEV today, every scan-log row
+   {'t': '07:00:01.634062', 'gap_pct': 47.06, 'rel_volume': 14.95, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:05:00.035569', 'gap_pct': 40.78, 'rel_volume': 15.47, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:10:00.04048', 'gap_pct': 47.84, 'rel_volume': 15.93, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:15:00.032804', 'gap_pct': 43.05, 'rel_volume': 16.16, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:20:00.091133', 'gap_pct': 47.99, 'rel_volume': 16.4, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:25:00.046501', 'gap_pct': 48.38, 'rel_volume': 16.96, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:30:00.027665', 'gap_pct': 50.28, 'rel_volume': 17.21, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:35:00.032772', 'gap_pct': 50.53, 'rel_volume': 17.41, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:40:00.025445', 'gap_pct': 47.99, 'rel_volume': 17.62, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:45:00.179038', 'gap_pct': 45.72, 'rel_volume': 17.84, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:50:00.208963', 'gap_pct': 42.24, 'rel_volume': 18.07, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '07:55:00.038853', 'gap_pct': 41.84, 'rel_volume': 18.37, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:00:00.037613', 'gap_pct': 44.65, 'rel_volume': 18.5, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:05:00.031049', 'gap_pct': 49.02, 'rel_volume': 18.82, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:10:00.021669', 'gap_pct': 44.12, 'rel_volume': 19.08, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:15:00.031346', 'gap_pct': 40.11, 'rel_volume': 19.3, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:20:00.095603', 'gap_pct': 41.04, 'rel_volume': 19.48, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:25:00.03114', 'gap_pct': 40.37, 'rel_volume': 19.6, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:30:00.03637', 'gap_pct': 38.77, 'rel_volume': 19.79, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:35:00.034571', 'gap_pct': 30.75, 'rel_volume': 20.09, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:40:00.030698', 'gap_pct': 33.69, 'rel_volume': 20.59, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:45:00.033402', 'gap_pct': 34.06, 'rel_volume': 20.76, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:50:00.077249', 'gap_pct': 35.03, 'rel_volume': 20.92, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '08:55:00.028171', 'gap_pct': 33.56, 'rel_volume': 21.01, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '09:00:00.090071', 'gap_pct': 34.83, 'rel_volume': 21.05, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '09:00:00.090236', 'gap_pct': 34.83, 'rel_volume': 21.05, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '09:05:00.032227', 'gap_pct': 39.17, 'rel_volume': 21.27, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '09:10:00.051495', 'gap_pct': 38.37, 'rel_volume': 21.4, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '09:15:00.043437', 'gap_pct': 36.58, 'rel_volume': 21.52, 'rank_by_gap': 2, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '09:20:00.087678', 'gap_pct': 31.28, 'rel_volume': 21.22, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'outside top-20 shortlist (prescore rank 21, gap 31.3%)', 'ep_score': None}
+   {'t': '09:25:00.037288', 'gap_pct': 27.28, 'rel_volume': 21.38, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'outside top-20 shortlist (prescore rank 22, gap 27.3%)', 'ep_score': None}
+   {'t': '09:30:00.047703', 'gap_pct': 30.55, 'rel_volume': 21.5, 'rank_by_gap': 3, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '09:31:00.031906', 'gap_pct': 17.78, 'rel_volume': 22.94, 'rank_by_gap': 6, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}
+   {'t': '09:35:00.058509', 'gap_pct': 1.34, 'rel_volume': 0.19, 'rank_by_gap': None, 'adv_source': 'pending', 'why': 'filter:universe_below_gap_floor: decided gap 1.3% < 9.0% after real-time confirm (recorded only)', 'ep_score': None}
+   {'t': '09:40:00.087126', 'gap_pct': 0.0, 'rel_volume': 0.19, 'rank_by_gap': None, 'adv_source': 'pending', 'why': 'filter:universe_below_gap_floor: decided gap 0.0% < 9.0% after real-time confirm (recorded only)', 'ep_score': None}
+   {'t': '09:45:00.051893', 'gap_pct': 29.95, 'rel_volume': 25.16, 'rank_by_gap': 4, 'adv_source': 'polygon_20d', 'why': 'already up 402% in prior 5 days (extended)', 'ep_score': None}

@@ -1,0 +1,32 @@
+tonight 2026-10-05 prior 2026-10-02
+== HUT tonight: [] | prior night: [{'name': 'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting', 'stage': 'Fading'}]
+== CIFR tonight: [] | prior night: [{'name': 'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting', 'stage': 'Fading'}]
+== rule B retirements: prior-night stage / members -> tonight's removals
+  Financial Data & Advisory/Capital Markets Platforms          prior=Nascent/3 removed_tonight=[('PS', "Description 'Financial Services / Asset ")]
+  AI Data Services & GPU Cloud Platforms                       prior=Nascent/3 removed_tonight=[]
+  Auto & Truck Dealership Retail Chains                        prior=Fading/2 removed_tonight=[]
+  Bitcoin Balance Sheet Proxies                                prior=Mainstream/2 removed_tonight=[('MSTR', "rehome: moved to 'Bitcoin Treasury & Cry")]
+  Bitcoin Miners Pivoting to AI/HPC Data Center Hosting        prior=Fading/2 removed_tonight=[]
+  Coal Mining Producers                                        prior=Fading/2 removed_tonight=[]
+  Consumer PC & Gaming Hardware Refresh Cycle                  prior=Fading/2 removed_tonight=[]
+  Cruise & Expedition Travel Operators                         prior=Fading/2 removed_tonight=[]
+  Defense & Space Systems Satellite Solutions                  prior=Nascent/3 removed_tonight=[]
+  Direct-to-Consumer Health & Wellness Subscription Brands     prior=Mainstream/2 removed_tonight=[]
+  Global IT Services Outsourcing & Digital Transformation Cons prior=Fading/4 removed_tonight=[('GIB', "rehome: moved to 'IT Consulting & Busine"), ('G', "rehome: moved to 'IT Consulting & Busine")]
+  Identity & Access Management Security Software               prior=Mainstream/3 removed_tonight=[('RDVT', "Description 'Identity intelligence, anal")]
+  Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound    prior=Fading/3 removed_tonight=[('TDS', "Description 'Communication Services / Te")]
+  Legal, Tax & Professional Information Analytics              prior=Fading/2 removed_tonight=[]
+  Media Streaming & Entertainment Content Turnaround           prior=Fading/3 removed_tonight=[]
+  Renewable & Specialty Fuels Chemical Producers               prior=Fading/2 removed_tonight=[]
+  Silver Producers & Streaming Momentum (SVM, AGI, MUX)        prior=Nascent/3 removed_tonight=[]
+  Small Modular Reactor & Advanced Nuclear Fission Technology  prior=Nascent/4 removed_tonight=[]
+  US Regional Bank Laggards Rate-Curve Basket                  prior=Nascent/9 removed_tonight=[]
+  Vertical Industry Infrastructure & Insurance Software        prior=Fading/2 removed_tonight=[]
+made small tonight (had >=3 members last night): 10 of 20
+== validator spend per night (theme_validation)
+   {'d': datetime.date(2026, 9, 28), 'model': 'claude-sonnet-5', 'n': 137, 'usd': Decimal('0.189')}
+   {'d': datetime.date(2026, 9, 29), 'model': 'claude-sonnet-5-5', 'n': 5, 'usd': Decimal('0.006')}
+   {'d': datetime.date(2026, 9, 30), 'model': 'claude-sonnet-5-5', 'n': 136, 'usd': Decimal('0.274')}
+   {'d': datetime.date(2026, 10, 1), 'model': 'claude-sonnet-5-5', 'n': 13, 'usd': Decimal('0.025')}
+   {'d': datetime.date(2026, 10, 2), 'model': 'claude-sonnet-5-5', 'n': 146, 'usd': Decimal('0.267')}
+   {'d': datetime.date(2026, 10, 5), 'model': 'claude-sonnet-5-5', 'n': 151, 'usd': Decimal('0.214')}

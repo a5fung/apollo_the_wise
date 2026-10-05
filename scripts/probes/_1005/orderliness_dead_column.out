@@ -1,0 +1,79 @@
+now ET: 2026-10-05 17:36:47.73437
+== running code: upsert_consolidation writes orderliness? True
+== table: {'n': 2132, 'n_ord': 106, 'last_upd': '2026-10-05 17:35:24.211751', 'n_upd_today': 106, 'n_ord_today': 106, 'n_eval_today': 106}
+== rows written per updated_at day (last 8 days)
+   {'d': datetime.date(2026, 9, 28), 'n': 12, 'n_ord': 0, 'mn': None, 'mx': None}
+   {'d': datetime.date(2026, 9, 29), 'n': 7, 'n_ord': 0, 'mn': None, 'mx': None}
+   {'d': datetime.date(2026, 9, 30), 'n': 23, 'n_ord': 0, 'mn': None, 'mx': None}
+   {'d': datetime.date(2026, 10, 1), 'n': 22, 'n_ord': 0, 'mn': None, 'mx': None}
+   {'d': datetime.date(2026, 10, 2), 'n': 23, 'n_ord': 0, 'mn': None, 'mx': None}
+   {'d': datetime.date(2026, 10, 5), 'n': 106, 'n_ord': 106, 'mn': 0.13003718500173808, 'mx': 1.3697159997049488}
+== today's scored sample
+   {'ticker': 'CAPR', 'state': 'aged', 'orderliness': 0.8532520377658435, 't': datetime.datetime(2026, 10, 5, 17, 35, 24, 211751)}
+   {'ticker': 'ZLAB', 'state': 'aged', 'orderliness': 0.8858651827042577, 't': datetime.datetime(2026, 10, 5, 17, 35, 24, 210757)}
+   {'ticker': 'CORT', 'state': 'aged', 'orderliness': 0.4020385678674774, 't': datetime.datetime(2026, 10, 5, 17, 35, 24, 207788)}
+   {'ticker': 'VEEV', 'state': 'aged', 'orderliness': 0.6725501314056544, 't': datetime.datetime(2026, 10, 5, 17, 35, 24, 202085)}
+   {'ticker': 'SPSC', 'state': 'aged', 'orderliness': 0.8355077912202697, 't': datetime.datetime(2026, 10, 5, 17, 35, 24, 195111)}
+   {'ticker': 'TRMB', 'state': 'aged', 'orderliness': 0.6907108896760866, 't': datetime.datetime(2026, 10, 5, 17, 35, 24, 193717)}
+   {'ticker': 'CNMD', 'state': 'aged', 'orderliness': 0.7383274400296987, 't': datetime.datetime(2026, 10, 5, 17, 35, 24, 192219)}
+   {'ticker': 'PAYC', 'state': 'aged', 'orderliness': 0.9312902644947698, 't': datetime.datetime(2026, 10, 5, 17, 35, 24, 190602)}
+== job audit rows today (dead-column sweep / scan / post-nightly)
+   2026-10-05 17:30:04.966909 dead_column_detected | mi_anticipation_consolidation.orderliness
+   2026-10-05 17:35:04.899889 anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+   2026-10-05 17:35:04.903177 anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+   2026-10-05 17:35:04.905426 anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+   2026-10-05 17:35:04.907701 anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+   2026-10-05 17:35:05.101529 anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+   2026-10-05 17:35:05.104981 anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+   2026-10-05 17:35:05.312613 anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+   2026-10-05 17:35:05.681267 anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+   2026-10-05 17:35:05.684428 anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+   2026-10-05 17:35:05.686921 anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+   2026-10-05 17:35:05.727355 anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+   2026-10-05 17:35:05.730318 anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+== all dead_column_detected ever
+   2026-08-08 14:32:19.678649 mi_stock_scores.market_cap
+   2026-08-18 17:30:00.906525 mi_alert_rank_shadow.expct_classifiable_frac
+   2026-08-19 17:30:00.696470 mi_alert_rank_shadow.ext_xadr_pregap
+   2026-08-19 17:30:00.698339 mi_alert_rank_shadow.base_days_raw40
+   2026-08-19 17:30:00.699697 mi_alert_rank_shadow.base_depth_raw40
+   2026-08-19 17:30:00.701305 mi_alert_rank_shadow.base_days_adr6
+   2026-08-19 17:30:00.702730 mi_alert_rank_shadow.base_depth_adr6
+   2026-08-19 17:30:00.704127 mi_alert_rank_shadow.base_net_disp_xadr
+   2026-08-19 17:30:00.705555 mi_alert_rank_shadow.base_lookback_bars
+   2026-08-24 17:30:04.268198 mi_live_trades.risk_dollars_actual
+   2026-08-31 17:30:03.781611 mi_ep_scan_log.days_since_prior_alert
+   2026-09-02 17:30:03.687428 mi_delayed_entry_trigger.ep_adr20_dollar
+   2026-09-02 17:30:03.689854 mi_delayed_entry_trigger.ep_adr20_n
+   2026-09-02 17:30:03.691763 mi_delayed_entry_trigger.stop_price_075
+   2026-09-02 17:30:03.693682 mi_delayed_entry_trigger.stop_width_pct_075
+   2026-09-02 17:30:03.695526 mi_delayed_entry_trigger.stop_price_100
+   2026-09-02 17:30:03.697450 mi_delayed_entry_trigger.stop_width_pct_100
+   2026-09-02 17:30:03.699422 mi_delayed_entry_trigger.day0_post_low
+   2026-09-02 17:30:03.701306 mi_delayed_entry_trigger.day0_post_high
+   2026-09-02 17:30:03.703320 mi_delayed_entry_trigger.realized_r_075
+   2026-09-02 17:30:03.705216 mi_delayed_entry_trigger.realized_r_trail_075
+   2026-09-02 17:30:03.707251 mi_delayed_entry_trigger.mfe_r_075
+   2026-09-02 17:30:03.709388 mi_delayed_entry_trigger.mae_r_075
+   2026-09-02 17:30:03.711377 mi_delayed_entry_trigger.realized_r_100
+   2026-09-02 17:30:03.713265 mi_delayed_entry_trigger.realized_r_trail_100
+   2026-09-02 17:30:03.715244 mi_delayed_entry_trigger.mfe_r_100
+   2026-09-02 17:30:03.717215 mi_delayed_entry_trigger.mae_r_100
+   2026-09-03 17:30:03.558667 mi_delayed_entry_trigger.stop_price_025
+   2026-09-03 17:30:03.561592 mi_delayed_entry_trigger.stop_width_pct_025
+   2026-09-03 17:30:03.563972 mi_delayed_entry_trigger.realized_r_025
+   2026-09-03 17:30:03.566249 mi_delayed_entry_trigger.realized_r_trail_025
+   2026-09-03 17:30:03.568453 mi_delayed_entry_trigger.mfe_r_025
+   2026-09-03 17:30:03.572079 mi_delayed_entry_trigger.mae_r_025
+   2026-09-04 17:30:00.970006 mi_analyst_estimates.fiscal_quarter
+   2026-09-04 17:30:00.971495 mi_analyst_estimates.fiscal_year
+   2026-09-07 17:30:11.844515 mi_gap_near_miss_replays.mark_r
+   2026-09-07 17:30:37.374085 mi_live_fill_counterfactuals.mark_r
+   2026-09-07 17:30:37.378736 mi_live_fill_counterfactuals.breakeven_arm_r
+   2026-09-14 17:30:08.671856 mi_flag_candidates.low_after_breakout
+   2026-10-05 17:30:04.966909 mi_anticipation_consolidation.orderliness
+== column add time proxy: pg_attribute exists? 1
+
+0c3a2901 #594 sample #3 rebuilt on REAL EP days (open >= 9% gap and >= 3x volume on the daily bars; HIGH alerts only; already-ruled dates dropped) — the first build counted pre-market spikes as gaps (his CHRN/AGX catch)
+HAS_5bf6ef85
+2026-10-05T16:02:29.686128479Z

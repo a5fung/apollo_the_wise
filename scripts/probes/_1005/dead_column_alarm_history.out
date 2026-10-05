@@ -1,0 +1,40 @@
+08-08 14:32  mi_stock_scores.market_cap                                   non-null now=0  first_nonnull_None=None
+08-18 17:30  mi_alert_rank_shadow.expct_classifiable_frac                 non-null now=292  first_nonnull_computed_at=2026-08-19 21:38:13.636250+00:00
+08-19 17:30  mi_alert_rank_shadow.ext_xadr_pregap                         non-null now=200  first_nonnull_computed_at=2026-08-19 21:38:13.636250+00:00
+08-19 17:30  mi_alert_rank_shadow.base_days_raw40                         non-null now=291  first_nonnull_computed_at=2026-08-19 21:38:13.636250+00:00
+08-19 17:30  mi_alert_rank_shadow.base_depth_raw40                        non-null now=291  first_nonnull_computed_at=2026-08-19 21:38:13.636250+00:00
+08-19 17:30  mi_alert_rank_shadow.base_days_adr6                          non-null now=291  first_nonnull_computed_at=2026-08-19 21:38:13.636250+00:00
+08-19 17:30  mi_alert_rank_shadow.base_depth_adr6                         non-null now=291  first_nonnull_computed_at=2026-08-19 21:38:13.636250+00:00
+08-19 17:30  mi_alert_rank_shadow.base_net_disp_xadr                      non-null now=291  first_nonnull_computed_at=2026-08-19 21:38:13.636250+00:00
+08-19 17:30  mi_alert_rank_shadow.base_lookback_bars                      non-null now=292  first_nonnull_computed_at=2026-08-19 21:38:13.636250+00:00
+08-24 17:30  mi_live_trades.risk_dollars_actual                           non-null now=12  first_nonnull_created_at=2026-08-27 13:31:10.808072+00:00
+08-31 17:30  mi_ep_scan_log.days_since_prior_alert                        non-null now=208  first_nonnull_created_at=2026-09-03 13:45:29.422651+00:00
+09-02 17:30  mi_delayed_entry_trigger.ep_adr20_dollar                     non-null now=96  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.ep_adr20_n                          non-null now=96  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.stop_price_075                      non-null now=96  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.stop_width_pct_075                  non-null now=96  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.stop_price_100                      non-null now=96  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.stop_width_pct_100                  non-null now=96  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.day0_post_low                       non-null now=44  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.day0_post_high                      non-null now=44  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.realized_r_075                      non-null now=62  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.realized_r_trail_075                non-null now=62  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.mfe_r_075                           non-null now=62  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.mae_r_075                           non-null now=62  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.realized_r_100                      non-null now=62  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.realized_r_trail_100                non-null now=62  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.mfe_r_100                           non-null now=62  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-02 17:30  mi_delayed_entry_trigger.mae_r_100                           non-null now=62  first_nonnull_created_at=2026-09-02 21:57:00.149688+00:00
+09-03 17:30  mi_delayed_entry_trigger.stop_price_025                      non-null now=95  first_nonnull_created_at=2026-09-03 22:05:27.460760+00:00
+09-03 17:30  mi_delayed_entry_trigger.stop_width_pct_025                  non-null now=95  first_nonnull_created_at=2026-09-03 22:05:27.460760+00:00
+09-03 17:30  mi_delayed_entry_trigger.realized_r_025                      non-null now=68  first_nonnull_created_at=2026-09-03 22:05:27.460760+00:00
+09-03 17:30  mi_delayed_entry_trigger.realized_r_trail_025                non-null now=68  first_nonnull_created_at=2026-09-03 22:05:27.460760+00:00
+09-03 17:30  mi_delayed_entry_trigger.mfe_r_025                           non-null now=68  first_nonnull_created_at=2026-09-03 22:05:27.460760+00:00
+09-03 17:30  mi_delayed_entry_trigger.mae_r_025                           non-null now=68  first_nonnull_created_at=2026-09-03 22:05:27.460760+00:00
+09-04 17:30  mi_analyst_estimates.fiscal_quarter                          non-null now=2066  first_nonnull_created_at=2026-09-04 22:12:24.449684+00:00
+09-04 17:30  mi_analyst_estimates.fiscal_year                             non-null now=2066  first_nonnull_created_at=2026-09-04 22:12:24.449684+00:00
+09-07 17:30  mi_gap_near_miss_replays.mark_r                              non-null now=1  first_nonnull_updated_at=2026-10-02 22:14:01.809747+00:00
+09-07 17:30  mi_live_fill_counterfactuals.mark_r                          non-null now=0  first_nonnull_None=None
+09-07 17:30  mi_live_fill_counterfactuals.breakeven_arm_r                 non-null now=30  first_nonnull_None=None
+09-14 17:30  mi_flag_candidates.low_after_breakout                        non-null now=2  first_nonnull_created_at=2026-09-15 21:25:03.639951+00:00
+10-05 17:30  mi_anticipation_consolidation.orderliness                    non-null now=106  first_nonnull_updated_at=2026-10-05 21:35:06.404545+00:00

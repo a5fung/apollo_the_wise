@@ -1,0 +1,28 @@
+rows: 25
+last_eval values: ['None']
+NULL orderliness: 0
+  PSIX   state=post_runup streak=1 today_pct=0.00045 ord=0.5487164656326908
+  AMDY   state=post_runup streak=1 today_pct=0.00134 ord=0.8730248323004285
+  EWY    state=post_runup streak=1 today_pct=0.00219 ord=0.8203390515903469
+  AMRX   state=post_runup streak=1 today_pct=0.00246 ord=0.13003718500173808
+  ABCL   state=post_runup streak=1 today_pct=0.00291 ord=0.200788432538376
+  SIG    state=post_runup streak=1 today_pct=0.00308 ord=0.43781840861268606
+  PLTR   state=post_runup streak=1 today_pct=0.00344 ord=0.5944543868047715
+  BLSH   state=post_runup streak=1 today_pct=0.00351 ord=0.46486837361381605
+  APA    state=post_runup streak=1 today_pct=0.00389 ord=0.6190912564017955
+  FLKR   state=post_runup streak=0 today_pct=0.00587 ord=0.8942298337917851
+  FEIM   state=post_runup streak=0 today_pct=0.00663 ord=0.33743234497991204
+  SAIL   state=post_runup streak=0 today_pct=0.00685 ord=0.4472913023049825
+  TGTX   state=post_runup streak=0 today_pct=0.007 ord=0.21751221638268822
+  AI     state=post_runup streak=0 today_pct=0.00727 ord=0.4365316768616887
+  LPG    state=post_runup streak=0 today_pct=0.00752 ord=0.6747625639313839
+  SVIX   state=post_runup streak=0 today_pct=0.00759 ord=0.6265832631703888
+  ASST   state=post_runup streak=0 today_pct=0.00766 ord=0.6334621896508229
+  SSL    state=post_runup streak=0 today_pct=0.00789 ord=1.117957123526306
+  NSIT   state=post_runup streak=0 today_pct=0.0079 ord=0.39293216726601854
+  ATAI   state=post_runup streak=0 today_pct=0.00823 ord=0.6725240829217003
+  BE     state=post_runup streak=0 today_pct=0.00865 ord=0.37671533404798285
+  HHH    state=post_runup streak=0 today_pct=0.00873 ord=0.18333239557147635
+  SNDK   state=post_runup streak=0 today_pct=0.0092 ord=0.4163274851075295
+  RNG    state=post_runup streak=0 today_pct=0.00996 ord=0.5518265150056213
+  INSP   state=post_runup streak=0 today_pct=0.01115 ord=0.2873992189385747

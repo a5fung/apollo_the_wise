@@ -1,0 +1,71 @@
+now ET: 2026-10-05 17:47:48.64997
+== 2026-09-17: prev score_date 2026-09-16, 2338 names with adv_20; ticks=38
+  09:45:00 board=21 repro_actual=True would-ADD=['XE'] would-DROP=['PSIX']
+  09:50:00 board=23 repro_actual=True would-ADD=['VELO', 'VICR', 'XE'] would-DROP=['PSIX', 'SECZ', 'USDE']
+  -- 2026-09-17: per-name max ep_score / tier that day, and alerts
+     PSIX   add@[] drop@['09:45', '09:50'] max_score=None graded_rows=0 tiers=None alerts=0 other_reasons=EP cooldown — alerted within last 60 days | filter:universe_below_gap_floor: decided gap 5.1%  | filter:universe_below_gap_floor: decided gap 6.5%  | filter:uni
+     SECZ   add@[] drop@['09:50'] max_score=33.8 graded_rows=7 tiers=None alerts=0 other_reasons=filter:universe_below_gap_floor: decided gap 5.2%  | filter:universe_below_gap_floor: decided gap 6.0%  | filter:universe_below_gap_floor: decided gap 7.6%  | f
+     USDE   add@[] drop@['09:50'] max_score=None graded_rows=0 tiers=None alerts=0 other_reasons=filter:session_rvol_too_low: session_rvol=0.41x (t | filter:session_rvol_too_low: session_rvol=0.69x (t | filter:universe_below_gap_floor: decided gap 3.8%  | f
+     VELO   add@['09:50'] drop@[] max_score=None graded_rows=0 tiers=None alerts=0 other_reasons=quality filter: filter:mcap_too_small: $353M < $50
+     VICR   add@['09:50'] drop@[] max_score=65.0 graded_rows=1 tiers=HIGH alerts=1 other_reasons=already scored earlier today
+     XE     add@['09:45', '09:50'] drop@[] max_score=36.2 graded_rows=1 tiers=None alerts=0 other_reasons=score 36 < bar 65 (catalyst=routine)
+== 2026-10-05: prev score_date 2026-10-02, 2365 names with adv_20; ticks=38
+  07:25:00 board=21 repro_actual=True would-ADD=['VIV'] would-DROP=['SVRN']
+  07:35:00 board=22 repro_actual=True would-ADD=['TIMB'] would-DROP=['SVRN']
+  07:40:00 board=21 repro_actual=True would-ADD=['VIV'] would-DROP=['SVRN']
+  07:55:00 board=22 repro_actual=True would-ADD=['UGP'] would-DROP=['SVRN']
+  08:00:00 board=23 repro_actual=True would-ADD=['TIMB', 'UGP'] would-DROP=['INTR', 'SVRN']
+  08:05:00 board=24 repro_actual=True would-ADD=['TIMB', 'UGP'] would-DROP=['INTR', 'PAGS']
+  08:10:00 board=22 repro_actual=True would-ADD=['TIMB'] would-DROP=['SVRN']
+  08:15:00 board=22 repro_actual=True would-ADD=['TIMB'] would-DROP=['SVRN']
+  08:20:00 board=24 repro_actual=True would-ADD=['TIMB', 'UGP'] would-DROP=['INTR', 'PAGS']
+  08:25:00 board=24 repro_actual=True would-ADD=['TIMB', 'UGP'] would-DROP=['INTR', 'PAGS']
+  08:30:00 board=24 repro_actual=True would-ADD=['TIMB', 'UGP'] would-DROP=['INTR', 'PAGS']
+  08:35:00 board=25 repro_actual=True would-ADD=['TIMB', 'VINP', 'XRPN'] would-DROP=['INTR', 'PAGS', 'SBS']
+  08:40:00 board=23 repro_actual=True would-ADD=['UGP', 'VINP'] would-DROP=['INTR', 'PAGS']
+  08:45:00 board=23 repro_actual=True would-ADD=['TIMB', 'UGP'] would-DROP=['INTR', 'PAGS']
+  08:50:00 board=23 repro_actual=True would-ADD=['TIMB', 'UGP'] would-DROP=['INTR', 'PAGS']
+  08:55:00 board=24 repro_actual=True would-ADD=['TIMB', 'VINP'] would-DROP=['INTR', 'PAGS']
+  09:00:00 board=27 repro_actual=True would-ADD=['STNE', 'TIMB', 'VINP', 'XRPN'] would-DROP=['GRML', 'INTR', 'PAGS', 'SBS']
+  09:00:00 board=27 repro_actual=True would-ADD=['STNE', 'TIMB', 'VINP', 'XRPN'] would-DROP=['GRML', 'INTR', 'PAGS', 'SBS']
+  09:05:00 board=21 repro_actual=True would-ADD=['VINP'] would-DROP=['INTR']
+  09:15:00 board=23 repro_actual=True would-ADD=['TIMB', 'VINP'] would-DROP=['INTR', 'PAGS']
+  09:20:00 board=24 repro_actual=True would-ADD=['SDEV', 'STNE', 'TIMB'] would-DROP=['GRML', 'INTR', 'PAGS']
+  09:25:00 board=25 repro_actual=True would-ADD=['SDEV', 'STNE', 'TIMB'] would-DROP=['GRML', 'INTR', 'PAGS']
+  09:30:00 board=22 repro_actual=True would-ADD=['XRPN'] would-DROP=['GRML']
+  09:31:00 board=22 repro_actual=True would-ADD=['XRPN'] would-DROP=['INTR']
+  09:35:00 board=21 repro_actual=True would-ADD=[] would-DROP=[]
+  09:40:00 board=24 repro_actual=True would-ADD=['UGP', 'VINP', 'XRPN'] would-DROP=['INTR', 'PAGS', 'SVRN']
+  09:45:00 board=25 repro_actual=True would-ADD=['TIMB', 'XRPN'] would-DROP=['INTR', 'PAGS']
+  09:50:00 board=23 repro_actual=True would-ADD=['TIMB'] would-DROP=['DNA']
+  09:55:00 board=23 repro_actual=True would-ADD=['TIMB'] would-DROP=['DNA']
+  -- 2026-10-05: per-name max ep_score / tier that day, and alerts
+     DNA    add@[] drop@['09:50', '09:55'] max_score=33.8 graded_rows=2 tiers=None alerts=0 other_reasons=score 34 < bar 65 (catalyst=routine)
+     GRML   add@[] drop@['09:00', '09:00', '09:20', '09:25', '09:30'] max_score=None graded_rows=0 tiers=None alerts=0 other_reasons=filter:pm_rvol_too_low: pm_rvol=0.20x (today 839,1 | filter:pm_rvol_too_low: pm_rvol=0.21x (today 960,6 | filter:pm_rvol_too_low: pm_rvol=0.22x (today 994,7 | f
+     INTR   add@[] drop@['08:00', '08:05', '08:20', '08:25', '08:30', '08:35']... max_score=33.8 graded_rows=38 tiers=None alerts=0 other_reasons=score 28 < bar 65 (catalyst=routine) | score 31 < bar 65 (catalyst=routine) | score 34 < bar 65 (catalyst=routine)
+     PAGS   add@[] drop@['08:05', '08:20', '08:25', '08:30', '08:35', '08:40']... max_score=33.8 graded_rows=38 tiers=None alerts=0 other_reasons=score 28 < bar 65 (catalyst=routine) | score 34 < bar 65 (catalyst=routine)
+     SBS    add@[] drop@['08:35', '09:00', '09:00'] max_score=27.5 graded_rows=32 tiers=None alerts=0 other_reasons=routine catalyst, gap 10.6% | routine catalyst, gap 11.9% | score 28 < bar 65 (catalyst=routine)
+     SDEV   add@['09:20', '09:25'] drop@[] max_score=None graded_rows=0 tiers=None alerts=0 other_reasons=already up 402% in prior 5 days (extended) | filter:universe_below_gap_floor: decided gap 0.0%  | filter:universe_below_gap_floor: decided gap 1.3% 
+     STNE   add@['09:00', '09:00', '09:20', '09:25'] drop@[] max_score=31.2 graded_rows=34 tiers=None alerts=0 other_reasons=score 28 < bar 65 (catalyst=routine) | score 31 < bar 65 (catalyst=routine)
+     SVRN   add@[] drop@['07:25', '07:35', '07:40', '07:55', '08:00', '08:10']... max_score=None graded_rows=0 tiers=None alerts=0 other_reasons=filter:pm_rvol_too_low: pm_rvol=0.40x (today 2,744 | filter:pm_rvol_too_low: pm_rvol=0.41x (today 2,744 | filter:pm_rvol_too_low: pm_rvol=0.42x (today 2,744 | f
+     TIMB   add@['07:35', '08:00', '08:05', '08:10', '08:15', '08:20']... drop@[] max_score=27.5 graded_rows=2 tiers=None alerts=0 other_reasons=filter:universe_below_gap_floor: decided gap 6.8%  | routine catalyst, gap 10.8% | routine catalyst, gap 11.1% | routine catalyst, gap 9.2% | score 28 < bar 65 
+     UGP    add@['07:55', '08:00', '08:05', '08:20', '08:25', '08:30']... drop@[] max_score=None graded_rows=0 tiers=None alerts=0 other_reasons=filter:universe_below_gap_floor: decided gap 2.0%  | filter:universe_below_gap_floor: decided gap 4.7%  | filter:universe_below_gap_floor: decided gap 5.5%  | f
+     VINP   add@['08:35', '08:40', '08:55', '09:00', '09:00', '09:05']... drop@[] max_score=None graded_rows=0 tiers=None alerts=0 other_reasons=filter:universe_below_gap_floor: decided gap 10.2% | filter:universe_below_gap_floor: decided gap 5.9%  | filter:universe_below_gap_floor: decided gap 6.3%  | f
+     VIV    add@['07:25', '07:40'] drop@[] max_score=46.2 graded_rows=6 tiers=None alerts=0 other_reasons=filter:universe_below_gap_floor: decided gap 7.5%  | filter:universe_below_gap_floor: decided gap 8.5%  | score 46 < bar 65 (catalyst=strong)
+     XRPN   add@['08:35', '09:00', '09:00', '09:30', '09:31', '09:40']... drop@[] max_score=None graded_rows=0 tiers=None alerts=0 other_reasons=filter:universe_below_gap_floor: decided gap 5.5%  | filter:universe_below_gap_floor: decided gap 6.0%  | filter:universe_below_gap_floor: decided gap 6.4%  | f
+== the 09:00 double tick: distinct scan_time_et in 09:00:00-09:00:59 per day (last 15 days)
+   {'scan_date': datetime.date(2026, 9, 21), 'n': 2}
+   {'scan_date': datetime.date(2026, 9, 22), 'n': 2}
+   {'scan_date': datetime.date(2026, 9, 23), 'n': 2}
+   {'scan_date': datetime.date(2026, 9, 24), 'n': 2}
+   {'scan_date': datetime.date(2026, 9, 25), 'n': 2}
+   {'scan_date': datetime.date(2026, 9, 28), 'n': 2}
+   {'scan_date': datetime.date(2026, 9, 29), 'n': 2}
+   {'scan_date': datetime.date(2026, 9, 30), 'n': 2}
+   {'scan_date': datetime.date(2026, 10, 1), 'n': 2}
+   {'scan_date': datetime.date(2026, 10, 2), 'n': 2}
+   {'scan_date': datetime.date(2026, 10, 5), 'n': 2}
+== ep alerts today
+   {'ticker': 'NU', 'ep_score': 65.0, 'score_tier': 'MODERATE', 't': '07:00:50.17605'}
+   {'ticker': 'PBR', 'ep_score': 77.5, 'score_tier': 'MODERATE', 't': '07:25:15.174968'}
+   {'ticker': 'ITUB', 'ep_score': 65.0, 'score_tier': 'MODERATE', 't': '09:45:17.319038'}

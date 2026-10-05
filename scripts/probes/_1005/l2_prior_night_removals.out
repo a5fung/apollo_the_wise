@@ -1,0 +1,72 @@
+== 2026-09-28: 14
+  17:02:24.113817 | MMSI removed from 'Orthopedic Surgical Devices & Instruments' by validation | Description: 'Medical device components, interventional products' — validation (claude-sonnet-5) flagged as not matching theme
+  17:02:56.541599 | AKAM removed from 'AI data-center power buildout' by validation | Description: 'Content delivery, web security, CDN' — validation (claude-sonnet-5) flagged as not matching theme
+  17:03:04.931534 | PAYC removed from 'Enterprise HR & Workforce Management SaaS' by validation | Description: 'Cloud HR software, payroll & HCM services' — validation (claude-sonnet-5) flagged as not matching theme
+  17:11:17.762757 | PG removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Household & Personal Products — Consumer packaged goods (beauty, grooming, household care)' — validation (claude-so
+  17:11:17.766834 | EPC removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Household & Personal Products — Wet shave, sun care, skin care products' — validation (claude-sonnet-5) flagged as 
+  17:11:17.770035 | MDLZ removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Confectioners — Snack foods & beverages manufacturing & distribution' — validation (claude-sonnet-5) flagged as not
+  17:11:17.772962 | PM removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Tobacco — Cigarettes, heat-not-burn, e-vapor, oral nicotine products' — validation (claude-sonnet-5) flagged as not
+  17:11:17.775937 | DEO removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Beverages - Wineries & Distilleries — Spirits & alcoholic beverages production, distribution' — validation (claude-
+  17:11:17.779159 | SENEA removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Canned & frozen produce, packaged foods' — validation (claude-sonnet-5) flagged as not matching theme
+  17:11:17.782289 | MICC removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Packaged Foods — Ice cream manufacturing & distribution' — validation (claude-sonnet-5) flagged as not matching the
+  17:11:17.785591 | SJM removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Packaged Foods — Coffee, peanut butter, jams & frozen foods' — validation (claude-sonnet-5) flagged as not matching
+  17:11:17.788821 | KHC removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Packaged Foods — Packaged food & beverage products' — validation (claude-sonnet-5) flagged as not matching theme
+  17:11:17.792107 | EL removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Household & Personal Products — Skincare, makeup, fragrance, hair care products' — validation (claude-sonnet-5) fla
+  17:11:17.795274 | UL removed from 'Value Retail & Grocery Wholesale Trade-Down Basket' by validation | Description: 'Consumer Defensive / Household & Personal Products — Beauty, personal care, home care FMCG' — validation (claude-sonnet-5) flagged as no
+== 2026-09-30: 11
+  17:01:30.747238 | SNOW removed from 'AI data-center power buildout' by validation | Description: 'Cloud data warehouse & analytics' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:02:08.941152 | SPB removed from 'Defensive Consumer Rotation & Trade-Down' by validation | Description: 'Consumer Defensive / Household & Personal Products — Household & personal care consumer products' — validation (claude-sonnet-5-5) flagg
+  17:02:16.042170 | SVRN removed from 'Digital Dollar & Crypto Payments Infrastructure' by validation | Description: 'AI agent infrastructure, decentralized asset control' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:02:23.170517 | LIFE removed from 'Digital Insurance Distribution & InsurTech Platforms' by validation | Description: 'Insurance third-party administrator, tech platform' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:02:27.249813 | MANE removed from 'Direct-to-Consumer Health & Wellness Subscription Brands' by validation | Description: 'Dermatologic therapeutics, hair loss treatment' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:03:22.966743 | SIMO removed from 'Pure-Play NAND/DRAM Memory Chip Makers' by validation | Description: 'NAND flash controllers, storage devices' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:03:23.721599 | SSL removed from 'Renewable & Specialty Fuels Chemical Producers' by validation | Description: 'Chemicals, fuels, bitumen production' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:03:30.903833 | SANM removed from 'Semiconductor Test, Yield & Assembly Supply Chain' by validation | Description: 'Electronics manufacturing services, assembly' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:04:05.977761 | LNG removed from 'Energy Supply Disruption: Middle East Geopolitical Risk' by validation | Description: 'LNG liquefaction infrastructure, energy export' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:04:05.981066 | XPRO removed from 'Energy Supply Disruption: Middle East Geopolitical Risk' by validation | Description: 'Energy / Oil & Gas Equipment & Services — Oil & gas well services equipment' — validation (claude-sonnet-5-5) flagged as not matching th
+  17:07:44.934082 | CNR removed from 'Coal Mining Producers' by validation | Description: 'Metallurgical & thermal coal mining, export' — validation (claude-sonnet-5-5) flagged as not matching theme
+== 2026-10-02: 13
+  17:01:24.035317 | VICR removed from 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers' by validation | Description: 'Modular power components, electrical conversion' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:01:49.322462 | RIO removed from 'Copper Mining & Production' by validation | Description: 'Basic Materials / Other Industrial Metals & Mining — Iron ore, aluminum, lithium & copper mining' — validation (claude-sonnet-5-5) flagg
+  17:02:01.710955 | INGM removed from 'Data Storage & Data Management Software/Hardware Leaders' by validation | Description: 'Technology / Information Technology Services — IT products & cloud services distribution' — validation (claude-sonnet-5-5) flagged as no
+  17:02:12.555320 | INOD removed from 'Emerging AI Compute & Cloud Infrastructure Platforms' by validation | Description: 'Technology / Information Technology Services — Data engineering, content annotation services' — validation (claude-sonnet-5-5) flagged a
+  17:02:25.547332 | NTLA removed from 'Genomics & DNA Sequencing Tools' by validation | Description: 'Gene editing, in vivo genome treatments' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:02:25.552580 | CRSP removed from 'Genomics & DNA Sequencing Tools' by validation | Description: 'Healthcare / Biotechnology — CRISPR gene editing therapies, genetic disease treatment' — validation (claude-sonnet-5-5) flagged as not m
+  17:03:21.638473 | DCO removed from 'Space Economy: Satellite Communications & Launch Services' by validation | Description: 'Aerospace & defense engineering, manufacturing' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:03:30.955199 | NAVN removed from 'Vertical Industry Infrastructure & Insurance Software' by validation | Description: 'AI-powered travel, expense, and payments software' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:03:52.864021 | SUNC removed from 'Global Oil & Gas Producers and Refiners' by validation | Description: 'Fuel distribution & energy infrastructure' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:04:07.874902 | CNXC removed from 'IT Consulting & Business Process Outsourcing Services' by validation | Description: 'Customer experience outsourcing, contact center services' — validation (claude-sonnet-5-5) flagged as not matching theme
+  17:06:42.583255 | HLT removed from 'Lodging & Hotel REITs' by validation | Description: 'Consumer Cyclical / Lodging — Hotel & resort management, franchising, leasing' — validation (claude-sonnet-5-5) flagged as not matching 
+  17:06:42.588779 | MAR removed from 'Lodging & Hotel REITs' by validation | Description: 'Consumer Cyclical / Lodging — Hotel & resort franchising, property management, timeshare licensing' — validation (claude-sonnet-5-5) fla
+  17:06:42.593208 | IHG removed from 'Lodging & Hotel REITs' by validation | Description: 'Consumer Cyclical / Lodging — Hotel management, franchising, leasing operations' — validation (claude-sonnet-5-5) flagged as not matchin
+== llm rewrite adoption rows (theme model)
+   2026-09-28 07:00:21.301269 claude-opus-5-5: forced_tool_to_structured_output
+   2026-09-28 16:02:00.892889 claude-opus-5-5: forced_tool_to_structured_output
+   2026-09-28 18:08:00.524086 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-09-28 18:08:03.105909 claude-sonnet-5-5: drop_thinking_disabled
+   2026-09-28 21:39:27.046819 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-09-29 07:00:09.287235 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-09-29 07:00:12.933907 claude-sonnet-5-5: drop_thinking_disabled
+   2026-09-29 16:02:00.938511 claude-opus-5-5: forced_tool_to_structured_output
+   2026-09-29 18:35:31.692152 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-09-29 18:36:17.56052 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-09-29 18:37:30.092379 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-09-29 21:22:04.914935 claude-sonnet-5-5: drop_thinking_disabled
+   2026-09-29 21:22:05.107572 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-09-30 07:05:07.73984 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-09-30 16:02:01.17185 claude-opus-5-5: forced_tool_to_structured_output
+   2026-09-30 17:01:26.83358 claude-sonnet-5-5: drop_thinking_disabled
+   2026-09-30 17:05:01.018705 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-10-01 07:00:17.507998 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-10-01 09:45:28.860958 claude-opus-5-5: forced_tool_to_structured_output
+   2026-10-01 17:04:05.683283 claude-sonnet-5-5: drop_thinking_disabled
+   2026-10-02 07:00:07.910817 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-10-02 16:02:01.099813 claude-opus-5-5: forced_tool_to_structured_output
+   2026-10-02 17:01:23.345963 claude-sonnet-5-5: drop_thinking_disabled
+   2026-10-03 17:06:04.460153 claude-opus-5-5: forced_tool_to_structured_output
+   2026-10-03 21:10:25.62355 claude-opus-5-5: forced_tool_to_structured_output
+   2026-10-05 07:00:13.259561 claude-sonnet-5-5: forced_tool_to_structured_output
+   2026-10-05 07:01:56.705645 claude-opus-5-5: forced_tool_to_structured_output
+   2026-10-05 16:02:00.921037 claude-opus-5-5: forced_tool_to_structured_output
+   2026-10-05 17:02:14.977187 claude-sonnet-5-5: thinking_disabled_to_between_tools
+   2026-10-05 17:05:15.286325 claude-sonnet-5-5: forced_tool_to_structured_output

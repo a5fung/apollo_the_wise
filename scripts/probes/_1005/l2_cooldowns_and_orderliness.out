@@ -1,0 +1,85 @@
+now ET: 2026-10-05 17:34:11.559268
+== 1. cooldowns written today, by reason (first 60 chars)
+    2  17:05:35.312563-17:05:35.317409  rehome: moved to 'IT Consulting & Business Process Outsourci
+    1  17:03:15.640439-17:03:15.640439  Description 'Communication Services / Telecom Services — Res
+    1  17:07:47.910479-17:07:47.910479  Description 'Consumer Cyclical / Furnishings, Fixtures & App
+    1  17:02:45.099060-17:02:45.099060  Description 'Data storage, management software & hardware' d
+    1  17:03:53.729266-17:03:53.729266  Description 'Diamond & jewelry retail, consumer luxury' does
+    1  17:04:21.926029-17:04:21.926029  Description 'Field service management software, contractor o
+    1  17:03:02.914844-17:03:02.914844  Description 'Financial Services / Asset Management — Alterna
+    1  17:08:29.536873-17:08:29.536873  Description 'Financial Services / Banks - Regional — Brazili
+    1  17:03:19.572979-17:03:19.572979  Description 'Healthcare / Biotechnology — Contract research 
+    1  17:03:12.276220-17:03:12.276220  Description 'Healthcare / Medical Care Facilities — Newborn,
+    1  17:03:26.704779-17:03:26.704779  Description 'Identity & access management software, enterpri
+    1  17:04:13.579443-17:04:13.579443  Description 'Identity intelligence, analytics software' does
+    1  17:07:51.977561-17:07:51.977561  Description 'Infrastructure products & engineered structures
+    1  17:02:18.619836-17:02:18.619836  Description 'IoT semiconductors, cloud connectivity' does no
+    1  17:02:48.393745-17:02:48.393745  Description 'Communication Services / Advertising Agencies —
+    1  17:02:39.357281-17:02:39.357281  Description 'Marine transportation, hydrogen infrastructure 
+    1  17:07:47.905254-17:07:47.905254  Description 'Modular carpet, commercial flooring' does not m
+    1  17:03:28.720134-17:03:28.720134  Description 'Modular power generation, oilfield equipment' d
+    1  17:04:36.001870-17:04:36.001870  Description 'Natural gas & oil production, Appalachia' does 
+    1  17:04:31.402469-17:04:31.402469  Description 'Oil & gas exploration, production & refining Ca
+    1  17:02:52.943462-17:02:52.943462  Description 'Precision sensors, measurement technology' does
+    1  17:08:31.757573-17:08:31.757573  Description 'Real Estate / REIT - Mortgage — Commercial & re
+    1  17:03:48.886411-17:03:48.886411  Description 'Real Estate / REIT - Residential — Senior housi
+    1  17:04:10.310539-17:04:10.310539  Description 'Technology / Information Technology Services — 
+    1  17:07:49.193233-17:07:49.193233  Description 'Technology / Software - Application — Financial
+    1  17:08:30.704680-17:08:30.704680  Description 'Technology / Software - Infrastructure — Teleco
+    1  17:05:35.307957-17:05:35.307957  rehome: moved to 'Bitcoin Treasury & Crypto Proxy Equities C
+    1  17:04:10.313728-17:04:10.313728  Description 'Management consulting, government & commercial 
+== 1b. cooldowns per day, last 10 days
+  2026-09-28 14
+  2026-09-30 11
+  2026-10-02 13
+  2026-10-05 29
+== 2. theme_retired_small_fading today
+   AI Data Services & GPU Cloud Platforms: retired — weak Fading at 2 members (< 3), #655 | {"theme": "AI Data Services & GPU Cloud Platforms", "members": 2, "tickers": ["INOD", "NBIS"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 48.373333333333335}
+   Auto & Truck Dealership Retail Chains: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Auto & Truck Dealership Retail Chains", "members": 2, "tickers": ["LAD", "ABG"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 9.830400000000004}
+   Bitcoin Balance Sheet Proxies: retired — weak Fading at 1 members (< 3), #655 | {"theme": "Bitcoin Balance Sheet Proxies", "members": 1, "tickers": ["BLSH"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 56.800000000000004}
+   Bitcoin Miners Pivoting to AI/HPC Data Center Hosting: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Bitcoin Miners Pivoting to AI/HPC Data Center Hosting", "members": 2, "tickers": ["HUT", "CIFR"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 5.21011200000
+   Coal Mining Producers: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Coal Mining Producers", "members": 2, "tickers": ["BTU", "HCC"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 24.268800000000002}
+   Consumer PC & Gaming Hardware Refresh Cycle: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Consumer PC & Gaming Hardware Refresh Cycle", "members": 2, "tickers": ["HPQ", "LOGI"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 47.68000000000001}
+   Cruise & Expedition Travel Operators: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Cruise & Expedition Travel Operators", "members": 2, "tickers": ["LIND", "CCL"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 56.400000000000006}
+   Defense & Space Systems Satellite Solutions: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Defense & Space Systems Satellite Solutions", "members": 2, "tickers": ["AADX", "MRCY"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 36.77333333333333}
+   Direct-to-Consumer Health & Wellness Subscription Brands: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Direct-to-Consumer Health & Wellness Subscription Brands", "members": 2, "tickers": ["WRBY", "HIMS"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 58.400000
+   Financial Data & Advisory/Capital Markets Platforms: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Financial Data & Advisory/Capital Markets Platforms", "members": 2, "tickers": ["FDS", "PWP"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 59.7600000000000
+   Global IT Services Outsourcing & Digital Transformation Consulting: retired — weak Fading at 0 members (< 3), #655 | {"theme": "Global IT Services Outsourcing & Digital Transformation Consulting", "members": 0, "tickers": [], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 42.432}
+   Identity & Access Management Security Software: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Identity & Access Management Security Software", "members": 2, "tickers": ["MITK", "OKTA"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 62.56}
+   Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound", "members": 2, "tickers": ["NMAX", "ECHO"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 28.87680
+   Legal, Tax & Professional Information Analytics: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Legal, Tax & Professional Information Analytics", "members": 2, "tickers": ["TRI", "RELX"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 9.830400000000004}
+   Media Streaming & Entertainment Content Turnaround: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Media Streaming & Entertainment Content Turnaround", "members": 2, "tickers": ["PSKY", "DIS"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 37.7856}
+   Renewable & Specialty Fuels Chemical Producers: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Renewable & Specialty Fuels Chemical Producers", "members": 2, "tickers": ["MEOH", "CLMT"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 30.556160000000002}
+   Silver Producers & Streaming Momentum (SVM, AGI, MUX): retired — weak Fading at 2 members (< 3), #655 | {"theme": "Silver Producers & Streaming Momentum (SVM, AGI, MUX)", "members": 2, "tickers": ["SVM", "MUX"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 24.37333333333
+   Small Modular Reactor & Advanced Nuclear Fission Technology: retired — weak Fading at 0 members (< 3), #655 | {"theme": "Small Modular Reactor & Advanced Nuclear Fission Technology", "members": 0, "tickers": [], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 31.28}
+   US Regional Bank Laggards Rate-Curve Basket: retired — weak Fading at 2 members (< 3), #655 | {"theme": "US Regional Bank Laggards Rate-Curve Basket", "members": 2, "tickers": ["USB", "ZION"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 20.195555555555558}
+   Vertical Industry Infrastructure & Insurance Software: retired — weak Fading at 2 members (< 3), #655 | {"theme": "Vertical Industry Infrastructure & Insurance Software", "members": 2, "tickers": ["BSY", "GWRE"], "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after 5 nights", "score": 47.0400000000
+== 3. theme_rehome_judged today (summaries)
+   MSTR moved -> 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket' (tape 0.89, own_unjudgeable:thin_basket)
+   FRSH stays — the judgement did not place it (offered on tape 0.89 to 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS', own_unjudgeable:thin_basket)
+   GIB moved -> 'IT Consulting & Business Process Outsourcing Services' (tape 0.87, own_unjudgeable:thin_basket)
+   SIBN stays — the judgement did not place it (offered on tape 0.87 to 'Medical Device Mean-Reversion & Rotation Recovery', own_unjudgeable:thin_basket)
+   NVTS stays — the judgement did not place it (offered on tape 0.86 to 'Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery', own_unjudgeable:thin_basket)
+   G moved -> 'IT Consulting & Business Process Outsourcing Services' (tape 0.86, own_unjudgeable:thin_basket)
+   SNDK stays — the judgement did not place it (offered on tape 0.85 to 'AI-Driven Memory & Storage Supply Shortage', own_unjudgeable:thin_basket)
+   ON stays — the judgement did not place it (offered on tape 0.84 to 'Semiconductor Photomask & Ultra-Low-Power Chip Enablers', own_unjudgeable:thin_basket)
+   PLAB stays — the judgement did not place it (offered on tape 0.84 to 'Semiconductor Test, Yield & Assembly Supply Chain', own_unjudgeable:thin_basket)
+   SBET stays — the judgement did not place it (offered on tape 0.83 to 'Bitcoin Holding & Trading Proxy Equities', own_unjudgeable:thin_basket)
+   MTSI stays — the judgement did not place it (offered on tape 0.83 to 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers', own_unjudgeable:thin_basket)
+   ASST stays — the judgement did not place it (offered on tape 0.83 to 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket', own_unjudgeable:thin_basket)
+   AMBQ stays — the judgement did not place it (offered on tape 0.81 to 'Semiconductor Foundry & Advanced Packaging Manufacturing', own_unjudgeable:thin_basket)
+   COIN stays — the judgement did not place it (offered on tape 0.80 to 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket', own_unjudgeable:thin_basket)
+   BOX stays — the judgement did not place it (offered on tape 0.80 to 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS', own_unjudgeable:thin_basket)
+   CIEN stays — the judgement did not place it (offered on tape 0.80 to 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers', own_unjudgeable:thin_basket)
+   BMNR stays — the judgement did not place it (offered on tape 0.80 to 'Bitcoin Holding & Trading Proxy Equities', own_unjudgeable:thin_basket)
+   RBRK stays — the judgement did not place it (offered on tape 0.79 to 'Network Security & Zero-Trust Edge', own_unjudgeable:thin_basket)
+   INTR moved -> 'Fintech & Digital Finance Sector Re-rating on Fed Easing' (tape 0.44, join_carry)
+== theme_rehome_pass_ran: Re-homing pass: 139 candidate(s) on the tape, 18 offered, 3 moved, 15 stayed ⚠ 139 candidates exceeds the 18-per-night offer cap
+    {"candidates_pre_cap": 139, "offered": 18, "moved": 3, "joined": 0, "stayed": 15, "unjudged": 0, "skipped": {}, "judged_recent": 0, "offer_cap": 18, "per_target_cap": 3, "candidates": ["MSTR", "FRSH", "GIB", "SIBN", "NVTS", "G", "SNDK", "ON", "PLAB", "SBET", "MTSI", "ASST", "AMBQ", "COIN", "BOX", "CIEN", "BMNR", "RBRK"]}
+== theme_correctness_check: G1 507/552 (91.8% bar 90.0%) · G2 23/552 (4.2% bar<= 5.0%) · G3 100/116 (86.2% bar 90.0%) · G4 4/116 small (3.4% bar<= 10.0%) · latency median 31.5 sessions (n=6)
+    {"n_board": 116, "g1": {"pass": 507, "n": 552, "rate_pct": 91.8, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 23, "n": 552, "rate_pct": 4.2, "bar_pct": 5.0, "pass_bar": true, "list": [["DGX", "AI-Driven Diagnostics & Imaging Re-Rating", "Life Science Tools & Analytical Instruments"], ["LH", "AI-Driven Diagnostics & Imaging Re-Rating", "Life Science Tools & Analytical Instruments"], ["SAN", "Bank Stocks: Rising-Rate NIM Expansion", "U.S. Domestic Passenger Airlines"], ["ING", "Bank Stocks: Rising-Rate NIM Expansion", "Canadian Big Banks"], ["NWG", "Bank Stocks: Rising-Rate NIM Expansio
+== 4. ep_adv_probe_synthesized per day, last 30 days
+  2026-09-17 4
+  2026-10-05 94
+== 5. orderliness on mi_anticipation_consolidation
+   {'n': 2125, 'n_ord': 0, 'last_upd': '2026-10-02 17:35:14.472119', 'n_upd_24h': 0}

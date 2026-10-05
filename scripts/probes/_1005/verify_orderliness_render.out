@@ -1,0 +1,51 @@
+== /anticipation render: lines with 'overnight gaps': 12
+⏱️ *Anticipation plays* (Family A · SHADOW — observe, ordering-only)
+_edge so far: 320 settled · 20% capture · +0.0R median_
+
+✅ *Entry fired* (12) — Confirm, base-high breakout (control arm)
+  `AIS  ` buy 76.14 · stop 72.72 (-4.5%)
+  `ANDG ` buy 57.36 · stop 51.31 (-10.5%)
+  `GO   ` buy 11.77 · stop 10.77 (-8.5%)
+  `HURN ` buy 168.42 · stop 143.18 (-15.0%)
+  `MUU  ` buy 38.80 · stop 33.73 (-13.1%)
+  `TWLO ` buy 292.46 · stop 265.40 (-9.3%)
+  `ZETA ` buy 31.57 · stop 28.03 (-11.2%)
+  `MSFL ` buy 26.71 · stop 23.86 (-10.7%)
+  `MSFU ` buy 39.82 · stop 35.89 (-9.9%)
+  `PRGO ` buy 14.68 · stop 13.15 (-10.4%)
+  `QMCO ` buy 25.09 · stop 19.73 (-21.4%) · 9M
+  `TGTX ` buy 56.87 · stop 52.50 (-7.7%)
+
+👁 *Post-runup* — ran up, not coiled yet (24)
+  `PSIX ` +35% · 4d since peak · overnight gaps 0.5× daily range
+  `AMDY ` +28% · 9d since peak · overnight gaps 0.9× daily range
+  `EWY  ` +18% · 9d since peak · overnight gaps 0.8× daily range
+  `AMRX ` +23% · 5d since peak · overnight gaps 0.1× daily range
+  `ABCL ` +42% · 4d since peak · overnight gaps 0.2× daily range
+  `SIG  ` +29% · 4d since peak · overnight gaps 0.4× daily range
+  `PLTR ` +16% · 7d since peak · overnight gaps 0.6× daily range
+  `BLSH ` +67% · 9d since peak · overnight gaps 0.5× daily range
+  `APA  ` +37% · 14d since peak · overnight gaps 0.6× daily range
+  `FLKR ` +16% · 9d since peak · overnight gaps 0.9× daily range
+  `FEIM ` +52% · 10d since peak · overnight gaps 0.3× daily range
+  `SAIL ` +28% · 7d since peak · overnight gaps 0.4× daily range
+
+📐 *Settled* (recent 8)
+  `SMMT ` ✗ stopped -1.0R
+  `CMPS ` ✗ stopped -1.0R
+  `IVES ` ○ timed out +0.6R
+  `HPEpC` ○ timed out +0.4R
+  `PGEN ` ○ timed out +0.0R
+  `RDNT ` ✗ stopped -0.5R
+  `STEP ` ✗ stopped -1.0R
+  `INFQ ` ○ timed out -0.7R
+
+_SHADOW — surfaced for judgment, no trades._
+== mi_delayed_entry_trigger time columns: ['ep_date', 'fire_date', 'settled_at', 'created_at', 'stop_hit_date', 'settled_at_075', 'settled_at_100', 'settled_at_025']
+   min(ep_date) where realized_r_075 set: 2026-08-27 | where ep_adr20_dollar set: 2026-08-27
+   min(fire_date) where realized_r_075 set: 2026-09-02 | where ep_adr20_dollar set: 2026-09-02
+   min(settled_at) where realized_r_075 set: 2026-09-02 21:58:56.986682+00 | where ep_adr20_dollar set: 2026-09-02 21:58:56.986682+00
+   min(stop_hit_date) where realized_r_075 set: 2026-09-02 | where ep_adr20_dollar set: 2026-09-02
+   min(settled_at_075) where realized_r_075 set: 2026-09-08 21:58:17.171305+00 | where ep_adr20_dollar set: 2026-09-08 21:58:17.171305+00
+   min(settled_at_100) where realized_r_075 set: 2026-09-09 21:58:13.613543+00 | where ep_adr20_dollar set: 2026-09-09 21:58:13.613543+00
+   min(settled_at_025) where realized_r_075 set: 2026-09-03 21:58:47.627837+00 | where ep_adr20_dollar set: 2026-09-03 21:58:47.627837+00

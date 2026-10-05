@@ -1,0 +1,71 @@
+now ET: 2026-10-05 17:48:47.833261
+
+== 1. previously-announced dead columns: populated now?
+   mi_stock_scores.market_cap: rows=551838 populated=0
+   mi_live_fill_counterfactuals.mark_r: rows=119 populated=0
+   mi_gap_near_miss_replays.mark_r: rows=442 populated=1
+   mi_flag_candidates.low_after_breakout: rows=62603 populated=2
+   mi_anticipation_consolidation.orderliness: rows=2132 populated=106
+
+== 2a. tonight's theme_retired_small_fading rows (time, theme)
+   17:05:35.333987  AI Data Services & GPU Cloud Platforms  members=2 ['INOD', 'NBIS']
+   17:05:35.335076  Auto & Truck Dealership Retail Chains  members=2 ['LAD', 'ABG']
+   17:05:35.336084  Bitcoin Balance Sheet Proxies  members=1 ['BLSH']
+   17:05:35.337089  Bitcoin Miners Pivoting to AI/HPC Data Center Hosting  members=2 ['HUT', 'CIFR']
+   17:05:35.338095  Coal Mining Producers  members=2 ['BTU', 'HCC']
+   17:05:35.339024  Consumer PC & Gaming Hardware Refresh Cycle  members=2 ['HPQ', 'LOGI']
+   17:05:35.34008  Cruise & Expedition Travel Operators  members=2 ['LIND', 'CCL']
+   17:05:35.341136  Defense & Space Systems Satellite Solutions  members=2 ['AADX', 'MRCY']
+   17:05:35.342221  Direct-to-Consumer Health & Wellness Subscription Brands  members=2 ['WRBY', 'HIMS']
+   17:05:35.343306  Financial Data & Advisory/Capital Markets Platforms  members=2 ['FDS', 'PWP']
+   17:05:35.344375  Global IT Services Outsourcing & Digital Transformation Consulting  members=0 []
+   17:05:35.345532  Identity & Access Management Security Software  members=2 ['MITK', 'OKTA']
+   17:05:35.346639  Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound  members=2 ['NMAX', 'ECHO']
+   17:05:35.347699  Legal, Tax & Professional Information Analytics  members=2 ['TRI', 'RELX']
+   17:05:35.348718  Media Streaming & Entertainment Content Turnaround  members=2 ['PSKY', 'DIS']
+   17:05:35.349702  Renewable & Specialty Fuels Chemical Producers  members=2 ['MEOH', 'CLMT']
+   17:05:35.350693  Silver Producers & Streaming Momentum (SVM, AGI, MUX)  members=2 ['SVM', 'MUX']
+   17:05:35.351718  Small Modular Reactor & Advanced Nuclear Fission Technology  members=0 []
+   17:05:35.352714  US Regional Bank Laggards Rate-Curve Basket  members=2 ['USB', 'ZION']
+   17:05:35.353845  Vertical Industry Infrastructure & Insurance Software  members=2 ['BSY', 'GWRE']
+   first small-fading retirement ever: 2026-10-05 17:05:35.333987
+
+== 2b. tonight's cooldowns whose theme was retired/dissolved tonight
+   17:02:18 SMTC  stage_now=Nascent                           AI-Driven Memory & Storage Supply Shortage | Description 'IoT semiconductor
+   17:02:39 CMBT  stage_now=Mainstream                        Crude & Product Tanker Shipping | Description 'Marine transporta
+   17:02:45 P     stage_now=Retired                           Data Storage & Data Management Software/Hardware Leaders | Description 'Data storage, man
+   17:02:48 ZD    stage_now=Mainstream                        Digital Advertising & Ad-Tech Monetization Platforms | Description 'Communication Ser
+   17:02:52 VPG   stage_now=Nascent                           Discrete, Passive & Low-Power Programmable Semiconductor Com | Description 'Precision sensors
+   17:03:02 PS    stage_now=Retired    RETIRED-SMALL-FADING   Financial Data & Advisory/Capital Markets Platforms | Description 'Financial Service
+   17:03:12 MD    stage_now=Fading                            Hospital & Behavioral Health Facility Procedure Volume Recov | Description 'Healthcare / Medi
+   17:03:15 TDS   stage_now=Retired    RETIRED-SMALL-FADING   Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound | Description 'Communication Ser
+   17:03:19 FTRE  stage_now=Nascent                           Life Science Tools & Analytical Instruments | Description 'Healthcare / Biot
+   17:03:26 SAIL  stage_now=Mainstream                        Network Security & Zero-Trust Edge | Description 'Identity & access
+   17:03:28 SEI   stage_now=Mainstream                        On-Site Power Generation & Distribution Equipment for Data C | Description 'Modular power gen
+   17:03:48 JAN   stage_now=Fading                            Skilled Nursing & Senior Housing Healthcare REITs | Description 'Real Estate / REI
+   17:03:53 SIG   stage_now=Retired                           Specialty Retail Short-Squeeze Momentum Basket | Description 'Diamond & jewelry
+   17:04:10 EFOR  stage_now=Fading                            Defense Intelligence & Cybersecurity IT Contractors | Description 'Technology / Info
+   17:04:10 ICFI  stage_now=Fading                            Defense Intelligence & Cybersecurity IT Contractors | Description 'Management consul
+   17:04:13 RDVT  stage_now=Retired    RETIRED-SMALL-FADING   Identity & Access Management Security Software | Description 'Identity intellig
+   17:04:21 TTAN  stage_now=Retired                           Marketing & Customer Data SaaS Rotation | Description 'Field service man
+   17:04:31 IMO   stage_now=Retired                           Oil & Gas E&P Crude-Weighted Producers Momentum | Description 'Oil & gas explora
+   17:04:36 DEC   stage_now=Fading                            Energy Supply Disruption: Middle East Geopolitical Risk | Description 'Natural gas & oil
+   17:05:35 MSTR  stage_now=Retired    RETIRED-SMALL-FADING   Bitcoin Balance Sheet Proxies | rehome: moved to 'Bitcoin Trea
+   17:05:35 GIB   stage_now=Retired    RETIRED-SMALL-FADING   Global IT Services Outsourcing & Digital Transformation Cons | rehome: moved to 'IT Consultin
+   17:05:35 G     stage_now=Retired    RETIRED-SMALL-FADING   Global IT Services Outsourcing & Digital Transformation Cons | rehome: moved to 'IT Consultin
+   17:07:47 TILE  stage_now=Mainstream                        Commercial, Office & Home Furniture Retailers and Manufactur | Description 'Modular carpet, c
+   17:07:47 MHK   stage_now=Mainstream                        Commercial, Office & Home Furniture Retailers and Manufactur | Description 'Consumer Cyclical
+   17:07:49 SSNC  stage_now=Mainstream                        Fintech & Digital Finance Sector Re-rating on Fed Easing | Description 'Technology / Soft
+   17:07:51 ACA   stage_now=Mainstream                        Industrial Construction Execution & On-Site Supply Chain | Description 'Infrastructure pr
+   17:08:29 ITUB  stage_now=Mainstream                        Fintech & Digital Finance Sector Re-rating on Fed Easing | Description 'Financial Service
+   17:08:30 DOX   stage_now=Nascent                           Offshore IT Services & Digital Engineering Outsourcers | Description 'Technology / Soft
+   17:08:31 STWD  stage_now=Nascent                           Mortgage REITs (Agency & Residential MBS) | Description 'Real Estate / REI
+   -> 10 of 29 cooldowns sit on a theme that is Retired now
+
+== 3. rehome cooldowns by day (all time)
+    2026-10-05 3
+   theme_rehome_pass_ran rows by day:
+    2026-10-05 1
+
+== 4. mass-removal tripwire + dissolve events tonight
+    {'event_type': 'theme_dissolved_flagged_pair', 'n': 3, 's': "Arm A dissolve: 'Data Storage & Data Management Software/Hardware Leaders' — validation fl || Arm A dissolve: 'Specialty Retail Short-Squeeze Momentum Basket' — validation flagged SIG  || Arm A dissolve: 'Marketing & Customer Data SaaS Rotation' — validation flagged TTAN at 2 m"}

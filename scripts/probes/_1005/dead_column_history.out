@@ -1,0 +1,41 @@
+40 flagged columns, ever
+  flagged 2026-08-08 14:32  mi_stock_scores.market_cap  rows=551838 populated=0  first_populated(None)=None
+  flagged 2026-08-18 17:30  mi_alert_rank_shadow.expct_classifiable_frac  rows=292 populated=292  first_populated(computed_at)=2026-08-19 17:38:13.63625
+  flagged 2026-08-19 17:30  mi_alert_rank_shadow.ext_xadr_pregap  rows=292 populated=200  first_populated(computed_at)=2026-08-19 17:38:13.63625
+  flagged 2026-08-19 17:30  mi_alert_rank_shadow.base_days_raw40  rows=292 populated=291  first_populated(computed_at)=2026-08-19 17:38:13.63625
+  flagged 2026-08-19 17:30  mi_alert_rank_shadow.base_depth_raw40  rows=292 populated=291  first_populated(computed_at)=2026-08-19 17:38:13.63625
+  flagged 2026-08-19 17:30  mi_alert_rank_shadow.base_days_adr6  rows=292 populated=291  first_populated(computed_at)=2026-08-19 17:38:13.63625
+  flagged 2026-08-19 17:30  mi_alert_rank_shadow.base_depth_adr6  rows=292 populated=291  first_populated(computed_at)=2026-08-19 17:38:13.63625
+  flagged 2026-08-19 17:30  mi_alert_rank_shadow.base_net_disp_xadr  rows=292 populated=291  first_populated(computed_at)=2026-08-19 17:38:13.63625
+  flagged 2026-08-19 17:30  mi_alert_rank_shadow.base_lookback_bars  rows=292 populated=292  first_populated(computed_at)=2026-08-19 17:38:13.63625
+  flagged 2026-08-24 17:30  mi_live_trades.risk_dollars_actual  rows=346 populated=12  first_populated(created_at)=2026-08-27 09:31:10.808072
+  flagged 2026-08-31 17:30  mi_ep_scan_log.days_since_prior_alert  rows=117874 populated=208  first_populated(created_at)=2026-09-03 09:45:29.422651
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.ep_adr20_dollar  rows=112 populated=96  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.ep_adr20_n  rows=112 populated=96  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.stop_price_075  rows=112 populated=96  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.stop_width_pct_075  rows=112 populated=96  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.stop_price_100  rows=112 populated=96  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.stop_width_pct_100  rows=112 populated=96  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.day0_post_low  rows=112 populated=44  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.day0_post_high  rows=112 populated=44  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.realized_r_075  rows=112 populated=62  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.realized_r_trail_075  rows=112 populated=62  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.mfe_r_075  rows=112 populated=62  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.mae_r_075  rows=112 populated=62  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.realized_r_100  rows=112 populated=62  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.realized_r_trail_100  rows=112 populated=62  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.mfe_r_100  rows=112 populated=62  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-02 17:30  mi_delayed_entry_trigger.mae_r_100  rows=112 populated=62  first_populated(created_at)=2026-09-02 17:57:00.149688
+  flagged 2026-09-03 17:30  mi_delayed_entry_trigger.stop_price_025  rows=112 populated=95  first_populated(created_at)=2026-09-03 18:05:27.46076
+  flagged 2026-09-03 17:30  mi_delayed_entry_trigger.stop_width_pct_025  rows=112 populated=95  first_populated(created_at)=2026-09-03 18:05:27.46076
+  flagged 2026-09-03 17:30  mi_delayed_entry_trigger.realized_r_025  rows=112 populated=68  first_populated(created_at)=2026-09-03 18:05:27.46076
+  flagged 2026-09-03 17:30  mi_delayed_entry_trigger.realized_r_trail_025  rows=112 populated=68  first_populated(created_at)=2026-09-03 18:05:27.46076
+  flagged 2026-09-03 17:30  mi_delayed_entry_trigger.mfe_r_025  rows=112 populated=68  first_populated(created_at)=2026-09-03 18:05:27.46076
+  flagged 2026-09-03 17:30  mi_delayed_entry_trigger.mae_r_025  rows=112 populated=68  first_populated(created_at)=2026-09-03 18:05:27.46076
+  flagged 2026-09-04 17:30  mi_analyst_estimates.fiscal_quarter  rows=2361 populated=2066  first_populated(created_at)=2026-09-04 18:12:24.449684
+  flagged 2026-09-04 17:30  mi_analyst_estimates.fiscal_year  rows=2361 populated=2066  first_populated(created_at)=2026-09-04 18:12:24.449684
+  flagged 2026-09-07 17:30  mi_gap_near_miss_replays.mark_r  rows=442 populated=1  first_populated(updated_at)=2026-10-02 18:14:01.809747
+  flagged 2026-09-07 17:30  mi_live_fill_counterfactuals.mark_r  rows=119 populated=0  first_populated(recorded_at)=None
+  flagged 2026-09-07 17:30  mi_live_fill_counterfactuals.breakeven_arm_r  rows=119 populated=30  first_populated(recorded_at)=2026-09-08 18:04:00.051123
+  flagged 2026-09-14 17:30  mi_flag_candidates.low_after_breakout  rows=62603 populated=2  first_populated(created_at)=2026-09-15 17:25:03.639951
+  flagged 2026-10-05 17:30  mi_anticipation_consolidation.orderliness  rows=2132 populated=106  first_populated(updated_at)=2026-10-05 17:35:06.404545
