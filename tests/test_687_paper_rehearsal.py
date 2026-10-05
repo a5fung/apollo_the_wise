@@ -62,6 +62,39 @@ def test_account_check_refuses_a_live_endpoint_and_shared_keys():
                                          "paper_base_url": "https://paper-api.alpaca.markets"})
 
 
+
+def test_the_endpoint_check_reads_a_REAL_trading_client():
+    """alpaca-py stores the endpoint as BaseURL(str, Enum): str() of it is 'BaseURL.TRADING_PAPER',
+    which the endpoint check refused — every real run would have stopped at preflight. Literal URL
+    strings in the test above could not see that. conftest stubs alpaca with MagicMocks, so this
+    builds the REAL client (no network) in a clean interpreter."""
+    import json
+    import subprocess
+    code = (
+        "import importlib.util, json, sys\n"
+        "from alpaca.trading.client import TradingClient\n"
+        f"spec = importlib.util.spec_from_file_location('pr', {_PATH!r})\n"
+        "pr = importlib.util.module_from_spec(spec); spec.loader.exec_module(pr)\n"
+        "paper = pr.client_base_url(TradingClient('PK' + 'X' * 18, 's' * 40, paper=True))\n"
+        "live = pr.client_base_url(TradingClient('AK' + 'X' * 18, 's' * 40, paper=False))\n"
+        "pr.check_account_ids({'paper_id': 'A', 'live_id': 'B', 'paper_base_url': paper})\n"
+        "try:\n"
+        "    pr.check_account_ids({'paper_id': 'A', 'live_id': 'B', 'paper_base_url': live})\n"
+        "    refused = None\n"
+        "except pr.RehearsalRefused as e:\n"
+        "    refused = str(e)\n"
+        "print(json.dumps({'paper': paper, 'live': live, 'refused': refused}))\n"
+    )
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    if "No module named 'alpaca'" in out.stderr:
+        pytest.skip("alpaca-py not installed")
+    assert out.returncode == 0, out.stderr[-2000:]
+    got = json.loads(out.stdout.strip().splitlines()[-1])
+    assert got["paper"] == "https://paper-api.alpaca.markets"
+    assert got["live"] == "https://api.alpaca.markets"
+    assert got["refused"] and "paper endpoint" in got["refused"]
+
+
 def test_the_tripwire_refuses_every_non_paper_lookup(monkeypatch):
     monkeypatch.setenv("ALPACA_LIVE_API_KEY", "k")
     monkeypatch.setenv("ALPACA_LIVE_SECRET_KEY", "s")
@@ -261,3 +294,54 @@ async def test_cleanup_never_flattens_a_ticker_carrying_someone_elses_paper_row(
     assert env.positions.get("KO")                     # KO left alone
     assert not env.positions.get("PEP")                # PEP (no foreign row) flattened
     assert "KO" in [r for r in log.results if r["step"] == "CLEANUP"][-1]["detail"]
+
+
+@pytest.mark.asyncio
+async def test_cleanup_still_deletes_the_rows_when_a_flatten_is_refused(tmp_path):
+    """A refused flatten (a re-protect stop holding the shares) used to raise out of cleanup before
+    the rows were deleted — leaving them counting toward the paper position cap."""
+    rc, env, log = await _dry(tmp_path, cmd="day-a")
+    assert rc == 0
+    env.clock = pr.datetime(2026, 10, 6, 10, 0, tzinfo=pr._ET)
+    real_submit = env.submit
+
+    async def refusing(t, qty, side, **kw):
+        if side == "sell" and kw.get("kind") == "market":
+            raise RuntimeError('{"message":"insufficient qty available for order"}')
+        return await real_submit(t, qty, side, **kw)
+
+    env.submit = refusing
+    assert await pr.Rehearsal(env, log, TICKERS).cleanup() == 1
+    assert env.trades == {}
+    assert any(e["event_type"] == pr.END_EVENT for e in env.audit)
+    assert "FAILED" in [r for r in log.results if r["step"] == "CLEANUP"][-1]["detail"]
+
+
+# ── production's +2R profit trigger must not reach the rehearsal rows ─────────────────────────────
+
+def _selected_by_scan_profit_triggers(row) -> bool:
+    """order_manager.scan_profit_triggers' own WHERE clause (no signal_type filter)."""
+    return (row["status"] == "filled" and float(row["remaining_shares"]) > 0
+            and not row.get("partial_taken"))
+
+
+@pytest.mark.asyncio
+async def test_no_rehearsal_row_is_eligible_for_the_production_profit_trigger(tmp_path):
+    """On the rehearsal's R frame the +2R target sits 1% above the fill; with partial_taken FALSE the
+    5-minute production scan would sell a third of P2 on an ordinary day and break every Day B step."""
+    rc, env, log = await _dry(tmp_path, cmd="day-a")
+    assert rc == 0, log.failed()
+    assert env.trades and not [r for r in env.trades.values() if _selected_by_scan_profit_triggers(r)]
+    # ...and the REAL insert writes TRUE (the fake above only mirrors it).
+    # source-pin-ok: the real INSERT runs only against Postgres (no DB in unit tests); A1/B1 read the
+    # column back from the DB at run time, which is the behavioural check on the real path.
+    import inspect
+    import re
+    src = inspect.getsource(pr.RealEnv.insert_trade)
+    assert re.search(r"partial_taken, filled_at\)\s*VALUES \(.*, 0, TRUE, NOW\(\)\)", src, re.S), src
+
+
+@pytest.mark.asyncio
+async def test_a_row_left_eligible_for_the_profit_trigger_fails_A1_and_B1(tmp_path):
+    rc, _, log = await _dry(tmp_path, cmd="day-a", partial_taken_false=True)
+    assert rc == 1 and {"A1", "B1"} <= set(_steps(log, "FAIL")), _steps(log)

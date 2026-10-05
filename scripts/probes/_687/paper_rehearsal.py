@@ -161,6 +161,16 @@ def arm_live_tripwire(alpaca_module) -> None:
         os.environ.pop(k, None)
 
 
+def client_base_url(client) -> str:
+    """The endpoint a TradingClient talks to, as a plain URL. alpaca-py (0.43.2) stores it as
+    `BaseURL(str, Enum)`, whose str() is 'BaseURL.TRADING_PAPER' — not a URL — so read `.value`."""
+    for attr in ("_base_url", "base_url"):
+        v = getattr(client, attr, None)
+        if v:
+            return str(getattr(v, "value", v))
+    return ""
+
+
 def check_account_ids(ids: dict) -> str:
     """Refuse unless the paper account is provably not the live one. Returns a log line."""
     paper_id = ids.get("paper_id")
@@ -380,11 +390,13 @@ class Rehearsal:
             row = await env.trade(tid)
             pos = await self._wait_avail(t, 0.0)
             ok = (row["account_mode"] == ACCOUNT_MODE and row["signal_type"] == TAG_SIGNAL_TYPE
+                  and row.get("partial_taken") is True
                   and pos and float(pos["qty"]) == 3 and float(pos["qty_available"]) == 0)
             log.step("A1", f"buy 3 {t} + GTC stop 5% below; every share reserved", ok,
                      f"fill ${fill:.2f}, stop ${stop_px} ({stop['id'][:8]}), row #{tid} entry "
                      f"${entry} (set 3% under the fill so the breakeven step stays below market), "
-                     f"position {pos and pos['qty']} / free {pos and pos['qty_available']}")
+                     f"partial_taken {row.get('partial_taken')} (TRUE keeps production's +2R "
+                     f"profit trigger off it), position {pos and pos['qty']} / free {pos and pos['qty_available']}")
             if not ok:
                 return
 
@@ -468,11 +480,13 @@ class Rehearsal:
             p2.update(trade_id=tid, fill=fill, stop_price=stop_px, extra_id=extra["id"])
             await self._save()
             pos = await self._wait_avail(t, 0.0)
-            ok = bool(pos and float(pos["qty"]) == 4 and float(pos["qty_available"]) == 0)
+            row = await env.trade(tid)
+            ok = bool(pos and float(pos["qty"]) == 4 and float(pos["qty_available"]) == 0
+                      and row and row.get("partial_taken") is True)
             log.step("B1", f"P2: 4 {t}, row of 3 under a 3-sh stop + one extra 1-sh resting sell "
                      f"the books do not know (holds a share, not a pending exit)", ok,
                      f"fill ${fill:.2f}, stop ${stop_px} ({stop['id'][:8]}), extra {extra['id'][:8]}, "
-                     f"row #{tid}, position {pos and pos['qty']} / free {pos and pos['qty_available']}")
+                     f"row #{tid} partial_taken {row and row.get('partial_taken')}, position {pos and pos['qty']} / free {pos and pos['qty_available']}")
             if not ok:
                 return
 
@@ -652,6 +666,9 @@ class Rehearsal:
             self.log.step("A8", "stamp P2 for the opening-auction sale", None,
                           "skipped — P2 not ready", status="SKIP")
             return
+        # The stop the 19:01 sale must cancel is the row's stop AT MARKING TIME — not B2's restored
+        # id, which anything replacing the stop between B3 and 19:01 would make stale.
+        p2["stop_at_mark"] = (await self.env.trade(p2["trade_id"]))["stop_order_id"]
         await self.env.set_trade_cols(p2["trade_id"], {"exit_rule": "depth",
                                                        "depth_sell_pending_on": self.env.et_today()})
         p2["marked_at"] = self.env.now().isoformat()
@@ -667,8 +684,8 @@ class Rehearsal:
             return
         tid = p2["trade_id"]
         since = datetime.fromisoformat(p2["marked_at"])
-        stop_id = (await env.trade(tid))["stop_order_id"] if not p2.get("restored_stop_id") \
-            else p2["restored_stop_id"]
+        stop_id = p2.get("stop_at_mark") or p2.get("restored_stop_id") \
+            or (await env.trade(tid))["stop_order_id"]
         placed = await self._audit_for_trade(["depth_open_sale_placed"], since, tid)
         driver = "the PRODUCTION 19:01 job"
         if not placed:
@@ -740,7 +757,8 @@ class Rehearsal:
         # The rows must still be OPEN at 3 + 3 before the open — otherwise D3's "row closed by the
         # stream" could be passing on an overnight sync that closed it (a different mechanism).
         for label, p, cancelled in ((f"P1 {self.t1}", p1, p1.get("stop3_id")),
-                                    (f"P2 {self.t2}", p2, p2.get("restored_stop_id"))):
+                                    (f"P2 {self.t2}", p2,
+                                     p2.get("stop_at_mark") or p2.get("restored_stop_id"))):
             if not p.get("sale_id"):
                 continue
             row = await env.trade(p["trade_id"])
@@ -924,11 +942,19 @@ class Rehearsal:
                 residue.append(f"{t}: {qty} sh NOT flattened — {foreign_rows} non-rehearsal paper "
                                f"row(s) / {len(foreign_orders)} foreign order(s) on it")
             elif qty:
-                sell = await env.submit(t, qty, "sell", kind="market", tif="day")
-                st = await self._wait_status(sell["id"], {"filled"}, budget_s=20)
-                if st != "filled":
-                    residue.append(f"{t}: flatten order {sell['id'][:8]} is {st} (queued for the "
-                                   f"next open if the market is shut)")
+                # A refused flatten (e.g. a re-protect stop reserving the shares) must not abort
+                # cleanup before the rows are deleted and the end row written — record it, go on.
+                try:
+                    sell = await env.submit(t, qty, "sell", kind="market", tif="day")
+                    st = await self._wait_status(sell["id"], {"filled"}, budget_s=20)
+                    if st != "filled":
+                        residue.append(f"{t}: flatten order {sell['id'][:8]} is {st} (queued for "
+                                       f"the next open if the market is shut)")
+                except LiveTouched:
+                    raise
+                except Exception as e:
+                    residue.append(f"{t}: flatten of {qty} sh FAILED ({type(e).__name__}: "
+                                   f"{str(e)[:160]}) — re-run `cleanup`")
             if foreign_orders:
                 residue.append(f"{t}: left {len(foreign_orders)} order(s) that are not ours")
         deleted = await env.delete_trades(sorted(trade_ids))
@@ -997,12 +1023,7 @@ class RealEnv:
     async def account_ids(self) -> dict:
         paper_client = self.alpaca.get_trading_client(ACCOUNT_MODE)
         paper = await asyncio.to_thread(paper_client.get_account)
-        base = ""
-        for attr in ("_base_url", "base_url"):
-            v = getattr(paper_client, attr, None)
-            if v:
-                base = str(v)
-                break
+        base = client_base_url(paper_client)
         live_id = None
         pk, lk = os.environ.get("ALPACA_PAPER_API_KEY"), os.environ.get("ALPACA_LIVE_API_KEY")
         if lk:
@@ -1083,6 +1104,12 @@ class RealEnv:
         return await self.db.get_pool()
 
     async def insert_trade(self, *, ticker, shares, entry, stop, stop_id, alert_date) -> int:
+        # partial_taken = TRUE: production's 5-minute `scan_profit_triggers` selects EVERY filled row
+        # with partial_taken FALSE (no signal_type filter) and, on this row's R frame (entry 3% under
+        # the fill, stop 5% under → R = 2% of the fill, target +2R = 1% above the fill), would SELL a
+        # third of P2 on an ordinary +1% day, and page / write failure rows every poll for P1. No
+        # function the rehearsal drives reads partial_taken (it is read only by that scan and the
+        # EOD ladder, which skips same-day rows), so TRUE takes both rows out of its reach only.
         pool = await self._pool()
         async with pool.acquire() as conn:
             tid = await conn.fetchval("""
@@ -1090,7 +1117,7 @@ class RealEnv:
                     (ticker, alert_date, status, account_mode, signal_type, entry_shares,
                      remaining_shares, entry_price, stop_price, hard_stop, orb_low, stop_order_id,
                      hold_days, partial_taken, filled_at)
-                VALUES ($1, $2, 'filled', $3, $4, $5, $5, $6, $7, $7, $7, $8, 0, FALSE, NOW())
+                VALUES ($1, $2, 'filled', $3, $4, $5, $5, $6, $7, $7, $7, $8, 0, TRUE, NOW())
                 RETURNING id
             """, ticker, alert_date, ACCOUNT_MODE, TAG_SIGNAL_TYPE, float(shares), float(entry),
                 float(stop), stop_id)
@@ -1328,7 +1355,7 @@ class FakeEnv:
 
     def __init__(self, *, start: datetime, held=None, open_orders=None, same_account=False,
                  stream_silent=True, prod_depth_job=True, broken_close_qty=False,
-                 foreign_rows=None):
+                 foreign_rows=None, partial_taken_false=False):
         self.clock = start
         self.pages: list[dict] = []
         self.tripwire_armed = False
@@ -1345,6 +1372,7 @@ class FakeEnv:
         self.stream_silent = stream_silent
         self.prod_depth_job = prod_depth_job
         self.broken_close_qty = broken_close_qty
+        self.partial_taken_false = partial_taken_false   # a DB that drops the insert's TRUE
         self.foreign_rows = dict(foreign_rows or {})
         self._n = 0
         self._ran = set()
@@ -1490,7 +1518,8 @@ class FakeEnv:
                             "entry_shares": shares, "remaining_shares": float(shares),
                             "entry_price": entry, "stop_price": stop, "hard_stop": stop,
                             "stop_order_id": stop_id, "exit_rule": None,
-                            "depth_sell_pending_on": None}
+                            "depth_sell_pending_on": None,
+                            "partial_taken": not self.partial_taken_false}
         return tid
 
     async def trade(self, tid):
