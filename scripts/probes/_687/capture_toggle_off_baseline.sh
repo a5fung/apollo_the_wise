@@ -12,7 +12,7 @@
 # Re-run it whenever the harness changes (the fixture stores the harness's sha256 and the test
 # refuses a mismatch). Usage: bash scripts/probes/_687/capture_toggle_off_baseline.sh [<sha>]
 set -euo pipefail
-BASE="${1:-4e4543957c1be082ebae59b46698ba8d9420c67b}"
+BASE="${1:-3b82b7c0b51eae18bfceae68f6ddae9019cf8441}"
 REPO="$(git rev-parse --show-toplevel)"
 TMP="$(mktemp -d)"
 cleanup() {

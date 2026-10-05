@@ -1,5 +1,5 @@
 {
- "baseline_sha": "4e4543957c1be082ebae59b46698ba8d9420c67b",
+ "baseline_sha": "3b82b7c0b51eae18bfceae68f6ddae9019cf8441",
  "captured_by": "scripts/probes/_687/capture_toggle_off_baseline.sh",
  "harness_sha256": "4b5c620c7fec557a71396835a9f44c0b9ff94a73fc26e99b655593c0c36d5636",
  "scenarios": {
@@ -1330,6 +1330,13 @@
     {
      "args": {
       "account_mode": "live",
+      "ticker": "KOD"
+     },
+     "method": "get_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
       "client_order_id": "apollo_live_magna53_KOD_1",
       "qty": 10,
       "side": "sell",
@@ -2074,6 +2081,13 @@
     {
      "args": {
       "account_mode": "live",
+      "ticker": "KOD"
+     },
+     "method": "get_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
       "client_order_id": "apollo_live_magna53_KOD_1",
       "qty": 10,
       "side": "sell",
@@ -2738,6 +2752,13 @@
     {
      "args": {
       "account_mode": "live",
+      "ticker": "KOD"
+     },
+     "method": "get_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
       "client_order_id": "apollo_live_magna53_KOD_1",
       "qty": 2,
       "side": "sell",
@@ -2850,7 +2871,7 @@
     }
    ],
    "pages": [
-    "💰 LIVE-$ ⚠️ Full exit FAILED for KOD: {\"code\":40410000,\"message\":\"position does not exist\"}\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books."
+    "💰 LIVE-$ ⚠️ Full exit FAILED for KOD: {\"code\":40410000,\"message\":\"position does not exist\"}\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). The after-close coverage repair (17:00 / 19:00 ET) also reads the broker and will not re-place a stop while it shows no position."
    ],
    "raised": null,
    "result": false
@@ -2914,7 +2935,7 @@
     }
    ],
    "pages": [
-    "💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). Until the row is resolved, the after-close coverage repair (17:00 / 19:00 ET) may re-place a stop from the books."
+    "💰 LIVE-$ ⚠️ *Close order CANCELLED:* KOD\nNo stop placed: the broker shows no position, so there is nothing to protect. Our books still show the trade open — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open (if this was the only open position, the sync will not act). The after-close coverage repair (17:00 / 19:00 ET) also reads the broker and will not re-place a stop while it shows no position."
    ],
    "raised": null,
    "result": null
@@ -3054,17 +3075,6 @@
     {
      "args": {
       "account_mode": "live",
-      "client_order_id": "apollo_live_magna53_KOD_1",
-      "qty": 10,
-      "side": "sell",
-      "stop_price": 58,
-      "ticker": "KOD"
-     },
-     "method": "place_stop_order"
-    },
-    {
-     "args": {
-      "account_mode": "live",
       "ticker": "KOD"
      },
      "method": "get_position"
@@ -3079,7 +3089,7 @@
    ],
    "pages": [],
    "raised": null,
-   "result": "🚨 KOD: stop $58.00 is ABOVE market — position breached the stop. Operator decision needed (no auto-exit)."
+   "result": "⚠️ KOD: the broker shows no position, so no stop was placed. Our records still show the trade open (10 sh) — run /syncnow to book the exit from the broker, and reconcile the row by hand if it is still open."
   },
   "s43_coverage_1700_slot_broker_flat": {
    "_unknown_sql": [],
@@ -3108,7 +3118,7 @@
       "remaining_shares": 10,
       "signal_type": "magna53",
       "status": "filled",
-      "stop_order_id": "stop-1",
+      "stop_order_id": null,
       "stop_price": 58,
       "ticker": "KOD",
       "total_pnl": null
@@ -3135,13 +3145,16 @@
     {
      "args": {
       "account_mode": "live",
-      "client_order_id": "apollo_live_magna53_KOD_1",
-      "qty": 10,
-      "side": "sell",
-      "stop_price": 58,
       "ticker": "KOD"
      },
-     "method": "place_stop_order"
+     "method": "get_position"
+    },
+    {
+     "args": {
+      "account_mode": "live",
+      "raise_on_error": true
+     },
+     "method": "get_all_positions"
     },
     {
      "args": {
@@ -3152,7 +3165,9 @@
      "method": "get_open_orders"
     }
    ],
-   "pages": [],
+   "pages": [
+    "🚨 *UNPROTECTED AFTER THE CLOSE*\n• KOD: the broker shows NO position, so no stop was placed; our records still show 10 sh open — `/syncnow` books the exit, or reconcile the row by hand\n\nExtended hours are still trading, and the automatic repair above did not hold.\n`/syncnow live` re-runs the same repair now."
+   ],
    "raised": null,
    "result": null
   }

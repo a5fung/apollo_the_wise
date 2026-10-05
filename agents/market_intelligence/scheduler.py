@@ -2296,7 +2296,7 @@ async def _stop_ack_timeout_watchdog_job():
                     )
                     await send_telegram_message(
                         f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: STOP-ACK TIMEOUT + NO FALLBACK* {ticker}\n"
-                        f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
+                        f"Trade #{trade_id} filled at {row['filled_at'].astimezone(_ET):%H:%M:%S} ET, "
                         f"no stop_order_id, can't remediate (qty={qty}, orb_low={stop_target}).\n"
                         f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard."
                     )
@@ -2316,7 +2316,7 @@ async def _stop_ack_timeout_watchdog_job():
                     await log_audit_event(
                         "stop_ack_timeout_remediated",
                         f"{ticker} #{trade_id}: stop-ACK timeout (filled_at "
-                        f"{row['filled_at']:%H:%M:%S} ET, stop_order_id NULL >30s); "
+                        f"{row['filled_at'].astimezone(_ET):%H:%M:%S} ET, stop_order_id NULL >30s); "
                         f"fallback stop placed at ${stop_target:.2f} order={fallback['id']}",
                         detail=_json.dumps({
                             "trade_id": trade_id,
@@ -2330,7 +2330,7 @@ async def _stop_ack_timeout_watchdog_job():
                     )
                     await send_telegram_message(
                         f"{mode_prefix(account_mode)}🛡 *STOP-ACK TIMEOUT — REMEDIATED:* {ticker}\n"
-                        f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
+                        f"Trade #{trade_id} filled at {row['filled_at'].astimezone(_ET):%H:%M:%S} ET, "
                         f"stop_order_id never populated.\n"
                         f"Fallback stop placed at ${stop_target:.2f}. Original OTO child "
                         f"stop-leg likely failed silently on Alpaca side."
@@ -2375,7 +2375,7 @@ async def _stop_ack_timeout_watchdog_job():
                     )
                     await send_telegram_message(
                         f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: POSITION NAKED, REMEDIATION FAILED* {ticker}\n"
-                        f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
+                        f"Trade #{trade_id} filled at {row['filled_at'].astimezone(_ET):%H:%M:%S} ET, "
                         f"no stop, fallback also failed: {stop_err}\n"
                         f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard NOW."
                     )
