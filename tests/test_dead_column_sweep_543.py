@@ -14,8 +14,14 @@ L1/L2/L3 anomaly system. `slope_30d` went through two specific holes:
 2. `_NULL_SWEEP_TABLES` covers five tables. `crypto_btc_dominance` is not one of them.
 
 So this sweep is the COMPLEMENT, not a replacement. A numeric column 100% NULL across its whole
-history on a table with real rows is dead or unwired — **binary, not a rate**, which is what makes
-it near-impossible to false-positive on.
+history on a table with real rows is dead or unwired — **binary, not a rate**.
+
+⚠ **"Near-impossible to false-positive" was WRONG (2026-10-05).** The sweep runs at 17:30 ET and a
+column's writer can run minutes later the same evening: 32 of the first 40 pages were that race
+(`mi_anticipation_consolidation.orderliness`: paged 17:30:04, its writer filled 106/106 rows at
+17:35). It is now a two-step rule — a quiet `dead_column_suspect` row on first sighting, announced
+only when a later sweep still sees the column all-NULL on a table written since. The behavioural
+tests at the bottom of this file drive that rule through a fake connection across several nights.
 
 First live run: **6 dead columns across 65 tables**, including `mi_stock_scores.market_cap` on
 **455,506 rows**.
@@ -39,16 +45,6 @@ def test_it_detects_NEVER_populated_not_merely_sparse():
     body = _fn()
     assert re.search(r'count\("\{col\}"\)|count\(\\"', body) or 'count("{col}")' in body, (
         "the sweep no longer counts non-null values per column")
-
-
-def test_it_announces_each_column_ONCE_EVER():
-    """A build defect, not a daily condition. A column unwired today is unwired tomorrow, and
-    re-announcing it nightly is exactly how a guard becomes noise and gets muted — the failure
-    mode this repo threw away three checks for last week."""
-    body = _fn()
-    assert "dead_column_detected" in body
-    assert "already" in body and "not in already" in body, (
-        "the once-ever dedupe is gone — this will now nag every night")
 
 
 def test_the_audit_log_IS_the_dedupe_state():
@@ -93,3 +89,203 @@ def test_it_does_not_duplicate_the_null_RATE_sweep():
     assert "always-null" in SRC, (
         "the null-rate sweep no longer documents that it skips always-null columns — that "
         "comment is the reason this second sweep exists")
+
+
+# ── BEHAVIOUR: the two-step rule, driven across several nights through a fake connection ──────
+#
+# The fake is a small stateful stand-in for asyncpg: tables, an audit log, and a clock the test
+# advances. The sweep's REAL audit writer (`log_audit_event(..., conn=c)`) runs against it, so a
+# suspect row really lands in the same log the next sweep reads back — which is the whole point:
+# the bug this rule prevents is a state-machine one (a suspect row mistaken for an announcement).
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+import pytest
+
+from agents.market_intelligence import health_checks
+
+_ET = ZoneInfo("America/New_York")
+_NIGHT_1 = datetime(2026, 10, 5, 21, 30, tzinfo=timezone.utc)   # Mon 17:30 ET — the sweep's slot
+_SOFT = "mi_anticipation_consolidation"
+_KEY = f"{_SOFT}.orderliness"
+
+
+class _FakeDB:
+    """tables: {name: {"rows": int, "nonnull": {col: n}, "ts_col": str|None, "last_write": dt|None}}"""
+
+    def __init__(self, tables: dict, now: datetime = _NIGHT_1):
+        self.tables, self.now, self.audit = tables, now, []
+
+    def advance(self, **delta):
+        self.now += timedelta(**delta)
+
+    async def fetch(self, sql, *args):
+        if "FROM information_schema.tables" in sql:
+            return [{"table_name": t} for t in sorted(self.tables)]
+        if "event_type = 'dead_column_detected'" in sql:
+            return [{"summary": s} for (e, s, _d, _t) in self.audit if e == "dead_column_detected"]
+        if "event_type = 'dead_column_suspect'" in sql:
+            first: dict = {}
+            for (e, s, _d, t) in self.audit:
+                if e == "dead_column_suspect":
+                    first[s] = min(t, first.get(s, t))
+            return [{"summary": s, "first_seen": t} for s, t in first.items()]
+        if "data_type = ANY" in sql:     # the numeric-columns query
+            return [{"column_name": c} for c in self.tables[args[0]]["nonnull"]]
+        if "column_name::text = ANY" in sql:   # the write-timestamp-column query
+            ts = self.tables[args[0]]["ts_col"]
+            return [{"column_name": ts}] if ts else []
+        raise AssertionError(f"unexpected fetch: {sql[:90]}")
+
+    async def fetchval(self, sql, *args):
+        if sql.startswith("SELECT count(*)"):
+            t = self.tables[sql.split('"')[1]]
+            if t.get("boom"):
+                raise RuntimeError("permission denied")
+            return t["rows"]
+        if sql.startswith("SELECT count("):
+            return self.tables[sql.split('"')[3]]["nonnull"][sql.split('"')[1]]
+        if "SELECT EXISTS" in sql:
+            last = self.tables[sql.split('"')[1]]["last_write"]
+            return last is not None and last > args[0]
+        raise AssertionError(f"unexpected fetchval: {sql[:90]}")
+
+    async def execute(self, sql, *args, timeout=None):
+        assert "INSERT INTO mi_audit_log" in sql
+        self.audit.append((args[0], args[1], args[2], self.now))
+
+    def events(self, kind=None):
+        return [(e, s) for (e, s, _d, _t) in self.audit if kind is None or e == kind]
+
+
+def _soft_table(**over):
+    """The 2026-10-05 table: 106 rows, `orderliness` all NULL, stamped by `created_at`."""
+    t = {"rows": 106, "nonnull": {"orderliness": 0}, "ts_col": "created_at", "last_write": None}
+    t.update(over)
+    return {_SOFT: t}
+
+
+@pytest.fixture
+def telegram(monkeypatch):
+    sent: list[str] = []
+
+    async def _send(text, *a, **k):
+        sent.append(text)
+        return True
+
+    import agents.market_intelligence.briefing as briefing
+    monkeypatch.setattr(briefing, "send_telegram_message", _send)
+    return sent
+
+
+def _run(db, monkeypatch):
+    # The no-timestamp rule compares ET calendar days; pin "today" to the fake clock.
+    monkeypatch.setattr(health_checks, "et_today", lambda: db.now.astimezone(_ET).date())
+    return health_checks.run_dead_column_sweep(db)
+
+
+@pytest.mark.asyncio
+async def test_first_sighting_is_a_QUIET_suspect_row_not_a_page(telegram, monkeypatch):
+    """The 10-05 incident: sweep at 17:30:04, writer at 17:35. First sight must not page — and
+    the row it leaves must be `dead_column_suspect`, never `dead_column_detected`."""
+    db = _FakeDB(_soft_table())
+    out = await _run(db, monkeypatch)
+    assert db.events() == [("dead_column_suspect", _KEY)]
+    assert telegram == []
+    assert out["dead"] == [] and [(s["table"], s["column"]) for s in out["suspect"]] == [
+        (_SOFT, "orderliness")]
+
+
+@pytest.mark.asyncio
+async def test_still_null_with_a_write_since_is_announced_exactly_once(telegram, monkeypatch):
+    """Night 2: column still NULL AND the table took rows after the suspect row → announce. This
+    also proves the suspect row does not count as an announcement (the silent-drop bug)."""
+    db = _FakeDB(_soft_table())
+    await _run(db, monkeypatch)
+    db.tables[_SOFT]["last_write"] = db.now + timedelta(minutes=5)   # rows written, column not
+    db.advance(days=1)
+    out = await _run(db, monkeypatch)
+    assert db.events("dead_column_detected") == [("dead_column_detected", _KEY)]
+    assert len(telegram) == 1 and _KEY in telegram[0] and "106 rows" in telegram[0]
+    assert [d["new"] for d in out["dead"]] == [True] and out["suspect"] == []
+    # Night 3: announced on an earlier night — no new row, no second page.
+    db.advance(days=1)
+    out = await _run(db, monkeypatch)
+    assert len(db.events("dead_column_detected")) == 1 and len(telegram) == 1
+    assert [d["new"] for d in out["dead"]] == [False]
+
+
+@pytest.mark.asyncio
+async def test_no_rows_written_since_stays_quiet_but_keeps_rechecking(telegram, monkeypatch):
+    """'No new rows' is never a final state: quiet tonight, and it announces the night a write
+    finally lands without the column."""
+    db = _FakeDB(_soft_table(last_write=_NIGHT_1 - timedelta(days=3)))
+    await _run(db, monkeypatch)
+    for _ in range(3):                                   # three quiet nights, nothing written
+        db.advance(days=1)
+        out = await _run(db, monkeypatch)
+        assert db.events("dead_column_detected") == [] and telegram == []
+        assert len(out["suspect"]) == 1 and out["dead"] == []
+    assert len(db.events("dead_column_suspect")) == 1    # still ONE suspect row, not one a night
+    db.tables[_SOFT]["last_write"] = db.now + timedelta(minutes=5)
+    db.advance(days=1)
+    await _run(db, monkeypatch)
+    assert len(db.events("dead_column_detected")) == 1 and len(telegram) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_column_filled_before_announcement_never_alerts(telegram, monkeypatch):
+    """The writer ran at 17:35 and filled all 106 rows (row writes included) — no alert, ever."""
+    db = _FakeDB(_soft_table())
+    await _run(db, monkeypatch)
+    db.tables[_SOFT]["nonnull"]["orderliness"] = 106
+    db.tables[_SOFT]["last_write"] = db.now + timedelta(minutes=5)
+    for _ in range(3):
+        db.advance(days=1)
+        out = await _run(db, monkeypatch)
+        assert out["dead"] == [] and out["suspect"] == []
+    assert db.events("dead_column_detected") == [] and telegram == []
+
+
+@pytest.mark.asyncio
+async def test_a_table_with_no_write_timestamp_announces_on_a_later_ET_day(telegram, monkeypatch):
+    """No `updated_at`/`created_at`/… to show a write: one full later sweep is the wait. A re-run
+    the same evening (ET) must NOT announce — that is the race all over again."""
+    db = _FakeDB(_soft_table(ts_col=None))
+    await _run(db, monkeypatch)
+    db.advance(minutes=10)                               # same ET evening, 17:40
+    await _run(db, monkeypatch)
+    assert db.events("dead_column_detected") == [] and telegram == []
+    db.advance(days=1)                                   # next ET day
+    out = await _run(db, monkeypatch)
+    assert db.events("dead_column_detected") == [("dead_column_detected", _KEY)]
+    assert len(telegram) == 1 and [d["new"] for d in out["dead"]] == [True]
+
+
+@pytest.mark.asyncio
+async def test_an_already_announced_column_is_never_re_announced(telegram, monkeypatch):
+    """Announced once EVER: a pre-existing `dead_column_detected` row suppresses everything —
+    no page, and no fresh suspect row either."""
+    db = _FakeDB(_soft_table(last_write=_NIGHT_1 + timedelta(days=1)))
+    db.audit.append(("dead_column_detected", _KEY, "{}", _NIGHT_1 - timedelta(days=30)))
+    out = await _run(db, monkeypatch)
+    assert len(db.audit) == 1 and telegram == []
+    assert [d["new"] for d in out["dead"]] == [False] and out["suspect"] == []
+
+
+@pytest.mark.asyncio
+async def test_a_young_table_is_not_judged_at_all(telegram, monkeypatch):
+    """Under `_DEAD_COL_MIN_ROWS` rows: no suspect row, no page, not even counted as scanned."""
+    db = _FakeDB(_soft_table(rows=health_checks._DEAD_COL_MIN_ROWS - 1))
+    out = await _run(db, monkeypatch)
+    assert db.audit == [] and telegram == [] and out["tables_scanned"] == 0
+
+
+@pytest.mark.asyncio
+async def test_one_bad_table_does_not_stop_the_others_being_checked(telegram, monkeypatch):
+    tables = {"mi_aaa_broken": {"rows": 99, "nonnull": {"x": 0}, "ts_col": None,
+                                "last_write": None, "boom": True}, **_soft_table()}
+    db = _FakeDB(tables)
+    out = await _run(db, monkeypatch)
+    assert len(out["errors"]) == 1 and "mi_aaa_broken" in out["errors"][0]
+    assert db.events() == [("dead_column_suspect", _KEY)]

@@ -3833,24 +3833,75 @@ async def get_theme_hierarchy_evening_line() -> str | None:
 #
 # THIS SWEEP IS THE COMPLEMENT, not a replacement: a numeric column that is 100% NULL across
 # its ENTIRE history, on a table with real rows, is either dead or never wired. That is binary,
-# not a rate — which is what makes it cheap to check and near-impossible to false-positive on.
+# not a rate — which is what makes it cheap to check. It is NOT immune to a false alarm: this
+# runs at 17:30 ET inside the post-nightly audit, and a column's writer can run minutes AFTER it
+# on the same evening (2026-10-05: `mi_anticipation_consolidation.orderliness` was added Saturday,
+# its only writer runs 17:35 Mon-Fri; the sweep paged at 17:30:04 and the writer filled 106/106
+# rows at 17:35). Measured on prod history: 32 of the 40 pages ever sent were that race.
+#
+# ⚠ TWO-STEP RULE. First sighting of an all-NULL column writes a QUIET `dead_column_suspect` audit
+# row (no Telegram). A later sweep announces it only if the column is STILL all-NULL AND the table
+# has been written since that first sighting (`_dead_col_written_since`). A column that gets any
+# value in between never alerts. It keeps re-checking every night — "no new rows" is never a
+# final state, just a reason to wait one more night.
 #
 # ⚠ REPORTED ONCE PER COLUMN, EVER. This is a BUILD defect, not a daily condition: a column
 # unwired today is unwired tomorrow, and re-announcing it every night is how a guard becomes
 # noise and gets muted. The audit log IS the dedupe state (same pattern as `cost_new_lane`).
+# `dead_column_suspect` and `dead_column_detected` are DISTINCT event types on purpose: the
+# `already` set reads only the latter, so a suspect row can never be mistaken for an announcement.
 _DEAD_COL_MIN_ROWS = 30          # below this the table is too young to judge
 _DEAD_COL_TABLE_PREFIXES = ("mi_", "crypto_")
+# Row-write timestamps, in preference order (the first one a table has wins). Deliberately small
+# and timestamp-typed only: a business-date column (score_date, alert_date) says which day a row
+# is ABOUT, not when it was written, so it cannot show "written since first sighting" — a table
+# with none of these falls back to the one-full-ET-day rule instead.
+_DEAD_COL_WRITE_TS = ("updated_at", "created_at", "computed_at", "logged_at")
+
+
+async def _dead_col_written_since(c, table: str, since) -> bool:
+    """Has `table` taken any write since `since` (the column's first-sighting time)?
+
+    A table with a write-timestamp column (`_DEAD_COL_WRITE_TS`): was any row stamped after
+    `since`. A table with none: True once `since` is from an earlier ET calendar day — one full
+    later sweep has passed, which is what the 17:30 race needs.
+    """
+    present = {r["column_name"] for r in await c.fetch(
+        """
+        SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = $1
+           AND column_name::text = ANY($2::text[])
+           AND data_type IN ('timestamp with time zone', 'timestamp without time zone')
+        """, table, list(_DEAD_COL_WRITE_TS))}
+    ts_col = next((x for x in _DEAD_COL_WRITE_TS if x in present), None)
+    if ts_col is None:
+        return since.astimezone(_ET).date() < et_today()
+    return bool(await c.fetchval(
+        f'SELECT EXISTS (SELECT 1 FROM "{table}" WHERE "{ts_col}" > $1::timestamptz)', since))
 
 
 async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
-    """Numeric columns that have NEVER been populated. Announced once per column, ever.
+    """Numeric columns that have NEVER been populated. Announced once per column, ever — but only
+    on the SECOND look, because the column's nightly writer can run after this sweep does.
 
-    Returns {"tables_scanned", "dead" [list], "errors" [list]}.
+    The 17:30 ET sweep used to page on first sight of an all-NULL column. That was a race, not a
+    detector: a writer scheduled minutes later (17:35) fills the column the same evening, and 32
+    of the first 40 pages were exactly that. So:
+
+      1. First sighting of an all-NULL column → a QUIET `dead_column_suspect` audit row, no
+         Telegram. (Never `dead_column_detected` — `already` reads that type, and a suspect row
+         there would drop the real alert forever.)
+      2. A later sweep, column STILL all-NULL, and the table written since the suspect row
+         (`_dead_col_written_since`) → announce: `dead_column_detected` row + Telegram.
+      3. Column filled in between → never alerts. Nothing written since → quiet, and re-checked
+         every night after.
+
+    Returns {"tables_scanned", "dead" [announced, ever], "suspect" [on probation], "errors" [list]}.
     """
     from agents.market_intelligence.db import get_pool, log_audit_event
 
     async def _run(c) -> dict[str, Any]:
-        out: dict[str, Any] = {"tables_scanned": 0, "dead": [], "errors": []}
+        out: dict[str, Any] = {"tables_scanned": 0, "dead": [], "suspect": [], "errors": []}
         tables = [r["table_name"] for r in await c.fetch(
             """
             SELECT table_name FROM information_schema.tables
@@ -3860,6 +3911,10 @@ async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
             """)]
         already = {r["summary"] for r in await c.fetch(
             "SELECT summary FROM mi_audit_log WHERE event_type = 'dead_column_detected'")}
+        # key → when we FIRST saw it all-NULL (earliest row wins: it is the "written since" anchor).
+        suspect_since = {r["summary"]: r["first_seen"] for r in await c.fetch(
+            "SELECT summary, min(created_at) AS first_seen FROM mi_audit_log "
+            "WHERE event_type = 'dead_column_suspect' GROUP BY summary")}
 
         for table in tables:
             try:
@@ -3878,12 +3933,21 @@ async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
                     if await c.fetchval(f'SELECT count("{col}") FROM "{table}"'):
                         continue
                     key = f"{table}.{col}"
-                    out["dead"].append({"table": table, "column": col, "rows": n,
-                                        "new": key not in already})
-                    if key not in already:
-                        await log_audit_event(
-                            "dead_column_detected", key,
-                            f'{{"table": "{table}", "column": "{col}", "rows": {n}}}')
+                    entry = {"table": table, "column": col, "rows": n}
+                    detail = f'{{"table": "{table}", "column": "{col}", "rows": {n}}}'
+                    if key in already:   # announced on an earlier night — never again
+                        out["dead"].append({**entry, "new": False})
+                        continue
+                    first_seen = suspect_since.get(key)
+                    if first_seen is None:
+                        # FIRST SIGHTING: quiet. Its writer may simply not have run yet tonight.
+                        await log_audit_event("dead_column_suspect", key, detail, conn=c)
+                        out["suspect"].append(entry)
+                    elif await _dead_col_written_since(c, table, first_seen):
+                        out["dead"].append({**entry, "new": True})
+                        await log_audit_event("dead_column_detected", key, detail, conn=c)
+                    else:
+                        out["suspect"].append(entry)   # nothing written since: ask again tomorrow
             except Exception as e:  # loud-ok: one bad table must not kill the sweep
                 out["errors"].append(f"{table}: {type(e).__name__}: {str(e)[:120]}")
                 logger.warning(f"dead-column sweep: {table} failed: {e}")
