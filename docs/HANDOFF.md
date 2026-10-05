@@ -1378,3 +1378,18 @@ stagger cards, one at a time.
 **Sunday 10-04 (his ok, one at a time, start on his word):** #655 failing G3/G4 checks; #598 flag-board M&A screen + /flags header; #687 flat-vs-unreadable broker read; #686 pre-registration; the chart-eval adapter fix.
 
 **Standing:** prod DB reads from the laptop are blocked by the permission classifier — ask him to run them (`! ssh ...`). #519 chart pilot parked to 60 closed trades (data-gated review `chart_pilot_rerun_60_closed_trades`).
+
+## 2026-10-04 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 10-03 close above.
+
+**Board 44 → 44** (no closes; no new tasks). Server + main = 73dc7089 (deployed 17:07 ET, both + execution, logs clean).
+
+**Shipped Sunday (his list, one at a time):**
+- #655 (theme correctness): his "aligned" — a weak-Fading theme under 3 members retires the night it is weak (toggle `theme_small_fading_retire`, ON), after re-homing; bug E fixed (a re-promotion over a Retired tombstone goes through the birth gate). Rule 2 (retire themes failing the random-basket test) WAITS: re-measure after #491's third night (Wed 10-07).
+- #598: the flag board's buyout screen covers TIGHTENING; /flags and /htf no longer call a stage a setup. $0 replay: in 90 days only FBRX (a known buyout) would have been caught.
+- #687 ruling (i): a flat broker read places no stop (restore + ruling (iii)'s sale); his ruling (a): the 17:00/19:00 coverage repair reads the broker and places nothing when flat; its page names the flat broker.
+- #686: the September-block read is registered and frozen (hashes pinned); it refuses to run before 10-17.
+- Chart-judge eval goes through the shared model adapter. Review-and-simplify pass on the day: 3 tidy-ups, suite 9,984.
+
+**Monday 10-05 = first live day for Saturday's and Sunday's work.** Checks are on the #687 / #692 / #688 / #655 / #598 / #491 PLAN lines (EXPECT / DONE-WHEN / WOULD-FAIL-IF). #687's depth-exit paper rehearsal runs Mon–Tue, then his yes/no on going live — no further change on that path before the rehearsal.
+
+**Standing:** Fable capacity at 93% for the week — route the rest of the week to Opus/Sonnet. Prod DB reads via psql are blocked by the permission classifier; read-only probes through the app container work.
