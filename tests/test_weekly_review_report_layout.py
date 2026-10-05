@@ -377,3 +377,16 @@ def test_crypto_not_ready_is_not_raised_with_him(monkeypatch):
         "universe_size": 331, "rs_history_days": 135, "ingest_attempts_7d": 6,
     })
     assert meta["needs_you"] == 0, "a blocked crypto gate was put in front of him as a decision"
+
+
+def test_ripe_reviews_are_my_work_not_his_and_their_list_leads_the_fold(monkeypatch):
+    """2026-10-05: the digest put ripe data-gated reviews under 'Needs you (4)' while
+    scripts/operator_asks.py — the SoT for what waits on him — files them as MY work ('GATED
+    REVIEWS NOW READY: MY WORK IS DUE, NOT HIS ANSWER'). He read a week of my reviews as his asks."""
+    ready = [{"review_id": "r1", "title": "Steady-state cost of theme assignment", "kind": "accrual",
+              "earliest_review_date": (TODAY - timedelta(days=3)).isoformat(),
+              "action_when_ready": "Report cost and pool as a pair."}]
+    head, fold, meta = _assemble(monkeypatch, pending_reviews={"ready": ready, "pending_count": 54})
+    assert "Needs you" not in head
+    assert "*Needs me (1):*" in head and "1 data-gated review(s) ripe" in head
+    assert fold.startswith("📅 *Reviews ready* (1)") and "Steady-state cost of theme assignment" in fold

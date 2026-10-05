@@ -220,14 +220,19 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
     header = (f"🧠 *Weekly review — {window_start.strftime('%b')} {window_start.day}–{today.day}* "
               f"· regime {regime}")
 
-    # 1. Data-gated reviews whose threshold flipped — the operator's decisions. Rendered
-    #    deterministically (#412) so a title can't be truncated; every ripe item is an action.
+    # 1. Data-gated reviews whose threshold flipped. A ripe review is MY work first — I run it and
+    #    he hears only its result (scripts/operator_asks.py, the SoT for what waits on him: "GATED
+    #    REVIEWS NOW READY: MY WORK IS DUE, NOT HIS ANSWER"; operator 2026-09-08, never ask what is
+    #    not his). The head counts them under Needs me; the full list (#412, never truncated)
+    #    leads the fold.
     try:
         pr = metrics.get("pending_reviews") or {}
         ready_n = len(pr.get("ready") or [])
         block = _format_pending_reviews_section(pr, today=today)
         if block:
-            needs_you.append((ready_n, block))
+            needs_me.append(f"{ready_n} data-gated review(s) ripe — I run each and bring you only "
+                            f"its result (listed below)")
+            fold.insert(0, block)
         checked.append(f"reviews: {ready_n} ripe" + (" (above)" if ready_n else "")
                        + f", {pr.get('pending_count') or 0} still accruing")
     except Exception:

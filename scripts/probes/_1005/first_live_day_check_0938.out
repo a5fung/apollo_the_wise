@@ -1,0 +1,13 @@
+RISK_PCT = 0.02
+== M&A filter rows today (7)
+  07:00:32 mna_filter_released                INTR: old rule would have blocked (keyword_in_text_0:buyout); grader read none/none/none
+  07:01:30 mna_filter_fired                   PTC via claude_deal_fields (ep)
+  07:01:39 mna_filter_released                SBS: old rule would have blocked (keyword_in_text_0:merger); grader read none/none/none
+  07:05:15 mna_filter_released                AFYA: old rule would have blocked (keyword_in_text_0:merger); grader read target/signed/stock
+  07:05:51 mna_filter_released                TIMB: old rule would have blocked (keyword_in_text_1:takeover); grader read none/none/none
+  08:35:18 mna_filter_released                CRML: old rule would have blocked (keyword_in_text_0:buyout); grader read none/none/none
+  09:35:17 mna_pin_confirmed                  PTC: the open window confirmed the block (target/signed/cash via claude_deal_fields): open5m range 0.6895% <= 1.0%
+== EP alerts today (2)
+  07:00:50 NU     MODERATE 65.0
+  07:25:15 PBR    MODERATE 77.5
+== live trades rows today (0)  columns: ['id', 'ticker', 'status', 'account_mode', 'entry_shares', 'orb_high', 'orb_low', 'risk_dollars', 'skip_reason', 'created_at']
