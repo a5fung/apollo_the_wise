@@ -1,0 +1,29 @@
+== theme_assignment cost by night (21d)
+  2026-09-14 calls  10  $0.296  out_tok 17134  max_tokens 0
+  2026-09-15 calls  10  $0.281  out_tok 16043  max_tokens 0
+  2026-09-16 calls  10  $0.277  out_tok 16750  max_tokens 0
+  2026-09-17 calls   9  $0.267  out_tok 16841  max_tokens 0
+  2026-09-18 calls   9  $0.274  out_tok 17072  max_tokens 0
+  2026-09-21 calls  17  $0.502  out_tok 32802  max_tokens 0
+  2026-09-22 calls  16  $0.484  out_tok 31615  max_tokens 0
+  2026-09-23 calls  15  $0.462  out_tok 28989  max_tokens 0
+  2026-09-24 calls  15  $0.422  out_tok 25104  max_tokens 0
+  2026-09-25 calls  14  $0.400  out_tok 24612  max_tokens 0
+  2026-09-28 calls  15  $0.413  out_tok 25872  max_tokens 0
+  2026-09-30 calls  15  $0.323  out_tok 15821  max_tokens 0
+  2026-10-01 calls  15  $0.311  out_tok 14234  max_tokens 0
+  2026-10-02 calls  14  $0.315  out_tok 15598  max_tokens 0
+== pool / summary rows (21d)
+  2026-09-16 Co-movement test: 18 admitted (3 over the sector label), 5 rejected the label would have kept, 7 rejected, 1 unjudgeable
+  2026-09-17 Co-movement test: 13 admitted (2 over the sector label), 3 rejected the label would have kept, 6 rejected, 3 unjudgeable
+  2026-09-18 Co-movement test: 15 admitted (5 over the sector label), 5 rejected the label would have kept, 7 rejected, 3 unjudgeable
+  2026-09-21 Co-movement test: 32 admitted (5 over the sector label), 7 rejected the label would have kept, 8 rejected, 3 unjudgeable
+  2026-09-22 Co-movement test: 32 admitted (5 over the sector label), 13 rejected the label would have kept, 14 rejected, 3 unjudgeable
+  2026-09-23 Co-movement test: 22 admitted (6 over the sector label), 6 rejected the label would have kept, 8 rejected, 2 unjudgeable
+  2026-09-24 Co-movement test: 15 admitted (4 over the sector label), 9 rejected the label would have kept, 10 rejected, 1 unjudgeable
+  2026-09-25 Co-movement test: 14 admitted (3 over the sector label), 12 rejected the label would have kept, 13 rejected, 4 unjudgeable
+  2026-09-28 Co-movement test: 19 admitted (3 over the sector label), 7 rejected the label would have kept, 7 rejected, 3 unjudgeable
+  2026-09-30 Co-movement test: 11 admitted (2 over the sector label), 10 rejected the label would have kept, 10 rejected, 3 unjudgeable
+  2026-10-01 Co-movement test: 6 admitted (2 over the sector label), 6 rejected the label would have kept, 6 rejected, 0 unjudgeable
+  2026-10-02 Co-movement test: 9 admitted (0 over the sector label), 11 rejected the label would have kept, 11 rejected, 2 unjudgeable
+== live board: {'n': 133, 'avg_members': Decimal('5.63'), 'le3': 59}

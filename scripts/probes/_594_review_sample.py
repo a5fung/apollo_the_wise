@@ -37,7 +37,9 @@ if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
 from datetime import date
-SINCE = date(2026, 8, 8)      # sample #1 ended here
+# The previous sample's window end (exclusive lower bound). Sample #1 ended 2026-08-08; sample #2
+# (built 2026-09-21) ended 2026-08-22. Override: python _594_review_sample.py YYYY-MM-DD
+SINCE = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1][:2] == "20" else date(2026, 8, 8)
 SETTLE_SESSIONS = 20
 
 _FWD = """
