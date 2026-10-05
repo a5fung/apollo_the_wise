@@ -12699,7 +12699,8 @@ reviews:
       members (baseline 3.3 on 2026-08-10), 59 of 133 at <= 3 members (44%; baseline 350 of 460, 76%).
       OUTCOME (b) by this entry's own rule — the cost is flat (~$0.3/night, not decaying to zero) and membership
       rose — "a real ongoing price for a working component, operator rules". Rec: keep (~$9 a month).
-      ASKED 2026-10-05.
+      ASKED 2026-10-05. ⚖ HIS RULING 2026-10-05: "Yes but monitor costs" — keep it; the watch is the
+      tripwire theme_assignment_cost_tripwire (any night over $1.00 or any truncated call).
     title: >-
       Steady-state cost of theme assignment after the 08-10 output-bounding fix — does the
       backlog cost decay, and did batch=18 hold?
@@ -12738,13 +12739,51 @@ reviews:
       (c) membership does NOT rise => the spend bought nothing, pull it. ALSO: if
       `theme_assignment` still shows stop_reason='max_tokens' rows, batch=18 was modelled too
       high (no untruncated sonnet-5 sample existed to measure it) — halve it.
-    status: deferred
+    status: done
     deferred_reason: "OFF the EP critical path (operator triage 2026-08-24), deferred on PRIORITY not on merit - it is the only deferred item still spending money, roughly 1.90 dollars a night that was approved as a TEMPORARY backlog cost. PULLS FORWARD ON ITS OWN, no calendar needed, if either envelope breaks: cost per night runs above the modelled 1.90 dollars, or theme_assignment rows show stop_reason max_tokens again (which would mean batch=18 was modelled too high). Either one means the approved cost envelope no longer holds and the spend decision cannot wait for October."
     deferred_on: 2026-08-24
     deferred_until: 2026-10-01
     kind: accrual
     added_on: 2026-08-10
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
+
+  - review_id: theme_assignment_cost_tripwire
+    kind: tripwire
+    title: "Theme assignment cost — flag any night over $1.00 or any truncated call (his 'monitor costs', 2026-10-05)"
+    question: |
+      He kept the nightly theme-assignment step on 2026-10-05 ("Yes but monitor costs") at ~$0.31 a night
+      (~$9 a month; peak $0.50 on 09-21/22 with the largest pool). Does any night now cost more than $1.00 —
+      double the highest night seen and about half the $1.90 envelope approved in August — or does any call
+      come back truncated (stop_reason max_tokens, which would mean batch=18 is too big)?
+    predicate_sql: |
+      SELECT count(*) FROM (
+        SELECT (created_at AT TIME ZONE 'America/New_York')::date AS d, sum(cost_usd) AS usd,
+               sum(CASE WHEN stop_reason = 'max_tokens' THEN 1 ELSE 0 END) AS truncated
+          FROM api_usage
+         WHERE caller = 'theme_assignment' AND created_at >= NOW() - INTERVAL '7 days'
+         GROUP BY 1) nights
+       WHERE usd > 1.00 OR truncated > 0;
+    can_fire:
+      predicate_runs: "2026-10-05 - the same api_usage read as scripts/probes/_1005/theme_assignment_cost_review.py; returns 0 today (every night 09-14..10-02 under $0.51, zero truncations)."
+      nonzero_possible: "Yes - one expensive night or one truncated call makes it 1; the 09-21/22 pool spike already took a night to $0.50."
+      lane_live: "theme_assignment runs every weeknight inside the theme engine (9-17 calls a night)."
+      threshold_vs_observed: "1 against 0 today - it fires on the first bad night, which is what a cost watch should do."
+      era_scoped: "A rolling 7-day window, so it always reads the current rules and batch size."
+      population_actionable: "The action reads the flagged night's calls, pool size and truncations directly from api_usage and the assignment summary rows."
+      instrument_trusted: "api_usage is the spend ledger (cost_usd and stop_reason per call), the same table the weekly cost envelope reads."
+    threshold: 1
+    earliest_review_date: 2026-10-05
+    status: pending
+    added_on: 2026-10-05
+    action_when_ready: |
+      1. Name the night(s): cost, calls, output tokens, truncations, and that night's uncovered pool (the
+         assignment_comove_summary row) — cost is only readable against the pool.
+      2. Truncated calls → halve the batch (batch=18 was modelled with no untruncated sample) and say so.
+      3. A cost jump with a matching pool jump is the backlog working; a jump without one is a defect to find.
+      4. Bring him one line: what it cost, why, and whether the $9-a-month keep still holds.
+    cross_refs: ['theme_assignment_steady_state_cost', 'task #560', 'task #543']
+    discriminates_on: [api_usage.caller, api_usage.stop_reason]
+    zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
     resolution_2026_10_02: >-
