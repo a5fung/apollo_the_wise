@@ -1028,7 +1028,7 @@ tombstone is held (`join`) in `dedup_only` instead of being written over its liv
 **Reversion-flag**: NEW for B (a second, faster exit from Fading beside the 5-night rule; revert = toggle OFF, no
 redeploy). BUG FIX for E (the gate's own "first crossing" definition, no new criterion).
 
-**Status**: BUILT 2026-10-04 on branch `655-small-fading-retire`, awaiting deploy. Tests:
+**Status**: DEPLOYED 2026-10-04 (merge b09f82b9; server f5e27495, market-agent + execution), toggle `theme_small_fading_retire` ON; first live night Mon 10-05. Tests:
 `tests/test_theme_small_fading_retire.py` (14: retire at 2 and at 1 member; a scored/elite pair never touched; ≥ 3 keep the grace; toggle OFF = old
 behaviour, in the pass and through the real `run_theme_engine`; runs AFTER re-homing so a moved name is counted out; the
 toggle is discoverable and defaults ON; a tombstone prior consults the gate and a `join` is held; a tombstone prior the
