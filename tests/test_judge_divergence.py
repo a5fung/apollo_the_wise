@@ -283,6 +283,9 @@ def test_mi_judge_divergence_is_touched_only_by_the_audited_allow_list():
         "agents/market_intelligence/audit_events.py",   # comment only, naming the audit events
         "agents/market_intelligence/judge_divergence.py",  # the writer itself
         "agents/market_intelligence/system_review.py",     # the one weekly-digest READ-ONLY line
+        "scripts/probes/_1005/judge_divergence_check.py",  # the 2026-10-05 #301 grounding check: an
+                                                           # offline, read-only probe run by hand — no
+                                                           # scoring, entry or exit path imports it
     }
     assert _repo_files_mentioning("mi_judge_divergence") == allow_list
 
