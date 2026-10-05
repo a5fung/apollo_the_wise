@@ -1,28 +1,34 @@
-==== A. WE SAID HIGH AND IT FAILED — worst 5 (settled 20 sessions) ====
-ticker|alert_date|gap|ep_score|cat|pct_20d
-SOLS|2026-08-28|16.3|67.5|strong|-12.0
-CHRN|2026-08-27|12.2|105.0|game_changer|-11.0
-AGX|2026-09-03|9.6|65.0|strong|-10.0
-SNOW|2026-09-03|23.8|77.5|strong|-10.0
-DG|2026-08-27|10.9|70.5|strong|-2.0
+#594 CHART REVIEW SAMPLE #3 — 2026-10-05 (REBUILT; the first build is withdrawn)
 
-==== B. WE SCORED IT BELOW THE BAR AND IT RAN — best 5 ====
-ticker|scan_date|gap|ep_score|cat|pct_20d
-DELL|2026-09-02|12.3|46.2|routine|17.0
-NTSK|2026-09-03|15.2|48.8|routine|14.0
-ANF|2026-08-26|28.6|46.2|routine|2.0
-YEXT|2026-09-02|12.2|27.5|routine|-0.0
-OOMA|2026-08-27|27.0|33.8|routine|-3.0
+Page: https://claude.ai/artifact/2u1rfqKEagBDtceyT1bKqC (point-in-time charts, bars to the day before).
 
-==== METHOD ====
-Window: alert/scan dates 2026-08-23 .. 2026-09-05 (sample #2 ended 2026-08-22), every date settled at 20
-sessions. Same probe and rules as sample #2 (scripts/probes/_594_review_sample.py 2026-08-22): outcome =
-20-session close vs the day's OPEN from mi_daily_closes; arm B = the day's BEST score stayed under the 50
-skip floor, anything we alerted EXCLUDED. None of the ten is already labelled in must_not_trade_charts.py.
+==== A. WE ALERTED HIGH AND IT FELL — real EP days, 20 sessions settled ====
+ticker|date|open_gap|vol_x|ep_score|catalyst|pct_20d
+AEVA|2026-08-06|31.6|6.1|96.0|strong|-41
+RXT|2026-06-16|14.4|4.2|84.0|strong|-38
+BLZE|2026-08-04|29.3|5.4|80.0|game_changer|-33
+RUM|2026-06-04|13.2|4.1|84.0|strong|-31
+HPE|2026-06-02|34.2|6.2|115.2|strong|-30
 
-⚠ A THIN WINDOW, NOT PADDED. Arm A's worst five fell 2-12% (sample #2: 22-49%); arm B's best five ran
-+17/+14/+2/0/-3%. Only SOLS, CHRN, AGX, SNOW (A) and DELL, NTSK (B) carry a real move; DG, ANF, YEXT and
-OOMA are flat and are shown only so the sample is the probe's honest top five per arm.
+==== B. WE SCORED IT UNDER 50 ALL DAY AND IT RAN — real EP days, 20 sessions settled ====
+CDNA|2026-07-16|22.4|4.6|30.0|routine|+30
+MAN|2026-07-16|19.9|3.9|42.0|routine|+26
+IBTA|2026-08-04|24.5|6.9|42.0|routine|+22
+KRO|2026-08-06|14.3|5.5|44.4|routine|+19
+HURN|2026-07-29|10.5|5.2|37.0|routine|+17
 
-THE ASK, per his loop: he judges the DAY, not the ticker — was the CHART right on that date, and if not,
-which date was? Rulings land in tests/fixtures/must_not_trade_charts.py keyed on (ticker, DATE).
+==== WHY THE FIRST BUILD WAS WITHDRAWN (his catch, 2026-10-05) ====
+He: "I don't get CHRN and AGX, there's no EP or gap up on those days". Right — the probe took the ALERT's
+gap_pct, which is the price at scan time (pre-market or 09:50 ET) vs the prior close. On the daily bars CHRN
+08-27 opened +5.7% (alert said 12.2%), AGX 09-03 +4.1% (9.6%), DG 08-27 +4.1% (10.9%), and all faded. The
+same class as the VEEE 07-08 note in the probe. He: "I want real potential EPs, not garbage to grade."
+
+==== THE RULE, STATED BEFORE THE REBUILD RAN ====
+A real EP day on the DAILY bars: OPEN >= 9% above the prior session's close (the live MIN_GAP_PCT) AND that
+day's volume >= 3x the prior 20-session average. Arm A = HIGH-tier alert rows only, one per (ticker, day) at
+the day's best score (the first build also let MODERATE alerts in). Arm B = the day's best score < 50, any
+alerted date excluded. Window widened to 2026-06-01 .. 2026-09-05 because 08-23..09-05 alone held almost no
+real EP days; every (ticker, date) he already ruled on in tests/fixtures/must_not_trade_charts.py is dropped
+(NVTX, MRLN, NVTS, AVGU, BW, AVAH 08-13, NIQ were the top of the raw lists). Probe:
+scripts/probes/_594_review_sample.py 2026-05-31 (prints the top 15 per arm); charts:
+scripts/probes/_1005/render_sample3_charts.py (the live chart_axis.render_prior_day_chart).
