@@ -182,7 +182,7 @@ async def test_the_dry_run_passes_end_to_end_and_cleans_up(tmp_path):
     rc, env, log = await _dry(tmp_path)
     assert rc == 0, log.failed()
     want = {"A1", "A2", "A3", "B1", "B2", "B2b", "B3", "A4", "A5", "A6", "A6a", "A6b", "A6c",
-            "A6d", "A6e", "A6f", "A7", "A8", "A9", "A9b", "D1", "D2", "D3", "D3b", "D4", "D5",
+            "A6d", "A6e", "A6f", "A7", "A8", "A9", "A9b", "D1r", "D1", "D2", "D3", "D3b", "D4", "D5",
             "CLEANUP"}
     assert want <= set(_steps(log, "PASS")), _steps(log)
     assert env.trades == {}
@@ -219,6 +219,20 @@ async def test_the_rehearsal_drives_the_opening_auction_sale_itself_if_the_19_01
     rc, _, log = await _dry(tmp_path, prod_depth_job=False)
     a9 = [r for r in log.results if r["step"] == "A9"][0]
     assert rc == 0 and a9["status"] == "PASS" and "THIS process" in a9["detail"]
+
+
+@pytest.mark.asyncio
+async def test_a_row_an_overnight_job_closed_fails_before_the_open(tmp_path):
+    """D3 ('closed by the stream after the fill') would also read true if the 21:00 sync had closed
+    the row — so D1r pins both rows OPEN at 3 sh before the open."""
+    rc, env, log = await _dry(tmp_path, cmd="day-a")
+    assert rc == 0
+    p2 = [r for r in env.trades.values() if r["ticker"] == "PEP"][0]
+    p2.update(status="closed", remaining_shares=0.0)            # an overnight resolver closed it
+    env.clock = pr.datetime(2026, 10, 6, 9, 0, tzinfo=pr._ET)
+    assert await pr.Rehearsal(env, log, TICKERS).day_b() == 1
+    d1r = [r for r in log.results if r["step"] == "D1r" and "PEP" in r["title"]]
+    assert d1r and d1r[0]["status"] == "FAIL"
 
 
 def test_a_cutoff_probe_rejected_for_quantity_proves_nothing():

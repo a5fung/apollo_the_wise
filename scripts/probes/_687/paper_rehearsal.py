@@ -426,9 +426,20 @@ class Rehearsal:
                     and pos and float(pos["qty_available"]) == 0)
             p1.update(stop3_id=new["id"], stop3_price=new_px)
             await self._save()
+            since_a3 = env.now()
             log.step("A3", "price-only replace of the 2/3 stop +1% → a new id, still covering", good,
                      f"{old_id[:8]} → {new['id'][:8]} @ ${new_px} ({st}, qty {n['qty']}); row "
                      f"pointer {row['stop_order_id'][:8]}; free {pos and pos['qty_available']}")
+            # The stream's "Stop order CANCELED/REPLACED — Position unprotected" page writes NO audit
+            # row, so a false page on this replace cannot be proven absent from here: log what the
+            # stream DID record for 20 s, and check the paper channel by eye.
+            await env.sleep(20.0)
+            seen = [r["event_type"] for r in await env.audit_rows(None, since_a3)
+                    if r["detail"].get("trade_id") == tid]
+            log.note(f"A3: audit rows naming P1 in the 20 s after the replace: {seen or 'none'} — "
+                     f"the stream's unprotected page leaves no row; check the paper channel for a "
+                     f"'Stop order ... Position unprotected' page on {t} around "
+                     f"{since_a3:%H:%M:%S} ET")
         except LiveTouched:
             raise
         except Exception as e:
@@ -726,6 +737,22 @@ class Rehearsal:
         mine = [r for r in rows if r["detail"].get("trade_id") in ids]
         log.note(f"audit rows naming the rehearsal trades since Day A start: "
                  f"{sorted({r['event_type'] for r in mine})}")
+        # The rows must still be OPEN at 3 + 3 before the open — otherwise D3's "row closed by the
+        # stream" could be passing on an overnight sync that closed it (a different mechanism).
+        for label, p, cancelled in ((f"P1 {self.t1}", p1, p1.get("stop3_id")),
+                                    (f"P2 {self.t2}", p2, p2.get("restored_stop_id"))):
+            if not p.get("sale_id"):
+                continue
+            row = await env.trade(p["trade_id"])
+            sid = row and row.get("stop_order_id")
+            so = await env.get_order(sid) if sid else None
+            ok = bool(row and row["status"] == "filled" and float(row["remaining_shares"]) == 3
+                      and (sid is None or sid == cancelled
+                           or canon(so and so["status"]) not in LIVE_STATUSES))
+            log.step("D1r", f"{label}: row still open at 3 sh before the open, no live stop pointer",
+                     ok, f"status {row and row['status']}, remaining "
+                     f"{row and row['remaining_shares']}, stop pointer {sid and sid[:8]} "
+                     f"{canon(so and so['status']) if so else ''}")
         for label, t, keep in ((f"P1 {self.t1}", self.t1, {p1.get("sale_id"), p1.get("oco_id")}),
                                (f"P2 {self.t2}", self.t2, {p2.get("sale_id")})):
             keep.discard(None)
