@@ -146,6 +146,15 @@
 
 reviews:
   - review_id: chart_reading_review_cycle
+    resolution_2026_10_05: >-
+      Sample #3 built and RULED the same day. The first build was withdrawn on his catch ("there's no EP or gap
+      up on those days" — CHRN 08-27 / AGX 09-03 / DG 08-27 were pre-market spikes that opened +4-6%; "I want
+      real potential EPs, not garbage to grade"). Rebuilt on REAL EP days only (open >= 9% above the prior close
+      and volume >= 3x its 20-day average, from the daily bars; HIGH alerts only; ruled dates dropped; window
+      2026-06-01..09-05): https://claude.ai/artifact/2u1rfqKEagBDtceyT1bKqC. 8 of 10 ruled (session 4 in
+      must_not_trade_charts.py): AEVA bad, RXT wrong day (May 7), BLZE good, RUM bad, HPE ok, CDNA good, MAN good,
+      IBTA bad; KRO answered both ways and HURN unanswered — asked. Predicate re-armed: counts alerts after
+      2026-10-05 (the next sample needs 20 new ones).
     kind: cadence
     title: "Chart reading — surface the next review sample for his ruling (#594)"
     question: |
@@ -176,7 +185,7 @@ reviews:
     # quiet fortnight does not manufacture a review with nothing new to look at.
     predicate_sql: >-
       SELECT count(*) FROM mi_ep_alerts
-      WHERE alert_date > '2026-09-06';
+      WHERE alert_date > '2026-10-05';
     can_fire:
       predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 11: alerts on
         09-08 (6), 09-14 (2), 09-16 (1), 09-17 (2). It did NOT run before 2026-09-10: the entire
