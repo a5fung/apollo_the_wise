@@ -3852,7 +3852,7 @@ async def get_theme_hierarchy_evening_line() -> str | None:
 # `already` set reads only the latter, so a suspect row can never be mistaken for an announcement.
 _DEAD_COL_MIN_ROWS = 30          # below this the table is too young to judge
 _DEAD_COL_TABLE_PREFIXES = ("mi_", "crypto_")
-# Row-write timestamps, in preference order (the first one a table has wins). Deliberately small
+# Row-write timestamps (a row stamped after the first sighting in ANY of them counts). Deliberately small
 # and timestamp-typed only: a business-date column (score_date, alert_date) says which day a row
 # is ABOUT, not when it was written, so it cannot show "written since first sighting" — a table
 # with none of these falls back to the one-full-ET-day rule instead.
@@ -3873,11 +3873,13 @@ async def _dead_col_written_since(c, table: str, since) -> bool:
            AND column_name::text = ANY($2::text[])
            AND data_type IN ('timestamp with time zone', 'timestamp without time zone')
         """, table, list(_DEAD_COL_WRITE_TS))}
-    ts_col = next((x for x in _DEAD_COL_WRITE_TS if x in present), None)
-    if ts_col is None:
+    ts_cols = [x for x in _DEAD_COL_WRITE_TS if x in present]
+    if not ts_cols:
         return since.astimezone(_ET).date() < et_today()
-    return bool(await c.fetchval(
-        f'SELECT EXISTS (SELECT 1 FROM "{table}" WHERE "{ts_col}" > $1::timestamptz)', since))
+    # ANY of them: an `updated_at` with no insert default reads NULL on a fresh row, and its
+    # `created_at` still shows the write.
+    where = " OR ".join(f'"{x}" > $1::timestamptz' for x in ts_cols)
+    return bool(await c.fetchval(f'SELECT EXISTS (SELECT 1 FROM "{table}" WHERE {where})', since))
 
 
 async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
