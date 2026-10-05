@@ -1,0 +1,26 @@
+10:33:57 entry_partial_fill                 [paper] KO partial_fill 2/3 (cum 2) @ $85.94 side=buy
+10:33:58 paper_rehearsal_687_state          #687 paper rehearsal state
+10:33:58 partial_exit_started               KO: sell 1 of 3 (new_remaining=2)
+10:33:58 stop_order_id_changed              trade #407 [paper]: stop_order_id=6d5ff7a8-5a7b-417c-a5c9-45470ba9a880 (reason=partial_replacement)
+10:33:58 partial_exit_stop_replaced         KO: stop reissued for 2 sh @$81.64 (6d5ff7a8-5a7b-417c-a5c9-45470ba9a880)
+10:33:58 partial_exit_sell_placed           KO: OCO resting for 1: limit @ $128.91 / stop @ $83.36 (6876bfdd-f17f-4bb3-a6e4-c688eb76d4ef, status=pending_new)
+10:33:58 paper_rehearsal_687_state          #687 paper rehearsal state
+10:33:58 stop_order_id_changed              trade #407 [paper]: stop_order_id=346bf2ff-af40-44f5-b8c2-ec1e3a32a69d (reason=rehearsal_687_price_replace)
+10:33:58 paper_rehearsal_687_state          #687 paper rehearsal state
+10:34:21 paper_rehearsal_687_state          #687 paper rehearsal state
+10:34:22 paper_rehearsal_687_state          #687 paper rehearsal state
+10:34:55 paper_rehearsal_687_state          #687 paper rehearsal state
+10:34:55 paper_rehearsal_687_state          #687 paper rehearsal state
+10:45:00 order_status_reconciled            KO order=6876bfdd: pending_new -> new (paper)
+10:45:00 order_status_reconciled            KO order=6d5ff7a8: new -> replaced (paper)
+12:02:57 dead_stop_price_preserved          trade #407 [paper]: dead stop 346bf2ff (status=OrderStatus.CANCELED) preserved at $82.46 for the #600 floor
+12:02:57 stop_order_id_changed              trade #407 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+12:03:00 stop_order_id_changed              trade #407 [paper]: stop_order_id=5664c691-5969-4432-9684-ae9160064bb0 (reason=stop_ack_timeout)
+12:03:00 stop_ack_timeout_remediated        KO #407: stop-ACK timeout (filled_at 14:33:58 ET, stop_order_id NULL >30s); fallback stop placed at $81.64 order=5664c691-5969-4432-9684-ae9160064bb0
+12:03:00 stop_pointer_repair_deferred       KO [paper]: broker-confirmed stop 5664c691 was NOT written — the pointer had already been set by another writer
+12:03:00 oco_parent_cancelled_unfilled      KO [paper]: OCO parent 6876bfdd cancelled with sibling leg status=canceled — third uncovered, re-protecting from broker truth
+-- orders rows for 407:
+  6876bfdd partial_exit limit 1.0 cancelled stop=None lim=128.91
+  6d5ff7a8 stop_loss stop 2.0 replaced stop=81.64 lim=None
+  c840511c stop_loss stop 1.0 cancelled stop=83.36 lim=None
+-- trade row now: {'stop_order_id': '5664c691-5969-4432-9684-ae9160064bb0', 'stop_price': 82.46, 'remaining_shares': 3.0, 'partial_taken': True}

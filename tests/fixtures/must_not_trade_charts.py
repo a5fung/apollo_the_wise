@@ -107,7 +107,7 @@ RULING_DATE = "2026-08-25"          # session 1 — the original eleven
 # review sample #1 (ten names where our score and the outcome disagreed). Every member
 # carries its own `ruling_date`; this set is what a test may check membership against, so
 # a typo cannot invent a session that never happened.
-RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23"})
+RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23", "2026-10-05"})
 # The eleven BAD_CHART members of session 1 are the population the v3 backtest measured.
 # Later BAD_CHART rulings are NOT in it — the doc's numbers are against these only.
 V3_MEASURED_POPULATION_SIZE = 11
@@ -589,6 +589,72 @@ CHART_RULINGS: list[ChartRuling] = [
         operator_words='good',
         gap_open_pct=16.5, ret_5d=None,
         prior_runup_note='WE SKIPPED IT: best score 12, catalyst=routine. 20 sessions later +4%.',
+    ),
+    # ── Session 4, 2026-10-05 — review sample #3 (docs/analysis/594_chart_review_sample_2026-10-05.txt,
+    #    https://claude.ai/artifact/2u1rfqKEagBDtceyT1bKqC), point-in-time charts; every date a REAL EP day on
+    #    the daily bars (open >= 9% above the prior close, volume >= 3x its 20-day average). Words verbatim.
+    #    KRO 2026-08-06 got two answers ("kro - good; kro - bad") and HURN 2026-07-29 none — both held until
+    #    he clarifies, never guessed. ──
+    ChartRuling(
+        ticker='AEVA', alert_date='2026-08-06', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="bad, gapped right into resistance area and failed to take them out",
+        gap_open_pct=31.6, ret_5d=None,
+        prior_runup_note="WE ALERTED HIGH: score 96, catalyst=strong. Volume 6.1x. 20 sessions later -41%.",
+    ),
+    ChartRuling(
+        ticker='RXT', alert_date='2026-06-16', verdict=WRONG_DAY,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="real date is May 7",
+        better_date="2026-05-07", better_date_provenance=POINTED_AT,
+        better_date_note="He named May 7 as the real date; he did not call it good, so it stays POINTED_AT (the AVAH 'its is 08-13' precedent).",
+        gap_open_pct=14.4, ret_5d=None,
+        prior_runup_note="WE ALERTED HIGH: score 84, catalyst=strong. Volume 4.2x. 20 sessions later -38%.",
+    ),
+    ChartRuling(
+        ticker='BLZE', alert_date='2026-08-04', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="good",
+        gap_open_pct=29.3, ret_5d=None,
+        prior_runup_note="WE ALERTED HIGH: score 80, catalyst=game changer. Volume 5.4x. 20 sessions later -33% — a chart he calls good that still failed.",
+    ),
+    ChartRuling(
+        ticker='RUM', alert_date='2026-06-04', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="bad, it gapped down not up as well",
+        gap_open_pct=13.2, ret_5d=None,
+        prior_runup_note=("WE ALERTED HIGH: score 84, catalyst=strong. Volume 4.1x. 20 sessions later -31%. "
+                          "⚠ Our daily bars show the OPEN +13.2% above the prior close (8.33 -> 9.43) and the CLOSE 8.18, "
+                          "below the prior close — a gap up that reversed to a red close; he read the day as a gap down. "
+                          "Recorded as he said it; the bar disagreement is noted, not resolved."),
+    ),
+    ChartRuling(
+        ticker='HPE', alert_date='2026-06-02', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="ok, it's already quite extended on the run up to the gap with previous gap up as well, this is a good candidate for HTF or delayed entry",
+        gap_open_pct=34.2, ret_5d=None,
+        prior_runup_note="WE ALERTED HIGH: score 115.2, catalyst=strong. Volume 6.2x. 20 sessions later -30%.",
+    ),
+    ChartRuling(
+        ticker='CDNA', alert_date='2026-07-16', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="good; would've been stopped but good delay entry near EP day low",
+        gap_open_pct=22.4, ret_5d=None,
+        prior_runup_note="WE SKIPPED IT: best score 30, catalyst=routine. Volume 4.6x. 20 sessions later +30%.",
+    ),
+    ChartRuling(
+        ticker='MAN', alert_date='2026-07-16', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="good, cleared a lot of highs are pviot areas to the left",
+        gap_open_pct=19.9, ret_5d=None,
+        prior_runup_note="WE SKIPPED IT: best score 42, catalyst=routine. Volume 3.9x. 20 sessions later +26%.",
+    ),
+    ChartRuling(
+        ticker='IBTA', alert_date='2026-08-04', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-05",
+        operator_words="bad",
+        gap_open_pct=24.5, ret_5d=None,
+        prior_runup_note="WE SKIPPED IT: best score 42, catalyst=routine. Volume 6.9x. 20 sessions later +22% — a chart he calls bad that still ran.",
     ),
 ]
 

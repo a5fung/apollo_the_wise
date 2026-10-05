@@ -1667,3 +1667,29 @@ Our live trades, read from `mi_live_trades` the same day:
   own range.
 - **His trade-off, stated:** more monitoring complexity than a resting stop, accepted to stop being shaken out of big
   winners. Carried into #685's test design.
+
+## 2026-10-05 — chart rulings, review sample #3 (real EP days only)
+
+Source: his reply on https://claude.ai/artifact/2u1rfqKEagBDtceyT1bKqC (ten point-in-time charts, every date a
+real EP day: open >= 9% above the prior close, volume >= 3x its 20-day average). Labels recorded in
+`tests/fixtures/must_not_trade_charts.py` session 4. Before it he rejected the first build outright: *"I want
+real potential EPs, not garbage to grade"* — three of its dates (CHRN 08-27, AGX 09-03, DG 08-27) were
+pre-market spikes that opened only +4-6% and faded.
+
+His words, verbatim, and what each adds to the structure read:
+- **AEVA 08-06 — "bad, gapped right into resistance area and failed to take them out".** A big gap (+31.6%,
+  6x volume) is not enough: where it opens relative to overhead supply decides it. Opening INTO a resistance
+  zone without clearing it is the failure shape (the same supply-ladder idea as `structure_model.md`).
+- **MAN 07-16 — "good, cleared a lot of highs are pviot areas to the left".** The mirror of AEVA: the gap
+  CLEARS the prior highs / pivot areas on the left side.
+- **HPE 06-02 — "ok, it's already quite extended on the run up to the gap with previous gap up as well, this
+  is a good candidate for HTF or delayed entry".** Extension before the gap (a prior gap-up and a run) makes
+  the day-1 ORB entry worse; he points it at the HTF / delayed-entry families instead of rejecting it.
+- **CDNA 07-16 — "good; would've been stopped but good delay entry near EP day low".** A good EP where the
+  day-1 entry would have been stopped out, and a DELAYED entry near the EP day's low would have worked — the
+  delayed-entry lane's case in his own words (#327).
+- **RXT 06-16 — "real date is May 7".** Wrong day; he points at 2026-05-07 (recorded POINTED_AT).
+- **RUM 06-04 — "bad, it gapped down not up as well".** ⚠ Our daily bars show the open +13.2% above the
+  prior close and the close below it (a gap up that reversed to a red close); his read differs and is
+  recorded as he said it.
+- BLZE 08-04 good · IBTA 08-04 bad · KRO 08-06 "good" and "bad" (both given — asked) · HURN 07-29 not ruled.

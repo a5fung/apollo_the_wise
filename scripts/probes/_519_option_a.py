@@ -148,6 +148,9 @@ EXPECTED_BOOK_IMAGES = 24
 # never hand-listed.
 # ══════════════════════════════════════════════════════════════════════════════════════
 
+PREREG_RULINGS_THROUGH = "2026-09-23"   # the last ruling session this pre-registration was built on
+
+
 def load_population() -> list[tuple[str, str, str, str]]:
     """[(pop, ticker, iso_date, verdict), ...] — REAL_EP 30, APPROVED 9, BAD_CHART 21,
     OTHER_REJECTED 4. DATA_DEFECT and POINTED_AT are excluded (shown-not-scored is OTHER_REJECTED
@@ -155,9 +158,14 @@ def load_population() -> list[tuple[str, str, str, str]]:
     the already-scored free read used, not a second hand-count of the fixtures."""
     pops = free_read.populations()
     keep = ("REAL_EP", "APPROVED", "BAD_CHART", "OTHER_REJECTED")
+    # FROZEN at registration: the labelled side is the rulings given through PREREG_RULINGS_THROUGH.
+    # A later session (2026-10-05, sample #3) must not change a registered population.
+    late = {(r.ticker, r.alert_date) for r in CHART_RULINGS if r.ruling_date > PREREG_RULINGS_THROUGH}
     out: list[tuple[str, str, str, str]] = []
     for pop in keep:
         for tk, d, verdict in pops[pop]:
+            if pop != "REAL_EP" and (tk, d) in late:
+                continue
             out.append((pop, tk, d, verdict))
     return out
 
