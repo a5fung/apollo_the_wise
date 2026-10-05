@@ -1,0 +1,28 @@
+==== A. WE SAID HIGH AND IT FAILED — worst 5 (settled 20 sessions) ====
+ticker|alert_date|gap|ep_score|cat|pct_20d
+SOLS|2026-08-28|16.3|67.5|strong|-12.0
+CHRN|2026-08-27|12.2|105.0|game_changer|-11.0
+AGX|2026-09-03|9.6|65.0|strong|-10.0
+SNOW|2026-09-03|23.8|77.5|strong|-10.0
+DG|2026-08-27|10.9|70.5|strong|-2.0
+
+==== B. WE SCORED IT BELOW THE BAR AND IT RAN — best 5 ====
+ticker|scan_date|gap|ep_score|cat|pct_20d
+DELL|2026-09-02|12.3|46.2|routine|17.0
+NTSK|2026-09-03|15.2|48.8|routine|14.0
+ANF|2026-08-26|28.6|46.2|routine|2.0
+YEXT|2026-09-02|12.2|27.5|routine|-0.0
+OOMA|2026-08-27|27.0|33.8|routine|-3.0
+
+==== METHOD ====
+Window: alert/scan dates 2026-08-23 .. 2026-09-05 (sample #2 ended 2026-08-22), every date settled at 20
+sessions. Same probe and rules as sample #2 (scripts/probes/_594_review_sample.py 2026-08-22): outcome =
+20-session close vs the day's OPEN from mi_daily_closes; arm B = the day's BEST score stayed under the 50
+skip floor, anything we alerted EXCLUDED. None of the ten is already labelled in must_not_trade_charts.py.
+
+⚠ A THIN WINDOW, NOT PADDED. Arm A's worst five fell 2-12% (sample #2: 22-49%); arm B's best five ran
++17/+14/+2/0/-3%. Only SOLS, CHRN, AGX, SNOW (A) and DELL, NTSK (B) carry a real move; DG, ANF, YEXT and
+OOMA are flat and are shown only so the sample is the probe's honest top five per arm.
+
+THE ASK, per his loop: he judges the DAY, not the ticker — was the CHART right on that date, and if not,
+which date was? Rulings land in tests/fixtures/must_not_trade_charts.py keyed on (ticker, DATE).
