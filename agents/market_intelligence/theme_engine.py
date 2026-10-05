@@ -8654,6 +8654,18 @@ async def _retro_sweep_flagged_pairs(
 # score-delta or hysteresis shows Fading — 'Cruise & Expedition Travel Operators', RS 81) is the
 # #368 guard's case and is NEVER touched.
 #
+# ONE-NIGHT WAIT (operator ruling 2026-10-05, after the first live night). The rule retired 20
+# themes on Mon 10-05; 10 of them had >= 3 members the night BEFORE and were emptied that same
+# night ('US Regional Bank Laggards Rate-Curve Basket' 9 -> 2, 'Legacy Telecom & Pay-TV…' 3 -> 2
+# after a wrong validator removal) — they got no night to recover. So a theme is retired by this
+# rule only if it was ALREADY under 3 members on its PREVIOUS persisted night (its latest
+# mi_themes row before tonight's theme_date, any stage): `prior_member_counts`, read off the
+# `existing` snapshot Step 1 already loads — no extra DB read. NO previous row (or only a row dated
+# tonight, a same-day "rerun theme engine") -> NOT retired tonight. A theme this spares is
+# retired the next night if it is still under 3 (its row tonight is then the previous night). NOT
+# changed: a theme emptied to 0 or 1 member is still dropped the same night by Step 4's cap
+# (PRUNE_MIN_TICKERS = 2, older than this rule) — the wait only reaches the 3+ -> 2 shape.
+#
 # WHY. #655's signed G4 bar (theme_correctness: themes under 3 members <= 10% of the board)
 # failed 18 of 19 rebuilt nights 2026-09-08..10-02; replaying this rule over the same nights
 # passes 19/19 (study `655_study/verify_b.txt`, 2026-10-04). Cost, measured: 579 weak-small
@@ -8707,7 +8719,20 @@ async def _read_small_fading_retire_toggle() -> bool:
                                          "THEME_SMALL_FADING_RETIRE_ENABLED", default=True))
 
 
-def _is_weak_fading_small(theme: dict) -> bool:
+def _prior_member_counts(existing: list[dict], today: date) -> dict[str, int]:
+    """PURE: theme name -> member count on its PREVIOUS persisted night, off the `existing`
+    snapshot (`get_active_themes`: latest row per name). Only rows dated BEFORE `today` count: on a
+    same-day "rerun theme engine" the latest row is tonight's own first pass, not last night's, so
+    it is left out and the theme reads as having no previous row (-> kept, the wait's default)."""
+    counts: dict[str, int] = {}
+    for t in existing:
+        td = t.get("theme_date")
+        if type(td) is date and td < today:
+            counts[t["name"]] = len(t.get("tickers") or [])
+    return counts
+
+
+def _is_weak_fading_shape(theme: dict) -> bool:
     """PURE: tonight's emitted row is the weak branch's (stage 'Fading' AND rs_avg None — a
     numeric rs_avg is the scored path, never retired here) with fewer than
     SMALL_FADING_RETIRE_MIN_MEMBERS members."""
@@ -8716,20 +8741,42 @@ def _is_weak_fading_small(theme: dict) -> bool:
             and len(theme.get("tickers") or []) < SMALL_FADING_RETIRE_MIN_MEMBERS)
 
 
+def _is_weak_fading_small(theme: dict, prior_members: int | None) -> bool:
+    """PURE: retire-tonight test = `_is_weak_fading_shape` AND the one-night wait — the theme was
+    ALREADY under SMALL_FADING_RETIRE_MIN_MEMBERS members on its previous persisted night
+    (`prior_members`; None = no previous row = not retired tonight)."""
+    return (_is_weak_fading_shape(theme)
+            and prior_members is not None
+            and prior_members < SMALL_FADING_RETIRE_MIN_MEMBERS)
+
+
 async def _retire_small_fading_themes(
     updated_themes: list[dict],
     changelog: list[dict],
+    prior_member_counts: dict[str, int],
 ) -> list[dict]:
     """#655 rule B (section header above). Returns `updated_themes` minus the weak-Fading
-    themes under 3 members; each retirement writes ONE `theme_retired_small_fading` audit row
-    and ONE `theme_retired` changelog line (the 5-night path's own line — the Step 1 loop that
-    writes it already ran). The dropped theme then takes the engine-drop path like any 5-night
-    retirement. A theme RENAMED this run (`renamed_from` set) is skipped for one night: its old
-    name is already tombstoned with the new name as successor, and retiring the new name the
-    same night would leave that lineage pointing at a theme that never got a row. Toggle OFF,
-    or no candidate -> the list is returned untouched (no toggle read without a candidate)."""
-    candidates = [t for t in updated_themes
-                  if _is_weak_fading_small(t) and not t.get("renamed_from")]
+    themes under 3 members that were ALREADY under 3 on their previous persisted night
+    (`prior_member_counts`, from `_prior_member_counts`; a name absent from it has no previous
+    row and is kept — the one-night wait); each retirement writes ONE `theme_retired_small_fading`
+    audit row and ONE `theme_retired` changelog line (the 5-night path's own line — the Step 1
+    loop that writes it already ran). The dropped theme then takes the engine-drop path like any
+    5-night retirement. A theme RENAMED this run (`renamed_from` set) is skipped for one night: its
+    old name is already tombstoned with the new name as successor, and retiring the new name the
+    same night would leave that lineage pointing at a theme that never got a row. Toggle OFF, or no
+    candidate -> the list is returned untouched (no toggle read without a candidate)."""
+    shaped = [t for t in updated_themes
+              if _is_weak_fading_shape(t) and not t.get("renamed_from")]
+    candidates = [t for t in shaped
+                  if _is_weak_fading_small(t, prior_member_counts.get(t["name"]))]
+    _cand_names = {t["name"] for t in candidates}
+    held = [t for t in shaped if t["name"] not in _cand_names]
+    if held:
+        logger.info(f"Small-Fading retire (#655 B): {len(held)} weak-Fading theme(s) under "
+                    f"{SMALL_FADING_RETIRE_MIN_MEMBERS} members kept tonight — not under "
+                    f"{SMALL_FADING_RETIRE_MIN_MEMBERS} the night before (one-night wait): "
+                    + ", ".join(f"'{t['name']}' {prior_member_counts.get(t['name'], 'no prior row')}"
+                                f" -> {len(t.get('tickers') or [])}" for t in held))
     if not candidates:
         return updated_themes
     if not await _read_small_fading_retire_toggle():
@@ -8748,7 +8795,9 @@ async def _retire_small_fading_themes(
                          f"(< {SMALL_FADING_RETIRE_MIN_MEMBERS}), #655"),
                 detail=json.dumps({
                     "theme": t["name"], "members": n, "tickers": tickers,
-                    "rule": "weak-Fading (rs_avg None) under 3 members retires tonight, not after "
+                    "prior_members": prior_member_counts.get(t["name"]),
+                    "rule": "weak-Fading (rs_avg None) under 3 members, and already under 3 the "
+                            "night before (one-night wait), retires tonight, not after "
                             f"{FADING_RETIRE_AFTER} nights",
                     "score": t.get("score"),
                 }, default=str),
@@ -9391,6 +9440,9 @@ async def run_theme_engine(
     # --- Step 1: Re-score existing themes (concurrent, Tavily rate-limited by semaphore) ---
     existing = await get_active_themes()
     await _emit_load_diagnostic(existing, today)
+    # #655 rule B one-night wait (2026-10-05): last night's member counts, snapshotted BEFORE the
+    # rescore gather below — Step 2a.6 retires only a theme that was already under 3 then.
+    prior_member_counts = _prior_member_counts(existing, today)
 
     # --- Step 1.1: Ensure existing theme members also have descriptions ---
     # _ensure_descriptions above only covers top RS leaders. Stocks already in themes
@@ -9736,7 +9788,8 @@ async def run_theme_engine(
     # AFTER re-homing (2a.5) on purpose: only what re-homing could not place is retired. The rule,
     # evidence and toggle are in the section header above `_retire_small_fading_themes`.
     try:
-        updated_themes = await _retire_small_fading_themes(updated_themes, changelog)
+        updated_themes = await _retire_small_fading_themes(
+            updated_themes, changelog, prior_member_counts)
     except Exception as e:  # loud-ok: a failed pass must not take the nightly down; audited + logged, nothing retired
         logger.error(f"Small-Fading retire pass FAILED — nothing retired by it tonight: "
                      f"{type(e).__name__}: {e}", exc_info=True)
