@@ -14646,12 +14646,17 @@ async def get_prior_consec_breakdown_days(before_date: date) -> int:
 
 
 async def get_open_live_trades() -> list[dict[str, Any]]:
-    """Get all open (filled) live trades."""
+    """Get all open (filled) trades on the LIVE (real-money) account — the ADR 0014 mgmt judge and
+    the #508 'LIVE MONEY — OPEN NOW' block read this. Before 2026-10-06 it had no account_mode
+    filter, so paper positions (that day: the #687 rehearsal's KO/PEP) were judged and listed as
+    live money (dual-account invariant 3)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT * FROM mi_live_trades
             WHERE status = 'filled' AND remaining_shares > 0
+              AND account_mode = 'live'  -- mode-ok: ADR 0014 judges the real-money book only
+              AND signal_type IS DISTINCT FROM 'integration_test'
             ORDER BY alert_date ASC
         """)
     return [dict(r) for r in rows]
