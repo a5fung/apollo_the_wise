@@ -173,9 +173,12 @@ CEILINGS: dict[str, OutputCeiling] = {
         "~100-token answer, shared/llm_client) and a cut answer reads as UNANSWERED. Billed only "
         "on use; re-evidence from api_usage after the first week."),
     "judge_divergence": _JUDGE._replace(
-        role="JUDGE_DIVERGENCE_MODEL",
-        evidence="Rides ep_grade_judge.grade_holistic (model-swapped twin); max completed "
-                 "475 on sonnet-5 — the old 500 default left a 5% margin."),
+        max_tokens=3000, role="JUDGE_DIVERGENCE_MODEL", sized_on="claude-sonnet-5-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        evidence="Rides ep_grade_judge.grade_holistic (model-swapped twin; passes its own "
+                 "ceiling since 2026-10-06). Max completed 475 on sonnet-5. 2026-10-06 raise "
+                 "1500 -> 3000: on sonnet-5-5, which thinks between tools, TLN 10-06 truncated "
+                 "at 1500 and the second opinion failed open (also a failure 09-28); 2x room, "
+                 "billed only on use."),
     "judge_robustness_eval": _JUDGE._replace(
         evidence="scripts/evals harness — rides grade_holistic. ⚠ The 2026-08-03 opus-5 "
                  "eval ran pre-raise: all 144 calls at exactly 500 (censored)."),

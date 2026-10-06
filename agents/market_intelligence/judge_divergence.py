@@ -114,6 +114,7 @@ async def _run(ticker: str, alert_date, payload: dict, primary_verdict: dict) ->
         # Independence is the TIER, not the vintage — resolving dynamically keeps the second
         # opinion on a DIFFERENT tier from the Opus primary, which is the whole point of the check.
         from shared.llm_models import effective_model
+        from shared.output_ceilings import max_tokens_for
         _MODEL = effective_model("JUDGE_DIVERGENCE_MODEL")
 
         # IDENTICAL payload, model-swapped only (PLAN #301 build-spec). Own semaphore +
@@ -123,6 +124,7 @@ async def _run(ticker: str, alert_date, payload: dict, primary_verdict: dict) ->
             _get_claude(), payload,
             semaphore=_DIVERGENCE_SEMAPHORE, timeout=25, model=_MODEL,
             log_caller="judge_divergence",
+            max_tokens=max_tokens_for("judge_divergence"),
         )
         if verdict is None:
             await log_audit_event(

@@ -179,11 +179,13 @@ def test_ceiling_max_tokens_resolves_through_an_annassign_ceilings_dict(tmp_path
 
 
 def test_ceiling_max_tokens_resolves_replace_call_without_override():
-    # "judge_divergence": _JUDGE._replace(role=..., evidence=...) — no max_tokens kwarg, so it
-    # must inherit the base's value (real NamedTuple._replace semantics). Asserted against the
-    # literal (1500), not against the sibling extraction — two arms resolving to the same wrong
-    # answer would still pass an arm-vs-arm comparison.
-    assert gate._extract_ceiling_max_tokens(gate.CEILINGS_SRC, key="judge_divergence") == 1500
+    # "judge_robustness_eval": _JUDGE._replace(evidence=...) — no max_tokens kwarg, so it must
+    # inherit the base's value (real NamedTuple._replace semantics). Asserted against the literal
+    # (1500), not against the sibling extraction — two arms resolving to the same wrong answer
+    # would still pass an arm-vs-arm comparison. (Was judge_divergence until 2026-10-06, when it
+    # took its own max_tokens=3000 override — which the second assert pins: a kwarg override wins.)
+    assert gate._extract_ceiling_max_tokens(gate.CEILINGS_SRC, key="judge_robustness_eval") == 1500
+    assert gate._extract_ceiling_max_tokens(gate.CEILINGS_SRC, key="judge_divergence") == 3000
 
 
 def test_live_timeout_raises_when_call_site_is_renamed_away(tmp_path):

@@ -505,6 +505,7 @@ async def grade_holistic(
     chart_note: str | None = None,
     include_axis_reads: bool = False,
     log_caller: str,
+    max_tokens: int | None = None,
 ) -> dict | None:
     """One holistic judge call. Returns the verdict dict (schema), or None on any
     error/timeout — the caller then falls back to the conviction floor (FAIL-OPEN). The
@@ -592,5 +593,7 @@ async def grade_holistic(
         # schema and the normalizer are untouched; the model simply gets room to finish the
         # answer it was already giving. It WILL change live grades — that is the point.
         # The number now lives in shared/output_ceilings.py with its evidence.
-        max_tokens=max_tokens_for("ep_grade_judge"),
+        # `max_tokens` override: the model-swapped second opinion (judge_divergence) runs a
+        # thinking 5.5 Sonnet that needs more room than the Opus primary (2026-10-06).
+        max_tokens=max_tokens if max_tokens is not None else max_tokens_for("ep_grade_judge"),
         log_caller=log_caller)  # #377 cost meter

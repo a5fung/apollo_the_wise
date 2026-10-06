@@ -228,6 +228,21 @@ def test_uses_a_different_model_than_the_primary_judge_and_distinct_log_caller(m
     assert gh.await_args.args[1] is _PAYLOAD
 
 
+def test_second_opinion_gets_its_own_output_ceiling_not_the_opus_primarys(monkeypatch):
+    """2026-10-06: the thinking sonnet-5-5 second opinion truncated at the primary's 1500 (TLN) and
+    failed open; it now passes its own registered ceiling."""
+    from shared.output_ceilings import max_tokens_for
+    _mock_db(monkeypatch)
+    gh = AsyncMock(return_value={"tier": "HIGH", "grade": "strong",
+                                  "direction_vs_floor": "hold", "confidence": 0.7,
+                                  "rationale": "r"})
+    monkeypatch.setattr(ep_grade_judge, "grade_holistic", gh)
+    _run(jd._run("MODEL", date(2026, 7, 26), _PAYLOAD, dict(_PRIMARY)))
+    _, kwargs = gh.await_args
+    assert kwargs["max_tokens"] == max_tokens_for("judge_divergence")
+    assert kwargs["max_tokens"] > max_tokens_for("ep_grade_judge")
+
+
 # ─── ep_detector.py wiring: off the critical path, correctly gated ─────────────────────────
 
 

@@ -1,0 +1,9 @@
+10-06 09:35:28 stop_coverage_repair_failed
+  S: KO: place coverage stop (target 3) failed: {"available":"0","code":40310000,"existing_qty":"3","held_for_orders":"3","message":"insufficient qty available for order (requested: 3, available: 0)","related_orders":["8e050a56-e5b4-4999-990e-ae087d1864a1"],"symbol":"KO"}
+  D: {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "target_qty": 3.0, "error": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"3\",\"held_for_orders\":\"3\",\"message\":\"insufficient qty available for order (requested: 3, available: 0)\",\"related_orders\":[\"8e050a56-e5b4-4999-990e-ae087d1864a1\"],\"symbol\":\"KO\"}"}
+
+10-06 09:55:53 judge_divergence_check_failed
+  S: TLN 2026-10-06: 2nd-model call failed/timed out (model=claude-sonnet-5-5)
+  D: 
+
+judge_divergence rows, 14 days: [{'d': datetime.date(2026, 9, 28), 'event_type': 'judge_divergence_check_failed', 'n': 1}, {'d': datetime.date(2026, 10, 1), 'event_type': 'judge_divergence_detected', 'n': 1}, {'d': datetime.date(2026, 10, 5), 'event_type': 'judge_divergence_detected', 'n': 2}, {'d': datetime.date(2026, 10, 6), 'event_type': 'judge_divergence_check_failed', 'n': 1}]
