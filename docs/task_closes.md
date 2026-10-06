@@ -1987,3 +1987,13 @@ EVIDENCE: deploy of 571241c7 on 2026-10-05 21:15 ET (both + execution), captured
 - **Count at 0, gate zero-tolerance:** the deploy's `[5k/7]` line reads "Preflight no-silent-failures - OK (194 files in agents/core/channels/shared scanned; no broad+silent swallows - zero-tolerance, #466)"; the same check passes locally on 571241c7.
 - **The new log lines are safe live:** Monday 10-05, a full scan day, the market and execution containers logged 0 Traceback / 0 NameError over 14 hours (`scripts/probes/_1005/monday_night_checks.out`).
 - **Not claimed:** that every newly-logged fallback has fired once — they log only when their dependency fails.
+
+## #688 — base risk per trade is 2% × the regime multiplier, verified on the first live entry after the switch (2026-10-06)
+
+BAR: "the switch deployed on a weekend with the SSoT updated, and one live entry verified at the new size"
+
+EVIDENCE: the first live entry since the 2026-10-03 switch — CEG, trade #409, 2026-10-06 09:31 ET (Choppy regime, multiplier 0.75).
+- **The switch:** `constants.RISK_PCT` 0.02 deployed Sat 10-03 with the safeguards.md change-log entry (recorded on the task line).
+- **The new size, from the execution log at the order:** "Order spec: CEG entry=$300.71 stop=$281.29 (2R below; ORB L=$291.00) shares=3 risk=$77.22 position=$902.13 risk_pct=1.50% equity=$5148" — 1.50% = 2% × 0.75 Choppy, and $77.22 = $5,148 × 1.5%. 3 shares = floor($77.22 ÷ $19.42 per share), also the 20% notional cap's limit (floor($1,029.60 ÷ $300.71)). The fill's actual risk is $58.26 (whole shares).
+- **WOULD-FAIL-IF checked:** not sized at the old 1% (that would be 0.75% → $38.61 and 1 share) and not above 2% × the multiplier.
+- **Not claimed:** a Bull-regime entry at the full 2% has not happened yet; the two other live rows today (VST #412, TLN #413) were skipped out of the ORB window, not sized.
