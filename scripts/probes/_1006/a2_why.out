@@ -1,0 +1,19 @@
+09:00:00 order_status_reconciled              KOD order=1c7860fc: accepted -> new (live)
+09:00:00 order_status_reconciled              KOD order=fada5284: new -> canceled (live)
+09:35:11 paper_rehearsal_687_start            #687 paper rehearsal Day A started (KO, PEP, probe PG)
+09:35:22 entry_partial_fill                   [paper] KO partial_fill 1/3 (cum 1) @ $86.67 side=buy
+09:35:24 entry_partial_fill                   [paper] KO partial_fill 1/3 (cum 2) @ $86.67 side=buy
+09:35:26 partial_exit_started                 KO: sell 1 of 3 (new_remaining=2)
+09:35:28 stop_order_id_changed                trade #410 [paper]: stop_order_id=NULL (reason=partial_naked)
+09:35:28 partial_exit_aborted                 KO: replacement stop failed AND old stop not live — under-covered, re-protecting in-process (APIError)
+09:35:28 stop_coverage_repair_failed          KO: place coverage stop (target 3) failed: {"available":"0","code":40310000,"existing_qty":"3","held_for_orders":"3","message":"insufficient qty available for order (requested: 3, available: 0)","related_orders":["8e050a56-e5b4-4999-990e-ae
+09:35:40 entry_partial_fill                   [paper] PEP partial_fill 3/4 (cum 3) @ $125.98 side=buy
+09:35:43 planned_sale_stop_cancel             PEP: cancelling stop 97039c8b on purpose — a planned sale (sma_trail_stop) replaces it
+09:35:48 full_exit_rejected                   PEP full exit REJECTED (sma_trail_stop) — 3 sh still open
+09:35:50 dead_stop_price_preserved            trade #411 [paper]: dead stop 97039c8b (status=OrderStatus.CANCELED) preserved at $119.68 for the #600 floor
+09:35:50 stop_order_id_changed                trade #411 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+09:35:53 stop_cancel_by_planned_sale_silent   PEP: stop 97039c8b cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome)
+09:36:00 stop_order_id_changed                trade #410 [paper]: stop_order_id=8e050a56-e5b4-4999-990e-ae087d1864a1 (reason=watchdog_synced_from_broker)
+09:36:00 stop_ack_broker_covered              KO #410: broker has 3.0 sh covering 3.0 remaining (stop_order_id=synced)
+09:36:30 stop_order_id_changed                trade #411 [paper]: stop_order_id=821530a8-843e-47c1-a930-aa58d63530f6 (reason=stop_ack_timeout)
+09:36:30 stop_ack_timeout_remediated          PEP #411: stop-ACK timeout (filled_at 09:35:43 ET, stop_order_id NULL >30s); fallback stop placed at $119.68 order=821530a8-843e-47c1-a930-aa58d63530f6

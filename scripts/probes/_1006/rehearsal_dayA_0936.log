@@ -1,0 +1,17 @@
+2026-10-06T09:24:36-04:00 [note] PAPER GUARD OK: paper account c126091e-cef0-474a-bfc5-6309f6e3fd4a != live account 68f00b2a-5b67-4490-83b7-058af8f5b50f; paper endpoint https://paper-api.alpaca.markets; live tripwire armed (any non-paper client lookup raises; live keys removed from this process)
+2026-10-06T09:24:36-04:00 [note] state: {}
+2026-10-06T09:24:36-04:00 [note] KO: position None; open orders []; rehearsal rows []
+2026-10-06T09:24:37-04:00 [note] PEP: position None; open orders []; rehearsal rows []
+2026-10-06T09:24:37-04:00 [note] PG: position None; open orders []; rehearsal rows []
+2026-10-06T09:35:11-04:00 [note] PAPER GUARD OK: paper account c126091e-cef0-474a-bfc5-6309f6e3fd4a != live account 68f00b2a-5b67-4490-83b7-058af8f5b50f; paper endpoint https://paper-api.alpaca.markets; live tripwire armed (any non-paper client lookup raises; live keys removed from this process)
+2026-10-06T09:35:11-04:00 [note] TICKERS OK: P1=KO P2=PEP probe=PG — not held, no open orders, no trade rows in the paper account
+2026-10-06T09:35:11-04:00 [note] paper toggles in mi_safeguard_state (read-only; patched IN-PROCESS for the partial only, prod unaffected): {'profit_take_resting_limit': 'no row', 'profit_take_oco': 'no row', 'magna53_depth_exit': 'no row'}
+2026-10-06T09:35:11-04:00 [note] open paper trade rows before the rehearsal: 0 (the rehearsal adds 2; they count toward the PAPER 5-position cap until cleanup)
+2026-10-06T09:35:11-04:00 [note] A1-A3 and B1 run NOW (spec 10:00/10:05/10:10) — the steps, not the clock time, are what the rehearsal checks
+2026-10-06T09:35:26-04:00 [A1] PASS — buy 3 KO + GTC stop 5% below; every share reserved | fill $86.67, stop $82.33 (8e050a56), row #410 entry $84.07 (set 3% under the fill so the breakeven step stays below market), partial_taken True (TRUE keeps production's +2R profit trigger off it), position 3.0 / free 0.0
+2026-10-06T09:35:28-04:00 [A2] FAIL — execute_partial_exit (limit far above) → OCO third resting, 2/3 stop live, every share reserved | returned False; OCO None None; 2/3 stop None; free 0.0
+2026-10-06T09:35:43-04:00 [B1] PASS — P2: 4 PEP, row of 3 under a 3-sh stop + one extra 1-sh resting sell the books do not know (holds a share, not a pending exit) | fill $125.98, stop $119.68 (97039c8b), extra 6f3d6a75, row #411 partial_taken True, position 4.0 / free 0.0
+2026-10-06T09:35:50-04:00 [B2] FAIL — extra sell holds a share → execute_full_exit rejected → stop restored at the same price <= 5 s → page | returned False; sell error: {"available":"0","code":40310000,"existing_qty":"4","held_for_orders":"4","message":"insufficient qty available for order (requested: 4, available: 0)","symbol"; full_exit_rejected rows 1; restored ('97039c8b', 'new', 3.0, 119.68) 0.02 s after the rejection; page: 📄 PAPER 🧪 #687 REHEARSAL (paper test order, not a real position) — ⚠️ Full exit FAILED for PEP: {"available":"0","code":40310000,"existing_q
+2026-10-06T09:35:54-04:00 [B2b] PASS — the stream recorded the planned-sale cancel instead of paging 'unprotected' | stop_cancel_by_planned_sale_silent row found
+2026-10-06T09:36:08-04:00 [B3] FAIL — extra sell cancelled + extra share sold → P2 = 3 PEP under the restored stop | position 3.0 / free 3.0
+2026-10-06T09:36:08-04:00 [note] waiting for 15:51 ET

@@ -12795,6 +12795,14 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_06: >-
+      RAN 2026-10-06 06:50 PDT, same SQL via scripts/probes/_rank_shadow/run_read.py (output
+      scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-06.out): n = 19 sessions, 42 rows. The one new
+      session is 2026-10-05, a pool of 3 MODERATE alerts, none filled (PBR rank 0.5, NU 0.39, ITUB 0.61 at
+      EOD), each with ONE session behind it, so the read CANNOT move on them. SNPS/ACN (10-01) have 3 of 5
+      sessions: SNPS (top quartile) +8.7% from the open, about 2.4x ADR, low held; ACN (rank 0.75) about 1.6x
+      ADR and broke its EP-day low. Neither near the 8x bar. Conclusion unchanged: THIN (19 of 25),
+      directional only, against the rule. Next movement: SNPS/ACN mature ~2026-10-08.
     resolution_2026_10_02: >-
       RAN 2026-10-02 06:30 PDT, same SQL (output scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-02.out):
       n = 18 sessions, 39 rows. The one new session is 2026-10-01, a pool of 2, both HIGH, neither filled:
