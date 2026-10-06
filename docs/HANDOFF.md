@@ -1393,3 +1393,18 @@ stagger cards, one at a time.
 **Monday 10-05 = first live day for Saturday's and Sunday's work.** Checks are on the #687 / #692 / #688 / #655 / #598 / #491 PLAN lines (EXPECT / DONE-WHEN / WOULD-FAIL-IF). #687's depth-exit paper rehearsal runs Mon–Tue, then his yes/no on going live — no further change on that path before the rehearsal.
 
 **Standing:** Fable capacity at 93% for the week — route the rest of the week to Opus/Sonnet. Prod DB reads via psql are blocked by the permission classifier; read-only probes through the app container work.
+
+## 2026-10-05 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the 10-04 close above.
+
+**Board 44 → 45** — closed #466 (silent-failure baseline at zero, gate zero-tolerance); filed #694 (EP shortlist volume fix) + #695 (two never-written columns) on his "go with rec", carryover 1 on his authorisation. Server + main = 571241c7 (deployed 21:15 ET, both + execution).
+
+**Monday (first live day):**
+- Morning checks clean; #594 chart sample #3 rebuilt on real EP days and ruled 10/10 (his reasoning in operator_shared_notes.md); theme-assignment cost kept on his "yes but monitor costs" (tripwire > $1/night).
+- #687 paper rehearsal Day A ABORTED — the noon deploy's G6 preflight swept its paper orders. Restart **Tue 10-06 09:35 ET; no deploys until Day B ends Wed ~09:40 ET**, then his yes/no on going live.
+- His rulings: sector-cap churn option (a) — keep a theme whose stocks don't co-move with the group's top theme (build Sat 10-10, on #655); rule B gets a one-night wait (deployed tonight); #693 validator replay with thinking on (~$1, Sat); #694 — he wants SEVERAL tie-breakers tested before choosing (list on the line).
+- Evening alerts: the dead-column page was the sweep racing its writer (fixed: #543 two-step); the cooldown page was real (a big clean-up night; 4 removals look wrong). Found: the pre-open EP shortlist has been cut A→Z on crowded mornings since 08-22 (#694), and the 09:00 tick runs twice daily (on #694).
+- HUT and CIFR now sit in no theme (rule B retired their home) — #491's P2 can only pass via discovery.
+
+**Tue 10-06 night checks:** #655 B rows all `prior_members` < 3 + G4 ≤ 10%; #543 sweep log 'K suspect', no page; #580 / #693 night 2; #598 PURR not re-announced. Evidence for all of today: `scripts/probes/_1005/`.
+
+**Standing:** Fable at 93% for the week — Opus/Sonnet only. Saturday 10-10 build slot: #694 test then build, #695, #693 replay, #655 option (a).
