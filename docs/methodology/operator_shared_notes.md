@@ -1740,3 +1740,15 @@ rule until he says so (THE LINE).
   the same rate); the book names neglect as the best EP trait.
 - Parabolic short: our `days_up_streak >= 3` gate matches "day 3 or 4"; see `docs/setups/parabolic_short.md` for the
   gain and trigger rules.
+
+**TEST MAP (his word 2026-10-06: *"No changes but worth comparing and see where we can test and tweak as we refine
+our system"*)** — each book rule, where it is measured, and on what. All $0 on stored data; none changes a live rule.
+
+| Book rule | Ours today | Where it gets tested | Data |
+|---|---|---|---|
+| EP entry above the first 5-min bar (1-hour bar if volume unconfirmed) | first 1-min bar high | #482 bracket lab — its 5-min ORB shadow lane already has 55+ closed trades; add a first-1-hour-bar arm | `mi_orb_shadow_trades`, stored minute bars |
+| EP stop at the low of the day | entry − 2R | #482 — a low-of-day stop arm beside its intraday-low / ATR variants, scored in capped dollars too (the 10-06 H10 lesson) | stored minute bars |
+| No utilities; only stocks that can make a big move | no sector filter | #686 follow-up, AFTER its frozen 10-17 read (the registration cannot take new features) — sector and size as candidate features on the out-of-sample block | `mi_ep_alerts` + sectors |
+| Neglect: sideways for months, then ~10× volume | neglect / prior-momentum terms deleted 08-22 (fired on real EPs and junk alike) | same #686 follow-up — a base-length + EP-day volume-multiple feature, measured on the TAIL, against his labelled EPs | `mi_daily_closes` |
+| Parabolic short: day 3-4, ≥ 300% total, short the OR-low break, stop at the high of day | detection only (shadow): streak ≥ 3 + cap-tier prior move; no trigger or stop defined | `docs/setups/parabolic_short.md` — replay the book's A+ definition against our climax rows | `mi_parabolic_candidates` + minute bars |
+| Momentum burst: top 1-2% by 1/3/6-month gain, 1-3 week base on lower volume, buy the OR / 5-30-60-min high, hold 3-5 days | flag board (TIGHTENING/COILED) + #397 breakout-entry shadow | #397 — the leading-stock filter and the 3-5 day hold as arms on the breakout shadow | `mi_flag_candidates`, shadow rows |
