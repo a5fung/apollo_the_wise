@@ -297,12 +297,12 @@ one; with the legacy bars 65-80 that is byte-identical to the old order):
 - **Flag OFF (revert): unchanged** — `< 50` → skip; `50 ≤ score < ep_threshold` → MODERATE
   (briefing only); `≥ ep_threshold` → HIGH at the per-regime bar from the stored regime row
   (`regime.py`: Bull=65, Choppy=70, Correcting=75, Crisis=80), all on the old raw scale.
-- ⚠ Known seam (unchanged from the separation entry): surfaces that DISPLAY the stored regime
-  row's `ep_threshold` (briefing regime line, agent.py why-no-alert prose, the allocator's
-  advisory `legacy_eligible` label) still show the per-regime raw number — under Bull it now
-  coincidentally reads 65 like the presented bar, but they are different scales. `regime.py`
-  and stored rows deliberately untouched so the revert side survives intact; the alerting
-  decision uses the flag-gated bar.
+- Display seam CLOSED 2026-10-06 (operator saw "Choppy, EP bar 75" while a score-65 EP traded):
+  the briefing / delta-brief / `/regime` / HUD / `/ep` / `/why` / regime-change surfaces now show
+  the ACTING bar via `ep_rubric.acting_ep_bar` (65 while the flag is ON; the per-regime bar only
+  while OFF), and the regime-change alert states the size multiplier (+ Bull's x1.2 score boost)
+  instead of a moving threshold. Still reading the stored regime row's `ep_threshold`: the
+  allocator's advisory `legacy_eligible` label only. `regime.py` and stored rows untouched.
 
 **Holistic Grade Judge overwrite**: when `holistic_judge_enabled` is ON (toggle,
 ADR 0011/W2c — SHIPPED DORMANT, see 2026-06-08 change-log entry below), the

@@ -69,6 +69,10 @@ conventions. See the SHORTLIST section at the bottom of the module.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def tier_points(value: float, tiers: list[tuple[float, int]], default: int = 0) -> int:
     """Return the points for the first tier whose threshold `value` clears.
@@ -379,6 +383,54 @@ def resolve_ep_bar(separation_enabled: bool, regime_ep_threshold: int) -> float 
     65/70/75/80 on the old raw scale). The ONLY bar switch point. Each bar is
     on the same scale as the scores the matching weight table produces."""
     return SEPARATION_BAR if separation_enabled else regime_ep_threshold
+
+
+async def read_separation_toggle() -> bool:
+    """The `ep_score_separation` toggle exactly as `run_ep_scan` reads it
+    (runtime toggle / `EP_SCORE_SEPARATION_ENABLED`, default ON; a read error
+    fails open to ON, the shipped default). For DISPLAY surfaces — the scan
+    keeps its own read. Lazy db import: this module stays pure at import time."""
+    try:
+        from agents.market_intelligence.db import get_runtime_toggle
+        return await get_runtime_toggle(
+            "ep_score_separation", "EP_SCORE_SEPARATION_ENABLED", default=True)
+    except Exception as e:  # loud-ok: display-only; same fail-open-to-ON as ep_detector's scan read
+        logger.warning(f"ep_score_separation toggle read failed — display assumes separation ON: {e}")
+        return True
+
+
+async def acting_ep_bar(regime_ep_threshold) -> tuple[float | int, bool]:
+    """(bar, separation_on): the HIGH bar that ACTS right now — for DISPLAY surfaces.
+
+    Same toggle as the scanner (`read_separation_toggle`), resolved through
+    `resolve_ep_bar`, so a surface can never print a bar the scanner is not
+    using. The stored regime row's `ep_threshold` is the LEGACY-side bar: it
+    acts only while the toggle is OFF (2026-10-06: the operator saw "Choppy,
+    EP bar 75" while a score-65 EP traded — the bar that acted was 65).
+    Display only: nothing here gates, scores or sizes.
+    """
+    separation_on = await read_separation_toggle()
+    return resolve_ep_bar(separation_on, regime_ep_threshold), separation_on
+
+
+async def annotate_acting_bar(regime: dict) -> dict:
+    """Copy of a stored regime row carrying `acting_ep_bar` + `separation_on`.
+
+    The sync formatters (briefing / delta brief / HUD) read these two keys; a
+    bare regime dict with neither key renders the legacy per-regime bar, which
+    is exactly the toggle-OFF side. Never mutates `regime` (it is a DB row)."""
+    bar, separation_on = await acting_ep_bar((regime or {}).get("ep_threshold", 70))
+    return {**(regime or {}), "acting_ep_bar": bar, "separation_on": separation_on}
+
+
+def acting_bar_of(regime: dict) -> tuple[float | int | None, bool]:
+    """(bar, separation_on) for a SYNC formatter, from a row `annotate_acting_bar`
+    stamped. A bare row (no stamp — tests, a caller that never annotated) reads as
+    the legacy per-regime bar, i.e. the toggle-OFF rendering."""
+    regime = regime or {}
+    if regime.get("separation_on"):
+        return regime.get("acting_ep_bar", SEPARATION_BAR), True
+    return regime.get("ep_threshold", 70), False
 
 
 def resolve_moderate_cutline(separation_enabled: bool) -> int | None:

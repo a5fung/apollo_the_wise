@@ -72,6 +72,7 @@ from agents.market_intelligence.collector import et_today, search_news_perplexit
 from agents.market_intelligence.ep_detector import run_ep_scan, MIN_GAP_PCT, MIN_PREV_CLOSE, MIN_PREMARKET_SHARES, MAX_EXTENSION_PCT, EP_COOLDOWN_DAYS
 from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
 from agents.market_intelligence.regime import run_regime_engine, get_current_regime
+from agents.market_intelligence.ep_rubric import acting_ep_bar, annotate_acting_bar
 from agents.market_intelligence.theme_engine import (
     run_theme_engine, get_today_themes, PerplexityUnavailableError,
 )
@@ -4701,11 +4702,12 @@ class MarketIntelligenceAgent(BaseAgent):
             data_tag = f" _(data: {query_date.strftime('%a %b %-d').lstrip('0')})_"
         alerts = await get_today_ep_alerts(query_str)
         regime = await get_current_regime()
+        _acting_bar, _ = await acting_ep_bar(regime.get("ep_threshold"))   # the bar that ACTS (#533), not the regime row's
 
         if not alerts:
             result = (
                 f"No EP alerts for {query_str}.{data_tag}\n"
-                f"Market regime: {regime.get('regime')} (EP bar: {regime.get('ep_threshold')}+).\n"
+                f"Market regime: {regime.get('regime')} (EP bar: {_acting_bar}+).\n"
                 f"EP scanning runs every 5 min from 7:00–9:30 AM ET."
             )
         else:
@@ -4814,7 +4816,10 @@ class MarketIntelligenceAgent(BaseAgent):
         if isinstance(news, Exception):
             news = ""
 
-        ep_threshold = regime.get("ep_threshold", 70) if isinstance(regime, dict) else 70
+        # The bar that ACTS (#533): the uniform separation bar while the toggle is ON, else the
+        # regime row's per-regime bar — never the stored regime bar alone (it does not act when ON).
+        ep_threshold, _sep_on = await acting_ep_bar(
+            regime.get("ep_threshold", 70) if isinstance(regime, dict) else 70)
         regime_label = regime.get("regime", "Unknown") if isinstance(regime, dict) else "Unknown"
 
         # ── Run filters in order, same as ep_detector.py ─────────────────────
@@ -4858,9 +4863,7 @@ class MarketIntelligenceAgent(BaseAgent):
         if root_cause is None:
             if isinstance(rs_result, dict) and "rs_composite" in rs_result:
                 rs = rs_result["rs_composite"]
-                lines.append(f"{'✅' if rs >= ep_threshold else '⚠️'} RS: {rs:.0f}  |  Regime: {regime_label} (EP bar: {ep_threshold}+)")
-                if rs < ep_threshold:
-                    lines.append(f"   → RS {rs:.0f} is below the {ep_threshold} threshold for {regime_label} regime. Score could still reach the bar with a strong catalyst and big gap, but it's harder.")
+                lines.extend(_rs_vs_bar_lines(rs, ep_threshold, regime_label, _sep_on))
             else:
                 lines.append(f"⚠️ RS: no score available — ticker may not be in the RS universe")
 
@@ -5014,7 +5017,7 @@ class MarketIntelligenceAgent(BaseAgent):
         # display across briefings and on-demand queries.
         # NB: _format_regime_section already embeds the grouped-why description
         # (briefing.py) — appending it again here double-printed it (7/2 review fix).
-        result = _format_regime_section(regime, section_num=1)
+        result = _format_regime_section(await annotate_acting_bar(regime), section_num=1)
         # /breadth merged into /regime (operator 6/14: "keep it simple") — append the
         # full Stockbee 10-day cluster matrix after the regime summary. Degrade gracefully:
         # a matrix-render failure must not error the whole /regime (the regime section is
@@ -6832,7 +6835,7 @@ class MarketIntelligenceAgent(BaseAgent):
         regime_name = r.get("regime", "Unknown")
         qqq_ok = r.get("qqq_ema_bullish")
         qqq_icon = "✅" if qqq_ok else ("❌" if qqq_ok is False else "❓")
-        ep_bar = r.get("ep_threshold", "?")
+        ep_bar, _ = await acting_ep_bar(r.get("ep_threshold", "?"))   # the bar that ACTS (#533)
         lines.append(f"📈 Regime: *{regime_name}* | QQQ {qqq_icon} | EP bar: {ep_bar}")
 
         # Accelerating themes only — sort by rs_avg desc (was alphabetical from DB)
@@ -7436,8 +7439,9 @@ class MarketIntelligenceAgent(BaseAgent):
         ep_alerts = await get_today_ep_alerts(today_str)
         rs_leaders = await get_rs_leaders(today_str, limit=10)
 
+        _acting_bar, _ = await acting_ep_bar(regime.get("ep_threshold"))   # the bar that ACTS (#533)
         context = (
-            f"Market regime: {regime.get('regime')} (EP bar: {regime.get('ep_threshold')})\n"
+            f"Market regime: {regime.get('regime')} (EP bar: {_acting_bar})\n"
             f"EP alerts today: {len(ep_alerts)}\n"
             f"Top RS stocks: {', '.join(s['ticker'] for s in rs_leaders[:5])}\n"
         )
@@ -7496,6 +7500,18 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result=first_text(response))  # #544: never content[0]
 
 
+def _rs_vs_bar_lines(rs: float, bar, regime_label: str, separation_on: bool) -> list[str]:
+    """The /why "RS vs the EP bar" diagnostic lines. `bar` is the ACTING bar
+    (ep_rubric.acting_ep_bar): with the #533 separation toggle ON it is the same in
+    every regime, so the "for <regime> regime" wording is dropped (it would imply a
+    per-regime bar that does not act). Toggle OFF keeps the per-regime wording."""
+    out = [f"{'✅' if rs >= bar else '⚠️'} RS: {rs:.0f}  |  Regime: {regime_label} (EP bar: {bar}+)"]
+    if rs < bar:
+        bar_for = f"{bar} EP bar" if separation_on else f"{bar} threshold for {regime_label} regime"
+        out.append(f"   → RS {rs:.0f} is below the {bar_for}. Score could still reach the bar with a strong catalyst and big gap, but it's harder.")
+    return out
+
+
 async def _build_hud_text() -> str:
     """Standalone HUD text builder — returns a plain str. Shared by _handle_hud and _hud_refresh_job."""
     import asyncio as _aio
@@ -7526,7 +7542,7 @@ async def _build_hud_text() -> str:
     regime_name = r.get("regime", "Unknown")
     qqq_ok = r.get("qqq_ema_bullish")
     qqq_icon = "✅" if qqq_ok else ("❌" if qqq_ok is False else "❓")
-    ep_bar = r.get("ep_threshold", "?")
+    ep_bar, _ = await acting_ep_bar(r.get("ep_threshold", "?"))   # the bar that ACTS (#533)
     regime_date = r.get("regime_date")
     data_age = f" · data {regime_date}" if regime_date else ""
     regime_line = f"📈 Regime: *{regime_name}* | QQQ {qqq_icon} | EP bar: {ep_bar}{data_age}"

@@ -35,6 +35,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
+from agents.market_intelligence.ep_rubric import acting_bar_of
 from shared.dates import last_trading_day
 
 # ── Materiality thresholds (shipped-defaults; distributions from the design doc §1) ──
@@ -361,7 +362,12 @@ def _regime_material(data: BriefData) -> tuple[list[str] | None, bool]:
     label_t, label_p = today.get("regime"), prior.get("regime")
     flipped = bool(label_t and label_p and label_t != label_p)
     thr_t, thr_p = today.get("ep_threshold"), prior.get("ep_threshold")
-    thr_changed = thr_t is not None and thr_p is not None and thr_t != thr_p
+    # #533: with separation ON the per-regime threshold in the history rows does NOT act — the
+    # acting bar is the same in every regime, so a stored-threshold change is not an EP-filter
+    # change and must neither fire this block nor be reported as one (2026-10-06).
+    acting_bar, sep_on = acting_bar_of(data.regime)
+    thr_changed = (thr_t is not None and thr_p is not None and thr_t != thr_p
+                   and not sep_on)
     vix_t, vix_p = today.get("vix"), prior.get("vix")
     # Threshold compares the ROUNDED display value (what the operator sees):
     # a shown "+2.7" must fire and a shown "+2.6" must not — raw-float compares
@@ -402,7 +408,9 @@ def _regime_material(data: BriefData) -> tuple[list[str] | None, bool]:
 
     # The trading-actionable consequence line (what the operator acts on).
     size_str = f" · size ≈{data.size_mult:.2f}×" if data.size_mult is not None else ""
-    if thr_changed:
+    if sep_on:
+        lines.append(f"   EP bar ≥{acting_bar} (same in every regime){size_str}")
+    elif thr_changed:
         direction = "tightened" if thr_t > thr_p else "loosened"
         lines.append(f"   EP filter {thr_p} → {thr_t} ({direction}){size_str}")
     else:
@@ -831,7 +839,10 @@ def _regime_state_line(data: BriefData) -> str:
         d_str = f" ({vix - p_vix:+.1f})" if p_vix is not None else ""
         bits.append(f"VIX {vix:.1f}{d_str}")
     thr = today.get("ep_threshold")
-    if thr is not None:
+    acting_bar, sep_on = acting_bar_of(data.regime)
+    if sep_on:
+        bits.append(f"EP bar ≥{acting_bar}")   # #533: the bar that ACTS, not the stored regime row's
+    elif thr is not None:
         bits.append(f"filter ≥{thr}")
     if data.size_mult is not None:
         bits.append(f"size ≈{data.size_mult:.2f}×")

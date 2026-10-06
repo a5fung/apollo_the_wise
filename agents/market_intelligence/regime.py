@@ -10,11 +10,15 @@ Inputs:
 - Breadth: % of universe stocks above their 40-day MA (T2108 proxy)
 - +/-4% ratio: rolling 5d and 10d count of stocks with >=+4% vs <=-4% daily moves
 
-Regime → EP threshold adjustment:
-- Bull:       threshold = 70
-- Choppy:     threshold = 80
-- Correcting: threshold = 85
-- Crisis:     threshold = 90
+Regime → EP threshold (the LEGACY per-regime bar stored in `mi_market_regime.ep_threshold`):
+- Bull:       threshold = 65
+- Choppy:     threshold = 70
+- Correcting: threshold = 75
+- Crisis:     threshold = 80
+⚠ Since #533 (2026-08-22) this per-regime bar ACTS only while the `ep_score_separation`
+toggle is OFF; with it ON (default) the bar is `ep_rubric.SEPARATION_BAR` in every regime.
+What the regime still changes live: the position-size multiplier and, in Bull, the x1.2
+score multiplier. Display surfaces show the acting bar via `ep_rubric.acting_ep_bar`.
 """
 from __future__ import annotations
 
@@ -63,9 +67,16 @@ def _determine_regime(
     pradeep_1m_50: Optional[int] = None,
     pradeep_3m_25: Optional[int] = None,
     consec_breakdown_days: Optional[int] = None,
+    separation_on: bool = False,
 ) -> tuple[str, str, int]:
     """
     Returns: (regime_label, description, ep_threshold)
+
+    `separation_on` only words the Choppy verdict (display): with the #533
+    separation toggle ON the per-regime bar does not act, so the verdict must
+    not claim the EP bar rises. Default False = the legacy per-regime wording
+    (backtester / pure callers); the nightly engine passes the live toggle.
+    The returned `ep_threshold` (the legacy-side bar) is unchanged either way.
     """
     # Each signal carries its WEIGHT (delta): >0 bullish, <0 bearish, 0 neutral. The weights are
     # identical to the prior bullish_count/bearish_count increments — the change is display-only
@@ -188,7 +199,8 @@ def _determine_regime(
     elif net >= 1:
         regime = "Choppy"
         ep_threshold = 70
-        verdict = "Market choppy — raise EP bar, size down."
+        verdict = ("Market choppy — size down." if separation_on
+                   else "Market choppy — raise EP bar, size down.")
     elif net >= -2:
         regime = "Correcting"
         ep_threshold = 75
@@ -470,6 +482,33 @@ async def calculate_breadth_full(today: date) -> dict:
     }
 
 
+def _regime_change_ep_text(
+    prev_regime, regime, prev_threshold, ep_threshold, *,
+    separation_on: bool, bar, prev_mult, mult,
+) -> tuple[str, str]:
+    """(audit summary, Telegram consequence line) for a regime flip — DISPLAY only.
+
+    Separation ON (default): the per-regime bar does not act, so the message must
+    not say the EP threshold moved. It states the acting bar and what the regime
+    really changes — the position-size multiplier and, entering/leaving Bull, the
+    x1.2 score multiplier (ep_detector `regime_multiplier`). Separation OFF: the
+    legacy per-regime bar text, unchanged (the revert path stays truthful)."""
+    if not separation_on:
+        return (f"EP threshold {prev_threshold} -> {ep_threshold}",
+                f"EP threshold {prev_threshold} → {ep_threshold}")
+    size = (f"size {prev_mult:.2f}× → {mult:.2f}×"
+            if prev_mult is not None and mult is not None else "")
+    bull = ""
+    if regime == "Bull" and prev_regime != "Bull":
+        bull = "EP scores ×1.2 in Bull"
+    elif prev_regime == "Bull" and regime != "Bull":
+        bull = "EP scores lose the ×1.2 Bull boost"
+    consequence = " · ".join(x for x in (size, bull) if x)
+    audit = f"EP bar {bar} in every regime" + (f"; {consequence}" if consequence else "")
+    tg = f"EP bar {bar} — same in every regime (unchanged)" + (f"\n{consequence}" if consequence else "")
+    return audit, tg
+
+
 async def run_regime_engine(trade_date: date | None = None) -> dict:
     """
     Calculate current market regime and store in DB.
@@ -522,12 +561,14 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
     pradeep_3m_25 = breadth.get("pradeep_3m_25")
     consec_breakdown_days = breadth.get("consec_breakdown_days")
 
+    from agents.market_intelligence.ep_rubric import read_separation_toggle
     regime, description, ep_threshold = _determine_regime(
         spy_vs_50ma, spy_vs_200ma, qqq_vs_50ma, current_vix, breadth_pct, pct4_5d, pct4_10d,
         t2108=t2108,
         pradeep_1m_50=pradeep_1m_50,
         pradeep_3m_25=pradeep_3m_25,
         consec_breakdown_days=consec_breakdown_days,
+        separation_on=await read_separation_toggle(),
     )
 
     record = {
@@ -562,14 +603,29 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
     prev_threshold = (prev_row or {}).get("ep_threshold")
 
     await upsert_regime(record)
-    logger.info(f"Regime: {regime} (EP threshold: {ep_threshold})")
+    logger.info(f"Regime: {regime} (legacy per-regime EP threshold: {ep_threshold})")
 
     if prev_regime and regime != prev_regime:
+        # What the operator is told the regime change moves: the ACTING bar (not the
+        # legacy per-regime one) + the size multiplier. Display only; any failure
+        # degrades to no multipliers, never to a missing alert.
+        from agents.market_intelligence.ep_rubric import acting_ep_bar
+        _bar, _sep_on = await acting_ep_bar(ep_threshold)
+        _prev_mult = _mult = None
+        try:
+            from agents.market_intelligence.briefing import _regime_size_multiplier
+            _prev_mult = _regime_size_multiplier(prev_row or {})
+            _mult = _regime_size_multiplier(record)
+        except Exception:
+            logger.exception("regime_transition size multiplier lookup failed")
+        _audit_txt, _tg_txt = _regime_change_ep_text(
+            prev_regime, regime, prev_threshold, ep_threshold,
+            separation_on=_sep_on, bar=_bar, prev_mult=_prev_mult, mult=_mult)
         try:
             from agents.market_intelligence.db import log_audit_event
             await log_audit_event(
                 "regime_transition",
-                f"{prev_regime} -> {regime} (EP threshold {prev_threshold} -> {ep_threshold})",
+                f"{prev_regime} -> {regime} ({_audit_txt})",
                 description,
             )
         except Exception:
@@ -579,7 +635,7 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
             from shared.telegram_format import b, esc
             await send_telegram_message(
                 f"🧭 {b('REGIME CHANGE')}: {esc(str(prev_regime))} → {esc(regime)}\n"
-                f"EP threshold {prev_threshold} → {ep_threshold}\n"
+                f"{esc(_tg_txt)}\n"
                 f"{esc(description)}",
                 parse_mode="HTML",
             )

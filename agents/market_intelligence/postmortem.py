@@ -136,6 +136,23 @@ async def build_postmortem_context(
             LIMIT 1
         """, ad)
 
+        # The HIGH bar that ACTED on that tick (#533: the uniform separation bar while the toggle
+        # was ON, the regime row's per-regime bar before / while OFF). A postmortem is historical,
+        # so today's toggle is the wrong source — the scan log recorded the bar per tick.
+        scan_bar = await conn.fetchrow("""
+            SELECT ep_bar FROM mi_ep_scan_log
+            WHERE ticker = $1 AND scan_date = $2 AND ep_bar IS NOT NULL
+            ORDER BY scan_time_et DESC NULLS LAST, id DESC
+            LIMIT 1
+        """, ticker, ad)
+
+    regime_clean = _clean(regime)
+    if regime_clean is not None and scan_bar is not None:
+        # Replace the stored regime row's (legacy-side) threshold so neither the narrative nor
+        # the LLM reads it as the bar that decided this alert.
+        regime_clean.pop("ep_threshold", None)
+        regime_clean["ep_bar"] = float(scan_bar["ep_bar"])
+
     trade_clean = _clean(trade)
     # #228: a CLOSED/FILLED trade's skip_reason is a LATER re-entry block (the trade
     # entered AND exited), NOT the entry gate — and irrelevant to its own outcome.
@@ -157,7 +174,7 @@ async def build_postmortem_context(
         "alert": _clean(alert),
         "outcome": _clean(outcome),
         "themes": [_clean(t) for t in themes] if themes else [],
-        "regime": _clean(regime),
+        "regime": regime_clean,
     }
 
 
@@ -239,7 +256,7 @@ def _fallback_narrative(ctx: dict) -> str:
         f"• Catalyst: {alert.get('catalyst') or 'n/a'} ({alert.get('catalyst_quality') or '—'})",
         f"• Score: {_fmt(alert.get('ep_score'), 0)} ({alert.get('score_tier') or '—'}) · "
         f"Gap {_fmt(alert.get('gap_pct'), 1, '%')} · RVOL {_fmt(alert.get('rel_volume'), 1, 'x')}",
-        f"• Regime: {regime.get('regime') or 'n/a'} (EP bar {regime.get('ep_threshold')}, "
+        f"• Regime: {regime.get('regime') or 'n/a'} (EP bar {_fmt(regime.get('ep_bar', regime.get('ep_threshold')), 0)}, "
         f"QQQ bullish={regime.get('qqq_ema_bullish')})",
     ]
     if themes:

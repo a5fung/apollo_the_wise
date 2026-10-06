@@ -52,6 +52,8 @@ from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean, 
 from agents.market_intelligence.ep_rubric import (
     SEPARATION_BAR as _NEAR_MISS_HI,
     LEGACY_MODERATE_CUTLINE as _NEAR_MISS_LO,
+    acting_bar_of,
+    annotate_acting_bar,
 )
 from agents.market_intelligence.theme_engine import get_today_themes
 from agents.market_intelligence.audit_events import EVENING_BRIEF_SENT, EVENING_BRIEF_SEND_FAILED
@@ -261,10 +263,15 @@ def _vix_context(v: float) -> str:
         return "low fear, risk-on ✓"
 
 
-def _ep_threshold_context(thresh: int) -> str:
-    # Bands match the LIVE regime thresholds (regime.py: Bull 65 · Choppy 70 · Correcting 75 ·
-    # Crisis 80). The old 90/85/80 cutoffs tracked a stale docstring and mislabelled every
-    # non-Bull regime as "standard" (operator 6/26: the brief printed "CORRECTING … standard").
+def _ep_threshold_context(thresh: int, separation_on: bool = False) -> str:
+    # `thresh` is the ACTING bar (ep_rubric.acting_bar_of). With the #533 separation toggle ON
+    # (default) the bar is the same in every regime — the per-regime wording below would claim a
+    # tightened bar that does not act (operator 2026-10-06: "Choppy, EP bar 75", score-65 EP traded).
+    if separation_on:
+        return f"≥{thresh} — same bar in every regime"
+    # Toggle OFF (revert): bands match the LIVE regime thresholds (regime.py: Bull 65 · Choppy 70 ·
+    # Correcting 75 · Crisis 80). The old 90/85/80 cutoffs tracked a stale docstring and mislabelled
+    # every non-Bull regime as "standard" (operator 6/26: the brief printed "CORRECTING … standard").
     if thresh >= 80:
         return f"≥{thresh} — crisis, very selective"
     elif thresh >= 75:
@@ -306,7 +313,7 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
     vix = regime.get("vix")
-    ep_thresh = regime.get("ep_threshold", 70)
+    ep_thresh, _sep_on = acting_bar_of(regime)
 
     lines = [f"*{section_num}. MARKET CONDITION* {emoji} *{label.upper()}*"]
 
@@ -331,7 +338,7 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     ep_bits = []
     if vix is not None:
         ep_bits.append(f"VIX {vix:.1f}")
-    ep_bits.append(f"filter {_ep_threshold_context(ep_thresh)}")
+    ep_bits.append(f"filter {_ep_threshold_context(ep_thresh, _sep_on)}")
     # #456: DISPLAY only (not a sizing site) — _regime_size_multiplier stays in
     # sync with order_manager._resolve_regime_risk_pct's flag branch. Under
     # REGIME_SIZING_ENABLED the multiplier no longer depends on VIX, so it is
@@ -1568,7 +1575,7 @@ async def send_evening_briefing(
             _get_active_cooldowns(),
         )
     )
-    regime = regime or {"regime": "Unknown", "ep_threshold": 70}
+    regime = await annotate_acting_bar(regime or {"regime": "Unknown", "ep_threshold": 70})
 
     # Refresh description overrides so newly enriched tickers show industry names
     try:
@@ -2154,13 +2161,13 @@ def _format_morning_briefing(
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
     vix = regime.get("vix")
-    ep_thresh = regime.get("ep_threshold", 70)
+    ep_thresh, _sep_on = acting_bar_of(regime)
 
     vix_str = f"VIX {vix:.1f}" if vix is not None else ""
     regime_line = f"Market: {emoji} *{label}*"
     if vix_str:
         regime_line += f"  |  {vix_str}"
-    regime_line += f"  |  EP filter {_ep_threshold_context(ep_thresh)}"
+    regime_line += f"  |  EP filter {_ep_threshold_context(ep_thresh, _sep_on)}"
 
     sections = [f"*Apollo Morning Briefing — {briefing_date}*"]
 
@@ -2385,7 +2392,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     # %error%, won't double-count) and drop probe-origin api_failure rows.
     overnight_errors = _merge_overnight_error_rows(
         overnight_err_rows, overnight_api_rows, overnight_rate_rows)
-    regime = regime or {"regime": "Unknown", "ep_threshold": 70}
+    regime = await annotate_acting_bar(regime or {"regime": "Unknown", "ep_threshold": 70})
 
     # Earnings calendar — get RS scores for tickers with earnings data
     earnings_calendar_text = None
